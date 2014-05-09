@@ -241,7 +241,7 @@ mpi_printf("... this caught the error \n");
 #endif
 
 
-#ifdef AV_CD10_VISCOSITY_SWITCH
+#ifdef SPHAV_CD10_VISCOSITY_SWITCH
       All.ArtBulkViscConst = all.ArtBulkViscConst;
       All.ViscosityAMin = all.ViscosityAMin;
       All.ViscosityAMax = all.ViscosityAMax;
@@ -249,7 +249,7 @@ mpi_printf("... this caught the error \n");
 #ifdef TURB_DIFFUSION
       All.TurbDiffusion_Coefficient = all.TurbDiffusion_Coefficient;
 #endif
-#ifdef AV_ARTIFICIAL_CONDUCTIVITY
+#ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
       All.ArtCondConstant = all.ArtCondConstant;
 #endif
 
@@ -1175,7 +1175,7 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.ArtBulkViscConst;
       id[nt++] = REAL;
 
-#ifdef AV_ARTIFICIAL_CONDUCTIVITY
+#ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
       strcpy(tag[nt], "ArtCondConstant");
       addr[nt] = &All.ArtCondConstant;
       id[nt++] = REAL;
@@ -1668,7 +1668,7 @@ void read_parameter_file(char *fname)
 #endif
 #endif
 
-#ifdef AV_CD10_VISCOSITY_SWITCH
+#ifdef SPHAV_CD10_VISCOSITY_SWITCH
       strcpy(tag[nt], "ViscosityAMin");
       addr[nt] = &All.ViscosityAMin;
       id[nt++] = REAL;

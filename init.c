@@ -639,7 +639,7 @@ void init(void)
         SphP[i].Phi = SphP[i].PhiPred = SphP[i].DtPhi = 0;
 #endif
 #endif
-#ifdef AV_CD10_VISCOSITY_SWITCH
+#ifdef SPHAV_CD10_VISCOSITY_SWITCH
         SphP[i].alpha = 0.0;
 #endif
 #if defined(BH_THERMALFEEDBACK)
@@ -1165,7 +1165,7 @@ void test_id_uniqueness(void)
     
     t0 = my_second();
     
-#ifndef SPH_BND_PARTICLES
+#ifndef BND_PARTICLES
     ids = (MyIDType *) mymalloc("ids", NumPart * sizeof(MyIDType));
     ids_first = (MyIDType *) mymalloc("ids_first", NTask * sizeof(MyIDType));
     

@@ -48,7 +48,7 @@ struct kernel_density
 static struct densdata_in
 {
   MyDouble Pos[3];
-#if defined(AV_CD10_VISCOSITY_SWITCH)
+#if defined(SPHAV_CD10_VISCOSITY_SWITCH)
   MyFloat Accel[3];
 #endif
   MyFloat Vel[3];
@@ -83,7 +83,7 @@ static struct densdata_out
     MyFloat AGS_zeta;
 #endif
 
-#if defined(AV_CD10_VISCOSITY_SWITCH)
+#if defined(SPHAV_CD10_VISCOSITY_SWITCH)
     MyFloat NV_D[3][3];
     MyFloat NV_A[3][3];
 #endif
@@ -132,7 +132,7 @@ void particle2in_density(struct densdata_in *in, int i)
     
     if(P[i].Type == 0)
     {
-#if defined(AV_CD10_VISCOSITY_SWITCH)
+#if defined(SPHAV_CD10_VISCOSITY_SWITCH)
         for(k = 0; k < 3; k++)
             in->Accel[k] = All.cf_a2inv*P[i].GravAccel[k] + SphP[i].HydroAccel[k]; // PHYSICAL units //
 #endif
@@ -185,7 +185,7 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
             ASSIGN_ADD(SphP[i].SmoothedVel[k], out->GasVel[k], mode);
 #endif
 
-#if defined(AV_CD10_VISCOSITY_SWITCH)
+#if defined(SPHAV_CD10_VISCOSITY_SWITCH)
         for(k = 0; k < 3; k++)
             for(j = 0; j < 3; j++)
             {
@@ -936,7 +936,7 @@ void density(void)
                     PPPZ[i].AGS_zeta *= 0.5 * P[i].Mass * PPP[i].Hsml / (NUMDIMS * ndenNGB) * PPPZ[i].DhsmlNgbFactor;
 #endif
                     
-#if defined(AV_CD10_VISCOSITY_SWITCH)
+#if defined(SPHAV_CD10_VISCOSITY_SWITCH)
                     for(k1 = 0; k1 < 3; k1++)
                         for(k2 = 0; k2 < 3; k2++)
                         {
@@ -1325,7 +1325,7 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
         
     } else { /* local.Type == 0 */
         
-#if defined(AV_CD10_VISCOSITY_SWITCH)
+#if defined(SPHAV_CD10_VISCOSITY_SWITCH)
         double wk = kernel->wk;
         out->NV_A[0][0] += (local->Accel[0] - All.cf_a2inv*P[j].GravAccel[0] - SphP[j].HydroAccel[0]) * kernel->dx * wk;
         out->NV_A[0][1] += (local->Accel[0] - All.cf_a2inv*P[j].GravAccel[0] - SphP[j].HydroAccel[0]) * kernel->dy * wk;

@@ -146,7 +146,7 @@
     if(kernel.vdotr2 < 0) // no viscosity applied if particles are moving away from each other //
     {
         double c_ij = 0.5 * (kernel.sound_i + kernel.sound_j);
-#if defined(AV_CD10_VISCOSITY_SWITCH)
+#if defined(SPHAV_CD10_VISCOSITY_SWITCH)
         double BulkVisc_ij = 0.5 * (local.alpha + SphP[j].alpha_limiter * SphP[j].alpha);
         double mu_ij = fac_mu * kernel.vdotr2 / kernel.r;
         double visc = -BulkVisc_ij * mu_ij * (c_ij - mu_ij) * kernel.rho_ij_inv; /* this method should use beta/alpha=1 */
@@ -173,7 +173,7 @@
     /* --------------------------------------------------------------------------------- */
     /* ... artificial conductivity (thermal diffusion) evaluation ... */
     /* --------------------------------------------------------------------------------- */
-#ifdef AV_ARTIFICIAL_CONDUCTIVITY
+#ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
 #ifdef BP_REAL_CRs
     double vsigu = sqrt(fabs(local.Pressure - SphP[j].Pressure - local.CRpPressure + SphP[j].CRpPressure) * kernel.rho_ij_inv);
     double u_i = (local.Pressure - local.CRpPressure) / (GAMMA_MINUS1 * local.Density);
@@ -185,13 +185,13 @@
     {
         vsigu *= fabs(local.Pressure - SphP[j].Pressure)/(local.Pressure + SphP[j].Pressure);
         du_ij = kernel.spec_egy_u_i - Particle_Internal_energy_i(j);
-#if defined(AV_CD10_VISCOSITY_SWITCH)
+#if defined(SPHAV_CD10_VISCOSITY_SWITCH)
         du_ij *= 0.5 * (local.alpha + SphP[j].alpha_limiter * SphP[j].alpha); // in this case, All.ArtCondConstant is just a multiplier -relative- to art. visc.
 #endif
         Fluxes.p += local.Mass * All.ArtCondConstant * P[j].Mass * kernel.rho_ij_inv * vsigu * du_ij * kernel.dwk_ij;
     }
 #endif
-#endif // AV_ARTIFICIAL_CONDUCTIVITY
+#endif // SPHAV_ARTIFICIAL_CONDUCTIVITY
 
     
     

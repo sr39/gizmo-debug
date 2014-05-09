@@ -685,7 +685,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
       break;
 
     case IO_ABVC:		/* artificial viscosity of particle  */
-#if defined(AV_CD10_VISCOSITY_SWITCH)
+#if defined(SPHAV_CD10_VISCOSITY_SWITCH)
       for(n = 0; n < pc; pindex++)
 	if(P[pindex].Type == type)
 	  {
@@ -2436,7 +2436,7 @@ int blockpresent(enum iofields blocknr)
       break;
 
     case IO_ABVC:
-#if defined(AV_CD10_VISCOSITY_SWITCH)
+#if defined(SPHAV_CD10_VISCOSITY_SWITCH)
       return 1;
 #else
       return 0;

@@ -13,7 +13,7 @@
 #--------------------------------------- Boundary Conditions & Dimensions
 ####################################################################################################
 PERIODIC                        # Use this if periodic boundaries are needed (otherwise open boundaries are assumed)
-#SPH_BND_PARTICLES              # particles with ID=0 are forced in place (their accelerations are set =0):
+#BND_PARTICLES                  # particles with ID=0 are forced in place (their accelerations are set =0):
                                 # use for special boundary conditions where these particles represent fixed "walls"
 #LONG_X=140                     # modify box dimensions (non-square periodic box): multiply X (PERIODIC and NOGRAVITY required)
 #LONG_Y=1                       # modify box dimensions (non-square periodic box): multiply Y
@@ -27,18 +27,18 @@ PERIODIC                        # Use this if periodic boundaries are needed (ot
 ####################################################################################################
 #--------------------------------------- Hydro solver method
 ####################################################################################################
-HYDRO_LAGRANGIAN_GALERKIN       # Lagrangian (constant-mass) discontinuous-Galerkin method
-#HYDRO_MESHLESS_FINITE_VOLUME    # Moving (quasi-Lagrangian) finite-volume method
+HYDRO_LAGRANGIAN_GALERKIN           # Lagrangian (constant-mass) discontinuous-Galerkin method
+#HYDRO_MESHLESS_FINITE_VOLUME       # Moving (quasi-Lagrangian) finite-volume method
 
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- SPH methods:
-#SPHEQ_DENSITY_INDEPENDENT_SPH   # force SPH to use the 'pressure-sph' formulation ("modern" SPH)
-#SPHEQ_TRADITIONAL_SPH           # force SPH to use the 'density-sph' (GADGET-2 & GASOLINE-era SPH)
+#SPHEQ_DENSITY_INDEPENDENT_SPH      # force SPH to use the 'pressure-sph' formulation ("modern" SPH)
+#SPHEQ_TRADITIONAL_SPH              # force SPH to use the 'density-sph' (GADGET-2 & GASOLINE-era SPH)
 #--------------------------------------- Kernel Options (use with SPH; not relevant for Galerkin/Mesh modes)
-#KERNEL_QUINTIC                  # Implementation of the Morris 1996 quintic spline kernel, requires ~1.74x more neighbours !
+#SPH_KERNEL_QUINTIC                 # Implementation of the Morris 1996 quintic spline kernel, requires ~1.74x more neighbours !
 #--------------------------------------- SPH diffusion options (use with SPH; not relevant for Galerkin/Mesh modes)
-#AV_CD10_VISCOSITY_SWITCH=0.05   # Enables Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks)
-#AV_ARTIFICIAL_CONDUCTIVITY      # Enables mixing entropy (J.Read's improved Price-Monaghan conductivity with Cullen-Dehnen switches)
+#SPHAV_CD10_VISCOSITY_SWITCH=0.05   # Enables Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks)
+#SPHAV_ARTIFICIAL_CONDUCTIVITY      # Enables mixing entropy (J.Read's improved Price-Monaghan conductivity with Cullen-Dehnen switches)
 ####################################################################################################
 
 

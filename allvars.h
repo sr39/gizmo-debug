@@ -552,7 +552,7 @@ typedef MyDouble MyBigFloat;
 #define NUMDIMS 3
 #endif
 
-#ifdef KERNEL_QUINTIC
+#ifdef SPH_KERNEL_QUINTIC
 #define KERNEL_CORE_SIZE (1.0/3.0)
 #else
 #define KERNEL_CORE_SIZE (1.0/2.0)
@@ -937,7 +937,7 @@ extern struct global_data_all_processes
   double InitGasU;		/*!< the same, but converted to thermal energy per unit mass */
   double MinGasTemp;		/*!< may be used to set a floor for the gas temperature */
   double MinEgySpec;		/*!< the minimum allowed temperature expressed as energy per unit mass */
-#ifdef AV_ARTIFICIAL_CONDUCTIVITY
+#ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
   double ArtCondConstant;
 #endif
     
@@ -1264,7 +1264,7 @@ extern struct global_data_all_processes
   double VelIniScale;		/*!< Scale the initial velocities by this amount */
 #endif
 
-#ifdef AV_CD10_VISCOSITY_SWITCH
+#ifdef SPHAV_CD10_VISCOSITY_SWITCH
   double ViscosityAMin;
   double ViscosityAMax;
 #endif
@@ -1898,7 +1898,7 @@ extern struct sph_particle_data
 #ifdef TURB_DIFFUSION
   MyFloat TD_DiffCoeff;             /*!< effective diffusion coefficient for sub-grid turbulent diffusion */
 #endif
-#if defined(AV_CD10_VISCOSITY_SWITCH)
+#if defined(SPHAV_CD10_VISCOSITY_SWITCH)
   MyFloat NV_DivVel;                /*!< quantities specific to the Cullen & Dehnen viscosity switch */
   MyFloat NV_dt_DivVel;
   MyFloat NV_A[3][3];

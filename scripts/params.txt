@@ -90,7 +90,7 @@ TurbDiffusionCoefficient  1.0 % Normalizes diffusion rates, should be ~1
 ArtificialMagneticDissipationConstant   1.00 % maximum alpha_B (>~1)
 ArtificialMagneticDissipationMin        0.10 % min alpha_B (TP recommend 0)
 ArtificialMagneticDissipationSource     1.00 % multiplies alpha_B growth (~1)
-ArtificialMagneticDissipationDecaytime  0.10 % ~0.1 (similar to AV_CD10_VISCOSITY_SWITCH parameter)
+ArtificialMagneticDissipationDecaytime  0.10 % ~0.1 (similar to SPHAV_CD10_VISCOSITY_SWITCH parameter)
 %--- Div-cleaning parameters
 DivBcleaningParabolicSigma   1.0 % (3D~0.7-1.0,2D~0.2-0.3)
 DivBcleaningHyperbolicSigma  1.0 % (~1)

@@ -2,7 +2,7 @@
 #define KERNEL_H
 
 /* fall back to standard kernel */
-#if !defined(KERNEL_QUINTIC)
+#if !defined(SPH_KERNEL_QUINTIC)
 #define STANDARD_KERNEL   
 #endif
 
@@ -24,7 +24,7 @@
 #endif
 #endif /* STANDARD_KERNEL */
 
-#ifdef KERNEL_QUINTIC
+#ifdef SPH_KERNEL_QUINTIC
 #ifdef THREEDIM
 #define  NORM 2187.0/(40.0*M_PI)	    /*!< For 3D-normalized kernel */
 #endif
@@ -34,7 +34,7 @@
 #ifdef ONEDIM
 #define  NORM 243.0/40.0        	    /*!< For 1D-normalized kernel */
 #endif
-#endif  /* KERNEL_QUINTIC */
+#endif  /* SPH_KERNEL_QUINTIC */
 
 static inline void kernel_hinv(double h, double *hinv, double *hinv3, double *hinv4)
 {
@@ -85,7 +85,7 @@ static inline void kernel_main(double u, double hinv3, double hinv4,
     }
 #endif /* STANDARD_KERNEL */
 
-#ifdef KERNEL_QUINTIC
+#ifdef SPH_KERNEL_QUINTIC
   double t1 = (1.0 - u);
   double t2 = t1 * t1;
   double t4 = t2 * t2;
@@ -115,7 +115,7 @@ static inline void kernel_main(double u, double hinv3, double hinv4,
       if(mode <= 0) 
           *wk += 15.0 * t4 * t1;
     }
-#endif /* KERNEL_QUINTIC */
+#endif /* SPH_KERNEL_QUINTIC */
 
   if(mode >= 0) 
       *dwk *= NORM * hinv4;
@@ -180,7 +180,7 @@ static inline double kernel_gravity(double u, double hinv, double hinv3, int mod
     } // mode==1 else
 #endif /* STANDARD_KERNEL */
 
-#ifdef KERNEL_QUINTIC
+#ifdef SPH_KERNEL_QUINTIC
     double u2=u*u;
     if(mode == 1)
     {

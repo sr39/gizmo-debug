@@ -126,7 +126,7 @@ static inline void particle2in_addSPH(struct addSPHdata_in *in, int i)
 static inline void out2particle_addSPH(struct addSPHdata_out *out, int i, int mode)
 {
     int j,k;
-#ifdef AV_CD10_VISCOSITY_SWITCH
+#ifdef SPHAV_CD10_VISCOSITY_SWITCH
     ASSIGN_ADD(SphP[i].alpha_limiter, out->alpha_limiter, mode);
 #endif
     
@@ -190,7 +190,7 @@ void hydro_gradient_calc(void)
   double timecomp, timecomm, timewait, tstart, tend, t0, t1;
   int save_NextParticle;
   long long n_exported = 0;
-#ifdef AV_CD10_VISCOSITY_SWITCH
+#ifdef SPHAV_CD10_VISCOSITY_SWITCH
     double NV_dt,NV_dummy,NV_limiter,NV_A,divVel_physical,h_eff,alphaloc,cs_nv;
 #endif
     
@@ -548,7 +548,7 @@ void hydro_gradient_calc(void)
           
 
 #ifdef HYDRO_SPH
-#ifdef AV_CD10_VISCOSITY_SWITCH
+#ifdef SPHAV_CD10_VISCOSITY_SWITCH
           SphP[i].alpha_limiter /= SphP[i].Density;
           NV_dt =  (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; // physical
           NV_dummy = fabs(1.0 * pow(1.0 - SphP[i].alpha_limiter,4.0) * SphP[i].NV_DivVel); // NV_ quantities are in physical units
@@ -562,7 +562,7 @@ void hydro_gradient_calc(void)
           
           h_eff = (KERNEL_CORE_SIZE/0.5) * PPP[i].Hsml * All.cf_atime; // 'default' parameter choices are scaled for a cubic spline //
           cs_nv = Particle_effective_soundspeed_i(i) * All.cf_afac3; // converts to physical velocity units //
-          alphaloc = All.ViscosityAMax * h_eff*h_eff*NV_A / (0.36*cs_nv*cs_nv*(0.05/AV_CD10_VISCOSITY_SWITCH) + h_eff*h_eff*NV_A);
+          alphaloc = All.ViscosityAMax * h_eff*h_eff*NV_A / (0.36*cs_nv*cs_nv*(0.05/SPHAV_CD10_VISCOSITY_SWITCH) + h_eff*h_eff*NV_A);
           // 0.25 in front of vsig is the 'noise parameter' that determines the relative amplitude which will trigger the switch:
           //    that choice was quite large (requires approach velocity rate-of-change is super-sonic); better to use c_s (above), and 0.05-0.25 //
           // NV_A is physical 1/(time*time), but Hsml and vsig can be comoving, so need appropriate correction terms above //
@@ -570,7 +570,7 @@ void hydro_gradient_calc(void)
           if(SphP[i].alpha < alphaloc)
               SphP[i].alpha = alphaloc;
           else if (SphP[i].alpha > alphaloc)
-              SphP[i].alpha = alphaloc + (SphP[i].alpha - alphaloc) * exp(-NV_dt * (0.5*fabs(SphP[i].MaxSignalVel)*All.cf_afac3)/(0.5*h_eff) * AV_CD10_VISCOSITY_SWITCH);
+              SphP[i].alpha = alphaloc + (SphP[i].alpha - alphaloc) * exp(-NV_dt * (0.5*fabs(SphP[i].MaxSignalVel)*All.cf_afac3)/(0.5*h_eff) * SPHAV_CD10_VISCOSITY_SWITCH);
           
           if(SphP[i].alpha < All.ViscosityAMin)
               SphP[i].alpha = All.ViscosityAMin;
@@ -726,7 +726,7 @@ int addSPH_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
     if(local.ConditionNumber > (double)CONDITION_NUMBER_DANGER) {sph_like_gradients_flag = 1;} else {sph_like_gradients_flag = 0;}
     kernel_mode = -1;
     if(sph_like_gradients_flag) kernel_mode = 1;
-#ifdef AV_CD10_VISCOSITY_SWITCH
+#ifdef SPHAV_CD10_VISCOSITY_SWITCH
     kernel_mode = 0;
 #endif
     
@@ -772,7 +772,7 @@ int addSPH_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
                     u = kernel.r * hinv;
                     kernel_main(u, hinv3, hinv4, &kernel.wk_i, &kernel.dwk_i, kernel_mode); /* only wk calculated now */
                     
-#ifdef AV_CD10_VISCOSITY_SWITCH
+#ifdef SPHAV_CD10_VISCOSITY_SWITCH
                     out.alpha_limiter += NV_MYSIGN(SphP[j].NV_DivVel) * P[j].Mass * kernel.wk_i;
 #endif
                     if(sph_like_gradients_flag==1)

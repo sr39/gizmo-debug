@@ -265,7 +265,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     in->ConditionNumber = SphP[i].ConditionNumber;
 #ifdef HYDRO_SPH
     in->DhsmlHydroSumFactor = SphP[i].DhsmlHydroSumFactor;
-#if defined(AV_CD10_VISCOSITY_SWITCH)
+#if defined(SPHAV_CD10_VISCOSITY_SWITCH)
     in->alpha = SphP[i].alpha_limiter * SphP[i].alpha;
 #else
     in->alpha = SphP[i].alpha_limiter;
@@ -574,7 +574,7 @@ void hydro_final_operations_and_cleanup(void)
 #endif
             
             
-#ifdef SPH_BND_PARTICLES
+#ifdef BND_PARTICLES
             /* this flag signals all particles with id=0 are frozen (boundary particles) */
             if(P[i].ID == 0)
             {
