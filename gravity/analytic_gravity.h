@@ -1,0 +1,315 @@
+/*! \file analytic_gravity.h
+ *  \brief externally-specified (analytic) gravity goes here
+ *
+ *  This file contains supplemental code if you want to add an 
+ *   -analytic- potential or gravitational force in the code, 
+ *   rather than solely relying on the calculated self-gravity
+ */
+
+void add_analytic_gravitational_forces(void);
+void GravAccel_StaticPlummerSphere(void);
+void GravAccel_StaticHernquist(void);
+void GravAccel_StaticIsothermalSphere(void);
+void GravAccel_KeplerianOrbit(void);
+void GravAccel_GrowingDiskPotential(void);
+void GravAccel_StaticNFW(void);
+void GravAccel_RayleighTaylorTest(void);
+
+
+/* master routine which decides which (if any) analytic gravitational forces are applied */
+void add_analytic_gravitational_forces()
+{
+#ifdef ANALYTIC_GRAVITY
+    //GravAccel_RayleighTaylorTest();     // vertical potential for RT tests
+    //GravAccel_StaticPlummerSphere();    // plummer sphere
+    //GravAccel_StaticHernquist();        // hernquist sphere
+    //GravAccel_StaticIsothermalSphere(); // singular or cored isothermal sphere
+    //GravAccel_KeplerianOrbit();         // keplerian disk
+    //GravAccel_GrowingDiskPotential();   // time-dependent (adiabatically growing) disk
+    //GravAccel_StaticNFW();              // spherical NFW profile
+#endif
+}
+
+
+
+/* constant vertical acceleration for Rayleigh-Taylor test problem */
+void GravAccel_RayleighTaylorTest()
+{
+    int i;
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        P[i].GravAccel[0]=P[i].GravAccel[1]=P[i].GravAccel[2]=0;
+        if(P[i].ID != 0) {P[i].GravAccel[1]=-0.5;}
+    }
+}
+
+
+
+/* static unit Plummer Sphere (G=M=a=1) */
+void GravAccel_StaticPlummerSphere()
+{
+    int i,l; double r;
+    
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        r = sqrt(P[i].Pos[0] * P[i].Pos[0] + P[i].Pos[1] * P[i].Pos[1] + P[i].Pos[2] * P[i].Pos[2]);
+        for(l = 0; l < 3; l++)
+            P[i].GravAccel[l] += -P[i].Pos[l] / pow(r * r + 1, 1.5);
+        
+#ifdef DISTORTIONTENSORPS
+        double x, y, z, r2, f, f2;
+        x = P[i].Pos[0]; y = P[i].Pos[1]; z = P[i].Pos[2];
+        r2 = r * r; f = pow(r2 + 1, 1.5); f2 = pow(r2 + 1, 2.5);
+        
+        P[i].tidal_tensorps[0][0] += -1.0 / f + 3.0 * x * x / f2;
+        P[i].tidal_tensorps[0][1] += -0.0 / f + 3.0 * x * y / f2;
+        P[i].tidal_tensorps[0][2] += -0.0 / f + 3.0 * x * z / f2;
+        P[i].tidal_tensorps[1][1] += -1.0 / f + 3.0 * y * y / f2;
+        P[i].tidal_tensorps[1][2] += -0.0 / f + 3.0 * y * z / f2;
+        P[i].tidal_tensorps[2][2] += -1.0 / f + 3.0 * z * z / f2;
+        P[i].tidal_tensorps[1][0] += P[i].tidal_tensorps[0][1];
+        P[i].tidal_tensorps[2][0] += P[i].tidal_tensorps[0][2];
+        P[i].tidal_tensorps[2][1] += P[i].tidal_tensorps[1][2];
+#endif
+    }
+}
+
+
+
+/* static Hernquist Profile (parameters specified in the routine below) */
+void GravAccel_StaticHernquist()
+{
+    double HQ_M200 = 95.2401;
+    double HQ_C = 9.0;
+    double HQ_DARKFRACTION = 0.9;
+
+    double r, m, a; int i,l;
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        r = sqrt(P[i].Pos[0] * P[i].Pos[0] + P[i].Pos[1] * P[i].Pos[1] + P[i].Pos[2] * P[i].Pos[2]);
+        
+        a = pow(All.G * HQ_M200 / (100 * All.Hubble * All.Hubble), 1.0 / 3) / HQ_C *
+        sqrt(2 * (log(1 + HQ_C) - HQ_C / (1 + HQ_C)));
+        
+        m = HQ_M200 * pow(r / (r + a), 2) * HQ_DARKFRACTION;
+        if(r > 0)
+        {
+            for(l = 0; l < 3; l++)
+                P[i].GravAccel[l] += -All.G * m * P[i].Pos[l] / (r * r * r);
+            
+#ifdef DISTORTIONTENSORPS
+            double x, y, z, r2, r3, f, f2, f3;
+            x = P[i].Pos[0]; y = P[i].Pos[1]; z = P[i].Pos[2];
+            r2 = r * r; r3 = r * r2; f = r + a; f2 = f * f; f3 = f2 * f;
+            
+            P[i].tidal_tensorps[0][0] += All.G * (2.0 * HQ_M200 / (r2 * f3) * x * x + HQ_M200 / (r3 * f2) * x * x - HQ_M200 / (r * f2));
+            P[i].tidal_tensorps[0][1] += All.G * (2.0 * HQ_M200 / (r2 * f3) * x * y + HQ_M200 / (r3 * f2) * x * y);
+            P[i].tidal_tensorps[0][2] += All.G * (2.0 * HQ_M200 / (r2 * f3) * x * z + HQ_M200 / (r3 * f2) * x * z);
+            P[i].tidal_tensorps[1][1] += All.G * (2.0 * HQ_M200 / (r2 * f3) * y * y + HQ_M200 / (r3 * f2) * y * y - HQ_M200 / (r * f2));
+            P[i].tidal_tensorps[1][2] += All.G * (2.0 * HQ_M200 / (r2 * f3) * y * z + HQ_M200 / (r3 * f2) * y * z);
+            P[i].tidal_tensorps[2][2] += All.G * (2.0 * HQ_M200 / (r2 * f3) * z * z + HQ_M200 / (r3 * f2) * z * z - HQ_M200 / (r * f2));
+            P[i].tidal_tensorps[1][0] += P[i].tidal_tensorps[0][1];
+            P[i].tidal_tensorps[2][0] += P[i].tidal_tensorps[0][2];
+            P[i].tidal_tensorps[2][1] += P[i].tidal_tensorps[1][2];
+#endif
+        }
+    }
+}
+
+
+
+/* static Isothermal Sphere Profile (parameters specified in the routine below) */
+void GravAccel_StaticIsothermalSphere()
+{
+    double ISO_M200=95.21;
+    double ISO_R200=160.0;
+    double ISO_Eps=0.1;
+    double ISO_FRACTION=0.9;
+    double r, m, dx, dy, dz; int i;
+    
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        dx = P[i].Pos[0]; dy = P[i].Pos[1]; dz = P[i].Pos[2];
+        r = sqrt(dx * dx + dy * dy + dz * dz);
+        
+        if(r > ISO_R200)
+            m = ISO_M200;
+        else
+            m = ISO_M200 * r / ISO_R200;
+        
+        m *= ISO_FRACTION;
+        if(r > 0)
+        {
+            P[i].GravAccel[0] += -All.G * m * dx / r / (r * r + ISO_Eps * ISO_Eps);
+            P[i].GravAccel[1] += -All.G * m * dy / r / (r * r + ISO_Eps * ISO_Eps);
+            P[i].GravAccel[2] += -All.G * m * dz / r / (r * r + ISO_Eps * ISO_Eps);
+        }
+    }
+}
+
+
+/* time-dependent potential of an adiabatically-growing disk */
+void GravAccel_GrowingDiskPotential()
+{
+#ifdef GROWING_DISK_POTENTIAL
+    double mdisk, dx, dy, dz, r, z, aR, az; int i;
+    /* currently ifdef'd out because these routines need to be supplied externally */
+    growing_disk_init();
+    mdisk = get_disk_mass(All.Time);
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        dx = P[i].Pos[0]; dy = P[i].Pos[1]; dz = P[i].Pos[2];
+        r = sqrt(dx * dx + dy * dy); z = fabs(dz);
+        
+        get_disk_forces(r, z, &aR, &az);
+        
+        aR *= mdisk;
+        az *= mdisk;
+        
+        if(r > 0)
+        {
+            P[i].GravAccel[0] += -dx / r * aR;
+            P[i].GravAccel[1] += -dy / r * aR;
+            P[i].GravAccel[2] += -dz / z * az;
+        }
+    }
+#endif
+}
+
+
+/* Keplerian forces (G=M=1): useful for orbit, MRI, planetary disk problems */
+void GravAccel_KeplerianOrbit()
+{
+    double x00,y00;
+    x00=y00=0;
+#if defined(PERIODIC)
+    x00=boxHalf_X; y00=boxHalf_Y;
+#endif
+    int i;
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        P[i].GravAccel[0] = -(P[i].Pos[0]-x00)
+            / pow(pow(P[i].Pos[1]-y00,2.)+pow(P[i].Pos[0]-x00,2.),1.5) ;
+        P[i].GravAccel[1] = -(P[i].Pos[1]-y00)
+            / pow(pow(P[i].Pos[1]-y00,2.)+pow(P[i].Pos[0]-x00,2.),1.5) ;
+        P[i].GravAccel[2] = 0;
+    }
+}
+    
+
+/* static NFW potential */
+void GravAccel_StaticNFW()
+{
+    double NFW_C=12;
+    double NFW_M200=100.0;
+    double NFW_Eps=0.01;
+    double NFW_DARKFRACTION=0.87;
+    double NFW_BOXCENTERED;
+    NFW_BOXCENTERED=1;
+
+    /* convert units */
+    double R200 = pow(NFW_M200 * All.G / (100 * All.Hubble * All.Hubble), 1.0 / 3);
+    double Rs = R200 / NFW_C;
+    double Dc = 200.0 / 3 * NFW_C * NFW_C * NFW_C / (log(1 + NFW_C) - NFW_C / (1 + NFW_C));
+    double RhoCrit = 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
+    double V200 = 10 * All.Hubble * R200;
+    
+    double r0, R, r, m, dx, dy, dz, fac; int i;
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        dx = P[i].Pos[0];
+        dy = P[i].Pos[1];
+        dz = P[i].Pos[2];
+#if defined(PERIODIC)
+        if(NFW_BOXCENTERED)
+        {
+            dx = P[i].Pos[0] - boxHalf_X;
+            dy = P[i].Pos[1] - boxHalf_Y;
+            dz = P[i].Pos[2] - boxHalf_Z;
+        }
+#endif
+        r0 = sqrt(dx * dx + dy * dy + dz * dz);
+
+        /* function to get enclosed mass(<r) for NFW: */
+        /* Eps is in units of Rs !!!! :: use unsoftened NFW if NFW_Eps=0 */
+        R = r0;
+        if(NFW_Eps > 0.0)
+            if(R > Rs * NFW_C)
+                R = Rs * NFW_C;
+        
+        fac=1.0;
+        if(NFW_Eps > 0.0)
+        {
+            m = fac * 4 * M_PI * RhoCrit * Dc * (-(Rs * Rs * Rs * (1 - NFW_Eps + log(Rs) - 2 * NFW_Eps * log(Rs) +
+              NFW_Eps * NFW_Eps * log(NFW_Eps * Rs))) / ((NFW_Eps - 1) * (NFW_Eps - 1)) + (Rs * Rs * Rs * (Rs -
+              NFW_Eps * Rs - (2 * NFW_Eps - 1) * (R + Rs) * log(R + Rs) + NFW_Eps * NFW_Eps * (R + Rs) * log(R + NFW_Eps * Rs)))
+              / ((NFW_Eps - 1) * (NFW_Eps - 1) * (R + Rs)));
+        }
+        else /* analytic NFW */
+        {
+            m = fac * 4 * M_PI * RhoCrit * Dc *
+            (-(Rs * Rs * Rs * (1 + log(Rs))) + Rs * Rs * Rs * (Rs + (R + Rs) * log(R + Rs)) / (R + Rs));
+        }
+        fac = V200 * V200 * V200 / (10 * All.G * All.Hubble) / m;
+        if(NFW_Eps > 0.0)
+        {
+            m = fac * 4 * M_PI * RhoCrit * Dc * (-(Rs * Rs * Rs * (1 - NFW_Eps + log(Rs) - 2 * NFW_Eps * log(Rs) +
+              NFW_Eps * NFW_Eps * log(NFW_Eps * Rs))) / ((NFW_Eps - 1) * (NFW_Eps - 1)) + (Rs * Rs * Rs * (Rs -
+              NFW_Eps * Rs - (2 * NFW_Eps - 1) * (R + Rs) * log(R + Rs) + NFW_Eps * NFW_Eps * (R + Rs) * log(R + NFW_Eps * Rs)))
+              / ((NFW_Eps - 1) * (NFW_Eps - 1) * (R + Rs)));
+        }
+        else /* analytic NFW */
+        {
+            m = fac * 4 * M_PI * RhoCrit * Dc *
+            (-(Rs * Rs * Rs * (1 + log(Rs))) + Rs * Rs * Rs * (Rs + (R + Rs) * log(R + Rs)) / (R + Rs));
+        }
+        m *= NFW_DARKFRACTION; r=r0;
+
+        if(r > 0)
+        {
+            P[i].GravAccel[0] += -All.G * m * dx / (r * r * r);
+            P[i].GravAccel[1] += -All.G * m * dy / (r * r * r);
+            P[i].GravAccel[2] += -All.G * m * dz / (r * r * r);
+            
+#ifdef DISTORTIONTENSORPS
+            double R200 = pow(NFW_M200 * All.G / (100 * All.Hubble * All.Hubble), 1.0 / 3);
+            double Rs = R200 / NFW_C;
+            double K = All.G * NFW_M200 / (Rs * (log(1 + NFW_C) - NFW_C / (1 + NFW_C)));
+            double r_red = r / Rs;
+            double x, y, z;
+            x = P[i].Pos[0]; y = P[i].Pos[1]; z = P[i].Pos[2];
+            
+            P[i].tidal_tensorps[0][0] +=
+            -(-K * (1.0 / (r * (1 + r_red)) - log(1 + r_red) / (r * r_red)) * (1 / r - x * x / (r * r * r)) -
+              K * (-2.0 / (r * r * (1 + r_red)) - 1.0 / (r * (1 + r_red) * (1 + r_red) * Rs) +
+                   2.0 * Rs * log(1 + r_red) / (r * r * r)) * x * x / (r * r));
+            P[i].tidal_tensorps[0][1] +=
+            -(-K * (1.0 / (r * (1 + r_red)) - log(1 + r_red) / (r * r_red)) * (0 - x * y / (r * r * r)) -
+              K * (-2.0 / (r * r * (1 + r_red)) - 1.0 / (r * (1 + r_red) * (1 + r_red) * Rs) +
+                   2.0 * Rs * log(1 + r_red) / (r * r * r)) * x * y / (r * r));
+            P[i].tidal_tensorps[0][2] +=
+            -(-K * (1.0 / (r * (1 + r_red)) - log(1 + r_red) / (r * r_red)) * (0 - x * z / (r * r * r)) -
+              K * (-2.0 / (r * r * (1 + r_red)) - 1.0 / (r * (1 + r_red) * (1 + r_red) * Rs) +
+                   2.0 * Rs * log(1 + r_red) / (r * r * r)) * x * z / (r * r));
+            P[i].tidal_tensorps[1][1] +=
+            -(-K * (1.0 / (r * (1 + r_red)) - log(1 + r_red) / (r * r_red)) * (1 / r - y * y / (r * r * r)) -
+              K * (-2.0 / (r * r * (1 + r_red)) - 1.0 / (r * (1 + r_red) * (1 + r_red) * Rs) +
+                   2.0 * Rs * log(1 + r_red) / (r * r * r)) * y * y / (r * r));
+            P[i].tidal_tensorps[1][2] +=
+            -(-K * (1.0 / (r * (1 + r_red)) - log(1 + r_red) / (r * r_red)) * (0 - y * z / (r * r * r)) -
+              K * (-2.0 / (r * r * (1 + r_red)) - 1.0 / (r * (1 + r_red) * (1 + r_red) * Rs) +
+                   2.0 * Rs * log(1 + r_red) / (r * r * r)) * y * z / (r * r));
+            P[i].tidal_tensorps[2][2] +=
+            -(-K * (1.0 / (r * (1 + r_red)) - log(1 + r_red) / (r * r_red)) * (1 / r - z * z / (r * r * r)) -
+              K * (-2.0 / (r * r * (1 + r_red)) - 1.0 / (r * (1 + r_red) * (1 + r_red) * Rs) +
+                   2.0 * Rs * log(1 + r_red) / (r * r * r)) * z * z / (r * r));
+            
+            P[i].tidal_tensorps[1][0] += P[i].tidal_tensorps[0][1];
+            P[i].tidal_tensorps[2][0] += P[i].tidal_tensorps[0][2];
+            P[i].tidal_tensorps[2][1] += P[i].tidal_tensorps[1][2];
+#endif
+        } // if(r > 0) //
+    } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) //
+}
+
+
