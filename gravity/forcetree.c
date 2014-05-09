@@ -1842,7 +1842,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     kick_x = kick_y = kick_z = 0;
     si_count = 0;
     max_prob = 0;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
     targeth_si = All.SIDMSmoothingFactor * soft;
+#else
+    targeth_si = All.SIDMSmoothingFactor * All.ForceSoftening[ptype];
+#endif
     if(mode == 0)
     {
         for(i=0;i<3;i++)

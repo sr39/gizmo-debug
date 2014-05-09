@@ -94,7 +94,10 @@ struct kernel_hydra
     double wk_i, wk_j, dwk_i, dwk_j;
     double h_i, h_j, dwk_ij, rho_ij_inv;
 #ifdef HYDRO_SPH
-    double p_over_rho2_i, spec_egy_u_i;
+    double p_over_rho2_i;
+#endif
+#if defined(HYDRO_SPH) || defined(CONDUCTION_EXPLICIT) || defined(TURB_DIFF_ENERGY)
+    double spec_egy_u_i;
 #endif
 #ifdef MAGNETIC
     double mj_r, mf_Ind, b2_i, b2_j;

@@ -245,7 +245,7 @@ void add_along_lines_of_sight(void)
   int n, bin, i, iz0, iz1, iz;
   double dx, dy, dz, r, r2, ne, nh0, nHeII, utherm, temp, meanWeight;
   double u, wk, dwk, weight, h3inv;
-  double z0, z1, dmax1, dmax2;
+  double z0, z1;
 
   for(i = 0; i < PIXELS; i++)
     {

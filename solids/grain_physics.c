@@ -247,7 +247,7 @@ void grain_density(void)
   int i, j, ndone, ndone_flag, npleft, dt_step, dummy, iter = 0;
   int ngrp, sendTask, recvTask, place, nexport, nimport;
   long long ntot;
-  double dmax1, dmax2, fac;
+  double fac;
   double timeall = 0, timecomp1 = 0, timecomp2 = 0, timecommsumm1 = 0, timecommsumm2 = 0, timewait1 =
     0, timewait2 = 0;
   double timecomp, timecomm, timewait;

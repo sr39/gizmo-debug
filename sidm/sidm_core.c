@@ -9,6 +9,7 @@
 
 #include "../allvars.h"
 #include "../proto.h"
+#include "../kernel.h"
 
 #define GSLWORKSIZE 100000
 
@@ -148,10 +149,11 @@ double geofactor_integ(double x, void * params)
     F.params = newparams;
     
     gsl_integration_qag(&F, -1.0, 1.0, 0, 1.0e-8, GSLWORKSIZE, GSL_INTEG_GAUSS41,workspace, &result, &abserr);
-    
     gsl_integration_workspace_free(workspace);
     
-    return x*x*kernel(x)*result;
+    /*! This function returns the value W(x). The values of the density kernel as a funtion of x=r/h */
+    double wk=0; if(x<1) kernel_main(x, 1, 1, &wk, &wk, -1);
+    return x*x*wk*result;
 }
 
 /*! This function returns the integrand of the angular part of the integral done on
@@ -164,34 +166,11 @@ double geofactor_angle_integ(double u, void * params)
     r = *(double *) params;
     x = *(double *) (params + sizeof(double));
     f = sqrt(x*x + r*r + 2*x*r*u);
-    
-    return kernel(f);
+    /*! This function returns the value W(x). The values of the density kernel as a funtion of x=r/h */
+    double wk=0; if(f<1) kernel_main(f, 1, 1, &wk, &wk, -1);
+    return wk;
 }
 
-/*! This function returns the value W(x). The values of the density kernel as a funtion of x=r/h.
- */
-double kernel(double u)
-{
-    double w;
-    
-    if (u < 1.0)
-    {
-        if (u <= 0.5)
-        {
-            w = (8.0/M_PI) * (1.0 + 6.0 * (u - 1.0) * u * u);
-            return w;
-        }
-        else
-        {
-            w = (8.0/M_PI) * 2.0 * (1.0-u)*(1.0-u)*(1.0-u);
-            return w;
-        }
-    }
-    else
-    {
-        return 0.0;
-    }
-}
 
 /*! This routine updates the interaction table each time there is an interaction */
 void update_interaction_table(MyIDType id1, MyIDType id2)

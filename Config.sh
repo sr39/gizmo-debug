@@ -120,7 +120,7 @@ HYDRO_LAGRANGIAN_GALERKIN           # Lagrangian (constant-mass) discontinuous-G
 #--------------------------------------- Self-Interacting DM (Rocha et al. 2012)
 #SIDM=2                         # Self-interacting particle types (specify the particle types which are self-interacting DM
                                 # with a bit mask, as for PM_PLACEHIGHRESREGION above (see description)
-#DMDISK_INTERACTIONS            # halo-'disk' particle interactions via SIDM (same as setting SIDM=2+4)
+                                # (previous "DMDISK_INTERACTIONS" is identical to setting SIDM=2+4)
 #ADAPTIVE_SIDM_HSML             # adaptive SIDM smoothings (this just forces ADAPTIVE_GRAVSOFT_FORALL to be active)
 ##-----------------------------------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------------------------------
@@ -286,7 +286,7 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #MPISENDRECV_CHECKSUM           # MPI debugging
 #DONOTUSENODELIST               # MPI debugging
 #NOTYPEPREFIX_FFTW              # FFTW debugging (fftw-header/libraries accessed without type prefix, adopting whatever was
-#chosen as default at compile of fftw). Otherwise, the type prefix 'd' for double is used.
+                                #chosen as default at compile of fftw). Otherwise, the type prefix 'd' for double is used.
 #DOUBLEPRECISION_FFTW           # FFTW in double precision to match libraries
 #DEBUG                          # enables core-dumps and FPU exceptions
 #STOP_WHEN_BELOW_MINTIMESTEP    # forces code to quit when stepsize wants to go below MinSizeTimestep specified in the parameterfile
@@ -381,31 +381,31 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #BP_REAL_CRs_ARTIFICIAL_CONDUCTIVITY	# enables Price-Monaghan artificial conductivity for CRs
 
 #---------------------------------------- Cosmic Rays (Martin)
-#COSMIC_RAYS               # Cosmic Rays Master Switch
-#NUMCRPOP=5                # Number of CR populations: Max is 6
-#CR_IC                     # IC files contain CR information
+#COSMIC_RAYS                # Cosmic Rays Master Switch
+#NUMCRPOP=5                 # Number of CR populations: Max is 6
+#CR_IC                      # IC files contain CR information
 #CR_IC_PHYSICAL
-#CR_DISSIPATION            # Catastrophic losses
-#CR_THERMALIZATION         # Coulomb cooling
-#CR_SHOCK=2                # Shock energy is directed into CR
+#CR_DISSIPATION             # Catastrophic losses
+#CR_THERMALIZATION          # Coulomb cooling
+#CR_SHOCK=2                 # Shock energy is directed into CR
 			                # 2 = Mach-Number dependent shocks, Mach-number derived for thermal gas/CR composite
 			                # 3 = Mach-Number dependent shocks, Mach-number derived for thermal gas
-#CR_DIFFUSION              # Cosmic Ray diffusion
-#CR_DIFFUSION_GREEN        # alternative diffusion model
-#UPDATE_PARANOIA=1         # 1 = Update on every predict, 2 = Update on every energy injection and on every predict
-#CR_OUTPUT_INJECTION       # Output energy injection rate in snapshots
-#COSMIC_RAY_TEST           # starts a test routine instead of the simulation
-#CR_NOPRESSURE             # computes CRs as usual, but ignores the pressure in the dynamics
-#CR_SN_INJECTION           # switches on CRs due to SNe 
-#CR_BUBBLES                # CRs in the AGN bubbles
-#CR_OUTPUT_TIMESCALES      # returns output from CR_ThermalizationTime and CR_DissipationTime
+#CR_DIFFUSION               # Cosmic Ray diffusion
+#CR_DIFFUSION_GREEN         # alternative diffusion model
+#UPDATE_PARANOIA=1          # 1 = Update on every predict, 2 = Update on every energy injection and on every predict
+#CR_OUTPUT_INJECTION        # Output energy injection rate in snapshots
+#COSMIC_RAY_TEST            # starts a test routine instead of the simulation
+#CR_NOPRESSURE              # computes CRs as usual, but ignores the pressure in the dynamics
+#CR_SN_INJECTION            # switches on CRs due to SNe
+#CR_BUBBLES                 # CRs in the AGN bubbles
+#CR_OUTPUT_TIMESCALES       # returns output from CR_ThermalizationTime and CR_DissipationTime
 #CR_OUTPUT_THERMO_VARIABLES # returns output from CR_P0, CR_E0, and CR_n0
 
 #---------------------------------------- Mach number finder (Christoph)
-#MACHNUM                   # Mach number Master Switch
-#MACHSTATISTIC             # Dissipated thermal energy at shocks
-#CR_OUTPUT_JUMP_CONDITIONS # CR: density and thermal energy jump at shocks
-#OUTPUT_PRESHOCK_CSND	# Output pre-shock sound speed and pre-shock physical density
+#MACHNUM                    # Mach number Master Switch
+#MACHSTATISTIC              # Dissipated thermal energy at shocks
+#CR_OUTPUT_JUMP_CONDITIONS  # CR: density and thermal energy jump at shocks
+#OUTPUT_PRESHOCK_CSND       # Output pre-shock sound speed and pre-shock physical density
 ####################################################################################################
 
 

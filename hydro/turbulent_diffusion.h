@@ -2,7 +2,7 @@
 /* ... turbulent diffusion (sub-grid) models ... */
 /* --------------------------------------------------------------------------------- */
 {
-    double diffusion_wt,diffusion_wt_dt,dv2_ij,diffusion_wt_dt_m,diffusion_m_min,diff_vi_dot_r;
+    double diffusion_wt,diffusion_wt_dt,dv2_ij,diffusion_wt_dt_m,diffusion_m_min,diff_vi_dot_r,diffusion_du_ij;
     /* out.dA_dt +=  diffusion_wt*(local.A-P[j].A) // this is the template for all turbulent diffusion terms */
     diffusion_wt = (local.TD_DiffCoeff + SphP[j].TD_DiffCoeff) * P[j].Mass * kernel.rho_ij_inv * kernel.dwk_ij / kernel.r;
     /* note, units of TD_DiffCoeff have already been corrected so that this combination has physical units */
@@ -13,8 +13,8 @@
         diffusion_wt_dt = diffusion_wt * dt_hydrostep;
     }
 #ifdef TURB_DIFF_ENERGY  // turbulent thermal energy diffusion //
-    du_ij = kernel.spec_egy_u_i - Particle_Internal_energy_i(j);
-    Fluxes.p += local.Mass * diffusion_wt * du_ij;
+    diffusion_du_ij = kernel.spec_egy_u_i - Particle_Internal_energy_i(j);
+    Fluxes.p += local.Mass * diffusion_wt * diffusion_du_ij;
 #endif
 #ifdef TURB_DIFF_VELOCITY // turbulent 'velocity diffusion': this is a turbulent effective viscosity
     if(kernel.vdotr2<0)

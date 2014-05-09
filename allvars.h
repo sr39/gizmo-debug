@@ -90,15 +90,12 @@
 #endif
 
 #if defined(TURB_DIFF_ENERGY) || defined(TURB_DIFF_VELOCITY) || defined(TURB_DIFF_MASS)
-#defined TURB_DIFFUSION /* master switch to calculate properties needed for scalar turbulent diffusion/mixing: must enable with any specific version */
+#define TURB_DIFFUSION /* master switch to calculate properties needed for scalar turbulent diffusion/mixing: must enable with any specific version */
 #endif
 
 
 #ifdef SIDM
-/* some purely internal flags for the SIDM module */
-#ifdef DMDISK_INTERACTIONS
-#define SIDM (2+4)
-#endif
+/* purely internal flags for the SIDM module */
 #ifdef ADAPTIVE_SIDM_HSML
 #ifndef ADAPTIVE_GRAVSOFT_FORALL
 #define ADAPATIVE_GRAVSOFT_FORALL

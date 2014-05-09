@@ -57,14 +57,16 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double cs_t_to_comoving_x = All.cf_afac3 / All.cf_atime; /* convert to code (comoving) length units */
     double delta_halfstep_i=0,delta_halfstep_j=0;
     
-#if defined(HYDRO_SPH) || defined(CONDUCTION_EXPLICIT) || defined(TURB_DIFFUSION)
+    double rho_for_egy = local.Density;
 #ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
-    kernel.p_over_rho2_i = local.Pressure / (local.EgyWtRho * local.EgyWtRho);
-    kernel.spec_egy_u_i = local.Pressure / (GAMMA_MINUS1 * local.EgyWtRho);
-#else
-    kernel.p_over_rho2_i = local.Pressure / (local.Density * local.Density);
-    kernel.spec_egy_u_i = local.Pressure / (GAMMA_MINUS1 * local.Density);
+    rho_for_egy = local.EgyWtRho;
 #endif
+    
+#if defined(HYDRO_SPH)
+    kernel.p_over_rho2_i = local.Pressure / (rho_for_egy*rho_for_egy);
+#endif
+#if defined(HYDRO_SPH) || defined(CONDUCTION_EXPLICIT) || defined(TURB_DIFFUSION)
+    kernel.spec_egy_u_i = local.Pressure / (GAMMA_MINUS1 * rho_for_egy);
 #endif
     
 #ifdef MAGNETIC
