@@ -17,7 +17,9 @@
     Fluxes.p += local.Mass * diffusion_wt * diffusion_du_ij;
 #endif
 #ifdef TURB_DIFF_VELOCITY // turbulent 'velocity diffusion': this is a turbulent effective viscosity
-    if(kernel.vdotr2<0)
+    double diff_vdotr2_phys = kernel.vdotr2;
+    if(All.ComovingIntegrationOn) diff_vdotr2_phys -= All.cf_hubble_a2 * r2;
+    if(diff_vdotr2_phys < 0)
     {
         diffusion_wt_dt_m = KERNEL_CORE_SIZE * 0.5 * (kernel.h_i + kernel.h_j);
         dv2_ij = local.Mass * fac_mu*fac_mu * diffusion_wt * kernel.vdotr2 / ((r2 + 0.0001*diffusion_wt_dt_m*diffusion_wt_dt_m) * All.cf_atime);
@@ -25,7 +27,7 @@
         Fluxes.v[1] += dv2_ij * kernel.dy;
         Fluxes.v[2] += dv2_ij * kernel.dz;
         diff_vi_dot_r = local.Vel[0]*kernel.dx + local.Vel[1]*kernel.dy + local.Vel[2]*kernel.dz;
-        Fluxes.p += dv2_ij * (diff_vi_dot_r - 0.5*vdotr2_phys) / All.cf_atime; /* remember, this is -total- energy now */
+        Fluxes.p += dv2_ij * (diff_vi_dot_r - 0.5*diff_vdotr2_phys) / All.cf_atime; /* remember, this is -total- energy now */
     }
 #endif
 #ifdef TURB_DIFF_METALS // turbulent diffusion of metals (passive scalar mixing) //

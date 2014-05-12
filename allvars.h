@@ -66,6 +66,14 @@
 #if (defined(SPHEQ_TRADITIONAL_SPH) || defined(SPHEQ_DENSITY_INDEPENDENT_SPH)) && !defined(HYDRO_SPH)
 #define HYDRO_SPH               /* master flag for SPH: must be enabled if any SPH method is used */
 #endif
+#ifdef HYDRO_SPH
+#ifndef SPHAV_DISABLE_CD10_VISCOSITY
+#define SPHAV_CD10_VISCOSITY_SWITCH 0.05   /* Enables Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks) */
+#endif
+#ifndef SPHAV_DISABLE_PM_CONDUCTIVITY
+#define SPHAV_ARTIFICIAL_CONDUCTIVITY      /* Enables mixing entropy (J.Read's improved Price-Monaghan conductivity with Cullen-Dehnen switches) */
+#endif
+#endif
 
 #ifdef MAGNETIC
 /* always-recommended MHD switches -- no excuse for these being off! */
@@ -99,6 +107,13 @@
 #ifdef ADAPTIVE_SIDM_HSML
 #ifndef ADAPTIVE_GRAVSOFT_FORALL
 #define ADAPATIVE_GRAVSOFT_FORALL
+#endif
+#endif
+
+
+#ifdef EVALPOTENTIAL
+#ifndef COMPUTE_POTENTIAL_ENERGY
+#define COMPUTE_POTENTIAL_ENERGY
 #endif
 #endif
 
@@ -321,7 +336,7 @@ typedef unsigned long long peanokey;
 #ifdef METALS
 
 #ifdef GALSF_FB_RPROCESS_ENRICHMENT
-#define NUM_RPROCESS_SPECIES (GALSF_FB_NUM_RPROCESS)
+#define NUM_RPROCESS_SPECIES (GALSF_FB_RPROCESS_ENRICHMENT)
 #else
 #define NUM_RPROCESS_SPECIES 0
 #endif
@@ -1127,9 +1142,8 @@ extern struct global_data_all_processes
   char InitCondFile[100],
     OutputDir[100],
     SnapshotFileBase[100],
-    EnergyFile[100],
-    CpuFile[100],
-    InfoFile[100], TimingsFile[100], TimebinFile[100], RestartFile[100], ResubmitCommand[100], OutputListFilename[100];
+    RestartFile[100], ResubmitCommand[100], OutputListFilename[100];
+    /* EnergyFile[100], CpuFile[100], InfoFile[100], TimingsFile[100], TimebinFile[100], */
 
   /*! table with desired output times */
   double OutputListTimes[MAXLEN_OUTPUTLIST];
@@ -1971,9 +1985,8 @@ extern struct sph_particle_data
     
     
 #ifdef EOS_DEGENERATE
-    MyFloat u;                            /* internal energy density */
     MyFloat temp;                         /* temperature */
-    MyFloat dpdr;							/* derivative of pressure with respect to density at constant entropy */
+    MyFloat dp_drho;                      /* derivative of pressure with respect to density at constant entropy */
     MyFloat xnuc[EOS_NSPECIES];           /* nuclear mass fractions */
     MyFloat dxnuc[EOS_NSPECIES];          /* change of nuclear mass fractions */
     MyFloat xnucPred[EOS_NSPECIES];

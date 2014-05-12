@@ -397,7 +397,7 @@ integertime get_timestep(int p,		/*!< particle index */
     if((P[p].Type == 0) && (P[p].Mass > 0))
         {
             csnd = sqrt(Particle_effective_soundspeed_i(p));
-            dt_courant = 2 * All.CourantFac * All.cf_atime * PPP[p].Hsml / (All.cf_afac3 * SphP[p].MaxSignalVel);
+            dt_courant = 2 * All.CourantFac * All.cf_atime * (2*KERNEL_CORE_SIZE * PPP[p].Hsml) / (All.cf_afac3 * SphP[p].MaxSignalVel);
             
             if(dt_courant < dt)
                 dt = dt_courant;
@@ -751,8 +751,7 @@ void determine_relaxfac(void)
     }
     else
     {
-        All.RelaxFac =
-        1. / (All.RelaxBaseFac * pow(10., (All.Time - 0.2 * All.TimeMax) / (0.6 * All.TimeMax) * 3.));
+        All.RelaxFac = 1. / (All.RelaxBaseFac * pow(10., (All.Time - 0.2 * All.TimeMax) / (0.6 * All.TimeMax) * 3.));
     }
 }
 #endif

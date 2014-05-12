@@ -37,8 +37,8 @@ HYDRO_LAGRANGIAN_GALERKIN           # Lagrangian (constant-mass) discontinuous-G
 #--------------------------------------- Kernel Options (use with SPH; not relevant for Galerkin/Mesh modes)
 #SPH_KERNEL_QUINTIC                 # Implementation of the Morris 1996 quintic spline kernel, requires ~1.74x more neighbours !
 #--------------------------------------- SPH diffusion options (use with SPH; not relevant for Galerkin/Mesh modes)
-#SPHAV_CD10_VISCOSITY_SWITCH=0.05   # Enables Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks)
-#SPHAV_ARTIFICIAL_CONDUCTIVITY      # Enables mixing entropy (J.Read's improved Price-Monaghan conductivity with Cullen-Dehnen switches)
+#SPHAV_DISABLE_CD10_VISCOSITY       # Disable Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks); just use Balsara switch
+#SPHAV_DISABLE_PM_CONDUCTIVITY      # Disable mixing entropy (J.Read's improved Price-Monaghan conductivity with Cullen-Dehnen switches)
 ####################################################################################################
 
 
@@ -71,7 +71,6 @@ HYDRO_LAGRANGIAN_GALERKIN           # Lagrangian (constant-mass) discontinuous-G
 #---------------------------------------- Protoplanetary/Protostellar disk stuff
 #GRAIN_FLUID                    # two-fluid medium with weakly-coupled grains (particle type 3 are grains)
 ##-----------------------------------------------------------------------------------------------------
-#ISOTHERM_EQS                   # isothermal equation of state (only implemented for test problems)
 ####################################################################################################
 
 
@@ -84,26 +83,6 @@ HYDRO_LAGRANGIAN_GALERKIN           # Lagrangian (constant-mass) discontinuous-G
 #PM_PLACEHIGHRESREGION=1+2+16    # COSMO enable: particle types to place high-res PMGRID around
 #PM_HIRES_REGION_CLIPPING=1000   # for stability: clips particles that escape the hires region in zoom/isolated sims
 #MULTIPLEDOMAINS=64              # Multi-Domain option for the top-tree level: iso=16,COSMO=64-128
-#
-#--- (PMGRID enables the TreePM method, i.e. long-range forces are computed with a PM algorithm, short-range with
-#       the tree. The parameter has to be set to the 1-D size of the mesh to be used (e.g. 64^D, 128^D, etc). The mesh
-#       dimensions need not be a power of two. If the simulation is not a period box, then a FFT method for vaccuum
-#       boundaries is employed, using a mesh with dimension = 2xPMGRID)
-#--- (if PM_PLACEHIGHRESREGION is set, then the long range force is computed in two stages: one Fourier-grid is used
-#       to cover the whole simulation volume, allowing the computation of the large-scale force. A second Fourier mesh
-#       is placed on the region occupied by "high-resolution" particles, allowing the computation of an intermediate
-#       scale force. Finally, the force on very small scales is supplemented by the tree. This procedure can be useful
-#       for "zoom-simulations", where the majority of particles (the high-res particles) are occupying only a small
-#       fraction of the volume. To activate this option, the parameter needs to be set to an integer that encodes the
-#       particle types that represent the high-res particles in the form of a bit mask.
-#       For example, if types 0, 1, and 4 form the high-res particles, set the parameter
-#       to PM_PLACEHIGHRESREGION=1+2+16 (or PM_PLACEHIGHRESREGION=19))
-#       The spatial region covered by the high-res grid is determined automatically from the initial conditions.
-#--- (PM_HIRES_REGION_CLIPPING is a kluge designed for zoom-in simulations. if gas particles develop smoothing lengths
-#       larger than the given value, in (comoving) units, or get further than that distance from the box center, they
-#       are removed from the simulation, to prevent stray gas particles outside the zoom-in region)
-#--- (MULTIPLEDOMAINS subdivides the tree into smaller sub-domains which can be independently moved to different
-#       processors. This makes domain de-composition dramatically less dependent on spatial co-location)
 ##-----------------------------------------------------------------------------------------------------
 #---------------------------------------- Adaptive Grav. Softening (including Lagrangian conservation terms!)
 #ADAPTIVE_GRAVSOFT_FORGAS       # allows variable softening length (=Hsml) for gas particles
@@ -122,7 +101,6 @@ HYDRO_LAGRANGIAN_GALERKIN           # Lagrangian (constant-mass) discontinuous-G
                                 # with a bit mask, as for PM_PLACEHIGHRESREGION above (see description)
                                 # (previous "DMDISK_INTERACTIONS" is identical to setting SIDM=2+4)
 #ADAPTIVE_SIDM_HSML             # adaptive SIDM smoothings (this just forces ADAPTIVE_GRAVSOFT_FORALL to be active)
-##-----------------------------------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- SCF (potential expansion in basis functions)
 #SCFPOTENTIAL                   # turn SCF on/off
@@ -181,8 +159,7 @@ HYDRO_LAGRANGIAN_GALERKIN           # Lagrangian (constant-mass) discontinuous-G
 #GALSF_FB_GASRETURN              # Paul Torrey's addition for stochastic gas return (modified for continuous return)
 #GALSF_FB_HII_HEATING            # gas within HII regions around young stars is photo-heated to 10^4 K
 #GALSF_FB_SNE_HEATING            # time-dependent heating from SNe (I & II) in shockwave radii around stars
-#GALSF_FB_RPROCESS_ENRICHMENT    # tracks a set of 'dummy' species from neutron-star mergers (but have no dynamical effect)
-#GALSF_FB_NUM_RPROCESS=8         # sets the number of R-process species to be followed (1=basic, 10=extended model)
+#GALSF_FB_RPROCESS_ENRICHMENT=8  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 8=extended model)
 #GALSF_FB_RT_PHOTONMOMENTUM      # continuous acceleration from starlight (uses luminosity tree)
 #GALSF_FB_RT_PHOTON_LOCALATTEN   # incident SED for GALSF_FB_RT_PHOTONMOMENTUM calculated w local attenuation of stars
 #GALSF_FB_LOCAL_UV_HEATING       # use local estimate of spectral information for photoionization and photoelectric heating
@@ -256,7 +233,6 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #OUTPUT_IN_DOUBLEPRECISION      # snapshot files will be written in double precision
 #INPUT_IN_DOUBLEPRECISION       # input files assumed to be in double precision (otherwise float is assumed)
 #OUTPUTPOTENTIAL                # forces code to compute+output potentials in snapshots
-#RECOMPUTE_POTENTIAL_ON_OUTPUT	# update potential every output even it EVALPOTENTIAL is set
 #OUTPUTACCELERATION             # output physical acceleration of each particle in snapshots
 #OUTPUTCHANGEOFENERGY           # outputs rate-of-change of internal energy of gas particles in snapshots
 #OUTPUT_VORTICITY				# outputs the vorticity vector
@@ -265,8 +241,8 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #OUTPUTLINEOFSIGHT				# enables on-the-fly output of Ly-alpha absorption spectra
 #OUTPUTLINEOFSIGHT_SPECTRUM
 #OUTPUTLINEOFSIGHT_PARTICLES
-#COMPUTE_POTENTIAL_ENERGY       # compute and output the potential (though it isnt used)
 #POWERSPEC_ON_OUTPUT            # compute and output power spectra (not used)
+#RECOMPUTE_POTENTIAL_ON_OUTPUT	# update potential every output even it EVALPOTENTIAL is set
 ####################################################################################################
 
 
@@ -415,6 +391,7 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #--------------------------------------- degenerate equation of state
 ####################################################################################################
 #EOS_DEGENERATE
+#EOS_IDEAL
 #EOS_COULOMB_CORRECTIONS
 #EOS_NSPECIES=3
 #RELAXOBJECT

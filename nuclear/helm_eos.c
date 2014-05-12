@@ -14,6 +14,15 @@
 
 #include "./helm_eos.h"
 
+
+/* NOTE: This file uses the Helmholtz equation of state lookup table, available at 
+ https://dl.dropboxusercontent.com/u/16659252/helm_table.dat
+ (this is also identical to the Helmholtz table used in FLASH, available via 
+  http://cococubed.asu.edu/code_pages/eos.shtml
+ if you click 'Helmholtz'). This is e.g. the EOS from Timmes et al. 1999, 2000. 
+ The file must be in the run directory with the code. */
+ 
+
 #define ELECTRON_CHARGE_ESU (4.80320427e-10)
 
 #ifndef HELM_EOS_MAXITER
@@ -786,188 +795,190 @@ static int
 
 int eos_init(const char *datafile, const char *speciesfile)
 {
-  FILE *file;
-
-  file = fopen(datafile, "r");
-  if(file == NULL)
+    FILE *file;
+    
+    file = fopen(datafile, "r");
+    if(file == NULL)
     {
-      perror("error opening EOS table file");
-      fprintf(stderr, "the filname was `%s'\n", datafile);
-      return -1;
+        perror("error opening EOS table file");
+        fprintf(stderr, "the filname was `%s'\n", datafile);
+        return -1;
     }
-
-  helm_eos_table = malloc(sizeof(struct helm_eos_table));
-  if(helm_eos_table == NULL)
+    
+    helm_eos_table = malloc(sizeof(struct helm_eos_table));
+    if(helm_eos_table == NULL)
     {
-      perror("could not allocate memory for the EOS table");
-      fclose(file);
-      return -1;
+        perror("could not allocate memory for the EOS table");
+        fclose(file);
+        return -1;
     }
-
-  helm_eos_table->ntemp = JMAX;
-  helm_eos_table->nrho = IMAX;
-
-  helm_eos_table->ltempMin = 3.0;
-  helm_eos_table->ltempMax = 13.0;
-  helm_eos_table->lrhoMin = -12.0;
-  helm_eos_table->lrhoMax = 15.0;
-
-  helm_eos_table->tempMin = exp10(helm_eos_table->ltempMin);
-  helm_eos_table->tempMax = exp10(helm_eos_table->ltempMax);
-  helm_eos_table->rhoMin = exp10(helm_eos_table->lrhoMin);
-  helm_eos_table->rhoMax = exp10(helm_eos_table->lrhoMax);
-
-  helm_eos_table->ltempDelta =
-    (helm_eos_table->ltempMax - helm_eos_table->ltempMin) / (double) (helm_eos_table->ntemp - 1);
-  helm_eos_table->lrhoDelta =
-    (helm_eos_table->lrhoMax - helm_eos_table->lrhoMin) / (double) (helm_eos_table->nrho - 1);
-
-
-  // read the Helmholtz free energy table and its derivatives
-  {
-    int i, j;
-    for(j = 0; j < helm_eos_table->ntemp; j++)
-      {
-	helm_eos_table->temp[j] = exp10(helm_eos_table->ltempMin + j * helm_eos_table->ltempDelta);
-	for(i = 0; i < helm_eos_table->nrho; i++)
-	  {
-	    helm_eos_table->rho[i] = exp10(helm_eos_table->lrhoMin + i * helm_eos_table->lrhoDelta);
-	    if(fscanf
-	       (file, "%lf %lf %lf %lf %lf %lf %lf %lf %lf", &helm_eos_table->f[i][j],
-		&helm_eos_table->fd[i][j], &helm_eos_table->ft[i][j], &helm_eos_table->fdd[i][j],
-		&helm_eos_table->ftt[i][j], &helm_eos_table->fdt[i][j], &helm_eos_table->fddt[i][j],
-		&helm_eos_table->fdtt[i][j], &helm_eos_table->fddtt[i][j]) != 9)
-	      {
-		fprintf(stderr, "error reading the Helmholtz free energy table at i = %d, j = %d\n", i, j);
-		fclose(file);
-		free(helm_eos_table);
-		return -1;
-	      }
-	  }
-      }
-  }
-
-  // read the pressure derivative table
-  {
-    int i, j;
-    for(j = 0; j < helm_eos_table->ntemp; j++)
-      {
-	for(i = 0; i < helm_eos_table->nrho; i++)
-	  {
-	    if(fscanf
-	       (file, "%lf %lf %lf %lf", &helm_eos_table->dpdf[i][j], &helm_eos_table->dpdfd[i][j],
-		&helm_eos_table->dpdft[i][j], &helm_eos_table->dpdfdt[i][j]) != 4)
-	      {
-		fprintf(stderr, "error reading the pressure derivative table at i = %d, j = %d\n", i, j);
-		fclose(file);
-		free(helm_eos_table);
-		return -1;
-	      }
-	  }
-      }
-  }
-
-  // read the electron chemical potential table
-  {
-    int i, j;
-    for(j = 0; j < helm_eos_table->ntemp; j++)
-      {
-	for(i = 0; i < helm_eos_table->nrho; i++)
-	  {
-	    if(fscanf
-	       (file, "%lf %lf %lf %lf", &helm_eos_table->ef[i][j], &helm_eos_table->efd[i][j],
-		&helm_eos_table->eft[i][j], &helm_eos_table->efdt[i][j]) != 4)
-	      {
-		fprintf(stderr, "error reading the electron chemical potential table at i = %d, j = %d\n", i,
-			j);
-		fclose(file);
-		free(helm_eos_table);
-		return -1;
-	      }
-	  }
-      }
-  }
-
-  // read the number density table
-  {
-    int i, j;
-    for(j = 0; j < helm_eos_table->ntemp; j++)
-      {
-	for(i = 0; i < helm_eos_table->nrho; i++)
-	  {
-	    if(fscanf
-	       (file, "%lf %lf %lf %lf", &helm_eos_table->xf[i][j], &helm_eos_table->xfd[i][j],
-		&helm_eos_table->xft[i][j], &helm_eos_table->xfdt[i][j]) != 4)
-	      {
-		fprintf(stderr, "error reading the number density table at i = %d, j = %d\n", i, j);
-		fclose(file);
-		free(helm_eos_table);
-		return -1;
-	      }
-	  }
-      }
-  }
-
-  fclose(file);
-
-  // read the species file
-  file = fopen(speciesfile, "r");
-  if(file == NULL)
+    
+    helm_eos_table->ntemp = JMAX;
+    helm_eos_table->nrho = IMAX;
+    
+    helm_eos_table->ltempMin = 3.0;
+    helm_eos_table->ltempMax = 13.0;
+    helm_eos_table->lrhoMin = -12.0;
+    helm_eos_table->lrhoMax = 15.0;
+    
+    helm_eos_table->tempMin = exp10(helm_eos_table->ltempMin);
+    helm_eos_table->tempMax = exp10(helm_eos_table->ltempMax);
+    helm_eos_table->rhoMin = exp10(helm_eos_table->lrhoMin);
+    helm_eos_table->rhoMax = exp10(helm_eos_table->lrhoMax);
+    
+    helm_eos_table->ltempDelta =
+        (helm_eos_table->ltempMax - helm_eos_table->ltempMin) / (double) (helm_eos_table->ntemp - 1);
+    helm_eos_table->lrhoDelta =
+        (helm_eos_table->lrhoMax - helm_eos_table->lrhoMin) / (double) (helm_eos_table->nrho - 1);
+    
+    
+    // read the Helmholtz free energy table and its derivatives
     {
-      perror("cannot open species file");
-      fprintf(stderr, "The filename was `%s'.\n", speciesfile);
-      free(helm_eos_table);
-      fclose(file);
-      return -1;
+        int i, j;
+        for(j = 0; j < helm_eos_table->ntemp; j++)
+        {
+            helm_eos_table->temp[j] = exp10(helm_eos_table->ltempMin + j * helm_eos_table->ltempDelta);
+            for(i = 0; i < helm_eos_table->nrho; i++)
+            {
+                helm_eos_table->rho[i] = exp10(helm_eos_table->lrhoMin + i * helm_eos_table->lrhoDelta);
+                if(fscanf
+                   (file, "%lf %lf %lf %lf %lf %lf %lf %lf %lf", &helm_eos_table->f[i][j],
+                    &helm_eos_table->fd[i][j], &helm_eos_table->ft[i][j], &helm_eos_table->fdd[i][j],
+                    &helm_eos_table->ftt[i][j], &helm_eos_table->fdt[i][j], &helm_eos_table->fddt[i][j],
+                    &helm_eos_table->fdtt[i][j], &helm_eos_table->fddtt[i][j]) != 9)
+                {
+                    fprintf(stderr, "error reading the Helmholtz free energy table at i = %d, j = %d\n", i, j);
+                    fclose(file);
+                    free(helm_eos_table);
+                    return -1;
+                }
+            }
+        }
     }
-
-  if(fscanf(file, "%d", &helm_eos_table->nspecies) != 1)
+    
+    // read the pressure derivative table
     {
-      fprintf(stderr, "error in species file format");
-      free(helm_eos_table);
-      fclose(file);
-      return -1;
+        int i, j;
+        for(j = 0; j < helm_eos_table->ntemp; j++)
+        {
+            for(i = 0; i < helm_eos_table->nrho; i++)
+            {
+                if(fscanf
+                   (file, "%lf %lf %lf %lf", &helm_eos_table->dpdf[i][j], &helm_eos_table->dpdfd[i][j],
+                    &helm_eos_table->dpdft[i][j], &helm_eos_table->dpdfdt[i][j]) != 4)
+                {
+                    fprintf(stderr, "error reading the pressure derivative table at i = %d, j = %d\n", i, j);
+                    fclose(file);
+                    free(helm_eos_table);
+                    return -1;
+                }
+            }
+        }
     }
-
-  helm_eos_table->na = malloc(helm_eos_table->nspecies * sizeof(double));
-  helm_eos_table->nai = malloc(helm_eos_table->nspecies * sizeof(double));
-  helm_eos_table->nz = malloc(helm_eos_table->nspecies * sizeof(double));
-
-  if(helm_eos_table->na == NULL || helm_eos_table->nai == NULL || helm_eos_table->nz == NULL)
+    
+    // read the electron chemical potential table
     {
-      perror("error allocating species table");
-      if(!helm_eos_table->na)
-	free(helm_eos_table->na);
-      if(!helm_eos_table->nai)
-	free(helm_eos_table->na);
-      if(!helm_eos_table->nz)
-	free(helm_eos_table->nz);
-      free(helm_eos_table);
-      fclose(file);
-      return -1;
+        int i, j;
+        for(j = 0; j < helm_eos_table->ntemp; j++)
+        {
+            for(i = 0; i < helm_eos_table->nrho; i++)
+            {
+                if(fscanf
+                   (file, "%lf %lf %lf %lf", &helm_eos_table->ef[i][j], &helm_eos_table->efd[i][j],
+                    &helm_eos_table->eft[i][j], &helm_eos_table->efdt[i][j]) != 4)
+                {
+                    fprintf(stderr, "error reading the electron chemical potential table at i = %d, j = %d\n", i,
+                            j);
+                    fclose(file);
+                    free(helm_eos_table);
+                    return -1;
+                }
+            }
+        }
     }
-
-  {
-    int i;
-    for(i = 0; i < helm_eos_table->nspecies; i++)
-      {
-	if(fscanf(file, "%*5s %lf %lf", helm_eos_table->na + i, helm_eos_table->nz + i) != 2)
-	  {
-	    fprintf(stderr, "error in species file at element %d\n", i);
-	    free(helm_eos_table->na);
-	    free(helm_eos_table->nai);
-	    free(helm_eos_table->nz);
-	    free(helm_eos_table);
-	    fclose(file);
-	    return -1;
-	  }
-	helm_eos_table->nai[i] = 1.0 / helm_eos_table->na[i];
-      }
-  }
-
-  fclose(file);
-  return 0;
+    
+    // read the number density table
+    {
+        int i, j;
+        for(j = 0; j < helm_eos_table->ntemp; j++)
+        {
+            for(i = 0; i < helm_eos_table->nrho; i++)
+            {
+                if(fscanf
+                   (file, "%lf %lf %lf %lf", &helm_eos_table->xf[i][j], &helm_eos_table->xfd[i][j],
+                    &helm_eos_table->xft[i][j], &helm_eos_table->xfdt[i][j]) != 4)
+                {
+                    fprintf(stderr, "error reading the number density table at i = %d, j = %d\n", i, j);
+                    fclose(file);
+                    free(helm_eos_table);
+                    return -1;
+                }
+            }
+        }
+    }
+    
+    fclose(file);
+    
+    // read the species file
+    file = fopen(speciesfile, "r");
+    if(file == NULL)
+    {
+        perror("cannot open species file");
+        fprintf(stderr, "The filename was `%s'.\n", speciesfile);
+        free(helm_eos_table);
+        fclose(file);
+        return -1;
+    }
+    
+    if(fscanf(file, "%d", &helm_eos_table->nspecies) != 1)
+    {
+        fprintf(stderr, "error in species file format");
+        free(helm_eos_table);
+        fclose(file);
+        return -1;
+    }
+    
+    helm_eos_table->na = malloc(helm_eos_table->nspecies * sizeof(double));
+    helm_eos_table->nai = malloc(helm_eos_table->nspecies * sizeof(double));
+    helm_eos_table->nz = malloc(helm_eos_table->nspecies * sizeof(double));
+    
+    if(helm_eos_table->na == NULL || helm_eos_table->nai == NULL || helm_eos_table->nz == NULL)
+    {
+        perror("error allocating species table");
+        if(!helm_eos_table->na)
+            free(helm_eos_table->na);
+        if(!helm_eos_table->nai)
+            free(helm_eos_table->na);
+        if(!helm_eos_table->nz)
+            free(helm_eos_table->nz);
+        free(helm_eos_table);
+        fclose(file);
+        return -1;
+    }
+    
+    {
+        int i;
+        for(i = 0; i < helm_eos_table->nspecies; i++)
+        {
+            if(fscanf(file, "%*5s %lf %lf", helm_eos_table->na + i, helm_eos_table->nz + i) != 2)
+            {
+                fprintf(stderr, "error in species file at element %d\n", i);
+                free(helm_eos_table->na);
+                free(helm_eos_table->nai);
+                free(helm_eos_table->nz);
+                free(helm_eos_table);
+                fclose(file);
+                return -1;
+            }
+            helm_eos_table->nai[i] = 1.0 / helm_eos_table->na[i];
+        }
+    }
+    
+    fclose(file);
+    return 0;
 }
+
+
 
 void eos_deinit(void)
 {
@@ -1042,10 +1053,9 @@ offsetof(struct eos_value, dabar), offsetof(struct eos_value, dzbar) };
   if(helm_eos_ele(rho, temp, ltemp * (1.0 / log(10)), pele, eele, sele, etaele, xne, cache, only_e) != 0)
     return -1;
 #ifdef EOS_COULOMB_CORRECTIONS
-  if(helm_eos_coul(rho, temp, abar, zbar, pcoul, ecoul, scoul) != 0)
-    return -1;
-#endif // EOS_COULOMB_CORRECTIONS
-#endif // ! EOS_IDEAL
+  if(helm_eos_coul(rho, temp, abar, zbar, pcoul, ecoul, scoul) != 0) return -1;
+#endif
+#endif
 
   if(res != NULL)
     res->temp = temp;
@@ -1161,7 +1171,7 @@ int eos_calc_egiven(double rho, const double xnuc[], double e, double *tempguess
 	}
 
       _temp = fmax(fmin(_temp, helm_eos_table->tempMax), helm_eos_table->tempMin);
-#endif // ! EOS_IDEAL
+#endif
     }
 
   if(iter >= HELM_EOS_MAXITER)
@@ -1177,9 +1187,9 @@ int eos_calc_egiven(double rho, const double xnuc[], double e, double *tempguess
   if(eos_calc_tgiven_azbar(rho, &cache, _temp, res, 0) != 0)
     return -1;
 
-  /* FIXME: dpdr should be checked again */
-  /* *dpdr = res->p.drho + _temp * gsl_pow_2(res->p.dtemp / rho) / res->e.dtemp;
-     assert(*dpdr > 0); */
+  /* FIXME: dp_drho should be checked again */
+  /* *dp_drho = res->p.drho + _temp * gsl_pow_2(res->p.dtemp / rho) / res->e.dtemp;
+     assert(*dp_drho > 0); */
 
   if(have_to_free)
     {

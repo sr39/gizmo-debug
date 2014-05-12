@@ -796,7 +796,7 @@ int addSPH_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
                     for(k=0;k<3;k++)
                         dB[k] = SphP[j].BPred[k] - local.GQuant.B[k];
 #ifdef DIVBCLEANING_DEDNER
-                    double dphi = SphP[j].PhiPred[k] - local.GQuant.Phi;
+                    double dphi = SphP[j].PhiPred - local.GQuant.Phi;
 #endif
 #endif
 #ifdef RADTRANSFER_FLUXLIMITER

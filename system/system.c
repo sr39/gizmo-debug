@@ -269,9 +269,14 @@ void merge_particles_ij(MyIDType i, MyIDType j)
 #endif
 #endif
 #ifdef EOS_DEGENERATE
-    SphP[j].u = wt_j*SphP[j].u + wt_i*SphP[i].u;
-    SphP[j].xnuc = wt_j*SphP[j].xnuc + wt_i*SphP[i].xnuc;
-    SphP[j].dxnuc = wt_j*SphP[j].dxnuc + wt_i*SphP[i].dxnuc;
+    SphP[j].temp = wt_j*SphP[j].temp + wt_i*SphP[i].temp;
+    SphP[j].dp_drho = wt_j*SphP[j].dp_drho + wt_i*SphP[i].dp_drho;
+    for(k=0;k<EOS_NSPECIES;k++)
+    {
+        SphP[j].xnuc[k] = wt_j*SphP[j].xnuc[k] + wt_i*SphP[i].xnuc[k];
+        SphP[j].dxnuc[k] = wt_j*SphP[j].dxnuc[k] + wt_i*SphP[i].dxnuc[k];
+        SphP[j].xnucPred[k] = wt_j*SphP[j].xnucPred[k] + wt_i*SphP[i].xnucPred[k];
+    }
 #endif
 #if defined(RADTRANSFER)
     for(k=0;k<6;k++) SphP[j].ET[k] = wt_j*SphP[j].ET[k] + wt_i*SphP[i].ET[k];

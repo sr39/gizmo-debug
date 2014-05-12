@@ -162,12 +162,7 @@ void begrun(void)
 
   if(RestartFlag == 0 || RestartFlag == 2 || RestartFlag == 3 || RestartFlag == 4 || RestartFlag == 5 || RestartFlag == 6)
     {
-
-mpi_printf("needs to be in init if ...\n");
-
       init();			/* ... read in initial model */
-
-mpi_printf("... this caught the error \n");
     }
   else
     {
@@ -219,8 +214,8 @@ mpi_printf("... this caught the error \n");
       All.MaxRMSDisplacementFac = all.MaxRMSDisplacementFac;
 
       All.ErrTolForceAcc = all.ErrTolForceAcc;
-      All.TypeOfTimestepCriterion = all.TypeOfTimestepCriterion;
-      All.TypeOfOpeningCriterion = all.TypeOfOpeningCriterion;
+      /* All.TypeOfTimestepCriterion = all.TypeOfTimestepCriterion; */
+      /* All.TypeOfOpeningCriterion = all.TypeOfOpeningCriterion; */
       All.NumFilesWrittenInParallel = all.NumFilesWrittenInParallel;
       All.TreeDomainUpdateFrequency = all.TreeDomainUpdateFrequency;
 
@@ -280,11 +275,13 @@ mpi_printf("... this caught the error \n");
       strcpy(All.OutputListFilename, all.OutputListFilename);
       strcpy(All.OutputDir, all.OutputDir);
       strcpy(All.RestartFile, all.RestartFile);
+      /*
       strcpy(All.EnergyFile, all.EnergyFile);
       strcpy(All.InfoFile, all.InfoFile);
       strcpy(All.CpuFile, all.CpuFile);
       strcpy(All.TimingsFile, all.TimingsFile);
       strcpy(All.TimebinFile, all.TimebinFile);
+      */
       strcpy(All.SnapshotFileBase, all.SnapshotFileBase);
 
 #ifdef EOS_DEGENERATE
@@ -440,6 +437,9 @@ void set_units(void)
   All.MinEgySpec *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
 
 #if defined(GALSF)
+  /* for historical reasons, we need to convert to "All.MaxSfrTimescale", defined as the SF timescale in code units at the critical physical
+     density given above. use the dimensionless SfEffPerFreeFall (which has been read in) to calculate this. This must be done -BEFORE- calling set_units_sfr) */
+  All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3*M_PI / (32 * All.G * (All.CritPhysDensity * meanweight * 1.67e-24 / All.UnitDensity_in_cgs)));
   set_units_sfr();
 #endif
 
@@ -566,6 +566,7 @@ void open_outputfiles(void)
   if(ThisTask != 0)		/* only the root processors writes to the log files */
     return;
 
+  /*
   sprintf(buf, "%s%s", All.OutputDir, All.CpuFile);
   if(!(FdCPU = fopen(buf, mode)))
     {
@@ -600,13 +601,51 @@ void open_outputfiles(void)
       printf("error in opening file '%s'\n", buf);
       endrun(1);
     }
-
-  sprintf(buf, "%s%s", All.OutputDir, "balance.txt");
-  if(!(FdBalance = fopen(buf, mode)))
+  */
+    
+    
+    sprintf(buf, "%s%s", All.OutputDir, "cpu.txt");
+    if(!(FdCPU = fopen(buf, mode)))
     {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
+        printf("error in opening file '%s'\n", buf);
+        endrun(1);
     }
+    
+    sprintf(buf, "%s%s", All.OutputDir, "info.txt");
+    if(!(FdInfo = fopen(buf, mode)))
+    {
+        printf("error in opening file '%s'\n", buf);
+        endrun(1);
+    }
+    
+    sprintf(buf, "%s%s", All.OutputDir, "energy.txt");
+    if(!(FdEnergy = fopen(buf, mode)))
+    {
+        printf("error in opening file '%s'\n", buf);
+        endrun(1);
+    }
+    
+    sprintf(buf, "%s%s", All.OutputDir, "timings.txt");
+    if(!(FdTimings = fopen(buf, mode)))
+    {
+        printf("error in opening file '%s'\n", buf);
+        endrun(1);
+    }
+    
+    sprintf(buf, "%s%s", All.OutputDir, "timebin.txt");
+    if(!(FdTimebin = fopen(buf, mode)))
+    {
+        printf("error in opening file '%s'\n", buf);
+        endrun(1);
+    }
+    
+    sprintf(buf, "%s%s", All.OutputDir, "balance.txt");
+    if(!(FdBalance = fopen(buf, mode)))
+    {
+        printf("error in opening file '%s'\n", buf);
+        endrun(1);
+    }
+
 
   fprintf(FdBalance, "\n");
   fprintf(FdBalance, "Treewalk1      = '%c' / '%c'\n", CPU_Symbol[CPU_TREEWALK1],
@@ -923,6 +962,7 @@ void read_parameter_file(char *fname)
       addr[nt] = All.SnapshotFileBase;
       id[nt++] = STRING;
 
+      /*
       strcpy(tag[nt], "EnergyFile");
       addr[nt] = All.EnergyFile;
       id[nt++] = STRING;
@@ -942,6 +982,7 @@ void read_parameter_file(char *fname)
       strcpy(tag[nt], "TimebinFile");
       addr[nt] = All.TimebinFile;
       id[nt++] = STRING;
+      */
 
       strcpy(tag[nt], "RestartFile");
       addr[nt] = All.RestartFile;
@@ -979,9 +1020,15 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.BoxSize;
       id[nt++] = REAL;
 
+        /*
       strcpy(tag[nt], "PeriodicBoundariesOn");
       addr[nt] = &All.PeriodicBoundariesOn;
       id[nt++] = INT;
+         */
+        All.PeriodicBoundariesOn = 0;
+#ifdef PERIODIC
+        All.PeriodicBoundariesOn = 1;
+#endif
 
       strcpy(tag[nt], "MaxMemSize");
       addr[nt] = &All.MaxMemSize;
@@ -1052,7 +1099,7 @@ void read_parameter_file(char *fname)
 #endif
         
 #ifdef GALSF_FB_GASRETURN
-        strcpy(tag[nt],"AGBGasTemp");
+        strcpy(tag[nt],"GasReturnEnergy");
         addr[nt] = &All.AGBGasEnergy;
         id[nt++] = REAL;
 #endif
@@ -1116,9 +1163,12 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.PhotonMomentum_fOPT;
         id[nt++] = REAL;
         
+        /*
         strcpy(tag[nt], "PhotonMomentum_fIR");
         addr[nt] = &All.PhotonMomentum_fIR;
         id[nt++] = REAL;
+        */
+        All.PhotonMomentum_fIR = 1 - All.PhotonMomentum_fUV - All.PhotonMomentum_fOPT;
 #endif
 
         
@@ -1148,7 +1198,7 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.MinGasHsmlFractional;
       id[nt++] = REAL;
 
-#if defined(ISOTHERM_EQS) || defined(VS_TURB) || defined (AB_TURB)
+#if defined(VS_TURB) || defined (AB_TURB)
       strcpy(tag[nt], "IsoSoundSpeed");
       addr[nt] = &All.IsoSoundSpeed;
       id[nt++] = REAL;
@@ -1230,22 +1280,42 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.ResubmitOn;
       id[nt++] = INT;
 
+        /*
       strcpy(tag[nt], "CoolingOn");
       addr[nt] = &All.CoolingOn;
       id[nt++] = INT;
-
+         */
+        All.CoolingOn = 0;
+#ifdef COOLING
+        All.CoolingOn = 1;
+#endif
+      
+        /*
       strcpy(tag[nt], "StarformationOn");
       addr[nt] = &All.StarformationOn;
       id[nt++] = INT;
-
+         */
+        All.StarformationOn = 0;
+#ifdef GALSF
+        All.StarformationOn = 1;
+#endif
+      
+        /*
       strcpy(tag[nt], "TypeOfTimestepCriterion");
       addr[nt] = &All.TypeOfTimestepCriterion;
       id[nt++] = INT;
+         */
+      All.TypeOfTimestepCriterion = 0;
 
+        /*
       strcpy(tag[nt], "TypeOfOpeningCriterion");
       addr[nt] = &All.TypeOfOpeningCriterion;
       id[nt++] = INT;
-
+         */
+      All.TypeOfOpeningCriterion = 1;
+        /*!< determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion: this 
+                should only be changed if you -really- know what you're doing! */
+        
       strcpy(tag[nt], "TimeLimitCPU");
       addr[nt] = &All.TimeLimitCPU;
       id[nt++] = REAL;
@@ -1563,17 +1633,33 @@ void read_parameter_file(char *fname)
 #endif /* BLACK_HOLES */
 
 #ifdef GALSF
+        /*
       strcpy(tag[nt], "CritOverDensity");
       addr[nt] = &All.CritOverDensity;
       id[nt++] = REAL;
+         */
+      All.CritOverDensity = 1000.0;
+      /* this just needs to be some number >> 1, or else we get nonsense. 
+       In cosmological runs, star formation is not allowed below this overdensity, to prevent spurious
+       star formation at very high redshifts */
 
       strcpy(tag[nt], "CritPhysDensity");
       addr[nt] = &All.CritPhysDensity;
       id[nt++] = REAL;
 
+        /*
       strcpy(tag[nt], "MaxSfrTimescale");
       addr[nt] = &All.MaxSfrTimescale;
       id[nt++] = REAL;
+         */
+      strcpy(tag[nt], "SfEffPerFreeFall");
+      addr[nt] = &All.MaxSfrTimescale;
+      id[nt++] = REAL;
+      /* for historical reasons, we need to convert to "MaxSfrTimescale", 
+            defined as the SF timescale in code units at the critical physical 
+            density given above. use the dimensionless SfEffPerFreeFall
+            to calculate this */
+        
         
 #ifdef GALSF_EFFECTIVE_EQS
       strcpy(tag[nt], "FactorSN");
@@ -1612,7 +1698,7 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.WindEnergyFraction;
       id[nt++] = REAL;
 
-      strcpy(tag[nt], "WindFreeTravelMaxTimeFactor");
+      strcpy(tag[nt], "WindFreeTravelMaxTime");
       addr[nt] = &All.WindFreeTravelMaxTimeFactor;
       id[nt++] = REAL;
 
@@ -1684,7 +1770,7 @@ void read_parameter_file(char *fname)
 #endif
 
 #if defined(MAGNETIC_DISSIPATION)
-      strcpy(tag[nt], "ArtificialMagneticDissipationConstant");
+      strcpy(tag[nt], "ArtificialResistivityMax");
       addr[nt] = &All.ArtMagDispConst;
       id[nt++] = REAL;
 #endif

@@ -35,13 +35,14 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     /* --------------------------------------------------------------------------------- */
     /* pre-define Particle-i based variables (so we save time in the loop below) */
     /* --------------------------------------------------------------------------------- */
+#ifdef EOS_DEGENERATE
+    kernel.sound_i = sqrt(local.dp_drho);
+#else
 #ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
     kernel.sound_i = sqrt(GAMMA*local.Pressure/local.EgyWtRho);
 #else
     kernel.sound_i = sqrt(GAMMA*local.Pressure/local.Density);
 #endif
-#ifdef EOS_DEGENERATE
-    kernel.sound_i = sqrt(local.dpdr);
 #endif
     kernel.h_i = local.Hsml;
     kernel_hinv(kernel.h_i, &hinv_i, &hinv3_i, &hinv4_i);
@@ -80,8 +81,8 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double mm_i[3][3], mm_j[3][3];
     for(k = 0; k < 3; k++)
     {
-        for(l = 0; l < 3; l++)
-            mm_i[k][l] = local.BPred[k] * local.BPred[l];
+        for(j = 0; j < 3; j++)
+            mm_i[k][j] = local.BPred[k] * local.BPred[j];
     }
     for(k = 0; k < 3; k++)
         mm_i[k][k] -= 0.5 * kernel.b2_i;
@@ -171,7 +172,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* sound speed, relative velocity, and signal velocity computation */
                 kernel.sound_j = Particle_effective_soundspeed_i(j);
 #ifdef MAGNETIC_SIGNALVEL
-                kernel.b2_j = SphP.BPred[0]*SphP.BPred[0] + SphP.BPred[1]*SphP.BPred[1] + SphP.BPred[2]*SphP.BPred[2];
+                kernel.b2_j = SphP[j].BPred[0]*SphP[j].BPred[0] + SphP[j].BPred[1]*SphP[j].BPred[1] + SphP[j].BPred[2]*SphP[j].BPred[2];
                 kernel.alfven2_j = kernel.b2_j * fac_magnetic_pressure / SphP[j].Density;
 #ifdef ALFVEN_VEL_LIMITER
                 kernel.alfven2_j = DMIN(kernel.alfven2_j, ALFVEN_VEL_LIMITER * kernel.sound_j*kernel.sound_j);

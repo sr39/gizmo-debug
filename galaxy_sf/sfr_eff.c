@@ -215,10 +215,10 @@ double get_starformation_rate(int i)
     double alpha_vir = 0.2387 * dv2abs / (All.G * SphP[i].Density * All.cf_a3inv);
     if(All.ComovingIntegrationOn)
     {
-        if((alpha_vir<1.0)||(SphP[i].Density*All.cf_a3inv>100.*All.PhysDensThresh)) rateOfSF *= 66.7; else rateOfSF *= 0.1;
+        if((alpha_vir<1.0)||(SphP[i].Density*All.cf_a3inv>100.*All.PhysDensThresh)) {rateOfSF *= 1.0;} else {rateOfSF *= 0.0015;}
         // PFH: note the latter flag is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! //
     } else {
-        if(alpha_vir>1.0) {rateOfSF*=0.1;} else {rateOfSF*=66.7;}
+        if(alpha_vir>1.0) {rateOfSF *= 0.0015;} else {rateOfSF *= 1.0;}
     }
     //  if( divv>=0 ) rateOfSF=0; // restrict to convergent flows (optional) //
     //  rateOfSF *= 1.0/(1.0 + alpha_vir); // continuous cutoff w alpha_vir instead of sharp (optional) //
@@ -1055,8 +1055,7 @@ void init_clouds(void)
       if(All.WindEfficiency > 0)
 	if(ThisTask == 0)
 	  printf("Windspeed: %g\n",
-		 sqrt(2 * All.WindEnergyFraction * All.FactorSN * All.EgySpecSN / (1 - All.FactorSN) /
-		      All.WindEfficiency));
+		 sqrt(2 * All.WindEnergyFraction * All.FactorSN * All.EgySpecSN / (1 - All.FactorSN) / All.WindEfficiency));
 #endif
 #endif
     }

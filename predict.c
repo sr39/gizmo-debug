@@ -195,7 +195,6 @@ void drift_particle(int i, integertime time1)
                             maxfac = tmpfac;
                     }
                 }
-                
                 if(maxfac > 0)
                 {
                     for(j = 0; j < EOS_NSPECIES; j++)
@@ -270,7 +269,7 @@ double get_pressure(int i)
     struct eos_result res;
     eos_calc_egiven(SphP[i].Density * All.UnitDensity_in_cgs, SphP[i].xnucPred, SphP[i].InternalEnergyPred, &SphP[i].temp, &res);
     press = res.p.v / All.UnitPressure_in_cgs;
-    SphP[i].dpdr = (res.p.drho + res.temp * gsl_pow_2(res.p.dtemp / (SphP[i].Density * All.UnitDensity_in_cgs)) / res.e.dtemp);
+    SphP[i].dp_drho = (res.p.drho + res.temp * gsl_pow_2(res.p.dtemp / (SphP[i].Density * All.UnitDensity_in_cgs)) / res.e.dtemp);
 #endif
     
     
@@ -377,9 +376,7 @@ double INLINE_FUNC Particle_density_for_energy_i(int i)
 
 double INLINE_FUNC Get_Particle_Pressure(int i)
 {
-#ifndef EOS_DEGENERATE
     return GAMMA_MINUS1 * SphP[i].InternalEnergyPred * Particle_density_for_energy_i(i);
-#endif
 }
 
 double INLINE_FUNC Particle_Internal_energy_i(int i)
@@ -392,7 +389,7 @@ double INLINE_FUNC Particle_effective_soundspeed_i(int i)
 #ifndef EOS_DEGENERATE
     return sqrt(GAMMA * SphP[i].Pressure / Particle_density_for_energy_i(i));
 #else
-    return sqrt(SphP[i].dpdr);
+    return sqrt(SphP[i].dp_drho);
 #endif
 }
 

@@ -93,13 +93,7 @@ void compute_global_quantities_of_system(void)
 
       if(P[i].Type == 0)
 	{
-#ifndef EOS_DEGENERATE
       egyspec = entr;
-#else
-	  egyspec = SphP[i].u;
-#endif
-
-
 	  sys.EnergyIntComp[0] += P[i].Mass * egyspec;
 	}
 

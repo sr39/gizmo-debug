@@ -191,7 +191,7 @@ struct hydrodata_in
 #endif // MAGNETIC //
     
 #ifdef EOS_DEGENERATE
-    MyFloat dpdr;
+    MyFloat dp_drho;
 #endif
     
 #ifndef DONOTUSENODELIST
@@ -318,7 +318,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
 #endif
     
 #ifdef EOS_DEGENERATE
-    in->dpdr = SphP[i].dpdr;
+    in->dp_drho = SphP[i].dp_drho;
 #endif
     
 #ifdef BP_REAL_CRs
@@ -446,11 +446,11 @@ void hydro_final_operations_and_cleanup(void)
             SphP[i].DtInternalEnergy /= P[i].Mass;
             /* ok, now: HydroAccel = dv/dt, DtInternalEnergy = du/dt (energy per unit mass) */
             
-#if !defined(EOS_DEGENERATE)
             // need to explicitly include adiabatic correction from the hubble-flow (for drifting) here //
             if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*GAMMA_MINUS1 * SphP[i].InternalEnergyPred * All.cf_hubble_a; //???
             // = du/dlna -3*(gamma-1)*u ; then dlna/dt = H(z) =  All.cf_hubble_a //
-#else
+
+#ifdef EOS_DEGENERATE
             /* DtInternalEnergy stores the energy change rate in internal units */
             SphP[i].DtInternalEnergy *= All.UnitEnergy_in_cgs / All.UnitTime_in_s;
 #endif
@@ -532,7 +532,7 @@ void hydro_final_operations_and_cleanup(void)
             /* multiply by negative sign and cosmological correction term */
             //SphP[i].DtPhi = - phiphi * All.cf_atime * All.cf_atime;	/* Compensate for the 1/Ha^2 in dt_mag */
             SphP[i].DtPhi = -phiphi; // should be in units of [Phi]*[v_code]/[r_code]; from that point dt_mag will correctly integrate it //
-            phiphi = sqrt(SphP[i].Gradients.Phi[0]*SphP[i].Gradient.Phi[0] + SphP[i].Gradients.Phi[1]*SphP[i].Gradients.Phi[1] + SphP[i].Gradients.Phi[2]*SphP[i].Gradients.Phi[2]);
+            phiphi = sqrt(SphP[i].Gradients.Phi[0]*SphP[i].Gradients.Phi[0] + SphP[i].Gradients.Phi[1]*SphP[i].Gradients.Phi[1] + SphP[i].Gradients.Phi[2]*SphP[i].Gradients.Phi[2]);
             tmpb = sqrt(SphP[i].DtB[0]*SphP[i].DtB[0] + SphP[i].DtB[1]*SphP[i].DtB[1] + SphP[i].DtB[2]*SphP[i].DtB[2]);
             if(phiphi > All.DivBcleanQ * tmpb && tmpb != 0)
                 for(k = 0; k < 3; k++)

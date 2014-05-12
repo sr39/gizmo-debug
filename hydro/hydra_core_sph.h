@@ -31,12 +31,21 @@
 #endif
     
     hfc_egy = hfc_i; /* needed to follow the internal energy explicitly; note this is the same for any of the formulations above */
-
+        
     /* use the traditional 'kernel derivative' (dwk) to compute derivatives */
     hfc_dwk_i = hfc_dwk_j = local.Mass * P[j].Mass / kernel.r;
     hfc_dwk_i *= kernel.dwk_i; /* grad-h terms have already been multiplied in here */
     hfc_dwk_j *= kernel.dwk_j;
     hfc = hfc_i*hfc_dwk_i + hfc_j*hfc_dwk_j;
+        
+    /* GASOLINE-like equation of motion: */
+    /* hfc_dwk_i = 0.5 * (hfc_dwk_i + hfc_dwk_j); */
+    /* hfc = (p_over_rho2_j + kernel.p_over_rho2_i) * hfc_dwk_i */
+        
+    /* RSPH equation of motion */
+    /* hfc_dwk_i = 0.5 * (hfc_dwk_i + hfc_dwk_j); */
+    /* hfc = (local.Pressure-SphP[j].Pressure)/(local.Density*SphP[j].Density) * hfc_dwk_i */
+        
     Fluxes.v[0] += -hfc * kernel.dx; /* momentum */
     Fluxes.v[1] += -hfc * kernel.dy;
     Fluxes.v[2] += -hfc * kernel.dz;
@@ -95,10 +104,11 @@
     kernel.b2_j = SphP[j].BPred[0]*SphP[j].BPred[0] + SphP[j].BPred[1]*SphP[j].BPred[1] + SphP[j].BPred[2]*SphP[j].BPred[2];
 #endif
 #ifdef MAGFORCE
+    int k1;
     for(k = 0; k < 3; k++)
     {
-        for(l = 0; l < 3; l++)
-            mm_j[k][l] = SphP[j].BPred[k] * SphP[j].BPred[l];
+        for(k1 = 0; k1 < 3; k1++)
+            mm_j[k][k1] = SphP[j].BPred[k] * SphP[j].BPred[k1];
     }
     for(k = 0; k < 3; k++)
         mm_j[k][k] -= 0.5 * kernel.b2_j;
@@ -115,9 +125,9 @@
         (mm_i[k][2] * mf_i + mm_j[k][2] * mf_j) * kernel.dz;
 #ifdef DIVBFORCE3
     for(k = 0; k < 3; k++)
-        out.magcorr[k] += local.BPred[k] * ((local.BPred[0] * mf_i + bpred_j[0] * mf_j) * kernel.dx +
-                                            (local.BPred[1] * mf_i + bpred_j[1] * mf_j) * kernel.dy +
-                                            (local.BPred[2] * mf_i + bpred_j[2] * mf_j) * kernel.dz);
+        out.magcorr[k] += local.BPred[k] * ((local.BPred[0] * mf_i + SphP[j].BPred[0] * mf_j) * kernel.dx +
+                                            (local.BPred[1] * mf_i + SphP[j].BPred[1] * mf_j) * kernel.dy +
+                                            (local.BPred[2] * mf_i + SphP[j].BPred[2] * mf_j) * kernel.dz);
 #endif
 #endif /* end MAG FORCE   */
     

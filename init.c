@@ -227,8 +227,19 @@ void init(void)
 #endif
     
     All.TotNumOfForces = 0;
-    All.TopNodeAllocFactor = 0.008;
-    All.TreeAllocFactor = 0.45;
+    All.TopNodeAllocFactor = 0.008; /* this will start from a low value and be iteratively increased until it is well-behaved */
+    All.TreeAllocFactor = 0.45; /* this will also iteratively increase to fit the particle distribution */
+    /* To construct the BH-tree for N particles, somewhat less than N
+     internal tree-nodes are necessary for ‘normal’ particle distributions. 
+     TreeAllocFactor sets the number of internal tree-nodes allocated in units of the particle number. 
+     By experience, space for ≃ 0.65N internal nodes is usually fully sufficient for typical clustered 
+     particle distributions, so a value of 0.7 should put you on the safe side. If the employed particle 
+     number per processor is very small (less than a thousand or so), or if there are many particle pairs 
+     with identical or nearly identical coordinates, a higher value may be required. Since the number of 
+     particles on a given processor may be higher by a factor PartAllocFactor than the average particle 
+     number, the total amount of memory requested for the BH tree on a single processor scales proportional 
+     to PartAllocFactor*TreeAllocFactor. */
+    
     
     
     
@@ -746,20 +757,16 @@ void init(void)
         {
             SphP[i].dxnuc[j] = 0;
         }
-        
         SphP[i].InternalEnergy *= All.UnitEnergy_in_cgs;
         SphP[i].InternalEnergyPred *= All.UnitEnergy_in_cgs;
         /* call eos with physical units, energy and entropy are always stored in physical units */
         SphP[i].temp = -1.0;
         
         struct eos_result res;
-        eos_calc_egiven(SphP[i].Density * All.UnitDensity_in_cgs, SphP[i].xnuc, SphP[i].InternalEnergy,
-                        &SphP[i].temp, &res);
+        eos_calc_egiven(SphP[i].Density * All.UnitDensity_in_cgs, SphP[i].xnuc, SphP[i].InternalEnergy, &SphP[i].temp, &res);
         SphP[i].Pressure = res.p.v / All.UnitPressure_in_cgs;
-        // Warning: dpdr is in physical units ...
-        SphP[i].dpdr =
-        res.p.drho +
-        res.temp * gsl_pow_2(res.p.dtemp / (SphP[i].Density * All.UnitDensity_in_cgs)) / res.e.dtemp;
+        // Warning: dp_drho is in physical units ...
+        SphP[i].dp_drho = res.p.drho + res.temp * gsl_pow_2(res.p.dtemp / (SphP[i].Density * All.UnitDensity_in_cgs)) / res.e.dtemp;
 #endif
         
 #if defined (VS_TURB) || defined (AB_TURB)

@@ -1314,7 +1314,7 @@ int network_getrhs(double rho, double temp, const double y[], int compute_derivs
     network_var dedT_var = { 0 }, dedtime =
     {
     0};
-    network_var dpdrho = { 0 }, dpdT =
+    network_var dp_drho = { 0 }, dpdT =
     {
     0}, dedrho =
     {
@@ -1344,7 +1344,7 @@ int network_getrhs(double rho, double temp, const double y[], int compute_derivs
 
       eos_calc_tgiven_azbar(rho, &cache, temp, &res, 0);
       dedT_var.v = res.e.dtemp;
-      dpdrho.v = res.p.drho;
+      dp_drho.v = res.p.drho;
       dpdT.v = res.p.dtemp;
       dedrho.v = res.e.drho;
 #ifndef NETWORK_NEGLECT_DTDY_TERMS
@@ -1365,7 +1365,7 @@ int network_getrhs(double rho, double temp, const double y[], int compute_derivs
 	  eos_calc_tgiven_azbar(rho, &cache, temp, &res, 0);
 	  abar = old;
 	  dedT_var.dabar = (res.e.dtemp - dedT_var.v) / diff;
-	  dpdrho.dabar = (res.p.drho - dpdrho.v) / diff;
+	  dp_drho.dabar = (res.p.drho - dp_drho.v) / diff;
 	  dpdT.dabar = (res.p.dtemp - dpdT.v) / diff;
 	  dedrho.dabar = (res.e.drho - dedrho.v) / diff;
 #ifndef NETWORK_NEGLECT_DTDY_TERMS
@@ -1382,7 +1382,7 @@ int network_getrhs(double rho, double temp, const double y[], int compute_derivs
 	  eos_calc_tgiven_azbar(rho, &cache, temp, &res, 0);
 	  zbar = old;
 	  dedT_var.dzbar = (res.e.dtemp - dedT_var.v) / diff;
-	  dpdrho.dzbar = (res.p.drho - dpdrho.v) / diff;
+	  dp_drho.dzbar = (res.p.drho - dp_drho.v) / diff;
 	  dpdT.dzbar = (res.p.dtemp - dpdT.v) / diff;
 	  dedrho.dzbar = (res.e.drho - dedrho.v) / diff;
 #ifndef NETWORK_NEGLECT_DTDY_TERMS
@@ -1399,7 +1399,7 @@ int network_getrhs(double rho, double temp, const double y[], int compute_derivs
 	  eos_calc_tgiven_azbar(rho, &cache, temp, &res, 0);
 	  temp = old;
 	  dedT_var.dT = (res.e.dtemp - dedT_var.v) / diff;
-	  dpdrho.dT = (res.p.drho - dpdrho.v) / diff;
+	  dp_drho.dT = (res.p.drho - dp_drho.v) / diff;
 	  dpdT.dT = (res.p.dtemp - dpdT.v) / diff;
 	  dedrho.dT = (res.e.drho - dedrho.v) / diff;
 #ifndef NETWORK_NEGLECT_DTDY_TERMS
@@ -1417,7 +1417,7 @@ int network_getrhs(double rho, double temp, const double y[], int compute_derivs
 	  eos_calc_tgiven_azbar(rho, &cache, temp, &res, 0);
 	  rho = old;
 	  dedT_var.drho = (res.e.dtemp - dedT_var.v) / diff;
-	  dpdrho.drho = (res.p.drho - dpdrho.v) / diff;
+	  dp_drho.drho = (res.p.drho - dp_drho.v) / diff;
 	  dpdT.drho = (res.p.dtemp - dpdT.v) / diff;
 	  dedrho.drho = (res.e.drho - dedrho.v) / diff;
 #ifndef NETWORK_NEGLECT_DTDY_TERMS
@@ -1440,9 +1440,9 @@ int network_getrhs(double rho, double temp, const double y[], int compute_derivs
     dedtime = n_cm(dedtime, -conv);
 #if NETWORK_VARIABLE == NETWORK_VAR_RHO_TEMP
     /* case of fixed pressure
-     * dT/dE = dPdrho / (dPdrho * dEdT - dPdT * dEdrho)
+     * dT/dE = dp_drho / (dp_drho * dEdT - dPdT * dEdrho)
      */
-    nw->temp_deriv_fac = n_d(dpdrho, n_s(n_m(dpdrho, dedT_var), n_m(dpdT, dedrho)));
+    nw->temp_deriv_fac = n_d(dp_drho, n_s(n_m(dp_drho, dedT_var), n_m(dpdT, dedrho)));
 #else
     /* case of fixed density
      * dT/dE = 1 / (dEdT)
@@ -1468,10 +1468,10 @@ int network_getrhs(double rho, double temp, const double y[], int compute_derivs
 	/* fixed pressure */
 	/* dT/dA|P = (de/dA * dp/drho - de/drho * dp/dA) / (de/drho * dp/dT - de/dT * dp/drho) ... */
 	{
-	  const network_var denominator = n_s(n_m(dedrho, dpdT), n_m(dedT_var, dpdrho));
+	  const network_var denominator = n_s(n_m(dedrho, dpdT), n_m(dedT_var, dp_drho));
 
-	  dTdA = n_d(n_s(n_m(dedA, dpdrho), n_m(dedrho, dpdA)), denominator);
-	  dTdZ = n_d(n_s(n_m(dedZ, dpdrho), n_m(dedrho, dpdZ)), denominator);
+	  dTdA = n_d(n_s(n_m(dedA, dp_drho), n_m(dedrho, dpdA)), denominator);
+	  dTdZ = n_d(n_s(n_m(dedZ, dp_drho), n_m(dedrho, dpdZ)), denominator);
 	}
 #else
 #error "unknown mode"
@@ -1501,9 +1501,9 @@ int network_getrhs(double rho, double temp, const double y[], int compute_derivs
 	const double dTdA = -dedA.v / dedT_var.v;
 	const double dTdZ = -dedZ.v / dedT_var.v;
 #elif NETWORK_VARIABLE == NETWORK_VAR_RHO_TEMP
-	const double idenominator = 1.0 / (dedrho.v * dpdT.v - dedT_var.v * dpdrho.v);
-	const double dTdA = (dedA.v * dpdrho.v - dedrho.v * dpdA.v) * idenominator;
-	const double dTdZ = (dedZ.v * dpdrho.v - dedrho.v * dpdZ.v) * idenominator;
+	const double idenominator = 1.0 / (dedrho.v * dpdT.v - dedT_var.v * dp_drho.v);
+	const double dTdA = (dedA.v * dp_drho.v - dedrho.v * dpdA.v) * idenominator;
+	const double dTdZ = (dedZ.v * dp_drho.v - dedrho.v * dpdZ.v) * idenominator;
 #else
 #error "unknown mode"
 #endif /* NETWORK_VARIABLE == NETWORK_VAR_TEMP */
@@ -1530,7 +1530,7 @@ int network_getrhs(double rho, double temp, const double y[], int compute_derivs
        * drho/dE|(P,A,Z) = dP/dT / ( dP/dT * dE/rho - dE/dT * dP/drho )
        */
 
-      nw->rho_deriv_fac = n_d(dpdT, n_s(n_m(dpdT, dedrho), n_m(dedT_var, dpdrho)));
+      nw->rho_deriv_fac = n_d(dpdT, n_s(n_m(dpdT, dedrho), n_m(dedT_var, dp_drho)));
       deriv[nd->iRho] = n_m(dedtime, nw->rho_deriv_fac);
 #ifndef NETWORK_NEGLECT_DTDY_TERMS
       {
@@ -1541,7 +1541,7 @@ int network_getrhs(double rho, double temp, const double y[], int compute_derivs
 	/* drho/dA|P = (de/dT * dp/dA - dp/dT * de/dA) / (de/drho * dp/dT - dp/drho * de/dT) */
 
 	{
-	  const network_var denominator = n_s(n_m(dedrho, dpdT), n_m(dedT_var, dpdrho));
+	  const network_var denominator = n_s(n_m(dedrho, dpdT), n_m(dedT_var, dp_drho));
 
 	  drhodA = n_d(n_s(n_m(dedT_var, dpdA), n_m(dpdT, dedA)), denominator);
 	  drhodZ = n_d(n_s(n_m(dedT_var, dpdZ), n_m(dpdT, dedZ)), denominator);

@@ -132,6 +132,9 @@ FC       =  $(CC)
 OPTIMIZE = -O3 -xhost -ipo -funroll-loops -no-prec-div -fp-model fast=2  # speed
 OPTIMIZE += -g -Wall # compiler warnings
 #OPTIMIZE += -parallel -openmp  # openmp (comment out this line if OPENMP not used)
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -parallel -openmp  # openmp required compiler flags
+endif
 GMP_INCL = #
 GMP_LIBS = #
 MKL_INCL = -I$(TACC_MKL_INC)
@@ -190,6 +193,9 @@ CC       =  mpicc     # sets the C-compiler
 OPTIMIZE =  -O1 -xHost -funroll-loops -no-prec-div -fast-transcendentals -fp-model fast=2 -ipo  # speed
 #OPTIMIZE += -openmp -parallel -par-num-threads=4  # for openmp mode
 OPTIMIZE += -g -debug parallel -Wall  # warnings
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE +=-openmp -parallel  # openmp required compiler flags
+endif
 FC       =  $(CC)
 GSL_INCL =  -I${SCINET_GSL_INC}
 GSL_LIBS =  -L${SCINET_GSL_LIB} #-limf

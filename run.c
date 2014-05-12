@@ -940,7 +940,7 @@ void write_cpu_log(void)
           "    cellopen  %10.2f  %5.1f%%\n"
 #endif
 	      "pmgrav        %10.2f  %5.1f%%\n"
-	      "sph           %10.2f  %5.1f%%\n"
+	      "hydro         %10.2f  %5.1f%%\n"
 	      "   density    %10.2f  %5.1f%%\n"
 	      "   denscomm   %10.2f  %5.1f%%\n"
 	      "   densimbal  %10.2f  %5.1f%%\n"

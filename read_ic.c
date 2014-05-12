@@ -225,11 +225,6 @@ void read_ic(char *fname)
   for(i = 0; i < N_gas; i++)
     SphP[i].InternalEnergy = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);
 
-#ifdef EOS_DEGENERATE
-  for(i = 0; i < N_gas; i++)
-    SphP[i].u = 0;
-#endif
-
   MPI_Barrier(MPI_COMM_WORLD);
 
   if(ThisTask == 0)
