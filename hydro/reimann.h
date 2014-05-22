@@ -104,7 +104,7 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
     *Q_L = Q_j + Grad_Q_j[0]*distance_from_j[0] + Grad_Q_j[1]*distance_from_j[1] + Grad_Q_j[2]*distance_from_j[2];
     
     /* we now check for monotonicity (enforce a local slope limiter) */
-    //
+    /*
     double Qmed=0.5*(Q_i+Q_j);
     if(Q_i<Q_j)
     {
@@ -120,7 +120,7 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
         if(*Q_L<Q_j)  *Q_L=Q_j;
         if(*Q_L>Qmed) *Q_L=Qmed;
     }
-    //
+    */
     double qmax=DMAX(Q_i,Q_j);
     double qmin=DMIN(Q_i,Q_j);
     double fac = 2.0 * (qmax-qmin);

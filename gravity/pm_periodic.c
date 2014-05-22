@@ -304,7 +304,8 @@ void pmforce_periodic(int mode, int *typelist)
 	      continue;
 #endif
 
-	  if(mode)
+        /* possible bugfix: Y.Feng: ??? (was if(mode)) */
+	  if(mode > -1)
 	    {
 	      /* make sure that particles are properly box-wrapped */
 	      for(j = 0; j < 3; j++)
@@ -322,47 +323,13 @@ void pmforce_periodic(int mode, int *typelist)
 	  else
 	    pos = P[i].Pos;
 
-#ifdef POWER6_fails
-	  double slab_x = __friz(to_slab_fac * pos[0]);
-	  double slab_y = __friz(to_slab_fac * pos[1]);
-	  double slab_z = __friz(to_slab_fac * pos[2]);
-	  double fx, fy, fz;
-
-	  slab_x = __fsel(slab_x - (double) PMGRID, (double) PMGRID - 1.0, slab_x);
-	  slab_y = __fsel(slab_y - (double) PMGRID, (double) PMGRID - 1.0, slab_y);
-	  slab_z = __fsel(slab_z - (double) PMGRID, (double) PMGRID - 1.0, slab_z);
-
-	  for(xx = 0, fx = 0.0; xx < 2; xx++, fx += 1.0)
-	    for(yy = 0, fy = 0.0; yy < 2; yy++, fy += 1.0)
-	      for(zz = 0, fz = 0.0; zz < 2; zz++, fz += 1.0)
-		{
-		  double slab_xx = slab_x + fx;
-		  double slab_yy = slab_y + fy;
-		  double slab_zz = slab_z + fz;
-		  double offset;
-
-		  slab_xx = __fsel(slab_xx - (double) PMGRID, slab_xx - (double) PMGRID, slab_xx);
-		  slab_yy = __fsel(slab_yy - (double) PMGRID, slab_yy - (double) PMGRID, slab_yy);
-		  slab_zz = __fsel(slab_zz - (double) PMGRID, slab_zz - (double) PMGRID, slab_zz);
-
-		  offset = ((double) PMGRID2) * ((double) PMGRID * slab_xx + slab_yy) + slab_zz;
-
-		  part[num_on_grid].partindex = (i << 3) + (xx << 2) + (yy << 1) + zz;
-		  part[num_on_grid].globalindex = (large_array_offset) offset;
-		  part_sortindex[num_on_grid] = num_on_grid;
-		  num_on_grid++;
-		}
-#else
 	  slab_x = (int) (to_slab_fac * pos[0]);
 	  slab_y = (int) (to_slab_fac * pos[1]);
 	  slab_z = (int) (to_slab_fac * pos[2]);
 
-	  if(slab_x >= PMGRID)
-	    slab_x -= PMGRID;
-	  if(slab_y >= PMGRID)
-	    slab_y -= PMGRID;
-	  if(slab_z >= PMGRID)
-	    slab_z -= PMGRID;
+        if(slab_x >= PMGRID) slab_x -= PMGRID;
+        if(slab_y >= PMGRID) slab_y -= PMGRID;
+        if(slab_z >= PMGRID) slab_z -= PMGRID;
 
 	  for(xx = 0; xx < 2; xx++)
 	    for(yy = 0; yy < 2; yy++)
@@ -386,7 +353,6 @@ void pmforce_periodic(int mode, int *typelist)
 		  part_sortindex[num_on_grid] = num_on_grid;
 		  num_on_grid++;
 		}
-#endif
 	}
       /* note: num_on_grid will be  8 times larger than the particle number,
          but num_field_points will generally be much smaller */
@@ -395,11 +361,7 @@ void pmforce_periodic(int mode, int *typelist)
 #ifdef MYSORT
       mysort_pmperiodic(part_sortindex, num_on_grid, sizeof(int), pm_periodic_compare_sortindex);
 #else
-#ifndef POWER6_fails
       qsort(part_sortindex, num_on_grid, sizeof(int), pm_periodic_compare_sortindex);
-#else
-      qsort_pm_periodic(part_sortindex, num_on_grid);
-#endif
 #endif
 
       /* determine the number of unique field points */
@@ -472,7 +434,8 @@ void pmforce_periodic(int mode, int *typelist)
 	{
 	  pindex = (part[i].partindex >> 3);
 
-	  if(mode)
+        /* possible bugfix: Y.Feng: ??? (was if(mode)) */
+	  if(mode > -1)
 	    {
 	      /* make sure that particles are properly box-wrapped */
 	      for(j = 0; j < 3; j++)
@@ -493,6 +456,10 @@ void pmforce_periodic(int mode, int *typelist)
 	  slab_x = (int) (to_slab_fac * pos[0]);
 	  slab_y = (int) (to_slab_fac * pos[1]);
 	  slab_z = (int) (to_slab_fac * pos[2]);
+        /* possible bugfix: Y.Feng: ??? */
+        if(slab_x >= PMGRID) slab_x -= PMGRID;
+        if(slab_y >= PMGRID) slab_y -= PMGRID;
+        if(slab_z >= PMGRID) slab_z -= PMGRID;
 
 	  dx = to_slab_fac * pos[0] - slab_x;
 	  dy = to_slab_fac * pos[1] - slab_y;
@@ -731,26 +698,32 @@ void pmforce_periodic(int mode, int *typelist)
 	  for(i = 0, j = 0; i < NumPart; i++)
 	    {
 	      while(j < num_on_grid && (part[j].partindex >> 3) != i)
-		j++;
+              j++;
 
-	      slab_x = (int) (to_slab_fac * P[i].Pos[0]);
-	      dx = to_slab_fac * P[i].Pos[0] - slab_x;
+            /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+            /* make sure that particles are properly box-wrapped */
+            for(xx = 0; xx < 3; xx++)
+            {
+                pp[xx] = P[i].Pos[xx];
+                while(pp[xx] < 0) pp[xx] += All.BoxSize;
+                while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            }
+            slab_x = (int) (to_slab_fac * pp[0]);
+            slab_y = (int) (to_slab_fac * pp[1]);
+            slab_z = (int) (to_slab_fac * pp[2]);
+            dx = to_slab_fac * pp[0] - slab_x;
+            dy = to_slab_fac * pp[1] - slab_y;
+            dz = to_slab_fac * pp[2] - slab_z;
 
-	      slab_y = (int) (to_slab_fac * P[i].Pos[1]);
-	      dy = to_slab_fac * P[i].Pos[1] - slab_y;
-
-	      slab_z = (int) (to_slab_fac * P[i].Pos[2]);
-	      dz = to_slab_fac * P[i].Pos[2] - slab_z;
-
-	      pot =
-		+localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
-		+ localfield_data[part[j + 1].localindex] * (1.0 - dx) * (1.0 - dy) * dz
-		+ localfield_data[part[j + 2].localindex] * (1.0 - dx) * dy * (1.0 - dz)
-		+ localfield_data[part[j + 3].localindex] * (1.0 - dx) * dy * dz
-		+ localfield_data[part[j + 4].localindex] * (dx) * (1.0 - dy) * (1.0 - dz)
-		+ localfield_data[part[j + 5].localindex] * (dx) * (1.0 - dy) * dz
-		+ localfield_data[part[j + 6].localindex] * (dx) * dy * (1.0 - dz)
-		+ localfield_data[part[j + 7].localindex] * (dx) * dy * dz;
+            pot =
+            +localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
+            + localfield_data[part[j + 1].localindex] * (1.0 - dx) * (1.0 - dy) * dz
+            + localfield_data[part[j + 2].localindex] * (1.0 - dx) * dy * (1.0 - dz)
+            + localfield_data[part[j + 3].localindex] * (1.0 - dx) * dy * dz
+            + localfield_data[part[j + 4].localindex] * (dx) * (1.0 - dy) * (1.0 - dz)
+            + localfield_data[part[j + 5].localindex] * (dx) * (1.0 - dy) * dz
+            + localfield_data[part[j + 6].localindex] * (dx) * dy * (1.0 - dz)
+            + localfield_data[part[j + 7].localindex] * (dx) * dy * dz;
 
 	      P[i].PM_Potential += pot * fac * (2 * All.BoxSize / PMGRID);
 	      /* compensate the finite differencing factor */ ;
@@ -904,19 +877,25 @@ void pmforce_periodic(int mode, int *typelist)
 		    if(P[i].Type == 0)	/* baryons don't get an extra scalar force */
 		      continue;
 #endif
-		  while(j < num_on_grid && (part[j].partindex >> 3) != i)
-		    j++;
+            while(j < num_on_grid && (part[j].partindex >> 3) != i)
+                j++;
 
-		  slab_x = (int) (to_slab_fac * P[i].Pos[0]);
-		  dx = to_slab_fac * P[i].Pos[0] - slab_x;
+            /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+            /* make sure that particles are properly box-wrapped */
+            for(xx = 0; xx < 3; xx++)
+            {
+                pp[xx] = P[i].Pos[xx];
+                while(pp[xx] < 0) pp[xx] += All.BoxSize;
+                while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            }
+            slab_x = (int) (to_slab_fac * pp[0]);
+            slab_y = (int) (to_slab_fac * pp[1]);
+            slab_z = (int) (to_slab_fac * pp[2]);
+            dx = to_slab_fac * pp[0] - slab_x;
+            dy = to_slab_fac * pp[1] - slab_y;
+            dz = to_slab_fac * pp[2] - slab_z;
 
-		  slab_y = (int) (to_slab_fac * P[i].Pos[1]);
-		  dy = to_slab_fac * P[i].Pos[1] - slab_y;
-
-		  slab_z = (int) (to_slab_fac * P[i].Pos[2]);
-		  dz = to_slab_fac * P[i].Pos[2] - slab_z;
-
-		  acc_dim =
+            acc_dim =
 		    +localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
 		    + localfield_data[part[j + 1].localindex] * (1.0 - dx) * (1.0 - dy) * dz
 		    + localfield_data[part[j + 2].localindex] * (1.0 - dx) * dy * (1.0 - dz)
@@ -925,7 +904,7 @@ void pmforce_periodic(int mode, int *typelist)
 		    + localfield_data[part[j + 5].localindex] * (dx) * (1.0 - dy) * dz
 		    + localfield_data[part[j + 6].localindex] * (dx) * dy * (1.0 - dz)
 		    + localfield_data[part[j + 7].localindex] * (dx) * dy * dz;
-
+            
 		  P[i].GravPM[dim] += acc_dim;
 		}
 
@@ -970,6 +949,7 @@ void pmpotential_periodic(void)
   int slab_x, slab_y, slab_z;
   int slab_xx, slab_yy, slab_zz;
   int num_on_grid, num_field_points, pindex, xx, yy, zz;
+  MyDouble pp[3];
   MPI_Status status;
   int *localfield_count, *localfield_first, *localfield_offset, *localfield_togo;
   large_array_offset offset, *localfield_globalindex, *import_globalindex;
@@ -994,16 +974,20 @@ void pmpotential_periodic(void)
   /* determine the cells each particles accesses */
   for(i = 0, num_on_grid = 0; i < NumPart; i++)
     {
-      slab_x = (int) (to_slab_fac * P[i].Pos[0]);
-      slab_y = (int) (to_slab_fac * P[i].Pos[1]);
-      slab_z = (int) (to_slab_fac * P[i].Pos[2]);
-
-      if(slab_x >= PMGRID)
-	slab_x -= PMGRID;
-      if(slab_y >= PMGRID)
-	slab_y -= PMGRID;
-      if(slab_z >= PMGRID)
-	slab_z -= PMGRID;
+        /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+        /* make sure that particles are properly box-wrapped */
+        for(xx = 0; xx < 3; xx++)
+        {
+            pp[xx] = P[i].Pos[xx];
+            while(pp[xx] < 0) pp[xx] += All.BoxSize;
+            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+        }
+        slab_x = (int) (to_slab_fac * pp[0]);
+        slab_y = (int) (to_slab_fac * pp[1]);
+        slab_z = (int) (to_slab_fac * pp[2]);
+        if(slab_x >= PMGRID) slab_x -= PMGRID;
+        if(slab_y >= PMGRID) slab_y -= PMGRID;
+        if(slab_z >= PMGRID) slab_z -= PMGRID;
 
       for(xx = 0; xx < 2; xx++)
 	for(yy = 0; yy < 2; yy++)
@@ -1101,13 +1085,20 @@ void pmpotential_periodic(void)
     {
       pindex = (part[i].partindex >> 3);
 
-      slab_x = (int) (to_slab_fac * P[pindex].Pos[0]);
-      slab_y = (int) (to_slab_fac * P[pindex].Pos[1]);
-      slab_z = (int) (to_slab_fac * P[pindex].Pos[2]);
-
-      dx = to_slab_fac * P[pindex].Pos[0] - slab_x;
-      dy = to_slab_fac * P[pindex].Pos[1] - slab_y;
-      dz = to_slab_fac * P[pindex].Pos[2] - slab_z;
+        /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+        /* make sure that particles are properly box-wrapped */
+        for(xx = 0; xx < 3; xx++)
+        {
+            pp[xx] = P[pindex].Pos[xx];
+            while(pp[xx] < 0) pp[xx] += All.BoxSize;
+            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+        }
+        slab_x = (int) (to_slab_fac * pp[0]);
+        slab_y = (int) (to_slab_fac * pp[1]);
+        slab_z = (int) (to_slab_fac * pp[2]);
+        dx = to_slab_fac * pp[0] - slab_x;
+        dy = to_slab_fac * pp[1] - slab_y;
+        dz = to_slab_fac * pp[2] - slab_z;
 
       localfield_d_data[part[i + 0].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
       localfield_d_data[part[i + 1].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * dz;
@@ -1319,27 +1310,33 @@ void pmpotential_periodic(void)
 
   for(i = 0, j = 0; i < NumPart; i++)
     {
-      while(j < num_on_grid && (part[j].partindex >> 3) != i)
-	j++;
+        while(j < num_on_grid && (part[j].partindex >> 3) != i)
+            j++;
 
-      slab_x = (int) (to_slab_fac * P[i].Pos[0]);
-      dx = to_slab_fac * P[i].Pos[0] - slab_x;
+        /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+        /* make sure that particles are properly box-wrapped */
+        for(xx = 0; xx < 3; xx++)
+        {
+            pp[xx] = P[i].Pos[xx];
+            while(pp[xx] < 0) pp[xx] += All.BoxSize;
+            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+        }
+        slab_x = (int) (to_slab_fac * pp[0]);
+        slab_y = (int) (to_slab_fac * pp[1]);
+        slab_z = (int) (to_slab_fac * pp[2]);
+        dx = to_slab_fac * pp[0] - slab_x;
+        dy = to_slab_fac * pp[1] - slab_y;
+        dz = to_slab_fac * pp[2] - slab_z;
 
-      slab_y = (int) (to_slab_fac * P[i].Pos[1]);
-      dy = to_slab_fac * P[i].Pos[1] - slab_y;
-
-      slab_z = (int) (to_slab_fac * P[i].Pos[2]);
-      dz = to_slab_fac * P[i].Pos[2] - slab_z;
-
-      pot =
-	+localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
-	+ localfield_data[part[j + 1].localindex] * (1.0 - dx) * (1.0 - dy) * dz
-	+ localfield_data[part[j + 2].localindex] * (1.0 - dx) * dy * (1.0 - dz)
-	+ localfield_data[part[j + 3].localindex] * (1.0 - dx) * dy * dz
-	+ localfield_data[part[j + 4].localindex] * (dx) * (1.0 - dy) * (1.0 - dz)
-	+ localfield_data[part[j + 5].localindex] * (dx) * (1.0 - dy) * dz
-	+ localfield_data[part[j + 6].localindex] * (dx) * dy * (1.0 - dz)
-	+ localfield_data[part[j + 7].localindex] * (dx) * dy * dz;
+        pot =
+        +localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
+        + localfield_data[part[j + 1].localindex] * (1.0 - dx) * (1.0 - dy) * dz
+        + localfield_data[part[j + 2].localindex] * (1.0 - dx) * dy * (1.0 - dz)
+        + localfield_data[part[j + 3].localindex] * (1.0 - dx) * dy * dz
+        + localfield_data[part[j + 4].localindex] * (dx) * (1.0 - dy) * (1.0 - dz)
+        + localfield_data[part[j + 5].localindex] * (dx) * (1.0 - dy) * dz
+        + localfield_data[part[j + 6].localindex] * (dx) * dy * (1.0 - dz)
+        + localfield_data[part[j + 7].localindex] * (dx) * dy * dz;
 
 #if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUTPOTENTIAL)
       P[i].Potential += pot;
@@ -1728,47 +1725,20 @@ void pmtidaltensor_periodic_diff(void)
 	      continue;
 #endif
 
-#ifdef POWER6_fails
-	  double slab_x = __friz(to_slab_fac * P[i].Pos[0]);
-	  double slab_y = __friz(to_slab_fac * P[i].Pos[1]);
-	  double slab_z = __friz(to_slab_fac * P[i].Pos[2]);
-	  double fx, fy, fz;
-
-	  slab_x = __fsel(slab_x - (double) PMGRID, (double) PMGRID - 1.0, slab_x);
-	  slab_y = __fsel(slab_y - (double) PMGRID, (double) PMGRID - 1.0, slab_y);
-	  slab_z = __fsel(slab_z - (double) PMGRID, (double) PMGRID - 1.0, slab_z);
-
-	  for(xx = 0, fx = 0.0; xx < 2; xx++, fx += 1.0)
-	    for(yy = 0, fy = 0.0; yy < 2; yy++, fy += 1.0)
-	      for(zz = 0, fz = 0.0; zz < 2; zz++, fz += 1.0)
-		{
-		  double slab_xx = slab_x + fx;
-		  double slab_yy = slab_y + fy;
-		  double slab_zz = slab_z + fz;
-		  double offset;
-
-		  slab_xx = __fsel(slab_xx - (double) PMGRID, slab_xx - (double) PMGRID, slab_xx);
-		  slab_yy = __fsel(slab_yy - (double) PMGRID, slab_yy - (double) PMGRID, slab_yy);
-		  slab_zz = __fsel(slab_zz - (double) PMGRID, slab_zz - (double) PMGRID, slab_zz);
-
-		  offset = ((double) PMGRID2) * ((double) PMGRID * slab_xx + slab_yy) + slab_zz;
-
-		  part[num_on_grid].partindex = (i << 3) + (xx << 2) + (yy << 1) + zz;
-		  part[num_on_grid].globalindex = (large_array_offset) offset;
-		  part_sortindex[num_on_grid] = num_on_grid;
-		  num_on_grid++;
-		}
-#else
-	  slab_x = (int) (to_slab_fac * P[i].Pos[0]);
-	  slab_y = (int) (to_slab_fac * P[i].Pos[1]);
-	  slab_z = (int) (to_slab_fac * P[i].Pos[2]);
-
-	  if(slab_x >= PMGRID)
-	    slab_x -= PMGRID;
-	  if(slab_y >= PMGRID)
-	    slab_y -= PMGRID;
-	  if(slab_z >= PMGRID)
-	    slab_z -= PMGRID;
+        /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+        /* make sure that particles are properly box-wrapped */
+        for(xx = 0; xx < 3; xx++)
+        {
+            pp[xx] = P[i].Pos[xx];
+            while(pp[xx] < 0) pp[xx] += All.BoxSize;
+            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+        }
+        slab_x = (int) (to_slab_fac * pp[0]);
+        slab_y = (int) (to_slab_fac * pp[1]);
+        slab_z = (int) (to_slab_fac * pp[2]);
+        if(slab_x >= PMGRID) slab_x -= PMGRID;
+        if(slab_y >= PMGRID) slab_y -= PMGRID;
+        if(slab_z >= PMGRID) slab_z -= PMGRID;
 
 	  for(xx = 0; xx < 2; xx++)
 	    for(yy = 0; yy < 2; yy++)
@@ -1792,7 +1762,6 @@ void pmtidaltensor_periodic_diff(void)
 		  part_sortindex[num_on_grid] = num_on_grid;
 		  num_on_grid++;
 		}
-#endif
 	}
       /* note: num_on_grid will be  8 times larger than the particle number,
          but num_field_points will generally be much smaller */
@@ -1801,11 +1770,7 @@ void pmtidaltensor_periodic_diff(void)
 #ifdef MYSORT
       mysort_pmperiodic(part_sortindex, num_on_grid, sizeof(int), pm_periodic_compare_sortindex);
 #else
-#ifndef POWER6_fails
       qsort(part_sortindex, num_on_grid, sizeof(int), pm_periodic_compare_sortindex);
-#else
-      qsort_pm_periodic(part_sortindex, num_on_grid);
-#endif
 #endif
 
       /* determine the number of unique field points */
@@ -1873,13 +1838,20 @@ void pmtidaltensor_periodic_diff(void)
 	{
 	  pindex = (part[i].partindex >> 3);
 
-	  slab_x = (int) (to_slab_fac * P[pindex].Pos[0]);
-	  slab_y = (int) (to_slab_fac * P[pindex].Pos[1]);
-	  slab_z = (int) (to_slab_fac * P[pindex].Pos[2]);
-
-	  dx = to_slab_fac * P[pindex].Pos[0] - slab_x;
-	  dy = to_slab_fac * P[pindex].Pos[1] - slab_y;
-	  dz = to_slab_fac * P[pindex].Pos[2] - slab_z;
+        /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+        /* make sure that particles are properly box-wrapped */
+        for(xx = 0; xx < 3; xx++)
+        {
+            pp[xx] = P[pindex].Pos[xx];
+            while(pp[xx] < 0) pp[xx] += All.BoxSize;
+            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+        }
+        slab_x = (int) (to_slab_fac * pp[0]);
+        slab_y = (int) (to_slab_fac * pp[1]);
+        slab_z = (int) (to_slab_fac * pp[2]);
+        dx = to_slab_fac * pp[0] - slab_x;
+        dy = to_slab_fac * pp[1] - slab_y;
+        dz = to_slab_fac * pp[2] - slab_z;
 
 	  localfield_d_data[part[i + 0].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
 	  localfield_d_data[part[i + 1].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * dz;
@@ -2146,14 +2118,20 @@ void pmtidaltensor_periodic_diff(void)
 	  while(j < num_on_grid && (part[j].partindex >> 3) != i)
 	    j++;
 
-	  slab_x = (int) (to_slab_fac * P[i].Pos[0]);
-	  dx = to_slab_fac * P[i].Pos[0] - slab_x;
-
-	  slab_y = (int) (to_slab_fac * P[i].Pos[1]);
-	  dy = to_slab_fac * P[i].Pos[1] - slab_y;
-
-	  slab_z = (int) (to_slab_fac * P[i].Pos[2]);
-	  dz = to_slab_fac * P[i].Pos[2] - slab_z;
+        /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+        /* make sure that particles are properly box-wrapped */
+        for(xx = 0; xx < 3; xx++)
+        {
+            pp[xx] = P[i].Pos[xx];
+            while(pp[xx] < 0) pp[xx] += All.BoxSize;
+            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+        }
+        slab_x = (int) (to_slab_fac * pp[0]);
+        slab_y = (int) (to_slab_fac * pp[1]);
+        slab_z = (int) (to_slab_fac * pp[2]);
+        dx = to_slab_fac * pp[0] - slab_x;
+        dy = to_slab_fac * pp[1] - slab_y;
+        dz = to_slab_fac * pp[2] - slab_z;
 
 	  pot =
 	    +localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
@@ -2398,15 +2376,21 @@ void pmtidaltensor_periodic_diff(void)
 	      while(j < num_on_grid && (part[j].partindex >> 3) != i)
 		j++;
 
-	      slab_x = (int) (to_slab_fac * P[i].Pos[0]);
-	      dx = to_slab_fac * P[i].Pos[0] - slab_x;
-
-	      slab_y = (int) (to_slab_fac * P[i].Pos[1]);
-	      dy = to_slab_fac * P[i].Pos[1] - slab_y;
-
-	      slab_z = (int) (to_slab_fac * P[i].Pos[2]);
-	      dz = to_slab_fac * P[i].Pos[2] - slab_z;
-
+            /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+            /* make sure that particles are properly box-wrapped */
+            for(xx = 0; xx < 3; xx++)
+            {
+                pp[xx] = P[i].Pos[xx];
+                while(pp[xx] < 0) pp[xx] += All.BoxSize;
+                while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            }
+            slab_x = (int) (to_slab_fac * pp[0]);
+            slab_y = (int) (to_slab_fac * pp[1]);
+            slab_z = (int) (to_slab_fac * pp[2]);
+            dx = to_slab_fac * pp[0] - slab_x;
+            dy = to_slab_fac * pp[1] - slab_y;
+            dz = to_slab_fac * pp[2] - slab_z;
+            
 	      tidal_dim =
 		+localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
 		+ localfield_data[part[j + 1].localindex] * (1.0 - dx) * (1.0 - dy) * dz
@@ -2517,16 +2501,20 @@ void pmtidaltensor_periodic_fourier(int component)
   /* determine the cells each particles accesses */
   for(i = 0, num_on_grid = 0; i < NumPart; i++)
     {
-      slab_x = (int) (to_slab_fac * P[i].Pos[0]);
-      slab_y = (int) (to_slab_fac * P[i].Pos[1]);
-      slab_z = (int) (to_slab_fac * P[i].Pos[2]);
-
-      if(slab_x >= PMGRID)
-	slab_x -= PMGRID;
-      if(slab_y >= PMGRID)
-	slab_y -= PMGRID;
-      if(slab_z >= PMGRID)
-	slab_z -= PMGRID;
+        /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+        /* make sure that particles are properly box-wrapped */
+        for(xx = 0; xx < 3; xx++)
+        {
+            pp[xx] = P[i].Pos[xx];
+            while(pp[xx] < 0) pp[xx] += All.BoxSize;
+            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+        }
+        slab_x = (int) (to_slab_fac * pp[0]);
+        slab_y = (int) (to_slab_fac * pp[1]);
+        slab_z = (int) (to_slab_fac * pp[2]);
+        if(slab_x >= PMGRID) slab_x -= PMGRID;
+        if(slab_y >= PMGRID) slab_y -= PMGRID;
+        if(slab_z >= PMGRID) slab_z -= PMGRID;
 
       for(xx = 0; xx < 2; xx++)
 	for(yy = 0; yy < 2; yy++)
@@ -2624,13 +2612,20 @@ void pmtidaltensor_periodic_fourier(int component)
     {
       pindex = (part[i].partindex >> 3);
 
-      slab_x = (int) (to_slab_fac * P[pindex].Pos[0]);
-      slab_y = (int) (to_slab_fac * P[pindex].Pos[1]);
-      slab_z = (int) (to_slab_fac * P[pindex].Pos[2]);
-
-      dx = to_slab_fac * P[pindex].Pos[0] - slab_x;
-      dy = to_slab_fac * P[pindex].Pos[1] - slab_y;
-      dz = to_slab_fac * P[pindex].Pos[2] - slab_z;
+        /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+        /* make sure that particles are properly box-wrapped */
+        for(xx = 0; xx < 3; xx++)
+        {
+            pp[xx] = P[pindex].Pos[xx];
+            while(pp[xx] < 0) pp[xx] += All.BoxSize;
+            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+        }
+        slab_x = (int) (to_slab_fac * pp[0]);
+        slab_y = (int) (to_slab_fac * pp[1]);
+        slab_z = (int) (to_slab_fac * pp[2]);
+        dx = to_slab_fac * pp[0] - slab_x;
+        dy = to_slab_fac * pp[1] - slab_y;
+        dz = to_slab_fac * pp[2] - slab_z;
 
       localfield_d_data[part[i + 0].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
       localfield_d_data[part[i + 1].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * dz;
@@ -2899,14 +2894,20 @@ void pmtidaltensor_periodic_fourier(int component)
       while(j < num_on_grid && (part[j].partindex >> 3) != i)
 	j++;
 
-      slab_x = (int) (to_slab_fac * P[i].Pos[0]);
-      dx = to_slab_fac * P[i].Pos[0] - slab_x;
-
-      slab_y = (int) (to_slab_fac * P[i].Pos[1]);
-      dy = to_slab_fac * P[i].Pos[1] - slab_y;
-
-      slab_z = (int) (to_slab_fac * P[i].Pos[2]);
-      dz = to_slab_fac * P[i].Pos[2] - slab_z;
+        /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+        /* make sure that particles are properly box-wrapped */
+        for(xx = 0; xx < 3; xx++)
+        {
+            pp[xx] = P[i].Pos[xx];
+            while(pp[xx] < 0) pp[xx] += All.BoxSize;
+            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+        }
+        slab_x = (int) (to_slab_fac * pp[0]);
+        slab_y = (int) (to_slab_fac * pp[1]);
+        slab_z = (int) (to_slab_fac * pp[2]);
+        dx = to_slab_fac * pp[0] - slab_x;
+        dy = to_slab_fac * pp[1] - slab_y;
+        dz = to_slab_fac * pp[2] - slab_z;
 
       tidal =
 	+localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
