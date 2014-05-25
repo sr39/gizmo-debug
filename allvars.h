@@ -37,6 +37,12 @@
 #define ALLOWEXTRAPARAMS        /* don't crash (just warn) if there are extra lines in the input parameterfile */
 #define INHOMOG_GASDISTR_HINT   /* if the gas is distributed very different from collisionless particles, this can helps to avoid problems in the domain decomposition */
 
+#ifndef NOTEST_FOR_IDUNIQUENESS
+#ifdef BND_PARTICLES
+#define NOTEST_FOR_IDUNIQUENESS
+#endif
+#endif
+
 #ifndef DISABLE_SPH_PARTICLE_WAKEUP
 #define WAKEUP   4.1            /* allows 2 timestep bins within kernel */
 #endif
@@ -1837,7 +1843,7 @@ extern struct sph_particle_data
     } Gradients;
     MyFloat NV_T[3][3];             /*!< holds the tensor used for gradient estimation */
     MyDouble ConditionNumber;       /*!< condition number of the gradient matrix: needed to ensure stability */
-    
+    MyDouble MaxKineticEnergyNgb;   /*!< maximum kinetic energy (with respect to neighbors): use for entropy 'switch' */
 
 #ifndef ADAPTIVE_GRAVSOFT_FORALL
     MyDouble DhsmlNgbFactor;        /*!< correction factor needed for varying smoothing lengths */

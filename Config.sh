@@ -46,6 +46,9 @@ HYDRO_LAGRANGIAN_GALERKIN           # Lagrangian (constant-mass) discontinuous-G
 ####################################################################################################
 #--------------------------------------- Additional Fluid Physics
 ####################################################################################################
+#--------------------------------- Polytropic Index of Gas (for an ideal gas law)
+#GAMMA=(5.0/3.0)                # if not set and no other (more complex) EOS set, defaults to GAMMA=5/3
+##-----------------------------------------------------------------------------------------------------
 #--------------------------------- Magneto-Hydrodynamics
 #MAGNETIC                       # master switch for MHD, regardless of which Hydro solver is used
 #BINISET                        # set initial fields (Bx,By,Bz) in parameter file

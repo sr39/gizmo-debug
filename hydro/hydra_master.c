@@ -212,6 +212,7 @@ struct hydrodata_out
     MyLongDouble DtInternalEnergy;
     //MyLongDouble dInternalEnergy; //???
     MyFloat MaxSignalVel;
+    MyFloat MaxKineticEnergyNgb;
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     MyLongDouble DtMass;
     //MyLongDouble dMass; //???
@@ -370,6 +371,9 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
 #endif
     if(SphP[i].MaxSignalVel < out->MaxSignalVel)
         SphP[i].MaxSignalVel = out->MaxSignalVel;
+
+    if(SphP[i].MaxKineticEnergyNgb < out->MaxKineticEnergyNgb)
+        SphP[i].MaxKineticEnergyNgb = out->MaxKineticEnergyNgb;
     
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
     for(k=0;k<NUM_METAL_SPECIES;k++)
@@ -660,6 +664,7 @@ void hydro_force(void)
         if(P[i].Type==0)
         {
             SphP[i].MaxSignalVel = -1.e10;
+            SphP[i].MaxKineticEnergyNgb = -1.e10;
             SphP[i].DtInternalEnergy = 0;//SphP[i].dInternalEnergy = 0;//???
             for(k=0;k<3;k++)
                 SphP[i].HydroAccel[k] = 0;//SphP[i].dMomentum[k] = 0;//???

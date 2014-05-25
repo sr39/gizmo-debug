@@ -201,6 +201,8 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     kernel.vsig -= fac_mu * kernel.vdotr2 * rinv;
 #endif
                 }
+                double KE = kernel.dvx*kernel.dvx + kernel.dvy*kernel.dvy + kernel.dvz*kernel.dvz;
+                if(KE > out.MaxKineticEnergyNgb) out.MaxKineticEnergyNgb = KE;
                 
                 /* --------------------------------------------------------------------------------- */
                 /* calculate the kernel functions (centered on both 'i' and 'j') */

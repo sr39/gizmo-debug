@@ -220,7 +220,8 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                 e_potential += grav_acc*grav_acc;
             }
             e_potential = sqrt(e_potential) * (KERNEL_CORE_SIZE*PPP[i].Hsml*All.cf_atime); // = M*|a_grav|*h (physical)
-            e_kinetic=0; for(j=0;j<3;j++) e_kinetic += 0.5*P[i].Mass * All.cf_a2inv * SphP[i].VelPred[j]*SphP[i].VelPred[j];
+            //e_kinetic=0; for(j=0;j<3;j++) e_kinetic += 0.5*P[i].Mass * All.cf_a2inv * SphP[i].VelPred[j]*SphP[i].VelPred[j]; // ???
+            e_kinetic = 0.5 * P[i].Mass * All.cf_a2inv * SphP[i].MaxKineticEnergyNgb;
             e_thermal = DMAX(0.5*SphP[i].InternalEnergy, dEnt) * P[i].Mass;
             int do_entropy = 0;
             if(0.01*(e_thermal+e_kinetic) > e_thermal) {do_entropy=1;}

@@ -574,6 +574,7 @@ void init(void)
         P[i].Particle_DivVel = 0;
         SphP[i].ConditionNumber = 1;
         SphP[i].DtInternalEnergy = 0;
+        SphP[i].MaxKineticEnergyNgb = 0;
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
         //SphP[i].dMass = 0;//???
         SphP[i].DtMass = 0;
