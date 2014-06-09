@@ -8,8 +8,8 @@
 #define GAMMA_G8 (1.0/GAMMA)
 #define GAMMA_G9 (GAMMA-1.0)
 
-#define TOL_ITER 1.e-4
-#define NMAX_ITER 100
+#define TOL_ITER 1.e-6
+#define NMAX_ITER 1000
 
 
 /* --------------------------------------------------------------------------------- */
@@ -121,6 +121,7 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
         if(*Q_L>Qmed) *Q_L=Qmed;
     }
     */
+    /*
     double qmax=DMAX(Q_i,Q_j);
     double qmin=DMIN(Q_i,Q_j);
     double fac = 2.0 * (qmax-qmin);
@@ -133,6 +134,44 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
     if(*Q_R<qmin) *Q_R=qmin;
     if(*Q_L>qmax) *Q_L=qmax;
     if(*Q_R>qmax) *Q_R=qmax;
+    */
+
+    /* here we do our slightly-fancy slope-limiting */
+    double Qmin,Qmax,Qmed,Qmax_eff,Qmin_eff,fac,Qmed_max,Qmed_min;
+    double fac_minmax = 0.5; /* 0.5, 0.1 works; 1.0 unstable; 0.75 is stable but begins to 'creep' */
+    double fac_meddev = 0.75; /* 0.5,0.75 work well w. 0.5 above; 1.0 unstable; 0.875 is on-edge */
+    /* get the max/min vals, difference, and midpoint value */
+    Qmed = 0.5*(Q_i+Q_j);
+    if(Q_i<Q_j) {Qmax=Q_j; Qmin=Q_i;} else {Qmax=Q_i; Qmin=Q_j;}
+    fac = fac_minmax * (Qmax-Qmin);
+    Qmax_eff = Qmax + fac; /* 'overshoot tolerance' */
+    Qmin_eff = Qmin - fac; /* 'undershoot tolerance' */
+    /* check if this implies a sign from the min/max values: if so, we re-interpret the derivative as a
+     logarithmic derivative to prevent sign changes from occurring */
+    if(Qmax<0) {if(Qmax_eff>0) Qmax_eff=Qmax*Qmax/(Qmax-(Qmax_eff-Qmax));} // works with 0.5,0.1 //
+    if(Qmin>0) {if(Qmin_eff<0) Qmin_eff=Qmin*Qmin/(Qmin+(Qmin-Qmin_eff));}
+    /* also allow tolerance to over/undershoot the exact midpoint value in the reconstruction */
+    Qmed_max = Qmed + fac_meddev * fac;
+    Qmed_min = Qmed - fac_meddev * fac;
+    if(Qmed_max>Qmax_eff) Qmed_max=Qmax_eff;
+    if(Qmed_min<Qmin_eff) Qmed_min=Qmin_eff;
+    /* now check which side is which and apply these limiters */
+    if(Q_i<Q_j)
+    {
+        if(*Q_R<Qmin_eff) *Q_R=Qmin_eff;
+        if(*Q_R>Qmed_max) *Q_R=Qmed_max;
+        if(*Q_L>Qmax_eff) *Q_L=Qmax_eff;
+        if(*Q_L<Qmed_min) *Q_L=Qmed_min;
+    } else {
+        if(*Q_R>Qmax_eff) *Q_R=Qmax_eff;
+        if(*Q_R<Qmed_min) *Q_R=Qmed_min;
+        if(*Q_L<Qmin_eff) *Q_L=Qmin_eff;
+        if(*Q_L>Qmed_max) *Q_L=Qmed_max;
+    }
+    /* done! */
+    
+
+    
 }
 
 

@@ -725,7 +725,7 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
       /* initialize dummy values here so the function doesn't crash, if called when there isn't a target particle */
       int k;
       double Zsol[NUM_METAL_SPECIES];
-      for(k=0;k<NUM_METAL_SPECIES;k++) Zsol[NUM_METAL_SPECIES]=All.SolarAbundances[k];
+      for(k=0;k<NUM_METAL_SPECIES;k++) Zsol[k]=All.SolarAbundances[k];
       Z = Zsol;
   }
 #endif

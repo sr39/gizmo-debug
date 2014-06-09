@@ -12,7 +12,7 @@ SnapshotFileBase            snapshot
 OutputListOn                1  % =1 to use list in "OutputListFilename" 
 OutputListFilename          output_times.txt  % list of times for snaps 
 NumFilesPerSnapshot         1 
-NumFilesWrittenInParallel   32  % must be < N_processors
+NumFilesWrittenInParallel   32  % must be < N_processors & power of 2
 
 %---- Output frequency 
 TimeOfFirstSnapshot     0.1 

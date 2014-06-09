@@ -213,11 +213,12 @@ void read_ic(char *fname)
 	{
 	  for(i = 0; i < N_gas; i++)
 	    {
-	      if(ThisTask == 0 && i == 0 && SphP[i].InternalEnergy == 0)
-              printf("Initializing u from InitGasTemp !\n");
+	      if(ThisTask == 0 && i == 0)// && SphP[i].InternalEnergy == 0)
+              printf("Initializing u from InitGasTemp : InitGasTemp=%g InitGasU=%g MinEgySpec=%g SphP[0].InternalEnergy=%g!\n",
+                     All.InitGasTemp,All.InitGasU,All.MinEgySpec,SphP[i].InternalEnergy);
 
-	      if(SphP[i].InternalEnergy == 0)
-              SphP[i].InternalEnergy = All.InitGasU;
+	      //if(SphP[i].InternalEnergy == 0)//???
+            SphP[i].InternalEnergy = All.InitGasU;
 	    }
 	}
     }
