@@ -254,6 +254,8 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* --------------------------------------------------------------------------------- */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 double dmass_holder = Fluxes.rho * dt_hydrostep;
+                double dmass_limiter = 0.01 * DMAX(0,DMIN(DMIN(local.Mass,SphP[j].MassTrue),P[j].Mass));
+                if(fabs(dmass_holder) > dmass_limiter) {dmass_holder *= dmass_limiter / fabs(dmass_holder);}
                 out.dMass += dmass_holder; //???
                 out.DtMass += Fluxes.rho;
                 SphP[j].dMass -= dmass_holder; //???
