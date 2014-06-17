@@ -158,6 +158,14 @@
 #else
             /* the fluxes have been calculated in the rest frame of the interface: we need to de-boost to the 'simulation frame'
              which we do following Pakmor et al. 2011 */
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME 
+            /* limiter to prevent crazy mass fluxes per-particle per-timestep */
+            if(dt_hydrostep > 0)
+            {
+                double dmass_min = 0.01 * DMIN(DMIN(local.Mass,SphP[j].MassTrue),P[j].Mass) / dt_hydrostep;
+                if(fabs(Riemann_out.Fluxes.rho) > dmass_min) {Riemann_out.Fluxes.rho *= dmass_min / fabs(Riemann_out.Fluxes.rho);}
+            }
+#endif
             for(k=0;k<3;k++)
             {
                 /* Riemann_out->Fluxes.rho is un-modified */

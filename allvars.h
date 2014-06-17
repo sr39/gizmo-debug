@@ -1788,8 +1788,9 @@ extern struct sph_particle_data
     MyDouble Density;           /*!< current baryonic mass density of particle */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     MyDouble MassTrue;          /*!< true particle mass ('mass' now is -predicted- mass */
-    //MyDouble dMass;             /*!< change in particle masses from hydro step (conserved variable) */ //???
+    MyDouble dMass;             /*!< change in particle masses from hydro step (conserved variable) */ //???
     MyDouble DtMass;            /*!< rate-of-change of particle masses (for drifting) */
+    MyDouble GravWorkTerm[3];   /*!< correction term needed for hydro mass flux in gravity */
 #endif
 
     MyDouble Pressure;          /*!< current pressure */

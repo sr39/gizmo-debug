@@ -410,7 +410,7 @@ void cooling_and_starformation(void)
                 P[i].BH_Mass = All.SeedBlackHoleMass;
                 if(p>1) P[i].BH_Mass *= p; /* assume multiple seeds in particle merge */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-                P[i].Mass = SphP[i].MassTrue;
+                P[i].Mass = SphP[i].MassTrue + SphP[i].dMass;
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
                 P[i].BH_Mass_AlphaDisk = 0;
@@ -452,7 +452,7 @@ void cooling_and_starformation(void)
                 P[i].DensAroundStar = SphP[i].Density;
 #endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-                P[i].Mass = SphP[i].MassTrue;
+                P[i].Mass = SphP[i].MassTrue + SphP[i].dMass;
 #endif
 		    } /* closes final generation from original gas particle */
 		  else

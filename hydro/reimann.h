@@ -254,8 +254,11 @@ void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs
     
     HLLC_Riemann_solver(Riemann_vec, Riemann_out, n_unit, v_line_L, v_line_R, cs_L, cs_R, h_L, h_R);
     /* check if HLLC failed: if so, compute the Rusanov flux instead */
+    /* (actually, the rusanov solver is so diffusive, it creates more problems than it solves: better to 
+        go right to the exact solver, and if that fails, to a lower-order reconstruction)
     if((Riemann_out->P_M<=0)||(isnan(Riemann_out->P_M)))
         Riemann_solver_Rusanov(Riemann_vec, Riemann_out, n_unit, v_line_L, v_line_R, cs_L, cs_R, h_L, h_R);
+    */
     /* check if Rusanov failed: if so, go to the more expensive but exact solver (only works for hydro!) */
     if((Riemann_out->P_M<=0)||(isnan(Riemann_out->P_M)))
         Riemann_solver_exact(Riemann_vec, Riemann_out, n_unit, v_line_L, v_line_R, cs_L, cs_R, h_L, h_R);

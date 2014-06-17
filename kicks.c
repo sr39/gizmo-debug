@@ -131,28 +131,38 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
     
     /* First, we do the pure hydro update for gas (because we use a total energy equation, its much easier to 
         do this than to deal with the gravitational force first and then have to subtract it back out) */
-/*
-    double d_inc = 0.5; // fraction of delta_conserved to couple per kick step (each 'kick' is 1/2-timestep) //
-    double dv[3], v_old[3], dMass, ent_old=0;
+
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+    /* need to do the slightly more complicated update scheme to maintain exact mass conservation */
+    double dMass, d_inc = 0.5; // fraction of delta_conserved to couple per kick step (each 'kick' is 1/2-timestep) //
+    //double dv[3], v_old[3], dMass, ent_old=0;
     if(P[i].Type==0)
     {
-        ent_old = SphP[i].InternalEnergy;
-        for(j=0;j<3;j++) v_old[j] = P[i].Vel[j];
-        if(SphP[i].dInternalEnergy != 0)
+        //ent_old = SphP[i].InternalEnergy;
+        //for(j=0;j<3;j++) v_old[j] = P[i].Vel[j];
+        if(SphP[i].dMass != 0)
         {
             // update the --conserved-- variables of each particle //
+            if(mode != 0)
+            {
+                //dMass = d_inc * SphP[i].dMass; //???
+                dMass = (tend - tstart) * All.Timebase_interval / All.cf_hubble_a * SphP[i].DtMass;
+                if(dMass >= SphP[i].dMass) dMass = SphP[i].dMass; // try to get close to what the time-integration scheme would give //
+                SphP[i].dMass -= dMass;
+            } else {
+                dMass = SphP[i].dMass;
+            }
+            if(fabs(dMass) > 0.9*SphP[i].MassTrue) dMass *= 0.9*SphP[i].MassTrue/fabs(dMass); // limiter to prevent madness //
+
             
             // load and update the particle masses //
-#ifdef HYDRO_MESHLESS_FINITE_VOLUME
             // particle mass update here, from hydro fluxes //
-            dMass = d_inc * SphP[i].dMass;//???
-            if(fabs(dMass) > 0.01*SphP[i].MassTrue) dMass *= 0.01*SphP[i].MassTrue/fabs(dMass); // limiter to prevent madness //
             mass_old = SphP[i].MassTrue;
             mass_pred = P[i].Mass;
             mass_new = mass_old + dMass;
             SphP[i].MassTrue = mass_new;
-#endif
             // UNITS: remember all time derivatives (DtX, dX) are in -physical- units; as are mass, entropy/internal energy, but -not- velocity //
+            /*
             double e_old = mass_old * SphP[i].InternalEnergy;
             for(j = 0; j< 3; j++) e_old += 0.5*mass_old * (P[i].Vel[j]/All.cf_atime)*(P[i].Vel[j]/All.cf_atime); // physical //
             
@@ -169,20 +179,19 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             for(j = 0; j< 3; j++) e_old -= 0.5*mass_new * (P[i].Vel[j]/All.cf_atime)*(P[i].Vel[j]/All.cf_atime); // subtract off the new kinetic energy //
             SphP[i].InternalEnergy = e_old / mass_new; // obtain the new internal energy per unit mass //
             check_particle_for_temperature_minimum(i); // if we've fallen below the minimum temperature, force the 'floor' //
-            
+            */
+             
             // at the end of this kick, need to re-zero the dInternalEnergy, and other
             // conserved-variable SPH quantities set in the hydro loop, to avoid double-counting them
             if(mode==0)
             {
-                SphP[i].dInternalEnergy = 0;
-                SphP[i].dMomentum[0] = SphP[i].dMomentum[1] = SphP[i].dMomentum[2] = 0;
-#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+                //SphP[i].dInternalEnergy = 0;
+                //SphP[i].dMomentum[0] = SphP[i].dMomentum[1] = SphP[i].dMomentum[2] = 0;
                 SphP[i].dMass = 0;
-#endif
             }
         }
     } // if(P[i].Type==0) //
-*/
+#endif
     
     /* only enter the 'normal' kick loop below for genuinely active particles */
     if(TimeBinActive[P[i].TimeBin])
@@ -200,25 +209,28 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
         
         if(P[i].Type==0)
         {
-#ifdef HYDRO_MESHLESS_FINITE_VOLUME
-            double dMass = SphP[i].MassTrue + SphP[i].DtMass * dt_hydrokick;
-            if(dMass < 0.5*SphP[i].MassTrue) {SphP[i].MassTrue *= 0.5;} else {SphP[i].MassTrue = dMass;} //???
+            double grav_acc[3], dEnt_Gravity = 0;
+            for(j = 0; j < 3; j++)
+            {
+                grav_acc[j] = All.cf_a2inv * P[i].GravAccel[j];
+#ifdef PMGRID
+                grav_acc[j] += All.cf_a2inv * P[i].GravPM[j];
 #endif
-            double dEnt = SphP[i].InternalEnergy + SphP[i].DtInternalEnergy * dt_hydrokick;
+            }
+            
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+            //double dMass = SphP[i].MassTrue + SphP[i].DtMass * dt_hydrokick;
+            //if(dMass < 0.5*SphP[i].MassTrue) {SphP[i].MassTrue *= 0.5;} else {SphP[i].MassTrue = dMass;} //???
+            /* calculate the contribution to the energy change from the mass fluxes in the gravitation field */
+            for(j=0;j<3;j++) {dEnt_Gravity += -(SphP[i].GravWorkTerm[j] * All.cf_atime * dt_hydrokick) * grav_acc[j];}
+#endif
+            double dEnt = SphP[i].InternalEnergy + SphP[i].DtInternalEnergy * dt_hydrokick + dEnt_Gravity;
             
 #ifndef HYDRO_SPH
             /* if we're using a Riemann solver, we include an energy/entropy-type switch to ensure
                 that we don't corrupt the temperature evolution of extremely cold, adiabatic flows */
-            double grav_acc,e_thermal,e_kinetic,e_potential;
-            e_potential=0;
-            for(j=0;j<3;j++)
-            {
-                grav_acc = All.cf_a2inv * P[i].GravAccel[j];
-#ifdef PMGRID
-                grav_acc += All.cf_a2inv * P[i].GravPM[j];
-#endif
-                e_potential += grav_acc*grav_acc;
-            }
+            double e_thermal,e_kinetic,e_potential;
+            e_potential=0; for(j=0;j<3;j++) {e_potential += grav_acc[j]*grav_acc[j];}
             e_potential = P[i].Mass * sqrt(e_potential) * (KERNEL_CORE_SIZE*PPP[i].Hsml*All.cf_atime); // = M*|a_grav|*h (physical)
             //e_kinetic=0; for(j=0;j<3;j++) e_kinetic += 0.5*P[i].Mass * All.cf_a2inv * SphP[i].VelPred[j]*SphP[i].VelPred[j]; // ???
             e_kinetic = 0.5 * P[i].Mass * All.cf_a2inv * SphP[i].MaxKineticEnergyNgb;
@@ -238,7 +250,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                 /* use the pure-SPH entropy equation, which is exact up to the mass flux, for adiabatic flows */
                 SphP[i].DtInternalEnergy = (SphP[i].Pressure/SphP[i].Density) * P[i].Particle_DivVel*All.cf_a2inv;
                 if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*GAMMA_MINUS1 * SphP[i].InternalEnergyPred * All.cf_hubble_a;
-                dEnt = SphP[i].InternalEnergy + SphP[i].DtInternalEnergy * dt_hydrokick;
+                dEnt = SphP[i].InternalEnergy + SphP[i].DtInternalEnergy * dt_hydrokick + dEnt_Gravity;
             }
 #endif
             
@@ -251,7 +263,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
         {
             dp[j] = 0;
             if(P[i].Type==0)
-                dp[j] += mass_pred * SphP[i].HydroAccel[j] * dt_hydrokick; // ???
+                dp[j] += mass_pred * SphP[i].HydroAccel[j] * All.cf_atime * dt_hydrokick; // convert to code units
 #ifdef RT_RAD_PRESSURE
             if(P[i].Type==0)
                 dp[j] += mass_pred * SphP[i].RadAccel[j] * dt_hydrokick;
@@ -263,6 +275,39 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
         }
 
+ 
+        /* check for reflecting boundaries: if so, do the reflection! */
+#if defined(REFLECT_BND_X) || defined(REFLECT_BND_Y) || defined(REFLECT_BND_Z)
+        double box_upper[3]; box_upper[0]=box_upper[1]=box_upper[2]=1;
+#ifdef PERIODIC
+        box_upper[0]=boxSize_X; box_upper[1]=boxSize_Y; box_upper[2]=boxSize_Z;
+#endif
+        for(j = 0; j < 3; j++)
+        {
+            /* skip the non-reflecting boundaries */
+#ifndef REFLECT_BND_X
+            if(j==0) continue;
+#endif
+#ifndef REFLECT_BND_Y
+            if(j==1) continue;
+#endif
+#ifndef REFLECT_BND_Z
+            if(j==2) continue;
+#endif
+            if(P[i].Pos[j] <= 0)
+            {
+                if(P[i].Vel[j]<0) {P[i].Vel[j]=-P[i].Vel[j]; SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0; dp[j]+=2*P[i].Vel[j]*mass_new;}
+                P[i].Pos[j]=(0+((double)P[i].ID)*1.e-6)*box_upper[j];
+            }
+            if(P[i].Pos[j] >= box_upper[j])
+            {
+                if(P[i].Vel[j]>0) {P[i].Vel[j]=-P[i].Vel[j]; SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0; dp[j]+=2*P[i].Vel[j]*mass_new;}
+                P[i].Pos[j]=box_upper[j]*(1-((double)P[i].ID)*1.e-6);
+            }
+        }
+#endif
+        
+        
         /* now account for the cosmological terms (comoving integrations) */
         if(All.ComovingIntegrationOn)
         {

@@ -174,6 +174,38 @@ void drift_particle(int i, integertime time1)
             SphP[i].EgyWtDensity *= exp(-divVel * dt_drift);
 #endif
             
+            /* check for reflecting boundaries: if so, do the reflection! */
+#if defined(REFLECT_BND_X) || defined(REFLECT_BND_Y) || defined(REFLECT_BND_Z)
+            double box_upper[3]; box_upper[0]=box_upper[1]=box_upper[2]=1;
+#ifdef PERIODIC
+            box_upper[0]=boxSize_X; box_upper[1]=boxSize_Y; box_upper[2]=boxSize_Z;
+#endif
+            for(j = 0; j < 3; j++)
+            {
+                /* skip the non-reflecting boundaries */
+#ifndef REFLECT_BND_X
+                if(j==0) continue;
+#endif
+#ifndef REFLECT_BND_Y
+                if(j==1) continue;
+#endif
+#ifndef REFLECT_BND_Z
+                if(j==2) continue;
+#endif
+                if(P[i].Pos[j] <= 0)
+                {
+                    if(P[i].Vel[j]<0) {P[i].Vel[j]=-P[i].Vel[j]; SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0;}
+                    P[i].Pos[j]=(0+((double)P[i].ID)*1.e-6)*box_upper[j];
+                }
+                if(P[i].Pos[j] >= box_upper[j])
+                {
+                    if(P[i].Vel[j]>0) {P[i].Vel[j]=-P[i].Vel[j]; SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0;}
+                    P[i].Pos[j]=box_upper[j]*(1-((double)P[i].ID)*1.e-6);
+                }
+            }
+#endif
+            
+            
             
 #ifdef EOS_DEGENERATE
             {

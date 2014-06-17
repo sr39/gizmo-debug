@@ -215,7 +215,8 @@ struct hydrodata_out
     MyFloat MaxKineticEnergyNgb;
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     MyLongDouble DtMass;
-    //MyLongDouble dMass; //???
+    MyLongDouble dMass; //???
+    MyLongDouble GravWorkTerm[3];
 #endif
     
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
@@ -367,7 +368,8 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
     //SphP[i].dInternalEnergy += out->dInternalEnergy; //???
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     SphP[i].DtMass += out->DtMass;
-    //SphP[i].dMass += out->dMass; //???
+    SphP[i].dMass += out->dMass; //???
+    for(k=0;k<3;k++) {SphP[i].GravWorkTerm[k] += out->GravWorkTerm[k];}
 #endif
     if(SphP[i].MaxSignalVel < out->MaxSignalVel)
         SphP[i].MaxSignalVel = out->MaxSignalVel;
@@ -586,7 +588,9 @@ void hydro_final_operations_and_cleanup(void)
             if(P[i].ID == 0)
             {
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-                SphP[i].DtMass = 0;//SphP[i].dMass = 0;//???
+                SphP[i].DtMass = 0;
+                SphP[i].dMass = 0;//???
+                for(k = 0; k < 3; k++) SphP[i].GravWorkTerm[k] = 0;
 #endif
                 SphP[i].DtInternalEnergy = 0;//SphP[i].dInternalEnergy = 0;//???
                 for(k = 0; k < 3; k++) SphP[i].HydroAccel[k] = 0;//SphP[i].dMomentum[k] = 0;//???
@@ -669,7 +673,9 @@ void hydro_force(void)
             for(k=0;k<3;k++)
                 SphP[i].HydroAccel[k] = 0;//SphP[i].dMomentum[k] = 0;//???
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-            SphP[i].DtMass = 0;//SphP[i].dMass = 0;//???
+            SphP[i].DtMass = 0;
+            SphP[i].dMass = 0;//???
+            for(k=0;k<3;k++) SphP[i].GravWorkTerm[k] = 0;
 #endif
 #ifdef WAKEUP
             SphP[i].wakeup = 0;

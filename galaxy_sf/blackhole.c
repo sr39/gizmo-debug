@@ -2106,18 +2106,9 @@ void bh_bubble(double bh_dmass, MyFloat center[3], MyIDType BH_id)
             dz = pos[2] - P[j].Pos[2];
             
 #ifdef PERIODIC			/*  now find the closest image in the given box size  */
-            if(dx > boxHalf_X)
-                dx -= boxSize_X;
-            if(dx < -boxHalf_X)
-                dx += boxSize_X;
-            if(dy > boxHalf_Y)
-                dy -= boxSize_Y;
-            if(dy < -boxHalf_Y)
-                dy += boxSize_Y;
-            if(dz > boxHalf_Z)
-                dz -= boxSize_Z;
-            if(dz < -boxHalf_Z)
-                dz += boxSize_Z;
+            dx = NEAREST_X(dx);
+            dy = NEAREST_Y(dy);
+            dz = NEAREST_Z(dz);
 #endif
             r2 = dx * dx + dy * dy + dz * dz;
             
@@ -2213,20 +2204,10 @@ void bh_bubble(double bh_dmass, MyFloat center[3], MyIDType BH_id)
                 dx = pos[0] - P[j].Pos[0];
                 dy = pos[1] - P[j].Pos[1];
                 dz = pos[2] - P[j].Pos[2];
-                
 #ifdef PERIODIC			/*  now find the closest image in the given box size  */
-                if(dx > boxHalf_X)
-                    dx -= boxSize_X;
-                if(dx < -boxHalf_X)
-                    dx += boxSize_X;
-                if(dy > boxHalf_Y)
-                    dy -= boxSize_Y;
-                if(dy < -boxHalf_Y)
-                    dy += boxSize_Y;
-                if(dz > boxHalf_Z)
-                    dz -= boxSize_Z;
-                if(dz < -boxHalf_Z)
-                    dz += boxSize_Z;
+                dx = NEAREST_X(dx);
+                dy = NEAREST_Y(dy);
+                dz = NEAREST_Z(dz);
 #endif
                 r2 = dx * dx + dy * dy + dz * dz;
                 
@@ -2282,20 +2263,10 @@ void bh_bubble(double bh_dmass, MyFloat center[3], MyIDType BH_id)
                 dx = pos[0] - P[j].Pos[0];
                 dy = pos[1] - P[j].Pos[1];
                 dz = pos[2] - P[j].Pos[2];
-                
 #ifdef PERIODIC			/*  now find the closest image in the given box size  */
-                if(dx > boxHalf_X)
-                    dx -= boxSize_X;
-                if(dx < -boxHalf_X)
-                    dx += boxSize_X;
-                if(dy > boxHalf_Y)
-                    dy -= boxSize_Y;
-                if(dy < -boxHalf_Y)
-                    dy += boxSize_Y;
-                if(dz > boxHalf_Z)
-                    dz -= boxSize_Z;
-                if(dz < -boxHalf_Z)
-                    dz += boxSize_Z;
+                dx = NEAREST_X(dx);
+                dy = NEAREST_Y(dy);
+                dz = NEAREST_Z(dz);
 #endif
                 r2 = dx * dx + dy * dy + dz * dz;
                 

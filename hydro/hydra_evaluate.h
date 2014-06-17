@@ -253,9 +253,12 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* now we will actually assign the hydro variables for the evolution step */
                 /* --------------------------------------------------------------------------------- */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-                //out.dMass += Fluxes.rho * dt_hydrostep; //???
+                double dmass_holder = Fluxes.rho * dt_hydrostep;
+                out.dMass += dmass_holder; //???
                 out.DtMass += Fluxes.rho;
-                //SphP[j].dMass -= Fluxes.rho * dt_hydrostep; //???
+                SphP[j].dMass -= dmass_holder; //???
+                double gravwork[3]; gravwork[0]=Fluxes.rho*kernel.dx; gravwork[1]=Fluxes.rho*kernel.dy; gravwork[2]=Fluxes.rho*kernel.dz;
+                for(k=0;k<3;k++) {out.GravWorkTerm[k] += gravwork[k];}
 #endif
                 for(k=0;k<3;k++)
                 {
@@ -273,6 +276,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 {
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                     SphP[j].DtMass -= Fluxes.rho;
+                    for(k=0;k<3;k++) {SphP[j].GravWorkTerm[k] -= gravwork[k];}
 #endif
                     for(k=0;k<3;k++) SphP[j].HydroAccel[k] -= Fluxes.v[k];
                     SphP[j].DtInternalEnergy -= Fluxes.p;
@@ -280,21 +284,19 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 
                 /* if we have mass fluxes, we need to have metal fluxes if we're using them (or any other passive scalars) */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-                if(Fluxes.rho != 0)
+                if(dmass_holder != 0)
                 {
-                    double dmass;
-                    dmass = Fluxes.rho * dt_hydrostep;
 #ifdef METALS
                     if(Fluxes.rho > 0)
                     {
                         /* particle i gains mass from particle j */
                         for(k=0;k<NUM_METAL_SPECIES;k++)
-                            out.Dyield[k] += (P[j].Metallicity[k] - local.Metallicity[k]) * dmass;
+                            out.Dyield[k] += (P[j].Metallicity[k] - local.Metallicity[k]) * dmass_holder;
                     } else {
                         /* particle j gains mass from particle i */
-                        dmass /= -P[j].Mass;
+                        dmass_holder /= -P[j].Mass;
                         for(k=0;k<NUM_METAL_SPECIES;k++)
-                            P[j].Metallicity[k] += (local.Metallicity[k] - P[j].Metallicity[k]) * dmass;
+                            P[j].Metallicity[k] += (local.Metallicity[k] - P[j].Metallicity[k]) * dmass_holder;
                     }
 #endif
                 }

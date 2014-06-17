@@ -44,7 +44,7 @@ void merge_and_split_particles(void);
 int does_particle_need_to_be_merged(MyIDType i);
 int does_particle_need_to_be_split(MyIDType i);
 void merge_particles_ij(MyIDType i, MyIDType j);
-void split_particle_i(MyIDType i, int n_particles_split);
+void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, double r2_nearest);
 
 void do_first_halfstep_kick(void);
 void do_second_halfstep_kick(void);

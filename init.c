@@ -576,9 +576,10 @@ void init(void)
         SphP[i].DtInternalEnergy = 0;
         SphP[i].MaxKineticEnergyNgb = 0;
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-        //SphP[i].dMass = 0;//???
+        SphP[i].dMass = 0;//???
         SphP[i].DtMass = 0;
         SphP[i].MassTrue = P[i].Mass;
+        for(j=0;j<3;j++) SphP[i].GravWorkTerm[j] = 0;
 #endif
         
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
@@ -778,9 +779,10 @@ void init(void)
         //SphP[i].dInternalEnergy = 0;//???
         SphP[i].DtInternalEnergy = 0;
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-        //SphP[i].dMass = 0;//???
+        SphP[i].dMass = 0;//???
         SphP[i].DtMass = 0;
         SphP[i].MassTrue = P[i].Mass;
+        for(j=0;j<3;j++) SphP[i].GravWorkTerm[j] = 0;
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         PPPZ[i].AGS_zeta = 0;

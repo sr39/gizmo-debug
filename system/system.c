@@ -49,7 +49,6 @@ void merge_and_split_particles(void)
                         /* make sure we're not taking the same particle (and that its available to be merged into)! */
                         if((j>=0)&&(j!=i)&&(P[j].Type==0)&&(P[j].Mass > P[i].Mass)&&(P[i].Mass+P[j].Mass < All.MaxMassForParticleSplit))
                         {
-                            //double r2=0; for(int k=0;k<3;k++) {r2+=(P[i].Pos[k]-P[j].Pos[k])*(P[i].Pos[k]-P[j].Pos[k]);} if(r2<threshold_val) {threshold_val=r2; target_for_merger=j;} // position-based //
                             if(P[j].Mass<threshold_val) {threshold_val=P[j].Mass; target_for_merger=j;} // mass-based //
                         }
                     } // for(n=0; n<numngb_inbox; n++)
@@ -66,8 +65,32 @@ void merge_and_split_particles(void)
             /* now ask if the particle needs to be split */
             if(does_particle_need_to_be_split(i))
             {
-                split_particle_i(i, n_particles_split);
-                n_particles_split++;
+                /* if splitting: do a neighbor loop ON THE SAME DOMAIN to determine the nearest particle (so dont overshoot it) */
+                startnode=All.MaxPart;
+                numngb_inbox = ngb_treefind_variable_threads(P[i].Pos,PPP[i].Hsml,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist);
+                if(numngb_inbox>0)
+                {
+                    target_for_merger = -1;
+                    threshold_val = MAX_REAL_NUMBER;
+                    /* loop over neighbors */
+                    for(n=0; n<numngb_inbox; n++)
+                    {
+                        j = Ngblist[n];
+                        /* make sure we're not taking the same particle */
+                        if((j>=0)&&(j!=i))
+                        {
+                            int k; double r2=0; for(k=0;k<3;k++) {r2+=(P[i].Pos[k]-P[j].Pos[k])*(P[i].Pos[k]-P[j].Pos[k]);}
+                            if(r2<threshold_val) {threshold_val=r2; target_for_merger=j;} // position-based //
+                            if(P[j].Mass<threshold_val) {threshold_val=P[j].Mass; target_for_merger=j;} // mass-based //
+                        }
+                    } // for(n=0; n<numngb_inbox; n++)
+                    if(target_for_merger>=0)
+                    {
+                        /* some neighbors were found, we can true we're not going to crash the tree by splitting */
+                        split_particle_i(i, n_particles_split,target_for_merger,threshold_val);
+                        n_particles_split++;
+                    }
+                } // if(numngb_inbox>0)
             }
             /* alright, particle splitting operations are complete! */
         } // P[i].Type==0
@@ -97,6 +120,7 @@ int does_particle_need_to_be_merged(MyIDType i)
     if(P[i].Mass <= All.MinMassForParticleMerger) return 1;
     return 0;
 }
+
 int does_particle_need_to_be_split(MyIDType i)
 {
     /* here we can insert any desired criteria for particle splitting: by default, this will occur
@@ -106,7 +130,7 @@ int does_particle_need_to_be_split(MyIDType i)
 }
 
 
-void split_particle_i(MyIDType i, int n_particles_split)
+void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, double r2_nearest)
 {
     double mass_of_new_particle;
     if(NumPart + n_particles_split >= All.MaxPart)
@@ -119,9 +143,11 @@ void split_particle_i(MyIDType i, int n_particles_split)
     /* here is where the details of the split are coded, the rest is bookkeeping */
     mass_of_new_particle = 0.5;
     
+    int k;
     double phi = 2.0*M_PI*get_random_number(i+1+ThisTask); // random from 0 to 2pi //
     double cos_theta = 2.0*(get_random_number(i+3+2*ThisTask)-0.5); // random between 1 to -1 //
-    double d_r = 0.5 * KERNEL_CORE_SIZE*PPP[i].Hsml; // needs to be epsilon*Hsml where epsilon<<1, to maintain stability //
+    double d_r = 0.25 * KERNEL_CORE_SIZE*PPP[i].Hsml; // needs to be epsilon*Hsml where epsilon<<1, to maintain stability //
+    d_r = DMIN(d_r , 0.35 * sqrt(r2_nearest)); // use a 'buffer' to limit to some multiple of the distance to the nearest particle //
     
     /* find the first non-gas particle and move it to the end of the particle list */
     long j = NumPart + n_particles_split;
@@ -146,6 +172,9 @@ void split_particle_i(MyIDType i, int n_particles_split)
     int SPLIT_GENERATIONS = 10;
     for(bits = 0; SPLIT_GENERATIONS > (1 << bits); bits++);
     P[i].ID += ((MyIDType) 1 << (sizeof(MyIDType) * 8 - bits));
+    /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
+    SphP[i].ConditionNumber *= 10.0;
+    SphP[j].ConditionNumber = SphP[i].ConditionNumber;
     /* assign masses to both particles (so they sum correctly) */
     P[j].Mass = mass_of_new_particle * P[i].Mass;
     P[i].Mass -= P[j].Mass;
@@ -153,20 +182,58 @@ void split_particle_i(MyIDType i, int n_particles_split)
     double dmass = mass_of_new_particle * SphP[i].DtMass;
     SphP[j].DtMass = dmass;
     SphP[i].DtMass -= dmass;
+    dmass = mass_of_new_particle * SphP[i].dMass;
+    SphP[j].dMass = dmass;
+    SphP[i].dMass -= dmass;
+    for(k=0;k<3;k++)
+    {
+        SphP[j].GravWorkTerm[k] = mass_of_new_particle * SphP[i].GravWorkTerm[k];
+        SphP[i].GravWorkTerm[k] -= SphP[j].GravWorkTerm[k];
+    }
     SphP[j].MassTrue = mass_of_new_particle * SphP[i].MassTrue;
     SphP[i].MassTrue -= SphP[j].MassTrue;
 #endif
+    
+    
     /* shift the particle locations according to the random number we drew above */
+    double dx, dy, dz;
+#ifdef ONEDIM 
+    dy=dz=0; dx=d_r; // here the split direction is trivial //
+#else
+    /* in 2D and 3D its not so trivial how to split the directions */
     double sin_theta = sqrt(1 - cos_theta*cos_theta);
-    double dx = d_r * sin_theta * cos(phi);
-    double dy = d_r * sin_theta * sin(phi);
-    double dz = d_r * cos_theta;
-#ifdef ONEDIM
-    dy=dz=0; if(phi > M_PI) {dx=d_r;} else {dx=-d_r;}
-#endif
+    dx = d_r * sin_theta * cos(phi);
+    dy = d_r * sin_theta * sin(phi);
+    dz = d_r * cos_theta;
 #ifdef TWODIMS
     dz=0; dx=d_r*cos(phi); dy=d_r*sin(phi);
 #endif
+    double norm=0, dp[3]; int m; dp[0]=dp[1]=dp[2]=0;
+    for(k = 0; k < NUMDIMS; k++)
+    {
+        for(m = 0; m < NUMDIMS; m++) dp[k] += SphP[i].NV_T[k][m];
+        dp[k] = SphP[i].Gradients.Density[k]; // ???
+        norm += dp[k] * dp[k];
+    }
+    if(norm > 0)
+    {
+        norm = 1/sqrt(norm);
+        for(k=0;k<NUMDIMS;k++) dp[k] *= norm;
+        dx=d_r*dp[0]; dy=d_r*dp[1]; dz=d_r*dp[2];
+        
+        /* rotate to 90-degree offset from above orientation */
+        if(dp[2]==1)
+        {
+            dx=d_r; dy=0; dz=0;
+        } else {
+            dz = sqrt(dp[1]*dp[1] + dp[0]*dp[0]);
+            dx = -d_r * dp[1]/dz;
+            dy = d_r * dp[0]/dz;
+            dz = 0.0;
+        }
+    }
+#endif
+    
     P[i].Pos[0] += dx;
     P[j].Pos[0] -= dx;
     P[i].Pos[1] += dy;
@@ -192,6 +259,11 @@ void merge_particles_ij(MyIDType i, MyIDType j)
         P[i].Mass = 0;
         return;
     }
+    if(P[j].Mass <= 0)
+    {
+        P[j].Mass = 0;
+        return;
+    }
     double mtot = P[j].Mass + P[i].Mass;
     double wt_i = P[i].Mass / mtot;
     double wt_j = P[j].Mass / mtot;
@@ -210,10 +282,10 @@ void merge_particles_ij(MyIDType i, MyIDType j)
     de_j = P[j].Mass * SphP[j].DtInternalEnergy + dm_j*SphP[j].InternalEnergy;
     for(k=0;k<3;k++)
     {
-        dp_i[k] = P[i].Mass * SphP[i].HydroAccel[k] + dm_i*SphP[i].VelPred[k];
-        dp_j[k] = P[j].Mass * SphP[j].HydroAccel[k] + dm_j*SphP[j].VelPred[k];
-        de_i += dp_i[k] * SphP[i].VelPred[k] - 0.5*dm_i*SphP[i].VelPred[k]*SphP[i].VelPred[k];
-        de_j += dp_j[k] * SphP[j].VelPred[k] - 0.5*dm_j*SphP[j].VelPred[k]*SphP[j].VelPred[k];
+        dp_i[k] = P[i].Mass * SphP[i].HydroAccel[k] + dm_i * SphP[i].VelPred[k] / All.cf_atime;
+        dp_j[k] = P[j].Mass * SphP[j].HydroAccel[k] + dm_j * SphP[j].VelPred[k] / All.cf_atime;
+        de_i += dp_i[k] * SphP[i].VelPred[k] / All.cf_atime - 0.5 * dm_i * SphP[i].VelPred[k] * SphP[i].VelPred[k] * All.cf_a2inv;
+        de_j += dp_j[k] * SphP[j].VelPred[k] / All.cf_atime - 0.5 * dm_j * SphP[j].VelPred[k] * SphP[j].VelPred[k] * All.cf_a2inv;
         dp_ij[k] = dp_i[k] + dp_j[k];
     }
     dm_ij = dm_i+dm_j;
@@ -224,7 +296,32 @@ void merge_particles_ij(MyIDType i, MyIDType j)
     SphP[i].MassTrue = 0;
     SphP[j].DtMass=dm_ij;
     SphP[i].DtMass=0;
+    SphP[j].dMass = SphP[i].dMass + SphP[j].dMass;
+    SphP[i].dMass = 0;
 #endif
+
+    /* make sure to update the conserved variables correctly: mass and momentum are easy, energy is non-trivial */
+    double egy_old = 0, pos_new_xyz = 0;
+    egy_old += mtot * (wt_j*SphP[j].InternalEnergy + wt_i*SphP[i].InternalEnergy); // internal energy //
+    for(k=0;k<3;k++)
+    {
+        egy_old += mtot*wt_j * 0.5 * P[j].Vel[k]*P[j].Vel[k]*All.cf_a2inv; // kinetic energy (j) //
+        egy_old += mtot*wt_i * 0.5 * P[i].Vel[k]*P[i].Vel[k]*All.cf_a2inv; // kinetic energy (i) //
+        // gravitational energy terms need to be added (including work for moving particles 'together') //
+        pos_new_xyz = wt_j*P[j].Pos[k] + wt_i*P[i].Pos[k];
+        // Egrav = m*g*h = m * (-grav_acc) * (position relative to zero point) //
+        egy_old += mtot*wt_j * (P[j].Pos[k] - pos_new_xyz)*All.cf_atime * (-P[j].GravAccel[k])*All.cf_a2inv; // work (j) //
+        egy_old += mtot*wt_i * (P[i].Pos[k] - pos_new_xyz)*All.cf_atime * (-P[i].GravAccel[k])*All.cf_a2inv; // work (i) //
+#ifdef PMGRID
+        egy_old += mtot*wt_j * (P[j].Pos[k] - pos_new_xyz)*All.cf_atime * (-P[j].GravPM[k])*All.cf_a2inv; // work (j) [PMGRID] //
+        egy_old += mtot*wt_i * (P[i].Pos[k] - pos_new_xyz)*All.cf_atime * (-P[i].GravPM[k])*All.cf_a2inv; // work (i) [PMGRID] //
+#endif
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+        SphP[j].GravWorkTerm[k] = 0; // since we're accounting for the work above and dont want to accidentally double-count //
+#endif
+    }
+    
+    
     SphP[j].InternalEnergy = wt_j*SphP[j].InternalEnergy + wt_i*SphP[i].InternalEnergy;
     SphP[j].InternalEnergyPred = wt_j*SphP[j].InternalEnergyPred + wt_i*SphP[i].InternalEnergyPred;
     double p_old_i[3],p_old_j[3];
@@ -235,25 +332,39 @@ void merge_particles_ij(MyIDType i, MyIDType j)
     }
     for(k=0;k<3;k++)
     {
-        P[j].Pos[k] = wt_j*P[j].Pos[k] + wt_i*P[i].Pos[k];
-        P[j].Vel[k] = wt_j*P[j].Vel[k] + wt_i*P[i].Vel[k];
-        SphP[j].VelPred[k] = wt_j*SphP[j].VelPred[k] + wt_i*SphP[i].VelPred[k];
-        P[j].GravAccel[k] = wt_j*P[j].GravAccel[k] + wt_i*P[i].GravAccel[k];
+        P[j].Pos[k] = wt_j*P[j].Pos[k] + wt_i*P[i].Pos[k]; // center-of-mass conserving //
+        P[j].Vel[k] = wt_j*P[j].Vel[k] + wt_i*P[i].Vel[k]; // momentum-conserving //
+        SphP[j].VelPred[k] = wt_j*SphP[j].VelPred[k] + wt_i*SphP[i].VelPred[k]; // momentum-conserving //
+        P[j].GravAccel[k] = wt_j*P[j].GravAccel[k] + wt_i*P[i].GravAccel[k]; // force-conserving //
 #ifdef PMGRID
-        P[j].GravPM[k] = wt_j*P[j].GravPM[k] + wt_i*P[i].GravPM[k];
+        P[j].GravPM[k] = wt_j*P[j].GravPM[k] + wt_i*P[i].GravPM[k]; // force-conserving //
 #endif
     }
+
+    /* correct our 'guess' for the internal energy with the residual from exact energy conservation */
+    double egy_new = mtot * SphP[j].InternalEnergy;
+    for(k=0;k<3;k++) {egy_new += mtot * 0.5*P[j].Vel[k]*P[j].Vel[k]*All.cf_a2inv;}
+    egy_new = (egy_old - egy_new) / mtot; /* this residual needs to be put into the thermal energy */
+    if(egy_new < -0.5*SphP[j].InternalEnergy) egy_new = -0.5 * SphP[j].InternalEnergy;
+    SphP[j].InternalEnergy += egy_new;
+    SphP[j].InternalEnergyPred += egy_new;
+    if(SphP[j].InternalEnergyPred<0.5*SphP[j].InternalEnergy) SphP[j].InternalEnergyPred=0.5*SphP[j].InternalEnergy;
+    
+    
     // now use the conserved variables to correct the derivatives to primitive variables //
     de_ij -= dm_ij * SphP[j].InternalEnergyPred;
     for(k=0;k<3;k++)
     {
         SphP[j].HydroAccel[k] = (dp_ij[k] - dm_ij * SphP[j].VelPred[k]) / mtot;
-        de_ij -= mtot * SphP[j].VelPred[k] * SphP[j].HydroAccel[k] + 0.5 * dm_ij * SphP[j].VelPred[k] * SphP[j].VelPred[k];
+        de_ij -= mtot * SphP[j].VelPred[k]/All.cf_atime * SphP[j].HydroAccel[k] + 0.5 * dm_ij * SphP[j].VelPred[k]*SphP[j].VelPred[k]*All.cf_a2inv;
     }
     SphP[j].DtInternalEnergy = de_ij;
     // to be conservative adopt the maximum signal velocity and smoothing length //
     SphP[j].MaxSignalVel = sqrt(SphP[j].MaxSignalVel*SphP[j].MaxSignalVel + SphP[i].MaxSignalVel*SphP[i].MaxSignalVel); /* need to be conservative */
     PPP[j].Hsml = pow(pow(PPP[j].Hsml,NUMDIMS)+pow(PPP[i].Hsml,NUMDIMS),1.0/NUMDIMS); /* sum the volume of the two particles */
+    SphP[j].ConditionNumber = SphP[j].ConditionNumber + SphP[i].ConditionNumber; /* sum to be conservative */
+    SphP[j].MaxKineticEnergyNgb = DMAX(SphP[j].MaxKineticEnergyNgb,SphP[i].MaxKineticEnergyNgb); /* for the entropy/energy switch condition */
+
     // below, we need to take care of additional physics //
 #ifdef MAGNETIC
     for(k=0;k<3;k++)
@@ -284,7 +395,7 @@ void merge_particles_ij(MyIDType i, MyIDType j)
 #endif
 #ifdef METALS
     for(k=0;k<NUM_METAL_SPECIES;k++)
-        P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k];
+        P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k]; /* metal-mass conserving */
 #endif
     /* finally zero out the particle mass so it will be deleted */
     P[i].Mass = 0;

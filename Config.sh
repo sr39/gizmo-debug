@@ -18,6 +18,9 @@ PERIODIC                        # Use this if periodic boundaries are needed (ot
 #LONG_X=140                     # modify box dimensions (non-square periodic box): multiply X (PERIODIC and NOGRAVITY required)
 #LONG_Y=1                       # modify box dimensions (non-square periodic box): multiply Y
 #LONG_Z=1                       # modify box dimensions (non-square periodic box): multiply Z
+#REFLECT_BND_X                  # make the x-boundary reflecting (assumes a box 0<x<1, unless PERIODIC is set)
+#REFLECT_BND_Y                  # make the y-boundary reflecting (assumes a box 0<y<1, unless PERIODIC is set)
+#REFLECT_BND_Z                  # make the z-boundary reflecting (assumes a box 0<z<1, unless PERIODIC is set)
 #ONEDIM                         # Switch for 1D test problems: code only follows the x-line. requires NOGRAVITY, and all y=z=0
 #TWODIMS                        # Switch for 2D test problems: code only follows the xy-plane. requires NOGRAVITY, and all z=0.
 ####################################################################################################
