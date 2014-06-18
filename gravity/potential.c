@@ -120,24 +120,37 @@ void compute_potential(void)
 	{
 	  place = DataIndexTable[j].Index;
 
-	  for(k = 0; k < 3; k++)
-	    GravDataIn[j].Pos[k] = P[place].Pos[k];
+        for(k = 0; k < 3; k++)
+        {
+            GravDataIn[j].Pos[k] = P[place].Pos[k];
+        }
 
+        GravDataIn[j].Type = P[place].Type;
 #if defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
         GravDataIn[j].Mass = P[place].Mass;
 #endif
 #if defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(ADAPTIVE_GRAVSOFT_FORALL)
-        GravDataIn[j].Soft = PPP[place].Hsml;
-#endif
-        GravDataIn[j].Type = P[place].Type;
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(GALSF_FB_RT_PHOTONMOMENTUM)
-        if(P[place].Type == 0)
+        if(PPP[place].Hsml > 0)
+        {
             GravDataIn[j].Soft = PPP[place].Hsml;
+        } else {
+            GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];
+        }
+#endif
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(GALSF_FB_RT_PHOTONMOMENTUM)
+        if((P[place].Type == 0) && (PPP[place].Hsml > 0))
+        {
+            GravDataIn[j].Soft = PPP[place].Hsml;
+        } else {
+            GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];
+        }
 #endif
         GravDataIn[j].OldAcc = P[place].OldAcc;
         
         for(k = 0; k < NODELISTLENGTH; k++)
+        {
             GravDataIn[j].NodeList[k] = DataNodeList[DataIndexTable[j].IndexGet].NodeList[k];
+        }
 	}
 
 

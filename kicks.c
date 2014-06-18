@@ -250,7 +250,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                 /* use the pure-SPH entropy equation, which is exact up to the mass flux, for adiabatic flows */
                 SphP[i].DtInternalEnergy = (SphP[i].Pressure/SphP[i].Density) * P[i].Particle_DivVel*All.cf_a2inv;
                 if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*GAMMA_MINUS1 * SphP[i].InternalEnergyPred * All.cf_hubble_a;
-                dEnt = SphP[i].InternalEnergy + SphP[i].DtInternalEnergy * dt_hydrokick + dEnt_Gravity;
+                dEnt = SphP[i].InternalEnergy + SphP[i].DtInternalEnergy * dt_hydrokick; /* gravity term not included here, as it makes this unstable */
             }
 #endif
             

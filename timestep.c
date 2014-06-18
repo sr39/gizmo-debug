@@ -364,26 +364,27 @@ integertime get_timestep(int p,		/*!< particle index */
                 dt = flag * All.Timebase_interval;
                 
                 dt /= All.cf_hubble_a;	/* convert dloga to physical timestep  */
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-                ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * PPP[p].Hsml / 2.8 / (dt * dt);
-#else
+
                 ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / (dt * dt);
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+                ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / 2.8 / (dt * dt);
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
-                if(P[p].Type == 0)
-                    ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * PPP[p].Hsml / 2.8 / (dt * dt);
+                if(P[p].Type==0)
+                    ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / 2.8 / (dt * dt);
 #endif
+
                 *aphys = ac;
                 return flag;
             }
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-            dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * PPP[p].Hsml / 2.8 / ac);
-#else
+
             dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac);
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+            dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / 2.8 / ac);
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
             if(P[p].Type == 0)
-                dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * PPP[p].Hsml / 2.8 / ac);
+                dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / 2.8 / ac);
 #endif
             break;
             

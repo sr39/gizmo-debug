@@ -55,8 +55,8 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     kernel_mode = 0; /* need dwk and wk */
 #endif
     double cnumcrit2 = ((double)CONDITION_NUMBER_DANGER)*((double)CONDITION_NUMBER_DANGER) - local.ConditionNumber*local.ConditionNumber;
-    double cs_t_to_comoving_x = All.cf_afac3 / All.cf_atime; /* convert to code (comoving) length units */
-    double delta_halfstep_i=0,delta_halfstep_j=0;
+    //double cs_t_to_comoving_x = All.cf_afac3 / All.cf_atime; /* convert to code (comoving) length units */ //???
+    //double delta_halfstep_i=0,delta_halfstep_j=0;//???
     
     double rho_for_egy;
     rho_for_egy = local.Density;

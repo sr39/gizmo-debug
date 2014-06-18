@@ -68,10 +68,10 @@
         /* --------------------------------------------------------------------------------- */
         s_i =  0.5 * kernel.r;
         s_j = -0.5 * kernel.r;
-        delta_halfstep_i = kernel.sound_i*0.5*dt_hydrostep*cs_t_to_comoving_x; if(delta_halfstep_i>s_i) {delta_halfstep_i=s_i;}
-        delta_halfstep_j = kernel.sound_j*0.5*dt_hydrostep*cs_t_to_comoving_x; if(delta_halfstep_j>-s_j) {delta_halfstep_j=-s_j;}
-        s_i = s_star_ij - s_i + delta_halfstep_i; /* projection element for gradients */
-        s_j = s_star_ij - s_j - delta_halfstep_j;
+        //delta_halfstep_i = kernel.sound_i*0.5*dt_hydrostep*cs_t_to_comoving_x; if(delta_halfstep_i>s_i) {delta_halfstep_i=s_i;} //???
+        //delta_halfstep_j = kernel.sound_j*0.5*dt_hydrostep*cs_t_to_comoving_x; if(delta_halfstep_j>-s_j) {delta_halfstep_j=-s_j;} //???
+        s_i = s_star_ij - s_i; //+ delta_halfstep_i; /* projection element for gradients */
+        s_j = s_star_ij - s_j; //- delta_halfstep_j;
         distance_from_i[0]=kernel.dx*rinv; distance_from_i[1]=kernel.dy*rinv; distance_from_i[2]=kernel.dz*rinv;
         for(k=0;k<3;k++) {distance_from_j[k] = distance_from_i[k] * s_j; distance_from_i[k] *= s_i;}
         for(k=0;k<3;k++) {v_frame[k] = 0.5 * (local.Vel[k] + SphP[j].VelPred[k]);}

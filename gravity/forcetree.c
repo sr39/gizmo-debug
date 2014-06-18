@@ -1729,7 +1729,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
     double soft=0, pmass;
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
-    double wp, h_p_inv=0, h_p3_inv=0, u_p=0, zeta, zeta_sec=0, dWdr;
+    double wp, h_p_inv=0, h_p3_inv=0, u_p=0, zeta, ptype_sec=-1, zeta_sec=0, dWdr;
 #endif
 #endif
 #ifdef EVALPOTENTIAL
@@ -1777,7 +1777,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         else
             soft = All.ForceSoftening[P[target].Type];
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
-        if(ptype == 0)
+        if((ptype == 0) && (PPP[target].Hsml>0))
             zeta = PPPZ[target].AGS_zeta;
         else
             zeta = 0;
@@ -1791,8 +1791,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         }
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-        if(PPP[target].Hsml>0) soft = PPP[target].Hsml; else soft = All.ForceSoftening[ptype];
-        zeta = PPPZ[target].AGS_zeta;
+        if(PPP[target].Hsml>0)
+        {
+            soft = PPP[target].Hsml;
+            zeta = PPPZ[target].AGS_zeta;
+        } else {
+            soft = All.ForceSoftening[ptype];
+            zeta = 0;
+        }
 #endif
     }
     else
@@ -2022,10 +2028,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
                 /* set secondary softening and zeta term */
+                ptype_sec = P[no].Type;
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
-                if(P[no].Type == 0)
+                if(ptype_sec == 0)
 #else
-                if(P[no].Type > -1) /* trigger for all particles */
+                if(ptype_sec > -1) /* trigger for all particles */
 #endif
                 {
                     if(PPP[no].Hsml > 0)
@@ -2394,6 +2401,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 /* set secondary softening and zeta term */
                 if (nop->maxsoft > 0) h_p_inv = 1.0 / nop->maxsoft; else h_p_inv = 0;
                 zeta_sec = 0;
+                ptype_sec = -1;
                 
                 if(h < nop->maxsoft) // compare primary softening to node maximum
                 {
@@ -2462,7 +2470,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
                 // first, appropriately symmetrize the forces between particles //
-                if(h_p_inv > 0)
+                if((h_p_inv > 0) && (ptype_sec > -1))
                 {
                     if(h_p_inv != h_inv)
                     {
@@ -2477,24 +2485,30 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 }
                 
                 // next, compute the correction for adaptive softenings, as needed //
+                if(ptype_sec > -1)
+                {
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
-                if(ptype==0) // primary is gas, so compute correction for it
+                    if(ptype==0) // primary is gas, so compute correction for it
 #endif
-                    if((r>0) && (u<1) && (pmass>0)) // checks that these aren't the same particle
+                    if(ptype==ptype_sec) // correction only applies to 'shared-kernel' particles (modify if modify ngb search!???)
                     {
-                        kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
-                        //fac += mass * zeta * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
-                        fac += (zeta/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
-                    } // if(ptype==0)
-                
-                if(zeta_sec != 0) // secondary is gas particle (set above)
-                    if(h_p_inv > 0)
-                        if((r>0) && (u_p<1) && (pmass>0))
+                        if((r>0) && (u<1) && (pmass>0)) // checks that these aren't the same particle
                         {
-                            kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
-                            //fac += mass * zeta_sec * dWdr / r;
-                            fac += (zeta_sec/pmass) * dWdr / r;
-                        } // if(zeta_sec != 0)
+                            kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
+                            //fac += mass * zeta * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
+                            fac += (zeta/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
+                        } // if(ptype==0)
+                    
+                    if(zeta_sec != 0) // secondary is adaptively-softened particle (set above)
+                        if(h_p_inv > 0)
+                            if((r>0) && (u_p<1) && (pmass>0))
+                            {
+                                kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
+                                //fac += mass * zeta_sec * dWdr / r;
+                                fac += (zeta_sec/pmass) * dWdr / r;
+                            } // if(zeta_sec != 0)
+                    } // if(ptype==ptype_sec)
+                } // if(ptype_sec > -1)
 #endif // #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) //
                 
 #ifdef EVALPOTENTIAL
@@ -3198,8 +3212,12 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
         ptype = P[target].Type;
         aold = All.ErrTolForceAcc * P[target].OldAcc;
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
-        if(ptype == 0)
+        if((ptype == 0) && (PPP[target].Hsml > 0))
+        {
             soft = PPP[target].Hsml;
+        } else {
+            soft = All.ForceSoftening[P[target].Type];
+        }
 #endif
 #if defined(PMGRID) && defined(PM_PLACEHIGHRESREGION)
         if(pmforce_is_particle_high_res(ptype, P[target].Pos))
@@ -3209,7 +3227,12 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
         }
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-        soft = PPP[target].Hsml;
+        if(PPP[target].Hsml > 0)
+        {
+            soft = PPP[target].Hsml;
+        } else {
+            soft = All.ForceSoftening[P[target].Type];
+        }
 #endif
     }
     else

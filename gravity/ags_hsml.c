@@ -425,6 +425,7 @@ void ags_density(void)
                     redo_particle = 1;
                 
                 double maxsoft = All.MaxHsml;
+                maxsoft = DMIN(maxsoft, 50.0 * All.ForceSoftening[P[i].Type]);
 #ifdef PMGRID
                 /*!< this gives the maximum allowed gravitational softening when using the TreePM method.
                  *  The quantity is given in units of the scale used for the force split (ASMTH) */
