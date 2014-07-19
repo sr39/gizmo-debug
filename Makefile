@@ -860,7 +860,7 @@ EXEC   = GIZMO
 
 OBJS  =  main.o accel.o  timestep.o init.o restart.o io.o \
          predict.o global.o begrun.o run.o allvars.o read_ic.o \
-         domain.o driftfac.o kicks.o ngb.o compile_time_info.o
+         domain.o driftfac.o kicks.o ngb.o compile_time_info.o merge_split.o
 
 OBJS	+= $(GRAVITY_OBJS) $(HYDRO_OBJS) $(SYSTEM_OBJS) $(STRUCTURE_OBJS)
 OBJS	+= $(L3_OBJS)

@@ -1059,7 +1059,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     if((P_M > 0)&&(!isnan(P_M)))
     {
         /* alright, we have a valid solution! we can now compute the HLLD fluxes */
-#if defined(HYDRO_LAGRANGIAN_GALERKIN)
+#if defined(HYDRO_MESHLESS_FINITE_MASS)
         v_frame = S_M; /* in the lagrangian scheme, we must calculate fluxes consistent with the assumption
                         that there is zero mass flux. this gives that result for the HLLC/D flux */
 #endif
@@ -1351,7 +1351,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     /* alright, do we have a valid (positive) pressure? if so, continue */
     if((P_M > 0)&&(!isnan(P_M)))
     {
-#if defined(HYDRO_LAGRANGIAN_GALERKIN)
+#if defined(HYDRO_MESHLESS_FINITE_MASS)
         v_frame = (S_R*rho_wt_L - S_L*rho_wt_R) / (rho_wt_L - rho_wt_R);
         /* in the lagrangian scheme, we must calculate fluxes consistent with the assumption
          that there is zero mass flux. this gives that result for the HLL flux */
@@ -1434,7 +1434,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     cf2_R = Riemann_out->cfast_R;
     /* get the single wave speed (S_R = -S_L = S) */
     S_R = DMAX(DMAX(fabs(vxL-cf2_L),fabs(vxR-cf2_R)) , DMAX(fabs(vxL+cf2_L),fabs(vxR+cf2_R)));
-#if defined(HYDRO_LAGRANGIAN_GALERKIN)
+#if defined(HYDRO_MESHLESS_FINITE_MASS)
     rho_wt_L = Riemann_vec.L.rho * (S_R + vxL);
     rho_wt_R = Riemann_vec.R.rho * (S_R - vxR);
     v_frame = S_R * (rho_wt_L - rho_wt_R)/(rho_wt_L + rho_wt_R);

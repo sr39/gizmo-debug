@@ -730,6 +730,7 @@ double hnlm_var(int n, int l, int m);
 void bp_cr_evol();
 #endif
 
+int ags_gravity_kernel_shared_check(short int particle_type_primary, short int particle_type_secondary);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
 void ags_setup_smoothinglengths(void);
 int ags_ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,

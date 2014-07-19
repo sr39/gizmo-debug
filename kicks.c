@@ -245,6 +245,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             // also check for flows which are totally dominated by the adiabatic component of their temperature evolution //
             // double mach = fabs(SphP[i].MaxSignalVel/Particle_effective_soundspeed_i(i) - 2.0); //
             // if(mach < 1.1) {do_entropy=1;} // (actually, this switch tends to do more harm than good!) //
+            do_entropy = 0; // seems unstable in tests like interacting blastwaves... //
             if(do_entropy)
             {
                 /* use the pure-SPH entropy equation, which is exact up to the mass flux, for adiabatic flows */

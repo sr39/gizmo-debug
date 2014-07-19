@@ -2487,10 +2487,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 // next, compute the correction for adaptive softenings, as needed //
                 if(ptype_sec > -1)
                 {
-#ifdef ADAPTIVE_GRAVSOFT_FORGAS
-                    if(ptype==0) // primary is gas, so compute correction for it
-#endif
-                    if(ptype==ptype_sec) // correction only applies to 'shared-kernel' particles (modify if modify ngb search!???)
+                    // correction only applies to 'shared-kernel' particles: so this needs to check if
+                    // these are the same particles for which the smoothing lengths are computed
+                    if(ags_gravity_kernel_shared_check(ptype, ptype_sec))
                     {
                         if((r>0) && (u<1) && (pmass>0)) // checks that these aren't the same particle
                         {

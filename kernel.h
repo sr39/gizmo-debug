@@ -2,7 +2,7 @@
 #define KERNEL_H
 
 /* fall back to standard kernel */
-#if !defined(SPH_KERNEL_QUINTIC)
+#if !defined(SPH_KERNEL_QUINTIC) && !defined(SPH_KERNEL_QUARTIC)
 #define STANDARD_KERNEL   
 #endif
 
@@ -35,6 +35,20 @@
 #define  NORM 243.0/40.0        	    /*!< For 1D-normalized kernel */
 #endif
 #endif  /* SPH_KERNEL_QUINTIC */
+
+
+#ifdef SPH_KERNEL_QUARTIC
+#ifdef THREEDIM
+#define  NORM 15625.0/(512.0*M_PI)	    /*!< For 3D-normalized kernel */
+#endif
+#ifdef TWODIMS
+#define  NORM 46875.0/(2398.0*M_PI)	    /*!< For 2D-normalized kernel */
+#endif
+#ifdef ONEDIM
+#define  NORM 3125.0/768.0        	    /*!< For 1D-normalized kernel */
+#endif
+#endif  /* SPH_KERNEL_QUARTIC */
+
 
 static inline void kernel_hinv(double h, double *hinv, double *hinv3, double *hinv4)
 {
@@ -117,6 +131,36 @@ static inline void kernel_main(double u, double hinv3, double hinv4,
     }
 #endif /* SPH_KERNEL_QUINTIC */
 
+#ifdef SPH_KERNEL_QUARTIC
+    double t1 = (1.0 - u);
+    double t2 = t1 * t1;
+    
+    if(mode >= 0)
+        *dwk = -4.0 * t2 * t1;
+    if(mode <= 0)
+        *wk = t2 * t2;
+    
+    if (u < 0.6)
+    {
+        t1 = (0.6 - u);
+        t2 = t1 * t1;
+        if(mode >= 0)
+            *dwk += 20.0 * t2 * t1;
+        if(mode <= 0)
+            *wk -= 5.0 * t2 * t2;
+    }
+    if (u < 0.2)
+    {
+        t1 = (0.2 - u);
+        t2 = t1 * t1;
+        if(mode >= 0)
+            *dwk -= 40.0 * t2 * t1;
+        if(mode <= 0)
+            *wk += 10.0 * t2 * t2;
+    }
+#endif /* SPH_KERNEL_QUARTIC */
+    
+    
   if(mode >= 0) 
       *dwk *= NORM * hinv4;
   if(mode <= 0) 
@@ -131,7 +175,7 @@ static inline void kernel_main(double u, double hinv3, double hinv4,
  itself, it should). dwk is the force kernel, wk is the potential kernel
   Call with mode 0 to calculate only dphi_dh (for zeta correction)
   Call with mode -1 to calculate only phi
-  Call with mode +1 to calculate only dphi_du */
+  Call with mode +1 to calculate only (1/u) * dphi_du */
 
 
 static inline double kernel_gravity(double u, double hinv, double hinv3, int mode)
@@ -180,6 +224,7 @@ static inline double kernel_gravity(double u, double hinv, double hinv3, int mod
     } // mode==1 else
 #endif /* STANDARD_KERNEL */
 
+    
 #ifdef SPH_KERNEL_QUINTIC
     double u2=u*u;
     if(mode == 1)
@@ -226,6 +271,54 @@ static inline double kernel_gravity(double u, double hinv, double hinv3, int mod
     } // mode==1 else
 #endif /* QUINTIC KERNEL */
 
+    
+#ifdef SPH_KERNEL_QUARTIC
+    double u2=u*u;
+    if(mode == 1)
+    {
+        if(u < 0.2)
+            wk = 125.*(161. - 630.*u2 + 1125.*u2*u2) / 1344.;
+        else
+            if(u < 0.6)
+                wk = (1. - 625.*u2*u*(-154. + 5.*u*(-21. + 2.*u*(126. + 25.*u*(-7. + 3.*u))))) / (6720.*u2*u);
+            else
+                wk = (-437. + 3125.*u2*u*(35. + u*(-105. + u*(126. + 5.*u*(-14. + 3.*u))))) / (2688.*u2*u);
+        return wk * hinv3;
+    }
+    else
+    {
+    if(mode == -1)
+    {
+        if(u < 0.2)
+            wk = (-8393. + 125.*u2 * (161. - 315.*u2 + 375.*u2*u2)) / 2688.;
+        else
+            if(u < 0.6)
+                wk = -(1. + 5.*u*(4193. + 125.*u2*(-77. + 5.*u*(-7. + u*(63. + 5.*u*(-14. + 5.*u)))))) / (6720.*u);
+            else
+                wk = (874. + 3125.*u*(-7. + u2*(35. + u*(-70. + u*(63. + u*(-28. + 5.*u)))))) / (5376.*u);
+        return wk * hinv;
+    }
+    else
+    {
+    if(mode == 0)
+    {
+        if(u < 0.2)
+            wk = (1199. - 375.*u2*(23. - 75.*u2 + 125.*u2*u2)) / 384.;
+        else
+            if(u < 0.6)
+                wk = (599. + 125.*u2*(-33. + 5.*u*(-4. + 5.*u*(9. + u*(-12. + 5.*u))))) / 192.;
+            else
+            {
+                double um=1.0-u; u2=um*um;
+                wk = (3125./768.) * u2*u2*um * (1. + 5.*u);
+            }
+        return wk * hinv * hinv;
+    } // mode==0
+    } // mode==-1 else
+    } // mode==1 else
+#endif /* QUARTIC KERNEL */
+    
+    
     return 0;
 }
 

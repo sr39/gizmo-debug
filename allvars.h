@@ -573,7 +573,11 @@ typedef MyDouble MyBigFloat;
 #ifdef SPH_KERNEL_QUINTIC
 #define KERNEL_CORE_SIZE (1.0/3.0)
 #else
+#ifdef SPH_KERNEL_QUARTIC
+#define KERNEL_CORE_SIZE (2.0/5.0)
+#else
 #define KERNEL_CORE_SIZE (1.0/2.0)
+#endif
 #endif
 
 #define PPP P

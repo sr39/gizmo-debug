@@ -28,6 +28,50 @@ extern pthread_mutex_t mutex_partnodedrift;
  *    for all particle types, to make softenings fully adaptive
  */
 
+
+/*! this routine is called by the adaptive gravitational softening neighbor search and forcetree (for application 
+    of the appropriate correction terms), to determine which particle types "talk to" which other particle types 
+    (i.e. which particle types you search for to determine the smoothing radii for gravity). For effectively volume-filling 
+    fluids like gas or dark matter, it makes sense for this to be 'matched' to particles of the same type. For other 
+    particle types like stars or black holes, it's more ambiguous, and requires some judgement on the part of the user. */
+int ags_gravity_kernel_shared_check(short int particle_type_primary, short int particle_type_secondary)
+{
+    /* gas particles see gas particles */
+    if(particle_type_primary == 0)
+        return (particle_type_secondary==particle_type_primary);
+
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef BLACK_HOLES
+    /* black hole particles see gas */
+    if(particle_type_primary == 5)
+        return (particle_type_secondary == 0);
+#endif
+#ifdef GALSF
+    /* stars see baryons (any type) */
+    if(All.ComovingIntegrationOn)
+    {
+        if(particle_type_primary == 4)
+            return ((particle_type_secondary==0)||(particle_type_secondary==4));
+    } else {
+        if((particle_type_primary == 4)||(particle_type_primary == 2)||(particle_type_primary == 3))
+            return ((particle_type_secondary==0)||(particle_type_secondary==4)||(particle_type_secondary == 2)||(particle_type_secondary == 3));
+    }
+#endif
+#ifdef SIDM
+    /* SIDM particles see other SIDM particles */
+    if((1 << particle_type_primary) & (SIDM))
+        return ((1 << particle_type_secondary) & (SIDM))
+#endif
+    
+    /* if we haven't been caught by one of the above checks, we simply return whether or not we see 'ourselves' */
+    return (particle_type_primary == particle_type_secondary);
+#endif
+    
+    return 0;
+}
+
+
+
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
 
 /*! Structure for communication during the density computation. Holds data that is sent to other processors.

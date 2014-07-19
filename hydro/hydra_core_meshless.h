@@ -11,7 +11,8 @@
     /* define volume elements and interface position */
     /* --------------------------------------------------------------------------------- */
     V_j = P[j].Mass / SphP[j].Density;
-    s_star_ij = 0;
+    //s_star_ij = 0;
+    s_star_ij = 0.5 * kernel.r * (PPP[j].Hsml - local.Hsml) / (local.Hsml + PPP[j].Hsml);
 
     /* ------------------------------------------------------------------------------------------------------------------- */
     /* now we're ready to compute the volume integral of the fluxes (or equivalently an 'effective area'/face orientation) */
@@ -74,7 +75,8 @@
         s_j = s_star_ij - s_j; //- delta_halfstep_j;
         distance_from_i[0]=kernel.dx*rinv; distance_from_i[1]=kernel.dy*rinv; distance_from_i[2]=kernel.dz*rinv;
         for(k=0;k<3;k++) {distance_from_j[k] = distance_from_i[k] * s_j; distance_from_i[k] *= s_i;}
-        for(k=0;k<3;k++) {v_frame[k] = 0.5 * (local.Vel[k] + SphP[j].VelPred[k]);}
+        //for(k=0;k<3;k++) {v_frame[k] = 0.5 * (local.Vel[k] + SphP[j].VelPred[k]);}
+        for(k=0;k<3;k++) {v_frame[k] = rinv * (s_j*SphP[j].VelPred[k] - s_i*local.Vel[k]);} // allows for face to be off-center (to second-order)
         
         
         /* now we do the reconstruction (second-order reconstruction at the face) */

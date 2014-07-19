@@ -30,16 +30,17 @@ PERIODIC                        # Use this if periodic boundaries are needed (ot
 ####################################################################################################
 #--------------------------------------- Hydro solver method
 ####################################################################################################
-HYDRO_LAGRANGIAN_GALERKIN           # Lagrangian (constant-mass) discontinuous-Galerkin method
-#HYDRO_MESHLESS_FINITE_VOLUME       # Moving (quasi-Lagrangian) finite-volume method
+HYDRO_MESHLESS_FINITE_MASS           # Lagrangian (constant-mass) finite-volume Godunov method
+#HYDRO_MESHLESS_FINITE_VOLUME       # Moving (quasi-Lagrangian) finite-volume Godunov method
 
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- SPH methods:
 #SPHEQ_DENSITY_INDEPENDENT_SPH      # force SPH to use the 'pressure-sph' formulation ("modern" SPH)
 #SPHEQ_TRADITIONAL_SPH              # force SPH to use the 'density-sph' (GADGET-2 & GASOLINE-era SPH)
-#--------------------------------------- Kernel Options (use with SPH; not relevant for Galerkin/Mesh modes)
+#--------------------------------------- Kernel Options
+#SPH_KERNEL_QUARTIC                 # Implementation of the Morris 1996 quartic spline kernel
 #SPH_KERNEL_QUINTIC                 # Implementation of the Morris 1996 quintic spline kernel, requires ~1.74x more neighbours !
-#--------------------------------------- SPH diffusion options (use with SPH; not relevant for Galerkin/Mesh modes)
+#--------------------------------------- SPH diffusion options (use with SPH; not relevant for Godunov/Mesh modes)
 #SPHAV_DISABLE_CD10_VISCOSITY       # Disable Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks); just use Balsara switch
 #SPHAV_DISABLE_PM_CONDUCTIVITY      # Disable mixing entropy (J.Read's improved Price-Monaghan conductivity with Cullen-Dehnen switches)
 ####################################################################################################

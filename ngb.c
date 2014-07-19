@@ -1718,28 +1718,7 @@ int ags_ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, in
     SCALE_VECTOR3(0.5, &box, &hbox);
 #endif
     
-    /*
-    int gaskey = 0;
-    int baryonkey = 0;
-    int dmkey = 1;
-    // gas searches for gas //
-    if(type_of_searching_particle == 0) {gaskey=1; dmkey=0;}
-    // stars and black holes search for any baryons //
-#ifdef GALSF
-    if(type_of_searching_particle == 4) baryonkey=1;
-    if(All.ComovingIntegrationOn==0)
-        if((type_of_searching_particle == 2)||(type_of_searching_particle == 3)) baryonkey=1;
-#endif
-#ifdef BLACK_HOLES
-    if(type_of_searching_particle == 5) baryonkey=1;
-#endif
-    // dark matter searches for dark matter //
-    if((gaskey==0)&&(baryonkey==0)) dmkey=1;
-    if(gaskey==1) {baryonkey=dmkey=0;}
-    if(baryonkey==1) {gaskey=dmkey=0;}
-    if(dmkey==1) {gaskey=baryonkey=0;}
-    */
-    
+
     numngb = 0;
     no = *startnode;
     
@@ -1750,68 +1729,9 @@ int ags_ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, in
             p = no;
             no = Nextnode[no];
             
-            if(type_of_searching_particle != P[p].Type)
+            /* call the master routine which decides if particles "talk to" each other in-kernel */
+            if(ags_gravity_kernel_shared_check(type_of_searching_particle , P[p].Type) == 0)
                 continue;
-            
-            /*
-            if(gaskey)
-                if(P[p].Type != 0)
-                    continue;
-            
-            if(baryonkey)
-            {
-                if(P[p].Type == 1)
-                    continue;
-#ifndef BLACK_HOLES
-                if(P[p].Type == 5)
-                    continue;
-#endif
-#ifndef GALSF
-                if(P[p].Type > 0)
-                    continue;
-#else
-                if(All.ComovingIntegrationOn)
-                {
-                    if((P[p].Type==2)||(P[p].Type==3))
-                        continue;
-                }
-#endif
-            }
-
-            if(dmkey)
-            {
-                if(P[p].Type == 0)
-                    continue;
-#ifdef BLACK_HOLES
-                if(P[p].Type == 5)
-                    continue;
-#endif
-#ifdef GALSF
-                if(All.ComovingIntegrationOn)
-                {
-                    if(P[p].Type==4)
-                        continue;
-                } else {
-                    if((P[p].Type==2)||(P[p].Type==3)||(P[p].Type==4))
-                        continue;
-                }
-#endif
-#ifdef SIDM
-                // match self-interacting particles to other self-interacting particles //
-                if((1 << type_of_searching_particle) & (SIDM))
-                {
-                    // is self-interacting //
-                    if(!((1 << P[p].Type) & (SIDM)))
-                        continue;
-                } else {
-                    // not self-interacting //
-                    if((1 << P[p].Type) & (SIDM))
-                        continue;
-                }
-#endif
-            }
-             */
-            
             
             if(P[p].Mass <= 0)
                 continue;
