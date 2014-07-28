@@ -81,6 +81,12 @@
 #endif
 #endif
 
+
+#if defined(EOS_DEGENERATE)
+#define NON_IDEAL_EOS
+#endif
+
+
 #ifdef MAGNETIC
 /* always-recommended MHD switches -- no excuse for these being off! */
 #define MAGNETIC_SIGNALVEL          /* extend definition of signal velocity by the magneto sonic waves */
@@ -1844,7 +1850,10 @@ extern struct sph_particle_data
 #ifdef RADTRANSFER_FLUXLIMITER
         MyFloat n_gamma[3][N_BINS];
 #endif
-        
+#ifdef NON_IDEAL_EOS
+        MyDouble InternalEnergy[3];
+        MyDouble SoundSpeed[3];
+#endif
     } Gradients;
     MyFloat NV_T[3][3];             /*!< holds the tensor used for gradient estimation */
     MyDouble ConditionNumber;       /*!< condition number of the gradient matrix: needed to ensure stability */

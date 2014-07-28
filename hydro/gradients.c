@@ -48,6 +48,10 @@ struct Quantities_for_Gradients
 #ifdef RADTRANSFER_FLUXLIMITER
     MyFloat n_gamma[N_BINS];
 #endif
+#ifdef NON_IDEAL_EOS
+    MyDouble InternalEnergy[3];
+    MyDouble SoundSpeed[3];
+#endif
 };
 
 struct kernel_addSPH
@@ -118,6 +122,10 @@ static inline void particle2in_addSPH(struct addSPHdata_in *in, int i)
     for(k = 0; k < N_BINS; k++)
         in->GQuant.n_gamma[k] = SphP[i].n_gamma[k];
 #endif
+#ifdef NON_IDEAL_EOS
+    in->GQuant.InternalEnergy = SphP[i].InternalEnergyPred;
+    in->GQuant.SoundSpeed = Particle_effective_soundspeed_i(i);
+#endif
 }
 
 #define MAX_ADD(x,y,mode) (mode == 0 ? (x=y) : (((x)<(y)) ? (x=y) : (x)))
@@ -139,6 +147,17 @@ static inline void out2particle_addSPH(struct addSPHdata_out *out, int i, int mo
         ASSIGN_ADD(SphP[i].Gradients.Density[k],out->Gradients[k].Density,mode);
         ASSIGN_ADD(SphP[i].Gradients.Pressure[k],out->Gradients[k].Pressure,mode);
     }
+#ifdef NON_IDEAL_EOS
+    MAX_ADD(AddSPHDataPasser[i].Maxima.InternalEnergy,out->Maxima.InternalEnergy,mode);
+    MIN_ADD(AddSPHDataPasser[i].Minima.InternalEnergy,out->Minima.InternalEnergy,mode);
+    MAX_ADD(AddSPHDataPasser[i].Maxima.SoundSpeed,out->Maxima.SoundSpeed,mode);
+    MIN_ADD(AddSPHDataPasser[i].Minima.SoundSpeed,out->Minima.SoundSpeed,mode);
+    for(k=0;k<3;k++)
+    {
+        ASSIGN_ADD(SphP[i].Gradients.InternalEnergy[k],out->Gradients[k].InternalEnergy,mode);
+        ASSIGN_ADD(SphP[i].Gradients.SoundSpeed[k],out->Gradients[k].SoundSpeed,mode);
+    }
+#endif
     
     for(j=0;j<3;j++)
     {
@@ -500,6 +519,16 @@ void hydro_gradient_calc(void)
                   for(k1=0;k1<3;k1++)
                       SphP[i].Gradients.Velocity[k2][k1] = SphP[i].NV_T[k1][0]*v_tmp[0] + SphP[i].NV_T[k1][1]*v_tmp[1] + SphP[i].NV_T[k1][2]*v_tmp[2];
               }
+#ifdef NON_IDEAL_EOS
+              for(k1=0;k1<3;k1++)
+                  v_tmp[k1] = SphP[i].Gradients.InternalEnergy[k1];
+              for(k1=0;k1<3;k1++)
+                  SphP[i].Gradients.InternalEnergy[k1] = SphP[i].NV_T[k1][0]*v_tmp[0] + SphP[i].NV_T[k1][1]*v_tmp[1] + SphP[i].NV_T[k1][2]*v_tmp[2];
+              for(k1=0;k1<3;k1++)
+                  v_tmp[k1] = SphP[i].Gradients.SoundSpeed[k1];
+              for(k1=0;k1<3;k1++)
+                  SphP[i].Gradients.SoundSpeed[k1] = SphP[i].NV_T[k1][0]*v_tmp[0] + SphP[i].NV_T[k1][1]*v_tmp[1] + SphP[i].NV_T[k1][2]*v_tmp[2];
+#endif
 #ifdef MAGNETIC
               /* use the magnitude of the B-field gradients relative to smoothing length to calculate artificial resistivity */
               for(k2=0;k2<3;k2++)
@@ -652,6 +681,21 @@ void hydro_gradient_calc(void)
               d_abs=h0/sqrt(d_abs); d_norm = DMIN(1, d_abs * DMIN(AddSPHDataPasser[i].Maxima.Pressure,-AddSPHDataPasser[i].Minima.Pressure));
               for(k=0;k<3;k++) SphP[i].Gradients.Pressure[k] *= d_norm;
           }
+#ifdef NON_IDEAL_EOS
+          d_abs=0; for(k=0;k<3;k++) {d_tmp[k]=SphP[i].Gradients.InternalEnergy[k]; d_abs+=d_tmp[k]*d_tmp[k];}
+          if(d_abs>0)
+          {
+              d_abs=h0/sqrt(d_abs); d_norm = DMIN(1, d_abs * DMIN(AddSPHDataPasser[i].Maxima.InternalEnergy,-AddSPHDataPasser[i].Minima.InternalEnergy));
+              for(k=0;k<3;k++) SphP[i].Gradients.InternalEnergy[k] *= d_norm;
+          }
+          
+          d_abs=0; for(k=0;k<3;k++) {d_tmp[k]=SphP[i].Gradients.SoundSpeed[k]; d_abs+=d_tmp[k]*d_tmp[k];}
+          if(d_abs>0)
+          {
+              d_abs=h0/sqrt(d_abs); d_norm = DMIN(1, d_abs * DMIN(AddSPHDataPasser[i].Maxima.SoundSpeed,-AddSPHDataPasser[i].Minima.SoundSpeed));
+              for(k=0;k<3;k++) SphP[i].Gradients.SoundSpeed[k] *= d_norm;
+          }
+#endif
           
           for(k1=0;k1<3;k1++)
           {
@@ -789,6 +833,10 @@ int addSPH_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
                     /* get the differences for use in the loop below */
                     double dd = SphP[j].Density - local.GQuant.Density;
                     double dp = SphP[j].Pressure - local.GQuant.Pressure;
+#ifdef NON_IDEAL_EOS
+                    double du = SphP[j].InternalEnergyPred - local.GQuant.InternalEnergy;
+                    double dc = Particle_effective_soundspeed_i(j) - local.GQuant.SoundSpeed;
+#endif
                     double dv[3];
                     for(k=0;k<3;k++)
                         dv[k] = SphP[j].VelPred[k] - local.GQuant.Velocity[k];
@@ -812,6 +860,12 @@ int addSPH_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
                     if(dd < out.Minima.Density) out.Minima.Density = dd;
                     if(dp > out.Maxima.Pressure) out.Maxima.Pressure = dp;
                     if(dp < out.Minima.Pressure) out.Minima.Pressure = dp;
+#ifdef NON_IDEAL_EOS
+                    if(dd > out.Maxima.InternalEnergy) out.Maxima.InternalEnergy = du;
+                    if(dd < out.Minima.InternalEnergy) out.Minima.InternalEnergy = du;
+                    if(dp > out.Maxima.SoundSpeed) out.Maxima.SoundSpeed = dc;
+                    if(dp < out.Minima.SoundSpeed) out.Minima.SoundSpeed = dc;
+#endif
                     for(k=0;k<3;k++)
                     {
                         if(dv[k] > out.Maxima.Velocity[k]) out.Maxima.Velocity[k] = dv[k];
@@ -840,6 +894,11 @@ int addSPH_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
                         out.Gradients[k].Pressure += wk_xyz * dp;
                         for(k2=0;k2<3;k2++)
                             out.Gradients[k].Velocity[k2] += wk_xyz * dv[k2];
+#ifdef NON_IDEAL_EOS
+                        out.Gradients[k].InternalEnergy += wk_xyz * du;
+                        out.Gradients[k].SoundSpeed += wk_xyz * dc;
+#endif
+                        
 #ifdef MAGNETIC
                         for(k2=0;k2<3;k2++)
                             out.Gradients[k].B[k2] += wk_xyz * dB[k2];

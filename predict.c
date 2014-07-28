@@ -424,4 +424,3 @@ double INLINE_FUNC Particle_effective_soundspeed_i(int i)
     return sqrt(SphP[i].dp_drho);
 #endif
 }
-

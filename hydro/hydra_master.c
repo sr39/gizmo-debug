@@ -85,7 +85,11 @@ struct Conserved_var_Riemann
     MyDouble rho;
     MyDouble p;
     MyDouble v[3];
+    MyDouble u;
+    MyDouble cs;
 };
+
+
 struct kernel_hydra
 {
     double dx, dy, dz;
@@ -93,11 +97,9 @@ struct kernel_hydra
     double dvx, dvy, dvz, vdotr2;
     double wk_i, wk_j, dwk_i, dwk_j;
     double h_i, h_j, dwk_ij, rho_ij_inv;
+    double spec_egy_u_i;
 #ifdef HYDRO_SPH
     double p_over_rho2_i;
-#endif
-#if defined(HYDRO_SPH) || defined(CONDUCTION_EXPLICIT) || defined(TURB_DIFF_ENERGY)
-    double spec_egy_u_i;
 #endif
 #ifdef MAGNETIC
     double mj_r, mf_Ind, b2_i, b2_j;
@@ -130,6 +132,8 @@ struct hydrodata_in
     MyFloat Density;
     MyFloat Pressure;
     MyFloat ConditionNumber;
+    MyFloat InternalEnergyPred;
+    MyFloat SoundSpeed;
     MyIDType ID;
     int Timestep;
 #ifdef HYDRO_SPH
@@ -149,12 +153,15 @@ struct hydrodata_in
         MyDouble Phi[3];
 #endif
 #endif
+#ifdef NON_IDEAL_EOS
+        MyDouble InternalEnergy[3];
+        MyDouble SoundSpeed[3];
+#endif
     } Gradients;
     MyFloat NV_T[3][3];
     
 #ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
     MyFloat EgyWtRho;
-    MyFloat InternalEnergyPred;
 #endif
 
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
@@ -189,10 +196,6 @@ struct hydrodata_in
     MyFloat PhiPred;
 #endif
 #endif // MAGNETIC //
-    
-#ifdef EOS_DEGENERATE
-    MyFloat dp_drho;
-#endif
     
 #ifndef DONOTUSENODELIST
     int NodeList[NODELISTLENGTH];
@@ -265,6 +268,8 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     in->Mass = P[i].Mass;
     in->Density = SphP[i].Density;
     in->Pressure = SphP[i].Pressure;
+    in->InternalEnergyPred = SphP[i].InternalEnergyPred;
+    in->SoundSpeed = Particle_effective_soundspeed_i(i);
     in->ID = P[i].ID;
     in->Timestep = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0);
     in->ConditionNumber = SphP[i].ConditionNumber;
@@ -279,7 +284,6 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     
 #ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
     in->EgyWtRho = SphP[i].EgyWtDensity;
-    in->InternalEnergyPred = SphP[i].InternalEnergyPred;
 #endif
     
     int j;
@@ -317,10 +321,6 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     
 #ifdef CONDUCTION_EXPLICIT
     in->Kappa_Conduction = SphP[i].Kappa_Conduction;
-#endif
-    
-#ifdef EOS_DEGENERATE
-    in->dp_drho = SphP[i].dp_drho;
 #endif
     
 #ifdef BP_REAL_CRs

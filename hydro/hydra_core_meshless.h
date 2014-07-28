@@ -84,6 +84,12 @@
                                 distance_from_i, distance_from_j, &Riemann_vec.L.rho, &Riemann_vec.R.rho, 1);
         reconstruct_face_states(local.Pressure, local.Gradients.Pressure, SphP[j].Pressure, SphP[j].Gradients.Pressure,
                                 distance_from_i, distance_from_j, &Riemann_vec.L.p, &Riemann_vec.R.p, 1);
+#ifdef NON_IDEAL_EOS
+        reconstruct_face_states(local.InternalEnergyPred, local.Gradients.InternalEnergy, SphP[j].InternalEnergyPred, SphP[j].Gradients.InternalEnergy,
+                                distance_from_i, distance_from_j, &Riemann_vec.L.u, &Riemann_vec.R.u, 1);
+        reconstruct_face_states(local.SoundSpeed, local.Gradients.SoundSpeed, SphP[j].SoundSpeed, SphP[j].Gradients.SoundSpeed,
+                                distance_from_i, distance_from_j, &Riemann_vec.L.cs, &Riemann_vec.R.cs, 1);
+#endif
         for(k=0;k<3;k++)
         {
             reconstruct_face_states(local.Vel[k]-v_frame[k], local.Gradients.Velocity[k], SphP[j].VelPred[k]-v_frame[k], SphP[j].Gradients.Velocity[k],

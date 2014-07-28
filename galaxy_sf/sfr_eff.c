@@ -45,13 +45,24 @@ double evaluate_stellar_age_Gyr(double stellar_tform)
 /* return the (solar-scaled) light-to-mass ratio of an SSP with a given age; used throughout */
 inline double evaluate_l_over_m_ssp(double stellar_age_in_gyr)
 {
+    // original SB99 tracks
+    /*
     if(stellar_age_in_gyr < 0.0029)
     {
         return 1136.59;
     } else {
         double log_age = log10(stellar_age_in_gyr)-(-2.2681);
         return 478.63*pow(10.,-1.3625*log_age+0.115765*log_age*log_age);
-        /* could replace with piecewise linear functions; if this call in forcetree gets expensive */
+        // could replace with piecewise linear functions; if this call in forcetree gets expensive //
+    }
+    */
+    // updated SB99 tracks: including rotation, new mass-loss tracks, etc.
+    if(stellar_age_in_gyr < 0.0035)
+    {
+        return 1136.59;
+    } else {
+        double log_age = log10(stellar_age_in_gyr/0.0035);
+        return 1500.*pow(10.,-1.8*log_age+0.3*log_age*log_age-0.025*log_age*log_age*log_age);
     }
 }
 

@@ -35,15 +35,8 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     /* --------------------------------------------------------------------------------- */
     /* pre-define Particle-i based variables (so we save time in the loop below) */
     /* --------------------------------------------------------------------------------- */
-#ifdef EOS_DEGENERATE
-    kernel.sound_i = sqrt(local.dp_drho);
-#else
-#ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
-    kernel.sound_i = sqrt(GAMMA*local.Pressure/local.EgyWtRho);
-#else
-    kernel.sound_i = sqrt(GAMMA*local.Pressure/local.Density);
-#endif
-#endif
+    kernel.sound_i = local.SoundSpeed;
+    kernel.spec_egy_u_i = local.InternalEnergyPred;
     kernel.h_i = local.Hsml;
     kernel_hinv(kernel.h_i, &hinv_i, &hinv3_i, &hinv4_i);
     hinv_j=hinv3_j=hinv4_j=0;
@@ -58,17 +51,12 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     //double cs_t_to_comoving_x = All.cf_afac3 / All.cf_atime; /* convert to code (comoving) length units */ //???
     //double delta_halfstep_i=0,delta_halfstep_j=0;//???
     
-    double rho_for_egy;
-    rho_for_egy = local.Density;
-#ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
-    rho_for_egy = local.EgyWtRho;
-#endif
-    
 #if defined(HYDRO_SPH)
-    kernel.p_over_rho2_i = local.Pressure / (rho_for_egy*rho_for_egy);
+#ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
+    kernel.p_over_rho2_i = local.Pressure / (local.EgyWtRho*local.EgyWtRho);
+#else 
+    kernel.p_over_rho2_i = local.Pressure / (local.Density*local.Density);
 #endif
-#if defined(HYDRO_SPH) || defined(CONDUCTION_EXPLICIT) || defined(TURB_DIFFUSION)
-    kernel.spec_egy_u_i = local.Pressure / (GAMMA_MINUS1 * rho_for_egy);
 #endif
     
 #ifdef MAGNETIC

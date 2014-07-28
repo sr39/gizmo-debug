@@ -8,7 +8,11 @@ The code is descended from P-GADGET, itself descended from GADGET-2, and many of
 
 No, the code title is not an acronym, I just liked it. It refers both to the code's multi-purpose applications and to its historical relation ship to GADGET.
 
-The bitbucket wiki is where I will post code updates, news, and documentation, so check back regularly. The main reference for the numerical methods, setting up the code, code policies, branching etc, is the wiki. Read it!
+The bitbucket site is where I will post code updates, news, and documentation, so check back regularly. The main reference for the numerical methods, setting up the code, code policies, branching etc, is the user's guide, available through download on the bitbucket site or at my website: 
+
+http://www.tapir.caltech.edu/~phopkins/Site/GIZMO_files/gizmo_documentation.html
+
+Read it!
 
 The code is written in standard ANSI C, and should run on all parallel platforms that support MPI. The portability of the code has been confirmed on a large number of systems -- if it can run GADGET (and it almost certainly can), it can run GIZMO.
 

@@ -58,6 +58,7 @@ void HII_heating_singledomain(void)
          if(P[i].Type != 5)
          {
              star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+             /* // original SB99 tracks
              if(star_age >= 0.0126) continue; // skip loop since old stars don't contribute
              if(star_age < 0.00259710)
              {
@@ -66,6 +67,17 @@ void HII_heating_singledomain(void)
                  log_age=log10(star_age)-(-2.6226865);
                  lm_ssp=468.1832*pow(10.,-2.2408834*log_age-2.9534785*log_age*log_age);
              }
+             */
+             // updated SB99 tracks: including rotation, new mass-loss tracks, etc.
+             if(star_age >= 0.02) continue; // skip loop since old stars don't contribute
+             if(star_age < 0.0035)
+             {
+                 lm_ssp=500.;
+             } else {
+                 log_age=log10(star_age/0.0035);
+                 lm_ssp=470.*pow(10.,-2.24*log_age-4.2*log_age*log_age) + 60.*pow(10.,-3.6*log_age);
+             }
+         
          } // (P[i].Type != 5)
          
 #ifdef BH_HII_HEATING
