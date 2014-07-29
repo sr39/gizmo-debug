@@ -130,9 +130,10 @@ SfEffPerFreeFall    1.0     %  SFR/(Mgas/tfreefall) for gas which meets SF crite
 
 %---- sub-grid (Springel+Hernquist/GADGET/AREPO) "effective equation of state" 
 %------- star formation+feedback model (GALSF_EFFECTIVE_EQS on)
-TempSupernova       3.0e8       % in Kelvin 
-TempClouds          1000.0      % in Kelvin 
-FactorSN            0.1         % SNe coupling frac 
+MaxSfrTimescale     4.0         % code units (SF timescale at 2-phase threshold)
+TempSupernova       3.0e8       % in Kelvin (temp of hot gas in 2-phase model)
+TempClouds          1000.0      % in Kelvin (temp of cold gas in 2-phase model)
+FactorSN            0.1         % SNe coupling frac (frac of egy retained in hot)
 FactorEVP           3000.0      % controls Kennicutt normalization 
 FactorForSofterEQS  1.0         % interpolate between 'stiff' and isothermal EOS
 %------- the sub-grid "decoupled winds" model (GALSF_SUBGRID_WINDS on)
