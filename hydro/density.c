@@ -953,8 +953,8 @@ void density(void)
                     for(k1=0;k1<3;k1++)
                         for(k2=0;k2<3;k2++)
                         {
-                            V[k1][k2] = SphP[i].NV_D[k1][0]*Tinv[0][k2] + SphP[i].NV_D[k1][1]*Tinv[1][k2] + SphP[i].NV_D[k1][2]*Tinv[2][k2];
-                            A[k1][k2] = SphP[i].NV_A[k1][0]*Tinv[0][k2] + SphP[i].NV_A[k1][1]*Tinv[1][k2] + SphP[i].NV_A[k1][2]*Tinv[2][k2];
+                            V[k1][k2] = SphP[i].NV_D[k1][0]*SphP[i].NV_T[0][k2] + SphP[i].NV_D[k1][1]*SphP[i].NV_T[1][k2] + SphP[i].NV_D[k1][2]*SphP[i].NV_T[2][k2];
+                            A[k1][k2] = SphP[i].NV_A[k1][0]*SphP[i].NV_T[0][k2] + SphP[i].NV_A[k1][1]*SphP[i].NV_T[1][k2] + SphP[i].NV_A[k1][2]*SphP[i].NV_T[2][k2];
                         }
                     SphP[i].NV_DivVel = V[0][0] + V[1][1] + V[2][2];
                     SphP[i].NV_trSSt = 0;
