@@ -684,16 +684,13 @@ void density(void)
                         /* if we find ourselves with a sudden increase in condition number - check if we have a reasonable 
                             neighbor number for the previous iteration, and if so, use the new (larger) correction */
                         ncorr_ngb=1; cn=SphP[i].ConditionNumber; if(cn>c0) {ncorr_ngb=sqrt(1.0+(cn-c0)/((double)CONDITION_NUMBER_DANGER));} if(ncorr_ngb>2) ncorr_ngb=2;
-                        /* ncorr_ngb = DMIN(2.0,sqrt(1.0 + SphP[i].ConditionNumber/((double)CONDITION_NUMBER_DANGER))); */ // ???
                         double dn_ngb = fabs(PPP[i].NumNgb-All.DesNumNgb*ncorr_ngb)/(All.MaxNumNgbDeviation*ncorr_ngb);
                         ncorr_ngb=1; cn=ConditionNumber; if(cn>c0) {ncorr_ngb=sqrt(1.0+(cn-c0)/((double)CONDITION_NUMBER_DANGER));} if(ncorr_ngb>2) ncorr_ngb=2;
-                        /* ncorr_ngb = DMIN(2.0,sqrt(1.0 + ConditionNumber/((double)CONDITION_NUMBER_DANGER))); */ // ???
                         double dn_ngb_alt = fabs(PPP[i].NumNgb-All.DesNumNgb*ncorr_ngb)/(All.MaxNumNgbDeviation*ncorr_ngb);
                         dn_ngb = DMIN(dn_ngb,dn_ngb_alt);
                         if(dn_ngb < 10.0) SphP[i].ConditionNumber = ConditionNumber;
                     }
                     ncorr_ngb=1; cn=SphP[i].ConditionNumber; if(cn>c0) {ncorr_ngb=sqrt(1.0+(cn-c0)/((double)CONDITION_NUMBER_DANGER));} if(ncorr_ngb>2) ncorr_ngb=2;
-                    /* ncorr_ngb = DMIN(2.0, sqrt(1.0 + SphP[i].ConditionNumber/((double)CONDITION_NUMBER_DANGER))); */ // ???
                 }
                 
                 desnumngb = All.DesNumNgb * ncorr_ngb;

@@ -3,11 +3,12 @@
 #endif
 #include "gravity/forcetree.h"
 #include "domain.h"
+#ifdef COOLING
 #include "cooling/cooling.h"
+#endif
 #ifdef COSMIC_RAYS
 #include "cosmic_rays/cosmic_rays.h"
 #endif
-
 #ifdef ADJ_BOX_POWERSPEC
 #include "power_spec/adj_box_powerspec_proto.h"
 #endif
@@ -110,8 +111,7 @@ void kspace_neutrinos_init(void);
 
 void twopoint(void);
 void twopoint_save(void);
-int twopoint_ngb_treefind_variable(MyDouble searchcenter[3], MyFloat rsearch, int target, int *startnode,
-				   int mode, int *nexport, int *nsend_local);
+int twopoint_ngb_treefind_variable(MyDouble searchcenter[3], MyFloat rsearch, int target, int *startnode, int mode, int *nexport, int *nsend_local);
 int twopoint_count_local(int target, int mode, int *nexport, int *nsend_local);
 
 void powerspec(int flag, int *typeflag);

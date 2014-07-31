@@ -1056,20 +1056,36 @@ void write_cpu_log(void)
 	      (All.CPU_Sum[CPU_SNAPSHOT]) / All.CPU_Sum[CPU_ALL] * 100,
               All.CPU_Sum[CPU_PEANO],
 	      (All.CPU_Sum[CPU_PEANO]) / All.CPU_Sum[CPU_ALL] * 100,
+#ifdef COOLING
               All.CPU_Sum[CPU_COOLINGSFR],
 	      (All.CPU_Sum[CPU_COOLINGSFR]) / All.CPU_Sum[CPU_ALL] * 100,
+#else
+              0.,0.,
+#endif
+#ifdef BLACK_HOLES
               All.CPU_Sum[CPU_BLACKHOLES],
 	      (All.CPU_Sum[CPU_BLACKHOLES]) / All.CPU_Sum[CPU_ALL] * 100,
+#else
+              0.,0.,
+#endif
+#ifdef FOF
               All.CPU_Sum[CPU_FOF],
 	      (All.CPU_Sum[CPU_FOF]) / All.CPU_Sum[CPU_ALL] * 100,
+#else
+            0.,0.,
+#endif
 	      All.CPU_Sum[CPU_SMTHCOMPUTE] + All.CPU_Sum[CPU_SMTHWAIT] +
               All.CPU_Sum[CPU_SMTHCOMM] +
 	      All.CPU_Sum[CPU_SMTHMISC],
 	      (All.CPU_Sum[CPU_SMTHCOMPUTE] + All.CPU_Sum[CPU_SMTHWAIT] +
            All.CPU_Sum[CPU_SMTHCOMM] +
 	       All.CPU_Sum[CPU_SMTHMISC]) / All.CPU_Sum[CPU_ALL] * 100,
+#ifdef GALSF_FB_GASRETURN
+            All.CPU_Sum[CPU_GALSF_FB_GASRETURN], (All.CPU_Sum[CPU_GALSF_FB_GASRETURN]) / All.CPU_Sum[CPU_ALL] * 100,
+#else 
+            0.,0.,
+#endif
 
-              All.CPU_Sum[CPU_GALSF_FB_GASRETURN], (All.CPU_Sum[CPU_GALSF_FB_GASRETURN]) / All.CPU_Sum[CPU_ALL] * 100,
 #ifdef GRAIN_FLUID
               All.CPU_Sum[CPU_DRAGFORCE], (All.CPU_Sum[CPU_DRAGFORCE]) / All.CPU_Sum[CPU_ALL] * 100,
               All.CPU_Sum[CPU_BACKREACT], (All.CPU_Sum[CPU_BACKREACT]) / All.CPU_Sum[CPU_ALL] * 100,

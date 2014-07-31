@@ -48,8 +48,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     kernel_mode = 0; /* need dwk and wk */
 #endif
     double cnumcrit2 = ((double)CONDITION_NUMBER_DANGER)*((double)CONDITION_NUMBER_DANGER) - local.ConditionNumber*local.ConditionNumber;
-    //double cs_t_to_comoving_x = All.cf_afac3 / All.cf_atime; /* convert to code (comoving) length units */ //???
-    //double delta_halfstep_i=0,delta_halfstep_j=0;//???
+    //define units used for upwind instead of time-centered formulation//
+    //double cs_t_to_comoving_x = All.cf_afac3 / All.cf_atime; /* convert to code (comoving) length units */
+    //double delta_halfstep_i=0,delta_halfstep_j=0;
     
 #if defined(HYDRO_SPH)
 #ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
@@ -244,21 +245,21 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double dmass_holder = Fluxes.rho * dt_hydrostep;
                 double dmass_limiter = 0.01 * DMAX(0,DMIN(DMIN(local.Mass,SphP[j].MassTrue),P[j].Mass));
                 if(fabs(dmass_holder) > dmass_limiter) {dmass_holder *= dmass_limiter / fabs(dmass_holder);}
-                out.dMass += dmass_holder; //???
+                out.dMass += dmass_holder;
                 out.DtMass += Fluxes.rho;
-                SphP[j].dMass -= dmass_holder; //???
+                SphP[j].dMass -= dmass_holder; 
                 double gravwork[3]; gravwork[0]=Fluxes.rho*kernel.dx; gravwork[1]=Fluxes.rho*kernel.dy; gravwork[2]=Fluxes.rho*kernel.dz;
                 for(k=0;k<3;k++) {out.GravWorkTerm[k] += gravwork[k];}
 #endif
                 for(k=0;k<3;k++)
                 {
-                    //out.dMomentum[k] += Fluxes.v[k] * dt_hydrostep; //???
+                    //out.dMomentum[k] += Fluxes.v[k] * dt_hydrostep; //manifest-indiv-timestep-debug//
                     out.Acc[k] += Fluxes.v[k];
-                    //SphP[j].dMomentum[k] -= Fluxes.v[k] * dt_hydrostep; //???
+                    //SphP[j].dMomentum[k] -= Fluxes.v[k] * dt_hydrostep; //manifest-indiv-timestep-debug//
                 }
-                //out.dInternalEnergy += Fluxes.p * dt_hydrostep; //???
+                //out.dInternalEnergy += Fluxes.p * dt_hydrostep; //manifest-indiv-timestep-debug//
                 out.DtInternalEnergy += Fluxes.p;
-                //SphP[j].dInternalEnergy -= Fluxes.p * dt_hydrostep; //???
+                //SphP[j].dInternalEnergy -= Fluxes.p * dt_hydrostep; //manifest-indiv-timestep-debug//
                 
                 /* if this is particle j's active timestep, you should sent them the time-derivative
                  information as well, for their subsequent drift operations */

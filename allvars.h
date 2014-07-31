@@ -1798,7 +1798,7 @@ extern struct sph_particle_data
     MyDouble Density;           /*!< current baryonic mass density of particle */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     MyDouble MassTrue;          /*!< true particle mass ('mass' now is -predicted- mass */
-    MyDouble dMass;             /*!< change in particle masses from hydro step (conserved variable) */ //???
+    MyDouble dMass;             /*!< change in particle masses from hydro step (conserved variable) */
     MyDouble DtMass;            /*!< rate-of-change of particle masses (for drifting) */
     MyDouble GravWorkTerm[3];   /*!< correction term needed for hydro mass flux in gravity */
 #endif
@@ -1806,11 +1806,11 @@ extern struct sph_particle_data
     MyDouble Pressure;          /*!< current pressure */
     MyDouble InternalEnergy;           /*!< internal energy of particle */
     MyDouble InternalEnergyPred;       /*!< predicted value of the internal energy at the current time */
-    //MyDouble dInternalEnergy;          /*!< change in internal energy from hydro step */ //???
+    //MyDouble dInternalEnergy;          /*!< change in internal energy from hydro step */ //manifest-indiv-timestep-debug//
     MyDouble DtInternalEnergy;         /*!< rate of change of internal energy */
 
     MyDouble VelPred[3];        /*!< predicted SPH particle velocity at the current time */
-    //MyDouble dMomentum[3];      /*!< change in momentum from hydro step (conserved variable) */ //???
+    //MyDouble dMomentum[3];      /*!< change in momentum from hydro step (conserved variable) */ //manifest-indiv-timestep-debug//
     MyDouble HydroAccel[3];     /*!< acceleration due to hydrodynamical force (for drifting) */
     
 #ifdef MAGNETIC

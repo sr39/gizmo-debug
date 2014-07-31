@@ -202,8 +202,8 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     SphP[i].dMass -= dmass;
     for(k=0;k<3;k++)
     {
-        SphP[j].GravWorkTerm[k] =0;//= mass_of_new_particle * SphP[i].GravWorkTerm[k];//???
-        SphP[i].GravWorkTerm[k] =0;//-= SphP[j].GravWorkTerm[k];//???
+        SphP[j].GravWorkTerm[k] =0;//= mass_of_new_particle * SphP[i].GravWorkTerm[k];//appears more stable with this zero'd
+        SphP[i].GravWorkTerm[k] =0;//-= SphP[j].GravWorkTerm[k];//appears more stable with this zero'd
     }
     SphP[j].MassTrue = mass_of_new_particle * SphP[i].MassTrue;
     SphP[i].MassTrue -= SphP[j].MassTrue;
@@ -227,7 +227,7 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     for(k = 0; k < NUMDIMS; k++)
     {
         for(m = 0; m < NUMDIMS; m++) dp[k] += SphP[i].NV_T[k][m];
-        //dp[k] = SphP[i].Gradients.Density[k]; // ???
+        //dp[k] = SphP[i].Gradients.Density[k]; //unstable
         norm += dp[k] * dp[k];
     }
     if(norm > 0)
@@ -365,7 +365,7 @@ void merge_particles_ij(MyIDType i, MyIDType j)
     for(k=0;k<3;k++) {egy_new += mtot * 0.5*P[j].Vel[k]*P[j].Vel[k]*All.cf_a2inv;}
     egy_new = (egy_old - egy_new) / mtot; /* this residual needs to be put into the thermal energy */
     if(egy_new < -0.5*SphP[j].InternalEnergy) egy_new = -0.5 * SphP[j].InternalEnergy;
-    //SphP[j].InternalEnergy += egy_new; SphP[j].InternalEnergyPred += egy_new;//???
+    //SphP[j].InternalEnergy += egy_new; SphP[j].InternalEnergyPred += egy_new;//test during splits
     if(SphP[j].InternalEnergyPred<0.5*SphP[j].InternalEnergy) SphP[j].InternalEnergyPred=0.5*SphP[j].InternalEnergy;
     
     

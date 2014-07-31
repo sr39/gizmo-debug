@@ -567,16 +567,16 @@ void init(void)
         {
             SphP[i].VelPred[j] = P[i].Vel[j];
             SphP[i].HydroAccel[j] = 0;
-            //SphP[i].dMomentum[j] = 0;//???
+            //SphP[i].dMomentum[j] = 0;//manifest-indiv-timestep-debug//
         }
         
-        //SphP[i].dInternalEnergy = 0;//???
+        //SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
         P[i].Particle_DivVel = 0;
         SphP[i].ConditionNumber = 1;
         SphP[i].DtInternalEnergy = 0;
         SphP[i].MaxKineticEnergyNgb = 0;
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-        SphP[i].dMass = 0;//???
+        SphP[i].dMass = 0;
         SphP[i].DtMass = 0;
         SphP[i].MassTrue = P[i].Mass;
         for(j=0;j<3;j++) SphP[i].GravWorkTerm[j] = 0;
@@ -776,10 +776,10 @@ void init(void)
         SphP[i].InternalEnergyPred = All.RefInternalEnergy
 #endif
         
-        //SphP[i].dInternalEnergy = 0;//???
+        //SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
         SphP[i].DtInternalEnergy = 0;
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-        SphP[i].dMass = 0;//???
+        SphP[i].dMass = 0;
         SphP[i].DtMass = 0;
         SphP[i].MassTrue = P[i].Mass;
         for(j=0;j<3;j++) SphP[i].GravWorkTerm[j] = 0;

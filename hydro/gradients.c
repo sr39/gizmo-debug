@@ -663,7 +663,6 @@ void hydro_gradient_calc(void)
           
           
           /* finally, we need to apply a sensible slope limiter to the gradients, to prevent overshooting */
-          //double a_limiter = DMIN(0.5, 0.125 * SphP[i].ConditionNumber); //a_limiter = 0.5; // ???
           double a_limiter = 0.25; if(SphP[i].ConditionNumber>100) a_limiter=DMIN(0.5, 0.25 + 0.25 * (SphP[i].ConditionNumber-100)/100);
           /* fraction of H at which maximum reconstruction is allowed (=0.5 for 'standard') */
           double d_norm, d_abs, d_tmp[3], h0 = 1 / (a_limiter * PPP[i].Hsml);

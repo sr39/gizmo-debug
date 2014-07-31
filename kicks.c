@@ -145,7 +145,6 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             // update the --conserved-- variables of each particle //
             if(mode != 0)
             {
-                //dMass = d_inc * SphP[i].dMass; //???
                 dMass = (tend - tstart) * All.Timebase_interval / All.cf_hubble_a * SphP[i].DtMass;
                 if(dMass >= SphP[i].dMass) dMass = SphP[i].dMass; // try to get close to what the time-integration scheme would give //
                 SphP[i].dMass -= dMass;
@@ -219,8 +218,6 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             }
             
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-            //double dMass = SphP[i].MassTrue + SphP[i].DtMass * dt_hydrokick;
-            //if(dMass < 0.5*SphP[i].MassTrue) {SphP[i].MassTrue *= 0.5;} else {SphP[i].MassTrue = dMass;} //???
             /* calculate the contribution to the energy change from the mass fluxes in the gravitation field */
             for(j=0;j<3;j++) {dEnt_Gravity += -(SphP[i].GravWorkTerm[j] * All.cf_atime * dt_hydrokick) * grav_acc[j];}
 #endif
@@ -232,7 +229,6 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             double e_thermal,e_kinetic,e_potential;
             e_potential=0; for(j=0;j<3;j++) {e_potential += grav_acc[j]*grav_acc[j];}
             e_potential = P[i].Mass * sqrt(e_potential) * (KERNEL_CORE_SIZE*PPP[i].Hsml*All.cf_atime); // = M*|a_grav|*h (physical)
-            //e_kinetic=0; for(j=0;j<3;j++) e_kinetic += 0.5*P[i].Mass * All.cf_a2inv * SphP[i].VelPred[j]*SphP[i].VelPred[j]; // ???
             e_kinetic = 0.5 * P[i].Mass * All.cf_a2inv * SphP[i].MaxKineticEnergyNgb;
             e_thermal = DMAX(0.5*SphP[i].InternalEnergy, dEnt) * P[i].Mass;
             int do_entropy = 0;
@@ -255,7 +251,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             }
 #endif
             
-            if(dEnt < 0.5*SphP[i].InternalEnergy) {SphP[i].InternalEnergy *= 0.5;} else {SphP[i].InternalEnergy = dEnt;} //???
+            if(dEnt < 0.5*SphP[i].InternalEnergy) {SphP[i].InternalEnergy *= 0.5;} else {SphP[i].InternalEnergy = dEnt;}
             check_particle_for_temperature_minimum(i); /* if we've fallen below the minimum temperature, force the 'floor' */
         }
         
@@ -307,27 +303,9 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             }
         }
 #endif
-        
-        
-        /* now account for the cosmological terms (comoving integrations) */
-        if(All.ComovingIntegrationOn)
-        {
-            // need to explicitly include adiabatic expansion from the hubble-flow, here //
-            /*
-            if(P[i].Type==0)
-            {
-                double hubble_correction = exp(-3*GAMMA_MINUS1 * dt_entr * All.cf_hubble_a); //???
-                SphP[i].InternalEnergy *= hubble_correction; //???
-                ent_old *= hubble_correction; //???
-            }
-            */
-            // = du/dlna -3*(gamma-1)*u ; so multiplies directly with timestepping //
-        }
         /* any other gas-specific kicks (e.g. B-fields, radiation) go here */
         if(P[i].Type==0)
         {
-// ???            for(j = 0; j < 3; j++) dp[j] += mass_pred * SphP[i].HydroAccel[j] * dt_hydrokick * All.cf_atime; /* code units */
-
             do_sph_kick_for_extra_physics(i, tstart, tend, dt_entr);
 
             /* after completion of a full step, set the predicted values of SPH quantities

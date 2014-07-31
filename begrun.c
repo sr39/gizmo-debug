@@ -697,11 +697,15 @@ void open_outputfiles(void)
 	  CPU_SymbolImbalance[CPU_POTENTIAL]);
   fprintf(FdBalance, "PM             = '%c' / '%c'\n", CPU_Symbol[CPU_MESH], CPU_SymbolImbalance[CPU_MESH]);
   fprintf(FdBalance, "Peano-Hilbert  = '%c' / '%c'\n", CPU_Symbol[CPU_PEANO], CPU_SymbolImbalance[CPU_PEANO]);
+#ifdef COOLING
   fprintf(FdBalance, "Cooling & SFR  = '%c' / '%c'\n", CPU_Symbol[CPU_COOLINGSFR],
 	  CPU_SymbolImbalance[CPU_COOLINGSFR]);
+#endif
   fprintf(FdBalance, "Snapshot dump  = '%c' / '%c'\n", CPU_Symbol[CPU_SNAPSHOT],
 	  CPU_SymbolImbalance[CPU_SNAPSHOT]);
+#ifdef FOF
   fprintf(FdBalance, "FoF            = '%c' / '%c'\n", CPU_Symbol[CPU_FOF], CPU_SymbolImbalance[CPU_FOF]);
+#endif
   fprintf(FdBalance, "Miscellaneous  = '%c' / '%c'\n", CPU_Symbol[CPU_MISC], CPU_SymbolImbalance[CPU_MISC]);
   fprintf(FdBalance, "\n");
 

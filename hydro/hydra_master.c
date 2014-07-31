@@ -211,14 +211,14 @@ struct hydrodata_in
 struct hydrodata_out
 {
     MyLongDouble Acc[3];
-    //MyLongDouble dMomentum[3]; //???
+    //MyLongDouble dMomentum[3]; //manifest-indiv-timestep-debug//
     MyLongDouble DtInternalEnergy;
-    //MyLongDouble dInternalEnergy; //???
+    //MyLongDouble dInternalEnergy; //manifest-indiv-timestep-debug//
     MyFloat MaxSignalVel;
     MyFloat MaxKineticEnergyNgb;
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     MyLongDouble DtMass;
-    MyLongDouble dMass; //???
+    MyLongDouble dMass;
     MyLongDouble GravWorkTerm[3];
 #endif
     
@@ -362,13 +362,13 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
     for(k = 0; k < 3; k++)
     {
         SphP[i].HydroAccel[k] += out->Acc[k];
-        //SphP[i].dMomentum[k] += out->dMomentum[k]; //???
+        //SphP[i].dMomentum[k] += out->dMomentum[k]; //manifest-indiv-timestep-debug//
     }
     SphP[i].DtInternalEnergy += out->DtInternalEnergy;
-    //SphP[i].dInternalEnergy += out->dInternalEnergy; //???
+    //SphP[i].dInternalEnergy += out->dInternalEnergy; //manifest-indiv-timestep-debug//
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     SphP[i].DtMass += out->DtMass;
-    SphP[i].dMass += out->dMass; //???
+    SphP[i].dMass += out->dMass;
     for(k=0;k<3;k++) {SphP[i].GravWorkTerm[k] += out->GravWorkTerm[k];}
 #endif
     if(SphP[i].MaxSignalVel < out->MaxSignalVel)
@@ -453,7 +453,7 @@ void hydro_final_operations_and_cleanup(void)
             /* ok, now: HydroAccel = dv/dt, DtInternalEnergy = du/dt (energy per unit mass) */
             
             // need to explicitly include adiabatic correction from the hubble-flow (for drifting) here //
-            if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*GAMMA_MINUS1 * SphP[i].InternalEnergyPred * All.cf_hubble_a; //???
+            if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*GAMMA_MINUS1 * SphP[i].InternalEnergyPred * All.cf_hubble_a;
             // = du/dlna -3*(gamma-1)*u ; then dlna/dt = H(z) =  All.cf_hubble_a //
 
 #ifdef EOS_DEGENERATE
@@ -589,11 +589,11 @@ void hydro_final_operations_and_cleanup(void)
             {
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 SphP[i].DtMass = 0;
-                SphP[i].dMass = 0;//???
+                SphP[i].dMass = 0;
                 for(k = 0; k < 3; k++) SphP[i].GravWorkTerm[k] = 0;
 #endif
-                SphP[i].DtInternalEnergy = 0;//SphP[i].dInternalEnergy = 0;//???
-                for(k = 0; k < 3; k++) SphP[i].HydroAccel[k] = 0;//SphP[i].dMomentum[k] = 0;//???
+                SphP[i].DtInternalEnergy = 0;//SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
+                for(k = 0; k < 3; k++) SphP[i].HydroAccel[k] = 0;//SphP[i].dMomentum[k] = 0;//manifest-indiv-timestep-debug//
 #ifdef SPH_BND_DTB
                 for(k = 0; k < 3; k++) SphP[i].DtB[k] = 0;
 #endif
@@ -669,12 +669,12 @@ void hydro_force(void)
         {
             SphP[i].MaxSignalVel = -1.e10;
             SphP[i].MaxKineticEnergyNgb = -1.e10;
-            SphP[i].DtInternalEnergy = 0;//SphP[i].dInternalEnergy = 0;//???
+            SphP[i].DtInternalEnergy = 0;//SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
             for(k=0;k<3;k++)
-                SphP[i].HydroAccel[k] = 0;//SphP[i].dMomentum[k] = 0;//???
+                SphP[i].HydroAccel[k] = 0;//SphP[i].dMomentum[k] = 0;//manifest-indiv-timestep-debug//
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             SphP[i].DtMass = 0;
-            SphP[i].dMass = 0;//???
+            SphP[i].dMass = 0;
             for(k=0;k<3;k++) SphP[i].GravWorkTerm[k] = 0;
 #endif
 #ifdef WAKEUP

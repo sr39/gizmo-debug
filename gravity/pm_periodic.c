@@ -304,7 +304,7 @@ void pmforce_periodic(int mode, int *typelist)
 	      continue;
 #endif
 
-        /* possible bugfix: Y.Feng: ??? (was if(mode)) */
+        /* possible bugfix: Y.Feng:  (was if(mode)) */
 	  if(mode > -1)
 	    {
 	      /* make sure that particles are properly box-wrapped */
@@ -434,7 +434,7 @@ void pmforce_periodic(int mode, int *typelist)
 	{
 	  pindex = (part[i].partindex >> 3);
 
-        /* possible bugfix: Y.Feng: ??? (was if(mode)) */
+        /* possible bugfix: Y.Feng:  (was if(mode)) */
 	  if(mode > -1)
 	    {
 	      /* make sure that particles are properly box-wrapped */
@@ -456,7 +456,7 @@ void pmforce_periodic(int mode, int *typelist)
 	  slab_x = (int) (to_slab_fac * pos[0]);
 	  slab_y = (int) (to_slab_fac * pos[1]);
 	  slab_z = (int) (to_slab_fac * pos[2]);
-        /* possible bugfix: Y.Feng: ??? */
+        /* possible bugfix: Y.Feng:  */
         if(slab_x >= PMGRID) slab_x -= PMGRID;
         if(slab_y >= PMGRID) slab_y -= PMGRID;
         if(slab_z >= PMGRID) slab_z -= PMGRID;
@@ -700,7 +700,7 @@ void pmforce_periodic(int mode, int *typelist)
 	      while(j < num_on_grid && (part[j].partindex >> 3) != i)
               j++;
 
-            /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+            /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
             /* make sure that particles are properly box-wrapped */
             for(xx = 0; xx < 3; xx++)
             {
@@ -880,7 +880,7 @@ void pmforce_periodic(int mode, int *typelist)
             while(j < num_on_grid && (part[j].partindex >> 3) != i)
                 j++;
 
-            /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+            /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
             /* make sure that particles are properly box-wrapped */
             for(xx = 0; xx < 3; xx++)
             {
@@ -974,7 +974,7 @@ void pmpotential_periodic(void)
   /* determine the cells each particles accesses */
   for(i = 0, num_on_grid = 0; i < NumPart; i++)
     {
-        /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+        /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
         /* make sure that particles are properly box-wrapped */
         for(xx = 0; xx < 3; xx++)
         {
@@ -1085,7 +1085,7 @@ void pmpotential_periodic(void)
     {
       pindex = (part[i].partindex >> 3);
 
-        /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+        /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
         /* make sure that particles are properly box-wrapped */
         for(xx = 0; xx < 3; xx++)
         {
@@ -1313,7 +1313,7 @@ void pmpotential_periodic(void)
         while(j < num_on_grid && (part[j].partindex >> 3) != i)
             j++;
 
-        /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+        /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
         /* make sure that particles are properly box-wrapped */
         for(xx = 0; xx < 3; xx++)
         {
@@ -1725,7 +1725,7 @@ void pmtidaltensor_periodic_diff(void)
 	      continue;
 #endif
 
-        /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+        /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
         /* make sure that particles are properly box-wrapped */
         for(xx = 0; xx < 3; xx++)
         {
@@ -1838,7 +1838,7 @@ void pmtidaltensor_periodic_diff(void)
 	{
 	  pindex = (part[i].partindex >> 3);
 
-        /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+        /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
         /* make sure that particles are properly box-wrapped */
         for(xx = 0; xx < 3; xx++)
         {
@@ -2118,7 +2118,7 @@ void pmtidaltensor_periodic_diff(void)
 	  while(j < num_on_grid && (part[j].partindex >> 3) != i)
 	    j++;
 
-        /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+        /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
         /* make sure that particles are properly box-wrapped */
         for(xx = 0; xx < 3; xx++)
         {
@@ -2376,7 +2376,7 @@ void pmtidaltensor_periodic_diff(void)
 	      while(j < num_on_grid && (part[j].partindex >> 3) != i)
 		j++;
 
-            /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+            /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
             /* make sure that particles are properly box-wrapped */
             for(xx = 0; xx < 3; xx++)
             {
@@ -2501,7 +2501,7 @@ void pmtidaltensor_periodic_fourier(int component)
   /* determine the cells each particles accesses */
   for(i = 0, num_on_grid = 0; i < NumPart; i++)
     {
-        /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+        /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
         /* make sure that particles are properly box-wrapped */
         for(xx = 0; xx < 3; xx++)
         {
@@ -2612,7 +2612,7 @@ void pmtidaltensor_periodic_fourier(int component)
     {
       pindex = (part[i].partindex >> 3);
 
-        /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+        /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
         /* make sure that particles are properly box-wrapped */
         for(xx = 0; xx < 3; xx++)
         {
@@ -2894,7 +2894,7 @@ void pmtidaltensor_periodic_fourier(int component)
       while(j < num_on_grid && (part[j].partindex >> 3) != i)
 	j++;
 
-        /* possible bugfix: Y.Feng: ??? (otherwise just pp[xx]=Pos[xx]) */
+        /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
         /* make sure that particles are properly box-wrapped */
         for(xx = 0; xx < 3; xx++)
         {
