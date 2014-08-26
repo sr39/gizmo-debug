@@ -5,6 +5,12 @@
 #  From the list below, please activate/deactivate the
 #       options that apply to your run. If you modify any of these options,
 #       make sure that you recompile the whole code by typing "make clean; make".
+#
+# This file was originally part of the GADGET3 code developed by
+#   Volker Springel (volker.springel@h-its.org). The code has been modified
+#   substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO (to add new modules and clean
+#   up the naming conventions and changed many of them to match the new GIZMO conventions)
+#
 ####################################################################################################
 
 
@@ -224,6 +230,20 @@ HYDRO_MESHLESS_FINITE_MASS           # Lagrangian (constant-mass) finite-volume 
 
 
 
+
+####################################################################################################
+#-------------------------------------- Driven turbulence (for turbulence tests, large-eddy sims)
+####################################################################################################
+#TURB_DRIVING           # turns on turbulent driving/stirring. see begrun for parameters that must be set
+#POWERSPEC_GRID=128     # activates on-the-fly calculation of the turbulent velocity, vorticity, and smoothed-velocity power spectra
+#ADJ_BOX_POWERSPEC      # compiles in a code module that allows via restart-flag 6 the calculation of a gas velocity power spectrum of a snapshot with an adjustable box (user defined center and size)
+####################################################################################################
+
+
+
+
+
+
 ####################################################################################################
 #--------------------------------------- Multi-Threading (parallelization) options
 ####################################################################################################
@@ -417,17 +437,6 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 ####################################################################################################
 
 
-
-####################################################################################################
-#-------------------------------------- Simple turbulence test
-####################################################################################################
-#VS_TURB
-#POWERSPEC_GRID=128
-#AB_TURB
-#TURB_DRIVING
-#SUB_TURB_DRIVING
-#ADJ_BOX_POWERSPEC         # compiles in a code module that allows via restart-flag 6 the calculation of a gas velocity power spectrum of a snapshot with an adjustable box (user defined center and size)
-####################################################################################################
 
 
 

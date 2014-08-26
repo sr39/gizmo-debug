@@ -10,6 +10,20 @@
 #include "./cooling.h"
 
 
+/*
+ * This file contains the routines for optically-thin cooling (generally aimed towards simulations of the ISM, 
+ *   galaxy formation, and cosmology). A wide range of heating/cooling processes are included, including 
+ *   free-free, metal-line, Compton, collisional, photo-ionization and recombination, and more. Some of these 
+ *   are controlled by individual modules that need to be enabled or disabled explicitly.
+ *
+ * This file was originally part of the GADGET3 code developed by
+ *   Volker Springel (volker.springel@h-its.org). The code has been modified heavily by 
+ *   Phil Hopkins (phopkins@caltech.edu) for GIZMO; everything except the original metal-free free-free and 
+ *   photo-ionization heating physics has been added (or re-written), and the iteration routine to converge to 
+ *   temperatures has been significantly modified.
+ */
+
+
 #ifdef COOLING
 
 #define NCOOLTAB  2000

@@ -5,6 +5,9 @@
  *   -analytic- potential or gravitational force in the code, 
  *   rather than solely relying on the calculated self-gravity
  */
+/*
+ * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
 
 void add_analytic_gravitational_forces(void);
 void GravAccel_StaticPlummerSphere(void);

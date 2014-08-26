@@ -13,6 +13,12 @@
 /*! \file blackhole.c
  *  \brief routines for gas accretion onto black holes, and black hole mergers
  */
+/*
+ * This file is largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ *   It was based on a similar file in GADGET3 by Volker Springel (volker.springel@h-its.org), 
+ *   but the physical modules for black hole accretion and feedback have been 
+ *   replaced, and the algorithm for their coupling is new to GIZMO.
+ */
 
 #ifdef BLACK_HOLES
 

@@ -5,6 +5,12 @@
 #include "./integrate.h"
 #include "./network_solver.h"
 
+/*
+ *  This code is place-holder, inherited from GADGET3,
+ *   to be replaced by David Radice's version (written completely independently)
+ */
+
+
 static const double conv = 1.602177e-12 * 1.0e3 * 6.0221367e23;	/* eV2erg * 1.0e3 [keV] * avogadro */
 
 void network_normalize(double *x, double *e, const struct network_data *nd, struct network_workspace *nw)

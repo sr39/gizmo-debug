@@ -6,6 +6,9 @@
 *   In this routine, we find the SPH neighbors, and do the loop over 
 *  neighbors to calculate the hydro fluxes. The actual flux calculation, 
 *  and the returned values, should be in PHYSICAL (not comoving) units */
+/*
+ * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
 /* --------------------------------------------------------------------------------- */
 /* --------------------------------------------------------------------------------- */
 int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist)
@@ -161,6 +164,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* --------------------------------------------------------------------------------- */
                 /* sound speed, relative velocity, and signal velocity computation */
                 kernel.sound_j = Particle_effective_soundspeed_i(j);
+                kernel.vsig = kernel.sound_i + kernel.sound_j;
 #ifdef MAGNETIC_SIGNALVEL
                 kernel.b2_j = SphP[j].BPred[0]*SphP[j].BPred[0] + SphP[j].BPred[1]*SphP[j].BPred[1] + SphP[j].BPred[2]*SphP[j].BPred[2];
                 kernel.alfven2_j = kernel.b2_j * fac_magnetic_pressure / SphP[j].Density;
@@ -181,7 +185,6 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 kernel.vdotr2 = kernel.dx * kernel.dvx + kernel.dy * kernel.dvy + kernel.dz * kernel.dvz;
                 // hubble-flow correction: need in -code- units, hence extra a2 appearing here //
                 if(All.ComovingIntegrationOn) kernel.vdotr2 += All.cf_hubble_a2 * r2;
-                kernel.vsig = kernel.sound_i + kernel.sound_j;
                 if(kernel.vdotr2 < 0)
                 {
 #ifdef HYDRO_SPH
@@ -192,6 +195,11 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 }
                 double KE = kernel.dvx*kernel.dvx + kernel.dvy*kernel.dvy + kernel.dvz*kernel.dvz;
                 if(KE > out.MaxKineticEnergyNgb) out.MaxKineticEnergyNgb = KE;
+                if(TimeBinActive[P[j].TimeBin])
+                {
+                    if(KE > SphP[j].MaxKineticEnergyNgb) SphP[j].MaxKineticEnergyNgb = KE;
+                }
+
                 
                 /* --------------------------------------------------------------------------------- */
                 /* calculate the kernel functions (centered on both 'i' and 'j') */
@@ -253,12 +261,15 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                 for(k=0;k<3;k++)
                 {
-                    //out.dMomentum[k] += Fluxes.v[k] * dt_hydrostep; //manifest-indiv-timestep-debug//
                     out.Acc[k] += Fluxes.v[k];
+                    //out.dMomentum[k] += Fluxes.v[k] * dt_hydrostep; //manifest-indiv-timestep-debug//
                     //SphP[j].dMomentum[k] -= Fluxes.v[k] * dt_hydrostep; //manifest-indiv-timestep-debug//
                 }
-                //out.dInternalEnergy += Fluxes.p * dt_hydrostep; //manifest-indiv-timestep-debug//
                 out.DtInternalEnergy += Fluxes.p;
+#ifdef MAGNETIC
+                out.DtB += Fluxes.B[k];
+#endif
+                //out.dInternalEnergy += Fluxes.p * dt_hydrostep; //manifest-indiv-timestep-debug//
                 //SphP[j].dInternalEnergy -= Fluxes.p * dt_hydrostep; //manifest-indiv-timestep-debug//
                 
                 /* if this is particle j's active timestep, you should sent them the time-derivative
@@ -268,6 +279,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                     SphP[j].DtMass -= Fluxes.rho;
                     for(k=0;k<3;k++) {SphP[j].GravWorkTerm[k] -= gravwork[k];}
+#endif
+#ifdef MAGNETIC
+                    for(k=0;k<3;k++) {SphP[j].DtB[k] -= Fluxes.B[k];}
 #endif
                     for(k=0;k<3;k++) SphP[j].HydroAccel[k] -= Fluxes.v[k];
                     SphP[j].DtInternalEnergy -= Fluxes.p;

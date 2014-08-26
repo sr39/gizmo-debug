@@ -213,3 +213,10 @@
 1.06   1.45165e-15   1.93818e-15   4.84395e-27   1.36933e-26   3.0249e-26   2.43198e-36
 1.065   2.10205e-16   2.82933e-16   4.96681e-28   1.99298e-27   4.42766e-27   2.49922e-37
 1.07   0.0   0.0   0.0   0.0   0.0   0.0
+
+#############
+## This version of TREECOOL was compiled by Claude-Andre Faucher-Giguere <cgiguere@northwestern.edu>
+##  using his most recent compilation of UV background and photo-ionization data. The columns 
+##  represent different aspects of the UV background, as a function of redshift. See the routine 
+##  "ReadIonizeParams" in cooling.c, to learn what the different columns do.
+#############

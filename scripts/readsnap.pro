@@ -2,7 +2,7 @@
 ;; Load a snapshot into IDL                             ;;
 ;; -takes as inputes snapshot directory and number      ;;
 ;;  (routine originally written by TJ Cox, modified     ;;
-;;   many times since then by P Hopkins)                ;;
+;;   many times since then by Phil Hopkins)             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                                                      ;;
 ;;                                                      ;;
@@ -19,7 +19,7 @@
 ;;          (don't need preceeding 0's)                 ;;
 ;;                                                      ;;
 ;;      ....= options, see below, but likely need       ;;
-;;            to ask TJ about these.                    ;;
+;;            to ask Phil about these.                  ;;
 ;;                                                      ;;
 ;;                                                      ;;
 ;;                                                      ;;

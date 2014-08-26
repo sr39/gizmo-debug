@@ -1,6 +1,14 @@
 #ifndef FOF_H
 #define FOF_H
 
+/* variables for fof.c code */
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). It is here in GIZMO
+ * as legacy code at the moment, and needs to be re-written or removed.
+ */
+
+
 #include "../allvars.h"
 
 void fof_exchange_group_data(void);

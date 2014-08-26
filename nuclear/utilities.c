@@ -4,6 +4,11 @@
 
 #include "./utilities.h"
 #include "../proto.h"
+/*
+ *  This code is place-holder, inherited from GADGET3,
+ *   to be replaced by David Radice's version (written completely independently)
+ */
+
 
 void myprintf(const char *format, ...)
 {

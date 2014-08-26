@@ -11,6 +11,11 @@
 
 
 
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org).
+ */
+
 
 static struct peano_hilbert_data
 {

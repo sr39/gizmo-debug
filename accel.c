@@ -24,6 +24,12 @@
  * particle, the densities are recomputed accordingly. Finally, the hydrodynamical forces are added.
  */
 
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * slightly (re-arranged, consolidated, and added compute_stellar_feedback and 
+ * the gradients loop) by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
 
 void compute_grav_accelerations(void)
 {

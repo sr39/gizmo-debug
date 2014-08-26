@@ -28,6 +28,13 @@
  *  short-range part.
  */
 
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
+
+
 #ifdef OMP_NUM_THREADS
 pthread_mutex_t mutex_nexport;
 pthread_mutex_t mutex_workcount;
@@ -938,11 +945,6 @@ void gravity_tree(void)
 #endif
 
 
-#ifdef SUB_TURB_DRIVING
-  sub_turb_add_forces();
-#endif
-
-    
   add_analytic_gravitational_forces();
     
     

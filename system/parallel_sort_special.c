@@ -13,6 +13,11 @@
 #include "../proto.h"
 
 
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org).
+ */
+
 #if defined(ORDER_SNAPSHOTS_BY_ID) || defined(SUBFIND_READ_FOF) || defined(SUBFIND_RESHUFFLE_CATALOGUE)
 
 static struct aux_data

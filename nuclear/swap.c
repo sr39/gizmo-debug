@@ -5,6 +5,11 @@
 #include "./utilities.h"
 #include "./swap.h"
 
+/*
+ *  This code is place-holder, inherited from GADGET3,
+ *   to be replaced by David Radice's version (written completely independently)
+ */
+
 double SwapDouble(double Val)
 {
   double nVal;

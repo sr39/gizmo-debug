@@ -14,6 +14,16 @@
 #include "../allvars.h"
 #include "../proto.h"
 
+/* various routines are collected here, needed to communicate with the 
+ *  actual system, stdin/out, abort runs, etc
+ */
+
+/*
+ * This file (and the relevant routines) were originally part of the GADGET3 
+ * code developed by Volker Springel (volker.springel@h-its.org). The routines 
+ * have been collected and re-arranged a bit, but not substantially modified, by 
+ * Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
 
 
 /*  This function aborts the simulations. If a single processors

@@ -6,6 +6,14 @@
 #include "allvars.h"
 #include "proto.h"
 
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO 
+ * (added energy/entropy switch, terms for explicit mass conservation in mass fluxes, 
+ *  and updates to additional fluid variables as needed)
+ */
+
 void apply_long_range_kick(integertime, integertime);
 
 void do_first_halfstep_kick(void)
@@ -13,7 +21,7 @@ void do_first_halfstep_kick(void)
     int i;
     integertime ti_step, tstart=0, tend=0;
     
-#if defined (VS_TURB) || defined (AB_TURB) || defined (TURB_DRIVING)
+#ifdef TURB_DRIVING
     do_turb_driving_step_first_half();
 #endif
     
@@ -88,7 +96,7 @@ void do_second_halfstep_kick(void)
         }
     } // for(i = 0; i < NumPart; i++) //
     
-#if defined (VS_TURB) || defined (AB_TURB) || defined (TURB_DRIVING)
+#ifdef TURB_DRIVING
     do_turb_driving_step_second_half();
 #endif
 }
@@ -237,17 +245,24 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #else
             if(0.005*(e_thermal+e_kinetic) > e_thermal) {do_entropy=1;}
 #endif
+            do_entropy = 0;
             if(0.01*e_potential > e_thermal) {do_entropy=1;}
+            // note that for the Zeldovich problem, either the gravity or kinetic energy switch is sufficient for good resolution;
+            //  both are not needed. we find slightly cleaner results on that test keeping the gravity and removing the KE switch
+            
             // also check for flows which are totally dominated by the adiabatic component of their temperature evolution //
             // double mach = fabs(SphP[i].MaxSignalVel/Particle_effective_soundspeed_i(i) - 2.0); //
             // if(mach < 1.1) {do_entropy=1;} // (actually, this switch tends to do more harm than good!) //
-            do_entropy = 0; // seems unstable in tests like interacting blastwaves... //
+            //do_entropy = 0; // seems unstable in tests like interacting blastwaves... //
             if(do_entropy)
             {
                 /* use the pure-SPH entropy equation, which is exact up to the mass flux, for adiabatic flows */
                 SphP[i].DtInternalEnergy = (SphP[i].Pressure/SphP[i].Density) * P[i].Particle_DivVel*All.cf_a2inv;
                 if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*GAMMA_MINUS1 * SphP[i].InternalEnergyPred * All.cf_hubble_a;
                 dEnt = SphP[i].InternalEnergy + SphP[i].DtInternalEnergy * dt_hydrokick; /* gravity term not included here, as it makes this unstable */
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+                SphP[i].dMass = SphP[i].DtMass = 0;
+#endif
             }
 #endif
             

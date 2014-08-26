@@ -1,3 +1,8 @@
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org).
+ */
+
 #ifndef _VECTOR_H_
 #define _VECTOR_H_
 

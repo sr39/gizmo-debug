@@ -1,6 +1,9 @@
 /* --------------------------------------------------------------------------------- */
 /* this is the sub-routine where we actually extrapolate quantities to the faces 
     and set up, then solve the pair-wise Riemann problem for the method */
+/*
+ * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
 /* --------------------------------------------------------------------------------- */
 {
     double s_star_ij,s_i,s_j,v_frame[3],n_unit[3];
@@ -172,6 +175,9 @@
                 /* Riemann_out->Fluxes.rho is un-modified */
                 Riemann_out.Fluxes.p += (0.5*v_frame[k]*v_frame[k])*Riemann_out.Fluxes.rho + v_frame[k]*Riemann_out.Fluxes.v[k];
                 Riemann_out.Fluxes.v[k] += v_frame[k] * Riemann_out.Fluxes.rho; /* just boost by frame vel (as we would in non-moving frame) */
+#ifdef MAGNETIC
+                Riemann_out.Fluxes.B[k] += -v_frame[k] * ???;
+#endif
             }
             /* ok now we can actually apply this to the EOM */
             Fluxes.rho = dwk_norm * Riemann_out.Fluxes.rho;

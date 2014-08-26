@@ -9,6 +9,14 @@
 #endif
 #endif
 
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * substantially (condensed, new feedback routines added,
+ * some optimizatins, and new variable/memory conventions added)
+ * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
+
 
 #define BITFLAG_TOPLEVEL                   0
 #define BITFLAG_DEPENDS_ON_LOCAL_MASS      1

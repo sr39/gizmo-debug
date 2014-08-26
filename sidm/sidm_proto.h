@@ -1,6 +1,9 @@
 /*! \file sidm_proto.h
  *  \brief this file contains all function prototypes for sidm module
  */
+/*
+ * This file was written by Miguel Rocha (merocha@ucsc.edu) for GIZMO
+ */
 
 double prob_of_interaction(double r, double h_si,  double Vtarget[3], double Vno[3], int dt_step);
 double g_geo(double r);

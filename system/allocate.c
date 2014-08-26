@@ -12,6 +12,12 @@
  * The memory for the ordered binary tree of the timeline
  * is also allocated.
  */
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * in part (cleaned up a bit) by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
+
 void allocate_memory(void)
 {
   size_t bytes;

@@ -12,6 +12,13 @@
  *  \brief driver routines for computation of long-range gravitational PM force
  */
 
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * slightly by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
+
+
 #ifdef PMGRID
 
 /*! Driver routine to call initializiation of periodic or/and non-periodic FFT

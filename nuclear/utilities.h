@@ -5,6 +5,12 @@
 #include <stdio.h>
 #include "../GIZMO_config.h"
 
+/*
+ *  This code is place-holder, inherited from GADGET3,
+ *   to be replaced by David Radice's version (written completely independently)
+ */
+
+
 #define safe_fgets( str, num, stream ) util_fgets( str, num, stream, __FILE__, __LINE__ )
 #define safe_fread( ptr, size, count, stream ) util_fread( ptr, size, count, stream, __FILE__, __LINE__ )
 

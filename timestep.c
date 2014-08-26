@@ -7,8 +7,14 @@
 #include "proto.h"
 
 /*! \file timestep.c
- *  \brief routines for 'kicking' particles in
- *  momentum space and assigning new timesteps
+ *  routines for assigning new timesteps
+ */
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO; these 
+ * modifications include the addition of various timestep criteria, the WAKEUP 
+ * additions, and various changes of units and variable naming conventions throughout. 
  */
 
 static double dt_displacement = 0;
@@ -330,7 +336,7 @@ integertime get_timestep(int p,		/*!< particle index */
         az += All.cf_a2inv * P[p].GravPM[2];
 #endif
         
-#if defined(AB_TURB) || defined(TURB_DRIVING)
+#ifdef TURB_DRIVING
         if(P[p].Type==0)
         {
             ax += SphP[p].TurbAccel[0];

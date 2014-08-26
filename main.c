@@ -15,6 +15,12 @@
 /*! \file main.c
  *  \brief start of the program
  */
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
+
 /*!
  *  This function initializes the MPI communication packages, and sets
  *  cpu-time counters to 0. Then begrun() is called, which sets up

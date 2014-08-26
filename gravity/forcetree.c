@@ -27,8 +27,15 @@
  *  be dynamically updated in drift/kick operations to avoid having to
  *  reconstruct the tree every timestep.
  */
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * substantially (condensed, new feedback routines added, 
+ * some optimizatins, and new variable/memory conventions added) 
+ * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
 
-/*! auxialiary variable used to set-up non-recursive walk */
+/*! auxiliary variable used to set-up non-recursive walk */
 static int last;
 
 
@@ -2639,6 +2646,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 /* now apply the appropriate normalization (and swap the sign)  */
                 fac *= fac_stellum;
                 if((soft>r)&&(soft>0)) fac *= (r2/(soft*soft)); // don't allow cross-section > r2
+                
+                /* now that we've done the long-range heating component, we only allow the momentum to couple over 
+                 some distance to prevent bad approximations when the distance between points here is enormous */
+                if(r>50. * 3.086e21*All.HubbleParam/(All.UnitLength_in_cm*All.cf_atime)) fac=0;
                 
 #ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
                 fac *= (mass_stellarlum_uv*fac_stellum_uv +

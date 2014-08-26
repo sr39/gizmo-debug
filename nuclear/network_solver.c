@@ -11,6 +11,11 @@
 #include "./network_solver.h"
 #include "../proto.h"
 
+/*
+ *  This code is place-holder, inherited from GADGET3,
+ *   to be replaced by David Radice's version (written completely independently)
+ */
+
 #ifdef NUCLEAR_NETWORK
 
 #ifdef NETWORK_SUPERLU

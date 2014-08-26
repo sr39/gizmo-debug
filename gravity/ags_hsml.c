@@ -27,6 +27,9 @@ extern pthread_mutex_t mutex_partnodedrift;
  *    determines softening lengths (and appropriate correction terms) 
  *    for all particle types, to make softenings fully adaptive
  */
+/*
+ * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
 
 
 /*! this routine is called by the adaptive gravitational softening neighbor search and forcetree (for application 

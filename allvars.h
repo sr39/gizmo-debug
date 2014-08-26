@@ -14,6 +14,14 @@
  *        becomes "struct global_data_all_processes All;"
  */
 
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO (new variables, 
+ * and different naming conventions for some old variables)
+ */
+
+
 #ifndef ALLVARS_H
 #define ALLVARS_H
 
@@ -730,7 +738,7 @@ extern int Flag_FullStep;	/*!< Flag used to signal that the current step involve
 extern size_t HighMark_run,  HighMark_domain, HighMark_gravtree, HighMark_pmperiodic,
   HighMark_pmnonperiodic,  HighMark_sphdensity, HighMark_sphhydro, HighMark_addSPH;
 
-#if defined (VS_TURB) || defined (AB_TURB)
+#ifdef TURB_DRIVING
 extern size_t HighMark_turbpower;
 #endif
 
@@ -854,9 +862,8 @@ extern FILE *FdHIIHeating;	/*!< file handle for HIIheating.txt log-file */
 extern FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 #endif
 
-
-#if defined (VS_TURB) || defined (AB_TURB)
-extern FILE *FdTurb;
+#ifdef TURB_DRIVING
+extern FILE *FdTurb;    /*!< file handle for turb.txt log-file */
 #endif
 
 #ifdef RADTRANSFER
@@ -1118,7 +1125,7 @@ extern struct global_data_all_processes
   MinGasHsml;			/*!< minimum allowed SPH smoothing length */
   double MaxHsml;
 
-#if defined (VS_TURB) || defined (AB_TURB)
+#ifdef TURB_DRIVING
   double RefDensity;
   double RefInternalEnergy;
   double IsoSoundSpeed;
@@ -1477,7 +1484,7 @@ extern struct global_data_all_processes
   double AGS_MaxNumNgbDeviation;
 #endif
 
-#if defined(AB_TURB) || defined(TURB_DRIVING)
+#ifdef TURB_DRIVING
   double StDecay;
   double StEnergy;
   double StDtFreq;
@@ -1884,7 +1891,7 @@ extern struct sph_particle_data
     MyFloat RadFluxAGN;             /*!< local AGN flux */
 #endif
     
-#if defined(AB_TURB) || defined(VS_TURB) || defined(OUTPUT_VORTICITY) 
+#if defined(TURB_DRIVING) || defined(OUTPUT_VORTICITY)
    MyFloat Vorticity[3];
    MyFloat SmoothedVel[3];
 #endif
@@ -1915,14 +1922,11 @@ extern struct sph_particle_data
   MyFloat DelayTimeCoolingSNe;      /*!< flag indicating cooling is suppressed b/c heated by SNe */
 #endif
     
-#if defined (VS_TURB) || defined (AB_TURB)
+#ifdef TURB_DRIVING
   MyDouble DuDt_diss;               /*!< quantities specific to turbulent driving routines */
   MyDouble DuDt_drive;
   MyDouble EgyDiss;
   MyDouble EgyDrive;
-  MyDouble TurbAccel[3];
-#endif
-#if defined(TURB_DRIVING)
   MyDouble TurbAccel[3];
 #endif
 
@@ -2497,7 +2501,7 @@ extern int *Father;		/*!< gives parent node in tree (Prenodes array) */
 
 extern int maxThreads;
 
-#if defined(AB_TURB) || defined(TURB_DRIVING)
+#ifdef TURB_DRIVING
 //parameters
 extern double StDecay;
 extern double StEnergy;
@@ -2524,11 +2528,8 @@ extern integertime StTPrev;
 extern double StSolWeightNorm;
 
 extern int StSpectForm;
-#endif
-#ifdef AB_TURB
+
 extern gsl_rng* StRng;
-#endif
-#ifdef TURB_DRIVING
 extern int FB_Seed;
 #endif
 

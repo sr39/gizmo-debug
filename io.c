@@ -22,6 +22,12 @@
 /*! \file io.c
  *  \brief Output of a snapshot file to disk.
  */
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO (mostly to 
+ * write out new/modified quantities, as needed)
+ */
 
 static int n_type[6];
 static long long ntot_type_all[6];
@@ -486,7 +492,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
       break;
 
     case IO_VSTURB_DISS:
-#if defined (VS_TURB) || defined (AB_TURB)
+#if defined(TURB_DRIVING)
       for(n = 0; n < pc; pindex++)
 	if(P[pindex].Type == type)
 	  {
@@ -497,7 +503,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
       break;
 
     case IO_VSTURB_DRIVE:
-#if defined (VS_TURB) || defined (AB_TURB)
+#if defined(TURB_DRIVING)
       for(n = 0; n < pc; pindex++)
 	if(P[pindex].Type == type)
 	  {
@@ -661,7 +667,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
       break;
 
     case IO_VORT:		/* Vorticity */
-#if defined(OUTPUT_VORTICITY)
+#if defined(TURB_DRIVING) || defined(OUTPUT_VORTICITY)
       for(n = 0; n < pc; pindex++)
 	if(P[pindex].Type == type)
 	  {
@@ -2327,7 +2333,7 @@ int blockpresent(enum iofields blocknr)
 
     case IO_VSTURB_DISS:
     case IO_VSTURB_DRIVE:
-#if defined (VS_TURB) || defined (AB_TURB)
+#if defined(TURB_DRIVING)
       return 1;
 #else
       return 0;
@@ -2411,7 +2417,7 @@ int blockpresent(enum iofields blocknr)
       break;
 
     case IO_VORT:
-#ifdef OUTPUT_VORTICITY
+#if defined(TURB_DRIVING) || defined(OUTPUT_VORTICITY)
       return 1;
 #else
       return 0;

@@ -27,6 +27,16 @@
  */
 
 
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * somewhat by Phil Hopkins (phopkins@caltech.edu) for GIZMO; these 
+ * modifications do not change the core algorithm, but have optimized it in 
+ * some places, changed relative weighting factors for different levels in the 
+ * domain decomposition, and similar details.
+ */
+
+
 #define REDUC_FAC      0.98
 
 

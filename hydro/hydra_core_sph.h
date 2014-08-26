@@ -1,3 +1,9 @@
+/* --------------------------------------------------------------------------------- */
+/* this is the sub-routine where we actually evaluate the SPH equations of motion */
+/*
+ * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
+/* --------------------------------------------------------------------------------- */
 {
     /* basic overhead variables and zero-ing fluxes for the computation */
     Fluxes.rho = Fluxes.p = Fluxes.v[0] = Fluxes.v[1] = Fluxes.v[2] = 0;
@@ -72,11 +78,11 @@
     /* --------------------------------------------------------------------------------- */
     /* ... induction equation ... */
     /* --------------------------------------------------------------------------------- */
-    out.DtB[0] += kernel.mf_Ind * ((local.BPred[0] * kernel.dvy - local.BPred[1] * kernel.dvx) * kernel.dy +
+    Fluxes.B[0] += kernel.mf_Ind * ((local.BPred[0] * kernel.dvy - local.BPred[1] * kernel.dvx) * kernel.dy +
                                    (local.BPred[0] * kernel.dvz - local.BPred[2] * kernel.dvx) * kernel.dz);
-    out.DtB[1] += kernel.mf_Ind * ((local.BPred[1] * kernel.dvz - local.BPred[2] * kernel.dvy) * kernel.dz +
+    Fluxes.B[1] += kernel.mf_Ind * ((local.BPred[1] * kernel.dvz - local.BPred[2] * kernel.dvy) * kernel.dz +
                                    (local.BPred[1] * kernel.dvx - local.BPred[0] * kernel.dvy) * kernel.dx);
-    out.DtB[2] += kernel.mf_Ind * ((local.BPred[2] * kernel.dvx - local.BPred[0] * kernel.dvz) * kernel.dx +
+    Fluxes.B[2] += kernel.mf_Ind * ((local.BPred[2] * kernel.dvx - local.BPred[0] * kernel.dvz) * kernel.dx +
                                    (local.BPred[2] * kernel.dvy - local.BPred[1] * kernel.dvz) * kernel.dy);
     
     /* --------------------------------------------------------------------------------- */
@@ -91,7 +97,7 @@
     out.GradPhi[0] += (phifac_i+phifac_j) * kernel.dx;
     out.GradPhi[1] += (phifac_i+phifac_j) * kernel.dy;
     out.GradPhi[2] += (phifac_i+phifac_j) * kernel.dz;
-    // GradPhi should have units of [Phicode]/[rcode] = [Bcode]*[vcode]/[rcode] = [DtB]
+    // GradPhi should have units of [Phicode]/[rcode] = [Bcode]*[vcode]/[rcode] = [DtB]=[Fluxes.B]
 #endif // DIVBCLEANING_DEDNER
     
     /* --------------------------------------------------------------------------------- */
@@ -142,9 +148,9 @@
     double eta = All.ArtMagDispConst * vsigb * kernel.r;
 #endif
     Fluxes.p -= eta * kernel.mf_dissEnt * (dBx * dBx + dBy * dBy + dBz * dBz);
-    out.DtB[0] += eta * kernel.mf_dissInd * dBx;
-    out.DtB[1] += eta * kernel.mf_dissInd * dBy;
-    out.DtB[2] += eta * kernel.mf_dissInd * dBz;
+    Fluxes.B[0] += eta * kernel.mf_dissInd * dBx;
+    Fluxes.B[1] += eta * kernel.mf_dissInd * dBy;
+    Fluxes.B[2] += eta * kernel.mf_dissInd * dBz;
 #endif
 #endif
 

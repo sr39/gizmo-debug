@@ -13,6 +13,13 @@
  *        becomes "struct global_data_all_processes All;"
  */
 
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO (new variables,
+ * and different naming conventions for some old variables)
+ */
+
 #include "allvars.h"
 
 
@@ -85,6 +92,10 @@ int *PrevInTimeBin;
 
 size_t HighMark_run, HighMark_domain, HighMark_gravtree,
   HighMark_pmperiodic, HighMark_pmnonperiodic, HighMark_sphdensity, HighMark_sphhydro, HighMark_addSPH;
+
+#ifdef TURB_DRIVING
+size_t HighMark_turbpower;
+#endif
 
 #ifdef GALSF
 double TimeBinSfr[TIMEBINS];
@@ -220,6 +231,10 @@ FILE *FdHIIHeating;	/*!< file handle for HIIheating.txt log-file */
 #endif
 #ifdef GALSF_FB_SNE_HEATING
 FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
+#endif
+
+#ifdef TURB_DRIVING
+FILE *FdTurb;    /*!< file handle for turb.txt log-file */
 #endif
 
 #ifdef RADTRANSFER

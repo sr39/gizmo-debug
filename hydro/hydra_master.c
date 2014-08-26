@@ -38,6 +38,9 @@ extern pthread_mutex_t mutex_partnodedrift;
  *  computed, and where the rate of change of entropy due to the shock heating
  *  (via artificial viscosity) is computed.
  */
+/*
+ * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
 
 
 /* some very useful notes on the hydro variables in comoving integrations:
@@ -87,6 +90,9 @@ struct Conserved_var_Riemann
     MyDouble v[3];
     MyDouble u;
     MyDouble cs;
+#ifdef MAGNETIC
+    MyDouble B[3];
+#endif
 };
 
 
@@ -186,9 +192,7 @@ struct hydrodata_in
 #endif
     
 #ifdef MAGNETIC
-#ifdef MAGFORCE
     MyFloat BPred[3];
-#endif
 #if defined(TRICCO_RESISTIVITY_SWITCH)
     MyFloat Balpha;
 #endif

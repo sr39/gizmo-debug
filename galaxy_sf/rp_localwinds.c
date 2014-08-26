@@ -9,6 +9,14 @@
 #include "../kernel.h"
 
 
+/* this does the local wind coupling on a per-star basis,
+ as opposed to in the SFR routine */
+
+/*
+ * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
+
+
 /*-----------------------------------------
  A REMINDER ABOUT GIZMO/GADGET VELOCITY UNITS::
  
@@ -57,8 +65,6 @@
 
 #if defined(GALSF_FB_RPWIND_FROMSTARS) && !defined(GALSF_FB_RPWIND_DO_IN_SFCALC) 
 
-/* this does the local wind coupling on a per-star basis, 
-     as opposed to in the SFR routine */
 
 void radiation_pressure_winds_consolidated(void)
 {
@@ -91,6 +97,7 @@ void radiation_pressure_winds_consolidated(void)
     ascale = All.cf_atime;
     hubble_a = All.cf_hubble_a;
     sigma_eff_0=0.955*All.UnitMass_in_g*All.HubbleParam/(All.UnitLength_in_cm*All.UnitLength_in_cm)*0.333*pow((float)All.DesNumNgb,0.66)/(ascale*ascale) * KAPPA_IR;
+    double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
 
   for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
   {
@@ -110,9 +117,10 @@ void radiation_pressure_winds_consolidated(void)
             (2.0 * KAPPA_UV *
              P[i].Hsml*P[i].DensAroundStar/(ascale*ascale) *
              All.UnitDensity_in_cgs*All.HubbleParam*All.UnitLength_in_cm);
-        if (RtauMax > 1.) RtauMax=1.;
         RtauMax /= ascale;
         RtauMax += P[i].Hsml;
+        double rmax0 = 1.0 / unitlength_in_kpc;
+        if(RtauMax > rmax0) RtauMax = rmax0;
         
 #ifndef GALSF_FB_RPWIND_CONTINUOUS
     /* if kicks are stochastic, we don't want to waste time doing a neighbor search every timestep; 

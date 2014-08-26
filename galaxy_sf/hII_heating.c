@@ -9,6 +9,9 @@
 #include "../proto.h"
 
 /* Routines for simple photo-ionization heating feedback model */
+/*
+ * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
 
 
 #if defined(GALSF_FB_HII_HEATING)

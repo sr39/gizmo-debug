@@ -1,4 +1,13 @@
-%----  Relevant files 
+%-------------------------------------------------------------------------
+%----  This file contains the input parameters needed at run-time for 
+%       simulations. It is based on and closely resembles the GADGET-3
+%       parameterfile (format of which and parsing routines written by 
+%       Volker Springel [volker.springel@h-its.org]). It has been updated
+%       with new naming conventions and additional variables as needed by 
+%       Phil Hopkins [phopkins@caltech.edu] for GIZMO.
+%-------------------------------------------------------------------------
+
+%----  Relevant files
 InitCondFile  /work/01799/phopkins/sim_ICs/ics_z10n192_B1hr 
 OutputDir     /scratch/01799/phopkins/B1_lr_fixg_51 
 

@@ -51,6 +51,15 @@
 #
 # If you add an ifeq for a new system below, also add that systype to
 # Template-Makefile.systype
+#
+###########
+#
+# This file was originally part of the GADGET3 code developed by
+#   Volker Springel (volker.springel@h-its.org). The code has been modified
+#   slighty by Phil Hopkins (phopkins@caltech.edu) for GIZMO (mostly 
+#   dealing with new files and filename conventions)
+#
+#############
 
 ifdef SYSTYPE
 SYSTYPE := "$(SYSTYPE)"
@@ -900,10 +909,6 @@ ifeq (SCFPOTENTIAL,$(findstring SCFPOTENTIAL,$(CONFIGVARS)))
 OBJS    += modules/potentials/scf.o modules/potentials/scf_util.o
 endif
 
-ifeq (SUB_TURB_DRIVING,$(findstring SUB_TURB_DRIVING,$(CONFIGVARS)))
-OBJS    += modules/turb/sub_turb_driving.o
-endif
-
 ifeq (FOF,$(findstring FOF,$(CONFIGVARS)))
 OBJS    += structure/fof.o
 INCL	+= structure/fof.h
@@ -972,17 +977,8 @@ OBJS	+=  nuclear/utilities.o nuclear/integrate.o nuclear/network_solver.o nuclea
 INCL	+=  nuclear/utilities.h nuclear/integrate.h nuclear/network_solver.h nuclear/network.h nuclear/swap.h
 endif
 
-ifeq (VS_TURB,$(findstring VS_TURB,$(CONFIGVARS)))
-OBJS	+=  modules/turb/turb_driving.o modules/turb/turb_powerspectra.o
-INCL	+=  
-endif
-
-ifeq (AB_TURB,$(findstring AB_TURB,$(CONFIGVARS)))
-OBJS	+= modules/turb/ab_turb.o  modules/turb/turb_driving.o modules/turb/turb_powerspectra.o
-endif
-
 ifeq (TURB_DRIVING,$(findstring TURB_DRIVING,$(CONFIGVARS)))
-OBJS	+= modules/fb_driveturb/turb_driving.o
+OBJS	+= turb/turb_driving.o turb/turb_powerspectra.o
 endif
 
 ifeq (BP_REAL_CRs,$(findstring BP_REAL_CRs,$(CONFIGVARS))) # add bp cr part

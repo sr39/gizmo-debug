@@ -19,6 +19,9 @@
     If more complicated routines, etc. are to be added to determine when (and how) splitting/merging occurs, they should also be 
     added here. The split routine should also be the template for spawning new gas particles (collisionless particles are spawned
     much more easily; for those, see the star formation routines). */
+/*
+ * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
 
 
 /*! Here we can insert any desired criteria for particle mergers: by default, this will occur

@@ -28,7 +28,12 @@
 /*! \file init.c
  *  \brief code for initialisation of a simulation from initial conditions
  */
-
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO (mostly initializing 
+ * new/modified variables, as needed)
+ */
 
 /*! This function reads the initial conditions, and allocates storage for the
  *  tree(s). Various variables of the particle data are initialised and An
@@ -479,19 +484,20 @@ void init(void)
         
         
 #ifdef METALS
-        All.SolarAbundances[0]=0.02;        // all metals (by mass)
+        All.SolarAbundances[0]=0.02;        // all metals (by mass); present photospheric abundances from Asplund et al. 2009 (Z=0.0134, proto-solar=0.0142) in notes;
+                                            //   also Anders+Grevesse 1989 (older, but hugely-cited compilation; their Z=0.0201, proto-solar=0.0213)
 #ifdef COOL_METAL_LINES_BY_SPECIES
         if (NUM_METAL_SPECIES>=10) {
-            All.SolarAbundances[1]=0.28;    // He
-            All.SolarAbundances[2]=3.26e-3; // C
-            All.SolarAbundances[3]=1.32e-3; // N
-            All.SolarAbundances[4]=8.65e-3; // O
-            All.SolarAbundances[5]=2.22e-3; // Ne
-            All.SolarAbundances[6]=9.31e-4; // Mg
-            All.SolarAbundances[7]=1.08e-3; // Si
-            All.SolarAbundances[8]=6.44e-4; // S
-            All.SolarAbundances[9]=1.01e-4; // Ca
-            All.SolarAbundances[10]=1.73e-3; // Fe
+            All.SolarAbundances[1]=0.28;    // He  (10.93 in units where log[H]=12, so photospheric mass fraction -> Y=0.2485 [Hydrogen X=0.7381]; Anders+Grevesse Y=0.2485, X=0.7314)
+            All.SolarAbundances[2]=3.26e-3; // C   (8.43 -> 2.38e-3, AG=3.18e-3)
+            All.SolarAbundances[3]=1.32e-3; // N   (7.83 -> 0.70e-3, AG=1.15e-3)
+            All.SolarAbundances[4]=8.65e-3; // O   (8.69 -> 5.79e-3, AG=9.97e-3)
+            All.SolarAbundances[5]=2.22e-3; // Ne  (7.93 -> 1.26e-3, AG=1.72e-3)
+            All.SolarAbundances[6]=9.31e-4; // Mg  (7.60 -> 7.14e-4, AG=6.75e-4)
+            All.SolarAbundances[7]=1.08e-3; // Si  (7.51 -> 6.71e-4, AG=7.30e-4)
+            All.SolarAbundances[8]=6.44e-4; // S   (7.12 -> 3.12e-4, AG=3.80e-4)
+            All.SolarAbundances[9]=1.01e-4; // Ca  (6.34 -> 0.65e-4, AG=0.67e-4)
+            All.SolarAbundances[10]=1.73e-3; // Fe (7.50 -> 1.31e-3, AG=1.92e-3)
         }
 #endif // COOL_METAL_LINES_BY_SPECIES
 #ifdef GALSF_FB_RPROCESS_ENRICHMENT
@@ -734,11 +740,8 @@ void init(void)
         ags_setup_smoothinglengths();
 #endif
     
-    
-    
-    
-    
-#if defined (VS_TURB) || defined (AB_TURB)
+
+#if defined(TURB_DRIVING)
     {
         double mass = 0, glob_mass;
         int i;
@@ -746,9 +749,13 @@ void init(void)
             mass += P[i].Mass;
         MPI_Allreduce(&mass, &glob_mass, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
         All.RefDensity = glob_mass / pow(All.BoxSize, 3);
-        All.RefInternalEnergy = GAMMA_MINUS1 * All.IsoSoundSpeed * All.IsoSoundSpeed / GAMMA ;
+        All.RefInternalEnergy = All.IsoSoundSpeed*All.IsoSoundSpeed / (GAMMA*GAMMA_MINUS1);
     }
 #endif
+    
+/* this here is where you should insert custom code for hard-wiring the ICs of various test problems */
+    
+    
     
     for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
     {
@@ -771,11 +778,15 @@ void init(void)
         SphP[i].dp_drho = res.p.drho + res.temp * gsl_pow_2(res.p.dtemp / (SphP[i].Density * All.UnitDensity_in_cgs)) / res.e.dtemp;
 #endif
         
-#if defined (VS_TURB) || defined (AB_TURB)
+#if defined(TURB_DRIVING)
         SphP[i].InternalEnergy = All.RefInternalEnergy;
-        SphP[i].InternalEnergyPred = All.RefInternalEnergy
+        SphP[i].InternalEnergyPred = All.RefInternalEnergy;
 #endif
-        
+        // re-match the predicted and initial velocities and B-field values, just to be sure //
+        for(j=0;j<3;j++) SphP[i].VelPred[j]=P[i].Vel[j];
+#ifdef MAGNETIC
+        for(j=0;j<3;j++) SphP[i].BPred[j]=SphP[i].B[j];
+#endif
         //SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
         SphP[i].DtInternalEnergy = 0;
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -1044,23 +1055,25 @@ void setup_smoothinglengths(void)
                 {
                     
 #ifndef READ_HSML
-#ifndef TWODIMS
-#ifndef ONEDIM
-                    PPP[i].Hsml =
-                    pow(3.0 / (4 * M_PI) * All.DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0 / 3) * Nodes[no].len;
-#else
+#if NUMDIMS == 3
+                    PPP[i].Hsml = pow(3.0 / (4 * M_PI) * All.DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 0.333333) * Nodes[no].len;
+#endif
+#if NUMDIMS == 2
+                    PPP[i].Hsml = pow(1.0 / (M_PI) * All.DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 0.5) * Nodes[no].len;
+#endif
+#if NUMDIMS == 1
                     PPP[i].Hsml = All.DesNumNgb * (P[i].Mass / Nodes[no].u.d.mass) * Nodes[no].len;
 #endif
-#else
-                    PPP[i].Hsml =
-                    pow(1.0 / (M_PI) * All.DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0 / 2) * Nodes[no].len;
-#endif
+#ifndef NOGRAVITY
                     if(All.SofteningTable[0] != 0)
                     {
                         if((PPP[i].Hsml>100.*All.SofteningTable[0])||(PPP[i].Hsml<=0.01*All.SofteningTable[0])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
                             PPP[i].Hsml = All.SofteningTable[0];
                     }
+#else
+                    if((Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) PPP[i].Hsml = 1.0;
 #endif
+#endif // READ_HSML
                 } // closes if((RestartFlag == 0)||(P[i].Type != 0))
             }
     }

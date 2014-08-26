@@ -1,3 +1,12 @@
+/* this file contains the definitions for the smoothing kernels */
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO (added the 
+ * calls to this for other uses of the kernel in-code in areas like gravity;
+ * also added new kernels here)
+ */
+
 #ifndef KERNEL_H
 #define KERNEL_H
 

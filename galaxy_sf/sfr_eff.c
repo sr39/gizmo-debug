@@ -6,6 +6,16 @@
 #include "../allvars.h"
 #include "../proto.h"
 
+/*!
+ *  routines for star formation in cosmological simulations
+ */
+/*
+ * This file is largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ *   It was based on a similar file in GADGET3 by Volker Springel (volker.springel@h-its.org),
+ *   but the physical modules for star formation and feedback have been
+ *   replaced, and the algorithm is mostly new to GIZMO.
+ */
+
 
 #ifdef GALSF // master switch for compiling the routines below //
 

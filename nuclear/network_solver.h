@@ -3,6 +3,11 @@
 
 #include "../GIZMO_config.h"
 
+/*
+ *  This code is place-holder, inherited from GADGET3,
+ *   to be replaced by David Radice's version (written completely independently)
+ */
+
 #if defined(NETWORK_SUPERLU) || defined(NETWORK_PARDISO)
 #define NETWORK_SPARSE 1
 #else

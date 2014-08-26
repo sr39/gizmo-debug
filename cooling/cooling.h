@@ -6,6 +6,15 @@
 #endif
 #endif
 
+/*
+ * This file contains the definitions for the cooling.c routines
+ *
+ * This file was originally part of the GADGET3 code developed by
+ *   Volker Springel (volker.springel@h-its.org). The code has been modified by
+ *   Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
+
+
 double AbundanceRatios(double u, double rho, double *ne_guess, double *nH0_pointer, double *nHeII_pointer, int target);
 void   InitCool(void);
 void   InitCoolMemory(void);

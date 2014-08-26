@@ -1,5 +1,8 @@
 /* --------------------------------------------------------------------------------- */
 /* ... real conduction evaluation ... */
+/*
+ * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
 /* --------------------------------------------------------------------------------- */
 {
     if((local.Kappa_Conduction>0)&&(SphP[j].Kappa_Conduction>0))

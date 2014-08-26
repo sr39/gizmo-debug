@@ -8,6 +8,13 @@
 #include "../allvars.h"
 #include "../proto.h"
 
+/* custom memory allocation routines */
+
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * very slightly by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
 
 #define MAXBLOCKS 500
 #define MAXCHARS  16

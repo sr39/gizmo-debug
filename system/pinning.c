@@ -6,6 +6,11 @@
 #include <gsl/gsl_math.h>
 #include <unistd.h>
 
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org).
+ */
+
 #ifdef IMPOSE_PINNING
 
 #define __USE_GNU

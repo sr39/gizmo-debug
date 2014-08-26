@@ -13,6 +13,14 @@
 /*! \file run.c
  *  \brief  iterates over timesteps, main loop
  */
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * in part (adding/removing calls, re-ordering some routines, and 
+ * adding hooks to new elements such as particle splitting, as necessary)
+ * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
+
 
 /*! This routine contains the main simulation loop that iterates over
  * single timesteps. The loop terminates when the cpu-time limit is
@@ -192,7 +200,7 @@ void calculate_non_standard_physics(void)
     compute_stellar_feedback();
 #endif
     
-#if defined (VS_TURB) || defined (AB_TURB)
+#if defined(TURB_DRIVING)
     reset_turb_temp();
 #if defined(POWERSPEC_GRID)
     if(All.Time >= All.TimeNextTurbSpectrum)
@@ -491,10 +499,6 @@ mpi_printf("\n\n\nI found the last snapshot call...\n\n\n");
 #endif
 
   All.TimeStep = All.Time - timeold;
-
-#ifdef SUB_TURB_DRIVING
-  sub_turb_move_perturbers(timeold, All.Time);
-#endif
 
   /* mark the bins that will be active */
   for(n = 1, TimeBinActive[0] = 1, NumForceUpdate = TimeBinCount[0], highest_active_bin = 0; n < TIMEBINS;
@@ -1169,7 +1173,7 @@ void output_extra_log_messages(void)
     log_self_interactions();
 #endif
     
-#if defined (VS_TURB) || defined (AB_TURB)
+#if defined(TURB_DRIVING)
     log_turb_temp();
 #endif
     

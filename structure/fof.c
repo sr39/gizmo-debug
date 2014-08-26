@@ -18,6 +18,12 @@
 /*! \file fof.c
  *  \brief parallel FoF group finder
  */
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). It is here in GIZMO 
+ * as legacy code at the moment, and needs to be re-written or removed.
+ */
+
 
 #ifdef FOF
 #include "structure/fof.h"

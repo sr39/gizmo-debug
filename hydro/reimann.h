@@ -12,6 +12,15 @@
 #define NMAX_ITER 1000
 
 
+/*
+ * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO. 
+ *   However some of the sub-routines here are adopted from other codes, in particular
+ *   AREPO by Volker Springel (volker.springel@h-its.org) and 
+ *   ATHENA by Jim Stone (jstone@astro.princeton.edu). These sections should be 
+ *   identified explicitly in the code below.
+ */
+
+
 /* --------------------------------------------------------------------------------- */
 /* some structures with the conserved variables to pass to/from the Riemann solver */
 /* --------------------------------------------------------------------------------- */
@@ -75,14 +84,15 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
 #ifdef MAGNETIC
 void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out);
 void correct_face_normal_B_field(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out);
-#endif
 void rotate_states_to_face(struct Input_vec_Riemann *Riemann_vec, double n_unit[3], struct rotation_matrix *rot_matrix);
 void rotate_fluxes_back_to_lab(struct Riemann_outputs *Riemann_out, struct rotation_matrix rot_matrix);
+#endif
 
 
 
 /* --------------------------------------------------------------------------------- */
 /* reconstruction procedure (use to extrapolate from cell/particle centered quantities to faces) */
+/*  (reconstruction and slope-limiter from P. Hopkins) */
 /* --------------------------------------------------------------------------------- */
 void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloat Grad_Q_j[3],
                              double distance_from_i[3], double distance_from_j[3], double *Q_L, double *Q_R, int order)
@@ -139,7 +149,7 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
     /* here we do our slightly-fancy slope-limiting */
     double Qmin,Qmax,Qmed,Qmax_eff,Qmin_eff,fac,Qmed_max,Qmed_min;
     double fac_minmax = 0.5; /* 0.5, 0.1 works; 1.0 unstable; 0.75 is stable but begins to 'creep' */
-    double fac_meddev = 0.75; /* 0.5,0.75 work well w. 0.5 above; 1.0 unstable; 0.875 is on-edge */
+    double fac_meddev = 0.375; /* 0.25,0.375 work well; 0.5 unstable; 0.44 is on-edge */
     /* get the max/min vals, difference, and midpoint value */
     Qmed = 0.5*(Q_i+Q_j);
     if(Q_i<Q_j) {Qmax=Q_j; Qmin=Q_i;} else {Qmax=Q_i; Qmin=Q_j;}
@@ -151,8 +161,9 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
     if(Qmax<0) {if(Qmax_eff>0) Qmax_eff=Qmax*Qmax/(Qmax-(Qmax_eff-Qmax));} // works with 0.5,0.1 //
     if(Qmin>0) {if(Qmin_eff<0) Qmin_eff=Qmin*Qmin/(Qmin+(Qmin-Qmin_eff));}
     /* also allow tolerance to over/undershoot the exact midpoint value in the reconstruction */
-    Qmed_max = Qmed + fac_meddev * fac;
-    Qmed_min = Qmed - fac_meddev * fac;
+    fac = fac_meddev * (Qmax-Qmin);
+    Qmed_max = Qmed + fac;
+    Qmed_min = Qmed - fac;
     if(Qmed_max>Qmax_eff) Qmed_max=Qmax_eff;
     if(Qmed_min<Qmin_eff) Qmed_min=Qmin_eff;
     /* now check which side is which and apply these limiters */
@@ -177,6 +188,7 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
 
 /* --------------------------------------------------------------------------------- */
 /* slope limiter: put other limiters here, will replace all calculations with this */
+/*  (not currently used, but optional if we want to use other limiters, cited as noted below) */
 /* --------------------------------------------------------------------------------- */
 static inline double actual_slopelimiter(double dQ_1, double dQ_2)
 {
@@ -196,6 +208,7 @@ static inline double actual_slopelimiter(double dQ_1, double dQ_2)
 
 /* --------------------------------------------------------------------------------- */
 /* simple function to get the slope limiter from the difference and gradient vectors */
+/*  (not currently used, but optional if we want to use other limiters, cited as noted below) */
 /* --------------------------------------------------------------------------------- */
 static inline double get_dQ_from_slopelimiter(double dQ_1, MyFloat grad[3], struct kernel_hydra kernel, double rinv)
 {
@@ -206,6 +219,7 @@ static inline double get_dQ_from_slopelimiter(double dQ_1, MyFloat grad[3], stru
 
 /* --------------------------------------------------------------------------------- */
 /* Master Riemann solver routine: call this, it will call sub-routines */
+/*  (written by P. Hopkins, this is just a wrapper though for the various sub-routines) */
 /* --------------------------------------------------------------------------------- */
 void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3])
 {
@@ -281,77 +295,12 @@ void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs
 
 
 
-/* -------------------------------------------------------------------------------------------------------------- */
-/*  obtain the rotation matrix to rotate into the frame, and do the rotation (as well as routine to rotate back)  */
-/* -------------------------------------------------------------------------------------------------------------- */
-void rotate_states_to_face(struct Input_vec_Riemann *Riemann_vec, double n_unit[3], struct rotation_matrix *rot_matrix)
-{
-    rot_matrix->n[0] = n_unit[0];
-    rot_matrix->n[1] = n_unit[1];
-    rot_matrix->n[2] = n_unit[2];
-    /* now we can construct a basis orthonormal to this */
-    if((rot_matrix->n[0]==0)&&(rot_matrix->n[1]==0))
-    {
-        /* trap for the pathological case */
-        rot_matrix->m[0] = 1;
-        rot_matrix->m[1] = rot_matrix->m[2] = 0;
-        rot_matrix->p[1] = 1;
-        rot_matrix->p[0] = rot_matrix->p[2] = 0;
-    } else {
-        rot_matrix->m[0] = -rot_matrix->n[1];
-        rot_matrix->m[1] = rot_matrix->n[0];
-        rot_matrix->m[2] = 0;
-        double mm = sqrt(rot_matrix->m[0]*rot_matrix->m[0] + rot_matrix->m[1]*rot_matrix->m[1]);
-        rot_matrix->m[0] /= mm;
-        rot_matrix->m[1] /= mm;
-        
-        rot_matrix->p[0] = rot_matrix->n[1] * rot_matrix->m[2] - rot_matrix->n[2] * rot_matrix->m[1];
-        rot_matrix->p[1] = rot_matrix->n[2] * rot_matrix->m[0] - rot_matrix->n[0] * rot_matrix->m[2];
-        rot_matrix->p[2] = rot_matrix->n[0] * rot_matrix->m[1] - rot_matrix->n[1] * rot_matrix->m[0];
-    }
-    
-    /* now we have an orthonormal rotation matrix -- we can rotate the states */
-    int k; double v[3];
-    for(k=0;k<3;k++) {v[k]=Riemann_vec->L.v[k];}
-    Riemann_vec->L.v[0] = v[0]*rot_matrix->n[0] + v[1]*rot_matrix->n[1] + v[2]*rot_matrix->n[2];
-    Riemann_vec->L.v[1] = v[0]*rot_matrix->m[0] + v[1]*rot_matrix->m[1] + v[2]*rot_matrix->m[2];
-    Riemann_vec->L.v[2] = v[0]*rot_matrix->p[0] + v[1]*rot_matrix->p[1] + v[2]*rot_matrix->p[2];
-    for(k=0;k<3;k++) {v[k]=Riemann_vec->R.v[k];}
-    Riemann_vec->R.v[0] = v[0]*rot_matrix->n[0] + v[1]*rot_matrix->n[1] + v[2]*rot_matrix->n[2];
-    Riemann_vec->R.v[1] = v[0]*rot_matrix->m[0] + v[1]*rot_matrix->m[1] + v[2]*rot_matrix->m[2];
-    Riemann_vec->R.v[2] = v[0]*rot_matrix->p[0] + v[1]*rot_matrix->p[1] + v[2]*rot_matrix->p[2];
-#ifdef MAGNETIC
-    for(k=0;k<3;k++) {v[k]=Riemann_vec.L.B[k];}
-    Riemann_vec->L.B[0] = v[0]*rot_matrix->n[0] + v[1]*rot_matrix->n[1] + v[2]*rot_matrix->n[2];
-    Riemann_vec->L.B[1] = v[0]*rot_matrix->m[0] + v[1]*rot_matrix->m[1] + v[2]*rot_matrix->m[2];
-    Riemann_vec->L.B[2] = v[0]*rot_matrix->p[0] + v[1]*rot_matrix->p[1] + v[2]*rot_matrix->p[2];
-    for(k=0;k<3;k++) {v[k]=Riemann_vec.R.B[k];}
-    Riemann_vec->R.B[0] = v[0]*rot_matrix->n[0] + v[1]*rot_matrix->n[1] + v[2]*rot_matrix->n[2];
-    Riemann_vec->R.B[1] = v[0]*rot_matrix->m[0] + v[1]*rot_matrix->m[1] + v[2]*rot_matrix->m[2];
-    Riemann_vec->R.B[2] = v[0]*rot_matrix->p[0] + v[1]*rot_matrix->p[1] + v[2]*rot_matrix->p[2];
-#endif
-}
-void rotate_fluxes_back_to_lab(struct Riemann_outputs *Riemann_out, struct rotation_matrix rot_matrix)
-{
-    /* for an orthonormal rotation matrix A, we have A_transpose = A_inverse, so this is easy */
-    int k; double v[3];
-    for(k=0;k<3;k++) {v[k]=Riemann_out->Fluxes.v[k];}
-    Riemann_out->Fluxes.v[0] = v[0]*rot_matrix.n[0] + v[1]*rot_matrix.m[0] + v[2]*rot_matrix.p[0];
-    Riemann_out->Fluxes.v[1] = v[0]*rot_matrix.n[1] + v[1]*rot_matrix.m[1] + v[2]*rot_matrix.p[1];
-    Riemann_out->Fluxes.v[2] = v[0]*rot_matrix.n[2] + v[1]*rot_matrix.m[2] + v[2]*rot_matrix.p[2];
-#ifdef MAGNETIC
-    for(k=0;k<3;k++) {v[k]=Riemann_out->Fluxes.B[k];}
-    Riemann_out->Fluxes.B[0] = v[0]*rot_matrix.n[0] + v[1]*rot_matrix.m[0] + v[2]*rot_matrix.p[0];
-    Riemann_out->Fluxes.B[1] = v[0]*rot_matrix.n[1] + v[1]*rot_matrix.m[1] + v[2]*rot_matrix.p[1];
-    Riemann_out->Fluxes.B[2] = v[0]*rot_matrix.n[2] + v[1]*rot_matrix.m[2] + v[2]*rot_matrix.p[2];
-#endif
-}
-
 
 
 
 /* -------------------------------------------------------------------------------------------------------------- */
 /* the HLLC Riemann solver: try this first - it's approximate, but fast, and accurate for our purposes */
+/*  (wrapper for sub-routines to evaluate hydro reimann problem) */
 /* -------------------------------------------------------------------------------------------------------------- */
 /* HLLC: hydro (no MHD) */
 void HLLC_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
@@ -368,8 +317,8 @@ void HLLC_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
 
 
 
-
-
+/*  Rusanov flux: generally not used, because it's too diffusive. But here if we need it. 
+        (this implementation written by P. Hopkins) */
 void Riemann_solver_Rusanov(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
                             double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R)
 {
@@ -404,6 +353,7 @@ void Riemann_solver_Rusanov(struct Input_vec_Riemann Riemann_vec, struct Riemann
 /* here we obtain wave-speed and pressure estimates for the 'star' region for the HLLC solver or the 
     Lagrangian (contact-wave) method; note we keep trying several methods here in the hopes of eventually getting a
     valid (positive-pressure) solution */
+/*  (written by P. Hopkins) */
 void get_wavespeeds_and_pressure_star(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
                                       double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R,
                                       double *S_L_out, double *S_R_out)
@@ -467,6 +417,7 @@ void get_wavespeeds_and_pressure_star(struct Input_vec_Riemann Riemann_vec, stru
 
 /* --------------------------------------------------------------------------------- */
 /* ... fluxes from HLLC four-wave sampling ... */
+/*  (written by P. Hopkins) */
 /* --------------------------------------------------------------------------------- */
 void HLLC_fluxes(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
                  double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R, double S_L, double S_R)
@@ -536,6 +487,7 @@ void HLLC_fluxes(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *R
 
 /* --------------------------------------------------------------------------------- */
 /*  exact Riemann solver here -- deals with all the problematic states! */
+/*  (written by V. Springel for AREPO; as are the extensions to the exact solver below) */
 /* --------------------------------------------------------------------------------- */
 void Riemann_solver_exact(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
                        double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R)
@@ -582,6 +534,7 @@ void Riemann_solver_exact(struct Input_vec_Riemann Riemann_vec, struct Riemann_o
 /* --------------------------------------------------------------------------------- */
 /* part of exact Riemann solver: */
 /* left state is a vacuum, but right state is not: sample the fan appropriately */
+/*  (written by V. Springel for AREPO) */
 /* --------------------------------------------------------------------------------- */
 void sample_reimann_vaccum_left(double S, struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out,
                                 double n_unit[3], double v_line_L, double v_line_R, double cs_L, double cs_R)
@@ -629,6 +582,7 @@ void sample_reimann_vaccum_left(double S, struct Input_vec_Riemann Riemann_vec, 
 /* --------------------------------------------------------------------------------- */
 /* Part of exact Riemann solver: */
 /* right state is a vacuum, but left state is not: sample the fan appropriately */
+/*  (written by V. Springel for AREPO) */
 /* --------------------------------------------------------------------------------- */
 void sample_reimann_vaccum_right(double S, struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out,
                                 double n_unit[3], double v_line_L, double v_line_R, double cs_L, double cs_R)
@@ -678,6 +632,7 @@ void sample_reimann_vaccum_right(double S, struct Input_vec_Riemann Riemann_vec,
 /* Part of exact Riemann solver: */
 /* solution generations a vacuum inside the fan: sample the vacuum appropriately */
 /*   (note that these solutions are identical to the left/right solutions above) */
+/*  (written by V. Springel for AREPO) */
 /* --------------------------------------------------------------------------------- */
 void sample_reimann_vaccum_internal(double S, struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out,
                                     double n_unit[3], double v_line_L, double v_line_R, double cs_L, double cs_R)
@@ -716,6 +671,7 @@ void sample_reimann_vaccum_internal(double S, struct Input_vec_Riemann Riemann_v
 /* --------------------------------------------------------------------------------- */
 /* Part of exact Riemann solver: */
 /*  This is the "normal" Riemann fan, with no vacuum on L or R state! */
+/*  (written by V. Springel for AREPO) */
 /* --------------------------------------------------------------------------------- */
 void sample_reimann_standard(double S, struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out,
                              double n_unit[3], double v_line_L, double v_line_R, double cs_L, double cs_R)
@@ -878,6 +834,8 @@ void sample_reimann_standard(double S, struct Input_vec_Riemann Riemann_vec, str
 /* the exact (iterative) Riemann solver: this is slower, but exact. 
  however there is a small chance of the iteration diverging,
  so we still cannot completely gaurantee a valid solution */
+/*  (written by P. Hopkins; however this is adapted from the iterative solver in 
+        ATHENA by J. Stone) */
 /* --------------------------------------------------------------------------------- */
 int iterative_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double v_line_L, double v_line_R, double cs_L, double cs_R)
 {
@@ -947,6 +905,7 @@ int iterative_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Rieman
 
 /* --------------------------------------------------------------------------------- */
 /* get a pressure guess to begin iteration, for the iterative exact Riemann solver(s) */
+/*   (written by V. Springel for AREPO, with minor modifications) */
 /* --------------------------------------------------------------------------------- */
 double guess_for_pressure(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double v_line_L, double v_line_R, double cs_L, double cs_R)
 {
@@ -988,6 +947,7 @@ double guess_for_pressure(struct Input_vec_Riemann Riemann_vec, struct Riemann_o
 /* -------------------------------------------------------------------------------------------------------------- */
 /*  Part of exact Riemann solver: */
  /*    take the face state we have calculated from the exact Riemann solution and get the corresponding fluxes */
+/*   (written by V. Springel for AREPO, with minor modifications) */
  /* -------------------------------------------------------------------------------------------------------------- */
 void convert_face_to_flux(struct Riemann_outputs *Riemann_out, double n_unit[3])
 {
@@ -1021,15 +981,18 @@ void convert_face_to_flux(struct Riemann_outputs *Riemann_out, double n_unit[3])
 #ifdef MAGNETIC
 /* -------------------------------------------------------------------------------------------------------------- */
 /* simple routine to correct the reconstructed B-field to mean value (required by div.B criterion across shocks) */
+/*   (written by P. Hopkins) */
 /* -------------------------------------------------------------------------------------------------------------- */
 void correct_face_normal_B_field(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out)
 {
     /* compute the fast magnetosonic wave speeds */
-    double tmp,c_eff;
-    tmp = GAMMA*Riemann_vec.L.p + B2_L;
-    Riemann_out->cfast_L = sqrt(0.5*(tmp + sqrt(tmp*tmp - 4*GAMMA*Riemann_vec.L.p*Bx2)) / Riemann_vec.L.rho);
-    tmp = GAMMA*Riemann_vec.R.p + B2_R;
-    Riemann_out->cfast_R = sqrt(0.5*(tmp + sqrt(tmp*tmp - 4*GAMMA*Riemann_vec.R.p*Bx2)) / Riemann_vec.R.rho);
+    double cs2rho,tmp,c_eff;
+    cs2rho = Riemann_vec.L.cs*Riemann_vec.L.cs * Riemann_vec.L.rho;
+    tmp = cs2rho + B2_L;
+    Riemann_out->cfast_L = sqrt(0.5*(tmp + sqrt(tmp*tmp - 4*cs2rho*Bx2)) / Riemann_vec.L.rho);
+    cs2rho = Riemann_vec.R.cs*Riemann_vec.R.cs * Riemann_vec.R.rho;
+    tmp = cs2rho + B2_R;
+    Riemann_out->cfast_R = sqrt(0.5*(tmp + sqrt(tmp*tmp - 4*cs2rho*Bx2)) / Riemann_vec.R.rho);
     c_eff = DMAX(Riemann_out->cfast_L,Riemann_out->cfast_R);
     
     Riemann_out->B_normal_corrected = 0.5*((Riemann_vec.L.B[0]+Riemann_vec.R.B[0]) -
@@ -1044,6 +1007,7 @@ void correct_face_normal_B_field(struct Input_vec_Riemann Riemann_vec, struct Ri
 
 /* -------------------------------------------------------------------------------------------------------------- */
 /* the MHD Riemann solvers: includes HLLD, HLL, and Lax_Friedrich, which it will try in that order */
+/*   (written by P. Hopkins) */
 /* -------------------------------------------------------------------------------------------------------------- */
 /* HLLD: (MHD) */
 void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out)
@@ -1085,7 +1049,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
         {
             /* v_frame <= S_M : we're in the left fan */
             tmp = Riemann_vec.L.v[0]*Riemann_vec.L.v[0]+Riemann_vec.L.v[1]*Riemann_vec.L.v[1]+Riemann_vec.L.v[2]*Riemann_vec.L.v[2]
-            e_L = Riemann_vec.L.p/GAMMA_MINUS1 + 0.5*B2_L + 0.5*Riemann_vec.L.rho*tmp;
+            e_L = Riemann_vec.L.u*Riemann_vec.L.rho + 0.5*B2_L + 0.5*Riemann_vec.L.rho*tmp;
             vdotB_L = Riemann_vec.L.v[0]*Riemann_vec.L.B[0]+Riemann_vec.L.v[1]*Riemann_vec.L.B[1]+Riemann_vec.L.v[2]*Riemann_vec.L.B[2];
             Riemann_out->Fluxes.rho = Riemann_vec.L.rho * vxL;
             Riemann_out->Fluxes.p = (e_L + PT_L) * vxL - vdotB_L * Bx;
@@ -1199,7 +1163,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
         } else {
             /* v_frame > S_M : we're in the right fan */
             tmp = Riemann_vec.R.v[0]*Riemann_vec.R.v[0]+Riemann_vec.R.v[1]*Riemann_vec.R.v[1]+Riemann_vec.R.v[2]*Riemann_vec.R.v[2]
-            e_R = Riemann_vec.R.p/GAMMA_MINUS1 + 0.5*B2_R + 0.5*Riemann_vec.R.rho*tmp;
+            e_R = Riemann_vec.R.u*Riemann_vec.R.rho + 0.5*B2_R + 0.5*Riemann_vec.R.rho*tmp;
             vdotB_R = Riemann_vec.R.v[0]*Riemann_vec.R.B[0]+Riemann_vec.R.v[1]*Riemann_vec.R.B[1]+Riemann_vec.R.v[2]*Riemann_vec.R.B[2];
             Riemann_out->Fluxes.rho = Riemann_vec.R.rho * vxR;
             Riemann_out->Fluxes.p = (e_R + PT_R) * vxR - vdotB_R * Bx;
@@ -1312,6 +1276,8 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
             }
         }
         /* alright, we've gotten successful HLLD fluxes! */
+        Riemann_out->S_M=S_M;
+        Riemann_out->P_M=P_M;
         return;
     } // if((P_M > 0)&&(!isnan(P_M))) //
     
@@ -1319,10 +1285,10 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     /* if we got this far, we failed to find a valid solution: instead try the HLL flux */
     /* first test whether the middle-state pressure is positive : to do so, we need to construct it */
     tmp = Riemann_vec.L.v[0]*Riemann_vec.L.v[0]+Riemann_vec.L.v[1]*Riemann_vec.L.v[1]+Riemann_vec.L.v[2]*Riemann_vec.L.v[2]
-    e_L = Riemann_vec.L.p/GAMMA_MINUS1 + 0.5*B2_L + 0.5*Riemann_vec.L.rho*tmp;
+    e_L = Riemann_vec.L.u*Riemann_vec.L.rho + 0.5*B2_L + 0.5*Riemann_vec.L.rho*tmp;
     vdotB_L = Riemann_vec.L.v[0]*Riemann_vec.L.B[0]+Riemann_vec.L.v[1]*Riemann_vec.L.B[1]+Riemann_vec.L.v[2]*Riemann_vec.L.B[2];
     tmp = Riemann_vec.R.v[0]*Riemann_vec.R.v[0]+Riemann_vec.R.v[1]*Riemann_vec.R.v[1]+Riemann_vec.R.v[2]*Riemann_vec.R.v[2]
-    e_R = Riemann_vec.R.p/GAMMA_MINUS1 + 0.5*B2_R + 0.5*Riemann_vec.R.rho*tmp;
+    e_R = Riemann_vec.R.u*Riemann_vec.R.rho + 0.5*B2_R + 0.5*Riemann_vec.R.rho*tmp;
     vdotB_R = Riemann_vec.R.v[0]*Riemann_vec.R.B[0]+Riemann_vec.R.v[1]*Riemann_vec.R.B[1]+Riemann_vec.R.v[2]*Riemann_vec.R.B[2];
     /* calculate the left and right state fluxes (needed for everything below) */
     U_s.rho = Riemann_vec.L.rho * vxL;
@@ -1364,7 +1330,9 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     /* ok NOW we can finally calculate the star-state pressure */
     P_M = U_ss.p;
     for(k=0;k<3;k++) {P_M -= 0.5*U_ss.v[k]*U_ss.v[k]/U_ss.rho + 0.5*U_ss.B[k]*U_ss.B[k];}
-    P_M *= GAMMA_MINUS1;
+    // P_M *= GAMMA_MINUS1; // this gamma is not actually DOING anything, other than adding a check for positivity;
+    //   so technically there should be the GAMMA_MINUS1 if we are considering an ideal gas, but we don't need to
+    //   include it and we won't because it will mess things up when we use a non-ideal EOS
     
     /* alright, do we have a valid (positive) pressure? if so, continue */
     if((P_M > 0)&&(!isnan(P_M)))
@@ -1443,6 +1411,8 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
             }
         }
         /* alright, we've gotten successful HLL fluxes! */
+        Riemann_out->S_M=S_M;
+        Riemann_out->P_M=P_M;
         return;
     } // if((P_M > 0)&&(!isnan(P_M))) //
     
@@ -1481,9 +1451,86 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     }
     S_M = S_R;
     P_M = 0.5*(Riemann_vec.R.p + Riemann_vec.L.p);
+    Riemann_out->S_M=S_M;
+    Riemann_out->P_M=P_M;
     return;
     
 } /* yay! we're done writing our HLLD solver! */
+
+
+
+
+
+
+
+/* -------------------------------------------------------------------------------------------------------------- */
+/*  obtain the rotation matrix to rotate into the frame, and do the rotation (as well as routine to rotate back)  */
+/*    (based on the code by V. Springel in AREPO; a nearly identical implementation was also developed by E. Gaburov
+ *      based on the Weighted-Particle MHD code)
+ /* -------------------------------------------------------------------------------------------------------------- */
+void rotate_states_to_face(struct Input_vec_Riemann *Riemann_vec, double n_unit[3], struct rotation_matrix *rot_matrix)
+{
+    rot_matrix->n[0] = n_unit[0];
+    rot_matrix->n[1] = n_unit[1];
+    rot_matrix->n[2] = n_unit[2];
+    /* now we can construct a basis orthonormal to this */
+    if((rot_matrix->n[0]==0)&&(rot_matrix->n[1]==0))
+    {
+        /* trap for the pathological case */
+        rot_matrix->m[0] = 1;
+        rot_matrix->m[1] = rot_matrix->m[2] = 0;
+        rot_matrix->p[1] = 1;
+        rot_matrix->p[0] = rot_matrix->p[2] = 0;
+    } else {
+        rot_matrix->m[0] = -rot_matrix->n[1];
+        rot_matrix->m[1] = rot_matrix->n[0];
+        rot_matrix->m[2] = 0;
+        double mm = sqrt(rot_matrix->m[0]*rot_matrix->m[0] + rot_matrix->m[1]*rot_matrix->m[1]);
+        rot_matrix->m[0] /= mm;
+        rot_matrix->m[1] /= mm;
+        
+        rot_matrix->p[0] = rot_matrix->n[1] * rot_matrix->m[2] - rot_matrix->n[2] * rot_matrix->m[1];
+        rot_matrix->p[1] = rot_matrix->n[2] * rot_matrix->m[0] - rot_matrix->n[0] * rot_matrix->m[2];
+        rot_matrix->p[2] = rot_matrix->n[0] * rot_matrix->m[1] - rot_matrix->n[1] * rot_matrix->m[0];
+    }
+    
+    /* now we have an orthonormal rotation matrix -- we can rotate the states */
+    int k; double v[3];
+    for(k=0;k<3;k++) {v[k]=Riemann_vec->L.v[k];}
+    Riemann_vec->L.v[0] = v[0]*rot_matrix->n[0] + v[1]*rot_matrix->n[1] + v[2]*rot_matrix->n[2];
+    Riemann_vec->L.v[1] = v[0]*rot_matrix->m[0] + v[1]*rot_matrix->m[1] + v[2]*rot_matrix->m[2];
+    Riemann_vec->L.v[2] = v[0]*rot_matrix->p[0] + v[1]*rot_matrix->p[1] + v[2]*rot_matrix->p[2];
+    for(k=0;k<3;k++) {v[k]=Riemann_vec->R.v[k];}
+    Riemann_vec->R.v[0] = v[0]*rot_matrix->n[0] + v[1]*rot_matrix->n[1] + v[2]*rot_matrix->n[2];
+    Riemann_vec->R.v[1] = v[0]*rot_matrix->m[0] + v[1]*rot_matrix->m[1] + v[2]*rot_matrix->m[2];
+    Riemann_vec->R.v[2] = v[0]*rot_matrix->p[0] + v[1]*rot_matrix->p[1] + v[2]*rot_matrix->p[2];
+#ifdef MAGNETIC
+    for(k=0;k<3;k++) {v[k]=Riemann_vec.L.B[k];}
+    Riemann_vec->L.B[0] = v[0]*rot_matrix->n[0] + v[1]*rot_matrix->n[1] + v[2]*rot_matrix->n[2];
+    Riemann_vec->L.B[1] = v[0]*rot_matrix->m[0] + v[1]*rot_matrix->m[1] + v[2]*rot_matrix->m[2];
+    Riemann_vec->L.B[2] = v[0]*rot_matrix->p[0] + v[1]*rot_matrix->p[1] + v[2]*rot_matrix->p[2];
+    for(k=0;k<3;k++) {v[k]=Riemann_vec.R.B[k];}
+    Riemann_vec->R.B[0] = v[0]*rot_matrix->n[0] + v[1]*rot_matrix->n[1] + v[2]*rot_matrix->n[2];
+    Riemann_vec->R.B[1] = v[0]*rot_matrix->m[0] + v[1]*rot_matrix->m[1] + v[2]*rot_matrix->m[2];
+    Riemann_vec->R.B[2] = v[0]*rot_matrix->p[0] + v[1]*rot_matrix->p[1] + v[2]*rot_matrix->p[2];
+#endif
+}
+void rotate_fluxes_back_to_lab(struct Riemann_outputs *Riemann_out, struct rotation_matrix rot_matrix)
+{
+    /* for an orthonormal rotation matrix A, we have A_transpose = A_inverse, so this is easy */
+    int k; double v[3];
+    for(k=0;k<3;k++) {v[k]=Riemann_out->Fluxes.v[k];}
+    Riemann_out->Fluxes.v[0] = v[0]*rot_matrix.n[0] + v[1]*rot_matrix.m[0] + v[2]*rot_matrix.p[0];
+    Riemann_out->Fluxes.v[1] = v[0]*rot_matrix.n[1] + v[1]*rot_matrix.m[1] + v[2]*rot_matrix.p[1];
+    Riemann_out->Fluxes.v[2] = v[0]*rot_matrix.n[2] + v[1]*rot_matrix.m[2] + v[2]*rot_matrix.p[2];
+#ifdef MAGNETIC
+    for(k=0;k<3;k++) {v[k]=Riemann_out->Fluxes.B[k];}
+    Riemann_out->Fluxes.B[0] = v[0]*rot_matrix.n[0] + v[1]*rot_matrix.m[0] + v[2]*rot_matrix.p[0];
+    Riemann_out->Fluxes.B[1] = v[0]*rot_matrix.n[1] + v[1]*rot_matrix.m[1] + v[2]*rot_matrix.p[1];
+    Riemann_out->Fluxes.B[2] = v[0]*rot_matrix.n[2] + v[1]*rot_matrix.m[2] + v[2]*rot_matrix.p[2];
+#endif
+}
+
 
 #endif // MAGNETIC //
 

@@ -8,6 +8,11 @@
 
 /* this module contains the self-contained sub-routines needed for
     grain-specific physics in proto-planetary/proto-stellar/planetary cases */
+/*
+ * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
+
+
 
 #ifdef GRAIN_FLUID
 

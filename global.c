@@ -14,6 +14,12 @@
  * actually used (e.g. momentum is not really used anywhere),
  * just the energies are written to a log-file every once in a while.
  */
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * somewhat by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
+
 void compute_global_quantities_of_system(void)
 {
   int i, j, n, dt_step;

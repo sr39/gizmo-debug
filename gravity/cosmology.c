@@ -7,6 +7,14 @@
 #include "../proto.h"
 
 
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO. The modifications
+ * mostly center on added functionality for new modules, changed variables for 
+ * cosmology, and consolidating the relevant functions into a single file.
+ */
+
 
 /* this function gets called regardless of the cosmology choices: 
     anything which modifies the growth history should live here. 

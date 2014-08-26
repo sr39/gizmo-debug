@@ -1,5 +1,8 @@
 /* --------------------------------------------------------------------------------- */
 /* ... turbulent diffusion (sub-grid) models ... */
+/*
+ * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
 /* --------------------------------------------------------------------------------- */
 {
     double diffusion_wt,diffusion_wt_dt,dv2_ij,diffusion_wt_dt_m,diffusion_m_min,diff_vi_dot_r,diffusion_du_ij;

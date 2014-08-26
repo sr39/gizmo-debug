@@ -7,6 +7,15 @@
 #include "allvars.h"
 #include "proto.h"
 
+/* Routines for the drift/predict step
+
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * substantially in detail (although the actual algorithm 
+ * structure remains essentially the same) 
+ * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
 
 void reconstruct_timebins(void)
 {
@@ -152,7 +161,7 @@ void drift_particle(int i, integertime time1)
                     SphP[i].HydroAccel[j]*All.cf_atime * dt_hydrokick; /* make sure v is in code units */
 #endif
             
-#if defined (VS_TURB) || defined (AB_TURB)
+#if defined(TURB_DRIVING)
             for(j = 0; j < 3; j++)
                 SphP[i].VelPred[j] += SphP[i].TurbAccel[j] * dt_gravkick;
 #endif

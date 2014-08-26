@@ -18,6 +18,9 @@
  *   gradients are calculated. All gradients now use the second-order accurate 
  *   moving-least-squares formulation, and are calculated here consistently.
  */
+/*
+ * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
 
 
 #ifdef OMP_NUM_THREADS
@@ -558,6 +561,11 @@ void hydro_gradient_calc(void)
               P[i].GradRho[k] = SphP[i].Gradients.Density[k];
 #endif
 
+#if defined(TURB_DRIVING) || defined(OUTPUT_VORTICITY)
+          SphP[i].Vorticity[0] = SphP[i].Gradients.Velocity[1][2] - SphP[i].Gradients.Velocity[2][1];
+          SphP[i].Vorticity[1] = SphP[i].Gradients.Velocity[2][0] - SphP[i].Gradients.Velocity[0][2];
+          SphP[i].Vorticity[2] = SphP[i].Gradients.Velocity[0][1] - SphP[i].Gradients.Velocity[1][0];
+#endif
           
 #ifdef TRICCO_RESISTIVITY_SWITCH
           double GradBMag=0.0;

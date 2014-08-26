@@ -25,6 +25,13 @@
  * neutrality, or full ionization.
  */
 
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * in part (adding/removing read items and changing variable units as necessary)
+ * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
+
 #if defined(SAVE_HSML_IN_IC_ORDER) || defined(SUBFIND_RESHUFFLE_CATALOGUE)
 static unsigned long FileNr;
 static long long *NumPartPerFile;

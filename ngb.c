@@ -19,7 +19,12 @@
  *  This file contains routines for neighbour finding.  We use the
  *  gravity-tree and a range-searching technique to find neighbours.
  */
-
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO (adding/consolidating 
+ * some of the search routines as needed for different fluids)
+ */
 
 
 #ifdef OMP_NUM_THREADS

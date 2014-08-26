@@ -22,12 +22,20 @@
  *  to their proper values.
  */
 
-
-
 /*! This function performs the initial set-up of the simulation. First, the
  *  parameterfile is set, then routines for setting units, reading
  *  ICs/restart-files are called, auxialiary memory is allocated, etc.
  */
+
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO. The modifications 
+ * mostly center on added functionality for new modules.
+ */
+
+
+
 void begrun(void)
 {
   struct global_data_all_processes all;
@@ -78,10 +86,6 @@ void begrun(void)
 #endif
 
   set_units();
-
-#ifdef SUB_TURB_DRIVING
-  sub_turb_read_table();
-#endif
 
 #ifdef COOLING
   All.Time = All.TimeBegin;
@@ -149,8 +153,8 @@ void begrun(void)
   network_workspace_init(&All.nd, &All.nw);
 #endif
 
-#if defined (VS_TURB) || defined (AB_TURB) || defined(TURB_DRIVING)
-  init_turb();
+#ifdef TURB_DRIVING
+    init_turb();
 #endif
 
 #ifdef SIDM
@@ -790,7 +794,7 @@ void open_outputfiles(void)
     }
 #endif
 
-#if defined (VS_TURB) || defined (AB_TURB)
+#ifdef TURB_DRIVING
   sprintf(buf, "%s%s", All.OutputDir, "turb.txt");
   if(!(FdTurb = fopen(buf, mode)))
     {
@@ -1204,13 +1208,6 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.MinGasHsmlFractional;
       id[nt++] = REAL;
 
-#if defined(VS_TURB) || defined (AB_TURB)
-      strcpy(tag[nt], "IsoSoundSpeed");
-      addr[nt] = &All.IsoSoundSpeed;
-      id[nt++] = REAL;
-#endif
-
-
       strcpy(tag[nt], "MaxHsml");
       addr[nt] = &All.MaxHsml;
       id[nt++] = REAL;
@@ -1250,12 +1247,6 @@ void read_parameter_file(char *fname)
       strcpy(tag[nt], "DesLinkNgb");
       addr[nt] = &All.DesLinkNgb;
       id[nt++] = INT;
-#endif
-
-#if (defined(AB_TURB) || defined(VS_TURB)) && defined(POWERSPEC_GRID)
-      strcpy(tag[nt], "TimeBetTurbSpectrum");
-      addr[nt] = &All.TimeBetTurbSpectrum;
-      id[nt++] = REAL;
 #endif
 
       strcpy(tag[nt], "MaxNumNgbDeviation");
@@ -1927,48 +1918,88 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 
-#if defined(AB_TURB) || defined(TURB_DRIVING)
-      strcpy(tag[nt], "ST_decay");
-      addr[nt] = &All.StDecay;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "ST_energy");
-      addr[nt] = &All.StEnergy;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "ST_DtFreq");
-      addr[nt] = &All.StDtFreq;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "ST_Kmin");
-      addr[nt] = &All.StKmin;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "ST_Kmax");
-      addr[nt] = &All.StKmax;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "ST_SolWeight");
-      addr[nt] = &All.StSolWeight;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "ST_AmplFac");
-      addr[nt] = &All.StAmplFac;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "ST_SpectForm");
-      addr[nt] = &All.StSpectForm;
-      id[nt++] = INT;
-#endif
-#ifdef AB_TURB
-      strcpy(tag[nt], "ST_Seed");
-      addr[nt] = &All.StSeed;
-      id[nt++] = REAL;
-#endif
 #ifdef TURB_DRIVING
-      strcpy(tag[nt], "ST_Seed");
-      addr[nt] = &All.StSeed;
-      id[nt++] = INT;
+        
+#if defined(POWERSPEC_GRID)
+        strcpy(tag[nt], "TimeBetTurbSpectrum"); // time (code) between evaluations of turb pwrspec
+        addr[nt] = &All.TimeBetTurbSpectrum;
+        id[nt++] = REAL;
+#endif
+        
+        strcpy(tag[nt], "IsoSoundSpeed");  // initializes gas sound speed in box to this value
+        addr[nt] = &All.IsoSoundSpeed;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "ST_decay"); // decay time for driving-mode phase correlations
+        addr[nt] = &All.StDecay;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "ST_energy"); // energy of driving-scale modes: sets norm of turb (?)
+        addr[nt] = &All.StEnergy;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "ST_DtFreq"); // time interval for driving updates (set by hand)
+        addr[nt] = &All.StDtFreq;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "ST_Kmin"); // minimum driving-k: should be ~2.*M_PI/All.BoxSize
+        addr[nt] = &All.StKmin;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "ST_Kmax"); // maximum driving-k: set to couple times Kmin or more if more cascade desired
+        addr[nt] = &All.StKmax;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "ST_SolWeight"); // fractional wt of solenoidal modes (wt*curl + (1-wt)*div)
+        addr[nt] = &All.StSolWeight;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "ST_AmplFac"); // multiplies turb amplitudes
+        addr[nt] = &All.StAmplFac;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "ST_SpectForm"); // driving pwr-spec: 0=Ek~const; 1=sharp-peak at kc; 2=Ek~k^(-5/3); 3=Ek~k^-2
+        addr[nt] = &All.StSpectForm;
+        id[nt++] = INT;
+        
+        strcpy(tag[nt], "ST_Seed"); // random number seed for modes
+        addr[nt] = &All.StSeed;
+        id[nt++] = REAL;
+        
+/* Andreas Bauer's paper on turbulence: 
+ // sub-sonic (Mach~0.3) test: //
+ ST_decay        1.
+ ST_energy       0.0002 (sigma=0.014)
+ ST_DtFreq       0.005
+ ST_Kmin         6.27
+ ST_Kmax         12.57
+ ST_SolWeight    1.
+ ST_AmplFac      1.
+ ST_Seed         42
+ ST_SpectForm    2
+
+ // trans-sonic (Mach~1.2/3.5) test: //
+ ST_decay        0.5
+ ST_energy       0.21 (sigma=0.21-3.0)
+ ST_DtFreq       0.005
+ ST_Kmin         6.27
+ ST_Kmax         12.57
+ ST_SolWeight    1.
+ ST_AmplFac      1.
+ ST_Seed         42
+ ST_SpectForm    2
+
+ // super-sonic (Mach~8.4) test: //
+ ST_decay        0.05
+ ST_energy       25.0 (sigma=12.247)
+ ST_DtFreq       0.005
+ ST_Kmin         6.27
+ ST_Kmax         18.85
+ ST_SolWeight    1.
+ ST_AmplFac      1.
+ ST_Seed         42
+ ST_SpectForm    1
+*/
 #endif
 
 #ifdef ADJ_BOX_POWERSPEC
@@ -2413,8 +2444,7 @@ void readjust_timebase(double TimeMax_old, double TimeMax_new)
       All.CR_Diffusion_Ti_begstep /= 2;
       All.CR_Diffusion_Ti_endstep /= 2;
 #endif
-
-#if defined(AB_TURB) || defined(TURB_DRIVING)
+#ifdef TURB_DRIVING
       StTPrev /= 2;
 #endif
 

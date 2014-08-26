@@ -12,6 +12,11 @@
 /*! \file potential.c
  *  \brief Computation of the gravitational potential of particles
  */
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * slightly by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
 
 #if !defined(EVALPOTENTIAL) && (defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUTPOTENTIAL))
 

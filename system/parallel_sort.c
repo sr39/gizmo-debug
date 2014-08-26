@@ -12,6 +12,10 @@
 #include "../allvars.h"
 #include "../proto.h"
 
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org).
+ */
 
 #define TRANSFER_SIZE_LIMIT  1000000000
 

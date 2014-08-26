@@ -9,6 +9,20 @@
 #include "allvars.h"
 #include "proto.h"
 
+/*
+ * This routine calculates the pre-factors and timesteps for cosmological 
+ *  simulations where the time-stepping is done in co-moving units and the 
+ *  time units are the scale factor. Basically the pre-factors that need to be 
+ *  combined and/or integrated are calculated here, to be combined with the 
+ *  appropriate time derivatives as calculated in code units elsewhere.
+ */
+
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * by Phil Hopkins (phopkins@caltech.edu) for GIZMO; the conventions for the 
+ * timestep units are different so this is revised here.
+ */
 
 static double logTimeBegin;
 static double logTimeMax;

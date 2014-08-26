@@ -1,3 +1,12 @@
+/* defines tag names for tracking the cpu time used by different parts of the code */
+
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO (new variables,
+ * and different naming conventions for some old variables)
+ */
+
 
 #define TAG_N             10      /*!< Various tags used for labelling MPI messages */ 
 #define TAG_HEADER        11

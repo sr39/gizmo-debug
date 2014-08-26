@@ -32,6 +32,15 @@ int old_MaxPart = 0, new_MaxPart;
  * If modus>0  the restart()-routine reads, 
  * if modus==0 it writes a restart file. 
  */
+
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * in part (adding/removing read/write items, allowing for different variables 
+ * to be changed or re-initialized on restars, and changing variable units as necessary)
+ * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
+
 void restart(int modus)
 {
   char buf[200], buf_bak[200], buf_mv[500];
@@ -202,8 +211,8 @@ void restart(int modus)
 	  byten(gsl_rng_state(random_generator), gsl_rng_size(random_generator), modus);
 	  byten(&SelRnd, sizeof(SelRnd), modus);
 
-#if defined(AB_TURB) || defined(TURB_DRIVING)
-      byten(gsl_rng_state(StRng), gsl_rng_size(StRng), modus);   
+#ifdef TURB_DRIVING
+      byten(gsl_rng_state(StRng), gsl_rng_size(StRng), modus);
  
 	  byten(&StNModes, sizeof(StNModes), modus);
 

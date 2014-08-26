@@ -9,6 +9,15 @@
 #include "../proto.h"
 #include "../kernel.h"
 
+/*!
+ *  routines for sink particles
+ */
+/*
+ * This file is largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ *   It was based on a similar file in GADGET3.
+ */
+
+
 void do_sinks(void)
 {
   int i, j, k, index, sink_index, iter, count, count_global, prev, num_acc, num_acc_glob, num_update,

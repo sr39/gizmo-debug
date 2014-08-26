@@ -31,6 +31,13 @@ extern pthread_mutex_t mutex_partnodedrift;
  *  corrects the smoothing length if needed.
  */
 
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * substantially (condensed, different criteria for smoothing lengths, 
+ * some optimizatins, and new variable/memory conventions added)
+ * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
 
 struct kernel_density
 {
@@ -106,7 +113,7 @@ static struct densdata_out
     int BH_TimeBinGasNeighbor;
 #endif
 
-#if defined(VS_TURB) || defined(AB_TURB) || defined(GRAIN_FLUID)
+#if defined(TURB_DRIVING) || defined(GRAIN_FLUID)
     MyLongDouble GasVel[3];
 #endif
 
@@ -180,7 +187,7 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
         ASSIGN_ADD(SphP[i].EgyWtDensity,   out->EgyRho,   mode);
 #endif
 
-#if defined(VS_TURB) || defined(AB_TURB)
+#if defined(TURB_DRIVING)
         for(k = 0; k < 3; k++)
             ASSIGN_ADD(SphP[i].SmoothedVel[k], out->GasVel[k], mode);
 #endif
@@ -320,6 +327,9 @@ void density(void)
 
   desnumngb = All.DesNumNgb;
   desnumngbdev = All.MaxNumNgbDeviation;
+    /* in the initial timestep and iteration, use a much more strict tolerance for the neighbor number */
+    if(All.Time==All.TimeBegin) {if(All.MaxNumNgbDeviation > 0.05) desnumngbdev=0.05;}
+    double desnumngbdev_0 = desnumngbdev;
 
   /* we will repeat the whole thing for those particles where we didn't find enough neighbours */
   do
@@ -600,10 +610,15 @@ void density(void)
         {
             if(density_isactive(i))
             {
-                PPPZ[i].DhsmlNgbFactor *= PPP[i].Hsml / (NUMDIMS * PPP[i].NumNgb);
-                P[i].Particle_DivVel /= PPP[i].NumNgb;
-                /* spherical volume of the Kernel (use this to normalize 'effective neighbor number') */
-                PPP[i].NumNgb *= NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS);
+                if(PPP[i].NumNgb > 0)
+                {
+                    PPPZ[i].DhsmlNgbFactor *= PPP[i].Hsml / (NUMDIMS * PPP[i].NumNgb);
+                    P[i].Particle_DivVel /= PPP[i].NumNgb;
+                    /* spherical volume of the Kernel (use this to normalize 'effective neighbor number') */
+                    PPP[i].NumNgb *= NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS);
+                } else {
+                    PPP[i].NumNgb = PPPZ[i].DhsmlNgbFactor = P[i].Particle_DivVel = 0;
+                }
                 
                 // inverse of SPH volume element (to satisfy constraint implicit in Lagrange multipliers)
                 if(PPPZ[i].DhsmlNgbFactor > -0.9)	/* note: this would be -1 if only a single particle at zero lag is found */
@@ -684,9 +699,9 @@ void density(void)
                         /* if we find ourselves with a sudden increase in condition number - check if we have a reasonable 
                             neighbor number for the previous iteration, and if so, use the new (larger) correction */
                         ncorr_ngb=1; cn=SphP[i].ConditionNumber; if(cn>c0) {ncorr_ngb=sqrt(1.0+(cn-c0)/((double)CONDITION_NUMBER_DANGER));} if(ncorr_ngb>2) ncorr_ngb=2;
-                        double dn_ngb = fabs(PPP[i].NumNgb-All.DesNumNgb*ncorr_ngb)/(All.MaxNumNgbDeviation*ncorr_ngb);
+                        double dn_ngb = fabs(PPP[i].NumNgb-All.DesNumNgb*ncorr_ngb)/(desnumngbdev_0*ncorr_ngb);
                         ncorr_ngb=1; cn=ConditionNumber; if(cn>c0) {ncorr_ngb=sqrt(1.0+(cn-c0)/((double)CONDITION_NUMBER_DANGER));} if(ncorr_ngb>2) ncorr_ngb=2;
-                        double dn_ngb_alt = fabs(PPP[i].NumNgb-All.DesNumNgb*ncorr_ngb)/(All.MaxNumNgbDeviation*ncorr_ngb);
+                        double dn_ngb_alt = fabs(PPP[i].NumNgb-All.DesNumNgb*ncorr_ngb)/(desnumngbdev_0*ncorr_ngb);
                         dn_ngb = DMIN(dn_ngb,dn_ngb_alt);
                         if(dn_ngb < 10.0) SphP[i].ConditionNumber = ConditionNumber;
                     }
@@ -694,7 +709,7 @@ void density(void)
                 }
                 
                 desnumngb = All.DesNumNgb * ncorr_ngb;
-                desnumngbdev = All.MaxNumNgbDeviation * ncorr_ngb;
+                desnumngbdev = desnumngbdev_0 * ncorr_ngb;
                 
 #ifdef BLACK_HOLES
                 if(P[i].Type == 5)
@@ -783,7 +798,12 @@ void density(void)
                     if(Right[i] > 0 && Left[i] > 0)
                     {
                         // geometric interpolation between right/left //
-                        PPP[i].Hsml *= exp(PPPZ[i].DhsmlNgbFactor * log( desnumngb / PPP[i].NumNgb ) / NUMDIMS);
+                        if(PPP[i].NumNgb > 1)
+                        {
+                            PPP[i].Hsml *= exp(PPPZ[i].DhsmlNgbFactor * log( desnumngb / PPP[i].NumNgb ) / NUMDIMS);
+                        } else {
+                            PPP[i].Hsml *= 2.0;
+                        }
                         if((PPP[i].Hsml<=Right[i])||(PPP[i].Hsml>=Left[i]))
                         {
                             if(PPP[i].Hsml>Right[i]) PPP[i].Hsml=Right[i];
@@ -925,17 +945,32 @@ void density(void)
                 {
 #ifdef HYDRO_SPH
 #ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
-                    SphP[i].EgyWtDensity /= SphP[i].InternalEnergyPred;
+                    if(SphP[i].InternalEnergyPred > 0)
+                    {
+                        SphP[i].EgyWtDensity /= SphP[i].InternalEnergyPred;
+                    } else {
+                        SphP[i].EgyWtDensity = 0;
+                    }
 #endif
                     /* need to divide by the sum of x_tilde=1, i.e. numden_ngb */
-                    double numden_ngb = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
-                    SphP[i].DhsmlHydroSumFactor *= PPP[i].Hsml / (NUMDIMS * numden_ngb);
-                    SphP[i].DhsmlHydroSumFactor *= -PPPZ[i].DhsmlNgbFactor; /* now this is ready to be called in hydro routine */
+                    if((PPP[i].Hsml > 0)&&(PPP[i].NumNgb > 0))
+                    {
+                        double numden_ngb = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
+                        SphP[i].DhsmlHydroSumFactor *= PPP[i].Hsml / (NUMDIMS * numden_ngb);
+                        SphP[i].DhsmlHydroSumFactor *= -PPPZ[i].DhsmlNgbFactor; /* now this is ready to be called in hydro routine */
+                    } else {
+                        SphP[i].DhsmlHydroSumFactor = 0;
+                    }
 #endif
                     
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
-                    double ndenNGB = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
-                    PPPZ[i].AGS_zeta *= 0.5 * P[i].Mass * PPP[i].Hsml / (NUMDIMS * ndenNGB) * PPPZ[i].DhsmlNgbFactor;
+                    if((PPP[i].Hsml > 0)&&(PPP[i].NumNgb > 0))
+                    {
+                        double ndenNGB = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
+                        PPPZ[i].AGS_zeta *= 0.5 * P[i].Mass * PPP[i].Hsml / (NUMDIMS * ndenNGB) * PPPZ[i].DhsmlNgbFactor;
+                    } else {
+                        PPPZ[i].AGS_zeta = 0;
+                    }
 #endif
                     
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
@@ -969,19 +1004,34 @@ void density(void)
 #endif
                     
                     
-#if defined(VS_TURB) || defined(AB_TURB)
-                    SphP[i].SmoothedVel[0] /= SphP[i].Density;
-                    SphP[i].SmoothedVel[1] /= SphP[i].Density;
-                    SphP[i].SmoothedVel[2] /= SphP[i].Density;
+#if defined(TURB_DRIVING)
+                    if(SphP[i].Density > 0)
+                    {
+                        SphP[i].SmoothedVel[0] /= SphP[i].Density;
+                        SphP[i].SmoothedVel[1] /= SphP[i].Density;
+                        SphP[i].SmoothedVel[2] /= SphP[i].Density;
+                    } else {
+                        SphP[i].SmoothedVel[0] = SphP[i].SmoothedVel[1] = SphP[i].SmoothedVel[2] = 0;
+                    }
 #endif
                     
 #if defined(MAGNETIC) && defined(HYDRO_SPH) && (defined(TRACEDIVB) || defined(DIVBCLEANING_DEDNER))
-                    SphP[i].divB *= 1 / SphP[i].Density; // add DhsmlNgbFactor per TP correction //
+                    if(SphP[i].Density > 0)
+                    {
+                        SphP[i].divB *= 1 / SphP[i].Density; // add DhsmlNgbFactor per TP correction //
+                    } else {
+                        SphP[i].divB = 0;
+                    }
 #endif
                 }
                 
 #ifndef HYDRO_SPH
-                SphP[i].Density = P[i].Mass * PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
+                if((PPP[i].Hsml > 0)&&(PPP[i].NumNgb > 0))
+                {
+                    SphP[i].Density = P[i].Mass * PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
+                } else {
+                    SphP[i].Density = 0;
+                }
 #endif
                 SphP[i].Pressure = get_pressure(i);		// should account for density independent pressure
 
@@ -1297,22 +1347,20 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
 {
     kernel->mj_dwk_r = P[j].Mass * kernel->dwk / kernel->r;
 
+
     if(local->Type != 0)
     {
         
 #if defined(GRAIN_FLUID)
         out->SmoothedEntr += FLT(kernel->mj_wk * SphP[j].InternalEnergy);
+        out->GasVel[0] += FLT(kernel->mj_wk * SphP[j].VelPred[0]);
+        out->GasVel[1] += FLT(kernel->mj_wk * SphP[j].VelPred[1]);
+        out->GasVel[2] += FLT(kernel->mj_wk * SphP[j].VelPred[2]);
 #endif
         
 #if defined(BLACK_HOLES)
         if(out->BH_TimeBinGasNeighbor > P[j].TimeBin)
             out->BH_TimeBinGasNeighbor = P[j].TimeBin;
-#endif
-        
-#if defined(VS_TURB) || defined(AB_TURB) || defined(GRAIN_FLUID)
-        out->GasVel[0] += FLT(kernel->mj_wk * SphP[j].VelPred[0]);
-        out->GasVel[1] += FLT(kernel->mj_wk * SphP[j].VelPred[1]);
-        out->GasVel[2] += FLT(kernel->mj_wk * SphP[j].VelPred[2]);
 #endif
         
 #if defined(BH_POPIII_SEEDS) || defined(GALSF_FB_LOCAL_UV_HEATING) || defined(GALSF_FB_RPWIND_FROMSTARS) || defined(BH_PHOTONMOMENTUM) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN)
@@ -1326,7 +1374,13 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
 #endif
         
     } else { /* local.Type == 0 */
-        
+
+#if defined(TURB_DRIVING)
+        out->GasVel[0] += FLT(kernel->mj_wk * SphP[j].VelPred[0]);
+        out->GasVel[1] += FLT(kernel->mj_wk * SphP[j].VelPred[1]);
+        out->GasVel[2] += FLT(kernel->mj_wk * SphP[j].VelPred[2]);
+#endif
+
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
         double wk = kernel->wk;
         out->NV_A[0][0] += (local->Accel[0] - All.cf_a2inv*P[j].GravAccel[0] - SphP[j].HydroAccel[0]) * kernel->dx * wk;

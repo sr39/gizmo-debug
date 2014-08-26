@@ -20,6 +20,9 @@
  *  the self-interaction probabilities and the velocity kicks due to the interactios.
  *  Originally written by Miguel Rocha, rocham@uci.edu. Oct 2010. Updated on 2014
  */
+/*
+ * This file was written by Miguel Rocha (merocha@ucsc.edu) for GIZMO
+ */
 
 /*! This function calculates the interaction probability between two particles.
  *  It checks if comoving integration is on and does the necesary change of

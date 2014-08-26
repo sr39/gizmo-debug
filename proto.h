@@ -13,6 +13,13 @@
 #include "power_spec/adj_box_powerspec_proto.h"
 #endif
 
+/* declarations of functions throughout the code */
+/*
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel (volker.springel@h-its.org). The code has been modified
+ * in part (adding/removing routines as necessary) 
+ * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ */
 
 #ifdef HAVE_HDF5
 #include <hdf5.h>
