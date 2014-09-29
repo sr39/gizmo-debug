@@ -230,7 +230,7 @@ void read_ic(char *fname)
     }
 
   for(i = 0; i < N_gas; i++)
-    SphP[i].InternalEnergy = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);
+    SphP[i].InternalEnergyPred = SphP[i].InternalEnergy = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);
 
   MPI_Barrier(MPI_COMM_WORLD);
 

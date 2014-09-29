@@ -283,6 +283,7 @@ void density(void)
   int save_NextParticle;
   long long n_exported = 0;
   int redo_particle;
+  int particle_set_to_minhsml_flag = 0;
 
 #ifdef COSMIC_RAYS
   int CRpop;
@@ -746,6 +747,23 @@ void density(void)
                     PPP[i].Hsml = All.MaxHsml;
                     redo_particle = 0;
                 }
+
+                particle_set_to_minhsml_flag = 0;
+                if((PPP[i].Hsml <= All.MinGasHsml) && (PPP[i].NumNgb > (desnumngb - desnumngbdev)))
+                {
+                    if(PPP[i].Hsml == All.MinGasHsml)
+                    {
+                        /* this means we've already done an iteration with the MinHsml value, so the 
+                            neighbor weights, etc, are not going to be wrong; thus we simply stop iterating */
+                        redo_particle = 0;
+                        particle_set_to_minhsml_flag = 0;
+                    } else {
+                        /* ok, the particle needs to be set to the minimum, and iterated one more time */
+                        PPP[i].Hsml = All.MinGasHsml;
+                        redo_particle = 1;
+                        particle_set_to_minhsml_flag = 1;
+                    }                   
+                }
                 
                 if((redo_particle==0)&&(P[i].Type == 0))
                 {
@@ -878,6 +896,9 @@ void density(void)
                     }
                     
                     if(PPP[i].Hsml < All.MinGasHsml)
+                        PPP[i].Hsml = All.MinGasHsml;
+                    
+                    if(particle_set_to_minhsml_flag==1)
                         PPP[i].Hsml = All.MinGasHsml;
                     
 #ifdef BLACK_HOLES
