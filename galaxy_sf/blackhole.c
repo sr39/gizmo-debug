@@ -1722,7 +1722,13 @@ int blackhole_evaluate_swallow(int target, int mode, int *nexport, int *nSend_lo
                         if(P[j].Type==0) v_kick=All.BAL_v_outflow; else v_kick=0.1*All.BAL_v_outflow;
                         accreted_mass += FLT(f_accreted*(1. - All.BlackHoleRadiativeEfficiency)*P[j].Mass);
 #ifdef BH_GRAVCAPTURE_SWALLOWS
+#ifdef BH_ALPHADISK_ACCRETION
+                        /* mass goes into the alpha disk, before going into the BH */
+                        accreted_BH_mass_alphadisk += FLT(f_accreted*P[j].Mass);
+#else
+                        /* mass goes directly to the BH, not just the parent particle */
                         accreted_BH_mass += FLT(f_accreted*(1. - All.BlackHoleRadiativeEfficiency)*P[j].Mass);
+#endif
 #endif // #ifdef BH_GRAVCAPTURE_SWALLOWS
                         for(k = 0; k < 3; k++)
                             accreted_momentum[k] += FLT(f_accreted*(1. - All.BlackHoleRadiativeEfficiency)*P[j].Mass * P[j].Vel[k]);

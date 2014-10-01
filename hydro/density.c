@@ -1180,6 +1180,29 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     out.DhsmlHydroSumFactor += -mass_eff * (NUMDIMS * kernel.hinv * kernel.wk + u * kernel.dwk);
 #endif
                     
+                    /*
+#ifndef HYDRO_SPH
+                    // PFH: testing more accurate quadrature rules for our meshless methods here //
+#ifdef ONEDIM
+                    wt = SphP[j].Hsml;
+#endif
+#ifdef TWODIM
+                    wt = SphP[j].Hsml * SphP[j].Hsml;
+#endif
+#ifdef THREEDIM
+                    wt = SphP[j].Hsml * SphP[j].Hsml * SphP[j].Hsml;
+#endif
+                    if(kernel.r < SphP[j].Hsml)
+                    {
+                        kernel_main(kernel.r/SphP[j].Hsml, 1, 1, &wk, &wk, -1);
+                        wk *= wt * kernel.hinv3 / kernel.wk;
+                        out.VolumeCorrectionFactor += wk;
+                    }
+                    out.VolumeCorrectionFactorWeights += wt;
+#endif
+                    */
+                     
+                    
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
                     out.AGS_zeta += mass_j * kernel_gravity(u, kernel.hinv, kernel.hinv3, 0);
 #endif
