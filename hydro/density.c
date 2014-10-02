@@ -1183,18 +1183,17 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     /*
 #ifndef HYDRO_SPH
                     // PFH: testing more accurate quadrature rules for our meshless methods here //
+                    double wt = 0;
+                    wt = PPP[j].Hsml * PPP[j].Hsml * PPP[j].Hsml;
 #ifdef ONEDIM
-                    wt = SphP[j].Hsml;
+                    wt = PPP[j].Hsml;
 #endif
-#ifdef TWODIM
-                    wt = SphP[j].Hsml * SphP[j].Hsml;
+#ifdef TWODIMS
+                    wt = PPP[j].Hsml * PPP[j].Hsml;
 #endif
-#ifdef THREEDIM
-                    wt = SphP[j].Hsml * SphP[j].Hsml * SphP[j].Hsml;
-#endif
-                    if(kernel.r < SphP[j].Hsml)
+                    if(kernel.r < PPP[j].Hsml)
                     {
-                        kernel_main(kernel.r/SphP[j].Hsml, 1, 1, &wk, &wk, -1);
+                        kernel_main(kernel.r/PPP[j].Hsml, 1, 1, &wk, &wk, -1);
                         wk *= wt * kernel.hinv3 / kernel.wk;
                         out.VolumeCorrectionFactor += wk;
                     }

@@ -587,7 +587,8 @@ void sample_reimann_vaccum_left(double S, struct Input_vec_Riemann Riemann_vec, 
 void sample_reimann_vaccum_right(double S, struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out,
                                 double n_unit[3], double v_line_L, double v_line_R, double cs_L, double cs_R)
 {
-    double S_L = v_line_L - GAMMA_G4 * cs_L;
+    //double S_L = v_line_L - GAMMA_G4 * cs_L;
+    double S_L = v_line_L + GAMMA_G4 * cs_L; // above line was a sign error, caught by Bert Vandenbroucke
 #ifndef HYDRO_MESHLESS_FINITE_VOLUME
     /* in this code mode, we are -always- moving with the contact discontinuity so density flux = 0;
      this constrains where we reside in the solution fan */
@@ -1463,11 +1464,11 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
 
 
 
-/* -------------------------------------------------------------------------------------------------------------- */
-/*  obtain the rotation matrix to rotate into the frame, and do the rotation (as well as routine to rotate back)  */
-/*    (based on the code by V. Springel in AREPO; a nearly identical implementation was also developed by E. Gaburov
+/* --------------------------------------------------------------------------------------------------------------
+ *  obtain the rotation matrix to rotate into the frame, and do the rotation (as well as routine to rotate back)
+ *    (based on the code by V. Springel in AREPO; a nearly identical implementation was also developed by E. Gaburov
  *      based on the Weighted-Particle MHD code)
- /* -------------------------------------------------------------------------------------------------------------- */
+ * -------------------------------------------------------------------------------------------------------------- */
 void rotate_states_to_face(struct Input_vec_Riemann *Riemann_vec, double n_unit[3], struct rotation_matrix *rot_matrix)
 {
     rot_matrix->n[0] = n_unit[0];

@@ -7,7 +7,7 @@
 #include "allvars.h"
 #include "proto.h"
 
-/* Routines for the drift/predict step
+/* Routines for the drift/predict step */
 
 /*
  * This file was originally part of the GADGET3 code developed by
