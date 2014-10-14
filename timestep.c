@@ -475,6 +475,8 @@ integertime get_timestep(int p,		/*!< particle index */
         } else {
             dt_stellar_evol = star_age/10.;
         }
+        dt_stellar_evol /= ((1.0e4 + P[i].Mass * (UnitMass_in_g/1.989e33)) / 1.0e4); // multiply by inverse particle mass, since goal is to prevent too much energy in one time //
+        if(dt_stellar_evol < 1.e-7) {dt_stellar_evol = 1.e-7;}
         dt_stellar_evol /= (0.001*All.UnitTime_in_Megayears/All.HubbleParam); // convert to code units //
         if(dt_stellar_evol>0)
             if(dt_stellar_evol<dt)

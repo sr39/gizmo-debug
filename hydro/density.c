@@ -1182,7 +1182,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     
                     /*
 #ifndef HYDRO_SPH
-                    // PFH: testing more accurate quadrature rules for our meshless methods here //
+                    // PFH: experimenting with some quadrature rules for our meshless methods here //
                     double wt = 0;
                     wt = PPP[j].Hsml * PPP[j].Hsml * PPP[j].Hsml;
 #ifdef ONEDIM
