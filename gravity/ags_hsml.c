@@ -744,7 +744,7 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
                         kernel.dvx = local.Vel[0] - SphP[j].VelPred[0];
                         kernel.dvy = local.Vel[1] - SphP[j].VelPred[1];
                         kernel.dvz = local.Vel[2] - SphP[j].VelPred[2];
-                        out.Particle_DivVel += kernel.dwk * (kernel.dx * kernel.dvx + kernel.dy * kernel.dvy + kernel.dz * kernel.dvz) / kernel.r;
+                        out.Particle_DivVel -= kernel.dwk * (kernel.dx * kernel.dvx + kernel.dy * kernel.dvy + kernel.dz * kernel.dvz) / kernel.r;
                         /* this is the (not especially accurate) SPH div-v estimator: however we only need a crude
                          approximation to use in drift steps (consistency here does not affect convergence), so its fast and ok */
                     }

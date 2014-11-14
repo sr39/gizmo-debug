@@ -428,11 +428,8 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
     case IO_BFLD:		/* Magnetic field */
 #ifdef MAGNETIC
       for(n = 0; n < pc; n++)
-	for(k = 0; k < 3; k++)
-	  SphP[offset + n].BPred[k] = *fp++;
-#ifdef TRACEDIVB
+        for(k = 0; k < 3; k++) {SphP[offset + n].BPred[k] = *fp++;}
       SphP[offset + n].divB = 0;
-#endif
 #ifdef DIVBCLEANING_DEDNER
       SphP[offset + n].Phi = 0;
       SphP[offset + n].PhiPred = 0;

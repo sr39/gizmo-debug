@@ -120,7 +120,7 @@ void do_sinks(void)
 	      sink_send[index].pos[j] = P[NumPart - NumSinks + i].Pos[j];
 	      sink_send[index].vel[j] = P[NumPart - NumSinks + i].Vel[j];
 #ifdef MAGNETIC
-	      sink_send[index].bfld[j] = SphP[NumPart - NumSinks + i].BPred[j];
+          sink_send[index].bfld[j] = Get_Particle_BField(NumPart - NumSinks + i,j);
 #endif
 	    }
 
@@ -506,7 +506,7 @@ void do_sinks(void)
 		      sink_send[index].pos[j] = P[i].Pos[j];
 		      sink_send[index].vel[j] = P[i].Vel[j];
 #ifdef MAGNETIC
-		      sink_send[index].bfld[j] = SphP[i].BPred[j];
+              sink_send[index].bfld[j] = Get_Particle_BField(i,j);
 #endif
 		    }
 

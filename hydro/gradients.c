@@ -116,9 +116,9 @@ static inline void particle2in_addSPH(struct addSPHdata_in *in, int i)
         in->GQuant.Velocity[k] = SphP[i].VelPred[k];
 #ifdef MAGNETIC
     for(k = 0; k < 3; k++)
-        in->GQuant.B[k] = SphP[i].BPred[k];
+        in->GQuant.B[k] = Get_Particle_BField(i,k);
 #ifdef DIVBCLEANING_DEDNER
-    in->GQuant.Phi = SphP[i].PhiPred;
+    in->GQuant.Phi = Get_Particle_PhiField(i);
 #endif
 #endif
 #ifdef RADTRANSFER_FLUXLIMITER
@@ -533,7 +533,6 @@ void hydro_gradient_calc(void)
                   SphP[i].Gradients.SoundSpeed[k1] = SphP[i].NV_T[k1][0]*v_tmp[0] + SphP[i].NV_T[k1][1]*v_tmp[1] + SphP[i].NV_T[k1][2]*v_tmp[2];
 #endif
 #ifdef MAGNETIC
-              /* use the magnitude of the B-field gradients relative to smoothing length to calculate artificial resistivity */
               for(k2=0;k2<3;k2++)
               {
                   for(k1=0;k1<3;k1++)
@@ -568,6 +567,7 @@ void hydro_gradient_calc(void)
 #endif
           
 #ifdef TRICCO_RESISTIVITY_SWITCH
+          /* use the magnitude of the B-field gradients relative to smoothing length to calculate artificial resistivity */
           double GradBMag=0.0;
           double BMag=0.0;
           for(k=0;k<3;k++)
@@ -576,11 +576,11 @@ void hydro_gradient_calc(void)
               {
                   GradBMag += SphP[i].Gradients.B[k][j]*SphP[i].Gradients.B[k][j];
               }
-              BMag += SphP[i].BPred[k]*SphP[i].BPred[k];
+              BMag += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);
           }
-          GradBMag = sqrt(GradBMag);
-          SphP[i].Balpha = (KERNEL_CORE_SIZE * PPP[i].Hsml) * sqrt(GradBMag/BMag);
+          SphP[i].Balpha = (KERNEL_CORE_SIZE * PPP[i].Hsml) * sqrt(GradBMag/(BMag+1.0e-33));
           SphP[i].Balpha = DMIN(SphP[i].Balpha, All.ArtMagDispConst);
+          SphP[i].Balpha = DMAX(SphP[i].Balpha, 0.05);
 #endif
           
 
@@ -671,8 +671,15 @@ void hydro_gradient_calc(void)
           
           
           /* finally, we need to apply a sensible slope limiter to the gradients, to prevent overshooting */
-          double a_limiter = 0.25; if(SphP[i].ConditionNumber>100) a_limiter=DMIN(0.5, 0.25 + 0.25 * (SphP[i].ConditionNumber-100)/100);
+#ifdef MAGNETIC
           /* fraction of H at which maximum reconstruction is allowed (=0.5 for 'standard') */
+          double a_limiter = 0.5;
+#else
+          /* fraction of H at which maximum reconstruction is allowed (=0.5 for 'standard'); for pure hydro we can 
+                be a little more aggresive and the equations are still stable (but this is as far as you want to push it) */
+          double a_limiter = 0.25; if(SphP[i].ConditionNumber>100) a_limiter=DMIN(0.5, 0.25 + 0.25 * (SphP[i].ConditionNumber-100)/100);
+#endif
+          
           double d_norm, d_abs, d_tmp[3], h0 = 1 / (a_limiter * PPP[i].Hsml);
           
           d_abs=0; for(k=0;k<3;k++) {d_tmp[k]=SphP[i].Gradients.Density[k]; d_abs+=d_tmp[k]*d_tmp[k];}
@@ -704,6 +711,9 @@ void hydro_gradient_calc(void)
           }
 #endif
           
+#ifdef MAGNETIC
+          h0 = 1 / (1.0 * PPP[i].Hsml);
+#endif
           for(k1=0;k1<3;k1++)
           {
               d_abs=0; for(k=0;k<3;k++) {d_tmp[k]=SphP[i].Gradients.Velocity[k1][k]; d_abs+=d_tmp[k]*d_tmp[k];}
@@ -714,6 +724,7 @@ void hydro_gradient_calc(void)
               }
           }
 #ifdef MAGNETIC
+          h0 = 1 / (a_limiter * PPP[i].Hsml);
           for(k1=0;k1<3;k1++)
           {
               d_abs=0; for(k=0;k<3;k++) {d_tmp[k]=SphP[i].Gradients.B[k1][k]; d_abs+=d_tmp[k]*d_tmp[k];}
@@ -850,9 +861,9 @@ int addSPH_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
 #ifdef MAGNETIC
                     double dB[3];
                     for(k=0;k<3;k++)
-                        dB[k] = SphP[j].BPred[k] - local.GQuant.B[k];
+                        dB[k] = Get_Particle_BField(j,k) - local.GQuant.B[k];
 #ifdef DIVBCLEANING_DEDNER
-                    double dphi = SphP[j].PhiPred - local.GQuant.Phi;
+                    double dphi = Get_Particle_PhiField(j) - local.GQuant.Phi;
 #endif
 #endif
 #ifdef RADTRANSFER_FLUXLIMITER

@@ -120,11 +120,7 @@ ViscosityAMax       2.00    % maximum viscosity in shocks (>1)
 TurbDiffusionCoefficient    1.0     % Normalizes diffusion rates, should be ~1 
 
 %---- Magneto-Hydrodynamics Parameters (MAGNETIC on)
-%--- Dedner 2002 div-cleaning parameters 
-DivBcleaningParabolicSigma      1.0     % (3D~0.7-1.0,2D~0.2-0.3) 
-DivBcleaningHyperbolicSigma     1.0     % (~1) 
-DivBcleaningQ                   0.5     % (~0.5-1)
-%--- Initial B-Field Strengths (BINISET on) (in Gauss) 
+%--- Initial B-Field Strengths (BINISET on) (in Gauss)
 BiniX   1.0e-8    % B_x, in Gauss
 BiniY   1.0e-8 
 BiniZ   1.0e-8 

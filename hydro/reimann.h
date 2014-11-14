@@ -35,9 +35,11 @@ struct Riemann_outputs
     MyDouble S_M;
 #ifdef MAGNETIC
     MyDouble B_normal_corrected;
-    MyDouble phi_normal_corrected;
     MyDouble cfast_L;
     MyDouble cfast_R;
+#ifdef DIVBCLEANING_DEDNER
+    MyDouble phi_normal_corrected;
+#endif
 #endif
     struct Conserved_var_Riemann Fluxes;
 };
@@ -83,7 +85,6 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
                              double distance_from_i[3], double distance_from_j[3], double *Q_L, double *Q_R, int order);
 #ifdef MAGNETIC
 void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out);
-void correct_face_normal_B_field(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out);
 void rotate_states_to_face(struct Input_vec_Riemann *Riemann_vec, double n_unit[3], struct rotation_matrix *rot_matrix);
 void rotate_fluxes_back_to_lab(struct Riemann_outputs *Riemann_out, struct rotation_matrix rot_matrix);
 #endif
@@ -107,44 +108,9 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
     /* check for the (also) trivial case of equal values on both sides */
     if(Q_i==Q_j) {*Q_L=*Q_R=Q_i; return;}
     
-    /* optional additional slope limiter for first-order reconstruction? */
-    
     /* first order reconstruction */
     *Q_R = Q_i + Grad_Q_i[0]*distance_from_i[0] + Grad_Q_i[1]*distance_from_i[1] + Grad_Q_i[2]*distance_from_i[2];
     *Q_L = Q_j + Grad_Q_j[0]*distance_from_j[0] + Grad_Q_j[1]*distance_from_j[1] + Grad_Q_j[2]*distance_from_j[2];
-    
-    /* we now check for monotonicity (enforce a local slope limiter) */
-    /*
-    double Qmed=0.5*(Q_i+Q_j);
-    if(Q_i<Q_j)
-    {
-        if(*Q_R<Q_i)  *Q_R=Q_i;
-        if(*Q_R>Qmed) *Q_R=Qmed;
-        if(*Q_L>Q_j)  *Q_L=Q_j;
-        if(*Q_L<Qmed) *Q_L=Qmed;
-    }
-    if(Q_i>Q_j)
-    {
-        if(*Q_R>Q_i)  *Q_R=Q_i;
-        if(*Q_R<Qmed) *Q_R=Qmed;
-        if(*Q_L<Q_j)  *Q_L=Q_j;
-        if(*Q_L>Qmed) *Q_L=Qmed;
-    }
-    */
-    /*
-    double qmax=DMAX(Q_i,Q_j);
-    double qmin=DMIN(Q_i,Q_j);
-    double fac = 2.0 * (qmax-qmin);
-    if(qmin>0) if(fac>0.75*qmin) fac=0.75*qmin;
-    if(qmax<0) if(fac>-0.75*qmax) fac=-0.75*qmax;
-    if((qmin==0)||(qmax==0)) fac=0;
-    qmax += fac;
-    qmin -= fac;
-    if(*Q_L<qmin) *Q_L=qmin;
-    if(*Q_R<qmin) *Q_R=qmin;
-    if(*Q_L>qmax) *Q_L=qmax;
-    if(*Q_R>qmax) *Q_R=qmax;
-    */
 
     /* here we do our slightly-fancy slope-limiting */
     double Qmin,Qmax,Qmed,Qmax_eff,Qmin_eff,fac,Qmed_max,Qmed_min;
@@ -180,9 +146,6 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
         if(*Q_L>Qmed_max) *Q_L=Qmed_max;
     }
     /* done! */
-    
-
-    
 }
 
 
@@ -263,9 +226,7 @@ void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs
 #ifdef MAGNETIC
     struct rotation_matrix rot_matrix;
     /* rotate the state to the face, so we can use the 1D riemann solver */
-    rotate_states_to_face(Riemann_vec, n_unit, rot_matrix);
-    /* now we need to correct the face-centered B-field and psi-field */
-    correct_face_normal_B_field(Riemann_vec, Riemann_out);
+    rotate_states_to_face(&Riemann_vec, n_unit, &rot_matrix);
     /* send it to our 1D MHD solver, which will try several solutions until it gets a positive pressure */
     HLLD_Riemann_solver(Riemann_vec, Riemann_out);
     /* rotate the returned fluxes back to the lab frame */
@@ -981,63 +942,79 @@ void convert_face_to_flux(struct Riemann_outputs *Riemann_out, double n_unit[3])
 
 #ifdef MAGNETIC
 /* -------------------------------------------------------------------------------------------------------------- */
-/* simple routine to correct the reconstructed B-field to mean value (required by div.B criterion across shocks) */
-/*   (written by P. Hopkins) */
-/* -------------------------------------------------------------------------------------------------------------- */
-void correct_face_normal_B_field(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out)
-{
-    /* compute the fast magnetosonic wave speeds */
-    double cs2rho,tmp,c_eff;
-    cs2rho = Riemann_vec.L.cs*Riemann_vec.L.cs * Riemann_vec.L.rho;
-    tmp = cs2rho + B2_L;
-    Riemann_out->cfast_L = sqrt(0.5*(tmp + sqrt(tmp*tmp - 4*cs2rho*Bx2)) / Riemann_vec.L.rho);
-    cs2rho = Riemann_vec.R.cs*Riemann_vec.R.cs * Riemann_vec.R.rho;
-    tmp = cs2rho + B2_R;
-    Riemann_out->cfast_R = sqrt(0.5*(tmp + sqrt(tmp*tmp - 4*cs2rho*Bx2)) / Riemann_vec.R.rho);
-    c_eff = DMAX(Riemann_out->cfast_L,Riemann_out->cfast_R);
-    
-    Riemann_out->B_normal_corrected = 0.5*((Riemann_vec.L.B[0]+Riemann_vec.R.B[0]) -
-                                           (Riemann_vec.R.phi-Riemann_vec.L.phi)/c_eff);
-    Riemann_out->phi_normal_corrected = 0.5*(c_eff*(Riemann_vec.L.B[0]-Riemann_vec.R.B[0]) +
-                                           (Riemann_vec.R.phi+Riemann_vec.L.phi));
-    /* and set the normal component of B to the corrected value */
-    Riemann_vec.L.B[0] = Riemann_out->B_normal_corrected;
-    Riemann_vec.R.B[0] = Riemann_out->B_normal_corrected;
-}
-
-
-/* -------------------------------------------------------------------------------------------------------------- */
 /* the MHD Riemann solvers: includes HLLD, HLL, and Lax_Friedrich, which it will try in that order */
 /*   (written by P. Hopkins) */
 /* -------------------------------------------------------------------------------------------------------------- */
 /* HLLD: (MHD) */
 void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out)
 {
-    double v_frame = 0; /* this will be used below! */
+    double v_frame = 0; /* frame velocity (in the direction of its normal): this will be used below! */
+    double SMALL_NUMBER = 1.0e-11;
+
+    /* -------------------------------------------------------------------------------------------------------------- *
+     * first, a simple routine to correct the reconstructed B-field to mean value
+     * (required by div.B criterion across shocks)
+     *   (written by P. Hopkins)
+     * -------------------------------------------------------------------------------------------------------------- */
+    /* compute the fast magnetosonic wave speeds */
+    int k;
+    double S_L,S_R,PT_L,PT_R,e_L,e_R,S_M,P_M,Bx,vxL,vxR,tmp2,
+            vdotB_L,vdotB_R,B2_L,B2_R,cs2rho_L,cs2rho_R,tmp,c_eff,Bx2,rho_wt_L,rho_wt_R;
+    struct Conserved_var_Riemann U_s,U_ss,V_s;
+    B2_L = Riemann_vec.L.B[0]*Riemann_vec.L.B[0]+Riemann_vec.L.B[1]*Riemann_vec.L.B[1]+Riemann_vec.L.B[2]*Riemann_vec.L.B[2];
+    B2_R = Riemann_vec.R.B[0]*Riemann_vec.R.B[0]+Riemann_vec.R.B[1]*Riemann_vec.R.B[1]+Riemann_vec.R.B[2]*Riemann_vec.R.B[2];
+
+    /* left fast speed (before B-interface correction) */
+    cs2rho_L = Riemann_vec.L.cs*Riemann_vec.L.cs * Riemann_vec.L.rho;
+    tmp = cs2rho_L + B2_L;
+    Bx2 = Riemann_vec.L.B[0]*Riemann_vec.L.B[0];
+    Riemann_out->cfast_L = sqrt(0.5*(tmp + sqrt(tmp*tmp - 4*cs2rho_L*Bx2)) / Riemann_vec.L.rho);
+    /* right fast speed (before B-interface correction) */
+    cs2rho_R = Riemann_vec.R.cs*Riemann_vec.R.cs * Riemann_vec.R.rho;
+    tmp = cs2rho_R + B2_R;
+    Bx2 = Riemann_vec.R.B[0]*Riemann_vec.R.B[0];
+    Riemann_out->cfast_R = sqrt(0.5*(tmp + sqrt(tmp*tmp - 4*cs2rho_R*Bx2)) / Riemann_vec.R.rho);
+    /* effective sound speed is the maximum of the two */
+    c_eff = DMAX(Riemann_out->cfast_L,Riemann_out->cfast_R);
+    
+    /* use this to compute the corrected face-centered fields (recall Bx = constant through all states) */
+    Bx = 0.5*(Riemann_vec.L.B[0]+Riemann_vec.R.B[0]);
+    Riemann_out->B_normal_corrected = Bx;
+#ifdef DIVBCLEANING_DEDNER
+    Riemann_out->B_normal_corrected += 0.5*(Riemann_vec.L.phi-Riemann_vec.R.phi)/c_eff;
+    Riemann_out->phi_normal_corrected = 0.5*(c_eff*(Riemann_vec.L.B[0]-Riemann_vec.R.B[0]) +
+                                             (Riemann_vec.R.phi+Riemann_vec.L.phi));
+#endif
+    /* and set the normal component of B to the corrected value */
+    Riemann_vec.L.B[0] = Bx;
+    Riemann_vec.R.B[0] = Bx;
+    Bx2 = Bx*Bx;
     
     /* define useful quantities and obtain the wavespeeds */
-    double S_L,S_R,PT_L,PT_R,e_L,e_R,S_M,P_M,B2_L,B2_R,tmp,Bx,Bx2,cf2_L,cf2_R,c_eff,vxL,vxR,tmp2;
-    struct Conserved_var_Riemann U_s,U_ss,V_s;
-    /* recall Bx = constant through all states */
-    Bx = Riemann_vec.L.B[0];
-    Bx2 = Bx*Bx;
     vxL = Riemann_vec.L.v[0];
     vxR = Riemann_vec.R.v[0];
-    /* compute the total pressure */
+    /* compute the total pressure (use the updated B-field values!) */
     B2_L = Riemann_vec.L.B[0]*Riemann_vec.L.B[0]+Riemann_vec.L.B[1]*Riemann_vec.L.B[1]+Riemann_vec.L.B[2]*Riemann_vec.L.B[2];
     B2_R = Riemann_vec.R.B[0]*Riemann_vec.R.B[0]+Riemann_vec.R.B[1]*Riemann_vec.R.B[1]+Riemann_vec.R.B[2]*Riemann_vec.R.B[2];
     PT_L = Riemann_vec.L.p + 0.5*B2_L;
     PT_R = Riemann_vec.R.p + 0.5*B2_R;
-    /* compute the fast magnetosonic wave speeds */
+
+    /* re-compute the fast-magnetosonic wave speeds with the corrected Bx value */
+    tmp = cs2rho_L + B2_L;
+    Riemann_out->cfast_L = sqrt(0.5*(tmp + sqrt(tmp*tmp - 4*cs2rho_L*Bx2)) / Riemann_vec.L.rho);
+    tmp = cs2rho_R + B2_R;
+    Riemann_out->cfast_R = sqrt(0.5*(tmp + sqrt(tmp*tmp - 4*cs2rho_R*Bx2)) / Riemann_vec.R.rho);
     c_eff = DMAX(Riemann_out->cfast_L, Riemann_out->cfast_R);
+
     /* now make guesses for S_L and S_R */
     S_L = DMIN(vxL,vxR) - c_eff;
     S_R = DMAX(vxL,vxR) + c_eff;
     /* ok, now we can approximate the contact wavespeed and pressure */
-    double rho_wt_L = Riemann_vec.L.rho*(S_L-vxL);
-    double rho_wt_R = Riemann_vec.R.rho*(S_R-vxR);
+    rho_wt_L = Riemann_vec.L.rho*(S_L-vxL);
+    rho_wt_R = Riemann_vec.R.rho*(S_R-vxR);
     S_M = ((PT_R-PT_L) + rho_wt_L*vxL - rho_wt_R*vxR) / (rho_wt_L - rho_wt_R);
-    P_M = (PT_L*rho_wt_R - PT_R*rho_wt_L + rho_wt_L*rho_wt_R*(vxR - vxL)) / (rho_wt_R - rho_wt_L);
+    P_M = PT_L + rho_wt_L*(S_M-vxL);
+    /* P_M = (PT_L*rho_wt_R - PT_R*rho_wt_L + rho_wt_L*rho_wt_R*(vxR - vxL)) / (rho_wt_R - rho_wt_L); */
     
     if((P_M > 0)&&(!isnan(P_M)))
     {
@@ -1049,7 +1026,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
         if(v_frame <= S_M)
         {
             /* v_frame <= S_M : we're in the left fan */
-            tmp = Riemann_vec.L.v[0]*Riemann_vec.L.v[0]+Riemann_vec.L.v[1]*Riemann_vec.L.v[1]+Riemann_vec.L.v[2]*Riemann_vec.L.v[2]
+            tmp = Riemann_vec.L.v[0]*Riemann_vec.L.v[0]+Riemann_vec.L.v[1]*Riemann_vec.L.v[1]+Riemann_vec.L.v[2]*Riemann_vec.L.v[2];
             e_L = Riemann_vec.L.u*Riemann_vec.L.rho + 0.5*B2_L + 0.5*Riemann_vec.L.rho*tmp;
             vdotB_L = Riemann_vec.L.v[0]*Riemann_vec.L.B[0]+Riemann_vec.L.v[1]*Riemann_vec.L.B[1]+Riemann_vec.L.v[2]*Riemann_vec.L.B[2];
             Riemann_out->Fluxes.rho = Riemann_vec.L.rho * vxL;
@@ -1071,7 +1048,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
                     for(k=0;k<3;k++)
                     {
                         Riemann_out->Fluxes.v[k] -= v_frame * Riemann_vec.L.rho * Riemann_vec.L.v[k];
-                        Riemann_out->Fluxes.B[k] -= v_frame * Riemann_vec.L.B[k];
+                        if(k>0) Riemann_out->Fluxes.B[k] -= v_frame * Riemann_vec.L.B[k];
                     }
                 }
             } else {
@@ -1079,15 +1056,23 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
                 double sqrt_rho_star = sqrt(U_s.rho);
                 double S_star = S_M - fabs(Bx) / sqrt_rho_star;
                 tmp = rho_wt_L * (S_L - S_M) - Bx2;
-                if(tmp != 0) {tmp = 1/tmp;}
                 U_s.v[0] = S_M;
-                tmp2 = tmp * (S_M - vxL) * Bx;
-                U_s.v[1] = Riemann_vec.L.v[1] - Riemann_vec.L.B[1] * tmp2;
-                U_s.v[2] = Riemann_vec.L.v[2] - Riemann_vec.L.B[2] * tmp2;
                 U_s.B[0] = Bx;
-                tmp2 = tmp * (rho_wt_L*(S_L-vxL) - Bx2);
-                U_s.B[1] = Riemann_vec.L.B[1] * tmp2;
-                U_s.B[2] = Riemann_vec.L.B[2] * tmp2;
+                if(fabs(tmp) < SMALL_NUMBER * P_M)
+                {
+                    U_s.v[1] = Riemann_vec.L.v[1];
+                    U_s.v[2] = Riemann_vec.L.v[2];
+                    U_s.B[1] = Riemann_vec.L.B[1];
+                    U_s.B[2] = Riemann_vec.L.B[2];
+                } else {
+                    tmp = 1/tmp;
+                    tmp2 = tmp * (S_M - vxL) * Bx;
+                    U_s.v[1] = Riemann_vec.L.v[1] - Riemann_vec.L.B[1] * tmp2;
+                    U_s.v[2] = Riemann_vec.L.v[2] - Riemann_vec.L.B[2] * tmp2;
+                    tmp2 = tmp * (rho_wt_L*(S_L-vxL) - Bx2);
+                    U_s.B[1] = Riemann_vec.L.B[1] * tmp2;
+                    U_s.B[2] = Riemann_vec.L.B[2] * tmp2;
+                }
                 double vdotB_star = U_s.v[0]*U_s.B[0] + U_s.v[1]*U_s.B[1] + U_s.v[2]*U_s.B[2];
                 U_s.p = (e_L*(S_L-vxL) - PT_L*vxL + P_M*S_M + Bx*(vdotB_L-vdotB_star)) / (S_L-S_M);
                 /* F_L - S_L*U_L :: */
@@ -1096,32 +1081,36 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
                 for(k=0;k<3;k++)
                 {
                     Riemann_out->Fluxes.v[k] -= S_L * Riemann_vec.L.rho * Riemann_vec.L.v[k];
-                    Riemann_out->Fluxes.B[k] -= S_L * Riemann_vec.L.B[k];
+                    if(k>0) Riemann_out->Fluxes.B[k] -= S_L * Riemann_vec.L.B[k];
                 }
                 
-                if(v_frame < S_star)
+                if((v_frame <= S_star) || (0.5*Bx2 < SMALL_NUMBER * P_M))
                 {
                     /* left Alfven wave :: F_L - S_L*U_L + (S_L-a_x)*U_star */
+                    /* note also: if Bx=0, the star-star state is the same as the star-state, so can just finish here! */
                     double dS = S_L - v_frame;
                     Riemann_out->Fluxes.rho += dS * U_s.rho;
                     Riemann_out->Fluxes.p += dS * U_s.p;
                     for(k=0;k<3;k++)
                     {
-                        Riemann_out->Fluxes.v[k] += dS * U_s.v[k];
-                        Riemann_out->Fluxes.B[k] += dS * U_s.B[k];
+                        Riemann_out->Fluxes.v[k] += dS * U_s.rho * U_s.v[k];
+                        if(k>0) Riemann_out->Fluxes.B[k] += dS * U_s.B[k];
                     }
-                    
                 } else {
+                    /* ok the star and star-star states are different, need to compute them separately */
                     /* left contact wave :: F_L - S_L*U_L - (S_Lstar-S_L)*U_star + (S_Lstar-a_x)*U_starstar */
                     double dS = S_L - S_star;
                     Riemann_out->Fluxes.rho += dS * U_s.rho;
                     Riemann_out->Fluxes.p += dS * U_s.p;
                     for(k=0;k<3;k++)
                     {
-                        Riemann_out->Fluxes.v[k] += dS * U_s.v[k];
-                        Riemann_out->Fluxes.B[k] += dS * U_s.B[k];
+                        Riemann_out->Fluxes.v[k] += dS * U_s.rho * U_s.v[k];
+                        if(k>0) Riemann_out->Fluxes.B[k] += dS * U_s.B[k];
                     }
                     /* now we just need the star-star state to finish */
+                    U_ss.rho = U_s.rho;
+                    U_ss.p = U_s.p;
+                    for(k=0;k<3;k++) {U_ss.v[k]=U_s.v[k]; U_ss.B[k]=U_s.B[k];}
                     U_ss.rho = U_s.rho;
                     U_ss.v[0] = S_M;
                     U_ss.B[0] = Bx;
@@ -1133,14 +1122,21 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
                     double sqrt_rho_star_alt = sqrt(V_s.rho);
                     double irhowt = 1/(sqrt_rho_star + sqrt_rho_star_alt);
                     tmp = rho_wt_R * (S_R - S_M) - Bx2;
-                    if(tmp != 0) {tmp = 1/tmp;}
-                    tmp2 = tmp * (S_M - vxR) * Bx;
-                    V_s.v[1] = Riemann_vec.R.v[1] - Riemann_vec.R.B[1] * tmp2;
-                    V_s.v[2] = Riemann_vec.R.v[2] - Riemann_vec.R.B[2] * tmp2;
-                    tmp2 = tmp * (rho_wt_R*(S_R-vxR) - Bx2);
-                    V_s.B[1] = Riemann_vec.R.B[1] * tmp2;
-                    V_s.B[2] = Riemann_vec.R.B[2] * tmp2;
-                    
+                    if(fabs(tmp) < SMALL_NUMBER * P_M)
+                    {
+                        V_s.v[1] = Riemann_vec.R.v[1];
+                        V_s.v[2] = Riemann_vec.R.v[2];
+                        V_s.B[1] = Riemann_vec.R.B[1];
+                        V_s.B[2] = Riemann_vec.R.B[2];
+                    } else {
+                        tmp = 1/tmp;
+                        tmp2 = tmp * (S_M - vxR) * Bx;
+                        V_s.v[1] = Riemann_vec.R.v[1] - Riemann_vec.R.B[1] * tmp2;
+                        V_s.v[2] = Riemann_vec.R.v[2] - Riemann_vec.R.B[2] * tmp2;
+                        tmp2 = tmp * (rho_wt_R*(S_R-vxR) - Bx2);
+                        V_s.B[1] = Riemann_vec.R.B[1] * tmp2;
+                        V_s.B[2] = Riemann_vec.R.B[2] * tmp2;
+                    }
                     for(k=1;k<3;k++)
                     {
                         U_ss.v[k] = irhowt * (sqrt_rho_star*U_s.v[k] + sqrt_rho_star_alt*V_s.v[k] +
@@ -1155,15 +1151,15 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
                     Riemann_out->Fluxes.p += dS * U_ss.p;
                     for(k=0;k<3;k++)
                     {
-                        Riemann_out->Fluxes.v[k] += dS * U_ss.v[k];
-                        Riemann_out->Fluxes.B[k] += dS * U_ss.B[k];
+                        Riemann_out->Fluxes.v[k] += dS * U_ss.rho * U_ss.v[k];
+                        if(k>0) Riemann_out->Fluxes.B[k] += dS * U_ss.B[k];
                     }
                 }
             }
             
         } else {
             /* v_frame > S_M : we're in the right fan */
-            tmp = Riemann_vec.R.v[0]*Riemann_vec.R.v[0]+Riemann_vec.R.v[1]*Riemann_vec.R.v[1]+Riemann_vec.R.v[2]*Riemann_vec.R.v[2]
+            tmp = Riemann_vec.R.v[0]*Riemann_vec.R.v[0]+Riemann_vec.R.v[1]*Riemann_vec.R.v[1]+Riemann_vec.R.v[2]*Riemann_vec.R.v[2];
             e_R = Riemann_vec.R.u*Riemann_vec.R.rho + 0.5*B2_R + 0.5*Riemann_vec.R.rho*tmp;
             vdotB_R = Riemann_vec.R.v[0]*Riemann_vec.R.B[0]+Riemann_vec.R.v[1]*Riemann_vec.R.B[1]+Riemann_vec.R.v[2]*Riemann_vec.R.B[2];
             Riemann_out->Fluxes.rho = Riemann_vec.R.rho * vxR;
@@ -1174,7 +1170,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
             Riemann_out->Fluxes.B[0] = 0;
             Riemann_out->Fluxes.B[1] = Riemann_vec.R.B[1] * vxR - Bx * Riemann_vec.R.v[1];
             Riemann_out->Fluxes.B[2] = Riemann_vec.R.B[2] * vxR - Bx * Riemann_vec.R.v[2];
-            if(v_frame > S_R)
+            if(v_frame >= S_R)
             {
                 /* right state */
                 if(v_frame != 0)
@@ -1185,24 +1181,32 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
                     for(k=0;k<3;k++)
                     {
                         Riemann_out->Fluxes.v[k] -= v_frame * Riemann_vec.R.rho * Riemann_vec.R.v[k];
-                        Riemann_out->Fluxes.B[k] -= v_frame * Riemann_vec.R.B[k];
+                        if(k>0) Riemann_out->Fluxes.B[k] -= v_frame * Riemann_vec.R.B[k];
                     }
                 }
             } else {
-                double rho_star = rho_wt_R / (S_R - S_M);
-                double sqrt_rho_star = sqrt(rho_star);
+                U_s.rho = rho_wt_R / (S_R - S_M);
+                double sqrt_rho_star = sqrt(U_s.rho);
                 double inv_sqrt_rho_star = 1 / sqrt_rho_star;
                 double S_star = S_M + fabs(Bx) * inv_sqrt_rho_star;
-                tmp = rho_wt_R * (S_R - S_M) - Bx2;
-                if(tmp != 0) {tmp = 1/tmp;}
                 U_s.v[0] = S_M;
-                tmp2 = tmp * (S_M - vxR) * Bx;
-                U_s.v[1] = Riemann_vec.R.v[1] - Riemann_vec.R.B[1] * tmp2;
-                U_s.v[2] = Riemann_vec.R.v[2] - Riemann_vec.R.B[2] * tmp2;
                 U_s.B[0] = Bx;
-                tmp2 = tmp * (rho_wt_R*(S_R-vxR) - Bx2);
-                U_s.B[1] = Riemann_vec.R.B[1] * tmp2;
-                U_s.B[2] = Riemann_vec.R.B[2] * tmp2;
+                tmp = rho_wt_R * (S_R - S_M) - Bx2;
+                if(fabs(tmp) < SMALL_NUMBER * P_M)
+                {
+                    U_s.v[1] = Riemann_vec.R.v[1];
+                    U_s.v[2] = Riemann_vec.R.v[2];
+                    U_s.B[1] = Riemann_vec.R.B[1];
+                    U_s.B[2] = Riemann_vec.R.B[2];
+                } else {
+                    tmp = 1/tmp;
+                    tmp2 = tmp * (S_M - vxR) * Bx;
+                    U_s.v[1] = Riemann_vec.R.v[1] - Riemann_vec.R.B[1] * tmp2;
+                    U_s.v[2] = Riemann_vec.R.v[2] - Riemann_vec.R.B[2] * tmp2;
+                    tmp2 = tmp * (rho_wt_R*(S_R-vxR) - Bx2);
+                    U_s.B[1] = Riemann_vec.R.B[1] * tmp2;
+                    U_s.B[2] = Riemann_vec.R.B[2] * tmp2;
+                }
                 double vdotB_star = U_s.v[0]*U_s.B[0] + U_s.v[1]*U_s.B[1] + U_s.v[2]*U_s.B[2];
                 U_s.p = (e_R*(S_R-vxR) - PT_R*vxR + P_M*S_M + Bx*(vdotB_R-vdotB_star)) / (S_R-S_M);
                 /* F_R - S_R*U_R :: */
@@ -1211,30 +1215,31 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
                 for(k=0;k<3;k++)
                 {
                     Riemann_out->Fluxes.v[k] -= S_R * Riemann_vec.R.rho * Riemann_vec.R.v[k];
-                    Riemann_out->Fluxes.B[k] -= S_R * Riemann_vec.R.B[k];
+                    if(k>0) Riemann_out->Fluxes.B[k] -= S_R * Riemann_vec.R.B[k];
                 }
                 
-                if(v_frame > S_star)
+                if((v_frame >= S_star) || (0.5*Bx2 < SMALL_NUMBER * P_M))
                 {
                     /* right Alfven wave :: F_R - S_R*U_R + (S_R-a_x)*U_star */
+                    /* note also: if Bx=0, the star-star state is the same as the star-state, so can just finish here! */
                     double dS = S_R - v_frame;
                     Riemann_out->Fluxes.rho += dS * U_s.rho;
                     Riemann_out->Fluxes.p += dS * U_s.p;
                     for(k=0;k<3;k++)
                     {
-                        Riemann_out->Fluxes.v[k] += dS * U_s.v[k];
-                        Riemann_out->Fluxes.B[k] += dS * U_s.B[k];
+                        Riemann_out->Fluxes.v[k] += dS * U_s.rho * U_s.v[k];
+                        if(k>0) Riemann_out->Fluxes.B[k] += dS * U_s.B[k];
                     }
-                    
                 } else {
+                    /* ok the star and star-star states are different, need to compute them separately */
                     /* right contact wave :: F_R - S_R*U_R - (S_Rstar-S_R)*U_star + (S_Rstar-a_x)*U_starstar */
                     double dS = S_R - S_star;
                     Riemann_out->Fluxes.rho += dS * U_s.rho;
                     Riemann_out->Fluxes.p += dS * U_s.p;
                     for(k=0;k<3;k++)
                     {
-                        Riemann_out->Fluxes.v[k] += dS * U_s.v[k];
-                        Riemann_out->Fluxes.B[k] += dS * U_s.B[k];
+                        Riemann_out->Fluxes.v[k] += dS * U_s.rho * U_s.v[k];
+                        if(k>0) Riemann_out->Fluxes.B[k] += dS * U_s.B[k];
                     }
                     /* now we just need the star-star state to finish */
                     U_ss.rho = U_s.rho;
@@ -1248,14 +1253,21 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
                     double sqrt_rho_star_alt = sqrt(V_s.rho);
                     double irhowt = 1/(sqrt_rho_star + sqrt_rho_star_alt);
                     tmp = rho_wt_L * (S_L - S_M) - Bx2;
-                    if(tmp != 0) {tmp = 1/tmp;}
-                    tmp2 = tmp * (S_M - vxL) * Bx;
-                    V_s.v[1] = Riemann_vec.L.v[1] - Riemann_vec.L.B[1] * tmp2;
-                    V_s.v[2] = Riemann_vec.L.v[2] - Riemann_vec.L.B[2] * tmp2;
-                    tmp2 = tmp * (rho_wt_L*(S_L-vxL) - Bx2);
-                    V_s.B[1] = Riemann_vec.L.B[1] * tmp2;
-                    V_s.B[2] = Riemann_vec.L.B[2] * tmp2;
-                    
+                    if(fabs(tmp) < SMALL_NUMBER * P_M)
+                    {
+                        V_s.v[1] = Riemann_vec.L.v[1];
+                        V_s.v[2] = Riemann_vec.L.v[2];
+                        V_s.B[1] = Riemann_vec.L.B[1];
+                        V_s.B[2] = Riemann_vec.L.B[2];
+                    } else {
+                        tmp = 1/tmp;
+                        tmp2 = tmp * (S_M - vxL) * Bx;
+                        V_s.v[1] = Riemann_vec.L.v[1] - Riemann_vec.L.B[1] * tmp2;
+                        V_s.v[2] = Riemann_vec.L.v[2] - Riemann_vec.L.B[2] * tmp2;
+                        tmp2 = tmp * (rho_wt_L*(S_L-vxL) - Bx2);
+                        V_s.B[1] = Riemann_vec.L.B[1] * tmp2;
+                        V_s.B[2] = Riemann_vec.L.B[2] * tmp2;
+                    }
                     for(k=1;k<3;k++)
                     {
                         U_ss.v[k] = irhowt * (sqrt_rho_star*U_s.v[k] + sqrt_rho_star_alt*V_s.v[k] +
@@ -1270,192 +1282,29 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
                     Riemann_out->Fluxes.p += dS * U_ss.p;
                     for(k=0;k<3;k++)
                     {
-                        Riemann_out->Fluxes.v[k] += dS * U_ss.v[k];
-                        Riemann_out->Fluxes.B[k] += dS * U_ss.B[k];
+                        Riemann_out->Fluxes.v[k] += dS * U_ss.rho * U_ss.v[k];
+                        if(k>0) Riemann_out->Fluxes.B[k] += dS * U_ss.B[k];
                     }
                 }
             }
         }
         /* alright, we've gotten successful HLLD fluxes! */
-        Riemann_out->S_M=S_M;
+        Riemann_out->Fluxes.B[0] = -v_frame * Bx;
+#ifdef DIVBCLEANING_DEDNER
+        Riemann_out->Fluxes.phi = -v_frame * Riemann_out->phi_normal_corrected; // ??? //
+        //Riemann_out->Fluxes.phi -= All.DivBcleanHyperbolicSigma * c_eff*c_eff * Bx;
+#endif
+        Riemann_out->S_M=v_frame;
         Riemann_out->P_M=P_M;
         return;
     } // if((P_M > 0)&&(!isnan(P_M))) //
     
+    /* originally we included HLL and LF solvers here, but those are way too prone to give unphysical 
+        results, and lead to crashing (plus they are more diffusive than a low-order 
+        reconstruction); therefore if HLLD fails, we prefer to simply re-calculate with a lower-order 
+        reconstruction at the face */
     
-    /* if we got this far, we failed to find a valid solution: instead try the HLL flux */
-    /* first test whether the middle-state pressure is positive : to do so, we need to construct it */
-    tmp = Riemann_vec.L.v[0]*Riemann_vec.L.v[0]+Riemann_vec.L.v[1]*Riemann_vec.L.v[1]+Riemann_vec.L.v[2]*Riemann_vec.L.v[2]
-    e_L = Riemann_vec.L.u*Riemann_vec.L.rho + 0.5*B2_L + 0.5*Riemann_vec.L.rho*tmp;
-    vdotB_L = Riemann_vec.L.v[0]*Riemann_vec.L.B[0]+Riemann_vec.L.v[1]*Riemann_vec.L.B[1]+Riemann_vec.L.v[2]*Riemann_vec.L.B[2];
-    tmp = Riemann_vec.R.v[0]*Riemann_vec.R.v[0]+Riemann_vec.R.v[1]*Riemann_vec.R.v[1]+Riemann_vec.R.v[2]*Riemann_vec.R.v[2]
-    e_R = Riemann_vec.R.u*Riemann_vec.R.rho + 0.5*B2_R + 0.5*Riemann_vec.R.rho*tmp;
-    vdotB_R = Riemann_vec.R.v[0]*Riemann_vec.R.B[0]+Riemann_vec.R.v[1]*Riemann_vec.R.B[1]+Riemann_vec.R.v[2]*Riemann_vec.R.B[2];
-    /* calculate the left and right state fluxes (needed for everything below) */
-    U_s.rho = Riemann_vec.L.rho * vxL;
-    U_s.p = (e_L + PT_L) * vxL - vdotB_L * Bx;
-    U_s.v[0] = U_s.rho * vxL - Bx2 + PT_L;
-    U_s.v[1] = U_s.rho * Riemann_vec.L.v[1] - Riemann_vec.L.B[1]*Bx;
-    U_s.v[2] = U_s.rho * Riemann_vec.L.v[2] - Riemann_vec.L.B[2]*Bx;
-    U_s.B[0] = 0;
-    U_s.B[1] = Riemann_vec.L.B[1] * vxL - Bx * Riemann_vec.L.v[1];
-    U_s.B[2] = Riemann_vec.L.B[2] * vxL - Bx * Riemann_vec.L.v[2];
-    V_s.rho = Riemann_vec.R.rho * vxR;
-    V_s.p = (e_R + PT_R) * vxR - vdotB_R * Bx;
-    V_s.v[0] = V_s.rho * vxR - Bx2 + PT_R;
-    V_s.v[1] = V_s.rho * Riemann_vec.R.v[1] - Riemann_vec.R.B[1]*Bx;
-    V_s.v[2] = V_s.rho * Riemann_vec.R.v[2] - Riemann_vec.R.B[2]*Bx;
-    V_s.B[0] = 0;
-    V_s.B[1] = Riemann_vec.R.B[1] * vxR - Bx * Riemann_vec.R.v[1];
-    V_s.B[2] = Riemann_vec.R.B[2] * vxR - Bx * Riemann_vec.R.v[2];
-    /* and use these to get the star state in-between */
-    tmp = 1/(S_R-S_L);
-    double wt_UR = S_R * tmp;
-    double wt_UL = -S_L * tmp;
-    double wt_FR = -tmp;
-    double wt_FL = tmp;
-    U_ss.rho = wt_UR * Riemann_vec.R.rho + wt_UL * Riemann_vec.L.rho;
-    U_ss.p = wt_UR * e_R + wt_UL * e_L;
-    for(k=0;k<3;k++)
-    {
-        U_ss.v[k] = wt_UR * Riemann_vec.R.rho * Riemann_vec.R.v[k] + wt_UL * Riemann_vec.L.rho * Riemann_vec.L.v[k];
-        U_ss.B[k] = wt_UR * Riemann_vec.R.B[k] + wt_UL * Riemann_vec.L.B[k];
-    }
-    U_ss.rho += wt_FR * V_s.rho + wt_FL * U_s.rho;
-    U_ss.p += wt_FR * V_s.p + wt_FL * U_s.p;
-    for(k=0;k<3;k++)
-    {
-        U_ss.v[k] += wt_FR * V_s.v[k] + wt_FL * U_s.v[k];
-        U_ss.B[k] += wt_FR * V_s.B[k] + wt_FL * U_s.B[k];
-    }
-    /* ok NOW we can finally calculate the star-state pressure */
-    P_M = U_ss.p;
-    for(k=0;k<3;k++) {P_M -= 0.5*U_ss.v[k]*U_ss.v[k]/U_ss.rho + 0.5*U_ss.B[k]*U_ss.B[k];}
-    // P_M *= GAMMA_MINUS1; // this gamma is not actually DOING anything, other than adding a check for positivity;
-    //   so technically there should be the GAMMA_MINUS1 if we are considering an ideal gas, but we don't need to
-    //   include it and we won't because it will mess things up when we use a non-ideal EOS
-    
-    /* alright, do we have a valid (positive) pressure? if so, continue */
-    if((P_M > 0)&&(!isnan(P_M)))
-    {
-#if defined(HYDRO_MESHLESS_FINITE_MASS)
-        v_frame = (S_R*rho_wt_L - S_L*rho_wt_R) / (rho_wt_L - rho_wt_R);
-        /* in the lagrangian scheme, we must calculate fluxes consistent with the assumption
-         that there is zero mass flux. this gives that result for the HLL flux */
-#endif
-        if(v_frame<S_L)
-        {
-            /* left state */
-            Riemann_out->Fluxes.rho = U_s.rho;
-            Riemann_out->Fluxes.p = U_s.p;
-            for(k=0;k<3;k++)
-            {
-                Riemann_out->Fluxes.v[k] = U_s.v[k];
-                Riemann_out->Fluxes.B[k] = U_s.B[k];
-            }
-            if(v_frame != 0)
-            {
-                /* correct for frame velocity if it is non-zero */
-                Riemann_out->Fluxes.rho -= v_frame * Riemann_vec.L.rho;
-                Riemann_out->Fluxes.p -= v_frame * e_L;
-                for(k=0;k<3;k++)
-                {
-                    Riemann_out->Fluxes.v[k] -= v_frame * Riemann_vec.L.rho * Riemann_vec.L.v[k];
-                    Riemann_out->Fluxes.B[k] -= v_frame * Riemann_vec.L.B[k];
-                }
-            }
-        } else {
-            if(v_frame>S_R)
-            {
-                /* right state */
-                Riemann_out->Fluxes.rho = V_s.rho;
-                Riemann_out->Fluxes.p = V_s.p;
-                for(k=0;k<3;k++)
-                {
-                    Riemann_out->Fluxes.v[k] = V_s.v[k];
-                    Riemann_out->Fluxes.B[k] = V_s.B[k];
-                }
-                if(v_frame != 0)
-                {
-                    /* correct for frame velocity if it is non-zero */
-                    Riemann_out->Fluxes.rho -= v_frame * Riemann_vec.R.rho;
-                    Riemann_out->Fluxes.p -= v_frame * e_R;
-                    for(k=0;k<3;k++)
-                    {
-                        Riemann_out->Fluxes.v[k] -= v_frame * Riemann_vec.R.rho * Riemann_vec.R.v[k];
-                        Riemann_out->Fluxes.B[k] -= v_frame * Riemann_vec.R.B[k];
-                    }
-                }
-            } else {
-                /* intermediate state */
-                tmp = 1/(S_R-S_L);
-                wt_UR = (S_R*S_L - v_frame*S_R) * tmp;
-                wt_UL = (-S_R*S_L + v_frame*S_L) * tmp;
-                wt_FR = (-S_L + v_frame) * tmp;
-                wt_FL = (S_R - v_frame) * tmp;
-                /* add the U components */
-                Riemann_out->Fluxes.rho = wt_UR * Riemann_vec.R.rho + wt_UL * Riemann_vec.L.rho;
-                Riemann_out->Fluxes.p = wt_UR * e_R + wt_UL * e_L;
-                for(k=0;k<3;k++)
-                {
-                    Riemann_out->Fluxes.v[k] = wt_UR * Riemann_vec.R.rho * Riemann_vec.R.v[k] + wt_UL * Riemann_vec.L.rho * Riemann_vec.L.v[k];
-                    Riemann_out->Fluxes.B[k] = wt_UR * Riemann_vec.R.B[k] + wt_UL * Riemann_vec.L.B[k];
-                }
-                /* add the F components */
-                Riemann_out->Fluxes.rho += wt_FR * V_s.rho + wt_FL * U_s.rho;
-                Riemann_out->Fluxes.p += wt_FR * V_s.p + wt_FL * U_s.p;
-                for(k=0;k<3;k++)
-                {
-                    Riemann_out->Fluxes.v[k] += wt_FR * V_s.v[k] + wt_FL * U_s.v[k];
-                    Riemann_out->Fluxes.B[k] += wt_FR * V_s.B[k] + wt_FL * U_s.B[k];
-                }
-            }
-        }
-        /* alright, we've gotten successful HLL fluxes! */
-        Riemann_out->S_M=S_M;
-        Riemann_out->P_M=P_M;
-        return;
-    } // if((P_M > 0)&&(!isnan(P_M))) //
-    
-    
-    /* still no valid solution? try the Lax-Friedrich flux (most diffusive, but should work) */
-    cf2_L = Riemann_out->cfast_L;
-    cf2_R = Riemann_out->cfast_R;
-    /* get the single wave speed (S_R = -S_L = S) */
-    S_R = DMAX(DMAX(fabs(vxL-cf2_L),fabs(vxR-cf2_R)) , DMAX(fabs(vxL+cf2_L),fabs(vxR+cf2_R)));
-#if defined(HYDRO_MESHLESS_FINITE_MASS)
-    rho_wt_L = Riemann_vec.L.rho * (S_R + vxL);
-    rho_wt_R = Riemann_vec.R.rho * (S_R - vxR);
-    v_frame = S_R * (rho_wt_L - rho_wt_R)/(rho_wt_L + rho_wt_R);
-    /* in the lagrangian scheme, we must calculate fluxes consistent with the assumption
-     that there is zero mass flux. this gives that result for the Lax-Friedrich flux */
-#endif
-    wt_UR = -0.5 * (S_R + v_frame);
-    wt_UL = +0.5 * (S_R - v_frame);
-    wt_FR = 0.5 * (1 + v_frame/S_R);
-    wt_FL = 0.5 * (1 - v_frame/S_R);
-    /* add the U components */
-    Riemann_out->Fluxes.rho = wt_UR * Riemann_vec.R.rho + wt_UL * Riemann_vec.L.rho;
-    Riemann_out->Fluxes.p = wt_UR * e_R + wt_UL * e_L;
-    for(k=0;k<3;k++)
-    {
-        Riemann_out->Fluxes.v[k] = wt_UR * Riemann_vec.R.rho * Riemann_vec.R.v[k] + wt_UL * Riemann_vec.L.rho * Riemann_vec.L.v[k];
-        Riemann_out->Fluxes.B[k] = wt_UR * Riemann_vec.R.B[k] + wt_UL * Riemann_vec.L.B[k];
-    }
-    /* add the F components */
-    Riemann_out->Fluxes.rho += wt_FR * V_s.rho + wt_FL * U_s.rho;
-    Riemann_out->Fluxes.p += wt_FR * V_s.p + wt_FL * U_s.p;
-    for(k=0;k<3;k++)
-    {
-        Riemann_out->Fluxes.v[k] += wt_FR * V_s.v[k] + wt_FL * U_s.v[k];
-        Riemann_out->Fluxes.B[k] += wt_FR * V_s.B[k] + wt_FL * U_s.B[k];
-    }
-    S_M = S_R;
-    P_M = 0.5*(Riemann_vec.R.p + Riemann_vec.L.p);
-    Riemann_out->S_M=S_M;
-    Riemann_out->P_M=P_M;
     return;
-    
 } /* yay! we're done writing our HLLD solver! */
 
 
@@ -1506,11 +1355,11 @@ void rotate_states_to_face(struct Input_vec_Riemann *Riemann_vec, double n_unit[
     Riemann_vec->R.v[1] = v[0]*rot_matrix->m[0] + v[1]*rot_matrix->m[1] + v[2]*rot_matrix->m[2];
     Riemann_vec->R.v[2] = v[0]*rot_matrix->p[0] + v[1]*rot_matrix->p[1] + v[2]*rot_matrix->p[2];
 #ifdef MAGNETIC
-    for(k=0;k<3;k++) {v[k]=Riemann_vec.L.B[k];}
+    for(k=0;k<3;k++) {v[k]=Riemann_vec->L.B[k];}
     Riemann_vec->L.B[0] = v[0]*rot_matrix->n[0] + v[1]*rot_matrix->n[1] + v[2]*rot_matrix->n[2];
     Riemann_vec->L.B[1] = v[0]*rot_matrix->m[0] + v[1]*rot_matrix->m[1] + v[2]*rot_matrix->m[2];
     Riemann_vec->L.B[2] = v[0]*rot_matrix->p[0] + v[1]*rot_matrix->p[1] + v[2]*rot_matrix->p[2];
-    for(k=0;k<3;k++) {v[k]=Riemann_vec.R.B[k];}
+    for(k=0;k<3;k++) {v[k]=Riemann_vec->R.B[k];}
     Riemann_vec->R.B[0] = v[0]*rot_matrix->n[0] + v[1]*rot_matrix->n[1] + v[2]*rot_matrix->n[2];
     Riemann_vec->R.B[1] = v[0]*rot_matrix->m[0] + v[1]*rot_matrix->m[1] + v[2]*rot_matrix->m[2];
     Riemann_vec->R.B[2] = v[0]*rot_matrix->p[0] + v[1]*rot_matrix->p[1] + v[2]*rot_matrix->p[2];

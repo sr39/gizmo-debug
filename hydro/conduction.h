@@ -23,7 +23,7 @@
         }
         if(kernel.b2_j>0)
         {
-            Bpro2_j = SphP[j].BPred[0]*kernel.dx + SphP[j].BPred[1]*kernel.dy + SphP[j].BPred[2]*kernel.dz;
+            Bpro2_j = BPred_j[0]*kernel.dx + BPred_j[1]*kernel.dy + BPred_j[2]*kernel.dz;
             Bpro2_j *= Bpro2_j / (kernel.b2_j * kernel.r*kernel.r);
         }
 #else

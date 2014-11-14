@@ -21,6 +21,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     struct Conserved_var_Riemann Fluxes;
     memset(&out, 0, sizeof(struct hydrodata_out));
     memset(&kernel, 0, sizeof(struct kernel_hydra));
+    memset(&Fluxes, 0, sizeof(struct Conserved_var_Riemann));
 #ifndef HYDRO_SPH
     struct Input_vec_Riemann Riemann_vec;
     struct Riemann_outputs Riemann_out;
@@ -64,13 +65,12 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
     
 #ifdef MAGNETIC
+    double magfluxv[3]; magfluxv[0]=magfluxv[1]=magfluxv[2]=0;
     kernel.b2_i = local.BPred[0]*local.BPred[0] + local.BPred[1]*local.BPred[1] + local.BPred[2]*local.BPred[2];
-#ifdef MAGFORCE
+#if defined(HYDRO_SPH)
+    kernel.mf_i = local.Mass * fac_magnetic_pressure / (local.Density * local.Density);
+    kernel.mf_j = local.Mass * fac_magnetic_pressure;
     // PFH: comoving factors here to convert from B*B/rho to P/rho for accelerations //
-    kernel.mf_i = fac_magnetic_pressure / (local.Density * local.Density);
-    kernel.mf_j = fac_magnetic_pressure;
-#endif
-#ifdef MAGFORCE
     double mm_i[3][3], mm_j[3][3];
     for(k = 0; k < 3; k++)
     {
@@ -165,14 +165,20 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* sound speed, relative velocity, and signal velocity computation */
                 kernel.sound_j = Particle_effective_soundspeed_i(j);
                 kernel.vsig = kernel.sound_i + kernel.sound_j;
+#ifdef MAGNETIC
+                double BPred_j[3];
+                for(k=0;k<3;k++) {BPred_j[k]=Get_Particle_BField(j,k);} /* defined j b-field in appropriate units for everything */
+#ifdef DIVBCLEANING_DEDNER
+                double PhiPred_j = Get_Particle_PhiField(j); /* define j phi-field in appropriate units */
+#endif
 #ifdef MAGNETIC_SIGNALVEL
-                kernel.b2_j = SphP[j].BPred[0]*SphP[j].BPred[0] + SphP[j].BPred[1]*SphP[j].BPred[1] + SphP[j].BPred[2]*SphP[j].BPred[2];
+                kernel.b2_j = BPred_j[0]*BPred_j[0] + BPred_j[1]*BPred_j[1] + BPred_j[2]*BPred_j[2];
                 kernel.alfven2_j = kernel.b2_j * fac_magnetic_pressure / SphP[j].Density;
 #ifdef ALFVEN_VEL_LIMITER
                 kernel.alfven2_j = DMIN(kernel.alfven2_j, ALFVEN_VEL_LIMITER * kernel.sound_j*kernel.sound_j);
 #endif
                 double vcsa2_j = kernel.sound_j*kernel.sound_j + kernel.alfven2_j;
-                double Bpro2_j = (SphP[j].BPred[0]*kernel.dx + SphP[j].BPred[1]*kernel.dy + SphP[j].BPred[2]*kernel.dz) / kernel.r;
+                double Bpro2_j = (BPred_j[0]*kernel.dx + BPred_j[1]*kernel.dy + BPred_j[2]*kernel.dz) / kernel.r;
                 Bpro2_j *= Bpro2_j;
                 double magneticspeed_j = sqrt(0.5 * (vcsa2_j + sqrt(DMAX((vcsa2_j*vcsa2_j -
                         4 * kernel.sound_j*kernel.sound_j * Bpro2_j*fac_magnetic_pressure/SphP[j].Density), 0))));
@@ -181,6 +187,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double magneticspeed_i = sqrt(0.5 * (vcsa2_i + sqrt(DMAX((vcsa2_i*vcsa2_i -
                         4 * kernel.sound_i*kernel.sound_i * Bpro2_i*fac_magnetic_pressure/local.Density), 0))));
                 kernel.vsig = magneticspeed_i + magneticspeed_j;
+#endif
 #endif
                 kernel.vdotr2 = kernel.dx * kernel.dvx + kernel.dy * kernel.dvy + kernel.dz * kernel.dvz;
                 // hubble-flow correction: need in -code- units, hence extra a2 appearing here //
@@ -267,8 +274,16 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 }
                 out.DtInternalEnergy += Fluxes.p;
 #ifdef MAGNETIC
-                out.DtB += Fluxes.B[k];
+#ifdef HYDRO_SPH
+                for(k=0;k<3;k++) {out.DtB[k]+=Fluxes.B[k]/V_i; out.DtInternalEnergy+=magfluxv[k]*local.Vel[k];}
+#else
+                for(k=0;k<3;k++) {out.DtB[k]+=Fluxes.B[k]; out.DtInternalEnergy+=magfluxv[k]*local.BPred[k];}
 #endif
+                out.divB += Fluxes.B_normal_corrected;
+#ifdef DIVBCLEANING_DEDNER
+                out.DtPhi += Fluxes.phi;
+#endif
+#endif // magnetic //
                 //out.dInternalEnergy += Fluxes.p * dt_hydrostep; //manifest-indiv-timestep-debug//
                 //SphP[j].dInternalEnergy -= Fluxes.p * dt_hydrostep; //manifest-indiv-timestep-debug//
                 
@@ -280,11 +295,19 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     SphP[j].DtMass -= Fluxes.rho;
                     for(k=0;k<3;k++) {SphP[j].GravWorkTerm[k] -= gravwork[k];}
 #endif
-#ifdef MAGNETIC
-                    for(k=0;k<3;k++) {SphP[j].DtB[k] -= Fluxes.B[k];}
-#endif
                     for(k=0;k<3;k++) SphP[j].HydroAccel[k] -= Fluxes.v[k];
                     SphP[j].DtInternalEnergy -= Fluxes.p;
+#ifdef MAGNETIC
+#ifdef HYDRO_SPH
+                    for(k=0;k<3;k++) {SphP[j].DtB[k]-=Fluxes.B[k]/V_j; SphP[j].DtInternalEnergy-=magfluxv[k]*SphP[j].VelPred[k];}
+#else
+                    for(k=0;k<3;k++) {SphP[j].DtB[k]-=Fluxes.B[k]; SphP[j].DtInternalEnergy-=magfluxv[k]*BPred_j[k];}
+#endif
+                    SphP[j].divB -= Fluxes.B_normal_corrected;
+#ifdef DIVBCLEANING_DEDNER
+                    SphP[j].DtPhi -= Fluxes.phi;
+#endif
+#endif
                 }
 
                 /* if we have mass fluxes, we need to have metal fluxes if we're using them (or any other passive scalars) */

@@ -75,6 +75,38 @@ void find_timesteps(void)
         find_dt_displacement_constraint(All.cf_hubble_a * All.cf_atime * All.cf_atime);
     
     
+#ifdef DIVBCLEANING_DEDNER
+    /* need to calculate the global fastest wave speed to manage the damping terms stably */
+    if((All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)||(All.FastestWaveSpeed == 0))
+    {
+        double fastwavespeed = 0.0;
+        double fastwavedecay = 0.0;
+        for(i=0;i<NumPart;i++)
+        {
+            if(P[i].Type==0)
+            {
+                // ??? //
+                double vsig2 = 0.5 * All.cf_afac3 * fabs(SphP[i].MaxSignalVel);
+                double vsig1 = sqrt( Particle_effective_soundspeed_i(i)*Particle_effective_soundspeed_i(i) + (Get_Particle_BField(i,0)*Get_Particle_BField(i,0)+Get_Particle_BField(i,1)*Get_Particle_BField(i,1)+Get_Particle_BField(i,2)*Get_Particle_BField(i,2)) / SphP[i].Density );
+                double vsig0 = DMAX(vsig1,vsig2);
+
+                if(vsig0 > fastwavespeed) fastwavespeed = vsig0;
+                double hsig0 = KERNEL_CORE_SIZE * PPP[i].Hsml * All.cf_atime;
+                if(vsig0/hsig0 > fastwavedecay) fastwavedecay = vsig0/hsig0;
+            }
+        }
+        /* if desired, can just do this by domain; otherwise we use an MPI call over all domains to collect */
+        double fastwavespeed_max_glob=fastwavespeed;
+        MPI_Allreduce(&fastwavespeed, &fastwavespeed_max_glob, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+        double fastwavedecay_max_glob=fastwavedecay;
+        MPI_Allreduce(&fastwavedecay, &fastwavedecay_max_glob, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+        /* now set the variables */
+        All.FastestWaveSpeed = fastwavespeed_max_glob;
+        All.FastestWaveDecay = fastwavedecay_max_glob;
+    }
+#endif
+
+    
 #ifdef FORCE_EQUAL_TIMESTEPS
     for(i = FirstActiveParticle, ti_min = TIMEBASE; i >= 0; i = NextActiveParticle[i])
     {
@@ -408,6 +440,13 @@ integertime get_timestep(int p,		/*!< particle index */
             
             if(dt_courant < dt)
                 dt = dt_courant;
+
+#ifdef DIVBCLEANING_DEDNER
+            // ??? //
+            dt_courant = 2 * All.CourantFac * All.cf_atime * (2*KERNEL_CORE_SIZE * PPP[p].Hsml) / (All.cf_afac3 * All.FastestWaveSpeed);
+            if(dt_courant < dt)
+                dt = dt_courant;
+#endif
             
             /* make sure that the velocity divergence does not imply a too large change of density or smoothing length in the step */
             double divVel = P[p].Particle_DivVel;
@@ -595,13 +634,6 @@ integertime get_timestep(int p,		/*!< particle index */
                P[p].GravAccel[2]);
 #ifdef PMGRID
         printf("pm_force=(%g|%g|%g)\n", P[p].GravPM[0], P[p].GravPM[1], P[p].GravPM[2]);
-#endif
-        
-#ifdef DIVBFORCE3
-        if(P[p].Type == 0)
-            printf("mhd-frc=(%g|%g|%g) mhd-corr=(%g|%g|%g)\n",
-                   SphP[p].magacc[0],SphP[p].magacc[1],SphP[p].magacc[2],
-                   SphP[p].magcorr[0],SphP[p].magcorr[1],SphP[p].magcorr[2]);
 #endif
         
 #ifdef COSMIC_RAYS

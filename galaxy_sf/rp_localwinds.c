@@ -360,7 +360,7 @@ void radiation_pressure_winds_consolidated(void)
          totMPI_avg_v /= totMPI_n_wind;
          totMPI_pwt_avg_v /= totMPI_mom_wind;
      }
-     printf("Momentum Wind Feedback: Time=%g Nkicked=%g L/c=%g Momkicks=%g V_avg=%g tau_j_mean=%g \n",
+     printf("Momentum Wind Feedback: Time=%g Nkicked=%g (L/c)dt=%g Momkicks=%g V_avg=%g tau_j_mean=%g \n",
            All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_pwt_avg_v); fflush(stdout);
       fprintf(FdMomWinds, "%lg %g %g %g %g %g \n",
         All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_pwt_avg_v);

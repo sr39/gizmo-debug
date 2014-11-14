@@ -348,13 +348,15 @@ double get_pressure(int i)
 void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double dt_entr)
 {
 #ifdef MAGNETIC
+    int k;
     double dt_mag = dt_entr;
+    for(k=0;k<3;k++) {SphP[i].BPred[k] += SphP[i].DtB[k] * dt_mag;}
 #ifdef DIVBCLEANING_DEDNER
-    SphP[i].PhiPred += SphP[i].DtPhi * dt_mag;
+    // ??? //
+    //SphP[i].PhiPred += SphP[i].DtPhi * dt_mag; SphP[i].PhiPred *= exp(-dt_mag*Get_Particle_PhiField_DampingTimeInv(i));
+    double tinv0 = Get_Particle_PhiField_DampingTime(i);
+    if(tinv0<=0.0) {SphP[i].PhiPred=0.0;} else {SphP[i].PhiPred += (SphP[i].DtPhi/tinv0-SphP[i].PhiPred)*(1 - exp(-dt_mag*tinv0));}
 #endif
-    int j;
-    for(j = 0; j < 3; j++)
-        SphP[i].BPred[j] += SphP[i].DtB[j] * dt_mag;
 #endif
 }
 
@@ -433,3 +435,42 @@ double INLINE_FUNC Particle_effective_soundspeed_i(int i)
     return sqrt(SphP[i].dp_drho);
 #endif
 }
+
+#ifdef MAGNETIC
+double INLINE_FUNC Get_Particle_BField(int i_particle_id, int k_vector_component)
+{
+#ifdef HYDRO_SPH
+    return SphP[i_particle_id].BPred[k_vector_component];
+#else
+    return SphP[i_particle_id].BPred[k_vector_component] * SphP[i_particle_id].Density / P[i_particle_id].Mass;
+#endif
+}
+
+#ifdef DIVBCLEANING_DEDNER
+double INLINE_FUNC Get_Particle_PhiField(int i_particle_id)
+{
+#ifdef HYDRO_SPH
+    return SphP[i_particle_id].PhiPred;
+#else
+    //return SphP[i_particle_id].PhiPred / P[i_particle_id].Mass;
+    return SphP[i_particle_id].PhiPred * SphP[i_particle_id].Density / P[i_particle_id].Mass;
+#endif
+}
+
+double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)
+{
+#ifdef HYDRO_SPH
+    /* PFH: add simple damping (-phi/tau) term */
+    double damping_tinv = 0.5 * All.DivBcleanParabolicSigma * (SphP[i_particle_id].MaxSignalVel*All.cf_afac3*All.cf_atime / (KERNEL_CORE_SIZE*PPP[i_particle_id].Hsml));
+    /* PFH: add div_v term from Tricco & Price to DtPhi */
+    damping_tinv += 0.5 * P[i_particle_id].Particle_DivVel*All.cf_a2inv;
+#else
+    // ??? //
+    //double damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveSpeed / (KERNEL_CORE_SIZE*PPP[i_particle_id].Hsml);
+    double damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveDecay;
+#endif
+    return damping_tinv;
+}
+
+#endif // dedner
+#endif // magnetic

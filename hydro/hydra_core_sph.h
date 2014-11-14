@@ -63,96 +63,82 @@
     /* ... Magnetic evolution (ideal MHD terms all below) ... */
     /* --------------------------------------------------------------------------------- */
 #ifdef MAGNETIC
-    kernel.mj_r = P[j].Mass / kernel.r;
-    kernel.mf_Ind = kernel.mj_r * kernel.dwk_i / local.Density;
-#ifdef MAGFORCE
-    double mf_i = kernel.mf_i * kernel.mj_r * kernel.dwk_i;
-    double mf_j = kernel.mf_j * kernel.mj_r * kernel.dwk_j / (SphP[j].Density * SphP[j].Density);
-#endif
-#ifdef MAGNETIC_DISSIPATION
-    double dissfac = kernel.mj_r * kernel.dwk_ij * kernel.rho_ij_inv * kernel.rho_ij_inv / fac_mu;
-    kernel.mf_dissInd = local.Density * dissfac;
-    kernel.mf_dissEnt = 0.5 * fac_magnetic_pressure * dissfac;
-#endif
+    Fluxes.B[0] = Fluxes.B[1] = Fluxes.B[2] = 0;
+    V_j = P[j].Mass / SphP[j].Density;
+    double mj_r = P[j].Mass / kernel.r;
+    double mf_i = kernel.mf_i * mj_r * kernel.dwk_i;
+    double mf_j = kernel.mf_j * mj_r * kernel.dwk_j / (SphP[j].Density * SphP[j].Density);
     
-    /* --------------------------------------------------------------------------------- */
-    /* ... induction equation ... */
-    /* --------------------------------------------------------------------------------- */
-    Fluxes.B[0] += kernel.mf_Ind * ((local.BPred[0] * kernel.dvy - local.BPred[1] * kernel.dvx) * kernel.dy +
-                                   (local.BPred[0] * kernel.dvz - local.BPred[2] * kernel.dvx) * kernel.dz);
-    Fluxes.B[1] += kernel.mf_Ind * ((local.BPred[1] * kernel.dvz - local.BPred[2] * kernel.dvy) * kernel.dz +
-                                   (local.BPred[1] * kernel.dvx - local.BPred[0] * kernel.dvy) * kernel.dx);
-    Fluxes.B[2] += kernel.mf_Ind * ((local.BPred[2] * kernel.dvx - local.BPred[0] * kernel.dvz) * kernel.dx +
-                                   (local.BPred[2] * kernel.dvy - local.BPred[1] * kernel.dvz) * kernel.dy);
+    /* ---------------------------------------------------------------------------------
+     * ... induction equation ...
+     * (the SPH induction equation is inherently non-symmetric: the result for particle
+     *  'a' and particle 'b' must each be separately computed. However, they do not rely on the 
+     *   densities or smoothing lengths of the neighbor particles. Therefore they can and should 
+     *   be computed in the density loop, not the hydro loop)
+     * --------------------------------------------------------------------------------- */
     
+#ifdef DIVBCLEANING_DEDNER
     /* --------------------------------------------------------------------------------- */
     /* ... update to the Dedner divergence-damping scalar field ... */
     /* --------------------------------------------------------------------------------- */
-#ifdef DIVBCLEANING_DEDNER
     /* PFH: this is the symmetric estimator of grad phi: used be used IFF div.dot.B is estimated by the 'direct difference' operator (recommended) */
-    double phifac_i = -kernel.mj_r * local.Density; // *All.cf_atime*All.cf_atime; // All.cf_atime NOT needed for convention [Phicode]=[Bcode][vcode]
-    double phifac_j = phifac_i;
-    phifac_i *= kernel.dwk_i * local.PhiPred / (local.Density*local.Density);
-    phifac_j *= kernel.dwk_j * SphP[j].PhiPred / (SphP[j].Density*SphP[j].Density);
-    out.GradPhi[0] += (phifac_i+phifac_j) * kernel.dx;
-    out.GradPhi[1] += (phifac_i+phifac_j) * kernel.dy;
-    out.GradPhi[2] += (phifac_i+phifac_j) * kernel.dz;
+    double phifac = -(mf_i*local.PhiPred + mf_j*PhiPred_j); // *All.cf_atime*All.cf_atime; // All.cf_atime NOT needed for convention [Phicode]=[Bcode][vcode]
+    Fluxes.B[0] += phifac * kernel.dx;
+    Fluxes.B[1] += phifac * kernel.dy;
+    Fluxes.B[2] += phifac * kernel.dz;
     // GradPhi should have units of [Phicode]/[rcode] = [Bcode]*[vcode]/[rcode] = [DtB]=[Fluxes.B]
 #endif // DIVBCLEANING_DEDNER
     
     /* --------------------------------------------------------------------------------- */
     /* ... magnetic acceleration (with correction/limiter term) ... */
     /* --------------------------------------------------------------------------------- */
-#if defined(MAGFORCE) || defined(MAGNETIC_DISSIPATION) || defined(MAGNETIC_SIGNALVEL)
     double dBx = local.BPred[0] - SphP[j].BPred[0];
     double dBy = local.BPred[1] - SphP[j].BPred[1];
     double dBz = local.BPred[2] - SphP[j].BPred[2];
-    kernel.b2_j = SphP[j].BPred[0]*SphP[j].BPred[0] + SphP[j].BPred[1]*SphP[j].BPred[1] + SphP[j].BPred[2]*SphP[j].BPred[2];
-#endif
-#ifdef MAGFORCE
     int k1;
     for(k = 0; k < 3; k++)
     {
         for(k1 = 0; k1 < 3; k1++)
-            mm_j[k][k1] = SphP[j].BPred[k] * SphP[j].BPred[k1];
+            mm_j[k][k1] = BPred_j[k] * BPred_j[k1];
     }
     for(k = 0; k < 3; k++)
         mm_j[k][k] -= 0.5 * kernel.b2_j;
     
+    /* need to be able to subtract component of force which owes to the non-zero value of div.B */
+    Fluxes.B_normal_corrected = (local.BPred[0] * mf_i + BPred_j[0] * mf_j) * kernel.dx +
+                                (local.BPred[1] * mf_i + BPred_j[1] * mf_j) * kernel.dy +
+                                (local.BPred[2] * mf_i + BPred_j[2] * mf_j) * kernel.dz;
     for(k = 0; k < 3; k++)
-#ifdef DIVBFORCE3
-        // magnetic acceleration must be added to its own saved term, for correction later //
-        out.magacc[k] +=
-#else
-        Fluxes.v[k] +=
-#endif
-        (mm_i[k][0] * mf_i + mm_j[k][0] * mf_j) * kernel.dx +
-        (mm_i[k][1] * mf_i + mm_j[k][1] * mf_j) * kernel.dy +
-        (mm_i[k][2] * mf_i + mm_j[k][2] * mf_j) * kernel.dz;
-#ifdef DIVBFORCE3
-    for(k = 0; k < 3; k++)
-        out.magcorr[k] += local.BPred[k] * ((local.BPred[0] * mf_i + SphP[j].BPred[0] * mf_j) * kernel.dx +
-                                            (local.BPred[1] * mf_i + SphP[j].BPred[1] * mf_j) * kernel.dy +
-                                            (local.BPred[2] * mf_i + SphP[j].BPred[2] * mf_j) * kernel.dz);
-#endif
-#endif /* end MAG FORCE   */
+    {
+        /* momentum flux from MHD forces */
+        magfluxv[k] = (mm_i[k][0] * mf_i + mm_j[k][0] * mf_j) * kernel.dx +
+                          (mm_i[k][1] * mf_i + mm_j[k][1] * mf_j) * kernel.dy +
+                          (mm_i[k][2] * mf_i + mm_j[k][2] * mf_j) * kernel.dz;
+        Fluxes.v[k] += magfluxv[k];
+    }
     
+        
+        
     /* --------------------------------------------------------------------------------- */
     /* ... Magnetic dissipation/diffusion terms (artificial resitivity evaluation) ... */
     /* --------------------------------------------------------------------------------- */
 #ifdef MAGNETIC_DISSIPATION
+    double mf_dissInd = local.Mass * mj_r * kernel.dwk_ij * kernel.rho_ij_inv * kernel.rho_ij_inv / fac_mu;
     double vsigb = 0.5 * sqrt(kernel.alfven2_i + kernel.alfven2_j);
 #if defined(TRICCO_RESISTIVITY_SWITCH)
     double eta = 0.5 * (local.Balpha + SphP[j].Balpha) * vsigb * kernel.r;
 #else
     double eta = All.ArtMagDispConst * vsigb * kernel.r;
 #endif
-    Fluxes.p -= eta * kernel.mf_dissEnt * (dBx * dBx + dBy * dBy + dBz * dBz);
-    Fluxes.B[0] += eta * kernel.mf_dissInd * dBx;
-    Fluxes.B[1] += eta * kernel.mf_dissInd * dBy;
-    Fluxes.B[2] += eta * kernel.mf_dissInd * dBz;
+    mf_dissInd *= eta;
+    Fluxes.B[0] += mf_dissInd * dBx;
+    Fluxes.B[1] += mf_dissInd * dBy;
+    Fluxes.B[2] += mf_dissInd * dBz;
+    Fluxes.p -= 0.5 * fac_magnetic_pressure * mf_dissInd * (dBx * dBx + dBy * dBy + dBz * dBz);
 #endif
-#endif
+#endif /* end MAGNETIC */
+        
+    
 
     
     

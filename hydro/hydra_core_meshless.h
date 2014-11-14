@@ -9,6 +9,12 @@
     double s_star_ij,s_i,s_j,v_frame[3],n_unit[3];
     double distance_from_i[3],distance_from_j[3];
     Fluxes.rho = Fluxes.p = Fluxes.v[0] = Fluxes.v[1] = Fluxes.v[2] = 0;
+#ifdef MAGNETIC
+    Fluxes.B[0] = Fluxes.B[1] = Fluxes.B[2] = 0;
+#if defined(DIVBCLEANING_DEDNER) && defined(HYDRO_MESHLESS_FINITE_VOLUME)
+    Fluxes.phi = 0;
+#endif
+#endif
     
     /* --------------------------------------------------------------------------------- */
     /* define volume elements and interface position */
@@ -102,11 +108,11 @@
 #ifdef MAGNETIC
         for(k=0;k<3;k++)
         {
-            reconstruct_face_states(local.Bpred[k], local.Gradients.B[k], SphP[j].BPred[k], SphP[j].Gradients.B[k],
+            reconstruct_face_states(local.BPred[k], local.Gradients.B[k], BPred_j[k], SphP[j].Gradients.B[k],
                                     distance_from_i, distance_from_j, &Riemann_vec.L.B[k], &Riemann_vec.R.B[k], 1);
         }
 #ifdef DIVBCLEANING_DEDNER
-        reconstruct_face_states(local.PhiPred, local.Gradients.Phi, SphP[j].PhiPred, SphP[j].Gradients.Phi,
+        reconstruct_face_states(local.PhiPred, local.Gradients.Phi, PhiPred_j, SphP[j].Gradients.Phi,
                                 distance_from_i, distance_from_j, &Riemann_vec.L.phi, &Riemann_vec.R.phi, 1);
 #endif
 #endif
@@ -123,9 +129,9 @@
             Riemann_vec.R.rho = local.Density; Riemann_vec.L.rho = SphP[j].Density;
             for(k=0;k<3;k++) {Riemann_vec.R.v[k]=local.Vel[k]-v_frame[k]; Riemann_vec.L.v[k]=SphP[j].VelPred[k]-v_frame[k];}
 #ifdef MAGNETIC
-            for(k=0;k<3;k++) {Riemann_vec.R.B[k]=local.Bpred[k]; Riemann_vec.L.B[k]=SphP[j].Bpred[k];}
+            for(k=0;k<3;k++) {Riemann_vec.R.B[k]=local.BPred[k]; Riemann_vec.L.B[k]=BPred_j[k];}
 #ifdef DIVBCLEANING_DEDNER
-            Riemann_vec.R.phi = local.PhiPred; Riemann_vec.L.phi = SphP[j].PhiPred;
+            Riemann_vec.R.phi = local.PhiPred; Riemann_vec.L.phi = PhiPred_j;
 #endif
 #endif
             Riemann_solver(Riemann_vec, &Riemann_out, n_unit);
@@ -136,9 +142,9 @@
                 Riemann_vec.R.rho = local.Density; Riemann_vec.L.rho = SphP[j].Density;
                 for(k=0;k<3;k++) {Riemann_vec.R.v[k]=0; Riemann_vec.L.v[k]=0;}
 #ifdef MAGNETIC
-                for(k=0;k<3;k++) {Riemann_vec.R.B[k]=local.Bpred[k]; Riemann_vec.L.B[k]=SphP[j].Bpred[k];}
+                for(k=0;k<3;k++) {Riemann_vec.R.B[k]=local.BPred[k]; Riemann_vec.L.B[k]=BPred_j[k];}
 #ifdef DIVBCLEANING_DEDNER
-                Riemann_vec.R.phi = local.PhiPred; Riemann_vec.L.phi = SphP[j].PhiPred;
+                Riemann_vec.R.phi = local.PhiPred; Riemann_vec.L.phi = PhiPred_j;
 #endif
 #endif
                 Riemann_solver(Riemann_vec, &Riemann_out, n_unit);
@@ -176,7 +182,10 @@
                 Riemann_out.Fluxes.p += (0.5*v_frame[k]*v_frame[k])*Riemann_out.Fluxes.rho + v_frame[k]*Riemann_out.Fluxes.v[k];
                 Riemann_out.Fluxes.v[k] += v_frame[k] * Riemann_out.Fluxes.rho; /* just boost by frame vel (as we would in non-moving frame) */
 #ifdef MAGNETIC
-                Riemann_out.Fluxes.B[k] += -v_frame[k] * ???;
+                Riemann_out.Fluxes.B[k] += -v_frame[k] * Riemann_out.B_normal_corrected; /* v dotted into B along the normal to the face (careful of sign here) */
+#ifdef DIVBCLEANING_DEDNER
+                // Riemann_out.Fluxes.phi += -v_frame[k] * n_unit[k] * Riemann_out.phi_normal_corrected; /* extra phi flux from advection */
+#endif
 #endif
             }
             /* ok now we can actually apply this to the EOM */
@@ -186,6 +195,24 @@
             {
                 Fluxes.v[k] = dwk_norm * Riemann_out.Fluxes.v[k]; // momentum flux (need to divide by mass) //
             }
+#ifdef MAGNETIC
+            for(k=0;k<3;k++)
+            {
+                Fluxes.B[k] = dwk_norm * Riemann_out.Fluxes.B[k]; // flux of magnetic flux (B*V) //
+            }
+            Fluxes.B_normal_corrected = -Riemann_out.B_normal_corrected * dwk_norm;
+#ifdef DIVBCLEANING_DEDNER
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+//            if(Fluxes.rho > 0) {Fluxes.phi=Fluxes.rho*Riemann_vec.L.phi;} else {Fluxes.phi=Fluxes.rho*Riemann_vec.R.phi;}
+#endif
+            Fluxes.phi = Riemann_out.Fluxes.phi; // ??? still not clear if mass-based flux is better ??? //
+            for(k=0;k<3;k++)
+            {
+                magfluxv[k] = Riemann_out.phi_normal_corrected * dwk_norm * n_unit[k]; // = contribution to -grad*phi //
+                Fluxes.B[k] += magfluxv[k];
+            }
+#endif // DIVBCLEANING_DEDNER
+#endif // MAGNETIC
 #endif
         }
     } // dwk_norm != 0

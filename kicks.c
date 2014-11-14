@@ -257,7 +257,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             if(do_entropy)
             {
                 /* use the pure-SPH entropy equation, which is exact up to the mass flux, for adiabatic flows */
-                SphP[i].DtInternalEnergy = (SphP[i].Pressure/SphP[i].Density) * P[i].Particle_DivVel*All.cf_a2inv;
+                SphP[i].DtInternalEnergy = -(SphP[i].Pressure/SphP[i].Density) * P[i].Particle_DivVel*All.cf_a2inv;
                 if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*GAMMA_MINUS1 * SphP[i].InternalEnergyPred * All.cf_hubble_a;
                 dEnt = SphP[i].InternalEnergy + SphP[i].DtInternalEnergy * dt_hydrokick; /* gravity term not included here, as it makes this unstable */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -350,9 +350,8 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 void set_predicted_sph_quantities_for_extra_physics(int i)
 {
 #if defined(MAGNETIC)
-    int j1;
-    for(j1 = 0; j1 < 3; j1++)
-        SphP[i].BPred[j1] = SphP[i].B[j1];
+    int k;
+    for(k=0;k<3;k++) {SphP[i].BPred[k] = SphP[i].B[k];}
 #if defined(DIVBCLEANING_DEDNER)
     SphP[i].PhiPred = SphP[i].Phi;
 #endif
@@ -364,10 +363,12 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
 {
     int j; j=0;
 #ifdef MAGNETIC
-    for(j = 0; j < 3; j++)
-        SphP[i].B[j] += SphP[i].DtB[j] * dt_entr;
+    for(j = 0; j < 3; j++) {SphP[i].B[j] += SphP[i].DtB[j] * dt_entr;}
 #ifdef DIVBCLEANING_DEDNER
-    SphP[i].Phi += SphP[i].DtPhi * dt_entr;
+    // ??? //
+    //SphP[i].Phi += SphP[i].DtPhi * dt_entr; SphP[i].Phi *= exp(-dt_entr*Get_Particle_PhiField_DampingTimeInv(i));
+    double tinv0 = Get_Particle_PhiField_DampingTime(i);
+    if(tinv0<=0.0) {SphP[i].Phi=0.0;} else {SphP[i].Phi += (SphP[i].DtPhi/tinv0-SphP[i].Phi)*(1 - exp(-dt_entr*tinv0));}
 #endif
 #endif
 #ifdef NUCLEAR_NETWORK

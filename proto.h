@@ -242,6 +242,13 @@ double INLINE_FUNC Particle_density_for_energy_i(int i);
 double INLINE_FUNC Get_Particle_Pressure(int i);
 double INLINE_FUNC Particle_Internal_energy_i(int i);
 double INLINE_FUNC Particle_effective_soundspeed_i(int i);
+#ifdef MAGNETIC
+double INLINE_FUNC Get_Particle_BField(int i_particle_id, int k_vector_component);
+#ifdef DIVBCLEANING_DEDNER
+double INLINE_FUNC Get_Particle_PhiField(int i_particle_id);
+double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id);
+#endif
+#endif
 
 double INLINE_FUNC hubble_function(double a);
 #ifdef DARKENERGY

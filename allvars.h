@@ -98,15 +98,12 @@
 #ifdef MAGNETIC
 /* always-recommended MHD switches -- no excuse for these being off! */
 #define MAGNETIC_SIGNALVEL          /* extend definition of signal velocity by the magneto sonic waves */
-#define ALFVEN_VEL_LIMITER 10       /* Limits the contribution of the Alfven waves to the signal velocity */
-#define TRACEDIVB                   /* calculate and write div(B) into snapshot */
+#define ALFVEN_VEL_LIMITER 100      /* Limits the contribution of the Alfven waves to the signal velocity */
 #define MU0_UNITY                   /* Sets \mu_0 to unity (needed for all the tricco+price formulations!) */
 /* usually-recommended MHD switches -- only turn these off for de-bugging */
-#define MAGFORCE                    /* turn on B-force (otherwise just passively evolved) */
 #define DIVBCLEANING_DEDNER         /* hyperbolic/parabolic div-cleaing (Dedner 2002), with TP improvements */
 /* MHD switches specific to SPH MHD */
 #ifdef HYDRO_SPH
-#define DIVBFORCE3 1.0              /* Subtract div(B) force from M-tensor (prevents tensile instability) */
 #define MAGNETIC_DISSIPATION        /* turns on magnetic dissipation ('artificial resistivity') */
 #define TRICCO_RESISTIVITY_SWITCH   /* uses tricco switch =h*|gradB|/|B| */
 #endif
@@ -1326,9 +1323,10 @@ extern struct global_data_all_processes
   double ArtMagDispConst;	/*!< Sets the parameter \f$\alpha\f$ of the artificial magnetic disipation */
 #endif
 #ifdef DIVBCLEANING_DEDNER
+  double FastestWaveSpeed;
+  double FastestWaveDecay;
   double DivBcleanParabolicSigma;
   double DivBcleanHyperbolicSigma;
-  double DivBcleanQ;
 #endif
 #endif /* MAGNETIC */
 
@@ -1822,19 +1820,13 @@ extern struct sph_particle_data
     
 #ifdef MAGNETIC
     MyDouble BPred[3];          /*!< current magnetic field strength */
-    MyDouble B[3];              /*!< actual B (conserved variable used for integration) */
-    MyDouble DtB[3];             /*!< time derivative of B-field */
+    MyDouble B[3];              /*!< actual B (conserved variable used for integration; can be B*V for flux schemes) */
+    MyDouble DtB[3];             /*!< time derivative of B-field (of -conserved- B-field) */
+    MyFloat divB;               /*!< storage for the 'effective' divB used in div-cleaning procedure */
 #ifdef DIVBCLEANING_DEDNER
     MyDouble PhiPred;           /*!< current value of Phi */
     MyDouble Phi;               /*!< scalar field for Dedner divergence cleaning */
     MyDouble DtPhi;             /*!< time derivative of Phi-field */
-#endif
-#ifdef DIVBFORCE3
-    MyFloat magacc[3];          /*!< temporary variable for dedner correction in sph */
-    MyFloat magcorr[3];         /*!< temporary variable for dedner correction in sph */
-#endif
-#if defined(TRACEDIVB) || defined(DIVBCLEANING_DEDNER)
-    MyFloat divB;               /*!< storage for the 'effective' divB used in div-cleaning procedure */
 #endif
 #if defined(TRICCO_RESISTIVITY_SWITCH)
     MyFloat Balpha;             /*!< effective resistivity coefficient */

@@ -621,7 +621,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	if(P[pindex].Type == type)
 	  {
 	    for(k = 0; k < 3; k++)
-	      *fp++ = (SphP[pindex].BPred[k] * a2_inv * gizmo2gauss);
+	      *fp++ = (Get_Particle_BField(pindex,k) * a2_inv * gizmo2gauss);
 	    n++;
 	  }
 #endif
@@ -680,11 +680,11 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
       break;
 
     case IO_DIVB:		/* divergence of magnetic field  */
-#ifdef TRACEDIVB
+#ifdef MAGNETIC
       for(n = 0; n < pc; pindex++)
 	if(P[pindex].Type == type)
 	  {
-	    *fp++ = (SphP[pindex].divB * a2_inv * gizmo2gauss);
+	    *fp++ = (SphP[pindex].divB * SphP[pindex].Density/P[pindex].Mass * a2_inv * gizmo2gauss);
 	    n++;
 	  }
 #endif
@@ -714,18 +714,18 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
       break;
 
     case IO_PHI:		/* divBcleaning fuction of particle  */
-#ifdef OUTPUTDEDNER
+#ifdef DIVBCLEANING_DEDNER
       for(n = 0; n < pc; pindex++)
 	if(P[pindex].Type == type)
 	  {
-	    *fp++ = (SphP[pindex].PhiPred * a2_inv * gizmo2gauss);
+	    *fp++ = (Get_Particle_PhiField(pindex) * a2_inv * gizmo2gauss);
 	    n++;
 	  }
 #endif
       break;
 
     case IO_GRADPHI:		/* divBcleaning fuction of particle  */
-#ifdef OUTPUTDEDNER
+#ifdef DIVBCLEANING_DEDNER
       for(n = 0; n < pc; pindex++)
 	if(P[pindex].Type == type)
 	  {
@@ -2434,7 +2434,7 @@ int blockpresent(enum iofields blocknr)
 
 
     case IO_DIVB:
-#ifdef TRACEDIVB
+#ifdef MAGNETIC
       return 1;
 #else
       return 0;
@@ -2459,7 +2459,7 @@ int blockpresent(enum iofields blocknr)
       break;
 
     case IO_PHI:
-#ifdef OUTPUTDEDNER
+#ifdef DIVBCLEANING_DEDNER
       return 1;
 #else
       return 0;
@@ -2467,7 +2467,7 @@ int blockpresent(enum iofields blocknr)
       break;
 
     case IO_GRADPHI:
-#ifdef OUTPUTDEDNER
+#ifdef DIVBCLEANING_DEDNER
       return 1;
 #else
       return 0;

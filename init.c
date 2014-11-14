@@ -649,7 +649,11 @@ void init(void)
         for(j = 0; j < 3; j++)
         {
             SphP[i].BPred[j] *= a2_fac * gauss2gizmo;
+#ifndef HYDRO_SPH
+            SphP[i].B[j] = SphP[i].BPred[j] * P[i].Mass / SphP[i].Density; /* convert to the conserved unit V*B */
+#else
             SphP[i].B[j] = SphP[i].BPred[j];
+#endif
         }
 #if defined(TRICCO_RESISTIVITY_SWITCH)
         SphP[i].Balpha = 0.0;
@@ -753,7 +757,7 @@ void init(void)
     }
 #endif
     
-/* this here is where you should insert custom code for hard-wiring the ICs of various test problems */
+    /* HELLO! This here is where you should insert custom code for hard-wiring the ICs of various test problems */
     
     
     
@@ -785,7 +789,7 @@ void init(void)
         // re-match the predicted and initial velocities and B-field values, just to be sure //
         for(j=0;j<3;j++) SphP[i].VelPred[j]=P[i].Vel[j];
 #ifdef MAGNETIC
-        for(j=0;j<3;j++) SphP[i].BPred[j]=SphP[i].B[j];
+        for(j=0;j<3;j++) {SphP[i].BPred[j]=SphP[i].B[j]; SphP[i].DtB[j]=0;}
 #endif
         //SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
         SphP[i].DtInternalEnergy = 0;

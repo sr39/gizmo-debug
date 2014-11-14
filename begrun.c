@@ -259,7 +259,8 @@ void begrun(void)
 #ifdef DIVBCLEANING_DEDNER
       All.DivBcleanParabolicSigma = all.DivBcleanParabolicSigma;
       All.DivBcleanHyperbolicSigma = all.DivBcleanHyperbolicSigma;
-      All.DivBcleanQ = all.DivBcleanQ;
+      All.FastestWaveSpeed = 0.0;
+      All.FastestWaveDecay = 0.0;
 #endif
 #ifdef BLACK_HOLES
       All.BlackHoleMaxAccretionRadius = all.BlackHoleMaxAccretionRadius;
@@ -1237,6 +1238,9 @@ void read_parameter_file(char *fname)
       strcpy(tag[nt], "CourantFac");
       addr[nt] = &All.CourantFac;
       id[nt++] = REAL;
+#ifdef MAGNETIC
+      All.CourantFac *= 0.5; /* safety factor needed for MHD calc, because people keep using the same CFac as hydro! */
+#endif
 
       strcpy(tag[nt], "DesNumNgb");
       addr[nt] = &All.DesNumNgb;
@@ -1779,6 +1783,7 @@ void read_parameter_file(char *fname)
 #endif
 
 #ifdef DIVBCLEANING_DEDNER
+      /*
       strcpy(tag[nt], "DivBcleaningParabolicSigma");
       addr[nt] = &All.DivBcleanParabolicSigma;
       id[nt++] = REAL;
@@ -1786,6 +1791,13 @@ void read_parameter_file(char *fname)
       strcpy(tag[nt], "DivBcleaningHyperbolicSigma");
       addr[nt] = &All.DivBcleanHyperbolicSigma;
       id[nt++] = REAL;
+      */
+        
+      /* PFH: these are generally not parameters that should be freely-varied. we're
+            going to hard-code them here, instead, so that only development-level 
+            users are modifying them */
+        All.DivBcleanHyperbolicSigma = 1.0;
+        All.DivBcleanParabolicSigma = 1.0;
 #endif
 
 #ifdef MAGNETIC

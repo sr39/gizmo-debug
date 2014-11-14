@@ -227,6 +227,7 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
             yields[1]=4.03;/*He*/ yields[2]=0.117;/*C*/ yields[3]=0.0399;/*N*/ yields[4]=1.06;/*O*/
             yields[5]=0.169;/*Ne*/ yields[6]=0.0596;/*Mg*/ yields[7]=0.0924;/*Si*/
             yields[8]=0.0408;/*S*/ yields[9]=0.00492;/*Ca*/ yields[10]=0.0842;/*Fe*/
+            /* note that the Mg yield here, and perhaps some other products, is systematically low (by ~0.4 dex) */
             
             if(P[i].Metallicity[0]<0.033)
             {

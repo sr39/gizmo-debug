@@ -64,7 +64,7 @@ static struct densdata_in
   MyFloat DelayTime;
 #endif
   int NodeList[NODELISTLENGTH];
-#if defined(MAGNETIC) && defined(HYDRO_SPH) && (defined(TRACEDIVB) || defined(DIVBCLEANING_DEDNER))
+#if defined(MAGNETIC) && defined(HYDRO_SPH)
   MyFloat BPred[3];
 #endif
   int Type;
@@ -95,8 +95,9 @@ static struct densdata_out
     MyFloat NV_A[3][3];
 #endif
 
-#if defined(MAGNETIC) && defined(HYDRO_SPH) && (defined(TRACEDIVB) || defined(DIVBCLEANING_DEDNER))
+#if defined(MAGNETIC) && defined(HYDRO_SPH)
     MyFloat divB;
+    MyFloat DtB[3];
 #endif
 
 #if defined(BH_POPIII_SEEDS) || defined(GALSF_FB_LOCAL_UV_HEATING) || defined(GALSF_FB_RPWIND_FROMSTARS) || defined(BH_PHOTONMOMENTUM) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN)
@@ -148,9 +149,8 @@ void particle2in_density(struct densdata_in *in, int i)
         in->DelayTime = SphP[i].DelayTime;
 #endif
         
-#if defined(MAGNETIC) && defined(HYDRO_SPH) && (defined(TRACEDIVB) || defined(DIVBCLEANING_DEDNER))
-        for(k = 0; k < 3; k++)
-            in->BPred[k] = SphP[i].BPred[k];
+#if defined(MAGNETIC) && defined(HYDRO_SPH)
+        for(k = 0; k < 3; k++) {in->BPred[k] = Get_Particle_BField(i,k);}
 #endif
     }
 }
@@ -201,8 +201,10 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
             }
 #endif
         
-#if defined(MAGNETIC) && defined(HYDRO_SPH) && (defined(TRACEDIVB) || defined(DIVBCLEANING_DEDNER))
+#if defined(MAGNETIC) && defined(HYDRO_SPH)
         ASSIGN_ADD(SphP[i].divB, out->divB, mode);
+        for(k = 0; k < 3; k++)
+            ASSIGN_ADD(SphP[i].DtB[k], out->DtB[k], mode);
 #endif
 
     } // P[i].Type == 0 //
@@ -302,15 +304,24 @@ void density(void)
 
   for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-      if(density_isactive(i))
-	{
-	  Left[i] = Right[i] = 0;
-
-#ifdef BLACK_HOLES
-	  P[i].SwallowID = 0;
+#ifdef MAGNETIC
+        /* use this chance to zero some time derivatives that will be re-computed on this same timestep */
+        if(P[i].Type==0)
+        {
+            for(k=0;k<3;k++) {SphP[i].DtB[k]=0;}
+#ifdef DIVBCLEANING_DEDNER
+            SphP[i].DtPhi=0;
 #endif
-	}
-    }
+        }
+#endif
+        if(density_isactive(i))
+        {
+            Left[i] = Right[i] = 0;
+#ifdef BLACK_HOLES
+            P[i].SwallowID = 0;
+#endif
+        }
+    } /* done with intial zero-out loop */
 
   /* allocate buffers to arrange communication */
   size_t MyBufferSize = All.BufferSize;
@@ -1036,12 +1047,25 @@ void density(void)
                     }
 #endif
                     
-#if defined(MAGNETIC) && defined(HYDRO_SPH) && (defined(TRACEDIVB) || defined(DIVBCLEANING_DEDNER))
+#if defined(MAGNETIC) && defined(HYDRO_SPH) 
                     if(SphP[i].Density > 0)
                     {
-                        SphP[i].divB *= 1 / SphP[i].Density; // add DhsmlNgbFactor per TP correction //
+                        SphP[i].divB *= PPPZ[i].DhsmlNgbFactor / SphP[i].Density; // add DhsmlNgbFactor per TP correction //
+                        for(k=0;k<3;k++) SphP[i].DtB[k] *= PPPZ[i].DhsmlNgbFactor / SphP[i].Density; // induction equation // 
+#ifdef DIVBCLEANING_DEDNER
+                        /* full correct form of D(phi)/Dt = -ch*ch*div.dot.B - phi/tau - (1/2)*phi*div.dot.v */
+                        /* PFH: here's the div.dot.B term: make sure div.dot.B def'n matches appropriate grad_phi conjugate pair: recommend direct diff div.dot.B */
+                        double tmp_ded = 0.5 * SphP[i].MaxSignalVel * All.cf_afac3*All.cf_atime; // has units of v_code now
+                        SphP[i].DtPhi = -tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB;
+                        // phiphi above now has units of [Bcode]*[vcode]^2/[rcode]=(Bcode*vcode)*vcode/rcode; needs to have units of [Phicode]*[vcode]/[rcode]
+                        // [GradPhi]=[Phicode]/[rcode] = [DtB] = [Bcode]*[vcode]/[rcode] IFF [Phicode]=[Bcode]*[vcode]; this also makes the above self-consistent //
+                        // (implicitly, this gives the correct evolution in comoving, adiabatic coordinates where the sound speed is the relevant speed at which
+                        //   the 'damping wave' propagates. another choice (provided everything else is self-consistent) is fine, it just makes different assumptions
+                        //   about the relevant 'desired' timescale for damping wave propagation in the expanding box) //
+#endif
                     } else {
                         SphP[i].divB = 0;
+                        for(k=0;k<3;k++) SphP[i].DtB[k]=0;
                     }
 #endif
                 }
@@ -1180,28 +1204,6 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     out.DhsmlHydroSumFactor += -mass_eff * (NUMDIMS * kernel.hinv * kernel.wk + u * kernel.dwk);
 #endif
                     
-                    /*
-#ifndef HYDRO_SPH
-                    // PFH: experimenting with some quadrature rules for our meshless methods here //
-                    double wt = 0;
-                    wt = PPP[j].Hsml * PPP[j].Hsml * PPP[j].Hsml;
-#ifdef ONEDIM
-                    wt = PPP[j].Hsml;
-#endif
-#ifdef TWODIMS
-                    wt = PPP[j].Hsml * PPP[j].Hsml;
-#endif
-                    if(kernel.r < PPP[j].Hsml)
-                    {
-                        kernel_main(kernel.r/PPP[j].Hsml, 1, 1, &wk, &wk, -1);
-                        wk *= wt * kernel.hinv3 / kernel.wk;
-                        out.VolumeCorrectionFactor += wk;
-                    }
-                    out.VolumeCorrectionFactorWeights += wt;
-#endif
-                    */
-                     
-                    
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
                     out.AGS_zeta += mass_j * kernel_gravity(u, kernel.hinv, kernel.hinv3, 0);
 #endif
@@ -1222,7 +1224,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                         kernel.dvx = local.Vel[0] - SphP[j].VelPred[0];
                         kernel.dvy = local.Vel[1] - SphP[j].VelPred[1];
                         kernel.dvz = local.Vel[2] - SphP[j].VelPred[2];
-                        out.Particle_DivVel += kernel.dwk * (kernel.dx * kernel.dvx + kernel.dy * kernel.dvy + kernel.dz * kernel.dvz) / kernel.r;
+                        out.Particle_DivVel -= kernel.dwk * (kernel.dx * kernel.dvx + kernel.dy * kernel.dvy + kernel.dz * kernel.dvz) / kernel.r;
                         /* not-very accurate SPH div-v estimator: however, it exactly describes the -particle- drift */
                         
                         density_evaluate_extra_physics_gas(&local, &out, &kernel, j);
@@ -1448,12 +1450,26 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
 #endif
         
         
-#if defined(MAGNETIC) && defined(HYDRO_SPH) && (defined(TRACEDIVB) || defined(DIVBCLEANING_DEDNER))
+#if defined(MAGNETIC) && defined(HYDRO_SPH)
         /* this lives here because the Lagrangian form of the Dedner cleaning scheme depends on
          the -specific- functional form of the div_B estimator */
-        out->divB += FLT(-kernel->mj_dwk_r * ((local->BPred[0] - SphP[j].BPred[0]) * kernel->dx +
-                                              (local->BPred[1] - SphP[j].BPred[1]) * kernel->dy +
-                                              (local->BPred[2] - SphP[j].BPred[2]) * kernel->dz));
+        out->divB += FLT(-kernel->mj_dwk_r * ((local->BPred[0] - Get_Particle_BField(j,0)) * kernel->dx +
+                                              (local->BPred[1] - Get_Particle_BField(j,1)) * kernel->dy +
+                                              (local->BPred[2] - Get_Particle_BField(j,2)) * kernel->dz));
+        /* ---------------------------------------------------------------------------------
+         * ... SPH induction equation ...
+         * (the SPH induction equation is inherently non-symmetric: the result for particle
+         *  'a' and particle 'b' must each be separately computed. However, they do not rely on the
+         *   densities or smoothing lengths of the neighbor particles. Therefore they can and should
+         *   be computed in the density loop, not the hydro loop)
+         * --------------------------------------------------------------------------------- */
+        out->DtB[0] += kernel->mj_dwk_r * ((local->BPred[0] * kernel->dvy - local->BPred[1] * kernel->dvx) * kernel->dy +
+                                           (local->BPred[0] * kernel->dvz - local->BPred[2] * kernel->dvx) * kernel->dz);
+        out->DtB[1] += kernel->mj_dwk_r * ((local->BPred[1] * kernel->dvz - local->BPred[2] * kernel->dvy) * kernel->dz +
+                                           (local->BPred[1] * kernel->dvx - local->BPred[0] * kernel->dvy) * kernel->dx);
+        out->DtB[2] += kernel->mj_dwk_r * ((local->BPred[2] * kernel->dvx - local->BPred[0] * kernel->dvz) * kernel->dx +
+                                           (local->BPred[2] * kernel->dvy - local->BPred[1] * kernel->dvz) * kernel->dy);
+
 #endif
     
     } // Type = 0 check

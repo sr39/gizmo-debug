@@ -92,6 +92,11 @@ struct Conserved_var_Riemann
     MyDouble cs;
 #ifdef MAGNETIC
     MyDouble B[3];
+    MyDouble B_normal_corrected;
+#ifdef DIVBCLEANING_DEDNER
+    MyDouble phi;
+    MyDouble phi_normal_corrected[3];
+#endif
 #endif
 };
 
@@ -108,15 +113,12 @@ struct kernel_hydra
     double p_over_rho2_i;
 #endif
 #ifdef MAGNETIC
-    double mj_r, mf_Ind, b2_i, b2_j;
-#ifdef MAGFORCE
+    double b2_i, b2_j;
+#ifdef HYDRO_SPH
     double mf_i, mf_j;
 #endif
 #if defined(MAGNETIC_SIGNALVEL)
     double alfven2_i, alfven2_j;
-#endif
-#if defined(MAGNETIC_DISSIPATION)
-    double mf_dissInd, mf_dissEnt;
 #endif
 #endif // MAGNETIC //
 };
@@ -232,12 +234,9 @@ struct hydrodata_out
     
 #if defined(MAGNETIC)
     MyFloat DtB[3];
-#ifdef DIVBFORCE3
-    MyFloat magacc[3];
-    MyFloat magcorr[3];
-#endif
-#if defined(HYDRO_SPH) && defined(DIVBCLEANING_DEDNER)
-    MyFloat GradPhi[3];
+    MyFloat divB;
+#if defined(DIVBCLEANING_DEDNER)
+    MyFloat DtPhi;
 #endif
 #endif // MAGNETIC //
     
@@ -340,15 +339,12 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
 #endif
     
 #ifdef MAGNETIC
-#ifdef MAGFORCE
-    for(k = 0; k < 3; k++)
-        in->BPred[k] = SphP[i].BPred[k];
-#endif
+    for(k = 0; k < 3; k++) {in->BPred[k] = Get_Particle_BField(i,k);}
 #if defined(TRICCO_RESISTIVITY_SWITCH)
     in->Balpha = SphP[i].Balpha;
 #endif
 #ifdef DIVBCLEANING_DEDNER
-    in->PhiPred = SphP[i].PhiPred;
+    in->PhiPred = Get_Particle_PhiField(i);
 #endif
 #endif // MAGNETIC // 
     
@@ -396,17 +392,12 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
 #endif
     
 #if defined(MAGNETIC)
-    for(k = 0; k < 3; k++)
-    {
-        ASSIGN_ADD(SphP[i].DtB[k], out->DtB[k], mode);
-#ifdef DIVBFORCE3
-        ASSIGN_ADD(SphP[i].magacc[k], out->magacc[k], mode);
-        ASSIGN_ADD(SphP[i].magcorr[k], out->magcorr[k], mode);
-#endif
-#if defined(HYDRO_SPH) && defined(DIVBCLEANING_DEDNER)
-        ASSIGN_ADD(SphP[i].Gradients.Phi[k], out->GradPhi[k], mode);
-#endif
-    }
+    /* can't just do DtB += out-> DtB, because for SPH methods, the induction equation is solved in the density loop; need to simply add it here */
+    for(k=0;k<3;k++) {SphP[i].DtB[k] += out->DtB[k];}
+    SphP[i].divB += out->divB;
+#if defined(DIVBCLEANING_DEDNER)
+    SphP[i].DtPhi += out->DtPhi;
+#endif // Dedner //
 #endif // MAGNETIC //
 }
 
@@ -437,6 +428,25 @@ void hydro_final_operations_and_cleanup(void)
                 rShockEnergy = SphP[i].DtInternalEnergy * dt / (All.cf_atime*All.cf_atime * fac_egy);
 #endif
             
+            
+#if defined(MAGNETIC)
+            /* need to subtract out the source terms proportional to the (non-zero) B-field divergence; to stabilize the scheme */
+            for(k = 0; k < 3; k++)
+            {
+#ifndef HYDRO_SPH
+                /* this part of the induction equation has to do with advection of div-B, it is not present in SPH */
+                SphP[i].DtB[k] -= SphP[i].divB * SphP[i].VelPred[k];
+#endif
+                SphP[i].HydroAccel[k] -= SphP[i].divB * Get_Particle_BField(i,k);
+                SphP[i].DtInternalEnergy -= SphP[i].divB * SphP[i].VelPred[k] * Get_Particle_BField(i,k);
+            }
+#if defined(DIVBCLEANING_DEDNER) && !defined(HYDRO_SPH)
+            double tmp_ded = 0.5 * SphP[i].MaxSignalVel / fac_mu; // has units of v_code now
+            SphP[i].DtPhi -= tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB;// * SphP[i].Density; // ??? //
+#endif
+#endif // MAGNETIC
+            
+            
             /* we calculated the flux of conserved variables: these are used in the kick operation. But for
              intermediate drift operations, we need the primive variables, so reduce to those here 
              (remembering that v_phys = v_code/All.cf_atime, for the sake of doing the unit conversions to physical) */
@@ -452,6 +462,15 @@ void hydro_final_operations_and_cleanup(void)
             }
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             SphP[i].DtInternalEnergy -= SphP[i].InternalEnergyPred * SphP[i].DtMass;
+#endif
+#ifdef MAGNETIC
+#ifndef HYDRO_SPH
+            for(k=0;k<3;k++)
+            {
+                SphP[i].DtInternalEnergy += -Get_Particle_BField(i,k)*SphP[i].DtB[k] +
+                    0.5*Get_Particle_BField(i,k)*Get_Particle_BField(i,k) * (P[i].Mass/SphP[i].Density) * P[i].Particle_DivVel;
+            }
+#endif
 #endif
             SphP[i].DtInternalEnergy /= P[i].Mass;
             /* ok, now: HydroAccel = dv/dt, DtInternalEnergy = du/dt (energy per unit mass) */
@@ -502,60 +521,6 @@ void hydro_final_operations_and_cleanup(void)
                 }
             }
 #endif
-            
-                        
-            
-#if defined(HYDRO_SPH) && defined(MAGNETIC)
-            double tmpb,phiphi;
-#ifdef DIVBFORCE3
-            // PFH: check if magnitude of correction > force itself; in which case limit it to equal value //
-            phiphi = SphP[i].magcorr[0]*SphP[i].magcorr[0] + SphP[i].magcorr[1]*SphP[i].magcorr[1] + SphP[i].magcorr[2]*SphP[i].magcorr[2];
-            tmpb = SphP[i].magacc[0]*SphP[i].magacc[0] + SphP[i].magacc[1]*SphP[i].magacc[1] + SphP[i].magacc[2]*SphP[i].magacc[2];
-            if(phiphi > DIVBFORCE3 * tmpb)
-            {
-                tmpb = sqrt(DIVBFORCE3 * tmpb / phiphi); // save sqrt for here (speeds this up)
-                for(k = 0; k < 3; k++)
-                    SphP[i].magcorr[k] *= tmpb;
-            }
-            // add the corrected mhd acceleration to the hydro acceleration //
-            for(k = 0; k < 3; k++)
-                SphP[i].HydroAccel[k] += (SphP[i].magacc[k] - SphP[i].magcorr[k]);
-#endif
-#ifdef DIVBCLEANING_DEDNER
-            /* full correct form of D(phi)/Dt = -ch*ch*div.dot.B - phi/tau - (1/2)*phi*div.dot.v */
-            /* PFH: here's the div.dot.B term: make sure div.dot.B def'n matches appropriate grad_phi conjugate pair: recommend direct diff div.dot.B */
-            tmpb = 0.5 * SphP[i].MaxSignalVel / fac_mu; // has units of v_code now
-            phiphi = tmpb * tmpb * All.DivBcleanHyperbolicSigma * SphP[i].divB;
-            // phiphi above now has units of [Bcode]*[vcode]^2/[rcode]=(Bcode*vcode)*vcode/rcode; needs to have units of [Phicode]*[vcode]/[rcode]
-            // [GradPhi]=[Phicode]/[rcode] = [DtB] = [Bcode]*[vcode]/[rcode] IFF [Phicode]=[Bcode]*[vcode]; this also makes the above self-consistent //
-            // (implicitly, this gives the correct evolution in comoving, adiabatic coordinates where the sound speed is the relevant speed at which
-            //   the 'damping wave' propagates. another choice (provided everything else is self-consistent) is fine, it just makes different assumptions
-            //   about the relevant 'desired' timescale for damping wave propagation in the expanding box) //
-            
-            /* PFH: add simple damping (-phi/tau) term */
-            phiphi += SphP[i].PhiPred * 0.5 * SphP[i].MaxSignalVel / (KERNEL_CORE_SIZE*PPP[i].Hsml*fac_mu) *
-                All.DivBcleanParabolicSigma; // need to be sure this translates into vcode/rcode units
-            
-            /* PFH: add div_v term from Tricco & Price to DtPhi */
-            phiphi += SphP[i].PhiPred * 0.5 * P[i].Particle_DivVel*All.cf_a2inv;
-            
-            /* multiply by negative sign and cosmological correction term */
-            //SphP[i].DtPhi = - phiphi * All.cf_atime * All.cf_atime;	/* Compensate for the 1/Ha^2 in dt_mag */
-            SphP[i].DtPhi = -phiphi; // should be in units of [Phi]*[v_code]/[r_code]; from that point dt_mag will correctly integrate it //
-            phiphi = sqrt(SphP[i].Gradients.Phi[0]*SphP[i].Gradients.Phi[0] + SphP[i].Gradients.Phi[1]*SphP[i].Gradients.Phi[1] + SphP[i].Gradients.Phi[2]*SphP[i].Gradients.Phi[2]);
-            tmpb = sqrt(SphP[i].DtB[0]*SphP[i].DtB[0] + SphP[i].DtB[1]*SphP[i].DtB[1] + SphP[i].DtB[2]*SphP[i].DtB[2]);
-            if(phiphi > All.DivBcleanQ * tmpb && tmpb != 0)
-                for(k = 0; k < 3; k++)
-                    SphP[i].Gradients.Phi[k] *=  tmpb * All.DivBcleanQ / phiphi;
-#ifdef MAGNETIC_DISSIPATION
-            SphP[i].DtInternalEnergy -= (SphP[i].BPred[0] * SphP[i].Gradients.Phi[0] + SphP[i].BPred[1] * SphP[i].Gradients.Phi[1] +
-                                  SphP[i].BPred[2] * SphP[i].Gradients.Phi[2]) * fac_magnetic_pressure / SphP[i].Density;
-#endif
-            SphP[i].DtB[0] += SphP[i].Gradients.Phi[0];
-            SphP[i].DtB[1] += SphP[i].Gradients.Phi[1];
-            SphP[i].DtB[2] += SphP[i].Gradients.Phi[2];
-#endif /* End DEDNER */
-#endif /* End Magnetic */
             
             
 #ifdef RT_RAD_PRESSURE
@@ -681,6 +646,9 @@ void hydro_force(void)
             SphP[i].dMass = 0;
             for(k=0;k<3;k++) SphP[i].GravWorkTerm[k] = 0;
 #endif
+#ifdef MAGNETIC
+            SphP[i].divB = 0;
+#endif // magnetic //
 #ifdef WAKEUP
             SphP[i].wakeup = 0;
 #endif
