@@ -24,26 +24,24 @@ extern pthread_mutex_t mutex_partnodedrift;
 #endif
 
 /*! \file density.c
- *  \brief SPH density computation and smoothing length determination
+ *  \brief SPH density computation and kernel length determination
  *
  *  This file contains the "first hydro loop", where the gas densities and some
  *  auxiliary quantities are computed.  There is also functionality that
- *  corrects the smoothing length if needed.
+ *  corrects the kernel length if needed.
  */
 
 /*
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel (volker.springel@h-its.org). The code has been modified
- * substantially (condensed, different criteria for smoothing lengths, 
+ * substantially (condensed, different criteria for kernel lengths,
  * some optimizatins, and new variable/memory conventions added)
  * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
 struct kernel_density
 {
-  double dx, dy, dz;
-  double r;
-  double dvx, dvy, dvz;
+  double dp[3],dv[3],r;
   double wk, dwk;
   double hinv, hinv3, hinv4;
   double mj_wk, mj_dwk_r;
@@ -258,13 +256,13 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
 
 
 /*! This function computes the local density for each active SPH particle, the
- * number of neighbours in the current smoothing radius, and the divergence
+ * number of neighbours in the current kernel radius, and the divergence
  * and rotation of the velocity field.  The pressure is updated as well.  If a
- * particle with its smoothing region is fully inside the local domain, it is
+ * particle with its kernel region is fully inside the local domain, it is
  * not exported to the other processors. The function also detects particles
  * that have a number of neighbours outside the allowed tolerance range. For
- * these particles, the smoothing length is adjusted accordingly, and the
- * density() computation is called again.  Note that the smoothing length is
+ * these particles, the kernel length is adjusted accordingly, and the
+ * density() computation is called again.  Note that the kernel length is
  * not allowed to fall below the lower bound set by MinGasHsml (this may mean
  * that one has to deal with substantially more than normal number of
  * neighbours.)
@@ -916,7 +914,7 @@ void density(void)
                     if(P[i].Type == 5)
                         if(Left[i] > All.BlackHoleMaxAccretionRadius)
                         {
-                            /* this will stop the search for a new BH smoothing length in the next iteration */
+                            /* this will stop the search for a new BH kernel length in the next iteration */
                             PPP[i].Hsml = Left[i] = Right[i] = All.BlackHoleMaxAccretionRadius;
                         }
 #endif
@@ -995,16 +993,7 @@ void density(void)
                     }
 #endif
                     
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
-                    if((PPP[i].Hsml > 0)&&(PPP[i].NumNgb > 0))
-                    {
-                        double ndenNGB = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
-                        PPPZ[i].AGS_zeta *= 0.5 * P[i].Mass * PPP[i].Hsml / (NUMDIMS * ndenNGB) * PPPZ[i].DhsmlNgbFactor;
-                    } else {
-                        PPPZ[i].AGS_zeta = 0;
-                    }
-#endif
-                    
+              
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
                     for(k1 = 0; k1 < 3; k1++)
                         for(k2 = 0; k2 < 3; k2++)
@@ -1050,12 +1039,12 @@ void density(void)
 #if defined(MAGNETIC) && defined(HYDRO_SPH) 
                     if(SphP[i].Density > 0)
                     {
-                        SphP[i].divB *= PPPZ[i].DhsmlNgbFactor / SphP[i].Density; // add DhsmlNgbFactor per TP correction //
-                        for(k=0;k<3;k++) SphP[i].DtB[k] *= PPPZ[i].DhsmlNgbFactor / SphP[i].Density; // induction equation // 
+                        SphP[i].divB *= PPPZ[i].DhsmlNgbFactor / SphP[i].Density * All.cf_a2inv / All.cf_atime; // add DhsmlNgbFactor per TP correction (convert from Bcode/rode to Bphys/rphys) //
+                        for(k=0;k<3;k++) SphP[i].DtB[k] *= PPPZ[i].DhsmlNgbFactor / SphP[i].Density * All.cf_a2inv*All.cf_a2inv; // induction equation (convert from Bcode*vcode/rcode to Bphy/tphys) //
 #ifdef DIVBCLEANING_DEDNER
                         /* full correct form of D(phi)/Dt = -ch*ch*div.dot.B - phi/tau - (1/2)*phi*div.dot.v */
                         /* PFH: here's the div.dot.B term: make sure div.dot.B def'n matches appropriate grad_phi conjugate pair: recommend direct diff div.dot.B */
-                        double tmp_ded = 0.5 * SphP[i].MaxSignalVel * All.cf_afac3*All.cf_atime; // has units of v_code now
+                        double tmp_ded = 0.5 * SphP[i].MaxSignalVel * All.cf_afac3; // has units of v_physical now
                         SphP[i].DtPhi = -tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB;
                         // phiphi above now has units of [Bcode]*[vcode]^2/[rcode]=(Bcode*vcode)*vcode/rcode; needs to have units of [Phicode]*[vcode]/[rcode]
                         // [GradPhi]=[Phicode]/[rcode] = [DtB] = [Bcode]*[vcode]/[rcode] IFF [Phicode]=[Bcode]*[vcode]; this also makes the above self-consistent //
@@ -1081,6 +1070,21 @@ void density(void)
                 SphP[i].Pressure = get_pressure(i);		// should account for density independent pressure
 
             } // P[i].Type == 0
+
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
+#ifdef ADAPTIVE_GRAVSOFT_FORGAS
+            if(P[i].Type==0)
+#endif
+            {
+                if((PPP[i].Hsml > 0)&&(PPP[i].NumNgb > 0))
+                {
+                    double ndenNGB = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
+                    PPPZ[i].AGS_zeta *= 0.5 * P[i].Mass * PPP[i].Hsml / (NUMDIMS * ndenNGB) * PPPZ[i].DhsmlNgbFactor;
+                } else {
+                    PPPZ[i].AGS_zeta = 0;
+                }
+            }
+#endif
             
 #ifdef PM_HIRES_REGION_CLIPPING
 #ifdef BLACK_HOLES
@@ -1174,15 +1178,15 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #endif
                 if(P[j].Mass <= 0) continue;
                 
-                kernel.dx = local.Pos[0] - P[j].Pos[0];
-                kernel.dy = local.Pos[1] - P[j].Pos[1];
-                kernel.dz = local.Pos[2] - P[j].Pos[2];
+                kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
+                kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
+                kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
 #ifdef PERIODIC			/*  find the closest image in the given box size  */
-                kernel.dx = NEAREST_X(kernel.dx);
-                kernel.dy = NEAREST_Y(kernel.dy);
-                kernel.dz = NEAREST_Z(kernel.dz);
+                kernel.dp[0] = NEAREST_X(kernel.dp[0]);
+                kernel.dp[1] = NEAREST_Y(kernel.dp[1]);
+                kernel.dp[2] = NEAREST_Z(kernel.dp[2]);
 #endif
-                r2 = kernel.dx * kernel.dx + kernel.dy * kernel.dy + kernel.dz * kernel.dz;
+                r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 
                 if(r2 < h2)
                 {
@@ -1214,17 +1218,21 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                         {
                             wk = kernel.wk; /* MAKE SURE THIS MATCHES CHOICE IN GRADIENTS.c!!! */
                             /* the weights for the MLS tensor used for gradient estimation */
-                            out.NV_T[0][0] +=  wk * kernel.dx * kernel.dx;
-                            out.NV_T[0][1] +=  wk * kernel.dx * kernel.dy;
-                            out.NV_T[0][2] +=  wk * kernel.dx * kernel.dz;
-                            out.NV_T[1][1] +=  wk * kernel.dy * kernel.dy;
-                            out.NV_T[1][2] +=  wk * kernel.dy * kernel.dz;
-                            out.NV_T[2][2] +=  wk * kernel.dz * kernel.dz;
+                            out.NV_T[0][0] +=  wk * kernel.dp[0] * kernel.dp[0];
+                            out.NV_T[0][1] +=  wk * kernel.dp[0] * kernel.dp[1];
+                            out.NV_T[0][2] +=  wk * kernel.dp[0] * kernel.dp[2];
+                            out.NV_T[1][1] +=  wk * kernel.dp[1] * kernel.dp[1];
+                            out.NV_T[1][2] +=  wk * kernel.dp[1] * kernel.dp[2];
+                            out.NV_T[2][2] +=  wk * kernel.dp[2] * kernel.dp[2];
                         }
-                        kernel.dvx = local.Vel[0] - SphP[j].VelPred[0];
-                        kernel.dvy = local.Vel[1] - SphP[j].VelPred[1];
-                        kernel.dvz = local.Vel[2] - SphP[j].VelPred[2];
-                        out.Particle_DivVel -= kernel.dwk * (kernel.dx * kernel.dvx + kernel.dy * kernel.dvy + kernel.dz * kernel.dvz) / kernel.r;
+                        kernel.dv[0] = local.Vel[0] - SphP[j].VelPred[0];
+                        kernel.dv[1] = local.Vel[1] - SphP[j].VelPred[1];
+                        kernel.dv[2] = local.Vel[2] - SphP[j].VelPred[2];
+#ifdef SHEARING_BOX
+                        if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {kernel.dv[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+                        if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {kernel.dv[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+#endif
+                        out.Particle_DivVel -= kernel.dwk * (kernel.dp[0] * kernel.dv[0] + kernel.dp[1] * kernel.dv[1] + kernel.dp[2] * kernel.dv[2]) / kernel.r;
                         /* not-very accurate SPH div-v estimator: however, it exactly describes the -particle- drift */
                         
                         density_evaluate_extra_physics_gas(&local, &out, &kernel, j);
@@ -1397,10 +1405,10 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
     {
         
 #if defined(GRAIN_FLUID)
-        out->SmoothedEntr += FLT(kernel->mj_wk * SphP[j].InternalEnergy);
-        out->GasVel[0] += FLT(kernel->mj_wk * SphP[j].VelPred[0]);
-        out->GasVel[1] += FLT(kernel->mj_wk * SphP[j].VelPred[1]);
-        out->GasVel[2] += FLT(kernel->mj_wk * SphP[j].VelPred[2]);
+        out->SmoothedEntr += kernel->mj_wk * SphP[j].InternalEnergy;
+        out->GasVel[0] += kernel->mj_wk * (local->Vel[0]+kernel->dv[0]);
+        out->GasVel[1] += kernel->mj_wk * (local->Vel[1]+kernel->dv[1]);
+        out->GasVel[2] += kernel->mj_wk * (local->Vel[2]+kernel->dv[2]);
 #endif
         
 #if defined(BLACK_HOLES)
@@ -1413,62 +1421,62 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
          just need a quick-and-dirty, single-pass approximation for the gradients (the error from
          using this as opposed to the higher-order gradient estimators is small compared to the
          Sobolev approximation): use only for -non-gas- particles */
-        out->GradRho[0] += kernel->mj_dwk_r * kernel->dx;
-        out->GradRho[1] += kernel->mj_dwk_r * kernel->dy;
-        out->GradRho[2] += kernel->mj_dwk_r * kernel->dz;
+        out->GradRho[0] += kernel->mj_dwk_r * kernel->dp[0];
+        out->GradRho[1] += kernel->mj_dwk_r * kernel->dp[1];
+        out->GradRho[2] += kernel->mj_dwk_r * kernel->dp[2];
 #endif
         
     } else { /* local.Type == 0 */
 
 #if defined(TURB_DRIVING)
-        out->GasVel[0] += FLT(kernel->mj_wk * SphP[j].VelPred[0]);
-        out->GasVel[1] += FLT(kernel->mj_wk * SphP[j].VelPred[1]);
-        out->GasVel[2] += FLT(kernel->mj_wk * SphP[j].VelPred[2]);
+        out->GasVel[0] += kernel->mj_wk * (local->Vel[0]+kernel->dv[0]);
+        out->GasVel[1] += kernel->mj_wk * (local->Vel[1]+kernel->dv[1]);
+        out->GasVel[2] += kernel->mj_wk * (local->Vel[2]+kernel->dv[2]);
 #endif
 
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
         double wk = kernel->wk;
-        out->NV_A[0][0] += (local->Accel[0] - All.cf_a2inv*P[j].GravAccel[0] - SphP[j].HydroAccel[0]) * kernel->dx * wk;
-        out->NV_A[0][1] += (local->Accel[0] - All.cf_a2inv*P[j].GravAccel[0] - SphP[j].HydroAccel[0]) * kernel->dy * wk;
-        out->NV_A[0][2] += (local->Accel[0] - All.cf_a2inv*P[j].GravAccel[0] - SphP[j].HydroAccel[0]) * kernel->dz * wk;
-        out->NV_A[1][0] += (local->Accel[1] - All.cf_a2inv*P[j].GravAccel[1] - SphP[j].HydroAccel[1]) * kernel->dx * wk;
-        out->NV_A[1][1] += (local->Accel[1] - All.cf_a2inv*P[j].GravAccel[1] - SphP[j].HydroAccel[1]) * kernel->dy * wk;
-        out->NV_A[1][2] += (local->Accel[1] - All.cf_a2inv*P[j].GravAccel[1] - SphP[j].HydroAccel[1]) * kernel->dz * wk;
-        out->NV_A[2][0] += (local->Accel[2] - All.cf_a2inv*P[j].GravAccel[2] - SphP[j].HydroAccel[2]) * kernel->dx * wk;
-        out->NV_A[2][1] += (local->Accel[2] - All.cf_a2inv*P[j].GravAccel[2] - SphP[j].HydroAccel[2]) * kernel->dy * wk;
-        out->NV_A[2][2] += (local->Accel[2] - All.cf_a2inv*P[j].GravAccel[2] - SphP[j].HydroAccel[2]) * kernel->dz * wk;
+        out->NV_A[0][0] += (local->Accel[0] - All.cf_a2inv*P[j].GravAccel[0] - SphP[j].HydroAccel[0]) * kernel->dp[0] * wk;
+        out->NV_A[0][1] += (local->Accel[0] - All.cf_a2inv*P[j].GravAccel[0] - SphP[j].HydroAccel[0]) * kernel->dp[1] * wk;
+        out->NV_A[0][2] += (local->Accel[0] - All.cf_a2inv*P[j].GravAccel[0] - SphP[j].HydroAccel[0]) * kernel->dp[2] * wk;
+        out->NV_A[1][0] += (local->Accel[1] - All.cf_a2inv*P[j].GravAccel[1] - SphP[j].HydroAccel[1]) * kernel->dp[0] * wk;
+        out->NV_A[1][1] += (local->Accel[1] - All.cf_a2inv*P[j].GravAccel[1] - SphP[j].HydroAccel[1]) * kernel->dp[1] * wk;
+        out->NV_A[1][2] += (local->Accel[1] - All.cf_a2inv*P[j].GravAccel[1] - SphP[j].HydroAccel[1]) * kernel->dp[2] * wk;
+        out->NV_A[2][0] += (local->Accel[2] - All.cf_a2inv*P[j].GravAccel[2] - SphP[j].HydroAccel[2]) * kernel->dp[0] * wk;
+        out->NV_A[2][1] += (local->Accel[2] - All.cf_a2inv*P[j].GravAccel[2] - SphP[j].HydroAccel[2]) * kernel->dp[1] * wk;
+        out->NV_A[2][2] += (local->Accel[2] - All.cf_a2inv*P[j].GravAccel[2] - SphP[j].HydroAccel[2]) * kernel->dp[2] * wk;
         
-        out->NV_D[0][0] += kernel->dvx * kernel->dx * wk;
-        out->NV_D[0][1] += kernel->dvx * kernel->dy * wk;
-        out->NV_D[0][2] += kernel->dvx * kernel->dz * wk;
-        out->NV_D[1][0] += kernel->dvy * kernel->dx * wk;
-        out->NV_D[1][1] += kernel->dvy * kernel->dy * wk;
-        out->NV_D[1][2] += kernel->dvy * kernel->dz * wk;
-        out->NV_D[2][0] += kernel->dvz * kernel->dx * wk;
-        out->NV_D[2][1] += kernel->dvz * kernel->dy * wk;
-        out->NV_D[2][2] += kernel->dvz * kernel->dz * wk;
+        out->NV_D[0][0] += kernel->dv[0] * kernel->dp[0] * wk;
+        out->NV_D[0][1] += kernel->dv[0] * kernel->dp[1] * wk;
+        out->NV_D[0][2] += kernel->dv[0] * kernel->dp[2] * wk;
+        out->NV_D[1][0] += kernel->dv[1] * kernel->dp[0] * wk;
+        out->NV_D[1][1] += kernel->dv[1] * kernel->dp[1] * wk;
+        out->NV_D[1][2] += kernel->dv[1] * kernel->dp[2] * wk;
+        out->NV_D[2][0] += kernel->dv[2] * kernel->dp[0] * wk;
+        out->NV_D[2][1] += kernel->dv[2] * kernel->dp[1] * wk;
+        out->NV_D[2][2] += kernel->dv[2] * kernel->dp[2] * wk;
 #endif
         
         
 #if defined(MAGNETIC) && defined(HYDRO_SPH)
         /* this lives here because the Lagrangian form of the Dedner cleaning scheme depends on
          the -specific- functional form of the div_B estimator */
-        out->divB += FLT(-kernel->mj_dwk_r * ((local->BPred[0] - Get_Particle_BField(j,0)) * kernel->dx +
-                                              (local->BPred[1] - Get_Particle_BField(j,1)) * kernel->dy +
-                                              (local->BPred[2] - Get_Particle_BField(j,2)) * kernel->dz));
+        out->divB += FLT(-kernel->mj_dwk_r * ((local->BPred[0] - Get_Particle_BField(j,0)) * kernel->dp[0] +
+                                              (local->BPred[1] - Get_Particle_BField(j,1)) * kernel->dp[1] +
+                                              (local->BPred[2] - Get_Particle_BField(j,2)) * kernel->dp[2]));
         /* ---------------------------------------------------------------------------------
          * ... SPH induction equation ...
          * (the SPH induction equation is inherently non-symmetric: the result for particle
          *  'a' and particle 'b' must each be separately computed. However, they do not rely on the
-         *   densities or smoothing lengths of the neighbor particles. Therefore they can and should
+         *   densities or kernel lengths of the neighbor particles. Therefore they can and should
          *   be computed in the density loop, not the hydro loop)
          * --------------------------------------------------------------------------------- */
-        out->DtB[0] += kernel->mj_dwk_r * ((local->BPred[0] * kernel->dvy - local->BPred[1] * kernel->dvx) * kernel->dy +
-                                           (local->BPred[0] * kernel->dvz - local->BPred[2] * kernel->dvx) * kernel->dz);
-        out->DtB[1] += kernel->mj_dwk_r * ((local->BPred[1] * kernel->dvz - local->BPred[2] * kernel->dvy) * kernel->dz +
-                                           (local->BPred[1] * kernel->dvx - local->BPred[0] * kernel->dvy) * kernel->dx);
-        out->DtB[2] += kernel->mj_dwk_r * ((local->BPred[2] * kernel->dvx - local->BPred[0] * kernel->dvz) * kernel->dx +
-                                           (local->BPred[2] * kernel->dvy - local->BPred[1] * kernel->dvz) * kernel->dy);
+        out->DtB[0] += kernel->mj_dwk_r * ((local->BPred[0] * kernel->dv[1] - local->BPred[1] * kernel->dv[0]) * kernel->dp[1] +
+                                           (local->BPred[0] * kernel->dv[2] - local->BPred[2] * kernel->dv[0]) * kernel->dp[2]);
+        out->DtB[1] += kernel->mj_dwk_r * ((local->BPred[1] * kernel->dv[2] - local->BPred[2] * kernel->dv[1]) * kernel->dp[2] +
+                                           (local->BPred[1] * kernel->dv[0] - local->BPred[0] * kernel->dv[1]) * kernel->dp[0]);
+        out->DtB[2] += kernel->mj_dwk_r * ((local->BPred[2] * kernel->dv[0] - local->BPred[0] * kernel->dv[2]) * kernel->dp[0] +
+                                           (local->BPred[2] * kernel->dv[1] - local->BPred[1] * kernel->dv[2]) * kernel->dp[1]);
 
 #endif
     

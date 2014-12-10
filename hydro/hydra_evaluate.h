@@ -1,9 +1,9 @@
 /* --------------------------------------------------------------------------------- */
 /* --------------------------------------------------------------------------------- */
-/*! This function is the 'core' of the SPH force computation. A target
+/*! This function is the 'core' of the hydro force computation. A target
 *  particle is specified which may either be local, or reside in the
 *  communication buffer.
-*   In this routine, we find the SPH neighbors, and do the loop over 
+*   In this routine, we find the gas particle neighbors, and do the loop over 
 *  neighbors to calculate the hydro fluxes. The actual flux calculation, 
 *  and the returned values, should be in PHYSICAL (not comoving) units */
 /*
@@ -125,21 +125,23 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* check if I need to compute this pair-wise interaction from "i" to "j", or skip it and 
                     let it be computed from "j" to "i" */
                 int TimeStep_J = (P[j].TimeBin ? (1 << P[j].TimeBin) : 0);
+#ifndef SHEARING_BOX // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //
                 if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
                 if((local.Timestep == TimeStep_J) && (P[j].ID < local.ID)) continue; /* use ID to break degeneracy */
+#endif
                 if(P[j].Mass <= 0) continue;
 #ifdef GALSF_SUBGRID_WINDS
                 if(SphP[j].DelayTime > 0) continue; /* no hydro forces for decoupled wind particles */
 #endif
-                kernel.dx = local.Pos[0] - P[j].Pos[0];
-                kernel.dy = local.Pos[1] - P[j].Pos[1];
-                kernel.dz = local.Pos[2] - P[j].Pos[2];
+                kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
+                kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
+                kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
 #ifdef PERIODIC  /* find the closest image in the given box size  */
-                kernel.dx = NEAREST_X(kernel.dx);
-                kernel.dy = NEAREST_Y(kernel.dy);
-                kernel.dz = NEAREST_Z(kernel.dz);
+                kernel.dp[0] = NEAREST_X(kernel.dp[0]);
+                kernel.dp[1] = NEAREST_Y(kernel.dp[1]);
+                kernel.dp[2] = NEAREST_Z(kernel.dp[2]);
 #endif
-                r2 = kernel.dx * kernel.dx + kernel.dy * kernel.dy + kernel.dz * kernel.dz;
+                r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 kernel.h_j = PPP[j].Hsml;
                 
                 /* force applied for all particles inside each-others kernels! */
@@ -156,9 +158,19 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 rinv = 1 / kernel.r;
                 /* we require a 'softener' to prevent numerical madness in interpolating functions */
                 rinv_soft = 1.0 / sqrt(r2 + 0.0001*kernel.h_i*kernel.h_i);
-                kernel.dvx = local.Vel[0] - SphP[j].VelPred[0];
-                kernel.dvy = local.Vel[1] - SphP[j].VelPred[1];
-                kernel.dvz = local.Vel[2] - SphP[j].VelPred[2];
+#ifdef SHEARING_BOX
+                /* in a shearing box, need to set dv appropriately for the shearing boundary conditions */
+                MyDouble VelPred_j[3];
+                for(k=0;k<3;k++) {VelPred_j[k]=SphP[j].VelPred[k];}
+                if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#else
+                /* faster to just set a pointer directly */
+                MyDouble *VelPred_j = SphP[j].VelPred;
+#endif
+                kernel.dv[0] = local.Vel[0] - VelPred_j[0];
+                kernel.dv[1] = local.Vel[1] - VelPred_j[1];
+                kernel.dv[2] = local.Vel[2] - VelPred_j[2];
                 kernel.rho_ij_inv = 2.0 / (local.Density + SphP[j].Density);
                 
                 /* --------------------------------------------------------------------------------- */
@@ -178,18 +190,18 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 kernel.alfven2_j = DMIN(kernel.alfven2_j, ALFVEN_VEL_LIMITER * kernel.sound_j*kernel.sound_j);
 #endif
                 double vcsa2_j = kernel.sound_j*kernel.sound_j + kernel.alfven2_j;
-                double Bpro2_j = (BPred_j[0]*kernel.dx + BPred_j[1]*kernel.dy + BPred_j[2]*kernel.dz) / kernel.r;
+                double Bpro2_j = (BPred_j[0]*kernel.dp[0] + BPred_j[1]*kernel.dp[1] + BPred_j[2]*kernel.dp[2]) / kernel.r;
                 Bpro2_j *= Bpro2_j;
                 double magneticspeed_j = sqrt(0.5 * (vcsa2_j + sqrt(DMAX((vcsa2_j*vcsa2_j -
                         4 * kernel.sound_j*kernel.sound_j * Bpro2_j*fac_magnetic_pressure/SphP[j].Density), 0))));
-                double Bpro2_i = (local.BPred[0]*kernel.dx + local.BPred[1]*kernel.dy + local.BPred[2]*kernel.dz) / kernel.r;
+                double Bpro2_i = (local.BPred[0]*kernel.dp[0] + local.BPred[1]*kernel.dp[1] + local.BPred[2]*kernel.dp[2]) / kernel.r;
                 Bpro2_i *= Bpro2_i;
                 double magneticspeed_i = sqrt(0.5 * (vcsa2_i + sqrt(DMAX((vcsa2_i*vcsa2_i -
                         4 * kernel.sound_i*kernel.sound_i * Bpro2_i*fac_magnetic_pressure/local.Density), 0))));
                 kernel.vsig = magneticspeed_i + magneticspeed_j;
 #endif
 #endif
-                kernel.vdotr2 = kernel.dx * kernel.dvx + kernel.dy * kernel.dvy + kernel.dz * kernel.dvz;
+                kernel.vdotr2 = kernel.dp[0] * kernel.dv[0] + kernel.dp[1] * kernel.dv[1] + kernel.dp[2] * kernel.dv[2];
                 // hubble-flow correction: need in -code- units, hence extra a2 appearing here //
                 if(All.ComovingIntegrationOn) kernel.vdotr2 += All.cf_hubble_a2 * r2;
                 if(kernel.vdotr2 < 0)
@@ -200,7 +212,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     kernel.vsig -= fac_mu * kernel.vdotr2 * rinv;
 #endif
                 }
-                double KE = kernel.dvx*kernel.dvx + kernel.dvy*kernel.dvy + kernel.dvz*kernel.dvz;
+                double KE = kernel.dv[0]*kernel.dv[0] + kernel.dv[1]*kernel.dv[1] + kernel.dv[2]*kernel.dv[2];
                 if(KE > out.MaxKineticEnergyNgb) out.MaxKineticEnergyNgb = KE;
                 if(TimeBinActive[P[j].TimeBin])
                 {
@@ -263,7 +275,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 out.dMass += dmass_holder;
                 out.DtMass += Fluxes.rho;
                 SphP[j].dMass -= dmass_holder; 
-                double gravwork[3]; gravwork[0]=Fluxes.rho*kernel.dx; gravwork[1]=Fluxes.rho*kernel.dy; gravwork[2]=Fluxes.rho*kernel.dz;
+                double gravwork[3]; gravwork[0]=Fluxes.rho*kernel.dp[0]; gravwork[1]=Fluxes.rho*kernel.dp[1]; gravwork[2]=Fluxes.rho*kernel.dp[2];
                 for(k=0;k<3;k++) {out.GravWorkTerm[k] += gravwork[k];}
 #endif
                 for(k=0;k<3;k++)
@@ -275,9 +287,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 out.DtInternalEnergy += Fluxes.p;
 #ifdef MAGNETIC
 #ifdef HYDRO_SPH
-                for(k=0;k<3;k++) {out.DtB[k]+=Fluxes.B[k]/V_i; out.DtInternalEnergy+=magfluxv[k]*local.Vel[k];}
+                for(k=0;k<3;k++) {out.DtB[k]+=Fluxes.B[k]*(All.cf_a3inv/V_i); out.DtInternalEnergy+=magfluxv[k]*local.Vel[k]/All.cf_atime;}
 #else
-                for(k=0;k<3;k++) {out.DtB[k]+=Fluxes.B[k]; out.DtInternalEnergy+=magfluxv[k]*local.BPred[k];}
+                for(k=0;k<3;k++) {out.DtB[k]+=Fluxes.B[k]; out.DtInternalEnergy+=magfluxv[k]*local.BPred[k]*All.cf_a2inv;}
 #endif
                 out.divB += Fluxes.B_normal_corrected;
 #ifdef DIVBCLEANING_DEDNER
@@ -289,6 +301,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 
                 /* if this is particle j's active timestep, you should sent them the time-derivative
                  information as well, for their subsequent drift operations */
+#ifndef SHEARING_BOX
                 if(TimeBinActive[P[j].TimeBin])
                 {
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -299,9 +312,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     SphP[j].DtInternalEnergy -= Fluxes.p;
 #ifdef MAGNETIC
 #ifdef HYDRO_SPH
-                    for(k=0;k<3;k++) {SphP[j].DtB[k]-=Fluxes.B[k]/V_j; SphP[j].DtInternalEnergy-=magfluxv[k]*SphP[j].VelPred[k];}
+                    for(k=0;k<3;k++) {SphP[j].DtB[k]-=Fluxes.B[k]*(All.cf_a3inv/V_j); SphP[j].DtInternalEnergy-=magfluxv[k]*VelPred_j[k]/All.cf_atime;}
 #else
-                    for(k=0;k<3;k++) {SphP[j].DtB[k]-=Fluxes.B[k]; SphP[j].DtInternalEnergy-=magfluxv[k]*BPred_j[k];}
+                    for(k=0;k<3;k++) {SphP[j].DtB[k]-=Fluxes.B[k]; SphP[j].DtInternalEnergy-=magfluxv[k]*BPred_j[k]*All.cf_a2inv;}
 #endif
                     SphP[j].divB -= Fluxes.B_normal_corrected;
 #ifdef DIVBCLEANING_DEDNER
@@ -309,6 +322,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #endif
                 }
+#endif
 
                 /* if we have mass fluxes, we need to have metal fluxes if we're using them (or any other passive scalars) */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME

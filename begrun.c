@@ -122,6 +122,15 @@ void begrun(void)
   inverse_boxSize_Z = 1. / boxSize_Z;
 #endif
 #endif
+    
+#ifdef SHEARING_BOX
+#ifdef LONG_X
+    Shearing_Box_Vel_Offset = SHEARING_BOX_Q * SHEARING_BOX_OMEGA_BOX_CENTER * boxSize * LONG_X;
+#else
+    Shearing_Box_Vel_Offset = SHEARING_BOX_Q * SHEARING_BOX_OMEGA_BOX_CENTER * boxSize;
+#endif
+#endif
+    
 
   random_generator = gsl_rng_alloc(gsl_rng_ranlxd1);
 
@@ -347,7 +356,9 @@ void begrun(void)
 
       if(P[i].Type == 0)
 	{
+#ifndef SHEARING_BOX
 	  SphP[i].VelPred[2] = 0;
+#endif
 	  SphP[i].HydroAccel[2] = 0;
 	}
     }
@@ -410,7 +421,7 @@ void set_units(void)
   All.UnitPressure_in_cgs = All.UnitMass_in_g / All.UnitLength_in_cm / pow(All.UnitTime_in_s, 2);
   All.UnitCoolingRate_in_cgs = All.UnitPressure_in_cgs / All.UnitTime_in_s;
   All.UnitEnergy_in_cgs = All.UnitMass_in_g * pow(All.UnitLength_in_cm, 2) / pow(All.UnitTime_in_s, 2);
-
+    
 #ifdef DISTORTIONTENSORPS
   /* 5.609589206e23 is the factor to convert from g to GeV/c^2, the rest comes from All.UnitDensity_in_cgs */
   All.UnitDensity_in_Gev_per_cm3 = 5.609589206e23 / pow(All.UnitLength_in_cm, 3) * All.UnitMass_in_g;
@@ -1081,6 +1092,12 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.UnitMass_in_g;
       id[nt++] = REAL;
 
+#ifdef MAGNETIC
+      strcpy(tag[nt], "UnitMagneticField_in_gauss");
+      addr[nt] = &All.UnitMagneticField_in_gauss;
+      id[nt++] = REAL;
+#endif
+
       strcpy(tag[nt], "TreeDomainUpdateFrequency");
       addr[nt] = &All.TreeDomainUpdateFrequency;
       id[nt++] = REAL;
@@ -1244,7 +1261,7 @@ void read_parameter_file(char *fname)
 
       strcpy(tag[nt], "DesNumNgb");
       addr[nt] = &All.DesNumNgb;
-      id[nt++] = INT;
+      id[nt++] = REAL;
 
 
 #ifdef SUBFIND
@@ -1713,7 +1730,7 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.WindFreeTravelDensFac;
       id[nt++] = REAL;
 
-#ifdef GALSF_SUBGRID_VARIABLEVELOCITY
+#if defined (GALSF_SUBGRID_VARIABLEVELOCITY) || defined(GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION)
       strcpy(tag[nt], "VariableWindVelFactor");
       addr[nt] = &All.VariableWindVelFactor;
       id[nt++] = REAL;
@@ -1729,7 +1746,7 @@ void read_parameter_file(char *fname)
       strcpy(tag[nt], "HaloConcentrationSlope");
       addr[nt] = &All.HaloConcentrationSlope;
       id[nt++] = REAL;
-#endif // GALSF_SUBGRID_VARIABLEVELOCITY
+#endif
 #endif // GALSF_SUBGRID_WINDS
 
 #endif
@@ -1783,7 +1800,7 @@ void read_parameter_file(char *fname)
 #endif
 
 #ifdef DIVBCLEANING_DEDNER
-      /*
+      //
       strcpy(tag[nt], "DivBcleaningParabolicSigma");
       addr[nt] = &All.DivBcleanParabolicSigma;
       id[nt++] = REAL;
@@ -1791,13 +1808,15 @@ void read_parameter_file(char *fname)
       strcpy(tag[nt], "DivBcleaningHyperbolicSigma");
       addr[nt] = &All.DivBcleanHyperbolicSigma;
       id[nt++] = REAL;
-      */
+      //
         
       /* PFH: these are generally not parameters that should be freely-varied. we're
             going to hard-code them here, instead, so that only development-level 
-            users are modifying them */
+            users are modifying them ??? */
+        /*
         All.DivBcleanHyperbolicSigma = 1.0;
         All.DivBcleanParabolicSigma = 1.0;
+        */
 #endif
 
 #ifdef MAGNETIC
@@ -1923,7 +1942,7 @@ void read_parameter_file(char *fname)
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
       strcpy(tag[nt], "AGS_DesNumNgb");
       addr[nt] = &All.AGS_DesNumNgb;
-      id[nt++] = INT;
+      id[nt++] = REAL;
 
       strcpy(tag[nt], "AGS_MaxNumNgbDeviation");
       addr[nt] = &All.AGS_MaxNumNgbDeviation;

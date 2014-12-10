@@ -18,12 +18,12 @@
         double Bpro2_j=0;
         if(kernel.b2_i>0)
         {
-            Bpro2_i = local.BPred[0]*kernel.dx + local.BPred[1]*kernel.dy + local.BPred[2]*kernel.dz;
+            Bpro2_i = local.BPred[0]*kernel.dp[0] + local.BPred[1]*kernel.dp[1] + local.BPred[2]*kernel.dp[2];
             Bpro2_i *= Bpro2_i / (kernel.b2_i * kernel.r*kernel.r);
         }
         if(kernel.b2_j>0)
         {
-            Bpro2_j = BPred_j[0]*kernel.dx + BPred_j[1]*kernel.dy + BPred_j[2]*kernel.dz;
+            Bpro2_j = BPred_j[0]*kernel.dp[0] + BPred_j[1]*kernel.dp[1] + BPred_j[2]*kernel.dp[2];
             Bpro2_j *= Bpro2_j / (kernel.b2_j * kernel.r*kernel.r);
         }
 #else

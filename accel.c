@@ -78,7 +78,7 @@ void compute_hydro_densities_and_forces(void)
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
         ags_density();
 #endif
-        force_update_hmax();	/* update smoothing lengths in tree */
+        force_update_hmax();	/* update kernel lengths in tree */
         /*! This function updates the hmax-values in tree nodes that hold SPH
          *  particles. These values are needed to find all neighbors in the
          *  hydro-force computation.  Since the Hsml-values are potentially changed

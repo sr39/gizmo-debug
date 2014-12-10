@@ -80,7 +80,7 @@ void HII_heating_singledomain(void)
                  log_age=log10(star_age/0.0035);
                  lm_ssp=470.*pow(10.,-2.24*log_age-4.2*log_age*log_age) + 60.*pow(10.,-3.6*log_age);
              }
-         
+             lm_ssp *= calculate_relative_light_to_mass_ratio_from_imf(i);
          } // (P[i].Type != 5)
          
 #ifdef BH_HII_HEATING

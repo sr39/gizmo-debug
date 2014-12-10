@@ -572,7 +572,7 @@ void do_sinks(void)
 		  e_kin +=
 		    0.5 * sink[i].mass * (sink[i].vel[j] - vel_cm[j]) * (sink[i].vel[j] - vel_cm[j]) / a2;
 #ifdef MAGNETIC
-		  e_mag += 0.5 * sink[i].mass * (sink[i].bfld[j] * sink[i].bfld[j])*MU0_1*All.cf_a2inv*All.cf_a2inv / (sink[i].rho*All.cf_a3inv);
+		  e_mag += 0.5 * sink[i].mass * (sink[i].bfld[j] * sink[i].bfld[j])*All.cf_a2inv*All.cf_a2inv / (sink[i].rho*All.cf_a3inv);
 #endif
 		}
 

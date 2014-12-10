@@ -130,10 +130,16 @@ void apply_grain_dragforce(void)
                u=sqrt(r2)*hinv;
                wk=P[j].Mass * hinv3*kernel_wk(u) / rho;
 			   degy=0;
+               MyDouble VelPred_j[3];
+               for(k=0;k<3;k++) {VelPred_j[k]=P[j].Vel[k];}
+#ifdef SHEARING_BOX
+               if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+               if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#endif
 			   for(k=0; k<3; k++)
 			   {
 			     dvel=-wk*delta_mom[k]/P[j].Mass;
-			     degy-=0.5*P[j].Mass*((P[j].Vel[k]+dvel)*(P[j].Vel[k]+dvel) - P[j].Vel[k]*P[j].Vel[k]);
+			     degy-=0.5*P[j].Mass*((VelPred_j[k]+dvel)*(VelPred_j[k]+dvel) - VelPred_j[k]*VelPred_j[k]);
 			       P[j].Vel[k] += dvel;
 			       SphP[j].VelPred[k] += dvel;
 			   }
@@ -146,10 +152,16 @@ void apply_grain_dragforce(void)
           } else { 
               j=jnearest; wk=1;
 			   degy=0;
+              MyDouble VelPred_j[3];
+              for(k=0;k<3;k++) {VelPred_j[k]=P[j].Vel[k];}
+#ifdef SHEARING_BOX
+              if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+              if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#endif
 			   for(k=0; k<3; k++)
 			   {
 			     dvel=-wk*delta_mom[k]/P[j].Mass;
-			     degy-=0.5*P[j].Mass*((P[j].Vel[k]+dvel)*(P[j].Vel[k]+dvel) - P[j].Vel[k]*P[j].Vel[k]);
+                 degy-=0.5*P[j].Mass*((VelPred_j[k]+dvel)*(VelPred_j[k]+dvel) - VelPred_j[k]*VelPred_j[k]);
 			       P[j].Vel[k] += dvel;
 			       SphP[j].VelPred[k] += dvel;
 			   }
@@ -583,9 +595,15 @@ int grain_density_evaluate(int target, int mode, int *nexport, int *nsend_local)
 		    mass_j = P[j].Mass;
 		    rho += FLT(mass_j * wk);
 		    weighted_numngb += FLT(NORM_COEFF * wk / hinv3);
-		    gasvel[0] += FLT(mass_j * wk * SphP[j].VelPred[0]);
-		    gasvel[1] += FLT(mass_j * wk * SphP[j].VelPred[1]);
-		    gasvel[2] += FLT(mass_j * wk * SphP[j].VelPred[2]);
+            MyDouble VelPred_j[3];
+            for(k=0;k<3;k++) {VelPred_j[k]=SphP[j].VelPred[k];}
+#ifdef SHEARING_BOX
+            if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+            if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#endif
+		    gasvel[0] += FLT(mass_j * wk * VelPred_j[0]);
+		    gasvel[1] += FLT(mass_j * wk * VelPred_j[1]);
+		    gasvel[2] += FLT(mass_j * wk * VelPred_j[2]);
 		  }
 		}
 	    }

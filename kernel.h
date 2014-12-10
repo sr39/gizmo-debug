@@ -1,4 +1,4 @@
-/* this file contains the definitions for the smoothing kernels */
+/* this file contains the definitions for the kernel functions */
 /*
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel (volker.springel@h-its.org). The code has been modified
@@ -11,7 +11,7 @@
 #define KERNEL_H
 
 /* fall back to standard kernel */
-#if !defined(SPH_KERNEL_QUINTIC) && !defined(SPH_KERNEL_QUARTIC)
+#if !defined(KERNEL_QUINTIC) && !defined(KERNEL_QUARTIC)
 #define STANDARD_KERNEL   
 #endif
 
@@ -33,7 +33,7 @@
 #endif
 #endif /* STANDARD_KERNEL */
 
-#ifdef SPH_KERNEL_QUINTIC
+#ifdef KERNEL_QUINTIC
 #ifdef THREEDIM
 #define  NORM 2187.0/(40.0*M_PI)	    /*!< For 3D-normalized kernel */
 #endif
@@ -43,10 +43,10 @@
 #ifdef ONEDIM
 #define  NORM 243.0/40.0        	    /*!< For 1D-normalized kernel */
 #endif
-#endif  /* SPH_KERNEL_QUINTIC */
+#endif  /* KERNEL_QUINTIC */
 
 
-#ifdef SPH_KERNEL_QUARTIC
+#ifdef KERNEL_QUARTIC
 #ifdef THREEDIM
 #define  NORM 15625.0/(512.0*M_PI)	    /*!< For 3D-normalized kernel */
 #endif
@@ -56,7 +56,7 @@
 #ifdef ONEDIM
 #define  NORM 3125.0/768.0        	    /*!< For 1D-normalized kernel */
 #endif
-#endif  /* SPH_KERNEL_QUARTIC */
+#endif  /* KERNEL_QUARTIC */
 
 
 static inline void kernel_hinv(double h, double *hinv, double *hinv3, double *hinv4)
@@ -108,7 +108,7 @@ static inline void kernel_main(double u, double hinv3, double hinv4,
     }
 #endif /* STANDARD_KERNEL */
 
-#ifdef SPH_KERNEL_QUINTIC
+#ifdef KERNEL_QUINTIC
   double t1 = (1.0 - u);
   double t2 = t1 * t1;
   double t4 = t2 * t2;
@@ -138,9 +138,9 @@ static inline void kernel_main(double u, double hinv3, double hinv4,
       if(mode <= 0) 
           *wk += 15.0 * t4 * t1;
     }
-#endif /* SPH_KERNEL_QUINTIC */
+#endif /* KERNEL_QUINTIC */
 
-#ifdef SPH_KERNEL_QUARTIC
+#ifdef KERNEL_QUARTIC
     double t1 = (1.0 - u);
     double t2 = t1 * t1;
     
@@ -167,7 +167,7 @@ static inline void kernel_main(double u, double hinv3, double hinv4,
         if(mode <= 0)
             *wk += 10.0 * t2 * t2;
     }
-#endif /* SPH_KERNEL_QUARTIC */
+#endif /* KERNEL_QUARTIC */
     
     
   if(mode >= 0) 
@@ -234,7 +234,7 @@ static inline double kernel_gravity(double u, double hinv, double hinv3, int mod
 #endif /* STANDARD_KERNEL */
 
     
-#ifdef SPH_KERNEL_QUINTIC
+#ifdef KERNEL_QUINTIC
     double u2=u*u;
     if(mode == 1)
     {
@@ -281,7 +281,7 @@ static inline double kernel_gravity(double u, double hinv, double hinv3, int mod
 #endif /* QUINTIC KERNEL */
 
     
-#ifdef SPH_KERNEL_QUARTIC
+#ifdef KERNEL_QUARTIC
     double u2=u*u;
     if(mode == 1)
     {

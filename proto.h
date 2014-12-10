@@ -233,8 +233,6 @@ int compare_length_values(const void *a, const void *b);
 double rho_dot(double z, void *params);
 double bhgrowth(double z1, double z2);
 
-int smoothed_evaluate(int target, int mode, int *nexport, int *nsend_local);
-void smoothed_values(void);
 
 int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend_local);
 
@@ -428,6 +426,7 @@ void cooling_and_starformation(void);
 double evaluate_stellar_age_Gyr(double stellar_tform);
 inline double evaluate_l_over_m_ssp(double stellar_age_in_gyr);
 inline double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double include_h);
+inline double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i);
 #endif
 #if defined(GALSF_FB_RPWIND_LOCAL) && defined(GALSF_FB_RPWIND_FROMSTARS)
 int ngb_treefind_newstars(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode, int *nexport, int *nsend_local);
@@ -501,6 +500,20 @@ void radiation_pressure_winds_consolidated(void);
 #if defined(BLACK_HOLES)
 int blackhole_evaluate_PREPASS(int target, int mode, int *nexport, int *nSend_local);
 #endif
+
+#ifdef  GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION
+int disp_gravity_kernel_shared_check(short int particle_type_primary, short int particle_type_secondary);
+void disp_setup_smoothinglengths(void);
+int dm_disp_ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
+                                       int mode, int *exportflag, int *exportnodecount, int *exportindex,
+                                       int *ngblist, int type_of_searching_particle);
+void disp_density(void);
+int disp_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
+void *disp_density_evaluate_primary(void *p);
+void *disp_density_evaluate_secondary(void *p);
+int disp_density_isactive(MyIDType i);
+#endif
+
 
 void cooling_only(void);
 void count_hot_phase(void);

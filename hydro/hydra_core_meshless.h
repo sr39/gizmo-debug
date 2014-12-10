@@ -6,13 +6,15 @@
  */
 /* --------------------------------------------------------------------------------- */
 {
+//#define DO_HALFSTEP_FOR_MESHLESS_METHODS 1
+    
     double s_star_ij,s_i,s_j,v_frame[3],n_unit[3];
     double distance_from_i[3],distance_from_j[3];
     Fluxes.rho = Fluxes.p = Fluxes.v[0] = Fluxes.v[1] = Fluxes.v[2] = 0;
 #ifdef MAGNETIC
-    Fluxes.B[0] = Fluxes.B[1] = Fluxes.B[2] = 0;
+    Fluxes.B_normal_corrected = Fluxes.B[0] = Fluxes.B[1] = Fluxes.B[2] = 0;
 #if defined(DIVBCLEANING_DEDNER) && defined(HYDRO_MESHLESS_FINITE_VOLUME)
-    Fluxes.phi = 0;
+    Fluxes.phi = magfluxv[0] = magfluxv[1] = magfluxv[2] = 0.0;
 #endif
 #endif
     
@@ -44,16 +46,16 @@
         }
 #endif
         dwk_norm = -(V_i*V_i*kernel.dwk_i + V_j*V_j*kernel.dwk_j) / kernel.r;
-        dwk_tmp[0] = dwk_norm * kernel.dx;
-        dwk_tmp[1] = dwk_norm * kernel.dy;
-        dwk_tmp[2] = dwk_norm * kernel.dz;
+        dwk_tmp[0] = dwk_norm * kernel.dp[0];
+        dwk_tmp[1] = dwk_norm * kernel.dp[1];
+        dwk_tmp[2] = dwk_norm * kernel.dp[2];
         dwk_norm = dwk_norm * dwk_norm * r2;
     } else {
         /* the effective gradient matrix is well-conditioned: we can safely use the consistent EOM */
         for(k=0;k<3;k++)
         {
-            dwk_tmp[k] = kernel.wk_i * V_i * (local.NV_T[k][0]*kernel.dx + local.NV_T[k][1]*kernel.dy + local.NV_T[k][2]*kernel.dz)
-                       + kernel.wk_j * V_j * (SphP[j].NV_T[k][0]*kernel.dx + SphP[j].NV_T[k][1]*kernel.dy + SphP[j].NV_T[k][2]*kernel.dz);
+            dwk_tmp[k] = kernel.wk_i * V_i * (local.NV_T[k][0]*kernel.dp[0] + local.NV_T[k][1]*kernel.dp[1] + local.NV_T[k][2]*kernel.dp[2])
+                       + kernel.wk_j * V_j * (SphP[j].NV_T[k][0]*kernel.dp[0] + SphP[j].NV_T[k][1]*kernel.dp[1] + SphP[j].NV_T[k][2]*kernel.dp[2]);
             dwk_norm += dwk_tmp[k]*dwk_tmp[k];
         }
     }
@@ -64,7 +66,7 @@
         if((dwk_norm<=0)||(isnan(dwk_norm)))
         {
             printf("PANIC! dwk_norm=%g Mij=%g/%g wk_ij=%g/%g Vij=%g/%g dx/dy/dz=%g/%g/%g NVT=%g/%g/%g NVT_j=%g/%g/%g \n",dwk_norm,local.Mass,P[j].Mass,kernel.wk_i,
-                   kernel.wk_j,V_i,V_j,kernel.dx,kernel.dy,kernel.dz,local.NV_T[0][0],local.NV_T[0][1],local.NV_T[0][2],SphP[j].NV_T[0][0],SphP[j].NV_T[0][1],
+                   kernel.wk_j,V_i,V_j,kernel.dp[0],kernel.dp[1],kernel.dp[2],local.NV_T[0][0],local.NV_T[0][1],local.NV_T[0][2],SphP[j].NV_T[0][0],SphP[j].NV_T[0][1],
                    SphP[j].NV_T[0][2]);fflush(stdout);
         }
         dwk_norm = sqrt(dwk_norm);
@@ -81,12 +83,19 @@
         //(simple up-winding formulation: use if desired instead of time-centered fluxes)//
         //delta_halfstep_i = kernel.sound_i*0.5*dt_hydrostep*cs_t_to_comoving_x; if(delta_halfstep_i>s_i) {delta_halfstep_i=s_i;}
         //delta_halfstep_j = kernel.sound_j*0.5*dt_hydrostep*cs_t_to_comoving_x; if(delta_halfstep_j>-s_j) {delta_halfstep_j=-s_j;}
+#ifdef DO_HALFSTEP_FOR_MESHLESS_METHODS
+        /* advance the faces a half-step forward in time (given our leapfrog scheme, this actually has
+            very, very weak effects on the errors. nonetheless it does help a small amount in reducing
+            certain types of noise and oscillations (but not always!) */
+        s_i += 0.5 * dt_hydrostep * (local.Vel[0]*kernel.dp[0] + local.Vel[1]*kernel.dp[1] + local.Vel[2]*kernel.dp[2]) * rinv;
+        s_j += 0.5 * dt_hydrostep * (VelPred_j[0]*kernel.dp[0] + VelPred_j[1]*kernel.dp[1] + VelPred_j[2]*kernel.dp[2]) * rinv;
+#endif
         s_i = s_star_ij - s_i; //+ delta_halfstep_i; /* projection element for gradients */
         s_j = s_star_ij - s_j; //- delta_halfstep_j;
-        distance_from_i[0]=kernel.dx*rinv; distance_from_i[1]=kernel.dy*rinv; distance_from_i[2]=kernel.dz*rinv;
+        distance_from_i[0]=kernel.dp[0]*rinv; distance_from_i[1]=kernel.dp[1]*rinv; distance_from_i[2]=kernel.dp[2]*rinv;
         for(k=0;k<3;k++) {distance_from_j[k] = distance_from_i[k] * s_j; distance_from_i[k] *= s_i;}
-        //for(k=0;k<3;k++) {v_frame[k] = 0.5 * (local.Vel[k] + SphP[j].VelPred[k]);}
-        for(k=0;k<3;k++) {v_frame[k] = rinv * (s_j*SphP[j].VelPred[k] - s_i*local.Vel[k]);} // allows for face to be off-center (to second-order)
+        //for(k=0;k<3;k++) {v_frame[k] = 0.5 * (VelPred_j[k] + local.Vel[k]);}
+        for(k=0;k<3;k++) {v_frame[k] = rinv * (s_j*VelPred_j[k] - s_i*local.Vel[k]);} // allows for face to be off-center (to second-order)
         
         
         /* now we do the reconstruction (second-order reconstruction at the face) */
@@ -102,7 +111,7 @@
 #endif
         for(k=0;k<3;k++)
         {
-            reconstruct_face_states(local.Vel[k]-v_frame[k], local.Gradients.Velocity[k], SphP[j].VelPred[k]-v_frame[k], SphP[j].Gradients.Velocity[k],
+            reconstruct_face_states(local.Vel[k]-v_frame[k], local.Gradients.Velocity[k], VelPred_j[k]-v_frame[k], SphP[j].Gradients.Velocity[k],
                                     distance_from_i, distance_from_j, &Riemann_vec.L.v[k], &Riemann_vec.R.v[k], 1);
         }
 #ifdef MAGNETIC
@@ -116,6 +125,36 @@
                                 distance_from_i, distance_from_j, &Riemann_vec.L.phi, &Riemann_vec.R.phi, 1);
 #endif
 #endif
+
+#ifdef DO_HALFSTEP_FOR_MESHLESS_METHODS
+        /* advance the faces a half-step forward in time (given our leapfrog scheme, this actually has
+            very, very weak effects on the errors. nonetheless it does help a small amount in reducing 
+            certain types of noise and oscillations */
+        double dt_half = 0.5*dt_hydrostep;
+        for(k=0;k<3;k++)
+        {
+            Riemann_vec.R.rho -= dt_half * local.Density * local.Gradients.Velocity[k][k];
+            Riemann_vec.L.rho -= dt_half * SphP[j].Density * SphP[j].Gradients.Velocity[k][k];
+            Riemann_vec.R.p -= dt_half * GAMMA * local.Pressure * local.Gradients.Velocity[k][k];
+            Riemann_vec.L.p -= dt_half * GAMMA * SphP[j].Pressure * SphP[j].Gradients.Velocity[k][k];
+            double dv_l_half = -dt_half * local.Gradients.Pressure[k] / local.Density;
+            double dv_r_half = -dt_half * SphP[j].Gradients.Pressure[k] / SphP[j].Density;
+            /* // this part doesn't need to be done, because our derivatives are co-moving; but if they are not, use it //
+             Riemann_vec.R.rho -= dt_half * (local.Vel[k]-v_frame[k]) * local.Gradients.Density[k];
+             Riemann_vec.L.rho -= dt_half * (VelPred_j[k]-v_frame[k]) * SphP[j].Gradients.Density[k];
+             Riemann_vec.R.p -= dt_half * (local.Vel[k]-v_frame[k]) * local.Gradients.Pressure[k];
+             Riemann_vec.L.p -= dt_half * (VelPred_j[k]-v_frame[k]) * SphP[j].Gradients.Pressure[k];
+             for(int kx=0;kx<3;kx++)
+             {
+                dv_r_half -= dt_half * (local.Vel[kx]-v_frame[kx]) * local.Gradients.Velocity[k][kx];
+                dv_l_half -= dt_half * (VelPred_j[kx]-v_frame[kx]) * SphP[j].Gradients.Velocity[k][kx];
+             }
+            */
+            Riemann_vec.R.v[k] += 0.5 * (dv_l_half - dv_r_half);
+            Riemann_vec.L.v[k] += 0.5 * (dv_r_half - dv_l_half);
+            v_frame[k] += 0.5*(dv_l_half + dv_l_half);
+        }
+#endif
         
         /* --------------------------------------------------------------------------------- */
         /* Alright! Now we're actually ready to solve the Riemann problem at the particle interface */
@@ -127,7 +166,7 @@
             /* go to a linear reconstruction of P, rho, and v, and re-try */
             Riemann_vec.R.p = local.Pressure; Riemann_vec.L.p = SphP[j].Pressure;
             Riemann_vec.R.rho = local.Density; Riemann_vec.L.rho = SphP[j].Density;
-            for(k=0;k<3;k++) {Riemann_vec.R.v[k]=local.Vel[k]-v_frame[k]; Riemann_vec.L.v[k]=SphP[j].VelPred[k]-v_frame[k];}
+            for(k=0;k<3;k++) {Riemann_vec.R.v[k]=local.Vel[k]-v_frame[k]; Riemann_vec.L.v[k]=VelPred_j[k]-v_frame[k];}
 #ifdef MAGNETIC
             for(k=0;k<3;k++) {Riemann_vec.R.B[k]=local.BPred[k]; Riemann_vec.L.B[k]=BPred_j[k];}
 #ifdef DIVBCLEANING_DEDNER
@@ -184,7 +223,7 @@
 #ifdef MAGNETIC
                 Riemann_out.Fluxes.B[k] += -v_frame[k] * Riemann_out.B_normal_corrected; /* v dotted into B along the normal to the face (careful of sign here) */
 #ifdef DIVBCLEANING_DEDNER
-                // Riemann_out.Fluxes.phi += -v_frame[k] * n_unit[k] * Riemann_out.phi_normal_corrected; /* extra phi flux from advection */
+                Riemann_out.Fluxes.phi += -v_frame[k] * n_unit[k] * Riemann_out.phi_normal_corrected; /* extra phi flux from advection */
 #endif
 #endif
             }
@@ -205,7 +244,7 @@
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
 //            if(Fluxes.rho > 0) {Fluxes.phi=Fluxes.rho*Riemann_vec.L.phi;} else {Fluxes.phi=Fluxes.rho*Riemann_vec.R.phi;}
 #endif
-            Fluxes.phi = Riemann_out.Fluxes.phi; // ??? still not clear if mass-based flux is better ??? //
+            Fluxes.phi = Riemann_out.Fluxes.phi * dwk_norm; // ??? still not clear if mass-based flux is better ??? //
             for(k=0;k<3;k++)
             {
                 magfluxv[k] = Riemann_out.phi_normal_corrected * dwk_norm * n_unit[k]; // = contribution to -grad*phi //

@@ -2411,7 +2411,9 @@ int blackhole_evaluate_PREPASS(int target, int mode, int *nexport, int *nSend_lo
                     {
                         dP[k]=P[j].Pos[k]-pos[k];
 #ifdef PERIODIC
-                        dP[k]=NEAREST(dP[k]);
+                        if(k==0) dP[k]=NEAREST_X(dP[k]);
+                        if(k==1) dP[k]=NEAREST_Y(dP[k]);
+                        if(k==2) dP[k]=NEAREST_Z(dP[k]);
 #endif
                         dv[k]=P[j].Vel[k]-vel[k];
                     }

@@ -66,8 +66,9 @@ TreeDomainUpdateFrequency   0.005	% 0.0005-0.05, dept on core+particle number
 %---- System of units 
 UnitLength_in_cm            3.085678e21     % 1.0 kpc/h
 UnitMass_in_g               1.989e43  	    % 1.0e10 solar masses/h
-UnitVelocity_in_cm_per_s    1e5   	        % 1 km/sec 
-GravityConstantInternal     0		        % calculated by code if =0 
+UnitVelocity_in_cm_per_s    1.0e5   	    % 1 km/sec
+UnitMagneticField_in_gauss  1.0   	        % 1 gauss
+GravityConstantInternal     0		        % calculated by code if =0
 
 %---- Initial temperature & temperature floor 
 InitGasTemp     300	    % set by IC file if =0 
@@ -77,7 +78,7 @@ MinGasTemp      10.	    % don't set <10 in explicit feedback runs, otherwise 0
 DesNumNgb               32      % 32 for standard kernel, 60-114 for quintic 
 MaxNumNgbDeviation      0.25    % <<DesNumNgb (values<1 are fine)
 MaxHsml                 1.0e10  % some very large value (here to prevent errors)
-MinGasHsmlFractional    1.0     % minimum gas smoothing in terms of softening  (=1)
+MinGasHsmlFractional    1.0     % minimum gas kernel length in terms of softening  (=1)
 
 %---- Gravitational softening lengths 
 %----- Softening lengths per particle type. If ADAPTIVE_GRAVSOFT is set, these  

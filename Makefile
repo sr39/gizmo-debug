@@ -270,6 +270,7 @@ OPT     += -DFIX_PATHSCALE_MPI_STATUS_IGNORE_BUG
 endif
 
 
+#----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Ranger_pgi")
 CC       =  mpicc 
 CXX      =  mpiCC
@@ -297,45 +298,7 @@ OPT     += -DNOCALLSOFSYSTEM -DNO_ISEND_IRECV_IN_DOMAIN -DMPICH_IGNORE_CXX_SEEK
 endif
 
 
-ifeq ($(SYSTYPE),"Octopus")
-CC       =  mpicc
-CXX      =  mpiCC
-OPTIMIZE = -g
-GSL_INCL =
-GSL_LIBS =
-FFTW_INCL=
-FFTW_LIBS= -lfftw3
-MPICHLIB = -lmpi
-HDF5INCL =
-HDF5LIB  =
-endif
-
-
-ifeq ($(SYSTYPE),"odyssey_comparison")
-CC       =  mpicc
-#gnu
-OPT      +=  -DNOCALLSOFSYSTEM  -DMPICH_IGNORE_CXX_SEEK  -DNOTYPEPREFIX_FFTW
-OPTIMIZE =   -O2 -g -Wall -m64
-GSL_INCL =
-GSL_LIBS =
-FFTW_INCL=
-FFTW_LIBS=
-MPICHLIB =
-HDF5INCL =  -I/n/sw/hdf5-1.8.5_gnu/include
-HDF5LIB  =  -L/n/sw/hdf5-1.8.5_gnu/lib -lhdf5
-#intel
-#OPT      +=  -DMPICH_IGNORE_CXX_SEEK  -DNOTYPEPREFIX_FFTW
-#OPTIMIZE =   -parallel -O3 -ipo -funroll-loops -Wall
-#GSL_INCL =
-#GSL_LIBS =
-#FFTW_INCL=
-#FFTW_LIBS=
-#MPICHLIB =
-#HDF5INCL =
-#HDF5LIB  =  -lhdf5 -lz
-endif
-
-
+#----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"odyssey")
 CC       =  mpicc     # sets the C-compiler
 FCC      =  $(CC)
@@ -352,205 +315,7 @@ HDF5LIB  =  -lhdf5
 endif
 
 
-ifeq ($(SYSTYPE),"odyssey_old")
-CC       =  mpicc
-CXX      =  mpiCC 
-OPT      +=  -DMPICH_IGNORE_CXX_SEEK  
-OPTIMIZE =   -O3 -g -Wall -m64
-GSL_INCL =
-GSL_LIBS =
-FFTW_INCL=
-FFTW_LIBS=
-MPICHLIB =
-HDF5INCL =  -I/n/sw/hdf5-1.8.5_gnu/include
-HDF5LIB  =  -L/n/sw/hdf5-1.8.5_gnu/lib -lhdf5
-#intel
-#OPT      +=  -DMPICH_IGNORE_CXX_SEEK  -DNOTYPEPREFIX_FFTW
-#OPTIMIZE =   -parallel -O3 -ipo -funroll-loops -Wall
-#GSL_INCL =
-#GSL_LIBS =
-#FFTW_INCL=
-#FFTW_LIBS=
-#MPICHLIB =
-#HDF5INCL =
-#HDF5LIB  =  -lhdf5 -lz
-endif
-
-
-ifeq ($(SYSTYPE),"Darwin")
-CC       =  mpicc -g -O2 -Wall
-CXX      =  mpiCC -g -O2 -Wall
-OPTIMIZE =  
-GSL_INCL = -I/sw/include 
-GSL_LIBS = -L/sw/lib 
-FFTW_INCL= -I/sw/include 
-FFTW_LIBS= -L/sw/lib 
-MPICHLIB = -lmpi 
-HDF5INCL =
-HDF5LIB  =
-endif
-
-
-# modules for Genius
-# module load hdf5/1.8.4p1
-
-ifeq ($(SYSTYPE),"Genius")
-CC       =  mpixlc_r
-CXX      =  mpixlcxx_r
-OPTIMIZE =  -O3 -qarch=450 -qtune=450
-GSL_INCL =  -I/u/vrs/BlueGene/Libs/include
-GSL_LIBS =  -L/u/vrs/BlueGene/Libs/lib -static
-FFTW_INCL=  -I/u/vrs/BlueGene/Libs/include
-FFTW_LIBS=  -L/u/vrs/BlueGene/Libs/lib
-MPICHLIB =
-HDF5INCL =
-HDF5LIB  =
-OPT      +=  -DNOCALLSOFSYSTEM
-endif
-
-ifeq ($(SYSTYPE),"BGP_toy")
-CC       =  mpixlc_r
-CXX      =  mpixlcxx_r
-OPTIMIZE =  -O3 -qarch=450 -qtune=450
-GSL_INCL =  -I/gpfs/scratch/userinternal/cin8263a/lib/gsl-1.9/include/
-GSL_LIBS =  -L/gpfs/scratch/userinternal/cin8263a/lib/gsl-1.9/lib/ -static
-FFTW_INCL=  -I/gpfs/scratch/userinternal/cin8263a/lib/fftw-2.1.5/include
-FFTW_LIBS=  -L/gpfs/scratch/userinternal/cin8263a/lib/fftw-2.1.5/lib
-MPICHLIB =
-HDF5INCL =  -I/gpfs/scratch/userinternal/cin0753a/hdf5_2/hdf5/hdf5-1.8.5-patch1/hdf5/include -I/gpfs/scratch/userinternal/cin0753a/zlib/zlib-1.2.5/include
-HDF5LIB  =  -L/gpfs/scratch/userinternal/cin0753a/hdf5_2/hdf5/hdf5-1.8.5-patch1/hdf5/lib -static -lhdf5 -L/gpfs/scratch/userinternal/cin0753a/zlib/zlib-1.2.5/lib -lz
-endif
-
-# modules for Jugene
-# module load gsl/1.14
-# module load fftw/v2.1.5
-# module load hdf5/1.8.4_450
-
-ifeq ($(SYSTYPE),"Jugene")
-CC       =  mpixlc_r
-CXX      =  mpixlcxx_r
-OPTIMIZE =  -O3 -qarch=450 -qtune=450 -qsmp=omp:noauto -qreport
-GSL_INCL =  -I$(GSL_DIR)/include
-GSL_LIBS =  -L$(GSL_DIR)/lib
-FFTW_INCL=  -I$(FFTW_DIR)/include
-FFTW_LIBS=  -L$(FFTW_DIR)/lib
-MPICHLIB =
-HDF5INCL =  $(HDF5_INCLUDE)
-HDF5LIB  =  -L/bgsys/local/hdf5/v1.8.4/lib_450 -lhdf5 -lhdf5_hl -L/bgsys/local/zlib/lib/ -lz -L/bgsys/local/szip/lib/ -lsz # $(HDF5_LIB)
-ZLIB     =  -L/bgsys/local/zlib/lib/ -lz
-SZIP     =  -L/bgsys/local/szip/lib/ -lsz
-OPT      +=  -DNOCALLSOFSYSTEM
-endif
-
-
-ifeq ($(SYSTYPE),"Solaris_amd64")
-CC       = /opt/SUNWhpc/bin/mpicc
-CXX      = /opt/SUNWhpc/bin/mpiCC
-OPTIMIZE = -xO4 -xchip=native -xarch=amd64a
-#OPTIMIZE =   -g -xarch=amd64a
-GSL_INCL = $(GSL64INCL)
-GSL_LIBS = $(GSL64LIB)
-FFTW_INCL= $(FFTW64INCL)
-FFTW_LIBS= $(FFTW64LIB)
-FFTW_LIB = $(FFTW_LIBS) -ldrfftw_mpi -ldfftw_mpi -ldrfftw -ldfftw
-R_PATH   = $(R64LIB)
-CFLAGS   = $(OPTIONS) $(GSL_INCL) $(FFTW_INCL)  $(GSL_LIBS)
-HDF5INCL =
-HDF5LIB  =
-LIBS     =   -lm  $(GSL_LIBS) -lgsl -lgslcblas $(FFTW_LIB) $(R64LIB)
-endif
-
-
-ifeq ($(SYSTYPE),"MBM") 
-CC       =   mpicc
-CXX      =   mpicxx
-OPTIMIZE =  -O3 -g -Wall -m64
-GSL_INCL =  -I/sw/tap/include
-GSL_LIBS =  -L/sw/tap/lib  -Xlinker -R -Xlinker /sw/tap/lib
-FFTW_INCL=  -I/sw/tap/include
-FFTW_LIBS=  -L/sw/tap/lib  -Xlinker -R -Xlinker /sw/tap/lib
-MPICHLIB =
-HDF5INCL =  
-HDF5LIB  =  
-OPT      +=  -DNOCALLSOFSYSTEM
-endif
-
-# modules for Magny
-# module add mvapich2/gcc/64/1.4.1-qlc
-
-ifeq ($(SYSTYPE),"Magny") 
-CC       =   mpicc
-CXX      =   mpicxx
-OPTIMIZE =  -O3 -g -Wall -m64
-GSL_INCL =  -I/hits/tap/sw/libs/include
-GSL_LIBS =  -L/hits/tap/sw/libs/lib  -Xlinker -R -Xlinker /hits/tap/sw/libs/lib
-FFTW_INCL=  -I/hits/tap/sw/libs/include
-FFTW_LIBS=  -L/hits/tap/sw/libs/lib  -Xlinker -R -Xlinker /hits/tap/sw/libs/lib
-GMP_INCL =  -I/hits/tap/sw/libs/include
-GMP_LIBS =  -L/hits/tap/sw/libs/lib  -Xlinker -R -Xlinker /hits/tap/sw/libs/lib
-MPICHLIB =
-HDF5INCL =  -I/hits/tap/sw/libs/include -DH5_USE_16_API
-HDF5LIB  =  -L/hits/tap/sw/libs/lib -lhdf5 
-OPT      +=  -DNOCALLSOFSYSTEM
-OPT      +=  -DIMPOSE_PINNING
-endif
-
-ifeq ($(SYSTYPE),"OpenSuse")
-CC       =  mpicc
-CXX      =  mpicxx
-OPTIMIZE =  
-GSL_INCL =  
-GSL_LIBS =  
-FFTW_INCL=  
-FFTW_LIBS=
-MPICHLIB = -L/usr/lib/mpi/gcc/openmpi/lib -Xlinker -R -Xlinker /usr/lib/mpi/gcc/openmpi/lib -lmpi 
-HDF5INCL =
-HDF5LIB  =
-endif
-
-
-ifeq ($(SYSTYPE),"OpenSuse64")
-CC       =  mpicc
-CXX      =  mpicxx
-OPTIMIZE =  
-GSL_INCL =  
-GSL_LIBS =  
-FFTW_INCL=  
-FFTW_LIBS=  
-MPICHLIB = -L/usr/lib64/mpi/gcc/openmpi/lib64 -Xlinker -R -Xlinker /usr/lib64/mpi/gcc/openmpi/lib64 -lmpi 
-HDF5INCL =
-HDF5LIB  =
-endif
-
-
-ifeq ($(SYSTYPE),"SUNNYVALE")
-CC       =  mpicc   # sets the C-compiler
-CXX      =  mpicxx
-OPTIMIZE =  -g -O3 #-Wall
-GSL_INCL = -I/usr/include
-GSL_LIBS = -L/usr/lib64
-FFTW_INCL= -I${MCKENZIE_FFTW_INC_PATH}
-FFTW_LIBS= -L${MCKENZIE_FFTW_LIB_PATH}
-MPICHLIB =  -L/opt/lam-7.1.2-intel/lib -lmpi
-HDF5INCL = -I${MCKENZIE_HDF_INC_PATH}
-HDF5LIB  = -L${MCKENZIE_HDF_LIB_PATH} -lhdf5 -lz
-endif
-
-
-ifeq ($(SYSTYPE),"McKenzie")
-CC       =  mpicc   # sets the C-compiler
-CXX      =  mpicxx
-OPTIMIZE =  -g -O3 #-Wall
-GSL_INCL = -I/usr/include
-GSL_LIBS = -L/usr/lib
-FFTW_INCL= -I/opt/fftw/intel_8.1/2.1.5/include
-FFTW_LIBS= -L/opt/fftw/intel_8.1/2.1.5/lib #-ldrfftw_mpi
-MPICHLIB = -L/opt/lam-7.1.2b24-g77/lib -lmpi
-HDF5INCL = -I/opt/hdf5-oscar-1.6.4/include
-HDF5LIB  = -L/opt/hdf5-oscar-1.6.4/lib -lhdf5 -lz
-endif
-
-
+#----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"CITA")
 CC       =  mpicc
 CXX      =  mpicxx
@@ -565,59 +330,7 @@ HDF5LIB  =  -L/usr/lib/libhdf5 -static -lhdf5 -lz
 endif 
 
 
-ifeq ($(SYSTYPE),"Stella")
-CC       =  mpicc
-CXX      =  mpicxx
-OPTIMIZE =  -O3 -Wall
-GSL_INCL =  -I/home/schaye/libs/include
-GSL_LIBS =  -L/home/schaye/libs/lib -static
-FFTW_INCL=  -I/home/schaye/libs/include
-FFTW_LIBS=  -L/home/schaye/libs/lib
-MPICHLIB =
-HDF5INCL =
-HDF5LIB  =
-OPT      +=  -DNOCALLSOFSYSTEM
-endif
-
-
-# modules for OPA  
-# module load intel
-# module load impi
-# module load fftw/2.1.5
-# module load gsl/1.14
-# module load hdf5-serial
-
-ifeq ($(SYSTYPE),"OPA-Cluster64-Intel")  
-CC       =   mpiicc
-CXX      =   mpicxx
-OPTIMIZE =  -O3 -g -Wall -m64 -wd981 -wd2259 -wd1572 -ipo4 -funroll-loops -finline -finline-functions -finline-limit=200
-GSL_INCL = -I$(GSL_INCDIR)
-GSL_LIBS = -L$(GSL_LIBDIR) -Xlinker -R -Xlinker $(GSL_LIBDIR)
-FFTW_INCL= -I$(FFTW_HOME)/include
-FFTW_LIBS= -L$(FFTW_HOME)/lib -Xlinker -R -Xlinker $(FFTW_HOME)/lib
-MPICHLIB =  
-HDF5INCL = -I$(HDF5_HOME)/include
-HDF5LIB  = -L$(HDF5_HOME)/lib -Xlinker -R -Xlinker $(HDF5_HOME)/lib -lhdf5 -lz
-#OPT      +=  -DOLD_HDF5
-OPT      +=  -DNOCALLSOFSYSTEM
-endif
-
-
-ifeq ($(SYSTYPE),"opus")
-CC       =   mpicc
-CXX      =   mpicxx
-OPTIMIZE =  -O3 -g -Wall -m64
-GSL_INCL =  -I/snfs1/cgwork/dgad0043/include
-GSL_LIBS =  -L/snfs1/cgwork/dgad0043/lib
-FFTW_INCL=  -I/snfs1/cgwork/dgad0043/include
-FFTW_LIBS=  -L/snfs1/cgwork/dgad0043/lib
-MPICHLIB =
-HDF5INCL =  
-HDF5LIB  =  
-OPT      +=  -DNOCALLSOFSYSTEM
-endif
-
-
+#----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Sauron-gcc")
 CC       =   mpicc.gcc   # sets the C-compiler
 OPTIMIZE =   -O3 -funroll-loops -march=k8 -msse2 -static
@@ -629,6 +342,7 @@ MPICHLIB =
 endif
 
 
+#----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Sauron")
 CC       =  mpicc  -m64 # sets the C-compiler
 CXX      =  mpiCC  -m64
@@ -640,33 +354,7 @@ FFTW_LIBS=
 MPICHLIB =
 endif
 
-
-ifeq ($(SYSTYPE),"OpteronMPA-Intel")
-CC       =  /usr/local/appl/openmpi-intel/bin/mpicc  -m64 # sets the C-compiler
-CXX      =  /usr/local/appl/openmpi-intel/bin/mpiCC  -m64
-OPTIMIZE =   -O3 -Wall
-FFTW_INCL=  -I/afs/mpa/home/volker/Libs/include
-FFTW_LIBS=  -L/afs/mpa/home/volker/Libs/lib -Xlinker -R -Xlinker /afs/mpa/home/volker/Libs/lib
-MPICHLIB =
-HDF5INCL =  -I/afs/mpa/home/volker/Libs/include
-HDF5LIB  =  -L/afs/mpa/home/volker/Libs/lib -Xlinker -R -Xlinker /afs/mpa/home/volker/Libs/lib -lhdf5 -lz
-endif
-
-
-ifeq ($(SYSTYPE),"OpteronMPA-Gnu")
-CC       =  /usr/local/appl/openmpi-gnu/bin/mpicc  -m64 # sets the C-compiler
-CXX      =  /usr/local/appl/openmpi-gnu/bin/mpiCC  -m64
-OPTIMIZE =   -O3 -Wall
-GSL_INCL =  
-GSL_LIBS =  
-FFTW_INCL=  -I/afs/mpa/home/volker/Libs/include
-FFTW_LIBS=  -L/afs/mpa/home/volker/Libs/lib -Xlinker -R -Xlinker /afs/mpa/home/volker/Libs/lib
-MPICHLIB =
-HDF5INCL =  -I/afs/mpa/home/volker/Libs/include
-HDF5LIB  =  -L/afs/mpa/home/volker/Libs/lib -Xlinker -R -Xlinker /afs/mpa/home/volker/Libs/lib -lhdf5 -lz
-endif
-
-
+#----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"MPA")
 CC       =  mpicc   # sets the C-compiler
 CXX      =  mpiCC
@@ -684,162 +372,10 @@ OPT     +=  -DOLD_HDF5
 endif
 
 
-ifeq ($(SYSTYPE),"Mako")
-CC       =  mpicc   # sets the C-compiler
-CXX      =  mpiCC
-OPTIMIZE =   -O3 -march=athlon-mp  -mfpmath=sse
-GSL_INCL =
-GSL_LIBS =
-FFTW_INCL=
-FFTW_LIBS=
-MPICHLIB =
-endif
+#----------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------
 
-
-# modules for VIP
-# module load fftw/2.1.5
-# module load gsl/1.14
-# module load hdf5
-
-ifeq ($(SYSTYPE),"VIP")
-CC       =  mpcc_r -g -qcpluscmt # -qflttrap=enable:zerodivide:nanq # sets the C-compiler
-CCX      =  mpCC_r -g
-FC       =  mpxlf_r
-ifeq (FLTROUNDOFFREDUCTION,$(findstring FLTROUNDOFFREDUCTION,$(CONFIGVARS)))
-CC       =  mpcc_r  -qldbl128 -lC128_r  -qcpluscmt # sets the C-compiler
-#            (this compiler has native support for 128bit long double, SOFTDOUBLEDOUBLE not needed)
-endif
-OPT      += -DVIP
-FOPT     += -WF,-DVIP
-OPTIMIZE =  -q64 -O2 -qarch=auto -qtune=auto -qinline -qstrict -qipa -qhot -qipa=level=2 -qlanglvl=extc99 -qalias=ansi -qinline=200 # -qfloat=hdflt
-GSL_INCL = -I$(GSL_INCDIR)
-GSL_LIBS = -L$(GSL_LIBDIR)
-FFTW_INCL= -I$(FFTW_HOME)/include
-FFTW_LIBS= -L$(FFTW_HOME)/lib
-MPICHLIB =
-HDF5INCL = -I$(HDF5_HOME)/include
-HDF5LIB  = -L$(HDF5_HOME)/lib -lhdf5 -lz
-OPT     +=   -DPOWER6 -DDO_NOT_BRACH_IF -DPAD_STRUCTURES
-endif
-
-# modules for SARA
-# module load c/ibm/11.1
-# module load fftw2/2.1.5
-# module load gsl/1.11
-# module load hdf5
-
-ifeq ($(SYSTYPE),"SARA")
-CC       =  mpcc -g -qcpluscmt # -qsmp -qreport # -qflttrap=enable:zerodivide:nanq # sets the C-compiler
-CXX      =  mpCC -g
-FC       =  mpxlf_r
-ifeq (FLTROUNDOFFREDUCTION,$(findstring FLTROUNDOFFREDUCTION,$(CONFIGVARS)))
-CC       =  mpcc_r  -qldbl128 -lC128_r  -qcpluscmt # sets the C-compiler
-#            (this compiler has native support for 128bit long double, SOFTDOUBLEDOUBLE not needed)
-endif
-OPT      += -DVIP
-FOPT     += -WF,-DVIP
-OPTIMIZE =  -q64 -O5 -qarch=auto -qtune=auto -qinline -qstrict -qhot -qipa=level=2 -qlanglvl=extc99 -qalias=ansi -qinline=200 # -qfloat=hsflt
-GSL_INCL = -I$(SARA_GSL_INCLUDE)
-GSL_LIBS = -L$(SARA_GSL_LIB)
-FFTW_INCL= -I$(SARA_FFTW2_INCLUDE)
-FFTW_LIBS= -L$(SARA_FFTW2_LIB)
-MPICHLIB =
-HDF5INCL = -I$(SARA_HDF5_INCLUDE)
-HDF5LIB  = -L$(SARA_HDF5_LIB) -lhdf5 -lz -static
-OPT     +=   -DPOWER6 -DDO_NOT_BRACH_IF -DPAD_STRUCTURES
-endif
-
-
-ifeq ($(SYSTYPE),"CINECA_SP6")
-CC       =   mpcc # sets the gcc C-compiler
-CXX      =   mpCC
-#to be used for deugging: -g -qcheck=all -qdbxextra -qheapdebug -qkeepparm -qoptdebug
-OPTIMIZE =  -O5 -q64  -qhot -qstrict -qarch=pwr6 -qtune=pwr6 -qcpluscmt -qlanglvl=extc99 -qalias=ansi -qinline=200 -qipa=level=2 # :inline=noauto:list
-
-GSL_INCL = -I/cineca/prod/libraries/gsl/1.9/xl--10.1/include
-GSL_LIBS = -L/cineca/prod/libraries/gsl/1.9/xl--10.1/lib
-FFTW_INCL= -I/cineca/prod/libraries/fftw/2.1.5/xl--10.1/include
-FFTW_LIBS= -L/cineca/prod/libraries/fftw/2.1.5/xl--10.1/lib
-HDF5INCL = -I/sp6/userexternal/sborgani/code/HDF5/include
-HDF5LIB  = -L/sp6/userexternal/sborgani/code/HDF5/lib -lhdf5
-MPICHLIB =
-OPT     +=   -DPOWER6 -DDO_NOT_BRACH_IF -DPAD_STRUCTURES
-endif
-
-
-ifeq ($(SYSTYPE),"Ingeld_LinuxCluster")
-CC       =   mpicc  # sets the C-compiler
-CXX      =   mpiCC
-OPTIMIZE =   -O3 -Wall
-
-GSL_INCL = -I/home/patricia/my-gsl/include
-GSL_LIBS = -L/home/patricia/my-gsl/lib -static
-FFTW_INCL= -I/home/patricia/my-fftw/include
-FFTW_LIBS= -L/home/patricia/my-fftw/lib
-endif
-
-
-ifeq ($(SYSTYPE),"Warp")
-CC       =   /opt/intel/impi/3.1/bin64/mpiicc
-CXX      =   /opt/intel/impi/3.1/bin64/mpiiCC
-OPTIMIZE =  -xW
-GSL_INCL = -I/opt/gsl/impi/include/gsl
-GSL_LIBS = -L/opt/gsl/impi/lib64 -Wl,-rpath,/opt/gsl/impi/lib64
-FFTW_INCL= -I/opt/fftw/impi_intel-3.1/include
-FFTW_LIBS= -L/opt/fftw/impi_intel-3.1/lib64 -Wl,-rpath,/opt/fftw/impi_intel-3.1/lib64
-MPICHLIB = -L/opt/intel/impi/3.1/lib64 -Wl,-rpath,/opt/intel/impi/3.1/lib64
-endif
-
-
-ifeq ($(SYSTYPE),"Kraken")
-OPT     +=   -DNOCALLSOFSYSTEM
-CC       =   cc # sets the C-compiler
-OPTIMIZE =   -fast
-GSL_INCL =  -I/sw/xt5/gsl/1.11/cnl2.1_pgi7.2.3/include
-GSL_LIBS =   -L/sw/xt5/gsl/1.11/cnl2.1_pgi7.2.3/lib
-FFTW_INCL=  -I/opt/fftw/2.1.5/cnos/include
-FFTW_LIBS=  -L/opt/fftw/2.1.5/cnos/lib
-MPICHLIB =
-HDF5INCL =
-HDF5LIB  =
-endif
-
-ifeq ($(SYSTYPE),"Kraken_FFTW3")
-OPT     +=   -DNOCALLSOFSYSTEM
-CC       =   cc # sets the C-compiler
-OPTIMIZE =   -fast
-GSL_INCL =  -I/sw/xt5/gsl/1.11/cnl2.1_pgi7.2.3/include
-GSL_LIBS =   -L/sw/xt5/gsl/1.11/cnl2.1_pgi7.2.3/lib
-FFTW_INCL=  -I/sw/xt/fftw/3.3_alpha/cnl2.2_pgi9.0.3/include
-FFTW_LIBS=  -L/sw/xt/fftw/3.3_alpha/cnl2.2_pgi9.0.3/lib
-MPICHLIB =
-HDF5INCL =
-HDF5LIB  =
-
-ifeq (NOTYPEPREFIX_FFTW,$(findstring NOTYPEPREFIX_FFTW,$(CONFIGVARS)))    # fftw installed with type prefix?
-  FFTW_LIBNAMES = $(FFTW_LIBS) -lfftw3_mpi -lfftw3_threads -lfftw3
-else
-ifeq (DOUBLEPRECISION_FFTW,$(findstring DOUBLEPRECISION_FFTW,$(CONFIGVARS)))
-  FFTW_LIBNAMES =  -lfftw3_mpi -lfftw3_threads -lfftw3
-else
-  FFTW_LIBNAMES =  -lfftw3f_mpi -lfftw3f_threads -lfftw3f
-endif
-endif
-
-endif
-
-ifeq ($(SYSTYPE),"INAF_IRA")
-OPT     += -DNOCALLSOFSYSTEM
-CC       = mpicc # sets the C-compiler
-OPTIMIZE = -O3 -Wall
-GSL_INCL = -I/homes/donnert/Libs/include
-GSL_LIBS = -L/homes/donnert/Libs/lib
-FFTW_INCL= 
-FFTW_LIBS= 
-MPICHLIB =
-HDF5INCL =
-HDF5LIB  = -lhdf5 
-endif
 
 
 ifneq (HAVE_HDF5,$(findstring HAVE_HDF5,$(CONFIGVARS)))
@@ -876,6 +412,10 @@ OBJS	+= $(L3_OBJS)
 
 INCL    += allvars.h proto.h gravity/forcetree.h domain.h system/myqsort.h kernel.h Makefile \
 
+
+ifeq (GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION,$(findstring GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION,$(CONFIGVARS)))
+OBJS    += galaxy_sf/dm_dispersion_hsml.o
+endif
 
 ifeq (GRAIN_FLUID,$(findstring GRAIN_FLUID,$(CONFIGVARS)))
 OBJS    += solids/grain_physics.o

@@ -162,7 +162,6 @@ inline static int ngb_check_node(struct NODE * cur,t_vector * v2,t_vector * box,
 #else
 
 // On older Intel and AMD processors it seems better to avoid the computations and branch early
-// TODO: This should be validated
 
 inline static int ngb_check_node(struct NODE * cur,t_vector * v2,t_vector * box,t_vector * hbox,MyFloat hsml)
 {

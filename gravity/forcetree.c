@@ -757,6 +757,8 @@ void force_update_node_recursive(int no, int sib, int father)
             {
                 star_age = evaluate_stellar_age_Gyr(pa->StellarAge);
                 l_over_m_ssp = evaluate_l_over_m_ssp(star_age);
+                l_over_m_ssp *= calculate_relative_light_to_mass_ratio_from_imf(p);
+                // ( careful here, i'm directly referencing the particle id number, instead of passing the pointer... want to be sure this is ok ) //
 
 #ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
                 stellar_lum_s[0] += (pa->Mass * pa->Pos[0] * l_over_m_ssp);
@@ -1966,9 +1968,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 dy = P[no].Pos[1] - pos_y;
                 dz = P[no].Pos[2] - pos_z;
 #ifdef PERIODIC
-                dx = NEAREST(dx);
-                dy = NEAREST(dy);
-                dz = NEAREST(dz);
+                dx = NEAREST_X(dx);
+                dy = NEAREST_Y(dy);
+                dz = NEAREST_Z(dz);
 #endif
                 r2 = dx * dx + dy * dy + dz * dz;
                 
@@ -1982,7 +1984,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     if((mass>0)&&((P[no].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[no].Type == 2)||(P[no].Type==3)))))
                     {
                         star_age = evaluate_stellar_age_Gyr(P[no].StellarAge);
-                        l_over_m_ssp = evaluate_l_over_m_ssp(star_age);
+                        l_over_m_ssp = evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(no);
                         
                         mass_stellarlum = mass*l_over_m_ssp;
 #ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
@@ -2286,9 +2288,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
                 
 #if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-                dx = NEAREST(dx);
-                dy = NEAREST(dy);
-                dz = NEAREST(dz);
+                dx = NEAREST_X(dx);
+                dy = NEAREST_Y(dy);
+                dz = NEAREST_Z(dz);
 #endif
                 r2 = dx * dx + dy * dy + dz * dz;
 #ifdef PMGRID
@@ -2314,21 +2316,21 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 {
                     eff_dist = rcut + 0.5 * nop->len;
                     
-                    dist = NEAREST(nop->center[0] - pos_x);
+                    dist = NEAREST_X(nop->center[0] - pos_x);
                     if(dist < -eff_dist || dist > eff_dist)
                     {
                         no = nop->u.d.sibling;
                         continue;
                     }
                     
-                    dist = NEAREST(nop->center[1] - pos_y);
+                    dist = NEAREST_Y(nop->center[1] - pos_y);
                     if(dist < -eff_dist || dist > eff_dist)
                     {
                         no = nop->u.d.sibling;
                         continue;
                     }
                     
-                    dist = NEAREST(nop->center[2] - pos_z);
+                    dist = NEAREST_Z(nop->center[2] - pos_z);
                     if(dist < -eff_dist || dist > eff_dist)
                     {
                         no = nop->u.d.sibling;
@@ -2495,7 +2497,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if(ptype_sec > -1)
                 {
                     // correction only applies to 'shared-kernel' particles: so this needs to check if
-                    // these are the same particles for which the smoothing lengths are computed
+                    // these are the same particles for which the kernel lengths are computed
                     if(ags_gravity_kernel_shared_check(ptype, ptype_sec))
                     {
                         if((r>0) && (u<1) && (pmass>0)) // checks that these aren't the same particle
@@ -2598,9 +2600,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             if((ptype==0)&&(soft>0)&&(pmass>0))	/* we have a (valid) gas particle as target */
             {
 #ifdef PERIODIC
-                dx_stellarlum = NEAREST(dx_stellarlum); /* could dx_stellarlum be undefined? */
-                dy_stellarlum = NEAREST(dy_stellarlum);
-                dz_stellarlum = NEAREST(dz_stellarlum);
+                dx_stellarlum = NEAREST_X(dx_stellarlum); /* could dx_stellarlum be undefined? */
+                dy_stellarlum = NEAREST_Y(dy_stellarlum);
+                dz_stellarlum = NEAREST_Z(dz_stellarlum);
 #endif
                 r2 = dx_stellarlum*dx_stellarlum + dy_stellarlum*dy_stellarlum + dz_stellarlum*dz_stellarlum;
                 r = sqrt(r2);
@@ -2683,9 +2685,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             if(ptype != 0)	/* we have a dark matter particle as target */
             {
 #if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-                dx_dm = NEAREST(dx_dm);
-                dy_dm = NEAREST(dy_dm);
-                dz_dm = NEAREST(dz_dm);
+                dx_dm = NEAREST_X(dx_dm);
+                dy_dm = NEAREST_Y(dy_dm);
+                dz_dm = NEAREST_Z(dz_dm);
 #endif
                 r2 = dx_dm * dx_dm + dy_dm * dy_dm + dz_dm * dz_dm;
                 r = sqrt(r2);
@@ -2988,9 +2990,9 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
 	      dz = nop->u.d.s[2] - pos_z;
 	    }
 
-	  dx = NEAREST(dx);
-	  dy = NEAREST(dy);
-	  dz = NEAREST(dz);
+	  dx = NEAREST_X(dx);
+	  dy = NEAREST_Y(dy);
+	  dz = NEAREST_Z(dz);
 
 	  if(no < All.MaxPart)
 	    no = Nextnode[no];
@@ -3368,9 +3370,9 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
             }
             
 #if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-            dx = NEAREST(dx);
-            dy = NEAREST(dy);
-            dz = NEAREST(dz);
+            dx = NEAREST_X(dx);
+            dy = NEAREST_Y(dy);
+            dz = NEAREST_Z(dz);
 #endif
             r2 = dx * dx + dy * dy + dz * dz;
             if(no < All.MaxPart)
@@ -3418,9 +3420,9 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                 dyy = nop->center[1] - pos_y;	/* this vector is -y in my thesis notation */
                 dzz = nop->center[2] - pos_z;
 #ifdef PERIODIC
-                dxx = NEAREST(dxx);
-                dyy = NEAREST(dyy);
-                dzz = NEAREST(dzz);
+                dxx = NEAREST_X(dxx);
+                dyy = NEAREST_Y(dyy);
+                dzz = NEAREST_Z(dzz);
 #endif
 #ifdef DO_NOT_BRACH_IF
                 if((fabs(dxx) > eff_dist) | (fabs(dyy) > eff_dist) | (fabs(dzz) > eff_dist))
@@ -3708,9 +3710,9 @@ int subfind_force_treeevaluate_potential(int target, int mode, int *nexport, int
 	    }
 
 #if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-	  dx = NEAREST(dx);
-	  dy = NEAREST(dy);
-	  dz = NEAREST(dz);
+	  dx = NEAREST_X(dx);
+	  dy = NEAREST_Y(dy);
+	  dz = NEAREST_Z(dz);
 #endif
 	  r2 = dx * dx + dy * dy + dz * dz;
 	  if(no < All.MaxPart)

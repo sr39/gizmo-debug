@@ -21,7 +21,7 @@ extern pthread_mutex_t mutex_partnodedrift;
 #endif
 
 /*! \file ags_hsml.c
- *  \brief smoothing length determination for non-gas particles
+ *  \brief kernel length determination for non-gas particles
  *
  *  This file contains a loop modeled on the gas density computation which 
  *    determines softening lengths (and appropriate correction terms) 
@@ -34,7 +34,7 @@ extern pthread_mutex_t mutex_partnodedrift;
 
 /*! this routine is called by the adaptive gravitational softening neighbor search and forcetree (for application 
     of the appropriate correction terms), to determine which particle types "talk to" which other particle types 
-    (i.e. which particle types you search for to determine the smoothing radii for gravity). For effectively volume-filling 
+    (i.e. which particle types you search for to determine the softening radii for gravity). For effectively volume-filling
     fluids like gas or dark matter, it makes sense for this to be 'matched' to particles of the same type. For other 
     particle types like stars or black holes, it's more ambiguous, and requires some judgement on the part of the user. */
 int ags_gravity_kernel_shared_check(short int particle_type_primary, short int particle_type_secondary)
@@ -123,9 +123,7 @@ void ags_out2particle_density(struct ags_densdata_out *out, int i, int mode)
 
 struct kernel_density
 {
-    double dx, dy, dz;
-    double r;
-    double dvx, dvy, dvz;
+    double dp[3],dv[3],r;
     double wk, dwk;
     double hinv, hinv3, hinv4;
     double mj_wk, mj_dwk_r;
@@ -466,7 +464,7 @@ void ags_density(void)
                 /* now check whether we have enough neighbours */
                 redo_particle = 0;
                 
-                /* the force softenings in the usual input now serve as the MINIMUM smoothings/force softenings allowed */
+                /* the force softenings in the usual input now serve as the MINIMUM force softenings allowed */
                 if(PPP[i].NumNgb < (desnumngb - desnumngbdev) ||
                    (PPP[i].NumNgb > (desnumngb + desnumngbdev) && PPP[i].Hsml > (1.01 * All.ForceSoftening[P[i].Type])))
                     redo_particle = 1;
@@ -717,15 +715,15 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 j = ngblist[n];
                 if(P[j].Mass <= 0) continue;
                 
-                kernel.dx = local.Pos[0] - P[j].Pos[0];
-                kernel.dy = local.Pos[1] - P[j].Pos[1];
-                kernel.dz = local.Pos[2] - P[j].Pos[2];
+                kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
+                kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
+                kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
 #ifdef PERIODIC /*  now find the closest image in the given box size  */
-                kernel.dx = NEAREST_X(kernel.dx);
-                kernel.dy = NEAREST_Y(kernel.dy);
-                kernel.dz = NEAREST_Z(kernel.dz);
+                kernel.dp[0] = NEAREST_X(kernel.dp[0]);
+                kernel.dp[1] = NEAREST_Y(kernel.dp[1]);
+                kernel.dp[2] = NEAREST_Z(kernel.dp[2]);
 #endif
-                r2 = kernel.dx * kernel.dx + kernel.dy * kernel.dy + kernel.dz * kernel.dz;
+                r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 
                 if(r2 < h2)
                 {
@@ -741,10 +739,14 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
 
                     if(kernel.r > 0)
                     {
-                        kernel.dvx = local.Vel[0] - SphP[j].VelPred[0];
-                        kernel.dvy = local.Vel[1] - SphP[j].VelPred[1];
-                        kernel.dvz = local.Vel[2] - SphP[j].VelPred[2];
-                        out.Particle_DivVel -= kernel.dwk * (kernel.dx * kernel.dvx + kernel.dy * kernel.dvy + kernel.dz * kernel.dvz) / kernel.r;
+                        kernel.dv[0] = local.Vel[0] - SphP[j].VelPred[0];
+                        kernel.dv[1] = local.Vel[1] - SphP[j].VelPred[1];
+                        kernel.dv[2] = local.Vel[2] - SphP[j].VelPred[2];
+#ifdef SHEARING_BOX
+                        if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {kernel.dv[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+                        if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {kernel.dv[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+#endif
+                        out.Particle_DivVel -= kernel.dwk * (kernel.dp[0] * kernel.dv[0] + kernel.dp[1] * kernel.dv[1] + kernel.dp[2] * kernel.dv[2]) / kernel.r;
                         /* this is the (not especially accurate) SPH div-v estimator: however we only need a crude
                          approximation to use in drift steps (consistency here does not affect convergence), so its fast and ok */
                     }

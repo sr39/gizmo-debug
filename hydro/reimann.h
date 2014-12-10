@@ -175,7 +175,7 @@ static inline double actual_slopelimiter(double dQ_1, double dQ_2)
 /* --------------------------------------------------------------------------------- */
 static inline double get_dQ_from_slopelimiter(double dQ_1, MyFloat grad[3], struct kernel_hydra kernel, double rinv)
 {
-    double dQ_2 = (grad[0]*kernel.dx + grad[1]*kernel.dy + grad[2]*kernel.dz) * rinv;
+    double dQ_2 = (grad[0]*kernel.dp[0] + grad[1]*kernel.dp[1] + grad[2]*kernel.dp[2]) * rinv;
     return actual_slopelimiter(dQ_1,dQ_2);
 }
 
@@ -203,11 +203,19 @@ void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs
         {
             Riemann_vec.L.v[k] /= All.cf_atime;
             Riemann_vec.R.v[k] /= All.cf_atime;
+#ifdef MAGNETIC
+            Riemann_vec.L.B[k] *= All.cf_a2inv;
+            Riemann_vec.R.B[k] *= All.cf_a2inv;
+#endif
         }
         Riemann_vec.L.rho *= All.cf_a3inv;
         Riemann_vec.R.rho *= All.cf_a3inv;
         Riemann_vec.L.p *= All.cf_a3inv / All.cf_afac1;
         Riemann_vec.R.p *= All.cf_a3inv / All.cf_afac1;
+#ifdef DIVBCLEANING_DEDNER
+        Riemann_vec.L.phi *= All.cf_a3inv;
+        Riemann_vec.R.phi *= All.cf_a3inv;
+#endif
 #ifdef NON_IDEAL_EOS
         Riemann_vec.L.cs *= All.cf_afac3;
         Riemann_vec.R.cs *= All.cf_afac3;
@@ -951,12 +959,8 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     double v_frame = 0; /* frame velocity (in the direction of its normal): this will be used below! */
     double SMALL_NUMBER = 1.0e-11;
 
-    /* -------------------------------------------------------------------------------------------------------------- *
-     * first, a simple routine to correct the reconstructed B-field to mean value
-     * (required by div.B criterion across shocks)
-     *   (written by P. Hopkins)
-     * -------------------------------------------------------------------------------------------------------------- */
-    /* compute the fast magnetosonic wave speeds */
+    /* first, correct the reconstructed B-field to mean value (required by div.B criterion across shocks) */
+    /* begin by computing the fast magnetosonic wave speeds */
     int k;
     double S_L,S_R,PT_L,PT_R,e_L,e_R,S_M,P_M,Bx,vxL,vxR,tmp2,
             vdotB_L,vdotB_R,B2_L,B2_R,cs2rho_L,cs2rho_R,tmp,c_eff,Bx2,rho_wt_L,rho_wt_R;
@@ -986,6 +990,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
                                              (Riemann_vec.R.phi+Riemann_vec.L.phi));
 #endif
     /* and set the normal component of B to the corrected value */
+    Bx = Riemann_out->B_normal_corrected; // ??? //
     Riemann_vec.L.B[0] = Bx;
     Riemann_vec.R.B[0] = Bx;
     Bx2 = Bx*Bx;

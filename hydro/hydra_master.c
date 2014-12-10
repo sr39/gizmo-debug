@@ -32,11 +32,7 @@ extern pthread_mutex_t mutex_partnodedrift;
 #endif
 
 /*! \file hydra_master.c
- *  \brief Computation of SPH forces and rate of entropy/internal energy generation
- *
- *  This file contains the "second SPH loop", where the SPH forces are
- *  computed, and where the rate of change of entropy due to the shock heating
- *  (via artificial viscosity) is computed.
+ *  \brief This contains the "second hydro loop", where the hydro fluxes are computed.
  */
 /*
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
@@ -52,12 +48,13 @@ extern pthread_mutex_t mutex_partnodedrift;
  InternalEnergy_code = InternalEnergy_physical
  Pressure_code =
     InternalEnergy_code * rho_code * (gamma-1) = Pressure_physical * a^3 (energy SPH)
-    -- the distinction between these cases should be taken care of in the factors
+    -- the distinction between these cases and e.g. entropy sph (now depricated) 
+        should be taken care of in the factors
         All.cf_afac1/2/3, which will correctly assign between the two --
  B_code = a*a * B_physical (comoving magnetic fields)
  Phi_code = B_code*v_code (damping field for Dedner divergence cleaning)
     (note: spec egy of phi field is: phi*phi/(2*mu0*rho*ch*ch); compare Bfield is B*B/(mu0*rho);
-    so [phi]~[B]*[ch], where ch is the signal velocity used in the damping equation;
+    so [phi]~[B]*[ch], where ch is the signal velocity used in the damping equation);
  
  -- Time derivatives (rate of change from hydro forces) here are all 
         assumed to end up in *physical* units ---
@@ -66,7 +63,39 @@ extern pthread_mutex_t mutex_partnodedrift;
      HydroAccel is in units of (Pcode/rhocode)/rcode)
  DtInternalEnergy and dInternalEnergy are assumed to end up in *physical* units
  DtMass and dMass are assumed to end up in *physical* units
+
+ -----------------------------------------
+ A REMINDER ABOUT GIZMO/GADGET VELOCITY UNITS:: (direct quote from Volker)
+ 
+ The IC file should contain the *peculiar* velocity divided by sqrt(a),
+ not the *physical* velocity. Let "x" denote comoving
+ coordinates and "r=a*x" physical coordinates. Then I call
+ 
+ comoving velocity: dx/dt
+ physical velocity: dr/dt = H(a)*r + a*dx/dt
+ peculiar velocity: v = a * dx/dt
+ 
+ The physical velocity is hence the peculiar velocity plus the Hubble flow.
+ 
+ The internal velocity variable is not given by dx/d(ln a). Rather, it is given by
+ the canonical momentum p = a^2 * dx/dt.
+ The IC-file and snapshot files of gadget/GIZMO don't
+ contain the variable "p" directly because of historical reasons.
+ Instead, they contain the velocity variable
+ u = v/sqrt(a) = sqrt(a) * dx/dt = p / a^(3/2), which is just what the
+ manual says. (The conversion between u and p is done on the fly when
+ reading or writing snapshot files.)
+ 
+ Also note that d(ln a)/dt is equal to the
+ Hubble rate, i.e.: d(ln a)/dt = H(a) = H_0 * sqrt(omega_m/a^3 + omega_v
+ + (1 - omega_m - omega_v)/a^2).
+ 
+ Best wishes,
+ Volker
+ 
+ -----------------------------------------
 */
+
 
 
 #ifdef MACHNUM
@@ -103,9 +132,9 @@ struct Conserved_var_Riemann
 
 struct kernel_hydra
 {
-    double dx, dy, dz;
+    double dp[3];
     double r, vsig, sound_i, sound_j;
-    double dvx, dvy, dvz, vdotr2;
+    double dv[3], vdotr2;
     double wk_i, wk_j, dwk_i, dwk_j;
     double h_i, h_j, dwk_ij, rho_ij_inv;
     double spec_egy_u_i;
@@ -435,13 +464,13 @@ void hydro_final_operations_and_cleanup(void)
             {
 #ifndef HYDRO_SPH
                 /* this part of the induction equation has to do with advection of div-B, it is not present in SPH */
-                SphP[i].DtB[k] -= SphP[i].divB * SphP[i].VelPred[k];
+                SphP[i].DtB[k] -= SphP[i].divB * SphP[i].VelPred[k]/All.cf_atime;
 #endif
-                SphP[i].HydroAccel[k] -= SphP[i].divB * Get_Particle_BField(i,k);
-                SphP[i].DtInternalEnergy -= SphP[i].divB * SphP[i].VelPred[k] * Get_Particle_BField(i,k);
+                SphP[i].HydroAccel[k] -= SphP[i].divB * Get_Particle_BField(i,k)*All.cf_a2inv;
+                SphP[i].DtInternalEnergy -= SphP[i].divB * (SphP[i].VelPred[k]/All.cf_atime) * Get_Particle_BField(i,k)*All.cf_a2inv;
             }
 #if defined(DIVBCLEANING_DEDNER) && !defined(HYDRO_SPH)
-            double tmp_ded = 0.5 * SphP[i].MaxSignalVel / fac_mu; // has units of v_code now
+            double tmp_ded = 0.5 * SphP[i].MaxSignalVel / (fac_mu*All.cf_atime); // has units of v_physical now
             SphP[i].DtPhi -= tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB;// * SphP[i].Density; // ??? //
 #endif
 #endif // MAGNETIC
@@ -467,8 +496,9 @@ void hydro_final_operations_and_cleanup(void)
 #ifndef HYDRO_SPH
             for(k=0;k<3;k++)
             {
-                SphP[i].DtInternalEnergy += -Get_Particle_BField(i,k)*SphP[i].DtB[k] +
-                    0.5*Get_Particle_BField(i,k)*Get_Particle_BField(i,k) * (P[i].Mass/SphP[i].Density) * P[i].Particle_DivVel;
+                SphP[i].DtInternalEnergy += -Get_Particle_BField(i,k)*All.cf_a2inv*SphP[i].DtB[k] +
+                    0.5*(Get_Particle_BField(i,k)*All.cf_a2inv)*(Get_Particle_BField(i,k)*All.cf_a2inv)
+                        * (P[i].Mass/(SphP[i].Density*All.cf_a3inv)) * (P[i].Particle_DivVel*All.cf_a2inv);
             }
 #endif
 #endif
@@ -661,7 +691,7 @@ void hydro_force(void)
     // note also that signal_vel in forms below should be in units of code_soundspeed //
     fac_vsic_fix = All.cf_hubble_a * All.cf_afac1;
 #ifdef MAGNETIC
-    fac_magnetic_pressure = MU0_1 * All.cf_afac1 / All.cf_atime;
+    fac_magnetic_pressure = All.cf_afac1 / All.cf_atime;
     // code_Bfield*code_Bfield * fac_magnetic_pressure = code_pressure //
     // -- use this to get alfven velocities, etc, as well as comoving units for magnetic integration //
 #endif

@@ -17,52 +17,6 @@
  */
 
 
-/*-----------------------------------------
- A REMINDER ABOUT GIZMO/GADGET VELOCITY UNITS::
- 
- Hi Melanie,
- 
- The manual is correct on this...
- 
- I can only speculate where you got confused, but I'm guessing you have
- mixed up the definitions of comoving, physical, and peculiar velocity.
- Note that they are all different. Also note that the manual says that
- the IC file should contain the *peculiar* velocity divided by sqrt(a),
- not the *physical* velocity as you state above. Let "x" denote comoving
- coordinates and "r=a*x" physical coordinates. Then I call
- 
- comoving velocity: dx/dt
- physical velocity: dr/dt = H(a)*r + a*dx/dt
- peculiar velocity: v = a * dx/dt
- 
- The physical velocity is hence the peculiar velocity plus the Hubble flow.
- 
- I think your attempts to guess the correct conversion factor have caused
- some additional confusion. Let me try to clarify: The internal velocity
- variable of gadget2 is not given by dx/d(ln a). Rather, it is given by
- the canonical momentum p = a^2 * dx/dt, which is different from the
- definition you assumed. The IC-file and snapshot files of gadget don't
- contain the variable "p" directly because of historical reasons of
- compatibility with gagdet-1. Instead, they contain the velocity variable
- u = v/sqrt(a) = sqrt(a) * dx/dt = p / a^(3/2), which is just what the
- manual says. (The conversion between u and p is done on the fly when
- reading or writing snapshot files.)
- 
- Also note that d(ln a)/dt is not a*sqrt(omega_m/a + omega_v*a^2 + 1 -
- omega_m - omega_v), as you say above... This factor is equal to the
- Hubble rate, i.e.: d(ln a)/dt = H(a) = H_0 * sqrt(omega_m/a^3 + omega_v
- + (1 - omega_m - omega_v)/a^2).
- 
- If you can't solve your unit conversion problem, I'd suggest to talk to
- Michele Trenti, who figured out the grafic->gadget2 conversion.
- 
- Best wishes, 
- Volker 
-
------------------------------------------*/
-
-
-
 #if defined(GALSF_FB_RPWIND_FROMSTARS) && !defined(GALSF_FB_RPWIND_DO_IN_SFCALC) 
 
 
@@ -137,7 +91,7 @@ void radiation_pressure_winds_consolidated(void)
         //if(vq>v) v=vq;
         v *= All.WindInitialVelocityBoost;
         if(v<=15.e5/All.UnitVelocity_in_cm_per_s) v=15.e5/All.UnitVelocity_in_cm_per_s;
-        lm_ssp = evaluate_l_over_m_ssp(star_age);
+        lm_ssp = evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(i);
         dE_over_c = lm_ssp * (4.0/2.0) * (P[i].Mass*All.UnitMass_in_g/All.HubbleParam); // L in CGS
         dE_over_c *= (dt*All.UnitTime_in_s/All.HubbleParam) / 2.9979e10; // dE/c in CGS
         dv_units = KAPPA_IR * dE_over_c / (4*M_PI * All.UnitLength_in_cm*All.UnitLength_in_cm*ascale*ascale);
@@ -235,7 +189,7 @@ void radiation_pressure_winds_consolidated(void)
 #endif
 #ifdef GALSF_FB_RPWIND_CONTINUOUS
         /* if GALSF_FB_RPWIND_CONTINUOUS is not set, these have already been calculated above */
-        lm_ssp = evaluate_l_over_m_ssp(star_age);
+        lm_ssp = evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(i);
         dE_over_c = lm_ssp * (4.0/2.0) * (P[i].Mass*All.UnitMass_in_g/All.HubbleParam); // L in CGS
           dE_over_c *= (dt*All.UnitTime_in_s/All.HubbleParam) / 2.9979e10; // dE/c in CGS
         dv_units = KAPPA_IR * dE_over_c / (4*M_PI * All.UnitLength_in_cm*All.UnitLength_in_cm*ascale*ascale);
@@ -259,7 +213,7 @@ void radiation_pressure_winds_consolidated(void)
                     flux scales as 1/r2 from source, kappa with metallicity */
                dv_imparted = dv_units * (0.1 + P[j].Metallicity[0]/All.SolarAbundances[0]) / r2;
                               
-               /* first loop -- share out the UV luminosity among the local neighbors, weighted by the SPH smoothing kernel */
+               /* first loop -- share out the UV luminosity among the local neighbors, weighted by the gas kernel */
                u=sqrt(r2)*hinv; //wk=hinv3*kernel_wk(u); // wt=wk*P[j].Mass/rho, with dE_over_c/P[j].Mass being delta_v
                kernel_main(u,hinv3,1,&wk,&vq,-1);
                dv_imparted_uv = (wk/rho) * dE_over_c;

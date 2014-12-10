@@ -99,7 +99,6 @@
 /* always-recommended MHD switches -- no excuse for these being off! */
 #define MAGNETIC_SIGNALVEL          /* extend definition of signal velocity by the magneto sonic waves */
 #define ALFVEN_VEL_LIMITER 100      /* Limits the contribution of the Alfven waves to the signal velocity */
-#define MU0_UNITY                   /* Sets \mu_0 to unity (needed for all the tricco+price formulations!) */
 /* usually-recommended MHD switches -- only turn these off for de-bugging */
 #define DIVBCLEANING_DEDNER         /* hyperbolic/parabolic div-cleaing (Dedner 2002), with TP improvements */
 /* MHD switches specific to SPH MHD */
@@ -134,7 +133,34 @@
 #endif
 #endif
 
-
+#ifdef SHEARING_BOX
+/* set default compile-time flags for the shearing-box (or shearing-sheet) boundaries */
+/* shearing box boundaries: 1=r-z sheet (coordinates [0,1,2] = [r,z,phi]), 2=r-phi sheet [r,phi,z], 3=[r-phi-z] box */
+#if (SHEARING_BOX==1)
+#define SHEARING_BOX_PHI_COORDINATE 2
+#else
+#define SHEARING_BOX_PHI_COORDINATE 1
+#endif
+/* if the r-z or r-phi sheet is set, the code must be compiled in 2D mode */
+#if (SHEARING_BOX==1) || (SHEARING_BOX==2)
+#ifndef TWODIMS
+#define TWODIMS
+#endif
+#endif
+/* box must be periodic in this approximation */
+#ifndef PERIODIC
+#define PERIODIC
+#endif
+/* if not set, default to q=3/2 (q==-dlnOmega/dlnr, used for boundary and velocity corrections) */
+#ifndef SHEARING_BOX_Q
+#define SHEARING_BOX_Q (3.0/2.0)
+#endif
+/* set omega - usually we will default to always using time coordinates such that Omega = 1 at the box center */
+#define SHEARING_BOX_OMEGA_BOX_CENTER 1.0
+/* need analytic gravity on so we can add the appropriate source terms to the EOM */
+#ifndef ANALYTIC_GRAVITY
+#define ANALYTIC_GRAVITY
+#endif
 #endif
 
 /*------- Things that are always recommended -------*/
@@ -194,23 +220,13 @@
 #endif
 
 #ifdef PERIODIC
-#ifdef POWER6
-#define NEAREST_X(x) ((x)  - boxSize_X * __frin ( (x) * inverse_boxSize_X))
-#define NEAREST_Y(y) ((y)  - boxSize_Y * __frin ( (y) * inverse_boxSize_Y))
-#define NEAREST_Z(z) ((z)  - boxSize_Z * __frin ( (z) * inverse_boxSize_Z))
-#define NEAREST(x) ((x)  - boxSize * __frin ( (x) * inverse_boxSize))
-#else
 #define NEAREST_X(x) (((x)>boxHalf_X)?((x)-boxSize_X):(((x)<-boxHalf_X)?((x)+boxSize_X):(x)))
 #define NEAREST_Y(y) (((y)>boxHalf_Y)?((y)-boxSize_Y):(((y)<-boxHalf_Y)?((y)+boxSize_Y):(y)))
 #define NEAREST_Z(z) (((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
-#define NEAREST(x) (((x)>boxHalf)?((x)-boxSize):(((x)<-boxHalf)?((x)+boxSize):(x)))
-#define __fsel(crit,age,alt) (((crit) >= 0.0) ? (age) : (alt))
-#endif
 #else
 #define NEAREST_X(x) (x)
-#define NEAREST_Y(x) (x)
-#define NEAREST_Z(x) (x)
-#define NEAREST(x) (x)
+#define NEAREST_Y(y) (y)
+#define NEAREST_Z(z) (z)
 #endif
 
 #define ASSIGN_ADD(x,y,mode) (mode == 0 ? (x=y) : (x+=y))
@@ -367,20 +383,6 @@ typedef unsigned long long peanokey;
 #endif // METALS //
 
 
-
-#ifdef MAGNETIC
-#ifdef GALSF
-#define POW_CC 1./3.
-#endif
-
-#ifdef MU0_UNITY
-#define MU0 1.0
-#define MU0_1 1.0
-#else
-#define MU0  12.566370614  /* 4pi */
-#define MU0_1 0.079577472  /* 1/4pi */
-#endif
-#endif
 
 #define  SEC_PER_MEGAYEAR   3.155e13
 #define  SEC_PER_YEAR       3.155e7
@@ -581,10 +583,10 @@ typedef MyDouble MyBigFloat;
 #define NUMDIMS 3
 #endif
 
-#ifdef SPH_KERNEL_QUINTIC
+#ifdef KERNEL_QUINTIC
 #define KERNEL_CORE_SIZE (1.0/3.0)
 #else
-#ifdef SPH_KERNEL_QUARTIC
+#ifdef KERNEL_QUARTIC
 #define KERNEL_CORE_SIZE (2.0/5.0)
 #else
 #define KERNEL_CORE_SIZE (1.0/2.0)
@@ -623,30 +625,21 @@ extern MyDouble boxSize_Z, boxHalf_Z, inverse_boxSize_Z;
 #endif
 #endif
 
+#ifdef SHEARING_BOX
+extern MyDouble Shearing_Box_Vel_Offset;
+#endif
+
+
 #ifdef PERIODIC
-#ifndef POWER6
 #define NGB_PERIODIC_LONG(x,box,hbox) ((fabs(x)>hbox)?(box-fabs(x)):fabs(x))
 #define NGB_PERIODIC_LONG_X(x) (xtmp=fabs(x),(xtmp>boxHalf_X)?(boxSize_X-xtmp):xtmp)
-#define NGB_PERIODIC_LONG_Y(x) (xtmp=fabs(x),(xtmp>boxHalf_Y)?(boxSize_Y-xtmp):xtmp)
-#define NGB_PERIODIC_LONG_Z(x) (xtmp=fabs(x),(xtmp>boxHalf_Z)?(boxSize_Z-xtmp):xtmp)
-#else
-#ifdef DOUBLEPRECISION
-#define NGB_PERIODIC_LONG(x,box,hbox) __fsel(hbox-fabs(x),fabs(x),box-fabs(x))
-#define NGB_PERIODIC_LONG_X(x) (xtmp=fabs(x),__fsel(boxHalf_X-xtmp,xtmp,boxSize_X-xtmp))
-#define NGB_PERIODIC_LONG_Y(x) (xtmp=fabs(x),__fsel(boxHalf_Y-xtmp,xtmp,boxSize_Y-xtmp))
-#define NGB_PERIODIC_LONG_Z(x) (xtmp=fabs(x),__fsel(boxHalf_Z-xtmp,xtmp,boxSize_Z-xtmp))
-#else
-#define NGB_PERIODIC_LONG(x,box,hbox) __fsel(hbox-fabsf(x),fabsf(x),box-fabsf(x))
-#define NGB_PERIODIC_LONG_X(x) (xtmp=fabsf(x),__fsels(boxHalf_X-xtmp,xtmp,boxSize_X-xtmp))
-#define NGB_PERIODIC_LONG_Y(x) (xtmp=fabsf(x),__fsels(boxHalf_Y-xtmp,xtmp,boxSize_Y-xtmp))
-#define NGB_PERIODIC_LONG_Z(x) (xtmp=fabsf(x),__fsels(boxHalf_Z-xtmp,xtmp,boxSize_Z-xtmp))
-#endif
-#endif
+#define NGB_PERIODIC_LONG_Y(y) (xtmp=fabs(y),(xtmp>boxHalf_Y)?(boxSize_Y-xtmp):xtmp)
+#define NGB_PERIODIC_LONG_Z(z) (xtmp=fabs(z),(xtmp>boxHalf_Z)?(boxSize_Z-xtmp):xtmp)
 #else
 #define NGB_PERIODIC_LONG(x,box,hbox) fabs(x)
 #define NGB_PERIODIC_LONG_X(x) fabs(x)
-#define NGB_PERIODIC_LONG_Y(x) fabs(x)
-#define NGB_PERIODIC_LONG_Z(x) fabs(x)
+#define NGB_PERIODIC_LONG_Y(y) fabs(y)
+#define NGB_PERIODIC_LONG_Z(z) fabs(z)
 #endif
 
 #define FACT1 0.366025403785	/* FACT1 = 0.5 * (sqrt(3)-1) */
@@ -922,7 +915,7 @@ extern struct global_data_all_processes
     unsigned long Ndmsi_thisTask; /*!< Number of DM self-interactions computed at this Task during current time-step */
     unsigned long Ndmsi;          /*!< Sum of Nsi_thisTask over all Tasks. Only the root task keeps track of this	 value.*/
     MyDouble InteractionCrossSection;  /*!< self-interaction cross-section in [cm^2/g]*/
-    double SIDMSmoothingFactor;  /*!< self-interaction smoothing length in units of the force softening, i.e. h_sidm
+    double SIDMSmoothingFactor;  /*!< self-interaction softening length in units of the force softening, i.e. h_sidm
                                   = All.SIDMSmoothingFactor*All.ForceSoftening[1]  (for -both- adaptive and non-adaptive modes) */
 #endif
     
@@ -956,7 +949,7 @@ extern struct global_data_all_processes
 
   /* some SPH parameters */
 
-  int DesNumNgb;		/*!< Desired number of SPH neighbours */
+  double DesNumNgb;		/*!< Desired number of SPH neighbours */
 #ifdef SUBFIND
   int DesLinkNgb;
   double ErrTolThetaSubfind;
@@ -1006,6 +999,10 @@ extern struct global_data_all_processes
   double UnitDensity_in_Gev_per_cm3; /*!< factor to convert internal density unit to GeV/c^2 / cm^3 */
   /* Cosmology */
 
+#ifdef MAGNETIC
+  double UnitMagneticField_in_gauss; /*!< factor to convert internal magnetic field (B) unit to gauss (cgs) units */
+#endif
+    
   double Hubble;		/*!< Hubble-constant in internal units */
   double Omega0,		/*!< matter density in units of the critical density (at z=0) */
     OmegaLambda,		/*!< vaccum energy density relative to crictical density (at z=0) */
@@ -1117,9 +1114,9 @@ extern struct global_data_all_processes
    *
    * five groups of particles are supported 0=gas,1=halo,2=disk,3=bulge,4=stars
    */
-  double MinGasHsmlFractional,	/*!< minimum allowed SPH smoothing length in units of SPH gravitational
+  double MinGasHsmlFractional,	/*!< minimum allowed kernel length in units of gas gravitational
 				   softening length */
-  MinGasHsml;			/*!< minimum allowed SPH smoothing length */
+  MinGasHsml;			/*!< minimum allowed gas kernel length */
   double MaxHsml;
 
 #ifdef TURB_DRIVING
@@ -1234,12 +1231,12 @@ extern struct global_data_all_processes
   double WindEnergyFraction;
   double WindFreeTravelMaxTimeFactor;  /* maximum free travel time in units of the Hubble time at the current simulation redshift */
   double WindFreeTravelDensFac;
-#ifdef GALSF_SUBGRID_VARIABLEVELOCITY
+#if defined(GALSF_SUBGRID_VARIABLEVELOCITY) || defined(GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION)
   double VariableWindVelFactor;  /* wind velocity in units of the halo escape velcoity */
   double VariableWindSpecMomentum;  /* momentum available for wind per unit mass of stars formed, in internal velocity units */
   double HaloConcentrationNorm;  /* concentration c0 of a halo of unit mass */
   double HaloConcentrationSlope;  /* slope n of mass concentration relation, namely c = c0 * M_200,crit^n */
-#endif // GALSF_SUBGRID_VARIABLEVELOCITY
+#endif
 #endif // GALSF_SUBGRID_WINDS //
 
 #ifdef GALSF_FB_SNE_HEATING
@@ -1478,7 +1475,7 @@ extern struct global_data_all_processes
 
 
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-  int AGS_DesNumNgb;
+  double AGS_DesNumNgb;
   double AGS_MaxNumNgbDeviation;
 #endif
 
@@ -1582,6 +1579,9 @@ extern ALIGN(32) struct particle_data
 #endif
 #ifdef METALS
     MyFloat Metallicity[NUM_METAL_SPECIES]; /*!< metallicity (species-by-species) of gas or star particle */
+#endif
+#ifdef GALSF_SFR_IMF_VARIATION
+    MyFloat IMF_Mturnover; /*!< IMF turnover mass [in solar] (or any other parameter which conveniently describes the IMF) */
 #endif
     
     MyFloat Hsml;
@@ -1724,7 +1724,7 @@ extern ALIGN(32) struct particle_data
     
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     MyFloat AGS_zeta;           /*!< factor in the correction term */
-    MyDouble DhsmlNgbFactor;    /*!< correction factor needed for varying smoothing lengths */
+    MyDouble DhsmlNgbFactor;    /*!< correction factor needed for varying kernel lengths */
 #endif
 }
  *P,				/*!< holds particle data on local processor */
@@ -1859,7 +1859,7 @@ extern struct sph_particle_data
     MyDouble MaxKineticEnergyNgb;   /*!< maximum kinetic energy (with respect to neighbors): use for entropy 'switch' */
 
 #ifndef ADAPTIVE_GRAVSOFT_FORALL
-    MyDouble DhsmlNgbFactor;        /*!< correction factor needed for varying smoothing lengths */
+    MyDouble DhsmlNgbFactor;        /*!< correction factor needed for varying kernel lengths */
 #endif
 #ifdef HYDRO_SPH
     MyDouble DhsmlHydroSumFactor;   /* for 'traditional' SPH, we need the SPH hydro-element volume estimator */
@@ -1904,6 +1904,11 @@ extern struct sph_particle_data
   MyFloat DelayTime;                /*!< remaining maximum decoupling time of wind particle */
 #ifdef GALSF_SUBGRID_VARIABLEVELOCITY
   MyFloat HostHaloMass;             /*!< host halo mass estimator for wind launching velocity */
+#endif
+#ifdef GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION
+  MyFloat HsmlDM;                   /*!< smoothing length to find neighboring dark matter particles */
+  MyDouble NumNgbDM;                /*!< number of neighbor dark matter particles */
+  MyDouble DM_Vx, DM_Vy, DM_Vz, DM_VelDisp; /*!< surrounding DM velocity and velocity dispersion */
 #endif
 #endif
     
@@ -2255,7 +2260,6 @@ enum iofields
   IO_SHEARCOEFF,
   IO_TSTP,
   IO_BFLD,
-  IO_BSMTH,
   IO_DBDT,
   IO_DIVB,
   IO_ABVC,
@@ -2263,7 +2267,6 @@ enum iofields
   IO_PHI,
   IO_GRADPHI,
   IO_ROTB,
-  IO_SROTB,
   IO_COOLRATE,
   IO_CONDRATE,
   IO_DENN,
@@ -2476,7 +2479,7 @@ extern struct extNODE
 #endif
   MyFloat vs[3];
   MyFloat vmax;
-  MyFloat hmax;			/*!< maximum SPH smoothing length in node. Only used for gas particles */
+  MyFloat hmax;			/*!< maximum gas kernel length in node. Only used for gas particles */
   MyFloat divVmax;
   integertime Ti_lastkicked;
   int Flag;

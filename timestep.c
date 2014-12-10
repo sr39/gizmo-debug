@@ -81,13 +81,14 @@ void find_timesteps(void)
     {
         double fastwavespeed = 0.0;
         double fastwavedecay = 0.0;
+        double fac_magnetic_pressure = All.cf_afac1 / All.cf_atime;
         for(i=0;i<NumPart;i++)
         {
             if(P[i].Type==0)
             {
                 // ??? //
                 double vsig2 = 0.5 * All.cf_afac3 * fabs(SphP[i].MaxSignalVel);
-                double vsig1 = sqrt( Particle_effective_soundspeed_i(i)*Particle_effective_soundspeed_i(i) + (Get_Particle_BField(i,0)*Get_Particle_BField(i,0)+Get_Particle_BField(i,1)*Get_Particle_BField(i,1)+Get_Particle_BField(i,2)*Get_Particle_BField(i,2)) / SphP[i].Density );
+                double vsig1 = All.cf_afac3 * sqrt( Particle_effective_soundspeed_i(i)*Particle_effective_soundspeed_i(i) + fac_magnetic_pressure * (Get_Particle_BField(i,0)*Get_Particle_BField(i,0)+Get_Particle_BField(i,1)*Get_Particle_BField(i,1)+Get_Particle_BField(i,2)*Get_Particle_BField(i,2)) / SphP[i].Density );
                 double vsig0 = DMAX(vsig1,vsig2);
 
                 if(vsig0 > fastwavespeed) fastwavespeed = vsig0;
@@ -441,14 +442,26 @@ integertime get_timestep(int p,		/*!< particle index */
             if(dt_courant < dt)
                 dt = dt_courant;
 
-#ifdef DIVBCLEANING_DEDNER
+#if (2==0) && defined(DIVBCLEANING_DEDNER) //&& !defined(HYDRO_SPH)
             // ??? //
-            dt_courant = 2 * All.CourantFac * All.cf_atime * (2*KERNEL_CORE_SIZE * PPP[p].Hsml) / (All.cf_afac3 * All.FastestWaveSpeed);
+            double C0 = pow( 4.0*M_PI / (3.0 * PPP[p].NumNgb) , 1.0/3.0);
+#ifdef ONEDIM
+            C0 = 1.0 / PPP[p].NumNgb;
+#endif
+#ifdef TWODIMS
+            C0 = sqrt( M_PI / (2.0 * PPP[p].NumNgb) );
+#endif
+            double fac_magnetic_pressure = All.cf_afac1 / All.cf_atime;
+            double vsig1 = All.cf_afac3 * sqrt( Particle_effective_soundspeed_i(p)*Particle_effective_soundspeed_i(p) +
+                    fac_magnetic_pressure * (Get_Particle_BField(p,0)*Get_Particle_BField(p,0)+Get_Particle_BField(p,1)*Get_Particle_BField(p,1)+
+                                             Get_Particle_BField(p,2)*Get_Particle_BField(p,2) + pow(Get_Particle_PhiField(p)/SphP[p].MaxSignalVel,2)) / SphP[p].Density );
+
+            dt_courant = 0.4 * All.CourantFac * All.cf_atime * (C0*PPP[p].Hsml) / vsig1;
             if(dt_courant < dt)
                 dt = dt_courant;
 #endif
             
-            /* make sure that the velocity divergence does not imply a too large change of density or smoothing length in the step */
+            /* make sure that the velocity divergence does not imply a too large change of density or kernel length in the step */
             double divVel = P[p].Particle_DivVel;
             if(divVel != 0)
             {

@@ -348,17 +348,22 @@ double get_pressure(int i)
 void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double dt_entr)
 {
 #ifdef MAGNETIC
+    double BphysVolphys_to_BcodeVolCode = All.cf_atime;
+#ifdef HYDRO_SPH
+    BphysVolphys_to_BcodeVolCode = All.cf_atime*All.cf_atime;
+#endif
+    
     int k;
     double dt_mag = dt_entr;
-    for(k=0;k<3;k++) {SphP[i].BPred[k] += SphP[i].DtB[k] * dt_mag;}
+    for(k=0;k<3;k++) {SphP[i].BPred[k] += SphP[i].DtB[k] * dt_mag * BphysVolphys_to_BcodeVolCode;} // fluxes are always physical, convert to code units //
 #ifdef DIVBCLEANING_DEDNER
-    // ??? //
-    //SphP[i].PhiPred += SphP[i].DtPhi * dt_mag; SphP[i].PhiPred *= exp(-dt_mag*Get_Particle_PhiField_DampingTimeInv(i));
-    double tinv0 = Get_Particle_PhiField_DampingTime(i);
-    if(tinv0<=0.0) {SphP[i].PhiPred=0.0;} else {SphP[i].PhiPred += (SphP[i].DtPhi/tinv0-SphP[i].PhiPred)*(1 - exp(-dt_mag*tinv0));}
+    double dtphi_code = BphysVolphys_to_BcodeVolCode * All.cf_atime * SphP[i].DtPhi;
+    SphP[i].PhiPred += dtphi_code  * dt_mag;
+    SphP[i].PhiPred *= exp( -dt_mag * Get_Particle_PhiField_DampingTimeInv(i) );
 #endif
 #endif
 }
+
 
 
 
@@ -375,7 +380,9 @@ void do_box_wrapping(void)
     double boxsize[3];
     
     for(j = 0; j < 3; j++)
+    {
         boxsize[j] = All.BoxSize;
+    }
     
 #ifdef LONG_X
     boxsize[0] *= LONG_X;
@@ -388,14 +395,31 @@ void do_box_wrapping(void)
 #endif
     
     for(i = 0; i < NumPart; i++)
+    {
         for(j = 0; j < 3; j++)
         {
             while(P[i].Pos[j] < 0)
+            {
                 P[i].Pos[j] += boxsize[j];
+#ifdef SHEARING_BOX
+                if(j==0) {P[i].Vel[SHEARING_BOX_PHI_COORDINATE]-=Shearing_Box_Vel_Offset; P[i].VelPred[SHEARING_BOX_PHI_COORDINATE]-=Shearing_Box_Vel_Offset;}
+#if (SHEARING_BOX != 1)
+                /* if we're not assuming axisymmetry, we need to shift the coordinates for the shear flow at the boundary */
+                // ??? //
+                //if(j==0) {P[i].Pos[SHEARING_BOX_PHI_COORDINATE]+= Shearing_Box_Vel_Offset * All.Time;
+#endif
+#endif
+            }
             
             while(P[i].Pos[j] >= boxsize[j])
+            {
                 P[i].Pos[j] -= boxsize[j];
+#ifdef SHEARING_BOX
+                if(j==0) {P[i].Vel[SHEARING_BOX_PHI_COORDINATE]+=Shearing_Box_Vel_Offset; P[i].VelPred[SHEARING_BOX_PHI_COORDINATE]+=Shearing_Box_Vel_Offset;}
+#endif
+            }
         }
+    }
 }
 #endif
 
@@ -459,15 +483,16 @@ double INLINE_FUNC Get_Particle_PhiField(int i_particle_id)
 
 double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)
 {
+    /* this timescale should always be returned as a -physical- time */
 #ifdef HYDRO_SPH
     /* PFH: add simple damping (-phi/tau) term */
-    double damping_tinv = 0.5 * All.DivBcleanParabolicSigma * (SphP[i_particle_id].MaxSignalVel*All.cf_afac3*All.cf_atime / (KERNEL_CORE_SIZE*PPP[i_particle_id].Hsml));
+    double damping_tinv = 0.5 * All.DivBcleanParabolicSigma * (SphP[i_particle_id].MaxSignalVel*All.cf_afac3 / (All.cf_atime*KERNEL_CORE_SIZE*PPP[i_particle_id].Hsml));
     /* PFH: add div_v term from Tricco & Price to DtPhi */
     damping_tinv += 0.5 * P[i_particle_id].Particle_DivVel*All.cf_a2inv;
 #else
     // ??? //
-    //double damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveSpeed / (KERNEL_CORE_SIZE*PPP[i_particle_id].Hsml);
-    double damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveDecay;
+    double damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveSpeed * All.cf_a2inv / (KERNEL_CORE_SIZE*PPP[i_particle_id].Hsml);
+    //double damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveDecay;
 #endif
     return damping_tinv;
 }

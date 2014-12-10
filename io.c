@@ -223,10 +223,6 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
   float *fp_single;
   integertime dt_step;
 
-#ifdef MAGNETIC
-  double a2_inv, gizmo2gauss = 1.0;
-#endif
-
 #ifdef PERIODIC
   MyFloat boxSize;
 #endif
@@ -256,11 +252,10 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     fac1 = All.cf_a2inv;
     fac2 = All.cf_afac2;
 #ifdef MAGNETIC
-#ifndef MU0_UNITY
-    gizmo2gauss /= sqrt(All.UnitTime_in_s * All.UnitTime_in_s * All.UnitLength_in_cm / All.UnitMass_in_g);
-    if(All.ComovingIntegrationOn) gizmo2gauss *= All.HubbleParam * All.HubbleParam;
-#endif
-    a2_inv = All.cf_a2inv;
+    double a2_inv = All.cf_a2inv;
+    double gizmo2gauss = sqrt(4.*M_PI*All.UnitPressure_in_cgs) / All.UnitMagneticField_in_gauss;
+    /* NOTE: we will always work -internally- in code units where MU_0 = 1; hence the 4pi here;
+        [much simpler, but be sure of your conversions!] */
 #endif
 
     
@@ -459,7 +454,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
       break;
 
 
-    case IO_HSML:		/* SPH smoothing length */
+    case IO_HSML:		/* gas kernel length */
       for(n = 0; n < pc; pindex++)
 	if(P[pindex].Type == type)
 	  {
@@ -513,7 +508,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
       break;
  
-    case IO_HSMS:		/* smoothing length for star particles */
+    case IO_HSMS:		/* kernel length for star particles */
 #ifdef SUBFIND
       for(n = 0; n < pc; pindex++)
 	if(P[pindex].Type == type)
@@ -627,9 +622,6 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
       break;
 
-    case IO_BSMTH:		/* smoothed magnetic field */
-      break;
-
     case IO_DBDT:		/* rate of change of magnetic field  */
       break;
 
@@ -684,7 +676,11 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
       for(n = 0; n < pc; pindex++)
 	if(P[pindex].Type == type)
 	  {
-	    *fp++ = (SphP[pindex].divB * SphP[pindex].Density/P[pindex].Mass * a2_inv * gizmo2gauss);
+#ifdef HYDRO_SPH
+        *fp++ = (SphP[pindex].divB * gizmo2gauss);
+#else
+	    *fp++ = (SphP[pindex].divB * SphP[pindex].Density/P[pindex].Mass * gizmo2gauss);
+#endif
 	    n++;
 	  }
 #endif
@@ -737,9 +733,6 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
       break;
 
     case IO_ROTB:		/* rot of magnetic field  */
-      break;
-
-    case IO_SROTB:		/* smoothed rot of magnetic field  */
       break;
 
     case IO_COOLRATE:		/* current cooling rate of particle  */
@@ -1513,10 +1506,8 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
     case IO_VBULK:
     case IO_BFLD:
     case IO_GRADPHI:
-    case IO_BSMTH:
     case IO_DBDT:
     case IO_ROTB:
-    case IO_SROTB:
     case IO_STRESSDIAG:
     case IO_STRESSOFFDIAG:
     case IO_RAD_ACCEL:
@@ -1785,11 +1776,9 @@ int get_values_per_blockelement(enum iofields blocknr)
     case IO_VEL:
     case IO_ACCEL:
     case IO_BFLD:
-    case IO_BSMTH:
     case IO_GRADPHI:
     case IO_DBDT:
     case IO_ROTB:
-    case IO_SROTB:
     case IO_STRESSDIAG:
     case IO_STRESSOFFDIAG:
     case IO_VBULK:
@@ -2051,7 +2040,6 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
     case IO_STRESSOFFDIAG:
     case IO_STRESSBULK:
     case IO_SHEARCOEFF:
-    case IO_BSMTH:
     case IO_BFLD:
     case IO_DBDT:
     case IO_VRMS:
@@ -2068,7 +2056,6 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
     case IO_PHI:
     case IO_GRADPHI:
     case IO_ROTB:
-    case IO_SROTB:
     case IO_COOLRATE:
     case IO_CONDRATE:
     case IO_DENN:
@@ -2391,11 +2378,6 @@ int blockpresent(enum iofields blocknr)
       break;
 
 
-    case IO_BSMTH:
-      return 0;
-      break;
-
-
     case IO_DBDT:
       return 0;
       break;
@@ -2479,10 +2461,6 @@ int blockpresent(enum iofields blocknr)
       return 0;
       break;
 
-
-    case IO_SROTB:
-      return 0;
-      break;
 
     case IO_COOLRATE:
 #ifdef OUTPUTCOOLRATE
@@ -2925,9 +2903,6 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
     case IO_BFLD:
       strncpy(label, "BFLD", 4);
       break;
-    case IO_BSMTH:
-      strncpy(label, "BFSM", 4);
-      break;
     case IO_DBDT:
       strncpy(label, "DBDT", 4);
       break;
@@ -2975,9 +2950,6 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
       break;
     case IO_ROTB:
       strncpy(label, "ROTB", 4);
-      break;
-    case IO_SROTB:
-      strncpy(label, "SRTB", 4);
       break;
     case IO_COOLRATE:
       strncpy(label, "COOR", 4);
@@ -3302,9 +3274,6 @@ void get_dataset_name(enum iofields blocknr, char *buf)
     case IO_BFLD:
       strcpy(buf, "MagneticField");
       break;
-    case IO_BSMTH:
-      strcpy(buf, "SmoothedMagneticField");
-      break;
     case IO_DBDT:
       strcpy(buf, "RateOfChangeOfMagneticField");
       break;
@@ -3352,9 +3321,6 @@ void get_dataset_name(enum iofields blocknr, char *buf)
       break;
     case IO_ROTB:
       strcpy(buf, "RotationB");
-      break;
-    case IO_SROTB:
-      strcpy(buf, "SmoothedRotationB");
       break;
     case IO_COOLRATE:
       strcpy(buf, "CoolingRate");
@@ -3567,7 +3533,7 @@ void get_dataset_name(enum iofields blocknr, char *buf)
  *  types with zero entry in MassTable.  After that, first the internal
  *  energies u, and then the density is written for the SPH particles.  If
  *  cooling is enabled, mean molecular weight and neutral hydrogen abundance
- *  are written for the gas particles. This is followed by the SPH smoothing
+ *  are written for the gas particles. This is followed by the gas kernel
  *  length and further blocks of information, depending on included physics
  *  and compile-time flags.
  */

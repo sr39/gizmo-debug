@@ -365,7 +365,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
       break;
 
 
-    case IO_HSML:		/* SPH smoothing length */
+    case IO_HSML:		/* gas kernel length */
       for(n = 0; n < pc; n++)
 	PPP[offset + n].Hsml = *fp++;
       break;
@@ -611,7 +611,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
     case IO_ABVC:
     case IO_COOLRATE:
     case IO_CONDRATE:
-    case IO_BSMTH:
     case IO_DENN:
     case IO_MACH:
     case IO_DTENERGY:
@@ -626,7 +625,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
     case IO_GRADPHI:
     case IO_TIDALTENSORPS:
     case IO_ROTB:
-    case IO_SROTB:
     case IO_FLOW_DETERMINANT:
     case IO_STREAM_DENSITY:
     case IO_PHASE_SPACE_DETERMINANT:

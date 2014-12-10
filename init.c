@@ -38,7 +38,7 @@
 /*! This function reads the initial conditions, and allocates storage for the
  *  tree(s). Various variables of the particle data are initialised and An
  *  intial domain decomposition is performed. If SPH particles are present,
- *  the inial SPH smoothing lengths are determined.
+ *  the initial gas kernel lengths are determined.
  */
 void init(void)
 {
@@ -46,7 +46,10 @@ void init(void)
     double a3, atime;
     
 #ifdef MAGNETIC
-    double a2_fac, gauss2gizmo = 1.0;
+    double a2_fac;
+    double gauss2gizmo = All.UnitMagneticField_in_gauss / sqrt(4.*M_PI*All.UnitPressure_in_cgs);
+    /* NOTE: we will always work -internally- in code units where MU_0 = 1; hence the 4pi here;
+        [much simpler, but be sure of your conversions!] */
 #endif
     
 #ifdef COSMIC_RAYS
@@ -177,10 +180,6 @@ void init(void)
         a3 = All.Time * All.Time * All.Time;
         atime = All.Time;
 #ifdef MAGNETIC
-#ifndef MU0_UNITY
-        gauss2gizmo *= sqrt(All.UnitTime_in_s * All.UnitTime_in_s * All.UnitLength_in_cm / All.UnitMass_in_g /
-                             (All.HubbleParam * All.HubbleParam));
-#endif
         a2_fac = (All.Time * All.Time);
 #endif
     }
@@ -191,9 +190,6 @@ void init(void)
         a3 = 1;
         atime = 1;
 #ifdef MAGNETIC
-#ifndef MU0_UNITY
-        gauss2gizmo *= sqrt(All.UnitTime_in_s * All.UnitTime_in_s * All.UnitLength_in_cm / All.UnitMass_in_g);
-#endif
         a2_fac = 1;
 #endif
     }
@@ -649,11 +645,7 @@ void init(void)
         for(j = 0; j < 3; j++)
         {
             SphP[i].BPred[j] *= a2_fac * gauss2gizmo;
-#ifndef HYDRO_SPH
-            SphP[i].B[j] = SphP[i].BPred[j] * P[i].Mass / SphP[i].Density; /* convert to the conserved unit V*B */
-#else
             SphP[i].B[j] = SphP[i].BPred[j];
-#endif
         }
 #if defined(TRICCO_RESISTIVITY_SWITCH)
         SphP[i].Balpha = 0.0;
@@ -668,7 +660,6 @@ void init(void)
 #if defined(BH_THERMALFEEDBACK)
         SphP[i].Injected_BH_Energy = 0;
 #endif
-        
     }
     
 #ifdef TWODIMS
@@ -681,7 +672,9 @@ void init(void)
         
         if(P[i].Type == 0)
         {
+#ifndef SHEARING_BOX
             SphP[i].VelPred[2] = 0;
+#endif
             SphP[i].HydroAccel[2] = 0;
         }
     }
@@ -744,6 +737,11 @@ void init(void)
         ags_setup_smoothinglengths();
 #endif
     
+#ifdef GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION
+    if(RestartFlag != 3 && RestartFlag != 5)
+        disp_setup_smoothinglengths();
+#endif
+    
 
 #if defined(TURB_DRIVING)
     {
@@ -789,6 +787,9 @@ void init(void)
         // re-match the predicted and initial velocities and B-field values, just to be sure //
         for(j=0;j<3;j++) SphP[i].VelPred[j]=P[i].Vel[j];
 #ifdef MAGNETIC
+#ifndef HYDRO_SPH
+        for(j=0;j<3;j++) {SphP[i].B[j] = SphP[i].BPred[j] * P[i].Mass / SphP[i].Density;} // convert to the conserved unit V*B //
+#endif
         for(j=0;j<3;j++) {SphP[i].BPred[j]=SphP[i].B[j]; SphP[i].DtB[j]=0;}
 #endif
         //SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
@@ -1026,11 +1027,12 @@ void check_omega(void)
 
 
 
-/*! This function is used to find an initial smoothing length for each SPH
+/*! This function is used to find an initial kernel length (what used to be called the 
+ *  'smoothing length' for SPH, but is just the kernel size for the mesh-free methods) for each gas
  *  particle. It guarantees that the number of neighbours will be between
  *  desired_ngb-MAXDEV and desired_ngb+MAXDEV. For simplicity, a first guess
- *  of the smoothing length is provided to the function density(), which will
- *  then iterate if needed to find the right smoothing length.
+ *  of the kernel length is provided to the function density(), which will
+ *  then iterate if needed to find the right kernel length.
  */
 void setup_smoothinglengths(void)
 {
@@ -1170,6 +1172,44 @@ void ags_setup_smoothinglengths(void)
     ags_density();
 }
 #endif // ADAPTIVE_GRAVSOFT_FORALL
+
+
+#ifdef GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION
+void disp_setup_smoothinglengths(void)
+{
+    int i, no, p;
+    if(RestartFlag == 0 || RestartFlag == 2)
+    {
+        for(i = 0; i < NumPart; i++)
+        {
+            if(P[i].Type == 0)
+            {
+                no = Father[i];
+                while(10 * 2.0 * All.AGS_DesNumNgb * P[i].Mass > Nodes[no].u.d.mass)
+                {
+                    p = Nodes[no].u.d.father;
+                    if(p < 0)
+                        break;
+                    no = p;
+                }
+                SphP[i].HsmlDM = pow(1.0/NORM_COEFF * 2.0 * All.AGS_DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
+                if(All.SofteningTable[P[i].Type] != 0)
+                {
+                    if((SphP[i].HsmlDM >1000.*All.SofteningTable[P[i].Type])||(PPP[i].Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
+                        SphP[i].HsmlDM = All.SofteningTable[P[i].Type];
+                }
+            }
+        }
+    }
+    
+    if(ThisTask == 0)
+    {
+        printf("computing DM Vel_disp around gas particles.\n");
+        fflush(stdout);
+    }
+    disp_density();
+}
+#endif
 
 
 void test_id_uniqueness(void)

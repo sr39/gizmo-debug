@@ -223,11 +223,16 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
         } else {
             /* SNII (IMF-averaged... may not be the best approx on short timescales...) */
             // Woosley & Weaver 1995 'B' models, integrated (log-log interp) over Salpeter IMF, from 10-50 rescaled from 0.1-100 solar //
-            yields[0]=1.70;/*Z*/
-            yields[1]=4.03;/*He*/ yields[2]=0.117;/*C*/ yields[3]=0.0399;/*N*/ yields[4]=1.06;/*O*/
-            yields[5]=0.169;/*Ne*/ yields[6]=0.0596;/*Mg*/ yields[7]=0.0924;/*Si*/
-            yields[8]=0.0408;/*S*/ yields[9]=0.00492;/*Ca*/ yields[10]=0.0842;/*Fe*/
-            /* note that the Mg yield here, and perhaps some other products, is systematically low (by ~0.4 dex) */
+            //yields[0]=1.70;/*Z*/
+            //yields[1]=4.03;/*He*/ yields[2]=0.117;/*C*/ yields[3]=0.0399;/*N*/ yields[4]=1.06;/*O*/
+            //yields[5]=0.169;/*Ne*/ yields[6]=0.0596;/*Mg*/ yields[7]=0.0924;/*Si*/
+            //yields[8]=0.0408;/*S*/ yields[9]=0.00492;/*Ca*/ yields[10]=0.0842;/*Fe*/
+            /* note that the Mg yield here, and perhaps some other products, is systematically low compared to observations (by ~0.4 dex) */
+            // Nomoto 2006 (arXiv:0605725) //
+            yields[0]=2.0;/*Z*/
+            yields[1]=3.87;/*He*/ yields[2]=0.133;/*C*/ yields[3]=0.0479;/*N*/ yields[4]=1.17;/*O*/
+            yields[5]=0.30;/*Ne*/ yields[6]=0.0987;/*Mg*/ yields[7]=0.0933;/*Si*/
+            yields[8]=0.0397;/*S*/ yields[9]=0.00458;/*Ca*/ yields[10]=0.0741;/*Fe*/
             
             if(P[i].Metallicity[0]<0.033)
             {
@@ -235,6 +240,7 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
             } else {
                 yields[3] *= 1.65;
             }
+            yields[0] += yields[3]-0.0479; // correct total metal mass for this correction //
         }
     }
     if(NUM_METAL_SPECIES==3 || NUM_METAL_SPECIES==4)
@@ -729,7 +735,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
           r2=0; for(k=0;k<3;k++) r2 += kernel.dp[k]*kernel.dp[k];
             if(r2<=0) continue; // same particle // 
-            if(r2>=h2) continue; // outside smoothing kernel //
+            if(r2>=h2) continue; // outside kernel //
             
             // calculate kernel quantities //
             kernel.r = sqrt(r2);
@@ -1078,7 +1084,7 @@ void determine_where_SNe_occur()
                 if(star_age>agemax)
                     RSNe = 5.3e-8 + 1.6e-5*exp(-0.5*((star_age-0.05)/0.01)*((star_age-0.05)/0.01));
                 // delayed population (constant rate)  +  prompt population (gaussian) //
-                p = dt * (RSNe*RSNeFac) * P[i].Mass;
+                p = dt * (RSNe*RSNeFac) * P[i].Mass * calculate_relative_light_to_mass_ratio_from_imf(i);
                 ptotal += p;
                 n_sn_0 = (float)floor(p);
                 p -= n_sn_0;
@@ -1105,6 +1111,7 @@ void determine_where_SNe_occur()
                         }}}
             p *= 1.4 * 0.291175; // to give expected return fraction from stellar winds alone (~17%) //
             p *= All.GasReturnFraction * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam);
+            p *= calculate_relative_light_to_mass_ratio_from_imf(i);
             // this is the fraction of the particle mass expected to return in the timestep //
             p = 1.0 - exp(-p); // need to account for p>1 cases //
             if(get_random_number(P[i].ID + 5) < p/D_RETURN_FRAC) // ok, have a mass return event //
@@ -1118,7 +1125,7 @@ void determine_where_SNe_occur()
         if(star_age>=0.003) // rate is zero at <3e6 yr
         {
             p = 3.0e-5 / (1000.*star_age); // Nsne/Myr for a 1 Msun population
-            p *= dt * RSNeFac * P[i].Mass;
+            p *= dt * RSNeFac * P[i].Mass * calculate_relative_light_to_mass_ratio_from_imf(i);
             n_sn_0 = (float)floor(p);
             p -= n_sn_0;
             if(get_random_number(P[i].ID + 7) < p) n_sn_0++;
@@ -1176,7 +1183,7 @@ void luminosity_heating_gasoline(void)
             star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
             if((star_age < 0.004)&&(dt>0)&&(P[i].Mass>0))
             {
-                dE = evaluate_l_over_m_ssp(star_age);
+                dE = evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(i);
                 dE *= Gasoline_LumHeating_Efficiency;
                 dE *= (4.0/2.0) * (P[i].Mass*All.UnitMass_in_g/All.HubbleParam); // L in CGS
                 dE *= (dt*All.UnitTime_in_s/All.HubbleParam) / (All.UnitEnergy_in_cgs/All.HubbleParam); // dE in code units

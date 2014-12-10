@@ -18,12 +18,16 @@ void GravAccel_KeplerianTestProblem(void);
 void GravAccel_GrowingDiskPotential(void);
 void GravAccel_StaticNFW(void);
 void GravAccel_RayleighTaylorTest(void);
+void GravAccel_ShearingSheet(void);
 
 
 /* master routine which decides which (if any) analytic gravitational forces are applied */
 void add_analytic_gravitational_forces()
 {
 #ifdef ANALYTIC_GRAVITY
+#ifdef SHEARING_BOX
+    GravAccel_ShearingSheet();            // adds coriolis and centrifugal terms for shearing-sheet approximation
+#endif
     //GravAccel_RayleighTaylorTest();     // vertical potential for RT tests
     //GravAccel_StaticPlummerSphere();    // plummer sphere
     //GravAccel_StaticHernquist();        // hernquist sphere
@@ -36,6 +40,28 @@ void add_analytic_gravitational_forces()
 }
 
 
+/* adds coriolis and centrifugal terms for shearing-sheet approximation */
+void GravAccel_ShearingSheet()
+{
+#ifdef SHEARING_BOX
+    int i;
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        /* centrifugal force term (depends on distance from box center) */
+        P[i].GravAccel[0] += 2.*(P[i].Pos[0]-boxHalf_X) * SHEARING_BOX_Q*SHEARING_BOX_OMEGA_BOX_CENTER*SHEARING_BOX_OMEGA_BOX_CENTER;
+        /* coriolis force terms */
+        P[i].GravAccel[0] += 2. * SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE] * SHEARING_BOX_OMEGA_BOX_CENTER;
+        P[i].GravAccel[SHEARING_BOX_PHI_COORDINATE] -= 2. * SphP[i].VelPred[0] * SHEARING_BOX_OMEGA_BOX_CENTER;
+#if (SHEARING_BOX==4)
+        /* add vertical gravity to the force law */
+        P[i].GravAccel[2] -= SHEARING_BOX_OMEGA_BOX_CENTER*SHEARING_BOX_OMEGA_BOX_CENTER * (P[i].Pos[2]-boxHalf_Z);
+#endif
+    }
+#endif
+#endif
+}
+
+
 
 /* constant vertical acceleration for Rayleigh-Taylor test problem */
 void GravAccel_RayleighTaylorTest()
@@ -43,7 +69,9 @@ void GravAccel_RayleighTaylorTest()
     int i;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
+        /* zero out the gravity first (since this test doesn't use self-gravity) */
         P[i].GravAccel[0]=P[i].GravAccel[1]=P[i].GravAccel[2]=0;
+        /* now add the constant vertical field */
         if(P[i].ID != 0) {P[i].GravAccel[1]=-0.5;}
     }
 }

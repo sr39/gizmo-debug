@@ -64,19 +64,6 @@ int ngb_filter_variables(long long numngb, int list[], t_vector * center, t_vect
 int ngb_filter_pairs(long long numngb, int list[], t_vector * center, t_vector * box, t_vector * hbox,
 		     MyFloat hsml)
 {
-#ifdef POWER6
-  long long numngb_old = numngb;
-  long long *comp;
-  long long no;
-  if(!(comp = ALLOC_STACK(numngb_old*sizeof(long long))))
-    {
-      printf("Failed to allocate additional memory for `comp' (%d Mbytes), switch off 'DO_NOT_BRACH_IF'.\n",
-	     numngb_old*sizeof(long long));
-      endrun(124);
-    }
-  // mymalloc is nod thread save !!
-  // comp = (long long *) mymalloc("NgbFilter", numngb_old * sizeof(long long));
-#else
   int numngb_old = numngb;
   int *comp;
   int no;
@@ -88,7 +75,6 @@ int ngb_filter_pairs(long long numngb, int list[], t_vector * center, t_vector *
     }
   // mymalloc is nod thread save !!
   // comp = (int *) mymalloc("NgbFilter", numngb_old * sizeof(int));
-#endif
 
   // first compute all the distances                                                                                                                                            
 
@@ -103,11 +89,7 @@ int ngb_filter_pairs(long long numngb, int list[], t_vector * center, t_vector *
       dy = NGB_PERIODIC_LONG(P[p].Pos[1] - center->d[1], box->d[1], hbox->d[1]);
       dz = NGB_PERIODIC_LONG(P[p].Pos[2] - center->d[2], box->d[2], hbox->d[2]);
       d2 = dx * dx + dy * dy + dz * dz;
-#ifdef POWER6
-      comp[no] = (long long) __fsel(d2 - dist * dist, 0.0, 1.0);
-#else
       comp[no] = (d2 < dist * dist);
-#endif
     }
 
   // then filter out the distant particles
@@ -130,19 +112,6 @@ int ngb_filter_pairs(long long numngb, int list[], t_vector * center, t_vector *
 int ngb_filter_variables(long long numngb, int list[], t_vector * center, t_vector * box, t_vector * hbox,
 			 MyFloat dist)
 {
-#ifdef POWER6
-  long long numngb_old = numngb;
-  long long *comp;
-  long long no;
-  if(!(comp = ALLOC_STACK(numngb_old*sizeof(long long))))
-    {
-      printf("Failed to allocate additional memory for `comp' (%d Mbytes), switch off 'DO_NOT_BRACH_IF'.\n",
-	     numngb_old*sizeof(long long));
-      endrun(124);
-    }
-  // mymalloc is nod thread save !!
-  //  comp = (long long *) mymalloc("NgbFilter", numngb_old * sizeof(long long));
-#else
   int numngb_old = numngb;
   int *comp;
   int no;
@@ -154,7 +123,6 @@ int ngb_filter_variables(long long numngb, int list[], t_vector * center, t_vect
     }
   // mymalloc is nod thread save !!
   //  comp = (int *) mymalloc("NgbFilter", numngb_old * sizeof(int));
-#endif
 
   // first compute all the distances                                                                                                                                            
 
@@ -168,11 +136,7 @@ int ngb_filter_variables(long long numngb, int list[], t_vector * center, t_vect
       dy = NGB_PERIODIC_LONG(P[p].Pos[1] - center->d[1], box->d[1], hbox->d[1]);
       dz = NGB_PERIODIC_LONG(P[p].Pos[2] - center->d[2], box->d[2], hbox->d[2]);
       d2 = dx * dx + dy * dy + dz * dz;
-#ifdef POWER6
-      comp[no] = (long long) __fsel(d2 - dist * dist, 0.0, 1.0);
-#else
       comp[no] = (d2 < dist * dist);
-#endif
     }
 
   // then filter out the distant particles
@@ -1209,7 +1173,7 @@ int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int target,
 
 
 
-/* find all particles of type FOF_PRIMARY_LINK_TYPES in smoothing length in order to find nearest one */
+/* find all particles of type FOF_PRIMARY_LINK_TYPES in kernel length in order to find nearest one */
 int ngb_treefind_fof_nearest(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode,
 			     int *nexport, int *nsend_local, int MyFOF_PRIMARY_LINK_TYPES)
 {
@@ -1689,6 +1653,205 @@ int ngb_treefind_newstars(MyDouble searchcenter[3], MyFloat hsml, int target, in
     return numngb;
 }
 #endif // defined(GALSF_FB_RPWIND_LOCAL) && defined(GALSF_FB_RPWIND_FROMSTARS)
+
+
+
+
+
+#ifdef GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION
+int dm_disp_ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
+                                       int mode, int *exportflag, int *exportnodecount, int *exportindex,
+                                       int *ngblist, int type_of_searching_particle)
+{
+    int numngb, no, nexp, p, task;
+    struct NODE *current;
+    // cache some global vars locally for improved compiler alias analysis
+    int maxPart = All.MaxPart;
+    int maxNodes = MaxNodes;
+    int bunchSize = All.BunchSize;
+    integertime ti_Current = All.Ti_Current;
+    
+#ifndef DO_NOT_BRACH_IF
+    MyDouble dx, dy, dz, dist;
+#ifdef PERIODIC
+    MyDouble xtmp;
+#endif
+#else
+    t_vector box, hbox, vcenter;
+    INIT_VECTOR3(boxSize_X, boxSize_Y, boxSize_Z, &box);
+    INIT_VECTOR3(searchcenter[0], searchcenter[1], searchcenter[2], &vcenter);
+    SCALE_VECTOR3(0.5, &box, &hbox);
+#endif
+    
+    
+    numngb = 0;
+    no = *startnode;
+    
+    while(no >= 0)
+    {
+        if(no < maxPart)		/* single particle */
+        {
+            p = no;
+            no = Nextnode[no];
+            
+            /* call the master routine which decides if particles "talk to" each other in-kernel */
+            if(disp_gravity_kernel_shared_check(type_of_searching_particle , P[p].Type) == 0)
+                continue;
+            
+            if(P[p].Mass <= 0)
+                continue;
+            
+            if(P[p].Ti_current != ti_Current)
+            {
+                LOCK_PARTNODEDRIFT;
+#ifdef _OPENMP
+#pragma omp critical(_partnodedrift_)
+#endif
+                drift_particle(p, ti_Current);
+                UNLOCK_PARTNODEDRIFT;
+            }
+            
+#ifndef DO_NOT_BRACH_IF
+            dist = hsml;
+            dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0]);
+            if(dx > dist)
+                continue;
+            dy = NGB_PERIODIC_LONG_Y(P[p].Pos[1] - searchcenter[1]);
+            if(dy > dist)
+                continue;
+            dz = NGB_PERIODIC_LONG_Z(P[p].Pos[2] - searchcenter[2]);
+            if(dz > dist)
+                continue;
+            if(dx * dx + dy * dy + dz * dz > dist * dist)
+                continue;
+#endif
+            ngblist[numngb++] = p;
+        }
+        else
+        {
+            if(no >= maxPart + maxNodes)	/* pseudo particle */
+            {
+                if(mode == 1)
+                    endrun(12312);
+                
+                if(target >= 0)	/* if no target is given, export will not occur */
+                {
+                    if(exportflag[task = DomainTask[no - (maxPart + maxNodes)]] != target)
+                    {
+                        exportflag[task] = target;
+                        exportnodecount[task] = NODELISTLENGTH;
+                    }
+                    
+                    if(exportnodecount[task] == NODELISTLENGTH)
+                    {
+                        int exitFlag = 0;
+                        LOCK_NEXPORT;
+#ifdef _OPENMP
+#pragma omp critical(_nexport_)
+#endif
+                        {
+                            if(Nexport >= bunchSize)
+                            {
+                                /* out of buffer space. Need to discard work for this particle and interrupt */
+                                BufferFullFlag = 1;
+                                exitFlag = 1;
+                            }
+                            else
+                            {
+                                nexp = Nexport;
+                                Nexport++;
+                            }
+                        }
+                        UNLOCK_NEXPORT;
+                        if(exitFlag)
+                            return -1;
+                        
+                        exportnodecount[task] = 0;
+                        exportindex[task] = nexp;
+                        DataIndexTable[nexp].Task = task;
+                        DataIndexTable[nexp].Index = target;
+                        DataIndexTable[nexp].IndexGet = nexp;
+                    }
+                    
+                    DataNodeList[exportindex[task]].NodeList[exportnodecount[task]++] =
+                    DomainNodeIndex[no - (maxPart + maxNodes)];
+                    
+                    if(exportnodecount[task] < NODELISTLENGTH)
+                        DataNodeList[exportindex[task]].NodeList[exportnodecount[task]] = -1;
+                    
+                }
+                
+                no = Nextnode[no - maxNodes];
+                continue;
+            }
+            
+            current = &Nodes[no];
+            
+            if(mode == 1)
+            {
+                if(current->u.d.bitflags & (1 << BITFLAG_TOPLEVEL))	/* we reached a top-level node again, which means that we are done with the branch */
+                {
+                    *startnode = -1;
+#ifndef DO_NOT_BRACH_IF
+                    return numngb;
+#else
+                    return ngb_filter_variables(numngb, ngblist, &vcenter, &box, &hbox, hsml);
+#endif
+                }
+            }
+            
+            if(current->Ti_current != ti_Current)
+            {
+                LOCK_PARTNODEDRIFT;
+#ifdef _OPENMP
+#pragma omp critical(_partnodedrift_)
+#endif
+                force_drift_node(no, ti_Current);
+                UNLOCK_PARTNODEDRIFT;
+            }
+            
+            if(!(current->u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)))
+            {
+                if(current->u.d.mass)	/* open cell */
+                {
+                    no = current->u.d.nextnode;
+                    continue;
+                }
+            }
+            
+#ifndef DO_NOT_BRACH_IF
+            no = current->u.d.sibling;	/* in case the node can be discarded */
+            
+            dist = hsml + 0.5 * current->len;
+            dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0]);
+            if(dx > dist)
+                continue;
+            dy = NGB_PERIODIC_LONG_Y(current->center[1] - searchcenter[1]);
+            if(dy > dist)
+                continue;
+            dz = NGB_PERIODIC_LONG_Z(current->center[2] - searchcenter[2]);
+            if(dz > dist)
+                continue;
+            /* now test against the minimal sphere enclosing everything */
+            dist += FACT1 * current->len;
+            if(dx * dx + dy * dy + dz * dz > dist * dist)
+                continue;
+            
+            no = current->u.d.nextnode;	/* ok, we need to open the node */
+#else
+            no = ngb_check_node(current, &vcenter, &box, &hbox, hsml);
+#endif
+        }
+    }
+    *startnode = -1;
+#ifndef DO_NOT_BRACH_IF
+    return numngb;
+#else
+    return ngb_filter_variables(numngb, ngblist, &vcenter, &box, &hbox, hsml);
+#endif
+}
+#endif
+
 
 
 

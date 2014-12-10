@@ -91,9 +91,17 @@ void run(void)
         }
         
         compute_grav_accelerations();	/* compute gravitational accelerations for synchronous particles */
-        
+
+#ifdef GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION
+        // ??? Need to figure out how frequently we caculate this; below is pretty rough ??? //
+        if(All.Ti_Current == All.PM_Ti_endstep && get_random_number(1+All.Ti_Current) < 0.05)
+        {
+            disp_density(); /* compute the DM velocity dispersion around gas particles every 20 PM steps, should be sufficient */
+        }
+#endif
+
 #if (defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPROCESS_ENRICHMENT))
-        /* flag particles which will be feedback centers, so smoothing lengths can be computed for them */
+        /* flag particles which will be feedback centers, so kernel lengths can be computed for them */
         determine_where_SNe_occur();
 #endif
         

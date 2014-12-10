@@ -268,7 +268,7 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
 
 
 /*! Routine to merge particle 'i' into particle 'j'
-    The volumetric quantities (density, pressure, gradients, smoothing lengths)
+    The volumetric quantities (density, pressure, gradients, kernel lengths)
     can be re-estimated after the merger operation. but we need to make sure
     all conserved quantities are appropriately dealt with. This also requires some care, to be 
     done appropriately, but is a little bit less sensitive and more well-defined compared to 
@@ -380,7 +380,7 @@ void merge_particles_ij(MyIDType i, MyIDType j)
         de_ij -= mtot * SphP[j].VelPred[k]/All.cf_atime * SphP[j].HydroAccel[k] + 0.5 * dm_ij * SphP[j].VelPred[k]*SphP[j].VelPred[k]*All.cf_a2inv;
     }
     SphP[j].DtInternalEnergy = de_ij;
-    // to be conservative adopt the maximum signal velocity and smoothing length //
+    // to be conservative adopt the maximum signal velocity and kernel length //
     SphP[j].MaxSignalVel = sqrt(SphP[j].MaxSignalVel*SphP[j].MaxSignalVel + SphP[i].MaxSignalVel*SphP[i].MaxSignalVel); /* need to be conservative */
     PPP[j].Hsml = pow(pow(PPP[j].Hsml,NUMDIMS)+pow(PPP[i].Hsml,NUMDIMS),1.0/NUMDIMS); /* sum the volume of the two particles */
     SphP[j].ConditionNumber = SphP[j].ConditionNumber + SphP[i].ConditionNumber; /* sum to be conservative */

@@ -52,10 +52,10 @@
     /* hfc_dwk_i = 0.5 * (hfc_dwk_i + hfc_dwk_j); */
     /* hfc = (local.Pressure-SphP[j].Pressure)/(local.Density*SphP[j].Density) * hfc_dwk_i */
         
-    Fluxes.v[0] += -hfc * kernel.dx; /* momentum */
-    Fluxes.v[1] += -hfc * kernel.dy;
-    Fluxes.v[2] += -hfc * kernel.dz;
-    vi_dot_r = local.Vel[0]*kernel.dx + local.Vel[1]*kernel.dy + local.Vel[2]*kernel.dz;
+    Fluxes.v[0] += -hfc * kernel.dp[0]; /* momentum */
+    Fluxes.v[1] += -hfc * kernel.dp[1];
+    Fluxes.v[2] += -hfc * kernel.dp[2];
+    vi_dot_r = local.Vel[0]*kernel.dp[0] + local.Vel[1]*kernel.dp[1] + local.Vel[2]*kernel.dp[2];
     Fluxes.p += hfc_egy * hfc_dwk_i * vdotr2_phys - hfc * vi_dot_r; /* total energy */
     
     
@@ -73,7 +73,7 @@
      * ... induction equation ...
      * (the SPH induction equation is inherently non-symmetric: the result for particle
      *  'a' and particle 'b' must each be separately computed. However, they do not rely on the 
-     *   densities or smoothing lengths of the neighbor particles. Therefore they can and should 
+     *   densities or kernel lengths of the neighbor particles. Therefore they can and should 
      *   be computed in the density loop, not the hydro loop)
      * --------------------------------------------------------------------------------- */
     
@@ -83,10 +83,12 @@
     /* --------------------------------------------------------------------------------- */
     /* PFH: this is the symmetric estimator of grad phi: used be used IFF div.dot.B is estimated by the 'direct difference' operator (recommended) */
     double phifac = -(mf_i*local.PhiPred + mf_j*PhiPred_j); // *All.cf_atime*All.cf_atime; // All.cf_atime NOT needed for convention [Phicode]=[Bcode][vcode]
-    Fluxes.B[0] += phifac * kernel.dx;
-    Fluxes.B[1] += phifac * kernel.dy;
-    Fluxes.B[2] += phifac * kernel.dz;
-    // GradPhi should have units of [Phicode]/[rcode] = [Bcode]*[vcode]/[rcode] = [DtB]=[Fluxes.B]
+    Fluxes.B[0] += phifac * kernel.dp[0];
+    Fluxes.B[1] += phifac * kernel.dp[1];
+    Fluxes.B[2] += phifac * kernel.dp[2];
+    /* units are phi_code * rcode^2 = Bcode*vcode * rcode^2 = vcode * Bphys*rphys^2 = (a*vphys) * Bphys*rphys^2 */
+    /* GradPhi should have units of [Phicode]/[rcode] = [Bcode]*[vcode]/[rcode] =
+        a*a*Bphys * a*vphys/(rphys/a) = a^4 [DtB]= a^4 [Fluxes.B]; extra terms come in V_i multiplication in evaluate */
 #endif // DIVBCLEANING_DEDNER
     
     /* --------------------------------------------------------------------------------- */
@@ -105,16 +107,18 @@
         mm_j[k][k] -= 0.5 * kernel.b2_j;
     
     /* need to be able to subtract component of force which owes to the non-zero value of div.B */
-    Fluxes.B_normal_corrected = (local.BPred[0] * mf_i + BPred_j[0] * mf_j) * kernel.dx +
-                                (local.BPred[1] * mf_i + BPred_j[1] * mf_j) * kernel.dy +
-                                (local.BPred[2] * mf_i + BPred_j[2] * mf_j) * kernel.dz;
+    /* units of this are Bcode * rcode*rcode = a*a*Bphys*(rphys/a)^2 = Bphys * rphys*rphys */
+    Fluxes.B_normal_corrected = (local.BPred[0] * mf_i + BPred_j[0] * mf_j) * kernel.dp[0] +
+                                (local.BPred[1] * mf_i + BPred_j[1] * mf_j) * kernel.dp[1] +
+                                (local.BPred[2] * mf_i + BPred_j[2] * mf_j) * kernel.dp[2];
     for(k = 0; k < 3; k++)
     {
         /* momentum flux from MHD forces */
-        magfluxv[k] = (mm_i[k][0] * mf_i + mm_j[k][0] * mf_j) * kernel.dx +
-                          (mm_i[k][1] * mf_i + mm_j[k][1] * mf_j) * kernel.dy +
-                          (mm_i[k][2] * mf_i + mm_j[k][2] * mf_j) * kernel.dz;
-        Fluxes.v[k] += magfluxv[k];
+        /* units of this are Bcode^2 * rcode^2 = a2 * Bphys^2 * rphys^2 */
+        magfluxv[k] = (mm_i[k][0] * mf_i + mm_j[k][0] * mf_j) * kernel.dp[0] +
+                          (mm_i[k][1] * mf_i + mm_j[k][1] * mf_j) * kernel.dp[1] +
+                          (mm_i[k][2] * mf_i + mm_j[k][2] * mf_j) * kernel.dp[2];
+        Fluxes.v[k] += magfluxv[k] * All.cf_a2inv / All.cf_afac2; /* converts to (Pcode/rhocode)/rcode */
     }
     
         
@@ -131,11 +135,20 @@
     double eta = All.ArtMagDispConst * vsigb * kernel.r;
 #endif
     mf_dissInd *= eta;
+    /* units are Bcode * vcode * rcode*rcode = vcode * Bphys*rphys^2 = a * vphys*Bphys*rphys^2 */
     Fluxes.B[0] += mf_dissInd * dBx;
     Fluxes.B[1] += mf_dissInd * dBy;
     Fluxes.B[2] += mf_dissInd * dBz;
+    /* units are Bc^2 * vc * rc^2 = (Pc/fac_magnetic_pressure) * vc * rc^2 = 1/fac_magnetic_pressure * mc * Pc/rhoc * vc/rc */ 
     Fluxes.p -= 0.5 * fac_magnetic_pressure * mf_dissInd * (dBx * dBx + dBy * dBy + dBz * dBz);
 #endif
+    
+    /* convert to physical units! */
+    for(k=0;k<3;k++)
+    {
+        Fluxes.B[k] /= All.cf_atime;
+        magfluxv[k] *= All.cf_a2inv;
+    }
 #endif /* end MAGNETIC */
         
     
@@ -164,9 +177,9 @@
             visc = DMIN(visc, 0.5 * fac_vsic_fix * kernel.vdotr2 / ((local.Mass + P[j].Mass) * kernel.dwk_ij * kernel.r * dt));
 #endif
         hfc_visc = -local.Mass * P[j].Mass * visc * kernel.dwk_ij / kernel.r;
-        Fluxes.v[0] += hfc_visc * kernel.dx; /* this is momentum */
-        Fluxes.v[1] += hfc_visc * kernel.dy;
-        Fluxes.v[2] += hfc_visc * kernel.dz;
+        Fluxes.v[0] += hfc_visc * kernel.dp[0]; /* this is momentum */
+        Fluxes.v[1] += hfc_visc * kernel.dp[1];
+        Fluxes.v[2] += hfc_visc * kernel.dp[2];
         Fluxes.p += hfc_visc * (vi_dot_r - 0.5*vdotr2_phys); /* remember, this is -total- energy now */
     } // kernel.vdotr2 < 0 -- triggers artificial viscosity
     

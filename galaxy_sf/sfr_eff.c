@@ -20,6 +20,43 @@
 #ifdef GALSF // master switch for compiling the routines below //
 
 
+#ifdef GALSF_SFR_IMF_VARIATION
+/* function to determine what the IMF of a new star particle will be, based 
+    on the gas properties of the particle out of which it forms */
+double assign_imf_properties_from_starforming_gas(MyIDType i)
+{
+    double h = PPP[i].Hsml * All.cf_atime / pow(PPP[i].NumNgb, 1/NUMDIMS);
+    double cs = Particle_effective_soundspeed_i(i) * All.cf_afac3;
+    double dv2abs = 0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
+    // squared norm of the trace-free symmetric [shear] component of the velocity gradient tensor //
+    dv2_abs = ((1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1])*(SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) +
+                        (SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2])*(SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2]) +
+                        (SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])*(SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])) +
+               (2./3.)*((SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[0][0] +
+                         SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[1][1] +
+                         SphP[i].Gradients.Velocity[2][2]*SphP[i].Gradients.Velocity[2][2]) -
+                        (SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[2][2] +
+                         SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[1][1] +
+                         SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))) * All.cf_a2inv*All.cf_a2inv;
+    double M_sonic = cs*cs*cs*cs / (All.G * dv2abs * h);
+    M_sonic *= All.UnitMass_in_g / All.Hubble / (1.989e33); // sonic mass in solar units //
+    P[i].IMF_Mturnover = M_sonic;
+}
+#endif
+
+
+/* return the light-to-mass ratio, for the IMF of a given particle, relative to the Chabrier/Kroupa IMF which 
+    is otherwise (for all purposes) our 'default' choice */
+inline double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i)
+{
+#ifdef GALSF_SFR_IMF_VARIATION
+    return pow(P[i].IMF_Mturnover/1.0,0.35);
+#endif
+    return 1; // Chabrier or Kroupa IMF //
+    // return 0.5; // Salpeter IMF down to 0.1 solar //
+}
+
+
 /* return the stellar age in Gyr for a given labeled age, needed throughout for stellar feedback */
 double evaluate_stellar_age_Gyr(double stellar_tform)
 {
@@ -533,7 +570,7 @@ void cooling_and_starformation(void)
 #endif
         } // closes check of flag==0 for star-formation operation
 
-#if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) || defined(GALSF_SUBGRID_WINDS) || defined(GALSF_SUBGRID_VARIABLEVELOCITY)
+#if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) || defined(GALSF_SUBGRID_WINDS) || defined(GALSF_SUBGRID_VARIABLEVELOCITY) || defined(GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPSERSION)
         if( (flag==0 || All.ComovingIntegrationOn==0) &&
            (P[i].Mass>0) && (P[i].Type==0) && (dtime>0) && (All.Time>0) )
         {
@@ -647,7 +684,7 @@ if(All.WindMomentumLoading)
 
 
 
-#if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) || defined(GALSF_SUBGRID_WINDS) || defined(GALSF_SUBGRID_VARIABLEVELOCITY)
+#if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) || defined(GALSF_SUBGRID_WINDS) || defined(GALSF_SUBGRID_VARIABLEVELOCITY) || defined(GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPSERSION)
 void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvtau_return[4])
 {
     int j;
@@ -680,6 +717,30 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
     prob = 1 - exp(-p);
 #endif
     
+
+#ifdef GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION
+    /* wind model where launching scales with halo/galaxy bulk properties (as in Vogelsberger's simulations) */
+    if(SphP[i].DM_VelDisp > 0 && sm > 0)
+    {
+        double wind_energy, wind_momentum, wind_mass;
+        v = All.VariableWindVelFactor * SphP[i].DM_VelDisp;  /* physical wind velocity */
+        //      if(v < 50.0) v = 50.0;
+        wind_momentum = sm * All.VariableWindSpecMomentum;
+        wind_energy = sm * All.WindEnergyFraction * All.FactorSN * All.EgySpecSN / (1 - All.FactorSN);
+        wind_mass = (wind_energy + sqrt(wind_energy * wind_energy + v * v * wind_momentum * wind_momentum)) / (v * v);
+        /* wind mass for this particle, assuming the wind is first given the energy wind_energy and then the momentum wind_momentum */
+        p = wind_mass / P[i].Mass;
+    }
+    else
+    {
+        v = 0;
+        p = 0;
+    }
+    prob = 1 - exp(-p);
+#endif
+    
+    
+    
 #ifdef GALSF_SUBGRID_VARIABLEVELOCITY
     /* wind model where launching scales with halo/galaxy bulk properties (as in Romeel's simulations) */
     if(SphP[i].HostHaloMass > 0 && sm > 0)
@@ -708,6 +769,8 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
     }
     prob = 1 - exp(-p);
 #endif
+    
+    
     
 #ifdef GALSF_FB_RPWIND_LOCAL
     /* revised winds model (blowing winds out from local dense clumps) */
@@ -749,7 +812,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
                     j = Ngblist[n];
                     star_age = evaluate_stellar_age_Gyr(P[j].StellarAge);
                     m_st_kernel += P[j].Mass;
-                    lm_ssp = evaluate_l_over_m_ssp(star_age);
+                    lm_ssp = evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(j);
                     l_st_kernel += lm_ssp*P[j].Mass;
                 } /* for(n=0; n<numngb_inbox; n++) */
             } /* if(numngb_inbox>0) */
@@ -850,7 +913,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
                 pow(rho_to_launch*unitrho_in_e10solar_kpc3,-0.5);
                 if(star_age <= vq) {
                     m_st_kernel+=P[Ngblist[n]].Mass;
-                    lm_ssp = evaluate_l_over_m_ssp(star_age);
+                    lm_ssp = evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(Ngblist[n]);
                     cl_st_lum+=lm_ssp*P[Ngblist[n]].Mass;
                     
                     stcom_pos[0]+=P[Ngblist[n]].Pos[0]*lm_ssp*P[Ngblist[n]].Mass;

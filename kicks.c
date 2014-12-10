@@ -359,16 +359,21 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
 }
 
 
+
 void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, double dt_entr)
 {
     int j; j=0;
 #ifdef MAGNETIC
-    for(j = 0; j < 3; j++) {SphP[i].B[j] += SphP[i].DtB[j] * dt_entr;}
+    double BphysVolphys_to_BcodeVolCode = All.cf_atime;
+#ifdef HYDRO_SPH
+    BphysVolphys_to_BcodeVolCode = All.cf_atime*All.cf_atime;
+#endif
+    for(j = 0; j < 3; j++) {SphP[i].B[j] += SphP[i].DtB[j] * dt_entr * BphysVolphys_to_BcodeVolCode;} // fluxes are always physical, convert to code units //
 #ifdef DIVBCLEANING_DEDNER
-    // ??? //
-    //SphP[i].Phi += SphP[i].DtPhi * dt_entr; SphP[i].Phi *= exp(-dt_entr*Get_Particle_PhiField_DampingTimeInv(i));
-    double tinv0 = Get_Particle_PhiField_DampingTime(i);
-    if(tinv0<=0.0) {SphP[i].Phi=0.0;} else {SphP[i].Phi += (SphP[i].DtPhi/tinv0-SphP[i].Phi)*(1 - exp(-dt_entr*tinv0));}
+    double dtphi_code = BphysVolphys_to_BcodeVolCode * All.cf_atime * SphP[i].DtPhi;
+    /* phi units are [vcode][Bcode]=a^3 * vphys*Bphys */
+    SphP[i].Phi += dtphi_code * dt_entr;
+    SphP[i].Phi *= exp( -dt_entr * Get_Particle_PhiField_DampingTimeInv(i) );
 #endif
 #endif
 #ifdef NUCLEAR_NETWORK

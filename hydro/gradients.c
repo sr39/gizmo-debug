@@ -567,7 +567,7 @@ void hydro_gradient_calc(void)
 #endif
           
 #ifdef TRICCO_RESISTIVITY_SWITCH
-          /* use the magnitude of the B-field gradients relative to smoothing length to calculate artificial resistivity */
+          /* use the magnitude of the B-field gradients relative to kernel length to calculate artificial resistivity */
           double GradBMag=0.0;
           double BMag=0.0;
           for(k=0;k<3;k++)
@@ -735,6 +735,7 @@ void hydro_gradient_calc(void)
               }
           }
 #ifdef DIVBCLEANING_DEDNER
+          h0 = 1 / (a_limiter * PPP[i].Hsml);
           d_abs=0; for(k=0;k<3;k++) {d_tmp[k]=SphP[i].Gradients.Phi[k]; d_abs+=d_tmp[k]*d_tmp[k];}
           if(d_abs>0)
           {
@@ -819,15 +820,15 @@ int addSPH_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
             {
                 j = ngblist[n];
                 
-                kernel.dx = local.Pos[0] - P[j].Pos[0];
-                kernel.dy = local.Pos[1] - P[j].Pos[1];
-                kernel.dz = local.Pos[2] - P[j].Pos[2];
+                kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
+                kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
+                kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
 #ifdef PERIODIC			/*  now find the closest image in the given box size  */
-                kernel.dx = NEAREST_X(kernel.dx);
-                kernel.dy = NEAREST_Y(kernel.dy);
-                kernel.dz = NEAREST_Z(kernel.dz);
+                kernel.dp[0] = NEAREST_X(kernel.dp[0]);
+                kernel.dp[1] = NEAREST_Y(kernel.dp[1]);
+                kernel.dp[2] = NEAREST_Z(kernel.dp[2]);
 #endif
-                r2 = kernel.dx * kernel.dx + kernel.dy * kernel.dy + kernel.dz * kernel.dz;
+                r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 
                 if((r2>0)&&(r2<h2_i))
                 {
@@ -846,7 +847,7 @@ int addSPH_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
                     }
                     
                     /* now the vectors for the basic hydro gradients we will need */
-                    double dpos[3]; dpos[0]=kernel.dx; dpos[1]=kernel.dy; dpos[2]=kernel.dz;
+                    double dpos[3]; dpos[0]=kernel.dp[0]; dpos[1]=kernel.dp[1]; dpos[2]=kernel.dp[2];
                     
                     /* get the differences for use in the loop below */
                     double dd = SphP[j].Density - local.GQuant.Density;
@@ -858,6 +859,10 @@ int addSPH_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
                     double dv[3];
                     for(k=0;k<3;k++)
                         dv[k] = SphP[j].VelPred[k] - local.GQuant.Velocity[k];
+#ifdef SHEARING_BOX
+                    if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                    if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#endif
 #ifdef MAGNETIC
                     double dB[3];
                     for(k=0;k<3;k++)
