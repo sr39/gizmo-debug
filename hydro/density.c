@@ -1406,9 +1406,9 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
         
 #if defined(GRAIN_FLUID)
         out->SmoothedEntr += kernel->mj_wk * SphP[j].InternalEnergy;
-        out->GasVel[0] += kernel->mj_wk * (local->Vel[0]+kernel->dv[0]);
-        out->GasVel[1] += kernel->mj_wk * (local->Vel[1]+kernel->dv[1]);
-        out->GasVel[2] += kernel->mj_wk * (local->Vel[2]+kernel->dv[2]);
+        out->GasVel[0] += kernel->mj_wk * (local->Vel[0]-kernel->dv[0]);
+        out->GasVel[1] += kernel->mj_wk * (local->Vel[1]-kernel->dv[1]);
+        out->GasVel[2] += kernel->mj_wk * (local->Vel[2]-kernel->dv[2]);
 #endif
         
 #if defined(BLACK_HOLES)
@@ -1429,9 +1429,9 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
     } else { /* local.Type == 0 */
 
 #if defined(TURB_DRIVING)
-        out->GasVel[0] += kernel->mj_wk * (local->Vel[0]+kernel->dv[0]);
-        out->GasVel[1] += kernel->mj_wk * (local->Vel[1]+kernel->dv[1]);
-        out->GasVel[2] += kernel->mj_wk * (local->Vel[2]+kernel->dv[2]);
+        out->GasVel[0] += kernel->mj_wk * (local->Vel[0]-kernel->dv[0]);
+        out->GasVel[1] += kernel->mj_wk * (local->Vel[1]-kernel->dv[1]);
+        out->GasVel[2] += kernel->mj_wk * (local->Vel[2]-kernel->dv[2]);
 #endif
 
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)

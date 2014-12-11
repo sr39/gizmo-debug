@@ -118,7 +118,6 @@
 #endif
 
 
-#ifdef SIDM
 /* purely internal flags for the SIDM module */
 #ifdef ADAPTIVE_SIDM_HSML
 #ifndef ADAPTIVE_GRAVSOFT_FORALL
@@ -161,7 +160,7 @@
 #ifndef ANALYTIC_GRAVITY
 #define ANALYTIC_GRAVITY
 #endif
-#endif
+#endif // SHEARING_BOX
 
 /*------- Things that are always recommended -------*/
 
@@ -465,15 +464,9 @@ typedef unsigned long long MyIDType;
 #ifndef DOUBLEPRECISION     /* default is single-precision */
 typedef float  MyFloat;
 typedef float  MyDouble;
-#else
-#if (DOUBLEPRECISION+0) == 2 
-//typedef float   MyFloat;
-typedef double   MyFloat;
-typedef double  MyDouble;
 #else                        /* everything double-precision */
 typedef double  MyFloat;
 typedef double  MyDouble;
-#endif
 #endif
 
 #ifdef OUTPUT_IN_DOUBLEPRECISION
@@ -1314,9 +1307,7 @@ extern struct global_data_all_processes
 #ifdef BINISET
   double BiniX, BiniY, BiniZ;	/*!< Initial values for B */
 #endif
-
-#if defined(MAGNETIC_DISSIPATION)
-#define MAGNETIC_SIGNALVEL      /*!< Make explicit the dependence with MAGNETIC_SIGNALVEL as described in Dolag2009 */
+#ifdef MAGNETIC_DISSIPATION
   double ArtMagDispConst;	/*!< Sets the parameter \f$\alpha\f$ of the artificial magnetic disipation */
 #endif
 #ifdef DIVBCLEANING_DEDNER
@@ -2261,6 +2252,7 @@ enum iofields
   IO_TSTP,
   IO_BFLD,
   IO_DBDT,
+  IO_IMF,
   IO_DIVB,
   IO_ABVC,
   IO_AMDC,

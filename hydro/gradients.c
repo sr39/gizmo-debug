@@ -59,10 +59,7 @@ struct Quantities_for_Gradients
 
 struct kernel_addSPH
 {
-    double dx, dy, dz;
-    double r;
-    double wk_i, wk_j, dwk_i, dwk_j;
-    double h_i;
+    double dp[3],r,wk_i, wk_j, dwk_i, dwk_j,h_i;
 };
 
 struct addSPHdata_in

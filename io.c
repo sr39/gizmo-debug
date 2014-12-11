@@ -671,6 +671,19 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
       break;
 
+
+    case IO_IMF:		/* parameters describing the IMF  */
+#ifdef GALSF_SFR_IMF_VARIATION
+    for(n = 0; n < pc; pindex++)
+        if(P[pindex].Type == type)
+            {
+                *fp++ = SphP[pindex].IMF_Mturnover;
+                n++;
+            }
+        break;
+#endif
+            
+            
     case IO_DIVB:		/* divergence of magnetic field  */
 #ifdef MAGNETIC
       for(n = 0; n < pc; pindex++)
@@ -1556,6 +1569,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
     case IO_STRESSBULK:
     case IO_SHEARCOEFF:
     case IO_TSTP:
+    case IO_IMF:
     case IO_DIVB:
     case IO_VRMS:
     case IO_VRAD:
@@ -1823,6 +1837,7 @@ int get_values_per_blockelement(enum iofields blocknr)
     case IO_VDIV:
     case IO_VROT:
     case IO_DPP:
+    case IO_IMF:
     case IO_DIVB:
     case IO_ABVC:
     case IO_AMDC:
@@ -2050,6 +2065,7 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
     case IO_VROT:
     case IO_VORT:
     case IO_DPP:
+    case IO_IMF:
     case IO_DIVB:
     case IO_ABVC:
     case IO_AMDC:
@@ -2414,6 +2430,14 @@ int blockpresent(enum iofields blocknr)
 #endif
       break;
 
+    case IO_IMF:
+#ifdef GALSF_SFR_IMF_VARIATION
+        return 1;
+#else
+        return 0;
+#endif
+        break;
+            
 
     case IO_DIVB:
 #ifdef MAGNETIC
@@ -2933,6 +2957,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
     case IO_VORT:
       strncpy(label, "VORT", 4);
       break;
+    case IO_IMF:
+      strncpy(label, "IMF ", 4);
+      break;
     case IO_DIVB:
       strncpy(label, "DIVB", 4);
       break;
@@ -3303,6 +3330,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
       break;
     case IO_VORT:
       strcpy(buf, "Vorticity");
+      break;
+    case IO_IMF:
+      strcpy(buf, "IMFTurnOverMass");
       break;
     case IO_DIVB:
       strcpy(buf, "DivergenceOfMagneticField");

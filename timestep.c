@@ -442,7 +442,7 @@ integertime get_timestep(int p,		/*!< particle index */
             if(dt_courant < dt)
                 dt = dt_courant;
 
-#if (2==0) && defined(DIVBCLEANING_DEDNER) //&& !defined(HYDRO_SPH)
+#if (2==2) && defined(DIVBCLEANING_DEDNER)
             // ??? //
             double C0 = pow( 4.0*M_PI / (3.0 * PPP[p].NumNgb) , 1.0/3.0);
 #ifdef ONEDIM
@@ -456,7 +456,7 @@ integertime get_timestep(int p,		/*!< particle index */
                     fac_magnetic_pressure * (Get_Particle_BField(p,0)*Get_Particle_BField(p,0)+Get_Particle_BField(p,1)*Get_Particle_BField(p,1)+
                                              Get_Particle_BField(p,2)*Get_Particle_BField(p,2) + pow(Get_Particle_PhiField(p)/SphP[p].MaxSignalVel,2)) / SphP[p].Density );
 
-            dt_courant = 0.4 * All.CourantFac * All.cf_atime * (C0*PPP[p].Hsml) / vsig1;
+            dt_courant = 0.8 * All.CourantFac * All.cf_atime * (C0*PPP[p].Hsml) / vsig1;
             if(dt_courant < dt)
                 dt = dt_courant;
 #endif

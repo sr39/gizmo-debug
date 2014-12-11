@@ -23,11 +23,11 @@
 #ifdef GALSF_SFR_IMF_VARIATION
 /* function to determine what the IMF of a new star particle will be, based 
     on the gas properties of the particle out of which it forms */
-double assign_imf_properties_from_starforming_gas(MyIDType i)
+void assign_imf_properties_from_starforming_gas(MyIDType i)
 {
     double h = PPP[i].Hsml * All.cf_atime / pow(PPP[i].NumNgb, 1/NUMDIMS);
     double cs = Particle_effective_soundspeed_i(i) * All.cf_afac3;
-    double dv2abs = 0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
+    double dv2_abs = 0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
     // squared norm of the trace-free symmetric [shear] component of the velocity gradient tensor //
     dv2_abs = ((1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1])*(SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) +
                         (SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2])*(SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2]) +
@@ -38,7 +38,7 @@ double assign_imf_properties_from_starforming_gas(MyIDType i)
                         (SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[2][2] +
                          SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[1][1] +
                          SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))) * All.cf_a2inv*All.cf_a2inv;
-    double M_sonic = cs*cs*cs*cs / (All.G * dv2abs * h);
+    double M_sonic = cs*cs*cs*cs / (All.G * dv2_abs * h);
     M_sonic *= All.UnitMass_in_g / All.Hubble / (1.989e33); // sonic mass in solar units //
     P[i].IMF_Mturnover = M_sonic;
 }
@@ -491,8 +491,13 @@ void cooling_and_starformation(void)
             } else {
 #endif /* closes ifdef(BH_POPIII_SEEDS) */ 
 
+            /* ok, we're going to make a star! */
+#ifdef GALSF_SFR_IMF_VARIATION
+            /* if we're allowing for a variable IMF, this is where we will 
+                calculate the IMF properties produced from the gas forming stars */
+            assign_imf_properties_from_starforming_gas(i);
+#endif
                 
-            
             if(number_of_stars_generated == (GALSF_GENERATIONS - 1))
 		    {
 		      /* here we turn the gas particle itself into a star */

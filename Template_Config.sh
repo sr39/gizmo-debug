@@ -164,8 +164,8 @@ HYDRO_MESHLESS_FINITE_MASS           # Lagrangian (constant-mass) finite-volume 
 #GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION #wind velocity scaling based on MV 13 paper, as used in Illustris. req.GALSF_SUBGRID_WINDS
 #GALSF_WINDS_ISOTROPIC          # forces winds to have a random orientation (works with both subgrid+explicit winds)
 #GALSF_WINDS_POLAR              # forces winds to have polar orientation (works for sub-grid winds)
-#GALSF_TURNOFF_COOLING_WINDS    # turn off cooling for SNe-heated particles (as Stinson+ GASOLINE model)
-#GALSF_GASOLINE_RADHEATING      # heat gas with luminosity from young stars (as Stinson+ 2013 GASOLINE model)
+#GALSF_TURNOFF_COOLING_WINDS    # turn off cooling for SNe-heated particles (as Stinson+ GASOLINE model; requires GALSF_FB_SNE_HEATING)
+#GALSF_GASOLINE_RADHEATING      # heat gas with luminosity from young stars (as Stinson+ 2013 GASOLINE model; requires GALSF_FB_SNE_HEATING)
 #
 ##-----------------------------------------------------------------------------------------------------
 ## ------ PFH physical models for star formation and feedback ------ ##

@@ -58,7 +58,6 @@ void GravAccel_ShearingSheet()
 #endif
     }
 #endif
-#endif
 }
 
 

@@ -114,7 +114,6 @@ void disp_density(void)
   int i, j, k, ndone, ndone_flag, npleft, iter = 0;
   int ngrp, recvTask, place;
   long long ntot;
-  double fac, fac_lim;
   double timeall = 0, timecomp1 = 0, timecomp2 = 0, timecommsumm1 = 0, timecommsumm2 = 0, timewait1 = 0, timewait2 = 0;
   double timecomp, timecomm, timewait;
   double tstart, tend, t0, t1;
@@ -621,7 +620,7 @@ int disp_density_evaluate(int target, int mode, int *exportflag, int *exportnode
     {
         while(startnode >= 0)
         {
-            numngb_inbox = disp_ngb_treefind_variable_threads(local.Pos, local.HsmlDM, target, &startnode, mode, exportflag,
+            numngb_inbox = dm_disp_ngb_treefind_variable_threads(local.Pos, local.HsmlDM, target, &startnode, mode, exportflag,
                                           exportnodecount, exportindex, ngblist, local.Type);
             
             if(numngb_inbox < 0)

@@ -11,6 +11,8 @@
 #define TOL_ITER 1.e-6
 #define NMAX_ITER 1000
 
+#define DEDNER_IMPLICIT_LIMITER 0.75
+
 
 /*
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO. 
@@ -114,8 +116,13 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
 
     /* here we do our slightly-fancy slope-limiting */
     double Qmin,Qmax,Qmed,Qmax_eff,Qmin_eff,fac,Qmed_max,Qmed_min;
+#ifdef MAGNETIC
+    double fac_minmax = 0.375; /* 0.5, 0.1 works; 1.0 unstable; 0.75 is stable but begins to 'creep' */
+    double fac_meddev = 0.25; /* 0.25,0.375 work well; 0.5 unstable; 0.44 is on-edge */
+#else
     double fac_minmax = 0.5; /* 0.5, 0.1 works; 1.0 unstable; 0.75 is stable but begins to 'creep' */
     double fac_meddev = 0.375; /* 0.25,0.375 work well; 0.5 unstable; 0.44 is on-edge */
+#endif
     /* get the max/min vals, difference, and midpoint value */
     Qmed = 0.5*(Q_i+Q_j);
     if(Q_i<Q_j) {Qmax=Q_j; Qmin=Q_i;} else {Qmax=Q_i; Qmin=Q_j;}
@@ -985,9 +992,16 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     Bx = 0.5*(Riemann_vec.L.B[0]+Riemann_vec.R.B[0]);
     Riemann_out->B_normal_corrected = Bx;
 #ifdef DIVBCLEANING_DEDNER
-    Riemann_out->B_normal_corrected += 0.5*(Riemann_vec.L.phi-Riemann_vec.R.phi)/c_eff;
-    Riemann_out->phi_normal_corrected = 0.5*(c_eff*(Riemann_vec.L.B[0]-Riemann_vec.R.B[0]) +
-                                             (Riemann_vec.R.phi+Riemann_vec.L.phi));
+    /* use the solution for the modified Bx, given the action of the phi-field; 
+        however this must be slope-limited to ensure the 'corrected' Bx remains stable */
+    double corr_norm = 1.0;
+    double corr_p = 0.5*(Riemann_vec.L.phi-Riemann_vec.R.phi)/c_eff;
+    double corr_p_abs = fabs(corr_p);
+    double corr_b_abs = DEDNER_IMPLICIT_LIMITER * fabs(Bx);
+    if(corr_p_abs > corr_b_abs) {corr_norm *= corr_b_abs/corr_p_abs;}
+    Riemann_out->B_normal_corrected += corr_norm * corr_p;
+    Riemann_out->phi_normal_corrected = 0.5*(Riemann_vec.R.phi+Riemann_vec.L.phi);
+    Riemann_out->phi_normal_corrected += corr_norm * 0.5*(c_eff*(Riemann_vec.L.B[0]-Riemann_vec.R.B[0]));
 #endif
     /* and set the normal component of B to the corrected value */
     Bx = Riemann_out->B_normal_corrected; // ??? //

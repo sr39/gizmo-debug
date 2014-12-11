@@ -247,7 +247,7 @@ void drift_particle(int i, integertime time1)
 #endif
             
             SphP[i].Pressure = get_pressure(i);
-            
+ 
             PPP[i].Hsml *= exp(divVel * dt_drift / NUMDIMS);
             
             if(PPP[i].Hsml < All.MinGasHsml)

@@ -1185,14 +1185,14 @@ void disp_setup_smoothinglengths(void)
             if(P[i].Type == 0)
             {
                 no = Father[i];
-                while(10 * 2.0 * All.AGS_DesNumNgb * P[i].Mass > Nodes[no].u.d.mass)
+                while(10 * 2.0 * 64 * P[i].Mass > Nodes[no].u.d.mass)
                 {
                     p = Nodes[no].u.d.father;
                     if(p < 0)
                         break;
                     no = p;
                 }
-                SphP[i].HsmlDM = pow(1.0/NORM_COEFF * 2.0 * All.AGS_DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
+                SphP[i].HsmlDM = pow(1.0/NORM_COEFF * 2.0 * 64 * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
                 if(All.SofteningTable[P[i].Type] != 0)
                 {
                     if((SphP[i].HsmlDM >1000.*All.SofteningTable[P[i].Type])||(PPP[i].Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
