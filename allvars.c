@@ -41,6 +41,11 @@ MyDouble boxSize_Z, boxHalf_Z, inverse_boxSize_Z;
 #endif
 #endif
 
+#ifdef SHEARING_BOX
+MyDouble Shearing_Box_Vel_Offset;
+#endif
+
+
 #ifdef FIX_PATHSCALE_MPI_STATUS_IGNORE_BUG
 MPI_Status mpistat;
 #endif
@@ -91,7 +96,7 @@ int *NextInTimeBin;
 int *PrevInTimeBin;
 
 size_t HighMark_run, HighMark_domain, HighMark_gravtree,
-  HighMark_pmperiodic, HighMark_pmnonperiodic, HighMark_sphdensity, HighMark_sphhydro, HighMark_addSPH;
+  HighMark_pmperiodic, HighMark_pmnonperiodic, HighMark_sphdensity, HighMark_sphhydro, HighMark_GasGrad;
 
 #ifdef TURB_DRIVING
 size_t HighMark_turbpower;

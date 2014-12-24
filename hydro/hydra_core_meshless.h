@@ -10,12 +10,9 @@
     
     double s_star_ij,s_i,s_j,v_frame[3],n_unit[3];
     double distance_from_i[3],distance_from_j[3];
-    Fluxes.rho = Fluxes.p = Fluxes.v[0] = Fluxes.v[1] = Fluxes.v[2] = 0;
+    face_vel_i=face_vel_j=0;
 #ifdef MAGNETIC
-    Fluxes.B_normal_corrected = Fluxes.B[0] = Fluxes.B[1] = Fluxes.B[2] = 0;
-#if defined(DIVBCLEANING_DEDNER) && defined(HYDRO_MESHLESS_FINITE_VOLUME)
-    Fluxes.phi = magfluxv[0] = magfluxv[1] = magfluxv[2] = 0.0;
-#endif
+    Face_Area_Norm=0;
 #endif
     
     /* --------------------------------------------------------------------------------- */
@@ -28,7 +25,6 @@
     /* ------------------------------------------------------------------------------------------------------------------- */
     /* now we're ready to compute the volume integral of the fluxes (or equivalently an 'effective area'/face orientation) */
     /* ------------------------------------------------------------------------------------------------------------------- */
-    double dwk_tmp[3],dwk_norm=0;
     if(SphP[j].ConditionNumber*SphP[j].ConditionNumber > cnumcrit2)
     {
         /* the effective gradient matrix is ill-conditioned: for stability, we revert to the "RSPH" EOM */
@@ -45,34 +41,39 @@
             kernel_main(u, hinv3_j, hinv4_j, &kernel.wk_j, &kernel.dwk_j, 1);
         }
 #endif
-        dwk_norm = -(V_i*V_i*kernel.dwk_i + V_j*V_j*kernel.dwk_j) / kernel.r;
-        dwk_tmp[0] = dwk_norm * kernel.dp[0];
-        dwk_tmp[1] = dwk_norm * kernel.dp[1];
-        dwk_tmp[2] = dwk_norm * kernel.dp[2];
-        dwk_norm = dwk_norm * dwk_norm * r2;
+        Face_Area_Norm = -(V_i*V_i*kernel.dwk_i + V_j*V_j*kernel.dwk_j) / kernel.r;
+        Face_Area_Norm *= All.cf_atime*All.cf_atime; /* Face_Area_Norm has units of area, need to convert to physical */
+        Face_Area_Vec[0] = Face_Area_Norm * kernel.dp[0];
+        Face_Area_Vec[1] = Face_Area_Norm * kernel.dp[1];
+        Face_Area_Vec[2] = Face_Area_Norm * kernel.dp[2];
+        Face_Area_Norm = Face_Area_Norm * Face_Area_Norm * r2;
     } else {
         /* the effective gradient matrix is well-conditioned: we can safely use the consistent EOM */
         for(k=0;k<3;k++)
         {
-            dwk_tmp[k] = kernel.wk_i * V_i * (local.NV_T[k][0]*kernel.dp[0] + local.NV_T[k][1]*kernel.dp[1] + local.NV_T[k][2]*kernel.dp[2])
+            Face_Area_Vec[k] = kernel.wk_i * V_i * (local.NV_T[k][0]*kernel.dp[0] + local.NV_T[k][1]*kernel.dp[1] + local.NV_T[k][2]*kernel.dp[2])
                        + kernel.wk_j * V_j * (SphP[j].NV_T[k][0]*kernel.dp[0] + SphP[j].NV_T[k][1]*kernel.dp[1] + SphP[j].NV_T[k][2]*kernel.dp[2]);
-            dwk_norm += dwk_tmp[k]*dwk_tmp[k];
+            Face_Area_Vec[k] *= All.cf_atime*All.cf_atime; /* Face_Area_Norm has units of area, need to convert to physical */
+            Face_Area_Norm += Face_Area_Vec[k]*Face_Area_Vec[k];
         }
     }
-    if(dwk_norm == 0)
+    if(Face_Area_Norm == 0)
     {
+        memset(&Fluxes, 0, sizeof(struct Conserved_var_Riemann));
+#ifdef DIVBCLEANING_DEDNER
+        magfluxv[0]=magfluxv[1]=magfluxv[2]=0.0; Riemann_out.phi_normal_corrected=0;
+#endif
     } else {
         
-        if((dwk_norm<=0)||(isnan(dwk_norm)))
+        if((Face_Area_Norm<=0)||(isnan(Face_Area_Norm)))
         {
-            printf("PANIC! dwk_norm=%g Mij=%g/%g wk_ij=%g/%g Vij=%g/%g dx/dy/dz=%g/%g/%g NVT=%g/%g/%g NVT_j=%g/%g/%g \n",dwk_norm,local.Mass,P[j].Mass,kernel.wk_i,
+            printf("PANIC! Face_Area_Norm=%g Mij=%g/%g wk_ij=%g/%g Vij=%g/%g dx/dy/dz=%g/%g/%g NVT=%g/%g/%g NVT_j=%g/%g/%g \n",Face_Area_Norm,local.Mass,P[j].Mass,kernel.wk_i,
                    kernel.wk_j,V_i,V_j,kernel.dp[0],kernel.dp[1],kernel.dp[2],local.NV_T[0][0],local.NV_T[0][1],local.NV_T[0][2],SphP[j].NV_T[0][0],SphP[j].NV_T[0][1],
                    SphP[j].NV_T[0][2]);fflush(stdout);
         }
-        dwk_norm = sqrt(dwk_norm);
-        for(k=0;k<3;k++) {n_unit[k] = dwk_tmp[k] / dwk_norm;}
-        dwk_norm *= All.cf_atime*All.cf_atime; /* dwk_norm has units of area, need to convert to physical */
-            
+        Face_Area_Norm = sqrt(Face_Area_Norm);
+        for(k=0;k<3;k++) {n_unit[k] = Face_Area_Vec[k] / Face_Area_Norm;}
+        
 
         /* --------------------------------------------------------------------------------- */
         /* extrapolate the conserved quantities to the interaction face between the particles */
@@ -196,7 +197,7 @@
                     exit(1234);
                 }
             }
-        }
+        } // closes loop of alternative reconstructions if invalid pressures are found //
         
         
         /* --------------------------------------------------------------------------------- */
@@ -206,11 +207,12 @@
         {
             if(All.ComovingIntegrationOn) {for(k=0;k<3;k++) v_frame[k] /= All.cf_atime;}
 #if !defined(HYDRO_MESHLESS_FINITE_VOLUME) && !defined(MAGNETIC)
-            dwk_norm *= Riemann_out.P_M;
+            Face_Area_Norm *= Riemann_out.P_M;
+            Fluxes.p = 0;
             for(k=0;k<3;k++)
             {
-                Fluxes.v[k] = dwk_norm * n_unit[k]; /* total momentum flux */
-                Fluxes.p += dwk_norm * (Riemann_out.S_M*n_unit[k] + v_frame[k]) * n_unit[k]; /* total energy flux = v_frame.dot.mom_flux */
+                Fluxes.v[k] = Face_Area_Norm * n_unit[k]; /* total momentum flux */
+                Fluxes.p += Face_Area_Norm * (Riemann_out.S_M*n_unit[k] + v_frame[k]) * n_unit[k]; /* total energy flux = v_frame.dot.mom_flux */
             }
 #else
             /* the fluxes have been calculated in the rest frame of the interface: we need to de-boost to the 'simulation frame'
@@ -220,39 +222,46 @@
                 /* Riemann_out->Fluxes.rho is un-modified */
                 Riemann_out.Fluxes.p += (0.5*v_frame[k]*v_frame[k])*Riemann_out.Fluxes.rho + v_frame[k]*Riemann_out.Fluxes.v[k];
                 Riemann_out.Fluxes.v[k] += v_frame[k] * Riemann_out.Fluxes.rho; /* just boost by frame vel (as we would in non-moving frame) */
+            }
 #ifdef MAGNETIC
+            for(k=0;k<3;k++)
+            {
                 Riemann_out.Fluxes.B[k] += -v_frame[k] * Riemann_out.B_normal_corrected; /* v dotted into B along the normal to the face (careful of sign here) */
-#ifdef DIVBCLEANING_DEDNER
-                Riemann_out.Fluxes.phi += -v_frame[k] * n_unit[k] * Riemann_out.phi_normal_corrected; /* extra phi flux from advection */
-#endif
-#endif
+                face_vel_i += local.Vel[k] * n_unit[k] / All.cf_atime;
+                face_vel_j += VelPred_j[k] * n_unit[k] / All.cf_atime;
             }
+            face_area_dot_vel = -(s_j*face_vel_j - s_i*face_vel_i) * rinv;
+#endif
+            
             /* ok now we can actually apply this to the EOM */
-            Fluxes.rho = dwk_norm * Riemann_out.Fluxes.rho;
-            Fluxes.p = dwk_norm * Riemann_out.Fluxes.p; // this is really Dt of --total-- energy, need to subtract KE component for e */
+            Fluxes.rho = Face_Area_Norm * Riemann_out.Fluxes.rho;
+            Fluxes.p = Face_Area_Norm * Riemann_out.Fluxes.p; // this is really Dt of --total-- energy, need to subtract KE component for e */
             for(k=0;k<3;k++)
             {
-                Fluxes.v[k] = dwk_norm * Riemann_out.Fluxes.v[k]; // momentum flux (need to divide by mass) //
+                Fluxes.v[k] = Face_Area_Norm * Riemann_out.Fluxes.v[k]; // momentum flux (need to divide by mass) //
             }
 #ifdef MAGNETIC
             for(k=0;k<3;k++)
             {
-                Fluxes.B[k] = dwk_norm * Riemann_out.Fluxes.B[k]; // flux of magnetic flux (B*V) //
+                Fluxes.B[k] = Face_Area_Norm * Riemann_out.Fluxes.B[k]; // flux of magnetic flux (B*V) //
             }
-            Fluxes.B_normal_corrected = -Riemann_out.B_normal_corrected * dwk_norm;
+            Fluxes.B_normal_corrected = -Riemann_out.B_normal_corrected * Face_Area_Norm;
 #ifdef DIVBCLEANING_DEDNER
-#ifdef HYDRO_MESHLESS_FINITE_VOLUME
-//            if(Fluxes.rho > 0) {Fluxes.phi=Fluxes.rho*Riemann_vec.L.phi;} else {Fluxes.phi=Fluxes.rho*Riemann_vec.R.phi;}
-#endif
-            Fluxes.phi = Riemann_out.Fluxes.phi * dwk_norm; // ??? still not clear if mass-based flux is better ??? //
+            Fluxes.phi = Riemann_out.Fluxes.phi * Face_Area_Norm; // much more accurate than mass-based flux //
             for(k=0;k<3;k++)
             {
-                magfluxv[k] = Riemann_out.phi_normal_corrected * dwk_norm * n_unit[k]; // = contribution to -grad*phi //
+                magfluxv[k] = Riemann_out.phi_normal_corrected * Face_Area_Vec[k]; // = contribution to -grad*phi //
                 Fluxes.B[k] += magfluxv[k];
             }
 #endif // DIVBCLEANING_DEDNER
 #endif // MAGNETIC
 #endif
+        } else {
+            /* nothing but bad riemann solutions found! */
+            memset(&Fluxes, 0, sizeof(struct Conserved_var_Riemann));
+#ifdef DIVBCLEANING_DEDNER
+            magfluxv[0]=magfluxv[1]=magfluxv[2]=0.0; Riemann_out.phi_normal_corrected=0;
+#endif
         }
-    } // dwk_norm != 0
+    } // Face_Area_Norm != 0
 }

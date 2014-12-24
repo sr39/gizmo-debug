@@ -90,6 +90,9 @@ void do_second_halfstep_kick(void)
                         SphP[i].xnucPred[j] = SphP[i].xnuc[j];
 #endif
                     SphP[i].Pressure = get_pressure(i);
+#ifdef GAMMA_ENFORCE_ADIABAT
+                    SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = SphP[i].Pressure / (SphP[i].Density * GAMMA_MINUS1);
+#endif
                     set_predicted_sph_quantities_for_extra_physics(i);
                 }
             }
@@ -231,7 +234,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #endif
             double dEnt = SphP[i].InternalEnergy + SphP[i].DtInternalEnergy * dt_hydrokick + dEnt_Gravity;
             
-#ifndef HYDRO_SPH
+#if !defined(HYDRO_SPH) && !defined(MAGNETIC)
             /* if we're using a Riemann solver, we include an energy/entropy-type switch to ensure
                 that we don't corrupt the temperature evolution of extremely cold, adiabatic flows */
             double e_thermal,e_kinetic,e_potential;
@@ -264,7 +267,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                 SphP[i].dMass = SphP[i].DtMass = 0;
 #endif
             }
-#endif
+#endif // closes do_entropy check
             
             if(dEnt < 0.5*SphP[i].InternalEnergy) {SphP[i].InternalEnergy *= 0.5;} else {SphP[i].InternalEnergy = dEnt;}
             check_particle_for_temperature_minimum(i); /* if we've fallen below the minimum temperature, force the 'floor' */
@@ -364,10 +367,7 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
 {
     int j; j=0;
 #ifdef MAGNETIC
-    double BphysVolphys_to_BcodeVolCode = All.cf_atime;
-#ifdef HYDRO_SPH
-    BphysVolphys_to_BcodeVolCode = All.cf_atime*All.cf_atime;
-#endif
+    double BphysVolphys_to_BcodeVolCode = 1 / All.cf_atime;
     for(j = 0; j < 3; j++) {SphP[i].B[j] += SphP[i].DtB[j] * dt_entr * BphysVolphys_to_BcodeVolCode;} // fluxes are always physical, convert to code units //
 #ifdef DIVBCLEANING_DEDNER
     double dtphi_code = BphysVolphys_to_BcodeVolCode * All.cf_atime * SphP[i].DtPhi;

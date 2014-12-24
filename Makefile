@@ -301,17 +301,16 @@ endif
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"odyssey")
 CC       =  mpicc     # sets the C-compiler
-FCC      =  $(CC)
-OPT      +=  -DNOCALLSOFSYSTEM  -DMPICH_IGNORE_CXX_SEEK  -DNOTYPEPREFIX_FFTW
-#OPTIMIZE =   -O0 -g -Wall -m64 -Wno-unused-but-set-variable -Wno-uninitialized
-OPTIMIZE =  -O2 -mcmodel=medium -funroll-loops -Wall
+OPT      +=  -DMPICH_IGNORE_CXX_SEEK
+FC       =  $(CC)
+OPTIMIZE = -g -O2 -Wall
 GSL_INCL =
 GSL_LIBS =
-FFTW_INCL=  -I/n/home12/mvogelsberger/opt/include/
-FFTW_LIBS=  -L/n/home12/mvogelsberger/opt/lib/
+FFTW_INCL=
+FFTW_LIBS=
 MPICHLIB =
-HDF5INCL = -DH5_USE_16_API
-HDF5LIB  =  -lhdf5
+HDF5INCL =  -DH5_USE_16_API
+HDF5LIB  =  -lhdf5 -lz
 endif
 
 

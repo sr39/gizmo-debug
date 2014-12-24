@@ -117,8 +117,8 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
     /* here we do our slightly-fancy slope-limiting */
     double Qmin,Qmax,Qmed,Qmax_eff,Qmin_eff,fac,Qmed_max,Qmed_min;
 #ifdef MAGNETIC
-    double fac_minmax = 0.375; /* 0.5, 0.1 works; 1.0 unstable; 0.75 is stable but begins to 'creep' */
-    double fac_meddev = 0.25; /* 0.25,0.375 work well; 0.5 unstable; 0.44 is on-edge */
+    double fac_minmax = 0.5; //0.375; /* 0.5, 0.1 works; 1.0 unstable; 0.75 is stable but begins to 'creep' */
+    double fac_meddev = 0.375; //0.25; /* 0.25,0.375 work well; 0.5 unstable; 0.44 is on-edge */
 #else
     double fac_minmax = 0.5; /* 0.5, 0.1 works; 1.0 unstable; 0.75 is stable but begins to 'creep' */
     double fac_meddev = 0.375; /* 0.25,0.375 work well; 0.5 unstable; 0.44 is on-edge */
@@ -1004,7 +1004,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     Riemann_out->phi_normal_corrected += corr_norm * 0.5*(c_eff*(Riemann_vec.L.B[0]-Riemann_vec.R.B[0]));
 #endif
     /* and set the normal component of B to the corrected value */
-    Bx = Riemann_out->B_normal_corrected; // ??? //
+    Bx = Riemann_out->B_normal_corrected; // need to re-set this using the updated value of Bx //
     Riemann_vec.L.B[0] = Bx;
     Riemann_vec.R.B[0] = Bx;
     Bx2 = Bx*Bx;
@@ -1035,13 +1035,48 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     P_M = PT_L + rho_wt_L*(S_M-vxL);
     /* P_M = (PT_L*rho_wt_R - PT_R*rho_wt_L + rho_wt_L*rho_wt_R*(vxR - vxL)) / (rho_wt_R - rho_wt_L); */
     
+    
+    /* now we need to check if these guesses are reasonable; otherwise, use a different wavespeed estimate */
+    if((P_M<=0)||(isnan(P_M)))
+    {
+        double sqrt_rho_L = sqrt(Riemann_vec.L.rho);
+        double sqrt_rho_R = sqrt(Riemann_vec.R.rho);
+        double sqrt_rho_inv = 1 / (sqrt_rho_L + sqrt_rho_R);
+        double vx_roe = (sqrt_rho_L*vxL + sqrt_rho_R*vxR) * sqrt_rho_inv;
+        /* compute velocity along the line connecting the nodes, and max/min wave speeds */
+        double cs_roe = (sqrt_rho_L*Riemann_out->cfast_L  + sqrt_rho_R*Riemann_out->cfast_R) * sqrt_rho_inv;
+        S_R = DMAX(vxR + Riemann_out->cfast_R , vx_roe + cs_roe);
+        S_L = DMIN(vxL - Riemann_out->cfast_L , vx_roe - cs_roe);
+        
+        rho_wt_L = Riemann_vec.L.rho*(S_L-vxL);
+        rho_wt_R = Riemann_vec.R.rho*(S_R-vxR);
+        S_M = ((PT_R-PT_L) + rho_wt_L*vxL - rho_wt_R*vxR) / (rho_wt_L - rho_wt_R);
+        P_M = PT_L + rho_wt_L*(S_M-vxL);
+        
+        /* ok, are the roe-averaged wavespeed guesses reasonable? */
+        if((P_M<=0)||(isnan(P_M)))
+        {
+            double S_plus = DMAX(fabs(vxL),fabs(vxR)) + c_eff;
+            S_L=-S_plus; S_R=S_plus;
+            
+            rho_wt_L = Riemann_vec.L.rho*(S_L-vxL);
+            rho_wt_R = Riemann_vec.R.rho*(S_R-vxR);
+            S_M = ((PT_R-PT_L) + rho_wt_L*vxL - rho_wt_R*vxR) / (rho_wt_L - rho_wt_R);
+            P_M = PT_L + rho_wt_L*(S_M-vxL);
+        }
+    }
+    
+    /* done trying different wavespeed estimates. we'll enter the flux computation if we have a valid pressure. 
+        if not, this will return to the main hydro routine, and a lower-order reconstruction will be attempted */
+    
+#if defined(HYDRO_MESHLESS_FINITE_MASS)
+    v_frame = S_M; /* in the lagrangian scheme, we must calculate fluxes consistent with the assumption
+                    that there is zero mass flux. this gives that result for the HLLC/D flux */
+#endif
+    
     if((P_M > 0)&&(!isnan(P_M)))
     {
         /* alright, we have a valid solution! we can now compute the HLLD fluxes */
-#if defined(HYDRO_MESHLESS_FINITE_MASS)
-        v_frame = S_M; /* in the lagrangian scheme, we must calculate fluxes consistent with the assumption
-                        that there is zero mass flux. this gives that result for the HLLC/D flux */
-#endif
         if(v_frame <= S_M)
         {
             /* v_frame <= S_M : we're in the left fan */
@@ -1307,23 +1342,23 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
                 }
             }
         }
-        /* alright, we've gotten successful HLLD fluxes! */
-        Riemann_out->Fluxes.B[0] = -v_frame * Bx;
-#ifdef DIVBCLEANING_DEDNER
-        Riemann_out->Fluxes.phi = -v_frame * Riemann_out->phi_normal_corrected; // ??? //
-        //Riemann_out->Fluxes.phi -= All.DivBcleanHyperbolicSigma * c_eff*c_eff * Bx;
-#endif
-        Riemann_out->S_M=v_frame;
-        Riemann_out->P_M=P_M;
-        return;
     } // if((P_M > 0)&&(!isnan(P_M))) //
-    
-    /* originally we included HLL and LF solvers here, but those are way too prone to give unphysical 
+
+    /* alright, we've gotten successful HLLD fluxes! */
+    Riemann_out->Fluxes.B[0] = -v_frame * Bx;
+#ifdef DIVBCLEANING_DEDNER
+    Riemann_out->Fluxes.phi = -v_frame * Riemann_out->phi_normal_corrected; // need to use the proper phi from the updated problem //
+    //Riemann_out->Fluxes.phi -= All.DivBcleanHyperbolicSigma * c_eff*c_eff * Bx;
+#endif
+    Riemann_out->S_M=v_frame;
+    Riemann_out->P_M=P_M;
+    return;
+
+    /* originally we included HLL and LF solvers here, but those are way too prone to give unphysical
         results, and lead to crashing (plus they are more diffusive than a low-order 
         reconstruction); therefore if HLLD fails, we prefer to simply re-calculate with a lower-order 
         reconstruction at the face */
     
-    return;
 } /* yay! we're done writing our HLLD solver! */
 
 

@@ -689,11 +689,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
       for(n = 0; n < pc; pindex++)
 	if(P[pindex].Type == type)
 	  {
-#ifdef HYDRO_SPH
-        *fp++ = (SphP[pindex].divB * gizmo2gauss);
-#else
-	    *fp++ = (SphP[pindex].divB * SphP[pindex].Density/P[pindex].Mass * gizmo2gauss);
-#endif
+        /* divB is saved in physical units */
+	    *fp++ = (SphP[pindex].divB*gizmo2gauss * (SphP[pindex].Density/P[pindex].Mass*All.cf_a3inv));
 	    n++;
 	  }
 #endif
@@ -727,7 +724,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
       for(n = 0; n < pc; pindex++)
 	if(P[pindex].Type == type)
 	  {
-	    *fp++ = (Get_Particle_PhiField(pindex) * a2_inv * gizmo2gauss);
+	    *fp++ = (Get_Particle_PhiField(pindex) * All.cf_a3inv * gizmo2gauss);
 	    n++;
 	  }
 #endif
@@ -739,7 +736,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	if(P[pindex].Type == type)
 	  {
 	    for(k = 0; k < 3; k++)
-	      *fp++ = (SphP[pindex].Gradients.Phi[k] * a2_inv * gizmo2gauss);
+	      *fp++ = (SphP[pindex].Gradients.Phi[k] * a2_inv*a2_inv * gizmo2gauss);
 	    n++;
 	  }
 #endif

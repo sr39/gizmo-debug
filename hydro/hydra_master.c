@@ -55,8 +55,8 @@ extern pthread_mutex_t mutex_partnodedrift;
  Phi_code = B_code*v_code (damping field for Dedner divergence cleaning)
     (note: spec egy of phi field is: phi*phi/(2*mu0*rho*ch*ch); compare Bfield is B*B/(mu0*rho);
     so [phi]~[B]*[ch], where ch is the signal velocity used in the damping equation);
- 
- -- Time derivatives (rate of change from hydro forces) here are all 
+
+ -- Time derivatives (rate of change from hydro forces) here are all
         assumed to end up in *physical* units ---
  HydroAccel, dMomentum are assumed to end up in *physical* units
     (note, this is different from GADGET's convention, where 
@@ -64,6 +64,27 @@ extern pthread_mutex_t mutex_partnodedrift;
  DtInternalEnergy and dInternalEnergy are assumed to end up in *physical* units
  DtMass and dMass are assumed to end up in *physical* units
 
+ -----------------------------------------
+ 
+ // All.cf_atime = a = 1/(1+z), the cosmological scale factor //
+ All.cf_atime = All.Time;
+ // All.cf_a2inv is just handy //
+ All.cf_a2inv = 1 / (All.Time * All.Time);
+ // All.cf_a3inv * Density_code = Density_physical //
+ All.cf_a3inv = 1 / (All.Time * All.Time * All.Time);
+ // Pressure_code/Density_code = All.cf_afac1 * Pressure_physical/Density_physical //
+ All.cf_afac1 = 1;
+ // All.cf_afac2 * Pressure_code/Density_code * 1/r_code = Pressure_physical/Density_physical * 1/r_physical //
+ All.cf_afac2 = 1 / (All.Time * All.cf_afac1);
+ // All.cf_afac3 * cs_code = All.cf_afac3 * sqrt(Pressure_code/Density_code) = sqrt(Pressure_phys/Density_phys) = cs_physical //
+ All.cf_afac3 = 1 / sqrt(All.cf_afac1);
+ // time units: proper time dt_phys = 1/hubble_function(a) * dz/(1+z) = dlna / hubble_function(a)
+ code time unit in comoving is dlna, so dt_phys = dt_code / All.cf_hubble_a   //
+ All.cf_hubble_a = hubble_function(All.Time); // hubble_function(a) = H(a) = H(z) //
+ // dt_code * v_code/r_code = All.cf_hubble_a2 * dt_phys * v_phys/r_phys //
+ All.cf_hubble_a2 = All.Time * All.Time * hubble_function(All.Time);
+ 
+ 
  -----------------------------------------
  A REMINDER ABOUT GIZMO/GADGET VELOCITY UNITS:: (direct quote from Volker)
  
@@ -262,6 +283,7 @@ struct hydrodata_out
 #endif
     
 #if defined(MAGNETIC)
+    MyDouble Face_Area[3];
     MyFloat DtB[3];
     MyFloat divB;
 #if defined(DIVBCLEANING_DEDNER)
@@ -422,7 +444,11 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
     
 #if defined(MAGNETIC)
     /* can't just do DtB += out-> DtB, because for SPH methods, the induction equation is solved in the density loop; need to simply add it here */
-    for(k=0;k<3;k++) {SphP[i].DtB[k] += out->DtB[k];}
+    for(k=0;k<3;k++)
+    {
+        SphP[i].DtB[k] += out->DtB[k];
+        SphP[i].Face_Area[k] += out->Face_Area[k];
+    }
     SphP[i].divB += out->divB;
 #if defined(DIVBCLEANING_DEDNER)
     SphP[i].DtPhi += out->DtPhi;
@@ -469,9 +495,13 @@ void hydro_final_operations_and_cleanup(void)
                 SphP[i].HydroAccel[k] -= SphP[i].divB * Get_Particle_BField(i,k)*All.cf_a2inv;
                 SphP[i].DtInternalEnergy -= SphP[i].divB * (SphP[i].VelPred[k]/All.cf_atime) * Get_Particle_BField(i,k)*All.cf_a2inv;
             }
+
+            double magnorm_closure = Get_DtB_FaceArea_Limiter(i);
+
 #if defined(DIVBCLEANING_DEDNER) && !defined(HYDRO_SPH)
+            SphP[i].DtPhi *= magnorm_closure;
             double tmp_ded = 0.5 * SphP[i].MaxSignalVel / (fac_mu*All.cf_atime); // has units of v_physical now
-            SphP[i].DtPhi -= tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB;// * SphP[i].Density; // ??? //
+            SphP[i].DtPhi -= tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB;
 #endif
 #endif // MAGNETIC
             
@@ -496,11 +526,10 @@ void hydro_final_operations_and_cleanup(void)
 #ifndef HYDRO_SPH
             for(k=0;k<3;k++)
             {
-                SphP[i].DtInternalEnergy += -Get_Particle_BField(i,k)*All.cf_a2inv*SphP[i].DtB[k] +
-                    0.5*(Get_Particle_BField(i,k)*All.cf_a2inv)*(Get_Particle_BField(i,k)*All.cf_a2inv)
-                        * (P[i].Mass/(SphP[i].Density*All.cf_a3inv)) * (P[i].Particle_DivVel*All.cf_a2inv);
+                SphP[i].DtInternalEnergy += -Get_Particle_BField(i,k)*All.cf_a2inv * SphP[i].DtB[k];
             }
 #endif
+            for(k=0;k<3;k++) {SphP[i].DtB[k] *= magnorm_closure;}
 #endif
             SphP[i].DtInternalEnergy /= P[i].Mass;
             /* ok, now: HydroAccel = dv/dt, DtInternalEnergy = du/dt (energy per unit mass) */
@@ -670,7 +699,9 @@ void hydro_force(void)
             SphP[i].MaxKineticEnergyNgb = -1.e10;
             SphP[i].DtInternalEnergy = 0;//SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
             for(k=0;k<3;k++)
+            {
                 SphP[i].HydroAccel[k] = 0;//SphP[i].dMomentum[k] = 0;//manifest-indiv-timestep-debug//
+            }
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             SphP[i].DtMass = 0;
             SphP[i].dMass = 0;
@@ -678,6 +709,16 @@ void hydro_force(void)
 #endif
 #ifdef MAGNETIC
             SphP[i].divB = 0;
+#ifndef HYDRO_SPH
+#ifdef DIVBCLEANING_DEDNER
+            SphP[i].DtPhi = 0;
+#endif
+            for(k=0;k<3;k++)
+            {
+                SphP[i].DtB[k] = 0;
+                SphP[i].Face_Area[k] = 0;
+            }
+#endif
 #endif // magnetic //
 #ifdef WAKEUP
             SphP[i].wakeup = 0;

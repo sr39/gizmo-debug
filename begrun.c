@@ -31,7 +31,9 @@
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel (volker.springel@h-its.org). The code has been modified
  * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO. The modifications 
- * mostly center on added functionality for new modules.
+ * mostly center on added functionality for new modules, elimination of unnecessary
+ * variables, implementing the DEVELOPER_MODE options, and re-organizing the read order 
+ * to allow easier manipulation on restarts.
  */
 
 
@@ -200,7 +202,7 @@ void begrun(void)
       All.TimeBetStatistics = all.TimeBetStatistics;
       All.CpuTimeBetRestartFile = all.CpuTimeBetRestartFile;
       All.ErrTolIntAccuracy = all.ErrTolIntAccuracy;
-      All.MinGasHsmlFractional = all.MinGasHsmlFractional;
+      All.MinHsml = all.MinHsml;
       All.MinGasTemp = all.MinGasTemp;
         
         /* allow softenings to be modified during the run */
@@ -344,6 +346,7 @@ void begrun(void)
 
 #endif
 
+#ifndef SHEARING_BOX
 #ifdef TWODIMS
   int i;
 
@@ -356,12 +359,11 @@ void begrun(void)
 
       if(P[i].Type == 0)
 	{
-#ifndef SHEARING_BOX
 	  SphP[i].VelPred[2] = 0;
-#endif
 	  SphP[i].HydroAccel[2] = 0;
 	}
     }
+#endif
 #endif
 
 
@@ -984,28 +986,6 @@ void read_parameter_file(char *fname)
       addr[nt] = All.SnapshotFileBase;
       id[nt++] = STRING;
 
-      /*
-      strcpy(tag[nt], "EnergyFile");
-      addr[nt] = All.EnergyFile;
-      id[nt++] = STRING;
-
-      strcpy(tag[nt], "CpuFile");
-      addr[nt] = All.CpuFile;
-      id[nt++] = STRING;
-
-      strcpy(tag[nt], "InfoFile");
-      addr[nt] = All.InfoFile;
-      id[nt++] = STRING;
-
-      strcpy(tag[nt], "TimingsFile");
-      addr[nt] = All.TimingsFile;
-      id[nt++] = STRING;
-
-      strcpy(tag[nt], "TimebinFile");
-      addr[nt] = All.TimebinFile;
-      id[nt++] = STRING;
-      */
-
       strcpy(tag[nt], "RestartFile");
       addr[nt] = All.RestartFile;
       id[nt++] = STRING;
@@ -1042,11 +1022,6 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.BoxSize;
       id[nt++] = REAL;
 
-        /*
-      strcpy(tag[nt], "PeriodicBoundariesOn");
-      addr[nt] = &All.PeriodicBoundariesOn;
-      id[nt++] = INT;
-         */
         All.PeriodicBoundariesOn = 0;
 #ifdef PERIODIC
         All.PeriodicBoundariesOn = 1;
@@ -1102,14 +1077,131 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.TreeDomainUpdateFrequency;
       id[nt++] = REAL;
 
-      strcpy(tag[nt], "ErrTolIntAccuracy");
-      addr[nt] = &All.ErrTolIntAccuracy;
-      id[nt++] = REAL;
+        
+        All.TypeOfTimestepCriterion = 0;
+        All.TypeOfOpeningCriterion = 1;
+        /*!< determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion: this
+         should only be changed if you -really- know what you're doing! */
+        
+#ifdef DEVELOPER_MODE
+        strcpy(tag[nt], "ErrTolIntAccuracy");
+        addr[nt] = &All.ErrTolIntAccuracy;
+        id[nt++] = REAL;
 
-      strcpy(tag[nt], "ErrTolTheta");
-      addr[nt] = &All.ErrTolTheta;
-      id[nt++] = REAL;
+        strcpy(tag[nt], "ErrTolTheta");
+        addr[nt] = &All.ErrTolTheta;
+        id[nt++] = REAL;
 
+        strcpy(tag[nt], "CourantFac");
+        addr[nt] = &All.CourantFac;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt], "ErrTolForceAcc");
+        addr[nt] = &All.ErrTolForceAcc;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt], "MaxRMSDisplacementFac");
+        addr[nt] = &All.MaxRMSDisplacementFac;
+        id[nt++] = REAL;
+        
+#ifdef HYDRO_SPH
+        strcpy(tag[nt], "ArtBulkViscConst");
+        addr[nt] = &All.ArtBulkViscConst;
+        id[nt++] = REAL;
+#ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
+        strcpy(tag[nt], "ArtCondConstant");
+        addr[nt] = &All.ArtCondConstant;
+        id[nt++] = REAL;
+#endif
+#ifdef SPHAV_CD10_VISCOSITY_SWITCH
+        strcpy(tag[nt], "ViscosityAMin");
+        addr[nt] = &All.ViscosityAMin;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "ViscosityAMax");
+        addr[nt] = &All.ViscosityAMax;
+        id[nt++] = REAL;
+#endif
+#ifdef MAGNETIC_DISSIPATION
+        strcpy(tag[nt], "ArtificialResistivityMax");
+        addr[nt] = &All.ArtMagDispConst;
+        id[nt++] = REAL;
+#endif
+#endif
+        
+#ifdef DIVBCLEANING_DEDNER
+        strcpy(tag[nt], "DivBcleaningParabolicSigma");
+        addr[nt] = &All.DivBcleanParabolicSigma;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "DivBcleaningHyperbolicSigma");
+        addr[nt] = &All.DivBcleanHyperbolicSigma;
+        id[nt++] = REAL;
+#endif
+        
+#else
+    /*
+     
+     %- PFH: these are generally not parameters that should be freely-varied. we're
+     %- going to default to hard-coding them, instead, so that only development-level
+     %- users are modifying them. However, if you want to set them, here are some
+     %- reasonable values that you will need to insert into your parameterfile
+     
+     %---- Accuracy of time integration
+     ErrTolIntAccuracy       0.010   % <0.02
+     CourantFac              0.1 	% <0.20
+     MaxRMSDisplacementFac   0.125	% <0.25
+     
+     %---- Tree algorithm, force accuracy, domain update frequency
+     ErrTolTheta                 0.7	    % 0.7=standard
+     ErrTolForceAcc              0.0025	% 0.0025=standard
+     %---- Convergence error for evaluating particle volumes
+     MaxNumNgbDeviation      0.05    % <<DesNumNgb (values<1 are fine)
+     AGS_MaxNumNgbDeviation  2   % same, for adaptive gravsoft: can be much larger
+
+     %--- Dedner Divergence-cleaning Parameters (for MHD)
+     DivBcleaningParabolicSigma      0.2  % <1, ~0.2-0.5 needed for stability
+     DivBcleaningHyperbolicSigma     1.0  % ~1
+     
+     %---------- SPH-Specific Parameters ---------------------------------
+     %---- Artificial viscosity
+     ArtBulkViscConst    1.0     % multiplies 'standard' AV (use 1.0)
+     %---- P&M artificial conductivity (if present); normalized to Alpha_Visc:
+     ArtCondConstant     0.25    % multiplies 'standard' (use 0.25-0.5)
+     %---- Cullen & Dehnen viscosity suppression
+     ViscosityAMin       0.05    % minimum viscosity away from shocks (>0.025)
+     ViscosityAMax       2.00    % maximum viscosity in shocks (>1)
+     %---- Artificial resistivity (for MHD runs)
+     ArtificialResistivityMax    1.  % maximum alpha_B (~1-2) for art. res. (like art. visc)
+     */
+        
+        All.CourantFac = 0.2;
+        All.ErrTolIntAccuracy = 0.02;
+        All.ErrTolTheta = 0.7;
+        All.ErrTolForceAcc = 0.0025;
+        All.MaxRMSDisplacementFac = 0.25;
+#ifdef HYDRO_SPH
+        All.ArtBulkViscConst = 1.0;
+#ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
+        All.ArtCondConstant = 0.25;
+#endif
+#ifdef SPHAV_CD10_VISCOSITY_SWITCH
+        All.ViscosityAMin = 0.05;
+        All.ViscosityAMax = 2.00;
+#endif
+#ifdef MAGNETIC_DISSIPATION
+        All.ArtMagDispConst = 1.0;
+#endif
+#endif
+#ifdef DIVBCLEANING_DEDNER
+        All.DivBcleanParabolicSigma = 0.2;
+        All.DivBcleanHyperbolicSigma = 1.0;
+#endif
+        
+#endif // closes DEVELOPER_MODE check
+        
+        
+        
 #ifdef GRAIN_FLUID
         strcpy(tag[nt],"Grain_Density_CGS");
         addr[nt] = &All.Grain_Internal_Density;
@@ -1163,9 +1255,15 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.SNeIIEnergyFrac;
         id[nt++] = REAL;
         
+        /*
         strcpy(tag[nt], "SNeIIBW_Radius_Factor");
         addr[nt] = &All.SNeIIBW_Radius_Factor;
         id[nt++] = REAL;
+        */
+        All.SNeIIBW_Radius_Factor = 1.0;
+        /*
+        SNeIIBW_Radius_Factor       1.0     % (optional) boost cooling radius for resolution-check
+         */
 #endif
         
 #ifdef GALSF_FB_HII_HEATING
@@ -1173,9 +1271,15 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.HIIRegion_fLum_Coupled;
         id[nt++] = REAL;
         
+        /*
         strcpy(tag[nt], "HIIRegion_Temp");
         addr[nt] = &All.HIIRegion_Temp;
         id[nt++] = REAL;
+        */
+        All.HIIRegion_Temp = 10000.0;
+        /*
+         HIIRegion_Temp              10000.  % temperature (in K) of heated gas
+         */
 #endif
 
 #ifdef GALSF_FB_RT_PHOTONMOMENTUM
@@ -1190,13 +1294,6 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "PhotonMomentum_fOPT");
         addr[nt] = &All.PhotonMomentum_fOPT;
         id[nt++] = REAL;
-        
-        /*
-        strcpy(tag[nt], "PhotonMomentum_fIR");
-        addr[nt] = &All.PhotonMomentum_fIR;
-        id[nt++] = REAL;
-        */
-        All.PhotonMomentum_fIR = 1 - All.PhotonMomentum_fUV - All.PhotonMomentum_fOPT;
 #endif
 
         
@@ -1218,50 +1315,27 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 
-      strcpy(tag[nt], "ErrTolForceAcc");
-      addr[nt] = &All.ErrTolForceAcc;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "MinGasHsmlFractional");
-      addr[nt] = &All.MinGasHsmlFractional;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "MaxHsml");
-      addr[nt] = &All.MaxHsml;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "MaxSizeTimestep");
-      addr[nt] = &All.MaxSizeTimestep;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "MinSizeTimestep");
-      addr[nt] = &All.MinSizeTimestep;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "MaxRMSDisplacementFac");
-      addr[nt] = &All.MaxRMSDisplacementFac;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "ArtBulkViscConst");
-      addr[nt] = &All.ArtBulkViscConst;
-      id[nt++] = REAL;
-
-#ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
-      strcpy(tag[nt], "ArtCondConstant");
-      addr[nt] = &All.ArtCondConstant;
-      id[nt++] = REAL;
-#endif
-
-      strcpy(tag[nt], "CourantFac");
-      addr[nt] = &All.CourantFac;
-      id[nt++] = REAL;
-#ifdef MAGNETIC
-      All.CourantFac *= 0.5; /* safety factor needed for MHD calc, because people keep using the same CFac as hydro! */
-#endif
-
-      strcpy(tag[nt], "DesNumNgb");
-      addr[nt] = &All.DesNumNgb;
-      id[nt++] = REAL;
+        
+        strcpy(tag[nt], "MinHsml");
+        addr[nt] = &All.MinHsml;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "MaxHsml");
+        addr[nt] = &All.MaxHsml;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "MaxSizeTimestep");
+        addr[nt] = &All.MaxSizeTimestep;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "MinSizeTimestep");
+        addr[nt] = &All.MinSizeTimestep;
+        id[nt++] = REAL;
+        
+        
+        strcpy(tag[nt], "DesNumNgb");
+        addr[nt] = &All.DesNumNgb;
+        id[nt++] = REAL;
 
 
 #ifdef SUBFIND
@@ -1270,10 +1344,12 @@ void read_parameter_file(char *fname)
       id[nt++] = INT;
 #endif
 
-      strcpy(tag[nt], "MaxNumNgbDeviation");
-      addr[nt] = &All.MaxNumNgbDeviation;
-      id[nt++] = REAL;
-
+#ifdef DEVELOPER_MODE
+        strcpy(tag[nt], "MaxNumNgbDeviation");
+        addr[nt] = &All.MaxNumNgbDeviation;
+        id[nt++] = REAL;
+#endif
+        
       strcpy(tag[nt], "ComovingIntegrationOn");
       addr[nt] = &All.ComovingIntegrationOn;
       id[nt++] = INT;
@@ -1298,42 +1374,16 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.ResubmitOn;
       id[nt++] = INT;
 
-        /*
-      strcpy(tag[nt], "CoolingOn");
-      addr[nt] = &All.CoolingOn;
-      id[nt++] = INT;
-         */
         All.CoolingOn = 0;
 #ifdef COOLING
         All.CoolingOn = 1;
 #endif
       
-        /*
-      strcpy(tag[nt], "StarformationOn");
-      addr[nt] = &All.StarformationOn;
-      id[nt++] = INT;
-         */
         All.StarformationOn = 0;
 #ifdef GALSF
         All.StarformationOn = 1;
 #endif
-      
-        /*
-      strcpy(tag[nt], "TypeOfTimestepCriterion");
-      addr[nt] = &All.TypeOfTimestepCriterion;
-      id[nt++] = INT;
-         */
-      All.TypeOfTimestepCriterion = 0;
-
-        /*
-      strcpy(tag[nt], "TypeOfOpeningCriterion");
-      addr[nt] = &All.TypeOfOpeningCriterion;
-      id[nt++] = INT;
-         */
-      All.TypeOfOpeningCriterion = 1;
-        /*!< determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion: this 
-                should only be changed if you -really- know what you're doing! */
-        
+            
       strcpy(tag[nt], "TimeLimitCPU");
       addr[nt] = &All.TimeLimitCPU;
       id[nt++] = REAL;
@@ -1501,24 +1551,14 @@ void read_parameter_file(char *fname)
 #endif
 
 #ifdef COSMIC_RAYS
-      for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-	{
-	  sprintf(tempBuf, "CR_SpectralIndex_%i", CRpop);
-	  strcpy(tag[nt], tempBuf);
-	  addr[nt] = &All.CR_Alpha[CRpop];
-	  id[nt++] = REAL;
-	}
+        for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
+        {
+            sprintf(tempBuf, "CR_SpectralIndex_%i", CRpop);
+            strcpy(tag[nt], tempBuf);
+            addr[nt] = &All.CR_Alpha[CRpop];
+            id[nt++] = REAL;
+        }
 
-      /* sort the All.CR_Alpha[CRpop] array in assending order */
-      if(NUMCRPOP > 1)
-	for(x = 0; x < NUMCRPOP - 1; x++)
-	  for(CRpop = 0; CRpop < NUMCRPOP - x - 1; CRpop++)
-	    if(All.CR_Alpha[CRpop] > All.CR_Alpha[CRpop + 1])
-	      {
-		tempAlpha = All.CR_Alpha[CRpop];
-		All.CR_Alpha[CRpop] = All.CR_Alpha[CRpop + 1];
-		All.CR_Alpha[CRpop + 1] = tempAlpha;
-	      }
 
       strcpy(tag[nt], "CR_SupernovaEfficiency");
       addr[nt] = &All.CR_SNEff;
@@ -1651,11 +1691,6 @@ void read_parameter_file(char *fname)
 #endif /* BLACK_HOLES */
 
 #ifdef GALSF
-        /*
-      strcpy(tag[nt], "CritOverDensity");
-      addr[nt] = &All.CritOverDensity;
-      id[nt++] = REAL;
-         */
       All.CritOverDensity = 1000.0;
       /* this just needs to be some number >> 1, or else we get nonsense. 
        In cosmological runs, star formation is not allowed below this overdensity, to prevent spurious
@@ -1665,11 +1700,6 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.CritPhysDensity;
       id[nt++] = REAL;
 
-        /*
-      strcpy(tag[nt], "MaxSfrTimescale");
-      addr[nt] = &All.MaxSfrTimescale;
-      id[nt++] = REAL;
-         */
       strcpy(tag[nt], "SfEffPerFreeFall");
       addr[nt] = &All.MaxSfrTimescale;
       id[nt++] = REAL;
@@ -1708,9 +1738,15 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.WindMomentumLoading;
         id[nt++] = REAL;
         
+        /*
         strcpy(tag[nt], "WindInitialVelocityBoost");
         addr[nt] = &All.WindInitialVelocityBoost;
         id[nt++] = REAL;
+        */
+        All.WindInitialVelocityBoost = 1.0;
+        /*
+        WindInitialVelocityBoost    1.0     % (optional) boost velocity coupled (fixed momentum)
+        */
 #endif
         
 #ifdef GALSF_SUBGRID_WINDS
@@ -1778,46 +1814,13 @@ void read_parameter_file(char *fname)
 #endif
 #endif
 
-#ifdef SPHAV_CD10_VISCOSITY_SWITCH
-      strcpy(tag[nt], "ViscosityAMin");
-      addr[nt] = &All.ViscosityAMin;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "ViscosityAMax");
-      addr[nt] = &All.ViscosityAMax;
-      id[nt++] = REAL;
-#endif
 #ifdef TURB_DIFFUSION
       strcpy(tag[nt], "TurbDiffusionCoefficient");
       addr[nt] = &All.TurbDiffusion_Coefficient;
       id[nt++] = REAL;
 #endif
 
-#if defined(MAGNETIC_DISSIPATION)
-      strcpy(tag[nt], "ArtificialResistivityMax");
-      addr[nt] = &All.ArtMagDispConst;
-      id[nt++] = REAL;
-#endif
 
-#ifdef DIVBCLEANING_DEDNER
-      //
-      strcpy(tag[nt], "DivBcleaningParabolicSigma");
-      addr[nt] = &All.DivBcleanParabolicSigma;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "DivBcleaningHyperbolicSigma");
-      addr[nt] = &All.DivBcleanHyperbolicSigma;
-      id[nt++] = REAL;
-      //
-        
-      /* PFH: these are generally not parameters that should be freely-varied. we're
-            going to hard-code them here, instead, so that only development-level 
-            users are modifying them ??? */
-        /*
-        All.DivBcleanHyperbolicSigma = 1.0;
-        All.DivBcleanParabolicSigma = 1.0;
-        */
-#endif
 
 #ifdef MAGNETIC
 #ifdef BINISET
@@ -1940,13 +1943,15 @@ void read_parameter_file(char *fname)
 
 
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-      strcpy(tag[nt], "AGS_DesNumNgb");
-      addr[nt] = &All.AGS_DesNumNgb;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "AGS_MaxNumNgbDeviation");
-      addr[nt] = &All.AGS_MaxNumNgbDeviation;
-      id[nt++] = REAL;
+        strcpy(tag[nt], "AGS_DesNumNgb");
+        addr[nt] = &All.AGS_DesNumNgb;
+        id[nt++] = REAL;
+        
+#ifdef DEVELOPER_MODE
+        strcpy(tag[nt], "AGS_MaxNumNgbDeviation");
+        addr[nt] = &All.AGS_MaxNumNgbDeviation;
+        id[nt++] = REAL;
+#endif
 #endif
 
 #ifdef TURB_DRIVING
@@ -1997,40 +2002,40 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.StSeed;
         id[nt++] = REAL;
         
-/* Andreas Bauer's paper on turbulence: 
- // sub-sonic (Mach~0.3) test: //
- ST_decay        1.
- ST_energy       0.0002 (sigma=0.014)
- ST_DtFreq       0.005
- ST_Kmin         6.27
- ST_Kmax         12.57
- ST_SolWeight    1.
- ST_AmplFac      1.
- ST_Seed         42
- ST_SpectForm    2
-
- // trans-sonic (Mach~1.2/3.5) test: //
- ST_decay        0.5
- ST_energy       0.21 (sigma=0.21-3.0)
- ST_DtFreq       0.005
- ST_Kmin         6.27
- ST_Kmax         12.57
- ST_SolWeight    1.
- ST_AmplFac      1.
- ST_Seed         42
- ST_SpectForm    2
-
- // super-sonic (Mach~8.4) test: //
- ST_decay        0.05
- ST_energy       25.0 (sigma=12.247)
- ST_DtFreq       0.005
- ST_Kmin         6.27
- ST_Kmax         18.85
- ST_SolWeight    1.
- ST_AmplFac      1.
- ST_Seed         42
- ST_SpectForm    1
-*/
+        /* Andreas Bauer's paper on turbulence:
+         // sub-sonic (Mach~0.3) test: //
+         ST_decay        1.
+         ST_energy       0.0002 (sigma=0.014)
+         ST_DtFreq       0.005
+         ST_Kmin         6.27
+         ST_Kmax         12.57
+         ST_SolWeight    1.
+         ST_AmplFac      1.
+         ST_Seed         42
+         ST_SpectForm    2
+         
+         // trans-sonic (Mach~1.2/3.5) test: //
+         ST_decay        0.5
+         ST_energy       0.21 (sigma=0.21-3.0)
+         ST_DtFreq       0.005
+         ST_Kmin         6.27
+         ST_Kmax         12.57
+         ST_SolWeight    1.
+         ST_AmplFac      1.
+         ST_Seed         42
+         ST_SpectForm    2
+         
+         // super-sonic (Mach~8.4) test: //
+         ST_decay        0.05
+         ST_energy       25.0 (sigma=12.247)
+         ST_DtFreq       0.005
+         ST_Kmin         6.27
+         ST_Kmax         18.85
+         ST_SolWeight    1.
+         ST_AmplFac      1.
+         ST_Seed         42
+         ST_SpectForm    1
+         */
 #endif
 
 #ifdef ADJ_BOX_POWERSPEC
@@ -2056,322 +2061,506 @@ void read_parameter_file(char *fname)
 #endif
 
 
-      if((fd = fopen(fname, "r")))
-	{
-	  sprintf(buf, "%s%s", fname, "-usedvalues");
-	  if(!(fdout = fopen(buf, "w")))
-	    {
-	      printf("error opening file '%s' \n", buf);
-	      errorFlag = 1;
-	    }
-	  else
-	    {
-	      printf("Obtaining parameters from file '%s':\n", fname);
-	      while(!feof(fd))
-		{
-
-		  *buf = 0;
-		  fgets(buf, 200, fd);
-		  if(sscanf(buf, "%s%s%s", buf1, buf2, buf3) < 2)
-		    continue;
-
-		  if(buf1[0] == '%')
-		    continue;
-
-		  for(i = 0, j = -1; i < nt; i++)
-		    if(strcmp(buf1, tag[i]) == 0)
-		      {
-			j = i;
-			tag[i][0] = 0;
-			break;
-		      }
-
-		  if(j >= 0)
-		    {
-		      switch (id[j])
-			{
-			case REAL:
-			  *((double *) addr[j]) = atof(buf2);
-			  fprintf(fdout, "%-35s%g\n", buf1, *((double *) addr[j]));
-			  fprintf(stdout, "%-35s%g\n", buf1, *((double *) addr[j]));
-			  break;
-			case STRING:
-			  strcpy((char *) addr[j], buf2);
-			  fprintf(fdout, "%-35s%s\n", buf1, buf2);
-			  fprintf(stdout, "%-35s%s\n", buf1, buf2);
-			  break;
-			case INT:
-			  *((int *) addr[j]) = atoi(buf2);
-			  fprintf(fdout, "%-35s%d\n", buf1, *((int *) addr[j]));
-			  fprintf(stdout, "%-35s%d\n", buf1, *((int *) addr[j]));
-			  break;
-			}
-		    }
-		  else
-		    {
+        if((fd = fopen(fname, "r")))
+        {
+            sprintf(buf, "%s%s", fname, "-usedvalues");
+            if(!(fdout = fopen(buf, "w")))
+            {
+                printf("error opening file '%s' \n", buf);
+                errorFlag = 1;
+            }
+            else
+            {
+                printf("Obtaining parameters from file '%s':\n", fname);
+                while(!feof(fd))
+                {
+                    
+                    *buf = 0;
+                    fgets(buf, 200, fd);
+                    if(sscanf(buf, "%s%s%s", buf1, buf2, buf3) < 2)
+                        continue;
+                    
+                    if(buf1[0] == '%')
+                        continue;
+                    
+                    for(i = 0, j = -1; i < nt; i++)
+                        if(strcmp(buf1, tag[i]) == 0)
+                        {
+                            j = i;
+                            tag[i][0] = 0;
+                            break;
+                        }
+                    
+                    if(j >= 0)
+                    {
+                        switch (id[j])
+                        {
+                            case REAL:
+                                *((double *) addr[j]) = atof(buf2);
+                                fprintf(fdout, "%-35s%g\n", buf1, *((double *) addr[j]));
+                                fprintf(stdout, "%-35s%g\n", buf1, *((double *) addr[j]));
+                                break;
+                            case STRING:
+                                strcpy((char *) addr[j], buf2);
+                                fprintf(fdout, "%-35s%s\n", buf1, buf2);
+                                fprintf(stdout, "%-35s%s\n", buf1, buf2);
+                                break;
+                            case INT:
+                                *((int *) addr[j]) = atoi(buf2);
+                                fprintf(fdout, "%-35s%d\n", buf1, *((int *) addr[j]));
+                                fprintf(stdout, "%-35s%d\n", buf1, *((int *) addr[j]));
+                                break;
+                        }
+                    }
+                    else
+                    {
 #ifdef ALLOWEXTRAPARAMS
-		      fprintf(stdout, "WARNING from file %s:   Tag '%s' ignored !\n", fname, buf1);
+                        fprintf(stdout, "WARNING from file %s:   Tag '%s' ignored !\n", fname, buf1);
 #else
-		      fprintf(stdout, "Error in file %s:   Tag '%s' not allowed or multiple defined.\n",
-			      fname, buf1);
-		      errorFlag = 1;
+                        fprintf(stdout, "Error in file %s:   Tag '%s' not allowed or multiple defined.\n",
+                                fname, buf1);
+                        errorFlag = 1;
 #endif
-		    }
-		}
-	      fclose(fd);
-	      fclose(fdout);
-	      printf("\n");
-
-	      i = strlen(All.OutputDir);
-	      if(i > 0)
-		if(All.OutputDir[i - 1] != '/')
-		  strcat(All.OutputDir, "/");
-
-	      sprintf(buf1, "%s%s", fname, "-usedvalues");
-	      sprintf(buf2, "%s%s", All.OutputDir, "parameters-usedvalues");
-	      sprintf(buf3, "cp %s %s", buf1, buf2);
+                    }
+                }
+                fclose(fd);
+                fclose(fdout);
+                printf("\n");
+                
+                i = strlen(All.OutputDir);
+                if(i > 0)
+                    if(All.OutputDir[i - 1] != '/')
+                        strcat(All.OutputDir, "/");
+                
+                sprintf(buf1, "%s%s", fname, "-usedvalues");
+                sprintf(buf2, "%s%s", All.OutputDir, "parameters-usedvalues");
+                sprintf(buf3, "cp %s %s", buf1, buf2);
 #ifndef NOCALLSOFSYSTEM
-	      int ret;
-
-	      ret = system(buf3);
+                int ret;
+                
+                ret = system(buf3);
 #endif
-	    }
-	}
-      else
-	{
-	  printf("Parameter file %s not found.\n", fname);
-	  errorFlag = 1;
-	}
+            }
+        }
+        else
+        {
+            printf("Parameter file %s not found.\n", fname);
+            errorFlag = 1;
+        }
 
-      /* Counts number of CR populations in parameter file */
-      /*
-         #ifdef COSMIC_RAYS
-         CRpop=0;
-         while ((All.CR_Alpha[CRpop] != 0.0 ) && ( CRpop < MaxNumCRpop ))
-         CRpop++;
-         NUMCRPOP = CRpop;
-         #else
-         NUMCRPOP = 1;
-         #endif
-       */
+        
+        for(i = 0; i < nt; i++)
+        {
+            if(*tag[i])
+            {
+                printf("Error. I miss a value for tag '%s' in parameter file '%s'.\n", tag[i], fname);
+                errorFlag = 1;
+            }
+        }
+        
+        if(All.OutputListOn && errorFlag == 0)
+            errorFlag += read_outputlist(All.OutputListFilename);
+        else
+            All.OutputListLength = 0;
+    }
+
+    MPI_Bcast(&errorFlag, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    
+    if(errorFlag)
+    {
+        MPI_Finalize();
+        exit(0);
+    }
+
+    
+    /* now communicate the relevant parameters to the other processes */
+    MPI_Bcast(&All, sizeof(struct global_data_all_processes), MPI_BYTE, 0, MPI_COMM_WORLD);
+    
+    
+    
+    /* ok, -NOW- we can properly read the "All" variables; we should do any if/then checks on
+     them at this point. if any all variable depends on another, it must be set AFTER this point! */
+    
+#ifndef DEVELOPER_MODE
+    if(All.ComovingIntegrationOn) {All.ErrTolForceAcc = 0.005;}
+    All.MaxNumNgbDeviation = All.DesNumNgb / 16.0;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+    All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 16.0;
+#endif
+#endif
+#ifdef MAGNETIC
+    All.CourantFac *= 0.5; // ??? //
+    /* safety factor needed for MHD calc, because people keep using the same CFac as hydro! */
+#endif
+#ifdef GALSF_FB_RT_PHOTONMOMENTUM
+    All.PhotonMomentum_fIR = 1 - All.PhotonMomentum_fUV - All.PhotonMomentum_fOPT;
+#endif
+
+    /* now we're going to do a bunch of checks */
+    if((All.ErrTolIntAccuracy<=0)||(All.ErrTolIntAccuracy>0.02))
+    {
+        if(ThisTask==0)
+            printf("ErrTolIntAccuracy must be >0 and <0.02 to ensure stability \n");
+        endrun(1);
+    }
+    if((All.ErrTolTheta<=0.5)||(All.ErrTolTheta>=0.9))
+    {
+        if(ThisTask==0)
+            printf("ErrTolTheta must be >0.5 and <0.9 to ensure stability \n");
+        endrun(1);
+    }
+    if((All.CourantFac<=0)||(All.CourantFac>0.2))
+    {
+        if(ThisTask==0)
+            printf("CourantFac must be >0 and <0.2 to ensure stability \n");
+        endrun(1);
+    }
+    if((All.ErrTolForceAcc<=0)||(All.ErrTolForceAcc>=0.01))
+    {
+        if(ThisTask==0)
+            printf("ErrTolForceAcc must be >0 and <0.01 to ensure stability \n");
+        endrun(1);
+    }
+    if((All.MaxRMSDisplacementFac<=0)||(All.MaxRMSDisplacementFac>0.25))
+    {
+        if(ThisTask==0)
+            printf("MaxRMSDisplacementFac must be >0 and <0.25 to ensure stability \n");
+        endrun(1);
+    }
+#ifdef HYDRO_SPH
+    if((All.ArtBulkViscConst<=0.5)||(All.ArtBulkViscConst>=2.0))
+    {
+        if(ThisTask==0)
+            printf("ArtBulkViscConst must be >0.5 and <2 to ensure stability \n");
+        endrun(1);
+    }
+#ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
+    if((All.ArtCondConstant<=0)||(All.ArtCondConstant>0.5))
+    {
+        if(ThisTask==0)
+            printf("For SPH-mode runs, ArtCondConstant must be >0 and <0.5");
+        endrun(1);
+    }
+#endif
+#ifdef SPHAV_CD10_VISCOSITY_SWITCH
+    if((All.ViscosityAMin<=0.025)||(All.ViscosityAMin>=All.ViscosityAMax)||(All.ViscosityAMin>1.0))
+    {
+        if(ThisTask==0)
+            printf("For SPH-mode runs, ViscosityAMin must be >0.025 (stability) and <MIN(1,ViscosityAMax)");
+        endrun(1);
+    }
+    if((All.ViscosityAMax<1))
+    {
+        if(ThisTask==0)
+            printf("For SPH-mode runs, ViscosityAMax must be >1");
+        endrun(1);
+    }
+#endif
+#ifdef MAGNETIC_DISSIPATION
+    if((All.ArtMagDispConst<1)||(All.ArtMagDispConst>2))
+    {
+        if(ThisTask==0)
+            printf("For SPH-mode runs, ArtificialResistivityMax must be >1 and <2");
+        endrun(1);
+    }
+#endif
+#endif
+#ifdef DIVBCLEANING_DEDNER
+    if((All.DivBcleanParabolicSigma<0.1)||(All.DivBcleanParabolicSigma>1))
+    {
+        if(ThisTask==0)
+            printf("Divergence-Cleaning Damping Parameter DivBcleaningParabolicSigma must be >0.1 and <1");
+        endrun(1);
+    }
+    if((All.DivBcleanHyperbolicSigma<0.5)||(All.DivBcleanHyperbolicSigma>2))
+    {
+        if(ThisTask==0)
+            printf("Divergence-Cleaning Damping Parameter DivBcleanHyperbolicSigma must be >0.5 and <2");
+        endrun(1);
+    }
+#endif
+    if((All.MaxNumNgbDeviation<=0)||(All.MaxNumNgbDeviation>0.1*All.DesNumNgb))
+    {
+        if(ThisTask==0)
+            printf("MaxNumNgbDeviation must be >0 and <0.1*DesNumNgb \n");
+        endrun(1);
+    }
+    if(!isnan(All.DesNumNgb))
+    {
+        double nk_min,nk_max;
+        nk_min=30; nk_max=64;
+#ifdef KERNEL_QUARTIC
+        nk_min=40; nk_max=125;
+#endif
+#ifdef KERNEL_QUINTIC
+        nk_min=60; nk_max=180;
+#endif
+#ifdef ONEDIM
+        nk_min=2; nk_max=8;
+#ifdef KERNEL_QUARTIC
+        nk_min=3; nk_max=8;
+#endif
+#ifdef KERNEL_QUINTIC
+        nk_min=4; nk_max=12;
+#endif
+#endif
+#ifdef TWODIMS
+        nk_min=12; nk_max=24;
+#ifdef KERNEL_QUARTIC
+        nk_min=16; nk_max=32;
+#endif
+#ifdef KERNEL_QUINTIC
+        nk_min=20; nk_max=50;
+#endif
+#endif
+        if((All.DesNumNgb<nk_min)||(All.DesNumNgb>nk_max))
+        {
+            if(ThisTask==0)
+                printf("For the kernel chosen, proper sampling and stability requires DesNumNgb must be >%g and <%g \n", nk_min,nk_max);
+            endrun(1);
+        }
+    }
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+    if((All.AGS_MaxNumNgbDeviation<=0)||(All.AGS_MaxNumNgbDeviation>0.1*All.AGS_DesNumNgb))
+    {
+        if(ThisTask==0)
+            printf("AGS_MaxNumNgbDeviation must be >0 and <0.1*AGS_DesNumNgb \n");
+        endrun(1);
+    }
+    if(!isnan(All.AGS_DesNumNgb))
+    {
+        double nk_min,nk_max;
+        nk_min=30; nk_max=64;
+#ifdef KERNEL_QUARTIC
+        nk_min=40; nk_max=125;
+#endif
+#ifdef KERNEL_QUINTIC
+        nk_min=60; nk_max=180;
+#endif
+#ifdef ONEDIM
+        nk_min=2; nk_max=8;
+#ifdef KERNEL_QUARTIC
+        nk_min=3; nk_max=8;
+#endif
+#ifdef KERNEL_QUINTIC
+        nk_min=4; nk_max=12;
+#endif
+#endif
+#ifdef TWODIMS
+        nk_min=12; nk_max=24;
+#ifdef KERNEL_QUARTIC
+        nk_min=16; nk_max=32;
+#endif
+#ifdef KERNEL_QUINTIC
+        nk_min=20; nk_max=50;
+#endif
+#endif
+        if((All.AGS_DesNumNgb<nk_min)||(All.AGS_DesNumNgb>nk_max))
+        {
+            printf("For the kernel chosen, proper sampling and stability requires AGS_DesNumNgb must be >%g and <%g \n", nk_min,nk_max);
+            endrun(1);
+        }
+        
+    }
+#endif
+
 #ifdef COSMIC_RAYS
-      printf(" NUMCRPOP = %i \n", NUMCRPOP);
+    /* sort the All.CR_Alpha[CRpop] array in ascending order */
+    if(NUMCRPOP > 1)
+        for(x = 0; x < NUMCRPOP - 1; x++)
+            for(CRpop = 0; CRpop < NUMCRPOP - x - 1; CRpop++)
+                if(All.CR_Alpha[CRpop] > All.CR_Alpha[CRpop + 1])
+                {
+                    tempAlpha = All.CR_Alpha[CRpop];
+                    All.CR_Alpha[CRpop] = All.CR_Alpha[CRpop + 1];
+                    All.CR_Alpha[CRpop + 1] = tempAlpha;
+                }
 #endif
-
-#ifdef BP_REAL_CRs
-      printf(" BP_REAL_CRs = %i \n", BP_REAL_CRs);
-#endif
-
-      for(i = 0; i < nt; i++)
-	{
-	  if(*tag[i])
-	    {
-	      printf("Error. I miss a value for tag '%s' in parameter file '%s'.\n", tag[i], fname);
-	      errorFlag = 1;
-	    }
-	}
-
-      if(All.OutputListOn && errorFlag == 0)
-	errorFlag += read_outputlist(All.OutputListFilename);
-      else
-	All.OutputListLength = 0;
-    }
-
-  MPI_Bcast(&errorFlag, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-  if(errorFlag)
+    
+    
+    for(pnum = 0; All.NumFilesWrittenInParallel > (1 << pnum); pnum++);
+    
+    if(All.NumFilesWrittenInParallel != (1 << pnum))
     {
-      MPI_Finalize();
-      exit(0);
+        if(ThisTask == 0)
+            printf("NumFilesWrittenInParallel MUST be a power of 2\n");
+        endrun(0);
     }
-
-  /* now communicate the relevant parameters to the other processes */
-  MPI_Bcast(&All, sizeof(struct global_data_all_processes), MPI_BYTE, 0, MPI_COMM_WORLD);
-
-
-
-  for(pnum = 0; All.NumFilesWrittenInParallel > (1 << pnum); pnum++);
-
-  if(All.NumFilesWrittenInParallel != (1 << pnum))
+    
+    if(All.NumFilesWrittenInParallel > NTask)
     {
-      if(ThisTask == 0)
-	printf("NumFilesWrittenInParallel MUST be a power of 2\n");
-      endrun(0);
+        if(ThisTask == 0)
+            printf("NumFilesWrittenInParallel MUST be smaller than number of processors\n");
+        endrun(0);
     }
-
-  if(All.NumFilesWrittenInParallel > NTask)
-    {
-      if(ThisTask == 0)
-	printf("NumFilesWrittenInParallel MUST be smaller than number of processors\n");
-      endrun(0);
-    }
-
+    
 #ifdef PERIODIC
-  if(All.PeriodicBoundariesOn == 0)
+    if(All.PeriodicBoundariesOn == 0)
     {
-      if(ThisTask == 0)
-	{
-	  printf("Code was compiled with periodic boundary conditions switched on.\n");
-	  printf("You must set `PeriodicBoundariesOn=1', or recompile the code.\n");
-	}
-      endrun(0);
+        if(ThisTask == 0)
+        {
+            printf("Code was compiled with periodic boundary conditions switched on.\n");
+            printf("You must set `PeriodicBoundariesOn=1', or recompile the code.\n");
+        }
+        endrun(0);
     }
 #else
-  if(All.PeriodicBoundariesOn == 1)
+    if(All.PeriodicBoundariesOn == 1)
     {
-      if(ThisTask == 0)
-	{
-	  printf("Code was compiled with periodic boundary conditions switched off.\n");
-	  printf("You must set `PeriodicBoundariesOn=0', or recompile the code.\n");
-	}
-      endrun(0);
+        if(ThisTask == 0)
+        {
+            printf("Code was compiled with periodic boundary conditions switched off.\n");
+            printf("You must set `PeriodicBoundariesOn=0', or recompile the code.\n");
+        }
+        endrun(0);
     }
 #endif
-
-
+    
+    
 #ifdef EDDINGTON_TENSOR_BH
 #ifndef BLACK_HOLES
-  if(ThisTask == 0)
+    if(ThisTask == 0)
     {
-      printf("Code was compiled with EDDINGTON_TENSOR_BH, but not with BLACK_HOLES.\n");
-      printf("Switch on BLACK_HOLES.\n");
+        printf("Code was compiled with EDDINGTON_TENSOR_BH, but not with BLACK_HOLES.\n");
+        printf("Switch on BLACK_HOLES.\n");
     }
-  endrun(0);
+    endrun(0);
 #endif
 #endif
-
+    
 #ifdef COOLING
-  if(All.CoolingOn == 0)
+    if(All.CoolingOn == 0)
     {
-      if(ThisTask == 0)
-	{
-	  printf("Code was compiled with cooling switched on.\n");
-	  printf("You must set `CoolingOn=1', or recompile the code.\n");
-	}
-      endrun(0);
+        if(ThisTask == 0)
+        {
+            printf("Code was compiled with cooling switched on.\n");
+            printf("You must set `CoolingOn=1', or recompile the code.\n");
+        }
+        endrun(0);
     }
 #else
-  if(All.CoolingOn == 1)
+    if(All.CoolingOn == 1)
     {
-      if(ThisTask == 0)
-	{
-	  printf("Code was compiled with cooling switched off.\n");
-	  printf("You must set `CoolingOn=0', or recompile the code.\n");
-	}
-      endrun(0);
+        if(ThisTask == 0)
+        {
+            printf("Code was compiled with cooling switched off.\n");
+            printf("You must set `CoolingOn=0', or recompile the code.\n");
+        }
+        endrun(0);
     }
 #endif
-
-  if(All.TypeOfTimestepCriterion >= 3)
+    
+    if(All.TypeOfTimestepCriterion >= 3)
     {
-      if(ThisTask == 0)
-	{
-	  printf("The specified timestep criterion\n");
-	  printf("is not valid\n");
-	}
-      endrun(0);
+        if(ThisTask == 0)
+        {
+            printf("The specified timestep criterion\n");
+            printf("is not valid\n");
+        }
+        endrun(0);
     }
-
+    
 #if defined(LONG_X) ||  defined(LONG_Y) || defined(LONG_Z)
 #ifndef NOGRAVITY
-  if(ThisTask == 0)
+    if(ThisTask == 0)
     {
-      printf("Code was compiled with LONG_X/Y/Z, but not with NOGRAVITY.\n");
-      printf("Stretched periodic boxes are not implemented for gravity yet.\n");
+        printf("Code was compiled with LONG_X/Y/Z, but not with NOGRAVITY.\n");
+        printf("Stretched periodic boxes are not implemented for gravity yet.\n");
     }
-  endrun(0);
+    endrun(0);
 #endif
 #endif
-
+    
 #ifdef GALSF
-  if(All.StarformationOn == 0)
+    if(All.StarformationOn == 0)
     {
-      if(ThisTask == 0)
-	{
-	  printf("Code was compiled with star formation switched on.\n");
-	  printf("You must set `StarformationOn=1', or recompile the code.\n");
-	}
-      endrun(0);
+        if(ThisTask == 0)
+        {
+            printf("Code was compiled with star formation switched on.\n");
+            printf("You must set `StarformationOn=1', or recompile the code.\n");
+        }
+        endrun(0);
     }
-  if(All.CoolingOn == 0)
+    if(All.CoolingOn == 0)
     {
-      if(ThisTask == 0)
-	{
-	  printf("You try to use the code with star formation enabled,\n");
-	  printf("but you did not switch on cooling.\nThis mode is not supported.\n");
-	}
-      endrun(0);
+        if(ThisTask == 0)
+        {
+            printf("You try to use the code with star formation enabled,\n");
+            printf("but you did not switch on cooling.\nThis mode is not supported.\n");
+        }
+        endrun(0);
     }
 #else
-  if(All.StarformationOn == 1)
+    if(All.StarformationOn == 1)
     {
-      if(ThisTask == 0)
-	{
-	  printf("Code was compiled with star formation switched off.\n");
-	  printf("You must set `StarformationOn=0', or recompile the code.\n");
-	}
-      endrun(0);
+        if(ThisTask == 0)
+        {
+            printf("Code was compiled with star formation switched off.\n");
+            printf("You must set `StarformationOn=0', or recompile the code.\n");
+        }
+        endrun(0);
     }
 #endif
-
-
-
+    
+    
+    
 #ifdef TIMEDEPDE
 #ifndef DARKENERGY
-  if(ThisTask == 0)
+    if(ThisTask == 0)
     {
-      fprintf(stdout, "Code was compiled with TIMEDEPDE, but not with DARKENERGY.\n");
-      fprintf(stdout, "This is not allowed.\n");
+        fprintf(stdout, "Code was compiled with TIMEDEPDE, but not with DARKENERGY.\n");
+        fprintf(stdout, "This is not allowed.\n");
     }
-  endrun(0);
+    endrun(0);
 #endif
 #endif
-
-
+    
+    
 #ifdef BH_BUBBLES
 #ifndef BLACK_HOLES
-  if(ThisTask == 0)
+    if(ThisTask == 0)
     {
-      printf("Code was compiled with BH_BUBBLES, but not with BLACK_HOLES.\n");
-      printf("This is not allowed.\n");
+        printf("Code was compiled with BH_BUBBLES, but not with BLACK_HOLES.\n");
+        printf("This is not allowed.\n");
     }
-  endrun(0);
+    endrun(0);
 #endif
-
+    
 #if defined(BUBBLES) || defined(MULTI_BUBBLES) || defined(EBUB_PROPTO_BHAR)
-  if(ThisTask == 0)
+    if(ThisTask == 0)
     {
-      printf
-	("If the code is compiled with BH_BUBBLES, then BUBBLES, MULTI_BUBBLES or EBUB_PROPTO_BHAR options cannot be used.\n");
-      printf("This is not allowed.\n");
+        printf
+        ("If the code is compiled with BH_BUBBLES, then BUBBLES, MULTI_BUBBLES or EBUB_PROPTO_BHAR options cannot be used.\n");
+        printf("This is not allowed.\n");
     }
-  endrun(0);
+    endrun(0);
 #endif
 #endif
-
-
-
+    
+    
+    
 #ifdef OMP_NUM_THREADS
 #ifdef _OPENMP
-  if(ThisTask == 0)
-    printf("OMP_NUM_THREADS is incompatible with enabling OpenMP in the compiler options \n");
-  endrun(0);
+    if(ThisTask == 0)
+        printf("OMP_NUM_THREADS is incompatible with enabling OpenMP in the compiler options \n");
+    endrun(0);
 #endif
 #endif
-
+    
 #undef REAL
 #undef STRING
 #undef INT
 #undef MAXTAGS
-
-
+    
+    
 #ifdef COSMIC_RAYS
-  if(ThisTask == 0)
+    if(ThisTask == 0)
     {
-      printf("CR SN Efficiency: %g\n", All.CR_SNEff);
+        printf("CR SN Efficiency: %g\n", All.CR_SNEff);
     }
 #endif
 }
+
 
 
 /*! this function reads a table with a list of desired output times. The table

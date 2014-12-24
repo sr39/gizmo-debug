@@ -435,26 +435,20 @@ void gravity_tree(void)
 #if defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
                 GravDataIn[j].Mass = P[place].Mass;
 #endif
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-                if( (P[place].Type == 0) && (PPP[place].Hsml > 0) )
-                    GravDataIn[j].Soft = PPP[place].Hsml;
-                else
-                    GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];
-#endif
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(GALSF_FB_RT_PHOTONMOMENTUM)
-                if( (P[place].Type == 0) && (PPP[place].Hsml > 0) )
+#if defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+                if( (P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type]) )
                     GravDataIn[j].Soft = PPP[place].Hsml;
                 else
                     GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
-                if((P[place].Type == 0) && (PPP[place].Hsml > 0))
+                if((P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type]))
                     GravDataIn[j].AGS_zeta = PPPZ[place].AGS_zeta;
                 else
                     GravDataIn[j].AGS_zeta = 0;
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-                if(PPP[place].Hsml > 0)
+                if(PPP[place].Hsml > All.ForceSoftening[P[place].Type])
                 {
                     GravDataIn[j].Soft = PPP[place].Hsml;
                     GravDataIn[j].AGS_zeta = PPPZ[place].AGS_zeta;
@@ -1312,8 +1306,6 @@ void set_softenings(void)
     }
   for(i = 0; i < 6; i++)
     All.ForceSoftening[i] = 2.8 * All.SofteningTable[i];
-
-  All.MinGasHsml = All.MinGasHsmlFractional * All.ForceSoftening[0];
 
 }
 

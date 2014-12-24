@@ -82,10 +82,10 @@
     /* ... update to the Dedner divergence-damping scalar field ... */
     /* --------------------------------------------------------------------------------- */
     /* PFH: this is the symmetric estimator of grad phi: used be used IFF div.dot.B is estimated by the 'direct difference' operator (recommended) */
-    double phifac = -(mf_i*local.PhiPred + mf_j*PhiPred_j); // *All.cf_atime*All.cf_atime; // All.cf_atime NOT needed for convention [Phicode]=[Bcode][vcode]
-    Fluxes.B[0] += phifac * kernel.dp[0];
-    Fluxes.B[1] += phifac * kernel.dp[1];
-    Fluxes.B[2] += phifac * kernel.dp[2];
+    double phifac = -(mf_i*local.PhiPred + mf_j*PhiPred_j);
+    Fluxes.B[0] += phifac * kernel.dp[0] / All.cf_afac1;
+    Fluxes.B[1] += phifac * kernel.dp[1] / All.cf_afac1;
+    Fluxes.B[2] += phifac * kernel.dp[2] / All.cf_afac1;
     /* units are phi_code * rcode^2 = Bcode*vcode * rcode^2 = vcode * Bphys*rphys^2 = (a*vphys) * Bphys*rphys^2 */
     /* GradPhi should have units of [Phicode]/[rcode] = [Bcode]*[vcode]/[rcode] =
         a*a*Bphys * a*vphys/(rphys/a) = a^4 [DtB]= a^4 [Fluxes.B]; extra terms come in V_i multiplication in evaluate */
@@ -94,9 +94,9 @@
     /* --------------------------------------------------------------------------------- */
     /* ... magnetic acceleration (with correction/limiter term) ... */
     /* --------------------------------------------------------------------------------- */
-    double dBx = local.BPred[0] - SphP[j].BPred[0];
-    double dBy = local.BPred[1] - SphP[j].BPred[1];
-    double dBz = local.BPred[2] - SphP[j].BPred[2];
+    double dBx = local.BPred[0] - BPred_j[0];
+    double dBy = local.BPred[1] - BPred_j[1];
+    double dBz = local.BPred[2] - BPred_j[2];
     int k1;
     for(k = 0; k < 3; k++)
     {
@@ -107,22 +107,19 @@
         mm_j[k][k] -= 0.5 * kernel.b2_j;
     
     /* need to be able to subtract component of force which owes to the non-zero value of div.B */
-    /* units of this are Bcode * rcode*rcode = a*a*Bphys*(rphys/a)^2 = Bphys * rphys*rphys */
-    Fluxes.B_normal_corrected = (local.BPred[0] * mf_i + BPred_j[0] * mf_j) * kernel.dp[0] +
-                                (local.BPred[1] * mf_i + BPred_j[1] * mf_j) * kernel.dp[1] +
-                                (local.BPred[2] * mf_i + BPred_j[2] * mf_j) * kernel.dp[2];
+    Fluxes.B_normal_corrected = ((local.BPred[0] * mf_i + BPred_j[0] * mf_j) * kernel.dp[0] +
+                                 (local.BPred[1] * mf_i + BPred_j[1] * mf_j) * kernel.dp[1] +
+                                 (local.BPred[2] * mf_i + BPred_j[2] * mf_j) * kernel.dp[2]) * All.cf_atime / All.cf_afac1;
     for(k = 0; k < 3; k++)
     {
         /* momentum flux from MHD forces */
-        /* units of this are Bcode^2 * rcode^2 = a2 * Bphys^2 * rphys^2 */
-        magfluxv[k] = (mm_i[k][0] * mf_i + mm_j[k][0] * mf_j) * kernel.dp[0] +
-                          (mm_i[k][1] * mf_i + mm_j[k][1] * mf_j) * kernel.dp[1] +
-                          (mm_i[k][2] * mf_i + mm_j[k][2] * mf_j) * kernel.dp[2];
-        Fluxes.v[k] += magfluxv[k] * All.cf_a2inv / All.cf_afac2; /* converts to (Pcode/rhocode)/rcode */
+        magfluxv[k] = ((mm_i[k][0] * mf_i + mm_j[k][0] * mf_j) * kernel.dp[0] +
+                       (mm_i[k][1] * mf_i + mm_j[k][1] * mf_j) * kernel.dp[1] +
+                       (mm_i[k][2] * mf_i + mm_j[k][2] * mf_j) * kernel.dp[2]) * All.cf_afac2; // converts to physical //
+        Fluxes.v[k] += magfluxv[k] / All.cf_afac2; /* converts to (Pcode/rhocode)/rcode */
     }
     
-        
-        
+    
     /* --------------------------------------------------------------------------------- */
     /* ... Magnetic dissipation/diffusion terms (artificial resitivity evaluation) ... */
     /* --------------------------------------------------------------------------------- */
@@ -136,23 +133,13 @@
 #endif
     mf_dissInd *= eta;
     /* units are Bcode * vcode * rcode*rcode = vcode * Bphys*rphys^2 = a * vphys*Bphys*rphys^2 */
-    Fluxes.B[0] += mf_dissInd * dBx;
-    Fluxes.B[1] += mf_dissInd * dBy;
-    Fluxes.B[2] += mf_dissInd * dBz;
+    Fluxes.B[0] += mf_dissInd * dBx / All.cf_atime;
+    Fluxes.B[1] += mf_dissInd * dBy / All.cf_atime;
+    Fluxes.B[2] += mf_dissInd * dBz / All.cf_atime;
     /* units are Bc^2 * vc * rc^2 = (Pc/fac_magnetic_pressure) * vc * rc^2 = 1/fac_magnetic_pressure * mc * Pc/rhoc * vc/rc */ 
-    Fluxes.p -= 0.5 * fac_magnetic_pressure * mf_dissInd * (dBx * dBx + dBy * dBy + dBz * dBz);
 #endif
-    
-    /* convert to physical units! */
-    for(k=0;k<3;k++)
-    {
-        Fluxes.B[k] /= All.cf_atime;
-        magfluxv[k] *= All.cf_a2inv;
-    }
 #endif /* end MAGNETIC */
-        
     
-
     
     
     /* --------------------------------------------------------------------------------- */

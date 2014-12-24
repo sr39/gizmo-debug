@@ -25,6 +25,8 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifndef HYDRO_SPH
     struct Input_vec_Riemann Riemann_vec;
     struct Riemann_outputs Riemann_out;
+    double face_area_dot_vel=0, face_vel_i=0, face_vel_j=0;
+    double Face_Area_Vec[3], Face_Area_Norm = 0;
 #endif
     
     if(mode == 0)
@@ -286,14 +288,21 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 }
                 out.DtInternalEnergy += Fluxes.p;
 #ifdef MAGNETIC
-#ifdef HYDRO_SPH
-                for(k=0;k<3;k++) {out.DtB[k]+=Fluxes.B[k]*(All.cf_a3inv/V_i); out.DtInternalEnergy+=magfluxv[k]*local.Vel[k]/All.cf_atime;}
-#else
-                for(k=0;k<3;k++) {out.DtB[k]+=Fluxes.B[k]; out.DtInternalEnergy+=magfluxv[k]*local.BPred[k]*All.cf_a2inv;}
-#endif
+                for(k=0;k<3;k++) {out.DtB[k]+=Fluxes.B[k];}
                 out.divB += Fluxes.B_normal_corrected;
 #ifdef DIVBCLEANING_DEDNER
                 out.DtPhi += Fluxes.phi;
+#endif
+#ifdef HYDRO_SPH
+                for(k=0;k<3;k++) {out.DtInternalEnergy+=magfluxv[k]*local.Vel[k]/All.cf_atime;}
+#else
+                for(k=0;k<3;k++) {out.Face_Area[k] += Face_Area_Vec[k];}
+                double wt_face_sum = Face_Area_Norm * (face_area_dot_vel+face_vel_i);
+                out.DtInternalEnergy += 0.5 * kernel.b2_i*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
+#ifdef DIVBCLEANING_DEDNER
+                out.DtPhi += Riemann_out.phi_normal_corrected * wt_face_sum;
+                for(k=0;k<3;k++) {out.DtInternalEnergy += magfluxv[k] * local.BPred[k]*All.cf_a2inv;}
+#endif
 #endif
 #endif // magnetic //
                 //out.dInternalEnergy += Fluxes.p * dt_hydrostep; //manifest-indiv-timestep-debug//
@@ -308,19 +317,26 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     SphP[j].DtMass -= Fluxes.rho;
                     for(k=0;k<3;k++) {SphP[j].GravWorkTerm[k] -= gravwork[k];}
 #endif
-                    for(k=0;k<3;k++) SphP[j].HydroAccel[k] -= Fluxes.v[k];
+                    for(k=0;k<3;k++) {SphP[j].HydroAccel[k] -= Fluxes.v[k];}
                     SphP[j].DtInternalEnergy -= Fluxes.p;
 #ifdef MAGNETIC
-#ifdef HYDRO_SPH
-                    for(k=0;k<3;k++) {SphP[j].DtB[k]-=Fluxes.B[k]*(All.cf_a3inv/V_j); SphP[j].DtInternalEnergy-=magfluxv[k]*VelPred_j[k]/All.cf_atime;}
-#else
-                    for(k=0;k<3;k++) {SphP[j].DtB[k]-=Fluxes.B[k]; SphP[j].DtInternalEnergy-=magfluxv[k]*BPred_j[k]*All.cf_a2inv;}
-#endif
+                    for(k=0;k<3;k++) {SphP[j].DtB[k]-=Fluxes.B[k];}
                     SphP[j].divB -= Fluxes.B_normal_corrected;
 #ifdef DIVBCLEANING_DEDNER
                     SphP[j].DtPhi -= Fluxes.phi;
 #endif
+#ifdef HYDRO_SPH
+                    for(k=0;k<3;k++) {SphP[j].DtInternalEnergy-=magfluxv[k]*VelPred_j[k]/All.cf_atime;}
+#else
+                    for(k=0;k<3;k++) {SphP[j].Face_Area[k] -= Face_Area_Vec[k];}
+                    double wt_face_sum = Face_Area_Norm * (face_area_dot_vel+face_vel_j);
+                    SphP[j].DtInternalEnergy -= 0.5 * kernel.b2_j*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
+#ifdef DIVBCLEANING_DEDNER
+                    SphP[j].DtPhi -= Riemann_out.phi_normal_corrected * wt_face_sum;
+                    for(k=0;k<3;k++) {SphP[j].DtInternalEnergy -= magfluxv[k]*BPred_j[k]*All.cf_a2inv;}
 #endif
+#endif
+#endif // magnetic //
                 }
 #endif
 

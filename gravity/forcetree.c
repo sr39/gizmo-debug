@@ -1778,35 +1778,34 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         pmass = P[target].Mass;
 #endif
         aold = All.ErrTolForceAcc * P[target].OldAcc;
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
-        if(ptype == 0)
-        {
-            if(PPP[target].Hsml>0) soft = PPP[target].Hsml; else soft = All.ForceSoftening[0];
-        }
-        else
-            soft = All.ForceSoftening[P[target].Type];
-#ifdef ADAPTIVE_GRAVSOFT_FORGAS
-        if((ptype == 0) && (PPP[target].Hsml>0))
-            zeta = PPPZ[target].AGS_zeta;
-        else
-            zeta = 0;
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(ADAPTIVE_GRAVSOFT_FORALL)
+        soft = All.ForceSoftening[ptype];
 #endif
-#endif
-#if defined(PMGRID) && defined(PM_PLACEHIGHRESREGION)
-        if(pmforce_is_particle_high_res(ptype, P[target].Pos))
-        {
-            rcut = All.Rcut[1];
-            asmth = All.Asmth[1];
-        }
-#endif
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-        if(PPP[target].Hsml>0)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS)
+        if((ptype == 0) && (PPP[target].Hsml>All.ForceSoftening[ptype]))
         {
             soft = PPP[target].Hsml;
             zeta = PPPZ[target].AGS_zeta;
         } else {
             soft = All.ForceSoftening[ptype];
             zeta = 0;
+        }
+#endif
+#if defined(ADAPTIVE_GRAVSOFT_FORALL)
+        if(PPP[target].Hsml > All.ForceSoftening[ptype])
+        {
+            soft = PPP[target].Hsml;
+            zeta = PPPZ[target].AGS_zeta;
+        } else {
+            soft = All.ForceSoftening[ptype];
+            zeta = 0;
+        }
+#endif
+#if defined(PMGRID) && defined(PM_PLACEHIGHRESREGION)
+        if(pmforce_is_particle_high_res(ptype, P[target].Pos))
+        {
+            rcut = All.Rcut[1];
+            asmth = All.Asmth[1];
         }
 #endif
     }
@@ -2044,7 +2043,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if(ptype_sec > -1) /* trigger for all particles */
 #endif
                 {
-                    if(PPP[no].Hsml > 0)
+                    if(PPP[no].Hsml > All.ForceSoftening[P[no].Type])
                     {
                         h_p_inv = 1.0 / PPP[no].Hsml;
                         zeta_sec = PPPZ[no].AGS_zeta;
@@ -2082,7 +2081,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                             sidm_tstart = my_second();
                             r = sqrt(r2);
 #if defined(ADAPTIVE_GRAVSOFT_FORALL)
-                            h_si = DMAX(targeth_si, All.SIDMSmoothingFactor * PPP[no].Hsml);
+                            h_si = DMAX(targeth_si, All.SIDMSmoothingFactor * DMAX(PPP[no].Hsml,All.ForceSoftening[P[no].Type]));
 #else
                             h_si = DMAX(targeth_si, All.SIDMSmoothingFactor * All.ForceSoftening[P[no].Type]);
 #endif
@@ -3224,11 +3223,19 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
         ptype = P[target].Type;
         aold = All.ErrTolForceAcc * P[target].OldAcc;
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
-        if((ptype == 0) && (PPP[target].Hsml > 0))
+        if((ptype == 0) && (PPP[target].Hsml > All.ForceSoftening[ptype]))
         {
             soft = PPP[target].Hsml;
         } else {
-            soft = All.ForceSoftening[P[target].Type];
+            soft = All.ForceSoftening[ptype];
+        }
+#endif
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+        if(PPP[target].Hsml > All.ForceSoftening[ptype])
+        {
+            soft = PPP[target].Hsml;
+        } else {
+            soft = All.ForceSoftening[ptype];
         }
 #endif
 #if defined(PMGRID) && defined(PM_PLACEHIGHRESREGION)
@@ -3236,14 +3243,6 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
         {
             rcut = All.Rcut[1];
             asmth = All.Asmth[1];
-        }
-#endif
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-        if(PPP[target].Hsml > 0)
-        {
-            soft = PPP[target].Hsml;
-        } else {
-            soft = All.ForceSoftening[P[target].Type];
         }
 #endif
     }

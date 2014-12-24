@@ -135,7 +135,7 @@ void compute_potential(void)
         GravDataIn[j].Mass = P[place].Mass;
 #endif
 #if defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(ADAPTIVE_GRAVSOFT_FORALL)
-        if(PPP[place].Hsml > 0)
+        if(PPP[place].Hsml > All.ForceSoftening[P[place].Type])
         {
             GravDataIn[j].Soft = PPP[place].Hsml;
         } else {
@@ -143,7 +143,7 @@ void compute_potential(void)
         }
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(GALSF_FB_RT_PHOTONMOMENTUM)
-        if((P[place].Type == 0) && (PPP[place].Hsml > 0))
+        if((P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type]))
         {
             GravDataIn[j].Soft = PPP[place].Hsml;
         } else {

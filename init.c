@@ -662,6 +662,7 @@ void init(void)
 #endif
     }
     
+#ifndef SHEARING_BOX
 #ifdef TWODIMS
     for(i = 0; i < NumPart; i++)
     {
@@ -672,12 +673,11 @@ void init(void)
         
         if(P[i].Type == 0)
         {
-#ifndef SHEARING_BOX
             SphP[i].VelPred[2] = 0;
-#endif
             SphP[i].HydroAccel[2] = 0;
         }
     }
+#endif
 #endif
     
 #ifdef ONEDIM
@@ -787,9 +787,7 @@ void init(void)
         // re-match the predicted and initial velocities and B-field values, just to be sure //
         for(j=0;j<3;j++) SphP[i].VelPred[j]=P[i].Vel[j];
 #ifdef MAGNETIC
-#ifndef HYDRO_SPH
         for(j=0;j<3;j++) {SphP[i].B[j] = SphP[i].BPred[j] * P[i].Mass / SphP[i].Density;} // convert to the conserved unit V*B //
-#endif
         for(j=0;j<3;j++) {SphP[i].BPred[j]=SphP[i].B[j]; SphP[i].DtB[j]=0;}
 #endif
         //SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//

@@ -242,6 +242,7 @@ double INLINE_FUNC Particle_Internal_energy_i(int i);
 double INLINE_FUNC Particle_effective_soundspeed_i(int i);
 #ifdef MAGNETIC
 double INLINE_FUNC Get_Particle_BField(int i_particle_id, int k_vector_component);
+double Get_DtB_FaceArea_Limiter(int i);
 #ifdef DIVBCLEANING_DEDNER
 double INLINE_FUNC Get_Particle_PhiField(int i_particle_id);
 double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id);
@@ -775,9 +776,9 @@ void init_sort_ID(MyIDType *data, int ndata);
 #endif
 
 void hydro_gradient_calc(void);
-int addSPH_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *addSPH_evaluate_primary(void *p);
-void *addSPH_evaluate_secondary(void *p);
+int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
+void *GasGrad_evaluate_primary(void *p);
+void *GasGrad_evaluate_secondary(void *p);
 
 #ifdef SIDM
 #include "./sidm/sidm_proto.h"

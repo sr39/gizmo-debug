@@ -117,7 +117,14 @@ void drift_particle(int i, integertime time1)
         dt_drift = (time1 - time0) * All.Timebase_interval;
     
     for(j = 0; j < 3; j++)
+    {
         P[i].Pos[j] += P[i].Vel[j] * dt_drift;
+    }
+#ifdef SHEARING_BOX
+#if (SHEARING_BOX < 3)
+    P[i].Pos[2] = 0; /* this must be re-zero'd, because the [2] velocity is non-zero */
+#endif
+#endif
     
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     if(P[i].Type>0)
@@ -247,11 +254,14 @@ void drift_particle(int i, integertime time1)
 #endif
             
             SphP[i].Pressure = get_pressure(i);
+#ifdef GAMMA_ENFORCE_ADIABAT
+            SphP[i].InternalEnergyPred = SphP[i].Pressure / (SphP[i].Density * GAMMA_MINUS1);
+#endif
  
             PPP[i].Hsml *= exp(divVel * dt_drift / NUMDIMS);
             
-            if(PPP[i].Hsml < All.MinGasHsml)
-                PPP[i].Hsml = All.MinGasHsml;
+            if(PPP[i].Hsml < All.MinHsml)
+                PPP[i].Hsml = All.MinHsml;
             
             if(PPP[i].Hsml > All.MaxHsml)
                 PPP[i].Hsml = All.MaxHsml;
@@ -296,6 +306,9 @@ double get_pressure(int i)
     press = Get_Particle_Pressure(i);
 #endif
     
+#ifdef GAMMA_ENFORCE_ADIABAT
+    press = GAMMA_ENFORCE_ADIABAT * pow(SphP[i].Density, GAMMA);
+#endif
     
 #ifdef GALSF_EFFECTIVE_EQS
     /* modify pressure to 'interpolate' between effective EOS and isothermal */
@@ -348,18 +361,13 @@ double get_pressure(int i)
 void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double dt_entr)
 {
 #ifdef MAGNETIC
-    double BphysVolphys_to_BcodeVolCode = All.cf_atime;
-#ifdef HYDRO_SPH
-    BphysVolphys_to_BcodeVolCode = All.cf_atime*All.cf_atime;
-#endif
-    
     int k;
-    double dt_mag = dt_entr;
-    for(k=0;k<3;k++) {SphP[i].BPred[k] += SphP[i].DtB[k] * dt_mag * BphysVolphys_to_BcodeVolCode;} // fluxes are always physical, convert to code units //
+    double BphysVolphys_to_BcodeVolCode = 1 / All.cf_atime;
+    for(k=0;k<3;k++) {SphP[i].BPred[k] += SphP[i].DtB[k] * dt_entr * BphysVolphys_to_BcodeVolCode;} // fluxes are always physical, convert to code units //
 #ifdef DIVBCLEANING_DEDNER
     double dtphi_code = BphysVolphys_to_BcodeVolCode * All.cf_atime * SphP[i].DtPhi;
-    SphP[i].PhiPred += dtphi_code  * dt_mag;
-    SphP[i].PhiPred *= exp( -dt_mag * Get_Particle_PhiField_DampingTimeInv(i) );
+    SphP[i].PhiPred += dtphi_code  * dt_entr;
+    SphP[i].PhiPred *= exp( -dt_entr * Get_Particle_PhiField_DampingTimeInv(i) );
 #endif
 #endif
 }
@@ -402,7 +410,9 @@ void do_box_wrapping(void)
             {
                 P[i].Pos[j] += boxsize[j];
 #ifdef SHEARING_BOX
-                if(j==0) {P[i].Vel[SHEARING_BOX_PHI_COORDINATE]-=Shearing_Box_Vel_Offset; P[i].VelPred[SHEARING_BOX_PHI_COORDINATE]-=Shearing_Box_Vel_Offset;}
+                if(j==0) {
+                    P[i].Vel[SHEARING_BOX_PHI_COORDINATE]-=Shearing_Box_Vel_Offset;
+                    if(P[i].Type==0) SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE]-=Shearing_Box_Vel_Offset;}
 #if (SHEARING_BOX != 1)
                 /* if we're not assuming axisymmetry, we need to shift the coordinates for the shear flow at the boundary */
                 // ??? //
@@ -415,7 +425,9 @@ void do_box_wrapping(void)
             {
                 P[i].Pos[j] -= boxsize[j];
 #ifdef SHEARING_BOX
-                if(j==0) {P[i].Vel[SHEARING_BOX_PHI_COORDINATE]+=Shearing_Box_Vel_Offset; P[i].VelPred[SHEARING_BOX_PHI_COORDINATE]+=Shearing_Box_Vel_Offset;}
+                if(j==0) {
+                    P[i].Vel[SHEARING_BOX_PHI_COORDINATE]+=Shearing_Box_Vel_Offset;
+                    if(P[i].Type==0) SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE]+=Shearing_Box_Vel_Offset;}
 #endif
             }
         }
@@ -463,22 +475,63 @@ double INLINE_FUNC Particle_effective_soundspeed_i(int i)
 #ifdef MAGNETIC
 double INLINE_FUNC Get_Particle_BField(int i_particle_id, int k_vector_component)
 {
-#ifdef HYDRO_SPH
-    return SphP[i_particle_id].BPred[k_vector_component];
-#else
     return SphP[i_particle_id].BPred[k_vector_component] * SphP[i_particle_id].Density / P[i_particle_id].Mass;
+}
+
+/* this function is needed to control volume fluxes of the normal components of B and phi in the 
+    -bad- situation where the meshless method 'faces' do not properly close (usually means you are 
+    using boundary conditions that you should not) */
+double Get_DtB_FaceArea_Limiter(int i)
+{
+#ifdef HYDRO_SPH
+    return 1;
+#else
+    /* define some variables */
+    double dt_entr = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+    int j; double dB[3],dBmag=0,Bmag=0;
+    /* check the magnitude of the predicted change in B-fields, vs. B-magnitude */
+    for(j=0;j<3;j++)
+    {
+        dB[j] = SphP[i].DtB[j] * dt_entr / All.cf_atime;
+        dBmag += dB[j]*dB[j];
+        Bmag += SphP[i].BPred[j]*SphP[i].BPred[j];
+    }
+    dBmag = sqrt(dBmag); Bmag = sqrt(Bmag);
+    /* also make sure to check the actual pressure, since if P>>B, we will need to allow larger changes in B per timestep */
+    double P_BV_units = sqrt(2.*SphP[i].Pressure*All.cf_a3inv)*P[i].Mass/SphP[i].Density * All.cf_afac3 * All.cf_a2inv;
+    double Bmag_max = DMAX(Bmag, DMIN( P_BV_units, 10.*Bmag ));
+    /* now check how accurately the cell is 'closed': the face areas are ideally zero */
+    double area_sum = fabs(SphP[i].Face_Area[0])+fabs(SphP[i].Face_Area[1])+fabs(SphP[i].Face_Area[2]);
+    /* but this needs to be normalized to the 'expected' area given Hsml */
+#ifdef ONEDIM
+    double area_norm = 2.;
+#else
+#ifdef TWODIMS
+    double area_norm = 2.*M_PI * PPP[i].Hsml * All.cf_atime;
+#else
+    double area_norm = 4.*M_PI * PPP[i].Hsml*PPP[i].Hsml * All.cf_atime*All.cf_atime;
+#endif
+#endif
+    /* ok, with that in hand, define an error tolerance based on this */
+    if(area_norm>0)
+    {
+        if(area_sum/area_norm > 0.0001)
+        {   
+            /* double tol = (All.CourantFac/0.1) * DMAX( 0.01, area_norm/(2000.*area_sum) ); */
+            double tol = (All.CourantFac/0.1) * DMAX( 0.01, area_norm/(500.*area_sum) );
+            tol *= Bmag_max; /* give the limiter dimensions */
+            if(dBmag > tol) {return tol/dBmag;} /* now actually check if we exceed this */
+        }
+    }
+    return 1;
 #endif
 }
+
 
 #ifdef DIVBCLEANING_DEDNER
 double INLINE_FUNC Get_Particle_PhiField(int i_particle_id)
 {
-#ifdef HYDRO_SPH
-    return SphP[i_particle_id].PhiPred;
-#else
-    //return SphP[i_particle_id].PhiPred / P[i_particle_id].Mass;
     return SphP[i_particle_id].PhiPred * SphP[i_particle_id].Density / P[i_particle_id].Mass;
-#endif
 }
 
 double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)
@@ -488,11 +541,17 @@ double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)
     /* PFH: add simple damping (-phi/tau) term */
     double damping_tinv = 0.5 * All.DivBcleanParabolicSigma * (SphP[i_particle_id].MaxSignalVel*All.cf_afac3 / (All.cf_atime*KERNEL_CORE_SIZE*PPP[i_particle_id].Hsml));
     /* PFH: add div_v term from Tricco & Price to DtPhi */
-    damping_tinv += 0.5 * P[i_particle_id].Particle_DivVel*All.cf_a2inv;
+    // damping_tinv += 0.5 * P[i_particle_id].Particle_DivVel*All.cf_a2inv; // this is not needed for the form of Vphi we evolve //
 #else
-    // ??? //
-    double damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveSpeed * All.cf_a2inv / (KERNEL_CORE_SIZE*PPP[i_particle_id].Hsml);
-    //double damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveDecay;
+    double damping_tinv;
+    if((All.StarformationOn)||(All.ComovingIntegrationOn))
+    {
+        // only see a small performance drop from fastestwavespeed above to maxsignalvel below, despite the fact that below is purely local (so allows more flexible adapting to high dynamic range)
+        damping_tinv = 0.5 * All.DivBcleanParabolicSigma * (SphP[i_particle_id].MaxSignalVel*All.cf_afac3 / (All.cf_atime*KERNEL_CORE_SIZE*PPP[i_particle_id].Hsml));
+    } else {
+        damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveSpeed / (KERNEL_CORE_SIZE*PPP[i_particle_id].Hsml); // fastest wavespeed has units of [vphys]
+        //double damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveDecay * All.cf_a2inv; // no improvement over fastestwavespeed; decay has units [vphys/rphys]
+    }
 #endif
     return damping_tinv;
 }

@@ -719,7 +719,7 @@ extern double WallclockTime;    /*!< This holds the last wallclock time measurem
 extern int Flag_FullStep;	/*!< Flag used to signal that the current step involves all particles */
 
 extern size_t HighMark_run,  HighMark_domain, HighMark_gravtree, HighMark_pmperiodic,
-  HighMark_pmnonperiodic,  HighMark_sphdensity, HighMark_sphhydro, HighMark_addSPH;
+  HighMark_pmnonperiodic,  HighMark_sphdensity, HighMark_sphhydro, HighMark_GasGrad;
 
 #ifdef TURB_DRIVING
 extern size_t HighMark_turbpower;
@@ -1107,10 +1107,8 @@ extern struct global_data_all_processes
    *
    * five groups of particles are supported 0=gas,1=halo,2=disk,3=bulge,4=stars
    */
-  double MinGasHsmlFractional,	/*!< minimum allowed kernel length in units of gas gravitational
-				   softening length */
-  MinGasHsml;			/*!< minimum allowed gas kernel length */
-  double MaxHsml;
+  double MinHsml;			/*!< minimum allowed gas kernel length */
+  double MaxHsml;           /*!< minimum allowed gas kernel length */
 
 #ifdef TURB_DRIVING
   double RefDensity;
@@ -1810,6 +1808,7 @@ extern struct sph_particle_data
     MyDouble HydroAccel[3];     /*!< acceleration due to hydrodynamical force (for drifting) */
     
 #ifdef MAGNETIC
+    MyDouble Face_Area[3];      /*!< vector sum of effective areas of 'faces'; this is used to check closure for meshless methods */
     MyDouble BPred[3];          /*!< current magnetic field strength */
     MyDouble B[3];              /*!< actual B (conserved variable used for integration; can be B*V for flux schemes) */
     MyDouble DtB[3];             /*!< time derivative of B-field (of -conserved- B-field) */
