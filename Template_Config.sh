@@ -38,8 +38,8 @@ PERIODIC                        # Use this if periodic boundaries are needed (ot
 ####################################################################################################
 #--------------------------------------- Hydro solver method
 ####################################################################################################
-HYDRO_MESHLESS_FINITE_MASS           # Lagrangian (constant-mass) finite-volume Godunov method
-#HYDRO_MESHLESS_FINITE_VOLUME       # Moving (quasi-Lagrangian) finite-volume Godunov method
+#HYDRO_MESHLESS_FINITE_MASS           # Lagrangian (constant-mass) finite-volume Godunov method
+HYDRO_MESHLESS_FINITE_VOLUME       # Moving (quasi-Lagrangian) finite-volume Godunov method
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- SPH methods:
 #SPHEQ_DENSITY_INDEPENDENT_SPH      # force SPH to use the 'pressure-sph' formulation ("modern" SPH)
