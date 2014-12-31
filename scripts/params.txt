@@ -72,7 +72,7 @@ MinGasTemp      10.	    % don't set <10 in explicit feedback runs, otherwise 0
 %---- Density/volume estimation (kernel) 
 DesNumNgb               32      % 32 for standard kernel, 60-114 for quintic 
 MaxHsml                 1.0e10  % minimum gas kernel length (some very large value to prevent errors)
-MinHsml                 0       % minimum gas kernel length  (=0, should be <=SofteningGasMaxPhys)
+MinGasHsmlFractional    0       % minimum kernel length relative to gas force softening (<= 1)
 
 %---- Gravitational softening lengths 
 %----- Softening lengths per particle type. If ADAPTIVE_GRAVSOFT is set, these  

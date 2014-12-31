@@ -234,7 +234,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #endif
             double dEnt = SphP[i].InternalEnergy + SphP[i].DtInternalEnergy * dt_hydrokick + dEnt_Gravity;
             
-#if !defined(HYDRO_SPH) && !defined(MAGNETIC)
+#if !defined(HYDRO_SPH) && !defined(MAGNETIC) // ??? //
             /* if we're using a Riemann solver, we include an energy/entropy-type switch to ensure
                 that we don't corrupt the temperature evolution of extremely cold, adiabatic flows */
             double e_thermal,e_kinetic,e_potential;
@@ -242,6 +242,9 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             e_potential = P[i].Mass * sqrt(e_potential) * (KERNEL_CORE_SIZE*PPP[i].Hsml*All.cf_atime); // = M*|a_grav|*h (physical)
             e_kinetic = 0.5 * P[i].Mass * All.cf_a2inv * SphP[i].MaxKineticEnergyNgb;
             e_thermal = DMAX(0.5*SphP[i].InternalEnergy, dEnt) * P[i].Mass;
+#ifdef MAGNETIC
+            for(j=0;j<3;j++) {e_thermal += 0.5*SphP[i].B[j]*SphP[i].B[j]*SphP[i].Density/(All.cf_atime*P[i].Mass);}
+#endif
             int do_entropy = 0;
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             if(0.01*(e_thermal+e_kinetic) > e_thermal) {do_entropy=1;}
@@ -261,6 +264,15 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             {
                 /* use the pure-SPH entropy equation, which is exact up to the mass flux, for adiabatic flows */
                 SphP[i].DtInternalEnergy = -(SphP[i].Pressure/SphP[i].Density) * P[i].Particle_DivVel*All.cf_a2inv;
+#ifdef MAGNETIC
+                for(j=0;j<3;j++)
+                {
+                    SphP[i].DtB[j] = (1./3.) * SphP[i].B[j]*All.cf_atime * P[i].Particle_DivVel*All.cf_a2inv;
+                }
+#ifdef DIVBCLEANING_DEDNER
+                SphP[i].DtPhi = (1./3.) * SphP[i].Phi * P[i].Particle_DivVel*All.cf_a2inv;
+#endif
+#endif
                 if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*GAMMA_MINUS1 * SphP[i].InternalEnergyPred * All.cf_hubble_a;
                 dEnt = SphP[i].InternalEnergy + SphP[i].DtInternalEnergy * dt_hydrokick; /* gravity term not included here, as it makes this unstable */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -370,10 +382,55 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
     double BphysVolphys_to_BcodeVolCode = 1 / All.cf_atime;
     for(j = 0; j < 3; j++) {SphP[i].B[j] += SphP[i].DtB[j] * dt_entr * BphysVolphys_to_BcodeVolCode;} // fluxes are always physical, convert to code units //
 #ifdef DIVBCLEANING_DEDNER
-    double dtphi_code = BphysVolphys_to_BcodeVolCode * All.cf_atime * SphP[i].DtPhi;
     /* phi units are [vcode][Bcode]=a^3 * vphys*Bphys */
-    SphP[i].Phi += dtphi_code * dt_entr;
-    SphP[i].Phi *= exp( -dt_entr * Get_Particle_PhiField_DampingTimeInv(i) );
+    if(SphP[i].Density > 0)
+    {
+        /* now we're going to check for physically reasonable phi values */
+        double cs_phys = All.cf_afac3 * Particle_effective_soundspeed_i(i);
+        double b_phys = 0.0;
+        for(j = 0; j < 3; j++) {b_phys += Get_Particle_BField(i,j)*Get_Particle_BField(i,j);}
+        b_phys = sqrt(b_phys)*All.cf_a2inv;
+        double vsig1 = sqrt(cs_phys*cs_phys + b_phys*b_phys/(SphP[i].Density*All.cf_a3inv));
+        double vsig2 = 0.5 * All.cf_afac3 * fabs(SphP[i].MaxSignalVel);
+        double vsig_max = DMAX( DMAX(vsig1,vsig2) , All.FastestWaveSpeed );
+        double phi_phys_abs = fabs(Get_Particle_PhiField(i)) * All.cf_a3inv;
+        double vb_phy_abs = vsig_max * b_phys;
+
+        if((phi_phys_abs>0)&&(vb_phy_abs>0)&&(!isnan(phi_phys_abs))&&(!isnan(vb_phy_abs)))
+        {
+            double phi_max_tolerance = 10.0;
+            if(phi_phys_abs > 1000. * phi_max_tolerance * vb_phy_abs)
+            {
+                /* this indicates a serious problem! issue a warning and zero phi */
+                printf("MAJOR GROWTH ERROR IN PHI-FIELD: phi_phys_abs=%g vb_phy_abs=%g vsig_max=%g b_phys=%g particle_id_i=%d dtphi_code=%g Pressure=%g rho=%g x/y/z=%g/%g/%g vx/vy/vz=%g/%g/%g Bx/By/Bz=%g/%g/%g h=%g u=%g m=%g phi=%g bin=%d SigVel=%g a=%g \n",
+                       phi_phys_abs,vb_phy_abs,vsig_max,b_phys,i,SphP[i].DtPhi,
+                       SphP[i].Pressure,SphP[i].Density,P[i].Pos[0],P[i].Pos[1],P[i].Pos[2],
+                       P[i].Vel[0],P[i].Vel[1],P[i].Vel[2],SphP[i].B[0],SphP[i].B[1],SphP[i].B[2],
+                       PPP[i].Hsml,SphP[i].InternalEnergy,P[i].Mass,SphP[i].Phi,P[i].TimeBin,
+                       SphP[i].MaxSignalVel,All.cf_atime);
+                fflush(stdout);
+                SphP[i].PhiPred = SphP[i].Phi = SphP[i].DtPhi = 0;
+            } else {
+                if(phi_phys_abs > phi_max_tolerance * vb_phy_abs)
+                {
+                    /* in this limit, only allow for decay of phi: to avoid over-shooting, we apply the force as damping */
+                    if(SphP[i].Phi > 0) {SphP[i].DtPhi=DMIN(SphP[i].DtPhi,0);} else {SphP[i].DtPhi=DMAX(SphP[i].DtPhi,0);}
+                    double dtphi_code = dt_entr * BphysVolphys_to_BcodeVolCode * All.cf_atime * SphP[i].DtPhi;
+                    if(SphP[i].Phi != 0) {SphP[i].Phi *= exp( - fabs(dtphi_code) / fabs(SphP[i].Phi) );}
+                } else {
+                    /* ok, in this regime, we're safe to apply the 'normal' time evolution */
+                    double dtphi_code = dt_entr * BphysVolphys_to_BcodeVolCode * All.cf_atime * SphP[i].DtPhi;
+                    SphP[i].Phi += dtphi_code;
+                }
+            }
+        }
+    }
+    /* now apply the usual damping term */
+    double t_damp = Get_Particle_PhiField_DampingTimeInv(i);
+    if((t_damp>0) && (!isnan(t_damp)))
+    {
+        SphP[i].Phi *= exp( -dt_entr * t_damp );
+    }
 #endif
 #endif
 #ifdef NUCLEAR_NETWORK

@@ -453,6 +453,24 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
       break;
 
+            
+    case IO_HeIII:
+        break;
+    case IO_H2I:
+        break;
+    case IO_H2II:
+        break;
+    case IO_HM:
+        break;
+    case IO_HD:
+        break;
+    case IO_DI:
+        break;
+    case IO_DII:
+        break;
+    case IO_HeHII:
+        break;
+            
 
     case IO_HSML:		/* gas kernel length */
       for(n = 0; n < pc; pindex++)
@@ -3338,13 +3356,13 @@ void get_dataset_name(enum iofields blocknr, char *buf)
       strcpy(buf, "ArtificialViscosity");
       break;
     case IO_AMDC:
-      strcpy(buf, "ArtificialMagneticDissipatio");
+      strcpy(buf, "ArtMagneticDissipation");
       break;
     case IO_PHI:
       strcpy(buf, "DivBcleaningFunctionPhi");
       break;
     case IO_GRADPHI:
-      strcpy(buf, "DivBcleaningFunctionGadPhi");
+      strcpy(buf, "DivBcleaningFunctionGradPhi");
       break;
     case IO_ROTB:
       strcpy(buf, "RotationB");

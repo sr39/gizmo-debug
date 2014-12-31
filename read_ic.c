@@ -603,6 +603,20 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
     case IO_DTENTR:
     case IO_STRESSDIAG:
     case IO_STRESSOFFDIAG:
+    case IO_RAD_ACCEL:
+    case IO_DISTORTIONTENSORPS:
+    case IO_HeHII:
+    case IO_DI:
+    case IO_DII:
+    case IO_HD:
+    case IO_HM:
+    case IO_H2II:
+    case IO_H2I:
+    case IO_HeIII:
+    case IO_HeII:
+    case IO_HeI:
+    case IO_HII:
+    case IO_NH:
     case IO_STRESSBULK:
     case IO_SHEARCOEFF:
     case IO_TSTP:

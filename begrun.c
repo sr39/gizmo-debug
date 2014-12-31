@@ -202,7 +202,7 @@ void begrun(void)
       All.TimeBetStatistics = all.TimeBetStatistics;
       All.CpuTimeBetRestartFile = all.CpuTimeBetRestartFile;
       All.ErrTolIntAccuracy = all.ErrTolIntAccuracy;
-      All.MinHsml = all.MinHsml;
+      All.MinGasHsmlFractional = all.MinGasHsmlFractional;
       All.MinGasTemp = all.MinGasTemp;
         
         /* allow softenings to be modified during the run */
@@ -1315,9 +1315,8 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 
-        
-        strcpy(tag[nt], "MinHsml");
-        addr[nt] = &All.MinHsml;
+        strcpy(tag[nt], "MinGasHsmlFractional");
+        addr[nt] = &All.MinGasHsmlFractional;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "MaxHsml");
@@ -2183,9 +2182,11 @@ void read_parameter_file(char *fname)
     
 #ifndef DEVELOPER_MODE
     if(All.ComovingIntegrationOn) {All.ErrTolForceAcc = 0.005;}
-    All.MaxNumNgbDeviation = All.DesNumNgb / 16.0;
+    All.MaxNumNgbDeviation = All.DesNumNgb / 640.0;
+    if(All.MaxNumNgbDeviation < 0.05) All.MaxNumNgbDeviation = 0.05;
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-    All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 16.0;
+    All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 64.0;
+    if(All.AGS_MaxNumNgbDeviation < 0.05) All.AGS_MaxNumNgbDeviation = 0.05;
 #endif
 #endif
 #ifdef MAGNETIC

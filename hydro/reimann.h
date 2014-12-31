@@ -40,7 +40,8 @@ struct Riemann_outputs
     MyDouble cfast_L;
     MyDouble cfast_R;
 #ifdef DIVBCLEANING_DEDNER
-    MyDouble phi_normal_corrected;
+    MyDouble phi_normal_mean;
+    MyDouble phi_normal_db;
 #endif
 #endif
     struct Conserved_var_Riemann Fluxes;
@@ -999,9 +1000,11 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     double corr_p_abs = fabs(corr_p);
     double corr_b_abs = DEDNER_IMPLICIT_LIMITER * fabs(Bx);
     if(corr_p_abs > corr_b_abs) {corr_norm *= corr_b_abs/corr_p_abs;}
+    /* ok, now we should have a properly slope-limited reconstruction of Bnorm */
+    
     Riemann_out->B_normal_corrected += corr_norm * corr_p;
-    Riemann_out->phi_normal_corrected = 0.5*(Riemann_vec.R.phi+Riemann_vec.L.phi);
-    Riemann_out->phi_normal_corrected += corr_norm * 0.5*(c_eff*(Riemann_vec.L.B[0]-Riemann_vec.R.B[0]));
+    Riemann_out->phi_normal_mean = 0.5 * corr_norm * (Riemann_vec.R.phi+Riemann_vec.L.phi);
+    Riemann_out->phi_normal_db = corr_norm * 0.5*(c_eff*(Riemann_vec.L.B[0]-Riemann_vec.R.B[0]));
 #endif
     /* and set the normal component of B to the corrected value */
     Bx = Riemann_out->B_normal_corrected; // need to re-set this using the updated value of Bx //
@@ -1347,7 +1350,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     /* alright, we've gotten successful HLLD fluxes! */
     Riemann_out->Fluxes.B[0] = -v_frame * Bx;
 #ifdef DIVBCLEANING_DEDNER
-    Riemann_out->Fluxes.phi = -v_frame * Riemann_out->phi_normal_corrected; // need to use the proper phi from the updated problem //
+    Riemann_out->Fluxes.phi = -v_frame * Riemann_out->phi_normal_mean; // need to use the proper phi from the updated problem //
     //Riemann_out->Fluxes.phi -= All.DivBcleanHyperbolicSigma * c_eff*c_eff * Bx;
 #endif
     Riemann_out->S_M=v_frame;

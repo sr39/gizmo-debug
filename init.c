@@ -293,7 +293,9 @@ void init(void)
     {
         for(i = 0; i < NumPart; i++)
             for(j = 0; j < 3; j++)
+	    {
                 P[i].Vel[j] *= sqrt(All.Time) * All.Time;
+	    }
     }
     
 #ifdef SIDM

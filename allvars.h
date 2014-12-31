@@ -1102,14 +1102,14 @@ extern struct global_data_all_processes
   double TreeDomainUpdateFrequency;	/*!< controls frequency of domain decompositions  */
 
 
-  /* gravitational and hydrodynamical softening lengths (given in terms of an `equivalent' Plummer softening
-   * length)
+  /* gravitational and hydrodynamical softening lengths (given in terms of an `equivalent' Plummer softening length)
    *
    * five groups of particles are supported 0=gas,1=halo,2=disk,3=bulge,4=stars
    */
-  double MinHsml;			/*!< minimum allowed gas kernel length */
-  double MaxHsml;           /*!< minimum allowed gas kernel length */
-
+    double MinGasHsmlFractional; /*!< minimim allowed gas kernel length relative to force softening (what you actually set) */
+    double MinHsml;			/*!< minimum allowed gas kernel length */
+    double MaxHsml;           /*!< minimum allowed gas kernel length */
+    
 #ifdef TURB_DRIVING
   double RefDensity;
   double RefInternalEnergy;
@@ -1814,6 +1814,7 @@ extern struct sph_particle_data
     MyDouble DtB[3];             /*!< time derivative of B-field (of -conserved- B-field) */
     MyFloat divB;               /*!< storage for the 'effective' divB used in div-cleaning procedure */
 #ifdef DIVBCLEANING_DEDNER
+    MyDouble DtB_PhiCorr[3];    /*!< correction forces for mid-face update to phi-field */
     MyDouble PhiPred;           /*!< current value of Phi */
     MyDouble Phi;               /*!< scalar field for Dedner divergence cleaning */
     MyDouble DtPhi;             /*!< time derivative of Phi-field */

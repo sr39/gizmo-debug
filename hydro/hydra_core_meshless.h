@@ -61,7 +61,7 @@
     {
         memset(&Fluxes, 0, sizeof(struct Conserved_var_Riemann));
 #ifdef DIVBCLEANING_DEDNER
-        magfluxv[0]=magfluxv[1]=magfluxv[2]=0.0; Riemann_out.phi_normal_corrected=0;
+        Riemann_out.phi_normal_mean=Riemann_out.phi_normal_db=0;
 #endif
     } else {
         
@@ -190,10 +190,21 @@
                 Riemann_solver(Riemann_vec, &Riemann_out, n_unit);
                 if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M)))
                 {
+#if defined(MAGNETIC) && defined(DIVBCLEANING_DEDNER)
+                    printf("Riemann Solver Failed to Find Positive Pressure!: PL/M/R=%g/%g/%g Mi/j=%g/%g rhoL/R=%g/%g H_ij=%g/%g vL=%g/%g/%g vR=%g/%g/%g n_unit=%g/%g/%g BL=%g/%g/%g BR=%g/%g/%g phiL/R=%g/%g \n",
+                           Riemann_vec.L.p,Riemann_out.P_M,Riemann_vec.R.p,local.Mass,P[j].Mass,Riemann_vec.L.rho,Riemann_vec.R.rho,local.Hsml,PPP[j].Hsml,
+                           local.Vel[0]-v_frame[0],local.Vel[1]-v_frame[1],local.Vel[2]-v_frame[2],
+                           VelPred_j[0]-v_frame[0],VelPred_j[1]-v_frame[1],VelPred_j[2]-v_frame[2],
+                           n_unit[0],n_unit[1],n_unit[2],
+                           Riemann_vec.L.B[0],Riemann_vec.L.B[1],Riemann_vec.L.B[2],
+                           Riemann_vec.R.B[0],Riemann_vec.R.B[1],Riemann_vec.R.B[2],
+                           Riemann_vec.L.phi,Riemann_vec.R.phi);
+#else
                     printf("Riemann Solver Failed to Find Positive Pressure!: PL/M/R=%g/%g/%g Mi/j=%g/%g rhoL/R=%g/%g vL=%g/%g/%g vR=%g/%g/%g n_unit=%g/%g/%g \n",
                            Riemann_vec.L.p,Riemann_out.P_M,Riemann_vec.R.p,local.Mass,P[j].Mass,Riemann_vec.L.rho,Riemann_vec.R.rho,
                            Riemann_vec.L.v[0],Riemann_vec.L.v[1],Riemann_vec.L.v[2],
                            Riemann_vec.R.v[0],Riemann_vec.R.v[1],Riemann_vec.R.v[2],n_unit[0],n_unit[1],n_unit[2]);
+#endif
                     exit(1234);
                 }
             }
@@ -248,11 +259,6 @@
             Fluxes.B_normal_corrected = -Riemann_out.B_normal_corrected * Face_Area_Norm;
 #ifdef DIVBCLEANING_DEDNER
             Fluxes.phi = Riemann_out.Fluxes.phi * Face_Area_Norm; // much more accurate than mass-based flux //
-            for(k=0;k<3;k++)
-            {
-                magfluxv[k] = Riemann_out.phi_normal_corrected * Face_Area_Vec[k]; // = contribution to -grad*phi //
-                Fluxes.B[k] += magfluxv[k];
-            }
 #endif // DIVBCLEANING_DEDNER
 #endif // MAGNETIC
 #endif
@@ -260,7 +266,7 @@
             /* nothing but bad riemann solutions found! */
             memset(&Fluxes, 0, sizeof(struct Conserved_var_Riemann));
 #ifdef DIVBCLEANING_DEDNER
-            magfluxv[0]=magfluxv[1]=magfluxv[2]=0.0; Riemann_out.phi_normal_corrected=0;
+            Riemann_out.phi_normal_mean=Riemann_out.phi_normal_db=0;
 #endif
         }
     } // Face_Area_Norm != 0

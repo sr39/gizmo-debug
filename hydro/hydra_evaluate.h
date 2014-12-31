@@ -67,9 +67,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
     
 #ifdef MAGNETIC
-    double magfluxv[3]; magfluxv[0]=magfluxv[1]=magfluxv[2]=0;
     kernel.b2_i = local.BPred[0]*local.BPred[0] + local.BPred[1]*local.BPred[1] + local.BPred[2]*local.BPred[2];
 #if defined(HYDRO_SPH)
+    double magfluxv[3]; magfluxv[0]=magfluxv[1]=magfluxv[2]=0;
     kernel.mf_i = local.Mass * fac_magnetic_pressure / (local.Density * local.Density);
     kernel.mf_j = local.Mass * fac_magnetic_pressure;
     // PFH: comoving factors here to convert from B*B/rho to P/rho for accelerations //
@@ -300,8 +300,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double wt_face_sum = Face_Area_Norm * (face_area_dot_vel+face_vel_i);
                 out.DtInternalEnergy += 0.5 * kernel.b2_i*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
 #ifdef DIVBCLEANING_DEDNER
-                out.DtPhi += Riemann_out.phi_normal_corrected * wt_face_sum;
-                for(k=0;k<3;k++) {out.DtInternalEnergy += magfluxv[k] * local.BPred[k]*All.cf_a2inv;}
+                out.DtPhi += (Riemann_out.phi_normal_mean - local.PhiPred*All.cf_a3inv) * wt_face_sum;
+                double phi_normal_full = Riemann_out.phi_normal_mean + Riemann_out.phi_normal_db;
+                for(k=0;k<3;k++) {out.DtB_PhiCorr[k] += phi_normal_full * Face_Area_Vec[k];}
 #endif
 #endif
 #endif // magnetic //
@@ -332,8 +333,8 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double wt_face_sum = Face_Area_Norm * (face_area_dot_vel+face_vel_j);
                     SphP[j].DtInternalEnergy -= 0.5 * kernel.b2_j*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
 #ifdef DIVBCLEANING_DEDNER
-                    SphP[j].DtPhi -= Riemann_out.phi_normal_corrected * wt_face_sum;
-                    for(k=0;k<3;k++) {SphP[j].DtInternalEnergy -= magfluxv[k]*BPred_j[k]*All.cf_a2inv;}
+                    SphP[j].DtPhi -= (Riemann_out.phi_normal_mean - PhiPred_j*All.cf_a3inv) * wt_face_sum;
+                    for(k=0;k<3;k++) {SphP[j].DtB_PhiCorr[k] -= phi_normal_full * Face_Area_Vec[k];;}
 #endif
 #endif
 #endif // magnetic //

@@ -515,10 +515,15 @@ double Get_DtB_FaceArea_Limiter(int i)
     /* ok, with that in hand, define an error tolerance based on this */
     if(area_norm>0)
     {
-        if(area_sum/area_norm > 0.0001)
-        {   
-            /* double tol = (All.CourantFac/0.1) * DMAX( 0.01, area_norm/(2000.*area_sum) ); */
-            double tol = (All.CourantFac/0.1) * DMAX( 0.01, area_norm/(500.*area_sum) );
+        double area_norm_min_threshold = 0.0001;
+        double area_norm_weight = 500.0;
+#ifdef PM_HIRES_REGION_CLIPPING
+        area_norm_min_threshold *= 0.1;
+        area_norm_weight *= 5.0;
+#endif
+        if(area_sum/area_norm > area_norm_min_threshold)
+        {
+            double tol = (All.CourantFac/0.1) * DMAX( 0.01, area_norm/(area_norm_weight * area_sum) );
             tol *= Bmag_max; /* give the limiter dimensions */
             if(dBmag > tol) {return tol/dBmag;} /* now actually check if we exceed this */
         }
@@ -547,7 +552,28 @@ double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)
     if((All.StarformationOn)||(All.ComovingIntegrationOn))
     {
         // only see a small performance drop from fastestwavespeed above to maxsignalvel below, despite the fact that below is purely local (so allows more flexible adapting to high dynamic range)
-        damping_tinv = 0.5 * All.DivBcleanParabolicSigma * (SphP[i_particle_id].MaxSignalVel*All.cf_afac3 / (All.cf_atime*KERNEL_CORE_SIZE*PPP[i_particle_id].Hsml));
+        //damping_tinv = 0.5 * All.DivBcleanParabolicSigma * (SphP[i_particle_id].MaxSignalVel*All.cf_afac3 / (All.cf_atime*KERNEL_CORE_SIZE*PPP[i_particle_id].Hsml));
+        damping_tinv = 0.0;
+        
+        if(PPP[i_particle_id].Hsml > 0)
+        {
+            double vsig2 = 0.5 * All.cf_afac3 * fabs(SphP[i_particle_id].MaxSignalVel);
+            double phi_B_eff = 0.0;
+            if(vsig2 > 0) {phi_B_eff = Get_Particle_PhiField(i_particle_id) / (All.cf_atime * vsig2);}
+            double vsig1 = 0.0;
+            if(SphP[i_particle_id].Density > 0)
+            {
+                vsig1 = All.cf_afac3 *
+                sqrt( Particle_effective_soundspeed_i(i_particle_id)*Particle_effective_soundspeed_i(i_particle_id) +
+                     (All.cf_afac1 / All.cf_atime) *
+                     (Get_Particle_BField(i_particle_id,0)*Get_Particle_BField(i_particle_id,0) +
+                      Get_Particle_BField(i_particle_id,1)*Get_Particle_BField(i_particle_id,1) +
+                      Get_Particle_BField(i_particle_id,2)*Get_Particle_BField(i_particle_id,2) +
+                      phi_B_eff*phi_B_eff) / SphP[i_particle_id].Density );
+            }
+            double vsig_max = DMAX( DMAX(vsig1,vsig2) , 0.1 * All.FastestWaveSpeed );            
+            damping_tinv = 0.5 * All.DivBcleanParabolicSigma * (vsig_max / (All.cf_atime*KERNEL_CORE_SIZE*PPP[i_particle_id].Hsml));
+        }
     } else {
         damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveSpeed / (KERNEL_CORE_SIZE*PPP[i_particle_id].Hsml); // fastest wavespeed has units of [vphys]
         //double damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveDecay * All.cf_a2inv; // no improvement over fastestwavespeed; decay has units [vphys/rphys]

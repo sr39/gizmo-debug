@@ -1255,58 +1255,61 @@ void sum_top_level_node_costfactors(void)
  */
 void set_softenings(void)
 {
-  int i;
-
-  if(All.ComovingIntegrationOn)
+    int i;
+    
+    if(All.ComovingIntegrationOn)
     {
-      if(All.SofteningGas * All.Time > All.SofteningGasMaxPhys)
-	All.SofteningTable[0] = All.SofteningGasMaxPhys / All.Time;
-      else
-	All.SofteningTable[0] = All.SofteningGas;
-
-      if(All.SofteningHalo * All.Time > All.SofteningHaloMaxPhys)
-	All.SofteningTable[1] = All.SofteningHaloMaxPhys / All.Time;
-      else
-	All.SofteningTable[1] = All.SofteningHalo;
-
-      if(All.SofteningDisk * All.Time > All.SofteningDiskMaxPhys)
-	All.SofteningTable[2] = All.SofteningDiskMaxPhys / All.Time;
-      else
-	All.SofteningTable[2] = All.SofteningDisk;
-
-      if(All.SofteningBulge * All.Time > All.SofteningBulgeMaxPhys)
-	All.SofteningTable[3] = All.SofteningBulgeMaxPhys / All.Time;
-      else
-	All.SofteningTable[3] = All.SofteningBulge;
-
-      if(All.SofteningStars * All.Time > All.SofteningStarsMaxPhys)
-	All.SofteningTable[4] = All.SofteningStarsMaxPhys / All.Time;
-      else
-	All.SofteningTable[4] = All.SofteningStars;
-
-      if(All.SofteningBndry * All.Time > All.SofteningBndryMaxPhys)
-	All.SofteningTable[5] = All.SofteningBndryMaxPhys / All.Time;
-      else
-	All.SofteningTable[5] = All.SofteningBndry;
+        if(All.SofteningGas * All.Time > All.SofteningGasMaxPhys)
+            All.SofteningTable[0] = All.SofteningGasMaxPhys / All.Time;
+        else
+            All.SofteningTable[0] = All.SofteningGas;
+        
+        if(All.SofteningHalo * All.Time > All.SofteningHaloMaxPhys)
+            All.SofteningTable[1] = All.SofteningHaloMaxPhys / All.Time;
+        else
+            All.SofteningTable[1] = All.SofteningHalo;
+        
+        if(All.SofteningDisk * All.Time > All.SofteningDiskMaxPhys)
+            All.SofteningTable[2] = All.SofteningDiskMaxPhys / All.Time;
+        else
+            All.SofteningTable[2] = All.SofteningDisk;
+        
+        if(All.SofteningBulge * All.Time > All.SofteningBulgeMaxPhys)
+            All.SofteningTable[3] = All.SofteningBulgeMaxPhys / All.Time;
+        else
+            All.SofteningTable[3] = All.SofteningBulge;
+        
+        if(All.SofteningStars * All.Time > All.SofteningStarsMaxPhys)
+            All.SofteningTable[4] = All.SofteningStarsMaxPhys / All.Time;
+        else
+            All.SofteningTable[4] = All.SofteningStars;
+        
+        if(All.SofteningBndry * All.Time > All.SofteningBndryMaxPhys)
+            All.SofteningTable[5] = All.SofteningBndryMaxPhys / All.Time;
+        else
+            All.SofteningTable[5] = All.SofteningBndry;
 #ifdef SINKS
-      All.SofteningTable[5] = All.SinkHsml / All.Time * All.HubbleParam;
+        All.SofteningTable[5] = All.SinkHsml / All.Time * All.HubbleParam;
 #endif
     }
-  else
+    else
     {
-      All.SofteningTable[0] = All.SofteningGas;
-      All.SofteningTable[1] = All.SofteningHalo;
-      All.SofteningTable[2] = All.SofteningDisk;
-      All.SofteningTable[3] = All.SofteningBulge;
-      All.SofteningTable[4] = All.SofteningStars;
-      All.SofteningTable[5] = All.SofteningBndry;
+        All.SofteningTable[0] = All.SofteningGas;
+        All.SofteningTable[1] = All.SofteningHalo;
+        All.SofteningTable[2] = All.SofteningDisk;
+        All.SofteningTable[3] = All.SofteningBulge;
+        All.SofteningTable[4] = All.SofteningStars;
+        All.SofteningTable[5] = All.SofteningBndry;
 #ifdef SINKS
-      All.SofteningTable[5] = All.SinkHsml;
+        All.SofteningTable[5] = All.SinkHsml;
 #endif
     }
-  for(i = 0; i < 6; i++)
-    All.ForceSoftening[i] = 2.8 * All.SofteningTable[i];
-
+    for(i = 0; i < 6; i++)
+    {
+        All.ForceSoftening[i] = 2.8 * All.SofteningTable[i];
+    }
+    /* set the minimum gas kernel length to be used this timestep */
+    All.MinHsml = All.MinGasHsmlFractional * All.ForceSoftening[0];
 }
 
 

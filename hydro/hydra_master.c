@@ -145,7 +145,6 @@ struct Conserved_var_Riemann
     MyDouble B_normal_corrected;
 #ifdef DIVBCLEANING_DEDNER
     MyDouble phi;
-    MyDouble phi_normal_corrected[3];
 #endif
 #endif
 };
@@ -288,6 +287,7 @@ struct hydrodata_out
     MyFloat divB;
 #if defined(DIVBCLEANING_DEDNER)
     MyFloat DtPhi;
+    MyFloat DtB_PhiCorr[3];
 #endif
 #endif // MAGNETIC //
     
@@ -452,6 +452,7 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
     SphP[i].divB += out->divB;
 #if defined(DIVBCLEANING_DEDNER)
     SphP[i].DtPhi += out->DtPhi;
+    for(k=0;k<3;k++) {SphP[i].DtB_PhiCorr[k] += out->DtB_PhiCorr[k];}
 #endif // Dedner //
 #endif // MAGNETIC //
 }
@@ -499,9 +500,52 @@ void hydro_final_operations_and_cleanup(void)
             double magnorm_closure = Get_DtB_FaceArea_Limiter(i);
 
 #if defined(DIVBCLEANING_DEDNER) && !defined(HYDRO_SPH)
+            // ok now deal with the divB correction forces and damping fields //
+            double DtB_PhiCorr = 0.0;
+            double DtB_UnCorr = 0.0;
+            for(k=0; k<3; k++)
+            {
+                DtB_UnCorr += SphP[i].DtB[k] * SphP[i].DtB[k];
+                DtB_PhiCorr += SphP[i].DtB_PhiCorr[k] * SphP[i].DtB_PhiCorr[k];
+            }
+            double tolerance_for_correction;
+            if((All.StarformationOn)||(All.ComovingIntegrationOn))
+            {
+                tolerance_for_correction = 10.0;
+            } else {
+                tolerance_for_correction = 30.0;
+            }
+#ifdef PM_HIRES_REGION_CLIPPING
+            tolerance_for_correction *= 0.5;
+#endif
+            tolerance_for_correction *= magnorm_closure*magnorm_closure;
+            /* take a high power of these: here we'll use 4, so it works like a threshold */
+            DtB_UnCorr*=DtB_UnCorr; DtB_PhiCorr*=DtB_PhiCorr;
+            tolerance_for_correction *= tolerance_for_correction;
+            /* now re-normalize the correction term if its unacceptably large */
+            double PhiCorr_Norm = 1.0;
+            if((DtB_PhiCorr > 0)&&(!isnan(DtB_PhiCorr))&&(DtB_UnCorr>0)&&(!isnan(DtB_UnCorr))&&(tolerance_for_correction>0)&&(!isnan(tolerance_for_correction)))
+            {
+                if(DtB_PhiCorr > tolerance_for_correction * DtB_UnCorr) {PhiCorr_Norm *= tolerance_for_correction * DtB_UnCorr / DtB_PhiCorr;}
+                for(k=0; k<3; k++)
+                {
+                    SphP[i].DtB[k] += PhiCorr_Norm * SphP[i].DtB_PhiCorr[k];
+                    SphP[i].DtInternalEnergy += PhiCorr_Norm * SphP[i].DtB_PhiCorr[k] * Get_Particle_BField(i,k)*All.cf_a2inv;
+                }
+            }
+            
             SphP[i].DtPhi *= magnorm_closure;
-            double tmp_ded = 0.5 * SphP[i].MaxSignalVel / (fac_mu*All.cf_atime); // has units of v_physical now
-            SphP[i].DtPhi -= tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB;
+            if((!isnan(SphP[i].divB))&&(PPP[i].Hsml>0)&&(SphP[i].divB!=0)&&(SphP[i].Density>0))
+            {
+                double tmp_ded = 0.5 * SphP[i].MaxSignalVel / (fac_mu*All.cf_atime); // has units of v_physical now
+                /* do a check to make sure divB isn't something wildly divergent (owing to particles being too close) */
+                double b2_max = 0.0;
+                for(k=0;k<3;k++) {b2_max += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+                b2_max = 100.0 * fabs( sqrt(b2_max) * All.cf_a2inv * P[i].Mass / (SphP[i].Density*All.cf_a3inv) * 1.0 / (PPP[i].Hsml*All.cf_atime) );
+                if(fabs(SphP[i].divB) > b2_max) {SphP[i].divB *= b2_max / fabs(SphP[i].divB);}
+                /* ok now can apply this to get the growth rate of phi */
+                SphP[i].DtPhi -= tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB;
+            }
 #endif
 #endif // MAGNETIC
             
@@ -624,6 +668,10 @@ void hydro_final_operations_and_cleanup(void)
                 for(k = 0; k < 3; k++) SphP[i].HydroAccel[k] = 0;//SphP[i].dMomentum[k] = 0;//manifest-indiv-timestep-debug//
 #ifdef SPH_BND_DTB
                 for(k = 0; k < 3; k++) SphP[i].DtB[k] = 0;
+#ifdef DIVBCLEANING_DEDNER
+                for(k = 0; k < 3; k++) SphP[i].DtB_PhiCorr[k] = 0;
+                SphP[i].DtPhi = 0;
+#endif
 #endif
 #ifdef SPH_BND_BFLD
                 for(k = 0; k < 3; k++) SphP[i].B[k] = 0;
@@ -712,6 +760,7 @@ void hydro_force(void)
 #ifndef HYDRO_SPH
 #ifdef DIVBCLEANING_DEDNER
             SphP[i].DtPhi = 0;
+            for(k=0;k<3;k++) {SphP[i].DtB_PhiCorr[k] = 0;}
 #endif
             for(k=0;k<3;k++)
             {
