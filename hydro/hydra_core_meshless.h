@@ -10,10 +10,7 @@
     
     double s_star_ij,s_i,s_j,v_frame[3],n_unit[3];
     double distance_from_i[3],distance_from_j[3];
-    face_vel_i=face_vel_j=0;
-#ifdef MAGNETIC
-    Face_Area_Norm=0;
-#endif
+    face_vel_i=face_vel_j=Face_Area_Norm=0;
     
     /* --------------------------------------------------------------------------------- */
     /* define volume elements and interface position */

@@ -263,7 +263,7 @@ void begrun(void)
       All.ArtCondConstant = all.ArtCondConstant;
 #endif
 
-#if defined(MAGNETIC_DISSIPATION)
+#if defined(SPH_ARTIFICIAL_RESISTIVITY)
       All.ArtMagDispConst = all.ArtMagDispConst;
 #endif
 
@@ -1122,7 +1122,7 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.ViscosityAMax;
         id[nt++] = REAL;
 #endif
-#ifdef MAGNETIC_DISSIPATION
+#ifdef SPH_ARTIFICIAL_RESISTIVITY
         strcpy(tag[nt], "ArtificialResistivityMax");
         addr[nt] = &All.ArtMagDispConst;
         id[nt++] = REAL;
@@ -1189,7 +1189,7 @@ void read_parameter_file(char *fname)
         All.ViscosityAMin = 0.05;
         All.ViscosityAMax = 2.00;
 #endif
-#ifdef MAGNETIC_DISSIPATION
+#ifdef SPH_ARTIFICIAL_RESISTIVITY
         All.ArtMagDispConst = 1.0;
 #endif
 #endif
@@ -2190,8 +2190,8 @@ void read_parameter_file(char *fname)
 #endif
 #endif
 #ifdef MAGNETIC
-    All.CourantFac *= 0.5; // ??? //
-    /* safety factor needed for MHD calc, because people keep using the same CFac as hydro! */
+    All.CourantFac *= 0.5; //
+    /* (PFH) safety factor needed for MHD calc, because people keep using the same CFac as hydro! */
 #endif
 #ifdef GALSF_FB_RT_PHOTONMOMENTUM
     All.PhotonMomentum_fIR = 1 - All.PhotonMomentum_fUV - All.PhotonMomentum_fOPT;
@@ -2257,7 +2257,7 @@ void read_parameter_file(char *fname)
         endrun(1);
     }
 #endif
-#ifdef MAGNETIC_DISSIPATION
+#ifdef SPH_ARTIFICIAL_RESISTIVITY
     if((All.ArtMagDispConst<1)||(All.ArtMagDispConst>2))
     {
         if(ThisTask==0)

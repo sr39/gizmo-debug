@@ -92,40 +92,40 @@ OPTIMIZE = -Wall  -g   # optimization and warning flags (default)
 MPICHLIB = -lmpich
 
 ifeq (NOTYPEPREFIX_FFTW,$(findstring NOTYPEPREFIX_FFTW,$(CONFIGVARS)))  # fftw installed without type prefix?
-  FFTW_LIBNAMES =  -lrfftw_mpi -lfftw_mpi -lrfftw -lfftw
+    FFTW_LIBNAMES =  #-lrfftw_mpi -lfftw_mpi -lrfftw -lfftw
 else
 ifeq (DOUBLEPRECISION_FFTW,$(findstring DOUBLEPRECISION_FFTW,$(CONFIGVARS)))  # test for double precision libraries
-  FFTW_LIBNAMES =  -ldrfftw_mpi -ldfftw_mpi -ldrfftw -ldfftw
+    FFTW_LIBNAMES =  #-ldrfftw_mpi -ldfftw_mpi -ldrfftw -ldfftw
 else
-  FFTW_LIBNAMES =  -lsrfftw_mpi -lsfftw_mpi -lsrfftw -lsfftw
+    FFTW_LIBNAMES =  #-lsrfftw_mpi -lsfftw_mpi -lsrfftw -lsfftw
 endif
 endif
 
 # we only need fftw if PMGRID is turned on
 ifeq (PMGRID, $(findstring PMGRID, $(CONFIGVARS)))
 ifeq (NOTYPEPREFIX_FFTW,$(findstring NOTYPEPREFIX_FFTW,$(CONFIGVARS)))  # fftw installed without type prefix?
-  FFTW_LIB = $(FFTW_LIBS) -lrfftw_mpi -lfftw_mpi -lrfftw -lfftw
+  FFTW_LIBNAMES = -lrfftw_mpi -lfftw_mpi -lrfftw -lfftw
 else
 ifeq (DOUBLEPRECISION_FFTW,$(findstring DOUBLEPRECISION_FFTW,$(CONFIGVARS)))  # test for double precision libraries
-  FFTW_LIB = $(FFTW_LIBS) -ldrfftw_mpi -ldfftw_mpi -ldrfftw -ldfftw
+  FFTW_LIBNAMES = -ldrfftw_mpi -ldfftw_mpi -ldrfftw -ldfftw
 else
-  FFTW_LIB = $(FFTW_LIBS) -lsrfftw_mpi -lsfftw_mpi -lsrfftw -lsfftw
+  FFTW_LIBNAMES = -lsrfftw_mpi -lsfftw_mpi -lsrfftw -lsfftw
 endif
 endif
 else
 # or if POWERSPEC_GRID is activated
 ifeq (POWERSPEC_GRID, $(findstring POWERSPEC_GRID, $(CONFIGVARS)))
 ifeq (NOTYPEPREFIX_FFTW,$(findstring NOTYPEPREFIX_FFTW,$(CONFIGVARS)))  # fftw installed without type prefix?
-  FFTW_LIB = $(FFTW_LIBS) -lrfftw_mpi -lfftw_mpi -lrfftw -lfftw
+  FFTW_LIBNAMES = -lrfftw_mpi -lfftw_mpi -lrfftw -lfftw
 else
 ifeq (DOUBLEPRECISION_FFTW,$(findstring DOUBLEPRECISION_FFTW,$(CONFIGVARS)))  # test for double precision libraries
-  FFTW_LIB = $(FFTW_LIBS) -ldrfftw_mpi -ldfftw_mpi -ldrfftw -ldfftw
+  FFTW_LIBNAMES = -ldrfftw_mpi -ldfftw_mpi -ldrfftw -ldfftw
 else
-  FFTW_LIB = $(FFTW_LIBS) -lsrfftw_mpi -lsfftw_mpi -lsrfftw -lsfftw
+  FFTW_LIBNAMES = -lsrfftw_mpi -lsfftw_mpi -lsrfftw -lsfftw
 endif
 endif
 else
-  FFTW_LIB =
+  FFTW_LIBNAMES = #
 endif
 
 endif
@@ -162,6 +162,65 @@ OPT     += -DUSE_MPI_IN_PLACE
 ##  -- performance is very similar with impi (intel-mpi) instead of mpavich2, 
 ##   if preferred use that with MPICHLIB line uncommented
 ## newest version of code needed for compatibility with calls in MPI-2 libraries
+##
+endif
+
+
+
+#----------------------------
+ifeq ($(SYSTYPE),"MacBookPro")
+CC       =  mpicc
+CXX      =  mpiccxx
+FC       =  $(CC)
+OPTIMIZE = -O1 -funroll-loops
+OPTIMIZE += -g -Wall # compiler warnings
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = #
+MKL_LIBS = #
+GSL_INCL = -I$(PORTINCLUDE)
+GSL_LIBS = -L$(PORTLIB)
+FFTW_INCL= -I/usr/local/include
+FFTW_LIBS= -L/usr/local/lib
+HDF5INCL = -I$(PORTINCLUDE) -DH5_USE_16_API
+HDF5LIB  = -L$(PORTLIB) -lhdf5 -lz
+MPICHLIB = #
+OPT     += #
+##
+## PFH: this is my own laptop installation (2013 MacBook Pro running Yosemite)
+## --
+## I have installed GSL and HDF5 through MacPorts (once you have it installed, just use:
+## sudo port install gsl
+## sudo port install hdf5
+## then the shortcut PORTINCLUDE/PORTLIB are just my own links to the macports installation
+##  directories. in my case they are the default:
+## PORTLIB=/opt/local/lib
+## PORTINCLUDE=/opt/local/include
+## --
+## Unfortunately, FFTW is more complicated, since macports, fink, and other repository systems
+## do not support direct installation of the MPI version of FFTW2, which is what GIZMO needs
+## if you want to run with PMGRID or POWERSPEC enabled (if not, it should just compile without
+## FFTW just fine). Be sure to install FFTW 2.1.5: get it from http://www.fftw.org/
+## then unpack it, go into the unpacked directory, and configure it with:
+## ./configure --enable-mpi --enable-type-prefix --enable-float
+## (this set of commands is important to install the correct version)
+## then "make" and finally "sudo make install"
+## that should install it to its default location, /usr/local/, which is where FFTW_INCL/FFW_LIBS
+## are set to point (to the respective include and lib sub-directories). check to make sure you
+## have the fftw libraries correctly installed.
+## --
+## With this done, and the code successfully compiled, you should be able to run it with
+## mpirun -np X ./GIZMO 1>gizmo.out 2>gizmo.err &
+## (here "X" is the number of processes you want to use, I'm assuming youre running from the
+##  same directory with the code so ./GIZMO is just in the local directory, and GIZMO is the
+##  compiled file, and the 1> and 2> commands route stdin and stderr to the desired files)
+##--
+## If you're having trouble, I recommend the excellent guides to installing GADGET-2 at:
+## http://astrobites.org/2011/04/02/installing-and-running-gadget-2/
+## and
+## https://gauge.wordpress.com/2009/06/16/pitp-2009-installing-gadget2/
+## (by Nathan Goldbaum and Javiera Guedes, respectively) -- the installation should be
+## nearly identical here
 ##
 endif
 

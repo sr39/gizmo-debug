@@ -219,12 +219,6 @@ void pause_run_to_attach_debugger()
 }
 #endif
 
-/*
-double get_random_number(unsigned int id)
-{
-  return RndTable[(id % RNDTABLE)];
-}
-*/
 
 double get_random_number(MyIDType id)
 {

@@ -284,7 +284,7 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 ####################################################################################################
 #DEVELOPER_MODE                 # allows you to modify various numerical parameters (courant factor, etc) at run-time
 #GAMMA_ENFORCE_ADIABAT=(1.0)    # if set, this forces gas to lie -exactly- along the adiabat P=GAMMA_ENFORCE_ADIABAT*(rho^GAMMA)
-#NOTEST_FOR_IDUNIQUENESS        # don't bother checking all particles have unique id numbers
+#TEST_FOR_IDUNIQUENESS          # explicitly check if particles have unique id numbers (only use for special behaviors)
 #LONGIDS                        # use long ints for IDs (needed for super-large simulations)
 #ASSIGN_NEW_IDS                 # assign IDs on startup instead of reading from ICs
 #READ_HSML                      # reads hsml from IC file

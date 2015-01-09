@@ -63,7 +63,7 @@ int ags_gravity_kernel_shared_check(short int particle_type_primary, short int p
 #ifdef SIDM
     /* SIDM particles see other SIDM particles */
     if((1 << particle_type_primary) & (SIDM))
-        return ((1 << particle_type_secondary) & (SIDM))
+        return ((1 << particle_type_secondary) & (SIDM));
 #endif
     
     /* if we haven't been caught by one of the above checks, we simply return whether or not we see 'ourselves' */

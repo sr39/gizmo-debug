@@ -583,8 +583,8 @@ void blackhole_accretion(void)
             fac=BPP(n).BH_Mass_AlphaDisk;
             medd=mdot_alphadisk;
 #endif
-            fprintf(FdBlackHolesDetails, "BH=%u %g %g %g %g %g %g %g %g   %2.7f %2.7f %2.7f\n",
-                    P[n].ID, All.Time, BPP(n).BH_Mass, fac, P[n].Mass, mdot, medd,
+            fprintf(FdBlackHolesDetails, "BH=%llu %g %g %g %g %g %g %g %g   %2.7f %2.7f %2.7f\n",
+                    (unsigned long long) P[n].ID, All.Time, BPP(n).BH_Mass, fac, P[n].Mass, mdot, medd,
                     BPP(n).DensAroundStar*All.cf_a3inv, BlackholeDataPasser[n].BH_InternalEnergy,
                     P[n].Pos[0], P[n].Pos[1], P[n].Pos[2]);
             
@@ -1367,8 +1367,8 @@ int blackhole_evaluate(int target, int mode, int *nexport, int *nSend_local)
                                 if(vrel > BH_CSND_FRAC_BH_MERGE * csnd)
                                 {
                                     fprintf(FdBlackHolesDetails,
-                                            "ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n",
-                                            ThisTask, All.Time, id, P[j].ID, vrel, csnd);
+                                            "ThisTask=%d, time=%g: id=%llu would like to swallow %llu, but vrel=%g vesc=%g\n",
+                                            ThisTask, All.Time, (unsigned long long) id, (unsigned long long) P[j].ID, vrel, csnd);
                                 }
                                 else
                                 {
@@ -1655,8 +1655,8 @@ int blackhole_evaluate_swallow(int target, int mode, int *nexport, int *nSend_lo
                     if(P[j].Type == 5)
                     {
                         fprintf(FdBlackHolesDetails,
-                                "ThisTask=%d, time=%g: id=%u swallows %u (%g %g)\n",
-                                ThisTask, All.Time, id, P[j].ID, bh_mass, BPP(j).BH_Mass);
+                                "ThisTask=%d, time=%g: id=%llu swallows %llu (%g %g)\n",
+                                ThisTask, All.Time, (unsigned long long) id, (unsigned long long) P[j].ID, bh_mass, BPP(j).BH_Mass);
                         
                         accreted_mass += FLT(P[j].Mass);
                         accreted_BH_mass += FLT(BPP(j).BH_Mass);

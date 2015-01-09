@@ -145,8 +145,8 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     /* need to do the slightly more complicated update scheme to maintain exact mass conservation */
-    double dMass, d_inc = 0.5; // fraction of delta_conserved to couple per kick step (each 'kick' is 1/2-timestep) //
-    //double dv[3], v_old[3], dMass, ent_old=0;
+    double dMass;  // fraction of delta_conserved to couple per kick step (each 'kick' is 1/2-timestep) //
+    //double dv[3], v_old[3], dMass, ent_old=0, d_inc = 0.5;;
     if(P[i].Type==0)
     {
         //ent_old = SphP[i].InternalEnergy;
@@ -234,9 +234,13 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #endif
             double dEnt = SphP[i].InternalEnergy + SphP[i].DtInternalEnergy * dt_hydrokick + dEnt_Gravity;
             
-#if !defined(HYDRO_SPH) && !defined(MAGNETIC) // ??? //
+#if !defined(HYDRO_SPH) && !defined(MAGNETIC) 
             /* if we're using a Riemann solver, we include an energy/entropy-type switch to ensure
                 that we don't corrupt the temperature evolution of extremely cold, adiabatic flows */
+            /* MHD tests suggest that this switch often does more harm than good: we will
+             pay the price of noisier temperature fields (corrupting them when c_s << v_A << v_bulk)
+             and they are dynamically irrelevant, in exchange for avoiding potentially much more
+             serious errors if this tripped when the B-fields were important */
             double e_thermal,e_kinetic,e_potential;
             e_potential=0; for(j=0;j<3;j++) {e_potential += grav_acc[j]*grav_acc[j];}
             e_potential = P[i].Mass * sqrt(e_potential) * (KERNEL_CORE_SIZE*PPP[i].Hsml*All.cf_atime); // = M*|a_grav|*h (physical)

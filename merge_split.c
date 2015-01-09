@@ -163,9 +163,12 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     int k;
     double phi = 2.0*M_PI*get_random_number(i+1+ThisTask); // random from 0 to 2pi //
     double cos_theta = 2.0*(get_random_number(i+3+2*ThisTask)-0.5); // random between 1 to -1 //
-    double d_r = 0.25 * KERNEL_CORE_SIZE*PPP[i].Hsml; // needs to be epsilon*Hsml where epsilon<<1, to maintain stability //
-    double r_near = 0.35 * sqrt(r2_nearest);
-    d_r = DMIN(d_r , r_near); // use a 'buffer' to limit to some multiple of the distance to the nearest particle //
+    double r_near = sqrt(r2_nearest);
+    double hsml = PPP[i].Hsml;
+    if(hsml < r_near) {hsml = r_near;}
+    r_near *= 0.35;
+    double d_r = 0.25 * KERNEL_CORE_SIZE*hsml; // needs to be epsilon*Hsml where epsilon<<1, to maintain stability //
+    d_r = DMAX( DMAX(0.1*r_near , 0.005*hsml) , DMIN(d_r , r_near) ); // use a 'buffer' to limit to some multiple of the distance to the nearest particle //
     
     /* find the first non-gas particle and move it to the end of the particle list */
     long j = NumPart + n_particles_split;
@@ -196,6 +199,30 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     /* assign masses to both particles (so they sum correctly) */
     P[j].Mass = mass_of_new_particle * P[i].Mass;
     P[i].Mass -= P[j].Mass;
+#ifdef MAGNETIC
+    /* we evolve the -conserved- VB and Vphi, so this must be partitioned */
+    for(k=0;k<3;k++)
+    {
+        SphP[j].B[k] = mass_of_new_particle * SphP[i].B[k];
+        SphP[i].B[k] -= SphP[j].B[k];
+        SphP[j].BPred[k] = mass_of_new_particle * SphP[i].BPred[k];
+        SphP[i].BPred[k] -= SphP[j].BPred[k];
+        SphP[j].DtB[k] = mass_of_new_particle * SphP[i].DtB[k];
+        SphP[i].DtB[k] -= SphP[j].DtB[k];
+    }
+    SphP[j].divB = mass_of_new_particle * SphP[i].divB;
+    SphP[i].divB -= SphP[j].divB;
+#ifdef DIVBCLEANING_DEDNER
+    SphP[j].Phi = mass_of_new_particle * SphP[i].Phi;
+    SphP[i].Phi -= SphP[j].Phi;
+    SphP[j].DtPhi = mass_of_new_particle * SphP[i].DtPhi;
+    SphP[i].DtPhi -= SphP[j].DtPhi;
+    SphP[j].PhiPred = mass_of_new_particle * SphP[i].PhiPred;
+    SphP[i].PhiPred -= SphP[j].PhiPred;
+#endif
+    /* ideally, particle-splits should be accompanied by a re-partition of the density via the density() call
+        for the particles affected, after the tree-reconstruction, with quantities like B used to re-calculate after */
+#endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     double dmass = mass_of_new_particle * SphP[i].DtMass;
     SphP[j].DtMass = dmass;
@@ -362,6 +389,20 @@ void merge_particles_ij(MyIDType i, MyIDType j)
         P[j].GravPM[k] = wt_j*P[j].GravPM[k] + wt_i*P[i].GravPM[k]; // force-conserving //
 #endif
     }
+#ifdef MAGNETIC
+    // we evolve the conservative variables VB and Vpsi, these should simply add in particle-merge operations //
+    for(k=0;k<3;k++)
+    {
+        SphP[j].B[k] += SphP[i].B[k];
+        SphP[j].BPred[k] += SphP[i].BPred[k];
+        SphP[j].DtB[k] += SphP[i].DtB[k];
+    }
+#ifdef DIVBCLEANING_DEDNER
+    SphP[j].Phi += SphP[i].Phi;
+    SphP[j].PhiPred += SphP[i].PhiPred;
+    SphP[j].DtPhi += SphP[i].DtPhi;
+#endif
+#endif
 
     /* correct our 'guess' for the internal energy with the residual from exact energy conservation */
     double egy_new = mtot * SphP[j].InternalEnergy;
@@ -387,19 +428,6 @@ void merge_particles_ij(MyIDType i, MyIDType j)
     SphP[j].MaxKineticEnergyNgb = DMAX(SphP[j].MaxKineticEnergyNgb,SphP[i].MaxKineticEnergyNgb); /* for the entropy/energy switch condition */
 
     // below, we need to take care of additional physics //
-#ifdef MAGNETIC
-    for(k=0;k<3;k++)
-    {
-        SphP[j].B[k] = wt_j*SphP[j].B[k] + wt_i*SphP[i].B[k];
-        SphP[j].BPred[k] = wt_j*SphP[j].BPred[k] + wt_i*SphP[i].BPred[k];
-        SphP[j].DtB[k] = wt_j*SphP[j].DtB[k] + wt_i*SphP[i].DtB[k];
-    }
-#ifdef DIVBCLEANING_DEDNER
-    SphP[j].Phi = wt_j*SphP[j].Phi + wt_i*SphP[i].Phi;
-    SphP[j].PhiPred = wt_j*SphP[j].PhiPred + wt_i*SphP[i].PhiPred;
-    SphP[j].DtPhi = wt_j*SphP[j].DtPhi + wt_i*SphP[i].DtPhi;
-#endif
-#endif
 #ifdef EOS_DEGENERATE
     SphP[j].temp = wt_j*SphP[j].temp + wt_i*SphP[i].temp;
     SphP[j].dp_drho = wt_j*SphP[j].dp_drho + wt_i*SphP[i].dp_drho;

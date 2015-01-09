@@ -86,7 +86,6 @@ void find_timesteps(void)
         {
             if(P[i].Type==0)
             {
-                // ??? //
                 double vsig2 = 0.5 * All.cf_afac3 * fabs(SphP[i].MaxSignalVel); // in v_phys units //
                 double vsig1 = All.cf_afac3 * sqrt( Particle_effective_soundspeed_i(i)*Particle_effective_soundspeed_i(i) + fac_magnetic_pressure * (Get_Particle_BField(i,0)*Get_Particle_BField(i,0)+Get_Particle_BField(i,1)*Get_Particle_BField(i,1)+Get_Particle_BField(i,2)*Get_Particle_BField(i,2)) / SphP[i].Density );
                 double vsig0 = DMAX(vsig1,vsig2);
@@ -442,7 +441,7 @@ integertime get_timestep(int p,		/*!< particle index */
             if(dt_courant < dt)
                 dt = dt_courant;
 
-#if defined(DIVBCLEANING_DEDNER) // ??? //
+#if defined(DIVBCLEANING_DEDNER) 
             double C0 = pow( 4.0*M_PI / (3.0 * PPP[p].NumNgb) , 1.0/3.0);
 #ifdef ONEDIM
             C0 = 1.0 / PPP[p].NumNgb;
@@ -456,7 +455,7 @@ integertime get_timestep(int p,		/*!< particle index */
                                              Get_Particle_BField(p,2)*Get_Particle_BField(p,2) +
                                              pow(Get_Particle_PhiField(p)/(All.cf_afac3 * All.cf_atime * SphP[p].MaxSignalVel),2)) / SphP[p].Density );
 
-            dt_courant = 0.8 * All.CourantFac * All.cf_atime * (C0*PPP[p].Hsml) / vsig1; // 2.0 factor ??? //
+            dt_courant = 4.0 * 0.8 * All.CourantFac * All.cf_atime * (C0*PPP[p].Hsml) / vsig1; // 2.0 factor may be added (PFH) //
             if(dt_courant < dt) {dt = dt_courant;}
 #endif
             

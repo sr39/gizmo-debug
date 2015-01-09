@@ -695,7 +695,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     for(n = 0; n < pc; pindex++)
         if(P[pindex].Type == type)
             {
-                *fp++ = SphP[pindex].IMF_Mturnover;
+                *fp++ = P[pindex].IMF_Mturnover;
                 n++;
             }
         break;
@@ -708,7 +708,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	if(P[pindex].Type == type)
 	  {
         /* divB is saved in physical units */
-	    *fp++ = (SphP[pindex].divB*gizmo2gauss * (SphP[pindex].Density/P[pindex].Mass*All.cf_a3inv));
+	    *fp++ = (SphP[pindex].divB * gizmo2gauss * (SphP[pindex].Density*All.cf_a3inv / P[pindex].Mass));
 	    n++;
 	  }
 #endif

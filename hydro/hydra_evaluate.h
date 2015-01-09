@@ -301,8 +301,16 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 out.DtInternalEnergy += 0.5 * kernel.b2_i*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
 #ifdef DIVBCLEANING_DEDNER
                 out.DtPhi += (Riemann_out.phi_normal_mean - local.PhiPred*All.cf_a3inv) * wt_face_sum;
+                /*
                 double phi_normal_full = Riemann_out.phi_normal_mean + Riemann_out.phi_normal_db;
                 for(k=0;k<3;k++) {out.DtB_PhiCorr[k] += phi_normal_full * Face_Area_Vec[k];}
+                */ 
+                for(k=0; k<3; k++)
+                {
+                    out.DtB_PhiCorr[k] += Riemann_out.phi_normal_db * Face_Area_Vec[k];
+                    out.DtB[k] += Riemann_out.phi_normal_mean * Face_Area_Vec[k];
+                    out.DtInternalEnergy += Riemann_out.phi_normal_mean * Face_Area_Vec[k] * local.BPred[k]*All.cf_a2inv;
+                }
 #endif
 #endif
 #endif // magnetic //
@@ -334,7 +342,15 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     SphP[j].DtInternalEnergy -= 0.5 * kernel.b2_j*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
 #ifdef DIVBCLEANING_DEDNER
                     SphP[j].DtPhi -= (Riemann_out.phi_normal_mean - PhiPred_j*All.cf_a3inv) * wt_face_sum;
+                    /*
                     for(k=0;k<3;k++) {SphP[j].DtB_PhiCorr[k] -= phi_normal_full * Face_Area_Vec[k];;}
+                    */
+                    for(k=0; k<3; k++)
+                    {
+                        SphP[j].DtB_PhiCorr[k] -= Riemann_out.phi_normal_db * Face_Area_Vec[k];
+                        SphP[j].DtB[k] -= Riemann_out.phi_normal_mean * Face_Area_Vec[k];
+                        SphP[j].DtInternalEnergy -= Riemann_out.phi_normal_mean * Face_Area_Vec[k] * BPred_j[k]*All.cf_a2inv;
+                    }
 #endif
 #endif
 #endif // magnetic //

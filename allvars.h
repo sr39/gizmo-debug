@@ -45,11 +45,6 @@
 #define ALLOWEXTRAPARAMS        /* don't crash (just warn) if there are extra lines in the input parameterfile */
 #define INHOMOG_GASDISTR_HINT   /* if the gas is distributed very different from collisionless particles, this can helps to avoid problems in the domain decomposition */
 
-#ifndef NOTEST_FOR_IDUNIQUENESS
-#ifdef BND_PARTICLES
-#define NOTEST_FOR_IDUNIQUENESS
-#endif
-#endif
 
 #ifndef DISABLE_SPH_PARTICLE_WAKEUP
 #define WAKEUP   4.1            /* allows 2 timestep bins within kernel */
@@ -103,7 +98,7 @@
 #define DIVBCLEANING_DEDNER         /* hyperbolic/parabolic div-cleaing (Dedner 2002), with TP improvements */
 /* MHD switches specific to SPH MHD */
 #ifdef HYDRO_SPH
-#define MAGNETIC_DISSIPATION        /* turns on magnetic dissipation ('artificial resistivity') */
+#define SPH_ARTIFICIAL_RESISTIVITY        /* turns on magnetic dissipation ('artificial resistivity') */
 #define TRICCO_RESISTIVITY_SWITCH   /* uses tricco switch =h*|gradB|/|B| */
 #endif
 #endif
@@ -330,8 +325,11 @@ typedef unsigned long long peanokey;
 #define  MAX_REAL_NUMBER  1e37
 #define  MIN_REAL_NUMBER  1e-37
 
-
+#ifdef MAGNETIC
+#define  CONDITION_NUMBER_DANGER  1.0e7 /*!< condition number above which we will not trust matrix-based gradients */
+#else
 #define  CONDITION_NUMBER_DANGER  1.0e3 /*!< condition number above which we will not trust matrix-based gradients */
+#endif
 
 //#define  RNDTABLE 8192 /* this is arbitrary, but some power of 2 makes much easier */
 #define  RNDTABLE 16384
@@ -1305,7 +1303,7 @@ extern struct global_data_all_processes
 #ifdef BINISET
   double BiniX, BiniY, BiniZ;	/*!< Initial values for B */
 #endif
-#ifdef MAGNETIC_DISSIPATION
+#ifdef SPH_ARTIFICIAL_RESISTIVITY
   double ArtMagDispConst;	/*!< Sets the parameter \f$\alpha\f$ of the artificial magnetic disipation */
 #endif
 #ifdef DIVBCLEANING_DEDNER

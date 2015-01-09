@@ -415,7 +415,7 @@ void do_box_wrapping(void)
                     if(P[i].Type==0) SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE]-=Shearing_Box_Vel_Offset;}
 #if (SHEARING_BOX != 1)
                 /* if we're not assuming axisymmetry, we need to shift the coordinates for the shear flow at the boundary */
-                // ??? //
+                // PFH: needs update for shearing coordinates, if desired //
                 //if(j==0) {P[i].Pos[SHEARING_BOX_PHI_COORDINATE]+= Shearing_Box_Vel_Offset * All.Time;
 #endif
 #endif
@@ -515,11 +515,11 @@ double Get_DtB_FaceArea_Limiter(int i)
     /* ok, with that in hand, define an error tolerance based on this */
     if(area_norm>0)
     {
-        double area_norm_min_threshold = 0.0001;
-        double area_norm_weight = 500.0;
+        double area_norm_min_threshold = 0.0005;
+        double area_norm_weight = 250.0;
 #ifdef PM_HIRES_REGION_CLIPPING
-        area_norm_min_threshold *= 0.1;
-        area_norm_weight *= 5.0;
+        area_norm_min_threshold *= 0.02;
+        area_norm_weight *= 10.0; // can be as low as 1.0 (PFH) //
 #endif
         if(area_sum/area_norm > area_norm_min_threshold)
         {

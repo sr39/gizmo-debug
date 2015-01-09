@@ -9,6 +9,7 @@
     Fluxes.rho = Fluxes.p = Fluxes.v[0] = Fluxes.v[1] = Fluxes.v[2] = 0;
     double du_ij;
     kernel.dwk_ij = 0.5 * (kernel.dwk_i + kernel.dwk_j);
+    cnumcrit2 *= 1.0;
     double vdotr2_phys = kernel.vdotr2;
     if(All.ComovingIntegrationOn) vdotr2_phys -= All.cf_hubble_a2 * r2;
     
@@ -68,7 +69,11 @@
     double mj_r = P[j].Mass / kernel.r;
     double mf_i = kernel.mf_i * mj_r * kernel.dwk_i;
     double mf_j = kernel.mf_j * mj_r * kernel.dwk_j / (SphP[j].Density * SphP[j].Density);
-    
+#ifndef SPHEQ_DENSITY_INDEPENDENT_SPH
+    mf_i *= (1 + local.DhsmlHydroSumFactor / P[j].Mass);
+    mf_j *= (1 + SphP[j].DhsmlHydroSumFactor / local.Mass);
+#endif
+        
     /* ---------------------------------------------------------------------------------
      * ... induction equation ...
      * (the SPH induction equation is inherently non-symmetric: the result for particle
@@ -82,6 +87,7 @@
     /* ... update to the Dedner divergence-damping scalar field ... */
     /* --------------------------------------------------------------------------------- */
     /* PFH: this is the symmetric estimator of grad phi: used be used IFF div.dot.B is estimated by the 'direct difference' operator (recommended) */
+    // terms for variable smoothing lengths are already accounted for above //
     double phifac = -(mf_i*local.PhiPred + mf_j*PhiPred_j);
     Fluxes.B[0] += phifac * kernel.dp[0] / All.cf_afac1;
     Fluxes.B[1] += phifac * kernel.dp[1] / All.cf_afac1;
@@ -123,9 +129,22 @@
     /* --------------------------------------------------------------------------------- */
     /* ... Magnetic dissipation/diffusion terms (artificial resitivity evaluation) ... */
     /* --------------------------------------------------------------------------------- */
-#ifdef MAGNETIC_DISSIPATION
+#ifdef SPH_ARTIFICIAL_RESISTIVITY
     double mf_dissInd = local.Mass * mj_r * kernel.dwk_ij * kernel.rho_ij_inv * kernel.rho_ij_inv / fac_mu;
-    double vsigb = 0.5 * sqrt(kernel.alfven2_i + kernel.alfven2_j);
+    /*
+    //double vsigb = 0.5 * sqrt(kernel.alfven2_i + kernel.alfven2_j);
+    //double vsb_0 = 0.5 * (magneticspeed_i + magneticspeed_j);
+    //double vsb_1 = 0.5 * (sqrt(kernel.alfven2_i) + sqrt(kernel.alfven2_j));
+    //double vsigb = DMIN( 10.0*vsb_1 , vsb_0 );
+     Note there is an important ambiguity in the signal velocity for artificial resistivity, depending on the
+        type of shock. using the full fast-wave speed (vsigb=0.5*(magneticspeed_i+magneticspeed_j)) is 
+        necessary to avoid noise in shocks in highly supersonic MHD turbulence. But this leads to serious 
+        over-damping of the B-fields when there is particle disorder and c_s >> v_Alfven, which destroys the 
+        correct behavior on many problems (Rayleigh-Taylor & Kelvin-Helmholtz tests, Santa Barbara cluster, 
+        Zeldovich pancakes, and more). So we go with the noisier, but less diffusive choice of the 
+        mean Alfven speed (vsb_1 = 0.5*(sqrt(kernel.alfven2_i)+sqrt(kernel.alfven2_j))
+     */
+    double vsigb = 0.5 * (sqrt(kernel.alfven2_i) + sqrt(kernel.alfven2_j));
 #if defined(TRICCO_RESISTIVITY_SWITCH)
     double eta = 0.5 * (local.Balpha + SphP[j].Balpha) * vsigb * kernel.r;
 #else
@@ -148,6 +167,9 @@
     if(kernel.vdotr2 < 0) // no viscosity applied if particles are moving away from each other //
     {
         double c_ij = 0.5 * (kernel.sound_i + kernel.sound_j);
+#ifdef MAGNETIC_SIGNALVEL
+        c_ij = 0.5 * (magneticspeed_i + magneticspeed_j);
+#endif
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
         double BulkVisc_ij = 0.5 * (local.alpha + SphP[j].alpha_limiter * SphP[j].alpha);
         double mu_ij = fac_mu * kernel.vdotr2 / kernel.r;

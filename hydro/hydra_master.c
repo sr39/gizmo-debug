@@ -501,31 +501,29 @@ void hydro_final_operations_and_cleanup(void)
 
 #if defined(DIVBCLEANING_DEDNER) && !defined(HYDRO_SPH)
             // ok now deal with the divB correction forces and damping fields //
-            double DtB_PhiCorr = 0.0;
-            double DtB_UnCorr = 0.0;
+            double tolerance_for_correction,db_vsig_h_norm;
+            tolerance_for_correction = 1.0;
+            db_vsig_h_norm = 0.1; // can be as low as 0.03 //
+#ifdef PM_HIRES_REGION_CLIPPING
+            tolerance_for_correction = 0.5; // could be as high as 0.75 //
+            //db_vsig_h_norm = 0.03;
+#endif
+
+            double DtB_PhiCorr=0,DtB_UnCorr=0,db_vsig_h=0,PhiCorr_Norm=1.0;
             for(k=0; k<3; k++)
             {
                 DtB_UnCorr += SphP[i].DtB[k] * SphP[i].DtB[k];
+                db_vsig_h = db_vsig_h_norm * SphP[i].BPred[k] * (0.5*SphP[i].MaxSignalVel*All.cf_afac3) / (KERNEL_CORE_SIZE*PPP[i].Hsml);
+                DtB_UnCorr += db_vsig_h * db_vsig_h;
                 DtB_PhiCorr += SphP[i].DtB_PhiCorr[k] * SphP[i].DtB_PhiCorr[k];
             }
-            double tolerance_for_correction;
-            if((All.StarformationOn)||(All.ComovingIntegrationOn))
-            {
-                tolerance_for_correction = 10.0;
-            } else {
-                tolerance_for_correction = 30.0;
-            }
-#ifdef PM_HIRES_REGION_CLIPPING
-            tolerance_for_correction *= 0.5;
-#endif
-            tolerance_for_correction *= magnorm_closure*magnorm_closure;
+            
             /* take a high power of these: here we'll use 4, so it works like a threshold */
-            DtB_UnCorr*=DtB_UnCorr; DtB_PhiCorr*=DtB_PhiCorr;
-            tolerance_for_correction *= tolerance_for_correction;
+            DtB_UnCorr*=DtB_UnCorr; DtB_PhiCorr*=DtB_PhiCorr; tolerance_for_correction *= tolerance_for_correction;
             /* now re-normalize the correction term if its unacceptably large */
-            double PhiCorr_Norm = 1.0;
             if((DtB_PhiCorr > 0)&&(!isnan(DtB_PhiCorr))&&(DtB_UnCorr>0)&&(!isnan(DtB_UnCorr))&&(tolerance_for_correction>0)&&(!isnan(tolerance_for_correction)))
             {
+                
                 if(DtB_PhiCorr > tolerance_for_correction * DtB_UnCorr) {PhiCorr_Norm *= tolerance_for_correction * DtB_UnCorr / DtB_PhiCorr;}
                 for(k=0; k<3; k++)
                 {
@@ -666,7 +664,7 @@ void hydro_final_operations_and_cleanup(void)
 #endif
                 SphP[i].DtInternalEnergy = 0;//SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
                 for(k = 0; k < 3; k++) SphP[i].HydroAccel[k] = 0;//SphP[i].dMomentum[k] = 0;//manifest-indiv-timestep-debug//
-#ifdef SPH_BND_DTB
+#ifdef MAGNETIC
                 for(k = 0; k < 3; k++) SphP[i].DtB[k] = 0;
 #ifdef DIVBCLEANING_DEDNER
                 for(k = 0; k < 3; k++) SphP[i].DtB_PhiCorr[k] = 0;

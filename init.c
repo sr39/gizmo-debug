@@ -702,7 +702,7 @@ void init(void)
     assign_unique_ids();
 #endif
     
-#ifndef NOTEST_FOR_IDUNIQUENESS
+#ifdef TEST_FOR_IDUNIQUENESS
     test_id_uniqueness();
 #endif
     
@@ -908,7 +908,7 @@ void init(void)
         MPI_Allreduce(&mass_min, &mpi_mass_min, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
         MPI_Allreduce(&mass_max, &mpi_mass_max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
         All.MinMassForParticleMerger = 0.50 * mpi_mass_min;
-        All.MaxMassForParticleSplit  = 2.00 * mpi_mass_max;
+        All.MaxMassForParticleSplit  = 5.00 * mpi_mass_max;
     }
     
     
@@ -1214,9 +1214,11 @@ void disp_setup_smoothinglengths(void)
 
 void test_id_uniqueness(void)
 {
-    int i;
     double t0, t1;
+#ifndef BND_PARTICLES
+    int i;
     MyIDType *ids, *ids_first;
+#endif
     
     if(ThisTask == 0)
     {

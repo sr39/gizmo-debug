@@ -596,8 +596,8 @@ void hydro_gradient_calc(void)
               BMag += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);
           }
           SphP[i].Balpha = PPP[i].Hsml * sqrt(GradBMag/(BMag+1.0e-33));
-          SphP[i].Balpha = DMIN(SphP[i].Balpha, All.ArtMagDispConst);
-          SphP[i].Balpha = DMAX(SphP[i].Balpha, 0.05);
+          SphP[i].Balpha = DMIN(SphP[i].Balpha, 0.1 * All.ArtMagDispConst);
+          SphP[i].Balpha = DMAX(SphP[i].Balpha, 0.1 * 0.05);
 #endif
           
 
@@ -718,7 +718,6 @@ void hydro_gradient_calc(void)
           /* finally, we need to apply a sensible slope limiter to the gradients, to prevent overshooting */
 #ifdef MAGNETIC
           /* fraction of H at which maximum reconstruction is allowed (=0.5 for 'standard') */
-          //double a_limiter = 0.5; // ??? //
           double a_limiter = 0.25; if(SphP[i].ConditionNumber>100) a_limiter=DMIN(0.5, 0.25 + 0.25 * (SphP[i].ConditionNumber-100)/100);
 #else
           /* fraction of H at which maximum reconstruction is allowed (=0.5 for 'standard'); for pure hydro we can 
