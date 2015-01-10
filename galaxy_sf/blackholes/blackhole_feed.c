@@ -423,6 +423,8 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                             } /* P[j].SwallowID < id */
                                         } else { /* w < p */
                                             printf("REJECTED_BH_FOOD (based on eddington limit): j %d w %g p_acc %g TO_BE_SWALLOWED \n",j,w,p);
+                                            printf("CURRENTLY DISABLED.\n");
+                                            if(P[j].SwallowID < id)  P[j].SwallowID = id;
                                         }/* w < p */
 #else
                                         /* simply mark all this to be accreted (can -greatly- exceed Eddington) */
