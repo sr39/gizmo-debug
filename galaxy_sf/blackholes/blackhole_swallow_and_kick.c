@@ -249,9 +249,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 
     MyFloat dir[3],norm,mom=0;
+    MyFloat f_accreted=0;
+
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
-    MyFloat f_accreted;
-    f_accreted=0;
     double BH_angle_weighted_kernel_sum, mom_wt;
     MyFloat theta,*Jgas_in_Kernel,BH_disk_hr,kernel_zero,dwk;
     kernel_main(0.0,1.0,1.0,&kernel_zero,&dwk,-1);

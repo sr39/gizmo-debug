@@ -21,7 +21,7 @@ void blackhole_start(void);
 void blackhole_end(void);
 void blackhole_environment_loop(void);
 void blackhole_properties_loop(void);
-void blackhole_feedback_loop(void);
+void blackhole_swallow_and_kick_loop(void);
 void blackhole_final_loop(void);
 void blackhole_feed_loop(void);
 int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSend_local);

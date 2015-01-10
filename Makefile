@@ -500,7 +500,7 @@ OBJS    += galaxy_sf/blackholes/blackhole.o
 OBJS    += galaxy_sf/blackholes/blackhole_util.o
 OBJS    += galaxy_sf/blackholes/blackhole_environment.o
 OBJS    += galaxy_sf/blackholes/blackhole_feed.o
-OBJS    += galaxy_sf/blackholes/blackhole_feedback.o
+OBJS    += galaxy_sf/blackholes/blackhole_swallow_and_kick.o
 INCL    += galaxy_sf/blackholes/blackhole.h
 #####OBJS	+= galaxy_sf/blackhole.o
 endif
