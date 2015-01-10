@@ -99,7 +99,7 @@ void blackhole_feed_loop(void)
                 BlackholeDataIn[j].Jgas_in_Kernel[k] = P[place].GradRho[k];
 #endif
             }
-            BlackholeDataIn[j].mass_to_swallow_edd = BlackholeTempInfo[P[target].IndexMapToTempStruc].mass_to_swallow_edd;
+            BlackholeDataIn[j].mass_to_swallow_edd = BlackholeTempInfo[P[place].IndexMapToTempStruc].mass_to_swallow_edd;
             
             BlackholeDataIn[j].Hsml = PPP[place].Hsml;
             BlackholeDataIn[j].Mass = P[place].Mass;
@@ -445,7 +445,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                         
                                         w = get_random_number(P[j].ID);
                                         if(w < p) {
-                                            printf("MARKING_BH_FOOD: j %d w %g p_acc %g facc %g TO_BE_SWALLOWED \n",j,w,p,m_to_swallow_thispart/P[j].Mass);
+                                            printf("MARKING_BH_FOOD: j %d w %g p_acc %g TO_BE_SWALLOWED \n",j,w,p);
                                             if(P[j].SwallowID < id) {
                                                 P[j].SwallowID = id;
 //                                                if((P[j].Type != 1)||(All.ComovingIntegrationOn && (P[j].Type==0||P[j].Type==4)))

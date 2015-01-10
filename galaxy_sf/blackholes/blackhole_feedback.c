@@ -241,7 +241,11 @@ int blackhole_evaluate_swallow(int target, int mode, int *nexport, int *nSend_lo
 #if defined(BH_BAL_WINDS) && ( (  (!defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS))  || defined(BH_ALPHADISK_ACCRETION) ) || defined(BH_ALPHADISK_ACCRETION) )
     MyFloat *velocity, hinv, hinv3;
 #endif
+
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
     MyFloat mdot,dt;
+#endif
+
     MyFloat dir[3],norm,mom=0;
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
     MyFloat f_accreted;
@@ -281,12 +285,15 @@ int blackhole_evaluate_swallow(int target, int mode, int *nexport, int *nSend_lo
 //#ifdef BH_ALPHADISK_ACCRETION
 //        bh_mass_alphadisk = BPP(target).BH_Mass_AlphaDisk;
 //#endif
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
         mdot = BPP(target).BH_Mdot;
 #ifndef WAKEUP
         dt = (P[target].TimeBin ? (1 << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
         dt = P[target].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
+#endif
+
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
         Jgas_in_Kernel = P[target].GradRho;
         BH_disk_hr = P[target].BH_disk_hr;
@@ -306,8 +313,10 @@ int blackhole_evaluate_swallow(int target, int mode, int *nexport, int *nSend_lo
 //#ifdef BH_ALPHADISK_ACCRETION
 //        bh_mass_alphadisk = BlackholeDataGet[target].BH_Mass_AlphaDisk;       /* remove this from comm? */
 //#endif
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
         mdot = BlackholeDataGet[target].Mdot;
         dt = BlackholeDataGet[target].Dt;
+#endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
         Jgas_in_Kernel = BlackholeDataGet[target].Jgas_in_Kernel;
         BH_disk_hr = BlackholeDataGet[target].BH_disk_hr;
