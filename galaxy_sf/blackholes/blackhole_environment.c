@@ -190,16 +190,13 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     
 #if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
     MyFloat mass, vrel, vbound, r2;
-
-    //, mass_to_swallow_total, mass_to_swallow_edd;
-//    mass_to_swallow_edd = mass_to_swallow_total = 0;
 #endif
     
     double dP[3],dv[3],wt;
     struct blackhole_temp_particle_data out;
     memset(&out, 0, sizeof(struct blackhole_temp_particle_data));
     
-    /* these are BH properties */
+    /* these are the BH properties */
     if(mode == 0)
     {
 #if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
@@ -300,7 +297,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                     
                     
                     
-/* NOTE TO PHIL FROM  PT:  I MOVED THIS TO THE PREPASS LOOP, SO THAT WE KNOW THE DESIRED ACCRETION RATE FROM GRAVCAPT
+/* NOTE TO PHIL FROM  PT:  I MOVED THIS TO THE PREPASS LOOP, SO THAT WE KNOW THE DESIRED ACCRETION RATE FROM GRAVCAPT.
  *                          WE CAN THEN MODULATE THE ACTUAL SWALLOWING OF PARTICLES BASED ON THE EDDINGTON LIMIT, IF DESIRED.
  *                          NOTE THAT SWALLOWID'S ARE NOT SET HERE, JUST mass_to_swallow_edd AND mass_to_swallow_total. 
  */

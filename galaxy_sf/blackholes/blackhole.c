@@ -70,11 +70,8 @@ void blackhole_accretion(void)
     /* this is the PRE-PASS loop.  BH does neighbor search, evaluates local gas properties */
     if(ThisTask == 0)  printf("Evaluating black-hole environment\n");
     blackhole_environment_loop();    /* populates BlackholeTempInfo based on surrounding gas (blackhole_environment.c)
-                                        - BH mergers are evaluated (P[j].SwallowID's set)
-                                        - If using gravcap P[j].SwallowID's are set for gas, stars, and DM as well.
-                                        - Set BlackholeTempInfo.mass_to_swallow_edd.
-                                        - Re-evaluate in feeding loop if if m_dot_acc > m_dot_edd */
-    
+                                        - If using gravcap the desired mass accretion rate is calculated and set to BlackholeTempInfo.mass_to_swallow_edd
+                                      */
 
     /*----------------------------------------------------------------------
      Now do a first set of local operations based on BH environment calculation:
@@ -84,7 +81,7 @@ void blackhole_accretion(void)
 
     if(ThisTask == 0)  printf("Setting black-hole properties\n");
     blackhole_properties_loop();       /* do 'BH-centric' operations such as dyn-fric, mdot, etc. */
-    
+
     
     
     /*----------------------------------------------------------------------
@@ -93,31 +90,25 @@ void blackhole_accretion(void)
      Use the above info to determine the weight functions for feedback
      ----------------------------------------------------------------------*/
     
-    if(ThisTask == 0)  printf("Swallowing gas\n");
-    blackhole_feed_loop();       /* perform feeding of particles */
+    if(ThisTask == 0)  printf("Marking gas to swallow\n");
+    blackhole_feed_loop();       /* BH mergers and gas/star/dm accretion events are evaluated
+                                  - P[j].SwallowID's are set
+                                  */
     
     
     
     /*----------------------------------------------------------------------
-     ------------------------------------------------------------------------
-     Ok, now we do a THIRD pass over the particles, and
+     Meow we do a THIRD pass over the particles, and
      this is where we can do the actual 'swallowing' operations
      (blackhole_evaluate_swallow), and 'kicking' operations
-     ------------------------------------------------------------------------
      ----------------------------------------------------------------------*/
     
-    if(ThisTask == 0)
-    {
-        printf("Injecting feedback\n");
-        fflush(stdout);
-    }
-    blackhole_feedback_loop();
+    if(ThisTask == 0)  printf("Injecting feedback\n");
+    blackhole_swallow_and_kick_loop();
     
-    if(ThisTask == 0)
-    {
-        printf("Doing whatever goes in the final loop\n");
-        fflush(stdout);
-    }
+    
+    
+    if(ThisTask == 0) printf("Doing whatever goes in the final loop\n");
     blackhole_final_loop();     /* this is causing problems with the alpha disk ?! */
 
     /*----------------------------------------------------------------------
