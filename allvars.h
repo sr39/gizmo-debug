@@ -1603,6 +1603,8 @@ extern ALIGN(32) struct particle_data
     
 #if defined(BLACK_HOLES)
     MyIDType SwallowID;
+    int IndexMapToTempStruc;   /*!< allows for mapping to BlackholeTempInfo struc */
+
 #if !defined(DETACH_BLACK_HOLES)
 #ifdef BH_COUNTPROGS
     int BH_CountProgs;
@@ -2145,6 +2147,50 @@ extern struct info_block
   int is_present[6];
 }
 *InfoBlock;
+
+
+#ifdef BLACK_HOLES
+#define BHPOTVALUEINIT 1.0e30
+
+extern int N_active_loc_BHs;    /*!< number of active black holes on the LOCAL processor */
+
+extern struct blackhole_temp_particle_data       // blackholedata_topass
+{
+    MyIDType index;
+    MyFloat BH_InternalEnergy;
+    MyLongDouble accreted_Mass;
+    MyLongDouble accreted_BH_Mass;
+    MyLongDouble accreted_momentum[3];
+    MyLongDouble Mgas_in_Kernel;
+    MyLongDouble Malt_in_Kernel;
+    MyLongDouble Jalt_in_Kernel[3];
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+    MyLongDouble GradRho_in_Kernel[3];
+    MyLongDouble Jgas_in_Kernel[3];
+    MyFloat BH_angle_weighted_kernel_sum;
+#endif
+#ifdef BH_DYNFRICTION
+    MyFloat DF_mean_vel[3];
+    MyFloat DF_rms_vel;
+    MyFloat DF_mmax_particles;
+#endif
+#if defined(BH_USE_GASVEL_IN_BONDI) || defined(BH_DRAG)
+    MyFloat BH_SurroundingGasVel[3];
+#endif
+    
+#if defined(BH_ALPHADISK_ACCRETION)
+    MyFloat mdot_alphadisk;             /*!< gives mdot of mass going into alpha disk */
+#endif
+#if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
+    
+    MyFloat mass_to_swallow_total;      /*!< gives the total bound mass we want to swallow in this timestep */
+    MyFloat mass_to_swallow_edd;        /*!< gives the mass we want to swallow that contributes to eddington */
+#endif
+}
+*BlackholeTempInfo, *BlackholeDataPasserResult, *BlackholeDataPasserOut;
+#endif
+
+
 
 
 /*! Header for the standard file format.

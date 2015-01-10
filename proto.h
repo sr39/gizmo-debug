@@ -12,6 +12,10 @@
 #ifdef ADJ_BOX_POWERSPEC
 #include "power_spec/adj_box_powerspec_proto.h"
 #endif
+#ifdef BLACK_HOLES
+#include "./galaxy_sf/blackholes/blackhole.h"
+#endif
+
 
 /* declarations of functions throughout the code */
 /*

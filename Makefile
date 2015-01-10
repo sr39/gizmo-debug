@@ -496,7 +496,13 @@ OBJS    += galaxy_sf/rp_localwinds.o
 endif
 
 ifeq (BLACK_HOLES,$(findstring BLACK_HOLES,$(CONFIGVARS)))
-OBJS	+= galaxy_sf/blackhole.o
+OBJS    += galaxy_sf/blackholes/blackhole.o
+OBJS    += galaxy_sf/blackholes/blackhole_util.o
+OBJS    += galaxy_sf/blackholes/blackhole_environment.o
+OBJS    += galaxy_sf/blackholes/blackhole_feed.o
+OBJS    += galaxy_sf/blackholes/blackhole_feedback.o
+INCL    += galaxy_sf/blackholes/blackhole.h
+#####OBJS	+= galaxy_sf/blackhole.o
 endif
 
 ifeq (SINKS,$(findstring SINKS,$(CONFIGVARS)))
