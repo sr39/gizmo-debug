@@ -24,6 +24,7 @@ static struct blackholedata_in
     MyFloat BH_disk_hr;
     MyFloat BH_angle_weighted_kernel_sum;
 #endif
+    MyFload medd_markedswallow;
 }
 *BlackholeDataIn, *BlackholeDataGet;
 

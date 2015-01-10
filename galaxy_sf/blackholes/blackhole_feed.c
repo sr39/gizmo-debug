@@ -99,6 +99,8 @@ void blackhole_feed_loop(void)
                 BlackholeDataIn[j].Jgas_in_Kernel[k] = P[place].GradRho[k];
 #endif
             }
+            BlackholeDataIn[j].mass_to_swallow_edd = BlackholeTempInfo[P[target].IndexMapToTempStruc].mass_to_swallow_edd;
+            
             BlackholeDataIn[j].Hsml = PPP[place].Hsml;
             BlackholeDataIn[j].Mass = P[place].Mass;
             BlackholeDataIn[j].BH_Mass = BPP(place).BH_Mass;
@@ -218,8 +220,8 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     
 #if defined(UNIFIED_FEEDBACK) || defined(BH_ENFORCE_EDDINGTON_LIMIT)
 #if (defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)) && (defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION))
-    double meddington;
-    double medd_max_accretable;
+    double meddington, medd_max_accretable, medd_markedswallow;
+    double mass_to_swallow_edd, eddington_factor;
 #endif
 #endif
     
@@ -242,15 +244,11 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     double w=0,p=0,mass_markedswallow=0,bh_mass_withdisk=0;
 #endif
     
+    
+    //BlackholeTempInfo[target].mass_to_swallow_edd /
+    /* these are the BH properties */
     if(mode == 0)
     {
-        
-//        printf("BH (P[%d]) Pos (x|y|z) = (%f|%f|%f)\n",target,P[target].Pos[0],P[target].Pos[1],P[target].Pos[2]);
-//        printf("BH (P[%d]) Vel (x|y|z) = (%f|%f|%f)\n",target,P[target].Vel[0],P[target].Vel[1],P[target].Vel[2]);
-//        printf("BH (P[%d]) dt_accr = 0.001 * BPP(p).BH_Mass / BPP(p).BH_Mdot = %f\n",target,0.001 * BPP(target).BH_Mass / BPP(target).BH_Mdot);
-//        printf("BH (P[%d]) BPP(p).BH_Mdot = %f\n",target,BPP(target).BH_Mdot);
-        //        dt_accr = 0.001 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
-        
         pos = P[target].Pos;
         rho = BPP(target).DensAroundStar;
         mdot = BPP(target).BH_Mdot;
@@ -271,6 +269,8 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         Jgas_in_Kernel = P[target].GradRho;
         BH_disk_hr = P[target].BH_disk_hr;
 #endif
+        mass_to_swallow_edd = BlackholeTempInfo[P[target].IndexMapToTempStruc].mass_to_swallow_edd;
+
     }
     else
     {
@@ -290,6 +290,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         Jgas_in_Kernel = BlackholeDataGet[target].Jgas_in_Kernel;
         BH_disk_hr = BlackholeDataGet[target].BH_disk_hr;
 #endif
+        mass_to_swallow_edd = BlackholeDataGet[target].mass_to_swallow_edd;
     }
     
     if((mass<0)||(h_i<=0)) return -1;
@@ -303,6 +304,8 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #if (defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)) && (defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION))
     meddington = (4 * M_PI * GRAVITY * C * PROTONMASS / (All.BlackHoleRadiativeEfficiency * C * C * THOMPSON)) * (bh_mass/All.HubbleParam) * All.UnitTime_in_s;
     medd_max_accretable = All.BlackHoleEddingtonFactor * meddington * dt;
+    
+    eddington_factor = mass_to_swallow_edd / medd_max_accretable;   /* if <1 no problem, if >1, need to unset some swallowIDs */
 #endif
 #endif
 #if defined(BH_SWALLOWGAS) || defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
@@ -369,10 +372,19 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         }
 #endif
                         
-                        //check_for_bh_merger(j, id, mass, vrel, r2);
-                        if(P[j].Type == 5)	/* we (may) have a black hole merger */
+                        
+                        /* check_for_bh_merger.  Easy.  No Edd limit, just a pos and vel criteria. */
+                        if((id != P[j].ID) && (P[j].Mass > 0) && (P[j].Type == 5))	/* we may have a black hole merger */
                         {
-                            if(id != P[j].ID) /* check its not the same bh, duh! */
+//                            r2=0;
+//                            for(k=0;k<3;k++) r2+=(P[j].Pos[k] - pos[k])*(P[j].Pos[k] - pos[k]);
+                            
+//                            vrel = 0;
+//                            for(k=0;k<3;k++) vrel += (P[j].Vel[k] - vel[k])*(P[j].Vel[k] - vel[k]);
+//                            vrel = sqrt(vrel) / All.cf_atime;
+                            csnd = sqrt(2.0*All.G*(mass+P[j].Mass)/(sqrt(r2)*All.cf_atime) + pow(10.e5/All.UnitVelocity_in_cm_per_s,2));
+                            
+                            if(id != P[j].ID) /* check its not the same bh */
                             {
                                 /* with feedback on, sound speeds get -very- low, would be silly to use;
                                  instead use the escape velocity and follow to pairing */
@@ -390,54 +402,72 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                             }
                         } // if(P[j].Type == 5) //
                         
+                        
+                        
+/* This is a similar loop to what we already did in blackhole_environment, but here we stochastially
+ reduce GRAVCAPT events in order to (statistically) obey the eddington limit */
+                        
 #if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
-                        /* this will determine accretion from all particle types, based only on the
-                         ability of the particle to be gravitationally captured by the BH */
 #ifdef BH_GRAVCAPTURE_SWALLOWS
                         if(P[j].Type != 5)
 #else
                             if((P[j].Type != 0)&&(P[j].Type != 5))
 #endif
                             {
-                                if(vrel < csnd) { /* bound */
-                                    if( All.ForceSoftening[5]*(1.0-vrel*vrel/(csnd*csnd))/r > 1.0 ) { /* apocenter within 2.8*epsilon (softening length) */
+                                for(k = 0, vrel = 0; k < 3; k++)
+                                    vrel += (P[j].Vel[k] - velocity[k]) * (P[j].Vel[k] - velocity[k]);
+                                vrel = sqrt(vrel) / All.cf_atime;
+                                r = sqrt(r2);
+                                csnd = sqrt(2.0*All.G*(mass+P[j].Mass)/(r*All.cf_atime)); /* escape velocity */
+                                
+                                if(vrel < csnd){ /* bound */
+                                    if( All.ForceSoftening[5]*(1.0-vrel*vrel/(csnd*csnd))/r > 1.0 )
+                                    { /* apocenter within 2.8*epsilon (softening length) */
 #if defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
                                         /* only count gas and stars towards the Eddington limit */
-                                        p=1; m_to_swallow_thispart=P[j].Mass;
-                                        if((P[j].Type != 1)||(All.ComovingIntegrationOn && (P[j].Type==0||P[j].Type==4)))
-                                        {
-                                            if(medd_max_accretable-mass_markedswallow <= 0)
-                                            {
-                                                p=0;
-                                            } else {
-#if defined(BH_BAL_WINDS) && defined(BH_GRAVCAPTURE_SWALLOWS) && !defined(BH_GRAVCAPTURE_NOGAS)
-                                                if(All.BAL_f_accretion>0) m_to_swallow_thispart *= All.BAL_f_accretion;
-#endif
-                                                if(m_to_swallow_thispart >  medd_max_accretable-mass_markedswallow)
-                                                    p = (medd_max_accretable-mass_markedswallow)/m_to_swallow_thispart;
-                                            }
-                                        }
+                                        p=1/eddington_factor;   /*  >1 if below eddington limit (all particles swallowed), 
+                                                                    <1 if above eddington limit (reduces accretion accordinginly) */
+
+//                                        m_to_swallow_thispart=P[j].Mass;
+//                                        if((P[j].Type != 1)||(All.ComovingIntegrationOn && (P[j].Type==0||P[j].Type==4)))
+//                                        {
+//                                            if(medd_max_accretable-mass_markedswallow <= 0)
+//                                            {
+//                                                p=0;
+//                                            } else {
+//#if defined(BH_BAL_WINDS) && defined(BH_GRAVCAPTURE_SWALLOWS) && !defined(BH_GRAVCAPTURE_NOGAS)
+//                                                if(All.BAL_f_accretion>0) m_to_swallow_thispart *= All.BAL_f_accretion;
+//#endif
+//                                                if(m_to_swallow_thispart >  medd_max_accretable-mass_markedswallow)
+//                                                    p = (medd_max_accretable-mass_markedswallow)/m_to_swallow_thispart;
+//                                            }}
+                                        
+                                        
                                         w = get_random_number(P[j].ID);
                                         if(w < p) {
                                             printf("MARKING_BH_FOOD: j %d w %g p_acc %g facc %g TO_BE_SWALLOWED \n",j,w,p,m_to_swallow_thispart/P[j].Mass);
                                             if(P[j].SwallowID < id) {
                                                 P[j].SwallowID = id;
-                                                if((P[j].Type != 1)||(All.ComovingIntegrationOn && (P[j].Type==0||P[j].Type==4)))
-                                                    mass_markedswallow += m_to_swallow_thispart;
+//                                                if((P[j].Type != 1)||(All.ComovingIntegrationOn && (P[j].Type==0||P[j].Type==4)))
+//                                                    mass_markedswallow += m_to_swallow_thispart;
                                             } /* P[j].SwallowID < id */
-                                        } /* w < p */
+                                        } else { /* w < p */
+                                            printf("REJECTED_BH_FOOD (based on eddington limit): j %d w %g p_acc %g facc %g TO_BE_SWALLOWED \n",j,w,p,m_to_swallow_thispart/P[j].Mass);
+                                            
+                                        }/* w < p */
 #else
                                         /* simply mark all this to be accreted (can -greatly- exceed Eddington) */
                                         if(P[j].SwallowID < id)
                                             P[j].SwallowID = id;
 #endif
-                                        
                                     } /* if( All.ForceSoftening[5]*(1.0-vrel*vrel/(csnd*csnd))/sqrt(r2) > 1.0 ) */
                                 } /* if(vrel < csnd) */
                             } /* type check */
 #endif // BH_GRAVCAPTURE_SWALLOWS
                         
                         
+                        
+
                         /* now is the more standard accretion only of gas, according to the mdot calculated before */
                         if(P[j].Type == 0)
                         {
@@ -457,7 +487,6 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #if defined(BH_BAL_WINDS) && defined(BH_GRAVCAPTURE_SWALLOWS) && !defined(BH_GRAVCAPTURE_NOGAS)
                             if(All.BAL_f_accretion>0) p /= All.BAL_f_accretion;
 #endif
-                            /* compute random number, uniform in [0,1] */
                             w = get_random_number(P[j].ID);
                             if(w < p)
                             {
@@ -496,6 +525,15 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #endif
                             
                         } // if(P[j].Type == 0)
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+
+                        
                     } // if(r2 < h_i2)
                 } // if(P[j].Mass > 0)
             } // for(n = 0; n < numngb; n++)
@@ -541,35 +579,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     return 0;
 } /* closes bh_evaluate routine */
 
-//
-//
-//void normalize_temp_info_struct(int i)
-//{
-//#if defined(BH_DYNFRICTION) || ( defined(BH_USE_GASVEL_IN_BONDI) || defined(BH_DRAG) )
-//    int k;
-//#endif
-//    /* for new quantities, divide out weights and convert to physical units */
-//    if(BlackholeTempInfo[i].Mgas_in_Kernel > 0)
-//    {
-//        BlackholeTempInfo[i].BH_InternalEnergy /= BlackholeTempInfo[i].Mgas_in_Kernel;
-//#ifdef BH_DYNFRICTION
-//        BlackholeTempInfo[i].DF_rms_vel /= BlackholeTempInfo[i].Mgas_in_Kernel;
-//        BlackholeTempInfo[i].DF_rms_vel = sqrt(BlackholeTempInfo[i].DF_rms_vel) / All.cf_atime;
-//        for(k=0;k<3;k++)
-//            BlackholeTempInfo[i].DF_mean_vel[k] /= BlackholeTempInfo[i].Mgas_in_Kernel * All.cf_atime;
-//#endif
-//#if defined(BH_USE_GASVEL_IN_BONDI) || defined(BH_DRAG)
-//        for(k=0;k<3;k++)
-//            BlackholeTempInfo[i].BH_SurroundingGasVel[k] /= BlackholeTempInfo[i].Mgas_in_Kernel * All.cf_atime;
-//#endif
-//    }
-//    else
-//    {
-//        BlackholeTempInfo[i].BH_InternalEnergy = 0;
-//    }
-//    
-//}
-//
+
 
 
 

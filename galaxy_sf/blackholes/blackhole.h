@@ -1,10 +1,9 @@
-//
-//  blackhole.h
-//  gizmo
-//
-//  Created by Paul Torrey on 10/21/14.
-//
-//
+/*! \file blackhole.h
+ *  \brief declairations for black holes specific routines 
+ */
+/*
+ *   File history needs to be entered.
+ */
 
 #ifndef gizmo_blackhole_h
 #define gizmo_blackhole_h

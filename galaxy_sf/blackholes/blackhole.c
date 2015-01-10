@@ -21,8 +21,9 @@
  *   It was based on a similar file in GADGET3 by Volker Springel (volker.springel@h-its.org), 
  *   but the physical modules for black hole accretion and feedback have been 
  *   replaced, and the algorithm for their coupling is new to GIZMO.  This file was modified 
- *   by Paul Torrey (ptorrey@mit.edu) for clairity.  It was rearranged and parsed into 
- *   smaller files and routines.
+ *   on 1/9/15 by Paul Torrey (ptorrey@mit.edu) for clairity by parsing the existing code into
+ *   smaller files and routines.  Some communication and black hole structures were modified 
+ *   to reduce memory usage.
  */
 
 #ifdef BLACK_HOLES
@@ -30,8 +31,8 @@
 extern struct blackhole_temp_particle_data *BlackholeTempInfo;
 
 
-
-/* Alright, now this is the 'master' routine for the BH physics modules */
+/*  This is the master routine for the BH physics modules.
+ *  It is called in calculate_non_standard_physics in run.c */
 void blackhole_accretion(void)
 {
     int bin;
@@ -62,41 +63,40 @@ void blackhole_accretion(void)
     
     
     if(ThisTask == 0)  printf("Beginning black-hole accretion\n");
-    
     blackhole_start();              /* allocates and cleans BlackholeTempInfo struct */
- 
+
+    
+    
+    /* this is the PRE-PASS loop.  BH does neighbor search, evaluates local gas properties */
     if(ThisTask == 0)  printf("Evaluating black-hole environment\n");
+    blackhole_environment_loop();    /* populates BlackholeTempInfo based on surrounding gas (blackhole_environment.c)
+                                        - BH mergers are evaluated (P[j].SwallowID's set)
+                                        - If using gravcap P[j].SwallowID's are set for gas, stars, and DM as well.
+                                        - Set BlackholeTempInfo.mass_to_swallow_edd.
+                                        - Re-evaluate in feeding loop if if m_dot_acc > m_dot_edd */
     
-    blackhole_environment_loop();    /* populats BlackholeTempInfo based on surrounding gas (blackhole_environment.c) */
-                                     /* also:  if using gravcap, mark particles to swallow (marking BlackholeTempInfo.mass_to_swallow_edd in the process */
-    
+
     /*----------------------------------------------------------------------
-     ------------------------------------------------------------------------
-     now that the PRE-PASS loop is done, do a first set of
-     operations on the relevant quantities, calculating mdot,
-     dynamical friction forces, and other 'BH-centric' operations
-     ------------------------------------------------------------------------
+     Now do a first set of local operations based on BH environment calculation:
+     calculate mdot, dynamical friction, and other 'BH-centric' operations.
+     No MPI comm necessary.
      ----------------------------------------------------------------------*/
 
     if(ThisTask == 0)  printf("Setting black-hole properties\n");
-
     blackhole_properties_loop();       /* do 'BH-centric' operations such as dyn-fric, mdot, etc. */
     
+    
+    
     /*----------------------------------------------------------------------
-     ------------------------------------------------------------------------
-     Now let's do ANOTHER pass over the particles, and
-     invoke the functions that calculate when to stochastically swallow gas
-     and deal with black hole mergers (blackhole_evaluate), as well
-     as using the above info to determine the weight functions for feedback
-     ------------------------------------------------------------------------
+     Now we perform a second pass over the black hole environment.
+     Re-evaluate the decision to stochastically swallow gas if we exceed eddington.
+     Use the above info to determine the weight functions for feedback
      ----------------------------------------------------------------------*/
     
-    if(ThisTask == 0)
-    {
-        printf("Swallowing gas\n");
-        fflush(stdout);
-    }
+    if(ThisTask == 0)  printf("Swallowing gas\n");
     blackhole_feed_loop();       /* perform feeding of particles */
+    
+    
     
     /*----------------------------------------------------------------------
      ------------------------------------------------------------------------
@@ -341,6 +341,9 @@ double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, doubl
     return exp(y) * bh_lum;
 }
 #endif /* end of #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) */
+
+
+
 
 
 

@@ -17,8 +17,7 @@
  *   It was based on a similar file in GADGET3 by Volker Springel (volker.springel@h-its.org),
  *   but the physical modules for black hole accretion and feedback have been
  *   replaced, and the algorithm for their coupling is new to GIZMO.  This file was modified
- *   by Paul Torrey (ptorrey@mit.edu) for clairity.  It was rearranged and parsed into
- *   smaller files and routines. The main functional difference is that BlackholeTempInfo
+ *   by Paul Torrey (ptorrey@mit.edu) on 1/9/15 for clairity.  The main functional difference is that BlackholeTempInfo
  *   is now allocated only for N_active_loc_BHs, rather than NumPart (as was done before).  Some
  *   extra index gymnastics are required to follow this change through in the MPI comm routines.
  */
@@ -66,7 +65,7 @@ void blackhole_environment_loop(void)
             Send_count[j] = 0;
             Exportflag[j] = -1;
         }
-        /* do local particles and prepare export list */
+        /* do local active BH particles and prepare export list */
         for(nexport = 0; i >= 0; i = NextActiveParticle[i])
             if(P[i].Type == 5)
                 if(blackhole_environment_evaluate(i, 0, &nexport, Send_count) < 0)
@@ -190,7 +189,9 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 #endif
     
 #if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
-    MyFloat mass, vrel, vbound, r2;   //, mass_to_swallow_total, mass_to_swallow_edd;
+    MyFloat mass, vrel, vbound, r2;
+
+    //, mass_to_swallow_total, mass_to_swallow_edd;
 //    mass_to_swallow_edd = mass_to_swallow_total = 0;
 #endif
     
@@ -219,7 +220,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
         vel = BlackholeDataGet[target].Vel;
         h_i = BlackholeDataGet[target].Hsml;
         id = BlackholeDataGet[target].ID;
-        mod_index = 0;      /* this is not used for mode==1, but this avoids compiler error */
+        mod_index = 0;                              /* this is not used for mode==1, but this avoids compiler error */
     }
     
     if(h_i < 0) return -1;
@@ -242,13 +243,14 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     {
         while(startnode >= 0)
         {
-            numngb = ngb_treefind_blackhole(pos, h_i, target, &startnode, mode, nexport, nSend_local); /* whats the point of using target for non-loc search?*/
-            
+            numngb = ngb_treefind_blackhole(pos, h_i, target, &startnode, mode, nexport, nSend_local);
             if(numngb < 0) return -1;
             
             for(n = 0; n < numngb; n++)
             {
                 j = Ngblist[n];
+                
+                
                 if( (P[j].Mass > 0) && (P[j].Type != 5) && (P[j].ID != id) )
                 {
                     wt = P[j].Mass;
@@ -268,7 +270,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         if(P[j].Mass>out.DF_mmax_particles) out.DF_mmax_particles=P[j].Mass;
                     }
 #endif
-                    if(P[j].Type==0) /* gas in BH's kernel */
+                    if(P[j].Type==0) /* we found gas in BH's kernel */
                     {
                         out.Mgas_in_Kernel += wt;
                         out.BH_InternalEnergy += wt*SphP[j].InternalEnergy;
@@ -282,7 +284,6 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         kernel_main(u,hinv3,hinv3*hinv,&wk,&dwk,1);
                         dwk /= u*h_i;
                         for(k=0;k<3;k++) out.GradRho_in_Kernel[k] += wt * dwk * fabs(dP[k]);
-                       
 #endif
 #if defined(BH_USE_GASVEL_IN_BONDI) || defined(BH_DRAG)
                         for(k=0;k<3;k++)
@@ -290,7 +291,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                             out.BH_SurroundingGasVel[k] += wt*dv[k];
                         }
 #endif
-                    } else { /* not gas */
+                    } else { /* not gas, not BH */
                         out.Malt_in_Kernel += wt;
                         out.Jalt_in_Kernel[0] += wt*(dP[1]*dv[2] - dP[2]*dv[1]);
                         out.Jalt_in_Kernel[1] += wt*(dP[2]*dv[0] - dP[0]*dv[2]);
@@ -299,10 +300,12 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                     
                     
                     
+/* NOTE TO PHIL FROM  PT:  I MOVED THIS TO THE PREPASS LOOP, SO THAT WE KNOW THE DESIRED ACCRETION RATE FROM GRAVCAPT
+ *                          WE CAN THEN MODULATE THE ACTUAL SWALLOWING OF PARTICLES BASED ON THE EDDINGTON LIMIT, IF DESIRED.
+ *                          NOTE THAT SWALLOWID'S ARE NOT SET HERE, JUST mass_to_swallow_edd AND mass_to_swallow_total. 
+ */
                     
 #if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
-                    /* this will determine accretion from all particle types, based only on the
-                     ability of the particle to be gravitationally captured by the BH */
 #ifdef BH_GRAVCAPTURE_SWALLOWS
                     if( (P[j].Mass > 0) && (P[j].Type != 5))
 #else
@@ -321,23 +324,13 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         if(vrel < vbound) { /* bound */
                             if( All.ForceSoftening[5]*(1.0-vrel*vrel/(vbound*vbound))/sqrt(r2) > 1.0 ) { /* apocenter within 2.8*epsilon (softening length) */
                                 
-                                
-                                /* TODO: forget about eddington limit here.  It's really hard (impossible?) to enforce it properly during the comm step
-                                 since you don't know what's happening on the other processors.
-                                 
-                                 Instead (the real TODO), just figure out the total desired accreted mass (and, equiv. the total desired mdot) here.
-                                 Then, during the next neighbor loop, give a p (f_acc) value to stochastically (exactly) obey the eddington limit */
-                                
-                                
-                                if(P[j].SwallowID < id)     /* this should be true as long as nothing else has tried to swallow this particle first */
+                                if(P[j].SwallowID < id)     /* this should be true if nothing has tried to swallow this particle first */
                                 {
 #ifdef BH_BAL_WINDS
                                     out.mass_to_swallow_total += P[j].Mass * All.BAL_f_accretion;
 #else
                                     out.mass_to_swallow_total += P[j].Mass;
 #endif
-                                    
-                                    P[j].SwallowID = id;
                                     if((P[j].Type != 1)||(All.ComovingIntegrationOn && (P[j].Type==0||P[j].Type==4)))
                                     {
 #ifdef BH_BAL_WINDS
@@ -348,11 +341,6 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                                     }
                                     
                                 } /* P[j].SwallowID < id */
-                                
-                                printf("MARKING_BH_FOOD: j %d mass_this_part %g mass_this_proc %g \n",j,P[j].Mass , out.mass_to_swallow_total);
-                                
-
-                                
                             } /* if( All.ForceSoftening[5]*(1.0-vrel*vrel/(csnd*csnd))/sqrt(r2) > 1.0 ) */
                         } /* if(vrel < vbound) */
                     } /* type check */
@@ -366,7 +354,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
             if(mode == 0) /* local -> send directoy to local temp struct */
                 out2particle_blackhole(&out, mod_index, 0);     /* target -> mod_index for reduced size struc */
             else
-                BlackholeDataPasserResult[target] = out;        /* this is (still) okay, because target cycles over nimport only */
+                BlackholeDataPasserResult[target] = out;        /* this is okay because target cycles over nimport only */
             
         } // while(startnode >= 0)
         
