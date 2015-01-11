@@ -1615,7 +1615,7 @@ extern ALIGN(32) struct particle_data
 #endif
     MyFloat BH_Mdot;
     int BH_TimeBinGasNeighbor;
-#ifdef BH_PHOTONMOMENTUM
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
     MyFloat BH_disk_hr;
 #endif
 #ifdef BH_BUBBLES

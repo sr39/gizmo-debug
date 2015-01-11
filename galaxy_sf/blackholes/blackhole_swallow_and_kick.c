@@ -370,7 +370,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                 if(P[j].SwallowID == id)
                 {
                     printf("found particle P[j].ID = %llu with P[j].SwallowID = %llu of type P[j].Type = %d nearby id = %llu \n",
-                           (unsigned long long) P[j].ID, P[j].SwalowID, P[j].Type, id);
+                           (unsigned long long) P[j].ID, (unsigned long long) P[j].SwallowID, P[j].Type, (unsigned long long) id);
                     /* this is a BH-BH merger */
                     if(P[j].Type == 5)
                     {
