@@ -451,9 +451,10 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                     {
 #if defined(BH_BAL_WINDS) && defined(BH_GRAVCAPTURE_SWALLOWS) && !defined(BH_GRAVCAPTURE_NOGAS)
                         printf("BAL kick: ID %llu Type(j) %d f_acc %g M(j) %g V(j).xyz %g/%g/%g P(j).xyz %g/%g/%g p(i).xyz %g/%g/%g v_out %g \n",
-                                   (long long) P[j].SwallowID,P[j].Type, All.BAL_f_accretion,P[j].Mass,
+                                   (unsigned long long) P[j].SwallowID,P[j].Type, All.BAL_f_accretion,P[j].Mass,
                                    P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],
-                                   P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],pos[0],pos[1],pos[2],
+                                   P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],
+                                   pos[0],pos[1],pos[2],
                                    All.BAL_v_outflow);
                         fflush(stdout);
 

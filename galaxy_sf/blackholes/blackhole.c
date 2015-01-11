@@ -66,7 +66,7 @@ void blackhole_accretion(void)
     
     for(i = 0; i < NumPart; i++)
     {
-        P[i].SwallowID = 0;
+        P[i].SwallowID = -1;
     }
         
 
@@ -160,7 +160,7 @@ void blackhole_accretion(void)
     
     for(i = 0; i < NumPart; i++)
     {
-        P[i].SwallowID = 0;
+        P[i].SwallowID = -1;
     }
     
     blackhole_end();            /* frees BlackholeTempInfo; cleans up */
