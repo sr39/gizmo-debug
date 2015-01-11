@@ -385,6 +385,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                 }
                                 else
                                 {
+                                    printf("MARKING_BH_MERGER: P[j.]ID=%llu to be swallowed by id=%llu \n",
+                                           (unsigned long long) P[j].ID, (unsigned long long) id);
+
                                     if(P[j].SwallowID < id && P[j].ID < id) // makes it so only one swallows the other
                                         P[j].SwallowID = id;
                                 }
@@ -417,13 +420,12 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                         
                                         w = get_random_number(P[j].ID);
                                         if(w < p) {
-                                            printf("MARKING_BH_FOOD: j %d w %g p_acc %g TO_BE_SWALLOWED \n",j,w,p);
-                                            if(P[j].SwallowID < id) {
-                                                P[j].SwallowID = id;
-                                            } /* P[j].SwallowID < id */
+                                            printf("MARKING_BH_FOOD: P[j.]ID=%llu to be swallowed by id=%llu \n",
+                                                   (unsigned long long) P[j].ID, (unsigned long long) id);
+                                            if(P[j].SwallowID < id) P[j].SwallowID = id;
                                         } else { /* w < p */
-                                            printf("REJECTED_BH_FOOD (based on eddington limit): j %d w %g p_acc %g TO_BE_SWALLOWED \n",j,w,p);
-                                            printf("CURRENTLY DISABLED.\n");
+                                            printf("MARKING_BH_FOOD (should have been rejected): P[j.]ID=%llu to be swallowed by id=%llu \n",
+                                                   (unsigned long long) P[j].ID, (unsigned long long) id);
                                             if(P[j].SwallowID < id)  P[j].SwallowID = id;
                                         }/* w < p */
 #else
