@@ -62,6 +62,14 @@ void blackhole_accretion(void)
 #endif
     
     
+    
+    for(i = 0; i < NumPart; i++)
+    {
+        P[i].SwallowID = 0;
+    }
+        
+
+        
     if(ThisTask == 0)  printf("Beginning black-hole accretion\n");
     blackhole_start();              /* allocates and cleans BlackholeTempInfo struct */
 
@@ -69,8 +77,8 @@ void blackhole_accretion(void)
     
     /* this is the PRE-PASS loop.  BH does neighbor search, evaluates local gas properties */
     if(ThisTask == 0)  printf("Evaluating black-hole environment\n");
-    blackhole_environment_loop();    /* populates BlackholeTempInfo based on surrounding gas (blackhole_environment.c)
-                                        - If using gravcap the desired mass accretion rate is calculated and set to BlackholeTempInfo.mass_to_swallow_edd
+    blackhole_environment_loop();    /* populates BlackholeTempInfo based on surrounding gas (blackhole_environment.c).
+                                        If using gravcap the desired mass accretion rate is calculated and set to BlackholeTempInfo.mass_to_swallow_edd
                                       */
 
     /*----------------------------------------------------------------------
@@ -80,7 +88,8 @@ void blackhole_accretion(void)
      ----------------------------------------------------------------------*/
 
     if(ThisTask == 0)  printf("Setting black-hole properties\n");
-    blackhole_properties_loop();       /* do 'BH-centric' operations such as dyn-fric, mdot, etc. */
+    blackhole_properties_loop();       /* do 'BH-centric' operations such as dyn-fric, mdot, etc. 
+                                          This loop is at the end of this file.  */
 
     
     
@@ -147,6 +156,11 @@ void blackhole_accretion(void)
     }
     
     fflush(FdBlackHolesDetails);
+    
+    for(i = 0; i < NumPart; i++)
+    {
+        P[i].SwallowID = 0;
+    }
     
     blackhole_end();            /* frees BlackholeTempInfo; cleans up */
 
@@ -769,6 +783,119 @@ void set_blackhole_long_range_rp(int i, int n)
     }
 }
 #endif // if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+
+
+
+
+
+
+
+
+void blackhole_final_loop(void)
+{
+    int i, k, n, bin;
+    double  dt;
+#ifdef BH_GRAVACCRETION
+    double m_tmp_for_bhar;
+    double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar,mdisk_for_bhar;
+    double f0_for_bhar;
+#endif
+#ifdef BH_SUBGRIDBHVARIABILITY
+    long nsubgridvar;
+    int jsub;
+    double varsg1,varsg2;
+    double omega_ri,n0_sgrid_elements,norm_subgrid,time_var_subgridvar;
+    gsl_rng *random_generator_forbh;
+#endif
+#ifdef BH_BONDI
+    double norm, soundspeed, bhvel, rho;
+#endif
+#ifdef KD_FRICTION
+    /* add a friction force for the black-holes, accounting for the environment */
+    double fac_friction, relvel, accgrv, accfrc;
+    double a_erf, lambda;
+#endif
+    
+    
+#ifdef BH_REPOSITION_ON_POTMIN
+    for(n = FirstActiveParticle; n >= 0; n = NextActiveParticle[n])
+        if(P[n].Type == 5)
+            if(BPP(n).BH_MinPot < 0.5 * BHPOTVALUEINIT)
+                for(k = 0; k < 3; k++)
+                    P[n].Pos[k] = BPP(n).BH_MinPotPos[k];
+#endif
+    
+    
+    for(n = 0; n < TIMEBINS; n++)
+    {
+        if(TimeBinActive[n])
+        {
+            TimeBin_BH_mass[n] = 0;
+            TimeBin_BH_dynamicalmass[n] = 0;
+            TimeBin_BH_Mdot[n] = 0;
+            TimeBin_BH_Medd[n] = 0;
+        }
+    }
+    
+    
+    for(i=0; i<N_active_loc_BHs; i++)
+    {
+        n = BlackholeTempInfo[i].index;
+        if(((BlackholeTempInfo[i].accreted_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass>0)) && P[n].Mass > 0)
+        {
+            for(k = 0; k < 3; k++)
+            {
+#ifndef BH_IGNORE_ACCRETED_GAS_MOMENTUM
+                P[n].Vel[k] = (P[n].Vel[k]*P[n].Mass + BlackholeTempInfo[i].accreted_momentum[k]) / (BlackholeTempInfo[i].accreted_Mass + P[n].Mass);
+#else
+                P[n].Vel[k] = (P[n].Vel[k]*P[n].Mass + BlackholeTempInfo[i].accreted_momentum[k]) / (BlackholeTempInfo[i].accreted_BH_Mass + P[n].Mass);
+#endif
+            } //for(k = 0; k < 3; k++)
+            P[n].Mass += BlackholeTempInfo[i].accreted_Mass;
+            BPP(n).BH_Mass += BlackholeTempInfo[i].accreted_BH_Mass;
+#ifdef BH_BUBBLES
+            BPP(n).BH_Mass_bubbles += BPP(n).b7.BH_accreted_BHMass_bubbles;
+#ifdef UNIFIED_FEEDBACK
+            BPP(n).BH_Mass_radio += BPP(n).b8.BH_accreted_BHMass_radio;
+#endif
+#endif
+            
+        } // if(((BlackholeTempInfo[n].accreted_Mass>0)||(BlackholeTempInfo[n].accreted_BH_Mass>0)) && P[n].Mass > 0)
+        
+        
+#if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
+        /* now that its been added to the BH, use the actual swallowed mass to define the BHAR */
+#ifndef WAKEUP
+        dt = (P[n].TimeBin ? (1 << P[n].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+#else
+        dt = P[n].dt_step * All.Timebase_interval / All.cf_hubble_a;
+#endif
+        
+#ifdef BH_ALPHADISK_ACCRETION
+        if(dt>0)
+            BPP(n).BH_Mdot += BlackholeTempInfo[i].accreted_BH_Mass / dt;
+#else
+        if(dt>0)
+            BPP(n).BH_Mdot = BlackholeTempInfo[i].accreted_BH_Mass / dt;
+        else
+            BPP(n).BH_Mdot = 0;
+#endif // ifdef BH_ALPHADISK_ACCRETION
+#endif
+        bin = P[n].TimeBin;
+        TimeBin_BH_mass[bin] += BPP(n).BH_Mass;
+        TimeBin_BH_dynamicalmass[bin] += P[n].Mass;
+        TimeBin_BH_Mdot[bin] += BPP(n).BH_Mdot;
+        if(BPP(n).BH_Mass > 0)
+            TimeBin_BH_Medd[bin] += BPP(n).BH_Mdot / BPP(n).BH_Mass;
+#ifdef BH_BUBBLES
+        if(BPP(n).BH_Mass_bubbles > 0 && BPP(n).BH_Mass_bubbles > All.BlackHoleRadioTriggeringFactor * BPP(n).BH_Mass_ini) num_activebh++;
+#endif
+        
+    } // for(n = FirstActiveParticle; n >= 0; n = NextActiveParticle[n]) //
+    
+    
+}
+
 
 
 #endif // BLACK_HOLES

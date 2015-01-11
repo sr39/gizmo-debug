@@ -24,7 +24,7 @@
 
 
 
-/* quantities that pass IN to the 'blackhole_evaluate' routines */
+/* quantities that pass IN to the 'blackhole_environment_evaluate' routines */
 static struct blackholedata_in
 {
 #if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
