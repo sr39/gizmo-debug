@@ -1,4 +1,15 @@
-
+/*! \file blackhole_local.h
+ *  \brief comm structures to be used throughout blackhole routines
+ */
+/*
+ * This file is largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ *   It was based on a similar file in GADGET3 by Volker Springel (volker.springel@h-its.org),
+ *   but the physical modules for black hole accretion and feedback have been
+ *   replaced, and the algorithm for their coupling is new to GIZMO.  This file was modified
+ *   on 1/9/15 by Paul Torrey (ptorrey@mit.edu) for clairity by parsing the existing code into
+ *   smaller files and routines.  Some communication and black hole structures were modified
+ *   to reduce memory usage.
+ */
 
 /* quantities that pass IN to the 'blackhole_evaluate' routines */
 static struct blackholedata_in

@@ -1,11 +1,15 @@
-//
-//  blackhole_feedback.c
-//  BuildingGIZMO
-//
-//  Created by Paul Torrey on 10/22/14.
-//
-//
-
+/*! \file blackhole_swallow_and_kick.c
+ *  \brief routines for gas accretion onto black holes, and black hole mergers
+ */
+/*
+ * This file is largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ *   It was based on a similar file in GADGET3 by Volker Springel (volker.springel@h-its.org),
+ *   but the physical modules for black hole accretion and feedback have been
+ *   replaced, and the algorithm for their coupling is new to GIZMO.  This file was modified
+ *   on 1/9/15 by Paul Torrey (ptorrey@mit.edu) for clairity by parsing the existing code into
+ *   smaller files and routines.  Some communication and black hole structures were modified
+ *   to reduce memory usage.
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
