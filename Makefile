@@ -360,9 +360,9 @@ endif
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"odyssey")
 CC       =  mpicc     # sets the C-compiler
-OPT      +=  -DMPICH_IGNORE_CXX_SEEK
+OPT      +=  -DMPICH_IGNORE_CXX_SEEK 
 FC       =  $(CC)
-OPTIMIZE = -g -O2 -Wall
+OPTIMIZE = -g -O2 -Wall -Wno-unused-but-set-variable
 GSL_INCL =
 GSL_LIBS =
 FFTW_INCL=

@@ -35,6 +35,7 @@ extern struct blackhole_temp_particle_data *BlackholeTempInfo;
  *  It is called in calculate_non_standard_physics in run.c */
 void blackhole_accretion(void)
 {
+    long i;
     int bin;
     double mdot, mdot_in_msun_per_year;
     double mass_real, total_mass_real, medd, total_mdoteddington;

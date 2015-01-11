@@ -17,14 +17,27 @@
 
 
 #if defined(BLACK_HOLES)
+/* blackhole_utils.c */
 void blackhole_start(void);
 void blackhole_end(void);
-void blackhole_environment_loop(void);
+
+/* blackholes.c */
 void blackhole_properties_loop(void);
-void blackhole_swallow_and_kick_loop(void);
 void blackhole_final_loop(void);
-void blackhole_feed_loop(void);
+
+void blackhole_environment_loop(void);
 int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSend_local);
+
+
+
+void blackhole_swallow_and_kick_loop(void);
+int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int *nSend_local);
+
+
+void blackhole_feed_loop(void);
+int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local);
+
+
 void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target, int mode);
 
 //void check_for_bh_merger(int j, MyIDType id);
