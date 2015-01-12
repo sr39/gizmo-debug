@@ -134,3 +134,129 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
 
 #endif
 }
+
+
+
+int ngb_treefind_blackhole(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode,
+                           int *nexport, int *nsend_local)
+{
+    int numngb, no, p, task, nexport_save;
+    struct NODE *current;
+    MyDouble dx, dy, dz, dist;
+    
+#ifdef PERIODIC
+    MyDouble xtmp;
+#endif
+    nexport_save = *nexport;
+    
+    numngb = 0;
+    no = *startnode;
+    
+    while(no >= 0)
+    {
+        if(no < All.MaxPart)	/* single particle */
+        {
+            p = no;
+            no = Nextnode[no];
+            
+            /* make sure we get all the particle types we need */
+#if defined(BH_REPOSITION_ON_POTMIN) || defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_NOGAS) || defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_DYNFRICTION)
+            if(P[p].Type < 0)
+                continue;
+#else
+            if(P[p].Type != 0 && P[p].Type != 5)
+                continue;
+#endif
+            dist = hsml;
+            dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0]);
+            if(dx > dist)
+                continue;
+            dy = NGB_PERIODIC_LONG_Y(P[p].Pos[1] - searchcenter[1]);
+            if(dy > dist)
+                continue;
+            dz = NGB_PERIODIC_LONG_Z(P[p].Pos[2] - searchcenter[2]);
+            if(dz > dist)
+                continue;
+            if(dx * dx + dy * dy + dz * dz > dist * dist)
+                continue;
+            
+            Ngblist[numngb++] = p;
+        }
+        else
+        {
+            if(no >= All.MaxPart + MaxNodes)	/* pseudo particle */
+            {
+                if(mode == 1)
+                    endrun(12312);
+                
+                if(Exportflag[task = DomainTask[no - (All.MaxPart + MaxNodes)]] != target)
+                {
+                    Exportflag[task] = target;
+                    Exportnodecount[task] = NODELISTLENGTH;
+                }
+                
+                if(Exportnodecount[task] == NODELISTLENGTH)
+                {
+                    if(*nexport >= All.BunchSize)
+                    {
+                        *nexport = nexport_save;
+                        for(task = 0; task < NTask; task++)
+                            nsend_local[task] = 0;
+                        for(no = 0; no < nexport_save; no++)
+                            nsend_local[DataIndexTable[no].Task]++;
+                        return -1;
+                    }
+                    Exportnodecount[task] = 0;
+                    Exportindex[task] = *nexport;
+                    DataIndexTable[*nexport].Task = task;
+                    DataIndexTable[*nexport].Index = target;
+                    DataIndexTable[*nexport].IndexGet = *nexport;
+                    *nexport = *nexport + 1;
+                    nsend_local[task]++;
+                }
+                
+                DataNodeList[Exportindex[task]].NodeList[Exportnodecount[task]++] =
+                DomainNodeIndex[no - (All.MaxPart + MaxNodes)];
+                
+                if(Exportnodecount[task] < NODELISTLENGTH)
+                    DataNodeList[Exportindex[task]].NodeList[Exportnodecount[task]] = -1;
+                
+                no = Nextnode[no - MaxNodes];
+                continue;
+            }
+            
+            current = &Nodes[no];
+            
+            if(mode == 1)
+            {
+                if(current->u.d.bitflags & (1 << BITFLAG_TOPLEVEL))	/* we reached a top-level node again, which means that we are done with the branch */
+                {
+                    *startnode = -1;
+                    return numngb;
+                }
+            }
+            
+            no = current->u.d.sibling;	/* in case the node can be discarded */
+            
+            dist = hsml + 0.5 * current->len;;
+            dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0]);
+            if(dx > dist)
+                continue;
+            dy = NGB_PERIODIC_LONG_Y(current->center[1] - searchcenter[1]);
+            if(dy > dist)
+                continue;
+            dz = NGB_PERIODIC_LONG_Z(current->center[2] - searchcenter[2]);
+            if(dz > dist)
+                continue;
+            /* now test against the minimal sphere enclosing everything */
+            dist += FACT1 * current->len;
+            if(dx * dx + dy * dy + dz * dz > dist * dist)
+                continue;
+            
+            no = current->u.d.nextnode;	/* ok, we need to open the node */
+        }
+    }
+    
+    *startnode = -1;
+    return numngb;
+}
