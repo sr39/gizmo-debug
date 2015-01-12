@@ -36,10 +36,10 @@ extern struct blackhole_temp_particle_data *BlackholeTempInfo;
 void blackhole_accretion(void)
 {
     long i;
-    int bin;
-    double mdot, mdot_in_msun_per_year;
-    double mass_real, total_mass_real, medd, total_mdoteddington;
-    double mass_holes, total_mass_holes, total_mdot;
+//    int bin;
+//    double mdot, mdot_in_msun_per_year;
+//    double mass_real, total_mass_real, medd, total_mdoteddington;
+//    double mass_holes, total_mass_holes, total_mdot;
     
     for(i = 0; i < NumPart; i++)
     {
@@ -103,36 +103,6 @@ void blackhole_accretion(void)
      ------------------------------------------------------------------------
      ----------------------------------------------------------------------*/
 
-    
-    /* sum up numbers to print for summary of the BH step (blackholes.txt) */
-    mdot = mass_holes = mass_real = medd = 0;
-    for(bin = 0; bin < TIMEBINS; bin++)
-    {
-        if(TimeBinCount[bin])
-        {
-            mass_holes += TimeBin_BH_mass[bin];
-            mass_real += TimeBin_BH_dynamicalmass[bin];
-            mdot += TimeBin_BH_Mdot[bin];
-            medd += TimeBin_BH_Medd[bin];
-        }
-    }
-    MPI_Reduce(&mass_holes, &total_mass_holes, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&mass_real, &total_mass_real, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&mdot, &total_mdot, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&medd, &total_mdoteddington, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if(ThisTask == 0)
-    {
-        /* convert to solar masses per yr */
-        mdot_in_msun_per_year = total_mdot * (All.UnitMass_in_g / SOLAR_MASS) / (All.UnitTime_in_s / SEC_PER_YEAR);
-        total_mdoteddington *= 1.0 / ((4 * M_PI * GRAVITY * C * PROTONMASS /
-                                       (All.BlackHoleRadiativeEfficiency * C * C * THOMPSON)) * All.UnitTime_in_s / All.HubbleParam);
-        fprintf(FdBlackHoles, "%g %d %g %g %g %g %g\n",
-                All.Time, All.TotBHs, total_mass_holes, total_mdot, mdot_in_msun_per_year,
-                total_mass_real, total_mdoteddington);
-        fflush(FdBlackHoles);
-    }
-    
-    fflush(FdBlackHolesDetails);
     
     for(i = 0; i < NumPart; i++)
     {
