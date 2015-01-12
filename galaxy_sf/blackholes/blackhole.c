@@ -46,21 +46,22 @@ void blackhole_accretion(void)
 //    double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar;
 //    double f0_for_bhar;
 //#endif
-#ifdef BH_SUBGRIDBHVARIABILITY
-    long nsubgridvar;
-    int jsub;
-    double varsg1,varsg2;
-    double omega_ri,n0_sgrid_elements,norm_subgrid,time_var_subgridvar;
-    gsl_rng *random_generator_forbh;
-#endif
-#ifdef BH_BONDI
-    double norm, soundspeed, bhvel, rho;
-#endif
-#ifdef KD_FRICTION
-    /* add a friction force for the black-holes, accounting for the environment */
-    double fac_friction, relvel, accgrv, accfrc;
-    double a_erf, lambda;
-#endif
+//#ifdef BH_SUBGRIDBHVARIABILITY
+//    long nsubgridvar;
+//    int jsub;
+//    double varsg1,varsg2;
+//    double omega_ri,n0_sgrid_elements,norm_subgrid,time_var_subgridvar;
+//    gsl_rng *random_generator_forbh;
+//#endif
+
+//#ifdef BH_BONDI
+//    double norm, soundspeed, bhvel, rho;
+//#endif
+//#ifdef KD_FRICTION
+//    /* add a friction force for the black-holes, accounting for the environment */
+//    double fac_friction, relvel, accgrv, accfrc;
+//    double a_erf, lambda;
+//#endif
     
     
     
@@ -365,21 +366,21 @@ void blackhole_properties_loop(void)
 //    double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar,mdisk_for_bhar;
 //    double f0_for_bhar;
 //#endif
-#ifdef BH_SUBGRIDBHVARIABILITY
-    long nsubgridvar;
-    int jsub;
-    double varsg1,varsg2;
-    double omega_ri,n0_sgrid_elements,norm_subgrid,time_var_subgridvar;
-    gsl_rng *random_generator_forbh;
-#endif
-#ifdef BH_BONDI
-    double norm, soundspeed, bhvel, rho;
-#endif
-#ifdef KD_FRICTION
+//#ifdef BH_SUBGRIDBHVARIABILITY
+//    long nsubgridvar;
+//    int jsub;
+//    double varsg1,varsg2;
+//    double omega_ri,n0_sgrid_elements,norm_subgrid,time_var_subgridvar;
+//    gsl_rng *random_generator_forbh;
+//#endif
+//#ifdef BH_BONDI
+//    double norm, soundspeed, bhvel, rho;
+//#endif
+//#ifdef KD_FRICTION
     /* add a friction force for the black-holes, accounting for the environment */
-    double fac_friction, relvel, accgrv, accfrc;
-    double a_erf, lambda;
-#endif
+//    double fac_friction, relvel, accgrv, accfrc;
+//    double a_erf, lambda;
+//#endif
 #ifdef BH_ALPHADISK_ACCRETION
     double mdot_alphadisk;
 #endif
@@ -467,13 +468,27 @@ void normalize_temp_info_struct(int i)
 
 void set_blackhole_mdot(int i, int n, double dt)
 {
-    double mdot;
+    double mdot=0;
 #ifdef BH_GRAVACCRETION
     int k;
     double m_tmp_for_bhar, mdisk_for_bhar, bh_mass;
     double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar;
     double f0_for_bhar, fac;
 #endif
+
+#ifdef BH_SUBGRIDBHVARIABILITY
+    long nsubgridvar;
+    int jsub;
+    double varsg1,varsg2;
+    double omega_ri,n0_sgrid_elements,norm_subgrid,time_var_subgridvar;
+    gsl_rng *random_generator_forbh;
+#endif
+
+#ifdef BH_BONDI
+    double  soundspeed, bhvel, rho, fac;
+#endif
+
+//
 //
 //
 //#ifdef BH_ALPHADISK_ACCRETION
@@ -687,6 +702,13 @@ void set_blackhole_new_mass(int i, int n, double dt)
 #if defined(BH_DRAG) || defined(BH_DYNFRICTION)
 void set_blackhole_drag(int i, int n, double dt)
 {
+
+#ifdef KD_FRICTION
+    /* add a friction force for the black-holes, accounting for the environment */
+    double fac_friction, relvel, accgrv, accfrc;
+    double a_erf, lambda;
+#endif
+
     int k;
     double meddington, fac;
 
@@ -803,27 +825,29 @@ void set_blackhole_long_range_rp(int i, int n)
 void blackhole_final_loop(void)
 {
     int i, k, n, bin;
+#if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
     double  dt;
+#endif
 //#ifdef BH_GRAVACCRETION
 //    double m_tmp_for_bhar;
 //    double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar,mdisk_for_bhar;
 //    double f0_for_bhar;
 //#endif
-#ifdef BH_SUBGRIDBHVARIABILITY
-    long nsubgridvar;
-    int jsub;
-    double varsg1,varsg2;
-    double omega_ri,n0_sgrid_elements,norm_subgrid,time_var_subgridvar;
-    gsl_rng *random_generator_forbh;
-#endif
-#ifdef BH_BONDI
-    double norm, soundspeed, bhvel, rho;
-#endif
-#ifdef KD_FRICTION
-    /* add a friction force for the black-holes, accounting for the environment */
-    double fac_friction, relvel, accgrv, accfrc;
-    double a_erf, lambda;
-#endif
+//#ifdef BH_SUBGRIDBHVARIABILITY
+//    long nsubgridvar;
+//    int jsub;
+//    double varsg1,varsg2;
+//    double omega_ri,n0_sgrid_elements,norm_subgrid,time_var_subgridvar;
+//    gsl_rng *random_generator_forbh;
+//#endif
+//#ifdef BH_BONDI
+//    double norm, soundspeed, bhvel, rho;
+//#endif
+//#ifdef KD_FRICTION
+//    /* add a friction force for the black-holes, accounting for the environment */
+//    double fac_friction, relvel, accgrv, accfrc;
+//    double a_erf, lambda;
+//#endif
     
     
 #ifdef BH_REPOSITION_ON_POTMIN

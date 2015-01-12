@@ -35,21 +35,21 @@ void blackhole_feed_loop(void)
 //    double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar,mdisk_for_bhar;
 //    double f0_for_bhar;
 //#endif
-#ifdef BH_SUBGRIDBHVARIABILITY
-    long nsubgridvar;
-    int jsub;
-    double varsg1,varsg2;
-    double omega_ri,n0_sgrid_elements,norm_subgrid,time_var_subgridvar;
-    gsl_rng *random_generator_forbh;
-#endif
-#ifdef BH_BONDI
-    double norm, soundspeed, bhvel, rho;
-#endif
-#ifdef KD_FRICTION
-    /* add a friction force for the black-holes, accounting for the environment */
-    double fac_friction, relvel, accgrv, accfrc;
-    double a_erf, lambda;
-#endif
+//#ifdef BH_SUBGRIDBHVARIABILITY
+//    long nsubgridvar;
+//    int jsub;
+//    double varsg1,varsg2;
+//    double omega_ri,n0_sgrid_elements,norm_subgrid,time_var_subgridvar;
+//    gsl_rng *random_generator_forbh;
+//#endif
+//#ifdef BH_BONDI
+//    double norm, soundspeed, bhvel, rho;
+//#endif
+//#ifdef KD_FRICTION
+//    /* add a friction force for the black-holes, accounting for the environment */
+//    double fac_friction, relvel, accgrv, accfrc;
+//    double a_erf, lambda;
+//#endif
     
     
     /* allocate buffers to arrange communication */
@@ -323,9 +323,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #endif
 #endif
     
-#if defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
-    double m_to_swallow_thispart;
-#endif
+//#if defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
+//    double m_to_swallow_thispart;
+//#endif
     
     /* Now start the actual SPH computation for this BH particle */
     if(mode == 0)
