@@ -274,7 +274,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         Jgas_in_Kernel = P[target].GradRho;
         BH_disk_hr = P[target].BH_disk_hr;
 #endif
+#if (defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)) && (defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION))
         mass_to_swallow_edd = BlackholeTempInfo[P[target].IndexMapToTempStruc].mass_to_swallow_edd;
+#endif
     }
     else
     {
@@ -294,7 +296,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         Jgas_in_Kernel = BlackholeDataGet[target].Jgas_in_Kernel;
         BH_disk_hr = BlackholeDataGet[target].BH_disk_hr;
 #endif
+#if (defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)) && (defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION))
         mass_to_swallow_edd = BlackholeDataGet[target].mass_to_swallow_edd;
+#endif
     }
     
     if((mass<0)||(h_i<=0)) return -1;
