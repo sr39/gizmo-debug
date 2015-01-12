@@ -41,11 +41,11 @@ void blackhole_accretion(void)
     double mass_real, total_mass_real, medd, total_mdoteddington;
     double mass_holes, total_mass_holes, total_mdot;
     
-#ifdef BH_GRAVACCRETION
-    double m_tmp_for_bhar;
-    double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar,mdisk_for_bhar;
-    double f0_for_bhar;
-#endif
+//#ifdef BH_GRAVACCRETION
+//    double m_tmp_for_bhar;
+//    double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar;
+//    double f0_for_bhar;
+//#endif
 #ifdef BH_SUBGRIDBHVARIABILITY
     long nsubgridvar;
     int jsub;
@@ -360,11 +360,11 @@ void blackhole_properties_loop(void)
     double fac, mdot, dt;
     double medd;
 
-#ifdef BH_GRAVACCRETION
-    double m_tmp_for_bhar;
-    double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar,mdisk_for_bhar;
-    double f0_for_bhar;
-#endif
+//#ifdef BH_GRAVACCRETION
+//    double m_tmp_for_bhar;
+//    double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar,mdisk_for_bhar;
+//    double f0_for_bhar;
+//#endif
 #ifdef BH_SUBGRIDBHVARIABILITY
     long nsubgridvar;
     int jsub;
@@ -468,6 +468,14 @@ void normalize_temp_info_struct(int i)
 void set_blackhole_mdot(int i, int n, double dt)
 {
     double mdot;
+#ifdef BH_GRAVACCRETION
+    int k;
+    double m_tmp_for_bhar, mdisk_for_bhar, bh_mass;
+    double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar;
+    double f0_for_bhar, fac;
+#endif
+//
+//
 //#ifdef BH_ALPHADISK_ACCRETION
 //    double mdot_alphadisk;
 //#endif
@@ -796,11 +804,11 @@ void blackhole_final_loop(void)
 {
     int i, k, n, bin;
     double  dt;
-#ifdef BH_GRAVACCRETION
-    double m_tmp_for_bhar;
-    double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar,mdisk_for_bhar;
-    double f0_for_bhar;
-#endif
+//#ifdef BH_GRAVACCRETION
+//    double m_tmp_for_bhar;
+//    double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar,mdisk_for_bhar;
+//    double f0_for_bhar;
+//#endif
 #ifdef BH_SUBGRIDBHVARIABILITY
     long nsubgridvar;
     int jsub;

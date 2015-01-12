@@ -29,11 +29,11 @@ void blackhole_swallow_and_kick_loop(void)
     int ngrp, recvTask, place, nexport, nimport, dummy;
     MPI_Status status;
 
-#ifdef BH_GRAVACCRETION
-    double m_tmp_for_bhar;
-    double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar,mdisk_for_bhar;
-    double f0_for_bhar;
-#endif
+//#ifdef BH_GRAVACCRETION
+//    double m_tmp_for_bhar;
+//    double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar,mdisk_for_bhar;
+//    double f0_for_bhar;
+//#endif
 #ifdef BH_SUBGRIDBHVARIABILITY
     long nsubgridvar;
     int jsub;

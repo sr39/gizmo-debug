@@ -2181,11 +2181,12 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 #if defined(BH_ALPHADISK_ACCRETION)
     MyFloat mdot_alphadisk;             /*!< gives mdot of mass going into alpha disk */
 #endif
-#if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
-    
+
+//#if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)    
     MyFloat mass_to_swallow_total;      /*!< gives the total bound mass we want to swallow in this timestep */
     MyFloat mass_to_swallow_edd;        /*!< gives the mass we want to swallow that contributes to eddington */
-#endif
+//#endif
+
 }
 *BlackholeTempInfo, *BlackholeDataPasserResult, *BlackholeDataPasserOut;
 #endif
