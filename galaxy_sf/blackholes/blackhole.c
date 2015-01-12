@@ -36,15 +36,8 @@ extern struct blackhole_temp_particle_data *BlackholeTempInfo;
 void blackhole_accretion(void)
 {
     long i;
-//    int bin;
-//    double mdot, mdot_in_msun_per_year;
-//    double mass_real, total_mass_real, medd, total_mdoteddington;
-//    double mass_holes, total_mass_holes, total_mdot;
     
-    for(i = 0; i < NumPart; i++)
-    {
-        P[i].SwallowID = 0;
-    }
+    for(i = 0; i < NumPart; i++) P[i].SwallowID = 0;
     
         
     if(ThisTask == 0)  printf("Beginning black-hole accretion\n");
@@ -104,13 +97,10 @@ void blackhole_accretion(void)
      ----------------------------------------------------------------------*/
 
     
-    for(i = 0; i < NumPart; i++)
-    {
-        P[i].SwallowID = 0;
-    }
-    
     blackhole_end();            /* frees BlackholeTempInfo; cleans up */
     
+    for(i = 0; i < NumPart; i++)  P[i].SwallowID = 0;
+
 }
 
 
@@ -611,27 +601,6 @@ void blackhole_final_loop(void)
 #if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
     double  dt;
 #endif
-//#ifdef BH_GRAVACCRETION
-//    double m_tmp_for_bhar;
-//    double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar,mdisk_for_bhar;
-//    double f0_for_bhar;
-//#endif
-//#ifdef BH_SUBGRIDBHVARIABILITY
-//    long nsubgridvar;
-//    int jsub;
-//    double varsg1,varsg2;
-//    double omega_ri,n0_sgrid_elements,norm_subgrid,time_var_subgridvar;
-//    gsl_rng *random_generator_forbh;
-//#endif
-//#ifdef BH_BONDI
-//    double norm, soundspeed, bhvel, rho;
-//#endif
-//#ifdef KD_FRICTION
-//    /* add a friction force for the black-holes, accounting for the environment */
-//    double fac_friction, relvel, accgrv, accfrc;
-//    double a_erf, lambda;
-//#endif
-    
     
 #ifdef BH_REPOSITION_ON_POTMIN
     for(n = FirstActiveParticle; n >= 0; n = NextActiveParticle[n])

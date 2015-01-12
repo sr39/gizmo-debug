@@ -30,15 +30,15 @@ void blackhole_end(void);
 void blackhole_properties_loop(void);
 void blackhole_final_loop(void);
 
+/* blackhole_environment.c */
 void blackhole_environment_loop(void);
 int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSend_local);
 
-
-
+/* blackhole_swallow_and_kick.c */
 void blackhole_swallow_and_kick_loop(void);
 int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int *nSend_local);
 
-
+/* blackhole_feed.c */
 void blackhole_feed_loop(void);
 int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local);
 
