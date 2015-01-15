@@ -342,7 +342,8 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         vrel = sqrt(vrel) / All.cf_atime;       /* do this once and use below */
                         vesc = sqrt(2.0*All.G*(mass+P[j].Mass)/(sqrt(r2)*All.cf_atime) + pow(10.e5/All.UnitVelocity_in_cm_per_s,2));
                         r = sqrt(r2);
-                        
+                        if(P[j].Type==0)  printf("vrel=%g, vesc=%g, r=%g, cond2=%g, Type=%d\n", vrel, vesc, r, All.ForceSoftening[5]*(1.0-vrel*vrel/(vesc*vesc))/r, P[j].Type);
+
 #ifdef BH_REPOSITION_ON_POTMIN
                         /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
                         if(P[j].Potential < minpot)
@@ -391,7 +392,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                             if((P[j].Type != 0)&&(P[j].Type != 5))
 #endif
                             {
-                                printf("vrel=%g, vesc=%g, cond2=%g\n", vrel, vesc, All.ForceSoftening[5]*(1.0-vrel*vrel/(vesc*vesc))/r)
+//                                printf("vrel=%g, vesc=%g, cond2=%g\n", vrel, vesc, All.ForceSoftening[5]*(1.0-vrel*vrel/(vesc*vesc))/r)
                                 
                                 if(vrel < vesc){ /* bound */
                                     if( All.ForceSoftening[5]*(1.0-vrel*vrel/(vesc*vesc))/r > 1.0 )

@@ -458,6 +458,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                         if(P[j].Type==0) v_kick=All.BAL_v_outflow; else v_kick=0.1*All.BAL_v_outflow;
                         if(P[j].Type==0) f_accreted=All.BAL_f_accretion; else f_accreted=1;
                         
+			if( !(All.ComovingIntegrationOn) && (All.Time < 0.001)) v_kick *= All.Time/0.001;
+
                         accreted_mass += FLT(f_accreted*(1. - All.BlackHoleRadiativeEfficiency)*P[j].Mass);
                         accreted_BH_mass += FLT(f_accreted*(1. - All.BlackHoleRadiativeEfficiency)*P[j].Mass);
                         for(k = 0; k < 3; k++)
