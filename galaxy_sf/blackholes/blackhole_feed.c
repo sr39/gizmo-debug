@@ -222,7 +222,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat bh_mass_alphadisk;
 #endif
-#if defined(BH_SWALLOWGAS) || defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
+#if defined(BH_SWALLOWGAS)
     int N_gas_toswallow=0;
     double w=0,p=0,mass_markedswallow=0,bh_mass_withdisk=0;
 #endif
@@ -294,7 +294,8 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     eddington_factor = mass_to_swallow_edd / medd_max_accretable;   /* if <1 no problem, if >1, need to not set some swallowIDs */
 #endif
 #endif
-#if defined(BH_SWALLOWGAS) || defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
+    
+#if defined(BH_SWALLOWGAS)
     bh_mass_withdisk = bh_mass;
 #ifdef BH_ALPHADISK_ACCRETION
     bh_mass_withdisk += bh_mass_alphadisk;
@@ -385,11 +386,12 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
 #ifdef BH_GRAVCAPTURE_SWALLOWS
 //                        if(P[j].Type != 5)
-			if(P[j].Type == 0)		// enforce gas accretion only
+                        if(P[j].Type == 0)		// enforce gas accretion only
 #else
                             if((P[j].Type != 0)&&(P[j].Type != 5))
 #endif
                             {
+                                printf("vrel=%g, vesc=%g, cond2=%g\n", vrel, vesc, All.ForceSoftening[5]*(1.0-vrel*vrel/(vesc*vesc))/r)
                                 
                                 if(vrel < vesc){ /* bound */
                                     if( All.ForceSoftening[5]*(1.0-vrel*vrel/(vesc*vesc))/r > 1.0 )
@@ -434,23 +436,26 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                             
 #ifdef BH_SWALLOWGAS
                             /* compute accretion probability */
-                            if((bh_mass_withdisk - (mass+mass_markedswallow))>0)
-                                p = (bh_mass_withdisk - (mass+mass_markedswallow)) * wk / rho;
+                            if((bh_mass_withdisk - (mass + mass_markedswallow))>0)
+                                p = (bh_mass_withdisk - (mass + mass_markedswallow)) * wk / rho;
                             else
                                 p = 0;
+                            
 #if defined(BH_GRAVCAPTURE_SWALLOWS) && !defined(BH_GRAVCAPTURE_NOGAS)
                             p = 0;
 #endif
-#if defined(BH_BAL_WINDS) && defined(BH_GRAVCAPTURE_SWALLOWS) && !defined(BH_GRAVCAPTURE_NOGAS)
+                            
+#if defined(BH_BAL_WINDS)
                             if(All.BAL_f_accretion>0) p /= All.BAL_f_accretion;
 #endif
+                            
                             w = get_random_number(P[j].ID);
                             if(w < p)
                             {
                                 printf("MARKING_BH_FOOD: j %d w %g p %g TO_BE_SWALLOWED \n",j,w,p);
                                 if(P[j].SwallowID < id) P[j].SwallowID = id;
                                 N_gas_toswallow++;
-#if defined(BH_BAL_WINDS) && defined(BH_GRAVCAPTURE_SWALLOWS) && !defined(BH_GRAVCAPTURE_NOGAS)
+#if defined(BH_BAL_WINDS)
                                 mass_markedswallow += P[j].Mass*All.BAL_f_accretion;
 #else
                                 mass_markedswallow += P[j].Mass;
