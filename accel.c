@@ -132,6 +132,7 @@ void compute_stellar_feedback(void)
     /* first, check the mechanical sources of feedback */
 #if (defined(GALSF_FB_SNE_HEATING)||defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPROCESS_ENRICHMENT))
     mechanical_fb_calc(-1); /* compute weights for coupling */
+    CPU_Step[CPU_SNIIHEATING] += measure_time();
 #ifdef GALSF_FB_SNE_HEATING
     mechanical_fb_calc(0); /* actually do the SNe coupling */
     CPU_Step[CPU_SNIIHEATING] += measure_time();
@@ -164,5 +165,6 @@ void compute_stellar_feedback(void)
     CPU_Step[CPU_LOCALWIND] += measure_time();
 #endif
     
+    CPU_Step[CPU_MISC] += measure_time();
 }
 #endif // GALSF //

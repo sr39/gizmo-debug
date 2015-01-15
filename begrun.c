@@ -280,7 +280,8 @@ void begrun(void)
 #ifdef DARKENERGY
       All.DarkEnergyParam = all.DarkEnergyParam;
 #endif
-
+        
+      All.MaxNumNgbDeviation = all.MaxNumNgbDeviation;
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
       /* Allow the tolerance over the number of neighbours to vary during the run:
        * If it was initially set to a very strict value, convergence in ngb-iteration may at some point fail */

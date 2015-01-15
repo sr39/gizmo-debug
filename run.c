@@ -418,7 +418,7 @@ void execute_resubmit_command(void)
 /*! This function finds the next synchronization point of the system
  * (i.e. the earliest point of time any of the particles needs a force
  * computation), and drifts the system to this point of time.  If the
- * system dirfts over the desired time of a snapshot file, the
+ * system drifts over the desired time of a snapshot file, the
  * function will drift to this moment, generate an output, and then
  * resume the drift.
  */
@@ -485,7 +485,7 @@ void find_next_sync_point_and_drift(void)
 #endif
 
 
-mpi_printf("\n\n\nI found the last snapshot call...\n\n\n");
+      mpi_printf("\n\n\nI found the last snapshot call...\n\n\n");
       savepositions(All.SnapshotFileCount++);	/* write snapshot file */
 
       All.Ti_nextoutput = find_next_outputtime(All.Ti_nextoutput + 1);

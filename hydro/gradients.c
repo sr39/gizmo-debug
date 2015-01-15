@@ -755,12 +755,6 @@ void hydro_gradient_calc(void)
               for(k=0;k<3;k++) SphP[i].Gradients.SoundSpeed[k] *= d_norm;
           }
 #endif
-#ifdef MAGNETIC
-          double q = fabs(SphP[i].divB) * PPP[i].Hsml / sqrt(SphP[i].BPred[0]*SphP[i].BPred[0]+SphP[i].BPred[1]*SphP[i].BPred[1]+SphP[i].BPred[2]*SphP[i].BPred[2]);
-          double alim2 = a_limiter * (1. + pow((300.*q),2));
-          if(alim2 > 0.5) alim2=0.5;
-          h0 = 1 / (alim2 * PPP[i].Hsml);
-#endif
           for(k1=0;k1<3;k1++)
           {
               d_abs=0; for(k=0;k<3;k++) {d_tmp[k]=SphP[i].Gradients.Velocity[k1][k]; d_abs+=d_tmp[k]*d_tmp[k];}
@@ -771,6 +765,9 @@ void hydro_gradient_calc(void)
               }
           }
 #ifdef MAGNETIC
+          double q = fabs(SphP[i].divB) * PPP[i].Hsml / sqrt(1.0e-37 + 2.0e-8*SphP[i].Pressure + SphP[i].BPred[0]*SphP[i].BPred[0]+SphP[i].BPred[1]*SphP[i].BPred[1]+SphP[i].BPred[2]*SphP[i].BPred[2]);
+          double alim2 = a_limiter * (1. + pow((300.*q),2));
+          if(alim2 > 0.5) alim2=0.5;
           h0 = 1 / (alim2 * PPP[i].Hsml);
 
           for(k1=0;k1<3;k1++)

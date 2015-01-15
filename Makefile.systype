@@ -13,9 +13,9 @@
 
 
 #SYSTYPE="Stampede"
-#SYSTYPE="Zwicky"
+SYSTYPE="Zwicky"
 #SYSTYPE="MacBookPro"
-SYSTYPE="odyssey"
+#SYSTYPE="odyssey"
 #SYSTYPE="SciNet"
 #SYSTYPE="Ranger_intel"
 #SYSTYPE="Ranger_pgi"
