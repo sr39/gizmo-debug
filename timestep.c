@@ -427,7 +427,7 @@ integertime get_timestep(int p,		/*!< particle index */
             break;
             
         default:
-            fprintf(stderr, "\n !!!2@@@!!! \n");
+            fprintf(stderr, "\n !!!2@@@!!! \n"); 
             endrun(888);
             fprintf(stderr, "\n !!!2@@@!!! \n");
             break;
