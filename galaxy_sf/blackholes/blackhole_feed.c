@@ -384,7 +384,8 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         
 #if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
 #ifdef BH_GRAVCAPTURE_SWALLOWS
-                        if(P[j].Type != 5)
+//                        if(P[j].Type != 5)
+			if(P[j].Type == 0)		// enforce gas accretion only
 #else
                             if((P[j].Type != 0)&&(P[j].Type != 5))
 #endif
