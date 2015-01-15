@@ -45,7 +45,7 @@ void blackhole_accretion(void)
 
     
     
-    /* this is the PRE-PASS loop.  BH does neighbor search, evaluates local gas properties */
+    /* this is the PRE-PASS loop.*/
     if(ThisTask == 0)  printf("Evaluating black-hole environment\n");
     blackhole_environment_loop();    /* populates BlackholeTempInfo based on surrounding gas (blackhole_environment.c).
                                         If using gravcap the desired mass accretion rate is calculated and set to BlackholeTempInfo.mass_to_swallow_edd
@@ -206,7 +206,7 @@ void blackhole_properties_loop(void)
         fac=0; medd=0;
 #ifdef BH_ALPHADISK_ACCRETION
         fac=BPP(n).BH_Mass_AlphaDisk;
-        medd=mdot_alphadisk;			// is this really what we want?!? I don't think so...
+        medd=mdot_alphadisk;	
 #endif
         fprintf(FdBlackHolesDetails, "BH=%u %g %g %g %g %g %g %g %g   %2.7f %2.7f %2.7f\n",
                 P[n].ID, All.Time, BPP(n).BH_Mass, fac, P[n].Mass, mdot, medd,
