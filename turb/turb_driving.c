@@ -391,7 +391,7 @@ void reset_turb_temp(void)
     {
       double u0 = All.RefInternalEnergy;
       if(fabs(GAMMA_MINUS1) > 0.01) u0 *= pow(SphP[i].Density/All.RefDensity,GAMMA_MINUS1);
-      double du = (Particle_Internal_energy_i(i) - u0);
+      double du = (P[i].InternalEnergy - u0);
       double dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval;
       SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = u0;  /* this is where internal energy is reset */
       SphP[i].Pressure = get_pressure(i);
@@ -535,7 +535,7 @@ void log_turb_temp(void)
       ekin += 0.5 * P[i].Mass * (P[i].Vel[0] * P[i].Vel[0] +
 				 P[i].Vel[1] * P[i].Vel[1] + P[i].Vel[2] * P[i].Vel[2]);
 
-      double u = Particle_Internal_energy_i(i);
+      double u = P[i].InternalEnergy;
       etot += P[i].Mass * u;
       mass += P[i].Mass;
     }

@@ -639,8 +639,13 @@ void ags_density(void)
         {
             if((P[i].Mass>0)&&(PPP[i].Hsml>0)&&(PPP[i].NumNgb>0))
             {
-                double ndenNGB = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
-                PPPZ[i].AGS_zeta *= 0.5 * P[i].Mass * PPP[i].Hsml / (NUMDIMS * ndenNGB) * PPPZ[i].DhsmlNgbFactor;
+                if(fabs(PPP[i].NumNgb-All.AGS_DesNumNgb)/All.AGS_DesNumNgb < 0.05)
+                {
+                    double ndenNGB = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
+                    PPPZ[i].AGS_zeta *= 0.5 * P[i].Mass * PPP[i].Hsml / (NUMDIMS * ndenNGB) * PPPZ[i].DhsmlNgbFactor;
+                } else {
+                    PPPZ[i].AGS_zeta = 0;
+                }
             } else {
                 PPPZ[i].AGS_zeta = 0;
             }

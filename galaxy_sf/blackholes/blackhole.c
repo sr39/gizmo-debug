@@ -476,12 +476,6 @@ void set_blackhole_new_mass(int i, int n, double dt)
 void set_blackhole_drag(int i, int n, double dt)
 {
 
-#ifdef KD_FRICTION
-    /* add a friction force for the black-holes, accounting for the environment */
-    double fac_friction, relvel, accgrv, accfrc;
-    double a_erf, lambda;
-#endif
-
     int k;
     double meddington, fac;
 

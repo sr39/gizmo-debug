@@ -25,8 +25,7 @@
     if(SphP[j].ConditionNumber*SphP[j].ConditionNumber > cnumcrit2)
     {
         /* the effective gradient matrix is ill-conditioned: for stability, we revert to the "RSPH" EOM */
-#if !(defined(HYDRO_SPH) || defined(CONDUCTION_EXPLICIT) || defined(TURB_DIFFUSION))
-        /* we may need to evaluate dwk, if it is not done by default */
+        /* we need to evaluate dwk, since it is not done by default */
         if(kernel.r < kernel.h_i)
         {
             u = kernel.r * hinv_i;
@@ -37,7 +36,6 @@
             u = kernel.r * hinv_j;
             kernel_main(u, hinv3_j, hinv4_j, &kernel.wk_j, &kernel.dwk_j, 1);
         }
-#endif
         Face_Area_Norm = -(V_i*V_i*kernel.dwk_i + V_j*V_j*kernel.dwk_j) / kernel.r;
         Face_Area_Norm *= All.cf_atime*All.cf_atime; /* Face_Area_Norm has units of area, need to convert to physical */
         Face_Area_Vec[0] = Face_Area_Norm * kernel.dp[0];
@@ -93,7 +91,9 @@
         distance_from_i[0]=kernel.dp[0]*rinv; distance_from_i[1]=kernel.dp[1]*rinv; distance_from_i[2]=kernel.dp[2]*rinv;
         for(k=0;k<3;k++) {distance_from_j[k] = distance_from_i[k] * s_j; distance_from_i[k] *= s_i;}
         //for(k=0;k<3;k++) {v_frame[k] = 0.5 * (VelPred_j[k] + local.Vel[k]);}
-        for(k=0;k<3;k++) {v_frame[k] = rinv * (s_j*VelPred_j[k] - s_i*local.Vel[k]);} // allows for face to be off-center (to second-order)
+        for(k=0;k<3;k++) {v_frame[k] = rinv * (-s_i*VelPred_j[k] + s_j*local.Vel[k]);} // allows for face to be off-center (to second-order)
+        // (note that in the above, the s_i/s_j terms are crossed with the opposing velocity terms: this is because the face is closer to the
+        //   particle with the smaller smoothing length; so it's values are slightly up-weighted //
         
         
         /* now we do the reconstruction (second-order reconstruction at the face) */
@@ -238,7 +238,7 @@
                 face_vel_i += local.Vel[k] * n_unit[k] / All.cf_atime;
                 face_vel_j += VelPred_j[k] * n_unit[k] / All.cf_atime;
             }
-            face_area_dot_vel = -(s_j*face_vel_j - s_i*face_vel_i) * rinv;
+            face_area_dot_vel = -(-s_i*face_vel_j + s_j*face_vel_i) * rinv;
 #endif
             
             /* ok now we can actually apply this to the EOM */
@@ -248,6 +248,19 @@
             {
                 Fluxes.v[k] = Face_Area_Norm * Riemann_out.Fluxes.v[k]; // momentum flux (need to divide by mass) //
             }
+#if defined(COSMIC_RAYS) && defined(HYDRO_MESHLESS_FINITE_VOLUME)
+            /* here we simply assume that if there is mass flux, the cosmic ray fluid is advected -with the mass flux-, taking an 
+                implicit constant (zeroth-order) reconstruction of the CR energy density at the face (we could reconstruct the CR 
+                properties at the face, and calculate a more accurate advection term; however at that stage we should actually be 
+                including them self-consistently in the Riemann problem */
+            if(Fluxes.rho < 0)
+            {
+                Fluxes.CosmicRayPressure = Fluxes.rho * (3*local.CosmicRayPressure*V_i/local.Mass);
+            } else {
+                Fluxes.CosmicRayPressure = Fluxes.rho * (3*CosmicRayPressure_j*V_j/P[j].Mass);
+            }
+#endif
+            
 #ifdef MAGNETIC
             for(k=0;k<3;k++)
             {

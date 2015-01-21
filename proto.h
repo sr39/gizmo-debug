@@ -6,9 +6,6 @@
 #ifdef COOLING
 #include "cooling/cooling.h"
 #endif
-#ifdef COSMIC_RAYS
-#include "cosmic_rays/cosmic_rays.h"
-#endif
 #ifdef ADJ_BOX_POWERSPEC
 #include "power_spec/adj_box_powerspec_proto.h"
 #endif
@@ -103,7 +100,9 @@ void output_extra_log_messages(void);
 static inline double DMAX(double a, double b) { return (a > b) ? a : b; } 
 static inline double DMIN(double a, double b) { return (a < b) ? a : b; }
 static inline int IMAX(int a, int b) { return (a > b) ? a : b; } 
-static inline int IMIN(int a, int b) { return (a < b) ? a : b; } 
+static inline int IMIN(int a, int b) { return (a < b) ? a : b; }
+static inline double MINMOD(double a, double b) {return (a>0) ? ((b<0) ? 0 : DMIN(a,b)) : ((b>=0) ? 0 : DMAX(a,b));}
+
 
 
 void do_distortion_tensor_kick(int i, double dt_gravkick);
@@ -240,9 +239,12 @@ double bhgrowth(double z1, double z2);
 
 int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend_local);
 
+double INLINE_FUNC Get_Particle_Size(int i);
 double INLINE_FUNC Particle_density_for_energy_i(int i);
 double INLINE_FUNC Get_Particle_Pressure(int i);
-double INLINE_FUNC Particle_Internal_energy_i(int i);
+#ifdef COSMIC_RAYS
+double INLINE_FUNC Get_Particle_CosmicRayPressure(int i);
+#endif
 double INLINE_FUNC Particle_effective_soundspeed_i(int i);
 #ifdef MAGNETIC
 double INLINE_FUNC Get_Particle_BField(int i_particle_id, int k_vector_component);
@@ -372,10 +374,6 @@ void *density_evaluate_primary(void *p);
 void *density_evaluate_secondary(void *p);
 int density_isactive(int n);
 
-void GetMachNumberCR( struct sph_particle_data *Particle );
-void GetMachNumber( struct sph_particle_data* Particle );
-void GetShock_DtEnergy( struct sph_particle_data* Particle );
-
 size_t sizemax(size_t a, size_t b);
 
 
@@ -439,11 +437,13 @@ int ngb_treefind_newstars(MyDouble searchcenter[3], MyFloat hsml, int target, in
 
 #ifdef GRAIN_FLUID
 void apply_grain_dragforce(void);
+#ifdef GRAIN_COLLISIONS
 void grain_collisions(void);
 void grain_density(void);
 int grain_density_evaluate(int target, int mode, int *nexport, int *nsend_local);
 int grain_density_isactive(int n);
 int grain_ngb_treefind_variable(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode, int *nexport, int *nsend_local);
+#endif
 #endif
 
 #ifdef GALSF_FB_GASRETURN
@@ -463,7 +463,7 @@ int HIIheating_evaluate(int target, int mode, int *nexport, int *nsend_local);
 void selfshield_local_incident_uv_flux(void);
 #endif
 
-#ifdef GALSF_FB_SNE_HEATING
+#if defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_GASRETURN)
 void snII_heating_singledomain(void);
 void determine_where_SNe_occur(void);
 void mechanical_fb_calc(int feedback_type);
@@ -506,7 +506,7 @@ void radiation_pressure_winds_consolidated(void);
 int blackhole_evaluate_PREPASS(int target, int mode, int *nexport, int *nSend_local);
 #endif
 
-#ifdef  GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION
+#ifdef  GALSF_SUBGRID_DMDISPERSION
 int disp_gravity_kernel_shared_check(short int particle_type_primary, short int particle_type_secondary);
 void disp_setup_smoothinglengths(void);
 int dm_disp_ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
@@ -728,11 +728,6 @@ void check_tidaltensor_nonperiodic(int particle_ID);
 void do_sinks(void);
 #endif
 
-#ifdef JD_DPP
-void compute_Dpp();
-#endif
-
-
 #ifdef SCFPOTENTIAL
 void SCF_do_center_of_mass_correction(double fac_rad, double start_rad, double fac_part, int max_iter);
 void SCF_write(int task);
@@ -756,10 +751,6 @@ int lm(int l, int m);
 int kdelta(int a, int b);
 double gnlm_var(int n, int l, int m);
 double hnlm_var(int n, int l, int m);
-#endif
-
-#ifdef BP_REAL_CRs
-void bp_cr_evol();
 #endif
 
 int ags_gravity_kernel_shared_check(short int particle_type_primary, short int particle_type_secondary);

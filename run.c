@@ -92,7 +92,7 @@ void run(void)
         
         compute_grav_accelerations();	/* compute gravitational accelerations for synchronous particles */
 
-#ifdef GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION
+#ifdef GALSF_SUBGRID_DMDISPERSION
         // Need to figure out how frequently we calculate this; below is pretty rough //
         if(All.Ti_Current == All.PM_Ti_endstep && get_random_number(1+All.Ti_Current) < 0.05)
         {
@@ -222,12 +222,7 @@ void calculate_non_standard_physics(void)
 #ifdef GRAIN_FLUID
     apply_grain_dragforce();
 #endif
-    
-#ifdef CR_DIFFUSION
-    if(All.CR_Diffusion_Ti_endstep == All.Ti_Current)
-        cosmic_ray_diffusion();
-#endif
-    
+        
     
 #ifdef RADTRANSFER
     double timeeach = 0, timeall = 0, tstart = 0, tend = 0;
@@ -372,10 +367,6 @@ void calculate_non_standard_physics(void)
     
 #ifdef SINKS
     do_sinks();
-#endif
-    
-#ifdef BP_REAL_CRs
-    bp_cr_evol();
 #endif
     
 #ifdef SCF_HYBRID

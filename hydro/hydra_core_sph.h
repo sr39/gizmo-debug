@@ -12,6 +12,7 @@
     cnumcrit2 *= 1.0;
     double vdotr2_phys = kernel.vdotr2;
     if(All.ComovingIntegrationOn) vdotr2_phys -= All.cf_hubble_a2 * r2;
+    V_j = P[j].Mass / SphP[j].Density;
     
     /* --------------------------------------------------------------------------------- */
     /* --------------------------------------------------------------------------------- */
@@ -65,7 +66,6 @@
     /* --------------------------------------------------------------------------------- */
 #ifdef MAGNETIC
     Fluxes.B[0] = Fluxes.B[1] = Fluxes.B[2] = 0;
-    V_j = P[j].Mass / SphP[j].Density;
     double mj_r = P[j].Mass / kernel.r;
     double mf_i = kernel.mf_i * mj_r * kernel.dwk_i;
     double mf_j = kernel.mf_j * mj_r * kernel.dwk_j / (SphP[j].Density * SphP[j].Density);
@@ -198,39 +198,18 @@
     /* ... artificial conductivity (thermal diffusion) evaluation ... */
     /* --------------------------------------------------------------------------------- */
 #ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
-#ifdef BP_REAL_CRs
-    double vsigu = sqrt(fabs(local.Pressure - SphP[j].Pressure - local.CRpPressure + SphP[j].CRpPressure) * kernel.rho_ij_inv);
-    double u_i = (local.Pressure - local.CRpPressure) / (GAMMA_MINUS1 * local.Density);
-    double u_j = (SphP[j].Pressure - SphP[j].CRpPressure) / (GAMMA_MINUS1 * SphP[j].Density);
-    Fluxes.p += local.Mass * P[j].Mass * All.ArtCondConstant * vsigu * (u_i - u_j) * kernel.rho_ij_inv * kernel.dwk_ij;
-#else
     double vsigu = (kernel.sound_i + kernel.sound_j - 3 * fac_mu * kernel.vdotr2 / kernel.r) / fac_mu; // want in code velocity units
     if(vsigu > 0) // implicitly sets vsig=0 if 3*w_ij > (c_i+c_j)
     {
         vsigu *= fabs(local.Pressure - SphP[j].Pressure)/(local.Pressure + SphP[j].Pressure);
-        du_ij = kernel.spec_egy_u_i - Particle_Internal_energy_i(j);
+        du_ij = kernel.spec_egy_u_i - SphP[j].InternalEnergyPred;
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
         du_ij *= 0.5 * (local.alpha + SphP[j].alpha_limiter * SphP[j].alpha); // in this case, All.ArtCondConstant is just a multiplier -relative- to art. visc.
 #endif
         Fluxes.p += local.Mass * All.ArtCondConstant * P[j].Mass * kernel.rho_ij_inv * vsigu * du_ij * kernel.dwk_ij;
     }
-#endif
 #endif // SPHAV_ARTIFICIAL_CONDUCTIVITY
 
-    
-    
-    /* --------------------------------------------------------------------------------- */
-    /* ... cosmic ray conductivity ... */
-    /* --------------------------------------------------------------------------------- */
-#ifdef BP_REAL_CRs_ARTIFICIAL_CONDUCTIVITY
-    int Nbin;
-    double vsigu_cr = sqrt(fabs(local.CRpPressure - SphP[j].CRpPressure) * kernel.rho_ij_inv);
-    for( Nbin = 0; Nbin < BP_REAL_CRs; Nbin++ )
-    {
-        out.DtCRpE[Nbin] += P[j].Mass * All.CRsArtCondConstant * vsigu_cr * (local.CRpE[Nbin] - SphP[j].CRpE[Nbin]) * kernel.rho_ij_inv * kernel.dwk_ij;
-        out.DtCRpN[Nbin] += P[j].Mass * All.CRsArtCondConstant * vsigu_cr * (local.CRpN[Nbin] - SphP[j].CRpN[Nbin]) * kernel.rho_ij_inv * kernel.dwk_ij;
-    }
-#endif
     
     
     /* --------------------------------------------------------------------------------- */

@@ -149,9 +149,8 @@ PREDEFINED             = PMGRID \
                          GALSF \
                          GALSF_SUBGRID_WINDS \
                          PEANOHILBERT \
-                         WALLCLOCK \
-			 COSMIC_RAYS
-EXPAND_AS_DEFINED      = 
+                         WALLCLOCK 
+EXPAND_AS_DEFINED      =
 SKIP_FUNCTION_MACROS   = YES
 #---------------------------------------------------------------------------
 # Configuration::addtions related to external references   

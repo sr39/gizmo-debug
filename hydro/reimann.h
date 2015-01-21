@@ -13,6 +13,16 @@
 
 #define DEDNER_IMPLICIT_LIMITER 0.75
 
+#if defined(TURB_DIFFUSION)
+#define SAVE_FACE_DENSITY 1
+#endif
+#if (defined(CONDUCTION) || defined(COSMIC_RAYS)) && defined(MAGNETIC)
+#define SAVE_FACE_BFIELD 1
+#endif
+#if defined(VISCOSITY) && defined(MAGNETIC)
+//#define SAVE_FACE_VFIELD 1 // for now we use a simpler midpoint velocity; this should be updated for hydro solvers (not just mhd) //
+#endif
+
 
 /*
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO. 
@@ -43,6 +53,15 @@ struct Riemann_outputs
     MyDouble phi_normal_mean;
     MyDouble phi_normal_db;
 #endif
+#endif
+#ifdef SAVE_FACE_DENSITY
+    MyDouble Face_Density;
+#endif
+#ifdef SAVE_FACE_BFIELD
+    MyDouble Face_B[3];
+#endif
+#ifdef SAVE_FACE_VFIELD
+    MyDouble Face_Vel[3];
 #endif
     struct Conserved_var_Riemann Fluxes;
 };
@@ -265,7 +284,12 @@ void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs
 #else
     /* go straight to the expensive but exact solver (only for hydro with polytropic eos!) */
     if((Riemann_out->P_M<=0)||(isnan(Riemann_out->P_M)))
+    {
         Riemann_solver_exact(Riemann_vec, Riemann_out, n_unit, v_line_L, v_line_R, cs_L, cs_R, h_L, h_R);
+#ifdef SAVE_FACE_DENSITY
+        Riemann_out->Face_Density = 0.5*(Riemann_vec.L.rho + Riemann_vec.R.rho);
+#endif
+    }
 #endif
 #endif
 }
@@ -289,6 +313,14 @@ void HLLC_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     /* check if we have a valid solution, and if so, compute the fluxes */
     if((Riemann_out->P_M>0)&&(!isnan(Riemann_out->P_M)))
         HLLC_fluxes(Riemann_vec, Riemann_out, n_unit,  v_line_L, v_line_R, cs_L, cs_R, h_L, h_R, S_L, S_R);
+#else
+#ifdef SAVE_FACE_DENSITY
+    Riemann_out->Face_Density = 0.5 * (Riemann_vec.L.rho*(S_L-v_line_L)/(S_L-Riemann_out->S_M) +
+                                       Riemann_vec.R.rho*(S_R-v_line_R)/(S_R-Riemann_out->S_M));
+    if(Riemann_out->S_M==S_L) {Riemann_out->Face_Density=Riemann_vec.L.rho;}
+    if(Riemann_out->S_M==S_R) {Riemann_out->Face_Density=Riemann_vec.R.rho;}
+    if((Riemann_out->P_M<=0)&&(!isnan(Riemann_out->P_M))) {Riemann_out->Face_Density = 0.5*(Riemann_vec.L.rho+Riemann_vec.R.rho);}
+#endif
 #endif
 }
 
@@ -321,6 +353,13 @@ void Riemann_solver_Rusanov(struct Input_vec_Riemann Riemann_vec, struct Riemann
                                               (Riemann_vec.L.p + Riemann_vec.R.p) * n_unit[k]);
         Riemann_out->Fluxes.p = 0.5 * (f_rho_left * h_L + f_rho_right * h_R + S_plus * (Riemann_vec.R.p - Riemann_vec.L.p));
     }
+#endif
+#ifdef SAVE_FACE_DENSITY
+    Riemann_out->Face_Density = 0.5 * (Riemann_vec.L.rho*(S_L-v_line_L)/(S_L-Riemann_out->S_M) +
+                                       Riemann_vec.R.rho*(S_R-v_line_R)/(S_R-Riemann_out->S_M));
+    if(Riemann_out->S_M==S_L) {Riemann_out->Face_Density=Riemann_vec.L.rho;}
+    if(Riemann_out->S_M==S_R) {Riemann_out->Face_Density=Riemann_vec.R.rho;}
+    if((Riemann_out->P_M<=0)&&(!isnan(Riemann_out->P_M))) {Riemann_out->Face_Density = 0.5*(Riemann_vec.L.rho+Riemann_vec.R.rho);}
 #endif
     return;
 }
@@ -419,6 +458,9 @@ void HLLC_fluxes(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *R
         Riemann_out->Fluxes.p = Riemann_vec.L.rho * h_L * (v_line_L - v_line_frame) + Riemann_vec.L.p * v_line_frame;
         for(k=0;k<3;k++)
             Riemann_out->Fluxes.v[k] = Riemann_out->Fluxes.rho * Riemann_vec.L.v[k] + Riemann_vec.L.p * n_unit[k];
+#ifdef SAVE_FACE_DENSITY
+        Riemann_out->Face_Density = Riemann_vec.L.rho;
+#endif
     } else {
         if((S_L <= v_line_frame)&&(v_line_frame <= S_M))
         {
@@ -433,6 +475,9 @@ void HLLC_fluxes(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *R
             dv2 = nfac * (S_L - v_line_frame) * (S_M - v_line_L) + Riemann_vec.L.p;
             for(k=0;k<3;k++)
                 Riemann_out->Fluxes.v[k] = Riemann_out->Fluxes.rho * Riemann_vec.L.v[k] + dv2 * n_unit[k];
+#ifdef SAVE_FACE_DENSITY
+            Riemann_out->Face_Density = nfac;
+#endif
         } else {
             if((S_M <= v_line_frame)&&(v_line_frame <= S_R))
             {
@@ -447,11 +492,17 @@ void HLLC_fluxes(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *R
                 dv2 = nfac * (S_R - v_line_frame) * (S_M - v_line_R) + Riemann_vec.R.p;
                 for(k=0;k<3;k++)
                     Riemann_out->Fluxes.v[k] = Riemann_out->Fluxes.rho * Riemann_vec.R.v[k] + dv2 * n_unit[k];
+#ifdef SAVE_FACE_DENSITY
+                Riemann_out->Face_Density = nfac;
+#endif
             } else {
                 Riemann_out->Fluxes.rho = Riemann_vec.R.rho * (v_line_R - v_line_frame);
                 Riemann_out->Fluxes.p = Riemann_vec.R.rho * h_R * (v_line_R - v_line_frame) + Riemann_vec.R.p * v_line_frame;
                 for(k=0;k<3;k++)
                     Riemann_out->Fluxes.v[k] = Riemann_out->Fluxes.rho * Riemann_vec.R.v[k] + Riemann_vec.R.p * n_unit[k];
+#ifdef SAVE_FACE_DENSITY
+                Riemann_out->Face_Density = Riemann_vec.R.rho;
+#endif
             }
         }
     }
@@ -972,7 +1023,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     int k;
     double S_L,S_R,PT_L,PT_R,e_L,e_R,S_M,P_M,Bx,vxL,vxR,tmp2,
             vdotB_L,vdotB_R,B2_L,B2_R,cs2rho_L,cs2rho_R,tmp,c_eff,Bx2,rho_wt_L,rho_wt_R;
-    struct Conserved_var_Riemann U_s,U_ss,V_s;
+    struct Conserved_var_Riemann U_s,U_ss,V_s, *Interface_State;
     B2_L = Riemann_vec.L.B[0]*Riemann_vec.L.B[0]+Riemann_vec.L.B[1]*Riemann_vec.L.B[1]+Riemann_vec.L.B[2]*Riemann_vec.L.B[2];
     B2_R = Riemann_vec.R.B[0]*Riemann_vec.R.B[0]+Riemann_vec.R.B[1]*Riemann_vec.R.B[1]+Riemann_vec.R.B[2]*Riemann_vec.R.B[2];
 
@@ -1107,6 +1158,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
                         Riemann_out->Fluxes.v[k] -= v_frame * Riemann_vec.L.rho * Riemann_vec.L.v[k];
                         if(k>0) Riemann_out->Fluxes.B[k] -= v_frame * Riemann_vec.L.B[k];
                     }
+                    Interface_State = &Riemann_vec.L;
                 }
             } else {
                 U_s.rho = rho_wt_L / (S_L - S_M);
@@ -1153,6 +1205,8 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
                         Riemann_out->Fluxes.v[k] += dS * U_s.rho * U_s.v[k];
                         if(k>0) Riemann_out->Fluxes.B[k] += dS * U_s.B[k];
                     }
+                    Interface_State = &U_s;
+
                 } else {
                     /* ok the star and star-star states are different, need to compute them separately */
                     /* left contact wave :: F_L - S_L*U_L - (S_Lstar-S_L)*U_star + (S_Lstar-a_x)*U_starstar */
@@ -1211,6 +1265,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
                         Riemann_out->Fluxes.v[k] += dS * U_ss.rho * U_ss.v[k];
                         if(k>0) Riemann_out->Fluxes.B[k] += dS * U_ss.B[k];
                     }
+                    Interface_State = &U_ss;
                 }
             }
             
@@ -1240,6 +1295,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
                         Riemann_out->Fluxes.v[k] -= v_frame * Riemann_vec.R.rho * Riemann_vec.R.v[k];
                         if(k>0) Riemann_out->Fluxes.B[k] -= v_frame * Riemann_vec.R.B[k];
                     }
+                    Interface_State = &Riemann_vec.R;
                 }
             } else {
                 U_s.rho = rho_wt_R / (S_R - S_M);
@@ -1287,6 +1343,8 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
                         Riemann_out->Fluxes.v[k] += dS * U_s.rho * U_s.v[k];
                         if(k>0) Riemann_out->Fluxes.B[k] += dS * U_s.B[k];
                     }
+                    Interface_State = &U_s;
+                    
                 } else {
                     /* ok the star and star-star states are different, need to compute them separately */
                     /* right contact wave :: F_R - S_R*U_R - (S_Rstar-S_R)*U_star + (S_Rstar-a_x)*U_starstar */
@@ -1342,6 +1400,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
                         Riemann_out->Fluxes.v[k] += dS * U_ss.rho * U_ss.v[k];
                         if(k>0) Riemann_out->Fluxes.B[k] += dS * U_ss.B[k];
                     }
+                    Interface_State = &U_ss;
                 }
             }
         }
@@ -1355,6 +1414,15 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
 #endif
     Riemann_out->S_M=v_frame;
     Riemann_out->P_M=P_M;
+#ifdef SAVE_FACE_DENSITY
+    Riemann_out->Face_Density = Interface_State->rho;
+#endif
+#ifdef SAVE_FACE_BFIELD
+    for(k=0;k<3;k++) {Riemann_out->Face_B[k] = Interface_State->B[k];}
+#endif
+#ifdef SAVE_FACE_VFIELD
+    for(k=0;k<3;k++) {Riemann_out->Face_Vel[k] = Interface_State->v[k];}
+#endif
     return;
 
     /* originally we included HLL and LF solvers here, but those are way too prone to give unphysical
@@ -1435,6 +1503,18 @@ void rotate_fluxes_back_to_lab(struct Riemann_outputs *Riemann_out, struct rotat
     Riemann_out->Fluxes.B[0] = v[0]*rot_matrix.n[0] + v[1]*rot_matrix.m[0] + v[2]*rot_matrix.p[0];
     Riemann_out->Fluxes.B[1] = v[0]*rot_matrix.n[1] + v[1]*rot_matrix.m[1] + v[2]*rot_matrix.p[1];
     Riemann_out->Fluxes.B[2] = v[0]*rot_matrix.n[2] + v[1]*rot_matrix.m[2] + v[2]*rot_matrix.p[2];
+#endif
+#ifdef SAVE_FACE_BFIELD
+    for(k=0;k<3;k++) {v[k]=Riemann_out->Face_B[k];}
+    Riemann_out->Face_B[0] = v[0]*rot_matrix.n[0] + v[1]*rot_matrix.m[0] + v[2]*rot_matrix.p[0];
+    Riemann_out->Face_B[1] = v[0]*rot_matrix.n[1] + v[1]*rot_matrix.m[1] + v[2]*rot_matrix.p[1];
+    Riemann_out->Face_B[2] = v[0]*rot_matrix.n[2] + v[1]*rot_matrix.m[2] + v[2]*rot_matrix.p[2];
+#endif
+#ifdef SAVE_FACE_VFIELD
+    for(k=0;k<3;k++) {v[k]=Riemann_out->Face_Vel[k];}
+    Riemann_out->Face_Vel[0] = v[0]*rot_matrix.n[0] + v[1]*rot_matrix.m[0] + v[2]*rot_matrix.p[0];
+    Riemann_out->Face_Vel[1] = v[0]*rot_matrix.n[1] + v[1]*rot_matrix.m[1] + v[2]*rot_matrix.p[1];
+    Riemann_out->Face_Vel[2] = v[0]*rot_matrix.n[2] + v[1]*rot_matrix.m[2] + v[2]*rot_matrix.p[2];
 #endif
 }
 

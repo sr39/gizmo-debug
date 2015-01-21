@@ -54,31 +54,11 @@ void mymalloc_init(void)
 
   n = All.MaxMemSize * ((size_t) 1024 * 1024);
 
-#ifndef KD_ITTEREATE_MEMORYUSAGE
-
   if(!(Base = malloc(n)))
     {
       printf("Failed to allocate memory for `Base' (%d Mbytes).\n", All.MaxMemSize);
       endrun(122);
     }
-
-#else
-
-  n -= MAXBLOCKS * (sizeof(size_t) + sizeof(void *) + sizeof(char) + sizeof(void **) +
-		    3 * MAXCHARS * sizeof(char) + sizeof(int));
-
-  while(!(Base = malloc(n)) && n > All.MaxMemSize * ((size_t) 1024 * 1024 / 2))
-    {
-      printf("Task %d: Failed to allocate memory for `Base' (%d Mbytes).\n", ThisTask, (int) (n / ((size_t) 1024 * 1024)));
-      n = n - ((size_t) 50 * 1024 * 1024);
-    }
-
-  if(n <= All.MaxMemSize * ((size_t) 1024 * 1024 / 2))
-    {
-      printf("Task %d: Gave up to allocate memory for `Base' (%d Mbytes).\n", ThisTask, (int) (n / ((size_t) 1024 * 1024)));
-      endrun(122);
-    }
-#endif
 
   TotBytes = FreeBytes = n;
 

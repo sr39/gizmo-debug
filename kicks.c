@@ -85,6 +85,7 @@ void do_second_halfstep_kick(void)
             {
                 if(P[i].Type == 0 && P[i].Mass > 0)
                 {
+                    set_predicted_sph_quantities_for_extra_physics(i);
 #ifdef EOS_DEGENERATE
                     for(j = 0; j < 3; j++)
                         SphP[i].xnucPred[j] = SphP[i].xnuc[j];
@@ -93,7 +94,6 @@ void do_second_halfstep_kick(void)
 #ifdef GAMMA_ENFORCE_ADIABAT
                     SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = SphP[i].Pressure / (SphP[i].Density * GAMMA_MINUS1);
 #endif
-                    set_predicted_sph_quantities_for_extra_physics(i);
                 }
             }
         }
@@ -234,7 +234,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #endif
             double dEnt = SphP[i].InternalEnergy + SphP[i].DtInternalEnergy * dt_hydrokick + dEnt_Gravity;
             
-#if !defined(HYDRO_SPH) && !defined(MAGNETIC) 
+#if !defined(HYDRO_SPH) && !defined(MAGNETIC) && !defined(COSMIC_RAYS)
             /* if we're using a Riemann solver, we include an energy/entropy-type switch to ensure
                 that we don't corrupt the temperature evolution of extremely cold, adiabatic flows */
             /* MHD tests suggest that this switch often does more harm than good: we will
@@ -243,7 +243,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
              serious errors if this tripped when the B-fields were important */
             double e_thermal,e_kinetic,e_potential;
             e_potential=0; for(j=0;j<3;j++) {e_potential += grav_acc[j]*grav_acc[j];}
-            e_potential = P[i].Mass * sqrt(e_potential) * (KERNEL_CORE_SIZE*PPP[i].Hsml*All.cf_atime); // = M*|a_grav|*h (physical)
+            e_potential = P[i].Mass * sqrt(e_potential) * (Get_Particle_Size(i)*All.cf_atime); // = M*|a_grav|*h (physical)
             e_kinetic = 0.5 * P[i].Mass * All.cf_a2inv * SphP[i].MaxKineticEnergyNgb;
             e_thermal = DMAX(0.5*SphP[i].InternalEnergy, dEnt) * P[i].Mass;
 #ifdef MAGNETIC
@@ -375,6 +375,9 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
     SphP[i].PhiPred = SphP[i].Phi;
 #endif
 #endif
+#ifdef COSMIC_RAYS
+    SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy;
+#endif
 }
 
 
@@ -386,6 +389,7 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
     double BphysVolphys_to_BcodeVolCode = 1 / All.cf_atime;
     for(j = 0; j < 3; j++) {SphP[i].B[j] += SphP[i].DtB[j] * dt_entr * BphysVolphys_to_BcodeVolCode;} // fluxes are always physical, convert to code units //
 #ifdef DIVBCLEANING_DEDNER
+    double PhiphysVolphys_to_PhicodeVolCode = 1;
     /* phi units are [vcode][Bcode]=a^3 * vphys*Bphys */
     if(SphP[i].Density > 0)
     {
@@ -400,7 +404,7 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
         double phi_phys_abs = fabs(Get_Particle_PhiField(i)) * All.cf_a3inv;
         double vb_phy_abs = vsig_max * b_phys;
 
-        if((phi_phys_abs>0)&&(vb_phy_abs>0)&&(!isnan(phi_phys_abs))&&(!isnan(vb_phy_abs)))
+        if((!isnan(SphP[i].DtPhi))&&(phi_phys_abs>0)&&(vb_phy_abs>0)&&(!isnan(phi_phys_abs))&&(!isnan(vb_phy_abs)))
         {
             double phi_max_tolerance = 10.0;
             if(phi_phys_abs > 1000. * phi_max_tolerance * vb_phy_abs)
@@ -419,15 +423,20 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
                 {
                     /* in this limit, only allow for decay of phi: to avoid over-shooting, we apply the force as damping */
                     if(SphP[i].Phi > 0) {SphP[i].DtPhi=DMIN(SphP[i].DtPhi,0);} else {SphP[i].DtPhi=DMAX(SphP[i].DtPhi,0);}
-                    double dtphi_code = dt_entr * BphysVolphys_to_BcodeVolCode * All.cf_atime * SphP[i].DtPhi;
+                    double dtphi_code = dt_entr * PhiphysVolphys_to_PhicodeVolCode * SphP[i].DtPhi;
                     if(SphP[i].Phi != 0) {SphP[i].Phi *= exp( - fabs(dtphi_code) / fabs(SphP[i].Phi) );}
                 } else {
                     /* ok, in this regime, we're safe to apply the 'normal' time evolution */
-                    double dtphi_code = dt_entr * BphysVolphys_to_BcodeVolCode * All.cf_atime * SphP[i].DtPhi;
+                    double dtphi_code = dt_entr * PhiphysVolphys_to_PhicodeVolCode * SphP[i].DtPhi;
                     SphP[i].Phi += dtphi_code;
                 }
             }
         }
+        if(isnan(SphP[i].DtPhi)) {SphP[i].DtPhi=0;}
+        if(isnan(SphP[i].Phi)) {SphP[i].Phi=0;}
+        if(isnan(SphP[i].PhiPred)) {SphP[i].PhiPred=SphP[i].Phi;}
+    } else {
+        SphP[i].Phi = SphP[i].PhiPred = SphP[i].DtPhi = 0;
     }
     /* now apply the usual damping term */
     double t_damp = Get_Particle_PhiField_DampingTimeInv(i);
@@ -442,6 +451,10 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
         SphP[i].xnuc[j] += SphP[i].dxnuc[j] * dt_entr * All.UnitTime_in_s;
     
     network_normalize(SphP[i].xnuc, &SphP[i].InternalEnergy, &All.nd, &All.nw);
+#endif
+#ifdef COSMIC_RAYS
+    double CR_Egy = SphP[i].CosmicRayEnergy + SphP[i].DtCosmicRayEnergy * dt_entr;
+    if(CR_Egy < 0.5*SphP[i].CosmicRayEnergy) {SphP[i].CosmicRayEnergy *= 0.5;} else {SphP[i].CosmicRayEnergy = CR_Egy;}
 #endif
 }
 

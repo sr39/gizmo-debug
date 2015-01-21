@@ -50,7 +50,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     kernel_mode = -1; /* only need wk */
     dt_hydrostep = local.Timestep * All.Timebase_interval / All.cf_hubble_a; /* (physical) timestep */
     out.MaxSignalVel = kernel.sound_i;
-#if defined(HYDRO_SPH) || defined(CONDUCTION_EXPLICIT) || defined(TURB_DIFFUSION)
+#if defined(HYDRO_SPH)
     kernel_mode = 0; /* need dwk and wk */
 #endif
     double cnumcrit2 = ((double)CONDITION_NUMBER_DANGER)*((double)CONDITION_NUMBER_DANGER) - local.ConditionNumber*local.ConditionNumber;
@@ -179,6 +179,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* sound speed, relative velocity, and signal velocity computation */
                 kernel.sound_j = Particle_effective_soundspeed_i(j);
                 kernel.vsig = kernel.sound_i + kernel.sound_j;
+#ifdef COSMIC_RAYS
+                double CosmicRayPressure_j = Get_Particle_CosmicRayPressure(j); /* compute this for use below */
+#endif
 #ifdef MAGNETIC
                 double BPred_j[3];
                 for(k=0;k<3;k++) {BPred_j[k]=Get_Particle_BField(j,k);} /* defined j b-field in appropriate units for everything */
@@ -259,12 +262,20 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #include "hydra_core_meshless.h"
 #endif
                 
-#ifdef CONDUCTION_EXPLICIT
+#ifdef CONDUCTION
 #include "conduction.h"
+#endif
+
+#ifdef VISCOSITY
+#include "viscosity.h"
 #endif
                 
 #ifdef TURB_DIFFUSION
 #include "turbulent_diffusion.h"
+#endif
+                
+#ifdef COSMIC_RAYS
+#include "../galaxy_sf/cosmic_ray_diffusion.h"
 #endif
                 
                 /* --------------------------------------------------------------------------------- */
@@ -314,6 +325,11 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #endif
 #endif // magnetic //
+                
+#ifdef COSMIC_RAYS
+                out.DtCosmicRayEnergy += Fluxes.CosmicRayPressure;
+#endif
+                
                 //out.dInternalEnergy += Fluxes.p * dt_hydrostep; //manifest-indiv-timestep-debug//
                 //SphP[j].dInternalEnergy -= Fluxes.p * dt_hydrostep; //manifest-indiv-timestep-debug//
                 
@@ -354,6 +370,10 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #endif
 #endif // magnetic //
+
+#ifdef COSMIC_RAYS
+                    SphP[j].DtCosmicRayEnergy -= Fluxes.CosmicRayPressure;
+#endif
                 }
 #endif
 

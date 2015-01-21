@@ -175,28 +175,6 @@ void set_units_sfr(void)
     All.EgySpecSN = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.TempSupernova;
     All.EgySpecSN *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
 #endif // GALSF_EFFECTIVE_EQS
-    
-#ifdef COSMIC_RAYS
-    /* if CR_SNeff < 0.0, then substract CR Feedback energy from thermal fb energy */
-    if(All.CR_SNEff < 0.0)
-    {
-        if(ThisTask == 0)
-        printf("%g percent of thermal feedback go into Cosmic Rays.\nRemaining ", -100.0 * All.CR_SNEff);
-        All.EgySpecSN *= (1.0 + All.CR_SNEff);
-        All.CR_SNEff = -All.CR_SNEff / (1.0 + All.CR_SNEff);
-    }
-    All.FeedbackEnergy = 1;
-#ifdef GALSF_EFFECTIVE_EQS
-    All.FeedbackEnergy = All.FactorSN / (1 - All.FactorSN) * All.EgySpecSN;
-#endif
-    double feedbackenergyinergs = All.FeedbackEnergy / All.UnitMass_in_g * (All.UnitEnergy_in_cgs * SOLAR_MASS);
-    if(ThisTask == 0)
-    {
-        printf("Feedback energy per formed solar mass in stars= %g  ergs\n", feedbackenergyinergs);
-        printf("OverDensThresh= %g\nPhysDensThresh= %g (internal units)\n", All.OverDensThresh,
-               All.PhysDensThresh);
-    }
-#endif // COSMIC_RAYS
 }
 
 
@@ -299,31 +277,6 @@ void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double t
     double egyeff = egyhot * (1 - x) + All.EgySpecCold * x;
     double egycurrent = SphP[i].InternalEnergy;
 
-#ifdef COSMIC_RAYS
-    int Crpop;
-#ifdef CR_SN_INJECTION
-    double instant_reheat=0;
-    double p=rateOfSF*dtime/P[i].Mass;
-    if(All.CR_SNEff > 0)
-    {
-        if(NUMCRPOP > 1)
-            InjPopulation = CR_Find_Alpha_to_InjectTo(All.CR_SNAlpha);
-        else
-            InjPopulation = 0;
-        double tinj = SphP[i].CR_E0[InjPopulation] / (p * All.FeedbackEnergy * All.CR_SNEff / dtime);
-        instant_reheat = CR_Particle_SupernovaFeedback(&SphP[i], p * All.FeedbackEnergy * All.CR_SNEff, tinj);
-    }
-    else
-        instant_reheat = 0;
-#if defined(COSMIC_RAYS) && defined(CR_OUTPUT_INJECTION)
-    SphP[i].CR_Specific_SupernovaHeatingRate = (p * All.FeedbackEnergy * All.CR_SNEff - instant_reheat) / dtime;
-#endif
-    egycurrent += instant_reheat;
-#endif
-    for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-        egycurrent += CR_Particle_ThermalizeAndDissipate(SphP + i, dtime, CRpop);
-#endif // COSMIC_RAYS //
-
 #if defined(BH_THERMALFEEDBACK)
     if((SphP[i].Injected_BH_Energy > 0) && (P[i].Mass>0))
     {
@@ -401,9 +354,6 @@ void cooling_and_starformation(void)
             }
 #endif
             SphP[i].Sfr = 0; /* will be reset below if flag==0 */
-#if defined(COSMIC_RAYS) && defined(CR_OUTPUT_INJECTION)
-            SphP[i].CR_Specific_SupernovaHeatingRate = 0;
-#endif
         }
         
     if((flag == 0)&&(dt>0)&&(P[i].TimeBin))		/* active star formation (upon start-up, we need to protect against dt==0) */
@@ -434,6 +384,11 @@ void cooling_and_starformation(void)
 #if defined(METALS) && defined(GALSF_EFFECTIVE_EQS) // does instantaneous enrichment //
             double w = get_random_number(P[i].ID);
             P[i].Metallicity[0] += w * All.SolarAbundances[0] * (1 - exp(-p));
+            if(NUM_METAL_SPECIES>=10)
+            {
+                int k;
+                for(k=1;k<NUM_METAL_SPECIES;k++) {P[i].Metallicity[k] += w * All.SolarAbundances[k] * (1 - exp(-p));}
+            }
 #endif
             
         if(get_random_number(P[i].ID + 1) < prob)	/* ok, make a star */
@@ -571,7 +526,14 @@ void cooling_and_starformation(void)
 
 #if defined(METALS) && defined(GALSF_EFFECTIVE_EQS) // does instantaneous enrichment //
 	    if(P[i].Type == 0)	/* to protect using a particle that has been turned into a star */
+        {
             P[i].Metallicity[0] += (1 - w) * All.SolarAbundances[0] * (1 - exp(-p));
+            if(NUM_METAL_SPECIES>=10)
+            {
+                int k;
+                for(k=1;k<NUM_METAL_SPECIES;k++) {P[i].Metallicity[k] += (1-w) * All.SolarAbundances[k] * (1 - exp(-p));}
+            }
+        }
 #endif
         } // closes check of flag==0 for star-formation operation
 
@@ -723,7 +685,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
 #endif
     
 
-#ifdef GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION
+#ifdef GALSF_SUBGRID_DMDISPERSION
     /* wind model where launching scales with halo/galaxy bulk properties (as in Vogelsberger's simulations) */
     if(SphP[i].DM_VelDisp > 0 && sm > 0)
     {

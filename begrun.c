@@ -335,17 +335,6 @@ void begrun(void)
 #endif
   reconstruct_timebins();
 
-#ifdef COSMIC_RAYS
-  int CRpop;
-
-  for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-    CR_initialize_beta_tabs(All.CR_Alpha[CRpop], CRpop);
-  CR_Tab_Initialize();
-#ifdef COSMIC_RAY_TEST
-  CR_test_routine();
-#endif
-
-#endif
 
 #ifndef SHEARING_BOX
 #ifdef TWODIMS
@@ -403,10 +392,6 @@ void begrun(void)
 void set_units(void)
 {
   double meanweight;
-
-#if defined(CONDUCTION_EXPLICIT)
-  double coulomb_log;
-#endif
 
   All.UnitTime_in_s = All.UnitLength_in_cm / All.UnitVelocity_in_cm_per_s;
   All.UnitTime_in_Megayears = All.UnitTime_in_s / SEC_PER_MEGAYEAR;
@@ -475,75 +460,43 @@ void set_units(void)
 #define k_B (BOLTZMANN * erg / deg)
 
 
-#if defined(CONDUCTION_EXPLICIT)
-
-  meanweight = m_p * 4.0 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));
-  /* assuming full ionization */
-
-  coulomb_log = 37.8;
-  /* accordin1g to Sarazin's book */
-
-  All.ConductionCoeff *= (1.84e-5 / coulomb_log * pow(meanweight / k_B * GAMMA_MINUS1, 2.5) * erg / (s * deg * cm));
-  /* Kappa_Spitzer definition taken from Zakamska & Narayan 2003
-   * ( ApJ 582:162-169, Eq. (5) )
-   */
-
-  /* Note: Because we replace \nabla(T) in the conduction equation with
-   * \nable(u), our conduction coefficient is not the usual kappa, but
-   * rather kappa*(gamma-1)*mu/kB. We therefore need to multiply with
-   * another factor of (meanweight / k_B * GAMMA_MINUS1).
-   */
-  All.ConductionCoeff *= meanweight / k_B * GAMMA_MINUS1;
-
-  /* The conversion of ConductionCoeff between internal units and cgs
-   * units involves one factor of 'h'. We take care of this here.
-   */
-  All.ConductionCoeff /= All.HubbleParam;
-
-#ifdef CONDUCTION_SATURATION
-  All.ElectronFreePathFactor = 8 * pow(3.0, 1.5) * pow(GAMMA_MINUS1, 2) / pow(3 + 5 * HYDROGEN_MASSFRAC, 2)
-    / (1 + HYDROGEN_MASSFRAC) / sqrt(M_PI) / coulomb_log * pow(PROTONMASS, 3) / pow(ELECTRONCHARGE, 4)
-    / (All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam)
-    * pow(All.UnitPressure_in_cgs / All.UnitDensity_in_cgs, 2);
+#if defined(CONDUCTION_SPITZER) || defined(VISCOSITY_BRAGINSKII)
+    /* Note: Because we replace \nabla(T) in the conduction equation with
+     * \nable(u), our conduction coefficient is not the usual kappa, but
+     * rather kappa*(gamma-1)*mu/kB. We therefore need to multiply with
+     * another factor of (meanweight / k_B * GAMMA_MINUS1).
+     */
+    double coefficient;
+    double meanweight = m_p * 4.0 / (8 - 5 * (1 - HYDROGEN_MASSFRAC)); /* assuming full ionization */
+    coefficient = meanweight / k_B * GAMMA_MINUS1;
+    
+    /* Kappa_Spitzer definition taken from Zakamska & Narayan 2003 ( ApJ 582:162-169, Eq. (5) ) */
+    double coulomb_log = 37.8; // Sarazin value (recommendation from PIC calculations) //
+    coefficient *= (1.84e-5 / coulomb_log * pow(meanweight / k_B * GAMMA_MINUS1, 2.5) * erg / (s * deg * cm));
+    coefficient /= All.HubbleParam; // We also need one factor of 'h' to convert between internal units and cgs //
+    
+#ifdef CONDUCTION_SPITZER
+    All.ConductionCoeff *= coefficient;
+#endif
+#ifdef VISCOSITY_BRAGINSKII
+    All.ShearViscosityCoeff *= 0.423 * coefficient * sqrt((PROTONMASS/ELECTRONMASS) * (HYDROGEN_MASSFRAC + 4.0*(1-HYDROGEN_MASSFRAC)));
+    // the viscosity coefficient eta is identical in these units up to the order-unity constant, and multiplied by sqrt[m_ion/m_electron] //
+    All.BulkViscosityCoeff = 0;
+    // no bulk viscosity in the Braginskii-Spitzer formulation //
+#endif
+    
+    /* factor used for determining saturation */
+    All.ElectronFreePathFactor = 8 * pow(3.0, 1.5) * pow(GAMMA_MINUS1, 2) / pow(3 + 5 * HYDROGEN_MASSFRAC, 2)
+        / (1 + HYDROGEN_MASSFRAC) / sqrt(M_PI) / coulomb_log * pow(PROTONMASS, 3) / pow(ELECTRONCHARGE, 4)
+        / (All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam)
+        * pow(All.UnitPressure_in_cgs / All.UnitDensity_in_cgs, 2);
 
   /* If the above value is multiplied with u^2/rho in code units (with rho being the physical density), then
-   * one gets the electrong mean free path in centimeter. Since we want to compare this with another length
-   * scale in code units, we now add an additional factor to convert back to code units.
-   */
+   * one gets the electron mean free path in centimeters. Since we want to compare this with another length
+   * scale in code units, we now add an additional factor to convert back to code units. */
   All.ElectronFreePathFactor *= All.HubbleParam / All.UnitLength_in_cm;
 #endif
-#endif /* CONDUCTION */
 
-#if defined(CR_DIFFUSION)
-  if(All.CR_DiffusionDensZero == 0.0)
-    {
-      /* Set reference density for CR Diffusion to rhocrit at z=0 */
-      All.CR_DiffusionDensZero = 3.0 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
-    }
-
-  if(All.CR_DiffusionInternalEnergyZero == 0.0)
-    {
-      All.CR_DiffusionInternalEnergyZero = 1.0e4;
-    }
-
-  /* Set reference entropic function to correspond to
-     Reference Temperature @ ReferenceDensity */
-  if(ThisTask == 0)
-    {
-      printf("CR Diffusion: T0 = %g\n", All.CR_DiffusionInternalEnergyZero);
-    }
-
-  /* convert Temperature value in Kelvin to thermal energy per unit mass in internal units */
-  All.CR_DiffusionInternalEnergyZero *=
-    BOLTZMANN / (4.0 * PROTONMASS / (3.0 * HYDROGEN_MASSFRAC + 1.0)) *
-    All.UnitMass_in_g / All.UnitEnergy_in_cgs;
-
-  if(ThisTask == 0)
-    {
-      printf("CR Diffusion: Rho0 = %g -- A0 = %g\n", All.CR_DiffusionDensZero, All.CR_DiffusionInternalEnergyZero);
-    }
-
-#endif /* CR_DIFFUSION */
 
 }
 
@@ -933,15 +886,6 @@ void read_parameter_file(char *fname)
 
   All.StarformationOn = 0;	/* defaults */
 
-#ifdef COSMIC_RAYS
-  char tempBuf[20];
-
-  int CRpop, x;
-
-  double tempAlpha;
-#endif
-
-
   if(sizeof(long long) != 8)
     {
       if(ThisTask == 0)
@@ -1150,7 +1094,7 @@ void read_parameter_file(char *fname)
      
      %---- Accuracy of time integration
      ErrTolIntAccuracy       0.010   % <0.02
-     CourantFac              0.1 	% <0.20
+     CourantFac              0.2 	% <0.40
      MaxRMSDisplacementFac   0.125	% <0.25
      
      %---- Tree algorithm, force accuracy, domain update frequency
@@ -1176,7 +1120,7 @@ void read_parameter_file(char *fname)
      ArtificialResistivityMax    1.  % maximum alpha_B (~1-2) for art. res. (like art. visc)
      */
         
-        All.CourantFac = 0.2;
+        All.CourantFac = 0.4;
         All.ErrTolIntAccuracy = 0.02;
         All.ErrTolTheta = 0.7;
         All.ErrTolForceAcc = 0.0025;
@@ -1204,12 +1148,16 @@ void read_parameter_file(char *fname)
         
         
 #ifdef GRAIN_FLUID
-        strcpy(tag[nt],"Grain_Density_CGS");
+        strcpy(tag[nt],"Grain_Internal_Density");
         addr[nt] = &All.Grain_Internal_Density;
         id[nt++] = REAL;
         
-        strcpy(tag[nt],"Grain_Size_Init");
-        addr[nt] = &All.InitGrainSize;
+        strcpy(tag[nt],"Grain_Size_Min");
+        addr[nt] = &All.Grain_Size_Min;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt],"Grain_Size_Max");
+        addr[nt] = &All.Grain_Size_Max;
         id[nt++] = REAL;
 #endif
         
@@ -1550,90 +1498,17 @@ void read_parameter_file(char *fname)
 #endif
 #endif
 
+        
 #ifdef COSMIC_RAYS
-        for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-        {
-            sprintf(tempBuf, "CR_SpectralIndex_%i", CRpop);
-            strcpy(tag[nt], tempBuf);
-            addr[nt] = &All.CR_Alpha[CRpop];
-            id[nt++] = REAL;
-        }
+        strcpy(tag[nt], "CosmicRay_SNeFraction");
+        addr[nt] = &All.CosmicRay_SNeFraction;
+        id[nt++] = REAL;
 
-
-      strcpy(tag[nt], "CR_SupernovaEfficiency");
-      addr[nt] = &All.CR_SNEff;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "CR_SupernovaSpectralIndex");
-      addr[nt] = &All.CR_SNAlpha;
-      id[nt++] = REAL;
-
-#if defined(CR_DIFFUSION)
-      strcpy(tag[nt], "CR_DiffusionCoeff");
-      addr[nt] = &All.CR_DiffusionCoeff;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "CR_DiffusionDensityScaling");
-      addr[nt] = &All.CR_DiffusionDensScaling;
-      id[nt++] = REAL;
-
-      /* CR Diffusion scaling: reference density rho_0.
-         If value is 0, then rho_crit @ z=0 is used. */
-      strcpy(tag[nt], "CR_DiffusionReferenceDensity");
-      addr[nt] = &All.CR_DiffusionDensZero;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "CR_DiffusionTemperatureScaling");
-      addr[nt] = &All.CR_DiffusionInternalEnergyScaling;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "CR_DiffusionReferenceTemperature");
-      addr[nt] = &All.CR_DiffusionInternalEnergyZero;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "CR_DiffusionMaxSizeTimestep");
-      addr[nt] = &All.CR_DiffusionMaxSizeTimestep;
-      id[nt++] = REAL;
-#endif /* CR_DIFFUSION */
-
-#ifdef CR_SHOCK
-      strcpy(tag[nt], "CR_ShockEfficiency");
-      addr[nt] = &All.CR_ShockEfficiency;
-      id[nt++] = REAL;
-#if ( CR_SHOCK == 1 )		/* Constant Spectral Index method */
-      strcpy(tag[nt], "CR_ShockSpectralIndex");
-      addr[nt] = &All.CR_ShockAlpha;
-      id[nt++] = REAL;
-#else /* Mach-Number - Dependent method */
-      strcpy(tag[nt], "CR_ShockCutoffFac");
-      addr[nt] = &All.CR_ShockCutoff;
-      id[nt++] = REAL;
-#endif
-#endif /* CR_SHOCK */
-
-#ifdef FIX_QINJ
-      strcpy(tag[nt], "Shock_Fix_Qinj");
-      addr[nt] = &All.Shock_Fix_Qinj;
-      id[nt++] = REAL;
+        strcpy(tag[nt], "CosmicRayDiffusionCoeff");
+        addr[nt] = &All.CosmicRayDiffusionCoeff;
+        id[nt++] = REAL;
 #endif
 
-#ifdef CR_BUBBLES
-      strcpy(tag[nt], "CR_AGNEff");
-      addr[nt] = &All.CR_AGNEff;
-      id[nt++] = REAL;
-#endif
-#endif /* COSMIC_RAYS */
-
-
-#ifdef MACHNUM
-      strcpy(tag[nt], "Shock_LengthScale");
-      addr[nt] = &All.Shock_Length;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "Shock_DeltaDecayTimeMax");
-      addr[nt] = &All.Shock_DeltaDecayTimeMax;
-      id[nt++] = REAL;
-#endif
 
 #if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_VARIABLEVELOCITY)
       strcpy(tag[nt], "TimeBetOnTheFlyFoF");
@@ -1766,7 +1641,7 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.WindFreeTravelDensFac;
       id[nt++] = REAL;
 
-#if defined (GALSF_SUBGRID_VARIABLEVELOCITY) || defined(GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION)
+#if defined (GALSF_SUBGRID_VARIABLEVELOCITY) || defined(GALSF_SUBGRID_DMDISPERSION)
       strcpy(tag[nt], "VariableWindVelFactor");
       addr[nt] = &All.VariableWindVelFactor;
       id[nt++] = REAL;
@@ -1821,9 +1696,25 @@ void read_parameter_file(char *fname)
 #endif
 
 
+#ifdef CONDUCTION
+        strcpy(tag[nt], "ConductionCoeff");
+        addr[nt] = &All.ConductionCoeff;
+        id[nt++] = REAL;
+#endif
+
+#ifdef VISCOSITY
+        strcpy(tag[nt], "ShearViscosityCoeff");
+        addr[nt] = &All.ShearViscosityCoeff;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt], "BulkViscosityCoeff");
+        addr[nt] = &All.BulkViscosityCoeff;
+        id[nt++] = REAL;
+#endif
+
 
 #ifdef MAGNETIC
-#ifdef BINISET
+#ifdef B_SET_IN_PARAMS
       strcpy(tag[nt], "BiniX");
       addr[nt] = &All.BiniX;
       id[nt++] = REAL;
@@ -1916,31 +1807,6 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.SinkDensThresh;
       id[nt++] = REAL;
 #endif
-
-#ifdef BP_REAL_CRs
-      strcpy(tag[nt], "MinCREnergy");
-      addr[nt] = &All.ecr_min;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "MaxCREnergy");
-      addr[nt] = &All.ecr_max;
-      id[nt++] = REAL;
-#ifdef BP_SEED_CRs
-      strcpy(tag[nt], "CRpInitSlope");
-      addr[nt] = &All.pSlope_init;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "CReInitSlope");
-      addr[nt] = &All.eSlope_init;
-      id[nt++] = REAL;
-#endif
-#ifdef BP_REAL_CRs_ARTIFICIAL_CONDUCTIVITY
-      strcpy(tag[nt], "CRsArtCondConstant");
-      addr[nt] = &All.CRsArtCondConstant;
-      id[nt++] = REAL;
-#endif
-#endif
-
 
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
         strcpy(tag[nt], "AGS_DesNumNgb");
@@ -2211,10 +2077,10 @@ void read_parameter_file(char *fname)
             printf("ErrTolTheta must be >0.5 and <0.9 to ensure stability \n");
         endrun(1);
     }
-    if((All.CourantFac<=0)||(All.CourantFac>0.2))
+    if((All.CourantFac<=0)||(All.CourantFac>0.5))
     {
         if(ThisTask==0)
-            printf("CourantFac must be >0 and <0.2 to ensure stability \n");
+            printf("CourantFac must be >0 and <0.5 to ensure stability \n");
         endrun(1);
     }
     if((All.ErrTolForceAcc<=0)||(All.ErrTolForceAcc>=0.01))
@@ -2366,19 +2232,6 @@ void read_parameter_file(char *fname)
     }
 #endif
 
-#ifdef COSMIC_RAYS
-    /* sort the All.CR_Alpha[CRpop] array in ascending order */
-    if(NUMCRPOP > 1)
-        for(x = 0; x < NUMCRPOP - 1; x++)
-            for(CRpop = 0; CRpop < NUMCRPOP - x - 1; CRpop++)
-                if(All.CR_Alpha[CRpop] > All.CR_Alpha[CRpop + 1])
-                {
-                    tempAlpha = All.CR_Alpha[CRpop];
-                    All.CR_Alpha[CRpop] = All.CR_Alpha[CRpop + 1];
-                    All.CR_Alpha[CRpop + 1] = tempAlpha;
-                }
-#endif
-    
     
     for(pnum = 0; All.NumFilesWrittenInParallel > (1 << pnum); pnum++);
     
@@ -2554,13 +2407,6 @@ void read_parameter_file(char *fname)
 #undef INT
 #undef MAXTAGS
     
-    
-#ifdef COSMIC_RAYS
-    if(ThisTask == 0)
-    {
-        printf("CR SN Efficiency: %g\n", All.CR_SNEff);
-    }
-#endif
 }
 
 
@@ -2661,10 +2507,6 @@ void readjust_timebase(double TimeMax_old, double TimeMax_new)
 #ifdef PMGRID
       All.PM_Ti_begstep /= 2;
       All.PM_Ti_endstep /= 2;
-#endif
-#ifdef CR_DIFFUSION
-      All.CR_Diffusion_Ti_begstep /= 2;
-      All.CR_Diffusion_Ti_endstep /= 2;
 #endif
 #ifdef TURB_DRIVING
       StTPrev /= 2;

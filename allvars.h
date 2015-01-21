@@ -85,9 +85,20 @@
 #endif
 
 
-#if defined(EOS_DEGENERATE)
+#if defined(EOS_DEGENERATE) || defined(COSMIC_RAYS)
 #define NON_IDEAL_EOS
 #endif
+
+
+#if defined(CONDUCTION) || defined(TURB_DIFF_ENERGY) || defined(NON_IDEAL_EOS)
+#define DOGRAD_INTERNAL_ENERGY 1
+#endif
+
+#if defined(NON_IDEAL_EOS)
+#define DOGRAD_SOUNDSPEED 1
+#endif
+
+
 
 
 #ifdef MAGNETIC
@@ -103,10 +114,6 @@
 #endif
 #endif
 
-
-#ifdef CONDUCTION_EXPLICIT
-#define CONDUCTION_SATURATION   /* includes saturation when mean free path of electrons is large */
-#endif
 
 #if defined(TURB_DIFF_ENERGY) || defined(TURB_DIFF_VELOCITY) || defined(TURB_DIFF_MASS)
 #define TURB_DIFFUSION /* master switch to calculate properties needed for scalar turbulent diffusion/mixing: must enable with any specific version */
@@ -383,12 +390,6 @@ typedef unsigned long long peanokey;
 
 #define  SEC_PER_MEGAYEAR   3.155e13
 #define  SEC_PER_YEAR       3.155e7
-
-/*Determines the maximum size of arrays related to the number of CR populations */
-#ifndef NUMCRPOP   /*!< Number of CR populations pressent in parameter file */
-#define NUMCRPOP 1
-#endif
-
 
 
 #ifndef FOF_PRIMARY_LINK_TYPES
@@ -1180,7 +1181,8 @@ extern struct global_data_all_processes
     
 #ifdef GRAIN_FLUID
     double Grain_Internal_Density;
-    double InitGrainSize;
+    double Grain_Size_Min;
+    double Grain_Size_Max;
 #endif
     
 #ifdef DISTORTIONTENSORPS
@@ -1220,7 +1222,7 @@ extern struct global_data_all_processes
   double WindEnergyFraction;
   double WindFreeTravelMaxTimeFactor;  /* maximum free travel time in units of the Hubble time at the current simulation redshift */
   double WindFreeTravelDensFac;
-#if defined(GALSF_SUBGRID_VARIABLEVELOCITY) || defined(GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION)
+#if defined(GALSF_SUBGRID_VARIABLEVELOCITY) || defined(GALSF_SUBGRID_DMDISPERSION)
   double VariableWindVelFactor;  /* wind velocity in units of the halo escape velcoity */
   double VariableWindSpecMomentum;  /* momentum available for wind per unit mass of stars formed, in internal velocity units */
   double HaloConcentrationNorm;  /* concentration c0 of a halo of unit mass */
@@ -1233,6 +1235,11 @@ extern struct global_data_all_processes
   double SNeIIBW_Radius_Factor;
 #endif
 
+#ifdef COSMIC_RAYS
+    double CosmicRay_SNeFraction;
+    double CosmicRayDiffusionCoeff;
+#endif
+    
 #ifdef GALSF_FB_HII_HEATING
   double HIIRegion_fLum_Coupled;
   double HIIRegion_Temp;
@@ -1289,18 +1296,22 @@ extern struct global_data_all_processes
   double TurbDiffusion_Coefficient;
 #endif
   
-#if defined(CONDUCTION_EXPLICIT)
-  double ConductionCoeff;	/*!< Thermal Conductivity */
-#ifdef CONDUCTION_SATURATION
-  double ElectronFreePathFactor;	/*!< Factor to get electron mean free path */
+#if defined(CONDUCTION)
+   double ConductionCoeff;	/*!< Thermal Conductivity */
+#endif
+    
+#if defined(VISCOSITY)
+   double ShearViscosityCoeff;
+   double BulkViscosityCoeff;
 #endif
 
-  integertime Conduction_Ti_begstep, Conduction_Ti_endstep;
-  double MaxSizeConductionStep;
+#if defined(CONDUCTION_SPITZER) || defined(VISCOSITY_BRAGINSKII)
+    double ElectronFreePathFactor;	/*!< Factor to get electron mean free path */
 #endif
 
+    
 #ifdef MAGNETIC
-#ifdef BINISET
+#ifdef B_SET_IN_PARAMS
   double BiniX, BiniY, BiniZ;	/*!< Initial values for B */
 #endif
 #ifdef SPH_ARTIFICIAL_RESISTIVITY
@@ -1335,50 +1346,6 @@ extern struct global_data_all_processes
   double BlackHoleRefDensity;
   double BlackHoleRefSoundspeed;
 #endif
-#endif
-
-#ifdef COSMIC_RAYS
-  double CR_Alpha[NUMCRPOP];	/*!< Cosmic ray spectral index [2..3] */
-  double CR_SNEff;		/*!< SN injection efficiency [0..1] */
-  double CR_SNAlpha;		/*!< SN injection spectral index [2..3] */
-  int bDebugFlag;		/*!< enables debug outputs after triggered */
-
-#if defined(CR_DIFFUSION)
-  double CR_DiffusionCoeff;	/*!< (temporary) fixed value for CR diffusivity */
-
-  double CR_DiffusionDensScaling;	/*!< grade of density dependence of diffusivity */
-  double CR_DiffusionDensZero;	/*!< Reference point density for diffusivity */
-
-  double CR_DiffusionInternalEnergyScaling;	/*!< grade of specific energy dependence of diffusivity */
-
-  double CR_DiffusionInternalEnergyZero;	/*!< Reference Entropic function for diffusivity */
-
-  double CR_DiffusionMaxSizeTimestep;
-  integertime CR_Diffusion_Ti_begstep, CR_Diffusion_Ti_endstep;
-#endif				/* CR_DIFFUSION */
-
-#if defined(CR_SHOCK)
-#if (CR_SHOCK == 1)
-  double CR_ShockAlpha;		/*!< spectral index to be used in shock injection */
-#else
-  double CR_ShockCutoff;	/*!< Cutoff factor x_inj for CR accel */
-#endif
-  double CR_ShockEfficiency;	/*!< energy fraction of shock energy fed into CR */
-#endif				/* CR_SHOCK */
-
-#ifdef FIX_QINJ
-  double Shock_Fix_Qinj;	/*!< inject only CRps with threshold cutoff Shock_Fix_Qinj */
-#endif
-
-#ifdef CR_BUBBLES
-  double CR_AGNEff;               /*!< AGN injection efficiency [0..1] */
-#endif
-#endif				/* COSMIC_RAYS */
-
-#ifdef MACHNUM
-  double Shock_Length;		/*!< length scale on which the shock is smoothed out */
-  double Shock_DeltaDecayTimeMax;	/*!< maximum time interval (Dloga) for which the
-					   Mach number is kept at its maximum */
 #endif
 
 #ifdef BUBBLES
@@ -1447,19 +1414,6 @@ extern struct global_data_all_processes
   double RelaxBaseFac;
   double RelaxFac;
 #endif
-
-#ifdef BP_REAL_CRs
-  double ecr_min, ecr_max;		/*!< min and max momenta of cosmic rays */
-  double ecr_bound[BP_REAL_CRs+1];	/*!< boundaries of cosmic rays momentum bins */
-  double CR_Gamma;			/*!< adiabatic index of CRs  */
-#ifdef BP_SEED_CRs
-  double pSlope_init, eSlope_init;      /*!< init slopes of spectra of protons and electrons */
-#endif
-#ifdef BP_REAL_CRs_ARTIFICIAL_CONDUCTIVITY
-  double CRsArtCondConstant;
-#endif
-#endif
-
 
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
   double AGS_DesNumNgb;
@@ -1593,8 +1547,10 @@ extern ALIGN(32) struct particle_data
     MyFloat Gas_Density;
     MyFloat Gas_InternalEnergy;
     MyFloat Gas_Velocity[3];
+#ifdef GRAIN_COLLISIONS
     MyFloat Grain_Density;
     MyFloat Grain_Velocity[3];
+#endif
 #endif
     
 #if defined(BH_POPIII_SEEDS) || defined(GALSF_FB_LOCAL_UV_HEATING) || defined(GALSF_FB_RPWIND_FROMSTARS) || defined(BH_PHOTONMOMENTUM) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN) || defined(GALSF_FB_SNE_HEATING)
@@ -1789,41 +1745,49 @@ extern struct bh_particle_data
 extern struct sph_particle_data
 {
     /* the PRIMITIVE and CONSERVED hydro variables used in STATE reconstruction */
-    MyDouble Density;           /*!< current baryonic mass density of particle */
+    MyDouble Density;               /*!< current baryonic mass density of particle */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-    MyDouble MassTrue;          /*!< true particle mass ('mass' now is -predicted- mass */
-    MyDouble dMass;             /*!< change in particle masses from hydro step (conserved variable) */
-    MyDouble DtMass;            /*!< rate-of-change of particle masses (for drifting) */
-    MyDouble GravWorkTerm[3];   /*!< correction term needed for hydro mass flux in gravity */
+    MyDouble MassTrue;              /*!< true particle mass ('mass' now is -predicted- mass */
+    MyDouble dMass;                 /*!< change in particle masses from hydro step (conserved variable) */
+    MyDouble DtMass;                /*!< rate-of-change of particle masses (for drifting) */
+    MyDouble GravWorkTerm[3];       /*!< correction term needed for hydro mass flux in gravity */
 #endif
 
-    MyDouble Pressure;          /*!< current pressure */
-    MyDouble InternalEnergy;           /*!< internal energy of particle */
-    MyDouble InternalEnergyPred;       /*!< predicted value of the internal energy at the current time */
-    //MyDouble dInternalEnergy;          /*!< change in internal energy from hydro step */ //manifest-indiv-timestep-debug//
-    MyDouble DtInternalEnergy;         /*!< rate of change of internal energy */
+    MyDouble Pressure;              /*!< current pressure */
+    MyDouble InternalEnergy;        /*!< internal energy of particle */
+    MyDouble InternalEnergyPred;    /*!< predicted value of the internal energy at the current time */
+    //MyDouble dInternalEnergy;     /*!< change in internal energy from hydro step */ //manifest-indiv-timestep-debug//
+    MyDouble DtInternalEnergy;      /*!< rate of change of internal energy */
 
-    MyDouble VelPred[3];        /*!< predicted SPH particle velocity at the current time */
-    //MyDouble dMomentum[3];      /*!< change in momentum from hydro step (conserved variable) */ //manifest-indiv-timestep-debug//
-    MyDouble HydroAccel[3];     /*!< acceleration due to hydrodynamical force (for drifting) */
+    MyDouble VelPred[3];            /*!< predicted SPH particle velocity at the current time */
+    //MyDouble dMomentum[3];        /*!< change in momentum from hydro step (conserved variable) */ //manifest-indiv-timestep-debug//
+    MyDouble HydroAccel[3];         /*!< acceleration due to hydrodynamical force (for drifting) */
     
 #ifdef MAGNETIC
-    MyDouble Face_Area[3];      /*!< vector sum of effective areas of 'faces'; this is used to check closure for meshless methods */
-    MyDouble BPred[3];          /*!< current magnetic field strength */
-    MyDouble B[3];              /*!< actual B (conserved variable used for integration; can be B*V for flux schemes) */
-    MyDouble DtB[3];             /*!< time derivative of B-field (of -conserved- B-field) */
-    MyFloat divB;               /*!< storage for the 'effective' divB used in div-cleaning procedure */
+    MyDouble Face_Area[3];          /*!< vector sum of effective areas of 'faces'; this is used to check closure for meshless methods */
+    MyDouble BPred[3];              /*!< current magnetic field strength */
+    MyDouble B[3];                  /*!< actual B (conserved variable used for integration; can be B*V for flux schemes) */
+    MyDouble DtB[3];                /*!< time derivative of B-field (of -conserved- B-field) */
+    MyFloat divB;                   /*!< storage for the 'effective' divB used in div-cleaning procedure */
 #ifdef DIVBCLEANING_DEDNER
-    MyDouble DtB_PhiCorr[3];    /*!< correction forces for mid-face update to phi-field */
-    MyDouble PhiPred;           /*!< current value of Phi */
-    MyDouble Phi;               /*!< scalar field for Dedner divergence cleaning */
-    MyDouble DtPhi;             /*!< time derivative of Phi-field */
+    MyDouble DtB_PhiCorr[3];        /*!< correction forces for mid-face update to phi-field */
+    MyDouble PhiPred;               /*!< current value of Phi */
+    MyDouble Phi;                   /*!< scalar field for Dedner divergence cleaning */
+    MyDouble DtPhi;                 /*!< time derivative of Phi-field */
 #endif
 #if defined(TRICCO_RESISTIVITY_SWITCH)
-    MyFloat Balpha;             /*!< effective resistivity coefficient */
+    MyFloat Balpha;                 /*!< effective resistivity coefficient */
 #endif
 #endif /* MAGNETIC */
 
+    
+#ifdef COSMIC_RAYS
+    MyFloat CosmicRayEnergy;        /*!< total energy of cosmic ray fluid (the conserved variable) */
+    MyFloat CosmicRayEnergyPred;    /*!< total energy of cosmic ray fluid (the conserved variable) */
+    MyFloat DtCosmicRayEnergy;      /*!< time derivative of cosmic ray energy */
+    MyFloat CosmicRayDiffusionCoeff;/*!< diffusion coefficient kappa for cosmic ray fluid */
+#endif
+    
     
     /* matrix of the primitive variable gradients: rho, P, vx, vy, vz, B, phi */
     struct
@@ -1838,11 +1802,16 @@ extern struct sph_particle_data
 #endif
 #endif
 #ifdef RADTRANSFER_FLUXLIMITER
-        MyFloat n_gamma[3][N_BINS];
+        MyFloat n_gamma[N_BINS][3];
 #endif
-#ifdef NON_IDEAL_EOS
-        MyDouble InternalEnergy[3];
+#ifdef DOGRAD_SOUNDSPEED
         MyDouble SoundSpeed[3];
+#endif
+#ifdef DOGRAD_INTERNAL_ENERGY
+        MyDouble InternalEnergy[3];
+#endif
+#ifdef TURB_DIFF_METALS
+        MyDouble Metallicity[NUM_METAL_SPECIES][3];
 #endif
     } Gradients;
     MyFloat NV_T[3][3];             /*!< holds the tensor used for gradient estimation */
@@ -1896,7 +1865,7 @@ extern struct sph_particle_data
 #ifdef GALSF_SUBGRID_VARIABLEVELOCITY
   MyFloat HostHaloMass;             /*!< host halo mass estimator for wind launching velocity */
 #endif
-#ifdef GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION
+#ifdef GALSF_SUBGRID_DMDISPERSION
   MyFloat HsmlDM;                   /*!< smoothing length to find neighboring dark matter particles */
   MyDouble NumNgbDM;                /*!< number of neighbor dark matter particles */
   MyDouble DM_Vx, DM_Vy, DM_Vz, DM_VelDisp; /*!< surrounding DM velocity and velocity dispersion */
@@ -1934,43 +1903,14 @@ extern struct sph_particle_data
   MyFloat alpha_limiter;                /*!< artificial viscosity limiter (Balsara-like) */
 #endif
 
-#ifdef CONDUCTION_EXPLICIT
+#ifdef CONDUCTION
     MyFloat Kappa_Conduction;           /*!< conduction coefficient */
 #endif
-    
-#ifdef COSMIC_RAYS
-    MyFloat CR_C0[NUMCRPOP];			/*!< Cosmic ray amplitude adiabatic invariable */
-    MyFloat CR_q0[NUMCRPOP];			/*!< Cosmic ray cutoff adiabatic invariable */
-    MyFloat CR_E0[NUMCRPOP];			/*!< Specific Energy at Rho0 */
-    MyFloat CR_n0[NUMCRPOP];			/*!< baryon fraction in cosmic rays */
-    MyFloat CR_DeltaE[NUMCRPOP];		/*!< Specific Energy growth during timestep */
-    MyFloat CR_DeltaN[NUMCRPOP];		/*!< baryon fraction growth during timestep */
-#ifdef MACHNUM
-    MyFloat CR_Gamma0[NUMCRPOP];
+
+#if defined(VISCOSITY)
+    MyFloat Eta_ShearViscosity;         /*!< shear viscosity coefficient */
+    MyFloat Zeta_BulkViscosity;         /*!< bulk viscosity coefficient */
 #endif
-#ifdef CR_OUTPUT_INJECTION
-    MyFloat CR_Specific_SupernovaHeatingRate;
-#endif
-#endif				/* COSMIC_RAYS */
-    
-#ifdef MACHNUM
-    MyFloat Shock_MachNumber;	/*!< Mach number */
-    MyFloat Shock_DecayTime;	/*!< Shock decay time */
-#ifdef COSMIC_RAYS
-    MyFloat Shock_DensityJump;	/*!< Density jump at the shock */
-    MyFloat Shock_EnergyJump;	/*!< Energy jump at the shock */
-    MyFloat PreShock_PhysicalDensity;	/*!< Specific energy in the preshock regime */
-    MyFloat PreShock_PhysicalEnergy;	/*!< Density in the preshock regime */
-    MyFloat PreShock_XCR;		/*!< XCR = PCR / Pth in the preshock regime */
-#endif
-#ifdef MACHSTATISTIC
-    MyFloat Shock_DtEnergy;		/*!< Change of thermal specific energy at Shocks */
-#endif
-#ifdef OUTPUT_PRESHOCK_CSND
-    MyFloat PreShock_PhysicalSoundSpeed;	/*!< Sound speed in the preshock regime */
-    MyFloat PreShock_PhysicalDensity;	/*!< Specific energy in the preshock regime */
-#endif
-#endif				/* Mach number estimate */
 
     
 #if defined(RADTRANSFER)
@@ -2008,26 +1948,6 @@ extern struct sph_particle_data
     short int wakeup;                     /*!< flag to wake up particle */
 #endif
     
-#ifdef BP_REAL_CRs
-    MyFloat CRpNorm[BP_REAL_CRs];         /*!< normalization of CR protons spectrum */
-    MyFloat CRpSlope[BP_REAL_CRs];        /*!< slope of CR protons spectrum */
-    MyFloat CRpCut;                       /*!< cutoff of CR protons spectrum  */
-    MyFloat CRpN[BP_REAL_CRs];            /*!< number of CR p */
-    MyFloat CRpE[BP_REAL_CRs];            /*!< energy of CR p */
-    MyFloat CRpPressure;                  /*!< pressure of CR p */
-#ifdef BP_REAL_CRs_ARTIFICIAL_CONDUCTIVITY
-    MyFloat DtCRpE[BP_REAL_CRs];		/*!< time derivative of CR p energy */
-    MyFloat DtCRpN[BP_REAL_CRs];		/*!< time derivative of CR p number */
-#endif
-    MyFloat CReNorm[BP_REAL_CRs];         /*!< normalization of CR electrons spectrum */
-    MyFloat CReSlope[BP_REAL_CRs];        /*!< slope of CR electrons spectrum */
-    MyFloat CReCut;                       /*!< cutoff of CR electrons spectrum  */
-    MyFloat CReN[BP_REAL_CRs];            /*!< number of CR e */
-    MyFloat CReE[BP_REAL_CRs];            /*!< energy of CR e */
-    MyFloat CRePressure;                  /*!< pressure of CR e */
-    MyFloat DensityOld;
-#endif
-
 }
   *SphP,				/*!< holds SPH particle data on local processor */
   *DomainSphBuf;			/*!< buffer for SPH particle data in domain decomposition */
@@ -2200,10 +2120,7 @@ extern struct io_header
 {
   int npart[6];			/*!< number of particles of each type in this file */
   double mass[6];		/*!< mass of particles of each type. If 0, then the masses are explicitly
-				   stored in the mass-block of the snapshot file, otherwise they are omitted */
-#ifdef COSMIC_RAYS
-  double SpectralIndex_CR_Pop[NUMCRPOP]; /*!< spectral indices of cosmic ray populations */
-#endif
+                                stored in the mass-block of the snapshot file, otherwise they are omitted */
   double time;			/*!< time of snapshot file */
   double redshift;		/*!< redshift of snapshot file */
   int flag_sfr;			/*!< flags whether the simulation was including star formation */
@@ -2235,12 +2152,7 @@ extern struct io_header
                                  */
   float lpt_scalingfactor;      /*!< scaling factor for 2lpt initial conditions */
 
-#ifdef COSMIC_RAYS
-  char fill[18-8*NUMCRPOP];	/*!< fills to 256 Bytes */
-#else
   char fill[18];		/*!< fills to 256 Bytes */
-#endif
-
   char names[15][2];
 }
 header;				/*!< holds header for snapshot files */
@@ -2271,13 +2183,6 @@ enum iofields
   IO_ACRB,
   IO_POT,
   IO_ACCEL,
-  IO_CR_C0,
-  IO_CR_Q0,
-  IO_CR_P0,
-  IO_CR_E0,
-  IO_CR_n0,
-  IO_CR_ThermalizationTime,
-  IO_CR_DissipationTime,
   IO_HII,
   IO_HeI,
   IO_HeII,
@@ -2307,15 +2212,6 @@ enum iofields
   IO_COOLRATE,
   IO_CONDRATE,
   IO_DENN,
-  IO_MACH,
-  IO_DTENERGY,
-  IO_PRESHOCK_CSND,
-  IO_PRESHOCK_DENSITY,
-  IO_PRESHOCK_ENERGY,
-  IO_PRESHOCK_XCR,
-  IO_DENSITY_JUMP,
-  IO_ENERGY_JUMP,
-  IO_CRINJECT,
   IO_TIDALTENSORPS,
   IO_DISTORTIONTENSORPS,
   IO_FLOW_DETERMINANT,
@@ -2345,15 +2241,6 @@ enum iofields
   IO_VDIV,
   IO_VROT,
   IO_VORT,
-  IO_DPP,
-  IO_BPCR_pNORM,
-  IO_BPCR_eNORM,
-  IO_BPCR_pSLOPE,
-  IO_BPCR_eSLOPE,
-  IO_BPCR_pE,
-  IO_BPCR_pN,
-  IO_BPCR_ePRESSURE,
-  IO_BPCR_pPRESSURE,
 
   IO_CHEM,
   IO_DELAYTIME,

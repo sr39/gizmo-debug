@@ -15,10 +15,6 @@
 #include "allvars.h"
 #include "proto.h"
 
-#ifdef JD_DPP
-#include "cr_electrons.h"
-#endif
-
 /*! \file io.c
  *  \brief Output of a snapshot file to disk.
  */
@@ -52,9 +48,6 @@ void savepositions(int num)
   /* ensures that new tree will be constructed */
   All.NumForcesSinceLastDomainDecomp = (long long) (1 + All.TreeDomainUpdateFrequency * All.TotNumPart);
 
-#if defined(JD_DPP) && defined(JD_DPPONSNAPSHOTONLY)
-  compute_Dpp(0);		/* Particle loop already inside, just add water */
-#endif
 
   if(DumpFlag == 1)
     {
@@ -235,14 +228,6 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
   double tcool, u;
 #endif
 
-#ifdef COSMIC_RAYS
-  int CRpop;
-#endif
-
-#ifdef BP_REAL_CRs
-  int Nbin;
-#endif
-
 #if (defined(OUTPUT_DISTORTIONTENSORPS) || defined(OUTPUT_TIDALTENSORPS))
   MyBigFloat half_kick_add[6][6];
   int l;
@@ -372,7 +357,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
       for(n = 0; n < pc; pindex++)
 	if(P[pindex].Type == type)
 	  {
-        *fp++ = DMAX(All.MinEgySpec, Particle_Internal_energy_i(pindex));
+        *fp++ = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergyPred);
 	    n++;
 	  }
       break;
@@ -659,16 +644,6 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     case IO_TRUENGB:		/* True Number of Neighbours  */
       break;
 
-    case IO_DPP:		/* Reacceleration Coefficient */
-#ifdef JD_DPP
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    *fp++ = SphP[pindex].Dpp;
-	    n++;
-	  }
-#endif
-      break;
 
     case IO_VDIV:		/* Divergence of Vel */
       break;
@@ -770,7 +745,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	  {
 	    double ne = SphP[pindex].Ne;
 	    /* get cooling time */
-        u = Particle_Internal_energy_i(pindex);
+        u = SphP[pindex].InternalEnergyPred;
         tcool = GetCoolingTime(u, SphP[pindex].Density * All.cf_a3inv, &ne, i);
 	    /* convert cooling time with current thermal energy to du/dt */
 	    if(tcool != 0)
@@ -788,200 +763,6 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     case IO_DENN:		/* density normalization factor */
       break;
 
-
-    case IO_CR_C0:
-#ifdef COSMIC_RAYS
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-	      fp[CRpop] = SphP[pindex].CR_C0[CRpop];
-	    n++;
-	    fp += NUMCRPOP;
-	  }
-#endif
-      break;
-
-    case IO_CR_Q0:
-#ifdef COSMIC_RAYS
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-	      fp[CRpop] = SphP[pindex].CR_q0[CRpop];
-	    n++;
-	    fp += NUMCRPOP;
-	  }
-#endif
-      break;
-
-    case IO_CR_P0:
-#if defined(COSMIC_RAYS) && defined(CR_OUTPUT_THERMO_VARIABLES)
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-	      fp[CRpop] = CR_Physical_Pressure(&SphP[pindex], CRpop);
-	    n++;
-	    fp += NUMCRPOP;
-	  }
-#endif
-      break;
-
-    case IO_CR_E0:
-#if defined(COSMIC_RAYS) && defined(CR_OUTPUT_THERMO_VARIABLES)
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-	      fp[CRpop] = SphP[pindex].CR_E0[CRpop];
-	    n++;
-	    fp += NUMCRPOP;
-	  }
-#endif
-      break;
-
-    case IO_CR_n0:
-#if defined(COSMIC_RAYS) && defined(CR_OUTPUT_THERMO_VARIABLES)
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-	      fp[CRpop] = SphP[pindex].CR_n0[CRpop];
-	    n++;
-	    fp += NUMCRPOP;
-	  }
-#endif
-      break;
-
-    case IO_CR_ThermalizationTime:
-#if defined(COSMIC_RAYS) && defined(CR_OUTPUT_TIMESCALES)
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-	      fp[CRpop] = CR_Tab_GetThermalizationTimescale(SphP[pindex].CR_q0[CRpop] *
-							    pow(SphP[pindex].Density * All.cf_a3inv, 0.333333),
-							    SphP[pindex].Density * All.cf_a3inv, CRpop);
-	    n++;
-	    fp += NUMCRPOP;
-	  }
-#endif
-      break;
-
-    case IO_CR_DissipationTime:
-#if defined(COSMIC_RAYS) && defined(CR_OUTPUT_TIMESCALES)
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-	      fp[CRpop] = CR_Tab_GetDissipationTimescale(SphP[pindex].CR_q0[CRpop] *
-							 pow(SphP[pindex].Density * All.cf_a3inv, 0.333333),
-							 SphP[pindex].Density * All.cf_a3inv, CRpop);
-	    n++;
-	    fp += NUMCRPOP;
-	  }
-#endif
-      break;
-
-    case IO_BPCR_pNORM:
-#if defined BP_REAL_CRs
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    for(Nbin = 0; Nbin < BP_REAL_CRs; Nbin++)
-	      fp[Nbin] = SphP[pindex].CRpNorm[Nbin];
-	    n++;
-	    fp += BP_REAL_CRs;
-	  }
-#endif
-      break;
-
-    case IO_BPCR_eNORM:
-#if defined BP_REAL_CRs
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    for(Nbin = 0; Nbin < BP_REAL_CRs; Nbin++)
-	      fp[Nbin] = SphP[pindex].CReNorm[Nbin];
-	    n++;
-	    fp += BP_REAL_CRs;
-	  }
-#endif
-      break;
-
-    case IO_BPCR_pSLOPE:
-#if defined BP_REAL_CRs
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    for(Nbin = 0; Nbin < BP_REAL_CRs; Nbin++)
-	      fp[Nbin] = SphP[pindex].CRpSlope[Nbin];
-	    n++;
-	    fp += BP_REAL_CRs;
-	  }
-#endif
-      break;
-
-    case IO_BPCR_eSLOPE:
-#if defined BP_REAL_CRs
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    for(Nbin = 0; Nbin < BP_REAL_CRs; Nbin++)
-	      fp[Nbin] = SphP[pindex].CReSlope[Nbin];
-	    n++;
-	    fp += BP_REAL_CRs;
-	  }
-#endif
-      break;
-
-    case IO_BPCR_pE:
-#if defined BP_REAL_CRs
-      for(n = 0; n < pc; pindex++)
-        if(P[pindex].Type == type)
-	  {
-	    for(Nbin = 0; Nbin < BP_REAL_CRs; Nbin++)
-	      fp[Nbin] = SphP[pindex].CRpE[Nbin];
-	    n++;
-	    fp += BP_REAL_CRs;
-	  }
-#endif
-      break;
-
-    case IO_BPCR_pN:
-#if defined BP_REAL_CRs
-      for(n = 0; n < pc; pindex++)
-        if(P[pindex].Type == type)
-	  {
-	    for(Nbin = 0; Nbin < BP_REAL_CRs; Nbin++)
-	      fp[Nbin] = SphP[pindex].CRpN[Nbin];
-	    n++;
-	    fp += BP_REAL_CRs;
-	  }
-#endif
-
-    case IO_BPCR_pPRESSURE:
-#if defined BP_REAL_CRs
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    *fp++ = SphP[pindex].CRpPressure;
-	    n++;
-	  }
-#endif
-      break;
-
-    case IO_BPCR_ePRESSURE:
-#if defined BP_REAL_CRs
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    *fp++ = SphP[pindex].CRePressure;
-	    n++;
-	  }
-#endif
-      break;
 
     case IO_BHMASS:
 #ifdef BLACK_HOLES
@@ -1071,104 +852,6 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
       break;
 
-    case IO_MACH:
-#if defined(MACHNUM)
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    *fp++ = SphP[pindex].Shock_MachNumber;
-	    n++;
-	  }
-#endif
-      break;
-
-    case IO_DTENERGY:
-#ifdef MACHSTATISTIC
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    *fp++ = SphP[pindex].Shock_DtEnergy;
-	    n++;
-	  }
-#endif
-      break;
-
-    case IO_PRESHOCK_CSND:
-#ifdef OUTPUT_PRESHOCK_CSND
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    *fp++ = SphP[pindex].PreShock_PhysicalSoundSpeed;
-	    n++;
-	  }
-#endif
-      break;
-
-    case IO_PRESHOCK_DENSITY:
-#if defined(CR_OUTPUT_JUMP_CONDITIONS) || defined(OUTPUT_PRESHOCK_CSND)
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    *fp++ = SphP[pindex].PreShock_PhysicalDensity;
-	    n++;
-	  }
-#endif
-      break;
-
-    case IO_PRESHOCK_ENERGY:
-#ifdef CR_OUTPUT_JUMP_CONDITIONS
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    *fp++ = SphP[pindex].PreShock_PhysicalEnergy;
-	    n++;
-	  }
-#endif
-      break;
-
-    case IO_PRESHOCK_XCR:
-#ifdef CR_OUTPUT_JUMP_CONDITIONS
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    *fp++ = SphP[pindex].PreShock_XCR;
-	    n++;
-	  }
-#endif
-      break;
-
-    case IO_DENSITY_JUMP:
-#ifdef CR_OUTPUT_JUMP_CONDITIONS
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    *fp++ = SphP[pindex].Shock_DensityJump;
-	    n++;
-	  }
-#endif
-      break;
-
-    case IO_ENERGY_JUMP:
-#ifdef CR_OUTPUT_JUMP_CONDITIONS
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    *fp++ = SphP[pindex].Shock_EnergyJump;
-	    n++;
-	  }
-#endif
-      break;
-
-    case IO_CRINJECT:
-#if defined( COSMIC_RAYS ) && defined( CR_OUTPUT_INJECTION )
-      for(n = 0; n < pc; pindex++)
-	if(P[pindex].Type == type)
-	  {
-	    *fp++ = SphP[pindex].CR_Specific_SupernovaHeatingRate;
-	    n++;
-	  }
-#endif
-      break;
 
     case IO_TIDALTENSORPS:
       /* 3x3 configuration-space tidal tensor that is driving the GDE */
@@ -1591,7 +1274,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
     case IO_VTAN:
     case IO_VDIV:
     case IO_VROT:
-    case IO_DPP:
     case IO_ABVC:
     case IO_AMDC:
     case IO_PHI:
@@ -1605,15 +1287,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
     case IO_BHMBUB:
     case IO_BHMINI:
     case IO_BHMRAD:
-    case IO_MACH:
-    case IO_DTENERGY:
-    case IO_PRESHOCK_CSND:
-    case IO_PRESHOCK_DENSITY:
-    case IO_PRESHOCK_ENERGY:
-    case IO_PRESHOCK_XCR:
-    case IO_DENSITY_JUMP:
-    case IO_ENERGY_JUMP:
-    case IO_CRINJECT:
     case IO_CAUSTIC_COUNTER:
     case IO_FLOW_DETERMINANT:
     case IO_STREAM_DENSITY:
@@ -1621,8 +1294,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
     case IO_EOSTEMP:
     case IO_PRESSURE:
     case IO_INIT_DENSITY:
-    case IO_BPCR_pPRESSURE:
-    case IO_BPCR_ePRESSURE:
     case IO_AGS_SOFT:
     case IO_AGS_ZETA:
     case IO_AGS_OMEGA:
@@ -1636,38 +1307,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
 	bytes_per_blockelement = sizeof(MyOutputFloat);
       break;
 
-    case IO_CR_C0:
-    case IO_CR_Q0:
-    case IO_CR_P0:
-    case IO_CR_E0:
-    case IO_CR_n0:
-    case IO_CR_ThermalizationTime:
-    case IO_CR_DissipationTime:
-      if(mode)
-	bytes_per_blockelement = NUMCRPOP * sizeof(MyInputFloat);
-      else
-	bytes_per_blockelement = NUMCRPOP * sizeof(MyOutputFloat);
-      break;
-
-    case IO_BPCR_pNORM:
-    case IO_BPCR_eNORM:
-    case IO_BPCR_pSLOPE:
-    case IO_BPCR_eSLOPE:
-    case IO_BPCR_pE:
-    case IO_BPCR_pN:
-#ifndef BP_REAL_CRs
-      if(mode)
-	bytes_per_blockelement = sizeof(MyInputFloat);
-      else
-	bytes_per_blockelement = sizeof(MyOutputFloat);
-      break;
-#else
-      if(mode)
-	bytes_per_blockelement = BP_REAL_CRs * sizeof(MyInputFloat);
-      else
-	bytes_per_blockelement = BP_REAL_CRs * sizeof(MyOutputFloat);
-      break;
-#endif
 
     case IO_DMHSML:
     case IO_DMDENSITY:
@@ -1851,7 +1490,6 @@ int get_values_per_blockelement(enum iofields blocknr)
     case IO_VRAD:  
     case IO_VDIV:
     case IO_VROT:
-    case IO_DPP:
     case IO_IMF:
     case IO_DIVB:
     case IO_ABVC:
@@ -1868,15 +1506,6 @@ int get_values_per_blockelement(enum iofields blocknr)
     case IO_BHMBUB:
     case IO_BHMINI:
     case IO_BHMRAD:
-    case IO_MACH:
-    case IO_DTENERGY:
-    case IO_PRESHOCK_CSND:
-    case IO_PRESHOCK_DENSITY:
-    case IO_PRESHOCK_ENERGY:
-    case IO_PRESHOCK_XCR:
-    case IO_DENSITY_JUMP:
-    case IO_ENERGY_JUMP:
-    case IO_CRINJECT:
     case IO_CAUSTIC_COUNTER:
     case IO_FLOW_DETERMINANT:
     case IO_STREAM_DENSITY:
@@ -1889,8 +1518,6 @@ int get_values_per_blockelement(enum iofields blocknr)
     case IO_DMVELDISP:
     case IO_DMHSML_V:
     case IO_DMDENSITY_V:
-    case IO_BPCR_pPRESSURE:
-    case IO_BPCR_ePRESSURE:
     case IO_AGS_SOFT:
     case IO_AGS_ZETA:
     case IO_AGS_OMEGA:
@@ -1900,27 +1527,6 @@ int get_values_per_blockelement(enum iofields blocknr)
     case IO_VSTURB_DRIVE:
     case IO_MG_PHI:
       values = 1;
-      break;
-
-    case IO_CR_C0:
-    case IO_CR_Q0:
-    case IO_CR_P0:
-    case IO_CR_E0:
-    case IO_CR_n0:
-    case IO_CR_ThermalizationTime:
-    case IO_CR_DissipationTime:
-      values = NUMCRPOP;
-      break;
-
-    case IO_BPCR_pNORM:
-    case IO_BPCR_eNORM:
-    case IO_BPCR_pSLOPE:
-    case IO_BPCR_eSLOPE:
-    case IO_BPCR_pE:
-    case IO_BPCR_pN:
-#ifdef BP_REAL_CRs
-      values = BP_REAL_CRs;
-#endif
       break;
 
     case IO_EDDINGTON_TENSOR:
@@ -1990,7 +1596,7 @@ int get_values_per_blockelement(enum iofields blocknr)
  */
 int get_particles_in_block(enum iofields blocknr, int *typelist)
 {
-    int i, nall, nsel, ntot_withmasses, ngas, ngasAlpha, nstars, nngb;
+    int i, nall, nsel, ntot_withmasses, ngas, nstars, nngb;
     
     nall = 0;
     nsel = 0;
@@ -2011,7 +1617,6 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
     }
     
     ngas = header.npart[0];
-    ngasAlpha = NUMCRPOP * header.npart[0];
     nstars = header.npart[4];
 
 
@@ -2079,7 +1684,6 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
     case IO_VDIV:
     case IO_VROT:
     case IO_VORT:
-    case IO_DPP:
     case IO_IMF:
     case IO_DIVB:
     case IO_ABVC:
@@ -2090,44 +1694,15 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
     case IO_COOLRATE:
     case IO_CONDRATE:
     case IO_DENN:
-    case IO_MACH:
-    case IO_DTENERGY:
-    case IO_PRESHOCK_CSND:
-    case IO_PRESHOCK_DENSITY:
-    case IO_PRESHOCK_ENERGY:
-    case IO_PRESHOCK_XCR:
-    case IO_DENSITY_JUMP:
-    case IO_ENERGY_JUMP:
-    case IO_CRINJECT:
     case IO_EOSTEMP:
     case IO_EOSXNUC:
     case IO_PRESSURE:
     case IO_CHEM:
-    case IO_BPCR_pNORM:
-    case IO_BPCR_eNORM:
-    case IO_BPCR_pSLOPE:
-    case IO_BPCR_eSLOPE:
-    case IO_BPCR_pE:
-    case IO_BPCR_pN:
-    case IO_BPCR_pPRESSURE:
-    case IO_BPCR_ePRESSURE:
     case IO_VSTURB_DISS:
     case IO_VSTURB_DRIVE:
       for(i = 1; i < 6; i++)
 	typelist[i] = 0;
       return ngas;
-      break;
-
-    case IO_CR_C0:
-    case IO_CR_Q0:
-    case IO_CR_P0:
-    case IO_CR_E0:
-    case IO_CR_n0:
-    case IO_CR_ThermalizationTime:
-    case IO_CR_DissipationTime:
-      for(i = 1; i < 6; i++)
-	typelist[i] = 0;
-      return ngasAlpha;
       break;
 
     case IO_AGE:
@@ -2437,13 +2012,6 @@ int blockpresent(enum iofields blocknr)
 #endif
       break;
 
-    case IO_DPP:
-#ifdef JD_DPP
-      return 1;
-#else
-      return 0;
-#endif
-      break;
 
     case IO_IMF:
 #ifdef GALSF_SFR_IMF_VARIATION
@@ -2560,106 +2128,6 @@ int blockpresent(enum iofields blocknr)
 #endif
       break;
 
-    case IO_MACH:
-#if defined(MACHNUM)
-      return 1;
-#else
-      return 0;
-#endif
-      break;
-
-    case IO_DTENERGY:
-#ifdef MACHSTATISTIC
-      return 1;
-#else
-      return 0;
-#endif
-      break;
-
-    case IO_PRESHOCK_CSND:
-#ifdef OUTPUT_PRESHOCK_CSND
-
-
-      return 1;
-#else
-      return 0;
-#endif
-      break;
-
-
-    case IO_CR_C0:
-    case IO_CR_Q0:
-#ifdef COSMIC_RAYS
-      return 1;
-#else
-      return 0;
-#endif
-      break;
-
-
-    case IO_CR_P0:
-    case IO_CR_E0:
-    case IO_CR_n0:
-#ifdef CR_OUTPUT_THERMO_VARIABLES
-      return 1;
-#else
-      return 0;
-#endif
-      break;
-
-
-    case IO_CR_ThermalizationTime:
-    case IO_CR_DissipationTime:
-#ifdef CR_OUTPUT_TIMESCALES
-      return 1;
-#else
-      return 0;
-#endif
-      break;
-
-    case IO_PRESHOCK_DENSITY:
-#if defined(CR_OUTPUT_JUMP_CONDITIONS) || defined(OUTPUT_PRESHOCK_CSND)
-
-
-      return 1;
-#else
-      return 0;
-#endif
-      break;
-
-    case IO_PRESHOCK_ENERGY:
-    case IO_PRESHOCK_XCR:
-    case IO_DENSITY_JUMP:
-    case IO_ENERGY_JUMP:
-#ifdef CR_OUTPUT_JUMP_CONDITIONS
-      return 1;
-#else
-      return 0;
-#endif
-      break;
-
-    case IO_BPCR_pNORM:
-    case IO_BPCR_eNORM:
-    case IO_BPCR_pSLOPE:
-    case IO_BPCR_eSLOPE:
-    case IO_BPCR_pE:
-    case IO_BPCR_pN:
-    case IO_BPCR_pPRESSURE:
-    case IO_BPCR_ePRESSURE:
-#ifdef BP_REAL_CRs
-      return 1;
-#else
-      return 0;
-#endif
-      break;
-
-    case IO_CRINJECT:
-#ifdef CR_OUTPUT_INJECTION
-      return 1;
-#else
-      return 0;
-#endif
-      break;
 
     case IO_TIDALTENSORPS:
 #ifdef OUTPUT_TIDALTENSORPS
@@ -2960,9 +2428,6 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
     case IO_TRUENGB:
       strncpy(label, "TNGB", 4);
       break;
-    case IO_DPP:
-      strncpy(label, "DPP ", 4);
-      break;
     case IO_VDIV:
       strncpy(label, "VDIV", 4);
       break;
@@ -3002,27 +2467,6 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
     case IO_DENN:
       strncpy(label, "DENN", 4);
       break;
-    case IO_CR_C0:
-      strncpy(label, "CRC0", 4);
-      break;
-    case IO_CR_Q0:
-      strncpy(label, "CRQ0", 4);
-      break;
-    case IO_CR_P0:
-      strncpy(label, "CRP0", 4);
-      break;
-    case IO_CR_E0:
-      strncpy(label, "CRE0", 4);
-      break;
-    case IO_CR_n0:
-      strncpy(label, "CRn0", 4);
-      break;
-    case IO_CR_ThermalizationTime:
-      strncpy(label, "CRco", 4);
-      break;
-    case IO_CR_DissipationTime:
-      strncpy(label, "CRdi", 4);
-      break;
     case IO_BHMASS:
       strncpy(label, "BHMA", 4);
       break;
@@ -3046,33 +2490,6 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
       break;
     case IO_BHMRAD:
       strncpy(label, "BHMR", 4);
-      break;
-    case IO_MACH:
-      strncpy(label, "MACH", 4);
-      break;
-    case IO_DTENERGY:
-      strncpy(label, "DTEG", 4);
-      break;
-    case IO_PRESHOCK_CSND:
-      strncpy(label, "PSCS", 4);
-      break;
-    case IO_PRESHOCK_DENSITY:
-      strncpy(label, "PSDE", 4);
-      break;
-    case IO_PRESHOCK_ENERGY:
-      strncpy(label, "PSEN", 4);
-      break;
-    case IO_PRESHOCK_XCR:
-      strncpy(label, "PSXC", 4);
-      break;
-    case IO_DENSITY_JUMP:
-      strncpy(label, "DJMP", 4);
-      break;
-    case IO_ENERGY_JUMP:
-      strncpy(label, "EJMP", 4);
-      break;
-    case IO_CRINJECT:
-      strncpy(label, "CRDE", 4);
       break;
     case IO_TIDALTENSORPS:
       strncpy(label, "TIPS", 4);
@@ -3142,30 +2559,6 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
       break;
     case IO_CHEM:
       strncpy(label, "CHEM", 4);
-      break;
-    case IO_BPCR_pNORM:
-      strncpy(label, "CRpN", 4);
-      break;
-    case IO_BPCR_eNORM:
-      strncpy(label, "CReN", 4);
-      break;
-    case IO_BPCR_pSLOPE:
-      strncpy(label, "CRpS", 4);
-      break;
-    case IO_BPCR_eSLOPE:
-      strncpy(label, "CReS", 4);
-      break;
-    case IO_BPCR_pE:
-      strncpy(label, "CRpE", 4);
-      break;
-    case IO_BPCR_pN:
-      strncpy(label, "CRpD", 4);
-      break;
-    case IO_BPCR_pPRESSURE:
-      strncpy(label, "CRpP", 4);
-      break;
-    case IO_BPCR_ePRESSURE:
-      strncpy(label, "CReP", 4);
       break;
     case IO_AGS_SOFT:
       strncpy(label, "AGSH", 4);
@@ -3334,9 +2727,6 @@ void get_dataset_name(enum iofields blocknr, char *buf)
     case IO_TRUENGB:
       strcpy(buf, "TrueNumberOfNeighbours");
       break;
-    case IO_DPP:
-      strcpy(buf, "MagnetosReaccCoefficient");
-      break;
     case IO_VDIV:
       strcpy(buf, "VelocityDivergence");
       break;
@@ -3376,27 +2766,6 @@ void get_dataset_name(enum iofields blocknr, char *buf)
     case IO_DENN:
       strcpy(buf, "Denn");
       break;
-    case IO_CR_C0:
-      strcpy(buf, "CR_C0");
-      break;
-    case IO_CR_Q0:
-      strcpy(buf, "CR_q0");
-      break;
-    case IO_CR_P0:
-      strcpy(buf, "CR_P0");
-      break;
-    case IO_CR_E0:
-      strcpy(buf, "CR_E0");
-      break;
-    case IO_CR_n0:
-      strcpy(buf, "CR_n0");
-      break;
-    case IO_CR_ThermalizationTime:
-      strcpy(buf, "CR_ThermalizationTime");
-      break;
-    case IO_CR_DissipationTime:
-      strcpy(buf, "CR_DissipationTime");
-      break;
     case IO_BHMASS:
       strcpy(buf, "BH_Mass");
       break;
@@ -3420,33 +2789,6 @@ void get_dataset_name(enum iofields blocknr, char *buf)
       break;
     case IO_BHMRAD:
       strcpy(buf, "BH_Mass_radio");
-      break;
-    case IO_MACH:
-      strcpy(buf, "MachNumber");
-      break;
-    case IO_DTENERGY:
-      strcpy(buf, "DtEnergy");
-      break;
-    case IO_PRESHOCK_CSND:
-      strcpy(buf, "Preshock_SoundSpeed");
-      break;
-    case IO_PRESHOCK_DENSITY:
-      strcpy(buf, "Preshock_Density");
-      break;
-    case IO_PRESHOCK_ENERGY:
-      strcpy(buf, "Preshock_Energy");
-      break;
-    case IO_PRESHOCK_XCR:
-      strcpy(buf, "Preshock_XCR");
-      break;
-    case IO_DENSITY_JUMP:
-      strcpy(buf, "DensityJump");
-      break;
-    case IO_ENERGY_JUMP:
-      strcpy(buf, "EnergyJump");
-      break;
-    case IO_CRINJECT:
-      strcpy(buf, "CR_DtE");
       break;
     case IO_TIDALTENSORPS:
       strcpy(buf, "TidalTensorPS");
@@ -3510,30 +2852,6 @@ void get_dataset_name(enum iofields blocknr, char *buf)
       break;
     case IO_CHEM:
       strcpy(buf, "ChemicalAbundances");
-      break;
-    case IO_BPCR_pNORM:
-      strcpy(buf, "BPCRpNormalization");
-      break;
-    case IO_BPCR_eNORM:
-      strcpy(buf, "BPCReNormalization");
-      break;
-    case IO_BPCR_pSLOPE:
-      strcpy(buf, "BPCRpSlope");
-      break;
-    case IO_BPCR_eSLOPE:
-      strcpy(buf, "BPCReSlope");
-      break;
-    case IO_BPCR_pE:
-      strcpy(buf, "BPCRpEnergy");
-      break;
-    case IO_BPCR_pN:
-      strcpy(buf, "BPCRpNumber");
-      break;
-    case IO_BPCR_pPRESSURE:
-      strcpy(buf, "BPCRpPressure");
-      break;
-    case IO_BPCR_ePRESSURE:
-      strcpy(buf, "BPCRePressure");
       break;
     case IO_AGS_SOFT:
       strcpy(buf, "AGS-Softening");
@@ -3604,10 +2922,6 @@ void write_file(char *fname, int writeTask, int lastTask)
   char buf[500];
 #endif
 
-#ifdef COSMIC_RAYS
-  int CRpop;
-#endif
-
 #define SKIP  {my_fwrite(&blksize,sizeof(int),1,fd);}
 
 #ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
@@ -3662,11 +2976,6 @@ void write_file(char *fname, int writeTask, int lastTask)
 
   for(n = 0; n < 6; n++)
     header.mass[n] = All.MassTable[n];
-
-#ifdef COSMIC_RAYS
-  for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-    header.SpectralIndex_CR_Pop[CRpop] = All.CR_Alpha[CRpop];
-#endif
 
 
   header.time = All.Time;
@@ -4073,9 +3382,6 @@ void write_header_attributes_in_hdf5(hid_t handle)
 {
   hsize_t adim[1] = { 6 };
 
-#ifdef COSMIC_RAYS
-  hsize_t adim_alpha[1] = { NUMCRPOP };
-#endif
   hid_t hdf5_dataspace, hdf5_attribute;
 
   hdf5_dataspace = H5Screate(H5S_SIMPLE);
@@ -4105,16 +3411,6 @@ void write_header_attributes_in_hdf5(hid_t handle)
   H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, header.mass);
   H5Aclose(hdf5_attribute);
   H5Sclose(hdf5_dataspace);
-
-#ifdef COSMIC_RAYS
-  hdf5_dataspace = H5Screate(H5S_SIMPLE);
-  H5Sset_extent_simple(hdf5_dataspace, 1, adim_alpha, NULL);
-  hdf5_attribute = H5Acreate(handle, "SpectralIndex_CR_Pop", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-  H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, header.SpectralIndex_CR_Pop);
-  H5Aclose(hdf5_attribute);
-  H5Sclose(hdf5_dataspace);
-#endif
-
 
   hdf5_dataspace = H5Screate(H5S_SCALAR);
   hdf5_attribute = H5Acreate(handle, "Time", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);

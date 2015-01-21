@@ -264,10 +264,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
   fp_single = (float *) CommBuffer;
   ip = (MyIDType *) CommBuffer;
 
-#ifdef COSMIC_RAYS
-  int CRpop;
-#endif
-
   switch (blocknr)
     {
     case IO_POS:		/* positions */
@@ -418,12 +414,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
       break;
     case IO_TRUENGB:
       break;
-    case IO_DPP:
-#ifdef JD_DPP
-      for(n = 0; n < pc; n++)
-	SphP[offset + n].Dpp = *fp++;
-#endif
-      break;
 
     case IO_BFLD:		/* Magnetic field */
 #ifdef MAGNETIC
@@ -437,44 +427,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
       break;
 
-    case IO_CR_C0:		/* Adiabatic invariant for cosmic rays */
-#ifdef COSMIC_RAYS
-      for(n = 0; n < pc; n++)
-	for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-	  SphP[offset + n].CR_C0[CRpop] = *fp++;
-#endif
-      break;
-
-    case IO_CR_Q0:		/* Adiabatic invariant for cosmic rays */
-#ifdef COSMIC_RAYS
-      for(n = 0; n < pc; n++)
-	for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-	  SphP[offset + n].CR_q0[CRpop] = *fp++;
-#endif
-      break;
-
-    case IO_CR_P0:
-      break;
-
-    case IO_CR_E0:
-#ifdef COSMIC_RAYS
-      for(n = 0; n < pc; n++)
-	for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-	  SphP[offset + n].CR_E0[CRpop] = *fp++;
-#endif
-      break;
-
-    case IO_CR_n0:
-#ifdef COSMIC_RAYS
-      for(n = 0; n < pc; n++)
-	for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-	  SphP[offset + n].CR_n0[CRpop] = *fp++;
-#endif
-      break;
-
-    case IO_CR_ThermalizationTime:
-    case IO_CR_DissipationTime:
-      break;
 
     case IO_BHMASS:
 #ifdef BLACK_HOLES
@@ -627,14 +579,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
     case IO_COOLRATE:
     case IO_CONDRATE:
     case IO_DENN:
-    case IO_MACH:
-    case IO_DTENERGY:
-    case IO_PRESHOCK_DENSITY:
-    case IO_PRESHOCK_ENERGY:
-    case IO_PRESHOCK_XCR:
-    case IO_DENSITY_JUMP:
-    case IO_ENERGY_JUMP:
-    case IO_CRINJECT:
     case IO_AMDC:
     case IO_PHI:
     case IO_GRADPHI:
@@ -646,19 +590,10 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
     case IO_ANNIHILATION_RADIATION:
     case IO_EOSTEMP:
     case IO_PRESSURE:
-    case IO_PRESHOCK_CSND:
     case IO_EDDINGTON_TENSOR:
     case IO_LAST_CAUSTIC:
     case IO_HSMS:
     case IO_ACRB:
-    case IO_BPCR_pNORM:
-    case IO_BPCR_eNORM:
-    case IO_BPCR_pSLOPE:
-    case IO_BPCR_eSLOPE:
-    case IO_BPCR_pE:
-    case IO_BPCR_pN:
-    case IO_BPCR_ePRESSURE:
-    case IO_BPCR_pPRESSURE:
     case IO_AGS_SOFT:
     case IO_AGS_ZETA:
     case IO_AGS_OMEGA:
@@ -702,10 +637,6 @@ void read_file(char *fname, int readTask, int lastTask)
   hid_t hdf5_file = 0, hdf5_grp[6], hdf5_dataspace_in_file;
   hid_t hdf5_datatype = 0, hdf5_dataspace_in_memory, hdf5_dataset;
   hsize_t dims[2], count[2], start[2];
-#endif
-
-#if defined(COSMIC_RAYS) && (!defined(CR_IC))
-  int CRpop;
 #endif
 
 #define SKIP  {my_fread(&blksize1,sizeof(int),1,fd);}
@@ -925,10 +856,6 @@ void read_file(char *fname, int readTask, int lastTask)
 
       if(blockpresent(blocknr))
 	{
-#ifdef CR_IC
-	  if(RestartFlag == 0 && ((blocknr > IO_CR_Q0 && blocknr != IO_BFLD)
-				  || (blocknr >= IO_RHO && blocknr <= IO_ACCEL)))
-#else
 #ifdef EOS_DEGENERATE
 	  if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_EOSXNUC))
 #else
@@ -937,7 +864,6 @@ void read_file(char *fname, int readTask, int lastTask)
 	     && blocknr != IO_HSML
 #endif
 	    )
-#endif
 #endif
 #if defined(DISTORTIONTENSORPS) && defined(GDE_READIC)
 	    if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_SHEET_ORIENTATION))
@@ -953,7 +879,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #endif
 
 
-#ifdef BINISET
+#ifdef B_SET_IN_PARAMS
 	  if(RestartFlag == 0 && blocknr == IO_BFLD)
 	    continue;
 #endif
@@ -1246,22 +1172,6 @@ void read_file(char *fname, int readTask, int lastTask)
 	}
 #endif
     }
-
-#if defined(COSMIC_RAYS) && (!defined(CR_IC))
-  for(i = 0; i < n_for_this_task; i++)
-    {
-      if(P[i].Type != 0)
-	{
-	  break;
-	}
-
-      for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-	{
-	  SphP[i].CR_C0[CRpop] = 0.0;
-	  SphP[i].CR_q0[CRpop] = 1.0e10;
-	}
-    }
-#endif
 
 }
 

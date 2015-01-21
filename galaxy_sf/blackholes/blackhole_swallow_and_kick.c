@@ -627,10 +627,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #ifdef BH_COUNTPROGS
         BPP(target).BH_CountProgs += accreted_BH_progs;
 #endif
-#ifdef KD_TAKE_CENTER_OF_MASS_FOR_BH_MERGER
-        for(k = 0; k < 3; k++)
-            BlackholeTempInfo[mod_index].BH_SwallowPos[k] = bh_swallowpos[k];
-#endif
 #ifdef GALSF
         if(P[target].StellarAge > accreted_age)
             P[target].StellarAge = accreted_age;

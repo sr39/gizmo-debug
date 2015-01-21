@@ -164,10 +164,10 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     double phi = 2.0*M_PI*get_random_number(i+1+ThisTask); // random from 0 to 2pi //
     double cos_theta = 2.0*(get_random_number(i+3+2*ThisTask)-0.5); // random between 1 to -1 //
     double r_near = sqrt(r2_nearest);
-    double hsml = PPP[i].Hsml;
+    double hsml = Get_Particle_Size(i);
     if(hsml < r_near) {hsml = r_near;}
     r_near *= 0.35;
-    double d_r = 0.25 * KERNEL_CORE_SIZE*hsml; // needs to be epsilon*Hsml where epsilon<<1, to maintain stability //
+    double d_r = 0.25 * hsml; // needs to be epsilon*Hsml where epsilon<<1, to maintain stability //
     d_r = DMAX( DMAX(0.1*r_near , 0.005*hsml) , DMIN(d_r , r_near) ); // use a 'buffer' to limit to some multiple of the distance to the nearest particle //
     
     /* find the first non-gas particle and move it to the end of the particle list */

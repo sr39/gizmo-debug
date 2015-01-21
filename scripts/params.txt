@@ -102,15 +102,23 @@ AGS_DesNumNgb           32  % neighbor number for calculating adaptive gravsoft
 %---------- Physics Modules ---------------------------------
 %------------------------------------------------------------
 
-%---- Turbulent Diffusion Master Switch (TURB_DIFFUSION on) 
-TurbDiffusionCoefficient    1.0     % Normalizes diffusion rates, should be ~1 
-
-
 %---- Magneto-Hydrodynamics Parameters (MAGNETIC on)
-%--- Initial B-Field Strengths (if BINISET on, otherwise read from IC file)
+%--- Initial B-Field Strengths (if B_SET_IN_PARAMS on, otherwise read from IC file)
 BiniX   1.0e-8    % initial B_x, in code units
 BiniY   1.0e-8    % initial B_y, in code units
 BiniZ   1.0e-8    % initial B_z, in code units
+
+%---- Thermal Conduction (CONDUCTION on)
+%--- set coefficient kappa [code units] or, if CONDUCTION_SPITZER on, multiplies value
+ConductionCoeff  1.0  % set/multiply conduction coefficient
+
+%---- Navier-Stokes Viscosity (VISCOSITY on)
+%--- set coefficients eta,zeta [code units] or, if VISCOSITY_BRAGINSKII on, multiplies value
+ShearViscosityCoeff     1.0     % set/multiply shear viscosity coefficient
+BulkViscosityCoeff      1.0     % set/multiply bulk viscosity coefficient
+
+%---- Turbulent Diffusion Master Switch (TURB_DIFFUSION on)
+TurbDiffusionCoefficient    1.0     % Normalizes diffusion rates, should be ~1
 
 
 %---- Star Formation parameters (GALSF on)

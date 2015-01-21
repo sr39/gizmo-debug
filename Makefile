@@ -471,7 +471,7 @@ OBJS	+= $(L3_OBJS)
 INCL    += allvars.h proto.h gravity/forcetree.h domain.h system/myqsort.h kernel.h Makefile \
 
 
-ifeq (GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION,$(findstring GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION,$(CONFIGVARS)))
+ifeq (GALSF_SUBGRID_DMDISPERSION,$(findstring GALSF_SUBGRID_DMDISPERSION,$(CONFIGVARS)))
 OBJS    += galaxy_sf/dm_dispersion_hsml.o
 endif
 
@@ -540,18 +540,8 @@ ifeq (IMPOSE_PINNING,$(findstring IMPOSE_PINNING,$(CONFIGVARS)))
 OBJS	+= system/pinning.o
 endif
 
-ifeq (JD_DPP,$(findstring JD_DPP,$(CONFIGVARS)))
-OBJS	+= modules/cosmic_rays/cr_electrons.o
-INCL	+= modules/cosmic_rays/cr_electrons.h
-endif
-
 ifeq (DISTORTIONTENSORPS,$(findstring DISTORTIONTENSORPS,$(CONFIGVARS)))
 OBJS	+= modules/phasespace/phasespace.o modules/phasespace/phasespace_math.o
-endif
-
-ifeq (MACHNUM,$(findstring MACHNUM,$(CONFIGVARS)))
-OBJS	+= machfinder.o
-INCL	+= machfinder.h
 endif
 
 ifeq (RAD_TRANSFER,$(findstring RAD_TRANSFER,$(CONFIGVARS)))
@@ -566,11 +556,6 @@ OBJS	+= subfind/subfind.o subfind/subfind_vars.o subfind/subfind_collective.o su
 INCL	+= subfind/subfind.h
 endif
 
-ifeq (COSMIC_RAYS,$(findstring COSMIC_RAYS,$(CONFIGVARS)))
-OBJS	+= modules/cosmic_rays/cosmic_rays.o modules/cosmic_rays/cosmic_rays_diffusion.o modules/cosmic_rays/greenf_diffusion.o
-INCL	+= modules/cosmic_rays/cosmic_rays.h
-endif
-
 ifeq (SIDM,$(findstring SIDM,$(CONFIGVARS)))
 OBJS    +=  sidm/sidm_core.o sidm/sidm_allvars.o
 INCL    +=
@@ -583,11 +568,6 @@ endif
 
 ifeq (TURB_DRIVING,$(findstring TURB_DRIVING,$(CONFIGVARS)))
 OBJS	+= turb/turb_driving.o turb/turb_powerspectra.o
-endif
-
-ifeq (BP_REAL_CRs,$(findstring BP_REAL_CRs,$(CONFIGVARS))) # add bp cr part
-OBJS += bp_cosmic_rays/bp_cosmic_rays.o
-INCL += bp_cosmic_rays/bp_cosmic_rays.h
 endif
 
 ifeq (ADJ_BOX_POWERSPEC,$(findstring ADJ_BOX_POWERSPEC,$(CONFIGVARS)))

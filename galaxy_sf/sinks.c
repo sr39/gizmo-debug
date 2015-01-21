@@ -493,7 +493,7 @@ void do_sinks(void)
 		  sink_send[index].mass = P[i].Mass;
 		  sink_send[index].soft = SphP[i].Hsml;
 #ifndef FB_BAROTROPIC_EOS
-          sink_send[index].utherm = Particle_Internal_energy_i(i);
+          sink_send[index].utherm = SphP[i].InternalEnergyPred;
 #else
 		  sink_send[index].utherm = get_energy(SphP[i].Density);
 #endif

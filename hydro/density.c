@@ -7,9 +7,6 @@
 #include "../allvars.h"
 #include "../proto.h"
 #include "../kernel.h"
-#ifdef COSMIC_RAYS
-#include "../cosmic_rays/cosmic_rays.h"
-#endif
 #ifdef OMP_NUM_THREADS
 #include <pthread.h>
 #endif
@@ -94,18 +91,15 @@ static struct densdata_out
     MyFloat GradRho[3];
 #endif
     
-#if defined(GRAIN_FLUID)
-    MyLongDouble RhoGrains;
-    MyLongDouble GrainVel[3];
-    MyLongDouble SmoothedEntr;
-#endif
-    
 #if defined(BLACK_HOLES)
     int BH_TimeBinGasNeighbor;
 #endif
 
 #if defined(TURB_DRIVING) || defined(GRAIN_FLUID)
-    MyLongDouble GasVel[3];
+    MyDouble GasVel[3];
+#endif
+#if defined(GRAIN_FLUID)
+    MyDouble Gas_InternalEnergy;
 #endif
 
 }
@@ -197,13 +191,8 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
     if(P[i].Type > 0)
     {
         ASSIGN_ADD(P[i].Gas_Density, out->Rho, mode);
-        ASSIGN_ADD(P[i].Grain_Density, out->RhoGrains, mode);
-        ASSIGN_ADD(P[i].Gas_InternalEnergy, out->SmoothedEntr, mode);
-        for(k = 0; k<3; k++)
-        {
-            ASSIGN_ADD(P[i].Gas_Velocity[k], out->GasVel[k], mode);
-            ASSIGN_ADD(P[i].Grain_Velocity[k], out->GrainVel[k], mode);
-        }
+        ASSIGN_ADD(P[i].Gas_InternalEnergy, out->Gas_InternalEnergy, mode);
+        for(k = 0; k<3; k++) {ASSIGN_ADD(P[i].Gas_Velocity[k], out->GasVel[k], mode);}
     }
 #endif
 
@@ -266,10 +255,6 @@ void density(void)
   int redo_particle;
   int particle_set_to_minhsml_flag = 0;
 
-#ifdef COSMIC_RAYS
-  int CRpop;
-#endif
-    
   CPU_Step[CPU_DENSMISC] += measure_time();
 
   int NTaskTimesNumPart;
@@ -1020,6 +1005,22 @@ void density(void)
 
             } // P[i].Type == 0
 
+            
+#if defined(GRAIN_FLUID)
+            if(P[i].Type > 0)
+            {
+                if(P[i].Gas_Density > 0)
+                {
+                    P[i].Gas_InternalEnergy /= P[i].Gas_Density;
+                    for(k = 0; k<3; k++) {P[i].Gas_Velocity[k] /= -P[i].Gas_Density;}
+                } else {
+                    P[i].Gas_InternalEnergy = 0;
+                    for(k = 0; k<3; k++) {P[i].Gas_Velocity[k] = 0;}
+                }
+            }
+#endif
+            
+            
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
             if(P[i].Type==0)
@@ -1027,8 +1028,15 @@ void density(void)
             {
                 if((PPP[i].Hsml > 0)&&(PPP[i].NumNgb > 0))
                 {
-                    double ndenNGB = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
-                    PPPZ[i].AGS_zeta *= 0.5 * P[i].Mass * PPP[i].Hsml / (NUMDIMS * ndenNGB) * PPPZ[i].DhsmlNgbFactor;
+                    /* the zeta terms ONLY control errors if we maintain the 'correct' neighbor number: for boundary 
+                        particles, it can actually be worse. so we need to check whether we should use it or not */
+                    if(fabs(PPP[i].NumNgb-All.DesNumNgb)/All.DesNumNgb < 0.05)
+                    {
+                        double ndenNGB = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
+                        PPPZ[i].AGS_zeta *= 0.5 * P[i].Mass * PPP[i].Hsml / (NUMDIMS * ndenNGB) * PPPZ[i].DhsmlNgbFactor;
+                    } else {
+                        PPPZ[i].AGS_zeta = 0;
+                    }
                 } else {
                     PPPZ[i].AGS_zeta = 0;
                 }
@@ -1354,7 +1362,7 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
     {
         
 #if defined(GRAIN_FLUID)
-        out->SmoothedEntr += kernel->mj_wk * SphP[j].InternalEnergy;
+        out->Gas_InternalEnergy += kernel->mj_wk * SphP[j].InternalEnergyPred;
         out->GasVel[0] += kernel->mj_wk * (local->Vel[0]-kernel->dv[0]);
         out->GasVel[1] += kernel->mj_wk * (local->Vel[1]-kernel->dv[1]);
         out->GasVel[2] += kernel->mj_wk * (local->Vel[2]-kernel->dv[2]);

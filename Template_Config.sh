@@ -38,19 +38,19 @@ PERIODIC                        # Use this if periodic boundaries are needed (ot
 ####################################################################################################
 #--------------------------------------- Hydro solver method
 ####################################################################################################
-HYDRO_MESHLESS_FINITE_MASS         # Lagrangian (constant-mass) finite-volume Godunov method
-#HYDRO_MESHLESS_FINITE_VOLUME       # Moving (quasi-Lagrangian) finite-volume Godunov method
+HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godunov method
+#HYDRO_MESHLESS_FINITE_VOLUME   # Moving (quasi-Lagrangian) finite-volume Godunov method
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- SPH methods:
-#SPHEQ_DENSITY_INDEPENDENT_SPH      # force SPH to use the 'pressure-sph' formulation ("modern" SPH)
-#SPHEQ_TRADITIONAL_SPH              # force SPH to use the 'density-sph' (GADGET-2 & GASOLINE SPH)
+#SPHEQ_DENSITY_INDEPENDENT_SPH  # force SPH to use the 'pressure-sph' formulation ("modern" SPH)
+#SPHEQ_TRADITIONAL_SPH          # force SPH to use the 'density-sph' (GADGET-2 & GASOLINE SPH)
 #--------------------------------------- SPH diffusion options (use with SPH; not relevant for Godunov/Mesh modes)
-#SPHAV_DISABLE_CD10_VISCOSITY       # Disable Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks); just use Balsara switch
-#SPHAV_DISABLE_PM_CONDUCTIVITY      # Disable mixing entropy (J.Read's improved Price-Monaghan conductivity with Cullen-Dehnen switches)
+#SPHAV_DISABLE_CD10_VISCOSITY   # Disable Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks); just use Balsara switch
+#SPHAV_DISABLE_PM_CONDUCTIVITY  # Disable mixing entropy (J.Read's improved Price-Monaghan conductivity with Cullen-Dehnen switches)
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- Kernel Options
-#KERNEL_QUARTIC                     # Implementation of the Morris 1996 quartic spline kernel
-#KERNEL_QUINTIC                     # Implementation of the Morris 1996 quintic spline kernel, requires ~1.74x more neighbours !
+#KERNEL_QUARTIC                 # Implementation of the Morris 1996 quartic spline kernel
+#KERNEL_QUINTIC                 # Implementation of the Morris 1996 quintic spline kernel, requires more neighbours !
 ####################################################################################################
 
 
@@ -63,28 +63,41 @@ HYDRO_MESHLESS_FINITE_MASS         # Lagrangian (constant-mass) finite-volume Go
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------- Magneto-Hydrodynamics
 #MAGNETIC                       # master switch for MHD, regardless of which Hydro solver is used
-#BINISET                        # set initial fields (Bx,By,Bz) in parameter file
+#B_SET_IN_PARAMS                # set initial fields (Bx,By,Bz) in parameter file
 ##-----------------------------------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- Conduction
-#CONDUCTION_EXPLICIT            # Thermal conduction solved *explicitly*: assumes isotropic spitzer IFF MAGNETIC is off, otherwise does it right
+#CONDUCTION                     # Thermal conduction solved *explicitly*: isotropic if MAGNETIC off, otherwise anisotropic
+#CONDUCTION_SPITZER             # Spitzer conductivity accounting for saturation: otherwise conduction coefficient is constant
+##-----------------------------------------------------------------------------------------------------
+##-----------------------------------------------------------------------------------------------------
+#--------------------------------------- Viscosity
+#VISCOSITY                      # Navier-stokes equations solved *explicitly*: isotropic coefficients if MAGNETIC off, otherwise anisotropic
+#VISCOSITY_BRAGINSKII           # Braginskii viscosity tensor for ideal MHD
 ##-----------------------------------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- Radiative Cooling physics (mostly geared towards galactic/extragalactic cooling)
 #COOLING                        # enables radiative cooling and heating: if GALSF, also external UV background read from file "TREECOOL"
-#TRUELOVE_CRITERION_PRESSURE    # adds 'artificial' pressure floor to ensure the Jeans mass is always resolved
+#TRUELOVE_CRITERION_PRESSURE    # adds artificial pressure floor to ensure the Jeans mass is always resolved
 #COOL_LOW_TEMPERATURES          # allow fine-structure and molecular cooling to ~10 K
 #COOL_METAL_LINES_BY_SPECIES    # use full multi-species-dependent cooling tables (https://dl.dropbox.com/u/16659252/spcool_tables.tgz)
 ##-----------------------------------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------------------------------
-#--------------------------------------- Smagorinsky Turbulent Eddy Diffusion Model (Shen 2009, implemented by PFH)
+#--------------------------------------- Smagorinsky Turbulent Eddy Diffusion Model
 #TURB_DIFF_ENERGY               # turbulent diffusion of internal energy (energy-conserving formulation)
 #TURB_DIFF_VELOCITY             # turbulent diffusion of velocity (effective turbulent viscosity)
-#TURB_DIFF_METALS               # turbulent metal diffusion (metal mixing)
+#TURB_DIFF_METALS               # turbulent diffusion of metals (passive scalars)
 ##-----------------------------------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------------------------------
-#---------------------------------------- Protoplanetary/Protostellar disk stuff
+#---------------------------------------- Aerodynamic Particles
 #GRAIN_FLUID                    # two-fluid medium with weakly-coupled grains (particle type 3 are grains)
+#GRAIN_EPSTEIN=1                # uses the cross section for molecular hydrogen (times this number) to calculate epstein drag
+#GRAIN_COLLISIONS               # model collisions between grains (super-particles; so this is stochastic)
+#GRAIN_BACKREACTION             # account for momentum of grains pushing back on gas
+##-----------------------------------------------------------------------------------------------------
+##-----------------------------------------------------------------------------------------------------
+#---------------------------------------- Cosmic Rays
+#COSMIC_RAYS                    # two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anistropic diffusion, streaming, injection by SNe
 ##-----------------------------------------------------------------------------------------------------
 ####################################################################################################
 
@@ -94,10 +107,10 @@ HYDRO_MESHLESS_FINITE_MASS         # Lagrangian (constant-mass) finite-volume Go
 ##------------------------ Gravity & Cosmological Integration Options ---------------------------------
 ####################################################################################################
 #--------------------------------------- TreePM Options (recommended for cosmological sims)
-#PMGRID=512                      # COSMO enable: resolution of particle-mesh grid
-#PM_PLACEHIGHRESREGION=1+2+16    # COSMO enable: particle types to place high-res PMGRID around
-#PM_HIRES_REGION_CLIPPING=1000   # for stability: clips particles that escape the hires region in zoom/isolated sims
-#MULTIPLEDOMAINS=64              # Multi-Domain option for the top-tree level: iso=16,COSMO=64-128
+#PMGRID=512                     # COSMO enable: resolution of particle-mesh grid
+#PM_PLACEHIGHRESREGION=1+2+16   # COSMO enable: particle types to place high-res PMGRID around
+#PM_HIRES_REGION_CLIPPING=1000  # for stability: clips particles that escape the hires region in zoom/isolated sims
+#MULTIPLEDOMAINS=64             # Multi-Domain option for the top-tree level: iso=16,COSMO=64-128
 ##-----------------------------------------------------------------------------------------------------
 #---------------------------------------- Adaptive Grav. Softening (including Lagrangian conservation terms!)
 #ADAPTIVE_GRAVSOFT_FORGAS       # allows variable softening length (=Hsml) for gas particles
@@ -137,13 +150,13 @@ HYDRO_MESHLESS_FINITE_MASS         # Lagrangian (constant-mass) finite-volume Go
 #TIMEDEPGRAV                    # rescales H and G according to DE model (pre-tabulated)
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- Fine-grained phase space structure analysis (M. Vogelsberger)
-#DISTORTIONTENSORPS             #main switch: integrate phase-space distortion tensor
-#OUTPUT_DISTORTIONTENSORPS      #write phase-space distortion tensor to snapshot
-#OUTPUT_TIDALTENSORPS           #write configuration-space tidal tensor to snapshot
-#OUTPUT_LAST_CAUSTIC            #write info on last passed caustic to snapshot
-#GDE_TYPES=2+4+8+16+32          #track GDE for these types
-#GDE_READIC                     #read initial sheet orientation/initial density/initial caustic count from ICs
-#GDE_LEAN                       #lean version of GDE
+#DISTORTIONTENSORPS             # main switch: integrate phase-space distortion tensor
+#OUTPUT_DISTORTIONTENSORPS      # write phase-space distortion tensor to snapshot
+#OUTPUT_TIDALTENSORPS           # write configuration-space tidal tensor to snapshot
+#OUTPUT_LAST_CAUSTIC            # write info on last passed caustic to snapshot
+#GDE_TYPES=2+4+8+16+32          # track GDE for these types
+#GDE_READIC                     # read initial sheet orientation/initial density/initial caustic count from ICs
+#GDE_LEAN                       # lean version of GDE
 ####################################################################################################
 
 
@@ -152,8 +165,8 @@ HYDRO_MESHLESS_FINITE_MASS         # Lagrangian (constant-mass) finite-volume Go
 #------------------ Galaxy formation / Star formation / Supermassive BH Models (with feedback)
 ####################################################################################################
 # ---- basic/master switches ---- #
-#GALSF                           # master switch for galactic star formation model: enables SF, stellar ages, metals, generations, etc.
-#METALS                          # enable metallicities (with multiple species optional) for gas and stars
+#GALSF                          # master switch for galactic star formation model: enables SF, stellar ages, metals, generations, etc.
+#METALS                         # enable metallicities (with multiple species optional) for gas and stars
 #SINKS                          # add sink particles (SF studies)
 ##GALSF_GENERATIONS=1           # the number of stars a gas particle may spawn (defaults to 1, set otherwise)
 ##-----------------------------------------------------------------------------------------------------
@@ -161,7 +174,7 @@ HYDRO_MESHLESS_FINITE_MASS         # Lagrangian (constant-mass) finite-volume Go
 #GALSF_EFFECTIVE_EQS            # 'effective equation of state' model for the ISM and star formation
 #GALSF_SUBGRID_WINDS            # sub-grid winds ('kicks' as in Oppenheimer+Dave,Springel+Hernquist,Boothe+Schaye,etc)
 #GALSF_SUBGRID_VARIABLEVELOCITY # winds with velocity scaling based on halo properties (Oppenheimer+Dave); req.GALSF_SUBGRID_WINDS
-#GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION #wind velocity scaling based on MV 13 paper, as used in Illustris. req.GALSF_SUBGRID_WINDS
+#GALSF_SUBGRID_DMDISPERSION     # wind velocity scaling based on MV 13 paper, as used in Illustris. req.GALSF_SUBGRID_WINDS
 #GALSF_WINDS_ISOTROPIC          # forces winds to have a random orientation (works with both subgrid+explicit winds)
 #GALSF_WINDS_POLAR              # forces winds to have polar orientation (works for sub-grid winds)
 #GALSF_TURNOFF_COOLING_WINDS    # turn off cooling for SNe-heated particles (as Stinson+ GASOLINE model; requires GALSF_FB_SNE_HEATING)
@@ -170,19 +183,19 @@ HYDRO_MESHLESS_FINITE_MASS         # Lagrangian (constant-mass) finite-volume Go
 ##-----------------------------------------------------------------------------------------------------
 ## ------ PFH physical models for star formation and feedback ------ ##
 # ---- star formation law ---- #
-#GALSF_SFR_MOLECULAR_CRITERION	 # estimates molecular fraction in SF-ing gas, only SF from that is allowed
-#GALSF_SFR_VIRIAL_SF_CRITERION	 # only allow star formation in virialized sub-regions (alpha<1)
-#GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Gusjenov/Hopkins/Hennebelle/Chabrier/Padoan theory
+#GALSF_SFR_MOLECULAR_CRITERION	# estimates molecular fraction in SF-ing gas, only SF from that is allowed
+#GALSF_SFR_VIRIAL_SF_CRITERION	# only allow star formation in virialized sub-regions (alpha<1)
+#GALSF_SFR_IMF_VARIATION        # determines the stellar IMF for each particle from the Gusjenov/Hopkins/Hennebelle/Chabrier/Padoan theory
 # ---- physical stellar feedback mechanisms ---- #
-#GALSF_FB_GASRETURN              # Paul Torrey's addition for stochastic gas return (modified for continuous return)
-#GALSF_FB_HII_HEATING            # gas within HII regions around young stars is photo-heated to 10^4 K
-#GALSF_FB_SNE_HEATING            # time-dependent heating from SNe (I & II) in shockwave radii around stars
-#GALSF_FB_RPROCESS_ENRICHMENT=8  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 8=extended model)
-#GALSF_FB_RT_PHOTONMOMENTUM      # continuous acceleration from starlight (uses luminosity tree)
-#GALSF_FB_RT_PHOTON_LOCALATTEN   # incident SED for GALSF_FB_RT_PHOTONMOMENTUM calculated w local attenuation of stars
-#GALSF_FB_LOCAL_UV_HEATING       # use local estimate of spectral information for photoionization and photoelectric heating
-#GALSF_FB_RPWIND_LOCAL           # turn on local radiation pressure coupling to gas
-#GALSF_FB_RPWIND_FROMSTARS       # drive radiation pressure with local young stars (otherwise uses the gas SFR)
+#GALSF_FB_GASRETURN             # Paul Torrey's addition for stochastic gas return (modified for continuous return)
+#GALSF_FB_HII_HEATING           # gas within HII regions around young stars is photo-heated to 10^4 K
+#GALSF_FB_SNE_HEATING           # time-dependent heating from SNe (I & II) in shockwave radii around stars
+#GALSF_FB_RPROCESS_ENRICHMENT=8 # tracks a set of 'dummy' species from neutron-star mergers (set to number: 8=extended model)
+#GALSF_FB_RT_PHOTONMOMENTUM     # continuous acceleration from starlight (uses luminosity tree)
+#GALSF_FB_RT_PHOTON_LOCALATTEN  # incident SED for GALSF_FB_RT_PHOTONMOMENTUM calculated w local attenuation of stars
+#GALSF_FB_LOCAL_UV_HEATING      # use local estimate of spectral information for photoionization and photoelectric heating
+#GALSF_FB_RPWIND_LOCAL          # turn on local radiation pressure coupling to gas
+#GALSF_FB_RPWIND_FROMSTARS      # drive radiation pressure with local young stars (otherwise uses the gas SFR)
 ##-----------------------------------------------------------------------------------------------------
 # ----------- deprecated options (most have been combined or optimized into the functions above, here for legacy)
 ##GALSF_FB_SEPARATELY_TRACK_LUMPOS  # keep stellar vs. gas positions separate in tree (useful if running in tree-only mode)
@@ -193,24 +206,24 @@ HYDRO_MESHLESS_FINITE_MASS         # Lagrangian (constant-mass) finite-volume Go
 ####################################################################################################
 
 #-------------------------------------- SMBH/AGN stuff; also heavily expanded with PFH models
-#BLACK_HOLES                     # enables Black-Holes (master switch)
+#BLACK_HOLES                    # enables Black-Holes (master switch)
 # ----- seed models
 #BH_POPIII_SEEDS                # BHs seeded on-the-fly from dense, low-metallicity gas
 # ----- accretion models/options
-#BH_SWALLOWGAS                   # enables stochastic accretion of gas particles consistent with growth rate of hole
-#BH_ALPHADISK_ACCRETION          # gas accreted into 'virtual' alpha-disk, and from there onto the BH
+#BH_SWALLOWGAS                  # enables stochastic accretion of gas particles consistent with growth rate of hole
+#BH_ALPHADISK_ACCRETION         # gas accreted into 'virtual' alpha-disk, and from there onto the BH
 #BH_GRAVCAPTURE_SWALLOWS        # accretion determined only by resolved gravitational capture by the BH
 ##BH_GRAVCAPTURE_NOGAS          # as BH_GRAVCAPTURE_SWALLOWS, but excludes gas (use with other mdot estimator for gas)
-#BH_GRAVACCRETION                # Gravitational instability accretion estimator from Hopkins & Quataert 2010
+#BH_GRAVACCRETION               # Gravitational instability accretion estimator from Hopkins & Quataert 2010
 ##BH_BONDI                      # Bondi-Hoyle style accretion model
 ##BH_VARIABLE_ACCRETION_FACTOR  # variable-alpha model as in Booth&Schaye 2009
 ##BH_USE_GASVEL_IN_BONDI        # surrounding gas velocity used with sounds speed in the Bondi rate
 #BH_SUBGRIDBHVARIABILITY        # model variability below resolved dynamical time for BH
 # ----- feedback models/options
-#BH_BAL_WINDS                    # accreted particles are launched back out as high-vel BAL winds
-#BH_PHOTONMOMENTUM               # continuous long-range IR radiation pressure acceleration from BH (needs GALSF_FB_RT_PHOTONMOMENTUM)
+#BH_BAL_WINDS                   # accreted particles are launched back out as high-vel BAL winds
+#BH_PHOTONMOMENTUM              # continuous long-range IR radiation pressure acceleration from BH (needs GALSF_FB_RT_PHOTONMOMENTUM)
 #BH_HII_HEATING                 # photo-ionization feedback from BH (needs GALSF_FB_HII_HEATING)
-#BH_COMPTON_HEATING              # enable Compton heating in cooling function (needs BH_PHOTONMOMENTUM)
+#BH_COMPTON_HEATING             # enable Compton heating in cooling function (needs BH_PHOTONMOMENTUM)
 ##BH_THERMALFEEDBACK            # couple a fraction of the BH luminosity into surrounding gas as thermal energy
 # ----------- use the BH_DRAG options only in cosmological cases where M_BH is not >> other particle masses
 #BH_DYNFRICTION                 # apply dynamical friction force to the BHs when m_bh not >> other particle mass
@@ -226,11 +239,11 @@ HYDRO_MESHLESS_FINITE_MASS         # Lagrangian (constant-mass) finite-volume Go
 ##BH_SEED_STAR_MASS_FRACTION=0.02 # minimum star mass fraction for BH seeding
 ##-----------------------------------------------------------------------------------------------------
 #-------------------------------------- AGN-Bubble feedback (D. Sijacki)
-#BUBBLES			# generation of hot bubbles in an isolated halo or the the biggest halo in the run
-#MULTI_BUBBLES		# hot bubbles in all haloes above certain mass threshold (works only with FOF and without BUBBLES)
-#EBUB_PROPTO_BHAR	# Energy content of the bubbles with cosmic time evolves as an integrated BHAR(z) over a Salpeter time (Di Matteo 2003 eq. [11])
-#BH_BUBBLES			# calculate bubble energy directly from the black hole accretion rate
-#UNIFIED_FEEDBACK	# activates BH_THERMALFEEDBACK at high Mdot and BH_BUBBLES FEEDBACK al low Mdot
+#BUBBLES                        # generation of hot bubbles in an isolated halo or the the biggest halo in the run
+#MULTI_BUBBLES                  # hot bubbles in all haloes above certain mass threshold (works only with FOF and without BUBBLES)
+#EBUB_PROPTO_BHAR               # Energy content of the bubbles with cosmic time evolves as an integrated BHAR(z) over a Salpeter time (Di Matteo 2003 eq. [11])
+#BH_BUBBLES                     # calculate bubble energy directly from the black hole accretion rate
+#UNIFIED_FEEDBACK               # activates BH_THERMALFEEDBACK at high Mdot and BH_BUBBLES FEEDBACK al low Mdot
 ####################################################################################################
 
 
@@ -239,9 +252,9 @@ HYDRO_MESHLESS_FINITE_MASS         # Lagrangian (constant-mass) finite-volume Go
 ####################################################################################################
 #-------------------------------------- Driven turbulence (for turbulence tests, large-eddy sims)
 ####################################################################################################
-#TURB_DRIVING           # turns on turbulent driving/stirring. see begrun for parameters that must be set
-#POWERSPEC_GRID=128     # activates on-the-fly calculation of the turbulent velocity, vorticity, and smoothed-velocity power spectra
-#ADJ_BOX_POWERSPEC      # compiles in a code module that allows via restart-flag 6 the calculation of a gas velocity power spectrum of a snapshot with an adjustable box (user defined center and size)
+#TURB_DRIVING                   # turns on turbulent driving/stirring. see begrun for parameters that must be set
+#POWERSPEC_GRID=128             # activates on-the-fly calculation of the turbulent velocity, vorticity, and smoothed-velocity power spectra
+#ADJ_BOX_POWERSPEC              # compiles in a code module that allows via restart-flag 6 the calculation of a gas velocity power spectrum of a snapshot with an adjustable box (user defined center and size)
 ####################################################################################################
 
 
@@ -376,46 +389,6 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #RT_POPIII
 #RT_MULTI_FREQUENCY                     # enables multi-frequency radiation transport. Here the integration
                                         # variable is the ionising intensity J_nu
-####################################################################################################
-
-
-
-
-####################################################################################################
-#--------------------------------------- Cosmic Rays
-####################################################################################################
-#JD_DPP				        # Compute Reacceleration Coefficient Dpp/p^2, needs -DMAGNETIC -DJD_VTURB
-#JD_DPPONSNAPSHOTONLY	    # Compute Dpp ONLY for the snapshot, not for every timestep 
-#BP_REAL_CRs=1				# Number of energy bins for CRs
-#BP_SEED_CRs				# enables seed CRs
-#BP_REAL_CRs_ARTIFICIAL_CONDUCTIVITY	# enables Price-Monaghan artificial conductivity for CRs
-
-#---------------------------------------- Cosmic Rays (Martin)
-#COSMIC_RAYS                # Cosmic Rays Master Switch
-#NUMCRPOP=5                 # Number of CR populations: Max is 6
-#CR_IC                      # IC files contain CR information
-#CR_IC_PHYSICAL
-#CR_DISSIPATION             # Catastrophic losses
-#CR_THERMALIZATION          # Coulomb cooling
-#CR_SHOCK=2                 # Shock energy is directed into CR
-			                # 2 = Mach-Number dependent shocks, Mach-number derived for thermal gas/CR composite
-			                # 3 = Mach-Number dependent shocks, Mach-number derived for thermal gas
-#CR_DIFFUSION               # Cosmic Ray diffusion
-#CR_DIFFUSION_GREEN         # alternative diffusion model
-#UPDATE_PARANOIA=1          # 1 = Update on every predict, 2 = Update on every energy injection and on every predict
-#CR_OUTPUT_INJECTION        # Output energy injection rate in snapshots
-#COSMIC_RAY_TEST            # starts a test routine instead of the simulation
-#CR_NOPRESSURE              # computes CRs as usual, but ignores the pressure in the dynamics
-#CR_SN_INJECTION            # switches on CRs due to SNe
-#CR_BUBBLES                 # CRs in the AGN bubbles
-#CR_OUTPUT_TIMESCALES       # returns output from CR_ThermalizationTime and CR_DissipationTime
-#CR_OUTPUT_THERMO_VARIABLES # returns output from CR_P0, CR_E0, and CR_n0
-
-#---------------------------------------- Mach number finder (Christoph)
-#MACHNUM                    # Mach number Master Switch
-#MACHSTATISTIC              # Dissipated thermal energy at shocks
-#CR_OUTPUT_JUMP_CONDITIONS  # CR: density and thermal energy jump at shocks
-#OUTPUT_PRESHOCK_CSND       # Output pre-shock sound speed and pre-shock physical density
 ####################################################################################################
 
 

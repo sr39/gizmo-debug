@@ -174,7 +174,7 @@ void find_particles_and_save_them(int num)
 
 	      particles[count_local].Hsml = PPP[n].Hsml;
 	      particles[count_local].Vz = P[n].Vel[Los->zaxis];
-	      particles[count_local].Utherm = Particle_Internal_energy_i(n);
+	      particles[count_local].Utherm = SphP[n].InternalEnergyPred;
 	      particles[count_local].Mass = P[n].Mass;
 	      particles[count_local].Metallicity = P[n].Metallicity[0];
 
@@ -318,7 +318,7 @@ void add_along_lines_of_sight(void)
                   bin += PIXELS;
 
 		      ne = SphP[n].Ne;
-                utherm = DMAX(All.MinEgySpec, Particle_Internal_energy_i(n));
+                utherm = DMAX(All.MinEgySpec, SphP[i].InternalEnergyPred);
 
 		      AbundanceRatios(utherm, SphP[n].Density * All.cf_a3inv, &ne, &nh0, &nHeII);
 

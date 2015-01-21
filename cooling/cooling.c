@@ -133,14 +133,21 @@ void do_the_cooling_for_particle(int i)
             unew += SphP[i].Injected_BH_Energy / P[i].Mass;
             SphP[i].Injected_BH_Energy = 0;
 		}
-#endif // #if defined(BH_THERMALFEEDBACK)
+#endif
         
-        
+
 #ifdef COSMIC_RAYS
-        int CRpop;
-        for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-        unew += CR_Particle_ThermalizeAndDissipate(SphP + i, dtime, CRpop);
-#endif // COSMIC_RAYS
+        /* cosmic ray interactions affecting the -thermal- temperature of the gas are included in the actual cooling/heating functions; 
+            they are solved implicitly above. however we need to account for energy losses of the actual cosmic ray fluid, here. The 
+            timescale for this is reasonably long, so we can treat it semi-explicitly, as we do here */
+        
+        /* use the estimate for combined decay + Coulomb losses from Volk 1996, Ensslin 1997, as updated in Guo & Oh 2008: */
+        double ne_cgs = (ne * XH / PROTONMASS) * (SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam);
+        double CR_coolingrate_perunitenergy = -7.51e-16 * ne_cgs / (All.UnitTime_in_s / All.HubbleParam); // converts cgs to code units //
+        double CR_Egy_new = SphP[i].CosmicRayEnergyPred * exp(CR_coolingrate_perunitenergy * dtime);
+        SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy = CR_Egy_new;
+#endif
+        
         
         /* InternalEnergy, InternalEnergyPred, Pressure, ne are now immediately updated; however, DtInternalEnergy
          carries information from the hydro loop which is only half-stepped here, so is -not- updated */
@@ -871,6 +878,17 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
             /* CAFG: if density exceeds NH_SS, ignore ionizing background. */
             Heat += local_gammamultiplier * (nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) / nHcgs * shieldfac;
         }
+#ifdef COSMIC_RAYS
+        if(SphP[target].CosmicRayEnergyPred > 0)
+        {
+            /* cosmic ray heating, from Guo & Oh 2008: this scales proportional to the electron number density and 
+                cosmic ray energy density, both of which we quickly evaluate here */
+            double Gamma_CR = 2.63e-16 * necgs *
+                ((SphP[target].CosmicRayEnergyPred/P[target].Mass*SphP[target].Density*All.cf_a3inv) *
+                 (All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam*All.HubbleParam));
+            Heat += Gamma_CR;
+        }
+#endif
 #ifdef BH_COMPTON_HEATING
         if(T < AGN_T_Compton) Heat += AGN_LambdaPre * (AGN_T_Compton - T) / nHcgs;
         /* note this is independent of the free electron fraction */

@@ -18,7 +18,7 @@
  */
 
 
-#if defined(GALSF_FB_SNE_HEATING)
+#if defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_GASRETURN)
 
 /* in case you're wondering, here are some conventions that may be useful for solar abundances
     All.SolarAbundances[0]=0.02;        // all metals (by mass); present photospheric abundances from Asplund et al. 2009 (Z=0.0134, proto-solar=0.0142) in notes;
@@ -837,7 +837,13 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 }
 #endif
             
-                /* inject energy (convert to specific units as needed first) */
+#ifdef COSMIC_RAYS
+                /* a fraction of the *INITIAL* energy goes into cosmic rays [this is -not- affected by the radiative losses above] */
+                double dE_init_coupled = 0.5 * dM * local.SNe_v_ejecta * local.SNe_v_ejecta;
+                SphP[j].CosmicRayEnergy += All.CosmicRay_SNeFraction * dE_init_coupled;
+                SphP[j].CosmicRayEnergyPred += All.CosmicRay_SNeFraction * dE_init_coupled;
+#endif
+                /* inject the post-shock energy and momentum (convert to specific units as needed first) */
                 dE *= 1 / P[j].Mass;
                 SphP[j].InternalEnergy += dE;
                 SphP[j].InternalEnergyPred += dE;

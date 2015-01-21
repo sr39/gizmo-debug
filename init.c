@@ -6,23 +6,6 @@
 
 #include "allvars.h"
 #include "proto.h"
-#ifdef COSMIC_RAYS
-#include "cosmic_rays/cosmic_rays.h"
-#endif
-#ifdef BP_REAL_CRs
-#include "cosmic_rays/bp_cosmic_rays.h"
-#endif
-
-#ifdef MACHNUM
-#ifdef COSMIC_RAYS
-#define h  All.HubbleParam
-#define cm (h/All.UnitLength_in_cm)
-#define s  (h/All.UnitTime_in_s)
-#define LightSpeed (2.9979e10*cm/s)
-#define c2   ( LightSpeed * LightSpeed )
-#endif
-#endif
-
 
 
 /*! \file init.c
@@ -52,21 +35,6 @@ void init(void)
         [much simpler, but be sure of your conversions!] */
 #endif
     
-#ifdef COSMIC_RAYS
-    int CRpop;
-#endif
-    
-#ifdef BP_REAL_CRs
-    double Pinit_integral;
-    double Pth0;
-#endif
-    
-#if defined(COSMIC_RAYS) && defined(MACHNUM)
-    double Pth1, PCR1[NUMCRPOP], rBeta[NUMCRPOP], C_phys[NUMCRPOP], q_phys[NUMCRPOP];
-#endif
-#ifdef CR_INITPRESSURE
-    double cr_pressure, q_phys, C_phys[NUMCRPOP];
-#endif
 #ifdef BLACK_HOLES
     int count_holes = 0;
 #endif
@@ -162,15 +130,6 @@ void init(void)
     
 #ifdef COOLING
     IonizeParams();
-#endif
-    
-#ifdef BP_REAL_CRs
-    init_cr_bound();
-#ifdef BP_SEED_CRs
-    Pinit_integral = pressure_integral(All.ecr_bound[0], All.ecr_bound[BP_REAL_CRs], All.pSlope_init, CNST_MP);
-#else
-    Pinit_integral = 0.0;
-#endif
 #endif
     
     if(All.ComovingIntegrationOn)
@@ -468,14 +427,16 @@ void init(void)
 #endif
         
 #ifdef GRAIN_FLUID
-        if(RestartFlag != 1)
+        if(RestartFlag == 0)
         {
-            P[i].Grain_Size = All.InitGrainSize;
+            P[i].Grain_Size = All.Grain_Size_Min * exp( gsl_rng_uniform(random_generator) * log(All.Grain_Size_Max/All.Grain_Size_Min) );
             P[i].Gas_Density = 0;
             P[i].Gas_InternalEnergy = 0;
             P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0;
+#ifdef GRAIN_COLLISIONS
             P[i].Grain_Density = 0;
             P[i].Grain_Velocity[0]=P[i].Grain_Velocity[1]=P[i].Grain_Velocity[2]=0;
+#endif
         }
 #endif
         
@@ -558,11 +519,7 @@ void init(void)
 #ifdef PMGRID
     All.PM_Ti_endstep = All.PM_Ti_begstep = 0;
 #endif
-    
-#ifdef CR_DIFFUSION
-    All.CR_Diffusion_Ti_endstep = All.CR_Diffusion_Ti_begstep = 0;
-#endif
-    
+        
     for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
     {
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
@@ -594,9 +551,14 @@ void init(void)
             SphP[i].xnucPred[j] = SphP[i].xnuc[j];
 #endif
         
-#ifdef CONDUCTION_EXPLICIT
+#ifdef CONDUCTION
         SphP[i].Kappa_Conduction = 0;
 #endif
+#ifdef VISCOSITY
+        SphP[i].Eta_ShearViscosity = 0;
+        SphP[i].Zeta_BulkViscosity = 0;
+#endif
+        
         
 #ifdef TURB_DIFFUSION
         SphP[i].TD_DiffCoeff = 0;
@@ -635,15 +597,19 @@ void init(void)
 #ifdef GALSF
         SphP[i].Sfr = 0;
 #endif
+#ifdef COSMIC_RAYS
+        SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy = 0;
+        SphP[i].CosmicRayDiffusionCoeff = SphP[i].DtCosmicRayEnergy = 0;
+#endif
 #ifdef MAGNETIC
-#if defined BINISET
+#if defined B_SET_IN_PARAMS
         if(RestartFlag == 0)
         {			/* Set only when starting from ICs */
             SphP[i].B[0]=SphP[i].BPred[0] = All.BiniX;
             SphP[i].B[1]=SphP[i].BPred[1] = All.BiniY;
             SphP[i].B[2]=SphP[i].BPred[2] = All.BiniZ;
         }
-#endif /*BINISET*/
+#endif /*B_SET_IN_PARAMS*/
         for(j = 0; j < 3; j++)
         {
             SphP[i].BPred[j] *= a2_fac * gauss2gizmo;
@@ -739,7 +705,7 @@ void init(void)
         ags_setup_smoothinglengths();
 #endif
     
-#ifdef GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION
+#ifdef GALSF_SUBGRID_DMDISPERSION
     if(RestartFlag != 3 && RestartFlag != 5)
         disp_setup_smoothinglengths();
 #endif
@@ -809,84 +775,6 @@ void init(void)
 #endif
 #ifdef BH_COMPTON_HEATING
         SphP[i].RadFluxAGN = 0;
-#endif
-        
-#ifdef BP_REAL_CRs
-        SphP[i].DensityOld = SphP[i].Density;
-        Pth0 = Get_Particle_Pressure(i);
-        init_bp_cr_pressure(i, P[i].Pos[0], Pth0);
-        init_bp_cr_arrays(i, Pinit_integral);
-#endif
-        
-#ifdef MACHNUM
-        SphP[i].Shock_MachNumber = 1.0;
-#ifdef COSMIC_RAYS
-        Pth1 = Get_Particle_Pressure(i);
-        
-#ifdef CR_IC_PHYSICAL
-        for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-        {
-            C_phys[CRpop] = SphP[i].CR_C0[CRpop];
-            q_phys[CRpop] = SphP[i].CR_q0[CRpop];
-        }
-#else
-        for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-        {
-            C_phys[CRpop] = SphP[i].CR_C0[CRpop] * pow(SphP[i].Density, (All.CR_Alpha[CRpop] - 1.0) / 3.0);
-            q_phys[CRpop] = SphP[i].CR_q0[CRpop] * pow(SphP[i].Density, 1.0 / 3.0);
-        }
-#endif
-        SphP[i].PreShock_XCR = 0.0;
-        for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-        {
-            rBeta[CRpop] = gsl_sf_beta((All.CR_Alpha[CRpop] - 2.0) * 0.5, (3.0 - All.CR_Alpha[CRpop]) * 0.5) *
-            gsl_sf_beta_inc((All.CR_Alpha[CRpop] - 2.0) * 0.5, (3.0 - All.CR_Alpha[CRpop]) * 0.5,
-                            1.0 / (1.0 + q_phys[CRpop] * q_phys[CRpop]));
-            
-            PCR1[CRpop] = C_phys[CRpop] * c2 * SphP[i].Density * rBeta[CRpop] / 6.0;
-            PCR1[CRpop] *= pow(atime, -3.0);
-            SphP[i].PreShock_XCR += PCR1[CRpop] / Pth1;
-        }
-        
-        SphP[i].PreShock_PhysicalDensity = SphP[i].Density / a3;
-        SphP[i].PreShock_PhysicalEnergy = Particle_Internal_energy_i(i);
-        
-        SphP[i].Shock_DensityJump = 1.0001;
-        SphP[i].Shock_EnergyJump = 1.0;
-#endif /* COSMIC_RAYS */
-#ifdef OUTPUT_PRESHOCK_CSND
-        Pth1 = Get_Particle_Pressure(i);
-        SphP[i].PreShock_PhysicalSoundSpeed = sqrt(GAMMA * GAMMA_MINUS1 * Particle_Internal_energy_i(i));
-        SphP[i].PreShock_PhysicalDensity = SphP[i].Density / a3;
-#endif /* OUTPUT_PRESHOCK_CSND */
-#endif /* MACHNUM */
-        
-#ifdef CR_IC_PHYSICAL
-        /* Scale CR variables so that values from IC file are now the
-         * physical values, not the adiabatic invariants
-         */
-        for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-        {
-            SphP[i].CR_C0[CRpop] *= pow(SphP[i].Density, (1.0 - All.CR_Alpha[CRpop]) / 3.0);
-            SphP[i].CR_q0[CRpop] *= pow(SphP[i].Density, -1.0 / 3.0);
-        }
-#endif
-        
-#ifdef CR_INITPRESSURE
-        
-        cr_pressure = CR_INITPRESSURE * Get_Particle_Pressure(i);
-        SphP[i].InternalEnergy *= (1 - CR_INITPRESSURE);
-        q_phys = 1.685;
-        
-        for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-        {
-            C_phys[CRpop] =
-            cr_pressure / (SphP[i].Density / a3 * CR_Tab_Beta(q_phys, CRpop) *
-                           (C / All.UnitVelocity_in_cm_per_s) * (C / All.UnitVelocity_in_cm_per_s) / 6.0);
-            
-            SphP[i].CR_C0[CRpop] = C_phys[CRpop] * pow(SphP[i].Density, (1.0 - All.CR_Alpha[CRpop]) / 3.0);
-            SphP[i].CR_q0[CRpop] = q_phys * pow(SphP[i].Density, -1.0 / 3.0);
-        }
 #endif
         
     }
@@ -1174,7 +1062,7 @@ void ags_setup_smoothinglengths(void)
 #endif // ADAPTIVE_GRAVSOFT_FORALL
 
 
-#ifdef GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION
+#ifdef GALSF_SUBGRID_DMDISPERSION
 void disp_setup_smoothinglengths(void)
 {
     int i, no, p;
