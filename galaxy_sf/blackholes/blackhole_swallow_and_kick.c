@@ -236,9 +236,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     double BH_angle_weighted_kernel_sum, mom_wt;
     MyFloat theta,*Jgas_in_Kernel,BH_disk_hr,kernel_zero,dwk;
     kernel_main(0.0,1.0,1.0,&kernel_zero,&dwk,-1);
-#if !defined(BH_ALPHADISK_ACCRETION)
-    MyFloat v_kick;
-#endif
 #endif
 #ifdef BH_BUBBLES
     MyLongDouble accreted_BH_mass_bubbles = 0;
@@ -254,7 +251,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     MyFloat m_wind, e_wind;
 #endif
     
-    int mod_index;
+    int mod_index = 0;
     
     if(mode == 0)
     {
@@ -372,12 +369,12 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #endif
                         
-#ifdef BH_IGNORE_ACCRETED_GAS_MOMENTUM
-                        for(k = 0; k < 3; k++)
-                            accreted_momentum[k] += FLT(BPP(j).BH_Mass * P[j].Vel[k]);
-#else
+#ifdef BH_FOLLOW_ACCRETED_GAS_MOMENTUM
                         for(k = 0; k < 3; k++)
                             accreted_momentum[k] += FLT(P[j].Mass * P[j].Vel[k]);
+#else
+                        for(k = 0; k < 3; k++)
+                            accreted_momentum[k] += FLT(BPP(j).BH_Mass * P[j].Vel[k]);
 #endif
                         
                         
@@ -455,6 +452,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                         SphP[j].MassTrue = 0;
 #endif  //  HYDRO_MESHLESS_FINITE_VOLUME
 #else   //  BH_ALPHADISK_ACCRETION
+                        double v_kick = 0;
                         if(P[j].Type==0) v_kick=All.BAL_v_outflow; else v_kick=0.1*All.BAL_v_outflow;
                         if(P[j].Type==0) f_accreted=All.BAL_f_accretion; else f_accreted=1;
                         
@@ -491,7 +489,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                         accreted_BH_mass += FLT((1. - All.BlackHoleRadiativeEfficiency) * P[j].Mass);
 #endif
                         
-#ifndef BH_IGNORE_ACCRETED_GAS_MOMENTUM
+#ifdef BH_FOLLOW_ACCRETED_GAS_MOMENTUM
                         for(k = 0; k < 3; k++)
                             accreted_momentum[k] += FLT((1. - All.BlackHoleRadiativeEfficiency) * P[j].Mass * P[j].Vel[k]);
 #endif
@@ -543,7 +541,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 mom_wt = All.BH_FluxMomentumFactor * bh_angleweight_localcoupling(j,BH_disk_hr,theta) / BH_angle_weighted_kernel_sum;
                                 if(BH_angle_weighted_kernel_sum<=0) mom_wt=0;
                                 /* add initial L/c optical/UV coupling to the gas at the dust sublimation radius */
-                                v_kick = mom_wt * mom / P[j].Mass;
+                                double v_kick = mom_wt * mom / P[j].Mass;
                                 for(k = 0; k < 3; k++)
                                 {
                                     P[j].Vel[k] += v_kick*All.cf_atime*dir[k];

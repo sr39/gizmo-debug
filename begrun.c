@@ -464,15 +464,15 @@ void set_units(void)
     /* Note: Because we replace \nabla(T) in the conduction equation with
      * \nable(u), our conduction coefficient is not the usual kappa, but
      * rather kappa*(gamma-1)*mu/kB. We therefore need to multiply with
-     * another factor of (meanweight / k_B * GAMMA_MINUS1).
+     * another factor of (meanweight_ion / k_B * GAMMA_MINUS1).
      */
     double coefficient;
-    double meanweight = m_p * 4.0 / (8 - 5 * (1 - HYDROGEN_MASSFRAC)); /* assuming full ionization */
-    coefficient = meanweight / k_B * GAMMA_MINUS1;
+    double meanweight_ion = m_p * 4.0 / (8 - 5 * (1 - HYDROGEN_MASSFRAC)); /* assuming full ionization */
+    coefficient = meanweight_ion / k_B * GAMMA_MINUS1;
     
     /* Kappa_Spitzer definition taken from Zakamska & Narayan 2003 ( ApJ 582:162-169, Eq. (5) ) */
     double coulomb_log = 37.8; // Sarazin value (recommendation from PIC calculations) //
-    coefficient *= (1.84e-5 / coulomb_log * pow(meanweight / k_B * GAMMA_MINUS1, 2.5) * erg / (s * deg * cm));
+    coefficient *= (1.84e-5 / coulomb_log * pow(meanweight_ion / k_B * GAMMA_MINUS1, 2.5) * erg / (s * deg * cm));
     coefficient /= All.HubbleParam; // We also need one factor of 'h' to convert between internal units and cgs //
     
 #ifdef CONDUCTION_SPITZER
@@ -1500,9 +1500,11 @@ void read_parameter_file(char *fname)
 
         
 #ifdef COSMIC_RAYS
+#ifdef GALSF_FB_SNE_HEATING
         strcpy(tag[nt], "CosmicRay_SNeFraction");
         addr[nt] = &All.CosmicRay_SNeFraction;
         id[nt++] = REAL;
+#endif
 
         strcpy(tag[nt], "CosmicRayDiffusionCoeff");
         addr[nt] = &All.CosmicRayDiffusionCoeff;

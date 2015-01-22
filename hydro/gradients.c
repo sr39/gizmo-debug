@@ -51,7 +51,7 @@ struct Quantities_for_Gradients
 #endif
 #endif
 #ifdef TURB_DIFF_METALS
-    MyDouble Metallicity[NUM_METAL_SPECIES]
+    MyDouble Metallicity[NUM_METAL_SPECIES];
 #endif
 #ifdef RADTRANSFER_FLUXLIMITER
     MyFloat n_gamma[N_BINS];
@@ -136,7 +136,7 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i)
 #endif
 #ifdef TURB_DIFF_METALS
     for(k = 0; k < NUM_METAL_SPECIES; k++)
-        in->GQuant.Metallicity[k] = SphP[i].Metallicity[k];
+        in->GQuant.Metallicity[k] = P[i].Metallicity[k];
 #endif
 #ifdef RADTRANSFER_FLUXLIMITER
     for(k = 0; k < N_BINS; k++)
@@ -273,27 +273,16 @@ void local_slopelimiter(double *grad, double valmax, double valmin, double alim,
     }
 }
 
-void construct_gradient(double *grad, MyIDType i, int num_gradients);
+void construct_gradient(double *grad, MyIDType i);
 
-void construct_gradient(double *grad, MyIDType i, int num_gradients)
+void construct_gradient(double *grad, MyIDType i)
 {
     /* check if the matrix is well-conditioned: otherwise we will use the 'standard SPH-like' derivative estimation */
     if(SphP[i].ConditionNumber <= (double)CONDITION_NUMBER_DANGER)
     {
         int k; double v_tmp[3];
-        if(num_gradients <= 1)
-        {
-            for(k=0;k<3;k++) {v_tmp[k] = grad[k];}
-            for(k=0;k<3;k++) {grad[k] = SphP[i].NV_T[k][0]*v_tmp[0] + SphP[i].NV_T[k][1]*v_tmp[1] + SphP[i].NV_T[k][2]*v_tmp[2];}
-        } else {
-            int k1;
-            for(k1=0;k1<num_gradients;k1++)
-            {
-                for(k=0;k<3;k++) {v_tmp[k] = grad[k1][k];}
-                for(k=0;k<3;k++) {grad[k1][k] = SphP[i].NV_T[k][0]*v_tmp[0] + SphP[i].NV_T[k][1]*v_tmp[1] + SphP[i].NV_T[k][2]*v_tmp[2];}
-            }
-        }
-
+        for(k=0;k<3;k++) {v_tmp[k] = grad[k];}
+        for(k=0;k<3;k++) {grad[k] = SphP[i].NV_T[k][0]*v_tmp[0] + SphP[i].NV_T[k][1]*v_tmp[1] + SphP[i].NV_T[k][2]*v_tmp[2];}
     }
 }
 
@@ -302,7 +291,7 @@ void construct_gradient(double *grad, MyIDType i, int num_gradients)
 
 void hydro_gradient_calc(void)
 {
-    int i, j, k, k1, k2, ngrp, ndone, ndone_flag;
+    int i, j, k, k1, ngrp, ndone, ndone_flag;
     int recvTask, place;
     double timeall = 0, timecomp1 = 0, timecomp2 = 0, timecommsumm1 = 0, timecommsumm2 = 0, timewait1 = 0, timewait2 = 0;
     double timecomp, timecomm, timewait, tstart, tend, t0, t1;
@@ -598,37 +587,34 @@ void hydro_gradient_calc(void)
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
         if(P[i].Type == 0)
         {
-                /* now we can properly calculate (second-order accurate) gradients of hydrodynamic quantities from this loop */
-                construct_gradient(SphP[i].Gradients.Density,i,0);
-                construct_gradient(SphP[i].Gradients.Pressure,i,0);
-                construct_gradient(SphP[i].Gradients.Velocity,i,3);
+            /* now we can properly calculate (second-order accurate) gradients of hydrodynamic quantities from this loop */
+            construct_gradient(SphP[i].Gradients.Density,i);
+            construct_gradient(SphP[i].Gradients.Pressure,i);
+            for(k=0;k<3;k++) {construct_gradient(SphP[i].Gradients.Velocity[k],i);}
 #ifdef DOGRAD_INTERNAL_ENERGY
-                construct_gradient(SphP[i].Gradients.InternalEnergy,i,0);
+            construct_gradient(SphP[i].Gradients.InternalEnergy,i);
 #endif
 #ifdef COSMIC_RAYS
-                construct_gradient(SphP[i].Gradients.CosmicRayPressure,i,0);
+            construct_gradient(SphP[i].Gradients.CosmicRayPressure,i);
 #endif
 #ifdef DOGRAD_SOUNDSPEED
-                construct_gradient(SphP[i].Gradients.SoundSpeed,i,0);
+            construct_gradient(SphP[i].Gradients.SoundSpeed,i);
 #endif
 #ifdef MAGNETIC
-                construct_gradient(SphP[i].Gradients.B,i,3);
+            for(k=0;k<3;k++) {construct_gradient(SphP[i].Gradients.B[k],i);}
 #ifdef DIVBCLEANING_DEDNER
-                construct_gradient(SphP[i].Gradients.Phi,i,0);
+            construct_gradient(SphP[i].Gradients.Phi,i);
 #endif
 #endif
 #ifdef TURB_DIFF_METALS
-                construct_gradient(SphP[i].Gradients.Metallicity,i,NUM_METAL_SPECIES);
+            for(k=0;k<NUM_METAL_SPECIES;k++) {construct_gradient(SphP[i].Gradients.Metallicity[k],i);}
 #endif
 #ifdef RADTRANSFER_FLUXLIMITER
-                construct_gradient(SphP[i].Gradients.Metallicity,i,N_BINS);
+            for(k=0;k<N_BINS;k++) {construct_gradient(SphP[i].Gradients.n_gamma[k],i);}
 #endif
             
-            
-            
             /* now the gradients are calculated: below are simply useful operations on the results */
-            
-#if defined(BH_POPIII_SEEDS) || defined(GALSF_FB_LOCAL_UV_HEATING) || defined(GALSF_FB_RPWIND_FROMSTARS) || defined(BH_PHOTONMOMENTUM) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN)
+#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
             /* this is here because for the models of BH growth and self-shielding of stars, we
              need to calculate GradRho: we don't bother doing it in density.c if we're already calculating it here! */
             for(k=0;k<3;k++)
@@ -734,59 +720,65 @@ void hydro_gradient_calc(void)
             
             
 #ifdef CONDUCTION
-            SphP[i].Kappa_Conduction = All.ConductionCoeff;
+            {
+                SphP[i].Kappa_Conduction = All.ConductionCoeff;
 #ifdef CONDUCTION_SPITZER
-            /* calculate the thermal conductivities: use the Spitzer formula */
-            SphP[i].Kappa_Conduction *= pow(SphP[i].InternalEnergyPred, 2.5);
-            
-            /* account for saturation (when the mean free path of electrons is large): estimate whether we're in that limit with the gradients */
-            double electron_free_path = All.ElectronFreePathFactor * SphP[i].InternalEnergyPred * SphP[i].InternalEnergyPred / (SphP[i].Density * All.cf_a3inv);
-            double du_conduction=0;
-            for(k=0;k<3;k++) {du_conduction += SphP[i].Gradients.InternalEnergy[k] * SphP[i].Gradients.InternalEnergy[k];}
-            double temp_scale_length = SphP[i].InternalEnergyPred / sqrt(du_conduction) * All.cf_atime;
-            SphP[i].Kappa_Conduction /= (1 + 4.2 * electron_free_path / temp_scale_length); // should be in physical units //
+                /* calculate the thermal conductivities: use the Spitzer formula */
+                SphP[i].Kappa_Conduction *= pow(SphP[i].InternalEnergyPred, 2.5);
+                
+                /* account for saturation (when the mean free path of electrons is large): estimate whether we're in that limit with the gradients */
+                double electron_free_path = All.ElectronFreePathFactor * SphP[i].InternalEnergyPred * SphP[i].InternalEnergyPred / (SphP[i].Density * All.cf_a3inv);
+                double du_conduction=0;
+                for(k=0;k<3;k++) {du_conduction += SphP[i].Gradients.InternalEnergy[k] * SphP[i].Gradients.InternalEnergy[k];}
+                double temp_scale_length = SphP[i].InternalEnergyPred / sqrt(du_conduction) * All.cf_atime;
+                SphP[i].Kappa_Conduction /= (1 + 4.2 * electron_free_path / temp_scale_length); // should be in physical units //
 #endif
+            }
 #endif
 
             
             
 #ifdef CONDUCTION
-            SphP[i].Kappa_Conduction = All.ConductionCoeff;
+            {
+                SphP[i].Kappa_Conduction = All.ConductionCoeff;
 #ifdef CONDUCTION_SPITZER
-            /* calculate the thermal conductivities: use the Spitzer formula */
-            SphP[i].Kappa_Conduction *= pow(SphP[i].InternalEnergyPred, 2.5);
-            
-            /* account for saturation (when the mean free path of electrons is large): estimate whether we're in that limit with the gradients */
-            double electron_free_path = All.ElectronFreePathFactor * SphP[i].InternalEnergyPred * SphP[i].InternalEnergyPred / (SphP[i].Density * All.cf_a3inv);
-            double du_conduction=0;
-            for(k=0;k<3;k++) {du_conduction += SphP[i].Gradients.InternalEnergy[k] * SphP[i].Gradients.InternalEnergy[k];}
-            double temp_scale_length = SphP[i].InternalEnergyPred / sqrt(du_conduction) * All.cf_atime;
-            SphP[i].Kappa_Conduction /= (1 + 4.2 * electron_free_path / temp_scale_length); // should be in physical units //
+                /* calculate the thermal conductivities: use the Spitzer formula */
+                SphP[i].Kappa_Conduction *= pow(SphP[i].InternalEnergyPred, 2.5);
+                
+                /* account for saturation (when the mean free path of electrons is large): estimate whether we're in that limit with the gradients */
+                double electron_free_path = All.ElectronFreePathFactor * SphP[i].InternalEnergyPred * SphP[i].InternalEnergyPred / (SphP[i].Density * All.cf_a3inv);
+                double du_conduction=0;
+                for(k=0;k<3;k++) {du_conduction += SphP[i].Gradients.InternalEnergy[k] * SphP[i].Gradients.InternalEnergy[k];}
+                double temp_scale_length = SphP[i].InternalEnergyPred / sqrt(du_conduction) * All.cf_atime;
+                SphP[i].Kappa_Conduction /= (1 + 4.2 * electron_free_path / temp_scale_length); // should be in physical units //
 #endif
+            }
 #endif
             
             
 #ifdef COSMIC_RAYS
-            /* self-consistently calculate the diffusion coefficients for cosmic ray fluids; 
-                following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
-            /* in the weak-field (high-beta) case, the streaming velocity is approximately the sound speed */
-            double v_streaming = sqrt(GAMMA*GAMMA_MINUS1 * SphP[i].InternalEnergyPred); // thermal ion sound speed //
+            {
+                /* self-consistently calculate the diffusion coefficients for cosmic ray fluids;
+                 following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
+                /* in the weak-field (high-beta) case, the streaming velocity is approximately the sound speed */
+                double v_streaming = sqrt(GAMMA*GAMMA_MINUS1 * SphP[i].InternalEnergyPred); // thermal ion sound speed //
 #ifdef MAGNETIC
-            /* in the strong-field (low-beta) case, it's actually the Alfven velocity: interpolate between these */
-            double vA_2 = 0.0;
-            for(k=0;k<3;k++) {vA_2 += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
-            vA_2 *= All.cf_afac1 / (All.cf_atime * SphP[i].Density);
-            v_streaming = sqrt(v_streaming*v_streaming + vA_2);
+                /* in the strong-field (low-beta) case, it's actually the Alfven velocity: interpolate between these */
+                double vA_2 = 0.0;
+                for(k=0;k<3;k++) {vA_2 += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+                vA_2 *= All.cf_afac1 / (All.cf_atime * SphP[i].Density);
+                v_streaming = sqrt(v_streaming*v_streaming + vA_2);
 #endif
-            v_streaming *= All.CosmicRayDiffusionCoeff * All.cf_afac3; // converts to physical units and rescales according to chosen coefficient //
-            /* now we need the cosmic ray pressure or energy density scale length, defined as :
-                L = (e_cr + p_cr) / |gradient_p_cr| = cr_enthalpy / |gradient(p_cr)| */
-            double CRPressureGradMag = 0.0;
-            for(k=0;k<3;k++) {CRPressureGradMag += SphP[i].Gradients.CosmicRayPressure[k]*SphP[i].Gradients.CosmicRayPressure[k];}
-            double CRPressureGradScaleLength = (4./3.) * Get_Particle_CosmicRayPressure(i) / sqrt(CRPressureGradMag) * All.cf_atime;
-            
-            /* the diffusivity is now just the product of these two coefficients */
-            SphP[i].CosmicRayDiffusionCoeff = v_streaming * CRPressureGradScaleLength;
+                v_streaming *= All.CosmicRayDiffusionCoeff * All.cf_afac3; // converts to physical units and rescales according to chosen coefficient //
+                /* now we need the cosmic ray pressure or energy density scale length, defined as :
+                 L = (e_cr + p_cr) / |gradient_p_cr| = cr_enthalpy / |gradient(p_cr)| */
+                double CRPressureGradMag = 0.0;
+                for(k=0;k<3;k++) {CRPressureGradMag += SphP[i].Gradients.CosmicRayPressure[k]*SphP[i].Gradients.CosmicRayPressure[k];}
+                double CRPressureGradScaleLength = (4./3.) * Get_Particle_CosmicRayPressure(i) / sqrt(CRPressureGradMag) * All.cf_atime;
+                
+                /* the diffusivity is now just the product of these two coefficients */
+                SphP[i].CosmicRayDiffusionCoeff = v_streaming * CRPressureGradScaleLength;
+            }
 #endif
             
             
@@ -994,7 +986,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #ifdef TURB_DIFF_METALS
                     double dmetal[NUM_METAL_SPECIES];
                     for(k=0;k<NUM_METAL_SPECIES;k++)
-                        dmetal[k] = SphP[j].Metallicity[k] - local.GQuant.Metallicity[k];
+                        dmetal[k] = P[j].Metallicity[k] - local.GQuant.Metallicity[k];
 #endif
 #ifdef RADTRANSFER_FLUXLIMITER
                     double dn[N_BINS];

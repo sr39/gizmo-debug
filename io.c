@@ -675,7 +675,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             }
         break;
 #endif
-            
+
+    case IO_COSMICRAY_ENERGY:	/* energy in the cosmic ray field  */
+#ifdef COSMIC_RAYS
+        for(n = 0; n < pc; pindex++)
+            if(P[pindex].Type == type)
+            {
+                *fp++ = SphP[pindex].CosmicRayEnergyPred;
+                n++;
+            }
+        break;
+#endif
             
     case IO_DIVB:		/* divergence of magnetic field  */
 #ifdef MAGNETIC
@@ -1268,6 +1278,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
     case IO_SHEARCOEFF:
     case IO_TSTP:
     case IO_IMF:
+    case IO_COSMICRAY_ENERGY:
     case IO_DIVB:
     case IO_VRMS:
     case IO_VRAD:
@@ -1491,6 +1502,7 @@ int get_values_per_blockelement(enum iofields blocknr)
     case IO_VDIV:
     case IO_VROT:
     case IO_IMF:
+    case IO_COSMICRAY_ENERGY:
     case IO_DIVB:
     case IO_ABVC:
     case IO_AMDC:
@@ -1630,7 +1642,6 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
     case IO_POT:
     case IO_SECONDORDERMASS:
     case IO_AGS_SOFT:
-//    case IO_AGS_DENS:
     case IO_AGS_ZETA:
     case IO_AGS_OMEGA:
     case IO_AGS_CORR:
@@ -1684,7 +1695,7 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
     case IO_VDIV:
     case IO_VROT:
     case IO_VORT:
-    case IO_IMF:
+    case IO_COSMICRAY_ENERGY:
     case IO_DIVB:
     case IO_ABVC:
     case IO_AMDC:
@@ -1717,6 +1728,13 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
       return nstars;
 #endif
       break;
+            
+    case IO_IMF:
+        for(i = 0; i < 6; i++)
+            if(i != 4)
+                typelist[i] = 0;
+            return nstars;
+        break;
 
     case IO_TRUENGB:
       nngb = ngas;
@@ -2020,7 +2038,15 @@ int blockpresent(enum iofields blocknr)
         return 0;
 #endif
         break;
-            
+
+    case IO_COSMICRAY_ENERGY:
+#ifdef COSMIC_RAYS
+        return 1;
+#else
+        return 0;
+#endif
+        break;
+
 
     case IO_DIVB:
 #ifdef MAGNETIC
@@ -2248,16 +2274,6 @@ int blockpresent(enum iofields blocknr)
 #endif
       break;
 
-/*
-    case IO_AGS_DENS:
-#if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(AGS_OUTPUTGRAVNUMDENS)
-      return 1;
-#else
-      return 0;
-#endif
-      break;
-*/
- 
     case IO_AGS_ZETA:
 #if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(AGS_OUTPUTZETA)
       return 1;
@@ -2439,6 +2455,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
       break;
     case IO_IMF:
       strncpy(label, "IMF ", 4);
+      break;
+    case IO_COSMICRAY_ENERGY:
+      strncpy(label, "CREG ", 4);
       break;
     case IO_DIVB:
       strncpy(label, "DIVB", 4);
@@ -2738,6 +2757,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
       break;
     case IO_IMF:
       strcpy(buf, "IMFTurnOverMass");
+      break;
+    case IO_COSMICRAY_ENERGY:
+      strcpy(buf, "CosmicRayEnergy");
       break;
     case IO_DIVB:
       strcpy(buf, "DivergenceOfMagneticField");

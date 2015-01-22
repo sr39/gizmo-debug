@@ -98,8 +98,15 @@ AGS_DesNumNgb           32  % neighbor number for calculating adaptive gravsoft
 
 
 
+%-------------------------------------------------------------------------
+%-------------------------------------------------------------------------
+%---------- Physics Modules ----------------------------------------------
+%-------------------------------------------------------------------------
+%-------------------------------------------------------------------------
+
+
 %------------------------------------------------------------
-%---------- Physics Modules ---------------------------------
+%------------------ Additional Fluid Physics ----------------
 %------------------------------------------------------------
 
 %---- Magneto-Hydrodynamics Parameters (MAGNETIC on)
@@ -120,10 +127,19 @@ BulkViscosityCoeff      1.0     % set/multiply bulk viscosity coefficient
 %---- Turbulent Diffusion Master Switch (TURB_DIFFUSION on)
 TurbDiffusionCoefficient    1.0     % Normalizes diffusion rates, should be ~1
 
+%--- Cosmic Ray + Gas Fluids (COSMIC_RAYS)
+CosmicRayDiffusionCoeff     1.0     % multiplies anisotropic diffusion/streaming coefficients
+
+
+
+%-------------------------------------------------------------------------
+%------------------ Star, Black Hole, and Galaxy Formation ---------------
+%-------------------------------------------------------------------------
+
 
 %---- Star Formation parameters (GALSF on)
 CritPhysDensity     100.    %  critical physical density for star formation (cm^(-3)) 
-SfEffPerFreeFall    1.0     %  SFR/(Mgas/tfreefall) for gas which meets SF criteria 
+SfEffPerFreeFall    1.0     %  SFR/(Mgas/tfreefall) for gas which meets SF criteria
 
 
 %---- sub-grid (Springel+Hernquist/GADGET/AREPO) "effective equation of state" 
@@ -158,8 +174,10 @@ PhotonMomentum_fOPT         0.0    % incident SED f(L) in optical/near-IR
 %--- gas return/recycling (GALSF_FB_GASRETURN) 
 GasReturnFraction           1.0     % fraction of gas mass returned (relative to ssp)
 GasReturnEnergy             1.0     % fraction of returned gas energy+momentum (relative to ssp)
-  
-  
+%--- cosmic rays (COSMIC_RAYS)
+CosmicRay_SNeFraction       0.1     % fraction of SNe ejecta kinetic energy into cosmic rays (~10%)
+
+
 %-------------- Black Hole accretion & formation (BLACK_HOLES on)
 %--- formation/seeding  
 MinFoFMassForNewSeed         10.	    % log(M_stars) for on-the-fly FoF seeding 
@@ -176,3 +194,21 @@ BlackHoleFeedbackFactor      1.0	    % generic feedback strength multiplier
 BH_FluxMomentumFactor        1.0	    % multiply radiation pressure (BH_PHOTONMOMENTUM) 
 BAL_f_accretion              0.5        % fraction of gas swallowed by BH (BH_BAL_WINDS) 
 BAL_v_outflow                30000	    % velocity (km/s) of BAL outflow (BH_BAL_WINDS) 
+
+
+%-------------------------------------------------------------------------
+%------------------ Driven Turbulence (Large-Eddy boxes) -----------------
+%-------------------------------------------------------------------------
+
+￼%-------------- Turbulent stirring parameters (TURB_DRIVING on)
+ST_decay       1.	    % decay time for driving-mode phase correlations
+ST_energy      0.0002   % energy of driving-scale modes: sets norm of turb
+ST_DtFreq      0.005    % time interval for driving updates (set by hand)
+ST_Kmin        6.27     % minimum driving-k: should be >=2.*M_PI/All.BoxSize
+ST_Kmax        12.57    % maximum driving-k: set to couple times Kmin or more if cascade desired
+ST_SolWeight   1.0      % fractional wt of solenoidal modes (wt*curl + (1-wt)*div)
+ST_AmplFac     1.0      % multiplies turb amplitudes
+ST_SpectForm   2        % driving pwr-spec: 0=Ek~const; 1=sharp-peak at kc; 2=Ek~k^(-5/3); 3=Ek~k^-2
+ST_Seed        42       % random number seed for modes (so you can reproduce it)
+IsoSoundSpeed  1.0      % initializes gas sound speed in box to this value
+TimeBetTurbSpectrum 0.5 % time (code units) between evaluations of turb pwrspec

@@ -102,9 +102,10 @@
         reconstruct_face_states(local.Pressure, local.Gradients.Pressure, SphP[j].Pressure, SphP[j].Gradients.Pressure,
                                 distance_from_i, distance_from_j, &Riemann_vec.L.p, &Riemann_vec.R.p, 1);
 #ifdef NON_IDEAL_EOS
+        double soundspeed_j = Particle_effective_soundspeed_i(j);
         reconstruct_face_states(local.InternalEnergyPred, local.Gradients.InternalEnergy, SphP[j].InternalEnergyPred, SphP[j].Gradients.InternalEnergy,
                                 distance_from_i, distance_from_j, &Riemann_vec.L.u, &Riemann_vec.R.u, 1);
-        reconstruct_face_states(local.SoundSpeed, local.Gradients.SoundSpeed, SphP[j].SoundSpeed, SphP[j].Gradients.SoundSpeed,
+        reconstruct_face_states(local.SoundSpeed, local.Gradients.SoundSpeed, soundspeed_j, SphP[j].Gradients.SoundSpeed,
                                 distance_from_i, distance_from_j, &Riemann_vec.L.cs, &Riemann_vec.R.cs, 1);
 #endif
         for(k=0;k<3;k++)
@@ -171,6 +172,10 @@
             Riemann_vec.R.phi = local.PhiPred; Riemann_vec.L.phi = PhiPred_j;
 #endif
 #endif
+#ifdef NON_IDEAL_EOS
+            Riemann_vec.R.u = local.InternalEnergyPred; Riemann_vec.L.u = SphP[j].InternalEnergyPred;
+            Riemann_vec.R.cs = local.SoundSpeed; Riemann_vec.L.cs = soundspeed_j;
+#endif
             Riemann_solver(Riemann_vec, &Riemann_out, n_unit);
             if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M)))
             {
@@ -183,6 +188,10 @@
 #ifdef DIVBCLEANING_DEDNER
                 Riemann_vec.R.phi = local.PhiPred; Riemann_vec.L.phi = PhiPred_j;
 #endif
+#endif
+#ifdef NON_IDEAL_EOS
+                Riemann_vec.R.u = local.InternalEnergyPred; Riemann_vec.L.u = SphP[j].InternalEnergyPred;
+                Riemann_vec.R.cs = local.SoundSpeed; Riemann_vec.L.cs = soundspeed_j;
 #endif
                 Riemann_solver(Riemann_vec, &Riemann_out, n_unit);
                 if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M)))

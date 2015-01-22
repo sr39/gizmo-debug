@@ -56,7 +56,7 @@
             // enforce a limiter for stability (to prevent artificial oscillations) //
             double CR_egy_i = 3*local.CosmicRayPressure*(V_i/All.cf_a3inv); // (E_cr = Volume * (Pressure/(GAMMA_CR-1)))
             double CR_egy_j = 3*CR_pressure_j*(V_j/All.cf_a3inv);
-            double du_ij_cond = 0.5*DMIN(DMIN(0.5*fabs(CR_egy_i-CR_egy_j),CR_egy_i,CR_egy_j));
+            double du_ij_cond = 0.5*DMIN(DMIN(0.5*fabs(CR_egy_i-CR_egy_j),CR_egy_i),CR_egy_j);
             if(fabs(conduction_wt)>du_ij_cond) {conduction_wt *= du_ij_cond/fabs(conduction_wt);}
             // now apply time rate of change to particle 'i'
             Fluxes.CosmicRayPressure += conduction_wt / dt_hydrostep;
@@ -121,7 +121,7 @@
             // enforce a flux limiter for stability (to prevent overshoot) //
             double CR_egy_i = 3*local.CosmicRayPressure*V_i; // (E_cr = Volume * (Pressure/(GAMMA_CR-1)))
             double CR_egy_j = 3*CR_pressure_j*V_j;
-            double du_ij_cond = 0.5*DMIN(DMIN(0.5*fabs(CR_egy_i-CR_egy_j),CR_egy_i,CR_egy_j));
+            double du_ij_cond = 0.5*DMIN(DMIN(0.5*fabs(CR_egy_i-CR_egy_j),CR_egy_i),CR_egy_j);
             if(fabs(conduction_wt)>du_ij_cond) {conduction_wt *= du_ij_cond/fabs(conduction_wt);}
             Fluxes.CosmicRayPressure += conduction_wt / dt_hydrostep;
         } // if(conduction_wt > 0)

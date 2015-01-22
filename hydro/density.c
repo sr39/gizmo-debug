@@ -87,7 +87,7 @@ static struct densdata_out
     MyFloat NV_A[3][3];
 #endif
 
-#if defined(BH_POPIII_SEEDS) || defined(GALSF_FB_LOCAL_UV_HEATING) || defined(GALSF_FB_RPWIND_FROMSTARS) || defined(BH_PHOTONMOMENTUM) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN)
+#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
     MyFloat GradRho[3];
 #endif
     
@@ -182,11 +182,6 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
 #endif
     } // P[i].Type == 0 //
 
-#if (defined(RADTRANSFER) && defined(EDDINGTON_TENSOR_STARS))
-    if(P[i].Type == 4)
-        ASSIGN_ADD(P[i].DensAroundStar, out->Rho, mode);
-#endif
-
 #if defined(GRAIN_FLUID)
     if(P[i].Type > 0)
     {
@@ -196,22 +191,18 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
     }
 #endif
 
-#if defined(GALSF_FB_RPWIND_FROMSTARS) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN )
-    if((P[i].Type == 4)||(P[i].Type == 2)||(P[i].Type==3))
-        ASSIGN_ADD(P[i].DensAroundStar, out->Rho, mode);
-#endif
-
-#if defined(BH_POPIII_SEEDS) || defined(GALSF_FB_LOCAL_UV_HEATING) || defined(GALSF_FB_RPWIND_FROMSTARS) || defined(BH_PHOTONMOMENTUM) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN)
+#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
     if(P[i].Type != 0)
-        for(k = 0; k<3; k++)
-            ASSIGN_ADD(P[i].GradRho[k], out->GradRho[k], mode);
+    {
+        ASSIGN_ADD(P[i].DensAroundStar, out->Rho, mode);
+        for(k = 0; k<3; k++) {ASSIGN_ADD(P[i].GradRho[k], out->GradRho[k], mode);}
+    }
 #endif
     
 
 #ifdef BLACK_HOLES
     if(P[i].Type == 5)
     {
-        ASSIGN_ADD(P[i].DensAroundStar, out->Rho, mode);
         if(mode == 0)
             BPP(i).BH_TimeBinGasNeighbor = out->BH_TimeBinGasNeighbor;
         else
@@ -690,7 +681,7 @@ void density(void)
                     desnumngb = 64; /* will assign the stellar luminosity to very few (one actually) gas particles */
 #endif
                 
-#if defined(GALSF_FB_RPWIND_FROMSTARS) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN)
+#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
                 /* use a much looser check for N_neighbors when the central point is a star particle,
                  since the accuracy is limited anyways to the coupling efficiency -- the routines use their
                  own estimators+neighbor loops, anyways, so this is just to get some nearby particles */
@@ -1316,7 +1307,7 @@ int density_isactive(int n)
         return 1;
 #endif
     
-#if defined(GALSF_FB_RPWIND_FROMSTARS) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN )
+#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
     if(((P[n].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[n].Type == 2)||(P[n].Type==3))))&&(P[n].Mass>0))
     {
 #if defined(GALSF_FB_SNE_HEATING)
@@ -1373,7 +1364,7 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
             out->BH_TimeBinGasNeighbor = P[j].TimeBin;
 #endif
         
-#if defined(BH_POPIII_SEEDS) || defined(GALSF_FB_LOCAL_UV_HEATING) || defined(GALSF_FB_RPWIND_FROMSTARS) || defined(BH_PHOTONMOMENTUM) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN)
+#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
         /* this is here because for the models of BH growth and self-shielding of stars, we
          just need a quick-and-dirty, single-pass approximation for the gradients (the error from
          using this as opposed to the higher-order gradient estimators is small compared to the

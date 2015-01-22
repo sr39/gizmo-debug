@@ -25,8 +25,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifndef HYDRO_SPH
     struct Input_vec_Riemann Riemann_vec;
     struct Riemann_outputs Riemann_out;
-    double face_area_dot_vel=0, face_vel_i=0, face_vel_j=0;
+    double face_area_dot_vel, face_vel_i=0, face_vel_j=0;
     double Face_Area_Vec[3], Face_Area_Norm = 0;
+    face_area_dot_vel = 0;
 #endif
     
     if(mode == 0)

@@ -425,6 +425,11 @@ void compute_potential(void);
 void construct_timetree(void);
 void cooling_and_starformation(void);
 
+#if defined(TURB_DRIVING)
+void do_turb_driving_step_first_half(void);
+void do_turb_driving_step_second_half(void);
+#endif
+
 #ifdef GALSF
 double evaluate_stellar_age_Gyr(double stellar_tform);
 inline double evaluate_l_over_m_ssp(double stellar_age_in_gyr);

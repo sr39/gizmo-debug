@@ -98,6 +98,9 @@
 #define DOGRAD_SOUNDSPEED 1
 #endif
 
+#if defined(BLACK_HOLES) || defined(RADTRANSFER) || defined(GALSF_FB_RPWIND_FROMSTARS) || defined(BH_POPIII_SEEDS) || defined(GALSF_FB_LOCAL_UV_HEATING) || defined(BH_PHOTONMOMENTUM) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN )
+#define DO_DENSITY_AROUND_STAR_PARTICLES
+#endif
 
 
 
@@ -531,34 +534,19 @@ typedef MyDouble MyBigFloat;
 #define CPU_FOF            27
 #define CPU_BLACKHOLES     28
 #define CPU_MISC           29
-#define CPU_SMTHCOMPUTE    30
-#define CPU_SMTHWAIT       31
-#define CPU_SMTHCOMM       32
-#define CPU_SMTHMISC       33
-#define CPU_GALSF_FB_GASRETURN      34
-#ifdef GRAIN_FLUID
-#define CPU_DRAGFORCE      35
-#define CPU_BACKREACT      36
-#define CPU_GRAINCOLL      37
-#else
-#define CPU_SNIIHEATING    35
-#define CPU_HIIHEATING     36
-#define CPU_LOCALWIND      37
-#endif
-#define CPU_BHACCEST       38
-#define CPU_FBMISC         39
-#define CPU_HYDNETWORK     40
-#define CPU_AGSDENSCOMPUTE 41
-#define CPU_AGSDENSWAIT    42
-#define CPU_AGSDENSCOMM    43
-#define CPU_AGSDENSMISC    44
-#define CPU_AGSTREEHMAXUPD 45
-#define CPU_MG_CIC         46
-#define CPU_MG_FIELDSOLVE  47
-#define CPU_MG_EFF_MASS    48
-#define CPU_SIDMSCATTER    49
-#define CPU_SIDMCELLOPEN   50
-#define CPU_PARTS          51  /* this gives the number of parts above (must be last) */
+#define CPU_DRAGFORCE      30
+#define CPU_GASRETURN      31
+#define CPU_SNIIHEATING    32
+#define CPU_HIIHEATING     33
+#define CPU_LOCALWIND      34
+#define CPU_HYDNETWORK     35
+#define CPU_AGSDENSCOMPUTE 36
+#define CPU_AGSDENSWAIT    37
+#define CPU_AGSDENSCOMM    38
+#define CPU_AGSDENSMISC    39
+#define CPU_SIDMSCATTER    40
+#define CPU_SIDMCELLOPEN   41
+#define CPU_PARTS          42  /* this gives the number of parts above (must be last) */
 
 #define CPU_STRING_LEN 120
 
@@ -1185,6 +1173,15 @@ extern struct global_data_all_processes
     double Grain_Size_Max;
 #endif
     
+#ifdef COSMIC_RAYS
+#ifdef GALSF_FB_SNE_HEATING
+    double CosmicRay_SNeFraction;
+#endif
+    double CosmicRayDiffusionCoeff;
+#endif
+    
+
+    
 #ifdef DISTORTIONTENSORPS
   /* present day velocity dispersion of DM particle in cm/s (e.g. Neutralino = 0.03 cm/s) */
   double DM_velocity_dispersion;
@@ -1235,11 +1232,6 @@ extern struct global_data_all_processes
   double SNeIIBW_Radius_Factor;
 #endif
 
-#ifdef COSMIC_RAYS
-    double CosmicRay_SNeFraction;
-    double CosmicRayDiffusionCoeff;
-#endif
-    
 #ifdef GALSF_FB_HII_HEATING
   double HIIRegion_fLum_Coupled;
   double HIIRegion_Temp;
@@ -1527,8 +1519,9 @@ extern ALIGN(32) struct particle_data
     
     MyFloat Hsml;
     MyFloat NumNgb;
-#if defined(BLACK_HOLES) || defined(GALSF_FB_RPWIND_FROMSTARS) || defined(RADTRANSFER) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN )
+#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
     MyFloat DensAroundStar;
+    MyFloat GradRho[3];
 #endif
     
 #ifdef GALSF_FB_SNE_HEATING
@@ -1551,10 +1544,6 @@ extern ALIGN(32) struct particle_data
     MyFloat Grain_Density;
     MyFloat Grain_Velocity[3];
 #endif
-#endif
-    
-#if defined(BH_POPIII_SEEDS) || defined(GALSF_FB_LOCAL_UV_HEATING) || defined(GALSF_FB_RPWIND_FROMSTARS) || defined(BH_PHOTONMOMENTUM) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN) || defined(GALSF_FB_SNE_HEATING)
-    MyFloat GradRho[3];
 #endif
     
 #if defined(BLACK_HOLES)
@@ -1812,6 +1801,9 @@ extern struct sph_particle_data
 #endif
 #ifdef TURB_DIFF_METALS
         MyDouble Metallicity[NUM_METAL_SPECIES][3];
+#endif
+#ifdef COSMIC_RAYS
+        MyDouble CosmicRayPressure[3];
 #endif
     } Gradients;
     MyFloat NV_T[3][3];             /*!< holds the tensor used for gradient estimation */
@@ -2203,6 +2195,7 @@ enum iofields
   IO_BFLD,
   IO_DBDT,
   IO_IMF,
+  IO_COSMICRAY_ENERGY,
   IO_DIVB,
   IO_ABVC,
   IO_AMDC,

@@ -249,6 +249,7 @@ struct hydrodata_in
 
 #ifdef COSMIC_RAYS
     MyDouble CosmicRayPressure;
+    MyDouble CosmicRayDiffusionCoeff;
 #endif
 
 #ifndef DONOTUSENODELIST
@@ -395,6 +396,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     
 #ifdef COSMIC_RAYS
     in->CosmicRayPressure = Get_Particle_CosmicRayPressure(i);
+    in->CosmicRayDiffusionCoeff = SphP[i].CosmicRayDiffusionCoeff;
 #endif
     
 }

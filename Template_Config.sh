@@ -97,7 +97,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##-----------------------------------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------------------------------
 #---------------------------------------- Cosmic Rays
-#COSMIC_RAYS                    # two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anistropic diffusion, streaming, injection by SNe
+#COSMIC_RAYS                    # two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anisotropic diffusion, streaming, injection by SNe
 ##-----------------------------------------------------------------------------------------------------
 ####################################################################################################
 
@@ -234,7 +234,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##EVALPOTENTIAL                 # computes gravitational potential
 ##BH_REPOSITION_ON_POTMIN       # repositions hole on potential minimum (requires EVALPOTENTIAL)
 ##DETACH_BLACK_HOLES            # Insert an independent data structure for BHs (currently exlicitly depends on SEPARATE_STELLARDOMAINDECOMP)
-##BH_IGNORE_ACCRETED_GAS_MOMENTUM # Do not transfer momentum for swallowed gas, but follow momentum for swallowed BHs
+##BH_FOLLOW_ACCRETED_GAS_MOMENTUM # Follow momentum for each swallowed gas parcel (add to BH; this ignores dissipation on small scales)
 ##BH_SEED_ON_POTMIN             # Seed in minimal potential instead of max density
 ##BH_SEED_STAR_MASS_FRACTION=0.02 # minimum star mass fraction for BH seeding
 ##-----------------------------------------------------------------------------------------------------

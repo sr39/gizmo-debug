@@ -1024,6 +1024,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     double S_L,S_R,PT_L,PT_R,e_L,e_R,S_M,P_M,Bx,vxL,vxR,tmp2,
             vdotB_L,vdotB_R,B2_L,B2_R,cs2rho_L,cs2rho_R,tmp,c_eff,Bx2,rho_wt_L,rho_wt_R;
     struct Conserved_var_Riemann U_s,U_ss,V_s, *Interface_State;
+    Interface_State = &Riemann_vec.L;
     B2_L = Riemann_vec.L.B[0]*Riemann_vec.L.B[0]+Riemann_vec.L.B[1]*Riemann_vec.L.B[1]+Riemann_vec.L.B[2]*Riemann_vec.L.B[2];
     B2_R = Riemann_vec.R.B[0]*Riemann_vec.R.B[0]+Riemann_vec.R.B[1]*Riemann_vec.R.B[1]+Riemann_vec.R.B[2]*Riemann_vec.R.B[2];
 

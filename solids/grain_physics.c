@@ -34,6 +34,7 @@ void apply_grain_dragforce(void)
         fflush(stdout);
     }
     
+    int i, k;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         if(P[i].Type != 0)
@@ -46,7 +47,7 @@ void apply_grain_dragforce(void)
                     double cs = sqrt( GAMMA * GAMMA_MINUS1 * P[i].Gas_InternalEnergy);
                     double R_grain = P[i].Grain_Size;
                     double rho_gas = P[i].Gas_Density * All.cf_a3inv;
-                    double rho_grain = P[i].Grain_Internal_Density;
+                    double rho_grain = All.Grain_Internal_Density;
                     double vgas_mag = 0.0;
                     for(k=0;k<3;k++) {vgas_mag+=P[i].Gas_Velocity[k]*P[i].Gas_Velocity[k];}
 
@@ -830,3 +831,5 @@ int grain_ngb_treefind_variable(MyDouble searchcenter[3], MyFloat hsml, int targ
 
 
 #endif
+
+

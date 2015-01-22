@@ -18,7 +18,7 @@
 /* --------------------------------------------------------------------------------- */
 {
 #ifdef HYDRO_SPH
-    double diffusion_wt,diffusion_wt_dt,dv2_ij,diffusion_wt_dt_m,diffusion_m_min,diff_vi_dot_r,diffusion_du_ij;
+    double diffusion_wt,diffusion_wt_dt,dv2_ij,diffusion_wt_dt_m,diff_vi_dot_r,diffusion_du_ij;
     /* out.dA_dt +=  diffusion_wt*(local.A-P[j].A) // this is the template for all turbulent diffusion terms */
     diffusion_wt = (local.TD_DiffCoeff + SphP[j].TD_DiffCoeff) * P[j].Mass * kernel.rho_ij_inv * kernel.dwk_ij / kernel.r;
     /* note, units of TD_DiffCoeff have already been corrected so that this combination has physical units */
@@ -50,7 +50,7 @@
     if((local.Mass>0)&&(P[j].Mass>0))
     {
         diffusion_wt_dt_m = 0.25 * (P[j].Mass + local.Mass) * diffusion_wt_dt;
-        diffusion_m_min = 0.01 * DMIN(local.Mass,P[j].Mass);
+        double diffusion_m_min = 0.01 * DMIN(local.Mass,P[j].Mass);
         if(diffusion_wt_dt_m > 0) if(diffusion_wt_dt_m >  diffusion_m_min) diffusion_wt_dt_m =  diffusion_m_min;
             if(diffusion_wt_dt_m < 0) if(diffusion_wt_dt_m < -diffusion_m_min) diffusion_wt_dt_m = -diffusion_m_min;
                 for(k=0;k<NUM_METAL_SPECIES;k++)
@@ -65,7 +65,7 @@
     
     if((local.Mass>0)&&(P[j].Mass>0)&&(local.TD_DiffCoeff>0)&&(SphP[j].TD_DiffCoeff))
     {
-        double diffusion_wt,diff_tmp;
+        double diffusion_wt;
         double wt_i,wt_j;
         // wt_i = wt_j = 0.5;
         wt_i = PPP[j].Hsml / (PPP[j].Hsml + local.Hsml); wt_j = 1.-wt_i; // this is consistent with our second-order face location //

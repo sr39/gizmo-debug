@@ -574,6 +574,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
     case IO_TSTP:
     case IO_DBDT:
     case IO_IMF:
+    case IO_COSMICRAY_ENERGY:
     case IO_DIVB:
     case IO_ABVC:
     case IO_COOLRATE:

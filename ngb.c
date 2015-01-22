@@ -1652,7 +1652,7 @@ int ngb_treefind_newstars(MyDouble searchcenter[3], MyFloat hsml, int target, in
     *startnode = -1;
     return numngb;
 }
-#endif // defined(GALSF_FB_RPWIND_LOCAL) && defined(GALSF_FB_RPWIND_FROMSTARS)
+#endif 
 
 
 

@@ -203,7 +203,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     
 #if defined(UNIFIED_FEEDBACK) || defined(BH_ENFORCE_EDDINGTON_LIMIT)
 #if (defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)) && (defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION))
-    double meddington, medd_max_accretable, medd_markedswallow;
+    double meddington, medd_max_accretable;
     double mass_to_swallow_edd, eddington_factor;
 #endif
 #endif

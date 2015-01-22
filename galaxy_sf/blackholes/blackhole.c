@@ -169,10 +169,6 @@ void blackhole_properties_loop(void)
     double fac, mdot, dt;
     double medd;
 
-#ifdef BH_ALPHADISK_ACCRETION
-    double mdot_alphadisk;
-#endif
-    
     for(i=0; i<N_active_loc_BHs; i++)
     {
         n = BlackholeTempInfo[i].index;
@@ -205,8 +201,8 @@ void blackhole_properties_loop(void)
         /* dump the results to the 'blackhole_details' files */
         fac=0; medd=0;
 #ifdef BH_ALPHADISK_ACCRETION
-        fac=BPP(n).BH_Mass_AlphaDisk;
-        medd=mdot_alphadisk;	
+        fac = BPP(n).BH_Mass_AlphaDisk;
+        medd = BlackholeTempInfo[i].mdot_alphadisk;
 #endif
         fprintf(FdBlackHolesDetails, "BH=%u %g %g %g %g %g %g %g %g   %2.7f %2.7f %2.7f\n",
                 P[n].ID, All.Time, BPP(n).BH_Mass, fac, P[n].Mass, mdot, medd,
@@ -261,7 +257,7 @@ void set_blackhole_mdot(int i, int n, double dt)
     int k;
     double m_tmp_for_bhar, mdisk_for_bhar, bh_mass;
     double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar;
-    double f0_for_bhar, fac;
+    double f0_for_bhar;
 #endif
 #ifdef BH_SUBGRIDBHVARIABILITY
     long nsubgridvar;
@@ -271,7 +267,7 @@ void set_blackhole_mdot(int i, int n, double dt)
     gsl_rng *random_generator_forbh;
 #endif
 #ifdef BH_BONDI
-    double  soundspeed, bhvel, rho, fac;
+    double  soundspeed, bhvel, rho;
 #endif
 #ifdef BH_ENFORCE_EDDINGTON_LIMIT
     double meddington;
@@ -300,7 +296,7 @@ void set_blackhole_mdot(int i, int n, double dt)
         bh_mass += BPP(n).BH_Mass_AlphaDisk;
 #endif
         fgas_for_bhar = BlackholeTempInfo[i].Mgas_in_Kernel / m_tmp_for_bhar;
-        fac = m_tmp_for_bhar * r0_for_bhar * sqrt(All.G*(m_tmp_for_bhar+bh_mass)/r0_for_bhar);
+        double fac = m_tmp_for_bhar * r0_for_bhar * sqrt(All.G*(m_tmp_for_bhar+bh_mass)/r0_for_bhar);
         /* All.G is G in code (physical) units */
         f_disk_for_bhar = fgas_for_bhar + (1.75*j_tmp_for_bhar/fac);
         if(f_disk_for_bhar>1) f_disk_for_bhar=1;
@@ -340,7 +336,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 #endif
     rho = BPP(n).DensAroundStar * All.cf_a3inv; /* we want all quantities in physical units */
     soundspeed = GAMMA*GAMMA_MINUS1 * BlackholeTempInfo[i].BH_InternalEnergy; // this is in physical units now
-    fac = pow(soundspeed+bhvel, 1.5);
+    double fac = pow(soundspeed+bhvel, 1.5);
     if(fac > 0)
     {
         double AccretionFactor = All.BlackHoleAccretionFactor;
@@ -402,6 +398,7 @@ void set_blackhole_mdot(int i, int n, double dt)
         n0_sgrid_elements=10.0; norm_subgrid=0.55*3.256/sqrt(n0_sgrid_elements);
         nsubgridvar=(long)P[n].ID + (long)(All.Time/((All.TimeMax-All.TimeBegin)/1000.));
         /* this line just allows 'resetting' the time constants every so often, while generally keeping them steady */
+        double fac;
         if(All.ComovingIntegrationOn)
             fac=omega_ri * (evaluate_stellar_age_Gyr(0.001)/(0.001*All.UnitTime_in_Megayears/All.HubbleParam));
         else
@@ -477,7 +474,7 @@ void set_blackhole_drag(int i, int n, double dt)
 {
 
     int k;
-    double meddington, fac;
+    double meddington;
 
     meddington = (4 * M_PI * GRAVITY * C * PROTONMASS /
                   (All.BlackHoleRadiativeEfficiency * C * C * THOMPSON) ) *
@@ -487,7 +484,7 @@ void set_blackhole_drag(int i, int n, double dt)
     /* add a drag force for the black-holes, accounting for the accretion */
     if((dt>0)&&(BPP(n).BH_Mass>0))
     {
-        fac = BPP(n).BH_Mdot * dt / BPP(n).BH_Mass;
+        double fac = BPP(n).BH_Mdot * dt / BPP(n).BH_Mass;
 #ifdef BH_STRONG_DRAG
         /* make the force stronger to keep the BH from wandering */
         fac = meddington * dt / BPP(n).BH_Mass;
@@ -521,7 +518,7 @@ void set_blackhole_drag(int i, int n, double dt)
 #endif
         double bhvel_df=0; for(k=0;k<3;k++) bhvel_df += BlackholeTempInfo[i].DF_mean_vel[k]*BlackholeTempInfo[i].DF_mean_vel[k];
         /* First term is approximation of the error function */
-        fac = 8 * (M_PI - 3) / (3 * M_PI * (4. - M_PI));
+        double fac = 8 * (M_PI - 3) / (3 * M_PI * (4. - M_PI));
         x = sqrt(bhvel_df) / (sqrt(2) * BlackholeTempInfo[i].DF_rms_vel);
         double fac_friction =  x / fabs(x) * sqrt(1 - exp(-x * x * (4 / M_PI + fac * x * x) / (1 + fac * x * x))) - 2 * x / sqrt(M_PI) * exp(-x * x);
         /* now the Coulomb logarithm */
@@ -624,7 +621,7 @@ void blackhole_final_loop(void)
         {
             for(k = 0; k < 3; k++)
             {
-#ifndef BH_IGNORE_ACCRETED_GAS_MOMENTUM
+#ifdef BH_FOLLOW_ACCRETED_GAS_MOMENTUM
                 P[n].Vel[k] = (P[n].Vel[k]*P[n].Mass + BlackholeTempInfo[i].accreted_momentum[k]) / (BlackholeTempInfo[i].accreted_Mass + P[n].Mass);
 #else
                 P[n].Vel[k] = (P[n].Vel[k]*P[n].Mass + BlackholeTempInfo[i].accreted_momentum[k]) / (BlackholeTempInfo[i].accreted_BH_Mass + P[n].Mass);

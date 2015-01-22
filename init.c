@@ -927,7 +927,7 @@ void setup_smoothinglengths(void)
     int i, no, p;
     if((RestartFlag == 0)||(RestartFlag==2)) // best for stability if we re-calc Hsml for snapshot restarts //
     {
-#if defined(GALSF_FB_RPWIND_FROMSTARS) || defined(RADTRANSFER) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN )
+#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
         for(i = 0; i < NumPart; i++)
 #else
             for(i = 0; i < N_gas; i++)

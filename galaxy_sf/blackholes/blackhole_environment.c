@@ -251,14 +251,21 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                 if( (P[j].Mass > 0) && (P[j].Type != 5) && (P[j].ID != id) )
                 {
                     wt = P[j].Mass;
-                    for (k=0;k<3;k++)
-                    {
-                        dP[k]=P[j].Pos[k]-pos[k];
-#ifdef PERIODIC
-                        dP[k]=NEAREST(dP[k]);
+                    dP[0] = P[j].Pos[0]-pos[0];
+                    dP[1] = P[j].Pos[1]-pos[1];
+                    dP[2] = P[j].Pos[2]-pos[2];
+#ifdef PERIODIC			/*  find the closest image in the given box size  */
+                    dP[0] = NEAREST_X(dP[0]);
+                    dP[1] = NEAREST_Y(dP[1]);
+                    dP[2] = NEAREST_Z(dP[2]);
 #endif
-                        dv[k]=P[j].Vel[k]-vel[k];
-                    }
+                    dv[0] = P[j].Vel[0]-vel[0];
+                    dv[1] = P[j].Vel[1]-vel[1];
+                    dv[2] = P[j].Vel[2]-vel[2];
+#ifdef SHEARING_BOX
+                    if(pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                    if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#endif
 #ifdef BH_DYNFRICTION
                     for (k=0;k<3;k++)
                     {

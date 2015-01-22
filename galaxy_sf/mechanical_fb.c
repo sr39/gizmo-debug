@@ -248,9 +248,10 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
     if(star_age > agemax) {
         yields[0]=1.4; yields[1]=0.0086; yields[2]=0.743; // All Z, Mg, Fe in total mass (SnIa)
     } else {
-        yields[0]=1.7; yields[1]=0.12; yields[2]=0.083; // SnII (per-SNe IMF-weighted averages)
+        yields[0]=2.0; yields[1]=0.12; yields[2]=0.0741; // SnII (per-SNe IMF-weighted averages)
     }
     }
+    if(NUM_METAL_SPECIES==1) {if(star_age > agemax) {yields[0]=1.4;} else {yields[0]=2.0;}}
 #ifdef GALSF_FB_RPROCESS_ENRICHMENT
     for(k=1;k<=NUM_RPROCESS_SPECIES;k++)
         yields[NUM_METAL_SPECIES-k] = 0.0; // R-process tracker
@@ -341,6 +342,9 @@ void particle2in_addFB_winds(struct addFBdata_in *in, int i)
         for(k=1;k<=NUM_RPROCESS_SPECIES;k++)
             yields[NUM_METAL_SPECIES-k] = 0.0; // R-process tracker
 #endif
+    } else {
+        for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=0.0;}
+        yields[0]=0.032;
     }
     for(k=0;k<NUM_METAL_SPECIES;k++) in->yields[k]=yields[k];
 #endif
@@ -661,7 +665,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     int startnode, numngb_inbox, listindex = 0;
     int j, k, n;
     double u,r2,h2;
-    double v_ejecta_max,kernel_zero,wk,dM,dP,dE,r2sne;
+    double v_ejecta_max,kernel_zero,wk,dM,dP,dE;
     double E_coupled,wk_sum,dP_sum,dP_boost_sum;
 
     struct kernel_addFB kernel;
@@ -693,9 +697,10 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
     // now define quantities that will be used below //
     double Esne51 = 0.5*local.SNe_v_ejecta*local.SNe_v_ejecta*local.Msne / unit_egy_SNe;
-    double RsneKPC_0=(0.0284/unitlength_in_kpc)*pow(Esne51,0.286); //Cioffi: weak external pressure
-    double RsneKPC=0.;
-    double RsneMAX=local.Hsml;
+    double r2sne, RsneKPC, RsneKPC_0, RsneMAX;
+    r2sne=0; RsneKPC=0.; RsneMAX=local.Hsml;
+    RsneKPC_0=(0.0284/unitlength_in_kpc)*pow(Esne51,0.286); //Cioffi: weak external pressure
+
 
 
   /* Now start the actual FB computation for this particle */
@@ -837,7 +842,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 }
 #endif
             
-#ifdef COSMIC_RAYS
+#if defined(COSMIC_RAYS) && defined(GALSF_FB_SNE_HEATING)
                 /* a fraction of the *INITIAL* energy goes into cosmic rays [this is -not- affected by the radiative losses above] */
                 double dE_init_coupled = 0.5 * dM * local.SNe_v_ejecta * local.SNe_v_ejecta;
                 SphP[j].CosmicRayEnergy += All.CosmicRay_SNeFraction * dE_init_coupled;
