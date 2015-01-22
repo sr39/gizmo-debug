@@ -73,6 +73,7 @@
         // conduction_wt *= Riemann_out.Face_Density;
         
         double cmag = 0.0;
+        double c_max = 0.0;
 #ifdef MAGNETIC
         double B_interface[3];
         /* should use the solution in the appropriate face of the Riemann problem for interface values */
@@ -93,6 +94,7 @@
         {
             for(k=0;k<3;k++)
             {
+                c_max += Face_Area_Vec[k] * kernel.dp[k];
                 cmag += B_interface[k] * Face_Area_Vec[k];
             }
             cmag *= B_interface_dot_grad_T / B_interface_mag;
@@ -100,6 +102,7 @@
             /* no magnetic field; use isotropic conduction equation */
             for(k=0;k<3;k++)
             {
+                c_max+=Face_Area_Vec[k] * kernel.dp[k];
                 cmag += Face_Area_Vec[k] * (wt_i*local.Gradients.InternalEnergy[k]
                                             + wt_j*SphP[j].Gradients.InternalEnergy[k]);
             }
@@ -107,13 +110,18 @@
 #else
         for(k=0;k<3;k++)
         {
+            c_max += Face_Area_Vec[k] * kernel.dp[k];
             cmag += Face_Area_Vec[k] * (wt_i*local.Gradients.InternalEnergy[k]
                                         + wt_j*SphP[j].Gradients.InternalEnergy[k]);
         }
 #endif
         /* slope-limiter to ensure heat always flows from hot to cold */
-        double c_max = 2.0 * Face_Area_Norm * (local.InternalEnergyPred-SphP[j].InternalEnergyPred) * rinv; // inter-particle gradient times tolerance //
-        cmag = MINMOD(c_max,cmag);
+        c_max *= rinv*rinv;
+        double du_cond = local.InternalEnergyPred-SphP[j].InternalEnergyPred;
+        cmag = MINMOD(MINMOD(MINMOD(cmag , c_max*du_cond), fabs(c_max)*du_cond) , Face_Area_Norm*du_cond*rinv);
+        //double c_max = 1.0 * Face_Area_Norm * (local.InternalEnergyPred-SphP[j].InternalEnergyPred) * rinv; // inter-particle gradient times tolerance //
+        //cmag = MINMOD(c_max,cmag);
+        
         /* now multiply through the coefficient to get the actual flux */
         cmag *= -conduction_wt;
         

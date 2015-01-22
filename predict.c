@@ -446,7 +446,7 @@ double INLINE_FUNC Get_Particle_Size(int i)
     return 2 / PPP[i].NumNgb * PPP[i].Hsml;
 #else
 #ifdef TWODIMS
-    return sqrt( M_PI / PPP[i].NumNgb ) * PPP[i].Hsml;
+    return sqrt( (M_PI/2.0) / PPP[i].NumNgb ) * PPP[i].Hsml;
 #else
     return sqrt( 4.0 * M_PI / (3.0 * PPP[i].NumNgb) ) * PPP[i].Hsml;
 #endif

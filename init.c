@@ -727,6 +727,7 @@ void init(void)
     
     
     
+    density();
     for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
     {
 #ifndef EOS_DEGENERATE

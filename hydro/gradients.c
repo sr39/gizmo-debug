@@ -738,19 +738,26 @@ void hydro_gradient_calc(void)
 
             
             
-#ifdef CONDUCTION
+#ifdef VISCOSITY
             {
-                SphP[i].Kappa_Conduction = All.ConductionCoeff;
-#ifdef CONDUCTION_SPITZER
-                /* calculate the thermal conductivities: use the Spitzer formula */
-                SphP[i].Kappa_Conduction *= pow(SphP[i].InternalEnergyPred, 2.5);
+                SphP[i].Eta_ShearViscosity = All.ShearViscosityCoeff;
+                SphP[i].Zeta_BulkViscosity = All.BulkViscosityCoeff;
+#ifdef VISCOSITY_BRAGINSKII
+                /* calculate the viscosity coefficients: use the Braginskii shear tensor formulation expanded to first order */
+                SphP[i].Eta_ShearViscosity *= pow(SphP[i].InternalEnergyPred, 2.5);
+                SphP[i].Zeta_BulkViscosity = 0;
                 
-                /* account for saturation (when the mean free path of electrons is large): estimate whether we're in that limit with the gradients */
-                double electron_free_path = All.ElectronFreePathFactor * SphP[i].InternalEnergyPred * SphP[i].InternalEnergyPred / (SphP[i].Density * All.cf_a3inv);
-                double du_conduction=0;
-                for(k=0;k<3;k++) {du_conduction += SphP[i].Gradients.InternalEnergy[k] * SphP[i].Gradients.InternalEnergy[k];}
-                double temp_scale_length = SphP[i].InternalEnergyPred / sqrt(du_conduction) * All.cf_atime;
-                SphP[i].Kappa_Conduction /= (1 + 4.2 * electron_free_path / temp_scale_length); // should be in physical units //
+                /* again need to account for possible saturation (when the mean free path of ions is large): estimate whether we're in that limit with the gradients */
+                double ion_free_path = All.ElectronFreePathFactor * SphP[i].InternalEnergyPred * SphP[i].InternalEnergyPred / (SphP[i].Density * All.cf_a3inv);
+                /* need an estimate of the internal energy gradient scale length, which we get by d(P/rho) = P/rho * (dP/P - drho/rho) */
+                double dv_magnitude=0, v_magnitude=0;
+                for(k=0;k<3;k++)
+                {
+                    for(k1=0;k1<3;k1++) {dv_magnitude += SphP[i].Gradients.Velocity[k][k1]*SphP[i].Gradients.Velocity[k][k1];}
+                    v_magnitude += SphP[i].VelPred[k]*SphP[i].VelPred[k];
+                }
+                double vel_scale_length = sqrt( v_magnitude / dv_magnitude ) * All.cf_atime;
+                SphP[i].Eta_ShearViscosity /= (1 + 4.2 * ion_free_path / vel_scale_length); // should be in physical units //
 #endif
             }
 #endif
