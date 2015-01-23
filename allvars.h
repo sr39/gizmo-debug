@@ -856,6 +856,9 @@ extern FILE *FdDE;  /*!< file handle for darkenergy.txt log-file. */
 
 
 
+#if defined(COOLING) && defined(GRACKLE)
+#include <grackle.h>
+#endif
 
 
 
@@ -1136,6 +1139,10 @@ extern struct global_data_all_processes
     RestartFile[100], ResubmitCommand[100], OutputListFilename[100];
     /* EnergyFile[100], CpuFile[100], InfoFile[100], TimingsFile[100], TimebinFile[100], */
 
+#ifdef GRACKLE
+    char GrackleDataFile[100];
+#endif
+    
   /*! table with desired output times */
   double OutputListTimes[MAXLEN_OUTPUTLIST];
   char OutputListFlag[MAXLEN_OUTPUTLIST];
@@ -1429,6 +1436,10 @@ extern struct global_data_all_processes
   int FourierGrid;     /*dimension of the Fourier transform (actual size is FourierGrid^3)*/
 #endif
 
+    
+#if defined(COOLING) && defined(GRACKLE)
+    code_units GrackleUnits;
+#endif
 }
 All;
 
@@ -1936,6 +1947,26 @@ extern struct sph_particle_data
     short int wakeup;                     /*!< flag to wake up particle */
 #endif
     
+#if defined(COOLING) && defined(GRACKLE)
+#if (GRACKLE_CHEMISTRY >= 1)
+    gr_float grHI;
+    gr_float grHII;
+    gr_float grHM;
+    gr_float grHeI;
+    gr_float grHeII;
+    gr_float grHeIII;
+#endif
+#if (GRACKLE_CHEMISTRY >= 2)
+    gr_float grH2I;
+    gr_float grH2II;
+#endif
+#if (GRACKLE_CHEMISTRY >= 3)
+    gr_float grDI;
+    gr_float grDII;
+    gr_float grHDI;
+#endif
+#endif
+    
 }
   *SphP,				/*!< holds SPH particle data on local processor */
   *DomainSphBuf;			/*!< buffer for SPH particle data in domain decomposition */
@@ -2246,6 +2277,18 @@ enum iofields
   IO_MG_PHI,
   IO_MG_ACCEL,
   
+  IO_grHI,
+  IO_grHII,
+  IO_grHM,
+  IO_grHeI,
+  IO_grHeII,
+  IO_grHeIII,
+  IO_grH2I,
+  IO_grH2II,
+  IO_grDI,
+  IO_grDII,
+  IO_grHDI,
+    
   IO_LASTENTRY			/* This should be kept - it signals the end of the list */
 };
 

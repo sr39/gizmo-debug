@@ -301,6 +301,10 @@ void begrun(void)
       */
       strcpy(All.SnapshotFileBase, all.SnapshotFileBase);
 
+#ifdef GRACKLE
+      strcpy(All.GrackleDataFile, all.GrackleDataFile);
+#endif
+
 #ifdef EOS_DEGENERATE
       strcpy(All.EosTable, all.EosTable);
       strcpy(All.EosSpecies, all.EosSpecies);
@@ -1326,7 +1330,13 @@ void read_parameter_file(char *fname)
 #ifdef COOLING
         All.CoolingOn = 1;
 #endif
-      
+        
+#ifdef GRACKLE
+        strcpy(tag[nt], "GrackleDataFile");
+        addr[nt] = All.GrackleDataFile;
+        id[nt++] = STRING;
+#endif
+        
         All.StarformationOn = 0;
 #ifdef GALSF
         All.StarformationOn = 1;

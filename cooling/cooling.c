@@ -181,6 +181,11 @@ double DoCooling(double u_old, double rho, double dt, double *ne_guess, int targ
   double LambdaNet;
   int iter=0, iter_upper=0, iter_lower=0;
 
+#ifdef GRACKLE
+    return CallGrackle(u_old, rho, dt, ne_guess, target, 0);
+#endif
+    
+    
   DoCool_u_old_input = u_old;
   DoCool_rho_input = rho;
   DoCool_dt_input = dt;
@@ -272,32 +277,39 @@ double DoCooling(double u_old, double rho, double dt, double *ne_guess, int targ
  */
 double GetCoolingTime(double u_old, double rho, double *ne_guess, int target)
 {
-  double u;
-  double ratefact;
-  double LambdaNet, coolingtime;
-
-  DoCool_u_old_input = u_old;
-  DoCool_rho_input = rho;
-  DoCool_ne_guess_input = *ne_guess;
-
-  rho *= All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;	/* convert to physical cgs units */
-  u_old *= All.UnitPressure_in_cgs / All.UnitDensity_in_cgs;
-
-  nHcgs = XH * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
-  ratefact = nHcgs * nHcgs / rho;
-  u = u_old;
-  LambdaNet = CoolingRateFromU(u, rho, ne_guess, target);
-
-  /* bracketing */
-
-  if(LambdaNet >= 0)		/* ups, we have actually heating due to UV background */
-    return 0;
-
-  coolingtime = u_old / (-ratefact * LambdaNet);
-
-  coolingtime *= All.HubbleParam / All.UnitTime_in_s;
-
-  return coolingtime;
+    double u;
+    double ratefact;
+    double LambdaNet, coolingtime;
+    
+#if defined(GRACKLE) && !defined(GALSF_EFFECTIVE_EQS)
+    coolingtime = CallGrackle(u_old, rho, 0.0, ne_guess, target, 1);
+    if(coolingtime >= 0) coolingtime = 0.0;
+    coolingtime *= All.HubbleParam / All.UnitTime_in_s;
+    return coolingtime;
+#endif
+    
+    DoCool_u_old_input = u_old;
+    DoCool_rho_input = rho;
+    DoCool_ne_guess_input = *ne_guess;
+    
+    rho *= All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;	/* convert to physical cgs units */
+    u_old *= All.UnitPressure_in_cgs / All.UnitDensity_in_cgs;
+    
+    nHcgs = XH * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
+    ratefact = nHcgs * nHcgs / rho;
+    u = u_old;
+    LambdaNet = CoolingRateFromU(u, rho, ne_guess, target);
+    
+    /* bracketing */
+    
+    if(LambdaNet >= 0)		/* ups, we have actually heating due to UV background */
+        return 0;
+    
+    coolingtime = u_old / (-ratefact * LambdaNet);
+    
+    coolingtime *= All.HubbleParam / All.UnitTime_in_s;
+    
+    return coolingtime;
 }
 
 
@@ -1362,17 +1374,22 @@ void IonizeParamsFunction(void)
 
 void InitCool(void)
 {
-  if(ThisTask == 0)
-    printf("Initializing cooling ...\n");
-
-  InitCoolMemory();
-  MakeCoolingTable();
-  ReadIonizeParams("TREECOOL");
-  All.Time = All.TimeBegin;
-  set_cosmo_factors_for_current_time();
-  IonizeParams();
+    if(ThisTask == 0)
+        printf("Initializing cooling ...\n");
+    
+    All.Time = All.TimeBegin;
+    set_cosmo_factors_for_current_time();
+    
+#ifdef GRACKLE
+    InitGrackle();
+#endif
+    
+    InitCoolMemory();
+    MakeCoolingTable();
+    ReadIonizeParams("TREECOOL");
+    IonizeParams();
 #ifdef COOL_METAL_LINES_BY_SPECIES
-  LoadMultiSpeciesTables();
+    LoadMultiSpeciesTables();
 #endif
 }
 

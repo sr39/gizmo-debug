@@ -91,6 +91,9 @@ OPTIMIZE = -Wall  -g   # optimization and warning flags (default)
 
 MPICHLIB = -lmpich
 
+GRACKLEINCL =
+GRACKLELIBS = -lgrackle
+
 ifeq (NOTYPEPREFIX_FFTW,$(findstring NOTYPEPREFIX_FFTW,$(CONFIGVARS)))  # fftw installed without type prefix?
     FFTW_LIBNAMES =  #-lrfftw_mpi -lfftw_mpi -lrfftw -lfftw
 else
@@ -441,6 +444,15 @@ HDF5INCL =
 HDF5LIB  =
 endif
 
+
+ifeq (GRACKLE,$(findstring GRACKLE,$(CONFIGVARS)))
+OPT += -DCONFIG_BFLOAT_8
+else
+GRACKLEINCL =
+GRACKLELIBS =
+endif
+
+
 SYSTEM_OBJS =   system/system.o system/allocate.o system/mymalloc.o system/parallel_sort.o \
                 system/peano.o system/parallel_sort_special.o system/mpi_util.o
 
@@ -522,6 +534,10 @@ ifeq (OUTPUTLINEOFSIGHT,$(findstring OUTPUTLINEOFSIGHT,$(CONFIGVARS)))
 OBJS    += structure/lineofsight.o
 endif
 
+ifeq (GRACKLE,$(findstring GRACKLE,$(CONFIGVARS)))
+OBJS	+= cooling/grackle.o
+endif
+
 ifeq (COOLING,$(findstring COOLING,$(CONFIGVARS)))
 OBJS    += cooling/cooling.o
 INCL	+= cooling/cooling.h
@@ -575,7 +591,7 @@ OBJS += modules/power_spec/adj_box_powerspec.o
 INCL += modules/power_spec/adj_box_powerspec_proto.h
 endif
 
-CFLAGS = $(OPTIONS) $(GSL_INCL) $(FFTW_INCL) $(HDF5INCL) $(GMP_INCL)
+CFLAGS = $(OPTIONS) $(GSL_INCL) $(FFTW_INCL) $(HDF5INCL) $(GMP_INCL) $(GRACKLEINCL)
 
 ifeq (VIP,$(findstring VIP,$(CONFIGVARS)))
 FFLAGS = $(FOPTIONS)
@@ -593,7 +609,7 @@ endif
 FFTW = $(FFTW_LIBS)  $(FFTW_LIBNAMES) 
 
 
-LIBS   = -lm $(HDF5LIB) -g $(MPICHLIB) $(GSL_LIBS) -lgsl -lgslcblas $(FFTW)
+LIBS   = -lm $(HDF5LIB) -g $(MPICHLIB) $(GSL_LIBS) -lgsl -lgslcblas $(FFTW) $(GRACKLELIBS)
 
 ifeq (OMP_NUM_THREADS,$(findstring OMP_NUM_THREADS,$(CONFIGVARS))) 
 LIBS   +=  -lpthread

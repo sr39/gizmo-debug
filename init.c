@@ -778,6 +778,30 @@ void init(void)
         SphP[i].RadFluxAGN = 0;
 #endif
         
+        
+#ifdef GRACKLE
+        if(RestartFlag == 0)
+        {
+#if (GRACKLE_CHEMISTRY >= 1)
+            SphP[i].grHI    = HYDROGEN_MASSFRAC;
+            SphP[i].grHII   = 1.0e-20;
+            SphP[i].grHM    = 1.0e-20;
+            SphP[i].grHeI   = 1.0 - HYDROGEN_MASSFRAC;
+            SphP[i].grHeII  = 1.0e-20;
+            SphP[i].grHeIII = 1.0e-20;
+#endif
+#if (GRACKLE_CHEMISTRY >= 2)
+            SphP[i].grH2I   = 1.0e-20;
+            SphP[i].grH2II  = 1.0e-20;
+#endif
+#if (GRACKLE_CHEMISTRY >= 3)
+            SphP[i].grDI    = 2.0 * 3.4e-5;
+            SphP[i].grDII   = 1.0e-20;
+            SphP[i].grHDI   = 1.0e-20;
+#endif
+        }
+#endif
+        
     }
     
     

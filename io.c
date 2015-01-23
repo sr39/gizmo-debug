@@ -389,6 +389,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	  {
 #if defined(RADTRANSFER)
 	    *fp++ = SphP[pindex].HI;
+#elif (GRACKLE_CHEMISTRY > 0)
+        *fp++ = SphP[pindex].grHI;
 #else
 	    double u, ne, nh0 = 0;
 	    double nHeII;
@@ -1201,6 +1203,129 @@ case IO_MG_PHI:      /* scalar field fluctuations */
     case IO_MG_ACCEL:      /* modified gravity acceleration */
       break;
       
+
+        case IO_grHI:
+#if (GRACKLE_CHEMISTRY >= 1)
+            for(n = 0; n < pc; pindex++){
+                if(P[pindex].Type == type){
+                    *fp++ = SphP[pindex].grHI;
+                    n++;
+                }
+            }
+#endif
+            break;
+            
+        case IO_grHII:
+#if (GRACKLE_CHEMISTRY >= 1)
+            for(n = 0; n < pc; pindex++){
+                if(P[pindex].Type == type){
+                    *fp++ = SphP[pindex].grHII;
+                    n++;
+                }
+            }
+#endif
+            break;
+            
+        case IO_grHM:
+#if (GRACKLE_CHEMISTRY >= 1)
+            for(n = 0; n < pc; pindex++){
+                if(P[pindex].Type == type){
+                    *fp++ = SphP[pindex].grHM;
+                    n++;
+                }
+            }
+#endif
+            break;
+            
+        case IO_grHeI:
+#if (GRACKLE_CHEMISTRY >= 1)
+            for(n = 0; n < pc; pindex++){
+                if(P[pindex].Type == type){
+                    *fp++ = SphP[pindex].grHeI;
+                    n++;
+                }
+            }
+#endif
+            break;
+            
+        case IO_grHeII:
+#if (GRACKLE_CHEMISTRY >= 1)
+            for(n = 0; n < pc; pindex++){
+                if(P[pindex].Type == type){
+                    *fp++ = SphP[pindex].grHeII;
+                    n++;
+                }
+            }
+#endif
+            break;
+            
+        case IO_grHeIII:
+#if (GRACKLE_CHEMISTRY >= 1)
+            for(n = 0; n < pc; pindex++){
+                if(P[pindex].Type == type){
+                    *fp++ = SphP[pindex].grHeIII;
+                    n++;
+                }
+            }
+#endif
+            break;
+            
+        case IO_grH2I:
+#if (GRACKLE_CHEMISTRY >= 2)
+            for(n = 0; n < pc; pindex++){
+                if(P[pindex].Type == type){
+                    *fp++ = SphP[pindex].grH2I;
+                    n++;
+                }
+            }
+#endif
+            break;
+            
+        case IO_grH2II:
+#if (GRACKLE_CHEMISTRY >= 2)
+            for(n = 0; n < pc; pindex++){
+                if(P[pindex].Type == type){
+                    *fp++ = SphP[pindex].grH2II;
+                    n++;
+                }
+            }
+#endif
+            break;
+            
+        case IO_grDI:
+#if (GRACKLE_CHEMISTRY >= 3)
+            for(n = 0; n < pc; pindex++){
+                if(P[pindex].Type == type){
+                    *fp++ = SphP[pindex].grDI;
+                    n++;
+                }
+            }
+#endif
+            break;
+            
+        case IO_grDII:
+#if (GRACKLE_CHEMISTRY >= 3)
+            for(n = 0; n < pc; pindex++){
+                if(P[pindex].Type == type){
+                    *fp++ = SphP[pindex].grDII;
+                    n++;
+                }
+            }
+#endif
+            break;
+            
+        case IO_grHDI:
+#if (GRACKLE_CHEMISTRY >= 3)
+            for(n = 0; n < pc; pindex++){
+                if(P[pindex].Type == type){
+                    *fp++ = SphP[pindex].grHDI;
+                    n++;
+                }
+            }
+#endif
+            break;
+            
+            
     case IO_LASTENTRY:
       endrun(213);
       break;
@@ -1312,6 +1437,17 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
     case IO_VSTURB_DISS:
     case IO_VSTURB_DRIVE:
     case IO_MG_PHI:
+        case IO_grHI:
+        case IO_grHII:
+        case IO_grHM:
+        case IO_grHeI:
+        case IO_grHeII:
+        case IO_grHeIII:
+        case IO_grH2I:
+        case IO_grH2II:
+        case IO_grDI:
+        case IO_grDII:
+        case IO_grHDI:
       if(mode)
 	bytes_per_blockelement = sizeof(MyInputFloat);
       else
@@ -1538,7 +1674,19 @@ int get_values_per_blockelement(enum iofields blocknr)
     case IO_VSTURB_DISS:
     case IO_VSTURB_DRIVE:
     case IO_MG_PHI:
-      values = 1;
+        case IO_grHI:
+        case IO_grHII:
+        case IO_grHM:
+        case IO_grHeI:
+        case IO_grHeII:
+        case IO_grHeIII:
+        case IO_grH2I:
+        case IO_grH2II:
+        case IO_grDI:
+        case IO_grDII:
+        case IO_grHDI:
+        case IO_fH2:
+    values = 1;
       break;
 
     case IO_EDDINGTON_TENSOR:
@@ -1711,7 +1859,18 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
     case IO_CHEM:
     case IO_VSTURB_DISS:
     case IO_VSTURB_DRIVE:
-      for(i = 1; i < 6; i++)
+        case IO_grHI:
+        case IO_grHII:
+        case IO_grHM:
+        case IO_grHeI:
+        case IO_grHeII:
+        case IO_grHeIII:
+        case IO_grH2I:
+        case IO_grH2II:
+        case IO_grDI:
+        case IO_grDII:
+        case IO_grHDI:
+    for(i = 1; i < 6; i++)
 	typelist[i] = 0;
       return ngas;
       break;
@@ -1808,13 +1967,14 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
 	  typelist[i] = 0;
       return nsel;
       break;
-
+            
     case IO_MG_ACCEL:
       for(i = 2; i < 6; i++)
         typelist[i] = 0;
       return ngas + header.npart[1];
       break;
-    
+            
+            
     case IO_LASTENTRY:
       endrun(216);
       break;
@@ -2306,6 +2466,40 @@ int blockpresent(enum iofields blocknr)
       return 0;
       break;
       
+
+        case IO_grHI:
+        case IO_grHII:
+        case IO_grHM:
+        case IO_grHeI:
+        case IO_grHeII:
+        case IO_grHeIII:
+#if (GRACKLE_CHEMISTRY >= 1)
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+            
+        case IO_grH2I:
+        case IO_grH2II:
+#if (GRACKLE_CHEMISTRY >= 2)
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+            
+        case IO_grDI:
+        case IO_grDII:
+        case IO_grHDI:
+#if (GRACKLE_CHEMISTRY >= 3)
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+            
+            
     case IO_LASTENTRY:
       return 0;			/* will not occur */
     }
@@ -2606,7 +2800,41 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
     case IO_MG_ACCEL:
       strncpy(label, "MGAC", 4);
       break;  
-      
+        case IO_grHI:
+            strncpy(label, "gHI", 4);
+            break;
+        case IO_grHII:
+            strncpy(label, "gHII", 4);
+            break;
+        case IO_grHM:
+            strncpy(label, "gHM", 4);
+            break;
+        case IO_grHeI:
+            strncpy(label, "gHeI", 4);
+            break;
+        case IO_grHeII:
+            strncpy(label, "gHe2", 4);
+            break;
+        case IO_grHeIII:
+            strncpy(label, "gHe3", 4);
+            break;
+        case IO_grH2I:
+            strncpy(label, "gH2I", 4);
+            break;
+        case IO_grH2II:
+            strncpy(label, "H2II", 4);
+            break;
+        case IO_grDI:
+            strncpy(label, "gDI", 4);
+            break;
+        case IO_grDII:
+            strncpy(label, "gDII", 4);
+            break;
+        case IO_grHDI:
+            strncpy(label, "gHDI", 4);
+            break;
+
+            
     case IO_LASTENTRY:
       endrun(217);
       break;
@@ -2902,6 +3130,39 @@ void get_dataset_name(enum iofields blocknr, char *buf)
     case IO_MG_ACCEL:
       strcpy(buf, "ModifiedGravityAcceleration");
       break;
+        case IO_grHI:
+            strcpy(buf, "GrackleHI");
+            break;
+        case IO_grHII:
+            strcpy(buf, "GrackleHII");
+            break;
+        case IO_grHM:
+            strcpy(buf, "GrackleHM");
+            break;
+        case IO_grHeI:
+            strcpy(buf, "GrackleHeI");
+            break;
+        case IO_grHeII:
+            strcpy(buf, "GrackleHeII");
+            break;
+        case IO_grHeIII:
+            strcpy(buf, "GrackleHeIII");
+            break;
+        case IO_grH2I:
+            strcpy(buf, "GrackleH2I");
+            break;
+        case IO_grH2II:
+            strcpy(buf, "GrackleH2II");
+            break;
+        case IO_grDI:
+            strcpy(buf, "GrackleDI");
+            break;
+        case IO_grDII:
+            strcpy(buf, "GrackleDII");
+            break;
+        case IO_grHDI:
+            strcpy(buf, "GrackleHDI");
+            break;
       
     case IO_LASTENTRY:
       endrun(218);

@@ -196,6 +196,10 @@ BAL_f_accretion              0.5        % fraction of gas swallowed by BH (BH_BA
 BAL_v_outflow                30000	    % velocity (km/s) of BAL outflow (BH_BAL_WINDS) 
 
 
+%-------------- Grackle UVB file (GRACKLE on)
+GrackleDataFile		     CloudyData_UVB=HM2012.h5
+
+
 %-------------------------------------------------------------------------
 %------------------ Driven Turbulence (Large-Eddy boxes) -----------------
 %-------------------------------------------------------------------------
