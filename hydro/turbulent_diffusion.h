@@ -63,7 +63,7 @@
     
 #else // ends SPH portion of these routines
     
-    if((local.Mass>0)&&(P[j].Mass>0)&&(local.TD_DiffCoeff>0)&&(SphP[j].TD_DiffCoeff))
+    if((local.Mass>0)&&(P[j].Mass>0)&&((local.TD_DiffCoeff>0)||(SphP[j].TD_DiffCoeff>0)))
     {
         double diffusion_wt;
         double wt_i,wt_j;
@@ -81,9 +81,9 @@
         double massflux = 0.0;
         for(k=0;k<3;k++) {massflux+=Face_Area_Vec[k]*Face_Area_Vec[k];}
         massflux = fabs( sqrt(massflux) * diffusion_wt /
-                        (0.25*DMIN(local.Hsml,PPP[j].Hsml) * All.cf_atime)
+                        (DMIN(local.Hsml,PPP[j].Hsml) * All.cf_atime)
                         * dt_hydrostep / (DMIN(local.Mass,P[j].Mass)) );
-        if(massflux > 0.1) {diffusion_wt *= 0.1/massflux;}
+        if(massflux > 0.25) {diffusion_wt *= 0.25/massflux;}
         
 #ifdef TURB_DIFF_ENERGY  // turbulent thermal energy diffusion //
         double diff_u = 0.0;
@@ -99,11 +99,11 @@
         if(fabs(conduction_wt) > 0)
         {
             // enforce a flux limiter for stability (to prevent overshoot) //
-            double du_ij_cond = 0.5*DMIN(DMIN(0.5*fabs(local.Mass*local.InternalEnergyPred-P[j].Mass*SphP[j].InternalEnergyPred),
+            double du_ij_cond = 0.5*DMIN(DMIN(0.5*fabs(DMIN(local.Mass,P[j].Mass)*(local.InternalEnergyPred-SphP[j].InternalEnergyPred)),
                                               local.Mass*local.InternalEnergyPred),
                                          P[j].Mass*SphP[j].InternalEnergyPred);
-            if(fabs(conduction_wt)>du_ij_cond) {conduction_wt *= du_ij_cond/fabs(conduction_wt);}
-            Fluxes.p += conduction_wt / dt_hydrostep;
+            if(fabs(conduction_wt)>du_ij_cond) {diff_u *= du_ij_cond/fabs(conduction_wt);}
+            Fluxes.p += diff_u;
         } // if(conduction_wt > 0)
 #endif
 #ifdef TURB_DIFF_VELOCITY // turbulent 'velocity diffusion': this is a turbulent effective viscosity
@@ -142,7 +142,7 @@
             double c_max = 2.0 * Face_Area_Norm * (local.Metallicity[k_species]-P[j].Metallicity[k_species]) * rinv; // inter-particle gradient times tolerance //
             diff_tmp = -diffusion_wt_z * MINMOD(c_max,diff_tmp);
 
-            double zlim = 0.25*DMIN(DMIN(0.5*fabs(local.Mass*local.Metallicity[k_species]-P[j].Mass*P[j].Metallicity[k_species]),
+            double zlim = 0.5*DMIN(DMIN(0.5*fabs(DMIN(local.Mass,P[j].Mass)*(local.Metallicity[k_species]-P[j].Metallicity[k_species])),
                                               local.Mass*local.Metallicity[k_species]),
                                                 P[j].Mass*P[j].Metallicity[k_species]);
             if(fabs(diff_tmp)>zlim) {diff_tmp*=zlim/fabs(diff_tmp);}

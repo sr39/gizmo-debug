@@ -130,9 +130,9 @@
         if(fabs(conduction_wt) > 0)
         {
             // enforce a flux limiter for stability (to prevent overshoot) //
-            double du_ij_cond = 0.5*DMIN(DMIN(0.5*fabs(local.Mass*local.InternalEnergyPred-P[j].Mass*SphP[j].InternalEnergyPred),
-                                          local.Mass*local.InternalEnergyPred),
-                                          P[j].Mass*SphP[j].InternalEnergyPred);
+            double du_ij_cond = 0.5*DMIN(DMIN(0.5*fabs(DMIN(local.Mass,P[j].Mass)*(local.InternalEnergyPred-SphP[j].InternalEnergyPred)),
+                                              local.Mass*local.InternalEnergyPred),
+                                         P[j].Mass*SphP[j].InternalEnergyPred);
             if(fabs(conduction_wt)>du_ij_cond) {conduction_wt *= du_ij_cond/fabs(conduction_wt);}
             Fluxes.p += conduction_wt / dt_hydrostep;
         } // if(conduction_wt > 0)
