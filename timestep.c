@@ -457,10 +457,10 @@ integertime get_timestep(int p,		/*!< particle index */
             double L_tdiff_inv = sqrt(SphP[p].Gradients.Density[0]*SphP[p].Gradients.Density[0] +
                                       SphP[p].Gradients.Density[1]*SphP[p].Gradients.Density[1] +
                                       SphP[p].Gradients.Density[2]*SphP[p].Gradients.Density[2]) / SphP[p].Density;
-            double L_tdiff = 1./(L_tdiff_inv + 1./L_particle) * All.cf_atime;
-            double dt_tdiff = 0.25 * L_tdiff*L_tdiff / (1.0e-33 + SphP[p].TD_DiffCoeff);
+            double L_tdiff = 1./(L_tdiff_inv + 0./L_particle) * All.cf_atime;
+            double dt_tdiff = 2.0 * L_tdiff*L_tdiff / (1.0e-33 + SphP[p].TD_DiffCoeff);
             // here, we use DIFFUSIVITIES, so there is no extra density power in the equation //
-            if(dt_tdiff < dt) dt = dt_tdiff;
+            //if(dt_tdiff < dt) dt = dt_tdiff;
 #endif
             
             
