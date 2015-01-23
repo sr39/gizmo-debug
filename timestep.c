@@ -411,30 +411,45 @@ integertime get_timestep(int p,		/*!< particle index */
             if(dt_courant < dt) dt = dt_courant;
 
 #ifdef CONDUCTION
-            double L_cond_inv = sqrt(SphP[p].Gradients.InternalEnergy[0]*SphP[p].Gradients.InternalEnergy[0] +
-                                     SphP[p].Gradients.InternalEnergy[1]*SphP[p].Gradients.InternalEnergy[1] +
-                                     SphP[p].Gradients.InternalEnergy[2]*SphP[p].Gradients.InternalEnergy[2]) / SphP[p].InternalEnergy;
-            double L_cond = 1./(L_cond_inv + 1./L_particle) * All.cf_atime;
-            double dt_conduction = 0.5 * L_cond*L_cond / (1.0e-33 + SphP[p].Kappa_Conduction);
-            // since we use CONDUCTIVITIES, not DIFFUSIVITIES, we need to add a power of density to get the right units //
-            dt_conduction *= SphP[p].Density;
-            if(dt_conduction < dt) dt = dt_conduction;
+            {
+                double L_cond_inv = sqrt(SphP[p].Gradients.InternalEnergy[0]*SphP[p].Gradients.InternalEnergy[0] +
+                                         SphP[p].Gradients.InternalEnergy[1]*SphP[p].Gradients.InternalEnergy[1] +
+                                         SphP[p].Gradients.InternalEnergy[2]*SphP[p].Gradients.InternalEnergy[2]) / SphP[p].InternalEnergy;
+                double L_cond = 1./(L_cond_inv + 1./L_particle) * All.cf_atime;
+                double dt_conduction = 0.5 * L_cond*L_cond / (1.0e-33 + SphP[p].Kappa_Conduction);
+                // since we use CONDUCTIVITIES, not DIFFUSIVITIES, we need to add a power of density to get the right units //
+                dt_conduction *= SphP[p].Density;
+                if(dt_conduction < dt) dt = dt_conduction;
+            }
+#endif
+
+#ifdef COSMIC_RAYS
+            {
+                double L_cond_inv = sqrt(SphP[p].Gradients.CosmicRayPressure[0]*SphP[p].Gradients.CosmicRayPressure[0] +
+                                         SphP[p].Gradients.CosmicRayPressure[1]*SphP[p].Gradients.CosmicRayPressure[1] +
+                                         SphP[p].Gradients.CosmicRayPressure[2]*SphP[p].Gradients.CosmicRayPressure[2]) / Get_Particle_CosmicRayPressure(p);
+                double L_cond = 1./(L_cond_inv + 0./L_particle) * All.cf_atime;
+                double dt_conduction = 0.5 * L_cond*L_cond / (1.0e-33 + SphP[p].CosmicRayDiffusionCoeff);
+                if(dt_conduction < dt) dt = dt_conduction;
+            }
 #endif
 
             
 #ifdef VISCOSITY
-            int kv1,kv2; double dv_mag=0,v_mag=0;
-            for(kv1=0;kv1<3;kv1++)
             {
-                for(kv2=0;kv2<3;kv2++) {dv_mag+=SphP[p].Gradients.Velocity[kv1][kv2]*SphP[p].Gradients.Velocity[kv1][kv2];}
-                v_mag+=P[p].Vel[kv1]*P[p].Vel[kv1];
+                int kv1,kv2; double dv_mag=0,v_mag=0;
+                for(kv1=0;kv1<3;kv1++)
+                {
+                    for(kv2=0;kv2<3;kv2++) {dv_mag+=SphP[p].Gradients.Velocity[kv1][kv2]*SphP[p].Gradients.Velocity[kv1][kv2];}
+                    v_mag+=P[p].Vel[kv1]*P[p].Vel[kv1];
+                }
+                v_mag += 1.0e-33;
+                double L_visc = 1. / (sqrt(dv_mag/v_mag) + 1./L_particle) * All.cf_atime;
+                double visc_coeff = sqrt(SphP[p].Eta_ShearViscosity*SphP[p].Eta_ShearViscosity + SphP[p].Zeta_BulkViscosity*SphP[p].Zeta_BulkViscosity);
+                double dt_viscosity = 0.5 * L_visc*L_visc / (1.0e-33 + visc_coeff) * SphP[p].Density;
+                // since we use VISCOSITIES, not DIFFUSIVITIES, we need to add a power of density to get the right units //
+                if(dt_viscosity < dt) dt = dt_viscosity;
             }
-            v_mag += 1.0e-33;
-            double L_visc = 1. / (sqrt(dv_mag/v_mag) + 1./L_particle) * All.cf_atime;
-            double visc_coeff = sqrt(SphP[p].Eta_ShearViscosity*SphP[p].Eta_ShearViscosity + SphP[p].Zeta_BulkViscosity*SphP[p].Zeta_BulkViscosity);
-            double dt_viscosity = 0.5 * L_visc*L_visc / (1.0e-33 + visc_coeff) * SphP[p].Density;
-            // since we use VISCOSITIES, not DIFFUSIVITIES, we need to add a power of density to get the right units //
-            if(dt_viscosity < dt) dt = dt_viscosity;
 #endif
             
 

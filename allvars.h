@@ -88,6 +88,10 @@
 #if defined(EOS_DEGENERATE) || defined(COSMIC_RAYS)
 #define NON_IDEAL_EOS
 #endif
+#ifdef COSMIC_RAYS
+#define GAMMA_COSMICRAY (4.0/3.0)
+#define GAMMA_COSMICRAY_MINUS1 (GAMMA_COSMICRAY-1)
+#endif
 
 
 #if defined(CONDUCTION) || defined(TURB_DIFF_ENERGY) || defined(NON_IDEAL_EOS)
@@ -120,14 +124,6 @@
 
 #if defined(TURB_DIFF_ENERGY) || defined(TURB_DIFF_VELOCITY) || defined(TURB_DIFF_MASS)
 #define TURB_DIFFUSION /* master switch to calculate properties needed for scalar turbulent diffusion/mixing: must enable with any specific version */
-#endif
-
-
-/* purely internal flags for the SIDM module */
-#ifdef ADAPTIVE_SIDM_HSML
-#ifndef ADAPTIVE_GRAVSOFT_FORALL
-#define ADAPATIVE_GRAVSOFT_FORALL
-#endif
 #endif
 
 

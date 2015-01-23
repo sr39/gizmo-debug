@@ -257,6 +257,15 @@ void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs
     Riemann_vec.L.u  = Riemann_vec.L.p / (GAMMA_MINUS1 * Riemann_vec.L.rho);
     Riemann_vec.R.u  = Riemann_vec.R.p / (GAMMA_MINUS1 * Riemann_vec.R.rho);
 #endif
+#ifdef COSMIC_RAYS
+    /*
+        double u_cr;
+        u_cr = (Riemann_vec.L.p / Riemann_vec.L.rho - GAMMA_MINUS1 * Riemann_vec.L.u) / GAMMA_COSMICRAY_MINUS1;
+        if(u_cr > 0) {Riemann_vec.L.u += u_cr;}
+        u_cr = (Riemann_vec.R.p / Riemann_vec.R.rho - GAMMA_MINUS1 * Riemann_vec.R.u) / GAMMA_COSMICRAY_MINUS1;
+        if(u_cr > 0) {Riemann_vec.R.u += u_cr;}
+    */
+#endif
     
 #ifdef MAGNETIC
     struct rotation_matrix rot_matrix;

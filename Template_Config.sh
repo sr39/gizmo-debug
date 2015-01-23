@@ -44,7 +44,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #--------------------------------------- SPH methods:
 #SPHEQ_DENSITY_INDEPENDENT_SPH  # force SPH to use the 'pressure-sph' formulation ("modern" SPH)
 #SPHEQ_TRADITIONAL_SPH          # force SPH to use the 'density-sph' (GADGET-2 & GASOLINE SPH)
-#--------------------------------------- SPH diffusion options (use with SPH; not relevant for Godunov/Mesh modes)
+#--------------------------------------- SPH artificial diffusion options (use with SPH; not relevant for Godunov/Mesh modes)
 #SPHAV_DISABLE_CD10_VISCOSITY   # Disable Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks); just use Balsara switch
 #SPHAV_DISABLE_PM_CONDUCTIVITY  # Disable mixing entropy (J.Read's improved Price-Monaghan conductivity with Cullen-Dehnen switches)
 ##-----------------------------------------------------------------------------------------------------
@@ -129,7 +129,6 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #SIDM=2                         # Self-interacting particle types (specify the particle types which are self-interacting DM
                                 # with a bit mask, as for PM_PLACEHIGHRESREGION above (see description)
                                 # (previous "DMDISK_INTERACTIONS" is identical to setting SIDM=2+4)
-#ADAPTIVE_SIDM_HSML             # adaptive SIDM softenings (this just forces ADAPTIVE_GRAVSOFT_FORALL to be active)
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- SCF (potential expansion in basis functions)
 #SCFPOTENTIAL                   # turn SCF on/off

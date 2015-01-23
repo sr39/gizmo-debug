@@ -472,7 +472,7 @@ double INLINE_FUNC Get_Particle_Pressure(int i)
 #ifdef COSMIC_RAYS
 double INLINE_FUNC Get_Particle_CosmicRayPressure(int i)
 {
-    return (SphP[i].CosmicRayEnergyPred * SphP[i].Density) / (3 * P[i].Mass); // cosmic ray pressure = (4/3-1) * e_cr = 1/3 * (E_cr/Vol) //
+    return GAMMA_COSMICRAY_MINUS1 * (SphP[i].CosmicRayEnergyPred * SphP[i].Density) / P[i].Mass; // cosmic ray pressure = (4/3-1) * e_cr = 1/3 * (E_cr/Vol) //
 
 }
 #endif
@@ -484,7 +484,7 @@ double INLINE_FUNC Particle_effective_soundspeed_i(int i)
     return sqrt(SphP[i].dp_drho);
 #endif
 #ifdef COSMIC_RAYS
-    return sqrt(GAMMA*GAMMA_MINUS1 * SphP[i].InternalEnergyPred + 4./9. * SphP[i].CosmicRayEnergyPred);
+    return sqrt(GAMMA*GAMMA_MINUS1 * SphP[i].InternalEnergyPred + GAMMA_COSMICRAY*GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred);
 #endif
     /* if nothing above triggers, then we resort to good old-fashioned ideal gas */
     return sqrt(GAMMA * SphP[i].Pressure / Particle_density_for_energy_i(i));

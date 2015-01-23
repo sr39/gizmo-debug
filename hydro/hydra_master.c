@@ -493,7 +493,7 @@ void hydro_final_operations_and_cleanup(void)
 #if defined(DIVBCLEANING_DEDNER) && !defined(HYDRO_SPH)
             // ok now deal with the divB correction forces and damping fields //
             double tolerance_for_correction,db_vsig_h_norm;
-            tolerance_for_correction = 1.0;
+            tolerance_for_correction = 10.0;
             db_vsig_h_norm = 0.1; // can be as low as 0.03 //
 #ifdef PM_HIRES_REGION_CLIPPING
             tolerance_for_correction = 0.5; // could be as high as 0.75 //
@@ -552,6 +552,13 @@ void hydro_final_operations_and_cleanup(void)
 #endif
                 SphP[i].HydroAccel[k] /= P[i].Mass; /* we solved for momentum flux */
             }
+#ifdef COSMIC_RAYS
+            /* need to account for the adiabatic heating/cooling of the cosmic ray fluid, here: its an ultra-relativistic fluid with gamma=4/3 */
+            double dt_cosmicray_energy_adiabatic = -GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred * (P[i].Particle_DivVel*All.cf_a2inv);
+            SphP[i].DtCosmicRayEnergy += dt_cosmicray_energy_adiabatic;
+            SphP[i].DtInternalEnergy -= dt_cosmicray_energy_adiabatic;
+            if(All.ComovingIntegrationOn) SphP[i].DtCosmicRayEnergy -= SphP[i].CosmicRayEnergyPred * All.cf_hubble_a;
+#endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             SphP[i].DtInternalEnergy -= SphP[i].InternalEnergyPred * SphP[i].DtMass;
 #endif
@@ -570,11 +577,6 @@ void hydro_final_operations_and_cleanup(void)
             // need to explicitly include adiabatic correction from the hubble-flow (for drifting) here //
             if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*GAMMA_MINUS1 * SphP[i].InternalEnergyPred * All.cf_hubble_a;
             // = du/dlna -3*(gamma-1)*u ; then dlna/dt = H(z) =  All.cf_hubble_a //
-#ifdef COSMIC_RAYS
-            /* need to account for the adiabatic heating/cooling of the cosmic ray fluid, here: its an ultra-relativistic fluid with gamma=4/3 */
-            SphP[i].DtCosmicRayEnergy -= (1./3.) * SphP[i].CosmicRayEnergyPred * (P[i].Particle_DivVel*All.cf_a2inv);
-            if(All.ComovingIntegrationOn) SphP[i].DtCosmicRayEnergy -= SphP[i].CosmicRayEnergyPred * All.cf_hubble_a;
-#endif
             
 #ifdef EOS_DEGENERATE
             /* DtInternalEnergy stores the energy change rate in internal units */

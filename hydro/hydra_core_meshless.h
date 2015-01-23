@@ -16,9 +16,11 @@
     /* define volume elements and interface position */
     /* --------------------------------------------------------------------------------- */
     V_j = P[j].Mass / SphP[j].Density;
-    //s_star_ij = 0;
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+    s_star_ij = 0;
+#else
     s_star_ij = 0.5 * kernel.r * (PPP[j].Hsml - local.Hsml) / (local.Hsml + PPP[j].Hsml);
-
+#endif
     /* ------------------------------------------------------------------------------------------------------------------- */
     /* now we're ready to compute the volume integral of the fluxes (or equivalently an 'effective area'/face orientation) */
     /* ------------------------------------------------------------------------------------------------------------------- */
@@ -224,12 +226,12 @@
         {
             if(All.ComovingIntegrationOn) {for(k=0;k<3;k++) v_frame[k] /= All.cf_atime;}
 #if !defined(HYDRO_MESHLESS_FINITE_VOLUME) && !defined(MAGNETIC)
-            Face_Area_Norm *= Riemann_out.P_M;
+            double facenorm_pm = Face_Area_Norm * Riemann_out.P_M;
             Fluxes.p = 0;
             for(k=0;k<3;k++)
             {
-                Fluxes.v[k] = Face_Area_Norm * n_unit[k]; /* total momentum flux */
-                Fluxes.p += Face_Area_Norm * (Riemann_out.S_M*n_unit[k] + v_frame[k]) * n_unit[k]; /* total energy flux = v_frame.dot.mom_flux */
+                Fluxes.v[k] = facenorm_pm * n_unit[k]; /* total momentum flux */
+                Fluxes.p += facenorm_pm * (Riemann_out.S_M*n_unit[k] + v_frame[k]) * n_unit[k]; /* total energy flux = v_frame.dot.mom_flux */
             }
 #else
             /* the fluxes have been calculated in the rest frame of the interface: we need to de-boost to the 'simulation frame'
@@ -264,9 +266,9 @@
                 including them self-consistently in the Riemann problem */
             if(Fluxes.rho < 0)
             {
-                Fluxes.CosmicRayPressure = Fluxes.rho * (3*local.CosmicRayPressure*V_i/local.Mass);
+                Fluxes.CosmicRayPressure = Fluxes.rho * (local.CosmicRayPressure*V_i/(GAMMA_COSMICRAY_MINUS1*local.Mass));
             } else {
-                Fluxes.CosmicRayPressure = Fluxes.rho * (3*CosmicRayPressure_j*V_j/P[j].Mass);
+                Fluxes.CosmicRayPressure = Fluxes.rho * (CosmicRayPressure_j*V_j/(GAMMA_COSMICRAY_MINUS1*P[j].Mass));
             }
 #endif
             

@@ -266,9 +266,16 @@ void local_slopelimiter(double *grad, double valmax, double valmin, double alim,
     if(d_abs > 0)
     {
         double cfac = 1 / (alim * h * sqrt(d_abs));
-        double abs_max, abs_min;
-        if(valmax > -valmin) {abs_max=valmax; abs_min=-valmin;} else {abs_max=-valmin; abs_min=valmax;}
-        cfac *= DMIN(abs_min + shoot_tol*abs_max, abs_max);
+        double fabs_max = fabs(valmax);
+        double fabs_min = fabs(valmin);
+        double abs_min = DMIN(fabs_max,fabs_min);
+        if(shoot_tol > 0)
+        {
+            double abs_max = DMAX(fabs_max,fabs_min);
+            cfac *= DMIN(abs_min + shoot_tol*abs_max, abs_max);
+        } else {
+            cfac *= abs_min;
+        }
         if(cfac < 1) {for(k=0;k<3;k++) {grad[k] *= cfac;}}
     }
 }
@@ -781,7 +788,7 @@ void hydro_gradient_calc(void)
                  L = (e_cr + p_cr) / |gradient_p_cr| = cr_enthalpy / |gradient(p_cr)| */
                 double CRPressureGradMag = 0.0;
                 for(k=0;k<3;k++) {CRPressureGradMag += SphP[i].Gradients.CosmicRayPressure[k]*SphP[i].Gradients.CosmicRayPressure[k];}
-                double CRPressureGradScaleLength = (4./3.) * Get_Particle_CosmicRayPressure(i) / sqrt(CRPressureGradMag) * All.cf_atime;
+                double CRPressureGradScaleLength = GAMMA_COSMICRAY * Get_Particle_CosmicRayPressure(i) / sqrt(1.0e-33 + CRPressureGradMag) * All.cf_atime;
                 
                 /* the diffusivity is now just the product of these two coefficients */
                 SphP[i].CosmicRayDiffusionCoeff = v_streaming * CRPressureGradScaleLength;

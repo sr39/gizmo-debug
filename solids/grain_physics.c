@@ -70,6 +70,7 @@ void apply_grain_dragforce(void)
                         double C2 = C1 * exp( dt * tstop_inv );
                         double xf = -2 * C2 / (C2*C2 -1);
                         double slow_fac = 1 - xf / x0;
+                        // note that, with an external (gravitational) acceleration, we can still solve this equation for the relevant update //
                         
                         double delta_egy = 0;
                         double delta_mom[3];
