@@ -510,7 +510,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
       if(RestartFlag != 2)
 	{
 	  for(n = 0; n < pc; n++)
-	    for(k = 0; k < N_BINS; k++)
+	    for(k = 0; k < N_RT_FREQ_BINS; k++)
 	      SphP[offset + n].n_gamma[k] = *fp++;
 	}
 #endif
@@ -604,6 +604,17 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
     case IO_VSTURB_DRIVE:
     case IO_MG_PHI:
     case IO_MG_ACCEL:
+        case IO_grHI:
+        case IO_grHII:
+        case IO_grHM:
+        case IO_grHeI:
+        case IO_grHeII:
+        case IO_grHeIII:
+        case IO_grH2I:
+        case IO_grH2II:
+        case IO_grDI:
+        case IO_grDII:
+        case IO_grHDI:
 
 //ptorrey
       break;

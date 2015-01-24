@@ -54,7 +54,7 @@ struct Quantities_for_Gradients
     MyDouble Metallicity[NUM_METAL_SPECIES];
 #endif
 #ifdef RADTRANSFER_FLUXLIMITER
-    MyFloat n_gamma[N_BINS];
+    MyFloat n_gamma[N_RT_FREQ_BINS];
 #endif
 #ifdef DOGRAD_INTERNAL_ENERGY
     MyDouble InternalEnergy;
@@ -139,7 +139,7 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i)
         in->GQuant.Metallicity[k] = P[i].Metallicity[k];
 #endif
 #ifdef RADTRANSFER_FLUXLIMITER
-    for(k = 0; k < N_BINS; k++)
+    for(k = 0; k < N_RT_FREQ_BINS; k++)
         in->GQuant.n_gamma[k] = SphP[i].n_gamma[k];
 #endif
 #ifdef DOGRAD_INTERNAL_ENERGY
@@ -242,7 +242,7 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
 #endif
     
 #ifdef RADTRANSFER_FLUXLIMITER
-    for(j=0;j<N_BINS;j++)
+    for(j=0;j<N_RT_FREQ_BINS;j++)
     {
         MAX_ADD(GasGradDataPasser[i].Maxima.n_gamma[j],out->Maxima.n_gamma[j],mode);
         MIN_ADD(GasGradDataPasser[i].Minima.n_gamma[j],out->Minima.n_gamma[j],mode);
@@ -617,7 +617,7 @@ void hydro_gradient_calc(void)
             for(k=0;k<NUM_METAL_SPECIES;k++) {construct_gradient(SphP[i].Gradients.Metallicity[k],i);}
 #endif
 #ifdef RADTRANSFER_FLUXLIMITER
-            for(k=0;k<N_BINS;k++) {construct_gradient(SphP[i].Gradients.n_gamma[k],i);}
+            for(k=0;k<N_RT_FREQ_BINS;k++) {construct_gradient(SphP[i].Gradients.n_gamma[k],i);}
 #endif
             
             /* now the gradients are calculated: below are simply useful operations on the results */
@@ -839,7 +839,7 @@ void hydro_gradient_calc(void)
                 local_slopelimiter(SphP[i].Gradients.Metallicity[k1],GasGradDataPasser[i].Maxima.Metallicity[k1],GasGradDataPasser[i].Minima.Metallicity[k1],a_limiter,h_lim,stol);
 #endif
 #ifdef RADTRANSFER_FLUXLIMITER
-            for(k1=0;k1<N_BINS;k1++)
+            for(k1=0;k1<N_RT_FREQ_BINS;k1++)
                 local_slopelimiter(SphP[i].Gradients.n_gamma[k1],GasGradDataPasser[i].Maxima.n_gamma[k1],GasGradDataPasser[i].Minima.n_gamma[k1],a_limiter,h_lim,stol);
 #endif
 #ifdef MAGNETIC
@@ -1003,8 +1003,8 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                         dmetal[k] = P[j].Metallicity[k] - local.GQuant.Metallicity[k];
 #endif
 #ifdef RADTRANSFER_FLUXLIMITER
-                    double dn[N_BINS];
-                    for(k=0;k<N_BINS;k++)
+                    double dn[N_RT_FREQ_BINS];
+                    for(k=0;k<N_RT_FREQ_BINS;k++)
                         dn[k] = SphP[j].n_gamma[k] - local.GQuant.n_gamma[k];
 #endif
                     
@@ -1047,7 +1047,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     }
 #endif
 #ifdef RADTRANSFER_FLUXLIMITER
-                    for(k = 0; k < N_BINS; k++)
+                    for(k = 0; k < N_RT_FREQ_BINS; k++)
                     {
                         if(dn[k] > out.Maxima.n_gamma[k]) out.Maxima.n_gamma[k] = dn[k];
                         if(dn[k] < out.Minima.n_gamma[k]) out.Minima.n_gamma[k] = dn[k];
@@ -1083,7 +1083,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                             out.Gradients[k].Metallicity[k2] += wk_xyz * dmetal[k2];
 #endif
 #ifdef RADTRANSFER_FLUXLIMITER
-                        for(k2=0;k2<N_BINS;k2++)
+                        for(k2=0;k2<N_RT_FREQ_BINS;k2++)
                             out.Gradients[k].n_gamma[k2] += wk_xyz * dn[k2];
 #endif
                     } // for(k=0;k<3;k++) //

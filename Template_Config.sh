@@ -78,7 +78,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- Radiative Cooling physics (mostly geared towards galactic/extragalactic cooling)
 #COOLING                        # enables radiative cooling and heating: if GALSF, also external UV background read from file "TREECOOL"
-#TRUELOVE_CRITERION_PRESSURE    # adds artificial pressure floor to ensure the Jeans mass is always resolved
+#TRUELOVE_CRITERION_PRESSURE    # adds artificial pressure floor force Jeans mass above resolution scale (not necessarily better in meshless methods)
 #COOL_LOW_TEMPERATURES          # allow fine-structure and molecular cooling to ~10 K
 #COOL_METAL_LINES_BY_SPECIES    # use full multi-species-dependent cooling tables (https://dl.dropbox.com/u/16659252/spcool_tables.tgz)
 #GRACKLE                        # enable GRACKLE: cooling+chemistry package (requires COOLING above; https://grackle.readthedocs.org/en/latest/)
@@ -382,12 +382,8 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #EDDINGTON_TENSOR_SFR                   # uses sf partices (gas above certain density) as sources of ionizing photons
 #EDDINGTON_TENSOR_BH                    # includes BH as source of ionising photons (not working)
 #RT_OUTPUT_ET                           # outputs the eddington tensor (used for diagnostics)
-#RT_OUTPUT_RAD_ACCEL
 #HYDROGEN_ONLY                          # sets hydrogen fraction to 1.0 (simplifies the chemistry)
 #RT_INCLUDE_HE                          # includes helium cooling and collisional ionisation
-#RT_SILENT
-#RT_TEST_SST
-#RT_POPIII
 #RT_MULTI_FREQUENCY                     # enables multi-frequency radiation transport. Here the integration
                                         # variable is the ionising intensity J_nu
 ####################################################################################################

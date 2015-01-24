@@ -676,11 +676,6 @@ void density(void)
                 }
 #endif
                 
-#if defined(RADTRANSFER) && defined(EDDINGTON_TENSOR_STARS)
-                if(P[i].Type == 4)
-                    desnumngb = 64; /* will assign the stellar luminosity to very few (one actually) gas particles */
-#endif
-                
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
                 /* use a much looser check for N_neighbors when the central point is a star particle,
                  since the accuracy is limited anyways to the coupling efficiency -- the routines use their

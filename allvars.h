@@ -255,9 +255,9 @@ typedef  int integertime;
 
 #ifdef RADTRANSFER
 #ifndef RT_MULTI_FREQUENCY
-#define N_BINS 1
+#define N_RT_FREQ_BINS 1
 #else
-#define N_BINS 4
+#define N_RT_FREQ_BINS 4
 #endif
 #endif
 
@@ -757,17 +757,14 @@ extern int *DomainList, DomainNumChanged;
 extern peanokey *Key, *KeySorted;
 
 #ifdef RADTRANSFER
-double lum[N_BINS];
-#ifdef RT_POPIII
-double lum_popIII[N_BINS];
-#endif
-double rt_sigma_HI[N_BINS];
-double rt_sigma_HeI[N_BINS];
-double rt_sigma_HeII[N_BINS];
-double G_HI[N_BINS];
-double G_HeI[N_BINS];
-double G_HeII[N_BINS];
-double nu[N_BINS];
+double lum[N_RT_FREQ_BINS];
+double rt_sigma_HI[N_RT_FREQ_BINS];
+double rt_sigma_HeI[N_RT_FREQ_BINS];
+double rt_sigma_HeII[N_RT_FREQ_BINS];
+double G_HI[N_RT_FREQ_BINS];
+double G_HeI[N_RT_FREQ_BINS];
+double G_HeII[N_RT_FREQ_BINS];
+double nu[N_RT_FREQ_BINS];
 #endif
 
 extern struct topnode_data
@@ -1798,7 +1795,7 @@ extern struct sph_particle_data
 #endif
 #endif
 #ifdef RADTRANSFER_FLUXLIMITER
-        MyFloat n_gamma[N_BINS][3];
+        MyFloat n_gamma[N_RT_FREQ_BINS][3];
 #endif
 #ifdef DOGRAD_SOUNDSPEED
         MyDouble SoundSpeed[3];
@@ -1914,7 +1911,7 @@ extern struct sph_particle_data
     
 #if defined(RADTRANSFER)
     MyFloat ET[6];                /* eddington tensor - symmetric -> only 6 elements needed */
-    MyFloat Je[N_BINS];           /* emmisivity */
+    MyFloat Je[N_RT_FREQ_BINS];           /* emmisivity */
     MyFloat HI;                  /* HI fraction */
     MyFloat HII;                 /* HII fraction */
     MyFloat elec;               /* electron fraction */
@@ -1923,7 +1920,7 @@ extern struct sph_particle_data
     MyFloat HeII;                 /* HeII fraction */
     MyFloat HeIII;                 /* HeIII fraction */
 #endif
-    MyFloat n_gamma[N_BINS];
+    MyFloat n_gamma[N_RT_FREQ_BINS];
 #ifdef RT_RAD_PRESSURE
     MyFloat n[3];
     MyFloat RadAccel[3];
@@ -1932,7 +1929,7 @@ extern struct sph_particle_data
     MyDouble DensitySfr;
     MyDouble HsmlSfr;
 #endif
-#endif //radtransfer
+#endif
     
     
 #ifdef EOS_DEGENERATE

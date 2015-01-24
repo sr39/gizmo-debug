@@ -114,14 +114,11 @@ double TimeBin_BH_Medd[TIMEBINS];
 #endif
 
 #ifdef RADTRANSFER
-double lum[N_BINS];
-#ifdef RT_POPIII
-double lum_popIII[N_BINS];
-#endif
-double rt_sigma_HI[N_BINS];
-double rt_sigma_HeI[N_BINS];
-double rt_sigma_HeII[N_BINS];
-double nu[N_BINS];
+double lum[N_RT_FREQ_BINS];
+double rt_sigma_HI[N_RT_FREQ_BINS];
+double rt_sigma_HeI[N_RT_FREQ_BINS];
+double rt_sigma_HeII[N_RT_FREQ_BINS];
+double nu[N_RT_FREQ_BINS];
 #endif
 
 

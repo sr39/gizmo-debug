@@ -591,7 +591,7 @@ void hydro_final_operations_and_cleanup(void)
                 for(k = 0; k < 3; k++)
                 {
                     SphP[i].RadAccel[k] = 0.0;
-                    for(j = 0; j < N_BINS; j++)
+                    for(j = 0; j < N_RT_FREQ_BINS; j++)
                         SphP[i].RadAccel[k] += SphP[i].n_gamma[j] * nu[j];
                     SphP[i].RadAccel[k] *= SphP[i].n[k] / P[i].Mass * ELECTRONVOLT_IN_ERGS /
                     All.UnitEnergy_in_cgs * All.HubbleParam / (C / All.UnitVelocity_in_cm_per_s) / dt / SphP[i].Density;

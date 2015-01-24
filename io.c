@@ -1089,17 +1089,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
       for(n = 0; n < pc; pindex++)
 	if(P[pindex].Type == type)
 	  {
-	    for(k = 0; k < N_BINS; k++)
+	    for(k = 0; k < N_RT_FREQ_BINS; k++)
 	      fp[k] = SphP[pindex].n_gamma[k] / 1e53;
 	    
 	    n++;
-	    fp += N_BINS;
+	    fp += N_RT_FREQ_BINS;
 	  }
 #endif
       break;
 
     case IO_RAD_ACCEL:
-#if defined(RADTRANSFER) && defined(RT_OUTPUT_RAD_ACCEL)
+#ifdef RADTRANSFER
       for(n = 0; n < pc; pindex++)
 	if(P[pindex].Type == type)
 	  {
@@ -1466,9 +1466,9 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
     case IO_RADGAMMA:
 #ifdef RADTRANSFER
       if(mode)
-	bytes_per_blockelement = N_BINS * sizeof(MyInputFloat);
+	bytes_per_blockelement = N_RT_FREQ_BINS * sizeof(MyInputFloat);
       else
-	bytes_per_blockelement = N_BINS * sizeof(MyOutputFloat);
+	bytes_per_blockelement = N_RT_FREQ_BINS * sizeof(MyOutputFloat);
 #endif
       break;
 
@@ -1685,7 +1685,6 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_grDI:
         case IO_grDII:
         case IO_grHDI:
-        case IO_fH2:
     values = 1;
       break;
 
@@ -1695,7 +1694,7 @@ int get_values_per_blockelement(enum iofields blocknr)
 
     case IO_RADGAMMA:
 #ifdef RADRANSFER
-      values = N_BINS;
+      values = N_RT_FREQ_BINS;
 #else
       values = 0;
 #endif
@@ -2015,14 +2014,14 @@ int blockpresent(enum iofields blocknr)
 
     case IO_RADGAMMA:
 #ifdef RADTRANSFER
-      return N_BINS;
+      return N_RT_FREQ_BINS;
 #else
       return 0;
 #endif
       break;
 
     case IO_RAD_ACCEL:
-#ifdef RT_OUTPUT_RAD_ACCEL
+#ifdef RADTRANSFER
       return 3;
 #else
       return 0;

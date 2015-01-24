@@ -270,9 +270,7 @@ void calculate_non_standard_physics(void)
         MPI_Allreduce(&timeeach, &timeall, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
         if(ThisTask == 0)
         {
-#ifndef RT_SILENT
             printf("time consumed is %g \n", timeall);
-#endif
             printf("done with radtransfer! \n");
             fflush(stdout);
         }

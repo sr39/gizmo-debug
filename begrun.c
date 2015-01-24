@@ -1779,36 +1779,11 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 
-#ifdef RADTRANSFER
-#if defined(EDDINGTON_TENSOR_STARS) && defined(RT_TEST_SST)
-      strcpy(tag[nt], "IonizingLumPerSolarMass");
-      addr[nt] = &All.IonizingLumPerSolarMass;
-      id[nt++] = REAL;
-#ifdef RT_POPIII
-      strcpy(tag[nt], "IonizingLumPerSolarMassPopIII");
-      addr[nt] = &All.IonizingLumPerSolarMassPopIII;
-      id[nt++] = REAL;
-#endif
-#endif
-
-#ifdef RT_MULTI_FREQUENCY
+#if defined(RADTRANSFER) && defined(RT_MULTI_FREQUENCY)
       strcpy(tag[nt], "star_Teff");
       addr[nt] = &All.star_Teff;
       id[nt++] = REAL;
-#ifdef RT_POPIII
-      strcpy(tag[nt], "star_Teff_popIII");
-      addr[nt] = &All.star_Teff_popIII;
-      id[nt++] = REAL;
 #endif
-#endif
-
-#if defined(EDDINGTON_TENSOR_SFR) && defined(RT_TEST_SST)
-      strcpy(tag[nt], "IonizingLumPerSFR");
-      addr[nt] = &All.IonizingLumPerSFR;
-      id[nt++] = REAL;
-#endif
-
-#endif //end radtransfer
 
 #ifdef SINKS
       strcpy(tag[nt], "SinkHsml");

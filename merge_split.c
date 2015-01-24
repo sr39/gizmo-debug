@@ -440,7 +440,7 @@ void merge_particles_ij(MyIDType i, MyIDType j)
 #endif
 #if defined(RADTRANSFER)
     for(k=0;k<6;k++) SphP[j].ET[k] = wt_j*SphP[j].ET[k] + wt_i*SphP[i].ET[k];
-    for(k=0;k<N_BINS;k++) SphP[j].n_gamma[k] = wt_j*SphP[j].n_gamma[k] + wt_i*SphP[i].n_gamma[k];
+    for(k=0;k<N_RT_FREQ_BINS;k++) SphP[j].n_gamma[k] = wt_j*SphP[j].n_gamma[k] + wt_i*SphP[i].n_gamma[k];
 #endif
 #ifdef METALS
     for(k=0;k<NUM_METAL_SPECIES;k++)

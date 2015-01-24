@@ -248,7 +248,8 @@ double get_starformation_rate(int i)
                     vt += All.cf_hubble_a; /* add hubble-flow correction */
             dv2abs += vt*vt;
         }
-    double alpha_vir = 0.2387 * dv2abs / (All.G * SphP[i].Density * All.cf_a3inv);
+    //double alpha_vir = 0.2387 * dv2abs / (All.G * SphP[i].Density * All.cf_a3inv); // coefficient here was for old form, with only divv information
+    double alpha_vir = dv2abs / (8. * M_PI * All.G * SphP[i].Density * All.cf_a3inv);
     if(All.ComovingIntegrationOn)
     {
         if((alpha_vir<1.0)||(SphP[i].Density*All.cf_a3inv>100.*All.PhysDensThresh)) {rateOfSF *= 1.0;} else {rateOfSF *= 0.0015;}
