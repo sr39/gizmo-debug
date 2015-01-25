@@ -16,7 +16,7 @@
 #if defined(TURB_DIFFUSION)
 #define SAVE_FACE_DENSITY 1
 #endif
-#if (defined(CONDUCTION) || defined(COSMIC_RAYS)) && defined(MAGNETIC)
+#if (defined(CONDUCTION) || defined(COSMIC_RAYS) || defined(VISCOSITY)) && defined(MAGNETIC)
 #define SAVE_FACE_BFIELD 1
 #endif
 #if defined(VISCOSITY) && defined(MAGNETIC)

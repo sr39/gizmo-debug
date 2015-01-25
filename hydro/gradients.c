@@ -771,6 +771,7 @@ void hydro_gradient_calc(void)
             
             
 #ifdef COSMIC_RAYS
+            if(SphP[i].Density > 0)
             {
                 /* self-consistently calculate the diffusion coefficients for cosmic ray fluids;
                  following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
@@ -789,9 +790,13 @@ void hydro_gradient_calc(void)
                 double CRPressureGradMag = 0.0;
                 for(k=0;k<3;k++) {CRPressureGradMag += SphP[i].Gradients.CosmicRayPressure[k]*SphP[i].Gradients.CosmicRayPressure[k];}
                 double CRPressureGradScaleLength = GAMMA_COSMICRAY * Get_Particle_CosmicRayPressure(i) / sqrt(1.0e-33 + CRPressureGradMag) * All.cf_atime;
+                // limit this scale length; if the gradient is too shallow, there is no information beyond a few smoothing lengths, so we can't let streaming go that far //
+                if(CRPressureGradScaleLength > 0) {CRPressureGradScaleLength = 1.0/(1.0/CRPressureGradScaleLength + 1.0/(10.0*PPP[i].Hsml));}
                 
                 /* the diffusivity is now just the product of these two coefficients */
                 SphP[i].CosmicRayDiffusionCoeff = v_streaming * CRPressureGradScaleLength;
+            } else {
+                SphP[i].CosmicRayDiffusionCoeff = 0;
             }
 #endif
             

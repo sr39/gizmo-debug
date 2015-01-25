@@ -25,8 +25,9 @@
     on the gas properties of the particle out of which it forms */
 void assign_imf_properties_from_starforming_gas(MyIDType i)
 {
-    double h = PPP[i].Hsml * All.cf_atime / pow(PPP[i].NumNgb, 1/NUMDIMS);
-    double cs = Particle_effective_soundspeed_i(i) * All.cf_afac3;
+    double h = Get_Particle_Size(i) * All.cf_atime;
+    double cs = Particle_effective_soundspeed_i(i) * All.cf_afac3; // actual sound speed in the simulation: might be unphysically high for SF conditions!
+    cs = (1.0e4 / UnitVelocity_in_cm_per_s); // set to a minimum cooling temperature, for the actual star-forming conditions. for now, just use a constant //
     double dv2_abs = 0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
     // squared norm of the trace-free symmetric [shear] component of the velocity gradient tensor //
     dv2_abs = ((1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1])*(SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) +
@@ -40,7 +41,7 @@ void assign_imf_properties_from_starforming_gas(MyIDType i)
                          SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))) * All.cf_a2inv*All.cf_a2inv;
     double M_sonic = cs*cs*cs*cs / (All.G * dv2_abs * h);
     M_sonic *= All.UnitMass_in_g / All.Hubble / (1.989e33); // sonic mass in solar units //
-    P[i].IMF_Mturnover = M_sonic;
+    P[i].IMF_Mturnover = 0.01 + DMIN(M_sonic,100.);
 }
 #endif
 
