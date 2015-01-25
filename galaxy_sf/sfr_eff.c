@@ -27,7 +27,7 @@ void assign_imf_properties_from_starforming_gas(MyIDType i)
 {
     double h = Get_Particle_Size(i) * All.cf_atime;
     double cs = Particle_effective_soundspeed_i(i) * All.cf_afac3; // actual sound speed in the simulation: might be unphysically high for SF conditions!
-    cs = (1.0e4 / UnitVelocity_in_cm_per_s); // set to a minimum cooling temperature, for the actual star-forming conditions. for now, just use a constant //
+    cs = (1.9e4 / UnitVelocity_in_cm_per_s); // set to a minimum cooling temperature, for the actual star-forming conditions. for now, just use a constant //
     double dv2_abs = 0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
     // squared norm of the trace-free symmetric [shear] component of the velocity gradient tensor //
     dv2_abs = ((1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1])*(SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) +
