@@ -160,9 +160,10 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     /* here is where the details of the split are coded, the rest is bookkeeping */
     mass_of_new_particle = 0.5;
     
-    int k;
-    double phi = 2.0*M_PI*get_random_number(i+1+ThisTask); // random from 0 to 2pi //
-    double cos_theta = 2.0*(get_random_number(i+3+2*ThisTask)-0.5); // random between 1 to -1 //
+    int k; double phi,cos_theta;
+    k=0;
+    phi = 2.0*M_PI*get_random_number(i+1+ThisTask); // random from 0 to 2pi //
+    cos_theta = 2.0*(get_random_number(i+3+2*ThisTask)-0.5); // random between 1 to -1 //
     double r_near = sqrt(r2_nearest);
     double hsml = Get_Particle_Size(i);
     if(hsml < r_near) {hsml = r_near;}

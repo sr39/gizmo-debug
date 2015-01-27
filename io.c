@@ -2037,7 +2037,6 @@ int blockpresent(enum iofields blocknr)
 
     case IO_SFR:
     case IO_AGE:
-    case IO_Z:
       if(All.StarformationOn == 0)
 	return 0;
       else
@@ -2048,14 +2047,20 @@ int blockpresent(enum iofields blocknr)
 	  if(blocknr == IO_AGE)
 	    return 1;
 #endif
-#ifdef METALS
-	  if(blocknr == IO_Z)
-	    return 1;
-#endif
 	}
       return 0;
       break;
 
+            
+        case IO_Z:
+#ifdef METALS
+                if(blocknr == IO_Z)
+                    return 1;
+#endif
+            return 0;
+            break;
+            
+            
     case IO_DELAYTIME:
 #ifdef GALSF_SUBGRID_WINDS
     	return 1;
