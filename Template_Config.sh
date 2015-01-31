@@ -78,7 +78,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- Radiative Cooling physics (mostly geared towards galactic/extragalactic cooling)
 #COOLING                        # enables radiative cooling and heating: if GALSF, also external UV background read from file "TREECOOL"
-#TRUELOVE_CRITERION_PRESSURE    # adds artificial pressure floor force Jeans mass above resolution scale (not necessarily better in meshless methods)
+#TRUELOVE_CRITERION_PRESSURE    # adds artificial pressure floor force Jeans mass above resolution scale (not necessarily better in meshless methods!)
 #COOL_LOW_TEMPERATURES          # allow fine-structure and molecular cooling to ~10 K
 #COOL_METAL_LINES_BY_SPECIES    # use full multi-species-dependent cooling tables (https://dl.dropbox.com/u/16659252/spcool_tables.tgz)
 #GRACKLE                        # enable GRACKLE: cooling+chemistry package (requires COOLING above; https://grackle.readthedocs.org/en/latest/)

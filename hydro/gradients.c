@@ -803,8 +803,8 @@ void hydro_gradient_calc(void)
             
 #ifdef TURB_DIFFUSION
             /* estimate local turbulent diffusion coefficient from velocity gradients using Smagorinsky mixing model */
-            SphP[i].TD_DiffCoeff = All.TurbDiffusion_Coefficient * // overall normalization
-            (PPP[i].Hsml*PPP[i].Hsml / pow(PPP[i].NumNgb,2./(1.*NUMDIMS))) * // scales with inter-particle spacing
+            double h_turb = Get_Particle_Size(i);
+            SphP[i].TD_DiffCoeff = All.TurbDiffusion_Coefficient * h_turb*h_turb * // overall normalization, then scaling with inter-particle spacing
             sqrt(
                  (1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1])*(SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) +
                           (SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2])*(SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2]) +
@@ -815,7 +815,7 @@ void hydro_gradient_calc(void)
                           (SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[2][2] +
                            SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[1][1] +
                            SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))
-                 ) * All.cf_a2inv; // norm of matrix of velocity gradient tensor
+                 ) * All.cf_a2inv; // norm of velocity gradient tensor
 #endif
             
             
