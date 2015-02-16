@@ -388,7 +388,7 @@ void init(void)
         if(header.flag_ic_info != FLAG_SECOND_ORDER_ICS)
             P[i].OldAcc = 0;	/* Do not zero in 2lpt case as masses are stored here */
         
-#if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY)
+#if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY)      // DAA: should we add || defined(OUTPUTPOTENTIAL) here ???
         P[i].Potential = 0;
 #endif
 #ifdef GALSF

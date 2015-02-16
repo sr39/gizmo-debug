@@ -1742,7 +1742,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #endif
 #ifdef EVALPOTENTIAL
-    double wp, facpot;
+    //double wp, facpot;        // DAA: it looks like EVALPOTENTIAL doesn't need wp...??
+    double facpot;
     MyLongDouble pot;
     pot = 0;
 #endif

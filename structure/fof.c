@@ -2007,6 +2007,9 @@ void fof_make_black_holes(void)
 
   for(i = 0; i < Ngroups; i++)
     {
+#ifdef BH_HOST_TO_SEED_RATIO
+      if(Group[i].MassType[4] > BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass)
+#else
 #ifndef BH_SEED_STAR_MASS_FRACTION
       if(Group[i].LenType[1] * massDMpart >=
 	 (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
@@ -2014,6 +2017,7 @@ void fof_make_black_holes(void)
       if(Group[i].MassType[4] > BH_SEED_STAR_MASS_FRACTION * All.MinFoFMassForNewSeed
 	 && Group[i].LenType[2] == 0)
 #endif
+#endif //ifdef BH_HOST_TO_SEED_RATIO
 	if(Group[i].LenType[5] == 0)
 	  {
 	    if(Group[i].index_maxdens >= 0)
@@ -2047,6 +2051,9 @@ void fof_make_black_holes(void)
 
   for(i = 0; i < Ngroups; i++)
     {
+#ifdef BH_HOST_TO_SEED_RATIO
+      if(Group[i].MassType[4] > BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass)
+#else
 #ifndef BH_SEED_STAR_MASS_FRACTION
       if(Group[i].LenType[1] * massDMpart >=
 	 (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
@@ -2054,6 +2061,7 @@ void fof_make_black_holes(void)
       if(Group[i].MassType[4] > BH_SEED_STAR_MASS_FRACTION * All.MinFoFMassForNewSeed
 	 && Group[i].LenType[2] == 0)
 #endif
+#endif //ifdef BH_HOST_TO_SEED_RATIO
 	if(Group[i].LenType[5] == 0)
 	  {
 #ifdef BH_SEED_STAR_MASS_FRACTION
@@ -2139,7 +2147,7 @@ void fof_make_black_holes(void)
 	All.SeedBlackHoleMass * import_fofmass[n] / (BH_SEED_STAR_MASS_FRACTION * All.MinFoFMassForNewSeed);
 #else
       BPP(import_indices[n]).BH_Mass = All.SeedBlackHoleMass;
-#ifdef BH_ALPHADISK_ACCRETION
+#ifdef BH_ALPHADISK_ACCRETION                                     // DAA: this should be outside of BH_SEED_STAR_MASS_FRACTION ...
       BPP(import_indices[n]).BH_Mass_AlphaDisk = 0;
 #endif
 #endif

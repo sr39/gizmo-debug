@@ -51,7 +51,7 @@ void blackhole_feed_loop(void)
         }
         
         /* do local particles and prepare export list */
-        for(nexport = 0; i >= 0; i = NextActiveParticle[i])
+        for(nexport = 0; i >= 0; i = NextActiveParticle[i])                      // DAA: can this be replaced by a loop over N_active_loc_BHs ???
             if(P[i].Type == 5)
                 if(blackhole_feed_evaluate(i, 0, &nexport, Send_count) < 0)
                     break;
@@ -79,7 +79,7 @@ void blackhole_feed_loop(void)
                 BlackholeDataIn[j].Pos[k] = P[place].Pos[k];
                 BlackholeDataIn[j].Vel[k] = P[place].Vel[k];
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
-                BlackholeDataIn[j].Jgas_in_Kernel[k] = P[place].GradRho[k];
+                BlackholeDataIn[j].Jgas_in_Kernel[k] = P[place].GradRho[k];   // DAA: why don't just take BlackholeTempInfo[P[place].IndexMapToTempStruc].Jgas_in_Kernel[k] here ???
 #endif
             }
             BlackholeDataIn[j].mass_to_swallow_edd = BlackholeTempInfo[P[place].IndexMapToTempStruc].mass_to_swallow_edd;
@@ -233,7 +233,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     if(mode == 0)
     {
         pos = P[target].Pos;
-        rho = BPP(target).DensAroundStar;
+        rho = BPP(target).DensAroundStar;       // DAA: DensAroundStar is not defined in BHP->BPP...
         mdot = BPP(target).BH_Mdot;
 #ifndef WAKEUP
         dt = (P[target].TimeBin ? (1 << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
@@ -328,7 +328,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                 j = Ngblist[n];
                 if(P[j].Mass > 0)
                 {
-                    for(k=0;k<3;k++) dpos[k] = pos[k] - P[j].Pos[k];
+                    for(k=0;k<3;k++) dpos[k] = pos[k] - P[j].Pos[k];               // DAA: revert order?  It seems that it doesn't matter here...  
 #ifdef PERIODIC		/*  find the closest image in the given box size  */
                     dpos[0]=NEAREST_X(dpos[0]); dpos[1]=NEAREST_Y(dpos[1]); dpos[2]=NEAREST_Z(dpos[2]);
 #endif
@@ -360,20 +360,27 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         /* check_for_bh_merger.  Easy.  No Edd limit, just a pos and vel criteria. */
                         if((id != P[j].ID) && (P[j].Mass > 0) && (P[j].Type == 5))	/* we may have a black hole merger */
                         {
-                            if(id != P[j].ID) /* check its not the same bh */
+                            if(id != P[j].ID) /* check its not the same bh  (DAA: this is duplicated here...) */
                             {
                                 if(vrel > BH_CSND_FRAC_BH_MERGE * vesc)
                                 {
+#ifdef BH_OUTPUT_MOREINFO           // DAA: BH merger info will be saved in a separate output file 
+                                    printf("ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n",
+                                            ThisTask, All.Time, id, P[j].ID, vrel, vesc);
+#else
                                     fprintf(FdBlackHolesDetails,
                                             "ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n",
                                             ThisTask, All.Time, id, P[j].ID, vrel, vesc);
+#endif
                                 }
                                 else
                                 {
                                     printf("MARKING_BH_MERGER: P[j.]ID=%llu to be swallowed by id=%llu \n",
                                            (unsigned long long) P[j].ID, (unsigned long long) id);
 
-                                    if(P[j].SwallowID < id && P[j].ID < id) // makes it so only one swallows the other
+                                    //if(P[j].SwallowID < id && P[j].ID < id) // makes it so only one swallows the other
+                                    //    P[j].SwallowID = id;
+                                    if((P[j].SwallowID == 0) && (P[j].BH_Mass < bh_mass))  // DAA: makes it so that the most massive BH swallows the other ??
                                         P[j].SwallowID = id;
                                 }
                             }
@@ -440,27 +447,43 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                             else
                                 p = 0;
                             
+/* #ifdef BH_BAL_WINDS
+ * DAA: we now make explicit distinction between continuous winds (BH_BAL_WINDS) and stochastic winds (BH_STOCHASTIC_WINDS)
+ *      --> mass is removed from gas particles only for BH_STOCHASTIC_WINDS
+ */
+#ifdef BH_STOCHASTIC_WINDS
+                            if(All.BAL_f_accretion>0) 
+                            {
+                                p /= All.BAL_f_accretion;
+
+                                /* DAA: compute outflow probability even if we don't need to enforce mass conservation yet 
+                                   this is relevant only in low-res sims where the BH seed mass is much lower than the gas particle mass */
+                                if((bh_mass_withdisk - mass) < 0)
+                                    p = ( (1-All.BAL_f_accretion)/All.BAL_f_accretion ) * mdot * dt * wk / rho;
+                            }
+#endif
+
 #if defined(BH_GRAVCAPTURE_SWALLOWS) && !defined(BH_GRAVCAPTURE_NOGAS)
                             p = 0;
-#endif
-                            
-#if defined(BH_BAL_WINDS)
-                            if(All.BAL_f_accretion>0) p /= All.BAL_f_accretion;
 #endif
                             
                             w = get_random_number(P[j].ID);
                             if(w < p)
                             {
                                 printf("MARKING_BH_FOOD: j %d w %g p %g TO_BE_SWALLOWED \n",j,w,p);
-                                if(P[j].SwallowID < id) P[j].SwallowID = id;
-                                N_gas_toswallow++;
-#if defined(BH_BAL_WINDS)
-                                mass_markedswallow += P[j].Mass*All.BAL_f_accretion;
+                                if(P[j].SwallowID < id) 
+                                {
+                                   P[j].SwallowID = id;
+                                   N_gas_toswallow++;       // DAA: this is not used !!
+#ifdef BH_STOCHASTIC_WINDS
+                                   mass_markedswallow += P[j].Mass*All.BAL_f_accretion;
 #else
-                                mass_markedswallow += P[j].Mass;
+                                   mass_markedswallow += P[j].Mass;
 #endif
+                                }
                             } // if(w < p)
 #endif // BH_SWALLOWGAS
+
                             
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
                             /* calculate the angle-weighting for the photon momentum */

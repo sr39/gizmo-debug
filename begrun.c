@@ -539,6 +539,23 @@ void open_outputfiles(void)
       printf("error in opening file '%s'\n", buf);
       endrun(1);
     }
+
+#ifdef BH_OUTPUT_MOREINFO
+  sprintf(buf, "%sblackhole_details/bhmergers_%d.txt", All.OutputDir, ThisTask); 
+  if(!(FdBhMergerDetails = fopen(buf, mode)))
+    {
+      printf("error in opening file '%s'\n", buf);
+      endrun(1);
+    }
+#ifdef BH_STOCHASTIC_WINDS
+  sprintf(buf, "%sblackhole_details/bhwinds_%d.txt", All.OutputDir, ThisTask);
+  if(!(FdBhWindDetails = fopen(buf, mode)))
+    {
+      printf("error in opening file '%s'\n", buf);
+      endrun(1);
+    }
+#endif
+#endif
 #endif
 
   if(ThisTask != 0)		/* only the root processors writes to the log files */
@@ -1177,7 +1194,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
         
-#ifdef BH_BAL_WINDS
+#if defined(BH_BAL_WINDS) || defined(BH_STOCHASTIC_WINDS)
         strcpy(tag[nt],"BAL_f_accretion");
         addr[nt] = &All.BAL_f_accretion;
         id[nt++] = REAL;

@@ -253,6 +253,12 @@ FILE *FdTidaltensor;		/*!< file handle for Tidaltensor.txt log-file. */
 #ifdef BLACK_HOLES
 FILE *FdBlackHoles;		/*!< file handle for blackholes.txt log-file. */
 FILE *FdBlackHolesDetails;
+#ifdef BH_OUTPUT_MOREINFO
+FILE *FdBhMergerDetails;
+#ifdef BH_STOCHASTIC_WINDS
+FILE *FdBhWindDetails;
+#endif
+#endif
 #endif
 
 #ifdef DARKENERGY

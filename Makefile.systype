@@ -12,8 +12,9 @@
 #############
 
 
+SYSTYPE="Quest"
 #SYSTYPE="Stampede"
-SYSTYPE="Zwicky"
+#SYSTYPE="Zwicky"
 #SYSTYPE="MacBookPro"
 #SYSTYPE="odyssey"
 #SYSTYPE="SciNet"

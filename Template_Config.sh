@@ -216,12 +216,15 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #BH_GRAVCAPTURE_SWALLOWS        # accretion determined only by resolved gravitational capture by the BH
 ##BH_GRAVCAPTURE_NOGAS          # as BH_GRAVCAPTURE_SWALLOWS, but excludes gas (use with other mdot estimator for gas)
 #BH_GRAVACCRETION               # Gravitational instability accretion estimator from Hopkins & Quataert 2010
+#BH_GRAVACCRETION_BTOD          # DAA: torque rate based on kinematic bulge/disk decomposition as in Angles-Alcazar et al 2013  (requires BH_GRAVACCRETION)
 ##BH_BONDI                      # Bondi-Hoyle style accretion model
 ##BH_VARIABLE_ACCRETION_FACTOR  # variable-alpha model as in Booth&Schaye 2009
 ##BH_USE_GASVEL_IN_BONDI        # surrounding gas velocity used with sounds speed in the Bondi rate
 #BH_SUBGRIDBHVARIABILITY        # model variability below resolved dynamical time for BH
 # ----- feedback models/options
-#BH_BAL_WINDS                   # accreted particles are launched back out as high-vel BAL winds
+#BH_BAL_WINDS                   # particles within the BH kernel are given mass, momentum, and energy continuously as high-vel BAL winds
+#BH_STOCHASTIC_WINDS            # DAA: accreted particles are launched back out as winds (requires BH_SWALLOWGAS)
+#BH_WINDS_COLLIMATED            # DAA: winds follow the direction of angular momentum within Kernel (needs BH_STOCHASTIC_WINDS)
 #BH_PHOTONMOMENTUM              # continuous long-range IR radiation pressure acceleration from BH (needs GALSF_FB_RT_PHOTONMOMENTUM)
 #BH_HII_HEATING                 # photo-ionization feedback from BH (needs GALSF_FB_HII_HEATING)
 #BH_COMPTON_HEATING             # enable Compton heating in cooling function (needs BH_PHOTONMOMENTUM)
@@ -230,6 +233,8 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #BH_DYNFRICTION                 # apply dynamical friction force to the BHs when m_bh not >> other particle mass
 ##BH_DRAG                       # Drag on black-holes due to accretion (w real mdot)
 ##BH_STRONG_DRAG                # Drag rate boosted as if BH is accreting at eddington (requires BH_DRAG)
+# ----- output options
+#BH_OUTPUT_MOREINFO             # DAA: output additional info to "blackhole_details"
 ##-----------------------------------------------------------------------------------------------------
 # ----------- deprecated options (most have been combined or optimized into the functions above, here for legacy)
 ##EVALPOTENTIAL                 # computes gravitational potential
