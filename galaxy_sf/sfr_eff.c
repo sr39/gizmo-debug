@@ -715,13 +715,16 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
     /* wind model where launching scales with halo/galaxy bulk properties (as in Romeel's simulations) */
     if(SphP[i].HostHaloMass > 0 && sm > 0)
     {
+        double HaloConcentrationNorm = 9.;  /* concentration c0 of a halo of unit mass */
+        double HaloConcentrationSlope = -0.15;  /* slope n of mass concentration relation, namely c = c0 * M_200,crit^n */
+
         double r200c, v_esc, c_halo, wind_energy, wind_momentum, wind_mass;
         double rhocrit = 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
         rhocrit *= All.Omega0/All.cf_a3inv + (1-All.Omega0-All.OmegaLambda)/All.cf_a2inv + All.OmegaLambda; /* physical critical density at redshift z */
 
         r200c = pow(SphP[i].HostHaloMass / (4 * M_PI / 3.0 * 200 * rhocrit), 1.0 / 3.0);	/* physical r_200,crit value, assuming FoF mass = M_200,crit */
         v_esc = sqrt(All.G * SphP[i].HostHaloMass / r200c);	/* physical circular velocity at r_200,crit */
-        c_halo = All.HaloConcentrationNorm * pow(SphP[i].HostHaloMass, All.HaloConcentrationSlope);
+        c_halo = HaloConcentrationNorm * pow(SphP[i].HostHaloMass, HaloConcentrationSlope);
         v_esc *= sqrt(2 * c_halo / (log(1 + c_halo) - c_halo / (1 + c_halo)));	/* physical escape velocity of halo */
         v = All.VariableWindVelFactor * v_esc;	/* physical wind velocity */
         

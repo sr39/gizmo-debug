@@ -156,9 +156,14 @@ WindEfficiency          2.0     % mass-loading (Mdot_wind = SFR * WindEfficiency
 WindEnergyFraction      0.06    % fraction of SNe energy in winds (sets velocity) 
 WindFreeTravelMaxTime   0.1     % 'free-stream time' in units of t_Hubble(z)
 WindFreeTravelDensFac   0.1     % 'free-stream' until density < this * CritPhysDensity
+%------- alternative winds (GALSF_SUBGRID_DMDISPERSION or GALSF_SUBGRID_VARIABLEVELOCITY)
+%------- (scaling with local dark matter properties, as Dave/Oppenheimer/Mannucci/Illustris)
+VariableWindVelFactor    1.0    % wind velocity relative to estimated halo v_escape
+VariableWindSpecMomentum 5000.  % wind momentum per unit stellar mass (code velocity units)
 
 
-%-------------- FIRE (PFH) explicit star formation & feedback model 
+
+%-------------- FIRE (PFH) explicit star formation & feedback model
 %--- initial metallicity of gas & stars in simulation 
 InitMetallicity             0.0001  % initial gas+stellar metallicity (in solar)
 InitStellarAge              0.001   % initial mean age (in Gyr; for stars in sim ICs)

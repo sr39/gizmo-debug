@@ -1661,14 +1661,6 @@ void read_parameter_file(char *fname)
       strcpy(tag[nt], "VariableWindSpecMomentum");
       addr[nt] = &All.VariableWindSpecMomentum;
       id[nt++] = REAL;
-
-      strcpy(tag[nt], "HaloConcentrationNorm");
-      addr[nt] = &All.HaloConcentrationNorm;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "HaloConcentrationSlope");
-      addr[nt] = &All.HaloConcentrationSlope;
-      id[nt++] = REAL;
 #endif
 #endif // GALSF_SUBGRID_WINDS
 

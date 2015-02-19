@@ -1220,10 +1220,8 @@ extern struct global_data_all_processes
   double WindFreeTravelMaxTimeFactor;  /* maximum free travel time in units of the Hubble time at the current simulation redshift */
   double WindFreeTravelDensFac;
 #if defined(GALSF_SUBGRID_VARIABLEVELOCITY) || defined(GALSF_SUBGRID_DMDISPERSION)
-  double VariableWindVelFactor;  /* wind velocity in units of the halo escape velcoity */
+  double VariableWindVelFactor;  /* wind velocity in units of the halo escape velocity */
   double VariableWindSpecMomentum;  /* momentum available for wind per unit mass of stars formed, in internal velocity units */
-  double HaloConcentrationNorm;  /* concentration c0 of a halo of unit mass */
-  double HaloConcentrationSlope;  /* slope n of mass concentration relation, namely c = c0 * M_200,crit^n */
 #endif
 #endif // GALSF_SUBGRID_WINDS //
 
