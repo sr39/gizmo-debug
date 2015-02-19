@@ -86,6 +86,7 @@ SofteningStars  0.001    % stars spawned from gas (type=4)
 SofteningBndry  0.001    % black holes (if active), or collisionless (type=5)
 %---- if these are set in cosmo runs, SofteningX switches from comoving to physical
 %------- units when the comoving value exceeds the choice here
+%------- (these are ignored, and *only* the above are used, for non-cosmo runs)
 SofteningGasMaxPhys     0.0005    % switch to 0.5pc physical below z=1 
 SofteningHaloMaxPhys    0.010 
 SofteningDiskMaxPhys    0.075 
@@ -125,7 +126,7 @@ ShearViscosityCoeff     1.0     % set/multiply shear viscosity coefficient
 BulkViscosityCoeff      1.0     % set/multiply bulk viscosity coefficient
 
 %---- Turbulent Diffusion Master Switch (TURB_DIFFUSION on)
-TurbDiffusionCoefficient    0.05     % Normalizes diffusion rates, reasonable values ~0.05
+TurbDiffusionCoefficient 1.0    % Normalizes diffusion rates relative to Smagorinsky-Lilly theory (~0.5-2)
 
 %--- Cosmic Ray + Gas Fluids (COSMIC_RAYS)
 CosmicRayDiffusionCoeff     1.0     % multiplies anisotropic diffusion/streaming coefficients
@@ -204,7 +205,7 @@ GrackleDataFile		     CloudyData_UVB=HM2012.h5
 %------------------ Driven Turbulence (Large-Eddy boxes) -----------------
 %-------------------------------------------------------------------------
 
-￼%-------------- Turbulent stirring parameters (TURB_DRIVING on)
+%-------------- Turbulent stirring parameters (TURB_DRIVING on)
 ST_decay       1.	    % decay time for driving-mode phase correlations
 ST_energy      0.0002   % energy of driving-scale modes: sets norm of turb
 ST_DtFreq      0.005    % time interval for driving updates (set by hand)

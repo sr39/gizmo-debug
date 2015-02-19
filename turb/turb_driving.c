@@ -285,7 +285,7 @@ void set_turb_ampl(void)
 {
     int i;
     mpi_printf("entering ... \n");
-    double delta = (All.Ti_Current - StTPrev) * All.Timebase_interval;
+    double delta = (All.Ti_Current - StTPrev) * All.Timebase_interval / All.cf_hubble_a;
     mpi_printf("entering ... \n");
     
     if(delta >= All.StDtFreq)

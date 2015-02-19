@@ -750,7 +750,12 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
             kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, -1);
             for(k=0; k<3; k++) kernel.dv[k] = local.Vel[k] - P[j].Vel[k];
             
+            /*
             wk = 1./SphP[j].Density; // wt ~ 1 (uniform in SPH terms)
+            wk = kernel.wk * P[j].Mass / SphP[j].Density; // psi
+            */
+            double h_eff_j = PPP[j].Hsml * (0.124 + 11.45 / (26.55 + PPP[j].NumNgb)); // fast and very accurate approximation to h/Nngb^(1/3) //
+            wk = h_eff_j * h_eff_j / (r2 + 0.01*h2); // area weight
             
             // if feedback_type==-1, this is a pre-calc loop to get the relevant weights for coupling //
             if(feedback_type==-1)
@@ -760,7 +765,10 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
             }
             // NOW do the actual feedback calculation //
                 wk /= local.area_sum; // this way wk matches the value summed above for the weighting //
-
+                // need to check to make sure the coupled fraction doesn't exceed the solid angle subtended by the particles //
+                double wkmax = 1.5 * M_PI * h_eff_j * h_eff_j / (4. * M_PI * (0.5625*r2 + 0.005*h2));
+                if(wk > wkmax) {wk = wkmax;}
+            
                 dM = wk * local.Msne;
                 dP = local.SNe_v_ejecta / kernel.r;
                 /* define initial mass and ejecta velocity in this 'cone' */
@@ -843,10 +851,13 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
             
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_SNE_HEATING)
+            if(local.SNe_v_ejecta > 5.0e7 / All.UnitVelocity_in_cm_per_s)
+            {
                 /* a fraction of the *INITIAL* energy goes into cosmic rays [this is -not- affected by the radiative losses above] */
                 double dE_init_coupled = 0.5 * dM * local.SNe_v_ejecta * local.SNe_v_ejecta;
                 SphP[j].CosmicRayEnergy += All.CosmicRay_SNeFraction * dE_init_coupled;
                 SphP[j].CosmicRayEnergyPred += All.CosmicRay_SNeFraction * dE_init_coupled;
+            }
 #endif
                 /* inject the post-shock energy and momentum (convert to specific units as needed first) */
                 dE *= 1 / P[j].Mass;

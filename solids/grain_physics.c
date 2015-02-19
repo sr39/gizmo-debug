@@ -242,9 +242,9 @@ void grain_collisions(void)
             if(P[i].Grain_Density > 0)
             {
 #ifndef WAKEUP
-                dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval;
+                dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
-                dt = P[i].dt_step * All.Timebase_interval;
+                dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
                 if(dt > 0)
                 {

@@ -402,6 +402,19 @@ integertime get_timestep(int p,		/*!< particle index */
             break;
     }
     
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+    /* make sure smoothing length of non-gas particles doesn't change too much in one timestep */
+    if(P[p].Type > 0)
+    {
+        double divVel = P[p].Particle_DivVel;
+        if(divVel != 0)
+        {
+            dt_divv = 1.5 / fabs(All.cf_a2inv * divVel);
+            if(dt_divv < dt) {dt = dt_divv;}
+        }
+    }
+#endif
+    
     if((P[p].Type == 0) && (P[p].Mass > 0))
         {
             csnd = 0.5 * SphP[p].MaxSignalVel * All.cf_afac3;
@@ -454,6 +467,7 @@ integertime get_timestep(int p,		/*!< particle index */
             
 
 #ifdef TURB_DIFFUSION
+            /*
             double L_tdiff_inv = sqrt(SphP[p].Gradients.Density[0]*SphP[p].Gradients.Density[0] +
                                       SphP[p].Gradients.Density[1]*SphP[p].Gradients.Density[1] +
                                       SphP[p].Gradients.Density[2]*SphP[p].Gradients.Density[2]) / SphP[p].Density;
@@ -461,6 +475,7 @@ integertime get_timestep(int p,		/*!< particle index */
             double dt_tdiff = 2.0 * L_tdiff*L_tdiff / (1.0e-33 + SphP[p].TD_DiffCoeff);
             // here, we use DIFFUSIVITIES, so there is no extra density power in the equation //
             //if(dt_tdiff < dt) dt = dt_tdiff;
+            */
 #endif
             
             

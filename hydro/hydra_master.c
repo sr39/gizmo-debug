@@ -714,20 +714,21 @@ void hydro_force(void)
             SphP[i].dMass = 0;
             for(k=0;k<3;k++) SphP[i].GravWorkTerm[k] = 0;
 #endif
+            
 #ifdef MAGNETIC
             SphP[i].divB = 0;
-#ifndef HYDRO_SPH
+            for(k=0;k<3;k++) {SphP[i].Face_Area[k] = 0;}
 #ifdef DIVBCLEANING_DEDNER
-            SphP[i].DtPhi = 0;
             for(k=0;k<3;k++) {SphP[i].DtB_PhiCorr[k] = 0;}
 #endif
-            for(k=0;k<3;k++)
-            {
-                SphP[i].DtB[k] = 0;
-                SphP[i].Face_Area[k] = 0;
-            }
+#ifndef HYDRO_SPH
+            for(k=0;k<3;k++) {SphP[i].DtB[k] = 0;}
+#ifdef DIVBCLEANING_DEDNER
+            SphP[i].DtPhi = 0;
+#endif
 #endif
 #endif // magnetic //
+
 #ifdef COSMIC_RAYS
             SphP[i].DtCosmicRayEnergy = 0;
 #endif
@@ -1071,8 +1072,11 @@ void *hydro_evaluate_primary(void *p)
         
         if(P[i].Type == 0 && P[i].Mass > 0)
         {
-            if(hydro_evaluate(i, 0, exportflag, exportnodecount, exportindex, ngblist) < 0)
-                break;		/* export buffer has filled up */
+            if(SphP[i].Density > 0)
+            {
+                if(hydro_evaluate(i, 0, exportflag, exportnodecount, exportindex, ngblist) < 0)
+                    break;		/* export buffer has filled up */
+            }
         }
         ProcessedFlag[i] = 1;	/* particle successfully finished */
     }

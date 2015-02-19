@@ -657,28 +657,40 @@ void hydro_gradient_calc(void)
 #ifdef MAGNETIC
             if(SphP[i].Density > 0)
             {
-                for(k=0;k<3;k++) SphP[i].DtB[k] *= PPPZ[i].DhsmlNgbFactor * P[i].Mass / (SphP[i].Density * SphP[i].Density) / All.cf_atime; // induction equation (convert from Bcode*vcode/rcode to Bphy/tphys) //
+                for(k=0;k<3;k++) SphP[i].DtB[k] *= PPP[i].DhsmlNgbFactor * P[i].Mass / (SphP[i].Density * SphP[i].Density) / All.cf_atime; // induction equation (convert from Bcode*vcode/rcode to Bphy/tphys) //
 #ifdef DIVBCLEANING_DEDNER
                 /* full correct form of D(phi)/Dt = -ch*ch*div.dot.B - phi/tau - (1/2)*phi*div.dot.v */
                 /* PFH: here's the div.dot.B term: make sure div.dot.B def'n matches appropriate grad_phi conjugate pair: recommend direct diff div.dot.B */
-                SphP[i].divB *= PPPZ[i].DhsmlNgbFactor * P[i].Mass / (SphP[i].Density * SphP[i].Density);
-                double tmp_ded = 0.5 * SphP[i].MaxSignalVel * All.cf_afac3; // has units of v_physical now
-                SphP[i].DtPhi = -tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB;
+                SphP[i].divB *= PPP[i].DhsmlNgbFactor * P[i].Mass / (SphP[i].Density * SphP[i].Density);
+                if((!isnan(SphP[i].divB))&&(PPP[i].Hsml>0)&&(SphP[i].divB!=0)&&(SphP[i].Density>0))
+                {
+                    double tmp_ded = 0.5 * SphP[i].MaxSignalVel * All.cf_afac3; // has units of v_physical now
+                    /* do a check to make sure divB isn't something wildly divergent (owing to particles being too close) */
+                    double b2_max = 0.0;
+                    for(k=0;k<3;k++) {b2_max += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+                    b2_max = 100.0 * fabs( sqrt(b2_max) * All.cf_a2inv * P[i].Mass / (SphP[i].Density*All.cf_a3inv) * 1.0 / (PPP[i].Hsml*All.cf_atime) );
+                    if(fabs(SphP[i].divB) > b2_max) {SphP[i].divB *= b2_max / fabs(SphP[i].divB);}
+                    /* ok now can apply this to get the growth rate of phi */
+                    SphP[i].DtPhi = -tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB;
+                    // phiphi above now has units of [Bcode]*[vcode]^2/[rcode]=(Bcode*vcode)*vcode/rcode; needs to have units of [Phicode]*[vcode]/[rcode]
+                    // [GradPhi]=[Phicode]/[rcode] = [DtB] = [Bcode]*[vcode]/[rcode] IFF [Phicode]=[Bcode]*[vcode]; this also makes the above self-consistent //
+                    // (implicitly, this gives the correct evolution in comoving, adiabatic coordinates where the sound speed is the relevant speed at which
+                    //   the 'damping wave' propagates. another choice (provided everything else is self-consistent) is fine, it just makes different assumptions
+                    //   about the relevant 'desired' timescale for damping wave propagation in the expanding box) //
+                } else {
+                    SphP[i].DtPhi=0; SphP[i].divB=0; for(k=0;k<3;k++) {SphP[i].DtB[k] = 0;}
+                    SphP[i].DtPhi=0; SphP[i].divB=0; for(k=0;k<3;k++) {SphP[i].DtB[k] = 0;}
+                }
                 SphP[i].divB = 0.0; // now we re-zero it, since a -different- divB definition must be used in hydro to subtract the tensile terms */
-                // phiphi above now has units of [Bcode]*[vcode]^2/[rcode]=(Bcode*vcode)*vcode/rcode; needs to have units of [Phicode]*[vcode]/[rcode]
-                // [GradPhi]=[Phicode]/[rcode] = [DtB] = [Bcode]*[vcode]/[rcode] IFF [Phicode]=[Bcode]*[vcode]; this also makes the above self-consistent //
-                // (implicitly, this gives the correct evolution in comoving, adiabatic coordinates where the sound speed is the relevant speed at which
-                //   the 'damping wave' propagates. another choice (provided everything else is self-consistent) is fine, it just makes different assumptions
-                //   about the relevant 'desired' timescale for damping wave propagation in the expanding box) //
 #endif
             } else {
                 for(k=0;k<3;k++) SphP[i].DtB[k] = 0;
 #ifdef DIVBCLEANING_DEDNER
                 SphP[i].divB = 0;
                 SphP[i].DtPhi = 0;
-#endif
-            }
-#endif
+#endif          
+            }   
+#endif                      
             
             
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
@@ -780,9 +792,10 @@ void hydro_gradient_calc(void)
 #ifdef MAGNETIC
                 /* in the strong-field (low-beta) case, it's actually the Alfven velocity: interpolate between these */
                 double vA_2 = 0.0;
+                double cs_stream = v_streaming;
                 for(k=0;k<3;k++) {vA_2 += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
                 vA_2 *= All.cf_afac1 / (All.cf_atime * SphP[i].Density);
-                v_streaming = sqrt(v_streaming*v_streaming + vA_2);
+                v_streaming = DMIN(100.*cs_stream, sqrt(cs_stream*cs_stream + vA_2));
 #endif
                 v_streaming *= All.CosmicRayDiffusionCoeff * All.cf_afac3; // converts to physical units and rescales according to chosen coefficient //
                 /* now we need the cosmic ray pressure or energy density scale length, defined as :
@@ -791,10 +804,11 @@ void hydro_gradient_calc(void)
                 for(k=0;k<3;k++) {CRPressureGradMag += SphP[i].Gradients.CosmicRayPressure[k]*SphP[i].Gradients.CosmicRayPressure[k];}
                 double CRPressureGradScaleLength = GAMMA_COSMICRAY * Get_Particle_CosmicRayPressure(i) / sqrt(1.0e-33 + CRPressureGradMag) * All.cf_atime;
                 // limit this scale length; if the gradient is too shallow, there is no information beyond a few smoothing lengths, so we can't let streaming go that far //
-                if(CRPressureGradScaleLength > 0) {CRPressureGradScaleLength = 1.0/(1.0/CRPressureGradScaleLength + 1.0/(10.0*PPP[i].Hsml));}
+                if(CRPressureGradScaleLength > 0) {CRPressureGradScaleLength = 1.0/(1.0/CRPressureGradScaleLength + 1.0/(100.0*PPP[i].Hsml));}
                 
                 /* the diffusivity is now just the product of these two coefficients */
                 SphP[i].CosmicRayDiffusionCoeff = v_streaming * CRPressureGradScaleLength;
+                if((SphP[i].CosmicRayDiffusionCoeff<=0)||(isnan(SphP[i].CosmicRayDiffusionCoeff))) {SphP[i].CosmicRayDiffusionCoeff=0;}
             } else {
                 SphP[i].CosmicRayDiffusionCoeff = 0;
             }
@@ -802,20 +816,24 @@ void hydro_gradient_calc(void)
             
             
 #ifdef TURB_DIFFUSION
-            /* estimate local turbulent diffusion coefficient from velocity gradients using Smagorinsky mixing model */
-            double h_turb = Get_Particle_Size(i);
-            SphP[i].TD_DiffCoeff = All.TurbDiffusion_Coefficient * h_turb*h_turb * // overall normalization, then scaling with inter-particle spacing
-            sqrt(
-                 (1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1])*(SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) +
-                          (SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2])*(SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2]) +
-                          (SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])*(SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])) +
-                 (2./3.)*((SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[0][0] +
-                           SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[1][1] +
-                           SphP[i].Gradients.Velocity[2][2]*SphP[i].Gradients.Velocity[2][2]) -
-                          (SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[2][2] +
-                           SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[1][1] +
-                           SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))
-                 ) * All.cf_a2inv; // norm of velocity gradient tensor
+            {
+                /* estimate local turbulent diffusion coefficient from velocity gradients using Smagorinsky mixing model */
+                double C_Smagorinsky_Lilly = 0.15; // this is the standard Smagorinsky-Lilly constant, calculated from Kolmogorov theory: should be 0.1-0.2 //
+                double h_turb = Get_Particle_Size(i);
+                double turb_prefactor = All.TurbDiffusion_Coefficient * C_Smagorinsky_Lilly*C_Smagorinsky_Lilly * h_turb*h_turb * sqrt(2.0);
+                SphP[i].TD_DiffCoeff = turb_prefactor * // overall normalization, then scaling with inter-particle spacing
+                sqrt(
+                     (1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1])*(SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) +
+                              (SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2])*(SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2]) +
+                              (SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])*(SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])) +
+                     (2./3.)*((SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[0][0] +
+                               SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[1][1] +
+                               SphP[i].Gradients.Velocity[2][2]*SphP[i].Gradients.Velocity[2][2]) -
+                              (SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[2][2] +
+                               SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[1][1] +
+                               SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))
+                     ) * All.cf_a2inv; // norm of velocity gradient tensor
+            }
 #endif
             
             
@@ -1028,8 +1046,8 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     if(dpCR < out.Minima.CosmicRayPressure) out.Minima.CosmicRayPressure = dpCR;
 #endif
 #ifdef DOGRAD_SOUNDSPEED
-                    if(dp > out.Maxima.SoundSpeed) out.Maxima.SoundSpeed = dc;
-                    if(dp < out.Minima.SoundSpeed) out.Minima.SoundSpeed = dc;
+                    if(dc > out.Maxima.SoundSpeed) out.Maxima.SoundSpeed = dc;
+                    if(dc < out.Minima.SoundSpeed) out.Minima.SoundSpeed = dc;
 #endif
                     for(k=0;k<3;k++)
                     {

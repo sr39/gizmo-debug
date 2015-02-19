@@ -40,13 +40,13 @@ void blackhole_accretion(void)
     for(i = 0; i < NumPart; i++) P[i].SwallowID = 0;
     
         
-    if(ThisTask == 0)  printf("Beginning black-hole accretion\n");
+    if(ThisTask == 0)  printf("Blackhole: beginning black-hole accretion\n");
     blackhole_start();              /* allocates and cleans BlackholeTempInfo struct */
 
     
     
     /* this is the PRE-PASS loop.*/
-    if(ThisTask == 0)  printf("Evaluating black-hole environment\n");
+    if(ThisTask == 0)  printf("Blackhole: evaluating black-hole environment\n");
     blackhole_environment_loop();    /* populates BlackholeTempInfo based on surrounding gas (blackhole_environment.c).
                                         If using gravcap the desired mass accretion rate is calculated and set to BlackholeTempInfo.mass_to_swallow_edd
                                       */
@@ -57,7 +57,7 @@ void blackhole_accretion(void)
      No MPI comm necessary.
      ----------------------------------------------------------------------*/
 
-    if(ThisTask == 0)  printf("Setting black-hole properties\n");
+    if(ThisTask == 0)  printf("Blackhole: setting black-hole properties\n");
     blackhole_properties_loop();       /* do 'BH-centric' operations such as dyn-fric, mdot, etc. 
                                           This loop is at the end of this file.  */
 
@@ -69,7 +69,7 @@ void blackhole_accretion(void)
      Use the above info to determine the weight functions for feedback
      ----------------------------------------------------------------------*/
     
-    if(ThisTask == 0)  printf("Marking gas to swallow\n");
+    if(ThisTask == 0)  printf("Blackhole: marking gas to swallow\n");
     blackhole_feed_loop();       /* BH mergers and gas/star/dm accretion events are evaluated
                                   - P[j].SwallowID's are set
                                   */
@@ -82,12 +82,12 @@ void blackhole_accretion(void)
      (blackhole_evaluate_swallow), and 'kicking' operations
      ----------------------------------------------------------------------*/
     
-    if(ThisTask == 0)  printf("Injecting feedback\n");
+    if(ThisTask == 0)  printf("Blackhole: injecting feedback\n");
     blackhole_swallow_and_kick_loop();
     
     
     
-    if(ThisTask == 0) printf("Doing whatever goes in the final loop\n");
+    if(ThisTask == 0) printf("Blackhole: doing whatever goes in the final loop\n");
     blackhole_final_loop();     /* this is causing problems with the alpha disk ?! */
 
     /*----------------------------------------------------------------------

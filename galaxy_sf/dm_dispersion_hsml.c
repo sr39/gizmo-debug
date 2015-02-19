@@ -477,7 +477,7 @@ void disp_density(void)
                         if(Right[i] == 0 && Left[i] == 0)
 			  {
                             char buf[1000];
-                            sprintf(buf, "Right[i] == 0 && Left[i] == 0 && SphP[i].Hsml=%g\n", SphP[i].HsmlDM);
+                            sprintf(buf, "Right[i] == 0 && Left[i] == 0 && SphP[i].HsmlDM=%g\n", SphP[i].HsmlDM);
                             terminate(buf);
 			  }
                         

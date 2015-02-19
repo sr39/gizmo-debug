@@ -760,7 +760,7 @@ void read_file(char *fname, int readTask, int lastTask)
 
       All.MaxPart = (int) (All.PartAllocFactor * (All.TotNumPart / NTask));	/* sets the maximum number of particles that may */
       All.MaxPartSph = (int) (All.PartAllocFactor * (All.TotN_gas / NTask));	/* sets the maximum number of particles that may reside on a processor */
-      All.MaxPartSph = All.MaxPart;
+      // All.MaxPartSph = All.MaxPart; // PFH: increasing All.MaxPartSph according to this line can allow better load-balancing in some cases. however it leads to more memory problems
 
 #if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
       if(All.TotBHs == 0)

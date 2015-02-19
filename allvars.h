@@ -427,7 +427,7 @@ typedef unsigned long long peanokey;
 #define DRIFT_TABLE_LENGTH  1000	/*!< length of the lookup table used to hold the drift and kick factors */
 
 
-#define MAXITER 150
+#define MAXITER 300
 
 #ifndef LINKLENGTH
 #define LINKLENGTH 0.2
@@ -1521,8 +1521,9 @@ extern ALIGN(32) struct particle_data
     MyFloat IMF_Mturnover; /*!< IMF turnover mass [in solar] (or any other parameter which conveniently describes the IMF) */
 #endif
     
-    MyFloat Hsml;
-    MyFloat NumNgb;
+    MyFloat Hsml;                   /*!< search radius around particle for neighbors/interactions */
+    MyFloat NumNgb;                 /*!< neighbor number around particle */
+    MyFloat DhsmlNgbFactor;        /*!< correction factor needed for varying kernel lengths */
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
     MyFloat DensAroundStar;
     MyFloat GradRho[3];
@@ -1662,7 +1663,6 @@ extern ALIGN(32) struct particle_data
     
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     MyFloat AGS_zeta;           /*!< factor in the correction term */
-    MyDouble DhsmlNgbFactor;    /*!< correction factor needed for varying kernel lengths */
 #endif
 }
  *P,				/*!< holds particle data on local processor */
@@ -1814,9 +1814,6 @@ extern struct sph_particle_data
     MyDouble ConditionNumber;       /*!< condition number of the gradient matrix: needed to ensure stability */
     MyDouble MaxKineticEnergyNgb;   /*!< maximum kinetic energy (with respect to neighbors): use for entropy 'switch' */
 
-#ifndef ADAPTIVE_GRAVSOFT_FORALL
-    MyDouble DhsmlNgbFactor;        /*!< correction factor needed for varying kernel lengths */
-#endif
 #ifdef HYDRO_SPH
     MyDouble DhsmlHydroSumFactor;   /* for 'traditional' SPH, we need the SPH hydro-element volume estimator */
 #endif
@@ -1825,7 +1822,7 @@ extern struct sph_particle_data
     MyDouble EgyWtDensity;          /*!< 'effective' rho to use in hydro equations */
 #endif
     
-#ifdef ADAPTIVE_GRAVSOFT_FORGAS
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
     MyFloat AGS_zeta;               /*!< correction term for adaptive gravitational softening lengths */
 #endif
     

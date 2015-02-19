@@ -311,7 +311,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 		  get_gravkick_factor(P[pindex].Ti_begstep, All.Ti_Current) -
 		  get_gravkick_factor(P[pindex].Ti_begstep, P[pindex].Ti_begstep + dt_step / 2);
         dt_hydrokick =
-          (All.Ti_Current - (P[pindex].Ti_begstep + dt_step / 2)) * All.Timebase_interval;
+          (All.Ti_Current - (P[pindex].Ti_begstep + dt_step / 2)) * All.Timebase_interval / All.cf_hubble_a;
 	      }
 	    else
 	      dt_gravkick = dt_hydrokick =

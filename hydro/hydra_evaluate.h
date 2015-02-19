@@ -133,6 +133,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if((local.Timestep == TimeStep_J) && (P[j].ID < local.ID)) continue; /* use ID to break degeneracy */
 #endif
                 if(P[j].Mass <= 0) continue;
+                if(SphP[j].Density <= 0) continue;
 #ifdef GALSF_SUBGRID_WINDS
                 if(SphP[j].DelayTime > 0) continue; /* no hydro forces for decoupled wind particles */
 #endif

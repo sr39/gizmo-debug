@@ -11,6 +11,9 @@
     double s_star_ij,s_i,s_j,v_frame[3],n_unit[3];
     double distance_from_i[3],distance_from_j[3];
     face_vel_i=face_vel_j=Face_Area_Norm=0;
+#ifdef COSMIC_RAYS
+    Fluxes.CosmicRayPressure = 0;
+#endif
     
     /* --------------------------------------------------------------------------------- */
     /* define volume elements and interface position */
@@ -104,10 +107,9 @@
         reconstruct_face_states(local.Pressure, local.Gradients.Pressure, SphP[j].Pressure, SphP[j].Gradients.Pressure,
                                 distance_from_i, distance_from_j, &Riemann_vec.L.p, &Riemann_vec.R.p, 1);
 #ifdef NON_IDEAL_EOS
-        double soundspeed_j = Particle_effective_soundspeed_i(j);
         reconstruct_face_states(local.InternalEnergyPred, local.Gradients.InternalEnergy, SphP[j].InternalEnergyPred, SphP[j].Gradients.InternalEnergy,
                                 distance_from_i, distance_from_j, &Riemann_vec.L.u, &Riemann_vec.R.u, 1);
-        reconstruct_face_states(local.SoundSpeed, local.Gradients.SoundSpeed, soundspeed_j, SphP[j].Gradients.SoundSpeed,
+        reconstruct_face_states(kernel.sound_i, local.Gradients.SoundSpeed, kernel.sound_j, SphP[j].Gradients.SoundSpeed,
                                 distance_from_i, distance_from_j, &Riemann_vec.L.cs, &Riemann_vec.R.cs, 1);
 #endif
         for(k=0;k<3;k++)
@@ -176,7 +178,7 @@
 #endif
 #ifdef NON_IDEAL_EOS
             Riemann_vec.R.u = local.InternalEnergyPred; Riemann_vec.L.u = SphP[j].InternalEnergyPred;
-            Riemann_vec.R.cs = local.SoundSpeed; Riemann_vec.L.cs = soundspeed_j;
+            Riemann_vec.R.cs = kernel.sound_i; Riemann_vec.L.cs = kernel.sound_j;
 #endif
             Riemann_solver(Riemann_vec, &Riemann_out, n_unit);
             if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M)))
@@ -193,7 +195,7 @@
 #endif
 #ifdef NON_IDEAL_EOS
                 Riemann_vec.R.u = local.InternalEnergyPred; Riemann_vec.L.u = SphP[j].InternalEnergyPred;
-                Riemann_vec.R.cs = local.SoundSpeed; Riemann_vec.L.cs = soundspeed_j;
+                Riemann_vec.R.cs = kernel.sound_i; Riemann_vec.L.cs = kernel.sound_j;
 #endif
                 Riemann_solver(Riemann_vec, &Riemann_out, n_unit);
                 if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M)))
@@ -260,17 +262,17 @@
                 Fluxes.v[k] = Face_Area_Norm * Riemann_out.Fluxes.v[k]; // momentum flux (need to divide by mass) //
             }
 #if defined(COSMIC_RAYS) && defined(HYDRO_MESHLESS_FINITE_VOLUME)
-            /* here we simply assume that if there is mass flux, the cosmic ray fluid is advected -with the mass flux-, taking an 
-                implicit constant (zeroth-order) reconstruction of the CR energy density at the face (we could reconstruct the CR 
-                properties at the face, and calculate a more accurate advection term; however at that stage we should actually be 
-                including them self-consistently in the Riemann problem */
+            /* here we simply assume that if there is mass flux, the cosmic ray fluid is advected -with the mass flux-, taking an
+             implicit constant (zeroth-order) reconstruction of the CR energy density at the face (we could reconstruct the CR
+             properties at the face, and calculate a more accurate advection term; however at that stage we should actually be
+             including them self-consistently in the Riemann problem */
             if(Fluxes.rho < 0)
             {
                 Fluxes.CosmicRayPressure = Fluxes.rho * (local.CosmicRayPressure*V_i/(GAMMA_COSMICRAY_MINUS1*local.Mass));
             } else {
                 Fluxes.CosmicRayPressure = Fluxes.rho * (CosmicRayPressure_j*V_j/(GAMMA_COSMICRAY_MINUS1*P[j].Mass));
             }
-#endif
+#endif // cosmic_rays
             
 #ifdef MAGNETIC
             for(k=0;k<3;k++)
