@@ -952,7 +952,7 @@ void setup_smoothinglengths(void)
     int i, no, p;
     if((RestartFlag == 0)||(RestartFlag==2)) // best for stability if we re-calc Hsml for snapshot restarts //
     {
-#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
+#if defined(DO_DENSITY_AROUND_STAR_PARTICLES) || defined(GRAIN_FLUID)
         for(i = 0; i < NumPart; i++)
 #else
             for(i = 0; i < N_gas; i++)

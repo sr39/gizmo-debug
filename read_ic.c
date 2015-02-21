@@ -760,8 +760,10 @@ void read_file(char *fname, int readTask, int lastTask)
 
       All.MaxPart = (int) (All.PartAllocFactor * (All.TotNumPart / NTask));	/* sets the maximum number of particles that may */
       All.MaxPartSph = (int) (All.PartAllocFactor * (All.TotN_gas / NTask));	/* sets the maximum number of particles that may reside on a processor */
-      // All.MaxPartSph = All.MaxPart; // PFH: increasing All.MaxPartSph according to this line can allow better load-balancing in some cases. however it leads to more memory problems
-
+      All.MaxPartSph = All.MaxPart; // PFH: increasing All.MaxPartSph according to this line can allow better load-balancing in some cases. however it leads to more memory problems
+        // (PFH: needed to revert the change -- i.e. INCLUDE the line above: commenting it out, while it improved memory useage, causes some instability in the domain decomposition for
+        //   sufficiently irregular trees. overall more stable behavior with the 'buffer', albeit at the expense of memory )
+        
 #if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
       if(All.TotBHs == 0)
           All.MaxPartBH = All.PartAllocFactor * (All.TotN_gas / NTask) * All.BHfactor;
@@ -1466,7 +1468,6 @@ void read_header_attributes_in_hdf5(char *fname)
   hdf5_attribute = H5Aopen_name(hdf5_headergrp, "Flag_DoublePrecision");
   H5Aread(hdf5_attribute, H5T_NATIVE_INT, &header.flag_doubleprecision);
   H5Aclose(hdf5_attribute);
-
 
   H5Gclose(hdf5_headergrp);
   H5Fclose(hdf5_file);

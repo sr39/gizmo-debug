@@ -262,7 +262,7 @@ typedef  int integertime;
 #endif
 
 #ifndef  MULTIPLEDOMAINS
-#define  MULTIPLEDOMAINS     1
+#define  MULTIPLEDOMAINS     8
 #endif
 
 #ifndef  TOPNODEFACTOR

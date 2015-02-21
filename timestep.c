@@ -414,6 +414,20 @@ integertime get_timestep(int p,		/*!< particle index */
         }
     }
 #endif
+
+#ifdef GRAIN_FLUID
+    if(P[p].Type > 0)
+    {
+        csnd = GAMMA * GAMMA_MINUS1 * P[p].Gas_InternalEnergy;
+        int k;
+        for(k=0;k<3;k++) {csnd += (P[p].Gas_Velocity[k]-P[p].Vel[k])*(P[p].Gas_Velocity[k]-P[p].Vel[k]);}
+        csnd = sqrt(csnd);
+        double L_particle = Get_Particle_Size(p);
+        dt_courant = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / csnd;
+        if(dt_courant < dt) dt = dt_courant;
+    }
+#endif
+    
     
     if((P[p].Type == 0) && (P[p].Mass > 0))
         {

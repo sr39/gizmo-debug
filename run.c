@@ -965,7 +965,7 @@ void write_cpu_log(void)
 	      "blackholes    %10.2f  %5.1f%%\n"
 	      "fof/subfind   %10.2f  %5.1f%%\n"
 #ifdef GRAIN_FLUID
-          "grains       %10.2f  %5.1f%%\n"
+          "grains        %10.2f  %5.1f%%\n"
 #endif
           "gas_return    %10.2f  %5.1f%%\n"
           "snII_fb_loop  %10.2f  %5.1f%%\n"

@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <gsl/gsl_math.h>
+
 #include "../allvars.h"
 #include "../proto.h"
 
@@ -49,8 +51,8 @@ void apply_grain_dragforce(void)
                     double rho_gas = P[i].Gas_Density * All.cf_a3inv;
                     double rho_grain = All.Grain_Internal_Density;
                     double vgas_mag = 0.0;
-                    for(k=0;k<3;k++) {vgas_mag+=P[i].Gas_Velocity[k]*P[i].Gas_Velocity[k];}
-
+                    for(k=0;k<3;k++) {vgas_mag+=(P[i].Gas_Velocity[k]-P[i].Vel[k])*(P[i].Gas_Velocity[k]-P[i].Vel[k]);}
+                    
                     if(vgas_mag > 0)
                     {
                         vgas_mag = sqrt(vgas_mag) / All.cf_atime;
@@ -76,7 +78,7 @@ void apply_grain_dragforce(void)
                         double delta_mom[3];
                         for(k=0; k<3; k++)
                         {
-                            double vel_new = P[i].Vel[k] + slow_fac * P[i].Gas_Velocity[k];
+                            double vel_new = P[i].Vel[k] + slow_fac * (P[i].Gas_Velocity[k]-P[i].Vel[k]);
                             delta_mom[k] = P[i].Mass * (vel_new - P[i].Vel[k]);
                             delta_egy += 0.5*P[i].Mass * (vel_new*vel_new - P[i].Vel[k]*P[i].Vel[k]);
                             P[i].Vel[k] = vel_new;
@@ -85,11 +87,9 @@ void apply_grain_dragforce(void)
 
                     
 #ifdef GRAIN_BACKREACTION
-                        int i,k;
-                        double dt, dvel, degy, soundspeed, R_grain, t_stop, slow_fac, vel_new, delta_mom[3], delta_egy;
+                        double dvel, degy, r2nearest, *pos,h,h2,hinv,hinv3,r2,rho,u,wk;;
                         int N_MAX_KERNEL,N_MIN_KERNEL,MAXITER_FB,NITER,startnode,dummy,numngb_inbox,jnearest,i,j,k,n;
-                        double *pos,h,h2,hinv,hinv3,r2,rho,u,wk;
-                        Ngblist = (int *) mymalloc(NumPart * sizeof(int));
+                        Ngblist = (int *) mymalloc("Ngblist",NumPart * sizeof(int));
                         
                         /* now add in a loop to find particles in same domain, share back the
                          momentum and energy to them (to be properly conservative) */
@@ -198,6 +198,7 @@ void apply_grain_dragforce(void)
                             } // if(rho>0) else
                         } // closes if((jnearest != 0)&&(rho>0)) //
                         
+                        myfree(Ngblist);
 #endif // closes GRAIN_BACKREACTION
 
                     } // closes check for if(v_mag > 0)
@@ -206,7 +207,6 @@ void apply_grain_dragforce(void)
         } // closes check for if(P[i].Type != 0)
     } // closes main particle loop
     
-    myfree(Ngblist);
     CPU_Step[CPU_DRAGFORCE] += measure_time();
     
 }

@@ -236,11 +236,7 @@ int n_treeevaluate(int target, int mode, int *nexport, int *nsend_local)
       pos_z = NDataGet[target].Pos[2];
     }
 
-
-#ifdef UNEQUALSOFTENINGS
   double h = All.ForceSoftening[ptype];
-#endif
-
   if(mode == 0)
     {
       no = All.MaxPart;		/* root node */
@@ -369,11 +365,9 @@ int n_treeevaluate(int target, int mode, int *nexport, int *nsend_local)
 
 	  if(no < All.MaxPart)
 	    {
-#ifdef UNEQUALSOFTENINGS
               h = All.ForceSoftening[ptype];
 	      if(h < All.ForceSoftening[P[no].Type])
 		h = All.ForceSoftening[P[no].Type];
-#endif
 	      no = Nextnode[no];
 	    }
 	  else			/* we have an  internal node. Need to check opening criterion */
@@ -404,7 +398,6 @@ int n_treeevaluate(int target, int mode, int *nexport, int *nsend_local)
 		    }
 		}
 
-#ifdef UNEQUALSOFTENINGS
 	      h = All.ForceSoftening[ptype];
 	      if(h < All.ForceSoftening[extract_max_softening_type(nop->u.d.bitflags)])
 		{
@@ -418,7 +411,6 @@ int n_treeevaluate(int target, int mode, int *nexport, int *nsend_local)
 			}
 		    }
 		}
-#endif
 	      no = nop->u.d.sibling;	/* ok, node can be used */
 
 	    }
