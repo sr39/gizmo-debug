@@ -771,7 +771,7 @@ void force_update_node_recursive(int no, int sib, int father)
                 stellar_lum += (pa->Mass * l_over_m_ssp);
                 
 #ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-                GradRho = evaluate_NH_from_GradRho(pa->GradRho,pa->Hsml,pa->DensAroundStar,0);
+                GradRho = evaluate_NH_from_GradRho(pa->GradRho,pa->Hsml,pa->DensAroundStar,pa->NumNgb,0);
                 sigma_eff = sigma_eff_0*GradRho;
                 if(star_age <= 0.0025) {f_op=0.09;} else {
                     if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));
@@ -1987,7 +1987,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         
                         mass_stellarlum = mass*l_over_m_ssp;
 #ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-                        GradRho = evaluate_NH_from_GradRho(P[no].GradRho,PPP[no].Hsml,P[no].DensAroundStar,0);
+                        GradRho = evaluate_NH_from_GradRho(P[no].GradRho,PPP[no].Hsml,P[no].DensAroundStar,PPP[no].NumNgb,0);
                         sigma_eff = sigma_eff_0*GradRho;
                         if(star_age <= 0.0025) {f_op=0.09;} else {
                             if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));

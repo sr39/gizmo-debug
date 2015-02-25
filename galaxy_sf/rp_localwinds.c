@@ -50,7 +50,7 @@ void radiation_pressure_winds_consolidated(void)
     a3inv = All.cf_a3inv;
     ascale = All.cf_atime;
     hubble_a = All.cf_hubble_a;
-    sigma_eff_0=0.955*All.UnitMass_in_g*All.HubbleParam/(All.UnitLength_in_cm*All.UnitLength_in_cm)*0.333*pow((float)All.DesNumNgb,0.66)/(ascale*ascale) * KAPPA_IR;
+    sigma_eff_0 = 0.955 * All.UnitMass_in_g*All.HubbleParam/(All.UnitLength_in_cm*All.UnitLength_in_cm) / (ascale*ascale) * KAPPA_IR;
     double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
 
   for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
@@ -67,10 +67,7 @@ void radiation_pressure_winds_consolidated(void)
     star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
     if( (star_age < 0.1) && (P[i].Mass > 0) && (P[i].DensAroundStar > 0) )
     {
-        RtauMax = P[i].Hsml*ascale *
-            (2.0 * KAPPA_UV *
-             P[i].Hsml*P[i].DensAroundStar/(ascale*ascale) *
-             All.UnitDensity_in_cgs*All.HubbleParam*All.UnitLength_in_cm);
+        RtauMax = P[i].Hsml*ascale * (2.0 * KAPPA_UV * P[i].Hsml*P[i].DensAroundStar/(ascale*ascale) * All.UnitDensity_in_cgs*All.HubbleParam*All.UnitLength_in_cm);
         RtauMax /= ascale;
         RtauMax += P[i].Hsml;
         double rmax0 = 1.0 / unitlength_in_kpc;
@@ -135,12 +132,14 @@ void radiation_pressure_winds_consolidated(void)
                  dz=P[j].Pos[2]-P[i].Pos[2];
                  r2 = dx*dx + dy*dy + dz*dz;
                    r2 += MIN_REAL_NUMBER; // just a small number to prevent errors on near-overlaps
-                   r2 += (P[i].Hsml/5.)*(P[i].Hsml/5.); // just a small number to prevent errors on near-overlaps
+                   double h_eff_i = Get_Particle_Size(i);
+                   r2 += (h_eff_i/5.)*(h_eff_i/5.); // just a small number to prevent errors on near-overlaps
                    
                  u=sqrt(r2)*hinv; //wk=hinv3*kernel_wk(u);
                    kernel_main(u,hinv3,1,&wk,&vq,-1);
                    rho += (P[j].Mass*wk);
-                   wt_sum += PPP[j].Hsml * PPP[j].Hsml / r2;
+                   double h_eff_j = Get_Particle_Size(j);
+                   wt_sum += h_eff_j*h_eff_j / r2;
                } /* if( (P[j].Mass>0) && (SphP[j].Density>0) ) */
               } /* for(n=0; n<numngb_inbox; n++) */
               if (rho <= 0) {
@@ -208,7 +207,8 @@ void radiation_pressure_winds_consolidated(void)
             dz=P[j].Pos[2]-P[i].Pos[2];
             r2 = dx*dx + dy*dy + dz*dz;
             r2 += MIN_REAL_NUMBER; // just a small number to prevent errors on near-overlaps
-            r2 += (P[i].Hsml/5.)*(P[i].Hsml/5.); // just a small number to prevent errors on near-overlaps
+            double h_eff_i = Get_Particle_Size(i);
+            r2 += (h_eff_i/5.)*(h_eff_i/5.); // just a small number to prevent errors on near-overlaps
 
                /* velocity imparted by IR acceleration : = kappa*flux/c,
                     flux scales as 1/r2 from source, kappa with metallicity */
@@ -219,8 +219,8 @@ void radiation_pressure_winds_consolidated(void)
                //kernel_main(u,hinv3,1,&wk,&vq,-1);
                //dv_imparted_uv = (wk/rho) * dE_over_c;
               
-              wk = PPP[j].Hsml * PPP[j].Hsml / (r2 * wt_sum);
-              double h_eff_j = PPP[j].Hsml * (0.124 + 11.45 / (26.55 + PPP[j].NumNgb));
+              double h_eff_j = Get_Particle_Size(j);
+              wk = h_eff_j*h_eff_j / (r2 * wt_sum);
               double wkmax = 1.5 * M_PI * h_eff_j * h_eff_j / (4. * M_PI * 0.5625*r2);
               if(wk > wkmax) {wk = wkmax;}
               dv_imparted_uv = wk * dE_over_c;
@@ -241,7 +241,7 @@ void radiation_pressure_winds_consolidated(void)
                total_n_wind += 1.0;
                total_mom_wind += P[j].Mass*v;
                avg_v_kick += v;
-               momwt_avg_v_kick += P[j].Mass*v * sigma_eff_0*P[j].Mass/(P[j].Hsml*P[j].Hsml) * (0.01 + P[j].Metallicity[0]/All.SolarAbundances[0]);
+               momwt_avg_v_kick += P[j].Mass*v * sigma_eff_0*P[j].Mass/(h_eff_j*h_eff_j) * (0.01 + P[j].Metallicity[0]/All.SolarAbundances[0]);
                
                /* determine the direction of the kick */
 #ifdef GALSF_FB_RPWIND_FROMCLUMPS

@@ -855,7 +855,6 @@ void density(void)
                                 else
                                     fac_lim = 1.4; // factor ~66 increase in N_NGB in constant-density medium
                                 
-                                //if(fabs(PPP[i].NumNgb - desnumngb) < 0.75 * desnumngb)
                                 if((PPP[i].NumNgb < 2*desnumngb)&&(PPP[i].NumNgb > 0.1*desnumngb))
                                 {
                                     double slope = PPP[i].DhsmlNgbFactor;
@@ -888,7 +887,6 @@ void density(void)
                                 
                                 if (fac_lim < -1.535) fac_lim = -1.535; // decreasing N_ngb by factor ~100
                                 
-                                //if(fabs(PPP[i].NumNgb - desnumngb) < 0.75 * desnumngb)
                                 if((PPP[i].NumNgb < 2*desnumngb)&&(PPP[i].NumNgb > 0.1*desnumngb))
                                 {
                                     double slope = PPP[i].DhsmlNgbFactor;
@@ -1108,6 +1106,11 @@ void density(void)
 #endif // BLACK_HOLES
 #endif // ifdef PM_HIRES_REGION_CLIPPING
             
+            
+         /* finally, convert NGB to the more useful format, NumNgb^(1/NDIMS),
+            which we can use to obtain the corrected particle sizes. Because of how this number is used above, we --must-- make 
+            sure that this operation is the last in the loop here */
+            if(PPP[i].NumNgb > 0) {PPP[i].NumNgb=pow(PPP[i].NumNgb,1./NUMDIMS);} else {PPP[i].NumNgb=0;}
             
         } // density_isactive(i)
     } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])

@@ -727,8 +727,11 @@ void ags_density(void)
                 } else {
                     PPPZ[i].AGS_zeta = 0;
                 }
+                /* convert NGB to the more useful format, NumNgb^(1/NDIMS), which we can use to obtain the corrected particle sizes */
+                PPP[i].NumNgb = pow(PPP[i].NumNgb , 1./NUMDIMS);
             } else {
                 PPPZ[i].AGS_zeta = 0;
+                PPP[i].NumNgb = 0;
             }
         }
     }

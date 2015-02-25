@@ -8,7 +8,9 @@ The code is descended from P-SPH/P-GADGET, itself descended from GADGET-3 (so a 
 
 No, the code title is not an acronym, I just liked it. It refers both to the code's multi-purpose applications and to its historical relationship to GADGET.
 
-The bitbucket site is where I will post code updates, news, and documentation, so check back regularly. The main reference for the numerical methods, setting up the code, code policies, branching etc, is the user's guide, available through download on the bitbucket site or at my website: 
+The BitBucket site is where I will post code updates, news, and documentation, so check back regularly. If you have code issues, feature requests, bugs, or just questions, use the (public) BitBucket issue tracker and wiki pages. 
+
+The main reference for the numerical methods, setting up the code, code policies, branching etc, is the user's guide, available through download on the bitbucket site or at my website: 
 
 http://www.tapir.caltech.edu/~phopkins/Site/GIZMO_files/gizmo_documentation.html
 
@@ -16,7 +18,10 @@ Read it!
 
 The code is written in standard ANSI C, and should run on all parallel platforms that support MPI. The portability of the code has been confirmed on a large number of systems -- if it can run GADGET (and it almost certainly can), it can run GIZMO.
 
-The public version of the code is free software, distributed under the GNU General Public License (http://www.gnu.org/copyleft/gpl.html). This implies that you may freely distribute and copy the software. You may also modify it as you wish, and distribute these modified versions as long as you indicate prominently any changes you made in the original code, and as long as you leave the copyright notices, and the no-warranty notice intact. Please read the General Public License for more details. Note that the authors retain their copyright on the code.
+The public version of the code is free software, distributed under the GNU General Public License (http://www.gnu.org/copyleft/gpl.html). This implies that you may freely distribute and copy the software. You may also modify it as you wish, and distribute these modified versions as long as you indicate prominently any changes you made in the original code, and as long as you leave the copyright notices, and the no-warranty notice intact. Please read the General Public License for more details. Note that the authors retain their copyright on the code. The public code is available at:
 
-If you use the code, please reference the code paper at: http://arxiv.org/abs/1409.7395 (Hopkins 2014); you should also reference Volker Springel's GADGET paper (Springel, 2005, MNRAS, 364, 1105) for the domain decomposition and N-body algorithms. 
+http://www.tapir.caltech.edu/~phopkins/public/gizmo_public.tgz
+
+
+If you use any version of the code, please reference the code paper at: http://arxiv.org/abs/1409.7395 (Hopkins 2014); you should also reference Volker Springel's GADGET paper (Springel, 2005, MNRAS, 364, 1105) for the domain decomposition and N-body algorithms. 
 

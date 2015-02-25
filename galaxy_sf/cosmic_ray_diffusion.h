@@ -67,7 +67,8 @@
         
         double conduction_wt;
         double wt_i,wt_j;
-        wt_i = PPP[j].Hsml / (PPP[j].Hsml + local.Hsml); wt_j = 1.-wt_i; // this is consistent with our second-order face location //
+        wt_i = wt_j = 0.5;
+        //wt_i = PPP[j].Hsml / (PPP[j].Hsml + local.Hsml); wt_j = 1.-wt_i; // this is consistent with our second-order face location //
         conduction_wt = wt_i*local.CosmicRayDiffusionCoeff + wt_j*SphP[j].CosmicRayDiffusionCoeff; // arithmetic mean
         //conduction_wt = 2.0 * (CosmicRayDiffusionCoeff * SphP[j].CosmicRayDiffusionCoeff) / (CosmicRayDiffusionCoeff + SphP[j].CosmicRayDiffusionCoeff); // geometric mean
         conduction_wt *= All.cf_a2inv; // based on units CosmicRayDiffusionCoeff is defined with, this makes it physical for a dimensionless quantity gradient below

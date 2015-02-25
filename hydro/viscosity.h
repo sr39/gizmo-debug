@@ -24,8 +24,8 @@
         double v_interface[3];
         double cmag[3];
         double wt_i,wt_j;
-        // wt_i = wt_j = 0.5;
-        wt_i = PPP[j].Hsml / (PPP[j].Hsml + local.Hsml); wt_j = 1.-wt_i; // this is consistent with our second-order face location //
+        wt_i = wt_j = 0.5;
+        //wt_i = PPP[j].Hsml / (PPP[j].Hsml + local.Hsml); wt_j = 1.-wt_i; // this is consistent with our second-order face location //
         for(k=0;k<3;k++) {v_interface[k] = wt_i*local.Vel[k] + wt_j*VelPred_j[k];} // should use interface solution from Riemann problem //
         
         // estimate the interface coefficients with a simple arithmetic average //

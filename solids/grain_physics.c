@@ -479,7 +479,6 @@ void grain_density(void)
                 place = DataIndexTable[j].Index;
                 if(P[place].Type == 3)
                 {
-                    //PPP[place].NumNgb += GrnDensDataOut[j].Ngb;
                     P[place].Grain_Density += GrnDensDataOut[j].RhoGrains;
                     P[place].Grain_Velocity[0] += GrnDensDataOut[j].GrainVel[0];
                     P[place].Grain_Velocity[1] += GrnDensDataOut[j].GrainVel[1];
@@ -677,7 +676,6 @@ void grain_density(void)
     
     if(mode == 0)
     {
-        //P[target].Grain_NumNgb = weighted_numngb;
         P[target].Grain_Density = rho;
         P[target].Grain_Velocity[0] = 0;
         P[target].Grain_Velocity[1] = 0;
@@ -685,7 +683,6 @@ void grain_density(void)
     }
     else
     {
-        //GrnDensDataResult[target].Ngb = weighted_numngb;
         GrnDensDataResult[target].RhoGrains = rho;
         GrnDensDataResult[target].GrainVel[0] = 0;
         GrnDensDataResult[target].GrainVel[1] = 0;
