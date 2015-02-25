@@ -262,7 +262,7 @@ typedef  int integertime;
 #endif
 
 #ifndef  MULTIPLEDOMAINS
-#define  MULTIPLEDOMAINS     1
+#define  MULTIPLEDOMAINS     8
 #endif
 
 #ifndef  TOPNODEFACTOR
@@ -1177,6 +1177,9 @@ extern struct global_data_all_processes
     double Grain_Internal_Density;
     double Grain_Size_Min;
     double Grain_Size_Max;
+#ifdef GRAIN_LORENTZFORCE
+    double Grain_Charge;
+#endif
 #endif
     
 #ifdef COSMIC_RAYS
@@ -1226,10 +1229,8 @@ extern struct global_data_all_processes
   double WindFreeTravelMaxTimeFactor;  /* maximum free travel time in units of the Hubble time at the current simulation redshift */
   double WindFreeTravelDensFac;
 #if defined(GALSF_SUBGRID_VARIABLEVELOCITY) || defined(GALSF_SUBGRID_DMDISPERSION)
-  double VariableWindVelFactor;  /* wind velocity in units of the halo escape velcoity */
+  double VariableWindVelFactor;  /* wind velocity in units of the halo escape velocity */
   double VariableWindSpecMomentum;  /* momentum available for wind per unit mass of stars formed, in internal velocity units */
-  double HaloConcentrationNorm;  /* concentration c0 of a halo of unit mass */
-  double HaloConcentrationSlope;  /* slope n of mass concentration relation, namely c = c0 * M_200,crit^n */
 #endif
 #endif // GALSF_SUBGRID_WINDS //
 
@@ -1527,8 +1528,9 @@ extern ALIGN(32) struct particle_data
     MyFloat IMF_Mturnover; /*!< IMF turnover mass [in solar] (or any other parameter which conveniently describes the IMF) */
 #endif
     
-    MyFloat Hsml;
-    MyFloat NumNgb;
+    MyFloat Hsml;                   /*!< search radius around particle for neighbors/interactions */
+    MyFloat NumNgb;                 /*!< neighbor number around particle */
+    MyFloat DhsmlNgbFactor;        /*!< correction factor needed for varying kernel lengths */
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
     MyFloat DensAroundStar;
     MyFloat GradRho[3];
@@ -1550,6 +1552,9 @@ extern ALIGN(32) struct particle_data
     MyFloat Gas_Density;
     MyFloat Gas_InternalEnergy;
     MyFloat Gas_Velocity[3];
+#ifdef GRAIN_LORENTZFORCE
+    MyFloat Gas_B[3];
+#endif
 #ifdef GRAIN_COLLISIONS
     MyFloat Grain_Density;
     MyFloat Grain_Velocity[3];
@@ -1668,7 +1673,6 @@ extern ALIGN(32) struct particle_data
     
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     MyFloat AGS_zeta;           /*!< factor in the correction term */
-    MyDouble DhsmlNgbFactor;    /*!< correction factor needed for varying kernel lengths */
 #endif
 }
  *P,				/*!< holds particle data on local processor */
@@ -1820,9 +1824,6 @@ extern struct sph_particle_data
     MyDouble ConditionNumber;       /*!< condition number of the gradient matrix: needed to ensure stability */
     MyDouble MaxKineticEnergyNgb;   /*!< maximum kinetic energy (with respect to neighbors): use for entropy 'switch' */
 
-#ifndef ADAPTIVE_GRAVSOFT_FORALL
-    MyDouble DhsmlNgbFactor;        /*!< correction factor needed for varying kernel lengths */
-#endif
 #ifdef HYDRO_SPH
     MyDouble DhsmlHydroSumFactor;   /* for 'traditional' SPH, we need the SPH hydro-element volume estimator */
 #endif
@@ -1831,7 +1832,7 @@ extern struct sph_particle_data
     MyDouble EgyWtDensity;          /*!< 'effective' rho to use in hydro equations */
 #endif
     
-#ifdef ADAPTIVE_GRAVSOFT_FORGAS
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
     MyFloat AGS_zeta;               /*!< correction term for adaptive gravitational softening lengths */
 #endif
     

@@ -1037,16 +1037,18 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     B2_L = Riemann_vec.L.B[0]*Riemann_vec.L.B[0]+Riemann_vec.L.B[1]*Riemann_vec.L.B[1]+Riemann_vec.L.B[2]*Riemann_vec.L.B[2];
     B2_R = Riemann_vec.R.B[0]*Riemann_vec.R.B[0]+Riemann_vec.R.B[1]*Riemann_vec.R.B[1]+Riemann_vec.R.B[2]*Riemann_vec.R.B[2];
 
+    /* define rho*cs^2 for wavespeeds below: note that for the HLLD solver, this must be limited at the pressure 
+        (minimum soundspeed is the isothermal soundspeed), for good behavior of the wavespeed guesses */
+    cs2rho_L = DMAX(Riemann_vec.L.p , Riemann_vec.L.cs*Riemann_vec.L.cs * Riemann_vec.L.rho);
+    cs2rho_R = DMAX(Riemann_vec.R.p , Riemann_vec.R.cs*Riemann_vec.R.cs * Riemann_vec.R.rho);
     /* left fast speed (before B-interface correction) */
-    cs2rho_L = Riemann_vec.L.cs*Riemann_vec.L.cs * Riemann_vec.L.rho;
     tmp = cs2rho_L + B2_L;
     Bx2 = Riemann_vec.L.B[0]*Riemann_vec.L.B[0];
-    Riemann_out->cfast_L = sqrt(0.5*(tmp + sqrt(tmp*tmp - 4*cs2rho_L*Bx2)) / Riemann_vec.L.rho);
+    Riemann_out->cfast_L = sqrt(0.5*(tmp + sqrt(DMAX(0,tmp*tmp - 4*cs2rho_L*Bx2))) / Riemann_vec.L.rho);
     /* right fast speed (before B-interface correction) */
-    cs2rho_R = Riemann_vec.R.cs*Riemann_vec.R.cs * Riemann_vec.R.rho;
     tmp = cs2rho_R + B2_R;
     Bx2 = Riemann_vec.R.B[0]*Riemann_vec.R.B[0];
-    Riemann_out->cfast_R = sqrt(0.5*(tmp + sqrt(tmp*tmp - 4*cs2rho_R*Bx2)) / Riemann_vec.R.rho);
+    Riemann_out->cfast_R = sqrt(0.5*(tmp + sqrt(DMAX(0,tmp*tmp - 4*cs2rho_R*Bx2))) / Riemann_vec.R.rho);
     /* effective sound speed is the maximum of the two */
     c_eff = DMAX(Riemann_out->cfast_L,Riemann_out->cfast_R);
     
@@ -1084,9 +1086,9 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
 
     /* re-compute the fast-magnetosonic wave speeds with the corrected Bx value */
     tmp = cs2rho_L + B2_L;
-    Riemann_out->cfast_L = sqrt(0.5*(tmp + sqrt(tmp*tmp - 4*cs2rho_L*Bx2)) / Riemann_vec.L.rho);
+    Riemann_out->cfast_L = sqrt(0.5*(tmp + sqrt(DMAX(0,tmp*tmp - 4*cs2rho_L*Bx2))) / Riemann_vec.L.rho);
     tmp = cs2rho_R + B2_R;
-    Riemann_out->cfast_R = sqrt(0.5*(tmp + sqrt(tmp*tmp - 4*cs2rho_R*Bx2)) / Riemann_vec.R.rho);
+    Riemann_out->cfast_R = sqrt(0.5*(tmp + sqrt(DMAX(0,tmp*tmp - 4*cs2rho_R*Bx2))) / Riemann_vec.R.rho);
     c_eff = DMAX(Riemann_out->cfast_L, Riemann_out->cfast_R);
 
     /* now make guesses for S_L and S_R */

@@ -24,7 +24,7 @@ void radiation_pressure_winds_consolidated(void)
 {
   MyDouble *pos;
   int N_MAX_KERNEL,N_MIN_KERNEL,MAXITER_FB,NITER,startnode,dummy,numngb_inbox,i,j,k,n;
-  double dx,dy,dz,r2,u,h,hinv,hinv3,wk,rho,a3inv,hubble_a,ascale,p_random,p_cumulative;
+  double dx,dy,dz,r2,u,h,hinv,hinv3,wk,rho,wt_sum,a3inv,hubble_a,ascale,p_random,p_cumulative;
   double star_age,lm_ssp,dv_units,dE_over_c,unitmass_in_msun;
   double prob,dt,v,vq=0,dv_imparted,dv_imparted_uv,norm,dir[3];
 #ifdef GALSF_WINDS_ISOTROPIC
@@ -112,7 +112,7 @@ void radiation_pressure_winds_consolidated(void)
         { // within loop if ndef(GALSF_FB_RPWIND_CONTINUOUS)
         
      /* ok, now open the neighbor list for the star particle */
-     N_MIN_KERNEL=20;N_MAX_KERNEL=500;MAXITER_FB=10;NITER=0;rho=0;
+     N_MIN_KERNEL=20;N_MAX_KERNEL=500;MAXITER_FB=10;NITER=0;rho=0;wt_sum=0;
      startnode=All.MaxPart;dummy=0;numngb_inbox=0;h=1.0*P[i].Hsml;pos=P[i].Pos;
      if(h<=0) h=All.SofteningTable[0];
     
@@ -124,7 +124,7 @@ void radiation_pressure_winds_consolidated(void)
                                        &dummy, &dummy, Ngblist);
           if((numngb_inbox>=N_MIN_KERNEL)&&(numngb_inbox<=N_MAX_KERNEL))
           {
-             hinv=1/h; hinv3=hinv*hinv*hinv; rho=0;
+             hinv=1/h; hinv3=hinv*hinv*hinv; wt_sum=rho=0;
              for(n=0; n<numngb_inbox; n++)
              {
                j = Ngblist[n];
@@ -140,6 +140,7 @@ void radiation_pressure_winds_consolidated(void)
                  u=sqrt(r2)*hinv; //wk=hinv3*kernel_wk(u);
                    kernel_main(u,hinv3,1,&wk,&vq,-1);
                    rho += (P[j].Mass*wk);
+                   wt_sum += PPP[j].Hsml * PPP[j].Hsml / r2;
                } /* if( (P[j].Mass>0) && (SphP[j].Density>0) ) */
               } /* for(n=0; n<numngb_inbox; n++) */
               if (rho <= 0) {
@@ -214,10 +215,17 @@ void radiation_pressure_winds_consolidated(void)
                dv_imparted = dv_units * (0.1 + P[j].Metallicity[0]/All.SolarAbundances[0]) / r2;
                               
                /* first loop -- share out the UV luminosity among the local neighbors, weighted by the gas kernel */
-               u=sqrt(r2)*hinv; //wk=hinv3*kernel_wk(u); // wt=wk*P[j].Mass/rho, with dE_over_c/P[j].Mass being delta_v
-               kernel_main(u,hinv3,1,&wk,&vq,-1);
-               dv_imparted_uv = (wk/rho) * dE_over_c;
-                           
+               //u=sqrt(r2)*hinv; //wk=hinv3*kernel_wk(u); // wt=wk*P[j].Mass/rho, with dE_over_c/P[j].Mass being delta_v
+               //kernel_main(u,hinv3,1,&wk,&vq,-1);
+               //dv_imparted_uv = (wk/rho) * dE_over_c;
+              
+              wk = PPP[j].Hsml * PPP[j].Hsml / (r2 * wt_sum);
+              double h_eff_j = PPP[j].Hsml * (0.124 + 11.45 / (26.55 + PPP[j].NumNgb));
+              double wkmax = 1.5 * M_PI * h_eff_j * h_eff_j / (4. * M_PI * 0.5625*r2);
+              if(wk > wkmax) {wk = wkmax;}
+              dv_imparted_uv = wk * dE_over_c;
+
+              
 #ifdef GALSF_FB_RPWIND_CONTINUOUS
                v = dv_imparted + dv_imparted_uv; prob = 1;
                { /* open subloop with wind kick */

@@ -94,7 +94,11 @@ void run(void)
 
 #ifdef GALSF_SUBGRID_DMDISPERSION
         // Need to figure out how frequently we calculate this; below is pretty rough //
+#ifdef PMGRID
         if(All.Ti_Current == All.PM_Ti_endstep && get_random_number(1+All.Ti_Current) < 0.05)
+#else
+        if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
+#endif
         {
             disp_density(); /* compute the DM velocity dispersion around gas particles every 20 PM steps, should be sufficient */
         }
@@ -961,7 +965,7 @@ void write_cpu_log(void)
 	      "blackholes    %10.2f  %5.1f%%\n"
 	      "fof/subfind   %10.2f  %5.1f%%\n"
 #ifdef GRAIN_FLUID
-          "grains       %10.2f  %5.1f%%\n"
+          "grains        %10.2f  %5.1f%%\n"
 #endif
           "gas_return    %10.2f  %5.1f%%\n"
           "snII_fb_loop  %10.2f  %5.1f%%\n"

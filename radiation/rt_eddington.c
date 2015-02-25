@@ -248,10 +248,6 @@ int eddington_treeevaluate(int target, int mode, int *nexport, int *nsend_local)
 #endif
     }
 
-#ifndef UNEQUALSOFTENINGS
-  h = All.ForceSoftening[ptype];
-#endif
-
   if(mode == 0)
     {
       no = All.MaxPart;		/* root node */
@@ -444,7 +440,6 @@ int eddington_treeevaluate(int target, int mode, int *nexport, int *nsend_local)
 
 	  if(no < All.MaxPart)
 	    {
-#ifdef UNEQUALSOFTENINGS
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
 	      if(ptype == 0)
 		h = soft;
@@ -461,11 +456,6 @@ int eddington_treeevaluate(int target, int mode, int *nexport, int *nsend_local)
 		  if(h < All.ForceSoftening[P[no].Type])
 		    h = All.ForceSoftening[P[no].Type];
 		}
-#else
-	      h = All.ForceSoftening[ptype];
-	      if(h < All.ForceSoftening[P[no].Type])
-		h = All.ForceSoftening[P[no].Type];
-#endif
 #endif
 	      no = Nextnode[no];
 	    }
@@ -496,7 +486,6 @@ int eddington_treeevaluate(int target, int mode, int *nexport, int *nsend_local)
 			}
 		    }
 		}
-#ifdef UNEQUALSOFTENINGS
 #ifndef ADAPTIVE_GRAVSOFT_FORGAS
 	      h = All.ForceSoftening[ptype];
 	      if(h < All.ForceSoftening[extract_max_softening_type(nop->u.d.bitflags)])
@@ -526,7 +515,6 @@ int eddington_treeevaluate(int target, int mode, int *nexport, int *nsend_local)
 		      continue;
 		    }
 		}
-#endif
 #endif
 	      no = nop->u.d.sibling;	/* ok, node can be used */
 

@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <gsl/gsl_math.h>
+
 #include "../allvars.h"
 #include "../proto.h"
 
@@ -49,8 +51,9 @@ void apply_grain_dragforce(void)
                     double rho_gas = P[i].Gas_Density * All.cf_a3inv;
                     double rho_grain = All.Grain_Internal_Density;
                     double vgas_mag = 0.0;
-                    for(k=0;k<3;k++) {vgas_mag+=P[i].Gas_Velocity[k]*P[i].Gas_Velocity[k];}
-
+                    for(k=0;k<3;k++) {vgas_mag+=(P[i].Gas_Velocity[k]-P[i].Vel[k])*(P[i].Gas_Velocity[k]-P[i].Vel[k]);}
+                    
+                    
                     if(vgas_mag > 0)
                     {
                         vgas_mag = sqrt(vgas_mag) / All.cf_atime;
@@ -71,29 +74,50 @@ void apply_grain_dragforce(void)
                         double xf = -2 * C2 / (C2*C2 -1);
                         double slow_fac = 1 - xf / x0;
                         // note that, with an external (gravitational) acceleration, we can still solve this equation for the relevant update //
+
+                        double external_forcing[3];
+                        for(k=0;k<3;k++) {external_forcing[k]=0};
+                        
+#ifdef GRAIN_LORENTZFORCE
+                        /* Lorentz force on a grain = Z*e/c * (v_grain x B) */
+                        double v_cross_B[3];
+                        v_cross_B[0] = P[i].Vel[1]*P[i].Gas_B[2] - P[i].Vel[2]*P[i].Gas_B[1];
+                        v_cross_B[1] = P[i].Vel[2]*P[i].Gas_B[0] - P[i].Vel[0]*P[i].Gas_B[2];
+                        v_cross_B[2] = P[i].Vel[0]*P[i].Gas_B[1] - P[i].Vel[1]*P[i].Gas_B[0];
+
+                        grain_mass = (4.*M_PI/3.) * P[i].Grain_Size*P[i].Grain_Size*P[i].Grain_Size * All.Grain_Internal_Density; // code units
+                        double lorentz_units = sqrt(4.*M_PI*All.UnitPressure_in_cgs); // code B to Gauss
+                        lorentz_units *= (ELECTRONCHARGE/C) * All.UnitVelocity_in_cm_per_s / (All.UnitMass_in_g / All.HubbleParam); // converts acceleration to cgs
+                        lorentz_units /= All.UnitVelocity_in_cm_per_s / (All.UnitTime_in_s / All.HubbleParam); // converts it to code-units acceleration
+
+                        double grain_charge_cinv = All.Grain_Charge / grain_mass * lorentz_units;
+                        for(k=0;k<3;k++) {external_forcing[k] += grain_charge_cinv * v_cross_B[k];}
+#endif
                         
                         double delta_egy = 0;
                         double delta_mom[3];
                         for(k=0; k<3; k++)
                         {
-                            double vel_new = P[i].Vel[k] + slow_fac * P[i].Gas_Velocity[k];
-                            delta_mom[k] = P[i].Mass * (vel_new - P[i].Vel[k]);
-                            delta_egy += 0.5*P[i].Mass * (vel_new*vel_new - P[i].Vel[k]*P[i].Vel[k]);
-                            P[i].Vel[k] = vel_new;
+                            /* measure the imparted energy and momentum as if there were no external acceleration */
+                            double v_init = P[i].Vel[k];
+                            double vel_new = v_init + slow_fac * (P[i].Gas_Velocity[k]-v_init);
+                            delta_mom[k] = P[i].Mass * (vel_new - v_init);
+                            delta_egy += 0.5*P[i].Mass * (vel_new*vel_new - v_init*v_init);
+                            /* now calculate the updated velocity accounting for any external, non-standard accelerations */
+                            double vdrift = 0;
+                            if(tstop_inv > 0) {vdrift = external_forcing[k] / (tstop_inv * sqrt(1+x0*x0));}
+                            P[i].Vel[k] = v_init + slow_fac * (P[i].Gas_Velocity[k] - v_init + vdrift);
                         }
-                    
 
                     
 #ifdef GRAIN_BACKREACTION
-                        int i,k;
-                        double dt, dvel, degy, soundspeed, R_grain, t_stop, slow_fac, vel_new, delta_mom[3], delta_egy;
+                        double dvel, degy, r2nearest, *pos,h,h2,hinv,hinv3,r2,rho,u,wk;;
                         int N_MAX_KERNEL,N_MIN_KERNEL,MAXITER_FB,NITER,startnode,dummy,numngb_inbox,jnearest,i,j,k,n;
-                        double *pos,h,h2,hinv,hinv3,r2,rho,u,wk;
-                        Ngblist = (int *) mymalloc(NumPart * sizeof(int));
+                        Ngblist = (int *) mymalloc("Ngblist",NumPart * sizeof(int));
                         
                         /* now add in a loop to find particles in same domain, share back the
                          momentum and energy to them (to be properly conservative) */
-                        N_MIN_KERNEL=4;N_MAX_KERNEL=20;MAXITER_FB=30;NITER=0;jnearest=0;
+                        N_MIN_KERNEL=4;N_MAX_KERNEL=10.*All.DesNumNgb;MAXITER_FB=30;NITER=0;jnearest=0;
                         startnode=All.MaxPart;dummy=0;h=0;numngb_inbox=0;pos=P[i].Pos;
                         h=PPP[i].Hsml; if(h<=0) h=All.SofteningTable[0];
                         do {
@@ -198,6 +222,7 @@ void apply_grain_dragforce(void)
                             } // if(rho>0) else
                         } // closes if((jnearest != 0)&&(rho>0)) //
                         
+                        myfree(Ngblist);
 #endif // closes GRAIN_BACKREACTION
 
                     } // closes check for if(v_mag > 0)
@@ -206,7 +231,6 @@ void apply_grain_dragforce(void)
         } // closes check for if(P[i].Type != 0)
     } // closes main particle loop
     
-    myfree(Ngblist);
     CPU_Step[CPU_DRAGFORCE] += measure_time();
     
 }
@@ -242,9 +266,9 @@ void grain_collisions(void)
             if(P[i].Grain_Density > 0)
             {
 #ifndef WAKEUP
-                dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval;
+                dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
-                dt = P[i].dt_step * All.Timebase_interval;
+                dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
                 if(dt > 0)
                 {

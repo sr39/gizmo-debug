@@ -27,7 +27,7 @@ void assign_imf_properties_from_starforming_gas(MyIDType i)
 {
     double h = Get_Particle_Size(i) * All.cf_atime;
     double cs = Particle_effective_soundspeed_i(i) * All.cf_afac3; // actual sound speed in the simulation: might be unphysically high for SF conditions!
-    cs = (1.9e4 / UnitVelocity_in_cm_per_s); // set to a minimum cooling temperature, for the actual star-forming conditions. for now, just use a constant //
+    cs = (1.9e4 / All.UnitVelocity_in_cm_per_s); // set to a minimum cooling temperature, for the actual star-forming conditions. for now, just use a constant //
     double dv2_abs = 0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
     // squared norm of the trace-free symmetric [shear] component of the velocity gradient tensor //
     dv2_abs = ((1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1])*(SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) +
@@ -125,7 +125,8 @@ inline double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double r
     } else {
         gradrho_mag = sqrt(gradrho[0]*gradrho[0]+gradrho[1]*gradrho[1]+gradrho[2]*gradrho[2]);
         if(gradrho_mag > 0) {gradrho_mag = rho*rho/gradrho_mag;} else {gradrho_mag=0;}
-        if(include_h > 0) gradrho_mag += include_h*rho*hsml;
+        if(include_h > 0) gradrho_mag += include_h * rho * (hsml * (0.124 + 11.45 / (26.55 + All.DesNumNgb)));
+        // account for the fact that 'h' is much larger than the inter-particle separation //
     }
     return gradrho_mag; // *(Z/Zsolar) add metallicity dependence
 }
@@ -250,7 +251,7 @@ double get_starformation_rate(int i)
             dv2abs += vt*vt;
         }
     //double alpha_vir = 0.2387 * dv2abs / (All.G * SphP[i].Density * All.cf_a3inv); // coefficient here was for old form, with only divv information
-    double alpha_vir = dv2abs / (8. * M_PI * All.G * SphP[i].Density * All.cf_a3inv);
+    double alpha_vir = dv2abs / (4. * M_PI * All.G * SphP[i].Density * All.cf_a3inv); // 1/4 or 1/8 ? //
     if(All.ComovingIntegrationOn)
     {
         if((alpha_vir<1.0)||(SphP[i].Density*All.cf_a3inv>100.*All.PhysDensThresh)) {rateOfSF *= 1.0;} else {rateOfSF *= 0.0015;}
@@ -714,13 +715,16 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
     /* wind model where launching scales with halo/galaxy bulk properties (as in Romeel's simulations) */
     if(SphP[i].HostHaloMass > 0 && sm > 0)
     {
+        double HaloConcentrationNorm = 9.;  /* concentration c0 of a halo of unit mass */
+        double HaloConcentrationSlope = -0.15;  /* slope n of mass concentration relation, namely c = c0 * M_200,crit^n */
+
         double r200c, v_esc, c_halo, wind_energy, wind_momentum, wind_mass;
         double rhocrit = 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
         rhocrit *= All.Omega0/All.cf_a3inv + (1-All.Omega0-All.OmegaLambda)/All.cf_a2inv + All.OmegaLambda; /* physical critical density at redshift z */
 
         r200c = pow(SphP[i].HostHaloMass / (4 * M_PI / 3.0 * 200 * rhocrit), 1.0 / 3.0);	/* physical r_200,crit value, assuming FoF mass = M_200,crit */
         v_esc = sqrt(All.G * SphP[i].HostHaloMass / r200c);	/* physical circular velocity at r_200,crit */
-        c_halo = All.HaloConcentrationNorm * pow(SphP[i].HostHaloMass, All.HaloConcentrationSlope);
+        c_halo = HaloConcentrationNorm * pow(SphP[i].HostHaloMass, HaloConcentrationSlope);
         v_esc *= sqrt(2 * c_halo / (log(1 + c_halo) - c_halo / (1 + c_halo)));	/* physical escape velocity of halo */
         v = All.VariableWindVelFactor * v_esc;	/* physical wind velocity */
         

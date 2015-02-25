@@ -368,30 +368,30 @@ integertime get_timestep(int p,		/*!< particle index */
         case 0:
             if(flag > 0)
             {
+                /* this is the non-standard mode; use timestep to get the maximum acceleration tolerated */
                 dt = flag * All.Timebase_interval;
-                
                 dt /= All.cf_hubble_a;	/* convert dloga to physical timestep  */
 
-                ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / (dt * dt);
+                ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / (dt * dt);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-                ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / 2.8 / (dt * dt);
+                ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / (dt * dt);
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
                 if(P[p].Type==0)
-                    ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / 2.8 / (dt * dt);
+                    ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / (dt * dt);
 #endif
 
                 *aphys = ac;
                 return flag;
             }
 
-            dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac);
+            dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / ac);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-            dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / 2.8 / ac);
+            dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / ac);
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
             if(P[p].Type == 0)
-                dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / 2.8 / ac);
+                dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / ac);
 #endif
             break;
             
@@ -401,6 +401,36 @@ integertime get_timestep(int p,		/*!< particle index */
             fprintf(stderr, "\n !!!2@@@!!! \n");
             break;
     }
+    
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+    /* make sure smoothing length of non-gas particles doesn't change too much in one timestep */
+    if(P[p].Type > 0)
+    {
+        double divVel = P[p].Particle_DivVel;
+        if(divVel != 0)
+        {
+            dt_divv = 1.5 / fabs(All.cf_a2inv * divVel);
+            if(dt_divv < dt) {dt = dt_divv;}
+        }
+    }
+#endif
+
+#ifdef GRAIN_FLUID
+    if(P[p].Type > 0)
+    {
+        csnd = GAMMA * GAMMA_MINUS1 * P[p].Gas_InternalEnergy;
+        int k;
+        for(k=0;k<3;k++) {csnd += (P[p].Gas_Velocity[k]-P[p].Vel[k])*(P[p].Gas_Velocity[k]-P[p].Vel[k]);}
+#ifdef GRAIN_LORENTZFORCE
+        for(k=0;k<3;k++) {csnd += P[p].Gas_B[k]*P[p].Gas_B[k] / (2.0 * P[i].Gas_Density);}
+#endif
+        csnd = sqrt(csnd);
+        double L_particle = Get_Particle_Size(p);
+        dt_courant = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / csnd;
+        if(dt_courant < dt) dt = dt_courant;
+    }
+#endif
+    
     
     if((P[p].Type == 0) && (P[p].Mass > 0))
         {
@@ -454,6 +484,7 @@ integertime get_timestep(int p,		/*!< particle index */
             
 
 #ifdef TURB_DIFFUSION
+            /*
             double L_tdiff_inv = sqrt(SphP[p].Gradients.Density[0]*SphP[p].Gradients.Density[0] +
                                       SphP[p].Gradients.Density[1]*SphP[p].Gradients.Density[1] +
                                       SphP[p].Gradients.Density[2]*SphP[p].Gradients.Density[2]) / SphP[p].Density;
@@ -461,6 +492,7 @@ integertime get_timestep(int p,		/*!< particle index */
             double dt_tdiff = 2.0 * L_tdiff*L_tdiff / (1.0e-33 + SphP[p].TD_DiffCoeff);
             // here, we use DIFFUSIVITIES, so there is no extra density power in the equation //
             //if(dt_tdiff < dt) dt = dt_tdiff;
+            */
 #endif
             
             
@@ -542,7 +574,9 @@ integertime get_timestep(int p,		/*!< particle index */
         } else {
             dt_stellar_evol = star_age/10.;
         }
-        dt_stellar_evol /= ( 1. + 0.1*(P[p].Mass*All.UnitMass_in_g)/(1.0e4*1.989e33) ); // multiply by inverse particle mass, since goal is to prevent too much energy in one time //
+        //dt_stellar_evol /= ( 1. + 0.1*(P[p].Mass*All.UnitMass_in_g)/(1.0e4*1.989e33) ); // multiply by inverse particle mass, since goal is to prevent too much energy in one time //
+        // PFH: temporarily modifying the terms above while Marcel studies them //
+        dt_stellar_evol /= ( 1. + 0.0*(P[p].Mass*All.UnitMass_in_g)/(1.0e4*1.989e33) ); // multiply by inverse particle mass, since goal is to prevent too much energy in one time //
         if(dt_stellar_evol < 1.e-7) {dt_stellar_evol = 1.e-7;}
         dt_stellar_evol /= (0.001*All.UnitTime_in_Megayears/All.HubbleParam); // convert to code units //
         if(dt_stellar_evol>0)

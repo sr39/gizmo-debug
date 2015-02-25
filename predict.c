@@ -127,14 +127,37 @@ void drift_particle(int i, integertime time1)
     P[i].Pos[2]=0;
 #endif
     
+    double divv_fac = P[i].Particle_DivVel * dt_drift;
+    double divv_fac_max = 1.5;
+    if(divv_fac > +divv_fac_max) divv_fac = +divv_fac_max;
+    if(divv_fac < -divv_fac_max) divv_fac = -divv_fac_max;
+    
+#ifdef GRAIN_FLUID
+    if(P[i].Type > 0)
+    {
+        PPP[i].Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
+        if(PPP[i].Hsml < All.MinHsml) {PPP[i].Hsml = All.MinHsml;}
+        if(PPP[i].Hsml > All.MaxHsml) {PPP[i].Hsml = All.MaxHsml;}
+    }
+#endif
+
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     if(P[i].Type>0)
     {
         if(dt_drift>0)
         {
-            PPP[i].Hsml *= exp(P[i].Particle_DivVel * dt_drift / NUMDIMS);
-            if(P[i].Hsml < All.ForceSoftening[P[i].Type])
-                P[i].Hsml = All.ForceSoftening[P[i].Type];
+            double minsoft = All.ForceSoftening[P[i].Type];
+            double maxsoft = All.MaxHsml;
+            if(density_isactive(i)==0)
+            {
+                maxsoft = DMIN(maxsoft, 50.0 * All.ForceSoftening[P[i].Type]);
+#ifdef PMGRID
+                maxsoft = DMIN(maxsoft, 0.5 * All.Asmth[0]);
+#endif
+            }
+            PPP[i].Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
+            if(PPP[i].Hsml < minsoft) {PPP[i].Hsml = minsoft;}
+            if(PPP[i].Hsml > maxsoft) {PPP[i].Hsml = maxsoft;}
         }
     }
 #endif
@@ -157,8 +180,6 @@ void drift_particle(int i, integertime time1)
                 dt_entr = dt_gravkick = dt_hydrokick = (time1 - time0) * All.Timebase_interval;
             }
             
-            
-            double divVel = P[i].Particle_DivVel;
 #ifdef PMGRID
             for(j = 0; j < 3; j++)
                 SphP[i].VelPred[j] += (P[i].GravAccel[j] + P[i].GravPM[j]) * dt_gravkick +
@@ -178,13 +199,13 @@ void drift_particle(int i, integertime time1)
             P[i].Mass = DMAX(P[i].Mass + SphP[i].DtMass * dt_entr, 0.5 * SphP[i].MassTrue);
 #endif
             
-            SphP[i].Density *= exp(-divVel * dt_drift);
+            SphP[i].Density *= exp(-divv_fac);
             double etmp = SphP[i].InternalEnergyPred + SphP[i].DtInternalEnergy * dt_entr;
             if(etmp<0.5*SphP[i].InternalEnergyPred) {SphP[i].InternalEnergyPred *= 0.5;} else {SphP[i].InternalEnergyPred=etmp;}
             if(SphP[i].InternalEnergyPred<All.MinEgySpec) SphP[i].InternalEnergyPred=All.MinEgySpec;
             
 #ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
-            SphP[i].EgyWtDensity *= exp(-divVel * dt_drift);
+            SphP[i].EgyWtDensity *= exp(-divv_fac);
 #endif
             
             /* check for reflecting boundaries: if so, do the reflection! */
@@ -250,13 +271,9 @@ void drift_particle(int i, integertime time1)
             }
 #endif
             
-            PPP[i].Hsml *= exp(divVel * dt_drift / NUMDIMS);
-            
-            if(PPP[i].Hsml < All.MinHsml)
-                PPP[i].Hsml = All.MinHsml;
-            
-            if(PPP[i].Hsml > All.MaxHsml)
-                PPP[i].Hsml = All.MaxHsml;
+            PPP[i].Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
+            if(PPP[i].Hsml < All.MinHsml) {PPP[i].Hsml = All.MinHsml;}
+            if(PPP[i].Hsml > All.MaxHsml) {PPP[i].Hsml = All.MaxHsml;}
             
             drift_sph_extra_physics(i, time0, time1, dt_entr);
 
@@ -336,11 +353,11 @@ double get_pressure(int i)
 #ifdef HYDRO_SPH
     /* robertson & kravtsov modification of Bate & Burkert formulation */
     xJeans=(1.83*2.0/GAMMA)*All.G*PPP[i].Hsml*PPP[i].Hsml*SphP[i].Density*SphP[i].Density;
-    //xJeans*=1.5; /* above is NJeans=5, this is NJeans=9 */
+    xJeans*=1.5; /* above is NJeans=5, this is NJeans=9 */
 #else
     /* standard finite-volume formulation of this */
-    double NJeans = 2; // set so that resolution = lambda_Jeans/NJeans //
-    double h_eff = Get_Particle_Size(i);
+    double NJeans = 4; // set so that resolution = lambda_Jeans/NJeans 
+    double h_eff = 2.0 * Get_Particle_Size(i);
     xJeans = NJeans*NJeans/(M_PI*GAMMA) * All.G * h_eff*h_eff * SphP[i].Density*SphP[i].Density;
 #endif
     if(All.ComovingIntegrationOn) xJeans *= All.cf_afac1/All.cf_atime;
@@ -480,8 +497,12 @@ double INLINE_FUNC Get_Particle_Pressure(int i)
 #ifdef COSMIC_RAYS
 double INLINE_FUNC Get_Particle_CosmicRayPressure(int i)
 {
-    return GAMMA_COSMICRAY_MINUS1 * (SphP[i].CosmicRayEnergyPred * SphP[i].Density) / P[i].Mass; // cosmic ray pressure = (4/3-1) * e_cr = 1/3 * (E_cr/Vol) //
-
+    if((P[i].Mass > 0) && (SphP[i].Density>0) && (SphP[i].CosmicRayEnergyPred > 0))
+    {
+        return GAMMA_COSMICRAY_MINUS1 * (SphP[i].CosmicRayEnergyPred * SphP[i].Density) / P[i].Mass; // cosmic ray pressure = (4/3-1) * e_cr = 1/3 * (E_cr/Vol) //
+    } else {
+        return 0;
+    }
 }
 #endif
 
@@ -492,7 +513,12 @@ double INLINE_FUNC Particle_effective_soundspeed_i(int i)
     return sqrt(SphP[i].dp_drho);
 #endif
 #ifdef COSMIC_RAYS
-    return sqrt(GAMMA*GAMMA_MINUS1 * SphP[i].InternalEnergyPred + GAMMA_COSMICRAY*GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred);
+    if((P[i].Mass > 0) && (SphP[i].Density>0) && (SphP[i].CosmicRayEnergyPred > 0))
+    {
+        return sqrt(GAMMA*GAMMA_MINUS1 * SphP[i].InternalEnergyPred + GAMMA_COSMICRAY*GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred / P[i].Mass);
+    } else {
+        return sqrt(GAMMA*GAMMA_MINUS1 * SphP[i].InternalEnergyPred);
+    }
 #endif
     /* if nothing above triggers, then we resort to good old-fashioned ideal gas */
     return sqrt(GAMMA * SphP[i].Pressure / Particle_density_for_energy_i(i));
@@ -572,38 +598,35 @@ double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)
 #ifdef HYDRO_SPH
     /* PFH: add simple damping (-phi/tau) term */
     double damping_tinv = 0.5 * All.DivBcleanParabolicSigma * (SphP[i_particle_id].MaxSignalVel*All.cf_afac3 / (All.cf_atime*Get_Particle_Size(i_particle_id)));
-    /* PFH: add div_v term from Tricco & Price to DtPhi */
-    // damping_tinv += 0.5 * P[i_particle_id].Particle_DivVel*All.cf_a2inv; // this is not needed for the form of Vphi we evolve //
 #else
     double damping_tinv;
-    if((All.StarformationOn)||(All.ComovingIntegrationOn))
+#ifdef NOGRAVITY
+    damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveSpeed / Get_Particle_Size(i_particle_id); // fastest wavespeed has units of [vphys]
+    //double damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveDecay * All.cf_a2inv; // no improvement over fastestwavespeed; decay has units [vphys/rphys]
+#else
+    // only see a small performance drop from fastestwavespeed above to maxsignalvel below, despite the fact that below is purely local (so allows more flexible adapting to high dynamic range)
+    damping_tinv = 0.0;
+    
+    if(PPP[i_particle_id].Hsml > 0)
     {
-        // only see a small performance drop from fastestwavespeed above to maxsignalvel below, despite the fact that below is purely local (so allows more flexible adapting to high dynamic range)
-        damping_tinv = 0.0;
-        
-        if(PPP[i_particle_id].Hsml > 0)
+        double vsig2 = 0.5 * All.cf_afac3 * fabs(SphP[i_particle_id].MaxSignalVel);
+        double phi_B_eff = 0.0;
+        if(vsig2 > 0) {phi_B_eff = Get_Particle_PhiField(i_particle_id) / (All.cf_atime * vsig2);}
+        double vsig1 = 0.0;
+        if(SphP[i_particle_id].Density > 0)
         {
-            double vsig2 = 0.5 * All.cf_afac3 * fabs(SphP[i_particle_id].MaxSignalVel);
-            double phi_B_eff = 0.0;
-            if(vsig2 > 0) {phi_B_eff = Get_Particle_PhiField(i_particle_id) / (All.cf_atime * vsig2);}
-            double vsig1 = 0.0;
-            if(SphP[i_particle_id].Density > 0)
-            {
-                vsig1 = All.cf_afac3 *
-                sqrt( Particle_effective_soundspeed_i(i_particle_id)*Particle_effective_soundspeed_i(i_particle_id) +
-                     (All.cf_afac1 / All.cf_atime) *
-                     (Get_Particle_BField(i_particle_id,0)*Get_Particle_BField(i_particle_id,0) +
-                      Get_Particle_BField(i_particle_id,1)*Get_Particle_BField(i_particle_id,1) +
-                      Get_Particle_BField(i_particle_id,2)*Get_Particle_BField(i_particle_id,2) +
-                      phi_B_eff*phi_B_eff) / SphP[i_particle_id].Density );
-            }
-            double vsig_max = DMAX( DMAX(vsig1,vsig2) , 0.1 * All.FastestWaveSpeed );            
-            damping_tinv = 0.5 * All.DivBcleanParabolicSigma * (vsig_max / (All.cf_atime*Get_Particle_Size(i_particle_id)));
+            vsig1 = All.cf_afac3 *
+            sqrt( Particle_effective_soundspeed_i(i_particle_id)*Particle_effective_soundspeed_i(i_particle_id) +
+                 (All.cf_afac1 / All.cf_atime) *
+                 (Get_Particle_BField(i_particle_id,0)*Get_Particle_BField(i_particle_id,0) +
+                  Get_Particle_BField(i_particle_id,1)*Get_Particle_BField(i_particle_id,1) +
+                  Get_Particle_BField(i_particle_id,2)*Get_Particle_BField(i_particle_id,2) +
+                  phi_B_eff*phi_B_eff) / SphP[i_particle_id].Density );
         }
-    } else {
-        damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveSpeed / Get_Particle_Size(i_particle_id); // fastest wavespeed has units of [vphys]
-        //double damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveDecay * All.cf_a2inv; // no improvement over fastestwavespeed; decay has units [vphys/rphys]
+        double vsig_max = DMAX( DMAX(vsig1,vsig2) , 0.1 * All.FastestWaveSpeed );
+        damping_tinv = 0.5 * All.DivBcleanParabolicSigma * (vsig_max / (All.cf_atime*Get_Particle_Size(i_particle_id)));
     }
+#endif
 #endif
     return damping_tinv;
 }
