@@ -52,7 +52,7 @@ void blackhole_accretion(void)
                                       */
 
 #ifdef BH_GRAVACCRETION_BTOD
-    if(ThisTask == 0)  printf("Evaluating black-hole environment (second loop)\n");   // DAA
+    if(ThisTask == 0)  printf("Blackhole: evaluating black-hole environment (second loop)\n");   // DAA
     blackhole_environment_second_loop();    /* populates BlackholeTempInfo based on surrounding gas (blackhole_environment.c).
                                                Here we compute quantities that require knowledge of previous environment variables 
                                                --> Bulge-Disk kinematic decomposition for gravitational torque accretion  */
