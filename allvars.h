@@ -427,7 +427,7 @@ typedef unsigned long long peanokey;
 #define DRIFT_TABLE_LENGTH  1000	/*!< length of the lookup table used to hold the drift and kick factors */
 
 
-#define MAXITER 300
+#define MAXITER 150
 
 #ifndef LINKLENGTH
 #define LINKLENGTH 0.2
@@ -1171,6 +1171,9 @@ extern struct global_data_all_processes
     double Grain_Internal_Density;
     double Grain_Size_Min;
     double Grain_Size_Max;
+#ifdef GRAIN_LORENTZFORCE
+    double Grain_Charge;
+#endif
 #endif
     
 #ifdef COSMIC_RAYS
@@ -1543,6 +1546,9 @@ extern ALIGN(32) struct particle_data
     MyFloat Gas_Density;
     MyFloat Gas_InternalEnergy;
     MyFloat Gas_Velocity[3];
+#ifdef GRAIN_LORENTZFORCE
+    MyFloat Gas_B[3];
+#endif
 #ifdef GRAIN_COLLISIONS
     MyFloat Grain_Density;
     MyFloat Grain_Velocity[3];

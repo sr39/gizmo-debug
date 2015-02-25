@@ -1163,6 +1163,12 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt],"Grain_Size_Max");
         addr[nt] = &All.Grain_Size_Max;
         id[nt++] = REAL;
+        
+#ifdef GRAIN_LORENTZFORCE
+        strcpy(tag[nt],"Grain_Charge");
+        addr[nt] = &All.Grain_Charge;
+        id[nt++] = REAL;
+#endif
 #endif
         
 #if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_SNE_HEATING)
@@ -2027,11 +2033,17 @@ void read_parameter_file(char *fname)
      them at this point. if any all variable depends on another, it must be set AFTER this point! */
     
 #ifndef DEVELOPER_MODE
-    if(All.ComovingIntegrationOn) {All.ErrTolForceAcc = 0.005;}
-    All.MaxNumNgbDeviation = All.DesNumNgb / 640.0;
+    if(All.ComovingIntegrationOn) {All.ErrTolForceAcc = 0.005; All.ErrTolIntAccuracy = 0.05;}
+    All.MaxNumNgbDeviation = All.DesNumNgb / 640.;
+#ifdef GALSF
+    All.MaxNumNgbDeviation = All.DesNumNgb / 64.;
+#endif
     if(All.MaxNumNgbDeviation < 0.05) All.MaxNumNgbDeviation = 0.05;
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-    All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 64.0;
+    All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 64.;
+#ifdef GALSF
+    All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 32.;
+#endif
     if(All.AGS_MaxNumNgbDeviation < 0.05) All.AGS_MaxNumNgbDeviation = 0.05;
 #endif
 #endif
@@ -2044,10 +2056,10 @@ void read_parameter_file(char *fname)
 #endif
 
     /* now we're going to do a bunch of checks */
-    if((All.ErrTolIntAccuracy<=0)||(All.ErrTolIntAccuracy>0.02))
+    if((All.ErrTolIntAccuracy<=0)||(All.ErrTolIntAccuracy>0.05))
     {
         if(ThisTask==0)
-            printf("ErrTolIntAccuracy must be >0 and <0.02 to ensure stability \n");
+            printf("ErrTolIntAccuracy must be >0 and <0.05 to ensure stability \n");
         endrun(1);
     }
     if((All.ErrTolTheta<=0.5)||(All.ErrTolTheta>=0.9))

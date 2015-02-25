@@ -437,6 +437,9 @@ void init(void)
             P[i].Grain_Density = 0;
             P[i].Grain_Velocity[0]=P[i].Grain_Velocity[1]=P[i].Grain_Velocity[2]=0;
 #endif
+#ifdef GRAIN_LORENTZFORCE
+            P[i].Gas_B[0]=P[i].Gas_B[1]=P[i].Gas_B[2];
+#endif
         }
 #endif
         

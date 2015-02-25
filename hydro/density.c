@@ -100,6 +100,9 @@ static struct densdata_out
 #endif
 #if defined(GRAIN_FLUID)
     MyDouble Gas_InternalEnergy;
+#ifdef GRAIN_LORENTZFORCE
+    MyDouble Gas_B[3];
+#endif
 #endif
 
 }
@@ -188,6 +191,9 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
         ASSIGN_ADD(P[i].Gas_Density, out->Rho, mode);
         ASSIGN_ADD(P[i].Gas_InternalEnergy, out->Gas_InternalEnergy, mode);
         for(k = 0; k<3; k++) {ASSIGN_ADD(P[i].Gas_Velocity[k], out->GasVel[k], mode);}
+#ifdef GRAIN_LORENTZFORCE
+        for(k = 0; k<3; k++) {ASSIGN_ADD(P[i].Gas_B[k], out->Gas_B[k], mode);}
+#endif
     }
 #endif
 
@@ -668,7 +674,9 @@ void density(void)
                 
                 desnumngb = All.DesNumNgb * ncorr_ngb;
                 desnumngbdev = desnumngbdev_0 * ncorr_ngb;
-                
+                /* allow the neighbor tolerance to gradually grow as we iterate, so that we don't spend forever trapped in a narrow iteration */
+                if(iter > 1) {desnumngbdev = DMIN( 0.25*desnumngb , desnumngbdev * exp(0.1*log(desnumngb/(16.*desnumngbdev))*(double)iter) );}
+
 #ifdef BLACK_HOLES
                 if(P[i].Type == 5)
                 {
@@ -676,7 +684,20 @@ void density(void)
                     desnumngbdev = 4 * (All.BlackHoleNgbFactor+1);
                 }
 #endif
-                
+
+#ifdef GRAIN_FLUID
+                /* for the grains, we only need to estimate neighboring gas properties, we don't need to worry about 
+                    condition numbers or conserving an exact neighbor number */
+                if(P[i].Type>0)
+                {
+                    desnumngb = All.DesNumNgb;
+                    desnumngbdev = All.DesNumNgb / 4;
+                }
+#endif
+
+                double minsoft = All.MinHsml;
+                double maxsoft = All.MaxHsml;
+
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
                 /* use a much looser check for N_neighbors when the central point is a star particle,
                  since the accuracy is limited anyways to the coupling efficiency -- the routines use their
@@ -685,51 +706,57 @@ void density(void)
                 {
                     desnumngb = All.DesNumNgb * ncorr_ngb;
                     if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
-                    desnumngbdev = All.DesNumNgb * ncorr_ngb / 4; // enforcing exact number not important
+                    desnumngbdev = desnumngb / 4; // enforcing exact number not important
+#ifdef GALSF
+                    // if we're finding this for feedback routines, there isn't any good reason to search beyond a modest physical radius //
+                    double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
+                    maxsoft = 2.0 / unitlength_in_kpc;
+#endif
                 }
 #endif
                 
+#ifdef BLACK_HOLES
+                if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius;}
+#endif
+
                 redo_particle = 0;
                 
-                double minsoft = All.MinHsml;
-                double maxsoft = All.MaxHsml;
-                
                 /* check if we are in the 'normal' range between the max/min allowed values */
-                if((PPP[i].NumNgb < (desnumngb - desnumngbdev) && PPP[i].Hsml < maxsoft) ||
-                   (PPP[i].NumNgb > (desnumngb + desnumngbdev) && PPP[i].Hsml > minsoft))
+                if((PPP[i].NumNgb < (desnumngb - desnumngbdev) && PPP[i].Hsml < 0.99*maxsoft) ||
+                   (PPP[i].NumNgb > (desnumngb + desnumngbdev) && PPP[i].Hsml > 1.01*minsoft))
                     redo_particle = 1;
                 
                 /* check maximum kernel size allowed */
                 particle_set_to_maxhsml_flag = 0;
-                if((PPP[i].Hsml >= maxsoft) && (PPP[i].NumNgb < (desnumngb + desnumngbdev)))
+                if((PPP[i].Hsml >= 0.99*maxsoft) && (PPP[i].NumNgb < (desnumngb - desnumngbdev)))
                 {
+                    redo_particle = 0;
                     if(PPP[i].Hsml == maxsoft)
                     {
                         /* iteration at the maximum value is already complete */
-                        redo_particle = 0;
                         particle_set_to_maxhsml_flag = 0;
                     } else {
-                        /* ok, the particle needs to be set to the maximum, and iterated one more time */
+                        /* ok, the particle needs to be set to the maximum, and (if gas) iterated one more time */
+                        if(P[i].Type==0) redo_particle = 1;
                         PPP[i].Hsml = maxsoft;
-                        redo_particle = 1;
                         particle_set_to_maxhsml_flag = 1;
                     }
                 }
                 
                 /* check minimum kernel size allowed */
                 particle_set_to_minhsml_flag = 0;
-                if((PPP[i].Hsml <= minsoft) && (PPP[i].NumNgb > (desnumngb - desnumngbdev)))
+                if((PPP[i].Hsml <= 1.01*minsoft) && (PPP[i].NumNgb > (desnumngb + desnumngbdev)))
                 {
+                    redo_particle = 0;
                     if(PPP[i].Hsml == minsoft)
                     {
                         /* this means we've already done an iteration with the MinHsml value, so the
                          neighbor weights, etc, are not going to be wrong; thus we simply stop iterating */
-                        redo_particle = 0;
                         particle_set_to_minhsml_flag = 0;
                     } else {
-                        /* ok, the particle needs to be set to the minimum, and iterated one more time */
+                        /* ok, the particle needs to be set to the minimum, and (if gas) iterated one more time */
+                        if(P[i].Type==0) redo_particle = 1;
                         PPP[i].Hsml = minsoft;
-                        redo_particle = 1;
                         particle_set_to_minhsml_flag = 1;
                     }
                 }
@@ -750,9 +777,10 @@ void density(void)
                 {
                     if(iter >= MAXITER - 10)
                     {
-                        printf("i=%d task=%d ID=%llu Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g\n   pos=(%g|%g|%g)\n",
+                        printf("i=%d task=%d ID=%llu Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)\n",
                                i, ThisTask, (unsigned long long) P[i].ID, P[i].Type, PPP[i].Hsml, PPP[i].DhsmlNgbFactor, Left[i], Right[i],
-                               (float) PPP[i].NumNgb, Right[i] - Left[i], P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+                               (float) PPP[i].NumNgb, Right[i] - Left[i], particle_set_to_maxhsml_flag, particle_set_to_minhsml_flag, minsoft,
+                               maxsoft, desnumngb, desnumngbdev, redo_particle, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
                         fflush(stdout);
                     }
                     
@@ -768,117 +796,124 @@ void density(void)
                             continue;
                         }
                     
-                    if(PPP[i].NumNgb < (desnumngb - desnumngbdev))
-                        Left[i] = DMAX(PPP[i].Hsml, Left[i]);
-                    else
+                    if((particle_set_to_maxhsml_flag==0)&&(particle_set_to_minhsml_flag==0))
                     {
-                        if(Right[i] != 0)
+                        if(PPP[i].NumNgb < (desnumngb - desnumngbdev))
+                            Left[i] = DMAX(PPP[i].Hsml, Left[i]);
+                        else
                         {
-                            if(PPP[i].Hsml < Right[i])
+                            if(Right[i] != 0)
+                            {
+                                if(PPP[i].Hsml < Right[i])
+                                    Right[i] = PPP[i].Hsml;
+                            }
+                            else
                                 Right[i] = PPP[i].Hsml;
                         }
+                        
+                        // right/left define upper/lower bounds from previous iterations
+                        if(Right[i] > 0 && Left[i] > 0)
+                        {
+                            // geometric interpolation between right/left //
+                            double maxjump=0;
+                            if(iter>1) {maxjump = 0.2*log(Right[i]/Left[i]);}
+                            if(PPP[i].NumNgb > 1)
+                            {
+                                double jumpvar = PPP[i].DhsmlNgbFactor * log( desnumngb / PPP[i].NumNgb ) / NUMDIMS;
+                                if(iter>1) {if(fabs(jumpvar) < maxjump) {if(jumpvar<0) {jumpvar=-maxjump;} else {jumpvar=maxjump;}}}
+                                PPP[i].Hsml *= exp(jumpvar);
+                            } else {
+                                PPP[i].Hsml *= 2.0;
+                            }
+                            if((PPP[i].Hsml<Right[i])&&(PPP[i].Hsml>Left[i]))
+                            {
+                                if(iter > 1)
+                                {
+                                    double hfac = exp(maxjump);
+                                    if(PPP[i].Hsml > Right[i] / hfac) {PPP[i].Hsml = Right[i] / hfac;}
+                                    if(PPP[i].Hsml < Left[i] * hfac) {PPP[i].Hsml = Left[i] * hfac;}
+                                }
+                            } else {
+                                if(PPP[i].Hsml>Right[i]) PPP[i].Hsml=Right[i];
+                                if(PPP[i].Hsml<Left[i]) PPP[i].Hsml=Left[i];
+                                PPP[i].Hsml = pow(PPP[i].Hsml * Left[i] * Right[i] , 1.0/3.0);
+                            }
+                        }
                         else
-                            Right[i] = PPP[i].Hsml;
-                    }
-                    
-                    // right/left define upper/lower bounds from previous iterations
-                    if(Right[i] > 0 && Left[i] > 0)
-                    {
-                        // geometric interpolation between right/left //
-                        if(PPP[i].NumNgb > 1)
                         {
-                            PPP[i].Hsml *= exp(PPP[i].DhsmlNgbFactor * log( desnumngb / PPP[i].NumNgb ) / NUMDIMS);
-                        } else {
-                            PPP[i].Hsml *= 2.0;
-                        }
-                        if((PPP[i].Hsml<Right[i])&&(PPP[i].Hsml>Left[i]))
-                        {
-                            PPP[i].Hsml = pow(PPP[i].Hsml*PPP[i].Hsml*PPP[i].Hsml*PPP[i].Hsml * Left[i]*Right[i] , 1./6.);
-                        } else {
-                            if(PPP[i].Hsml>Right[i]) PPP[i].Hsml=Right[i];
-                            if(PPP[i].Hsml<Left[i]) PPP[i].Hsml=Left[i];
-                            PPP[i].Hsml = pow(PPP[i].Hsml * Left[i] * Right[i] , 1.0/3.0);
-                        }
-                    }
-                    else
-                    {
-                        if(Right[i] == 0 && Left[i] == 0)
-                        {
-                            char buf[1000];
-                            sprintf(buf, "Right[i] == 0 && Left[i] == 0 && PPP[i].Hsml=%g\n", PPP[i].Hsml);
-                            terminate(buf);
-                        }
-                        
-                        if(Right[i] == 0 && Left[i] > 0)
-                        {
-                            if (PPP[i].NumNgb > 1)
-                                fac_lim = log( desnumngb / PPP[i].NumNgb ) / NUMDIMS; // this would give desnumgb if constant density (+0.231=2x desnumngb)
-                            else
-                                fac_lim = 1.4; // factor ~66 increase in N_NGB in constant-density medium
-                            
-                            //if(fabs(PPP[i].NumNgb - desnumngb) < 0.75 * desnumngb)
-                            if((PPP[i].NumNgb < 2*desnumngb)&&(PPP[i].NumNgb > 0.1*desnumngb))
+                            if(Right[i] == 0 && Left[i] == 0)
                             {
-                                fac = fac_lim * PPP[i].DhsmlNgbFactor; // account for derivative in making the 'corrected' guess
-                                if(iter>=20)
-                                    if(PPP[i].DhsmlNgbFactor==1) fac *= 10; // tries to help with being trapped in small steps
+                                char buf[1000];
+                                sprintf(buf, "Right[i] == 0 && Left[i] == 0 && PPP[i].Hsml=%g\n", PPP[i].Hsml);
+                                terminate(buf);
+                            }
+                            
+                            if(Right[i] == 0 && Left[i] > 0)
+                            {
+                                if (PPP[i].NumNgb > 1)
+                                    fac_lim = log( desnumngb / PPP[i].NumNgb ) / NUMDIMS; // this would give desnumgb if constant density (+0.231=2x desnumngb)
+                                else
+                                    fac_lim = 1.4; // factor ~66 increase in N_NGB in constant-density medium
                                 
-                                if(fac < fac_lim+0.231)
+                                //if(fabs(PPP[i].NumNgb - desnumngb) < 0.75 * desnumngb)
+                                if((PPP[i].NumNgb < 2*desnumngb)&&(PPP[i].NumNgb > 0.1*desnumngb))
                                 {
-                                    PPP[i].Hsml *= exp(fac); // more expensive function, but faster convergence
+                                    double slope = PPP[i].DhsmlNgbFactor;
+                                    if(iter>2 && slope<1) slope = 0.5*(slope+1);
+                                    fac = fac_lim * slope; // account for derivative in making the 'corrected' guess
+                                    if(iter>=10)
+                                        if(PPP[i].DhsmlNgbFactor==1) fac *= 10; // tries to help with being trapped in small steps
+                                    
+                                    if(fac < fac_lim+0.231)
+                                    {
+                                        PPP[i].Hsml *= exp(fac); // more expensive function, but faster convergence
+                                    }
+                                    else
+                                    {
+                                        PPP[i].Hsml *= exp(fac_lim+0.231);
+                                        // fac~0.26 leads to expected doubling of number if density is constant,
+                                        //   insert this limiter here b/c we don't want to get *too* far from the answer (which we're close to)
+                                    }
                                 }
                                 else
-                                {
-                                    PPP[i].Hsml *= exp(fac_lim+0.231);
-                                    // fac~0.26 leads to expected doubling of number if density is constant,
-                                    //   insert this limiter here b/c we don't want to get *too* far from the answer (which we're close to)
-                                }
+                                    PPP[i].Hsml *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
                             }
-                            else
-                                PPP[i].Hsml *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
-                        }
-                        
-                        if(Right[i] > 0 && Left[i] == 0)
-                        {
-                            if (PPP[i].NumNgb > 1)
-                                fac_lim = log( desnumngb / PPP[i].NumNgb ) / NUMDIMS; // this would give desnumgb if constant density (-0.231=0.5x desnumngb)
-                            else
-                                fac_lim = 1.4; // factor ~66 increase in N_NGB in constant-density medium
                             
-                            if (fac_lim < -1.535) fac_lim = -1.535; // decreasing N_ngb by factor ~100
-                            
-                            //if(fabs(PPP[i].NumNgb - desnumngb) < 0.75 * desnumngb)
-                            if((PPP[i].NumNgb < 2*desnumngb)&&(PPP[i].NumNgb > 0.1*desnumngb))
+                            if(Right[i] > 0 && Left[i] == 0)
                             {
-                                fac = fac_lim * PPP[i].DhsmlNgbFactor; // account for derivative in making the 'corrected' guess
-                                if(iter>=20)
-                                    if(PPP[i].DhsmlNgbFactor==1) fac *= 10; // tries to help with being trapped in small steps
+                                if (PPP[i].NumNgb > 1)
+                                    fac_lim = log( desnumngb / PPP[i].NumNgb ) / NUMDIMS; // this would give desnumgb if constant density (-0.231=0.5x desnumngb)
+                                else
+                                    fac_lim = 1.4; // factor ~66 increase in N_NGB in constant-density medium
                                 
-                                if(fac > fac_lim-0.231)
+                                if (fac_lim < -1.535) fac_lim = -1.535; // decreasing N_ngb by factor ~100
+                                
+                                //if(fabs(PPP[i].NumNgb - desnumngb) < 0.75 * desnumngb)
+                                if((PPP[i].NumNgb < 2*desnumngb)&&(PPP[i].NumNgb > 0.1*desnumngb))
                                 {
-                                    PPP[i].Hsml *= exp(fac); // more expensive function, but faster convergence
+                                    double slope = PPP[i].DhsmlNgbFactor;
+                                    if(iter>2 && slope<1) slope = 0.5*(slope+1);
+                                    fac = fac_lim * slope; // account for derivative in making the 'corrected' guess
+                                    if(iter>=10)
+                                        if(PPP[i].DhsmlNgbFactor==1) fac *= 10; // tries to help with being trapped in small steps
+                                    
+                                    if(fac > fac_lim-0.231)
+                                    {
+                                        PPP[i].Hsml *= exp(fac); // more expensive function, but faster convergence
+                                    }
+                                    else
+                                        PPP[i].Hsml *= exp(fac_lim-0.231); // limiter to prevent --too-- far a jump in a single iteration
                                 }
                                 else
-                                    PPP[i].Hsml *= exp(fac_lim-0.231); // limiter to prevent --too-- far a jump in a single iteration
+                                    PPP[i].Hsml *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
                             }
-                            else
-                                PPP[i].Hsml *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
-                        }
-                    }
+                        } // closes if[particle_set_to_max/minhsml_flag]
+                    } // closes redo_particle
                     /* resets for max/min values */
                     if(PPP[i].Hsml < minsoft) PPP[i].Hsml = minsoft;
                     if(particle_set_to_minhsml_flag==1) PPP[i].Hsml = minsoft;
                     if(PPP[i].Hsml > maxsoft) PPP[i].Hsml = maxsoft;
                     if(particle_set_to_maxhsml_flag==1) PPP[i].Hsml = maxsoft;
-                    
-#ifdef BLACK_HOLES
-                    if(P[i].Type == 5)
-                        if(Left[i] > All.BlackHoleMaxAccretionRadius)
-                        {
-                            /* this will stop the search for a new BH kernel length in the next iteration */
-                            PPP[i].Hsml = Left[i] = Right[i] = All.BlackHoleMaxAccretionRadius;
-                        }
-#endif
                 }
                 else
                     P[i].TimeBin = -P[i].TimeBin - 1;	/* Mark as inactive */
@@ -1021,6 +1056,9 @@ void density(void)
                 } else {
                     P[i].Gas_InternalEnergy = 0;
                     for(k = 0; k<3; k++) {P[i].Gas_Velocity[k] = 0;}
+#ifdef GRAIN_LORENTZFORCE
+                    for(k = 0; k<3; k++) {P[i].Gas_B[k] = 0;}
+#endif
                 }
             }
 #endif
@@ -1378,6 +1416,11 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
         out->GasVel[0] += kernel->mj_wk * (local->Vel[0]-kernel->dv[0]);
         out->GasVel[1] += kernel->mj_wk * (local->Vel[1]-kernel->dv[1]);
         out->GasVel[2] += kernel->mj_wk * (local->Vel[2]-kernel->dv[2]);
+#ifdef GRAIN_LORENTZFORCE
+        out->Gas_B[0] += kernel->wk * SphP[j].BPred[0];
+        out->Gas_B[1] += kernel->wk * SphP[j].BPred[1];
+        out->Gas_B[2] += kernel->wk * SphP[j].BPred[2];
+#endif
 #endif
         
 #if defined(BLACK_HOLES)

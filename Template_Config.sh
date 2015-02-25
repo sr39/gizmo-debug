@@ -92,10 +92,11 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##-----------------------------------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------------------------------
 #---------------------------------------- Aerodynamic Particles
-#GRAIN_FLUID                    # two-fluid medium with weakly-coupled grains (particle type 3 are grains)
-#GRAIN_EPSTEIN=1                # uses the cross section for molecular hydrogen (times this number) to calculate epstein drag
+#GRAIN_FLUID                    # two-fluid medium with aerodynamically-coupled grains (particle type 3 are grains); default is Stokes drag
+#GRAIN_EPSTEIN=1                # uses the cross section for molecular hydrogen (times this number) to calculate Epstein drag
+#GRAIN_BACKREACTION             # account for momentum of grains pushing back on gas (from drag terms)
+#GRAIN_LORENTZFORCE             # charged grains feel Lorentz forces (requires MAGNETIC)
 #GRAIN_COLLISIONS               # model collisions between grains (super-particles; so this is stochastic)
-#GRAIN_BACKREACTION             # account for momentum of grains pushing back on gas
 ##-----------------------------------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------------------------------
 #---------------------------------------- Cosmic Rays

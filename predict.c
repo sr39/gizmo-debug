@@ -132,6 +132,15 @@ void drift_particle(int i, integertime time1)
     if(divv_fac > +divv_fac_max) divv_fac = +divv_fac_max;
     if(divv_fac < -divv_fac_max) divv_fac = -divv_fac_max;
     
+#ifdef GRAIN_FLUID
+    if(P[i].Type > 0)
+    {
+        PPP[i].Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
+        if(PPP[i].Hsml < All.MinHsml) {PPP[i].Hsml = All.MinHsml;}
+        if(PPP[i].Hsml > All.MaxHsml) {PPP[i].Hsml = All.MaxHsml;}
+    }
+#endif
+
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     if(P[i].Type>0)
     {
@@ -347,7 +356,7 @@ double get_pressure(int i)
     xJeans*=1.5; /* above is NJeans=5, this is NJeans=9 */
 #else
     /* standard finite-volume formulation of this */
-    double NJeans = 4; // set so that resolution = lambda_Jeans/NJeans // ??? //
+    double NJeans = 4; // set so that resolution = lambda_Jeans/NJeans 
     double h_eff = 2.0 * Get_Particle_Size(i);
     xJeans = NJeans*NJeans/(M_PI*GAMMA) * All.G * h_eff*h_eff * SphP[i].Density*SphP[i].Density;
 #endif

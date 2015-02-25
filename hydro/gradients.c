@@ -287,9 +287,13 @@ void construct_gradient(double *grad, MyIDType i)
     /* check if the matrix is well-conditioned: otherwise we will use the 'standard SPH-like' derivative estimation */
     if(SphP[i].ConditionNumber <= (double)CONDITION_NUMBER_DANGER)
     {
+        /* ok, the condition number was good so we used the matrix-like gradient estimator */
         int k; double v_tmp[3];
         for(k=0;k<3;k++) {v_tmp[k] = grad[k];}
         for(k=0;k<3;k++) {grad[k] = SphP[i].NV_T[k][0]*v_tmp[0] + SphP[i].NV_T[k][1]*v_tmp[1] + SphP[i].NV_T[k][2]*v_tmp[2];}
+    } else {
+        /* the condition number was bad, so we used SPH-like gradients */
+        int k; for(k=0;k<3;k++) {grad[k] *= PPP[i].DhsmlNgbFactor / SphP[i].Density;}
     }
 }
 
@@ -972,7 +976,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #endif
                     if(sph_like_gradients_flag==1)
                     {
-                        wk = -kernel.dwk_i/kernel.r * P[j].Mass/SphP[j].Density; /* use the SPH-like gradient estimator */
+                        wk = -kernel.dwk_i/kernel.r * P[j].Mass; /* use the SPH-like gradient estimator */
                     } else {
                         wk = kernel.wk_i; /* use 2nd-order matrix gradient estimators */
                     }
