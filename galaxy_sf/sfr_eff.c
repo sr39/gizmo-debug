@@ -41,7 +41,7 @@ void assign_imf_properties_from_starforming_gas(MyIDType i)
                          SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))) * All.cf_a2inv*All.cf_a2inv;
     double M_sonic = cs*cs*cs*cs / (All.G * dv2_abs * h);
     M_sonic *= All.UnitMass_in_g / All.Hubble / (1.989e33); // sonic mass in solar units //
-    P[i].IMF_Mturnover = 0.01 + DMIN(M_sonic,100.);
+    P[i].IMF_Mturnover = DMAX(0.01,DMIN(M_sonic,100.));
 }
 #endif
 
@@ -51,7 +51,10 @@ void assign_imf_properties_from_starforming_gas(MyIDType i)
 inline double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i)
 {
 #ifdef GALSF_SFR_IMF_VARIATION
-    return pow(P[i].IMF_Mturnover/1.0,0.35);
+    /* more accurate version from David Guszjenov's IMF calculations (ok for Mturnover in range 0.01-100) */
+    double log_mimf = log10(P[i].IMF_Mturnover);
+    return (0.051+0.042*(log_mimf+2)+0.031*(log_mimf+2)*(log_mimf+2)) / 0.31;
+    // return pow(P[i].IMF_Mturnover/1.0,0.35);
 #endif
     return 1; // Chabrier or Kroupa IMF //
     // return 0.5; // Salpeter IMF down to 0.1 solar //

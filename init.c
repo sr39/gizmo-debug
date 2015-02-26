@@ -393,7 +393,12 @@ void init(void)
 #endif
 #ifdef GALSF
         if(RestartFlag == 0)
+        {
             P[i].StellarAge = 0;
+#ifdef GALSF_SFR_IMF_VARIATION
+            P[i].IMF_Mturnover = 2.0;
+#endif
+        }
 #endif
         
 #if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN )
@@ -421,8 +426,7 @@ void init(void)
 #if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
         if(RestartFlag == 0)
         {
-            /*P[i].StellarAge = - 5.0*get_random_number(P[i].ID + 3);*/
-            P[i].StellarAge = -2.0*All.InitStellarAgeinGyr/(All.UnitTime_in_Megayears*0.001)*get_random_number(P[i].ID + 3);
+            P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (All.UnitTime_in_Megayears*0.001) * get_random_number(P[i].ID + 3);
         }
 #endif
         

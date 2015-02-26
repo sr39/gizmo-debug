@@ -265,8 +265,12 @@ int force_treebuild_single(int npart, struct unbind_data *mp)
 		   * of tree are still correct, but this will only happen well below gravitational softening
 		   * length-scale anyway.
 		   */
+#ifdef USE_PREGENERATED_RANDOM_NUMBER_TABLE
 		  subnode = (int) (8.0 * get_random_number((P[i].ID + rep) % (RNDTABLE + (rep & 3))));
-
+#else
+          subnode = (int) (8.0 * get_random_number(P[i].ID));
+#endif
+            
 		  if(subnode >= 8)
 		    subnode = 7;
 		}
@@ -349,7 +353,11 @@ int force_treebuild_single(int npart, struct unbind_data *mp)
 		   * of tree are still correct, but this will only happen well below gravitational softening
 		   * length-scale anyway.
 		   */
-		  subnode = (int) (8.0 * get_random_number((P[th].ID + rep) % (RNDTABLE + (rep & 3))));
+#ifdef USE_PREGENERATED_RANDOM_NUMBER_TABLE
+            subnode = (int) (8.0 * get_random_number((P[th].ID + rep) % (RNDTABLE + (rep & 3))));
+#else
+            subnode = (int) (8.0 * get_random_number(P[th].ID));
+#endif
 
 		  if(subnode >= 8)
 		    subnode = 7;
