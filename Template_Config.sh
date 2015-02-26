@@ -303,6 +303,7 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #LONGIDS                        # use long ints for IDs (needed for super-large simulations)
 #ASSIGN_NEW_IDS                 # assign IDs on startup instead of reading from ICs
 #READ_HSML                      # reads hsml from IC file
+#PREVENT_PARTICLE_MERGE_SPLIT   # don't allow gas particle splitting/merging operations
 
 #USE_MPI_IN_PLACE               # MPI debugging: makes AllGatherV compatible with MPI_IN_PLACE definitions in some MPI libraries
 #NO_ISEND_IRECV_IN_DOMAIN       # MPI debugging

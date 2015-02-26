@@ -28,9 +28,13 @@
     when particles fall below some minimum mass threshold */
 int does_particle_need_to_be_merged(MyIDType i)
 {
+#ifdef PREVENT_PARTICLE_MERGE_SPLIT
+    return 0;
+#else
     if(P[i].Mass <= 0) return 0;
     if(P[i].Mass <= All.MinMassForParticleMerger) return 1;
     return 0;
+#endif
 }
 
 
@@ -38,8 +42,12 @@ int does_particle_need_to_be_merged(MyIDType i)
     when particles become too massive, but it could also be done when Hsml gets very large, densities are high, etc */
 int does_particle_need_to_be_split(MyIDType i)
 {
+#ifdef PREVENT_PARTICLE_MERGE_SPLIT
+    return 0;
+#else
     if(P[i].Mass >= All.MaxMassForParticleSplit) return 1;
     return 0;
+#endif
 }
 
 
