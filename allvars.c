@@ -114,14 +114,11 @@ double TimeBin_BH_Medd[TIMEBINS];
 #endif
 
 #ifdef RADTRANSFER
-double lum[N_BINS];
-#ifdef RT_POPIII
-double lum_popIII[N_BINS];
-#endif
-double rt_sigma_HI[N_BINS];
-double rt_sigma_HeI[N_BINS];
-double rt_sigma_HeII[N_BINS];
-double nu[N_BINS];
+double lum[N_RT_FREQ_BINS];
+double rt_sigma_HI[N_RT_FREQ_BINS];
+double rt_sigma_HeI[N_RT_FREQ_BINS];
+double rt_sigma_HeII[N_RT_FREQ_BINS];
+double nu[N_RT_FREQ_BINS];
 #endif
 
 
@@ -134,7 +131,7 @@ size_t FreeBytes;
 double CPU_Step[CPU_PARTS];
 char CPU_Symbol[CPU_PARTS] =
   { '-', '*', '=', ';', '<', '[', '^', ':', '.', '~', '|', '+', '"', '/', '`', ',', '>', '@', '#', '&', '$',
-  ']', '(', '?', ')', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '\\', '\%', '{', '}'
+  ']', '(', '?', ')', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '\\', '%', '{', '}'
 };
 char CPU_SymbolImbalance[CPU_PARTS] =
   { 'a', 't', 'u', 'v', 'b', 'w', 'd', 'r', 'h', 'm', 'n', 'l', 'o', 'p', 's', 'f', 'i', 'g', 'c', 'e', 'x',
@@ -198,7 +195,9 @@ struct topnode_data *TopNodes;
 
 int NTopnodes, NTopleaves;
 
+#ifdef USE_PREGENERATED_RANDOM_NUMBER_TABLE
 double RndTable[RNDTABLE];
+#endif
 
 #ifdef SUBFIND
 int GrNr;
@@ -343,6 +342,10 @@ struct info_block *InfoBlock;
 struct io_header header;	/*!< holds header for snapshot files */
 
 
+#ifdef BLACK_HOLES
+int N_active_loc_BHs=0;       /*!< number of active black holes on the LOCAL processor */
+struct blackhole_temp_particle_data *BlackholeTempInfo, *BlackholeDataPasserOut, *BlackholeDataPasserResult;
+#endif
 
 
 

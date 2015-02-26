@@ -104,11 +104,13 @@ void lineofsight_output(void)
 
   for(n = 0, s = 0; n < N_LOS; n++)
     {
+#ifdef USE_PREGENERATED_RANDOM_NUMBER_TABLE
       if(s + 3 >= RNDTABLE)
 	{
 	  set_random_numbers();
 	  s = 0;
 	}
+#endif
 
       Los->zaxis = (int) (3.0 * get_random_number(s++));
       switch (Los->zaxis)
@@ -174,7 +176,7 @@ void find_particles_and_save_them(int num)
 
 	      particles[count_local].Hsml = PPP[n].Hsml;
 	      particles[count_local].Vz = P[n].Vel[Los->zaxis];
-	      particles[count_local].Utherm = Particle_Internal_energy_i(n);
+	      particles[count_local].Utherm = SphP[n].InternalEnergyPred;
 	      particles[count_local].Mass = P[n].Mass;
 	      particles[count_local].Metallicity = P[n].Metallicity[0];
 
@@ -318,7 +320,7 @@ void add_along_lines_of_sight(void)
                   bin += PIXELS;
 
 		      ne = SphP[n].Ne;
-                utherm = DMAX(All.MinEgySpec, Particle_Internal_energy_i(n));
+                utherm = DMAX(All.MinEgySpec, SphP[i].InternalEnergyPred);
 
 		      AbundanceRatios(utherm, SphP[n].Density * All.cf_a3inv, &ne, &nh0, &nHeII);
 

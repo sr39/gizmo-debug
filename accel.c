@@ -130,19 +130,20 @@ void compute_stellar_feedback(void)
     CPU_Step[CPU_MISC] += measure_time();
 
     /* first, check the mechanical sources of feedback */
-#if (defined(GALSF_FB_SNE_HEATING)||defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPROCESS_ENRICHMENT))
+#if defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPROCESS_ENRICHMENT)
     mechanical_fb_calc(-1); /* compute weights for coupling */
+    CPU_Step[CPU_SNIIHEATING] += measure_time();
 #ifdef GALSF_FB_SNE_HEATING
     mechanical_fb_calc(0); /* actually do the SNe coupling */
     CPU_Step[CPU_SNIIHEATING] += measure_time();
 #endif
 #if defined(GALSF_FB_GASRETURN)
     mechanical_fb_calc(1); /* do the gas return coupling */
-    CPU_Step[CPU_GALSF_FB_GASRETURN] += measure_time();
+    CPU_Step[CPU_GASRETURN] += measure_time();
 #endif
 #ifdef GALSF_FB_RPROCESS_ENRICHMENT
     mechanical_fb_calc(2); /* do the R-process element injection */
-    CPU_Step[CPU_GALSF_FB_GASRETURN] += measure_time();
+    CPU_Step[CPU_GASRETURN] += measure_time();
 #endif
 #endif // (defined(GALSF_FB_SNE_HEATING)||defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPROCESS_ENRICHMENT))
     
@@ -164,5 +165,6 @@ void compute_stellar_feedback(void)
     CPU_Step[CPU_LOCALWIND] += measure_time();
 #endif
     
+    CPU_Step[CPU_MISC] += measure_time();
 }
 #endif // GALSF //

@@ -12,7 +12,6 @@ void calculate_interact_kick(double Vtarget[3], double Vno[3], double kick_targe
 void init_geofactor_table(void);
 double geofactor_integ(double x, void * params);
 double geofactor_angle_integ(double u, void * params);
-double kernel(double u);
 
 void update_interaction_table(MyIDType id1, MyIDType id2);
 int  check_interaction_table(MyIDType id1, MyIDType id2);

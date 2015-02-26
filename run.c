@@ -92,9 +92,13 @@ void run(void)
         
         compute_grav_accelerations();	/* compute gravitational accelerations for synchronous particles */
 
-#ifdef GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION
+#ifdef GALSF_SUBGRID_DMDISPERSION
         // Need to figure out how frequently we calculate this; below is pretty rough //
+#ifdef PMGRID
         if(All.Ti_Current == All.PM_Ti_endstep && get_random_number(1+All.Ti_Current) < 0.05)
+#else
+        if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
+#endif
         {
             disp_density(); /* compute the DM velocity dispersion around gas particles every 20 PM steps, should be sufficient */
         }
@@ -222,12 +226,7 @@ void calculate_non_standard_physics(void)
 #ifdef GRAIN_FLUID
     apply_grain_dragforce();
 #endif
-    
-#ifdef CR_DIFFUSION
-    if(All.CR_Diffusion_Ti_endstep == All.Ti_Current)
-        cosmic_ray_diffusion();
-#endif
-    
+        
     
 #ifdef RADTRANSFER
     double timeeach = 0, timeall = 0, tstart = 0, tend = 0;
@@ -275,9 +274,7 @@ void calculate_non_standard_physics(void)
         MPI_Allreduce(&timeeach, &timeall, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
         if(ThisTask == 0)
         {
-#ifndef RT_SILENT
             printf("time consumed is %g \n", timeall);
-#endif
             printf("done with radtransfer! \n");
             fflush(stdout);
         }
@@ -374,10 +371,6 @@ void calculate_non_standard_physics(void)
     do_sinks();
 #endif
     
-#ifdef BP_REAL_CRs
-    bp_cr_evol();
-#endif
-    
 #ifdef SCF_HYBRID
     SCF_do_center_of_mass_correction(0.75, 10.0 * SCF_HQ_A, 0.01, 1000);
 #endif
@@ -418,7 +411,7 @@ void execute_resubmit_command(void)
 /*! This function finds the next synchronization point of the system
  * (i.e. the earliest point of time any of the particles needs a force
  * computation), and drifts the system to this point of time.  If the
- * system dirfts over the desired time of a snapshot file, the
+ * system drifts over the desired time of a snapshot file, the
  * function will drift to this moment, generate an output, and then
  * resume the drift.
  */
@@ -485,7 +478,7 @@ void find_next_sync_point_and_drift(void)
 #endif
 
 
-mpi_printf("\n\n\nI found the last snapshot call...\n\n\n");
+      mpi_printf("\n\n\nI found the last snapshot call...\n\n\n");
       savepositions(All.SnapshotFileCount++);	/* write snapshot file */
 
       All.Ti_nextoutput = find_next_outputtime(All.Ti_nextoutput + 1);
@@ -971,149 +964,87 @@ void write_cpu_log(void)
 	      "sfrcool       %10.2f  %5.1f%%\n"
 	      "blackholes    %10.2f  %5.1f%%\n"
 	      "fof/subfind   %10.2f  %5.1f%%\n"
-          "dummy         %10.2f  %5.1f%%\n"
-          "gas_return    %10.2f  %5.1f%%\n"
 #ifdef GRAIN_FLUID
-          "drag_force    %10.2f  %5.1f%%\n"
-          "gas_backreact %10.2f  %5.1f%%\n"
-          "grain_colls   %10.2f  %5.1f%%\n"
-#else
+          "grains        %10.2f  %5.1f%%\n"
+#endif
+          "gas_return    %10.2f  %5.1f%%\n"
           "snII_fb_loop  %10.2f  %5.1f%%\n"
           "hII_fb_loop   %10.2f  %5.1f%%\n"
           "localwindkik  %10.2f  %5.1f%%\n"
-#endif
-          "pre_sf_misc   %10.2f  %5.1f%%\n"
-          "cooling       %10.2f  %5.1f%%\n"
           "misc          %10.2f  %5.1f%%\n",
-	      All.CPU_Sum[CPU_ALL], 100.0,
-	      All.CPU_Sum[CPU_TREEWALK1] + All.CPU_Sum[CPU_TREEWALK2]
-	      + All.CPU_Sum[CPU_TREESEND] + All.CPU_Sum[CPU_TREERECV]
-	      + All.CPU_Sum[CPU_TREEWAIT1] + All.CPU_Sum[CPU_TREEWAIT2]
-	      + All.CPU_Sum[CPU_TREEBUILD] + All.CPU_Sum[CPU_TREEUPDATE]
-	      + All.CPU_Sum[CPU_TREEMISC],
-	      (All.CPU_Sum[CPU_TREEWALK1] + All.CPU_Sum[CPU_TREEWALK2]
-	       + All.CPU_Sum[CPU_TREESEND] + All.CPU_Sum[CPU_TREERECV]
-	       + All.CPU_Sum[CPU_TREEWAIT1] + All.CPU_Sum[CPU_TREEWAIT2]
-	       + All.CPU_Sum[CPU_TREEBUILD] + All.CPU_Sum[CPU_TREEUPDATE]
-	       + All.CPU_Sum[CPU_TREEMISC]) / All.CPU_Sum[CPU_ALL] * 100,
-	      All.CPU_Sum[CPU_TREEBUILD],
-	      (All.CPU_Sum[CPU_TREEBUILD]) / All.CPU_Sum[CPU_ALL] * 100,
-	      All.CPU_Sum[CPU_TREEUPDATE],
-	      (All.CPU_Sum[CPU_TREEUPDATE]) / All.CPU_Sum[CPU_ALL] * 100,
-	      All.CPU_Sum[CPU_TREEWALK1] + All.CPU_Sum[CPU_TREEWALK2],
-	      (All.CPU_Sum[CPU_TREEWALK1] + All.CPU_Sum[CPU_TREEWALK2]) / All.CPU_Sum[CPU_ALL] * 100,
-	      All.CPU_Sum[CPU_TREESEND] + All.CPU_Sum[CPU_TREERECV],
-	      (All.CPU_Sum[CPU_TREESEND] + All.CPU_Sum[CPU_TREERECV]) / All.CPU_Sum[CPU_ALL] * 100,
-	      All.CPU_Sum[CPU_TREEWAIT1] + All.CPU_Sum[CPU_TREEWAIT2],
-	      (All.CPU_Sum[CPU_TREEWAIT1] + All.CPU_Sum[CPU_TREEWAIT2]) / All.CPU_Sum[CPU_ALL] * 100,
+              
+    All.CPU_Sum[CPU_ALL], 100.0,
+    All.CPU_Sum[CPU_TREEWALK1] + All.CPU_Sum[CPU_TREEWALK2] + All.CPU_Sum[CPU_TREESEND] + All.CPU_Sum[CPU_TREERECV]
+              + All.CPU_Sum[CPU_TREEWAIT1] + All.CPU_Sum[CPU_TREEWAIT2] + All.CPU_Sum[CPU_TREEBUILD] + All.CPU_Sum[CPU_TREEUPDATE]
+              + All.CPU_Sum[CPU_TREEMISC],
+    (All.CPU_Sum[CPU_TREEWALK1] + All.CPU_Sum[CPU_TREEWALK2] + All.CPU_Sum[CPU_TREESEND] + All.CPU_Sum[CPU_TREERECV]
+              + All.CPU_Sum[CPU_TREEWAIT1] + All.CPU_Sum[CPU_TREEWAIT2] + All.CPU_Sum[CPU_TREEBUILD] + All.CPU_Sum[CPU_TREEUPDATE] + All.CPU_Sum[CPU_TREEMISC]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_TREEBUILD], (All.CPU_Sum[CPU_TREEBUILD]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_TREEUPDATE], (All.CPU_Sum[CPU_TREEUPDATE]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_TREEWALK1] + All.CPU_Sum[CPU_TREEWALK2], (All.CPU_Sum[CPU_TREEWALK1] + All.CPU_Sum[CPU_TREEWALK2]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_TREESEND] + All.CPU_Sum[CPU_TREERECV], (All.CPU_Sum[CPU_TREESEND] + All.CPU_Sum[CPU_TREERECV]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_TREEWAIT1] + All.CPU_Sum[CPU_TREEWAIT2], (All.CPU_Sum[CPU_TREEWAIT1] + All.CPU_Sum[CPU_TREEWAIT2]) / All.CPU_Sum[CPU_ALL] * 100,
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-              All.CPU_Sum[CPU_AGSDENSCOMPUTE] + All.CPU_Sum[CPU_AGSDENSWAIT]
-              + All.CPU_Sum[CPU_AGSDENSCOMM] + All.CPU_Sum[CPU_AGSDENSMISC],
-              (All.CPU_Sum[CPU_AGSDENSCOMPUTE] + All.CPU_Sum[CPU_AGSDENSWAIT]
-               + All.CPU_Sum[CPU_AGSDENSCOMM] + All.CPU_Sum[CPU_AGSDENSMISC]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_AGSDENSCOMPUTE],
-              (All.CPU_Sum[CPU_AGSDENSCOMPUTE]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_AGSDENSCOMM],
-              (All.CPU_Sum[CPU_AGSDENSCOMM]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_AGSDENSWAIT],
-              (All.CPU_Sum[CPU_AGSDENSWAIT]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_AGSDENSCOMPUTE] + All.CPU_Sum[CPU_AGSDENSWAIT] + All.CPU_Sum[CPU_AGSDENSCOMM] + All.CPU_Sum[CPU_AGSDENSMISC],
+              (All.CPU_Sum[CPU_AGSDENSCOMPUTE] + All.CPU_Sum[CPU_AGSDENSWAIT] + All.CPU_Sum[CPU_AGSDENSCOMM] + All.CPU_Sum[CPU_AGSDENSMISC]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_AGSDENSCOMPUTE], (All.CPU_Sum[CPU_AGSDENSCOMPUTE]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_AGSDENSCOMM], (All.CPU_Sum[CPU_AGSDENSCOMM]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_AGSDENSWAIT], (All.CPU_Sum[CPU_AGSDENSWAIT]) / All.CPU_Sum[CPU_ALL] * 100,
 #endif
 #ifdef SIDM
-              All.CPU_Sum[CPU_SIDMSCATTER] +  All.CPU_Sum[CPU_SIDMCELLOPEN],
-              (All.CPU_Sum[CPU_SIDMSCATTER] +
-               All.CPU_Sum[CPU_SIDMCELLOPEN])/ All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_SIDMSCATTER],
-              (All.CPU_Sum[CPU_SIDMSCATTER]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_SIDMCELLOPEN],
-              (All.CPU_Sum[CPU_SIDMCELLOPEN]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_SIDMSCATTER] +  All.CPU_Sum[CPU_SIDMCELLOPEN], (All.CPU_Sum[CPU_SIDMSCATTER] + All.CPU_Sum[CPU_SIDMCELLOPEN])/ All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_SIDMSCATTER], (All.CPU_Sum[CPU_SIDMSCATTER]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_SIDMCELLOPEN], (All.CPU_Sum[CPU_SIDMCELLOPEN]) / All.CPU_Sum[CPU_ALL] * 100,
 #endif
-	      All.CPU_Sum[CPU_MESH],
-	      (All.CPU_Sum[CPU_MESH]) / All.CPU_Sum[CPU_ALL] * 100,
-	      All.CPU_Sum[CPU_DENSCOMPUTE] + All.CPU_Sum[CPU_DENSWAIT]
-	      + All.CPU_Sum[CPU_DENSCOMM] + All.CPU_Sum[CPU_DENSMISC]
-	      + All.CPU_Sum[CPU_HYDCOMPUTE] + All.CPU_Sum[CPU_HYDWAIT] + All.CPU_Sum[CPU_TREEHMAXUPDATE]
-	      + All.CPU_Sum[CPU_HYDCOMM] + All.CPU_Sum[CPU_HYDMISC] + All.CPU_Sum[CPU_HYDNETWORK],
-	      (All.CPU_Sum[CPU_DENSCOMPUTE] + All.CPU_Sum[CPU_DENSWAIT]
-	       + All.CPU_Sum[CPU_DENSCOMM] + All.CPU_Sum[CPU_DENSMISC]
-	       + All.CPU_Sum[CPU_HYDCOMPUTE] + All.CPU_Sum[CPU_HYDWAIT] + All.CPU_Sum[CPU_TREEHMAXUPDATE]
-	       + All.CPU_Sum[CPU_HYDCOMM] + All.CPU_Sum[CPU_HYDMISC] +
-	       All.CPU_Sum[CPU_HYDNETWORK]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_DENSCOMPUTE],
-	      (All.CPU_Sum[CPU_DENSCOMPUTE]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_DENSCOMM],
-	      (All.CPU_Sum[CPU_DENSCOMM]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_DENSWAIT],
-	      (All.CPU_Sum[CPU_DENSWAIT]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_HYDCOMPUTE],
-	      (All.CPU_Sum[CPU_HYDCOMPUTE]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_HYDCOMM],
-	      (All.CPU_Sum[CPU_HYDCOMM]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_HYDMISC],
-	      (All.CPU_Sum[CPU_HYDMISC]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_HYDNETWORK],
-	      (All.CPU_Sum[CPU_HYDNETWORK]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_HYDWAIT],
-	      (All.CPU_Sum[CPU_HYDWAIT]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_TREEHMAXUPDATE],
-	      (All.CPU_Sum[CPU_TREEHMAXUPDATE]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_DOMAIN],
-	      (All.CPU_Sum[CPU_DOMAIN]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_POTENTIAL],
-	      (All.CPU_Sum[CPU_POTENTIAL]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_DRIFT],
-	      (All.CPU_Sum[CPU_DRIFT]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_TIMELINE],
-	      (All.CPU_Sum[CPU_TIMELINE]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_SNAPSHOT],
-	      (All.CPU_Sum[CPU_SNAPSHOT]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_PEANO],
-	      (All.CPU_Sum[CPU_PEANO]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_MESH], (All.CPU_Sum[CPU_MESH]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DENSCOMPUTE] + All.CPU_Sum[CPU_DENSWAIT] + All.CPU_Sum[CPU_DENSCOMM] + All.CPU_Sum[CPU_DENSMISC]
+              + All.CPU_Sum[CPU_HYDCOMPUTE] + All.CPU_Sum[CPU_HYDWAIT] + All.CPU_Sum[CPU_TREEHMAXUPDATE]
+              + All.CPU_Sum[CPU_HYDCOMM] + All.CPU_Sum[CPU_HYDMISC] + All.CPU_Sum[CPU_HYDNETWORK],
+    (All.CPU_Sum[CPU_DENSCOMPUTE] + All.CPU_Sum[CPU_DENSWAIT] + All.CPU_Sum[CPU_DENSCOMM] + All.CPU_Sum[CPU_DENSMISC]
+              + All.CPU_Sum[CPU_HYDCOMPUTE] + All.CPU_Sum[CPU_HYDWAIT] + All.CPU_Sum[CPU_TREEHMAXUPDATE]
+              + All.CPU_Sum[CPU_HYDCOMM] + All.CPU_Sum[CPU_HYDMISC] + All.CPU_Sum[CPU_HYDNETWORK]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DENSCOMPUTE], (All.CPU_Sum[CPU_DENSCOMPUTE]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DENSCOMM], (All.CPU_Sum[CPU_DENSCOMM]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DENSWAIT], (All.CPU_Sum[CPU_DENSWAIT]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_HYDCOMPUTE], (All.CPU_Sum[CPU_HYDCOMPUTE]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_HYDCOMM], (All.CPU_Sum[CPU_HYDCOMM]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_HYDMISC], (All.CPU_Sum[CPU_HYDMISC]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_HYDNETWORK], (All.CPU_Sum[CPU_HYDNETWORK]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_HYDWAIT], (All.CPU_Sum[CPU_HYDWAIT]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_TREEHMAXUPDATE], (All.CPU_Sum[CPU_TREEHMAXUPDATE]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DOMAIN], (All.CPU_Sum[CPU_DOMAIN]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_POTENTIAL], (All.CPU_Sum[CPU_POTENTIAL]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DRIFT], (All.CPU_Sum[CPU_DRIFT]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_TIMELINE], (All.CPU_Sum[CPU_TIMELINE]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_SNAPSHOT], (All.CPU_Sum[CPU_SNAPSHOT]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_PEANO], (All.CPU_Sum[CPU_PEANO]) / All.CPU_Sum[CPU_ALL] * 100,
 #ifdef COOLING
-              All.CPU_Sum[CPU_COOLINGSFR],
-	      (All.CPU_Sum[CPU_COOLINGSFR]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_COOLINGSFR], (All.CPU_Sum[CPU_COOLINGSFR]) / All.CPU_Sum[CPU_ALL] * 100,
 #else
-              0.,0.,
+    0.,0.,
 #endif
 #ifdef BLACK_HOLES
-              All.CPU_Sum[CPU_BLACKHOLES],
-	      (All.CPU_Sum[CPU_BLACKHOLES]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_BLACKHOLES], (All.CPU_Sum[CPU_BLACKHOLES]) / All.CPU_Sum[CPU_ALL] * 100,
 #else
-              0.,0.,
+    0.,0.,
 #endif
 #ifdef FOF
-              All.CPU_Sum[CPU_FOF],
-	      (All.CPU_Sum[CPU_FOF]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_FOF], (All.CPU_Sum[CPU_FOF]) / All.CPU_Sum[CPU_ALL] * 100,
 #else
-            0.,0.,
+    0.,0.,
 #endif
-	      All.CPU_Sum[CPU_SMTHCOMPUTE] + All.CPU_Sum[CPU_SMTHWAIT] +
-              All.CPU_Sum[CPU_SMTHCOMM] +
-	      All.CPU_Sum[CPU_SMTHMISC],
-	      (All.CPU_Sum[CPU_SMTHCOMPUTE] + All.CPU_Sum[CPU_SMTHWAIT] +
-           All.CPU_Sum[CPU_SMTHCOMM] +
-	       All.CPU_Sum[CPU_SMTHMISC]) / All.CPU_Sum[CPU_ALL] * 100,
-#ifdef GALSF_FB_GASRETURN
-            All.CPU_Sum[CPU_GALSF_FB_GASRETURN], (All.CPU_Sum[CPU_GALSF_FB_GASRETURN]) / All.CPU_Sum[CPU_ALL] * 100,
-#else 
-            0.,0.,
-#endif
-
 #ifdef GRAIN_FLUID
-              All.CPU_Sum[CPU_DRAGFORCE], (All.CPU_Sum[CPU_DRAGFORCE]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_BACKREACT], (All.CPU_Sum[CPU_BACKREACT]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_GRAINCOLL], (All.CPU_Sum[CPU_GRAINCOLL]) / All.CPU_Sum[CPU_ALL] * 100,
-#else
-              All.CPU_Sum[CPU_SNIIHEATING], (All.CPU_Sum[CPU_SNIIHEATING]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_HIIHEATING], (All.CPU_Sum[CPU_HIIHEATING]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_LOCALWIND], (All.CPU_Sum[CPU_LOCALWIND]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DRAGFORCE], (All.CPU_Sum[CPU_DRAGFORCE]) / All.CPU_Sum[CPU_ALL] * 100,
 #endif
-              All.CPU_Sum[CPU_BHACCEST], (All.CPU_Sum[CPU_BHACCEST]) / All.CPU_Sum[CPU_ALL] * 100,
-              All.CPU_Sum[CPU_FBMISC], (All.CPU_Sum[CPU_FBMISC]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_GASRETURN], (All.CPU_Sum[CPU_GASRETURN]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_SNIIHEATING], (All.CPU_Sum[CPU_SNIIHEATING]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_HIIHEATING], (All.CPU_Sum[CPU_HIIHEATING]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_LOCALWIND], (All.CPU_Sum[CPU_LOCALWIND]) / All.CPU_Sum[CPU_ALL] * 100,
 
-              All.CPU_Sum[CPU_MISC],
-	      (All.CPU_Sum[CPU_MISC]) / All.CPU_Sum[CPU_ALL] * 100);
-      fprintf(FdCPU, "\n");
-      fflush(FdCPU);
+    All.CPU_Sum[CPU_MISC], (All.CPU_Sum[CPU_MISC]) / All.CPU_Sum[CPU_ALL] * 100);
+        
+    fprintf(FdCPU, "\n");
+    fflush(FdCPU);
     }
 }
 

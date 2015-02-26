@@ -18,7 +18,7 @@
  */
 
 
-#if defined(GALSF_FB_SNE_HEATING)
+#if defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_GASRETURN)
 
 /* in case you're wondering, here are some conventions that may be useful for solar abundances
     All.SolarAbundances[0]=0.02;        // all metals (by mass); present photospheric abundances from Asplund et al. 2009 (Z=0.0134, proto-solar=0.0142) in notes;
@@ -248,9 +248,10 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
     if(star_age > agemax) {
         yields[0]=1.4; yields[1]=0.0086; yields[2]=0.743; // All Z, Mg, Fe in total mass (SnIa)
     } else {
-        yields[0]=1.7; yields[1]=0.12; yields[2]=0.083; // SnII (per-SNe IMF-weighted averages)
+        yields[0]=2.0; yields[1]=0.12; yields[2]=0.0741; // SnII (per-SNe IMF-weighted averages)
     }
     }
+    if(NUM_METAL_SPECIES==1) {if(star_age > agemax) {yields[0]=1.4;} else {yields[0]=2.0;}}
 #ifdef GALSF_FB_RPROCESS_ENRICHMENT
     for(k=1;k<=NUM_RPROCESS_SPECIES;k++)
         yields[NUM_METAL_SPECIES-k] = 0.0; // R-process tracker
@@ -341,6 +342,9 @@ void particle2in_addFB_winds(struct addFBdata_in *in, int i)
         for(k=1;k<=NUM_RPROCESS_SPECIES;k++)
             yields[NUM_METAL_SPECIES-k] = 0.0; // R-process tracker
 #endif
+    } else {
+        for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=0.0;}
+        yields[0]=0.032;
     }
     for(k=0;k<NUM_METAL_SPECIES;k++) in->yields[k]=yields[k];
 #endif
@@ -661,7 +665,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     int startnode, numngb_inbox, listindex = 0;
     int j, k, n;
     double u,r2,h2;
-    double v_ejecta_max,kernel_zero,wk,dM,dP,dE,r2sne;
+    double v_ejecta_max,kernel_zero,wk,dM,dP,dE;
     double E_coupled,wk_sum,dP_sum,dP_boost_sum;
 
     struct kernel_addFB kernel;
@@ -693,9 +697,10 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
     // now define quantities that will be used below //
     double Esne51 = 0.5*local.SNe_v_ejecta*local.SNe_v_ejecta*local.Msne / unit_egy_SNe;
-    double RsneKPC_0=(0.0284/unitlength_in_kpc)*pow(Esne51,0.286); //Cioffi: weak external pressure
-    double RsneKPC=0.;
-    double RsneMAX=local.Hsml;
+    double r2sne, RsneKPC, RsneKPC_0, RsneMAX;
+    r2sne=0; RsneKPC=0.; RsneMAX=local.Hsml;
+    RsneKPC_0=(0.0284/unitlength_in_kpc)*pow(Esne51,0.286); //Cioffi: weak external pressure
+
 
 
   /* Now start the actual FB computation for this particle */
@@ -745,7 +750,12 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
             kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, -1);
             for(k=0; k<3; k++) kernel.dv[k] = local.Vel[k] - P[j].Vel[k];
             
+            /*
             wk = 1./SphP[j].Density; // wt ~ 1 (uniform in SPH terms)
+            wk = kernel.wk * P[j].Mass / SphP[j].Density; // psi
+            */
+            double h_eff_j = Get_Particle_Size(j);
+            wk = h_eff_j * h_eff_j / (r2 + 0.01*h2); // area weight
             
             // if feedback_type==-1, this is a pre-calc loop to get the relevant weights for coupling //
             if(feedback_type==-1)
@@ -755,7 +765,10 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
             }
             // NOW do the actual feedback calculation //
                 wk /= local.area_sum; // this way wk matches the value summed above for the weighting //
-
+                // need to check to make sure the coupled fraction doesn't exceed the solid angle subtended by the particles //
+                double wkmax = 1.5 * M_PI * h_eff_j * h_eff_j / (4. * M_PI * (0.5625*r2 + 0.005*h2));
+                if(wk > wkmax) {wk = wkmax;}
+            
                 dM = wk * local.Msne;
                 dP = local.SNe_v_ejecta / kernel.r;
                 /* define initial mass and ejecta velocity in this 'cone' */
@@ -837,7 +850,16 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 }
 #endif
             
-                /* inject energy (convert to specific units as needed first) */
+#if defined(COSMIC_RAYS) && defined(GALSF_FB_SNE_HEATING)
+            if(local.SNe_v_ejecta > 5.0e7 / All.UnitVelocity_in_cm_per_s)
+            {
+                /* a fraction of the *INITIAL* energy goes into cosmic rays [this is -not- affected by the radiative losses above] */
+                double dE_init_coupled = 0.5 * dM * local.SNe_v_ejecta * local.SNe_v_ejecta;
+                SphP[j].CosmicRayEnergy += All.CosmicRay_SNeFraction * dE_init_coupled;
+                SphP[j].CosmicRayEnergyPred += All.CosmicRay_SNeFraction * dE_init_coupled;
+            }
+#endif
+                /* inject the post-shock energy and momentum (convert to specific units as needed first) */
                 dE *= 1 / P[j].Mass;
                 SphP[j].InternalEnergy += dE;
                 SphP[j].InternalEnergyPred += dE;

@@ -26,7 +26,7 @@
 
 
 #ifdef FOF
-#include "structure/fof.h"
+#include "fof.h"
 #ifdef SUBFIND
 #include "subfind.h"
 #endif
@@ -2540,7 +2540,7 @@ void multi_bubbles(void)
 			{
 			  numngb++;
 
-                E_bubble += P[j].Mass * Particle_Internal_energy_i(j);
+                E_bubble += P[j].Mass * SphP[j].InternalEnergyPred;
 			  Mass_bubble += P[j].Mass;
 
 			}

@@ -1652,13 +1652,13 @@ int ngb_treefind_newstars(MyDouble searchcenter[3], MyFloat hsml, int target, in
     *startnode = -1;
     return numngb;
 }
-#endif // defined(GALSF_FB_RPWIND_LOCAL) && defined(GALSF_FB_RPWIND_FROMSTARS)
+#endif 
 
 
 
 
 
-#ifdef GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION
+#ifdef GALSF_SUBGRID_DMDISPERSION
 int dm_disp_ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
                                        int mode, int *exportflag, int *exportnodecount, int *exportindex,
                                        int *ngblist, int type_of_searching_particle)

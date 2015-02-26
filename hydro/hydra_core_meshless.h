@@ -10,26 +10,27 @@
     
     double s_star_ij,s_i,s_j,v_frame[3],n_unit[3];
     double distance_from_i[3],distance_from_j[3];
-    face_vel_i=face_vel_j=0;
-#ifdef MAGNETIC
-    Face_Area_Norm=0;
+    face_vel_i=face_vel_j=Face_Area_Norm=0;
+#ifdef COSMIC_RAYS
+    Fluxes.CosmicRayPressure = 0;
 #endif
     
     /* --------------------------------------------------------------------------------- */
     /* define volume elements and interface position */
     /* --------------------------------------------------------------------------------- */
     V_j = P[j].Mass / SphP[j].Density;
-    //s_star_ij = 0;
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+    s_star_ij = 0;
+#else
     s_star_ij = 0.5 * kernel.r * (PPP[j].Hsml - local.Hsml) / (local.Hsml + PPP[j].Hsml);
-
+#endif
     /* ------------------------------------------------------------------------------------------------------------------- */
     /* now we're ready to compute the volume integral of the fluxes (or equivalently an 'effective area'/face orientation) */
     /* ------------------------------------------------------------------------------------------------------------------- */
     if(SphP[j].ConditionNumber*SphP[j].ConditionNumber > cnumcrit2)
     {
         /* the effective gradient matrix is ill-conditioned: for stability, we revert to the "RSPH" EOM */
-#if !(defined(HYDRO_SPH) || defined(CONDUCTION_EXPLICIT) || defined(TURB_DIFFUSION))
-        /* we may need to evaluate dwk, if it is not done by default */
+        /* we need to evaluate dwk, since it is not done by default */
         if(kernel.r < kernel.h_i)
         {
             u = kernel.r * hinv_i;
@@ -40,7 +41,6 @@
             u = kernel.r * hinv_j;
             kernel_main(u, hinv3_j, hinv4_j, &kernel.wk_j, &kernel.dwk_j, 1);
         }
-#endif
         Face_Area_Norm = -(V_i*V_i*kernel.dwk_i + V_j*V_j*kernel.dwk_j) / kernel.r;
         Face_Area_Norm *= All.cf_atime*All.cf_atime; /* Face_Area_Norm has units of area, need to convert to physical */
         Face_Area_Vec[0] = Face_Area_Norm * kernel.dp[0];
@@ -61,7 +61,7 @@
     {
         memset(&Fluxes, 0, sizeof(struct Conserved_var_Riemann));
 #ifdef DIVBCLEANING_DEDNER
-        magfluxv[0]=magfluxv[1]=magfluxv[2]=0.0; Riemann_out.phi_normal_corrected=0;
+        Riemann_out.phi_normal_mean=Riemann_out.phi_normal_db=0;
 #endif
     } else {
         
@@ -96,7 +96,9 @@
         distance_from_i[0]=kernel.dp[0]*rinv; distance_from_i[1]=kernel.dp[1]*rinv; distance_from_i[2]=kernel.dp[2]*rinv;
         for(k=0;k<3;k++) {distance_from_j[k] = distance_from_i[k] * s_j; distance_from_i[k] *= s_i;}
         //for(k=0;k<3;k++) {v_frame[k] = 0.5 * (VelPred_j[k] + local.Vel[k]);}
-        for(k=0;k<3;k++) {v_frame[k] = rinv * (s_j*VelPred_j[k] - s_i*local.Vel[k]);} // allows for face to be off-center (to second-order)
+        for(k=0;k<3;k++) {v_frame[k] = rinv * (-s_i*VelPred_j[k] + s_j*local.Vel[k]);} // allows for face to be off-center (to second-order)
+        // (note that in the above, the s_i/s_j terms are crossed with the opposing velocity terms: this is because the face is closer to the
+        //   particle with the smaller smoothing length; so it's values are slightly up-weighted //
         
         
         /* now we do the reconstruction (second-order reconstruction at the face) */
@@ -107,7 +109,7 @@
 #ifdef NON_IDEAL_EOS
         reconstruct_face_states(local.InternalEnergyPred, local.Gradients.InternalEnergy, SphP[j].InternalEnergyPred, SphP[j].Gradients.InternalEnergy,
                                 distance_from_i, distance_from_j, &Riemann_vec.L.u, &Riemann_vec.R.u, 1);
-        reconstruct_face_states(local.SoundSpeed, local.Gradients.SoundSpeed, SphP[j].SoundSpeed, SphP[j].Gradients.SoundSpeed,
+        reconstruct_face_states(kernel.sound_i, local.Gradients.SoundSpeed, kernel.sound_j, SphP[j].Gradients.SoundSpeed,
                                 distance_from_i, distance_from_j, &Riemann_vec.L.cs, &Riemann_vec.R.cs, 1);
 #endif
         for(k=0;k<3;k++)
@@ -174,6 +176,10 @@
             Riemann_vec.R.phi = local.PhiPred; Riemann_vec.L.phi = PhiPred_j;
 #endif
 #endif
+#ifdef NON_IDEAL_EOS
+            Riemann_vec.R.u = local.InternalEnergyPred; Riemann_vec.L.u = SphP[j].InternalEnergyPred;
+            Riemann_vec.R.cs = kernel.sound_i; Riemann_vec.L.cs = kernel.sound_j;
+#endif
             Riemann_solver(Riemann_vec, &Riemann_out, n_unit);
             if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M)))
             {
@@ -187,13 +193,28 @@
                 Riemann_vec.R.phi = local.PhiPred; Riemann_vec.L.phi = PhiPred_j;
 #endif
 #endif
+#ifdef NON_IDEAL_EOS
+                Riemann_vec.R.u = local.InternalEnergyPred; Riemann_vec.L.u = SphP[j].InternalEnergyPred;
+                Riemann_vec.R.cs = kernel.sound_i; Riemann_vec.L.cs = kernel.sound_j;
+#endif
                 Riemann_solver(Riemann_vec, &Riemann_out, n_unit);
                 if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M)))
                 {
+#if defined(MAGNETIC) && defined(DIVBCLEANING_DEDNER)
+                    printf("Riemann Solver Failed to Find Positive Pressure!: PL/M/R=%g/%g/%g Mi/j=%g/%g rhoL/R=%g/%g H_ij=%g/%g vL=%g/%g/%g vR=%g/%g/%g n_unit=%g/%g/%g BL=%g/%g/%g BR=%g/%g/%g phiL/R=%g/%g \n",
+                           Riemann_vec.L.p,Riemann_out.P_M,Riemann_vec.R.p,local.Mass,P[j].Mass,Riemann_vec.L.rho,Riemann_vec.R.rho,local.Hsml,PPP[j].Hsml,
+                           local.Vel[0]-v_frame[0],local.Vel[1]-v_frame[1],local.Vel[2]-v_frame[2],
+                           VelPred_j[0]-v_frame[0],VelPred_j[1]-v_frame[1],VelPred_j[2]-v_frame[2],
+                           n_unit[0],n_unit[1],n_unit[2],
+                           Riemann_vec.L.B[0],Riemann_vec.L.B[1],Riemann_vec.L.B[2],
+                           Riemann_vec.R.B[0],Riemann_vec.R.B[1],Riemann_vec.R.B[2],
+                           Riemann_vec.L.phi,Riemann_vec.R.phi);
+#else
                     printf("Riemann Solver Failed to Find Positive Pressure!: PL/M/R=%g/%g/%g Mi/j=%g/%g rhoL/R=%g/%g vL=%g/%g/%g vR=%g/%g/%g n_unit=%g/%g/%g \n",
                            Riemann_vec.L.p,Riemann_out.P_M,Riemann_vec.R.p,local.Mass,P[j].Mass,Riemann_vec.L.rho,Riemann_vec.R.rho,
                            Riemann_vec.L.v[0],Riemann_vec.L.v[1],Riemann_vec.L.v[2],
                            Riemann_vec.R.v[0],Riemann_vec.R.v[1],Riemann_vec.R.v[2],n_unit[0],n_unit[1],n_unit[2]);
+#endif
                     exit(1234);
                 }
             }
@@ -207,12 +228,12 @@
         {
             if(All.ComovingIntegrationOn) {for(k=0;k<3;k++) v_frame[k] /= All.cf_atime;}
 #if !defined(HYDRO_MESHLESS_FINITE_VOLUME) && !defined(MAGNETIC)
-            Face_Area_Norm *= Riemann_out.P_M;
+            double facenorm_pm = Face_Area_Norm * Riemann_out.P_M;
             Fluxes.p = 0;
             for(k=0;k<3;k++)
             {
-                Fluxes.v[k] = Face_Area_Norm * n_unit[k]; /* total momentum flux */
-                Fluxes.p += Face_Area_Norm * (Riemann_out.S_M*n_unit[k] + v_frame[k]) * n_unit[k]; /* total energy flux = v_frame.dot.mom_flux */
+                Fluxes.v[k] = facenorm_pm * n_unit[k]; /* total momentum flux */
+                Fluxes.p += facenorm_pm * (Riemann_out.S_M*n_unit[k] + v_frame[k]) * n_unit[k]; /* total energy flux = v_frame.dot.mom_flux */
             }
 #else
             /* the fluxes have been calculated in the rest frame of the interface: we need to de-boost to the 'simulation frame'
@@ -230,7 +251,7 @@
                 face_vel_i += local.Vel[k] * n_unit[k] / All.cf_atime;
                 face_vel_j += VelPred_j[k] * n_unit[k] / All.cf_atime;
             }
-            face_area_dot_vel = -(s_j*face_vel_j - s_i*face_vel_i) * rinv;
+            face_area_dot_vel = -(-s_i*face_vel_j + s_j*face_vel_i) * rinv;
 #endif
             
             /* ok now we can actually apply this to the EOM */
@@ -240,6 +261,19 @@
             {
                 Fluxes.v[k] = Face_Area_Norm * Riemann_out.Fluxes.v[k]; // momentum flux (need to divide by mass) //
             }
+#if defined(COSMIC_RAYS) && defined(HYDRO_MESHLESS_FINITE_VOLUME)
+            /* here we simply assume that if there is mass flux, the cosmic ray fluid is advected -with the mass flux-, taking an
+             implicit constant (zeroth-order) reconstruction of the CR energy density at the face (we could reconstruct the CR
+             properties at the face, and calculate a more accurate advection term; however at that stage we should actually be
+             including them self-consistently in the Riemann problem */
+            if(Fluxes.rho < 0)
+            {
+                Fluxes.CosmicRayPressure = Fluxes.rho * (local.CosmicRayPressure*V_i/(GAMMA_COSMICRAY_MINUS1*local.Mass));
+            } else {
+                Fluxes.CosmicRayPressure = Fluxes.rho * (CosmicRayPressure_j*V_j/(GAMMA_COSMICRAY_MINUS1*P[j].Mass));
+            }
+#endif // cosmic_rays
+            
 #ifdef MAGNETIC
             for(k=0;k<3;k++)
             {
@@ -248,11 +282,6 @@
             Fluxes.B_normal_corrected = -Riemann_out.B_normal_corrected * Face_Area_Norm;
 #ifdef DIVBCLEANING_DEDNER
             Fluxes.phi = Riemann_out.Fluxes.phi * Face_Area_Norm; // much more accurate than mass-based flux //
-            for(k=0;k<3;k++)
-            {
-                magfluxv[k] = Riemann_out.phi_normal_corrected * Face_Area_Vec[k]; // = contribution to -grad*phi //
-                Fluxes.B[k] += magfluxv[k];
-            }
 #endif // DIVBCLEANING_DEDNER
 #endif // MAGNETIC
 #endif
@@ -260,7 +289,7 @@
             /* nothing but bad riemann solutions found! */
             memset(&Fluxes, 0, sizeof(struct Conserved_var_Riemann));
 #ifdef DIVBCLEANING_DEDNER
-            magfluxv[0]=magfluxv[1]=magfluxv[2]=0.0; Riemann_out.phi_normal_corrected=0;
+            Riemann_out.phi_normal_mean=Riemann_out.phi_normal_db=0;
 #endif
         }
     } // Face_Area_Norm != 0

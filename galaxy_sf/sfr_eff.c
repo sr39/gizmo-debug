@@ -25,8 +25,9 @@
     on the gas properties of the particle out of which it forms */
 void assign_imf_properties_from_starforming_gas(MyIDType i)
 {
-    double h = PPP[i].Hsml * All.cf_atime / pow(PPP[i].NumNgb, 1/NUMDIMS);
-    double cs = Particle_effective_soundspeed_i(i) * All.cf_afac3;
+    double h = Get_Particle_Size(i) * All.cf_atime;
+    double cs = Particle_effective_soundspeed_i(i) * All.cf_afac3; // actual sound speed in the simulation: might be unphysically high for SF conditions!
+    cs = (1.9e4 / All.UnitVelocity_in_cm_per_s); // set to a minimum cooling temperature, for the actual star-forming conditions. for now, just use a constant //
     double dv2_abs = 0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
     // squared norm of the trace-free symmetric [shear] component of the velocity gradient tensor //
     dv2_abs = ((1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1])*(SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) +
@@ -40,7 +41,7 @@ void assign_imf_properties_from_starforming_gas(MyIDType i)
                          SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))) * All.cf_a2inv*All.cf_a2inv;
     double M_sonic = cs*cs*cs*cs / (All.G * dv2_abs * h);
     M_sonic *= All.UnitMass_in_g / All.Hubble / (1.989e33); // sonic mass in solar units //
-    P[i].IMF_Mturnover = M_sonic;
+    P[i].IMF_Mturnover = DMAX(0.01,DMIN(M_sonic,100.));
 }
 #endif
 
@@ -50,7 +51,10 @@ void assign_imf_properties_from_starforming_gas(MyIDType i)
 inline double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i)
 {
 #ifdef GALSF_SFR_IMF_VARIATION
-    return pow(P[i].IMF_Mturnover/1.0,0.35);
+    /* more accurate version from David Guszjenov's IMF calculations (ok for Mturnover in range 0.01-100) */
+    double log_mimf = log10(P[i].IMF_Mturnover);
+    return (0.051+0.042*(log_mimf+2)+0.031*(log_mimf+2)*(log_mimf+2)) / 0.31;
+    // return pow(P[i].IMF_Mturnover/1.0,0.35);
 #endif
     return 1; // Chabrier or Kroupa IMF //
     // return 0.5; // Salpeter IMF down to 0.1 solar //
@@ -115,7 +119,7 @@ inline double evaluate_l_over_m_ssp(double stellar_age_in_gyr)
 
 
 /* return the estimated local column from integrating the gradient in the density (separated here for convenience) */
-inline double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double include_h)
+inline double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h)
 {
     double gradrho_mag;
     if(rho<=0)
@@ -124,7 +128,9 @@ inline double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double r
     } else {
         gradrho_mag = sqrt(gradrho[0]*gradrho[0]+gradrho[1]*gradrho[1]+gradrho[2]*gradrho[2]);
         if(gradrho_mag > 0) {gradrho_mag = rho*rho/gradrho_mag;} else {gradrho_mag=0;}
-        if(include_h > 0) gradrho_mag += include_h*rho*hsml;
+        if(include_h > 0) if(numngb_ndim > 0) gradrho_mag += include_h * rho * hsml / numngb_ndim; // quick-and-dirty approximation to the effective neighbor number needed here
+        //if(include_h > 0) gradrho_mag += include_h * rho * (hsml * (0.124 + 11.45 / (26.55 + All.DesNumNgb))); // quick-and-dirty approximation to the effective neighbor number needed here
+        // account for the fact that 'h' is much larger than the inter-particle separation //
     }
     return gradrho_mag; // *(Z/Zsolar) add metallicity dependence
 }
@@ -175,28 +181,6 @@ void set_units_sfr(void)
     All.EgySpecSN = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.TempSupernova;
     All.EgySpecSN *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
 #endif // GALSF_EFFECTIVE_EQS
-    
-#ifdef COSMIC_RAYS
-    /* if CR_SNeff < 0.0, then substract CR Feedback energy from thermal fb energy */
-    if(All.CR_SNEff < 0.0)
-    {
-        if(ThisTask == 0)
-        printf("%g percent of thermal feedback go into Cosmic Rays.\nRemaining ", -100.0 * All.CR_SNEff);
-        All.EgySpecSN *= (1.0 + All.CR_SNEff);
-        All.CR_SNEff = -All.CR_SNEff / (1.0 + All.CR_SNEff);
-    }
-    All.FeedbackEnergy = 1;
-#ifdef GALSF_EFFECTIVE_EQS
-    All.FeedbackEnergy = All.FactorSN / (1 - All.FactorSN) * All.EgySpecSN;
-#endif
-    double feedbackenergyinergs = All.FeedbackEnergy / All.UnitMass_in_g * (All.UnitEnergy_in_cgs * SOLAR_MASS);
-    if(ThisTask == 0)
-    {
-        printf("Feedback energy per formed solar mass in stars= %g  ergs\n", feedbackenergyinergs);
-        printf("OverDensThresh= %g\nPhysDensThresh= %g (internal units)\n", All.OverDensThresh,
-               All.PhysDensThresh);
-    }
-#endif // COSMIC_RAYS
 }
 
 
@@ -245,7 +229,7 @@ double get_starformation_rate(int i)
     
 #ifdef GALSF_SFR_MOLECULAR_CRITERION
     /* Krumholz & Gnedin fitting function for f_H2 as a function of local properties */
-    double tau_fmol = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,1) * All.cf_a2inv;
+    double tau_fmol = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1) * All.cf_a2inv;
     tau_fmol *= (0.1 + P[i].Metallicity[0]/All.SolarAbundances[0]);
     if(tau_fmol>0) {
         tau_fmol *= 434.78*All.UnitDensity_in_cgs*All.HubbleParam*All.UnitLength_in_cm;
@@ -270,7 +254,8 @@ double get_starformation_rate(int i)
                     vt += All.cf_hubble_a; /* add hubble-flow correction */
             dv2abs += vt*vt;
         }
-    double alpha_vir = 0.2387 * dv2abs / (All.G * SphP[i].Density * All.cf_a3inv);
+    //double alpha_vir = 0.2387 * dv2abs / (All.G * SphP[i].Density * All.cf_a3inv); // coefficient here was for old form, with only divv information
+    double alpha_vir = dv2abs / (4. * M_PI * All.G * SphP[i].Density * All.cf_a3inv); // 1/4 or 1/8 ? //
     if(All.ComovingIntegrationOn)
     {
         if((alpha_vir<1.0)||(SphP[i].Density*All.cf_a3inv>100.*All.PhysDensThresh)) {rateOfSF *= 1.0;} else {rateOfSF *= 0.0015;}
@@ -298,31 +283,6 @@ void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double t
     double egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold;
     double egyeff = egyhot * (1 - x) + All.EgySpecCold * x;
     double egycurrent = SphP[i].InternalEnergy;
-
-#ifdef COSMIC_RAYS
-    int Crpop;
-#ifdef CR_SN_INJECTION
-    double instant_reheat=0;
-    double p=rateOfSF*dtime/P[i].Mass;
-    if(All.CR_SNEff > 0)
-    {
-        if(NUMCRPOP > 1)
-            InjPopulation = CR_Find_Alpha_to_InjectTo(All.CR_SNAlpha);
-        else
-            InjPopulation = 0;
-        double tinj = SphP[i].CR_E0[InjPopulation] / (p * All.FeedbackEnergy * All.CR_SNEff / dtime);
-        instant_reheat = CR_Particle_SupernovaFeedback(&SphP[i], p * All.FeedbackEnergy * All.CR_SNEff, tinj);
-    }
-    else
-        instant_reheat = 0;
-#if defined(COSMIC_RAYS) && defined(CR_OUTPUT_INJECTION)
-    SphP[i].CR_Specific_SupernovaHeatingRate = (p * All.FeedbackEnergy * All.CR_SNEff - instant_reheat) / dtime;
-#endif
-    egycurrent += instant_reheat;
-#endif
-    for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-        egycurrent += CR_Particle_ThermalizeAndDissipate(SphP + i, dtime, CRpop);
-#endif // COSMIC_RAYS //
 
 #if defined(BH_THERMALFEEDBACK)
     if((SphP[i].Injected_BH_Energy > 0) && (P[i].Mass>0))
@@ -401,9 +361,6 @@ void cooling_and_starformation(void)
             }
 #endif
             SphP[i].Sfr = 0; /* will be reset below if flag==0 */
-#if defined(COSMIC_RAYS) && defined(CR_OUTPUT_INJECTION)
-            SphP[i].CR_Specific_SupernovaHeatingRate = 0;
-#endif
         }
         
     if((flag == 0)&&(dt>0)&&(P[i].TimeBin))		/* active star formation (upon start-up, we need to protect against dt==0) */
@@ -434,6 +391,11 @@ void cooling_and_starformation(void)
 #if defined(METALS) && defined(GALSF_EFFECTIVE_EQS) // does instantaneous enrichment //
             double w = get_random_number(P[i].ID);
             P[i].Metallicity[0] += w * All.SolarAbundances[0] * (1 - exp(-p));
+            if(NUM_METAL_SPECIES>=10)
+            {
+                int k;
+                for(k=1;k<NUM_METAL_SPECIES;k++) {P[i].Metallicity[k] += w * All.SolarAbundances[k] * (1 - exp(-p));}
+            }
 #endif
             
         if(get_random_number(P[i].ID + 1) < prob)	/* ok, make a star */
@@ -444,7 +406,7 @@ void cooling_and_starformation(void)
             p=0;
             if ( (SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) && (P[i].Metallicity[0]/All.SolarAbundances[0] < 0.1) )
             {
-                GradRho = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,1);
+                GradRho = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1);
                 GradRho *= (All.UnitDensity_in_cgs*All.cf_a3inv) * (All.UnitLength_in_cm*All.cf_atime) * All.HubbleParam;
                 /* surface dens in g/cm^2; threshold for bound cluster formation in our experiments is ~2 g/cm^2 (10^4 M_sun/pc^2) */
                 if (GradRho > 0.1)
@@ -571,7 +533,14 @@ void cooling_and_starformation(void)
 
 #if defined(METALS) && defined(GALSF_EFFECTIVE_EQS) // does instantaneous enrichment //
 	    if(P[i].Type == 0)	/* to protect using a particle that has been turned into a star */
+        {
             P[i].Metallicity[0] += (1 - w) * All.SolarAbundances[0] * (1 - exp(-p));
+            if(NUM_METAL_SPECIES>=10)
+            {
+                int k;
+                for(k=1;k<NUM_METAL_SPECIES;k++) {P[i].Metallicity[k] += (1-w) * All.SolarAbundances[k] * (1 - exp(-p));}
+            }
+        }
 #endif
         } // closes check of flag==0 for star-formation operation
 
@@ -723,7 +692,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
 #endif
     
 
-#ifdef GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION
+#ifdef GALSF_SUBGRID_DMDISPERSION
     /* wind model where launching scales with halo/galaxy bulk properties (as in Vogelsberger's simulations) */
     if(SphP[i].DM_VelDisp > 0 && sm > 0)
     {
@@ -750,13 +719,16 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
     /* wind model where launching scales with halo/galaxy bulk properties (as in Romeel's simulations) */
     if(SphP[i].HostHaloMass > 0 && sm > 0)
     {
+        double HaloConcentrationNorm = 9.;  /* concentration c0 of a halo of unit mass */
+        double HaloConcentrationSlope = -0.15;  /* slope n of mass concentration relation, namely c = c0 * M_200,crit^n */
+
         double r200c, v_esc, c_halo, wind_energy, wind_momentum, wind_mass;
         double rhocrit = 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
         rhocrit *= All.Omega0/All.cf_a3inv + (1-All.Omega0-All.OmegaLambda)/All.cf_a2inv + All.OmegaLambda; /* physical critical density at redshift z */
 
         r200c = pow(SphP[i].HostHaloMass / (4 * M_PI / 3.0 * 200 * rhocrit), 1.0 / 3.0);	/* physical r_200,crit value, assuming FoF mass = M_200,crit */
         v_esc = sqrt(All.G * SphP[i].HostHaloMass / r200c);	/* physical circular velocity at r_200,crit */
-        c_halo = All.HaloConcentrationNorm * pow(SphP[i].HostHaloMass, All.HaloConcentrationSlope);
+        c_halo = HaloConcentrationNorm * pow(SphP[i].HostHaloMass, HaloConcentrationSlope);
         v_esc *= sqrt(2 * c_halo / (log(1 + c_halo) - c_halo / (1 + c_halo)));	/* physical escape velocity of halo */
         v = All.VariableWindVelFactor * v_esc;	/* physical wind velocity */
         

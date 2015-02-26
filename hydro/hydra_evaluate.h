@@ -25,8 +25,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifndef HYDRO_SPH
     struct Input_vec_Riemann Riemann_vec;
     struct Riemann_outputs Riemann_out;
-    double face_area_dot_vel=0, face_vel_i=0, face_vel_j=0;
+    double face_area_dot_vel, face_vel_i=0, face_vel_j=0;
     double Face_Area_Vec[3], Face_Area_Norm = 0;
+    face_area_dot_vel = 0;
 #endif
     
     if(mode == 0)
@@ -50,7 +51,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     kernel_mode = -1; /* only need wk */
     dt_hydrostep = local.Timestep * All.Timebase_interval / All.cf_hubble_a; /* (physical) timestep */
     out.MaxSignalVel = kernel.sound_i;
-#if defined(HYDRO_SPH) || defined(CONDUCTION_EXPLICIT) || defined(TURB_DIFFUSION)
+#if defined(HYDRO_SPH)
     kernel_mode = 0; /* need dwk and wk */
 #endif
     double cnumcrit2 = ((double)CONDITION_NUMBER_DANGER)*((double)CONDITION_NUMBER_DANGER) - local.ConditionNumber*local.ConditionNumber;
@@ -67,9 +68,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
     
 #ifdef MAGNETIC
-    double magfluxv[3]; magfluxv[0]=magfluxv[1]=magfluxv[2]=0;
     kernel.b2_i = local.BPred[0]*local.BPred[0] + local.BPred[1]*local.BPred[1] + local.BPred[2]*local.BPred[2];
 #if defined(HYDRO_SPH)
+    double magfluxv[3]; magfluxv[0]=magfluxv[1]=magfluxv[2]=0;
     kernel.mf_i = local.Mass * fac_magnetic_pressure / (local.Density * local.Density);
     kernel.mf_j = local.Mass * fac_magnetic_pressure;
     // PFH: comoving factors here to convert from B*B/rho to P/rho for accelerations //
@@ -132,6 +133,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if((local.Timestep == TimeStep_J) && (P[j].ID < local.ID)) continue; /* use ID to break degeneracy */
 #endif
                 if(P[j].Mass <= 0) continue;
+                if(SphP[j].Density <= 0) continue;
 #ifdef GALSF_SUBGRID_WINDS
                 if(SphP[j].DelayTime > 0) continue; /* no hydro forces for decoupled wind particles */
 #endif
@@ -179,6 +181,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* sound speed, relative velocity, and signal velocity computation */
                 kernel.sound_j = Particle_effective_soundspeed_i(j);
                 kernel.vsig = kernel.sound_i + kernel.sound_j;
+#ifdef COSMIC_RAYS
+                double CosmicRayPressure_j = Get_Particle_CosmicRayPressure(j); /* compute this for use below */
+#endif
 #ifdef MAGNETIC
                 double BPred_j[3];
                 for(k=0;k<3;k++) {BPred_j[k]=Get_Particle_BField(j,k);} /* defined j b-field in appropriate units for everything */
@@ -259,12 +264,20 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #include "hydra_core_meshless.h"
 #endif
                 
-#ifdef CONDUCTION_EXPLICIT
+#ifdef CONDUCTION
 #include "conduction.h"
+#endif
+
+#ifdef VISCOSITY
+#include "viscosity.h"
 #endif
                 
 #ifdef TURB_DIFFUSION
 #include "turbulent_diffusion.h"
+#endif
+                
+#ifdef COSMIC_RAYS
+#include "../galaxy_sf/cosmic_ray_diffusion.h"
 #endif
                 
                 /* --------------------------------------------------------------------------------- */
@@ -300,11 +313,25 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double wt_face_sum = Face_Area_Norm * (face_area_dot_vel+face_vel_i);
                 out.DtInternalEnergy += 0.5 * kernel.b2_i*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
 #ifdef DIVBCLEANING_DEDNER
-                out.DtPhi += Riemann_out.phi_normal_corrected * wt_face_sum;
-                for(k=0;k<3;k++) {out.DtInternalEnergy += magfluxv[k] * local.BPred[k]*All.cf_a2inv;}
+                out.DtPhi += (Riemann_out.phi_normal_mean - local.PhiPred*All.cf_a3inv) * wt_face_sum;
+                /*
+                double phi_normal_full = Riemann_out.phi_normal_mean + Riemann_out.phi_normal_db;
+                for(k=0;k<3;k++) {out.DtB_PhiCorr[k] += phi_normal_full * Face_Area_Vec[k];}
+                */ 
+                for(k=0; k<3; k++)
+                {
+                    out.DtB_PhiCorr[k] += Riemann_out.phi_normal_db * Face_Area_Vec[k];
+                    out.DtB[k] += Riemann_out.phi_normal_mean * Face_Area_Vec[k];
+                    out.DtInternalEnergy += Riemann_out.phi_normal_mean * Face_Area_Vec[k] * local.BPred[k]*All.cf_a2inv;
+                }
 #endif
 #endif
 #endif // magnetic //
+                
+#ifdef COSMIC_RAYS
+                out.DtCosmicRayEnergy += Fluxes.CosmicRayPressure;
+#endif
+                
                 //out.dInternalEnergy += Fluxes.p * dt_hydrostep; //manifest-indiv-timestep-debug//
                 //SphP[j].dInternalEnergy -= Fluxes.p * dt_hydrostep; //manifest-indiv-timestep-debug//
                 
@@ -332,11 +359,23 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double wt_face_sum = Face_Area_Norm * (face_area_dot_vel+face_vel_j);
                     SphP[j].DtInternalEnergy -= 0.5 * kernel.b2_j*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
 #ifdef DIVBCLEANING_DEDNER
-                    SphP[j].DtPhi -= Riemann_out.phi_normal_corrected * wt_face_sum;
-                    for(k=0;k<3;k++) {SphP[j].DtInternalEnergy -= magfluxv[k]*BPred_j[k]*All.cf_a2inv;}
+                    SphP[j].DtPhi -= (Riemann_out.phi_normal_mean - PhiPred_j*All.cf_a3inv) * wt_face_sum;
+                    /*
+                    for(k=0;k<3;k++) {SphP[j].DtB_PhiCorr[k] -= phi_normal_full * Face_Area_Vec[k];;}
+                    */
+                    for(k=0; k<3; k++)
+                    {
+                        SphP[j].DtB_PhiCorr[k] -= Riemann_out.phi_normal_db * Face_Area_Vec[k];
+                        SphP[j].DtB[k] -= Riemann_out.phi_normal_mean * Face_Area_Vec[k];
+                        SphP[j].DtInternalEnergy -= Riemann_out.phi_normal_mean * Face_Area_Vec[k] * BPred_j[k]*All.cf_a2inv;
+                    }
 #endif
 #endif
 #endif // magnetic //
+
+#ifdef COSMIC_RAYS
+                    SphP[j].DtCosmicRayEnergy -= Fluxes.CosmicRayPressure;
+#endif
                 }
 #endif
 

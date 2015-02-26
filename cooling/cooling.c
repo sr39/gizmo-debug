@@ -133,14 +133,20 @@ void do_the_cooling_for_particle(int i)
             unew += SphP[i].Injected_BH_Energy / P[i].Mass;
             SphP[i].Injected_BH_Energy = 0;
 		}
-#endif // #if defined(BH_THERMALFEEDBACK)
+#endif
         
-        
+
 #ifdef COSMIC_RAYS
-        int CRpop;
-        for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-        unew += CR_Particle_ThermalizeAndDissipate(SphP + i, dtime, CRpop);
-#endif // COSMIC_RAYS
+        /* cosmic ray interactions affecting the -thermal- temperature of the gas are included in the actual cooling/heating functions; 
+            they are solved implicitly above. however we need to account for energy losses of the actual cosmic ray fluid, here. The 
+            timescale for this is reasonably long, so we can treat it semi-explicitly, as we do here.
+            -- We use the estimate for combined hadronic + Coulomb losses from Volk 1996, Ensslin 1997, as updated in Guo & Oh 2008: */
+        double ne_cgs = ((0.78 + 0.22*ne*XH) / PROTONMASS) * (SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam);
+        double CR_coolingrate_perunitenergy = -7.51e-16 * ne_cgs * (All.UnitTime_in_s / All.HubbleParam); // converts cgs to code units //
+        double CR_Egy_new = SphP[i].CosmicRayEnergyPred * exp(CR_coolingrate_perunitenergy * dtime);
+        SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy = CR_Egy_new;
+#endif
+        
         
         /* InternalEnergy, InternalEnergyPred, Pressure, ne are now immediately updated; however, DtInternalEnergy
          carries information from the hydro loop which is only half-stepped here, so is -not- updated */
@@ -174,6 +180,11 @@ double DoCooling(double u_old, double rho, double dt, double *ne_guess, int targ
   double LambdaNet;
   int iter=0, iter_upper=0, iter_lower=0;
 
+#ifdef GRACKLE
+    return CallGrackle(u_old, rho, dt, ne_guess, target, 0);
+#endif
+    
+    
   DoCool_u_old_input = u_old;
   DoCool_rho_input = rho;
   DoCool_dt_input = dt;
@@ -265,32 +276,39 @@ double DoCooling(double u_old, double rho, double dt, double *ne_guess, int targ
  */
 double GetCoolingTime(double u_old, double rho, double *ne_guess, int target)
 {
-  double u;
-  double ratefact;
-  double LambdaNet, coolingtime;
-
-  DoCool_u_old_input = u_old;
-  DoCool_rho_input = rho;
-  DoCool_ne_guess_input = *ne_guess;
-
-  rho *= All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;	/* convert to physical cgs units */
-  u_old *= All.UnitPressure_in_cgs / All.UnitDensity_in_cgs;
-
-  nHcgs = XH * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
-  ratefact = nHcgs * nHcgs / rho;
-  u = u_old;
-  LambdaNet = CoolingRateFromU(u, rho, ne_guess, target);
-
-  /* bracketing */
-
-  if(LambdaNet >= 0)		/* ups, we have actually heating due to UV background */
-    return 0;
-
-  coolingtime = u_old / (-ratefact * LambdaNet);
-
-  coolingtime *= All.HubbleParam / All.UnitTime_in_s;
-
-  return coolingtime;
+    double u;
+    double ratefact;
+    double LambdaNet, coolingtime;
+    
+#if defined(GRACKLE) && !defined(GALSF_EFFECTIVE_EQS)
+    coolingtime = CallGrackle(u_old, rho, 0.0, ne_guess, target, 1);
+    if(coolingtime >= 0) coolingtime = 0.0;
+    coolingtime *= All.HubbleParam / All.UnitTime_in_s;
+    return coolingtime;
+#endif
+    
+    DoCool_u_old_input = u_old;
+    DoCool_rho_input = rho;
+    DoCool_ne_guess_input = *ne_guess;
+    
+    rho *= All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;	/* convert to physical cgs units */
+    u_old *= All.UnitPressure_in_cgs / All.UnitDensity_in_cgs;
+    
+    nHcgs = XH * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
+    ratefact = nHcgs * nHcgs / rho;
+    u = u_old;
+    LambdaNet = CoolingRateFromU(u, rho, ne_guess, target);
+    
+    /* bracketing */
+    
+    if(LambdaNet >= 0)		/* ups, we have actually heating due to UV background */
+        return 0;
+    
+    coolingtime = u_old / (-ratefact * LambdaNet);
+    
+    coolingtime *= All.HubbleParam / All.UnitTime_in_s;
+    
+    return coolingtime;
 }
 
 
@@ -871,6 +889,18 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
             /* CAFG: if density exceeds NH_SS, ignore ionizing background. */
             Heat += local_gammamultiplier * (nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) / nHcgs * shieldfac;
         }
+#ifdef COSMIC_RAYS
+        if(SphP[target].CosmicRayEnergyPred > 0)
+        {
+            /* cosmic ray heating, from Guo & Oh 2008: this scales proportional to the electron number density and 
+                cosmic ray energy density, both of which we quickly evaluate here (make sure we convert to the correct per-atom units) 
+                - note that only 1/6 of the hadronic cooling is thermalized, according to their calculation, while all the Coulomb losses heat */
+            double Gamma_CR = 1.0e-16 * (0.98 + 1.65*ne*XH) / nHcgs *
+                ((SphP[target].CosmicRayEnergyPred/P[target].Mass*SphP[target].Density*All.cf_a3inv) *
+                 (All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam*All.HubbleParam));
+            Heat += Gamma_CR;
+        }
+#endif
 #ifdef BH_COMPTON_HEATING
         if(T < AGN_T_Compton) Heat += AGN_LambdaPre * (AGN_T_Compton - T) / nHcgs;
         /* note this is independent of the free electron fraction */
@@ -1344,17 +1374,22 @@ void IonizeParamsFunction(void)
 
 void InitCool(void)
 {
-  if(ThisTask == 0)
-    printf("Initializing cooling ...\n");
-
-  InitCoolMemory();
-  MakeCoolingTable();
-  ReadIonizeParams("TREECOOL");
-  All.Time = All.TimeBegin;
-  set_cosmo_factors_for_current_time();
-  IonizeParams();
+    if(ThisTask == 0)
+        printf("Initializing cooling ...\n");
+    
+    All.Time = All.TimeBegin;
+    set_cosmo_factors_for_current_time();
+    
+#ifdef GRACKLE
+    InitGrackle();
+#endif
+    
+    InitCoolMemory();
+    MakeCoolingTable();
+    ReadIonizeParams("TREECOOL");
+    IonizeParams();
 #ifdef COOL_METAL_LINES_BY_SPECIES
-  LoadMultiSpeciesTables();
+    LoadMultiSpeciesTables();
 #endif
 }
 
@@ -1488,7 +1523,7 @@ void selfshield_local_incident_uv_flux(void)
         {
             if((SphP[i].RadFluxUV>0) && (PPP[i].Hsml>0) && (SphP[i].Density>0) && (P[i].Mass>0) && (All.Time>0))
             {
-                GradRho = sigma_eff_0 * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,1);
+                GradRho = sigma_eff_0 * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1);
                 SphP[i].RadFluxUV *= 1276.19 * sigma_eff_0 * exp(-KAPPA_UV*GradRho);
                 GradRho *= 3.7e6; // 912 angstrom KAPPA_EUV //
                 //SphP[i].RadFluxEUV *= 1276.19 * sigma_eff_0 * exp(-GradRho);

@@ -86,13 +86,12 @@ void find_timesteps(void)
         {
             if(P[i].Type==0)
             {
-                // ??? //
-                double vsig2 = 0.5 * All.cf_afac3 * fabs(SphP[i].MaxSignalVel); // in v_code units //
+                double vsig2 = 0.5 * All.cf_afac3 * fabs(SphP[i].MaxSignalVel); // in v_phys units //
                 double vsig1 = All.cf_afac3 * sqrt( Particle_effective_soundspeed_i(i)*Particle_effective_soundspeed_i(i) + fac_magnetic_pressure * (Get_Particle_BField(i,0)*Get_Particle_BField(i,0)+Get_Particle_BField(i,1)*Get_Particle_BField(i,1)+Get_Particle_BField(i,2)*Get_Particle_BField(i,2)) / SphP[i].Density );
                 double vsig0 = DMAX(vsig1,vsig2);
 
                 if(vsig0 > fastwavespeed) fastwavespeed = vsig0; // physical unit
-                double hsig0 = KERNEL_CORE_SIZE * PPP[i].Hsml * All.cf_atime; // physical unit
+                double hsig0 = Get_Particle_Size(i) * All.cf_atime; // physical unit
                 if(vsig0/hsig0 > fastwavedecay) fastwavedecay = vsig0 / hsig0; // physical unit
             }
         }
@@ -250,33 +249,6 @@ void find_timesteps(void)
     }
     
     
-#ifdef CR_DIFFUSION
-    if(All.CR_Diffusion_Ti_endstep == All.Ti_Current)
-    {
-        if(All.CR_Diffusion_Ti_endstep < All.Ti_Current)
-            endrun(1231);
-        
-        ti_step = TIMEBASE;
-        while(ti_step > (All.CR_DiffusionMaxSizeTimestep / All.Timebase_interval))
-            ti_step >>= 1;
-        while(ti_step > (All.MaxSizeTimestep / All.Timebase_interval))
-            ti_step >>= 1;
-        
-        if(ti_step > (All.CR_Diffusion_Ti_endstep - All.CR_Diffusion_Ti_begstep))	/* PM-timestep wants to increase */
-        {
-            /* we only increase if an integer number of steps will bring us to the end */
-            if(((TIMEBASE - All.CR_Diffusion_Ti_endstep) % ti_step) > 0)
-                ti_step = All.CR_Diffusion_Ti_endstep - All.CR_Diffusion_Ti_begstep;	/* leave at old step */
-        }
-        
-        if(All.Ti_Current == TIMEBASE)	/* we here finish the last timestep. */
-            ti_step = 0;
-        
-        All.CR_Diffusion_Ti_begstep = All.CR_Diffusion_Ti_endstep;
-        All.CR_Diffusion_Ti_endstep = All.CR_Diffusion_Ti_begstep + ti_step;
-    }
-#endif
-    
     
 #ifdef PMGRID
     if(All.PM_Ti_endstep == All.Ti_Current)	/* need to do long-range kick */
@@ -348,10 +320,6 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif // UNIFIED_FEEDBACK
 #endif // BLACK_HOLES
     
-#ifdef COSMIC_RAYS
-    int CRpop;
-#endif
-    
 #ifdef NUCLEAR_NETWORK
     double dt_network, dt_species;
     int k;
@@ -400,65 +368,145 @@ integertime get_timestep(int p,		/*!< particle index */
         case 0:
             if(flag > 0)
             {
+                /* this is the non-standard mode; use timestep to get the maximum acceleration tolerated */
                 dt = flag * All.Timebase_interval;
-                
                 dt /= All.cf_hubble_a;	/* convert dloga to physical timestep  */
 
-                ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / (dt * dt);
+                ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / (dt * dt);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-                ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / 2.8 / (dt * dt);
+                ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / (dt * dt);
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
                 if(P[p].Type==0)
-                    ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / 2.8 / (dt * dt);
+                    ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / (dt * dt);
 #endif
 
                 *aphys = ac;
                 return flag;
             }
 
-            dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac);
+            dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / ac);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-            dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / 2.8 / ac);
+            dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / ac);
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
             if(P[p].Type == 0)
-                dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / 2.8 / ac);
+                dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / ac);
 #endif
             break;
             
         default:
-            fprintf(stderr, "\n !!!2@@@!!! \n");
+            fprintf(stderr, "\n !!!2@@@!!! \n"); 
             endrun(888);
             fprintf(stderr, "\n !!!2@@@!!! \n");
             break;
     }
     
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+    /* make sure smoothing length of non-gas particles doesn't change too much in one timestep */
+    if(P[p].Type > 0)
+    {
+        double divVel = P[p].Particle_DivVel;
+        if(divVel != 0)
+        {
+            dt_divv = 1.5 / fabs(All.cf_a2inv * divVel);
+            if(dt_divv < dt) {dt = dt_divv;}
+        }
+    }
+#endif
+
+#ifdef GRAIN_FLUID
+    if(P[p].Type > 0)
+    {
+        csnd = GAMMA * GAMMA_MINUS1 * P[p].Gas_InternalEnergy;
+        int k;
+        for(k=0;k<3;k++) {csnd += (P[p].Gas_Velocity[k]-P[p].Vel[k])*(P[p].Gas_Velocity[k]-P[p].Vel[k]);}
+#ifdef GRAIN_LORENTZFORCE
+        for(k=0;k<3;k++) {csnd += P[p].Gas_B[k]*P[p].Gas_B[k] / (2.0 * P[i].Gas_Density);}
+#endif
+        csnd = sqrt(csnd);
+        double L_particle = Get_Particle_Size(p);
+        dt_courant = 0.5 * All.CourantFac * (L_particle*All.cf_atime) / csnd;
+        if(dt_courant < dt) dt = dt_courant;
+    }
+#endif
+    
+    
     if((P[p].Type == 0) && (P[p].Mass > 0))
         {
-            csnd = sqrt(Particle_effective_soundspeed_i(p));
-            dt_courant = 2 * All.CourantFac * All.cf_atime * (2*KERNEL_CORE_SIZE * PPP[p].Hsml) / (All.cf_afac3 * SphP[p].MaxSignalVel);
+            csnd = 0.5 * SphP[p].MaxSignalVel * All.cf_afac3;
+            double L_particle = Get_Particle_Size(p);
             
-            if(dt_courant < dt)
-                dt = dt_courant;
+            dt_courant = All.CourantFac * (L_particle*All.cf_atime) / csnd;
+            if(dt_courant < dt) dt = dt_courant;
 
-#if defined(DIVBCLEANING_DEDNER)
-            double C0 = pow( 4.0*M_PI / (3.0 * PPP[p].NumNgb) , 1.0/3.0);
-#ifdef ONEDIM
-            C0 = 1.0 / PPP[p].NumNgb;
+#ifdef CONDUCTION
+            {
+                double L_cond_inv = sqrt(SphP[p].Gradients.InternalEnergy[0]*SphP[p].Gradients.InternalEnergy[0] +
+                                         SphP[p].Gradients.InternalEnergy[1]*SphP[p].Gradients.InternalEnergy[1] +
+                                         SphP[p].Gradients.InternalEnergy[2]*SphP[p].Gradients.InternalEnergy[2]) / SphP[p].InternalEnergy;
+                double L_cond = 1./(L_cond_inv + 1./L_particle) * All.cf_atime;
+                double dt_conduction = 0.5 * L_cond*L_cond / (1.0e-33 + SphP[p].Kappa_Conduction);
+                // since we use CONDUCTIVITIES, not DIFFUSIVITIES, we need to add a power of density to get the right units //
+                dt_conduction *= SphP[p].Density;
+                if(dt_conduction < dt) dt = dt_conduction;
+            }
 #endif
-#ifdef TWODIMS
-            C0 = sqrt( M_PI / (2.0 * PPP[p].NumNgb) );
+
+#ifdef COSMIC_RAYS
+            {
+                double L_cond_inv = sqrt(SphP[p].Gradients.CosmicRayPressure[0]*SphP[p].Gradients.CosmicRayPressure[0] +
+                                         SphP[p].Gradients.CosmicRayPressure[1]*SphP[p].Gradients.CosmicRayPressure[1] +
+                                         SphP[p].Gradients.CosmicRayPressure[2]*SphP[p].Gradients.CosmicRayPressure[2]) / Get_Particle_CosmicRayPressure(p);
+                double L_cond = 1./(L_cond_inv + 0./L_particle) * All.cf_atime;
+                double dt_conduction = 0.5 * L_cond*L_cond / (1.0e-33 + SphP[p].CosmicRayDiffusionCoeff);
+                if(dt_conduction < dt) dt = dt_conduction;
+            }
 #endif
+
+            
+#ifdef VISCOSITY
+            {
+                int kv1,kv2; double dv_mag=0,v_mag=0;
+                for(kv1=0;kv1<3;kv1++)
+                {
+                    for(kv2=0;kv2<3;kv2++) {dv_mag+=SphP[p].Gradients.Velocity[kv1][kv2]*SphP[p].Gradients.Velocity[kv1][kv2];}
+                    v_mag+=P[p].Vel[kv1]*P[p].Vel[kv1];
+                }
+                v_mag += 1.0e-33;
+                double L_visc = 1. / (sqrt(dv_mag/v_mag) + 1./L_particle) * All.cf_atime;
+                double visc_coeff = sqrt(SphP[p].Eta_ShearViscosity*SphP[p].Eta_ShearViscosity + SphP[p].Zeta_BulkViscosity*SphP[p].Zeta_BulkViscosity);
+                double dt_viscosity = 0.5 * L_visc*L_visc / (1.0e-33 + visc_coeff) * SphP[p].Density;
+                // since we use VISCOSITIES, not DIFFUSIVITIES, we need to add a power of density to get the right units //
+                if(dt_viscosity < dt) dt = dt_viscosity;
+            }
+#endif
+            
+
+#ifdef TURB_DIFFUSION
+            /*
+            double L_tdiff_inv = sqrt(SphP[p].Gradients.Density[0]*SphP[p].Gradients.Density[0] +
+                                      SphP[p].Gradients.Density[1]*SphP[p].Gradients.Density[1] +
+                                      SphP[p].Gradients.Density[2]*SphP[p].Gradients.Density[2]) / SphP[p].Density;
+            double L_tdiff = 1./(L_tdiff_inv + 0./L_particle) * All.cf_atime;
+            double dt_tdiff = 2.0 * L_tdiff*L_tdiff / (1.0e-33 + SphP[p].TD_DiffCoeff);
+            // here, we use DIFFUSIVITIES, so there is no extra density power in the equation //
+            //if(dt_tdiff < dt) dt = dt_tdiff;
+            */
+#endif
+            
+            
+#if defined(DIVBCLEANING_DEDNER) 
             double fac_magnetic_pressure = All.cf_afac1 / All.cf_atime;
+            double phi_b_units = Get_Particle_PhiField(p) / (All.cf_afac3 * All.cf_atime * SphP[p].MaxSignalVel);
             double vsig1 = All.cf_afac3 * sqrt( Particle_effective_soundspeed_i(p)*Particle_effective_soundspeed_i(p) +
-                    fac_magnetic_pressure * (Get_Particle_BField(p,0)*Get_Particle_BField(p,0)+Get_Particle_BField(p,1)*Get_Particle_BField(p,1)+
+                    fac_magnetic_pressure * (Get_Particle_BField(p,0)*Get_Particle_BField(p,0) +
+                                             Get_Particle_BField(p,1)*Get_Particle_BField(p,1)+
                                              Get_Particle_BField(p,2)*Get_Particle_BField(p,2) +
-                                             pow(Get_Particle_PhiField(p)/(All.cf_afac3 * All.cf_atime * SphP[p].MaxSignalVel),2)) / SphP[p].Density );
+                                             phi_b_units*phi_b_units) / SphP[p].Density );
 
-            dt_courant = 0.8 * All.CourantFac * All.cf_atime * (C0*PPP[p].Hsml) / vsig1; // 2.0 factor ??? //
-            if(dt_courant < dt)
-                dt = dt_courant;
+            dt_courant = 1.6 * All.CourantFac * (All.cf_atime*L_particle) / vsig1; // 2.0 factor may be added (PFH) //
+            if(dt_courant < dt) {dt = dt_courant;}
 #endif
             
             /* make sure that the velocity divergence does not imply a too large change of density or kernel length in the step */
@@ -466,8 +514,7 @@ integertime get_timestep(int p,		/*!< particle index */
             if(divVel != 0)
             {
                 dt_divv = 1.5 / fabs(All.cf_a2inv * divVel);
-                if(dt_divv < dt)
-                    dt = dt_divv;
+                if(dt_divv < dt) {dt = dt_divv;}
             }
             
 #ifdef NUCLEAR_NETWORK
@@ -527,7 +574,9 @@ integertime get_timestep(int p,		/*!< particle index */
         } else {
             dt_stellar_evol = star_age/10.;
         }
-        dt_stellar_evol /= ((1.0e4 + P[p].Mass * (All.UnitMass_in_g/1.989e33)) / 1.0e4); // multiply by inverse particle mass, since goal is to prevent too much energy in one time //
+        //dt_stellar_evol /= ( 1. + 0.1*(P[p].Mass*All.UnitMass_in_g)/(1.0e4*1.989e33) ); // multiply by inverse particle mass, since goal is to prevent too much energy in one time //
+        // PFH: temporarily modifying the terms above while Marcel studies them //
+        dt_stellar_evol /= ( 1. + 0.0*(P[p].Mass*All.UnitMass_in_g)/(1.0e4*1.989e33) ); // multiply by inverse particle mass, since goal is to prevent too much energy in one time //
         if(dt_stellar_evol < 1.e-7) {dt_stellar_evol = 1.e-7;}
         dt_stellar_evol /= (0.001*All.UnitTime_in_Megayears/All.HubbleParam); // convert to code units //
         if(dt_stellar_evol>0)
@@ -581,12 +630,6 @@ integertime get_timestep(int p,		/*!< particle index */
     if(dt >= dt_displacement)
         dt = dt_displacement;
     
-    
-#ifdef CR_DIFFUSION
-    if(P[p].Type == 0)
-        if(dt >= All.CR_DiffusionMaxSizeTimestep)
-            dt = All.CR_DiffusionMaxSizeTimestep;
-#endif
     
     if(dt < All.MinSizeTimestep)
     {
@@ -649,14 +692,6 @@ integertime get_timestep(int p,		/*!< particle index */
         printf("pm_force=(%g|%g|%g)\n", P[p].GravPM[0], P[p].GravPM[1], P[p].GravPM[2]);
 #endif
         
-#ifdef COSMIC_RAYS
-        if(P[p].Type == 0)
-            for(CRpop = 0; CRpop < NUMCRPOP; CRpop++)
-                printf("Cosmic Ray Properties: C0: %g -- q0  : %g -- P  : %g\n"
-                       "                       Rho: %g\n\n",
-                       SphP[p].CR_C0[CRpop], SphP[p].CR_q0[CRpop], CR_Particle_Pressure(SphP + p, CRpop),
-                       SphP[p].Density);
-#endif
         fflush(stdout);
         endrun(818);
     }

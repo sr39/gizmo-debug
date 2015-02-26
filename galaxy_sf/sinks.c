@@ -290,7 +290,7 @@ void do_sinks(void)
 
 		  if(r < All.SinkHsml / a * hubble_param)
 		    {
-		      h = DMAX(SphP[i].Hsml, All.ForceSoftening[5]);
+		      h = DMAX(PPP[i].Hsml, All.ForceSoftening[5]);
 
 		      if(r > h)
 			wp = 1 / r;
@@ -491,9 +491,9 @@ void do_sinks(void)
 	      if(r2 < All.SinkHsml * All.SinkHsml)
 		{
 		  sink_send[index].mass = P[i].Mass;
-		  sink_send[index].soft = SphP[i].Hsml;
+		  sink_send[index].soft = PPP[i].Hsml;
 #ifndef FB_BAROTROPIC_EOS
-          sink_send[index].utherm = Particle_Internal_energy_i(i);
+          sink_send[index].utherm = SphP[i].InternalEnergyPred;
 #else
 		  sink_send[index].utherm = get_energy(SphP[i].Density);
 #endif
