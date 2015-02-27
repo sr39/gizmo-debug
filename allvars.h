@@ -337,9 +337,9 @@ typedef unsigned long long peanokey;
 #define  CONDITION_NUMBER_DANGER  1.0e3 /*!< condition number above which we will not trust matrix-based gradients */
 #endif
 
-//#define  RNDTABLE 8192 /* this is arbitrary, but some power of 2 makes much easier */
-#define  RNDTABLE 16384
-//#define  RNDTABLE 1048576
+#ifdef USE_PREGENERATED_RANDOM_NUMBER_TABLE
+#define  RNDTABLE 16384 /*!< this is arbitrary, but some power of 2 makes much easier */
+#endif
 
 /* ... often used physical constants (cgs units) */
 
@@ -781,7 +781,9 @@ extern struct topnode_data
 
 extern int NTopnodes, NTopleaves;
 
+#ifdef USE_PREGENERATED_RANDOM_NUMBER_TABLE
 extern double RndTable[RNDTABLE];
+#endif
 
 
 #ifdef SUBFIND

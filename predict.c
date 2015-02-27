@@ -350,15 +350,15 @@ double get_pressure(int i)
 #ifdef TRUELOVE_CRITERION_PRESSURE
     /* add an extra pressure term to suppress fragmentation at/below the explicit resolution scale */
     MyFloat xJeans;
+    double h_eff = Get_Particle_Size(i);
 #ifdef HYDRO_SPH
     /* robertson & kravtsov modification of Bate & Burkert formulation */
-    xJeans=(1.83*2.0/GAMMA)*All.G*PPP[i].Hsml*PPP[i].Hsml*SphP[i].Density*SphP[i].Density;
+    xJeans=(1.83 * 2.0 / GAMMA) * All.G * h_eff * h_eff * SphP[i].Density * SphP[i].Density;
     xJeans*=1.5; /* above is NJeans=5, this is NJeans=9 */
 #else
     /* standard finite-volume formulation of this */
-    double NJeans = 4; // set so that resolution = lambda_Jeans/NJeans 
-    double h_eff = 2.0 * Get_Particle_Size(i);
-    xJeans = NJeans*NJeans/(M_PI*GAMMA) * All.G * h_eff*h_eff * SphP[i].Density*SphP[i].Density;
+    double NJeans = 4; // set so that resolution = lambda_Jeans/NJeans
+    xJeans = NJeans * NJeans / (M_PI*GAMMA) * All.G * h_eff*h_eff * SphP[i].Density * SphP[i].Density;
 #endif
     if(All.ComovingIntegrationOn) xJeans *= All.cf_afac1/All.cf_atime;
     if(xJeans>press) press=xJeans;
@@ -467,13 +467,17 @@ void do_box_wrapping(void)
     time-stepping and limiter functions */
 double INLINE_FUNC Get_Particle_Size(int i)
 {
+    /* in previous versions of the code, we took NumNgb^(1/NDIMS) here; however, now we 
+        take that when NumNgb is computed (at the end of the density routine), so we 
+        don't have to re-compute it each time. That makes this function fast enough to 
+        call -inside- of loops (e.g. hydro computations) */
 #ifdef ONEDIM
-    return 2 / PPP[i].NumNgb * PPP[i].Hsml;
+    return 2.00000 * PPP[i].Hsml / PPP[i].NumNgb;
 #else
 #ifdef TWODIMS
-    return sqrt( (M_PI/2.0) / PPP[i].NumNgb ) * PPP[i].Hsml;
+    return 1.25331 * PPP[i].Hsml / PPP[i].NumNgb; // sqrt(Pi/2)
 #else
-    return pow( 4.0 * M_PI / (3.0 * PPP[i].NumNgb) , 1./3. ) * PPP[i].Hsml;
+    return 1.61199 * PPP[i].Hsml / PPP[i].NumNgb; // (4pi/3)^(1/3)
 #endif
 #endif
 }

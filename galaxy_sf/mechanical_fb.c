@@ -754,7 +754,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
             wk = 1./SphP[j].Density; // wt ~ 1 (uniform in SPH terms)
             wk = kernel.wk * P[j].Mass / SphP[j].Density; // psi
             */
-            double h_eff_j = PPP[j].Hsml * (0.124 + 11.45 / (26.55 + PPP[j].NumNgb)); // fast and very accurate approximation to h/Nngb^(1/3) //
+            double h_eff_j = Get_Particle_Size(j);
             wk = h_eff_j * h_eff_j / (r2 + 0.01*h2); // area weight
             
             // if feedback_type==-1, this is a pre-calc loop to get the relevant weights for coupling //

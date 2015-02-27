@@ -1523,7 +1523,7 @@ void selfshield_local_incident_uv_flux(void)
         {
             if((SphP[i].RadFluxUV>0) && (PPP[i].Hsml>0) && (SphP[i].Density>0) && (P[i].Mass>0) && (All.Time>0))
             {
-                GradRho = sigma_eff_0 * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,1);
+                GradRho = sigma_eff_0 * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1);
                 SphP[i].RadFluxUV *= 1276.19 * sigma_eff_0 * exp(-KAPPA_UV*GradRho);
                 GradRho *= 3.7e6; // 912 angstrom KAPPA_EUV //
                 //SphP[i].RadFluxEUV *= 1276.19 * sigma_eff_0 * exp(-GradRho);

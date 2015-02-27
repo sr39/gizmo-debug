@@ -41,7 +41,7 @@ void assign_imf_properties_from_starforming_gas(MyIDType i)
                          SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))) * All.cf_a2inv*All.cf_a2inv;
     double M_sonic = cs*cs*cs*cs / (All.G * dv2_abs * h);
     M_sonic *= All.UnitMass_in_g / All.Hubble / (1.989e33); // sonic mass in solar units //
-    P[i].IMF_Mturnover = 0.01 + DMIN(M_sonic,100.);
+    P[i].IMF_Mturnover = DMAX(0.01,DMIN(M_sonic,100.));
 }
 #endif
 
@@ -51,7 +51,10 @@ void assign_imf_properties_from_starforming_gas(MyIDType i)
 inline double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i)
 {
 #ifdef GALSF_SFR_IMF_VARIATION
-    return pow(P[i].IMF_Mturnover/1.0,0.35);
+    /* more accurate version from David Guszjenov's IMF calculations (ok for Mturnover in range 0.01-100) */
+    double log_mimf = log10(P[i].IMF_Mturnover);
+    return (0.051+0.042*(log_mimf+2)+0.031*(log_mimf+2)*(log_mimf+2)) / 0.31;
+    // return pow(P[i].IMF_Mturnover/1.0,0.35);
 #endif
     return 1; // Chabrier or Kroupa IMF //
     // return 0.5; // Salpeter IMF down to 0.1 solar //
@@ -116,7 +119,7 @@ inline double evaluate_l_over_m_ssp(double stellar_age_in_gyr)
 
 
 /* return the estimated local column from integrating the gradient in the density (separated here for convenience) */
-inline double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double include_h)
+inline double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h)
 {
     double gradrho_mag;
     if(rho<=0)
@@ -125,7 +128,8 @@ inline double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double r
     } else {
         gradrho_mag = sqrt(gradrho[0]*gradrho[0]+gradrho[1]*gradrho[1]+gradrho[2]*gradrho[2]);
         if(gradrho_mag > 0) {gradrho_mag = rho*rho/gradrho_mag;} else {gradrho_mag=0;}
-        if(include_h > 0) gradrho_mag += include_h * rho * (hsml * (0.124 + 11.45 / (26.55 + All.DesNumNgb)));
+        if(include_h > 0) if(numngb_ndim > 0) gradrho_mag += include_h * rho * hsml / numngb_ndim; // quick-and-dirty approximation to the effective neighbor number needed here
+        //if(include_h > 0) gradrho_mag += include_h * rho * (hsml * (0.124 + 11.45 / (26.55 + All.DesNumNgb))); // quick-and-dirty approximation to the effective neighbor number needed here
         // account for the fact that 'h' is much larger than the inter-particle separation //
     }
     return gradrho_mag; // *(Z/Zsolar) add metallicity dependence
@@ -225,7 +229,7 @@ double get_starformation_rate(int i)
     
 #ifdef GALSF_SFR_MOLECULAR_CRITERION
     /* Krumholz & Gnedin fitting function for f_H2 as a function of local properties */
-    double tau_fmol = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,1) * All.cf_a2inv;
+    double tau_fmol = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1) * All.cf_a2inv;
     tau_fmol *= (0.1 + P[i].Metallicity[0]/All.SolarAbundances[0]);
     if(tau_fmol>0) {
         tau_fmol *= 434.78*All.UnitDensity_in_cgs*All.HubbleParam*All.UnitLength_in_cm;
@@ -402,7 +406,7 @@ void cooling_and_starformation(void)
             p=0;
             if ( (SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) && (P[i].Metallicity[0]/All.SolarAbundances[0] < 0.1) )
             {
-                GradRho = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,1);
+                GradRho = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1);
                 GradRho *= (All.UnitDensity_in_cgs*All.cf_a3inv) * (All.UnitLength_in_cm*All.cf_atime) * All.HubbleParam;
                 /* surface dens in g/cm^2; threshold for bound cluster formation in our experiments is ~2 g/cm^2 (10^4 M_sun/pc^2) */
                 if (GradRho > 0.1)

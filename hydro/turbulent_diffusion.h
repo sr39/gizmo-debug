@@ -67,8 +67,8 @@
     {
         double diffusion_wt;
         double wt_i,wt_j;
-        // wt_i = wt_j = 0.5;
-        wt_i = PPP[j].Hsml / (PPP[j].Hsml + local.Hsml); wt_j = 1.-wt_i; // this is consistent with our second-order face location //
+        wt_i = wt_j = 0.5;
+        //wt_i = PPP[j].Hsml / (PPP[j].Hsml + local.Hsml); wt_j = 1.-wt_i; // this is consistent with our second-order face location //
         diffusion_wt = wt_i*local.TD_DiffCoeff + wt_j*SphP[j].TD_DiffCoeff; // arithmetic mean
         //diffusion_wt = 2.0 * (local.TD_DiffCoeff * SphP[j].TD_DiffCoeff) / (local.TD_DiffCoeff + SphP[j].TD_DiffCoeff); // geometric mean
         
@@ -81,7 +81,7 @@
         double massflux = 0.0;
         for(k=0;k<3;k++) {massflux+=Face_Area_Vec[k]*Face_Area_Vec[k];}
         massflux = fabs( sqrt(massflux) * diffusion_wt /
-                        (DMIN(local.Hsml,PPP[j].Hsml) * All.cf_atime)
+                        (DMIN(kernel.h_i,kernel.h_j) * All.cf_atime)
                         * dt_hydrostep / (DMIN(local.Mass,P[j].Mass)) );
         if(massflux > 0.25) {diffusion_wt *= 0.25/massflux;}
         

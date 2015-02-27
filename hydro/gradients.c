@@ -652,7 +652,7 @@ void hydro_gradient_calc(void)
             }
             SphP[i].Balpha = PPP[i].Hsml * sqrt(GradBMag/(BMag+1.0e-33));
             SphP[i].Balpha = DMIN(SphP[i].Balpha, 0.1 * All.ArtMagDispConst);
-            SphP[i].Balpha = DMAX(SphP[i].Balpha, 0.1 * 0.05);
+            SphP[i].Balpha = DMAX(SphP[i].Balpha, 0.005);
 #endif
             
             

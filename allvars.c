@@ -195,7 +195,9 @@ struct topnode_data *TopNodes;
 
 int NTopnodes, NTopleaves;
 
+#ifdef USE_PREGENERATED_RANDOM_NUMBER_TABLE
 double RndTable[RNDTABLE];
+#endif
 
 #ifdef SUBFIND
 int GrNr;

@@ -433,7 +433,7 @@ void do_turb_driving_step_second_half(void);
 #ifdef GALSF
 double evaluate_stellar_age_Gyr(double stellar_tform);
 inline double evaluate_l_over_m_ssp(double stellar_age_in_gyr);
-inline double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double include_h);
+inline double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h);
 inline double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i);
 #endif
 #if defined(GALSF_FB_RPWIND_LOCAL) && defined(GALSF_FB_RPWIND_FROMSTARS)

@@ -222,15 +222,20 @@ void pause_run_to_attach_debugger()
 
 double get_random_number(MyIDType id)
 {
-  return RndTable[(int) (id % RNDTABLE)];
+#ifdef USE_PREGENERATED_RANDOM_NUMBER_TABLE
+    return RndTable[(int) (id % RNDTABLE)];
+#else
+    return gsl_rng_uniform(random_generator);
+#endif
 }
 
 void set_random_numbers(void)
 {
+#ifdef USE_PREGENERATED_RANDOM_NUMBER_TABLE
   int i;
-
   for(i = 0; i < RNDTABLE; i++)
     RndTable[i] = gsl_rng_uniform(random_generator);
+#endif
 }
 
 
