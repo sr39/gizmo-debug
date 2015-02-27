@@ -380,7 +380,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 
                                     //if(P[j].SwallowID < id && P[j].ID < id) // makes it so only one swallows the other
                                     //    P[j].SwallowID = id;
-                                    if((P[j].SwallowID == 0) && (P[j].BH_Mass < bh_mass))  // DAA: makes it so that the most massive BH swallows the other ??
+                                    if((P[j].SwallowID == 0) && (BPP(j).BH_Mass < bh_mass))  // DAA: makes it so that the most massive BH swallows the other
                                         P[j].SwallowID = id;
                                 }
                             }

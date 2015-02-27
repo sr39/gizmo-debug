@@ -224,8 +224,8 @@ void blackhole_properties_loop(void)
 #endif
 
 #ifdef BH_OUTPUT_MOREINFO
-        fprintf(FdBlackHolesDetails, "%g %u  %g %g %g %g %g  %g %g %g %g %g %g  %2.7f %2.7f %2.7f  %2.7f %2.7f %2.7f  %g %g %g\n",
-                All.Time, P[n].ID,  P[n].Mass, BPP(n).BH_Mass, fac, BPP(n).BH_Mdot, medd,
+        fprintf(FdBlackHolesDetails, "%g %u  %g %g %g %g %g %g  %g %g %g %g %g %g  %2.7f %2.7f %2.7f  %2.7f %2.7f %2.7f  %g %g %g\n",
+                All.Time, P[n].ID,  P[n].Mass, BPP(n).BH_Mass, fac, BPP(n).BH_Mdot, medd, dt,
                 BPP(n).DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy, 
                 BlackholeTempInfo[i].Malt_in_Kernel, BlackholeTempInfo[i].Mgas_in_Kernel, mbulge, r0,
                 P[n].Pos[0], P[n].Pos[1], P[n].Pos[2],  P[n].Vel[0], P[n].Vel[1], P[n].Vel[2], 
