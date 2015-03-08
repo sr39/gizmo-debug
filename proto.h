@@ -776,9 +776,9 @@ void init_sort_ID(MyIDType *data, int ndata);
 #endif
 
 void hydro_gradient_calc(void);
-int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *GasGrad_evaluate_primary(void *p);
-void *GasGrad_evaluate_secondary(void *p);
+int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
+void *GasGrad_evaluate_primary(void *p, int gradient_iteration);
+void *GasGrad_evaluate_secondary(void *p, int gradient_iteration);
 
 #ifdef SIDM
 #include "./sidm/sidm_proto.h"

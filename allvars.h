@@ -94,6 +94,32 @@
 #endif
 
 
+#ifdef CONSTRAINED_GRADIENT_MHD
+/* make sure mid-point gradient calculation for cleaning terms is enabled */
+#ifndef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#define CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#endif
+/* these are tolerances for the slope-limiters. we define them here, because the gradient constraint routine needs to
+    be sure to use the -same- values in both the gradients and reimann solver routines */
+#if (CONSTRAINED_GRADIENT_MHD > 2)
+#define CONSTRAINED_GRADIENT_MHD_FAC_MINMAX 20.
+#define CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV 10.
+#define CONSTRAINED_GRADIENT_MHD_FAC_MED_PM 2.0
+#define CONSTRAINED_GRADIENT_MHD_FAC_MAX_PM 1.5
+#else
+#define CONSTRAINED_GRADIENT_MHD_FAC_MINMAX 7.5
+#define CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV 5.0
+#define CONSTRAINED_GRADIENT_MHD_FAC_MED_PM 0.25
+#define CONSTRAINED_GRADIENT_MHD_FAC_MAX_PM 0.25
+#endif
+#else
+#define CONSTRAINED_GRADIENT_MHD_FAC_MINMAX 2.0
+#define CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV 1.0
+#define CONSTRAINED_GRADIENT_MHD_FAC_MED_PM 0.20
+#define CONSTRAINED_GRADIENT_MHD_FAC_MAX_PM 0.125
+#endif
+
+
 #if defined(CONDUCTION) || defined(TURB_DIFF_ENERGY) || defined(NON_IDEAL_EOS)
 #define DOGRAD_INTERNAL_ENERGY 1
 #endif
@@ -106,6 +132,9 @@
 #define DO_DENSITY_AROUND_STAR_PARTICLES
 #endif
 
+#if !defined(HYDRO_SPH) && !defined(MAGNETIC) && !defined(COSMIC_RAYS)
+#define ENERGY_ENTROPY_SWITCH_IS_ACTIVE
+#endif
 
 
 #ifdef MAGNETIC
@@ -1774,6 +1803,9 @@ extern struct sph_particle_data
     MyDouble Phi;                   /*!< scalar field for Dedner divergence cleaning */
     MyDouble DtPhi;                 /*!< time derivative of Phi-field */
 #endif
+#ifdef CONSTRAINED_GRADIENT_MHD
+    int FlagForConstrainedGradients;/*!< flag indicating whether the B-field gradient is a 'standard' one or the constrained-divB version */
+#endif
 #if defined(TRICCO_RESISTIVITY_SWITCH)
     MyFloat Balpha;                 /*!< effective resistivity coefficient */
 #endif
@@ -1818,8 +1850,11 @@ extern struct sph_particle_data
     } Gradients;
     MyFloat NV_T[3][3];             /*!< holds the tensor used for gradient estimation */
     MyDouble ConditionNumber;       /*!< condition number of the gradient matrix: needed to ensure stability */
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
     MyDouble MaxKineticEnergyNgb;   /*!< maximum kinetic energy (with respect to neighbors): use for entropy 'switch' */
+#endif
 
+    
 #ifdef HYDRO_SPH
     MyDouble DhsmlHydroSumFactor;   /* for 'traditional' SPH, we need the SPH hydro-element volume estimator */
 #endif

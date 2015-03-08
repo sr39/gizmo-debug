@@ -219,13 +219,14 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     kernel.vsig -= fac_mu * kernel.vdotr2 * rinv;
 #endif
                 }
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
                 double KE = kernel.dv[0]*kernel.dv[0] + kernel.dv[1]*kernel.dv[1] + kernel.dv[2]*kernel.dv[2];
                 if(KE > out.MaxKineticEnergyNgb) out.MaxKineticEnergyNgb = KE;
                 if(TimeBinActive[P[j].TimeBin])
                 {
                     if(KE > SphP[j].MaxKineticEnergyNgb) SphP[j].MaxKineticEnergyNgb = KE;
                 }
-
+#endif
                 
                 /* --------------------------------------------------------------------------------- */
                 /* calculate the kernel functions (centered on both 'i' and 'j') */

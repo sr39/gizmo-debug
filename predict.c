@@ -627,8 +627,14 @@ double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)
                   Get_Particle_BField(i_particle_id,2)*Get_Particle_BField(i_particle_id,2) +
                   phi_B_eff*phi_B_eff) / SphP[i_particle_id].Density );
         }
-        double vsig_max = DMAX( DMAX(vsig1,vsig2) , 0.1 * All.FastestWaveSpeed );
-        damping_tinv = 0.5 * All.DivBcleanParabolicSigma * (vsig_max / (All.cf_atime*Get_Particle_Size(i_particle_id)));
+        double prefac_fastest = 0.1;
+        double prefac_tinv = 0.5;
+#ifdef CONSTRAINED_GRADIENT_MHD
+        prefac_fastest = 1;
+        prefac_tinv = 1;
+#endif
+        double vsig_max = DMAX( DMAX(vsig1,vsig2) , prefac_fastest * All.FastestWaveSpeed );
+        damping_tinv = prefac_tinv * All.DivBcleanParabolicSigma * (vsig_max / (All.cf_atime*Get_Particle_Size(i_particle_id)));
     }
 #endif
 #endif

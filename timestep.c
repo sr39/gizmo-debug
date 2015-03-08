@@ -574,10 +574,9 @@ integertime get_timestep(int p,		/*!< particle index */
         } else {
             dt_stellar_evol = star_age/10.;
         }
+        // PFH: temporarily modifying the terms above while Marcel studies them: turns out not to be necessary to use as strict a mass-dependent timestep, so faster to comment out //
         //dt_stellar_evol /= ( 1. + 0.1*(P[p].Mass*All.UnitMass_in_g)/(1.0e4*1.989e33) ); // multiply by inverse particle mass, since goal is to prevent too much energy in one time //
-        // PFH: temporarily modifying the terms above while Marcel studies them //
-        dt_stellar_evol /= ( 1. + 0.0*(P[p].Mass*All.UnitMass_in_g)/(1.0e4*1.989e33) ); // multiply by inverse particle mass, since goal is to prevent too much energy in one time //
-        if(dt_stellar_evol < 1.e-7) {dt_stellar_evol = 1.e-7;}
+        if(dt_stellar_evol < 1.e-6) {dt_stellar_evol = 1.e-6;}
         dt_stellar_evol /= (0.001*All.UnitTime_in_Megayears/All.HubbleParam); // convert to code units //
         if(dt_stellar_evol>0)
             if(dt_stellar_evol<dt)

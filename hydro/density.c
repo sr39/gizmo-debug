@@ -704,7 +704,7 @@ void density(void)
                  own estimators+neighbor loops, anyways, so this is just to get some nearby particles */
                 if((P[i].Type!=0)&&(P[i].Type!=5))
                 {
-                    desnumngb = All.DesNumNgb * ncorr_ngb;
+                    desnumngb = All.DesNumNgb;
                     if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
                     desnumngbdev = desnumngb / 4; // enforcing exact number not important
 #ifdef GALSF

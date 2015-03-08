@@ -774,16 +774,46 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* define initial mass and ejecta velocity in this 'cone' */
 
 #ifndef GALSF_TURNOFF_COOLING_WINDS
-                RsneKPC=RsneKPC_0*pow(SphP[j].Density*density_to_n+1.0e-3,-0.429);
+            //RsneKPC=RsneKPC_0 * pow(SphP[j].Density*density_to_n+1.0e-3,-0.429);
+            //RsneKPC=RsneKPC_0 / sqrt(SphP[j].Density*density_to_n+1.0e-3);
+            RsneKPC = RsneKPC_0;
+            double n0 = SphP[j].Density*density_to_n;
+            /* this is tedious, but is a fast approximation (essentially a lookup table) for the -0.429 power above */
+            if(n0 < 1.e-3) {RsneKPC *= 19.4;} else {
+                if(n0 < 1.e-2) {RsneKPC *= 1.9 + 23./(1.+333.*n0);} else {
+                    if(n0 < 1.e-1) {RsneKPC *= 0.7 + 8.4/(1.+33.3*n0);} else {
+                        if(n0 < 1) {RsneKPC *= 0.08 + 3.1/(1.+2.5*n0);} else {
+                            if(n0 < 10) {RsneKPC *= 0.1 + 1.14/(1.+0.333*n0);} else {
+                                if(n0 < 100) {RsneKPC *= 0.035 + 0.43/(1.+0.0333*n0);} else {
+                                    if(n0 < 1000) {RsneKPC *= 0.017 + 0.154/(1.+0.00333*n0);} else {
+                                        if(n0 < 1.e4) {RsneKPC *= 0.006 + 0.057/(1.+0.000333*n0);} else {
+                                            RsneKPC *= pow(n0, -0.429); }}}}}}}}
+            
+                /*
                 if(P[j].Metallicity[0]/All.SolarAbundances[0] < 0.01) {RsneKPC*=2.0;} else {
                     if(P[j].Metallicity[0]<All.SolarAbundances[0]) {RsneKPC*=pow(P[j].Metallicity[0]/All.SolarAbundances[0],-0.15);} else {RsneKPC*=pow(P[j].Metallicity[0]/All.SolarAbundances[0],-0.09);}}
+                */
+                /* below expression is again just as good a fit to the simulations, and much faster to evaluate */
+                double z0 = P[j].Metallicity[0]/All.SolarAbundances[0];
+                if(z0 < 0.01)
+                {
+                    RsneKPC *= 2.0;
+                } else {
+                    if(z0 < 1)
+                    {
+                        RsneKPC *= 0.93 + 0.0615 / (0.05 + 0.8*z0);
+                    } else {
+                        RsneKPC *= 0.8 + 0.4 / (1 + z0);
+                    }
+                }
                 /* calculates cooling radius given density and metallicity in this annulus into which the ejecta propagate */
             
                 if(RsneMAX<RsneKPC) RsneKPC=RsneMAX;
                 /* limit to Hsml for coupling */
 
                 r2sne = RsneKPC*RsneKPC;
-                if(r2 > r2sne) dP *= pow(r2sne/r2 , 1.625);
+                // if(r2 > r2sne) dP *= pow(r2sne/r2 , 1.625);
+                if(r2 > r2sne) dP *= r2sne*RsneKPC / (r2*kernel.r); // just as good a fit, and much faster to evaluate //
                 /* if coupling radius > R_cooling, account for thermal energy loss in the post-shock medium:
                     from Thornton et al. thermal energy scales as R^(-6.5) for R>R_cool */
 #endif
@@ -983,21 +1013,24 @@ void *addFB_evaluate_primary(void *p, int feedback_type)
 	break;
         
     active_check = 0;
+    if(PPP[i].NumNgb > 0 && PPP[i].Hsml > 0 && P[i].Mass > 0)
+    {
 #ifdef GALSF_FB_SNE_HEATING
-    if(P[i].SNe_ThisTimeStep>0)
+        if(P[i].SNe_ThisTimeStep>0)
         if(feedback_type==-1 || feedback_type==0)
-            active_check = 1;
+        active_check = 1;
 #endif
 #ifdef GALSF_FB_GASRETURN
-    if(P[i].MassReturn_ThisTimeStep>0)
+        if(P[i].MassReturn_ThisTimeStep>0)
         if(feedback_type==-1 || feedback_type==1)
-            active_check = 1;
+        active_check = 1;
 #endif
 #ifdef GALSF_FB_RPROCESS_ENRICHMENT
-    if(P[i].RProcessEvent_ThisTimeStep>0)
+        if(P[i].RProcessEvent_ThisTimeStep>0)
         if(feedback_type==-1 || feedback_type==2)
-            active_check = 1;
+        active_check = 1;
 #endif
+    }
         
     if(active_check==1)
     {

@@ -434,8 +434,10 @@ void merge_particles_ij(MyIDType i, MyIDType j)
     SphP[j].MaxSignalVel = sqrt(SphP[j].MaxSignalVel*SphP[j].MaxSignalVel + SphP[i].MaxSignalVel*SphP[i].MaxSignalVel); /* need to be conservative */
     PPP[j].Hsml = pow(pow(PPP[j].Hsml,NUMDIMS)+pow(PPP[i].Hsml,NUMDIMS),1.0/NUMDIMS); /* sum the volume of the two particles */
     SphP[j].ConditionNumber = SphP[j].ConditionNumber + SphP[i].ConditionNumber; /* sum to be conservative */
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
     SphP[j].MaxKineticEnergyNgb = DMAX(SphP[j].MaxKineticEnergyNgb,SphP[i].MaxKineticEnergyNgb); /* for the entropy/energy switch condition */
-
+#endif
+    
     // below, we need to take care of additional physics //
 #ifdef EOS_DEGENERATE
     SphP[j].temp = wt_j*SphP[j].temp + wt_i*SphP[i].temp;
