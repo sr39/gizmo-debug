@@ -99,8 +99,10 @@
 #ifndef CONSTRAINED_GRADIENT_MHD_MIDPOINT
 #define CONSTRAINED_GRADIENT_MHD_MIDPOINT
 #endif
+#endif
 /* these are tolerances for the slope-limiters. we define them here, because the gradient constraint routine needs to
     be sure to use the -same- values in both the gradients and reimann solver routines */
+#if CONSTRAINED_GRADIENT_MHD
 #if (CONSTRAINED_GRADIENT_MHD > 2)
 #define CONSTRAINED_GRADIENT_MHD_FAC_MINMAX 20.
 #define CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV 10.

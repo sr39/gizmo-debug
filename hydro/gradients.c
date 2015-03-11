@@ -116,7 +116,6 @@ struct GasGraddata_out
     MyFloat Face_Area[3];
     MyFloat FaceDotB;
     MyFloat FaceCrossX[3][3];
-    MyFloat BGrad[3][3];
 #endif
     struct Quantities_for_Gradients Gradients[3];
     struct Quantities_for_Gradients Maxima;
@@ -136,6 +135,9 @@ static struct temporary_data_topass
     MyDouble FaceDotB;
     MyDouble FaceCrossX[3][3];
     MyDouble BGrad[3][3];
+#ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+    MyDouble PhiGrad[3];
+#endif
 #endif
 }
 *GasGradDataPasser;
@@ -219,11 +221,8 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
         int k;
         ASSIGN_ADD(GasGradDataPasser[i].FaceDotB,out->FaceDotB,mode);
 #ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
-        if(gradient_iteration > 0)
-        {
-            for(k=0;k<3;k++)
-                ASSIGN_ADD(SphP[i].Gradients.Phi[k],out->Gradients[k].Phi,mode);
-        }
+        for(k=0;k<3;k++)
+            ASSIGN_ADD(GasGradDataPasser[i].PhiGrad[k],out->Gradients[k].Phi,mode);
 #endif
     }
 #endif
@@ -310,8 +309,10 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
 #ifdef DIVBCLEANING_DEDNER
         MAX_ADD(GasGradDataPasser[i].Maxima.Phi,out->Maxima.Phi,mode);
         MIN_ADD(GasGradDataPasser[i].Minima.Phi,out->Minima.Phi,mode);
+#ifndef CONSTRAINED_GRADIENT_MHD_MIDPOINT
         for(k=0;k<3;k++)
             ASSIGN_ADD(SphP[i].Gradients.Phi[k],out->Gradients[k].Phi,mode);
+#endif
 #endif
 #endif // closes MAGNETIC
         
@@ -702,13 +703,31 @@ void hydro_gradient_calc(void)
                 /* build the gradient */
                 for(k=0;k<3;k++) {construct_gradient(SphP[i].Gradients.B[k],i);}
                 /* slope limit it */
-                double tmp = fabs(SphP[i].divB) * PPP[i].Hsml / sqrt(1.0e-37 + 2.0e-8*SphP[i].Pressure + SphP[i].BPred[0]*SphP[i].BPred[0]+SphP[i].BPred[1]*SphP[i].BPred[1]+SphP[i].BPred[2]*SphP[i].BPred[2]);
-                double alim = 0.25 * (1. + pow((3000.*tmp),2));
-                if(alim > 0.5) alim=0.5;
+                double tmp = 1.0e4 * fabs(SphP[i].divB) * PPP[i].Hsml / sqrt(1.0e-37 + 2.0e-8*SphP[i].Pressure + SphP[i].BPred[0]*SphP[i].BPred[0]+SphP[i].BPred[1]*SphP[i].BPred[1]+SphP[i].BPred[2]*SphP[i].BPred[2]);
+                double alim = 1. + DMIN(1.,tmp*tmp);
 #if (CONSTRAINED_GRADIENT_MHD <= 1)
-                for(k=0;k<3;k++) {local_slopelimiter(SphP[i].Gradients.B[k],
-                                                     GasGradDataPasser[i].Maxima.B[k],GasGradDataPasser[i].Minima.B[k],
-                                                     alim,PPP[i].Hsml,0.);}
+                double dbmax=0, dbgrad=0, dh=0.25*PPP[i].Hsml;
+                for(k=0;k<3;k++)
+                {
+                    double b0 = Get_Particle_BField(i,k);
+                    double dd = 2. * fabs(b0) * DMIN(fabs(GasGradDataPasser[i].Minima.B[k]) , fabs(GasGradDataPasser[i].Maxima.B[k]));
+                    dbmax = DMIN(fabs(dbmax+dd),fabs(dbmax-dd));
+                    for(k1=0;k1<3;k1++) {dbgrad += 2.*dh * fabs(b0*SphP[i].Gradients.B[k][k1]);}
+                }
+                dbmax /= dbgrad;
+                for(k1=0;k1<3;k1++)
+                {
+                    double d_abs=0; for(k=0;k<3;k++) {d_abs += SphP[i].Gradients.B[k1][k]*SphP[i].Gradients.B[k1][k];}
+                    if(d_abs > 0)
+                    {
+                        double cfac = 1 / (0.25 * PPP[i].Hsml * sqrt(d_abs));
+                        cfac *= DMIN(fabs(GasGradDataPasser[i].Maxima.B[k1]) , fabs(GasGradDataPasser[i].Minima.B[k1]));
+                        double c_eff = DMIN( cfac , DMAX(cfac/alim , dbmax) );
+                        if(c_eff < 1) {for(k=0;k<3;k++) {SphP[i].Gradients.B[k1][k] *= c_eff;}}
+                    } else {
+                        for(k=0;k<3;k++) {SphP[i].Gradients.B[k1][k]=0;}
+                    }
+                }
 #endif
                 /* check the particle area closure, which will inform whether it is safe to use the constrained gradients */
                 double area = fabs(SphP[i].Face_Area[0]) + fabs(SphP[i].Face_Area[1]) + fabs(SphP[i].Face_Area[2]);
@@ -796,6 +815,9 @@ void hydro_gradient_calc(void)
                 } // closes FlagForConstrainedGradients check
 #ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
                 double a_limiter = 0.25; if(SphP[i].ConditionNumber>100) a_limiter=DMIN(0.5, 0.25 + 0.25 * (SphP[i].ConditionNumber-100)/100);
+                /* copy everything from the structure holding phi-gradients (needed so they dont change mid-loop) */
+                for(k=0;k<3;k++) {SphP[i].Gradients.Phi[k] = GasGradDataPasser[i].PhiGrad[k];}
+                /* build and limit the gradient */
                 construct_gradient(SphP[i].Gradients.Phi,i);
                 local_slopelimiter(SphP[i].Gradients.Phi,GasGradDataPasser[i].Maxima.Phi,GasGradDataPasser[i].Minima.Phi,a_limiter,PPP[i].Hsml,0.0);
 #endif
