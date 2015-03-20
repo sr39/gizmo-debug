@@ -88,10 +88,10 @@ void begrun(void)
 #endif
 
   set_units();
+  set_cosmo_factors_for_current_time();
+  All.Time = All.TimeBegin;
 
 #ifdef COOLING
-  All.Time = All.TimeBegin;
-  set_cosmo_factors_for_current_time();
   InitCool();
 #endif
 
@@ -229,8 +229,6 @@ void begrun(void)
       All.MaxRMSDisplacementFac = all.MaxRMSDisplacementFac;
 
       All.ErrTolForceAcc = all.ErrTolForceAcc;
-      /* All.TypeOfTimestepCriterion = all.TypeOfTimestepCriterion; */
-      /* All.TypeOfOpeningCriterion = all.TypeOfOpeningCriterion; */
       All.NumFilesWrittenInParallel = all.NumFilesWrittenInParallel;
       All.TreeDomainUpdateFrequency = all.TreeDomainUpdateFrequency;
 
@@ -888,8 +886,6 @@ void read_parameter_file(char *fname)
   char tag[MAXTAGS][50];
   int pnum, errorFlag = 0;
 
-  All.StarformationOn = 0;	/* defaults */
-
   if(sizeof(long long) != 8)
     {
       if(ThisTask == 0)
@@ -971,11 +967,6 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.BoxSize;
       id[nt++] = REAL;
 
-        All.PeriodicBoundariesOn = 0;
-#ifdef PERIODIC
-        All.PeriodicBoundariesOn = 1;
-#endif
-
       strcpy(tag[nt], "MaxMemSize");
       addr[nt] = &All.MaxMemSize;
       id[nt++] = INT;
@@ -1027,7 +1018,6 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 
         
-        All.TypeOfTimestepCriterion = 0;
         All.TypeOfOpeningCriterion = 1;
         /*!< determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion: this
          should only be changed if you -really- know what you're doing! */
@@ -1332,22 +1322,12 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.ResubmitOn;
       id[nt++] = INT;
 
-        All.CoolingOn = 0;
-#ifdef COOLING
-        All.CoolingOn = 1;
-#endif
-        
 #ifdef GRACKLE
         strcpy(tag[nt], "GrackleDataFile");
         addr[nt] = All.GrackleDataFile;
         id[nt++] = STRING;
 #endif
         
-        All.StarformationOn = 0;
-#ifdef GALSF
-        All.StarformationOn = 1;
-#endif
-            
       strcpy(tag[nt], "TimeLimitCPU");
       addr[nt] = &All.TimeLimitCPU;
       id[nt++] = REAL;
@@ -2240,29 +2220,6 @@ void read_parameter_file(char *fname)
         endrun(0);
     }
     
-#ifdef PERIODIC
-    if(All.PeriodicBoundariesOn == 0)
-    {
-        if(ThisTask == 0)
-        {
-            printf("Code was compiled with periodic boundary conditions switched on.\n");
-            printf("You must set `PeriodicBoundariesOn=1', or recompile the code.\n");
-        }
-        endrun(0);
-    }
-#else
-    if(All.PeriodicBoundariesOn == 1)
-    {
-        if(ThisTask == 0)
-        {
-            printf("Code was compiled with periodic boundary conditions switched off.\n");
-            printf("You must set `PeriodicBoundariesOn=0', or recompile the code.\n");
-        }
-        endrun(0);
-    }
-#endif
-    
-    
 #ifdef EDDINGTON_TENSOR_BH
 #ifndef BLACK_HOLES
     if(ThisTask == 0)
@@ -2274,37 +2231,6 @@ void read_parameter_file(char *fname)
 #endif
 #endif
     
-#ifdef COOLING
-    if(All.CoolingOn == 0)
-    {
-        if(ThisTask == 0)
-        {
-            printf("Code was compiled with cooling switched on.\n");
-            printf("You must set `CoolingOn=1', or recompile the code.\n");
-        }
-        endrun(0);
-    }
-#else
-    if(All.CoolingOn == 1)
-    {
-        if(ThisTask == 0)
-        {
-            printf("Code was compiled with cooling switched off.\n");
-            printf("You must set `CoolingOn=0', or recompile the code.\n");
-        }
-        endrun(0);
-    }
-#endif
-    
-    if(All.TypeOfTimestepCriterion >= 3)
-    {
-        if(ThisTask == 0)
-        {
-            printf("The specified timestep criterion\n");
-            printf("is not valid\n");
-        }
-        endrun(0);
-    }
     
 #if defined(LONG_X) ||  defined(LONG_Y) || defined(LONG_Z)
 #ifndef NOGRAVITY
@@ -2316,38 +2242,6 @@ void read_parameter_file(char *fname)
     endrun(0);
 #endif
 #endif
-    
-#ifdef GALSF
-    if(All.StarformationOn == 0)
-    {
-        if(ThisTask == 0)
-        {
-            printf("Code was compiled with star formation switched on.\n");
-            printf("You must set `StarformationOn=1', or recompile the code.\n");
-        }
-        endrun(0);
-    }
-    if(All.CoolingOn == 0)
-    {
-        if(ThisTask == 0)
-        {
-            printf("You try to use the code with star formation enabled,\n");
-            printf("but you did not switch on cooling.\nThis mode is not supported.\n");
-        }
-        endrun(0);
-    }
-#else
-    if(All.StarformationOn == 1)
-    {
-        if(ThisTask == 0)
-        {
-            printf("Code was compiled with star formation switched off.\n");
-            printf("You must set `StarformationOn=0', or recompile the code.\n");
-        }
-        endrun(0);
-    }
-#endif
-    
     
     
 #ifdef TIMEDEPDE

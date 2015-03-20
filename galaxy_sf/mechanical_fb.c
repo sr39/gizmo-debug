@@ -392,7 +392,7 @@ void mechanical_fb_calc(int feedback_type)
   long long n_exported = 0;
 
   /* allocate buffers to arrange communication */
-  int NTaskTimesNumPart;
+  long long NTaskTimesNumPart;
   NTaskTimesNumPart = maxThreads * NumPart;
   Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
   All.BunchSize =
@@ -836,6 +836,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* inject actual mass from mass return */
                 if(P[j].Hsml<=0) {if(SphP[j].Density>0){SphP[j].Density*=(1+dM/P[j].Mass);} else {SphP[j].Density=dM*kernel.hinv3;}} else {
                     SphP[j].Density+=kernel_zero*dM/(P[j].Hsml*P[j].Hsml*P[j].Hsml);}
+                SphP[j].Density *= 1 + dM/P[j].Mass; // inject mass at constant particle volume //
                 P[j].Mass += dM;
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 SphP[j].MassTrue += dM;

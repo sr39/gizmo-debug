@@ -103,16 +103,16 @@
 /* these are tolerances for the slope-limiters. we define them here, because the gradient constraint routine needs to
     be sure to use the -same- values in both the gradients and reimann solver routines */
 #if CONSTRAINED_GRADIENT_MHD
-#if (CONSTRAINED_GRADIENT_MHD > 2)
-#define CONSTRAINED_GRADIENT_MHD_FAC_MINMAX 20.
-#define CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV 10.
-#define CONSTRAINED_GRADIENT_MHD_FAC_MED_PM 2.0
-#define CONSTRAINED_GRADIENT_MHD_FAC_MAX_PM 1.5
-#else
+#if (CONSTRAINED_GRADIENT_MHD > 1)
 #define CONSTRAINED_GRADIENT_MHD_FAC_MINMAX 7.5
 #define CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV 5.0
 #define CONSTRAINED_GRADIENT_MHD_FAC_MED_PM 0.25
 #define CONSTRAINED_GRADIENT_MHD_FAC_MAX_PM 0.25
+#else
+#define CONSTRAINED_GRADIENT_MHD_FAC_MINMAX 7.5
+#define CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV 1.5
+#define CONSTRAINED_GRADIENT_MHD_FAC_MED_PM 0.2
+#define CONSTRAINED_GRADIENT_MHD_FAC_MAX_PM 0.2
 #endif
 #else
 #define CONSTRAINED_GRADIENT_MHD_FAC_MINMAX 2.0
@@ -509,6 +509,15 @@ typedef double MyInputFloat;
 #else
 typedef float MyInputFloat;
 #endif
+
+#ifdef IO_POSITIONS_IN_DOUBLE
+typedef double MyOutputPosFloat;
+typedef double MyInputPosFloat;
+#else
+typedef float MyOutputPosFloat;
+typedef float MyInputPosFloat;
+#endif
+
 
 struct unbind_data
 {
@@ -1025,13 +1034,9 @@ extern struct global_data_all_processes
   /* Code options */
 
   int ComovingIntegrationOn;	/*!< flags that comoving integration is enabled */
-  int PeriodicBoundariesOn;	/*!< flags that periodic boundaries are enabled */
   int ResubmitOn;		/*!< flags that automatic resubmission of job to queue system is enabled */
   int TypeOfOpeningCriterion;	/*!< determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion */
-  int TypeOfTimestepCriterion;	/*!< gives type of timestep criterion (only 0 supported right now - unlike gadget-1.1) */
   int OutputListOn;		/*!< flags that output times are listed in a specified file */
-  int CoolingOn;		/*!< flags that cooling is enabled */
-  int StarformationOn;		/*!< flags that star formation is enabled */
 
   int HighestActiveTimeBin;
   int HighestOccupiedTimeBin;
@@ -1723,7 +1728,7 @@ extern ALIGN(32) struct particle_data
 
 extern struct bh_particle_data
 {
-  unsigned int PID;
+  MyIDType PID;
 #ifdef BH_COUNTPROGS
   int BH_CountProgs;
 #endif
@@ -2190,9 +2195,8 @@ extern struct io_header
   double OmegaLambda;		/*!< cosmological constant parameter */
   double HubbleParam;		/*!< Hubble parameter in units of 100 km/sec/Mpc */
   int flag_stellarage;		/*!< flags whether the file contains formation times of star particles */
-  int flag_metals;		/*!< flags whether the file contains metallicity values for gas and star
-				   particles */
-  unsigned int npartTotalHighWord[6];	/*!< High word of the total number of particles of each type */
+  int flag_metals;		/*!< flags whether the file contains metallicity values for gas and star particles */
+  unsigned int npartTotalHighWord[6];	/*!< High word of the total number of particles of each type (needed to combine with npartTotal to allow >2^31 particles of a given type) */
   int flag_doubleprecision;	/*!< flags that snapshot contains double-precision instead of single precision */
 
   int flag_ic_info;             /*!< flag to inform whether IC files are generated with ordinary Zeldovich approximation,
@@ -2212,6 +2216,11 @@ extern struct io_header
   char names[15][2];
 }
 header;				/*!< holds header for snapshot files */
+
+
+
+
+
 
 
 enum iofields
@@ -2298,22 +2307,17 @@ enum iofields
   IO_VDIV,
   IO_VROT,
   IO_VORT,
-
   IO_CHEM,
   IO_DELAYTIME,
-  
   IO_AGS_SOFT,
   IO_AGS_ZETA,
   IO_AGS_OMEGA,
   IO_AGS_CORR,
   IO_AGS_NGBS,
-
   IO_VSTURB_DISS,
   IO_VSTURB_DRIVE,
-  
   IO_MG_PHI,
   IO_MG_ACCEL,
-  
   IO_grHI,
   IO_grHII,
   IO_grHM,

@@ -64,7 +64,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #--------------------------------- Magneto-Hydrodynamics
 #MAGNETIC                       # master switch for MHD, regardless of which Hydro solver is used
 #B_SET_IN_PARAMS                # set initial fields (Bx,By,Bz) in parameter file
-#CONSTRAINED_GRADIENT_MHD=0     # use CG method to maintain low divB: set this value to control how aggressive the div-reduction is:
+#CONSTRAINED_GRADIENT_MHD=1     # use CG method to maintain low divB: set this value to control how aggressive the div-reduction is:
                                 # 0=minimal (safest), 1=intermediate (recommended), 2=aggressive (less stable), 3+=very aggressive (less stable+more expensive)
 ##-----------------------------------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------------------------------
@@ -281,6 +281,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 HAVE_HDF5						# needed when HDF5 I/O support is desired
 #OUTPUT_IN_DOUBLEPRECISION      # snapshot files will be written in double precision
 #INPUT_IN_DOUBLEPRECISION       # input files assumed to be in double precision (otherwise float is assumed)
+#IO_POSITIONS_IN_DOUBLE         # input/output files in single, but positions in double (used in hires, hi-dynamic range sims when positions differ by < float accuracy)
 #OUTPUTPOTENTIAL                # forces code to compute+output potentials in snapshots
 #OUTPUTACCELERATION             # output physical acceleration of each particle in snapshots
 #OUTPUTCHANGEOFENERGY           # outputs rate-of-change of internal energy of gas particles in snapshots

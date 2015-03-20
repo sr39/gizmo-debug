@@ -357,7 +357,7 @@ double get_pressure(int i)
     xJeans*=1.5; /* above is NJeans=5, this is NJeans=9 */
 #else
     /* standard finite-volume formulation of this */
-    double NJeans = 4; // set so that resolution = lambda_Jeans/NJeans
+    double NJeans = 2; // set so that resolution = lambda_Jeans/NJeans
     xJeans = NJeans * NJeans / (M_PI*GAMMA) * All.G * h_eff*h_eff * SphP[i].Density * SphP[i].Density;
 #endif
     if(All.ComovingIntegrationOn) xJeans *= All.cf_afac1/All.cf_atime;
@@ -613,6 +613,7 @@ double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)
     
     if(PPP[i_particle_id].Hsml > 0)
     {
+        double h_eff = Get_Particle_Size(i_particle_id);
         double vsig2 = 0.5 * All.cf_afac3 * fabs(SphP[i_particle_id].MaxSignalVel);
         double phi_B_eff = 0.0;
         if(vsig2 > 0) {phi_B_eff = Get_Particle_PhiField(i_particle_id) / (All.cf_atime * vsig2);}
@@ -627,14 +628,37 @@ double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)
                   Get_Particle_BField(i_particle_id,2)*Get_Particle_BField(i_particle_id,2) +
                   phi_B_eff*phi_B_eff) / SphP[i_particle_id].Density );
         }
+        vsig1 = DMAX(vsig1, vsig2);
+        vsig2 = 0.0;
+        int j,k;
+        for(j=0;j<3;j++) for(k=0;k<3;k++) {vsig2 += SphP[i_particle_id].Gradients.Velocity[j][k]*SphP[i_particle_id].Gradients.Velocity[j][k];}
+        vsig2 = sqrt(vsig2);
+        vsig2 = 3.0 * h_eff * DMAX( vsig2, fabs(P[i_particle_id].Particle_DivVel)) / All.cf_atime;
         double prefac_fastest = 0.1;
         double prefac_tinv = 0.5;
+        double area_0 = 0.1;
 #ifdef CONSTRAINED_GRADIENT_MHD
-        prefac_fastest = 1;
-        prefac_tinv = 1;
+        prefac_fastest = 1.0;
+        prefac_tinv = 2.0;
+        area_0 = 0.05;
+        vsig2 *= 5.0;
+        if(SphP[i_particle_id].FlagForConstrainedGradients <= 0) prefac_tinv *= 30;
 #endif
+        prefac_tinv *= sqrt(1. + SphP[i_particle_id].ConditionNumber/100.);
+        double area = fabs(SphP[i_particle_id].Face_Area[0]) + fabs(SphP[i_particle_id].Face_Area[1]) + fabs(SphP[i_particle_id].Face_Area[2]);
+#ifdef ONEDIM
+        area /= 2;
+#else
+#ifdef TWODIMS
+        area /= 2*M_PI*PPP[i_particle_id].Hsml;
+#else
+        area /= 4*M_PI*PPP[i_particle_id].Hsml*PPP[i_particle_id].Hsml;
+#endif
+#endif
+        prefac_tinv *= (1. + area/area_0)*(1. + area/area_0);
+        
         double vsig_max = DMAX( DMAX(vsig1,vsig2) , prefac_fastest * All.FastestWaveSpeed );
-        damping_tinv = prefac_tinv * All.DivBcleanParabolicSigma * (vsig_max / (All.cf_atime*Get_Particle_Size(i_particle_id)));
+        damping_tinv = prefac_tinv * All.DivBcleanParabolicSigma * (vsig_max / (All.cf_atime * h_eff));
     }
 #endif
 #endif

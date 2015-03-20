@@ -25,7 +25,7 @@
  */
 
 #if defined(CONSTRAINED_GRADIENT_MHD)
-#if (CONSTRAINED_GRADIENT_MHD > 2)
+#if (CONSTRAINED_GRADIENT_MHD > 1)
 #define NUMBER_OF_GRADIENT_ITERATIONS 3
 #else
 #define NUMBER_OF_GRADIENT_ITERATIONS 2
@@ -401,7 +401,7 @@ void hydro_gradient_calc(void)
 #endif
     
     /* allocate buffers to arrange communication */
-    int NTaskTimesNumPart;
+    long long NTaskTimesNumPart;
     GasGradDataPasser = (struct temporary_data_topass *) mymalloc("GasGradDataPasser",NumPart * sizeof(struct temporary_data_topass));
     NTaskTimesNumPart = maxThreads * NumPart;
     All.BunchSize = (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
@@ -703,7 +703,10 @@ void hydro_gradient_calc(void)
                 /* build the gradient */
                 for(k=0;k<3;k++) {construct_gradient(SphP[i].Gradients.B[k],i);}
                 /* slope limit it */
-                double tmp = 1.0e4 * fabs(SphP[i].divB) * PPP[i].Hsml / sqrt(1.0e-37 + 2.0e-8*SphP[i].Pressure + SphP[i].BPred[0]*SphP[i].BPred[0]+SphP[i].BPred[1]*SphP[i].BPred[1]+SphP[i].BPred[2]*SphP[i].BPred[2]);
+                double v_tmp = P[i].Mass / SphP[i].Density;
+                double tmp_d = sqrt(1.0e-37 + (2. * All.cf_atime/All.cf_afac1 * SphP[i].Pressure*v_tmp*v_tmp) +
+                                    SphP[i].BPred[0]*SphP[i].BPred[0]+SphP[i].BPred[1]*SphP[i].BPred[1]+SphP[i].BPred[2]*SphP[i].BPred[2]);
+                double tmp = 3.0e3 * fabs(SphP[i].divB) * PPP[i].Hsml / tmp_d;
                 double alim = 1. + DMIN(1.,tmp*tmp);
 #if (CONSTRAINED_GRADIENT_MHD <= 1)
                 double dbmax=0, dbgrad=0, dh=0.25*PPP[i].Hsml;
@@ -1105,8 +1108,11 @@ void hydro_gradient_calc(void)
 #endif
 #ifdef MAGNETIC
 #ifndef CONSTRAINED_GRADIENT_MHD
-            double q = fabs(SphP[i].divB) * PPP[i].Hsml / sqrt(1.0e-37 + 2.0e-8*SphP[i].Pressure + SphP[i].BPred[0]*SphP[i].BPred[0]+SphP[i].BPred[1]*SphP[i].BPred[1]+SphP[i].BPred[2]*SphP[i].BPred[2]);
-            double alim2 = a_limiter * (1. + pow((300.*q),2));
+            double v_tmp = P[i].Mass / SphP[i].Density;
+            double tmp_d = sqrt(1.0e-37 + (2. * All.cf_atime/All.cf_afac1 * SphP[i].Pressure*v_tmp*v_tmp) +
+                                SphP[i].BPred[0]*SphP[i].BPred[0]+SphP[i].BPred[1]*SphP[i].BPred[1]+SphP[i].BPred[2]*SphP[i].BPred[2]);
+            double q = fabs(SphP[i].divB) * PPP[i].Hsml / tmp_d;
+            double alim2 = a_limiter * (1. + q*q);
             if(alim2 > 0.5) alim2=0.5;
             for(k1=0;k1<3;k1++)
                 local_slopelimiter(SphP[i].Gradients.B[k1],GasGradDataPasser[i].Maxima.B[k1],GasGradDataPasser[i].Minima.B[k1],alim2,h_lim,stol);

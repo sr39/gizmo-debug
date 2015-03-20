@@ -130,7 +130,15 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 int TimeStep_J = (P[j].TimeBin ? (1 << P[j].TimeBin) : 0);
 #ifndef SHEARING_BOX // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //
                 if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
-                if((local.Timestep == TimeStep_J) && (P[j].ID < local.ID)) continue; /* use ID to break degeneracy */
+                /* use relative positions to break degeneracy */
+                /*
+                if(local.Timestep == TimeStep_J)
+                {
+                    int n0=0; if(local.Pos[n0] == P[j].Pos[n0]) {n0++; if(local.Pos[n0] == P[j].Pos[n0]) n0++;}
+                    if(local.Pos[n0] < P[j].Pos[n0]) continue;
+                }
+                */
+                if((local.Timestep == TimeStep_J) && (P[j].ID < local.ID)) continue; /* use ID to break degeneracy */ // ???
 #endif
                 if(P[j].Mass <= 0) continue;
                 if(SphP[j].Density <= 0) continue;

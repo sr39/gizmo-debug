@@ -181,7 +181,7 @@ struct hydrodata_in
     MyFloat ConditionNumber;
     MyFloat InternalEnergyPred;
     MyFloat SoundSpeed;
-    MyIDType ID;
+    MyIDType ID; // ???
     int Timestep;
 #ifdef HYDRO_SPH
     MyFloat DhsmlHydroSumFactor;
@@ -322,7 +322,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     in->Pressure = SphP[i].Pressure;
     in->InternalEnergyPred = SphP[i].InternalEnergyPred;
     in->SoundSpeed = Particle_effective_soundspeed_i(i);
-    in->ID = P[i].ID;
+    in->ID = P[i].ID; //???
     in->Timestep = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0);
     in->ConditionNumber = SphP[i].ConditionNumber;
 #ifdef CONSTRAINED_GRADIENT_MHD
@@ -760,7 +760,7 @@ void hydro_force(void)
     
     /* --------------------------------------------------------------------------------- */
     /* allocate buffers to arrange communication */
-    int NTaskTimesNumPart;
+    long long NTaskTimesNumPart;
     NTaskTimesNumPart = maxThreads * NumPart;
     Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
     All.BunchSize = (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +

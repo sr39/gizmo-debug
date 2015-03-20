@@ -23,7 +23,7 @@ void set_cosmo_factors_for_current_time(void)
 {
     
     /* These are critical factors used throughout for co-moving integrations. Set them here and
-       call THESE, rather than trying to come up with the factors throughout, since that makes debugging IMPOSSIBLE */
+       call THESE, rather than trying to come up with the factors throughout, since that makes debugging a nightmare */
     if(All.ComovingIntegrationOn)
     {
         /* All.cf_atime = a = 1/(1+z), the cosmological scale factor */
@@ -359,48 +359,37 @@ integertime get_timestep(int p,		/*!< particle index */
     else
         ac = *aphys;
     
-    if(ac == 0)
-        ac = 1.0e-30;
+    if(ac == 0) ac = 1.0e-30;
     
     
-    switch (All.TypeOfTimestepCriterion)
+    if(flag > 0)
     {
-        case 0:
-            if(flag > 0)
-            {
-                /* this is the non-standard mode; use timestep to get the maximum acceleration tolerated */
-                dt = flag * All.Timebase_interval;
-                dt /= All.cf_hubble_a;	/* convert dloga to physical timestep  */
-
-                ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / (dt * dt);
+        /* this is the non-standard mode; use timestep to get the maximum acceleration tolerated */
+        dt = flag * All.Timebase_interval;
+        dt /= All.cf_hubble_a;	/* convert dloga to physical timestep  */
+        
+        ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / (dt * dt);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-                ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / (dt * dt);
+        ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / (dt * dt);
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
-                if(P[p].Type==0)
-                    ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / (dt * dt);
+        if(P[p].Type==0)
+            ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / (dt * dt);
 #endif
-
-                *aphys = ac;
-                return flag;
-            }
-
-            dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / ac);
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-            dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / ac);
-#endif
-#ifdef ADAPTIVE_GRAVSOFT_FORGAS
-            if(P[p].Type == 0)
-                dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / ac);
-#endif
-            break;
-            
-        default:
-            fprintf(stderr, "\n !!!2@@@!!! \n"); 
-            endrun(888);
-            fprintf(stderr, "\n !!!2@@@!!! \n");
-            break;
+        *aphys = ac;
+        return flag;
     }
+    
+    dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / ac);
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+    dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / ac);
+#endif
+#ifdef ADAPTIVE_GRAVSOFT_FORGAS
+    if(P[p].Type == 0)
+        dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / ac);
+#endif
+
+    
     
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     /* make sure smoothing length of non-gas particles doesn't change too much in one timestep */
@@ -759,15 +748,14 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
         {
             if(count_sum[type] > 0)
             {
-                if(type == 0 || (type == 4 && All.StarformationOn))
-                    dmean =
-                    pow(min_mass[type] / (All.OmegaBaryon * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G)),
-                        1.0 / 3);
+#ifdef GALSF
+                if(type == 0 || type == 4)
+#else
+                if(type == 0)
+#endif
+                    dmean = pow(min_mass[type] / (All.OmegaBaryon * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G)), 1.0 / 3);
                 else
-                    dmean =
-                    pow(min_mass[type] /
-                        ((All.Omega0 - All.OmegaBaryon) * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G)),
-                        1.0 / 3);
+                    dmean = pow(min_mass[type] / ((All.Omega0 - All.OmegaBaryon) * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G)), 1.0 / 3);
                 
 #ifdef BLACK_HOLES
                 if(type == 5)

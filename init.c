@@ -202,10 +202,9 @@ void init(void)
     
     
     
-    
-    if(All.ComovingIntegrationOn)
-        if(All.PeriodicBoundariesOn == 1)
-            check_omega();
+#ifdef PERIODIC
+    if(All.ComovingIntegrationOn) check_omega();
+#endif
     
     All.TimeLastStatistics = All.TimeBegin - All.TimeBetStatistics;
 #if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_VARIABLEVELOCITY)
