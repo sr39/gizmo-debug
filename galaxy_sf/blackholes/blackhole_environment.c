@@ -289,7 +289,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                     {
                         out.Mgas_in_Kernel += wt;
                         out.BH_InternalEnergy += wt*SphP[j].InternalEnergy;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_GRAVACCRETION)   
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_WINDS_COLLIMATED) || defined(BH_GRAVACCRETION) 
          /* DAA: now we need Jgas for GRAVACCRETION as well
             Note that Jalt_in_Kernel will be updated to be the TOTAL Angular momentum (including gas) in normalize_temp_info_struct */
                         out.Jgas_in_Kernel[0] += wt*(dP[1]*dv[2] - dP[2]*dv[1]);
@@ -332,6 +332,10 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
  *                          WE CAN THEN MODULATE THE ACTUAL SWALLOWING OF PARTICLES BASED ON THE EDDINGTON LIMIT, IF DESIRED.
  *                          NOTE THAT SWALLOWID'S ARE NOT SET HERE, JUST mass_to_swallow_edd AND mass_to_swallow_total. 
  */
+
+
+// DAA: this below is only needed if defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION) ...
+
                     
 #if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
 #ifdef BH_GRAVCAPTURE_SWALLOWS
@@ -365,7 +369,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 #else
                                     out.mass_to_swallow_total += P[j].Mass;
 #endif
-                                    if((P[j].Type != 1)||(All.ComovingIntegrationOn && (P[j].Type==0||P[j].Type==4)))
+                                    if((P[j].Type != 1)||(All.ComovingIntegrationOn && (P[j].Type==0||P[j].Type==4)))  // DAA: this could include low-res DM particles ?? 
                                     {
 #ifdef BH_STOCHASTIC_WINDS
                                         out.mass_to_swallow_edd += P[j].Mass * All.BAL_f_accretion;

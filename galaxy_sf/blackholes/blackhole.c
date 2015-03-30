@@ -279,7 +279,7 @@ void normalize_temp_info_struct(int i)
 
     /* DAA: add GAS mas/angular momentum to the TOTAL mass/angular momentum */
     BlackholeTempInfo[i].Malt_in_Kernel += BlackholeTempInfo[i].Mgas_in_Kernel;            // Malt is now TOTAL mass inside BH kernel !
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_GRAVACCRETION)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_WINDS_COLLIMATED) || defined(BH_GRAVACCRETION)
     for(k=0;k<3;k++)
         BlackholeTempInfo[i].Jalt_in_Kernel[k] += BlackholeTempInfo[i].Jgas_in_Kernel[k];  // Jalt is now TOTAL angular momentum inside BH kernel !
 #endif
@@ -421,7 +421,6 @@ void set_blackhole_mdot(int i, int n, double dt)
  *      -->  mdot*dt in set_blackhole_new_mass
  *      -->  accreted_BH_mass in blackhole_swallow_and_kick
  */
-    
 #ifdef BH_GRAVCAPTURE_SWALLOWS
     mdot = 0; /* force mdot=0 despite any earlier settings here.  If this is set, we have to wait to swallow step to eval mdot. */
 //    mdot = BlackholeTempInfo[i].mass_to_swallow_edd / dt;       /* TODO: this can still greatly exceed eddington... */

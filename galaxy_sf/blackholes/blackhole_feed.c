@@ -390,6 +390,12 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         
 /* This is a similar loop to what we already did in blackhole_environment, but here we stochastially
  reduce GRAVCAPT events in order to (statistically) obey the eddington limit */
+
+/* DAA: this is currently NOT working ??
+ *      - No particles are rejected even if the probability considers the eddington_factor
+ *      - Only gas particles are accreted but eddington_factor computed also includes star particles (see blackhole_environment_evaluate )  
+ *      - do we actully want to grow tne physical mass (BH_Mass) by accreting DM or star particles?
+ */
                         
 #if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
 #ifdef BH_GRAVCAPTURE_SWALLOWS

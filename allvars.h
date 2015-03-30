@@ -2112,7 +2112,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 #ifdef BH_GRAVACCRETION_BTOD
     MyLongDouble Mbulge_in_Kernel;
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_GRAVACCRETION)  // DAA: need Jgas for GRAVACCRETION as well
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_WINDS_COLLIMATED) || defined(BH_GRAVACCRETION)  // DAA: need Jgas for GRAVACCRETION as well
     MyLongDouble Jgas_in_Kernel[3];
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
