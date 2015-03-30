@@ -49,8 +49,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #SPHAV_DISABLE_PM_CONDUCTIVITY  # Disable mixing entropy (J.Read's improved Price-Monaghan conductivity with Cullen-Dehnen switches)
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- Kernel Options
-#KERNEL_QUARTIC                 # Implementation of the Morris 1996 quartic spline kernel
-#KERNEL_QUINTIC                 # Implementation of the Morris 1996 quintic spline kernel, requires more neighbours !
+#KERNEL_FUNCTION=3              # Choose the kernel function (2=quadratic peak, 3=cubic spline [default], 4=quartic spline, 5=quintic spline, 6=Wendland C2, 7=Wendland C4)
 ####################################################################################################
 
 
@@ -64,6 +63,8 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #--------------------------------- Magneto-Hydrodynamics
 #MAGNETIC                       # master switch for MHD, regardless of which Hydro solver is used
 #B_SET_IN_PARAMS                # set initial fields (Bx,By,Bz) in parameter file
+#CONSTRAINED_GRADIENT_MHD=1     # use CG method to maintain low divB: set this value to control how aggressive the div-reduction is:
+                                # 0=minimal (safest), 1=intermediate (recommended), 2=aggressive (less stable), 3+=very aggressive (less stable+more expensive)
 ##-----------------------------------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- Conduction
@@ -287,6 +288,8 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 HAVE_HDF5						# needed when HDF5 I/O support is desired
 #OUTPUT_IN_DOUBLEPRECISION      # snapshot files will be written in double precision
 #INPUT_IN_DOUBLEPRECISION       # input files assumed to be in double precision (otherwise float is assumed)
+#OUTPUT_POSITIONS_IN_DOUBLE     # input/output files in single, but positions in double (used in hires, hi-dynamic range sims when positions differ by < float accuracy)
+#INPUT_POSITIONS_IN_DOUBLE      # as above, but specific to the ICs file
 #OUTPUTPOTENTIAL                # forces code to compute+output potentials in snapshots
 #OUTPUTACCELERATION             # output physical acceleration of each particle in snapshots
 #OUTPUTCHANGEOFENERGY           # outputs rate-of-change of internal energy of gas particles in snapshots

@@ -13,6 +13,7 @@
 
 #include "./allvars.h"
 #include "./proto.h"
+#include "./kernel.h"
 
 
 /*! This file contains the operations needed for merging/splitting gas particles/cells on-the-fly in the simulations. 
@@ -172,13 +173,18 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     k=0;
     phi = 2.0*M_PI*get_random_number(i+1+ThisTask); // random from 0 to 2pi //
     cos_theta = 2.0*(get_random_number(i+3+2*ThisTask)-0.5); // random between 1 to -1 //
+    double d_r = 0.25 * KERNEL_CORE_SIZE*PPP[i].Hsml; // needs to be epsilon*Hsml where epsilon<<1, to maintain stability //
+    double r_near = 0.35 * sqrt(r2_nearest);
+    d_r = DMIN(d_r , r_near); // use a 'buffer' to limit to some multiple of the distance to the nearest particle //
+    /*
     double r_near = sqrt(r2_nearest);
     double hsml = Get_Particle_Size(i);
     if(hsml < r_near) {hsml = r_near;}
     r_near *= 0.35;
     double d_r = 0.25 * hsml; // needs to be epsilon*Hsml where epsilon<<1, to maintain stability //
     d_r = DMAX( DMAX(0.1*r_near , 0.005*hsml) , DMIN(d_r , r_near) ); // use a 'buffer' to limit to some multiple of the distance to the nearest particle //
-    
+    */ // the change above appears to cause some numerical instability //
+     
     /* find the first non-gas particle and move it to the end of the particle list */
     long j = NumPart + n_particles_split;
     /* set the pointers equal to one another -- all quantities get copied, we only have to modify what needs changing */
@@ -199,7 +205,7 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
         LastInTimeBin[P[i].TimeBin] = j;
     /* the particle needs an ID: we give it a bit-flip from the original particle to signify the split */
     unsigned int bits;
-    int SPLIT_GENERATIONS = 10;
+    int SPLIT_GENERATIONS = 4;
     for(bits = 0; SPLIT_GENERATIONS > (1 << bits); bits++);
     P[i].ID += ((MyIDType) 1 << (sizeof(MyIDType) * 8 - bits));
     /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
@@ -251,7 +257,7 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     
     /* shift the particle locations according to the random number we drew above */
     double dx, dy, dz;
-#ifdef ONEDIM 
+#if (NUMDIMS == 1)
     dy=dz=0; dx=d_r; // here the split direction is trivial //
 #else
     /* in 2D and 3D its not so trivial how to split the directions */
@@ -259,7 +265,7 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     dx = d_r * sin_theta * cos(phi);
     dy = d_r * sin_theta * sin(phi);
     dz = d_r * cos_theta;
-#ifdef TWODIMS
+#if (NUMDIMS == 2)
     dz=0; dx=d_r*cos(phi); dy=d_r*sin(phi);
 #endif
     double norm=0, dp[3]; int m; dp[0]=dp[1]=dp[2]=0;
@@ -434,8 +440,10 @@ void merge_particles_ij(MyIDType i, MyIDType j)
     SphP[j].MaxSignalVel = sqrt(SphP[j].MaxSignalVel*SphP[j].MaxSignalVel + SphP[i].MaxSignalVel*SphP[i].MaxSignalVel); /* need to be conservative */
     PPP[j].Hsml = pow(pow(PPP[j].Hsml,NUMDIMS)+pow(PPP[i].Hsml,NUMDIMS),1.0/NUMDIMS); /* sum the volume of the two particles */
     SphP[j].ConditionNumber = SphP[j].ConditionNumber + SphP[i].ConditionNumber; /* sum to be conservative */
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
     SphP[j].MaxKineticEnergyNgb = DMAX(SphP[j].MaxKineticEnergyNgb,SphP[i].MaxKineticEnergyNgb); /* for the entropy/energy switch condition */
-
+#endif
+    
     // below, we need to take care of additional physics //
 #ifdef EOS_DEGENERATE
     SphP[j].temp = wt_j*SphP[j].temp + wt_i*SphP[i].temp;

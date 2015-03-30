@@ -755,11 +755,12 @@ void gravity_tree(void)
       /* remove self-potential */
       P[i].Potential += P[i].Mass / All.SofteningTable[P[i].Type];
 
-      if(All.ComovingIntegrationOn)
-	if(All.PeriodicBoundariesOn)
-	  P[i].Potential -= 2.8372975 * pow(P[i].Mass, 2.0 / 3) *
-	    pow(All.Omega0 * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G), 1.0 / 3);
-
+#ifdef PERIODIC
+        if(All.ComovingIntegrationOn)
+            P[i].Potential -= 2.8372975 * pow(P[i].Mass, 2.0 / 3) *
+            pow(All.Omega0 * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G), 1.0 / 3);
+#endif
+        
       P[i].Potential *= All.G;
 
 #ifdef PMGRID

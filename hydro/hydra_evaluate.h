@@ -29,6 +29,11 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double Face_Area_Vec[3], Face_Area_Norm = 0;
     face_area_dot_vel = 0;
 #endif
+#ifdef HYDRO_MESHLESS_FINITE_MASS
+    double epsilon_entropic_eos_big = 0.5; // can be anything from (small number=more diffusive, less accurate entropy conservation) to ~1.1-1.3 (least diffusive, most noisy)
+    double epsilon_entropic_eos_small = 1.e-3; // should be << epsilon_entropic_eos_big
+    if(All.ComovingIntegrationOn) {epsilon_entropic_eos_big = 0.6; epsilon_entropic_eos_small=1.e-2;}
+#endif
     
     if(mode == 0)
     {
@@ -48,12 +53,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     kernel_hinv(kernel.h_i, &hinv_i, &hinv3_i, &hinv4_i);
     hinv_j=hinv3_j=hinv4_j=0;
     V_i = local.Mass / local.Density;
-    kernel_mode = -1; /* only need wk */
     dt_hydrostep = local.Timestep * All.Timebase_interval / All.cf_hubble_a; /* (physical) timestep */
     out.MaxSignalVel = kernel.sound_i;
-#if defined(HYDRO_SPH)
     kernel_mode = 0; /* need dwk and wk */
-#endif
     double cnumcrit2 = ((double)CONDITION_NUMBER_DANGER)*((double)CONDITION_NUMBER_DANGER) - local.ConditionNumber*local.ConditionNumber;
     //define units used for upwind instead of time-centered formulation//
     //double cs_t_to_comoving_x = All.cf_afac3 / All.cf_atime; /* convert to code (comoving) length units */
@@ -130,7 +132,12 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 int TimeStep_J = (P[j].TimeBin ? (1 << P[j].TimeBin) : 0);
 #ifndef SHEARING_BOX // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //
                 if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
-                if((local.Timestep == TimeStep_J) && (P[j].ID < local.ID)) continue; /* use ID to break degeneracy */
+                /* use relative positions to break degeneracy */
+                if(local.Timestep == TimeStep_J)
+                {
+                    int n0=0; if(local.Pos[n0] == P[j].Pos[n0]) {n0++; if(local.Pos[n0] == P[j].Pos[n0]) n0++;}
+                    if(local.Pos[n0] < P[j].Pos[n0]) continue;
+                }
 #endif
                 if(P[j].Mass <= 0) continue;
                 if(SphP[j].Density <= 0) continue;
@@ -219,13 +226,14 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     kernel.vsig -= fac_mu * kernel.vdotr2 * rinv;
 #endif
                 }
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
                 double KE = kernel.dv[0]*kernel.dv[0] + kernel.dv[1]*kernel.dv[1] + kernel.dv[2]*kernel.dv[2];
                 if(KE > out.MaxKineticEnergyNgb) out.MaxKineticEnergyNgb = KE;
                 if(TimeBinActive[P[j].TimeBin])
                 {
                     if(KE > SphP[j].MaxKineticEnergyNgb) SphP[j].MaxKineticEnergyNgb = KE;
                 }
-
+#endif
                 
                 /* --------------------------------------------------------------------------------- */
                 /* calculate the kernel functions (centered on both 'i' and 'j') */
@@ -310,7 +318,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 for(k=0;k<3;k++) {out.DtInternalEnergy+=magfluxv[k]*local.Vel[k]/All.cf_atime;}
 #else
                 for(k=0;k<3;k++) {out.Face_Area[k] += Face_Area_Vec[k];}
-                double wt_face_sum = Face_Area_Norm * (face_area_dot_vel+face_vel_i);
+                double wt_face_sum = Face_Area_Norm * (-face_area_dot_vel+face_vel_i);
                 out.DtInternalEnergy += 0.5 * kernel.b2_i*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
 #ifdef DIVBCLEANING_DEDNER
                 out.DtPhi += (Riemann_out.phi_normal_mean - local.PhiPred*All.cf_a3inv) * wt_face_sum;
@@ -356,7 +364,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     for(k=0;k<3;k++) {SphP[j].DtInternalEnergy-=magfluxv[k]*VelPred_j[k]/All.cf_atime;}
 #else
                     for(k=0;k<3;k++) {SphP[j].Face_Area[k] -= Face_Area_Vec[k];}
-                    double wt_face_sum = Face_Area_Norm * (face_area_dot_vel+face_vel_j);
+                    double wt_face_sum = Face_Area_Norm * (-face_area_dot_vel+face_vel_j);
                     SphP[j].DtInternalEnergy -= 0.5 * kernel.b2_j*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
 #ifdef DIVBCLEANING_DEDNER
                     SphP[j].DtPhi -= (Riemann_out.phi_normal_mean - PhiPred_j*All.cf_a3inv) * wt_face_sum;

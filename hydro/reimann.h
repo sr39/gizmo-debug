@@ -11,12 +11,16 @@
 #define TOL_ITER 1.e-6
 #define NMAX_ITER 1000
 
+#ifdef CONSTRAINED_GRADIENT_MHD
+#define DEDNER_IMPLICIT_LIMITER 0.25
+#else 
 #define DEDNER_IMPLICIT_LIMITER 0.75
+#endif
 
 #if defined(TURB_DIFFUSION)
 #define SAVE_FACE_DENSITY 1
 #endif
-#if (defined(CONDUCTION) || defined(COSMIC_RAYS) || defined(VISCOSITY)) && defined(MAGNETIC)
+#if (defined(HYDRO_MESHLESS_FINITE_MASS) || defined(CONDUCTION) || defined(COSMIC_RAYS) || defined(VISCOSITY)) && defined(MAGNETIC)
 #define SAVE_FACE_BFIELD 1
 #endif
 #if defined(VISCOSITY) && defined(MAGNETIC)
@@ -104,7 +108,7 @@ void convert_face_to_flux(struct Riemann_outputs *Riemann_out, double n_unit[3])
 int iterative_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out,
                               double v_line_L, double v_line_R, double cs_L, double cs_R);
 void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloat Grad_Q_j[3],
-                             double distance_from_i[3], double distance_from_j[3], double *Q_L, double *Q_R, int order);
+                             double distance_from_i[3], double distance_from_j[3], double *Q_L, double *Q_R, int mode);
 #ifdef MAGNETIC
 void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out);
 void rotate_states_to_face(struct Input_vec_Riemann *Riemann_vec, double n_unit[3], struct rotation_matrix *rot_matrix);
@@ -118,9 +122,9 @@ void rotate_fluxes_back_to_lab(struct Riemann_outputs *Riemann_out, struct rotat
 /*  (reconstruction and slope-limiter from P. Hopkins) */
 /* --------------------------------------------------------------------------------- */
 void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloat Grad_Q_j[3],
-                             double distance_from_i[3], double distance_from_j[3], double *Q_L, double *Q_R, int order)
+                             double distance_from_i[3], double distance_from_j[3], double *Q_L, double *Q_R, int mode)
 {
-    if(order==0)
+    if(mode == 0)
     {
         /* zeroth order reconstruction: this case is trivial */
         *Q_R = Q_i;
@@ -137,8 +141,28 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
     /* here we do our slightly-fancy slope-limiting */
     double Qmin,Qmax,Qmed,Qmax_eff,Qmin_eff,fac,Qmed_max,Qmed_min;
 #ifdef MAGNETIC
-    double fac_minmax = 0.5; //0.375; /* 0.5, 0.1 works; 1.0 unstable; 0.75 is stable but begins to 'creep' */
-    double fac_meddev = 0.375; //0.25; /* 0.25,0.375 work well; 0.5 unstable; 0.44 is on-edge */
+    double fac_minmax;
+    double fac_meddev;
+    if(mode == 1)
+    {
+        fac_minmax = 0.5; //0.375; /* 0.5, 0.1 works; 1.0 unstable; 0.75 is stable but begins to 'creep' */
+        fac_meddev = 0.375; //0.25; /* 0.25,0.375 work well; 0.5 unstable; 0.44 is on-edge */
+    }
+    if(mode == 2)
+    {
+#ifdef CONSTRAINED_GRADIENT_MHD
+        fac_minmax = 0.0;
+        fac_meddev = 0.0;
+#else
+        fac_minmax = 0.0;
+        fac_meddev = 0.25;
+#endif
+    }
+    if(mode == -1)
+    {
+        fac_minmax = CONSTRAINED_GRADIENT_MHD_FAC_MINMAX;
+        fac_meddev = CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV;
+    }
 #else
     double fac_minmax = 0.5; /* 0.5, 0.1 works; 1.0 unstable; 0.75 is stable but begins to 'creep' */
     double fac_meddev = 0.375; /* 0.25,0.375 work well; 0.5 unstable; 0.44 is on-edge */
@@ -147,14 +171,19 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
     Qmed = 0.5*(Q_i+Q_j);
     if(Q_i<Q_j) {Qmax=Q_j; Qmin=Q_i;} else {Qmax=Q_i; Qmin=Q_j;}
     fac = fac_minmax * (Qmax-Qmin);
+    if(mode == -1) {fac += CONSTRAINED_GRADIENT_MHD_FAC_MAX_PM * fabs(Qmed);}
     Qmax_eff = Qmax + fac; /* 'overshoot tolerance' */
     Qmin_eff = Qmin - fac; /* 'undershoot tolerance' */
     /* check if this implies a sign from the min/max values: if so, we re-interpret the derivative as a
      logarithmic derivative to prevent sign changes from occurring */
-    if(Qmax<0) {if(Qmax_eff>0) Qmax_eff=Qmax*Qmax/(Qmax-(Qmax_eff-Qmax));} // works with 0.5,0.1 //
-    if(Qmin>0) {if(Qmin_eff<0) Qmin_eff=Qmin*Qmin/(Qmin+(Qmin-Qmin_eff));}
+    if(mode > 0)
+    {
+        if(Qmax<0) {if(Qmax_eff>0) Qmax_eff=Qmax*Qmax/(Qmax-(Qmax_eff-Qmax));} // works with 0.5,0.1 //
+        if(Qmin>0) {if(Qmin_eff<0) Qmin_eff=Qmin*Qmin/(Qmin+(Qmin-Qmin_eff));}
+    }
     /* also allow tolerance to over/undershoot the exact midpoint value in the reconstruction */
     fac = fac_meddev * (Qmax-Qmin);
+    if(mode == -1) {fac += CONSTRAINED_GRADIENT_MHD_FAC_MED_PM * fabs(Qmed);}
     Qmed_max = Qmed + fac;
     Qmed_min = Qmed - fac;
     if(Qmed_max>Qmax_eff) Qmed_max=Qmax_eff;
@@ -166,11 +195,17 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
         if(*Q_R>Qmed_max) *Q_R=Qmed_max;
         if(*Q_L>Qmax_eff) *Q_L=Qmax_eff;
         if(*Q_L<Qmed_min) *Q_L=Qmed_min;
+#if defined(MAGNETIC) && !defined(CONSTRAINED_GRADIENT_MHD)
+        if(mode > 0) {if(*Q_R > *Q_L) {*Q_R = 0.5*(*Q_R + *Q_L); *Q_L=*Q_R;}} // causes strong diffusion in Gresho: limit conditions of use
+#endif
     } else {
         if(*Q_R>Qmax_eff) *Q_R=Qmax_eff;
         if(*Q_R<Qmed_min) *Q_R=Qmed_min;
         if(*Q_L<Qmin_eff) *Q_L=Qmin_eff;
         if(*Q_L>Qmed_max) *Q_L=Qmed_max;
+#if defined(MAGNETIC) && !defined(CONSTRAINED_GRADIENT_MHD)
+        if(mode > 0) {if(*Q_R < *Q_L) {*Q_R = 0.5*(*Q_R + *Q_L); *Q_L=*Q_R;}} // causes strong diffusion in Gresho: limit conditions of use
+#endif
     }
     /* done! */
 }
@@ -1058,6 +1093,8 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
 #ifdef DIVBCLEANING_DEDNER
     /* use the solution for the modified Bx, given the action of the phi-field; 
         however this must be slope-limited to ensure the 'corrected' Bx remains stable */
+    /* add approach speed, since this is a signal velocity (and that's what we use for growing phi) */
+    c_eff += DMAX( 0. , Riemann_vec.L.v[0]-Riemann_vec.R.v[0] );
     double corr_norm = 1.0;
     double corr_p = 0.5*(Riemann_vec.L.phi-Riemann_vec.R.phi)/c_eff;
     double corr_p_abs = fabs(corr_p);

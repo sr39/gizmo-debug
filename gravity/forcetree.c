@@ -2241,6 +2241,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 dx = nop->u.d.s[0] - pos_x;
                 dy = nop->u.d.s[1] - pos_y;
                 dz = nop->u.d.s[2] - pos_z;
+#if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
+                dx = NEAREST_X(dx);
+                dy = NEAREST_Y(dy);
+                dz = NEAREST_Z(dz);
+#endif
+                r2 = dx * dx + dy * dy + dz * dz;
                 
                 
 #ifdef GALSF_FB_RT_PHOTONMOMENTUM
@@ -2250,6 +2256,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     dx_stellarlum = nop->stellar_lum_s[0] - pos_x;
                     dy_stellarlum = nop->stellar_lum_s[1] - pos_y;
                     dz_stellarlum = nop->stellar_lum_s[2] - pos_z;
+#if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
+                    dx_stellarlum = NEAREST_X(dx_stellarlum);
+                    dy_stellarlum = NEAREST_Y(dy_stellarlum);
+                    dz_stellarlum = NEAREST_Z(dz_stellarlum);
+#endif
 #else
                     dx_stellarlum = dx;
                     dy_stellarlum = dy;
@@ -2295,12 +2306,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 }
 #endif
                 
-#if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-                dx = NEAREST_X(dx);
-                dy = NEAREST_Y(dy);
-                dz = NEAREST_Z(dz);
-#endif
-                r2 = dx * dx + dy * dy + dz * dz;
 #ifdef PMGRID
 #ifdef DO_NOT_BRACH_IF
                 dxx = fabs(nop->center[0] - pos_x);
@@ -2607,11 +2612,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef GALSF_FB_RT_PHOTONMOMENTUM
             if((ptype==0)&&(soft>0)&&(pmass>0))	/* we have a (valid) gas particle as target */
             {
-#ifdef PERIODIC
-                dx_stellarlum = NEAREST_X(dx_stellarlum); /* could dx_stellarlum be undefined? */
-                dy_stellarlum = NEAREST_Y(dy_stellarlum);
-                dz_stellarlum = NEAREST_Z(dz_stellarlum);
-#endif
                 r2 = dx_stellarlum*dx_stellarlum + dy_stellarlum*dy_stellarlum + dz_stellarlum*dz_stellarlum;
                 r = sqrt(r2);
                 //h = soft;

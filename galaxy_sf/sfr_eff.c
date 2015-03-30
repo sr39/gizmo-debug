@@ -19,6 +19,7 @@
 
 #ifdef GALSF // master switch for compiling the routines below //
 
+#define WindInitialVelocityBoost 1.0 // (optional) boost velocity coupled (fixed momentum)
 
 #ifdef GALSF_SFR_IMF_VARIATION
 /* function to determine what the IMF of a new star particle will be, based 
@@ -144,13 +145,9 @@ int determine_sf_flag(int i)
      * f=0  star formation
      */
     int flag = 1; /* default is normal cooling */
-    if(SphP[i].Density * All.cf_a3inv >= All.PhysDensThresh)
-        flag = 0;
-    if(All.ComovingIntegrationOn)
-        if(SphP[i].Density < All.OverDensThresh)
-            flag = 1;
-    if(P[i].Mass <= 0)
-        flag = 1;
+    if(SphP[i].Density * All.cf_a3inv >= All.PhysDensThresh) {flag = 0;}
+    if(All.ComovingIntegrationOn) {if(SphP[i].Density < All.OverDensThresh) flag = 1;}
+    if(P[i].Mass <= 0) {flag = 1;}
     
 #ifdef GALSF_SUBGRID_WINDS
     if(SphP[i].DelayTime > 0)
@@ -255,7 +252,7 @@ double get_starformation_rate(int i)
             dv2abs += vt*vt;
         }
     //double alpha_vir = 0.2387 * dv2abs / (All.G * SphP[i].Density * All.cf_a3inv); // coefficient here was for old form, with only divv information
-    double alpha_vir = dv2abs / (4. * M_PI * All.G * SphP[i].Density * All.cf_a3inv); // 1/4 or 1/8 ? //
+    double alpha_vir = dv2abs / (8. * M_PI * All.G * SphP[i].Density * All.cf_a3inv); // 1/4 or 1/8 ? //
     if(All.ComovingIntegrationOn)
     {
         if((alpha_vir<1.0)||(SphP[i].Density*All.cf_a3inv>100.*All.PhysDensThresh)) {rateOfSF *= 1.0;} else {rateOfSF *= 0.0015;}
@@ -765,7 +762,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
         /* we only weakly revise the model here, to scale velocities with density estimate */
         m_gas_kernel=0; h=PPP[i].Hsml;
         rho_to_launch = SphP[i].Density*All.cf_a3inv;
-        v = All.WindInitialVelocityBoost * (45.0/unitvel_in_km_s) * pow(rho_to_launch*unitrho_in_e10solar_kpc3, 0.25);
+        v = WindInitialVelocityBoost * (45.0/unitvel_in_km_s) * pow(rho_to_launch*unitrho_in_e10solar_kpc3, 0.25);
         if(v<0.01/unitvel_in_km_s) v=0.01/unitvel_in_km_s;
         p = 116 * sm / (P[i].Mass*(v/unitvel_in_km_s));
 #endif
@@ -913,12 +910,12 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
 #endif // GALSF_FB_RPWIND_FROMCLUMPS
         
         /* alright, now do calculations on the results to determine speed & loading of kicks */
-        vq= All.WindInitialVelocityBoost*sqrt(All.G*(m_gas_kernel_i+m_st_kernel_i)/(h_kernel_i*All.cf_atime));
-        v = All.WindInitialVelocityBoost*sqrt(All.G*(m_gas_kernel+m_st_kernel)/(h*All.cf_atime));
+        vq= WindInitialVelocityBoost*sqrt(All.G*(m_gas_kernel_i+m_st_kernel_i)/(h_kernel_i*All.cf_atime));
+        v = WindInitialVelocityBoost*sqrt(All.G*(m_gas_kernel+m_st_kernel)/(h*All.cf_atime));
         if(vq>v) v=vq;
         /* compare the velocity from the central star cluster, using the observed cluster size-mass relation */
         if((m_st_kernel==0)&&(m_st_kernel_i>0)) m_st_kernel=m_st_kernel_i;
-        vq=All.WindInitialVelocityBoost*(65.748/unitvel_in_km_s)*pow(m_st_kernel*unitmass_in_e10solar/0.0001,0.25);
+        vq=WindInitialVelocityBoost*(65.748/unitvel_in_km_s)*pow(m_st_kernel*unitmass_in_e10solar/0.0001,0.25);
         vq=vq*1.82;
         /* this corresponds to =G M_star/R_e for a 10^6 Msun cluster, scaling upwards from there;
          note that All.WindEnergyFraction will boost appropriately; should be at least sqrt(2), if want

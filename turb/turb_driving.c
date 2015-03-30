@@ -52,17 +52,13 @@ void init_turb(void)
     double ampl;
     
     int ikxmax = All.BoxSize*All.StKmax/2./M_PI;
-#ifndef ONEDIM
-    int ikymax = All.BoxSize*All.StKmax/2./M_PI;
-#ifndef TWODIMS
-    int ikzmax = All.BoxSize*All.StKmax/2./M_PI;
-#else
-    int ikzmax = 0;
-#endif
-    
-#else
     int ikymax = 0;
     int ikzmax = 0;
+#if (NUMDIMS > 1)
+    ikymax = All.BoxSize*All.StKmax/2./M_PI;
+#endif
+#if (NUMDIMS > 2)
+    ikzmax = All.BoxSize*All.StKmax/2./M_PI;
 #endif
     
     StNModes = 0;
@@ -361,12 +357,10 @@ void add_turb_accel()
             {
                 acc[0] = fx;
                 acc[1] = fy;
-#ifndef TWODIMS
-                acc[2] = fz;
-#else
                 acc[2] = 0;
+#if (NUMDIMS > 2)
+                acc[2] = fz;
 #endif
-                
                 for(j = 0; j < 3; j++)
                 {
                     SphP[i].TurbAccel[j] = acc[j];

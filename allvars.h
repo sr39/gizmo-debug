@@ -94,6 +94,34 @@
 #endif
 
 
+#ifdef CONSTRAINED_GRADIENT_MHD
+/* make sure mid-point gradient calculation for cleaning terms is enabled */
+#ifndef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#define CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#endif
+#endif
+/* these are tolerances for the slope-limiters. we define them here, because the gradient constraint routine needs to
+    be sure to use the -same- values in both the gradients and reimann solver routines */
+#if CONSTRAINED_GRADIENT_MHD
+#if (CONSTRAINED_GRADIENT_MHD > 1)
+#define CONSTRAINED_GRADIENT_MHD_FAC_MINMAX 7.5
+#define CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV 5.0
+#define CONSTRAINED_GRADIENT_MHD_FAC_MED_PM 0.25
+#define CONSTRAINED_GRADIENT_MHD_FAC_MAX_PM 0.25
+#else
+#define CONSTRAINED_GRADIENT_MHD_FAC_MINMAX 7.5
+#define CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV 1.5
+#define CONSTRAINED_GRADIENT_MHD_FAC_MED_PM 0.2
+#define CONSTRAINED_GRADIENT_MHD_FAC_MAX_PM 0.2
+#endif
+#else
+#define CONSTRAINED_GRADIENT_MHD_FAC_MINMAX 2.0
+#define CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV 1.0
+#define CONSTRAINED_GRADIENT_MHD_FAC_MED_PM 0.20
+#define CONSTRAINED_GRADIENT_MHD_FAC_MAX_PM 0.125
+#endif
+
+
 #if defined(CONDUCTION) || defined(TURB_DIFF_ENERGY) || defined(NON_IDEAL_EOS)
 #define DOGRAD_INTERNAL_ENERGY 1
 #endif
@@ -106,6 +134,11 @@
 #define DO_DENSITY_AROUND_STAR_PARTICLES
 #endif
 
+#if !defined(HYDRO_SPH) && !defined(MAGNETIC) && !defined(COSMIC_RAYS)
+//#define ENERGY_ENTROPY_SWITCH_IS_ACTIVE
+/* this is a ryu+jones type energy/entropy switch. it can help with some problems, but can also generate significant 
+ errors in other types of problems. in general, even for pure hydro, this isn't recommended; use it for special problems if you know what you are doing. */
+#endif
 
 
 #ifdef MAGNETIC
@@ -368,6 +401,10 @@ typedef unsigned long long peanokey;
 #define KAPPA_OP 180.0
 #define KAPPA_UV 1800.0
 
+#ifdef GALSF_FB_HII_HEATING
+#define HIIRegion_Temp 1.0e4 /* temperature (in K) of heated gas */
+#endif
+
 
 #ifdef METALS
 
@@ -479,6 +516,18 @@ typedef double MyInputFloat;
 typedef float MyInputFloat;
 #endif
 
+#ifdef OUTPUT_POSITIONS_IN_DOUBLE
+typedef double MyOutputPosFloat;
+#else
+typedef MyOutputFloat MyOutputPosFloat;
+#endif
+#ifdef INPUT_POSITIONS_IN_DOUBLE
+typedef double MyInputPosFloat;
+#else
+typedef MyInputFloat MyInputPosFloat;
+#endif
+
+
 struct unbind_data
 {
   int index;
@@ -546,28 +595,17 @@ typedef MyDouble MyBigFloat;
 
 #define CPU_STRING_LEN 120
 
-#ifdef ONEDIM
-#define NUMDIMS 1
+#if defined(ONEDIM)
+#define NUMDIMS 1           /* define number of dimensions and volume normalization */
 #define NORM_COEFF 2.0
-#endif
-#ifdef TWODIMS
+#elif defined(TWODIMS)
 #define NUMDIMS 2
 #define NORM_COEFF M_PI
-#endif
-#if !defined(TWODIMS) && !defined(ONEDIM)
-#define NORM_COEFF 4.188790204786  /*!< Coefficient for kernel normalization. Note:  4.0/3 * PI = 4.188790204786 */
+#else
+#define NORM_COEFF 4.188790204786  /* 4pi/3 */
 #define NUMDIMS 3
 #endif
 
-#ifdef KERNEL_QUINTIC
-#define KERNEL_CORE_SIZE (1.0/3.0)
-#else
-#ifdef KERNEL_QUARTIC
-#define KERNEL_CORE_SIZE (2.0/5.0)
-#else
-#define KERNEL_CORE_SIZE (1.0/2.0)
-#endif
-#endif
 
 #define PPP P
 #if defined(ADAPTIVE_GRAVSOFT_FORALL)
@@ -1000,13 +1038,9 @@ extern struct global_data_all_processes
   /* Code options */
 
   int ComovingIntegrationOn;	/*!< flags that comoving integration is enabled */
-  int PeriodicBoundariesOn;	/*!< flags that periodic boundaries are enabled */
   int ResubmitOn;		/*!< flags that automatic resubmission of job to queue system is enabled */
   int TypeOfOpeningCriterion;	/*!< determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion */
-  int TypeOfTimestepCriterion;	/*!< gives type of timestep criterion (only 0 supported right now - unlike gadget-1.1) */
   int OutputListOn;		/*!< flags that output times are listed in a specified file */
-  int CoolingOn;		/*!< flags that cooling is enabled */
-  int StarformationOn;		/*!< flags that star formation is enabled */
 
   int HighestActiveTimeBin;
   int HighestOccupiedTimeBin;
@@ -1222,7 +1256,6 @@ extern struct global_data_all_processes
     
 #ifdef GALSF_FB_RPWIND_LOCAL
   double WindMomentumLoading;
-  double WindInitialVelocityBoost;
 #endif
     
 #ifdef GALSF_SUBGRID_WINDS
@@ -1238,12 +1271,10 @@ extern struct global_data_all_processes
 
 #ifdef GALSF_FB_SNE_HEATING
   double SNeIIEnergyFrac;
-  double SNeIIBW_Radius_Factor;
 #endif
 
 #ifdef GALSF_FB_HII_HEATING
   double HIIRegion_fLum_Coupled;
-  double HIIRegion_Temp;
 #endif
 
 #endif // GALSF
@@ -1698,7 +1729,7 @@ extern ALIGN(32) struct particle_data
 
 extern struct bh_particle_data
 {
-  unsigned int PID;
+  MyIDType PID;
 #ifdef BH_COUNTPROGS
   int BH_CountProgs;
 #endif
@@ -1780,6 +1811,9 @@ extern struct sph_particle_data
     MyDouble Phi;                   /*!< scalar field for Dedner divergence cleaning */
     MyDouble DtPhi;                 /*!< time derivative of Phi-field */
 #endif
+#ifdef CONSTRAINED_GRADIENT_MHD
+    int FlagForConstrainedGradients;/*!< flag indicating whether the B-field gradient is a 'standard' one or the constrained-divB version */
+#endif
 #if defined(TRICCO_RESISTIVITY_SWITCH)
     MyFloat Balpha;                 /*!< effective resistivity coefficient */
 #endif
@@ -1824,8 +1858,11 @@ extern struct sph_particle_data
     } Gradients;
     MyFloat NV_T[3][3];             /*!< holds the tensor used for gradient estimation */
     MyDouble ConditionNumber;       /*!< condition number of the gradient matrix: needed to ensure stability */
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
     MyDouble MaxKineticEnergyNgb;   /*!< maximum kinetic energy (with respect to neighbors): use for entropy 'switch' */
+#endif
 
+    
 #ifdef HYDRO_SPH
     MyDouble DhsmlHydroSumFactor;   /* for 'traditional' SPH, we need the SPH hydro-element volume estimator */
 #endif
@@ -2164,9 +2201,8 @@ extern struct io_header
   double OmegaLambda;		/*!< cosmological constant parameter */
   double HubbleParam;		/*!< Hubble parameter in units of 100 km/sec/Mpc */
   int flag_stellarage;		/*!< flags whether the file contains formation times of star particles */
-  int flag_metals;		/*!< flags whether the file contains metallicity values for gas and star
-				   particles */
-  unsigned int npartTotalHighWord[6];	/*!< High word of the total number of particles of each type */
+  int flag_metals;		/*!< flags whether the file contains metallicity values for gas and star particles */
+  unsigned int npartTotalHighWord[6];	/*!< High word of the total number of particles of each type (needed to combine with npartTotal to allow >2^31 particles of a given type) */
   int flag_doubleprecision;	/*!< flags that snapshot contains double-precision instead of single precision */
 
   int flag_ic_info;             /*!< flag to inform whether IC files are generated with ordinary Zeldovich approximation,
@@ -2186,6 +2222,11 @@ extern struct io_header
   char names[15][2];
 }
 header;				/*!< holds header for snapshot files */
+
+
+
+
+
 
 
 enum iofields
@@ -2272,22 +2313,17 @@ enum iofields
   IO_VDIV,
   IO_VROT,
   IO_VORT,
-
   IO_CHEM,
   IO_DELAYTIME,
-  
   IO_AGS_SOFT,
   IO_AGS_ZETA,
   IO_AGS_OMEGA,
   IO_AGS_CORR,
   IO_AGS_NGBS,
-
   IO_VSTURB_DISS,
   IO_VSTURB_DRIVE,
-  
   IO_MG_PHI,
   IO_MG_ACCEL,
-  
   IO_grHI,
   IO_grHII,
   IO_grHM,

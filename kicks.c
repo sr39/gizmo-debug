@@ -234,7 +234,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #endif
             double dEnt = SphP[i].InternalEnergy + SphP[i].DtInternalEnergy * dt_hydrokick + dEnt_Gravity;
             
-#if !defined(HYDRO_SPH) && !defined(MAGNETIC) && !defined(COSMIC_RAYS)
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
             /* if we're using a Riemann solver, we include an energy/entropy-type switch to ensure
                 that we don't corrupt the temperature evolution of extremely cold, adiabatic flows */
             /* MHD tests suggest that this switch often does more harm than good: we will
@@ -283,7 +283,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                 SphP[i].dMass = SphP[i].DtMass = 0;
 #endif
             }
-#endif // closes do_entropy check
+#endif // closes ENERGY_ENTROPY_SWITCH_IS_ACTIVE
             
             if(dEnt < 0.5*SphP[i].InternalEnergy) {SphP[i].InternalEnergy *= 0.5;} else {SphP[i].InternalEnergy = dEnt;}
             check_particle_for_temperature_minimum(i); /* if we've fallen below the minimum temperature, force the 'floor' */
@@ -410,7 +410,7 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
             if(phi_phys_abs > 1000. * phi_max_tolerance * vb_phy_abs)
             {
                 /* this indicates a serious problem! issue a warning and zero phi */
-                printf("MAJOR GROWTH ERROR IN PHI-FIELD: phi_phys_abs=%g vb_phy_abs=%g vsig_max=%g b_phys=%g particle_id_i=%d dtphi_code=%g Pressure=%g rho=%g x/y/z=%g/%g/%g vx/vy/vz=%g/%g/%g Bx/By/Bz=%g/%g/%g h=%g u=%g m=%g phi=%g bin=%d SigVel=%g a=%g \n",
+                printf("WARNING: MAJOR GROWTH IN PHI-FIELD: phi_phys_abs=%g vb_phy_abs=%g vsig_max=%g b_phys=%g particle_id_i=%d dtphi_code=%g Pressure=%g rho=%g x/y/z=%g/%g/%g vx/vy/vz=%g/%g/%g Bx/By/Bz=%g/%g/%g h=%g u=%g m=%g phi=%g bin=%d SigVel=%g a=%g \n",
                        phi_phys_abs,vb_phy_abs,vsig_max,b_phys,i,SphP[i].DtPhi,
                        SphP[i].Pressure,SphP[i].Density,P[i].Pos[0],P[i].Pos[1],P[i].Pos[2],
                        P[i].Vel[0],P[i].Vel[1],P[i].Vel[2],SphP[i].B[0],SphP[i].B[1],SphP[i].B[2],

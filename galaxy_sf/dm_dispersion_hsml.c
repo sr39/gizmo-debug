@@ -104,10 +104,8 @@ void disp_density(void)
     
     CPU_Step[CPU_AGSDENSMISC] += measure_time();
     
-    int NTaskTimesNumPart;
-    
+    long long NTaskTimesNumPart;
     NTaskTimesNumPart = maxThreads * NumPart;
-    
     Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
     
     Left = (MyFloat *) mymalloc("Left", NumPart * sizeof(MyFloat));

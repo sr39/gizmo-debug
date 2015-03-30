@@ -181,8 +181,8 @@ struct hydrodata_in
     MyFloat ConditionNumber;
     MyFloat InternalEnergyPred;
     MyFloat SoundSpeed;
-    MyIDType ID;
     int Timestep;
+    MyFloat DhsmlNgbFactor;
 #ifdef HYDRO_SPH
     MyFloat DhsmlHydroSumFactor;
     MyFloat alpha;
@@ -270,7 +270,9 @@ struct hydrodata_out
     MyLongDouble DtInternalEnergy;
     //MyLongDouble dInternalEnergy; //manifest-indiv-timestep-debug//
     MyFloat MaxSignalVel;
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
     MyFloat MaxKineticEnergyNgb;
+#endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     MyLongDouble DtMass;
     MyLongDouble dMass;
@@ -320,9 +322,14 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     in->Pressure = SphP[i].Pressure;
     in->InternalEnergyPred = SphP[i].InternalEnergyPred;
     in->SoundSpeed = Particle_effective_soundspeed_i(i);
-    in->ID = P[i].ID;
     in->Timestep = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0);
     in->ConditionNumber = SphP[i].ConditionNumber;
+#ifdef CONSTRAINED_GRADIENT_MHD
+    /* since it is not used elsewhere, we can use the sign of the condition number as a bit 
+        to conveniently indicate the status of the parent particle flag, for the constrained gradients */
+    if(SphP[i].FlagForConstrainedGradients == 0) {in->ConditionNumber *= -1;}
+#endif
+    in->DhsmlNgbFactor = PPP[i].DhsmlNgbFactor;
 #ifdef HYDRO_SPH
     in->DhsmlHydroSumFactor = SphP[i].DhsmlHydroSumFactor;
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
@@ -424,10 +431,10 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
 #endif
     if(SphP[i].MaxSignalVel < out->MaxSignalVel)
         SphP[i].MaxSignalVel = out->MaxSignalVel;
-
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
     if(SphP[i].MaxKineticEnergyNgb < out->MaxKineticEnergyNgb)
         SphP[i].MaxKineticEnergyNgb = out->MaxKineticEnergyNgb;
-    
+#endif
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
     for(k=0;k<NUM_METAL_SPECIES;k++)
         P[i].Metallicity[k] += out->Dyield[k] / P[i].Mass;
@@ -703,7 +710,9 @@ void hydro_force(void)
         if(P[i].Type==0)
         {
             SphP[i].MaxSignalVel = -1.e10;
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
             SphP[i].MaxKineticEnergyNgb = -1.e10;
+#endif
             SphP[i].DtInternalEnergy = 0;//SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
             for(k=0;k<3;k++)
             {
@@ -751,7 +760,7 @@ void hydro_force(void)
     
     /* --------------------------------------------------------------------------------- */
     /* allocate buffers to arrange communication */
-    int NTaskTimesNumPart;
+    long long NTaskTimesNumPart;
     NTaskTimesNumPart = maxThreads * NumPart;
     Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
     All.BunchSize = (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +

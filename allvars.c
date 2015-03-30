@@ -347,7 +347,6 @@ struct info_block *InfoBlock;
  */
 struct io_header header;	/*!< holds header for snapshot files */
 
-
 #ifdef BLACK_HOLES
 int N_active_loc_BHs=0;       /*!< number of active black holes on the LOCAL processor */
 struct blackhole_temp_particle_data *BlackholeTempInfo, *BlackholeDataPasserOut, *BlackholeDataPasserResult;

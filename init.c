@@ -202,10 +202,9 @@ void init(void)
     
     
     
-    
-    if(All.ComovingIntegrationOn)
-        if(All.PeriodicBoundariesOn == 1)
-            check_omega();
+#ifdef PERIODIC
+    if(All.ComovingIntegrationOn) check_omega();
+#endif
     
     All.TimeLastStatistics = All.TimeBegin - All.TimeBetStatistics;
 #if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_VARIABLEVELOCITY)
@@ -542,7 +541,9 @@ void init(void)
         P[i].Particle_DivVel = 0;
         SphP[i].ConditionNumber = 1;
         SphP[i].DtInternalEnergy = 0;
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
         SphP[i].MaxKineticEnergyNgb = 0;
+#endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
         SphP[i].dMass = 0;
         SphP[i].DtMass = 0;
@@ -638,7 +639,7 @@ void init(void)
     }
     
 #ifndef SHEARING_BOX
-#ifdef TWODIMS
+#if (NUMDIMS==2)
     for(i = 0; i < NumPart; i++)
     {
         P[i].Pos[2] = 0;
@@ -655,7 +656,7 @@ void init(void)
 #endif
 #endif
     
-#ifdef ONEDIM
+#if (NUMDIMS==1)
     for(i = 0; i < NumPart; i++)
     {
         P[i].Pos[1] = P[i].Pos[2] = 0;
@@ -827,8 +828,12 @@ void init(void)
         double mpi_mass_min,mpi_mass_max;
         MPI_Allreduce(&mass_min, &mpi_mass_min, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
         MPI_Allreduce(&mass_max, &mpi_mass_max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-        All.MinMassForParticleMerger = 0.50 * mpi_mass_min;
-        All.MaxMassForParticleSplit  = 5.00 * mpi_mass_max;
+        All.MinMassForParticleMerger = 0.49 * mpi_mass_min;
+#ifdef GALSF_GENERATIONS
+        All.MinMassForParticleMerger /= (float)GALSF_GENERATIONS;
+#endif
+        /* All.MaxMassForParticleSplit  = 5.01 * mpi_mass_max; */
+        All.MaxMassForParticleSplit  = 3.01 * mpi_mass_max;
     }
     
     

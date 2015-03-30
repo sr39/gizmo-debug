@@ -10,7 +10,7 @@
     
     double s_star_ij,s_i,s_j,v_frame[3],n_unit[3];
     double distance_from_i[3],distance_from_j[3];
-    face_vel_i=face_vel_j=Face_Area_Norm=0;
+    face_area_dot_vel=face_vel_i=face_vel_j=Face_Area_Norm=0;
 #ifdef COSMIC_RAYS
     Fluxes.CosmicRayPressure = 0;
 #endif
@@ -19,7 +19,7 @@
     /* define volume elements and interface position */
     /* --------------------------------------------------------------------------------- */
     V_j = P[j].Mass / SphP[j].Density;
-#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) || defined(CONSTRAINED_GRADIENT_MHD)
     s_star_ij = 0;
 #else
     s_star_ij = 0.5 * kernel.r * (PPP[j].Hsml - local.Hsml) / (local.Hsml + PPP[j].Hsml);
@@ -30,17 +30,6 @@
     if(SphP[j].ConditionNumber*SphP[j].ConditionNumber > cnumcrit2)
     {
         /* the effective gradient matrix is ill-conditioned: for stability, we revert to the "RSPH" EOM */
-        /* we need to evaluate dwk, since it is not done by default */
-        if(kernel.r < kernel.h_i)
-        {
-            u = kernel.r * hinv_i;
-            kernel_main(u, hinv3_i, hinv4_i, &kernel.wk_i, &kernel.dwk_i, 1);
-        }
-        if(kernel.r < kernel.h_j)
-        {
-            u = kernel.r * hinv_j;
-            kernel_main(u, hinv3_j, hinv4_j, &kernel.wk_j, &kernel.dwk_j, 1);
-        }
         Face_Area_Norm = -(V_i*V_i*kernel.dwk_i + V_j*V_j*kernel.dwk_j) / kernel.r;
         Face_Area_Norm *= All.cf_atime*All.cf_atime; /* Face_Area_Norm has units of area, need to convert to physical */
         Face_Area_Vec[0] = Face_Area_Norm * kernel.dp[0];
@@ -118,14 +107,18 @@
                                     distance_from_i, distance_from_j, &Riemann_vec.L.v[k], &Riemann_vec.R.v[k], 1);
         }
 #ifdef MAGNETIC
+        int slim_mode = 1;
+#ifdef CONSTRAINED_GRADIENT_MHD
+        if((local.ConditionNumber < 0) || (SphP[j].FlagForConstrainedGradients == 0)) {slim_mode = 1;} else {slim_mode = -1;}
+#endif
         for(k=0;k<3;k++)
         {
             reconstruct_face_states(local.BPred[k], local.Gradients.B[k], BPred_j[k], SphP[j].Gradients.B[k],
-                                    distance_from_i, distance_from_j, &Riemann_vec.L.B[k], &Riemann_vec.R.B[k], 1);
+                                    distance_from_i, distance_from_j, &Riemann_vec.L.B[k], &Riemann_vec.R.B[k], slim_mode);
         }
 #ifdef DIVBCLEANING_DEDNER
         reconstruct_face_states(local.PhiPred, local.Gradients.Phi, PhiPred_j, SphP[j].Gradients.Phi,
-                                distance_from_i, distance_from_j, &Riemann_vec.L.phi, &Riemann_vec.R.phi, 1);
+                                distance_from_i, distance_from_j, &Riemann_vec.L.phi, &Riemann_vec.R.phi, 2);
 #endif
 #endif
 
@@ -227,40 +220,80 @@
         if((Riemann_out.P_M>0)&&(!isnan(Riemann_out.P_M)))
         {
             if(All.ComovingIntegrationOn) {for(k=0;k<3;k++) v_frame[k] /= All.cf_atime;}
+#if defined(HYDRO_MESHLESS_FINITE_MASS) || defined(MAGNETIC)
+            /* we need the face velocities, dotted into the face vector, for correction back to the lab frame */
+            for(k=0;k<3;k++) {face_vel_i+=local.Vel[k]*n_unit[k]; face_vel_j+=VelPred_j[k]*n_unit[k];}
+            face_vel_i /= All.cf_atime; face_vel_j /= All.cf_atime;
+            face_area_dot_vel = rinv*(-s_i*face_vel_j + s_j*face_vel_i);
+#endif
+            
+            
 #if !defined(HYDRO_MESHLESS_FINITE_VOLUME) && !defined(MAGNETIC)
             double facenorm_pm = Face_Area_Norm * Riemann_out.P_M;
             Fluxes.p = 0;
-            for(k=0;k<3;k++)
+            for(k=0;k<3;k++) {Fluxes.v[k] = facenorm_pm * n_unit[k];} /* total momentum flux */
+            
+            /* for MFM, do the face correction for adiabatic flows here */
+            int use_entropic_energy_equation = 0;
+            double du_new = 0;
+            double SM_over_ceff = fabs(Riemann_out.S_M) / DMIN(kernel.sound_i,kernel.sound_j);
+            if(SM_over_ceff < epsilon_entropic_eos_big)
             {
-                Fluxes.v[k] = facenorm_pm * n_unit[k]; /* total momentum flux */
-                Fluxes.p += facenorm_pm * (Riemann_out.S_M*n_unit[k] + v_frame[k]) * n_unit[k]; /* total energy flux = v_frame.dot.mom_flux */
+                use_entropic_energy_equation = 1;
+                double vdotr2_phys = kernel.vdotr2;
+                if(All.ComovingIntegrationOn) {vdotr2_phys -= All.cf_hubble_a2 * r2;}
+                double PdV_fac = Riemann_out.P_M * vdotr2_phys / kernel.r * All.cf_atime;
+                double PdV_i = kernel.dwk_i * V_i*V_i * local.DhsmlNgbFactor * PdV_fac;
+                double PdV_j = kernel.dwk_j * V_j*V_j * PPP[j].DhsmlNgbFactor * PdV_fac;
+                du_new = 0.5 * (PdV_i - PdV_j + facenorm_pm * (face_vel_i+face_vel_j));
+                // check if, for the (weakly) diffusive case, heat is (correctly) flowing from hot to cold after particle averaging (flux-limit) //
+                if(SM_over_ceff > epsilon_entropic_eos_small)
+                {
+                    double du_old = facenorm_pm * (Riemann_out.S_M + face_area_dot_vel);
+                    if(local.Pressure/local.Density > SphP[j].Pressure/SphP[j].Density)
+                    {
+                        double dtoj = -du_old + facenorm_pm * face_vel_j;
+                        if(dtoj > 0) {use_entropic_energy_equation=0;} else {
+                            if(dtoj > -du_new+facenorm_pm*face_vel_j) {use_entropic_energy_equation=0;}}
+                    } else {
+                        double dtoi = du_old - facenorm_pm * face_vel_i;
+                        if(dtoi > 0) {use_entropic_energy_equation=0;} else {
+                            if(dtoi > du_new-facenorm_pm*face_vel_i) {use_entropic_energy_equation=0;}}
+                    }
+                }
+                // alright, if we've come this far, we need to subtract -off- the thermal energy part of the flux, and replace it //
             }
+            if(use_entropic_energy_equation)
+            {
+                Fluxes.p = du_new;
+            } else {
+                // default:  total energy flux = v_frame.dot.mom_flux //
+                Fluxes.p = facenorm_pm * (Riemann_out.S_M + face_area_dot_vel);
+            }
+            
 #else
+            
             /* the fluxes have been calculated in the rest frame of the interface: we need to de-boost to the 'simulation frame'
              which we do following Pakmor et al. 2011 */
             for(k=0;k<3;k++)
             {
+                Riemann_out.Fluxes.p += v_frame[k] * Riemann_out.Fluxes.v[k];
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME)
                 /* Riemann_out->Fluxes.rho is un-modified */
-                Riemann_out.Fluxes.p += (0.5*v_frame[k]*v_frame[k])*Riemann_out.Fluxes.rho + v_frame[k]*Riemann_out.Fluxes.v[k];
+                Riemann_out.Fluxes.p += (0.5*v_frame[k]*v_frame[k])*Riemann_out.Fluxes.rho;
                 Riemann_out.Fluxes.v[k] += v_frame[k] * Riemann_out.Fluxes.rho; /* just boost by frame vel (as we would in non-moving frame) */
+#endif
             }
 #ifdef MAGNETIC
-            for(k=0;k<3;k++)
-            {
-                Riemann_out.Fluxes.B[k] += -v_frame[k] * Riemann_out.B_normal_corrected; /* v dotted into B along the normal to the face (careful of sign here) */
-                face_vel_i += local.Vel[k] * n_unit[k] / All.cf_atime;
-                face_vel_j += VelPred_j[k] * n_unit[k] / All.cf_atime;
-            }
-            face_area_dot_vel = -(-s_i*face_vel_j + s_j*face_vel_i) * rinv;
+            for(k=0;k<3;k++) {Riemann_out.Fluxes.B[k] += -v_frame[k] * Riemann_out.B_normal_corrected;} /* v dotted into B along the normal to the face (careful of sign here) */
 #endif
             
             /* ok now we can actually apply this to the EOM */
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME)
             Fluxes.rho = Face_Area_Norm * Riemann_out.Fluxes.rho;
+#endif
             Fluxes.p = Face_Area_Norm * Riemann_out.Fluxes.p; // this is really Dt of --total-- energy, need to subtract KE component for e */
-            for(k=0;k<3;k++)
-            {
-                Fluxes.v[k] = Face_Area_Norm * Riemann_out.Fluxes.v[k]; // momentum flux (need to divide by mass) //
-            }
+            for(k=0;k<3;k++) {Fluxes.v[k] = Face_Area_Norm * Riemann_out.Fluxes.v[k];} // momentum flux (need to divide by mass) //
 #if defined(COSMIC_RAYS) && defined(HYDRO_MESHLESS_FINITE_VOLUME)
             /* here we simply assume that if there is mass flux, the cosmic ray fluid is advected -with the mass flux-, taking an
              implicit constant (zeroth-order) reconstruction of the CR energy density at the face (we could reconstruct the CR
@@ -273,18 +306,54 @@
                 Fluxes.CosmicRayPressure = Fluxes.rho * (CosmicRayPressure_j*V_j/(GAMMA_COSMICRAY_MINUS1*P[j].Mass));
             }
 #endif // cosmic_rays
-            
 #ifdef MAGNETIC
-            for(k=0;k<3;k++)
-            {
-                Fluxes.B[k] = Face_Area_Norm * Riemann_out.Fluxes.B[k]; // flux of magnetic flux (B*V) //
-            }
+            for(k=0;k<3;k++) {Fluxes.B[k] = Face_Area_Norm * Riemann_out.Fluxes.B[k];} // magnetic flux (B*V) //
             Fluxes.B_normal_corrected = -Riemann_out.B_normal_corrected * Face_Area_Norm;
 #ifdef DIVBCLEANING_DEDNER
             Fluxes.phi = Riemann_out.Fluxes.phi * Face_Area_Norm; // much more accurate than mass-based flux //
 #endif // DIVBCLEANING_DEDNER
 #endif // MAGNETIC
+
+#ifdef HYDRO_MESHLESS_FINITE_MASS
+            /* for MFM, do the face correction for adiabatic flows here */
+            double SM_over_ceff = fabs(Riemann_out.S_M) / DMIN(kernel.sound_i,kernel.sound_j); // do we want sound speed here, or magnetosonic speed??? //
+            /* if SM is sufficiently large, we do nothing to the equations */
+            if(SM_over_ceff < epsilon_entropic_eos_big)
+            {
+                /* ok SM is small, we should use adiabatic equations instead */
+#ifdef MAGNETIC
+                // convert the face pressure P_M to a gas pressure alone (subtract the magnetic term) //
+                for(k=0;k<3;k++) {Riemann_out.P_M -= 0.5*Riemann_out.Face_B[k]*Riemann_out.Face_B[k];}
 #endif
+                int use_entropic_energy_equation = 1;
+                double facenorm_pm = Riemann_out.P_M * Face_Area_Norm;
+                double vdotr2_phys = kernel.vdotr2;
+                if(All.ComovingIntegrationOn) {vdotr2_phys -= All.cf_hubble_a2 * r2;}
+                double PdV_fac = Riemann_out.P_M * vdotr2_phys / kernel.r * All.cf_atime;
+                double PdV_i = kernel.dwk_i * V_i*V_i * local.DhsmlNgbFactor * PdV_fac;
+                double PdV_j = kernel.dwk_j * V_j*V_j * PPP[j].DhsmlNgbFactor * PdV_fac;
+                double du_old = facenorm_pm * (Riemann_out.S_M + face_area_dot_vel);
+                double du_new = 0.5 * (PdV_i - PdV_j + facenorm_pm * (face_vel_i+face_vel_j));
+                // more detailed check for intermediate cases //
+                if(SM_over_ceff > epsilon_entropic_eos_small)
+                {
+                    if(local.Pressure/local.Density > SphP[j].Pressure/SphP[j].Density)
+                    {
+                        double dtoj = -du_old + facenorm_pm * face_vel_j;
+                        if(dtoj > 0) {use_entropic_energy_equation=0;} else {
+                            if(dtoj > -du_new+facenorm_pm*face_vel_j) {use_entropic_energy_equation=0;}}
+                    } else {
+                        double dtoi = du_old - facenorm_pm * face_vel_i;
+                        if(dtoi > 0) {use_entropic_energy_equation=0;} else {
+                            if(dtoi > du_new-facenorm_pm*face_vel_i) {use_entropic_energy_equation=0;}}
+                    }
+                }
+                // alright, if we've come this far, we need to subtract -off- the thermal energy part of the flux, and replace it //
+                if(use_entropic_energy_equation) {Fluxes.p += du_new - du_old;}
+            }
+#endif // closes MFM check // 
+
+#endif // endif for clause opening full fluxes (mfv or magnetic)
         } else {
             /* nothing but bad riemann solutions found! */
             memset(&Fluxes, 0, sizeof(struct Conserved_var_Riemann));
