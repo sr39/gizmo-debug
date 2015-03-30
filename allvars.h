@@ -135,7 +135,9 @@
 #endif
 
 #if !defined(HYDRO_SPH) && !defined(MAGNETIC) && !defined(COSMIC_RAYS)
-#define ENERGY_ENTROPY_SWITCH_IS_ACTIVE
+//#define ENERGY_ENTROPY_SWITCH_IS_ACTIVE
+/* this is a ryu+jones type energy/entropy switch. it can help with some problems, but can also generate significant 
+ errors in other types of problems. in general, even for pure hydro, this isn't recommended; use it for special problems if you know what you are doing. */
 #endif
 
 
@@ -399,6 +401,10 @@ typedef unsigned long long peanokey;
 #define KAPPA_OP 180.0
 #define KAPPA_UV 1800.0
 
+#ifdef GALSF_FB_HII_HEATING
+#define HIIRegion_Temp 1.0e4 /* temperature (in K) of heated gas */
+#endif
+
 
 #ifdef METALS
 
@@ -510,12 +516,15 @@ typedef double MyInputFloat;
 typedef float MyInputFloat;
 #endif
 
-#ifdef IO_POSITIONS_IN_DOUBLE
+#ifdef OUTPUT_POSITIONS_IN_DOUBLE
 typedef double MyOutputPosFloat;
+#else
+typedef MyOutputFloat MyOutputPosFloat;
+#endif
+#ifdef INPUT_POSITIONS_IN_DOUBLE
 typedef double MyInputPosFloat;
 #else
-typedef float MyOutputPosFloat;
-typedef float MyInputPosFloat;
+typedef MyInputFloat MyInputPosFloat;
 #endif
 
 
@@ -586,28 +595,17 @@ typedef MyDouble MyBigFloat;
 
 #define CPU_STRING_LEN 120
 
-#ifdef ONEDIM
-#define NUMDIMS 1
+#if defined(ONEDIM)
+#define NUMDIMS 1           /* define number of dimensions and volume normalization */
 #define NORM_COEFF 2.0
-#endif
-#ifdef TWODIMS
+#elif defined(TWODIMS)
 #define NUMDIMS 2
 #define NORM_COEFF M_PI
-#endif
-#if !defined(TWODIMS) && !defined(ONEDIM)
-#define NORM_COEFF 4.188790204786  /*!< Coefficient for kernel normalization. Note:  4.0/3 * PI = 4.188790204786 */
+#else
+#define NORM_COEFF 4.188790204786  /* 4pi/3 */
 #define NUMDIMS 3
 #endif
 
-#ifdef KERNEL_QUINTIC
-#define KERNEL_CORE_SIZE (1.0/3.0)
-#else
-#ifdef KERNEL_QUARTIC
-#define KERNEL_CORE_SIZE (2.0/5.0)
-#else
-#define KERNEL_CORE_SIZE (1.0/2.0)
-#endif
-#endif
 
 #define PPP P
 #if defined(ADAPTIVE_GRAVSOFT_FORALL)
@@ -1252,7 +1250,6 @@ extern struct global_data_all_processes
     
 #ifdef GALSF_FB_RPWIND_LOCAL
   double WindMomentumLoading;
-  double WindInitialVelocityBoost;
 #endif
     
 #ifdef GALSF_SUBGRID_WINDS
@@ -1268,12 +1265,10 @@ extern struct global_data_all_processes
 
 #ifdef GALSF_FB_SNE_HEATING
   double SNeIIEnergyFrac;
-  double SNeIIBW_Radius_Factor;
 #endif
 
 #ifdef GALSF_FB_HII_HEATING
   double HIIRegion_fLum_Coupled;
-  double HIIRegion_Temp;
 #endif
 
 #endif // GALSF

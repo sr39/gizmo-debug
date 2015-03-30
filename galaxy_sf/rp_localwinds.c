@@ -19,6 +19,7 @@
 
 #if defined(GALSF_FB_RPWIND_FROMSTARS) && !defined(GALSF_FB_RPWIND_DO_IN_SFCALC) 
 
+#define WindInitialVelocityBoost 1.0 // (optional) boost velocity coupled (fixed momentum)
 
 void radiation_pressure_winds_consolidated(void)
 {
@@ -86,7 +87,7 @@ void radiation_pressure_winds_consolidated(void)
          full velocities; in fact for Hernquist profile, the mass-weighted V_esc=1.82 times this */
         if(vq<v) v=vq;
         //if(vq>v) v=vq;
-        v *= All.WindInitialVelocityBoost;
+        v *= WindInitialVelocityBoost;
         if(v<=15.e5/All.UnitVelocity_in_cm_per_s) v=15.e5/All.UnitVelocity_in_cm_per_s;
         lm_ssp = evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(i);
         dE_over_c = lm_ssp * (4.0/2.0) * (P[i].Mass*All.UnitMass_in_g/All.HubbleParam); // L in CGS
@@ -185,7 +186,7 @@ void radiation_pressure_winds_consolidated(void)
         v = sqrt( All.G * (P[i].Mass + NORM_COEFF*rho*h*h*h) / (h*ascale) );
         if (vq<v) v=vq;
         //if (vq>v) v=vq;
-        v *= All.WindInitialVelocityBoost; if (v<=15.e5/All.UnitVelocity_in_cm_per_s) v=15.e5/All.UnitVelocity_in_cm_per_s;
+        v *= WindInitialVelocityBoost; if (v<=15.e5/All.UnitVelocity_in_cm_per_s) v=15.e5/All.UnitVelocity_in_cm_per_s;
 #endif
 #ifdef GALSF_FB_RPWIND_CONTINUOUS
         /* if GALSF_FB_RPWIND_CONTINUOUS is not set, these have already been calculated above */

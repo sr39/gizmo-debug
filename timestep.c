@@ -5,6 +5,7 @@
 #include <math.h>
 #include "allvars.h"
 #include "proto.h"
+#include "kernel.h"
 
 /*! \file timestep.c
  *  routines for assigning new timesteps

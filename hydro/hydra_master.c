@@ -181,8 +181,8 @@ struct hydrodata_in
     MyFloat ConditionNumber;
     MyFloat InternalEnergyPred;
     MyFloat SoundSpeed;
-    MyIDType ID; // ???
     int Timestep;
+    MyFloat DhsmlNgbFactor;
 #ifdef HYDRO_SPH
     MyFloat DhsmlHydroSumFactor;
     MyFloat alpha;
@@ -322,7 +322,6 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     in->Pressure = SphP[i].Pressure;
     in->InternalEnergyPred = SphP[i].InternalEnergyPred;
     in->SoundSpeed = Particle_effective_soundspeed_i(i);
-    in->ID = P[i].ID; //???
     in->Timestep = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0);
     in->ConditionNumber = SphP[i].ConditionNumber;
 #ifdef CONSTRAINED_GRADIENT_MHD
@@ -330,6 +329,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
         to conveniently indicate the status of the parent particle flag, for the constrained gradients */
     if(SphP[i].FlagForConstrainedGradients == 0) {in->ConditionNumber *= -1;}
 #endif
+    in->DhsmlNgbFactor = PPP[i].DhsmlNgbFactor;
 #ifdef HYDRO_SPH
     in->DhsmlHydroSumFactor = SphP[i].DhsmlHydroSumFactor;
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)

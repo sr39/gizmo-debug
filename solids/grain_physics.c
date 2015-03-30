@@ -600,10 +600,14 @@ void grain_density(void)
         
         h2 = h * h;
         hinv = 1.0 / h;
-#ifndef  TWODIMS
-        hinv3 = hinv * hinv * hinv;
-#else
+#if (NUMDIMS==1)
+        hinv3 = hinv / (boxSize_Y * boxSize_Z);
+#endif
+#if (NUMDIMS==2)
         hinv3 = hinv * hinv / boxSize_Z;
+#endif
+#if (NUMDIMS==3)
+        hinv3 = hinv * hinv * hinv;
 #endif
         hinv4 = hinv3 * hinv;
         

@@ -222,7 +222,7 @@ void read_ic(char *fname)
             for(i = 0; i < N_gas; i++)
             {
                 if(ThisTask == 0 && i == 0)// && SphP[i].InternalEnergy == 0)
-                    printf("Initializing u from InitGasTemp : InitGasTemp=%g InitGasU=%g MinEgySpec=%g SphP[0].InternalEnergy=%g!\n",
+                    printf("Initializing u from InitGasTemp : InitGasTemp=%g InitGasU=%g MinEgySpec=%g SphP[0].InternalEnergy=%g\n",
                            All.InitGasTemp,All.InitGasU,All.MinEgySpec,SphP[i].InternalEnergy);
                 
                 SphP[i].InternalEnergy = All.InitGasU;
@@ -1047,7 +1047,7 @@ void read_file(char *fname, int readTask, int lastTask)
                                         switch (get_datatype_in_block(blocknr))
                                         {
                                             case 0:
-                                                hdf5_datatype = H5Tcopy(H5T_NATIVE_LLONG);
+                                                hdf5_datatype = H5Tcopy(H5T_NATIVE_UINT);
                                                 break;
                                             case 1:
 #ifdef INPUT_IN_DOUBLEPRECISION
@@ -1057,10 +1057,15 @@ void read_file(char *fname, int readTask, int lastTask)
 #endif
                                                 break;
                                             case 2:
-                                                hdf5_datatype = H5Tcopy(H5T_NATIVE_LLONG);
+                                                hdf5_datatype = H5Tcopy(H5T_NATIVE_UINT64);
                                                 break;
+                                                
                                             case 3:
+#if defined(INPUT_POSITIONS_IN_DOUBLE)
                                                 hdf5_datatype = H5Tcopy(H5T_NATIVE_DOUBLE);
+#else
+                                                hdf5_datatype = H5Tcopy(H5T_NATIVE_FLOAT);
+#endif
                                                 break;
                                         }
                                         

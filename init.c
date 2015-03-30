@@ -639,7 +639,7 @@ void init(void)
     }
     
 #ifndef SHEARING_BOX
-#ifdef TWODIMS
+#if (NUMDIMS==2)
     for(i = 0; i < NumPart; i++)
     {
         P[i].Pos[2] = 0;
@@ -656,7 +656,7 @@ void init(void)
 #endif
 #endif
     
-#ifdef ONEDIM
+#if (NUMDIMS==1)
     for(i = 0; i < NumPart; i++)
     {
         P[i].Pos[1] = P[i].Pos[2] = 0;
@@ -828,8 +828,12 @@ void init(void)
         double mpi_mass_min,mpi_mass_max;
         MPI_Allreduce(&mass_min, &mpi_mass_min, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
         MPI_Allreduce(&mass_max, &mpi_mass_max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-        All.MinMassForParticleMerger = 0.50 * mpi_mass_min;
-        All.MaxMassForParticleSplit  = 5.00 * mpi_mass_max;
+        All.MinMassForParticleMerger = 0.49 * mpi_mass_min;
+#ifdef GALSF_GENERATIONS
+        All.MinMassForParticleMerger /= (float)GALSF_GENERATIONS;
+#endif
+        /* All.MaxMassForParticleSplit  = 5.01 * mpi_mass_max; */
+        All.MaxMassForParticleSplit  = 3.01 * mpi_mass_max;
     }
     
     

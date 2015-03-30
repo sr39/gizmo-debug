@@ -598,13 +598,13 @@ void density(void)
                         this will tell us how robust our procedure is (and let us know if we need to expand the neighbor number */
                     ConditionNumber=CNumHolder=0;
                     for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {ConditionNumber += SphP[i].NV_T[k1][k2]*SphP[i].NV_T[k1][k2];}}
-#ifdef ONEDIM
+#if (NUMDIMS==1)
                     /* one-dimensional case */
                     for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Tinv[k1][k2]=0;}}
                     detT = SphP[i].NV_T[0][0];
                     if(SphP[i].NV_T[0][0]!=0 && !isnan(SphP[i].NV_T[0][0])) Tinv[0][0] = 1/detT; /* only one non-trivial element in 1D! */
 #endif
-#ifdef TWODIMS
+#if (NUMDIMS==2)
                     /* two-dimensional case */
                     for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Tinv[k1][k2]=0;}}
                     detT = SphP[i].NV_T[0][0]*SphP[i].NV_T[1][1] - SphP[i].NV_T[0][1]*SphP[i].NV_T[1][0];
@@ -616,7 +616,7 @@ void density(void)
                         Tinv[1][1] = SphP[i].NV_T[0][0] / detT;
                     }
 #endif
-#if !defined(ONEDIM) && !defined(TWODIMS)
+#if (NUMDIMS==3)
                     /* three-dimensional case */
                     detT = SphP[i].NV_T[0][0] * SphP[i].NV_T[1][1] * SphP[i].NV_T[2][2] +
                         SphP[i].NV_T[0][1] * SphP[i].NV_T[1][2] * SphP[i].NV_T[2][0] +
@@ -1072,6 +1072,7 @@ void density(void)
             if(P[i].Type==0)
 #endif
             {
+                double zeta_0 = 2.0 * P[i].Mass*P[i].Mass * PPP[i].Hsml*PPP[i].Hsml; // self-value of zeta if no neighbors are found //
                 if((PPP[i].Hsml > 0)&&(PPP[i].NumNgb > 0))
                 {
                     /* the zeta terms ONLY control errors if we maintain the 'correct' neighbor number: for boundary
@@ -1081,10 +1082,10 @@ void density(void)
                         double ndenNGB = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
                         PPPZ[i].AGS_zeta *= 0.5 * P[i].Mass * PPP[i].Hsml / (NUMDIMS * ndenNGB) * PPP[i].DhsmlNgbFactor;
                     } else {
-                        PPPZ[i].AGS_zeta = 0;
+                        PPPZ[i].AGS_zeta = zeta_0;
                     }
                 } else {
-                    PPPZ[i].AGS_zeta = 0;
+                    PPPZ[i].AGS_zeta = zeta_0;
                 }
             }
 #endif

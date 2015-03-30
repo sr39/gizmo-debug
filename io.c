@@ -277,21 +277,16 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #ifdef PERIODIC
                         boxSize = All.BoxSize;
 #ifdef LONG_X
-                        if(k == 0)
-                            boxSize = All.BoxSize * LONG_X;
+                        if(k == 0) {boxSize = All.BoxSize * LONG_X;}
 #endif
 #ifdef LONG_Y
-                        if(k == 1)
-                            boxSize = All.BoxSize * LONG_Y;
+                        if(k == 1) {boxSize = All.BoxSize * LONG_Y;}
 #endif
 #ifdef LONG_Z
-                        if(k == 2)
-                            boxSize = All.BoxSize * LONG_Z;
+                        if(k == 2) {boxSize = All.BoxSize * LONG_Z;}
 #endif
-                        while(fp[k] < 0)
-                            fp_pos[k] += boxSize;
-                        while(fp[k] >= boxSize)
-                            fp_pos[k] -= boxSize;
+                        while(fp_pos[k] < 0) {fp_pos[k] += boxSize;}
+                        while(fp_pos[k] >= boxSize) {fp_pos[k] -= boxSize;}
 #endif
                     }
                     n++;
@@ -1563,7 +1558,7 @@ int get_datatype_in_block(enum iofields blocknr)
     
     switch (blocknr)
     {
-#ifdef IO_POSITIONS_IN_DOUBLE
+#if defined(OUTPUT_POSITIONS_IN_DOUBLE) || defined(INPUT_POSITIONS_IN_DOUBLE)
         case IO_POS:
             typekey = 3; /* pos outputs in HDF5 are double automatically, to prevent overlaps */
             break;
@@ -3410,14 +3405,13 @@ void write_file(char *fname, int writeTask, int lastTask)
                                 strncpy(InfoBlock[n_info].type, "DOUBLE  ", 8);
                             else
                                 strncpy(InfoBlock[n_info].type, "DOUBLEN ", 8);
-                            break;
 #else
                             if(InfoBlock[n_info].ndim <= 1)
                                 strncpy(InfoBlock[n_info].type, "FLOAT   ", 8);
                             else
                                 strncpy(InfoBlock[n_info].type, "FLOATN  ", 8);
-                            break;
 #endif
+                            break;
                         case 2:
                             if(InfoBlock[n_info].ndim <= 1)
                                 strncpy(InfoBlock[n_info].type, "LLONG   ", 8);
@@ -3425,10 +3419,17 @@ void write_file(char *fname, int writeTask, int lastTask)
                                 strncpy(InfoBlock[n_info].type, "LLONGN  ", 8);
                             break;
                         case 3:
+#ifdef OUTPUT_POSITIONS_IN_DOUBLE
                             if(InfoBlock[n_info].ndim <= 1)
                                 strncpy(InfoBlock[n_info].type, "DOUBLE  ", 8);
                             else
                                 strncpy(InfoBlock[n_info].type, "DOUBLEN ", 8);
+#else
+                            if(InfoBlock[n_info].ndim <= 1)
+                                strncpy(InfoBlock[n_info].type, "FLOAT   ", 8);
+                            else
+                                strncpy(InfoBlock[n_info].type, "FLOATN  ", 8);
+#endif
                             break;
                     }
                     n_info++;
@@ -3502,7 +3503,7 @@ void write_file(char *fname, int writeTask, int lastTask)
                             switch (get_datatype_in_block(blocknr))
                             {
                                 case 0:
-                                    hdf5_datatype = H5Tcopy(H5T_NATIVE_LLONG);
+                                    hdf5_datatype = H5Tcopy(H5T_NATIVE_UINT);
                                     break;
                                 case 1:
 #ifdef OUTPUT_IN_DOUBLEPRECISION
@@ -3512,10 +3513,14 @@ void write_file(char *fname, int writeTask, int lastTask)
 #endif
                                     break;
                                 case 2:
-                                    hdf5_datatype = H5Tcopy(H5T_NATIVE_LLONG);
+                                    hdf5_datatype = H5Tcopy(H5T_NATIVE_UINT64);
                                     break;
                                 case 3:
+#ifdef OUTPUT_POSITIONS_IN_DOUBLE
                                     hdf5_datatype = H5Tcopy(H5T_NATIVE_DOUBLE);
+#else 
+                                    hdf5_datatype = H5Tcopy(H5T_NATIVE_FLOAT);
+#endif
                                     break;
                             }
                             

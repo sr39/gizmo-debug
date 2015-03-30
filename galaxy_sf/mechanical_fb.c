@@ -50,6 +50,9 @@ extern pthread_mutex_t mutex_partnodedrift;
 #endif
 
 
+#define SNeIIBW_Radius_Factor 1.0 // (optional) boost cooling radius for resolution-check
+
+
 struct kernel_addFB
 {
     double dp[3];
@@ -179,7 +182,7 @@ void particle2in_addFB_wt(struct addFBdata_in *in, int i)
 #ifdef GALSF_TURNOFF_COOLING_WINDS
     /* calculate the 'blast radius' and 'cooling turnoff time' used by this model */
     double n0 = P[i].DensAroundStar*All.cf_a3inv*All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / PROTONMASS;
-    n0 = All.SNeIIBW_Radius_Factor * 0.087*pow(n0,-0.36) / (All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime);
+    n0 = SNeIIBW_Radius_Factor * 0.087*pow(n0,-0.36) / (All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime);
     in->Hsml = DMAX(PPP[i].Hsml/2.,DMIN(n0,5.*PPP[i].Hsml));
 #endif
 }
@@ -283,7 +286,7 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
 #ifdef GALSF_TURNOFF_COOLING_WINDS
     /* calculate the 'blast radius' and 'cooling turnoff time' used by this model */
     double n0 = P[i].DensAroundStar*All.cf_a3inv*All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / PROTONMASS;
-    n0 = All.SNeIIBW_Radius_Factor * 0.087*pow(n0,-0.36) / (All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime);
+    n0 = SNeIIBW_Radius_Factor * 0.087*pow(n0,-0.36) / (All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime);
     in->Hsml = DMAX(PPP[i].Hsml/2.,DMIN(n0,5.*PPP[i].Hsml));
     in->unit_mom_SNe = 0;
 #endif

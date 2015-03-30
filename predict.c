@@ -120,10 +120,10 @@ void drift_particle(int i, integertime time1)
     {
         P[i].Pos[j] += P[i].Vel[j] * dt_drift;
     }
-#ifdef ONEDIM
+#if (NUMDIMS==1)
     P[i].Pos[1]=P[i].Pos[2]=0;
 #endif
-#ifdef TWODIMS
+#if (NUMDIMS==2)
     P[i].Pos[2]=0;
 #endif
     
@@ -471,14 +471,14 @@ double INLINE_FUNC Get_Particle_Size(int i)
         take that when NumNgb is computed (at the end of the density routine), so we 
         don't have to re-compute it each time. That makes this function fast enough to 
         call -inside- of loops (e.g. hydro computations) */
-#ifdef ONEDIM
+#if (NUMDIMS == 1)
     return 2.00000 * PPP[i].Hsml / PPP[i].NumNgb;
-#else
-#ifdef TWODIMS
-    return 1.25331 * PPP[i].Hsml / PPP[i].NumNgb; // sqrt(Pi/2)
-#else
-    return 1.61199 * PPP[i].Hsml / PPP[i].NumNgb; // (4pi/3)^(1/3)
 #endif
+#if (NUMDIMS == 2)
+    return 1.25331 * PPP[i].Hsml / PPP[i].NumNgb; // sqrt(Pi/2)
+#endif
+#if (NUMDIMS == 3)
+    return 1.61199 * PPP[i].Hsml / PPP[i].NumNgb; // (4pi/3)^(1/3)
 #endif
 }
 
@@ -497,6 +497,21 @@ double INLINE_FUNC Get_Particle_Pressure(int i)
 {
     return GAMMA_MINUS1 * SphP[i].InternalEnergyPred * Particle_density_for_energy_i(i);
 }
+
+
+double INLINE_FUNC Get_Particle_Expected_Area(double h)
+{
+#if (NUMDIMS == 1)
+    return 2;
+#endif
+#if (NUMDIMS == 2)
+    return 2 * M_PI * h;
+#endif
+#if (NUMDIMS == 3)
+    return 4 * M_PI * h * h;
+#endif
+}
+
 
 #ifdef COSMIC_RAYS
 double INLINE_FUNC Get_Particle_CosmicRayPressure(int i)
@@ -560,15 +575,7 @@ double Get_DtB_FaceArea_Limiter(int i)
     /* now check how accurately the cell is 'closed': the face areas are ideally zero */
     double area_sum = fabs(SphP[i].Face_Area[0])+fabs(SphP[i].Face_Area[1])+fabs(SphP[i].Face_Area[2]);
     /* but this needs to be normalized to the 'expected' area given Hsml */
-#ifdef ONEDIM
-    double area_norm = 2.;
-#else
-#ifdef TWODIMS
-    double area_norm = 2.*M_PI * PPP[i].Hsml * All.cf_atime;
-#else
-    double area_norm = 4.*M_PI * PPP[i].Hsml*PPP[i].Hsml * All.cf_atime*All.cf_atime;
-#endif
-#endif
+    double area_norm = Get_Particle_Expected_Area(PPP[i].Hsml * All.cf_atime);
     /* ok, with that in hand, define an error tolerance based on this */
     if(area_norm>0)
     {
@@ -646,15 +653,7 @@ double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)
 #endif
         prefac_tinv *= sqrt(1. + SphP[i_particle_id].ConditionNumber/100.);
         double area = fabs(SphP[i_particle_id].Face_Area[0]) + fabs(SphP[i_particle_id].Face_Area[1]) + fabs(SphP[i_particle_id].Face_Area[2]);
-#ifdef ONEDIM
-        area /= 2;
-#else
-#ifdef TWODIMS
-        area /= 2*M_PI*PPP[i_particle_id].Hsml;
-#else
-        area /= 4*M_PI*PPP[i_particle_id].Hsml*PPP[i_particle_id].Hsml;
-#endif
-#endif
+        area /= Get_Particle_Expected_Area(PPP[i_particle_id].Hsml);
         prefac_tinv *= (1. + area/area_0)*(1. + area/area_0);
         
         double vsig_max = DMAX( DMAX(vsig1,vsig2) , prefac_fastest * All.FastestWaveSpeed );

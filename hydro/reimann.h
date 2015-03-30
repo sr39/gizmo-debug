@@ -20,7 +20,7 @@
 #if defined(TURB_DIFFUSION)
 #define SAVE_FACE_DENSITY 1
 #endif
-#if (defined(CONDUCTION) || defined(COSMIC_RAYS) || defined(VISCOSITY)) && defined(MAGNETIC)
+#if (defined(HYDRO_MESHLESS_FINITE_MASS) || defined(CONDUCTION) || defined(COSMIC_RAYS) || defined(VISCOSITY)) && defined(MAGNETIC)
 #define SAVE_FACE_BFIELD 1
 #endif
 #if defined(VISCOSITY) && defined(MAGNETIC)
@@ -195,16 +195,16 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
         if(*Q_R>Qmed_max) *Q_R=Qmed_max;
         if(*Q_L>Qmax_eff) *Q_L=Qmax_eff;
         if(*Q_L<Qmed_min) *Q_L=Qmed_min;
-#ifndef CONSTRAINED_GRADIENT_MHD
-        if(mode > 0) {if(*Q_R > *Q_L) {*Q_R = 0.5*(*Q_R + *Q_L); *Q_L=*Q_R;}}
+#if defined(MAGNETIC) && !defined(CONSTRAINED_GRADIENT_MHD)
+        if(mode > 0) {if(*Q_R > *Q_L) {*Q_R = 0.5*(*Q_R + *Q_L); *Q_L=*Q_R;}} // causes strong diffusion in Gresho: limit conditions of use
 #endif
     } else {
         if(*Q_R>Qmax_eff) *Q_R=Qmax_eff;
         if(*Q_R<Qmed_min) *Q_R=Qmed_min;
         if(*Q_L<Qmin_eff) *Q_L=Qmin_eff;
         if(*Q_L>Qmed_max) *Q_L=Qmed_max;
-#ifndef CONSTRAINED_GRADIENT_MHD
-        if(mode > 0) {if(*Q_R < *Q_L) {*Q_R = 0.5*(*Q_R + *Q_L); *Q_L=*Q_R;}}
+#if defined(MAGNETIC) && !defined(CONSTRAINED_GRADIENT_MHD)
+        if(mode > 0) {if(*Q_R < *Q_L) {*Q_R = 0.5*(*Q_R + *Q_L); *Q_L=*Q_R;}} // causes strong diffusion in Gresho: limit conditions of use
 #endif
     }
     /* done! */

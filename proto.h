@@ -242,6 +242,7 @@ int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend
 double INLINE_FUNC Get_Particle_Size(int i);
 double INLINE_FUNC Particle_density_for_energy_i(int i);
 double INLINE_FUNC Get_Particle_Pressure(int i);
+double INLINE_FUNC Get_Particle_Expected_Area(double h);
 #ifdef COSMIC_RAYS
 double INLINE_FUNC Get_Particle_CosmicRayPressure(int i);
 #endif
