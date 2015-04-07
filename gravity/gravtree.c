@@ -1311,6 +1311,10 @@ void set_softenings(void)
     }
     /* set the minimum gas kernel length to be used this timestep */
     All.MinHsml = All.MinGasHsmlFractional * All.ForceSoftening[0];
+#ifndef NOGRAVITY
+    if(All.MinHsml <= 5.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0])
+        All.MinHsml = 5.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0];
+#endif
 }
 
 

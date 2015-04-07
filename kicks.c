@@ -232,7 +232,11 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             /* calculate the contribution to the energy change from the mass fluxes in the gravitation field */
             for(j=0;j<3;j++) {dEnt_Gravity += -(SphP[i].GravWorkTerm[j] * All.cf_atime * dt_hydrokick) * grav_acc[j];}
 #endif
-            double dEnt = SphP[i].InternalEnergy + SphP[i].DtInternalEnergy * dt_hydrokick + dEnt_Gravity;
+            double du_tot = SphP[i].DtInternalEnergy * dt_hydrokick + dEnt_Gravity;
+#if defined(COOLING) && !defined(COOLING_OPERATOR_SPLIT)
+            if(mode == 1) {du_tot = 0;}
+#endif
+            double dEnt = SphP[i].InternalEnergy + du_tot;
             
 #ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
             /* if we're using a Riemann solver, we include an energy/entropy-type switch to ensure
@@ -274,7 +278,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                     SphP[i].DtB[j] = (1./3.) * SphP[i].B[j]*All.cf_atime * P[i].Particle_DivVel*All.cf_a2inv;
                 }
 #ifdef DIVBCLEANING_DEDNER
-                SphP[i].DtPhi = (1./3.) * SphP[i].Phi * P[i].Particle_DivVel*All.cf_a2inv;
+                SphP[i].DtPhi = (1./3.) * (SphP[i].Phi*All.cf_a3inv) * P[i].Particle_DivVel*All.cf_a2inv; // cf_a3inv from mass-based phi-fluxes???
 #endif
 #endif
                 if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*GAMMA_MINUS1 * SphP[i].InternalEnergyPred * All.cf_hubble_a;
@@ -389,7 +393,7 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
     double BphysVolphys_to_BcodeVolCode = 1 / All.cf_atime;
     for(j = 0; j < 3; j++) {SphP[i].B[j] += SphP[i].DtB[j] * dt_entr * BphysVolphys_to_BcodeVolCode;} // fluxes are always physical, convert to code units //
 #ifdef DIVBCLEANING_DEDNER
-    double PhiphysVolphys_to_PhicodeVolCode = 1;
+    double PhiphysVolphys_to_PhicodeVolCode = 1 / All.cf_a3inv; // mass-based phi-fluxes (otherwise is just "1") ???
     /* phi units are [vcode][Bcode]=a^3 * vphys*Bphys */
     if(SphP[i].Density > 0)
     {

@@ -709,6 +709,7 @@ void ags_density(void)
             {
                 
                 double minsoft = All.ForceSoftening[P[i].Type];
+                minsoft = DMAX(minsoft, 5.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[P[i].Type]);
                 double maxsoft = All.MaxHsml;
                 maxsoft = DMIN(maxsoft, 50.0 * All.ForceSoftening[P[i].Type]);
 #ifdef PMGRID

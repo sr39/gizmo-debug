@@ -376,7 +376,7 @@ void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double
     double BphysVolphys_to_BcodeVolCode = 1 / All.cf_atime;
     for(k=0;k<3;k++) {SphP[i].BPred[k] += SphP[i].DtB[k] * dt_entr * BphysVolphys_to_BcodeVolCode;} // fluxes are always physical, convert to code units //
 #ifdef DIVBCLEANING_DEDNER
-    double PhiphysVolphys_to_PhicodeVolCode = 1;
+    double PhiphysVolphys_to_PhicodeVolCode = 1 / All.cf_a3inv; // mass-based phi fluxes (otherwise coefficient is 1) ???
     double dtphi_code = (PhiphysVolphys_to_PhicodeVolCode) * SphP[i].DtPhi;
     SphP[i].PhiPred += dtphi_code  * dt_entr;
     double t_damp = Get_Particle_PhiField_DampingTimeInv(i);
@@ -600,7 +600,8 @@ double Get_DtB_FaceArea_Limiter(int i)
 #ifdef DIVBCLEANING_DEDNER
 double INLINE_FUNC Get_Particle_PhiField(int i_particle_id)
 {
-    return SphP[i_particle_id].PhiPred * SphP[i_particle_id].Density / P[i_particle_id].Mass;
+    //return SphP[i_particle_id].PhiPred * SphP[i_particle_id].Density / P[i_particle_id].Mass; //
+    return SphP[i_particle_id].PhiPred / P[i_particle_id].Mass; // mass-based phi-flux ???
 }
 
 double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)

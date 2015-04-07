@@ -95,7 +95,7 @@
     /* units are phi_code * rcode^2 = Bcode*vcode * rcode^2 = vcode * Bphys*rphys^2 = (a*vphys) * Bphys*rphys^2 */
     /* GradPhi should have units of [Phicode]/[rcode] = [Bcode]*[vcode]/[rcode] =
         a*a*Bphys * a*vphys/(rphys/a) = a^4 [DtB]= a^4 [Fluxes.B]; extra terms come in V_i multiplication in evaluate */
-#endif // DIVBCLEANING_DEDNER
+#endif 
     
     /* --------------------------------------------------------------------------------- */
     /* ... magnetic acceleration (with correction/limiter term) ... */
