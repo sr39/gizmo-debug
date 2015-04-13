@@ -46,6 +46,7 @@
 #define INHOMOG_GASDISTR_HINT   /* if the gas is distributed very different from collisionless particles, this can helps to avoid problems in the domain decomposition */
 
 
+
 #ifndef DISABLE_SPH_PARTICLE_WAKEUP
 #define WAKEUP   4.1            /* allows 2 timestep bins within kernel */
 #endif
@@ -252,15 +253,6 @@
 #define ALIGN(n) 
 #endif
 
-#ifdef PERIODIC
-#define NEAREST_X(x) (((x)>boxHalf_X)?((x)-boxSize_X):(((x)<-boxHalf_X)?((x)+boxSize_X):(x)))
-#define NEAREST_Y(y) (((y)>boxHalf_Y)?((y)-boxSize_Y):(((y)<-boxHalf_Y)?((y)+boxSize_Y):(y)))
-#define NEAREST_Z(z) (((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
-#else
-#define NEAREST_X(x) (x)
-#define NEAREST_Y(y) (y)
-#define NEAREST_Z(z) (z)
-#endif
 
 #define ASSIGN_ADD(x,y,mode) (mode == 0 ? (x=y) : (x+=y))
 
@@ -309,6 +301,11 @@ typedef  int integertime;
 #define  NUMBER_OF_MEASUREMENTS_TO_RECORD  6  /* this is the number of past executions of a timebin that the reported average CPU-times average over */
 
 #define  NODELISTLENGTH      8
+
+
+#define EPSILON_FOR_TREERND_SUBNODE_SPLITTING (1.0e-3) /* define some number << 1; particles with less than this separation will trigger randomized sub-node splitting in the tree.
+                                                            we set it to a global value here so that other sub-routines will know not to force particle separations below this */
+
 
 typedef unsigned long long peanokey;
 
@@ -645,15 +642,25 @@ extern MyDouble Shearing_Box_Vel_Offset;
 
 
 #ifdef PERIODIC
+
 #define NGB_PERIODIC_LONG(x,box,hbox) ((fabs(x)>hbox)?(box-fabs(x)):fabs(x))
 #define NGB_PERIODIC_LONG_X(x) (xtmp=fabs(x),(xtmp>boxHalf_X)?(boxSize_X-xtmp):xtmp)
 #define NGB_PERIODIC_LONG_Y(y) (xtmp=fabs(y),(xtmp>boxHalf_Y)?(boxSize_Y-xtmp):xtmp)
 #define NGB_PERIODIC_LONG_Z(z) (xtmp=fabs(z),(xtmp>boxHalf_Z)?(boxSize_Z-xtmp):xtmp)
+#define NEAREST_X(x) (((x)>boxHalf_X)?((x)-boxSize_X):(((x)<-boxHalf_X)?((x)+boxSize_X):(x)))
+#define NEAREST_Y(y) (((y)>boxHalf_Y)?((y)-boxSize_Y):(((y)<-boxHalf_Y)?((y)+boxSize_Y):(y)))
+#define NEAREST_Z(z) (((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
+
 #else
+
 #define NGB_PERIODIC_LONG(x,box,hbox) fabs(x)
 #define NGB_PERIODIC_LONG_X(x) fabs(x)
 #define NGB_PERIODIC_LONG_Y(y) fabs(y)
 #define NGB_PERIODIC_LONG_Z(z) fabs(z)
+#define NEAREST_X(x) (x)
+#define NEAREST_Y(y) (y)
+#define NEAREST_Z(z) (z)
+
 #endif
 
 #define FACT1 0.366025403785	/* FACT1 = 0.5 * (sqrt(3)-1) */
@@ -900,6 +907,9 @@ extern FILE *FdDE;  /*!< file handle for darkenergy.txt log-file. */
 
 
 #if defined(COOLING) && defined(GRACKLE)
+#ifndef COOLING_OPERATOR_SPLIT
+#define COOLING_OPERATOR_SPLIT /*!< by default, Grackle does not include the hydro heating/cooling, so this must be operator-split */
+#endif
 #include <grackle.h>
 #endif
 

@@ -643,7 +643,7 @@ void init(void)
     for(i = 0; i < NumPart; i++)
     {
         P[i].Pos[2] = 0;
-        P[i].Vel[2] = 0;
+        //P[i].Vel[2] = 0; // this should be set in the ICs, not here //
         
         P[i].GravAccel[2] = 0;
         
@@ -660,7 +660,7 @@ void init(void)
     for(i = 0; i < NumPart; i++)
     {
         P[i].Pos[1] = P[i].Pos[2] = 0;
-        P[i].Vel[1] = P[i].Vel[2] = 0;
+        //P[i].Vel[1] = P[i].Vel[2] = 0; // this should be set in the ICs, not here //
         
         P[i].GravAccel[1] = P[i].GravAccel[2] = 0;
         

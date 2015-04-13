@@ -258,7 +258,7 @@ int force_treebuild_single(int npart, struct unbind_data *mp)
 		}
 
 #ifndef NOTREERND
-	      if(Nodes[th].len < 1.0e-3 * All.ForceSoftening[P[i].Type])
+	      if(Nodes[th].len < EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[P[i].Type])
 		{
 		  /* seems like we're dealing with particles at identical (or extremely close)
 		   * locations. Randomize subnode index to allow tree construction. Note: Multipole moments
@@ -346,7 +346,7 @@ int force_treebuild_single(int npart, struct unbind_data *mp)
 		}
 
 #ifndef NOTREERND
-	      if(nfreep->len < 1.0e-3 * All.ForceSoftening[P[th].Type])
+	      if(nfreep->len < EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[P[th].Type])
 		{
 		  /* seems like we're dealing with particles at identical (or extremely close)
 		   * locations. Randomize subnode index to allow tree construction. Note: Multipole moments

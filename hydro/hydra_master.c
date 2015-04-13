@@ -43,7 +43,7 @@ extern pthread_mutex_t mutex_partnodedrift;
         should be taken care of in the factors
         All.cf_afac1/2/3, which will correctly assign between the two --
  B_code = a*a * B_physical (comoving magnetic fields)
- Phi_code = B_code*v_code (damping field for Dedner divergence cleaning)
+ Phi_code = B_code*v_code = a^3 * Phi_physical (damping field for Dedner divergence cleaning)
     (note: spec egy of phi field is: phi*phi/(2*mu0*rho*ch*ch); compare Bfield is B*B/(mu0*rho);
     so [phi]~[B]*[ch], where ch is the signal velocity used in the damping equation);
 
@@ -288,7 +288,9 @@ struct hydrodata_out
     MyFloat DtB[3];
     MyFloat divB;
 #if defined(DIVBCLEANING_DEDNER)
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME // mass-based phi-flux ???
     MyFloat DtPhi;
+#endif
     MyFloat DtB_PhiCorr[3];
 #endif
 #endif // MAGNETIC //
@@ -450,7 +452,9 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
     }
     SphP[i].divB += out->divB;
 #if defined(DIVBCLEANING_DEDNER)
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME // mass-based phi-flux ???
     SphP[i].DtPhi += out->DtPhi;
+#endif
     for(k=0;k<3;k++) {SphP[i].DtB_PhiCorr[k] += out->DtB_PhiCorr[k];}
 #endif // Dedner //
 #endif // MAGNETIC //
@@ -530,7 +534,11 @@ void hydro_final_operations_and_cleanup(void)
                 }
             }
             
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME // mass-based phi-flux ???
             SphP[i].DtPhi *= magnorm_closure;
+#else
+            SphP[i].DtPhi = 0;
+#endif
             if((!isnan(SphP[i].divB))&&(PPP[i].Hsml>0)&&(SphP[i].divB!=0)&&(SphP[i].Density>0))
             {
                 double tmp_ded = 0.5 * SphP[i].MaxSignalVel / (fac_mu*All.cf_atime); // has units of v_physical now
@@ -540,7 +548,8 @@ void hydro_final_operations_and_cleanup(void)
                 b2_max = 100.0 * fabs( sqrt(b2_max) * All.cf_a2inv * P[i].Mass / (SphP[i].Density*All.cf_a3inv) * 1.0 / (PPP[i].Hsml*All.cf_atime) );
                 if(fabs(SphP[i].divB) > b2_max) {SphP[i].divB *= b2_max / fabs(SphP[i].divB);}
                 /* ok now can apply this to get the growth rate of phi */
-                SphP[i].DtPhi -= tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB;
+                // SphP[i].DtPhi -= tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB;
+                SphP[i].DtPhi -= tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB * SphP[i].Density*All.cf_a3inv; // mass-based phi-flux ???
             }
 #endif
 #endif // MAGNETIC

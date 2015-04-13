@@ -853,9 +853,12 @@ void hydro_gradient_calc(void)
                 double tmp_d = sqrt(1.0e-37 + (2. * All.cf_atime/All.cf_afac1 * SphP[i].Pressure*v_tmp*v_tmp) +
                                     SphP[i].BPred[0]*SphP[i].BPred[0]+SphP[i].BPred[1]*SphP[i].BPred[1]+SphP[i].BPred[2]*SphP[i].BPred[2]);
                 double tmp = 3.0e3 * fabs(SphP[i].divB) * PPP[i].Hsml / tmp_d;
-                double alim = 1. + DMIN(1.,tmp*tmp);
+                double alim = 1. + DMIN(1.,tmp*tmp); // ????
+                //double alim = 1. + DMIN(2.,tmp*tmp); // need to be more aggressive with new wt_i,wt_j formalism
 #if (CONSTRAINED_GRADIENT_MHD <= 1)
-                double dbmax=0, dbgrad=0, dh=0.25*PPP[i].Hsml;
+                double dbmax=0, dbgrad=0;
+                double dh=0.25*PPP[i].Hsml; // ???
+                //double dh=0.25*PPP[i].Hsml*(1. + DMIN(1.,tmp*tmp)); // need to be more aggressive with new wt_i,wt_j formalism
                 for(k=0;k<3;k++)
                 {
                     double b0 = Get_Particle_BField(i,k);
@@ -1053,7 +1056,8 @@ void hydro_gradient_calc(void)
                     b2_max = 100.0 * fabs( sqrt(b2_max) * All.cf_a2inv * P[i].Mass / (SphP[i].Density*All.cf_a3inv) * 1.0 / (PPP[i].Hsml*All.cf_atime) );
                     if(fabs(SphP[i].divB) > b2_max) {SphP[i].divB *= b2_max / fabs(SphP[i].divB);}
                     /* ok now can apply this to get the growth rate of phi */
-                    SphP[i].DtPhi = -tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB;
+                    // SphP[i].DtPhi = -tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB;
+                    SphP[i].DtPhi = -tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB * SphP[i].Density*All.cf_a3inv; // mass-based phi-flux ???
                     // phiphi above now has units of [Bcode]*[vcode]^2/[rcode]=(Bcode*vcode)*vcode/rcode; needs to have units of [Phicode]*[vcode]/[rcode]
                     // [PhiGrad]=[Phicode]/[rcode] = [DtB] = [Bcode]*[vcode]/[rcode] IFF [Phicode]=[Bcode]*[vcode]; this also makes the above self-consistent //
                     // (implicitly, this gives the correct evolution in comoving, adiabatic coordinates where the sound speed is the relevant speed at which
@@ -1061,15 +1065,13 @@ void hydro_gradient_calc(void)
                     //   about the relevant 'desired' timescale for damping wave propagation in the expanding box) //
                 } else {
                     SphP[i].DtPhi=0; SphP[i].divB=0; for(k=0;k<3;k++) {SphP[i].DtB[k] = 0;}
-                    SphP[i].DtPhi=0; SphP[i].divB=0; for(k=0;k<3;k++) {SphP[i].DtB[k] = 0;}
                 }
                 SphP[i].divB = 0.0; // now we re-zero it, since a -different- divB definition must be used in hydro to subtract the tensile terms */
 #endif
             } else {
                 for(k=0;k<3;k++) SphP[i].DtB[k] = 0;
 #ifdef DIVBCLEANING_DEDNER
-                SphP[i].divB = 0;
-                SphP[i].DtPhi = 0;
+                SphP[i].divB = 0; SphP[i].DtPhi = 0;
 #endif
             }
 #endif
@@ -1252,9 +1254,13 @@ void hydro_gradient_calc(void)
             double v_tmp = P[i].Mass / SphP[i].Density;
             double tmp_d = sqrt(1.0e-37 + (2. * All.cf_atime/All.cf_afac1 * SphP[i].Pressure*v_tmp*v_tmp) +
                                 SphP[i].BPred[0]*SphP[i].BPred[0]+SphP[i].BPred[1]*SphP[i].BPred[1]+SphP[i].BPred[2]*SphP[i].BPred[2]);
-            double q = fabs(SphP[i].divB) * PPP[i].Hsml / tmp_d;
+            double q = fabs(SphP[i].divB) * PPP[i].Hsml / tmp_d; // ???
+            //double q = 80.0 * fabs(SphP[i].divB) * PPP[i].Hsml / tmp_d; // 300,100 work; 30-50 not great; increased coefficient owing to new formulation with wt_i,wt_j in hydro
             double alim2 = a_limiter * (1. + q*q);
-            if(alim2 > 0.5) alim2=0.5;
+            if(alim2 > 0.5) alim2=0.5; // ???
+            //if(alim2 > 0.75) alim2=0.75; // needs to be a bit higher than 0.5, for new formulation with wt_i,wt_j in hydro
+            
+            
             for(k1=0;k1<3;k1++)
                 local_slopelimiter(SphP[i].Gradients.B[k1],GasGradDataPasser[i].Maxima.B[k1],GasGradDataPasser[i].Minima.B[k1],alim2,h_lim,stol);
 #endif
@@ -1420,11 +1426,19 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #if defined(CONSTRAINED_GRADIENT_MHD)
                 double V_j = P[j].Mass / SphP[j].Density;
                 double Face_Area_Vec[3];
+                double wt_i,wt_j;
+#ifdef COOLING
+                //wt_i=wt_j = 2.*V_i*V_j / (V_i + V_j); // more conservatively, could use DMIN(V_i,V_j), but that is less accurate
+                if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.25) {wt_i=wt_j=2.*V_i*V_j/(V_i+V_j);} else {wt_i=V_i; wt_j=V_j;}
+#else
+                //wt_i=wt_j = (V_i*PPP[j].Hsml + V_j*local.Hsml) / (local.Hsml+PPP[j].Hsml); // should these be H, or be -effective sizes-??? //
+                if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.50) {wt_i=wt_j=(V_i*PPP[j].Hsml+V_j*local.Hsml)/(local.Hsml+PPP[j].Hsml);} else {wt_i=V_i; wt_j=V_j;}
+#endif
                 for(k=0;k<3;k++)
                 {
                     /* calculate the face area between the particles (must match what is done in the actual hydro routine! */
-                    Face_Area_Vec[k] = kernel.wk_i * V_i * (local.NV_T[k][0]*kernel.dp[0] + local.NV_T[k][1]*kernel.dp[1] + local.NV_T[k][2]*kernel.dp[2])
-                                     + kernel.wk_j * V_j * (SphP[j].NV_T[k][0]*kernel.dp[0] + SphP[j].NV_T[k][1]*kernel.dp[1] + SphP[j].NV_T[k][2]*kernel.dp[2]);
+                    Face_Area_Vec[k] = kernel.wk_i * wt_i * (local.NV_T[k][0]*kernel.dp[0] + local.NV_T[k][1]*kernel.dp[1] + local.NV_T[k][2]*kernel.dp[2])
+                                     + kernel.wk_j * wt_j * (SphP[j].NV_T[k][0]*kernel.dp[0] + SphP[j].NV_T[k][1]*kernel.dp[1] + SphP[j].NV_T[k][2]*kernel.dp[2]);
                     if(All.ComovingIntegrationOn) {Face_Area_Vec[k] *= All.cf_atime*All.cf_atime;} /* Face_Area_Norm has units of area, need to convert to physical */
                     /* on the first pass, we need to save the face information to be used to correct the gradients; this only needs to be done once */
                     if(gradient_iteration == 0)

@@ -100,10 +100,33 @@ void do_the_cooling_for_particle(int i)
         double ne = SphP[i].Ne;	/* electron abundance (gives ionization state and mean molecular weight) */
         double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);
 #ifdef GALSF_FB_HII_HEATING
-        double u_to_temp_fac = (4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC))) * PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
+        double u_to_temp_fac = PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
         double uion = HIIRegion_Temp / u_to_temp_fac;
         if(SphP[i].DelayTimeHII > 0) if(uold<uion) uold=uion; /* u_old should be >= ionized temp if used here */
 #endif // GALSF_FB_HII_HEATING
+        
+#ifndef COOLING_OPERATOR_SPLIT
+        /* do some prep operations on the hydro-step determined heating/cooling rates before passing to the cooling subroutine */
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+        /* calculate the contribution to the energy change from the mass fluxes in the gravitation field */
+        double grav_acc; int k;
+        for(k = 0; k < 3; k++)
+        {
+            grav_acc = All.cf_a2inv * P[i].GravAccel[k];
+#ifdef PMGRID
+            grav_acc += All.cf_a2inv * P[i].GravPM[k];
+#endif
+            SphP[i].DtInternalEnergy -= SphP[i].GravWorkTerm[k] * All.cf_atime * grav_acc;
+        }
+#endif
+        /* limit the magnitude of the hydro dtinternalenergy */
+        double du = SphP[i].DtInternalEnergy * dtime;
+        if(du < -0.5*SphP[i].InternalEnergy) {SphP[i].DtInternalEnergy = -0.5*SphP[i].InternalEnergy / dtime;}
+        if(du >  50.*SphP[i].InternalEnergy) {SphP[i].DtInternalEnergy =  50.*SphP[i].InternalEnergy / dtime;}
+        /* and convert to cgs before use in the cooling sub-routine */
+        SphP[i].DtInternalEnergy *= All.HubbleParam * All.UnitEnergy_in_cgs / (All.UnitMass_in_g * All.UnitTime_in_s) * (PROTONMASS/XH);
+#endif
+        
         
 #ifndef RT_COOLING_PHOTOHEATING
         unew = DoCooling(uold, SphP[i].Density * All.cf_a3inv, dtime, &ne, i);
@@ -148,12 +171,17 @@ void do_the_cooling_for_particle(int i)
 #endif
         
         
-        /* InternalEnergy, InternalEnergyPred, Pressure, ne are now immediately updated; however, DtInternalEnergy
-         carries information from the hydro loop which is only half-stepped here, so is -not- updated */
+        /* InternalEnergy, InternalEnergyPred, Pressure, ne are now immediately updated; however, if COOLING_OPERATOR_SPLIT
+         is set, then DtInternalEnergy carries information from the hydro loop which is only half-stepped here, so is -not- updated. 
+         if the flag is not set (default), then the full hydro-heating is accounted for in the cooling loop, so it should be re-zeroed here */
         SphP[i].InternalEnergy = unew;
         SphP[i].Ne = ne;
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
         SphP[i].Pressure = get_pressure(i);
+#ifndef COOLING_OPERATOR_SPLIT
+        SphP[i].DtInternalEnergy = 0;
+#endif
+        
         
 #ifdef GALSF_FB_HII_HEATING
         /* count off time which has passed since ionization 'clock' */
@@ -804,13 +832,12 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
 #endif
 
     
+  T = pow(10.0, logT);
   if(logT < Tmax)
     {
       find_abundances_and_rates(logT, rho, nelec, target);
       /* Compute cooling and heating rate (cf KWH Table 1) in units of nH**2 */
         
-      T = pow(10.0, logT);
-
       LambdaExcH0 = bH0 * ne * nH0;
       LambdaExcHep = bHep * ne * nHep;
       LambdaExc = LambdaExcH0 + LambdaExcHep;	/* excitation */
@@ -932,9 +959,7 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
       ne = nHp + 2.0 * nHepp;
       *nelec = ne;		/* note: in units of the hydrogen number density */
 
-      T = pow(10.0, logT);
-      LambdaFF =
-	1.42e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - logT) * (5.5 - logT) / 3)) * (nHp + 4 * nHepp) * ne;
+      LambdaFF = 1.42e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - logT) * (5.5 - logT) / 3)) * (nHp + 4 * nHepp) * ne;
 
       if(All.ComovingIntegrationOn)
 	{
@@ -968,8 +993,15 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
      LambdaFF, LambdaCmptn, Heat,
      ne, nHp, nHep, nHepp);
    */
+    
+    double Q = Heat - Lambda;
+#ifndef COOLING_OPERATOR_SPLIT
+    /* add the hydro energy change directly: this represents an additional heating/cooling term, to be accounted for 
+        in the semi-implicit solution determined here. this is more accurate when tcool << tdynamical */
+    Q += SphP[target].DtInternalEnergy / nHcgs;
+#endif
 
-  return (Heat - Lambda);
+  return Q;
 }
 
 

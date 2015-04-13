@@ -119,7 +119,12 @@ void merge_and_split_particles(void)
                         /* make sure we're not taking the same particle */
                         if((j>=0)&&(j!=i))
                         {
-                            int k; double r2=0; for(k=0;k<3;k++) {r2+=(P[i].Pos[k]-P[j].Pos[k])*(P[i].Pos[k]-P[j].Pos[k]);}
+                            double dp[3]; int k; double r2=0;
+                            for(k=0;k<3;k++) {dp[k]=P[i].Pos[k]-P[j].Pos[k];}
+#ifdef PERIODIC
+                            dp[0]=NEAREST_X(dp[0]); dp[1]=NEAREST_Y(dp[1]); dp[2]=NEAREST_Z(dp[2]);
+#endif
+                            for(k=0;k<3;k++) {r2+=dp[k]*dp[k];}
                             if(r2<threshold_val) {threshold_val=r2; target_for_merger=j;} // position-based //
                         }
                     } // for(n=0; n<numngb_inbox; n++)
@@ -134,6 +139,13 @@ void merge_and_split_particles(void)
             /* alright, particle splitting operations are complete! */
         } // P[i].Type==0
     } // for(i = 0; i < NumPart; i++)
+#ifdef PERIODIC
+    /* map the particles back onto the box (make sure they get wrapped if they go off the edges). this is redundant here,
+     because we only do splits in the beginning of a domain decomposition step, where this will be called as soon as
+     the particle re-order is completed. but it is still useful to keep here in case this changes (and to note what needs
+     to be done for any more complicated splitting operations */
+    do_box_wrapping();
+#endif
     myfree(Ngblist);
     MPI_Allreduce(&n_particles_merged, &MPI_n_particles_merged, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&n_particles_split, &MPI_n_particles_split, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -184,7 +196,10 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     double d_r = 0.25 * hsml; // needs to be epsilon*Hsml where epsilon<<1, to maintain stability //
     d_r = DMAX( DMAX(0.1*r_near , 0.005*hsml) , DMIN(d_r , r_near) ); // use a 'buffer' to limit to some multiple of the distance to the nearest particle //
     */ // the change above appears to cause some numerical instability //
-     
+#ifndef NOGRAVITY
+    d_r = DMAX(d_r , 2.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0]);
+#endif
+    
     /* find the first non-gas particle and move it to the end of the particle list */
     long j = NumPart + n_particles_split;
     /* set the pointers equal to one another -- all quantities get copied, we only have to modify what needs changing */
@@ -302,6 +317,10 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     P[j].Pos[1] -= dy;
     P[i].Pos[2] += dz;
     P[j].Pos[2] -= dz;
+    /* this is allowed to push particles over the 'edges' of periodic boxes, because we will call the box-wrapping routine immediately below. 
+        but it is important that the periodicity of the box be accounted for in relative positions and that we correct for this before allowing
+        any other operations on the particles */
+    
     /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
     force_add_star_to_tree(i, j);// (buggy)
     /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
@@ -365,20 +384,28 @@ void merge_particles_ij(MyIDType i, MyIDType j)
 #endif
 
     /* make sure to update the conserved variables correctly: mass and momentum are easy, energy is non-trivial */
-    double egy_old = 0, pos_new_xyz = 0;
+    double egy_old = 0;
     egy_old += mtot * (wt_j*SphP[j].InternalEnergy + wt_i*SphP[i].InternalEnergy); // internal energy //
+    double pos_new_xyz[3], dp[3];
+    /* for periodic boxes, we need to (arbitrarily) pick one position as our coordinate center. we pick i. then everything defined in 
+        position differences relative to i. the final position will be appropriately box-wrapped after these operations are completed */
+    for(k=0;k<3;k++) {dp[k]=P[j].Pos[k]-P[i].Pos[k];}
+#ifdef PERIODIC
+    dp[0]=NEAREST_X(dp[0]); dp[1]=NEAREST_Y(dp[1]); dp[2]=NEAREST_Z(dp[2]);
+#endif
+    for(k=0;k<3;k++) {pos_new_xyz[k] = P[i].Pos[k] + wt_j * dp[k];}
+
     for(k=0;k<3;k++)
     {
         egy_old += mtot*wt_j * 0.5 * P[j].Vel[k]*P[j].Vel[k]*All.cf_a2inv; // kinetic energy (j) //
         egy_old += mtot*wt_i * 0.5 * P[i].Vel[k]*P[i].Vel[k]*All.cf_a2inv; // kinetic energy (i) //
         // gravitational energy terms need to be added (including work for moving particles 'together') //
-        pos_new_xyz = wt_j*P[j].Pos[k] + wt_i*P[i].Pos[k];
         // Egrav = m*g*h = m * (-grav_acc) * (position relative to zero point) //
-        egy_old += mtot*wt_j * (P[j].Pos[k] - pos_new_xyz)*All.cf_atime * (-P[j].GravAccel[k])*All.cf_a2inv; // work (j) //
-        egy_old += mtot*wt_i * (P[i].Pos[k] - pos_new_xyz)*All.cf_atime * (-P[i].GravAccel[k])*All.cf_a2inv; // work (i) //
+        egy_old += mtot*wt_j * (P[i].Pos[k]+dp[k] - pos_new_xyz[k])*All.cf_atime * (-P[j].GravAccel[k])*All.cf_a2inv; // work (j) //
+        egy_old += mtot*wt_i * (P[i].Pos[k] - pos_new_xyz[k])*All.cf_atime * (-P[i].GravAccel[k])*All.cf_a2inv; // work (i) //
 #ifdef PMGRID
-        egy_old += mtot*wt_j * (P[j].Pos[k] - pos_new_xyz)*All.cf_atime * (-P[j].GravPM[k])*All.cf_a2inv; // work (j) [PMGRID] //
-        egy_old += mtot*wt_i * (P[i].Pos[k] - pos_new_xyz)*All.cf_atime * (-P[i].GravPM[k])*All.cf_a2inv; // work (i) [PMGRID] //
+        egy_old += mtot*wt_j * (P[i].Pos[k]+dp[k] - pos_new_xyz[k])*All.cf_atime * (-P[j].GravPM[k])*All.cf_a2inv; // work (j) [PMGRID] //
+        egy_old += mtot*wt_i * (P[i].Pos[k] - pos_new_xyz[k])*All.cf_atime * (-P[i].GravPM[k])*All.cf_a2inv; // work (i) [PMGRID] //
 #endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
         SphP[j].GravWorkTerm[k] = 0; // since we're accounting for the work above and dont want to accidentally double-count //
@@ -396,7 +423,7 @@ void merge_particles_ij(MyIDType i, MyIDType j)
     }
     for(k=0;k<3;k++)
     {
-        P[j].Pos[k] = wt_j*P[j].Pos[k] + wt_i*P[i].Pos[k]; // center-of-mass conserving //
+        P[j].Pos[k] = pos_new_xyz[k]; // center-of-mass conserving //
         P[j].Vel[k] = wt_j*P[j].Vel[k] + wt_i*P[i].Vel[k]; // momentum-conserving //
         SphP[j].VelPred[k] = wt_j*SphP[j].VelPred[k] + wt_i*SphP[i].VelPred[k]; // momentum-conserving //
         P[j].GravAccel[k] = wt_j*P[j].GravAccel[k] + wt_i*P[i].GravAccel[k]; // force-conserving //

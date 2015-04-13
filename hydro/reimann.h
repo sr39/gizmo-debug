@@ -195,17 +195,21 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
         if(*Q_R>Qmed_max) *Q_R=Qmed_max;
         if(*Q_L>Qmax_eff) *Q_L=Qmax_eff;
         if(*Q_L<Qmed_min) *Q_L=Qmed_min;
+/*
 #if defined(MAGNETIC) && !defined(CONSTRAINED_GRADIENT_MHD)
-        if(mode > 0) {if(*Q_R > *Q_L) {*Q_R = 0.5*(*Q_R + *Q_L); *Q_L=*Q_R;}} // causes strong diffusion in Gresho: limit conditions of use
+        if(mode > 0) {if(*Q_R > *Q_L) {*Q_R = 0.5*(*Q_R + *Q_L); *Q_L=*Q_R;}} // causes strong diffusion in Gresho and RTMHD: limit conditions of use
 #endif
+*/
     } else {
         if(*Q_R>Qmax_eff) *Q_R=Qmax_eff;
         if(*Q_R<Qmed_min) *Q_R=Qmed_min;
         if(*Q_L<Qmin_eff) *Q_L=Qmin_eff;
         if(*Q_L>Qmed_max) *Q_L=Qmed_max;
+/*
 #if defined(MAGNETIC) && !defined(CONSTRAINED_GRADIENT_MHD)
-        if(mode > 0) {if(*Q_R < *Q_L) {*Q_R = 0.5*(*Q_R + *Q_L); *Q_L=*Q_R;}} // causes strong diffusion in Gresho: limit conditions of use
+        if(mode > 0) {if(*Q_R < *Q_L) {*Q_R = 0.5*(*Q_R + *Q_L); *Q_L=*Q_R;}} // causes strong diffusion in Gresho and RTMHD: limit conditions of use
 #endif
+*/
     }
     /* done! */
 }
@@ -1090,22 +1094,40 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     /* use this to compute the corrected face-centered fields (recall Bx = constant through all states) */
     Bx = 0.5*(Riemann_vec.L.B[0]+Riemann_vec.R.B[0]);
     Riemann_out->B_normal_corrected = Bx;
+
 #ifdef DIVBCLEANING_DEDNER
     /* use the solution for the modified Bx, given the action of the phi-field; 
         however this must be slope-limited to ensure the 'corrected' Bx remains stable */
-    /* add approach speed, since this is a signal velocity (and that's what we use for growing phi) */
+#if !defined(CONSTRAINED_GRADIENT_MHD) || defined(COOLING) || defined(GALSF)
+    /* this is the formulation from E. Gaburov assuming -two- wavespeeds (cL and cR); this down-weights the correction term
+     under some circumstances, which appears to increase stability */
+    double cL = Riemann_out->cfast_L; // try with correction for approach speed ???
+    double cR = Riemann_out->cfast_R;
+    double corr_norm = 1;
+    double cinv = 1.0 / (cL+cR);
+    Riemann_out->B_normal_corrected = cinv*(Riemann_vec.L.B[0]*cL + Riemann_vec.R.B[0]*cR);
+    double corr_p = cinv*(Riemann_vec.L.phi-Riemann_vec.R.phi);
+    double corr_p_abs = fabs(corr_p);
+    double corr_b_abs = DEDNER_IMPLICIT_LIMITER * fabs(Riemann_out->B_normal_corrected);
+    if(corr_p_abs > corr_b_abs) {corr_norm *= corr_b_abs/corr_p_abs;}
+    Riemann_out->B_normal_corrected += corr_norm * corr_p;
+    Riemann_out->phi_normal_mean = corr_norm * cinv * (cL*Riemann_vec.R.phi + cR*Riemann_vec.L.phi);
+    Riemann_out->phi_normal_db = corr_norm * cinv * cL * cR * (Riemann_vec.L.B[0]-Riemann_vec.R.B[0]);
+#else
+    /* this is the 'default' Dedner formulation, which uses a single (maximum) wavespeed for the interface */
     c_eff += DMAX( 0. , Riemann_vec.L.v[0]-Riemann_vec.R.v[0] );
+    // add approach speed, since this is a signal velocity (and that's what we use for growing phi)
     double corr_norm = 1.0;
     double corr_p = 0.5*(Riemann_vec.L.phi-Riemann_vec.R.phi)/c_eff;
     double corr_p_abs = fabs(corr_p);
     double corr_b_abs = DEDNER_IMPLICIT_LIMITER * fabs(Bx);
     if(corr_p_abs > corr_b_abs) {corr_norm *= corr_b_abs/corr_p_abs;}
-    /* ok, now we should have a properly slope-limited reconstruction of Bnorm */
-    
     Riemann_out->B_normal_corrected += corr_norm * corr_p;
     Riemann_out->phi_normal_mean = 0.5 * corr_norm * (Riemann_vec.R.phi+Riemann_vec.L.phi);
     Riemann_out->phi_normal_db = corr_norm * 0.5*(c_eff*(Riemann_vec.L.B[0]-Riemann_vec.R.B[0]));
 #endif
+#endif
+    
     /* and set the normal component of B to the corrected value */
     Bx = Riemann_out->B_normal_corrected; // need to re-set this using the updated value of Bx //
     Riemann_vec.L.B[0] = Bx;
@@ -1457,8 +1479,9 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
 
     /* alright, we've gotten successful HLLD fluxes! */
     Riemann_out->Fluxes.B[0] = -v_frame * Bx;
-#ifdef DIVBCLEANING_DEDNER
-    Riemann_out->Fluxes.phi = -v_frame * Riemann_out->phi_normal_mean; // need to use the proper phi from the updated problem //
+#if defined(DIVBCLEANING_DEDNER) && defined(HYDRO_MESHLESS_FINITE_VOLUME)
+    //Riemann_out->Fluxes.phi = -Interface_State->v[0] * Interface_State->rho * Riemann_out->phi_normal_mean; // potentially improved phi-flux for MFV with mass-based fluxes ???
+    //Riemann_out->Fluxes.phi = -v_frame * Riemann_out->phi_normal_mean; // need to use the proper phi from the updated problem // mass-based phi-fluxes don't require this ???
     //Riemann_out->Fluxes.phi -= All.DivBcleanHyperbolicSigma * c_eff*c_eff * Bx;
 #endif
     Riemann_out->S_M=v_frame;
