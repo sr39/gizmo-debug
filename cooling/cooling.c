@@ -998,7 +998,7 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
 #ifndef COOLING_OPERATOR_SPLIT
     /* add the hydro energy change directly: this represents an additional heating/cooling term, to be accounted for 
         in the semi-implicit solution determined here. this is more accurate when tcool << tdynamical */
-    Q += SphP[target].DtInternalEnergy / nHcgs;
+    if(target >= 0) Q += SphP[target].DtInternalEnergy / nHcgs;
 #endif
 
   return Q;
