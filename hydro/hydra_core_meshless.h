@@ -162,12 +162,36 @@
         }
 #endif
         
+        /* we need the face velocities, dotted into the face vector, for correction back to the lab frame */
+        for(k=0;k<3;k++) {face_vel_i+=local.Vel[k]*n_unit[k]; face_vel_j+=VelPred_j[k]*n_unit[k];}
+        face_vel_i /= All.cf_atime; face_vel_j /= All.cf_atime;
+        face_area_dot_vel = rinv*(-s_i*face_vel_j + s_j*face_vel_i);
+
+        /* also will need approach velocities to determine maximum upwind pressure */
+        double v2_approach = 0;
+        double vdotr2_phys = kernel.vdotr2;
+        if(All.ComovingIntegrationOn) {vdotr2_phys -= All.cf_hubble_a2 * r2;}
+        vdotr2_phys *= 1/(kernel.r * All.cf_atime);
+        if(vdotr2_phys < 0) {v2_approach = vdotr2_phys*vdotr2_phys;}
+        double vdotf2_phys = face_vel_i - face_vel_j; // need to be careful of sign here //
+        if(vdotf2_phys < 0) {v2_approach = DMAX( v2_approach , vdotf2_phys*vdotf2_phys );}
+        
+        double press_i_tot = local.Pressure + local.Density * v2_approach;
+        double press_j_tot = SphP[j].Pressure + SphP[j].Density * v2_approach;
+#ifdef MAGNETIC
+        press_i_tot += 0.5 * kernel.b2_i * fac_magnetic_pressure;
+        press_j_tot += 0.5 * kernel.b2_j * fac_magnetic_pressure;
+#endif
+        double press_tot_limiter = 1.1 * All.cf_a3inv * DMAX( press_i_tot , press_j_tot );
+        
+        
+        
         /* --------------------------------------------------------------------------------- */
         /* Alright! Now we're actually ready to solve the Riemann problem at the particle interface */
         /* --------------------------------------------------------------------------------- */
         Riemann_solver(Riemann_vec, &Riemann_out, n_unit);
         /* before going on, check to make sure we have a valid Riemann solution */
-        if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M)))
+        if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>press_tot_limiter))
         {
             /* go to a linear reconstruction of P, rho, and v, and re-try */
             Riemann_vec.R.p = local.Pressure; Riemann_vec.L.p = SphP[j].Pressure;
@@ -184,7 +208,7 @@
             Riemann_vec.R.cs = kernel.sound_i; Riemann_vec.L.cs = kernel.sound_j;
 #endif
             Riemann_solver(Riemann_vec, &Riemann_out, n_unit);
-            if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M)))
+            if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>press_tot_limiter))
             {
                 /* ignore any velocity difference between the particles: this should gaurantee we have a positive pressure! */
                 Riemann_vec.R.p = local.Pressure; Riemann_vec.L.p = SphP[j].Pressure;
@@ -201,11 +225,11 @@
                 Riemann_vec.R.cs = kernel.sound_i; Riemann_vec.L.cs = kernel.sound_j;
 #endif
                 Riemann_solver(Riemann_vec, &Riemann_out, n_unit);
-                if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M)))
+                if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>press_tot_limiter))
                 {
 #if defined(MAGNETIC) && defined(DIVBCLEANING_DEDNER)
-                    printf("Riemann Solver Failed to Find Positive Pressure!: PL/M/R=%g/%g/%g Mi/j=%g/%g rhoL/R=%g/%g H_ij=%g/%g vL=%g/%g/%g vR=%g/%g/%g n_unit=%g/%g/%g BL=%g/%g/%g BR=%g/%g/%g phiL/R=%g/%g \n",
-                           Riemann_vec.L.p,Riemann_out.P_M,Riemann_vec.R.p,local.Mass,P[j].Mass,Riemann_vec.L.rho,Riemann_vec.R.rho,local.Hsml,PPP[j].Hsml,
+                    printf("Riemann Solver Failed to Find Positive Pressure!: Pmax=%g PL/M/R=%g/%g/%g Mi/j=%g/%g rhoL/R=%g/%g H_ij=%g/%g vL=%g/%g/%g vR=%g/%g/%g n_unit=%g/%g/%g BL=%g/%g/%g BR=%g/%g/%g phiL/R=%g/%g \n",
+                           press_tot_limiter,Riemann_vec.L.p,Riemann_out.P_M,Riemann_vec.R.p,local.Mass,P[j].Mass,Riemann_vec.L.rho,Riemann_vec.R.rho,local.Hsml,PPP[j].Hsml,
                            local.Vel[0]-v_frame[0],local.Vel[1]-v_frame[1],local.Vel[2]-v_frame[2],
                            VelPred_j[0]-v_frame[0],VelPred_j[1]-v_frame[1],VelPred_j[2]-v_frame[2],
                            n_unit[0],n_unit[1],n_unit[2],
@@ -213,8 +237,8 @@
                            Riemann_vec.R.B[0],Riemann_vec.R.B[1],Riemann_vec.R.B[2],
                            Riemann_vec.L.phi,Riemann_vec.R.phi);
 #else
-                    printf("Riemann Solver Failed to Find Positive Pressure!: PL/M/R=%g/%g/%g Mi/j=%g/%g rhoL/R=%g/%g vL=%g/%g/%g vR=%g/%g/%g n_unit=%g/%g/%g \n",
-                           Riemann_vec.L.p,Riemann_out.P_M,Riemann_vec.R.p,local.Mass,P[j].Mass,Riemann_vec.L.rho,Riemann_vec.R.rho,
+                    printf("Riemann Solver Failed to Find Positive Pressure!: Pmax=%g PL/M/R=%g/%g/%g Mi/j=%g/%g rhoL/R=%g/%g vL=%g/%g/%g vR=%g/%g/%g n_unit=%g/%g/%g \n",
+                           press_tot_limiter,Riemann_vec.L.p,Riemann_out.P_M,Riemann_vec.R.p,local.Mass,P[j].Mass,Riemann_vec.L.rho,Riemann_vec.R.rho,
                            Riemann_vec.L.v[0],Riemann_vec.L.v[1],Riemann_vec.L.v[2],
                            Riemann_vec.R.v[0],Riemann_vec.R.v[1],Riemann_vec.R.v[2],n_unit[0],n_unit[1],n_unit[2]);
 #endif
@@ -230,12 +254,6 @@
         if((Riemann_out.P_M>0)&&(!isnan(Riemann_out.P_M)))
         {
             if(All.ComovingIntegrationOn) {for(k=0;k<3;k++) v_frame[k] /= All.cf_atime;}
-#if defined(HYDRO_MESHLESS_FINITE_MASS) || defined(MAGNETIC)
-            /* we need the face velocities, dotted into the face vector, for correction back to the lab frame */
-            for(k=0;k<3;k++) {face_vel_i+=local.Vel[k]*n_unit[k]; face_vel_j+=VelPred_j[k]*n_unit[k];}
-            face_vel_i /= All.cf_atime; face_vel_j /= All.cf_atime;
-            face_area_dot_vel = rinv*(-s_i*face_vel_j + s_j*face_vel_i);
-#endif
             
             
 #if !defined(HYDRO_MESHLESS_FINITE_VOLUME) && !defined(MAGNETIC)
@@ -250,9 +268,7 @@
             if(SM_over_ceff < epsilon_entropic_eos_big)
             {
                 use_entropic_energy_equation = 1;
-                double vdotr2_phys = kernel.vdotr2;
-                if(All.ComovingIntegrationOn) {vdotr2_phys -= All.cf_hubble_a2 * r2;}
-                double PdV_fac = Riemann_out.P_M * vdotr2_phys / kernel.r * All.cf_atime;
+                double PdV_fac = Riemann_out.P_M * vdotr2_phys / All.cf_a2inv;
                 double PdV_i = kernel.dwk_i * V_i*V_i * local.DhsmlNgbFactor * PdV_fac;
                 double PdV_j = kernel.dwk_j * V_j*V_j * PPP[j].DhsmlNgbFactor * PdV_fac;
                 du_new = 0.5 * (PdV_i - PdV_j + facenorm_pm * (face_vel_i+face_vel_j));
@@ -343,9 +359,7 @@
 #endif
                 int use_entropic_energy_equation = 1;
                 double facenorm_pm = Riemann_out.P_M * Face_Area_Norm;
-                double vdotr2_phys = kernel.vdotr2;
-                if(All.ComovingIntegrationOn) {vdotr2_phys -= All.cf_hubble_a2 * r2;}
-                double PdV_fac = Riemann_out.P_M * vdotr2_phys / kernel.r * All.cf_atime;
+                double PdV_fac = Riemann_out.P_M * vdotr2_phys / All.cf_a2inv;
                 double PdV_i = kernel.dwk_i * V_i*V_i * local.DhsmlNgbFactor * PdV_fac;
                 double PdV_j = kernel.dwk_j * V_j*V_j * PPP[j].DhsmlNgbFactor * PdV_fac;
                 double du_old = facenorm_pm * (Riemann_out.S_M + face_area_dot_vel);
