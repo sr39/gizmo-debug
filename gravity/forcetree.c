@@ -2494,6 +2494,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 // first, appropriately symmetrize the forces between particles //
                 if((h_p_inv > 0) && (ptype_sec > -1))
                 {
+#ifdef HYDRO_SPH
                     if(h_p_inv != h_inv)
                     {
                         h_p3_inv = h_p_inv * h_p_inv * h_p_inv;
@@ -2504,11 +2505,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         if(zeta_sec != 0)
                         {u_p=u; h_p3_inv=h3_inv;}
                     }
-                }
-                
-                // next, compute the correction for adaptive softenings, as needed //
-                if(ptype_sec > -1)
-                {
                     // correction only applies to 'shared-kernel' particles: so this needs to check if
                     // these are the same particles for which the kernel lengths are computed
                     if(ags_gravity_kernel_shared_check(ptype, ptype_sec))
@@ -2516,20 +2512,47 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         if((r>0) && (u<1) && (pmass>0)) // checks that these aren't the same particle
                         {
                             kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
-                            //fac += mass * zeta * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
                             fac += (zeta/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
                         } // if(ptype==0)
-                    
-                    if(zeta_sec != 0) // secondary is adaptively-softened particle (set above)
-                        if(h_p_inv > 0)
-                            if((r>0) && (u_p<1) && (pmass>0))
+                        
+                        if(zeta_sec != 0) // secondary is adaptively-softened particle (set above)
+                            if(h_p_inv > 0)
+                                if((r>0) && (u_p<1) && (pmass>0))
+                                {
+                                    kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
+                                    fac += (zeta_sec/pmass) * dWdr / r;
+                                } // if(zeta_sec != 0)
+                    } // if(ptype==ptype_sec)
+#else
+                    if(h_p_inv < h_inv)
+                    {
+                        h_p3_inv = h_p_inv * h_p_inv * h_p_inv;
+                        u_p = r * h_p_inv;
+                        fac = mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1);
+                    }
+                    // correction only applies to 'shared-kernel' particles: so this needs to check if
+                    // these are the same particles for which the kernel lengths are computed
+                    // (also checks that these aren't the same particle)
+                    if(ags_gravity_kernel_shared_check(ptype, ptype_sec) && (r > 0) && (pmass > 0))
+                    {
+                        if(h_p_inv >= h_inv)
+                        {
+                            if((zeta != 0) && (u < 1))
+                            {
+                                kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
+                                fac += 2 * (zeta/pmass) * dWdr / sqrt(r2 + 0.0001/(h_inv*h_inv));   // 0.5 * zeta * omega * dWdr / r;
+                            }
+                        } else {
+                            if((zeta_sec != 0) && (u_p < 1)) // secondary is adaptively-softened particle (set above)
                             {
                                 kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
-                                //fac += mass * zeta_sec * dWdr / r;
-                                fac += (zeta_sec/pmass) * dWdr / r;
-                            } // if(zeta_sec != 0)
+                                fac += 2 * (zeta_sec/pmass) * dWdr / sqrt(r2 + 0.0001/(h_p_inv*h_p_inv));
+                            }
+                        }
                     } // if(ptype==ptype_sec)
-                } // if(ptype_sec > -1)
+#endif
+                }
+                
 #endif // #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) //
                 
 #ifdef EVALPOTENTIAL

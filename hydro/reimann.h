@@ -82,7 +82,7 @@ struct rotation_matrix
 /* --------------------------------------------------------------------------------- */
 static inline double actual_slopelimiter(double dQ_1, double dQ_2);
 static inline double get_dQ_from_slopelimiter(double dQ_1, MyFloat grad[3], struct kernel_hydra kernel, double rinv);
-void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3]);
+void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3], double press_tot_limiter);
 double guess_for_pressure(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out,
                           double v_line_L, double v_line_R, double cs_L, double cs_R);
 void sample_reimann_standard(double S, struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out,
@@ -99,18 +99,18 @@ void HLLC_fluxes(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *R
                  double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R, double S_L, double S_R);
 void get_wavespeeds_and_pressure_star(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
                                       double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R,
-                                      double *S_L_out, double *S_R_out);
+                                      double *S_L_out, double *S_R_out, double press_tot_limiter);
 void Riemann_solver_Rusanov(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
                             double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R);
 void HLLC_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
-                         double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R);
+                         double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R, double press_tot_limiter);
 void convert_face_to_flux(struct Riemann_outputs *Riemann_out, double n_unit[3]);
 int iterative_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out,
                               double v_line_L, double v_line_R, double cs_L, double cs_R);
 void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloat Grad_Q_j[3],
                              double distance_from_i[3], double distance_from_j[3], double *Q_L, double *Q_R, int mode);
 #ifdef MAGNETIC
-void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out);
+void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double press_tot_limiter);
 void rotate_states_to_face(struct Input_vec_Riemann *Riemann_vec, double n_unit[3], struct rotation_matrix *rot_matrix);
 void rotate_fluxes_back_to_lab(struct Riemann_outputs *Riemann_out, struct rotation_matrix rot_matrix);
 #endif
@@ -250,7 +250,7 @@ static inline double get_dQ_from_slopelimiter(double dQ_1, MyFloat grad[3], stru
 /* Master Riemann solver routine: call this, it will call sub-routines */
 /*  (written by P. Hopkins, this is just a wrapper though for the various sub-routines) */
 /* --------------------------------------------------------------------------------- */
-void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3])
+void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3], double press_tot_limiter)
 {
     if((Riemann_vec.L.p < 0 && Riemann_vec.R.p < 0)||(Riemann_vec.L.rho < 0)||(Riemann_vec.R.rho < 0))
     {
@@ -311,7 +311,7 @@ void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs
     /* rotate the state to the face, so we can use the 1D riemann solver */
     rotate_states_to_face(&Riemann_vec, n_unit, &rot_matrix);
     /* send it to our 1D MHD solver, which will try several solutions until it gets a positive pressure */
-    HLLD_Riemann_solver(Riemann_vec, Riemann_out);
+    HLLD_Riemann_solver(Riemann_vec, Riemann_out, press_tot_limiter);
     /* rotate the returned fluxes back to the lab frame */
     rotate_fluxes_back_to_lab(Riemann_out, rot_matrix);
 
@@ -324,20 +324,22 @@ void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs
     double v_line_L = Riemann_vec.L.v[0]*n_unit[0] + Riemann_vec.L.v[1]*n_unit[1] + Riemann_vec.L.v[2]*n_unit[2];
     double v_line_R = Riemann_vec.R.v[0]*n_unit[0] + Riemann_vec.R.v[1]*n_unit[1] + Riemann_vec.R.v[2]*n_unit[2];
     
-    HLLC_Riemann_solver(Riemann_vec, Riemann_out, n_unit, v_line_L, v_line_R, cs_L, cs_R, h_L, h_R);
+    HLLC_Riemann_solver(Riemann_vec, Riemann_out, n_unit, v_line_L, v_line_R, cs_L, cs_R, h_L, h_R, press_tot_limiter);
 #ifdef NON_IDEAL_EOS
     /* check if HLLC failed: if so, compute the Rusanov flux instead */
     if((Riemann_out->P_M<=0)||(isnan(Riemann_out->P_M)))
         Riemann_solver_Rusanov(Riemann_vec, Riemann_out, n_unit, v_line_L, v_line_R, cs_L, cs_R, h_L, h_R);
 #else
+#if !defined(COOLING) && !defined(GALSF)
     /* go straight to the expensive but exact solver (only for hydro with polytropic eos!) */
-    if((Riemann_out->P_M<=0)||(isnan(Riemann_out->P_M)))
+    if((Riemann_out->P_M<=0)||(isnan(Riemann_out->P_M))||(Riemann_out->P_M>press_tot_limiter))
     {
         Riemann_solver_exact(Riemann_vec, Riemann_out, n_unit, v_line_L, v_line_R, cs_L, cs_R, h_L, h_R);
 #ifdef SAVE_FACE_DENSITY
         Riemann_out->Face_Density = 0.5*(Riemann_vec.L.rho + Riemann_vec.R.rho);
 #endif
     }
+#endif
 #endif
 #endif
 }
@@ -353,10 +355,10 @@ void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs
 /* -------------------------------------------------------------------------------------------------------------- */
 /* HLLC: hydro (no MHD) */
 void HLLC_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
-                        double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R)
+                        double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R, double press_tot_limiter)
 {
     double S_L,S_R;
-    get_wavespeeds_and_pressure_star(Riemann_vec, Riemann_out, n_unit,  v_line_L, v_line_R, cs_L, cs_R, h_L, h_R, &S_L, &S_R);
+    get_wavespeeds_and_pressure_star(Riemann_vec, Riemann_out, n_unit,  v_line_L, v_line_R, cs_L, cs_R, h_L, h_R, &S_L, &S_R, press_tot_limiter);
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     /* check if we have a valid solution, and if so, compute the fluxes */
     if((Riemann_out->P_M>0)&&(!isnan(Riemann_out->P_M)))
@@ -420,7 +422,7 @@ void Riemann_solver_Rusanov(struct Input_vec_Riemann Riemann_vec, struct Riemann
 /*  (written by P. Hopkins) */
 void get_wavespeeds_and_pressure_star(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
                                       double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R,
-                                      double *S_L_out, double *S_R_out)
+                                      double *S_L_out, double *S_R_out, double press_tot_limiter)
 {
     /* Gaburov: 'simplest' HLLC discretization with weighting scheme */
     double PT_L = Riemann_vec.L.p;
@@ -432,7 +434,7 @@ void get_wavespeeds_and_pressure_star(struct Input_vec_Riemann Riemann_vec, stru
     Riemann_out->S_M = ((PT_R-PT_L) + rho_wt_L*v_line_L - rho_wt_R*v_line_R) / (rho_wt_L - rho_wt_R);
     Riemann_out->P_M = (PT_L*rho_wt_R - PT_R*rho_wt_L + rho_wt_L*rho_wt_R*(v_line_R - v_line_L)) / (rho_wt_R - rho_wt_L);
 
-    if((Riemann_out->P_M <= 0)||(isnan(Riemann_out->P_M)))
+    if((Riemann_out->P_M <= 0)||(isnan(Riemann_out->P_M))||(Riemann_out->P_M>press_tot_limiter))
     {
         /* failed: compute Roe-averaged values (Roe 1981) [roe-averaging not strictly necessary for HLLC, though it improves accuracy */
         /* note that enthalpy H=(Etotal+P)/d is averaged, with Etotal=Ekinetic+Einternal (Einternal=P/(gamma-1)) */
@@ -461,7 +463,7 @@ void get_wavespeeds_and_pressure_star(struct Input_vec_Riemann Riemann_vec, stru
         Riemann_out->P_M = Riemann_vec.L.rho * (v_line_L-S_L)*(v_line_L-Riemann_out->S_M) + PT_L;
         /* p_M = p_L* = p_R*  */
 
-        if((Riemann_out->P_M <= 0)||(isnan(Riemann_out->P_M)))
+        if((Riemann_out->P_M <= 0)||(isnan(Riemann_out->P_M))||(Riemann_out->P_M>press_tot_limiter))
         {
             /* failed again! try the simple primitive-variable estimate (as we would for Rusanov) */
             Riemann_out->P_M = 0.5*((PT_L + PT_R) + (v_line_L-v_line_R)*0.25*(Riemann_vec.L.rho+Riemann_vec.R.rho)*(cs_L+cs_R));
@@ -1061,7 +1063,7 @@ void convert_face_to_flux(struct Riemann_outputs *Riemann_out, double n_unit[3])
 /*   (written by P. Hopkins) */
 /* -------------------------------------------------------------------------------------------------------------- */
 /* HLLD: (MHD) */
-void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out)
+void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double press_tot_limiter)
 {
     double v_frame = 0; /* frame velocity (in the direction of its normal): this will be used below! */
     double SMALL_NUMBER = 1.0e-11;
@@ -1162,7 +1164,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     
     
     /* now we need to check if these guesses are reasonable; otherwise, use a different wavespeed estimate */
-    if((P_M<=0)||(isnan(P_M)))
+    if((P_M<=0)||(isnan(P_M))||(P_M>press_tot_limiter))
     {
         double sqrt_rho_L = sqrt(Riemann_vec.L.rho);
         double sqrt_rho_R = sqrt(Riemann_vec.R.rho);
@@ -1179,7 +1181,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
         P_M = PT_L + rho_wt_L*(S_M-vxL);
         
         /* ok, are the roe-averaged wavespeed guesses reasonable? */
-        if((P_M<=0)||(isnan(P_M)))
+        if((P_M<=0)||(isnan(P_M))||(P_M>press_tot_limiter))
         {
             double S_plus = DMAX(fabs(vxL),fabs(vxR)) + c_eff;
             S_L=-S_plus; S_R=S_plus;
