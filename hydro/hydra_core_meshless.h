@@ -189,7 +189,7 @@
         /* --------------------------------------------------------------------------------- */
         /* Alright! Now we're actually ready to solve the Riemann problem at the particle interface */
         /* --------------------------------------------------------------------------------- */
-        Riemann_solver(Riemann_vec, &Riemann_out, n_unit);
+        Riemann_solver(Riemann_vec, &Riemann_out, n_unit, press_tot_limiter);
         /* before going on, check to make sure we have a valid Riemann solution */
         if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>press_tot_limiter))
         {
@@ -207,7 +207,7 @@
             Riemann_vec.R.u = local.InternalEnergyPred; Riemann_vec.L.u = SphP[j].InternalEnergyPred;
             Riemann_vec.R.cs = kernel.sound_i; Riemann_vec.L.cs = kernel.sound_j;
 #endif
-            Riemann_solver(Riemann_vec, &Riemann_out, n_unit);
+            Riemann_solver(Riemann_vec, &Riemann_out, n_unit, press_tot_limiter);
             if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>press_tot_limiter))
             {
                 /* ignore any velocity difference between the particles: this should gaurantee we have a positive pressure! */
@@ -224,7 +224,7 @@
                 Riemann_vec.R.u = local.InternalEnergyPred; Riemann_vec.L.u = SphP[j].InternalEnergyPred;
                 Riemann_vec.R.cs = kernel.sound_i; Riemann_vec.L.cs = kernel.sound_j;
 #endif
-                Riemann_solver(Riemann_vec, &Riemann_out, n_unit);
+                Riemann_solver(Riemann_vec, &Riemann_out, n_unit, press_tot_limiter);
                 if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>press_tot_limiter))
                 {
 #if defined(MAGNETIC) && defined(DIVBCLEANING_DEDNER)
