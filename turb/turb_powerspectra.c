@@ -599,9 +599,9 @@ double powerspec_turb_obtain_fields(void)
 	      int zz = (place - xx * POWERSPEC_GRID * POWERSPEC_GRID - yy * POWERSPEC_GRID); 
 	      xx += slabstart_x;
 	      
-	      double x = (xx + 0.5) / POWERSPEC_GRID * All.BoxSize;
-	      double y = (yy + 0.5) / POWERSPEC_GRID * All.BoxSize;
-	      double z = (zz + 0.5) / POWERSPEC_GRID * All.BoxSize;
+	      double x = (xx + 0.5) / POWERSPEC_GRID * boxSize_X;
+	      double y = (yy + 0.5) / POWERSPEC_GRID * boxSize_Y;
+	      double z = (zz + 0.5) / POWERSPEC_GRID * boxSize_Z;
 	      
 	      DataIn[j].Pos[0] = x;
 	      DataIn[j].Pos[1] = y;
@@ -736,9 +736,9 @@ double powerspec_turb_obtain_fields(void)
 		  int zz = (i - xx * POWERSPEC_GRID * POWERSPEC_GRID - yy * POWERSPEC_GRID); 
 		  xx += slabstart_x;
 		  
-		  double x = (xx + 0.5) / POWERSPEC_GRID * All.BoxSize;
-		  double y = (yy + 0.5) / POWERSPEC_GRID * All.BoxSize;
-		  double z = (zz + 0.5) / POWERSPEC_GRID * All.BoxSize;
+            double x = (xx + 0.5) / POWERSPEC_GRID * boxSize_X;
+            double y = (yy + 0.5) / POWERSPEC_GRID * boxSize_Y;
+            double z = (zz + 0.5) / POWERSPEC_GRID * boxSize_Z;
 	      
 		  printf("i=%d task=%d Hsml=%g  pos=(%g|%g|%g)\n",
 			 (int)i, ThisTask, powerspec_turb_nearest_hsml[i], x, y, z);
@@ -883,9 +883,9 @@ int powerspec_turb_find_nearest_evaluate(int target, int mode, int *nexport, int
       int zz = (target - xx * POWERSPEC_GRID * POWERSPEC_GRID - yy * POWERSPEC_GRID); 
       xx += slabstart_x;
 
-      double x = (xx + 0.5) / POWERSPEC_GRID * All.BoxSize;
-      double y = (yy + 0.5) / POWERSPEC_GRID * All.BoxSize;
-      double z = (zz + 0.5) / POWERSPEC_GRID * All.BoxSize;
+        double x = (xx + 0.5) / POWERSPEC_GRID * boxSize_X;
+        double y = (yy + 0.5) / POWERSPEC_GRID * boxSize_Y;
+        double z = (zz + 0.5) / POWERSPEC_GRID * boxSize_Z;
 
       pos[0] = x;
       pos[1] = y;
@@ -930,18 +930,7 @@ int powerspec_turb_find_nearest_evaluate(int target, int mode, int *nexport, int
 	      dz = pos[2] - P[j].Pos[2];
 
 	      /*  now find the closest image in the given box size  */
-	      if(dx > boxHalf_X)
-		dx -= boxSize_X;
-	      if(dx < -boxHalf_X)
-		dx += boxSize_X;
-	      if(dy > boxHalf_Y)
-		dy -= boxSize_Y;
-	      if(dy < -boxHalf_Y)
-		dy += boxSize_Y;
-	      if(dz > boxHalf_Z)
-		dz -= boxSize_Z;
-	      if(dz < -boxHalf_Z)
-		dz += boxSize_Z;
+            NEAREST_XYZ(dx,dy,dz,1);
 
 	      r2 = dx * dx + dy * dy + dz * dz;
 	      if(r2 < r2max && r2 < h * h)
@@ -1067,13 +1056,13 @@ int powerspec_turb_treefind(MyDouble searchcenter[3], MyFloat hsml, int target, 
 	    continue;
 
 	  dist = hsml;
-	  dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0]);
+	  dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dx > dist)
 	    continue;
-	  dy = NGB_PERIODIC_LONG_Y(P[p].Pos[1] - searchcenter[1]);
+	  dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dy > dist)
 	    continue;
-	  dz = NGB_PERIODIC_LONG_Z(P[p].Pos[2] - searchcenter[2]);
+	  dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dz > dist)
 	    continue;
 	  if(dx * dx + dy * dy + dz * dz > dist * dist)
@@ -1149,13 +1138,13 @@ int powerspec_turb_treefind(MyDouble searchcenter[3], MyFloat hsml, int target, 
 	  no = current->u.d.sibling;	/* in case the node can be discarded */
 
 	  dist = hsml + 0.5 * current->len;;
-	  dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0]);
+	  dx = NGB_PERIODIC_LONG_X(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dx > dist)
 	    continue;
-	  dy = NGB_PERIODIC_LONG_Y(current->center[1] - searchcenter[1]);
+	  dy = NGB_PERIODIC_LONG_Y(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dy > dist)
 	    continue;
-	  dz = NGB_PERIODIC_LONG_Z(current->center[2] - searchcenter[2]);
+	  dz = NGB_PERIODIC_LONG_Z(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dz > dist)
 	    continue;
 	  /* now test against the minimal sphere enclosing everything */

@@ -43,6 +43,7 @@ MyDouble boxSize_Z, boxHalf_Z, inverse_boxSize_Z;
 
 #ifdef SHEARING_BOX
 MyDouble Shearing_Box_Vel_Offset;
+MyDouble Shearing_Box_Pos_Offset;
 #endif
 
 

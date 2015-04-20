@@ -1191,10 +1191,8 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
-#ifdef PERIODIC			/*  find the closest image in the given box size  */
-                kernel.dp[0] = NEAREST_X(kernel.dp[0]);
-                kernel.dp[1] = NEAREST_Y(kernel.dp[1]);
-                kernel.dp[2] = NEAREST_Z(kernel.dp[2]);
+#ifdef PERIODIC
+                NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1);
 #endif
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 

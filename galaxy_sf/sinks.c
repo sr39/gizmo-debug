@@ -13,7 +13,7 @@
  *  routines for sink particles
  */
 /*
- * This file is largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ * This file is heavily revised by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  *   It was based on a similar file in GADGET3.
  */
 
@@ -151,9 +151,9 @@ void do_sinks(void)
 	for(j = i + 1; j < All.TotNumSinks; j++)
 	  if(sink[j].active)
 	    {
-	      dx = NGB_PERIODIC_LONG_X(sink[i].pos[0] - sink[j].pos[0]);
-	      dy = NGB_PERIODIC_LONG_Y(sink[i].pos[1] - sink[j].pos[1]);
-	      dz = NGB_PERIODIC_LONG_Z(sink[i].pos[2] - sink[j].pos[2]);
+	      dx = NGB_PERIODIC_LONG_X(sink[i].pos[0] - sink[j].pos[0], sink[i].pos[1] - sink[j].pos[1], sink[i].pos[2] - sink[j].pos[2],1);
+	      dy = NGB_PERIODIC_LONG_Y(sink[i].pos[0] - sink[j].pos[0], sink[i].pos[1] - sink[j].pos[1], sink[i].pos[2] - sink[j].pos[2],1);
+	      dz = NGB_PERIODIC_LONG_Z(sink[i].pos[0] - sink[j].pos[0], sink[i].pos[1] - sink[j].pos[1], sink[i].pos[2] - sink[j].pos[2],1);
 
 	      r = sqrt(dx * dx + dy * dy + dz * dz);
 
@@ -282,9 +282,9 @@ void do_sinks(void)
 	    for(j = 0; j < All.TotNumSinks; j++)
 	      if(sink[j].active)
 		{
-		  dx = NGB_PERIODIC_LONG_X(P[i].Pos[0] - sink[j].pos[0]);
-		  dy = NGB_PERIODIC_LONG_Y(P[i].Pos[1] - sink[j].pos[1]);
-		  dz = NGB_PERIODIC_LONG_Z(P[i].Pos[2] - sink[j].pos[2]);
+		  dx = NGB_PERIODIC_LONG_X(P[i].Pos[0] - sink[j].pos[0], P[i].Pos[1] - sink[j].pos[1], P[i].Pos[2] - sink[j].pos[2],-1);
+		  dy = NGB_PERIODIC_LONG_Y(P[i].Pos[0] - sink[j].pos[0], P[i].Pos[1] - sink[j].pos[1], P[i].Pos[2] - sink[j].pos[2],-1);
+		  dz = NGB_PERIODIC_LONG_Z(P[i].Pos[0] - sink[j].pos[0], P[i].Pos[1] - sink[j].pos[1], P[i].Pos[2] - sink[j].pos[2],-1);
 
 		  r = sqrt(dx * dx + dy * dy + dz * dz);
 
@@ -408,9 +408,9 @@ void do_sinks(void)
       {
 	for(j = iter = r2_min = 0; j < All.TotNumSinks; j++)
 	  {
-	    dx = NGB_PERIODIC_LONG_X(P[i].Pos[0] - sink[j].pos[0]);
-	    dy = NGB_PERIODIC_LONG_Y(P[i].Pos[1] - sink[j].pos[1]);
-	    dz = NGB_PERIODIC_LONG_Z(P[i].Pos[2] - sink[j].pos[2]);
+	    dx = NGB_PERIODIC_LONG_X(P[i].Pos[0] - sink[j].pos[0], P[i].Pos[1] - sink[j].pos[1], P[i].Pos[2] - sink[j].pos[2],-1);
+	    dy = NGB_PERIODIC_LONG_Y(P[i].Pos[0] - sink[j].pos[0], P[i].Pos[1] - sink[j].pos[1], P[i].Pos[2] - sink[j].pos[2],-1);
+	    dz = NGB_PERIODIC_LONG_Z(P[i].Pos[0] - sink[j].pos[0], P[i].Pos[1] - sink[j].pos[1], P[i].Pos[2] - sink[j].pos[2],-1);
 
 	    r2 = (dx * dx + dy * dy + dz * dz) * a2 / hubble_param2;
 
@@ -447,9 +447,9 @@ void do_sinks(void)
 
       for(i = count = 0; i < N_gas; i++)
 	{
-	  dx = NGB_PERIODIC_LONG_X(P[i].Pos[0] - sink_pos[0]);
-	  dy = NGB_PERIODIC_LONG_Y(P[i].Pos[1] - sink_pos[1]);
-	  dz = NGB_PERIODIC_LONG_Z(P[i].Pos[2] - sink_pos[2]);
+	  dx = NGB_PERIODIC_LONG_X(P[i].Pos[0] - sink_pos[0], P[i].Pos[1] - sink_pos[1], P[i].Pos[2] - sink_pos[2],-1);
+	  dy = NGB_PERIODIC_LONG_Y(P[i].Pos[0] - sink_pos[0], P[i].Pos[1] - sink_pos[1], P[i].Pos[2] - sink_pos[2],-1);
+	  dz = NGB_PERIODIC_LONG_Z(P[i].Pos[0] - sink_pos[0], P[i].Pos[1] - sink_pos[1], P[i].Pos[2] - sink_pos[2],-1);
 
 	  r2 = (dx * dx + dy * dy + dz * dz) * a2 / hubble_param2;
 
@@ -482,9 +482,9 @@ void do_sinks(void)
 
 	  for(i = 0, index = prev_list[ThisTask]; i < N_gas; i++)
 	    {
-	      dx = NGB_PERIODIC_LONG_X(P[i].Pos[0] - sink_pos[0]);
-	      dy = NGB_PERIODIC_LONG_Y(P[i].Pos[1] - sink_pos[1]);
-	      dz = NGB_PERIODIC_LONG_Z(P[i].Pos[2] - sink_pos[2]);
+	      dx = NGB_PERIODIC_LONG_X(P[i].Pos[0] - sink_pos[0], P[i].Pos[1] - sink_pos[1], P[i].Pos[2] - sink_pos[2],-1);
+	      dy = NGB_PERIODIC_LONG_Y(P[i].Pos[0] - sink_pos[0], P[i].Pos[1] - sink_pos[1], P[i].Pos[2] - sink_pos[2],-1);
+	      dz = NGB_PERIODIC_LONG_Z(P[i].Pos[0] - sink_pos[0], P[i].Pos[1] - sink_pos[1], P[i].Pos[2] - sink_pos[2],-1);
 
 	      r2 = (dx * dx + dy * dy + dz * dz) * a2 / hubble_param2;
 
@@ -547,9 +547,9 @@ void do_sinks(void)
 	      else
 		for(j = i; j < count_global; j++)
 		  {
-		    dx = NGB_PERIODIC_LONG_X(sink[i].pos[0] - sink[j].pos[0]);
-		    dy = NGB_PERIODIC_LONG_Y(sink[i].pos[1] - sink[j].pos[1]);
-		    dz = NGB_PERIODIC_LONG_Z(sink[i].pos[2] - sink[j].pos[2]);
+		    dx = NGB_PERIODIC_LONG_X(sink[i].pos[0] - sink[j].pos[0], sink[i].pos[1] - sink[j].pos[1], sink[i].pos[2] - sink[j].pos[2],1);
+		    dy = NGB_PERIODIC_LONG_Y(sink[i].pos[0] - sink[j].pos[0], sink[i].pos[1] - sink[j].pos[1], sink[i].pos[2] - sink[j].pos[2],1);
+		    dz = NGB_PERIODIC_LONG_Z(sink[i].pos[0] - sink[j].pos[0], sink[i].pos[1] - sink[j].pos[1], sink[i].pos[2] - sink[j].pos[2],1);
 
 		    r = sqrt(dx * dx + dy * dy + dz * dz);
 
@@ -578,9 +578,9 @@ void do_sinks(void)
 
 	      e_therm += sink[i].utherm * sink[i].mass;
 
-	      dx = NGB_PERIODIC_LONG_X(sink[i].pos[0] - pos_cm[0]);
-	      dy = NGB_PERIODIC_LONG_Y(sink[i].pos[1] - pos_cm[1]);
-	      dz = NGB_PERIODIC_LONG_Z(sink[i].pos[2] - pos_cm[2]);
+	      dx = NGB_PERIODIC_LONG_X(sink[i].pos[0] - pos_cm[0], sink[i].pos[1] - pos_cm[1], sink[i].pos[2] - pos_cm[2],-1);
+	      dy = NGB_PERIODIC_LONG_Y(sink[i].pos[0] - pos_cm[0], sink[i].pos[1] - pos_cm[1], sink[i].pos[2] - pos_cm[2],-1);
+	      dz = NGB_PERIODIC_LONG_Z(sink[i].pos[0] - pos_cm[0], sink[i].pos[1] - pos_cm[1], sink[i].pos[2] - pos_cm[2],-1);
 
 	      r = sqrt(dx * dx + dy * dy + dz * dz);
 
@@ -609,9 +609,9 @@ void do_sinks(void)
 	    {
 	      for(i = num_acc = numforceupdate = 0; i < N_gas; i++)
 		{
-		  dx = NGB_PERIODIC_LONG_X(P[i].Pos[0] - sink_pos[0]);
-		  dy = NGB_PERIODIC_LONG_Y(P[i].Pos[1] - sink_pos[1]);
-		  dz = NGB_PERIODIC_LONG_Z(P[i].Pos[2] - sink_pos[2]);
+		  dx = NGB_PERIODIC_LONG_X(P[i].Pos[0] - sink_pos[0], P[i].Pos[1] - sink_pos[1], P[i].Pos[2] - sink_pos[2],-1);
+		  dy = NGB_PERIODIC_LONG_Y(P[i].Pos[0] - sink_pos[0], P[i].Pos[1] - sink_pos[1], P[i].Pos[2] - sink_pos[2],-1);
+		  dz = NGB_PERIODIC_LONG_Z(P[i].Pos[0] - sink_pos[0], P[i].Pos[1] - sink_pos[1], P[i].Pos[2] - sink_pos[2],-1);
 
 		  r2 = (dx * dx + dy * dy + dz * dz) * a2 / hubble_param2;
 

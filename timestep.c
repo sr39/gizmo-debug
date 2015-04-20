@@ -20,6 +20,14 @@
 
 static double dt_displacement = 0;
 
+#ifdef SHEARING_BOX
+void calc_shearing_box_pos_offset(void)
+{
+    Shearing_Box_Pos_Offset = Shearing_Box_Vel_Offset * All.Time;
+    while(Shearing_Box_Pos_Offset > boxSize_Y) {Shearing_Box_Pos_Offset -= boxSize_Y;}
+}
+#endif
+
 void set_cosmo_factors_for_current_time(void)
 {
     
@@ -435,10 +443,10 @@ integertime get_timestep(int p,		/*!< particle index */
                 double L_cond_inv = sqrt(SphP[p].Gradients.InternalEnergy[0]*SphP[p].Gradients.InternalEnergy[0] +
                                          SphP[p].Gradients.InternalEnergy[1]*SphP[p].Gradients.InternalEnergy[1] +
                                          SphP[p].Gradients.InternalEnergy[2]*SphP[p].Gradients.InternalEnergy[2]) / SphP[p].InternalEnergy;
-                double L_cond = 1./(L_cond_inv + 1./L_particle) * All.cf_atime;
+                double L_cond = DMAX(L_particle , 1./(L_cond_inv + 1./L_particle)) * All.cf_atime;
                 double dt_conduction = 0.5 * L_cond*L_cond / (1.0e-33 + SphP[p].Kappa_Conduction);
                 // since we use CONDUCTIVITIES, not DIFFUSIVITIES, we need to add a power of density to get the right units //
-                dt_conduction *= SphP[p].Density;
+                dt_conduction *= SphP[p].Density * All.cf_a3inv;
                 if(dt_conduction < dt) dt = dt_conduction;
             }
 #endif
@@ -464,9 +472,9 @@ integertime get_timestep(int p,		/*!< particle index */
                     v_mag+=P[p].Vel[kv1]*P[p].Vel[kv1];
                 }
                 v_mag += 1.0e-33;
-                double L_visc = 1. / (sqrt(dv_mag/v_mag) + 1./L_particle) * All.cf_atime;
+                double L_visc = DMAX(L_particle , 1. / (sqrt(dv_mag/v_mag) + 1./L_particle)) * All.cf_atime;
                 double visc_coeff = sqrt(SphP[p].Eta_ShearViscosity*SphP[p].Eta_ShearViscosity + SphP[p].Zeta_BulkViscosity*SphP[p].Zeta_BulkViscosity);
-                double dt_viscosity = 0.5 * L_visc*L_visc / (1.0e-33 + visc_coeff) * SphP[p].Density;
+                double dt_viscosity = 0.5 * L_visc*L_visc / (1.0e-33 + visc_coeff) * SphP[p].Density * All.cf_a3inv;
                 // since we use VISCOSITIES, not DIFFUSIVITIES, we need to add a power of density to get the right units //
                 if(dt_viscosity < dt) dt = dt_viscosity;
             }

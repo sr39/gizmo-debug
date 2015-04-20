@@ -54,7 +54,7 @@ void GravAccel_ShearingSheet()
         P[i].GravAccel[SHEARING_BOX_PHI_COORDINATE] -= 2. * SphP[i].VelPred[0] * SHEARING_BOX_OMEGA_BOX_CENTER;
 #if (SHEARING_BOX==4)
         /* add vertical gravity to the force law */
-        P[i].GravAccel[2] -= SHEARING_BOX_OMEGA_BOX_CENTER*SHEARING_BOX_OMEGA_BOX_CENTER * (P[i].Pos[2]-boxHalf_Z);
+        P[i].GravAccel[2] -= SHEARING_BOX_OMEGA_BOX_CENTER * SHEARING_BOX_OMEGA_BOX_CENTER * (P[i].Pos[2]-boxHalf_Z);
 #endif
     }
 #endif

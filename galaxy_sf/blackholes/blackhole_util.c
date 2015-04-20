@@ -206,13 +206,13 @@ int ngb_treefind_blackhole(MyDouble searchcenter[3], MyFloat hsml, int target, i
                 continue;
 #endif
             dist = hsml;
-            dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0]);
+            dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
             if(dx > dist)
                 continue;
-            dy = NGB_PERIODIC_LONG_Y(P[p].Pos[1] - searchcenter[1]);
+            dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
             if(dy > dist)
                 continue;
-            dz = NGB_PERIODIC_LONG_Z(P[p].Pos[2] - searchcenter[2]);
+            dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
             if(dz > dist)
                 continue;
             if(dx * dx + dy * dy + dz * dz > dist * dist)
@@ -277,13 +277,13 @@ int ngb_treefind_blackhole(MyDouble searchcenter[3], MyFloat hsml, int target, i
             no = current->u.d.sibling;	/* in case the node can be discarded */
             
             dist = hsml + 0.5 * current->len;;
-            dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0]);
+            dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0], current->center[1] - searchcenter[1], current->center[2] - searchcenter[2], -1);
             if(dx > dist)
                 continue;
-            dy = NGB_PERIODIC_LONG_Y(current->center[1] - searchcenter[1]);
+            dy = NGB_PERIODIC_LONG_Y(current->center[0] - searchcenter[0], current->center[1] - searchcenter[1], current->center[2] - searchcenter[2], -1);
             if(dy > dist)
                 continue;
-            dz = NGB_PERIODIC_LONG_Z(current->center[2] - searchcenter[2]);
+            dz = NGB_PERIODIC_LONG_Z(current->center[0] - searchcenter[0], current->center[1] - searchcenter[1], current->center[2] - searchcenter[2], -1);
             if(dz > dist)
                 continue;
             /* now test against the minimal sphere enclosing everything */

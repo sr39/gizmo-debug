@@ -150,9 +150,9 @@ inline static int ngb_check_node(struct NODE * cur,t_vector * v2,t_vector * box,
   MyDouble d2,dx,dy,dz;
   int node = cur->u.d.sibling; // in case the node can be discarded
 
-  dx = NGB_PERIODIC_LONG(cur->center[0] - v2->d[0],box->d[0],hbox->d[0]);
-  dy = NGB_PERIODIC_LONG(cur->center[1] - v2->d[1],box->d[1],hbox->d[1]);
-  dz = NGB_PERIODIC_LONG(cur->center[2] - v2->d[2],box->d[2],hbox->d[2]);
+  dx = NGB_PERIODIC_LONG_X(cur->center[0] - v2->d[0], cur->center[1] - v2->d[1], cur->center[2] - v2->d[2],-1);
+  dy = NGB_PERIODIC_LONG_Y(cur->center[0] - v2->d[0], cur->center[1] - v2->d[1], cur->center[2] - v2->d[2],-1);
+  dz = NGB_PERIODIC_LONG_Z(cur->center[0] - v2->d[0], cur->center[1] - v2->d[1], cur->center[2] - v2->d[2],-1);
   d2 = dx * dx + dy * dy + dz * dz;
   // now test against the minimal sphere enclosing everything
   if ((dx <= dist) & (dy <= dist) & (dz <= dist) & (d2 <= dist2 * dist2)) node = cur->u.d.nextnode;     // ok, we need to open the node
@@ -166,14 +166,14 @@ inline static int ngb_check_node(struct NODE * cur,t_vector * v2,t_vector * box,
 inline static int ngb_check_node(struct NODE * cur,t_vector * v2,t_vector * box,t_vector * hbox,MyFloat hsml)
 {
   MyDouble dist  = hsml + 0.5*cur->len;
-  MyDouble d2,dx,dy,dz;
+  MyDouble d2,dx,dy,dz,xtmp;
   int node = cur->u.d.sibling; // in case the node can be discarded
 
-  dx = NGB_PERIODIC_LONG(cur->center[0] - v2->d[0],box->d[0],hbox->d[0]);
+  dx = NGB_PERIODIC_LONG_X(cur->center[0] - v2->d[0], cur->center[1] - v2->d[1], cur->center[2] - v2->d[2],-1);
   if (dx <= dist) {
-    dy = NGB_PERIODIC_LONG(cur->center[1] - v2->d[1],box->d[1],hbox->d[1]);
+    dy = NGB_PERIODIC_LONG_Y(cur->center[0] - v2->d[0], cur->center[1] - v2->d[1], cur->center[2] - v2->d[2],-1);
     if (dy <= dist) {
-      dz = NGB_PERIODIC_LONG(cur->center[2] - v2->d[2],box->d[2],hbox->d[2]);
+      dz = NGB_PERIODIC_LONG_Z(cur->center[0] - v2->d[0], cur->center[1] - v2->d[1], cur->center[2] - v2->d[2],-1);
       if (dz <= dist) {
         // now test against the minimal sphere enclosing everything
         dist += FACT1 * cur->len;

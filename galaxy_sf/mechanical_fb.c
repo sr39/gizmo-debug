@@ -737,9 +737,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
             
             for(k=0; k<3; k++) {kernel.dp[k] = local.Pos[k] - P[j].Pos[k];}
 #ifdef PERIODIC			/* find the closest image in the given box size  */
-            kernel.dp[0] = NEAREST_X(kernel.dp[0]);
-            kernel.dp[1] = NEAREST_Y(kernel.dp[1]);
-            kernel.dp[2] = NEAREST_Z(kernel.dp[2]);
+            NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1);
 #endif
             r2=0; for(k=0;k<3;k++) {r2 += kernel.dp[k]*kernel.dp[k];}
             if(r2<=0) continue; // same particle //

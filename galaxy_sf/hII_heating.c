@@ -141,9 +141,7 @@ void HII_heating_singledomain(void)
             dy = pos[1] - P[j].Pos[1];
             dz = pos[2] - P[j].Pos[2];
 #ifdef PERIODIC               /*  now find the closest image in the given box size  */
-              dx = NEAREST_X(dx);
-              dy = NEAREST_Y(dy);
-              dz = NEAREST_Z(dz);
+              NEAREST_XYZ(dx,dy,dz,1);
 #endif
             r2 = dx * dx + dy * dy + dz * dz;
             r=sqrt(r2);

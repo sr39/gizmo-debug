@@ -1103,7 +1103,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
 #if !defined(CONSTRAINED_GRADIENT_MHD) || defined(COOLING) || defined(GALSF)
     /* this is the formulation from E. Gaburov assuming -two- wavespeeds (cL and cR); this down-weights the correction term
      under some circumstances, which appears to increase stability */
-    double cL = Riemann_out->cfast_L; // try with correction for approach speed ???
+    double cL = Riemann_out->cfast_L; // may want to try with correction for approach speed; this helps to stabilize things in the cL=cR case
     double cR = Riemann_out->cfast_R;
     double corr_norm = 1;
     double cinv = 1.0 / (cL+cR);
@@ -1482,8 +1482,8 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     /* alright, we've gotten successful HLLD fluxes! */
     Riemann_out->Fluxes.B[0] = -v_frame * Bx;
 #if defined(DIVBCLEANING_DEDNER) && defined(HYDRO_MESHLESS_FINITE_VOLUME)
-    //Riemann_out->Fluxes.phi = -Interface_State->v[0] * Interface_State->rho * Riemann_out->phi_normal_mean; // potentially improved phi-flux for MFV with mass-based fluxes ???
-    //Riemann_out->Fluxes.phi = -v_frame * Riemann_out->phi_normal_mean; // need to use the proper phi from the updated problem // mass-based phi-fluxes don't require this ???
+    //Riemann_out->Fluxes.phi = -Interface_State->v[0] * Interface_State->rho * Riemann_out->phi_normal_mean; // potentially improved phi-flux for MFV with mass-based fluxes
+    //Riemann_out->Fluxes.phi = -v_frame * Riemann_out->phi_normal_mean; // need to use the proper phi from the updated problem // mass-based phi-fluxes don't require this 
     //Riemann_out->Fluxes.phi -= All.DivBcleanHyperbolicSigma * c_eff*c_eff * Bx;
 #endif
     Riemann_out->S_M=v_frame;

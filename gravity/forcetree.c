@@ -1975,9 +1975,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 dy = P[no].Pos[1] - pos_y;
                 dz = P[no].Pos[2] - pos_z;
 #ifdef PERIODIC
-                dx = NEAREST_X(dx);
-                dy = NEAREST_Y(dy);
-                dz = NEAREST_Z(dz);
+                NEAREST_XYZ(dx,dy,dz,-1);
 #endif
                 r2 = dx * dx + dy * dy + dz * dz;
                 
@@ -2241,9 +2239,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 dy = nop->u.d.s[1] - pos_y;
                 dz = nop->u.d.s[2] - pos_z;
 #if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-                dx = NEAREST_X(dx);
-                dy = NEAREST_Y(dy);
-                dz = NEAREST_Z(dz);
+                NEAREST_XYZ(dx,dy,dz,-1);
 #endif
                 r2 = dx * dx + dy * dy + dz * dz;
                 
@@ -2256,9 +2252,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     dy_stellarlum = nop->stellar_lum_s[1] - pos_y;
                     dz_stellarlum = nop->stellar_lum_s[2] - pos_z;
 #if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-                    dx_stellarlum = NEAREST_X(dx_stellarlum);
-                    dy_stellarlum = NEAREST_Y(dy_stellarlum);
-                    dz_stellarlum = NEAREST_Z(dz_stellarlum);
+                    NEAREST_XYZ(dx_stellarlum,dy_stellarlum,dz_stellarlum,-1);
 #endif
 #else
                     dx_stellarlum = dx;
@@ -2307,15 +2301,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 
 #ifdef PMGRID
 #ifdef DO_NOT_BRACH_IF
-                dxx = fabs(nop->center[0] - pos_x);
-                dyy = fabs(nop->center[1] - pos_y);
-                dzz = fabs(nop->center[2] - pos_z);
+                dxx = (nop->center[0] - pos_x);
+                dyy = (nop->center[1] - pos_y);
+                dzz = (nop->center[2] - pos_z);
                 eff_dist = rcut + 0.5 * nop->len;
-#ifdef PERIODIC
-                pdxx = NGB_PERIODIC_LONG_X(dxx);
-                pdyy = NGB_PERIODIC_LONG_Y(dyy);
-                pdzz = NGB_PERIODIC_LONG_Z(dzz);
-#endif
+                pdxx = NGB_PERIODIC_LONG_X(dxx,dyy,dzz,-1);
+                pdyy = NGB_PERIODIC_LONG_Y(dxx,dyy,dzz,-1);
+                pdzz = NGB_PERIODIC_LONG_Z(dxx,dyy,dzz,-1);
                 /* check whether we can stop walking along this branch */
                 if((r2 > rcut2) & ((pdxx > eff_dist) | (pdyy > eff_dist) | (pdzz > eff_dist)))
                 {
@@ -2326,24 +2318,22 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 /* check whether we can stop walking along this branch */
                 if(r2 > rcut2)
                 {
+                    double xtmp;
                     eff_dist = rcut + 0.5 * nop->len;
-                    
-                    dist = NEAREST_X(nop->center[0] - pos_x);
-                    if(dist < -eff_dist || dist > eff_dist)
+                    dist = NGB_PERIODIC_LONG_X(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
+                    if(dist > eff_dist)
                     {
                         no = nop->u.d.sibling;
                         continue;
                     }
-                    
-                    dist = NEAREST_Y(nop->center[1] - pos_y);
-                    if(dist < -eff_dist || dist > eff_dist)
+                    dist = NGB_PERIODIC_LONG_Y(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
+                    if(dist > eff_dist)
                     {
                         no = nop->u.d.sibling;
                         continue;
                     }
-                    
-                    dist = NEAREST_Z(nop->center[2] - pos_z);
-                    if(dist < -eff_dist || dist > eff_dist)
+                    dist = NGB_PERIODIC_LONG_Z(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
+                    if(dist > eff_dist)
                     {
                         no = nop->u.d.sibling;
                         continue;
@@ -2388,7 +2378,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 {
 #ifdef DO_NOT_BRACH_IF
                     if((mass * nop->len * nop->len > r2 * r2 * aold) |
-                       ((dxx < 0.60 * nop->len) & (dyy < 0.60 * nop->len) & (dzz < 0.60 * nop->len)))
+                       ((pdxx < 0.60 * nop->len) & (pdyy < 0.60 * nop->len) & (pdzz < 0.60 * nop->len)))
                     {
                         /* open cell */
                         no = nop->u.d.nextnode;
@@ -2715,9 +2705,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             if(ptype != 0)	/* we have a dark matter particle as target */
             {
 #if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-                dx_dm = NEAREST_X(dx_dm);
-                dy_dm = NEAREST_Y(dy_dm);
-                dz_dm = NEAREST_Z(dz_dm);
+                NEAREST_XYZ(dx_dm,dy_dm,dz_dm,-1);
 #endif
                 r2 = dx_dm * dx_dm + dy_dm * dy_dm + dz_dm * dz_dm;
                 r = sqrt(r2);
@@ -3020,9 +3008,7 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
 	      dz = nop->u.d.s[2] - pos_z;
 	    }
 
-	  dx = NEAREST_X(dx);
-	  dy = NEAREST_Y(dy);
-	  dz = NEAREST_Z(dz);
+        NEAREST_XYZ(dx,dy,dz,-1);
 
 	  if(no < All.MaxPart)
 	    no = Nextnode[no];
@@ -3400,9 +3386,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
             }
             
 #if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-            dx = NEAREST_X(dx);
-            dy = NEAREST_Y(dy);
-            dz = NEAREST_Z(dz);
+            NEAREST_XYZ(dx,dy,dz,-1);
 #endif
             r2 = dx * dx + dy * dy + dz * dz;
             if(no < All.MaxPart)
@@ -3449,11 +3433,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                 dxx = nop->center[0] - pos_x;	/* observe the sign ! */
                 dyy = nop->center[1] - pos_y;	/* this vector is -y in my thesis notation */
                 dzz = nop->center[2] - pos_z;
-#ifdef PERIODIC
-                dxx = NEAREST_X(dxx);
-                dyy = NEAREST_Y(dyy);
-                dzz = NEAREST_Z(dzz);
-#endif
+                NEAREST_XYZ(dxx,dyy,dzz,-1);
 #ifdef DO_NOT_BRACH_IF
                 if((fabs(dxx) > eff_dist) | (fabs(dyy) > eff_dist) | (fabs(dzz) > eff_dist))
                 {
@@ -3483,6 +3463,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                 dxx = nop->center[0] - pos_x;	/* observe the sign ! */
                 dyy = nop->center[1] - pos_y;	/* this vector is -y in my thesis notation */
                 dzz = nop->center[2] - pos_z;
+                NEAREST_XYZ(dxx,dyy,dzz,-1);
 #endif // PMGRID
                 if(All.ErrTolTheta)	/* check Barnes-Hut opening criterion */
                 {
@@ -3740,9 +3721,7 @@ int subfind_force_treeevaluate_potential(int target, int mode, int *nexport, int
 	    }
 
 #if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-	  dx = NEAREST_X(dx);
-	  dy = NEAREST_Y(dy);
-	  dz = NEAREST_Z(dz);
+        NEAREST_XYZ(dx,dy,dz,-1);
 #endif
 	  r2 = dx * dx + dy * dy + dz * dz;
 	  if(no < All.MaxPart)

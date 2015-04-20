@@ -1143,15 +1143,13 @@ void fof_compute_group_properties(int gr, int start, int len)
 	}
 #endif
 
-      for(j = 0; j < 3; j++)
-	{
-	  xyz[j] = P[index].Pos[j];
-#ifdef PERIODIC
-	  xyz[j] = fof_periodic(xyz[j] - Group[gr].FirstPos[j]);
-#endif
-	  Group[gr].CM[j] += P[index].Mass * xyz[j];
-	  Group[gr].Vel[j] += P[index].Mass * P[index].Vel[j];
-	}
+        for(j = 0; j < 3; j++) {xyz[j] = P[index].Pos[j] - Group[gr].FirstPos[j];}
+        NEAREST_XYZ(xyz[0],xyz[1],xyz[2]);
+        for(j = 0; j < 3; j++)
+        {
+            Group[gr].CM[j] += P[index].Mass * xyz[j];
+            Group[gr].Vel[j] += P[index].Mass * P[index].Vel[j];
+        }
     }
 }
 
@@ -1247,15 +1245,13 @@ void fof_exchange_group_data(void)
 	}
 #endif
 
-      for(j = 0; j < 3; j++)
-	{
-	  xyz[j] = get_Group[i].CM[j] / get_Group[i].Mass + get_Group[i].FirstPos[j];
-#ifdef PERIODIC
-	  xyz[j] = fof_periodic(xyz[j] - Group[start].FirstPos[j]);
-#endif
-	  Group[start].CM[j] += get_Group[i].Mass * xyz[j];
-	  Group[start].Vel[j] += get_Group[i].Vel[j];
-	}
+        for(j = 0; j < 3; j++) {xyz[j] = get_Group[i].CM[j] / get_Group[i].Mass + get_Group[i].FirstPos[j] - Group[start].FirstPos[j];}
+        NEAREST_XYZ(xyz[0],xyz[1],xyz[2]);
+        for(j = 0; j < 3; j++)
+        {
+            Group[start].CM[j] += get_Group[i].Mass * xyz[j];
+            Group[start].Vel[j] += get_Group[i].Vel[j];
+        }
     }
 
   myfree(get_Group);
@@ -1274,10 +1270,8 @@ void fof_finish_group_properties(void)
 	    {
 	      Group[i].Vel[j] /= Group[i].Mass;
 
-	      cm[j] = Group[i].CM[j] / Group[i].Mass;
-#ifdef PERIODIC
-	      cm[j] = fof_periodic_wrap(cm[j] + Group[i].FirstPos[j]);
-#endif
+            cm[j] = Group[i].CM[j] / Group[i].Mass + Group[i].FirstPos[j];
+            cm[j] = WRAP_POSITION_UNIFORM_BOX(cm[j]);
 	      Group[i].CM[j] = cm[j];
 	    }
 	}
@@ -1927,17 +1921,15 @@ int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int
 
 	  for(n = 0; n < numngb_inbox; n++)
 	    {
-	      j = Ngblist[n];
-	      dx = pos[0] - P[j].Pos[0];
-	      dy = pos[1] - P[j].Pos[1];
-	      dz = pos[2] - P[j].Pos[2];
-#ifdef PERIODIC			/*  now find the closest image in the given box size  */
-            dx = NEAREST_X(dx);
-            dy = NEAREST_Y(dy);
-            dz = NEAREST_Z(dz);
+            j = Ngblist[n];
+            dx = pos[0] - P[j].Pos[0];
+            dy = pos[1] - P[j].Pos[1];
+            dz = pos[2] - P[j].Pos[2];
+#ifdef PERIODIC
+            NEAREST_XYZ(dx,dy,dz,1);
 #endif
-	      r2 = dx * dx + dy * dy + dz * dz;
-	      if(r2 < r2max && r2 < h * h)
+            r2 = dx * dx + dy * dy + dz * dz;
+            if(r2 < r2max && r2 < h * h)
 		{
 		  index = j;
 		  r2max = r2;
@@ -2524,17 +2516,14 @@ void multi_bubbles(void)
 
 		  for(n = 0; n < numngb_inbox; n++)
 		    {
-		      j = Ngblist[n];
-		      dx = pos[0] - P[j].Pos[0];
-		      dy = pos[1] - P[j].Pos[1];
-		      dz = pos[2] - P[j].Pos[2];
-
-#ifdef PERIODIC			/*  now find the closest image in the given box size  */
-                dx = NEAREST_X(dx);
-                dy = NEAREST_Y(dy);
-                dz = NEAREST_Z(dz);
+                j = Ngblist[n];
+                dx = pos[0] - P[j].Pos[0];
+                dy = pos[1] - P[j].Pos[1];
+                dz = pos[2] - P[j].Pos[2];
+#ifdef PERIODIC
+                NEAREST_XYZ(dx,dy,dz,1);
 #endif
-		      r2 = dx * dx + dy * dy + dz * dz;
+                r2 = dx * dx + dy * dy + dz * dz;
 
 		      if(r2 < BubbleRadius * BubbleRadius)
 			{
@@ -2594,17 +2583,14 @@ void multi_bubbles(void)
 
 		  for(n = 0; n < numngb_inbox; n++)
 		    {
-		      j = Ngblist[n];
-		      dx = pos[0] - P[j].Pos[0];
-		      dy = pos[1] - P[j].Pos[1];
-		      dz = pos[2] - P[j].Pos[2];
-
-#ifdef PERIODIC			/*  now find the closest image in the given box size  */
-                dx = NEAREST_X(dx);
-                dy = NEAREST_Y(dy);
-                dz = NEAREST_Z(dz);
+                j = Ngblist[n];
+                dx = pos[0] - P[j].Pos[0];
+                dy = pos[1] - P[j].Pos[1];
+                dz = pos[2] - P[j].Pos[2];
+#ifdef PERIODIC
+                NEAREST_XYZ(dx,dy,dz,1);
 #endif
-		      r2 = dx * dx + dy * dy + dz * dz;
+                r2 = dx * dx + dy * dy + dz * dz;
 
 		      if(r2 < BubbleRadius * BubbleRadius)
 			{
@@ -2661,24 +2647,7 @@ void multi_bubbles(void)
 
 
 
-double fof_periodic(double x)
-{
-  if(x >= 0.5 * All.BoxSize)
-    x -= All.BoxSize;
-  if(x < -0.5 * All.BoxSize)
-    x += All.BoxSize;
-  return x;
-}
 
-
-double fof_periodic_wrap(double x)
-{
-  while(x >= All.BoxSize)
-    x -= All.BoxSize;
-  while(x < 0)
-    x += All.BoxSize;
-  return x;
-}
 
 
 int fof_compare_FOF_PList_MinID(const void *a, const void *b)

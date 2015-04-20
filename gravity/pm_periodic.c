@@ -94,7 +94,7 @@ void pm_init_periodic(void)
   int i;
   int slab_to_task_local[PMGRID];
 
-  All.Asmth[0] = ASMTH * All.BoxSize / PMGRID;
+  All.Asmth[0] = ASMTH * All.BoxSize / PMGRID; /* note that these routines REQUIRE a uniform (LONG_X=LONG_Y=LONG_Z=1) box, so we can just use 'BoxSize' */
   All.Rcut[0] = RCUT * All.Asmth[0];
 
   /* Set up the FFTW plan files. */
@@ -316,12 +316,7 @@ void pmforce_periodic(int mode, int *typelist)
 	      for(j = 0; j < 3; j++)
 		{
 		  pp[j] = P[i].Pos[j];
-
-		  while(pp[j] < 0)
-		    pp[j] += All.BoxSize;
-
-		  while(pp[j] >= All.BoxSize)
-		    pp[j] -= All.BoxSize;
+            pp[j] = WRAP_POSITION_UNIFORM_BOX(pp[j]);
 		}
 	      pos = pp;
 	    }
@@ -446,12 +441,7 @@ void pmforce_periodic(int mode, int *typelist)
 	      for(j = 0; j < 3; j++)
 		{
 		  pp[j] = P[pindex].Pos[j];
-
-		  while(pp[j] < 0)
-		    pp[j] += All.BoxSize;
-
-		  while(pp[j] >= All.BoxSize)
-		    pp[j] -= All.BoxSize;
+            pp[j] = WRAP_POSITION_UNIFORM_BOX(pp[j]);
 		}
 	      pos = pp;
 	    }
@@ -710,8 +700,7 @@ void pmforce_periodic(int mode, int *typelist)
             for(xx = 0; xx < 3; xx++)
             {
                 pp[xx] = P[i].Pos[xx];
-                while(pp[xx] < 0) pp[xx] += All.BoxSize;
-                while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+                pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
             }
             slab_x = (int) (to_slab_fac * pp[0]);
             slab_y = (int) (to_slab_fac * pp[1]);
@@ -890,8 +879,7 @@ void pmforce_periodic(int mode, int *typelist)
             for(xx = 0; xx < 3; xx++)
             {
                 pp[xx] = P[i].Pos[xx];
-                while(pp[xx] < 0) pp[xx] += All.BoxSize;
-                while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+                pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
             }
             slab_x = (int) (to_slab_fac * pp[0]);
             slab_y = (int) (to_slab_fac * pp[1]);
@@ -984,8 +972,7 @@ void pmpotential_periodic(void)
         for(xx = 0; xx < 3; xx++)
         {
             pp[xx] = P[i].Pos[xx];
-            while(pp[xx] < 0) pp[xx] += All.BoxSize;
-            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
         slab_y = (int) (to_slab_fac * pp[1]);
@@ -1095,8 +1082,7 @@ void pmpotential_periodic(void)
         for(xx = 0; xx < 3; xx++)
         {
             pp[xx] = P[pindex].Pos[xx];
-            while(pp[xx] < 0) pp[xx] += All.BoxSize;
-            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
         slab_y = (int) (to_slab_fac * pp[1]);
@@ -1323,8 +1309,7 @@ void pmpotential_periodic(void)
         for(xx = 0; xx < 3; xx++)
         {
             pp[xx] = P[i].Pos[xx];
-            while(pp[xx] < 0) pp[xx] += All.BoxSize;
-            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
         slab_y = (int) (to_slab_fac * pp[1]);
@@ -1735,8 +1720,7 @@ void pmtidaltensor_periodic_diff(void)
         for(xx = 0; xx < 3; xx++)
         {
             pp[xx] = P[i].Pos[xx];
-            while(pp[xx] < 0) pp[xx] += All.BoxSize;
-            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
         slab_y = (int) (to_slab_fac * pp[1]);
@@ -1848,8 +1832,7 @@ void pmtidaltensor_periodic_diff(void)
         for(xx = 0; xx < 3; xx++)
         {
             pp[xx] = P[pindex].Pos[xx];
-            while(pp[xx] < 0) pp[xx] += All.BoxSize;
-            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
         slab_y = (int) (to_slab_fac * pp[1]);
@@ -2128,8 +2111,7 @@ void pmtidaltensor_periodic_diff(void)
         for(xx = 0; xx < 3; xx++)
         {
             pp[xx] = P[i].Pos[xx];
-            while(pp[xx] < 0) pp[xx] += All.BoxSize;
-            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
         slab_y = (int) (to_slab_fac * pp[1]);
@@ -2386,8 +2368,7 @@ void pmtidaltensor_periodic_diff(void)
             for(xx = 0; xx < 3; xx++)
             {
                 pp[xx] = P[i].Pos[xx];
-                while(pp[xx] < 0) pp[xx] += All.BoxSize;
-                while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+                pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
             }
             slab_x = (int) (to_slab_fac * pp[0]);
             slab_y = (int) (to_slab_fac * pp[1]);
@@ -2511,8 +2492,7 @@ void pmtidaltensor_periodic_fourier(int component)
         for(xx = 0; xx < 3; xx++)
         {
             pp[xx] = P[i].Pos[xx];
-            while(pp[xx] < 0) pp[xx] += All.BoxSize;
-            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
         slab_y = (int) (to_slab_fac * pp[1]);
@@ -2622,8 +2602,7 @@ void pmtidaltensor_periodic_fourier(int component)
         for(xx = 0; xx < 3; xx++)
         {
             pp[xx] = P[pindex].Pos[xx];
-            while(pp[xx] < 0) pp[xx] += All.BoxSize;
-            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
         slab_y = (int) (to_slab_fac * pp[1]);
@@ -2904,8 +2883,7 @@ void pmtidaltensor_periodic_fourier(int component)
         for(xx = 0; xx < 3; xx++)
         {
             pp[xx] = P[i].Pos[xx];
-            while(pp[xx] < 0) pp[xx] += All.BoxSize;
-            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
         slab_y = (int) (to_slab_fac * pp[1]);
@@ -3400,12 +3378,7 @@ void foldonitself(int *typelist)
 
 	  /* make sure that particles are properly box-wrapped */
 	  pp[0] = P[i].Pos[0];
-
-	  while(pp[0] < 0)
-	    pp[0] += All.BoxSize;
-
-	  while(pp[0] >= All.BoxSize)
-	    pp[0] -= All.BoxSize;
+        pp[0] = WRAP_POSITION_UNIFORM_BOX(pp[0]);
 
 	  slab_x = to_slab_fac_folded * pp[0];
 	  slab_xx = slab_x + 1;
@@ -3438,12 +3411,7 @@ void foldonitself(int *typelist)
 
 	  /* make sure that particles are properly box-wrapped */
 	  pp[0] = P[i].Pos[0];
-
-	  while(pp[0] < 0)
-	    pp[0] += All.BoxSize;
-
-	  while(pp[0] >= All.BoxSize)
-	    pp[0] -= All.BoxSize;
+        pp[0] = WRAP_POSITION_UNIFORM_BOX(pp[0]);
 
 	  slab_x = to_slab_fac_folded * pp[0];
 	  slab_xx = slab_x + 1;
@@ -3519,12 +3487,7 @@ void foldonitself(int *typelist)
 		  for(j = 0; j < 3; j++)
 		    {
 		      pp[j] = pos[j];
-
-		      while(pp[j] < 0)
-			pp[j] += All.BoxSize;
-
-		      while(pp[j] >= All.BoxSize)
-			pp[j] -= All.BoxSize;
+                pp[j] = WRAP_POSITION_UNIFORM_BOX(pp[j]);
 		    }
 
 		  slab_x = to_slab_fac_folded * pp[0];

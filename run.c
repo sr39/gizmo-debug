@@ -494,6 +494,9 @@ void find_next_sync_point_and_drift(void)
     All.Time = All.TimeBegin + All.Ti_Current * All.Timebase_interval;
 
   set_cosmo_factors_for_current_time();
+#ifdef SHEARING_BOX
+    calc_shearing_box_pos_offset();
+#endif
 
 #ifdef TIMEDEPGRAV
   All.G = All.Gini * dGfak(All.Time);
