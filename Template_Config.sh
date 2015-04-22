@@ -45,7 +45,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #SPHEQ_DENSITY_INDEPENDENT_SPH  # force SPH to use the 'pressure-sph' formulation ("modern" SPH)
 #SPHEQ_TRADITIONAL_SPH          # force SPH to use the 'density-sph' (GADGET-2 & GASOLINE SPH)
 # --------------------------------------- SPH artificial diffusion options (use with SPH; not relevant for Godunov/Mesh modes)
-#SPHAV_DISABLE_CD10_VISCOSITY   # Disable Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks); just use Balsara switch
+#SPHAV_DISABLE_CD10_ARTVISC     # Disable Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks); just use Balsara switch
 #SPHAV_DISABLE_PM_CONDUCTIVITY  # Disable mixing entropy (J.Read's improved Price-Monaghan conductivity with Cullen-Dehnen switches)
 ## -----------------------------------------------------------------------------------------------------
 # --------------------------------------- Kernel Options
@@ -117,7 +117,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ####################################################################################################
 ## ------------------------ Gravity & Cosmological Integration Options ---------------------------------
 ####################################################################################################
-#--------------------------------------- TreePM Options (recommended for cosmological sims)
+# --------------------------------------- TreePM Options (recommended for cosmological sims)
 #PMGRID=512                     # COSMO enable: resolution of particle-mesh grid
 #PM_PLACEHIGHRESREGION=1+2+16   # COSMO enable: particle types to place high-res PMGRID around
 #PM_HIRES_REGION_CLIPPING=1000  # for stability: clips particles that escape the hires region in zoom/isolated sims
@@ -208,7 +208,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #GALSF_SFR_MOLECULAR_CRITERION	# estimates molecular fraction in SF-ing gas, only SF from that is allowed
 #GALSF_SFR_VIRIAL_SF_CRITERION	# only allow star formation in virialized sub-regions (alpha<1)
 #GALSF_SFR_IMF_VARIATION        # determines the stellar IMF for each particle from the Gusjenov/Hopkins/Hennebelle/Chabrier/Padoan theory
-# ---- physical stellar feedback mechanisms ---- #
+#----- physical stellar feedback mechanisms ---- #
 #GALSF_FB_GASRETURN             # Paul Torrey's addition for stochastic gas return (modified for continuous return)
 #GALSF_FB_HII_HEATING           # gas within HII regions around young stars is photo-heated to 10^4 K
 #GALSF_FB_SNE_HEATING           # time-dependent heating from SNe (I & II) in shockwave radii around stars
@@ -234,9 +234,9 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #------ The original GADGET-3 BH model (only: BLACK_HOLES,BH_SWALLOWGAS,BH_BONDI,BH_DRAG) follow the GADGET-3 Springel & Hernquist policy above
 ##-----------------------------------------------------------------------------------------------------
 #BLACK_HOLES                    # enables Black-Holes (master switch)
-# ----- seed models
+#------ seed models
 #BH_POPIII_SEEDS                # BHs seeded on-the-fly from dense, low-metallicity gas
-# ----- accretion models/options
+#------ accretion models/options
 #BH_SWALLOWGAS                  # enables stochastic accretion of gas particles consistent with growth rate of hole
 #BH_ALPHADISK_ACCRETION         # gas accreted into 'virtual' alpha-disk, and from there onto the BH
 #BH_GRAVCAPTURE_SWALLOWS        # accretion determined only by resolved gravitational capture by the BH
@@ -246,18 +246,18 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##BH_VARIABLE_ACCRETION_FACTOR  # variable-alpha model as in Booth&Schaye 2009
 ##BH_USE_GASVEL_IN_BONDI        # surrounding gas velocity used with sounds speed in the Bondi rate
 #BH_SUBGRIDBHVARIABILITY        # model variability below resolved dynamical time for BH
-# ----- feedback models/options
+#------ feedback models/options
 #BH_BAL_WINDS                   # accreted particles are launched back out as high-vel BAL winds
 #BH_PHOTONMOMENTUM              # continuous long-range IR radiation pressure acceleration from BH (needs GALSF_FB_RT_PHOTONMOMENTUM)
 #BH_HII_HEATING                 # photo-ionization feedback from BH (needs GALSF_FB_HII_HEATING)
 #BH_COMPTON_HEATING             # enable Compton heating in cooling function (needs BH_PHOTONMOMENTUM)
 ##BH_THERMALFEEDBACK            # couple a fraction of the BH luminosity into surrounding gas as thermal energy
-# ----------- use the BH_DRAG options only in cosmological cases where M_BH is not >> other particle masses
+#------------ use the BH_DRAG options only in cosmological cases where M_BH is not >> other particle masses
 #BH_DYNFRICTION                 # apply dynamical friction force to the BHs when m_bh not >> other particle mass
 ##BH_DRAG                       # Drag on black-holes due to accretion (w real mdot)
 ##BH_STRONG_DRAG                # Drag rate boosted as if BH is accreting at eddington (requires BH_DRAG)
 ##-----------------------------------------------------------------------------------------------------
-# ----------- deprecated options (most have been combined or optimized into the functions above, here for legacy)
+#------------ deprecated options (most have been combined or optimized into the functions above, here for legacy)
 ##BH_REPOSITION_ON_POTMIN       # repositions hole on potential minimum (requires EVALPOTENTIAL)
 ##DETACH_BLACK_HOLES            # Insert an independent data structure for BHs (currently exlicitly depends on SEPARATE_STELLARDOMAINDECOMP)
 ##BH_FOLLOW_ACCRETED_GAS_MOMENTUM # Follow momentum for each swallowed gas parcel (add to BH; this ignores dissipation on small scales)
@@ -341,7 +341,7 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #MPISENDRECV_CHECKSUM           # MPI debugging
 #DONOTUSENODELIST               # MPI debugging
 #NOTYPEPREFIX_FFTW              # FFTW debugging (fftw-header/libraries accessed without type prefix, adopting whatever was
-                                #chosen as default at compile of fftw). Otherwise, the type prefix 'd' for double is used.
+                                #   chosen as default at compile of fftw). Otherwise, the type prefix 'd' for double is used.
 #DOUBLEPRECISION_FFTW           # FFTW in double precision to match libraries
 #DEBUG                          # enables core-dumps and FPU exceptions
 #STOP_WHEN_BELOW_MINTIMESTEP    # forces code to quit when stepsize wants to go below MinSizeTimestep specified in the parameterfile

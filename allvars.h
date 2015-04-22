@@ -77,7 +77,7 @@
 #define HYDRO_SPH               /* master flag for SPH: must be enabled if any SPH method is used */
 #endif
 #ifdef HYDRO_SPH
-#ifndef SPHAV_DISABLE_CD10_VISCOSITY
+#ifndef SPHAV_DISABLE_CD10_ARTVISC
 #define SPHAV_CD10_VISCOSITY_SWITCH 0.05   /* Enables Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks) */
 #endif
 #ifndef SPHAV_DISABLE_PM_CONDUCTIVITY
