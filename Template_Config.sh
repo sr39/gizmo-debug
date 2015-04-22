@@ -185,7 +185,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##GALSF_GENERATIONS=1           # the number of stars a gas particle may spawn (defaults to 1, set otherwise)
 ##-----------------------------------------------------------------------------------------------------------------------------
 #----- old sub-grid models (for large-volume simulations) ---- #
-#--------- these are all ultimately variations of the Springel & Hernquist 2002 sub-grid models for the ISM, star formation,
+#--------- these are all ultimately variations of the Springel & Hernquist 2005 sub-grid models for the ISM, star formation,
 #--------- and stellar winds. their use follows the GADGET-3 use policies. If you are not sure whether you have permission to use them,
 #--------- you should contact those authors (Lars Hernquist & Volker Springel)
 #------------------------------------------------------------------------------------------------------------------------------
