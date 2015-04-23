@@ -922,6 +922,7 @@ void init(void)
 /*! This routine computes the mass content of the box and compares it to the
  * specified value of Omega-matter.  If discrepant, the run is terminated.
  */
+#ifdef PERIODIC
 void check_omega(void)
 {
     double mass = 0, masstot, omega;
@@ -954,7 +955,7 @@ void check_omega(void)
         endrun(1);
     }
 }
-
+#endif
 
 
 /*! This function is used to find an initial kernel length (what used to be called the 
