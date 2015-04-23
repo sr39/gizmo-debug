@@ -256,7 +256,7 @@
             if(All.ComovingIntegrationOn) {for(k=0;k<3;k++) v_frame[k] /= All.cf_atime;}
             
             
-#if !defined(HYDRO_MESHLESS_FINITE_VOLUME) && !defined(MAGNETIC)
+#if defined(HYDRO_MESHLESS_FINITE_MASS) && !defined(MAGNETIC)
             double facenorm_pm = Face_Area_Norm * Riemann_out.P_M;
             Fluxes.p = 0;
             for(k=0;k<3;k++) {Fluxes.v[k] = facenorm_pm * n_unit[k];} /* total momentum flux */
