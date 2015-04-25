@@ -76,7 +76,7 @@ void apply_grain_dragforce(void)
                         // note that, with an external (gravitational) acceleration, we can still solve this equation for the relevant update //
 
                         double external_forcing[3];
-                        for(k=0;k<3;k++) {external_forcing[k]=0};
+                        for(k=0;k<3;k++) {external_forcing[k]=0;}
                         
 #ifdef GRAIN_LORENTZFORCE
                         /* Lorentz force on a grain = Z*e/c * (v_grain x B) */

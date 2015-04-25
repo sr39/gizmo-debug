@@ -183,7 +183,9 @@
         press_j_tot += 0.5 * kernel.b2_j * fac_magnetic_pressure;
 #endif
         double press_tot_limiter = 1.1 * All.cf_a3inv * DMAX( press_i_tot , press_j_tot );
-        
+#ifdef NON_IDEAL_EOS
+        press_tot_limiter *= 2.0;
+#endif
         
         
         /* --------------------------------------------------------------------------------- */
