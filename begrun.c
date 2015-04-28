@@ -132,6 +132,7 @@ void begrun(void)
 #else
     Shearing_Box_Vel_Offset = SHEARING_BOX_Q * SHEARING_BOX_OMEGA_BOX_CENTER * boxSize;
 #endif
+    calc_shearing_box_pos_offset();
 #endif
     
 

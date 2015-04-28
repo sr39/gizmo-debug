@@ -44,8 +44,7 @@ void init(void)
 #endif
     
     All.Time = All.TimeBegin;
-    set_cosmo_factors_for_current_time();
-    
+    set_cosmo_factors_for_current_time();    
     
     if(RestartFlag == 3 && RestartSnapNum < 0)
     {
@@ -688,7 +687,13 @@ void init(void)
 #ifdef SHIFT_BY_HALF_BOX
     for(i = 0; i < NumPart; i++)
         for(j = 0; j < 3; j++)
-            P[i].Pos[j] += 0.5 * All.BoxSize;
+        {
+            double boxtmp = 0;
+            if(j==0) {boxtmp = boxSize_X;}
+            if(j==1) {boxtmp = boxSize_Y;}
+            if(j==2) {boxtmp = boxSize_Z;}
+            P[i].Pos[j] += 0.5 * boxtmp;
+        }
 #endif
     
     
@@ -726,7 +731,7 @@ void init(void)
         for(i=0; i< N_gas; i++)
             mass += P[i].Mass;
         MPI_Allreduce(&mass, &glob_mass, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-        All.RefDensity = glob_mass / pow(All.BoxSize, 3);
+        All.RefDensity = glob_mass / (boxSize_X*boxSize_Y*boxSize_Z);
         All.RefInternalEnergy = All.IsoSoundSpeed*All.IsoSoundSpeed / (GAMMA*GAMMA_MINUS1);
     }
 #endif
@@ -917,6 +922,7 @@ void init(void)
 /*! This routine computes the mass content of the box and compares it to the
  * specified value of Omega-matter.  If discrepant, the run is terminated.
  */
+#ifdef PERIODIC
 void check_omega(void)
 {
     double mass = 0, masstot, omega;
@@ -927,7 +933,7 @@ void check_omega(void)
     
     MPI_Allreduce(&mass, &masstot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     
-    omega = masstot / (All.BoxSize * All.BoxSize * All.BoxSize) / (3 * All.Hubble * All.Hubble / (8 * M_PI * All.G));
+    omega = masstot / (boxSize_X*boxSize_Y*boxSize_Z) / (3 * All.Hubble * All.Hubble / (8 * M_PI * All.G));
 #ifdef TIMEDEPGRAV
     omega *= All.Gini / All.G;
 #endif
@@ -949,7 +955,7 @@ void check_omega(void)
         endrun(1);
     }
 }
-
+#endif
 
 
 /*! This function is used to find an initial kernel length (what used to be called the 

@@ -122,7 +122,7 @@ void merge_and_split_particles(void)
                             double dp[3]; int k; double r2=0;
                             for(k=0;k<3;k++) {dp[k]=P[i].Pos[k]-P[j].Pos[k];}
 #ifdef PERIODIC
-                            dp[0]=NEAREST_X(dp[0]); dp[1]=NEAREST_Y(dp[1]); dp[2]=NEAREST_Z(dp[2]);
+                            NEAREST_XYZ(dp[0],dp[1],dp[2],1);
 #endif
                             for(k=0;k<3;k++) {r2+=dp[k]*dp[k];}
                             if(r2<threshold_val) {threshold_val=r2; target_for_merger=j;} // position-based //
@@ -391,7 +391,7 @@ void merge_particles_ij(MyIDType i, MyIDType j)
         position differences relative to i. the final position will be appropriately box-wrapped after these operations are completed */
     for(k=0;k<3;k++) {dp[k]=P[j].Pos[k]-P[i].Pos[k];}
 #ifdef PERIODIC
-    dp[0]=NEAREST_X(dp[0]); dp[1]=NEAREST_Y(dp[1]); dp[2]=NEAREST_Z(dp[2]);
+    NEAREST_XYZ(dp[0],dp[1],dp[2],-1);
 #endif
     for(k=0;k<3;k++) {pos_new_xyz[k] = P[i].Pos[k] + wt_j * dp[k];}
 

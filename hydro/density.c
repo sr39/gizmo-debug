@@ -1072,12 +1072,13 @@ void density(void)
             if(P[i].Type==0)
 #endif
             {
-                double zeta_0 = 2.0 * P[i].Mass*P[i].Mass * PPP[i].Hsml*PPP[i].Hsml; // self-value of zeta if no neighbors are found //
+                double zeta_0 = 0; // 2.0 * P[i].Mass*P[i].Mass * PPP[i].Hsml*PPP[i].Hsml; // self-value of zeta if no neighbors are found //
                 if((PPP[i].Hsml > 0)&&(PPP[i].NumNgb > 0))
                 {
                     /* the zeta terms ONLY control errors if we maintain the 'correct' neighbor number: for boundary
                         particles, it can actually be worse. so we need to check whether we should use it or not */
-                    if(fabs(PPP[i].NumNgb-All.DesNumNgb)/All.DesNumNgb < 0.05)
+                    if((PPP[i].Hsml > 1.01*All.MinHsml) && (PPP[i].Hsml < 0.99*All.MaxHsml) &&
+                        (fabs(PPP[i].NumNgb-All.DesNumNgb)/All.DesNumNgb < 0.05))
                     {
                         double ndenNGB = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
                         PPPZ[i].AGS_zeta *= 0.5 * P[i].Mass * PPP[i].Hsml / (NUMDIMS * ndenNGB) * PPP[i].DhsmlNgbFactor;
@@ -1190,10 +1191,8 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
-#ifdef PERIODIC			/*  find the closest image in the given box size  */
-                kernel.dp[0] = NEAREST_X(kernel.dp[0]);
-                kernel.dp[1] = NEAREST_Y(kernel.dp[1]);
-                kernel.dp[2] = NEAREST_Z(kernel.dp[2]);
+#ifdef PERIODIC
+                NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1);
 #endif
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 

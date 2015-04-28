@@ -288,7 +288,7 @@ struct hydrodata_out
     MyFloat DtB[3];
     MyFloat divB;
 #if defined(DIVBCLEANING_DEDNER)
-#ifdef HYDRO_MESHLESS_FINITE_VOLUME // mass-based phi-flux ???
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME // mass-based phi-flux
     MyFloat DtPhi;
 #endif
     MyFloat DtB_PhiCorr[3];
@@ -452,7 +452,7 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
     }
     SphP[i].divB += out->divB;
 #if defined(DIVBCLEANING_DEDNER)
-#ifdef HYDRO_MESHLESS_FINITE_VOLUME // mass-based phi-flux ???
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME // mass-based phi-flux
     SphP[i].DtPhi += out->DtPhi;
 #endif
     for(k=0;k<3;k++) {SphP[i].DtB_PhiCorr[k] += out->DtB_PhiCorr[k];}
@@ -534,7 +534,7 @@ void hydro_final_operations_and_cleanup(void)
                 }
             }
             
-#ifdef HYDRO_MESHLESS_FINITE_VOLUME // mass-based phi-flux ???
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME // mass-based phi-flux
             SphP[i].DtPhi *= magnorm_closure;
 #else
             SphP[i].DtPhi = 0;
@@ -549,7 +549,7 @@ void hydro_final_operations_and_cleanup(void)
                 if(fabs(SphP[i].divB) > b2_max) {SphP[i].divB *= b2_max / fabs(SphP[i].divB);}
                 /* ok now can apply this to get the growth rate of phi */
                 // SphP[i].DtPhi -= tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB;
-                SphP[i].DtPhi -= tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB * SphP[i].Density*All.cf_a3inv; // mass-based phi-flux ???
+                SphP[i].DtPhi -= tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB * SphP[i].Density*All.cf_a3inv; // mass-based phi-flux
             }
 #endif
 #endif // MAGNETIC

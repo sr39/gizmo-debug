@@ -347,18 +347,7 @@ int n_treeevaluate(int target, int mode, int *nexport, int *nsend_local)
 	    }
 
 #ifdef PERIODIC
-	  if(dx > boxHalf_X)
-	    dx -= boxSize_X;
-	  if(dx < -boxHalf_X)
-	    dx += boxSize_X;
-	  if(dy > boxHalf_Y)
-	    dy -= boxSize_Y;
-	  if(dy < -boxHalf_Y)
-	    dy += boxSize_Y;
-	  if(dz > boxHalf_Z)
-	    dz -= boxSize_Z;
-	  if(dz < -boxHalf_Z)
-	    dz += boxSize_Z;
+        NEAREST_XYZ(dx,dy,dz,1);
 #endif
 
 	  r2 = (dx * dx) + (dy * dy) + (dz * dz);

@@ -328,9 +328,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                 j = Ngblist[n];
                 if(P[j].Mass > 0)
                 {
-                    for(k=0;k<3;k++) dpos[k] = pos[k] - P[j].Pos[k];               // DAA: revert order?  It seems that it doesn't matter here...  
-#ifdef PERIODIC		/*  find the closest image in the given box size  */
-                    dpos[0]=NEAREST_X(dpos[0]); dpos[1]=NEAREST_Y(dpos[1]); dpos[2]=NEAREST_Z(dpos[2]);
+                    for(k=0;k<3;k++) dpos[k] = pos[k] - P[j].Pos[k];       // DAA: revert order?  It seems that it doesn't matter here...
+#ifdef PERIODIC
+                    NEAREST_XYZ(dpos[0],dpos[1],dpos[2],1);
 #endif
                     r2=0; for(k=0;k<3;k++) r2+=dpos[k]*dpos[k];
                     

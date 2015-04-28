@@ -45,7 +45,7 @@
         //wt_i=wt_j = 2.*V_i*V_j / (V_i + V_j); // more conservatively, could use DMIN(V_i,V_j), but that is less accurate
         if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.25) {wt_i=wt_j=2.*V_i*V_j/(V_i+V_j);} else {wt_i=V_i; wt_j=V_j;}
 #else
-        //wt_i=wt_j = (V_i*PPP[j].Hsml + V_j*local.Hsml) / (local.Hsml+PPP[j].Hsml); // should these be H, or be -effective sizes-??? //
+        //wt_i=wt_j = (V_i*PPP[j].Hsml + V_j*local.Hsml) / (local.Hsml+PPP[j].Hsml); // should these be H, or be -effective sizes- //
         if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.50) {wt_i=wt_j=(V_i*PPP[j].Hsml+V_j*local.Hsml)/(local.Hsml+PPP[j].Hsml);} else {wt_i=V_i; wt_j=V_j;}
 #endif
         for(k=0;k<3;k++)
@@ -183,7 +183,9 @@
         press_j_tot += 0.5 * kernel.b2_j * fac_magnetic_pressure;
 #endif
         double press_tot_limiter = 1.1 * All.cf_a3inv * DMAX( press_i_tot , press_j_tot );
-        
+#ifdef NON_IDEAL_EOS
+        press_tot_limiter *= 2.0;
+#endif
         
         
         /* --------------------------------------------------------------------------------- */
@@ -191,7 +193,7 @@
         /* --------------------------------------------------------------------------------- */
         Riemann_solver(Riemann_vec, &Riemann_out, n_unit, press_tot_limiter);
         /* before going on, check to make sure we have a valid Riemann solution */
-        if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>press_tot_limiter))
+        if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>1.4*press_tot_limiter))
         {
             /* go to a linear reconstruction of P, rho, and v, and re-try */
             Riemann_vec.R.p = local.Pressure; Riemann_vec.L.p = SphP[j].Pressure;
@@ -207,8 +209,8 @@
             Riemann_vec.R.u = local.InternalEnergyPred; Riemann_vec.L.u = SphP[j].InternalEnergyPred;
             Riemann_vec.R.cs = kernel.sound_i; Riemann_vec.L.cs = kernel.sound_j;
 #endif
-            Riemann_solver(Riemann_vec, &Riemann_out, n_unit, press_tot_limiter);
-            if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>press_tot_limiter))
+            Riemann_solver(Riemann_vec, &Riemann_out, n_unit, 1.4*press_tot_limiter);
+            if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>2.0*press_tot_limiter))
             {
                 /* ignore any velocity difference between the particles: this should gaurantee we have a positive pressure! */
                 Riemann_vec.R.p = local.Pressure; Riemann_vec.L.p = SphP[j].Pressure;
@@ -224,8 +226,8 @@
                 Riemann_vec.R.u = local.InternalEnergyPred; Riemann_vec.L.u = SphP[j].InternalEnergyPred;
                 Riemann_vec.R.cs = kernel.sound_i; Riemann_vec.L.cs = kernel.sound_j;
 #endif
-                Riemann_solver(Riemann_vec, &Riemann_out, n_unit, press_tot_limiter);
-                if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>press_tot_limiter))
+                Riemann_solver(Riemann_vec, &Riemann_out, n_unit, 2.0*press_tot_limiter);
+                if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M)))
                 {
 #if defined(MAGNETIC) && defined(DIVBCLEANING_DEDNER)
                     printf("Riemann Solver Failed to Find Positive Pressure!: Pmax=%g PL/M/R=%g/%g/%g Mi/j=%g/%g rhoL/R=%g/%g H_ij=%g/%g vL=%g/%g/%g vR=%g/%g/%g n_unit=%g/%g/%g BL=%g/%g/%g BR=%g/%g/%g phiL/R=%g/%g \n",
@@ -256,7 +258,7 @@
             if(All.ComovingIntegrationOn) {for(k=0;k<3;k++) v_frame[k] /= All.cf_atime;}
             
             
-#if !defined(HYDRO_MESHLESS_FINITE_VOLUME) && !defined(MAGNETIC)
+#if defined(HYDRO_MESHLESS_FINITE_MASS) && !defined(MAGNETIC)
             double facenorm_pm = Face_Area_Norm * Riemann_out.P_M;
             Fluxes.p = 0;
             for(k=0;k<3;k++) {Fluxes.v[k] = facenorm_pm * n_unit[k];} /* total momentum flux */
@@ -336,7 +338,7 @@
             for(k=0;k<3;k++) {Fluxes.B[k] = Face_Area_Norm * Riemann_out.Fluxes.B[k];} // magnetic flux (B*V) //
             Fluxes.B_normal_corrected = -Riemann_out.B_normal_corrected * Face_Area_Norm;
 #if defined(DIVBCLEANING_DEDNER) && defined(HYDRO_MESHLESS_FINITE_VOLUME)
-            //Fluxes.phi = Riemann_out.Fluxes.phi * Face_Area_Norm; // is this more accurate than mass-based flux ??? //
+            //Fluxes.phi = Riemann_out.Fluxes.phi * Face_Area_Norm; // after testing, we now prefer the mass-based fluxes, now //
             if(Fluxes.rho < 0)
             {
                 Fluxes.phi = Fluxes.rho * Riemann_vec.R.phi;
@@ -348,7 +350,7 @@
 
 #ifdef HYDRO_MESHLESS_FINITE_MASS
             /* for MFM, do the face correction for adiabatic flows here */
-            double SM_over_ceff = fabs(Riemann_out.S_M) / DMIN(kernel.sound_i,kernel.sound_j); // do we want sound speed here, or magnetosonic speed??? //
+            double SM_over_ceff = fabs(Riemann_out.S_M) / DMIN(kernel.sound_i,kernel.sound_j); // for now use sound speed here (more conservative) vs magnetosonic speed //
             /* if SM is sufficiently large, we do nothing to the equations */
             if(SM_over_ceff < epsilon_entropic_eos_big)
             {

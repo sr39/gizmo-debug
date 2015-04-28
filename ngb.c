@@ -85,9 +85,9 @@ int ngb_filter_pairs(long long numngb, int list[], t_vector * center, t_vector *
       MyDouble dx, dy, dz, d2;
       MyDouble dist = DMAX(PPP[p].Hsml, hsml);
 
-      dx = NGB_PERIODIC_LONG(P[p].Pos[0] - center->d[0], box->d[0], hbox->d[0]);
-      dy = NGB_PERIODIC_LONG(P[p].Pos[1] - center->d[1], box->d[1], hbox->d[1]);
-      dz = NGB_PERIODIC_LONG(P[p].Pos[2] - center->d[2], box->d[2], hbox->d[2]);
+        dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - center->d[0], P[p].Pos[1] - center->d[1], P[p].Pos[2] - center->d[2],-1);
+        dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - center->d[0], P[p].Pos[1] - center->d[1], P[p].Pos[2] - center->d[2],-1);
+        dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - center->d[0], P[p].Pos[1] - center->d[1], P[p].Pos[2] - center->d[2],-1);
       d2 = dx * dx + dy * dy + dz * dz;
       comp[no] = (d2 < dist * dist);
     }
@@ -132,9 +132,9 @@ int ngb_filter_variables(long long numngb, int list[], t_vector * center, t_vect
       int p = list[no];
       MyDouble dx, dy, dz, d2;
 
-      dx = NGB_PERIODIC_LONG(P[p].Pos[0] - center->d[0], box->d[0], hbox->d[0]);
-      dy = NGB_PERIODIC_LONG(P[p].Pos[1] - center->d[1], box->d[1], hbox->d[1]);
-      dz = NGB_PERIODIC_LONG(P[p].Pos[2] - center->d[2], box->d[2], hbox->d[2]);
+        dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - center->d[0], P[p].Pos[1] - center->d[1], P[p].Pos[2] - center->d[2],-1);
+        dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - center->d[0], P[p].Pos[1] - center->d[1], P[p].Pos[2] - center->d[2],-1);
+        dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - center->d[0], P[p].Pos[1] - center->d[1], P[p].Pos[2] - center->d[2],-1);
       d2 = dx * dx + dy * dy + dz * dz;
       comp[no] = (d2 < dist * dist);
     }
@@ -218,13 +218,13 @@ int ngb_treefind_pairs(MyDouble searchcenter[3], MyFloat hsml, int target, int *
 #ifndef DO_NOT_BRACH_IF
 	  dist = DMAX(PPP[p].Hsml, hsml);
 
-	  dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0]);
+	  dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dx > dist)
 	    continue;
-	  dy = NGB_PERIODIC_LONG_Y(P[p].Pos[1] - searchcenter[1]);
+	  dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dy > dist)
 	    continue;
-	  dz = NGB_PERIODIC_LONG_Z(P[p].Pos[2] - searchcenter[2]);
+	  dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dz > dist)
 	    continue;
 	  if(dx * dx + dy * dy + dz * dz > dist * dist)
@@ -310,13 +310,13 @@ int ngb_treefind_pairs(MyDouble searchcenter[3], MyFloat hsml, int target, int *
 
 	  no = current->u.d.sibling;	/* in case the node can be discarded */
 
-	  dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0]);
+	  dx = NGB_PERIODIC_LONG_X(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dx > dist)
 	    continue;
-	  dy = NGB_PERIODIC_LONG_Y(current->center[1] - searchcenter[1]);
+	  dy = NGB_PERIODIC_LONG_Y(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dy > dist)
 	    continue;
-	  dz = NGB_PERIODIC_LONG_Z(current->center[2] - searchcenter[2]);
+	  dz = NGB_PERIODIC_LONG_Z(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dz > dist)
 	    continue;
 	  /* now test against the minimal sphere enclosing everything */
@@ -394,13 +394,13 @@ int ngb_treefind_pairs_threads(MyDouble searchcenter[3], MyFloat hsml, int targe
 #ifndef DO_NOT_BRACH_IF
 	  dist = DMAX(PPP[p].Hsml, hsml);
 
-	  dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0]);
+	  dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dx > dist)
 	    continue;
-	  dy = NGB_PERIODIC_LONG_Y(P[p].Pos[1] - searchcenter[1]);
+	  dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dy > dist)
 	    continue;
-	  dz = NGB_PERIODIC_LONG_Z(P[p].Pos[2] - searchcenter[2]);
+	  dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dz > dist)
 	    continue;
 	  if(dx * dx + dy * dy + dz * dz > dist * dist)
@@ -518,13 +518,13 @@ int ngb_treefind_pairs_threads(MyDouble searchcenter[3], MyFloat hsml, int targe
 
 	  no = current->u.d.sibling;	/* in case the node can be discarded */
 
-	  dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0]);
+	  dx = NGB_PERIODIC_LONG_X(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dx > dist)
 	    continue;
-	  dy = NGB_PERIODIC_LONG_Y(current->center[1] - searchcenter[1]);
+	  dy = NGB_PERIODIC_LONG_Y(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dy > dist)
 	    continue;
-	  dz = NGB_PERIODIC_LONG_Z(current->center[2] - searchcenter[2]);
+	  dz = NGB_PERIODIC_LONG_Z(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dz > dist)
 	    continue;
 	  /* now test against the minimal sphere enclosing everything */
@@ -603,13 +603,13 @@ int ngb_treefind_variable(MyDouble searchcenter[3], MyFloat hsml, int target, in
 #ifndef DO_NOT_BRACH_IF
 	  dist = hsml;
 
-	  dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0]);
+	  dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dx > dist)
 	    continue;
-	  dy = NGB_PERIODIC_LONG_Y(P[p].Pos[1] - searchcenter[1]);
+	  dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dy > dist)
 	    continue;
-	  dz = NGB_PERIODIC_LONG_Z(P[p].Pos[2] - searchcenter[2]);
+	  dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dz > dist)
 	    continue;
 	  if(dx * dx + dy * dy + dz * dz > dist * dist)
@@ -697,13 +697,13 @@ int ngb_treefind_variable(MyDouble searchcenter[3], MyFloat hsml, int target, in
 	  no = current->u.d.sibling;	/* in case the node can be discarded */
 
 	  dist = hsml + 0.5 * current->len;
-	  dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0]);
+	  dx = NGB_PERIODIC_LONG_X(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dx > dist)
 	    continue;
-	  dy = NGB_PERIODIC_LONG_Y(current->center[1] - searchcenter[1]);
+	  dy = NGB_PERIODIC_LONG_Y(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dy > dist)
 	    continue;
-	  dz = NGB_PERIODIC_LONG_Z(current->center[2] - searchcenter[2]);
+	  dz = NGB_PERIODIC_LONG_Z(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dz > dist)
 	    continue;
 	  /* now test against the minimal sphere enclosing everything */
@@ -787,13 +787,13 @@ int ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int ta
 
 #ifndef DO_NOT_BRACH_IF
 	  dist = hsml;
-	  dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0]);
+	  dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dx > dist)
 	    continue;
-	  dy = NGB_PERIODIC_LONG_Y(P[p].Pos[1] - searchcenter[1]);
+	  dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dy > dist)
 	    continue;
-	  dz = NGB_PERIODIC_LONG_Z(P[p].Pos[2] - searchcenter[2]);
+	  dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dz > dist)
 	    continue;
 	  if(dx * dx + dy * dy + dz * dz > dist * dist)
@@ -897,13 +897,13 @@ int ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int ta
 	  no = current->u.d.sibling;	/* in case the node can be discarded */
 
 	  dist = hsml + 0.5 * current->len;
-	  dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0]);
+	  dx = NGB_PERIODIC_LONG_X(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dx > dist)
 	    continue;
-	  dy = NGB_PERIODIC_LONG_Y(current->center[1] - searchcenter[1]);
+	  dy = NGB_PERIODIC_LONG_Y(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dy > dist)
 	    continue;
-	  dz = NGB_PERIODIC_LONG_Z(current->center[2] - searchcenter[2]);
+	  dz = NGB_PERIODIC_LONG_Z(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dz > dist)
 	    continue;
 	  /* now test against the minimal sphere enclosing everything */
@@ -993,13 +993,13 @@ int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int target,
 
 #ifndef DO_NOT_BRACH_IF
 	  dist = hsml;
-	  dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0]);
+	  dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dx > dist)
 	    continue;
-	  dy = NGB_PERIODIC_LONG_Y(P[p].Pos[1] - searchcenter[1]);
+	  dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dy > dist)
 	    continue;
-	  dz = NGB_PERIODIC_LONG_Z(P[p].Pos[2] - searchcenter[2]);
+	  dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dz > dist)
 	    continue;
 	  if(dx * dx + dy * dy + dz * dz > dist * dist)
@@ -1088,25 +1088,13 @@ int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int target,
 	  no = current->u.d.sibling;	/* in case the node can be discarded */
 
 	  dist = hsml + 0.5 * current->len;;
-#ifndef DO_NOT_BRACH_IF
-	  dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0]);
-#else
-	  dx = NGB_PERIODIC_LONG(current->center[0] - searchcenter[0], box.d[0], hbox.d[0]);
-#endif
+	  dx = NGB_PERIODIC_LONG_X(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dx > dist)
 	    continue;
-#ifndef DO_NOT_BRACH_IF
-	  dy = NGB_PERIODIC_LONG_Y(current->center[1] - searchcenter[1]);
-#else
-	  dy = NGB_PERIODIC_LONG(current->center[1] - searchcenter[1], box.d[1], hbox.d[1]);
-#endif
+	  dy = NGB_PERIODIC_LONG_Y(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dy > dist)
 	    continue;
-#ifndef DO_NOT_BRACH_IF
-	  dz = NGB_PERIODIC_LONG_Z(current->center[2] - searchcenter[2]);
-#else
-	  dz = NGB_PERIODIC_LONG(current->center[2] - searchcenter[2], box.d[2], hbox.d[2]);
-#endif
+	  dz = NGB_PERIODIC_LONG_Z(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dz > dist)
 	    continue;
 	  /* now test against the minimal sphere enclosing everything */
@@ -1133,9 +1121,9 @@ int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int target,
 				if(((1 << P[p].Type) & (MyFOF_PRIMARY_LINK_TYPES)))
 				  {
 #ifndef DO_NOT_BRACH_IF
-				    dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0]);
-				    dy = NGB_PERIODIC_LONG_Y(P[p].Pos[1] - searchcenter[1]);
-				    dz = NGB_PERIODIC_LONG_Z(P[p].Pos[2] - searchcenter[2]);
+				    dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
+				    dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
+				    dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 				    if(dx * dx + dy * dy + dz * dz > hsml * hsml)
 				      break;
 #endif
@@ -1214,13 +1202,13 @@ int ngb_treefind_fof_nearest(MyDouble searchcenter[3], MyFloat hsml, int target,
 
 #ifndef DO_NOT_BRACH_IF
 	  dist = hsml;
-	  dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0]);
+	  dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dx > dist)
 	    continue;
-	  dy = NGB_PERIODIC_LONG_Y(P[p].Pos[1] - searchcenter[1]);
+	  dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dy > dist)
 	    continue;
-	  dz = NGB_PERIODIC_LONG_Z(P[p].Pos[2] - searchcenter[2]);
+	  dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dz > dist)
 	    continue;
 	  if(dx * dx + dy * dy + dz * dz > dist * dist)
@@ -1293,13 +1281,13 @@ int ngb_treefind_fof_nearest(MyDouble searchcenter[3], MyFloat hsml, int target,
 	  no = current->u.d.sibling;	/* in case the node can be discarded */
 
 	  dist = hsml + 0.5 * current->len;;
-	  dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0]);
+	  dx = NGB_PERIODIC_LONG_X(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dx > dist)
 	    continue;
-	  dy = NGB_PERIODIC_LONG_Y(current->center[1] - searchcenter[1]);
+	  dy = NGB_PERIODIC_LONG_Y(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dy > dist)
 	    continue;
-	  dz = NGB_PERIODIC_LONG_Z(current->center[2] - searchcenter[2]);
+	  dz = NGB_PERIODIC_LONG_Z(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dz > dist)
 	    continue;
 	  /* now test against the minimal sphere enclosing everything */
@@ -1379,13 +1367,13 @@ int ngb_treefind_stars(MyDouble searchcenter[3], MyFloat hsml, int target, int *
 
 #ifndef DO_NOT_BRACH_IF
 	  dist = hsml;
-	  dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0]);
+	  dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dx > dist)
 	    continue;
-	  dy = NGB_PERIODIC_LONG_Y(P[p].Pos[1] - searchcenter[1]);
+	  dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dy > dist)
 	    continue;
-	  dz = NGB_PERIODIC_LONG_Z(P[p].Pos[2] - searchcenter[2]);
+	  dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 	  if(dz > dist)
 	    continue;
 	  if(dx * dx + dy * dy + dz * dz > dist * dist)
@@ -1469,13 +1457,13 @@ int ngb_treefind_stars(MyDouble searchcenter[3], MyFloat hsml, int target, int *
 	  no = current->u.d.sibling;	/* in case the node can be discarded */
 
 	  dist = hsml + 0.5 * current->len;;
-	  dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0]);
+	  dx = NGB_PERIODIC_LONG_X(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dx > dist)
 	    continue;
-	  dy = NGB_PERIODIC_LONG_Y(current->center[1] - searchcenter[1]);
+	  dy = NGB_PERIODIC_LONG_Y(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dy > dist)
 	    continue;
-	  dz = NGB_PERIODIC_LONG_Z(current->center[2] - searchcenter[2]);
+	  dz = NGB_PERIODIC_LONG_Z(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
 	  if(dz > dist)
 	    continue;
 	  /* now test against the minimal sphere enclosing everything */
@@ -1540,13 +1528,13 @@ int ngb_treefind_newstars(MyDouble searchcenter[3], MyFloat hsml, int target, in
             
             dist = hsml;
             
-            dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0]);
+            dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
             if(dx > dist)
                 continue;
-            dy = NGB_PERIODIC_LONG_Y(P[p].Pos[1] - searchcenter[1]);
+            dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
             if(dy > dist)
                 continue;
-            dz = NGB_PERIODIC_LONG_Z(P[p].Pos[2] - searchcenter[2]);
+            dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
             if(dz > dist)
                 continue;
             if(dx * dx + dy * dy + dz * dz > dist * dist)
@@ -1628,13 +1616,13 @@ int ngb_treefind_newstars(MyDouble searchcenter[3], MyFloat hsml, int target, in
             no = current->u.d.sibling;	/* in case the node can be discarded */
             
             dist = hsml + 0.5 * current->len;
-            dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0]);
+            dx = NGB_PERIODIC_LONG_X(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
             if(dx > dist)
                 continue;
-            dy = NGB_PERIODIC_LONG_Y(current->center[1] - searchcenter[1]);
+            dy = NGB_PERIODIC_LONG_Y(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
             if(dy > dist)
                 continue;
-            dz = NGB_PERIODIC_LONG_Z(current->center[2] - searchcenter[2]);
+            dz = NGB_PERIODIC_LONG_Z(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
             if(dz > dist)
                 continue;
             /* now test against the minimal sphere enclosing everything */
@@ -1713,13 +1701,13 @@ int dm_disp_ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml
             
 #ifndef DO_NOT_BRACH_IF
             dist = hsml;
-            dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0]);
+            dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
             if(dx > dist)
                 continue;
-            dy = NGB_PERIODIC_LONG_Y(P[p].Pos[1] - searchcenter[1]);
+            dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
             if(dy > dist)
                 continue;
-            dz = NGB_PERIODIC_LONG_Z(P[p].Pos[2] - searchcenter[2]);
+            dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
             if(dz > dist)
                 continue;
             if(dx * dx + dy * dy + dz * dz > dist * dist)
@@ -1823,13 +1811,13 @@ int dm_disp_ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml
             no = current->u.d.sibling;	/* in case the node can be discarded */
             
             dist = hsml + 0.5 * current->len;
-            dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0]);
+            dx = NGB_PERIODIC_LONG_X(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
             if(dx > dist)
                 continue;
-            dy = NGB_PERIODIC_LONG_Y(current->center[1] - searchcenter[1]);
+            dy = NGB_PERIODIC_LONG_Y(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
             if(dy > dist)
                 continue;
-            dz = NGB_PERIODIC_LONG_Z(current->center[2] - searchcenter[2]);
+            dz = NGB_PERIODIC_LONG_Z(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
             if(dz > dist)
                 continue;
             /* now test against the minimal sphere enclosing everything */
@@ -1916,13 +1904,13 @@ int ags_ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, in
             
 #ifndef DO_NOT_BRACH_IF
             dist = hsml;
-            dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0]);
+            dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
             if(dx > dist)
                 continue;
-            dy = NGB_PERIODIC_LONG_Y(P[p].Pos[1] - searchcenter[1]);
+            dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
             if(dy > dist)
                 continue;
-            dz = NGB_PERIODIC_LONG_Z(P[p].Pos[2] - searchcenter[2]);
+            dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
             if(dz > dist)
                 continue;
             if(dx * dx + dy * dy + dz * dz > dist * dist)
@@ -2026,13 +2014,13 @@ int ags_ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, in
             no = current->u.d.sibling;	/* in case the node can be discarded */
             
             dist = hsml + 0.5 * current->len;
-            dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0]);
+            dx = NGB_PERIODIC_LONG_X(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
             if(dx > dist)
                 continue;
-            dy = NGB_PERIODIC_LONG_Y(current->center[1] - searchcenter[1]);
+            dy = NGB_PERIODIC_LONG_Y(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
             if(dy > dist)
                 continue;
-            dz = NGB_PERIODIC_LONG_Z(current->center[2] - searchcenter[2]);
+            dz = NGB_PERIODIC_LONG_Z(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
             if(dz > dist)
                 continue;
             /* now test against the minimal sphere enclosing everything */

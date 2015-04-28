@@ -148,9 +148,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
 #ifdef PERIODIC  /* find the closest image in the given box size  */
-                kernel.dp[0] = NEAREST_X(kernel.dp[0]);
-                kernel.dp[1] = NEAREST_Y(kernel.dp[1]);
-                kernel.dp[2] = NEAREST_Z(kernel.dp[2]);
+                NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1);
 #endif
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 kernel.h_j = PPP[j].Hsml;
@@ -311,7 +309,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef MAGNETIC
                 for(k=0;k<3;k++) {out.DtB[k]+=Fluxes.B[k];}
                 out.divB += Fluxes.B_normal_corrected;
-#if defined(DIVBCLEANING_DEDNER) && defined(HYDRO_MESHLESS_FINITE_VOLUME) // mass-based phi-flux ???
+#if defined(DIVBCLEANING_DEDNER) && defined(HYDRO_MESHLESS_FINITE_VOLUME) // mass-based phi-flux
                 out.DtPhi += Fluxes.phi;
 #endif
 #ifdef HYDRO_SPH
@@ -321,7 +319,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double wt_face_sum = Face_Area_Norm * (-face_area_dot_vel+face_vel_i);
                 out.DtInternalEnergy += 0.5 * kernel.b2_i*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
 #ifdef DIVBCLEANING_DEDNER
-                //out.DtPhi += (Riemann_out.phi_normal_mean - local.PhiPred*All.cf_a3inv) * wt_face_sum; // mass-based phi-flux ???
+                //out.DtPhi += (Riemann_out.phi_normal_mean - local.PhiPred*All.cf_a3inv) * wt_face_sum; // now use mass-based phi-flux
                 /*
                 double phi_normal_full = Riemann_out.phi_normal_mean + Riemann_out.phi_normal_db;
                 for(k=0;k<3;k++) {out.DtB_PhiCorr[k] += phi_normal_full * Face_Area_Vec[k];}
@@ -357,7 +355,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef MAGNETIC
                     for(k=0;k<3;k++) {SphP[j].DtB[k]-=Fluxes.B[k];}
                     SphP[j].divB -= Fluxes.B_normal_corrected;
-#if defined(DIVBCLEANING_DEDNER) && defined(HYDRO_MESHLESS_FINITE_VOLUME) // mass-based phi-flux ???
+#if defined(DIVBCLEANING_DEDNER) && defined(HYDRO_MESHLESS_FINITE_VOLUME) // mass-based phi-flux
                     SphP[j].DtPhi -= Fluxes.phi;
 #endif
 #ifdef HYDRO_SPH
@@ -367,7 +365,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double wt_face_sum = Face_Area_Norm * (-face_area_dot_vel+face_vel_j);
                     SphP[j].DtInternalEnergy -= 0.5 * kernel.b2_j*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
 #ifdef DIVBCLEANING_DEDNER
-                    //SphP[j].DtPhi -= (Riemann_out.phi_normal_mean - PhiPred_j*All.cf_a3inv) * wt_face_sum; // mass-based phi-flux ???
+                    //SphP[j].DtPhi -= (Riemann_out.phi_normal_mean - PhiPred_j*All.cf_a3inv) * wt_face_sum; // mass-based phi-flux
                     /*
                     for(k=0;k<3;k++) {SphP[j].DtB_PhiCorr[k] -= phi_normal_full * Face_Area_Vec[k];;}
                     */

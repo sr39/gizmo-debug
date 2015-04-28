@@ -276,15 +276,9 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                         fp_pos[k] = P[pindex].Pos[k];
 #ifdef PERIODIC
                         boxSize = All.BoxSize;
-#ifdef LONG_X
-                        if(k == 0) {boxSize = All.BoxSize * LONG_X;}
-#endif
-#ifdef LONG_Y
-                        if(k == 1) {boxSize = All.BoxSize * LONG_Y;}
-#endif
-#ifdef LONG_Z
-                        if(k == 2) {boxSize = All.BoxSize * LONG_Z;}
-#endif
+                        if(k==0) {boxSize = boxSize_X;}
+                        if(k==1) {boxSize = boxSize_Y;}
+                        if(k==2) {boxSize = boxSize_Z;}
                         while(fp_pos[k] < 0) {fp_pos[k] += boxSize;}
                         while(fp_pos[k] >= boxSize) {fp_pos[k] -= boxSize;}
 #endif

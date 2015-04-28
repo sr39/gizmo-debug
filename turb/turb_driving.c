@@ -51,26 +51,26 @@ void init_turb(void)
     double kx,ky,kz,k;
     double ampl;
     
-    int ikxmax = All.BoxSize*All.StKmax/2./M_PI;
+    int ikxmax = boxSize_X * All.StKmax/2./M_PI;
     int ikymax = 0;
     int ikzmax = 0;
 #if (NUMDIMS > 1)
-    ikymax = All.BoxSize*All.StKmax/2./M_PI;
+    ikymax = boxSize_Y * All.StKmax/2./M_PI;
 #endif
 #if (NUMDIMS > 2)
-    ikzmax = All.BoxSize*All.StKmax/2./M_PI;
+    ikzmax = boxSize_Z * All.StKmax/2./M_PI;
 #endif
     
     StNModes = 0;
     for(ikx = 0;ikx <= ikxmax; ikx++)
     {
-        kx = 2.*M_PI*ikx/All.BoxSize;
+        kx = 2.*M_PI*ikx/boxSize_X;
         for(iky = 0;iky <= ikymax; iky++)
         {
-            ky = 2.*M_PI*iky/All.BoxSize;
+            ky = 2.*M_PI*iky/boxSize_Y;
             for(ikz = 0;ikz <= ikzmax; ikz++)
             {
-                kz = 2.*M_PI*ikz/All.BoxSize;
+                kz = 2.*M_PI*ikz/boxSize_Z;
                 k = sqrt(kx*kx+ky*ky+kz*kz);
                 if(k>=All.StKmin && k<=All.StKmax)
                 {
@@ -117,15 +117,15 @@ void init_turb(void)
     
     for(ikx = 0;ikx <= ikxmax; ikx++)
     {
-        kx = 2.*M_PI*ikx/All.BoxSize;
+        kx = 2.*M_PI*ikx/boxSize_X;
         
         for(iky = 0;iky <= ikymax; iky++)
         {
-            ky = 2.*M_PI*iky/All.BoxSize;
+            ky = 2.*M_PI*iky/boxSize_Y;
             
             for(ikz = 0;ikz <= ikzmax; ikz++)
             {
-                kz = 2.*M_PI*ikz/All.BoxSize;
+                kz = 2.*M_PI*ikz/boxSize_Z;
                 
                 k = sqrt(kx*kx+ky*ky+kz*kz);
                 if(k>=All.StKmin && k<=All.StKmax)

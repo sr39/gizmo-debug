@@ -376,7 +376,7 @@ void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double
     double BphysVolphys_to_BcodeVolCode = 1 / All.cf_atime;
     for(k=0;k<3;k++) {SphP[i].BPred[k] += SphP[i].DtB[k] * dt_entr * BphysVolphys_to_BcodeVolCode;} // fluxes are always physical, convert to code units //
 #ifdef DIVBCLEANING_DEDNER
-    double PhiphysVolphys_to_PhicodeVolCode = 1 / All.cf_a3inv; // mass-based phi fluxes (otherwise coefficient is 1) ???
+    double PhiphysVolphys_to_PhicodeVolCode = 1 / All.cf_a3inv; // for mass-based phi fluxes (otherwise coefficient is 1)
     double dtphi_code = (PhiphysVolphys_to_PhicodeVolCode) * SphP[i].DtPhi;
     SphP[i].PhiPred += dtphi_code  * dt_entr;
     double t_damp = Get_Particle_PhiField_DampingTimeInv(i);
@@ -406,21 +406,9 @@ void do_box_wrapping(void)
 {
     int i, j;
     double boxsize[3];
-    
-    for(j = 0; j < 3; j++)
-    {
-        boxsize[j] = All.BoxSize;
-    }
-    
-#ifdef LONG_X
-    boxsize[0] *= LONG_X;
-#endif
-#ifdef LONG_Y
-    boxsize[1] *= LONG_Y;
-#endif
-#ifdef LONG_Z
-    boxsize[2] *= LONG_Z;
-#endif
+    boxsize[0] = boxSize_X;
+    boxsize[1] = boxSize_Y;
+    boxsize[2] = boxSize_Z;
     
     for(i = 0; i < NumPart; i++)
     {
@@ -430,14 +418,15 @@ void do_box_wrapping(void)
             {
                 P[i].Pos[j] += boxsize[j];
 #ifdef SHEARING_BOX
-                if(j==0) {
-                    P[i].Vel[SHEARING_BOX_PHI_COORDINATE]-=Shearing_Box_Vel_Offset;
-                    if(P[i].Type==0) SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE]-=Shearing_Box_Vel_Offset;}
-#if (SHEARING_BOX != 1)
-                /* if we're not assuming axisymmetry, we need to shift the coordinates for the shear flow at the boundary */
-                // PFH: needs update for shearing coordinates, if desired //
-                //if(j==0) {P[i].Pos[SHEARING_BOX_PHI_COORDINATE]+= Shearing_Box_Vel_Offset * All.Time;
+                if(j==0)
+                {
+                    P[i].Vel[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;
+                    if(P[i].Type==0) {SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+#if (SHEARING_BOX > 1)
+                    /* if we're not assuming axisymmetry, we need to shift the coordinates for the shear flow at the boundary */
+                    P[i].Pos[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Pos_Offset;
 #endif
+                }
 #endif
             }
             
@@ -445,9 +434,15 @@ void do_box_wrapping(void)
             {
                 P[i].Pos[j] -= boxsize[j];
 #ifdef SHEARING_BOX
-                if(j==0) {
-                    P[i].Vel[SHEARING_BOX_PHI_COORDINATE]+=Shearing_Box_Vel_Offset;
-                    if(P[i].Type==0) SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE]+=Shearing_Box_Vel_Offset;}
+                if(j==0)
+                {
+                    P[i].Vel[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;
+                    if(P[i].Type==0) {SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#if (SHEARING_BOX > 1)
+                    /* if we're not assuming axisymmetry, we need to shift the coordinates for the shear flow at the boundary */
+                    P[i].Pos[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Pos_Offset;
+#endif
+                }
 #endif
             }
         }
@@ -600,8 +595,8 @@ double Get_DtB_FaceArea_Limiter(int i)
 #ifdef DIVBCLEANING_DEDNER
 double INLINE_FUNC Get_Particle_PhiField(int i_particle_id)
 {
-    //return SphP[i_particle_id].PhiPred * SphP[i_particle_id].Density / P[i_particle_id].Mass; //
-    return SphP[i_particle_id].PhiPred / P[i_particle_id].Mass; // mass-based phi-flux ???
+    //return SphP[i_particle_id].PhiPred * SphP[i_particle_id].Density / P[i_particle_id].Mass; // volumetric phy-flux (requires extra term compared to mass-based flux)
+    return SphP[i_particle_id].PhiPred / P[i_particle_id].Mass; // mass-based phi-flux
 }
 
 double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)

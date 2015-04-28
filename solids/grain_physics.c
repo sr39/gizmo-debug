@@ -76,7 +76,7 @@ void apply_grain_dragforce(void)
                         // note that, with an external (gravitational) acceleration, we can still solve this equation for the relevant update //
 
                         double external_forcing[3];
-                        for(k=0;k<3;k++) {external_forcing[k]=0};
+                        for(k=0;k<3;k++) {external_forcing[k]=0;}
                         
 #ifdef GRAIN_LORENTZFORCE
                         /* Lorentz force on a grain = Z*e/c * (v_grain x B) */
@@ -637,9 +637,7 @@ void grain_density(void)
                     dy = pos[1] - P[j].Pos[1];
                     dz = pos[2] - P[j].Pos[2];
 #ifdef PERIODIC			/*  now find the closest image in the given box size  */
-                    dx = NEAREST_X(dx);
-                    dy = NEAREST_Y(dy);
-                    dz = NEAREST_Z(dz);
+                    NEAREST_XYZ(dx,dy,dz,1);
 #endif
                     r2 = dx*dx + dy*dy + dz*dz;
                     if(r2 < h2)
@@ -742,13 +740,13 @@ int grain_ngb_treefind_variable(MyDouble searchcenter[3], MyFloat hsml, int targ
                 drift_particle(p, All.Ti_Current);
             
             dist = hsml;
-            dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0]);
+            dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
             if(dx > dist)
                 continue;
-            dy = NGB_PERIODIC_LONG_Y(P[p].Pos[1] - searchcenter[1]);
+            dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
             if(dy > dist)
                 continue;
-            dz = NGB_PERIODIC_LONG_Z(P[p].Pos[2] - searchcenter[2]);
+            dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
             if(dz > dist)
                 continue;
             if(dx * dx + dy * dy + dz * dz > dist * dist)
@@ -830,13 +828,13 @@ int grain_ngb_treefind_variable(MyDouble searchcenter[3], MyFloat hsml, int targ
             no = current->u.d.sibling;	/* in case the node can be discarded */
             
             dist = hsml + 0.5 * current->len;;
-            dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0]);
+            dx = NGB_PERIODIC_LONG_X(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
             if(dx > dist)
                 continue;
-            dy = NGB_PERIODIC_LONG_Y(current->center[1] - searchcenter[1]);
+            dy = NGB_PERIODIC_LONG_Y(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
             if(dy > dist)
                 continue;
-            dz = NGB_PERIODIC_LONG_Z(current->center[2] - searchcenter[2]);
+            dz = NGB_PERIODIC_LONG_Z(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
             if(dz > dist)
                 continue;
             /* now test against the minimal sphere enclosing everything */

@@ -278,7 +278,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                     SphP[i].DtB[j] = (1./3.) * SphP[i].B[j]*All.cf_atime * P[i].Particle_DivVel*All.cf_a2inv;
                 }
 #ifdef DIVBCLEANING_DEDNER
-                SphP[i].DtPhi = (1./3.) * (SphP[i].Phi*All.cf_a3inv) * P[i].Particle_DivVel*All.cf_a2inv; // cf_a3inv from mass-based phi-fluxes???
+                SphP[i].DtPhi = (1./3.) * (SphP[i].Phi*All.cf_a3inv) * P[i].Particle_DivVel*All.cf_a2inv; // cf_a3inv from mass-based phi-fluxes
 #endif
 #endif
                 if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*GAMMA_MINUS1 * SphP[i].InternalEnergyPred * All.cf_hubble_a;
@@ -393,7 +393,7 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
     double BphysVolphys_to_BcodeVolCode = 1 / All.cf_atime;
     for(j = 0; j < 3; j++) {SphP[i].B[j] += SphP[i].DtB[j] * dt_entr * BphysVolphys_to_BcodeVolCode;} // fluxes are always physical, convert to code units //
 #ifdef DIVBCLEANING_DEDNER
-    double PhiphysVolphys_to_PhicodeVolCode = 1 / All.cf_a3inv; // mass-based phi-fluxes (otherwise is just "1") ???
+    double PhiphysVolphys_to_PhicodeVolCode = 1 / All.cf_a3inv; // for mass-based phi-fluxes (otherwise is just "1")
     /* phi units are [vcode][Bcode]=a^3 * vphys*Bphys */
     if(SphP[i].Density > 0)
     {

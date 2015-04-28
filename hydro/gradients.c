@@ -853,12 +853,10 @@ void hydro_gradient_calc(void)
                 double tmp_d = sqrt(1.0e-37 + (2. * All.cf_atime/All.cf_afac1 * SphP[i].Pressure*v_tmp*v_tmp) +
                                     SphP[i].BPred[0]*SphP[i].BPred[0]+SphP[i].BPred[1]*SphP[i].BPred[1]+SphP[i].BPred[2]*SphP[i].BPred[2]);
                 double tmp = 3.0e3 * fabs(SphP[i].divB) * PPP[i].Hsml / tmp_d;
-                double alim = 1. + DMIN(1.,tmp*tmp); // ????
-                //double alim = 1. + DMIN(2.,tmp*tmp); // need to be more aggressive with new wt_i,wt_j formalism
+                double alim = 1. + DMIN(1.,tmp*tmp);
 #if (CONSTRAINED_GRADIENT_MHD <= 1)
                 double dbmax=0, dbgrad=0;
-                double dh=0.25*PPP[i].Hsml; // ???
-                //double dh=0.25*PPP[i].Hsml*(1. + DMIN(1.,tmp*tmp)); // need to be more aggressive with new wt_i,wt_j formalism
+                double dh=0.25*PPP[i].Hsml; // need to be more aggressive with new wt_i,wt_j formalism
                 for(k=0;k<3;k++)
                 {
                     double b0 = Get_Particle_BField(i,k);
@@ -1057,7 +1055,7 @@ void hydro_gradient_calc(void)
                     if(fabs(SphP[i].divB) > b2_max) {SphP[i].divB *= b2_max / fabs(SphP[i].divB);}
                     /* ok now can apply this to get the growth rate of phi */
                     // SphP[i].DtPhi = -tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB;
-                    SphP[i].DtPhi = -tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB * SphP[i].Density*All.cf_a3inv; // mass-based phi-flux ???
+                    SphP[i].DtPhi = -tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB * SphP[i].Density*All.cf_a3inv; // mass-based phi-flux
                     // phiphi above now has units of [Bcode]*[vcode]^2/[rcode]=(Bcode*vcode)*vcode/rcode; needs to have units of [Phicode]*[vcode]/[rcode]
                     // [PhiGrad]=[Phicode]/[rcode] = [DtB] = [Bcode]*[vcode]/[rcode] IFF [Phicode]=[Bcode]*[vcode]; this also makes the above self-consistent //
                     // (implicitly, this gives the correct evolution in comoving, adiabatic coordinates where the sound speed is the relevant speed at which
@@ -1254,12 +1252,10 @@ void hydro_gradient_calc(void)
             double v_tmp = P[i].Mass / SphP[i].Density;
             double tmp_d = sqrt(1.0e-37 + (2. * All.cf_atime/All.cf_afac1 * SphP[i].Pressure*v_tmp*v_tmp) +
                                 SphP[i].BPred[0]*SphP[i].BPred[0]+SphP[i].BPred[1]*SphP[i].BPred[1]+SphP[i].BPred[2]*SphP[i].BPred[2]);
-            double q = fabs(SphP[i].divB) * PPP[i].Hsml / tmp_d; // ???
+            double q = fabs(SphP[i].divB) * PPP[i].Hsml / tmp_d;
             //double q = 80.0 * fabs(SphP[i].divB) * PPP[i].Hsml / tmp_d; // 300,100 work; 30-50 not great; increased coefficient owing to new formulation with wt_i,wt_j in hydro
             double alim2 = a_limiter * (1. + q*q);
-            if(alim2 > 0.5) alim2=0.5; // ???
-            //if(alim2 > 0.75) alim2=0.75; // needs to be a bit higher than 0.5, for new formulation with wt_i,wt_j in hydro
-            
+            if(alim2 > 0.5) alim2=0.5;            
             
             for(k1=0;k1<3;k1++)
                 local_slopelimiter(SphP[i].Gradients.B[k1],GasGradDataPasser[i].Maxima.B[k1],GasGradDataPasser[i].Minima.B[k1],alim2,h_lim,stol);
@@ -1380,9 +1376,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
 #ifdef PERIODIC			/*  now find the closest image in the given box size  */
-                kernel.dp[0] = NEAREST_X(kernel.dp[0]);
-                kernel.dp[1] = NEAREST_Y(kernel.dp[1]);
-                kernel.dp[2] = NEAREST_Z(kernel.dp[2]);
+                NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1);
 #endif
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 double h_j = PPP[j].Hsml;
@@ -1431,7 +1425,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 //wt_i=wt_j = 2.*V_i*V_j / (V_i + V_j); // more conservatively, could use DMIN(V_i,V_j), but that is less accurate
                 if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.25) {wt_i=wt_j=2.*V_i*V_j/(V_i+V_j);} else {wt_i=V_i; wt_j=V_j;}
 #else
-                //wt_i=wt_j = (V_i*PPP[j].Hsml + V_j*local.Hsml) / (local.Hsml+PPP[j].Hsml); // should these be H, or be -effective sizes-??? //
+                //wt_i=wt_j = (V_i*PPP[j].Hsml + V_j*local.Hsml) / (local.Hsml+PPP[j].Hsml); // should these be H, or be -effective sizes- //
                 if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.50) {wt_i=wt_j=(V_i*PPP[j].Hsml+V_j*local.Hsml)/(local.Hsml+PPP[j].Hsml);} else {wt_i=V_i; wt_j=V_j;}
 #endif
                 for(k=0;k<3;k++)

@@ -97,12 +97,23 @@ void execute_resubmit_command(void);
 void make_list_of_active_particles(void);
 void output_extra_log_messages(void);
 
-static inline double DMAX(double a, double b) { return (a > b) ? a : b; } 
+
+static inline double WRAP_POSITION_UNIFORM_BOX(double x)
+{
+    while(x >= All.BoxSize) {x -= All.BoxSize;}
+    while(x < 0) {x += All.BoxSize;}
+    return x;
+}
+
+static inline double DMAX(double a, double b) { return (a > b) ? a : b; }
 static inline double DMIN(double a, double b) { return (a < b) ? a : b; }
 static inline int IMAX(int a, int b) { return (a > b) ? a : b; } 
 static inline int IMIN(int a, int b) { return (a < b) ? a : b; }
 static inline double MINMOD(double a, double b) {return (a>0) ? ((b<0) ? 0 : DMIN(a,b)) : ((b>=0) ? 0 : DMAX(a,b));}
 
+#ifdef SHEARING_BOX
+void calc_shearing_box_pos_offset(void);
+#endif
 
 
 void do_distortion_tensor_kick(int i, double dt_gravkick);
@@ -203,7 +214,6 @@ void output_lines_of_sight(int num);
 integertime find_next_lineofsighttime(integertime time0);
 integertime find_next_gridoutputtime(integertime ti_curr);
 void add_along_lines_of_sight(void);
-double los_periodic(double x);
 void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurrent, int mode);
 
 
@@ -297,8 +307,6 @@ int fof_grid_compare(const void *a, const void *b);
 void fof_compile_catalogue(void);
 void fof_save_groups(int num);
 void fof_save_local_catalogue(int num);
-double fof_periodic(double x);
-double fof_periodic_wrap(double x);
 void fof_find_nearest_dmparticle(void);
 int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int *nsend_local);
 

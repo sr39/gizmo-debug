@@ -77,7 +77,7 @@
 #define HYDRO_SPH               /* master flag for SPH: must be enabled if any SPH method is used */
 #endif
 #ifdef HYDRO_SPH
-#ifndef SPHAV_DISABLE_CD10_VISCOSITY
+#ifndef SPHAV_DISABLE_CD10_ARTVISC
 #define SPHAV_CD10_VISCOSITY_SWITCH 0.05   /* Enables Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks) */
 #endif
 #ifndef SPHAV_DISABLE_PM_CONDUCTIVITY
@@ -194,6 +194,12 @@
 /* need analytic gravity on so we can add the appropriate source terms to the EOM */
 #ifndef ANALYTIC_GRAVITY
 #define ANALYTIC_GRAVITY
+#endif
+/* if self-gravity is on, we need to make sure the gravitational forces are not periodic. this is going to cause some errors at the x/y 'edges', 
+    but for now at least, the periodic gravity routines (particularly the FFT's involved) require a regular periodic map, they cannot handle the 
+    non-standard map that the shearing box represents. */
+#ifndef GRAVITY_NOT_PERIODIC
+#define GRAVITY_NOT_PERIODIC
 #endif
 #endif // SHEARING_BOX
 
@@ -636,31 +642,72 @@ extern MyDouble boxSize_Z, boxHalf_Z, inverse_boxSize_Z;
 #endif
 #endif
 
+
 #ifdef SHEARING_BOX
 extern MyDouble Shearing_Box_Vel_Offset;
+extern MyDouble Shearing_Box_Pos_Offset;
 #endif
 
 
+/****************************************************************************************************************************/
+/* Here we define the box-wrapping macros NEAREST_XYZ and NGB_PERIODIC_LONG_X,NGB_PERIODIC_LONG_Y,NGB_PERIODIC_LONG_Z. 
+ *   The inputs to these functions are (dx_position, dy_position, dz_position, sign), where 
+ *     'sign' = -1 if dx_position = x_test_point - x_reference (reference = particle from which we are doing a calculation), 
+ *     'sign' = +1 if dx_position = x_reference - x_test_point
+ *
+ *   For non-periodic cases these functions are trivial (do nothing, or just take absolute values).
+ *
+ *   For standard periodic cases it will wrap in each dimension, allowing for a different box length in X/Y/Z.
+ *      here the "sign" term is irrelevant. Also NGB_PERIODIC_LONG_X, NGB_PERIODIC_LONG_Y, NGB_PERIODIC_LONG_Z will each 
+ *      compile to only use the x,y, or z information, but all four inputs are required for the sake of completeness 
+ *      and consistency.
+ *
+ *   The reason for the added complexity is for shearing boxes. In this case, the Y(phi)-coordinate for particles being
+ *      wrapped in the X(r)-direction must be modified by a time-dependent term. It also matters for the sign of that 
+ *      term "which side" of the box we are wrapping across (i.e. does the 'virtual particle' -- the test point which is
+ *      not the particle for which we are currently calculating forces, etc -- lie on the '-x' side or the '+x' side)
+ */
+/****************************************************************************************************************************/
+
 #ifdef PERIODIC
 
-#define NGB_PERIODIC_LONG(x,box,hbox) ((fabs(x)>hbox)?(box-fabs(x)):fabs(x))
-#define NGB_PERIODIC_LONG_X(x) (xtmp=fabs(x),(xtmp>boxHalf_X)?(boxSize_X-xtmp):xtmp)
-#define NGB_PERIODIC_LONG_Y(y) (xtmp=fabs(y),(xtmp>boxHalf_Y)?(boxSize_Y-xtmp):xtmp)
-#define NGB_PERIODIC_LONG_Z(z) (xtmp=fabs(z),(xtmp>boxHalf_Z)?(boxSize_Z-xtmp):xtmp)
-#define NEAREST_X(x) (((x)>boxHalf_X)?((x)-boxSize_X):(((x)<-boxHalf_X)?((x)+boxSize_X):(x)))
-#define NEAREST_Y(y) (((y)>boxHalf_Y)?((y)-boxSize_Y):(((y)<-boxHalf_Y)?((y)+boxSize_Y):(y)))
-#define NEAREST_Z(z) (((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
+#if (SHEARING_BOX > 1)
+/* SHEARING PERIODIC BOX:: 
+    in this case, we have a shearing box with the '1' coordinate being phi, so there is a periodic extra wrap */
+#define NEAREST_XYZ(x,y,z,sign) (\
+x=((x)>boxHalf_X)?((x)-boxSize_X):(((x)<-boxHalf_X)?((x)+boxSize_X):(x)),\
+y -= Shearing_Box_Pos_Offset * sign * ((x)>boxHalf_X)?(1):(((x)<-boxHalf_X)?(-1):(0)),\
+y = ((y)>boxSize_Y)?((y)-boxSize_Y):(((y)<-boxSize_Y)?((y)+boxSize_Y):(y)),\
+y=((y)>boxHalf_Y)?((y)-boxSize_Y):(((y)<-boxHalf_Y)?((y)+boxSize_Y):(y)),\
+z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
+
+#define NGB_PERIODIC_LONG_Y(x,y,z,sign) (\
+xtmp = y - Shearing_Box_Pos_Offset * sign * ((x)>boxHalf_X)?(1):(((x)<-boxHalf_X)?(-1):(0)),\
+xtmp = fabs(((xtmp)>boxSize_Y)?((xtmp)-boxSize_Y):(((xtmp)<-boxSize_Y)?((xtmp)+boxSize_Y):(xtmp))),\
+(xtmp>boxHalf_Y)?(boxSize_Y-xtmp):xtmp)
+
+#define NGB_PERIODIC_LONG_X(x,y,z,sign) (xtmp=fabs(x),(xtmp>boxHalf_X)?(boxSize_X-xtmp):xtmp)
+#define NGB_PERIODIC_LONG_Z(x,y,z,sign) (xtmp=fabs(z),(xtmp>boxHalf_Z)?(boxSize_Z-xtmp):xtmp)
 
 #else
+/* STANDARD PERIODIC BOX:: 
+    this box-wraps all three (x,y,z) separation variables when taking position differences */
+#define NEAREST_XYZ(x,y,z,sign) (\
+x=((x)>boxHalf_X)?((x)-boxSize_X):(((x)<-boxHalf_X)?((x)+boxSize_X):(x)),\
+y=((y)>boxHalf_Y)?((y)-boxSize_Y):(((y)<-boxHalf_Y)?((y)+boxSize_Y):(y)),\
+z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
+#define NGB_PERIODIC_LONG_X(x,y,z,sign) (xtmp=fabs(x),(xtmp>boxHalf_X)?(boxSize_X-xtmp):xtmp)
+#define NGB_PERIODIC_LONG_Y(x,y,z,sign) (xtmp=fabs(y),(xtmp>boxHalf_Y)?(boxSize_Y-xtmp):xtmp)
+#define NGB_PERIODIC_LONG_Z(x,y,z,sign) (xtmp=fabs(z),(xtmp>boxHalf_Z)?(boxSize_Z-xtmp):xtmp)
 
-#define NGB_PERIODIC_LONG(x,box,hbox) fabs(x)
-#define NGB_PERIODIC_LONG_X(x) fabs(x)
-#define NGB_PERIODIC_LONG_Y(y) fabs(y)
-#define NGB_PERIODIC_LONG_Z(z) fabs(z)
-#define NEAREST_X(x) (x)
-#define NEAREST_Y(y) (y)
-#define NEAREST_Z(z) (z)
+#endif
 
+#else
+/* NON-PERIODIC BOX:: */
+#define NEAREST_XYZ(x,y,z,sign) /* this is an empty macro: nothing will happen to the variables input here */
+#define NGB_PERIODIC_LONG_X(x,y,z,sign) (fabs(x))
+#define NGB_PERIODIC_LONG_Y(x,y,z,sign) (fabs(y))
+#define NGB_PERIODIC_LONG_Z(x,y,z,sign) (fabs(z))
 #endif
 
 #define FACT1 0.366025403785	/* FACT1 = 0.5 * (sqrt(3)-1) */
