@@ -632,10 +632,8 @@ int blackhole_environment_second_evaluate(int target, int mode, int *nexport, in
                     dP[0] = P[j].Pos[0]-pos[0];
                     dP[1] = P[j].Pos[1]-pos[1];
                     dP[2] = P[j].Pos[2]-pos[2];
-#ifdef PERIODIC                 /*  find the closest image in the given box size  */
-                    dP[0] = NEAREST_X(dP[0]);
-                    dP[1] = NEAREST_Y(dP[1]);
-                    dP[2] = NEAREST_Z(dP[2]);
+#ifdef PERIODIC           
+                    NEAREST_XYZ(dP[0],dP[1],dP[2],-1); /*  find the closest image in the given box size  */
 #endif
                     dv[0] = P[j].Vel[0]-vel[0];
                     dv[1] = P[j].Vel[1]-vel[1];
