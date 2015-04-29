@@ -49,7 +49,7 @@ void assign_imf_properties_from_starforming_gas(MyIDType i)
 
 /* return the light-to-mass ratio, for the IMF of a given particle, relative to the Chabrier/Kroupa IMF which 
     is otherwise (for all purposes) our 'default' choice */
-inline double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i)
+double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i)
 {
 #ifdef GALSF_SFR_IMF_VARIATION
     /* more accurate version from David Guszjenov's IMF calculations (ok for Mturnover in range 0.01-100) */
@@ -95,7 +95,7 @@ double evaluate_stellar_age_Gyr(double stellar_tform)
 
 
 /* return the (solar-scaled) light-to-mass ratio of an SSP with a given age; used throughout */
-inline double evaluate_l_over_m_ssp(double stellar_age_in_gyr)
+double evaluate_l_over_m_ssp(double stellar_age_in_gyr)
 {
     // original SB99 tracks
     /*
@@ -120,7 +120,7 @@ inline double evaluate_l_over_m_ssp(double stellar_age_in_gyr)
 
 
 /* return the estimated local column from integrating the gradient in the density (separated here for convenience) */
-inline double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h)
+double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h)
 {
     double gradrho_mag;
     if(rho<=0)
@@ -774,13 +774,12 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
         dummy=0;h=0;numngb_inbox=0;
         h=3.0*PPP[i].Hsml;
         pos=P[i].Pos;
+        m_st_kernel=0; l_st_kernel=0; //l_st_kernel_nonrad=0;
         do {
             numngb_inbox = ngb_treefind_newstars(&pos[0],h,-1,&startnode,0,&dummy,&dummy);
             /* searches for all new stars inside h */
-            m_st_kernel=0; l_st_kernel=0; //l_st_kernel_nonrad=0;
             if(numngb_inbox>0)
             {
-                m_st_kernel=0; l_st_kernel=0;
                 for(n=0; n<numngb_inbox; n++)
                 {
                     j = Ngblist[n];

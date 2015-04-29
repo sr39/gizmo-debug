@@ -319,9 +319,6 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         {
             numngb = ngb_treefind_blackhole(pos, h_i, target, &startnode, mode, nexport, nSend_local);
             if(numngb < 0) return -1;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
-            BH_angle_weighted_kernel_sum = 0;
-#endif
             
             for(n = 0; n < numngb; n++)
             {

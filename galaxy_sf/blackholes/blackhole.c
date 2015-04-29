@@ -35,6 +35,7 @@ extern struct blackhole_temp_particle_data *BlackholeTempInfo;
  *  It is called in calculate_non_standard_physics in run.c */
 void blackhole_accretion(void)
 {
+    if(All.TimeStep <= 0) return;
     long i;
     
     for(i = 0; i < NumPart; i++) P[i].SwallowID = 0;

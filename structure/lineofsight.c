@@ -167,7 +167,7 @@ void find_particles_and_save_them(int num)
         dx = P[n].Pos[Los->xaxis] - Los->Xpos;
         dy = P[n].Pos[Los->yaxis] - Los->Ypos;
         dz = 0;
-        NEAREST_XYZ(dx,dy,dz);
+        NEAREST_XYZ(dx,dy,dz,-1);
 
 	  r2 = dx * dx + dy * dy;
 
@@ -287,7 +287,7 @@ void add_along_lines_of_sight(void)
         dx = P[n].Pos[Los->xaxis] - Los->Xpos;
         dy = P[n].Pos[Los->yaxis] - Los->Ypos;
         dz = 0;
-        NEAREST_XYZ(dx,dy,dz);
+        NEAREST_XYZ(dx,dy,dz,-1);
 
 	  r2 = dx * dx + dy * dy;
 
@@ -305,7 +305,7 @@ void add_along_lines_of_sight(void)
             dx = P[n].Pos[Los->xaxis] - Los->Xpos;
             dy = P[n].Pos[Los->yaxis] - Los->Ypos;
             dz = (iz + 0.5) / PIXELS * All.BoxSize - P[n].Pos[Los->zaxis];
-            NEAREST_XYZ(dx,dy,dz);
+            NEAREST_XYZ(dx,dy,dz,-1);
 		  r = sqrt(r2 + dz * dz);
 
 		  if(PPP[n].Hsml > All.BoxSize)
