@@ -308,10 +308,10 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
  */
                     
 #if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
-#ifdef BH_GRAVCAPTURE_SWALLOWS
-                    if( (P[j].Mass > 0) && (P[j].Type != 5))
-#else
+#ifdef BH_GRAVCAPTURE_NOGAS
                     if( (P[j].Mass > 0) && (P[j].Type != 0) && (P[j].Type != 5))
+#else
+                    if( (P[j].Mass > 0) && (P[j].Type != 5))
 #endif
                     {
                         vrel = 0;

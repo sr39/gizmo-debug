@@ -382,11 +382,10 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
  reduce GRAVCAPT events in order to (statistically) obey the eddington limit */
                         
 #if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
-#ifdef BH_GRAVCAPTURE_SWALLOWS
-//                        if(P[j].Type != 5)
-                        if(P[j].Type == 0)		// enforce gas accretion only
+#ifdef BH_GRAVCAPTURE_NOGAS
+                        if((P[j].Type != 0)&&(P[j].Type != 5))
 #else
-                            if((P[j].Type != 0)&&(P[j].Type != 5))
+                        if(P[j].Type != 5)
 #endif
                             {                                
                                 if(vrel < vesc){ /* bound */

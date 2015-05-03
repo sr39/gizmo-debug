@@ -303,14 +303,18 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                         (All.Ti_Current - (P[pindex].Ti_begstep + dt_step / 2)) * All.Timebase_interval / All.cf_hubble_a;
                     }
                     else
+                    {
                         dt_gravkick = dt_hydrokick =
                         (All.Ti_Current - (P[pindex].Ti_begstep + dt_step / 2)) * All.Timebase_interval;
+                    }
                     
                     for(k = 0; k < 3; k++)
                     {
                         fp[k] = P[pindex].Vel[k] + P[pindex].GravAccel[k] * dt_gravkick;
                         if(P[pindex].Type == 0)
+                        {
                             fp[k] += SphP[pindex].HydroAccel[k] * dt_hydrokick * All.cf_atime;
+                        }
                     }
 #ifdef PMGRID
                     for(k = 0; k < 3; k++)

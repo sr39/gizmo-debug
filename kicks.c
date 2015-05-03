@@ -82,20 +82,7 @@ void do_second_halfstep_kick(void)
             }
             do_the_kick(i, tstart, tend, P[i].Ti_current, 1);
             if(TimeBinActive[P[i].TimeBin])
-            {
-                if(P[i].Type == 0 && P[i].Mass > 0)
-                {
-                    set_predicted_sph_quantities_for_extra_physics(i);
-#ifdef EOS_DEGENERATE
-                    for(j = 0; j < 3; j++)
-                        SphP[i].xnucPred[j] = SphP[i].xnuc[j];
-#endif
-                    SphP[i].Pressure = get_pressure(i);
-#ifdef GAMMA_ENFORCE_ADIABAT
-                    SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = SphP[i].Pressure / (SphP[i].Density * GAMMA_MINUS1);
-#endif
-                }
-            }
+                set_predicted_sph_quantities_for_extra_physics(i);
         }
     } // for(i = 0; i < NumPart; i++) //
     
@@ -372,16 +359,27 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 
 void set_predicted_sph_quantities_for_extra_physics(int i)
 {
+    if(P[i].Type == 0 && P[i].Mass > 0)
+    {
+        int k; k=0;
 #if defined(MAGNETIC)
-    int k;
-    for(k=0;k<3;k++) {SphP[i].BPred[k] = SphP[i].B[k];}
+        for(k=0;k<3;k++) {SphP[i].BPred[k] = SphP[i].B[k];}
 #if defined(DIVBCLEANING_DEDNER)
-    SphP[i].PhiPred = SphP[i].Phi;
+        SphP[i].PhiPred = SphP[i].Phi;
 #endif
 #endif
 #ifdef COSMIC_RAYS
-    SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy;
+        SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy;
 #endif
+        
+#ifdef EOS_DEGENERATE
+        for(k=0;k<3;k++) {SphP[i].xnucPred[k] = SphP[i].xnuc[k];}
+#endif
+        SphP[i].Pressure = get_pressure(i);
+#ifdef GAMMA_ENFORCE_ADIABAT
+        SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = SphP[i].Pressure / (SphP[i].Density * GAMMA_MINUS1);
+#endif
+    }
 }
 
 
