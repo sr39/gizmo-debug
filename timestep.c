@@ -965,7 +965,6 @@ void process_wake_ups(void)
 
             /* reverse part of the last second-half kick this particle received 
                 (to correct it back to its new active time) */
-            double vold = P[i].Vel[0];
             if(tend < tstart)
             {
                 do_the_kick(i, tstart, tend, P[i].Ti_current, 1);

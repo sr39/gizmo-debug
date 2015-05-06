@@ -954,6 +954,12 @@ extern FILE *FdDE;  /*!< file handle for darkenergy.txt log-file. */
 #include <grackle.h>
 #endif
 
+#if defined(COOLING) && defined(GALSF_EFFECTIVE_EQS)
+#ifndef COOLING_OPERATOR_SPLIT
+#define COOLING_OPERATOR_SPLIT /*!< the Springel-Hernquist EOS depends explicitly on the cooling time in a way that requires de-coupled hydro cooling */
+#endif
+#endif
+
 
 
 
