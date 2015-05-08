@@ -904,6 +904,9 @@ void process_wake_ups(void)
         if(P[i].Type != 0)
             continue;
         
+        if(P[i].Mass <= 0)
+            continue;
+        
         if(!SphP[i].wakeup)
             continue;
         
@@ -915,6 +918,12 @@ void process_wake_ups(void)
         
         if(bin != binold)
         {
+            integertime dt_0 = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
+            integertime tstart = P[i].Ti_begstep + dt_0;
+            integertime t_2 = P[i].Ti_current;
+            if(t_2 > tstart) {tstart = t_2;}
+            integertime tend = All.Ti_Current;
+
             TimeBinCount[binold]--;
             if(P[i].Type == 0)
                 TimeBinCountSph[binold]--;
@@ -953,11 +962,25 @@ void process_wake_ups(void)
                 NumForceUpdate++;
                         
             n++;
+
+            /* reverse part of the last second-half kick this particle received 
+                (to correct it back to its new active time) */
+            if(tend < tstart)
+            {
+                do_the_kick(i, tstart, tend, P[i].Ti_current, 1);
+                set_predicted_sph_quantities_for_extra_physics(i);
+            }
+            P[i].Ti_begstep = All.Ti_Current;
+            P[i].dt_step = bin ? (((integertime) 1) << bin) : 0;
+            if(P[i].Ti_current < All.Ti_Current) {P[i].Ti_current=All.Ti_Current;}
+            
         }
     }
     
     sumup_large_ints(1, &n, &ntot);
     if(ThisTask == 0)
-        printf("%d%09d particles woken up.\n", (int) (ntot / 1000000000), (int) (ntot % 1000000000));
+    {
+        if(ntot > 0) {printf("%d%09d particles woken up.\n", (int) (ntot / 1000000000), (int) (ntot % 1000000000));}
+    }
 }
 #endif

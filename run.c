@@ -213,7 +213,9 @@ void calculate_non_standard_physics(void)
 #endif
     
 #if defined(TURB_DRIVING)
+#ifdef GAMMA_ENFORCE_ADIABAT
     reset_turb_temp();
+#endif
 #if defined(POWERSPEC_GRID)
     if(All.Time >= All.TimeNextTurbSpectrum)
     {

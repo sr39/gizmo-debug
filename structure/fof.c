@@ -1259,7 +1259,7 @@ void fof_exchange_group_data(void)
 #endif
 
         for(j = 0; j < 3; j++) {xyz[j] = get_Group[i].CM[j] / get_Group[i].Mass + get_Group[i].FirstPos[j] - Group[start].FirstPos[j];}
-        NEAREST_XYZ(xyz[0],xyz[1],xyz[2],-1);
+        NEAREST_XYZ(xyz[0],xyz[1],xyz[2],1);
         for(j = 0; j < 3; j++)
         {
             Group[start].CM[j] += get_Group[i].Mass * xyz[j];

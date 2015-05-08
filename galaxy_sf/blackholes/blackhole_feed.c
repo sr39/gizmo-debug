@@ -319,9 +319,6 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         {
             numngb = ngb_treefind_blackhole(pos, h_i, target, &startnode, mode, nexport, nSend_local);
             if(numngb < 0) return -1;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
-            BH_angle_weighted_kernel_sum = 0;
-#endif
             
             for(n = 0; n < numngb; n++)
             {
@@ -398,11 +395,10 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
  */
                         
 #if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
-#ifdef BH_GRAVCAPTURE_SWALLOWS
-//                        if(P[j].Type != 5)
-                        if(P[j].Type == 0)		// enforce gas accretion only
+#ifdef BH_GRAVCAPTURE_NOGAS
+                        if((P[j].Type != 0)&&(P[j].Type != 5))
 #else
-                            if((P[j].Type != 0)&&(P[j].Type != 5))
+                        if(P[j].Type != 5)
 #endif
                             {                                
                                 if(vrel < vesc){ /* bound */
