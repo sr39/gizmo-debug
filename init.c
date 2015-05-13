@@ -842,6 +842,17 @@ void init(void)
     }
     
     
+#ifdef PM_HIRES_REGION_CLIPDM
+    if(RestartFlag != 1)
+    {
+        double mpi_m_hires_max, m_hires_max=0.0;
+        for(i=0; i<NumPart; i++) {if(P[i].Type==1) {if(P[i].Mass > m_hires_max) {m_hires_max=P[i].Mass;}}}
+        MPI_Allreduce(&m_hires_max, &mpi_m_hires_max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+        All.MassOfClippedDMParticles = mpi_m_hires_max;
+    }
+#endif
+    
+    
     if(RestartFlag == 3)
     {
 #ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL

@@ -69,6 +69,70 @@ void merge_and_split_particles(void)
     /* loop over active particles */
     for(i=0; i<NumPart; i++)
     {
+#ifdef PM_HIRES_REGION_CLIPDM
+        /* here we need to check whether a low-res DM particle is surrounded by all high-res particles, 
+            in which case we clip its mass down or split it to prevent the most problematic contamination artifacts */
+        if(((P[i].Type==2)||(P[i].Type==3)||(P[i].Type==5))&&(TimeBinActive[P[i].TimeBin]))
+        {
+#ifdef BLACKHOLES
+            if(P[i].Type==5) continue;
+#endif
+            /* do a neighbor loop ON THE SAME DOMAIN to determine the neighbors */
+            int n_search_min = 32;
+            int n_search_max = 320;
+            double h_search_max = 10. * All.ForceSoftening[P[i].Type];
+            double h_search_min = 0.1 * All.ForceSoftening[P[i].Type];
+            double h_guess; numngb_inbox=0; int NITER=0, NITER_MAX=30;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+            h_guess = PPP[i].Hsml; if(h_guess > h_search_max) {h_search_max=h_guess;} if(h_guess < h_search_min) {h_search_min=h_guess;}
+#else
+            h_guess = 5.0 * All.ForceSoftening[P[i].Type];
+#endif
+            startnode=All.MaxPart; 
+            do {
+                numngb_inbox = ngb_treefind_variable_threads_nongas(P[i].Pos,h_guess,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist);
+                if((numngb_inbox < n_search_min) && (h_guess < h_search_max) && (NITER < NITER_MAX))
+                {
+                    h_guess *= 1.27;
+                    startnode=All.MaxPart; // this will trigger the while loop to continue
+                }
+                if((numngb_inbox > n_search_max) && (h_guess > h_search_min) && (NITER < NITER_MAX))
+                {
+                    h_guess /= 1.25;
+                    startnode=All.MaxPart; // this will trigger the while loop to continue
+                }
+                NITER++;
+            } while(startnode >= 0);
+            int do_clipping = 0;
+            if(numngb_inbox >= n_search_min-1) // if can't find enough neighbors, don't clip //
+            {
+                do_clipping = 1;
+                for(n=0; n<numngb_inbox; n++)
+                {
+                    j = Ngblist[n];
+                    if(j == i) {if(numngb_inbox > 1) continue;}
+#ifdef BLACKHOLES
+                    if((P[j].Type == 2) || (P[j].Type == 3))
+#else
+                    if((P[j].Type == 2) || (P[j].Type == 3) || (P[j].Type == 5))
+#endif
+                    {
+                        /* found a neighbor with a low-res particle type, so don't clip this particle */
+                        do_clipping = 0;
+                        break;
+                    }
+                } // for(n=0; n<numngb_inbox; n++)
+            }
+            //printf("Particle %d clipping %d low/hi-res DM: neighbors=%d h_search=%g soft=%g iterations=%d \n",i,do_clipping,numngb_inbox,h_guess,All.ForceSoftening[P[i].Type],NITER);
+            if(do_clipping)
+            {
+                /* ok, the particle has neighbors but is completely surrounded by high-res particles, it should be clipped */
+                printf("Particle %d clipping low/hi-res DM: neighbors=%d h_search=%g soft=%g iterations=%d \n",i,numngb_inbox,h_guess,All.ForceSoftening[P[i].Type],NITER);
+                P[i].Type = 1; // 'graduate' to high-res DM particle
+                P[i].Mass = All.MassOfClippedDMParticles; // set mass to the 'safe' mass of typical high-res particles
+            }
+        }
+#endif
         /* check if we're a gas particle */
         if((P[i].Type==0)&&(TimeBinActive[P[i].TimeBin]))
         {

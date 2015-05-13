@@ -533,6 +533,11 @@ void *disp_density_evaluate_secondary(void *p);
 int disp_density_isactive(MyIDType i);
 #endif
 
+#ifdef PM_HIRES_REGION_CLIPDM
+int ngb_treefind_variable_threads_nongas(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
+                                         int mode, int *exportflag, int *exportnodecount, int *exportindex,
+                                         int *ngblist);
+#endif
 
 void cooling_only(void);
 void count_hot_phase(void);
