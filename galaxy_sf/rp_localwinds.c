@@ -70,9 +70,11 @@ void radiation_pressure_winds_consolidated(void)
     {
         RtauMax = P[i].Hsml*ascale * (2.0 * KAPPA_UV * P[i].Hsml*P[i].DensAroundStar/(ascale*ascale) * All.UnitDensity_in_cgs*All.HubbleParam*All.UnitLength_in_cm);
         RtauMax /= ascale;
-        RtauMax += P[i].Hsml;
-        double rmax0 = 1.0 / unitlength_in_kpc;
+        RtauMax += 5.*P[i].Hsml;
+        double rmax0 = 10.0 / unitlength_in_kpc;
         if(RtauMax > rmax0) RtauMax = rmax0;
+        rmax0 = 1.0 / unitlength_in_kpc;
+        if(RtauMax < rmax0) RtauMax = rmax0;
         
 #ifndef GALSF_FB_RPWIND_CONTINUOUS
     /* if kicks are stochastic, we don't want to waste time doing a neighbor search every timestep; 
@@ -102,7 +104,7 @@ void radiation_pressure_winds_consolidated(void)
         dv_imparted += dv_units * (0.1+P[i].Metallicity[0]/All.SolarAbundances[0]) * (4.0*M_PI*rho/P[i].Mass*h); // sum over neighbor IR term
 
         prob = dv_imparted / v;
-          prob *= 200.; // need to include a buffer for errors in the estimates above
+          prob *= 2000.; // need to include a buffer for errors in the estimates above
         p_random = get_random_number(P[i].ID+ThisTask+i+2); // master random number for use below
         p_cumulative = 0; // used below if the loop is executed
         if(p_random <= prob) // alright, its worth doing the loop!
@@ -197,6 +199,7 @@ void radiation_pressure_winds_consolidated(void)
           dv_units /= All.UnitVelocity_in_cm_per_s; // dv in code units per unit distance
           dv_units *= All.WindMomentumLoading; // rescale tau_ir component here
         dE_over_c /= (All.UnitMass_in_g/All.HubbleParam) * All.UnitVelocity_in_cm_per_s; // dv per unit mass
+          total_prob_kick += dE_over_c;
 #endif
         for(n=0; n<numngb_inbox; n++)
         {
@@ -223,8 +226,8 @@ void radiation_pressure_winds_consolidated(void)
               double h_eff_j = Get_Particle_Size(j);
               wk = h_eff_j*h_eff_j / (r2 * wt_sum);
               double wkmax = 1.5 * M_PI * h_eff_j * h_eff_j / (4. * M_PI * 0.5625*r2);
-              if(wk > wkmax) {wk = wkmax;}
-              dv_imparted_uv = wk * dE_over_c;
+              //if(wk > wkmax) {wk = wkmax;}
+              dv_imparted_uv = wk * dE_over_c / P[j].Mass;
 
               
 #ifdef GALSF_FB_RPWIND_CONTINUOUS
