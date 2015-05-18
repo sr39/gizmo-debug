@@ -167,6 +167,8 @@
 #endif
 #endif
 
+
+
 #ifdef SHEARING_BOX
 /* set default compile-time flags for the shearing-box (or shearing-sheet) boundaries */
 /* shearing box boundaries: 1=r-z sheet (coordinates [0,1,2] = [r,z,phi]), 2=r-phi sheet [r,phi,z], 3=[r-phi-z] box */
@@ -719,11 +721,6 @@ z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
 /*  Global variables                                     */
 /*********************************************************/
 
-#ifdef UM_SEN_H2_SOLOMON_PROCESS
-#define JLWn 23
-extern float JLW[JLWn];
-extern float z_JLW[JLWn];
-#endif
 
 extern int FirstActiveParticle;
 extern int *NextActiveParticle;
@@ -2225,10 +2222,9 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyFloat mdot_alphadisk;             /*!< gives mdot of mass going into alpha disk */
 #endif
 
-//#if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)    
-    MyFloat mass_to_swallow_total;      /*!< gives the total bound mass we want to swallow in this timestep */
+#if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;        /*!< gives the mass we want to swallow that contributes to eddington */
-//#endif
+#endif
 
 }
 *BlackholeTempInfo, *BlackholeDataPasserResult, *BlackholeDataPasserOut;

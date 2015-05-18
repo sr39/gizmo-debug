@@ -6,9 +6,10 @@
  *   It was based on a similar file in GADGET3 by Volker Springel (volker.springel@h-its.org),
  *   but the physical modules for black hole accretion and feedback have been
  *   replaced, and the algorithm for their coupling is new to GIZMO.  This file was modified
- *   on 1/9/15 by Paul Torrey (ptorrey@mit.edu) for clairity by parsing the existing code into
- *   smaller files and routines.  Some communication and black hole structures were modified
- *   to reduce memory usage.
+ *   on 1/9/15 by Paul Torrey (ptorrey@mit.edu) for clarity by parsing the existing code into
+ *   smaller files and routines. Some communication and black hole structures were modified
+ *   to reduce memory usage. Cleanup, de-bugging, and consolidation of routines by Xiangcheng Ma
+ *   (xchma@caltech.edu) followed on 05/15/15; re-integrated by PFH.
  */
 
 /* quantities that pass IN to the 'blackhole_evaluate' routines */
@@ -35,7 +36,9 @@ static struct blackholedata_in
     MyFloat BH_disk_hr;
     MyFloat BH_angle_weighted_kernel_sum;
 #endif
+#if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;
+#endif
 }
 *BlackholeDataIn, *BlackholeDataGet;
 
@@ -43,7 +46,7 @@ static struct blackholedata_in
 /* quantities that pass OUT of the 'blackhole_evaluate' routines */
 static struct blackholedata_out
 {
-
+    
     int orig_index;
     int trans_index;
     

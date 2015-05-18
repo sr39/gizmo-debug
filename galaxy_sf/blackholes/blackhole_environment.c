@@ -20,6 +20,8 @@
  *   by Paul Torrey (ptorrey@mit.edu) on 1/9/15 for clairity.  The main functional difference is that BlackholeTempInfo
  *   is now allocated only for N_active_loc_BHs, rather than NumPart (as was done before).  Some
  *   extra index gymnastics are required to follow this change through in the MPI comm routines.
+ *   Cleanup, de-bugging, and consolidation of routines by Xiangcheng Ma
+ *   (xchma@caltech.edu) followed on 05/15/15; re-integrated by PFH.
  */
 
 
@@ -27,7 +29,7 @@
 /* quantities that pass IN to the 'blackhole_environment_evaluate' routines */
 static struct blackholedata_in
 {
-#if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
+#if defined(BH_GRAVCAPTURE_GAS)
     MyDouble Mass;
 #endif
     MyDouble Pos[3];
@@ -55,7 +57,7 @@ void blackhole_environment_loop(void)
     
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
-
+    
     /* Scan gas particles for angular momentum, boundedness, etc */
     i = FirstActiveParticle;	/* first particle for this task */
     do
@@ -94,7 +96,7 @@ void blackhole_environment_loop(void)
                 BlackholeDataIn[j].Pos[k] = P[place].Pos[k];
                 BlackholeDataIn[j].Vel[k] = P[place].Vel[k];
             }
-#if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
+#if defined(BH_GRAVCAPTURE_GAS)
             BlackholeDataIn[j].Mass = P[place].Mass;
 #endif
             BlackholeDataIn[j].Hsml = PPP[place].Hsml;
@@ -120,7 +122,7 @@ void blackhole_environment_loop(void)
             }
         }
         myfree(BlackholeDataIn);
-   
+        
         
         BlackholeDataPasserResult = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserResult", nexport * sizeof(struct blackhole_temp_particle_data));
         BlackholeDataPasserOut = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserOut", nimport * sizeof(struct blackhole_temp_particle_data));
@@ -128,38 +130,38 @@ void blackhole_environment_loop(void)
         /* now do the particles that were sent to us */
         for(j = 0; j < nimport; j++)
             blackhole_environment_evaluate(j, 1, &dummy, &dummy);
-            
-            if(i < 0)
-                ndone_flag = 1;
-                else
-                    ndone_flag = 0;
-                    
-                    MPI_Allreduce(&ndone_flag, &ndone, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-                    
-                /* get the result */
-                    for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
-                    {
-                        recvTask = ThisTask ^ ngrp;
-                        if(recvTask < NTask)
-                        {
-                            if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
-                            {
-                                /* send the results */
-                                MPI_Sendrecv(&BlackholeDataPasserResult[Recv_offset[recvTask]],
-                                             Recv_count[recvTask] * sizeof(struct blackhole_temp_particle_data),
-                                             MPI_BYTE, recvTask, TAG_DENS_B,
-                                             &BlackholeDataPasserOut[Send_offset[recvTask]],
-                                             Send_count[recvTask] * sizeof(struct blackhole_temp_particle_data),
-                                             MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, &status);
-                            }
-                        }
-                    } // for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
+        
+        if(i < 0)
+            ndone_flag = 1;
+        else
+            ndone_flag = 0;
+        
+        MPI_Allreduce(&ndone_flag, &ndone, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+        
+        /* get the result */
+        for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
+        {
+            recvTask = ThisTask ^ ngrp;
+            if(recvTask < NTask)
+            {
+                if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
+                {
+                    /* send the results */
+                    MPI_Sendrecv(&BlackholeDataPasserResult[Recv_offset[recvTask]],
+                                 Recv_count[recvTask] * sizeof(struct blackhole_temp_particle_data),
+                                 MPI_BYTE, recvTask, TAG_DENS_B,
+                                 &BlackholeDataPasserOut[Send_offset[recvTask]],
+                                 Send_count[recvTask] * sizeof(struct blackhole_temp_particle_data),
+                                 MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, &status);
+                }
+            }
+        } // for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
         
         /* add the result to the particles */
         for(j = 0; j < nexport; j++)
         {
             place = DataIndexTable[j].Index;
-            out2particle_blackhole(&BlackholeDataPasserOut[j], P[place].IndexMapToTempStruc, 1); 
+            out2particle_blackhole(&BlackholeDataPasserOut[j], P[place].IndexMapToTempStruc, 1);
         } // for(j = 0; j < nexport; j++)
         myfree(BlackholeDataPasserOut);
         myfree(BlackholeDataPasserResult);
@@ -169,7 +171,7 @@ void blackhole_environment_loop(void)
     myfree(DataNodeList);
     myfree(DataIndexTable);
     myfree(Ngblist);
-        
+    
 }
 
 
@@ -188,7 +190,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     u=wk=dwk=0;
 #endif
     
-#if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
+#if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass, vrel, vbound, r2;
 #endif
     
@@ -199,7 +201,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     /* these are the BH properties */
     if(mode == 0)
     {
-#if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
+#if defined(BH_GRAVCAPTURE_GAS)
         mass = P[target].Mass;
 #endif
         pos = P[target].Pos;
@@ -210,7 +212,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     }
     else
     {
-#if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
+#if defined(BH_GRAVCAPTURE_GAS)
         mass = BlackholeDataGet[target].Mass;
 #endif
         pos = BlackholeDataGet[target].Pos;
@@ -301,52 +303,36 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                     }
                     
                     
-                    
-/* NOTE TO PHIL FROM  PT:  I MOVED THIS TO THE PREPASS LOOP, SO THAT WE KNOW THE DESIRED ACCRETION RATE FROM GRAVCAPT.
- *                          WE CAN THEN MODULATE THE ACTUAL SWALLOWING OF PARTICLES BASED ON THE EDDINGTON LIMIT, IF DESIRED.
- *                          NOTE THAT SWALLOWID'S ARE NOT SET HERE, JUST mass_to_swallow_edd AND mass_to_swallow_total. 
- */
-                    
-#if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
-#ifdef BH_GRAVCAPTURE_NOGAS
-                    if( (P[j].Mass > 0) && (P[j].Type != 0) && (P[j].Type != 5))
-#else
-                    if( (P[j].Mass > 0) && (P[j].Type != 5))
-#endif
+#if defined(BH_GRAVCAPTURE_GAS)
+                    /* XM: I formally distinguish BH_GRAVCAPTURE_GAS and BH_GRAVCAPTURE_NONGAS. The former applies to
+                     gas ONLY, as an accretion model. The later can be combined with any accreton model.
+                     Currently, I only allow gas acretion to contribute to BH_Mdot (consistent with the energy radiating away).
+                     For star particles, if there is an alpha-disk, they are captured to the disk. If not, they directly go
+                     to the hole, without any contribution to BH_Mdot and feedback. This can be modified in the swallow loop
+                     for other purposes. */
+                    /* XM: The goal of the following part is to estimate BH_Mdot, which will be used to evaluate feedback strength.
+                     Therefore, we only need it when we enable BH_GRAVCAPTURE_GAS as gas accretion model. */
+                    if( (P[j].Mass > 0) && (P[j].Type == 0))
                     {
                         vrel = 0;
                         for(k=0;k<3;k++) vrel += (P[j].Vel[k] - vel[k])*(P[j].Vel[k] - vel[k]);
-                        vrel   = sqrt(vrel) / All.cf_atime;
+                        vrel = sqrt(vrel) / All.cf_atime;
                         
-                        r2=0;
-                        for(k=0;k<3;k++) r2+=dP[k]*dP[k];
-                        
+                        r2=0; for(k=0;k<3;k++) r2+=dP[k]*dP[k];
                         vbound = sqrt(2.0*All.G*(mass+P[j].Mass)/(sqrt(r2)*All.cf_atime) + pow(10.e5/All.UnitVelocity_in_cm_per_s,2));
                         
                         if(vrel < vbound) { /* bound */
                             if( All.ForceSoftening[5]*(1.0-vrel*vrel/(vbound*vbound))/sqrt(r2) > 1.0 ) { /* apocenter within 2.8*epsilon (softening length) */
                                 
-                                if(P[j].SwallowID < id)     /* this should be true if nothing has tried to swallow this particle first */
+                                /* CAVEAT: when two BHs share some neighbours, this double counts the accretion */
+                                if(P[j].SwallowID < id)
                                 {
-#ifdef BH_BAL_WINDS
-                                    out.mass_to_swallow_total += P[j].Mass * All.BAL_f_accretion;
-#else
-                                    out.mass_to_swallow_total += P[j].Mass;
-#endif
-                                    if((P[j].Type != 1)||(All.ComovingIntegrationOn && (P[j].Type==0||P[j].Type==4)))
-                                    {
-#ifdef BH_BAL_WINDS
-                                        out.mass_to_swallow_edd += P[j].Mass * All.BAL_f_accretion;
-#else
-                                        out.mass_to_swallow_edd += P[j].Mass;
-#endif
-                                    }
-                                    
+                                    out.mass_to_swallow_edd += P[j].Mass;
                                 } /* P[j].SwallowID < id */
                             } /* if( All.ForceSoftening[5]*(1.0-vrel*vrel/(csnd*csnd))/sqrt(r2) > 1.0 ) */
                         } /* if(vrel < vbound) */
                     } /* type check */
-#endif // BH_GRAVCAPTURE_SWALLOWS
+#endif // BH_GRAVCAPTURE_GAS
                     
                     
                     
@@ -373,7 +359,3 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     } // while(startnode >= 0)
     return 0;
 }
-
-
-
-

@@ -322,13 +322,6 @@ integertime get_timestep(int p,		/*!< particle index */
     double star_age, dt_stellar_evol;
 #endif
     
-#ifdef BLACK_HOLES
-    double dt_accr;
-#ifdef UNIFIED_FEEDBACK
-    double meddington = 0;
-#endif // UNIFIED_FEEDBACK
-#endif // BLACK_HOLES
-    
 #ifdef NUCLEAR_NETWORK
     double dt_network, dt_species;
     int k;
@@ -588,7 +581,8 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
         {
-#if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_BAL_WINDS)
+            double dt_accr;
+#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_BAL_WINDS)
             /* really want prefactor to be ratio of median gas mass to bh mass */
             dt_accr = 0.001 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
 #ifdef BH_BAL_WINDS
@@ -596,7 +590,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif // BH_BAL_WINDS
 #else
             dt_accr = 0.05 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
-#endif // defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_BAL_WINDS)
+#endif // defined(BH_GRAVCAPTURE_GAS) || defined(BH_BAL_WINDS)
             
             if(dt_accr > 0 && dt_accr < dt)
                 dt = dt_accr;
@@ -767,10 +761,7 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
                     dmean = pow(min_mass[type] / ((All.Omega0 - All.OmegaBaryon) * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G)), 1.0 / 3);
                 
 #ifdef BLACK_HOLES
-                if(type == 5)
-                    dmean =
-                    pow(min_mass[type] / (All.OmegaBaryon * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G)),
-                        1.0 / 3);
+                if(type == 5) {dmean = pow(min_mass[type] / (All.OmegaBaryon * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G)), 1.0 / 3);}
 #endif
                 dt = All.MaxRMSDisplacementFac * hfac * dmean / sqrt(v_sum[type] / count_sum[type]);
                 
