@@ -196,16 +196,14 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     int startnode, numngb, j, k, n, listindex = 0;
     MyIDType id;
     MyFloat *pos, *velocity, h_i, dt, mdot, rho, mass, bh_mass;
-    double h_i2, r2, r, u, hinv, hinv3, wk, dwk, vrel, vesc;
-    double dpos[3];
+    double h_i2, r2, r, u, hinv, hinv3, wk, dwk, vrel, vesc, dpos[3];
     
 #if defined(BH_GRAVCAPTURE_GAS) && defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
-    double meddington, medd_max_accretable;
-    double mass_to_swallow_edd, eddington_factor;
+    double meddington, medd_max_accretable, mass_to_swallow_edd, eddington_factor;
 #endif
     
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
-    double norm,theta,BH_disk_hr,*Jgas_in_Kernel;
+    double norm, theta, BH_disk_hr, *Jgas_in_Kernel;
     double BH_angle_weighted_kernel_sum=0;
 #endif
     
