@@ -83,7 +83,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #--------------------------- These modules were originally developed for a combination of -proprietary- physics modules. they can only be used with
 #--------------------------- permission from the authors. email P. Hopkins to obtain the relevant permissions for the cooling routines of interest.
 #COOLING                        # enables radiative cooling and heating: if GALSF, also external UV background read from file "TREECOOL"
-#COOL_LOW_TEMPERATURES          # allow fine-structure and molecular cooling to ~10 K
+#COOL_LOW_TEMPERATURES          # allow fine-structure and molecular cooling to ~10 K; account for optical thickness and line-trapping effects with proper opacities
 #COOL_METAL_LINES_BY_SPECIES    # use full multi-species-dependent cooling tables (https://dl.dropbox.com/u/16659252/spcool_tables.tgz)
 #GRACKLE                        # enable GRACKLE: cooling+chemistry package (requires COOLING above; https://grackle.readthedocs.org/en/latest/)
 #GRACKLE_CHEMISTRY=1            # choose GRACKLE cooling chemistry: (0)=tabular, (1)=Atomic, (2)=(1)+H2+H2I+H2II, (3)=(2)+DI+DII+HD

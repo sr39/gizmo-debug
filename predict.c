@@ -508,6 +508,24 @@ double INLINE_FUNC Get_Particle_Expected_Area(double h)
 }
 
 
+/* return the estimated local column from integrating the gradient in the density (separated here for convenience) */
+double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h)
+{
+    double gradrho_mag;
+    if(rho<=0)
+    {
+        gradrho_mag = 0;
+    } else {
+        gradrho_mag = sqrt(gradrho[0]*gradrho[0]+gradrho[1]*gradrho[1]+gradrho[2]*gradrho[2]);
+        if(gradrho_mag > 0) {gradrho_mag = rho*rho/gradrho_mag;} else {gradrho_mag=0;}
+        if(include_h > 0) if(numngb_ndim > 0) gradrho_mag += include_h * rho * hsml / numngb_ndim; // quick-and-dirty approximation to the effective neighbor number needed here
+        //if(include_h > 0) gradrho_mag += include_h * rho * (hsml * (0.124 + 11.45 / (26.55 + All.DesNumNgb))); // quick-and-dirty approximation to the effective neighbor number needed here
+        // account for the fact that 'h' is much larger than the inter-particle separation //
+    }
+    return gradrho_mag; // *(Z/Zsolar) add metallicity dependence
+}
+
+
 #ifdef COSMIC_RAYS
 double INLINE_FUNC Get_Particle_CosmicRayPressure(int i)
 {
@@ -519,6 +537,7 @@ double INLINE_FUNC Get_Particle_CosmicRayPressure(int i)
     }
 }
 #endif
+
 
 
 double INLINE_FUNC Particle_effective_soundspeed_i(int i)
@@ -537,6 +556,8 @@ double INLINE_FUNC Particle_effective_soundspeed_i(int i)
     /* if nothing above triggers, then we resort to good old-fashioned ideal gas */
     return sqrt(GAMMA * SphP[i].Pressure / Particle_density_for_energy_i(i));
 }
+
+
 
 #ifdef MAGNETIC
 double INLINE_FUNC Get_Particle_BField(int i_particle_id, int k_vector_component)

@@ -19,11 +19,14 @@
     /* define volume elements and interface position */
     /* --------------------------------------------------------------------------------- */
     V_j = P[j].Mass / SphP[j].Density;
+    /*
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) || defined(CONSTRAINED_GRADIENT_MHD)
     s_star_ij = 0;
 #else
     s_star_ij = 0.5 * kernel.r * (PPP[j].Hsml - local.Hsml) / (local.Hsml + PPP[j].Hsml);
 #endif
+    */
+    s_star_ij = 0;
     /* ------------------------------------------------------------------------------------------------------------------- */
     /* now we're ready to compute the volume integral of the fluxes (or equivalently an 'effective area'/face orientation) */
     /* ------------------------------------------------------------------------------------------------------------------- */
@@ -182,7 +185,12 @@
         press_i_tot += 0.5 * kernel.b2_i * fac_magnetic_pressure;
         press_j_tot += 0.5 * kernel.b2_j * fac_magnetic_pressure;
 #endif
-        double press_tot_limiter = 1.1 * All.cf_a3inv * DMAX( press_i_tot , press_j_tot );
+        double press_tot_limiter;
+#ifdef MAGNETIC
+        press_tot_limiter = 2.0 * 1.1 * All.cf_a3inv * (press_i_tot + press_j_tot);
+#else 
+        press_tot_limiter = 1.1 * All.cf_a3inv * DMAX( press_i_tot , press_j_tot );
+#endif
 #ifdef NON_IDEAL_EOS
         press_tot_limiter *= 2.0;
 #endif

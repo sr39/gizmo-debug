@@ -285,11 +285,15 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
         {
             dp[j] = 0;
             if(P[i].Type==0)
+            {
                 dp[j] += mass_pred * SphP[i].HydroAccel[j] * All.cf_atime * dt_hydrokick; // convert to code units
+#ifdef TURB_DRIVING
+                dp[j] += mass_pred * SphP[i].TurbAccel[j] * dt_gravkick;
+#endif
 #ifdef RT_RAD_PRESSURE
-            if(P[i].Type==0)
                 dp[j] += mass_pred * SphP[i].RadAccel[j] * dt_hydrokick;
 #endif
+            }
             dp[j] += mass_pred * P[i].GravAccel[j] * dt_gravkick;
 #ifdef RELAXOBJECT
             dp[j] -= mass_pred * P[i].Vel[j] * All.RelaxFac * dt_gravkick;

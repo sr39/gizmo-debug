@@ -356,6 +356,15 @@ integertime get_timestep(int p,		/*!< particle index */
         }
         
         ac = sqrt(ax * ax + ay * ay + az * az);	/* this is now the physical acceleration */
+#ifdef TURB_DRIVING
+        if(P[p].Type==0)
+        {
+            /* because the turbulent acceleration is a random variable, we dont want it to catch us by surprise if it moves up, so 
+                we include a safety factor here which (very crudely) approximates the maximum amplitude it could reach */
+            double a_max_safety = 1.4 * sqrt(pow(All.StKmax,NUMDIMS) * All.StEnergy / All.StDecay);
+            ac = sqrt(ac*ac + a_max_safety*a_max_safety);
+        }
+#endif
         *aphys = ac;
     }
     else
@@ -496,7 +505,7 @@ integertime get_timestep(int p,		/*!< particle index */
                                              Get_Particle_BField(p,2)*Get_Particle_BField(p,2) +
                                              phi_b_units*phi_b_units) / SphP[p].Density );
 
-            dt_courant = 1.6 * All.CourantFac * (All.cf_atime*L_particle) / vsig1; // 2.0 factor may be added (PFH) //
+            dt_courant = 0.8 * All.CourantFac * (All.cf_atime*L_particle) / vsig1; // 2.0 factor may be added (PFH) //
             if(dt_courant < dt) {dt = dt_courant;}
 #endif
             
