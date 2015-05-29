@@ -118,11 +118,14 @@
 #endif
         
         /* slope-limit this to be sure that viscosity always acts in the proper direction when there is local noise */
-        double c_max_norm = -2.0 * Face_Area_Norm * DMAX(eta,zeta) * rinv;
+        double c_max_norm = -0.5 * DMAX(eta,zeta);
+        double c_max = 0.0;
+        for(k=0;k<3;k++) {c_max += Face_Area_Vec[k] * kernel.dp[k];}
+        c_max *= rinv*rinv;
         for(k_v=0;k_v<3;k_v++)
         {
-            double c_max = c_max_norm * (local.Vel[k_v]-VelPred_j[k_v]); // inter-particle gradient times tolerance //
-            cmag[k_v] = MINMOD(c_max,cmag[k_v]);
+            double dv_visc = local.Vel[k_v]-VelPred_j[k_v];
+            cmag[k_v] = MINMOD(MINMOD(MINMOD(cmag[k_v] , c_max_norm*c_max*dv_visc), c_max_norm*fabs(c_max)*dv_visc) , c_max_norm*Face_Area_Norm*dv_visc*rinv);
         }
         
         /* now add a flux-limiter to prevent overshoot (even when the directions are correct) */

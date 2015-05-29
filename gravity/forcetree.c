@@ -2522,6 +2522,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     // correction only applies to 'shared-kernel' particles: so this needs to check if
                     // these are the same particles for which the kernel lengths are computed
                     // (also checks that these aren't the same particle)
+#if !(defined(MAGNETIC) || defined(COOLING) || defined(GALSF) || defined(BLACK_HOLES))
                     if(ags_gravity_kernel_shared_check(ptype, ptype_sec) && (r > 0) && (pmass > 0))
                     {
                         if(h_p_inv >= h_inv)
@@ -2539,6 +2540,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                             }
                         }
                     } // if(ptype==ptype_sec)
+#endif
 #endif
                 }
                 

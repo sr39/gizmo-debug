@@ -400,7 +400,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                                    (unsigned long long) P[j].ID, (unsigned long long) id);
                                             if(P[j].SwallowID < id) P[j].SwallowID = id;
                                         } else { /* w < p */
-                                            printf("MARKING_BH_FOOD (should have been rejected): P[j.]ID=%llu to be swallowed by id=%llu \n",
+                                            printf("MARKING_BH_FOOD (will be rejected): P[j.]ID=%llu to be swallowed by id=%llu \n",
                                                    (unsigned long long) P[j].ID, (unsigned long long) id);
                                             //if(P[j].SwallowID < id)  P[j].SwallowID = id; // rejected
                                         }

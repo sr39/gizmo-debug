@@ -369,7 +369,7 @@ typedef unsigned long long peanokey;
 #define  MAX_REAL_NUMBER  1e37
 #define  MIN_REAL_NUMBER  1e-37
 
-#ifdef MAGNETIC
+#if (defined(MAGNETIC) && !defined(COOLING))
 #define  CONDITION_NUMBER_DANGER  1.0e7 /*!< condition number above which we will not trust matrix-based gradients */
 #else
 #define  CONDITION_NUMBER_DANGER  1.0e3 /*!< condition number above which we will not trust matrix-based gradients */
