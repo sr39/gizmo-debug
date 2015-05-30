@@ -206,19 +206,19 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #--------- Papers using these modules must offer co-authorship to the members of the FIRE development team.
 ##-----------------------------------------------------------------------------------------------------
 #---- star formation law ---- #
-#GALSF_SFR_MOLECULAR_CRITERION	# estimates molecular fraction in SF-ing gas, only SF from that is allowed
-#GALSF_SFR_VIRIAL_SF_CRITERION	# only allow star formation in virialized sub-regions (alpha<1)
-#GALSF_SFR_IMF_VARIATION        # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory
+#GALSF_SFR_MOLECULAR_CRITERION	 # estimates molecular fraction in SF-ing gas, only SF from that is allowed
+#GALSF_SFR_VIRIAL_SF_CRITERION=0 # only allow star formation in virialized sub-regions (alpha<1) (0='default'; 1=0+Jeans criterion; 2=1+'strict' (zero sf if not bound))
+#GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory
 #----- physical stellar feedback mechanisms ---- #
-#GALSF_FB_GASRETURN             # Paul Torrey's addition for stochastic gas return (modified for continuous return)
-#GALSF_FB_HII_HEATING           # gas within HII regions around young stars is photo-heated to 10^4 K
-#GALSF_FB_SNE_HEATING           # time-dependent heating from SNe (I & II) in shockwave radii around stars
-#GALSF_FB_RPROCESS_ENRICHMENT=8 # tracks a set of 'dummy' species from neutron-star mergers (set to number: 8=extended model)
-#GALSF_FB_RT_PHOTONMOMENTUM     # continuous acceleration from starlight (uses luminosity tree)
-#GALSF_FB_RT_PHOTON_LOCALATTEN  # incident SED for GALSF_FB_RT_PHOTONMOMENTUM calculated w local attenuation of stars
-#GALSF_FB_LOCAL_UV_HEATING      # use local estimate of spectral information for photoionization and photoelectric heating
-#GALSF_FB_RPWIND_LOCAL          # turn on local radiation pressure coupling to gas
-#GALSF_FB_RPWIND_FROMSTARS      # drive radiation pressure with local young stars (otherwise uses the gas SFR)
+#GALSF_FB_GASRETURN              # Paul Torrey's addition for stochastic gas return (modified for continuous return)
+#GALSF_FB_HII_HEATING            # gas within HII regions around young stars is photo-heated to 10^4 K
+#GALSF_FB_SNE_HEATING            # time-dependent heating from SNe (I & II) in shockwave radii around stars
+#GALSF_FB_RPROCESS_ENRICHMENT=8  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 8=extended model)
+#GALSF_FB_RT_PHOTONMOMENTUM      # continuous acceleration from starlight (uses luminosity tree)
+#GALSF_FB_RT_PHOTON_LOCALATTEN   # incident SED for GALSF_FB_RT_PHOTONMOMENTUM calculated w local attenuation of stars
+#GALSF_FB_LOCAL_UV_HEATING       # use local estimate of spectral information for photoionization and photoelectric heating
+#GALSF_FB_RPWIND_LOCAL           # turn on local radiation pressure coupling to gas
+#GALSF_FB_RPWIND_FROMSTARS       # drive radiation pressure with local young stars (otherwise uses the gas SFR)
 ##-----------------------------------------------------------------------------------------------------
 #----------- deprecated options (most have been combined or optimized into the functions above, here for legacy)
 ##GALSF_FB_SEPARATELY_TRACK_LUMPOS  # keep stellar vs. gas positions separate in tree (useful if running in tree-only mode)
