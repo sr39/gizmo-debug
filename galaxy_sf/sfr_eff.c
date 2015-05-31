@@ -242,6 +242,9 @@ double get_starformation_rate(int i)
     //double alpha_vir = 0.2387 * dv2abs / (All.G * SphP[i].Density * All.cf_a3inv); // coefficient here was for old form, with only divv information
     double alpha_vir = dv2abs / (8. * M_PI * All.G * SphP[i].Density * All.cf_a3inv); // 1/4 or 1/8 ? //
 
+    
+#if !(EXPAND_PREPROCESSOR_(GALSF_SFR_VIRIAL_SF_CRITERION) == 1)
+    /* the above macro checks if GALSF_SFR_VIRIAL_SF_CRITERION has been assigned a numerical value */
 #if (GALSF_SFR_VIRIAL_SF_CRITERION > 0)
     if(alpha_vir < 1.0)
     {
@@ -252,13 +255,13 @@ double get_starformation_rate(int i)
         if(MJ_solar > 1000.) {alpha_vir = 100.;}
     }
 #endif
-    
 #if (GALSF_SFR_VIRIAL_SF_CRITERION > 1)
-    if(alpha_vir<1.0) {rateOfSF *= 1.0;} else {rateOfSF *= 0.0;}
-#else
+    if(alpha_vir >= 1.0) {rateOfSF *= 0.0;}
+#endif
+#endif
+    
     if((alpha_vir<1.0)||(SphP[i].Density*All.cf_a3inv>100.*All.PhysDensThresh)) {rateOfSF *= 1.0;} else {rateOfSF *= 0.0015;}
     // PFH: note the latter flag is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! //
-#endif
     
     //  if( divv>=0 ) rateOfSF=0; // restrict to convergent flows (optional) //
     //  rateOfSF *= 1.0/(1.0 + alpha_vir); // continuous cutoff w alpha_vir instead of sharp (optional) //

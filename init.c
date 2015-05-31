@@ -763,8 +763,10 @@ void init(void)
 #endif
         
 #if defined(TURB_DRIVING)
+#ifdef GAMMA_ENFORCE_ADIABAT
         SphP[i].InternalEnergy = All.RefInternalEnergy;
         SphP[i].InternalEnergyPred = All.RefInternalEnergy;
+#endif
 #endif
         // re-match the predicted and initial velocities and B-field values, just to be sure //
         for(j=0;j<3;j++) SphP[i].VelPred[j]=P[i].Vel[j];
