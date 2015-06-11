@@ -1,3 +1,8 @@
+This is a development branch of phopkins/GIZMO. It is dedicated to implementing a working radiative transfer module, based off of the Petkova & Springel (2009) OTVET implementation initially made for Gadget-3.
+
+
+
+-----------------------------
 Welcome!
 
 This is GIZMO (beta version: likely to be Google-style and stay in beta for quite some time).
@@ -24,5 +29,4 @@ http://www.tapir.caltech.edu/~phopkins/public/gizmo_public.tgz
 
 The private version of the code is closed and can only be used or distributed with explicit permission from the code authors. Please note that most of the non-public "modules" are proprietary and developed by active students/postdocs for their ongoing research - it is not acceptable to use or share these routines without first obtaining the explicit permission of both the lead code author and the author(s) of the relevant routines.
 
-If you use any version of the code, please reference the code paper at: http://arxiv.org/abs/1409.7395 (Hopkins 2015); you should also reference Volker Springel's GADGET paper (Springel, 2005, MNRAS, 364, 1105) for the domain decomposition and N-body algorithms. 
-
+If you use any version of the code, please reference the code paper at: http://arxiv.org/abs/1409.7395 (Hopkins 2015); you should also reference Volker Springel's GADGET paper (Springel, 2005, MNRAS, 364, 1105) for the domain decomposition and N-body algorithms.
