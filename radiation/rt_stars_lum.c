@@ -5,8 +5,9 @@
 #include <math.h>
 #include <gsl/gsl_math.h>
 
-#include "allvars.h"
-#include "proto.h"
+#include "../allvars.h"
+#include "../proto.h"
+#include "../kernel.h"
 
 
 #ifdef RADTRANSFER
@@ -153,9 +154,9 @@ int star_lum_evaluate(int target, int mode, int *nexport, int *nsend_local)
 {
   int i, j, n, numngb;
   int startnode, listindex = 0;
-  double h, hinv, h2, hinv3;
-  double wk, mass, fac;
-  double dx, dy, dz, r, r2, u;
+  double h, hinv, h2, hinv3,hinv4;
+  double wk,dwk, mass, fac;
+  double dx, dy, dz, r, r2;
   MyDouble *pos;
 
   if(mode == 0)
@@ -178,11 +179,15 @@ int star_lum_evaluate(int target, int mode, int *nexport, int *nsend_local)
   hinv = 1.0 / h;
   hinv3 = hinv * hinv * hinv;
 
-  fac = mass * All.UnitMass_in_g / SOLAR_MASS;
+//  fac = mass * All.UnitMass_in_g / SOLAR_MASS;
+
+  fac = 1.0;
 
 #ifndef RT_MULTI_FREQUENCY
-  lum[0] = fac * All.IonizingLumPerSolarMass * All.UnitTime_in_s / All.HubbleParam;
+    lum[0] = 5.0e48 * All.UnitTime_in_s;
+//  lum[0] = fac * All.IonizingLumPerSolarMass * All.UnitTime_in_s / All.HubbleParam;
 #endif
+
 
   if(mode == 0)
     {
@@ -218,16 +223,22 @@ int star_lum_evaluate(int target, int mode, int *nexport, int *nsend_local)
 
 	      if(r2 < h2)
 		{
-		  u = r * hinv;
 
-		  if(u < 0.5)
-		    wk = hinv3 * (KERNEL_COEFF_1 + KERNEL_COEFF_2 * (u - 1) * u * u);
-		  else
-		    wk = hinv3 * KERNEL_COEFF_5 * (1.0 - u) * (1.0 - u) * (1.0 - u);
+/*      if(u < 0.5)
+        wk = hinv3 * (1.0 + 6.0 * (u - 1) * u * u);
+      else
+        wk = hinv3 * 2.0 * (1.0 - u) * (1.0 - u) * (1.0 - u); */
+
+      kernel_hinv(h,&hinv,&hinv3,&hinv4);
+      kernel_main(r*hinv,hinv3,hinv4,&wk,&dwk,0);
 
 		}
 	      else
-		wk = 0;
+		wk = 0; 
+
+
+
+      
 
 	      for(i = 0; i < N_RT_FREQ_BINS; i++)
 		{

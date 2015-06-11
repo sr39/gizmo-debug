@@ -1380,11 +1380,14 @@ int density_isactive(int n)
 #if defined(GALSF_FB_RPROCESS_ENRICHMENT)
         if(P[n].RProcessEvent_ThisTimeStep>0) return 1;
 #endif
+
+#if defined(GALSF)
         if(P[n].DensAroundStar<=0) return 1;
         // only do stellar age evaluation if we have to //
         float star_age=0;
         star_age = evaluate_stellar_age_Gyr(P[n].StellarAge);
         if(star_age < 0.035) return 1;
+#endif
     }
 #endif
     

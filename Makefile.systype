@@ -13,8 +13,8 @@
 
 
 #SYSTYPE="Stampede"
-SYSTYPE="Zwicky"
-#SYSTYPE="MacBookPro"
+#SYSTYPE="Zwicky"
+SYSTYPE="MacBookPro"
 #SYSTYPE="odyssey"
 #SYSTYPE="SciNet"
 #SYSTYPE="Ranger_intel"

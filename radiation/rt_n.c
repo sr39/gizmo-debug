@@ -6,8 +6,8 @@
 #include <gsl/gsl_math.h>
 
 
-#include "allvars.h"
-#include "proto.h"
+#include "../allvars.h"
+#include "../proto.h"
 
 
 #if defined(RADTRANSFER) && defined(RT_RAD_PRESSURE)
@@ -387,19 +387,36 @@ int n_treeevaluate(int target, int mode, int *nexport, int *nsend_local)
 		    }
 		}
 
+#ifndef ADAPTIVE_GRAVSOFT_FORGAS
 	      h = All.ForceSoftening[ptype];
-	      if(h < All.ForceSoftening[extract_max_softening_type(nop->u.d.bitflags)])
+//	      if(h < All.ForceSoftening[extract_max_softening_type(nop->u.d.bitflags)])
+//		{
+//		  h = All.ForceSoftening[extract_max_softening_type(nop->u.d.bitflags)];
+//		  if(r2 < h * h)
+//		    {
+//		      if(maskout_different_softening_flag(nop->u.d.bitflags))	/* signals that there are particles of different softening in the node */
+//			{
+//			  no = nop->u.d.nextnode;
+//			  continue;
+//			}
+//		    }
+//		}
+#else
+	      if(ptype == 0)
+		h = soft;
+	      else
+		h = All.ForceSoftening[ptype];
+
+	      if(h < nop->maxsoft)
 		{
-		  h = All.ForceSoftening[extract_max_softening_type(nop->u.d.bitflags)];
+		  h = nop->maxsoft;
 		  if(r2 < h * h)
 		    {
-		      if(maskout_different_softening_flag(nop->u.d.bitflags))	/* signals that there are particles of different softening in the node */
-			{
-			  no = nop->u.d.nextnode;
-			  continue;
-			}
+		      no = nop->u.d.nextnode;
+		      continue;
 		    }
 		}
+#endif
 	      no = nop->u.d.sibling;	/* ok, node can be used */
 
 	    }

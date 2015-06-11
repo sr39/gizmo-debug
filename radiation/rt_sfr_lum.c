@@ -5,8 +5,8 @@
 #include <math.h>
 #include <gsl/gsl_math.h>
 
-#include "allvars.h"
-#include "proto.h"
+#include "../allvars.h"
+#include "../proto.h"
 #ifdef RADTRANSFER
 #ifdef SFR
 
