@@ -1,5 +1,12 @@
 This is a development branch of phopkins/GIZMO. It is dedicated to implementing a working radiative transfer module, based off of the Petkova & Springel (2009) OTVET implementation initially made for Gadget-3.
 
+For the methods paper used, see http://arxiv.org/pdf/0812.1801v2.pdf
+
+It is based on the OTVET method by Gnedin & Abel (2001): http://arxiv.org/pdf/astro-ph/0106278.pdf
+
+This method is currently being tested using the Cosmological Radiative Transfer Comparison Project, which can be found at http://www.phys.susx.ac.uk/~cs390/RT_comparison_project/index.html
+
+In addition, several RT tests that use the same method, as well as applications, can be found in Sales et al. (2014): http://arxiv.org/pdf/1310.7572.pdf
 
 
 -----------------------------
