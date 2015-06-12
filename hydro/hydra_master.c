@@ -573,7 +573,13 @@ void hydro_final_operations_and_cleanup(void)
             double dt_cosmicray_energy_adiabatic = -GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred * (P[i].Particle_DivVel*All.cf_a2inv);
             SphP[i].DtCosmicRayEnergy += dt_cosmicray_energy_adiabatic;
             SphP[i].DtInternalEnergy -= dt_cosmicray_energy_adiabatic;
+            /* adiabatic term from Hubble expansion (needed for cosmological integrations */
             if(All.ComovingIntegrationOn) SphP[i].DtCosmicRayEnergy -= SphP[i].CosmicRayEnergyPred * All.cf_hubble_a;
+            /* energy transfer from CRs to gas due to the streaming instability (mediated by high-frequency Alfven waves, but they thermalize quickly 
+                (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
+            double cr_stream_cool = -SphP[i].CosmicRayEnergyPred * Get_CosmicRayStreamingVelocity(i) / Get_CosmicRayGradientLength(i);
+            SphP[i].DtCosmicRayEnergy += cr_stream_cool;
+            SphP[i].DtInternalEnergy -= cr_stream_cool;
 #endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             SphP[i].DtInternalEnergy -= SphP[i].InternalEnergyPred * SphP[i].DtMass;

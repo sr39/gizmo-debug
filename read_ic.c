@@ -272,7 +272,10 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_POS:		/* positions */
             for(n = 0; n < pc; n++)
                 for(k = 0; k < 3; k++)
+                {
                     P[offset + n].Pos[k] = *fp_pos++;
+                    //P[offset + n].Pos[k] += All.BoxHalf; /* manually turn on for some ICs */
+                }
             
             for(n = 0; n < pc; n++)
                 P[offset + n].Type = type;	/* initialize type here as well */

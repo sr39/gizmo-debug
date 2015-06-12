@@ -455,10 +455,8 @@ integertime get_timestep(int p,		/*!< particle index */
 
 #ifdef COSMIC_RAYS
             {
-                double L_cond_inv = sqrt(SphP[p].Gradients.CosmicRayPressure[0]*SphP[p].Gradients.CosmicRayPressure[0] +
-                                         SphP[p].Gradients.CosmicRayPressure[1]*SphP[p].Gradients.CosmicRayPressure[1] +
-                                         SphP[p].Gradients.CosmicRayPressure[2]*SphP[p].Gradients.CosmicRayPressure[2]) / Get_Particle_CosmicRayPressure(p);
-                double L_cond = 1./(L_cond_inv + 0./L_particle) * All.cf_atime;
+                double L_cond_inv = 1. / Get_CosmicRayGradientLength(p);
+                double L_cond = 1./(L_cond_inv + 0./(L_particle*All.cf_atime));
                 double dt_conduction = 0.5 * L_cond*L_cond / (1.0e-33 + SphP[p].CosmicRayDiffusionCoeff);
                 // since we use DIFFUSIVITIES, not CONDUCTIVITIES, we dont need any other powers to get the right units //
                 if(dt_conduction < dt) dt = dt_conduction;

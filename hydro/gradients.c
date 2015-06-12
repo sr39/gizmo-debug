@@ -1165,39 +1165,7 @@ void hydro_gradient_calc(void)
 #endif
             }
 #endif
-            
-            
-#ifdef COSMIC_RAYS
-            if(SphP[i].Density > 0)
-            {
-                /* self-consistently calculate the diffusion coefficients for cosmic ray fluids;
-                 following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
-                /* in the weak-field (high-beta) case, the streaming velocity is approximately the sound speed */
-                double v_streaming = sqrt(GAMMA*GAMMA_MINUS1 * SphP[i].InternalEnergyPred); // thermal ion sound speed //
-#ifdef MAGNETIC
-                /* in the strong-field (low-beta) case, it's actually the Alfven velocity: interpolate between these */
-                double vA_2 = 0.0;
-                double cs_stream = v_streaming;
-                for(k=0;k<3;k++) {vA_2 += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
-                vA_2 *= All.cf_afac1 / (All.cf_atime * SphP[i].Density);
-                v_streaming = DMIN(100.*cs_stream, sqrt(cs_stream*cs_stream + vA_2));
-#endif
-                v_streaming *= All.CosmicRayDiffusionCoeff * All.cf_afac3; // converts to physical units and rescales according to chosen coefficient //
-                /* now we need the cosmic ray pressure or energy density scale length, defined as :
-                 L = (e_cr + p_cr) / |gradient_p_cr| = cr_enthalpy / |gradient(p_cr)| */
-                double CRPressureGradMag = 0.0;
-                for(k=0;k<3;k++) {CRPressureGradMag += SphP[i].Gradients.CosmicRayPressure[k]*SphP[i].Gradients.CosmicRayPressure[k];}
-                double CRPressureGradScaleLength = GAMMA_COSMICRAY * Get_Particle_CosmicRayPressure(i) / sqrt(1.0e-33 + CRPressureGradMag) * All.cf_atime;
-                // limit this scale length; if the gradient is too shallow, there is no information beyond a few smoothing lengths, so we can't let streaming go that far //
-                if(CRPressureGradScaleLength > 0) {CRPressureGradScaleLength = 1.0/(1.0/CRPressureGradScaleLength + 1.0/(100.0*PPP[i].Hsml));}
-                
-                /* the diffusivity is now just the product of these two coefficients */
-                SphP[i].CosmicRayDiffusionCoeff = v_streaming * CRPressureGradScaleLength;
-                if((SphP[i].CosmicRayDiffusionCoeff<=0)||(isnan(SphP[i].CosmicRayDiffusionCoeff))) {SphP[i].CosmicRayDiffusionCoeff=0;}
-            } else {
-                SphP[i].CosmicRayDiffusionCoeff = 0;
-            }
-#endif
+
             
             
 #ifdef TURB_DIFFUSION
@@ -1272,7 +1240,24 @@ void hydro_gradient_calc(void)
             local_slopelimiter(SphP[i].Gradients.Phi,GasGradDataPasser[i].Maxima.Phi,GasGradDataPasser[i].Minima.Phi,a_limiter,h_lim,stol);
 #endif
 #endif
+
             
+            
+#ifdef COSMIC_RAYS
+            /* note that because of the way this depends on the gradient scale-length, we should calculate it -after- the slope-limiters are applied */
+            if(SphP[i].Density > 0)
+            {
+                /* self-consistently calculate the diffusion coefficients for cosmic ray fluids;
+                 following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
+                double CRPressureGradScaleLength = Get_CosmicRayGradientLength(i);
+                double v_streaming = Get_CosmicRayStreamingVelocity(i);
+                /* the diffusivity is now just the product of these two coefficients */
+                SphP[i].CosmicRayDiffusionCoeff = v_streaming * CRPressureGradScaleLength;
+                if((SphP[i].CosmicRayDiffusionCoeff<=0)||(isnan(SphP[i].CosmicRayDiffusionCoeff))) {SphP[i].CosmicRayDiffusionCoeff=0;}
+            } else {
+                SphP[i].CosmicRayDiffusionCoeff = 0;
+            }
+#endif
         }
     
     
