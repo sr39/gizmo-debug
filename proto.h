@@ -439,10 +439,11 @@ void do_turb_driving_step_first_half(void);
 void do_turb_driving_step_second_half(void);
 #endif
 
+inline double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h);
+
 #ifdef GALSF
 double evaluate_stellar_age_Gyr(double stellar_tform);
 inline double evaluate_l_over_m_ssp(double stellar_age_in_gyr);
-inline double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h);
 inline double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i);
 #endif
 #if defined(GALSF_FB_RPWIND_LOCAL) && defined(GALSF_FB_RPWIND_FROMSTARS)
@@ -533,6 +534,11 @@ void *disp_density_evaluate_secondary(void *p);
 int disp_density_isactive(MyIDType i);
 #endif
 
+#ifdef PM_HIRES_REGION_CLIPDM
+int ngb_treefind_variable_threads_nongas(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
+                                         int mode, int *exportflag, int *exportnodecount, int *exportindex,
+                                         int *ngblist);
+#endif
 
 void cooling_only(void);
 void count_hot_phase(void);

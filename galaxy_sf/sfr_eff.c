@@ -119,23 +119,6 @@ double evaluate_l_over_m_ssp(double stellar_age_in_gyr)
 }
 
 
-/* return the estimated local column from integrating the gradient in the density (separated here for convenience) */
-double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h)
-{
-    double gradrho_mag;
-    if(rho<=0)
-    {
-        gradrho_mag = 0;
-    } else {
-        gradrho_mag = sqrt(gradrho[0]*gradrho[0]+gradrho[1]*gradrho[1]+gradrho[2]*gradrho[2]);
-        if(gradrho_mag > 0) {gradrho_mag = rho*rho/gradrho_mag;} else {gradrho_mag=0;}
-        if(include_h > 0) if(numngb_ndim > 0) gradrho_mag += include_h * rho * hsml / numngb_ndim; // quick-and-dirty approximation to the effective neighbor number needed here
-        //if(include_h > 0) gradrho_mag += include_h * rho * (hsml * (0.124 + 11.45 / (26.55 + All.DesNumNgb))); // quick-and-dirty approximation to the effective neighbor number needed here
-        // account for the fact that 'h' is much larger than the inter-particle separation //
-    }
-    return gradrho_mag; // *(Z/Zsolar) add metallicity dependence
-}
-
 
 /* check whether conditions for star formation are fulfilled for a given particle */
 int determine_sf_flag(int i)
@@ -251,15 +234,35 @@ double get_starformation_rate(int i)
                     vt += All.cf_hubble_a; /* add hubble-flow correction */
             dv2abs += vt*vt;
         }
+    /* add thermal support, although it is almost always irrelevant */
+    double cs_eff = Particle_effective_soundspeed_i(i);
+    double k_cs = cs_eff / (Get_Particle_Size(i)*All.cf_atime);
+    dv2abs += 2.*k_cs*k_cs; // account for thermal pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
+    
     //double alpha_vir = 0.2387 * dv2abs / (All.G * SphP[i].Density * All.cf_a3inv); // coefficient here was for old form, with only divv information
     double alpha_vir = dv2abs / (8. * M_PI * All.G * SphP[i].Density * All.cf_a3inv); // 1/4 or 1/8 ? //
-    if(All.ComovingIntegrationOn)
+
+    
+#if !(EXPAND_PREPROCESSOR_(GALSF_SFR_VIRIAL_SF_CRITERION) == 1)
+    /* the above macro checks if GALSF_SFR_VIRIAL_SF_CRITERION has been assigned a numerical value */
+#if (GALSF_SFR_VIRIAL_SF_CRITERION > 0)
+    if(alpha_vir < 1.0)
     {
-        if((alpha_vir<1.0)||(SphP[i].Density*All.cf_a3inv>100.*All.PhysDensThresh)) {rateOfSF *= 1.0;} else {rateOfSF *= 0.0015;}
-        // PFH: note the latter flag is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! //
-    } else {
-        if(alpha_vir>1.0) {rateOfSF *= 0.0015;} else {rateOfSF *= 1.0;}
+        /* check if Jeans mass is remotely close to solar; if not, dont allow it to form 'stars' */
+        double q = cs_eff * All.UnitVelocity_in_cm_per_s / (0.2e5);
+        double q2 = SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / (HYDROGEN_MASSFRAC*1.0e3*PROTONMASS);
+        double MJ_solar = 2.*q*q*q/sqrt(q2);
+        if(MJ_solar > 1000.) {alpha_vir = 100.;}
     }
+#endif
+#if (GALSF_SFR_VIRIAL_SF_CRITERION > 1)
+    if(alpha_vir >= 1.0) {rateOfSF *= 0.0;}
+#endif
+#endif
+    
+    if((alpha_vir<1.0)||(SphP[i].Density*All.cf_a3inv>100.*All.PhysDensThresh)) {rateOfSF *= 1.0;} else {rateOfSF *= 0.0015;}
+    // PFH: note the latter flag is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! //
+    
     //  if( divv>=0 ) rateOfSF=0; // restrict to convergent flows (optional) //
     //  rateOfSF *= 1.0/(1.0 + alpha_vir); // continuous cutoff w alpha_vir instead of sharp (optional) //
 #endif // GALSF_SFR_VIRIAL_SF_CRITERION

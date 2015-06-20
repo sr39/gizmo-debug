@@ -83,7 +83,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #--------------------------- These modules were originally developed for a combination of -proprietary- physics modules. they can only be used with
 #--------------------------- permission from the authors. email P. Hopkins to obtain the relevant permissions for the cooling routines of interest.
 #COOLING                        # enables radiative cooling and heating: if GALSF, also external UV background read from file "TREECOOL"
-#COOL_LOW_TEMPERATURES          # allow fine-structure and molecular cooling to ~10 K
+#COOL_LOW_TEMPERATURES          # allow fine-structure and molecular cooling to ~10 K; account for optical thickness and line-trapping effects with proper opacities
 #COOL_METAL_LINES_BY_SPECIES    # use full multi-species-dependent cooling tables (https://dl.dropbox.com/u/16659252/spcool_tables.tgz)
 #GRACKLE                        # enable GRACKLE: cooling+chemistry package (requires COOLING above; https://grackle.readthedocs.org/en/latest/)
 #GRACKLE_CHEMISTRY=1            # choose GRACKLE cooling chemistry: (0)=tabular, (1)=Atomic, (2)=(1)+H2+H2I+H2II, (3)=(2)+DI+DII+HD
@@ -121,6 +121,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #PMGRID=512                     # COSMO enable: resolution of particle-mesh grid
 #PM_PLACEHIGHRESREGION=1+2+16   # COSMO enable: particle types to place high-res PMGRID around
 #PM_HIRES_REGION_CLIPPING=1000  # for stability: clips particles that escape the hires region in zoom/isolated sims
+#PM_HIRES_REGION_CLIPDM         # split low-res DM particles that enter high-res region (completely surrounded by high-res)
 #MULTIPLEDOMAINS=64             # Multi-Domain option for the top-tree level: iso=16,COSMO=64-128
 ## -----------------------------------------------------------------------------------------------------
 # ---------------------------------------- Adaptive Grav. Softening (including Lagrangian conservation terms!)
@@ -205,19 +206,19 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #--------- Papers using these modules must offer co-authorship to the members of the FIRE development team.
 ##-----------------------------------------------------------------------------------------------------
 #---- star formation law ---- #
-#GALSF_SFR_MOLECULAR_CRITERION	# estimates molecular fraction in SF-ing gas, only SF from that is allowed
-#GALSF_SFR_VIRIAL_SF_CRITERION	# only allow star formation in virialized sub-regions (alpha<1)
-#GALSF_SFR_IMF_VARIATION        # determines the stellar IMF for each particle from the Gusjenov/Hopkins/Hennebelle/Chabrier/Padoan theory
+#GALSF_SFR_MOLECULAR_CRITERION	 # estimates molecular fraction in SF-ing gas, only SF from that is allowed
+#GALSF_SFR_VIRIAL_SF_CRITERION=0 # only allow star formation in virialized sub-regions (alpha<1) (0/no value='default'; 1=0+Jeans criterion; 2=1+'strict' (zero sf if not bound))
+#GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory
 #----- physical stellar feedback mechanisms ---- #
-#GALSF_FB_GASRETURN             # Paul Torrey's addition for stochastic gas return (modified for continuous return)
-#GALSF_FB_HII_HEATING           # gas within HII regions around young stars is photo-heated to 10^4 K
-#GALSF_FB_SNE_HEATING           # time-dependent heating from SNe (I & II) in shockwave radii around stars
-#GALSF_FB_RPROCESS_ENRICHMENT=8 # tracks a set of 'dummy' species from neutron-star mergers (set to number: 8=extended model)
-#GALSF_FB_RT_PHOTONMOMENTUM     # continuous acceleration from starlight (uses luminosity tree)
-#GALSF_FB_RT_PHOTON_LOCALATTEN  # incident SED for GALSF_FB_RT_PHOTONMOMENTUM calculated w local attenuation of stars
-#GALSF_FB_LOCAL_UV_HEATING      # use local estimate of spectral information for photoionization and photoelectric heating
-#GALSF_FB_RPWIND_LOCAL          # turn on local radiation pressure coupling to gas
-#GALSF_FB_RPWIND_FROMSTARS      # drive radiation pressure with local young stars (otherwise uses the gas SFR)
+#GALSF_FB_GASRETURN              # Paul Torrey's addition for stochastic gas return (modified for continuous return)
+#GALSF_FB_HII_HEATING            # gas within HII regions around young stars is photo-heated to 10^4 K
+#GALSF_FB_SNE_HEATING            # time-dependent heating from SNe (I & II) in shockwave radii around stars
+#GALSF_FB_RPROCESS_ENRICHMENT=8  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 8=extended model)
+#GALSF_FB_RT_PHOTONMOMENTUM      # continuous acceleration from starlight (uses luminosity tree)
+#GALSF_FB_RT_PHOTON_LOCALATTEN   # incident SED for GALSF_FB_RT_PHOTONMOMENTUM calculated w local attenuation of stars
+#GALSF_FB_LOCAL_UV_HEATING       # use local estimate of spectral information for photoionization and photoelectric heating
+#GALSF_FB_RPWIND_LOCAL           # turn on local radiation pressure coupling to gas
+#GALSF_FB_RPWIND_FROMSTARS       # drive radiation pressure with local young stars (otherwise uses the gas SFR)
 ##-----------------------------------------------------------------------------------------------------
 #----------- deprecated options (most have been combined or optimized into the functions above, here for legacy)
 ##GALSF_FB_SEPARATELY_TRACK_LUMPOS  # keep stellar vs. gas positions separate in tree (useful if running in tree-only mode)
@@ -243,22 +244,23 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #------ accretion models/options
 #BH_SWALLOWGAS                  # enables stochastic accretion of gas particles consistent with growth rate of hole
 #BH_ALPHADISK_ACCRETION         # gas accreted into 'virtual' alpha-disk, and from there onto the BH
-#BH_GRAVCAPTURE_SWALLOWS        # accretion determined only by resolved gravitational capture by the BH
-##BH_GRAVCAPTURE_NOGAS          # as BH_GRAVCAPTURE_SWALLOWS, but excludes gas (use with other mdot estimator for gas)
+#BH_GRAVCAPTURE_GAS             # accretion determined only by resolved gravitational capture by the BH (for gas particles)
+#BH_GRAVCAPTURE_NONGAS          # as BH_GRAVCAPTURE_GAS, but applies to non-gas particles (can be enabled with other accretion models for gas)
 #BH_GRAVACCRETION               # Gravitational instability accretion estimator from Hopkins & Quataert 2010
-#BH_GRAVACCRETION_BTOD          # DAA: torque rate based on kinematic bulge/disk decomposition as in Angles-Alcazar et al 2013  (requires BH_GRAVACCRETION)
+#BH_GRAVACCRETION_BTOD          # DAA: torque rate based on kinematic bulge/disk decomposition as in Angles-Alcazar et al 2013-2015  (requires BH_GRAVACCRETION)
 ##BH_BONDI                      # Bondi-Hoyle style accretion model
 ##BH_VARIABLE_ACCRETION_FACTOR  # variable-alpha model as in Booth&Schaye 2009
 ##BH_USE_GASVEL_IN_BONDI        # surrounding gas velocity used with sounds speed in the Bondi rate
 #BH_SUBGRIDBHVARIABILITY        # model variability below resolved dynamical time for BH
 # ----- feedback models/options
 #BH_BAL_WINDS                   # particles within the BH kernel are given mass, momentum, and energy continuously as high-vel BAL winds
-#BH_STOCHASTIC_WINDS            # DAA: accreted particles are launched back out as winds (requires BH_SWALLOWGAS)
-#BH_WINDS_COLLIMATED            # DAA: winds follow the direction of angular momentum within Kernel (needs BH_STOCHASTIC_WINDS)
+#BH_BAL_KICK                    # do BAL winds with stochastic particle kicks at specified velocity (instead of continuous wind solution - requires BH_SWALLOWGAS - )
+#BH_BAL_KICK_COLLIMATED         # DAA: winds follow the direction of angular momentum within Kernel (only for BH_BAL_KICK winds)
+#BH_BAL_KICK_MOMENTUM_FLUX=10   # DAA: increase the effective mass-loading of BAL winds to reach the desired momentum flux in units of L_bol/c (needs BH_BAL_KICK)
 #BH_PHOTONMOMENTUM              # continuous long-range IR radiation pressure acceleration from BH (needs GALSF_FB_RT_PHOTONMOMENTUM)
 #BH_HII_HEATING                 # photo-ionization feedback from BH (needs GALSF_FB_HII_HEATING)
-#BH_COMPTON_HEATING             # enable Compton heating in cooling function (needs BH_PHOTONMOMENTUM)
-##BH_THERMALFEEDBACK            # couple a fraction of the BH luminosity into surrounding gas as thermal energy
+#BH_COMPTON_HEATING             # enable Compton heating/cooling from BHs in cooling function (needs BH_PHOTONMOMENTUM)
+##BH_THERMALFEEDBACK            # couple a fraction of the BH luminosity into surrounding gas as thermal energy (DiMatteo/Springel/Hernquist model)
 #------------ use the BH_DRAG options only in cosmological cases where M_BH is not >> other particle masses
 #BH_DYNFRICTION                 # apply dynamical friction force to the BHs when m_bh not >> other particle mass
 ##BH_DRAG                       # Drag on black-holes due to accretion (w real mdot)

@@ -45,7 +45,8 @@
 #define ALLOWEXTRAPARAMS        /* don't crash (just warn) if there are extra lines in the input parameterfile */
 #define INHOMOG_GASDISTR_HINT   /* if the gas is distributed very different from collisionless particles, this can helps to avoid problems in the domain decomposition */
 
-
+#define DO_PREPROCESSOR_EXPAND_(VAL)  VAL ## 1
+#define EXPAND_PREPROCESSOR_(VAL)     DO_PREPROCESSOR_EXPAND_(VAL)
 
 #ifndef DISABLE_SPH_PARTICLE_WAKEUP
 #define WAKEUP   4.1            /* allows 2 timestep bins within kernel */
@@ -166,6 +167,8 @@
 #define COMPUTE_POTENTIAL_ENERGY
 #endif
 #endif
+
+
 
 #ifdef SHEARING_BOX
 /* set default compile-time flags for the shearing-box (or shearing-sheet) boundaries */
@@ -367,7 +370,7 @@ typedef unsigned long long peanokey;
 #define  MAX_REAL_NUMBER  1e37
 #define  MIN_REAL_NUMBER  1e-37
 
-#ifdef MAGNETIC
+#if (defined(MAGNETIC) && !defined(COOLING))
 #define  CONDITION_NUMBER_DANGER  1.0e7 /*!< condition number above which we will not trust matrix-based gradients */
 #else
 #define  CONDITION_NUMBER_DANGER  1.0e3 /*!< condition number above which we will not trust matrix-based gradients */
@@ -719,11 +722,6 @@ z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
 /*  Global variables                                     */
 /*********************************************************/
 
-#ifdef UM_SEN_H2_SOLOMON_PROCESS
-#define JLWn 23
-extern float JLW[JLWn];
-extern float z_JLW[JLWn];
-#endif
 
 extern int FirstActiveParticle;
 extern int *NextActiveParticle;
@@ -939,7 +937,7 @@ extern FILE *FdBlackHoles;	/*!< file handle for blackholes.txt log-file. */
 extern FILE *FdBlackHolesDetails;
 #ifdef BH_OUTPUT_MOREINFO
 extern FILE *FdBhMergerDetails;
-#ifdef BH_STOCHASTIC_WINDS
+#ifdef BH_BAL_KICK
 extern FILE *FdBhWindDetails;
 #endif
 #endif
@@ -1049,6 +1047,10 @@ extern struct global_data_all_processes
   double MinEgySpec;		/*!< the minimum allowed temperature expressed as energy per unit mass */
 #ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
   double ArtCondConstant;
+#endif
+    
+#ifdef PM_HIRES_REGION_CLIPDM
+    double MassOfClippedDMParticles; /*!< the mass of high-res DM particles which the low-res particles will target if they enter the highres region */
 #endif
     
     double MinMassForParticleMerger; /*!< the minimum mass of a gas particle below which it will be merged into a neighbor */
@@ -1355,7 +1357,7 @@ extern struct global_data_all_processes
   double AGBGasEnergy;
 #endif
     
-#if defined(BH_BAL_WINDS) || defined(BH_STOCHASTIC_WINDS)
+#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
     double BAL_f_accretion;
     double BAL_v_outflow;
 #endif
@@ -2212,7 +2214,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 #ifdef BH_GRAVACCRETION_BTOD
     MyLongDouble Mbulge_in_Kernel;
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_WINDS_COLLIMATED) || defined(BH_GRAVACCRETION)  // DAA: need Jgas for GRAVACCRETION as well
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK_COLLIMATED) || defined(BH_GRAVACCRETION)  // DAA: need Jgas for GRAVACCRETION as well
     MyLongDouble Jgas_in_Kernel[3];
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
@@ -2232,10 +2234,9 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyFloat mdot_alphadisk;             /*!< gives mdot of mass going into alpha disk */
 #endif
 
-//#if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)    
-    MyFloat mass_to_swallow_total;      /*!< gives the total bound mass we want to swallow in this timestep */
+#if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;        /*!< gives the mass we want to swallow that contributes to eddington */
-//#endif
+#endif
 
 }
 *BlackholeTempInfo, *BlackholeDataPasserResult, *BlackholeDataPasserOut;

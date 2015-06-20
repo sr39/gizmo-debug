@@ -108,10 +108,12 @@
                                         + wt_j*SphP[j].Gradients.CosmicRayPressure[k]);
         }
 #endif
-        /* slope-limiter to ensure heat always flows from high pressure to low */
-        double CR_pressure_j = CosmicRayPressure_j;
-        double c_max = 2.0 * Face_Area_Norm * (local.CosmicRayPressure-CR_pressure_j) * rinv; // inter-particle gradient times tolerance //
-        cmag = MINMOD(c_max,cmag);
+        /* slope-limiter to ensure cosmic rays always flows from high pressure to low */
+        double c_max = 0.0;
+        for(k=0;k<3;k++) {c_max += Face_Area_Vec[k] * kernel.dp[k];}
+        c_max *= rinv*rinv;
+        double d_cr_p = local.CosmicRayPressure-CosmicRayPressure_j;
+        cmag = MINMOD(MINMOD(MINMOD(cmag , c_max*d_cr_p), fabs(c_max)*d_cr_p) , 2.0*Face_Area_Norm*d_cr_p*rinv);
         /* now multiply through the coefficient to get the actual flux */
         cmag *= -conduction_wt;
         
@@ -121,7 +123,7 @@
         {
             // enforce a flux limiter for stability (to prevent overshoot) //
             double CR_egy_i = local.CosmicRayPressure*V_i / GAMMA_COSMICRAY_MINUS1; // (E_cr = Volume * (Pressure/(GAMMA_CR-1)))
-            double CR_egy_j = CR_pressure_j*V_j / GAMMA_COSMICRAY_MINUS1;
+            double CR_egy_j = CosmicRayPressure_j*V_j / GAMMA_COSMICRAY_MINUS1;
             double du_ij_cond = 0.5*DMIN(DMIN(0.5*fabs(CR_egy_i-CR_egy_j),CR_egy_i),CR_egy_j);
             if(fabs(conduction_wt)>du_ij_cond) {conduction_wt *= du_ij_cond/fabs(conduction_wt);}
             Fluxes.CosmicRayPressure += conduction_wt / dt_hydrostep;

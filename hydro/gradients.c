@@ -134,6 +134,7 @@ struct GasGraddata_out
     struct Quantities_for_Gradients Gradients[3];
     struct Quantities_for_Gradients Maxima;
     struct Quantities_for_Gradients Minima;
+    MyFloat MaxDistance;
 }
 *GasGradDataResult, *GasGradDataOut;
 
@@ -158,6 +159,7 @@ static struct temporary_data_topass
 {
     struct Quantities_for_Gradients Maxima;
     struct Quantities_for_Gradients Minima;
+    MyFloat MaxDistance;
 #ifdef CONSTRAINED_GRADIENT_MHD
     MyDouble FaceDotB;
     MyDouble FaceCrossX[3][3];
@@ -287,6 +289,7 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
     if(gradient_iteration == 0)
     {
         int j,k;
+        MAX_ADD(GasGradDataPasser[i].MaxDistance,out->MaxDistance,mode);
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
         ASSIGN_ADD_PRESET(SphP[i].alpha_limiter, out->alpha_limiter, mode);
 #endif
@@ -1222,6 +1225,11 @@ void hydro_gradient_calc(void)
             /* finally, we need to apply a sensible slope limiter to the gradients, to prevent overshooting */
             double stol = 0.0;
             double h_lim = PPP[i].Hsml;
+//#if (defined(MAGNETIC) && defined(COOLING)) ||
+            h_lim = DMAX(PPP[i].Hsml,GasGradDataPasser[i].MaxDistance);
+//#else
+//            h_lim = DMIN(GasGradDataPasser[i].MaxDistance , 4.0*PPP[i].Hsml);
+//#endif
             /* fraction of H at which maximum reconstruction is allowed (=0.5 for 'standard'); for pure hydro we can
              be a little more aggresive and the equations are still stable (but this is as far as you want to push it) */
             double a_limiter = 0.25; if(SphP[i].ConditionNumber>100) a_limiter=DMIN(0.5, 0.25 + 0.25 * (SphP[i].ConditionNumber-100)/100);
@@ -1539,6 +1547,9 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     /* ------------------------------------------------------------------------------------------------ */
                     /* DIFFERENCE & SLOPE LIMITING: need to check maxima and minima of particle values in the kernel, to avoid
                      'overshoot' with our gradient estimators. this check should be among all interacting pairs */
+
+                    if(kernel.r > out.MaxDistance) {out.MaxDistance = kernel.r;}
+                    if(swap_to_j) {if(kernel.r > GasGradDataPasser[j].MaxDistance) {GasGradDataPasser[j].MaxDistance = kernel.r;}}
 
                     double dd = SphP[j].Density - local.GQuant.Density;
                     MINMAX_CHECK(dd,out.Minima.Density,out.Maxima.Density);

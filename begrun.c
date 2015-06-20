@@ -547,7 +547,7 @@ void open_outputfiles(void)
       printf("error in opening file '%s'\n", buf);
       endrun(1);
     }
-#ifdef BH_STOCHASTIC_WINDS
+#ifdef BH_BAL_KICK
   sprintf(buf, "%sblackhole_details/bhwinds_%d.txt", All.OutputDir, ThisTask);
   if(!(FdBhWindDetails = fopen(buf, mode)))
     {
@@ -1126,7 +1126,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
         
-#if defined(BH_BAL_WINDS) || defined(BH_STOCHASTIC_WINDS)
+#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
         strcpy(tag[nt],"BAL_f_accretion");
         addr[nt] = &All.BAL_f_accretion;
         id[nt++] = REAL;

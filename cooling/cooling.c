@@ -882,12 +882,17 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
             LambdaMol = //10.0 *
             2.8958629e-26/(pow(T/125.21547,-4.9201887)+pow(T/1349.8649,-1.7287826)+pow(T/6450.0636,-0.30749082));//*nHcgs*nHcgs;
             LambdaMol *= (1-shieldfac);
+            double LambdaDust = 0;
 #ifdef COOL_METAL_LINES_BY_SPECIES
             LambdaMol *= (1+Z[0]/All.SolarAbundances[0])*(0.001 + 0.1*nHcgs/(1.0+nHcgs)
                             + 0.09*nHcgs/(1.0+0.1*nHcgs)
                             + (Z[0]/All.SolarAbundances[0])*(Z[0]/All.SolarAbundances[0])/(1.0+nHcgs));
+            /* add dust cooling as well */
+            double Tdust = 30.;
+            if(T > Tdust) {LambdaDust = 0.63e-33 * (T-Tdust) * sqrt(T) * (Z[0]/All.SolarAbundances[0]);}
 #endif
-            Lambda += LambdaMol;
+            Lambda += LambdaMol + LambdaDust;
+            
         }
 #endif
         
@@ -928,6 +933,27 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
             Heat += Gamma_CR;
         }
 #endif
+        
+#ifdef COOL_LOW_TEMPERATURES
+#ifndef COSMIC_RAYS
+        /* if COSMIC_RAYS is not enabled, but low-temperature cooling is on, we account for the CRs as a heating source using
+         a more approximate expression (assuming the mean background of the Milky Way clouds) */
+        if(logT <= 5.2)
+        {
+            double Gamma_CR = 1.0e-16 * (0.98 + 1.65*ne*XH) / (1.e-2 + nHcgs) * 9.0e-12;
+            // multiplied by background of ~5eV/cm^3 (Goldsmith & Langer (1978),  van Dishoeck & Black (1986) //
+            Heat += Gamma_CR;
+        }
+#endif
+#ifdef COOL_METAL_LINES_BY_SPECIES
+        /* add dust heating as well */
+        double Tdust = 30.;
+        if(T < Tdust) {Heat += 0.63e-33 * (Tdust-T) * sqrt(Tdust) * (Z[0]/All.SolarAbundances[0]);}
+#endif
+#endif
+        
+        
+        
 #ifdef BH_COMPTON_HEATING
         if(T < AGN_T_Compton) Heat += AGN_LambdaPre * (AGN_T_Compton - T) / nHcgs;
         /* note this is independent of the free electron fraction */
@@ -995,6 +1021,56 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
    */
     
     double Q = Heat - Lambda;
+#ifdef COOL_LOW_TEMPERATURES
+    /* if we are in the optically thick limit, we need to modify the cooling/heating rates according to the appropriate limits; 
+        this flag does so by using a simple approximation. we consider the element as if it were a slab, with a column density 
+        calculated from the simulation properties and the Sobolev approximation. we then assume it develops an equilibrium internal 
+        temperature structure on a radiative diffusion timescale much faster than the dynamical time, and so the surface radiation 
+        from a photosphere can be simply related to the local density by the optical depth to infinity. the equations here follow 
+        Rafikov, 2007 (ApJ, 662, 642): 
+            denergy/dt/dArea = sigma*T^4 / fc(tau)
+            fc(tau) = tau^eta + 1/tau (taking chi, phi~1; the second term describes the optically thin limit, which is calculated above 
+                more accurately anyways - that was just Kirchoff's Law; so we only need to worry about the first term)
+            eta = 4*(gamma-1) / [gamma*(1+alpha+beta*(gamma-1)/gamma)], where gamma=real polytropic index, and alpha/beta follow
+                an opacity law kappa=kappa_0 * P^alpha * T^beta. for almost all the regimes of interest, however, eta~1, which is also 
+                what is obtained for a convectively stable slab. so we will use this.
+            now, this gives sigma*T^4/tau * Area_eff / nHcgs as the 'effective' cooling rate in our units of Heat or Lambda above. 
+                the nHcgs just puts it in the same volumetric terms. The Area_eff must be defined as ~m_particle/surface_density
+                to have the same meaning for a slab as assumed in Rafikov (and to integrate correctly over all particles in the slab, 
+                if/when the slab is resolved). We estimate this in our usual fashion with the Sobolev-type column density
+            tau = kappa * surface_density; we estimate kappa ~ 5 cm^2/g * (0.001+Z/Z_solar), as the frequency-integrated kappa for warm 
+                dust radiation (~150K), weighted by the dust-to-gas ratio (with a floor for molecular absorption). we could make this 
+                temperature-dependent, though, fairly easily - for this particular problem it won't make much difference
+        This rate then acts as an upper limit to the net heating/cooling calculated above (restricts absolute value)
+     */
+    //if(nHcgs > 0.1) /* don't bother at very low densities, since youre not optically thick */
+    if( (nHcgs > 0.1) && (target >= 0) )  // DAA: protect from target=-1 with GALSF_EFFECTIVE_EQS
+    {
+        double surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1);
+        surface_density *= All.cf_a2inv * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm; // converts to cgs
+        double effective_area = 2.3 * PROTONMASS / surface_density; // since cooling rate is ultimately per-particle, need a particle-weight here
+        double kappa_eff; // effective kappa, accounting for metal abundance, temperature, and density //
+        if(T < 1500.)
+        {
+            if(T < 150.) {kappa_eff=0.0027*T*sqrt(T);} else {kappa_eff=5.;}
+            kappa_eff *= P[target].Metallicity[0]/All.SolarAbundances[0];
+            if(kappa_eff < 0.1) {kappa_eff=0.1;}
+        } else {
+            /* this is an approximate result for high-temperature opacities, but provides a pretty good fit from 1.5e3 - 1.0e9 K */
+            double k_electron = 0.2 * (1. + HYDROGEN_MASSFRAC); //0.167 * ne; /* Thompson scattering (non-relativistic) */
+            double k_molecular = 0.1 * P[target].Metallicity[0]; /* molecular line opacities */
+            double k_Hminus = 1.1e-25 * sqrt(P[target].Metallicity[0] * rho) * pow(T,7.7); /* negative H- ion opacity */
+            double k_Kramers = 4.0e25 * (1.+HYDROGEN_MASSFRAC) * (P[target].Metallicity[0]+0.001) * rho / (T*T*T*sqrt(T)); /* free-free, bound-free, bound-bound transitions */
+            double k_radiative = k_molecular + 1./(1./k_Hminus + 1./(k_electron+k_Kramers)); /* approximate interpolation between the above opacities */
+            double k_conductive = 2.6e-7 * ne * T*T/(rho*rho); //*(1+pow(rho/1.e6,0.67) /* e- thermal conductivity can dominate at low-T, high-rho, here it as expressed as opacity */
+            kappa_eff = 1./(1./k_radiative + 1./k_conductive); /* effective opacity including both heat carriers (this is exact) */
+        }
+        double tau_eff = kappa_eff * surface_density;
+        double Lambda_Thick_BlackBody = 5.67e-5 * (T*T*T*T) * effective_area / ((1.+tau_eff) * nHcgs);
+        if(Q > 0) {if(Q > Lambda_Thick_BlackBody) {Q=Lambda_Thick_BlackBody;}} else {if(Q < -Lambda_Thick_BlackBody) {Q=-Lambda_Thick_BlackBody;}}
+    }
+#endif
+    
 #ifndef COOLING_OPERATOR_SPLIT
     /* add the hydro energy change directly: this represents an additional heating/cooling term, to be accounted for 
         in the semi-implicit solution determined here. this is more accurate when tcool << tdynamical */

@@ -11,10 +11,10 @@
 #include "../allvars.h"
 #include "../proto.h"
 
-/* This file contains the routines for driven turbulence/stirring; use for things 
-    like idealized turbulence tests, large-eddy simulations, and the like */
-/* 
- *  This code was originally written for GADGET3 by Andreas Bauer; it has been 
+/* This file contains the routines for driven turbulence/stirring; use for things
+ like idealized turbulence tests, large-eddy simulations, and the like */
+/*
+ *  This code was originally written for GADGET3 by Andreas Bauer; it has been
  *   modified slightly by Phil Hopkins for GIZMO, but is largely intact.
  */
 
@@ -378,182 +378,187 @@ void add_turb_accel()
 
 void reset_turb_temp(void)
 {
-  int i;
-  double esum = 0, globsum;
-
-  for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    int i;
+    double esum = 0, globsum;
+    
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-      double u0 = All.RefInternalEnergy;
-      if(fabs(GAMMA_MINUS1) > 0.01) u0 *= pow(SphP[i].Density/All.RefDensity,GAMMA_MINUS1);
-      double du = (SphP[i].InternalEnergy - u0);
-      SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = u0;  /* this is where internal energy is reset */
-      SphP[i].Pressure = get_pressure(i);
-      SphP[i].EgyDiss += P[i].Mass * du;
-      esum += P[i].Mass * du;
+        double u0 = All.RefInternalEnergy;
+        if(fabs(GAMMA_MINUS1) > 0.01) u0 *= pow(SphP[i].Density/All.RefDensity,GAMMA_MINUS1);
+        double du = (SphP[i].InternalEnergy - u0);
+        SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = u0;  /* this is where internal energy is reset */
+        SphP[i].Pressure = get_pressure(i);
+        SphP[i].EgyDiss += P[i].Mass * du;
+        esum += P[i].Mass * du;
     }
-
-  MPI_Allreduce(&esum, &globsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  
-  All.TurbDissipatedEnergy += globsum;
+    
+    MPI_Allreduce(&esum, &globsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    
+    All.TurbDissipatedEnergy += globsum;
 }
 
 
 void do_turb_driving_step_first_half(void)
 {
-  CPU_Step[CPU_MISC] += measure_time();
-  int i, j;
-  integertime ti_step, tstart, tend;
-  double dvel[3], dt_gravkick, atime;
-
-
-  add_turb_accel();
-
-
-  if(All.ComovingIntegrationOn)
-    atime = All.Time;
-  else
-    atime = 1.0;
-
-  double esum = 0, globsum;
-
-  for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    CPU_Step[CPU_MISC] += measure_time();
+    int i, j;
+    integertime ti_step, tstart, tend;
+    double dvel[3], dt_gravkick, atime;
+    
+    
+    add_turb_accel();
+    
+    
+    if(All.ComovingIntegrationOn)
+        atime = All.Time;
+    else
+        atime = 1.0;
+    
+    double esum = 0, globsum;
+    
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-      ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
-
-      tstart = P[i].Ti_begstep;	/* beginning of step */
-      tend = P[i].Ti_begstep + ti_step / 2;	/* midpoint of step */
-
-      if(All.ComovingIntegrationOn)
-	dt_gravkick = get_gravkick_factor(tstart, tend);
-      else
-	dt_gravkick = (tend - tstart) * All.Timebase_interval;
-
-      if(P[i].Type == 0)
-	{
-	  double ekin0 = 0.5 * P[i].Mass * (P[i].Vel[0] * P[i].Vel[0] + P[i].Vel[1] * P[i].Vel[1] +
-					    P[i].Vel[2] * P[i].Vel[2]);
-
-	  for(j = 0; j < 3; j++)
-	    {
-	      dvel[j] = SphP[i].TurbAccel[j] * dt_gravkick;
-	      P[i].Vel[j] += dvel[j];
-	      P[i].dp[j] += P[i].Mass * dvel[j];
-	    }
-
-	  double ekin1 = 0.5 * P[i].Mass * (P[i].Vel[0] * P[i].Vel[0] + P[i].Vel[1] * P[i].Vel[1] +
-					    P[i].Vel[2] * P[i].Vel[2]);
-
-	  SphP[i].EgyDrive += ekin1 - ekin0;
-
-	  esum += ekin1 - ekin0;
-	}
+        ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
+        
+        tstart = P[i].Ti_begstep;	/* beginning of step */
+        tend = P[i].Ti_begstep + ti_step / 2;	/* midpoint of step */
+        
+        if(All.ComovingIntegrationOn)
+            dt_gravkick = get_gravkick_factor(tstart, tend);
+        else
+            dt_gravkick = (tend - tstart) * All.Timebase_interval;
+        
+        if(P[i].Type == 0)
+        {
+            double ekin0 = 0.5 * P[i].Mass * (P[i].Vel[0] * P[i].Vel[0] + P[i].Vel[1] * P[i].Vel[1] +
+                                              P[i].Vel[2] * P[i].Vel[2]);
+            
+            double vtmp[3];
+            for(j = 0; j < 3; j++)
+            {
+                dvel[j] = SphP[i].TurbAccel[j] * dt_gravkick;
+                vtmp[j] = P[i].Vel[j] + dvel[j];
+                /*
+                 P[i].Vel[j] += dvel[j];
+                 P[i].dp[j] += P[i].Mass * dvel[j];
+                 */
+            }
+            
+            double ekin1 = 0.5 * P[i].Mass * (vtmp[0]*vtmp[0]+vtmp[1]*vtmp[1]+vtmp[2]*vtmp[2]);
+            
+            SphP[i].EgyDrive += ekin1 - ekin0;
+            
+            esum += ekin1 - ekin0;
+        }
     }
-
-  MPI_Allreduce(&esum, &globsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  All.TurbInjectedEnergy += globsum;
-
-  CPU_Step[CPU_DRIFT] += measure_time();
+    
+    MPI_Allreduce(&esum, &globsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    All.TurbInjectedEnergy += globsum;
+    
+    CPU_Step[CPU_DRIFT] += measure_time();
 }
 
 
 void do_turb_driving_step_second_half(void)
 {
-  CPU_Step[CPU_MISC] += measure_time();
-  int i, j;
-  integertime ti_step, tstart, tend;
-  double dvel[3], dt_gravkick, atime;
-
-  if(All.ComovingIntegrationOn)
-    atime = All.Time;
-  else
-    atime = 1.0;
-
-  double esum = 0, globsum;
-
-  for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    CPU_Step[CPU_MISC] += measure_time();
+    int i, j;
+    integertime ti_step, tstart, tend;
+    double dvel[3], dt_gravkick, atime;
+    
+    if(All.ComovingIntegrationOn)
+        atime = All.Time;
+    else
+        atime = 1.0;
+    
+    double esum = 0, globsum;
+    
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-      ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
-
-      tstart = P[i].Ti_begstep + ti_step / 2;	/* midpoint of step */
-      tend = P[i].Ti_begstep + ti_step;	/* end of step */
-
-      if(All.ComovingIntegrationOn)
-	dt_gravkick = get_gravkick_factor(tstart, tend);
-      else
-	dt_gravkick = (tend - tstart) * All.Timebase_interval;
-
-      if(P[i].Type == 0)
-	{
-	  double ekin0 = 0.5 * P[i].Mass * (P[i].Vel[0] * P[i].Vel[0] + P[i].Vel[1] * P[i].Vel[1] +
-					    P[i].Vel[2] * P[i].Vel[2]);
-
-	  for(j = 0; j < 3; j++)
-	    {
-	      dvel[j] = SphP[i].TurbAccel[j] * dt_gravkick;
-	      P[i].Vel[j] += dvel[j];
-	      P[i].dp[j] += P[i].Mass * dvel[j];
-
-	      SphP[i].VelPred[j] = P[i].Vel[j];
-	    }
-
-	  double ekin1 = 0.5 * P[i].Mass * (P[i].Vel[0] * P[i].Vel[0] + P[i].Vel[1] * P[i].Vel[1] +
-					    P[i].Vel[2] * P[i].Vel[2]);
-
-	  SphP[i].EgyDrive += ekin1 - ekin0;
-
-	  esum += ekin1 - ekin0;
-	}
+        ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
+        
+        tstart = P[i].Ti_begstep + ti_step / 2;	/* midpoint of step */
+        tend = P[i].Ti_begstep + ti_step;	/* end of step */
+        
+        if(All.ComovingIntegrationOn)
+            dt_gravkick = get_gravkick_factor(tstart, tend);
+        else
+            dt_gravkick = (tend - tstart) * All.Timebase_interval;
+        
+        if(P[i].Type == 0)
+        {
+            double ekin0 = 0.5 * P[i].Mass * (P[i].Vel[0] * P[i].Vel[0] + P[i].Vel[1] * P[i].Vel[1] +
+                                              P[i].Vel[2] * P[i].Vel[2]);
+            
+            double vtmp[3];
+            for(j = 0; j < 3; j++)
+            {
+                dvel[j] = SphP[i].TurbAccel[j] * dt_gravkick;
+                vtmp[j] = P[i].Vel[j] + dvel[j];
+                /*
+                 P[i].Vel[j] += dvel[j];
+                 P[i].dp[j] += P[i].Mass * dvel[j];
+                 SphP[i].VelPred[j] = P[i].Vel[j];
+                 */
+            }
+            
+            double ekin1 = 0.5 * P[i].Mass * (vtmp[0]*vtmp[0]+vtmp[1]*vtmp[1]+vtmp[2]*vtmp[2]);
+            
+            SphP[i].EgyDrive += ekin1 - ekin0;
+            
+            esum += ekin1 - ekin0;
+        }
     }
-  MPI_Allreduce(&esum, &globsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  All.TurbInjectedEnergy += globsum;
-
-  CPU_Step[CPU_DRIFT] += measure_time();
+    MPI_Allreduce(&esum, &globsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    All.TurbInjectedEnergy += globsum;
+    
+    CPU_Step[CPU_DRIFT] += measure_time();
 }
 
 
 
 void log_turb_temp(void)
 {
-  int i;
-  double dudt_drive = 0;
-  double dudt_diss = 0;
-  double mass = 0;
-  double ekin = 0;
-  double etot = 0;
-
-  for(i = 0; i < N_gas; i++)
+    int i;
+    double dudt_drive = 0;
+    double dudt_diss = 0;
+    double mass = 0;
+    double ekin = 0;
+    double etot = 0;
+    
+    for(i = 0; i < N_gas; i++)
     {
-      dudt_drive += P[i].Mass * SphP[i].DuDt_drive;
-      dudt_diss += P[i].Mass * SphP[i].DuDt_diss;
-      ekin += 0.5 * P[i].Mass * (P[i].Vel[0] * P[i].Vel[0] +
-				 P[i].Vel[1] * P[i].Vel[1] + P[i].Vel[2] * P[i].Vel[2]);
-
-      double u = SphP[i].InternalEnergy;
-      etot += P[i].Mass * u;
-      mass += P[i].Mass;
+        dudt_drive += P[i].Mass * SphP[i].DuDt_drive;
+        dudt_diss += P[i].Mass * SphP[i].DuDt_diss;
+        ekin += 0.5 * P[i].Mass * (P[i].Vel[0] * P[i].Vel[0] +
+                                   P[i].Vel[1] * P[i].Vel[1] + P[i].Vel[2] * P[i].Vel[2]);
+        
+        double u = SphP[i].InternalEnergy;
+        etot += P[i].Mass * u;
+        mass += P[i].Mass;
     }
-  
-  etot += ekin;
-  
-  double glob_mass, glob_dudt_drive, glob_dudt_diss, glob_ekin, glob_etot;
-
-  MPI_Allreduce(&mass, &glob_mass, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(&dudt_drive, &glob_dudt_drive, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(&dudt_diss, &glob_dudt_diss, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(&ekin, &glob_ekin, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(&etot, &glob_etot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
-  double mach = sqrt(2 * (glob_ekin / glob_mass)) / All.IsoSoundSpeed;
-
-  if(ThisTask == 0)
-    fprintf(FdTurb, "%g %g %g %g %g %g %g\n",
-	    All.Time,
-	    mach,
-	    glob_etot / glob_mass,
-	    glob_dudt_drive / glob_mass,
-	    glob_dudt_diss / glob_mass,
-	    All.TurbInjectedEnergy / glob_mass, 
-	    All.TurbDissipatedEnergy / glob_mass);
+    
+    etot += ekin;
+    
+    double glob_mass, glob_dudt_drive, glob_dudt_diss, glob_ekin, glob_etot;
+    
+    MPI_Allreduce(&mass, &glob_mass, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&dudt_drive, &glob_dudt_drive, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&dudt_diss, &glob_dudt_diss, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&ekin, &glob_ekin, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&etot, &glob_etot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    
+    double mach = sqrt(2 * (glob_ekin / glob_mass)) / All.IsoSoundSpeed;
+    
+    if(ThisTask == 0)
+        fprintf(FdTurb, "%g %g %g %g %g %g %g\n",
+                All.Time,
+                mach,
+                glob_etot / glob_mass,
+                glob_dudt_drive / glob_mass,
+                glob_dudt_diss / glob_mass,
+                All.TurbInjectedEnergy / glob_mass, 
+                All.TurbDissipatedEnergy / glob_mass);
 }
 
 #endif

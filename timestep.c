@@ -322,13 +322,6 @@ integertime get_timestep(int p,		/*!< particle index */
     double star_age, dt_stellar_evol;
 #endif
     
-#ifdef BLACK_HOLES
-    double dt_accr;
-#ifdef UNIFIED_FEEDBACK
-    double meddington = 0;
-#endif // UNIFIED_FEEDBACK
-#endif // BLACK_HOLES
-    
 #ifdef NUCLEAR_NETWORK
     double dt_network, dt_species;
     int k;
@@ -363,6 +356,15 @@ integertime get_timestep(int p,		/*!< particle index */
         }
         
         ac = sqrt(ax * ax + ay * ay + az * az);	/* this is now the physical acceleration */
+#ifdef TURB_DRIVING
+        if(P[p].Type==0)
+        {
+            /* because the turbulent acceleration is a random variable, we dont want it to catch us by surprise if it moves up, so 
+                we include a safety factor here which (very crudely) approximates the maximum amplitude it could reach */
+            double a_max_safety = 1.4 * sqrt(pow(All.StKmax,NUMDIMS) * All.StEnergy / All.StDecay);
+            ac = sqrt(ac*ac + a_max_safety*a_max_safety);
+        }
+#endif
         *aphys = ac;
     }
     else
@@ -458,6 +460,7 @@ integertime get_timestep(int p,		/*!< particle index */
                                          SphP[p].Gradients.CosmicRayPressure[2]*SphP[p].Gradients.CosmicRayPressure[2]) / Get_Particle_CosmicRayPressure(p);
                 double L_cond = 1./(L_cond_inv + 0./L_particle) * All.cf_atime;
                 double dt_conduction = 0.5 * L_cond*L_cond / (1.0e-33 + SphP[p].CosmicRayDiffusionCoeff);
+                // since we use DIFFUSIVITIES, not CONDUCTIVITIES, we dont need any other powers to get the right units //
                 if(dt_conduction < dt) dt = dt_conduction;
             }
 #endif
@@ -465,32 +468,71 @@ integertime get_timestep(int p,		/*!< particle index */
             
 #ifdef VISCOSITY
             {
-                int kv1,kv2; double dv_mag=0,v_mag=0;
+                int kv1,kv2; double dv_mag=0,v_mag=1.0e-33;
+                for(kv1=0;kv1<3;kv1++) {v_mag+=P[p].Vel[kv1]*P[p].Vel[kv1];}
+                double dv_mag_all = 0.0;
                 for(kv1=0;kv1<3;kv1++)
                 {
-                    for(kv2=0;kv2<3;kv2++) {dv_mag+=SphP[p].Gradients.Velocity[kv1][kv2]*SphP[p].Gradients.Velocity[kv1][kv2];}
-                    v_mag+=P[p].Vel[kv1]*P[p].Vel[kv1];
+                    double dvmag_tmp = 0;
+                    for(kv2=0;kv2<3;kv2++) {dvmag_tmp+=SphP[p].Gradients.Velocity[kv1][kv2]*SphP[p].Gradients.Velocity[kv1][kv2];}
+                    dv_mag += dvmag_tmp /DMAX(P[p].Vel[kv1]*P[p].Vel[kv1],0.01*v_mag);
+                    dv_mag_all += dvmag_tmp;
                 }
-                v_mag += 1.0e-33;
-                double L_visc = DMAX(L_particle , 1. / (sqrt(dv_mag/v_mag) + 1./L_particle)) * All.cf_atime;
+                dv_mag = sqrt(DMAX(dv_mag, dv_mag_all/v_mag));
+                double L_visc = DMAX(L_particle , 1. / (dv_mag + 1./L_particle)) * All.cf_atime;
                 double visc_coeff = sqrt(SphP[p].Eta_ShearViscosity*SphP[p].Eta_ShearViscosity + SphP[p].Zeta_BulkViscosity*SphP[p].Zeta_BulkViscosity);
-                double dt_viscosity = 0.5 * L_visc*L_visc / (1.0e-33 + visc_coeff) * SphP[p].Density * All.cf_a3inv;
+                double dt_viscosity = 0.25 * L_visc*L_visc / (1.0e-33 + visc_coeff) * SphP[p].Density * All.cf_a3inv;
                 // since we use VISCOSITIES, not DIFFUSIVITIES, we need to add a power of density to get the right units //
                 if(dt_viscosity < dt) dt = dt_viscosity;
             }
 #endif
             
+            
 
 #ifdef TURB_DIFFUSION
-            /*
-            double L_tdiff_inv = sqrt(SphP[p].Gradients.Density[0]*SphP[p].Gradients.Density[0] +
-                                      SphP[p].Gradients.Density[1]*SphP[p].Gradients.Density[1] +
-                                      SphP[p].Gradients.Density[2]*SphP[p].Gradients.Density[2]) / SphP[p].Density;
-            double L_tdiff = 1./(L_tdiff_inv + 0./L_particle) * All.cf_atime;
-            double dt_tdiff = 2.0 * L_tdiff*L_tdiff / (1.0e-33 + SphP[p].TD_DiffCoeff);
-            // here, we use DIFFUSIVITIES, so there is no extra density power in the equation //
-            //if(dt_tdiff < dt) dt = dt_tdiff;
-            */
+            {
+                double L_tdiff_inv,L_tdiff,dt_tdiff;
+#ifdef TURB_DIFF_METALS
+                int k_species,kt;
+                for(k_species=0;k_species<NUM_METAL_SPECIES;k_species++)
+                {
+                    L_tdiff_inv=0;
+                    for(kt=0;kt<3;kt++) {L_tdiff_inv+=SphP[p].Gradients.Metallicity[k_species][kt]*SphP[p].Gradients.Metallicity[k_species][kt];}
+                    L_tdiff_inv /= (1.0e-33 + P[p].Metallicity[k_species]*P[p].Metallicity[k_species]);
+                    L_tdiff_inv = sqrt(L_tdiff_inv);
+                    L_tdiff = 1./(L_tdiff_inv + 1./(1.0*L_particle)) * All.cf_atime;
+                    dt_tdiff = 1.0 * L_tdiff*L_tdiff / (1.0e-33 + SphP[p].TD_DiffCoeff);
+                    // here, we use DIFFUSIVITIES, so there is no extra density power in the equation //
+                    if(dt_tdiff < dt) dt = dt_tdiff;
+                }
+#endif
+#ifdef TURB_DIFF_ENERGY
+                L_tdiff_inv = sqrt(SphP[p].Gradients.InternalEnergy[0]*SphP[p].Gradients.InternalEnergy[0] +
+                                   SphP[p].Gradients.InternalEnergy[1]*SphP[p].Gradients.InternalEnergy[1] +
+                                   SphP[p].Gradients.InternalEnergy[2]*SphP[p].Gradients.InternalEnergy[2]) / (1.e-33 + SphP[p].InternalEnergy);
+                L_tdiff = 1./(L_tdiff_inv + 1./(1.0*L_particle)) * All.cf_atime;
+                dt_tdiff = 1.0 * L_tdiff*L_tdiff / (1.0e-33 + SphP[p].TD_DiffCoeff);
+                // here, we use DIFFUSIVITIES, so there is no extra density power in the equation //
+                if(dt_tdiff < dt) dt = dt_tdiff;
+#endif
+#ifdef TURB_DIFF_VELOCITY
+                int kv1,kv2; double dv_mag=0,v_mag=1.0e-33;
+                for(kv1=0;kv1<3;kv1++) {v_mag+=P[p].Vel[kv1]*P[p].Vel[kv1];}
+                double dv_mag_all = 0.0;
+                for(kv1=0;kv1<3;kv1++)
+                {
+                    double dvmag_tmp = 0;
+                    for(kv2=0;kv2<3;kv2++) {dvmag_tmp+=SphP[p].Gradients.Velocity[kv1][kv2]*SphP[p].Gradients.Velocity[kv1][kv2];}
+                    dv_mag += dvmag_tmp /DMAX(P[p].Vel[kv1]*P[p].Vel[kv1],0.01*v_mag);
+                    dv_mag_all += dvmag_tmp;
+                }
+                L_tdiff_inv = sqrt(DMAX(dv_mag, dv_mag_all/v_mag));
+                L_tdiff = 1./(L_tdiff_inv + 1./(1.0*L_particle)) * All.cf_atime;
+                dt_tdiff = 1.0 * L_tdiff*L_tdiff / (1.0e-33 + SphP[p].TD_DiffCoeff);
+                // here, we use DIFFUSIVITIES, so there is no extra density power in the equation //
+                if(dt_tdiff < dt) dt = dt_tdiff;
+#endif
+            }
 #endif
             
             
@@ -503,7 +545,7 @@ integertime get_timestep(int p,		/*!< particle index */
                                              Get_Particle_BField(p,2)*Get_Particle_BField(p,2) +
                                              phi_b_units*phi_b_units) / SphP[p].Density );
 
-            dt_courant = 1.6 * All.CourantFac * (All.cf_atime*L_particle) / vsig1; // 2.0 factor may be added (PFH) //
+            dt_courant = 0.8 * All.CourantFac * (All.cf_atime*L_particle) / vsig1; // 2.0 factor may be added (PFH) //
             if(dt_courant < dt) {dt = dt_courant;}
 #endif
             
@@ -588,7 +630,8 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
         {
-#if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_BAL_WINDS)
+            double dt_accr;
+#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_BAL_WINDS)
             /* really want prefactor to be ratio of median gas mass to bh mass */
             dt_accr = 0.001 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
 #ifdef BH_BAL_WINDS
@@ -596,7 +639,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif // BH_BAL_WINDS
 #else
             dt_accr = 0.05 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
-#endif // defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_BAL_WINDS)
+#endif // defined(BH_GRAVCAPTURE_GAS) || defined(BH_BAL_WINDS)
             
             if(dt_accr > 0 && dt_accr < dt)
                 dt = dt_accr;
@@ -767,10 +810,7 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
                     dmean = pow(min_mass[type] / ((All.Omega0 - All.OmegaBaryon) * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G)), 1.0 / 3);
                 
 #ifdef BLACK_HOLES
-                if(type == 5)
-                    dmean =
-                    pow(min_mass[type] / (All.OmegaBaryon * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G)),
-                        1.0 / 3);
+                if(type == 5) {dmean = pow(min_mass[type] / (All.OmegaBaryon * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G)), 1.0 / 3);}
 #endif
                 dt = All.MaxRMSDisplacementFac * hfac * dmean / sqrt(v_sum[type] / count_sum[type]);
                 

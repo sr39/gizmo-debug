@@ -14,6 +14,8 @@
  *   smaller files and routines. The main functional difference is that BlackholeTempInfo
  *   is now allocated only for N_active_loc_BHs, rather than NumPart (as was done before).  Some
  *   extra index gymnastics are required to follow this change through in the MPI comm routines.
+ *   Cleanup, de-bugging, and consolidation of routines by Xiangcheng Ma
+ *   (xchma@caltech.edu) followed on 05/15/15; re-integrated by PFH.
  */
 
 /* function for allocating temp BH data struc needed for feedback routines*/
@@ -39,7 +41,7 @@ void blackhole_start(void)
     } else {
         BlackholeTempInfo = mymalloc("BlackholeTempInfo", 1 * sizeof(struct blackhole_temp_particle_data));    // allocate dummy, necessary?
     }
-
+    
     Nbh=0;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
@@ -85,8 +87,8 @@ void blackhole_start(void)
     /* all future loops can now take the following form:
      for(i=0; i<N_active_loc_BHs; i++)
      {
-         i_old = BlackholeTempInfo[i].index;
-         ...
+     i_old = BlackholeTempInfo[i].index;
+     ...
      }
      */
     
@@ -96,7 +98,6 @@ void blackhole_start(void)
 /* function for freeing temp BH data struc needed for feedback routines*/
 void blackhole_end(void)
 {
-//    long i;
     int bin;
     double mdot, mdot_in_msun_per_year;
     double mass_real, total_mass_real, medd, total_mdoteddington;
@@ -131,9 +132,6 @@ void blackhole_end(void)
     }
     
     fflush(FdBlackHolesDetails);
-    
-    
-    
     myfree(BlackholeTempInfo);
 }
 
@@ -176,18 +174,14 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
     for(k=0;k<3;k++)
         ASSIGN_ADD(BlackholeTempInfo[target].BH_SurroundingGasVel[k],out->BH_SurroundingGasVel[k],mode);
 #endif
-#if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
-
-    ASSIGN_ADD(BlackholeTempInfo[target].mass_to_swallow_total, out->mass_to_swallow_total, mode);
+#if defined(BH_GRAVCAPTURE_GAS)
     ASSIGN_ADD(BlackholeTempInfo[target].mass_to_swallow_edd, out->mass_to_swallow_edd, mode);
-
 #endif
 }
 
 
 
-int ngb_treefind_blackhole(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode,
-                           int *nexport, int *nsend_local)
+int ngb_treefind_blackhole(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode, int *nexport, int *nsend_local)
 {
     int numngb, no, p, task, nexport_save;
     struct NODE *current;
@@ -209,7 +203,7 @@ int ngb_treefind_blackhole(MyDouble searchcenter[3], MyFloat hsml, int target, i
             no = Nextnode[no];
             
             /* make sure we get all the particle types we need */
-#if defined(BH_REPOSITION_ON_POTMIN) || defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_NOGAS) || defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_DYNFRICTION)
+#if defined(BH_REPOSITION_ON_POTMIN) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_NONGAS) || defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_DYNFRICTION)
             if(P[p].Type < 0)
                 continue;
 #else
@@ -309,3 +303,4 @@ int ngb_treefind_blackhole(MyDouble searchcenter[3], MyFloat hsml, int target, i
     *startnode = -1;
     return numngb;
 }
+

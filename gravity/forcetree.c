@@ -1746,11 +1746,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
     double soft=0, pmass;
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
-    double wp, h_p_inv=0, h_p3_inv=0, u_p=0, zeta, ptype_sec=-1, zeta_sec=0, dWdr;
+    double h_p_inv=0, h_p3_inv=0, u_p=0, zeta, ptype_sec=-1, zeta_sec=0;
 #endif
 #endif
 #ifdef EVALPOTENTIAL
-    //double wp, facpot;        // DAA: it looks like EVALPOTENTIAL doesn't need wp...??
     double facpot;
     MyLongDouble pot;
     pot = 0;
@@ -2499,6 +2498,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     // these are the same particles for which the kernel lengths are computed
                     if(ags_gravity_kernel_shared_check(ptype, ptype_sec))
                     {
+                        double dWdr, wp;
                         if((r>0) && (u<1) && (pmass>0)) // checks that these aren't the same particle
                         {
                             kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
@@ -2523,8 +2523,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     // correction only applies to 'shared-kernel' particles: so this needs to check if
                     // these are the same particles for which the kernel lengths are computed
                     // (also checks that these aren't the same particle)
+#if !(defined(MAGNETIC) || defined(COOLING) || defined(GALSF) || defined(BLACK_HOLES))
                     if(ags_gravity_kernel_shared_check(ptype, ptype_sec) && (r > 0) && (pmass > 0))
                     {
+                        double dWdr, wp;
                         if(h_p_inv >= h_inv)
                         {
                             if((zeta != 0) && (u < 1))
@@ -2540,6 +2542,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                             }
                         }
                     } // if(ptype==ptype_sec)
+#endif
 #endif
                 }
                 

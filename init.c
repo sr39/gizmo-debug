@@ -763,8 +763,10 @@ void init(void)
 #endif
         
 #if defined(TURB_DRIVING)
+#ifdef GAMMA_ENFORCE_ADIABAT
         SphP[i].InternalEnergy = All.RefInternalEnergy;
         SphP[i].InternalEnergyPred = All.RefInternalEnergy;
+#endif
 #endif
         // re-match the predicted and initial velocities and B-field values, just to be sure //
         for(j=0;j<3;j++) SphP[i].VelPred[j]=P[i].Vel[j];
@@ -840,6 +842,17 @@ void init(void)
         /* All.MaxMassForParticleSplit  = 5.01 * mpi_mass_max; */
         All.MaxMassForParticleSplit  = 3.01 * mpi_mass_max;
     }
+    
+    
+#ifdef PM_HIRES_REGION_CLIPDM
+    if(RestartFlag != 1)
+    {
+        double mpi_m_hires_max, m_hires_max=0.0;
+        for(i=0; i<NumPart; i++) {if(P[i].Type==1) {if(P[i].Mass > m_hires_max) {m_hires_max=P[i].Mass;}}}
+        MPI_Allreduce(&m_hires_max, &mpi_m_hires_max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+        All.MassOfClippedDMParticles = mpi_m_hires_max;
+    }
+#endif
     
     
     if(RestartFlag == 3)
