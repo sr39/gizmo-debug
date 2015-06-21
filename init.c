@@ -30,7 +30,7 @@ void init(void)
     
 #ifdef MAGNETIC
     double a2_fac;
-    double gauss2gizmo = All.UnitMagneticField_in_gauss / sqrt(4.*M_PI*All.UnitPressure_in_cgs);
+    double gauss2gizmo = All.UnitMagneticField_in_gauss / sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam);
     /* NOTE: we will always work -internally- in code units where MU_0 = 1; hence the 4pi here;
         [much simpler, but be sure of your conversions!] */
 #endif
@@ -757,7 +757,7 @@ void init(void)
         
         struct eos_result res;
         eos_calc_egiven(SphP[i].Density * All.UnitDensity_in_cgs, SphP[i].xnuc, SphP[i].InternalEnergy, &SphP[i].temp, &res);
-        SphP[i].Pressure = res.p.v / All.UnitPressure_in_cgs;
+        SphP[i].Pressure = res.p.v / (All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam);
         // Warning: dp_drho is in physical units ...
         SphP[i].dp_drho = res.p.drho + res.temp * gsl_pow_2(res.p.dtemp / (SphP[i].Density * All.UnitDensity_in_cgs)) / res.e.dtemp;
 #endif

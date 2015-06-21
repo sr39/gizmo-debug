@@ -337,7 +337,7 @@ double get_pressure(int i)
     /* call tabulated eos with physical units */
     struct eos_result res;
     eos_calc_egiven(SphP[i].Density * All.UnitDensity_in_cgs, SphP[i].xnucPred, SphP[i].InternalEnergyPred, &SphP[i].temp, &res);
-    press = res.p.v / All.UnitPressure_in_cgs;
+    press = res.p.v / (All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam);
     SphP[i].dp_drho = (res.p.drho + res.temp * gsl_pow_2(res.p.dtemp / (SphP[i].Density * All.UnitDensity_in_cgs)) / res.e.dtemp);
 #endif
     
@@ -543,13 +543,20 @@ double Get_CosmicRayGradientLength(int i)
         L = (e_cr + p_cr) / |gradient_p_cr| = cr_enthalpy / |gradient(p_cr)| */
     double CRPressureGradMag = 0.0;
     int k; for(k=0;k<3;k++) {CRPressureGradMag += SphP[i].Gradients.CosmicRayPressure[k]*SphP[i].Gradients.CosmicRayPressure[k];}
+    /* limit the scale length: if too sharp, need a slope limiter at around the particle size */
     double L_gradient_min = Get_Particle_Size(i) * All.cf_atime;
     /* limit this scale length; if the gradient is too shallow, there is no information beyond a few smoothing lengths, so we can't let streaming go that far */
     double L_gradient_max = DMAX(200.*L_gradient_min, 100.0*PPP[i].Hsml*All.cf_atime);
-    double CRPressureGradScaleLength = GAMMA_COSMICRAY * Get_Particle_CosmicRayPressure(i) / sqrt(1.0e-33 + CRPressureGradMag) * All.cf_atime;
+
+    /* also, physically, cosmic rays cannot stream/diffuse with a faster coefficient than ~v_max*L_mean_free_path, where L_mean_free_path ~ 2.e20 * (cm^-3/n) */
+    double nH_cgs = SphP[i].Density * All.cf_a3inv * ( All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam ) / PROTONMASS ;
+    double L_mean_free_path = (3.e25 / nH_cgs) / (All.UnitLength_in_cm / All.HubbleParam);
+    L_gradient_max = DMIN(L_gradient_max, L_mean_free_path);
+    
+    double CRPressureGradScaleLength = GAMMA_COSMICRAY/GAMMA_COSMICRAY_MINUS1 * Get_Particle_CosmicRayPressure(i) / sqrt(1.0e-33 + CRPressureGradMag) * All.cf_atime;
     if(CRPressureGradScaleLength > 0) {CRPressureGradScaleLength = 1.0/(1.0/CRPressureGradScaleLength + 1.0/L_gradient_max);} else {CRPressureGradScaleLength=0;}
     CRPressureGradScaleLength = sqrt(L_gradient_min*L_gradient_min + CRPressureGradScaleLength*CRPressureGradScaleLength);
-    return CRPressureGradScaleLength;
+    return CRPressureGradScaleLength; /* this is returned in -physical- units */
 }
 
 double Get_CosmicRayStreamingVelocity(int i)
@@ -561,9 +568,9 @@ double Get_CosmicRayStreamingVelocity(int i)
     double vA_2 = 0.0; double cs_stream = v_streaming;
     int k; for(k=0;k<3;k++) {vA_2 += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
     vA_2 *= All.cf_afac1 / (All.cf_atime * SphP[i].Density);
-    v_streaming = DMIN(1.0e4*cs_stream, sqrt(cs_stream*cs_stream + vA_2));
+    v_streaming = DMIN(1.0e6*cs_stream, sqrt(cs_stream*cs_stream + vA_2));
 #endif
-    v_streaming *= All.CosmicRayDiffusionCoeff * All.cf_afac3; // converts to physical units and rescales according to chosen coefficient //
+    v_streaming *= All.cf_afac3; // converts to physical units and rescales according to chosen coefficient //
     return v_streaming;
 }
 #endif

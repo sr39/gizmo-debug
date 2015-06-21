@@ -1066,10 +1066,8 @@ extern struct global_data_all_processes
     UnitMass_in_g,		/*!< factor to convert internal mass unit to grams/h */
     UnitVelocity_in_cm_per_s,	/*!< factor to convert intqernal velocity unit to cm/sec */
     UnitLength_in_cm,		/*!< factor to convert internal length unit to cm/h */
-    UnitPressure_in_cgs,	/*!< factor to convert internal pressure unit to cgs units (little 'h' still
-				   around!) */
+    UnitPressure_in_cgs,	/*!< factor to convert internal pressure unit to cgs units (little 'h' still around!) */
     UnitDensity_in_cgs,		/*!< factor to convert internal length unit to g/cm^3*h^2 */
-    UnitCoolingRate_in_cgs,	/*!< factor to convert internal cooling rate to cgs units */
     UnitEnergy_in_cgs,		/*!< factor to convert internal energy to cgs units */
     UnitTime_in_Megayears,	/*!< factor to convert internal time to megayears/h */
     GravityConstantInternal,	/*!< If set to zero in the parameterfile, the internal value of the
@@ -1077,8 +1075,10 @@ extern struct global_data_all_processes
 				   units specified. Otherwise the value provided is taken as internal gravity
 				   constant G. */
     G;				/*!< Gravity-constant in internal units */
+#ifdef DISTORTIONTENSORPS
   double UnitDensity_in_Gev_per_cm3; /*!< factor to convert internal density unit to GeV/c^2 / cm^3 */
-  /* Cosmology */
+#endif
+    /* Cosmology */
 
 #ifdef MAGNETIC
   double UnitMagneticField_in_gauss; /*!< factor to convert internal magnetic field (B) unit to gauss (cgs) units */
@@ -1416,6 +1416,10 @@ extern struct global_data_all_processes
 #endif
 #endif /* MAGNETIC */
 
+#if defined(BH_BROADCAST_POSITION)
+  double BH_Position[3];
+#endif
+    
 #if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_VARIABLEVELOCITY)
   double TimeNextOnTheFlyFoF;
   double TimeBetOnTheFlyFoF;
@@ -2295,6 +2299,7 @@ enum iofields
   IO_HSML,
   IO_SFR,
   IO_AGE,
+  IO_GRAINSIZE,
   IO_HSMS,
   IO_Z,
   IO_BHMASS,

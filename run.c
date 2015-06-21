@@ -225,10 +225,6 @@ void calculate_non_standard_physics(void)
 #endif
 #endif
     
-#ifdef GRAIN_FLUID
-    apply_grain_dragforce();
-#endif
-        
     
 #ifdef RADTRANSFER
     double timeeach = 0, timeall = 0, tstart = 0, tend = 0;

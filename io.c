@@ -237,7 +237,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     
 #ifdef MAGNETIC
     double a2_inv = All.cf_a2inv;
-    double gizmo2gauss = sqrt(4.*M_PI*All.UnitPressure_in_cgs) / All.UnitMagneticField_in_gauss;
+    double gizmo2gauss = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam) / All.UnitMagneticField_in_gauss;
     /* NOTE: we will always work -internally- in code units where MU_0 = 1; hence the 4pi here;
      [much simpler, but be sure of your conversions!] */
 #endif
@@ -483,6 +483,18 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
+       
+        case IO_GRAINSIZE:		/* grain size */
+#ifdef GRAIN_FLUID
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = P[pindex].Grain_Size;
+                    n++;
+                }
+#endif
+            break;
+            
             
         case IO_VSTURB_DISS:
 #if defined(TURB_DRIVING)
@@ -1393,6 +1405,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_HSML:
         case IO_SFR:
         case IO_AGE:
+        case IO_GRAINSIZE:
         case IO_DELAYTIME:
         case IO_HSMS:
         case IO_POT:
@@ -1628,6 +1641,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_HSML:
         case IO_SFR:
         case IO_AGE:
+        case IO_GRAINSIZE:
         case IO_DELAYTIME:
         case IO_HSMS:
         case IO_POT:
@@ -1890,7 +1904,18 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
             return nstars;
 #endif
             break;
-            
+
+        case IO_GRAINSIZE:
+            nngb = 0;
+            for(i = 0; i < 6; i++)
+            {
+                if(i == 0) typelist[i] = 0;
+                if(i == 4) typelist[i] = 0;
+                nngb += header.npart[i];
+            }
+            return nngb;
+            break;
+
         case IO_IMF:
             for(i = 0; i < 6; i++)
                 if(i != 4)
@@ -2046,6 +2071,13 @@ int blockpresent(enum iofields blocknr)
             return 0;
             break;
             
+        case IO_GRAINSIZE:
+#ifdef GRAIN_FLUID
+            return 1;
+#else
+            return 0;
+#endif
+            break;
             
         case IO_Z:
 #ifdef METALS
@@ -2188,7 +2220,6 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
-            
             
         case IO_IMF:
 #ifdef GALSF_SFR_IMF_VARIATION
@@ -2583,6 +2614,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_AGE:
             strncpy(label, "AGE ", 4);
             break;
+        case IO_GRAINSIZE:
+            strncpy(label, "GRSZ", 4);
+            break;
         case IO_DELAYTIME:
             strncpy(label, "DETI", 4);
             break;
@@ -2921,6 +2955,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_AGE:
             strcpy(buf, "StellarFormationTime");
+            break;
+        case IO_GRAINSIZE:
+            strcpy(buf, "GrainSize");
             break;
         case IO_HSMS:
             strcpy(buf, "StellarSmoothingLength");

@@ -274,7 +274,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                 for(k = 0; k < 3; k++)
                 {
                     P[offset + n].Pos[k] = *fp_pos++;
-                    //P[offset + n].Pos[k] += All.BoxHalf; /* manually turn on for some ICs */
+                    //P[offset + n].Pos[k] += 0.5*All.BoxSize; /* manually turn on for some ICs */
                 }
             
             for(n = 0; n < pc; n++)
@@ -383,6 +383,13 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #ifdef GALSF
             for(n = 0; n < pc; n++)
                 P[offset + n].StellarAge = *fp++;
+#endif
+            break;
+            
+        case IO_GRAINSIZE:
+#ifdef GRAIN_FLUID
+            for(n = 0; n < pc; n++)
+                P[offset + n].Grain_Size = *fp++;
 #endif
             break;
             

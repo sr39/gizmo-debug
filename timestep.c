@@ -115,6 +115,18 @@ void find_timesteps(void)
     }
 #endif
 
+#ifdef BH_BROADCAST_POSITION
+    /* find the BH position */
+    double bhpos[3]; bhpos[0]=bhpos[1]=bhpos[2]=-1.e37;
+    for(i=0;i<NumPart;i++) {if(P[i].Type==5) {bhpos[0]=P[i].Pos[0]; bhpos[1]=P[i].Pos[1]; bhpos[2]=P[i].Pos[2];}}
+    /* now broadcast this; if the loop failed to find a BH, should have the extreme negative position above, so maximum-searching here will work */
+    double bhpos_x=bhpos[0]; MPI_Allreduce(&bhpos[0], &bhpos_x, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    double bhpos_y=bhpos[1]; MPI_Allreduce(&bhpos[1], &bhpos_y, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    double bhpos_z=bhpos[2]; MPI_Allreduce(&bhpos[2], &bhpos_z, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    All.BH_Position[0] = bhpos_x; All.BH_Position[1] = bhpos_y; All.BH_Position[2] = bhpos_z;
+#endif
+    
+    
     
 #ifdef FORCE_EQUAL_TIMESTEPS
     for(i = FirstActiveParticle, ti_min = TIMEBASE; i >= 0; i = NextActiveParticle[i])
@@ -422,7 +434,7 @@ integertime get_timestep(int p,		/*!< particle index */
         int k;
         for(k=0;k<3;k++) {csnd += (P[p].Gas_Velocity[k]-P[p].Vel[k])*(P[p].Gas_Velocity[k]-P[p].Vel[k]);}
 #ifdef GRAIN_LORENTZFORCE
-        for(k=0;k<3;k++) {csnd += P[p].Gas_B[k]*P[p].Gas_B[k] / (2.0 * P[i].Gas_Density);}
+        for(k=0;k<3;k++) {csnd += P[p].Gas_B[k]*P[p].Gas_B[k] / (2.0 * P[p].Gas_Density);}
 #endif
         csnd = sqrt(csnd);
         double L_particle = Get_Particle_Size(p);
