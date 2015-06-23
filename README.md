@@ -1,3 +1,15 @@
+This is a development branch of phopkins/GIZMO. It is dedicated to implementing a working radiative transfer module, based off of the Petkova & Springel (2009) OTVET implementation initially made for Gadget-3.
+
+For the methods paper used, see http://arxiv.org/pdf/0812.1801v2.pdf
+
+It is based on the OTVET method by Gnedin & Abel (2001): http://arxiv.org/pdf/astro-ph/0106278.pdf
+
+This method is currently being tested using the Cosmological Radiative Transfer Comparison Project, which can be found at http://www.phys.susx.ac.uk/~cs390/RT_comparison_project/index.html
+
+In addition, several RT tests that use the same method, as well as applications, can be found in Sales et al. (2014): http://arxiv.org/pdf/1310.7572.pdf
+
+
+-----------------------------
 Welcome!
 
 This is GIZMO (beta version: likely to be Google-style and stay in beta for quite some time).
@@ -24,5 +36,4 @@ http://www.tapir.caltech.edu/~phopkins/public/gizmo_public.tgz
 
 The private version of the code is closed and can only be used or distributed with explicit permission from the code authors. Please note that most of the non-public "modules" are proprietary and developed by active students/postdocs for their ongoing research - it is not acceptable to use or share these routines without first obtaining the explicit permission of both the lead code author and the author(s) of the relevant routines.
 
-If you use any version of the code, please reference the code paper at: http://arxiv.org/abs/1409.7395 (Hopkins 2015); you should also reference Volker Springel's GADGET paper (Springel, 2005, MNRAS, 364, 1105) for the domain decomposition and N-body algorithms. 
-
+If you use any version of the code, please reference the code paper at: http://arxiv.org/abs/1409.7395 (Hopkins 2015); you should also reference Volker Springel's GADGET paper (Springel, 2005, MNRAS, 364, 1105) for the domain decomposition and N-body algorithms.
