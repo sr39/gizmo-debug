@@ -57,9 +57,20 @@ void radtransfer_update_chemistry(void)
 
 	molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[i].elec);
 
-	temp = SphP[i].Pressure / rho *
-	  molecular_weight * PROTONMASS / All.UnitMass_in_g * All.HubbleParam /
-	  BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
+
+
+//	  if(fabs(temp - 1.0e4) > 1000.0)
+//	  	printf("temp: %g\n",temp);
+
+#ifdef RT_ILIEV_TEST1
+	temp = 1.0e4;
+#else
+	temp = GAMMA_MINUS1 * SphP[i].InternalEnergyPred * molecular_weight * PROTONMASS /
+		All.UnitMass_in_g * All.HubbleParam / BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
+#endif
+
+//		if(fabs(temp - 1.0e4) > 1000.0)
+//	printf("temp: %g\n",temp);
 
 	/* collisional ionization rate */
 	gamma_HI = 5.85e-11 * sqrt(temp) * exp(-157809.1 / temp) / (1.0 + sqrt(temp / 1e5)) * fac;
@@ -237,9 +248,9 @@ void radtransfer_update_chemistry(void)
 
 	molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[i].elec);
 
-	temp = SphP[i].Pressure / rho *
-	  molecular_weight * PROTONMASS / All.UnitMass_in_g * All.HubbleParam /
-	  BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
+	temp = GAMMA_MINUS1 * SphP[i].InternalEnergyPred * molecular_weight * PROTONMASS /
+		All.UnitMass_in_g * All.HubbleParam / BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
+
 
 	/* collisional ionization rate */
 	gamma_HI = 5.85e-11 * sqrt(temp) * exp(-157809.1 / temp) / (1.0 + sqrt(temp / 1e5)) * fac;

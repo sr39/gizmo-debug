@@ -364,7 +364,7 @@ typedef unsigned long long peanokey;
 #ifndef  HYDROGEN_ONLY
 #define  HYDROGEN_MASSFRAC 0.76 /*!< mass fraction of hydrogen, relevant only for radiative cooling */
 #else
-#define  HYDROGEN_MASSFRAC 1 /*!< mass fraction of hydrogen, relevant only for radiative cooling */
+#define  HYDROGEN_MASSFRAC 1.0 /*!< mass fraction of hydrogen, relevant only for radiative cooling */
 #endif
 
 #define  MAX_REAL_NUMBER  1e37

@@ -909,14 +909,14 @@ void rt_get_lum_stars(void)
 	  lum[i] += 4.0 * M_PI * R_eff * R_eff * M_PI * I_nu / e * d_nu / PLANCK; // number/s
 	}
       sum += lum[i];
- //     lum[i] *= All.UnitTime_in_s / All.HubbleParam; //number/time
+      lum[i] *= All.UnitTime_in_s / All.HubbleParam; //number/time
     }
 
     for(i = 0; i < N_RT_FREQ_BINS; i++)
     {
-    	lum[i] *= 5.0e48 / sum;
-    	lum[i] *= All.UnitTime_in_s / All.HubbleParam;
-    	
+ //   	lum[i] *= 5.0e48 / sum;
+ //   	lum[i] *= All.UnitTime_in_s / All.HubbleParam;
+   		lum[i] *= All.IonizingLumPerSolarMass / sum; 	
     }
 
 
