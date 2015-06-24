@@ -105,9 +105,9 @@ double rt_DoHeating(int i, double dt_internal)
     }
   
   du = rate * dt_internal / hubble_a / (SphP[i].Density * a3inv);
-//  de = du * GAMMA_MINUS1 / pow(SphP[i].Density * a3inv, GAMMA_MINUS1);
+  de = du * GAMMA_MINUS1 / pow(SphP[i].Density * a3inv, GAMMA_MINUS1);
 
-  return du / dt_internal;
+  return de / dt_internal;
 }
 
 #endif
@@ -143,7 +143,7 @@ double rt_DoCooling(int i, double dt_internal)
   if(fabs(de) < 0.2 * entropy)
     {
       /* cooling is slow, we can do it explicitly */
-      return du / dt_internal;
+      return de / dt_internal;
     }
   else
     {

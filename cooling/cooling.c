@@ -134,7 +134,7 @@ void do_the_cooling_for_particle(int i)
         unew = DoCooling(uold, SphP[i].Density * All.cf_a3inv, dtime, &ne, i);
 #else
 //        unew = uold + dt * fac_entr_to_u * (rt_DoHeating(i, dt) + rt_DoCooling(i, dt));
-        unew = uold + dt * (rt_DoHeating(i, dt) + rt_DoCooling(i, dt));
+        unew = uold + dt * fac_entr_to_u * (rt_DoHeating(i, dt) + rt_DoCooling(i, dt));
 #endif // RT_COOLING_PHOTOHEATING
         
         
