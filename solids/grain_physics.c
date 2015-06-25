@@ -110,10 +110,10 @@ void apply_grain_dragforce(void)
                                 we can also account for the -gas- acceleration, by including it like vdrift;
                                 for a constant t_stop, the gas acceleration term appears as 
                                 P[i].Vel[l] += Gas_Accel[k] * dt + slow_fac * (Gas-Accel[k] / tstop_inv) */
+                            /* note that we solve the equations with an external acceleration already (external_forcing above): therefore add to forces
+                             like gravity that are acting on the gas and dust in the same manner (in terms of acceleration) */
+                            P[i].GravAccel[k] += dv[k] / dt;
                         }
-                        /* note that we solve the equations with an external acceleration already (external_forcing above): therefore add to forces
-                            like gravity that are acting on the gas and dust in the same manner (in terms of acceleration) */
-                        P[i].GravAccel[k] += dv[k] / dt;
 
                     
 #ifdef GRAIN_BACKREACTION

@@ -1176,6 +1176,17 @@ void hydro_gradient_calc(void)
                 }
                 double vel_scale_length = sqrt( v_magnitude / dv_magnitude ) * All.cf_atime;
                 SphP[i].Eta_ShearViscosity /= (1 + 4.2 * ion_free_path / vel_scale_length); // should be in physical units //
+                /* also limit to saturation magnitude ~ signal_speed / lambda_MFP^2 */
+                double cs = Particle_effective_soundspeed_i(i);
+#ifdef MAGNETIC
+                double vA_2 = 0.0; for(k=0;k<3;k++) {vA_2 += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+                vA_2 *= All.cf_afac1 / (All.cf_atime * SphP[i].Density);
+                cs = DMIN(1.e4*cs , sqrt(cs*cs+vA_2));
+#endif
+                cs *= All.cf_afac3;
+                double eta_sat = (SphP[i].Density*All.cf_a3inv) * cs / (ion_free_path * (1 + 4.2 * ion_free_path / vel_scale_length));
+                if(eta_sat <= 0) SphP[i].Eta_ShearViscosity=0;
+                if(SphP[i].Eta_ShearViscosity>0) {SphP[i].Eta_ShearViscosity = 1. / (1./SphP[i].Eta_ShearViscosity + 1./eta_sat);}
 #endif
             }
 #endif

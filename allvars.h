@@ -679,13 +679,13 @@ extern MyDouble Shearing_Box_Pos_Offset;
     in this case, we have a shearing box with the '1' coordinate being phi, so there is a periodic extra wrap */
 #define NEAREST_XYZ(x,y,z,sign) (\
 x=((x)>boxHalf_X)?((x)-boxSize_X):(((x)<-boxHalf_X)?((x)+boxSize_X):(x)),\
-y -= Shearing_Box_Pos_Offset * sign * ((x)>boxHalf_X)?(1):(((x)<-boxHalf_X)?(-1):(0)),\
+y -= Shearing_Box_Pos_Offset * sign * (((x)>boxHalf_X)?(1):(((x)<-boxHalf_X)?(-1):(0))),\
 y = ((y)>boxSize_Y)?((y)-boxSize_Y):(((y)<-boxSize_Y)?((y)+boxSize_Y):(y)),\
 y=((y)>boxHalf_Y)?((y)-boxSize_Y):(((y)<-boxHalf_Y)?((y)+boxSize_Y):(y)),\
 z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
 
 #define NGB_PERIODIC_LONG_Y(x,y,z,sign) (\
-xtmp = y - Shearing_Box_Pos_Offset * sign * ((x)>boxHalf_X)?(1):(((x)<-boxHalf_X)?(-1):(0)),\
+xtmp = y - Shearing_Box_Pos_Offset * sign * (((x)>boxHalf_X)?(1):(((x)<-boxHalf_X)?(-1):(0))),\
 xtmp = fabs(((xtmp)>boxSize_Y)?((xtmp)-boxSize_Y):(((xtmp)<-boxSize_Y)?((xtmp)+boxSize_Y):(xtmp))),\
 (xtmp>boxHalf_Y)?(boxSize_Y-xtmp):xtmp)
 

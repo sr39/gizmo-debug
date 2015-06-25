@@ -30,7 +30,7 @@
     /* ------------------------------------------------------------------------------------------------------------------- */
     /* now we're ready to compute the volume integral of the fluxes (or equivalently an 'effective area'/face orientation) */
     /* ------------------------------------------------------------------------------------------------------------------- */
-    if(SphP[j].ConditionNumber*SphP[j].ConditionNumber > cnumcrit2)
+    if(SphP[j].ConditionNumber*SphP[j].ConditionNumber > 1.0e12 + cnumcrit2)
     {
         /* the effective gradient matrix is ill-conditioned: for stability, we revert to the "RSPH" EOM */
         Face_Area_Norm = -(V_i*V_i*kernel.dwk_i + V_j*V_j*kernel.dwk_j) / kernel.r;
@@ -299,6 +299,7 @@
                 }
                 // alright, if we've come this far, we need to subtract -off- the thermal energy part of the flux, and replace it //
             }
+            if(SphP[j].ConditionNumber*SphP[j].ConditionNumber > cnumcrit2) {use_entropic_energy_equation=1;}
             if(use_entropic_energy_equation)
             {
                 Fluxes.p = du_new;
@@ -388,6 +389,7 @@
                             if(dtoi > du_new-facenorm_pm*face_vel_i) {use_entropic_energy_equation=0;}}
                     }
                 }
+                if(SphP[j].ConditionNumber*SphP[j].ConditionNumber > cnumcrit2) {use_entropic_energy_equation=1;}
                 // alright, if we've come this far, we need to subtract -off- the thermal energy part of the flux, and replace it //
                 if(use_entropic_energy_equation) {Fluxes.p += du_new - du_old;}
             }
