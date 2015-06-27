@@ -69,7 +69,7 @@ void radtransfer_update_chemistry(void)
 		All.UnitMass_in_g * All.HubbleParam / BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
 #endif
 
-//		if(fabs(temp - 1.0e4) > 1000.0)
+//		if(fabs(temp - 1.0e4) > 3000.0)
 //	printf("temp: %g\n",temp);
 
 	/* collisional ionization rate */

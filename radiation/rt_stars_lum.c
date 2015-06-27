@@ -185,8 +185,8 @@ int star_lum_evaluate(int target, int mode, int *nexport, int *nsend_local)
 
 #ifndef RT_MULTI_FREQUENCY
     fac = 1.0;
-    lum[0] = 5.0e48 * All.UnitTime_in_s;
- //  lum[0] = fac * All.IonizingLumPerSolarMass * All.UnitTime_in_s / All.HubbleParam;
+    lum[0] = 1.8e50 * All.UnitTime_in_s;
+//   lum[0] = fac * All.IonizingLumPerSolarMass * All.UnitTime_in_s / All.HubbleParam;
 #endif
 
 

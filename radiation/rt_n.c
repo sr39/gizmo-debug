@@ -214,8 +214,12 @@ int n_treeevaluate(int target, int mode, int *nexport, int *nsend_local)
   struct NODE *nop = 0;
   int k, no, nodesinlist, nexport_save, ninteractions, task, listindex = 0, ptype;
   double r2, dx = 0, dy = 0, dz = 0, mass = 0;
-  double pos_x, pos_y, pos_z;
+  double pos_x, pos_y, pos_z, h;
   MyLongDouble n[3] = { 0, 0, 0 };
+
+#ifdef ADAPTIVE_GRAVSOFT_FORGAS
+  	double soft = 0;
+ #endif
 
   nexport_save = *nexport;
 
@@ -228,15 +232,22 @@ int n_treeevaluate(int target, int mode, int *nexport, int *nsend_local)
       pos_x = P[target].Pos[0];
       pos_y = P[target].Pos[1];
       pos_z = P[target].Pos[2];
+#ifdef ADAPTIVE_GRAVSOFT_FORGAS
+      soft = PPP[target].Hsml;
+#endif
     }
   else				/* mode=1 */
     {
       pos_x = NDataGet[target].Pos[0];
       pos_y = NDataGet[target].Pos[1];
       pos_z = NDataGet[target].Pos[2];
+#ifdef ADAPTIVE_GRAVSOFT_FORGAS
+      soft = NDataGet[target].Hsml;
+#endif
     }
 
-  double h = All.ForceSoftening[ptype];
+   h = All.ForceSoftening[ptype];
+
   if(mode == 0)
     {
       no = All.MaxPart;		/* root node */
@@ -354,10 +365,24 @@ int n_treeevaluate(int target, int mode, int *nexport, int *nsend_local)
 
 	  if(no < All.MaxPart)
 	    {
-              h = All.ForceSoftening[ptype];
-	      if(h < All.ForceSoftening[P[no].Type])
-		h = All.ForceSoftening[P[no].Type];
-	      no = Nextnode[no];
+#ifdef ADAPTIVE_GRAVSOFT_FORGAS
+	    	if(ptype == 0)
+	    		h = soft;
+	    	else
+	    		h = All.ForceSoftening[ptype];
+
+	    	if(P[no].Type == 0)
+	    	{
+	    		if(h < PPP[no].Hsml)
+	    			h = PPP[no].Hsml;
+	    	}
+	    	else
+	    	{
+	    		if(h < All.ForceSoftening[P[no].Type])
+	    			h = All.ForceSoftening[P[no].Type];
+	    	}
+#endif
+	    	no = Nextnode[no];
 	    }
 	  else			/* we have an  internal node. Need to check opening criterion */
 	    {
