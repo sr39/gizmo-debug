@@ -349,18 +349,11 @@ double get_pressure(int i)
     
 #ifdef TRUELOVE_CRITERION_PRESSURE
     /* add an extra pressure term to suppress fragmentation at/below the explicit resolution scale */
-    MyFloat xJeans;
-    double h_eff = Get_Particle_Size(i);
-#ifdef HYDRO_SPH
-    /* robertson & kravtsov modification of Bate & Burkert formulation */
-    xJeans=(1.83 * 2.0 / GAMMA) * All.G * h_eff * h_eff * SphP[i].Density * SphP[i].Density;
-    xJeans*=1.5; /* above is NJeans=5, this is NJeans=9 */
-#else
-    /* standard finite-volume formulation of this */
-    double NJeans = 2; // set so that resolution = lambda_Jeans/NJeans
-    xJeans = NJeans * NJeans / (M_PI*GAMMA) * All.G * h_eff*h_eff * SphP[i].Density * SphP[i].Density;
-#endif
-    if(All.ComovingIntegrationOn) xJeans *= All.cf_afac1/All.cf_atime;
+    double h_eff = DMAX(Get_Particle_Size(i), All.ForceSoftening[0]/2.8); /* need to include latter to account for inter-particle spacing << grav soft cases */
+    /* standard finite-volume formulation of this (note there is some geometric ambiguity about whether there should be a "pi" in the equation below, but this 
+        can be completely folded into the (already arbitrary) definition of NJeans, so we just use the latter parameter */
+    double NJeans = 4; // set so that resolution = lambda_Jeans/NJeans -- fragmentation with Jeans/Toomre scales below this will be artificially suppressed now
+    double xJeans = (NJeans * NJeans / GAMMA) * All.G * h_eff*h_eff * SphP[i].Density * SphP[i].Density * All.cf_afac1/All.cf_atime;
     if(xJeans>press) press=xJeans;
 #endif
     
