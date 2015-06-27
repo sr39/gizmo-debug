@@ -255,6 +255,8 @@ double INLINE_FUNC Get_Particle_Pressure(int i);
 double INLINE_FUNC Get_Particle_Expected_Area(double h);
 #ifdef COSMIC_RAYS
 double INLINE_FUNC Get_Particle_CosmicRayPressure(int i);
+double Get_CosmicRayGradientLength(int i);
+double Get_CosmicRayStreamingVelocity(int i);
 #endif
 double INLINE_FUNC Particle_effective_soundspeed_i(int i);
 #ifdef MAGNETIC

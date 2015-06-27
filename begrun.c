@@ -273,6 +273,9 @@ void begrun(void)
       All.FastestWaveSpeed = 0.0;
       All.FastestWaveDecay = 0.0;
 #endif
+#ifdef BH_BROADCAST_POSITION
+      All.BH_Position[0]=All.BH_Position[1]=All.BH_Position[2]=0.;
+#endif
 #ifdef BLACK_HOLES
       All.BlackHoleMaxAccretionRadius = all.BlackHoleMaxAccretionRadius;
 #endif
@@ -411,7 +414,6 @@ void set_units(void)
 
   All.UnitDensity_in_cgs = All.UnitMass_in_g / pow(All.UnitLength_in_cm, 3);
   All.UnitPressure_in_cgs = All.UnitMass_in_g / All.UnitLength_in_cm / pow(All.UnitTime_in_s, 2);
-  All.UnitCoolingRate_in_cgs = All.UnitPressure_in_cgs / All.UnitTime_in_s;
   All.UnitEnergy_in_cgs = All.UnitMass_in_g * pow(All.UnitLength_in_cm, 2) / pow(All.UnitTime_in_s, 2);
     
 #ifdef DISTORTIONTENSORPS

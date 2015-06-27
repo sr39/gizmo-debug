@@ -120,6 +120,14 @@ void compute_hydro_densities_and_forces(void)
             printf("hydro force computation done.\n"); fflush(stdout);
         }
 
+#ifdef GRAIN_FLUID
+        apply_grain_dragforce(); /* if we are solving a coupled set of grains via aerodynamic drag, this is where their acceleration should be calculated */
+        if(ThisTask == 0)
+        {
+            printf("grain aerodynamic force evaluation done.\n"); fflush(stdout);
+        }
+#endif
+
     }
 }
 

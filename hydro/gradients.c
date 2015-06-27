@@ -1123,12 +1123,26 @@ void hydro_gradient_calc(void)
 #endif
             
             
+
+#if defined(CONDUCTION_SPITZER) || defined(VISCOSITY_BRAGINSKII)
+            /* get the neutral fraction */
+            double nHeII, u, ne, nh0 = 0;
+            ne = SphP[i].Ne;
+            u = DMAX(All.MinEgySpec, SphP[i].InternalEnergy); // needs to be in code units
+            AbundanceRatios(u, SphP[i].Density*All.cf_a3inv, &ne, &nh0, &nHeII, i);
+#ifdef GALSF_FB_HII_HEATING
+            if(SphP[i].DelayTimeHII>0 || SphP[i].Ne>=1.15789) nh0=0;
+#endif
+            double ion_frac = DMIN(DMAX(0,1.-nh0),1);
+#endif
+            
+            
 #ifdef CONDUCTION
             {
                 SphP[i].Kappa_Conduction = All.ConductionCoeff;
 #ifdef CONDUCTION_SPITZER
                 /* calculate the thermal conductivities: use the Spitzer formula */
-                SphP[i].Kappa_Conduction *= pow(SphP[i].InternalEnergyPred, 2.5);
+                SphP[i].Kappa_Conduction *= ion_frac * pow(SphP[i].InternalEnergyPred, 2.5);
                 
                 /* account for saturation (when the mean free path of electrons is large): estimate whether we're in that limit with the gradients */
                 double electron_free_path = All.ElectronFreePathFactor * SphP[i].InternalEnergyPred * SphP[i].InternalEnergyPred / (SphP[i].Density * All.cf_a3inv);
@@ -1148,7 +1162,7 @@ void hydro_gradient_calc(void)
                 SphP[i].Zeta_BulkViscosity = All.BulkViscosityCoeff;
 #ifdef VISCOSITY_BRAGINSKII
                 /* calculate the viscosity coefficients: use the Braginskii shear tensor formulation expanded to first order */
-                SphP[i].Eta_ShearViscosity *= pow(SphP[i].InternalEnergyPred, 2.5);
+                SphP[i].Eta_ShearViscosity *= ion_frac * pow(SphP[i].InternalEnergyPred, 2.5);
                 SphP[i].Zeta_BulkViscosity = 0;
                 
                 /* again need to account for possible saturation (when the mean free path of ions is large): estimate whether we're in that limit with the gradients */
@@ -1162,64 +1176,22 @@ void hydro_gradient_calc(void)
                 }
                 double vel_scale_length = sqrt( v_magnitude / dv_magnitude ) * All.cf_atime;
                 SphP[i].Eta_ShearViscosity /= (1 + 4.2 * ion_free_path / vel_scale_length); // should be in physical units //
-#endif
-            }
-#endif
-            
-            
-#ifdef COSMIC_RAYS
-            if(SphP[i].Density > 0)
-            {
-                /* self-consistently calculate the diffusion coefficients for cosmic ray fluids;
-                 following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
-                /* in the weak-field (high-beta) case, the streaming velocity is approximately the sound speed */
-                double v_streaming = sqrt(GAMMA*GAMMA_MINUS1 * SphP[i].InternalEnergyPred); // thermal ion sound speed //
+                /* also limit to saturation magnitude ~ signal_speed / lambda_MFP^2 */
+                double cs = Particle_effective_soundspeed_i(i);
 #ifdef MAGNETIC
-                /* in the strong-field (low-beta) case, it's actually the Alfven velocity: interpolate between these */
-                double vA_2 = 0.0;
-                double cs_stream = v_streaming;
-                for(k=0;k<3;k++) {vA_2 += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+                double vA_2 = 0.0; for(k=0;k<3;k++) {vA_2 += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
                 vA_2 *= All.cf_afac1 / (All.cf_atime * SphP[i].Density);
-                v_streaming = DMIN(100.*cs_stream, sqrt(cs_stream*cs_stream + vA_2));
+                cs = DMIN(1.e4*cs , sqrt(cs*cs+vA_2));
 #endif
-                v_streaming *= All.CosmicRayDiffusionCoeff * All.cf_afac3; // converts to physical units and rescales according to chosen coefficient //
-                /* now we need the cosmic ray pressure or energy density scale length, defined as :
-                 L = (e_cr + p_cr) / |gradient_p_cr| = cr_enthalpy / |gradient(p_cr)| */
-                double CRPressureGradMag = 0.0;
-                for(k=0;k<3;k++) {CRPressureGradMag += SphP[i].Gradients.CosmicRayPressure[k]*SphP[i].Gradients.CosmicRayPressure[k];}
-                double CRPressureGradScaleLength = GAMMA_COSMICRAY * Get_Particle_CosmicRayPressure(i) / sqrt(1.0e-33 + CRPressureGradMag) * All.cf_atime;
-                // limit this scale length; if the gradient is too shallow, there is no information beyond a few smoothing lengths, so we can't let streaming go that far //
-                if(CRPressureGradScaleLength > 0) {CRPressureGradScaleLength = 1.0/(1.0/CRPressureGradScaleLength + 1.0/(100.0*PPP[i].Hsml));}
-                
-                /* the diffusivity is now just the product of these two coefficients */
-                SphP[i].CosmicRayDiffusionCoeff = v_streaming * CRPressureGradScaleLength;
-                if((SphP[i].CosmicRayDiffusionCoeff<=0)||(isnan(SphP[i].CosmicRayDiffusionCoeff))) {SphP[i].CosmicRayDiffusionCoeff=0;}
-            } else {
-                SphP[i].CosmicRayDiffusionCoeff = 0;
+                cs *= All.cf_afac3;
+                double eta_sat = (SphP[i].Density*All.cf_a3inv) * cs / (ion_free_path * (1 + 4.2 * ion_free_path / vel_scale_length));
+                if(eta_sat <= 0) SphP[i].Eta_ShearViscosity=0;
+                if(SphP[i].Eta_ShearViscosity>0) {SphP[i].Eta_ShearViscosity = 1. / (1./SphP[i].Eta_ShearViscosity + 1./eta_sat);}
+#endif
             }
 #endif
+
             
-            
-#ifdef TURB_DIFFUSION
-            {
-                /* estimate local turbulent diffusion coefficient from velocity gradients using Smagorinsky mixing model */
-                double C_Smagorinsky_Lilly = 0.15; // this is the standard Smagorinsky-Lilly constant, calculated from Kolmogorov theory: should be 0.1-0.2 //
-                double h_turb = Get_Particle_Size(i);
-                double turb_prefactor = All.TurbDiffusion_Coefficient * C_Smagorinsky_Lilly*C_Smagorinsky_Lilly * h_turb*h_turb * sqrt(2.0);
-                SphP[i].TD_DiffCoeff = turb_prefactor * // overall normalization, then scaling with inter-particle spacing
-                sqrt(
-                     (1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1])*(SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) +
-                              (SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2])*(SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2]) +
-                              (SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])*(SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])) +
-                     (2./3.)*((SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[0][0] +
-                               SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[1][1] +
-                               SphP[i].Gradients.Velocity[2][2]*SphP[i].Gradients.Velocity[2][2]) -
-                              (SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[2][2] +
-                               SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[1][1] +
-                               SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))
-                     ) * All.cf_a2inv; // norm of velocity gradient tensor
-            }
-#endif
             
             
             /* finally, we need to apply a sensible slope limiter to the gradients, to prevent overshooting */
@@ -1272,7 +1244,122 @@ void hydro_gradient_calc(void)
             local_slopelimiter(SphP[i].Gradients.Phi,GasGradDataPasser[i].Maxima.Phi,GasGradDataPasser[i].Minima.Phi,a_limiter,h_lim,stol);
 #endif
 #endif
+
+           
             
+            
+
+#ifdef TURB_DIFFUSION
+            {
+                /* estimate local turbulent diffusion coefficient from velocity gradients using Smagorinsky mixing model: 
+                    we do this after slope-limiting to prevent the estimated velocity gradients from being unphysically large */
+                double h_turb = Get_Particle_Size(i);
+                if(h_turb > 0)
+                {
+                    // overall normalization //
+                    double C_Smagorinsky_Lilly = 0.15; // this is the standard Smagorinsky-Lilly constant, calculated from Kolmogorov theory: should be 0.1-0.2 //
+                    double turb_prefactor = All.TurbDiffusion_Coefficient * C_Smagorinsky_Lilly*C_Smagorinsky_Lilly * sqrt(2.0);
+                    // then scale with inter-particle spacing //
+                    turb_prefactor *= h_turb*h_turb;
+                    // calculate frobenius norm of symmetric shear velocity gradient tensor //
+                    double shear_factor = sqrt((1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) *
+                                                        (SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) +
+                                                        (SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2]) *
+                                                        (SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2]) +
+                                                        (SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2]) *
+                                                        (SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])) +
+                                               (2./3.)*((SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[0][0] +
+                                                         SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[1][1] +
+                                                         SphP[i].Gradients.Velocity[2][2]*SphP[i].Gradients.Velocity[2][2]) -
+                                                        (SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[2][2] +
+                                                         SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[1][1] +
+                                                         SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2])));
+                    // slope-limit and convert to physical units //
+                    double shearfac_max = 0.5 * sqrt(SphP[i].VelPred[0]*SphP[i].VelPred[0]+SphP[i].VelPred[1]*SphP[i].VelPred[1]+SphP[i].VelPred[2]*SphP[i].VelPred[2]) / h_turb;
+                    shear_factor = DMIN(shear_factor , shearfac_max) * All.cf_a2inv;
+                    // ok, combine to get the diffusion coefficient //
+                    SphP[i].TD_DiffCoeff = turb_prefactor * shear_factor;
+                } else {
+                    SphP[i].TD_DiffCoeff = 0;
+                }
+            }
+#endif
+            
+            
+            
+#ifdef COSMIC_RAYS
+            /* note that because of the way this depends on the gradient scale-length, we should calculate it -after- the slope-limiters are applied */
+            if(SphP[i].Density > 0)
+            {
+                SphP[i].CosmicRayDiffusionCoeff = 0;
+                double CRPressureGradScaleLength = Get_CosmicRayGradientLength(i);
+#ifndef COSMIC_RAYS_DISABLE_STREAMING
+                /* self-consistently calculate the diffusion coefficients for cosmic ray fluids; first the streaming part of this (kappa~v_stream*L_CR_grad)
+                 following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
+                double v_streaming = Get_CosmicRayStreamingVelocity(i);
+                /* the diffusivity is now just the product of these two coefficients */
+                SphP[i].CosmicRayDiffusionCoeff += v_streaming * CRPressureGradScaleLength; /* all physical units */
+#endif
+#ifndef COSMIC_RAYS_DISABLE_DIFFUSION
+                /* now we calculate the 'traditional' diffusion part of this: kappa~v_CR*r_gyro * B_bulk^2/(B_random[scale~r_gyro]^2)
+                 v_CR~c, r_gyro~p*c/(Z*e*B)~1e12 cm * RGV *(3 muG/B)  (RGV~1 is the magnetic rigidity). assuming a Kolmogorov spectrum, this
+                 gives kappa~3e28 * (R_driving/100pc)^(2/3) * RGV^(1/3) * (B/3 muG)^(-1/3)
+                 this follows Jokipii 1966 */
+                double kappa_diff = 3.e28 / (GAMMA_COSMICRAY_MINUS1 * All.UnitVelocity_in_cm_per_s * All.UnitLength_in_cm / All.HubbleParam); /* converts from CGS to code units */
+                double R_GV=1.0, p_scale=0, b_muG=1;
+#ifdef MAGNETIC
+                double gizmo2gauss = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam) / All.UnitMagneticField_in_gauss;
+                double b2_mag = 0.0;
+                for(k=0;k<3;k++) {b2_mag += Get_Particle_BField(i,k) * Get_Particle_BField(i,k);}
+                b_muG=sqrt(DMAX(b2_mag,0)) * All.cf_a2inv * gizmo2gauss / 1.0e-6; /* B-field in units of physical microGauss */
+                b_muG = sqrt(b_muG*b_muG + 1.e-6);
+
+#if 0
+                /* need to determine the random part of B^2 at the resolution scale: for this we use a Smagorinski-type approximation:
+                 note: this version of the algorithm is deprecated; it is too noisy, even in resolved flows, since many regions have
+                 locally 'flat' or 'steep' B-field gradients, giving a misleading estimate of the local variance */
+                p_scale = Get_Particle_Size(i); // this is simply the resolution scale (code units), at which the gradient is evaluated //
+                double BGrad_mag = 0.0;
+                int k2; for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {BGrad_mag += SphP[i].Gradients.B[k][k2] * SphP[i].Gradients.B[k][k2];}}
+                kappa_diff *= b2_mag / (1.e-37 + p_scale * p_scale * BGrad_mag); // should be dimensionless //
+#else
+                /* alternatively, we don't explicitly use the local B-gradient, but assume a cascade with a driving length equal to 
+                    the pressure gradient scale length */
+                p_scale = 0.0; for(k=0;k<3;k++) {p_scale += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
+                p_scale = SphP[i].Pressure / (1.e-33 + sqrt(p_scale));
+                double p_scale_min = 0.01 * Get_Particle_Size(i); // sets a 'floor' at some multiple of the particle size (unresolved below this) //
+                p_scale = sqrt(p_scale_min*p_scale_min + p_scale*p_scale);
+                double p_scale_max = 100.*PPP[i].Hsml; // sets a maximum beyond which we have no meaningful information //
+                p_scale = 1./(1./p_scale + 1./p_scale_max); // code units here //
+#endif
+#else
+                /* define the driving scale by the pressure scale length */
+                for(k=0;k<3;k++) {p_scale += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
+                p_scale = SphP[i].Pressure / (1.e-33 + sqrt(p_scale));
+                double p_scale_min = 0.01 * Get_Particle_Size(i); /* sets a 'floor' at some multiple of the particle size (unresolved below this) */
+                p_scale = sqrt(p_scale_min*p_scale_min + p_scale*p_scale);
+                double p_scale_max = 1000.*PPP[i].Hsml; /* sets a maximum beyond which we have no meaningful information */
+                p_scale = 1./(1./p_scale + 1./p_scale_max); /* code units here */
+                /* here we need sqrt(P/4e-14 erg/cm^3); convert pressure to physical units and multiply this out */
+                b_muG = sqrt( SphP[i].Pressure * All.cf_a3inv * All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam / 4.0e-14 );
+#endif
+                p_scale *= (All.UnitLength_in_cm / All.HubbleParam * All.cf_atime) / (3.086e21); /* physical pressure scale length in units of kpc */
+                kappa_diff *= pow( p_scale * p_scale * R_GV / b_muG, 1./3.); /* these should all be dimensionless here */
+                /* now we apply a limiter to prevent the coefficient from becoming too large: cosmic rays cannot stream/diffuse with v_diff > c */
+                double kappa_diff_vel = kappa_diff * GAMMA_COSMICRAY_MINUS1 / CRPressureGradScaleLength * All.UnitVelocity_in_cm_per_s;
+                kappa_diff *= 1 / (1 + kappa_diff_vel/3.e10); /* caps maximum here */
+                SphP[i].CosmicRayDiffusionCoeff += kappa_diff; /* should be in physical units */
+#endif                
+#ifdef COSMIC_RAYS_DIFFUSION_CONSTANT
+                SphP[i].CosmicRayDiffusionCoeff = All.CosmicRayDiffusionCoeff / GAMMA_COSMICRAY_MINUS1;
+#else
+                SphP[i].CosmicRayDiffusionCoeff *= All.CosmicRayDiffusionCoeff;
+#endif
+                if((SphP[i].CosmicRayDiffusionCoeff<=0)||(isnan(SphP[i].CosmicRayDiffusionCoeff))) {SphP[i].CosmicRayDiffusionCoeff=0;}
+            } else {
+                SphP[i].CosmicRayDiffusionCoeff = 0;
+            }
+#endif
         }
     
     

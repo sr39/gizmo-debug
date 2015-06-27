@@ -30,7 +30,7 @@
     /* ------------------------------------------------------------------------------------------------------------------- */
     /* now we're ready to compute the volume integral of the fluxes (or equivalently an 'effective area'/face orientation) */
     /* ------------------------------------------------------------------------------------------------------------------- */
-    if(SphP[j].ConditionNumber*SphP[j].ConditionNumber > cnumcrit2)
+    if(SphP[j].ConditionNumber*SphP[j].ConditionNumber > 1.0e12 + cnumcrit2)
     {
         /* the effective gradient matrix is ill-conditioned: for stability, we revert to the "RSPH" EOM */
         Face_Area_Norm = -(V_i*V_i*kernel.dwk_i + V_j*V_j*kernel.dwk_j) / kernel.r;
@@ -299,6 +299,7 @@
                 }
                 // alright, if we've come this far, we need to subtract -off- the thermal energy part of the flux, and replace it //
             }
+            if(SphP[j].ConditionNumber*SphP[j].ConditionNumber > cnumcrit2) {use_entropic_energy_equation=1;}
             if(use_entropic_energy_equation)
             {
                 Fluxes.p = du_new;
@@ -337,11 +338,11 @@
              including them self-consistently in the Riemann problem */
             if(Fluxes.rho < 0)
             {
-                Fluxes.CosmicRayPressure = Fluxes.rho * (local.CosmicRayPressure*V_i/(GAMMA_COSMICRAY_MINUS1*local.Mass));
+                Fluxes.CosmicRayPressure = Fluxes.rho * (local.CosmicRayPressure*V_i/(GAMMA_COSMICRAY_MINUS1*local.Mass)); /* note: CosmicRayPressure and V_i have comoving units, their product has physical units */
             } else {
                 Fluxes.CosmicRayPressure = Fluxes.rho * (CosmicRayPressure_j*V_j/(GAMMA_COSMICRAY_MINUS1*P[j].Mass));
             }
-#endif // cosmic_rays
+#endif
 #ifdef MAGNETIC
             for(k=0;k<3;k++) {Fluxes.B[k] = Face_Area_Norm * Riemann_out.Fluxes.B[k];} // magnetic flux (B*V) //
             Fluxes.B_normal_corrected = -Riemann_out.B_normal_corrected * Face_Area_Norm;
@@ -388,6 +389,7 @@
                             if(dtoi > du_new-facenorm_pm*face_vel_i) {use_entropic_energy_equation=0;}}
                     }
                 }
+                if(SphP[j].ConditionNumber*SphP[j].ConditionNumber > cnumcrit2) {use_entropic_energy_equation=1;}
                 // alright, if we've come this far, we need to subtract -off- the thermal energy part of the flux, and replace it //
                 if(use_entropic_energy_equation) {Fluxes.p += du_new - du_old;}
             }
