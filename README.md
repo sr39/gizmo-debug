@@ -1,3 +1,20 @@
+##RadTransfer Status##
+* Photoionization implemented, tested and working
+* Photoheating/cooling implemented, tested and (mostly) working
+* Multi-frequency RT implemented, tested and working (BB spectrum in 4 bins)
+* Rad Pressure implemented but **NOT TESTED** (current task as of 6/30/15)
+* **GIZMO displays some diffusivity compared to AREPO**
+
+
+#TODO LIST#
+* Need to test Rad. Pressure
+* Need to test multiple sources
+* Add luminosity as particle parameter rather than set in params file (i.e. arbitrary list of sources)
+* Consolidate Eddington tensor routines for separate particles (gas, star, BH) into a single routine
+* Need to test Helium cooling/ionization (cf. Friedrich et al. 2012)
+
+
+
 This is a development branch of phopkins/GIZMO. It is dedicated to implementing a working radiative transfer module, based off of the Petkova & Springel (2009) OTVET implementation initially made for Gadget-3.
 
 For the methods paper used, see http://arxiv.org/pdf/0812.1801v2.pdf
