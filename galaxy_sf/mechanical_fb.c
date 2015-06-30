@@ -721,10 +721,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     {
       while(startnode >= 0)
 	{
-
-        numngb_inbox =
-	    ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag,
-                                      exportnodecount, exportindex, ngblist);
+        numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+        
 	  if(numngb_inbox < 0)
 	    return -1;
 
@@ -741,14 +739,16 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
             r2=0; for(k=0;k<3;k++) {r2 += kernel.dp[k]*kernel.dp[k];}
             if(r2<=0) continue; // same particle //
-            if(r2>=h2) continue; // outside kernel //
+            
+            double h2j = PPP[j].Hsml * PPP[j].Hsml;
+            if((r2>h2)&&(r2>h2j)) continue; // outside kernel (in both 'directions') //
             
             // calculate kernel quantities //
             kernel.r = sqrt(r2);
-            if(kernel.r > 2.0/unitlength_in_kpc) continue; // no super-long-range effects allowed!
+            if(kernel.r > DMAX(2.0/unitlength_in_kpc,PPP[j].Hsml)) continue; // no super-long-range effects allowed! (of course this is arbitrary in code units) //
             
-            u = kernel.r * kernel.hinv;
-            kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, -1);
+            //u = kernel.r * kernel.hinv;
+            //kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, -1);
             for(k=0; k<3; k++) kernel.dv[k] = local.Vel[k] - P[j].Vel[k];
             
             /*
@@ -756,7 +756,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
             wk = kernel.wk * P[j].Mass / SphP[j].Density; // psi
             */
             double h_eff_j = Get_Particle_Size(j);
-            wk = h_eff_j * h_eff_j / (r2 + 0.01*h2); // area weight
+            //wk = h_eff_j * h_eff_j / (r2 + 0.01*h2); // solid-angle weight (actually, because of summation/division below, this really double-downweights further particles)
+            wk = h_eff_j * h_eff_j; // area (solid-angle after summation/division below) weight
+            //wk = h_eff_j * h_eff_j * h_eff_j; // volume weight
             
             // if feedback_type==-1, this is a pre-calc loop to get the relevant weights for coupling //
             if(feedback_type==-1)
@@ -767,8 +769,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
             // NOW do the actual feedback calculation //
                 wk /= local.area_sum; // this way wk matches the value summed above for the weighting //
                 // need to check to make sure the coupled fraction doesn't exceed the solid angle subtended by the particles //
-                double wkmax = 1.5 * M_PI * h_eff_j * h_eff_j / (4. * M_PI * (0.5625*r2 + 0.005*h2));
-                if(wk > wkmax) {wk = wkmax;}
+                //double wkmax = 1.5 * M_PI * h_eff_j * h_eff_j / (4. * M_PI * (0.5625*r2 + 0.005*h2)); if(wk > wkmax) {wk = wkmax;}
             
                 dM = wk * local.Msne;
                 dP = local.SNe_v_ejecta / kernel.r;

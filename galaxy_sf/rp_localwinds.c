@@ -119,9 +119,8 @@ void radiation_pressure_winds_consolidated(void)
      if (h>RtauMax) h=RtauMax;
             
      do {
-         numngb_inbox =
-           ngb_treefind_variable_threads(pos, h, -1, &startnode, 0, &dummy,
-                                       &dummy, &dummy, Ngblist);
+         numngb_inbox = ngb_treefind_pairs_threads(pos, h, -1, &startnode, 0, &dummy, &dummy, &dummy, Ngblist);
+         
           if((numngb_inbox>=N_MIN_KERNEL)&&(numngb_inbox<=N_MAX_KERNEL))
           {
              hinv=1/h; hinv3=hinv*hinv*hinv; wt_sum=rho=0;
@@ -268,7 +267,6 @@ void radiation_pressure_winds_consolidated(void)
                } else {
                    for(k=0;k<3;k++) dir[k]=-P[j].GradRho[k]; // otherwise, along opacity gradient //
                }
-                   
 #endif // GALSF_FB_RPWIND_CONTINUOUS
 #endif
                 norm=0; for(k=0; k<3; k++) norm += dir[k]*dir[k];
