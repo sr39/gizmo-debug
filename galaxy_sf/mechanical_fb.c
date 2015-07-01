@@ -118,13 +118,11 @@ void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i)
 #ifdef GALSF_FB_RPROCESS_ENRICHMENT
     /*
      k=0     no change to defaults (tmin=3e7yr, rate=1e-5, all neighbor particle)
-     k=1     as k=0, 1 ngb particles
-     k=2     as k=0, 10 ngb particles
-     k=3     as k=0, tmin=3e6yr
-     k=4     as k=0, tmin=1e7yr
-     k=5     as k=0, tmin=1e8yr
-     k=6     as k=0, rate=3e-6
-     k=7     as k=0, rate=3e-5
+     k=1     as k=0, tmin=3e6yr
+     k=2     as k=0, tmin=1e7yr
+     k=3     as k=0, tmin=1e8yr
+     k=4     as k=0, rate=3e-6
+     k=5     as k=0, rate=3e-5
     */
     if(P[i].RProcessEvent_ThisTimeStep<=0)
     {
@@ -147,11 +145,11 @@ void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i)
         in->yields[NUM_METAL_SPECIES-NUM_RPROCESS_SPECIES+k] = 0.0;
         tcrit=0.03; // default is age > 3e7
         pcrit=0.3333333333;     // rate lower by 1/3 for 'default'
-        if(k==3) {tcrit=0.003;} // k=3 requires age > 3e6 yr
-        if(k==4) {tcrit=0.01;}  // k=4 requires age > 1e7 yr
-        if(k==5) {tcrit=0.1;}   // k=5 requires age > 1e8
-        if(k==6) {pcrit=0.1;}   // k=6 has rate lower by 3
-        if(k==7) {pcrit=1.0;}   // k=7 has rate higher by 3
+        if(k==1) {tcrit=0.003;} // k=1 requires age > 3e6 yr
+        if(k==2) {tcrit=0.01;}  // k=2 requires age > 1e7 yr
+        if(k==3) {tcrit=0.1;}   // k=3 requires age > 1e8
+        if(k==4) {pcrit=0.1;}   // k=4 has rate lower by 3
+        if(k==5) {pcrit=1.0;}   // k=5 has rate higher by 3
         if((star_age>=tcrit)&&(p<=pcrit)&&(P[i].RProcessEvent_ThisTimeStep>0))
         {
             in->yields[NUM_METAL_SPECIES-NUM_RPROCESS_SPECIES+k] = 1.0; // absolute unit is irrelevant, so use 1.0 //
@@ -669,7 +667,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     int j, k, n;
     double u,r2,h2;
     double v_ejecta_max,kernel_zero,wk,dM,dP,dE;
-    double E_coupled,wk_sum,dP_sum,dP_boost_sum;
+    double E_coupled,dP_sum,dP_boost_sum;
 
     struct kernel_addFB kernel;
     struct addFBdata_in local;
@@ -726,7 +724,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 	  if(numngb_inbox < 0)
 	    return -1;
 
-      E_coupled = wk_sum = dP_sum = dP_boost_sum = 0;
+      E_coupled = dP_sum = dP_boost_sum = 0;
 	  for(n = 0; n < numngb_inbox; n++)
 	    {
 	      j = ngblist[n];
@@ -832,7 +830,6 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* now we have the proper energy to couple */
                 
                 E_coupled += dE;
-                wk_sum += 1.;
                 out.M_coupled += dM;
             
                 /* inject actual mass from mass return */
@@ -845,42 +842,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                 /* inject metals */
 #ifdef METALS
-                u=dM/P[j].Mass;
-                if(u>1) u=1;
-                for(k=0;k<NUM_METAL_SPECIES;k++)
-                {
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
-                    u=dM/P[j].Mass;
-                    if(u>1) u=1;
-                    if(k>=NUM_METAL_SPECIES-NUM_RPROCESS_SPECIES)
-                    {
-                        if(local.yields[k]>0)
-                        {
-                            /* for k=1, couple to only 1 neighbor */
-                            if(k==NUM_METAL_SPECIES-NUM_RPROCESS_SPECIES+1)
-                            {
-                                if((mode==0)&&(wk_sum<=1))
-                                {
-                                    u=local.Msne/P[j].Mass;
-                                } else {
-                                    u=0;
-                                }
-                            }
-                            /* for k=2, couple to only 10 neighbors */
-                            if(k==NUM_METAL_SPECIES-NUM_RPROCESS_SPECIES+2)
-                            {
-                                if((mode==0)&&(wk_sum<=10))
-                                {
-                                    u=0.1*local.Msne/P[j].Mass;
-                                } else {
-                                    u=0;
-                                }
-                            }
-                        }
-                    }
-#endif
-                    P[j].Metallicity[k]=(1-u)*P[j].Metallicity[k]+u*local.yields[k];
-                }
+                u=dM/P[j].Mass; if(u>1) u=1;
+                for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=(1-u)*P[j].Metallicity[k]+u*local.yields[k];}
 #endif
             
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_SNE_HEATING)

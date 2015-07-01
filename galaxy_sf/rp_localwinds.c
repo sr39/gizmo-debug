@@ -141,7 +141,7 @@ void radiation_pressure_winds_consolidated(void)
                    kernel_main(u,hinv3,1,&wk,&vq,-1);
                    rho += (P[j].Mass*wk);
                    double h_eff_j = Get_Particle_Size(j);
-                   wt_sum += h_eff_j*h_eff_j / r2;
+                   wt_sum += h_eff_j*h_eff_j;// / r2;
                } /* if( (P[j].Mass>0) && (SphP[j].Density>0) ) */
               } /* for(n=0; n<numngb_inbox; n++) */
               if (rho <= 0) {
@@ -223,7 +223,7 @@ void radiation_pressure_winds_consolidated(void)
                //dv_imparted_uv = (wk/rho) * dE_over_c;
               
               double h_eff_j = Get_Particle_Size(j);
-              wk = h_eff_j*h_eff_j / (r2 * wt_sum);
+              wk = h_eff_j*h_eff_j / wt_sum;// / (r2 * wt_sum);
               //double wkmax = 1.5 * M_PI * h_eff_j * h_eff_j / (4. * M_PI * 0.5625*r2); if(wk > wkmax) {wk = wkmax;}
               dv_imparted_uv = wk * dE_over_c / P[j].Mass;
 
