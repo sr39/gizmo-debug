@@ -482,7 +482,7 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
 /* --------------------------------------------------------------------------------- */
 void hydro_final_operations_and_cleanup(void)
 {
-    int i,j,k;
+    int i,k;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         if(P[i].Type == 0 && P[i].Mass > 0)
@@ -633,11 +633,9 @@ void hydro_final_operations_and_cleanup(void)
                 for(k = 0; k < 3; k++)
                 {
                     SphP[i].RadAccel[k] = 0.0;
-                    for(j = 0; j < N_RT_FREQ_BINS; j++)
-                        SphP[i].RadAccel[k] += SphP[i].n_gamma[j] * nu[j];
+                    int k2; for(k2=0; k2<N_RT_FREQ_BINS; k2++) {SphP[i].RadAccel[k] += SphP[i].n_gamma[k2] * nu[k2];}
                     SphP[i].RadAccel[k] *= SphP[i].n[k] / P[i].Mass * ELECTRONVOLT_IN_ERGS /
                     All.UnitEnergy_in_cgs * All.HubbleParam / (C / All.UnitVelocity_in_cm_per_s) / dt / SphP[i].Density;
-
                 }
 #endif
             

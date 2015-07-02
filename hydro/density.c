@@ -1172,9 +1172,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
     {
         while(startnode >= 0)
         {
-            numngb_inbox =
-            ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag,
-                                          exportnodecount, exportindex, ngblist);
+            numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             
             if(numngb_inbox < 0) return -1;
             
@@ -1353,18 +1351,15 @@ void *density_evaluate_secondary(void *p)
 int density_isactive(int n)
 {
     /* first check our 'marker' for particles which have finished iterating to an Hsml solution (if they have, dont do them again) */
-    if(P[n].TimeBin < 0)
-        return 0;
+    if(P[n].TimeBin < 0) return 0;
     
 #if defined(GRAIN_FLUID)
     /* all particles can potentially interact with the gas in this mode, if drag > 0 */
-    if(P[n].Type >= 0)
-        return 1;
+    if(P[n].Type >= 0) return 1;
 #endif
     
 #if (defined(RADTRANSFER) && defined(EDDINGTON_TENSOR_STARS))
-    if(P[n].Type == 4)
-        return 1;
+    if(P[n].Type == 4) return 1;
 #endif
     
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
@@ -1380,7 +1375,6 @@ int density_isactive(int n)
 #if defined(GALSF_FB_RPROCESS_ENRICHMENT)
         if(P[n].RProcessEvent_ThisTimeStep>0) return 1;
 #endif
-
 #if defined(GALSF)
         if(P[n].DensAroundStar<=0) return 1;
         // only do stellar age evaluation if we have to //
@@ -1392,12 +1386,10 @@ int density_isactive(int n)
 #endif
     
 #ifdef BLACK_HOLES
-    if(P[n].Type == 5)
-        return 1;
+    if(P[n].Type == 5) return 1;
 #endif
     
-    if(P[n].Type == 0 && P[n].Mass > 0)
-        return 1;
+    if(P[n].Type == 0 && P[n].Mass > 0) return 1;
     
     return 0;
 }

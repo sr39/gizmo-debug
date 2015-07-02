@@ -181,12 +181,12 @@ GMP_INCL = #
 GMP_LIBS = #
 MKL_INCL = #
 MKL_LIBS = #
-GSL_INCL = -I/usr/local/include
-GSL_LIBS = -L/usr/local/lib
+GSL_INCL = -I/usr/local/include -I$(PORTINCLUDE)
+GSL_LIBS = -L/usr/local/lib -L$(PORTLIB)
 FFTW_INCL= -I/usr/local/include
 FFTW_LIBS= -L/usr/local/lib
-HDF5INCL = -I/usr/local/include -DH5_USE_16_API
-HDF5LIB  = -L/usr/local/lib -lhdf5 -lz
+HDF5INCL = -I/usr/local/include -I$(PORTINCLUDE) -DH5_USE_16_API
+HDF5LIB  = -L/usr/local/lib -L$(PORTLIB) -lhdf5 -lz
 MPICHLIB = #
 OPT     += #
 ##

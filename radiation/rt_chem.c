@@ -55,7 +55,7 @@ void radtransfer_update_chemistry(void)
 	
 	nH = HYDROGEN_MASSFRAC * rho / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
 
-	molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[i].elec);
+	molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[i].Ne);
 
 
 
@@ -88,9 +88,9 @@ void radtransfer_update_chemistry(void)
 	    endrun(111);
 	  }
 	
-	A = dtime * gamma_HI * nH * SphP[i].elec;
+	A = dtime * gamma_HI * nH * SphP[i].Ne;
 	B = dtime * c_light * n_gamma * rt_sigma_HI[0];
-	CC = dtime * alpha_HII * nH * SphP[i].elec;
+	CC = dtime * alpha_HII * nH * SphP[i].Ne;
 	
 	/* semi-implicit scheme for ionization */
 	nHII = SphP[i].HII + B + A;
@@ -103,7 +103,7 @@ void radtransfer_update_chemistry(void)
 	    endrun(333);
 	  }
 	
-	SphP[i].elec = nHII;
+	SphP[i].Ne = nHII;
 	
 	SphP[i].HII = nHII;
 
@@ -118,12 +118,12 @@ void radtransfer_update_chemistry(void)
 	alpha_HeII = 1.5e-10 * pow(temp, -0.6353) * fac;
 	alpha_HeIII = 3.36e-10 / sqrt(temp) * pow(temp / 1e3, -0.2) / (1.0 + pow(temp / 1e6, 0.7)) * fac;
 
-	SphP[i].elec += SphP[i].HeII + 2.0 * SphP[i].HeIII;
+	SphP[i].Ne += SphP[i].HeII + 2.0 * SphP[i].HeIII;
 
-	D = dtime * gamma_HeII * nH * SphP[i].elec;
-	E = dtime * alpha_HeIII * nH * SphP[i].elec;
-	F = dtime * gamma_HeI * nH * SphP[i].elec;
-	J = dtime * alpha_HeII * nH * SphP[i].elec;
+	D = dtime * gamma_HeII * nH * SphP[i].Ne;
+	E = dtime * alpha_HeIII * nH * SphP[i].Ne;
+	F = dtime * gamma_HeI * nH * SphP[i].Ne;
+	J = dtime * alpha_HeII * nH * SphP[i].Ne;
 	G = 0.0;
 	L = 0.0;
 
@@ -152,12 +152,12 @@ void radtransfer_update_chemistry(void)
             endrun(333);
           }
 
-	SphP[i].elec = SphP[i].HII + nHeII + 2.0 * nHeIII;
+	SphP[i].Ne = SphP[i].HII + nHeII + 2.0 * nHeIII;
 	
         nHeII *= y_fac;
         nHeIII *= y_fac;
 
-        SphP[i].elec = SphP[i].HII + nHeII + 2.0 * nHeIII;
+        SphP[i].Ne = SphP[i].HII + nHeII + 2.0 * nHeIII;
 
         SphP[i].HeII = nHeII;
         SphP[i].HeIII = nHeIII;
@@ -246,7 +246,7 @@ void radtransfer_update_chemistry(void)
 	
 	nH = HYDROGEN_MASSFRAC * rho / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
 
-	molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[i].elec);
+	molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[i].Ne);
 
 	temp = GAMMA_MINUS1 * SphP[i].InternalEnergyPred * molecular_weight * PROTONMASS /
 		All.UnitMass_in_g * All.HubbleParam / BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
@@ -258,9 +258,9 @@ void radtransfer_update_chemistry(void)
 	/* alpha_B recombination coefficient */
 	alpha_HII = 2.59e-13 * pow(temp / 1e4, -0.7) * fac;
 	
-	A = dtime * gamma_HI * nH * SphP[i].elec;
+	A = dtime * gamma_HI * nH * SphP[i].Ne;
 	B = dtime * k_HI;
-	CC = dtime * alpha_HII * nH * SphP[i].elec;
+	CC = dtime * alpha_HII * nH * SphP[i].Ne;
 	
 	/* semi-implicit scheme for ionization */
 	nHII = SphP[i].HII + B + A;
@@ -282,7 +282,7 @@ void radtransfer_update_chemistry(void)
 	    endrun(333);
 	  }
 	
-	SphP[i].elec = nHII;
+	SphP[i].Ne = nHII;
 	
 	SphP[i].HII = nHII;
 
@@ -297,12 +297,12 @@ void radtransfer_update_chemistry(void)
 	alpha_HeII = 1.5e-10 * pow(temp, -0.6353) * fac;
 	alpha_HeIII = 3.36e-10 / sqrt(temp) * pow(temp / 1e3, -0.2) / (1.0 + pow(temp / 1e6, 0.7)) * fac;
 	
-	SphP[i].elec += SphP[i].HeII +  2.0 * SphP[i].HeIII;
+	SphP[i].Ne += SphP[i].HeII +  2.0 * SphP[i].HeIII;
 	
-	D = dtime * gamma_HeII * nH * SphP[i].elec;
-	E = dtime * alpha_HeIII * nH * SphP[i].elec;
-	F = dtime * gamma_HeI * nH * SphP[i].elec;
-	J = dtime * alpha_HeII * nH * SphP[i].elec;
+	D = dtime * gamma_HeII * nH * SphP[i].Ne;
+	E = dtime * alpha_HeIII * nH * SphP[i].Ne;
+	F = dtime * gamma_HeI * nH * SphP[i].Ne;
+	J = dtime * alpha_HeII * nH * SphP[i].Ne;
 	G = dtime * k_HeI;
 	L = dtime * k_HeII;
 
@@ -334,7 +334,7 @@ void radtransfer_update_chemistry(void)
 	nHeII *= y_fac;
 	nHeIII *= y_fac;
 
-	SphP[i].elec = SphP[i].HII + nHeII + 2.0 * nHeIII;
+	SphP[i].Ne = SphP[i].HII + nHeII + 2.0 * nHeIII;
 	
 	SphP[i].HeII = nHeII;
 	SphP[i].HeIII = nHeIII;

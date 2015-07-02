@@ -698,7 +698,7 @@ void radtransfer_set_simple_inits(void)
 	/* in code units */
 	SphP[i].HII = tiny;
 	SphP[i].HI = 1.0 - SphP[i].HII;
-	SphP[i].elec = SphP[i].HII;
+	SphP[i].Ne = SphP[i].HII;
 
 
 
@@ -710,7 +710,7 @@ void radtransfer_set_simple_inits(void)
 	SphP[i].HeII = tiny * fac;
 	SphP[i].HeI = (1.0 - SphP[i].HeII - SphP[i].HeIII) * fac;
 
-	SphP[i].elec += SphP[i].HeII + 2.0 * SphP[i].HeIII;
+	SphP[i].Ne += SphP[i].HeII + 2.0 * SphP[i].HeIII;
 #endif
       }
 }
@@ -966,7 +966,7 @@ void rt_get_lum_gas(int target, double *je)
   R_eff = 3.0 / 4.0 / M_PI * pow(P[target].Mass / SphP[target].Density * a3inv, 1. / 3.);
   R_eff *= All.UnitLength_in_cm / All.HubbleParam; //cm
 
-  molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[target].elec);
+  molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[target].Ne);
 
   temp =  SphP[target].Pressure *
     (molecular_weight * PROTONMASS / All.UnitMass_in_g * All.HubbleParam) /

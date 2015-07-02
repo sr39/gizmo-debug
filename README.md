@@ -1,37 +1,3 @@
-##RadTransfer Status (updated 7/1/15)##
-* Photoionization implemented, tested and working
-* Photoheating/cooling implemented, tested and working
-* Multi-frequency RT implemented and tested, working but exploring frequency binning
-* Rad Pressure implemented, tested and working
-* **GIZMO has a slightly more diffuse I-front compared to AREPO**
-
-
-#TODO LIST#
-* Test multiple sources
-* Add luminosity as IC dataset rather than set in params file (i.e. arbitrary list of sources)
-* Consolidate Eddington tensor and luminosity routines for separate particles (gas, star, BH) 
-into a unified file (remove redundant calculations)
-* Add Starburst99 SSPs as input
-* Test MFV/PSPH for RP/GP (Iliev T5 + Sales Fig. 1)
-* Test an isothermal, self-gravitating cloud with RP+GP (Sales C1/C2)
-* (low priority) Test Helium cooling/ionization (cf. Friedrich et al. 2012)
-* Add frequency bin switching (i.e. optimal binning for BB vs. power-law sources as in Mirocha et al. 2012)
-
-
-
-
-This is a development branch of phopkins/GIZMO. It is dedicated to implementing a working radiative transfer module, based off of the Petkova & Springel (2009) OTVET implementation initially made for Gadget-3.
-
-For the methods paper used, see http://arxiv.org/pdf/0812.1801v2.pdf
-
-It is based on the OTVET method by Gnedin & Abel (2001): http://arxiv.org/pdf/astro-ph/0106278.pdf
-
-This method is currently being tested using the Cosmological Radiative Transfer Comparison Project, which can be found at http://www.phys.susx.ac.uk/~cs390/RT_comparison_project/index.html
-
-In addition, several RT tests that use the same method, as well as applications, can be found in Sales et al. (2014): http://arxiv.org/pdf/1310.7572.pdf
-
-
------------------------------
 Welcome!
 
 This is GIZMO (beta version: likely to be Google-style and stay in beta for quite some time).

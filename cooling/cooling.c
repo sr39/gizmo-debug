@@ -99,8 +99,6 @@ void do_the_cooling_for_particle(int i)
         
         double ne = SphP[i].Ne;	/* electron abundance (gives ionization state and mean molecular weight) */
         double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);
-//      double uold = SphP[i].InternalEnergy;
-        double fac_entr_to_u = pow(SphP[i].Density * All.cf_a3inv, GAMMA_MINUS1) / GAMMA_MINUS1;
 #ifdef GALSF_FB_HII_HEATING
         double u_to_temp_fac = PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
         double uion = HIIRegion_Temp / u_to_temp_fac;
@@ -133,7 +131,7 @@ void do_the_cooling_for_particle(int i)
 #ifndef RT_COOLING_PHOTOHEATING
         unew = DoCooling(uold, SphP[i].Density * All.cf_a3inv, dtime, &ne, i);
 #else
-//        unew = uold + dt * fac_entr_to_u * (rt_DoHeating(i, dt) + rt_DoCooling(i, dt));
+        double fac_entr_to_u = pow(SphP[i].Density * All.cf_a3inv, GAMMA_MINUS1) / GAMMA_MINUS1;
         unew = uold + dt * fac_entr_to_u * (rt_DoHeating(i, dt) + rt_DoCooling(i, dt));
 #endif // RT_COOLING_PHOTOHEATING
         
