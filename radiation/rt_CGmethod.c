@@ -5,15 +5,16 @@
 #include <math.h>
 #include <gsl/gsl_math.h>
 
-#include "allvars.h"
-#include "proto.h"
+#include "../allvars.h"
+#include "../proto.h"
+#include "../kernel.h"
 
 #ifdef RADTRANSFER
 
 #define MAX_ITER 10000
 #define ACCURACY 1.0e-2
 #define EPSILON 1.0e-5
-#define tiny 1e-8
+#define tiny 1e-10
 
 /*structures for radtransfer*/
 struct radtransferdata_in
@@ -91,7 +92,7 @@ void radtransfer(void)
 
 	    XVec[j] = SphP[j].n_gamma[i];
 
-	    nH = HYDROGEN_MASSFRAC * SphP[j].d.Density / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
+	    nH = HYDROGEN_MASSFRAC * SphP[j].Density / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
 	    Kappa[j] = a3inv * (SphP[j].HI + tiny) * nH * rt_sigma_HI[i];
 
 #if defined(RT_INCLUDE_HE) && defined(RT_MULTI_FREQUENCY)
@@ -107,17 +108,20 @@ void radtransfer(void)
 
 	    if(SphP[j].n_gamma[i] > 0)
 	      {
-		double R = sqrt(SphP[j].Grad_ngamma[0][i] * SphP[j].Grad_ngamma[0][i] +
-				SphP[j].Grad_ngamma[1][i] * SphP[j].Grad_ngamma[1][i] +
-				SphP[j].Grad_ngamma[2][i] * SphP[j].Grad_ngamma[2][i]) / (SphP[j].n_gamma[i] *
+		double R = sqrt(SphP[j].Gradients.n_gamma[i][0] * SphP[j].Gradients.n_gamma[i][0] +
+				SphP[j].Gradients.n_gamma[i][1] * SphP[j].Gradients.n_gamma[i][1] +
+				SphP[j].Gradients.n_gamma[i][2] * SphP[j].Gradients.n_gamma[i][2]) / (SphP[j].n_gamma[i] *
 											  Kappa[j]);
 
 		if(All.ComovingIntegrationOn)
 		  R /= All.Time;
 
-		R *= 0.1;
+//		R *= 0.1;
 
-		Lambda[j] = (1 + R) / (1 + R + R * R);
+//		Lambda[j] = (1 + R) / (1 + R + R * R);
+
+		Lambda[j] = (2 + R) / (6 + 3 * R + R * R);
+
 		if(Lambda[j] < 1e-100)
 		  Lambda[j] = 0;
 	      }
@@ -372,7 +376,7 @@ void radtransfer_matrix_multiply(double *in, double *out, double *sum)
 	  RadTransferDataIn[j].Kappa = Kappa[place];
 	  RadTransferDataIn[j].Lambda = Lambda[place];
 	  RadTransferDataIn[j].Mass = P[place].Mass;
-	  RadTransferDataIn[j].Density = SphP[place].d.Density;
+	  RadTransferDataIn[j].Density = SphP[place].Density;
 
 	  memcpy(RadTransferDataIn[j].NodeList,
 		 DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
@@ -490,9 +494,9 @@ int radtransfer_evaluate(int target, int mode, double *in, double *out, double *
   double sum_out = 0, sum_w = 0, fac = 0;
 
   double dx, dy, dz;
-  double h_j, hinv, hinv4, h_i;
-  double dwk_i, dwk_j, dwk;
-  double r, r2, r3inv, u, ainv, dt;
+  double h_j, hinv, hinv3, hinv4, h_i;
+  double wk_i, wk_j,dwk_i, dwk_j, dwk;
+  double r, r2, r3inv, ainv, dt;
 
   dt = (All.Radiation_Ti_endstep - All.Radiation_Ti_begstep) * All.Timebase_interval;
 
@@ -517,7 +521,7 @@ int radtransfer_evaluate(int target, int mode, double *in, double *out, double *
       lambda_i = Lambda[target];
 #endif
       mass_i = P[target].Mass;
-      rho_i = SphP[target].d.Density;
+      rho_i = SphP[target].Density;
     }
   else
     {
@@ -582,7 +586,7 @@ int radtransfer_evaluate(int target, int mode, double *in, double *out, double *
 		if(r > 0 && (r < h_i || r < h_j))
 		  {
 		    mass = P[j].Mass;
-		    rho = SphP[j].d.Density;
+		    rho = SphP[j].Density;
 		    kappa_j = Kappa[j];
 #ifdef RADTRANSFER_FLUXLIMITER
 		    lambda_j = Lambda[j];
@@ -606,33 +610,27 @@ int radtransfer_evaluate(int target, int mode, double *in, double *out, double *
 		    for(k = 0; k < 6; k++)
 		      ET_ij[k] = 0.5 * (ET_i[k] + ET_j[k]);
 
-		    if(r < h_i)
-		      {
-			hinv = 1.0 / h_i;
-			hinv4 = hinv * hinv * hinv * hinv;
-			u = r * hinv;
+		  	if(r < h_i)
+		  	{
 
-			if(u < 0.5)
-			  dwk_i = hinv4 * u * (KERNEL_COEFF_3 * u - KERNEL_COEFF_4);
-			else
-			  dwk_i = hinv4 * KERNEL_COEFF_6 * (1.0 - u) * (1.0 - u);
-		      }
-		    else
-		      dwk_i = 0;
+		 	kernel_hinv(h_i,&hinv,&hinv3,&hinv4);
+		  	kernel_main(r * hinv,hinv3,hinv4,&wk_i,&dwk_i,0);
+		  }
+		  else
+		  	dwk_i = 0;
 
-		    if(r < h_j)
-		      {
-			hinv = 1.0 / h_j;
-			hinv4 = hinv * hinv * hinv * hinv;
-			u = r * hinv;
 
-			if(u < 0.5)
-			  dwk_j = hinv4 * u * (KERNEL_COEFF_3 * u - KERNEL_COEFF_4);
-			else
-			  dwk_j = hinv4 * KERNEL_COEFF_6 * (1.0 - u) * (1.0 - u);
-		      }
-		    else
-		      dwk_j = 0;
+		  	if(r < h_j)
+		  	{
+		  	kernel_hinv(h_j,&hinv,&hinv3,&hinv4);
+		  	kernel_main(r * hinv,hinv3,hinv4,&wk_j,&dwk_j,0);
+		  }
+		  else
+		  	dwk_j = 0;
+
+
+
+
 
 		    kappa_ij = 0.5 * (1 / kappa_i + 1 / kappa_j);
 		    dwk = 0.5 * (dwk_i + dwk_j);
@@ -695,12 +693,15 @@ void radtransfer_set_simple_inits(void)
     if(P[i].Type == 0)
       {
 	for(j = 0; j < N_RT_FREQ_BINS; j++)
-	  SphP[i].n_gamma[j] = 0.0;
+	  SphP[i].n_gamma[j] = tiny;
 	
 	/* in code units */
 	SphP[i].HII = tiny;
 	SphP[i].HI = 1.0 - SphP[i].HII;
 	SphP[i].elec = SphP[i].HII;
+
+
+
 
 #ifdef RT_INCLUDE_HE
 	double fac = (1-HYDROGEN_MASSFRAC)/4.0/HYDROGEN_MASSFRAC;
@@ -720,6 +721,7 @@ void rt_get_sigma(void)
 
 #ifndef RT_MULTI_FREQUENCY
   rt_sigma_HI[0] = 6.3e-18 * fac;
+  nu[0] = 13.6;
   
 #else 
   int i, j, integral;
@@ -909,6 +911,15 @@ void rt_get_lum_stars(void)
       sum += lum[i];
       lum[i] *= All.UnitTime_in_s / All.HubbleParam; //number/time
     }
+
+    for(i = 0; i < N_RT_FREQ_BINS; i++)
+    {
+ //   	lum[i] *= 5.0e48 / sum;
+ //   	lum[i] *= All.UnitTime_in_s / All.HubbleParam;
+   		lum[i] *= All.IonizingLumPerSolarMass / sum; 	
+    }
+
+
     
  
   if(ThisTask == 0)
@@ -930,7 +941,7 @@ void rt_get_lum_stars(void)
 void rt_get_lum_gas(int target, double *je)
 {
   int j;
-  double temp, molecular_weight;
+  double temp, entropy, molecular_weight;
   double kT, hc, BB_l, BB_r, next;
   double sigma_SB, R_eff;
   double u_cooling, u_BB;
@@ -952,21 +963,22 @@ void rt_get_lum_gas(int target, double *je)
       a3inv = 1.0;
     }
 
-  R_eff = 3.0 / 4.0 / M_PI * pow(P[target].Mass / SphP[target].d.Density * a3inv, 1. / 3.);
+  R_eff = 3.0 / 4.0 / M_PI * pow(P[target].Mass / SphP[target].Density * a3inv, 1. / 3.);
   R_eff *= All.UnitLength_in_cm / All.HubbleParam; //cm
 
   molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[target].elec);
 
-  temp =  SphP[target].Entropy *
-    pow(SphP[target].d.Density * a3inv, GAMMA_MINUS1) *
+  temp =  SphP[target].Pressure *
     (molecular_weight * PROTONMASS / All.UnitMass_in_g * All.HubbleParam) /
     (BOLTZMANN / All.UnitEnergy_in_cgs * All.HubbleParam);
 
   kT = temp * BOLTZMANN;
   hc = C * PLANCK;
 
-  u_cooling = rt_get_cooling_rate(target, SphP[target].Entropy) *
-    dtime / (SphP[target].d.Density * a3inv);
+  entropy = SphP[target].Pressure * pow(SphP[target].Density * a3inv, -1 * GAMMA);
+
+  u_cooling = rt_get_cooling_rate(target, entropy) *
+    dtime / (SphP[target].Density * a3inv);
 
   if(!(dtime > 0))
     u_cooling = 0.0;

@@ -5,8 +5,8 @@
 #include <math.h>
 #include <gsl/gsl_math.h>
 
-#include "allvars.h"
-#include "proto.h"
+#include "../allvars.h"
+#include "../proto.h"
 
 #ifdef RADTRANSFER
 
@@ -51,15 +51,26 @@ void radtransfer_update_chemistry(void)
 	else
 	  dtime = dt;
 	
-	rho = SphP[i].d.Density * a3inv;
+	rho = SphP[i].Density * a3inv;
 	
 	nH = HYDROGEN_MASSFRAC * rho / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
 
 	molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[i].elec);
 
-	temp = SphP[i].Entropy * pow(rho, GAMMA_MINUS1) *
-	  molecular_weight * PROTONMASS / All.UnitMass_in_g * All.HubbleParam /
-	  BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
+
+
+//	  if(fabs(temp - 1.0e4) > 1000.0)
+//	  	printf("temp: %g\n",temp);
+
+#ifdef RT_ILIEV_TEST1
+	temp = 1.0e4;
+#else
+	temp = GAMMA_MINUS1 * SphP[i].InternalEnergyPred * molecular_weight * PROTONMASS /
+		All.UnitMass_in_g * All.HubbleParam / BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
+#endif
+
+//		if(fabs(temp - 1.0e4) > 3000.0)
+//	printf("temp: %g\n",temp);
 
 	/* collisional ionization rate */
 	gamma_HI = 5.85e-11 * sqrt(temp) * exp(-157809.1 / temp) / (1.0 + sqrt(temp / 1e5)) * fac;
@@ -231,15 +242,15 @@ void radtransfer_update_chemistry(void)
 	else
 	  dtime = dt;
 	
-	rho = SphP[i].d.Density * a3inv;
+	rho = SphP[i].Density * a3inv;
 	
 	nH = HYDROGEN_MASSFRAC * rho / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
 
 	molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[i].elec);
 
-	temp = SphP[i].Entropy * pow(rho, GAMMA_MINUS1) *
-	  molecular_weight * PROTONMASS / All.UnitMass_in_g * All.HubbleParam /
-	  BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
+	temp = GAMMA_MINUS1 * SphP[i].InternalEnergyPred * molecular_weight * PROTONMASS /
+		All.UnitMass_in_g * All.HubbleParam / BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
+
 
 	/* collisional ionization rate */
 	gamma_HI = 5.85e-11 * sqrt(temp) * exp(-157809.1 / temp) / (1.0 + sqrt(temp / 1e5)) * fac;
@@ -259,6 +270,15 @@ void radtransfer_update_chemistry(void)
 	if(nHII < 0 || nHII > 1 || isnan(nHII))
 	  {
 	    printf("ERROR nHII %g \n", nHII);
+	    printf("HII %g \n", SphP[i].HII);
+	    printf("B %g CC %g A %g \n",B,CC,A);
+	    printf("alpha HII %g \n",alpha_HII);
+	    printf("nH %g \n",nH);
+	    printf("fac %g \n",fac);
+	    printf("temp %g \n",temp);
+	    printf("pressure %g \n",SphP[i].Pressure);
+	    printf("kHI %g \n",k_HI);
+	    printf("ngamma %g \n",SphP[i].n_gamma[0]);
 	    endrun(333);
 	  }
 	
@@ -358,7 +378,7 @@ void rt_write_stats(void)
   for(i = 0; i < N_gas; i++)
     if(P[i].Type == 0)
       {
-	rho = SphP[i].d.Density * a3inv;
+	rho = SphP[i].Density * a3inv;
 
 #ifndef RT_MULTI_FREQUENCY
 	n_gamma = SphP[i].n_gamma[0] / P[i].Mass * a3inv;

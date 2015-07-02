@@ -1663,6 +1663,10 @@ void read_parameter_file(char *fname)
       strcpy(tag[nt], "star_Teff");
       addr[nt] = &All.star_Teff;
       id[nt++] = REAL;
+
+      strcpy(tag[nt], "IonizingLumPerSolarMass");
+      addr[nt] = &All.IonizingLumPerSolarMass;
+      id[nt++] = REAL;
 #endif
 
 #ifdef SINKS

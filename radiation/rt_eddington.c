@@ -6,8 +6,8 @@
 #include <gsl/gsl_math.h>
 
 
-#include "allvars.h"
-#include "proto.h"
+#include "../allvars.h"
+#include "../proto.h"
 
 
 #ifdef RADTRANSFER
@@ -248,6 +248,8 @@ int eddington_treeevaluate(int target, int mode, int *nexport, int *nsend_local)
 #endif
     }
 
+    h = All.ForceSoftening[ptype];
+
   if(mode == 0)
     {
       no = All.MaxPart;		/* root node */
@@ -477,18 +479,18 @@ int eddington_treeevaluate(int target, int mode, int *nexport, int *nsend_local)
 		}
 #ifndef ADAPTIVE_GRAVSOFT_FORGAS
 	      h = All.ForceSoftening[ptype];
-	      if(h < All.ForceSoftening[extract_max_softening_type(nop->u.d.bitflags)])
-		{
-		  h = All.ForceSoftening[extract_max_softening_type(nop->u.d.bitflags)];
-		  if(r2 < h * h)
-		    {
-		      if(maskout_different_softening_flag(nop->u.d.bitflags))	/* signals that there are particles of different softening in the node */
-			{
-			  no = nop->u.d.nextnode;
-			  continue;
-			}
-		    }
-		}
+//	      if(h < All.ForceSoftening[extract_max_softening_type(nop->u.d.bitflags)])
+//		{
+//		  h = All.ForceSoftening[extract_max_softening_type(nop->u.d.bitflags)];
+//		  if(r2 < h * h)
+//		    {
+//		      if(maskout_different_softening_flag(nop->u.d.bitflags))	/* signals that there are particles of different softening in the node */
+//			{
+//			  no = nop->u.d.nextnode;
+//			  continue;
+//			}
+//		    }
+//		}
 #else
 	      if(ptype == 0)
 		h = soft;

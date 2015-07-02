@@ -1103,7 +1103,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_RAD_ACCEL:
-#ifdef RADTRANSFER
+#ifdef RT_RAD_PRESSURE 
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
