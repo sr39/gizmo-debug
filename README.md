@@ -1,17 +1,22 @@
-##RadTransfer Status##
+##RadTransfer Status (updated 7/1/15)##
 * Photoionization implemented, tested and working
-* Photoheating/cooling implemented, tested and (mostly) working
-* Multi-frequency RT implemented, tested and working (BB spectrum in 4 bins)
-* Rad Pressure implemented but **NOT TESTED** (current task as of 6/30/15)
-* **GIZMO displays some diffusivity compared to AREPO**
+* Photoheating/cooling implemented, tested and working
+* Multi-frequency RT implemented and tested, working but exploring frequency binning
+* Rad Pressure implemented, tested and working
+* **GIZMO has a slightly more diffuse I-front compared to AREPO**
 
 
 #TODO LIST#
-* Need to test Rad. Pressure
-* Need to test multiple sources
-* Add luminosity as particle parameter rather than set in params file (i.e. arbitrary list of sources)
-* Consolidate Eddington tensor routines for separate particles (gas, star, BH) into a single routine
-* Need to test Helium cooling/ionization (cf. Friedrich et al. 2012)
+* Test multiple sources
+* Add luminosity as IC dataset rather than set in params file (i.e. arbitrary list of sources)
+* Consolidate Eddington tensor and luminosity routines for separate particles (gas, star, BH) 
+into a unified file (remove redundant calculations)
+* Add Starburst99 SSPs as input
+* Test MFV/PSPH for RP/GP (Iliev T5 + Sales Fig. 1)
+* Test an isothermal, self-gravitating cloud with RP+GP (Sales C1/C2)
+* (low priority) Test Helium cooling/ionization (cf. Friedrich et al. 2012)
+* Add frequency bin switching (i.e. optimal binning for BB vs. power-law sources as in Mirocha et al. 2012)
+
 
 
 
