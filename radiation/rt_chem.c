@@ -5,8 +5,8 @@
 #include <math.h>
 #include <gsl/gsl_math.h>
 
-#include "allvars.h"
-#include "proto.h"
+#include "../allvars.h"
+#include "../proto.h"
 
 #ifdef RADTRANSFER
 
@@ -51,15 +51,26 @@ void radtransfer_update_chemistry(void)
 	else
 	  dtime = dt;
 	
-	rho = SphP[i].d.Density * a3inv;
+	rho = SphP[i].Density * a3inv;
 	
 	nH = HYDROGEN_MASSFRAC * rho / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
 
-	molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[i].elec);
+	molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[i].Ne);
 
-	temp = SphP[i].Entropy * pow(rho, GAMMA_MINUS1) *
-	  molecular_weight * PROTONMASS / All.UnitMass_in_g * All.HubbleParam /
-	  BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
+
+
+//	  if(fabs(temp - 1.0e4) > 1000.0)
+//	  	printf("temp: %g\n",temp);
+
+#ifdef RT_ILIEV_TEST1
+	temp = 1.0e4;
+#else
+	temp = GAMMA_MINUS1 * SphP[i].InternalEnergyPred * molecular_weight * PROTONMASS /
+		All.UnitMass_in_g * All.HubbleParam / BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
+#endif
+
+//		if(fabs(temp - 1.0e4) > 3000.0)
+//	printf("temp: %g\n",temp);
 
 	/* collisional ionization rate */
 	gamma_HI = 5.85e-11 * sqrt(temp) * exp(-157809.1 / temp) / (1.0 + sqrt(temp / 1e5)) * fac;
@@ -77,9 +88,9 @@ void radtransfer_update_chemistry(void)
 	    endrun(111);
 	  }
 	
-	A = dtime * gamma_HI * nH * SphP[i].elec;
+	A = dtime * gamma_HI * nH * SphP[i].Ne;
 	B = dtime * c_light * n_gamma * rt_sigma_HI[0];
-	CC = dtime * alpha_HII * nH * SphP[i].elec;
+	CC = dtime * alpha_HII * nH * SphP[i].Ne;
 	
 	/* semi-implicit scheme for ionization */
 	nHII = SphP[i].HII + B + A;
@@ -92,7 +103,7 @@ void radtransfer_update_chemistry(void)
 	    endrun(333);
 	  }
 	
-	SphP[i].elec = nHII;
+	SphP[i].Ne = nHII;
 	
 	SphP[i].HII = nHII;
 
@@ -107,12 +118,12 @@ void radtransfer_update_chemistry(void)
 	alpha_HeII = 1.5e-10 * pow(temp, -0.6353) * fac;
 	alpha_HeIII = 3.36e-10 / sqrt(temp) * pow(temp / 1e3, -0.2) / (1.0 + pow(temp / 1e6, 0.7)) * fac;
 
-	SphP[i].elec += SphP[i].HeII + 2.0 * SphP[i].HeIII;
+	SphP[i].Ne += SphP[i].HeII + 2.0 * SphP[i].HeIII;
 
-	D = dtime * gamma_HeII * nH * SphP[i].elec;
-	E = dtime * alpha_HeIII * nH * SphP[i].elec;
-	F = dtime * gamma_HeI * nH * SphP[i].elec;
-	J = dtime * alpha_HeII * nH * SphP[i].elec;
+	D = dtime * gamma_HeII * nH * SphP[i].Ne;
+	E = dtime * alpha_HeIII * nH * SphP[i].Ne;
+	F = dtime * gamma_HeI * nH * SphP[i].Ne;
+	J = dtime * alpha_HeII * nH * SphP[i].Ne;
 	G = 0.0;
 	L = 0.0;
 
@@ -141,12 +152,12 @@ void radtransfer_update_chemistry(void)
             endrun(333);
           }
 
-	SphP[i].elec = SphP[i].HII + nHeII + 2.0 * nHeIII;
+	SphP[i].Ne = SphP[i].HII + nHeII + 2.0 * nHeIII;
 	
         nHeII *= y_fac;
         nHeIII *= y_fac;
 
-        SphP[i].elec = SphP[i].HII + nHeII + 2.0 * nHeIII;
+        SphP[i].Ne = SphP[i].HII + nHeII + 2.0 * nHeIII;
 
         SphP[i].HeII = nHeII;
         SphP[i].HeIII = nHeIII;
@@ -231,15 +242,15 @@ void radtransfer_update_chemistry(void)
 	else
 	  dtime = dt;
 	
-	rho = SphP[i].d.Density * a3inv;
+	rho = SphP[i].Density * a3inv;
 	
 	nH = HYDROGEN_MASSFRAC * rho / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
 
-	molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[i].elec);
+	molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[i].Ne);
 
-	temp = SphP[i].Entropy * pow(rho, GAMMA_MINUS1) *
-	  molecular_weight * PROTONMASS / All.UnitMass_in_g * All.HubbleParam /
-	  BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
+	temp = GAMMA_MINUS1 * SphP[i].InternalEnergyPred * molecular_weight * PROTONMASS /
+		All.UnitMass_in_g * All.HubbleParam / BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
+
 
 	/* collisional ionization rate */
 	gamma_HI = 5.85e-11 * sqrt(temp) * exp(-157809.1 / temp) / (1.0 + sqrt(temp / 1e5)) * fac;
@@ -247,9 +258,9 @@ void radtransfer_update_chemistry(void)
 	/* alpha_B recombination coefficient */
 	alpha_HII = 2.59e-13 * pow(temp / 1e4, -0.7) * fac;
 	
-	A = dtime * gamma_HI * nH * SphP[i].elec;
+	A = dtime * gamma_HI * nH * SphP[i].Ne;
 	B = dtime * k_HI;
-	CC = dtime * alpha_HII * nH * SphP[i].elec;
+	CC = dtime * alpha_HII * nH * SphP[i].Ne;
 	
 	/* semi-implicit scheme for ionization */
 	nHII = SphP[i].HII + B + A;
@@ -259,10 +270,19 @@ void radtransfer_update_chemistry(void)
 	if(nHII < 0 || nHII > 1 || isnan(nHII))
 	  {
 	    printf("ERROR nHII %g \n", nHII);
+	    printf("HII %g \n", SphP[i].HII);
+	    printf("B %g CC %g A %g \n",B,CC,A);
+	    printf("alpha HII %g \n",alpha_HII);
+	    printf("nH %g \n",nH);
+	    printf("fac %g \n",fac);
+	    printf("temp %g \n",temp);
+	    printf("pressure %g \n",SphP[i].Pressure);
+	    printf("kHI %g \n",k_HI);
+	    printf("ngamma %g \n",SphP[i].n_gamma[0]);
 	    endrun(333);
 	  }
 	
-	SphP[i].elec = nHII;
+	SphP[i].Ne = nHII;
 	
 	SphP[i].HII = nHII;
 
@@ -277,12 +297,12 @@ void radtransfer_update_chemistry(void)
 	alpha_HeII = 1.5e-10 * pow(temp, -0.6353) * fac;
 	alpha_HeIII = 3.36e-10 / sqrt(temp) * pow(temp / 1e3, -0.2) / (1.0 + pow(temp / 1e6, 0.7)) * fac;
 	
-	SphP[i].elec += SphP[i].HeII +  2.0 * SphP[i].HeIII;
+	SphP[i].Ne += SphP[i].HeII +  2.0 * SphP[i].HeIII;
 	
-	D = dtime * gamma_HeII * nH * SphP[i].elec;
-	E = dtime * alpha_HeIII * nH * SphP[i].elec;
-	F = dtime * gamma_HeI * nH * SphP[i].elec;
-	J = dtime * alpha_HeII * nH * SphP[i].elec;
+	D = dtime * gamma_HeII * nH * SphP[i].Ne;
+	E = dtime * alpha_HeIII * nH * SphP[i].Ne;
+	F = dtime * gamma_HeI * nH * SphP[i].Ne;
+	J = dtime * alpha_HeII * nH * SphP[i].Ne;
 	G = dtime * k_HeI;
 	L = dtime * k_HeII;
 
@@ -314,7 +334,7 @@ void radtransfer_update_chemistry(void)
 	nHeII *= y_fac;
 	nHeIII *= y_fac;
 
-	SphP[i].elec = SphP[i].HII + nHeII + 2.0 * nHeIII;
+	SphP[i].Ne = SphP[i].HII + nHeII + 2.0 * nHeIII;
 	
 	SphP[i].HeII = nHeII;
 	SphP[i].HeIII = nHeIII;
@@ -358,7 +378,7 @@ void rt_write_stats(void)
   for(i = 0; i < N_gas; i++)
     if(P[i].Type == 0)
       {
-	rho = SphP[i].d.Density * a3inv;
+	rho = SphP[i].Density * a3inv;
 
 #ifndef RT_MULTI_FREQUENCY
 	n_gamma = SphP[i].n_gamma[0] / P[i].Mass * a3inv;

@@ -29,8 +29,15 @@
         for(k=0;k<3;k++) {v_interface[k] = wt_i*local.Vel[k] + wt_j*VelPred_j[k];} // should use interface solution from Riemann problem //
         
         // estimate the interface coefficients with a simple arithmetic average //
+        /*
         double eta  = wt_i*local.Eta_ShearViscosity + wt_j*SphP[j].Eta_ShearViscosity;
         double zeta = wt_i*local.Zeta_BulkViscosity + wt_j*SphP[j].Zeta_BulkViscosity;
+        */
+        // use a geometric average, since we want to weight the smaller of the two coefficients //
+        double eta = 0.5 * (local.Eta_ShearViscosity + SphP[j].Eta_ShearViscosity);
+        if(eta > 0) {eta = local.Eta_ShearViscosity * SphP[j].Eta_ShearViscosity / eta;} else {eta = 0;}
+        double zeta = 0.5 * (local.Zeta_BulkViscosity + SphP[j].Zeta_BulkViscosity);
+        if(zeta > 0) {zeta = local.Zeta_BulkViscosity * SphP[j].Zeta_BulkViscosity / zeta;} else {zeta = 0;}
         // we need a minus sign at some point; its handy to just include it now in the weights //
         wt_i *= -1.; wt_j *= -1.;
         
@@ -118,7 +125,8 @@
 #endif
         
         /* slope-limit this to be sure that viscosity always acts in the proper direction when there is local noise */
-        double c_max_norm = -0.5 * DMAX(eta,zeta);
+        //double c_max_norm = -0.5 * DMAX(eta,zeta); // safer but less accurate
+        double c_max_norm = -1.0 * DMAX(eta,zeta);
         double c_max = 0.0;
         for(k=0;k<3;k++) {c_max += Face_Area_Vec[k] * kernel.dp[k];}
         c_max *= rinv*rinv;

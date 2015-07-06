@@ -257,8 +257,8 @@ void myfree_movable_fullinfo(void *p, const char *func, const char *file, int li
     endrun(768728);
 
   /* first, let's find the block */
-    unsigned int nr; //
-    //int nr; // actually shouldn't be unsigned for the bcheck below //
+    //unsigned int nr; //
+    int nr; // actually shouldn't be unsigned for the bcheck below //
 
   for(nr = Nblocks - 1; nr >= 0; nr--)
     if(p == Table[nr])
@@ -387,8 +387,8 @@ void *myrealloc_movable_fullinfo(void *p, size_t n, const char *func, const char
     endrun(768799);
 
   /* first, let's find the block */
-   unsigned int nr; //
-   //int nr; // actually shouldn't be unsigned for the bcheck below //
+   //unsigned int nr; //
+   int nr; // actually shouldn't be unsigned for the bcheck below //
 
   for(nr = Nblocks - 1; nr >= 0; nr--)
     if(p == Table[nr])

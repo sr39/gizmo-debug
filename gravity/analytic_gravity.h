@@ -50,8 +50,11 @@ void GravAccel_ShearingSheet()
         /* centrifugal force term (depends on distance from box center) */
         P[i].GravAccel[0] += 2.*(P[i].Pos[0]-boxHalf_X) * SHEARING_BOX_Q*SHEARING_BOX_OMEGA_BOX_CENTER*SHEARING_BOX_OMEGA_BOX_CENTER;
         /* coriolis force terms */
-        P[i].GravAccel[0] += 2. * SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE] * SHEARING_BOX_OMEGA_BOX_CENTER;
-        P[i].GravAccel[SHEARING_BOX_PHI_COORDINATE] -= 2. * SphP[i].VelPred[0] * SHEARING_BOX_OMEGA_BOX_CENTER;
+        double vp=0;
+        if(P[i].Type==0) {vp=SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE];} else {vp=P[i].Vel[SHEARING_BOX_PHI_COORDINATE];}
+        P[i].GravAccel[0] += 2.*vp * SHEARING_BOX_OMEGA_BOX_CENTER;
+        if(P[i].Type==0) {vp=SphP[i].VelPred[0];} else {vp=P[i].Vel[0];}
+        P[i].GravAccel[SHEARING_BOX_PHI_COORDINATE] -= 2.*vp * SHEARING_BOX_OMEGA_BOX_CENTER;
 #if (SHEARING_BOX==4)
         /* add vertical gravity to the force law */
         P[i].GravAccel[2] -= SHEARING_BOX_OMEGA_BOX_CENTER * SHEARING_BOX_OMEGA_BOX_CENTER * (P[i].Pos[2]-boxHalf_Z);

@@ -439,7 +439,11 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
 #endif
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
     for(k=0;k<NUM_METAL_SPECIES;k++)
-        P[i].Metallicity[k] += out->Dyield[k] / P[i].Mass;
+    {
+        double z_tmp = P[i].Metallicity[k] + out->Dyield[k] / P[i].Mass;
+        z_tmp = DMAX(z_tmp , 0.5 * P[i].Metallicity[k]);
+        P[i].Metallicity[k] = z_tmp;
+    }
 #endif
     
     
@@ -568,13 +572,35 @@ void hydro_final_operations_and_cleanup(void)
 #endif
                 SphP[i].HydroAccel[k] /= P[i].Mass; /* we solved for momentum flux */
             }
+            
 #ifdef COSMIC_RAYS
             /* need to account for the adiabatic heating/cooling of the cosmic ray fluid, here: its an ultra-relativistic fluid with gamma=4/3 */
             double dt_cosmicray_energy_adiabatic = -GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred * (P[i].Particle_DivVel*All.cf_a2inv);
             SphP[i].DtCosmicRayEnergy += dt_cosmicray_energy_adiabatic;
             SphP[i].DtInternalEnergy -= dt_cosmicray_energy_adiabatic;
+            /* adiabatic term from Hubble expansion (needed for cosmological integrations */
             if(All.ComovingIntegrationOn) SphP[i].DtCosmicRayEnergy -= SphP[i].CosmicRayEnergyPred * All.cf_hubble_a;
+#ifndef COSMIC_RAYS_DISABLE_STREAMING
+            /* energy transfer from CRs to gas due to the streaming instability (mediated by high-frequency Alfven waves, but they thermalize quickly
+                (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
+            double cr_stream_cool = -SphP[i].CosmicRayEnergyPred * Get_CosmicRayStreamingVelocity(i) / Get_CosmicRayGradientLength(i);
+#ifdef MAGNETIC
+            /* account here for the fact that the streaming velocity can be suppressed by the requirement of motion along field lines */
+            double B_dot_gradP=0.0, B2_tot=0.0, Pgrad2_tot=0.0;
+            for(k=0;k<3;k++)
+            {
+                double b_to_use = Get_Particle_BField(i,k);
+                B2_tot += b_to_use * b_to_use;
+                Pgrad2_tot += SphP[i].Gradients.CosmicRayPressure[k] * SphP[i].Gradients.CosmicRayPressure[k];
+                B_dot_gradP += b_to_use * SphP[i].Gradients.CosmicRayPressure[k];
+            }
+            cr_stream_cool *= (B_dot_gradP * B_dot_gradP) / (1.e-37 + B2_tot * Pgrad2_tot);
 #endif
+            SphP[i].DtCosmicRayEnergy += cr_stream_cool;
+            SphP[i].DtInternalEnergy -= cr_stream_cool;
+#endif
+#endif
+            
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             SphP[i].DtInternalEnergy -= SphP[i].InternalEnergyPred * SphP[i].DtMass;
 #endif
@@ -607,8 +633,7 @@ void hydro_final_operations_and_cleanup(void)
                 for(k = 0; k < 3; k++)
                 {
                     SphP[i].RadAccel[k] = 0.0;
-                    for(j = 0; j < N_RT_FREQ_BINS; j++)
-                        SphP[i].RadAccel[k] += SphP[i].n_gamma[j] * nu[j];
+                    int k2; for(k2=0; k2<N_RT_FREQ_BINS; k2++) {SphP[i].RadAccel[k] += SphP[i].n_gamma[k2] * nu[k2];}
                     SphP[i].RadAccel[k] *= SphP[i].n[k] / P[i].Mass * ELECTRONVOLT_IN_ERGS /
                     All.UnitEnergy_in_cgs * All.HubbleParam / (C / All.UnitVelocity_in_cm_per_s) / dt / SphP[i].Density;
                 }

@@ -119,9 +119,8 @@ void radiation_pressure_winds_consolidated(void)
      if (h>RtauMax) h=RtauMax;
             
      do {
-         numngb_inbox =
-           ngb_treefind_variable_threads(pos, h, -1, &startnode, 0, &dummy,
-                                       &dummy, &dummy, Ngblist);
+         numngb_inbox = ngb_treefind_pairs_threads(pos, h, -1, &startnode, 0, &dummy, &dummy, &dummy, Ngblist);
+         
           if((numngb_inbox>=N_MIN_KERNEL)&&(numngb_inbox<=N_MAX_KERNEL))
           {
              hinv=1/h; hinv3=hinv*hinv*hinv; wt_sum=rho=0;
@@ -142,7 +141,7 @@ void radiation_pressure_winds_consolidated(void)
                    kernel_main(u,hinv3,1,&wk,&vq,-1);
                    rho += (P[j].Mass*wk);
                    double h_eff_j = Get_Particle_Size(j);
-                   wt_sum += h_eff_j*h_eff_j / r2;
+                   wt_sum += h_eff_j*h_eff_j;// / r2;
                } /* if( (P[j].Mass>0) && (SphP[j].Density>0) ) */
               } /* for(n=0; n<numngb_inbox; n++) */
               if (rho <= 0) {
@@ -224,7 +223,7 @@ void radiation_pressure_winds_consolidated(void)
                //dv_imparted_uv = (wk/rho) * dE_over_c;
               
               double h_eff_j = Get_Particle_Size(j);
-              wk = h_eff_j*h_eff_j / (r2 * wt_sum);
+              wk = h_eff_j*h_eff_j / wt_sum;// / (r2 * wt_sum);
               //double wkmax = 1.5 * M_PI * h_eff_j * h_eff_j / (4. * M_PI * 0.5625*r2); if(wk > wkmax) {wk = wkmax;}
               dv_imparted_uv = wk * dE_over_c / P[j].Mass;
 
@@ -268,7 +267,6 @@ void radiation_pressure_winds_consolidated(void)
                } else {
                    for(k=0;k<3;k++) dir[k]=-P[j].GradRho[k]; // otherwise, along opacity gradient //
                }
-                   
 #endif // GALSF_FB_RPWIND_CONTINUOUS
 #endif
                 norm=0; for(k=0; k<3; k++) norm += dir[k]*dir[k];

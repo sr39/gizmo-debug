@@ -66,8 +66,10 @@
         double wt_i,wt_j;
         wt_i = wt_j = 0.5;
         //wt_i = PPP[j].Hsml / (PPP[j].Hsml + local.Hsml); wt_j = 1.-wt_i; // this is consistent with our second-order face location //
-        conduction_wt = wt_i*local.Kappa_Conduction + wt_j*SphP[j].Kappa_Conduction; // arithmetic mean
-        //conduction_wt = 2.0 * (local.Kappa_Conduction * SphP[j].Kappa_Conduction) / (local.Kappa_Conduction + SphP[j].Kappa_Conduction); // geometric mean
+        //conduction_wt = wt_i*local.Kappa_Conduction + wt_j*SphP[j].Kappa_Conduction; // arithmetic mean
+        conduction_wt = 0.5 * (local.Kappa_Conduction + SphP[j].Kappa_Conduction);
+        if(conduction_wt > 0) {conduction_wt = local.Kappa_Conduction * SphP[j].Kappa_Conduction / conduction_wt;} else {conduction_wt = 0;}
+                //conduction_wt = 2.0 * (local.Kappa_Conduction * SphP[j].Kappa_Conduction) / (local.Kappa_Conduction + SphP[j].Kappa_Conduction); // geometric mean
         conduction_wt *= All.cf_atime; // based on units TD_DiffCoeff is defined with, this makes it physical for a dimensionless quantity gradient below
         /* if we use -DIFFUSIVITIES-, we need a density here; if we use -CONDUCTIVITITIES-, no density */
         // conduction_wt *= Riemann_out.Face_Density;

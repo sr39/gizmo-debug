@@ -178,12 +178,12 @@ GMP_INCL = #
 GMP_LIBS = #
 MKL_INCL = #
 MKL_LIBS = #
-GSL_INCL = -I$(PORTINCLUDE)
-GSL_LIBS = -L$(PORTLIB)
+GSL_INCL = -I/usr/local/include -I$(PORTINCLUDE)
+GSL_LIBS = -L/usr/local/lib -L$(PORTLIB)
 FFTW_INCL= -I/usr/local/include
 FFTW_LIBS= -L/usr/local/lib
-HDF5INCL = -I$(PORTINCLUDE) -DH5_USE_16_API
-HDF5LIB  = -L$(PORTLIB) -lhdf5 -lz
+HDF5INCL = -I/usr/local/include -I$(PORTINCLUDE) -DH5_USE_16_API
+HDF5LIB  = -L/usr/local/lib -L$(PORTLIB) -lhdf5 -lz
 MPICHLIB = #
 OPT     += #
 ##
@@ -568,14 +568,9 @@ ifeq (DISTORTIONTENSORPS,$(findstring DISTORTIONTENSORPS,$(CONFIGVARS)))
 OBJS	+= modules/phasespace/phasespace.o modules/phasespace/phasespace_math.o
 endif
 
-ifeq (MACHNUM,$(findstring MACHNUM,$(CONFIGVARS)))
-OBJS	+= machfinder.o
-INCL	+= machfinder.h
-endif
-
-ifeq (RAD_TRANSFER,$(findstring RAD_TRANSFER,$(CONFIGVARS)))
-OBJS	+= modules/rt/rt_chem.o modules/rt/rt_bh_lum.o modules/rt/rt_sfr_lum.o modules/rt/rt_cooling.o \
-    modules/rt/rt_eddington.o modules/rt/rt_n.o modules/rt/rt_CGmethod.o modules/rt/rt_stars_lum.o modules/rt/rt_gas_lum.o
+ifeq (RADTRANSFER,$(findstring RADTRANSFER,$(CONFIGVARS)))
+OBJS	+= radiation/rt_chem.o radiation/rt_bh_lum.o radiation/rt_sfr_lum.o radiation/rt_cooling.o \
+    radiation/rt_eddington.o radiation/rt_n.o radiation/rt_CGmethod.o radiation/rt_stars_lum.o radiation/rt_gas_lum.o
 endif
 
 ifeq (SUBFIND,$(findstring SUBFIND,$(CONFIGVARS)))

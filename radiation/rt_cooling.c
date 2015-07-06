@@ -4,10 +4,10 @@
 #include <string.h>
 #include <math.h>
 
-#include "allvars.h"
-#include "proto.h"
+#include "../allvars.h"
+#include "../proto.h"
 
-#include "cooling.h"
+#include "../cooling/cooling.h"
 
 #if defined(RT_COOLING_PHOTOHEATING)
 
@@ -39,7 +39,7 @@ double rt_DoHeating(int i, double dt_internal)
   
   c_light = C / All.UnitVelocity_in_cm_per_s;
   
-  nH = HYDROGEN_MASSFRAC * SphP[i].d.Density * a3inv / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
+  nH = HYDROGEN_MASSFRAC * SphP[i].Density * a3inv / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
   nHI = SphP[i].HI * nH;
   
   sigma = 1.63e-18 / All.UnitLength_in_cm / All.UnitLength_in_cm * All.HubbleParam * All.HubbleParam;
@@ -47,8 +47,8 @@ double rt_DoHeating(int i, double dt_internal)
   E = 30.0 * ELECTRONVOLT_IN_ERGS / All.UnitEnergy_in_cgs * All.HubbleParam;
   rate = nHI * c_light * E * sigma * n_gamma;
   
-  du = rate * dt_internal / hubble_a / (SphP[i].d.Density * a3inv);
-  de = du * GAMMA_MINUS1 / pow(SphP[i].d.Density * a3inv, GAMMA_MINUS1);
+  du = rate * dt_internal / hubble_a / (SphP[i].Density * a3inv);
+  de = du * GAMMA_MINUS1 / pow(SphP[i].Density * a3inv, GAMMA_MINUS1);
   
   return de / dt_internal;
 }
@@ -79,7 +79,7 @@ double rt_DoHeating(int i, double dt_internal)
       a3inv = hubble_a = 1.0;
     }
   
-  nH = HYDROGEN_MASSFRAC * SphP[i].d.Density * a3inv / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
+  nH = HYDROGEN_MASSFRAC * SphP[i].Density * a3inv / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
   nHI = SphP[i].HI * nH;
   
 #ifdef RT_INCLUDE_HE
@@ -104,8 +104,8 @@ double rt_DoHeating(int i, double dt_internal)
 #endif
     }
   
-  du = rate * dt_internal / hubble_a / (SphP[i].d.Density * a3inv);
-  de = du * GAMMA_MINUS1 / pow(SphP[i].d.Density * a3inv, GAMMA_MINUS1);
+  du = rate * dt_internal / hubble_a / (SphP[i].Density * a3inv);
+  de = du * GAMMA_MINUS1 / pow(SphP[i].Density * a3inv, GAMMA_MINUS1);
 
   return de / dt_internal;
 }
@@ -130,13 +130,14 @@ double rt_DoCooling(int i, double dt_internal)
       a3inv = 1.0;
     }
 
-  fac_u_to_entr = GAMMA_MINUS1 / pow(SphP[i].d.Density * a3inv, GAMMA_MINUS1);
+  fac_u_to_entr = GAMMA_MINUS1 / pow(SphP[i].Density * a3inv, GAMMA_MINUS1);
     
-  entropy = SphP[i].Entropy;
+  entropy = SphP[i].Pressure / pow(SphP[i].Density * a3inv, GAMMA);
+
 
   /* do the cooling */
   lambda = rt_get_cooling_rate(i, entropy);
-  du = lambda * dtime / (SphP[i].d.Density * a3inv);
+  du = lambda * dtime / (SphP[i].Density * a3inv);
   de = du * fac_u_to_entr;
 
   if(fabs(de) < 0.2 * entropy)
@@ -150,7 +151,7 @@ double rt_DoCooling(int i, double dt_internal)
       u_old = entropy / fac_u_to_entr;
       u_lower = u_old / sqrt(1.1);
       u_upper = u_old * sqrt(1.1);
-      ratefact = dtime / (SphP[i].d.Density * a3inv);
+      ratefact = dtime / (SphP[i].Density * a3inv);
       iter = 0;
 
       /* bracketing */
@@ -189,7 +190,9 @@ double rt_DoCooling(int i, double dt_internal)
 
       du = u - u_old;
 
-      return du * fac_u_to_entr / dt_internal;
+ //     return du * fac_u_to_entr / dt_internal;
+      return du / dt_internal;
+
     }
 
 }
@@ -215,66 +218,66 @@ double rt_get_cooling_rate(int i, double entropy)
   else
     a3inv = 1;
 
-  nH = HYDROGEN_MASSFRAC * SphP[i].d.Density * a3inv / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;	//physical
-  molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[i].elec);
+  nH = HYDROGEN_MASSFRAC * SphP[i].Density * a3inv / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;	//physical
+  molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[i].Ne);
 
-  temp = entropy * pow(SphP[i].d.Density * a3inv, GAMMA_MINUS1) *
+  temp = entropy * pow(SphP[i].Density * a3inv, GAMMA_MINUS1) *
     molecular_weight * PROTONMASS / All.UnitMass_in_g * All.HubbleParam /
     BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
 
   /* all rates in erg cm^3 s^-1 in code units */
   /* recombination cooling rate */
   rate2 = 8.7e-27 * sqrt(temp) * pow(temp / 1e3, -0.2) / (1.0 + pow(temp / 1e6, 0.7)) * fac;
-  de2 = SphP[i].HII * nH * SphP[i].elec * nH * rate2;
+  de2 = SphP[i].HII * nH * SphP[i].Ne * nH * rate2;
 
   /* collisional ionization cooling rate */
   rate3 = 1.27e-21 * sqrt(temp) * exp(-157809.1 / temp) / (1.0 + sqrt(temp / 1e5)) * fac;
-  de3 = SphP[i].HI * nH * SphP[i].elec * nH * rate3;
+  de3 = SphP[i].HI * nH * SphP[i].Ne * nH * rate3;
 
   /* collisional excitation cooling rate */
   rate4 = 7.5e-19 / (1.0 + sqrt(temp / 1e5)) * exp(-118348 / temp) * fac;
-  de4 = SphP[i].HI * nH * SphP[i].elec * nH * rate4;
+  de4 = SphP[i].HI * nH * SphP[i].Ne * nH * rate4;
 
   /* Bremsstrahlung cooling rate */
   rate5 = 1.42e-27 * sqrt(temp) * fac;
-  de5 = SphP[i].HII * nH * SphP[i].elec * nH * rate5;
+  de5 = SphP[i].HII * nH * SphP[i].Ne * nH * rate5;
 
   Lambda = de2 + de3 + de4 + de5;
 
   /* inverse Compton cooling rate */
   if(All.ComovingIntegrationOn)
-    Lambda += 5.406e-36 * SphP[i].elec * (temp - (2.73 / All.Time)) / pow(All.Time, 4) * fac;
+    Lambda += 5.406e-36 * SphP[i].Ne * (temp - (2.73 / All.Time)) / pow(All.Time, 4) * fac;
   
 #ifdef RT_INCLUDE_HE
   /* recombination cooling rate */
   rateHe2 = 1.55e-26 * pow(temp, 0.3647) * fac;
-  deHe2 = SphP[i].HeII * nH * SphP[i].elec * nH * rateHe2;
+  deHe2 = SphP[i].HeII * nH * SphP[i].Ne * nH * rateHe2;
 
   rateHe2 = 3.48e-26 * sqrt(temp) * pow(temp / 1e3, -0.2) / (1.0 + pow(temp / 1e6, 0.7)) * fac;
-  deHe2 += SphP[i].HeIII * nH * SphP[i].elec * nH * rateHe2;
+  deHe2 += SphP[i].HeIII * nH * SphP[i].Ne * nH * rateHe2;
 
   /* collisional ionization cooling rate */
   rateHe3 = 9.38e-22 * sqrt(temp) * exp(-285335.4 / temp) / (1.0 + sqrt(temp / 1e5)) * fac;
-  deHe3 = SphP[i].HeI * nH * SphP[i].elec * nH * rateHe3;
+  deHe3 = SphP[i].HeI * nH * SphP[i].Ne * nH * rateHe3;
 
   rateHe3 = 4.95e-22 * sqrt(temp) * exp(-631515 / temp) / (1.0 + sqrt(temp / 1e5)) * fac;
-  deHe3 += SphP[i].HeII * nH * SphP[i].elec * nH * rateHe3;
+  deHe3 += SphP[i].HeII * nH * SphP[i].Ne * nH * rateHe3;
 
   rateHe3 = 5.01e-27 * pow(temp, -0.1687) / (1.0 + sqrt(temp / 1e5)) * exp(-55338 / temp) * fac;
   rateHe3 *= pow(All.HubbleParam / All.UnitLength_in_cm, 3);
-  deHe3 += SphP[i].HeII * nH * SphP[i].elec * nH * SphP[i].elec * nH * rateHe3;
+  deHe3 += SphP[i].HeII * nH * SphP[i].Ne * nH * SphP[i].Ne * nH * rateHe3;
 
   /* collisional excitation cooling rate */
   rateHe4 = 5.54e-17 * pow(temp, -0.397) / (1.0 + sqrt(temp / 1e5)) * exp(-473638 / temp) * fac;
-  deHe4 = SphP[i].HeII * nH * SphP[i].elec * nH * rateHe4;
+  deHe4 = SphP[i].HeII * nH * SphP[i].Ne * nH * rateHe4;
 
   rateHe4 = 9.10e-27 * pow(temp, -0.1687) / (1.0 + sqrt(temp / 1e5)) * exp(-13179 / temp) * fac;
   rateHe4 *= pow(All.HubbleParam / All.UnitLength_in_cm, 3);
-  deHe4 += SphP[i].HeII * nH * SphP[i].elec * nH * SphP[i].elec * nH * rateHe4;
+  deHe4 += SphP[i].HeII * nH * SphP[i].Ne * nH * SphP[i].Ne * nH * rateHe4;
 
   /* Bremsstrahlung cooling rate */
   rateHe5 = 1.42e-27 * sqrt(temp) * fac;
-  deHe5 = (SphP[i].HeII + 4.0 * SphP[i].HeIII + SphP[i].elec) * nH * rateHe5;
+  deHe5 = (SphP[i].HeII + 4.0 * SphP[i].HeIII + SphP[i].Ne) * nH * rateHe5;
 
   Lambda += deHe2 + deHe3 + deHe4 + deHe5;
 #endif
