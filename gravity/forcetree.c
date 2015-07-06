@@ -789,7 +789,7 @@ void force_update_node_recursive(int no, int sib, int father)
         
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
         double l_tot=0; for(k=0;k<N_RT_FREQ_BINS;k++) {l_tot += stellar_lum[k];}
-        if(stellar_lum)
+        if(l_tot)
         {
             rt_source_lum_s[0] /= l_tot;
             rt_source_lum_s[1] /= l_tot;
@@ -845,7 +845,7 @@ void force_update_node_recursive(int no, int sib, int father)
         Nodes[no].u.d.s[2] = s[2];
         Nodes[no].GravCost = 0;
 #ifdef RT_USE_GRAVTREE
-        for(k=0;k<N_RT_FREQ_BINS;k++) {Nodes[no].stellar_lum[k] += stellar_lum[k];}
+        for(k=0;k<N_RT_FREQ_BINS;k++) {Nodes[no].stellar_lum[k] = stellar_lum[k];}
 #endif
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
         Nodes[no].rt_source_lum_s[0] = rt_source_lum_s[0];
@@ -1316,7 +1316,7 @@ void force_treeupdate_pseudos(int no)
     Extnodes[no].vs[2] = vs[2];
     Nodes[no].u.d.mass = mass;
 #ifdef RT_USE_GRAVTREE
-    int k; for(k=0;k<N_RT_FREQ_BINS;k++) {Nodes[no].stellar_lum[k] += stellar_lum[k];}
+    int k; for(k=0;k<N_RT_FREQ_BINS;k++) {Nodes[no].stellar_lum[k] = stellar_lum[k];}
 #endif
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
     Nodes[no].rt_source_lum_s[0] = rt_source_lum_s[0];
@@ -1733,9 +1733,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 
                 
 #ifdef RT_USE_GRAVTREE
-                dx_stellarlum=dx; dy_stellarlum=dy; dz_stellarlum=dz;
                 if(valid_gas_particle_for_rt)	/* we have a (valid) gas particle as target */
                 {
+                    dx_stellarlum=dx; dy_stellarlum=dy; dz_stellarlum=dz;
                     double lum[N_RT_FREQ_BINS];
                     int active_check = rt_get_source_luminosity(no,sigma_eff,lum);
                     int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {if(active_check) {mass_stellarlum[kf]=lum[kf];} else {mass_stellarlum[kf]=0;}}
