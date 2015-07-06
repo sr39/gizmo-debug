@@ -34,6 +34,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double epsilon_entropic_eos_small = 1.e-3; // should be << epsilon_entropic_eos_big
     if(All.ComovingIntegrationOn) {epsilon_entropic_eos_big = 0.6; epsilon_entropic_eos_small=1.e-2;}
 #endif
+#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
+    double Fluxes_E_gamma[N_RT_FREQ_BINS];
+#endif
     
     if(mode == 0)
     {
@@ -257,7 +260,6 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     kernel.wk_j = 0;
                 }
                 
-                
                 /* --------------------------------------------------------------------------------- */
                 /* with the overhead numbers above calculated, we now 'feed into' the "core" 
                     hydro computation (SPH, meshless godunov, etc -- doesn't matter, should all take the same inputs) 
@@ -286,6 +288,11 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #include "../galaxy_sf/cosmic_ray_diffusion.h"
 #endif
                 
+#ifdef RT_DIFFUSION_EXPLICIT
+#include "../radiation/rt_diffusion_explicit.h"
+#endif
+                
+                
                 /* --------------------------------------------------------------------------------- */
                 /* now we will actually assign the hydro variables for the evolution step */
                 /* --------------------------------------------------------------------------------- */
@@ -306,6 +313,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     //SphP[j].dMomentum[k] -= Fluxes.v[k] * dt_hydrostep; //manifest-indiv-timestep-debug//
                 }
                 out.DtInternalEnergy += Fluxes.p;
+#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
+                for(k=0;k<N_RT_FREQ_BINS;k++) {out.Dt_E_gamma[k] += Fluxes_E_gamma[k];}
+#endif
 #ifdef MAGNETIC
                 for(k=0;k<3;k++) {out.DtB[k]+=Fluxes.B[k];}
                 out.divB += Fluxes.B_normal_corrected;
@@ -352,6 +362,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                     for(k=0;k<3;k++) {SphP[j].HydroAccel[k] -= Fluxes.v[k];}
                     SphP[j].DtInternalEnergy -= Fluxes.p;
+#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
+                    for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[j].Dt_E_gamma[k] -= Fluxes_E_gamma[k];}
+#endif
 #ifdef MAGNETIC
                     for(k=0;k<3;k++) {SphP[j].DtB[k]-=Fluxes.B[k];}
                     SphP[j].divB -= Fluxes.B_normal_corrected;

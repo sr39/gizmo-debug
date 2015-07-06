@@ -71,8 +71,11 @@ struct Quantities_for_Gradients
 #ifdef TURB_DIFF_METALS
     MyDouble Metallicity[NUM_METAL_SPECIES];
 #endif
-#ifdef RADTRANSFER_FLUXLIMITER
-    MyFloat n_gamma[N_RT_FREQ_BINS];
+#if defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
+    MyFloat E_gamma[N_RT_FREQ_BINS];
+#endif
+#if defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT) 
+    MyFloat E_gamma_ET[6];
 #endif
 #ifdef DOGRAD_INTERNAL_ENERGY
     MyDouble InternalEnergy;
@@ -168,6 +171,9 @@ static struct temporary_data_topass
     MyDouble PhiGrad[3];
 #endif
 #endif
+#ifdef RT_FLUXLIMITER
+    MyFloat Gradients_E_gamma[N_RT_FREQ_BINS][3];
+#endif
 }
 *GasGradDataPasser;
 
@@ -232,9 +238,11 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
         for(k = 0; k < NUM_METAL_SPECIES; k++)
             in->GQuant.Metallicity[k] = P[i].Metallicity[k];
 #endif
-#ifdef RADTRANSFER_FLUXLIMITER
-        for(k = 0; k < N_RT_FREQ_BINS; k++)
-            in->GQuant.n_gamma[k] = SphP[i].n_gamma[k];
+#if defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
+        for(k = 0; k < N_RT_FREQ_BINS; k++) {in->GQuant.E_gamma[k] = SphP[i].E_gamma[k];}
+#endif
+#if defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
+        for(k = 0; k < 6; k++) {in->GQuant.E_gamma_ET[k] = SphP[i].ET[k];}
 #endif
 #ifdef DOGRAD_INTERNAL_ENERGY
         in->GQuant.InternalEnergy = SphP[i].InternalEnergyPred;
@@ -387,15 +395,28 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
             }
         }
 #endif
-        
-#ifdef RADTRANSFER_FLUXLIMITER
+
+#if defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
         for(j=0;j<N_RT_FREQ_BINS;j++)
         {
-            MAX_ADD(GasGradDataPasser[i].Maxima.n_gamma[j],out->Maxima.n_gamma[j],mode);
-            MIN_ADD(GasGradDataPasser[i].Minima.n_gamma[j],out->Minima.n_gamma[j],mode);
+            MAX_ADD(GasGradDataPasser[i].Maxima.E_gamma_ET[j],out->Maxima.E_gamma_ET[j],mode);
+            MIN_ADD(GasGradDataPasser[i].Minima.E_gamma_ET[j],out->Minima.E_gamma_ET[j],mode);
             for(k=0;k<3;k++)
             {
-                ASSIGN_ADD_PRESET(SphP[i].Gradients.n_gamma[j][k],out->Gradients[k].n_gamma[j],mode);
+                ASSIGN_ADD_PRESET(SphP[i].Gradients.E_gamma_ET[j][k],out->Gradients[k].E_gamma_ET[j],mode);
+            }
+        }
+#endif
+
+        
+#ifdef RT_FLUXLIMITER
+        for(j=0;j<N_RT_FREQ_BINS;j++)
+        {
+            MAX_ADD(GasGradDataPasser[i].Maxima.E_gamma[j],out->Maxima.E_gamma[j],mode);
+            MIN_ADD(GasGradDataPasser[i].Minima.E_gamma[j],out->Minima.E_gamma[j],mode);
+            for(k=0;k<3;k++)
+            {
+                ASSIGN_ADD_PRESET(GasGradDataPasser[i].Gradients_E_gamma[j][k],out->Gradients[k].E_gamma[j],mode);
             }
         }
 #endif
@@ -462,7 +483,7 @@ void hydro_gradient_calc(void)
     
     /* allocate buffers to arrange communication */
     long long NTaskTimesNumPart;
-    GasGradDataPasser = (struct temporary_data_topass *) mymalloc("GasGradDataPasser",NumPart * sizeof(struct temporary_data_topass));
+    GasGradDataPasser = (struct temporary_data_topass *) mymalloc("GasGradDataPasser",N_gas * sizeof(struct temporary_data_topass));
     NTaskTimesNumPart = maxThreads * NumPart;
     All.BunchSize = (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
                                                              sizeof(struct GasGraddata_in) +
@@ -521,8 +542,8 @@ void hydro_gradient_calc(void)
 #ifdef TURB_DIFF_METALS
                 for(k2=0;k2<NUM_METAL_SPECIES;k2++) {SphP[i].Gradients.Metallicity[k2][k] = 0;}
 #endif
-#ifdef RADTRANSFER_FLUXLIMITER
-                for(k2=0;k2<N_RT_FREQ_BINS;k2++) {SphP[i].Gradients.n_gamma[k2][k] = 0;}
+#if defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
+                for(k2=0;k2<N_RT_FREQ_BINS;k2++) {SphP[i].Gradients.E_gamma_ET[k2][k] = 0;}
 #endif
             }
         }
@@ -1003,8 +1024,11 @@ void hydro_gradient_calc(void)
 #ifdef TURB_DIFF_METALS
             for(k=0;k<NUM_METAL_SPECIES;k++) {construct_gradient(SphP[i].Gradients.Metallicity[k],i);}
 #endif
-#ifdef RADTRANSFER_FLUXLIMITER
-            for(k=0;k<N_RT_FREQ_BINS;k++) {construct_gradient(SphP[i].Gradients.n_gamma[k],i);}
+#if defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
+            for(k=0;k<N_RT_FREQ_BINS;k++) {construct_gradient(SphP[i].Gradients.E_gamma_ET[k],i);}
+#endif
+#ifdef RT_FLUXLIMITER
+            for(k=0;k<N_RT_FREQ_BINS;k++) {construct_gradient(GasGradDataPasser[i].Gradients_E_gamma[k],i);}
 #endif
             
             /* now the gradients are calculated: below are simply useful operations on the results */
@@ -1186,12 +1210,49 @@ void hydro_gradient_calc(void)
                 cs *= All.cf_afac3;
                 double eta_sat = (SphP[i].Density*All.cf_a3inv) * cs / (ion_free_path * (1 + 4.2 * ion_free_path / vel_scale_length));
                 if(eta_sat <= 0) SphP[i].Eta_ShearViscosity=0;
-                if(SphP[i].Eta_ShearViscosity>0) {SphP[i].Eta_ShearViscosity = 1. / (1./SphP[i].Eta_ShearViscosity + 1./eta_sat);}
+                if(SphP[i].Eta_ShearViscosity>0) {SphP[i].Eta_ShearViscosity = 1. / (1./SphP[i].Eta_ShearViscosity + 1./eta_sat);} // again, all physical units //
 #endif
             }
 #endif
 
             
+#ifdef RADTRANSFER
+            {
+                int k_freq;
+                for(k_freq = 0; k_freq < N_RT_FREQ_BINS; k_freq++)
+                {
+                    /* calculate the opacity */
+                    SphP[i].Kappa_RT[k_freq] = rt_kappa(i, k_freq); // physical units //
+                    double lambda = 1;
+#ifdef RT_FLUXLIMITER
+                    /* compute the flux-limiter for radiation transport: also convenient here to compute the relevant opacities for all particles */
+                    if(SphP[i].E_gamma[k_freq] > 0)
+                    {
+                        /* estimate: 1/gradient_length_scale */
+                        double R = sqrt(GasGradDataPasser[i].Gradients_E_gamma[k_freq][0] * GasGradDataPasser[i].Gradients_E_gamma[k_freq][0] +
+                                        GasGradDataPasser[i].Gradients_E_gamma[k_freq][1] * GasGradDataPasser[i].Gradients_E_gamma[k_freq][1] +
+                                        GasGradDataPasser[i].Gradients_E_gamma[k_freq][2] * GasGradDataPasser[i].Gradients_E_gamma[k_freq][2]) / (SphP[j].E_gamma[k_freq] * SphP[i].Density/P[i].Mass);
+
+#if defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
+                        /* use the maximum of the above or the gradient dotted into the full Eddington tensor, which we now have */
+                        double R2 = sqrt(SphP[i].Gradients.E_gamma_ET[k_freq][0] * SphP[i].Gradients.E_gamma_ET[k_freq][0] +
+                                         SphP[i].Gradients.E_gamma_ET[k_freq][1] * SphP[i].Gradients.E_gamma_ET[k_freq][1] +
+                                         SphP[i].Gradients.E_gamma_ET[k_freq][2] * SphP[i].Gradients.E_gamma_ET[k_freq][2]) / (SphP[i].E_gamma[k_freq] * SphP[i].Density/P[i].Mass);
+                        R = DMAX(R,R2);
+#endif
+                        R /= All.cf_atime * SphP[i].Kappa_RT[k_freq] * (SphP[i].Density*All.cf_a3inv); /* dimensionless (all in physical) */
+                        /* now we can apply the actual slope-limiter function desired */
+                        lambda = (2 + R) / (6 + 3 * R + R * R);
+                        if(lambda < 1e-100) lambda = 0;
+                    }
+#endif
+                    SphP[i].Lambda_FluxLim[k_freq] = lambda;
+                    /* now we use Kappa_RT to store the diffusion coefficient for the radiation transfer equations */
+                    double c_light = (C / All.UnitVelocity_in_cm_per_s) * RT_SPEEDOFLIGHT_REDUCTION;
+                    SphP[i].Kappa_RT[k_freq] = SphP[i].Lambda_FluxLim[k_freq] * c_light / (SphP[i].Kappa_RT[k_freq] * SphP[i].Density*All.cf_a3inv);
+                }
+            }
+#endif
             
             
             /* finally, we need to apply a sensible slope limiter to the gradients, to prevent overshooting */
@@ -1223,9 +1284,13 @@ void hydro_gradient_calc(void)
             for(k1=0;k1<NUM_METAL_SPECIES;k1++)
                 local_slopelimiter(SphP[i].Gradients.Metallicity[k1],GasGradDataPasser[i].Maxima.Metallicity[k1],GasGradDataPasser[i].Minima.Metallicity[k1],a_limiter,h_lim,stol);
 #endif
-#ifdef RADTRANSFER_FLUXLIMITER
+#if defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
             for(k1=0;k1<N_RT_FREQ_BINS;k1++)
-                local_slopelimiter(SphP[i].Gradients.n_gamma[k1],GasGradDataPasser[i].Maxima.n_gamma[k1],GasGradDataPasser[i].Minima.n_gamma[k1],a_limiter,h_lim,stol);
+                local_slopelimiter(SphP[i].Gradients.E_gamma_ET[k1],GasGradDataPasser[i].Maxima.E_gamma_ET[k1],GasGradDataPasser[i].Minima.E_gamma_ET[k1],a_limiter,h_lim,stol);
+#endif
+#ifdef RT_FLUXLIMITER
+            for(k1=0;k1<N_RT_FREQ_BINS;k1++)
+                local_slopelimiter(GasGradDataPasser[i].Gradients_E_gamma[k1],GasGradDataPasser[i].Maxima.E_gamma[k1],GasGradDataPasser[i].Minima.E_gamma[k1],a_limiter,h_lim,stol);
 #endif
 #ifdef MAGNETIC
 #ifndef CONSTRAINED_GRADIENT_MHD
@@ -1246,7 +1311,6 @@ void hydro_gradient_calc(void)
 #endif
 
            
-            
             
 
 #ifdef TURB_DIFFUSION
@@ -1276,7 +1340,7 @@ void hydro_gradient_calc(void)
                                                          SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2])));
                     // slope-limit and convert to physical units //
                     double shearfac_max = 0.5 * sqrt(SphP[i].VelPred[0]*SphP[i].VelPred[0]+SphP[i].VelPred[1]*SphP[i].VelPred[1]+SphP[i].VelPred[2]*SphP[i].VelPred[2]) / h_turb;
-                    shear_factor = DMIN(shear_factor , shearfac_max) * All.cf_a2inv;
+                    shear_factor = DMIN(shear_factor , shearfac_max); // physical units altogether //
                     // ok, combine to get the diffusion coefficient //
                     SphP[i].TD_DiffCoeff = turb_prefactor * shear_factor;
                 } else {
@@ -1700,13 +1764,29 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                         if(swap_to_j) {MINMAX_CHECK(-dmetal[k],GasGradDataPasser[j].Minima.Metallicity[k],GasGradDataPasser[j].Maxima.Metallicity[k]);}
                     }
 #endif
-#ifdef RADTRANSFER_FLUXLIMITER
+#if defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
+                    double dnET[N_RT_FREQ_BINS][3];
+                    double V_i_inv = 1/V_i, V_j_inv = SphP[j].Density/P[j].Mass;
+                    for(k = 0; k < N_RT_FREQ_BINS; k++)
+                    {
+                        double d_nET[6]; int k_dE;
+                        // we need to take the derivative of the volumetric dn/dVol = E_gamma*rho/m //
+                        for(k_dE=0;k_dE<6;k_dE++) {d_nET[k_dE] = SphP[j].E_gamma[k]*SphP[j].ET[k_dE]*V_j_inv - local.GQuant.E_gamma[k]*local.GQuant.E_gamma_ET[k_dE]*V_i_inv;}
+                        dnET[k][0] = (kernel.dp[0]*d_nET[0] + kernel.dp[1]*d_nET[3] + kernel.dp[2]*d_nET[5]); // xx,xy,xz components
+                        dnET[k][1] = (kernel.dp[0]*d_nET[3] + kernel.dp[1]*d_nET[1] + kernel.dp[2]*d_nET[4]); // xy,yy,yz components
+                        dnET[k][2] = (kernel.dp[0]*d_nET[5] + kernel.dp[1]*d_nET[4] + kernel.dp[2]*d_nET[2]); // xz,yz,zz components
+                        double dnET_mag = SphP[j].E_gamma[k]*V_j_inv - local.GQuant.E_gamma[k]*V_i_inv;
+                        MINMAX_CHECK(dnET_mag,out.Minima.E_gamma_ET[k],out.Maxima.E_gamma_ET[k]);
+                        if(swap_to_j) {MINMAX_CHECK(-dnET_mag,GasGradDataPasser[j].Minima.E_gamma_ET[k],GasGradDataPasser[j].Maxima.E_gamma_ET[k]);}
+                    }
+#endif
+#ifdef RT_FLUXLIMITER
                     double dn[N_RT_FREQ_BINS];
                     for(k = 0; k < N_RT_FREQ_BINS; k++)
                     {
-                        dn[k] = SphP[j].n_gamma[k] - local.GQuant.n_gamma[k];
-                        MINMAX_CHECK(dn[k],out.Minima.n_gamma[k],out.Maxima.n_gamma[k]);
-                        if(swap_to_j) {MINMAX_CHECK(-dn[k],GasGradDataPasser[j].Minima.n_gamma[k],GasGradDataPasser[j].Maxima.n_gamma[k]);}
+                        dn[k] = SphP[j].E_gamma[k]*SphP[j].Density/P[j].Mass - local.GQuant.E_gamma[k]/V_i;
+                        MINMAX_CHECK(dn[k],out.Minima.E_gamma[k],out.Maxima.E_gamma[k]);
+                        if(swap_to_j) {MINMAX_CHECK(-dn[k],GasGradDataPasser[j].Minima.E_gamma[k],GasGradDataPasser[j].Maxima.E_gamma[k]);}
                     }
 #endif
                     /* end of difference and slope-limiter (min/max) block */
@@ -1773,8 +1853,11 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #ifdef TURB_DIFF_METALS
                             for(k2=0;k2<NUM_METAL_SPECIES;k2++) {out.Gradients[k].Metallicity[k2] += wk_xyz_i * dmetal[k2];}
 #endif
-#ifdef RADTRANSFER_FLUXLIMITER
-                            for(k2=0;k2<N_RT_FREQ_BINS;k2++) {out.Gradients[k].n_gamma[k2] += wk_xyz_i * dn[k2];}
+#if defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
+                            for(k2=0;k2<N_RT_FREQ_BINS;k2++) {out.Gradients[k].E_gamma_ET[k2] += -kernel.wk_i * dnET[k2][k];} // because here we dot a gradient into a matrix, form is different //
+#endif
+#ifdef RT_FLUXLIMITER
+                            for(k2=0;k2<N_RT_FREQ_BINS;k2++) {out.Gradients[k].E_gamma[k2] += wk_xyz_i * dn[k2];}
 #endif
                         }
                     }
@@ -1811,8 +1894,11 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #ifdef TURB_DIFF_METALS
                             for(k2=0;k2<NUM_METAL_SPECIES;k2++) {SphP[j].Gradients.Metallicity[k2][k] += wk_xyz_j * dmetal[k2];}
 #endif
-#ifdef RADTRANSFER_FLUXLIMITER
-                            for(k2=0;k2<N_RT_FREQ_BINS;k2++) {SphP[j].Gradients.n_gamma[k2][k] += wk_xyz_j * dn[k2];}
+#if defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
+                            for(k2=0;k2<N_RT_FREQ_BINS;k2++) {SphP[j].Gradients.E_gamma_ET[k2][k] += -kernel.wk_i * dnET[k2][k];} // because here we dot a gradient into a matrix, form is different //
+#endif
+#ifdef RT_FLUXLIMITER
+                            for(k2=0;k2<N_RT_FREQ_BINS;k2++) {GasGradDataPasser[j].Gradients_E_gamma[k2][k] += wk_xyz_j * dn[k2];}
 #endif
                         }
                     }

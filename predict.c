@@ -194,6 +194,10 @@ void drift_particle(int i, integertime time1)
             for(j = 0; j < 3; j++)
                 SphP[i].VelPred[j] += SphP[i].TurbAccel[j] * dt_gravkick;
 #endif
+#ifdef RT_RAD_PRESSURE_OUTPUT
+            for(j = 0; j < 3; j++)
+                SphP[i].VelPred[j] += SphP[i].RadAccel[j] * All.cf_atime * dt_hydrokick;
+#endif
             
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             P[i].Mass = DMAX(P[i].Mass + SphP[i].DtMass * dt_entr, 0.5 * SphP[i].MassTrue);
@@ -382,6 +386,14 @@ void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double
 #ifdef COSMIC_RAYS
     double etmp = SphP[i].CosmicRayEnergyPred + SphP[i].DtCosmicRayEnergy * dt_entr;
     if(etmp<0.5*SphP[i].CosmicRayEnergyPred) {SphP[i].CosmicRayEnergyPred *= 0.5;} else {SphP[i].CosmicRayEnergyPred=etmp;}
+#endif
+#if defined(RT_EVOLVE_NGAMMA)
+    int kf;
+    for(kf=0;kf<N_RT_FREQ_BINS;kf++)
+    {
+        double Ntmp = SphP[i].E_gamma_Pred[k] + SphP[i].Dt_E_gamma[k] * dt_entr;
+        if(Ntmp<0.5*SphP[i].E_gamma_Pred[k]) {SphP[i].E_gamma_Pred[k] *= 0.5;} else {SphP[i].E_gamma_Pred[k]=Ntmp;}
+    }
 #endif
 }
 

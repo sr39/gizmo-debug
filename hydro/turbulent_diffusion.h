@@ -20,7 +20,7 @@
 #ifdef HYDRO_SPH
     double diffusion_wt,diffusion_wt_dt,dv2_ij,diffusion_wt_dt_m,diff_vi_dot_r,diffusion_du_ij;
     /* out.dA_dt +=  diffusion_wt*(local.A-P[j].A) // this is the template for all turbulent diffusion terms */
-    diffusion_wt = (local.TD_DiffCoeff + SphP[j].TD_DiffCoeff) * P[j].Mass * kernel.rho_ij_inv * kernel.dwk_ij / kernel.r;
+    diffusion_wt = (local.TD_DiffCoeff + SphP[j].TD_DiffCoeff) * P[j].Mass * kernel.rho_ij_inv * kernel.dwk_ij / kernel.r * All.cf_a2inv;
     /* note, units of TD_DiffCoeff have already been corrected so that this combination has physical units */
     diffusion_wt_dt = diffusion_wt * dt_hydrostep;
     if(fabs(diffusion_wt_dt)>0.01)
@@ -72,7 +72,7 @@
         diffusion_wt = wt_i*local.TD_DiffCoeff + wt_j*SphP[j].TD_DiffCoeff; // arithmetic mean
         //diffusion_wt = 2.0 * (local.TD_DiffCoeff * SphP[j].TD_DiffCoeff) / (local.TD_DiffCoeff + SphP[j].TD_DiffCoeff); // geometric mean
         
-        diffusion_wt *= All.cf_atime; // based on units TD_DiffCoeff is defined with, this makes it physical for a dimensionless quantity gradient below
+        diffusion_wt /= All.cf_atime; // based on units TD_DiffCoeff is defined with, this makes it physical for a dimensionless quantity gradient below
         //diffusion_wt *= (wt_i*local.Density + wt_j*SphP[j].Density) * All.cf_a3inv; // mean density; should really use solution to the Riemann problem here;
         diffusion_wt *= Riemann_out.Face_Density;
         

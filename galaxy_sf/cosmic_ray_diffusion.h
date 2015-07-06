@@ -71,7 +71,7 @@
         //wt_i = PPP[j].Hsml / (PPP[j].Hsml + local.Hsml); wt_j = 1.-wt_i; // this is consistent with our second-order face location //
         conduction_wt = wt_i*local.CosmicRayDiffusionCoeff + wt_j*SphP[j].CosmicRayDiffusionCoeff; // arithmetic mean
         //conduction_wt = 2.0 * (CosmicRayDiffusionCoeff * SphP[j].CosmicRayDiffusionCoeff) / (CosmicRayDiffusionCoeff + SphP[j].CosmicRayDiffusionCoeff); // geometric mean
-        conduction_wt *= All.cf_a2inv; // based on units CosmicRayDiffusionCoeff is defined with, this makes it physical for a dimensionless quantity gradient below
+        conduction_wt *= All.cf_a3inv / All.cf_atime; // based on units CosmicRayDiffusionCoeff is defined with, this makes it physical for a dimensionless quantity gradient below
         
         double cmag = 0.0;
 #ifdef MAGNETIC
@@ -117,7 +117,7 @@
         /* now multiply through the coefficient to get the actual flux */
         cmag *= -conduction_wt;
         
-        /* follow that with a fluxlimiter as well */
+        /* follow that with a flux limiter as well */
         conduction_wt = dt_hydrostep * cmag; // all in physical units //
         if(fabs(conduction_wt) > 0)
         {

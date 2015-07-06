@@ -1358,7 +1358,7 @@ int density_isactive(int n)
     if(P[n].Type >= 0) return 1;
 #endif
     
-#if (defined(RADTRANSFER) && defined(EDDINGTON_TENSOR_STARS))
+#if defined(RT_SOURCE_INJECTION)
     if(P[n].Type == 4) return 1;
 #endif
     

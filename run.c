@@ -227,62 +227,35 @@ void calculate_non_standard_physics(void)
     
     
 #ifdef RADTRANSFER
-    double timeeach = 0, timeall = 0, tstart = 0, tend = 0;
-    if(Flag_FullStep)		/* only do it for full timesteps */
+    
+#if defined(RT_SOURCE_INJECTION)
+    if(Flag_FullStep) {rt_source_injection();} /* source injection into neighbor gas particles (only on full timesteps) */
+#endif
+    
+#if defined(RT_DIFFUSION_CG)
+    /* use the CG method to solve the RT diffusion equation implicitly for all particles */
+    if(Flag_FullStep) /* only do it for full timesteps */
     {
+        if(ThisTask == 0) {printf("start CG iteration for radiative transfer (diffusion equation)...\n"); fflush(stdout);}
         All.Radiation_Ti_endstep = All.Ti_Current;
-        
-        if(ThisTask == 0)
-        {
-            printf("Start Eddington tensor computation...\n");
-            fflush(stdout);
-        }
-        eddington();
-#ifdef RT_RAD_PRESSURE
-        n();
-#endif
-        if(ThisTask == 0)
-        {
-            printf("done Eddington tensor! \n");
-            fflush(stdout);
-        }
-#ifdef EDDINGTON_TENSOR_SFR
-        density_sfr();
-        sfr_lum();
-#endif
-#ifdef EDDINGTON_TENSOR_STARS
-        star_lum();
-#endif
-#ifdef EDDINGTON_TENSOR_GAS
-        gas_lum();
-#endif
-#ifdef EDDINGTON_TENSOR_BH
-        bh_lum();
-#endif
-        /***** evolve the transport of radiation *****/
-        if(ThisTask == 0)
-        {
-            printf("start radtransfer...\n");
-            fflush(stdout);
-        }
+        double timeeach = 0, timeall = 0, tstart = 0, tend = 0;
         tstart = my_second();
-        radtransfer();
+        rt_diffusion_cg_solve();
         tend = my_second();
         timeeach = timediff(tstart, tend);
         MPI_Allreduce(&timeeach, &timeall, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-        if(ThisTask == 0)
-        {
-            printf("time consumed is %g \n", timeall);
-            printf("done with radtransfer! \n");
-            fflush(stdout);
-        }
+        if(ThisTask == 0) {printf("done with CG iteration for radiative transfer (time consumed = %g)! \n",timeall); fflush(stdout);}
         All.Radiation_Ti_begstep = All.Radiation_Ti_endstep;
     }
+#endif
+
+#ifdef RT_CHEM_PHOTOION
     /* chemistry updated at sub-stepping as well */
-    radtransfer_update_chemistry();
-    if(Flag_FullStep)             /* only do it for full timesteps */
-        rt_write_stats();
-#endif // closes RADTRANSFER
+    rt_update_chemistry();
+    if(Flag_FullStep) {rt_write_chemistry_stats();}
+#endif
+    
+#endif
     
     
 #ifdef BLACK_HOLES

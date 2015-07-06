@@ -290,8 +290,8 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #ifdef TURB_DRIVING
                 dp[j] += mass_pred * SphP[i].TurbAccel[j] * dt_gravkick;
 #endif
-#ifdef RT_RAD_PRESSURE
-                dp[j] += mass_pred * SphP[i].RadAccel[j] * dt_hydrokick;
+#ifdef RT_RAD_PRESSURE_OUTPUT
+                dp[j] += mass_pred * SphP[i].RadAccel[j] * All.cf_atime * dt_hydrokick;
 #endif
             }
             dp[j] += mass_pred * P[i].GravAccel[j] * dt_gravkick;
@@ -461,6 +461,14 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
 #ifdef COSMIC_RAYS
     double CR_Egy = SphP[i].CosmicRayEnergy + SphP[i].DtCosmicRayEnergy * dt_entr;
     if(CR_Egy < 0.5*SphP[i].CosmicRayEnergy) {SphP[i].CosmicRayEnergy *= 0.5;} else {SphP[i].CosmicRayEnergy = CR_Egy;}
+#endif
+#if defined(RT_EVOLVE_NGAMMA)
+    int kf;
+    for(kf=0;kf<N_RT_FREQ_BINS;kf++)
+    {
+        double Ntmp = SphP[i].E_gamma[kf] + SphP[i].Dt_E_gamma[kf] * dt_entr;
+        if(Ntmp<0.5*SphP[i].E_gamma[kf]) {SphP[i].E_gamma[kf] *= 0.5;} else {SphP[i].E_gamma[kf]=Ntmp;}
+    }
 #endif
 }
 

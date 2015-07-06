@@ -35,9 +35,9 @@
         */
         // use a geometric average, since we want to weight the smaller of the two coefficients //
         double eta = 0.5 * (local.Eta_ShearViscosity + SphP[j].Eta_ShearViscosity);
-        if(eta > 0) {eta = local.Eta_ShearViscosity * SphP[j].Eta_ShearViscosity / eta;} else {eta = 0;}
+        if(eta > 0) {eta = local.Eta_ShearViscosity * SphP[j].Eta_ShearViscosity / eta * All.cf_a2inv;} else {eta = 0;} // also converts to physical units
         double zeta = 0.5 * (local.Zeta_BulkViscosity + SphP[j].Zeta_BulkViscosity);
-        if(zeta > 0) {zeta = local.Zeta_BulkViscosity * SphP[j].Zeta_BulkViscosity / zeta;} else {zeta = 0;}
+        if(zeta > 0) {zeta = local.Zeta_BulkViscosity * SphP[j].Zeta_BulkViscosity / zeta * All.cf_a2inv;} else {zeta = 0;} // also converts to physical units
         // we need a minus sign at some point; its handy to just include it now in the weights //
         wt_i *= -1.; wt_j *= -1.;
         

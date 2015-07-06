@@ -460,7 +460,7 @@ GRAVITY_OBJS  = gravity/forcetree.o gravity/cosmology.o gravity/pm_periodic.o gr
                 gravity/gravtree.o gravity/forcetree_update.o gravity/pm_nonperiodic.o gravity/longrange.o \
                 gravity/ags_hsml.o
 
-HYDRO_OBJS = hydro/hydra_master.o hydro/density.o hydro/gradients.o
+HYDRO_OBJS = hydro/hydra_master.o hydro/density.o hydro/gradients.o radiation/rt_utilities.o
 
 STRUCTURE_OBJS = structure/twopoint.o
 
@@ -503,7 +503,7 @@ ifeq (GALSF_FB_SNE_HEATING,$(findstring GALSF_FB_SNE_HEATING,$(CONFIGVARS)))
 OBJS    += galaxy_sf/mechanical_fb.o
 endif
 
-ifeq (GALSF_FB_RPWIND_FROMSTARS,$(findstring GALSF_FB_RPWIND_FROMSTARS,$(CONFIGVARS)))
+ifeq (GALSF_FB_RPWIND_LOCAL,$(findstring GALSF_FB_RPWIND_LOCAL,$(CONFIGVARS)))
 OBJS    += galaxy_sf/rp_localwinds.o
 endif
 
@@ -560,9 +560,8 @@ ifeq (DISTORTIONTENSORPS,$(findstring DISTORTIONTENSORPS,$(CONFIGVARS)))
 OBJS	+= modules/phasespace/phasespace.o modules/phasespace/phasespace_math.o
 endif
 
-ifeq (RADTRANSFER,$(findstring RADTRANSFER,$(CONFIGVARS)))
-OBJS	+= radiation/rt_chem.o radiation/rt_bh_lum.o radiation/rt_sfr_lum.o radiation/rt_cooling.o \
-    radiation/rt_eddington.o radiation/rt_n.o radiation/rt_CGmethod.o radiation/rt_stars_lum.o radiation/rt_gas_lum.o
+ifeq (RT_,$(findstring RT_,$(CONFIGVARS)))
+OBJS	+= radiation/rt_CGmethod.o radiation/rt_source_injection.o radiation/rt_chem.o radiation/rt_cooling.o
 endif
 
 ifeq (SUBFIND,$(findstring SUBFIND,$(CONFIGVARS)))

@@ -473,7 +473,7 @@ void cooling_and_starformation(void)
 		      TimeBinSfr[P[i].TimeBin] -= SphP[i].Sfr;
 
 		      P[i].StellarAge = All.Time;
-#if defined(BLACK_HOLES) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN)
+#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
                 P[i].DensAroundStar = SphP[i].Density;
 #endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -495,7 +495,7 @@ void cooling_and_starformation(void)
 
 		      P[NumPart + stars_spawned] = P[i];
 		      P[NumPart + stars_spawned].Type = 4;
-#if defined(BLACK_HOLES) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN)
+#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
               P[NumPart + stars_spawned].DensAroundStar = SphP[i].Density;
 #endif
 		      NextActiveParticle[NumPart + stars_spawned] = FirstActiveParticle;

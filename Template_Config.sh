@@ -219,16 +219,15 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #GALSF_FB_SNE_HEATING            # time-dependent heating from SNe (I & II) in shockwave radii around stars
 #GALSF_FB_RPROCESS_ENRICHMENT=6  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 6=extended model)
 #GALSF_FB_RT_PHOTONMOMENTUM      # continuous acceleration from starlight (uses luminosity tree)
-#GALSF_FB_RT_PHOTON_LOCALATTEN   # incident SED for GALSF_FB_RT_PHOTONMOMENTUM calculated w local attenuation of stars
 #GALSF_FB_LOCAL_UV_HEATING       # use local estimate of spectral information for photoionization and photoelectric heating
 #GALSF_FB_RPWIND_LOCAL           # turn on local radiation pressure coupling to gas
-#GALSF_FB_RPWIND_FROMSTARS       # drive radiation pressure with local young stars (otherwise uses the gas SFR)
 ##-----------------------------------------------------------------------------------------------------
 #----------- deprecated options (most have been combined or optimized into the functions above, here for legacy)
-##GALSF_FB_SEPARATELY_TRACK_LUMPOS  # keep stellar vs. gas positions separate in tree (useful if running in tree-only mode)
 ##GALSF_FB_RPWIND_FROMCLUMPS	# clump-find to for wind angles (deprecated; now use density routine to find)
 ##GALSF_FB_RPWIND_CONTINUOUS	# wind accel term is continuous (more expensive and introduces more artificial dissipation)
 ##GALSF_FB_RPWIND_DO_IN_SFCALC	# do IR wind loop in SFR routine (allows fof clump-finding, useful for very IR-thick, but slow)
+##GALSF_FB_RPWIND_FROMSFR       # drive radiation pressure with gas SFR (instead of default, which is nearby young stars)
+
 
 ##-----------------------------------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------------------------------
@@ -411,23 +410,30 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 
 
 ####################################################################################################
-#--------------------------------------- Radiative Transfer (M. Petkova & V. Springel)
-#-------------------------------- use of these routines requires explicit pre-approval by developers M. Petkova & V. Springel
+#--------------------------------------- Radiative Transfer
 ####################################################################################################
-#RADTRANSFER                            # main switch; RT equation solved using the Conjugate Gradient iterative method
-#RADTRANSFER_FLUXLIMITER                # introduces a flux limiter, so that the Ifront speed does not exceed c
-#RADTRANSFER_MODIFY_EDDINGTON_TENSOR    # modifies the Eddington tensor to the fully anisotropic version
+#--------------------- methods for calculating photon propagation (one of these MUST be on for RT)
+#RT_FIRE                                # RT solved using the FIRE (local extinction with the Sobolev approximation at source and absorption points)
+#RT_OTVET                               # RT solved using the OTVET approximation (optically thin Eddington tensor)
+#--------------------- solvers (numerical) --------------------------------------------------------
+#RT_DIFFUSION_EXPLICIT                  # solve the diffusion part of the RT equations (if needed) explicitly (accurate but needs -small- timesteps); otherwise implicit with Conjugate Gradient iteration (Petkova & Springel)
+#RT_SPEEDOFLIGHT_REDUCTION=1            # set to a number <1 to use the 'reduced speed of light' approximation for photon propagation (C_eff=C_true*RT_SPEEDOFLIGHT_REDUCTION)
+#--------------------- radiation pressure options -------------------------------------------------
+#RT_RAD_PRESSURE_EDDINGTON              # calculate radiation pressure from eddington tensor
+#RT_RAD_PRESSURE_OUTPUT                 # print radiation pressure to file (requires some extra variables to save it)
+#--------------------- coupled radiation-gas chemistry networks -----------------------------------
+#RT_CHEM_PHOTOION=2                     # RT used to calculate photo-ionization of gas (1=H only, 2=H+He)
+#RT_PHOTOION_MULTIFREQUENCY             # enables multi-frequency radiation transport for ionizing photons. Integration variable is the ionising intensity J_nu
+#RT_PHOTOION_SOURCES=1+16+32            # source list for ionizing photons given by bitflag (1=2^0=gas[sfr-based],16=2^4=new stars[mass-based],32=2^5=BH)
 #RT_COOLING_PHOTOHEATING                # includes photoheating and cooling (using RT information)
-#RT_RAD_PRESSURE                        # includes radiation pressure
-#EDDINGTON_TENSOR_GAS                   # includes gas, works only together with RT_MULTI_FREQUENCY
-#EDDINGTON_TENSOR_STARS                 # includes stars as sources of ionising photons
-#EDDINGTON_TENSOR_SFR                   # uses sf partices (gas above certain density) as sources of ionizing photons
-#EDDINGTON_TENSOR_BH                    # includes BH as source of ionising photons (not working)
-#RT_OUTPUT_ET                           # outputs the eddington tensor (used for diagnostics)
-#HYDROGEN_ONLY                          # sets hydrogen fraction to 1.0 (simplifies the chemistry)
-#RT_INCLUDE_HE                          # includes helium cooling and collisional ionisation
-#RT_MULTI_FREQUENCY                     # enables multi-frequency radiation transport. Here the integration
-                                        # variable is the ionising intensity J_nu
+##-----------------------------------------------------------------------------------------------------
+#------------ deprecated or de-bugging options (most have been combined or optimized into the functions above, here for legacy)
+##-----------------------------------------------------------------------------------------------------
+#RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR    # when RT_DIFFUSION_CG is enabled, modifies the Eddington tensor to the fully anisotropic version (less stable CG iteration)
+#RT_SEPARATELY_TRACK_LUMPOS             # keep luminosity vs. mass positions separate in tree (useful if running in tree-only mode)
+#RT_DISABLE_FLUXLIMITER                 # removes the flux-limiter from the diffusion operations (default is to include it when using the relevant approximations)
+#RT_HYDROGEN_GAS_ONLY                   # sets hydrogen fraction to 1.0 (used for certain idealized chemistry calculations)
+#RT_FIRE_FIX_SPECTRAL_SHAPE             # enable with GALSF_FB_RT_PHOTONMOMENTUM to use a fixed SED shape set in parameterfile for all incident fluxes
 ####################################################################################################
 
 
