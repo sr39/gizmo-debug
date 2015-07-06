@@ -1043,7 +1043,7 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
                 temperature-dependent, though, fairly easily - for this particular problem it won't make much difference
         This rate then acts as an upper limit to the net heating/cooling calculated above (restricts absolute value)
      */
-    //if(nHcgs > 0.1) /* don't bother at very low densities, since youre not optically thick */
+    //if(nHcgs > 0.1) /* don't bother at very low densities, since youre not optically thick */  
     if( (nHcgs > 0.1) && (target >= 0) )  // DAA: protect from target=-1 with GALSF_EFFECTIVE_EQS
     {
         double surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1);
