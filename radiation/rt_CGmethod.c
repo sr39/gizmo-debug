@@ -136,7 +136,7 @@ void rt_diffusion_cg_solve(void)
         if(P[j].Type == 0)
             for(k = 0; k < N_RT_FREQ_BINS; k++)
             {
-                XVec[k][j] = SphP[j].E_gamma[k]; /* define the coefficients */
+                XVec[k][j] = SphP[j].E_gamma[k] * SphP[j].Density / P[j].Mass; /* define the coefficients: note we need energy densities for this operation */
                 SphP[j].E_gamma[k] += dt * SphP[j].Je[k]; /* -then- add the source terms */
             }
     
@@ -149,7 +149,7 @@ void rt_diffusion_cg_solve(void)
         for(j = 0; j < N_gas; j++)
             if(P[j].Type == 0)
             {
-                Residue[k][j] = SphP[j].E_gamma[k] - Residue[k][j]; // note: source terms have been added here to E_gamma //
+                Residue[k][j] = SphP[j].E_gamma[k] * SphP[j].Density / P[j].Mass - Residue[k][j]; // note: source terms have been added here to E_gamma //
                 /* note: in principle we would have to substract the w_ii term, but this is zero by definition */
                 ZVec[k][j] = Residue[k][j] / Diag[k][j];
                 DVec[k][j] = ZVec[k][j];
@@ -206,7 +206,7 @@ void rt_diffusion_cg_solve(void)
     for(j = 0; j < N_gas; j++)
         if(P[j].Type == 0)
             for(k = 0; k < N_RT_FREQ_BINS; k++)
-                SphP[j].E_gamma[k] = DMAX(XVec[k][j],0);
+                SphP[j].E_gamma[k] = DMAX(XVec[k][j],0) * P[j].Mass / SphP[j].Density; // convert back to an absolute energy, instead of a density //
     
     /* free memory */
     //myfree(Lambda);
