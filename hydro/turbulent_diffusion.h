@@ -68,13 +68,10 @@
         double diffusion_wt;
         double wt_i,wt_j;
         wt_i = wt_j = 0.5;
-        //wt_i = PPP[j].Hsml / (PPP[j].Hsml + local.Hsml); wt_j = 1.-wt_i; // this is consistent with our second-order face location //
         diffusion_wt = wt_i*local.TD_DiffCoeff + wt_j*SphP[j].TD_DiffCoeff; // arithmetic mean
-        //diffusion_wt = 2.0 * (local.TD_DiffCoeff * SphP[j].TD_DiffCoeff) / (local.TD_DiffCoeff + SphP[j].TD_DiffCoeff); // geometric mean
-        
-        diffusion_wt /= All.cf_atime; // based on units TD_DiffCoeff is defined with, this makes it physical for a dimensionless quantity gradient below
-        //diffusion_wt *= (wt_i*local.Density + wt_j*SphP[j].Density) * All.cf_a3inv; // mean density; should really use solution to the Riemann problem here;
         diffusion_wt *= Riemann_out.Face_Density;
+        double diffusion_wt_physical = diffusion_wt;
+        diffusion_wt /= All.cf_atime; // based on units TD_DiffCoeff is defined with, this makes it physical for a dimensionless quantity gradient below
         
         /* calculate the implied mass flux 'across the boundary' from the sub-grid model,
          so that we can apply a slope-limiter; this is needed for stability */
@@ -86,6 +83,7 @@
         for(k=0;k<3;k++) {c_max += Face_Area_Vec[k] * kernel.dp[k];}
         c_max *= rinv*rinv;
         double diff_ideal, dq_diff, diff_lim;
+        double rho_i = local.Density*All.cf_a3inv, rho_j = SphP[j].Density*All.cf_a3inv, rho_ij = 0.5*(rho_i+rho_j);
         
         
 #ifdef TURB_DIFF_ENERGY  // turbulent thermal energy diffusion //
@@ -94,6 +92,7 @@
         {
             diff_ideal += Face_Area_Vec[k] * (wt_i*local.Gradients.InternalEnergy[k] + wt_j*SphP[j].Gradients.InternalEnergy[k]);
         }
+        diff_ideal += rho_ij * HLL_correction(local.InternalEnergyPred, SphP[j].InternalEnergyPred, rho_ij, diffusion_wt_physical) / (-diffusion_wt);
         dq_diff = local.InternalEnergyPred-SphP[j].InternalEnergyPred;
         diff_lim = -diffusion_wt * MINMOD(MINMOD(MINMOD(diff_ideal , c_max*dq_diff), fabs(c_max)*dq_diff) , Face_Area_Norm*dq_diff*rinv);
 
@@ -121,6 +120,7 @@
                     {
                         diff_ideal += Face_Area_Vec[k] * (wt_i*local.Gradients.Velocity[k_v][k] + wt_j*SphP[j].Gradients.Velocity[k_v][k]);
                     }
+                    diff_ideal += rho_ij * HLL_correction(local.Vel[k_v], VelPred_j[k_v], rho_ij, diffusion_wt_physical)/(-diffusion_wt);
                     dq_diff = local.Vel[k_v]-VelPred_j[k_v];
                     diff_lim = -diffusion_wt_v * MINMOD(MINMOD(MINMOD(diff_ideal , c_max*dq_diff), fabs(c_max)*dq_diff) , Face_Area_Norm*dq_diff*rinv);
 
@@ -147,6 +147,7 @@
             {
                 diff_ideal += Face_Area_Vec[k] * (wt_i*local.Gradients.Metallicity[k_species][k] + wt_j*SphP[j].Gradients.Metallicity[k_species][k]);
             }
+            diff_ideal += rho_ij * HLL_correction(local.Metallicity[k_species], P[j].Metallicity[k_species], rho_ij, diffusion_wt_physical) / (-diffusion_wt);
             dq_diff = local.Metallicity[k_species]-P[j].Metallicity[k_species];
             diff_lim = -diffusion_wt_z * MINMOD(MINMOD(MINMOD(diff_ideal , c_max*dq_diff), fabs(c_max)*dq_diff) , Face_Area_Norm*dq_diff*rinv);
             

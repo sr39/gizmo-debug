@@ -68,7 +68,7 @@
         //conduction_wt = wt_i*local.Kappa_Conduction + wt_j*SphP[j].Kappa_Conduction; // arithmetic mean
         conduction_wt = 0.5 * (local.Kappa_Conduction + SphP[j].Kappa_Conduction);
         if(conduction_wt > 0) {conduction_wt = local.Kappa_Conduction * SphP[j].Kappa_Conduction / conduction_wt;} else {conduction_wt = 0;}
-                //conduction_wt = 2.0 * (local.Kappa_Conduction * SphP[j].Kappa_Conduction) / (local.Kappa_Conduction + SphP[j].Kappa_Conduction); // geometric mean
+        double conduction_wt_physical = conduction_wt;
         conduction_wt /= All.cf_atime; // based on units Kappa_Conduction is defined with [physical], this converts all below into physical units //
         /* if we use -DIFFUSIVITIES-, we need a density here; if we use -CONDUCTIVITITIES-, no density */
         // conduction_wt *= Riemann_out.Face_Density;
@@ -113,6 +113,11 @@
             cmag += Face_Area_Vec[k] * (wt_i*local.Gradients.InternalEnergy[k] + wt_j*SphP[j].Gradients.InternalEnergy[k]);
         }
 #endif
+        /* obtain HLL correction terms for Reimann problem solution */
+        double rho_i = local.Density*All.cf_a3inv, rho_j = SphP[j].Density*All.cf_a3inv, rho_ij=0.5*(rho_i+rho_j);
+        B_dot_grad_weights(local.Gradients.InternalEnergy,SphP[j].Gradients.InternalEnergy); // sets b_hll
+        cmag += b_hll*rho_ij*HLL_correction(local.InternalEnergyPred,SphP[j].InternalEnergyPred, rho_ij, conduction_wt_physical) / (-conduction_wt);
+
         /* slope-limiter to ensure heat always flows from hot to cold */
         c_max *= rinv*rinv;
         double du_cond = local.InternalEnergyPred-SphP[j].InternalEnergyPred;

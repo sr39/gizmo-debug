@@ -15,6 +15,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 {
     int j, k, n, startnode, numngb, kernel_mode, listindex = 0;
     double hinv_i,hinv3_i,hinv4_i,hinv_j,hinv3_j,hinv4_j,V_i,V_j,dt_hydrostep,r2,rinv,rinv_soft,u;
+    double v_hll,k_hll,b_hll; v_hll=k_hll=0,b_hll=1;
     struct kernel_hydra kernel;
     struct hydrodata_in local;
     struct hydrodata_out out;
@@ -271,6 +272,28 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #else
 #include "hydra_core_meshless.h"
 #endif
+
+#ifndef HYDRO_SPH
+/* the following macros are useful for all the diffusion operations below: this is the diffusion term associated
+    with the HLL reimann problem solution. This adds numerical diffusion (albeit limited to the magnitude of the 
+    physical diffusion coefficients), but stabilizes the relevant equations */
+#ifdef MAGNETIC
+                double bhat[3]={Riemann_out.Face_B[0],Riemann_out.Face_B[1],Riemann_out.Face_B[2]};
+                double bhat_mag=bhat[0]*bhat[0]+bhat[1]*bhat[1]+bhat[2]*bhat[2];
+                if(bhat_mag>0) {bhat_mag=1./sqrt(bhat_mag); bhat[0]*=bhat_mag; bhat[1]*=bhat_mag; bhat[2]*=bhat_mag;}
+                v_hll = 0.5*fabs(face_vel_i-face_vel_j) + DMAX(magneticspeed_i,magneticspeed_j);
+#define B_dot_grad_weights(grad_i,grad_j) {if(bhat_mag<=0) {b_hll=1;} else {double q_tmp_sum=0,b_tmp_sum=0; for(k=0;k<3;k++) {\
+                                           double q_tmp=0.5*(grad_i[k]+grad_j[k]); q_tmp_sum+=q_tmp*q_tmp; b_tmp_sum+=bhat[k]*q_tmp;}\
+                                           if((b_tmp_sum!=0)&&(q_tmp_sum>0)) {b_hll=fabs(b_tmp_sum)/sqrt(q_tmp_sum);} else {b_hll=0;}}}
+#else
+                v_hll = 0.5*fabs(face_vel_i-face_vel_j) + DMAX(kernel.sound_i,kernel.sound_j);
+#define B_dot_grad_weights(grad_i,grad_j) {b_hll=1;}
+#endif
+#define HLL_correction(ui,uj,wt,kappa) (k_hll = v_hll * (wt) * kernel.r * All.cf_atime / fabs(kappa),\
+                                        k_hll = (0.2 + k_hll) / (0.2 + k_hll + k_hll*k_hll),\
+                                        -0.5*k_hll*Face_Area_Norm*v_hll*((ui)-(uj)))
+#endif
+                
                 
 #ifdef CONDUCTION
 #include "conduction.h"

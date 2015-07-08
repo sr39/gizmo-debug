@@ -38,6 +38,7 @@
         if(eta > 0) {eta = local.Eta_ShearViscosity * SphP[j].Eta_ShearViscosity / eta * All.cf_a2inv;} else {eta = 0;} // also converts to physical units
         double zeta = 0.5 * (local.Zeta_BulkViscosity + SphP[j].Zeta_BulkViscosity);
         if(zeta > 0) {zeta = local.Zeta_BulkViscosity * SphP[j].Zeta_BulkViscosity / zeta * All.cf_a2inv;} else {zeta = 0;} // also converts to physical units
+        double viscous_wt_physical = DMAX(eta,zeta) / All.cf_a2inv;
         // we need a minus sign at some point; its handy to just include it now in the weights //
         wt_i *= -1.; wt_j *= -1.;
         
@@ -130,9 +131,13 @@
         double c_max = 0.0;
         for(k=0;k<3;k++) {c_max += Face_Area_Vec[k] * kernel.dp[k];}
         c_max *= rinv*rinv;
+        double rho_i = local.Density*All.cf_a3inv, rho_j = SphP[j].Density*All.cf_a3inv, rho_ij=0.5*(rho_i+rho_j);
         for(k_v=0;k_v<3;k_v++)
         {
             double dv_visc = local.Vel[k_v]-VelPred_j[k_v];
+            /* obtain HLL correction terms for Reimann problem solution */
+            B_dot_grad_weights(SphP[j].Gradients.Velocity[k_v],SphP[j].Gradients.Velocity[k_v]); // sets b_hll
+            cmag[k_v] += b_hll * rho_ij / All.cf_atime * HLL_correction(local.Vel[k_v],VelPred_j[k_v],rho_ij,viscous_wt_physical);
             cmag[k_v] = MINMOD(MINMOD(MINMOD(cmag[k_v] , c_max_norm*c_max*dv_visc), c_max_norm*fabs(c_max)*dv_visc) , c_max_norm*Face_Area_Norm*dv_visc*rinv);
         }
         
