@@ -313,10 +313,6 @@ void begrun(void)
       strcpy(All.EosSpecies, all.EosSpecies);
 #endif
 
-#ifdef RELAXOBJECT
-      All.RelaxBaseFac = all.RelaxBaseFac;
-#endif
-
 #ifdef NUCLEAR_NETWORK
       strcpy(All.NetworkRates, all.NetworkRates);
       strcpy(All.NetworkPartFunc, all.NetworkPartFunc);
@@ -1637,12 +1633,6 @@ void read_parameter_file(char *fname)
 
       strcpy(tag[nt], "NetworkTempThreshold");
       addr[nt] = &All.NetworkTempThreshold;
-      id[nt++] = REAL;
-#endif
-
-#ifdef RELAXOBJECT
-      strcpy(tag[nt], "RelaxBaseFac");
-      addr[nt] = &All.RelaxBaseFac;
       id[nt++] = REAL;
 #endif
 

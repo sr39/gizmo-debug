@@ -149,10 +149,6 @@ void find_timesteps(void)
     MPI_Allreduce(&ti_step, &ti_min_glob, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 #endif
     
-#ifdef RELAXOBJECT
-    determine_relaxfac();
-#endif
-    
     
     /* Now assign new timesteps  */
     
@@ -890,26 +886,6 @@ int get_timestep_bin(integertime ti_step)
 }
 
 
-
-
-
-#ifdef RELAXOBJECT
-void determine_relaxfac(void)
-{
-    if(All.Time < 0.2 * All.TimeMax)
-    {
-        All.RelaxFac = 1. / All.RelaxBaseFac;
-    }
-    else if(All.Time > 0.8 * All.TimeMax)
-    {
-        All.RelaxFac = 0.;
-    }
-    else
-    {
-        All.RelaxFac = 1. / (All.RelaxBaseFac * pow(10., (All.Time - 0.2 * All.TimeMax) / (0.6 * All.TimeMax) * 3.));
-    }
-}
-#endif
 
 
 

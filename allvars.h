@@ -1574,11 +1574,6 @@ extern struct global_data_all_processes
   double NetworkTempThreshold;
 #endif
 
-#ifdef RELAXOBJECT
-  double RelaxBaseFac;
-  double RelaxFac;
-#endif
-
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
   double AGS_DesNumNgb;
   double AGS_MaxNumNgbDeviation;
@@ -1703,7 +1698,7 @@ extern ALIGN(32) struct particle_data
     
 #ifdef GALSF_FB_SNE_HEATING
     MyFloat SNe_ThisTimeStep; /* flag that indicated number of SNe for the particle in the timestep */
-    MyFloat Area_weighted_sum; /* normalized weights for particles in kernel weighted by area, not mass */
+    MyFloat Area_weighted_sum[7]; /* normalized weights for particles in kernel weighted by area, not mass */
 #endif
 #ifdef GALSF_FB_GASRETURN
     MyFloat MassReturn_ThisTimeStep; /* gas return from stellar winds */

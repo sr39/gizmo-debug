@@ -443,11 +443,11 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #--------------------------------------- degenerate equation of state (D. Radice & P. Hopkins)
 #-------------------------------- use of these routines requires explicit pre-approval by developers D. Radice & P. Hopkins
 ####################################################################################################
-#EOS_DEGENERATE
-#EOS_IDEAL
-#EOS_COULOMB_CORRECTIONS
-#EOS_NSPECIES=3
-#RELAXOBJECT
+#EOS_DEGENERATE             # Use Timees & Swesty 2000 EOS
+#EOS_IDEAL                  # Include only the ideal-gas part
+#EOS_COULOMB_CORRECTIONS    # Include Coulomb corrections
+#EOS_DETAILED_COMPOSITION   # Use a detailed composition table
+#EOS_NSPECIES=3             # Number of species (if using the detailed composition table)
 ####################################################################################################
 
 

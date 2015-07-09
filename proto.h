@@ -414,9 +414,6 @@ void move_particles(integertime time1);
 
 void find_next_sync_point_and_drift(void);
 void find_dt_displacement_constraint(double hfac);
-#ifdef RELAXOBJECT
-void determine_relaxfac(void);
-#endif
 #ifdef WAKEUP
 void process_wake_ups(void);
 #endif

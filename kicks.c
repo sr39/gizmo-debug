@@ -295,9 +295,6 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #endif
             }
             dp[j] += mass_pred * P[i].GravAccel[j] * dt_gravkick;
-#ifdef RELAXOBJECT
-            dp[j] -= mass_pred * P[i].Vel[j] * All.RelaxFac * dt_gravkick;
-#endif
             P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
         }
 

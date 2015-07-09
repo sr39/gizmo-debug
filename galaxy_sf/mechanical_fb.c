@@ -71,7 +71,7 @@ struct addFBdata_in
   MyFloat SNe_v_ejecta;
   MyDouble Msne;
   MyDouble unit_mom_SNe;
-  MyFloat area_sum;
+  MyFloat Area_weighted_sum[7];
 #ifdef METALS
   MyDouble yields[NUM_METAL_SPECIES];
 #endif
@@ -84,7 +84,8 @@ struct addFBdata_in
 
 struct addFBdata_out
 {
-  MyFloat M_coupled;
+    MyFloat Area_weighted_sum[7];
+    MyFloat M_coupled;
 }
  *AddFBDataResult, *AddFBDataOut;
 
@@ -159,7 +160,7 @@ void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i)
     in->Msne = 0.01 * (double)P[i].RProcessEvent_ThisTimeStep / ((double)((All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS)); // mass ejected ~0.01*M_sun; only here for bookkeeping //
     in->unit_mom_SNe = 0;
     in->SNe_v_ejecta = 0.;
-    in->area_sum = P[i].Area_weighted_sum;
+    for(k=0;k<7;k++) {in->Area_weighted_sum[k] = 1/(MIN_REAL_NUMBER+fabs(P[i].Area_weighted_sum[k]));}
 #endif
 }
 
@@ -176,7 +177,6 @@ void particle2in_addFB_wt(struct addFBdata_in *in, int i)
     in->Msne = P[i].Mass;
     in->unit_mom_SNe = 1;
     in->SNe_v_ejecta = 500.;
-    in->area_sum = P[i].Area_weighted_sum;
 #ifdef GALSF_TURNOFF_COOLING_WINDS
     /* calculate the 'blast radius' and 'cooling turnoff time' used by this model */
     double n0 = P[i].DensAroundStar*All.cf_a3inv*All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / PROTONMASS;
@@ -280,7 +280,7 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
     in->Msne = Msne;
     in->SNe_v_ejecta = SNe_v_ejecta;
     in->unit_mom_SNe = unit_mom_SNe;
-    in->area_sum = P[i].Area_weighted_sum;
+    for(k=0;k<7;k++) {in->Area_weighted_sum[k] = 1/(MIN_REAL_NUMBER+fabs(P[i].Area_weighted_sum[k]));}
 #ifdef GALSF_TURNOFF_COOLING_WINDS
     /* calculate the 'blast radius' and 'cooling turnoff time' used by this model */
     double n0 = P[i].DensAroundStar*All.cf_a3inv*All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / PROTONMASS;
@@ -364,7 +364,7 @@ void particle2in_addFB_winds(struct addFBdata_in *in, int i)
     in->Msne = M_wind;
     in->SNe_v_ejecta = wind_velocity;
     in->unit_mom_SNe = wind_momentum;
-    in->area_sum = P[i].Area_weighted_sum;
+    for(k=0;k<7;k++) {in->Area_weighted_sum[k] = 1/(MIN_REAL_NUMBER+fabs(P[i].Area_weighted_sum[k]));}
 #endif // GALSF_FB_GASRETURN //
 }
 
@@ -374,7 +374,7 @@ void out2particle_addFB(struct addFBdata_out *out, int i, int mode, int feedback
 {
     if(feedback_type==-1)
     {
-        ASSIGN_ADD(P[i].Area_weighted_sum, out->M_coupled, mode);
+        int k; for(k=0;k<7;k++) {ASSIGN_ADD(P[i].Area_weighted_sum[k], out->Area_weighted_sum[k], mode);}
     } else {
         P[i].Mass -= out->M_coupled;
         if(P[i].Mass<0) P[i].Mass=0;
@@ -754,18 +754,23 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
             wk = kernel.wk * P[j].Mass / SphP[j].Density; // psi
             */
             double h_eff_j = Get_Particle_Size(j);
-            //wk = h_eff_j * h_eff_j / (r2 + 0.01*h2); // solid-angle weight (actually, because of summation/division below, this really double-downweights further particles)
-            wk = h_eff_j * h_eff_j; // area (solid-angle after summation/division below) weight
-            //wk = h_eff_j * h_eff_j * h_eff_j; // volume weight
+            //wk = h_eff_j * h_eff_j * h_eff_j; // volume weight (old FIRE runs)
+            double hR = h_eff_j / (kernel.r + 1.e-4*h_eff_j);
+            wk = 0.5*(1-1/sqrt(1.+hR*hR)); // solid angle for triangle of side-length h;
+            
+            double wk_vec[7]; wk_vec[0] = wk;
+            if(kernel.dp[0]>0) {wk_vec[1]=wk*kernel.dp[0]/kernel.r; wk_vec[2]=0;} else {wk_vec[1]=0; wk_vec[2]=wk*kernel.dp[0]/kernel.r;}
+            if(kernel.dp[1]>0) {wk_vec[3]=wk*kernel.dp[1]/kernel.r; wk_vec[4]=0;} else {wk_vec[3]=0; wk_vec[4]=wk*kernel.dp[1]/kernel.r;}
+            if(kernel.dp[2]>0) {wk_vec[5]=wk*kernel.dp[2]/kernel.r; wk_vec[6]=0;} else {wk_vec[5]=0; wk_vec[6]=wk*kernel.dp[2]/kernel.r;}
             
             // if feedback_type==-1, this is a pre-calc loop to get the relevant weights for coupling //
             if(feedback_type==-1)
             {
-                out.M_coupled += wk;
+                for(k=0;k<7;k++) out.Area_weighted_sum[k] += wk_vec[k];
                 continue;
             }
             // NOW do the actual feedback calculation //
-                wk /= local.area_sum; // this way wk matches the value summed above for the weighting //
+                wk *= local.Area_weighted_sum[0]; // this way wk matches the value summed above for the weighting //
                 // need to check to make sure the coupled fraction doesn't exceed the solid angle subtended by the particles //
                 //double wkmax = 1.5 * M_PI * h_eff_j * h_eff_j / (4. * M_PI * (0.5625*r2 + 0.005*h2)); if(wk > wkmax) {wk = wkmax;}
             
@@ -866,20 +871,25 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(dP>SphP[j].DelayTimeCoolingSNe) SphP[j].DelayTimeCoolingSNe=dP;
 #else
                 /* inject momentum */
-                dP = wk * local.unit_mom_SNe / P[j].Mass;
-                dP_sum += dP;
+                dP = local.unit_mom_SNe / P[j].Mass;
+                dP_sum += dP * wk;
                 dP *= sqrt(1. + NORM_COEFF*(SphP[j].Density*RsneKPC*RsneKPC*RsneKPC)/local.Msne);
                 /* above is the appropriate factor for the ejecta being energy-conserving inside the cooling radius (or Hsml, if thats smaller) */
                 if(dP > v_ejecta_max) dP = v_ejecta_max;
                 dP_boost_sum += dP;
-                dP *= All.cf_atime / kernel.r;
+                dP *= -All.cf_atime / 4.; // factor of 4 accounts for our normalization of each directional component below to be =P (given by properly integrating over a unit sphere)
                 for(k=0; k<3; k++)
                 {
+                    double q;
+                    if(k==0) {q=wk_vec[1]*local.Area_weighted_sum[1] + wk_vec[2]*local.Area_weighted_sum[2];}
+                    if(k==1) {q=wk_vec[3]*local.Area_weighted_sum[3] + wk_vec[4]*local.Area_weighted_sum[4];}
+                    if(k==2) {q=wk_vec[5]*local.Area_weighted_sum[5] + wk_vec[6]*local.Area_weighted_sum[6];}
+                    q *= dP; q += u;
                     u = wk * local.Msne * kernel.dv[k] / P[j].Mass;
                     if (u > v_ejecta_max*All.cf_atime) u = v_ejecta_max*All.cf_atime;
                     if (u < -v_ejecta_max*All.cf_atime) u = -v_ejecta_max*All.cf_atime;
-                    P[j].Vel[k] += -dP*kernel.dp[k] + u;
-                    SphP[j].VelPred[k] += -dP*kernel.dp[k] + u;
+                    P[j].Vel[k] += q;
+                    SphP[j].VelPred[k] += q;
                 }
 #endif
             
