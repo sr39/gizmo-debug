@@ -87,8 +87,8 @@ int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum)
 #endif
 #if defined(GALSF)
         if(P[i].Type==0) {if(sigma_0<0) return 1; active_check=1; fac += SphP[i].Sfr * All.IonizingLumPerSFR * All.UnitTime_in_s / All.HubbleParam;} // flux from gas according to SFR
-        if(P[i].Type==4) {if(sigma_0<0) return 1; active_check=1; fac += (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.IonizingLumPerSolarMass * All.UnitTime_in_s / All.HubbleParam;} // flux from star particles according to mass
 #endif
+        if(P[i].Type==4) {if(sigma_0<0) return 1; active_check=1; fac += (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.IonizingLumPerSolarMass * All.UnitTime_in_s / All.HubbleParam;} // flux from star particles according to mass
 #if defined(RT_PHOTOION_MULTIFREQUENCY)
         // we should have pre-tabulated how much luminosity gets assigned to each different waveband according to the following function //
         for(k=0;k<N_RT_FREQ_BINS;k++) {lum[k] += fac * precalc_stellar_luminosity_fraction[k];}
@@ -128,6 +128,13 @@ double rt_kappa(MyIDType i, int k_freq)
 }
 
 
+/* rate of photon absorption [absorptions per unit time per photon]: this, times the timestep dt, times the photon energy density E, 
+    gives the change in the energy density from absorptions (the sink term) */
+double rt_absorption_rate(MyIDType i, int k_freq)
+{
+    /* should be equal to (C * Kappa_opacity * rho) */
+    return, (C/All.UnitVelocity_in_cm_per_s) * rt_kappa(i, k_freq) * SphP[i].Density*All.a3inv;
+}
 
 #endif
 

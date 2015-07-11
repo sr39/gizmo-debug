@@ -176,6 +176,7 @@
 /* check if we are -explicitly- evolving the radiation field, in which case we need to carry time-derivatives of the field */
 #if defined(RT_DIFFUSION_EXPLICIT)
 #define RT_EVOLVE_NGAMMA
+#define RT_SOURCE_INJECTION
 #endif
 
 /* enable appropriate chemistry flags if we are using the photoionization modules */
@@ -2089,7 +2090,7 @@ extern struct sph_particle_data
     
 #if defined(RADTRANSFER)
     MyFloat ET[6];                      /*!< eddington tensor - symmetric -> only 6 elements needed: this is dimensionless by our definition */
-    MyFloat Je[N_RT_FREQ_BINS];         /*!< emissivity (includes sources like stars, as well as gas):  */
+    MyFloat Je[N_RT_FREQ_BINS];         /*!< emissivity (includes sources like stars, as well as gas): units=E_gamma/time  */
     MyFloat E_gamma[N_RT_FREQ_BINS];    /*!< photon energy (integral of dE_gamma/dvol*dVol) associated with particle [for simple frequency bins, equivalent to photon number] */
     MyFloat Kappa_RT[N_RT_FREQ_BINS];   /*!< photon diffusion coefficient = fluxlimiter * c_light / (kappa_opacity * density) [physical units]  */
     MyFloat Lambda_FluxLim[N_RT_FREQ_BINS]; /*!< dimensionless flux-limiter (0<lambda<1) */
