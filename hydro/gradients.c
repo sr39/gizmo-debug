@@ -1215,15 +1215,15 @@ void hydro_gradient_calc(void)
                         /* estimate: 1/gradient_length_scale */
                         double R = sqrt(GasGradDataPasser[i].Gradients_E_gamma[k_freq][0] * GasGradDataPasser[i].Gradients_E_gamma[k_freq][0] +
                                         GasGradDataPasser[i].Gradients_E_gamma[k_freq][1] * GasGradDataPasser[i].Gradients_E_gamma[k_freq][1] +
-                                        GasGradDataPasser[i].Gradients_E_gamma[k_freq][2] * GasGradDataPasser[i].Gradients_E_gamma[k_freq][2]) / (SphP[j].E_gamma[k_freq] * SphP[i].Density/P[i].Mass);
+                                        GasGradDataPasser[i].Gradients_E_gamma[k_freq][2] * GasGradDataPasser[i].Gradients_E_gamma[k_freq][2]) / (1.e-37 + SphP[j].E_gamma[k_freq] * SphP[i].Density/P[i].Mass);
 
                         /* use the maximum of the above or the gradient dotted into the full Eddington tensor, which we now have */
                         double R_ET = sqrt(SphP[i].Gradients.E_gamma_ET[k_freq][0] * SphP[i].Gradients.E_gamma_ET[k_freq][0] +
                                            SphP[i].Gradients.E_gamma_ET[k_freq][1] * SphP[i].Gradients.E_gamma_ET[k_freq][1] +
-                                           SphP[i].Gradients.E_gamma_ET[k_freq][2] * SphP[i].Gradients.E_gamma_ET[k_freq][2]) / (SphP[i].E_gamma[k_freq] * SphP[i].Density/P[i].Mass);
+                                           SphP[i].Gradients.E_gamma_ET[k_freq][2] * SphP[i].Gradients.E_gamma_ET[k_freq][2]) / (1.e-37 + SphP[i].E_gamma[k_freq] * SphP[i].Density/P[i].Mass);
                         R = DMAX(R,R_ET);
 
-                        R /= All.cf_atime * SphP[i].Kappa_RT[k_freq] * (SphP[i].Density*All.cf_a3inv); /* dimensionless (all in physical) */
+                        R /= (1.e-37 + All.cf_atime * SphP[i].Kappa_RT[k_freq] * (SphP[i].Density*All.cf_a3inv)); /* dimensionless (all in physical) */
                         /* now we can apply the actual slope-limiter function desired */
                         lambda = (2 + R) / (6 + 3 * R + R * R);
                         if(lambda < 1e-100) lambda = 0;
@@ -1248,7 +1248,7 @@ void hydro_gradient_calc(void)
                     SphP[i].Lambda_FluxLim[k_freq] = lambda;
                     /* now we use Kappa_RT to store the diffusion coefficient for the radiation transfer equations */
                     double c_light = (C / All.UnitVelocity_in_cm_per_s) * RT_SPEEDOFLIGHT_REDUCTION;
-                    SphP[i].Kappa_RT[k_freq] = SphP[i].Lambda_FluxLim[k_freq] * c_light / (SphP[i].Kappa_RT[k_freq] * SphP[i].Density*All.cf_a3inv);
+                    SphP[i].Kappa_RT[k_freq] = SphP[i].Lambda_FluxLim[k_freq] * c_light / (1.e-37 + SphP[i].Kappa_RT[k_freq] * SphP[i].Density*All.cf_a3inv);
                 }
             }
 #endif

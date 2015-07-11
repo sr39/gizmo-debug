@@ -427,8 +427,9 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #RT_PHOTOION_SOURCES=1+16+32            # source list for ionizing photons given by bitflag (1=2^0=gas[sfr-based],16=2^4=new stars[mass-based],32=2^5=BH)
 #RT_COOLING_PHOTOHEATING                # includes photoheating and cooling (using RT information)
 ##-----------------------------------------------------------------------------------------------------
-#------------ deprecated or de-bugging options (most have been combined or optimized into the functions above, here for legacy)
+#------------ test-problem, deprecated, or de-bugging functions
 ##-----------------------------------------------------------------------------------------------------
+#RT_NOGRAVITY                           # turn off gravity: if using an RT method that needs the gravity tree (FIRE, OTVET), use this -instead- of NOGRAVITY to safely turn off gravitational forces
 #RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR # when RT_DIFFUSION_CG is enabled, modifies the Eddington tensor to the fully anisotropic version (less stable CG iteration)
 #RT_SEPARATELY_TRACK_LUMPOS             # keep luminosity vs. mass positions separate in tree (useful if running in tree-only mode)
 #RT_DISABLE_FLUXLIMITER                 # removes the flux-limiter from the diffusion operations (default is to include it when using the relevant approximations)

@@ -2358,15 +2358,18 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef RT_OTVET
                 /* use the information we have here from the gravity tree (optically thin incident fluxes) to estimate the Eddington tensor */
                 // for now, just one tensor; so we use the sum of luminosities to determine the weights in the Eddington tensor
-                double fac_sum=0;
-                int kf_rt; for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++) {fac_sum += mass_stellarlum[kf_rt];}
-                fac_sum *= fac / r; // units are not important, since ET will be dimensionless, but final ET should scale as ~luminosity/r^2
-                ET[0] += dx_stellarlum * dx_stellarlum * fac_sum;
-                ET[1] += dy_stellarlum * dy_stellarlum * fac_sum;
-                ET[2] += dz_stellarlum * dz_stellarlum * fac_sum;
-                ET[3] += dx_stellarlum * dy_stellarlum * fac_sum;
-                ET[4] += dy_stellarlum * dz_stellarlum * fac_sum;
-                ET[5] += dz_stellarlum * dx_stellarlum * fac_sum;
+                if(r>0)
+                {
+                    double fac_sum=0;
+                    int kf_rt; for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++) {fac_sum += mass_stellarlum[kf_rt];}
+                    fac_sum *= fac / r; // units are not important, since ET will be dimensionless, but final ET should scale as ~luminosity/r^2
+                    ET[0] += dx_stellarlum * dx_stellarlum * fac_sum;
+                    ET[1] += dy_stellarlum * dy_stellarlum * fac_sum;
+                    ET[2] += dz_stellarlum * dz_stellarlum * fac_sum;
+                    ET[3] += dx_stellarlum * dy_stellarlum * fac_sum;
+                    ET[4] += dy_stellarlum * dz_stellarlum * fac_sum;
+                    ET[5] += dz_stellarlum * dx_stellarlum * fac_sum;
+                }
 #endif
                 
 #ifdef RT_FIRE

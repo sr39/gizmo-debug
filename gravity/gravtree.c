@@ -962,6 +962,11 @@ void gravity_tree(void)
 #endif
     
     
+#ifdef RT_NOGRAVITY
+    /* if this is set, we zero out gravity here, just after computing it! */
+    P[i].GravAccel[0]=P[i].GravAccel[1]=P[i].GravAccel[2]=0;
+#endif
+    
     add_analytic_gravitational_forces();
     
     

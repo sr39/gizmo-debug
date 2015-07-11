@@ -148,7 +148,7 @@ void rt_diffusion_cg_solve(void)
     {
         for(j = 0; j < N_gas; j++)
             if(P[j].Type == 0)
-            {
+            {                
                 Residue[k][j] = SphP[j].E_gamma[k] * SphP[j].Density / P[j].Mass - Residue[k][j]; // note: source terms have been added here to E_gamma //
                 /* note: in principle we would have to substract the w_ii term, but this is zero by definition */
                 ZVec[k][j] = Residue[k][j] / Diag[k][j];
@@ -192,10 +192,10 @@ void rt_diffusion_cg_solve(void)
             /* broadcast and decide if we need to keep iterating */
             MPI_Allreduce(&maxrel, &glob_maxrel, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
             if(ThisTask == 0) {printf("CG iteration: iter=%3d  |res|/|x|=%12.6g  maxrel=%12.6g  |x|=%12.6g | res|=%12.6g\n", iter, res / sum, glob_maxrel, sum, res); fflush(stdout);}
+            if(iter >= 2 && (res <= ACCURACY * sum || iter >= MAX_ITER)) {done_key[k]=1; ndone++;}
         }
         iter++;
-        if(iter >= MAX_ITER) {terminate("failed to converge in CG iteration \n");}
-        if(iter >= 2 && (res <= ACCURACY * sum || iter >= MAX_ITER)) {done_key[k]=1; ndone++;}
+        if(iter > MAX_ITER) {terminate("failed to converge in CG iteration \n");}
     }
     while(ndone < N_RT_FREQ_BINS);
     
@@ -421,20 +421,21 @@ void rt_diffusion_cg_matrix_multiply(double **matrixmult_in, double **matrixmult
     
     /* do final operations on results */
     double dt = (All.Radiation_Ti_endstep - All.Radiation_Ti_begstep) * All.Timebase_interval / All.cf_hubble_a;
-    double prefac = dt * (C/All.UnitVelocity_in_cm_per_s) * RT_SPEEDOFLIGHT_REDUCTION;
+    double prefac = dt * (C/All.UnitVelocity_in_cm_per_s) * (C/All.UnitVelocity_in_cm_per_s) * RT_SPEEDOFLIGHT_REDUCTION;
     int i;
     for(i = 0; i < N_gas; i++)
         if(P[i].Type == 0)
         {
             for(k = 0; k < N_RT_FREQ_BINS; k++)
             {
+                double fac_i = prefac * SphP[i].Lambda_FluxLim[k] / (1.e-37 + SphP[i].Kappa_RT[k]);
                 /* divide c_light by a to get comoving speed of light (because kappa is comoving) */
-                if((1 + prefac * SphP[i].Kappa_RT[k] + matrixmult_sum[k][i]) < 0)
+                if((1 + fac_i + matrixmult_sum[k][i]) < 0)
                 {
-                    printf("1 + matrixmult_sum + rate= %g   matrixmult_sum=%g rate=%g i =%d\n", 1 + prefac * SphP[i].Kappa_RT[k] + matrixmult_sum[k][i], matrixmult_sum[k][i], prefac * SphP[i].Kappa_RT[k], i);
+                    printf("1 + matrixmult_sum + rate= %g   matrixmult_sum=%g rate=%g i =%d\n", 1 + fac_i + matrixmult_sum[k][i], matrixmult_sum[k][i], fac_i, i);
                     endrun(11111111);
                 }
-                matrixmult_sum[k][i] += 1.0 + prefac * SphP[i].Kappa_RT[k];
+                matrixmult_sum[k][i] += 1.0 + fac_i;
                 matrixmult_out[k][i] += matrixmult_in[k][i] * matrixmult_sum[k][i];
             }
         }
