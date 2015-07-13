@@ -89,7 +89,7 @@ void rt_source_injection(void)
             for(k=0;k<N_RT_FREQ_BINS;k++) {if(active_check) {SphP[j].Je[k]=lum[k];} else {SphP[j].Je[k]=0;}}
         }
     }
-    
+
     /* allocate buffers to arrange communication */
     long long NTaskTimesNumPart;
     NTaskTimesNumPart = maxThreads * NumPart;
@@ -212,8 +212,8 @@ void rt_source_injection(void)
                 if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
                 {
                     /* get the particles */
-                    MPI_Sendrecv(&RT_SourceDataIn[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct rt_sourcedata_in), MPI_BYTE, recvTask, TAG_FBLOOP_A,
-                                 &RT_SourceDataGet[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(struct rt_sourcedata_in), MPI_BYTE, recvTask, TAG_FBLOOP_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                    MPI_Sendrecv(&RT_SourceDataIn[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct rt_sourcedata_in), MPI_BYTE, recvTask, TAG_RT_C,
+                                 &RT_SourceDataGet[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(struct rt_sourcedata_in), MPI_BYTE, recvTask, TAG_RT_C, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                 }
             }
         }

@@ -161,6 +161,10 @@
 #endif
 // use gravity tree for Eddington tensor
 #define RT_USE_GRAVTREE
+// and be sure to track luminosity locations 
+#ifndef RT_SEPARATELY_TRACK_LUMPOS
+#define RT_SEPARATELY_TRACK_LUMPOS
+#endif
 // need source injection enabled to define emissivity
 #define RT_SOURCE_INJECTION
 #endif
@@ -176,7 +180,6 @@
 /* check if we are -explicitly- evolving the radiation field, in which case we need to carry time-derivatives of the field */
 #if defined(RT_DIFFUSION_EXPLICIT)
 #define RT_EVOLVE_NGAMMA
-#define RT_SOURCE_INJECTION
 #endif
 
 /* enable appropriate chemistry flags if we are using the photoionization modules */
@@ -1985,7 +1988,7 @@ extern struct sph_particle_data
 #ifdef COSMIC_RAYS
         MyDouble CosmicRayPressure[3];
 #endif
-#if defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
+#if defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
         MyDouble E_gamma_ET[N_RT_FREQ_BINS][3];
 #endif
     } Gradients;

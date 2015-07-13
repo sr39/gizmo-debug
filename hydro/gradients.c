@@ -1215,18 +1215,17 @@ void hydro_gradient_calc(void)
                         /* estimate: 1/gradient_length_scale */
                         double R = sqrt(GasGradDataPasser[i].Gradients_E_gamma[k_freq][0] * GasGradDataPasser[i].Gradients_E_gamma[k_freq][0] +
                                         GasGradDataPasser[i].Gradients_E_gamma[k_freq][1] * GasGradDataPasser[i].Gradients_E_gamma[k_freq][1] +
-                                        GasGradDataPasser[i].Gradients_E_gamma[k_freq][2] * GasGradDataPasser[i].Gradients_E_gamma[k_freq][2]) / (1.e-37 + SphP[j].E_gamma[k_freq] * SphP[i].Density/P[i].Mass);
+                                        GasGradDataPasser[i].Gradients_E_gamma[k_freq][2] * GasGradDataPasser[i].Gradients_E_gamma[k_freq][2]) / (1.e-37 + SphP[i].E_gamma[k_freq] * SphP[i].Density/(1.e-37+P[i].Mass));
 
                         /* use the maximum of the above or the gradient dotted into the full Eddington tensor, which we now have */
                         double R_ET = sqrt(SphP[i].Gradients.E_gamma_ET[k_freq][0] * SphP[i].Gradients.E_gamma_ET[k_freq][0] +
                                            SphP[i].Gradients.E_gamma_ET[k_freq][1] * SphP[i].Gradients.E_gamma_ET[k_freq][1] +
-                                           SphP[i].Gradients.E_gamma_ET[k_freq][2] * SphP[i].Gradients.E_gamma_ET[k_freq][2]) / (1.e-37 + SphP[i].E_gamma[k_freq] * SphP[i].Density/P[i].Mass);
-                        R = DMAX(R,R_ET);
-
+                                           SphP[i].Gradients.E_gamma_ET[k_freq][2] * SphP[i].Gradients.E_gamma_ET[k_freq][2]) / (1.e-37 + SphP[i].E_gamma[k_freq] * SphP[i].Density/(1.e-37+P[i].Mass));
+                        //R = DMAX(R,R_ET); // still testing???
                         R /= (1.e-37 + All.cf_atime * SphP[i].Kappa_RT[k_freq] * (SphP[i].Density*All.cf_a3inv)); /* dimensionless (all in physical) */
                         /* now we can apply the actual slope-limiter function desired */
                         lambda = (2 + R) / (6 + 3 * R + R * R);
-                        if(lambda < 1e-100) lambda = 0;
+                        if(lambda < 1e-30) lambda = 1.e-30;
 #ifdef RT_OTVET
                         /* note that the OTVET eddington tensor is close to the correct value for the optically-thin limit. for the diffusion limit 
                             it may be incorrect. we can therefore interpolate using an M1-like relation below, based on the gradients above (used 
@@ -1234,13 +1233,15 @@ void hydro_gradient_calc(void)
                         /* calculate ratio f=|Flux|/(c_eff*Energy_density_rad): f<<1 = diffusion limit, f~1 = free-streaming limit
                             Here we can use the slope-limited f [f lower, so much more quickly our ET becomes isotropic], or 'pre-limit' R [less conservative, but may retain more information in some cases] */
                         double f_flux_to_egy = DMAX(0.,DMIN(R,1.)); // converges quickly to optically thin limit (for R~1)
-                        //f_flux_to_egy = DMAX(0.,DMIN(lambda*R,1.)); // converges more slowly to optically thin limit (for R>>10)
+                        f_flux_to_egy = DMAX(0.,DMIN(lambda*R,1.)); // converges more slowly to optically thin limit (for R>>10)
                         double chi = DMAX(1./3., DMIN(1. , (3. + 4.*f_flux_to_egy*f_flux_to_egy) / (5. + 2.*sqrt(4. - 3.*f_flux_to_egy*f_flux_to_egy))));
                         /* note that, because of how our slope-limiter appears, we don't want to double-count the 1/3 factor for the
                             diffusion limit (since whatever we come up with here will be multiplied by lambda in the relevant forces/etc: therefore 
                             we need to multiply chifac_iso by a power of 3 (because this goes to I/3, but also when lambda->1/3) */
+			//chi=1./3.; // pure isotropic
+			//chi=1.; // pure optically-thin
                         double chifac_iso=3.*(1-chi)/2., chifac_ot=(3.*chi-1.)/2.;
-                        if(k_freq==0) {for(k=0;k<6;k++) {SphP[i].ET[k] *= chifac_ot; if(k<3) {SphP[i].ET[k] += chifac_iso;}}} // diagonal components // (this only makes sense if ET is freq-dependent)
+                        if(k_freq==0) {for(k=0;k<6;k++) {SphP[i].ET[k] *= chifac_ot; if(k<3) {SphP[i].ET[k] += chifac_iso/3;}}} // diagonal components // (this only makes sense if ET is freq-dependent)
                         for(k=0;k<3;k++) {SphP[i].Gradients.E_gamma_ET[k_freq][k] = chifac_ot*SphP[i].Gradients.E_gamma_ET[k_freq][k] + chifac_iso*GasGradDataPasser[i].Gradients_E_gamma[k_freq][k];}
 #endif
                     }

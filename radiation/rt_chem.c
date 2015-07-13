@@ -25,7 +25,7 @@ void rt_get_sigma(void)
 #ifndef RT_PHOTOION_MULTIFREQUENCY
     rt_sigma_HI[0] = 6.3e-18 * fac; // cross-section (blackbody-weighted) for photons
     nu[0] = 13.6; // minimum frequency [in eV] of photons of interest
-    rt_nu_eff_eV[0] = 30.0; // typical blackbody-weighted frequency [in eV] of photons of interest: to convert energies to numbers
+    rt_nu_eff_eV[0] = 13.6; // typical blackbody-weighted frequency [in eV] of photons of interest: to convert energies to numbers
     
 #else
     
@@ -216,8 +216,7 @@ void rt_update_chemistry(void)
 #ifdef RT_ILIEV_TEST1
             temp = 1.0e4;
 #else
-            temp = GAMMA_MINUS1 * SphP[i].InternalEnergyPred * molecular_weight * PROTONMASS /
-            All.UnitMass_in_g * All.HubbleParam / BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
+            temp = GAMMA_MINUS1 * SphP[i].InternalEnergyPred * molecular_weight * PROTONMASS / All.UnitMass_in_g * All.HubbleParam / BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
 #endif
             
             //		if(fabs(temp - 1.0e4) > 3000.0)

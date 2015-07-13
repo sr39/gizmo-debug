@@ -365,7 +365,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_NE:		/* electron abundance */
-#if defined(COOLING)
+#if defined(COOLING) || defined(RT_CHEM_PHOTOION)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -2094,7 +2094,7 @@ int blockpresent(enum iofields blocknr)
             
         case IO_HeI:
         case IO_HeII:
-#if defined(RT_CHEM_PHOTOION)
+#if defined(RT_CHEM_PHOTOION_HE)
             return 1;
 #else
             return 0;

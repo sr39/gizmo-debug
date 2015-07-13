@@ -397,7 +397,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     }
 
 #ifdef RT_DIFFUSION_EXPLICIT
-    for(k=0;k<N_RT_FREQ_BINS;j++)
+    for(k=0;k<N_RT_FREQ_BINS;k++)
     {
         in->E_gamma[k] = SphP[i].E_gamma[k];
         in->Kappa_RT[k] = SphP[i].Kappa_RT[k];
@@ -435,7 +435,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     in->CosmicRayPressure = Get_Particle_CosmicRayPressure(i);
     in->CosmicRayDiffusionCoeff = SphP[i].CosmicRayDiffusionCoeff;
 #endif
-    
+
 }
 
 
@@ -847,7 +847,7 @@ void hydro_force(void)
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
     CPU_Step[CPU_HYDMISC] += measure_time();
     t0 = my_second();
-    NextParticle = FirstActiveParticle;	/* beginn with this index */
+    NextParticle = FirstActiveParticle;	/* begin with this index */
     
     do
     {

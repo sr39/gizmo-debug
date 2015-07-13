@@ -43,8 +43,6 @@ extern pthread_mutex_t mutex_partnodedrift;
 #define MAX_ITER 10000
 #define ACCURACY 1.0e-2
 static double **ZVec, **XVec, **QVec, **DVec, **Residue, **Diag, **Diag2;
-//static double *Kappa;
-//static double *Lambda;
 
 /*! structure for communication. holds data that is sent to other processors  */
 static struct rt_cg_data_in
@@ -56,7 +54,7 @@ static struct rt_cg_data_in
     MyFloat Hsml;
     MyFloat ET[6];
     MyDouble Kappa[N_RT_FREQ_BINS];
-    //MyDouble Lambda;
+    //MyDouble Lambda[N_RT_FREQ_BINS];
 }
 *rt_cg_DataIn, *rt_cg_DataGet;
 
@@ -88,7 +86,7 @@ void particle2in_rt_cg(struct rt_cg_data_in *in, MyIDType i)
     in->Mass = P[i].Mass;
     in->Density = SphP[i].Density;
     for(k=0; k<N_RT_FREQ_BINS; k++) in->Kappa[k] = SphP[i].Kappa_RT[k];
-    //in->Lambda = Lambda[i];
+    //for(k=0; k<N_RT_FREQ_BINS; k++) in->Lambda[k] = SphP[i].Lambda_FluxLim[k];
 }
 
 /* internal product of two vectors (for all gas particles) */
@@ -115,10 +113,10 @@ double rt_diffusion_cg_vector_sum(double *a)
 }
 
 /* define a convenient macro for allocating the required arrays below */
-#define MALLOC_CG(x) ({\
+#define MALLOC_CG(x) {\
 x = (double **) malloc(N_RT_FREQ_BINS * sizeof(double *));\
 for(k=0;k<N_RT_FREQ_BINS;k++) x[k] = (double *) malloc(N_gas * sizeof(double));\
-for(k=0;k<N_RT_FREQ_BINS;k++) memset(x[k], 0, N_gas * sizeof(double));})
+for(k=0;k<N_RT_FREQ_BINS;k++) memset(x[k], 0, N_gas * sizeof(double));}
 
 
 /*! routine to do the master loop for the CG iteration - this is the actual solver; it calls various subroutines
@@ -136,10 +134,10 @@ void rt_diffusion_cg_solve(void)
         if(P[j].Type == 0)
             for(k = 0; k < N_RT_FREQ_BINS; k++)
             {
-                XVec[k][j] = SphP[j].E_gamma[k] * SphP[j].Density / P[j].Mass; /* define the coefficients: note we need energy densities for this operation */
+                XVec[k][j] = SphP[j].E_gamma[k] * SphP[j].Density / (1.e-37+P[j].Mass); /* define the coefficients: note we need energy densities for this operation */
                 SphP[j].E_gamma[k] += dt * SphP[j].Je[k]; /* -then- add the source terms */
             }
-    
+ 
     /* do a first pass of our 'workhorse' routine, which lets us pre-condition to improve convergence */
     rt_diffusion_cg_matrix_multiply(XVec, Residue, Diag);
     /* take the diagonal matrix elements as a Jacobi preconditioner */
@@ -149,7 +147,7 @@ void rt_diffusion_cg_solve(void)
         for(j = 0; j < N_gas; j++)
             if(P[j].Type == 0)
             {                
-                Residue[k][j] = SphP[j].E_gamma[k] * SphP[j].Density / P[j].Mass - Residue[k][j]; // note: source terms have been added here to E_gamma //
+                Residue[k][j] = SphP[j].E_gamma[k] * SphP[j].Density / (1.e-37+P[j].Mass) - Residue[k][j]; // note: source terms have been added here to E_gamma //
                 /* note: in principle we would have to substract the w_ii term, but this is zero by definition */
                 ZVec[k][j] = Residue[k][j] / Diag[k][j];
                 DVec[k][j] = ZVec[k][j];
@@ -158,8 +156,9 @@ void rt_diffusion_cg_solve(void)
     }
     
     /* begin the CG method iteration */
-    int iter=0, ndone=0, done_key[N_RT_FREQ_BINS];
-    for(k = 0; k < N_RT_FREQ_BINS; k++) {done_key[k]=0;}
+    int iter=0, ndone=0, done_key[N_RT_FREQ_BINS]; 
+    double delta_new[N_RT_FREQ_BINS], delta_old[N_RT_FREQ_BINS];
+    for(k = 0; k < N_RT_FREQ_BINS; k++) {done_key[k]=0; delta_new[k]=delta_new_initial[k]; delta_old[k]=delta_new_initial[k];}
     do
     {
         /* this is the 'workhorse' routine with the neighbor communication and actual calculation */
@@ -168,10 +167,8 @@ void rt_diffusion_cg_solve(void)
         for(k = 0; k < N_RT_FREQ_BINS; k++)
         {
             /* define residues */
-            double delta_new, delta_old;
-            if(iter == 0) {delta_new = delta_new_initial[k];}
             DQ = rt_diffusion_cg_vector_multiply(DVec[k], QVec[k]);
-            if(DQ == 0) {alpha_cg = 0;} else {alpha_cg = delta_new / DQ;}
+            if(DQ == 0) {alpha_cg = 0;} else {alpha_cg = delta_new[k] / DQ;}
             for(j = 0, maxrel = 0; j < N_gas; j++)
             {
                 XVec[k][j] += alpha_cg * DVec[k][j];
@@ -180,18 +177,18 @@ void rt_diffusion_cg_solve(void)
                 rel = fabs(alpha_cg * DVec[k][j]) / (XVec[k][j] + 1.0e-10);
                 if(rel > maxrel) {maxrel = rel;}
             }
-            delta_old = delta_new;
-            delta_new = rt_diffusion_cg_vector_multiply(ZVec[k], Residue[k]);
+            delta_old[k] = delta_new[k];
+            delta_new[k] = rt_diffusion_cg_vector_multiply(ZVec[k], Residue[k]);
             
             /* sum up residues to define next step */
             sum = rt_diffusion_cg_vector_sum(XVec[k]);
             res = rt_diffusion_cg_vector_sum(Residue[k]);
-            if(delta_old) {beta = delta_new / delta_old;} else {beta = 0;}
+            if(delta_old[k]) {beta = delta_new[k] / delta_old[k];} else {beta = 0;}
             for(j = 0; j < N_gas; j++) {DVec[k][j] = ZVec[k][j] + beta * DVec[k][j];}
             
             /* broadcast and decide if we need to keep iterating */
             MPI_Allreduce(&maxrel, &glob_maxrel, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            if(ThisTask == 0) {printf("CG iteration: iter=%3d  |res|/|x|=%12.6g  maxrel=%12.6g  |x|=%12.6g | res|=%12.6g\n", iter, res / sum, glob_maxrel, sum, res); fflush(stdout);}
+            if(ThisTask == 0) {printf("CG iteration: iter=%3d  |res|/|x|=%12.6g  maxrel=%12.6g  |x|=%12.6g |res|=%12.6g\n", iter, res / sum, glob_maxrel, sum, res); fflush(stdout);}
             if(iter >= 2 && (res <= ACCURACY * sum || iter >= MAX_ITER)) {done_key[k]=1; ndone++;}
         }
         iter++;
@@ -209,15 +206,13 @@ void rt_diffusion_cg_solve(void)
                 SphP[j].E_gamma[k] = DMAX(XVec[k][j],0) * P[j].Mass / SphP[j].Density; // convert back to an absolute energy, instead of a density //
     
     /* free memory */
-    //myfree(Lambda);
-    //myfree(Kappa);
-    myfree(Diag2);
-    myfree(Diag);
-    myfree(Residue);
-    myfree(DVec);
-    myfree(QVec);
-    myfree(XVec);
-    myfree(ZVec);
+    free(Diag2);
+    free(Diag);
+    free(Residue);
+    free(DVec);
+    free(QVec);
+    free(XVec);
+    free(ZVec);
 }
 
 
@@ -427,8 +422,7 @@ void rt_diffusion_cg_matrix_multiply(double **matrixmult_in, double **matrixmult
         {
             for(k = 0; k < N_RT_FREQ_BINS; k++)
             {
-                double fac_i = dt * rt_absorption_rate(i,k);
-                prefac * SphP[i].Lambda_FluxLim[k] / (1.e-37 + SphP[i].Kappa_RT[k]);
+                double fac_i = dt * rt_absorption_rate(i,k); 
                 if((1 + fac_i + matrixmult_sum[k][i]) < 0)
                 {
                     printf("1 + matrixmult_sum + rate= %g   matrixmult_sum=%g rate=%g i =%d\n", 1 + fac_i + matrixmult_sum[k][i], matrixmult_sum[k][i], fac_i, i);
@@ -522,7 +516,7 @@ int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, doubl
                     double wt_ij = -dt * tensor * (dwk_i*local.Mass/local.Density + dwk_j*P[j].Mass/SphP[j].Density) / r;
                     for(k=0;k<N_RT_FREQ_BINS;k++)
                     {
-                        double kappa_ij = 2. * local.Kappa[k]*SphP[j].Kappa_RT[k] / (local.Kappa[k] + SphP[j].Kappa_RT[k]); // geometric mean (weights towards smaller for greater stability)
+			double kappa_ij = 0.5*(local.Kappa[k] + SphP[j].Kappa_RT[k]);
                         double fac = wt_ij * kappa_ij;
                         out.matrixmult_out[k] -= fac * matrixmult_in[k][j];
                         out.matrixmult_sum[k] += fac;

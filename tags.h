@@ -67,6 +67,9 @@
 #define TAG_RT_A          72
 #define TAG_RT_B          73
 #endif
+#ifdef RT_SOURCE_INJECTION
+#define TAG_RT_C	  76
+#endif
 
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
 #define TAG_AGS_DENS_A    74

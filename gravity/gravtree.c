@@ -583,7 +583,7 @@ void gravity_tree(void)
                     }
 #endif
 #ifdef RT_OTVET
-                    int k_et; for(k_et=0;k_et<6;k_et++) {SphP[place].ET[k_et] += GravDataOut[j].ET[k_et];}
+                    if(P[place].Type==0) for(k=0;k<6;k++) SphP[place].ET[k] += GravDataOut[j].ET[k];
 #endif
 #ifdef GALSF_FB_LOCAL_UV_HEATING
                     if(P[place].Type==0) SphP[place].RadFluxUV += GravDataOut[j].RadFluxUV;
@@ -807,7 +807,7 @@ void gravity_tree(void)
         if(P[i].Type == 0)
         {
             double trace = SphP[i].ET[0] + SphP[i].ET[1] + SphP[i].ET[2];
-            if(trace)
+            if(!isnan(trace) && (trace > 0))
             {
                 for(k = 0; k < 6; k++) SphP[i].ET[k] /= trace;
             }
@@ -964,7 +964,10 @@ void gravity_tree(void)
     
 #ifdef RT_NOGRAVITY
     /* if this is set, we zero out gravity here, just after computing it! */
-    P[i].GravAccel[0]=P[i].GravAccel[1]=P[i].GravAccel[2]=0;
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+	P[i].GravAccel[0]=P[i].GravAccel[1]=P[i].GravAccel[2]=0;
+    }
 #endif
     
     add_analytic_gravitational_forces();

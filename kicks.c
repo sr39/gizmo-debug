@@ -463,9 +463,14 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
     int kf;
     for(kf=0;kf<N_RT_FREQ_BINS;kf++)
     {
-        double Ntmp = SphP[i].E_gamma[kf] + (SphP[i].Dt_E_gamma[kf]+SphP[i].Je[kf]) * dt_entr;
-        if(Ntmp<0.5*SphP[i].E_gamma[kf]) {SphP[i].E_gamma[kf] *= 0.5;} else {SphP[i].E_gamma[kf]=Ntmp;} // diffusion/advection/reimann fluxes //
-        SphP[i].E_gamma[kf] *= exp(-dt_entr * rt_absorption_rate(i,kf)); // sink term (absorption) //
+	double e0 = SphP[i].E_gamma[kf];
+	double dd0 = SphP[i].Je[kf];
+	double a0 = -rt_absorption_rate(i,kf);
+	if(e0>0) {a0 += SphP[i].Dt_E_gamma[kf]/e0;} else {dd0+=SphP[i].Dt_E_gamma[kf];}
+	if(dd0*dt_entr!=0 && dd0*dt_entr < -0.5*e0) {dd0=-0.5*e0/dt_entr;}
+	double ef; if(a0>=0) {ef = e0 + dd0*dt_entr;} else {ef = (e0 + dd0/a0)*exp(a0*dt_entr) - dd0/a0;}
+	if(ef < 0.1*e0) {ef=0.1*e0;}
+	SphP[i].E_gamma[kf] = ef;
     }
 #endif
 }

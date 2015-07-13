@@ -24,7 +24,7 @@
             double scalar_j = SphP[j].E_gamma[k_freq] / V_j;
             
             double d_scalar = scalar_i - scalar_j;
-            double conduction_wt = 2.*kappa_i*kappa_j/(kappa_i+kappa_j) * All.cf_a3inv/All.cf_atime; // weight factor and conversion to physical units
+	    double conduction_wt = 0.5*(kappa_i+kappa_j) * All.cf_a3inv/All.cf_atime;  // weight factor and conversion to physical units
 #ifdef HYDRO_SPH
             conduction_wt *= d_scalar * P[j].Mass * (0.5*(kernel.dwk_i+kernel.dwk_j)) / (kernel.r * local.Density * SphP[j].Density);
 #else

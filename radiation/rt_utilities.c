@@ -88,7 +88,11 @@ int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum)
 #if defined(GALSF)
         if(P[i].Type==0) {if(sigma_0<0) return 1; active_check=1; fac += SphP[i].Sfr * All.IonizingLumPerSFR * All.UnitTime_in_s / All.HubbleParam;} // flux from gas according to SFR
 #endif
+#ifdef RT_ILIEV_TEST1
+        if(P[i].Type==4) {if(sigma_0<0) return 1; active_check=1; fac += 16.9;} // 5e48 in ionizing photons per second // 
+#else
         if(P[i].Type==4) {if(sigma_0<0) return 1; active_check=1; fac += (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.IonizingLumPerSolarMass * All.UnitTime_in_s / All.HubbleParam;} // flux from star particles according to mass
+#endif
 #if defined(RT_PHOTOION_MULTIFREQUENCY)
         // we should have pre-tabulated how much luminosity gets assigned to each different waveband according to the following function //
         for(k=0;k<N_RT_FREQ_BINS;k++) {lum[k] += fac * precalc_stellar_luminosity_fraction[k];}
@@ -133,7 +137,7 @@ double rt_kappa(MyIDType i, int k_freq)
 double rt_absorption_rate(MyIDType i, int k_freq)
 {
     /* should be equal to (C * Kappa_opacity * rho) */
-    return, (C/All.UnitVelocity_in_cm_per_s) * rt_kappa(i, k_freq) * SphP[i].Density*All.a3inv;
+    return (C/All.UnitVelocity_in_cm_per_s) * rt_kappa(i, k_freq) * SphP[i].Density*All.cf_a3inv;
 }
 
 #endif
@@ -218,7 +222,22 @@ void rt_set_simple_inits(void)
     {
         if(P[i].Type == 0)
         {
-            //int j; for(j = 0; j < N_RT_FREQ_BINS; j++) {SphP[i].E_gamma[j] = tiny;}
+            int k; 
+	    SphP[i].ET[0]=SphP[i].ET[1]=SphP[i].ET[2]=1./3.; SphP[i].ET[3]=SphP[i].ET[4]=SphP[i].ET[5]=0;
+            for(k = 0; k < N_RT_FREQ_BINS; k++) 
+	    {
+		SphP[i].E_gamma[k] = tiny;
+		SphP[i].Je[k] = 0;
+		SphP[i].Kappa_RT[k] = tiny;
+		SphP[i].Lambda_FluxLim[k] = 1;
+#ifdef RT_EVOLVE_NGAMMA
+		SphP[i].E_gamma_Pred[k] = SphP[i].E_gamma[k];
+		SphP[i].Dt_E_gamma[k] = 0;
+#endif
+	    }
+#ifdef RT_RAD_PRESSURE_OUTPUT
+            for(k=0;k<3;k++) {SphP[i].RadAccel[k]=0;}
+#endif
 #ifdef RT_CHEM_PHOTOION
             SphP[i].HII = tiny;
             SphP[i].HI = 1.0 - SphP[i].HII;

@@ -654,7 +654,7 @@ void pm_setup_nonperiodic_kernel(void);
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
 int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum);
 double rt_kappa(MyIDType j, int k_freq);
-double rt_absorption_rate(MyIDType i, int k_freq)
+double rt_absorption_rate(MyIDType i, int k_freq);
 #endif
 #ifdef RT_SOURCE_INJECTION
 void rt_source_injection(void);

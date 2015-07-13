@@ -785,11 +785,7 @@ void init(void)
 #endif
 #ifdef BH_COMPTON_HEATING
         SphP[i].RadFluxAGN = 0;
-#endif
-#ifdef RT_EVOLVE_NGAMMA
-        for(j=0;j<N_RT_FREQ_BINS;j++) {SphP[i].Je[j]=0; SphP[i].Dt_E_gamma[j]=0; SphP[i].E_gamma_Pred[j]=SphP[i].E_gamma[j];}
-#endif
-        
+#endif        
         
 #ifdef GRACKLE
         if(RestartFlag == 0)
