@@ -163,7 +163,7 @@ void rt_diffusion_cg_solve(void)
     {
         /* this is the 'workhorse' routine with the neighbor communication and actual calculation */
         rt_diffusion_cg_matrix_multiply(DVec, QVec, Diag2);
-        
+        ndone = 0; 
         for(k = 0; k < N_RT_FREQ_BINS; k++)
         {
             /* define residues */
