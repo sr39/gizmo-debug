@@ -195,7 +195,7 @@ void rt_update_chemistry(void)
     
     fac = All.UnitTime_in_s / pow(All.UnitLength_in_cm, 3) * All.HubbleParam * All.HubbleParam;
     
-    c_light = C / All.UnitVelocity_in_cm_per_s;
+    c_light = RT_SPEEDOFLIGHT_REDUCTION * C / All.UnitVelocity_in_cm_per_s;
     
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
         if(P[i].Type == 0)
@@ -350,7 +350,7 @@ void rt_update_chemistry(void)
     
     fac = All.UnitTime_in_s / pow(All.UnitLength_in_cm, 3) * All.HubbleParam * All.HubbleParam;
     
-    c_light = C / All.UnitVelocity_in_cm_per_s;
+    c_light = RT_SPEEDOFLIGHT_REDUCTION * C / All.UnitVelocity_in_cm_per_s;
     
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
         if(P[i].Type == 0)

@@ -137,7 +137,7 @@ double rt_kappa(MyIDType i, int k_freq)
 double rt_absorption_rate(MyIDType i, int k_freq)
 {
     /* should be equal to (C * Kappa_opacity * rho) */
-    return (C/All.UnitVelocity_in_cm_per_s) * rt_kappa(i, k_freq) * SphP[i].Density*All.cf_a3inv;
+    return RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s) * rt_kappa(i, k_freq) * SphP[i].Density*All.cf_a3inv;
 }
 
 #endif

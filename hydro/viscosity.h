@@ -126,8 +126,7 @@
 #endif
         
         /* slope-limit this to be sure that viscosity always acts in the proper direction when there is local noise */
-        //double c_max_norm = -0.5 * DMAX(eta,zeta); // safer but less accurate
-        double c_max_norm = -1.0 * DMAX(eta,zeta);
+        double c_max_norm = -0.5 * DMAX(eta,zeta); // safer but slightly less accurate for large coefficients
         double c_max = 0.0;
         for(k=0;k<3;k++) {c_max += Face_Area_Vec[k] * kernel.dp[k];}
         c_max *= rinv*rinv;
@@ -137,7 +136,15 @@
             double dv_visc = local.Vel[k_v]-VelPred_j[k_v];
             /* obtain HLL correction terms for Reimann problem solution */
             B_dot_grad_weights(SphP[j].Gradients.Velocity[k_v],SphP[j].Gradients.Velocity[k_v]); // sets b_hll
-            cmag[k_v] += b_hll * rho_ij / All.cf_atime * HLL_correction(local.Vel[k_v],VelPred_j[k_v],rho_ij,viscous_wt_physical);
+            double hll_tmp = b_hll * rho_ij / All.cf_atime * HLL_correction(local.Vel[k_v],VelPred_j[k_v],rho_ij,viscous_wt_physical);
+            double thold_hll = fabs(cmag[k_v]);
+            if(cmag[k_v] < 0) 
+            {
+            	hll_tmp=DMAX(DMIN(hll_tmp,thold_hll),-0.5*thold_hll);
+            } else {
+            	hll_tmp=DMIN(DMAX(hll_tmp,-thold_hll),0.5*thold_hll);
+            }
+            cmag[k_v] += hll_tmp;
             cmag[k_v] = MINMOD(MINMOD(MINMOD(cmag[k_v] , c_max_norm*c_max*dv_visc), c_max_norm*fabs(c_max)*dv_visc) , c_max_norm*Face_Area_Norm*dv_visc*rinv);
         }
         

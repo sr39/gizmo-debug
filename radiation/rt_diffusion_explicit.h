@@ -17,14 +17,13 @@
         Fluxes_E_gamma[k_freq] = 0;
         double kappa_i = local.Kappa_RT[k_freq];
         double kappa_j = SphP[j].Kappa_RT[k_freq];
-        //double kappa_j = SphP[j].Lambda_FluxLim[k_freq] * (C/All.UnitVelocity_in_cm_per_s) * RT_SPEEDOFLIGHT_REDUCTION / (SphP[j].Kappa_RT[k_freq] * SphP[j].Density * All.cf_a3inv);
         if((kappa_i>0)&&(kappa_j>0)&&(local.Mass>0)&&(P[j].Mass>0))
         {
             double scalar_i = local.E_gamma[k_freq] / V_i; // volumetric photon number density in this frequency bin //
             double scalar_j = SphP[j].E_gamma[k_freq] / V_j;
             
             double d_scalar = scalar_i - scalar_j;
-	    double conduction_wt = 0.5*(kappa_i+kappa_j) * All.cf_a3inv/All.cf_atime;  // weight factor and conversion to physical units
+	    	double conduction_wt = 0.5*(kappa_i+kappa_j) * All.cf_a3inv/All.cf_atime;  // weight factor and conversion to physical units
 #ifdef HYDRO_SPH
             conduction_wt *= d_scalar * P[j].Mass * (0.5*(kernel.dwk_i+kernel.dwk_j)) / (kernel.r * local.Density * SphP[j].Density);
 #else
@@ -39,14 +38,7 @@
             cmag = MINMOD(MINMOD(MINMOD(cmag , c_max*d_scalar), fabs(c_max)*d_scalar) , Face_Area_Norm*d_scalar*rinv);
             conduction_wt *= -cmag; // multiplies through the coefficient to get actual flux //
 #endif
-            // enforce a flux limiter for stability (to prevent overshoot) //
-            conduction_wt *= dt_hydrostep; // all in physical units //
-            if(fabs(conduction_wt) > 0)
-            {
-                double du_ij_cond = All.cf_a3inv * 0.5*DMIN(DMIN(0.5*fabs(DMIN(local.Mass,P[j].Mass)*d_scalar),local.Mass*scalar_i),P[j].Mass*scalar_j);
-                if(fabs(conduction_wt)>du_ij_cond) {conduction_wt *= du_ij_cond/fabs(conduction_wt);}
-                Fluxes_E_gamma[k_freq] += conduction_wt / dt_hydrostep;
-            }
+			Fluxes_E_gamma[k_freq] += conduction_wt;
         } // close check that kappa and particle masses are positive
     }
 }

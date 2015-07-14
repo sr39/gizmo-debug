@@ -184,16 +184,22 @@
 
 /* enable appropriate chemistry flags if we are using the photoionization modules */
 #if defined(RT_CHEM_PHOTOION)
-#if (RT_CHEM_PHOTOION_HE > 1)
+#if (RT_CHEM_PHOTOION > 1)
 #define RT_CHEM_PHOTOION_HE
 #endif
 #endif
 
+/* default to speed-of-light equal to actual speed-of-light, and stars as photo-ionizing sources */
 #ifndef RT_SPEEDOFLIGHT_REDUCTION
 #define RT_SPEEDOFLIGHT_REDUCTION 1.0
 #endif
 #ifndef RT_PHOTOION_SOURCES
-#define RT_PHOTOION_SOURCES 1
+#define RT_PHOTOION_SOURCES 16
+#endif
+
+/* cooling must be enabled for RT cooling to function */
+#if defined(RT_COOLING) && !defined(COOLING)
+#define COOLING
 #endif
 
 #if !defined(RT_USE_GRAVTREE) && defined(RT_NOGRAVITY) && !defined(NOGRAVITY)
@@ -434,7 +440,7 @@ typedef unsigned long long peanokey;
 #define  GAMMA_MINUS1  (GAMMA-1)
 #define  GAMMA_MINUS1_INV  (1./(GAMMA-1))
 
-#ifndef  RT_HYDROGEN_GAS_ONLY
+#if !defined(RT_HYDROGEN_GAS_ONLY) || defined(RT_CHEM_PHOTOION_HE)
 #define  HYDROGEN_MASSFRAC 0.76 /*!< mass fraction of hydrogen, relevant only for radiative cooling */
 #else
 #define  HYDROGEN_MASSFRAC 1.0  /*!< mass fraction of hydrogen, relevant only for radiative cooling */

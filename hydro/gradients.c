@@ -1241,8 +1241,8 @@ void hydro_gradient_calc(void)
 			//chi=1./3.; // pure isotropic
 			//chi=1.; // pure optically-thin
                         double chifac_iso=3.*(1-chi)/2., chifac_ot=(3.*chi-1.)/2.;
-                        if(k_freq==0) {for(k=0;k<6;k++) {SphP[i].ET[k] *= chifac_ot; if(k<3) {SphP[i].ET[k] += chifac_iso/3;}}} // diagonal components // (this only makes sense if ET is freq-dependent)
-                        for(k=0;k<3;k++) {SphP[i].Gradients.E_gamma_ET[k_freq][k] = chifac_ot*SphP[i].Gradients.E_gamma_ET[k_freq][k] + chifac_iso*GasGradDataPasser[i].Gradients_E_gamma[k_freq][k];}
+                        if(k_freq==0) {for(k=0;k<6;k++) {SphP[i].ET[k] *= chifac_ot; if(k<3) {SphP[i].ET[k] += chifac_iso/3.;}}} // diagonal components // (this only makes sense if ET is freq-dependent)
+                        for(k=0;k<3;k++) {SphP[i].Gradients.E_gamma_ET[k_freq][k] = chifac_ot*SphP[i].Gradients.E_gamma_ET[k_freq][k] + chifac_iso/3.*GasGradDataPasser[i].Gradients_E_gamma[k_freq][k];}
 #endif
                     }
 #endif

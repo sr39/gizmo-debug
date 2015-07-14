@@ -660,6 +660,10 @@ void hydro_final_operations_and_cleanup(void)
             
 #ifdef RT_RAD_PRESSURE_EDDINGTON
             /* calculate the radiation pressure force from the gradient of the Eddington tensor */
+            /* note: we could also solve this between particle faces, like our standard Reimann problem: use
+            	int[rho*a]dV=d[mv]/dt = int[grad.E_gamma_ET]*dV = sum[A * E_gamma_ET]=sum[E_gamma_face * A.h_ET], just like real pressure 
+            	This would ensure total momentum conservation; though its meaning with external forces is ambiguous. 
+            	We can experiment??? */
             double radacc[3]; radacc[0]=radacc[1]=radacc[2]=0; int k2;
             // a = kappa*F/c = lambda[flux_limiter] * Gradients.E_gamma_ET[gradient of photon energy density] / rho[gas_density] //
             for(k=0;k<3;k++)
@@ -672,7 +676,7 @@ void hydro_final_operations_and_cleanup(void)
 #else
                 SphP[i].HydroAccel[k] += radacc[k];
 #endif
-            }
+            } 
 #endif
 
             

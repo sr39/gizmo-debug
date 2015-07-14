@@ -291,7 +291,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #define HLL_correction(ui,uj,wt,kappa) (k_hll = v_hll * (wt) * kernel.r * All.cf_atime / fabs(kappa),\
                                         k_hll = (0.2 + k_hll) / (0.2 + k_hll + k_hll*k_hll),\
-                                        -0.5*k_hll*Face_Area_Norm*v_hll*((ui)-(uj)))
+                                        -1.0*k_hll*Face_Area_Norm*v_hll*((ui)-(uj)))
 #endif
                 
                 
