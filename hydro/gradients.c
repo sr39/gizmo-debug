@@ -73,7 +73,7 @@ struct Quantities_for_Gradients
 #endif
 #if defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
     MyFloat E_gamma[N_RT_FREQ_BINS];
-    MyFloat E_gamma_ET[6];
+    MyFloat E_gamma_ET[N_RT_FREQ_BINS][6];
 #endif
 #ifdef DOGRAD_INTERNAL_ENERGY
     MyDouble InternalEnergy;
@@ -237,8 +237,11 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
             in->GQuant.Metallicity[k] = P[i].Metallicity[k];
 #endif
 #if defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
-        for(k = 0; k < N_RT_FREQ_BINS; k++) {in->GQuant.E_gamma[k] = SphP[i].E_gamma[k];}
-        for(k = 0; k < 6; k++) {in->GQuant.E_gamma_ET[k] = SphP[i].ET[k];}
+        for(k = 0; k < N_RT_FREQ_BINS; k++) 
+        {
+        	in->GQuant.E_gamma[k] = SphP[i].E_gamma[k];
+        	int k_et; for(k_et = 0; k_et < 6; k_et++) {in->GQuant.E_gamma_ET[k][k_et] = SphP[i].ET[k_et];}	
+        }
 #endif
 #ifdef DOGRAD_INTERNAL_ENERGY
         in->GQuant.InternalEnergy = SphP[i].InternalEnergyPred;
@@ -395,15 +398,29 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
 #if defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
         for(j=0;j<N_RT_FREQ_BINS;j++)
         {
-            MAX_ADD(GasGradDataPasser[i].Maxima.E_gamma_ET[j],out->Maxima.E_gamma_ET[j],mode);
-            MIN_ADD(GasGradDataPasser[i].Minima.E_gamma_ET[j],out->Minima.E_gamma_ET[j],mode);
             MAX_ADD(GasGradDataPasser[i].Maxima.E_gamma[j],out->Maxima.E_gamma[j],mode);
             MIN_ADD(GasGradDataPasser[i].Minima.E_gamma[j],out->Minima.E_gamma[j],mode);
-            for(k=0;k<3;k++)
-            {
-                ASSIGN_ADD_PRESET(SphP[i].Gradients.E_gamma_ET[j][k],out->Gradients[k].E_gamma_ET[j],mode);
-                ASSIGN_ADD_PRESET(GasGradDataPasser[i].Gradients_E_gamma[j][k],out->Gradients[k].E_gamma[j],mode);
-            }
+            for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].Gradients_E_gamma[j][k],out->Gradients[k].E_gamma[j],mode);}
+        }
+		/* the gradient dotted into the Eddington tensor is more complicated: let's handle this below */
+        {
+        	int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
+        	{	
+        		int k_xyz; for(k_xyz=0;k_xyz<3;k_xyz++)
+        		{
+        			int j_xyz,i_xyz,k_et_loop[3]; // recall, for ET: 0=xx,1=yy,2=zz,3=xy,4=yz,5=xz
+					if(k_xyz==0) {k_et_loop[0]=0; k_et_loop[1]=3; k_et_loop[2]=5;}
+					if(k_xyz==1) {k_et_loop[0]=3; k_et_loop[1]=1; k_et_loop[2]=4;}
+					if(k_xyz==2) {k_et_loop[0]=5; k_et_loop[1]=4; k_et_loop[2]=2;}
+        			for(j_xyz=0;j_xyz<3;j_xyz++)
+        			{
+        				for(i_xyz=0;i_xyz<3;i_xyz++)
+        				{
+        					SphP[i].Gradients.E_gamma_ET[k_freq][k_xyz] += SphP[i].NV_T[j_xyz][i_xyz] * out->Gradients[i_xyz].E_gamma_ET[k_freq][k_et_loop[j_xyz]];
+						}
+        			}
+        		}
+        	}
         }
 #endif
     } // gradient_iteration == 0
@@ -1011,7 +1028,6 @@ void hydro_gradient_calc(void)
             for(k=0;k<NUM_METAL_SPECIES;k++) {construct_gradient(SphP[i].Gradients.Metallicity[k],i);}
 #endif
 #if defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
-            for(k=0;k<N_RT_FREQ_BINS;k++) {construct_gradient(SphP[i].Gradients.E_gamma_ET[k],i);}
             for(k=0;k<N_RT_FREQ_BINS;k++) {construct_gradient(GasGradDataPasser[i].Gradients_E_gamma[k],i);}
 #endif
             
@@ -1221,10 +1237,12 @@ void hydro_gradient_calc(void)
                         double R_ET = sqrt(SphP[i].Gradients.E_gamma_ET[k_freq][0] * SphP[i].Gradients.E_gamma_ET[k_freq][0] +
                                            SphP[i].Gradients.E_gamma_ET[k_freq][1] * SphP[i].Gradients.E_gamma_ET[k_freq][1] +
                                            SphP[i].Gradients.E_gamma_ET[k_freq][2] * SphP[i].Gradients.E_gamma_ET[k_freq][2]) / (1.e-37 + SphP[i].E_gamma[k_freq] * SphP[i].Density/(1.e-37+P[i].Mass));
-                        //R = DMAX(R,R_ET); // still testing???
+
+                        R = DMAX(R,R_ET); // R_ET may always be less than R, though
                         R /= (1.e-37 + All.cf_atime * SphP[i].Kappa_RT[k_freq] * (SphP[i].Density*All.cf_a3inv)); /* dimensionless (all in physical) */
                         /* now we can apply the actual slope-limiter function desired */
-                        lambda = (2 + R) / (6 + 3 * R + R * R);
+                        R_ET = 3.*R; 
+                        lambda = 3. * (2. + R_ET) / (6. + 3.*R_ET + R_ET*R_ET);
                         if(lambda < 1e-30) lambda = 1.e-30;
 #ifdef RT_OTVET
                         /* note that the OTVET eddington tensor is close to the correct value for the optically-thin limit. for the diffusion limit 
@@ -1232,14 +1250,13 @@ void hydro_gradient_calc(void)
                             to determine which limit we are actually in */
                         /* calculate ratio f=|Flux|/(c_eff*Energy_density_rad): f<<1 = diffusion limit, f~1 = free-streaming limit
                             Here we can use the slope-limited f [f lower, so much more quickly our ET becomes isotropic], or 'pre-limit' R [less conservative, but may retain more information in some cases] */
-                        double f_flux_to_egy = DMAX(0.,DMIN(R,1.)); // converges quickly to optically thin limit (for R~1)
-                        f_flux_to_egy = DMAX(0.,DMIN(lambda*R,1.)); // converges more slowly to optically thin limit (for R>>10)
+                        double f_flux_to_egy = DMIN(DMAX(R*(2.+R)/(6.+3.*R+R*R),0),1); // converges more slowly to optically thin limit (for R>>10)
                         double chi = DMAX(1./3., DMIN(1. , (3. + 4.*f_flux_to_egy*f_flux_to_egy) / (5. + 2.*sqrt(4. - 3.*f_flux_to_egy*f_flux_to_egy))));
                         /* note that, because of how our slope-limiter appears, we don't want to double-count the 1/3 factor for the
                             diffusion limit (since whatever we come up with here will be multiplied by lambda in the relevant forces/etc: therefore 
                             we need to multiply chifac_iso by a power of 3 (because this goes to I/3, but also when lambda->1/3) */
-			//chi=1./3.; // pure isotropic
-			//chi=1.; // pure optically-thin
+						//chi=1./3.; // pure isotropic
+						//chi=1.; // pure optically-thin
                         double chifac_iso=3.*(1-chi)/2., chifac_ot=(3.*chi-1.)/2.;
                         if(k_freq==0) {for(k=0;k<6;k++) {SphP[i].ET[k] *= chifac_ot; if(k<3) {SphP[i].ET[k] += chifac_iso/3.;}}} // diagonal components // (this only makes sense if ET is freq-dependent)
                         for(k=0;k<3;k++) {SphP[i].Gradients.E_gamma_ET[k_freq][k] = chifac_ot*SphP[i].Gradients.E_gamma_ET[k_freq][k] + chifac_iso/3.*GasGradDataPasser[i].Gradients_E_gamma[k_freq][k];}
@@ -1287,7 +1304,7 @@ void hydro_gradient_calc(void)
 #if defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
             for(k1=0;k1<N_RT_FREQ_BINS;k1++)
             {
-                local_slopelimiter(SphP[i].Gradients.E_gamma_ET[k1],GasGradDataPasser[i].Maxima.E_gamma_ET[k1],GasGradDataPasser[i].Minima.E_gamma_ET[k1],a_limiter,h_lim,stol);
+                local_slopelimiter(SphP[i].Gradients.E_gamma_ET[k1],GasGradDataPasser[i].Maxima.E_gamma[k1],GasGradDataPasser[i].Minima.E_gamma[k1],a_limiter,h_lim,stol);
                 local_slopelimiter(GasGradDataPasser[i].Gradients_E_gamma[k1],GasGradDataPasser[i].Maxima.E_gamma[k1],GasGradDataPasser[i].Minima.E_gamma[k1],a_limiter,h_lim,stol);
             }
 #endif
@@ -1764,21 +1781,12 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     }
 #endif
 #if defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
-                    double dnET[N_RT_FREQ_BINS][3];
+                    double dnET[N_RT_FREQ_BINS][6];
                     double dn[N_RT_FREQ_BINS];
                     double V_i_inv = 1/V_i, V_j_inv = SphP[j].Density/P[j].Mass;
                     for(k = 0; k < N_RT_FREQ_BINS; k++)
                     {
-                        double d_nET[6]; int k_dE;
-                        // we need to take the derivative of the volumetric dn/dVol = E_gamma*rho/m //
-                        for(k_dE=0;k_dE<6;k_dE++) {d_nET[k_dE] = SphP[j].E_gamma[k]*SphP[j].ET[k_dE]*V_j_inv - local.GQuant.E_gamma[k]*local.GQuant.E_gamma_ET[k_dE]*V_i_inv;}
-                        dnET[k][0] = (kernel.dp[0]*d_nET[0] + kernel.dp[1]*d_nET[3] + kernel.dp[2]*d_nET[5]); // xx,xy,xz components
-                        dnET[k][1] = (kernel.dp[0]*d_nET[3] + kernel.dp[1]*d_nET[1] + kernel.dp[2]*d_nET[4]); // xy,yy,yz components
-                        dnET[k][2] = (kernel.dp[0]*d_nET[5] + kernel.dp[1]*d_nET[4] + kernel.dp[2]*d_nET[2]); // xz,yz,zz components
-                        double dnET_mag = SphP[j].E_gamma[k]*V_j_inv - local.GQuant.E_gamma[k]*V_i_inv;
-                        MINMAX_CHECK(dnET_mag,out.Minima.E_gamma_ET[k],out.Maxima.E_gamma_ET[k]);
-                        if(swap_to_j) {MINMAX_CHECK(-dnET_mag,GasGradDataPasser[j].Minima.E_gamma_ET[k],GasGradDataPasser[j].Maxima.E_gamma_ET[k]);}
-
+                        int k_dE; for(k_dE=0;k_dE<6;k_dE++) {dnET[k][k_dE] = SphP[j].E_gamma[k]*SphP[j].ET[k_dE]*V_j_inv - local.GQuant.E_gamma[k]*local.GQuant.E_gamma_ET[k][k_dE]*V_i_inv;}
                         dn[k] = SphP[j].E_gamma[k]*V_j_inv - local.GQuant.E_gamma[k]*V_i_inv;
                         MINMAX_CHECK(dn[k],out.Minima.E_gamma[k],out.Maxima.E_gamma[k]);
                         if(swap_to_j) {MINMAX_CHECK(-dn[k],GasGradDataPasser[j].Minima.E_gamma[k],GasGradDataPasser[j].Maxima.E_gamma[k]);}
@@ -1849,8 +1857,11 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                             for(k2=0;k2<NUM_METAL_SPECIES;k2++) {out.Gradients[k].Metallicity[k2] += wk_xyz_i * dmetal[k2];}
 #endif
 #if defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
-                            for(k2=0;k2<N_RT_FREQ_BINS;k2++) {out.Gradients[k].E_gamma_ET[k2] += -kernel.wk_i * dnET[k2][k];} // because here we dot a gradient into a matrix, form is different //
-                            for(k2=0;k2<N_RT_FREQ_BINS;k2++) {out.Gradients[k].E_gamma[k2] += wk_xyz_i * dn[k2];}
+                            for(k2=0;k2<N_RT_FREQ_BINS;k2++) 
+                            {
+                            	out.Gradients[k].E_gamma[k2] += wk_xyz_i * dn[k2];
+                            	int k_et; for(k_et=0;k_et<6;k_et++) out.Gradients[k].E_gamma_ET[k2][k_et] += wk_xyz_i * dnET[k2][k_et];
+                            } 
 #endif
                         }
                     }
@@ -1888,8 +1899,22 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                             for(k2=0;k2<NUM_METAL_SPECIES;k2++) {SphP[j].Gradients.Metallicity[k2][k] += wk_xyz_j * dmetal[k2];}
 #endif
 #if defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
-                            for(k2=0;k2<N_RT_FREQ_BINS;k2++) {SphP[j].Gradients.E_gamma_ET[k2][k] += -kernel.wk_i * dnET[k2][k];} // because here we dot a gradient into a matrix, form is different //
-                            for(k2=0;k2<N_RT_FREQ_BINS;k2++) {GasGradDataPasser[j].Gradients_E_gamma[k2][k] += wk_xyz_j * dn[k2];}
+                            for(k2=0;k2<N_RT_FREQ_BINS;k2++) 
+                            {
+                            	GasGradDataPasser[j].Gradients_E_gamma[k2][k] += wk_xyz_j * dn[k2];
+								/* below we have the gradient dotted into the Eddington tensor (more complicated than a scalar gradient, but should recover full anisotropy */
+								int k_freq=k2,k_xyz,j_xyz,i_xyz=k,k_et_loop[3]; // recall, for ET: 0=xx,1=yy,2=zz,3=xy,4=yz,5=xz
+								for(k_xyz=0;k_xyz<3;k_xyz++)
+								{
+									if(k_xyz==0) {k_et_loop[0]=0; k_et_loop[1]=3; k_et_loop[2]=5;}
+									if(k_xyz==1) {k_et_loop[0]=3; k_et_loop[1]=1; k_et_loop[2]=4;}
+									if(k_xyz==2) {k_et_loop[0]=5; k_et_loop[1]=4; k_et_loop[2]=2;}
+									for(j_xyz=0;j_xyz<3;j_xyz++)
+									{
+										SphP[j].Gradients.E_gamma_ET[k_freq][k_xyz] += SphP[j].NV_T[j_xyz][i_xyz] * wk_xyz_j * dnET[k_freq][k_et_loop[j_xyz]];
+									}
+								}
+                            }
 #endif
                         }
                     }
