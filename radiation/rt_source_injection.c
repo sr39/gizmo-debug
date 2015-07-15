@@ -85,8 +85,9 @@ void rt_source_injection(void)
         if(P[j].Type==0)
         {
             double lum[N_RT_FREQ_BINS];
+            for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[j].Je[k]=0;} // need to zero -before- calling injection //
             int active_check = rt_get_source_luminosity(j,0,lum);
-            for(k=0;k<N_RT_FREQ_BINS;k++) {if(active_check) {SphP[j].Je[k]=lum[k];} else {SphP[j].Je[k]=0;}}
+            for(k=0;k<N_RT_FREQ_BINS;k++) if(active_check) {SphP[j].Je[k]=lum[k];}
         }
     }
 

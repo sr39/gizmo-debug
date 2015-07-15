@@ -100,6 +100,7 @@ int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum)
         lum[0] += fac;
 #endif
         if(P[i].Type == 0) {if(sigma_0<0) return 1; active_check=1; rt_get_lum_gas(i,lum);}     /* re-distributes flux as a blackbody */
+        if(P[i].Type == 0) {{if(sigma_0<0 && SphP[i].Je[0]>0) return 1;} {if(SphP[i].Je[0]>0) active_check=1;} {for(k=0;k<N_RT_FREQ_BINS;k++) {lum[k]+=SphP[i].Je[k];}}}     /* re-distributes flux as a blackbody */
     }
 #endif
     
