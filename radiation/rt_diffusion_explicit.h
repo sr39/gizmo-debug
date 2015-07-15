@@ -25,7 +25,7 @@
             double d_scalar = scalar_i - scalar_j;
 	    	double conduction_wt = 0.5*(kappa_i+kappa_j) * All.cf_a3inv/All.cf_atime;  // weight factor and conversion to physical units
 #ifdef HYDRO_SPH
-            conduction_wt *= d_scalar * P[j].Mass * (0.5*(kernel.dwk_i+kernel.dwk_j)) / (kernel.r * local.Density * SphP[j].Density);
+            cmag = conduction_wt * d_scalar * P[j].Mass * (0.5*(kernel.dwk_i+kernel.dwk_j)) / (kernel.r * local.Density * SphP[j].Density);
 #else
             double cmag=0., c_max=0.;
             for(k=0;k<3;k++)
@@ -33,12 +33,18 @@
                 c_max += Face_Area_Vec[k] * kernel.dp[k];
                 cmag += Face_Area_Vec[k] * 0.5*(local.Gradients.E_gamma_ET[k_freq][k] + SphP[j].Gradients.E_gamma_ET[k_freq][k]);
             }
+            /* here we add the HLL-like correction term. this greatly reduces noise and improves the stability of the diffusion. 
+            	however it comes at the cost of (significant) additional numerical diffusion */
+            double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + (RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s));
+			double q = 0.5 * c_hll * kernel.r * All.cf_atime / fabs(1.e-37 + 0.5*(kappa_i+kappa_j));
+			q = (0.2 + q) / (0.2 + q + q*q);
+            cmag += -q * Face_Area_Norm * c_hll * d_scalar/(-conduction_wt);            
             /* slope-limiter to ensure flow is always down the local gradient */
             c_max *= rinv*rinv;
             cmag = MINMOD(MINMOD(MINMOD(cmag , c_max*d_scalar), fabs(c_max)*d_scalar) , Face_Area_Norm*d_scalar*rinv);
-            conduction_wt *= -cmag; // multiplies through the coefficient to get actual flux //
+            cmag *= -conduction_wt; // multiplies through the coefficient to get actual flux //
 #endif
-			Fluxes_E_gamma[k_freq] += conduction_wt;
+			Fluxes_E_gamma[k_freq] += cmag;
         } // close check that kappa and particle masses are positive
     }
 }
