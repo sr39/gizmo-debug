@@ -668,7 +668,7 @@ void hydro_final_operations_and_cleanup(void)
             // a = kappa*F/c = lambda[flux_limiter] * Gradients.E_gamma_ET[gradient of photon energy density] / rho[gas_density] //
             for(k=0;k<3;k++)
                 for(k2=0;k2<N_RT_FREQ_BINS;k2++)
-                    radacc[k] += SphP[i].Lambda_FluxLim[k2] * SphP[i].Gradients.E_gamma_ET[k2][k] / SphP[i].Density;
+                    radacc[k] += RT_SPEEDOFLIGHT_REDUCTION * SphP[i].Lambda_FluxLim[k2] * SphP[i].Gradients.E_gamma_ET[k2][k] / SphP[i].Density;
             for(k=0;k<3;k++)
             {
 #ifdef RT_RAD_PRESSURE_OUTPUT
