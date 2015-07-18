@@ -1237,7 +1237,7 @@ void hydro_gradient_calc(void)
                         double R_ET = sqrt(SphP[i].Gradients.E_gamma_ET[k_freq][0] * SphP[i].Gradients.E_gamma_ET[k_freq][0] +
                                            SphP[i].Gradients.E_gamma_ET[k_freq][1] * SphP[i].Gradients.E_gamma_ET[k_freq][1] +
                                            SphP[i].Gradients.E_gamma_ET[k_freq][2] * SphP[i].Gradients.E_gamma_ET[k_freq][2]) / (1.e-37 + SphP[i].E_gamma[k_freq] * SphP[i].Density/(1.e-37+P[i].Mass));
-
+                        R = R_ET; // ??? testing; more accurate, I think
                         R = DMAX(R,R_ET); // R_ET may always be less than R, though
                         R /= (1.e-37 + All.cf_atime * SphP[i].Kappa_RT[k_freq] * (SphP[i].Density*All.cf_a3inv)); /* dimensionless (all in physical) */
                         /* now we can apply the actual slope-limiter function desired */
@@ -1256,7 +1256,9 @@ void hydro_gradient_calc(void)
                             diffusion limit (since whatever we come up with here will be multiplied by lambda in the relevant forces/etc: therefore 
                             we need to multiply chifac_iso by a power of 3 (because this goes to I/3, but also when lambda->1/3) */
 						//chi=1./3.; // pure isotropic
-						//chi=1.; // pure optically-thin
+#ifdef RT_RAD_PRESSURE_EDDINGTON
+						chi=1.; // pure optically-thin // may be needed for RP problems ???
+#endif
                         double chifac_iso=3.*(1-chi)/2., chifac_ot=(3.*chi-1.)/2.;
 #ifdef RT_DIFFUSION_CG
                         if(k_freq==0) {for(k=0;k<6;k++) {SphP[i].ET[k] *= chifac_ot; if(k<3) {SphP[i].ET[k] += chifac_iso/3.;}}} // diagonal components // (this only makes sense if ET is freq-dependent) [note this will cause instability in the explicit methods; only use for CG where ET is explicitly called and this is done only on global timesteps]

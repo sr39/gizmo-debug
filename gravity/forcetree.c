@@ -524,6 +524,7 @@ void force_update_node_recursive(int no, int sib, int father)
 #endif
 #ifdef RT_USE_GRAVTREE
     MyFloat stellar_lum[N_RT_FREQ_BINS], sigma_eff=0;
+    for(j=0;j<N_RT_FREQ_BINS;j++) {stellar_lum[j]=0;}
 #ifdef RT_FIRE
     sigma_eff = 0.955 * All.UnitMass_in_g*All.HubbleParam * All.cf_a2inv / (All.UnitLength_in_cm*All.UnitLength_in_cm);
 #endif
