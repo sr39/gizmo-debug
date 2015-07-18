@@ -87,7 +87,7 @@ double CallGrackle(double u_old, double rho, double dt, double *ne_guess, int ta
   switch(mode) {
   case 0:  //solve chemistry & update values
     if(solve_chemistry(&All.GrackleUnits,
-		       All.Time, dt,
+		       All.cf_atime, dt,
 		       grid_rank, grid_dimension,
 		       grid_start, grid_end,
 		       &density, &energy,
@@ -127,7 +127,7 @@ double CallGrackle(double u_old, double rho, double dt, double *ne_guess, int ta
   
   case 1:  //cooling time
     if(calculate_cooling_time(&All.GrackleUnits,
-			      All.Time,
+			      All.cf_atime,
 			      grid_rank, grid_dimension,
 			      grid_start, grid_end,
 			      &density, &energy,
@@ -195,7 +195,7 @@ double CallGrackle(double u_old, double rho, double dt, double *ne_guess, int ta
   switch(mode){
   case 0:  //solve chemistry & update values (table)
     if(solve_chemistry_table(&All.GrackleUnits,
-			     All.Time, dt,
+			     All.cf_atime, dt,
 			     grid_rank, grid_dimension,
 			     grid_start, grid_end,
 			     &density, &energy,
@@ -209,7 +209,7 @@ double CallGrackle(double u_old, double rho, double dt, double *ne_guess, int ta
     break;
   case 1:  //cooling time (table)
     if(calculate_cooling_time_table(&All.GrackleUnits,
-				    All.Time, dt,
+				    All.cf_atime, dt,
 				    grid_rank, grid_dimension,
 				    grid_start, grid_end,
 				    &density, &energy,
@@ -223,7 +223,7 @@ double CallGrackle(double u_old, double rho, double dt, double *ne_guess, int ta
     break;
   case 2:  //calculate temperature (table)
     if(calculate_temperature_table(&All.GrackleUnits,
-				   All.Time, dt,
+				   All.cf_atime, dt,
 				   grid_rank, grid_dimension,
 				   &density, &energy,
 				   &metal_density,
@@ -235,7 +235,7 @@ double CallGrackle(double u_old, double rho, double dt, double *ne_guess, int ta
     break;
   case 3:  //calculate pressure (table)
     if(calculate_pressure_table(&All.GrackleUnits,
-				All.Time, dt,
+				All.cf_atime, dt,
 				grid_rank, grid_dimension,
 				&density, &energy,
 				&pressure) == 0){
@@ -305,7 +305,7 @@ void InitGrackle(void)
   // Set expansion factor to 1 for non-cosmological simulation.
   double a_value = 1.0;
   if(All.ComovingIntegrationOn)
-    a_value = All.TimeBegin;
+      a_value = All.TimeBegin;
   
   // Finally, initialize the chemistry object.
   if (initialize_chemistry_data(&All.GrackleUnits, a_value) == 0) {
