@@ -582,16 +582,19 @@ void gravity_tree(void)
                         P[place].NInteractions += GravDataOut[j].NInteractions;
                     }
 #endif
+                    if(Ewald_iter==0) /* don't allow for an infinite hierarchy of these moments, or you will get nonsense */
+                    {
 #ifdef RT_OTVET
-                    if(P[place].Type==0) for(k=0;k<6;k++) SphP[place].ET[k] += GravDataOut[j].ET[k];
+                        if(P[place].Type==0) for(k=0;k<6;k++) SphP[place].ET[k] += GravDataOut[j].ET[k];
 #endif
 #ifdef GALSF_FB_LOCAL_UV_HEATING
-                    if(P[place].Type==0) SphP[place].RadFluxUV += GravDataOut[j].RadFluxUV;
-                    if(P[place].Type==0) SphP[place].RadFluxEUV += GravDataOut[j].RadFluxEUV;
+                        if(P[place].Type==0) SphP[place].RadFluxUV += GravDataOut[j].RadFluxUV;
+                        if(P[place].Type==0) SphP[place].RadFluxEUV += GravDataOut[j].RadFluxEUV;
 #endif
 #ifdef BH_COMPTON_HEATING
-                    if(P[place].Type==0) SphP[place].RadFluxAGN += GravDataOut[j].RadFluxAGN;
+                        if(P[place].Type==0) SphP[place].RadFluxAGN += GravDataOut[j].RadFluxAGN;
 #endif
+                    }
                     
 #ifdef DISTORTIONTENSORPS
                     for(i1 = 0; i1 < 3; i1++)
