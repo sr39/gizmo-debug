@@ -149,6 +149,10 @@
 #define RT_USE_GRAVTREE
 #endif
 
+#ifdef RT_FLUXLIMITEDDIFFUSION
+#define RT_OTVET /* for FLD, we use the OTVET architecture, but then just set the tensor to isotropic */
+#endif
+
 /* options for OTVET module */
 #if defined(RT_OTVET)
 // RADTRANSFER is ON, obviously

@@ -810,6 +810,9 @@ void gravity_tree(void)
         if(P[i].Type == 0)
         {
             double trace = SphP[i].ET[0] + SphP[i].ET[1] + SphP[i].ET[2];
+#ifdef RT_FLUXLIMITEDDIFFUSION
+            trace = 0; /* force the code to always use the isotropic Eddington tensor */
+#endif
             if(!isnan(trace) && (trace > 0))
             {
                 for(k = 0; k < 6; k++) SphP[i].ET[k] /= trace;
