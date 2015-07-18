@@ -51,7 +51,7 @@ def makeIC_box():
     # set the particle masses. Here we set it to be a list the same length, with all the same mass
     #   since their space-density is uniform this gives a uniform density, at the desired value
     mv_g=rho_desired/((1.*Ngas)/(Lbox*Lbox*Lbox)) + 0.*xv_g
-    # set the initial internal energy per unit mass. recall gadget uses this as the initial 'temperature' variable
+    # set the initial internal energy per unit mass. recall gizmo uses this as the initial 'temperature' variable
     #  this can be overridden with the InitGasTemp variable (which takes an actual temperature)
     uv_g=P_desired/((gamma_eos-1.)*rho_desired)
     # set the gas IDs: here a simple integer list
@@ -76,6 +76,13 @@ def makeIC_box():
     # set the masses, again a list with all the same mass
     mv_d = dust_to_gas_ratio * (1.*Ngas)/(1.*Ngrains) * mv_g[0] + 0.*xv_d
 
+
+
+
+    # now we get ready to actually write this out
+    #  first - open the hdf5 ics file, with the desired filename
+    file = h5py.File(fname,'w') 
+
     # set particle number of each type into the 'npart' vector
     #  NOTE: this MUST MATCH the actual particle numbers assigned to each type, i.e.
     #   npart = np.array([number_of_PartType0_particles,number_of_PartType1_particles,number_of_PartType2_particles,
@@ -83,11 +90,6 @@ def makeIC_box():
     #   or else the code simply cannot read the IC file correctly!
     #
     npart = np.array([Ngas,0,0,Ngrains,0,0]) # we have gas and particles we will set for type 3 here, zero for all others
-    
-
-    # now we get ready to actually write this out
-    #  first - open the hdf5 ics file, with the desired filename
-    file = h5py.File(fname,'w') 
 
     # now we make the Header - the formatting here is peculiar, for historical (GADGET-compatibility) reasons
     h = file.create_group("Header");
@@ -106,14 +108,14 @@ def makeIC_box():
     h.attrs['Time'] = 0.0;  # initial time
     h.attrs['Redshift'] = 0.0; # initial redshift
     h.attrs['BoxSize'] = 1.0; # box size
-    h.attrs['NumFilesPerSnapshot'] = 1; # initial time
+    h.attrs['NumFilesPerSnapshot'] = 1; # number of files for multi-part snapshots
     h.attrs['Omega0'] = 1.0; # z=0 Omega_matter
     h.attrs['OmegaLambda'] = 0.0; # z=0 Omega_Lambda
     h.attrs['HubbleParam'] = 1.0; # z=0 hubble parameter (small 'h'=H/100 km/s/Mpc)
     h.attrs['Flag_Sfr'] = 0; # flag indicating whether star formation is on or off
     h.attrs['Flag_Cooling'] = 0; # flag indicating whether cooling is on or off
-    h.attrs['Flag_StellarAge'] = 0; # flag indicating whether stellar ages is to be saved
-    h.attrs['Flag_Metals'] = 0; # flag indicating whether metallicity is to be saved
+    h.attrs['Flag_StellarAge'] = 0; # flag indicating whether stellar ages are to be saved
+    h.attrs['Flag_Metals'] = 0; # flag indicating whether metallicity are to be saved
     h.attrs['Flag_Feedback'] = 0; # flag indicating whether some parts of springel-hernquist model are active
     h.attrs['Flag_DoublePrecision'] = 0; # flag indicating whether ICs are in single/double precision
     h.attrs['Flag_IC_Info'] = 0; # flag indicating extra options for ICs
