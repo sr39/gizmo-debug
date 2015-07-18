@@ -524,7 +524,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             {
                 for(n = 0; n < pc; n++)
                     for(k = 0; k < N_RT_FREQ_BINS; k++)
-                        SphP[offset + n].n_gamma[k] = *fp++;
+                        SphP[offset + n].E_gamma[k] = *fp++;
             }
 #endif
             break;

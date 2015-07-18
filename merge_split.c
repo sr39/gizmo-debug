@@ -317,6 +317,19 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     /* ideally, particle-splits should be accompanied by a re-partition of the density via the density() call
         for the particles affected, after the tree-reconstruction, with quantities like B used to re-calculate after */
 #endif
+#ifdef RADTRANSFER
+    for(k=0;k<N_RT_FREQ_BINS;k++)
+    {
+        SphP[j].E_gamma[k] += mass_of_new_particle * SphP[i].E_gamma[k];
+        SphP[i].E_gamma[k] -= SphP[j].E_gamma[k];
+#if defined(RT_EVOLVE_NGAMMA)
+        SphP[j].E_gamma_Pred[k] += mass_of_new_particle * SphP[i].E_gamma_Pred[k];
+        SphP[i].E_gamma_Pred[k] -= SphP[j].E_gamma_Pred[k];
+        SphP[j].Dt_E_gamma[k] += mass_of_new_particle * SphP[i].Dt_E_gamma[k];
+        SphP[i].Dt_E_gamma[k] -= SphP[j].Dt_E_gamma[k];
+#endif
+    }
+#endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     double dmass = mass_of_new_particle * SphP[i].DtMass;
     SphP[j].DtMass = dmass;
@@ -548,7 +561,14 @@ void merge_particles_ij(MyIDType i, MyIDType j)
 #endif
 #if defined(RADTRANSFER)
     for(k=0;k<6;k++) SphP[j].ET[k] = wt_j*SphP[j].ET[k] + wt_i*SphP[i].ET[k];
-    for(k=0;k<N_RT_FREQ_BINS;k++) SphP[j].n_gamma[k] = wt_j*SphP[j].n_gamma[k] + wt_i*SphP[i].n_gamma[k];
+    for(k=0;k<N_RT_FREQ_BINS;k++)
+    {
+        SphP[j].E_gamma[k] = SphP[j].E_gamma[k] + SphP[i].E_gamma[k]; /* this is a photon number, so its conserved (we simply add) */
+#if defined(RT_EVOLVE_NGAMMA)
+        SphP[j].E_gamma_Pred[k] = SphP[j].E_gamma_Pred[k] + SphP[i].E_gamma_Pred[k];
+        SphP[j].Dt_E_gamma[k] = SphP[j].Dt_E_gamma[k] + SphP[i].Dt_E_gamma[k];
+#endif
+    }
 #endif
 #ifdef METALS
     for(k=0;k<NUM_METAL_SPECIES;k++)

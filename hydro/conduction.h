@@ -40,8 +40,7 @@
         Bpro2_i /= kernel.b2_i;
         Bpro2_j /= kernel.b2_j;
 #endif
-        conduction_wt *= 2.0 * local.Kappa_Conduction*Bpro2_i*SphP[j].Kappa_Conduction*Bpro2_j /
-        (local.Kappa_Conduction*Bpro2_i + SphP[j].Kappa_Conduction*Bpro2_j);
+        conduction_wt *= 2.0 * local.Kappa_Conduction*Bpro2_i*SphP[j].Kappa_Conduction*Bpro2_j / (local.Kappa_Conduction*Bpro2_i + SphP[j].Kappa_Conduction*Bpro2_j);
 #else
         conduction_wt *= 2.0 * local.Kappa_Conduction*SphP[j].Kappa_Conduction/(local.Kappa_Conduction + SphP[j].Kappa_Conduction);
         // this uses geometric-weighted kappa (as advocated by Cleary & Monaghan '99 for stability):
@@ -69,8 +68,8 @@
         //conduction_wt = wt_i*local.Kappa_Conduction + wt_j*SphP[j].Kappa_Conduction; // arithmetic mean
         conduction_wt = 0.5 * (local.Kappa_Conduction + SphP[j].Kappa_Conduction);
         if(conduction_wt > 0) {conduction_wt = local.Kappa_Conduction * SphP[j].Kappa_Conduction / conduction_wt;} else {conduction_wt = 0;}
-                //conduction_wt = 2.0 * (local.Kappa_Conduction * SphP[j].Kappa_Conduction) / (local.Kappa_Conduction + SphP[j].Kappa_Conduction); // geometric mean
-        conduction_wt *= All.cf_atime; // based on units TD_DiffCoeff is defined with, this makes it physical for a dimensionless quantity gradient below
+        double conduction_wt_physical = conduction_wt;
+        conduction_wt /= All.cf_atime; // based on units Kappa_Conduction is defined with [physical], this converts all below into physical units //
         /* if we use -DIFFUSIVITIES-, we need a density here; if we use -CONDUCTIVITITIES-, no density */
         // conduction_wt *= Riemann_out.Face_Density;
         
@@ -88,8 +87,7 @@
         double B_interface_dot_grad_T = 0.0;
         for(k=0;k<3;k++)
         {
-            B_interface_dot_grad_T += B_interface[k] * (wt_i*local.Gradients.InternalEnergy[k]
-                                                        + wt_j*SphP[j].Gradients.InternalEnergy[k]);
+            B_interface_dot_grad_T += B_interface[k] * (wt_i*local.Gradients.InternalEnergy[k] + wt_j*SphP[j].Gradients.InternalEnergy[k]);
             B_interface_mag += B_interface[k] * B_interface[k];
         }
         if(B_interface_mag > 0)
@@ -105,18 +103,21 @@
             for(k=0;k<3;k++)
             {
                 c_max+=Face_Area_Vec[k] * kernel.dp[k];
-                cmag += Face_Area_Vec[k] * (wt_i*local.Gradients.InternalEnergy[k]
-                                            + wt_j*SphP[j].Gradients.InternalEnergy[k]);
+                cmag += Face_Area_Vec[k] * (wt_i*local.Gradients.InternalEnergy[k] + wt_j*SphP[j].Gradients.InternalEnergy[k]);
             }
         }
 #else
         for(k=0;k<3;k++)
         {
             c_max += Face_Area_Vec[k] * kernel.dp[k];
-            cmag += Face_Area_Vec[k] * (wt_i*local.Gradients.InternalEnergy[k]
-                                        + wt_j*SphP[j].Gradients.InternalEnergy[k]);
+            cmag += Face_Area_Vec[k] * (wt_i*local.Gradients.InternalEnergy[k] + wt_j*SphP[j].Gradients.InternalEnergy[k]);
         }
 #endif
+        /* obtain HLL correction terms for Reimann problem solution */
+        double rho_i = local.Density*All.cf_a3inv, rho_j = SphP[j].Density*All.cf_a3inv, rho_ij=0.5*(rho_i+rho_j);
+        B_dot_grad_weights(local.Gradients.InternalEnergy,SphP[j].Gradients.InternalEnergy); // sets b_hll
+        cmag += b_hll*rho_ij*HLL_correction(local.InternalEnergyPred,SphP[j].InternalEnergyPred, rho_ij, conduction_wt_physical) / (-conduction_wt);
+
         /* slope-limiter to ensure heat always flows from hot to cold */
         c_max *= rinv*rinv;
         double du_cond = local.InternalEnergyPred-SphP[j].InternalEnergyPred;
@@ -127,14 +128,13 @@
         /* now multiply through the coefficient to get the actual flux */
         cmag *= -conduction_wt;
         
-        /* follow that with a fluxlimiter as well */
+        /* follow that with a flux limiter as well */
         conduction_wt = dt_hydrostep * cmag; // all in physical units //
         if(fabs(conduction_wt) > 0)
         {
             // enforce a flux limiter for stability (to prevent overshoot) //
             double du_ij_cond = 0.5*DMIN(DMIN(0.5*fabs(DMIN(local.Mass,P[j].Mass)*(local.InternalEnergyPred-SphP[j].InternalEnergyPred)),
-                                              local.Mass*local.InternalEnergyPred),
-                                         P[j].Mass*SphP[j].InternalEnergyPred);
+                                              local.Mass*local.InternalEnergyPred), P[j].Mass*SphP[j].InternalEnergyPred);
             if(fabs(conduction_wt)>du_ij_cond) {conduction_wt *= du_ij_cond/fabs(conduction_wt);}
             Fluxes.p += conduction_wt / dt_hydrostep;
         } // if(conduction_wt > 0)

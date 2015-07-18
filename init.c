@@ -151,11 +151,7 @@ void init(void)
         a2_fac = 1;
 #endif
     }
-    
-#ifdef RADTRANSFER
-    All.Radiation_Ti_begstep = 0;
-#endif
-    
+        
     set_softenings();
     
     All.NumCurrentTiStep = 0;	/* setup some counters */
@@ -399,18 +395,17 @@ void init(void)
         }
 #endif
         
-#if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN )
         if(RestartFlag != 1)
         {
+#if defined(DO_DENSITY_AROUND_STAR_PARTICLES)
             P[i].DensAroundStar = 0;
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
             P[i].GradRho[0]=0;
             P[i].GradRho[1]=0;
             P[i].GradRho[2]=1;
 #endif
 #ifdef GALSF_FB_SNE_HEATING
             P[i].SNe_ThisTimeStep = 0;
-            P[i].Area_weighted_sum = 0;
+            int k; for(k=0;k<7;k++) {P[i].Area_weighted_sum[k] = 0;}
 #endif
 #ifdef GALSF_FB_GASRETURN
             P[i].MassReturn_ThisTimeStep = 0;
@@ -419,7 +414,6 @@ void init(void)
             P[i].RProcessEvent_ThisTimeStep = 0;
 #endif
         }
-#endif
         
 #if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
         if(RestartFlag == 0)
@@ -791,8 +785,7 @@ void init(void)
 #endif
 #ifdef BH_COMPTON_HEATING
         SphP[i].RadFluxAGN = 0;
-#endif
-        
+#endif        
         
 #ifdef GRACKLE
         if(RestartFlag == 0)
@@ -1046,16 +1039,7 @@ void setup_smoothinglengths(void)
                 PPP[i].Hsml = All.SofteningTable[P[i].Type];
     }
 #endif
-    
-#if defined(RADTRANSFER)
-    if(RestartFlag == 0 || RestartFlag == 2)
-    {
-        for(i = 0; i < NumPart; i++)
-            if(P[i].Type == 4)
-                PPP[i].Hsml = All.SofteningTable[4];
-    }
-#endif
-    
+ 
     density();    
 }
 

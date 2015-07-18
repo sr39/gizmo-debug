@@ -149,10 +149,6 @@ void find_timesteps(void)
     MPI_Allreduce(&ti_step, &ti_min_glob, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 #endif
     
-#ifdef RELAXOBJECT
-    determine_relaxfac();
-#endif
-    
     
     /* Now assign new timesteps  */
     
@@ -321,6 +317,7 @@ integertime get_timestep(int p,		/*!< particle index */
     double ax, ay, az, ac;
     double csnd = 0, dt = 0, dt_courant = 0, dt_divv = 0;
     integertime ti_step;
+    int k; k=0;
 #ifdef CHEMCOOL
     double hubble_param;
     
@@ -330,13 +327,8 @@ integertime get_timestep(int p,		/*!< particle index */
         hubble_param = 1.0;
 #endif
     
-#if defined(YOUNGSTARWINDDRIVING) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN )
-    double star_age, dt_stellar_evol;
-#endif
-    
 #ifdef NUCLEAR_NETWORK
     double dt_network, dt_species;
-    int k;
 #endif
     
     if(flag == 0)
@@ -357,6 +349,14 @@ integertime get_timestep(int p,		/*!< particle index */
             ax += SphP[p].TurbAccel[0];
             ay += SphP[p].TurbAccel[1];
             az += SphP[p].TurbAccel[2];
+        }
+#endif
+#ifdef RT_RAD_PRESSURE_OUTPUT
+        if(P[p].Type==0)
+        {
+            ax += SphP[p].RadAccel[0];
+            ay += SphP[p].RadAccel[1];
+            az += SphP[p].RadAccel[2];
         }
 #endif
         
@@ -467,15 +467,35 @@ integertime get_timestep(int p,		/*!< particle index */
 
 #ifdef COSMIC_RAYS
             {
-                double L_cond_inv = 1. / Get_CosmicRayGradientLength(p);
-                double L_cond = 1./(L_cond_inv + 0./(L_particle*All.cf_atime));
-                double dt_conduction = 0.5 * L_cond*L_cond / (1.0e-33 + SphP[p].CosmicRayDiffusionCoeff);
-                // since we use DIFFUSIVITIES, not CONDUCTIVITIES, we dont need any other powers to get the right units //
-                if(dt_conduction < dt) dt = dt_conduction;
+                if(Get_Particle_CosmicRayPressure(p) > 1.0e-20)
+                {
+                    double L_cond_inv = 1. / Get_CosmicRayGradientLength(p);
+                    double L_cond = 1./(L_cond_inv + 0./(L_particle*All.cf_atime));
+                    double dt_conduction = 0.5 * L_cond*L_cond / (1.0e-33 + SphP[p].CosmicRayDiffusionCoeff);
+                    // since we use DIFFUSIVITIES, not CONDUCTIVITIES, we dont need any other powers to get the right units //
+                    if(dt_conduction < dt) dt = dt_conduction;
+                }
             }
 #endif
 
             
+#if defined(RT_DIFFUSION_EXPLICIT)
+            {
+                int kf;
+                for(kf=0;kf<N_RT_FREQ_BINS;kf++)
+                {
+                    double gradETmag=0; for(k=0;k<3;k++) {gradETmag+=SphP[p].Gradients.E_gamma_ET[kf][k]*SphP[p].Gradients.E_gamma_ET[kf][k];}
+                    double L_ETgrad_inv = sqrt(gradETmag) / (1.e-37 + SphP[p].E_gamma[kf] * SphP[p].Density/P[p].Mass);
+                    double L_RT_diffusion = DMAX(L_particle , 1./(L_ETgrad_inv + 1./L_particle)) * All.cf_atime;
+                    double dt_rt_diffusion = 0.5 * L_RT_diffusion*L_RT_diffusion / (1.0e-33 + SphP[p].Kappa_RT[kf]);
+                    if(dt_rt_diffusion < dt) dt = dt_rt_diffusion;
+                }
+				dt_courant = All.CourantFac * (L_particle*All.cf_atime) / (RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s)); /* courant-type criterion, using the reduced speed of light */
+				if(dt_courant < dt) dt = dt_courant;
+            }
+#endif
+    
+    
 #ifdef VISCOSITY
             {
                 int kv1,kv2; double dv_mag=0,v_mag=1.0e-33;
@@ -614,10 +634,11 @@ integertime get_timestep(int p,		/*!< particle index */
     
     
     // add a 'stellar evolution timescale' criterion to the timestep, to prevent too-large jumps in feedback //
-#if defined(YOUNGSTARWINDDRIVING) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN)
+#if defined(YOUNGSTARWINDDRIVING) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
     if(((P[p].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[p].Type == 2)||(P[p].Type==3))))&&(P[p].Mass>0))
     {
-        star_age = evaluate_stellar_age_Gyr(P[p].StellarAge);
+        double star_age = evaluate_stellar_age_Gyr(P[p].StellarAge);
+        double dt_stellar_evol;
         if(star_age<0.1)
         {
             dt_stellar_evol = DMAX(2.0e-4, star_age/250.); // restrict to small steps for young stars //
@@ -870,26 +891,6 @@ int get_timestep_bin(integertime ti_step)
 }
 
 
-
-
-
-#ifdef RELAXOBJECT
-void determine_relaxfac(void)
-{
-    if(All.Time < 0.2 * All.TimeMax)
-    {
-        All.RelaxFac = 1. / All.RelaxBaseFac;
-    }
-    else if(All.Time > 0.8 * All.TimeMax)
-    {
-        All.RelaxFac = 0.;
-    }
-    else
-    {
-        All.RelaxFac = 1. / (All.RelaxBaseFac * pow(10., (All.Time - 0.2 * All.TimeMax) / (0.6 * All.TimeMax) * 3.));
-    }
-}
-#endif
 
 
 

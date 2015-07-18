@@ -131,10 +131,10 @@ void compute_potential(void)
         }
 
         GravDataIn[j].Type = P[place].Type;
-#if defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
         GravDataIn[j].Mass = P[place].Mass;
 #endif
-#if defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(ADAPTIVE_GRAVSOFT_FORALL)
+#if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         if(PPP[place].Hsml > All.ForceSoftening[P[place].Type])
         {
             GravDataIn[j].Soft = PPP[place].Hsml;
@@ -142,7 +142,7 @@ void compute_potential(void)
             GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];
         }
 #endif
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(GALSF_FB_RT_PHOTONMOMENTUM)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(RT_USE_GRAVTREE)
         if((P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type]))
         {
             GravDataIn[j].Soft = PPP[place].Hsml;

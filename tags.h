@@ -63,9 +63,12 @@
 #define TAG_PDATA_SPH     70
 #define TAG_KEY_SPH       71
 
-#ifdef RADTRANSFER
+#ifdef RT_DIFFUSION_CG
 #define TAG_RT_A          72
 #define TAG_RT_B          73
+#endif
+#ifdef RT_SOURCE_INJECTION
+#define TAG_RT_C	  76
 #endif
 
 #ifdef ADAPTIVE_GRAVSOFT_FORALL

@@ -20,7 +20,7 @@
 #if defined(TURB_DIFFUSION)
 #define SAVE_FACE_DENSITY 1
 #endif
-#if (defined(HYDRO_MESHLESS_FINITE_MASS) || defined(CONDUCTION) || defined(COSMIC_RAYS) || defined(VISCOSITY)) && defined(MAGNETIC)
+#if defined(MAGNETIC)
 #define SAVE_FACE_BFIELD 1
 #endif
 #if defined(VISCOSITY) && defined(MAGNETIC)

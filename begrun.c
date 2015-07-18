@@ -313,10 +313,6 @@ void begrun(void)
       strcpy(All.EosSpecies, all.EosSpecies);
 #endif
 
-#ifdef RELAXOBJECT
-      All.RelaxBaseFac = all.RelaxBaseFac;
-#endif
-
 #ifdef NUCLEAR_NETWORK
       strcpy(All.NetworkRates, all.NetworkRates);
       strcpy(All.NetworkPartFunc, all.NetworkPartFunc);
@@ -365,19 +361,17 @@ void begrun(void)
 
 
 #ifdef RADTRANSFER
-  if(RestartFlag == 0)
-    radtransfer_set_simple_inits();
-  
-  rt_get_sigma();
-
-#ifdef RT_MULTI_FREQUENCY
-#if defined(EDDINGTON_TENSOR_STARS) || defined(EDDINGTON_TENSOR_SFR)
-    rt_get_lum_stars();
+    if(RestartFlag == 0) {rt_set_simple_inits();}
 #endif
+#ifdef RT_CHEM_PHOTOION
+    rt_get_sigma();
+    rt_get_lum_for_spectral_bin_stars(All.star_Teff, precalc_stellar_luminosity_fraction);
 #endif
-
+#if defined(RT_DIFFUSION_CG)
+    All.Radiation_Ti_begstep = 0;
 #endif
 
+    
   if(All.ComovingIntegrationOn)
     init_drift_table();
 
@@ -740,23 +734,13 @@ void open_outputfiles(void)
 #endif
     
     
-#ifdef RADTRANSFER
-  sprintf(buf, "%s%s", All.OutputDir, "radtransfer.txt");
+#ifdef RT_CHEM_PHOTOION
+  sprintf(buf, "%s%s", All.OutputDir, "rt_photoion_chem,.txt");
   if(!(FdRad = fopen(buf, mode)))
     {
       printf("error in opening file '%s'\n", buf);
       endrun(1);
     }
-
-#ifdef RT_MULTI_FREQUENCY
-  sprintf(buf, "%s%s", All.OutputDir, "star_lum.txt");
-  if(!(FdStar = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-#endif
-
 #endif
 
 #ifdef BLACK_HOLES
@@ -848,11 +832,8 @@ void close_outputfiles(void)
     fclose(FdSneIIHeating);
 #endif
     
-#ifdef RADTRANSFER
+#ifdef RT_CHEM_PHOTOION
   fclose(FdRad);
-#ifdef RT_MULTI_FREQUENCY
-  fclose(FdStar);
-#endif
 #endif
 
 #ifdef BLACK_HOLES
@@ -1149,11 +1130,13 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
+#ifdef RT_FIRE
         strcpy(tag[nt], "PhotonMomentum_Coupled_Fraction");
         addr[nt] = &All.PhotonMomentum_Coupled_Fraction;
         id[nt++] = REAL;
+#endif
         
+#ifdef GALSF_FB_RT_PHOTONMOMENTUM
         strcpy(tag[nt], "PhotonMomentum_fUV");
         addr[nt] = &All.PhotonMomentum_fUV;
         id[nt++] = REAL;
@@ -1653,20 +1636,14 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 
-#ifdef RELAXOBJECT
-      strcpy(tag[nt], "RelaxBaseFac");
-      addr[nt] = &All.RelaxBaseFac;
-      id[nt++] = REAL;
-#endif
-
-#if defined(RADTRANSFER) && defined(RT_MULTI_FREQUENCY)
-      strcpy(tag[nt], "star_Teff");
-      addr[nt] = &All.star_Teff;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "IonizingLumPerSolarMass");
-      addr[nt] = &All.IonizingLumPerSolarMass;
-      id[nt++] = REAL;
+#ifdef RT_CHEM_PHOTOION
+        strcpy(tag[nt], "IonizingLumPerSolarMass");
+        addr[nt] = &All.IonizingLumPerSolarMass;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "star_Teff");
+        addr[nt] = &All.star_Teff;
+        id[nt++] = REAL;
 #endif
 
 #ifdef SINKS
@@ -2010,9 +1987,6 @@ void read_parameter_file(char *fname)
     All.CourantFac *= 0.5; //
     /* (PFH) safety factor needed for MHD calc, because people keep using the same CFac as hydro! */
 #endif
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-    All.PhotonMomentum_fIR = 1 - All.PhotonMomentum_fUV - All.PhotonMomentum_fOPT;
-#endif
 
     /* now we're going to do a bunch of checks */
     if((All.ErrTolIntAccuracy<=0)||(All.ErrTolIntAccuracy>0.05))
@@ -2146,18 +2120,6 @@ void read_parameter_file(char *fname)
             printf("NumFilesWrittenInParallel MUST be smaller than number of processors\n");
         endrun(0);
     }
-    
-#ifdef EDDINGTON_TENSOR_BH
-#ifndef BLACK_HOLES
-    if(ThisTask == 0)
-    {
-        printf("Code was compiled with EDDINGTON_TENSOR_BH, but not with BLACK_HOLES.\n");
-        printf("Switch on BLACK_HOLES.\n");
-    }
-    endrun(0);
-#endif
-#endif
-    
     
 #if defined(LONG_X) ||  defined(LONG_Y) || defined(LONG_Z)
 #ifndef NOGRAVITY
