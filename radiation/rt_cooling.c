@@ -19,6 +19,8 @@
 
 /* now do the heating (note: we know how many photons we absorbed) */
 
+/* these routines should get combined into our standard cooling routine -- all the analogues are there, it just needs to be moved over */
+
 #ifndef RT_PHOTOION_MULTIFREQUENCY
 double rt_DoHeating(int i, double dt_internal)
 {

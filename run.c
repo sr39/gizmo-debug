@@ -206,6 +206,9 @@ void set_non_standard_physics_for_current_time(void)
 
 void calculate_non_standard_physics(void)
 {
+#ifdef PARTICLE_EXCISION
+    apply_excision();
+#endif
     
 #ifdef GALSF
     /* PFH set of feedback routines */
@@ -213,7 +216,7 @@ void calculate_non_standard_physics(void)
 #endif
     
 #if defined(TURB_DRIVING)
-#ifdef GAMMA_ENFORCE_ADIABAT
+#ifdef EOS_ENFORCE_ADIABAT
     reset_turb_temp();
 #endif
 #if defined(POWERSPEC_GRID)

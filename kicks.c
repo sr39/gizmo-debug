@@ -373,11 +373,8 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
         SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy;
 #endif
         
-#ifdef EOS_DEGENERATE
-        for(k=0;k<3;k++) {SphP[i].xnucPred[k] = SphP[i].xnuc[k];}
-#endif
         SphP[i].Pressure = get_pressure(i);
-#ifdef GAMMA_ENFORCE_ADIABAT
+#ifdef EOS_ENFORCE_ADIABAT
         SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = SphP[i].Pressure / (SphP[i].Density * GAMMA_MINUS1);
 #endif
     }
@@ -450,9 +447,7 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
 #endif
 #endif
 #ifdef NUCLEAR_NETWORK
-    for(j = 0; j < EOS_NSPECIES; j++)
-        SphP[i].xnuc[j] += SphP[i].dxnuc[j] * dt_entr * All.UnitTime_in_s;
-    
+    for(j = 0; j < EOS_NSPECIES; j++) {SphP[i].xnuc[j] += SphP[i].dxnuc[j] * dt_entr * All.UnitTime_in_s;}    
     network_normalize(SphP[i].xnuc, &SphP[i].InternalEnergy, &All.nd, &All.nw);
 #endif
 #ifdef COSMIC_RAYS

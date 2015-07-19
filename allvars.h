@@ -87,12 +87,20 @@
 #endif
 
 
-#if defined(EOS_DEGENERATE) || defined(COSMIC_RAYS)
-#define NON_IDEAL_EOS
-#endif
+#include "eos/eos.h"
+
+
+
 #ifdef COSMIC_RAYS
 #define GAMMA_COSMICRAY (4.0/3.0)
 #define GAMMA_COSMICRAY_MINUS1 (GAMMA_COSMICRAY-1)
+#endif
+
+#if defined(GRACKLE) 
+#if !defined(COOLING)
+#define COOLING
+#endif
+#include <grackle.h>
 #endif
 
 
@@ -124,11 +132,11 @@
 #endif
 
 
-#if defined(CONDUCTION) || defined(TURB_DIFF_ENERGY) || defined(NON_IDEAL_EOS)
+#if defined(CONDUCTION) || defined(TURB_DIFF_ENERGY) || defined(EOS_GENERAL)
 #define DOGRAD_INTERNAL_ENERGY 1
 #endif
 
-#if defined(NON_IDEAL_EOS)
+#if defined(EOS_GENERAL)
 #define DOGRAD_SOUNDSPEED 1
 #endif
 
@@ -299,25 +307,13 @@
 #endif
 
 #include "tags.h"
-/*! assert.h: defn of an assertation macro that matches the old PSPH/Gadget-Framework better than standard defn
- */
-#ifndef DEBUG
-#define assert(expr)
-#else
-#ifdef __func__
-#define assert(expr) if (!(expr)) { printf("ASSERTATION FAULT: File: %s -- %s() -- Line: %i -- Assertation (%s) failed.\n", __FILE__, __func__, __LINE__, __STRING(expr) ); fflush(stdout); endrun(1337); }
-#else
-#define assert(expr) if (!(expr)) { printf("ASSERTATION FAULT: File: %s -- Line: %i -- Assertation (%s) failed.\n", __FILE__, __LINE__, __STRING(expr) ); fflush(stdout); endrun(1337); }
-#endif
-#endif
+#include <assert.h>
 
-#ifdef EOS_DEGENERATE
-#include "helm_eos.h"
-#endif
 
 #ifdef NUCLEAR_NETWORK
-#include "network.h"
-#include "integrate.h"
+#include "nuclear/network.h"
+void network_normalize(double *x, double *e, const struct network_data *nd, struct network_workspace *nw);
+int network_integrate( double temp, double rho, const double *x, double *dx, double dt, double *dedt, double *drhodt, const struct network_data *nd, struct network_workspace *nw );
 #endif
 
 
@@ -437,8 +433,17 @@ typedef unsigned long long peanokey;
 #define  report_memory_usage(x, y) printf("Memory manager disabled.\n")
 #endif
 
-#ifndef  GAMMA
+
+#ifdef GAMMA_ENFORCE_ADIABAT
+#define EOS_ENFORCE_ADIABAT (GAMMA_ENFORCE_ADIABAT) /* this allows for either term to be defined, for backwards-compatibility */
+#endif
+
+#if !defined(GAMMA) /* this allows for either term to be defined, for backwards-compatibility */
+#ifndef EOS_GAMMA
 #define  GAMMA         (5.0/3.0)	/*!< adiabatic index of simulated gas */
+#else
+#define  GAMMA         (EOS_GAMMA)
+#endif
 #endif
 
 #define  GAMMA_MINUS1  (GAMMA-1)
@@ -1027,15 +1032,6 @@ extern FILE *FdDE;  /*!< file handle for darkenergy.txt log-file. */
 
 
 
-
-
-#if defined(COOLING) && defined(GRACKLE)
-#ifndef COOLING_OPERATOR_SPLIT
-#define COOLING_OPERATOR_SPLIT /*!< by default, Grackle does not include the hydro heating/cooling, so this must be operator-split */
-#endif
-#include <grackle.h>
-#endif
-
 #if defined(COOLING) && defined(GALSF_EFFECTIVE_EQS)
 #ifndef COOLING_OPERATOR_SPLIT
 #define COOLING_OPERATOR_SPLIT /*!< the Springel-Hernquist EOS depends explicitly on the cooling time in a way that requires de-coupled hydro cooling */
@@ -1572,9 +1568,8 @@ extern struct global_data_all_processes
 #endif
 
 
-#ifdef EOS_DEGENERATE
-  char EosTable[100];
-  char EosSpecies[100];
+#ifdef EOS_TABULATED
+    char EosTable[100];
 #endif
 
 #ifdef SINKS
@@ -2129,13 +2124,19 @@ extern struct sph_particle_data
 #endif
     
     
-#ifdef EOS_DEGENERATE
-    MyFloat temp;                         /* temperature */
-    MyFloat dp_drho;                      /* derivative of pressure with respect to density at constant entropy */
-    MyFloat xnuc[EOS_NSPECIES];           /* nuclear mass fractions */
-    MyFloat dxnuc[EOS_NSPECIES];          /* change of nuclear mass fractions */
-    MyFloat xnucPred[EOS_NSPECIES];
+#ifdef EOS_GENERAL
+    MyFloat SoundSpeed;                   /* Sound speed */
+#ifdef EOS_CARRIES_TEMPERATURE
+    MyFloat Temperature;                         /* temperature */
 #endif
+#ifdef EOS_CARRIES_YE
+    MyFloat Ye;                           /* Electron fraction */
+#endif
+#ifdef EOS_CARRIES_ABAR
+    MyFloat Abar;                         /* Average atomic weight (in atomic mass units) */
+#endif
+#endif
+    
     
 #ifdef WAKEUP
     short int wakeup;                     /*!< flag to wake up particle */
@@ -2440,7 +2441,8 @@ enum iofields
   IO_ANNIHILATION_RADIATION,
   IO_STREAM_DENSITY,
   IO_EOSTEMP,
-  IO_EOSXNUC,
+  IO_EOSABAR,
+  IO_EOSYE,
   IO_PRESSURE,
   IO_RADGAMMA,
   IO_RAD_ACCEL,

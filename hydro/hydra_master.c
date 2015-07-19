@@ -651,12 +651,6 @@ void hydro_final_operations_and_cleanup(void)
             if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*GAMMA_MINUS1 * SphP[i].InternalEnergyPred * All.cf_hubble_a;
             // = du/dlna -3*(gamma-1)*u ; then dlna/dt = H(z) =  All.cf_hubble_a //
             
-#ifdef EOS_DEGENERATE
-            /* DtInternalEnergy stores the energy change rate in internal units */
-            SphP[i].DtInternalEnergy *= All.UnitEnergy_in_cgs / All.UnitTime_in_s;
-#endif
-
-            
             
 #ifdef RT_RAD_PRESSURE_EDDINGTON
             /* calculate the radiation pressure force from the gradient of the Eddington tensor */
@@ -737,10 +731,10 @@ void hydro_final_operations_and_cleanup(void)
         if(P[i].Type == 0)
         {
             /* evaluate network here, but do it only for high enough temperatures */
-            if(SphP[i].temp > All.NetworkTempThreshold)
+            if(SphP[i].Temperature > All.NetworkTempThreshold)
             {
                 nuc_particles++;
-                network_integrate(SphP[i].temp, SphP[i].Density * All.UnitDensity_in_cgs, SphP[i].xnuc,
+                network_integrate(SphP[i].Temperature, SphP[i].Density * All.UnitDensity_in_cgs, SphP[i].xnuc,
                                   SphP[i].dxnuc, dt*All.UnitTime_in_s, &dedt_nuc, NULL, &All.nd, &All.nw);
                 SphP[i].DtInternalEnergy += dedt_nuc * All.UnitEnergy_in_cgs / All.UnitTime_in_s;
             }

@@ -588,7 +588,7 @@ integertime get_timestep(int p,		/*!< particle index */
             }
             
 #ifdef NUCLEAR_NETWORK
-            if(SphP[p].temp > 1e7)
+            if(SphP[p].Temperature > 1e7)
             {
                 /* check if the new timestep blows up our abundances */
                 dt_network = dt * All.UnitTime_in_s;

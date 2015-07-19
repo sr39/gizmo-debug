@@ -156,9 +156,14 @@ void begrun(void)
   GrNr = -1;
 #endif
 
-#ifdef EOS_DEGENERATE
-  eos_init(All.EosTable, All.EosSpecies);
+#ifdef EOS_TABULATED
+    int ierr = eos_init(All.EosTable);
+    if(ierr) {
+        printf("error initializing the eos");
+        endrun(1);
+    }
 #endif
+
 
 #ifdef NUCLEAR_NETWORK
   network_init(All.EosSpecies, All.NetworkRates, All.NetworkPartFunc, All.NetworkMasses,
@@ -308,9 +313,8 @@ void begrun(void)
       strcpy(All.GrackleDataFile, all.GrackleDataFile);
 #endif
 
-#ifdef EOS_DEGENERATE
-      strcpy(All.EosTable, all.EosTable);
-      strcpy(All.EosSpecies, all.EosSpecies);
+#ifdef EOS_TABULATED
+        strcpy(All.EosTable, all.EosTable);
 #endif
 
 #ifdef NUCLEAR_NETWORK
@@ -1604,14 +1608,10 @@ void read_parameter_file(char *fname)
 #endif
 #endif /* MAGNETIC */
 
-#ifdef EOS_DEGENERATE
-      strcpy(tag[nt], "EosTable");
-      addr[nt] = All.EosTable;
-      id[nt++] = STRING;
-
-      strcpy(tag[nt], "EosSpecies");
-      addr[nt] = All.EosSpecies;
-      id[nt++] = STRING;
+#ifdef EOS_TABULATED
+        strcpy(tag[nt], "EosTable");
+        addr[nt] = All.EosTable;
+        id[nt++] = STRING;
 #endif
 
 #ifdef NUCLEAR_NETWORK

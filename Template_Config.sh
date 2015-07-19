@@ -57,8 +57,6 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ####################################################################################################
 # --------------------------------------- Additional Fluid Physics
 ####################################################################################################
-# --------------------------------- Polytropic Index of Gas (for an ideal gas law)
-#GAMMA=(5.0/3.0)                # if not set and no other (more complex) EOS set, defaults to GAMMA=5/3
 ## -----------------------------------------------------------------------------------------------------
 # --------------------------------- Magneto-Hydrodynamics
 # ---------------------------------  these modules are public, but if used, the user should also cite the MHD-specific GIZMO methods paper
@@ -87,7 +85,6 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #COOL_METAL_LINES_BY_SPECIES    # use full multi-species-dependent cooling tables (https://dl.dropbox.com/u/16659252/spcool_tables.tgz)
 #GRACKLE                        # enable GRACKLE: cooling+chemistry package (requires COOLING above; https://grackle.readthedocs.org/en/latest/)
 #GRACKLE_CHEMISTRY=1            # choose GRACKLE cooling chemistry: (0)=tabular, (1)=Atomic, (2)=(1)+H2+H2I+H2II, (3)=(2)+DI+DII+HD
-#TRUELOVE_CRITERION_PRESSURE    # adds artificial pressure floor force Jeans length above resolution scale (not necessarily better in meshless methods!)
 ##-----------------------------------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- Smagorinsky Turbulent Eddy Diffusion Model
@@ -332,13 +329,13 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 # -------------------------------------------- De-Bugging & special (usually test-problem only) behaviors
 ####################################################################################################
 #DEVELOPER_MODE                 # allows you to modify various numerical parameters (courant factor, etc) at run-time
-#GAMMA_ENFORCE_ADIABAT=(1.0)    # if set, this forces gas to lie -exactly- along the adiabat P=GAMMA_ENFORCE_ADIABAT*(rho^GAMMA)
 #TEST_FOR_IDUNIQUENESS          # explicitly check if particles have unique id numbers (only use for special behaviors)
 #LONGIDS                        # use long ints for IDs (needed for super-large simulations)
 #ASSIGN_NEW_IDS                 # assign IDs on startup instead of reading from ICs
 #READ_HSML                      # reads hsml from IC file
 #PREVENT_PARTICLE_MERGE_SPLIT   # don't allow gas particle splitting/merging operations
 #COOLING_OPERATOR_SPLIT         # do the hydro heating/cooling in operator-split fashion from chemical/radiative. slightly more accurate when tcool >> tdyn, but much noisier when tcool << tdyn
+#PARTICLE_EXCISION              # enable dynamical excision (remove particles within some radius)
 
 #USE_MPI_IN_PLACE               # MPI debugging: makes AllGatherV compatible with MPI_IN_PLACE definitions in some MPI libraries
 #NO_ISEND_IRECV_IN_DOMAIN       # MPI debugging
@@ -445,11 +442,13 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #--------------------------------------- degenerate equation of state (D. Radice & P. Hopkins)
 #-------------------------------- use of these routines requires explicit pre-approval by developers D. Radice & P. Hopkins
 ####################################################################################################
-#EOS_DEGENERATE             # Use Timees & Swesty 2000 EOS
-#EOS_IDEAL                  # Include only the ideal-gas part
-#EOS_COULOMB_CORRECTIONS    # Include Coulomb corrections
-#EOS_DETAILED_COMPOSITION   # Use a detailed composition table
-#EOS_NSPECIES=3             # Number of species (if using the detailed composition table)
+#EOS_GAMMA=(5.0/3.0)        # Polytropic Index of Gas (for an ideal gas law): if not set and no other (more complex) EOS set, defaults to GAMMA=5/3
+#EOS_ENFORCE_ADIABAT=(1.0)  # If set, this forces gas to lie -exactly- along the adiabat P=EOS_ENFORCE_ADIABAT*(rho^GAMMA)
+#EOS_TRUELOVE_PRESSURE      # adds artificial pressure floor force Jeans length above resolution scale (means you will get the wrong answer, but things will look smooth)
+#EOS_HELMHOLTZ              # Use Timees & Swesty 2000 EOS
+##-----------------------------------------------------------------------------------------------------
+#------------ test-problem, deprecated, or de-bugging functions
+##-----------------------------------------------------------------------------------------------------
 ####################################################################################################
 
 

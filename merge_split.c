@@ -549,16 +549,6 @@ void merge_particles_ij(MyIDType i, MyIDType j)
 #endif
     
     // below, we need to take care of additional physics //
-#ifdef EOS_DEGENERATE
-    SphP[j].temp = wt_j*SphP[j].temp + wt_i*SphP[i].temp;
-    SphP[j].dp_drho = wt_j*SphP[j].dp_drho + wt_i*SphP[i].dp_drho;
-    for(k=0;k<EOS_NSPECIES;k++)
-    {
-        SphP[j].xnuc[k] = wt_j*SphP[j].xnuc[k] + wt_i*SphP[i].xnuc[k];
-        SphP[j].dxnuc[k] = wt_j*SphP[j].dxnuc[k] + wt_i*SphP[i].dxnuc[k];
-        SphP[j].xnucPred[k] = wt_j*SphP[j].xnucPred[k] + wt_i*SphP[i].xnucPred[k];
-    }
-#endif
 #if defined(RADTRANSFER)
     for(k=0;k<6;k++) SphP[j].ET[k] = wt_j*SphP[j].ET[k] + wt_i*SphP[i].ET[k];
     for(k=0;k<N_RT_FREQ_BINS;k++)
@@ -583,6 +573,8 @@ void merge_particles_ij(MyIDType i, MyIDType j)
         P[i].dp[k] += P[i].Mass*P[i].Vel[k] - p_old_i[k];
         P[j].dp[k] += P[j].Mass*P[j].Vel[k] - p_old_j[k];
     }
+    /* call the pressure routine to re-calculate pressure (and sound speeds) as needed */
+    SphP[j].Pressure = get_pressure(j);
     return;
 }
 

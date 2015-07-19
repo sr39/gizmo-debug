@@ -108,7 +108,7 @@
                                 distance_from_i, distance_from_j, &Riemann_vec.L.rho, &Riemann_vec.R.rho, 1);
         reconstruct_face_states(local.Pressure, local.Gradients.Pressure, SphP[j].Pressure, SphP[j].Gradients.Pressure,
                                 distance_from_i, distance_from_j, &Riemann_vec.L.p, &Riemann_vec.R.p, 1);
-#ifdef NON_IDEAL_EOS
+#ifdef EOS_GENERAL
         reconstruct_face_states(local.InternalEnergyPred, local.Gradients.InternalEnergy, SphP[j].InternalEnergyPred, SphP[j].Gradients.InternalEnergy,
                                 distance_from_i, distance_from_j, &Riemann_vec.L.u, &Riemann_vec.R.u, 1);
         reconstruct_face_states(kernel.sound_i, local.Gradients.SoundSpeed, kernel.sound_j, SphP[j].Gradients.SoundSpeed,
@@ -191,7 +191,7 @@
 #else 
         press_tot_limiter = 1.1 * All.cf_a3inv * DMAX( press_i_tot , press_j_tot );
 #endif
-#ifdef NON_IDEAL_EOS
+#ifdef EOS_GENERAL
         press_tot_limiter *= 2.0;
 #endif
         
@@ -213,7 +213,7 @@
             Riemann_vec.R.phi = local.PhiPred; Riemann_vec.L.phi = PhiPred_j;
 #endif
 #endif
-#ifdef NON_IDEAL_EOS
+#ifdef EOS_GENERAL
             Riemann_vec.R.u = local.InternalEnergyPred; Riemann_vec.L.u = SphP[j].InternalEnergyPred;
             Riemann_vec.R.cs = kernel.sound_i; Riemann_vec.L.cs = kernel.sound_j;
 #endif
@@ -230,7 +230,7 @@
                 Riemann_vec.R.phi = local.PhiPred; Riemann_vec.L.phi = PhiPred_j;
 #endif
 #endif
-#ifdef NON_IDEAL_EOS
+#ifdef EOS_GENERAL
                 Riemann_vec.R.u = local.InternalEnergyPred; Riemann_vec.L.u = SphP[j].InternalEnergyPred;
                 Riemann_vec.R.cs = kernel.sound_i; Riemann_vec.L.cs = kernel.sound_j;
 #endif

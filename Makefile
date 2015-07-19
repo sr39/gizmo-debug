@@ -73,6 +73,7 @@ INCL = Makefile.systype
 else
 INCL =
 endif
+FINCL =
 
 
 CONFIG   =  Config.sh
@@ -174,7 +175,7 @@ endif
 ifeq ($(SYSTYPE),"MacBookPro")
 CC       =  mpicc
 CXX      =  mpiccxx
-FC       =  $(CC)
+FC       =  mpifort
 OPTIMIZE = -O1 -funroll-loops
 OPTIMIZE += -g -Wall # compiler warnings
 GMP_INCL = #
@@ -232,8 +233,8 @@ endif
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Zwicky")
 CC       =  mpicc
-CXX      =  mpiCC
-FC       =  $(CC)
+CXX      =  mpicpc
+FC       =  mpiifort -nofor_main
 OPTIMIZE = -O3 -funroll-loops
 OPTIMIZE += -g -Wall # compiler warnings
 GMP_INCL = #
@@ -460,7 +461,7 @@ GRAVITY_OBJS  = gravity/forcetree.o gravity/cosmology.o gravity/pm_periodic.o gr
                 gravity/gravtree.o gravity/forcetree_update.o gravity/pm_nonperiodic.o gravity/longrange.o \
                 gravity/ags_hsml.o
 
-HYDRO_OBJS = hydro/hydra_master.o hydro/density.o hydro/gradients.o radiation/rt_utilities.o
+HYDRO_OBJS = hydro/hydra_master.o hydro/density.o hydro/gradients.o radiation/rt_utilities.o eos/eos.o
 
 STRUCTURE_OBJS = structure/twopoint.o
 
@@ -476,11 +477,12 @@ EXEC   = GIZMO
 OBJS  =  main.o accel.o  timestep.o init.o restart.o io.o \
          predict.o global.o begrun.o run.o allvars.o read_ic.o \
          domain.o driftfac.o kicks.o ngb.o compile_time_info.o merge_split.o
+FOBJS =
 
 OBJS	+= $(GRAVITY_OBJS) $(HYDRO_OBJS) $(SYSTEM_OBJS) $(STRUCTURE_OBJS)
 OBJS	+= $(L3_OBJS)
 
-INCL    += allvars.h proto.h gravity/forcetree.h domain.h system/myqsort.h kernel.h Makefile \
+INCL    += allvars.h proto.h gravity/forcetree.h domain.h system/myqsort.h kernel.h eos/eos.h Makefile \
 
 
 ifeq (GALSF_SUBGRID_DMDISPERSION,$(findstring GALSF_SUBGRID_DMDISPERSION,$(CONFIGVARS)))
@@ -547,9 +549,11 @@ ifeq (BUBBLES,$(findstring BUBBLES,$(CONFIGVARS)))
 OBJS    += modules/bubbles/bubbles.o
 endif
 
-ifeq (EOS_DEGENERATE,$(findstring EOS_DEGENERATE,$(CONFIGVARS)))
-OBJS	+= nuclear/helm_eos.o 
-INCL	+= nuclear/helm_eos.h 
+ifeq (EOS_HELMHOLTZ,$(findstring EOS_HELMHOLTZ,$(CONFIGVARS)))
+OBJS    += eos/eos_interface.o
+INCL    += eos/helmholtz/helm_wrap.h
+FOBJS   += eos/helmholtz/helm_impl.o eos/helmholtz/helm_wrap.o
+FINCL   += eos/helmholtz/helm_const.dek eos/helmholtz/helm_implno.dek eos/helmholtz/helm_table_storage.dek eos/helmholtz/helm_vector_eos.dek
 endif
 
 ifeq (IMPOSE_PINNING,$(findstring IMPOSE_PINNING,$(CONFIGVARS)))
@@ -577,8 +581,8 @@ INCL    +=
 endif
 
 ifeq (NUCLEAR_NETWORK,$(findstring NUCLEAR_NETWORK,$(CONFIGVARS)))
-OBJS	+=  nuclear/utilities.o nuclear/integrate.o nuclear/network_solver.o nuclear/network.o nuclear/swap.o
-INCL	+=  nuclear/utilities.h nuclear/integrate.h nuclear/network_solver.h nuclear/network.h nuclear/swap.h
+OBJS	+=  nuclear/network_solver.o nuclear/network.o
+INCL	+=  nuclear/network.h
 endif
 
 ifeq (TURB_DRIVING,$(findstring TURB_DRIVING,$(CONFIGVARS)))
@@ -619,8 +623,8 @@ $(EXEC): $(OBJS) $(FOBJS)
 
 $(OBJS): $(INCL)  $(CONFIG)  compile_time_info.c
 
-
-$(FOBJS): $(FINCL)
+$(FOBJS): %.o: %.f90
+	$(FC) $(OPTIMIZE) -c $< -o $@
 
 compile_time_info.c: $(CONFIG)
 	$(PERL) prepare-config.perl $(CONFIG)

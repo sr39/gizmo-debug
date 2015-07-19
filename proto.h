@@ -251,7 +251,6 @@ int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend
 
 double INLINE_FUNC Get_Particle_Size(int i);
 double INLINE_FUNC Particle_density_for_energy_i(int i);
-double INLINE_FUNC Get_Particle_Pressure(int i);
 double INLINE_FUNC Get_Particle_Expected_Area(double h);
 #ifdef COSMIC_RAYS
 double INLINE_FUNC Get_Particle_CosmicRayPressure(int i);
@@ -776,6 +775,10 @@ void hydro_gradient_calc(void);
 int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
 void *GasGrad_evaluate_primary(void *p, int gradient_iteration);
 void *GasGrad_evaluate_secondary(void *p, int gradient_iteration);
+
+#ifdef PARTICLE_EXCISION
+void apply_excision();
+#endif
 
 #ifdef SIDM
 #include "./sidm/sidm_proto.h"

@@ -282,28 +282,19 @@ void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs
         Riemann_vec.L.phi *= All.cf_a3inv;
         Riemann_vec.R.phi *= All.cf_a3inv;
 #endif
-#ifdef NON_IDEAL_EOS
+#ifdef EOS_GENERAL
         Riemann_vec.L.cs *= All.cf_afac3;
         Riemann_vec.R.cs *= All.cf_afac3;
         Riemann_vec.L.u /= All.cf_afac1;
         Riemann_vec.R.u /= All.cf_afac1;
 #endif
     }
-#ifndef NON_IDEAL_EOS
+#ifndef EOS_GENERAL
     /* here we haven't reconstructed the sound speeds and internal energies explicitly, so need to do it from pressure, density */
     Riemann_vec.L.cs = sqrt(GAMMA * Riemann_vec.L.p / Riemann_vec.L.rho);
     Riemann_vec.R.cs = sqrt(GAMMA * Riemann_vec.R.p / Riemann_vec.R.rho);
     Riemann_vec.L.u  = Riemann_vec.L.p / (GAMMA_MINUS1 * Riemann_vec.L.rho);
     Riemann_vec.R.u  = Riemann_vec.R.p / (GAMMA_MINUS1 * Riemann_vec.R.rho);
-#endif
-#ifdef COSMIC_RAYS
-    /*
-        double u_cr;
-        u_cr = (Riemann_vec.L.p / Riemann_vec.L.rho - GAMMA_MINUS1 * Riemann_vec.L.u) / GAMMA_COSMICRAY_MINUS1;
-        if(u_cr > 0) {Riemann_vec.L.u += u_cr;}
-        u_cr = (Riemann_vec.R.p / Riemann_vec.R.rho - GAMMA_MINUS1 * Riemann_vec.R.u) / GAMMA_COSMICRAY_MINUS1;
-        if(u_cr > 0) {Riemann_vec.R.u += u_cr;}
-    */
 #endif
     
 #ifdef MAGNETIC
@@ -325,7 +316,7 @@ void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs
     double v_line_R = Riemann_vec.R.v[0]*n_unit[0] + Riemann_vec.R.v[1]*n_unit[1] + Riemann_vec.R.v[2]*n_unit[2];
     
     HLLC_Riemann_solver(Riemann_vec, Riemann_out, n_unit, v_line_L, v_line_R, cs_L, cs_R, h_L, h_R, press_tot_limiter);
-#ifdef NON_IDEAL_EOS
+#ifdef EOS_GENERAL
     /* check if HLLC failed: if so, compute the Rusanov flux instead */
     if((Riemann_out->P_M<=0)||(isnan(Riemann_out->P_M)))
         Riemann_solver_Rusanov(Riemann_vec, Riemann_out, n_unit, v_line_L, v_line_R, cs_L, cs_R, h_L, h_R);
@@ -446,7 +437,7 @@ void get_wavespeeds_and_pressure_star(struct Input_vec_Riemann Riemann_vec, stru
         double vz_roe = (sqrt_rho_L*Riemann_vec.L.v[2] + sqrt_rho_R*Riemann_vec.R.v[2]) * sqrt_rho_inv;
         /* compute velocity along the line connecting the nodes, and max/min wave speeds */
         double v_line_roe = vx_roe*n_unit[0] + vy_roe*n_unit[1] + vz_roe*n_unit[2];
-#ifndef NON_IDEAL_EOS
+#ifndef EOS_GENERAL
         double h_roe  = (sqrt_rho_L*h_L  + sqrt_rho_R*h_R) * sqrt_rho_inv;
         double cs_roe = sqrt(DMAX(1.e-30, GAMMA_MINUS1*(h_roe - 0.5*(vx_roe*vx_roe+vy_roe*vy_roe+vz_roe*vz_roe))));
 #else

@@ -547,10 +547,6 @@ void init(void)
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         PPPZ[i].AGS_zeta = 0;
 #endif
-#ifdef EOS_DEGENERATE
-        for(j = 0; j < 3; j++)
-            SphP[i].xnucPred[j] = SphP[i].xnuc[j];
-#endif
         
 #ifdef CONDUCTION
         SphP[i].Kappa_Conduction = 0;
@@ -737,30 +733,11 @@ void init(void)
     density();
     for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
     {
-#ifndef EOS_DEGENERATE
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
-#else
-        for(j = 0; j < EOS_NSPECIES; j++)
-        {
-            SphP[i].dxnuc[j] = 0;
-        }
-        SphP[i].InternalEnergy *= All.UnitEnergy_in_cgs;
-        SphP[i].InternalEnergyPred *= All.UnitEnergy_in_cgs;
-        /* call eos with physical units, energy and entropy are always stored in physical units */
-        SphP[i].temp = -1.0;
         
-        struct eos_result res;
-        eos_calc_egiven(SphP[i].Density * All.UnitDensity_in_cgs, SphP[i].xnuc, SphP[i].InternalEnergy, &SphP[i].temp, &res);
-        SphP[i].Pressure = res.p.v / (All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam);
-        // Warning: dp_drho is in physical units ...
-        SphP[i].dp_drho = res.p.drho + res.temp * gsl_pow_2(res.p.dtemp / (SphP[i].Density * All.UnitDensity_in_cgs)) / res.e.dtemp;
-#endif
-        
-#if defined(TURB_DRIVING)
-#ifdef GAMMA_ENFORCE_ADIABAT
+#if defined(TURB_DRIVING) && defined(EOS_ENFORCE_ADIABAT)
         SphP[i].InternalEnergy = All.RefInternalEnergy;
         SphP[i].InternalEnergyPred = All.RefInternalEnergy;
-#endif
 #endif
         // re-match the predicted and initial velocities and B-field values, just to be sure //
         for(j=0;j<3;j++) SphP[i].VelPred[j]=P[i].Vel[j];

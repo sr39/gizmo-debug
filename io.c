@@ -1051,34 +1051,43 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_SECONDORDERMASS:
             break;
-            
-        case IO_EOSTEMP:
-#ifdef EOS_DEGENERATE
+
+        case IO_EOSABAR:
+#ifdef EOS_CARRIES_ABAR
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = SphP[pindex].temp;
+                    *fp++ = SphP[pindex].Abar;
                     n++;
                 }
 #endif
             break;
-            
-        case IO_EOSXNUC:
-#ifdef EOS_DEGENERATE
+
+        case IO_EOSYE:
+#ifdef EOS_CARRIES_YE
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < EOS_NSPECIES; k++)
-                    {
-                        *fp++ = SphP[pindex].xnuc[k];
-                    }
+                    *fp++ = SphP[pindex].Ye;
+                    n++;
+                }
+#endif
+            break;
+
+            
+        case IO_EOSTEMP:
+#ifdef EOS_CARRIES_TEMPERATURE
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = SphP[pindex].Temperature;
                     n++;
                 }
 #endif
             break;
             
         case IO_PRESSURE:
-#if defined(EOS_DEGENERATE)
+#if defined(EOS_GENERAL)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1435,6 +1444,8 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_STREAM_DENSITY:
         case IO_PHASE_SPACE_DETERMINANT:
         case IO_EOSTEMP:
+        case IO_EOSABAR:
+        case IO_EOSYE:
         case IO_PRESSURE:
         case IO_INIT_DENSITY:
         case IO_AGS_SOFT:
@@ -1529,22 +1540,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             else
                 bytes_per_blockelement = 9 * sizeof(MyOutputFloat);
             break;
-            
-        case IO_EOSXNUC:
-#ifdef EOS_DEGENERATE
-            if(mode)
-                bytes_per_blockelement = EOS_NSPECIES * sizeof(MyInputFloat);
-            else
-                bytes_per_blockelement = EOS_NSPECIES * sizeof(MyOutputFloat);
-            break;
-#else
-            if(mode)
-                bytes_per_blockelement = sizeof(MyInputFloat);
-            else
-                bytes_per_blockelement = sizeof(MyOutputFloat);
-            break;
-#endif
-            
             
         case IO_CHEM:
             bytes_per_blockelement = 0;
@@ -1673,6 +1668,8 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_STREAM_DENSITY:
         case IO_PHASE_SPACE_DETERMINANT:
         case IO_EOSTEMP:
+        case IO_EOSABAR:
+        case IO_EOSYE:
         case IO_PRESSURE:
         case IO_INIT_DENSITY:
         case IO_DMHSML:
@@ -1737,16 +1734,6 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_SHEET_ORIENTATION:
             values = 9;
             break;
-            
-            
-        case IO_EOSXNUC:
-#ifndef EOS_DEGENERATE
-            values = 1;
-#else
-            values = EOS_NSPECIES;
-#endif
-            break;
-            
             
         case IO_CHEM:
             values = 0;
@@ -1867,7 +1854,8 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_CONDRATE:
         case IO_DENN:
         case IO_EOSTEMP:
-        case IO_EOSXNUC:
+        case IO_EOSABAR:
+        case IO_EOSYE:
         case IO_PRESSURE:
         case IO_CHEM:
         case IO_VSTURB_DISS:
@@ -2418,13 +2406,30 @@ int blockpresent(enum iofields blocknr)
                 return 0;
             
         case IO_EOSTEMP:
-        case IO_EOSXNUC:
-        case IO_PRESSURE:
-#ifdef EOS_DEGENERATE
+#ifdef EOS_CARRIES_TEMPERATURE
             return 1;
 #else
             return 0;
 #endif
+        case IO_PRESSURE:
+#ifdef EOS_GENERAL
+            return 1;
+#else
+            return 0;
+#endif
+        case IO_EOSABAR:
+#ifdef EOS_CARRIES_ABAR
+            return 1;
+#else
+            return 0;
+#endif
+        case IO_EOSYE:
+#ifdef EOS_CARRIES_YE
+            return 1;
+#else
+            return 0;
+#endif
+
             
         case IO_EDDINGTON_TENSOR:
 #if defined(RADTRANSFER)
@@ -2769,8 +2774,11 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_EOSTEMP:
             strncpy(label, "TEMP", 4);
             break;
-        case IO_EOSXNUC:
-            strncpy(label, "XNUC", 4);
+        case IO_EOSABAR:
+            strncpy(label, "ABAR", 4);
+            break;
+        case IO_EOSYE:
+            strncpy(label, "YE  ", 4);
             break;
         case IO_PRESSURE:
             strncpy(label, "P   ", 4);
@@ -3108,8 +3116,11 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_EOSTEMP:
             strcpy(buf, "Temperature");
             break;
-        case IO_EOSXNUC:
-            strcpy(buf, "Nuclear mass fractions");
+        case IO_EOSABAR:
+            strcpy(buf, "Abar");
+            break;
+        case IO_EOSYE:
+            strcpy(buf, "Ye");
             break;
         case IO_PRESSURE:
             strcpy(buf, "Pressure");

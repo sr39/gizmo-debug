@@ -516,16 +516,10 @@ int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, doubl
                     double wt_ij = -dt * tensor * (dwk_i*local.Mass/local.Density + dwk_j*P[j].Mass/SphP[j].Density) / r;
                     for(k=0;k<N_RT_FREQ_BINS;k++)
                     {
-			double kappa_ij = 0.5*(local.Kappa[k] + SphP[j].Kappa_RT[k]);
+                        double kappa_ij = 0.5*(local.Kappa[k] + SphP[j].Kappa_RT[k]);
                         double fac = wt_ij * kappa_ij;
                         out.matrixmult_out[k] -= fac * matrixmult_in[k][j];
                         out.matrixmult_sum[k] += fac;
-                        /*
-                         double dwk_ij = 0.5 * (dwk_i + dwk_j) / r;
-                         double kappa_lambda_ij = 0.25 * (1./local.Kappa + 1./Kappa[j]) * (local.Lambda + Lambda[j]);
-                         double mass_ij_rho_ij = (local.Mass + P[j].Mass) / (local.Density + SphP[j].Density);
-                         double fac = prefac * kappa_lambda_ij * mass_ij_rho_ij * dwk_ij * tensor;
-                         */
                     }
                 }
             } // for(n = 0; n < numngb; n++)
