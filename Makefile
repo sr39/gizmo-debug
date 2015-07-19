@@ -140,8 +140,8 @@ endif
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Stampede")
 CC       =  mpicc
-CXX      =  mpiCC
-FC       =  $(CC)
+CXX      =  mpic++
+FC       =  mpif90 -nofor_main
 OPTIMIZE = -O3 -xhost -ipo -funroll-loops -no-prec-div -fp-model fast=2  # speed
 OPTIMIZE += -g -Wall # compiler warnings
 #OPTIMIZE += -parallel -openmp  # openmp (comment out this line if OPENMP not used)
