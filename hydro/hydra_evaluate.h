@@ -37,6 +37,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
     double Fluxes_E_gamma[N_RT_FREQ_BINS];
+    double tau_c_i[N_RT_FREQ_BINS];
+    double Particle_Size_i = pow(local.Mass/local.Density,1./NUMDIMS) * All.cf_atime; // in physical, used below in some routines //
+    for(k=0;k<N_RT_FREQ_BINS;k++) {tau_c_i[k] = Particle_Size_i * local.Kappa_RT[k]*local.Density*All.cf_a3inv;}
 #endif
     
     if(mode == 0)

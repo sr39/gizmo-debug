@@ -487,7 +487,7 @@ integertime get_timestep(int p,		/*!< particle index */
                     double gradETmag=0; for(k=0;k<3;k++) {gradETmag+=SphP[p].Gradients.E_gamma_ET[kf][k]*SphP[p].Gradients.E_gamma_ET[kf][k];}
                     double L_ETgrad_inv = sqrt(gradETmag) / (1.e-37 + SphP[p].E_gamma[kf] * SphP[p].Density/P[p].Mass);
                     double L_RT_diffusion = DMAX(L_particle , 1./(L_ETgrad_inv + 1./L_particle)) * All.cf_atime;
-                    double dt_rt_diffusion = 0.5 * L_RT_diffusion*L_RT_diffusion / (1.0e-33 + SphP[p].Kappa_RT[kf]);
+                    double dt_rt_diffusion = 0.5 * L_RT_diffusion*L_RT_diffusion / (1.0e-33 + rt_diffusion_coefficient(p,kf));
                     if(dt_rt_diffusion < dt) dt = dt_rt_diffusion;
                 }
 				dt_courant = All.CourantFac * (L_particle*All.cf_atime) / (RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s)); /* courant-type criterion, using the reduced speed of light */

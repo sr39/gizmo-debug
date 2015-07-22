@@ -235,6 +235,7 @@ struct hydrodata_in
 #ifdef RT_DIFFUSION_EXPLICIT
     MyDouble E_gamma[N_RT_FREQ_BINS];
     MyDouble Kappa_RT[N_RT_FREQ_BINS];
+    MyDouble DiffusionCoeff[N_RT_FREQ_BINS];
 #endif
     
 #ifdef TURB_DIFFUSION
@@ -401,6 +402,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     {
         in->E_gamma[k] = SphP[i].E_gamma[k];
         in->Kappa_RT[k] = SphP[i].Kappa_RT[k];
+        in->DiffusionCoeff[k] = rt_diffusion_coefficient(i,k);
     }
 #endif
 
@@ -662,7 +664,7 @@ void hydro_final_operations_and_cleanup(void)
             // a = kappa*F/c = Gradients.E_gamma_ET[gradient of photon energy density] / rho[gas_density] //
             for(k=0;k<3;k++)
                 for(k2=0;k2<N_RT_FREQ_BINS;k2++)
-                    radacc[k] += RT_SPEEDOFLIGHT_REDUCTION * SphP[i].Gradients.E_gamma_ET[k2][k] / SphP[i].Density;
+                    radacc[k] += -SphP[i].Lambda_FluxLim[k2] * RT_SPEEDOFLIGHT_REDUCTION * SphP[i].Gradients.E_gamma_ET[k2][k] / SphP[i].Density;
             for(k=0;k<3;k++)
             {
 #ifdef RT_RAD_PRESSURE_OUTPUT

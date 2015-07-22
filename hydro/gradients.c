@@ -1241,7 +1241,7 @@ void hydro_gradient_calc(void)
                         R = DMAX(R,R_ET); // R_ET may always be less than R, though
                         R /= (1.e-37 + All.cf_atime * SphP[i].Kappa_RT[k_freq] * (SphP[i].Density*All.cf_a3inv)); /* dimensionless (all in physical) */
                         /* now we can apply the actual slope-limiter function desired */
-                        R_ET = 3.*R; 
+                        R_ET = 1.*R;
                         lambda = 3. * (2. + R_ET) / (6. + 3.*R_ET + R_ET*R_ET);
                         if(lambda < 1e-30) lambda = 1.e-30;
 #ifdef RT_OTVET
@@ -1268,9 +1268,6 @@ void hydro_gradient_calc(void)
                     }
 #endif
                     SphP[i].Lambda_FluxLim[k_freq] = lambda;
-                    /* now we use Kappa_RT to store the diffusion coefficient for the radiation transfer equations */
-                    double c_light = (C / All.UnitVelocity_in_cm_per_s) * RT_SPEEDOFLIGHT_REDUCTION;
-                    SphP[i].Kappa_RT[k_freq] = SphP[i].Lambda_FluxLim[k_freq] * c_light / (1.e-37 + SphP[i].Kappa_RT[k_freq] * SphP[i].Density*All.cf_a3inv);
                 }
             }
 #endif

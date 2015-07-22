@@ -2100,7 +2100,7 @@ extern struct sph_particle_data
     MyFloat ET[6];                      /*!< eddington tensor - symmetric -> only 6 elements needed: this is dimensionless by our definition */
     MyFloat Je[N_RT_FREQ_BINS];         /*!< emissivity (includes sources like stars, as well as gas): units=E_gamma/time  */
     MyFloat E_gamma[N_RT_FREQ_BINS];    /*!< photon energy (integral of dE_gamma/dvol*dVol) associated with particle [for simple frequency bins, equivalent to photon number] */
-    MyFloat Kappa_RT[N_RT_FREQ_BINS];   /*!< photon diffusion coefficient = fluxlimiter * c_light / (kappa_opacity * density) [physical units]  */
+    MyFloat Kappa_RT[N_RT_FREQ_BINS];   /*!< opacity [physical units ~ length^2 / mass]  */
     MyFloat Lambda_FluxLim[N_RT_FREQ_BINS]; /*!< dimensionless flux-limiter (0<lambda<1) */
 #ifdef RT_EVOLVE_NGAMMA
     MyFloat Dt_E_gamma[N_RT_FREQ_BINS]; /*!< time derivative of photon number in particle (used only with explicit solvers) */
