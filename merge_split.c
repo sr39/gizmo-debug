@@ -550,13 +550,22 @@ void merge_particles_ij(MyIDType i, MyIDType j)
     
     // below, we need to take care of additional physics //
 #if defined(RADTRANSFER)
-    for(k=0;k<6;k++) SphP[j].ET[k] = wt_j*SphP[j].ET[k] + wt_i*SphP[i].ET[k];
     for(k=0;k<N_RT_FREQ_BINS;k++)
     {
+        int k_dir;
+        for(k_dir=0;k_dir<6;k_dir++) SphP[j].ET[k][k_dir] = wt_j*SphP[j].ET[k][k_dir] + wt_i*SphP[i].ET[k][k_dir];
         SphP[j].E_gamma[k] = SphP[j].E_gamma[k] + SphP[i].E_gamma[k]; /* this is a photon number, so its conserved (we simply add) */
 #if defined(RT_EVOLVE_NGAMMA)
         SphP[j].E_gamma_Pred[k] = SphP[j].E_gamma_Pred[k] + SphP[i].E_gamma_Pred[k];
         SphP[j].Dt_E_gamma[k] = SphP[j].Dt_E_gamma[k] + SphP[i].Dt_E_gamma[k];
+#endif
+#if defined(RT_EVOLVE_FLUX)
+        for(k_dir=0;k_dir<3;k_dir++)
+        {
+            SphP[j].Flux[k][k_dir] = SphP[j].Flux[k][k_dir] + SphP[i].Flux[k][k_dir];
+            SphP[j].Flux_Pred[k][k_dir] = SphP[j].Flux_Pred[k][k_dir] + SphP[i].Flux_Pred[k][k_dir];
+            SphP[j].Dt_Flux[k][k_dir] = SphP[j].Dt_Flux[k][k_dir] + SphP[i].Dt_Flux[k][k_dir];
+        }
 #endif
     }
 #endif

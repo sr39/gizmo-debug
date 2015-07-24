@@ -419,6 +419,7 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #--------------------- methods for calculating photon propagation (one of these MUST be on for RT)
 #RT_FIRE                                # RT solved using the FIRE (local extinction with the Sobolev approximation at source and absorption points)
 #RT_OTVET                               # RT solved using the OTVET approximation (optically thin Eddington tensor, but interpolated to thick when appropriate)
+#RT_M1                                  # RT solved using the M1 approximation (solve fluxes and tensors with M1 closure; gives better shadowing; currently only compatible with explicit diffusion solver)
 #RT_FLUXLIMITEDDIFFUSION                # RT solved using the flux-limited diffusion approximation (constant, always-isotropic Eddington tensor)
 #--------------------- solvers (numerical) --------------------------------------------------------
 #RT_DIFFUSION_EXPLICIT                  # solve the diffusion part of the RT equations (if needed) explicitly (accurate but needs -small- timesteps); otherwise implicit with Conjugate Gradient iteration (Petkova & Springel)

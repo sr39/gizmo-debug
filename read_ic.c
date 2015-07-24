@@ -360,7 +360,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             break;
             
         case IO_NE:		/* electron abundance */
-#if defined(COOLING) || defined(RADTRANSFER)
+#if defined(COOLING) || defined(RT_CHEM_PHOTOION)
             for(n = 0; n < pc; n++)
                 SphP[offset + n].Ne = *fp++;
 #endif

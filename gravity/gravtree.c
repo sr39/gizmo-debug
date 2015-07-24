@@ -585,7 +585,7 @@ void gravity_tree(void)
                     if(Ewald_iter==0) /* don't allow for an infinite hierarchy of these moments, or you will get nonsense */
                     {
 #ifdef RT_OTVET
-                        if(P[place].Type==0) for(k=0;k<6;k++) SphP[place].ET[k] += GravDataOut[j].ET[k];
+                        if(P[place].Type==0) {int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) for(k=0;k<6;k++) SphP[place].ET[k_freq][k] += GravDataOut[j].ET[k_freq][k];}
 #endif
 #ifdef GALSF_FB_LOCAL_UV_HEATING
                         if(P[place].Type==0) SphP[place].RadFluxUV += GravDataOut[j].RadFluxUV;
@@ -809,18 +809,22 @@ void gravity_tree(void)
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
         if(P[i].Type == 0)
         {
-            double trace = SphP[i].ET[0] + SphP[i].ET[1] + SphP[i].ET[2];
+            int k_freq;
+            for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
+            {
+                double trace = SphP[i].ET[k_freq][0] + SphP[i].ET[k_freq][1] + SphP[i].ET[k_freq][2];
 #ifdef RT_FLUXLIMITEDDIFFUSION
-            trace = 0; /* force the code to always use the isotropic Eddington tensor */
+                trace = 0; /* force the code to always use the isotropic Eddington tensor */
 #endif
-            if(!isnan(trace) && (trace > 0))
-            {
-                for(k = 0; k < 6; k++) SphP[i].ET[k] /= trace;
-            }
-            else
-            {
-                for(k = 0; k < 6; k++) {SphP[i].ET[k] = 0.0;}
-                SphP[i].ET[0] = SphP[i].ET[1] = SphP[i].ET[2] = 1./3.;
+                if(!isnan(trace) && (trace > 0))
+                {
+                    for(k = 0; k < 6; k++) SphP[i].ET[k_freq][k] /= trace;
+                }
+                else
+                {
+                    for(k = 0; k < 6; k++) {SphP[i].ET[k_freq][k] = 0.0;}
+                    SphP[i].ET[k_freq][0] = SphP[i].ET[k_freq][1] = SphP[i].ET[k_freq][2] = 1./3.;
+                }
             }
         }
 #endif

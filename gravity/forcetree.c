@@ -1492,7 +1492,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double dx_stellarlum=0, dy_stellarlum=0, dz_stellarlum=0, sigma_eff=0;
     int valid_gas_particle_for_rt = 0;
 #ifdef RT_OTVET
-    double RT_ET[6]={0};
+    double RT_ET[N_RT_FREQ_BINS][6]={0};
 #endif
 #endif
     
@@ -2362,14 +2362,18 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if(r>0)
                 {
                     double fac_sum=0;
-                    int kf_rt; for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++) {fac_sum += mass_stellarlum[kf_rt];}
-                    fac_sum *= fac / (1.e-37 + r); // units are not important, since ET will be dimensionless, but final ET should scale as ~luminosity/r^2
-                    RT_ET[0] += dx_stellarlum * dx_stellarlum * fac_sum;
-                    RT_ET[1] += dy_stellarlum * dy_stellarlum * fac_sum;
-                    RT_ET[2] += dz_stellarlum * dz_stellarlum * fac_sum;
-                    RT_ET[3] += dx_stellarlum * dy_stellarlum * fac_sum;
-                    RT_ET[4] += dy_stellarlum * dz_stellarlum * fac_sum;
-                    RT_ET[5] += dz_stellarlum * dx_stellarlum * fac_sum;
+                    int kf_rt;
+                    for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++)
+                    {
+                        fac_sum = mass_stellarlum[kf_rt];
+                        fac_sum *= fac / (1.e-37 + r); // units are not important, since ET will be dimensionless, but final ET should scale as ~luminosity/r^2
+                        RT_ET[kf_rt][0] += dx_stellarlum * dx_stellarlum * fac_sum;
+                        RT_ET[kf_rt][1] += dy_stellarlum * dy_stellarlum * fac_sum;
+                        RT_ET[kf_rt][2] += dz_stellarlum * dz_stellarlum * fac_sum;
+                        RT_ET[kf_rt][3] += dx_stellarlum * dy_stellarlum * fac_sum;
+                        RT_ET[kf_rt][4] += dy_stellarlum * dz_stellarlum * fac_sum;
+                        RT_ET[kf_rt][5] += dz_stellarlum * dx_stellarlum * fac_sum;
+                    }
                 }
 
 #endif
@@ -2466,7 +2470,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         P[target].GravAccel[1] = acc_y;
         P[target].GravAccel[2] = acc_z;
 #ifdef RT_OTVET
-        if(valid_gas_particle_for_rt) {int k_et; for(k_et=0;k_et<6;k_et++) {SphP[target].ET[k_et] = RT_ET[k_et];}} else {if(P[target].Type==0) {int k_et; for(k_et=0;k_et<6;k_et++) {SphP[target].ET[k_et]=0;}}}
+        if(valid_gas_particle_for_rt) {int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {SphP[target].ET[k][k_et] = RT_ET[k][k_et];}} else {if(P[target].Type==0) {int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {SphP[target].ET[k][k_et]=0;}}}
 #endif
 #ifdef GALSF_FB_LOCAL_UV_HEATING
         if(valid_gas_particle_for_rt) SphP[target].RadFluxUV = incident_flux_uv;
@@ -2492,7 +2496,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         GravDataResult[target].Acc[1] = acc_y;
         GravDataResult[target].Acc[2] = acc_z;
 #ifdef RT_OTVET
-        int k_et; for(k_et=0;k_et<6;k_et++) {GravDataResult[target].ET[k_et] = RT_ET[k_et];}
+        int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {GravDataResult[target].ET[k][k_et] = RT_ET[k][k_et];}
 #endif
 #ifdef GALSF_FB_LOCAL_UV_HEATING
         GravDataResult[target].RadFluxUV = incident_flux_uv;

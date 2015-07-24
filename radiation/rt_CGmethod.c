@@ -52,7 +52,7 @@ static struct rt_cg_data_in
     MyFloat Mass;
     MyFloat Density;
     MyFloat Hsml;
-    MyFloat ET[6];
+    MyFloat ET[N_RT_FREQ_BINS][6];
     MyDouble DiffusionCoeff[N_RT_FREQ_BINS];
     //MyDouble Lambda[N_RT_FREQ_BINS];
 }
@@ -81,7 +81,7 @@ void particle2in_rt_cg(struct rt_cg_data_in *in, MyIDType i)
 {
     int k;
     for(k=0; k<3; k++) {in->Pos[k] = P[i].Pos[k];}
-    for(k=0; k<6; k++) {in->ET[k] = SphP[i].ET[k];}
+    int kET; for(k=0;k<N_RT_FREQ_BINS;k++) for(kET=0; kET<6; kET++) {in->ET[k][kET] = SphP[i].ET[k][kET];}
     in->Hsml = PPP[i].Hsml;
     in->Mass = P[i].Mass;
     in->Density = SphP[i].Density;
@@ -189,7 +189,7 @@ void rt_diffusion_cg_solve(void)
             /* broadcast and decide if we need to keep iterating */
             MPI_Allreduce(&maxrel, &glob_maxrel, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
             if(ThisTask == 0) {printf("CG iteration: iter=%3d  |res|/|x|=%12.6g  maxrel=%12.6g  |x|=%12.6g |res|=%12.6g\n", iter, res / sum, glob_maxrel, sum, res); fflush(stdout);}
-            if(iter >= 2 && (res <= ACCURACY * sum || iter >= MAX_ITER)) {done_key[k]=1; ndone++;}
+            if(iter >= 1 && (res <= ACCURACY * sum || iter >= MAX_ITER)) {done_key[k]=1; ndone++;}
         }
         iter++;
         if(iter > MAX_ITER) {terminate("failed to converge in CG iteration \n");}
@@ -460,11 +460,15 @@ int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, doubl
     //double prefac = -2.0 * dt * (C/All.UnitVelocity_in_cm_per_s) * RT_SPEEDOFLIGHT_REDUCTION; // old version
 #ifdef RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR
     /*modify Eddington tensor */
-    double ET[6]; for(k = 0; k < 6; k++) {ET[k] = local.ET[k];}
-    local.ET[0] = 2.*ET[0] - 0.5*ET[1] - 0.5*ET[2];
-    local.ET[1] = 2.*ET[1] - 0.5*ET[2] - 0.5*ET[0];
-    local.ET[2] = 2.*ET[2] - 0.5*ET[0] - 0.5*ET[1];
-    for(k=3;k<6;k++) {local.ET[k] = 2.5*ET[k];}
+    for(j=0;j<N_RT_FREQ_BINS;j++)
+    {
+        double ET[6];
+        int kET; for(kET = 0; k < 6; k++) {ET[k] = local.ET[j][k];}
+        local.ET[j][0] = 2.*ET[0] - 0.5*ET[1] - 0.5*ET[2];
+        local.ET[j][1] = 2.*ET[1] - 0.5*ET[2] - 0.5*ET[0];
+        local.ET[j][2] = 2.*ET[2] - 0.5*ET[0] - 0.5*ET[1];
+        for(k=3;k<6;k++) {local.ET[j][k] = 2.5*ET[k];}
+    }
 #endif
     
     /* Now start the actual operations for this particle */
@@ -498,26 +502,29 @@ int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, doubl
                     double hinv_j,hinv3_j,hinv4_j; kernel_hinv(PPP[j].Hsml, &hinv_j, &hinv3_j, &hinv4_j);
                     kernel_main(r*hinv_j, hinv3_j, hinv4_j, &wk, &dwk_j, 1);
                 }
-                double ET_ij[6];
-#ifdef RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR
-                double ET_j[6];
-                ET_j[0] = 2.*SphP[j].ET[0] - 0.5*SphP[j].ET[1] - 0.5*SphP[j].ET[2];
-                ET_j[1] = 2.*SphP[j].ET[1] - 0.5*SphP[j].ET[2] - 0.5*SphP[j].ET[0];
-                ET_j[2] = 2.*SphP[j].ET[2] - 0.5*SphP[j].ET[0] - 0.5*SphP[j].ET[1];
-                for(k=3;k<6;k++) {ET_j[k] = 2.5*SphP[j].ET[k];}
-                for(k=0;k<6;k++) {ET_ij[k] = 0.5 * (local.ET[k] + ET_j[k]);}
-#else
-                for(k=0;k<6;k++) {ET_ij[k] = 0.5 * (local.ET[k] + SphP[j].ET[k]);}
-#endif
-                double tensor = (ET_ij[0]*dp[0]*dp[0] + ET_ij[1]*dp[1]*dp[1] + ET_ij[2]*dp[2]*dp[2]
-                                 + 2.*ET_ij[3]*dp[0]*dp[1] + 2.*ET_ij[4]*dp[1]*dp[2] + 2.*ET_ij[5]*dp[2]*dp[0]) / r2;
-                if(tensor > 0)
+                
+                double tensor_norm = -dt * (dwk_i*local.Mass/local.Density + dwk_j*P[j].Mass/SphP[j].Density) / r;
+                if(tensor_norm > 0)
                 {
-                    double wt_ij = -dt * tensor * (dwk_i*local.Mass/local.Density + dwk_j*P[j].Mass/SphP[j].Density) / r;
                     for(k=0;k<N_RT_FREQ_BINS;k++)
                     {
+                
+                        double ET_ij[6];
+#ifdef RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR
+                        double ET_j[6];
+                        ET_j[0] = 2.*SphP[j].ET[k][0] - 0.5*SphP[j].ET[k][1] - 0.5*SphP[j].ET[k][2];
+                        ET_j[1] = 2.*SphP[j].ET[k][1] - 0.5*SphP[j].ET[k][2] - 0.5*SphP[j].ET[k][0];
+                        ET_j[2] = 2.*SphP[j].ET[k][2] - 0.5*SphP[j].ET[k][0] - 0.5*SphP[j].ET[k][1];
+                        int kET;
+                        for(kET=3;kET<6;kET++) {ET_j[kET] = 2.5*SphP[j].ET[k][kET];}
+                        for(kET=0;kET<6;kET++) {ET_ij[kET] = 0.5 * (local.ET[k][kET] + ET_j[kET]);}
+#else
+                        int kET; for(kET=0;kET<6;kET++) {ET_ij[kET] = 0.5 * (local.ET[k][kET] + SphP[j].ET[k][kET]);}
+#endif
+                        double tensor = (ET_ij[0]*dp[0]*dp[0] + ET_ij[1]*dp[1]*dp[1] + ET_ij[2]*dp[2]*dp[2]
+                                         + 2.*ET_ij[3]*dp[0]*dp[1] + 2.*ET_ij[4]*dp[1]*dp[2] + 2.*ET_ij[5]*dp[2]*dp[0]) / r2;
                         double kappa_ij = 0.5*(local.DiffusionCoeff[k] + rt_diffusion_coefficient(j,k));
-                        double fac = wt_ij * kappa_ij;
+                        double fac = tensor_norm * tensor * kappa_ij;
                         out.matrixmult_out[k] -= fac * matrixmult_in[k][j];
                         out.matrixmult_sum[k] += fac;
                     }

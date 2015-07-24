@@ -296,19 +296,8 @@ void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double
     double etmp = SphP[i].CosmicRayEnergyPred + SphP[i].DtCosmicRayEnergy * dt_entr;
     if(etmp<0.5*SphP[i].CosmicRayEnergyPred) {SphP[i].CosmicRayEnergyPred *= 0.5;} else {SphP[i].CosmicRayEnergyPred=etmp;}
 #endif
-#if defined(RT_EVOLVE_NGAMMA)
-    int kf;
-    for(kf=0;kf<N_RT_FREQ_BINS;kf++)
-    {
-	double e0 = SphP[i].E_gamma_Pred[kf];
-	double dd0 = SphP[i].Je[kf];
-	double a0 = -rt_absorption_rate(i,kf);
-	if(e0>0) {a0 += SphP[i].Dt_E_gamma[kf]/e0;} else {dd0+=SphP[i].Dt_E_gamma[kf];}
-	if(dd0*dt_entr != 0 && dd0*dt_entr < -0.5*e0) {dd0=-0.5*e0/dt_entr;}
-	double ef; if(a0>=0) {ef = e0 + (dd0+a0*e0)*dt_entr;} else {ef = (e0 + dd0/a0)*exp(a0*dt_entr) - dd0/a0;}
-	if(ef < 0.5*e0) {ef=0.5*e0;}
-	SphP[i].E_gamma_Pred[kf] = ef;
-    }
+#ifdef RADTRANSFER
+    rt_update_driftkick(i,dt_entr,1);
 #endif
 }
 

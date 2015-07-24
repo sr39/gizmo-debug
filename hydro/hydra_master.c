@@ -218,7 +218,7 @@ struct hydrodata_in
 #ifdef DOGRAD_SOUNDSPEED
         MyDouble SoundSpeed[3];
 #endif
-#ifdef RT_DIFFUSION_EXPLICIT
+#if defined(RT_DIFFUSION_EXPLICIT) && defined(RT_EVOLVE_EDDINGTON_TENSOR)
         MyDouble E_gamma_ET[N_RT_FREQ_BINS][3];
 #endif
     } Gradients;
@@ -236,6 +236,10 @@ struct hydrodata_in
     MyDouble E_gamma[N_RT_FREQ_BINS];
     MyDouble Kappa_RT[N_RT_FREQ_BINS];
     MyDouble DiffusionCoeff[N_RT_FREQ_BINS];
+#ifdef RT_EVOLVE_FLUX
+    MyDouble ET[N_RT_FREQ_BINS][6];
+    MyDouble Flux[N_RT_FREQ_BINS][3];
+#endif
 #endif
     
 #ifdef TURB_DIFFUSION
@@ -299,6 +303,9 @@ struct hydrodata_out
     
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
     MyFloat Dt_E_gamma[N_RT_FREQ_BINS];
+#endif
+#if defined(RT_EVOLVE_FLUX)
+    MyFloat Dt_Flux[N_RT_FREQ_BINS][3];
 #endif
     
 #if defined(MAGNETIC)
@@ -392,7 +399,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
 #ifdef DOGRAD_SOUNDSPEED
         in->Gradients.SoundSpeed[k] = SphP[i].Gradients.SoundSpeed[k];
 #endif
-#ifdef RT_DIFFUSION_EXPLICIT
+#if defined(RT_DIFFUSION_EXPLICIT) && defined(RT_EVOLVE_EDDINGTON_TENSOR)
         for(j=0;j<N_RT_FREQ_BINS;j++) {in->Gradients.E_gamma_ET[j][k] = SphP[i].Gradients.E_gamma_ET[j][k];}
 #endif
     }
@@ -400,9 +407,14 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
 #ifdef RT_DIFFUSION_EXPLICIT
     for(k=0;k<N_RT_FREQ_BINS;k++)
     {
-        in->E_gamma[k] = SphP[i].E_gamma[k];
+        in->E_gamma[k] = SphP[i].E_gamma_Pred[k];
         in->Kappa_RT[k] = SphP[i].Kappa_RT[k];
         in->DiffusionCoeff[k] = rt_diffusion_coefficient(i,k);
+#ifdef RT_EVOLVE_FLUX
+        int k_dir;
+        for(k_dir=0;k_dir<6;k_dir++) in->ET[k][k_dir] = SphP[i].ET[k][k_dir];
+        for(k_dir=0;k_dir<3;k_dir++) in->Flux[k][k_dir] = SphP[i].Flux_Pred[k][k_dir];
+#endif
     }
 #endif
 
@@ -479,6 +491,10 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
     for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_E_gamma[k] += out->Dt_E_gamma[k];}
 #endif
+#if defined(RT_EVOLVE_FLUX)
+    for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Flux[k][k_dir] += out->Dt_Flux[k][k_dir];}}
+#endif
+
     
 #if defined(MAGNETIC)
     /* can't just do DtB += out-> DtB, because for SPH methods, the induction equation is solved in the density loop; need to simply add it here */
@@ -664,7 +680,14 @@ void hydro_final_operations_and_cleanup(void)
             // a = kappa*F/c = Gradients.E_gamma_ET[gradient of photon energy density] / rho[gas_density] //
             for(k=0;k<3;k++)
                 for(k2=0;k2<N_RT_FREQ_BINS;k2++)
+                {
+#ifdef RT_EVOLVE_FLUX
+                    radacc[k] += SphP[i].Kappa_RT[k2] * SphP[i].Flux_Pred[k2][k] / (C / All.UnitVelocity_in_cm_per_s); // no speed of light reduction multiplier here //
+#endif
+#ifdef RT_EVOLVE_EDDINGTON_TENSOR
                     radacc[k] += -SphP[i].Lambda_FluxLim[k2] * RT_SPEEDOFLIGHT_REDUCTION * SphP[i].Gradients.E_gamma_ET[k2][k] / SphP[i].Density;
+#endif
+                }
             for(k=0;k<3;k++)
             {
 #ifdef RT_RAD_PRESSURE_OUTPUT
@@ -797,6 +820,9 @@ void hydro_force(void)
 #endif
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
             for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_E_gamma[k] = 0;}
+#endif
+#if defined(RT_EVOLVE_FLUX)
+            for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Flux[k][k_dir] = 0;}}
 #endif
             
 #ifdef MAGNETIC

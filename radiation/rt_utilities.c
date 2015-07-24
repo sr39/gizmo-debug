@@ -141,12 +141,95 @@ double rt_absorption_rate(MyIDType i, int k_freq)
     return RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s) * rt_kappa(i, k_freq) * SphP[i].Density*All.cf_a3inv;
 }
 
+#endif // #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
+
+
+
+
+#ifdef RADTRANSFER
+
 /* returns the photon diffusion coefficient = fluxlimiter * c_light / (kappa_opacity * density)  [physical units] */
 double rt_diffusion_coefficient(MyIDType i, int k_freq)
 {
     double c_light = (C / All.UnitVelocity_in_cm_per_s) * RT_SPEEDOFLIGHT_REDUCTION;
     return SphP[i].Lambda_FluxLim[k_freq] * c_light / (1.e-37 + SphP[i].Kappa_RT[k_freq] * SphP[i].Density*All.cf_a3inv);
 }
+
+
+
+
+/* calculate the eddington tensor according to the M1 formalism (for use with that solver, obviously) */
+void rt_eddington_update_calculation(MyIDType j)
+{
+#ifdef RT_M1
+    int k_freq, k;
+    double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
+    double n_flux_j[3]={0}, fmag_j, V_j_inv = SphP[j].Density / P[j].Mass;
+    for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
+    {
+        fmag_j=0; for(k=0;k<3;k++) {fmag_j += SphP[j].Flux_Pred[k_freq][k] * V_j_inv;}
+        if(fmag_j<=0) {fmag_j=0;} else {fmag_j=sqrt(fmag_j); for(k=0;k<3;k++) {n_flux_j[k] = SphP[j].Flux_Pred[k_freq][k] * V_j_inv / fmag_j;}}
+        double f_chifac = DMAX(0, DMIN(1, fmag_j / (c_light * SphP[j].E_gamma_Pred[k_freq] * V_j_inv)));
+        double chi_j = (3.+4.*f_chifac*f_chifac) / (5. + 2.*sqrt(4. - 3.*f_chifac*f_chifac));
+        double chifac_iso_j = 0.5 * (1.-chi_j);
+        double chifac_n_j = 0.5 * (3.*chi_j-1.);
+        for(k=0;k<6;k++)
+        {
+            if(k<3)
+            {
+                SphP[j].ET[k_freq][k] = chifac_iso_j + chifac_n_j * n_flux_j[k]*n_flux_j[k];
+            } else {
+                if(k==3) {SphP[j].ET[k_freq][k] = chifac_n_j * n_flux_j[0]*n_flux_j[1];} // recall, for ET: 0=xx,1=yy,2=zz,3=xy,4=yz,5=xz
+                if(k==4) {SphP[j].ET[k_freq][k] = chifac_n_j * n_flux_j[1]*n_flux_j[2];}
+                if(k==5) {SphP[j].ET[k_freq][k] = chifac_n_j * n_flux_j[0]*n_flux_j[2];}
+            }
+        }
+    }
+#endif
+}
+
+
+/* 
+  routine which does the drift/kick operations on radiation quantities. separated here because we use a non-trivial
+    update to deal with potentially stiff absorption terms (could be done more rigorously with something fully implicit in this 
+    step, in fact). 
+    mode = 0 == kick operation (update the conserved quantities)
+    mode = 1 == predict/drift operation (update the predicted quantities)
+ */
+void rt_update_driftkick(MyIDType i, double dt_entr, int mode)
+{
+#if defined(RT_EVOLVE_NGAMMA)
+    int kf;
+    for(kf=0;kf<N_RT_FREQ_BINS;kf++)
+    {
+        double e0;
+        if(mode==0) {e0 = SphP[i].E_gamma[kf];} else {e0 = SphP[i].E_gamma_Pred[kf];}
+        double dd0 = SphP[i].Je[kf];
+        double a0 = -rt_absorption_rate(i,kf);
+        double abs_0;
+        abs_0 = a0;
+        if(e0>0) {a0 += SphP[i].Dt_E_gamma[kf]/e0;} else {dd0+=SphP[i].Dt_E_gamma[kf];}
+        if(dd0*dt_entr != 0 && dd0*dt_entr < -0.5*e0) {dd0=-0.5*e0/dt_entr;}
+        double ef; if(a0>=0) {ef = e0 + (dd0+a0*e0)*dt_entr;} else {ef = (e0 + dd0/a0)*exp(a0*dt_entr) - dd0/a0;}
+        if(ef < 0.5*e0) {ef=0.5*e0;}
+        if(mode==0) {SphP[i].E_gamma[kf] = ef;} else {SphP[i].E_gamma_Pred[kf] = ef;}
+#if defined(RT_EVOLVE_FLUX)
+        int k_dir;
+        for(k_dir=0;k_dir<3;k_dir++)
+        {
+            double f0;
+            dd0 = SphP[i].Dt_Flux[kf][k_dir];
+            if(mode==0) {f0 = SphP[i].Flux[kf][k_dir];} else {f0 = SphP[i].Flux_Pred[kf][k_dir];}
+            if(abs_0 >= 0) {f0+=(dd0+abs_0*f0)*dt_entr;} else {f0=(f0+dd0/abs_0)*exp(abs_0*dt_entr) - dd0/abs_0;}
+            if(mode==0) {SphP[i].Flux[kf][k_dir] = f0;} else {SphP[i].Flux_Pred[kf][k_dir] = f0;}
+        }
+#endif
+    }
+    if(mode > 0) rt_eddington_update_calculation(i); /* update the eddington tensor (if we calculate it) as well */
+#endif
+}
+
+
 
 #endif
 
@@ -230,19 +313,31 @@ void rt_set_simple_inits(void)
     {
         if(P[i].Type == 0)
         {
-            int k; 
-	    SphP[i].ET[0]=SphP[i].ET[1]=SphP[i].ET[2]=1./3.; SphP[i].ET[3]=SphP[i].ET[4]=SphP[i].ET[5]=0;
-            for(k = 0; k < N_RT_FREQ_BINS; k++) 
-	    {
-		SphP[i].E_gamma[k] = tiny;
-		SphP[i].Je[k] = 0;
-		SphP[i].Kappa_RT[k] = tiny;
-		SphP[i].Lambda_FluxLim[k] = 1;
+            int k;
+            for(k = 0; k < N_RT_FREQ_BINS; k++)
+            {
+                SphP[i].E_gamma[k] = tiny;
+                SphP[i].ET[k][0]=SphP[i].ET[k][1]=SphP[i].ET[k][2]=1./3.; SphP[i].ET[k][3]=SphP[i].ET[k][4]=SphP[i].ET[k][5]=0;
+                SphP[i].Je[k] = 0;
+                SphP[i].Kappa_RT[k] = tiny;
+                SphP[i].Lambda_FluxLim[k] = 1;
 #ifdef RT_EVOLVE_NGAMMA
-		SphP[i].E_gamma_Pred[k] = SphP[i].E_gamma[k];
-		SphP[i].Dt_E_gamma[k] = 0;
+                SphP[i].E_gamma_Pred[k] = SphP[i].E_gamma[k];
+                SphP[i].Dt_E_gamma[k] = 0;
 #endif
-	    }
+#if defined(RT_EVOLVE_FLUX)
+                for(k=0;k<N_RT_FREQ_BINS;k++)
+                {
+                    int k_dir;
+                    for(k_dir=0;k_dir<3;k_dir++)
+                    {
+                        SphP[i].Flux[k][k_dir] = 0;
+                        SphP[i].Flux_Pred[k][k_dir] = SphP[i].Flux[k][k_dir];
+                        SphP[i].Dt_Flux[k][k_dir] = 0;
+                    }
+                }
+#endif
+            }
 #ifdef RT_RAD_PRESSURE_OUTPUT
             for(k=0;k<3;k++) {SphP[i].RadAccel[k]=0;}
 #endif

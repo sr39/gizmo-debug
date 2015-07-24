@@ -40,6 +40,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double tau_c_i[N_RT_FREQ_BINS];
     double Particle_Size_i = pow(local.Mass/local.Density,1./NUMDIMS) * All.cf_atime; // in physical, used below in some routines //
     for(k=0;k<N_RT_FREQ_BINS;k++) {tau_c_i[k] = Particle_Size_i * local.Kappa_RT[k]*local.Density*All.cf_a3inv;}
+#ifdef RT_EVOLVE_FLUX
+    double Fluxes_Flux[N_RT_FREQ_BINS][3];
+#endif
 #endif
     
     if(mode == 0)
@@ -342,6 +345,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
                 for(k=0;k<N_RT_FREQ_BINS;k++) {out.Dt_E_gamma[k] += Fluxes_E_gamma[k];}
 #endif
+#ifdef RT_EVOLVE_FLUX
+                for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {out.Dt_Flux[k][k_dir] += Fluxes_Flux[k][k_dir];}}
+#endif
 #ifdef MAGNETIC
                 for(k=0;k<3;k++) {out.DtB[k]+=Fluxes.B[k];}
                 out.divB += Fluxes.B_normal_corrected;
@@ -390,6 +396,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     SphP[j].DtInternalEnergy -= Fluxes.p;
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
                     for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[j].Dt_E_gamma[k] -= Fluxes_E_gamma[k];}
+#endif
+#ifdef RT_EVOLVE_FLUX
+                    for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[j].Dt_Flux[k][k_dir] -= Fluxes_Flux[k][k_dir];}}
 #endif
 #ifdef MAGNETIC
                     for(k=0;k<3;k++) {SphP[j].DtB[k]-=Fluxes.B[k];}

@@ -181,6 +181,26 @@
 #define RT_SOURCE_INJECTION
 #endif
 
+/* options for M1 module */
+#if defined(RT_M1)
+// RADTRANSFER is ON, obviously
+#ifndef RADTRANSFER
+#define RADTRANSFER
+#endif
+// need to solve a diffusion equation
+#ifndef RT_DIFFUSION
+#define RT_DIFFUSION
+#endif
+// need source injection enabled to define emissivity
+#define RT_SOURCE_INJECTION
+// and need to evolve fluxes
+#define RT_EVOLVE_FLUX
+// at the moment, this only works for explicit solutions, so set this on
+#ifndef RT_DIFFUSION_EXPLICIT
+#define RT_DIFFUSION_EXPLICIT
+#endif
+#endif
+
 /* decide which diffusion method to use (for any diffusion-based method) */
 #if defined(RT_DIFFUSION) && !defined(RT_DIFFUSION_EXPLICIT)
 #define RT_DIFFUSION_CG
@@ -192,6 +212,10 @@
 /* check if we are -explicitly- evolving the radiation field, in which case we need to carry time-derivatives of the field */
 #if defined(RT_DIFFUSION_EXPLICIT)
 #define RT_EVOLVE_NGAMMA
+#endif
+
+#if ((defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)) && !defined(RT_EVOLVE_FLUX)) && !defined(RT_EVOLVE_EDDINGTON_TENSOR)
+#define RT_EVOLVE_EDDINGTON_TENSOR
 #endif
 
 /* enable appropriate chemistry flags if we are using the photoionization modules */
@@ -1993,7 +2017,7 @@ extern struct sph_particle_data
 #ifdef COSMIC_RAYS
         MyDouble CosmicRayPressure[3];
 #endif
-#if defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)
+#ifdef RT_EVOLVE_EDDINGTON_TENSOR
         MyDouble E_gamma_ET[N_RT_FREQ_BINS][3];
 #endif
     } Gradients;
@@ -2097,14 +2121,19 @@ extern struct sph_particle_data
 
     
 #if defined(RADTRANSFER)
-    MyFloat ET[6];                      /*!< eddington tensor - symmetric -> only 6 elements needed: this is dimensionless by our definition */
+    MyFloat ET[N_RT_FREQ_BINS][6];      /*!< eddington tensor - symmetric -> only 6 elements needed: this is dimensionless by our definition */
     MyFloat Je[N_RT_FREQ_BINS];         /*!< emissivity (includes sources like stars, as well as gas): units=E_gamma/time  */
     MyFloat E_gamma[N_RT_FREQ_BINS];    /*!< photon energy (integral of dE_gamma/dvol*dVol) associated with particle [for simple frequency bins, equivalent to photon number] */
     MyFloat Kappa_RT[N_RT_FREQ_BINS];   /*!< opacity [physical units ~ length^2 / mass]  */
     MyFloat Lambda_FluxLim[N_RT_FREQ_BINS]; /*!< dimensionless flux-limiter (0<lambda<1) */
+#ifdef RT_EVOLVE_FLUX
+    MyFloat Flux[N_RT_FREQ_BINS][3];    /*!< photon energy flux density (energy/time/area), for methods which track this explicitly (e.g. M1) */
+    MyFloat Flux_Pred[N_RT_FREQ_BINS][3];/*!< predicted photon energy flux density for drift operations (needed for adaptive timestepping) */
+    MyFloat Dt_Flux[N_RT_FREQ_BINS][3]; /*!< time derivative of photon energy flux density */
+#endif
 #ifdef RT_EVOLVE_NGAMMA
-    MyFloat Dt_E_gamma[N_RT_FREQ_BINS]; /*!< time derivative of photon number in particle (used only with explicit solvers) */
     MyFloat E_gamma_Pred[N_RT_FREQ_BINS]; /*!< predicted E_gamma for drift operations (needed for adaptive timestepping) */
+    MyFloat Dt_E_gamma[N_RT_FREQ_BINS]; /*!< time derivative of photon number in particle (used only with explicit solvers) */
 #endif
 #ifdef RT_RAD_PRESSURE_OUTPUT
     MyFloat RadAccel[3];
@@ -2243,7 +2272,7 @@ extern struct gravdata_out
 {
     MyLongDouble Acc[3];
 #ifdef RT_OTVET
-    MyLongDouble ET[6];
+    MyLongDouble ET[N_RT_FREQ_BINS][6];
 #endif
 #ifdef GALSF_FB_LOCAL_UV_HEATING
     MyLongDouble RadFluxUV;

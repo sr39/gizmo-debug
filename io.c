@@ -1130,10 +1130,12 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 {
                     for(k = 0; k < 6; k++)
                     {
-                        fp[k] = SphP[pindex].ET[k];
+                        int kf;
+                        for(kf = 0; kf < N_RT_FREQ_BINS; kf++)
+                            fp[k] = SphP[pindex].ET[kf][k];
                     }
                     n++;
-                    fp += 6;
+                    fp += 6*N_RT_FREQ_BINS;
                 }
 #endif
             break;
@@ -1491,11 +1493,14 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             break;
             
         case IO_EDDINGTON_TENSOR:
+#ifdef RADTRANSFER
             if(mode)
-                bytes_per_blockelement = 6 * sizeof(MyInputFloat);
+                bytes_per_blockelement = (6*N_RT_FREQ_BINS) * sizeof(MyInputFloat);
             else
-                bytes_per_blockelement = 6 * sizeof(MyOutputFloat);
-            
+                bytes_per_blockelement = (6*N_RT_FREQ_BINS) * sizeof(MyOutputFloat);
+#endif
+            break;
+
             
         case IO_Z:
 #ifdef METALS
@@ -1700,7 +1705,11 @@ int get_values_per_blockelement(enum iofields blocknr)
             break;
             
         case IO_EDDINGTON_TENSOR:
-            values = 6;
+#ifdef RADRANSFER
+            values = (6*N_RT_FREQ_BINS);
+#else
+            values = 0;
+#endif
             break;
             
         case IO_RADGAMMA:

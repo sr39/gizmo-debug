@@ -655,6 +655,8 @@ int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum);
 double rt_kappa(MyIDType j, int k_freq);
 double rt_absorption_rate(MyIDType i, int k_freq);
 double rt_diffusion_coefficient(MyIDType i, int k_freq);
+void rt_eddington_update_calculation(MyIDType j);
+void rt_update_driftkick(MyIDType i, double dt_entr, int mode);
 #endif
 #ifdef RT_SOURCE_INJECTION
 void rt_source_injection(void);

@@ -298,6 +298,32 @@ MPICHLIB =
 endif
 
 
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Quest")
+CC       =  mpiicc
+CXX      =  mpiicpc
+FC       =  $(CC)
+OPTIMIZE = -O1 -funroll-loops
+OPTIMIZE += -g -Wall -no-prec-div -ipo -heap-arrays
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = -I$(MKLROOT)/include
+MKL_LIBS = -L$(MKLROOT)/lib/intel64 -lm -lmkl_core -lmkl_sequential -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_blacs_intelmpi_lp64
+GSL_INCL = -I/software/gsl/1.16-intel/include
+GSL_LIBS = -L/software/gsl/1.16-intel/lib -lgsl -lgslcblas -lm
+FFTW_INCL= -I/software/FFTW/2.1.5-intel/include
+FFTW_LIBS= -L/software/FFTW/2.1.5-intel/lib
+HDF5INCL = -I/software/hdf5/1.8.12-serial/include -DH5_USE_16_API
+HDF5LIB  = -L/software/hdf5/1.8.12-serial/lib -lhdf5 -lz
+#MPICHLIB =
+OPT     += -DUSE_MPI_IN_PLACE
+## debugging:
+#OPT     += -check_mpi -genv I_MPI_DEBUG 5
+## modules to load:
+##module load mpi/intel-mpi-4.1.0 gsl/1.16-intel hdf5/1.8.12-serial fftw/2.1.5-intel
+endif
+
+
 
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Ranger_intel")
