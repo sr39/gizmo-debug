@@ -31,16 +31,32 @@ extern pthread_mutex_t mutex_partnodedrift;
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
-#define tiny 1e-10
+#define tiny 1e-20
+
+
+/***********************************************************************************************************
+ *
+ * ROUTINES IN THIS BLOCK MUST BE MODIFIED FOR NEW MODULES USING DIFFERENT WAVEBANDS/PHYSICS
+ *
+ *  (these routines depend on compiler-time choices for which frequencies will be followed, and the 
+ *    physics used to determine things like the types of source particles, source luminosities, 
+ *    and how opacities are calculated)
+ *
+ ***********************************************************************************************************/
+
 
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
+
+/***********************************************************************************************************/
 /* routine which returns the luminosity for the desired source particles, as a function of whatever the user desires, in the relevant bands */
+/***********************************************************************************************************/
 int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum)
 {
     int active_check = 0;
     
 #ifdef GALSF_FB_RT_PHOTONMOMENTUM
+    /* three-band (UV, OPTICAL, IR) approximate spectra for stars as used in the FIRE (Hopkins et al.) models */
     if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
     {
         if(sigma_0<0) return 1;
@@ -110,17 +126,21 @@ int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum)
 
 
 
+/***********************************************************************************************************/
 /* calculate the opacity for use in radiation transport operations [in physical code units = L^2/M] */
+/***********************************************************************************************************/
 double rt_kappa(MyIDType i, int k_freq)
 {
 #ifdef GALSF_FB_RT_PHOTONMOMENTUM
-    double fac = All.UnitMass_in_g * All.HubbleParam / (All.UnitLength_in_cm * All.UnitLength_in_cm);
+    /* three-band (UV, OPTICAL, IR) approximate spectra for stars as used in the FIRE (Hopkins et al.) models */
+    double fac = All.UnitMass_in_g * All.HubbleParam / (All.UnitLength_in_cm * All.UnitLength_in_cm); /* units */
     if(k_freq==0) return KAPPA_UV * fac;
     if(k_freq==1) return KAPPA_OP * fac;
     if(k_freq==2) return KAPPA_IR * fac;
 #endif
     
 #ifdef RT_CHEM_PHOTOION
+    /* opacity to ionizing radiation for Petkova & Springel bands. note rt_update_chemistry is where ionization is actually calculated */
     double nH_over_Density = HYDROGEN_MASSFRAC / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
     double kappa = nH_over_Density * (SphP[i].HI + tiny) * rt_sigma_HI[k_freq];
 #if defined(RT_CHEM_PHOTOION_HE) && defined(RT_PHOTOION_MULTIFREQUENCY)
@@ -133,22 +153,44 @@ double rt_kappa(MyIDType i, int k_freq)
 }
 
 
-/* rate of photon absorption [absorptions per unit time per photon]: this, times the timestep dt, times the photon energy density E, 
+#endif // #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
+
+
+
+
+
+
+/***********************************************************************************************************
+ *
+ * ROUTINES WHICH DO NOT NEED TO BE MODIFIED SHOULD GO BELOW THIS BREAK
+ *
+ *  (these routines may depend on the RT solver or other numerical choices, but below here, place routines 
+ *    which shouldn't needed to be hard-coded for different assumptions about the bands of the RT module, etc)
+ *
+ ***********************************************************************************************************/
+
+
+
+/***********************************************************************************************************/
+/* rate of photon absorption [absorptions per unit time per photon]: this, times the timestep dt, times the photon energy density E,
     gives the change in the energy density from absorptions (the sink term) */
+/***********************************************************************************************************/
+#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
 double rt_absorption_rate(MyIDType i, int k_freq)
 {
     /* should be equal to (C * Kappa_opacity * rho) */
     return RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s) * rt_kappa(i, k_freq) * SphP[i].Density*All.cf_a3inv;
 }
-
-#endif // #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
+#endif 
 
 
 
 
 #ifdef RADTRANSFER
 
+/***********************************************************************************************************/
 /* returns the photon diffusion coefficient = fluxlimiter * c_light / (kappa_opacity * density)  [physical units] */
+/***********************************************************************************************************/
 double rt_diffusion_coefficient(MyIDType i, int k_freq)
 {
     double c_light = (C / All.UnitVelocity_in_cm_per_s) * RT_SPEEDOFLIGHT_REDUCTION;
@@ -157,8 +199,9 @@ double rt_diffusion_coefficient(MyIDType i, int k_freq)
 
 
 
-
+/***********************************************************************************************************/
 /* calculate the eddington tensor according to the M1 formalism (for use with that solver, obviously) */
+/***********************************************************************************************************/
 void rt_eddington_update_calculation(MyIDType j)
 {
 #ifdef RT_M1
@@ -189,13 +232,17 @@ void rt_eddington_update_calculation(MyIDType j)
 }
 
 
-/* 
+
+
+/***********************************************************************************************************/
+/*
   routine which does the drift/kick operations on radiation quantities. separated here because we use a non-trivial
     update to deal with potentially stiff absorption terms (could be done more rigorously with something fully implicit in this 
     step, in fact). 
     mode = 0 == kick operation (update the conserved quantities)
     mode = 1 == predict/drift operation (update the predicted quantities)
  */
+/***********************************************************************************************************/
 void rt_update_driftkick(MyIDType i, double dt_entr, int mode)
 {
 #if defined(RT_EVOLVE_NGAMMA)
@@ -237,76 +284,10 @@ void rt_update_driftkick(MyIDType i, double dt_entr, int mode)
 
 
 
-
-
-
-#ifdef RT_CHEM_PHOTOION
-/* this tabulates the fraction of the ionizing luminosity (normalized to some total)
- from stars with a given effective temperature T_eff [in Kelvin], across the bands specified by the intervals nu[*] */
-void rt_get_lum_for_spectral_bin_stars(double T_eff, double luminosity_fraction[N_RT_FREQ_BINS])
-{
-    int i, j, integral = 10000;
-    double I_nu, sum, d_nu, e, e_start, e_end, hc = C * PLANCK, R_eff = 7.0e11;
-    
-    for(i = 0, sum = 0; i < N_RT_FREQ_BINS; i++)
-    {
-        e_start = nu[i]; if(i==N_RT_FREQ_BINS-1) {e_end = nu[N_RT_FREQ_BINS-1] + 500.;} else {e_end = nu[i+1];} // nu defines intervals to integrate
-        d_nu = (e_end - e_start) / (float)(integral - 1);
-        for(j=0, luminosity_fraction[i]=0.0; j<integral; j++)
-        {
-            e = e_start + j*d_nu; // integrate the Planck function to get the total photon number in the interval //
-            I_nu = 2.0 * pow(e * ELECTRONVOLT_IN_ERGS, 3) / (hc * hc) / (exp(e * ELECTRONVOLT_IN_ERGS / (BOLTZMANN * T_eff)) - 1.0);
-            luminosity_fraction[i] += 4.0 * M_PI * R_eff * R_eff * M_PI * I_nu / e * d_nu / PLANCK; // number/s
-        }
-        sum += luminosity_fraction[i];
-    }
-    /* normalize to unity; note that if we wanted a fast version of this function, the normalization means all the constants above are
-     redundant and can trivially be thrown out, to [slightly] save time. but right now only called once, so no big deal */
-    for(i = 0; i < N_RT_FREQ_BINS; i++) {luminosity_fraction[i] /= sum;}
-    if(ThisTask == 0)
-    {
-        printf("Calc Stellar spectra, for T_eff=%g, \n",T_eff);
-        for(i = 0; i < N_RT_FREQ_BINS; i++) {printf(" -- spectra: bin=%d nu=%g luminosity_fraction=%g \n",i,nu[i],luminosity_fraction[i]);}
-        fflush(stdout);
-    }
-}
-
-
-void rt_get_lum_gas(int target, double *je)
-{
-#ifdef RT_COOLING_PHOTOHEATING // routine below only makes sense (currently) with its coupled cooling routines //
-    int j;
-    double temp, entropy, molecular_weight, kT, BB_l, BB_r, next, sigma_SB=5.6704e-5, u_cooling, u_BB, d_nu;
- 
-    /* ??? needs fixing with fixed cooling routines */
-    molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[target].Ne);
-    temp =  SphP[target].Pressure * (molecular_weight * PROTONMASS / All.UnitMass_in_g * All.HubbleParam) / (BOLTZMANN / All.UnitEnergy_in_cgs * All.HubbleParam);
-    kT = temp * BOLTZMANN;
-    entropy = SphP[target].Pressure * pow(SphP[target].Density * All.cf_a3inv, -1 * GAMMA);
-    u_cooling = rt_get_cooling_rate(target, entropy) / (SphP[target].Density * All.cf_a3inv);
-    
-    u_BB = sigma_SB * pow(temp, 4) ; // erg/cm^2
-    u_BB /= P[target].Mass * All.UnitEnergy_in_cgs / All.HubbleParam; //energy/cm^2/mass
-    
-    double prefac = -u_cooling/u_BB * M_PI / (C*C*PLANCK*PLANCK*PLANCK) * ELECTRONVOLT_IN_ERGS / All.UnitEnergy_in_cgs * All.HubbleParam;
-    for(j = 0; j < N_RT_FREQ_BINS; j++)
-    {
-        if(j==N_RT_FREQ_BINS-1) {next = nu[N_RT_FREQ_BINS-1] + 500.;} else {next = nu[j+1];}
-        d_nu = next - nu[j];
-        
-        BB_r = pow(next * ELECTRONVOLT_IN_ERGS, 3) / (exp(next * ELECTRONVOLT_IN_ERGS / (kT)) - 1.0);
-        BB_l = pow(nu[j] * ELECTRONVOLT_IN_ERGS, 3) / (exp(nu[j] * ELECTRONVOLT_IN_ERGS / (kT)) - 1.0);
-        je[j] += prefac * (BB_l / nu[j] + BB_r / next) * d_nu * rt_nu_eff_eV[j]; // gives energy per unit time, as it should //
-    }
-#endif
-}
-#endif
-
-
-
-
 #ifdef RADTRANSFER
+/***********************************************************************************************************/
 /* this function initializes some of the variables we need */
+/***********************************************************************************************************/
 void rt_set_simple_inits(void)
 {
     int i; for(i = 0; i < N_gas; i++)
@@ -358,5 +339,75 @@ void rt_set_simple_inits(void)
 }
 #endif
 
+
+
+
+
+
+#ifdef RT_CHEM_PHOTOION
+/***********************************************************************************************************/
+/* this tabulates the fraction of the ionizing luminosity (normalized to some total)
+ from stars with a given effective temperature T_eff [in Kelvin], across the bands specified by the intervals nu[*]
+ -- this is just a subroutine here to be called by the routine above in rt_get_source_luminosity */
+/***********************************************************************************************************/
+void rt_get_lum_for_spectral_bin_stars(double T_eff, double luminosity_fraction[N_RT_FREQ_BINS])
+{
+    int i, j, integral = 10000;
+    double I_nu, sum, d_nu, e, e_start, e_end, hc = C * PLANCK, R_eff = 7.0e11;
+    
+    for(i = 0, sum = 0; i < N_RT_FREQ_BINS; i++)
+    {
+        e_start = nu[i]; if(i==N_RT_FREQ_BINS-1) {e_end = nu[N_RT_FREQ_BINS-1] + 500.;} else {e_end = nu[i+1];} // nu defines intervals to integrate
+        d_nu = (e_end - e_start) / (float)(integral - 1);
+        for(j=0, luminosity_fraction[i]=0.0; j<integral; j++)
+        {
+            e = e_start + j*d_nu; // integrate the Planck function to get the total photon number in the interval //
+            I_nu = 2.0 * pow(e * ELECTRONVOLT_IN_ERGS, 3) / (hc * hc) / (exp(e * ELECTRONVOLT_IN_ERGS / (BOLTZMANN * T_eff)) - 1.0);
+            luminosity_fraction[i] += 4.0 * M_PI * R_eff * R_eff * M_PI * I_nu / e * d_nu / PLANCK; // number/s
+        }
+        sum += luminosity_fraction[i];
+    }
+    /* normalize to unity; note that if we wanted a fast version of this function, the normalization means all the constants above are
+     redundant and can trivially be thrown out, to [slightly] save time. but right now only called once, so no big deal */
+    for(i = 0; i < N_RT_FREQ_BINS; i++) {luminosity_fraction[i] /= sum;}
+    if(ThisTask == 0)
+    {
+        printf("Calc Stellar spectra, for T_eff=%g, \n",T_eff);
+        for(i = 0; i < N_RT_FREQ_BINS; i++) {printf(" -- spectra: bin=%d nu=%g luminosity_fraction=%g \n",i,nu[i],luminosity_fraction[i]);}
+        fflush(stdout);
+    }
+}
+/***********************************************************************************************************/
+/* this is the same as the above, but for gas */
+/***********************************************************************************************************/
+void rt_get_lum_gas(int target, double *je)
+{
+#ifdef RT_COOLING_PHOTOHEATING // routine below only makes sense (currently) with its coupled cooling routines //
+    int j;
+    double temp, entropy, molecular_weight, kT, BB_l, BB_r, next, sigma_SB=5.6704e-5, u_cooling, u_BB, d_nu;
+    
+    /* ??? needs fixing with fixed cooling routines */
+    molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[target].Ne);
+    temp =  SphP[target].Pressure * (molecular_weight * PROTONMASS / All.UnitMass_in_g * All.HubbleParam) / (BOLTZMANN / All.UnitEnergy_in_cgs * All.HubbleParam);
+    kT = temp * BOLTZMANN;
+    entropy = SphP[target].Pressure * pow(SphP[target].Density * All.cf_a3inv, -1 * GAMMA);
+    u_cooling = rt_get_cooling_rate(target, entropy) / (SphP[target].Density * All.cf_a3inv);
+    
+    u_BB = sigma_SB * pow(temp, 4) ; // erg/cm^2
+    u_BB /= P[target].Mass * All.UnitEnergy_in_cgs / All.HubbleParam; //energy/cm^2/mass
+    
+    double prefac = -u_cooling/u_BB * M_PI / (C*C*PLANCK*PLANCK*PLANCK) * ELECTRONVOLT_IN_ERGS / All.UnitEnergy_in_cgs * All.HubbleParam;
+    for(j = 0; j < N_RT_FREQ_BINS; j++)
+    {
+        if(j==N_RT_FREQ_BINS-1) {next = nu[N_RT_FREQ_BINS-1] + 500.;} else {next = nu[j+1];}
+        d_nu = next - nu[j];
+        
+        BB_r = pow(next * ELECTRONVOLT_IN_ERGS, 3) / (exp(next * ELECTRONVOLT_IN_ERGS / (kT)) - 1.0);
+        BB_l = pow(nu[j] * ELECTRONVOLT_IN_ERGS, 3) / (exp(nu[j] * ELECTRONVOLT_IN_ERGS / (kT)) - 1.0);
+        je[j] += prefac * (BB_l / nu[j] + BB_r / next) * d_nu * rt_nu_eff_eV[j]; // gives energy per unit time, as it should //
+    }
+#endif
+}
+#endif
 
 

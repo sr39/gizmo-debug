@@ -2227,26 +2227,32 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     // correction only applies to 'shared-kernel' particles: so this needs to check if
                     // these are the same particles for which the kernel lengths are computed
                     // (also checks that these aren't the same particle)
-#if !(defined(MAGNETIC) || defined(COOLING) || defined(GALSF) || defined(BLACK_HOLES))
-                    if(ags_gravity_kernel_shared_check(ptype, ptype_sec) && (r > 0) && (pmass > 0))
-                    {
-                        double dWdr, wp;
-                        if(h_p_inv >= h_inv)
-                        {
-                            if((zeta != 0) && (u < 1))
-                            {
-                                kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
-                                fac += 2 * (zeta/pmass) * dWdr / sqrt(r2 + 0.0001/(h_inv*h_inv));   // 0.5 * zeta * omega * dWdr / r;
-                            }
-                        } else {
-                            if((zeta_sec != 0) && (u_p < 1)) // secondary is adaptively-softened particle (set above)
-                            {
-                                kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
-                                fac += 2 * (zeta_sec/pmass) * dWdr / sqrt(r2 + 0.0001/(h_p_inv*h_p_inv));
-                            }
-                        }
-                    } // if(ptype==ptype_sec)
+#if (defined(MAGNETIC) || defined(COOLING) || defined(GALSF) || defined(BLACK_HOLES))
+                    /* since these modules imply nonstandard cross-particel interactions for certain types, need to limit the correction terms here */
+                    if((ptype>0) && (ptype<4) && (ptype_sec>0) && (ptype_sec<4) && (r > 0) && (pmass > 0))
+#else
+                    if((r > 0) && (pmass > 0))
 #endif
+                    {
+                        if(ags_gravity_kernel_shared_check(ptype, ptype_sec))
+                        {
+                            double dWdr, wp;
+                            if(h_p_inv >= h_inv)
+                            {
+                                if((zeta != 0) && (u < 1))
+                                {
+                                    kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
+                                    fac += 2 * (zeta/pmass) * dWdr / sqrt(r2 + 0.0001/(h_inv*h_inv));   // 0.5 * zeta * omega * dWdr / r;
+                                }
+                            } else {
+                                if((zeta_sec != 0) && (u_p < 1)) // secondary is adaptively-softened particle (set above)
+                                {
+                                    kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
+                                    fac += 2 * (zeta_sec/pmass) * dWdr / sqrt(r2 + 0.0001/(h_p_inv*h_p_inv));
+                                }
+                            }
+                        } // if(ptype==ptype_sec)
+                    }
 #endif
                 }
                 

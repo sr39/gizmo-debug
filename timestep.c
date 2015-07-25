@@ -479,9 +479,9 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 
             
-#if defined(RT_DIFFUSION_EXPLICIT)
+#if defined(RADTRANSFER)
             {
-#ifndef RT_EVOLVE_FLUX
+#if defined(RT_DIFFUSION_EXPLICIT) && !defined(RT_EVOLVE_FLUX) /* for explicit diffusion, we include the usual second-order diffusion timestep */
                 int kf;
                 for(kf=0;kf<N_RT_FREQ_BINS;kf++)
                 {
@@ -492,8 +492,10 @@ integertime get_timestep(int p,		/*!< particle index */
                     if(dt_rt_diffusion < dt) dt = dt_rt_diffusion;
                 }
 #endif
+#if !defined(RT_DIFFUSION_CG) /* with the fully-implicit solver, we do not require a CFL-like criterion on timesteps (much larger steps allowed) */
 				dt_courant = All.CourantFac * (L_particle*All.cf_atime) / (RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s)); /* courant-type criterion, using the reduced speed of light */
 				if(dt_courant < dt) dt = dt_courant;
+#endif
             }
 #endif
     
