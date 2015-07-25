@@ -460,12 +460,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(TimeBinActive[P[j].TimeBin])
                     if(kernel.vsig > SphP[j].MaxSignalVel) SphP[j].MaxSignalVel = kernel.vsig;
 #ifdef WAKEUP
-#ifdef RADTRANSFER
-                /* need to use a stricter wakeup criterion here since the SignalVel doesn't account for radiation */
-                if((kernel.vsig > WAKEUP*SphP[j].MaxSignalVel) || ((double)local.Timestep < ((double)TimeStep_J)/WAKEUP)) SphP[j].wakeup = 1;
-#else
                 if(kernel.vsig > WAKEUP*SphP[j].MaxSignalVel) SphP[j].wakeup = 1;
-#endif
 #endif
                 
                 
