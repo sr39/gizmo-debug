@@ -197,7 +197,7 @@ void blackhole_properties_loop(void)
         mdot=0;
         BPP(n).BH_Mdot=0;
 
-/*      DAA CHECK: normalize_temp_info_struct is now done at the end of blackhole_environment_loop()
+/*      DAA: normalize_temp_info_struct is now done at the end of blackhole_environment_loop()
  *      so that final quantities are available for the second environment loop if needed 
  */
         //normalize_temp_info_struct(i);
@@ -412,7 +412,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 #endif // ifdef BH_BONDI
     
     
-/* DAA CHECK: note that we should have mdot=0 here !! 
+/* DAA: note that we should have mdot=0 here !! 
  *      otherwise the mass accreted is counted twice 
  *      -->  mdot*dt in set_blackhole_new_mass
  *      -->  accreted_BH_mass in blackhole_swallow_and_kick
@@ -508,7 +508,8 @@ void set_blackhole_new_mass(int i, int n, double dt)
 #endif
     
     /* Update the BH_Mass and the BH_Mass_AlphaDisk
-     TODO: in principle, when using gravitational capture, we should NOT update the mass here */
+     TODO: in principle, when using gravitational capture, we should NOT update the mass here 
+     DAA: note that this is fine now because mdot=0 for BH_GRAVCAPTURE_GAS above */
     if(BPP(n).BH_Mdot <= 0) {BPP(n).BH_Mdot=0;}
 
 /* DAA:

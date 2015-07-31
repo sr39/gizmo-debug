@@ -436,7 +436,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 /* DAA: DM and star particles can only be accreted ifdef BH_GRAVCAPTURE_NONGAS */
 #ifdef BH_GRAVCAPTURE_NONGAS
 
-                    /* this is a DM particle:
+                    /* this is a DM particle:    // DAA: do we really want to accrete DM particles?
                      In this case, no kick, so just zero out the mass and 'get rid of' the
                      particle (preferably by putting it somewhere irrelevant) */
 
@@ -544,7 +544,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                         dir[0]=dir[1]=dir[2]=0;
                         for(k = 0; k < 3; k++) dir[k]=P[j].Pos[k]-pos[k];          // DAA: default direction is radially outwards
 #ifdef BH_BAL_KICK_COLLIMATED
-                        /* DAA: along polar axis defined by angular momentum within Kernel 
+                        /* DAA: along polar axis defined by angular momentum within Kernel (could add finite opening angle)
                                 work out the geometry w/r to the plane of the disk */
                         if((dir[0]*Jgas_in_Kernel[0] + dir[1]*Jgas_in_Kernel[1] + dir[2]*Jgas_in_Kernel[2]) > 0){ 
                             for(k = 0; k < 3; k++) dir[k] = Jgas_in_Kernel[k];
@@ -682,6 +682,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
         BlackholeTempInfo[mod_index].accreted_Mass = accreted_mass;
         BlackholeTempInfo[mod_index].accreted_BH_Mass = accreted_BH_mass;
 #ifdef BH_ALPHADISK_ACCRETION
+        // DAA: it would be better to include this in BlackholeTempInfo and update BH_Mass_AlphaDisk only at the end (like Mass and BH_Mass)
         BPP(target).BH_Mass_AlphaDisk += accreted_BH_mass_alphadisk;
 #endif
         for(k = 0; k < 3; k++)

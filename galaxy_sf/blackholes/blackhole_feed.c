@@ -207,7 +207,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     double BH_angle_weighted_kernel_sum=0;
 #endif
 
-#ifdef BH_BAL_KICK
+#if defined(BH_BAL_KICK) && !defined(BH_GRAVCAPTURE_GAS)
     double m_gas, f_accreted=0;
 #endif
     
@@ -295,7 +295,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #endif
 #endif
 
-#ifdef BH_BAL_KICK
+#if defined(BH_BAL_KICK) && !defined(BH_GRAVCAPTURE_GAS)
     m_gas = All.MassTable[1] * All.OmegaBaryon / ( All.Omega0 - All.OmegaBaryon );
 #ifdef BH_BAL_KICK_MOMENTUM_FLUX
     /* DAA: increase the effective mass-loading of BAL winds to reach the desired momentum flux given the outflow velocity "All.BAL_v_outflow" chosen
@@ -393,7 +393,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         
                         
                         
-                        /* This is a similar loop to what we already did in blackhole_environment, but here we stochastially
+                        /* This is a similar loop to what we already did in blackhole_environment, but here we stochastically
                          reduce GRAVCAPT events in order to (statistically) obey the eddington limit */
 #if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
                         if(P[j].Type != 5)
@@ -413,7 +413,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #if defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
                                         /* if Eddington-limited and NO alpha-disk, do this stochastically */
                                         p = 1/eddington_factor;
-#ifdef BH_BAL_WINDS
+#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
                                         p /= All.BAL_f_accretion; // we need to accrete more, then remove the mass in winds
 #endif // ifdef BH_BAL_WINDS
                                         w = get_random_number(P[j].ID);
@@ -448,7 +448,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                             u = r * hinv;
                             kernel_main(u,hinv3,hinv*hinv3,&wk,&dwk,-1);
                             
-#ifdef BH_SWALLOWGAS
+// DAA: this below is only meaningful if !defined(BH_GRAVCAPTURE_GAS)...
+//#ifdef BH_SWALLOWGAS
+#if defined(BH_SWALLOWGAS) && !defined(BH_GRAVCAPTURE_GAS)
                             /* compute accretion probability */
                             if((bh_mass_withdisk - (mass + mass_markedswallow))>0)
                                 p = (bh_mass_withdisk - (mass + mass_markedswallow)) * wk / rho;
@@ -466,15 +468,15 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                 /* DAA: compute outflow probability when "bh_mass_withdisk < m_gas"
                                     - we don't need to enforce mass conservation in this case 
                                     - relevant only in low-res sims where the BH seed mass is much lower than the gas particle mass */
-                                //if((bh_mass_withdisk - mass) < 0)
                                 if((bh_mass_withdisk - m_gas) < 0)
                                     p = ( (1-f_accreted)/f_accreted ) * mdot * dt * wk / rho;
                             }
 #endif
 
-#if defined(BH_GRAVCAPTURE_GAS) // && !defined(BH_GRAVCAPTURE_NONGAS)
-                            p = 0;
-#endif
+// DAA: no need for this now - we shouldn't be here if defined(BH_GRAVCAPTURE_GAS)
+//#if defined(BH_GRAVCAPTURE_GAS) // && !defined(BH_GRAVCAPTURE_NONGAS)
+//                            p = 0;
+//#endif
                             
                             w = get_random_number(P[j].ID);
                             if(w < p)

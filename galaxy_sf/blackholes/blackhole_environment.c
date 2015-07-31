@@ -326,7 +326,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                     
                     
 
-// DAA: this below should only be needed if defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION) ...???
+// DAA: this below is only needed if !defined(BH_ALPHADISK_ACCRETION) ...
 #if defined(BH_GRAVCAPTURE_GAS)
                     /* XM: I formally distinguish BH_GRAVCAPTURE_GAS and BH_GRAVCAPTURE_NONGAS. The former applies to
                      gas ONLY, as an accretion model. The later can be combined with any accreton model.
@@ -529,7 +529,7 @@ void blackhole_environment_second_loop(void)
         {
             place = DataIndexTable[j].Index;
             mod_index = P[place].IndexMapToTempStruc;
- /*         DAA: make sure we don't mess up other variables in BlackholeTempInfo 
+ /*         DAA: make sure we don't mess up other variables in BlackholeTempInfo, we only need to update Mbulge_in_Kernel 
  *          out2particle_blackhole(&BlackholeDataPasserOut[j], P[place].IndexMapToTempStruc, 1); 
  */
             BlackholeTempInfo[mod_index].Mbulge_in_Kernel += BlackholeDataPasserOut[j].Mbulge_in_Kernel;
