@@ -317,6 +317,19 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     /* ideally, particle-splits should be accompanied by a re-partition of the density via the density() call
         for the particles affected, after the tree-reconstruction, with quantities like B used to re-calculate after */
 #endif
+#ifdef RADTRANSFER
+    for(k=0;k<N_RT_FREQ_BINS;k++)
+    {
+        SphP[j].E_gamma[k] += mass_of_new_particle * SphP[i].E_gamma[k];
+        SphP[i].E_gamma[k] -= SphP[j].E_gamma[k];
+#if defined(RT_EVOLVE_NGAMMA)
+        SphP[j].E_gamma_Pred[k] += mass_of_new_particle * SphP[i].E_gamma_Pred[k];
+        SphP[i].E_gamma_Pred[k] -= SphP[j].E_gamma_Pred[k];
+        SphP[j].Dt_E_gamma[k] += mass_of_new_particle * SphP[i].Dt_E_gamma[k];
+        SphP[i].Dt_E_gamma[k] -= SphP[j].Dt_E_gamma[k];
+#endif
+    }
+#endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     double dmass = mass_of_new_particle * SphP[i].DtMass;
     SphP[j].DtMass = dmass;
@@ -536,19 +549,25 @@ void merge_particles_ij(MyIDType i, MyIDType j)
 #endif
     
     // below, we need to take care of additional physics //
-#ifdef EOS_DEGENERATE
-    SphP[j].temp = wt_j*SphP[j].temp + wt_i*SphP[i].temp;
-    SphP[j].dp_drho = wt_j*SphP[j].dp_drho + wt_i*SphP[i].dp_drho;
-    for(k=0;k<EOS_NSPECIES;k++)
-    {
-        SphP[j].xnuc[k] = wt_j*SphP[j].xnuc[k] + wt_i*SphP[i].xnuc[k];
-        SphP[j].dxnuc[k] = wt_j*SphP[j].dxnuc[k] + wt_i*SphP[i].dxnuc[k];
-        SphP[j].xnucPred[k] = wt_j*SphP[j].xnucPred[k] + wt_i*SphP[i].xnucPred[k];
-    }
-#endif
 #if defined(RADTRANSFER)
-    for(k=0;k<6;k++) SphP[j].ET[k] = wt_j*SphP[j].ET[k] + wt_i*SphP[i].ET[k];
-    for(k=0;k<N_RT_FREQ_BINS;k++) SphP[j].n_gamma[k] = wt_j*SphP[j].n_gamma[k] + wt_i*SphP[i].n_gamma[k];
+    for(k=0;k<N_RT_FREQ_BINS;k++)
+    {
+        int k_dir;
+        for(k_dir=0;k_dir<6;k_dir++) SphP[j].ET[k][k_dir] = wt_j*SphP[j].ET[k][k_dir] + wt_i*SphP[i].ET[k][k_dir];
+        SphP[j].E_gamma[k] = SphP[j].E_gamma[k] + SphP[i].E_gamma[k]; /* this is a photon number, so its conserved (we simply add) */
+#if defined(RT_EVOLVE_NGAMMA)
+        SphP[j].E_gamma_Pred[k] = SphP[j].E_gamma_Pred[k] + SphP[i].E_gamma_Pred[k];
+        SphP[j].Dt_E_gamma[k] = SphP[j].Dt_E_gamma[k] + SphP[i].Dt_E_gamma[k];
+#endif
+#if defined(RT_EVOLVE_FLUX)
+        for(k_dir=0;k_dir<3;k_dir++)
+        {
+            SphP[j].Flux[k][k_dir] = SphP[j].Flux[k][k_dir] + SphP[i].Flux[k][k_dir];
+            SphP[j].Flux_Pred[k][k_dir] = SphP[j].Flux_Pred[k][k_dir] + SphP[i].Flux_Pred[k][k_dir];
+            SphP[j].Dt_Flux[k][k_dir] = SphP[j].Dt_Flux[k][k_dir] + SphP[i].Dt_Flux[k][k_dir];
+        }
+#endif
+    }
 #endif
 #ifdef METALS
     for(k=0;k<NUM_METAL_SPECIES;k++)
@@ -563,6 +582,8 @@ void merge_particles_ij(MyIDType i, MyIDType j)
         P[i].dp[k] += P[i].Mass*P[i].Vel[k] - p_old_i[k];
         P[j].dp[k] += P[j].Mass*P[j].Vel[k] - p_old_j[k];
     }
+    /* call the pressure routine to re-calculate pressure (and sound speeds) as needed */
+    SphP[j].Pressure = get_pressure(j);
     return;
 }
 

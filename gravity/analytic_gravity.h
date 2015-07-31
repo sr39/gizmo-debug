@@ -19,6 +19,7 @@ void GravAccel_GrowingDiskPotential(void);
 void GravAccel_StaticNFW(void);
 void GravAccel_RayleighTaylorTest(void);
 void GravAccel_ShearingSheet(void);
+void GravAccel_PaczynskyWiita(void);
 
 
 /* master routine which decides which (if any) analytic gravitational forces are applied */
@@ -36,6 +37,7 @@ void add_analytic_gravitational_forces()
     //GravAccel_KeplerianTestProblem();   // keplerian disk with boundaries for test problem
     //GravAccel_GrowingDiskPotential();   // time-dependent (adiabatically growing) disk
     //GravAccel_StaticNFW();              // spherical NFW profile
+    //GravAccel_PaczynskyWiita();         // Paczynsky-Wiita pseudo-Newtonian potential
 #endif
 }
 
@@ -399,4 +401,46 @@ void GravAccel_StaticNFW()
     } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) //
 }
 
+
+
+
+/* Paczysnky Wiita pseudo-Newtonian potential, G = M_sol = c = 1 */
+void GravAccel_PaczynskyWiita()
+{
+    double PACZYNSKY_WIITA_MASS = 1.0; // Mass to use for the Paczynksy-Wiita analytic gravity pseudo-Newtonian potential (in solar masses)
+    double r_g = 2*PACZYNSKY_WIITA_MASS;
+    int i;
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        double r = sqrt(P[i].Pos[0]*P[i].Pos[0]+P[i].Pos[1]*P[i].Pos[1]+P[i].Pos[2]*P[i].Pos[2]);
+        if(r > r_g)
+        {
+            double q = PACZYNSKY_WIITA_MASS/((r - r_g)*(r - r_g));
+            P[i].GravAccel[0] = - q * P[i].Pos[0]/r;
+            P[i].GravAccel[1] = - q * P[i].Pos[1]/r;
+            P[i].GravAccel[2] = - q * P[i].Pos[2]/r;
+        }
+    }
+}
+
+#ifdef PARTICLE_EXCISION
+void apply_excision(void)
+{
+    double EXCISION_MASS = 0; // mass of the excised object. Used to move the excision boundary so as to capture bound objects. If zero the excision boundary will not move
+    double EXCISION_INIT_RADIUS = 0; // initial excision radius
+    double EXCISION_ETA = 1; // remove particles with radius < EXCISION_ETA R_excision
+    double excision_radius = EXCISION_ETA * pow(EXCISION_INIT_RADIUS*EXCISION_INIT_RADIUS*EXCISION_INIT_RADIUS +
+                                                3.*sqrt(2. * All.G * EXCISION_MASS) * pow(EXCISION_INIT_RADIUS, 3./2.) * All.Time +
+                                                9./2. * All.G * EXCISION_MASS * All.Time*All.Time, 1./3.);
+    int i;
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        if(P[i].Type == 0)
+        {
+            double r = sqrt(P[i].Pos[0]*P[i].Pos[0]+P[i].Pos[1]*P[i].Pos[1]+P[i].Pos[2]*P[i].Pos[2]);
+            if(r < excision_radius) P[i].Mass = 0;
+        }
+    }
+}
+#endif
 

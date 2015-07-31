@@ -114,12 +114,11 @@ double TimeBin_BH_Mdot[TIMEBINS];
 double TimeBin_BH_Medd[TIMEBINS];
 #endif
 
-#ifdef RADTRANSFER
-double lum[N_RT_FREQ_BINS];
+#ifdef RT_CHEM_PHOTOION
+double nu[N_RT_FREQ_BINS];
 double rt_sigma_HI[N_RT_FREQ_BINS];
 double rt_sigma_HeI[N_RT_FREQ_BINS];
 double rt_sigma_HeII[N_RT_FREQ_BINS];
-double nu[N_RT_FREQ_BINS];
 #endif
 
 
@@ -242,9 +241,8 @@ FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 FILE *FdTurb;    /*!< file handle for turb.txt log-file */
 #endif
 
-#ifdef RADTRANSFER
+#ifdef RT_CHEM_PHOTOION
 FILE *FdRad;			/*!< file handle for radtransfer.txt log-file. */
-FILE *FdStar;			/*!< file handle for lum_star.txt log-file. */
 #endif
 
 #ifdef DISTORTIONTENSORPS

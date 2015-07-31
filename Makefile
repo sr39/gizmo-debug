@@ -73,6 +73,7 @@ INCL = Makefile.systype
 else
 INCL =
 endif
+FINCL =
 
 
 CONFIG   =  Config.sh
@@ -136,8 +137,8 @@ endif
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Stampede")
 CC       =  mpicc
-CXX      =  mpiCC
-FC       =  $(CC)
+CXX      =  mpic++
+FC       =  mpif90 -nofor_main
 OPTIMIZE = -O3 -xhost -ipo -funroll-loops -no-prec-div -fp-model fast=2  # speed
 OPTIMIZE += -g -Wall # compiler warnings
 #OPTIMIZE += -parallel -openmp  # openmp (comment out this line if OPENMP not used)
@@ -171,7 +172,7 @@ endif
 ifeq ($(SYSTYPE),"MacBookPro")
 CC       =  mpicc
 CXX      =  mpiccxx
-FC       =  $(CC)
+FC       =  mpifort
 OPTIMIZE = -O1 -funroll-loops
 OPTIMIZE += -g -Wall # compiler warnings
 GMP_INCL = #
@@ -229,8 +230,8 @@ endif
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Zwicky")
 CC       =  mpicc
-CXX      =  mpiCC
-FC       =  $(CC)
+CXX      =  mpicpc
+FC       =  mpiifort -nofor_main
 OPTIMIZE = -O3 -funroll-loops
 OPTIMIZE += -g -Wall # compiler warnings
 GMP_INCL = #
@@ -291,6 +292,32 @@ MPICHLIB =
 ##    module load intel intelmpi gsl fftw/2.1.5-intel-intelmpi4 use.experimental hdf5/intelmpi/1.8.9
 ##    OPTIMIZE =  -O2 -m64 -mt_mpi -openmp -xhost -g -debug parallel -mcmodel=medium -funroll-loops -Wall
 ##
+endif
+
+
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Quest")
+CC       =  mpiicc
+CXX      =  mpiicpc
+FC       =  $(CC)
+OPTIMIZE = -O1 -funroll-loops
+OPTIMIZE += -g -Wall -no-prec-div -ipo -heap-arrays
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = -I$(MKLROOT)/include
+MKL_LIBS = -L$(MKLROOT)/lib/intel64 -lm -lmkl_core -lmkl_sequential -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_blacs_intelmpi_lp64
+GSL_INCL = -I/software/gsl/1.16-intel/include
+GSL_LIBS = -L/software/gsl/1.16-intel/lib -lgsl -lgslcblas -lm
+FFTW_INCL= -I/software/FFTW/2.1.5-intel/include
+FFTW_LIBS= -L/software/FFTW/2.1.5-intel/lib
+HDF5INCL = -I/software/hdf5/1.8.12-serial/include -DH5_USE_16_API
+HDF5LIB  = -L/software/hdf5/1.8.12-serial/lib -lhdf5 -lz
+#MPICHLIB =
+OPT     += -DUSE_MPI_IN_PLACE
+## debugging:
+#OPT     += -check_mpi -genv I_MPI_DEBUG 5
+## modules to load:
+##module load mpi/intel-mpi-4.1.0 gsl/1.16-intel hdf5/1.8.12-serial fftw/2.1.5-intel
 endif
 
 
@@ -467,7 +494,7 @@ GRAVITY_OBJS  = gravity/forcetree.o gravity/cosmology.o gravity/pm_periodic.o gr
                 gravity/gravtree.o gravity/forcetree_update.o gravity/pm_nonperiodic.o gravity/longrange.o \
                 gravity/ags_hsml.o
 
-HYDRO_OBJS = hydro/hydra_master.o hydro/density.o hydro/gradients.o
+HYDRO_OBJS = hydro/hydra_master.o hydro/density.o hydro/gradients.o radiation/rt_utilities.o eos/eos.o
 
 STRUCTURE_OBJS = structure/twopoint.o
 
@@ -483,11 +510,12 @@ EXEC   = GIZMO
 OBJS  =  main.o accel.o  timestep.o init.o restart.o io.o \
          predict.o global.o begrun.o run.o allvars.o read_ic.o \
          domain.o driftfac.o kicks.o ngb.o compile_time_info.o merge_split.o
+FOBJS =
 
 OBJS	+= $(GRAVITY_OBJS) $(HYDRO_OBJS) $(SYSTEM_OBJS) $(STRUCTURE_OBJS)
 OBJS	+= $(L3_OBJS)
 
-INCL    += allvars.h proto.h gravity/forcetree.h domain.h system/myqsort.h kernel.h Makefile \
+INCL    += allvars.h proto.h gravity/forcetree.h domain.h system/myqsort.h kernel.h eos/eos.h Makefile \
 
 
 ifeq (GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION,$(findstring GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION,$(CONFIGVARS)))
@@ -510,7 +538,7 @@ ifeq (GALSF_FB_SNE_HEATING,$(findstring GALSF_FB_SNE_HEATING,$(CONFIGVARS)))
 OBJS    += galaxy_sf/mechanical_fb.o
 endif
 
-ifeq (GALSF_FB_RPWIND_FROMSTARS,$(findstring GALSF_FB_RPWIND_FROMSTARS,$(CONFIGVARS)))
+ifeq (GALSF_FB_RPWIND_LOCAL,$(findstring GALSF_FB_RPWIND_LOCAL,$(CONFIGVARS)))
 OBJS    += galaxy_sf/rp_localwinds.o
 endif
 
@@ -550,9 +578,11 @@ ifeq (BUBBLES,$(findstring BUBBLES,$(CONFIGVARS)))
 OBJS    += modules/bubbles/bubbles.o
 endif
 
-ifeq (EOS_DEGENERATE,$(findstring EOS_DEGENERATE,$(CONFIGVARS)))
-OBJS	+= nuclear/helm_eos.o 
-INCL	+= nuclear/helm_eos.h 
+ifeq (EOS_HELMHOLTZ,$(findstring EOS_HELMHOLTZ,$(CONFIGVARS)))
+OBJS    += eos/eos_interface.o
+INCL    += eos/helmholtz/helm_wrap.h
+FOBJS   += eos/helmholtz/helm_impl.o eos/helmholtz/helm_wrap.o
+FINCL   += eos/helmholtz/helm_const.dek eos/helmholtz/helm_implno.dek eos/helmholtz/helm_table_storage.dek eos/helmholtz/helm_vector_eos.dek
 endif
 
 ifeq (IMPOSE_PINNING,$(findstring IMPOSE_PINNING,$(CONFIGVARS)))
@@ -568,9 +598,8 @@ ifeq (DISTORTIONTENSORPS,$(findstring DISTORTIONTENSORPS,$(CONFIGVARS)))
 OBJS	+= modules/phasespace/phasespace.o modules/phasespace/phasespace_math.o
 endif
 
-ifeq (RADTRANSFER,$(findstring RADTRANSFER,$(CONFIGVARS)))
-OBJS	+= radiation/rt_chem.o radiation/rt_bh_lum.o radiation/rt_sfr_lum.o radiation/rt_cooling.o \
-    radiation/rt_eddington.o radiation/rt_n.o radiation/rt_CGmethod.o radiation/rt_stars_lum.o radiation/rt_gas_lum.o
+ifeq (RT_,$(findstring RT_,$(CONFIGVARS)))
+OBJS	+= radiation/rt_CGmethod.o radiation/rt_source_injection.o radiation/rt_chem.o radiation/rt_cooling.o
 endif
 
 ifeq (SUBFIND,$(findstring SUBFIND,$(CONFIGVARS)))
@@ -591,8 +620,8 @@ INCL    +=
 endif
 
 ifeq (NUCLEAR_NETWORK,$(findstring NUCLEAR_NETWORK,$(CONFIGVARS)))
-OBJS	+=  nuclear/utilities.o nuclear/integrate.o nuclear/network_solver.o nuclear/network.o nuclear/swap.o
-INCL	+=  nuclear/utilities.h nuclear/integrate.h nuclear/network_solver.h nuclear/network.h nuclear/swap.h
+OBJS	+=  nuclear/network_solver.o nuclear/network.o
+INCL	+=  nuclear/network.h
 endif
 
 ifeq (TURB_DRIVING,$(findstring TURB_DRIVING,$(CONFIGVARS)))
@@ -638,8 +667,8 @@ $(EXEC): $(OBJS) $(FOBJS)
 
 $(OBJS): $(INCL)  $(CONFIG)  compile_time_info.c
 
-
-$(FOBJS): $(FINCL)
+$(FOBJS): %.o: %.f90
+	$(FC) $(OPTIMIZE) -c $< -o $@
 
 compile_time_info.c: $(CONFIG)
 	$(PERL) prepare-config.perl $(CONFIG)

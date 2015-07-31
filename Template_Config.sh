@@ -57,8 +57,10 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ####################################################################################################
 # --------------------------------------- Additional Fluid Physics
 ####################################################################################################
-# --------------------------------- Polytropic Index of Gas (for an ideal gas law)
-#GAMMA=(5.0/3.0)                # if not set and no other (more complex) EOS set, defaults to GAMMA=5/3
+##-----------------------------------------------------------------------------------------------------
+#---------------------------------------- Gas Equations-of-State
+#EOS_GAMMA=(5.0/3.0)            # Polytropic Index of Gas (for an ideal gas law): if not set and no other (more complex) EOS set, defaults to GAMMA=5/3
+#EOS_HELMHOLTZ                  # Use Timmes & Swesty 2000 EOS (for e.g. stellar or degenerate equations of state; developed by D. Radice; use requires explicit pre-approval)
 ## -----------------------------------------------------------------------------------------------------
 # --------------------------------- Magneto-Hydrodynamics
 # ---------------------------------  these modules are public, but if used, the user should also cite the MHD-specific GIZMO methods paper
@@ -84,10 +86,9 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #--------------------------- permission from the authors. email P. Hopkins to obtain the relevant permissions for the cooling routines of interest.
 #COOLING                        # enables radiative cooling and heating: if GALSF, also external UV background read from file "TREECOOL"
 #COOL_LOW_TEMPERATURES          # allow fine-structure and molecular cooling to ~10 K; account for optical thickness and line-trapping effects with proper opacities
-#COOL_METAL_LINES_BY_SPECIES    # use full multi-species-dependent cooling tables (https://dl.dropbox.com/u/16659252/spcool_tables.tgz)
-#GRACKLE                        # enable GRACKLE: cooling+chemistry package (requires COOLING above; https://grackle.readthedocs.org/en/latest/)
+#COOL_METAL_LINES_BY_SPECIES    # use full multi-species-dependent cooling tables ( https://dl.dropbox.com/u/16659252/spcool_tables.tgz )
+#GRACKLE                        # enable GRACKLE: cooling+chemistry package (requires COOLING above; https://grackle.readthedocs.org/en/latest )
 #GRACKLE_CHEMISTRY=1            # choose GRACKLE cooling chemistry: (0)=tabular, (1)=Atomic, (2)=(1)+H2+H2I+H2II, (3)=(2)+DI+DII+HD
-#TRUELOVE_CRITERION_PRESSURE    # adds artificial pressure floor force Jeans length above resolution scale (not necessarily better in meshless methods!)
 ##-----------------------------------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- Smagorinsky Turbulent Eddy Diffusion Model
@@ -176,6 +177,8 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #GDE_TYPES=2+4+8+16+32          # track GDE for these types
 #GDE_READIC                     # read initial sheet orientation/initial density/initial caustic count from ICs
 #GDE_LEAN                       # lean version of GDE
+##-----------------------------------------------------------------------------------------------------
+#EOS_TRUELOVE_PRESSURE          # adds artificial pressure floor force Jeans length above resolution scale (means you will get the wrong answer, but things will look smooth)
 ####################################################################################################
 
 
@@ -219,16 +222,15 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #GALSF_FB_SNE_HEATING            # time-dependent heating from SNe (I & II) in shockwave radii around stars
 #GALSF_FB_RPROCESS_ENRICHMENT=6  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 6=extended model)
 #GALSF_FB_RT_PHOTONMOMENTUM      # continuous acceleration from starlight (uses luminosity tree)
-#GALSF_FB_RT_PHOTON_LOCALATTEN   # incident SED for GALSF_FB_RT_PHOTONMOMENTUM calculated w local attenuation of stars
 #GALSF_FB_LOCAL_UV_HEATING       # use local estimate of spectral information for photoionization and photoelectric heating
 #GALSF_FB_RPWIND_LOCAL           # turn on local radiation pressure coupling to gas
-#GALSF_FB_RPWIND_FROMSTARS       # drive radiation pressure with local young stars (otherwise uses the gas SFR)
 ##-----------------------------------------------------------------------------------------------------
 #----------- deprecated options (most have been combined or optimized into the functions above, here for legacy)
-##GALSF_FB_SEPARATELY_TRACK_LUMPOS  # keep stellar vs. gas positions separate in tree (useful if running in tree-only mode)
 ##GALSF_FB_RPWIND_FROMCLUMPS	# clump-find to for wind angles (deprecated; now use density routine to find)
 ##GALSF_FB_RPWIND_CONTINUOUS	# wind accel term is continuous (more expensive and introduces more artificial dissipation)
 ##GALSF_FB_RPWIND_DO_IN_SFCALC	# do IR wind loop in SFR routine (allows fof clump-finding, useful for very IR-thick, but slow)
+##GALSF_FB_RPWIND_FROMSFR       # drive radiation pressure with gas SFR (instead of default, which is nearby young stars)
+
 
 ##-----------------------------------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------------------------------
@@ -342,13 +344,14 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 # -------------------------------------------- De-Bugging & special (usually test-problem only) behaviors
 ####################################################################################################
 #DEVELOPER_MODE                 # allows you to modify various numerical parameters (courant factor, etc) at run-time
-#GAMMA_ENFORCE_ADIABAT=(1.0)    # if set, this forces gas to lie -exactly- along the adiabat P=GAMMA_ENFORCE_ADIABAT*(rho^GAMMA)
+#EOS_ENFORCE_ADIABAT=(1.0)      # If set, this forces gas to lie -exactly- along the adiabat P=EOS_ENFORCE_ADIABAT*(rho^GAMMA)
 #TEST_FOR_IDUNIQUENESS          # explicitly check if particles have unique id numbers (only use for special behaviors)
 #LONGIDS                        # use long ints for IDs (needed for super-large simulations)
 #ASSIGN_NEW_IDS                 # assign IDs on startup instead of reading from ICs
 #READ_HSML                      # reads hsml from IC file
 #PREVENT_PARTICLE_MERGE_SPLIT   # don't allow gas particle splitting/merging operations
 #COOLING_OPERATOR_SPLIT         # do the hydro heating/cooling in operator-split fashion from chemical/radiative. slightly more accurate when tcool >> tdyn, but much noisier when tcool << tdyn
+#PARTICLE_EXCISION              # enable dynamical excision (remove particles within some radius)
 
 #USE_MPI_IN_PLACE               # MPI debugging: makes AllGatherV compatible with MPI_IN_PLACE definitions in some MPI libraries
 #NO_ISEND_IRECV_IN_DOMAIN       # MPI debugging
@@ -420,37 +423,33 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 
 
 ####################################################################################################
-#--------------------------------------- Radiative Transfer (M. Petkova & V. Springel)
-#-------------------------------- use of these routines requires explicit pre-approval by developers M. Petkova & V. Springel
+#--------------------------------------- Radiative Transfer
 ####################################################################################################
-#RADTRANSFER                            # main switch; RT equation solved using the Conjugate Gradient iterative method
-#RADTRANSFER_FLUXLIMITER                # introduces a flux limiter, so that the Ifront speed does not exceed c
-#RADTRANSFER_MODIFY_EDDINGTON_TENSOR    # modifies the Eddington tensor to the fully anisotropic version
+#--------------------- methods for calculating photon propagation (one of these MUST be on for RT)
+#RT_FIRE                                # RT solved using the FIRE (local extinction with the Sobolev approximation at source and absorption points)
+#RT_OTVET                               # RT solved using the OTVET approximation (optically thin Eddington tensor, but interpolated to thick when appropriate)
+#RT_M1                                  # RT solved using the M1 approximation (solve fluxes and tensors with M1 closure; gives better shadowing; currently only compatible with explicit diffusion solver)
+#RT_FLUXLIMITEDDIFFUSION                # RT solved using the flux-limited diffusion approximation (constant, always-isotropic Eddington tensor)
+#--------------------- solvers (numerical) --------------------------------------------------------
+#RT_DIFFUSION_EXPLICIT                  # solve the diffusion part of the RT equations (if needed) explicitly (accurate but needs -small- timesteps); otherwise implicit with Conjugate Gradient iteration (Petkova & Springel)
+#RT_SPEEDOFLIGHT_REDUCTION=1            # set to a number <1 to use the 'reduced speed of light' approximation for photon propagation (C_eff=C_true*RT_SPEEDOFLIGHT_REDUCTION)
+#--------------------- radiation pressure options -------------------------------------------------
+#RT_RAD_PRESSURE_EDDINGTON              # calculate radiation pressure from eddington tensor
+#RT_RAD_PRESSURE_OUTPUT                 # print radiation pressure to file (requires some extra variables to save it)
+#--------------------- coupled radiation-gas chemistry networks -----------------------------------
+#RT_CHEM_PHOTOION=2                     # RT used to calculate photo-ionization of gas (1=H only, 2=H+He)
+#RT_PHOTOION_MULTIFREQUENCY             # enables multi-frequency radiation transport for ionizing photons. Integration variable is the ionising intensity J_nu
+#RT_PHOTOION_SOURCES=1+16+32            # source list for ionizing photons given by bitflag (1=2^0=gas[sfr-based],16=2^4=new stars[mass-based],32=2^5=BH)
 #RT_COOLING_PHOTOHEATING                # includes photoheating and cooling (using RT information)
-#RT_RAD_PRESSURE                        # includes radiation pressure
-#EDDINGTON_TENSOR_GAS                   # includes gas, works only together with RT_MULTI_FREQUENCY
-#EDDINGTON_TENSOR_STARS                 # includes stars as sources of ionising photons
-#EDDINGTON_TENSOR_SFR                   # uses sf partices (gas above certain density) as sources of ionizing photons
-#EDDINGTON_TENSOR_BH                    # includes BH as source of ionising photons (not working)
-#RT_OUTPUT_ET                           # outputs the eddington tensor (used for diagnostics)
-#HYDROGEN_ONLY                          # sets hydrogen fraction to 1.0 (simplifies the chemistry)
-#RT_INCLUDE_HE                          # includes helium cooling and collisional ionisation
-#RT_MULTI_FREQUENCY                     # enables multi-frequency radiation transport. Here the integration
-                                        # variable is the ionising intensity J_nu
-####################################################################################################
-
-
-
-
-####################################################################################################
-#--------------------------------------- degenerate equation of state (D. Radice & P. Hopkins)
-#-------------------------------- use of these routines requires explicit pre-approval by developers D. Radice & P. Hopkins
-####################################################################################################
-#EOS_DEGENERATE
-#EOS_IDEAL
-#EOS_COULOMB_CORRECTIONS
-#EOS_NSPECIES=3
-#RELAXOBJECT
+##-----------------------------------------------------------------------------------------------------
+#------------ test-problem, deprecated, or de-bugging functions
+##-----------------------------------------------------------------------------------------------------
+#RT_NOGRAVITY                           # turn off gravity: if using an RT method that needs the gravity tree (FIRE, OTVET), use this -instead- of NOGRAVITY to safely turn off gravitational forces
+#RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR # when RT_DIFFUSION_CG is enabled, modifies the Eddington tensor to the fully anisotropic version (less stable CG iteration)
+#RT_SEPARATELY_TRACK_LUMPOS             # keep luminosity vs. mass positions separate in tree (useful if running in tree-only mode)
+#RT_DISABLE_FLUXLIMITER                 # removes the flux-limiter from the diffusion operations (default is to include it when using the relevant approximations)
+#RT_HYDROGEN_GAS_ONLY                   # sets hydrogen fraction to 1.0 (used for certain idealized chemistry calculations)
+#RT_FIRE_FIX_SPECTRAL_SHAPE             # enable with GALSF_FB_RT_PHOTONMOMENTUM to use a fixed SED shape set in parameterfile for all incident fluxes
 ####################################################################################################
 
 

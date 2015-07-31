@@ -4,1018 +4,623 @@
 #include <string.h>
 #include <math.h>
 #include <gsl/gsl_math.h>
-
 #include "../allvars.h"
 #include "../proto.h"
 #include "../kernel.h"
+#ifdef OMP_NUM_THREADS
+#include <pthread.h>
+#endif
+#ifdef OMP_NUM_THREADS
+extern pthread_mutex_t mutex_nexport;
+extern pthread_mutex_t mutex_partnodedrift;
+#define LOCK_NEXPORT     pthread_mutex_lock(&mutex_nexport);
+#define UNLOCK_NEXPORT   pthread_mutex_unlock(&mutex_nexport);
+#else
+#define LOCK_NEXPORT
+#define UNLOCK_NEXPORT
+#endif
 
-#ifdef RADTRANSFER
+/*! \file rt_CGmethod.c
+ *  \brief solve the implicit sparse matrix inversion problem for RT fluxes via CG iteraiton
+ *
+ *  This file contains a loop modeled on the gas density computation which is fully parallel
+ *    and calculates the matrix and its inversion, using the conjugate-gradient method (coupled to
+ *    the method of steepest descent). The core of the module can be used for any global sparse
+ *    matrix inversion. Here it is applied to obtain the implicit solution of the diffusion
+ *    problem for radiative transfer, following Petkova & Springel 2008
+ */
+/*
+ * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO, heavily modifying some of the
+ *   original routines from GADGET-3 and re-writing the actual parallelization of the module.
+ */
 
+#ifdef RT_DIFFUSION_CG
+
+
+/* declare some of the global variables and functions that are going to be used in this solution */
+
+/*! global variables to be used */
 #define MAX_ITER 10000
 #define ACCURACY 1.0e-2
-#define EPSILON 1.0e-5
-#define tiny 1e-10
+static double **ZVec, **XVec, **QVec, **DVec, **Residue, **Diag, **Diag2;
 
-/*structures for radtransfer*/
-struct radtransferdata_in
+/*! structure for communication. holds data that is sent to other processors  */
+static struct rt_cg_data_in
 {
-  int NodeList[NODELISTLENGTH];
-  MyDouble Pos[3];
-  MyFloat Hsml;
-  MyFloat ET[6];
-  double Kappa, Lambda;
-  MyFloat Mass, Density;
+    int NodeList[NODELISTLENGTH];
+    MyDouble Pos[3];
+    MyFloat Mass;
+    MyFloat Density;
+    MyFloat Hsml;
+    MyFloat ET[N_RT_FREQ_BINS][6];
+    MyDouble DiffusionCoeff[N_RT_FREQ_BINS];
+    //MyDouble Lambda[N_RT_FREQ_BINS];
 }
- *RadTransferDataIn, *RadTransferDataGet;
+*rt_cg_DataIn, *rt_cg_DataGet;
 
-struct radtransferdata_out
+/*! structure for communication. holds data to be returned to the spawning processor */
+struct rt_cg_data_out
 {
-  double Out, Sum;
+    MyDouble matrixmult_out[N_RT_FREQ_BINS];
+    MyDouble matrixmult_sum[N_RT_FREQ_BINS];
 }
- *RadTransferDataResult, *RadTransferDataOut;
+*rt_cg_DataResult, *rt_cg_DataOut;
 
-static double *XVec;
-static double *QVec, *DVec, *Residue, *Zvec;
-static double *Kappa, *Lambda, *Diag, *Diag2;
-static double c_light, dt, a3inv, hubble_a;
+/*! declare functions */
+double rt_diffusion_cg_vector_multiply(double *a, double *b);
+double rt_diffusion_cg_vector_sum(double *a);
+void rt_diffusion_cg_matrix_multiply(double **matrixmult_in, double **matrixmult_out, double **matrixmult_sum);
+int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, double **matrixmult_out, double **matrixmult_sum, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
+void particle2in_rt_cg(struct rt_cg_data_in *in, MyIDType i);
+void *rt_diffusion_cg_evaluate_primary(void *p, double **matrixmult_in, double **matrixmult_out, double **matrixmult_sum);
+void *rt_diffusion_cg_evaluate_secondary(void *p, double **matrixmult_in, double **matrixmult_out, double **matrixmult_sum);
 
-void radtransfer(void)
+
+/*! subroutine to insert the data needed to be passed to other processors: here for convenience, match to structure above  */
+void particle2in_rt_cg(struct rt_cg_data_in *in, MyIDType i)
 {
-  int i, j, iter;
-  double alpha_cg, beta, delta_old, delta_new, sum, min_diag, glob_min_diag, max_diag, glob_max_diag;
-  double nH;
-  double rel, res, maxrel, glob_maxrel;
-  double DQ;
-
-  c_light = C / All.UnitVelocity_in_cm_per_s;
-
-  /*  the actual time-step we need to do */
-  dt = (All.Radiation_Ti_endstep - All.Radiation_Ti_begstep) * All.Timebase_interval;
-
-  if(All.ComovingIntegrationOn)
-    {
-      a3inv = 1 / (All.Time * All.Time * All.Time);
-      hubble_a = hubble_function(All.Time);
-      /* in comoving case, timestep is dloga at this point. Convert to dt */
-      dt /= hubble_a;
-    }
-  else
-    {
-      a3inv = hubble_a = 1.0;
-    }
-
-  XVec = (double *) mymalloc("XVec", N_gas * sizeof(double));
-  QVec = (double *) mymalloc("QVec", N_gas * sizeof(double));
-  DVec = (double *) mymalloc("DVec", N_gas * sizeof(double));
-  Residue = (double *) mymalloc("Residue", N_gas * sizeof(double));
-  Kappa = (double *) mymalloc("Kappa", N_gas * sizeof(double));
-  Lambda = (double *) mymalloc("Lambda", N_gas * sizeof(double));
-  Diag = (double *) mymalloc("Diag", N_gas * sizeof(double));
-  Zvec = (double *) mymalloc("Zvec", N_gas * sizeof(double));
-  Diag2 = (double *) mymalloc("Diag2", N_gas * sizeof(double));
-
-  for(i = 0; i < N_RT_FREQ_BINS; i++)
-    {
-      /* initialization for the CG method */
-      for(j = 0; j < N_gas; j++)
-	if(P[j].Type == 0)
-	  {
-	    XVec[j] = 0;
-	    QVec[j] = 0;
-	    DVec[j] = 0;
-	    Residue[j] = 0;
-	    Kappa[j] = 0;
-	    Lambda[j] = 0;
-	    Diag[j] = 0;
-	    Zvec[j] = 0;
-	    Diag2[j] = 0;
-
-	    XVec[j] = SphP[j].n_gamma[i];
-
-	    nH = HYDROGEN_MASSFRAC * SphP[j].Density / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
-	    Kappa[j] = a3inv * (SphP[j].HI + tiny) * nH * rt_sigma_HI[i];
-
-#if defined(RT_INCLUDE_HE) && defined(RT_MULTI_FREQUENCY)
-	    Kappa[j] += a3inv * ((SphP[j].HeI + tiny) * nH * rt_sigma_HeI[i] +
-				(SphP[j].HeII + tiny) * nH * rt_sigma_HeII[i]);
-#endif	    
-	    	    
-	    if(All.ComovingIntegrationOn)
-	      Kappa[j] *= All.Time;
-
-#ifdef RADTRANSFER_FLUXLIMITER
-	    /* now calculate flux limiter */
-
-	    if(SphP[j].n_gamma[i] > 0)
-	      {
-		double R = sqrt(SphP[j].Gradients.n_gamma[i][0] * SphP[j].Gradients.n_gamma[i][0] +
-				SphP[j].Gradients.n_gamma[i][1] * SphP[j].Gradients.n_gamma[i][1] +
-				SphP[j].Gradients.n_gamma[i][2] * SphP[j].Gradients.n_gamma[i][2]) / (SphP[j].n_gamma[i] *
-											  Kappa[j]);
-
-		if(All.ComovingIntegrationOn)
-		  R /= All.Time;
-
-//		R *= 0.1;
-
-//		Lambda[j] = (1 + R) / (1 + R + R * R);
-
-		Lambda[j] = (2 + R) / (6 + 3 * R + R * R);
-
-		if(Lambda[j] < 1e-100)
-		  Lambda[j] = 0;
-	      }
-	    else
-	      Lambda[j] = 1.0;
-#endif
-
-	    /* add the source term */
-	    SphP[j].n_gamma[i] += dt * SphP[j].Je[i] * P[j].Mass;
-	  }
-      
-      radtransfer_matrix_multiply(XVec, Residue, Diag);
-
-      /* Let's take the diagonal matrix elements as Jacobi preconditioner */
-
-      for(j = 0, min_diag = MAX_REAL_NUMBER, max_diag = -MAX_REAL_NUMBER; j < N_gas; j++)
-	if(P[j].Type == 0)
-	  {
-	    Residue[j] = SphP[j].n_gamma[i] - Residue[j];
-
-	    /* note: in principle we would have to substract the w_ii term, but this is always zero */
-	    if(Diag[j] < min_diag)
-	      min_diag = Diag[j];
-	    if(Diag[j] > max_diag)
-	      max_diag = Diag[j];
-
-	    Zvec[j] = Residue[j] / Diag[j];
-	    DVec[j] = Zvec[j];
-	  }
-
-      MPI_Allreduce(&min_diag, &glob_min_diag, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
-      MPI_Allreduce(&max_diag, &glob_max_diag, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-
-      delta_new = radtransfer_vector_multiply(Zvec, Residue);
-      delta_old = delta_new;
-
-      if(ThisTask == 0)
-	{ 
-	  printf("Begin N_BIN %d/%d\n", i+1, N_RT_FREQ_BINS);
-	  printf("\nBegin CG iteration\nmin-diagonal=%g, max-diagonal=%g\n",
-	       glob_min_diag, glob_max_diag);
-	}
-
-
-      /* begin the CG method iteration */
-      iter = 0;
-
-      do
-	{
-	  radtransfer_matrix_multiply(DVec, QVec, Diag2);
-
-	  DQ = radtransfer_vector_multiply(DVec, QVec);
-	  if(DQ == 0)
-	    alpha_cg = 0;
-	  else
-	    alpha_cg = delta_new / DQ;
-
-
-	  for(j = 0, maxrel = 0; j < N_gas; j++)
-	    {
-	      XVec[j] += alpha_cg * DVec[j];
-	      Residue[j] -= alpha_cg * QVec[j];
-
-	      Zvec[j] = Residue[j] / Diag[j];
-
-	      rel = fabs(alpha_cg * DVec[j]) / (XVec[j] + 1.0e-10);
-	      if(rel > maxrel)
-		maxrel = rel;
-	    }
-
-	  delta_old = delta_new;
-	  delta_new = radtransfer_vector_multiply(Zvec, Residue);
-
-	  sum = radtransfer_vector_sum(XVec);
-	  res = radtransfer_vector_sum(Residue);
-
-	  if(delta_old)
-	    beta = delta_new / delta_old;
-	  else
-	    beta = 0;
-
-	  for(j = 0; j < N_gas; j++)
-	    DVec[j] = Zvec[j] + beta * DVec[j];
-
-	  MPI_Allreduce(&maxrel, &glob_maxrel, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-
-	  if(ThisTask == 0)
-	    {
-	      printf("radtransfer: iter=%3d  |res|/|x|=%12.6g  maxrel=%12.6g  |x|=%12.6g | res|=%12.6g\n",
-		     iter, res / sum, glob_maxrel, sum, res);
-	      fflush(stdout);
-	    }
-	  iter++;
-
-	  if(iter >= MAX_ITER)
-            terminate("failed to converge radtransfer\n");
-	}
-      while((res > ACCURACY * sum && iter < MAX_ITER) || iter < 2);
-
-      if(ThisTask == 0)
-	{
-	  printf("%d iterations performed\n", iter);
-	  fflush(stdout);
-	}
-
-      /* update the intensity */
-      for(j = 0; j < N_gas; j++)
-	if(P[j].Type == 0)
-	  {
-	    if(XVec[j] < 0)
-	      XVec[j] = 0;
-
-	    SphP[j].n_gamma[i] = XVec[j];
-	  }
-    }
-
-  myfree(Diag2);
-  myfree(Zvec);
-  myfree(Diag);
-  myfree(Lambda);
-  myfree(Kappa);
-  myfree(Residue);
-  myfree(DVec);
-  myfree(QVec);
-  myfree(XVec);
-
+    int k;
+    for(k=0; k<3; k++) {in->Pos[k] = P[i].Pos[k];}
+    int kET; for(k=0;k<N_RT_FREQ_BINS;k++) for(kET=0; kET<6; kET++) {in->ET[k][kET] = SphP[i].ET[k][kET];}
+    in->Hsml = PPP[i].Hsml;
+    in->Mass = P[i].Mass;
+    in->Density = SphP[i].Density;
+    for(k=0; k<N_RT_FREQ_BINS; k++) in->DiffusionCoeff[k] = rt_diffusion_coefficient(i,k);
+    //for(k=0; k<N_RT_FREQ_BINS; k++) in->Lambda[k] = SphP[i].Lambda_FluxLim[k];
 }
 
-/* internal product of two vectors */
-double radtransfer_vector_multiply(double *a, double *b)
+/* internal product of two vectors (for all gas particles) */
+double rt_diffusion_cg_vector_multiply(double *a, double *b)
 {
-  int i;
-  double sum, sumall;
-
-  for(i = 0, sum = 0; i < N_gas; i++)
-    if(P[i].Type == 0)
-      sum += a[i] * b[i];
-
-  MPI_Allreduce(&sum, &sumall, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
-  return sumall;
+    int i; double sum, sumall;
+    for(i = 0, sum = 0; i < N_gas; i++)
+        if(P[i].Type == 0)
+            sum += a[i] * b[i];
+    MPI_Allreduce(&sum, &sumall, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    return sumall;
 }
 
 
-double radtransfer_vector_sum(double *a)
+/* absolute sum of vector elements (for all gas particles) */
+double rt_diffusion_cg_vector_sum(double *a)
 {
-  int i;
-  double sum, sumall;
-
-  for(i = 0, sum = 0; i < N_gas; i++)
-    if(P[i].Type == 0)
-      sum += fabs(a[i]);
-
-  MPI_Allreduce(&sum, &sumall, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
-  return sumall;
+    int i; double sum, sumall;
+    for(i = 0, sum = 0; i < N_gas; i++)
+        if(P[i].Type == 0)
+            sum += fabs(a[i]);
+    MPI_Allreduce(&sum, &sumall, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    return sumall;
 }
 
+/* define a convenient macro for allocating the required arrays below */
+#define MALLOC_CG(x) {\
+x = (double **) malloc(N_RT_FREQ_BINS * sizeof(double *));\
+for(k=0;k<N_RT_FREQ_BINS;k++) x[k] = (double *) malloc(N_gas * sizeof(double));\
+for(k=0;k<N_RT_FREQ_BINS;k++) memset(x[k], 0, N_gas * sizeof(double));}
 
-/* this function computes the vector b(out) given the vector x(in) such as Ax = b, where A is a matrix */
-void radtransfer_matrix_multiply(double *in, double *out, double *sum)
+
+/*! routine to do the master loop for the CG iteration - this is the actual solver; it calls various subroutines
+ to do the weights/matrix calculation on all particles */
+void rt_diffusion_cg_solve(void)
 {
-  int i, j, k, ngrp, dummy, ndone, ndone_flag;
-  int recvTask, nexport, nimport, place;
-  double ainv, dt;
-
-  /* allocate buffers to arrange communication */
-
-  Ngblist = (int *) mymalloc("Ngblist", NumPart * sizeof(int));
-
-  All.BunchSize =
-    (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
-					     sizeof(struct radtransferdata_in) +
-					     sizeof(struct radtransferdata_out) +
-					     sizemax(sizeof(struct radtransferdata_in),
-						     sizeof(struct radtransferdata_out))));
-  DataIndexTable =
-    (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
-  DataNodeList =
-    (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
-
-  dt = (All.Radiation_Ti_endstep - All.Radiation_Ti_begstep) * All.Timebase_interval;
-
-  if(All.ComovingIntegrationOn)
-    {
-      ainv = 1.0 / All.Time;
-      /* in comoving case, timestep is dloga at this point. Convert to dt */
-      dt /= hubble_function(All.Time);
-    }
-  else
-    {
-      ainv = 1.0;
-    }
-
-  i = 0;
-
-  do				/* communication loop */
-    {
-
-      for(j = 0; j < NTask; j++)
-	{
-	  Send_count[j] = 0;
-	  Exportflag[j] = -1;
-	}
-
-      /* do local particles and prepare export list */
-      for(nexport = 0; i < N_gas; i++)
-	{
-	  if(P[i].Type == 0)
-	    if(radtransfer_evaluate(i, 0, in, out, sum, &nexport, Send_count) < 0)
-	      break;
-	}
-
-#ifdef MYSORT
-      mysort_dataindex(DataIndexTable, nexport, sizeof(struct data_index), data_index_compare);
-#else
-      qsort(DataIndexTable, nexport, sizeof(struct data_index), data_index_compare);
-#endif
-
-      MPI_Alltoall(Send_count, 1, MPI_INT, Recv_count, 1, MPI_INT, MPI_COMM_WORLD);
-
-      for(j = 0, nimport = 0, Recv_offset[0] = 0, Send_offset[0] = 0; j < NTask; j++)
-	{
-	  nimport += Recv_count[j];
-
-	  if(j > 0)
-	    {
-	      Send_offset[j] = Send_offset[j - 1] + Send_count[j - 1];
-	      Recv_offset[j] = Recv_offset[j - 1] + Recv_count[j - 1];
-	    }
-	}
-
-      RadTransferDataGet =
-	(struct radtransferdata_in *) mymalloc("RadTransferDataGet",
-					       nimport * sizeof(struct radtransferdata_in));
-      RadTransferDataIn =
-	(struct radtransferdata_in *) mymalloc("RadTransferDataIn",
-					       nexport * sizeof(struct radtransferdata_in));
-
-      /* prepare particle data for export */
-
-      for(j = 0; j < nexport; j++)
-	{
-	  place = DataIndexTable[j].Index;
-	  for(k = 0; k < 3; k++)
-	    {
-	      RadTransferDataIn[j].Pos[k] = P[place].Pos[k];
-	      RadTransferDataIn[j].ET[k] = SphP[place].ET[k];
-	      RadTransferDataIn[j].ET[k + 3] = SphP[place].ET[k + 3];
-	    }
-	  RadTransferDataIn[j].Hsml = PPP[place].Hsml;
-	  RadTransferDataIn[j].Kappa = Kappa[place];
-	  RadTransferDataIn[j].Lambda = Lambda[place];
-	  RadTransferDataIn[j].Mass = P[place].Mass;
-	  RadTransferDataIn[j].Density = SphP[place].Density;
-
-	  memcpy(RadTransferDataIn[j].NodeList,
-		 DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
-	}
-
-      /* exchange particle data */
-      for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
-	{
-	  recvTask = ThisTask ^ ngrp;
-
-	  if(recvTask < NTask)
-	    {
-	      if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
-		{
-		  /* get the particles */
-		  MPI_Sendrecv(&RadTransferDataIn[Send_offset[recvTask]],
-			       Send_count[recvTask] * sizeof(struct radtransferdata_in), MPI_BYTE,
-			       recvTask, TAG_RT_A,
-			       &RadTransferDataGet[Recv_offset[recvTask]],
-			       Recv_count[recvTask] * sizeof(struct radtransferdata_in), MPI_BYTE,
-			       recvTask, TAG_RT_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		}
-	    }
-	}
-
-      myfree(RadTransferDataIn);
-      RadTransferDataResult =
-	(struct radtransferdata_out *) mymalloc("RadTransferDataResult",
-						nimport * sizeof(struct radtransferdata_out));
-      RadTransferDataOut =
-	(struct radtransferdata_out *) mymalloc("RadTransferDataOut",
-						nexport * sizeof(struct radtransferdata_out));
-
-      /* now do the particles that were sent to us */
-      for(j = 0; j < nimport; j++)
-	radtransfer_evaluate(j, 1, in, out, sum, &dummy, &dummy);
-
-      if(i < N_gas)
-	ndone_flag = 0;
-      else
-	ndone_flag = 1;
-
-      MPI_Allreduce(&ndone_flag, &ndone, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-
-      /* get the result */
-      for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
-	{
-	  recvTask = ThisTask ^ ngrp;
-	  if(recvTask < NTask)
-	    {
-	      if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
-		{
-		  /* send the results */
-		  MPI_Sendrecv(&RadTransferDataResult[Recv_offset[recvTask]],
-			       Recv_count[recvTask] * sizeof(struct radtransferdata_out),
-			       MPI_BYTE, recvTask, TAG_RT_B,
-			       &RadTransferDataOut[Send_offset[recvTask]],
-			       Send_count[recvTask] * sizeof(struct radtransferdata_out),
-			       MPI_BYTE, recvTask, TAG_RT_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		}
-	    }
-	}
-
-      /* add the result to the local particles */
-      for(j = 0; j < nexport; j++)
-	{
-	  place = DataIndexTable[j].Index;
-	  out[place] += RadTransferDataOut[j].Out;
-	  sum[place] += RadTransferDataOut[j].Sum;
-	}
-
-      myfree(RadTransferDataOut);
-      myfree(RadTransferDataResult);
-      myfree(RadTransferDataGet);
-
-    }
-  while(ndone < NTask);
-
-  /* do final operations on results */
-  for(i = 0; i < N_gas; i++)
-    if(P[i].Type == 0)
-      {
-	/* divide c_light by a to get comoving speed of light (because kappa is comoving) */
-	if((1 + dt * c_light * ainv * Kappa[i] + sum[i]) < 0)
-	  {
-	    printf("1 + sum + rate= %g   sum=%g rate=%g i =%d\n",
-		   1 + dt * c_light * ainv * Kappa[i] + sum[i], sum[i], dt * c_light * ainv * Kappa[i], i);
-	    endrun(11111111);
-	  }
-
-	sum[i] += 1.0 + dt * c_light * ainv * Kappa[i];
-
-	out[i] += in[i] * sum[i];
-      }
-
-  myfree(DataNodeList);
-  myfree(DataIndexTable);
-  myfree(Ngblist);
-}
-
-/* this function evaluates parts of the matrix A */
-int radtransfer_evaluate(int target, int mode, double *in, double *out, double *sum, int *nexport,
-			 int *nsend_local)
-{
-  int startnode, numngb, listindex = 0;
-  int j, n, k;
-  MyFloat *ET_aux, ET_j[6], ET_i[6], ET_ij[6];
-  MyFloat kappa_i, kappa_j, kappa_ij;
-
-#ifdef RADTRANSFER_FLUXLIMITER
-  MyFloat lambda_i, lambda_j;
-#endif
-  MyDouble *pos;
-  MyFloat mass, mass_i, rho, rho_i;
-  double sum_out = 0, sum_w = 0, fac = 0;
-
-  double dx, dy, dz;
-  double h_j, hinv, hinv3, hinv4, h_i;
-  double wk_i, wk_j,dwk_i, dwk_j, dwk;
-  double r, r2, r3inv, ainv, dt;
-
-  dt = (All.Radiation_Ti_endstep - All.Radiation_Ti_begstep) * All.Timebase_interval;
-
-  if(All.ComovingIntegrationOn)
-    {
-      ainv = 1.0 / All.Time;
-      /* in comoving case, timestep is dloga at this point. Convert to dt */
-      dt /= hubble_function(All.Time);
-    }
-  else
-    {
-      ainv = 1.0;
-    }
-
-  if(mode == 0)
-    {
-      ET_aux = SphP[target].ET;
-      pos = P[target].Pos;
-      h_i = PPP[target].Hsml;
-      kappa_i = Kappa[target];
-#ifdef RADTRANSFER_FLUXLIMITER
-      lambda_i = Lambda[target];
-#endif
-      mass_i = P[target].Mass;
-      rho_i = SphP[target].Density;
-    }
-  else
-    {
-      ET_aux = RadTransferDataGet[target].ET;
-      pos = RadTransferDataGet[target].Pos;
-      h_i = RadTransferDataGet[target].Hsml;
-      kappa_i = RadTransferDataGet[target].Kappa;
-#ifdef RADTRANSFER_FLUXLIMITER
-      lambda_i = RadTransferDataGet[target].Lambda;
-#endif
-      mass_i = RadTransferDataGet[target].Mass;
-      rho_i = RadTransferDataGet[target].Density;
-    }
-
-#ifdef RADTRANSFER_MODIFY_EDDINGTON_TENSOR
-  /*modify Eddington tensor */
-  ET_i[0] = 2 * ET_aux[0] - 0.5 * ET_aux[1] - 0.5 * ET_aux[2];
-  ET_i[1] = 2 * ET_aux[1] - 0.5 * ET_aux[2] - 0.5 * ET_aux[0];
-  ET_i[2] = 2 * ET_aux[2] - 0.5 * ET_aux[0] - 0.5 * ET_aux[1];
-
-  for(k = 3; k < 6; k++)
-    ET_i[k] = 2.5 * ET_aux[k];
-#else
-  for(k = 0; k < 6; k++)
-    ET_i[k] = ET_aux[k];
-#endif
-
-  if(mode == 0)
-    {
-      startnode = All.MaxPart;
-    }
-  else
-    {
-      startnode = RadTransferDataGet[target].NodeList[0];
-      startnode = Nodes[startnode].u.d.nextnode;
-    }
-
-  while(startnode >= 0)
-    {
-      while(startnode >= 0)
-	{
-	  numngb = ngb_treefind_pairs(pos, h_i, target, &startnode, mode, nexport, nsend_local);
-
-	  if(numngb < 0)
-	    return -1;
-
-	  for(n = 0; n < numngb; n++)
-	    {
-	      j = Ngblist[n];
-	      {
-		dx = pos[0] - P[j].Pos[0];
-		dy = pos[1] - P[j].Pos[1];
-		dz = pos[2] - P[j].Pos[2];
-#ifdef PERIODIC			/*  now find the closest image in the given box size  */
-              NEAREST_XYZ(dx,dy,dz,1);
-#endif
-		r2 = dx * dx + dy * dy + dz * dz;
-		r = sqrt(r2);
-		r3inv = 1.0 / (r2 * r);
-		h_j = PPP[j].Hsml;
-
-		if(r > 0 && (r < h_i || r < h_j))
-		  {
-		    mass = P[j].Mass;
-		    rho = SphP[j].Density;
-		    kappa_j = Kappa[j];
-#ifdef RADTRANSFER_FLUXLIMITER
-		    lambda_j = Lambda[j];
-#endif
-
-#ifdef RADTRANSFER_MODIFY_EDDINGTON_TENSOR
-		    ET_aux = SphP[j].ET;
-
-		    /*modify Eddington tensor */
-		    ET_j[0] = 2 * ET_aux[0] - 0.5 * ET_aux[1] - 0.5 * ET_aux[2];
-		    ET_j[1] = 2 * ET_aux[1] - 0.5 * ET_aux[2] - 0.5 * ET_aux[0];
-		    ET_j[2] = 2 * ET_aux[2] - 0.5 * ET_aux[0] - 0.5 * ET_aux[1];
-
-		    for(k = 3; k < 6; k++)
-		      ET_j[k] = 2.5 * ET_aux[k];
-#else
-		    for(k = 0; k < 6; k++)
-		      ET_j[k] = SphP[j].ET[k];
-#endif
-
-		    for(k = 0; k < 6; k++)
-		      ET_ij[k] = 0.5 * (ET_i[k] + ET_j[k]);
-
-		  	if(r < h_i)
-		  	{
-
-		 	kernel_hinv(h_i,&hinv,&hinv3,&hinv4);
-		  	kernel_main(r * hinv,hinv3,hinv4,&wk_i,&dwk_i,0);
-		  }
-		  else
-		  	dwk_i = 0;
-
-
-		  	if(r < h_j)
-		  	{
-		  	kernel_hinv(h_j,&hinv,&hinv3,&hinv4);
-		  	kernel_main(r * hinv,hinv3,hinv4,&wk_j,&dwk_j,0);
-		  }
-		  else
-		  	dwk_j = 0;
-
-
-
-
-
-		    kappa_ij = 0.5 * (1 / kappa_i + 1 / kappa_j);
-		    dwk = 0.5 * (dwk_i + dwk_j);
-		    mass = 0.5 * (mass + mass_i);
-		    rho = 0.5 * (rho + rho_i);
-
-		    double tensor = (ET_ij[0] * dx * dx + ET_ij[1] * dy * dy + ET_ij[2] * dz * dz
-				     + 2.0 * ET_ij[3] * dx * dy + 2.0 * ET_ij[4] * dy * dz +
-				     2.0 * ET_ij[5] * dz * dx);
-
-		    if(tensor > 0)
-		      {
-			fac = -2.0 * dt * c_light * ainv * (mass / rho) * kappa_ij * dwk * r3inv * tensor;
-
-#ifdef RADTRANSFER_FLUXLIMITER
-			fac *= 0.5 * (lambda_i + lambda_j);
-#endif
-
-			sum_out -= fac * in[j];
-
-			sum_w += fac;
-		      }
-		  }
-	      }
-	    }
-	}
-
-      if(mode == 1)
-	{
-	  listindex++;
-	  if(listindex < NODELISTLENGTH)
-	    {
-	      startnode = RadTransferDataGet[target].NodeList[listindex];
-	      if(startnode >= 0)
-		startnode = Nodes[startnode].u.d.nextnode;
-	    }
-	}
-    }
-
-  if(mode == 0)
-    {
-      out[target] = sum_out;
-      sum[target] = sum_w;
-    }
-  else
-    {
-      RadTransferDataResult[target].Out = sum_out;
-      RadTransferDataResult[target].Sum = sum_w;
-    }
-
-  return 0;
-}
-
-/* this function sets up simple initial conditions for a single source in a uniform field of gas with constant density*/
-void radtransfer_set_simple_inits(void)
-{
-  int i, j;
-
-  for(i = 0; i < N_gas; i++)
-    if(P[i].Type == 0)
-      {
-	for(j = 0; j < N_RT_FREQ_BINS; j++)
-	  SphP[i].n_gamma[j] = tiny;
-	
-	/* in code units */
-	SphP[i].HII = tiny;
-	SphP[i].HI = 1.0 - SphP[i].HII;
-	SphP[i].Ne = SphP[i].HII;
-
-
-
-
-#ifdef RT_INCLUDE_HE
-	double fac = (1-HYDROGEN_MASSFRAC)/4.0/HYDROGEN_MASSFRAC;
-
-	SphP[i].HeIII = tiny * fac;
-	SphP[i].HeII = tiny * fac;
-	SphP[i].HeI = (1.0 - SphP[i].HeII - SphP[i].HeIII) * fac;
-
-	SphP[i].Ne += SphP[i].HeII + 2.0 * SphP[i].HeIII;
-#endif
-      }
-}
-
-void rt_get_sigma(void)
-{
-  double fac = 1.0 / All.UnitLength_in_cm / All.UnitLength_in_cm * All.HubbleParam * All.HubbleParam;
-
-#ifndef RT_MULTI_FREQUENCY
-  rt_sigma_HI[0] = 6.3e-18 * fac;
-  nu[0] = 13.6;
-  
-#else 
-  int i, j, integral;
-  double e, d_nu, e_start, e_end;
-  double sum_HI_sigma, sum_HI_G;
-  double hc, T_eff, I_nu;
-  double sig, f, fac_two;
-#ifdef RT_INCLUDE_HE
-  double sum_HeI_sigma, sum_HeII_sigma;
-  double sum_HeI_G, sum_HeII_G;
-#endif
-
-  T_eff = All.star_Teff;
-  hc = C * PLANCK;
-
-  integral = 10000;
-
-  fac_two = ELECTRONVOLT_IN_ERGS / All.UnitEnergy_in_cgs * All.HubbleParam;
-
-  nu[0] = 13.6;
-  nu[1] = 24.6;
-  nu[2] = 54.4;
-  nu[3] = 70.0;
-
-  sum_HI_sigma = 0.0;
-  sum_HI_G = 0.0;
-#ifdef RT_INCLUDE_HE
-  sum_HeI_G = sum_HeII_G = 0.0;
-  sum_HeI_sigma = 0.0;
-  sum_HeII_sigma = 0.0;
-#endif
-  
-  for(i = 0; i < N_RT_FREQ_BINS; i++)
-    {
-      e_start = nu[i];
-      
-      if(i == N_RT_FREQ_BINS - 1)
-	e_end = 500.0;
-      else
-	e_end = nu[i+1];
-      
-      d_nu = (e_end - e_start) / (float)(integral - 1);
-      
-      rt_sigma_HI[i] = 0.0;
-      G_HI[i] = 0.0;
-
-#ifdef RT_INCLUDE_HE
-      rt_sigma_HeI[i] = 0.0;
-      rt_sigma_HeII[i] = 0.0;
-      G_HeI[i] = G_HeII[i] = 0.0;
-#endif	  
-	
-      for(j = 0; j < integral; j++)
-	{
-	  e = e_start + j * d_nu;
-	  
-	  I_nu = 2.0 * pow(e * ELECTRONVOLT_IN_ERGS, 3) / (hc * hc)
-	    / (exp(e * ELECTRONVOLT_IN_ERGS / (BOLTZMANN * T_eff)) - 1.0);
-	  
-	  if(nu[i] >= 13.6)
-	    {
-	      f = sqrt((e / 13.6) - 1.0);
-	  
-	      if(j == 0)
-		sig = 6.3e-18;
-	      else
-		sig = 6.3e-18 * pow(13.6 / e, 4) * exp(4 - (4 * atan(f) / f)) / (1.0 - exp(-2 * M_PI / f));
-	      
-	      rt_sigma_HI[i] += d_nu * sig * I_nu / e;
-
-	      sum_HI_sigma += d_nu * I_nu / e; 
-
-	      G_HI[i] += d_nu * sig * (e - 13.6) * I_nu / e;
-
-	      sum_HI_G += d_nu * sig * I_nu / e;
-	    }
-	  
-#ifdef RT_INCLUDE_HE
-	  if(nu[i] >= 24.6)
-	    {
-	      f = sqrt((e / 24.6) - 1.0);
-	  
-	      if(j == 0)
-		sig = 7.83e-18;
-	      else
-		sig = 7.83e-18 * pow(24.6 / e, 4) * exp(4 - (4 * atan(f) / f)) / (1.0 - exp(-2 * M_PI / f));
-	      
-	      rt_sigma_HeI[i] += d_nu * sig * I_nu / e;
-	      
-              sum_HeI_sigma += d_nu * I_nu / e;
-
-              G_HeI[i] += d_nu * sig * (e - 24.6) * I_nu / e;
-
-              sum_HeI_G += d_nu * sig * I_nu / e;
-	    }
-	  
-	  if(nu[i] >= 54.4)
-	    {
-	      f = sqrt((e / 54.4) - 1.0);
-	  
-	      if(j == 0)
-		sig = 1.58e-18;
-	      else
-		sig = 1.58e-18 * pow(54.4 / e, 4) * exp(4 - (4 * atan(f) / f)) / (1.0 - exp(-2 * M_PI / f));
-	      
-	      rt_sigma_HeII[i] += d_nu * sig * I_nu / e;
-
-              sum_HeII_sigma += d_nu * I_nu / e;
-
-              G_HeII[i] += d_nu * sig * (e - 54.4) * I_nu / e;
-
-              sum_HeII_G += d_nu * sig * I_nu / e;
-	    }
-#endif
-	}
-    }
-  for(i = 0; i < N_RT_FREQ_BINS; i++)
-    {      
-      if(nu[i] >= 13.6)
-	{
-	  rt_sigma_HI[i] *= fac / sum_HI_sigma;
-	  G_HI[i] *= fac_two / sum_HI_G;
-	}
-      
-#ifdef RT_INCLUDE_HE
-      if(nu[i] >= 24.6)
-	{
-	  rt_sigma_HeI[i] *= fac / sum_HeI_sigma;
-	  G_HeI[i] *= fac_two / sum_HeI_G;
-	}
-      
-      if(nu[i] >= 54.4)
-	{
-	  rt_sigma_HeII[i] *= fac / sum_HeII_sigma;         
-	  G_HeII[i] *= fac_two / sum_HeII_G;
-	}
-#endif
-    }
-
-  if(ThisTask == 0)
-    for(i = 0; i < N_RT_FREQ_BINS; i++)
-      printf("%g %g | %g %g | %g %g\n", 
-	     rt_sigma_HI[i]/fac, G_HI[i]/fac_two, 
-	     rt_sigma_HeI[i]/fac, G_HeI[i]/fac_two, 
-	     rt_sigma_HeII[i]/fac, G_HeII[i]/fac_two);
-  
-#endif
-}
-
-#ifdef RT_MULTI_FREQUENCY
-#if defined(EDDINGTON_TENSOR_STARS) || defined(EDDINGTON_TENSOR_SFR)
-void rt_get_lum_stars(void)
-{
-  int i;
-  double T_eff, R_eff, I_nu;
-  double hc, sum, d_nu;
-  int j, integral;
-  double e, e_start, e_end;
-  integral = 10000;
-
-  T_eff = All.star_Teff;
-  R_eff = 7e11;
-  hc = C * PLANCK;
-
-  for(i = 0, sum = 0; i < N_RT_FREQ_BINS; i++)
-    {
-      e_start = nu[i];
-
-      if(i == N_RT_FREQ_BINS - 1)
-        e_end = 500.0;
-      else
-        e_end = nu[i+1];
-      
-      d_nu = (e_end - e_start) / (float)(integral - 1);
-
-      lum[i] = 0.0;
-
-      for(j = 0; j < integral; j++)
-        {
-          e = e_start + j*d_nu;
-	  
-	  I_nu = 2.0 * pow(e * ELECTRONVOLT_IN_ERGS, 3) / (hc * hc)
-	    / (exp(e * ELECTRONVOLT_IN_ERGS / (BOLTZMANN * T_eff)) - 1.0);
-
-	  lum[i] += 4.0 * M_PI * R_eff * R_eff * M_PI * I_nu / e * d_nu / PLANCK; // number/s
-	}
-      sum += lum[i];
-      lum[i] *= All.UnitTime_in_s / All.HubbleParam; //number/time
-    }
-
-    for(i = 0; i < N_RT_FREQ_BINS; i++)
-    {
- //   	lum[i] *= 5.0e48 / sum;
- //   	lum[i] *= All.UnitTime_in_s / All.HubbleParam;
-   		lum[i] *= All.IonizingLumPerSolarMass / sum; 	
-    }
-
-
+    int k, j;
+    double alpha_cg, beta, sum;
+    double rel, res, maxrel, glob_maxrel, DQ;
+    double dt = (All.Radiation_Ti_endstep - All.Radiation_Ti_begstep) * All.Timebase_interval / All.cf_hubble_a;
     
+    /* initialization for the CG method */
+    MALLOC_CG(ZVec); MALLOC_CG(XVec); MALLOC_CG(QVec); MALLOC_CG(DVec); MALLOC_CG(Residue); MALLOC_CG(Diag); MALLOC_CG(Diag2); // allocate and zero all the arrays
+    for(j = 0; j < N_gas; j++)
+        if(P[j].Type == 0)
+            for(k = 0; k < N_RT_FREQ_BINS; k++)
+            {
+                XVec[k][j] = SphP[j].E_gamma[k] * SphP[j].Density / (1.e-37+P[j].Mass); /* define the coefficients: note we need energy densities for this operation */
+                SphP[j].E_gamma[k] += dt * SphP[j].Je[k]; /* -then- add the source terms */
+            }
  
-  if(ThisTask == 0)
+    /* do a first pass of our 'workhorse' routine, which lets us pre-condition to improve convergence */
+    rt_diffusion_cg_matrix_multiply(XVec, Residue, Diag);
+    /* take the diagonal matrix elements as a Jacobi preconditioner */
+    double delta_new_initial[N_RT_FREQ_BINS];
+    for(k = 0; k < N_RT_FREQ_BINS; k++)
     {
-      fprintf(FdStar, "T_eff %g\n", All.star_Teff);   
-      fflush(FdStar);
-      for(i = 0; i < N_RT_FREQ_BINS; i++)
-	{
-	  fprintf(FdStar, "%d %g %g\n", i, nu[i], lum[i] / All.UnitTime_in_s * All.HubbleParam);   
-	  fflush(FdStar);
-	}
+        for(j = 0; j < N_gas; j++)
+            if(P[j].Type == 0)
+            {                
+                Residue[k][j] = SphP[j].E_gamma[k] * SphP[j].Density / (1.e-37+P[j].Mass) - Residue[k][j]; // note: source terms have been added here to E_gamma //
+                /* note: in principle we would have to substract the w_ii term, but this is zero by definition */
+                ZVec[k][j] = Residue[k][j] / Diag[k][j];
+                DVec[k][j] = ZVec[k][j];
+            }
+        delta_new_initial[k] = rt_diffusion_cg_vector_multiply(ZVec[k], Residue[k]);
     }
-
+    
+    /* begin the CG method iteration */
+    int iter=0, ndone=0, done_key[N_RT_FREQ_BINS]; 
+    double delta_new[N_RT_FREQ_BINS], delta_old[N_RT_FREQ_BINS];
+    for(k = 0; k < N_RT_FREQ_BINS; k++) {done_key[k]=0; delta_new[k]=delta_new_initial[k]; delta_old[k]=delta_new_initial[k];}
+    do
+    {
+        /* this is the 'workhorse' routine with the neighbor communication and actual calculation */
+        rt_diffusion_cg_matrix_multiply(DVec, QVec, Diag2);
+        ndone = 0; 
+        for(k = 0; k < N_RT_FREQ_BINS; k++)
+        {
+            /* define residues */
+            DQ = rt_diffusion_cg_vector_multiply(DVec[k], QVec[k]);
+            if(DQ == 0) {alpha_cg = 0;} else {alpha_cg = delta_new[k] / DQ;}
+            for(j = 0, maxrel = 0; j < N_gas; j++)
+            {
+                XVec[k][j] += alpha_cg * DVec[k][j];
+                Residue[k][j] -= alpha_cg * QVec[k][j];
+                ZVec[k][j] = Residue[k][j] / Diag[k][j];
+                rel = fabs(alpha_cg * DVec[k][j]) / (XVec[k][j] + 1.0e-10);
+                if(rel > maxrel) {maxrel = rel;}
+            }
+            delta_old[k] = delta_new[k];
+            delta_new[k] = rt_diffusion_cg_vector_multiply(ZVec[k], Residue[k]);
+            
+            /* sum up residues to define next step */
+            sum = rt_diffusion_cg_vector_sum(XVec[k]);
+            res = rt_diffusion_cg_vector_sum(Residue[k]);
+            if(delta_old[k]) {beta = delta_new[k] / delta_old[k];} else {beta = 0;}
+            for(j = 0; j < N_gas; j++) {DVec[k][j] = ZVec[k][j] + beta * DVec[k][j];}
+            
+            /* broadcast and decide if we need to keep iterating */
+            MPI_Allreduce(&maxrel, &glob_maxrel, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+            if(ThisTask == 0) {printf("CG iteration: iter=%3d  |res|/|x|=%12.6g  maxrel=%12.6g  |x|=%12.6g |res|=%12.6g\n", iter, res / sum, glob_maxrel, sum, res); fflush(stdout);}
+            if(iter >= 1 && (res <= ACCURACY * sum || iter >= MAX_ITER)) {done_key[k]=1; ndone++;}
+        }
+        iter++;
+        if(iter > MAX_ITER) {terminate("failed to converge in CG iteration \n");}
+    }
+    while(ndone < N_RT_FREQ_BINS);
+    
+    /* success! */
+    if(ThisTask == 0) {printf("%d iterations performed\n", iter); fflush(stdout);}
+    
+    /* update the intensity */
+    for(j = 0; j < N_gas; j++)
+        if(P[j].Type == 0)
+            for(k = 0; k < N_RT_FREQ_BINS; k++)
+                SphP[j].E_gamma[k] = DMAX(XVec[k][j],0) * P[j].Mass / SphP[j].Density; // convert back to an absolute energy, instead of a density //
+    
+    /* free memory */
+    free(Diag2);
+    free(Diag);
+    free(Residue);
+    free(DVec);
+    free(QVec);
+    free(XVec);
+    free(ZVec);
 }
-#endif
-#endif
 
-#if defined(EDDINGTON_TENSOR_GAS) && defined(RT_MULTI_FREQUENCY)
-void rt_get_lum_gas(int target, double *je)
+
+
+
+
+
+
+/* this function computes the vector b(matrixmult_out) given the vector x(in) such as Ax = b, where A is a matrix */
+void rt_diffusion_cg_matrix_multiply(double **matrixmult_in, double **matrixmult_out, double **matrixmult_sum)
 {
-  int j;
-  double temp, entropy, molecular_weight;
-  double kT, hc, BB_l, BB_r, next;
-  double sigma_SB, R_eff;
-  double u_cooling, u_BB;
-  double dt, dtime, fac;
-  double d_nu;
-
-  sigma_SB = 5.6704e-5;
-
-  dt = (All.Radiation_Ti_endstep - All.Radiation_Ti_begstep) * All.Timebase_interval;
-
-  if(All.ComovingIntegrationOn)
+    /* allocate buffers to arrange communication */
+    int j, k, ngrp, ndone, ndone_flag, recvTask, place, save_NextParticle;
+    long long n_exported = 0;
+    long long NTaskTimesNumPart;
+    NTaskTimesNumPart = maxThreads * NumPart;
+    Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
+    All.BunchSize = (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
+                                                             sizeof(struct rt_cg_data_in) + sizeof(struct rt_cg_data_out) + sizemax(sizeof(struct rt_cg_data_in),sizeof(struct rt_cg_data_out))));
+    DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
+    DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
+    
+    NextParticle = FirstActiveParticle;	/* begin with this index */
+    do
     {
-      dtime = dt / hubble_function(All.Time);
-      a3inv = 1.0 / All.Time / All.Time / All.Time;
-    }
-  else
-    {
-      dtime = dt;
-      a3inv = 1.0;
-    }
-
-  R_eff = 3.0 / 4.0 / M_PI * pow(P[target].Mass / SphP[target].Density * a3inv, 1. / 3.);
-  R_eff *= All.UnitLength_in_cm / All.HubbleParam; //cm
-
-  molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[target].Ne);
-
-  temp =  SphP[target].Pressure *
-    (molecular_weight * PROTONMASS / All.UnitMass_in_g * All.HubbleParam) /
-    (BOLTZMANN / All.UnitEnergy_in_cgs * All.HubbleParam);
-
-  kT = temp * BOLTZMANN;
-  hc = C * PLANCK;
-
-  entropy = SphP[target].Pressure * pow(SphP[target].Density * a3inv, -1 * GAMMA);
-
-  u_cooling = rt_get_cooling_rate(target, entropy) *
-    dtime / (SphP[target].Density * a3inv);
-
-  if(!(dtime > 0))
-    u_cooling = 0.0;
-
-  u_BB = sigma_SB * pow(temp, 4) * dtime * All.UnitTime_in_s / All.HubbleParam; // erg/cm^2
-  u_BB /= All.UnitEnergy_in_cgs / All.HubbleParam; //energy/cm^2
-  u_BB *= 4.0 * M_PI * R_eff * R_eff; //energy
-  u_BB /= P[target].Mass; //energy/mass
-
-  if(u_BB > 0)
-    fac = - u_cooling / u_BB;
-  else
-    fac = 0.0;
-
-  for(j = 0; j < N_RT_FREQ_BINS; j++)
-    {
-      if(j == N_RT_FREQ_BINS - 1)
-        next = 500;
-      else
-        next = nu[j+1];
-
-      d_nu = next - nu[j];
-
-      BB_r = 2.0 * pow(next * ELECTRONVOLT_IN_ERGS, 3) / (hc * hc)
-        / (exp(next * ELECTRONVOLT_IN_ERGS / (kT)) - 1.0);
-
-      BB_l = 2.0 * pow(nu[j] * ELECTRONVOLT_IN_ERGS, 3) / (hc * hc)
-        / (exp(nu[j] * ELECTRONVOLT_IN_ERGS / (kT)) - 1.0);
-
-      je[j] += 4.0 * M_PI * R_eff * R_eff * M_PI * 0.5 * (BB_l / nu[j] + BB_r / next) * d_nu / PLANCK; // number/s
-
-      je[j] *= All.UnitTime_in_s / All.HubbleParam; //number/time
-
-      je[j] *= fac;
-    }
-
-}
+        BufferFullFlag = 0;
+        Nexport = 0;
+        save_NextParticle = NextParticle;
+        for(j = 0; j < NTask; j++) {Send_count[j] = 0; Exportflag[j] = -1;}
+        
+        /* do local particles and prepare export list */
+#ifdef OMP_NUM_THREADS
+        pthread_t mythreads[OMP_NUM_THREADS - 1];
+        int threadid[OMP_NUM_THREADS - 1];
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+        pthread_mutex_init(&mutex_nexport, NULL);
+        pthread_mutex_init(&mutex_partnodedrift, NULL);
+        TimerFlag = 0;
+        for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+        {
+            threadid[j] = j + 1;
+            pthread_create(&mythreads[j], &attr, rt_diffusion_cg_evaluate_primary, &threadid[j]);
+        }
 #endif
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+        {
+#ifdef _OPENMP
+            int mainthreadid = omp_get_thread_num();
+#else
+            int mainthreadid = 0;
+#endif
+            rt_diffusion_cg_evaluate_primary(&mainthreadid, matrixmult_in, matrixmult_out, matrixmult_sum);	/* do local particles and prepare export list */
+        }
+#ifdef OMP_NUM_THREADS
+        for(j = 0; j < OMP_NUM_THREADS - 1; j++) {pthread_join(mythreads[j], NULL);}
+#endif
+        if(BufferFullFlag)
+        {
+            int last_nextparticle = NextParticle;
+            NextParticle = save_NextParticle;
+            while(NextParticle >= 0)
+            {
+                if(NextParticle == last_nextparticle) break;
+                if(ProcessedFlag[NextParticle] != 1) break;
+                ProcessedFlag[NextParticle] = 2;
+                NextParticle = NextActiveParticle[NextParticle];
+            }
+            if(NextParticle == save_NextParticle)
+            {
+                /* in this case, the buffer is too small to process even a single particle */
+                endrun(116608);
+            }
+            int new_export = 0;
+            for(j = 0, k = 0; j < Nexport; j++)
+            {
+                if(ProcessedFlag[DataIndexTable[j].Index] != 2)
+                {
+                    if(k < j + 1) {k = j + 1;}
+                    for(; k < Nexport; k++)
+                    {
+                        if(ProcessedFlag[DataIndexTable[k].Index] == 2)
+                        {
+                            int old_index = DataIndexTable[j].Index;
+                            DataIndexTable[j] = DataIndexTable[k];
+                            DataNodeList[j] = DataNodeList[k];
+                            DataIndexTable[j].IndexGet = j;
+                            new_export++;
+                            DataIndexTable[k].Index = old_index;
+                            k++;
+                            break;
+                        }
+                    }
+                } else {new_export++;}
+            }
+            Nexport = new_export;
+        }
+        n_exported += Nexport;
+        
+        for(j = 0; j < NTask; j++) {Send_count[j] = 0;}
+        for(j = 0; j < Nexport; j++) {Send_count[DataIndexTable[j].Task]++;}
+        MYSORT_DATAINDEX(DataIndexTable, Nexport, sizeof(struct data_index), data_index_compare);
+        MPI_Alltoall(Send_count, 1, MPI_INT, Recv_count, 1, MPI_INT, MPI_COMM_WORLD);
+        for(j = 0, Nimport = 0, Recv_offset[0] = 0, Send_offset[0] = 0; j < NTask; j++)
+        {
+            Nimport += Recv_count[j];
+            if(j > 0)
+            {
+                Send_offset[j] = Send_offset[j - 1] + Send_count[j - 1];
+                Recv_offset[j] = Recv_offset[j - 1] + Recv_count[j - 1];
+            }
+        }
+        rt_cg_DataGet = (struct rt_cg_data_in *) mymalloc("rt_cg_DataGet", Nimport * sizeof(struct rt_cg_data_in));
+        rt_cg_DataIn = (struct rt_cg_data_in *) mymalloc("rt_cg_DataIn", Nexport * sizeof(struct rt_cg_data_in));
+        /* prepare particle data for export */
+        for(j = 0; j < Nexport; j++)
+        {
+            place = DataIndexTable[j].Index;
+            particle2in_rt_cg(&rt_cg_DataIn[j], place);
+#ifndef DONOTUSENODELIST
+            memcpy(rt_cg_DataIn[j].NodeList, DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
+#endif
+        }
+        /* exchange particle data */
+        for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
+        {
+            recvTask = ThisTask ^ ngrp;
+            if(recvTask < NTask)
+            {
+                if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
+                {
+                    /* get the particles */
+                    MPI_Sendrecv(&rt_cg_DataIn[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct rt_cg_data_in), MPI_BYTE, recvTask, TAG_RT_A,
+                                 &rt_cg_DataGet[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(struct rt_cg_data_in), MPI_BYTE, recvTask, TAG_RT_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                }
+            }
+        }
+        myfree(rt_cg_DataIn);
+        rt_cg_DataResult = (struct rt_cg_data_out *) mymalloc("rt_cg_DataResult", Nimport * sizeof(struct rt_cg_data_out));
+        rt_cg_DataOut = (struct rt_cg_data_out *) mymalloc("rt_cg_DataOut", Nexport * sizeof(struct rt_cg_data_out));
+        /* now do the particles that were sent to us */
+        NextJ = 0;
+#ifdef OMP_NUM_THREADS
+        for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+            pthread_create(&mythreads[j], &attr, rt_diffusion_cg_evaluate_secondary, &threadid[j]);
+#endif
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+        {
+#ifdef _OPENMP
+            int mainthreadid = omp_get_thread_num();
+#else
+            int mainthreadid = 0;
+#endif
+            rt_diffusion_cg_evaluate_secondary(&mainthreadid, matrixmult_in, matrixmult_out, matrixmult_sum);
+        }
+#ifdef OMP_NUM_THREADS
+        for(j = 0; j < OMP_NUM_THREADS - 1; j++) {pthread_join(mythreads[j], NULL);}
+        pthread_mutex_destroy(&mutex_partnodedrift);
+        pthread_mutex_destroy(&mutex_nexport);
+        pthread_attr_destroy(&attr);
+#endif
+        if(NextParticle < 0) {ndone_flag = 1;} else {ndone_flag = 0;}
+        MPI_Allreduce(&ndone_flag, &ndone, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+        /* get the result */
+        for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
+        {
+            recvTask = ThisTask ^ ngrp;
+            if(recvTask < NTask)
+            {
+                if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
+                {
+                    /* send the results */
+                    MPI_Sendrecv(&rt_cg_DataResult[Recv_offset[recvTask]],
+                                 Recv_count[recvTask] * sizeof(struct rt_cg_data_out), MPI_BYTE, recvTask, TAG_RT_B,
+                                 &rt_cg_DataOut[Send_offset[recvTask]],
+                                 Send_count[recvTask] * sizeof(struct rt_cg_data_out), MPI_BYTE, recvTask, TAG_RT_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                }
+            }
+        }
+        
+        /* add the result to the local particles */
+        for(j = 0; j < Nexport; j++)
+        {
+            place = DataIndexTable[j].Index;
+            for(k = 0; k < N_RT_FREQ_BINS; k++)
+            {
+                matrixmult_out[k][place] += rt_cg_DataOut[j].matrixmult_out[k];
+                matrixmult_sum[k][place] += rt_cg_DataOut[j].matrixmult_sum[k];
+            }
+        }
+        myfree(rt_cg_DataOut);
+        myfree(rt_cg_DataResult);
+        myfree(rt_cg_DataGet);
+    }
+    while(ndone < NTask);
+    
+    /* do final operations on results */
+    double dt = (All.Radiation_Ti_endstep - All.Radiation_Ti_begstep) * All.Timebase_interval / All.cf_hubble_a;
+    int i;
+    for(i = 0; i < N_gas; i++)
+        if(P[i].Type == 0)
+        {
+            for(k = 0; k < N_RT_FREQ_BINS; k++)
+            {
+                double fac_i = dt * rt_absorption_rate(i,k); 
+                if((1 + fac_i + matrixmult_sum[k][i]) < 0)
+                {
+                    printf("1 + matrixmult_sum + rate= %g   matrixmult_sum=%g rate=%g i =%d\n", 1 + fac_i + matrixmult_sum[k][i], matrixmult_sum[k][i], fac_i, i);
+                    endrun(11111111);
+                }
+                /* the "1" here accounts for the fact that we must start from the previous photon number (the matrix includes only the "dt" term); 
+                    the fac_i term here accounts for sinks [here, the rate of photon absorption]; the in*sum part below accounts for the re-arrangement 
+                    of indices [swapping indices i and j in the relevant equations so we account for both sides of the difference terms */
+                matrixmult_sum[k][i] += 1.0 + fac_i;
+                matrixmult_out[k][i] += matrixmult_in[k][i] * matrixmult_sum[k][i];
+            }
+        }
+    /* free memory */
+    myfree(DataNodeList);
+    myfree(DataIndexTable);
+    myfree(Ngblist);
+}
+
+
+/* subroutine that actually does the neighbor calculation: this needs to be customized for your problem! */
+int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, double **matrixmult_out, double **matrixmult_sum, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist)
+{
+    /* Load the data for the particle */
+    int j, k, n, startnode, numngb_inbox, listindex = 0;
+    struct rt_cg_data_in local;
+    if(mode == 0) {particle2in_rt_cg(&local, target);} else {local = rt_cg_DataGet[target];}
+    struct rt_cg_data_out out;
+    memset(&out, 0, sizeof(struct rt_cg_data_out));
+
+    /* basic calculations */
+    if(local.Hsml<=0) return 0; // zero-extent kernel, no particles //
+    double hinv, hinv3, hinv4, h2=local.Hsml*local.Hsml;
+    kernel_hinv(local.Hsml, &hinv, &hinv3, &hinv4);
+    double dt = (All.Radiation_Ti_endstep - All.Radiation_Ti_begstep) * All.Timebase_interval / All.cf_hubble_a;
+    //double prefac = -2.0 * dt * (C/All.UnitVelocity_in_cm_per_s) * RT_SPEEDOFLIGHT_REDUCTION; // old version
+#ifdef RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR
+    /*modify Eddington tensor */
+    for(j=0;j<N_RT_FREQ_BINS;j++)
+    {
+        double ET[6];
+        int kET; for(kET = 0; k < 6; k++) {ET[k] = local.ET[j][k];}
+        local.ET[j][0] = 2.*ET[0] - 0.5*ET[1] - 0.5*ET[2];
+        local.ET[j][1] = 2.*ET[1] - 0.5*ET[2] - 0.5*ET[0];
+        local.ET[j][2] = 2.*ET[2] - 0.5*ET[0] - 0.5*ET[1];
+        for(k=3;k<6;k++) {local.ET[j][k] = 2.5*ET[k];}
+    }
+#endif
+    
+    /* Now start the actual operations for this particle */
+    if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = rt_cg_DataGet[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;/* open it */}
+    while(startnode >= 0)
+    {
+        while(startnode >= 0)
+        {
+            numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+            if(numngb_inbox < 0) {return -1;}
+            for(n = 0; n < numngb_inbox; n++)
+            {
+                j = ngblist[n];
+                if(P[j].Type != 0) continue; // require a gas particle //
+                if(P[j].Mass <= 0) continue; // require the particle has mass //
+                double dp[3]; for(k=0; k<3; k++) {dp[k] = local.Pos[k] - P[j].Pos[k];}
+#ifdef PERIODIC	/* find the closest image in the given box size  */
+                NEAREST_XYZ(dp[0],dp[1],dp[2],1);
+#endif
+                double r2=0; for(k=0;k<3;k++) {r2 += dp[k]*dp[k];}
+                if(r2<=0) continue; // same particle //
+                if((r2>h2)||(r2>PPP[j].Hsml*PPP[j].Hsml)) continue; // outside kernel //
+                // calculate kernel quantities //
+                double r = sqrt(r2), wk, dwk_i=0, dwk_j=0;
+                if(r<local.Hsml)
+                {
+                    kernel_main(r*hinv, hinv3, hinv4, &wk, &dwk_i, 1);
+                }
+                if(r<PPP[j].Hsml)
+                {
+                    double hinv_j,hinv3_j,hinv4_j; kernel_hinv(PPP[j].Hsml, &hinv_j, &hinv3_j, &hinv4_j);
+                    kernel_main(r*hinv_j, hinv3_j, hinv4_j, &wk, &dwk_j, 1);
+                }
+                
+                double tensor_norm = -dt * (dwk_i*local.Mass/local.Density + dwk_j*P[j].Mass/SphP[j].Density) / r;
+                if(tensor_norm > 0)
+                {
+                    for(k=0;k<N_RT_FREQ_BINS;k++)
+                    {
+                
+                        double ET_ij[6];
+#ifdef RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR
+                        double ET_j[6];
+                        ET_j[0] = 2.*SphP[j].ET[k][0] - 0.5*SphP[j].ET[k][1] - 0.5*SphP[j].ET[k][2];
+                        ET_j[1] = 2.*SphP[j].ET[k][1] - 0.5*SphP[j].ET[k][2] - 0.5*SphP[j].ET[k][0];
+                        ET_j[2] = 2.*SphP[j].ET[k][2] - 0.5*SphP[j].ET[k][0] - 0.5*SphP[j].ET[k][1];
+                        int kET;
+                        for(kET=3;kET<6;kET++) {ET_j[kET] = 2.5*SphP[j].ET[k][kET];}
+                        for(kET=0;kET<6;kET++) {ET_ij[kET] = 0.5 * (local.ET[k][kET] + ET_j[kET]);}
+#else
+                        int kET; for(kET=0;kET<6;kET++) {ET_ij[kET] = 0.5 * (local.ET[k][kET] + SphP[j].ET[k][kET]);}
+#endif
+                        double tensor = (ET_ij[0]*dp[0]*dp[0] + ET_ij[1]*dp[1]*dp[1] + ET_ij[2]*dp[2]*dp[2]
+                                         + 2.*ET_ij[3]*dp[0]*dp[1] + 2.*ET_ij[4]*dp[1]*dp[2] + 2.*ET_ij[5]*dp[2]*dp[0]) / r2;
+                        double kappa_ij = 0.5*(local.DiffusionCoeff[k] + rt_diffusion_coefficient(j,k));
+                        double fac = tensor_norm * tensor * kappa_ij;
+                        out.matrixmult_out[k] -= fac * matrixmult_in[k][j];
+                        out.matrixmult_sum[k] += fac;
+                    }
+                }
+            } // for(n = 0; n < numngb; n++)
+        } // while(startnode >= 0)
+#ifndef DONOTUSENODELIST
+        if(mode == 1)
+        {
+            listindex++;
+            if(listindex < NODELISTLENGTH)
+            {
+                startnode = rt_cg_DataGet[target].NodeList[listindex];
+                if(startnode >= 0)
+                    startnode = Nodes[startnode].u.d.nextnode;	/* open it */
+            }
+        } // if(mode == 1)
+#endif
+    } // while(startnode >= 0)
+    /* Now collect the result at the right place */
+    if(mode == 0)
+    {
+        for(k=0;k<N_RT_FREQ_BINS;k++)
+        {
+            matrixmult_out[k][target] = out.matrixmult_out[k];
+            matrixmult_sum[k][target] = out.matrixmult_sum[k];
+        }
+    }
+    else
+        rt_cg_DataResult[target] = out;
+    return 0;
+}
+
+
+
+/* routine for initial loop of particles on local processor (and determination of which need passing) */
+void *rt_diffusion_cg_evaluate_primary(void *p, double **matrixmult_in, double **matrixmult_out, double **matrixmult_sum)
+{
+    int i, j, *exportflag, *exportnodecount, *exportindex, *ngblist, thread_id = *(int *) p;
+    ngblist = Ngblist + thread_id * NumPart;
+    exportflag = Exportflag + thread_id * NTask;
+    exportnodecount = Exportnodecount + thread_id * NTask;
+    exportindex = Exportindex + thread_id * NTask;
+    /* Note: exportflag is local to each thread */
+    for(j = 0; j < NTask; j++) {exportflag[j] = -1;}
+    while(1)
+    {
+        int exitFlag = 0;
+        LOCK_NEXPORT;
+#ifdef _OPENMP
+#pragma omp critical(_nexport_)
+#endif
+        {
+            if(BufferFullFlag != 0 || NextParticle < 0)
+            {
+                exitFlag = 1;
+            }
+            else
+            {
+                i = NextParticle;
+                ProcessedFlag[i] = 0;
+                NextParticle = NextActiveParticle[NextParticle];
+            }
+        }
+        UNLOCK_NEXPORT;
+        if(exitFlag) {break;}
+        if((P[i].Type == 0) && (PPP[i].NumNgb > 0) && (PPP[i].Hsml > 0) && (P[i].Mass) > 0)
+        {
+            if(rt_diffusion_cg_evaluate(i, 0, matrixmult_in, matrixmult_out, matrixmult_sum, exportflag, exportnodecount, exportindex, ngblist) < 0) {break;} // export buffer has filled up //
+        }
+        ProcessedFlag[i] = 1; /* particle successfully finished */
+    }
+    return NULL;
+}
+
+
+/* routine for looping over passed particles (with multi-threading): note here we dont need to check for activity, because nothing inactive is passed */
+void *rt_diffusion_cg_evaluate_secondary(void *p, double **matrixmult_in, double **matrixmult_out, double **matrixmult_sum)
+{
+    int j, dummy, *ngblist, thread_id = *(int *) p;
+    ngblist = Ngblist + thread_id * NumPart;
+    while(1)
+    {
+        LOCK_NEXPORT;
+#ifdef _OPENMP
+#pragma omp critical(_nexport_)
+#endif
+        {
+            j = NextJ;
+            NextJ++;
+        }
+        UNLOCK_NEXPORT;
+        if(j >= Nimport) {break;}
+        rt_diffusion_cg_evaluate(j, 1, matrixmult_in, matrixmult_out, matrixmult_sum, &dummy, &dummy, &dummy, ngblist);
+    }
+    return NULL;
+}
 
 #endif

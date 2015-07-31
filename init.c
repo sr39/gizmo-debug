@@ -151,11 +151,7 @@ void init(void)
         a2_fac = 1;
 #endif
     }
-    
-#ifdef RADTRANSFER
-    All.Radiation_Ti_begstep = 0;
-#endif
-    
+        
     set_softenings();
     
     All.NumCurrentTiStep = 0;	/* setup some counters */
@@ -399,18 +395,17 @@ void init(void)
         }
 #endif
         
-#if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN )
         if(RestartFlag != 1)
         {
+#if defined(DO_DENSITY_AROUND_STAR_PARTICLES)
             P[i].DensAroundStar = 0;
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
             P[i].GradRho[0]=0;
             P[i].GradRho[1]=0;
             P[i].GradRho[2]=1;
 #endif
 #ifdef GALSF_FB_SNE_HEATING
             P[i].SNe_ThisTimeStep = 0;
-            P[i].Area_weighted_sum = 0;
+            int k; for(k=0;k<7;k++) {P[i].Area_weighted_sum[k] = 0;}
 #endif
 #ifdef GALSF_FB_GASRETURN
             P[i].MassReturn_ThisTimeStep = 0;
@@ -419,7 +414,6 @@ void init(void)
             P[i].RProcessEvent_ThisTimeStep = 0;
 #endif
         }
-#endif
         
 #if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
         if(RestartFlag == 0)
@@ -552,10 +546,6 @@ void init(void)
         
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         PPPZ[i].AGS_zeta = 0;
-#endif
-#ifdef EOS_DEGENERATE
-        for(j = 0; j < 3; j++)
-            SphP[i].xnucPred[j] = SphP[i].xnuc[j];
 #endif
         
 #ifdef CONDUCTION
@@ -743,30 +733,11 @@ void init(void)
     density();
     for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
     {
-#ifndef EOS_DEGENERATE
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
-#else
-        for(j = 0; j < EOS_NSPECIES; j++)
-        {
-            SphP[i].dxnuc[j] = 0;
-        }
-        SphP[i].InternalEnergy *= All.UnitEnergy_in_cgs;
-        SphP[i].InternalEnergyPred *= All.UnitEnergy_in_cgs;
-        /* call eos with physical units, energy and entropy are always stored in physical units */
-        SphP[i].temp = -1.0;
         
-        struct eos_result res;
-        eos_calc_egiven(SphP[i].Density * All.UnitDensity_in_cgs, SphP[i].xnuc, SphP[i].InternalEnergy, &SphP[i].temp, &res);
-        SphP[i].Pressure = res.p.v / (All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam);
-        // Warning: dp_drho is in physical units ...
-        SphP[i].dp_drho = res.p.drho + res.temp * gsl_pow_2(res.p.dtemp / (SphP[i].Density * All.UnitDensity_in_cgs)) / res.e.dtemp;
-#endif
-        
-#if defined(TURB_DRIVING)
-#ifdef GAMMA_ENFORCE_ADIABAT
+#if defined(TURB_DRIVING) && defined(EOS_ENFORCE_ADIABAT)
         SphP[i].InternalEnergy = All.RefInternalEnergy;
         SphP[i].InternalEnergyPred = All.RefInternalEnergy;
-#endif
 #endif
         // re-match the predicted and initial velocities and B-field values, just to be sure //
         for(j=0;j<3;j++) SphP[i].VelPred[j]=P[i].Vel[j];
@@ -791,8 +762,7 @@ void init(void)
 #endif
 #ifdef BH_COMPTON_HEATING
         SphP[i].RadFluxAGN = 0;
-#endif
-        
+#endif        
         
 #ifdef GRACKLE
         if(RestartFlag == 0)
@@ -1046,16 +1016,7 @@ void setup_smoothinglengths(void)
                 PPP[i].Hsml = All.SofteningTable[P[i].Type];
     }
 #endif
-    
-#if defined(RADTRANSFER)
-    if(RestartFlag == 0 || RestartFlag == 2)
-    {
-        for(i = 0; i < NumPart; i++)
-            if(P[i].Type == 4)
-                PPP[i].Hsml = All.SofteningTable[4];
-    }
-#endif
-    
+ 
     density();    
 }
 

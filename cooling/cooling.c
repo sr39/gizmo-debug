@@ -210,7 +210,27 @@ double DoCooling(double u_old, double rho, double dt, double *ne_guess, int targ
   int iter=0, iter_upper=0, iter_lower=0;
 
 #ifdef GRACKLE
-    return CallGrackle(u_old, rho, dt, ne_guess, target, 0);
+#ifndef COOLING_OPERATOR_SPLIT
+    /* because grackle uses a pre-defined set of libraries, we can't properly incorporate the hydro heating
+     into the cooling subroutine. instead, we will use the approximate treatment below
+     to split the step */
+    du = dt * SphP[target].DtInternalEnergy / (All.HubbleParam * All.UnitEnergy_in_cgs / (All.UnitMass_in_g * All.UnitTime_in_s) * (PROTONMASS/XH));
+    u_old += 0.5*du;
+    u = CallGrackle(u_old, rho, dt, ne_guess, target, 0);
+    /* now we attempt to correct for what the solution would have been if we had included the remaining half-step heating
+     term in the full implicit solution. The term "r" below represents the exact solution if the cooling function has
+     the form d(u-u0)/dt ~ -a*(u-u0)  around some u0 which is close to the "ufinal" returned by the cooling routine,
+     to which we then add the heating term from hydro and compute the solution over a full timestep */
+    double r=u/u_old; if(r>1) {r=1/r;} if(fabs(r-1)>1.e-4) {r=(1-r)/log(r);} r=DMAX(0,DMIN(r,1));
+    du*=0.5*r; if(du<-0.5*u) {du=-0.5*u;} u+=du;
+#else
+    /* with full operator splitting we just call grackle normally. note this is usually fine,
+     but can lead to artificial noise at high densities and low temperatures, especially if something
+     like artificial pressure (but not temperature) floors are used such that the temperature gets
+     'contaminated' by the pressure terms */
+    u = CallGrackle(u_old, rho, dt, ne_guess, target, 0);
+#endif
+    return DMAX(u,All.MinEgySpec);
 #endif
     
     

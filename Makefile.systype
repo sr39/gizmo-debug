@@ -12,10 +12,10 @@
 #############
 
 
-SYSTYPE="Quest"
 #SYSTYPE="Stampede"
 #SYSTYPE="Zwicky"
 #SYSTYPE="MacBookPro"
+SYSTYPE="Quest"
 #SYSTYPE="odyssey"
 #SYSTYPE="SciNet"
 #SYSTYPE="Ranger_intel"

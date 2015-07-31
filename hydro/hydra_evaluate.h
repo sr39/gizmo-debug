@@ -15,6 +15,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 {
     int j, k, n, startnode, numngb, kernel_mode, listindex = 0;
     double hinv_i,hinv3_i,hinv4_i,hinv_j,hinv3_j,hinv4_j,V_i,V_j,dt_hydrostep,r2,rinv,rinv_soft,u;
+    double v_hll,k_hll,b_hll; v_hll=k_hll=0,b_hll=1;
     struct kernel_hydra kernel;
     struct hydrodata_in local;
     struct hydrodata_out out;
@@ -33,6 +34,15 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double epsilon_entropic_eos_big = 0.5; // can be anything from (small number=more diffusive, less accurate entropy conservation) to ~1.1-1.3 (least diffusive, most noisy)
     double epsilon_entropic_eos_small = 1.e-3; // should be << epsilon_entropic_eos_big
     if(All.ComovingIntegrationOn) {epsilon_entropic_eos_big = 0.6; epsilon_entropic_eos_small=1.e-2;}
+#endif
+#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
+    double Fluxes_E_gamma[N_RT_FREQ_BINS];
+    double tau_c_i[N_RT_FREQ_BINS];
+    double Particle_Size_i = pow(local.Mass/local.Density,1./NUMDIMS) * All.cf_atime; // in physical, used below in some routines //
+    for(k=0;k<N_RT_FREQ_BINS;k++) {tau_c_i[k] = Particle_Size_i * local.Kappa_RT[k]*local.Density*All.cf_a3inv;}
+#ifdef RT_EVOLVE_FLUX
+    double Fluxes_Flux[N_RT_FREQ_BINS][3];
+#endif
 #endif
     
     if(mode == 0)
@@ -257,7 +267,6 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     kernel.wk_j = 0;
                 }
                 
-                
                 /* --------------------------------------------------------------------------------- */
                 /* with the overhead numbers above calculated, we now 'feed into' the "core" 
                     hydro computation (SPH, meshless godunov, etc -- doesn't matter, should all take the same inputs) 
@@ -269,6 +278,28 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #else
 #include "hydra_core_meshless.h"
 #endif
+
+#ifndef HYDRO_SPH
+/* the following macros are useful for all the diffusion operations below: this is the diffusion term associated
+    with the HLL reimann problem solution. This adds numerical diffusion (albeit limited to the magnitude of the 
+    physical diffusion coefficients), but stabilizes the relevant equations */
+#ifdef MAGNETIC
+                double bhat[3]={Riemann_out.Face_B[0],Riemann_out.Face_B[1],Riemann_out.Face_B[2]};
+                double bhat_mag=bhat[0]*bhat[0]+bhat[1]*bhat[1]+bhat[2]*bhat[2];
+                if(bhat_mag>0) {bhat_mag=1./sqrt(bhat_mag); bhat[0]*=bhat_mag; bhat[1]*=bhat_mag; bhat[2]*=bhat_mag;}
+                v_hll = 0.5*fabs(face_vel_i-face_vel_j) + DMAX(magneticspeed_i,magneticspeed_j);
+#define B_dot_grad_weights(grad_i,grad_j) {if(bhat_mag<=0) {b_hll=1;} else {double q_tmp_sum=0,b_tmp_sum=0; for(k=0;k<3;k++) {\
+                                           double q_tmp=0.5*(grad_i[k]+grad_j[k]); q_tmp_sum+=q_tmp*q_tmp; b_tmp_sum+=bhat[k]*q_tmp;}\
+                                           if((b_tmp_sum!=0)&&(q_tmp_sum>0)) {b_hll=fabs(b_tmp_sum)/sqrt(q_tmp_sum);} else {b_hll=0;}}}
+#else
+                v_hll = 0.5*fabs(face_vel_i-face_vel_j) + DMAX(kernel.sound_i,kernel.sound_j);
+#define B_dot_grad_weights(grad_i,grad_j) {b_hll=1;}
+#endif
+#define HLL_correction(ui,uj,wt,kappa) (k_hll = v_hll * (wt) * kernel.r * All.cf_atime / fabs(kappa),\
+                                        k_hll = (0.2 + k_hll) / (0.2 + k_hll + k_hll*k_hll),\
+                                        -1.0*k_hll*Face_Area_Norm*v_hll*((ui)-(uj)))
+#endif
+                
                 
 #ifdef CONDUCTION
 #include "conduction.h"
@@ -285,6 +316,11 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef COSMIC_RAYS
 #include "../galaxy_sf/cosmic_ray_diffusion.h"
 #endif
+                
+#ifdef RT_DIFFUSION_EXPLICIT
+#include "../radiation/rt_diffusion_explicit.h"
+#endif
+                
                 
                 /* --------------------------------------------------------------------------------- */
                 /* now we will actually assign the hydro variables for the evolution step */
@@ -306,6 +342,12 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     //SphP[j].dMomentum[k] -= Fluxes.v[k] * dt_hydrostep; //manifest-indiv-timestep-debug//
                 }
                 out.DtInternalEnergy += Fluxes.p;
+#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
+                for(k=0;k<N_RT_FREQ_BINS;k++) {out.Dt_E_gamma[k] += Fluxes_E_gamma[k];}
+#endif
+#ifdef RT_EVOLVE_FLUX
+                for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {out.Dt_Flux[k][k_dir] += Fluxes_Flux[k][k_dir];}}
+#endif
 #ifdef MAGNETIC
                 for(k=0;k<3;k++) {out.DtB[k]+=Fluxes.B[k];}
                 out.divB += Fluxes.B_normal_corrected;
@@ -352,6 +394,12 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                     for(k=0;k<3;k++) {SphP[j].HydroAccel[k] -= Fluxes.v[k];}
                     SphP[j].DtInternalEnergy -= Fluxes.p;
+#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
+                    for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[j].Dt_E_gamma[k] -= Fluxes_E_gamma[k];}
+#endif
+#ifdef RT_EVOLVE_FLUX
+                    for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[j].Dt_Flux[k][k_dir] -= Fluxes_Flux[k][k_dir];}}
+#endif
 #ifdef MAGNETIC
                     for(k=0;k<3;k++) {SphP[j].DtB[k]-=Fluxes.B[k];}
                     SphP[j].divB -= Fluxes.B_normal_corrected;
@@ -412,7 +460,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(TimeBinActive[P[j].TimeBin])
                     if(kernel.vsig > SphP[j].MaxSignalVel) SphP[j].MaxSignalVel = kernel.vsig;
 #ifdef WAKEUP
-                if(kernel.vsig > WAKEUP * SphP[j].MaxSignalVel) SphP[j].wakeup = 1;
+                if(kernel.vsig > WAKEUP*SphP[j].MaxSignalVel) SphP[j].wakeup = 1;
 #endif
                 
                 

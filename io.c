@@ -365,7 +365,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_NE:		/* electron abundance */
-#if defined(COOLING)
+#if defined(COOLING) || defined(RT_CHEM_PHOTOION)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -376,11 +376,11 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_NH:		/* neutral hydrogen fraction */
-#if defined(COOLING) || defined(RADTRANSFER)
+#if defined(COOLING) || defined(RT_CHEM_PHOTOION)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-#if defined(RADTRANSFER)
+#if defined(RT_CHEM_PHOTOION)
                     *fp++ = SphP[pindex].HI;
 #elif (GRACKLE_CHEMISTRY > 0)
                     *fp++ = SphP[pindex].grHI;
@@ -394,14 +394,14 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     if(SphP[pindex].DelayTimeHII>0 || SphP[pindex].Ne>=1.15789) nh0=0;
 #endif
                     *fp++ = (MyOutputFloat) nh0;
-#endif // #if defined(RADTRANSFER)
+#endif
                     n++;
                 }
-#endif // #if defined(COOLING) || defined(RADTRANSFER)
+#endif // #if defined(COOLING) || defined(RT_CHEM_PHOTOION)
             break;
             
         case IO_HII:		/* ionized hydrogen abundance */
-#if defined(RADTRANSFER)
+#if defined(RT_CHEM_PHOTOION)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -412,7 +412,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_HeI:		/* neutral Helium */
-#if (defined(RADTRANSFER) && defined(RT_INCLUDE_HE))
+#if defined(RT_CHEM_PHOTOION_HE)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -422,8 +422,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
             
-        case IO_HeII:		/* ionized Heluum */
-#if (defined(RADTRANSFER) && defined(RT_INCLUDE_HE))
+        case IO_HeII:		/* ionized Helium */
+#if defined(RT_CHEM_PHOTOION_HE)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1051,34 +1051,43 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_SECONDORDERMASS:
             break;
-            
-        case IO_EOSTEMP:
-#ifdef EOS_DEGENERATE
+
+        case IO_EOSABAR:
+#ifdef EOS_CARRIES_ABAR
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = SphP[pindex].temp;
+                    *fp++ = SphP[pindex].Abar;
                     n++;
                 }
 #endif
             break;
-            
-        case IO_EOSXNUC:
-#ifdef EOS_DEGENERATE
+
+        case IO_EOSYE:
+#ifdef EOS_CARRIES_YE
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < EOS_NSPECIES; k++)
-                    {
-                        *fp++ = SphP[pindex].xnuc[k];
-                    }
+                    *fp++ = SphP[pindex].Ye;
+                    n++;
+                }
+#endif
+            break;
+
+            
+        case IO_EOSTEMP:
+#ifdef EOS_CARRIES_TEMPERATURE
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = SphP[pindex].Temperature;
                     n++;
                 }
 #endif
             break;
             
         case IO_PRESSURE:
-#if defined(EOS_DEGENERATE)
+#if defined(EOS_GENERAL)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1094,7 +1103,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 if(P[pindex].Type == type)
                 {
                     for(k = 0; k < N_RT_FREQ_BINS; k++)
-                        fp[k] = SphP[pindex].n_gamma[k] / 1e53;
+                        fp[k] = SphP[pindex].E_gamma[k];
                     
                     n++;
                     fp += N_RT_FREQ_BINS;
@@ -1103,13 +1112,11 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_RAD_ACCEL:
-#ifdef RT_RAD_PRESSURE 
+#ifdef RT_RAD_PRESSURE_OUTPUT
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < 3; k++)
-                        fp[k] = SphP[pindex].RadAccel[k];
-                    
+                    for(k = 0; k < 3; k++) {fp[k] = SphP[pindex].RadAccel[k];}                    
                     n++;
                     fp += 3;
                 }
@@ -1118,18 +1125,18 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_EDDINGTON_TENSOR:
 #ifdef RADTRANSFER
-#ifdef RT_OUTPUT_ET
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
                     for(k = 0; k < 6; k++)
                     {
-                        fp[k] = SphP[pindex].ET[k];
+                        int kf;
+                        for(kf = 0; kf < N_RT_FREQ_BINS; kf++)
+                            fp[k] = SphP[pindex].ET[kf][k];
                     }
                     n++;
-                    fp += 6;
+                    fp += 6*N_RT_FREQ_BINS;
                 }
-#endif
 #endif
             break;
             
@@ -1439,6 +1446,8 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_STREAM_DENSITY:
         case IO_PHASE_SPACE_DETERMINANT:
         case IO_EOSTEMP:
+        case IO_EOSABAR:
+        case IO_EOSYE:
         case IO_PRESSURE:
         case IO_INIT_DENSITY:
         case IO_AGS_SOFT:
@@ -1484,11 +1493,14 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             break;
             
         case IO_EDDINGTON_TENSOR:
+#ifdef RADTRANSFER
             if(mode)
-                bytes_per_blockelement = 6 * sizeof(MyInputFloat);
+                bytes_per_blockelement = (6*N_RT_FREQ_BINS) * sizeof(MyInputFloat);
             else
-                bytes_per_blockelement = 6 * sizeof(MyOutputFloat);
-            
+                bytes_per_blockelement = (6*N_RT_FREQ_BINS) * sizeof(MyOutputFloat);
+#endif
+            break;
+
             
         case IO_Z:
 #ifdef METALS
@@ -1533,22 +1545,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             else
                 bytes_per_blockelement = 9 * sizeof(MyOutputFloat);
             break;
-            
-        case IO_EOSXNUC:
-#ifdef EOS_DEGENERATE
-            if(mode)
-                bytes_per_blockelement = EOS_NSPECIES * sizeof(MyInputFloat);
-            else
-                bytes_per_blockelement = EOS_NSPECIES * sizeof(MyOutputFloat);
-            break;
-#else
-            if(mode)
-                bytes_per_blockelement = sizeof(MyInputFloat);
-            else
-                bytes_per_blockelement = sizeof(MyOutputFloat);
-            break;
-#endif
-            
             
         case IO_CHEM:
             bytes_per_blockelement = 0;
@@ -1677,6 +1673,8 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_STREAM_DENSITY:
         case IO_PHASE_SPACE_DETERMINANT:
         case IO_EOSTEMP:
+        case IO_EOSABAR:
+        case IO_EOSYE:
         case IO_PRESSURE:
         case IO_INIT_DENSITY:
         case IO_DMHSML:
@@ -1707,7 +1705,11 @@ int get_values_per_blockelement(enum iofields blocknr)
             break;
             
         case IO_EDDINGTON_TENSOR:
-            values = 6;
+#ifdef RADRANSFER
+            values = (6*N_RT_FREQ_BINS);
+#else
+            values = 0;
+#endif
             break;
             
         case IO_RADGAMMA:
@@ -1741,16 +1743,6 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_SHEET_ORIENTATION:
             values = 9;
             break;
-            
-            
-        case IO_EOSXNUC:
-#ifndef EOS_DEGENERATE
-            values = 1;
-#else
-            values = EOS_NSPECIES;
-#endif
-            break;
-            
             
         case IO_CHEM:
             values = 0;
@@ -1871,7 +1863,8 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_CONDRATE:
         case IO_DENN:
         case IO_EOSTEMP:
-        case IO_EOSXNUC:
+        case IO_EOSABAR:
+        case IO_EOSYE:
         case IO_PRESSURE:
         case IO_CHEM:
         case IO_VSTURB_DISS:
@@ -2038,7 +2031,7 @@ int blockpresent(enum iofields blocknr)
             break;
             
         case IO_RADGAMMA:
-#ifdef RADTRANSFER
+#if defined(RADTRANSFER)
             return N_RT_FREQ_BINS;
 #else
             return 0;
@@ -2046,7 +2039,7 @@ int blockpresent(enum iofields blocknr)
             break;
             
         case IO_RAD_ACCEL:
-#ifdef RADTRANSFER
+#if defined(RT_RAD_PRESSURE_OUPUT)
             return 3;
 #else
             return 0;
@@ -2098,7 +2091,7 @@ int blockpresent(enum iofields blocknr)
             
         case IO_HeI:
         case IO_HeII:
-#if defined(RADTRANSFER)
+#if defined(RT_CHEM_PHOTOION_HE)
             return 1;
 #else
             return 0;
@@ -2422,16 +2415,33 @@ int blockpresent(enum iofields blocknr)
                 return 0;
             
         case IO_EOSTEMP:
-        case IO_EOSXNUC:
-        case IO_PRESSURE:
-#ifdef EOS_DEGENERATE
+#ifdef EOS_CARRIES_TEMPERATURE
             return 1;
 #else
             return 0;
 #endif
+        case IO_PRESSURE:
+#ifdef EOS_GENERAL
+            return 1;
+#else
+            return 0;
+#endif
+        case IO_EOSABAR:
+#ifdef EOS_CARRIES_ABAR
+            return 1;
+#else
+            return 0;
+#endif
+        case IO_EOSYE:
+#ifdef EOS_CARRIES_YE
+            return 1;
+#else
+            return 0;
+#endif
+
             
         case IO_EDDINGTON_TENSOR:
-#if defined(RADTRANSFER) && defined(RT_OUTPUT_ET)
+#if defined(RADTRANSFER)
             return 1;
 #else
             return 0;
@@ -2773,8 +2783,11 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_EOSTEMP:
             strncpy(label, "TEMP", 4);
             break;
-        case IO_EOSXNUC:
-            strncpy(label, "XNUC", 4);
+        case IO_EOSABAR:
+            strncpy(label, "ABAR", 4);
+            break;
+        case IO_EOSYE:
+            strncpy(label, "YE  ", 4);
             break;
         case IO_PRESSURE:
             strncpy(label, "P   ", 4);
@@ -2906,10 +2919,10 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             strcpy(buf, "NeutralHydrogenAbundance");
             break;
         case IO_RADGAMMA:
-            strcpy(buf, "photon number density");
+            strcpy(buf, "PhotonNumberDensity");
             break;
         case IO_RAD_ACCEL:
-            strcpy(buf, "rad acceleration");
+            strcpy(buf, "RadiativeAcceleration");
             break;
         case IO_HII:
             strcpy(buf, "HII");
@@ -3112,8 +3125,11 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_EOSTEMP:
             strcpy(buf, "Temperature");
             break;
-        case IO_EOSXNUC:
-            strcpy(buf, "Nuclear mass fractions");
+        case IO_EOSABAR:
+            strcpy(buf, "Abar");
+            break;
+        case IO_EOSYE:
+            strcpy(buf, "Ye");
             break;
         case IO_PRESSURE:
             strcpy(buf, "Pressure");

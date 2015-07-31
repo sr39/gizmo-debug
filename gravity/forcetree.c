@@ -30,8 +30,8 @@
 /*
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel (volker.springel@h-its.org). The code has been modified
- * substantially (condensed, new feedback routines added, 
- * some optimizatins, and new variable/memory conventions added) 
+ * substantially (condensed, new feedback routines added,
+ * some optimizatins, and new variable/memory conventions added)
  * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
@@ -62,11 +62,11 @@ extern pthread_mutex_t mutex_nexport, mutex_partnodedrift, mutex_workcount;
 #define UNLOCK_PARTNODEDRIFT pthread_mutex_unlock(&mutex_partnodedrift);
 
 /*! The cost computation for the tree-gravity (required for the domain
-decomposition) is not exactly thread-safe if THREAD_SAFE_COSTS is not defined. 
-However using locks for an exactly thread-safe cost computiation results in a
-significant (~25%) performance penalty in the tree-walk while having only an 
-extremely small effect on the obtained costs. The domain decomposition should
-thus not be significantly changed if THREAD_SAFE_COSTS is not used.*/
+ decomposition) is not exactly thread-safe if THREAD_SAFE_COSTS is not defined.
+ However using locks for an exactly thread-safe cost computiation results in a
+ significant (~25%) performance penalty in the tree-walk while having only an
+ extremely small effect on the obtained costs. The domain decomposition should
+ thus not be significantly changed if THREAD_SAFE_COSTS is not used.*/
 #ifdef THREAD_SAFE_COSTS
 #define LOCK_WORKCOUNT       pthread_mutex_lock(&mutex_workcount);
 #define UNLOCK_WORKCOUNT     pthread_mutex_unlock(&mutex_workcount);
@@ -108,44 +108,44 @@ static double fac_intp;
  */
 int force_treebuild(int npart, struct unbind_data *mp)
 {
-  int flag;
-
-  do
+    int flag;
+    
+    do
     {
-      Numnodestree = force_treebuild_single(npart, mp);
-
-      MPI_Allreduce(&Numnodestree, &flag, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
-      if(flag == -1)
-	{
-	  force_treefree();
-
-	  if(ThisTask == 0)
-	    printf("Increasing TreeAllocFactor=%g", All.TreeAllocFactor);
-
-	  All.TreeAllocFactor *= 1.15;
-
-	  if(ThisTask == 0)
-	    printf("new value=%g\n", All.TreeAllocFactor);
-
-	  force_treeallocate((int) (All.TreeAllocFactor * All.MaxPart) + NTopnodes, All.MaxPart);
-	}
+        Numnodestree = force_treebuild_single(npart, mp);
+        
+        MPI_Allreduce(&Numnodestree, &flag, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+        if(flag == -1)
+        {
+            force_treefree();
+            
+            if(ThisTask == 0)
+                printf("Increasing TreeAllocFactor=%g", All.TreeAllocFactor);
+            
+            All.TreeAllocFactor *= 1.15;
+            
+            if(ThisTask == 0)
+                printf("new value=%g\n", All.TreeAllocFactor);
+            
+            force_treeallocate((int) (All.TreeAllocFactor * All.MaxPart) + NTopnodes, All.MaxPart);
+        }
     }
-  while(flag == -1);
-
-  force_flag_localnodes();
-
-  force_exchange_pseudodata();
-
-  force_treeupdate_pseudos(All.MaxPart);
-
-  TimeOfLastTreeConstruction = All.Time;
-
-  return Numnodestree;
+    while(flag == -1);
+    
+    force_flag_localnodes();
+    
+    force_exchange_pseudodata();
+    
+    force_treeupdate_pseudos(All.MaxPart);
+    
+    TimeOfLastTreeConstruction = All.Time;
+    
+    return Numnodestree;
 }
 
 
 
-/*! Constructs the gravitational oct-tree.  
+/*! Constructs the gravitational oct-tree.
  *
  *  The index convention for accessing tree nodes is the following: the
  *  indices 0...NumPart-1 reference single particles, the indices
@@ -164,261 +164,261 @@ int force_treebuild(int npart, struct unbind_data *mp)
  */
 int force_treebuild_single(int npart, struct unbind_data *mp)
 {
-  int i, j, k, subnode = 0, shift, parent, numnodes, rep;
-  int nfree, th, nn, no;
-  struct NODE *nfreep;
-  MyFloat lenhalf;
-  peanokey key, morton, th_key, *morton_list;
-
-
-  /* create an empty root node  */
-  nfree = All.MaxPart;		/* index of first free node */
-  nfreep = &Nodes[nfree];	/* select first node */
-
-  nfreep->len = DomainLen;
-  for(j = 0; j < 3; j++)
-    nfreep->center[j] = DomainCenter[j];
-  for(j = 0; j < 8; j++)
-    nfreep->u.suns[j] = -1;
-
-
-  numnodes = 1;
-  nfreep++;
-  nfree++;
-
-  /* create a set of empty nodes corresponding to the top-level domain
-   * grid. We need to generate these nodes first to make sure that we have a
-   * complete top-level tree which allows the easy insertion of the
-   * pseudo-particles at the right place 
-   */
-
-  force_create_empty_nodes(All.MaxPart, 0, 1, 0, 0, 0, &numnodes, &nfree);
-
-  /* if a high-resolution region in a global tree is used, we need to generate
-   * an additional set empty nodes to make sure that we have a complete
-   * top-level tree for the high-resolution inset
-   */
-
-  nfreep = &Nodes[nfree];
-  parent = -1;			/* note: will not be used below before it is changed */
-
-  morton_list = (peanokey *) mymalloc("morton_list", NumPart * sizeof(peanokey));
-
-  /* now we insert all particles */
-  for(k = 0; k < npart; k++)
+    int i, j, k, subnode = 0, shift, parent, numnodes, rep;
+    int nfree, th, nn, no;
+    struct NODE *nfreep;
+    MyFloat lenhalf;
+    peanokey key, morton, th_key, *morton_list;
+    
+    
+    /* create an empty root node  */
+    nfree = All.MaxPart;		/* index of first free node */
+    nfreep = &Nodes[nfree];	/* select first node */
+    
+    nfreep->len = DomainLen;
+    for(j = 0; j < 3; j++)
+        nfreep->center[j] = DomainCenter[j];
+    for(j = 0; j < 8; j++)
+        nfreep->u.suns[j] = -1;
+    
+    
+    numnodes = 1;
+    nfreep++;
+    nfree++;
+    
+    /* create a set of empty nodes corresponding to the top-level domain
+     * grid. We need to generate these nodes first to make sure that we have a
+     * complete top-level tree which allows the easy insertion of the
+     * pseudo-particles at the right place
+     */
+    
+    force_create_empty_nodes(All.MaxPart, 0, 1, 0, 0, 0, &numnodes, &nfree);
+    
+    /* if a high-resolution region in a global tree is used, we need to generate
+     * an additional set empty nodes to make sure that we have a complete
+     * top-level tree for the high-resolution inset
+     */
+    
+    nfreep = &Nodes[nfree];
+    parent = -1;			/* note: will not be used below before it is changed */
+    
+    morton_list = (peanokey *) mymalloc("morton_list", NumPart * sizeof(peanokey));
+    
+    /* now we insert all particles */
+    for(k = 0; k < npart; k++)
     {
-      if(mp)
-	i = mp[k].index;
-      else
-	i = k;
-
+        if(mp)
+            i = mp[k].index;
+        else
+            i = k;
+        
 #ifdef NEUTRINOS
-      if(P[i].Type == 2)
-	continue;
+        if(P[i].Type == 2)
+            continue;
 #endif
-
-      rep = 0;
-
-      key = peano_and_morton_key((int) ((P[i].Pos[0] - DomainCorner[0]) * DomainFac),
-				 (int) ((P[i].Pos[1] - DomainCorner[1]) * DomainFac),
-				 (int) ((P[i].Pos[2] - DomainCorner[2]) * DomainFac), BITS_PER_DIMENSION,
-				 &morton);
-      morton_list[i] = morton;
-
-      shift = 3 * (BITS_PER_DIMENSION - 1);
-
-      no = 0;
-      while(TopNodes[no].Daughter >= 0)
-	{
-	  no = TopNodes[no].Daughter + (key - TopNodes[no].StartKey) / (TopNodes[no].Size / 8);
-	  shift -= 3;
-	  rep++;
-	}
-
-      no = TopNodes[no].Leaf;
-      th = DomainNodeIndex[no];
-
-      while(1)
-	{
-	  if(th >= All.MaxPart)	/* we are dealing with an internal node */
-	    {
-	      if(shift >= 0)
-		{
-		  subnode = ((morton >> shift) & 7);
-		}
-	      else
-		{
-		  subnode = 0;
-		  if(P[i].Pos[0] > Nodes[th].center[0])
-		    subnode += 1;
-		  if(P[i].Pos[1] > Nodes[th].center[1])
-		    subnode += 2;
-		  if(P[i].Pos[2] > Nodes[th].center[2])
-		    subnode += 4;
-		}
-
+        
+        rep = 0;
+        
+        key = peano_and_morton_key((int) ((P[i].Pos[0] - DomainCorner[0]) * DomainFac),
+                                   (int) ((P[i].Pos[1] - DomainCorner[1]) * DomainFac),
+                                   (int) ((P[i].Pos[2] - DomainCorner[2]) * DomainFac), BITS_PER_DIMENSION,
+                                   &morton);
+        morton_list[i] = morton;
+        
+        shift = 3 * (BITS_PER_DIMENSION - 1);
+        
+        no = 0;
+        while(TopNodes[no].Daughter >= 0)
+        {
+            no = TopNodes[no].Daughter + (key - TopNodes[no].StartKey) / (TopNodes[no].Size / 8);
+            shift -= 3;
+            rep++;
+        }
+        
+        no = TopNodes[no].Leaf;
+        th = DomainNodeIndex[no];
+        
+        while(1)
+        {
+            if(th >= All.MaxPart)	/* we are dealing with an internal node */
+            {
+                if(shift >= 0)
+                {
+                    subnode = ((morton >> shift) & 7);
+                }
+                else
+                {
+                    subnode = 0;
+                    if(P[i].Pos[0] > Nodes[th].center[0])
+                        subnode += 1;
+                    if(P[i].Pos[1] > Nodes[th].center[1])
+                        subnode += 2;
+                    if(P[i].Pos[2] > Nodes[th].center[2])
+                        subnode += 4;
+                }
+                
 #ifndef NOTREERND
-	      if(Nodes[th].len < EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[P[i].Type])
-		{
-		  /* seems like we're dealing with particles at identical (or extremely close)
-		   * locations. Randomize subnode index to allow tree construction. Note: Multipole moments
-		   * of tree are still correct, but this will only happen well below gravitational softening
-		   * length-scale anyway.
-		   */
+                if(Nodes[th].len < EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[P[i].Type])
+                {
+                    /* seems like we're dealing with particles at identical (or extremely close)
+                     * locations. Randomize subnode index to allow tree construction. Note: Multipole moments
+                     * of tree are still correct, but this will only happen well below gravitational softening
+                     * length-scale anyway.
+                     */
 #ifdef USE_PREGENERATED_RANDOM_NUMBER_TABLE
-		  subnode = (int) (8.0 * get_random_number((P[i].ID + rep) % (RNDTABLE + (rep & 3))));
+                    subnode = (int) (8.0 * get_random_number((P[i].ID + rep) % (RNDTABLE + (rep & 3))));
 #else
-          subnode = (int) (8.0 * get_random_number(P[i].ID));
+                    subnode = (int) (8.0 * get_random_number(P[i].ID));
 #endif
-            
-		  if(subnode >= 8)
-		    subnode = 7;
-		}
+                    
+                    if(subnode >= 8)
+                        subnode = 7;
+                }
 #endif
-
-	      nn = Nodes[th].u.suns[subnode];
-
-	      shift -= 3;
-
-	      if(nn >= 0)	/* ok, something is in the daughter slot already, need to continue */
-		{
-		  parent = th;
-		  th = nn;
-		  rep++;
-		}
-	      else
-		{
-		  /* here we have found an empty slot where we can attach
-		   * the new particle as a leaf.
-		   */
-		  Nodes[th].u.suns[subnode] = i;
-		  break;	/* done for this particle */
-		}
-	    }
-	  else
-	    {
-	      /* We try to insert into a leaf with a single particle.  Need
-	       * to generate a new internal node at this point.
-	       */
-	      Nodes[parent].u.suns[subnode] = nfree;
-
-	      nfreep->len = 0.5 * Nodes[parent].len;
-	      lenhalf = 0.25 * Nodes[parent].len;
-
-	      if(subnode & 1)
-		nfreep->center[0] = Nodes[parent].center[0] + lenhalf;
-	      else
-		nfreep->center[0] = Nodes[parent].center[0] - lenhalf;
-
-	      if(subnode & 2)
-		nfreep->center[1] = Nodes[parent].center[1] + lenhalf;
-	      else
-		nfreep->center[1] = Nodes[parent].center[1] - lenhalf;
-
-	      if(subnode & 4)
-		nfreep->center[2] = Nodes[parent].center[2] + lenhalf;
-	      else
-		nfreep->center[2] = Nodes[parent].center[2] - lenhalf;
-
-	      nfreep->u.suns[0] = -1;
-	      nfreep->u.suns[1] = -1;
-	      nfreep->u.suns[2] = -1;
-	      nfreep->u.suns[3] = -1;
-	      nfreep->u.suns[4] = -1;
-	      nfreep->u.suns[5] = -1;
-	      nfreep->u.suns[6] = -1;
-	      nfreep->u.suns[7] = -1;
-
-	      if(shift >= 0)
-		{
-		  th_key = morton_list[th];
-		  subnode = ((th_key >> shift) & 7);
-		}
-	      else
-		{
-		  subnode = 0;
-		  if(P[th].Pos[0] > nfreep->center[0])
-		    subnode += 1;
-		  if(P[th].Pos[1] > nfreep->center[1])
-		    subnode += 2;
-		  if(P[th].Pos[2] > nfreep->center[2])
-		    subnode += 4;
-		}
-
+                
+                nn = Nodes[th].u.suns[subnode];
+                
+                shift -= 3;
+                
+                if(nn >= 0)	/* ok, something is in the daughter slot already, need to continue */
+                {
+                    parent = th;
+                    th = nn;
+                    rep++;
+                }
+                else
+                {
+                    /* here we have found an empty slot where we can attach
+                     * the new particle as a leaf.
+                     */
+                    Nodes[th].u.suns[subnode] = i;
+                    break;	/* done for this particle */
+                }
+            }
+            else
+            {
+                /* We try to insert into a leaf with a single particle.  Need
+                 * to generate a new internal node at this point.
+                 */
+                Nodes[parent].u.suns[subnode] = nfree;
+                
+                nfreep->len = 0.5 * Nodes[parent].len;
+                lenhalf = 0.25 * Nodes[parent].len;
+                
+                if(subnode & 1)
+                    nfreep->center[0] = Nodes[parent].center[0] + lenhalf;
+                else
+                    nfreep->center[0] = Nodes[parent].center[0] - lenhalf;
+                
+                if(subnode & 2)
+                    nfreep->center[1] = Nodes[parent].center[1] + lenhalf;
+                else
+                    nfreep->center[1] = Nodes[parent].center[1] - lenhalf;
+                
+                if(subnode & 4)
+                    nfreep->center[2] = Nodes[parent].center[2] + lenhalf;
+                else
+                    nfreep->center[2] = Nodes[parent].center[2] - lenhalf;
+                
+                nfreep->u.suns[0] = -1;
+                nfreep->u.suns[1] = -1;
+                nfreep->u.suns[2] = -1;
+                nfreep->u.suns[3] = -1;
+                nfreep->u.suns[4] = -1;
+                nfreep->u.suns[5] = -1;
+                nfreep->u.suns[6] = -1;
+                nfreep->u.suns[7] = -1;
+                
+                if(shift >= 0)
+                {
+                    th_key = morton_list[th];
+                    subnode = ((th_key >> shift) & 7);
+                }
+                else
+                {
+                    subnode = 0;
+                    if(P[th].Pos[0] > nfreep->center[0])
+                        subnode += 1;
+                    if(P[th].Pos[1] > nfreep->center[1])
+                        subnode += 2;
+                    if(P[th].Pos[2] > nfreep->center[2])
+                        subnode += 4;
+                }
+                
 #ifndef NOTREERND
-	      if(nfreep->len < EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[P[th].Type])
-		{
-		  /* seems like we're dealing with particles at identical (or extremely close)
-		   * locations. Randomize subnode index to allow tree construction. Note: Multipole moments
-		   * of tree are still correct, but this will only happen well below gravitational softening
-		   * length-scale anyway.
-		   */
+                if(nfreep->len < EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[P[th].Type])
+                {
+                    /* seems like we're dealing with particles at identical (or extremely close)
+                     * locations. Randomize subnode index to allow tree construction. Note: Multipole moments
+                     * of tree are still correct, but this will only happen well below gravitational softening
+                     * length-scale anyway.
+                     */
 #ifdef USE_PREGENERATED_RANDOM_NUMBER_TABLE
-            subnode = (int) (8.0 * get_random_number((P[th].ID + rep) % (RNDTABLE + (rep & 3))));
+                    subnode = (int) (8.0 * get_random_number((P[th].ID + rep) % (RNDTABLE + (rep & 3))));
 #else
-            subnode = (int) (8.0 * get_random_number(P[th].ID));
+                    subnode = (int) (8.0 * get_random_number(P[th].ID));
 #endif
-
-		  if(subnode >= 8)
-		    subnode = 7;
-		}
+                    
+                    if(subnode >= 8)
+                        subnode = 7;
+                }
 #endif
-	      nfreep->u.suns[subnode] = th;
-
-	      th = nfree;	/* resume trying to insert the new particle at
-				 * the newly created internal node
-				 */
-
-	      numnodes++;
-	      nfree++;
-	      nfreep++;
-
-	      if((numnodes) >= MaxNodes)
-		{
-		  printf("task %d: maximum number %d of tree-nodes reached for particle %d.\n", ThisTask,
-			 MaxNodes, i);
-
-		  if(All.TreeAllocFactor > 5.0)
-		    {
-		      printf
-			("task %d: looks like a serious problem for particle %d, stopping with particle dump.\n",
-			 ThisTask, i);
-		      dump_particles();
-		      endrun(1);
-		    }
-		  else
-		    {
-		      myfree(morton_list);
-		      return -1;
-		    }
-		}
-	    }
-	}
+                nfreep->u.suns[subnode] = th;
+                
+                th = nfree;	/* resume trying to insert the new particle at
+                             * the newly created internal node
+                             */
+                
+                numnodes++;
+                nfree++;
+                nfreep++;
+                
+                if((numnodes) >= MaxNodes)
+                {
+                    printf("task %d: maximum number %d of tree-nodes reached for particle %d.\n", ThisTask,
+                           MaxNodes, i);
+                    
+                    if(All.TreeAllocFactor > 5.0)
+                    {
+                        printf
+                        ("task %d: looks like a serious problem for particle %d, stopping with particle dump.\n",
+                         ThisTask, i);
+                        dump_particles();
+                        endrun(1);
+                    }
+                    else
+                    {
+                        myfree(morton_list);
+                        return -1;
+                    }
+                }
+            }
+        }
     }
-
-  myfree(morton_list);
-
-
-  /* insert the pseudo particles that represent the mass distribution of other domains */
-  force_insert_pseudo_particles();
-
-
-  /* now compute the multipole moments recursively */
-  last = -1;
-
-  force_update_node_recursive(All.MaxPart, -1, -1);
-
-  if(last >= All.MaxPart)
+    
+    myfree(morton_list);
+    
+    
+    /* insert the pseudo particles that represent the mass distribution of other domains */
+    force_insert_pseudo_particles();
+    
+    
+    /* now compute the multipole moments recursively */
+    last = -1;
+    
+    force_update_node_recursive(All.MaxPart, -1, -1);
+    
+    if(last >= All.MaxPart)
     {
-      if(last >= All.MaxPart + MaxNodes)	/* a pseudo-particle */
-	Nextnode[last - MaxNodes] = -1;
-      else
-	Nodes[last].u.d.nextnode = -1;
+        if(last >= All.MaxPart + MaxNodes)	/* a pseudo-particle */
+            Nextnode[last - MaxNodes] = -1;
+        else
+            Nodes[last].u.d.nextnode = -1;
     }
-  else
-    Nextnode[last] = -1;
-
-  return numnodes;
+    else
+        Nextnode[last] = -1;
+    
+    return numnodes;
 }
 
 
@@ -429,53 +429,53 @@ int force_treebuild_single(int npart, struct unbind_data *mp)
  *  associate the pseudo-particles of other CPUs with tree-nodes at a given
  *  level in the tree, even when the particle population is so sparse that
  *  some of these nodes are actually empty.
-*/
+ */
 void force_create_empty_nodes(int no, int topnode, int bits, int x, int y, int z, int *nodecount,
-			      int *nextfree)
+                              int *nextfree)
 {
-  int i, j, k, n, sub, count;
-  MyFloat lenhalf;
-
-  if(TopNodes[topnode].Daughter >= 0)
+    int i, j, k, n, sub, count;
+    MyFloat lenhalf;
+    
+    if(TopNodes[topnode].Daughter >= 0)
     {
-      for(i = 0; i < 2; i++)
-	for(j = 0; j < 2; j++)
-	  for(k = 0; k < 2; k++)
-	    {
-	      sub = 7 & peano_hilbert_key((x << 1) + i, (y << 1) + j, (z << 1) + k, bits);
-
-	      count = i + 2 * j + 4 * k;
-
-	      Nodes[no].u.suns[count] = *nextfree;
-
-	      lenhalf = 0.25 * Nodes[no].len;
-	      Nodes[*nextfree].len = 0.5 * Nodes[no].len;
-	      Nodes[*nextfree].center[0] = Nodes[no].center[0] + (2 * i - 1) * lenhalf;
-	      Nodes[*nextfree].center[1] = Nodes[no].center[1] + (2 * j - 1) * lenhalf;
-	      Nodes[*nextfree].center[2] = Nodes[no].center[2] + (2 * k - 1) * lenhalf;
-
-	      for(n = 0; n < 8; n++)
-		Nodes[*nextfree].u.suns[n] = -1;
-
-	      if(TopNodes[TopNodes[topnode].Daughter + sub].Daughter == -1)
-		DomainNodeIndex[TopNodes[TopNodes[topnode].Daughter + sub].Leaf] = *nextfree;
-
-	      *nextfree = *nextfree + 1;
-	      *nodecount = *nodecount + 1;
-
-	      if((*nodecount) >= MaxNodes || (*nodecount) >= MaxTopNodes)
-		{
-		  printf("task %d: maximum number MaxNodes=%d of tree-nodes reached."
-			 "MaxTopNodes=%d NTopnodes=%d NTopleaves=%d nodecount=%d\n",
-			 ThisTask, MaxNodes, MaxTopNodes, NTopnodes, NTopleaves, *nodecount);
-		  printf("in create empty nodes\n");
-		  dump_particles();
-		  endrun(11);
-		}
-
-	      force_create_empty_nodes(*nextfree - 1, TopNodes[topnode].Daughter + sub,
-				       bits + 1, 2 * x + i, 2 * y + j, 2 * z + k, nodecount, nextfree);
-	    }
+        for(i = 0; i < 2; i++)
+            for(j = 0; j < 2; j++)
+                for(k = 0; k < 2; k++)
+                {
+                    sub = 7 & peano_hilbert_key((x << 1) + i, (y << 1) + j, (z << 1) + k, bits);
+                    
+                    count = i + 2 * j + 4 * k;
+                    
+                    Nodes[no].u.suns[count] = *nextfree;
+                    
+                    lenhalf = 0.25 * Nodes[no].len;
+                    Nodes[*nextfree].len = 0.5 * Nodes[no].len;
+                    Nodes[*nextfree].center[0] = Nodes[no].center[0] + (2 * i - 1) * lenhalf;
+                    Nodes[*nextfree].center[1] = Nodes[no].center[1] + (2 * j - 1) * lenhalf;
+                    Nodes[*nextfree].center[2] = Nodes[no].center[2] + (2 * k - 1) * lenhalf;
+                    
+                    for(n = 0; n < 8; n++)
+                        Nodes[*nextfree].u.suns[n] = -1;
+                    
+                    if(TopNodes[TopNodes[topnode].Daughter + sub].Daughter == -1)
+                        DomainNodeIndex[TopNodes[TopNodes[topnode].Daughter + sub].Leaf] = *nextfree;
+                    
+                    *nextfree = *nextfree + 1;
+                    *nodecount = *nodecount + 1;
+                    
+                    if((*nodecount) >= MaxNodes || (*nodecount) >= MaxTopNodes)
+                    {
+                        printf("task %d: maximum number MaxNodes=%d of tree-nodes reached."
+                               "MaxTopNodes=%d NTopnodes=%d NTopleaves=%d nodecount=%d\n",
+                               ThisTask, MaxNodes, MaxTopNodes, NTopnodes, NTopleaves, *nodecount);
+                        printf("in create empty nodes\n");
+                        dump_particles();
+                        endrun(11);
+                    }
+                    
+                    force_create_empty_nodes(*nextfree - 1, TopNodes[topnode].Daughter + sub,
+                                             bits + 1, 2 * x + i, 2 * y + j, 2 * z + k, nodecount, nextfree);
+                }
     }
 }
 
@@ -489,14 +489,14 @@ void force_create_empty_nodes(int no, int topnode, int bits, int x, int y, int z
  */
 void force_insert_pseudo_particles(void)
 {
-  int i, index;
-
-  for(i = 0; i < NTopleaves; i++)
+    int i, index;
+    
+    for(i = 0; i < NTopleaves; i++)
     {
-      index = DomainNodeIndex[i];
-
-      if(DomainTask[i] != ThisTask)
-	Nodes[index].u.suns[0] = All.MaxPart + MaxNodes + i;
+        index = DomainNodeIndex[i];
+        
+        if(DomainTask[i] != ThisTask)
+            Nodes[index].u.suns[0] = All.MaxPart + MaxNodes + i;
     }
 }
 
@@ -513,484 +513,351 @@ void force_insert_pseudo_particles(void)
  */
 void force_update_node_recursive(int no, int sib, int father)
 {
-  int j, jj, k, p, pp, nextsib, suns[8], count_particles, multiple_flag;
-  MyFloat hmax, vmax, v;
-  MyFloat divVmax, divVel;
-  MyFloat s[3], vs[3], mass;
-  struct particle_data *pa;
-
+    int j, jj, k, p, pp, nextsib, suns[8], count_particles, multiple_flag;
+    MyFloat hmax, vmax, v;
+    MyFloat divVmax, divVel;
+    MyFloat s[3], vs[3], mass;
+    struct particle_data *pa;
+    
 #ifdef SCALARFIELD
-  MyFloat s_dm[3], vs_dm[3], mass_dm;
+    MyFloat s_dm[3], vs_dm[3], mass_dm;
 #endif
-#ifdef RADTRANSFER
-  MyFloat stellar_mass;
-  MyFloat stellar_s[3];
-#endif
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-    MyFloat star_age=0,l_over_m_ssp=0;
-    MyFloat stellar_lum;
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-    MyFloat stellar_lum_s[3];
-    MyFloat stellar_lum_vs[3];
-#endif
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-    MyFloat tau_uv=0,tau_op=0,GradRho=0;
-    MyFloat f_uv=0,f_op=0,sigma_eff=0;
-    MyFloat stellar_lum_uv;
-    MyFloat stellar_lum_op;
-    MyFloat stellar_lum_ir;
-    MyFloat sigma_eff_0 = 0.955 * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm);
-    if(All.ComovingIntegrationOn) sigma_eff_0 /= (All.Time*All.Time);
+#ifdef RT_USE_GRAVTREE
+    MyFloat stellar_lum[N_RT_FREQ_BINS], sigma_eff=0;
+    for(j=0;j<N_RT_FREQ_BINS;j++) {stellar_lum[j]=0;}
+#ifdef RT_FIRE
+    sigma_eff = 0.955 * All.UnitMass_in_g*All.HubbleParam * All.cf_a2inv / (All.UnitLength_in_cm*All.UnitLength_in_cm);
 #endif
 #endif
-#ifdef BH_PHOTONMOMENTUM
-    MyFloat BHLum,bh_lum,bh_lum_hR,bh_lum_grad[3];
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+    MyFloat rt_source_lum_s[3];
+    MyFloat rt_source_lum_vs[3];
 #endif
-  MyFloat maxsoft;
-
-  if(no >= All.MaxPart && no < All.MaxPart + MaxNodes)	/* internal node */
+    
+    MyFloat maxsoft;
+    
+    if(no >= All.MaxPart && no < All.MaxPart + MaxNodes)	/* internal node */
     {
-      for(j = 0; j < 8; j++)
-	suns[j] = Nodes[no].u.suns[j];	/* this "backup" is necessary because the nextnode entry will overwrite one element (union!) */
-      if(last >= 0)
-	{
-	  if(last >= All.MaxPart)
-	    {
-	      if(last >= All.MaxPart + MaxNodes)	/* a pseudo-particle */
-		Nextnode[last - MaxNodes] = no;
-	      else
-		Nodes[last].u.d.nextnode = no;
-	    }
-	  else
-	    Nextnode[last] = no;
-	}
-
-      last = no;
-
-#ifdef RADTRANSFER
-      stellar_mass = 0;
-      stellar_s[0] = 0;
-      stellar_s[1] = 0;
-      stellar_s[2] = 0;
+        for(j = 0; j < 8; j++)
+            suns[j] = Nodes[no].u.suns[j];	/* this "backup" is necessary because the nextnode entry will overwrite one element (union!) */
+        if(last >= 0)
+        {
+            if(last >= All.MaxPart)
+            {
+                if(last >= All.MaxPart + MaxNodes)	/* a pseudo-particle */
+                    Nextnode[last - MaxNodes] = no;
+                else
+                    Nodes[last].u.d.nextnode = no;
+            }
+            else
+                Nextnode[last] = no;
+        }
+        
+        last = no;
+        
+#ifdef RT_USE_GRAVTREE
+        for(j=0;j<N_RT_FREQ_BINS;j++) {stellar_lum[j]=0;}
 #endif
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-        stellar_lum = 0;
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-        stellar_lum_uv = 0;
-        stellar_lum_op = 0;
-        stellar_lum_ir = 0;
-#endif
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-        stellar_lum_s[0] = stellar_lum_vs[0] = 0;
-        stellar_lum_s[1] = stellar_lum_vs[1] = 0;
-        stellar_lum_s[2] = stellar_lum_vs[2] = 0;
-#endif
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+        rt_source_lum_s[0] = rt_source_lum_vs[0] = 0;
+        rt_source_lum_s[1] = rt_source_lum_vs[1] = 0;
+        rt_source_lum_s[2] = rt_source_lum_vs[2] = 0;
 #endif
 #ifdef BH_PHOTONMOMENTUM
+        MyFloat bh_lum,bh_lum_hR,bh_lum_grad[3];
         bh_lum=bh_lum_hR=bh_lum_grad[0]=bh_lum_grad[1]=bh_lum_grad[2]=0;
 #endif
 #ifdef SCALARFIELD
-      mass_dm = 0;
-      s_dm[0] = vs_dm[0] = 0;
-      s_dm[1] = vs_dm[1] = 0;
-      s_dm[2] = vs_dm[2] = 0;
+        mass_dm = 0;
+        s_dm[0] = vs_dm[0] = 0;
+        s_dm[1] = vs_dm[1] = 0;
+        s_dm[2] = vs_dm[2] = 0;
 #endif
-      mass = 0;
-      s[0] = 0;
-      s[1] = 0;
-      s[2] = 0;
-      vs[0] = 0;
-      vs[1] = 0;
-      vs[2] = 0;
-      hmax = 0;
-      vmax = 0;
-      divVmax = 0;
-      count_particles = 0;
-      maxsoft = 0;
-
-      for(j = 0; j < 8; j++)
-	{
-	  if((p = suns[j]) >= 0)
-	    {
-	      /* check if we have a sibling on the same level */
-	      for(jj = j + 1; jj < 8; jj++)
-		if((pp = suns[jj]) >= 0)
-		  break;
-
-	      if(jj < 8)	/* yes, we do */
-		nextsib = pp;
-	      else
-		nextsib = sib;
-
-	      force_update_node_recursive(p, nextsib, no);
-
-	      if(p >= All.MaxPart)	/* an internal node or pseudo particle */
-		{
-		  if(p >= All.MaxPart + MaxNodes)	/* a pseudo particle */
-		    {
-		      /* nothing to be done here because the mass of the
-		       * pseudo-particle is still zero. This will be changed
-		       * later.
-		       */
-		    }
-		  else
-		    {
-		      mass += (Nodes[p].u.d.mass);
-		      s[0] += (Nodes[p].u.d.mass * Nodes[p].u.d.s[0]);
-		      s[1] += (Nodes[p].u.d.mass * Nodes[p].u.d.s[1]);
-		      s[2] += (Nodes[p].u.d.mass * Nodes[p].u.d.s[2]);
-		      vs[0] += (Nodes[p].u.d.mass * Extnodes[p].vs[0]);
-		      vs[1] += (Nodes[p].u.d.mass * Extnodes[p].vs[1]);
-		      vs[2] += (Nodes[p].u.d.mass * Extnodes[p].vs[2]);
-#ifdef RADTRANSFER
-		      stellar_s[0] += (Nodes[p].stellar_mass * Nodes[p].stellar_s[0]);
-		      stellar_s[1] += (Nodes[p].stellar_mass * Nodes[p].stellar_s[1]);
-		      stellar_s[2] += (Nodes[p].stellar_mass * Nodes[p].stellar_s[2]);
-		      stellar_mass += (Nodes[p].stellar_mass);
-#endif
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-                stellar_lum_s[0] += (Nodes[p].stellar_lum * Nodes[p].stellar_lum_s[0]);
-                stellar_lum_s[1] += (Nodes[p].stellar_lum * Nodes[p].stellar_lum_s[1]);
-                stellar_lum_s[2] += (Nodes[p].stellar_lum * Nodes[p].stellar_lum_s[2]);
-                stellar_lum_vs[0] += (Nodes[p].stellar_lum * Extnodes[p].stellar_lum_vs[0]);
-                stellar_lum_vs[1] += (Nodes[p].stellar_lum * Extnodes[p].stellar_lum_vs[1]);
-                stellar_lum_vs[2] += (Nodes[p].stellar_lum * Extnodes[p].stellar_lum_vs[2]);
-#endif
-                stellar_lum += (Nodes[p].stellar_lum);
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-                stellar_lum_uv += (Nodes[p].stellar_lum_uv);
-                stellar_lum_op += (Nodes[p].stellar_lum_op);
-                stellar_lum_ir += (Nodes[p].stellar_lum_ir);
-#endif
-#endif
-#ifdef BH_PHOTONMOMENTUM
-                bh_lum += Nodes[p].bh_lum;
-                bh_lum_hR += Nodes[p].bh_lum * Nodes[p].bh_lum_hR;
-                bh_lum_grad[0] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[0];
-                bh_lum_grad[1] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[1];
-                bh_lum_grad[2] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[2];
-#endif
-#ifdef SCALARFIELD
-		      mass_dm += (Nodes[p].mass_dm);
-		      s_dm[0] += (Nodes[p].mass_dm * Nodes[p].s_dm[0]);
-		      s_dm[1] += (Nodes[p].mass_dm * Nodes[p].s_dm[1]);
-		      s_dm[2] += (Nodes[p].mass_dm * Nodes[p].s_dm[2]);
-		      vs_dm[0] += (Nodes[p].mass_dm * Extnodes[p].vs_dm[0]);
-		      vs_dm[1] += (Nodes[p].mass_dm * Extnodes[p].vs_dm[1]);
-		      vs_dm[2] += (Nodes[p].mass_dm * Extnodes[p].vs_dm[2]);
-#endif
-		      if(Nodes[p].u.d.mass > 0)
-			{
-			  if(Nodes[p].u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES))
-			    count_particles += 2;
-			  else
-			    count_particles++;
-			}
-
-		      if(Extnodes[p].hmax > hmax)
-			hmax = Extnodes[p].hmax;
-
-		      if(Extnodes[p].vmax > vmax)
-			vmax = Extnodes[p].vmax;
-		      if(Extnodes[p].divVmax > divVmax)
-			divVmax = Extnodes[p].divVmax;
-
-          /* update of the maximum gravitational softening in the node */
-          if(Nodes[p].maxsoft > maxsoft)
-              maxsoft = Nodes[p].maxsoft;
-
-		    }
-		}
-	      else		/* a particle */
-		{
-		  count_particles++;
-
-		  pa = &P[p];
-
-		  mass += (pa->Mass);
-		  s[0] += (pa->Mass * pa->Pos[0]);
-		  s[1] += (pa->Mass * pa->Pos[1]);
-		  s[2] += (pa->Mass * pa->Pos[2]);
-		  vs[0] += (pa->Mass * pa->Vel[0]);
-		  vs[1] += (pa->Mass * pa->Vel[1]);
-		  vs[2] += (pa->Mass * pa->Vel[2]);
-#ifdef RADTRANSFER
-#ifdef EDDINGTON_TENSOR_STARS
-		  if(pa->Type == 4)
-		    {
-		      stellar_s[0] += (pa->Mass * pa->Pos[0]);
-		      stellar_s[1] += (pa->Mass * pa->Pos[1]);
-		      stellar_s[2] += (pa->Mass * pa->Pos[2]);
-		      stellar_mass += (pa->Mass);
-		    }
-#endif
-#ifdef EDDINGTON_TENSOR_GAS
-		  if(pa->Type == 0)
-		    {
-		      stellar_s[0] += (pa->Mass * pa->Pos[0]);
-		      stellar_s[1] += (pa->Mass * pa->Pos[1]);
-		      stellar_s[2] += (pa->Mass * pa->Pos[2]);
-		      stellar_mass += (pa->Mass);
-		    }
-#endif
-
-#if defined(GALSF) && defined(EDDINGTON_TENSOR_SFR)
-		  if(pa->Type == 0)
-		    {
-              double a = All.cf_atime;
-		      if((SphP[p].Density / (a * a * a)) >= All.PhysDensThresh)
-			{
-			  stellar_s[0] += (pa->Mass * pa->Pos[0]);
-			  stellar_s[1] += (pa->Mass * pa->Pos[1]);
-			  stellar_s[2] += (pa->Mass * pa->Pos[2]);
-			  stellar_mass += (pa->Mass);
-			}
-		    }
-#endif
-#if defined(BLACK_HOLES) && defined(EDDINGTON_TENSOR_BH)
-		  if(pa->Type == 5)
-		    {
-		      stellar_s[0] += (pa->Mass * pa->Pos[0]);
-		      stellar_s[1] += (pa->Mass * pa->Pos[1]);
-		      stellar_s[2] += (pa->Mass * pa->Pos[2]);
-		      stellar_mass += (pa->Mass);
-		    }
-#endif
-#endif
-
-            
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-            if((pa->Type == 4)||((All.ComovingIntegrationOn==0)&&((pa->Type == 2)||(pa->Type==3))))
+        mass = 0;
+        s[0] = 0;
+        s[1] = 0;
+        s[2] = 0;
+        vs[0] = 0;
+        vs[1] = 0;
+        vs[2] = 0;
+        hmax = 0;
+        vmax = 0;
+        divVmax = 0;
+        count_particles = 0;
+        maxsoft = 0;
+        
+        for(j = 0; j < 8; j++)
+        {
+            if((p = suns[j]) >= 0)
             {
-                star_age = evaluate_stellar_age_Gyr(pa->StellarAge);
-                l_over_m_ssp = evaluate_l_over_m_ssp(star_age);
-                l_over_m_ssp *= calculate_relative_light_to_mass_ratio_from_imf(p);
-                // ( careful here, i'm directly referencing the particle id number, instead of passing the pointer... want to be sure this is ok ) //
-
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-                stellar_lum_s[0] += (pa->Mass * pa->Pos[0] * l_over_m_ssp);
-                stellar_lum_s[1] += (pa->Mass * pa->Pos[1] * l_over_m_ssp);
-                stellar_lum_s[2] += (pa->Mass * pa->Pos[2] * l_over_m_ssp);
-                stellar_lum_vs[0] += (pa->Mass * pa->Vel[0] * l_over_m_ssp);
-                stellar_lum_vs[1] += (pa->Mass * pa->Vel[1] * l_over_m_ssp);
-                stellar_lum_vs[2] += (pa->Mass * pa->Vel[2] * l_over_m_ssp);
-#endif
-                stellar_lum += (pa->Mass * l_over_m_ssp);
+                /* check if we have a sibling on the same level */
+                for(jj = j + 1; jj < 8; jj++)
+                    if((pp = suns[jj]) >= 0)
+                        break;
                 
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-                GradRho = evaluate_NH_from_GradRho(pa->GradRho,pa->Hsml,pa->DensAroundStar,pa->NumNgb,0);
-                sigma_eff = sigma_eff_0*GradRho;
-                if(star_age <= 0.0025) {f_op=0.09;} else {
-                    if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));
-                    } else {f_op=1-0.8410937/(1+sqrt((star_age-0.006)/0.3));}}
-                tau_uv = sigma_eff*KAPPA_UV; tau_op = sigma_eff*KAPPA_OP;
-                f_uv = (1-f_op)*(All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV)/(1+0.8*tau_uv+0.85*tau_uv*tau_uv));
-                f_op *= All.PhotonMomentum_fOPT + (1-All.PhotonMomentum_fOPT)/(1+0.8*tau_op+0.85*tau_op*tau_op);
-                /*
-                 // above is a fitting function for tau_disp~0.22 'tail' w. exp(-tau) 'core', removes expensive fns
-                 f_uv = (1-f_op)*(All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV)*exp(-tau_uv));
-                 f_op *= All.PhotonMomentum_fOPT + (1-All.PhotonMomentum_fOPT)*exp(-tau_op);
-                 // leakage for P(tau) ~ exp(-|logtau/tau0|/sig):
-                 f_uv = (1-f_op)*(All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV)/
-                 (1 + pow(tau_uv,1./(4.*tau_disp))/(3.*tau_disp) + pow(2.*tau_disp*tau_uv,1./tau_disp)));
-                 f_op *= All.PhotonMomentum_fOPT + (1-All.PhotonMomentum_fOPT)/
-                 (1 + pow(tau_op,1./(4.*tau_disp))/(3.*tau_disp) + pow(2.*tau_disp*tau_op,1./tau_disp));
-                */
-                stellar_lum_uv += (pa->Mass * l_over_m_ssp * f_uv);
-                stellar_lum_op += (pa->Mass * l_over_m_ssp * f_op);
-                stellar_lum_ir += (pa->Mass * l_over_m_ssp * (1-f_uv-f_op));
+                if(jj < 8)	/* yes, we do */
+                    nextsib = pp;
+                else
+                    nextsib = sib;
+                
+                force_update_node_recursive(p, nextsib, no);
+                
+                if(p >= All.MaxPart)	/* an internal node or pseudo particle */
+                {
+                    if(p >= All.MaxPart + MaxNodes)	/* a pseudo particle */
+                    {
+                        /* nothing to be done here because the mass of the
+                         * pseudo-particle is still zero. This will be changed
+                         * later.
+                         */
+                    }
+                    else
+                    {
+                        mass += (Nodes[p].u.d.mass);
+                        s[0] += (Nodes[p].u.d.mass * Nodes[p].u.d.s[0]);
+                        s[1] += (Nodes[p].u.d.mass * Nodes[p].u.d.s[1]);
+                        s[2] += (Nodes[p].u.d.mass * Nodes[p].u.d.s[2]);
+                        vs[0] += (Nodes[p].u.d.mass * Extnodes[p].vs[0]);
+                        vs[1] += (Nodes[p].u.d.mass * Extnodes[p].vs[1]);
+                        vs[2] += (Nodes[p].u.d.mass * Extnodes[p].vs[2]);
+#ifdef RT_USE_GRAVTREE
+                        for(k=0;k<N_RT_FREQ_BINS;k++) {stellar_lum[k] += (Nodes[p].stellar_lum[k]);}
 #endif
-            }
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+                        double l_tot=0; for(k=0;k<N_RT_FREQ_BINS;k++) {l_tot += (Nodes[p].stellar_lum[k]);}
+                        rt_source_lum_s[0] += (l_tot * Nodes[p].rt_source_lum_s[0]);
+                        rt_source_lum_s[1] += (l_tot * Nodes[p].rt_source_lum_s[1]);
+                        rt_source_lum_s[2] += (l_tot * Nodes[p].rt_source_lum_s[2]);
+                        rt_source_lum_vs[0] += (l_tot * Extnodes[p].rt_source_lum_vs[0]);
+                        rt_source_lum_vs[1] += (l_tot * Extnodes[p].rt_source_lum_vs[1]);
+                        rt_source_lum_vs[2] += (l_tot * Extnodes[p].rt_source_lum_vs[2]);
 #endif
-            
 #ifdef BH_PHOTONMOMENTUM
-            if(pa->Type == 5) {
-                if((pa->Mass>0)&&(pa->DensAroundStar>0)&&(pa->BH_Mdot>0)) {
-                    BHLum = All.BlackHoleFeedbackFactor * 
-                       pa->BH_Mdot * All.BlackHoleRadiativeEfficiency * (2.998e10*2.998e10/All.UnitTime_in_s)/(3.9/2.0) * All.HubbleParam;
-                    for(k=0;k<3;k++) bh_lum_grad[k] += BHLum * pa->GradRho[k];
-                    bh_lum += BHLum;
-                    bh_lum_hR += BHLum * pa->BH_disk_hr;
-                }}
+                        bh_lum += Nodes[p].bh_lum;
+                        bh_lum_hR += Nodes[p].bh_lum * Nodes[p].bh_lum_hR;
+                        bh_lum_grad[0] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[0];
+                        bh_lum_grad[1] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[1];
+                        bh_lum_grad[2] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[2];
 #endif
-            
-            
 #ifdef SCALARFIELD
-		  if(pa->Type != 0)
-		    {
-		      mass_dm += (pa->Mass);
-		      s_dm[0] += (pa->Mass * pa->Pos[0]);
-		      s_dm[1] += (pa->Mass * pa->Pos[1]);
-		      s_dm[2] += (pa->Mass * pa->Pos[2]);
-		      vs_dm[0] += (pa->Mass * pa->Vel[0]);
-		      vs_dm[1] += (pa->Mass * pa->Vel[1]);
-		      vs_dm[2] += (pa->Mass * pa->Vel[2]);
-		    }
+                        mass_dm += (Nodes[p].mass_dm);
+                        s_dm[0] += (Nodes[p].mass_dm * Nodes[p].s_dm[0]);
+                        s_dm[1] += (Nodes[p].mass_dm * Nodes[p].s_dm[1]);
+                        s_dm[2] += (Nodes[p].mass_dm * Nodes[p].s_dm[2]);
+                        vs_dm[0] += (Nodes[p].mass_dm * Extnodes[p].vs_dm[0]);
+                        vs_dm[1] += (Nodes[p].mass_dm * Extnodes[p].vs_dm[1]);
+                        vs_dm[2] += (Nodes[p].mass_dm * Extnodes[p].vs_dm[2]);
 #endif
-		  if(pa->Type == 0)
-		    {
-		      if(PPP[p].Hsml > hmax)
-                  hmax = PPP[p].Hsml;
-            
-              divVel = P[p].Particle_DivVel;
-		      if(divVel > divVmax)
-                  divVmax = divVel;
-            }
-
-		  for(k = 0; k < 3; k++)
-		    if((v = fabs(pa->Vel[k])) > vmax)
-		      vmax = v;
-
-            /* update of the maximum gravitational softening  */
+                        if(Nodes[p].u.d.mass > 0)
+                        {
+                            if(Nodes[p].u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES))
+                                count_particles += 2;
+                            else
+                                count_particles++;
+                        }
+                        
+                        if(Extnodes[p].hmax > hmax)
+                            hmax = Extnodes[p].hmax;
+                        
+                        if(Extnodes[p].vmax > vmax)
+                            vmax = Extnodes[p].vmax;
+                        if(Extnodes[p].divVmax > divVmax)
+                            divVmax = Extnodes[p].divVmax;
+                        
+                        /* update of the maximum gravitational softening in the node */
+                        if(Nodes[p].maxsoft > maxsoft)
+                            maxsoft = Nodes[p].maxsoft;
+                        
+                    }
+                }
+                else		/* a particle */
+                {
+                    count_particles++;
+                    
+                    pa = &P[p];
+                    
+                    mass += (pa->Mass);
+                    s[0] += (pa->Mass * pa->Pos[0]);
+                    s[1] += (pa->Mass * pa->Pos[1]);
+                    s[2] += (pa->Mass * pa->Pos[2]);
+                    vs[0] += (pa->Mass * pa->Vel[0]);
+                    vs[1] += (pa->Mass * pa->Vel[1]);
+                    vs[2] += (pa->Mass * pa->Vel[2]);
+                    
+#ifdef RT_USE_GRAVTREE
+                    double lum[N_RT_FREQ_BINS];
+                    int active_check = rt_get_source_luminosity(p,sigma_eff,lum);
+                    if(active_check)
+                    {
+                        double l_sum = 0; for(k=0;k<N_RT_FREQ_BINS;k++) {stellar_lum[k] += lum[k]; l_sum += lum[k];}
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+                        rt_source_lum_s[0] += (l_sum * pa->Pos[0]);
+                        rt_source_lum_s[1] += (l_sum * pa->Pos[1]);
+                        rt_source_lum_s[2] += (l_sum * pa->Pos[2]);
+                        rt_source_lum_vs[0] += (l_sum * pa->Vel[0]);
+                        rt_source_lum_vs[1] += (l_sum * pa->Vel[1]);
+                        rt_source_lum_vs[2] += (l_sum * pa->Vel[2]);
+#endif
+                    }
+#endif
+                    
+                    
+                    
+#ifdef BH_PHOTONMOMENTUM
+                    if(pa->Type == 5)
+                    {
+                        if((pa->Mass>0)&&(pa->DensAroundStar>0)&&(pa->BH_Mdot>0))
+                        {
+                            double BHLum = All.BlackHoleFeedbackFactor * pa->BH_Mdot * All.BlackHoleRadiativeEfficiency * (2.998e10*2.998e10/All.UnitTime_in_s)/(3.9/2.0) * All.HubbleParam;
+                            bh_lum += BHLum;
+                            bh_lum_hR += BHLum * pa->BH_disk_hr;
+                            for(k=0;k<3;k++) {bh_lum_grad[k] += BHLum * pa->GradRho[k];}
+                        }
+                    }
+#endif
+                    
+                    
+#ifdef SCALARFIELD
+                    if(pa->Type != 0)
+                    {
+                        mass_dm += (pa->Mass);
+                        s_dm[0] += (pa->Mass * pa->Pos[0]);
+                        s_dm[1] += (pa->Mass * pa->Pos[1]);
+                        s_dm[2] += (pa->Mass * pa->Pos[2]);
+                        vs_dm[0] += (pa->Mass * pa->Vel[0]);
+                        vs_dm[1] += (pa->Mass * pa->Vel[1]);
+                        vs_dm[2] += (pa->Mass * pa->Vel[2]);
+                    }
+#endif
+                    if(pa->Type == 0)
+                    {
+                        if(PPP[p].Hsml > hmax)
+                            hmax = PPP[p].Hsml;
+                        
+                        divVel = P[p].Particle_DivVel;
+                        if(divVel > divVmax)
+                            divVmax = divVel;
+                    }
+                    
+                    for(k = 0; k < 3; k++)
+                        if((v = fabs(pa->Vel[k])) > vmax)
+                            vmax = v;
+                    
+                    /* update of the maximum gravitational softening  */
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-            if(PPP[p].Hsml > maxsoft)
-                maxsoft = PPP[p].Hsml;
+                    if(PPP[p].Hsml > maxsoft)
+                        maxsoft = PPP[p].Hsml;
 #else
 #ifndef ADAPTIVE_GRAVSOFT_FORGAS
-            if(All.ForceSoftening[pa->Type] > maxsoft)
-                maxsoft = All.ForceSoftening[pa->Type];
+                    if(All.ForceSoftening[pa->Type] > maxsoft)
+                        maxsoft = All.ForceSoftening[pa->Type];
 #else
-            if(pa->Type == 0)
-		    {
-                if(PPP[p].Hsml > maxsoft)
-                    maxsoft = PPP[p].Hsml;
-		    }
-            else
-		    {
-                if(All.ForceSoftening[pa->Type] > maxsoft)
-                    maxsoft = All.ForceSoftening[pa->Type];
-		    }
+                    if(pa->Type == 0)
+                    {
+                        if(PPP[p].Hsml > maxsoft)
+                            maxsoft = PPP[p].Hsml;
+                    }
+                    else
+                    {
+                        if(All.ForceSoftening[pa->Type] > maxsoft)
+                            maxsoft = All.ForceSoftening[pa->Type];
+                    }
 #endif
 #endif // ADAPTIVE_GRAVSOFT_FORALL //
-		}
-	    }
-	}
-
-
-      if(mass)
-	{
-	  s[0] /= mass;
-	  s[1] /= mass;
-	  s[2] /= mass;
-	  vs[0] /= mass;
-	  vs[1] /= mass;
-	  vs[2] /= mass;
-	}
-      else
-	{
-	  s[0] = Nodes[no].center[0];
-	  s[1] = Nodes[no].center[1];
-	  s[2] = Nodes[no].center[2];
-	  vs[0] = 0;
-	  vs[1] = 0;
-	  vs[2] = 0;
-	}
-
-#ifdef RADTRANSFER
-      if(stellar_mass)
-	{
-	  stellar_s[0] /= stellar_mass;
-	  stellar_s[1] /= stellar_mass;
-	  stellar_s[2] /= stellar_mass;
-	}
-      else
-	{
-	  stellar_s[0] = Nodes[no].center[0];
-	  stellar_s[1] = Nodes[no].center[1];
-	  stellar_s[2] = Nodes[no].center[2];
-	}
-#endif
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-        if(stellar_lum)
+                }
+            }
+        }
+        
+        
+        if(mass)
         {
-            stellar_lum_s[0] /= stellar_lum;
-            stellar_lum_s[1] /= stellar_lum;
-            stellar_lum_s[2] /= stellar_lum;
-            stellar_lum_vs[0] /= stellar_lum;
-            stellar_lum_vs[1] /= stellar_lum;
-            stellar_lum_vs[2] /= stellar_lum;
+            s[0] /= mass;
+            s[1] /= mass;
+            s[2] /= mass;
+            vs[0] /= mass;
+            vs[1] /= mass;
+            vs[2] /= mass;
         }
         else
         {
-            stellar_lum_s[0] = Nodes[no].center[0];
-            stellar_lum_s[1] = Nodes[no].center[1];
-            stellar_lum_s[2] = Nodes[no].center[2];
-            stellar_lum_vs[0] = 0;
-            stellar_lum_vs[1] = 0;
-            stellar_lum_vs[2] = 0;
+            s[0] = Nodes[no].center[0];
+            s[1] = Nodes[no].center[1];
+            s[2] = Nodes[no].center[2];
+            vs[0] = 0;
+            vs[1] = 0;
+            vs[2] = 0;
         }
-#endif
+        
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+        double l_tot=0; for(k=0;k<N_RT_FREQ_BINS;k++) {l_tot += stellar_lum[k];}
+        if(l_tot)
+        {
+            rt_source_lum_s[0] /= l_tot;
+            rt_source_lum_s[1] /= l_tot;
+            rt_source_lum_s[2] /= l_tot;
+            rt_source_lum_vs[0] /= l_tot;
+            rt_source_lum_vs[1] /= l_tot;
+            rt_source_lum_vs[2] /= l_tot;
+        }
+        else
+        {
+            rt_source_lum_s[0] = Nodes[no].center[0];
+            rt_source_lum_s[1] = Nodes[no].center[1];
+            rt_source_lum_s[2] = Nodes[no].center[2];
+            rt_source_lum_vs[0] = 0;
+            rt_source_lum_vs[1] = 0;
+            rt_source_lum_vs[2] = 0;
+        }
 #endif
 #ifdef BH_PHOTONMOMENTUM
         if(bh_lum)
         {
-            bh_lum_hR /= bh_lum;
-            bh_lum_grad[0] /= bh_lum;
-            bh_lum_grad[1] /= bh_lum;
-            bh_lum_grad[2] /= bh_lum;
-        }
-        else
-        {
-            bh_lum_hR = 1;
-            bh_lum_grad[0]=bh_lum_grad[1]=bh_lum_grad[2]=0;
+            bh_lum_hR /= bh_lum; bh_lum_grad[0] /= bh_lum; bh_lum_grad[1] /= bh_lum; bh_lum_grad[2] /= bh_lum;
+        } else {
+            bh_lum_hR = 1; bh_lum_grad[0]=bh_lum_grad[1]=bh_lum_grad[2]=0;
         }
 #endif
 #ifdef SCALARFIELD
-      if(mass_dm)
-	{
-	  s_dm[0] /= mass_dm;
-	  s_dm[1] /= mass_dm;
-	  s_dm[2] /= mass_dm;
-	  vs_dm[0] /= mass_dm;
-	  vs_dm[1] /= mass_dm;
-	  vs_dm[2] /= mass_dm;
-	}
-      else
-	{
-	  s_dm[0] = Nodes[no].center[0];
-	  s_dm[1] = Nodes[no].center[1];
-	  s_dm[2] = Nodes[no].center[2];
-	  vs_dm[0] = 0;
-	  vs_dm[1] = 0;
-	  vs_dm[2] = 0;
-	}
+        if(mass_dm)
+        {
+            s_dm[0] /= mass_dm;
+            s_dm[1] /= mass_dm;
+            s_dm[2] /= mass_dm;
+            vs_dm[0] /= mass_dm;
+            vs_dm[1] /= mass_dm;
+            vs_dm[2] /= mass_dm;
+        }
+        else
+        {
+            s_dm[0] = Nodes[no].center[0];
+            s_dm[1] = Nodes[no].center[1];
+            s_dm[2] = Nodes[no].center[2];
+            vs_dm[0] = 0;
+            vs_dm[1] = 0;
+            vs_dm[2] = 0;
+        }
 #endif
-
-
-      Nodes[no].Ti_current = All.Ti_Current;
-      Nodes[no].u.d.mass = mass;
-      Nodes[no].u.d.s[0] = s[0];
-      Nodes[no].u.d.s[1] = s[1];
-      Nodes[no].u.d.s[2] = s[2];
-      Nodes[no].GravCost = 0;
-#ifdef RADTRANSFER
-      Nodes[no].stellar_s[0] = stellar_s[0];
-      Nodes[no].stellar_s[1] = stellar_s[1];
-      Nodes[no].stellar_s[2] = stellar_s[2];
-      Nodes[no].stellar_mass = stellar_mass;
+        
+        
+        Nodes[no].Ti_current = All.Ti_Current;
+        Nodes[no].u.d.mass = mass;
+        Nodes[no].u.d.s[0] = s[0];
+        Nodes[no].u.d.s[1] = s[1];
+        Nodes[no].u.d.s[2] = s[2];
+        Nodes[no].GravCost = 0;
+#ifdef RT_USE_GRAVTREE
+        for(k=0;k<N_RT_FREQ_BINS;k++) {Nodes[no].stellar_lum[k] = stellar_lum[k];}
 #endif
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-        Nodes[no].stellar_lum_s[0] = stellar_lum_s[0];
-        Nodes[no].stellar_lum_s[1] = stellar_lum_s[1];
-        Nodes[no].stellar_lum_s[2] = stellar_lum_s[2];
-#endif
-        Nodes[no].stellar_lum = stellar_lum;
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-        Nodes[no].stellar_lum_uv = stellar_lum_uv;
-        Nodes[no].stellar_lum_op = stellar_lum_op;
-        Nodes[no].stellar_lum_ir = stellar_lum_ir;
-#endif
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-        Extnodes[no].stellar_lum_vs[0] = stellar_lum_vs[0];
-        Extnodes[no].stellar_lum_vs[1] = stellar_lum_vs[1];
-        Extnodes[no].stellar_lum_vs[2] = stellar_lum_vs[2];
-        Extnodes[no].stellar_lum_dp[0] = 0;
-        Extnodes[no].stellar_lum_dp[1] = 0;
-        Extnodes[no].stellar_lum_dp[2] = 0;
-#endif
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+        Nodes[no].rt_source_lum_s[0] = rt_source_lum_s[0];
+        Nodes[no].rt_source_lum_s[1] = rt_source_lum_s[1];
+        Nodes[no].rt_source_lum_s[2] = rt_source_lum_s[2];
+        Extnodes[no].rt_source_lum_vs[0] = rt_source_lum_vs[0];
+        Extnodes[no].rt_source_lum_vs[1] = rt_source_lum_vs[1];
+        Extnodes[no].rt_source_lum_vs[2] = rt_source_lum_vs[2];
+        Extnodes[no].rt_source_lum_dp[0] = 0;
+        Extnodes[no].rt_source_lum_dp[1] = 0;
+        Extnodes[no].rt_source_lum_dp[2] = 0;
 #endif
 #ifdef BH_PHOTONMOMENTUM
         Nodes[no].bh_lum = bh_lum;
@@ -1000,59 +867,59 @@ void force_update_node_recursive(int no, int sib, int father)
         Nodes[no].bh_lum_grad[2] = bh_lum_grad[2];
 #endif
 #ifdef SCALARFIELD
-      Nodes[no].s_dm[0] = s_dm[0];
-      Nodes[no].s_dm[1] = s_dm[1];
-      Nodes[no].s_dm[2] = s_dm[2];
-      Nodes[no].mass_dm = mass_dm;
-      Extnodes[no].vs_dm[0] = vs_dm[0];
-      Extnodes[no].vs_dm[1] = vs_dm[1];
-      Extnodes[no].vs_dm[2] = vs_dm[2];
-      Extnodes[no].dp_dm[0] = 0;
-      Extnodes[no].dp_dm[1] = 0;
-      Extnodes[no].dp_dm[2] = 0;
+        Nodes[no].s_dm[0] = s_dm[0];
+        Nodes[no].s_dm[1] = s_dm[1];
+        Nodes[no].s_dm[2] = s_dm[2];
+        Nodes[no].mass_dm = mass_dm;
+        Extnodes[no].vs_dm[0] = vs_dm[0];
+        Extnodes[no].vs_dm[1] = vs_dm[1];
+        Extnodes[no].vs_dm[2] = vs_dm[2];
+        Extnodes[no].dp_dm[0] = 0;
+        Extnodes[no].dp_dm[1] = 0;
+        Extnodes[no].dp_dm[2] = 0;
 #endif
-
-      Extnodes[no].Ti_lastkicked = All.Ti_Current;
-      Extnodes[no].Flag = GlobFlag;
-      Extnodes[no].vs[0] = vs[0];
-      Extnodes[no].vs[1] = vs[1];
-      Extnodes[no].vs[2] = vs[2];
-      Extnodes[no].hmax = hmax;
-      Extnodes[no].vmax = vmax;
-      Extnodes[no].divVmax = divVmax;
-      Extnodes[no].dp[0] = 0;
-      Extnodes[no].dp[1] = 0;
-      Extnodes[no].dp[2] = 0;
-
-      if(count_particles > 1)	/* this flags that the node represents more than one particle */
-	multiple_flag = (1 << BITFLAG_MULTIPLEPARTICLES);
-      else
-	multiple_flag = 0;
-
-      Nodes[no].u.d.bitflags = multiple_flag;
-      Nodes[no].maxsoft = maxsoft;
-      Nodes[no].u.d.sibling = sib;
-      Nodes[no].u.d.father = father;
+        
+        Extnodes[no].Ti_lastkicked = All.Ti_Current;
+        Extnodes[no].Flag = GlobFlag;
+        Extnodes[no].vs[0] = vs[0];
+        Extnodes[no].vs[1] = vs[1];
+        Extnodes[no].vs[2] = vs[2];
+        Extnodes[no].hmax = hmax;
+        Extnodes[no].vmax = vmax;
+        Extnodes[no].divVmax = divVmax;
+        Extnodes[no].dp[0] = 0;
+        Extnodes[no].dp[1] = 0;
+        Extnodes[no].dp[2] = 0;
+        
+        if(count_particles > 1)	/* this flags that the node represents more than one particle */
+            multiple_flag = (1 << BITFLAG_MULTIPLEPARTICLES);
+        else
+            multiple_flag = 0;
+        
+        Nodes[no].u.d.bitflags = multiple_flag;
+        Nodes[no].maxsoft = maxsoft;
+        Nodes[no].u.d.sibling = sib;
+        Nodes[no].u.d.father = father;
     }
-  else				/* single particle or pseudo particle */
+    else				/* single particle or pseudo particle */
     {
-      if(last >= 0)
-	{
-	  if(last >= All.MaxPart)
-	    {
-	      if(last >= All.MaxPart + MaxNodes)	/* a pseudo-particle */
-		Nextnode[last - MaxNodes] = no;
-	      else
-		Nodes[last].u.d.nextnode = no;
-	    }
-	  else
-	    Nextnode[last] = no;
-	}
-
-      last = no;
-
-      if(no < All.MaxPart)	/* only set it for single particles */
-	Father[no] = father;
+        if(last >= 0)
+        {
+            if(last >= All.MaxPart)
+            {
+                if(last >= All.MaxPart + MaxNodes)	/* a pseudo-particle */
+                    Nextnode[last - MaxNodes] = no;
+                else
+                    Nodes[last].u.d.nextnode = no;
+            }
+            else
+                Nextnode[last] = no;
+        }
+        
+        last = no;
+        
+        if(no < All.MaxPart)	/* only set it for single particles */
+            Father[no] = father;
     }
 }
 
@@ -1065,213 +932,181 @@ void force_update_node_recursive(int no, int sib, int father)
  */
 void force_exchange_pseudodata(void)
 {
-  int i, no, m, ta, recvTask;
-  int *recvcounts, *recvoffset;
-  struct DomainNODE
-  {
-    MyFloat s[3];
-    MyFloat vs[3];
-    MyFloat mass;
-    MyFloat hmax;
-    MyFloat vmax;
-    MyFloat divVmax;
-
+    int i, no, m, ta, recvTask;
+    int *recvcounts, *recvoffset;
+    struct DomainNODE
+    {
+        MyFloat s[3];
+        MyFloat vs[3];
+        MyFloat mass;
+        MyFloat hmax;
+        MyFloat vmax;
+        MyFloat divVmax;        
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
-    MyFloat maxsoft;
+        MyFloat maxsoft;
 #endif
-#ifdef RADTRANSFER
-    MyFloat stellar_mass;
-    MyFloat stellar_s[3];
+#ifdef RT_USE_GRAVTREE
+        MyFloat stellar_lum[N_RT_FREQ_BINS];
 #endif
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-      MyFloat stellar_lum;
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-      MyFloat stellar_lum_uv;
-      MyFloat stellar_lum_op;
-      MyFloat stellar_lum_ir;
-#endif
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-      MyFloat stellar_lum_s[3];
-      MyFloat stellar_lum_vs[3];
-#endif
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+        MyFloat rt_source_lum_s[3];
+        MyFloat rt_source_lum_vs[3];
 #endif
 #ifdef BH_PHOTONMOMENTUM
-      MyFloat bh_lum,bh_lum_hR,bh_lum_grad[3];
+        MyFloat bh_lum,bh_lum_hR,bh_lum_grad[3];
 #endif
 #ifdef SCALARFIELD
-    MyFloat s_dm[3];
-    MyFloat vs_dm[3];
-    MyFloat mass_dm;
+        MyFloat s_dm[3];
+        MyFloat vs_dm[3];
+        MyFloat mass_dm;
 #endif
-    unsigned int bitflags;
+        unsigned int bitflags;
 #ifdef PAD_STRUCTURES
 #ifndef DOUBLEPRECISION
-    int pad[5];
+        int pad[5];
 #else
 #if (DOUBLEPRECISION+0) == 2
-    /* mixed precision */
-    int pad[5];
+        /* mixed precision */
+        int pad[5];
 #else
-    int pad[3];
+        int pad[3];
 #endif
 #endif				/* DOUBLEPRECISION  */
 #endif
-  }
-   *DomainMoment;
-
-
-  DomainMoment = (struct DomainNODE *) mymalloc("DomainMoment", NTopleaves * sizeof(struct DomainNODE));
+    }
+    *DomainMoment;
     
-  for(m = 0; m < MULTIPLEDOMAINS; m++)
-    for(i = DomainStartList[ThisTask * MULTIPLEDOMAINS + m];
-	i <= DomainEndList[ThisTask * MULTIPLEDOMAINS + m]; i++)
-      {
-	no = DomainNodeIndex[i];
-
-	/* read out the multipole moments from the local base cells */
-	DomainMoment[i].s[0] = Nodes[no].u.d.s[0];
-	DomainMoment[i].s[1] = Nodes[no].u.d.s[1];
-	DomainMoment[i].s[2] = Nodes[no].u.d.s[2];
-	DomainMoment[i].vs[0] = Extnodes[no].vs[0];
-	DomainMoment[i].vs[1] = Extnodes[no].vs[1];
-	DomainMoment[i].vs[2] = Extnodes[no].vs[2];
-	DomainMoment[i].mass = Nodes[no].u.d.mass;
-	DomainMoment[i].hmax = Extnodes[no].hmax;
-	DomainMoment[i].vmax = Extnodes[no].vmax;
-	DomainMoment[i].divVmax = Extnodes[no].divVmax;
-	DomainMoment[i].bitflags = Nodes[no].u.d.bitflags;
+    
+    DomainMoment = (struct DomainNODE *) mymalloc("DomainMoment", NTopleaves * sizeof(struct DomainNODE));
+    
+    for(m = 0; m < MULTIPLEDOMAINS; m++)
+        for(i = DomainStartList[ThisTask * MULTIPLEDOMAINS + m];
+            i <= DomainEndList[ThisTask * MULTIPLEDOMAINS + m]; i++)
+        {
+            no = DomainNodeIndex[i];
+            
+            /* read out the multipole moments from the local base cells */
+            DomainMoment[i].s[0] = Nodes[no].u.d.s[0];
+            DomainMoment[i].s[1] = Nodes[no].u.d.s[1];
+            DomainMoment[i].s[2] = Nodes[no].u.d.s[2];
+            DomainMoment[i].vs[0] = Extnodes[no].vs[0];
+            DomainMoment[i].vs[1] = Extnodes[no].vs[1];
+            DomainMoment[i].vs[2] = Extnodes[no].vs[2];
+            DomainMoment[i].mass = Nodes[no].u.d.mass;
+            DomainMoment[i].hmax = Extnodes[no].hmax;
+            DomainMoment[i].vmax = Extnodes[no].vmax;
+            DomainMoment[i].divVmax = Extnodes[no].divVmax;
+            DomainMoment[i].bitflags = Nodes[no].u.d.bitflags;
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
-	DomainMoment[i].maxsoft = Nodes[no].maxsoft;
+            DomainMoment[i].maxsoft = Nodes[no].maxsoft;
 #endif
-#ifdef RADTRANSFER
-	DomainMoment[i].stellar_s[0] = Nodes[no].stellar_s[0];
-	DomainMoment[i].stellar_s[1] = Nodes[no].stellar_s[1];
-	DomainMoment[i].stellar_s[2] = Nodes[no].stellar_s[2];
-	DomainMoment[i].stellar_mass = Nodes[no].stellar_mass;
+#ifdef RT_USE_GRAVTREE
+            int k; for(k=0;k<N_RT_FREQ_BINS;k++) {DomainMoment[i].stellar_lum[k] = Nodes[no].stellar_lum[k];}
 #endif
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-          DomainMoment[i].stellar_lum_s[0] = Nodes[no].stellar_lum_s[0];
-          DomainMoment[i].stellar_lum_s[1] = Nodes[no].stellar_lum_s[1];
-          DomainMoment[i].stellar_lum_s[2] = Nodes[no].stellar_lum_s[2];
-          DomainMoment[i].stellar_lum_vs[0] = Extnodes[no].stellar_lum_vs[0];
-          DomainMoment[i].stellar_lum_vs[1] = Extnodes[no].stellar_lum_vs[1];
-          DomainMoment[i].stellar_lum_vs[2] = Extnodes[no].stellar_lum_vs[2];
-#endif
-          DomainMoment[i].stellar_lum = Nodes[no].stellar_lum;
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-          DomainMoment[i].stellar_lum_uv = Nodes[no].stellar_lum_uv;
-          DomainMoment[i].stellar_lum_op = Nodes[no].stellar_lum_op;
-          DomainMoment[i].stellar_lum_ir = Nodes[no].stellar_lum_ir;
-#endif
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+            DomainMoment[i].rt_source_lum_s[0] = Nodes[no].rt_source_lum_s[0];
+            DomainMoment[i].rt_source_lum_s[1] = Nodes[no].rt_source_lum_s[1];
+            DomainMoment[i].rt_source_lum_s[2] = Nodes[no].rt_source_lum_s[2];
+            DomainMoment[i].rt_source_lum_vs[0] = Extnodes[no].rt_source_lum_vs[0];
+            DomainMoment[i].rt_source_lum_vs[1] = Extnodes[no].rt_source_lum_vs[1];
+            DomainMoment[i].rt_source_lum_vs[2] = Extnodes[no].rt_source_lum_vs[2];
 #endif
 #ifdef BH_PHOTONMOMENTUM
-          DomainMoment[i].bh_lum = Nodes[no].bh_lum;
-          DomainMoment[i].bh_lum_hR = Nodes[no].bh_lum_hR;
-          DomainMoment[i].bh_lum_grad[0] = Nodes[no].bh_lum_grad[0];
-          DomainMoment[i].bh_lum_grad[1] = Nodes[no].bh_lum_grad[1];
-          DomainMoment[i].bh_lum_grad[2] = Nodes[no].bh_lum_grad[2];
+            DomainMoment[i].bh_lum = Nodes[no].bh_lum;
+            DomainMoment[i].bh_lum_hR = Nodes[no].bh_lum_hR;
+            DomainMoment[i].bh_lum_grad[0] = Nodes[no].bh_lum_grad[0];
+            DomainMoment[i].bh_lum_grad[1] = Nodes[no].bh_lum_grad[1];
+            DomainMoment[i].bh_lum_grad[2] = Nodes[no].bh_lum_grad[2];
 #endif
 #ifdef SCALARFIELD
-	DomainMoment[i].s_dm[0] = Nodes[no].s_dm[0];
-	DomainMoment[i].s_dm[1] = Nodes[no].s_dm[1];
-	DomainMoment[i].s_dm[2] = Nodes[no].s_dm[2];
-	DomainMoment[i].mass_dm = Nodes[no].mass_dm;
-	DomainMoment[i].vs_dm[0] = Extnodes[no].vs_dm[0];
-	DomainMoment[i].vs_dm[1] = Extnodes[no].vs_dm[1];
-	DomainMoment[i].vs_dm[2] = Extnodes[no].vs_dm[2];
+            DomainMoment[i].s_dm[0] = Nodes[no].s_dm[0];
+            DomainMoment[i].s_dm[1] = Nodes[no].s_dm[1];
+            DomainMoment[i].s_dm[2] = Nodes[no].s_dm[2];
+            DomainMoment[i].mass_dm = Nodes[no].mass_dm;
+            DomainMoment[i].vs_dm[0] = Extnodes[no].vs_dm[0];
+            DomainMoment[i].vs_dm[1] = Extnodes[no].vs_dm[1];
+            DomainMoment[i].vs_dm[2] = Extnodes[no].vs_dm[2];
 #endif
-      }
-
-  /* share the pseudo-particle data accross CPUs */
-  recvcounts = (int *) mymalloc("recvcounts", sizeof(int) * NTask);
-  recvoffset = (int *) mymalloc("recvoffset", sizeof(int) * NTask);
+        }
     
-  for(m = 0; m < MULTIPLEDOMAINS; m++)
+    /* share the pseudo-particle data accross CPUs */
+    recvcounts = (int *) mymalloc("recvcounts", sizeof(int) * NTask);
+    recvoffset = (int *) mymalloc("recvoffset", sizeof(int) * NTask);
+    
+    for(m = 0; m < MULTIPLEDOMAINS; m++)
     {
-      for(recvTask = 0; recvTask < NTask; recvTask++)
-	{
-	  recvcounts[recvTask] =
-	    (DomainEndList[recvTask * MULTIPLEDOMAINS + m] - DomainStartList[recvTask * MULTIPLEDOMAINS + m] +
-	     1) * sizeof(struct DomainNODE);
-	  recvoffset[recvTask] = DomainStartList[recvTask * MULTIPLEDOMAINS + m] * sizeof(struct DomainNODE);
-	}
+        for(recvTask = 0; recvTask < NTask; recvTask++)
+        {
+            recvcounts[recvTask] =
+            (DomainEndList[recvTask * MULTIPLEDOMAINS + m] - DomainStartList[recvTask * MULTIPLEDOMAINS + m] +
+             1) * sizeof(struct DomainNODE);
+            recvoffset[recvTask] = DomainStartList[recvTask * MULTIPLEDOMAINS + m] * sizeof(struct DomainNODE);
+        }
 #ifdef USE_MPI_IN_PLACE
-      MPI_Allgatherv(MPI_IN_PLACE, recvcounts[ThisTask],
-		     MPI_BYTE, &DomainMoment[0], recvcounts, recvoffset, MPI_BYTE, MPI_COMM_WORLD);
+        MPI_Allgatherv(MPI_IN_PLACE, recvcounts[ThisTask],
+                       MPI_BYTE, &DomainMoment[0], recvcounts, recvoffset, MPI_BYTE, MPI_COMM_WORLD);
 #else
-      MPI_Allgatherv(&DomainMoment[DomainStartList[ThisTask * MULTIPLEDOMAINS + m]], recvcounts[ThisTask],
+        MPI_Allgatherv(&DomainMoment[DomainStartList[ThisTask * MULTIPLEDOMAINS + m]], recvcounts[ThisTask],
                        MPI_BYTE, &DomainMoment[0], recvcounts, recvoffset, MPI_BYTE, MPI_COMM_WORLD);
 #endif
     }
-
-  myfree(recvoffset);
-  myfree(recvcounts);
-
-
-  for(ta = 0; ta < NTask; ta++)
-    if(ta != ThisTask)
-      for(m = 0; m < MULTIPLEDOMAINS; m++)
-	for(i = DomainStartList[ta * MULTIPLEDOMAINS + m]; i <= DomainEndList[ta * MULTIPLEDOMAINS + m]; i++)
-	  {
-	    no = DomainNodeIndex[i];
-
-	    Nodes[no].u.d.s[0] = DomainMoment[i].s[0];
-	    Nodes[no].u.d.s[1] = DomainMoment[i].s[1];
-	    Nodes[no].u.d.s[2] = DomainMoment[i].s[2];
-	    Extnodes[no].vs[0] = DomainMoment[i].vs[0];
-	    Extnodes[no].vs[1] = DomainMoment[i].vs[1];
-	    Extnodes[no].vs[2] = DomainMoment[i].vs[2];
-	    Nodes[no].u.d.mass = DomainMoment[i].mass;
-	    Extnodes[no].hmax = DomainMoment[i].hmax;
-	    Extnodes[no].vmax = DomainMoment[i].vmax;
-	    Extnodes[no].divVmax = DomainMoment[i].divVmax;
-	    Nodes[no].u.d.bitflags =
-	      (Nodes[no].u.d.bitflags & (~BITFLAG_MASK)) | (DomainMoment[i].bitflags & BITFLAG_MASK);
+    
+    myfree(recvoffset);
+    myfree(recvcounts);
+    
+    
+    for(ta = 0; ta < NTask; ta++)
+        if(ta != ThisTask)
+            for(m = 0; m < MULTIPLEDOMAINS; m++)
+                for(i = DomainStartList[ta * MULTIPLEDOMAINS + m]; i <= DomainEndList[ta * MULTIPLEDOMAINS + m]; i++)
+                {
+                    no = DomainNodeIndex[i];
+                    
+                    Nodes[no].u.d.s[0] = DomainMoment[i].s[0];
+                    Nodes[no].u.d.s[1] = DomainMoment[i].s[1];
+                    Nodes[no].u.d.s[2] = DomainMoment[i].s[2];
+                    Extnodes[no].vs[0] = DomainMoment[i].vs[0];
+                    Extnodes[no].vs[1] = DomainMoment[i].vs[1];
+                    Extnodes[no].vs[2] = DomainMoment[i].vs[2];
+                    Nodes[no].u.d.mass = DomainMoment[i].mass;
+                    Extnodes[no].hmax = DomainMoment[i].hmax;
+                    Extnodes[no].vmax = DomainMoment[i].vmax;
+                    Extnodes[no].divVmax = DomainMoment[i].divVmax;
+                    Nodes[no].u.d.bitflags =
+                    (Nodes[no].u.d.bitflags & (~BITFLAG_MASK)) | (DomainMoment[i].bitflags & BITFLAG_MASK);
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
-	    Nodes[no].maxsoft = DomainMoment[i].maxsoft;
+                    Nodes[no].maxsoft = DomainMoment[i].maxsoft;
 #endif
-#ifdef RADTRANSFER
-	    Nodes[no].stellar_s[0] = DomainMoment[i].stellar_s[0];
-	    Nodes[no].stellar_s[1] = DomainMoment[i].stellar_s[1];
-	    Nodes[no].stellar_s[2] = DomainMoment[i].stellar_s[2];
-	    Nodes[no].stellar_mass = DomainMoment[i].stellar_mass;
+#ifdef RT_USE_GRAVTREE
+                    int k; for(k=0;k<N_RT_FREQ_BINS;k++) {Nodes[no].stellar_lum[k] = DomainMoment[i].stellar_lum[k];}
 #endif
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-          Nodes[no].stellar_lum_s[0] = DomainMoment[i].stellar_lum_s[0];
-          Nodes[no].stellar_lum_s[1] = DomainMoment[i].stellar_lum_s[1];
-          Nodes[no].stellar_lum_s[2] = DomainMoment[i].stellar_lum_s[2];
-          Extnodes[no].stellar_lum_vs[0] = DomainMoment[i].stellar_lum_vs[0];
-          Extnodes[no].stellar_lum_vs[1] = DomainMoment[i].stellar_lum_vs[1];
-          Extnodes[no].stellar_lum_vs[2] = DomainMoment[i].stellar_lum_vs[2];
-#endif
-          Nodes[no].stellar_lum = DomainMoment[i].stellar_lum;
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-          Nodes[no].stellar_lum_uv = DomainMoment[i].stellar_lum_uv;
-          Nodes[no].stellar_lum_op = DomainMoment[i].stellar_lum_op;
-          Nodes[no].stellar_lum_ir = DomainMoment[i].stellar_lum_ir;
-#endif
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+                    Nodes[no].rt_source_lum_s[0] = DomainMoment[i].rt_source_lum_s[0];
+                    Nodes[no].rt_source_lum_s[1] = DomainMoment[i].rt_source_lum_s[1];
+                    Nodes[no].rt_source_lum_s[2] = DomainMoment[i].rt_source_lum_s[2];
+                    Extnodes[no].rt_source_lum_vs[0] = DomainMoment[i].rt_source_lum_vs[0];
+                    Extnodes[no].rt_source_lum_vs[1] = DomainMoment[i].rt_source_lum_vs[1];
+                    Extnodes[no].rt_source_lum_vs[2] = DomainMoment[i].rt_source_lum_vs[2];
 #endif
 #ifdef BH_PHOTONMOMENTUM
-          Nodes[no].bh_lum = DomainMoment[i].bh_lum;
-          Nodes[no].bh_lum_hR = DomainMoment[i].bh_lum_hR;
-          Nodes[no].bh_lum_grad[0] = DomainMoment[i].bh_lum_grad[0];
-          Nodes[no].bh_lum_grad[1] = DomainMoment[i].bh_lum_grad[1];
-          Nodes[no].bh_lum_grad[2] = DomainMoment[i].bh_lum_grad[2];
+                    Nodes[no].bh_lum = DomainMoment[i].bh_lum;
+                    Nodes[no].bh_lum_hR = DomainMoment[i].bh_lum_hR;
+                    Nodes[no].bh_lum_grad[0] = DomainMoment[i].bh_lum_grad[0];
+                    Nodes[no].bh_lum_grad[1] = DomainMoment[i].bh_lum_grad[1];
+                    Nodes[no].bh_lum_grad[2] = DomainMoment[i].bh_lum_grad[2];
 #endif
 #ifdef SCALARFIELD
-	    Nodes[no].s_dm[0] = DomainMoment[i].s_dm[0];
-	    Nodes[no].s_dm[1] = DomainMoment[i].s_dm[1];
-	    Nodes[no].s_dm[2] = DomainMoment[i].s_dm[2];
-	    Nodes[no].mass_dm = DomainMoment[i].mass_dm;
-	    Extnodes[no].vs_dm[0] = DomainMoment[i].vs_dm[0];
-	    Extnodes[no].vs_dm[1] = DomainMoment[i].vs_dm[1];
-	    Extnodes[no].vs_dm[2] = DomainMoment[i].vs_dm[2];
+                    Nodes[no].s_dm[0] = DomainMoment[i].s_dm[0];
+                    Nodes[no].s_dm[1] = DomainMoment[i].s_dm[1];
+                    Nodes[no].s_dm[2] = DomainMoment[i].s_dm[2];
+                    Nodes[no].mass_dm = DomainMoment[i].mass_dm;
+                    Extnodes[no].vs_dm[0] = DomainMoment[i].vs_dm[0];
+                    Extnodes[no].vs_dm[1] = DomainMoment[i].vs_dm[1];
+                    Extnodes[no].vs_dm[2] = DomainMoment[i].vs_dm[2];
 #endif
-	  }
-
-  myfree(DomainMoment);
+                }
+    
+    myfree(DomainMoment);
 }
 
 
@@ -1281,280 +1116,216 @@ void force_exchange_pseudodata(void)
  */
 void force_treeupdate_pseudos(int no)
 {
-  int j, p, count_particles, multiple_flag;
-  MyFloat hmax, vmax;
-  MyFloat divVmax;
-  MyFloat s[3], vs[3], mass;
-
-#ifdef RADTRANSFER
-  MyFloat stellar_mass;
-  MyFloat stellar_s[3];
+    int j, p, count_particles, multiple_flag;
+    MyFloat hmax, vmax;
+    MyFloat divVmax;
+    MyFloat s[3], vs[3], mass;
+    
+#ifdef RT_USE_GRAVTREE
+    MyFloat stellar_lum[N_RT_FREQ_BINS];
 #endif
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-    MyFloat stellar_lum;
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-    MyFloat stellar_lum_uv;
-    MyFloat stellar_lum_op;
-    MyFloat stellar_lum_ir;
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+    MyFloat rt_source_lum_s[3];
+    MyFloat rt_source_lum_vs[3];
 #endif
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-    MyFloat stellar_lum_s[3];
-    MyFloat stellar_lum_vs[3];
+#ifdef SCALARFIELD
+    MyFloat s_dm[3], vs_dm[3], mass_dm;
 #endif
+    
+    MyFloat maxsoft;
+    
+#ifdef RT_USE_GRAVTREE
+    for(j=0;j<N_RT_FREQ_BINS;j++) {stellar_lum[j]=0;}
+#endif
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+    rt_source_lum_s[0] = 0;
+    rt_source_lum_s[1] = 0;
+    rt_source_lum_s[2] = 0;
+    rt_source_lum_vs[0] = 0;
+    rt_source_lum_vs[1] = 0;
+    rt_source_lum_vs[2] = 0;
 #endif
 #ifdef BH_PHOTONMOMENTUM
     MyFloat bh_lum,bh_lum_hR,bh_lum_grad[3];
-#endif
-#ifdef SCALARFIELD
-  MyFloat s_dm[3], vs_dm[3], mass_dm;
-#endif
-
-  MyFloat maxsoft;
-
-#ifdef RADTRANSFER
-  stellar_mass = 0;
-  stellar_s[0] = 0;
-  stellar_s[1] = 0;
-  stellar_s[2] = 0;
-#endif
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-    stellar_lum = 0;
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-    stellar_lum_uv = 0;
-    stellar_lum_op = 0;
-    stellar_lum_ir = 0;
-#endif
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-    stellar_lum_s[0] = 0;
-    stellar_lum_s[1] = 0;
-    stellar_lum_s[2] = 0;
-    stellar_lum_vs[0] = 0;
-    stellar_lum_vs[1] = 0;
-    stellar_lum_vs[2] = 0;
-#endif
-#endif
-#ifdef BH_PHOTONMOMENTUM
     bh_lum=bh_lum_hR=bh_lum_grad[0]=bh_lum_grad[1]=bh_lum_grad[2]=0;
 #endif
 #ifdef SCALARFIELD
-  mass_dm = 0;
-  s_dm[0] = vs_dm[0] = 0;
-  s_dm[1] = vs_dm[1] = 0;
-  s_dm[2] = vs_dm[2] = 0;
+    mass_dm = 0;
+    s_dm[0] = vs_dm[0] = 0;
+    s_dm[1] = vs_dm[1] = 0;
+    s_dm[2] = vs_dm[2] = 0;
 #endif
-  mass = 0;
-  s[0] = 0;
-  s[1] = 0;
-  s[2] = 0;
-  vs[0] = 0;
-  vs[1] = 0;
-  vs[2] = 0;
-  hmax = 0;
-  vmax = 0;
-  divVmax = 0;
-  count_particles = 0;
-  maxsoft = 0;
-
-  p = Nodes[no].u.d.nextnode;
-
-  for(j = 0; j < 8; j++)	/* since we are dealing with top-level nodes, we now that there are 8 consecutive daughter nodes */
+    mass = 0;
+    s[0] = 0;
+    s[1] = 0;
+    s[2] = 0;
+    vs[0] = 0;
+    vs[1] = 0;
+    vs[2] = 0;
+    hmax = 0;
+    vmax = 0;
+    divVmax = 0;
+    count_particles = 0;
+    maxsoft = 0;
+    
+    p = Nodes[no].u.d.nextnode;
+    
+    for(j = 0; j < 8; j++)	/* since we are dealing with top-level nodes, we now that there are 8 consecutive daughter nodes */
     {
-      if(p >= All.MaxPart && p < All.MaxPart + MaxNodes)	/* internal node */
-	{
-	  if(Nodes[p].u.d.bitflags & (1 << BITFLAG_INTERNAL_TOPLEVEL))
-	    force_treeupdate_pseudos(p);
-
-	  mass += (Nodes[p].u.d.mass);
-	  s[0] += (Nodes[p].u.d.mass * Nodes[p].u.d.s[0]);
-	  s[1] += (Nodes[p].u.d.mass * Nodes[p].u.d.s[1]);
-	  s[2] += (Nodes[p].u.d.mass * Nodes[p].u.d.s[2]);
-#ifdef RADTRANSFER
-	  stellar_mass += (Nodes[p].stellar_mass);
-	  stellar_s[0] += (Nodes[p].stellar_mass * Nodes[p].stellar_s[0]);
-	  stellar_s[1] += (Nodes[p].stellar_mass * Nodes[p].stellar_s[1]);
-	  stellar_s[2] += (Nodes[p].stellar_mass * Nodes[p].stellar_s[2]);
+        if(p >= All.MaxPart && p < All.MaxPart + MaxNodes)	/* internal node */
+        {
+            if(Nodes[p].u.d.bitflags & (1 << BITFLAG_INTERNAL_TOPLEVEL))
+                force_treeupdate_pseudos(p);
+            
+            mass += (Nodes[p].u.d.mass);
+            s[0] += (Nodes[p].u.d.mass * Nodes[p].u.d.s[0]);
+            s[1] += (Nodes[p].u.d.mass * Nodes[p].u.d.s[1]);
+            s[2] += (Nodes[p].u.d.mass * Nodes[p].u.d.s[2]);
+#ifdef RT_USE_GRAVTREE
+            int k; for(k=0;k<N_RT_FREQ_BINS;k++) {stellar_lum[k] += (Nodes[p].stellar_lum[k]);}
 #endif
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-        stellar_lum_s[0] += (Nodes[p].stellar_lum * Nodes[p].stellar_lum_s[0]);
-        stellar_lum_s[1] += (Nodes[p].stellar_lum * Nodes[p].stellar_lum_s[1]);
-        stellar_lum_s[2] += (Nodes[p].stellar_lum * Nodes[p].stellar_lum_s[2]);
-        stellar_lum_vs[0] += (Nodes[p].stellar_lum * Extnodes[p].stellar_lum_vs[0]);
-        stellar_lum_vs[1] += (Nodes[p].stellar_lum * Extnodes[p].stellar_lum_vs[1]);
-        stellar_lum_vs[2] += (Nodes[p].stellar_lum * Extnodes[p].stellar_lum_vs[2]);
-#endif
-        stellar_lum += (Nodes[p].stellar_lum);
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-        stellar_lum_uv += (Nodes[p].stellar_lum_uv);
-        stellar_lum_op += (Nodes[p].stellar_lum_op);
-        stellar_lum_ir += (Nodes[p].stellar_lum_ir);
-#endif
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+            double l_tot=0; for(k=0;k<N_RT_FREQ_BINS;k++) {l_tot += (Nodes[p].stellar_lum[k]);}
+            rt_source_lum_s[0] += (l_tot * Nodes[p].rt_source_lum_s[0]);
+            rt_source_lum_s[1] += (l_tot * Nodes[p].rt_source_lum_s[1]);
+            rt_source_lum_s[2] += (l_tot * Nodes[p].rt_source_lum_s[2]);
+            rt_source_lum_vs[0] += (l_tot * Extnodes[p].rt_source_lum_vs[0]);
+            rt_source_lum_vs[1] += (l_tot * Extnodes[p].rt_source_lum_vs[1]);
+            rt_source_lum_vs[2] += (l_tot * Extnodes[p].rt_source_lum_vs[2]);
 #endif
 #ifdef BH_PHOTONMOMENTUM
-        bh_lum += Nodes[p].bh_lum;
-        bh_lum_hR += Nodes[p].bh_lum * Nodes[p].bh_lum_hR;
-        bh_lum_grad[0] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[0];
-        bh_lum_grad[1] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[1];
-        bh_lum_grad[2] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[2];
+            bh_lum += Nodes[p].bh_lum;
+            bh_lum_hR += Nodes[p].bh_lum * Nodes[p].bh_lum_hR;
+            bh_lum_grad[0] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[0];
+            bh_lum_grad[1] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[1];
+            bh_lum_grad[2] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[2];
 #endif
 #ifdef SCALARFIELD
-	  mass_dm += (Nodes[p].mass_dm);
-	  s_dm[0] += (Nodes[p].mass_dm * Nodes[p].s_dm[0]);
-	  s_dm[1] += (Nodes[p].mass_dm * Nodes[p].s_dm[1]);
-	  s_dm[2] += (Nodes[p].mass_dm * Nodes[p].s_dm[2]);
-	  vs_dm[0] += (Nodes[p].mass_dm * Extnodes[p].vs_dm[0]);
-	  vs_dm[1] += (Nodes[p].mass_dm * Extnodes[p].vs_dm[1]);
-	  vs_dm[2] += (Nodes[p].mass_dm * Extnodes[p].vs_dm[2]);
+            mass_dm += (Nodes[p].mass_dm);
+            s_dm[0] += (Nodes[p].mass_dm * Nodes[p].s_dm[0]);
+            s_dm[1] += (Nodes[p].mass_dm * Nodes[p].s_dm[1]);
+            s_dm[2] += (Nodes[p].mass_dm * Nodes[p].s_dm[2]);
+            vs_dm[0] += (Nodes[p].mass_dm * Extnodes[p].vs_dm[0]);
+            vs_dm[1] += (Nodes[p].mass_dm * Extnodes[p].vs_dm[1]);
+            vs_dm[2] += (Nodes[p].mass_dm * Extnodes[p].vs_dm[2]);
 #endif
-	  vs[0] += (Nodes[p].u.d.mass * Extnodes[p].vs[0]);
-	  vs[1] += (Nodes[p].u.d.mass * Extnodes[p].vs[1]);
-	  vs[2] += (Nodes[p].u.d.mass * Extnodes[p].vs[2]);
-
-	  if(Extnodes[p].hmax > hmax)
-	    hmax = Extnodes[p].hmax;
-	  if(Extnodes[p].vmax > vmax)
-	    vmax = Extnodes[p].vmax;
-	  if(Extnodes[p].divVmax > divVmax)
-	    divVmax = Extnodes[p].divVmax;
-
-	  if(Nodes[p].u.d.mass > 0)
-	    {
-	      if(Nodes[p].u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES))
-		count_particles += 2;
-	      else
-		count_particles++;
-	    }
-
-	  if(Nodes[p].maxsoft > maxsoft)
-	    maxsoft = Nodes[p].maxsoft;
-	}
-      else
-	endrun(6767);		/* may not happen */
-
-      p = Nodes[p].u.d.sibling;
+            vs[0] += (Nodes[p].u.d.mass * Extnodes[p].vs[0]);
+            vs[1] += (Nodes[p].u.d.mass * Extnodes[p].vs[1]);
+            vs[2] += (Nodes[p].u.d.mass * Extnodes[p].vs[2]);
+            
+            if(Extnodes[p].hmax > hmax)
+                hmax = Extnodes[p].hmax;
+            if(Extnodes[p].vmax > vmax)
+                vmax = Extnodes[p].vmax;
+            if(Extnodes[p].divVmax > divVmax)
+                divVmax = Extnodes[p].divVmax;
+            
+            if(Nodes[p].u.d.mass > 0)
+            {
+                if(Nodes[p].u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES))
+                    count_particles += 2;
+                else
+                    count_particles++;
+            }
+            
+            if(Nodes[p].maxsoft > maxsoft)
+                maxsoft = Nodes[p].maxsoft;
+        }
+        else
+            endrun(6767);		/* may not happen */
+        
+        p = Nodes[p].u.d.sibling;
     }
-
-  if(mass)
+    
+    if(mass)
     {
-      s[0] /= mass;
-      s[1] /= mass;
-      s[2] /= mass;
-      vs[0] /= mass;
-      vs[1] /= mass;
-      vs[2] /= mass;
-    }
-  else
-    {
-      s[0] = Nodes[no].center[0];
-      s[1] = Nodes[no].center[1];
-      s[2] = Nodes[no].center[2];
-      vs[0] = 0;
-      vs[1] = 0;
-      vs[2] = 0;
-    }
-
-#ifdef RADTRANSFER
-  if(stellar_mass)
-    {
-      stellar_s[0] /= stellar_mass;
-      stellar_s[1] /= stellar_mass;
-      stellar_s[2] /= stellar_mass;
-    }
-  else
-    {
-      stellar_s[0] = Nodes[no].center[0];
-      stellar_s[1] = Nodes[no].center[1];
-      stellar_s[2] = Nodes[no].center[2];
-    }
-#endif
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-    if(stellar_lum)
-    {
-        stellar_lum_s[0] /= stellar_lum;
-        stellar_lum_s[1] /= stellar_lum;
-        stellar_lum_s[2] /= stellar_lum;
-        stellar_lum_vs[0] /= stellar_lum;
-        stellar_lum_vs[1] /= stellar_lum;
-        stellar_lum_vs[2] /= stellar_lum;
+        s[0] /= mass;
+        s[1] /= mass;
+        s[2] /= mass;
+        vs[0] /= mass;
+        vs[1] /= mass;
+        vs[2] /= mass;
     }
     else
     {
-        stellar_lum_s[0] = Nodes[no].center[0];
-        stellar_lum_s[1] = Nodes[no].center[1];
-        stellar_lum_s[2] = Nodes[no].center[2];
-        stellar_lum_vs[0] = 0;
-        stellar_lum_vs[1] = 0;
-        stellar_lum_vs[2] = 0;
+        s[0] = Nodes[no].center[0];
+        s[1] = Nodes[no].center[1];
+        s[2] = Nodes[no].center[2];
+        vs[0] = 0;
+        vs[1] = 0;
+        vs[2] = 0;
     }
-#endif
+    
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+    double l_tot=0; int kfreq; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {l_tot += stellar_lum[kfreq];}
+    if(l_tot)
+    {
+        rt_source_lum_s[0] /= l_tot;
+        rt_source_lum_s[1] /= l_tot;
+        rt_source_lum_s[2] /= l_tot;
+        rt_source_lum_vs[0] /= l_tot;
+        rt_source_lum_vs[1] /= l_tot;
+        rt_source_lum_vs[2] /= l_tot;
+    }
+    else
+    {
+        rt_source_lum_s[0] = Nodes[no].center[0];
+        rt_source_lum_s[1] = Nodes[no].center[1];
+        rt_source_lum_s[2] = Nodes[no].center[2];
+        rt_source_lum_vs[0] = 0;
+        rt_source_lum_vs[1] = 0;
+        rt_source_lum_vs[2] = 0;
+    }
 #endif
 #ifdef BH_PHOTONMOMENTUM
     if(bh_lum)
     {
-        bh_lum_hR /= bh_lum;
-        bh_lum_grad[0] /= bh_lum;
-        bh_lum_grad[1] /= bh_lum;
-        bh_lum_grad[2] /= bh_lum;
+        bh_lum_hR /= bh_lum; bh_lum_grad[0] /= bh_lum; bh_lum_grad[1] /= bh_lum; bh_lum_grad[2] /= bh_lum;
     }
     else
     {
-        bh_lum_hR = 1;
-        bh_lum_grad[0]=bh_lum_grad[1]=bh_lum_grad[2]=0;
+        bh_lum_hR = 1; bh_lum_grad[0]=bh_lum_grad[1]=bh_lum_grad[2]=0;
     }
 #endif
 #ifdef SCALARFIELD
-  if(mass_dm)
+    if(mass_dm)
     {
-      s_dm[0] /= mass_dm;
-      s_dm[1] /= mass_dm;
-      s_dm[2] /= mass_dm;
-      vs_dm[0] /= mass_dm;
-      vs_dm[1] /= mass_dm;
-      vs_dm[2] /= mass_dm;
+        s_dm[0] /= mass_dm;
+        s_dm[1] /= mass_dm;
+        s_dm[2] /= mass_dm;
+        vs_dm[0] /= mass_dm;
+        vs_dm[1] /= mass_dm;
+        vs_dm[2] /= mass_dm;
     }
-  else
+    else
     {
-      s_dm[0] = Nodes[no].center[0];
-      s_dm[1] = Nodes[no].center[1];
-      s_dm[2] = Nodes[no].center[2];
-      vs_dm[0] = 0;
-      vs_dm[1] = 0;
-      vs_dm[2] = 0;
+        s_dm[0] = Nodes[no].center[0];
+        s_dm[1] = Nodes[no].center[1];
+        s_dm[2] = Nodes[no].center[2];
+        vs_dm[0] = 0;
+        vs_dm[1] = 0;
+        vs_dm[2] = 0;
     }
 #endif
-
-
-  Nodes[no].u.d.s[0] = s[0];
-  Nodes[no].u.d.s[1] = s[1];
-  Nodes[no].u.d.s[2] = s[2];
-  Extnodes[no].vs[0] = vs[0];
-  Extnodes[no].vs[1] = vs[1];
-  Extnodes[no].vs[2] = vs[2];
-  Nodes[no].u.d.mass = mass;
-#ifdef RADTRANSFER
-  Nodes[no].stellar_s[0] = stellar_s[0];
-  Nodes[no].stellar_s[1] = stellar_s[1];
-  Nodes[no].stellar_s[2] = stellar_s[2];
-  Nodes[no].stellar_mass = stellar_mass;
+    
+    
+    Nodes[no].u.d.s[0] = s[0];
+    Nodes[no].u.d.s[1] = s[1];
+    Nodes[no].u.d.s[2] = s[2];
+    Extnodes[no].vs[0] = vs[0];
+    Extnodes[no].vs[1] = vs[1];
+    Extnodes[no].vs[2] = vs[2];
+    Nodes[no].u.d.mass = mass;
+#ifdef RT_USE_GRAVTREE
+    int k; for(k=0;k<N_RT_FREQ_BINS;k++) {Nodes[no].stellar_lum[k] = stellar_lum[k];}
 #endif
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-    Nodes[no].stellar_lum_s[0] = stellar_lum_s[0];
-    Nodes[no].stellar_lum_s[1] = stellar_lum_s[1];
-    Nodes[no].stellar_lum_s[2] = stellar_lum_s[2];
-#endif
-    Nodes[no].stellar_lum = stellar_lum;
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-    Nodes[no].stellar_lum_uv = stellar_lum_uv;
-    Nodes[no].stellar_lum_op = stellar_lum_op;
-    Nodes[no].stellar_lum_ir = stellar_lum_ir;
-#endif
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-    Extnodes[no].stellar_lum_vs[0] = stellar_lum_vs[0];
-    Extnodes[no].stellar_lum_vs[1] = stellar_lum_vs[1];
-    Extnodes[no].stellar_lum_vs[2] = stellar_lum_vs[2];
-#endif
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+    Nodes[no].rt_source_lum_s[0] = rt_source_lum_s[0];
+    Nodes[no].rt_source_lum_s[1] = rt_source_lum_s[1];
+    Nodes[no].rt_source_lum_s[2] = rt_source_lum_s[2];
+    Extnodes[no].rt_source_lum_vs[0] = rt_source_lum_vs[0];
+    Extnodes[no].rt_source_lum_vs[1] = rt_source_lum_vs[1];
+    Extnodes[no].rt_source_lum_vs[2] = rt_source_lum_vs[2];
 #endif
 #ifdef BH_PHOTONMOMENTUM
     Nodes[no].bh_lum = bh_lum;
@@ -1564,29 +1335,29 @@ void force_treeupdate_pseudos(int no)
     Nodes[no].bh_lum_grad[2] = bh_lum_grad[2];
 #endif
 #ifdef SCALARFIELD
-  Nodes[no].s_dm[0] = s_dm[0];
-  Nodes[no].s_dm[1] = s_dm[1];
-  Nodes[no].s_dm[2] = s_dm[2];
-  Nodes[no].mass_dm = mass_dm;
-  Extnodes[no].vs_dm[0] = vs_dm[0];
-  Extnodes[no].vs_dm[1] = vs_dm[1];
-  Extnodes[no].vs_dm[2] = vs_dm[2];
+    Nodes[no].s_dm[0] = s_dm[0];
+    Nodes[no].s_dm[1] = s_dm[1];
+    Nodes[no].s_dm[2] = s_dm[2];
+    Nodes[no].mass_dm = mass_dm;
+    Extnodes[no].vs_dm[0] = vs_dm[0];
+    Extnodes[no].vs_dm[1] = vs_dm[1];
+    Extnodes[no].vs_dm[2] = vs_dm[2];
 #endif
-
-  Extnodes[no].hmax = hmax;
-  Extnodes[no].vmax = vmax;
-  Extnodes[no].divVmax = divVmax;
-  Extnodes[no].Flag = GlobFlag;
-
-
-  if(count_particles > 1)
-    multiple_flag = (1 << BITFLAG_MULTIPLEPARTICLES);
-  else
-    multiple_flag = 0;
-
-  Nodes[no].u.d.bitflags &= (~BITFLAG_MASK);	/* this clears the bits */
-  Nodes[no].u.d.bitflags |= multiple_flag;
-  Nodes[no].maxsoft = maxsoft;
+    
+    Extnodes[no].hmax = hmax;
+    Extnodes[no].vmax = vmax;
+    Extnodes[no].divVmax = divVmax;
+    Extnodes[no].Flag = GlobFlag;
+    
+    
+    if(count_particles > 1)
+        multiple_flag = (1 << BITFLAG_MULTIPLEPARTICLES);
+    else
+        multiple_flag = 0;
+    
+    Nodes[no].u.d.bitflags &= (~BITFLAG_MASK);	/* this clears the bits */
+    Nodes[no].u.d.bitflags |= multiple_flag;
+    Nodes[no].maxsoft = maxsoft;
 }
 
 
@@ -1596,61 +1367,61 @@ void force_treeupdate_pseudos(int no)
  */
 void force_flag_localnodes(void)
 {
-  int no, i, m;
-
-  /* mark all top-level nodes */
-
-  for(i = 0; i < NTopleaves; i++)
+    int no, i, m;
+    
+    /* mark all top-level nodes */
+    
+    for(i = 0; i < NTopleaves; i++)
     {
-      no = DomainNodeIndex[i];
-
-      while(no >= 0)
-	{
-	  if(Nodes[no].u.d.bitflags & (1 << BITFLAG_TOPLEVEL))
-	    break;
-
-	  Nodes[no].u.d.bitflags |= (1 << BITFLAG_TOPLEVEL);
-
-	  no = Nodes[no].u.d.father;
-	}
-
-      /* mark also internal top level nodes */
-
-      no = DomainNodeIndex[i];
-      no = Nodes[no].u.d.father;
-
-      while(no >= 0)
-	{
-	  if(Nodes[no].u.d.bitflags & (1 << BITFLAG_INTERNAL_TOPLEVEL))
-	    break;
-
-	  Nodes[no].u.d.bitflags |= (1 << BITFLAG_INTERNAL_TOPLEVEL);
-
-	  no = Nodes[no].u.d.father;
-	}
+        no = DomainNodeIndex[i];
+        
+        while(no >= 0)
+        {
+            if(Nodes[no].u.d.bitflags & (1 << BITFLAG_TOPLEVEL))
+                break;
+            
+            Nodes[no].u.d.bitflags |= (1 << BITFLAG_TOPLEVEL);
+            
+            no = Nodes[no].u.d.father;
+        }
+        
+        /* mark also internal top level nodes */
+        
+        no = DomainNodeIndex[i];
+        no = Nodes[no].u.d.father;
+        
+        while(no >= 0)
+        {
+            if(Nodes[no].u.d.bitflags & (1 << BITFLAG_INTERNAL_TOPLEVEL))
+                break;
+            
+            Nodes[no].u.d.bitflags |= (1 << BITFLAG_INTERNAL_TOPLEVEL);
+            
+            no = Nodes[no].u.d.father;
+        }
     }
-
-  /* mark top-level nodes that contain local particles */
-
-  for(m = 0; m < MULTIPLEDOMAINS; m++)
-    for(i = DomainStartList[ThisTask * MULTIPLEDOMAINS + m];
-	i <= DomainEndList[ThisTask * MULTIPLEDOMAINS + m]; i++)
-      {
-	no = DomainNodeIndex[i];
-
-	if(DomainTask[i] != ThisTask)
-	  endrun(131231231);
-
-	while(no >= 0)
-	  {
-	    if(Nodes[no].u.d.bitflags & (1 << BITFLAG_DEPENDS_ON_LOCAL_MASS))
-	      break;
-
-	    Nodes[no].u.d.bitflags |= (1 << BITFLAG_DEPENDS_ON_LOCAL_MASS);
-
-	    no = Nodes[no].u.d.father;
-	  }
-      }
+    
+    /* mark top-level nodes that contain local particles */
+    
+    for(m = 0; m < MULTIPLEDOMAINS; m++)
+        for(i = DomainStartList[ThisTask * MULTIPLEDOMAINS + m];
+            i <= DomainEndList[ThisTask * MULTIPLEDOMAINS + m]; i++)
+        {
+            no = DomainNodeIndex[i];
+            
+            if(DomainTask[i] != ThisTask)
+                endrun(131231231);
+            
+            while(no >= 0)
+            {
+                if(Nodes[no].u.d.bitflags & (1 << BITFLAG_DEPENDS_ON_LOCAL_MASS))
+                    break;
+                
+                Nodes[no].u.d.bitflags |= (1 << BITFLAG_DEPENDS_ON_LOCAL_MASS);
+                
+                no = Nodes[no].u.d.father;
+            }
+        }
 }
 
 
@@ -1661,11 +1432,11 @@ void force_flag_localnodes(void)
  */
 void force_add_star_to_tree(int igas, int istar)
 {
-  int no;
-  no = Nextnode[igas];
-  Nextnode[igas] = istar;
-  Nextnode[istar] = no;
-  Father[istar] = Father[igas];
+    int no;
+    no = Nextnode[igas];
+    Nextnode[igas] = istar;
+    Nextnode[istar] = no;
+    Father[istar] = Father[igas];
 }
 
 
@@ -1688,8 +1459,7 @@ void force_add_star_to_tree(int igas, int istar)
  *  memory-access panelty (which reduces cache performance) incurred by the
  *  table.
  */
-int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecount,
-                       int *exportindex)
+int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex)
 {
     struct NODE *nop = 0;
     int no, nodesinlist, ptype, ninteractions, nexp, task, listindex = 0;
@@ -1716,20 +1486,18 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double dxx, dyy, dzz, pdxx, pdyy, pdzz;
 #endif
     
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-    double star_age=0,l_over_m_ssp=0;
-    double dx_stellarlum=0,dy_stellarlum=0,dz_stellarlum=0,mass_stellarlum=0;
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-    double tau_uv=0,tau_op=0,GradRho=0;
-    double f_uv=0,f_op=0;
-    double mass_stellarlum_uv=0,mass_stellarlum_op=0,mass_stellarlum_ir=0;
+#ifdef RT_USE_GRAVTREE
+    double mass_stellarlum[N_RT_FREQ_BINS];
+    int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) {mass_stellarlum[k_freq]=0;}
+    double dx_stellarlum=0, dy_stellarlum=0, dz_stellarlum=0, sigma_eff=0;
+    int valid_gas_particle_for_rt = 0;
+#ifdef RT_OTVET
+    double RT_ET[N_RT_FREQ_BINS][6]={0};
 #endif
 #endif
+    
 #ifdef BH_PHOTONMOMENTUM
     double mass_bhlum=0;
-#ifndef GALSF_FB_RT_PHOTON_LOCALATTEN
-    double GradRho=0;
-#endif
 #endif
 #ifdef GALSF_FB_LOCAL_UV_HEATING
     double incident_flux_uv=0;
@@ -1743,7 +1511,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SCALARFIELD
     double dx_dm = 0, dy_dm = 0, dz_dm = 0, mass_dm = 0;
 #endif
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE)
     double soft=0, pmass;
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
     double h_p_inv=0, h_p3_inv=0, u_p=0, zeta, ptype_sec=-1, zeta_sec=0;
@@ -1782,11 +1550,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         pos_y = P[target].Pos[1];
         pos_z = P[target].Pos[2];
         ptype = P[target].Type;
-#if defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
         pmass = P[target].Mass;
 #endif
         aold = All.ErrTolForceAcc * P[target].OldAcc;
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(ADAPTIVE_GRAVSOFT_FORALL)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         soft = All.ForceSoftening[ptype];
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS)
@@ -1822,12 +1590,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         pos_x = GravDataGet[target].Pos[0];
         pos_y = GravDataGet[target].Pos[1];
         pos_z = GravDataGet[target].Pos[2];
-#if defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
         pmass = GravDataGet[target].Mass;
 #endif
         ptype = GravDataGet[target].Type;
         aold = All.ErrTolForceAcc * GravDataGet[target].OldAcc;
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE)
         soft = GravDataGet[target].Soft;
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
         zeta = GravDataGet[target].AGS_zeta;
@@ -1886,7 +1654,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         targetID      = GravDataGet[target].ID;
     }
 #endif
-
+    
     
     
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
@@ -1900,37 +1668,20 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
     
     
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-    double fac_stellum=0,sigma_eff=0,sigma_eff_0=0;
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-    double fac_stellum_uv=0,fac_stellum_op=0,fac_stellum_ir=0;
+    
+#ifdef RT_USE_GRAVTREE
+    if(ptype==0) {if((soft>0)&&(pmass>0)) {valid_gas_particle_for_rt = 1;}}
+#ifdef RT_FIRE
+    double fac_stellum[N_RT_FREQ_BINS],fac_stellum_0=0;
+    if(valid_gas_particle_for_rt)
+    {
+        fac_stellum_0 = - 1.15 * All.PhotonMomentum_Coupled_Fraction * 1.626e-11 * (soft * soft / (pow((float)All.DesNumNgb,0.66) * pmass)) /
+            (All.G * All.UnitVelocity_in_cm_per_s * All.HubbleParam / All.UnitTime_in_s) / All.cf_a2inv;
+        sigma_eff = 0.955 * All.UnitMass_in_g*All.HubbleParam * All.cf_a2inv / (All.UnitLength_in_cm*All.UnitLength_in_cm);
+        double sigma_eff_abs = 0.955 * All.cf_a2inv * 0.333*pow((float)All.DesNumNgb,0.66) * pmass / (soft*soft); // *(Z/Zsolar) for metal-dept
+        int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {fac_stellum[kf] = 1 - exp(-rt_kappa(0,kf)*sigma_eff_abs);}
+    }
 #endif
-    if(ptype==0) {
-        if((soft>0)&&(pmass>0)) {
-            fac_stellum = - 1.15 * All.PhotonMomentum_Coupled_Fraction * 1.626e-11 *
-                (soft * soft / (pow((float)All.DesNumNgb,0.66) * pmass)) /
-                (All.G * All.UnitVelocity_in_cm_per_s * All.HubbleParam / All.UnitTime_in_s);
-            if(All.ComovingIntegrationOn) fac_stellum *= (All.Time*All.Time);
-            sigma_eff_0 = 0.955 * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm);
-            if(All.ComovingIntegrationOn) sigma_eff_0 /= (All.Time*All.Time);
-            sigma_eff = sigma_eff_0 * 0.333*pow((float)All.DesNumNgb,0.66)*pmass/(soft*soft); // *(Z/Zsolar) for metal-dept
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-            fac_stellum_uv = (1-exp(-KAPPA_UV*sigma_eff));
-            fac_stellum_op = (1-exp(-KAPPA_OP*sigma_eff));
-            fac_stellum_ir = (1-exp(-KAPPA_IR*sigma_eff)); /* single-scattering: diffusion limit is just KAPPA_IR*sigma_eff (can be >1) */
-#else
-            fac_stellum *= (
-                            (All.PhotonMomentum_fUV)  * (1-exp(-KAPPA_UV*sigma_eff)) + // f_UV * (1-exp(-kappa_UV*sigma_eff)) +
-                            (All.PhotonMomentum_fOPT) * (1-exp(-KAPPA_OP*sigma_eff)) + // f_OP * (1-exp(-kappa_OP*sigma_eff)) +
-                            (All.PhotonMomentum_fIR)  * (1-exp(-KAPPA_IR*sigma_eff))); // f_IR * (1-exp(-kappa_IR*sigma_eff)) )
-#endif
-        } else { // if((soft>0)&&(pmass>0))
-            fac_stellum=sigma_eff=sigma_eff_0=0;
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-            fac_stellum_uv=fac_stellum_op=fac_stellum_ir=0;
-#endif
-        } // if((soft>0)&&(pmass>0)) else
-    } // if(ptype==0)
 #endif
     
     
@@ -1982,42 +1733,16 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 mass = P[no].Mass;
                 
                 
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-                if((ptype == 0)&&(soft>0)&&(pmass>0))	/* we have a (valid) gas particle as target */
+#ifdef RT_USE_GRAVTREE
+                if(valid_gas_particle_for_rt)	/* we have a (valid) gas particle as target */
                 {
                     dx_stellarlum=dx; dy_stellarlum=dy; dz_stellarlum=dz;
-                    if((mass>0)&&((P[no].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[no].Type == 2)||(P[no].Type==3)))))
-                    {
-                        star_age = evaluate_stellar_age_Gyr(P[no].StellarAge);
-                        l_over_m_ssp = evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(no);
-                        
-                        mass_stellarlum = mass*l_over_m_ssp;
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-                        GradRho = evaluate_NH_from_GradRho(P[no].GradRho,PPP[no].Hsml,P[no].DensAroundStar,PPP[no].NumNgb,0);
-                        sigma_eff = sigma_eff_0*GradRho;
-                        if(star_age <= 0.0025) {f_op=0.09;} else {
-                            if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));
-                            } else { f_op=1-0.8410937/(1+sqrt((star_age-0.006)/0.3));}}
-                        tau_uv = sigma_eff*KAPPA_UV; tau_op = sigma_eff*KAPPA_OP;
-                        f_uv = (1-f_op)*(All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV)/(1+0.8*tau_uv+0.85*tau_uv*tau_uv));
-                        f_op *= All.PhotonMomentum_fOPT + (1-All.PhotonMomentum_fOPT)/(1+0.8*tau_op+0.85*tau_op*tau_op);
-                        mass_stellarlum_uv = mass_stellarlum * f_uv;
-                        mass_stellarlum_op = mass_stellarlum * f_op;
-                        mass_stellarlum_ir = mass_stellarlum * (1-f_uv-f_op);
-#endif
-                    }
-                    else
-                    {
-                        mass_stellarlum=0;
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-                        mass_stellarlum_uv=mass_stellarlum_op=mass_stellarlum_ir=0;
-#endif
+                    double lum[N_RT_FREQ_BINS];
+                    int active_check = rt_get_source_luminosity(no,sigma_eff,lum);
+                    int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {if(active_check) {mass_stellarlum[kf]=lum[kf];} else {mass_stellarlum[kf]=0;}}
 #ifdef BH_PHOTONMOMENTUM
-                        mass_bhlum=0;
-                        if(P[no].Type==5)
-                            mass_bhlum = bh_angleweight(P[no].BH_Mdot, P[no].GradRho, P[no].BH_disk_hr, dx,dy,dz, 1);
+                    mass_bhlum=0; if(P[no].Type==5) {mass_bhlum = bh_angleweight(P[no].BH_Mdot, P[no].GradRho, P[no].BH_disk_hr, dx,dy,dz, 1);}
 #endif
-                    }
                 }
 #endif
                 
@@ -2046,25 +1771,25 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
                 if(ptype_sec == 0)
 #else
-                if(ptype_sec > -1) /* trigger for all particles */
+                    if(ptype_sec > -1) /* trigger for all particles */
 #endif
-                {
-                    if(PPP[no].Hsml > All.ForceSoftening[P[no].Type])
                     {
-                        h_p_inv = 1.0 / PPP[no].Hsml;
-                        zeta_sec = PPPZ[no].AGS_zeta;
+                        if(PPP[no].Hsml > All.ForceSoftening[P[no].Type])
+                        {
+                            h_p_inv = 1.0 / PPP[no].Hsml;
+                            zeta_sec = PPPZ[no].AGS_zeta;
+                        }
+                        else
+                        {
+                            h_p_inv = 1.0 / All.ForceSoftening[P[no].Type];
+                            zeta_sec = 0;
+                        }
                     }
                     else
                     {
                         h_p_inv = 1.0 / All.ForceSoftening[P[no].Type];
                         zeta_sec = 0;
                     }
-                }
-                else
-                {
-                    h_p_inv = 1.0 / All.ForceSoftening[P[no].Type];
-                    zeta_sec = 0;
-                }
 #else
                 h = All.ForceSoftening[ptype];
                 if(h < All.ForceSoftening[P[no].Type])
@@ -2135,7 +1860,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 
 #endif // SIDM
                 
-
+                
                 if(TakeLevel >= 0)
                 {
                     LOCK_WORKCOUNT;
@@ -2244,43 +1969,22 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 r2 = dx * dx + dy * dy + dz * dz;
                 
                 
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-                if((ptype == 0)&&(soft>0)&&(pmass>0))	/* we have a (valid) gas particle as target */
+#ifdef RT_USE_GRAVTREE
+                if(valid_gas_particle_for_rt)	/* we have a (valid) gas particle as target */
                 {
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-                    dx_stellarlum = nop->stellar_lum_s[0] - pos_x;
-                    dy_stellarlum = nop->stellar_lum_s[1] - pos_y;
-                    dz_stellarlum = nop->stellar_lum_s[2] - pos_z;
+                    int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {mass_stellarlum[kf] = nop->stellar_lum[kf];}
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+                    dx_stellarlum = nop->rt_source_lum_s[0] - pos_x; dy_stellarlum = nop->rt_source_lum_s[1] - pos_y; dz_stellarlum = nop->rt_source_lum_s[2] - pos_z;
 #if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
                     NEAREST_XYZ(dx_stellarlum,dy_stellarlum,dz_stellarlum,-1);
 #endif
 #else
-                    dx_stellarlum = dx;
-                    dy_stellarlum = dy;
-                    dz_stellarlum = dz;
-#endif
-                    mass_stellarlum = nop->stellar_lum;
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-                    mass_stellarlum_uv = nop->stellar_lum_uv;
-                    mass_stellarlum_op = nop->stellar_lum_op;
-                    mass_stellarlum_ir = nop->stellar_lum_ir;
+                    dx_stellarlum = dx; dy_stellarlum = dy; dz_stellarlum = dz;
 #endif
 #ifdef BH_PHOTONMOMENTUM
                     mass_bhlum = bh_angleweight(nop->bh_lum, nop->bh_lum_grad, nop->bh_lum_hR, dx_stellarlum,dy_stellarlum,dz_stellarlum, 0);
 #endif
                 }
-                else
-                {
-                    mass_stellarlum = 0;
-                    dx_stellarlum = dy_stellarlum = dz_stellarlum = 0;
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-                    mass_stellarlum_uv = mass_stellarlum_op = mass_stellarlum_ir = 0;
-#endif
-#ifdef BH_PHOTONMOMENTUM
-                    mass_bhlum = 0;
-#endif
-                }
-                
 #endif
                 
                 
@@ -2341,7 +2045,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 }
 #endif
 #endif // PMGRID //
-
+                
 #ifdef SIDM
                 sidm_tstart = my_second();
                 dx_nc = nop->center[0] - pos_x;
@@ -2364,7 +2068,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     sidm_tcell += timediff(sidm_tstart, sidm_tend);
                 }
 #endif
-
+                
                 if(errTol2)	/* check Barnes-Hut opening criterion */
                 {
                     if(nop->len * nop->len > r2 * errTol2)
@@ -2523,26 +2227,32 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     // correction only applies to 'shared-kernel' particles: so this needs to check if
                     // these are the same particles for which the kernel lengths are computed
                     // (also checks that these aren't the same particle)
-#if !(defined(MAGNETIC) || defined(COOLING) || defined(GALSF) || defined(BLACK_HOLES))
-                    if(ags_gravity_kernel_shared_check(ptype, ptype_sec) && (r > 0) && (pmass > 0))
-                    {
-                        double dWdr, wp;
-                        if(h_p_inv >= h_inv)
-                        {
-                            if((zeta != 0) && (u < 1))
-                            {
-                                kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
-                                fac += 2 * (zeta/pmass) * dWdr / sqrt(r2 + 0.0001/(h_inv*h_inv));   // 0.5 * zeta * omega * dWdr / r;
-                            }
-                        } else {
-                            if((zeta_sec != 0) && (u_p < 1)) // secondary is adaptively-softened particle (set above)
-                            {
-                                kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
-                                fac += 2 * (zeta_sec/pmass) * dWdr / sqrt(r2 + 0.0001/(h_p_inv*h_p_inv));
-                            }
-                        }
-                    } // if(ptype==ptype_sec)
+#if (defined(MAGNETIC) || defined(COOLING) || defined(GALSF) || defined(BLACK_HOLES))
+                    /* since these modules imply nonstandard cross-particel interactions for certain types, need to limit the correction terms here */
+                    if((ptype>0) && (ptype<4) && (ptype_sec>0) && (ptype_sec<4) && (r > 0) && (pmass > 0))
+#else
+                    if((r > 0) && (pmass > 0))
 #endif
+                    {
+                        if(ags_gravity_kernel_shared_check(ptype, ptype_sec))
+                        {
+                            double dWdr, wp;
+                            if(h_p_inv >= h_inv)
+                            {
+                                if((zeta != 0) && (u < 1))
+                                {
+                                    kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
+                                    fac += 2 * (zeta/pmass) * dWdr / sqrt(r2 + 0.0001/(h_inv*h_inv));   // 0.5 * zeta * omega * dWdr / r;
+                                }
+                            } else {
+                                if((zeta_sec != 0) && (u_p < 1)) // secondary is adaptively-softened particle (set above)
+                                {
+                                    kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
+                                    fac += 2 * (zeta_sec/pmass) * dWdr / sqrt(r2 + 0.0001/(h_p_inv*h_p_inv));
+                                }
+                            }
+                        } // if(ptype==ptype_sec)
+                    }
 #endif
                 }
                 
@@ -2625,41 +2335,24 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             ninteractions++;
             
             
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-            if((ptype==0)&&(soft>0)&&(pmass>0))	/* we have a (valid) gas particle as target */
+#ifdef RT_USE_GRAVTREE
+            if(valid_gas_particle_for_rt)	/* we have a (valid) gas particle as target */
             {
-                r2 = dx_stellarlum*dx_stellarlum + dy_stellarlum*dy_stellarlum + dz_stellarlum*dz_stellarlum;
-                r = sqrt(r2);
-                //h = soft;
-                /* want to use h as defined above, in general, but its not too important here since it's just the 
-                 short-range kernel softening applied around the particle to prevent a divergence */
-                /* check the edits here and below replacing h with soft in run, see if they prevent the crash here? */
-                //if(r >= h)
-                if(r >= soft)
-                    fac = 1.0 / (r2 * r);
-                else
-                {
-                    //h_inv = 1.0 / h;
-                    h_inv = 1.0 / soft;
-                    h3_inv = h_inv * h_inv * h_inv;
-                    u = r * h_inv;
-                    fac = kernel_gravity(u, h_inv, h3_inv, 1);
-                }
-                //tabindex = (int) (asmthfac * r);
-                
-                //if(tabindex < NTAB && tabindex >= 0)
-                //{
+                r2 = dx_stellarlum*dx_stellarlum + dy_stellarlum*dy_stellarlum + dz_stellarlum*dz_stellarlum; r = sqrt(r2);
+                if(r >= soft) {fac=1./(r2*r);} else {h_inv=1./soft; h3_inv=h_inv*h_inv*h_inv; u=r*h_inv; fac=kernel_gravity(u,h_inv,h3_inv,1);}
+                if((soft>r)&&(soft>0)) fac *= (r2/(soft*soft)); // don't allow cross-section > r2
 #ifdef GALSF_FB_LOCAL_UV_HEATING
-                incident_flux_uv += (0.079577*fac*r) * mass_stellarlum_uv;// * shortrange_table[tabindex];
-                if((mass_stellarlum_ir<mass_stellarlum_uv)&&(mass_stellarlum_ir>0)) // if this -isn't- satisfied, no chance you are optically thin to EUV //
+                int i_uv_k = 0;
+                incident_flux_uv += (0.079577*fac*r) * mass_stellarlum[i_uv_k];// * shortrange_table[tabindex];
+                if((mass_stellarlum[N_RT_FREQ_BINS-1]<mass_stellarlum[i_uv_k])&&(mass_stellarlum[N_RT_FREQ_BINS-1]>0)) // if this -isn't- satisfied, no chance you are optically thin to EUV //
                 {
-                    incident_flux_euv += (0.079577*fac*r) * mass_stellarlum_uv * (All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV) *
-                        ((mass_stellarlum_uv+mass_stellarlum_ir)/(mass_stellarlum_uv+mass_stellarlum_ir*(2042.6))));
-                    // here, use ratio and linear scaling of escape with tau to correct to the escape fraction for the correspondingly
-                    //  higher EUV kappa: factor ~2000 is KAPPA_EUV/KAPPA_UV
+                    // here, use ratio and linear scaling of escape with tau to correct to the escape fraction for the correspondingly higher EUV kappa: factor ~2000 is KAPPA_EUV/KAPPA_UV
+                    incident_flux_euv += (0.079577*fac*r) * mass_stellarlum[i_uv_k] * (All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV) *
+                                                                                       ((mass_stellarlum[i_uv_k]+mass_stellarlum[N_RT_FREQ_BINS-1])/(mass_stellarlum[i_uv_k]+mass_stellarlum[N_RT_FREQ_BINS-1]*(2042.6))));
                 } else {
-                    incident_flux_euv += All.PhotonMomentum_fUV * (0.079577*fac*r) * (mass_stellarlum_uv+mass_stellarlum_op+mass_stellarlum_ir);
                     // here, just enforce a minimum escape fraction //
+                    double m_lum_total = 0; int ks_q; for(ks_q=0;ks_q<N_RT_FREQ_BINS;ks_q++) {m_lum_total += mass_stellarlum[ks_q];}
+                    incident_flux_euv += All.PhotonMomentum_fUV * (0.079577*fac*r) * m_lum_total;
                 }
                 // don't multiply by shortrange_table since that is to prevent 2x-counting by PMgrid (which never happens here) //
 #endif
@@ -2668,41 +2361,46 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 incident_flux_agn += (0.079577*fac*r) * mass_bhlum;// * shortrange_table[tabindex]; // L/(4pi*r*r) analog
 #endif
 #endif
-                //}
-                /* now apply the appropriate normalization (and swap the sign)  */
-                fac *= fac_stellum;
-                if((soft>r)&&(soft>0)) fac *= (r2/(soft*soft)); // don't allow cross-section > r2
                 
-                /* now that we've done the long-range heating component, we only allow the momentum to couple over 
+#ifdef RT_OTVET
+                /* use the information we have here from the gravity tree (optically thin incident fluxes) to estimate the Eddington tensor */
+                // for now, just one tensor; so we use the sum of luminosities to determine the weights in the Eddington tensor
+                if(r>0)
+                {
+                    double fac_sum=0;
+                    int kf_rt;
+                    for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++)
+                    {
+                        fac_sum = mass_stellarlum[kf_rt];
+                        fac_sum *= fac / (1.e-37 + r); // units are not important, since ET will be dimensionless, but final ET should scale as ~luminosity/r^2
+                        RT_ET[kf_rt][0] += dx_stellarlum * dx_stellarlum * fac_sum;
+                        RT_ET[kf_rt][1] += dy_stellarlum * dy_stellarlum * fac_sum;
+                        RT_ET[kf_rt][2] += dz_stellarlum * dz_stellarlum * fac_sum;
+                        RT_ET[kf_rt][3] += dx_stellarlum * dy_stellarlum * fac_sum;
+                        RT_ET[kf_rt][4] += dy_stellarlum * dz_stellarlum * fac_sum;
+                        RT_ET[kf_rt][5] += dz_stellarlum * dx_stellarlum * fac_sum;
+                    }
+                }
+
+#endif
+                
+#ifdef RT_FIRE
+                /* if we are using the FIRE RT module, we simply apply an on-the-spot approximation and do the absorption now.
+                 first apply the appropriate normalization (and swap the sign)  */
+                fac *= fac_stellum_0;
+                /* now that we've done the long-range heating component, we only allow the momentum to couple over
                  some distance to prevent bad approximations when the distance between points here is enormous */
+#ifdef GALSF_FB_RT_PHOTONMOMENTUM
                 if(r>50. * 3.086e21*All.HubbleParam/(All.UnitLength_in_cm*All.cf_atime)) fac=0;
-                
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-                fac *= (mass_stellarlum_uv*fac_stellum_uv +
-                        mass_stellarlum_op*fac_stellum_op +
-                        (mass_stellarlum_ir
-#ifdef BH_PHOTONMOMENTUM
-                         + All.BH_FluxMomentumFactor/All.PhotonMomentum_Coupled_Fraction*mass_bhlum
 #endif
-                         )*fac_stellum_ir);
-#else
-                fac *=
+                double fac2 = 0; int kf_rt; for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++) {fac2 += mass_stellarlum[kf_rt] * fac_stellum[kf_rt];}
 #ifdef BH_PHOTONMOMENTUM
-                All.BH_FluxMomentumFactor/All.PhotonMomentum_Coupled_Fraction*mass_bhlum +
+                fac2 += All.BH_FluxMomentumFactor / All.PhotonMomentum_Coupled_Fraction * mass_bhlum * fac_stellum[N_RT_FREQ_BINS-1];
 #endif
-                mass_stellarlum;
-#endif // GALSF_FB_RT_PHOTON_LOCALATTEN //
-                
-                //if(tabindex < NTAB && tabindex >= 0)
-                //{
-                //fac *= shortrange_table[tabindex];
-                // no accounting for this in PMgrid grav, so don't need suppression here //
-                acc_x += FLT(dx_stellarlum * fac);
-                acc_y += FLT(dy_stellarlum * fac);
-                acc_z += FLT(dz_stellarlum * fac);
-                //}
+                fac *= fac2; acc_x += FLT(dx_stellarlum * fac); acc_y += FLT(dy_stellarlum * fac); acc_z += FLT(dz_stellarlum * fac);
+#endif
             }
-#endif // GALSF_FB_RT_PHOTONMOMENTUM //
+#endif // RT_USE_GRAVTREE
             
             
 #ifdef SCALARFIELD
@@ -2754,7 +2452,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             }
         }
     }
-
+    
 #ifdef SIDM
     /* some final SIDM operations before writing back to the particles */
     All.Ndmsi_thisTask += si_count;
@@ -2769,7 +2467,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     CPU_Step[CPU_SIDMSCATTER] += sidm_tscatter;
     CPU_Step[CPU_SIDMCELLOPEN] += sidm_tcell;
 #endif
-
+    
     
     /* store result at the proper place */
     if(mode == 0)
@@ -2777,27 +2475,25 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         P[target].GravAccel[0] = acc_x;
         P[target].GravAccel[1] = acc_y;
         P[target].GravAccel[2] = acc_z;
+#ifdef RT_OTVET
+        if(valid_gas_particle_for_rt) {int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {SphP[target].ET[k][k_et] = RT_ET[k][k_et];}} else {if(P[target].Type==0) {int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {SphP[target].ET[k][k_et]=0;}}}
+#endif
 #ifdef GALSF_FB_LOCAL_UV_HEATING
-        if(P[target].Type==0) SphP[target].RadFluxUV = incident_flux_uv;
-        if(P[target].Type==0) SphP[target].RadFluxEUV = incident_flux_euv;
+        if(valid_gas_particle_for_rt) SphP[target].RadFluxUV = incident_flux_uv;
+        if(valid_gas_particle_for_rt) SphP[target].RadFluxEUV = incident_flux_euv;
 #endif
 #ifdef BH_COMPTON_HEATING
-        if(P[target].Type==0) SphP[target].RadFluxAGN = incident_flux_agn;
+        if(valid_gas_particle_for_rt) SphP[target].RadFluxAGN = incident_flux_agn;
 #endif
 #ifdef EVALPOTENTIAL
         P[target].Potential = pot;
 #endif
 #ifdef DISTORTIONTENSORPS
-        for(i1 = 0; i1 < 3; i1++)
-            for(i2 = 0; i2 < 3; i2++)
-                P[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];
+        for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
 #endif
 #ifdef SIDM
-        P[target].Vel[0] += kick_x;
-        P[target].Vel[1] += kick_y;
-        P[target].Vel[2] += kick_z;
-        P[target].dt_step_sidm = targetdt_step_sidm;
-        P[target].NInteractions += si_count;
+        P[target].Vel[0] += kick_x; P[target].Vel[1] += kick_y; P[target].Vel[2] += kick_z;
+        P[target].dt_step_sidm = targetdt_step_sidm; P[target].NInteractions += si_count;
 #endif
     }
     else
@@ -2805,6 +2501,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         GravDataResult[target].Acc[0] = acc_x;
         GravDataResult[target].Acc[1] = acc_y;
         GravDataResult[target].Acc[2] = acc_z;
+#ifdef RT_OTVET
+        int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {GravDataResult[target].ET[k][k_et] = RT_ET[k][k_et];}
+#endif
 #ifdef GALSF_FB_LOCAL_UV_HEATING
         GravDataResult[target].RadFluxUV = incident_flux_uv;
         GravDataResult[target].RadFluxEUV = incident_flux_euv;
@@ -2816,16 +2515,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         GravDataResult[target].Potential = pot;
 #endif
 #ifdef DISTORTIONTENSORPS
-        for(i1 = 0; i1 < 3; i1++)
-            for(i2 = 0; i2 < 3; i2++)
-                GravDataResult[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];
+        for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GravDataResult[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
 #endif
 #ifdef SIDM
-        GravDataResult[target].Vel[0] = kick_x;
-        GravDataResult[target].Vel[1] = kick_y;
-        GravDataResult[target].Vel[2] = kick_z;
-        GravDataResult[target].dt_step_sidm = targetdt_step_sidm;
-        GravDataResult[target].NInteractions = si_count;
+        GravDataResult[target].Vel[0] = kick_x; GravDataResult[target].Vel[1] = kick_y; GravDataResult[target].Vel[2] = kick_z;
+        GravDataResult[target].dt_step_sidm = targetdt_step_sidm; GravDataResult[target].NInteractions = si_count;
 #endif
         *exportflag = nodesinlist;
     }
@@ -2857,349 +2551,349 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
  *  walk would be further refined.
  */
 int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, int *exportnodecount,
-					int *exportindex)
+                                        int *exportindex)
 {
-  struct NODE *nop = 0;
-  int no, cost, listindex = 0;
-  double dx, dy, dz, mass, r2;
-  int signx, signy, signz, nexp;
-  int i, j, k, openflag, task;
-  double u, v, w;
-  double f1, f2, f3, f4, f5, f6, f7, f8;
-  MyLongDouble acc_x, acc_y, acc_z;
-  double boxsize, boxhalf;
-  double pos_x, pos_y, pos_z, aold;
-
-  boxsize = All.BoxSize;
-  boxhalf = 0.5 * All.BoxSize;
-
-  acc_x = 0;
-  acc_y = 0;
-  acc_z = 0;
-  cost = 0;
-  if(mode == 0)
+    struct NODE *nop = 0;
+    int no, cost, listindex = 0;
+    double dx, dy, dz, mass, r2;
+    int signx, signy, signz, nexp;
+    int i, j, k, openflag, task;
+    double u, v, w;
+    double f1, f2, f3, f4, f5, f6, f7, f8;
+    MyLongDouble acc_x, acc_y, acc_z;
+    double boxsize, boxhalf;
+    double pos_x, pos_y, pos_z, aold;
+    
+    boxsize = All.BoxSize;
+    boxhalf = 0.5 * All.BoxSize;
+    
+    acc_x = 0;
+    acc_y = 0;
+    acc_z = 0;
+    cost = 0;
+    if(mode == 0)
     {
-      pos_x = P[target].Pos[0];
-      pos_y = P[target].Pos[1];
-      pos_z = P[target].Pos[2];
-      aold = All.ErrTolForceAcc * P[target].OldAcc;
+        pos_x = P[target].Pos[0];
+        pos_y = P[target].Pos[1];
+        pos_z = P[target].Pos[2];
+        aold = All.ErrTolForceAcc * P[target].OldAcc;
     }
-  else
+    else
     {
-      pos_x = GravDataGet[target].Pos[0];
-      pos_y = GravDataGet[target].Pos[1];
-      pos_z = GravDataGet[target].Pos[2];
-      aold = All.ErrTolForceAcc * GravDataGet[target].OldAcc;
+        pos_x = GravDataGet[target].Pos[0];
+        pos_y = GravDataGet[target].Pos[1];
+        pos_z = GravDataGet[target].Pos[2];
+        aold = All.ErrTolForceAcc * GravDataGet[target].OldAcc;
     }
-
-  if(mode == 0)
+    
+    if(mode == 0)
     {
-      no = All.MaxPart;		/* root node */
+        no = All.MaxPart;		/* root node */
     }
-  else
+    else
     {
-      no = GravDataGet[target].NodeList[0];
-      no = Nodes[no].u.d.nextnode;	/* open it */
+        no = GravDataGet[target].NodeList[0];
+        no = Nodes[no].u.d.nextnode;	/* open it */
     }
-
-  while(no >= 0)
+    
+    while(no >= 0)
     {
-      while(no >= 0)
-	{
-	  if(no < All.MaxPart)	/* single particle */
-	    {
-	      /* the index of the node is the index of the particle */
-	      /* observe the sign */
-	      if(P[no].Ti_current != All.Ti_Current)
-		{
-		  LOCK_PARTNODEDRIFT;
+        while(no >= 0)
+        {
+            if(no < All.MaxPart)	/* single particle */
+            {
+                /* the index of the node is the index of the particle */
+                /* observe the sign */
+                if(P[no].Ti_current != All.Ti_Current)
+                {
+                    LOCK_PARTNODEDRIFT;
 #ifdef _OPENMP
 #pragma omp critical(_partnodedrift_)
 #endif
-		  drift_particle(no, All.Ti_Current);
-		  UNLOCK_PARTNODEDRIFT;
-		}
-
-	      dx = P[no].Pos[0] - pos_x;
-	      dy = P[no].Pos[1] - pos_y;
-	      dz = P[no].Pos[2] - pos_z;
-	      mass = P[no].Mass;
-	    }
-	  else			/* we have an  internal node */
-	    {
-	      if(no >= All.MaxPart + MaxNodes)	/* pseudo particle */
-		{
-		  if(mode == 0)
-		    {
-		      if(exportflag[task = DomainTask[no - (All.MaxPart + MaxNodes)]] != target)
-			{
-			  exportflag[task] = target;
-			  exportnodecount[task] = NODELISTLENGTH;
-			}
-
-		      if(exportnodecount[task] == NODELISTLENGTH)
-			{
-			  int exitFlag = 0;
-			  LOCK_NEXPORT;
+                    drift_particle(no, All.Ti_Current);
+                    UNLOCK_PARTNODEDRIFT;
+                }
+                
+                dx = P[no].Pos[0] - pos_x;
+                dy = P[no].Pos[1] - pos_y;
+                dz = P[no].Pos[2] - pos_z;
+                mass = P[no].Mass;
+            }
+            else			/* we have an  internal node */
+            {
+                if(no >= All.MaxPart + MaxNodes)	/* pseudo particle */
+                {
+                    if(mode == 0)
+                    {
+                        if(exportflag[task = DomainTask[no - (All.MaxPart + MaxNodes)]] != target)
+                        {
+                            exportflag[task] = target;
+                            exportnodecount[task] = NODELISTLENGTH;
+                        }
+                        
+                        if(exportnodecount[task] == NODELISTLENGTH)
+                        {
+                            int exitFlag = 0;
+                            LOCK_NEXPORT;
 #ifdef _OPENMP
 #pragma omp critical(_nexport_)
 #endif
-			  {
-			    if(Nexport >= All.BunchSize)
-			      {
-				/* out if buffer space. Need to discard work for this particle and interrupt */
-				BufferFullFlag = 1;
-				exitFlag = 1;
-			      }
-			    else
-			      {
-				nexp = Nexport;
-				Nexport++;
-			      }
-			  }
-			  UNLOCK_NEXPORT;
-			  if(exitFlag)
-			    return -1;
-
-			  exportnodecount[task] = 0;
-			  exportindex[task] = nexp;
-			  DataIndexTable[nexp].Task = task;
-			  DataIndexTable[nexp].Index = target;
-			  DataIndexTable[nexp].IndexGet = nexp;
-			}
-
-		      DataNodeList[exportindex[task]].NodeList[exportnodecount[task]++] =
-			DomainNodeIndex[no - (All.MaxPart + MaxNodes)];
-
-		      if(exportnodecount[task] < NODELISTLENGTH)
-			DataNodeList[exportindex[task]].NodeList[exportnodecount[task]] = -1;
-		    }
-		  no = Nextnode[no - MaxNodes];
-		  continue;
-		}
-
-	      nop = &Nodes[no];
-
-	      if(mode == 1)
-		{
-		  if(nop->u.d.bitflags & (1 << BITFLAG_TOPLEVEL))	/* we reached a top-level node again, which means that we are done with the branch */
-		    {
-		      no = -1;
-		      continue;
-		    }
-		}
-
-	      if(!(nop->u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)))
-		{
-		  /* open cell */
-		  no = nop->u.d.nextnode;
-		  continue;
-		}
-
-	      if(nop->Ti_current != All.Ti_Current)
-		{
-		  LOCK_PARTNODEDRIFT;
+                            {
+                                if(Nexport >= All.BunchSize)
+                                {
+                                    /* out if buffer space. Need to discard work for this particle and interrupt */
+                                    BufferFullFlag = 1;
+                                    exitFlag = 1;
+                                }
+                                else
+                                {
+                                    nexp = Nexport;
+                                    Nexport++;
+                                }
+                            }
+                            UNLOCK_NEXPORT;
+                            if(exitFlag)
+                                return -1;
+                            
+                            exportnodecount[task] = 0;
+                            exportindex[task] = nexp;
+                            DataIndexTable[nexp].Task = task;
+                            DataIndexTable[nexp].Index = target;
+                            DataIndexTable[nexp].IndexGet = nexp;
+                        }
+                        
+                        DataNodeList[exportindex[task]].NodeList[exportnodecount[task]++] =
+                        DomainNodeIndex[no - (All.MaxPart + MaxNodes)];
+                        
+                        if(exportnodecount[task] < NODELISTLENGTH)
+                            DataNodeList[exportindex[task]].NodeList[exportnodecount[task]] = -1;
+                    }
+                    no = Nextnode[no - MaxNodes];
+                    continue;
+                }
+                
+                nop = &Nodes[no];
+                
+                if(mode == 1)
+                {
+                    if(nop->u.d.bitflags & (1 << BITFLAG_TOPLEVEL))	/* we reached a top-level node again, which means that we are done with the branch */
+                    {
+                        no = -1;
+                        continue;
+                    }
+                }
+                
+                if(!(nop->u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)))
+                {
+                    /* open cell */
+                    no = nop->u.d.nextnode;
+                    continue;
+                }
+                
+                if(nop->Ti_current != All.Ti_Current)
+                {
+                    LOCK_PARTNODEDRIFT;
 #ifdef _OPENMP
 #pragma omp critical(_partnodedrift_)
 #endif
-		  force_drift_node(no, All.Ti_Current);
-		  UNLOCK_PARTNODEDRIFT;
-		}
-
-	      mass = nop->u.d.mass;
-	      dx = nop->u.d.s[0] - pos_x;
-	      dy = nop->u.d.s[1] - pos_y;
-	      dz = nop->u.d.s[2] - pos_z;
-	    }
-
-        NEAREST_XYZ(dx,dy,dz,-1);
-
-	  if(no < All.MaxPart)
-	    no = Nextnode[no];
-	  else			/* we have an  internal node. Need to check opening criterion */
-	    {
-	      openflag = 0;
-	      r2 = dx * dx + dy * dy + dz * dz;
-	      if(All.ErrTolTheta)	/* check Barnes-Hut opening criterion */
-		{
-		  if(nop->len * nop->len > r2 * All.ErrTolTheta * All.ErrTolTheta)
-		    {
-		      openflag = 1;
-		    }
-		}
-	      else		/* check relative opening criterion */
-		{
-		  if(mass * nop->len * nop->len > r2 * r2 * aold)
-		    {
-		      openflag = 1;
-		    }
-		  else
-		    {
-		      if(fabs(nop->center[0] - pos_x) < 0.60 * nop->len)
-			{
-			  if(fabs(nop->center[1] - pos_y) < 0.60 * nop->len)
-			    {
-			      if(fabs(nop->center[2] - pos_z) < 0.60 * nop->len)
-				{
-				  openflag = 1;
-				}
-			    }
-			}
-		    }
-		}
-
-	      if(openflag)
-		{
-		  /* now we check if we can avoid opening the cell */
-
-		  u = nop->center[0] - pos_x;
-		  if(u > boxhalf)
-		    u -= boxsize;
-		  if(u < -boxhalf)
-		    u += boxsize;
-		  if(fabs(u) > 0.5 * (boxsize - nop->len))
-		    {
-		      no = nop->u.d.nextnode;
-		      continue;
-		    }
-
-		  u = nop->center[1] - pos_y;
-		  if(u > boxhalf)
-		    u -= boxsize;
-		  if(u < -boxhalf)
-		    u += boxsize;
-		  if(fabs(u) > 0.5 * (boxsize - nop->len))
-		    {
-		      no = nop->u.d.nextnode;
-		      continue;
-		    }
-
-		  u = nop->center[2] - pos_z;
-		  if(u > boxhalf)
-		    u -= boxsize;
-		  if(u < -boxhalf)
-		    u += boxsize;
-		  if(fabs(u) > 0.5 * (boxsize - nop->len))
-		    {
-		      no = nop->u.d.nextnode;
-		      continue;
-		    }
-
-		  /* if the cell is too large, we need to refine
-		   * it further 
-		   */
-		  if(nop->len > 0.20 * boxsize)
-		    {
-		      /* cell is too large */
-		      no = nop->u.d.nextnode;
-		      continue;
-		    }
-		}
-
-	      no = nop->u.d.sibling;	/* ok, node can be used */
-	    }
-
-	  /* compute the Ewald correction force */
-
-	  if(dx < 0)
-	    {
-	      dx = -dx;
-	      signx = +1;
-	    }
-	  else
-	    signx = -1;
-	  if(dy < 0)
-	    {
-	      dy = -dy;
-	      signy = +1;
-	    }
-	  else
-	    signy = -1;
-	  if(dz < 0)
-	    {
-	      dz = -dz;
-	      signz = +1;
-	    }
-	  else
-	    signz = -1;
-	  u = dx * fac_intp;
-	  i = (int) u;
-	  if(i >= EN)
-	    i = EN - 1;
-	  u -= i;
-	  v = dy * fac_intp;
-	  j = (int) v;
-	  if(j >= EN)
-	    j = EN - 1;
-	  v -= j;
-	  w = dz * fac_intp;
-	  k = (int) w;
-	  if(k >= EN)
-	    k = EN - 1;
-	  w -= k;
-	  /* compute factors for trilinear interpolation */
-	  f1 = (1 - u) * (1 - v) * (1 - w);
-	  f2 = (1 - u) * (1 - v) * (w);
-	  f3 = (1 - u) * (v) * (1 - w);
-	  f4 = (1 - u) * (v) * (w);
-	  f5 = (u) * (1 - v) * (1 - w);
-	  f6 = (u) * (1 - v) * (w);
-	  f7 = (u) * (v) * (1 - w);
-	  f8 = (u) * (v) * (w);
-	  acc_x += FLT(mass * signx * (fcorrx[i][j][k] * f1 +
-				       fcorrx[i][j][k + 1] * f2 +
-				       fcorrx[i][j + 1][k] * f3 +
-				       fcorrx[i][j + 1][k + 1] * f4 +
-				       fcorrx[i + 1][j][k] * f5 +
-				       fcorrx[i + 1][j][k + 1] * f6 +
-				       fcorrx[i + 1][j + 1][k] * f7 + fcorrx[i + 1][j + 1][k + 1] * f8));
-	  acc_y +=
-	    FLT(mass * signy *
-		(fcorry[i][j][k] * f1 + fcorry[i][j][k + 1] * f2 +
-		 fcorry[i][j + 1][k] * f3 + fcorry[i][j + 1][k + 1] * f4 + fcorry[i +
-										  1]
-		 [j][k] * f5 + fcorry[i + 1][j][k + 1] * f6 + fcorry[i + 1][j +
-									    1][k] *
-		 f7 + fcorry[i + 1][j + 1][k + 1] * f8));
-	  acc_z +=
-	    FLT(mass * signz *
-		(fcorrz[i][j][k] * f1 + fcorrz[i][j][k + 1] * f2 +
-		 fcorrz[i][j + 1][k] * f3 + fcorrz[i][j + 1][k + 1] * f4 + fcorrz[i +
-										  1]
-		 [j][k] * f5 + fcorrz[i + 1][j][k + 1] * f6 + fcorrz[i + 1][j +
-									    1][k] *
-		 f7 + fcorrz[i + 1][j + 1][k + 1] * f8));
-	  cost++;
-	}
-
-      if(mode == 1)
-	{
-	  listindex++;
-	  if(listindex < NODELISTLENGTH)
-	    {
-	      no = GravDataGet[target].NodeList[listindex];
-	      if(no >= 0)
-		no = Nodes[no].u.d.nextnode;	/* open it */
-	    }
-	}
+                    force_drift_node(no, All.Ti_Current);
+                    UNLOCK_PARTNODEDRIFT;
+                }
+                
+                mass = nop->u.d.mass;
+                dx = nop->u.d.s[0] - pos_x;
+                dy = nop->u.d.s[1] - pos_y;
+                dz = nop->u.d.s[2] - pos_z;
+            }
+            
+            NEAREST_XYZ(dx,dy,dz,-1);
+            
+            if(no < All.MaxPart)
+                no = Nextnode[no];
+            else			/* we have an  internal node. Need to check opening criterion */
+            {
+                openflag = 0;
+                r2 = dx * dx + dy * dy + dz * dz;
+                if(All.ErrTolTheta)	/* check Barnes-Hut opening criterion */
+                {
+                    if(nop->len * nop->len > r2 * All.ErrTolTheta * All.ErrTolTheta)
+                    {
+                        openflag = 1;
+                    }
+                }
+                else		/* check relative opening criterion */
+                {
+                    if(mass * nop->len * nop->len > r2 * r2 * aold)
+                    {
+                        openflag = 1;
+                    }
+                    else
+                    {
+                        if(fabs(nop->center[0] - pos_x) < 0.60 * nop->len)
+                        {
+                            if(fabs(nop->center[1] - pos_y) < 0.60 * nop->len)
+                            {
+                                if(fabs(nop->center[2] - pos_z) < 0.60 * nop->len)
+                                {
+                                    openflag = 1;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if(openflag)
+                {
+                    /* now we check if we can avoid opening the cell */
+                    
+                    u = nop->center[0] - pos_x;
+                    if(u > boxhalf)
+                        u -= boxsize;
+                    if(u < -boxhalf)
+                        u += boxsize;
+                    if(fabs(u) > 0.5 * (boxsize - nop->len))
+                    {
+                        no = nop->u.d.nextnode;
+                        continue;
+                    }
+                    
+                    u = nop->center[1] - pos_y;
+                    if(u > boxhalf)
+                        u -= boxsize;
+                    if(u < -boxhalf)
+                        u += boxsize;
+                    if(fabs(u) > 0.5 * (boxsize - nop->len))
+                    {
+                        no = nop->u.d.nextnode;
+                        continue;
+                    }
+                    
+                    u = nop->center[2] - pos_z;
+                    if(u > boxhalf)
+                        u -= boxsize;
+                    if(u < -boxhalf)
+                        u += boxsize;
+                    if(fabs(u) > 0.5 * (boxsize - nop->len))
+                    {
+                        no = nop->u.d.nextnode;
+                        continue;
+                    }
+                    
+                    /* if the cell is too large, we need to refine
+                     * it further
+                     */
+                    if(nop->len > 0.20 * boxsize)
+                    {
+                        /* cell is too large */
+                        no = nop->u.d.nextnode;
+                        continue;
+                    }
+                }
+                
+                no = nop->u.d.sibling;	/* ok, node can be used */
+            }
+            
+            /* compute the Ewald correction force */
+            
+            if(dx < 0)
+            {
+                dx = -dx;
+                signx = +1;
+            }
+            else
+                signx = -1;
+            if(dy < 0)
+            {
+                dy = -dy;
+                signy = +1;
+            }
+            else
+                signy = -1;
+            if(dz < 0)
+            {
+                dz = -dz;
+                signz = +1;
+            }
+            else
+                signz = -1;
+            u = dx * fac_intp;
+            i = (int) u;
+            if(i >= EN)
+                i = EN - 1;
+            u -= i;
+            v = dy * fac_intp;
+            j = (int) v;
+            if(j >= EN)
+                j = EN - 1;
+            v -= j;
+            w = dz * fac_intp;
+            k = (int) w;
+            if(k >= EN)
+                k = EN - 1;
+            w -= k;
+            /* compute factors for trilinear interpolation */
+            f1 = (1 - u) * (1 - v) * (1 - w);
+            f2 = (1 - u) * (1 - v) * (w);
+            f3 = (1 - u) * (v) * (1 - w);
+            f4 = (1 - u) * (v) * (w);
+            f5 = (u) * (1 - v) * (1 - w);
+            f6 = (u) * (1 - v) * (w);
+            f7 = (u) * (v) * (1 - w);
+            f8 = (u) * (v) * (w);
+            acc_x += FLT(mass * signx * (fcorrx[i][j][k] * f1 +
+                                         fcorrx[i][j][k + 1] * f2 +
+                                         fcorrx[i][j + 1][k] * f3 +
+                                         fcorrx[i][j + 1][k + 1] * f4 +
+                                         fcorrx[i + 1][j][k] * f5 +
+                                         fcorrx[i + 1][j][k + 1] * f6 +
+                                         fcorrx[i + 1][j + 1][k] * f7 + fcorrx[i + 1][j + 1][k + 1] * f8));
+            acc_y +=
+            FLT(mass * signy *
+                (fcorry[i][j][k] * f1 + fcorry[i][j][k + 1] * f2 +
+                 fcorry[i][j + 1][k] * f3 + fcorry[i][j + 1][k + 1] * f4 + fcorry[i +
+                                                                                  1]
+                 [j][k] * f5 + fcorry[i + 1][j][k + 1] * f6 + fcorry[i + 1][j +
+                                                                            1][k] *
+                 f7 + fcorry[i + 1][j + 1][k + 1] * f8));
+            acc_z +=
+            FLT(mass * signz *
+                (fcorrz[i][j][k] * f1 + fcorrz[i][j][k + 1] * f2 +
+                 fcorrz[i][j + 1][k] * f3 + fcorrz[i][j + 1][k + 1] * f4 + fcorrz[i +
+                                                                                  1]
+                 [j][k] * f5 + fcorrz[i + 1][j][k + 1] * f6 + fcorrz[i + 1][j +
+                                                                            1][k] *
+                 f7 + fcorrz[i + 1][j + 1][k + 1] * f8));
+            cost++;
+        }
+        
+        if(mode == 1)
+        {
+            listindex++;
+            if(listindex < NODELISTLENGTH)
+            {
+                no = GravDataGet[target].NodeList[listindex];
+                if(no >= 0)
+                    no = Nodes[no].u.d.nextnode;	/* open it */
+            }
+        }
     }
-
-  /* add the result at the proper place */
-
-  if(mode == 0)
+    
+    /* add the result at the proper place */
+    
+    if(mode == 0)
     {
-      P[target].GravAccel[0] += acc_x;
-      P[target].GravAccel[1] += acc_y;
-      P[target].GravAccel[2] += acc_z;
+        P[target].GravAccel[0] += acc_x;
+        P[target].GravAccel[1] += acc_y;
+        P[target].GravAccel[2] += acc_z;
     }
-  else
+    else
     {
-      GravDataResult[target].Acc[0] = acc_x;
-      GravDataResult[target].Acc[1] = acc_y;
-      GravDataResult[target].Acc[2] = acc_z;
+        GravDataResult[target].Acc[0] = acc_x;
+        GravDataResult[target].Acc[1] = acc_y;
+        GravDataResult[target].Acc[2] = acc_z;
     }
-
-  return cost;
+    
+    return cost;
 }
 #endif // #ifdef PERIODIC //
 
@@ -3564,7 +3258,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
 #endif
                 if(r >= h)
                     pot += FLT(-fac * mass / r);
-
+                
                 else
                 {
                     h_inv = 1.0 / h;
@@ -3605,177 +3299,177 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
 #ifdef SUBFIND
 int subfind_force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_local)
 {
-  struct NODE *nop = 0;
-  MyLongDouble pot;
-  int no, ptype, task, nexport_save, listindex = 0;
-  double r2, dx, dy, dz, mass, r, u, h, h_inv, wp;
-  double pos_x, pos_y, pos_z;
-
-  nexport_save = *nexport;
-  pot = 0;
-  if(mode == 0)
+    struct NODE *nop = 0;
+    MyLongDouble pot;
+    int no, ptype, task, nexport_save, listindex = 0;
+    double r2, dx, dy, dz, mass, r, u, h, h_inv, wp;
+    double pos_x, pos_y, pos_z;
+    
+    nexport_save = *nexport;
+    pot = 0;
+    if(mode == 0)
     {
-      pos_x = P[target].Pos[0];
-      pos_y = P[target].Pos[1];
-      pos_z = P[target].Pos[2];
-      ptype = P[target].Type;
+        pos_x = P[target].Pos[0];
+        pos_y = P[target].Pos[1];
+        pos_z = P[target].Pos[2];
+        ptype = P[target].Type;
     }
-  else
+    else
     {
-      pos_x = GravDataGet[target].Pos[0];
-      pos_y = GravDataGet[target].Pos[1];
-      pos_z = GravDataGet[target].Pos[2];
-      ptype = GravDataGet[target].Type;
+        pos_x = GravDataGet[target].Pos[0];
+        pos_y = GravDataGet[target].Pos[1];
+        pos_z = GravDataGet[target].Pos[2];
+        ptype = GravDataGet[target].Type;
     }
-
-  h = All.ForceSoftening[ptype];
-  h_inv = 1.0 / h;
-
-  if(mode == 0)
+    
+    h = All.ForceSoftening[ptype];
+    h_inv = 1.0 / h;
+    
+    if(mode == 0)
     {
-      no = All.MaxPart;		/* root node */
+        no = All.MaxPart;		/* root node */
     }
-  else
+    else
     {
-      no = GravDataGet[target].NodeList[0];
-      no = Nodes[no].u.d.nextnode;	/* open it */
+        no = GravDataGet[target].NodeList[0];
+        no = Nodes[no].u.d.nextnode;	/* open it */
     }
-
-  while(no >= 0)
+    
+    while(no >= 0)
     {
-      while(no >= 0)
-	{
-	  if(no < All.MaxPart)	/* single particle */
-	    {
-	      /* the index of the node is the index of the particle */
-	      /* observe the sign */
-
-	      dx = P[no].Pos[0] - pos_x;
-	      dy = P[no].Pos[1] - pos_y;
-	      dz = P[no].Pos[2] - pos_z;
-	      mass = P[no].Mass;
-	    }
-	  else
-	    {
-	      if(no >= All.MaxPart + MaxNodes)	/* pseudo particle */
-		{
-		  if(mode == 0)
-		    {
-		      if(Exportflag[task = DomainTask[no - (All.MaxPart + MaxNodes)]] != target)
-			{
-			  Exportflag[task] = target;
-			  Exportnodecount[task] = NODELISTLENGTH;
-			}
-
-		      if(Exportnodecount[task] == NODELISTLENGTH)
-			{
-			  if(*nexport >= All.BunchSize)
-			    {
-			      *nexport = nexport_save;
-			      if(nexport_save == 0)
-				endrun(13001);	/* in this case, the buffer is too small to process even a single particle */
-			      for(task = 0; task < NTask; task++)
-				nsend_local[task] = 0;
-			      for(no = 0; no < nexport_save; no++)
-				nsend_local[DataIndexTable[no].Task]++;
-			      return -1;
-			    }
-			  Exportnodecount[task] = 0;
-			  Exportindex[task] = *nexport;
-			  DataIndexTable[*nexport].Task = task;
-			  DataIndexTable[*nexport].Index = target;
-			  DataIndexTable[*nexport].IndexGet = *nexport;
-			  *nexport = *nexport + 1;
-			  nsend_local[task]++;
-			}
-
-		      DataNodeList[Exportindex[task]].NodeList[Exportnodecount[task]++] =
-			DomainNodeIndex[no - (All.MaxPart + MaxNodes)];
-		      if(Exportnodecount[task] < NODELISTLENGTH)
-			DataNodeList[Exportindex[task]].NodeList[Exportnodecount[task]] = -1;
-		    }
-		  no = Nextnode[no - MaxNodes];
-		  continue;
-		}
-
-	      nop = &Nodes[no];
-	      if(mode == 1)
-		{
-		  if(nop->u.d.bitflags & (1 << BITFLAG_TOPLEVEL))	/* we reached a top-level node again, which means that we are done with the branch */
-		    {
-		      no = -1;
-		      continue;
-		    }
-		}
-
-	      mass = nop->u.d.mass;
-	      if(!(nop->u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)))
-		{
-		  /* open cell */
-		  if(mass)
-		    {
-		      no = nop->u.d.nextnode;
-		      continue;
-		    }
-		}
-
-	      dx = nop->u.d.s[0] - pos_x;
-	      dy = nop->u.d.s[1] - pos_y;
-	      dz = nop->u.d.s[2] - pos_z;
-	    }
-
+        while(no >= 0)
+        {
+            if(no < All.MaxPart)	/* single particle */
+            {
+                /* the index of the node is the index of the particle */
+                /* observe the sign */
+                
+                dx = P[no].Pos[0] - pos_x;
+                dy = P[no].Pos[1] - pos_y;
+                dz = P[no].Pos[2] - pos_z;
+                mass = P[no].Mass;
+            }
+            else
+            {
+                if(no >= All.MaxPart + MaxNodes)	/* pseudo particle */
+                {
+                    if(mode == 0)
+                    {
+                        if(Exportflag[task = DomainTask[no - (All.MaxPart + MaxNodes)]] != target)
+                        {
+                            Exportflag[task] = target;
+                            Exportnodecount[task] = NODELISTLENGTH;
+                        }
+                        
+                        if(Exportnodecount[task] == NODELISTLENGTH)
+                        {
+                            if(*nexport >= All.BunchSize)
+                            {
+                                *nexport = nexport_save;
+                                if(nexport_save == 0)
+                                    endrun(13001);	/* in this case, the buffer is too small to process even a single particle */
+                                for(task = 0; task < NTask; task++)
+                                    nsend_local[task] = 0;
+                                for(no = 0; no < nexport_save; no++)
+                                    nsend_local[DataIndexTable[no].Task]++;
+                                return -1;
+                            }
+                            Exportnodecount[task] = 0;
+                            Exportindex[task] = *nexport;
+                            DataIndexTable[*nexport].Task = task;
+                            DataIndexTable[*nexport].Index = target;
+                            DataIndexTable[*nexport].IndexGet = *nexport;
+                            *nexport = *nexport + 1;
+                            nsend_local[task]++;
+                        }
+                        
+                        DataNodeList[Exportindex[task]].NodeList[Exportnodecount[task]++] =
+                        DomainNodeIndex[no - (All.MaxPart + MaxNodes)];
+                        if(Exportnodecount[task] < NODELISTLENGTH)
+                            DataNodeList[Exportindex[task]].NodeList[Exportnodecount[task]] = -1;
+                    }
+                    no = Nextnode[no - MaxNodes];
+                    continue;
+                }
+                
+                nop = &Nodes[no];
+                if(mode == 1)
+                {
+                    if(nop->u.d.bitflags & (1 << BITFLAG_TOPLEVEL))	/* we reached a top-level node again, which means that we are done with the branch */
+                    {
+                        no = -1;
+                        continue;
+                    }
+                }
+                
+                mass = nop->u.d.mass;
+                if(!(nop->u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)))
+                {
+                    /* open cell */
+                    if(mass)
+                    {
+                        no = nop->u.d.nextnode;
+                        continue;
+                    }
+                }
+                
+                dx = nop->u.d.s[0] - pos_x;
+                dy = nop->u.d.s[1] - pos_y;
+                dz = nop->u.d.s[2] - pos_z;
+            }
+            
 #if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-        NEAREST_XYZ(dx,dy,dz,-1);
+            NEAREST_XYZ(dx,dy,dz,-1);
 #endif
-	  r2 = dx * dx + dy * dy + dz * dz;
-	  if(no < All.MaxPart)
-	    {
-	      no = Nextnode[no];
-	    }
-	  else			/* we have an internal node. Need to check opening criterion */
-	    {
-	      /* check Barnes-Hut opening criterion */
-
-	      if(nop->len * nop->len > r2 * All.ErrTolThetaSubfind * All.ErrTolThetaSubfind)
-		{
-		  /* open cell */
-		  if(mass)
-		    {
-		      no = nop->u.d.nextnode;
-		      continue;
-		    }
-		}
-	      no = nop->u.d.sibling;	/* node can be used */
-	    }
-
-	  r = sqrt(r2);
-	  if(r >= h)
-	    pot += FLT(-mass / r);
-	  else
-	    {
-            u = r * h_inv;
-            pot += FLT( mass * kernel_gravity(u, h_inv, 1, -1) );
-	    }
-	}
-      if(mode == 1)
-	{
-	  listindex++;
-	  if(listindex < NODELISTLENGTH)
-	    {
-	      no = GravDataGet[target].NodeList[listindex];
-	      if(no >= 0)
-		no = Nodes[no].u.d.nextnode;	/* open it */
-	    }
-	}
+            r2 = dx * dx + dy * dy + dz * dz;
+            if(no < All.MaxPart)
+            {
+                no = Nextnode[no];
+            }
+            else			/* we have an internal node. Need to check opening criterion */
+            {
+                /* check Barnes-Hut opening criterion */
+                
+                if(nop->len * nop->len > r2 * All.ErrTolThetaSubfind * All.ErrTolThetaSubfind)
+                {
+                    /* open cell */
+                    if(mass)
+                    {
+                        no = nop->u.d.nextnode;
+                        continue;
+                    }
+                }
+                no = nop->u.d.sibling;	/* node can be used */
+            }
+            
+            r = sqrt(r2);
+            if(r >= h)
+                pot += FLT(-mass / r);
+            else
+            {
+                u = r * h_inv;
+                pot += FLT( mass * kernel_gravity(u, h_inv, 1, -1) );
+            }
+        }
+        if(mode == 1)
+        {
+            listindex++;
+            if(listindex < NODELISTLENGTH)
+            {
+                no = GravDataGet[target].NodeList[listindex];
+                if(no >= 0)
+                    no = Nodes[no].u.d.nextnode;	/* open it */
+            }
+        }
     }
-
-  /* store result at the proper place */
-
-  if(mode == 0)
-    P[target].u.DM_Potential = pot;
-  else
-    PotDataResult[target].Potential = pot;
-  return 0;
+    
+    /* store result at the proper place */
+    
+    if(mode == 0)
+        P[target].u.DM_Potential = pot;
+    else
+        PotDataResult[target].Potential = pot;
+    return 0;
 }
 #endif // SUBFIND //
 
@@ -3789,62 +3483,62 @@ int subfind_force_treeevaluate_potential(int target, int mode, int *nexport, int
  */
 void force_treeallocate(int maxnodes, int maxpart)
 {
-  int i;
-  size_t bytes;
-  double allbytes = 0, allbytes_topleaves = 0;
-  double u;
-
-  tree_allocated_flag = 1;
-  DomainNodeIndex = (int *) mymalloc("DomainNodeIndex", bytes = NTopleaves * sizeof(int));
-  allbytes_topleaves += bytes;
-  MaxNodes = maxnodes;
-  if(!(Nodes_base = (struct NODE *) mymalloc("Nodes_base", bytes = (MaxNodes + 1) * sizeof(struct NODE))))
+    int i;
+    size_t bytes;
+    double allbytes = 0, allbytes_topleaves = 0;
+    double u;
+    
+    tree_allocated_flag = 1;
+    DomainNodeIndex = (int *) mymalloc("DomainNodeIndex", bytes = NTopleaves * sizeof(int));
+    allbytes_topleaves += bytes;
+    MaxNodes = maxnodes;
+    if(!(Nodes_base = (struct NODE *) mymalloc("Nodes_base", bytes = (MaxNodes + 1) * sizeof(struct NODE))))
     {
-      printf("failed to allocate memory for %d tree-nodes (%g MB).\n", MaxNodes, bytes / (1024.0 * 1024.0));
-      endrun(3);
+        printf("failed to allocate memory for %d tree-nodes (%g MB).\n", MaxNodes, bytes / (1024.0 * 1024.0));
+        endrun(3);
     }
-  allbytes += bytes;
-  if(!
-     (Extnodes_base =
-      (struct extNODE *) mymalloc("Extnodes_base", bytes = (MaxNodes + 1) * sizeof(struct extNODE))))
+    allbytes += bytes;
+    if(!
+       (Extnodes_base =
+        (struct extNODE *) mymalloc("Extnodes_base", bytes = (MaxNodes + 1) * sizeof(struct extNODE))))
     {
-      printf("failed to allocate memory for %d tree-extnodes (%g MB).\n",
-	     MaxNodes, bytes / (1024.0 * 1024.0));
-      endrun(3);
+        printf("failed to allocate memory for %d tree-extnodes (%g MB).\n",
+               MaxNodes, bytes / (1024.0 * 1024.0));
+        endrun(3);
     }
-  allbytes += bytes;
-  Nodes = Nodes_base - All.MaxPart;
-  Extnodes = Extnodes_base - All.MaxPart;
-  if(!(Nextnode = (int *) mymalloc("Nextnode", bytes = (maxpart + NTopnodes) * sizeof(int))))
+    allbytes += bytes;
+    Nodes = Nodes_base - All.MaxPart;
+    Extnodes = Extnodes_base - All.MaxPart;
+    if(!(Nextnode = (int *) mymalloc("Nextnode", bytes = (maxpart + NTopnodes) * sizeof(int))))
     {
-      printf("Failed to allocate %d spaces for 'Nextnode' array (%g MB)\n",
-	     maxpart + NTopnodes, bytes / (1024.0 * 1024.0));
-      exit(0);
+        printf("Failed to allocate %d spaces for 'Nextnode' array (%g MB)\n",
+               maxpart + NTopnodes, bytes / (1024.0 * 1024.0));
+        exit(0);
     }
-  allbytes += bytes;
-  if(!(Father = (int *) mymalloc("Father", bytes = (maxpart) * sizeof(int))))
+    allbytes += bytes;
+    if(!(Father = (int *) mymalloc("Father", bytes = (maxpart) * sizeof(int))))
     {
-      printf("Failed to allocate %d spaces for 'Father' array (%g MB)\n", maxpart, bytes / (1024.0 * 1024.0));
-      exit(0);
+        printf("Failed to allocate %d spaces for 'Father' array (%g MB)\n", maxpart, bytes / (1024.0 * 1024.0));
+        exit(0);
     }
-  allbytes += bytes;
-  if(first_flag == 0)
+    allbytes += bytes;
+    if(first_flag == 0)
     {
-      first_flag = 1;
-      if(ThisTask == 0)
-	printf
-	  ("\nAllocated %g MByte for BH-tree, and %g Mbyte for top-leaves.  (presently allocted %g MB)\n\n",
-	   allbytes / (1024.0 * 1024.0), allbytes_topleaves / (1024.0 * 1024.0),
-	   AllocatedBytes / (1024.0 * 1024.0));
-      for(i = 0; i < NTAB; i++)
-	{
-	  u = 3.0 / NTAB * (i + 0.5);
-	  shortrange_table[i] = erfc(u) + 2.0 * u / sqrt(M_PI) * exp(-u * u);
-	  shortrange_table_potential[i] = erfc(u);
+        first_flag = 1;
+        if(ThisTask == 0)
+            printf
+            ("\nAllocated %g MByte for BH-tree, and %g Mbyte for top-leaves.  (presently allocted %g MB)\n\n",
+             allbytes / (1024.0 * 1024.0), allbytes_topleaves / (1024.0 * 1024.0),
+             AllocatedBytes / (1024.0 * 1024.0));
+        for(i = 0; i < NTAB; i++)
+        {
+            u = 3.0 / NTAB * (i + 0.5);
+            shortrange_table[i] = erfc(u) + 2.0 * u / sqrt(M_PI) * exp(-u * u);
+            shortrange_table_potential[i] = erfc(u);
 #ifdef DISTORTIONTENSORPS
-	  shortrange_table_tidal[i] = 4.0 * u * u * u / sqrt(M_PI) * exp(-u * u);
+            shortrange_table_tidal[i] = 4.0 * u * u * u / sqrt(M_PI) * exp(-u * u);
 #endif
-	}
+        }
     }
 }
 
@@ -3854,14 +3548,14 @@ void force_treeallocate(int maxnodes, int maxpart)
  */
 void force_treefree(void)
 {
-  if(tree_allocated_flag)
+    if(tree_allocated_flag)
     {
-      myfree(Father);
-      myfree(Nextnode);
-      myfree(Extnodes_base);
-      myfree(Nodes_base);
-      myfree(DomainNodeIndex);
-      tree_allocated_flag = 0;
+        myfree(Father);
+        myfree(Nextnode);
+        myfree(Extnodes_base);
+        myfree(Nodes_base);
+        myfree(DomainNodeIndex);
+        tree_allocated_flag = 0;
     }
 }
 
@@ -3876,20 +3570,20 @@ void force_treefree(void)
  */
 void dump_particles(void)
 {
-  FILE *fd;
-  char buffer[200];
-  int i;
-
-  sprintf(buffer, "particles%d.dat", ThisTask);
-  fd = fopen(buffer, "w");
-  my_fwrite(&NumPart, 1, sizeof(int), fd);
-  for(i = 0; i < NumPart; i++)
-    my_fwrite(&P[i].Pos[0], 3, sizeof(MyFloat), fd);
-  for(i = 0; i < NumPart; i++)
-    my_fwrite(&P[i].Vel[0], 3, sizeof(MyFloat), fd);
-  for(i = 0; i < NumPart; i++)
-    my_fwrite(&P[i].ID, 1, sizeof(int), fd);
-  fclose(fd);
+    FILE *fd;
+    char buffer[200];
+    int i;
+    
+    sprintf(buffer, "particles%d.dat", ThisTask);
+    fd = fopen(buffer, "w");
+    my_fwrite(&NumPart, 1, sizeof(int), fd);
+    for(i = 0; i < NumPart; i++)
+        my_fwrite(&P[i].Pos[0], 3, sizeof(MyFloat), fd);
+    for(i = 0; i < NumPart; i++)
+        my_fwrite(&P[i].Vel[0], 3, sizeof(MyFloat), fd);
+    for(i = 0; i < NumPart; i++)
+        my_fwrite(&P[i].ID, 1, sizeof(int), fd);
+    fclose(fd);
 }
 
 
@@ -3912,124 +3606,124 @@ void dump_particles(void)
 void ewald_init(void)
 {
 #ifndef NOGRAVITY
-  int i, j, k, beg, len, size, n, task, count;
-  double x[3], force[3];
-  char buf[200];
-  FILE *fd;
-
-  if(ThisTask == 0)
+    int i, j, k, beg, len, size, n, task, count;
+    double x[3], force[3];
+    char buf[200];
+    FILE *fd;
+    
+    if(ThisTask == 0)
     {
-      printf("initialize Ewald correction...\n");
-      fflush(stdout);
+        printf("initialize Ewald correction...\n");
+        fflush(stdout);
     }
-
+    
 #ifdef DOUBLEPRECISION
-  sprintf(buf, "ewald_spc_table_%d_dbl.dat", EN);
+    sprintf(buf, "ewald_spc_table_%d_dbl.dat", EN);
 #else
-  sprintf(buf, "ewald_spc_table_%d.dat", EN);
+    sprintf(buf, "ewald_spc_table_%d.dat", EN);
 #endif
-  if((fd = fopen(buf, "r")))
+    if((fd = fopen(buf, "r")))
     {
-      if(ThisTask == 0)
-	{
-	  printf("\nreading Ewald tables from file `%s'\n", buf);
-	  fflush(stdout);
-	}
-
-      my_fread(&fcorrx[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
-      my_fread(&fcorry[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
-      my_fread(&fcorrz[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
-      my_fread(&potcorr[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
-      fclose(fd);
+        if(ThisTask == 0)
+        {
+            printf("\nreading Ewald tables from file `%s'\n", buf);
+            fflush(stdout);
+        }
+        
+        my_fread(&fcorrx[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
+        my_fread(&fcorry[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
+        my_fread(&fcorrz[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
+        my_fread(&potcorr[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
+        fclose(fd);
     }
-  else
+    else
     {
-      if(ThisTask == 0)
-	{
-	  printf("\nNo Ewald tables in file `%s' found.\nRecomputing them...\n", buf);
-	  fflush(stdout);
-	}
-
-      /* ok, let's recompute things. Actually, we do that in parallel. */
-
-      size = (EN + 1) * (EN + 1) * (EN + 1) / NTask;
-      beg = ThisTask * size;
-      len = size;
-      if(ThisTask == (NTask - 1))
-	len = (EN + 1) * (EN + 1) * (EN + 1) - beg;
-      for(i = 0, count = 0; i <= EN; i++)
-	for(j = 0; j <= EN; j++)
-	  for(k = 0; k <= EN; k++)
-	    {
-	      n = (i * (EN + 1) + j) * (EN + 1) + k;
-	      if(n >= beg && n < (beg + len))
-		{
-		  if(ThisTask == 0)
-		    {
-		      if((count % (len / 20)) == 0)
-			{
-			  printf("%4.1f percent done\n", count / (len / 100.0));
-			  fflush(stdout);
-			}
-		    }
-
-		  x[0] = 0.5 * ((double) i) / EN;
-		  x[1] = 0.5 * ((double) j) / EN;
-		  x[2] = 0.5 * ((double) k) / EN;
-		  ewald_force(i, j, k, x, force);
-		  fcorrx[i][j][k] = force[0];
-		  fcorry[i][j][k] = force[1];
-		  fcorrz[i][j][k] = force[2];
-		  if(i + j + k == 0)
-		    potcorr[i][j][k] = 2.8372975;
-		  else
-		    potcorr[i][j][k] = ewald_psi(x);
-		  count++;
-		}
-	    }
-
-      for(task = 0; task < NTask; task++)
-	{
-	  beg = task * size;
-	  len = size;
-	  if(task == (NTask - 1))
-	    len = (EN + 1) * (EN + 1) * (EN + 1) - beg;
-	  MPI_Bcast(&fcorrx[0][0][beg], len * sizeof(MyFloat), MPI_BYTE, task, MPI_COMM_WORLD);
-	  MPI_Bcast(&fcorry[0][0][beg], len * sizeof(MyFloat), MPI_BYTE, task, MPI_COMM_WORLD);
-	  MPI_Bcast(&fcorrz[0][0][beg], len * sizeof(MyFloat), MPI_BYTE, task, MPI_COMM_WORLD);
-	  MPI_Bcast(&potcorr[0][0][beg], len * sizeof(MyFloat), MPI_BYTE, task, MPI_COMM_WORLD);
-	}
-
-      if(ThisTask == 0)
-	{
-	  printf("\nwriting Ewald tables to file `%s'\n", buf);
-	  fflush(stdout);
-	  if((fd = fopen(buf, "w")))
-	    {
-	      my_fwrite(&fcorrx[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
-	      my_fwrite(&fcorry[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
-	      my_fwrite(&fcorrz[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
-	      my_fwrite(&potcorr[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
-	      fclose(fd);
-	    }
-	}
+        if(ThisTask == 0)
+        {
+            printf("\nNo Ewald tables in file `%s' found.\nRecomputing them...\n", buf);
+            fflush(stdout);
+        }
+        
+        /* ok, let's recompute things. Actually, we do that in parallel. */
+        
+        size = (EN + 1) * (EN + 1) * (EN + 1) / NTask;
+        beg = ThisTask * size;
+        len = size;
+        if(ThisTask == (NTask - 1))
+            len = (EN + 1) * (EN + 1) * (EN + 1) - beg;
+        for(i = 0, count = 0; i <= EN; i++)
+            for(j = 0; j <= EN; j++)
+                for(k = 0; k <= EN; k++)
+                {
+                    n = (i * (EN + 1) + j) * (EN + 1) + k;
+                    if(n >= beg && n < (beg + len))
+                    {
+                        if(ThisTask == 0)
+                        {
+                            if((count % (len / 20)) == 0)
+                            {
+                                printf("%4.1f percent done\n", count / (len / 100.0));
+                                fflush(stdout);
+                            }
+                        }
+                        
+                        x[0] = 0.5 * ((double) i) / EN;
+                        x[1] = 0.5 * ((double) j) / EN;
+                        x[2] = 0.5 * ((double) k) / EN;
+                        ewald_force(i, j, k, x, force);
+                        fcorrx[i][j][k] = force[0];
+                        fcorry[i][j][k] = force[1];
+                        fcorrz[i][j][k] = force[2];
+                        if(i + j + k == 0)
+                            potcorr[i][j][k] = 2.8372975;
+                        else
+                            potcorr[i][j][k] = ewald_psi(x);
+                        count++;
+                    }
+                }
+        
+        for(task = 0; task < NTask; task++)
+        {
+            beg = task * size;
+            len = size;
+            if(task == (NTask - 1))
+                len = (EN + 1) * (EN + 1) * (EN + 1) - beg;
+            MPI_Bcast(&fcorrx[0][0][beg], len * sizeof(MyFloat), MPI_BYTE, task, MPI_COMM_WORLD);
+            MPI_Bcast(&fcorry[0][0][beg], len * sizeof(MyFloat), MPI_BYTE, task, MPI_COMM_WORLD);
+            MPI_Bcast(&fcorrz[0][0][beg], len * sizeof(MyFloat), MPI_BYTE, task, MPI_COMM_WORLD);
+            MPI_Bcast(&potcorr[0][0][beg], len * sizeof(MyFloat), MPI_BYTE, task, MPI_COMM_WORLD);
+        }
+        
+        if(ThisTask == 0)
+        {
+            printf("\nwriting Ewald tables to file `%s'\n", buf);
+            fflush(stdout);
+            if((fd = fopen(buf, "w")))
+            {
+                my_fwrite(&fcorrx[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
+                my_fwrite(&fcorry[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
+                my_fwrite(&fcorrz[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
+                my_fwrite(&potcorr[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
+                fclose(fd);
+            }
+        }
     }
-
-  fac_intp = 2 * EN / All.BoxSize;
-  for(i = 0; i <= EN; i++)
-    for(j = 0; j <= EN; j++)
-      for(k = 0; k <= EN; k++)
-	{
-	  potcorr[i][j][k] /= All.BoxSize;
-	  fcorrx[i][j][k] /= All.BoxSize * All.BoxSize;
-	  fcorry[i][j][k] /= All.BoxSize * All.BoxSize;
-	  fcorrz[i][j][k] /= All.BoxSize * All.BoxSize;
-	}
-
-  if(ThisTask == 0)
+    
+    fac_intp = 2 * EN / All.BoxSize;
+    for(i = 0; i <= EN; i++)
+        for(j = 0; j <= EN; j++)
+            for(k = 0; k <= EN; k++)
+            {
+                potcorr[i][j][k] /= All.BoxSize;
+                fcorrx[i][j][k] /= All.BoxSize * All.BoxSize;
+                fcorry[i][j][k] /= All.BoxSize * All.BoxSize;
+                fcorrz[i][j][k] /= All.BoxSize * All.BoxSize;
+            }
+    
+    if(ThisTask == 0)
     {
-      printf("initialization of periodic boundaries finished.\n");
-      fflush(stdout);
+        printf("initialization of periodic boundaries finished.\n");
+        fflush(stdout);
     }
 #endif // #ifndef NOGRAVITY
 }
@@ -4043,40 +3737,40 @@ void ewald_init(void)
  */
 double ewald_pot_corr(double dx, double dy, double dz)
 {
-  int i, j, k;
-  double u, v, w;
-  double f1, f2, f3, f4, f5, f6, f7, f8;
-
-  if(dx < 0)
-    dx = -dx;
-  if(dy < 0)
-    dy = -dy;
-  if(dz < 0)
-    dz = -dz;
-  u = dx * fac_intp;
-  i = (int) u;
-  if(i >= EN)
-    i = EN - 1;
-  u -= i;
-  v = dy * fac_intp;
-  j = (int) v;
-  if(j >= EN)
-    j = EN - 1;
-  v -= j;
-  w = dz * fac_intp;
-  k = (int) w;
-  if(k >= EN)
-    k = EN - 1;
-  w -= k;
-  f1 = (1 - u) * (1 - v) * (1 - w);
-  f2 = (1 - u) * (1 - v) * (w);
-  f3 = (1 - u) * (v) * (1 - w);
-  f4 = (1 - u) * (v) * (w);
-  f5 = (u) * (1 - v) * (1 - w);
-  f6 = (u) * (1 - v) * (w);
-  f7 = (u) * (v) * (1 - w);
-  f8 = (u) * (v) * (w);
-  return potcorr[i][j][k] * f1 +
+    int i, j, k;
+    double u, v, w;
+    double f1, f2, f3, f4, f5, f6, f7, f8;
+    
+    if(dx < 0)
+        dx = -dx;
+    if(dy < 0)
+        dy = -dy;
+    if(dz < 0)
+        dz = -dz;
+    u = dx * fac_intp;
+    i = (int) u;
+    if(i >= EN)
+        i = EN - 1;
+    u -= i;
+    v = dy * fac_intp;
+    j = (int) v;
+    if(j >= EN)
+        j = EN - 1;
+    v -= j;
+    w = dz * fac_intp;
+    k = (int) w;
+    if(k >= EN)
+        k = EN - 1;
+    w -= k;
+    f1 = (1 - u) * (1 - v) * (1 - w);
+    f2 = (1 - u) * (1 - v) * (w);
+    f3 = (1 - u) * (v) * (1 - w);
+    f4 = (1 - u) * (v) * (w);
+    f5 = (u) * (1 - v) * (1 - w);
+    f6 = (u) * (1 - v) * (w);
+    f7 = (u) * (v) * (1 - w);
+    f8 = (u) * (v) * (w);
+    return potcorr[i][j][k] * f1 +
     potcorr[i][j][k + 1] * f2 +
     potcorr[i][j + 1][k] * f3 +
     potcorr[i][j + 1][k + 1] * f4 +
@@ -4091,35 +3785,35 @@ double ewald_pot_corr(double dx, double dy, double dz)
  */
 double ewald_psi(double x[3])
 {
-  double alpha, psi;
-  double r, sum1, sum2, hdotx;
-  double dx[3];
-  int i, n[3], h[3], h2;
-
-  alpha = 2.0;
-  for(n[0] = -4, sum1 = 0; n[0] <= 4; n[0]++)
-    for(n[1] = -4; n[1] <= 4; n[1]++)
-      for(n[2] = -4; n[2] <= 4; n[2]++)
-	{
-	  for(i = 0; i < 3; i++)
-	    dx[i] = x[i] - n[i];
-	  r = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
-	  sum1 += erfc(alpha * r) / r;
-	}
-
-  for(h[0] = -4, sum2 = 0; h[0] <= 4; h[0]++)
-    for(h[1] = -4; h[1] <= 4; h[1]++)
-      for(h[2] = -4; h[2] <= 4; h[2]++)
-	{
-	  hdotx = x[0] * h[0] + x[1] * h[1] + x[2] * h[2];
-	  h2 = h[0] * h[0] + h[1] * h[1] + h[2] * h[2];
-	  if(h2 > 0)
-	    sum2 += 1 / (M_PI * h2) * exp(-M_PI * M_PI * h2 / (alpha * alpha)) * cos(2 * M_PI * hdotx);
-	}
-
-  r = sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
-  psi = M_PI / (alpha * alpha) - sum1 - sum2 + 1 / r;
-  return psi;
+    double alpha, psi;
+    double r, sum1, sum2, hdotx;
+    double dx[3];
+    int i, n[3], h[3], h2;
+    
+    alpha = 2.0;
+    for(n[0] = -4, sum1 = 0; n[0] <= 4; n[0]++)
+        for(n[1] = -4; n[1] <= 4; n[1]++)
+            for(n[2] = -4; n[2] <= 4; n[2]++)
+            {
+                for(i = 0; i < 3; i++)
+                    dx[i] = x[i] - n[i];
+                r = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+                sum1 += erfc(alpha * r) / r;
+            }
+    
+    for(h[0] = -4, sum2 = 0; h[0] <= 4; h[0]++)
+        for(h[1] = -4; h[1] <= 4; h[1]++)
+            for(h[2] = -4; h[2] <= 4; h[2]++)
+            {
+                hdotx = x[0] * h[0] + x[1] * h[1] + x[2] * h[2];
+                h2 = h[0] * h[0] + h[1] * h[1] + h[2] * h[2];
+                if(h2 > 0)
+                    sum2 += 1 / (M_PI * h2) * exp(-M_PI * M_PI * h2 / (alpha * alpha)) * cos(2 * M_PI * hdotx);
+            }
+    
+    r = sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
+    psi = M_PI / (alpha * alpha) - sum1 - sum2 + 1 / r;
+    return psi;
 }
 
 
@@ -4128,43 +3822,43 @@ double ewald_psi(double x[3])
  */
 void ewald_force(int iii, int jjj, int kkk, double x[3], double force[3])
 {
-  double alpha, r2;
-  double r, val, hdotx, dx[3];
-  int i, h[3], n[3], h2;
-
-  alpha = 2.0;
-  for(i = 0; i < 3; i++)
-    force[i] = 0;
-  if(iii == 0 && jjj == 0 && kkk == 0)
-    return;
-  r2 = x[0] * x[0] + x[1] * x[1] + x[2] * x[2];
-  for(i = 0; i < 3; i++)
-    force[i] += x[i] / (r2 * sqrt(r2));
-  for(n[0] = -4; n[0] <= 4; n[0]++)
-    for(n[1] = -4; n[1] <= 4; n[1]++)
-      for(n[2] = -4; n[2] <= 4; n[2]++)
-	{
-	  for(i = 0; i < 3; i++)
-	    dx[i] = x[i] - n[i];
-	  r = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
-	  val = erfc(alpha * r) + 2 * alpha * r / sqrt(M_PI) * exp(-alpha * alpha * r * r);
-	  for(i = 0; i < 3; i++)
-	    force[i] -= dx[i] / (r * r * r) * val;
-	}
-
-  for(h[0] = -4; h[0] <= 4; h[0]++)
-    for(h[1] = -4; h[1] <= 4; h[1]++)
-      for(h[2] = -4; h[2] <= 4; h[2]++)
-	{
-	  hdotx = x[0] * h[0] + x[1] * h[1] + x[2] * h[2];
-	  h2 = h[0] * h[0] + h[1] * h[1] + h[2] * h[2];
-	  if(h2 > 0)
-	    {
-	      val = 2.0 / ((double) h2) * exp(-M_PI * M_PI * h2 / (alpha * alpha)) * sin(2 * M_PI * hdotx);
-	      for(i = 0; i < 3; i++)
-		force[i] -= h[i] * val;
-	    }
-	}
+    double alpha, r2;
+    double r, val, hdotx, dx[3];
+    int i, h[3], n[3], h2;
+    
+    alpha = 2.0;
+    for(i = 0; i < 3; i++)
+        force[i] = 0;
+    if(iii == 0 && jjj == 0 && kkk == 0)
+        return;
+    r2 = x[0] * x[0] + x[1] * x[1] + x[2] * x[2];
+    for(i = 0; i < 3; i++)
+        force[i] += x[i] / (r2 * sqrt(r2));
+    for(n[0] = -4; n[0] <= 4; n[0]++)
+        for(n[1] = -4; n[1] <= 4; n[1]++)
+            for(n[2] = -4; n[2] <= 4; n[2]++)
+            {
+                for(i = 0; i < 3; i++)
+                    dx[i] = x[i] - n[i];
+                r = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+                val = erfc(alpha * r) + 2 * alpha * r / sqrt(M_PI) * exp(-alpha * alpha * r * r);
+                for(i = 0; i < 3; i++)
+                    force[i] -= dx[i] / (r * r * r) * val;
+            }
+    
+    for(h[0] = -4; h[0] <= 4; h[0]++)
+        for(h[1] = -4; h[1] <= 4; h[1]++)
+            for(h[2] = -4; h[2] <= 4; h[2]++)
+            {
+                hdotx = x[0] * h[0] + x[1] * h[1] + x[2] * h[2];
+                h2 = h[0] * h[0] + h[1] * h[1] + h[2] * h[2];
+                if(h2 > 0)
+                {
+                    val = 2.0 / ((double) h2) * exp(-M_PI * M_PI * h2 / (alpha * alpha)) * sin(2 * M_PI * hdotx);
+                    for(i = 0; i < 3; i++)
+                        force[i] -= h[i] * val;
+                }
+            }
 }
 #endif // #ifdef PERIODIC //
 

@@ -290,14 +290,11 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #ifdef TURB_DRIVING
                 dp[j] += mass_pred * SphP[i].TurbAccel[j] * dt_gravkick;
 #endif
-#ifdef RT_RAD_PRESSURE
-                dp[j] += mass_pred * SphP[i].RadAccel[j] * dt_hydrokick;
+#ifdef RT_RAD_PRESSURE_OUTPUT
+                dp[j] += mass_pred * SphP[i].RadAccel[j] * All.cf_atime * dt_hydrokick;
 #endif
             }
             dp[j] += mass_pred * P[i].GravAccel[j] * dt_gravkick;
-#ifdef RELAXOBJECT
-            dp[j] -= mass_pred * P[i].Vel[j] * All.RelaxFac * dt_gravkick;
-#endif
             P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
         }
 
@@ -375,12 +372,20 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
 #ifdef COSMIC_RAYS
         SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy;
 #endif
-        
-#ifdef EOS_DEGENERATE
-        for(k=0;k<3;k++) {SphP[i].xnucPred[k] = SphP[i].xnuc[k];}
+#if defined(RT_EVOLVE_NGAMMA)
+        int kf;
+        for(kf=0;kf<N_RT_FREQ_BINS;kf++)
+        {
+            SphP[i].E_gamma_Pred[kf] = SphP[i].E_gamma[kf];
+#if defined(RT_EVOLVE_FLUX)
+            for(k=0;k<3;k++) SphP[i].Flux_Pred[kf][k] = SphP[i].Flux[kf][k];
 #endif
+        }
+        rt_eddington_update_calculation(i);
+#endif
+        
         SphP[i].Pressure = get_pressure(i);
-#ifdef GAMMA_ENFORCE_ADIABAT
+#ifdef EOS_ENFORCE_ADIABAT
         SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = SphP[i].Pressure / (SphP[i].Density * GAMMA_MINUS1);
 #endif
     }
@@ -453,14 +458,15 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
 #endif
 #endif
 #ifdef NUCLEAR_NETWORK
-    for(j = 0; j < EOS_NSPECIES; j++)
-        SphP[i].xnuc[j] += SphP[i].dxnuc[j] * dt_entr * All.UnitTime_in_s;
-    
+    for(j = 0; j < EOS_NSPECIES; j++) {SphP[i].xnuc[j] += SphP[i].dxnuc[j] * dt_entr * All.UnitTime_in_s;}    
     network_normalize(SphP[i].xnuc, &SphP[i].InternalEnergy, &All.nd, &All.nw);
 #endif
 #ifdef COSMIC_RAYS
     double CR_Egy = SphP[i].CosmicRayEnergy + SphP[i].DtCosmicRayEnergy * dt_entr;
     if(CR_Egy < 0.5*SphP[i].CosmicRayEnergy) {SphP[i].CosmicRayEnergy *= 0.5;} else {SphP[i].CosmicRayEnergy = CR_Egy;}
+#endif
+#ifdef RADTRANSFER
+    rt_update_driftkick(i,dt_entr,0);
 #endif
 }
 

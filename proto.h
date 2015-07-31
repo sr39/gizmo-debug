@@ -251,7 +251,6 @@ int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend
 
 double INLINE_FUNC Get_Particle_Size(int i);
 double INLINE_FUNC Particle_density_for_energy_i(int i);
-double INLINE_FUNC Get_Particle_Pressure(int i);
 double INLINE_FUNC Get_Particle_Expected_Area(double h);
 #ifdef COSMIC_RAYS
 double INLINE_FUNC Get_Particle_CosmicRayPressure(int i);
@@ -414,9 +413,6 @@ void move_particles(integertime time1);
 
 void find_next_sync_point_and_drift(void);
 void find_dt_displacement_constraint(double hfac);
-#ifdef RELAXOBJECT
-void determine_relaxfac(void);
-#endif
 #ifdef WAKEUP
 void process_wake_ups(void);
 #endif
@@ -441,12 +437,12 @@ void do_turb_driving_step_first_half(void);
 void do_turb_driving_step_second_half(void);
 #endif
 
-inline double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h);
+double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h);
 
 #ifdef GALSF
 double evaluate_stellar_age_Gyr(double stellar_tform);
-inline double evaluate_l_over_m_ssp(double stellar_age_in_gyr);
-inline double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i);
+double evaluate_l_over_m_ssp(double stellar_age_in_gyr);
+double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i);
 #endif
 #if defined(GALSF_FB_RPWIND_LOCAL) && defined(GALSF_FB_RPWIND_FROMSTARS)
 int ngb_treefind_newstars(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode, int *nexport, int *nsend_local);
@@ -654,54 +650,40 @@ double enclosed_mass(double R);
 void pm_setup_nonperiodic_kernel(void);
 
 
+#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
+int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum);
+double rt_kappa(MyIDType j, int k_freq);
+double rt_absorption_rate(MyIDType i, int k_freq);
+double rt_diffusion_coefficient(MyIDType i, int k_freq);
+void rt_eddington_update_calculation(MyIDType j);
+void rt_update_driftkick(MyIDType i, double dt_entr, int mode);
+#endif
+#ifdef RT_SOURCE_INJECTION
+void rt_source_injection(void);
+#endif
+
 #ifdef RADTRANSFER
-void rt_get_J_nu(int ithis);
+void rt_set_simple_inits(void);
 
-void rt_write_stats(void);
+#ifdef RT_DIFFUSION_CG
+void rt_diffusion_cg_solve(void);
+#endif
 
-/* Eddington tensor computation */
-int eddington_treeevaluate(int target, int mode, int *nexport, int *nsend_local);
-void eddington(void);
-
-int n_treeevaluate(int target, int mode, int *nexport, int *nsend_local);
-void n(void);
-
-/* radiative transfer integration */
-void radtransfer(void);
-double radtransfer_vector_multiply(double *a, double *b);
-double radtransfer_vector_sum(double *a);
-void radtransfer_matrix_multiply(double *in, double *out, double *sum);
-int radtransfer_evaluate(int target, int mode, double *in, double *out, double *sum, int *nexport, int *nsend_local);
-void radtransfer_set_simple_inits(void);
-void radtransfer_update_chemistry(void);
-
+#ifdef RT_CHEM_PHOTOION
+double rt_return_photon_number_density(MyIDType i, int k);
+void rt_update_chemistry(void);
 void rt_get_sigma(void);
-void rt_get_lum_stars(void);
-void rt_get_lum_gas(int target, double *je);
-
 double rt_GetCoolingTime(int i, double u, double rho);
-double radtransfer_cooling_photoheating(int i, double dt);
+double rt_cooling_photoheating(int i, double dt);
 double rt_DoCooling(int, double);
 double rt_DoHeating(int, double);
 double rt_get_cooling_rate(int i, double entropy);
+void rt_write_chemistry_stats(void);
+void rt_get_lum_for_spectral_bin_stars(double T_eff, double luminosity_fraction[N_RT_FREQ_BINS]);
+void rt_get_lum_gas(int target, double *je);
+#endif
 
-/* emission approximation */
-int ngb_treefind_stars(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode,
-		       int *nexport, int *nsend_local);
-void density_sfr(void);
-int density_sfr_evaluate(int target, int mode, int *nexport, int *nsend_local);
-
-void sfr_lum(void);
-int sfr_lum_evaluate(int target, int mode, int *nexport, int *nsend_local);
-
-void gas_lum(void);
-void star_lum(void);
-int star_lum_evaluate(int target, int mode, int *nexport, int *nsend_local);
-
-void bh_lum(void);
-int bh_lum_evaluate(int target, int mode, int *nexport, int *nsend_local);
-
-#endif //end radtransfer
+#endif
 
 
 void find_block(char *label,FILE *fd);
@@ -796,6 +778,10 @@ void hydro_gradient_calc(void);
 int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
 void *GasGrad_evaluate_primary(void *p, int gradient_iteration);
 void *GasGrad_evaluate_secondary(void *p, int gradient_iteration);
+
+#ifdef PARTICLE_EXCISION
+void apply_excision();
+#endif
 
 #ifdef SIDM
 #include "./sidm/sidm_proto.h"

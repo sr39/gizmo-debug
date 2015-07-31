@@ -360,7 +360,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             break;
             
         case IO_NE:		/* electron abundance */
-#if defined(COOLING) || defined(RADTRANSFER)
+#if defined(COOLING) || defined(RT_CHEM_PHOTOION)
             for(n = 0; n < pc; n++)
                 SphP[offset + n].Ne = *fp++;
 #endif
@@ -510,11 +510,24 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
             
-        case IO_EOSXNUC:
-#ifdef EOS_DEGENERATE
+        case IO_EOSTEMP:
+#ifdef EOS_CARRIES_TEMPERATURE
             for(n = 0; n < pc; n++)
-                for(k = 0; k < EOS_NSPECIES; k++)
-                    SphP[offset + n].xnuc[k] = *fp++;
+                SphP[offset + n].Temperature = *fp++;
+#endif
+            break;
+            
+        case IO_EOSABAR:
+#ifdef EOS_CARRIES_ABAR
+            for(n = 0; n < pc; n++)
+                SphP[offset + n].Abar = *fp++;
+#endif
+            break;
+            
+        case IO_EOSYE:
+#ifdef EOS_CARRIES_YE
+            for(n = 0; n < pc; n++)
+                SphP[offset + n].Ye = *fp++;
 #endif
             break;
             
@@ -524,7 +537,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             {
                 for(n = 0; n < pc; n++)
                     for(k = 0; k < N_RT_FREQ_BINS; k++)
-                        SphP[offset + n].n_gamma[k] = *fp++;
+                        SphP[offset + n].E_gamma[k] = *fp++;
             }
 #endif
             break;
@@ -602,7 +615,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_STREAM_DENSITY:
         case IO_PHASE_SPACE_DETERMINANT:
         case IO_ANNIHILATION_RADIATION:
-        case IO_EOSTEMP:
         case IO_PRESSURE:
         case IO_EDDINGTON_TENSOR:
         case IO_LAST_CAUSTIC:
@@ -878,15 +890,20 @@ void read_file(char *fname, int readTask, int lastTask)
         
         if(blockpresent(blocknr))
         {
-#ifdef EOS_DEGENERATE
-            if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_EOSXNUC))
-#else
                 if(RestartFlag == 0 && blocknr > IO_U && blocknr != IO_BFLD
 #ifdef READ_HSML
                    && blocknr != IO_HSML
 #endif
-                   )
+#ifdef EOS_CARRIES_TEMPERATURE
+                   && blocknr != IO_EOSTEMP
 #endif
+#ifdef EOS_CARRIES_ABAR
+                   && blocknr != IO_EOSABAR
+#endif
+#ifdef EOS_CARRIES_YE
+                   && blocknr != IO_EOSYE
+#endif
+                   )
 #if defined(DISTORTIONTENSORPS) && defined(GDE_READIC)
                     if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_SHEET_ORIENTATION))
                         if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_INIT_DENSITY))
