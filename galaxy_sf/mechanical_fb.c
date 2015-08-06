@@ -769,10 +769,11 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     for(k=0;k<7;k++) out.Area_weighted_sum[k] += wk_vec[k];
                     continue;
                 }
+                // need to check to make sure the coupled fraction doesn't exceed the solid angle subtended by the particles //
+                double wkmax = 2.0*wk;
                 // NOW do the actual feedback calculation //
                 wk *= local.Area_weighted_sum[0]; // this way wk matches the value summed above for the weighting //
-                // need to check to make sure the coupled fraction doesn't exceed the solid angle subtended by the particles //
-                //double wkmax = 1.5 * M_PI * h_eff_j * h_eff_j / (4. * M_PI * (0.5625*r2 + 0.005*h2)); if(wk > wkmax) {wk = wkmax;}
+                if(wk > wkmax) {wk = wkmax;}
                 
                 dM = wk * local.Msne;
                 dP = local.SNe_v_ejecta / kernel.r;
@@ -884,6 +885,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     if(k==0) {q=wk_vec[1]*local.Area_weighted_sum[1] + wk_vec[2]*local.Area_weighted_sum[2];}
                     if(k==1) {q=wk_vec[3]*local.Area_weighted_sum[3] + wk_vec[4]*local.Area_weighted_sum[4];}
                     if(k==2) {q=wk_vec[5]*local.Area_weighted_sum[5] + wk_vec[6]*local.Area_weighted_sum[6];}
+                    if(fabs(q) > wkmax) {q *= wkmax/fabs(q);}
                     q *= dP;
                     u = wk * local.Msne * kernel.dv[k] / P[j].Mass;
                     if (u > v_ejecta_max*All.cf_atime) u = v_ejecta_max*All.cf_atime;

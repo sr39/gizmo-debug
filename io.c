@@ -718,7 +718,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
             
         case IO_AMDC:		/* artificial magnetic dissipation of particle  */
-#if defined(TRICCO_RESISTIVITY_SWITCH)
+#if defined(SPH_TP12_ARTIFICIAL_RESISTIVITY)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1705,7 +1705,7 @@ int get_values_per_blockelement(enum iofields blocknr)
             break;
             
         case IO_EDDINGTON_TENSOR:
-#ifdef RADRANSFER
+#ifdef RADTRANSFER
             values = (6*N_RT_FREQ_BINS);
 #else
             values = 0;
@@ -1713,7 +1713,7 @@ int get_values_per_blockelement(enum iofields blocknr)
             break;
             
         case IO_RADGAMMA:
-#ifdef RADRANSFER
+#ifdef RADTRANSFER
             values = N_RT_FREQ_BINS;
 #else
             values = 0;
@@ -2032,7 +2032,7 @@ int blockpresent(enum iofields blocknr)
             
         case IO_RADGAMMA:
 #if defined(RADTRANSFER)
-            return N_RT_FREQ_BINS;
+            return 1;
 #else
             return 0;
 #endif
@@ -2040,7 +2040,7 @@ int blockpresent(enum iofields blocknr)
             
         case IO_RAD_ACCEL:
 #if defined(RT_RAD_PRESSURE_OUPUT)
-            return 3;
+            return 1;
 #else
             return 0;
 #endif
@@ -2249,7 +2249,7 @@ int blockpresent(enum iofields blocknr)
             
             
         case IO_AMDC:
-#if defined(TRICCO_RESISTIVITY_SWITCH)
+#if defined(SPH_TP12_ARTIFICIAL_RESISTIVITY)
             return 1;
 #else
             return 0;
@@ -2919,7 +2919,7 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             strcpy(buf, "NeutralHydrogenAbundance");
             break;
         case IO_RADGAMMA:
-            strcpy(buf, "PhotonNumberDensity");
+            strcpy(buf, "PhotonEnergy");
             break;
         case IO_RAD_ACCEL:
             strcpy(buf, "RadiativeAcceleration");

@@ -129,7 +129,7 @@
     /* --------------------------------------------------------------------------------- */
     /* ... Magnetic dissipation/diffusion terms (artificial resitivity evaluation) ... */
     /* --------------------------------------------------------------------------------- */
-#ifdef SPH_ARTIFICIAL_RESISTIVITY
+#ifdef SPH_TP12_ARTIFICIAL_RESISTIVITY
     double mf_dissInd = local.Mass * mj_r * kernel.dwk_ij * kernel.rho_ij_inv * kernel.rho_ij_inv / fac_mu;
     /*
     //double vsigb = 0.5 * sqrt(kernel.alfven2_i + kernel.alfven2_j);
@@ -145,11 +145,7 @@
         mean Alfven speed (vsb_1 = 0.5*(sqrt(kernel.alfven2_i)+sqrt(kernel.alfven2_j))
      */
     double vsigb = 0.5 * (sqrt(kernel.alfven2_i) + sqrt(kernel.alfven2_j));
-#if defined(TRICCO_RESISTIVITY_SWITCH)
     double eta = 0.5 * (local.Balpha + SphP[j].Balpha) * vsigb * kernel.r;
-#else
-    double eta = All.ArtMagDispConst * vsigb * kernel.r;
-#endif
     mf_dissInd *= eta;
     /* units are Bcode * vcode * rcode*rcode = vcode * Bphys*rphys^2 = a * vphys*Bphys*rphys^2 */
     Fluxes.B[0] += mf_dissInd * dBx / All.cf_atime;
@@ -167,7 +163,7 @@
     if(kernel.vdotr2 < 0) // no viscosity applied if particles are moving away from each other //
     {
         double c_ij = 0.5 * (kernel.sound_i + kernel.sound_j);
-#ifdef MAGNETIC_SIGNALVEL
+#ifdef MAGNETIC
         c_ij = 0.5 * (magneticspeed_i + magneticspeed_j);
 #endif
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)

@@ -551,6 +551,11 @@ void init(void)
 #ifdef CONDUCTION
         SphP[i].Kappa_Conduction = 0;
 #endif
+#ifdef MHD_NON_IDEAL
+        SphP[i].Eta_MHD_OhmicResistivity_Coeff = 0;
+        SphP[i].Eta_MHD_HallEffect_Coeff = 0;
+        SphP[i].Eta_MHD_AmbiPolarDiffusion_Coeff = 0;
+#endif
 #ifdef VISCOSITY
         SphP[i].Eta_ShearViscosity = 0;
         SphP[i].Zeta_BulkViscosity = 0;
@@ -612,7 +617,7 @@ void init(void)
             SphP[i].BPred[j] *= a2_fac * gauss2gizmo;
             SphP[i].B[j] = SphP[i].BPred[j];
         }
-#if defined(TRICCO_RESISTIVITY_SWITCH)
+#if defined(SPH_TP12_ARTIFICIAL_RESISTIVITY)
         SphP[i].Balpha = 0.0;
 #endif
 #ifdef DIVBCLEANING_DEDNER
@@ -727,7 +732,7 @@ void init(void)
 #endif
     
     /* HELLO! This here is where you should insert custom code for hard-wiring the ICs of various test problems */
-    
+
     
     
     density();

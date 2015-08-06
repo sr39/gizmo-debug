@@ -17,40 +17,22 @@
  */
 /* --------------------------------------------------------------------------------- */
 {
+#ifdef TURB_DIFF_METALS // turbulent diffusion of metals (passive scalar mixing) //
+
 #ifdef HYDRO_SPH
-    double diffusion_wt,diffusion_wt_dt,dv2_ij,diffusion_wt_dt_m,diff_vi_dot_r,diffusion_du_ij;
     /* out.dA_dt +=  diffusion_wt*(local.A-P[j].A) // this is the template for all turbulent diffusion terms */
-    diffusion_wt = (local.TD_DiffCoeff + SphP[j].TD_DiffCoeff) * P[j].Mass * kernel.rho_ij_inv * kernel.dwk_ij / kernel.r * All.cf_a2inv;
+    double diffusion_wt = (local.TD_DiffCoeff + SphP[j].TD_DiffCoeff) * P[j].Mass * kernel.rho_ij_inv * kernel.dwk_ij / kernel.r * All.cf_a2inv;
     /* note, units of TD_DiffCoeff have already been corrected so that this combination has physical units */
-    diffusion_wt_dt = diffusion_wt * dt_hydrostep;
+    double diffusion_wt_dt = diffusion_wt * dt_hydrostep;
     if(fabs(diffusion_wt_dt)>0.01)
     {
         diffusion_wt *= 0.01/fabs(diffusion_wt_dt);
         diffusion_wt_dt = diffusion_wt * dt_hydrostep;
     }
-#ifdef TURB_DIFF_ENERGY  // turbulent thermal energy diffusion //
-    diffusion_du_ij = kernel.spec_egy_u_i - SphP[j].InternalEnergyPred;
-    Fluxes.p += local.Mass * diffusion_wt * diffusion_du_ij;
-#endif
-#ifdef TURB_DIFF_VELOCITY // turbulent 'velocity diffusion': this is a turbulent effective viscosity
-    double diff_vdotr2_phys = kernel.vdotr2;
-    if(All.ComovingIntegrationOn) diff_vdotr2_phys -= All.cf_hubble_a2 * r2;
-        if(diff_vdotr2_phys < 0)
-        {
-            diffusion_wt_dt_m = KERNEL_CORE_SIZE * 0.5 * (kernel.h_i + kernel.h_j);
-            dv2_ij = local.Mass * fac_mu*fac_mu * diffusion_wt * kernel.vdotr2 / ((r2 + 0.0001*diffusion_wt_dt_m*diffusion_wt_dt_m) * All.cf_atime);
-            Fluxes.v[0] += dv2_ij * kernel.dp[0]; /* momentum (physical units) */
-            Fluxes.v[1] += dv2_ij * kernel.dp[1];
-            Fluxes.v[2] += dv2_ij * kernel.dp[2];
-            diff_vi_dot_r = local.Vel[0]*kernel.dp[0] + local.Vel[1]*kernel.dp[1] + local.Vel[2]*kernel.dp[2];
-            Fluxes.p += dv2_ij * (diff_vi_dot_r - 0.5*diff_vdotr2_phys) / All.cf_atime; /* remember, this is -total- energy now */
-        }
-#endif
-#ifdef TURB_DIFF_METALS // turbulent diffusion of metals (passive scalar mixing) //
     if((local.Mass>0)&&(P[j].Mass>0))
     {
-        diffusion_wt_dt_m = 0.25 * (P[j].Mass + local.Mass) * diffusion_wt_dt;
-        double diffusion_m_min = 0.01 * DMIN(local.Mass,P[j].Mass);
+        double diffusion_wt_dt_m = 2. * local.Mass * diffusion_wt_dt;
+        double diffusion_m_min = 0.05 * DMIN(local.Mass,P[j].Mass);
         if(diffusion_wt_dt_m > 0) if(diffusion_wt_dt_m >  diffusion_m_min) diffusion_wt_dt_m =  diffusion_m_min;
             if(diffusion_wt_dt_m < 0) if(diffusion_wt_dt_m < -diffusion_m_min) diffusion_wt_dt_m = -diffusion_m_min;
                 for(k=0;k<NUM_METAL_SPECIES;k++)
@@ -59,7 +41,6 @@
                     P[j].Metallicity[k] -= diffusion_wt_dt_m * (local.Metallicity[k] - P[j].Metallicity[k]) / P[j].Mass;
                 }
     }
-#endif
     
 #else // ends SPH portion of these routines
     
@@ -85,70 +66,20 @@
         double diff_ideal, dq_diff, diff_lim;
         double rho_i = local.Density*All.cf_a3inv, rho_j = SphP[j].Density*All.cf_a3inv, rho_ij = 0.5*(rho_i+rho_j);
         
-        
-#ifdef TURB_DIFF_ENERGY  // turbulent thermal energy diffusion //
-        diff_ideal = 0.0;
-        for(k=0;k<3;k++)
-        {
-            diff_ideal += Face_Area_Vec[k] * (wt_i*local.Gradients.InternalEnergy[k] + wt_j*SphP[j].Gradients.InternalEnergy[k]);
-        }
-        diff_ideal += rho_ij * HLL_correction(local.InternalEnergyPred, SphP[j].InternalEnergyPred, rho_ij, diffusion_wt_physical) / (-diffusion_wt);
-        dq_diff = local.InternalEnergyPred-SphP[j].InternalEnergyPred;
-        diff_lim = -diffusion_wt * MINMOD(MINMOD(MINMOD(diff_ideal , c_max*dq_diff), fabs(c_max)*dq_diff) , Face_Area_Norm*dq_diff*rinv);
-
-        double conduction_wt = dt_hydrostep * diff_lim; // all in physical units //
-        if(fabs(conduction_wt) > 0)
-        {
-            // enforce a flux limiter for stability (to prevent overshoot) //
-            double du_ij_cond = 0.5*DMIN(DMIN(0.5*fabs(DMIN(local.Mass,P[j].Mass)*dq_diff),
-                                              local.Mass*local.InternalEnergyPred),P[j].Mass*SphP[j].InternalEnergyPred);
-            if(fabs(conduction_wt)>du_ij_cond) {diff_lim *= du_ij_cond/fabs(conduction_wt);}
-            Fluxes.p += diff_lim;
-        } // if(conduction_wt > 0)
-#endif
-#ifdef TURB_DIFF_VELOCITY // turbulent 'velocity diffusion': this is a turbulent effective viscosity
-        double diff_vdotr2_phys = kernel.vdotr2;
-        if(All.ComovingIntegrationOn) diff_vdotr2_phys -= All.cf_hubble_a2 * r2;
-            if(diff_vdotr2_phys < 0)
-            {
-                int k_v;
-                double diffusion_wt_v = diffusion_wt / All.cf_atime; // needed because Vcode = a * Vphys in gradient below
-                for(k_v=0;k_v<3;k_v++)
-                {
-                    diff_ideal = 0.0;
-                    for(k=0;k<3;k++)
-                    {
-                        diff_ideal += Face_Area_Vec[k] * (wt_i*local.Gradients.Velocity[k_v][k] + wt_j*SphP[j].Gradients.Velocity[k_v][k]);
-                    }
-                    diff_ideal += rho_ij * HLL_correction(local.Vel[k_v], VelPred_j[k_v], rho_ij, diffusion_wt_physical)/(-diffusion_wt);
-                    dq_diff = local.Vel[k_v]-VelPred_j[k_v];
-                    diff_lim = -diffusion_wt_v * MINMOD(MINMOD(MINMOD(diff_ideal , c_max*dq_diff), fabs(c_max)*dq_diff) , Face_Area_Norm*dq_diff*rinv);
-
-                    double conduction_wt_v = dt_hydrostep * diff_lim; // all in physical units //
-                    if(fabs(conduction_wt_v) > 0)
-                    {
-                        double zlim = 0.5*DMIN(DMIN(0.5*fabs(DMIN(local.Mass,P[j].Mass)*dq_diff),
-                                                     local.Mass*DMAX(fabs(dq_diff),fabs(local.Vel[k_v]))),
-                                                      P[j].Mass*DMAX(fabs(dq_diff),fabs(VelPred_j[k_v])));
-                        if(fabs(conduction_wt_v)>zlim) {diff_lim*=zlim/fabs(conduction_wt_v);}
-                        Fluxes.v[k_v] += diff_lim;
-                        Fluxes.p += diff_lim * 0.5*(local.Vel[k_v] + VelPred_j[k_v])/All.cf_atime;
-                    }
-                }
-            }
-#endif
-#ifdef TURB_DIFF_METALS // turbulent diffusion of metals (passive scalar mixing) //
         int k_species;
         double diffusion_wt_z = diffusion_wt * dt_hydrostep;
         for(k_species=0;k_species<NUM_METAL_SPECIES;k_species++)
         {
             diff_ideal = 0.0;
+            dq_diff = local.Metallicity[k_species]-P[j].Metallicity[k_species];
             for(k=0;k<3;k++)
             {
-                diff_ideal += Face_Area_Vec[k] * (wt_i*local.Gradients.Metallicity[k_species][k] + wt_j*SphP[j].Gradients.Metallicity[k_species][k]);
+                double grad_ij = wt_i*local.Gradients.Metallicity[k_species][k] + wt_j*SphP[j].Gradients.Metallicity[k_species][k];
+                double grad_direct = dq_diff * kernel.dp[k] * rinv*rinv;
+                grad_ij = MINMOD(grad_ij , grad_direct);
+                diff_ideal += Face_Area_Vec[k] * grad_ij;
             }
             diff_ideal += rho_ij * HLL_correction(local.Metallicity[k_species], P[j].Metallicity[k_species], rho_ij, diffusion_wt_physical) / (-diffusion_wt);
-            dq_diff = local.Metallicity[k_species]-P[j].Metallicity[k_species];
             diff_lim = -diffusion_wt_z * MINMOD(MINMOD(MINMOD(diff_ideal , c_max*dq_diff), fabs(c_max)*dq_diff) , Face_Area_Norm*dq_diff*rinv);
             
             if(fabs(diff_lim) > 0)
@@ -160,8 +91,8 @@
                 P[j].Metallicity[k_species] -= diff_lim / P[j].Mass;
             }
         }
-#endif
     }
     
+#endif
 #endif
 }
