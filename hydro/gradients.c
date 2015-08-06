@@ -1153,10 +1153,14 @@ void hydro_gradient_calc(void)
 
 #if defined(CONDUCTION_SPITZER) || defined(VISCOSITY_BRAGINSKII) || (defined(MHD_NON_IDEAL) && defined(COOLING))
             /* get the neutral fraction */
-            double nHeII, u, ne, nh0 = 0;
+            double nHeII, temperature, u, ne, nh0, mu = 0;
             ne = SphP[i].Ne;
             u = DMAX(All.MinEgySpec, SphP[i].InternalEnergy); // needs to be in code units
+            
             AbundanceRatios(u, SphP[i].Density*All.cf_a3inv, &ne, &nh0, &nHeII, i);
+            yhelium = (1 - HYDROGEN_MASSFRAC) / (4 * HYDROGEN_MASSFRAC);
+            mu = (1 + 4 * yhelium) / (1 + yhelium + ne);
+            temperature = GAMMA_MINUS1 / BOLTZMANN * u * PROTONMASS * mu;
 #ifdef GALSF_FB_HII_HEATING
             if(SphP[i].DelayTimeHII>0 || SphP[i].Ne>=1.15789) nh0=0;
 #endif
@@ -1222,16 +1226,16 @@ void hydro_gradient_calc(void)
             
 #ifdef MHD_NON_IDEAL
             {
-                /*
                 double mu_unit = 4.0*M_PI; // 4PI for Gaussian units
-                double mean_molecular_weight = ???; // mean molecular weight in g
+#ifdef COOLING
+                double n_elec = SphP[i].Ne; // electron number per particle
+                double ionized_frac = ion_frac;
+                double mean_molecular_weight = mu; // mean molecular weight in g
+#else
+                double mean_molecular_weight = PROTONMASS; // mean molecular weight in g
                 double n_elec = 1;
                 double ionized_frac = n_elec;
-                double temperature = sqrt(???);
-#ifdef COOLING
-                n_elec = SphP[i].Ne; // electron number per particle
-                ionized_frac = ion_frac;
-                //temperature = ;
+                double temperature = GAMMA_MINUS1 / BOLTZMANN * (SphP[i].InternalEnergy*All.UnitPressure_in_cgs/All.UnitDensity_in_cgs) * PROTONMASS * mu;
 #endif
                 double density_cgs = SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam; // mass density (cgs) //
                 double density_ions = ionized_frac * density_cgs; // assume all the mass is in ions, with global charge neutrality
@@ -1239,21 +1243,17 @@ void hydro_gradient_calc(void)
                 double gizmo2gauss = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam) / All.UnitMagneticField_in_gauss; // convert to B-field to gauss (units)
                 double bmag = 0; for(k=0;k<3;k++) {bmag += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);} // get magnitude of B //
                 if(bmag<=0) {bmag=0;} else {bmag = sqrt(bmag) * All.cf_a2inv * gizmo2gaus;} // B-field magnitude in Gauss
-
+                
                 double gamma_e = 8.3e-9 * DMAX( 1.0, sqrt(temperature/100.) ) / (2. * mean_molecular_weight);
                 double gamma_i = 2.0e-9 * sqrt(PROTONMASS/mean_molecular_weight) / mean_molecular_weight;
                 
-                double eta_ohmic = (C * C * ELECTRONMASS * mean_molecular_weight) / (mu_unit * ELECTRONCHARGE*ELECTRONCHARGE * SphP[i].Ne) * gamma_e;
+                double eta_ohmic = (C * C * ELECTRONMASS * mean_molecular_weight) / (mu_unit * gamma_e * ELECTRONCHARGE*ELECTRONCHARGE * n_elec);
                 double eta_hall = (C * bmag) / (mu_unit * ELECTRONCHARGE * numden_e);
-                double eta_ad = (bmag*bmag) / (mu_unit * gamma_i * density_cgs * density_ions);
+                double eta_ad = (bmag * bmag) / (mu_unit * gamma_i * density_cgs * density_ions);
                 
                 double units_cgs_to_code = All.UnitTime_in_s / (All.UnitLength_in_cm * All.UnitLength_in_cm) * All.HubbleParam; // convert coefficients (L^2/t) to code units [physical]
-                */
+                eta_ohmic *= units_cgs_to_code; eta_hall *= units_cgs_to_code; eta_ad *= units_cgs_to_code;
                 
-                double eta_ohmic = 0;
-                double eta_hall = 0;
-                double eta_ad = 0;
-                 
                 SphP[i].Eta_MHD_OhmicResistivity_Coeff = eta_ohmic;     /*!< Ohmic resistivity coefficient [physical units of L^2/t] */
                 SphP[i].Eta_MHD_HallEffect_Coeff = eta_hall;            /*!< Hall effect coefficient [physical units of L^2/t] */
                 SphP[i].Eta_MHD_AmbiPolarDiffusion_Coeff = eta_ad;      /*!< Hall effect coefficient [physical units of L^2/t] */
