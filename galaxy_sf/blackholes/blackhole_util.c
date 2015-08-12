@@ -132,6 +132,12 @@ void blackhole_end(void)
     }
     
     fflush(FdBlackHolesDetails);
+#ifdef BH_OUTPUT_MOREINFO
+    fflush(FdBhMergerDetails);
+#ifdef BH_BAL_KICK
+    fflush(FdBhWindDetails);
+#endif
+#endif
     myfree(BlackholeTempInfo);
 }
 

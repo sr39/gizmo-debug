@@ -820,6 +820,12 @@ void close_outputfiles(void)
 {
 #ifdef BLACK_HOLES
   fclose(FdBlackHolesDetails);	/* needs to be done by everyone */
+#ifdef BH_OUTPUT_MOREINFO
+  fclose(FdBhMergerDetails);
+#ifdef BH_BAL_KICK
+  fclose(FdBhWindDetails);
+#endif
+#endif
 #endif
 
   if(ThisTask != 0)		/* only the root processors writes to the log files */

@@ -208,7 +208,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #endif
 
 #if defined(BH_BAL_KICK) && !defined(BH_GRAVCAPTURE_GAS)
-    double m_gas, f_accreted=0;
+    double f_accreted=0; 
 #endif
     
 #ifdef BH_THERMALFEEDBACK
@@ -296,7 +296,6 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #endif
 
 #if defined(BH_BAL_KICK) && !defined(BH_GRAVCAPTURE_GAS)
-    m_gas = All.MassTable[1] * All.OmegaBaryon / ( All.Omega0 - All.OmegaBaryon );
 #ifdef BH_BAL_KICK_MOMENTUM_FLUX
     /* DAA: increase the effective mass-loading of BAL winds to reach the desired momentum flux given the outflow velocity "All.BAL_v_outflow" chosen
        --> appropriate for cosmological simulations where particles are effectively kicked from ~kpc scales
@@ -385,7 +384,8 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                            (unsigned long long) P[j].ID, (unsigned long long) id);
 
                                     //if(P[j].SwallowID < id && P[j].ID < id) // makes it so only one swallows the other
-                                    if((P[j].SwallowID == 0) && (BPP(j).BH_Mass < bh_mass))  // DAA: makes it so that the most massive BH swallows the other
+                                    // DAA: makes it so that the most massive BH swallows the other - simplifies analysis
+                                    if((P[j].SwallowID == 0) && (BPP(j).BH_Mass < bh_mass)) 
                                         P[j].SwallowID = id;
                                 }
                             }
@@ -465,10 +465,11 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                             {
                                 p /= f_accreted;
 
-                                /* DAA: compute outflow probability when "bh_mass_withdisk < m_gas"
+                                /* DAA: compute outflow probability when "bh_mass_withdisk < mass"
                                     - we don't need to enforce mass conservation in this case 
-                                    - relevant only in low-res sims where the BH seed mass is much lower than the gas particle mass */
-                                if((bh_mass_withdisk - m_gas) < 0)
+                                    - relevant only in low-res sims where the BH seed mass is much lower than the gas particle mass 
+                                    - TODO: replace mdot below by mdot_alphadisk if BH_ALPHADISK_ACCRETION? */
+                                if((bh_mass_withdisk - mass) < 0)
                                     p = ( (1-f_accreted)/f_accreted ) * mdot * dt * wk / rho;
                             }
 #endif
