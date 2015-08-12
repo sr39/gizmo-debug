@@ -95,13 +95,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     for(k = 0; k < 3; k++)
         mm_i[k][k] -= 0.5 * kernel.b2_i;
 #endif
-#ifdef MAGNETIC_SIGNALVEL
     kernel.alfven2_i = kernel.b2_i * fac_magnetic_pressure / local.Density;
-#ifdef ALFVEN_VEL_LIMITER
-    kernel.alfven2_i = DMIN(kernel.alfven2_i, ALFVEN_VEL_LIMITER * kernel.sound_i*kernel.sound_i);
-#endif
+    kernel.alfven2_i = DMIN(kernel.alfven2_i, 1000. * kernel.sound_i*kernel.sound_i);
     double vcsa2_i = kernel.sound_i*kernel.sound_i + kernel.alfven2_i;
-#endif
 #endif // MAGNETIC //
     
     
@@ -205,12 +201,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef DIVBCLEANING_DEDNER
                 double PhiPred_j = Get_Particle_PhiField(j); /* define j phi-field in appropriate units */
 #endif
-#ifdef MAGNETIC_SIGNALVEL
                 kernel.b2_j = BPred_j[0]*BPred_j[0] + BPred_j[1]*BPred_j[1] + BPred_j[2]*BPred_j[2];
                 kernel.alfven2_j = kernel.b2_j * fac_magnetic_pressure / SphP[j].Density;
-#ifdef ALFVEN_VEL_LIMITER
-                kernel.alfven2_j = DMIN(kernel.alfven2_j, ALFVEN_VEL_LIMITER * kernel.sound_j*kernel.sound_j);
-#endif
+                kernel.alfven2_j = DMIN(kernel.alfven2_j, 1000. * kernel.sound_j*kernel.sound_j);
                 double vcsa2_j = kernel.sound_j*kernel.sound_j + kernel.alfven2_j;
                 double Bpro2_j = (BPred_j[0]*kernel.dp[0] + BPred_j[1]*kernel.dp[1] + BPred_j[2]*kernel.dp[2]) / kernel.r;
                 Bpro2_j *= Bpro2_j;
@@ -221,7 +214,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double magneticspeed_i = sqrt(0.5 * (vcsa2_i + sqrt(DMAX((vcsa2_i*vcsa2_i -
                         4 * kernel.sound_i*kernel.sound_i * Bpro2_i*fac_magnetic_pressure/local.Density), 0))));
                 kernel.vsig = magneticspeed_i + magneticspeed_j;
-#endif
+                Bpro2_i /= kernel.b2_i; Bpro2_j /= kernel.b2_j;
 #endif
                 kernel.vdotr2 = kernel.dp[0] * kernel.dv[0] + kernel.dp[1] * kernel.dv[1] + kernel.dp[2] * kernel.dv[2];
                 // hubble-flow correction: need in -code- units, hence extra a2 appearing here //
@@ -279,18 +272,20 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #include "hydra_core_meshless.h"
 #endif
 
+                
+                
 #ifndef HYDRO_SPH
-/* the following macros are useful for all the diffusion operations below: this is the diffusion term associated
-    with the HLL reimann problem solution. This adds numerical diffusion (albeit limited to the magnitude of the 
-    physical diffusion coefficients), but stabilizes the relevant equations */
+                /* the following macros are useful for all the diffusion operations below: this is the diffusion term associated
+                    with the HLL reimann problem solution. This adds numerical diffusion (albeit limited to the magnitude of the 
+                    physical diffusion coefficients), but stabilizes the relevant equations */
 #ifdef MAGNETIC
                 double bhat[3]={Riemann_out.Face_B[0],Riemann_out.Face_B[1],Riemann_out.Face_B[2]};
                 double bhat_mag=bhat[0]*bhat[0]+bhat[1]*bhat[1]+bhat[2]*bhat[2];
-                if(bhat_mag>0) {bhat_mag=1./sqrt(bhat_mag); bhat[0]*=bhat_mag; bhat[1]*=bhat_mag; bhat[2]*=bhat_mag;}
+                if(bhat_mag>0) {bhat_mag=sqrt(bhat_mag); bhat[0]/=bhat_mag; bhat[1]/=bhat_mag; bhat[2]/=bhat_mag;}
                 v_hll = 0.5*fabs(face_vel_i-face_vel_j) + DMAX(magneticspeed_i,magneticspeed_j);
 #define B_dot_grad_weights(grad_i,grad_j) {if(bhat_mag<=0) {b_hll=1;} else {double q_tmp_sum=0,b_tmp_sum=0; for(k=0;k<3;k++) {\
                                            double q_tmp=0.5*(grad_i[k]+grad_j[k]); q_tmp_sum+=q_tmp*q_tmp; b_tmp_sum+=bhat[k]*q_tmp;}\
-                                           if((b_tmp_sum!=0)&&(q_tmp_sum>0)) {b_hll=fabs(b_tmp_sum)/sqrt(q_tmp_sum);} else {b_hll=0;}}}
+                                           if((b_tmp_sum!=0)&&(q_tmp_sum>0)) {b_hll=fabs(b_tmp_sum)/sqrt(q_tmp_sum); b_hll*=b_hll;} else {b_hll=0;}}}
 #else
                 v_hll = 0.5*fabs(face_vel_i-face_vel_j) + DMAX(kernel.sound_i,kernel.sound_j);
 #define B_dot_grad_weights(grad_i,grad_j) {b_hll=1;}
@@ -300,6 +295,10 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                                         -1.0*k_hll*Face_Area_Norm*v_hll*((ui)-(uj)))
 #endif
                 
+
+#ifdef MHD_NON_IDEAL
+#include "nonideal_mhd.h"
+#endif
                 
 #ifdef CONDUCTION
 #include "conduction.h"
@@ -373,6 +372,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     out.DtInternalEnergy += Riemann_out.phi_normal_mean * Face_Area_Vec[k] * local.BPred[k]*All.cf_a2inv;
                 }
 #endif
+#ifdef NON_IDEAL_MHD
+                for(k=0;k<3;k++) {out.DtInternalEnergy += local.BPred[k]*All.cf_a2inv*bflux_from_nonideal_effects[k];}
+#endif
 #endif
 #endif // magnetic //
                 
@@ -423,6 +425,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                         SphP[j].DtB[k] -= Riemann_out.phi_normal_mean * Face_Area_Vec[k];
                         SphP[j].DtInternalEnergy -= Riemann_out.phi_normal_mean * Face_Area_Vec[k] * BPred_j[k]*All.cf_a2inv;
                     }
+#endif
+#ifdef NON_IDEAL_MHD
+                    for(k=0;k<3;k++) {SphP[j].DtInternalEnergy -= BPred_j[k]*All.cf_a2inv*bflux_from_nonideal_effects[k];}
 #endif
 #endif
 #endif // magnetic //

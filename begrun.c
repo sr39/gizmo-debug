@@ -268,7 +268,7 @@ void begrun(void)
       All.ArtCondConstant = all.ArtCondConstant;
 #endif
 
-#if defined(SPH_ARTIFICIAL_RESISTIVITY)
+#if defined(SPH_TP12_ARTIFICIAL_RESISTIVITY)
       All.ArtMagDispConst = all.ArtMagDispConst;
 #endif
 
@@ -1068,7 +1068,7 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.ViscosityAMax;
         id[nt++] = REAL;
 #endif
-#ifdef SPH_ARTIFICIAL_RESISTIVITY
+#ifdef SPH_TP12_ARTIFICIAL_RESISTIVITY
         strcpy(tag[nt], "ArtificialResistivityMax");
         addr[nt] = &All.ArtMagDispConst;
         id[nt++] = REAL;
@@ -1598,13 +1598,13 @@ void read_parameter_file(char *fname)
 #endif
 
 
-#ifdef CONDUCTION
+#if defined(CONDUCTION)
         strcpy(tag[nt], "ConductionCoeff");
         addr[nt] = &All.ConductionCoeff;
         id[nt++] = REAL;
 #endif
 
-#ifdef VISCOSITY
+#if defined(VISCOSITY)
         strcpy(tag[nt], "ShearViscosityCoeff");
         addr[nt] = &All.ShearViscosityCoeff;
         id[nt++] = REAL;
@@ -1967,7 +1967,7 @@ void read_parameter_file(char *fname)
     All.ViscosityAMin = 0.05;
     All.ViscosityAMax = 2.00;
 #endif
-#ifdef SPH_ARTIFICIAL_RESISTIVITY
+#ifdef SPH_TP12_ARTIFICIAL_RESISTIVITY
     All.ArtMagDispConst = 1.0;
 #endif
 #endif // sph
@@ -2071,7 +2071,7 @@ void read_parameter_file(char *fname)
         endrun(1);
     }
 #endif
-#ifdef SPH_ARTIFICIAL_RESISTIVITY
+#ifdef SPH_TP12_ARTIFICIAL_RESISTIVITY
     if((All.ArtMagDispConst<1)||(All.ArtMagDispConst>2))
     {
         if(ThisTask==0)

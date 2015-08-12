@@ -132,14 +132,6 @@
 #endif
 
 
-#if defined(CONDUCTION) || defined(TURB_DIFF_ENERGY) || defined(EOS_GENERAL)
-#define DOGRAD_INTERNAL_ENERGY 1
-#endif
-
-#if defined(EOS_GENERAL)
-#define DOGRAD_SOUNDSPEED 1
-#endif
-
 #if defined(GALSF_FB_RPWIND_LOCAL) && !defined(GALSF_FB_RPWIND_FROMSFR)
 #define GALSF_FB_RPWIND_FROMSTARS
 #endif
@@ -257,21 +249,23 @@
 
 
 #ifdef MAGNETIC
-/* always-recommended MHD switches -- no excuse for these being off! */
-#define MAGNETIC_SIGNALVEL          /* extend definition of signal velocity by the magneto sonic waves */
-#define ALFVEN_VEL_LIMITER 100      /* Limits the contribution of the Alfven waves to the signal velocity */
-/* usually-recommended MHD switches -- only turn these off for de-bugging */
+/* recommended MHD switches -- only turn these off for de-bugging */
 #define DIVBCLEANING_DEDNER         /* hyperbolic/parabolic div-cleaing (Dedner 2002), with TP improvements */
 /* MHD switches specific to SPH MHD */
 #ifdef HYDRO_SPH
-#define SPH_ARTIFICIAL_RESISTIVITY        /* turns on magnetic dissipation ('artificial resistivity') */
-#define TRICCO_RESISTIVITY_SWITCH   /* uses tricco switch =h*|gradB|/|B| */
+#define SPH_TP12_ARTIFICIAL_RESISTIVITY   /* turns on magnetic dissipation ('artificial resistivity'): uses tricco switch =h*|gradB|/|B| */
 #endif
 #endif
 
 
 #if defined(TURB_DIFF_ENERGY) || defined(TURB_DIFF_VELOCITY) || defined(TURB_DIFF_MASS) || defined(TURB_DIFF_METALS)
 #define TURB_DIFFUSION /* master switch to calculate properties needed for scalar turbulent diffusion/mixing: must enable with any specific version */
+#if defined(TURB_DIFF_VELOCITY) && !defined(VISCOSITY)
+#define VISCOSITY
+#endif
+#if defined(TURB_DIFF_ENERGY) && !defined(CONDUCTION)
+#define CONDUCTION
+#endif
 #endif
 
 
@@ -318,6 +312,19 @@
 #define GRAVITY_NOT_PERIODIC
 #endif
 #endif // SHEARING_BOX
+
+
+
+
+#if defined(CONDUCTION) || defined(EOS_GENERAL)
+#define DOGRAD_INTERNAL_ENERGY 1
+#endif
+
+#if defined(EOS_GENERAL)
+#define DOGRAD_SOUNDSPEED 1
+#endif
+
+
 
 /*------- Things that are always recommended -------*/
 
@@ -1519,7 +1526,7 @@ extern struct global_data_all_processes
 #ifdef B_SET_IN_PARAMS
   double BiniX, BiniY, BiniZ;	/*!< Initial values for B */
 #endif
-#ifdef SPH_ARTIFICIAL_RESISTIVITY
+#ifdef SPH_TP12_ARTIFICIAL_RESISTIVITY
   double ArtMagDispConst;	/*!< Sets the parameter \f$\alpha\f$ of the artificial magnetic disipation */
 #endif
 #ifdef DIVBCLEANING_DEDNER
@@ -1985,7 +1992,7 @@ extern struct sph_particle_data
 #ifdef CONSTRAINED_GRADIENT_MHD
     int FlagForConstrainedGradients;/*!< flag indicating whether the B-field gradient is a 'standard' one or the constrained-divB version */
 #endif
-#if defined(TRICCO_RESISTIVITY_SWITCH)
+#if defined(SPH_TP12_ARTIFICIAL_RESISTIVITY)
     MyFloat Balpha;                 /*!< effective resistivity coefficient */
 #endif
 #endif /* MAGNETIC */
@@ -2120,6 +2127,14 @@ extern struct sph_particle_data
     MyFloat Kappa_Conduction;           /*!< conduction coefficient */
 #endif
 
+    
+#ifdef MHD_NON_IDEAL
+    MyFloat Eta_MHD_OhmicResistivity_Coeff;     /*!< Ohmic resistivity coefficient [physical units of L^2/t] */
+    MyFloat Eta_MHD_HallEffect_Coeff;           /*!< Hall effect coefficient [physical units of L^2/t] */
+    MyFloat Eta_MHD_AmbiPolarDiffusion_Coeff;   /*!< Hall effect coefficient [physical units of L^2/t] */
+#endif
+    
+    
 #if defined(VISCOSITY)
     MyFloat Eta_ShearViscosity;         /*!< shear viscosity coefficient */
     MyFloat Zeta_BulkViscosity;         /*!< bulk viscosity coefficient */
