@@ -67,6 +67,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 # ---------------------------------  (Hopkins 2015: 'Accurate, Meshless Methods for Magneto-Hydrodynamics') as well as the standard GIZMO paper
 #MAGNETIC                       # master switch for MHD, regardless of which Hydro solver is used
 #B_SET_IN_PARAMS                # set initial fields (Bx,By,Bz) in parameter file
+#MHD_NON_IDEAL                  # enable non-ideal MHD terms: Ohmic resistivity, Hall effect, and ambipolar diffusion (solved explicitly)
 #CONSTRAINED_GRADIENT_MHD=1     # use CG method to maintain low divB: set this value to control how aggressive the div-reduction is:
                                 # 0=minimal (safest), 1=intermediate (recommended), 2=aggressive (less stable), 3+=very aggressive (less stable+more expensive)
 ##-----------------------------------------------------------------------------------------------------
@@ -93,9 +94,9 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- Smagorinsky Turbulent Eddy Diffusion Model
 #---------------------------------------- (this is developed by P. Hopkins as part of the FIRE package: the same FIRE authorship & approval policies apply, see below)
-#TURB_DIFF_ENERGY               # turbulent diffusion of internal energy (energy-conserving formulation)
-#TURB_DIFF_VELOCITY             # turbulent diffusion of velocity (effective turbulent viscosity)
 #TURB_DIFF_METALS               # turbulent diffusion of metals (passive scalars)
+#TURB_DIFF_ENERGY               # turbulent diffusion of internal energy (conduction with effective turbulent coefficients)
+#TURB_DIFF_VELOCITY             # turbulent diffusion of momentum (viscosity with effective turbulent coefficients)
 ##-----------------------------------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------------------------------
 #---------------------------------------- Aerodynamic Particles
@@ -423,7 +424,7 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 
 
 ####################################################################################################
-#--------------------------------------- Radiative Transfer
+#--------------------------------------- Radiative Transfer & Radiation Hydrodynamics
 ####################################################################################################
 #--------------------- methods for calculating photon propagation (one of these MUST be on for RT)
 #RT_FIRE                                # RT solved using the FIRE (local extinction with the Sobolev approximation at source and absorption points)

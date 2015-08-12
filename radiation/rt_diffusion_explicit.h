@@ -27,14 +27,24 @@
             double d_scalar = scalar_i - scalar_j;
 	    	double conduction_wt = 0.5*(kappa_i+kappa_j) * All.cf_a3inv/All.cf_atime;  // weight factor and conversion to physical units
 #ifdef HYDRO_SPH
-            cmag = conduction_wt * d_scalar * P[j].Mass * (0.5*(kernel.dwk_i+kernel.dwk_j)) / (kernel.r * local.Density * SphP[j].Density);
+            double Face_Area_Norm = local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * SphP[j].Density);
+            double d_ET[6];
+            for(k=0;k<6;k++) {d_ET[k] = scalar_i*local.ET[k_freq][k] - scalar_j*SphP[j].ET[k_freq][k];}
+            double flux_tmp = conduction_wt * (d_ET[0]*kernel.dp[0]*kernel.dp[0] + d_ET[1]*kernel.dp[1]*kernel.dp[1] + d_ET[2]*kernel.dp[2]*kernel.dp[2] +
+                                               2.*(d_ET[3]*kernel.dp[0]*kernel.dp[1] + d_ET[4]*kernel.dp[1]*kernel.dp[2] +
+                                                   d_ET[5]*kernel.dp[0]*kernel.dp[2])) / (1.e-37 + kernel.r * kernel.r * kernel.r);
+            double cmag = -Face_Area_Norm * flux_tmp;
+            cmag = MINMOD(cmag , -conduction_wt*Face_Area_Norm*d_scalar*rinv);
 #else
             double cmag=0., c_max=0.;
             for(k=0;k<3;k++)
             {
                 c_max += Face_Area_Vec[k] * kernel.dp[k];
                 /* the flux is determined by the energy density gradient */
-                cmag += Face_Area_Vec[k] * 0.5*(local.Gradients.E_gamma_ET[k_freq][k] + SphP[j].Gradients.E_gamma_ET[k_freq][k]);
+                double grad = 0.5 * (local.Gradients.E_gamma_ET[k_freq][k] + SphP[j].Gradients.E_gamma_ET[k_freq][k]);
+                double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv;
+                grad = MINMOD( grad , grad_direct );
+                cmag += Face_Area_Vec[k] * grad;
             }
             /* here we add the HLL-like correction term. this greatly reduces noise and improves the stability of the diffusion.
             	however it comes at the cost of (significant) additional numerical diffusion */
@@ -55,11 +65,11 @@
             c_max *= rinv*rinv;
             cmag = MINMOD(MINMOD(MINMOD(cmag , c_max*d_scalar), fabs(c_max)*d_scalar) , Face_Area_Norm*d_scalar*rinv);
             cmag *= -conduction_wt; // multiplies through the coefficient to get actual flux //
+#endif
 			// prevent super-luminal local fluxes //
 			double R_flux = fabs(cmag) / (3. * Face_Area_Norm * c_light * fabs(d_scalar) + 1.e-37);
 			R_flux = (1. + 12.*R_flux) / (1. + 12.*R_flux*(1.+R_flux)); // 12 arbitrary but >>1 gives good behavior here //
 			cmag *= R_flux;
-#endif
 			cmag *= dt_hydrostep; // all in physical units //
 			if(fabs(cmag) > 0)
 			{

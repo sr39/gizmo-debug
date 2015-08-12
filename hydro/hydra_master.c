@@ -159,11 +159,9 @@ struct kernel_hydra
 #endif
 #ifdef MAGNETIC
     double b2_i, b2_j;
+    double alfven2_i, alfven2_j;
 #ifdef HYDRO_SPH
     double mf_i, mf_j;
-#endif
-#if defined(MAGNETIC_SIGNALVEL)
-    double alfven2_i, alfven2_j;
 #endif
 #endif // MAGNETIC //
 };
@@ -236,8 +234,10 @@ struct hydrodata_in
     MyDouble E_gamma[N_RT_FREQ_BINS];
     MyDouble Kappa_RT[N_RT_FREQ_BINS];
     MyDouble DiffusionCoeff[N_RT_FREQ_BINS];
-#ifdef RT_EVOLVE_FLUX
+#if defined(RT_EVOLVE_FLUX) || defined(HYDRO_SPH)
     MyDouble ET[N_RT_FREQ_BINS][6];
+#endif
+#ifdef RT_EVOLVE_FLUX
     MyDouble Flux[N_RT_FREQ_BINS][3];
 #endif
 #endif
@@ -250,6 +250,12 @@ struct hydrodata_in
     MyFloat Kappa_Conduction;
 #endif
 
+#ifdef MHD_NON_IDEAL
+    MyFloat Eta_MHD_OhmicResistivity_Coeff;
+    MyFloat Eta_MHD_HallEffect_Coeff;
+    MyFloat Eta_MHD_AmbiPolarDiffusion_Coeff;
+#endif
+    
 #ifdef VISCOSITY
     MyFloat Eta_ShearViscosity;
     MyFloat Zeta_BulkViscosity;
@@ -257,7 +263,7 @@ struct hydrodata_in
     
 #ifdef MAGNETIC
     MyFloat BPred[3];
-#if defined(TRICCO_RESISTIVITY_SWITCH)
+#if defined(SPH_TP12_ARTIFICIAL_RESISTIVITY)
     MyFloat Balpha;
 #endif
 #ifdef DIVBCLEANING_DEDNER
@@ -410,9 +416,11 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
         in->E_gamma[k] = SphP[i].E_gamma_Pred[k];
         in->Kappa_RT[k] = SphP[i].Kappa_RT[k];
         in->DiffusionCoeff[k] = rt_diffusion_coefficient(i,k);
-#ifdef RT_EVOLVE_FLUX
+#if defined(RT_EVOLVE_FLUX) || defined(HYDRO_SPH)
         int k_dir;
         for(k_dir=0;k_dir<6;k_dir++) in->ET[k][k_dir] = SphP[i].ET[k][k_dir];
+#endif
+#ifdef RT_EVOLVE_FLUX
         for(k_dir=0;k_dir<3;k_dir++) in->Flux[k][k_dir] = SphP[i].Flux_Pred[k][k_dir];
 #endif
     }
@@ -429,6 +437,13 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
 #ifdef CONDUCTION
     in->Kappa_Conduction = SphP[i].Kappa_Conduction;
 #endif
+    
+#ifdef MHD_NON_IDEAL
+    in->Eta_MHD_OhmicResistivity_Coeff = SphP[i].Eta_MHD_OhmicResistivity_Coeff;
+    in->Eta_MHD_HallEffect_Coeff = SphP[i].Eta_MHD_HallEffect_Coeff;
+    in->Eta_MHD_AmbiPolarDiffusion_Coeff = SphP[i].Eta_MHD_AmbiPolarDiffusion_Coeff;
+#endif
+    
 
 #ifdef VISCOSITY
     in->Eta_ShearViscosity = SphP[i].Eta_ShearViscosity;
@@ -437,7 +452,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     
 #ifdef MAGNETIC
     for(k = 0; k < 3; k++) {in->BPred[k] = Get_Particle_BField(i,k);}
-#if defined(TRICCO_RESISTIVITY_SWITCH)
+#if defined(SPH_TP12_ARTIFICIAL_RESISTIVITY)
     in->Balpha = SphP[i].Balpha;
 #endif
 #ifdef DIVBCLEANING_DEDNER
@@ -672,10 +687,6 @@ void hydro_final_operations_and_cleanup(void)
             
 #ifdef RT_RAD_PRESSURE_EDDINGTON
             /* calculate the radiation pressure force from the gradient of the Eddington tensor */
-            /* note: we could also solve this between particle faces, like our standard Reimann problem: use
-            	int[rho*a]dV=d[mv]/dt = int[grad.E_gamma_ET]*dV = sum[A * E_gamma_ET]=sum[E_gamma_face * A.h_ET], just like real pressure 
-            	This would ensure total momentum conservation; though its meaning with external forces is ambiguous. 
-            	We can experiment??? (not clear if should have flux-limiter here; experiments suggest NO  */
             double radacc[3]; radacc[0]=radacc[1]=radacc[2]=0; int k2;
             // a = kappa*F/c = Gradients.E_gamma_ET[gradient of photon energy density] / rho[gas_density] //
             for(k=0;k<3;k++)

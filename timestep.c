@@ -465,6 +465,30 @@ integertime get_timestep(int p,		/*!< particle index */
             }
 #endif
 
+
+#ifdef MHD_NON_IDEAL
+            {
+                double b_grad = 0, b_mag = 0;
+                int k; for(k=0;k<3;k++)
+                {
+                    int k2;
+                    for(k2=0;k2<3;k2++)
+                    {
+                        double tmp_grad = SphP[p].Gradients.B[k][k2];
+                        b_grad += tmp_grad * tmp_grad;
+                    }
+                    double tmp_grad = Get_Particle_BField(p,k);
+                    b_mag += tmp_grad * tmp_grad;
+                }
+                double L_cond_inv = sqrt(b_grad / (1.e-37 + b_mag));
+                double L_cond = DMAX(L_particle , 1./(L_cond_inv + 1./L_particle)) * All.cf_atime;
+                double diff_coeff = SphP[p].Eta_MHD_OhmicResistivity_Coeff + SphP[p].Eta_MHD_HallEffect_Coeff + SphP[p].Eta_MHD_AmbiPolarDiffusion_Coeff;
+                double dt_conduction = 0.5 * L_cond*L_cond / (1.0e-37 + diff_coeff);
+                if(dt_conduction < dt) dt = dt_conduction;
+            }
+#endif
+            
+            
 #ifdef COSMIC_RAYS
             {
                 if(Get_Particle_CosmicRayPressure(p) > 1.0e-20)
@@ -525,11 +549,11 @@ integertime get_timestep(int p,		/*!< particle index */
 
 #ifdef TURB_DIFFUSION
             {
-                double L_tdiff_inv,L_tdiff,dt_tdiff;
 #ifdef TURB_DIFF_METALS
                 int k_species,kt;
                 for(k_species=0;k_species<NUM_METAL_SPECIES;k_species++)
                 {
+                    double L_tdiff_inv,L_tdiff,dt_tdiff;
                     L_tdiff_inv=0;
                     for(kt=0;kt<3;kt++) {L_tdiff_inv+=SphP[p].Gradients.Metallicity[k_species][kt]*SphP[p].Gradients.Metallicity[k_species][kt];}
                     L_tdiff_inv /= (1.0e-33 + P[p].Metallicity[k_species]*P[p].Metallicity[k_species]);
@@ -539,32 +563,6 @@ integertime get_timestep(int p,		/*!< particle index */
                     // here, we use DIFFUSIVITIES, so there is no extra density power in the equation //
                     if(dt_tdiff < dt) dt = dt_tdiff;
                 }
-#endif
-#ifdef TURB_DIFF_ENERGY
-                L_tdiff_inv = sqrt(SphP[p].Gradients.InternalEnergy[0]*SphP[p].Gradients.InternalEnergy[0] +
-                                   SphP[p].Gradients.InternalEnergy[1]*SphP[p].Gradients.InternalEnergy[1] +
-                                   SphP[p].Gradients.InternalEnergy[2]*SphP[p].Gradients.InternalEnergy[2]) / (1.e-33 + SphP[p].InternalEnergy);
-                L_tdiff = 1./(L_tdiff_inv + 1./(1.0*L_particle)) * All.cf_atime;
-                dt_tdiff = 1.0 * L_tdiff*L_tdiff / (1.0e-33 + SphP[p].TD_DiffCoeff);
-                // here, we use DIFFUSIVITIES, so there is no extra density power in the equation //
-                if(dt_tdiff < dt) dt = dt_tdiff;
-#endif
-#ifdef TURB_DIFF_VELOCITY
-                int kv1,kv2; double dv_mag=0,v_mag=1.0e-33;
-                for(kv1=0;kv1<3;kv1++) {v_mag+=P[p].Vel[kv1]*P[p].Vel[kv1];}
-                double dv_mag_all = 0.0;
-                for(kv1=0;kv1<3;kv1++)
-                {
-                    double dvmag_tmp = 0;
-                    for(kv2=0;kv2<3;kv2++) {dvmag_tmp+=SphP[p].Gradients.Velocity[kv1][kv2]*SphP[p].Gradients.Velocity[kv1][kv2];}
-                    dv_mag += dvmag_tmp /DMAX(P[p].Vel[kv1]*P[p].Vel[kv1],0.01*v_mag);
-                    dv_mag_all += dvmag_tmp;
-                }
-                L_tdiff_inv = sqrt(DMAX(dv_mag, dv_mag_all/v_mag));
-                L_tdiff = 1./(L_tdiff_inv + 1./(1.0*L_particle)) * All.cf_atime;
-                dt_tdiff = 1.0 * L_tdiff*L_tdiff / (1.0e-33 + SphP[p].TD_DiffCoeff);
-                // here, we use DIFFUSIVITIES, so there is no extra density power in the equation //
-                if(dt_tdiff < dt) dt = dt_tdiff;
 #endif
             }
 #endif
