@@ -372,7 +372,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     out.DtInternalEnergy += Riemann_out.phi_normal_mean * Face_Area_Vec[k] * local.BPred[k]*All.cf_a2inv;
                 }
 #endif
-#ifdef NON_IDEAL_MHD
+#ifdef MHD_NON_IDEAL
                 for(k=0;k<3;k++) {out.DtInternalEnergy += local.BPred[k]*All.cf_a2inv*bflux_from_nonideal_effects[k];}
 #endif
 #endif
@@ -426,7 +426,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                         SphP[j].DtInternalEnergy -= Riemann_out.phi_normal_mean * Face_Area_Vec[k] * BPred_j[k]*All.cf_a2inv;
                     }
 #endif
-#ifdef NON_IDEAL_MHD
+#ifdef MHD_NON_IDEAL
                     for(k=0;k<3;k++) {SphP[j].DtInternalEnergy -= BPred_j[k]*All.cf_a2inv*bflux_from_nonideal_effects[k];}
 #endif
 #endif

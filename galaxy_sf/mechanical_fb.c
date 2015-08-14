@@ -674,7 +674,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     struct addFBdata_out out;
     memset(&out, 0, sizeof(struct addFBdata_out));
     
-    v_ejecta_max = 5000.0 * 1.0e5/ All.UnitVelocity_in_cm_per_s;
+    v_ejecta_max = 400.0 * 1.0e5/ All.UnitVelocity_in_cm_per_s;
     // 'speed limit' to prevent numerically problematic kicks at low resolution //
     kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1);
     
