@@ -151,7 +151,8 @@
     Fluxes.B[0] += mf_dissInd * dBx / All.cf_atime;
     Fluxes.B[1] += mf_dissInd * dBy / All.cf_atime;
     Fluxes.B[2] += mf_dissInd * dBz / All.cf_atime;
-    /* units are Bc^2 * vc * rc^2 = (Pc/fac_magnetic_pressure) * vc * rc^2 = 1/fac_magnetic_pressure * mc * Pc/rhoc * vc/rc */ 
+    resistivity_heatflux = -0.5 * mf_dissInd * (dBx*dBx + dBy*dBy + dBz*dBz);
+    /* units are Bc^2 * vc * rc^2 = (Pc/fac_magnetic_pressure) * vc * rc^2 = 1/fac_magnetic_pressure * mc * Pc/rhoc * vc/rc */
 #endif
 #endif /* end MAGNETIC */
     

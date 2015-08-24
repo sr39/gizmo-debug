@@ -68,6 +68,7 @@ struct addFBdata_in
     MyDouble Pos[3];
     MyDouble Vel[3];
     MyFloat Hsml;
+    MyFloat V_i;
     MyFloat SNe_v_ejecta;
     MyDouble Msne;
     MyDouble unit_mom_SNe;
@@ -157,6 +158,7 @@ void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i)
         }
     }
     in->Hsml = PPP[i].Hsml;
+    double heff=PPP[i].Hsml / PPP[i].NumNgb; in->V_i=heff*heff*heff;
     in->Msne = 0.01 * (double)P[i].RProcessEvent_ThisTimeStep / ((double)((All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS)); // mass ejected ~0.01*M_sun; only here for bookkeeping //
     in->unit_mom_SNe = 0;
     in->SNe_v_ejecta = 0.;
@@ -174,6 +176,7 @@ void particle2in_addFB_wt(struct addFBdata_in *in, int i)
         in->Vel[k] = P[i].Vel[k];
     }
     in->Hsml = PPP[i].Hsml;
+    double heff=PPP[i].Hsml / PPP[i].NumNgb; in->V_i=heff*heff*heff;
     in->Msne = P[i].Mass;
     in->unit_mom_SNe = 1;
     in->SNe_v_ejecta = 500.;
@@ -277,6 +280,7 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
         in->Vel[k] = P[i].Vel[k];
     }
     in->Hsml = PPP[i].Hsml;
+    double heff=PPP[i].Hsml / PPP[i].NumNgb; in->V_i=heff*heff*heff;
     in->Msne = Msne;
     in->SNe_v_ejecta = SNe_v_ejecta;
     in->unit_mom_SNe = unit_mom_SNe;
@@ -361,6 +365,7 @@ void particle2in_addFB_winds(struct addFBdata_in *in, int i)
         in->Vel[k] = P[i].Vel[k];
     }
     in->Hsml = PPP[i].Hsml;
+    double heff=PPP[i].Hsml / PPP[i].NumNgb; in->V_i=heff*heff*heff;
     in->Msne = M_wind;
     in->SNe_v_ejecta = wind_velocity;
     in->unit_mom_SNe = wind_momentum;
@@ -674,7 +679,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     struct addFBdata_out out;
     memset(&out, 0, sizeof(struct addFBdata_out));
     
-    v_ejecta_max = 400.0 * 1.0e5/ All.UnitVelocity_in_cm_per_s;
+    v_ejecta_max = 5000.0 * 1.0e5/ All.UnitVelocity_in_cm_per_s;
     // 'speed limit' to prevent numerically problematic kicks at low resolution //
     kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1);
     
@@ -753,10 +758,21 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                  wk = 1./SphP[j].Density; // wt ~ 1 (uniform in SPH terms)
                  wk = kernel.wk * P[j].Mass / SphP[j].Density; // psi
                  */
-                double h_eff_j = Get_Particle_Size(j);
+                //double h_eff_j = Get_Particle_Size(j);
                 //wk = h_eff_j * h_eff_j * h_eff_j; // volume weight (old FIRE runs)
-                double hR = h_eff_j / (kernel.r + 1.e-4*h_eff_j);
-                wk = 0.5*(1-1/sqrt(1.+hR*hR)); // solid angle for triangle of side-length h;
+                //double hR = h_eff_j / (kernel.r + 1.e-4*h_eff_j);
+                //wk = 0.5*(1-1/sqrt(1.+hR*hR)); // solid angle for triangle of side-length h;
+
+                u = kernel.r * kernel.hinv;
+                double hinv_j = 1./PPP[j].Hsml;
+                double hinv3_j = hinv_j*hinv_j*hinv_j;
+                double wk_j = 0, dwk_j = 0, u_j = kernel.r * hinv_j, hinv4_j = hinv_j*hinv3_j, V_j = P[j].Mass / SphP[j].Density;
+                kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 1);
+                kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);
+                if(local.V_i<0 || isnan(local.V_i)) {local.V_i=0;}
+                if(V_j<0 || isnan(V_j)) {V_j=0;}
+                double sph_area = fabs(local.V_i*local.V_i*kernel.dwk + V_j*V_j*dwk_j);
+                wk = 0.5 * (1 - 1/sqrt(1 + sph_area / (M_PI*kernel.r*kernel.r)));
                 
                 double wk_vec[7]; wk_vec[0] = wk;
                 if(kernel.dp[0]>0) {wk_vec[1]=wk*kernel.dp[0]/kernel.r; wk_vec[2]=0;} else {wk_vec[1]=0; wk_vec[2]=wk*kernel.dp[0]/kernel.r;}
@@ -769,11 +785,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     for(k=0;k<7;k++) out.Area_weighted_sum[k] += wk_vec[k];
                     continue;
                 }
-                // need to check to make sure the coupled fraction doesn't exceed the solid angle subtended by the particles //
-                double wkmax = 2.0*wk;
                 // NOW do the actual feedback calculation //
                 wk *= local.Area_weighted_sum[0]; // this way wk matches the value summed above for the weighting //
-                if(wk > wkmax) {wk = wkmax;}
                 
                 dM = wk * local.Msne;
                 dP = local.SNe_v_ejecta / kernel.r;
@@ -814,14 +827,13 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 }
                 /* calculates cooling radius given density and metallicity in this annulus into which the ejecta propagate */
                 
+                /* limit to Hsml for coupling */
+                if(RsneMAX<RsneKPC) RsneKPC=RsneMAX;
                 
                 // double r2sne = RsneKPC*RsneKPC; if(r2 > r2sne) dP *= pow(r2sne/r2 , 1.625);
                 if(r2 > RsneKPC*RsneKPC) dP *= RsneKPC*RsneKPC*RsneKPC / (r2*kernel.r); // just as good a fit, and much faster to evaluate //
                 /* if coupling radius > R_cooling, account for thermal energy loss in the post-shock medium:
                  from Thornton et al. thermal energy scales as R^(-6.5) for R>R_cool */
-                
-                /* limit to Hsml for coupling */
-                if(RsneMAX<RsneKPC) RsneKPC=RsneMAX;
 #endif
                 
                 /* now, add contribution from relative star-gas particle motion to shock energy */
@@ -873,20 +885,34 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #else
                 /* inject momentum */
                 dP = local.unit_mom_SNe / P[j].Mass;
-                dP_sum += dP * wk;
-                dP *= sqrt(1. + NORM_COEFF*(SphP[j].Density*RsneKPC*RsneKPC*RsneKPC)/local.Msne);
-                /* above is the appropriate factor for the ejecta being energy-conserving inside the cooling radius (or Hsml, if thats smaller) */
-                if(dP > v_ejecta_max) dP = v_ejecta_max;
-                dP_boost_sum += dP;
-                dP *= -All.cf_atime / 4.; // factor of 4 accounts for our normalization of each directional component below to be =P (given by properly integrating over a unit sphere)
+                if(dP > v_ejecta_max) dP = v_ejecta_max; // limit maximum velocities //
+
+                /* apply limiter for energy conservation */
+                double pnorm = 0;
+                double pvec[3]={0};
                 for(k=0; k<3; k++)
                 {
                     double q;
                     if(k==0) {q=wk_vec[1]*local.Area_weighted_sum[1] + wk_vec[2]*local.Area_weighted_sum[2];}
                     if(k==1) {q=wk_vec[3]*local.Area_weighted_sum[3] + wk_vec[4]*local.Area_weighted_sum[4];}
                     if(k==2) {q=wk_vec[5]*local.Area_weighted_sum[5] + wk_vec[6]*local.Area_weighted_sum[6];}
-                    if(fabs(q) > wkmax) {q *= wkmax/fabs(q);}
-                    q *= dP;
+                    pvec[k] = q;
+                    pnorm += pvec[k]*pvec[k];
+                }
+                pnorm = sqrt(pnorm)/4.;
+                dP_sum += dP * pnorm;
+                
+                /* appropriate factor for the ejecta being energy-conserving inside the cooling radius (or Hsml, if thats smaller) */
+                dP *= sqrt(1. + NORM_COEFF*(SphP[j].Density*RsneKPC*RsneKPC*RsneKPC)/local.Msne);
+                double pmax = (local.unit_mom_SNe/local.Msne) * sqrt((wk*local.Msne)/(P[j].Mass));
+                double prat = dP * pnorm / (MIN_REAL_NUMBER + pmax);
+                if(prat > 1) {dP /= prat;}
+                dP_boost_sum += dP * pnorm;
+                
+                dP *= -All.cf_atime / 4.; // factor of 4 accounts for our normalization of each directional component below to be =P (given by properly integrating over a unit sphere)
+                for(k=0; k<3; k++)
+                {
+                    double q = pvec[k] * dP;
                     u = wk * local.Msne * kernel.dv[k] / P[j].Mass;
                     if (u > v_ejecta_max*All.cf_atime) u = v_ejecta_max*All.cf_atime;
                     if (u < -v_ejecta_max*All.cf_atime) u = -v_ejecta_max*All.cf_atime;
