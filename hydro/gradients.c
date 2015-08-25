@@ -1153,10 +1153,9 @@ void hydro_gradient_calc(void)
 
 #if defined(CONDUCTION_SPITZER) || defined(VISCOSITY_BRAGINSKII) || (defined(MHD_NON_IDEAL) && defined(COOLING))
             /* get the neutral fraction */
-            double nHeII, temperature, u, ne, nh0, mu = 0;
+            double nHeII, temperature, u, ne, nh0, mu, yhelium = 0;
             ne = SphP[i].Ne;
             u = DMAX(All.MinEgySpec, SphP[i].InternalEnergy); // needs to be in code units
-            
             AbundanceRatios(u, SphP[i].Density*All.cf_a3inv, &ne, &nh0, &nHeII, i);
             yhelium = (1 - HYDROGEN_MASSFRAC) / (4 * HYDROGEN_MASSFRAC);
             mu = (1 + 4 * yhelium) / (1 + yhelium + ne);
