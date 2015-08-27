@@ -739,7 +739,7 @@ void open_outputfiles(void)
     
     
 #ifdef RT_CHEM_PHOTOION
-  sprintf(buf, "%s%s", All.OutputDir, "rt_photoion_chem,.txt");
+  sprintf(buf, "%s%s", All.OutputDir, "rt_photoion_chem.txt");
   if(!(FdRad = fopen(buf, mode)))
     {
       printf("error in opening file '%s'\n", buf);
@@ -1637,8 +1637,8 @@ void read_parameter_file(char *fname)
 #endif
 
 #ifdef RT_CHEM_PHOTOION
-        strcpy(tag[nt], "IonizingLumPerSolarMass");
-        addr[nt] = &All.IonizingLumPerSolarMass;
+        strcpy(tag[nt], "IonizingLuminosityPerSolarMass_cgs");
+        addr[nt] = &All.IonizingLuminosityPerSolarMass_cgs;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "star_Teff");

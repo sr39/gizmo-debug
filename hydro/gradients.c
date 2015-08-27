@@ -1301,7 +1301,7 @@ void hydro_gradient_calc(void)
                             we need to multiply chifac_iso by a power of 3 (because this goes to I/3, but also when lambda->1/3) */
 						//chi=1./3.; // pure isotropic
 #ifdef RT_RAD_PRESSURE_EDDINGTON
-						chi=1.; // pure optically-thin // may be needed for RP problems ???
+						chi=1.; // pure optically-thin // may be needed for RP problems
 #endif
                         double chifac_iso=3.*(1-chi)/2., chifac_ot=(3.*chi-1.)/2.;
 #ifdef RT_DIFFUSION_CG

@@ -101,13 +101,10 @@ int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum)
 #if defined(BLACK_HOLES)
         if(P[i].Type==5) {if(sigma_0<0) return 1; active_check=1; fac += 0.0001 * P[i].BH_Mdot * pow(C / All.UnitVelocity_in_cm_per_s, 2);}
 #endif
-#if defined(GALSF)
-        if(P[i].Type==0) {if(sigma_0<0) return 1; active_check=1; fac += SphP[i].Sfr * All.IonizingLumPerSFR * All.UnitTime_in_s / All.HubbleParam;} // flux from gas according to SFR
-#endif
 #ifdef RT_ILIEV_TEST1
-        if(P[i].Type==4) {if(sigma_0<0) return 1; active_check=1; fac += 16.9;} // 5e48 in ionizing photons per second // 
+        if(P[i].Type==4) {if(sigma_0<0) return 1; active_check=1; fac += 5.0e48;} // 5e48 in ionizing photons per second //
 #else
-        if(P[i].Type==4) {if(sigma_0<0) return 1; active_check=1; fac += (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.IonizingLumPerSolarMass * All.UnitTime_in_s / All.HubbleParam;} // flux from star particles according to mass
+        if(P[i].Type==4) {if(sigma_0<0) return 1; active_check=1; fac += (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.IonizingLuminosityPerSolarMass_cgs * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs);} // flux from star particles according to mass
 #endif
 #if defined(RT_PHOTOION_MULTIFREQUENCY)
         // we should have pre-tabulated how much luminosity gets assigned to each different waveband according to the following function //
@@ -120,6 +117,7 @@ int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum)
     }
 #endif
     
+    {int k; for(k=0;k<N_RT_FREQ_BINS;k++) {lum[k] *= RT_SPEEDOFLIGHT_REDUCTION;}}
     return active_check;
 }
 
@@ -257,7 +255,11 @@ void rt_update_driftkick(MyIDType i, double dt_entr, int mode)
         abs_0 = a0;
         if(e0>0) {a0 += SphP[i].Dt_E_gamma[kf]/e0;} else {dd0+=SphP[i].Dt_E_gamma[kf];}
         if(dd0*dt_entr != 0 && dd0*dt_entr < -0.5*e0) {dd0=-0.5*e0/dt_entr;}
-        double ef; if(a0>=0) {ef = e0 + (dd0+a0*e0)*dt_entr;} else {ef = (e0 + dd0/a0)*exp(a0*dt_entr) - dd0/a0;}
+        double ef;
+        double q_left = (dd0+a0*e0)*dt_entr;
+        double q_right = (e0 + dd0/a0)*(exp(a0*dt_entr)-1);
+        if(isnan(q_right)) {q_right=2.0*q_left;}
+        if(fabs(q_left) < fabs(q_right)) {ef = e0 + q_left;} else {ef = e0 + q_right;}
         if(ef < 0.5*e0) {ef=0.5*e0;}
         if(mode==0) {SphP[i].E_gamma[kf] = ef;} else {SphP[i].E_gamma_Pred[kf] = ef;}
 #if defined(RT_EVOLVE_FLUX)
@@ -267,7 +269,10 @@ void rt_update_driftkick(MyIDType i, double dt_entr, int mode)
             double f0;
             dd0 = SphP[i].Dt_Flux[kf][k_dir];
             if(mode==0) {f0 = SphP[i].Flux[kf][k_dir];} else {f0 = SphP[i].Flux_Pred[kf][k_dir];}
-            if(abs_0 >= 0) {f0+=(dd0+abs_0*f0)*dt_entr;} else {f0=(f0+dd0/abs_0)*exp(abs_0*dt_entr) - dd0/abs_0;}
+            q_left = (dd0+abs_0*f0)*dt_entr;
+            q_right = (f0+dd0/abs_0)*(exp(abs_0*dt_entr)-1.);
+            if(isnan(q_right)) {q_right=2.0*q_left;}
+            if(fabs(q_left) < fabs(q_right)) {f0+=q_left;} else {f0+=q_right;}
             if(mode==0) {SphP[i].Flux[kf][k_dir] = f0;} else {SphP[i].Flux_Pred[kf][k_dir] = f0;}
         }
 #endif
@@ -370,6 +375,12 @@ void rt_get_lum_for_spectral_bin_stars(double T_eff, double luminosity_fraction[
     /* normalize to unity; note that if we wanted a fast version of this function, the normalization means all the constants above are
      redundant and can trivially be thrown out, to [slightly] save time. but right now only called once, so no big deal */
     for(i = 0; i < N_RT_FREQ_BINS; i++) {luminosity_fraction[i] /= sum;}
+
+    /* above we have calculated the relative number of ionizing photons in each bin. since we work in energy units, we need to 
+        renormalize this to an equivalent energy-fraction per bin. we do this by simply converting relative to our 'canonical' 
+        equivalent ionizing photon luminosity of 13.6eV */
+    for(i = 0; i < N_RT_FREQ_BINS; i++) {luminosity_fraction[i] *= rt_nu_eff_eV[i] / 13.6;}
+    
     if(ThisTask == 0)
     {
         printf("Calc Stellar spectra, for T_eff=%g, \n",T_eff);

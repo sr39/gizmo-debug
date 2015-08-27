@@ -238,7 +238,7 @@
             KE_com *= 0.25 * (local.Mass + P[j].Mass);
             double dKE_q = fabs(v_dot_dv) * dt_hydrostep / (1.e-40 + KE_com); // COSMO UNITS!
             double lim_corr=1; if(dKE_q > 0.1) {lim_corr = 0.1/dKE_q;}
-            for(k=0;k<3;k++) {cmag[k] *= lim_corr;} // ???
+            for(k=0;k<3;k++) {cmag[k] *= lim_corr;}
         }
         
         
