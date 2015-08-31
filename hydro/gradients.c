@@ -1153,10 +1153,9 @@ void hydro_gradient_calc(void)
 
 #if defined(CONDUCTION_SPITZER) || defined(VISCOSITY_BRAGINSKII) || (defined(MHD_NON_IDEAL) && defined(COOLING))
             /* get the neutral fraction */
-            double nHeII, temperature, u, ne, nh0, mu = 0;
+            double nHeII, temperature, u, ne, nh0, mu, yhelium = 0;
             ne = SphP[i].Ne;
             u = DMAX(All.MinEgySpec, SphP[i].InternalEnergy); // needs to be in code units
-            
             AbundanceRatios(u, SphP[i].Density*All.cf_a3inv, &ne, &nh0, &nHeII, i);
             yhelium = (1 - HYDROGEN_MASSFRAC) / (4 * HYDROGEN_MASSFRAC);
             mu = (1 + 4 * yhelium) / (1 + yhelium + ne);
@@ -1302,7 +1301,7 @@ void hydro_gradient_calc(void)
                             we need to multiply chifac_iso by a power of 3 (because this goes to I/3, but also when lambda->1/3) */
 						//chi=1./3.; // pure isotropic
 #ifdef RT_RAD_PRESSURE_EDDINGTON
-						chi=1.; // pure optically-thin // may be needed for RP problems ???
+						chi=1.; // pure optically-thin // may be needed for RP problems
 #endif
                         double chifac_iso=3.*(1-chi)/2., chifac_ot=(3.*chi-1.)/2.;
 #ifdef RT_DIFFUSION_CG

@@ -82,7 +82,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef MAGNETIC
     kernel.b2_i = local.BPred[0]*local.BPred[0] + local.BPred[1]*local.BPred[1] + local.BPred[2]*local.BPred[2];
 #if defined(HYDRO_SPH)
-    double magfluxv[3]; magfluxv[0]=magfluxv[1]=magfluxv[2]=0;
+    double magfluxv[3],resistivity_heatflux=0; magfluxv[0]=magfluxv[1]=magfluxv[2]=0;
     kernel.mf_i = local.Mass * fac_magnetic_pressure / (local.Density * local.Density);
     kernel.mf_j = local.Mass * fac_magnetic_pressure;
     // PFH: comoving factors here to convert from B*B/rho to P/rho for accelerations //
@@ -355,6 +355,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #ifdef HYDRO_SPH
                 for(k=0;k<3;k++) {out.DtInternalEnergy+=magfluxv[k]*local.Vel[k]/All.cf_atime;}
+                out.DtInternalEnergy += resistivity_heatflux;
 #else
                 for(k=0;k<3;k++) {out.Face_Area[k] += Face_Area_Vec[k];}
                 double wt_face_sum = Face_Area_Norm * (-face_area_dot_vel+face_vel_i);
@@ -372,7 +373,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     out.DtInternalEnergy += Riemann_out.phi_normal_mean * Face_Area_Vec[k] * local.BPred[k]*All.cf_a2inv;
                 }
 #endif
-#ifdef NON_IDEAL_MHD
+#ifdef MHD_NON_IDEAL
                 for(k=0;k<3;k++) {out.DtInternalEnergy += local.BPred[k]*All.cf_a2inv*bflux_from_nonideal_effects[k];}
 #endif
 #endif
@@ -410,6 +411,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #ifdef HYDRO_SPH
                     for(k=0;k<3;k++) {SphP[j].DtInternalEnergy-=magfluxv[k]*VelPred_j[k]/All.cf_atime;}
+                    SphP[j].DtInternalEnergy += resistivity_heatflux;
 #else
                     for(k=0;k<3;k++) {SphP[j].Face_Area[k] -= Face_Area_Vec[k];}
                     double wt_face_sum = Face_Area_Norm * (-face_area_dot_vel+face_vel_j);
@@ -426,7 +428,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                         SphP[j].DtInternalEnergy -= Riemann_out.phi_normal_mean * Face_Area_Vec[k] * BPred_j[k]*All.cf_a2inv;
                     }
 #endif
-#ifdef NON_IDEAL_MHD
+#ifdef MHD_NON_IDEAL
                     for(k=0;k<3;k++) {SphP[j].DtInternalEnergy -= BPred_j[k]*All.cf_a2inv*bflux_from_nonideal_effects[k];}
 #endif
 #endif

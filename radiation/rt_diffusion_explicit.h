@@ -10,6 +10,8 @@
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 /* --------------------------------------------------------------------------------- */
+double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
+
 #if !defined(RT_EVOLVE_FLUX) /* this means we just solve the diffusion equation for the eddington tensor, done in the loop below */
 {
     int k_freq;
@@ -18,7 +20,6 @@
         Fluxes_E_gamma[k_freq] = 0;
         double kappa_i = local.DiffusionCoeff[k_freq];
         double kappa_j = rt_diffusion_coefficient(j,k_freq);
-        double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
         if((kappa_i>0)&&(kappa_j>0)&&(local.Mass>0)&&(P[j].Mass>0))
         {
             double scalar_i = local.E_gamma[k_freq] / V_i; // volumetric photon number density in this frequency bin //
@@ -89,7 +90,6 @@
 
 {
     int k_freq;
-    double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
     double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + c_light;
     double thold_hll_0 = 2.0;
     for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)

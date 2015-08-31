@@ -457,7 +457,6 @@ int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, doubl
     double hinv, hinv3, hinv4, h2=local.Hsml*local.Hsml;
     kernel_hinv(local.Hsml, &hinv, &hinv3, &hinv4);
     double dt = (All.Radiation_Ti_endstep - All.Radiation_Ti_begstep) * All.Timebase_interval / All.cf_hubble_a;
-    //double prefac = -2.0 * dt * (C/All.UnitVelocity_in_cm_per_s) * RT_SPEEDOFLIGHT_REDUCTION; // old version
 #ifdef RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR
     /*modify Eddington tensor */
     for(j=0;j<N_RT_FREQ_BINS;j++)

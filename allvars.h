@@ -1372,8 +1372,7 @@ extern struct global_data_all_processes
 #endif
 
 #ifdef RT_CHEM_PHOTOION
-    double IonizingLumPerSolarMass;
-    double IonizingLumPerSFR;
+    double IonizingLuminosityPerSolarMass_cgs;
     double star_Teff;
 #endif
     

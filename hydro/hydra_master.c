@@ -696,7 +696,7 @@ void hydro_final_operations_and_cleanup(void)
                     radacc[k] += SphP[i].Kappa_RT[k2] * SphP[i].Flux_Pred[k2][k] / (C / All.UnitVelocity_in_cm_per_s); // no speed of light reduction multiplier here //
 #endif
 #ifdef RT_EVOLVE_EDDINGTON_TENSOR
-                    radacc[k] += -SphP[i].Lambda_FluxLim[k2] * RT_SPEEDOFLIGHT_REDUCTION * SphP[i].Gradients.E_gamma_ET[k2][k] / SphP[i].Density;
+                    radacc[k] += -SphP[i].Lambda_FluxLim[k2] * SphP[i].Gradients.E_gamma_ET[k2][k] / SphP[i].Density;
 #endif
                 }
             for(k=0;k<3;k++)

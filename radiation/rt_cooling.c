@@ -88,22 +88,15 @@ double rt_DoHeating(int i, double dt_internal)
 
 double rt_DoCooling(int i, double dt_internal)
 {
-    double dtime, iter;
-    double lambda, du, de;
-    double u_old, u_lower, u_upper, ratefact, u;
-    double fac_u_to_entr, entropy;
-    
-    dtime = dt_internal / All.cf_hubble_a;
-    
-    fac_u_to_entr = GAMMA_MINUS1 / pow(SphP[i].Density * All.cf_a3inv, GAMMA_MINUS1);
-    
-    entropy = SphP[i].Pressure / pow(SphP[i].Density * All.cf_a3inv, GAMMA);
-    
+    double iter, u_old, u_lower, u_upper, ratefact, u;
+    double dtime = dt_internal / All.cf_hubble_a;
+    double fac_u_to_entr = GAMMA_MINUS1 / pow(SphP[i].Density * All.cf_a3inv, GAMMA_MINUS1);
+    double entropy = entropy = fac_u_to_entr * SphP[i].InternalEnergyPred;
     
     /* do the cooling */
-    lambda = rt_get_cooling_rate(i, entropy);
-    du = lambda * dtime / (SphP[i].Density * All.cf_a3inv);
-    de = du * fac_u_to_entr;
+    double lambda = rt_get_cooling_rate(i, entropy);
+    double du = lambda * dtime / (SphP[i].Density * All.cf_a3inv);
+    double de = du * fac_u_to_entr;
     
     if(fabs(de) < 0.2 * entropy)
     {
@@ -180,9 +173,7 @@ double rt_get_cooling_rate(int i, double entropy)
     nH = HYDROGEN_MASSFRAC * SphP[i].Density * All.cf_a3inv / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;	//physical
     molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[i].Ne);
     
-    temp = entropy * pow(SphP[i].Density * All.cf_a3inv, GAMMA_MINUS1) *
-    molecular_weight * PROTONMASS / All.UnitMass_in_g * All.HubbleParam /
-    BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
+    temp = entropy * pow(SphP[i].Density * All.cf_a3inv, GAMMA_MINUS1) * molecular_weight * PROTONMASS / All.UnitMass_in_g * All.HubbleParam / BOLTZMANN * All.UnitEnergy_in_cgs / All.HubbleParam;
     
     /* all rates in erg cm^3 s^-1 in code units */
     /* recombination cooling rate */
