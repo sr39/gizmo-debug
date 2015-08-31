@@ -67,7 +67,7 @@ void blackhole_start(void)
             {
                 BlackholeTempInfo[Nbh].Jalt_in_Kernel[j]=0;
                 BlackholeTempInfo[Nbh].accreted_momentum[j]=0;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_GRAVACCRETION)    // DAA: need Jgas for GRAVACCRETION as well
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_GRAVACCRETION)  
                 BlackholeTempInfo[Nbh].Jgas_in_Kernel[j]=0;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
@@ -151,10 +151,6 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
     ASSIGN_ADD(BlackholeTempInfo[target].BH_InternalEnergy,out->BH_InternalEnergy,mode);
     ASSIGN_ADD(BlackholeTempInfo[target].Mgas_in_Kernel,out->Mgas_in_Kernel,mode);
     ASSIGN_ADD(BlackholeTempInfo[target].Malt_in_Kernel,out->Malt_in_Kernel,mode);
-// DAA: This is actually not needed... BlackholeTempInfo gets updated with new Mbulge_in_Kernel directly in blackhole_environment_second_evaluate
-//#ifdef BH_GRAVACCRETION_BTOD 
-//    ASSIGN_ADD(BlackholeTempInfo[target].Mbulge_in_Kernel,out->Mbulge_in_Kernel,mode);
-//#endif
     for(k=0;k<3;k++)
         ASSIGN_ADD(BlackholeTempInfo[target].Jalt_in_Kernel[k],out->Jalt_in_Kernel[k],mode);
 #ifdef BH_DYNFRICTION

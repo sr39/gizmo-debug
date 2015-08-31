@@ -268,7 +268,7 @@ void density(void)
         {
             Left[i] = Right[i] = 0;
 #ifdef BLACK_HOLES
-            P[i].SwallowID = 0;          // DAA: is this needed here?
+            P[i].SwallowID = 0;   
 #endif
         }
     } /* done with intial zero-out loop */
@@ -679,7 +679,7 @@ void density(void)
                 if(P[i].Type == 5)
                 {
                     desnumngb = All.DesNumNgb * All.BlackHoleNgbFactor;
-                    desnumngbdev = 4 * (All.BlackHoleNgbFactor+1);            // DAA: isn't this too big ??
+                    desnumngbdev = 4 * (All.BlackHoleNgbFactor+1);     
                 }
 #endif
 

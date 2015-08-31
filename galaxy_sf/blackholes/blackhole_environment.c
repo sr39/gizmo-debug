@@ -326,7 +326,6 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                     
                     
 
-// DAA: this below is only needed if !defined(BH_ALPHADISK_ACCRETION) ...
 #if defined(BH_GRAVCAPTURE_GAS)
                     /* XM: I formally distinguish BH_GRAVCAPTURE_GAS and BH_GRAVCAPTURE_NONGAS. The former applies to
                      gas ONLY, as an accretion model. The later can be combined with any accreton model.

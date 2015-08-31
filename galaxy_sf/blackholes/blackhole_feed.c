@@ -333,7 +333,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                 j = Ngblist[n];
                 if(P[j].Mass > 0)
                 {
-                    for(k=0;k<3;k++) dpos[k] = pos[k] - P[j].Pos[k];       // DAA: revert order?  It seems that it doesn't matter here...
+                    for(k=0;k<3;k++) dpos[k] = pos[k] - P[j].Pos[k];       // DAA: does this give the right angle for BH_PHOTONMOMENTUM below?
 #ifdef PERIODIC
                     NEAREST_XYZ(dpos[0],dpos[1],dpos[2],1);
 #endif

@@ -215,34 +215,8 @@ void blackhole_properties_loop(void)
         set_blackhole_new_mass(i, n, dt);
 
         
-        /* dump the results to the 'blackhole_details' files */
-
-/* DAA: this is done now in blackhole_final_loop so that BH mass is corrected for mass loss to radiation/bal outflows
-
-        fac=0; medd=0; mbulge=0; r0=0;
-#ifdef BH_ALPHADISK_ACCRETION
-        fac = BPP(n).BH_Mass_AlphaDisk;
-        medd = BlackholeTempInfo[i].mdot_alphadisk;
-#endif
-#ifdef BH_GRAVACCRETION_BTOD
-        mbulge =  BlackholeTempInfo[i].Mbulge_in_Kernel;
-        r0 = PPP[n].Hsml * All.cf_atime;       
-#endif
-
-#ifdef BH_OUTPUT_MOREINFO
-        fprintf(FdBlackHolesDetails, "%g %u  %g %g %g %g %g %g  %g %g %g %g %g %g  %2.7f %2.7f %2.7f  %2.7f %2.7f %2.7f  %g %g %g\n",
-                All.Time, P[n].ID,  P[n].Mass, BPP(n).BH_Mass, fac, BPP(n).BH_Mdot, medd, dt,
-                BPP(n).DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy, 
-                BlackholeTempInfo[i].Malt_in_Kernel, BlackholeTempInfo[i].Mgas_in_Kernel, mbulge, r0,
-                P[n].Pos[0], P[n].Pos[1], P[n].Pos[2],  P[n].Vel[0], P[n].Vel[1], P[n].Vel[2], 
-                BlackholeTempInfo[i].Jalt_in_Kernel[0], BlackholeTempInfo[i].Jalt_in_Kernel[1], BlackholeTempInfo[i].Jalt_in_Kernel[2] );
-#else
-        fprintf(FdBlackHolesDetails, "BH=%u %g %g %g %g %g %g %g %g   %2.7f %2.7f %2.7f\n",
-                P[n].ID, All.Time, BPP(n).BH_Mass, fac, P[n].Mass, BPP(n).BH_Mdot, medd,                       
-                BPP(n).DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy,             //       DensAroundStar is actually not defined in BHP->BPP... 
-                P[n].Pos[0], P[n].Pos[1], P[n].Pos[2]);
-#endif
-*/
+        /* DAA: results dumped to 'blackhole_details' files at the end of blackhole_final_loop 
+                so that BH mass is corrected for mass loss to radiation/bal outflows */
 
     }// for(i=0; i<N_active_loc_BHs; i++)
     
@@ -627,7 +601,8 @@ void set_blackhole_drag(int i, int n, double dt)
         /* now we add a correction to only apply this force if M_BH is not >> <m_particles> */
         fac_friction *= 1 / (1 + bh_mass / (5.*BlackholeTempInfo[i].DF_mmax_particles));
         /* now the dimensional part of the force */
-        fac = (BlackholeTempInfo[i].Mgas_in_Kernel+BlackholeTempInfo[i].Malt_in_Kernel) /
+        // fac = (BlackholeTempInfo[i].Mgas_in_Kernel+BlackholeTempInfo[i].Malt_in_Kernel) /         DAA: Malt_in_Kernel is total mass already
+        fac = BlackholeTempInfo[i].Malt_in_Kernel /
         ( (4*M_PI/3) * pow(PPP[n].Hsml*All.cf_atime,3) ); /* mean density of all mass inside kernel */
         fac_friction *= 4*M_PI * All.G * All.G * fac * bh_mass / (bhvel_df*sqrt(bhvel_df));
         /* now apply this to the actual acceleration */
