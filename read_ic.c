@@ -572,6 +572,28 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_CHEM:		/* Chemical abundances */
             break;
             
+            
+            /* adaptive softening parameters */
+        case IO_AGS_SOFT:
+#if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(AGS_OUTPUTGRAVSOFT)
+            for(n = 0; n < pc; n++)
+                PPP[offset + n].Hsml = *fp++;
+#endif
+            break;
+
+        case IO_AGS_ZETA:
+#if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(AGS_OUTPUTZETA)
+            for(n = 0; n < pc; n++)
+                PPPZ[offset + n].AGS_Zeta = *fp++;
+#endif
+            break;
+
+        case IO_AGS_OMEGA:
+        case IO_AGS_CORR:
+        case IO_AGS_NGBS:
+            break;
+
+            
             /* the other input fields (if present) are not needed to define the
              initial conditions of the code */
             
@@ -620,11 +642,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_LAST_CAUSTIC:
         case IO_HSMS:
         case IO_ACRB:
-        case IO_AGS_SOFT:
-        case IO_AGS_ZETA:
-        case IO_AGS_OMEGA:
-        case IO_AGS_CORR:
-        case IO_AGS_NGBS:
         case IO_VSTURB_DISS:
         case IO_VSTURB_DRIVE:
         case IO_MG_PHI:
@@ -929,10 +946,14 @@ void read_file(char *fname, int readTask, int lastTask)
 #endif
             
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifndef AGS_OUTPUTGRAVSOFT
             if(blocknr == IO_AGS_SOFT)
                 continue;
+#endif
+#ifndef AGS_OUTPUTZETA
             if(blocknr == IO_AGS_ZETA)
                 continue;
+#endif
             if(blocknr == IO_AGS_OMEGA)
                 continue;
             if(blocknr == IO_AGS_NGBS)

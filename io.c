@@ -2491,11 +2491,7 @@ int blockpresent(enum iofields blocknr)
             break;
             
         case IO_AGS_NGBS:
-#if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(AGS_OUTPUTNGBS)
-            return 1;
-#else
             return 0;
-#endif
             break;
             
         case IO_MG_PHI:
