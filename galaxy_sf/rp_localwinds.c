@@ -63,12 +63,18 @@ void radiation_pressure_winds_consolidated(void)
             star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
             if( (star_age < 0.1) && (P[i].Mass > 0) && (P[i].DensAroundStar > 0) )
             {
-                RtauMax = P[i].Hsml*All.cf_atime * (2.0 * KAPPA_UV * P[i].Hsml*P[i].DensAroundStar/(All.cf_atime*All.cf_atime) * All.UnitDensity_in_cgs*All.HubbleParam*All.UnitLength_in_cm);
+                //RtauMax = P[i].Hsml*All.cf_atime * (2.0 * KAPPA_UV * P[i].Hsml*P[i].DensAroundStar/(All.cf_atime*All.cf_atime) * All.UnitDensity_in_cgs*All.HubbleParam*All.UnitLength_in_cm);
+                RtauMax = P[i].Hsml*All.cf_atime / (2.0 * KAPPA_UV * P[i].Hsml*P[i].DensAroundStar/(All.cf_atime*All.cf_atime) * All.UnitDensity_in_cgs*All.HubbleParam*All.UnitLength_in_cm);
+
                 RtauMax /= All.cf_atime;
-                RtauMax += 5.*P[i].Hsml;
-                double rmax0 = 10.0 / unitlength_in_kpc;
+                //RtauMax += 5.*P[i].Hsml;
+                RtauMax += PPP[i].Hsml;
+                //double rmax0 = 10.0 / unitlength_in_kpc;
+                double rmax0 = 1.0 / unitlength_in_kpc;
                 if(RtauMax > rmax0) RtauMax = rmax0;
-                rmax0 = 1.0 / unitlength_in_kpc;
+                rmax0 = 10.0*PPP[i].Hsml;
+                if(RtauMax > rmax0) RtauMax = rmax0;                
+                rmax0 = 0.1 / unitlength_in_kpc;
                 if(RtauMax < rmax0) RtauMax = rmax0;
                 
 #ifndef GALSF_FB_RPWIND_CONTINUOUS
@@ -107,7 +113,7 @@ void radiation_pressure_winds_consolidated(void)
                 { // within loop if ndef(GALSF_FB_RPWIND_CONTINUOUS)
                     
                     /* ok, now open the neighbor list for the star particle */
-                    N_MIN_KERNEL=20;N_MAX_KERNEL=500;MAXITER_FB=10;NITER=0;rho=0;wt_sum=0;
+                    N_MIN_KERNEL=2;N_MAX_KERNEL=500;MAXITER_FB=5;NITER=0;rho=0;wt_sum=0;
                     startnode=All.MaxPart;dummy=0;numngb_inbox=0;h=1.0*P[i].Hsml;pos=P[i].Pos;
                     if(h<=0) h=All.SofteningTable[0];
                     

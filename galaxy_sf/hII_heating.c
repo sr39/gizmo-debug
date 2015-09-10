@@ -31,7 +31,7 @@ void HII_heating_singledomain(void)
   double star_age,lm_ssp=0,log_age,stellum,uion,prob,rho_j,prandom;
   double m_available,m_effective,RHII_initial,RHIImultiplier;
   MAX_N_ITERATIONS_HIIFB = 5; NITER_HIIFB = 0;
-  MAX_N_ITERATIONS_HIIFB = 10;
+  //MAX_N_ITERATIONS_HIIFB = 10;
 
   double total_l_ionizing,total_m_ionizing,total_m_ionizable,total_m_ionized,avg_RHII;
   total_l_ionizing=total_m_ionized=avg_RHII=total_m_ionizable=total_m_ionizing=0;
@@ -103,12 +103,15 @@ void HII_heating_singledomain(void)
          RHII /= All.cf_atime*All.UnitLength_in_cm/All.HubbleParam;
          RHIIMAX=240.0*pow(All.HIIRegion_fLum_Coupled*stellum,0.5)/(All.cf_atime*All.UnitLength_in_cm/All.HubbleParam);
          //if(RHIIMAX>20.0*h_i) RHIIMAX=20.0*h_i;
-
-     RHIIMAX *= 50;
-     if(RHIIMAX<10.0*h_i) RHIIMAX=10.0*h_i;
+         //RHIIMAX *= 50;
+         //if(RHIIMAX<10.0*h_i) RHIIMAX=10.0*h_i;
+         
+         if(RHIIMAX < h_i) RHIIMAX=h_i;
+         if(RHIIMAX > 5.0*h_i) RHIIMAX=5.*h_i;
+         
          mionizable=NORM_COEFF*rho*RHII*RHII*RHII;
          if(RHII>RHIIMAX) RHII=RHIIMAX;
-     if(RHII<0.5*h_i) RHII=0.5*h_i;
+         if(RHII<0.5*h_i) RHII=0.5*h_i;
          RHII_initial=RHII;
 
      prandom = get_random_number(P[i].ID + 7); // pre-calc the (eventually) needed random number

@@ -1076,12 +1076,6 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt],"Grain_Size_Max");
         addr[nt] = &All.Grain_Size_Max;
         id[nt++] = REAL;
-        
-#ifdef GRAIN_LORENTZFORCE
-        strcpy(tag[nt],"Grain_Charge");
-        addr[nt] = &All.Grain_Charge;
-        id[nt++] = REAL;
-#endif
 #endif
         
 #if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_SNE_HEATING)

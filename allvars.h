@@ -1386,9 +1386,6 @@ extern struct global_data_all_processes
     double Grain_Internal_Density;
     double Grain_Size_Min;
     double Grain_Size_Max;
-#ifdef GRAIN_LORENTZFORCE
-    double Grain_Charge;
-#endif
 #endif
     
 #ifdef COSMIC_RAYS

@@ -42,9 +42,11 @@ void apply_grain_dragforce(void)
                 if(dt > 0)
                 {
                     double cs = sqrt( GAMMA * GAMMA_MINUS1 * P[i].Gas_InternalEnergy);
-                    double R_grain = P[i].Grain_Size;
+                    double R_grain_cgs = P[i].Grain_Size;
+                    double R_grain_code = R_grain_cgs / (All.UnitLength_in_cm / All.HubbleParam);
                     double rho_gas = P[i].Gas_Density * All.cf_a3inv;
-                    double rho_grain = All.Grain_Internal_Density;
+                    double rho_grain_physical = All.Grain_Internal_Density; // cgs units //
+                    double rho_grain_code = rho_grain_physical / (All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam); // code units //
                     double vgas_mag = 0.0;
                     for(k=0;k<3;k++) {vgas_mag+=(P[i].Gas_Velocity[k]-P[i].Vel[k])*(P[i].Gas_Velocity[k]-P[i].Vel[k]);}
                     
@@ -53,7 +55,7 @@ void apply_grain_dragforce(void)
                     {
                         vgas_mag = sqrt(vgas_mag) / All.cf_atime;
                         double x0 = 0.469993 * vgas_mag/cs; // (3/8)*sqrt[pi/2]*|vgas-vgrain|/cs //
-                        double tstop_inv = 1.59577 * rho_gas * cs / (R_grain * rho_grain); // 2*sqrt[2/pi] * 1/tstop //
+                        double tstop_inv = 1.59577 * rho_gas * cs / (R_grain_code * rho_grain_code); // 2*sqrt[2/pi] * 1/tstop //
 #ifdef GRAIN_EPSTEIN
                         double mu = 2.3 * PROTONMASS;
                         double temperature = mu * (P[i].Gas_InternalEnergy*All.UnitEnergy_in_cgs*All.HubbleParam/All.UnitMass_in_g) / BOLTZMANN;
@@ -61,7 +63,7 @@ void apply_grain_dragforce(void)
                         cross_section /= (All.UnitLength_in_cm * All.UnitLength_in_cm / (All.HubbleParam*All.HubbleParam));
                         double n_mol = rho_gas / (mu * All.HubbleParam/All.UnitMass_in_g);
                         double mean_free_path = 1 / (n_mol * cross_section); // should be in code units now //
-                        double corr_mfp = R_grain / ((9./4.) * mean_free_path);
+                        double corr_mfp = R_grain_code / ((9./4.) * mean_free_path);
                         if(corr_mfp > 1) {tstop_inv /= corr_mfp;}
 #endif
                         double C1 = (-1-sqrt(1+x0*x0)) / x0;
@@ -82,13 +84,24 @@ void apply_grain_dragforce(void)
                         v_cross_B[1] = (P[i].Vel[2]-P[i].Gas_Velocity[2])*P[i].Gas_B[0] - (P[i].Vel[0]-P[i].Gas_Velocity[0])*P[i].Gas_B[2];
                         v_cross_B[2] = (P[i].Vel[0]-P[i].Gas_Velocity[0])*P[i].Gas_B[1] - (P[i].Vel[1]-P[i].Gas_Velocity[1])*P[i].Gas_B[0];
 
-                        double grain_mass = (4.*M_PI/3.) * P[i].Grain_Size*P[i].Grain_Size*P[i].Grain_Size * All.Grain_Internal_Density; // code units
+                        double grain_mass = (4.*M_PI/3.) * R_grain_code*R_grain_code*R_grain_code * rho_grain_code; // code units
                         double lorentz_units = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); // code B to Gauss
                         lorentz_units *= (ELECTRONCHARGE/C) * All.UnitVelocity_in_cm_per_s / (All.UnitMass_in_g / All.HubbleParam); // converts acceleration to cgs
                         lorentz_units /= All.UnitVelocity_in_cm_per_s / (All.UnitTime_in_s / All.HubbleParam); // converts it to code-units acceleration
 
-                        double grain_charge_cinv = -All.Grain_Charge / grain_mass * lorentz_units;
+                        /* calculate the grain charge following Draine & Sutin */
+                        double cs_cgs = cs / All.UnitVelocity_in_cm_per_s;
+                        double tau_draine_sutin = R_grain_cgs * (2.3*PROTONMASS) * (cs_cgs*cs_cgs) / (ELECTRONCHARGE*ELECTRONCHARGE);
+                        double Z_grain = -DMAX( 1./(1. + sqrt(1.0e-3/tau_draine_sutin)) , 2.5*tau_draine_sutin );
+                        
+                        double grain_charge_cinv = Z_grain / grain_mass * lorentz_units;
                         for(k=0;k<3;k++) {external_forcing[k] += grain_charge_cinv * v_cross_B[k];}
+                        /* note: if grains moving super-sonically with respect to gas, and charge equilibration time is much shorter than the 
+                            streaming/dynamical timescales, then the charge is slightly reduced, because the ion collision rate is increased while the 
+                            electron collision rate is increased less (since electrons are moving much faster, we assume the grain is still sub-sonic 
+                            relative to the electron sound speed. in this case, for the large-grain limit, the Draine & Sutin results can be generalized; 
+                            the full expressions are messy but can be -approximated- fairly well for Mach numbers ~3-30 by simply 
+                            suppressing the equilibrium grain charge by a power ~exp[-0.04*mach]  (weak effect, though can be significant for mach>10) */
 #endif
                         
                         double delta_egy = 0;
@@ -279,9 +292,7 @@ void grain_collisions(void)
                 if(dt > 0)
                 {
                     soundspeed = Particle_effective_soundspeed_i(i);
-                    R_grain = P[i].Grain_Size; // grain size in --code-- units //
-                    
-                    
+                    R_grain = P[i].Grain_Size; // grain size in --cgs-- units //
                 } // closes check for if(dt > 0)
             } // closes check for if(P[i].Gas_Density > 0)
         } // closes check for if(P[i].Type != 0)
