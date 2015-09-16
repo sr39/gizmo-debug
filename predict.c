@@ -155,9 +155,9 @@ void drift_particle(int i, integertime time1)
                 maxsoft = DMIN(maxsoft, 0.5 * All.Asmth[0]);
 #endif
             }
-            PPP[i].Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
-            if(PPP[i].Hsml < minsoft) {PPP[i].Hsml = minsoft;}
-            if(PPP[i].Hsml > maxsoft) {PPP[i].Hsml = maxsoft;}
+            PPP[i].AGS_Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
+            if(PPP[i].AGS_Hsml < minsoft) {PPP[i].AGS_Hsml = minsoft;}
+            if(PPP[i].AGS_Hsml > maxsoft) {PPP[i].AGS_Hsml = maxsoft;}
         }
     }
 #endif
@@ -247,6 +247,9 @@ void drift_particle(int i, integertime time1)
             PPP[i].Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
             if(PPP[i].Hsml < All.MinHsml) {PPP[i].Hsml = All.MinHsml;}
             if(PPP[i].Hsml > All.MaxHsml) {PPP[i].Hsml = All.MaxHsml;}
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+            PPP[i].AGS_Hsml = PPP[i].Hsml;
+#endif
             
             drift_sph_extra_physics(i, time0, time1, dt_entr);
 

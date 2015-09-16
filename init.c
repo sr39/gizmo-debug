@@ -546,6 +546,9 @@ void init(void)
         
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         PPPZ[i].AGS_zeta = 0;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+        PPP[i].AGS_Hsml = PPP[i].Hsml;
+#endif
 #endif
         
 #ifdef CONDUCTION
@@ -1070,12 +1073,14 @@ void ags_setup_smoothinglengths(void)
                         break;
                     no = p;
                 }
-                PPP[i].Hsml = pow(1.0/NORM_COEFF * All.AGS_DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
+                PPP[i].AGS_Hsml = pow(1.0/NORM_COEFF * All.AGS_DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
                 if(All.SofteningTable[P[i].Type] != 0)
                 {
-                    if((PPP[i].Hsml>1000.*All.SofteningTable[P[i].Type])||(PPP[i].Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
-                        PPP[i].Hsml = All.SofteningTable[P[i].Type];
+                    if((PPP[i].AGS_Hsml>1000.*All.SofteningTable[P[i].Type])||(PPP[i].AGS_Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
+                        PPP[i].AGS_Hsml = All.SofteningTable[P[i].Type];
                 }
+            } else {
+                PPP[i].AGS_Hsml = PPP[i].Hsml;
             }
         }
     }

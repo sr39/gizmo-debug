@@ -1873,6 +1873,7 @@ extern ALIGN(32) struct particle_data
 #endif
     
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
+    MyDouble AGS_Hsml;          /*!< smoothing length (for gravitational forces) */
     MyFloat AGS_zeta;           /*!< factor in the correction term */
 #endif
 }

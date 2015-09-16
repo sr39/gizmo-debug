@@ -135,9 +135,13 @@ void compute_potential(void)
         GravDataIn[j].Mass = P[place].Mass;
 #endif
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL)
-        if(PPP[place].Hsml > All.ForceSoftening[P[place].Type])
+        double h_place = PPP[place].Hsml;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+        h_place = PPP[place].AGS_Hsml;
+#endif
+        if(h_place > All.ForceSoftening[P[place].Type])
         {
-            GravDataIn[j].Soft = PPP[place].Hsml;
+            GravDataIn[j].Soft = h_place;
         } else {
             GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];
         }

@@ -84,7 +84,7 @@ void merge_and_split_particles(void)
             double h_search_min = 0.1 * All.ForceSoftening[P[i].Type];
             double h_guess; numngb_inbox=0; int NITER=0, NITER_MAX=30;
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-            h_guess = PPP[i].Hsml; if(h_guess > h_search_max) {h_search_max=h_guess;} if(h_guess < h_search_min) {h_search_min=h_guess;}
+            h_guess = PPP[i].AGS_Hsml; if(h_guess > h_search_max) {h_search_max=h_guess;} if(h_guess < h_search_min) {h_search_min=h_guess;}
 #else
             h_guess = 5.0 * All.ForceSoftening[P[i].Type];
 #endif

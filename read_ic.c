@@ -577,7 +577,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_AGS_SOFT:
 #if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(AGS_OUTPUTGRAVSOFT)
             for(n = 0; n < pc; n++)
-                PPP[offset + n].Hsml = *fp++;
+                PPP[offset + n].AGS_Hsml = *fp++;
 #endif
             break;
 

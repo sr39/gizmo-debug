@@ -393,7 +393,7 @@ integertime get_timestep(int p,		/*!< particle index */
         
         ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / (dt * dt);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-        ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / (dt * dt);
+        ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].AGS_Hsml,All.ForceSoftening[P[p].Type]) / (dt * dt);
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
         if(P[p].Type==0)
@@ -405,7 +405,7 @@ integertime get_timestep(int p,		/*!< particle index */
     
     dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / ac);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-    dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / ac);
+    dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * DMAX(PPP[p].AGS_Hsml,All.ForceSoftening[P[p].Type]) / ac);
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
     if(P[p].Type == 0)

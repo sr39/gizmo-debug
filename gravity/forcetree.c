@@ -745,8 +745,8 @@ void force_update_node_recursive(int no, int sib, int father)
                     
                     /* update of the maximum gravitational softening  */
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-                    if(PPP[p].Hsml > maxsoft)
-                        maxsoft = PPP[p].Hsml;
+                    if(PPP[p].AGS_Hsml > maxsoft)
+                        maxsoft = PPP[p].AGS_Hsml;
 #else
 #ifndef ADAPTIVE_GRAVSOFT_FORGAS
                     if(All.ForceSoftening[pa->Type] > maxsoft)
@@ -763,7 +763,7 @@ void force_update_node_recursive(int no, int sib, int father)
                             maxsoft = All.ForceSoftening[pa->Type];
                     }
 #endif
-#endif // ADAPTIVE_GRAVSOFT_FORALL //
+#endif
                 }
             }
         }
@@ -1568,9 +1568,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         }
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORALL)
-        if(PPP[target].Hsml > All.ForceSoftening[ptype])
+        if(PPP[target].AGS_Hsml > All.ForceSoftening[ptype])
         {
-            soft = PPP[target].Hsml;
+            soft = PPP[target].AGS_Hsml;
             zeta = PPPZ[target].AGS_zeta;
         } else {
             soft = All.ForceSoftening[ptype];
@@ -1774,9 +1774,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     if(ptype_sec > -1) /* trigger for all particles */
 #endif
                     {
-                        if(PPP[no].Hsml > All.ForceSoftening[P[no].Type])
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+                        double h_no = PPP[no].AGS_Hsml;
+#else
+                        double h_no = PPP[no].Hsml;
+#endif
+                        if(h_no > All.ForceSoftening[P[no].Type])
                         {
-                            h_p_inv = 1.0 / PPP[no].Hsml;
+                            h_p_inv = 1.0 / h_no;
                             zeta_sec = PPPZ[no].AGS_zeta;
                         }
                         else
@@ -1812,7 +1817,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                             sidm_tstart = my_second();
                             r = sqrt(r2);
 #if defined(ADAPTIVE_GRAVSOFT_FORALL)
-                            h_si = DMAX(targeth_si, All.SIDMSmoothingFactor * DMAX(PPP[no].Hsml,All.ForceSoftening[P[no].Type]));
+                            h_si = DMAX(targeth_si, All.SIDMSmoothingFactor * DMAX(PPP[no].AGS_Hsml,All.ForceSoftening[P[no].Type]));
 #else
                             h_si = DMAX(targeth_si, All.SIDMSmoothingFactor * All.ForceSoftening[P[no].Type]);
 #endif
@@ -2946,9 +2951,9 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
         }
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-        if(PPP[target].Hsml > All.ForceSoftening[ptype])
+        if(PPP[target].AGS_Hsml > All.ForceSoftening[ptype])
         {
-            soft = PPP[target].Hsml;
+            soft = PPP[target].AGS_Hsml;
         } else {
             soft = All.ForceSoftening[ptype];
         }

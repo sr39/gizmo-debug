@@ -448,9 +448,9 @@ void gravity_tree(void)
                         GravDataIn[j].AGS_zeta = 0;
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-                    if(PPP[place].Hsml > All.ForceSoftening[P[place].Type])
+                    if(PPP[place].AGS_Hsml > All.ForceSoftening[P[place].Type])
                     {
-                        GravDataIn[j].Soft = PPP[place].Hsml;
+                        GravDataIn[j].Soft = PPP[place].AGS_Hsml;
                         GravDataIn[j].AGS_zeta = PPPZ[place].AGS_zeta;
                     } else {
                         GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];
