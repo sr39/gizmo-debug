@@ -1055,6 +1055,12 @@ extern FILE *FdTidaltensor;     /*!< file handle for tidaltensor.txt log-file. *
 #ifdef BLACK_HOLES
 extern FILE *FdBlackHoles;	/*!< file handle for blackholes.txt log-file. */
 extern FILE *FdBlackHolesDetails;
+#ifdef BH_OUTPUT_MOREINFO
+extern FILE *FdBhMergerDetails;
+#ifdef BH_BAL_KICK
+extern FILE *FdBhWindDetails;
+#endif
+#endif
 #endif
 
 #ifdef DARKENERGY
@@ -1462,7 +1468,7 @@ extern struct global_data_all_processes
   double AGBGasEnergy;
 #endif
     
-#ifdef BH_BAL_WINDS
+#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
     double BAL_f_accretion;
     double BAL_v_outflow;
 #endif
@@ -2342,9 +2348,14 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyLongDouble Mgas_in_Kernel;
     MyLongDouble Malt_in_Kernel;
     MyLongDouble Jalt_in_Kernel[3];
+#ifdef BH_GRAVACCRETION_BTOD
+    MyLongDouble Mbulge_in_Kernel;
+#endif
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK_COLLIMATED) || defined(BH_GRAVACCRETION)  // DAA: need Jgas for GRAVACCRETION as well
+    MyLongDouble Jgas_in_Kernel[3];
+#endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
     MyLongDouble GradRho_in_Kernel[3];
-    MyLongDouble Jgas_in_Kernel[3];
     MyFloat BH_angle_weighted_kernel_sum;
 #endif
 #ifdef BH_DYNFRICTION

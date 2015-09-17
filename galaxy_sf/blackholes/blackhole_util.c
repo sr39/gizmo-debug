@@ -53,6 +53,9 @@ void blackhole_start(void)
             BlackholeTempInfo[Nbh].accreted_BH_Mass = 0;
             BlackholeTempInfo[Nbh].Mgas_in_Kernel=0;
             BlackholeTempInfo[Nbh].Malt_in_Kernel=0;
+#ifdef BH_GRAVACCRETION_BTOD
+            BlackholeTempInfo[Nbh].Mbulge_in_Kernel=0;
+#endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
             BlackholeTempInfo[Nbh].BH_angle_weighted_kernel_sum=0;
 #endif
@@ -64,9 +67,11 @@ void blackhole_start(void)
             {
                 BlackholeTempInfo[Nbh].Jalt_in_Kernel[j]=0;
                 BlackholeTempInfo[Nbh].accreted_momentum[j]=0;
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_GRAVACCRETION)  
+                BlackholeTempInfo[Nbh].Jgas_in_Kernel[j]=0;
+#endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
                 BlackholeTempInfo[Nbh].GradRho_in_Kernel[j]=0;
-                BlackholeTempInfo[Nbh].Jgas_in_Kernel[j]=0;
 #endif
 #ifdef BH_DYNFRICTION
                 BlackholeTempInfo[Nbh].DF_mean_vel[j]=0;
@@ -127,6 +132,12 @@ void blackhole_end(void)
     }
     
     fflush(FdBlackHolesDetails);
+#ifdef BH_OUTPUT_MOREINFO
+    fflush(FdBhMergerDetails);
+#ifdef BH_BAL_KICK
+    fflush(FdBhWindDetails);
+#endif
+#endif
     myfree(BlackholeTempInfo);
 }
 
@@ -152,11 +163,13 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
         if(out->DF_mmax_particles > BlackholeTempInfo[target].DF_mmax_particles)
             BlackholeTempInfo[target].DF_mmax_particles = out->DF_mmax_particles;
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_GRAVACCRETION)  // DAA: need Jgas for GRAVACCRETION as well
     for(k=0;k<3;k++)
     {
         ASSIGN_ADD(BlackholeTempInfo[target].Jgas_in_Kernel[k],out->Jgas_in_Kernel[k],mode);
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
         ASSIGN_ADD(BlackholeTempInfo[target].GradRho_in_Kernel[k],out->GradRho_in_Kernel[k],mode);
+#endif
     }
 #endif
 #if defined(BH_USE_GASVEL_IN_BONDI) || defined(BH_DRAG)

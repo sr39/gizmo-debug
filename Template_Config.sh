@@ -242,7 +242,11 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #------ The original GADGET-3 BH model (only: BLACK_HOLES,BH_SWALLOWGAS,BH_BONDI,BH_DRAG) follow the GADGET-3 Springel & Hernquist policy above
 ##-----------------------------------------------------------------------------------------------------
 #BLACK_HOLES                    # enables Black-Holes (master switch)
-#------ seed models
+# ----- seed models
+#BH_HOST_TO_SEED_RATIO=1000     # DAA: The minimum stellar mass for seeding is BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass
+                                #      Requires FOF with linking type including star particles (MinFoFMassForNewSeed and massDMpart are ignored)
+#MINREDSHIFT_FOR_BHSEED=2.0     # DAA: stops BH seeding below this redshift
+#SIGMA_FOR_BHSEED=0.5           # DAA: log(Mseed) is taken from a log-normal distribution with mean "SeedBlackHoleMass" and stddev SIGMA_FOR_BHSEED
 #BH_POPIII_SEEDS                # BHs seeded on-the-fly from dense, low-metallicity gas
 #------ accretion models/options
 #BH_SWALLOWGAS                  # enables stochastic accretion of gas particles consistent with growth rate of hole
@@ -250,12 +254,16 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #BH_GRAVCAPTURE_GAS             # accretion determined only by resolved gravitational capture by the BH (for gas particles)
 #BH_GRAVCAPTURE_NONGAS          # as BH_GRAVCAPTURE_GAS, but applies to non-gas particles (can be enabled with other accretion models for gas)
 #BH_GRAVACCRETION               # Gravitational instability accretion estimator from Hopkins & Quataert 2010
+#BH_GRAVACCRETION_BTOD          # DAA: torque rate based on kinematic bulge/disk decomposition as in Angles-Alcazar et al 2013-2015  (requires BH_GRAVACCRETION)
 ##BH_BONDI                      # Bondi-Hoyle style accretion model
 ##BH_VARIABLE_ACCRETION_FACTOR  # variable-alpha model as in Booth&Schaye 2009
 ##BH_USE_GASVEL_IN_BONDI        # surrounding gas velocity used with sounds speed in the Bondi rate
 #BH_SUBGRIDBHVARIABILITY        # model variability below resolved dynamical time for BH
-#------ feedback models/options
-#BH_BAL_WINDS                   # accretion drives a continuous BAL wind (from accretion-disk scales, coupled to BH neighbor particles)
+# ----- feedback models/options
+#BH_BAL_WINDS                   # particles within the BH kernel are given mass, momentum, and energy continuously as high-vel BAL winds
+#BH_BAL_KICK                    # do BAL winds with stochastic particle kicks at specified velocity (instead of continuous wind solution - requires BH_SWALLOWGAS - )
+#BH_BAL_KICK_COLLIMATED         # DAA: winds follow the direction of angular momentum within Kernel (only for BH_BAL_KICK winds)
+#BH_BAL_KICK_MOMENTUM_FLUX=10   # DAA: increase the effective mass-loading of BAL winds to reach the desired momentum flux in units of L_bol/c (needs BH_BAL_KICK)
 #BH_PHOTONMOMENTUM              # continuous long-range IR radiation pressure acceleration from BH (needs GALSF_FB_RT_PHOTONMOMENTUM)
 #BH_HII_HEATING                 # photo-ionization feedback from BH (needs GALSF_FB_HII_HEATING)
 #BH_COMPTON_HEATING             # enable Compton heating/cooling from BHs in cooling function (needs BH_PHOTONMOMENTUM)
@@ -264,6 +272,8 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #BH_DYNFRICTION                 # apply dynamical friction force to the BHs when m_bh not >> other particle mass
 ##BH_DRAG                       # Drag on black-holes due to accretion (w real mdot)
 ##BH_STRONG_DRAG                # Drag rate boosted as if BH is accreting at eddington (requires BH_DRAG)
+# ----- output options
+#BH_OUTPUT_MOREINFO             # DAA: output additional info to "blackhole_details"
 ##-----------------------------------------------------------------------------------------------------
 #------------ deprecated or de-bugging options (most have been combined or optimized into the functions above, here for legacy)
 ##BH_REPOSITION_ON_POTMIN       # repositions hole on potential minimum (requires EVALPOTENTIAL)
@@ -271,7 +281,6 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##BH_FOLLOW_ACCRETED_GAS_MOMENTUM # Follow momentum for each swallowed gas parcel (add to BH; this ignores dissipation on small scales)
 ##BH_SEED_ON_POTMIN             # Seed in minimal potential instead of max density
 ##BH_SEED_STAR_MASS_FRACTION=0.02 # minimum star mass fraction for BH seeding
-##BH_BAL_KICK                   # do BAL winds with stochastic particle kicks at specified velocity (instead of continuous wind solution) 
 ##BH_BROADCAST_POSITION         # make sure all processors always know BH position (saved in a global variable): works for single-BH simulations only
 ##-----------------------------------------------------------------------------------------------------
 #-------------------------------------- AGN-Bubble feedback (D. Sijacki)

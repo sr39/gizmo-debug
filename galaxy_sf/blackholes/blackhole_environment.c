@@ -34,6 +34,9 @@ static struct blackholedata_in
 #endif
     MyDouble Pos[3];
     MyFloat Vel[3];
+#ifdef BH_GRAVACCRETION_BTOD
+    MyFloat Jalt[3];
+#endif
     MyFloat Hsml;
     MyIDType ID;
     int NodeList[NODELISTLENGTH];
@@ -122,11 +125,13 @@ void blackhole_environment_loop(void)
             }
         }
         myfree(BlackholeDataIn);
-        
-        
+   
+        /*  DAA: PasserResult cycles over nimport!  PasserOut cycles over nexport!
         BlackholeDataPasserResult = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserResult", nexport * sizeof(struct blackhole_temp_particle_data));
-        BlackholeDataPasserOut = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserOut", nimport * sizeof(struct blackhole_temp_particle_data));
-        
+        BlackholeDataPasserOut = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserOut", nimport * sizeof(struct blackhole_temp_particle_data)); */
+        BlackholeDataPasserResult = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserResult", nimport * sizeof(struct blackhole_temp_particle_data));
+        BlackholeDataPasserOut = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserOut", nexport * sizeof(struct blackhole_temp_particle_data));        
+
         /* now do the particles that were sent to us */
         for(j = 0; j < nimport; j++)
             blackhole_environment_evaluate(j, 1, &dummy, &dummy);
@@ -171,7 +176,11 @@ void blackhole_environment_loop(void)
     myfree(DataNodeList);
     myfree(DataIndexTable);
     myfree(Ngblist);
-    
+
+    /* DAA: normalize/finalized some of the environment variables */
+    for(i=0; i<N_active_loc_BHs; i++)
+        normalize_temp_info_struct(i);
+        
 }
 
 
@@ -278,10 +287,18 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                     {
                         out.Mgas_in_Kernel += wt;
                         out.BH_InternalEnergy += wt*SphP[j].InternalEnergy;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK_COLLIMATED) || defined(BH_GRAVACCRETION) 
+         /* DAA: now we need Jgas for GRAVACCRETION as well
+            Note that Jalt_in_Kernel will be updated to be the TOTAL Angular momentum (including gas) in normalize_temp_info_struct */
                         out.Jgas_in_Kernel[0] += wt*(dP[1]*dv[2] - dP[2]*dv[1]);
                         out.Jgas_in_Kernel[1] += wt*(dP[2]*dv[0] - dP[0]*dv[2]);
                         out.Jgas_in_Kernel[2] += wt*(dP[0]*dv[1] - dP[1]*dv[0]);
+#else
+                        out.Jalt_in_Kernel[0] += wt*(dP[1]*dv[2] - dP[2]*dv[1]);
+                        out.Jalt_in_Kernel[1] += wt*(dP[2]*dv[0] - dP[0]*dv[2]);
+                        out.Jalt_in_Kernel[2] += wt*(dP[0]*dv[1] - dP[1]*dv[0]);
+#endif
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
                         u=0;
                         for(k=0;k<3;k++) u+=dP[k]*dP[k];
                         u=sqrt(u)/h_i;
@@ -295,7 +312,12 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                             out.BH_SurroundingGasVel[k] += wt*dv[k];
                         }
 #endif
-                    } else { /* not gas, not BH */
+                    }
+#ifdef BH_GRAVACCRETION_BTOD    // DAA: we need only star particles here
+                    else if( P[j].Type==4 || ((P[j].Type==2||P[j].Type==3) && !(All.ComovingIntegrationOn)) ) {
+#else 
+                    else { /* not gas, not BH */
+#endif
                         out.Malt_in_Kernel += wt;
                         out.Jalt_in_Kernel[0] += wt*(dP[1]*dv[2] - dP[2]*dv[1]);
                         out.Jalt_in_Kernel[1] += wt*(dP[2]*dv[0] - dP[0]*dv[2]);
@@ -303,6 +325,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                     }
                     
                     
+
 #if defined(BH_GRAVCAPTURE_GAS)
                     /* XM: I formally distinguish BH_GRAVCAPTURE_GAS and BH_GRAVCAPTURE_NONGAS. The former applies to
                      gas ONLY, as an accretion model. The later can be combined with any accreton model.
@@ -325,6 +348,8 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                             if( All.ForceSoftening[5]*(1.0-vrel*vrel/(vbound*vbound))/sqrt(r2) > 1.0 ) { /* apocenter within 2.8*epsilon (softening length) */
                                 
                                 /* CAVEAT: when two BHs share some neighbours, this double counts the accretion */
+                                /* DAA: looks like this is true always since SwallowID=0 has just been initialized...
+                                              only makes sense to check SwallowID if we update it... */
                                 if(P[j].SwallowID < id)
                                 {
                                     out.mass_to_swallow_edd += P[j].Mass;
@@ -339,7 +364,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                 } // ( (P[j].Mass > 0) && (P[j].Type != 5) && (P[j].ID != id) )
             } // for(n = 0; n < numngb; n++)
             
-            if(mode == 0) /* local -> send directoy to local temp struct */
+            if(mode == 0) /* local -> send directly to local temp struct */
                 out2particle_blackhole(&out, mod_index, 0);     /* target -> mod_index for reduced size struc */
             else
                 BlackholeDataPasserResult[target] = out;        /* this is okay because target cycles over nimport only */
@@ -359,3 +384,280 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     } // while(startnode >= 0)
     return 0;
 }
+
+
+
+
+
+/* -----------------------------------------------------------------------------------------------------
+ * DAA: modified versions of blackhole_environment_loop and blackhole_environment_evaluate for a second
+ * environment loop. Here we do a Bulge-Disk kinematic decomposition for gravitational torque accretion
+ * ----------------------------------------------------------------------------------------------------- 
+ */
+
+
+#ifdef BH_GRAVACCRETION_BTOD
+
+
+void blackhole_environment_second_loop(void)
+{
+    int i, j, k, nexport, nimport, place, ngrp, recvTask, dummy;
+    int ndone_flag, ndone;
+    int mod_index;
+    MPI_Status status;
+
+    Ngblist = (int *) mymalloc("Ngblist", NumPart * sizeof(int));
+    All.BunchSize = (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
+                                                             sizeof(struct blackholedata_in) +
+                                                             sizeof(struct blackhole_temp_particle_data) +
+                                                             sizemax(sizeof(struct blackholedata_in),
+                                                                     sizeof(struct blackhole_temp_particle_data))));
+
+    DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
+    DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
+
+    /* Scan gas particles for angular momentum, boundedness, etc */
+    i = FirstActiveParticle;    /* first particle for this task */
+    do
+    {
+        for(j = 0; j < NTask; j++)
+        {
+            Send_count[j] = 0;
+            Exportflag[j] = -1;
+        }
+        /* do local active BH particles and prepare export list */
+        for(nexport = 0; i >= 0; i = NextActiveParticle[i])
+            if(P[i].Type == 5)
+                if(blackhole_environment_second_evaluate(i, 0, &nexport, Send_count) < 0)
+                    break;
+
+        MYSORT_DATAINDEX(DataIndexTable, nexport, sizeof(struct data_index), data_index_compare);
+        MPI_Alltoall(Send_count, 1, MPI_INT, Recv_count, 1, MPI_INT, MPI_COMM_WORLD);
+        for(j = 0, nimport = 0, Recv_offset[0] = 0, Send_offset[0] = 0; j < NTask; j++)
+        {
+            nimport += Recv_count[j];
+            if(j > 0)
+            {
+                Send_offset[j] = Send_offset[j - 1] + Send_count[j - 1];
+                Recv_offset[j] = Recv_offset[j - 1] + Recv_count[j - 1];
+            }
+        }
+
+
+        BlackholeDataGet = (struct blackholedata_in *) mymalloc("BlackholeDataGet", nimport * sizeof(struct blackholedata_in));
+        BlackholeDataIn = (struct blackholedata_in *) mymalloc("BlackholeDataIn", nexport * sizeof(struct blackholedata_in));
+        for(j = 0; j < nexport; j++)
+        {
+            place = DataIndexTable[j].Index;
+            mod_index = P[place].IndexMapToTempStruc;  /* DAA: the index of the BlackholeTempInfo structure */
+            for(k = 0; k < 3; k++)
+            {
+                BlackholeDataIn[j].Pos[k] = P[place].Pos[k];
+                BlackholeDataIn[j].Vel[k] = P[place].Vel[k];
+                BlackholeDataIn[j].Jalt[k] = BlackholeTempInfo[mod_index].Jalt_in_Kernel[k];    // DAA: Jalt_in_Kernel is available after first environment loop
+            }
+            BlackholeDataIn[j].Hsml = PPP[place].Hsml;
+            BlackholeDataIn[j].ID = P[place].ID;
+            memcpy(BlackholeDataIn[j].NodeList, DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
+        }
+        /* exchange particle data */
+        for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
+        {
+            recvTask = ThisTask ^ ngrp;
+            if(recvTask < NTask)
+            {
+                if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
+                {
+                    /* get the particles */
+                    MPI_Sendrecv(&BlackholeDataIn[Send_offset[recvTask]],
+                                 Send_count[recvTask] * sizeof(struct blackholedata_in), MPI_BYTE,
+                                 recvTask, TAG_DENS_A,
+                                 &BlackholeDataGet[Recv_offset[recvTask]],
+                                 Recv_count[recvTask] * sizeof(struct blackholedata_in), MPI_BYTE,
+                                 recvTask, TAG_DENS_A, MPI_COMM_WORLD, &status);
+                }
+            }
+        }
+        myfree(BlackholeDataIn);
+
+/*       DAA: PasserResult cycles over nimport!
+ *       DAA: PasserOut cycles over nexport!
+ *       BlackholeDataPasserResult = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserResult", nexport * sizeof(struct blackhole_temp_particle_data));
+ *       BlackholeDataPasserOut = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserOut", nimport * sizeof(struct blackhole_temp_particle_data)); */
+        BlackholeDataPasserResult = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserResult", nimport * sizeof(struct blackhole_temp_particle_data));
+        BlackholeDataPasserOut = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserOut", nexport * sizeof(struct blackhole_temp_particle_data));
+
+ /* -------------- NOTE
+ *         DAA: note that we actually don't need the full BlackholeDataPasserResult/BlackholeDataPasserOut structures here... 
+ *         --> we could only pass Mbulge_in_Kernel !
+ *  -------------- NOTE
+ */
+
+        /* now do the particles that were sent to us */
+        for(j = 0; j < nimport; j++)
+            blackhole_environment_second_evaluate(j, 1, &dummy, &dummy);
+
+            if(i < 0)
+                ndone_flag = 1;
+                else
+                    ndone_flag = 0;
+
+                    MPI_Allreduce(&ndone_flag, &ndone, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+
+                /* get the result */
+                    for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
+                    {
+                        recvTask = ThisTask ^ ngrp;
+                        if(recvTask < NTask)
+                        {
+                            if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
+                            {
+                                /* send the results */
+                                MPI_Sendrecv(&BlackholeDataPasserResult[Recv_offset[recvTask]],
+                                             Recv_count[recvTask] * sizeof(struct blackhole_temp_particle_data),
+                                             MPI_BYTE, recvTask, TAG_DENS_B,
+                                             &BlackholeDataPasserOut[Send_offset[recvTask]],
+                                             Send_count[recvTask] * sizeof(struct blackhole_temp_particle_data),
+                                             MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, &status);
+                            }
+                        }
+                    } // for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
+
+        /* add the result to the particles */
+        for(j = 0; j < nexport; j++)
+        {
+            place = DataIndexTable[j].Index;
+            mod_index = P[place].IndexMapToTempStruc;
+ /*         DAA: make sure we don't mess up other variables in BlackholeTempInfo, we only need to update Mbulge_in_Kernel 
+ *          out2particle_blackhole(&BlackholeDataPasserOut[j], P[place].IndexMapToTempStruc, 1); 
+ */
+            BlackholeTempInfo[mod_index].Mbulge_in_Kernel += BlackholeDataPasserOut[j].Mbulge_in_Kernel;
+        } // for(j = 0; j < nexport; j++)
+        myfree(BlackholeDataPasserOut);
+        myfree(BlackholeDataPasserResult);
+        myfree(BlackholeDataGet);
+    }
+    while(ndone < NTask);
+    myfree(DataNodeList);
+    myfree(DataIndexTable);
+    myfree(Ngblist);
+
+}
+
+
+
+
+int blackhole_environment_second_evaluate(int target, int mode, int *nexport, int *nSend_local)
+{
+    /* initialize variables before SPH loop is started */
+    int startnode, numngb, j, n, listindex=0, mod_index;
+    MyFloat *pos, h_i, *vel, *Jalt;
+    MyIDType id;
+
+    double dP[3],dv[3],J_tmp[3],wt;
+    double Mbulge_tmp=0;
+
+    /* these are the BH properties */
+    if(mode == 0)
+    {
+        pos = P[target].Pos;
+        vel = P[target].Vel;
+        h_i = PPP[target].Hsml;
+        id = P[target].ID;
+        mod_index = P[target].IndexMapToTempStruc;  /* the index of the BlackholeTempInfo should we modify*/
+        Jalt = BlackholeTempInfo[mod_index].Jalt_in_Kernel;   // DAA: Jalt_in_Kernel is available after first environment loop
+    }
+    else
+    {
+        pos = BlackholeDataGet[target].Pos;
+        vel = BlackholeDataGet[target].Vel;
+        h_i = BlackholeDataGet[target].Hsml;
+        id = BlackholeDataGet[target].ID;
+        mod_index = 0;                              /* this is not used for mode==1, but this avoids compiler error */
+        Jalt = BlackholeDataGet[target].Jalt;
+    }
+
+    if(h_i < 0) return -1;
+
+    if(mode == 0)
+    {
+        startnode = All.MaxPart;  /* root node */
+    }
+    else
+    {
+        startnode = BlackholeDataGet[target].NodeList[0];
+        startnode = Nodes[startnode].u.d.nextnode;        /* open it */
+    }
+
+    while(startnode >= 0)
+    {
+        while(startnode >= 0)
+        {
+            numngb = ngb_treefind_blackhole(pos, h_i, target, &startnode, mode, nexport, nSend_local);
+            if(numngb < 0) return -1;
+
+            for(n = 0; n < numngb; n++)
+            {
+                j = Ngblist[n];
+
+
+                if( (P[j].Mass > 0) && (P[j].Type != 5) && (P[j].ID != id) )
+                {
+                    wt = P[j].Mass;
+                    dP[0] = P[j].Pos[0]-pos[0];
+                    dP[1] = P[j].Pos[1]-pos[1];
+                    dP[2] = P[j].Pos[2]-pos[2];
+#ifdef PERIODIC           
+                    NEAREST_XYZ(dP[0],dP[1],dP[2],-1); /*  find the closest image in the given box size  */
+#endif
+                    dv[0] = P[j].Vel[0]-vel[0];
+                    dv[1] = P[j].Vel[1]-vel[1];
+                    dv[2] = P[j].Vel[2]-vel[2];
+#ifdef SHEARING_BOX
+                    if(pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                    if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#endif
+
+                    if( (P[j].Type==0) || (P[j].Type==4) ) /* we found gas/stars in BH's kernel */
+                    {
+                        // DAA: jx,jy,jz, are independent of 'a' because ~ m*r*v, vphys=v/a, rphys=r*a //
+                        J_tmp[0] = wt*(dP[1]*dv[2] - dP[2]*dv[1]);
+                        J_tmp[1] = wt*(dP[2]*dv[0] - dP[0]*dv[2]);
+                        J_tmp[2] = wt*(dP[0]*dv[1] - dP[1]*dv[0]);
+
+                        if( (J_tmp[0]*Jalt[0] + J_tmp[1]*Jalt[1] + J_tmp[2]*Jalt[2]) < 0 )         /* for gas and stars */
+                        {
+                            /* DAA: assume the bulge component contains as many particles with positive azimuthal velocities  
+                               as with negative azimuthal velocities relative to the angular momentum vector */
+                            Mbulge_tmp += 2.0 * wt;
+                        }
+                    }
+
+
+
+                } // ( (P[j].Mass > 0) && (P[j].Type != 5) && (P[j].ID != id) )
+            } // for(n = 0; n < numngb; n++)
+
+            if(mode == 0) /* local -> send directly to local temp struct */
+                BlackholeTempInfo[mod_index].Mbulge_in_Kernel = Mbulge_tmp;
+            else
+                BlackholeDataPasserResult[target].Mbulge_in_Kernel = Mbulge_tmp;
+
+        } // while(startnode >= 0)
+
+        if(mode == 1)
+        {
+            listindex++;
+            if(listindex < NODELISTLENGTH)
+            {
+                startnode = BlackholeDataGet[target].NodeList[listindex];   /* non-local target o.k. */
+                if(startnode >= 0)
+                    startnode = Nodes[startnode].u.d.nextnode;  /* open it */
+            } // if(listindex < NODELISTLENGTH)
+        } // if(mode == 1)
+    } // while(startnode >= 0)
+    return 0;
+}
+
+
+#endif   //BH_GRAVACCRETION_BTOD

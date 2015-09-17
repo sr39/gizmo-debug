@@ -92,9 +92,6 @@ OPTIMIZE = -Wall  -g   # optimization and warning flags (default)
 
 MPICHLIB = -lmpich
 
-GRACKLEINCL =
-GRACKLELIBS = -lgrackle
-
 ifeq (NOTYPEPREFIX_FFTW,$(findstring NOTYPEPREFIX_FFTW,$(CONFIGVARS)))  # fftw installed without type prefix?
     FFTW_LIBNAMES =  #-lrfftw_mpi -lfftw_mpi -lrfftw -lfftw
 else
@@ -434,6 +431,25 @@ OPT     += -DNOCALLSOFSYSTEM -DNO_ISEND_IRECV_IN_DOMAIN -DMPICH_IGNORE_CXX_SEEK
 endif
 
 
+ifeq ($(SYSTYPE),"Quest")
+CC       =  mpiicc
+CXX      =  mpiicpc
+FC       =  $(CC)
+OPTIMIZE = -O2 -xhost -ipo -funroll-loops -no-prec-div -fp-model fast=2 
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = -I$(MKLROOT)/include
+MKL_LIBS = -L$(MKLROOT)/lib/intel64 -lm -lmkl_core -lmkl_sequential -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_blacs_intelmpi_lp64
+GSL_INCL = -I/software/gsl/1.16-intel/include
+GSL_LIBS = -L/software/gsl/1.16-intel/lib -lgsl -lgslcblas -lm
+FFTW_INCL= -I/software/FFTW/2.1.5-intel/include
+FFTW_LIBS= -L/software/FFTW/2.1.5-intel/lib
+HDF5INCL = -I/software/hdf5/1.8.12-serial/include -DH5_USE_16_API
+HDF5LIB  = -L/software/hdf5/1.8.12-serial/lib -lhdf5 -lz
+OPT     += -DUSE_MPI_IN_PLACE
+endif
+
+
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"odyssey")
 CC       =  mpicc     # sets the C-compiler
@@ -518,15 +534,6 @@ HDF5INCL =
 HDF5LIB  =
 endif
 
-
-ifeq (GRACKLE,$(findstring GRACKLE,$(CONFIGVARS)))
-OPT += -DCONFIG_BFLOAT_8
-else
-GRACKLEINCL =
-GRACKLELIBS =
-endif
-
-
 SYSTEM_OBJS =   system/system.o system/allocate.o system/mymalloc.o system/parallel_sort.o \
                 system/peano.o system/parallel_sort_special.o system/mpi_util.o
 
@@ -558,7 +565,7 @@ OBJS	+= $(L3_OBJS)
 INCL    += allvars.h proto.h gravity/forcetree.h domain.h system/myqsort.h kernel.h eos/eos.h Makefile \
 
 
-ifeq (GALSF_SUBGRID_DMDISPERSION,$(findstring GALSF_SUBGRID_DMDISPERSION,$(CONFIGVARS)))
+ifeq (GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION,$(findstring GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION,$(CONFIGVARS)))
 OBJS    += galaxy_sf/dm_dispersion_hsml.o
 endif
 
@@ -609,10 +616,6 @@ ifeq (OUTPUTLINEOFSIGHT,$(findstring OUTPUTLINEOFSIGHT,$(CONFIGVARS)))
 OBJS    += structure/lineofsight.o
 endif
 
-ifeq (GRACKLE,$(findstring GRACKLE,$(CONFIGVARS)))
-OBJS	+= cooling/grackle.o
-endif
-
 ifeq (COOLING,$(findstring COOLING,$(CONFIGVARS)))
 OBJS    += cooling/cooling.o
 INCL	+= cooling/cooling.h
@@ -633,6 +636,11 @@ ifeq (IMPOSE_PINNING,$(findstring IMPOSE_PINNING,$(CONFIGVARS)))
 OBJS	+= system/pinning.o
 endif
 
+ifeq (JD_DPP,$(findstring JD_DPP,$(CONFIGVARS)))
+OBJS	+= modules/cosmic_rays/cr_electrons.o
+INCL	+= modules/cosmic_rays/cr_electrons.h
+endif
+
 ifeq (DISTORTIONTENSORPS,$(findstring DISTORTIONTENSORPS,$(CONFIGVARS)))
 OBJS	+= modules/phasespace/phasespace.o modules/phasespace/phasespace_math.o
 endif
@@ -646,6 +654,11 @@ OBJS	+= subfind/subfind.o subfind/subfind_vars.o subfind/subfind_collective.o su
 	subfind/subfind_distribute.o subfind/subfind_findlinkngb.o subfind/subfind_nearesttwo.o subfind/subfind_loctree.o subfind/subfind_alternative_collective.o subfind/subfind_reshuffle.o \
 	subfind/subfind_potential.o subfind/subfind_density.o
 INCL	+= subfind/subfind.h
+endif
+
+ifeq (COSMIC_RAYS,$(findstring COSMIC_RAYS,$(CONFIGVARS)))
+OBJS	+= modules/cosmic_rays/cosmic_rays.o modules/cosmic_rays/cosmic_rays_diffusion.o modules/cosmic_rays/greenf_diffusion.o
+INCL	+= modules/cosmic_rays/cosmic_rays.h
 endif
 
 ifeq (SIDM,$(findstring SIDM,$(CONFIGVARS)))
@@ -662,12 +675,17 @@ ifeq (TURB_DRIVING,$(findstring TURB_DRIVING,$(CONFIGVARS)))
 OBJS	+= turb/turb_driving.o turb/turb_powerspectra.o
 endif
 
+ifeq (BP_REAL_CRs,$(findstring BP_REAL_CRs,$(CONFIGVARS))) # add bp cr part
+OBJS += bp_cosmic_rays/bp_cosmic_rays.o
+INCL += bp_cosmic_rays/bp_cosmic_rays.h
+endif
+
 ifeq (ADJ_BOX_POWERSPEC,$(findstring ADJ_BOX_POWERSPEC,$(CONFIGVARS)))
 OBJS += modules/power_spec/adj_box_powerspec.o 
 INCL += modules/power_spec/adj_box_powerspec_proto.h
 endif
 
-CFLAGS = $(OPTIONS) $(GSL_INCL) $(FFTW_INCL) $(HDF5INCL) $(GMP_INCL) $(GRACKLEINCL)
+CFLAGS = $(OPTIONS) $(GSL_INCL) $(FFTW_INCL) $(HDF5INCL) $(GMP_INCL)
 
 ifeq (VIP,$(findstring VIP,$(CONFIGVARS)))
 FFLAGS = $(FOPTIONS)
@@ -685,7 +703,7 @@ endif
 FFTW = $(FFTW_LIBS)  $(FFTW_LIBNAMES) 
 
 
-LIBS   = -lm $(HDF5LIB) -g $(MPICHLIB) $(GSL_LIBS) -lgsl -lgslcblas $(FFTW) $(GRACKLELIBS)
+LIBS   = -lm $(HDF5LIB) -g $(MPICHLIB) $(GSL_LIBS) -lgsl -lgslcblas $(FFTW)
 
 ifeq (OMP_NUM_THREADS,$(findstring OMP_NUM_THREADS,$(CONFIGVARS))) 
 LIBS   +=  -lpthread

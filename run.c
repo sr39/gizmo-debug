@@ -272,7 +272,11 @@ void calculate_non_standard_physics(void)
 #if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_VARIABLEVELOCITY)
 #ifdef FOF
     /* this will find new black hole seed halos and/or assign host halo masses for the variable wind model */
+#if defined(MINREDSHIFT_FOR_BHSEED) && !defined(GALSF_SUBGRID_VARIABLEVELOCITY)   // DAA: BH seeding only at z > MINREDSHIFT_FOR_BHSEED
+    if((All.Time < 1.0/(1.0+MINREDSHIFT_FOR_BHSEED)) && (All.Time >= All.TimeNextOnTheFlyFoF))
+#else
     if(All.Time >= All.TimeNextOnTheFlyFoF)
+#endif
     {
 #ifdef BH_SEED_STAR_MASS_FRACTION
         fof_fof(-2);
@@ -356,8 +360,10 @@ void compute_statistics(void)
 {
     if((All.Time - All.TimeLastStatistics) >= All.TimeBetStatistics)
     {
+#if !defined(EVALPOTENTIAL)          // DAA: compute_potential is not defined if EVALPOTENTIAL is on... check!
 #ifdef COMPUTE_POTENTIAL_ENERGY
         compute_potential();
+#endif
 #endif
         energy_statistics();	/* compute and output energy statistics */
         

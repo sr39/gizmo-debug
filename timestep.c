@@ -664,10 +664,10 @@ integertime get_timestep(int p,		/*!< particle index */
         if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
         {
             double dt_accr;
-#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_BAL_WINDS)
+#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK) 
             /* really want prefactor to be ratio of median gas mass to bh mass */
             dt_accr = 0.001 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
-#ifdef BH_BAL_WINDS
+#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
             dt_accr *= All.BAL_f_accretion;
 #endif // BH_BAL_WINDS
 #else
