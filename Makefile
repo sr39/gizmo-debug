@@ -92,6 +92,10 @@ OPTIMIZE = -Wall  -g   # optimization and warning flags (default)
 
 MPICHLIB = -lmpich
 
+GRACKLEINCL =
+GRACKLELIBS = -lgrackle
+
+
 ifeq (NOTYPEPREFIX_FFTW,$(findstring NOTYPEPREFIX_FFTW,$(CONFIGVARS)))  # fftw installed without type prefix?
     FFTW_LIBNAMES =  #-lrfftw_mpi -lfftw_mpi -lrfftw -lfftw
 else
@@ -534,6 +538,16 @@ HDF5INCL =
 HDF5LIB  =
 endif
 
+
+ifeq (GRACKLE,$(findstring GRACKLE,$(CONFIGVARS)))
+OPT += -DCONFIG_BFLOAT_8
+else
+GRACKLEINCL =
+GRACKLELIBS =
+endif
+
+
+
 SYSTEM_OBJS =   system/system.o system/allocate.o system/mymalloc.o system/parallel_sort.o \
                 system/peano.o system/parallel_sort_special.o system/mpi_util.o
 
@@ -541,7 +555,7 @@ GRAVITY_OBJS  = gravity/forcetree.o gravity/cosmology.o gravity/pm_periodic.o gr
                 gravity/gravtree.o gravity/forcetree_update.o gravity/pm_nonperiodic.o gravity/longrange.o \
                 gravity/ags_hsml.o
 
-HYDRO_OBJS = hydro/hydra_master.o hydro/density.o hydro/gradients.o radiation/rt_utilities.o eos/eos.o
+HYDRO_OBJS = hydro/hydra_master.o hydro/density.o hydro/gradients.o eos/eos.o
 
 STRUCTURE_OBJS = structure/twopoint.o
 
@@ -621,6 +635,10 @@ OBJS    += cooling/cooling.o
 INCL	+= cooling/cooling.h
 endif
 
+ifeq (GRACKLE,$(findstring GRACKLE,$(CONFIGVARS)))
+OBJS    += cooling/grackle.o
+endif
+
 ifeq (BUBBLES,$(findstring BUBBLES,$(CONFIGVARS)))
 OBJS    += modules/bubbles/bubbles.o
 endif
@@ -646,7 +664,11 @@ OBJS	+= modules/phasespace/phasespace.o modules/phasespace/phasespace_math.o
 endif
 
 ifeq (RT_,$(findstring RT_,$(CONFIGVARS)))
-OBJS	+= radiation/rt_CGmethod.o radiation/rt_source_injection.o radiation/rt_chem.o radiation/rt_cooling.o
+OBJS	+= radiation/rt_utilities.o radiation/rt_CGmethod.o radiation/rt_source_injection.o radiation/rt_chem.o radiation/rt_cooling.o
+endif
+
+ifeq (GALSF_FB_,$(findstring GALSF_FB_,$(CONFIGVARS)))
+OBJS	+= radiation/rt_utilities.o
 endif
 
 ifeq (SUBFIND,$(findstring SUBFIND,$(CONFIGVARS)))
@@ -685,7 +707,7 @@ OBJS += modules/power_spec/adj_box_powerspec.o
 INCL += modules/power_spec/adj_box_powerspec_proto.h
 endif
 
-CFLAGS = $(OPTIONS) $(GSL_INCL) $(FFTW_INCL) $(HDF5INCL) $(GMP_INCL)
+CFLAGS = $(OPTIONS) $(GSL_INCL) $(FFTW_INCL) $(HDF5INCL) $(GMP_INCL) $(GRACKLEINCL)
 
 ifeq (VIP,$(findstring VIP,$(CONFIGVARS)))
 FFLAGS = $(FOPTIONS)
@@ -703,7 +725,7 @@ endif
 FFTW = $(FFTW_LIBS)  $(FFTW_LIBNAMES) 
 
 
-LIBS   = -lm $(HDF5LIB) -g $(MPICHLIB) $(GSL_LIBS) -lgsl -lgslcblas $(FFTW)
+LIBS   = -lm $(HDF5LIB) -g $(MPICHLIB) $(GSL_LIBS) -lgsl -lgslcblas $(FFTW) $(GRACKLELIBS)
 
 ifeq (OMP_NUM_THREADS,$(findstring OMP_NUM_THREADS,$(CONFIGVARS))) 
 LIBS   +=  -lpthread

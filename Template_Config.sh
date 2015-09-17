@@ -345,7 +345,9 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 # -------------------------------------------- De-Bugging & special (usually test-problem only) behaviors
 ####################################################################################################
 #DEVELOPER_MODE                 # allows you to modify various numerical parameters (courant factor, etc) at run-time
-#EOS_ENFORCE_ADIABAT=(1.0)      # If set, this forces gas to lie -exactly- along the adiabat P=EOS_ENFORCE_ADIABAT*(rho^GAMMA)
+#EOS_ENFORCE_ADIABAT=(1.0)      # if set, this forces gas to lie -exactly- along the adiabat P=EOS_ENFORCE_ADIABAT*(rho^GAMMA)
+#AGGRESSIVE_SLOPE_LIMITERS      # use the original GIZMO paper (more aggressive) slope-limiters. more accurate for smooth problems, but
+                                # these can introduce numerical instability in problems with poorly-resolved large noise or density contrasts (e.g. multi-phase, self-gravitating flows)
 #TEST_FOR_IDUNIQUENESS          # explicitly check if particles have unique id numbers (only use for special behaviors)
 #LONGIDS                        # use long ints for IDs (needed for super-large simulations)
 #ASSIGN_NEW_IDS                 # assign IDs on startup instead of reading from ICs

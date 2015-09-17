@@ -44,12 +44,16 @@
         // note the 'default' formulation from Lanson and Vila takes wt_i=V_i, wt_j=V_j; but this assumes negligible variation in h between particles;
         //      it is more accurate to use a centered wt (centered face area), which we get by linear interpolation //
         double wt_i,wt_j;
+#ifdef AGGRESSIVE_SLOPE_LIMITERS
+        wt_i=V_i; wt_j=V_j;
+#else
 #ifdef COOLING
         //wt_i=wt_j = 2.*V_i*V_j / (V_i + V_j); // more conservatively, could use DMIN(V_i,V_j), but that is less accurate
         if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.25) {wt_i=wt_j=2.*V_i*V_j/(V_i+V_j);} else {wt_i=V_i; wt_j=V_j;}
 #else
         //wt_i=wt_j = (V_i*PPP[j].Hsml + V_j*local.Hsml) / (local.Hsml+PPP[j].Hsml); // should these be H, or be -effective sizes- //
         if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.50) {wt_i=wt_j=(V_i*PPP[j].Hsml+V_j*local.Hsml)/(local.Hsml+PPP[j].Hsml);} else {wt_i=V_i; wt_j=V_j;}
+#endif
 #endif
         for(k=0;k<3;k++)
         {
@@ -194,6 +198,9 @@
 #ifdef EOS_GENERAL
         press_tot_limiter *= 2.0;
 #endif
+#ifdef AGGRESSIVE_SLOPE_LIMITERS
+        press_tot_limiter *= 100.0; // large number
+#endif
         
         
         /* --------------------------------------------------------------------------------- */
@@ -271,6 +278,7 @@
             Fluxes.p = 0;
             for(k=0;k<3;k++) {Fluxes.v[k] = facenorm_pm * n_unit[k];} /* total momentum flux */
             
+#ifndef AGGRESSIVE_SLOPE_LIMITERS
             /* for MFM, do the face correction for adiabatic flows here */
             int use_entropic_energy_equation = 0;
             double du_new = 0;
@@ -307,6 +315,7 @@
                 // default:  total energy flux = v_frame.dot.mom_flux //
                 Fluxes.p = facenorm_pm * (Riemann_out.S_M + face_area_dot_vel);
             }
+#endif
             
 #else
             
@@ -357,7 +366,7 @@
 #endif
 #endif // MAGNETIC
 
-#ifdef HYDRO_MESHLESS_FINITE_MASS
+#if defined(HYDRO_MESHLESS_FINITE_MASS) && !defined(AGGRESSIVE_SLOPE_LIMITERS)
             /* for MFM, do the face correction for adiabatic flows here */
             double SM_over_ceff = fabs(Riemann_out.S_M) / DMIN(kernel.sound_i,kernel.sound_j); // for now use sound speed here (more conservative) vs magnetosonic speed //
             /* if SM is sufficiently large, we do nothing to the equations */
