@@ -48,7 +48,7 @@ void blackhole_feed_loop(void)
         }
         
         /* do local particles and prepare export list */
-        for(nexport = 0; i >= 0; i = NextActiveParticle[i])                      // DAA: can this be replaced by a loop over N_active_loc_BHs ???
+        for(nexport = 0; i >= 0; i = NextActiveParticle[i])                      // DAA: can this be replaced by a loop over N_active_loc_BHs
             if(P[i].Type == 5)
                 if(blackhole_feed_evaluate(i, 0, &nexport, Send_count) < 0)
                     break;
@@ -76,7 +76,7 @@ void blackhole_feed_loop(void)
                 BlackholeDataIn[j].Pos[k] = P[place].Pos[k];
                 BlackholeDataIn[j].Vel[k] = P[place].Vel[k];
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
-                BlackholeDataIn[j].Jgas_in_Kernel[k] = P[place].GradRho[k];   // DAA: why don't just take BlackholeTempInfo[P[place].IndexMapToTempStruc].Jgas_in_Kernel[k] here ???
+                BlackholeDataIn[j].Jgas_in_Kernel[k] = P[place].GradRho[k];
 #endif
             }
 #if defined(BH_GRAVCAPTURE_GAS)
@@ -159,14 +159,6 @@ void blackhole_feed_loop(void)
         for(j = 0; j < nexport; j++)
         {
             place = DataIndexTable[j].Index;
-#ifdef BH_REPOSITION_ON_POTMIN
-            if(BPP(place).BH_MinPot > BlackholeDataOut[j].BH_MinPot)
-            {
-                BPP(place).BH_MinPot = BlackholeDataOut[j].BH_MinPot;
-                for(k = 0; k < 3; k++)
-                    BPP(place).BH_MinPotPos[k] = BlackholeDataOut[j].BH_MinPotPos[k];
-            }
-#endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
             BlackholeTempInfo[P[place].IndexMapToTempStruc].BH_angle_weighted_kernel_sum += BlackholeDataOut[j].BH_angle_weighted_kernel_sum;
 #endif
@@ -214,9 +206,6 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #ifdef BH_THERMALFEEDBACK
     double energy;
 #endif
-#ifdef BH_REPOSITION_ON_POTMIN
-    MyFloat minpotpos[3] = { 0, 0, 0 }, minpot = BHPOTVALUEINIT;
-#endif
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat bh_mass_alphadisk;
 #endif
@@ -229,7 +218,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     if(mode == 0)
     {
         pos = P[target].Pos;
-        rho = BPP(target).DensAroundStar;       // DAA: DensAroundStar is not defined in BHP->BPP...
+        rho = P[target].DensAroundStar;       // DAA: DensAroundStar is not defined in BHP->BPP...
         mdot = BPP(target).BH_Mdot;
 #ifndef WAKEUP
         dt = (P[target].TimeBin ? (1 << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
@@ -333,7 +322,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                 j = Ngblist[n];
                 if(P[j].Mass > 0)
                 {
-                    for(k=0;k<3;k++) dpos[k] = pos[k] - P[j].Pos[k];       // DAA: does this give the right angle for BH_PHOTONMOMENTUM below?
+                    for(k=0;k<3;k++) dpos[k] = pos[k] - P[j].Pos[k]; 
 #ifdef PERIODIC
                     NEAREST_XYZ(dpos[0],dpos[1],dpos[2],1);
 #endif
@@ -347,21 +336,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         vrel = sqrt(vrel) / All.cf_atime;       /* do this once and use below */
                         vesc = sqrt(2.0*All.G*(mass+P[j].Mass)/(sqrt(r2)*All.cf_atime) + pow(10.e5/All.UnitVelocity_in_cm_per_s,2));
                         r = sqrt(r2);
-                        //                        if(P[j].Type==0)  printf("vrel=%g, vesc=%g, r=%g, cond2=%g, Type=%d\n", vrel, vesc, r, All.ForceSoftening[5]*(1.0-vrel*vrel/(vesc*vesc))/r, P[j].Type);
-                        
-#ifdef BH_REPOSITION_ON_POTMIN
-                        /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
-                        if(P[j].Potential < minpot)
-                        {
-                            if(vrel <= vesc)
-                            {
-                                minpot = P[j].Potential;
-                                for(k = 0; k < 3; k++) minpotpos[k] = P[j].Pos[k];
-                            }
-                        }
-#endif
-                        
-                        
+
                         /* check_for_bh_merger.  Easy.  No Edd limit, just a pos and vel criteria. */
                         if((id != P[j].ID) && (P[j].Mass > 0) && (P[j].Type == 5))	/* we may have a black hole merger */
                         {
@@ -554,21 +529,11 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
         BlackholeTempInfo[P[target].IndexMapToTempStruc].BH_angle_weighted_kernel_sum += BH_angle_weighted_kernel_sum;  /* need to correct target index */
 #endif
-#ifdef BH_REPOSITION_ON_POTMIN
-        BPP(target).BH_MinPot = minpot;
-        for(k = 0; k < 3; k++)
-            BPP(target).BH_MinPotPos[k] = minpotpos[k];
-#endif
     }
     else
     {
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
         BlackholeDataResult[target].BH_angle_weighted_kernel_sum = BH_angle_weighted_kernel_sum;
-#endif
-#ifdef BH_REPOSITION_ON_POTMIN
-        BlackholeDataResult[target].BH_MinPot = minpot;
-        for(k = 0; k < 3; k++)
-            BlackholeDataResult[target].BH_MinPotPos[k] = minpotpos[k];
 #endif
     }
     return 0;

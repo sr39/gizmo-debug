@@ -67,8 +67,13 @@ void apply_grain_dragforce(void)
                         if(corr_mfp > 1) {tstop_inv /= corr_mfp;}
 #endif
                         double C1 = (-1-sqrt(1+x0*x0)) / x0;
-                        double C2 = C1 * exp( dt * tstop_inv );
-                        double xf = -2 * C2 / (C2*C2 -1);
+                        double xf = 0.0;
+                        double dt_tinv = dt * tstop_inv;
+                        if(dt_tinv < 100.)
+                        {
+                            double C2 = C1 * exp( dt_tinv );
+                            xf = -2 * C2 / (C2*C2 -1);
+                        }
                         double slow_fac = 1 - xf / x0;
                         // note that, with an external (gravitational) acceleration, we can still solve this equation for the relevant update //
 
@@ -93,6 +98,7 @@ void apply_grain_dragforce(void)
                         double cs_cgs = cs / All.UnitVelocity_in_cm_per_s;
                         double tau_draine_sutin = R_grain_cgs * (2.3*PROTONMASS) * (cs_cgs*cs_cgs) / (ELECTRONCHARGE*ELECTRONCHARGE);
                         double Z_grain = -DMAX( 1./(1. + sqrt(1.0e-3/tau_draine_sutin)) , 2.5*tau_draine_sutin );
+                        if(isnan(Z_grain)||(Z_grain>=0)) {Z_grain=0;}
                         
                         double grain_charge_cinv = Z_grain / grain_mass * lorentz_units;
                         for(k=0;k<3;k++) {external_forcing[k] += grain_charge_cinv * v_cross_B[k];}
@@ -118,7 +124,8 @@ void apply_grain_dragforce(void)
                             double vdrift = 0;
                             if(tstop_inv > 0) {vdrift = external_forcing[k] / (tstop_inv * sqrt(1+x0*x0));}
                             dv[k] = slow_fac * (P[i].Gas_Velocity[k] - v_init + vdrift);
-                            /* note, we can directly apply this by taking P[i].Vel[k] += dv[k]; but this is not as accurate as our 
+                            if(isnan(vdrift)||isnan(slow_fac)) {dv[k] = 0;}
+                            /* note, we can directly apply this by taking P[i].Vel[k] += dv[k]; but this is not as accurate as our
                                 normal leapfrog integration scheme.
                                 we can also account for the -gas- acceleration, by including it like vdrift;
                                 for a constant t_stop, the gas acceleration term appears as 
@@ -126,6 +133,7 @@ void apply_grain_dragforce(void)
                             /* note that we solve the equations with an external acceleration already (external_forcing above): therefore add to forces
                              like gravity that are acting on the gas and dust in the same manner (in terms of acceleration) */
                             P[i].GravAccel[k] += dv[k] / dt;
+                            //P[i].Vel[k] += dv[k];
                         }
 
                     

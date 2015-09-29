@@ -610,7 +610,6 @@ OBJS    += galaxy_sf/blackholes/blackhole_environment.o
 OBJS    += galaxy_sf/blackholes/blackhole_feed.o
 OBJS    += galaxy_sf/blackholes/blackhole_swallow_and_kick.o
 INCL    += galaxy_sf/blackholes/blackhole.h
-#####OBJS	+= galaxy_sf/blackhole.o
 endif
 
 ifeq (SINKS,$(findstring SINKS,$(CONFIGVARS)))
@@ -654,21 +653,12 @@ ifeq (IMPOSE_PINNING,$(findstring IMPOSE_PINNING,$(CONFIGVARS)))
 OBJS	+= system/pinning.o
 endif
 
-ifeq (JD_DPP,$(findstring JD_DPP,$(CONFIGVARS)))
-OBJS	+= modules/cosmic_rays/cr_electrons.o
-INCL	+= modules/cosmic_rays/cr_electrons.h
-endif
-
 ifeq (DISTORTIONTENSORPS,$(findstring DISTORTIONTENSORPS,$(CONFIGVARS)))
 OBJS	+= modules/phasespace/phasespace.o modules/phasespace/phasespace_math.o
 endif
 
 ifeq (RT_,$(findstring RT_,$(CONFIGVARS)))
 OBJS	+= radiation/rt_utilities.o radiation/rt_CGmethod.o radiation/rt_source_injection.o radiation/rt_chem.o radiation/rt_cooling.o
-endif
-
-ifeq (GALSF_FB_,$(findstring GALSF_FB_,$(CONFIGVARS)))
-OBJS	+= radiation/rt_utilities.o
 endif
 
 ifeq (SUBFIND,$(findstring SUBFIND,$(CONFIGVARS)))
@@ -678,14 +668,9 @@ OBJS	+= subfind/subfind.o subfind/subfind_vars.o subfind/subfind_collective.o su
 INCL	+= subfind/subfind.h
 endif
 
-ifeq (COSMIC_RAYS,$(findstring COSMIC_RAYS,$(CONFIGVARS)))
-OBJS	+= modules/cosmic_rays/cosmic_rays.o modules/cosmic_rays/cosmic_rays_diffusion.o modules/cosmic_rays/greenf_diffusion.o
-INCL	+= modules/cosmic_rays/cosmic_rays.h
-endif
-
 ifeq (SIDM,$(findstring SIDM,$(CONFIGVARS)))
 OBJS    +=  sidm/sidm_core.o sidm/sidm_allvars.o
-INCL    +=
+INCL    +=  sidm/sidm_proto.h
 endif
 
 ifeq (NUCLEAR_NETWORK,$(findstring NUCLEAR_NETWORK,$(CONFIGVARS)))
@@ -695,16 +680,6 @@ endif
 
 ifeq (TURB_DRIVING,$(findstring TURB_DRIVING,$(CONFIGVARS)))
 OBJS	+= turb/turb_driving.o turb/turb_powerspectra.o
-endif
-
-ifeq (BP_REAL_CRs,$(findstring BP_REAL_CRs,$(CONFIGVARS))) # add bp cr part
-OBJS += bp_cosmic_rays/bp_cosmic_rays.o
-INCL += bp_cosmic_rays/bp_cosmic_rays.h
-endif
-
-ifeq (ADJ_BOX_POWERSPEC,$(findstring ADJ_BOX_POWERSPEC,$(CONFIGVARS)))
-OBJS += modules/power_spec/adj_box_powerspec.o 
-INCL += modules/power_spec/adj_box_powerspec_proto.h
 endif
 
 CFLAGS = $(OPTIONS) $(GSL_INCL) $(FFTW_INCL) $(HDF5INCL) $(GMP_INCL) $(GRACKLEINCL)

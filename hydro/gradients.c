@@ -1234,14 +1234,14 @@ void hydro_gradient_calc(void)
                 double mean_molecular_weight = PROTONMASS; // mean molecular weight in g
                 double n_elec = 1;
                 double ionized_frac = n_elec;
-                double temperature = GAMMA_MINUS1 / BOLTZMANN * (SphP[i].InternalEnergy*All.UnitPressure_in_cgs/All.UnitDensity_in_cgs) * PROTONMASS * mu;
+                double temperature = GAMMA_MINUS1 / BOLTZMANN * (SphP[i].InternalEnergy*All.UnitPressure_in_cgs/All.UnitDensity_in_cgs) * mean_molecular_weight;
 #endif
                 double density_cgs = SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam; // mass density (cgs) //
                 double density_ions = ionized_frac * density_cgs; // assume all the mass is in ions, with global charge neutrality
                 double numden_e = n_elec * density_cgs / mean_molecular_weight; // number density of electrons (cgs) //
                 double gizmo2gauss = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam) / All.UnitMagneticField_in_gauss; // convert to B-field to gauss (units)
                 double bmag = 0; for(k=0;k<3;k++) {bmag += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);} // get magnitude of B //
-                if(bmag<=0) {bmag=0;} else {bmag = sqrt(bmag) * All.cf_a2inv * gizmo2gaus;} // B-field magnitude in Gauss
+                if(bmag<=0) {bmag=0;} else {bmag = sqrt(bmag) * All.cf_a2inv * gizmo2gauss;} // B-field magnitude in Gauss
                 
                 double gamma_e = 8.3e-9 * DMAX( 1.0, sqrt(temperature/100.) ) / (2. * mean_molecular_weight);
                 double gamma_i = 2.0e-9 * sqrt(PROTONMASS/mean_molecular_weight) / mean_molecular_weight;
@@ -1319,6 +1319,8 @@ void hydro_gradient_calc(void)
             
             /* finally, we need to apply a sensible slope limiter to the gradients, to prevent overshooting */
             double stol = 0.0;
+            double stol_tmp, stol_diffusion = 0.1;
+            stol_tmp = stol;
             double h_lim = PPP[i].Hsml;
 //#if (defined(MAGNETIC) && defined(COOLING)) ||
             h_lim = DMAX(PPP[i].Hsml,GasGradDataPasser[i].MaxDistance);
@@ -1331,29 +1333,38 @@ void hydro_gradient_calc(void)
 #ifdef AGGRESSIVE_SLOPE_LIMITERS
             h_lim = PPP[i].Hsml; a_limiter *= 0.5; stol = 0.125;
 #endif
-            
             local_slopelimiter(SphP[i].Gradients.Density,GasGradDataPasser[i].Maxima.Density,GasGradDataPasser[i].Minima.Density,a_limiter,h_lim,stol);
             local_slopelimiter(SphP[i].Gradients.Pressure,GasGradDataPasser[i].Maxima.Pressure,GasGradDataPasser[i].Minima.Pressure,a_limiter,h_lim,stol);
+            stol_tmp = stol;
+#ifdef(VISCOSITY)
+            stol_tmp = DMAX(stol,stol_diffusion);
+#endif
             for(k1=0;k1<3;k1++)
-                local_slopelimiter(SphP[i].Gradients.Velocity[k1],GasGradDataPasser[i].Maxima.Velocity[k1],GasGradDataPasser[i].Minima.Velocity[k1],a_limiter,h_lim,stol);
+                local_slopelimiter(SphP[i].Gradients.Velocity[k1],GasGradDataPasser[i].Maxima.Velocity[k1],GasGradDataPasser[i].Minima.Velocity[k1],a_limiter,h_lim,stol_tmp);
 #ifdef DOGRAD_INTERNAL_ENERGY
-            local_slopelimiter(SphP[i].Gradients.InternalEnergy,GasGradDataPasser[i].Maxima.InternalEnergy,GasGradDataPasser[i].Minima.InternalEnergy,a_limiter,h_lim,stol);
+            stol_tmp = stol;
+#ifdef(CONDUCTION)
+            stol_tmp = DMAX(stol,stol_diffusion);
+#endif
+            local_slopelimiter(SphP[i].Gradients.InternalEnergy,GasGradDataPasser[i].Maxima.InternalEnergy,GasGradDataPasser[i].Minima.InternalEnergy,a_limiter,h_lim,stol_tmp);
 #endif
 #ifdef COSMIC_RAYS
-            local_slopelimiter(SphP[i].Gradients.CosmicRayPressure,GasGradDataPasser[i].Maxima.CosmicRayPressure,GasGradDataPasser[i].Minima.CosmicRayPressure,a_limiter,h_lim,stol);
+            stol_tmp = stol;
+            local_slopelimiter(SphP[i].Gradients.CosmicRayPressure,GasGradDataPasser[i].Maxima.CosmicRayPressure,GasGradDataPasser[i].Minima.CosmicRayPressure,a_limiter,h_lim,DMAX(stol,stol_diffusion));
 #endif
 #ifdef DOGRAD_SOUNDSPEED
             local_slopelimiter(SphP[i].Gradients.SoundSpeed,GasGradDataPasser[i].Maxima.SoundSpeed,GasGradDataPasser[i].Minima.SoundSpeed,a_limiter,h_lim,stol);
 #endif
 #ifdef TURB_DIFF_METALS
+            stol_tmp = DMAX(stol,0.1);
             for(k1=0;k1<NUM_METAL_SPECIES;k1++)
-                local_slopelimiter(SphP[i].Gradients.Metallicity[k1],GasGradDataPasser[i].Maxima.Metallicity[k1],GasGradDataPasser[i].Minima.Metallicity[k1],a_limiter,h_lim,stol);
+                local_slopelimiter(SphP[i].Gradients.Metallicity[k1],GasGradDataPasser[i].Maxima.Metallicity[k1],GasGradDataPasser[i].Minima.Metallicity[k1],a_limiter,h_lim,DMAX(stol,stol_diffusion));
 #endif
 #ifdef RT_EVOLVE_EDDINGTON_TENSOR
             for(k1=0;k1<N_RT_FREQ_BINS;k1++)
             {
                 //local_slopelimiter(SphP[i].Gradients.E_gamma_ET[k1],GasGradDataPasser[i].Maxima.E_gamma[k1],GasGradDataPasser[i].Minima.E_gamma[k1],a_limiter,h_lim,stol);
-                local_slopelimiter(GasGradDataPasser[i].Gradients_E_gamma[k1],GasGradDataPasser[i].Maxima.E_gamma[k1],GasGradDataPasser[i].Minima.E_gamma[k1],a_limiter,h_lim,stol);
+                local_slopelimiter(GasGradDataPasser[i].Gradients_E_gamma[k1],GasGradDataPasser[i].Maxima.E_gamma[k1],GasGradDataPasser[i].Minima.E_gamma[k1],a_limiter,h_lim,DMAX(stol,stol_diffusion));
             }
 #endif
 #ifdef MAGNETIC
@@ -1364,10 +1375,13 @@ void hydro_gradient_calc(void)
             double q = fabs(SphP[i].divB) * PPP[i].Hsml / tmp_d;
             //double q = 80.0 * fabs(SphP[i].divB) * PPP[i].Hsml / tmp_d; // 300,100 work; 30-50 not great; increased coefficient owing to new formulation with wt_i,wt_j in hydro
             double alim2 = a_limiter * (1. + q*q);
-            if(alim2 > 0.5) alim2=0.5;            
-            
+            if(alim2 > 0.5) alim2=0.5;
+            stol_tmp = stol;
+#ifdef MHD_NON_IDEAL
+            stol_tmp = DMAX(stol,stol_diffusion);
+#endif
             for(k1=0;k1<3;k1++)
-                local_slopelimiter(SphP[i].Gradients.B[k1],GasGradDataPasser[i].Maxima.B[k1],GasGradDataPasser[i].Minima.B[k1],alim2,h_lim,stol);
+                local_slopelimiter(SphP[i].Gradients.B[k1],GasGradDataPasser[i].Maxima.B[k1],GasGradDataPasser[i].Minima.B[k1],alim2,h_lim,stol_tmp);
 #endif
 #if defined(DIVBCLEANING_DEDNER) && !defined(CONSTRAINED_GRADIENT_MHD_MIDPOINT)
             local_slopelimiter(SphP[i].Gradients.Phi,GasGradDataPasser[i].Maxima.Phi,GasGradDataPasser[i].Minima.Phi,a_limiter,h_lim,stol);

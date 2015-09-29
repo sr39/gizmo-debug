@@ -18,7 +18,7 @@
 /* --------------------------------------------------------------------------------- */
 {
 #ifdef TURB_DIFF_METALS // turbulent diffusion of metals (passive scalar mixing) //
-
+    
 #ifdef HYDRO_SPH
     /* out.dA_dt +=  diffusion_wt*(local.A-P[j].A) // this is the template for all turbulent diffusion terms */
     double diffusion_wt = (local.TD_DiffCoeff + SphP[j].TD_DiffCoeff) * P[j].Mass * kernel.rho_ij_inv * kernel.dwk_ij / kernel.r * All.cf_a2inv;
@@ -46,49 +46,42 @@
     
     if((local.Mass>0)&&(P[j].Mass>0)&&((local.TD_DiffCoeff>0)||(SphP[j].TD_DiffCoeff>0)))
     {
-        double diffusion_wt;
-        double wt_i,wt_j;
-        wt_i = wt_j = 0.5;
-        diffusion_wt = wt_i*local.TD_DiffCoeff + wt_j*SphP[j].TD_DiffCoeff; // arithmetic mean
+        double wt_i=0.5, wt_j=0.5, cmag, d_scalar;
+        double diffusion_wt = wt_i*local.TD_DiffCoeff + wt_j*SphP[j].TD_DiffCoeff; // arithmetic mean
         diffusion_wt *= Riemann_out.Face_Density;
         double diffusion_wt_physical = diffusion_wt;
         diffusion_wt /= All.cf_atime; // based on units TD_DiffCoeff is defined with, this makes it physical for a dimensionless quantity gradient below
-        
-        /* calculate the implied mass flux 'across the boundary' from the sub-grid model,
-         so that we can apply a slope-limiter; this is needed for stability */
-        double massflux = 0.0;
-        for(k=0;k<3;k++) {massflux+=Face_Area_Vec[k]*Face_Area_Vec[k];}
-        massflux = fabs( sqrt(massflux) * diffusion_wt / (DMIN(kernel.h_i,kernel.h_j) * All.cf_atime) * dt_hydrostep / (DMIN(local.Mass,P[j].Mass)) );
+        /* calculate implied mass flux 'across the boundary' to prevent excessively large coefficients */
+        double massflux = fabs( Face_Area_Norm * diffusion_wt_physical / (DMIN(kernel.h_i,kernel.h_j)*All.cf_atime) * dt_hydrostep / (DMIN(local.Mass,P[j].Mass)) );
         if(massflux > 0.25) {diffusion_wt *= 0.25/massflux;}
-        double c_max = 0.0;
-        for(k=0;k<3;k++) {c_max += Face_Area_Vec[k] * kernel.dp[k];}
-        c_max *= rinv*rinv;
-        double diff_ideal, dq_diff, diff_lim;
-        double rho_i = local.Density*All.cf_a3inv, rho_j = SphP[j].Density*All.cf_a3inv, rho_ij = 0.5*(rho_i+rho_j);
         
         int k_species;
         double diffusion_wt_z = diffusion_wt * dt_hydrostep;
+        double rho_i = local.Density*All.cf_a3inv, rho_j = SphP[j].Density*All.cf_a3inv, rho_ij = 0.5*(rho_i+rho_j);
         for(k_species=0;k_species<NUM_METAL_SPECIES;k_species++)
         {
-            diff_ideal = 0.0;
-            dq_diff = local.Metallicity[k_species]-P[j].Metallicity[k_species];
+            cmag = 0.0;
+            d_scalar = local.Metallicity[k_species]-P[j].Metallicity[k_species];
             for(k=0;k<3;k++)
             {
                 double grad_ij = wt_i*local.Gradients.Metallicity[k_species][k] + wt_j*SphP[j].Gradients.Metallicity[k_species][k];
-                double grad_direct = dq_diff * kernel.dp[k] * rinv*rinv;
+                double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv;
                 grad_ij = MINMOD(grad_ij , grad_direct);
-                diff_ideal += Face_Area_Vec[k] * grad_ij;
+                cmag += Face_Area_Vec[k] * grad_ij;
             }
-            diff_ideal += rho_ij * HLL_correction(local.Metallicity[k_species], P[j].Metallicity[k_species], rho_ij, diffusion_wt_physical) / (-diffusion_wt);
-            diff_lim = -diffusion_wt_z * MINMOD(MINMOD(MINMOD(diff_ideal , c_max*dq_diff), fabs(c_max)*dq_diff) , Face_Area_Norm*dq_diff*rinv);
+            double hll_corr = rho_ij * HLL_correction(local.Metallicity[k_species], P[j].Metallicity[k_species], rho_ij, diffusion_wt_physical) / (-diffusion_wt);
+            double cmag_corr = cmag + hll_corr;
+            cmag = MINMOD(1.5*cmag, cmag_corr);
+            double f_direct = Face_Area_Norm*d_scalar*rinv;
+            if((d_scalar*cmag < 0) && (fabs(f_direct) > fabs(cmag))) {cmag = 0;}
             
-            if(fabs(diff_lim) > 0)
+            cmag *= -diffusion_wt_z;
+            if(fabs(cmag) > 0)
             {
-                double zlim = 0.5*DMIN(DMIN(0.5*fabs(DMIN(local.Mass,P[j].Mass)*dq_diff),
-                                            local.Mass*local.Metallicity[k_species]),P[j].Mass*P[j].Metallicity[k_species]);
-                if(fabs(diff_lim)>zlim) {diff_lim*=zlim/fabs(diff_lim);}
-                out.Dyield[k_species] += diff_lim;
-                P[j].Metallicity[k_species] -= diff_lim / P[j].Mass;
+                double zlim = 0.5*DMIN(DMIN(0.5*fabs(DMIN(local.Mass,P[j].Mass)*d_scalar),local.Mass*local.Metallicity[k_species]),P[j].Mass*P[j].Metallicity[k_species]);
+                if(fabs(cmag)>zlim) {cmag*=zlim/fabs(cmag);}
+                out.Dyield[k_species] += cmag;
+                P[j].Metallicity[k_species] -= cmag / P[j].Mass;
             }
         }
     }

@@ -405,7 +405,7 @@ void fof_fof(int num)
     printf("computation of group properties took = %g sec\n", timediff(t0, t1));
 
 #ifdef BLACK_HOLES
-  if(num < 0){                       // DAA: make BHs in every call to fof_fof ? (including the group finding for each snapshot ?)
+  if(num < 0){                       // DAA: make BHs in every call to fof_fof (including the group finding for each snapshot)
 #ifdef MINREDSHIFT_FOR_BHSEED                        // DAA: BH seeding only at z > MINREDSHIFT_FOR_BHSEED
     if(All.Time < 1.0/(1.0+MINREDSHIFT_FOR_BHSEED))
        fof_make_black_holes();
@@ -1085,12 +1085,7 @@ void fof_compute_group_properties(int gr, int start, int len)
   Group[gr].BH_Mass = 0;
   Group[gr].BH_Mdot = 0;
   Group[gr].index_maxdens = Group[gr].task_maxdens = -1;
-#ifdef BH_SEED_ON_POTMIN
-  Group[gr].MaxDens = 1e30;
-#else
   Group[gr].MaxDens = 0;
-#endif
-
 #endif
 
   for(k = 0; k < 3; k++)
@@ -1135,24 +1130,12 @@ void fof_compute_group_properties(int gr, int start, int len)
 #if defined(GALSF_SUBGRID_WINDS) && !defined(BH_SEED_STAR_MASS_FRACTION)
 	  if(SphP[index].DelayTime == 0)
 #endif
-#ifdef BH_SEED_ON_POTMIN
-	    /* 
-	       printf("Trying seeding on pot %e, minpot=-%e\n", P[index].Potential,Group[gr].MaxDens);
-	     */
-	    if(P[index].Potential < Group[gr].MaxDens)
-	      {
-		Group[gr].MaxDens = P[index].Potential;
-		Group[gr].index_maxdens = index;
-		Group[gr].task_maxdens = ThisTask;
-	      }
-#else
 	    if(SphP[index].Density > Group[gr].MaxDens)
 	      {
 		Group[gr].MaxDens = SphP[index].Density;
 		Group[gr].index_maxdens = index;
 		Group[gr].task_maxdens = ThisTask;
 	      }
-#endif
 	}
 #endif
 
@@ -1246,11 +1229,7 @@ void fof_exchange_group_data(void)
 #ifdef BLACK_HOLES
       Group[start].BH_Mdot += get_Group[i].BH_Mdot;
       Group[start].BH_Mass += get_Group[i].BH_Mass;
-#ifdef BH_SEED_ON_POTMIN
-      if(get_Group[i].MaxDens < Group[start].MaxDens)
-#else
       if(get_Group[i].MaxDens > Group[start].MaxDens)
-#endif
 	{
 	  Group[start].MaxDens = get_Group[i].MaxDens;
 	  Group[start].index_maxdens = get_Group[i].index_maxdens;

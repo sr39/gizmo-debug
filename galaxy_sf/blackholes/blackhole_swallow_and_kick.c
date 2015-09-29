@@ -398,16 +398,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                         accreted_BH_mass_radio += FLT(BPP(j).BH_Mass_radio - BPP(j).BH_Mass_ini);
 #endif
 #endif
-                        
-#ifdef BH_FOLLOW_ACCRETED_GAS_MOMENTUM
                         for(k = 0; k < 3; k++)
-                            accreted_momentum[k] += FLT(P[j].Mass * P[j].Vel[k]);
-#else
-                        for(k = 0; k < 3; k++)
-                            accreted_momentum[k] += FLT(BPP(j).BH_Mass * P[j].Vel[k]);     
-#endif
-                        
-                        
+                            accreted_momentum[k] += FLT(BPP(j).BH_Mass * P[j].Vel[k]);
 #ifdef BH_COUNTPROGS
                         accreted_BH_progs += BPP(j).BH_CountProgs;
 #endif
@@ -438,7 +430,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 /* DAA: DM and star particles can only be accreted ifdef BH_GRAVCAPTURE_NONGAS */
 #ifdef BH_GRAVCAPTURE_NONGAS
 
-                    /* this is a DM particle:    // DAA: do we really want to accrete DM particles?
+                    /* this is a DM particle:
                      In this case, no kick, so just zero out the mass and 'get rid of' the
                      particle (preferably by putting it somewhere irrelevant) */
 
@@ -453,10 +445,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                         
                         accreted_mass += FLT(P[j].Mass);
                         accreted_BH_mass += FLT(P[j].Mass);
-#ifdef BH_FOLLOW_ACCRETED_GAS_MOMENTUM
-                        for(k = 0; k < 3; k++)
-                            accreted_momentum[k] += FLT(P[j].Mass * P[j].Vel[k]);
-#endif
                         P[j].Mass = 0;		// zero out particle mass.  it has now been fully swallowed.
                         N_dm_swallowed++;
                     }
@@ -473,12 +461,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                         accreted_BH_mass_alphadisk += FLT(P[j].Mass);
 #else 
                         accreted_BH_mass += FLT(P[j].Mass);   /* mass goes directly to the BH, not just the parent particle */
-#endif 
-
-#ifdef BH_FOLLOW_ACCRETED_GAS_MOMENTUM
-                        for(k = 0; k < 3; k++)
-                            accreted_momentum[k] += FLT(P[j].Mass * P[j].Vel[k]);
-#endif 
+#endif
                         P[j].Mass = 0;          // zero out particle mass.  it has now been fully swallowed.
                         N_star_swallowed++;
                     }
@@ -520,13 +503,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                         accreted_BH_mass += FLT(f_accreted*P[j].Mass);
 #endif
 #endif
-
-
-#ifdef BH_FOLLOW_ACCRETED_GAS_MOMENTUM
-                        for(k = 0; k < 3; k++)
-                            accreted_momentum[k] += FLT(f_accreted*P[j].Mass * P[j].Vel[k]);   
-#endif
-
                         P[j].Mass *= (1-f_accreted);
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                         SphP[j].MassTrue *= (1-f_accreted);
@@ -597,7 +573,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                         {
                             for(norm=0,k=0;k<3;k++)
                             {
-                                dir[k] = (pos[k]-P[j].Pos[k]);    // DAA: towards the BH ???
+                                dir[k] = P[j].Pos[k] - pos[k]; // should be away from BH
                                 norm += dir[k]*dir[k];
                             }
                             if(norm>0)
@@ -683,7 +659,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
         BlackholeTempInfo[mod_index].accreted_Mass = accreted_mass;
         BlackholeTempInfo[mod_index].accreted_BH_Mass = accreted_BH_mass;
 #ifdef BH_ALPHADISK_ACCRETION
-        // DAA: could be better to include this in BlackholeTempInfo and update BH_Mass_AlphaDisk only at the end (like Mass and BH_Mass)?
+        // DAA: could be better to include this in BlackholeTempInfo and update BH_Mass_AlphaDisk only at the end (like Mass and BH_Mass)
         BPP(target).BH_Mass_AlphaDisk += accreted_BH_mass_alphadisk;
 #endif
         for(k = 0; k < 3; k++)

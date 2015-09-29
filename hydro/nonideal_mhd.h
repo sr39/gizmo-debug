@@ -51,8 +51,8 @@ if((local.Mass > 0) && (P[j].Mass > 0))
             if(k==0) {k_xyz_A=0; k_xyz_B=1;}
             double tmp_grad_A = 0.5*(local.Gradients.B[k_xyz_A][k_xyz_B] + SphP[j].Gradients.B[k_xyz_A][k_xyz_B]); // construct averaged slopes //
             double tmp_grad_B = 0.5*(local.Gradients.B[k_xyz_B][k_xyz_A] + SphP[j].Gradients.B[k_xyz_B][k_xyz_A]);
-            tmp_grad_A = MINMOD(tmp_grad_A , kernel.dp[k_xyz_B]*d_scalar[k_xyz_A]*rinv2); // and then slope-limit them //
-            tmp_grad_B = MINMOD(tmp_grad_B , kernel.dp[k_xyz_A]*d_scalar[k_xyz_B]*rinv2);
+            tmp_grad_A = MINMOD_G(tmp_grad_A , kernel.dp[k_xyz_B]*d_scalar[k_xyz_A]*rinv2); // and then slope-limit them //
+            tmp_grad_B = MINMOD_G(tmp_grad_B , kernel.dp[k_xyz_A]*d_scalar[k_xyz_B]*rinv2);
             J_current[k] = tmp_grad_B - tmp_grad_A; // determine contribution to J //
         }
         // calculate the 'direct' J needed for stabilizing numerical diffusion terms //

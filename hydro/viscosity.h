@@ -103,7 +103,6 @@
             B_interface[k] = Riemann_out.Face_B[k];
             B_interface_mag2 += B_interface[k]*B_interface[k];
         }
-        
         double bhat_dot_gradvhat = 1;
         double bhat_dot_gradvhat_direct = 1;
         double grad_v_mag = 0;
@@ -124,7 +123,7 @@
                 for(k=0;k<3;k++)
                 {
                     double grad_v = wt_i*local.Gradients.Velocity[k_v][k]+wt_j*SphP[j].Gradients.Velocity[k_v][k];
-                    grad_v = MINMOD( grad_v, -kernel.dv[k_v] * kernel.dp[k] * rinv*rinv);
+                    grad_v = MINMOD_G( grad_v, -kernel.dv[k_v] * kernel.dp[k] * rinv*rinv);
                     
                     if(k==k_v) {tmp=tmp_kv;} else {tmp=B_interface[k_v]*B_interface[k];}
                     rhs += tmp * grad_v;
@@ -142,7 +141,6 @@
             for(k_v=0;k_v<3;k_v++) {cmag[k_v] *= 3.*eta*rhs;}
         }
 #endif
-        
         
         /* standard Navier-Stokes equations: viscosity is decomposed into the shear and bulk viscosity terms */
         double cmag_dir[3];
@@ -189,7 +187,7 @@
         
         
         /* slope-limit this to be sure that viscosity always acts in the proper direction when there is local noise */
-        double rho_i = local.Density*All.cf_a3inv, rho_j = SphP[j].Density*All.cf_a3inv, rho_ij=0.5*(rho_i+rho_j);        
+        double rho_i = local.Density*All.cf_a3inv, rho_j = SphP[j].Density*All.cf_a3inv, rho_ij=0.5*(rho_i+rho_j);
         for(k_v=0;k_v<3;k_v++)
         {
 #ifdef MAGNETIC
@@ -202,31 +200,26 @@
             dv_visc = cmag_dir[k_v] * rinv*rinv / DMAX(eta,zeta);
             double thold_ptot_hll = 0.03;
 #endif
-            
-            double fluxlimiter_absnorm = -DMAX(eta,zeta) * sqrt(b_hll_eff) * Face_Area_Norm * dv_visc*rinv;
-            
             /* obtain HLL correction terms for Reimann problem solution */
             double hll_tmp = rho_ij * HLL_correction(dv_visc,-dv_visc,rho_ij,viscous_wt_physical) / All.cf_atime;
-            cmag[k_v] = MINMOD(cmag[k_v], fluxlimiter_absnorm);
-            
+            double fluxlimiter_absnorm = -DMAX(eta,zeta) * sqrt(b_hll_eff) * Face_Area_Norm * dv_visc*rinv;
             double ptot = DMIN(local.Mass,P[j].Mass)*sqrt(kernel.dv[0]*kernel.dv[0]+
                                                           kernel.dv[1]*kernel.dv[1]+
                                                           kernel.dv[2]*kernel.dv[2]) / (1.e-37 + dt_hydrostep);
             double thold_hll = 0.1*ptot;
-            if(fabs(cmag[k_v]) > thold_hll) {cmag[k_v] *= thold_hll/fabs(hll_tmp);}
-            
+            if(fabs(hll_tmp) > thold_hll) {hll_tmp *= thold_hll/fabs(hll_tmp);}
             hll_tmp *= b_hll_eff;
-            
             if(cmag[k_v] * hll_tmp <= 0)
             {
-                thold_hll = b_hll_eff * thold_ptot_hll*ptot;
-                if(fabs(hll_tmp) > thold_hll) {hll_tmp *= thold_hll/fabs(hll_tmp);}
+                thold_hll = b_hll_eff * thold_ptot_hll * ptot;
+                if(fabs(hll_tmp) > thold_hll) {hll_tmp *= thold_hll / fabs(hll_tmp);}
             } else {
                 thold_hll = b_hll_eff * DMAX(fabs(0.5*cmag[k_v]) , 0.3*thold_ptot_hll*ptot);
-                if(fabs(hll_tmp) > thold_hll) {hll_tmp *= thold_hll/fabs(hll_tmp);}
+                if(fabs(hll_tmp) > thold_hll) {hll_tmp *= thold_hll / fabs(hll_tmp);}
             }
-            cmag[k_v] += hll_tmp;
-            cmag[k_v] = MINMOD(cmag[k_v], fluxlimiter_absnorm);
+            double cmag_corr = cmag[k_v] + hll_tmp;
+            cmag[k_v] = MINMOD(cmag[k_v], cmag_corr);
+            if((fluxlimiter_absnorm*cmag[k_v] < 0) && (fabs(fluxlimiter_absnorm) > fabs(cmag[k_v]))) {cmag[k_v] = 0;}
         }
         
         double v_dot_dv=0; for(k=0;k<3;k++) {v_dot_dv += kernel.dv[k] * cmag[k];}
@@ -236,11 +229,11 @@
         } else {
             double KE_com=0; for(k=0;k<3;k++) {KE_com += kernel.dv[k]*kernel.dv[k];}
             KE_com *= 0.25 * (local.Mass + P[j].Mass);
-            double dKE_q = fabs(v_dot_dv) * dt_hydrostep / (1.e-40 + KE_com); // COSMO UNITS!
-            double lim_corr=1; if(dKE_q > 0.1) {lim_corr = 0.1/dKE_q;}
+            double dKE_q = fabs(v_dot_dv) * dt_hydrostep / (1.e-40 + KE_com); // COSMO UNITS!???????
+            double threshold_tmp = 1.0;
+            double lim_corr=1; if(dKE_q > threshold_tmp) {lim_corr = threshold_tmp/dKE_q;}
             for(k=0;k<3;k++) {cmag[k] *= lim_corr;}
         }
-        
         
 #endif // end of SPH/NOT SPH check
         
@@ -255,7 +248,6 @@
                 cmag[0]*=corr_visc; cmag[1]*=corr_visc; cmag[2]*=corr_visc; cmag_E*=corr_visc;
             }
         }
-        
         /* ok now we can finally add this to the numerical fluxes */
         for(k=0;k<3;k++) {Fluxes.v[k] += cmag[k];}
         Fluxes.p += cmag_E;

@@ -76,7 +76,7 @@ void blackhole_start(void)
 #ifdef BH_DYNFRICTION
                 BlackholeTempInfo[Nbh].DF_mean_vel[j]=0;
 #endif
-#if defined(BH_USE_GASVEL_IN_BONDI) || defined(BH_DRAG)
+#if defined(BH_BONDI) || defined(BH_DRAG)
                 BlackholeTempInfo[Nbh].BH_SurroundingGasVel[j]=0;
 #endif
             }
@@ -172,7 +172,7 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
 #endif
     }
 #endif
-#if defined(BH_USE_GASVEL_IN_BONDI) || defined(BH_DRAG)
+#if defined(BH_BONDI) || defined(BH_DRAG)
     for(k=0;k<3;k++)
         ASSIGN_ADD(BlackholeTempInfo[target].BH_SurroundingGasVel[k],out->BH_SurroundingGasVel[k],mode);
 #endif
@@ -205,7 +205,7 @@ int ngb_treefind_blackhole(MyDouble searchcenter[3], MyFloat hsml, int target, i
             no = Nextnode[no];
             
             /* make sure we get all the particle types we need */
-#if defined(BH_REPOSITION_ON_POTMIN) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_NONGAS) || defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_DYNFRICTION)
+#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_NONGAS) || defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_DYNFRICTION)
             if(P[p].Type < 0)
                 continue;
 #else

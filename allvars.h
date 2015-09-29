@@ -1806,10 +1806,6 @@ extern ALIGN(32) struct particle_data
     } b8;
 #endif
 #endif
-#ifdef BH_REPOSITION_ON_POTMIN
-    MyFloat BH_MinPotPos[3];
-    MyFloat BH_MinPot;
-#endif
 #endif  /* if !defined(DETACH_BLACK_HOLES) */
 #endif  /* if defined(BLACK_HOLES) */
     
@@ -1934,10 +1930,6 @@ extern struct bh_particle_data
     MyLongDouble dBH_accreted_BHMass_radio;
   } b8;
 #endif
-#endif
-#ifdef BH_REPOSITION_ON_POTMIN
-  MyFloat BH_MinPotPos[3];
-  MyFloat BH_MinPot;
 #endif
 }
   *BHP,
@@ -2351,7 +2343,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 #ifdef BH_GRAVACCRETION_BTOD
     MyLongDouble Mbulge_in_Kernel;
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK_COLLIMATED) || defined(BH_GRAVACCRETION)  // DAA: need Jgas for GRAVACCRETION as well
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK_COLLIMATED) || defined(BH_GRAVACCRETION)  
     MyLongDouble Jgas_in_Kernel[3];
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
@@ -2363,7 +2355,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyFloat DF_rms_vel;
     MyFloat DF_mmax_particles;
 #endif
-#if defined(BH_USE_GASVEL_IN_BONDI) || defined(BH_DRAG)
+#if defined(BH_BONDI) || defined(BH_DRAG)
     MyFloat BH_SurroundingGasVel[3];
 #endif
     

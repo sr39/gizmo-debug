@@ -101,6 +101,7 @@ void HII_heating_singledomain(void)
          RHII = 4.67e-9*pow(All.HIIRegion_fLum_Coupled*stellum,0.333)*
                 pow(rho*All.cf_a3inv*All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam,-0.66667);
          RHII /= All.cf_atime*All.UnitLength_in_cm/All.HubbleParam;
+         // crude estimate of where flux falls below cosmic background
          RHIIMAX=240.0*pow(All.HIIRegion_fLum_Coupled*stellum,0.5)/(All.cf_atime*All.UnitLength_in_cm/All.HubbleParam);
          //if(RHIIMAX>20.0*h_i) RHIIMAX=20.0*h_i;
          //RHIIMAX *= 50;
@@ -108,6 +109,21 @@ void HII_heating_singledomain(void)
          
          if(RHIIMAX < h_i) RHIIMAX=h_i;
          if(RHIIMAX > 5.0*h_i) RHIIMAX=5.*h_i;
+         /*
+         if(All.ComovingIntegrationOn)
+         {
+             double fac = DMIN(50./(3.*All.cf_atime), 100.); // want to search larger radii at high-z, where the background is weaker
+             RHIIMAX *= fac;
+             fac = DMIN(1.0/All.cf_atime , 10.0);
+             if(RHIIMAX < fac*h_i) RHIIMAX = fac*h_i;
+             fac = DMIN(10.0/All.cf_atime , 30.0);
+             if(RHIIMAX > fac*h_i) RHIIMAX = fac*h_i;
+         } else {
+             RHIIMAX *= 20;
+             if(RHIIMAX < 2.0*h_i) RHIIMAX = 2.0*h_i;
+             if(RHIIMAX > 10.0*h_i) RHIIMAX = 10.0*h_i;
+         }
+         */
          
          mionizable=NORM_COEFF*rho*RHII*RHII*RHII;
          if(RHII>RHIIMAX) RHII=RHIIMAX;

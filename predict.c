@@ -118,7 +118,9 @@ void drift_particle(int i, integertime time1)
     
     for(j = 0; j < 3; j++)
     {
+#ifndef FREEZE_HYDRO
         P[i].Pos[j] += P[i].Vel[j] * dt_drift;
+#endif
     }
 #if (NUMDIMS==1)
     P[i].Pos[1]=P[i].Pos[2]=0;

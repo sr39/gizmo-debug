@@ -26,7 +26,7 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
             double scalar_j = SphP[j].E_gamma_Pred[k_freq] / V_j;
             
             double d_scalar = scalar_i - scalar_j;
-	    	double conduction_wt = 0.5*(kappa_i+kappa_j) * All.cf_a3inv/All.cf_atime;  // weight factor and conversion to physical units
+            double conduction_wt = 0.5*(kappa_i+kappa_j) * All.cf_a3inv/All.cf_atime;  // weight factor and conversion to physical units
 #ifdef HYDRO_SPH
             double Face_Area_Norm = local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * SphP[j].Density);
             double d_ET[6];
@@ -37,49 +37,49 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
             double cmag = -Face_Area_Norm * flux_tmp;
             cmag = MINMOD(cmag , -conduction_wt*Face_Area_Norm*d_scalar*rinv);
 #else
-            double cmag=0., c_max=0.;
+            double cmag=0.;
             for(k=0;k<3;k++)
             {
-                c_max += Face_Area_Vec[k] * kernel.dp[k];
                 /* the flux is determined by the energy density gradient */
                 double grad = 0.5 * (local.Gradients.E_gamma_ET[k_freq][k] + SphP[j].Gradients.E_gamma_ET[k_freq][k]);
                 double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv;
-                grad = MINMOD( grad , grad_direct );
+                grad = MINMOD_G( grad , grad_direct );
                 cmag += Face_Area_Vec[k] * grad;
             }
             /* here we add the HLL-like correction term. this greatly reduces noise and improves the stability of the diffusion.
             	however it comes at the cost of (significant) additional numerical diffusion */
             double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + c_light;
-			double q = 0.5 * c_hll * kernel.r * All.cf_atime / fabs(1.e-37 + 0.5*(kappa_i+kappa_j));
-			q = (0.2 + q) / (0.2 + q + q*q);
-            double hll_tmp = -q * Face_Area_Norm * c_hll * d_scalar/(-conduction_wt); 
-
+            double q = 0.5 * c_hll * kernel.r * All.cf_atime / fabs(1.e-37 + 0.5*(kappa_i+kappa_j));
+            q = (0.2 + q) / (0.2 + q + q*q);
+            double hll_tmp = -q * Face_Area_Norm * c_hll * d_scalar/(-conduction_wt);
+            
             /* add asymptotic-preserving correction so that numerical flux doesn't dominate in optically thick limit */
             double tau_c_j = Get_Particle_Size(j)*All.cf_atime * SphP[j].Kappa_RT[k_freq]*SphP[j].Density*All.cf_a3inv; // = L_particle / (lambda_mean_free_path) = L*kappa*rho //
             double hll_corr = 1./(1. + 1.5*DMAX(tau_c_i[k_freq],tau_c_j));
             hll_tmp *= hll_corr;
             
             double thold_hll = 2.0*fabs(cmag);
-            if(fabs(hll_tmp)>thold_hll) hll_tmp*=thold_hll/fabs(hll_tmp);
-            cmag += hll_tmp;
-            /* slope-limiter to ensure flow is always down the local gradient */
-            c_max *= rinv*rinv;
-            cmag = MINMOD(MINMOD(MINMOD(cmag , c_max*d_scalar), fabs(c_max)*d_scalar) , Face_Area_Norm*d_scalar*rinv);
+            if(fabs(hll_tmp)>thold_hll) {hll_tmp*=thold_hll/fabs(hll_tmp);}
+            double cmag_corr = cmag + hll_tmp;
+            cmag = MINMOD(1.5*cmag, cmag_corr);
+            /* flux-limiter to ensure flow is always down the local gradient */
+            double f_direct = (1./9.) * Face_Area_Norm*d_scalar*rinv;
+            if((d_scalar*cmag < 0) && (fabs(f_direct) > fabs(cmag))) {cmag = 0;}
             cmag *= -conduction_wt; // multiplies through the coefficient to get actual flux //
 #endif
-			// prevent super-luminal local fluxes //
-			double R_flux = fabs(cmag) / (3. * Face_Area_Norm * c_light * fabs(d_scalar) + 1.e-37);
-			R_flux = (1. + 12.*R_flux) / (1. + 12.*R_flux*(1.+R_flux)); // 12 arbitrary but >>1 gives good behavior here //
-			cmag *= R_flux;
-			cmag *= dt_hydrostep; // all in physical units //
-			if(fabs(cmag) > 0)
-			{
-				// enforce a flux limiter for stability (to prevent overshoot) //
-				double thold_hll = 0.25 * fabs(scalar_i*V_i-scalar_j*V_j); 
-				if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
-				Fluxes_E_gamma[k_freq] += cmag / dt_hydrostep;
-			} // if(conduction_wt > 0)
-
+            // prevent super-luminal local fluxes //
+            double R_flux = fabs(cmag) / (3. * Face_Area_Norm * c_light * fabs(d_scalar) + 1.e-37);
+            R_flux = (1. + 12.*R_flux) / (1. + 12.*R_flux*(1.+R_flux)); // 12 arbitrary but >>1 gives good behavior here //
+            cmag *= R_flux;
+            cmag *= dt_hydrostep; // all in physical units //
+            if(fabs(cmag) > 0)
+            {
+                // enforce a flux limiter for stability (to prevent overshoot) //
+                double thold_hll = 0.25 * DMIN(fabs(scalar_i*V_i),fabs(scalar_j*V_j));
+                if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
+                Fluxes_E_gamma[k_freq] += cmag / dt_hydrostep;
+            } // if(conduction_wt > 0)
+            
         } // close check that kappa and particle masses are positive
     }
 }
@@ -102,10 +102,9 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
         {
             
             double d_scalar = scalar_i - scalar_j;
-            double cmag=0., c_max=0., cmag_flux[3]={0};
+            double cmag=0., cmag_flux[3]={0};
             for(k=0;k<3;k++)
             {
-                c_max += Face_Area_Vec[k] * kernel.dp[k]; /* for flux-limiter function */
                 /* the flux is already known (its explicitly evolved, rather than determined by the gradient of the energy density */
                 cmag += Face_Area_Vec[k] * 0.5*(local.Flux[k_freq][k]/V_i + SphP[j].Flux_Pred[k_freq][k]/V_j); /* remember, our 'flux' variable is a volume-integral */
                 int k_xyz=k, k_et_al, k_et_loop[3];
@@ -117,8 +116,6 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
                     cmag_flux[k_xyz] += c_light*c_light * Face_Area_Vec[k_et_al] * 0.5*(scalar_i*local.ET[k_freq][k_et_loop[k_et_al]] + scalar_j*SphP[j].ET[k_freq][k_et_loop[k_et_al]]);
                 }
             }
-            c_max *= rinv*rinv;
-            
             /* add asymptotic-preserving correction so that numerical flux doesn't unphysically dominate in optically thick limit */
             double tau_c_j = Get_Particle_Size(j)*All.cf_atime * SphP[j].Kappa_RT[k_freq]*SphP[j].Density*All.cf_a3inv; // = L_particle / (lambda_mean_free_path) = L*kappa*rho //
             double hll_corr = 1./(1. + 1.5*DMAX(tau_c_i[k_freq],tau_c_j));
@@ -128,14 +125,16 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
             hll_tmp *= q * hll_corr;
             double thold_hll = thold_hll_0*fabs(cmag);
             if(fabs(hll_tmp)>thold_hll) {hll_tmp *= thold_hll/fabs(hll_tmp);}
-            cmag += hll_tmp;
-            /* slope-limiter to ensure flow is always down the local gradient [no 'uphill' flow] */
-            cmag = MINMOD(cmag, -Face_Area_Norm * c_hll * d_scalar);
+            double cmag_corr = cmag + hll_tmp;
+            cmag = MINMOD(1.5*cmag, cmag_corr);
+            /* flux-limiter to ensure flow is always down the local gradient [no 'uphill' flow] */
+            double f_direct = -Face_Area_Norm * c_hll * d_scalar;
+            if((d_scalar*cmag < 0) && (fabs(f_direct) > fabs(cmag))) {cmag = 0;}
             cmag *= dt_hydrostep; // all in physical units //
             if(fabs(cmag) > 0)
             {
                 // enforce a flux limiter for stability (to prevent overshoot) //
-                thold_hll = 0.25 * fabs(scalar_i*V_i-scalar_j*V_j);
+                thold_hll = 0.25 * DMIN(fabs(scalar_i*V_i),fabs(scalar_j*V_j));
                 if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
                 Fluxes_E_gamma[k_freq] += cmag / dt_hydrostep;
             } // if(conduction_wt > 0)
@@ -146,7 +145,8 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
                 hll_tmp = -Face_Area_Norm * c_hll * d_flux;
                 thold_hll = thold_hll_0*fabs(cmag_flux[k]);
                 if(fabs(hll_tmp)>thold_hll) {hll_tmp *= thold_hll/fabs(hll_tmp);}
-                cmag_flux[k] += hll_tmp;
+                double cmag_tmp = cmag_flux[k] + hll_tmp;
+                cmag_flux[k] = MINMOD(1.5*cmag_flux[k], cmag_tmp);
                 Fluxes_Flux[k_freq][k] += cmag_flux[k];
             }
         } // close check that energy and masses are positive

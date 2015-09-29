@@ -59,7 +59,7 @@ void blackhole_accretion(void)
 #ifdef BH_GRAVACCRETION_BTOD
     //if(ThisTask == 0)  printf("Blackhole: evaluating black-hole environment (second loop)\n");
     blackhole_environment_second_loop();    /* populates BlackholeTempInfo based on surrounding gas (blackhole_environment.c).
-                                               DAA: Here we compute quantities that require knowledge of previous environment variables 
+                                               Here we compute quantities that require knowledge of previous environment variables
                                                --> Bulge-Disk kinematic decomposition for gravitational torque accretion  */
 #endif
  
@@ -196,7 +196,7 @@ void blackhole_properties_loop(void)
         /* always initialize/default to zero accretion rate */
         BPP(n).BH_Mdot=0;
 
-/*      DAA: normalize_temp_info_struct is now done at the end of blackhole_environment_loop()
+/*      normalize_temp_info_struct is now done at the end of blackhole_environment_loop()
  *      so that final quantities are available for the second environment loop if needed 
  */
         //normalize_temp_info_struct(i);
@@ -215,7 +215,7 @@ void blackhole_properties_loop(void)
         set_blackhole_new_mass(i, n, dt);
 
         
-        /* DAA: results dumped to 'blackhole_details' files at the end of blackhole_final_loop 
+        /* results dumped to 'blackhole_details' files at the end of blackhole_final_loop
                 so that BH mass is corrected for mass loss to radiation/bal outflows */
 
     }// for(i=0; i<N_active_loc_BHs; i++)
@@ -233,11 +233,8 @@ void blackhole_properties_loop(void)
 
 void normalize_temp_info_struct(int i)
 {
-#if defined(BH_DYNFRICTION) || ( defined(BH_USE_GASVEL_IN_BONDI) || defined(BH_DRAG) ) || defined(BH_BAL_WINDS) || defined(BH_GRAVACCRETION) || defined(BH_BAL_KICK_COLLIMATED)
-    int k;
-#endif
-
     /* for new quantities, divide out weights and convert to physical units */
+    int k; k=0;
     if(BlackholeTempInfo[i].Mgas_in_Kernel > 0)
     {
         BlackholeTempInfo[i].BH_InternalEnergy /= BlackholeTempInfo[i].Mgas_in_Kernel;
@@ -247,7 +244,7 @@ void normalize_temp_info_struct(int i)
         for(k=0;k<3;k++)
             BlackholeTempInfo[i].DF_mean_vel[k] /= BlackholeTempInfo[i].Mgas_in_Kernel * All.cf_atime;
 #endif
-#if defined(BH_USE_GASVEL_IN_BONDI) || defined(BH_DRAG)
+#if defined(BH_BONDI) || defined(BH_DRAG)
         for(k=0;k<3;k++)
             BlackholeTempInfo[i].BH_SurroundingGasVel[k] /= BlackholeTempInfo[i].Mgas_in_Kernel * All.cf_atime;
 #endif
@@ -257,7 +254,7 @@ void normalize_temp_info_struct(int i)
         BlackholeTempInfo[i].BH_InternalEnergy = 0;
     }
 
-    /* DAA: add GAS mas/angular momentum to the TOTAL mass/angular momentum */
+    /* add GAS mass/angular momentum to the TOTAL mass/angular momentum */
     BlackholeTempInfo[i].Malt_in_Kernel += BlackholeTempInfo[i].Mgas_in_Kernel;            // Malt is now TOTAL mass inside BH kernel !
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK_COLLIMATED) || defined(BH_GRAVACCRETION)
     for(k=0;k<3;k++)
@@ -369,7 +366,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 #ifdef BH_BONDI
     /* heres where we calculate the Bondi accretion rate, if that's going to be used */
     bhvel = 0;
-#ifdef BH_USE_GASVEL_IN_BONDI
+#if (BH_BONDI != 1)
     for(k=0;k<3;k++) bhvel += BlackholeTempInfo[i].BH_SurroundingGasVel[k]*BlackholeTempInfo[i].BH_SurroundingGasVel[k];
 #endif
     rho = BPP(n).DensAroundStar * All.cf_a3inv; /* we want all quantities in physical units */
@@ -378,7 +375,7 @@ void set_blackhole_mdot(int i, int n, double dt)
     if(fac > 0)
     {
         double AccretionFactor = All.BlackHoleAccretionFactor;
-#ifdef BH_VARIABLE_ACCRETION_FACTOR
+#if (BH_BONDI == 2)
         /* variable-alpha model (Booth&Schaye 2009): now All.BlackHoleAccretionFactor is the slope of the density dependence */
         AccretionFactor = 1.0;
         if(rho > All.PhysDensThresh)
@@ -559,7 +556,7 @@ void set_blackhole_drag(int i, int n, double dt)
     if((dt>0)&&(BPP(n).BH_Mass>0))
     {
         double fac = BPP(n).BH_Mdot * dt / BPP(n).BH_Mass;
-#ifdef BH_STRONG_DRAG
+#if (BH_DRAG == 2)
         /* make the force stronger to keep the BH from wandering */
         fac = meddington * dt / BPP(n).BH_Mass;
 #endif
@@ -640,7 +637,7 @@ void set_blackhole_long_range_rp(int i, int n)
          everything here is in code units, comes out dimensionless */
         
         /* use the gradrho vector as a surrogate to hold the orientation of the angular momentum 
-          (DAA: do we actually need this? Jgas_in_Kernel is available in BlackholeTempInfo until blackhole_end...) */
+          (this is done because the long-range radiation routines for the BH require the angular momentum vector for non-isotropic emission) */
         fac=0;
         for(k=0;k<3;k++)
             fac += BlackholeTempInfo[i].Jgas_in_Kernel[k]*BlackholeTempInfo[i].Jgas_in_Kernel[k];
@@ -651,10 +648,6 @@ void set_blackhole_long_range_rp(int i, int n)
         /* now, the P[n].GradRho[k] field for the BH holds the orientation of the UNIT angular momentum vector
          NOTE it is important that HARD-WIRED into the code, this blackhole calculation comes after the density calculation
          but before the forcetree update and walk; otherwise, this won't be used correctly there */
-
-        /* DAA: why do we need to store Jgas_in_Kernel in P.GradRho?  It will always be available in BlackholeTempInfo 
-                Also, BH_disk_hr could be in BlackholeTempInfo rather than P if it is only used for BH feedback... */
-
     }
 }
 #endif // if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
@@ -671,15 +664,6 @@ void blackhole_final_loop(void)
     int i, k, n, bin;
     double  dt;
     double mass_disk, mdot_disk, mbulge, r0;
-    
-#ifdef BH_REPOSITION_ON_POTMIN
-    for(n = FirstActiveParticle; n >= 0; n = NextActiveParticle[n])
-        if(P[n].Type == 5)
-            if(BPP(n).BH_MinPot < 0.5 * BHPOTVALUEINIT)
-                for(k = 0; k < 3; k++)
-                    P[n].Pos[k] = BPP(n).BH_MinPotPos[k];
-#endif
-    
     
     for(n = 0; n < TIMEBINS; n++)
     {
@@ -700,11 +684,7 @@ void blackhole_final_loop(void)
         {
             for(k = 0; k < 3; k++)
             {
-#ifdef BH_FOLLOW_ACCRETED_GAS_MOMENTUM
-                P[n].Vel[k] = (P[n].Vel[k]*P[n].Mass + BlackholeTempInfo[i].accreted_momentum[k]) / (BlackholeTempInfo[i].accreted_Mass + P[n].Mass);
-#else
                 P[n].Vel[k] = (P[n].Vel[k]*P[n].Mass + BlackholeTempInfo[i].accreted_momentum[k]) / (BlackholeTempInfo[i].accreted_BH_Mass + P[n].Mass);
-#endif
             } //for(k = 0; k < 3; k++)
             P[n].Mass += BlackholeTempInfo[i].accreted_Mass;
             BPP(n).BH_Mass += BlackholeTempInfo[i].accreted_BH_Mass;
@@ -772,7 +752,7 @@ void blackhole_final_loop(void)
 #else
         fprintf(FdBlackHolesDetails, "BH=%u %g %g %g %g %g %g %g %g   %2.7f %2.7f %2.7f\n",
                 P[n].ID, All.Time, BPP(n).BH_Mass, mass_disk, P[n].Mass, BPP(n).BH_Mdot, mdot_disk,              
-                BPP(n).DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy,             // DAA: DensAroundStar is actually not defined in BHP->BPP... 
+                P[n].DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy,             // DAA: DensAroundStar is actually not defined in BHP->BPP...
                 P[n].Pos[0], P[n].Pos[1], P[n].Pos[2]);
 #endif
 

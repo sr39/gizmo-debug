@@ -444,15 +444,20 @@ void ags_density(void)
         tstart = my_second();
         for(i = FirstActiveParticle, npleft = 0; i >= 0; i = NextActiveParticle[i])
         {
-            if((P[i].Mass>0)&&(PPP[i].AGS_Hsml>0)&&(PPP[i].NumNgb>0)&&(ags_density_isactive(i)))
+            if(density_isactive(i))
             {
-                /* first use Ngb as summed in neighbor loop to normalize DhsmlNgb and DivVel */
-                PPP[i].DhsmlNgbFactor *= PPP[i].AGS_Hsml / (NUMDIMS * PPP[i].NumNgb);
-                P[i].Particle_DivVel /= PPP[i].NumNgb;
-                /* spherical volume of the Kernel (use this to normalize 'effective neighbor number') */
-                PPP[i].NumNgb *= NORM_COEFF * pow(PPP[i].AGS_Hsml,NUMDIMS);; /* now we define 'effective neighbor number */
+                if(PPP[i].NumNgb > 0)
+                {
+                    PPP[i].DhsmlNgbFactor *= PPP[i].AGS_Hsml / (NUMDIMS * PPP[i].NumNgb);
+                    P[i].Particle_DivVel /= PPP[i].NumNgb;
+                    /* spherical volume of the Kernel (use this to normalize 'effective neighbor number') */
+                    PPP[i].NumNgb *= NORM_COEFF * pow(PPP[i].AGS_Hsml,NUMDIMS);
+                } else {
+                    PPP[i].NumNgb = PPP[i].DhsmlNgbFactor = P[i].Particle_DivVel = 0;
+                }
                 
-                if(PPP[i].DhsmlNgbFactor > -0.9)
+                // inverse of SPH volume element (to satisfy constraint implicit in Lagrange multipliers)
+                if(PPP[i].DhsmlNgbFactor > -0.9)	/* note: this would be -1 if only a single particle at zero lag is found */
                     PPP[i].DhsmlNgbFactor = 1 / (1 + PPP[i].DhsmlNgbFactor);
                 else
                     PPP[i].DhsmlNgbFactor = 1;
