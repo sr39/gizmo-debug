@@ -444,7 +444,7 @@ void ags_density(void)
         tstart = my_second();
         for(i = FirstActiveParticle, npleft = 0; i >= 0; i = NextActiveParticle[i])
         {
-            if(density_isactive(i))
+            if(ags_density_isactive(i))
             {
                 if(PPP[i].NumNgb > 0)
                 {
