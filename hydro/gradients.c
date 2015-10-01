@@ -1336,14 +1336,14 @@ void hydro_gradient_calc(void)
             local_slopelimiter(SphP[i].Gradients.Density,GasGradDataPasser[i].Maxima.Density,GasGradDataPasser[i].Minima.Density,a_limiter,h_lim,stol);
             local_slopelimiter(SphP[i].Gradients.Pressure,GasGradDataPasser[i].Maxima.Pressure,GasGradDataPasser[i].Minima.Pressure,a_limiter,h_lim,stol);
             stol_tmp = stol;
-#ifdef(VISCOSITY)
+#if defined(VISCOSITY)
             stol_tmp = DMAX(stol,stol_diffusion);
 #endif
             for(k1=0;k1<3;k1++)
                 local_slopelimiter(SphP[i].Gradients.Velocity[k1],GasGradDataPasser[i].Maxima.Velocity[k1],GasGradDataPasser[i].Minima.Velocity[k1],a_limiter,h_lim,stol_tmp);
 #ifdef DOGRAD_INTERNAL_ENERGY
             stol_tmp = stol;
-#ifdef(CONDUCTION)
+#if defined(CONDUCTION)
             stol_tmp = DMAX(stol,stol_diffusion);
 #endif
             local_slopelimiter(SphP[i].Gradients.InternalEnergy,GasGradDataPasser[i].Maxima.InternalEnergy,GasGradDataPasser[i].Minima.InternalEnergy,a_limiter,h_lim,stol_tmp);
@@ -1356,7 +1356,6 @@ void hydro_gradient_calc(void)
             local_slopelimiter(SphP[i].Gradients.SoundSpeed,GasGradDataPasser[i].Maxima.SoundSpeed,GasGradDataPasser[i].Minima.SoundSpeed,a_limiter,h_lim,stol);
 #endif
 #ifdef TURB_DIFF_METALS
-            stol_tmp = DMAX(stol,0.1);
             for(k1=0;k1<NUM_METAL_SPECIES;k1++)
                 local_slopelimiter(SphP[i].Gradients.Metallicity[k1],GasGradDataPasser[i].Maxima.Metallicity[k1],GasGradDataPasser[i].Minima.Metallicity[k1],a_limiter,h_lim,DMAX(stol,stol_diffusion));
 #endif
