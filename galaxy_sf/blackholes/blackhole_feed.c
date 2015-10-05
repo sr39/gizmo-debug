@@ -373,8 +373,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
                         if(P[j].Type != 5)
                         {
+                            double cs=0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}
                             if(vrel < vesc){ /* bound */
-                                if( All.ForceSoftening[5]*(1.0-vrel*vrel/(vesc*vesc))/r > 1.0 )
+                                if( All.ForceSoftening[5]*(1.0-(vrel*vrel+cs*cs)/(vesc*vesc))/r > 1.0 )
                                 { /* apocenter within 2.8*epsilon (softening length) */
                                     
 #ifdef BH_GRAVCAPTURE_NONGAS

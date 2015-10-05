@@ -494,7 +494,27 @@ void domain_allocate_trick(void)
 
 double domain_particle_costfactor(int i)
 {
-  return 0.1 + P[i].GravCost[TakeLevel];
+    double multiplier = 1.0;
+#if defined(GALSF) && defined(GALSF_FB_SNE_HEATING)
+    if(((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))&&(P[i].Mass>0))
+    {
+        float star_age=0;
+        star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+        if(star_age>0.1) {multiplier=1.25;} else
+        {
+            if(star_age>0.035)
+            {
+                multiplier = 2.0;
+            } else {
+                multiplier = 4.0;
+            }
+        }
+    }
+#endif
+#if defined(BLACK_HOLES)
+    if(P[i].Type == 5) {multiplier = 10.0;}
+#endif
+    return multiplier * (0.1 + P[i].GravCost[TakeLevel]);
 }
 
 
@@ -531,10 +551,24 @@ int domain_decompose(void)
 #endif
       NtypeLocal[P[i].Type]++;
 
-      gravcost += domain_particle_costfactor(i);
-      if(P[i].Type == 0)
-	if(TimeBinActive[P[i].TimeBin] || UseAllParticles)
-	  sphcost += 1.0;
+        gravcost += domain_particle_costfactor(i);
+        if(P[i].Type == 0)
+        {
+            if(TimeBinActive[P[i].TimeBin] || UseAllParticles)
+                sphcost += 1.0;
+        }
+
+#if defined(GALSF) && defined(GALSF_FB_SNE_HEATING)
+        if(((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))&&(P[i].Mass>0))
+        {
+            if(TimeBinActive[P[i].TimeBin] || UseAllParticles)
+            {
+                float star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+                if(star_age < 0.035) {sphcost += 4.0;}
+            }
+        }
+#endif
+        
     }
   /* because Ntype[] is of type `long long', we cannot do a simple
    * MPI_Allreduce() to sum the total particle numbers 
@@ -2937,12 +2971,23 @@ void domain_sumCost(void)
       local_domainWork[no] += (float) domain_particle_costfactor(n);
 
       local_domainCount[no] += 1;
-      if(P[n].Type == 0)
-	{
-	  local_domainCountSph[no] += 1;
-	  if(TimeBinActive[P[n].TimeBin] || UseAllParticles)
-	    local_domainWorkSph[no] += 1.0;
-	}
+        
+        if(P[n].Type == 0)
+        {
+            local_domainCountSph[no] += 1;
+            if(TimeBinActive[P[n].TimeBin] || UseAllParticles)
+                local_domainWorkSph[no] += 1.0;
+        }
+#if defined(GALSF) && defined(GALSF_FB_SNE_HEATING)
+        if(((P[n].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[n].Type == 2)||(P[n].Type==3))))&&(P[n].Mass>0))
+        {
+            if(TimeBinActive[P[n].TimeBin] || UseAllParticles)
+            {
+                float star_age = evaluate_stellar_age_Gyr(P[n].StellarAge);
+                if(star_age < 0.035) {local_domainWorkSph[no] += 4.0;}
+            }
+        }
+#endif
 #ifdef SEPARATE_STELLARDOMAINDECOMP
       if(P[n].Type == 4)
         {

@@ -827,13 +827,13 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 }
                 /* calculates cooling radius given density and metallicity in this annulus into which the ejecta propagate */
                 
-                /* limit to Hsml for coupling */
-                if(RsneMAX<RsneKPC) RsneKPC=RsneMAX;
-                
                 // double r2sne = RsneKPC*RsneKPC; if(r2 > r2sne) dP *= pow(r2sne/r2 , 1.625);
                 if(r2 > RsneKPC*RsneKPC) dP *= RsneKPC*RsneKPC*RsneKPC / (r2*kernel.r); // just as good a fit, and much faster to evaluate //
                 /* if coupling radius > R_cooling, account for thermal energy loss in the post-shock medium:
                  from Thornton et al. thermal energy scales as R^(-6.5) for R>R_cool */
+
+                /* limit to Hsml for coupling */
+                if(RsneMAX<RsneKPC) RsneKPC=RsneMAX;
 #endif
                 
                 /* now, add contribution from relative star-gas particle motion to shock energy */
@@ -893,6 +893,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 for(k=0; k<3; k++)
                 {
                     double q;
+                    q = 0;
                     if(k==0) {q=wk_vec[1]*local.Area_weighted_sum[1] + wk_vec[2]*local.Area_weighted_sum[2];}
                     if(k==1) {q=wk_vec[3]*local.Area_weighted_sum[3] + wk_vec[4]*local.Area_weighted_sum[4];}
                     if(k==2) {q=wk_vec[5]*local.Area_weighted_sum[5] + wk_vec[6]*local.Area_weighted_sum[6];}
@@ -905,6 +906,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* appropriate factor for the ejecta being energy-conserving inside the cooling radius (or Hsml, if thats smaller) */
                 dP *= sqrt(1. + NORM_COEFF*(SphP[j].Density*RsneKPC*RsneKPC*RsneKPC)/local.Msne);
                 double pmax = (local.unit_mom_SNe/local.Msne) * sqrt((wk*local.Msne)/(P[j].Mass));
+                if(P[j].Metallicity[0]<All.SolarAbundances[0]) {pmax *= sqrt(sqrt(All.SolarAbundances[0]/P[j].Metallicity[0]));}
                 double prat = dP * pnorm / (MIN_REAL_NUMBER + pmax);
                 if(prat > 1) {dP /= prat;}
                 dP_boost_sum += dP * pnorm;

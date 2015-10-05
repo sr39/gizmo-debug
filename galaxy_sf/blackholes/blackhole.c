@@ -121,6 +121,8 @@ void blackhole_accretion(void)
 
 
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+/* weight function for local (short-range) coupling terms from the black hole, including the single-scattering 
+    radiation pressure and the bal winds */
 double bh_angleweight_localcoupling(int j, double hR, double theta)
 {
 #ifndef BH_PHOTONMOMENTUM
@@ -138,6 +140,8 @@ double bh_angleweight_localcoupling(int j, double hR, double theta)
 }
 
 
+/* function below is used for long-range black hole radiation fields -- used only in the forcetree routines (where they 
+    rely this for things like the long-range radiation pressure and compton heating) */
 double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz, int mode)
 {
     double bh_lum = bh_lum_input;

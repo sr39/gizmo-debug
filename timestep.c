@@ -409,7 +409,21 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
     if(P[p].Type == 0)
+    {
         dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / ac);
+    }
+#if defined(GALSF) && defined(GALSF_FB_SNE_HEATING)
+    if(((P[p].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[p].Type == 2)||(P[p].Type==3))))&&(P[p].Mass>0))
+    {
+        if((All.ComovingIntegrationOn))
+        {
+            double ags_h = DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]);
+            ags_h = DMIN(ags_h, 10.*All.ForceSoftening[P[p].Type]);
+            dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * ags_h / ac);
+        }
+    }
+#endif
+
 #endif
 
     
@@ -649,6 +663,8 @@ integertime get_timestep(int p,		/*!< particle index */
         }
         // PFH: temporarily modifying the terms above while Marcel studies them: turns out not to be necessary to use as strict a mass-dependent timestep, so faster to comment out //
         //dt_stellar_evol /= ( 1. + 0.1*(P[p].Mass*All.UnitMass_in_g)/(1.0e4*1.989e33) ); // multiply by inverse particle mass, since goal is to prevent too much energy in one time //
+        double mcorr = 0.1 * (P[p].Mass*All.UnitMass_in_g/All.HubbleParam)/(1.0e4*1.989e33);
+        if(mcorr < 1 && mcorr > 0) {dt_stellar_evol /= mcorr;}
         if(dt_stellar_evol < 1.e-6) {dt_stellar_evol = 1.e-6;}
         dt_stellar_evol /= (0.001*All.UnitTime_in_Megayears/All.HubbleParam); // convert to code units //
         if(dt_stellar_evol>0)

@@ -16,18 +16,19 @@
        ((local.Mass>0)&&(P[j].Mass>0)) )
     {
         int k_v;
+        double a_inv = 1 / All.cf_atime;
         double v_interface[3];
         double cmag[3];
         double wt_i,wt_j;
         wt_i = wt_j = 0.5;
-        for(k=0;k<3;k++) {v_interface[k] = wt_i*local.Vel[k] + wt_j*VelPred_j[k];} // should use interface solution from Riemann problem //
+        for(k=0;k<3;k++) {v_interface[k] = (wt_i*local.Vel[k] + wt_j*VelPred_j[k]) * a_inv;} // physical units //
         
         // use a geometric average, since we want to weight the smaller of the two coefficients //
         double eta = 0.5 * (local.Eta_ShearViscosity + SphP[j].Eta_ShearViscosity);
-        if(eta > 0) {eta = local.Eta_ShearViscosity * SphP[j].Eta_ShearViscosity / eta * All.cf_a2inv;} else {eta = 0;} // also converts to physical units
+        if(eta > 0) {eta = local.Eta_ShearViscosity * SphP[j].Eta_ShearViscosity / eta;} else {eta = 0;} // also converts to physical units
         double zeta = 0.5 * (local.Zeta_BulkViscosity + SphP[j].Zeta_BulkViscosity);
-        if(zeta > 0) {zeta = local.Zeta_BulkViscosity * SphP[j].Zeta_BulkViscosity / zeta * All.cf_a2inv;} else {zeta = 0;} // also converts to physical units
-        double viscous_wt_physical = DMAX(eta,zeta) / All.cf_a2inv;
+        if(zeta > 0) {zeta = local.Zeta_BulkViscosity * SphP[j].Zeta_BulkViscosity / zeta;} else {zeta = 0;} // also converts to physical units
+        double viscous_wt_physical = DMAX(eta,zeta);
         // we need a minus sign at some point; its handy to just include it now in the weights //
         wt_i *= -1.; wt_j *= -1.;
         int do_non_mhd = 1;
@@ -65,7 +66,7 @@
                 }
             }
             rhs /= (kernel.r * kernel.r * kernel.r);
-            for(k_v=0;k_v<3;k_v++) {cmag[k_v] = Face_Area_Norm * eta * (3.*BPred[k_v]*Bproj - kernel.dp[k_v]) * rhs;}
+            for(k_v=0;k_v<3;k_v++) {cmag[k_v] = Face_Area_Norm * eta * (3.*BPred[k_v]*Bproj - kernel.dp[k_v]) * rhs;} // units vcode/rcode
         }
 #endif
         /* standard Navier-Stokes equations: viscosity is decomposed into the shear and bulk viscosity terms */
@@ -87,7 +88,7 @@
             cmag[1] = (Pxy*kernel.dp[0] + Pyy*kernel.dp[1] + Pyz*kernel.dp[2]) * r3inv;
             cmag[2] = (Pxz*kernel.dp[0] + Pyz*kernel.dp[1] + Pzz*kernel.dp[2]) * r3inv;
         }
-        for(k_v=0;k_v<3;k_v++) {cmag[k_v]*=-1;} // sign of the above is flipped
+        for(k_v=0;k_v<3;k_v++) {cmag[k_v]*=-All.cf_a2inv;} // sign of the above is flipped: units=physical
         
         
 #else // not SPH
@@ -126,19 +127,19 @@
                     grad_v = MINMOD_G( grad_v, -kernel.dv[k_v] * kernel.dp[k] * rinv*rinv);
                     
                     if(k==k_v) {tmp=tmp_kv;} else {tmp=B_interface[k_v]*B_interface[k];}
-                    rhs += tmp * grad_v;
-                    rhs_direct += tmp * kernel.dv[k] * kernel.dp[k_v];
-                    grad_v_mag += grad_v*grad_v;
-                    b_tensor_dot_face += tmp * Face_Area_Vec[k];
+                    rhs += tmp * grad_v; // units vcode/rcode
+                    rhs_direct += tmp * kernel.dv[k] * kernel.dp[k_v]; // units vcode*rcode
+                    grad_v_mag += grad_v*grad_v; // units (vcode/rcode)^2
+                    b_tensor_dot_face += tmp * Face_Area_Vec[k]; // physical
                 }
-                cmag[k_v] = b_tensor_dot_face / B_interface_mag2;
+                cmag[k_v] = b_tensor_dot_face / B_interface_mag2; // physical
             }
             rhs /= B_interface_mag2;
             grad_v_mag = sqrt(grad_v_mag);
-            bhat_dot_gradvhat = rhs / grad_v_mag;
-            bhat_dot_gradvhat_direct = 3.*rinv*rinv * (rhs_direct / B_interface_mag2);
+            bhat_dot_gradvhat = rhs / grad_v_mag; // physical (dimensionless)
+            bhat_dot_gradvhat_direct = 3.*rinv*rinv * (rhs_direct / B_interface_mag2); // units vcode/rcode
             /* ok now just multipy the scalar contraction of the B tensor and shear tensor to get the fluxes */
-            for(k_v=0;k_v<3;k_v++) {cmag[k_v] *= 3.*eta*rhs;}
+            for(k_v=0;k_v<3;k_v++) {cmag[k_v] *= 3.*eta*rhs;} // units vcode/rcode
         }
 #endif
         
@@ -159,13 +160,13 @@
             double Pyy = 2*(wt_i*local.Gradients.Velocity[1][1]+wt_j*SphP[j].Gradients.Velocity[1][1]) + divv;
             double Pzz = 2*(wt_i*local.Gradients.Velocity[2][2]+wt_j*SphP[j].Gradients.Velocity[2][2]) + divv;
             double Pxy = wt_i*(local.Gradients.Velocity[0][1]+local.Gradients.Velocity[1][0]) +
-            wt_j*(SphP[j].Gradients.Velocity[0][1]+SphP[j].Gradients.Velocity[1][0]);
+                         wt_j*(SphP[j].Gradients.Velocity[0][1]+SphP[j].Gradients.Velocity[1][0]);
             double Pxz = wt_i*(local.Gradients.Velocity[0][2]+local.Gradients.Velocity[2][0]) +
-            wt_j*(SphP[j].Gradients.Velocity[0][2]+SphP[j].Gradients.Velocity[2][0]);
+                         wt_j*(SphP[j].Gradients.Velocity[0][2]+SphP[j].Gradients.Velocity[2][0]);
             double Pyz = wt_i*(local.Gradients.Velocity[1][2]+local.Gradients.Velocity[2][1]) +
-            wt_j*(SphP[j].Gradients.Velocity[1][2]+SphP[j].Gradients.Velocity[2][1]);
+                         wt_j*(SphP[j].Gradients.Velocity[1][2]+SphP[j].Gradients.Velocity[2][1]);
             
-            cmag[0] = Pxx*Face_Area_Vec[0] + Pxy*Face_Area_Vec[1] + Pxz*Face_Area_Vec[2];
+            cmag[0] = Pxx*Face_Area_Vec[0] + Pxy*Face_Area_Vec[1] + Pxz*Face_Area_Vec[2]; // units vcode/rcode
             cmag[1] = Pxy*Face_Area_Vec[0] + Pyy*Face_Area_Vec[1] + Pyz*Face_Area_Vec[2];
             cmag[2] = Pxz*Face_Area_Vec[0] + Pyz*Face_Area_Vec[1] + Pzz*Face_Area_Vec[2];
             
@@ -176,36 +177,34 @@
             double Pxy_direct = eta*(kernel.dv[0]*kernel.dp[1]+kernel.dv[1]*kernel.dp[0]);
             double Pxz_direct = eta*(kernel.dv[0]*kernel.dp[2]+kernel.dv[2]*kernel.dp[0]);
             double Pyz_direct = eta*(kernel.dv[2]*kernel.dp[1]+kernel.dv[1]*kernel.dp[2]);
-            cmag_dir[0] = Pxx_direct*kernel.dp[0] + Pxy_direct*kernel.dp[1] + Pxz_direct*kernel.dp[2];
-            cmag_dir[1] = Pxy_direct*kernel.dp[0] + Pyy_direct*kernel.dp[1] + Pyz_direct*kernel.dp[2];
-            cmag_dir[2] = Pxz_direct*kernel.dp[0] + Pyz_direct*kernel.dp[1] + Pzz_direct*kernel.dp[2];
-            
             cmag_dir[0] = (Pxx_direct*Face_Area_Vec[0] + Pxy_direct*Face_Area_Vec[1] + Pxz_direct*Face_Area_Vec[2])/Face_Area_Norm*kernel.r;
             cmag_dir[1] = (Pxy_direct*Face_Area_Vec[0] + Pyy_direct*Face_Area_Vec[1] + Pyz_direct*Face_Area_Vec[2])/Face_Area_Norm*kernel.r;
             cmag_dir[2] = (Pxz_direct*Face_Area_Vec[0] + Pyz_direct*Face_Area_Vec[1] + Pzz_direct*Face_Area_Vec[2])/Face_Area_Norm*kernel.r;
         }
         
-        
         /* slope-limit this to be sure that viscosity always acts in the proper direction when there is local noise */
         double rho_i = local.Density*All.cf_a3inv, rho_j = SphP[j].Density*All.cf_a3inv, rho_ij=0.5*(rho_i+rho_j);
+
+        /* convert to physical units */
+        for(k_v=0;k_v<3;k_v++) {cmag[k_v] *= All.cf_a2inv;}
+        
         for(k_v=0;k_v<3;k_v++)
         {
 #ifdef MAGNETIC
-            double dv_visc = 3. * (B_interface[k_v]*Bi_proj - kernel.dp[k_v]/3.) * bhat_dot_gradvhat_direct;
             double b_hll_eff = DMAX(DMIN(1. , 3.*bhat_dot_gradvhat*bhat_dot_gradvhat) , 0.01);
-            double thold_ptot_hll = 0.1 * exp(-2. * grad_v_mag * kernel.r / (1.e-30 + fabs(kernel.dv[k_v])));
+            double dv_visc = 3. * (B_interface[k_v]*Bi_proj - kernel.dp[k_v]/3.) * bhat_dot_gradvhat_direct * a_inv; // physical
+            double thold_ptot_hll = 0.1 * exp(-2. * grad_v_mag * kernel.r / (1.e-30 + fabs(kernel.dv[k_v]))); // units ok
 #else
             double b_hll_eff=1;
-            double dv_visc = 0.5*kernel.dv[k_v];
-            dv_visc = cmag_dir[k_v] * rinv*rinv / DMAX(eta,zeta);
+            double dv_visc = dv_visc = cmag_dir[k_v] * rinv*rinv / (All.cf_atime * DMAX(eta,zeta)); // physical
             double thold_ptot_hll = 0.03;
 #endif
             /* obtain HLL correction terms for Reimann problem solution */
-            double hll_tmp = rho_ij * HLL_correction(dv_visc,-dv_visc,rho_ij,viscous_wt_physical) / All.cf_atime;
-            double fluxlimiter_absnorm = -DMAX(eta,zeta) * sqrt(b_hll_eff) * Face_Area_Norm * dv_visc*rinv;
+            double hll_tmp = rho_ij * HLL_correction(dv_visc,-dv_visc,rho_ij,viscous_wt_physical); // physical
+            double fluxlimiter_absnorm = -DMAX(eta,zeta) * sqrt(b_hll_eff) * Face_Area_Norm * dv_visc*rinv*a_inv; // physical
             double ptot = DMIN(local.Mass,P[j].Mass)*sqrt(kernel.dv[0]*kernel.dv[0]+
                                                           kernel.dv[1]*kernel.dv[1]+
-                                                          kernel.dv[2]*kernel.dv[2]) / (1.e-37 + dt_hydrostep);
+                                                          kernel.dv[2]*kernel.dv[2]) / (1.e-37 + dt_hydrostep) * a_inv; // physical
             double thold_hll = 0.1*ptot;
             if(fabs(hll_tmp) > thold_hll) {hll_tmp *= thold_hll/fabs(hll_tmp);}
             hll_tmp *= b_hll_eff;
@@ -220,16 +219,19 @@
             double cmag_corr = cmag[k_v] + hll_tmp;
             cmag[k_v] = MINMOD(cmag[k_v], cmag_corr);
             if((fluxlimiter_absnorm*cmag[k_v] < 0) && (fabs(fluxlimiter_absnorm) > fabs(cmag[k_v]))) {cmag[k_v] = 0;}
+#if defined(GALSF)
+            if((fluxlimiter_absnorm*cmag[k_v] < 0)) {cmag[k_v]=0;}
+#endif
         }
         
-        double v_dot_dv=0; for(k=0;k<3;k++) {v_dot_dv += kernel.dv[k] * cmag[k];}
+        double v_dot_dv=0; for(k=0;k<3;k++) {v_dot_dv += kernel.dv[k] * cmag[k] * a_inv;} // physical
         if(v_dot_dv>0)
         {
             for(k=0;k<3;k++) {cmag[k] = 0;}
         } else {
-            double KE_com=0; for(k=0;k<3;k++) {KE_com += kernel.dv[k]*kernel.dv[k];}
+            double KE_com=0; for(k=0;k<3;k++) {KE_com += kernel.dv[k]*kernel.dv[k] * All.cf_a2inv;} // physical
             KE_com *= 0.25 * (local.Mass + P[j].Mass);
-            double dKE_q = fabs(v_dot_dv) * dt_hydrostep / (1.e-40 + KE_com); // COSMO UNITS!???????
+            double dKE_q = fabs(v_dot_dv) * dt_hydrostep / (1.e-40 + KE_com);
             double threshold_tmp = 1.0;
             double lim_corr=1; if(dKE_q > threshold_tmp) {lim_corr = threshold_tmp/dKE_q;}
             for(k=0;k<3;k++) {cmag[k] *= lim_corr;}

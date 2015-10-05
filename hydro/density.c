@@ -704,7 +704,7 @@ void density(void)
                 {
                     desnumngb = All.DesNumNgb;
                     if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
-                    desnumngbdev = desnumngb / 4; // enforcing exact number not important
+                    desnumngbdev = desnumngb / 2; // enforcing exact number not important
 #ifdef GALSF
                     // if we're finding this for feedback routines, there isn't any good reason to search beyond a modest physical radius //
                     double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
@@ -758,6 +758,13 @@ void density(void)
                         particle_set_to_minhsml_flag = 1;
                     }
                 }
+                
+#ifdef GALSF
+                if((All.ComovingIntegrationOn)&&(All.Time>All.TimeBegin))
+                {
+                    if((P[i].Type==4)&&(iter>1)&&(PPP[i].NumNgb>4)&&(PPP[i].NumNgb<100)&&(redo_particle==1)) {redo_particle=0;}
+                }
+#endif    
                 
                 if((redo_particle==0)&&(P[i].Type == 0))
                 {
@@ -858,7 +865,7 @@ void density(void)
                                     double slope = PPP[i].DhsmlNgbFactor;
                                     if(iter>2 && slope<1) slope = 0.5*(slope+1);
                                     fac = fac_lim * slope; // account for derivative in making the 'corrected' guess
-                                    if(iter>=10)
+                                    if(iter>=4)
                                         if(PPP[i].DhsmlNgbFactor==1) fac *= 10; // tries to help with being trapped in small steps
                                     
                                     if(fac < fac_lim+0.231)
@@ -890,7 +897,7 @@ void density(void)
                                     double slope = PPP[i].DhsmlNgbFactor;
                                     if(iter>2 && slope<1) slope = 0.5*(slope+1);
                                     fac = fac_lim * slope; // account for derivative in making the 'corrected' guess
-                                    if(iter>=10)
+                                    if(iter>=4)
                                         if(PPP[i].DhsmlNgbFactor==1) fac *= 10; // tries to help with being trapped in small steps
                                     
                                     if(fac > fac_lim-0.231)
@@ -1381,9 +1388,12 @@ int density_isactive(int n)
 #if defined(GALSF)
         if(P[n].DensAroundStar<=0) return 1;
         // only do stellar age evaluation if we have to //
-        float star_age=0;
-        star_age = evaluate_stellar_age_Gyr(P[n].StellarAge);
-        if(star_age < 0.035) return 1;
+        if(All.ComovingIntegrationOn==0)
+        {
+            float star_age=0;
+            star_age = evaluate_stellar_age_Gyr(P[n].StellarAge);
+            if(star_age < 0.035) return 1;
+        }
 #endif
     }
 #endif
