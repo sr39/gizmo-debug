@@ -420,11 +420,11 @@ void set_units(void)
 #endif
   /* convert some physical input parameters to internal units */
 
-  All.Hubble = HUBBLE * All.UnitTime_in_s;
+  All.Hubble_H0_CodeUnits = HUBBLE * All.UnitTime_in_s;
 
   if(ThisTask == 0)
     {
-      printf("\nHubble (internal units) = %g\n", All.Hubble);
+      printf("\nHubble (internal units) = %g\n", All.Hubble_H0_CodeUnits);
       printf("G (internal units) = %g\n", All.G);
       printf("UnitMass_in_g = %g \n", All.UnitMass_in_g);
       printf("UnitTime_in_s = %g \n", All.UnitTime_in_s);

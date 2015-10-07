@@ -272,7 +272,7 @@ void long_range_force(void)
 #ifndef PERIODIC
   if(All.ComovingIntegrationOn)
     {
-      fac = 0.5 * All.Hubble * All.Hubble * All.Omega0;
+      fac = 0.5 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits * All.Omega0;
 
       for(i = 0; i < NumPart; i++)
 	for(j = 0; j < 3; j++)
@@ -285,7 +285,7 @@ void long_range_force(void)
 
   if(All.ComovingIntegrationOn == 0)
     {
-      fac = All.OmegaLambda * All.Hubble * All.Hubble;
+      fac = All.OmegaLambda * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits;
 
       for(i = 0; i < NumPart; i++)
 	for(j = 0; j < 3; j++)

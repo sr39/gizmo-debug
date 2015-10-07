@@ -92,7 +92,8 @@ void radiation_pressure_winds_consolidated(void)
                 //if(vq>v) v=vq;
                 v *= WindInitialVelocityBoost;
                 if(v<=15.e5/All.UnitVelocity_in_cm_per_s) v=15.e5/All.UnitVelocity_in_cm_per_s;
-                lm_ssp = evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(i);
+                lm_ssp = evaluate_l_over_m_ssp(star_age);
+                if(star_age < 0.1) {lm_ssp *= calculate_relative_light_to_mass_ratio_from_imf(i);}
                 dE_over_c = lm_ssp * (4.0/2.0) * (P[i].Mass*All.UnitMass_in_g/All.HubbleParam); // L in CGS
                 dE_over_c *= (dt*All.UnitTime_in_s/All.HubbleParam) / 2.9979e10; // dE/c in CGS
                 dv_units = KAPPA_IR * dE_over_c / (4*M_PI * All.UnitLength_in_cm*All.UnitLength_in_cm*All.cf_atime*All.cf_atime);
@@ -192,7 +193,8 @@ void radiation_pressure_winds_consolidated(void)
 #endif
 #ifdef GALSF_FB_RPWIND_CONTINUOUS
                         /* if GALSF_FB_RPWIND_CONTINUOUS is not set, these have already been calculated above */
-                        lm_ssp = evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(i);
+                        lm_ssp = evaluate_l_over_m_ssp(star_age);
+                        if(star_age < 0.1) {lm_ssp *= calculate_relative_light_to_mass_ratio_from_imf(i);}
                         dE_over_c = lm_ssp * (4.0/2.0) * (P[i].Mass*All.UnitMass_in_g/All.HubbleParam); // L in CGS
                         dE_over_c *= (dt*All.UnitTime_in_s/All.HubbleParam) / 2.9979e10; // dE/c in CGS
                         dv_units = KAPPA_IR * dE_over_c / (4*M_PI * All.UnitLength_in_cm*All.UnitLength_in_cm*All.cf_atime*All.cf_atime);

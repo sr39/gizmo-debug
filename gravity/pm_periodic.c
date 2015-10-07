@@ -282,7 +282,7 @@ void pmforce_periodic(int mode, int *typelist)
   fac *= 1 / (2 * All.BoxSize / PMGRID);	/* for finite differencing */
 
 #ifdef KSPACE_NEUTRINOS
-  double rhocrit = 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
+  double rhocrit = 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
   double kspace_prefac = sqrt(pow(2 * M_PI / All.BoxSize, 3.0)) * All.OmegaNu * rhocrit * pow(All.BoxSize, 3);
 #endif
 

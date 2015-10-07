@@ -1202,7 +1202,7 @@ extern struct global_data_all_processes
   double UnitMagneticField_in_gauss; /*!< factor to convert internal magnetic field (B) unit to gauss (cgs) units */
 #endif
     
-  double Hubble;		/*!< Hubble-constant in internal units */
+  double Hubble_H0_CodeUnits;		/*!< Hubble-constant (unit-ed version: 100 km/s/Mpc) in internal units */
   double Omega0,		/*!< matter density in units of the critical density (at z=0) */
     OmegaLambda,		/*!< vaccum energy density relative to crictical density (at z=0) */
     OmegaBaryon,		/*!< baryon density in units of the critical density (at z=0) */
@@ -1733,6 +1733,9 @@ extern ALIGN(32) struct particle_data
 #endif
 #ifdef GALSF_SFR_IMF_VARIATION
     MyFloat IMF_Mturnover; /*!< IMF turnover mass [in solar] (or any other parameter which conveniently describes the IMF) */
+#endif
+#ifdef GALSF_SFR_IMF_SAMPLING
+    MyFloat IMF_NumMassiveStars; /*!< number of massive stars to associate with this star particle (for feedback) */
 #endif
     
     MyFloat Hsml;                   /*!< search radius around particle for neighbors/interactions */

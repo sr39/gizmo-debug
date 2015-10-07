@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
 #include "../allvars.h"
 #include "../proto.h"
 
@@ -21,11 +24,13 @@
 
 #define WindInitialVelocityBoost 1.0 // (optional) boost velocity coupled (fixed momentum)
 
-#ifdef GALSF_SFR_IMF_VARIATION
+#if defined(GALSF_SFR_IMF_VARIATION) || defined(GALSF_SFR_IMF_SAMPLING)
 /* function to determine what the IMF of a new star particle will be, based 
     on the gas properties of the particle out of which it forms */
 void assign_imf_properties_from_starforming_gas(MyIDType i)
 {
+    
+#ifdef GALSF_SFR_IMF_VARIATION
     double h = Get_Particle_Size(i) * All.cf_atime;
     double cs = Particle_effective_soundspeed_i(i) * All.cf_afac3; // actual sound speed in the simulation: might be unphysically high for SF conditions!
     cs = (1.9e4 / All.UnitVelocity_in_cm_per_s); // set to a minimum cooling temperature, for the actual star-forming conditions. for now, just use a constant //
@@ -41,8 +46,19 @@ void assign_imf_properties_from_starforming_gas(MyIDType i)
                          SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[1][1] +
                          SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))) * All.cf_a2inv*All.cf_a2inv;
     double M_sonic = cs*cs*cs*cs / (All.G * dv2_abs * h);
-    M_sonic *= All.UnitMass_in_g / All.Hubble / (1.989e33); // sonic mass in solar units //
+    M_sonic *= All.UnitMass_in_g / All.HubbleParam / (1.989e33); // sonic mass in solar units //
     P[i].IMF_Mturnover = DMAX(0.01,DMIN(M_sonic,100.));
+#endif
+    
+#ifdef GALSF_SFR_IMF_SAMPLING
+    gsl_rng *random_generator_for_massivestars;
+    random_generator_for_massivestars = gsl_rng_alloc(gsl_rng_ranlxd1);
+    gsl_rng_set(random_generator_for_massivestars, P[i].ID+121);
+    double mu = 0.01 * P[i].Mass * All.UnitMass_in_g / All.HubbleParam / (1.989e33); // 1 O-star per 100 Msun
+    unsigned int k = gsl_ran_poisson(random_generator_for_massivestars, mu);
+    P[i].IMF_NumMassiveStars = (double)k;
+#endif
+    
 }
 #endif
 
@@ -52,10 +68,14 @@ void assign_imf_properties_from_starforming_gas(MyIDType i)
 double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i)
 {
 #ifdef GALSF_SFR_IMF_VARIATION
-    /* more accurate version from David Guszjenov's IMF calculations (ok for Mturnover in range 0.01-100) */
+    /* more accurate version from David Guszejnov's IMF calculations (ok for Mturnover in range 0.01-100) */
     double log_mimf = log10(P[i].IMF_Mturnover);
     return (0.051+0.042*(log_mimf+2)+0.031*(log_mimf+2)*(log_mimf+2)) / 0.31;
     // return pow(P[i].IMF_Mturnover/1.0,0.35);
+#endif
+#ifdef GALSF_SFR_IMF_SAMPLING
+    double mu = 0.01 * P[i].Mass * All.UnitMass_in_g / All.HubbleParam / (1.989e33); // 1 O-star per 100 Msun
+    return P[i].IMF_NumMassiveStars / mu;
 #endif
     return 1; // Chabrier or Kroupa IMF //
     // return 0.5; // Salpeter IMF down to 0.1 solar //
@@ -76,7 +96,7 @@ double evaluate_stellar_age_Gyr(double stellar_tform)
             x0 = (All.Omega0/(1-All.Omega0))/(a0*a0*a0);
             x2 = (All.Omega0/(1-All.Omega0))/(a2*a2*a2);
             age = (2./(3.*sqrt(1-All.Omega0)))*log(sqrt(x0*x2)/((sqrt(1+x2)-1)*(sqrt(1+x0)+1)));
-            age *= 1./All.Hubble;
+            age *= 1./All.Hubble_H0_CodeUnits;
         } else {
             /* use simple trap rule integration */
             a1 = 0.5*(a0+a2);
@@ -150,7 +170,7 @@ int determine_sf_flag(int i)
 /* simple routine to determine density thresholds and other common units for SF routines */
 void set_units_sfr(void)
 {
-    All.OverDensThresh = All.CritOverDensity * All.OmegaBaryon * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
+    All.OverDensThresh = All.CritOverDensity * All.OmegaBaryon * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
     All.PhysDensThresh = All.CritPhysDensity * PROTONMASS / HYDROGEN_MASSFRAC / All.UnitDensity_in_cgs;
     
 #ifdef GALSF_EFFECTIVE_EQS
@@ -454,7 +474,7 @@ void cooling_and_starformation(void)
 #endif /* closes ifdef(BH_POPIII_SEEDS) */ 
 
             /* ok, we're going to make a star! */
-#ifdef GALSF_SFR_IMF_VARIATION
+#if defined(GALSF_SFR_IMF_VARIATION) || defined(GALSF_SFR_IMF_SAMPLING)
             /* if we're allowing for a variable IMF, this is where we will 
                 calculate the IMF properties produced from the gas forming stars */
             assign_imf_properties_from_starforming_gas(i);
@@ -723,7 +743,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
         double HaloConcentrationSlope = -0.15;  /* slope n of mass concentration relation, namely c = c0 * M_200,crit^n */
 
         double r200c, v_esc, c_halo, wind_energy, wind_momentum, wind_mass;
-        double rhocrit = 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
+        double rhocrit = 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
         rhocrit *= All.Omega0/All.cf_a3inv + (1-All.Omega0-All.OmegaLambda)/All.cf_a2inv + All.OmegaLambda; /* physical critical density at redshift z */
 
         r200c = pow(SphP[i].HostHaloMass / (4 * M_PI / 3.0 * 200 * rhocrit), 1.0 / 3.0);	/* physical r_200,crit value, assuming FoF mass = M_200,crit */
@@ -1031,7 +1051,7 @@ void init_clouds(void)
       meanweight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));	/* note: assuming FULL ionization */
       u4 = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * 1.0e4;
       u4 *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
-      dens = 1.0e6 * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
+      dens = 1.0e6 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
 
       if(All.ComovingIntegrationOn)
 	{

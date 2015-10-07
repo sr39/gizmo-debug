@@ -844,8 +844,7 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
     if(target < 0) {
         AGN_LambdaPre = 0;
     } else {
-        AGN_LambdaPre = SphP[target].RadFluxAGN * (3.9/2.0) * All.UnitMass_in_g/(All.UnitLength_in_cm*All.UnitLength_in_cm)*All.Hubble; /* proper units */
-        if(All.ComovingIntegrationOn) AGN_LambdaPre /= All.Time*All.Time; /* convert to physical */
+        AGN_LambdaPre = SphP[target].RadFluxAGN * (3.9/2.0) * All.UnitMass_in_g/(All.UnitLength_in_cm*All.UnitLength_in_cm)*All.HubbleParam*All.cf_a2inv; /* proper units */
         /* now have incident flux, need to convert to relevant pre-factor for heating rate */
         AGN_LambdaPre *= 6.652e-25; /* sigma_T for absorption */
         AGN_LambdaPre *= (4.*1.381e-16)/(9.109e-28*2.998e10*2.998e10); /* times 4*k_B/(me*c^2) */

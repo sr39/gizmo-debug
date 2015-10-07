@@ -1319,8 +1319,8 @@ void hydro_gradient_calc(void)
             
             /* finally, we need to apply a sensible slope limiter to the gradients, to prevent overshooting */
             double stol = 0.0;
-            double stol_tmp, stol_diffusion = 0.1;
-            stol_tmp = stol;
+            double stol_tmp, stol_diffusion;
+            stol_diffusion = 0.1; stol_tmp = stol;
             double h_lim = PPP[i].Hsml;
 //#if (defined(MAGNETIC) && defined(COOLING)) ||
             h_lim = DMAX(PPP[i].Hsml,GasGradDataPasser[i].MaxDistance);

@@ -249,7 +249,7 @@ void compute_potential(void)
 #ifdef PERIODIC
         if(All.ComovingIntegrationOn)
             P[i].Potential -= 2.8372975 * pow(P[i].Mass, 2.0 / 3) *
-            pow(All.Omega0 * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G), 1.0 / 3);
+            pow(All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G), 1.0 / 3);
 #endif
     }
 #endif
@@ -305,7 +305,7 @@ void compute_potential(void)
   if(All.ComovingIntegrationOn)
     {
 #ifndef PERIODIC
-      fac = -0.5 * All.Omega0 * All.Hubble * All.Hubble;
+      fac = -0.5 * All.Omega0 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits;
 
       for(i = 0; i < NumPart; i++)
 	{
@@ -318,7 +318,7 @@ void compute_potential(void)
     }
   else
     {
-      fac = -0.5 * All.OmegaLambda * All.Hubble * All.Hubble;
+      fac = -0.5 * All.OmegaLambda * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits;
       if(fac != 0)
 	{
 	  for(i = 0; i < NumPart; i++)

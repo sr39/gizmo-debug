@@ -45,7 +45,7 @@ double prob_of_interaction(double r, double h_si, double Vtarget[3], double Vno[
         dloga = (dt_step)*All.Timebase_interval;
         hubble_a = (All.Omega0 / (All.Time * All.Time * All.Time)
                     + (1 - All.Omega0 - All.OmegaLambda) / (All.Time * All.Time) + All.OmegaLambda);
-        hubble_a = All.Hubble * sqrt(hubble_a);
+        hubble_a = All.Hubble_H0_CodeUnits * sqrt(hubble_a);
         dT = dloga/hubble_a;
         
         dV = dV/All.Time; /* Convert from internal velocity p = a^2 dx/dt to peculiar velocity v = a dx/dt*/

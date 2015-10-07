@@ -125,7 +125,7 @@ void GravAccel_StaticHernquist()
     {
         r = sqrt(P[i].Pos[0] * P[i].Pos[0] + P[i].Pos[1] * P[i].Pos[1] + P[i].Pos[2] * P[i].Pos[2]);
         
-        a = pow(All.G * HQ_M200 / (100 * All.Hubble * All.Hubble), 1.0 / 3) / HQ_C *
+        a = pow(All.G * HQ_M200 / (100 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits), 1.0 / 3) / HQ_C *
         sqrt(2 * (log(1 + HQ_C) - HQ_C / (1 + HQ_C)));
         
         m = HQ_M200 * pow(r / (r + a), 2) * HQ_DARKFRACTION;
@@ -297,11 +297,11 @@ void GravAccel_StaticNFW()
     NFW_BOXCENTERED=1;
 
     /* convert units */
-    double R200 = pow(NFW_M200 * All.G / (100 * All.Hubble * All.Hubble), 1.0 / 3);
+    double R200 = pow(NFW_M200 * All.G / (100 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits), 1.0 / 3);
     double Rs = R200 / NFW_C;
     double Dc = 200.0 / 3 * NFW_C * NFW_C * NFW_C / (log(1 + NFW_C) - NFW_C / (1 + NFW_C));
-    double RhoCrit = 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
-    double V200 = 10 * All.Hubble * R200;
+    double RhoCrit = 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
+    double V200 = 10 * All.Hubble_H0_CodeUnits * R200;
     
     double r0, R, r, m, dx, dy, dz, fac; int i;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
@@ -339,7 +339,7 @@ void GravAccel_StaticNFW()
             m = fac * 4 * M_PI * RhoCrit * Dc *
             (-(Rs * Rs * Rs * (1 + log(Rs))) + Rs * Rs * Rs * (Rs + (R + Rs) * log(R + Rs)) / (R + Rs));
         }
-        fac = V200 * V200 * V200 / (10 * All.G * All.Hubble) / m;
+        fac = V200 * V200 * V200 / (10 * All.G * All.Hubble_H0_CodeUnits) / m;
         if(NFW_Eps > 0.0)
         {
             m = fac * 4 * M_PI * RhoCrit * Dc * (-(Rs * Rs * Rs * (1 - NFW_Eps + log(Rs) - 2 * NFW_Eps * log(Rs) +
@@ -361,7 +361,7 @@ void GravAccel_StaticNFW()
             P[i].GravAccel[2] += -All.G * m * dz / (r * r * r);
             
 #ifdef DISTORTIONTENSORPS
-            double R200 = pow(NFW_M200 * All.G / (100 * All.Hubble * All.Hubble), 1.0 / 3);
+            double R200 = pow(NFW_M200 * All.G / (100 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits), 1.0 / 3);
             double Rs = R200 / NFW_C;
             double K = All.G * NFW_M200 / (Rs * (log(1 + NFW_C) - NFW_C / (1 + NFW_C)));
             double r_red = r / Rs;

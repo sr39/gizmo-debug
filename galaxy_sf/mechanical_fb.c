@@ -1127,11 +1127,28 @@ void determine_where_SNe_occur()
                 if(star_age>agemax)
                     RSNe = 5.3e-8 + 1.6e-5*exp(-0.5*((star_age-0.05)/0.01)*((star_age-0.05)/0.01));
                 // delayed population (constant rate)  +  prompt population (gaussian) //
-                p = dt * (RSNe*RSNeFac) * P[i].Mass * calculate_relative_light_to_mass_ratio_from_imf(i);
+                p = dt * (RSNe*RSNeFac) * P[i].Mass;
+                double renorm = calculate_relative_light_to_mass_ratio_from_imf(i);
+#ifdef GALSF_SFR_IMF_SAMPLING
+                if(star_age < agemax)
+                {
+                    p *= renorm; // multiplies by number of O-stars relative to expectation
+                } else {
+                    if(P[i].IMF_NumMassiveStars > 0) {p += renorm*dt*(2.516e-4*RSNeFac)*P[i].Mass;} // account for residual O-stars
+                }
+#else
+                if(star_age < agemax) {p *= renorm;}
+#endif
                 ptotal += p;
                 n_sn_0 = (float)floor(p);
                 p -= n_sn_0;
                 if(get_random_number(P[i].ID + 6) < p) n_sn_0++;
+#ifdef GALSF_SFR_IMF_SAMPLING
+                // limit to number of O-stars for SNe //
+                if((star_age < agemax) && (P[i].IMF_NumMassiveStars < n_sn_0)) {n_sn_0 = P[i].IMF_NumMassiveStars;}
+                // lose an O-star for every SNe //
+                if(P[i].IMF_NumMassiveStars > 0) {P[i].IMF_NumMassiveStars = DMAX(0 , P[i].IMF_NumMassiveStars - n_sn_0);}
+#endif
                 P[i].SNe_ThisTimeStep = n_sn_0;
                 
                 rmean += RSNe;
@@ -1154,7 +1171,7 @@ void determine_where_SNe_occur()
                         }}}
             p *= 1.4 * 0.291175; // to give expected return fraction from stellar winds alone (~17%) //
             p *= All.GasReturnFraction * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam);
-            p *= calculate_relative_light_to_mass_ratio_from_imf(i);
+            if(star_age < 0.1) {p *= calculate_relative_light_to_mass_ratio_from_imf(i);} // late-time independent of massive stars
             // this is the fraction of the particle mass expected to return in the timestep //
             p = 1.0 - exp(-p); // need to account for p>1 cases //
             if(get_random_number(P[i].ID + 5) < p/D_RETURN_FRAC) // ok, have a mass return event //
@@ -1168,7 +1185,7 @@ void determine_where_SNe_occur()
         if(star_age>=0.003) // rate is zero at <3e6 yr
         {
             p = 3.0e-5 / (1000.*star_age); // Nsne/Myr for a 1 Msun population
-            p *= dt * RSNeFac * P[i].Mass * calculate_relative_light_to_mass_ratio_from_imf(i);
+            p *= dt * RSNeFac * P[i].Mass;
             n_sn_0 = (float)floor(p);
             p -= n_sn_0;
             if(get_random_number(P[i].ID + 7) < p) n_sn_0++;

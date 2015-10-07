@@ -204,9 +204,9 @@ void fof_fof(int num)
   MPI_Allreduce(&mass, &masstot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   if(All.TotN_gas)
-    rhodm = (All.Omega0 - All.OmegaBaryon) * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
+    rhodm = (All.Omega0 - All.OmegaBaryon) * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
   else
-    rhodm = All.Omega0 * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
+    rhodm = All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
 
   LinkL = LINKLENGTH * pow(masstot / ndmtot / rhodm, 1.0 / 3);
 
@@ -2393,7 +2393,7 @@ void multi_bubbles(void)
 
   if(All.ComovingIntegrationOn)
     {
-      hubble_a = hubble_function(All.Time) / All.Hubble;
+      hubble_a = hubble_function(All.Time) / All.Hubble_H0_CodeUnits;
     }
 
   nheat = tot_nheat = 0;

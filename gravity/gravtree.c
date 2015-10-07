@@ -680,7 +680,7 @@ void gravity_tree(void)
 #ifndef PMGRID
     if(All.ComovingIntegrationOn)
     {
-        double fac = 0.5 * All.Hubble * All.Hubble * All.Omega0 / All.G;
+        double fac = 0.5 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits * All.Omega0 / All.G;
         
         for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
         {
@@ -764,7 +764,7 @@ void gravity_tree(void)
 #ifdef PERIODIC
         if(All.ComovingIntegrationOn)
             P[i].Potential -= 2.8372975 * pow(P[i].Mass, 2.0 / 3) *
-            pow(All.Omega0 * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G), 1.0 / 3);
+            pow(All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G), 1.0 / 3);
 #endif
         
         P[i].Potential *= All.G;
@@ -778,7 +778,7 @@ void gravity_tree(void)
 #ifndef PERIODIC
             double fac, r2;
             
-            fac = -0.5 * All.Omega0 * All.Hubble * All.Hubble;
+            fac = -0.5 * All.Omega0 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits;
             
             for(k = 0, r2 = 0; k < 3; k++)
                 r2 += P[i].Pos[k] * P[i].Pos[k];
@@ -790,7 +790,7 @@ void gravity_tree(void)
         {
             double fac, r2;
             
-            fac = -0.5 * All.OmegaLambda * All.Hubble * All.Hubble;
+            fac = -0.5 * All.OmegaLambda * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits;
             
             if(fac != 0)
             {
@@ -835,7 +835,7 @@ void gravity_tree(void)
 #ifndef PMGRID
     if(All.ComovingIntegrationOn == 0)
     {
-        double fac = All.OmegaLambda * All.Hubble * All.Hubble;
+        double fac = All.OmegaLambda * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits;
         
         for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
             for(j = 0; j < 3; j++)

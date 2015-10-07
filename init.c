@@ -333,9 +333,9 @@ void init(void)
                 for(i2 = 0; i2 < 3; i2++)
                     GDE_VMATRIX(i,i1,i2) = 0.0;
             /* approximation: initial sream density equals background density */
-            P[i].init_density = All.Omega0 * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
+            P[i].init_density = All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
 #else
-            All.GDEInitStreamDensity = All.Omega0 * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
+            All.GDEInitStreamDensity = All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
 #endif
 #endif
         }
@@ -391,6 +391,9 @@ void init(void)
             P[i].StellarAge = 0;
 #ifdef GALSF_SFR_IMF_VARIATION
             P[i].IMF_Mturnover = 2.0;
+#endif
+#ifdef GALSF_SFR_IMF_SAMPLING
+            P[i].IMF_NumMassiveStars = 0;
 #endif
         }
 #endif
@@ -924,7 +927,7 @@ void check_omega(void)
     
     MPI_Allreduce(&mass, &masstot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     
-    omega = masstot / (boxSize_X*boxSize_Y*boxSize_Z) / (3 * All.Hubble * All.Hubble / (8 * M_PI * All.G));
+    omega = masstot / (boxSize_X*boxSize_Y*boxSize_Z) / (3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G));
 #ifdef TIMEDEPGRAV
     omega *= All.Gini / All.G;
 #endif
