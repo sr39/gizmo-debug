@@ -114,10 +114,10 @@ void blackhole_feed_loop(void)
                     /* get the particles */
                     MPI_Sendrecv(&BlackholeDataIn[Send_offset[recvTask]],
                                  Send_count[recvTask] * sizeof(struct blackholedata_in), MPI_BYTE,
-                                 recvTask, TAG_DENS_A,
+                                 recvTask, TAG_BH_E,
                                  &BlackholeDataGet[Recv_offset[recvTask]],
                                  Recv_count[recvTask] * sizeof(struct blackholedata_in), MPI_BYTE,
-                                 recvTask, TAG_DENS_A, MPI_COMM_WORLD, &status);
+                                 recvTask, TAG_BH_E, MPI_COMM_WORLD, &status);
                 }
             }
         }
@@ -147,10 +147,10 @@ void blackhole_feed_loop(void)
                     /* send the results */
                     MPI_Sendrecv(&BlackholeDataResult[Recv_offset[recvTask]],
                                  Recv_count[recvTask] * sizeof(struct blackholedata_out),
-                                 MPI_BYTE, recvTask, TAG_DENS_B,
+                                 MPI_BYTE, recvTask, TAG_BH_F,
                                  &BlackholeDataOut[Send_offset[recvTask]],
                                  Send_count[recvTask] * sizeof(struct blackholedata_out),
-                                 MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, &status);
+                                 MPI_BYTE, recvTask, TAG_BH_F, MPI_COMM_WORLD, &status);
                 }
             }
         } // for(ngrp = 1; ngrp < (1 << PTask); ngrp++) //

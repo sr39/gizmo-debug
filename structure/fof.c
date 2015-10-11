@@ -633,10 +633,10 @@ void fof_find_groups(void)
 		      /* get the particles */
 		      MPI_Sendrecv(&FoFDataIn[Send_offset[recvTask]],
 				   Send_count[recvTask] * sizeof(struct fofdata_in), MPI_BYTE,
-				   recvTask, TAG_DENS_A,
+				   recvTask, TAG_FOF_A,
 				   &FoFDataGet[Recv_offset[recvTask]],
 				   Recv_count[recvTask] * sizeof(struct fofdata_in), MPI_BYTE,
-				   recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				   recvTask, TAG_FOF_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		    }
 		}
 	    }
@@ -669,10 +669,10 @@ void fof_find_groups(void)
 		      /* get the particles */
 		      MPI_Sendrecv(&FoFDataResult[Recv_offset[recvTask]],
 				   Recv_count[recvTask] * sizeof(char),
-				   MPI_BYTE, recvTask, TAG_DENS_B,
+				   MPI_BYTE, recvTask, TAG_FOF_B,
 				   &FoFDataOut[Send_offset[recvTask]],
 				   Send_count[recvTask] * sizeof(char),
-				   MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				   MPI_BYTE, recvTask, TAG_FOF_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		    }
 		}
 	    }
@@ -959,10 +959,10 @@ void fof_compile_catalogue(void)
 	      /* get the group info */
 	      MPI_Sendrecv(&FOF_GList[Send_offset[recvTask]],
 			   Send_count[recvTask] * sizeof(fof_group_list), MPI_BYTE,
-			   recvTask, TAG_DENS_A,
+			   recvTask, TAG_FOF_C,
 			   &get_FOF_GList[Recv_offset[recvTask]],
 			   Recv_count[recvTask] * sizeof(fof_group_list), MPI_BYTE,
-			   recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			   recvTask, TAG_FOF_C, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	    }
 	}
     }
@@ -1032,10 +1032,10 @@ void fof_compile_catalogue(void)
 	      /* get the group info */
 	      MPI_Sendrecv(&get_FOF_GList[Recv_offset[recvTask]],
 			   Recv_count[recvTask] * sizeof(fof_group_list), MPI_BYTE,
-			   recvTask, TAG_DENS_A,
+			   recvTask, TAG_FOF_D,
 			   &FOF_GList[Send_offset[recvTask]],
 			   Send_count[recvTask] * sizeof(fof_group_list), MPI_BYTE,
-			   recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			   recvTask, TAG_FOF_D, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	    }
 	}
     }
@@ -1193,10 +1193,10 @@ void fof_exchange_group_data(void)
 	      /* get the group data */
 	      MPI_Sendrecv(&Group[Send_offset[recvTask]],
 			   Send_count[recvTask] * sizeof(group_properties), MPI_BYTE,
-			   recvTask, TAG_DENS_A,
+			   recvTask, TAG_FOF_E,
 			   &get_Group[Recv_offset[recvTask]],
 			   Recv_count[recvTask] * sizeof(group_properties), MPI_BYTE,
-			   recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			   recvTask, TAG_FOF_E, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	    }
 	}
     }
@@ -1737,10 +1737,10 @@ void fof_find_nearest_dmparticle(void)
 		      /* get the particles */
 		      MPI_Sendrecv(&FoFDataIn[Send_offset[recvTask]],
 				   Send_count[recvTask] * sizeof(struct fofdata_in), MPI_BYTE,
-				   recvTask, TAG_DENS_A,
+				   recvTask, TAG_FOF_F,
 				   &FoFDataGet[Recv_offset[recvTask]],
 				   Recv_count[recvTask] * sizeof(struct fofdata_in), MPI_BYTE,
-				   recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				   recvTask, TAG_FOF_F, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		    }
 		}
 	    }
@@ -1765,10 +1765,10 @@ void fof_find_nearest_dmparticle(void)
 		      /* send the results */
 		      MPI_Sendrecv(&FoFDataResult[Recv_offset[recvTask]],
 				   Recv_count[recvTask] * sizeof(struct fofdata_out),
-				   MPI_BYTE, recvTask, TAG_DENS_B,
+				   MPI_BYTE, recvTask, TAG_FOF_G,
 				   &FoFDataOut[Send_offset[recvTask]],
 				   Send_count[recvTask] * sizeof(struct fofdata_out),
-				   MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				   MPI_BYTE, recvTask, TAG_FOF_G, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		    }
 		}
 
@@ -2077,18 +2077,18 @@ void fof_make_black_holes(void)
       if(recvTask < NTask)
 	MPI_Sendrecv(&export_indices[Send_offset[recvTask]],
 		     Send_count[recvTask] * sizeof(int),
-		     MPI_BYTE, recvTask, TAG_FOF_E,
+		     MPI_BYTE, recvTask, TAG_FOF_I,
 		     &import_indices[Recv_offset[recvTask]],
 		     Recv_count[recvTask] * sizeof(int),
-		     MPI_BYTE, recvTask, TAG_FOF_E, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		     MPI_BYTE, recvTask, TAG_FOF_I, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 #ifdef BH_SEED_STAR_MASS_FRACTION
       if(recvTask < NTask)
 	MPI_Sendrecv(&export_fofmass[Send_offset[recvTask]],
 		     Send_count[recvTask] * sizeof(float),
-		     MPI_BYTE, recvTask, TAG_FOF_M,
+		     MPI_BYTE, recvTask, TAG_FOF_J,
 		     &import_fofmass[Recv_offset[recvTask]],
 		     Recv_count[recvTask] * sizeof(float),
-		     MPI_BYTE, recvTask, TAG_FOF_M, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		     MPI_BYTE, recvTask, TAG_FOF_J, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 #endif
     }
 
@@ -3359,9 +3359,9 @@ void read_fof(int num)
 		  recv_ID_list = mymalloc("recv_ID_list", list_of_nids[recvTask] * sizeof(fof_id_list));
 
 		  /* get the particles */
-		  MPI_Sendrecv(ID_list, Nids * sizeof(fof_id_list), MPI_BYTE, recvTask, TAG_DENS_A,
+		  MPI_Sendrecv(ID_list, Nids * sizeof(fof_id_list), MPI_BYTE, recvTask, TAG_FOF_H,
 			       recv_ID_list, list_of_nids[recvTask] * sizeof(fof_id_list), MPI_BYTE,
-			       recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			       recvTask, TAG_FOF_H, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		}
 
 	      for(i = 0, j = 0; i < list_of_nids[recvTask]; i++)

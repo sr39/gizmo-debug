@@ -444,10 +444,10 @@ void grain_density(void)
                         /* get the particles */
                         MPI_Sendrecv(&GrnDensDataIn[Send_offset[recvTask]],
                                      Send_count[recvTask] * sizeof(struct grain_densdata_in), MPI_BYTE,
-                                     recvTask, TAG_DENS_A,
+                                     recvTask, TAG_GRDENS_A,
                                      &GrnDensDataGet[Recv_offset[recvTask]],
                                      Recv_count[recvTask] * sizeof(struct grain_densdata_in), MPI_BYTE,
-                                     recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                                     recvTask, TAG_GRDENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                     }
                 }
             }
@@ -487,10 +487,10 @@ void grain_density(void)
                         /* send the results */
                         MPI_Sendrecv(&GrnDensDataResult[Recv_offset[recvTask]],
                                      Recv_count[recvTask] * sizeof(struct grain_densdata_out),
-                                     MPI_BYTE, recvTask, TAG_DENS_B,
+                                     MPI_BYTE, recvTask, TAG_GRDENS_B,
                                      &GrnDensDataOut[Send_offset[recvTask]],
                                      Send_count[recvTask] * sizeof(struct grain_densdata_out),
-                                     MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                                     MPI_BYTE, recvTask, TAG_GRDENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                     }
                 }
             }

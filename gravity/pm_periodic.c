@@ -500,15 +500,15 @@ void pmforce_periodic(int mode, int *typelist)
 		    {
 		      MPI_Sendrecv(localfield_d_data + localfield_offset[recvTask],
 				   localfield_togo[sendTask * NTask + recvTask] * sizeof(d_fftw_real),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_A, import_d_data,
+				   MPI_BYTE, recvTask, TAG_PERIODIC_A, import_d_data,
 				   localfield_togo[recvTask * NTask + sendTask] * sizeof(d_fftw_real),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+				   MPI_BYTE, recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 		      MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 				   localfield_togo[sendTask * NTask + recvTask] * sizeof(large_array_offset),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_B, import_globalindex,
+				   MPI_BYTE, recvTask, TAG_PERIODIC_B, import_globalindex,
 				   localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_B, MPI_COMM_WORLD, &status);
+				   MPI_BYTE, recvTask, TAG_PERIODIC_B, MPI_COMM_WORLD, &status);
 		    }
 		}
 	      else
@@ -651,10 +651,10 @@ void pmforce_periodic(int mode, int *typelist)
 			  MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 				       localfield_togo[sendTask * NTask +
 						       recvTask] * sizeof(large_array_offset), MPI_BYTE,
-				       recvTask, TAG_NONPERIOD_C, import_globalindex,
+				       recvTask, TAG_PERIODIC_C, import_globalindex,
 				       localfield_togo[recvTask * NTask +
 						       sendTask] * sizeof(large_array_offset), MPI_BYTE,
-				       recvTask, TAG_NONPERIOD_C, MPI_COMM_WORLD, &status);
+				       recvTask, TAG_PERIODIC_C, MPI_COMM_WORLD, &status);
 			}
 		    }
 		  else
@@ -675,10 +675,10 @@ void pmforce_periodic(int mode, int *typelist)
 		    {
 		      MPI_Sendrecv(import_data,
 				   localfield_togo[recvTask * NTask + sendTask] * sizeof(fftw_real), MPI_BYTE,
-				   recvTask, TAG_NONPERIOD_A,
+				   recvTask, TAG_PERIODIC_A,
 				   localfield_data + localfield_offset[recvTask],
 				   localfield_togo[sendTask * NTask + recvTask] * sizeof(fftw_real), MPI_BYTE,
-				   recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+				   recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 		      myfree(import_globalindex);
 		      myfree(import_data);
@@ -826,10 +826,10 @@ void pmforce_periodic(int mode, int *typelist)
 			      MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 					   localfield_togo[sendTask * NTask +
 							   recvTask] * sizeof(large_array_offset), MPI_BYTE,
-					   recvTask, TAG_NONPERIOD_C, import_globalindex,
+					   recvTask, TAG_PERIODIC_C, import_globalindex,
 					   localfield_togo[recvTask * NTask +
 							   sendTask] * sizeof(large_array_offset), MPI_BYTE,
-					   recvTask, TAG_NONPERIOD_C, MPI_COMM_WORLD, &status);
+					   recvTask, TAG_PERIODIC_C, MPI_COMM_WORLD, &status);
 			    }
 			}
 		      else
@@ -851,10 +851,10 @@ void pmforce_periodic(int mode, int *typelist)
 			{
 			  MPI_Sendrecv(import_data,
 				       localfield_togo[recvTask * NTask + sendTask] * sizeof(fftw_real),
-				       MPI_BYTE, recvTask, TAG_NONPERIOD_A,
+				       MPI_BYTE, recvTask, TAG_PERIODIC_A,
 				       localfield_data + localfield_offset[recvTask],
 				       localfield_togo[sendTask * NTask + recvTask] * sizeof(fftw_real),
-				       MPI_BYTE, recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+				       MPI_BYTE, recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 			  myfree(import_globalindex);
 			  myfree(import_data);
@@ -1131,16 +1131,16 @@ void pmpotential_periodic(void)
 		{
 		  MPI_Sendrecv(localfield_d_data + localfield_offset[recvTask],
 			       localfield_togo[sendTask * NTask + recvTask] * sizeof(d_fftw_real), MPI_BYTE,
-			       recvTask, TAG_NONPERIOD_A,
+			       recvTask, TAG_PERIODIC_A,
 			       import_d_data,
 			       localfield_togo[recvTask * NTask + sendTask] * sizeof(d_fftw_real), MPI_BYTE,
-			       recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+			       recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 		  MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 			       localfield_togo[sendTask * NTask + recvTask] * sizeof(large_array_offset),
-			       MPI_BYTE, recvTask, TAG_NONPERIOD_B, import_globalindex,
+			       MPI_BYTE, recvTask, TAG_PERIODIC_B, import_globalindex,
 			       localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset),
-			       MPI_BYTE, recvTask, TAG_NONPERIOD_B, MPI_COMM_WORLD, &status);
+			       MPI_BYTE, recvTask, TAG_PERIODIC_B, MPI_COMM_WORLD, &status);
 		}
 	    }
 	  else
@@ -1262,9 +1262,9 @@ void pmpotential_periodic(void)
 		{
 		  MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 			       localfield_togo[sendTask * NTask + recvTask] * sizeof(large_array_offset),
-			       MPI_BYTE, recvTask, TAG_NONPERIOD_C, import_globalindex,
+			       MPI_BYTE, recvTask, TAG_PERIODIC_C, import_globalindex,
 			       localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset),
-			       MPI_BYTE, recvTask, TAG_NONPERIOD_C, MPI_COMM_WORLD, &status);
+			       MPI_BYTE, recvTask, TAG_PERIODIC_C, MPI_COMM_WORLD, &status);
 		}
 	    }
 	  else
@@ -1286,10 +1286,10 @@ void pmpotential_periodic(void)
 	    {
 	      MPI_Sendrecv(import_data,
 			   localfield_togo[recvTask * NTask + sendTask] * sizeof(fftw_real), MPI_BYTE,
-			   recvTask, TAG_NONPERIOD_A,
+			   recvTask, TAG_PERIODIC_A,
 			   localfield_data + localfield_offset[recvTask],
 			   localfield_togo[sendTask * NTask + recvTask] * sizeof(fftw_real), MPI_BYTE,
-			   recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+			   recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 	      myfree(import_globalindex);
 	      myfree(import_data);
@@ -1928,15 +1928,15 @@ void pmtidaltensor_periodic_diff(void)
 		    {
 		      MPI_Sendrecv(localfield_d_data + localfield_offset[recvTask],
 				   localfield_togo[sendTask * NTask + recvTask] * sizeof(d_fftw_real),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_A, import_d_data,
+				   MPI_BYTE, recvTask, TAG_PERIODIC_A, import_d_data,
 				   localfield_togo[recvTask * NTask + sendTask] * sizeof(d_fftw_real),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+				   MPI_BYTE, recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 		      MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 				   localfield_togo[sendTask * NTask + recvTask] * sizeof(large_array_offset),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_B, import_globalindex,
+				   MPI_BYTE, recvTask, TAG_PERIODIC_B, import_globalindex,
 				   localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_B, MPI_COMM_WORLD, &status);
+				   MPI_BYTE, recvTask, TAG_PERIODIC_B, MPI_COMM_WORLD, &status);
 		    }
 		}
 	      else
@@ -2063,9 +2063,9 @@ void pmtidaltensor_periodic_diff(void)
 		    {
 		      MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 				   localfield_togo[sendTask * NTask + recvTask] * sizeof(large_array_offset),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_C, import_globalindex,
+				   MPI_BYTE, recvTask, TAG_PERIODIC_C, import_globalindex,
 				   localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_C, MPI_COMM_WORLD, &status);
+				   MPI_BYTE, recvTask, TAG_PERIODIC_C, MPI_COMM_WORLD, &status);
 		    }
 		}
 	      else
@@ -2086,10 +2086,10 @@ void pmtidaltensor_periodic_diff(void)
 		{
 		  MPI_Sendrecv(import_data,
 			       localfield_togo[recvTask * NTask + sendTask] * sizeof(fftw_real), MPI_BYTE,
-			       recvTask, TAG_NONPERIOD_A,
+			       recvTask, TAG_PERIODIC_A,
 			       localfield_data + localfield_offset[recvTask],
 			       localfield_togo[sendTask * NTask + recvTask] * sizeof(fftw_real), MPI_BYTE,
-			       recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+			       recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 		  myfree(import_globalindex);
 		  myfree(import_data);
@@ -2314,10 +2314,10 @@ void pmtidaltensor_periodic_diff(void)
 			  MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 				       localfield_togo[sendTask * NTask +
 						       recvTask] * sizeof(large_array_offset), MPI_BYTE,
-				       recvTask, TAG_NONPERIOD_C, import_globalindex,
+				       recvTask, TAG_PERIODIC_C, import_globalindex,
 				       localfield_togo[recvTask * NTask +
 						       sendTask] * sizeof(large_array_offset), MPI_BYTE,
-				       recvTask, TAG_NONPERIOD_C, MPI_COMM_WORLD, &status);
+				       recvTask, TAG_PERIODIC_C, MPI_COMM_WORLD, &status);
 			}
 		    }
 		  else
@@ -2339,10 +2339,10 @@ void pmtidaltensor_periodic_diff(void)
 		    {
 		      MPI_Sendrecv(import_data,
 				   localfield_togo[recvTask * NTask + sendTask] * sizeof(fftw_real), MPI_BYTE,
-				   recvTask, TAG_NONPERIOD_A,
+				   recvTask, TAG_PERIODIC_A,
 				   localfield_data + localfield_offset[recvTask],
 				   localfield_togo[sendTask * NTask + recvTask] * sizeof(fftw_real), MPI_BYTE,
-				   recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+				   recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 		      myfree(import_globalindex);
 		      myfree(import_data);
@@ -2651,16 +2651,16 @@ void pmtidaltensor_periodic_fourier(int component)
 		{
 		  MPI_Sendrecv(localfield_d_data + localfield_offset[recvTask],
 			       localfield_togo[sendTask * NTask + recvTask] * sizeof(d_fftw_real), MPI_BYTE,
-			       recvTask, TAG_NONPERIOD_A,
+			       recvTask, TAG_PERIODIC_A,
 			       import_d_data,
 			       localfield_togo[recvTask * NTask + sendTask] * sizeof(d_fftw_real), MPI_BYTE,
-			       recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+			       recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 		  MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 			       localfield_togo[sendTask * NTask + recvTask] * sizeof(large_array_offset),
-			       MPI_BYTE, recvTask, TAG_NONPERIOD_B, import_globalindex,
+			       MPI_BYTE, recvTask, TAG_PERIODIC_B, import_globalindex,
 			       localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset),
-			       MPI_BYTE, recvTask, TAG_NONPERIOD_B, MPI_COMM_WORLD, &status);
+			       MPI_BYTE, recvTask, TAG_PERIODIC_B, MPI_COMM_WORLD, &status);
 		}
 	    }
 	  else
@@ -2836,9 +2836,9 @@ void pmtidaltensor_periodic_fourier(int component)
 		{
 		  MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 			       localfield_togo[sendTask * NTask + recvTask] * sizeof(large_array_offset),
-			       MPI_BYTE, recvTask, TAG_NONPERIOD_C, import_globalindex,
+			       MPI_BYTE, recvTask, TAG_PERIODIC_C, import_globalindex,
 			       localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset),
-			       MPI_BYTE, recvTask, TAG_NONPERIOD_C, MPI_COMM_WORLD, &status);
+			       MPI_BYTE, recvTask, TAG_PERIODIC_C, MPI_COMM_WORLD, &status);
 		}
 	    }
 	  else
@@ -2860,10 +2860,10 @@ void pmtidaltensor_periodic_fourier(int component)
 	    {
 	      MPI_Sendrecv(import_data,
 			   localfield_togo[recvTask * NTask + sendTask] * sizeof(fftw_real), MPI_BYTE,
-			   recvTask, TAG_NONPERIOD_A,
+			   recvTask, TAG_PERIODIC_A,
 			   localfield_data + localfield_offset[recvTask],
 			   localfield_togo[sendTask * NTask + recvTask] * sizeof(fftw_real), MPI_BYTE,
-			   recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+			   recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 	      myfree(import_globalindex);
 	      myfree(import_data);

@@ -556,6 +556,12 @@ void mechanical_fb_calc(int feedback_type)
         }
         
         /* exchange particle data */
+        int TAG_TO_USE = TAG_FBLOOP_1A;
+        if(feedback_type==-1) {TAG_TO_USE = TAG_FBLOOP_1A;}
+        if(feedback_type== 0) {TAG_TO_USE = TAG_FBLOOP_2A;}
+        if(feedback_type== 1) {TAG_TO_USE = TAG_FBLOOP_3A;}
+        if(feedback_type== 2) {TAG_TO_USE = TAG_FBLOOP_4A;}
+        if(feedback_type== 3) {TAG_TO_USE = TAG_FBLOOP_5A;}
         for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
         {
             recvTask = ThisTask ^ ngrp;
@@ -567,10 +573,10 @@ void mechanical_fb_calc(int feedback_type)
                     /* get the particles */
                     MPI_Sendrecv(&AddFBDataIn[Send_offset[recvTask]],
                                  Send_count[recvTask] * sizeof(struct addFBdata_in), MPI_BYTE,
-                                 recvTask, TAG_FBLOOP_A,
+                                 recvTask, TAG_TO_USE,
                                  &AddFBDataGet[Recv_offset[recvTask]],
                                  Recv_count[recvTask] * sizeof(struct addFBdata_in), MPI_BYTE,
-                                 recvTask, TAG_FBLOOP_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                                 recvTask, TAG_TO_USE, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                 }
             }
         }
@@ -616,6 +622,12 @@ void mechanical_fb_calc(int feedback_type)
         MPI_Allreduce(&ndone_flag, &ndone, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
         
         /* get the result */
+        TAG_TO_USE = TAG_FBLOOP_1B;
+        if(feedback_type==-1) {TAG_TO_USE = TAG_FBLOOP_1B;}
+        if(feedback_type== 0) {TAG_TO_USE = TAG_FBLOOP_2B;}
+        if(feedback_type== 1) {TAG_TO_USE = TAG_FBLOOP_3B;}
+        if(feedback_type== 2) {TAG_TO_USE = TAG_FBLOOP_4B;}
+        if(feedback_type== 3) {TAG_TO_USE = TAG_FBLOOP_5B;}
         for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
         {
             recvTask = ThisTask ^ ngrp;
@@ -626,10 +638,10 @@ void mechanical_fb_calc(int feedback_type)
                     /* send the results */
                     MPI_Sendrecv(&AddFBDataResult[Recv_offset[recvTask]],
                                  Recv_count[recvTask] * sizeof(struct addFBdata_out),
-                                 MPI_BYTE, recvTask, TAG_FBLOOP_B,
+                                 MPI_BYTE, recvTask, TAG_TO_USE,
                                  &AddFBDataOut[Send_offset[recvTask]],
                                  Send_count[recvTask] * sizeof(struct addFBdata_out),
-                                 MPI_BYTE, recvTask, TAG_FBLOOP_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                                 MPI_BYTE, recvTask, TAG_TO_USE, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                 }
             }
         }
@@ -703,9 +715,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
     // now define quantities that will be used below //
     double Esne51 = 0.5*local.SNe_v_ejecta*local.SNe_v_ejecta*local.Msne / unit_egy_SNe;
-    double RsneKPC, RsneKPC_0, RsneMAX;
-    RsneKPC=0.; RsneMAX=local.Hsml;
-    RsneKPC_0=(0.0284/unitlength_in_kpc)*pow(Esne51,0.286); //Cioffi: weak external pressure
+    double RsneKPC, RsneKPC_0;//, RsneMAX;
+    RsneKPC=0.; //RsneMAX=local.Hsml;
+    RsneKPC_0=(0.0284/unitlength_in_kpc);//*pow(Esne51,0.286); //Cioffi: weak external pressure
     
     
     
@@ -808,11 +820,12 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                                             if(n0 < 1.e4) {RsneKPC *= 0.006 + 0.057/(1.+0.000333*n0);} else {
                                                 RsneKPC *= pow(n0, -0.429); }}}}}}}}
                 
-                /*
+                //
                  if(P[j].Metallicity[0]/All.SolarAbundances[0] < 0.01) {RsneKPC*=2.0;} else {
                  if(P[j].Metallicity[0]<All.SolarAbundances[0]) {RsneKPC*=pow(P[j].Metallicity[0]/All.SolarAbundances[0],-0.15);} else {RsneKPC*=pow(P[j].Metallicity[0]/All.SolarAbundances[0],-0.09);}}
-                 */
+                //
                 /* below expression is again just as good a fit to the simulations, and much faster to evaluate */
+/*
                 double z0 = P[j].Metallicity[0]/All.SolarAbundances[0];
                 if(z0 < 0.01)
                 {
@@ -825,15 +838,20 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                         RsneKPC *= 0.8 + 0.4 / (1 + z0);
                     }
                 }
+*/
                 /* calculates cooling radius given density and metallicity in this annulus into which the ejecta propagate */
                 
                 // double r2sne = RsneKPC*RsneKPC; if(r2 > r2sne) dP *= pow(r2sne/r2 , 1.625);
-                if(r2 > RsneKPC*RsneKPC) dP *= RsneKPC*RsneKPC*RsneKPC / (r2*kernel.r); // just as good a fit, and much faster to evaluate //
+                double h_eff_j = Get_Particle_Size(j);
+                double r_eff_2 = r2;
+                r_eff_2 = DMAX(r2 , h_eff_j*h_eff_j);
+                
+                if(r_eff_2 > RsneKPC*RsneKPC) dP *= RsneKPC*RsneKPC*RsneKPC / (r2*sqrt(r_eff_2)); // just as good a fit, and much faster to evaluate //
                 /* if coupling radius > R_cooling, account for thermal energy loss in the post-shock medium:
                  from Thornton et al. thermal energy scales as R^(-6.5) for R>R_cool */
 
                 /* limit to Hsml for coupling */
-                if(RsneMAX<RsneKPC) RsneKPC=RsneMAX;
+                //if(RsneMAX<RsneKPC) RsneKPC=RsneMAX;
 #endif
                 
                 /* now, add contribution from relative star-gas particle motion to shock energy */
@@ -897,21 +915,29 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     if(k==0) {q=wk_vec[1]*local.Area_weighted_sum[1] + wk_vec[2]*local.Area_weighted_sum[2];}
                     if(k==1) {q=wk_vec[3]*local.Area_weighted_sum[3] + wk_vec[4]*local.Area_weighted_sum[4];}
                     if(k==2) {q=wk_vec[5]*local.Area_weighted_sum[5] + wk_vec[6]*local.Area_weighted_sum[6];}
-                    pvec[k] = q;
+                    pvec[k] = -q/4.; // factor of 4 accounts for our normalization of each directional component below to be =P (given by properly integrating over a unit sphere)
                     pnorm += pvec[k]*pvec[k];
                 }
-                pnorm = sqrt(pnorm)/4.;
+                pnorm = sqrt(pnorm);
                 dP_sum += dP * pnorm;
                 
+                double m_ej_input = wk*local.Msne;
+                double m_cooling = m_ej_input + 4.18879*DMAX(pnorm,wk)*SphP[j].Density*RsneKPC*RsneKPC*RsneKPC;
+                double m_coupled = DMIN(P[j].Mass , m_cooling);
+                double mom_boost_fac = sqrt(m_coupled / m_ej_input);
+                double mom_boost_fac_max = sqrt(P[j].Mass/m_ej_input) * (wk/pnorm);
+                mom_boost_fac = DMIN( mom_boost_fac , mom_boost_fac_max );
+                dP *= fac;
+                
                 /* appropriate factor for the ejecta being energy-conserving inside the cooling radius (or Hsml, if thats smaller) */
-                dP *= sqrt(1. + NORM_COEFF*(SphP[j].Density*RsneKPC*RsneKPC*RsneKPC)/local.Msne);
-                double pmax = (local.unit_mom_SNe/local.Msne) * sqrt((wk*local.Msne)/(P[j].Mass));
-                if(P[j].Metallicity[0]<All.SolarAbundances[0]) {pmax *= sqrt(sqrt(All.SolarAbundances[0]/P[j].Metallicity[0]));}
-                double prat = dP * pnorm / (MIN_REAL_NUMBER + pmax);
-                if(prat > 1) {dP /= prat;}
+                //dP *= sqrt(1. + NORM_COEFF*(SphP[j].Density*RsneKPC*RsneKPC*RsneKPC)/local.Msne);
+                //double pmax = (local.unit_mom_SNe/local.Msne) * sqrt((wk*local.Msne)/(P[j].Mass));
+                //if(P[j].Metallicity[0]<All.SolarAbundances[0]) {pmax *= sqrt(sqrt(All.SolarAbundances[0]/P[j].Metallicity[0]));}
+                //double prat = dP * pnorm / (MIN_REAL_NUMBER + pmax);
+                //if(prat > 1) {dP /= prat;}
                 dP_boost_sum += dP * pnorm;
                 
-                dP *= -All.cf_atime / 4.; // factor of 4 accounts for our normalization of each directional component below to be =P (given by properly integrating over a unit sphere)
+                dP *= All.cf_atime; // code velocity units
                 for(k=0; k<3; k++)
                 {
                     double q = pvec[k] * dP;

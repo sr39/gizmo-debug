@@ -121,10 +121,10 @@ void blackhole_swallow_and_kick_loop(void)
                     /* get the particles */
                     MPI_Sendrecv(&BlackholeDataIn[Send_offset[recvTask]],
                                  Send_count[recvTask] * sizeof(struct blackholedata_in), MPI_BYTE,
-                                 recvTask, TAG_DENS_A,
+                                 recvTask, TAG_BH_G,
                                  &BlackholeDataGet[Recv_offset[recvTask]],
                                  Recv_count[recvTask] * sizeof(struct blackholedata_in), MPI_BYTE,
-                                 recvTask, TAG_DENS_A, MPI_COMM_WORLD, &status);
+                                 recvTask, TAG_BH_G, MPI_COMM_WORLD, &status);
                 }
             }
         }
@@ -155,10 +155,10 @@ void blackhole_swallow_and_kick_loop(void)
                     /* send the results */
                     MPI_Sendrecv(&BlackholeDataResult[Recv_offset[recvTask]],
                                  Recv_count[recvTask] * sizeof(struct blackholedata_out),
-                                 MPI_BYTE, recvTask, TAG_DENS_B,
+                                 MPI_BYTE, recvTask, TAG_BH_H,
                                  &BlackholeDataOut[Send_offset[recvTask]],
                                  Send_count[recvTask] * sizeof(struct blackholedata_out),
-                                 MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, &status);
+                                 MPI_BYTE, recvTask, TAG_BH_H, MPI_COMM_WORLD, &status);
                 }
             }
         }

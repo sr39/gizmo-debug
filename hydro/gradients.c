@@ -740,10 +740,10 @@ void hydro_gradient_calc(void)
                         /* get the particles */
                         MPI_Sendrecv(&GasGradDataIn[Send_offset[recvTask]],
                                      Send_count[recvTask] * sizeof(struct GasGraddata_in), MPI_BYTE,
-                                     recvTask, TAG_INTERLOOP_A,
+                                     recvTask, TAG_GRADLOOP_A,
                                      &GasGradDataGet[Recv_offset[recvTask]],
                                      Recv_count[recvTask] * sizeof(struct GasGraddata_in), MPI_BYTE,
-                                     recvTask, TAG_INTERLOOP_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                                     recvTask, TAG_GRADLOOP_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                     }
                 }
             }
@@ -817,17 +817,17 @@ void hydro_gradient_calc(void)
                         {
                             MPI_Sendrecv(&GasGradDataResult[Recv_offset[recvTask]],
                                          Recv_count[recvTask] * sizeof(struct GasGraddata_out),
-                                         MPI_BYTE, recvTask, TAG_INTERLOOP_B,
+                                         MPI_BYTE, recvTask, TAG_GRADLOOP_B,
                                          &GasGradDataOut[Send_offset[recvTask]],
                                          Send_count[recvTask] * sizeof(struct GasGraddata_out),
-                                         MPI_BYTE, recvTask, TAG_INTERLOOP_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                                         MPI_BYTE, recvTask, TAG_GRADLOOP_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                         } else {
                             MPI_Sendrecv(&GasGradDataResult_iter[Recv_offset[recvTask]],
                                          Recv_count[recvTask] * sizeof(struct GasGraddata_out_iter),
-                                         MPI_BYTE, recvTask, TAG_INTERLOOP_B,
+                                         MPI_BYTE, recvTask, TAG_GRADLOOP_C,
                                          &GasGradDataOut_iter[Send_offset[recvTask]],
                                          Send_count[recvTask] * sizeof(struct GasGraddata_out_iter),
-                                         MPI_BYTE, recvTask, TAG_INTERLOOP_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                                         MPI_BYTE, recvTask, TAG_GRADLOOP_C, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                         }
                     }
                 }

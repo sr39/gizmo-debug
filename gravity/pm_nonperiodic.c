@@ -404,10 +404,9 @@ void pm_init_nonperiodic_free(void)
  */
 void pm_setup_nonperiodic_kernel(void)
 {
-  int i, j, k, x, y, z;
+  long i, j, k, x, y, z, ip;
   double xx, yy, zz, r, u, fac;
   double kx, ky, kz, k2, fx, fy, fz, ff;
-  int ip;
 
   if(ThisTask == 0)
     printf("Setting up non-periodic PM kernel (GRID=%d)  presently allocated=%g MB).\n", (int) GRID,
@@ -1530,12 +1529,10 @@ int pmpotential_nonperiodic(int grnr)
   double dx, dy, dz;
   double fac, to_slab_fac;
   double re, im, pot;
-  int i, j, slab, level, sendTask, recvTask, flag, flagsum;
-  int x, y, z, ip;
-  int xx, yy, zz, task, pindex;
-  int slab_x, slab_y, slab_z;
-  int slab_xx, slab_yy, slab_zz;
-  int num_on_grid, num_field_points;
+  long i, j, slab, level, sendTask, recvTask, flag, flagsum;
+  long x, y, z, ip, xx, yy, zz, task, pindex;
+  long slab_x, slab_y, slab_z, slab_xx, slab_yy, slab_zz;
+  long num_on_grid, num_field_points;
   int *localfield_count, *localfield_first, *localfield_offset, *localfield_togo;
   large_array_offset offset, *localfield_globalindex, *import_globalindex;
   d_fftw_real *localfield_d_data, *import_d_data;
@@ -1577,12 +1574,12 @@ int pmpotential_nonperiodic(int grnr)
 	}
     }
 
-  MPI_Allreduce(&flag, &flagsum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&flag, &flagsum, 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
   if(flagsum > 0)
     {
       if(ThisTask == 0)
 	{
-	  printf("In total %d particles were outside allowed range.\n", flagsum);
+	  printf("In total %ld particles were outside allowed range.\n", flagsum);
 	  fflush(stdout);
 	}
       return 1;			/* error - need to return because particles were outside allowed range */

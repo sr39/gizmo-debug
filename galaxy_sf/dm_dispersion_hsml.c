@@ -299,10 +299,10 @@ void disp_density(void)
                         /* get the particles */
                         MPI_Sendrecv(&DISP_DensDataIn[Send_offset[recvTask]],
                                      Send_count[recvTask] * sizeof(struct disp_densdata_in), MPI_BYTE,
-                                     recvTask, TAG_DENS_A,
+                                     recvTask, TAG_DMDENS_A,
                                      &DISP_DensDataGet[Recv_offset[recvTask]],
                                      Recv_count[recvTask] * sizeof(struct disp_densdata_in), MPI_BYTE,
-                                     recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                                     recvTask, TAG_DMDENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                     }
                 }
             }
@@ -370,10 +370,10 @@ void disp_density(void)
                         /* send the results */
                         MPI_Sendrecv(&DISP_DensDataResult[Recv_offset[recvTask]],
                                      Recv_count[recvTask] * sizeof(struct disp_densdata_out),
-                                     MPI_BYTE, recvTask, TAG_DENS_B,
+                                     MPI_BYTE, recvTask, TAG_DMDENS_B,
                                      &DISP_DensDataOut[Send_offset[recvTask]],
                                      Send_count[recvTask] * sizeof(struct disp_densdata_out),
-                                     MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                                     MPI_BYTE, recvTask, TAG_DMDENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                     }
                 }
                 

@@ -339,10 +339,10 @@ void ags_density(void)
 		      /* get the particles */
 		      MPI_Sendrecv(&AGS_DensDataIn[Send_offset[recvTask]],
 				   Send_count[recvTask] * sizeof(struct ags_densdata_in), MPI_BYTE,
-				   recvTask, TAG_DENS_A,
+				   recvTask, TAG_AGS_DENS_A,
 				   &AGS_DensDataGet[Recv_offset[recvTask]],
 				   Recv_count[recvTask] * sizeof(struct ags_densdata_in), MPI_BYTE,
-				   recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				   recvTask, TAG_AGS_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		    }
 		}
 	    }
@@ -410,10 +410,10 @@ void ags_density(void)
 		      /* send the results */
 		      MPI_Sendrecv(&AGS_DensDataResult[Recv_offset[recvTask]],
 				   Recv_count[recvTask] * sizeof(struct ags_densdata_out),
-				   MPI_BYTE, recvTask, TAG_DENS_B,
+				   MPI_BYTE, recvTask, TAG_AGS_DENS_B,
 				   &AGS_DensDataOut[Send_offset[recvTask]],
 				   Send_count[recvTask] * sizeof(struct ags_densdata_out),
-				   MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				   MPI_BYTE, recvTask, TAG_AGS_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		    }
 		}
 
