@@ -927,7 +927,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double mom_boost_fac = sqrt(m_coupled / m_ej_input);
                 double mom_boost_fac_max = sqrt(P[j].Mass/m_ej_input) * (wk/pnorm);
                 mom_boost_fac = DMIN( mom_boost_fac , mom_boost_fac_max );
-                dP *= fac;
+                dP *= mom_boost_fac;
                 
                 /* appropriate factor for the ejecta being energy-conserving inside the cooling radius (or Hsml, if thats smaller) */
                 //dP *= sqrt(1. + NORM_COEFF*(SphP[j].Density*RsneKPC*RsneKPC*RsneKPC)/local.Msne);
