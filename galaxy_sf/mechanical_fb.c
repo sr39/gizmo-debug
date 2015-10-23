@@ -760,7 +760,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 
                 // calculate kernel quantities //
                 kernel.r = sqrt(r2);
-                if(kernel.r > DMAX(2.0/unitlength_in_kpc,PPP[j].Hsml)) continue; // no super-long-range effects allowed! (of course this is arbitrary in code units) //
+                //if(kernel.r > DMAX(2.0/unitlength_in_kpc,PPP[j].Hsml)) continue; // no super-long-range effects allowed! (of course this is arbitrary in code units) //
+                if(kernel.r > 2.0/unitlength_in_kpc) continue; // no super-long-range effects allowed! (of course this is arbitrary in code units) //
                 
                 //u = kernel.r * kernel.hinv;
                 //kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, -1);
@@ -820,12 +821,11 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                                             if(n0 < 1.e4) {RsneKPC *= 0.006 + 0.057/(1.+0.000333*n0);} else {
                                                 RsneKPC *= pow(n0, -0.429); }}}}}}}}
                 
-                //
+                /*
                  if(P[j].Metallicity[0]/All.SolarAbundances[0] < 0.01) {RsneKPC*=2.0;} else {
                  if(P[j].Metallicity[0]<All.SolarAbundances[0]) {RsneKPC*=pow(P[j].Metallicity[0]/All.SolarAbundances[0],-0.15);} else {RsneKPC*=pow(P[j].Metallicity[0]/All.SolarAbundances[0],-0.09);}}
-                //
+                */
                 /* below expression is again just as good a fit to the simulations, and much faster to evaluate */
-/*
                 double z0 = P[j].Metallicity[0]/All.SolarAbundances[0];
                 if(z0 < 0.01)
                 {
@@ -838,17 +838,19 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                         RsneKPC *= 0.8 + 0.4 / (1 + z0);
                     }
                 }
-*/
                 /* calculates cooling radius given density and metallicity in this annulus into which the ejecta propagate */
                 
-                // double r2sne = RsneKPC*RsneKPC; if(r2 > r2sne) dP *= pow(r2sne/r2 , 1.625);
-                double h_eff_j = Get_Particle_Size(j);
-                double r_eff_2 = r2;
-                r_eff_2 = DMAX(r2 , h_eff_j*h_eff_j);
                 
-                if(r_eff_2 > RsneKPC*RsneKPC) dP *= RsneKPC*RsneKPC*RsneKPC / (r2*sqrt(r_eff_2)); // just as good a fit, and much faster to evaluate //
+                // double r2sne = RsneKPC*RsneKPC; if(r2 > r2sne) dP *= pow(r2sne/r2 , 1.625);
+                //double h_eff_j = Get_Particle_Size(j);
+                //double r_eff_2 = r2;
+                //r_eff_2 = DMAX(r2 , h_eff_j*h_eff_j);
+                //if(r_eff_2 > RsneKPC*RsneKPC) dP *= RsneKPC*RsneKPC*RsneKPC / (r_eff_2*sqrt(r_eff_2)); // just as good a fit, and much faster to evaluate //
                 /* if coupling radius > R_cooling, account for thermal energy loss in the post-shock medium:
                  from Thornton et al. thermal energy scales as R^(-6.5) for R>R_cool */
+
+                double r_eff_ij = sqrt(r2) - Get_Particle_Size(j);
+                if(r_eff_ij > RsneKPC) {dP *= RsneKPC*RsneKPC*RsneKPC/(r_eff_ij*r_eff_ij*r_eff_ij);}
 
                 /* limit to Hsml for coupling */
                 //if(RsneMAX<RsneKPC) RsneKPC=RsneMAX;
@@ -919,6 +921,12 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     pnorm += pvec[k]*pvec[k];
                 }
                 pnorm = sqrt(pnorm);
+                double pnmax = 10.*wk;
+                if(pnorm>pnmax)
+                {
+                    for(k=0;k<3;k++) {pvec[k]*=pnmax/pnorm;}
+                    pnorm=pnmax;
+                }
                 dP_sum += dP * pnorm;
                 
                 double m_ej_input = wk*local.Msne;

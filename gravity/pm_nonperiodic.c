@@ -627,12 +627,12 @@ int pmforce_nonperiodic(int grnr)
   double dx, dy, dz;
   double fac, to_slab_fac;
   double re, im, acc_dim;
-  int i, j, slab, level, sendTask, recvTask, flag, flagsum;
-  int x, y, z, yl, zl, yr, zr, yll, zll, yrr, zrr, ip, dim;
-  int xx, yy, zz, task, pindex;
-  int slab_x, slab_y, slab_z;
-  int slab_xx, slab_yy, slab_zz;
-  int num_on_grid, num_field_points;
+  long i, j, slab, level, sendTask, recvTask, flag, flagsum;
+  long x, y, z, yl, zl, yr, zr, yll, zll, yrr, zrr, ip, dim;
+  long xx, yy, zz, task, pindex;
+  long slab_x, slab_y, slab_z;
+  long slab_xx, slab_yy, slab_zz;
+  long num_on_grid, num_field_points;
   int *localfield_count, *localfield_first, *localfield_offset, *localfield_togo;
   large_array_offset offset, *localfield_globalindex, *import_globalindex;
   d_fftw_real *localfield_d_data, *import_d_data;
@@ -687,12 +687,12 @@ int pmforce_nonperiodic(int grnr)
 	}
     }
 
-  MPI_Allreduce(&flag, &flagsum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&flag, &flagsum, 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
   if(flagsum > 0)
     {
       if(ThisTask == 0)
 	{
-	  printf("In total %d particles were outside allowed range.\n", flagsum);
+	  printf("In total %ld particles were outside allowed range.\n", flagsum);
 	  fflush(stdout);
 	}
       return 1;			/* error - need to return because particles were outside allowed range */

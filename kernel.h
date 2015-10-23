@@ -139,6 +139,24 @@
 #endif
 
 
+#if (KERNEL_FUNCTION == 8) // quadratic 2-step kernel ('magic kernel' for image filtering)
+#define KERNEL_CORE_SIZE (1.0/2.0)
+#if (NUMDIMS==1)
+#define  KERNEL_NORM  (9.0/8.0)        	         /*!< For 1D-normalized kernel */
+#define  KERNEL_NMIN  2 // minimum number of neighbors for this kernel and dimension
+#define  KERNEL_NMAX  8 // maximum number of neighbors for this kernel and dimension
+#elif (NUMDIMS==2)
+#define  KERNEL_NORM  (54.0/(13.0*M_PI))	         /*!< For 2D-normalized kernel */
+#define  KERNEL_NMIN  12
+#define  KERNEL_NMAX  24
+#else
+#define  KERNEL_NORM  (81.0/(16.0*M_PI))             /*!< For 3D-normalized kernel */
+#define  KERNEL_NMIN  30
+#define  KERNEL_NMAX  64
+#endif
+#endif
+
+
 
 
 
@@ -182,6 +200,7 @@ static inline void kernel_main(double u, double hinv3, double hinv4,
     if(mode <= 0)
         *wk = t1*t1;
 #endif
+    
 
 #if (KERNEL_FUNCTION == 3) /* cubic spline */
   if(u < 0.5)
@@ -297,6 +316,22 @@ static inline void kernel_main(double u, double hinv3, double hinv4,
 #endif
 #endif
 
+    
+#if (KERNEL_FUNCTION == 8) /* quadratic '2-part' kernel */
+    if(u < 1.0/3.0)
+    {
+        if(mode >= 0)
+            *dwk = -6*u;
+        if(mode <= 0)
+            *wk = 1-3*u*u;
+    } else {
+        if(mode >= 0)
+            *dwk = -3*(1-u);
+        if(mode <= 0)
+            *wk = 1.5*(1-u)*(1-u);
+    }
+#endif
+    
     
   if(mode >= 0) 
       *dwk *= KERNEL_NORM * hinv4;
