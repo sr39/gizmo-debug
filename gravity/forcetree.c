@@ -1823,27 +1823,27 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
                             if(r < 2.0*h_si)
                             {
-                                if(check_interaction_table(targetID, P[no].ID) == 0)
+                                prob = prob_of_interaction(r, h_si, targetVel, P[no].Vel, targetdt_step);
+                                if(prob > max_prob) max_prob = prob;
+                                    
+                                if(prob > 0.2)
                                 {
-                                    prob = prob_of_interaction(r, h_si, targetVel, P[no].Vel, targetdt_step);
-                                    if(prob > max_prob) max_prob = prob;
-                                    
-                                    if(prob > 0.2)
+                                    if(targetdt_step_sidm == 0 ||
+                                       prob_of_interaction(r, h_si, targetVel, P[no].Vel, targetdt_step_sidm) > 0.2)
                                     {
-                                        if(targetdt_step_sidm == 0 ||
-                                           prob_of_interaction(r, h_si, targetVel, P[no].Vel, targetdt_step_sidm) > 0.2)
+                                        targetdt_step_sidm = targetdt_step;
+                                        prob_tmp = prob;
+                                        while(prob_tmp > 0.2)
                                         {
-                                            targetdt_step_sidm = targetdt_step;
-                                            prob_tmp = prob;
-                                            while(prob_tmp > 0.2)
-                                            {
-                                                targetdt_step_sidm /= 2;
-                                                prob_tmp = prob_of_interaction(r, h_si, targetVel, P[no].Vel, targetdt_step_sidm);
-                                            }
+                                            targetdt_step_sidm /= 2;
+                                            prob_tmp = prob_of_interaction(r, h_si, targetVel, P[no].Vel, targetdt_step_sidm);
                                         }
-                                    } // if(prob > 0.2)
+                                    }
+                                } // if(prob > 0.2)
                                     
-                                    if (gsl_rng_uniform(random_generator) < prob)
+                                if (gsl_rng_uniform(random_generator) < prob)
+                                {
+                                    if(check_interaction_table(targetID, P[no].ID) == 0)
                                     {
                                         calculate_interact_kick(targetVel, P[no].Vel, kick_target, kick_no);
                                         kick_x += kick_target[0];
@@ -1854,8 +1854,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                                         si_count++;
                                         P[no].NInteractions++;
                                         update_interaction_table(targetID, P[no].ID);
-                                    }
-                                } // if(check_interaction_table(targetID, P[no].ID) == 0)
+                                    }  // if(check_interaction_table(targetID, P[no].ID) == 0)
+                                } // if(prob for kick satisfied) 
                             } // if(r < 2.0*h_si)
                             sidm_tend = my_second();
                             sidm_tscatter += timediff(sidm_tstart, sidm_tend);
