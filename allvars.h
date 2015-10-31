@@ -2599,7 +2599,7 @@ enum siofields
  * ------------------
  */
 
-extern int Nexport, Nimport;
+extern long Nexport, Nimport;
 extern int BufferFullFlag;
 extern int NextParticle;
 extern int NextJ;

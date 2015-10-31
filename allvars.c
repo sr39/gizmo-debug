@@ -358,7 +358,7 @@ struct blackhole_temp_particle_data *BlackholeTempInfo, *BlackholeDataPasserOut,
  * ------------------
  */
 
-int Nexport, Nimport;
+long Nexport, Nimport;
 int BufferFullFlag;
 int NextParticle;
 int NextJ;

@@ -606,7 +606,8 @@ void init(void)
         SphP[i].Sfr = 0;
 #endif
 #ifdef COSMIC_RAYS
-        SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy = 0;
+        if(RestartFlag == 0) {SphP[i].CosmicRayEnergy = 0;}
+        SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy;;
         SphP[i].CosmicRayDiffusionCoeff = SphP[i].DtCosmicRayEnergy = 0;
 #endif
 #ifdef MAGNETIC

@@ -266,6 +266,8 @@ void restart(int modus)
 	  /* now store relevant data for tree */
 
 	  in(&nmulti, modus);
+        in(&NTopleaves, modus);
+        in(&NTopnodes, modus);
 	  if(modus != 0 && nmulti != MULTIPLEDOMAINS)
 	    {
 	      if(ThisTask == 0)
@@ -277,8 +279,6 @@ void restart(int modus)
 	    }
 	  else
 	    {
-	      in(&NTopleaves, modus);
-	      in(&NTopnodes, modus);
 
 	      if(modus)		/* read */
 		{

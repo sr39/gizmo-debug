@@ -680,6 +680,9 @@ void hydro_final_operations_and_cleanup(void)
             SphP[i].DtInternalEnergy /= P[i].Mass;
             /* ok, now: HydroAccel = dv/dt, DtInternalEnergy = du/dt (energy per unit mass) */
             
+            /* zero out hydrodynamic PdV work terms if the particle is at the maximum smoothing, these will be incorrect */
+            if(PPP[i].Hsml >= 0.99*All.MaxHsml) {SphP[i].DtInternalEnergy = 0;}
+            
             // need to explicitly include adiabatic correction from the hubble-flow (for drifting) here //
             if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*GAMMA_MINUS1 * SphP[i].InternalEnergyPred * All.cf_hubble_a;
             // = du/dlna -3*(gamma-1)*u ; then dlna/dt = H(z) =  All.cf_hubble_a //
@@ -983,7 +986,10 @@ void hydro_force(void)
         
         n_exported += Nexport;
         for(j = 0; j < NTask; j++)
+        {
             Send_count[j] = 0;
+            Recv_count[j] = 0;
+        }
         for(j = 0; j < Nexport; j++)
             Send_count[DataIndexTable[j].Task]++;
         

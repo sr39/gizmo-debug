@@ -1039,9 +1039,14 @@ void density(void)
 #ifndef HYDRO_SPH
                 if((PPP[i].Hsml > 0)&&(PPP[i].NumNgb > 0))
                 {
-                    SphP[i].Density = P[i].Mass * PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
+                    SphP[i].Density = P[i].Mass * PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) ); // divide mass by volume
                 } else {
-                    SphP[i].Density = 0;
+                    if(PPP[i].Hsml <= 0)
+                    {
+                        SphP[i].Density = 0; // in this case, give up, no meaningful volume
+                    } else {
+                        SphP[i].Density = P[i].Mass / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) ); // divide mass (lone particle) by volume
+                    }
                 }
 #endif
                 SphP[i].Pressure = get_pressure(i);		// should account for density independent pressure
