@@ -275,8 +275,8 @@
             
 #if defined(HYDRO_MESHLESS_FINITE_MASS) && !defined(MAGNETIC)
             double facenorm_pm = Face_Area_Norm * Riemann_out.P_M;
-            Fluxes.p = 0;
             for(k=0;k<3;k++) {Fluxes.v[k] = facenorm_pm * n_unit[k];} /* total momentum flux */
+            Fluxes.p = facenorm_pm * (Riemann_out.S_M + face_area_dot_vel); // default: total energy flux = v_frame.dot.mom_flux //
             
 #ifndef AGGRESSIVE_SLOPE_LIMITERS
             /* for MFM, do the face correction for adiabatic flows here */
@@ -308,13 +308,7 @@
                 // alright, if we've come this far, we need to subtract -off- the thermal energy part of the flux, and replace it //
             }
             if(SphP[j].ConditionNumber*SphP[j].ConditionNumber > cnumcrit2) {use_entropic_energy_equation=1;}
-            if(use_entropic_energy_equation)
-            {
-                Fluxes.p = du_new;
-            } else {
-                // default:  total energy flux = v_frame.dot.mom_flux //
-                Fluxes.p = facenorm_pm * (Riemann_out.S_M + face_area_dot_vel);
-            }
+            if(use_entropic_energy_equation) {Fluxes.p = du_new;}
 #endif
             
 #else
