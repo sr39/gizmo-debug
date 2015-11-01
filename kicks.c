@@ -364,9 +364,11 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
     {
         int k; k=0;
 #if defined(MAGNETIC)
+#ifndef MHD_ALTERNATIVE_LEAPFROG_SCHEME
         for(k=0;k<3;k++) {SphP[i].BPred[k] = SphP[i].B[k];}
 #if defined(DIVBCLEANING_DEDNER)
         SphP[i].PhiPred = SphP[i].Phi;
+#endif
 #endif
 #endif
 #ifdef COSMIC_RAYS
@@ -397,6 +399,7 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
 {
     int j; j=0;
 #ifdef MAGNETIC
+#ifndef MHD_ALTERNATIVE_LEAPFROG_SCHEME
     double BphysVolphys_to_BcodeVolCode = 1 / All.cf_atime;
     for(j = 0; j < 3; j++) {SphP[i].B[j] += SphP[i].DtB[j] * dt_entr * BphysVolphys_to_BcodeVolCode;} // fluxes are always physical, convert to code units //
 #ifdef DIVBCLEANING_DEDNER
@@ -455,6 +458,7 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
     {
         SphP[i].Phi *= exp( -dt_entr * t_damp );
     }
+#endif
 #endif
 #endif
 #ifdef NUCLEAR_NETWORK

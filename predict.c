@@ -296,6 +296,12 @@ void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double
         SphP[i].PhiPred *= exp( -dt_entr * t_damp );
     }
 #endif
+#ifdef MHD_ALTERNATIVE_LEAPFROG_SCHEME
+    for(k=0;k<3;k++) {SphP[i].B[k]=SphP[i].BPred[k];}
+#ifdef DIVBCLEANING_DEDNER
+    SphP[i].Phi=SphP[i].PhiPred;
+#endif
+#endif
 #endif
 #ifdef COSMIC_RAYS
     double etmp = SphP[i].CosmicRayEnergyPred + SphP[i].DtCosmicRayEnergy * dt_entr;
