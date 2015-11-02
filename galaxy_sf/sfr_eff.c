@@ -48,7 +48,63 @@ void assign_imf_properties_from_starforming_gas(MyIDType i)
     double M_sonic = cs*cs*cs*cs / (All.G * dv2_abs * h);
     M_sonic *= All.UnitMass_in_g / All.HubbleParam / (1.989e33); // sonic mass in solar units //
     P[i].IMF_Mturnover = DMAX(0.01,DMIN(M_sonic,100.));
+    P[i].IMF_Mturnover = 2.0; // 'normal' IMF in our definitions
+    
+    
+    /* now we need to record all the properties we care to save about the star-forming gas, for the sake of later use: */
+    int j,k;
+    double NH = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1) * All.cf_a2inv;
+    double dv2abs_tot = 0; /* calculate complete velocity dispersion (including hubble-flow correction) in physical units */
+    for(j=0;j<3;j++)
+    {
+        for(k=0;k<3;k++)
+        {
+            double vt = SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
+            if(All.ComovingIntegrationOn) {if(j==k) {vt += All.cf_hubble_a;}} /* add hubble-flow correction */
+            dv2abs_tot += vt*vt;
+        }
+    }
+    double acc=0,vel=0;
+    for(k=0;k<3;k++)
+    {
+        double acc_tmp = P[i].GravAccel[k];
+#ifdef PMGRID
+        acc_tmp += P[i].GravPM[k];
 #endif
+        acc_tmp *= All.cf_a2inv;
+        acc += acc_tmp * acc_tmp;
+        vel += SphP[i].VelPred[k]*SphP[i].VelPred[k];
+    }
+    double b_mag = 0;
+#ifdef MAGNETIC
+    double gizmo2gauss = 4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam;
+    for(k=0;k<3;k++) {b_mag += Get_Particle_BField(i,k)*Get_Particle_BField(i,k) * gizmo2gauss;}
+#endif
+    double rad_flux_uv = 1;
+#ifdef GALSF_FB_LOCAL_UV_HEATING
+    rad_flux_uv = SphP[i].RadFluxUV;
+#endif
+    double cr_energy_density = 0;
+#ifdef COSMIC_RAYS
+    cr_energy_density = SphP[i].CosmicRayEnergyPred * SphP[i].Density * All.cf_a3inv / P[i].Mass;
+#endif
+
+    P[i].IMF_FormProps[0] = P[i].IMF_Mturnover; // IMF turnover mass as defined above
+    P[i].IMF_FormProps[1] = SphP[i].Density * All.cf_a3inv; // density
+    P[i].IMF_FormProps[2] = SphP[i].InternalEnergyPred; // thermal internal energy (use to calculate temperature)
+    P[i].IMF_FormProps[3] = Particle_effective_soundspeed_i(i) * All.cf_afac3; // sound speed (not trivially related to temperature if CRs, etc included)
+    P[i].IMF_FormProps[4] = sqrt(dv2_abs); // shear velocity gradient (norm of shear gradient tensor)
+    P[i].IMF_FormProps[5] = h; // particle length/size (inter-particle spacing)
+    P[i].IMF_FormProps[6] = NH; // local gas surface density (our usual estimator) in the cloud where the particle formed
+    P[i].IMF_FormProps[7] = sqrt(dv2abs_tot) * h; // total rms/turbulent velocity dispersion
+    P[i].IMF_FormProps[8] = sqrt(acc); // gravitational acceleration
+    P[i].IMF_FormProps[9] = sqrt(vel); // total velocity (use with acceleration to estimate shear omega, etc)
+    P[i].IMF_FormProps[10] = sqrt(b_mag) * All.cf_a2inv; // magnetic field strength |B|
+    P[i].IMF_FormProps[11] = rad_flux_uv; // incident UV flux normalized to MW 'canonical' (Habing) field value
+    P[i].IMF_FormProps[12] = cr_energy_density; // cosmic ray energy density (if CRs are enabled)
+    
+#endif 
+    
     
 #ifdef GALSF_SFR_IMF_SAMPLING
     gsl_rng *random_generator_for_massivestars;

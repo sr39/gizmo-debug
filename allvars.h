@@ -425,6 +425,10 @@ typedef  int integertime;
 #define EPSILON_FOR_TREERND_SUBNODE_SPLITTING (1.0e-3) /* define some number << 1; particles with less than this separation will trigger randomized sub-node splitting in the tree.
                                                             we set it to a global value here so that other sub-routines will know not to force particle separations below this */
 
+#ifdef GALSF_SFR_IMF_VARIATION
+#define N_IMF_FORMPROPS  13  /*!< formation properties of star particles to record for output */
+#endif
+
 
 typedef unsigned long long peanokey;
 
@@ -1733,6 +1737,7 @@ extern ALIGN(32) struct particle_data
 #endif
 #ifdef GALSF_SFR_IMF_VARIATION
     MyFloat IMF_Mturnover; /*!< IMF turnover mass [in solar] (or any other parameter which conveniently describes the IMF) */
+    MyFloat IMF_FormProps[N_IMF_FORMPROPS]; /*!< formation properties of star particles to record for output */
 #endif
 #ifdef GALSF_SFR_IMF_SAMPLING
     MyFloat IMF_NumMassiveStars; /*!< number of massive stars to associate with this star particle (for feedback) */

@@ -714,7 +714,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double pressure_to_p4 = (1/All.cf_afac1)*density_to_n*(All.UnitEnergy_in_cgs/All.UnitMass_in_g) / 1.0e4;
 #endif
     // now define quantities that will be used below //
-    double Esne51 = 0.5*local.SNe_v_ejecta*local.SNe_v_ejecta*local.Msne / unit_egy_SNe;
+    double Esne51;
+    Esne51 = 0.5*local.SNe_v_ejecta*local.SNe_v_ejecta*local.Msne / unit_egy_SNe;
     double RsneKPC, RsneKPC_0;//, RsneMAX;
     RsneKPC=0.; //RsneMAX=local.Hsml;
     RsneKPC_0=(0.0284/unitlength_in_kpc);//*pow(Esne51,0.286); //Cioffi: weak external pressure

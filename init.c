@@ -390,7 +390,7 @@ void init(void)
         {
             P[i].StellarAge = 0;
 #ifdef GALSF_SFR_IMF_VARIATION
-            P[i].IMF_Mturnover = 2.0;
+            P[i].IMF_Mturnover = 2.0; /* gives a solar-type IMF for our calculations in current code */
 #endif
 #ifdef GALSF_SFR_IMF_SAMPLING
             P[i].IMF_NumMassiveStars = 0;

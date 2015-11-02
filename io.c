@@ -676,11 +676,13 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = P[pindex].IMF_Mturnover;
+                    for(k = 0; k < N_IMF_FORMPROPS; k++)
+                        fp[k] = P[pindex].IMF_FormProps[k];
+                    fp += N_IMF_FORMPROPS;
                     n++;
                 }
-            break;
 #endif
+            break;
             
         case IO_COSMICRAY_ENERGY:	/* energy in the cosmic ray field  */
 #ifdef COSMIC_RAYS
@@ -690,8 +692,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     *fp++ = SphP[pindex].CosmicRayEnergyPred;
                     n++;
                 }
-            break;
 #endif
+            break;
             
         case IO_DIVB:		/* divergence of magnetic field  */
 #ifdef MAGNETIC
@@ -1420,7 +1422,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_STRESSBULK:
         case IO_SHEARCOEFF:
         case IO_TSTP:
-        case IO_IMF:
         case IO_COSMICRAY_ENERGY:
         case IO_DIVB:
         case IO_VRMS:
@@ -1481,6 +1482,16 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_DMHSML_V:
         case IO_DMDENSITY_V:
             bytes_per_blockelement = sizeof(float);
+            break;
+
+            
+        case IO_IMF:
+#ifdef GALSF_SFR_IMF_VARIATION
+            if(mode)
+                bytes_per_blockelement = (N_IMF_FORMPROPS) * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = (N_IMF_FORMPROPS) * sizeof(MyOutputFloat);
+#endif
             break;
             
         case IO_RADGAMMA:
@@ -1651,7 +1662,6 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_VRAD:
         case IO_VDIV:
         case IO_VROT:
-        case IO_IMF:
         case IO_COSMICRAY_ENERGY:
         case IO_DIVB:
         case IO_ABVC:
@@ -1727,6 +1737,16 @@ int get_values_per_blockelement(enum iofields blocknr)
             values = 0;
 #endif
             break;
+            
+            
+        case IO_IMF:
+#ifdef GALSF_SFR_IMF_VARIATION
+            values = N_IMF_FORMPROPS;
+#else
+            values = 0;
+#endif
+            break;
+
             
         case IO_TIDALTENSORPS:
             values = 9;
@@ -3029,7 +3049,7 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             strcpy(buf, "Vorticity");
             break;
         case IO_IMF:
-            strcpy(buf, "IMFTurnOverMass");
+            strcpy(buf, "IMFFormationProperties");
             break;
         case IO_COSMICRAY_ENERGY:
             strcpy(buf, "CosmicRayEnergy");
