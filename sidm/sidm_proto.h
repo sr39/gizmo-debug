@@ -5,7 +5,7 @@
  * This file was written by Miguel Rocha (merocha@ucsc.edu) for GIZMO
  */
 
-double prob_of_interaction(double r, double h_si,  double Vtarget[3], double Vno[3], int dt_step);
+double prob_of_interaction(double mass, double r, double h_si,  double Vtarget[3], double Vno[3], int dt_step);
 double g_geo(double r);
 void calculate_interact_kick(double Vtarget[3], double Vno[3], double kick_target[3], double kick_no[3]);
 

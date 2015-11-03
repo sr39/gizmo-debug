@@ -1823,20 +1823,20 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
                             if(r < 2.0*h_si)
                             {
-                                prob = prob_of_interaction(r, h_si, targetVel, P[no].Vel, targetdt_step);
+                                prob = prob_of_interaction(P[no].Mass, r, h_si, targetVel, P[no].Vel, targetdt_step);
                                 if(prob > max_prob) max_prob = prob;
                                     
                                 if(prob > 0.2)
                                 {
                                     if(targetdt_step_sidm == 0 ||
-                                       prob_of_interaction(r, h_si, targetVel, P[no].Vel, targetdt_step_sidm) > 0.2)
+                                       prob_of_interaction(P[no].Mass, r, h_si, targetVel, P[no].Vel, targetdt_step_sidm) > 0.2)
                                     {
                                         targetdt_step_sidm = targetdt_step;
                                         prob_tmp = prob;
                                         while(prob_tmp > 0.2)
                                         {
                                             targetdt_step_sidm /= 2;
-                                            prob_tmp = prob_of_interaction(r, h_si, targetVel, P[no].Vel, targetdt_step_sidm);
+                                            prob_tmp = prob_of_interaction(P[no].Mass, r, h_si, targetVel, P[no].Vel, targetdt_step_sidm);
                                         }
                                     }
                                 } // if(prob > 0.2)
