@@ -718,7 +718,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     Esne51 = 0.5*local.SNe_v_ejecta*local.SNe_v_ejecta*local.Msne / unit_egy_SNe;
     double RsneKPC, RsneKPC_0;//, RsneMAX;
     RsneKPC=0.; //RsneMAX=local.Hsml;
-    RsneKPC_0=(0.0284/unitlength_in_kpc);//*pow(Esne51,0.286); //Cioffi: weak external pressure
+    RsneKPC_0=(0.0284/unitlength_in_kpc) * pow(1+Esne51,0.286); //Cioffi: weak external pressure
     
     
     
@@ -776,7 +776,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 //wk = h_eff_j * h_eff_j * h_eff_j; // volume weight (old FIRE runs)
                 //double hR = h_eff_j / (kernel.r + 1.e-4*h_eff_j);
                 //wk = 0.5*(1-1/sqrt(1.+hR*hR)); // solid angle for triangle of side-length h;
-
+                
                 u = kernel.r * kernel.hinv;
                 double hinv_j = 1./PPP[j].Hsml;
                 double hinv3_j = hinv_j*hinv_j*hinv_j;
@@ -803,12 +803,36 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 wk *= local.Area_weighted_sum[0]; // this way wk matches the value summed above for the weighting //
                 
                 dM = wk * local.Msne;
-                dP = local.SNe_v_ejecta / kernel.r;
+                
                 /* define initial mass and ejecta velocity in this 'cone' */
+                double v_bw[3]={0}, e_shock=0;
+                double pnorm = 0;
+                double pvec[3]={0};
+                for(k=0; k<3; k++)
+                {
+                    double q;
+                    q = 0;
+                    if(k==0) {q=wk_vec[1]*local.Area_weighted_sum[1] + wk_vec[2]*local.Area_weighted_sum[2];}
+                    if(k==1) {q=wk_vec[3]*local.Area_weighted_sum[3] + wk_vec[4]*local.Area_weighted_sum[4];}
+                    if(k==2) {q=wk_vec[5]*local.Area_weighted_sum[5] + wk_vec[6]*local.Area_weighted_sum[6];}
+                    pvec[k] = -q/4.; // factor of 4 accounts for our normalization of each directional component below to be =P (given by properly integrating over a unit sphere)
+                    pnorm += pvec[k]*pvec[k];
+                }
+                pnorm = sqrt(pnorm);
+                /* now, add contribution from relative star-gas particle motion to shock energy */
+                for(k=0;k<3;k++)
+                {
+                    v_bw[k] = local.SNe_v_ejecta*pvec[k]/pnorm + kernel.dv[k]/All.cf_atime;
+                    e_shock += v_bw[k]*v_bw[k];
+                }
+                double mj_preshock = P[j].Mass;
+                double mu_j = P[j].Mass / (dM + P[j].Mass);
+                e_shock *= pnorm * 0.5*local.Msne * mu_j;
+                
+                
+                
                 
 #ifndef GALSF_TURNOFF_COOLING_WINDS
-                //RsneKPC=RsneKPC_0 * pow(SphP[j].Density*density_to_n+1.0e-3,-0.429);
-                //RsneKPC=RsneKPC_0 / sqrt(SphP[j].Density*density_to_n+1.0e-3);
                 RsneKPC = RsneKPC_0;
                 double n0 = SphP[j].Density*density_to_n;
                 /* this is tedious, but is a fast approximation (essentially a lookup table) for the -0.429 power above */
@@ -822,10 +846,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                                             if(n0 < 1.e4) {RsneKPC *= 0.006 + 0.057/(1.+0.000333*n0);} else {
                                                 RsneKPC *= pow(n0, -0.429); }}}}}}}}
                 
-                /*
-                 if(P[j].Metallicity[0]/All.SolarAbundances[0] < 0.01) {RsneKPC*=2.0;} else {
-                 if(P[j].Metallicity[0]<All.SolarAbundances[0]) {RsneKPC*=pow(P[j].Metallicity[0]/All.SolarAbundances[0],-0.15);} else {RsneKPC*=pow(P[j].Metallicity[0]/All.SolarAbundances[0],-0.09);}}
-                */
+                
                 /* below expression is again just as good a fit to the simulations, and much faster to evaluate */
                 double z0 = P[j].Metallicity[0]/All.SolarAbundances[0];
                 if(z0 < 0.01)
@@ -841,34 +862,15 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 }
                 /* calculates cooling radius given density and metallicity in this annulus into which the ejecta propagate */
                 
-                
-                // double r2sne = RsneKPC*RsneKPC; if(r2 > r2sne) dP *= pow(r2sne/r2 , 1.625);
-                //double h_eff_j = Get_Particle_Size(j);
-                //double r_eff_2 = r2;
-                //r_eff_2 = DMAX(r2 , h_eff_j*h_eff_j);
-                //if(r_eff_2 > RsneKPC*RsneKPC) dP *= RsneKPC*RsneKPC*RsneKPC / (r_eff_2*sqrt(r_eff_2)); // just as good a fit, and much faster to evaluate //
                 /* if coupling radius > R_cooling, account for thermal energy loss in the post-shock medium:
                  from Thornton et al. thermal energy scales as R^(-6.5) for R>R_cool */
-
                 double r_eff_ij = sqrt(r2) - Get_Particle_Size(j);
-                if(r_eff_ij > RsneKPC) {dP *= RsneKPC*RsneKPC*RsneKPC/(r_eff_ij*r_eff_ij*r_eff_ij);}
-
-                /* limit to Hsml for coupling */
-                //if(RsneMAX<RsneKPC) RsneKPC=RsneMAX;
+                if(r_eff_ij > RsneKPC) {e_shock *= RsneKPC*RsneKPC*RsneKPC/(r_eff_ij*r_eff_ij*r_eff_ij);}
+                
 #endif
                 
-                /* now, add contribution from relative star-gas particle motion to shock energy */
-                u = 0.; dE = 0.;
-                for(k=0; k<3; k++)
-                {
-                    // relative outflow-particle velocity = v_ej*x_i/r + v_star - v_gasparticle //
-                    u = -dP*kernel.dp[k] + kernel.dv[k]/All.cf_atime;
-                    dE += u*u;
-                }
-                dE *= 0.5 * dM;
                 /* now we have the proper energy to couple */
-                
-                E_coupled += dE;
+                E_coupled += e_shock;
                 out.M_coupled += dM;
                 
                 /* inject actual mass from mass return */
@@ -895,9 +897,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 }
 #endif
                 /* inject the post-shock energy and momentum (convert to specific units as needed first) */
-                dE *= 1 / P[j].Mass;
-                SphP[j].InternalEnergy += dE;
-                SphP[j].InternalEnergyPred += dE;
+                e_shock *= 1 / P[j].Mass;
+                SphP[j].InternalEnergy += e_shock;
+                SphP[j].InternalEnergyPred += e_shock;
 #ifdef GALSF_TURNOFF_COOLING_WINDS
                 /* if the sub-grid 'cooling turnoff' model is enabled, turn off cooling for the 'blastwave timescale' */
                 dP = 7.08 * pow(Esne51*SphP[j].Density*density_to_n,0.34) * pow(SphP[j].Pressure*pressure_to_p4,-0.70)
@@ -905,55 +907,22 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(dP>SphP[j].DelayTimeCoolingSNe) SphP[j].DelayTimeCoolingSNe=dP;
 #else
                 /* inject momentum */
-                dP = local.unit_mom_SNe / P[j].Mass;
-                if(dP > v_ejecta_max) dP = v_ejecta_max; // limit maximum velocities //
-
-                /* apply limiter for energy conservation */
-                double pnorm = 0;
-                double pvec[3]={0};
-                for(k=0; k<3; k++)
-                {
-                    double q;
-                    q = 0;
-                    if(k==0) {q=wk_vec[1]*local.Area_weighted_sum[1] + wk_vec[2]*local.Area_weighted_sum[2];}
-                    if(k==1) {q=wk_vec[3]*local.Area_weighted_sum[3] + wk_vec[4]*local.Area_weighted_sum[4];}
-                    if(k==2) {q=wk_vec[5]*local.Area_weighted_sum[5] + wk_vec[6]*local.Area_weighted_sum[6];}
-                    pvec[k] = -q/4.; // factor of 4 accounts for our normalization of each directional component below to be =P (given by properly integrating over a unit sphere)
-                    pnorm += pvec[k]*pvec[k];
-                }
-                pnorm = sqrt(pnorm);
-                double pnmax = 10.*wk;
-                if(pnorm>pnmax)
-                {
-                    for(k=0;k<3;k++) {pvec[k]*=pnmax/pnorm;}
-                    pnorm=pnmax;
-                }
-                dP_sum += dP * pnorm;
-                
-                double m_ej_input = wk*local.Msne;
-                double m_cooling = m_ej_input + 4.18879*DMAX(pnorm,wk)*SphP[j].Density*RsneKPC*RsneKPC*RsneKPC;
-                double m_coupled = DMIN(P[j].Mass , m_cooling);
-                double mom_boost_fac = sqrt(m_coupled / m_ej_input);
-                double mom_boost_fac_max = sqrt(P[j].Mass/m_ej_input) * (wk/pnorm);
-                mom_boost_fac = DMIN( mom_boost_fac , mom_boost_fac_max );
-                dP *= mom_boost_fac;
-                
+                double m_ej_input = pnorm * local.Msne;
                 /* appropriate factor for the ejecta being energy-conserving inside the cooling radius (or Hsml, if thats smaller) */
-                //dP *= sqrt(1. + NORM_COEFF*(SphP[j].Density*RsneKPC*RsneKPC*RsneKPC)/local.Msne);
-                //double pmax = (local.unit_mom_SNe/local.Msne) * sqrt((wk*local.Msne)/(P[j].Mass));
-                //if(P[j].Metallicity[0]<All.SolarAbundances[0]) {pmax *= sqrt(sqrt(All.SolarAbundances[0]/P[j].Metallicity[0]));}
-                //double prat = dP * pnorm / (MIN_REAL_NUMBER + pmax);
-                //if(prat > 1) {dP /= prat;}
-                dP_boost_sum += dP * pnorm;
+                double m_cooling = 4.18879*pnorm*SphP[j].Density*RsneKPC*RsneKPC*RsneKPC;
+                /* apply limiter for energy conservation */
+                double mom_boost_fac = 1 + sqrt(DMIN(mj_preshock , m_cooling) / m_ej_input);
                 
-                dP *= All.cf_atime; // code velocity units
+                /* save summation values for outputs */
+                dP = local.unit_mom_SNe / P[j].Mass * pnorm;
+                dP_sum += dP;
+                dP_boost_sum += dP * mom_boost_fac;
+                
+                /* actually do the injection */
+                double q0 = All.cf_atime * (pnorm*local.Msne/P[j].Mass) * mom_boost_fac;
                 for(k=0; k<3; k++)
                 {
-                    double q = pvec[k] * dP;
-                    u = wk * local.Msne * kernel.dv[k] / P[j].Mass;
-                    if (u > v_ejecta_max*All.cf_atime) u = v_ejecta_max*All.cf_atime;
-                    if (u < -v_ejecta_max*All.cf_atime) u = -v_ejecta_max*All.cf_atime;
-                    q += u;
+                    double q = q0 * v_bw[k];
                     P[j].Vel[k] += q;
                     SphP[j].VelPred[k] += q;
                 }
