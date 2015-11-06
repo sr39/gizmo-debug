@@ -182,7 +182,6 @@ int CheckSwap(char *fname, int *swap)
 #define NETWORK_SPARSE 0
 #endif
 
-#include "./network.h"
 
 struct network_solver_data {
     int nsteps;

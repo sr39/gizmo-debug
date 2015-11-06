@@ -674,8 +674,8 @@ INCL    +=  sidm/sidm_proto.h
 endif
 
 ifeq (NUCLEAR_NETWORK,$(findstring NUCLEAR_NETWORK,$(CONFIGVARS)))
-OBJS	+=  nuclear/network_solver.o nuclear/network.o
-INCL	+=  nuclear/network.h
+OBJS	+=  nuclear/nuclear_network_solver.o nuclear/nuclear_network.o
+INCL	+=  nuclear/nuclear_network.h
 endif
 
 ifeq (TURB_DRIVING,$(findstring TURB_DRIVING,$(CONFIGVARS)))

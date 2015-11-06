@@ -6,7 +6,7 @@
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_const_cgs.h>
 #include <gsl/gsl_const_num.h>
-#include "./network.h"
+#include "./nuclear_network.h"
 
 /*
  *  This code is place-holder, inherited from GADGET3,

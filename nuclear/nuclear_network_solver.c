@@ -5,7 +5,7 @@
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_vector.h>
-#include "../network.h"
+#include "./nuclear_network.h"
 
 /*
  *  This code is place-holder, inherited from GADGET3,
@@ -23,7 +23,7 @@
 #include "mkl_service.h"
 #endif
 
-#include "./helm_eos.h"
+#include "../eos/eos.h"
 
 #define min(x,y) ((x) < (y) ? (x) : (y))
 #define max(x,y) ((x) > (y) ? (x) : (y))
