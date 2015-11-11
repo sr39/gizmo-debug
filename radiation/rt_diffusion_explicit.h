@@ -44,6 +44,7 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
                 double grad = 0.5 * (local.Gradients.E_gamma_ET[k_freq][k] + SphP[j].Gradients.E_gamma_ET[k_freq][k]);
                 double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv;
                 grad = MINMOD_G( grad , grad_direct );
+                if(grad*grad_direct < 0) {if(fabs(grad_direct) > 2.*fabs(grad)) {grad = 0.0;}}
                 cmag += Face_Area_Vec[k] * grad;
             }
             /* here we add the HLL-like correction term. this greatly reduces noise and improves the stability of the diffusion.
@@ -64,7 +65,8 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
             cmag = MINMOD(1.5*cmag, cmag_corr);
             /* flux-limiter to ensure flow is always down the local gradient */
             double f_direct = (1./9.) * Face_Area_Norm*d_scalar*rinv;
-            if((d_scalar*cmag < 0) && (fabs(f_direct) > fabs(cmag))) {cmag = 0;}
+            double check_for_stability_sign = d_scalar*cmag;
+            if((check_for_stability_sign < 0) && (fabs(f_direct) > 0.005*fabs(cmag))) {cmag = 0;}
             cmag *= -conduction_wt; // multiplies through the coefficient to get actual flux //
 #endif
             // prevent super-luminal local fluxes //
@@ -76,6 +78,7 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
             {
                 // enforce a flux limiter for stability (to prevent overshoot) //
                 double thold_hll = 0.25 * DMIN(fabs(scalar_i*V_i),fabs(scalar_j*V_j));
+                if(check_for_stability_sign<0) {thold_hll *= 1.e-2;}
                 if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
                 Fluxes_E_gamma[k_freq] += cmag / dt_hydrostep;
             } // if(conduction_wt > 0)

@@ -366,6 +366,7 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #DISABLE_SPH_PARTICLE_WAKEUP    # don't let gas particles move to lower timesteps based on neighbor activity (use for debugging)
 #EVALPOTENTIAL                  # computes gravitational potential
 #MHD_ALTERNATIVE_LEAPFROG_SCHEME # use alternative leapfrog where magnetic fields are treated like potential/positions (per Federico Stasyszyn's suggestion): still testing
+#FREEZE_HYDRO                   # zeros all fluxes from RP and doesn't let particles move (for testing additional physics layers)
 ####################################################################################################
 
 

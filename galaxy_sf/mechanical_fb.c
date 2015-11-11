@@ -683,7 +683,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     int startnode, numngb_inbox, listindex = 0;
     int j, k, n;
     double u,r2,h2;
-    double v_ejecta_max,kernel_zero,wk,dM,dP,dE;
+    double v_ejecta_max,kernel_zero,wk,dM,dP;
     double E_coupled,dP_sum,dP_boost_sum;
     
     struct kernel_addFB kernel;

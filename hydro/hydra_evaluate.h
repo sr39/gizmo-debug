@@ -271,6 +271,11 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #else
 #include "hydra_core_meshless.h"
 #endif
+                
+#ifdef FREEZE_HYDRO
+                memset(&Fluxes, 0, sizeof(struct Conserved_var_Riemann));
+#endif
+
 
                 
                 
@@ -286,7 +291,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #define B_dot_grad_weights(grad_i,grad_j) {if(bhat_mag<=0) {b_hll=1;} else {double q_tmp_sum=0,b_tmp_sum=0; for(k=0;k<3;k++) {\
                                            double q_tmp=0.5*(grad_i[k]+grad_j[k]); q_tmp_sum+=q_tmp*q_tmp; b_tmp_sum+=bhat[k]*q_tmp;}\
                                            if((b_tmp_sum!=0)&&(q_tmp_sum>0)) {b_hll=fabs(b_tmp_sum)/sqrt(q_tmp_sum); b_hll*=b_hll;} else {b_hll=0;}}}
-#define HLL_DIFFUSION_COMPROMISE_FACTOR 1.1
+#define HLL_DIFFUSION_COMPROMISE_FACTOR 2.0 //1.1
 #else
                 v_hll = 0.5*fabs(face_vel_i-face_vel_j) + DMAX(kernel.sound_i,kernel.sound_j);
 #define B_dot_grad_weights(grad_i,grad_j) {b_hll=1;}
@@ -350,6 +355,10 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {out.Dt_Flux[k][k_dir] += Fluxes_Flux[k][k_dir];}}
 #endif
 #ifdef MAGNETIC
+#ifndef HYDRO_SPH
+                for(k=0;k<3;k++) {out.Face_Area[k] += Face_Area_Vec[k];}
+#endif
+#ifndef FREEZE_HYDRO
                 for(k=0;k<3;k++) {out.DtB[k]+=Fluxes.B[k];}
                 out.divB += Fluxes.B_normal_corrected;
 #if defined(DIVBCLEANING_DEDNER) && defined(HYDRO_MESHLESS_FINITE_VOLUME) // mass-based phi-flux
@@ -359,7 +368,6 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 for(k=0;k<3;k++) {out.DtInternalEnergy+=magfluxv[k]*local.Vel[k]/All.cf_atime;}
                 out.DtInternalEnergy += resistivity_heatflux;
 #else
-                for(k=0;k<3;k++) {out.Face_Area[k] += Face_Area_Vec[k];}
                 double wt_face_sum = Face_Area_Norm * (-face_area_dot_vel+face_vel_i);
                 out.DtInternalEnergy += 0.5 * kernel.b2_i*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
 #ifdef DIVBCLEANING_DEDNER
@@ -377,6 +385,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #ifdef MHD_NON_IDEAL
                 for(k=0;k<3;k++) {out.DtInternalEnergy += local.BPred[k]*All.cf_a2inv*bflux_from_nonideal_effects[k];}
+#endif
 #endif
 #endif
 #endif // magnetic //
@@ -406,6 +415,10 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[j].Dt_Flux[k][k_dir] -= Fluxes_Flux[k][k_dir];}}
 #endif
 #ifdef MAGNETIC
+#ifndef HYDRO_SPH
+                    for(k=0;k<3;k++) {SphP[j].Face_Area[k] -= Face_Area_Vec[k];}
+#endif
+#ifndef FREEZE_HYDRO
                     for(k=0;k<3;k++) {SphP[j].DtB[k]-=Fluxes.B[k];}
                     SphP[j].divB -= Fluxes.B_normal_corrected;
 #if defined(DIVBCLEANING_DEDNER) && defined(HYDRO_MESHLESS_FINITE_VOLUME) // mass-based phi-flux
@@ -415,7 +428,6 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     for(k=0;k<3;k++) {SphP[j].DtInternalEnergy-=magfluxv[k]*VelPred_j[k]/All.cf_atime;}
                     SphP[j].DtInternalEnergy += resistivity_heatflux;
 #else
-                    for(k=0;k<3;k++) {SphP[j].Face_Area[k] -= Face_Area_Vec[k];}
                     double wt_face_sum = Face_Area_Norm * (-face_area_dot_vel+face_vel_j);
                     SphP[j].DtInternalEnergy -= 0.5 * kernel.b2_j*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
 #ifdef DIVBCLEANING_DEDNER
@@ -432,6 +444,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #ifdef MHD_NON_IDEAL
                     for(k=0;k<3;k++) {SphP[j].DtInternalEnergy -= BPred_j[k]*All.cf_a2inv*bflux_from_nonideal_effects[k];}
+#endif
 #endif
 #endif
 #endif // magnetic //

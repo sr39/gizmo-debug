@@ -798,6 +798,7 @@ void density(void)
                             /* this one should be ok */
                             npleft--;
                             P[i].TimeBin = -P[i].TimeBin - 1;	/* Mark as inactive */
+                            SphP[i].ConditionNumber = ConditionNumber;
                             continue;
                         }
                     

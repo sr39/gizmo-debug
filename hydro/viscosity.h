@@ -124,7 +124,9 @@
                 for(k=0;k<3;k++)
                 {
                     double grad_v = wt_i*local.Gradients.Velocity[k_v][k]+wt_j*SphP[j].Gradients.Velocity[k_v][k];
-                    grad_v = MINMOD_G( grad_v, -kernel.dv[k_v] * kernel.dp[k] * rinv*rinv);
+                    double grad_direct = -kernel.dv[k_v] * kernel.dp[k] * rinv*rinv;
+                    grad_v = MINMOD_G( grad_v, grad_direct);
+                    if(grad_v*grad_direct < 0) {if(fabs(grad_direct) > 2.*fabs(grad_v)) {grad_v = 0.0;}}
                     
                     if(k==k_v) {tmp=tmp_kv;} else {tmp=B_interface[k_v]*B_interface[k];}
                     rhs += tmp * grad_v; // units vcode/rcode
@@ -218,9 +220,11 @@
             }
             double cmag_corr = cmag[k_v] + hll_tmp;
             cmag[k_v] = MINMOD(cmag[k_v], cmag_corr);
-            if((fluxlimiter_absnorm*cmag[k_v] < 0) && (fabs(fluxlimiter_absnorm) > fabs(cmag[k_v]))) {cmag[k_v] = 0;}
+            double check_for_stability_sign = fluxlimiter_absnorm*cmag[k_v];
+            if((check_for_stability_sign < 0) && (fabs(fluxlimiter_absnorm) > 0.005*fabs(cmag[k_v]))) {cmag[k_v] = 0;}
+            
 #if defined(GALSF)
-            if((fluxlimiter_absnorm*cmag[k_v] < 0)) {cmag[k_v]=0;}
+            if(check_for_stability_sign < 0) {cmag[k_v]=0;}
 #endif
         }
         

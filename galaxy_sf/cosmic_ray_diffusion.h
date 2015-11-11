@@ -29,7 +29,7 @@
         kappa_i *= Bpro2_i; kappa_j *= Bpro2_j;
 #endif
         double cmag = diffusion_wt * (2.*kappa_i*kappa_j/(kappa_i+kappa_j)); // geometric-weighted kappa (see Cleary & Monaghan '99)
-        
+        double check_for_stability_sign = 1;
 #else
         
         // NOT SPH: Now we use the more accurate finite-volume formulation, with the effective faces we have already calculated //
@@ -47,10 +47,12 @@
             double q_direct = d_scalar * kernel.dp[k] * rinv*rinv;
 #ifdef MAGNETIC
             grad_ij[k] = MINMOD_G(q_grad , q_direct);
+            if(q_grad*q_direct < 0) {if(fabs(q_direct) > 2.*fabs(q_grad)) {grad_ij[k] = 0.0;}}
 #else
             grad_ij[k] = MINMOD(q_grad , q_direct);
 #endif
         }
+        
 #ifdef MAGNETIC
         if(bhat_mag > 0)
         {
@@ -78,7 +80,8 @@
         /* slope-limiter to ensure heat always flows from hot to cold */
         double d_scalar_b = b_hll * d_scalar;
         double f_direct = Face_Area_Norm*d_scalar_b*rinv/All.cf_atime;
-        if((d_scalar*cmag < 0) && (fabs(f_direct) > fabs(cmag))) {cmag = 0;}
+        double check_for_stability_sign = d_scalar*cmag;
+        if((check_for_stability_sign < 0) && (fabs(f_direct) > 0.005*fabs(cmag))) {cmag = 0;}
         cmag *= -diffusion_wt; /* multiply through coefficient to get flux */
         
 #endif // end of SPH/NOT SPH check
@@ -90,7 +93,8 @@
             // enforce a flux limiter for stability (to prevent overshoot) //
             double CR_egy_i = local.CosmicRayPressure*V_i / GAMMA_COSMICRAY_MINUS1; // (E_cr = Volume * (Pressure/(GAMMA_CR-1))) - this is physical units //
             double CR_egy_j = CosmicRayPressure_j*V_j / GAMMA_COSMICRAY_MINUS1;
-            double du_ij_cond = 0.5*DMIN(CR_egy_i, CR_egy_j);
+            double du_ij_cond = 1.0*DMIN(CR_egy_i, CR_egy_j);
+            if(check_for_stability_sign<0) {du_ij_cond *= 1.e-2;}
             if(fabs(diffusion_wt)>du_ij_cond) {diffusion_wt *= du_ij_cond/fabs(diffusion_wt);}
             Fluxes.CosmicRayPressure += diffusion_wt / dt_hydrostep;
         } // if(diffusion_wt > 0)

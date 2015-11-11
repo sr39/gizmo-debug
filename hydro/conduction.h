@@ -48,6 +48,7 @@
             double q_direct = d_scalar * kernel.dp[k] * rinv*rinv;
 #ifdef MAGNETIC
             grad_ij[k] = MINMOD_G(q_grad , q_direct);
+            if(q_grad*q_direct < 0) {if(fabs(q_direct) > 2.*fabs(q_grad)) {grad_ij[k] = 0.0;}}
 #else
             grad_ij[k] = MINMOD(q_grad , q_direct);
 #endif
@@ -79,7 +80,8 @@
         /* slope-limiter to ensure heat always flows from hot to cold */
         double d_scalar_b = b_hll * d_scalar;
         double f_direct = Face_Area_Norm*d_scalar_b*rinv/All.cf_atime;
-        if((d_scalar*cmag < 0) && (fabs(f_direct) > fabs(cmag))) {cmag = 0;}
+        double check_for_stability_sign = d_scalar*cmag;
+        if((check_for_stability_sign < 0) && (fabs(f_direct) > 0.005*fabs(cmag))) {cmag = 0;}
         cmag *= -diffusion_wt; /* multiply through coefficient to get flux */
         
 #endif // end of SPH/NOT SPH check
@@ -89,7 +91,8 @@
         if(fabs(diffusion_wt) > 0)
         {
             // enforce a flux limiter for stability (to prevent overshoot) //
-            double du_ij_cond = 0.5*DMIN(local.Mass*scalar_i, P[j].Mass*scalar_j);
+            double du_ij_cond = 1.0*DMIN(local.Mass*scalar_i, P[j].Mass*scalar_j);
+            if(check_for_stability_sign<0) {du_ij_cond *= 1.e-2;}
             if(fabs(diffusion_wt)>du_ij_cond) {diffusion_wt *= du_ij_cond/fabs(diffusion_wt);}
             Fluxes.p += diffusion_wt / dt_hydrostep;
         } // if(diffusion_wt > 0)

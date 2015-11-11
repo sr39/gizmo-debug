@@ -607,8 +607,9 @@ void init(void)
 #endif
 #ifdef COSMIC_RAYS
         if(RestartFlag == 0) {SphP[i].CosmicRayEnergy = 0;}
-        SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy;;
-        SphP[i].CosmicRayDiffusionCoeff = SphP[i].DtCosmicRayEnergy = 0;
+        SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy;
+        SphP[i].CosmicRayDiffusionCoeff = 0;
+        SphP[i].DtCosmicRayEnergy = 0;
 #endif
 #ifdef MAGNETIC
 #if defined B_SET_IN_PARAMS
