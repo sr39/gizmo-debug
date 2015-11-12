@@ -507,13 +507,20 @@ integertime get_timestep(int p,		/*!< particle index */
             {
                 if(Get_Particle_CosmicRayPressure(p) > 1.0e-20)
                 {
-                    double L_cond_inv = 1. / Get_CosmicRayGradientLength(p);
+                    double CRPressureGradScaleLength = Get_CosmicRayGradientLength(p);
+                    double L_cr_weak = CRPressureGradScaleLength;
+                    double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + 1./(L_particle*All.cf_atime)));
+                    double L_cr = L_cr_strong; // true diffusion requires the stronger timestep criterion be applied
 #ifdef COSMIC_RAYS_DISABLE_DIFFUSION
-                    double L_cond = 1./(L_cond_inv + 0./(L_particle*All.cf_atime)); // streaming allows weaker timestep criterion because it's really an advection equation
+                    L_cr = L_cr_weak; // streaming allows weaker timestep criterion because it's really an advection equation
 #else
-                    double L_cond = 1./(L_cond_inv + 1./(L_particle*All.cf_atime)); // true diffusion requires the stronger timestep criterion be applied
+#ifndef COSMIC_RAYS_DISABLE_STREAMING
+                    /* estimate whether diffusion is streaming-dominated: use stronger/weaker criterion accordingly */
+                    double diffusion_from_streaming = Get_CosmicRayStreamingVelocity(p) * CRPressureGradScaleLength;
+                    if(diffusion_from_streaming > 0.75*SphP[p].CosmicRayDiffusionCoeff) {L_cr = L_cr_weak;}
 #endif
-                    double dt_conduction = 0.5 * L_cond*L_cond / (1.0e-33 + SphP[p].CosmicRayDiffusionCoeff);
+#endif
+                    double dt_conduction = 0.5 * L_cr*L_cr / (1.0e-33 + SphP[p].CosmicRayDiffusionCoeff);
                     // since we use DIFFUSIVITIES, not CONDUCTIVITIES, we dont need any other powers to get the right units //
                     if(dt_conduction < dt) dt = dt_conduction;
                 }
