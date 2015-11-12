@@ -483,8 +483,8 @@ void set_units(void)
     All.ConductionCoeff *= coefficient;
 #endif
 #ifdef VISCOSITY_BRAGINSKII
-    All.ShearViscosityCoeff *= 0.423 * coefficient * sqrt((PROTONMASS/ELECTRONMASS) * (HYDROGEN_MASSFRAC + 4.0*(1-HYDROGEN_MASSFRAC)));
-    // the viscosity coefficient eta is identical in these units up to the order-unity constant, and multiplied by sqrt[m_ion/m_electron] //
+    All.ShearViscosityCoeff *= 0.636396 * coefficient * sqrt(ELECTRONMASS / (PROTONMASS * 4.0 / (8 - 5 * (1 - HYDROGEN_MASSFRAC))));
+    // the viscosity coefficient eta is identical in these units up to the order-unity constant, and multiplied by sqrt[m_electron/m_ion] //
     All.BulkViscosityCoeff = 0;
     // no bulk viscosity in the Braginskii-Spitzer formulation //
 #endif

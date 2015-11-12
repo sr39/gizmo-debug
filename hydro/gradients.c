@@ -1240,7 +1240,7 @@ void hydro_gradient_calc(void)
                 double density_cgs = SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam; // mass density (cgs) //
                 double density_ions = ionized_frac * density_cgs; // assume all the mass is in ions, with global charge neutrality
                 double numden_e = n_elec * density_cgs / mean_molecular_weight; // number density of electrons (cgs) //
-                double gizmo2gauss = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam) / All.UnitMagneticField_in_gauss; // convert to B-field to gauss (units)
+                double gizmo2gauss = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); // convert to B-field to gauss (units)
                 double bmag = 0; for(k=0;k<3;k++) {bmag += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);} // get magnitude of B //
                 if(bmag<=0) {bmag=0;} else {bmag = sqrt(bmag) * All.cf_a2inv * gizmo2gauss;} // B-field magnitude in Gauss
                 
@@ -1457,7 +1457,7 @@ void hydro_gradient_calc(void)
                 double kappa_diff = 3.e28 / (GAMMA_COSMICRAY_MINUS1 * All.UnitVelocity_in_cm_per_s * All.UnitLength_in_cm / All.HubbleParam); /* converts from CGS to code units */
                 double R_GV=1.0, p_scale=0, b_muG=1;
 #ifdef MAGNETIC
-                double gizmo2gauss = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam) / All.UnitMagneticField_in_gauss;
+                double gizmo2gauss = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam);
                 double b2_mag = 0.0;
                 for(k=0;k<3;k++) {b2_mag += Get_Particle_BField(i,k) * Get_Particle_BField(i,k);}
                 b_muG=sqrt(DMAX(b2_mag,0)) * All.cf_a2inv * gizmo2gauss / 1.0e-6; /* B-field in units of physical microGauss */
@@ -1493,6 +1493,7 @@ void hydro_gradient_calc(void)
                 b_muG = sqrt( SphP[i].Pressure * All.cf_a3inv * All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam / 4.0e-14 );
 #endif
                 p_scale *= (All.UnitLength_in_cm / All.HubbleParam * All.cf_atime) / (3.086e21); /* physical pressure scale length in units of kpc */
+                if(p_scale > 1) {p_scale=1;}
                 kappa_diff *= pow( p_scale * p_scale * R_GV / b_muG, 1./3.); /* these should all be dimensionless here */
                 /* now we apply a limiter to prevent the coefficient from becoming too large: cosmic rays cannot stream/diffuse with v_diff > c */
                 double kappa_diff_vel = kappa_diff * GAMMA_COSMICRAY_MINUS1 / CRPressureGradScaleLength * All.UnitVelocity_in_cm_per_s;

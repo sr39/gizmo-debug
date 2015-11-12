@@ -508,7 +508,11 @@ integertime get_timestep(int p,		/*!< particle index */
                 if(Get_Particle_CosmicRayPressure(p) > 1.0e-20)
                 {
                     double L_cond_inv = 1. / Get_CosmicRayGradientLength(p);
-                    double L_cond = 1./(L_cond_inv + 0./(L_particle*All.cf_atime));
+#ifdef COSMIC_RAYS_DISABLE_DIFFUSION
+                    double L_cond = 1./(L_cond_inv + 0./(L_particle*All.cf_atime)); // streaming allows weaker timestep criterion because it's really an advection equation
+#else
+                    double L_cond = 1./(L_cond_inv + 1./(L_particle*All.cf_atime)); // true diffusion requires the stronger timestep criterion be applied
+#endif
                     double dt_conduction = 0.5 * L_cond*L_cond / (1.0e-33 + SphP[p].CosmicRayDiffusionCoeff);
                     // since we use DIFFUSIVITIES, not CONDUCTIVITIES, we dont need any other powers to get the right units //
                     if(dt_conduction < dt) dt = dt_conduction;
