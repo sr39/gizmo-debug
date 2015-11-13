@@ -1967,10 +1967,9 @@ void fof_make_black_holes(void)
   int i, j, n, ntot;
   int nexport, nimport, recvTask, level;
   int *import_indices, *export_indices;
-  if(All.SeedBlackHoleMassSigma > 0) {
-        gsl_rng *random_generator_forbh;
-        double random_number_forbh=0, unitmass_in_msun;
-    }
+  gsl_rng *random_generator_forbh;
+  double random_number_forbh=0, unitmass_in_msun;
+    
 #ifdef BH_SEED_STAR_MASS_FRACTION
   float *import_fofmass, *export_fofmass;
 #else
