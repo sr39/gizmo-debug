@@ -453,6 +453,9 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
             
+        case IO_BH_DIST:
+            break;
+            
         case IO_BHMASSALPHA:
 #ifdef BH_ALPHADISK_ACCRETION
             for(n = 0; n < pc; n++)

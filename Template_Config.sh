@@ -258,6 +258,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #BH_GRAVACCRETION_BTOD          # DAA: torque rate based on kinematic bulge/disk decomposition as in Angles-Alcazar et al 2013-2015  (requires BH_GRAVACCRETION)
 ##BH_BONDI=0                    # Bondi-Hoyle style accretion model: 0=default (with velocity), 1=dont use gas velocity with sound speed; 2=variable-alpha tweak (Booth & Schaye 2009)
 #BH_SUBGRIDBHVARIABILITY        # model variability below resolved dynamical time for BH
+#BH_CALC_DISTANCES              # calculate distances for all particles to closest BH for, e.g., refinement
 # ----- feedback models/options
 #BH_BAL_WINDS                   # particles within the BH kernel are given mass, momentum, and energy continuously as high-vel BAL winds
 #BH_BAL_KICK                    # do BAL winds with stochastic particle kicks at specified velocity (instead of continuous wind solution - requires BH_SWALLOWGAS - )
@@ -276,7 +277,6 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #------------ deprecated or de-bugging options (most have been combined or optimized into the functions above, here for legacy)
 ##DETACH_BLACK_HOLES            # Insert an independent data structure for BHs (currently exlicitly depends on SEPARATE_STELLARDOMAINDECOMP)
 ##BH_SEED_STAR_MASS_FRACTION=0.02 # minimum star mass fraction for BH seeding
-##BH_BROADCAST_POSITION         # make sure all processors always know BH position (saved in a global variable): works for single-BH simulations only
 ##-----------------------------------------------------------------------------------------------------
 #-------------------------------------- AGN-Bubble feedback (D. Sijacki)
 #-------------------------------- use of these routines requires explicit pre-approval by developer D. Sijacki

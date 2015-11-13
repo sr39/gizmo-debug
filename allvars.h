@@ -1536,10 +1536,6 @@ extern struct global_data_all_processes
   double DivBcleanHyperbolicSigma;
 #endif
 #endif /* MAGNETIC */
-
-#if defined(BH_BROADCAST_POSITION)
-  double BH_Position[3];
-#endif
     
 #if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_VARIABLEVELOCITY)
   double TimeNextOnTheFlyFoF;
@@ -1816,6 +1812,10 @@ extern ALIGN(32) struct particle_data
 #endif
 #endif  /* if !defined(DETACH_BLACK_HOLES) */
 #endif  /* if defined(BLACK_HOLES) */
+    
+#ifdef BH_CALC_DISTANCES
+    MyFloat min_dist_to_bh;
+#endif
     
 #ifdef SIDM
 #ifndef WAKEUP
@@ -2310,6 +2310,9 @@ extern struct gravdata_out
     int dt_step_sidm;
     long unsigned int NInteractions;
 #endif
+#ifdef BH_CALC_DISTANCES
+    MyFloat min_dist_to_bh;
+#endif
 }
  *GravDataResult,		/*!< holds the partial results computed for imported particles. Note: We use GravDataResult = GravDataGet, such that the result replaces the imported data */
  *GravDataOut;			/*!< holds partial results received from other processors. This will overwrite the GravDataIn array */
@@ -2453,6 +2456,7 @@ enum iofields
   IO_BHMBUB,
   IO_BHMINI,
   IO_BHMRAD,
+  IO_BH_DIST,
   IO_ACRB,
   IO_POT,
   IO_ACCEL,
@@ -2646,10 +2650,13 @@ extern ALIGN(32) struct NODE
     MyFloat bh_lum_grad[3];	/*!< gradient vector for gas around BH (for angular dependence) */
 #endif    
 
+#ifdef BH_CALC_DISTANCES
+    MyFloat bh_mass;      /*!< holds the BH mass in the node.  Used for calculating tree based dist to closest bh */
+#endif
+    
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
     MyFloat rt_source_lum_s[3];     /*!< center of luminosity for sources in the node*/
 #endif
-    
     
   MyFloat maxsoft;		/*!< hold the maximum gravitational softening of particle in the node */
   

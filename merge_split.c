@@ -33,7 +33,7 @@ int does_particle_need_to_be_merged(MyIDType i)
     return 0;
 #else
     if(P[i].Mass <= 0) return 0;
-    if(P[i].Mass <= All.MinMassForParticleMerger) return 1;
+    if(P[i].Mass <= (All.MinMassForParticleMerger* ref_mass_factor(i))) return 1;
     return 0;
 #endif
 }
@@ -46,11 +46,21 @@ int does_particle_need_to_be_split(MyIDType i)
 #ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
 #else
-    if(P[i].Mass >= All.MaxMassForParticleSplit) return 1;
+    if(P[i].Mass >= (All.MaxMassForParticleSplit * ref_mass_factor(i))) return 1;
     return 0;
 #endif
 }
 
+/*! A multiplcative factor that determines the target mass of a particle for the (de)refinement routines */
+double ref_mass_factor(MyIDType i)
+{
+    double ref_factor=1.0;
+#ifdef BH_CALC_DISTANCES
+    ref_factor = sqrt(P[i].min_dist_to_bh + 0.0001);
+    if(ref_factor>1.0) { ref_factor = 1.0; }
+#endif
+    return ref_factor;
+}
 
 
 /*! This is the master routine to actually determine if mergers/splits need to be performed, and if so, to do them

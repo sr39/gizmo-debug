@@ -52,6 +52,7 @@ long long report_comittable_memory(long long *MemTotal,
 void merge_and_split_particles(void);
 int does_particle_need_to_be_merged(MyIDType i);
 int does_particle_need_to_be_split(MyIDType i);
+double ref_mass_factor(MyIDType i);
 void merge_particles_ij(MyIDType i, MyIDType j);
 void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, double r2_nearest);
 

@@ -278,9 +278,6 @@ void begrun(void)
       All.FastestWaveSpeed = 0.0;
       All.FastestWaveDecay = 0.0;
 #endif
-#ifdef BH_BROADCAST_POSITION
-      All.BH_Position[0]=All.BH_Position[1]=All.BH_Position[2]=0.;
-#endif
 #ifdef BLACK_HOLES
       All.BlackHoleMaxAccretionRadius = all.BlackHoleMaxAccretionRadius;
 #endif

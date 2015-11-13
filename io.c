@@ -553,6 +553,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
             
+        case IO_BH_DIST:
+#ifdef BH_CALC_DISTANCES
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = P[pindex].min_dist_to_bh;
+                    n++;
+                }
+#endif
+            break;
+            
         case IO_ACCEL:		/* acceleration */
 #ifdef OUTPUTACCELERATION
             for(n = 0; n < pc; pindex++)
@@ -1395,6 +1406,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             break;
             
         case IO_MASS:
+        case IO_BH_DIST:
         case IO_SECONDORDERMASS:
         case IO_U:
         case IO_RHO:
@@ -1629,6 +1641,7 @@ int get_values_per_blockelement(enum iofields blocknr)
             
         case IO_ID:
         case IO_MASS:
+        case IO_BH_DIST:
         case IO_SECONDORDERMASS:
         case IO_U:
         case IO_RHO:
@@ -1824,6 +1837,7 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_AGS_CORR:
         case IO_AGS_NGBS:
         case IO_MG_PHI:
+        case IO_BH_DIST:
             return nall;
             break;
             
@@ -2332,6 +2346,13 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
             
+        case IO_BH_DIST:
+#ifdef BH_CALC_DISTANCES
+            return 1;
+#else
+            return 0;
+#endif
+            
         case IO_BHPROGS:
 #ifdef BH_COUNTPROGS
             return 1;
@@ -2742,6 +2763,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_BHMASS:
             strncpy(label, "BHMA", 4);
             break;
+        case IO_BH_DIST:
+            strncpy(label, "BHR ", 4);
+            break;
         case IO_BHMASSALPHA:
             strncpy(label, "BHMa", 4);
             break;
@@ -3083,6 +3107,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_BHMASS:
             strcpy(buf, "BH_Mass");
+            break;
+        case IO_BH_DIST:
+            strcpy(buf, "BH_Dist");
             break;
         case IO_BHMASSALPHA:
             strcpy(buf, "BH_Mass_AlphaDisk");

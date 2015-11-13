@@ -582,6 +582,15 @@ void gravity_tree(void)
                         P[place].NInteractions += GravDataOut[j].NInteractions;
                     }
 #endif
+                    
+#ifdef BH_CALC_DISTANCES
+                    /* GravDataOut[j].min_dist_to_bh contains the min dist to particle "P[place]" on another
+                     task.  We now check if it is smaller than the current value */
+                    if(GravDataOut[j].min_dist_to_bh < P[place].min_dist_to_bh)
+                    {
+                        P[place].min_dist_to_bh = GravDataOut[j].min_dist_to_bh;
+                    }
+#endif
                     if(Ewald_iter==0) /* don't allow for an infinite hierarchy of these moments, or you will get nonsense */
                     {
 #ifdef RT_OTVET

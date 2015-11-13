@@ -110,6 +110,9 @@ int force_treebuild(int npart, struct unbind_data *mp)
 {
     int flag;
     
+    for(int i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) { P[i].min_dist_to_bh=1e9; }
+    
+    
     do
     {
         Numnodestree = force_treebuild_single(npart, mp);
@@ -567,6 +570,9 @@ void force_update_node_recursive(int no, int sib, int father)
         MyFloat bh_lum,bh_lum_hR,bh_lum_grad[3];
         bh_lum=bh_lum_hR=bh_lum_grad[0]=bh_lum_grad[1]=bh_lum_grad[2]=0;
 #endif
+#ifdef BH_CALC_DISTANCES
+        MyFloat bh_mass=0;
+#endif
 #ifdef SCALARFIELD
         mass_dm = 0;
         s_dm[0] = vs_dm[0] = 0;
@@ -638,6 +644,9 @@ void force_update_node_recursive(int no, int sib, int father)
                         bh_lum_grad[0] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[0];
                         bh_lum_grad[1] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[1];
                         bh_lum_grad[2] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[2];
+#endif
+#ifdef BH_CALC_DISTANCES
+                        bh_mass += Nodes[p].bh_mass;
 #endif
 #ifdef SCALARFIELD
                         mass_dm += (Nodes[p].mass_dm);
@@ -713,6 +722,12 @@ void force_update_node_recursive(int no, int sib, int father)
                             bh_lum_hR += BHLum * pa->BH_disk_hr;
                             for(k=0;k<3;k++) {bh_lum_grad[k] += BHLum * pa->GradRho[k];}
                         }
+                    }
+#endif
+#ifdef BH_CALC_DISTANCES
+                    if(pa->Type == 5)
+                    {
+                        bh_mass += pa->Mass;    /* actual value is not used for distances */
                     }
 #endif
                     
@@ -866,6 +881,9 @@ void force_update_node_recursive(int no, int sib, int father)
         Nodes[no].bh_lum_grad[1] = bh_lum_grad[1];
         Nodes[no].bh_lum_grad[2] = bh_lum_grad[2];
 #endif
+#ifdef BH_CALC_DISTANCES
+        Nodes[no].bh_mass = bh_mass;
+#endif
 #ifdef SCALARFIELD
         Nodes[no].s_dm[0] = s_dm[0];
         Nodes[no].s_dm[1] = s_dm[1];
@@ -955,6 +973,9 @@ void force_exchange_pseudodata(void)
 #ifdef BH_PHOTONMOMENTUM
         MyFloat bh_lum,bh_lum_hR,bh_lum_grad[3];
 #endif
+#ifdef BH_CALC_DISTANCES
+        MyFloat bh_mass;
+#endif
 #ifdef SCALARFIELD
         MyFloat s_dm[3];
         MyFloat vs_dm[3];
@@ -1017,6 +1038,9 @@ void force_exchange_pseudodata(void)
             DomainMoment[i].bh_lum_grad[0] = Nodes[no].bh_lum_grad[0];
             DomainMoment[i].bh_lum_grad[1] = Nodes[no].bh_lum_grad[1];
             DomainMoment[i].bh_lum_grad[2] = Nodes[no].bh_lum_grad[2];
+#endif
+#ifdef BH_CALC_DISTANCES
+            DomainMoment[i].bh_mass = Nodes[no].bh_mass;
 #endif
 #ifdef SCALARFIELD
             DomainMoment[i].s_dm[0] = Nodes[no].s_dm[0];
@@ -1095,6 +1119,9 @@ void force_exchange_pseudodata(void)
                     Nodes[no].bh_lum_grad[1] = DomainMoment[i].bh_lum_grad[1];
                     Nodes[no].bh_lum_grad[2] = DomainMoment[i].bh_lum_grad[2];
 #endif
+#ifdef BH_CALC_DISTANCES
+                    Nodes[no].bh_mass = DomainMoment[i].bh_mass;
+#endif
 #ifdef SCALARFIELD
                     Nodes[no].s_dm[0] = DomainMoment[i].s_dm[0];
                     Nodes[no].s_dm[1] = DomainMoment[i].s_dm[1];
@@ -1149,6 +1176,9 @@ void force_treeupdate_pseudos(int no)
     MyFloat bh_lum,bh_lum_hR,bh_lum_grad[3];
     bh_lum=bh_lum_hR=bh_lum_grad[0]=bh_lum_grad[1]=bh_lum_grad[2]=0;
 #endif
+#ifdef BH_CALC_DISTANCES
+    MyFloat bh_mass=0;
+#endif
 #ifdef SCALARFIELD
     mass_dm = 0;
     s_dm[0] = vs_dm[0] = 0;
@@ -1199,6 +1229,9 @@ void force_treeupdate_pseudos(int no)
             bh_lum_grad[0] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[0];
             bh_lum_grad[1] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[1];
             bh_lum_grad[2] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[2];
+#endif
+#ifdef BH_CALC_DISTANCES
+            bh_mass += Nodes[p].bh_mass;
 #endif
 #ifdef SCALARFIELD
             mass_dm += (Nodes[p].mass_dm);
@@ -1333,6 +1366,9 @@ void force_treeupdate_pseudos(int no)
     Nodes[no].bh_lum_grad[0] = bh_lum_grad[0];
     Nodes[no].bh_lum_grad[1] = bh_lum_grad[1];
     Nodes[no].bh_lum_grad[2] = bh_lum_grad[2];
+#endif
+#ifdef BH_CALC_DISTANCES
+    Nodes[no].bh_mass = bh_mass;
 #endif
 #ifdef SCALARFIELD
     Nodes[no].s_dm[0] = s_dm[0];
@@ -1505,6 +1541,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef BH_COMPTON_HEATING
     double incident_flux_agn=0;
+#endif
+#ifdef BH_CALC_DISTANCES
+    double min_dist_to_bh2=1e20;
 #endif
     
     
@@ -1732,6 +1771,16 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 
                 mass = P[no].Mass;
                 
+#ifdef BH_CALC_DISTANCES
+                if(P[no].Type == 5)             /* found a BH particle in grav calc */
+                {
+                    if(r2 < min_dist_to_bh2)    /* is this the closest BH part I've found yet? */
+                    {
+                        min_dist_to_bh2 = r2;   /* if yes: adjust min bh dist */
+                    }
+                }
+#endif
+
                 
 #ifdef RT_USE_GRAVTREE
                 if(valid_gas_particle_for_rt)	/* we have a (valid) gas particle as target */
@@ -1973,6 +2022,20 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
                 r2 = dx * dx + dy * dy + dz * dz;
                 
+
+#ifdef BH_CALC_DISTANCES
+                if(nop->bh_mass > 0)        /* found a node with non-zero BH mass */
+                {
+                    double bh_dx = nop->center[0] - pos_x;
+                    double bh_dy = nop->center[1] - pos_y;
+                    double bh_dz = nop->center[2] - pos_z;
+#if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
+                    NEAREST_XYZ(bh_dx,bh_dy,bh_dz,-1);
+#endif
+                    double bh_r2 = bh_dx * bh_dx + bh_dy * bh_dy + bh_dz * bh_dz + (nop->len)*(nop->len);
+                    if(bh_r2 < min_dist_to_bh2) { min_dist_to_bh2 = bh_r2;}
+                }
+#endif
                 
 #ifdef RT_USE_GRAVTREE
                 if(valid_gas_particle_for_rt)	/* we have a (valid) gas particle as target */
@@ -2500,6 +2563,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         P[target].Vel[0] += kick_x; P[target].Vel[1] += kick_y; P[target].Vel[2] += kick_z;
         P[target].dt_step_sidm = targetdt_step_sidm; P[target].NInteractions += si_count;
 #endif
+#ifdef BH_CALC_DISTANCES
+        P[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );
+#endif
     }
     else
     {
@@ -2525,6 +2591,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SIDM
         GravDataResult[target].Vel[0] = kick_x; GravDataResult[target].Vel[1] = kick_y; GravDataResult[target].Vel[2] = kick_z;
         GravDataResult[target].dt_step_sidm = targetdt_step_sidm; GravDataResult[target].NInteractions = si_count;
+#endif
+#ifdef BH_CALC_DISTANCES
+        GravDataResult[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );
 #endif
         *exportflag = nodesinlist;
     }
