@@ -244,10 +244,8 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##-----------------------------------------------------------------------------------------------------
 #BLACK_HOLES                    # enables Black-Holes (master switch)
 # ----- seed models
-#BH_HOST_TO_SEED_RATIO=1000     # DAA: The minimum stellar mass for seeding is BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass
-                                #      Requires FOF with linking type including star particles (MinFoFMassForNewSeed and massDMpart are ignored)
-#MINREDSHIFT_FOR_BHSEED=2.0     # DAA: stops BH seeding below this redshift
-#SIGMA_FOR_BHSEED=0.5           # DAA: log(Mseed) is taken from a log-normal distribution with mean "SeedBlackHoleMass" and stddev SIGMA_FOR_BHSEED
+#BH_HOST_TO_SEED_RATIO=1000     # Min stellar mass for seeding is BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass
+                                # Requires FOF with linking type including star particles (MinFoFMassForNewSeed and massDMpart are ignored)
 #BH_POPIII_SEEDS                # BHs seeded on-the-fly from dense, low-metallicity gas
 #------ accretion models/options
 #BH_SWALLOWGAS                  # enables stochastic accretion of gas particles consistent with growth rate of hole

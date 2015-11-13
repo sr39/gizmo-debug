@@ -110,8 +110,10 @@ int force_treebuild(int npart, struct unbind_data *mp)
 {
     int flag;
     
-    for(int i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) { P[i].min_dist_to_bh=1e9; }
-    
+#ifdef BH_CALC_DISTANCES
+    int i;
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) { P[i].min_dist_to_bh=1e9; }
+#endif
     
     do
     {

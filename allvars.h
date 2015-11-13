@@ -1545,9 +1545,14 @@ extern struct global_data_all_processes
 #ifdef BLACK_HOLES
   double BlackHoleAccretionFactor;	/*!< Fraction of BH bondi accretion rate */
   double BlackHoleFeedbackFactor;	/*!< Fraction of the black luminosity feed into thermal feedback */
-  double SeedBlackHoleMass;	/*!< Seed black hole mass */
-  double MinFoFMassForNewSeed;	/*!< Halo mass required before new seed is put in */
-  double BlackHoleNgbFactor;	/*!< Factor by which the normal SPH neighbour should be increased/decreased */
+  double SeedBlackHoleMass;         /*!< Seed black hole mass */
+  double SeedBlackHoleMassSigma;    /*!< Standard deviation of init black hole masses */
+  double SeedBlackHoleMinRedshift; /*!< Minimum redshift where BH seeds are allowed */
+#ifdef BH_ALPHADISK_ACCRETION
+  double SeedAlphaDiskMass;         /*!< Seed alpha disk mass */
+#endif
+  double MinFoFMassForNewSeed;      /*!< Halo mass required before new seed is put in */
+  double BlackHoleNgbFactor;        /*!< Factor by which the SPH neighbour should be increased/decreased */
   double BlackHoleMaxAccretionRadius;
   double BlackHoleEddingtonFactor;	/*!< Factor above Eddington */
   double BlackHoleRadiativeEfficiency;  /**< Radiative efficiency determined by the spin value, default value is 0.1 */

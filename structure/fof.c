@@ -11,10 +11,8 @@
 #include "../allvars.h"
 #include "../proto.h"
 
-#ifdef SIGMA_FOR_BHSEED
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
-#endif
 
 #ifdef HAVE_HDF5
 #include <hdf5.h>
@@ -405,15 +403,9 @@ void fof_fof(int num)
     printf("computation of group properties took = %g sec\n", timediff(t0, t1));
 
 #ifdef BLACK_HOLES
-  if(num < 0){                       // DAA: make BHs in every call to fof_fof (including the group finding for each snapshot)
-#ifdef MINREDSHIFT_FOR_BHSEED                        // DAA: BH seeding only at z > MINREDSHIFT_FOR_BHSEED
-    if(All.Time < 1.0/(1.0+MINREDSHIFT_FOR_BHSEED))
-       fof_make_black_holes();
-    else
-      printf("skipping black hole seeding at a = %g \n", All.Time);
-#else
-    fof_make_black_holes();
-#endif
+  if(num < 0){   // Make BHs in every call to fof_fof (including the group finding for each snapshot)
+      if(All.Time < 1.0/(1.0+All.SeedBlackHoleMinRedshift)) { fof_make_black_holes(); }
+      else {  printf("skipping black hole seeding at a = %g \n", All.Time); }
   }
 #endif
 
@@ -1975,10 +1967,10 @@ void fof_make_black_holes(void)
   int i, j, n, ntot;
   int nexport, nimport, recvTask, level;
   int *import_indices, *export_indices;
-#ifdef SIGMA_FOR_BHSEED
-  gsl_rng *random_generator_forbh;
-  double random_number_forbh=0, unitmass_in_msun;
-#endif
+  if(All.SeedBlackHoleMassSigma > 0) {
+        gsl_rng *random_generator_forbh;
+        double random_number_forbh=0, unitmass_in_msun;
+    }
 #ifdef BH_SEED_STAR_MASS_FRACTION
   float *import_fofmass, *export_fofmass;
 #else
@@ -2135,18 +2127,19 @@ void fof_make_black_holes(void)
       BPP(import_indices[n]).BH_Mass =
 	All.SeedBlackHoleMass * import_fofmass[n] / (BH_SEED_STAR_MASS_FRACTION * All.MinFoFMassForNewSeed);
 #else
-#ifdef SIGMA_FOR_BHSEED            // DAA: seed mass from lognormal distribution
-      /* compute gaussian random number: mean=0, sigma=SIGMA_FOR_BHSEED */
-      random_generator_forbh = gsl_rng_alloc(gsl_rng_ranlxd1);      
-      gsl_rng_set(random_generator_forbh,P[import_indices[n]].ID+17);
-      random_number_forbh = gsl_ran_gaussian(random_generator_forbh, SIGMA_FOR_BHSEED);
-      BPP(import_indices[n]).BH_Mass = pow( 10., log10(All.SeedBlackHoleMass) + random_number_forbh );
-      unitmass_in_msun = (All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS;
-      if( BPP(import_indices[n]).BH_Mass < 100./unitmass_in_msun )
+      if(All.SeedBlackHoleMassSigma > 0)
+      {
+        /* compute gaussian random number: mean=0, sigma=All.SeedBlackHoleMassSigma */
+        random_generator_forbh = gsl_rng_alloc(gsl_rng_ranlxd1);
+        gsl_rng_set(random_generator_forbh,P[import_indices[n]].ID+17);
+        random_number_forbh = gsl_ran_gaussian(random_generator_forbh, All.SeedBlackHoleMassSigma);
+        BPP(import_indices[n]).BH_Mass = pow( 10., log10(All.SeedBlackHoleMass) + random_number_forbh );
+        unitmass_in_msun = (All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS;
+        if( BPP(import_indices[n]).BH_Mass < 100./unitmass_in_msun )
           BPP(import_indices[n]).BH_Mass = 100./unitmass_in_msun;            // DAA: enforce lower limit of Mseed = 100 x Msun
-#else
-      BPP(import_indices[n]).BH_Mass = All.SeedBlackHoleMass;
-#endif
+      }else{
+          BPP(import_indices[n]).BH_Mass = All.SeedBlackHoleMass;
+      }
 #endif
 
 #ifdef BH_ALPHADISK_ACCRETION                                     // DAA: this should be outside of BH_SEED_STAR_MASS_FRACTION ...

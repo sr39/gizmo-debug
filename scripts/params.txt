@@ -188,7 +188,10 @@ CosmicRay_SNeFraction       0.1     % fraction of SNe ejecta kinetic energy into
 %--- formation/seeding  
 MinFoFMassForNewSeed         10.	    % log(M_stars) for on-the-fly FoF seeding 
 TimeBetOnTheFlyFoF           200000     % time (in sec) between FoF searches 
-SeedBlackHoleMass            1.0e-7 	% initial mass (on-the-fly or single galaxy) 
+SeedBlackHoleMass            1.0e-7 	% initial mass (on-the-fly or single galaxy)
+SeedBlackHoleMassSigma       0.5        % log normal standard deviation in the init BH seed masses
+SeedAlphaDiskMass            0.0        % initial mass in the alpha disk (mostly for iso gals)
+SeedBlackHoleMinRedshift    2.0        % this minimum redshift where new BH particles are seeded via FoF
 %--- accretion  
 BlackHoleAccretionFactor     1.0	    % multiplier for mdot 
 BlackHoleEddingtonFactor     1.0	    % fraction of eddington to cap (can be >1) 

@@ -490,7 +490,7 @@ void init(void)
             if(RestartFlag == 0)
                 BPP(i).BH_Mass = All.SeedBlackHoleMass;
 #ifdef BH_ALPHADISK_ACCRETION
-            BPP(i).BH_Mass_AlphaDisk = 0;
+            BPP(i).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
 #endif
 #ifdef BH_COUNTPROGS
             BPP(i).BH_CountProgs = 1;
