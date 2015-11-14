@@ -1453,14 +1453,16 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.SeedBlackHoleMass;
       id[nt++] = REAL;
         
+#ifdef FOF
       strcpy(tag[nt], "SeedBlackHoleMassSigma");
       addr[nt] = &All.SeedBlackHoleMassSigma;
       id[nt++] = REAL;
-        
+
       strcpy(tag[nt], "SeedBlackHoleMinRedshift");
       addr[nt] = &All.SeedBlackHoleMinRedshift;
       id[nt++] = REAL;
-        
+#endif
+  
 #ifdef BH_ALPHADISK_ACCRETION
       strcpy(tag[nt], "SeedAlphaDiskMass");
       addr[nt] = &All.SeedAlphaDiskMass;
