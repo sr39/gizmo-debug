@@ -486,25 +486,23 @@ void init(void)
         if(P[i].Type == 5)
         {
             count_holes++;
-            
-            if(RestartFlag == 0)
-                BPP(i).BH_Mass = All.SeedBlackHoleMass;
-#ifdef BH_ALPHADISK_ACCRETION
-            BPP(i).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
-#endif
-#ifdef BH_COUNTPROGS
-            BPP(i).BH_CountProgs = 1;
-#endif
-#ifdef BH_BUBBLES
             if(RestartFlag == 0)
             {
+                BPP(i).BH_Mass = All.SeedBlackHoleMass;
+#ifdef BH_ALPHADISK_ACCRETION
+                BPP(i).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
+#endif
+#ifdef BH_COUNTPROGS
+                BPP(i).BH_CountProgs = 1;
+#endif
+#ifdef BH_BUBBLES
                 BPP(i).BH_Mass_bubbles = All.SeedBlackHoleMass;
                 BPP(i).BH_Mass_ini = All.SeedBlackHoleMass;
 #ifdef UNIFIED_FEEDBACK
                 BPP(i).BH_Mass_radio = All.SeedBlackHoleMass;
 #endif
-            }
 #endif
+            }
         }
 #endif
     }
