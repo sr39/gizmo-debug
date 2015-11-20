@@ -221,8 +221,8 @@ double DoCooling(double u_old, double rho, double dt, double *ne_guess, int targ
      term in the full implicit solution. The term "r" below represents the exact solution if the cooling function has
      the form d(u-u0)/dt ~ -a*(u-u0)  around some u0 which is close to the "ufinal" returned by the cooling routine,
      to which we then add the heating term from hydro and compute the solution over a full timestep */
-    double r=u/u_old; if(r>1) {r=1/r;} if(fabs(r-1)>1.e-4) {r=(1-r)/log(r);} r=DMAX(0,DMIN(r,1));
-    du*=0.5*r; if(du<-0.5*u) {du=-0.5*u;} u+=du;
+    double r=u/u_old; if(r>1) {r=1/r;} if(fabs(r-1)>1.e-4) {r=(r-1)/log(r);} r=DMAX(0,DMIN(r,1));
+    du *= 0.5*r; if(du<-0.5*u) {du=-0.5*u;} u+=du;
 #else
     /* with full operator splitting we just call grackle normally. note this is usually fine,
      but can lead to artificial noise at high densities and low temperatures, especially if something

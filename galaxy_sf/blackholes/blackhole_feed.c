@@ -381,7 +381,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #ifdef BH_GRAVCAPTURE_NONGAS
                                     /* simply swallow non-gas particle if BH_GRAVCAPTURE_NONGAS enabled */
                                     if((P[j].Type != 0) && (P[j].SwallowID < id)) P[j].SwallowID = id;
-#endif //ifdef BH_GRAVCAPTURE_NONGAS
+#endif
                                     
 #ifdef BH_GRAVCAPTURE_GAS
                                     /* now deal with gas */
@@ -391,7 +391,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                         p = 1/eddington_factor;
 #if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
                                         p /= All.BAL_f_accretion; // we need to accrete more, then remove the mass in winds
-#endif // ifdef BH_BAL_WINDS
+#endif
                                         w = get_random_number(P[j].ID);
                                         if(w < p) {
                                             printf("MARKING_BH_FOOD: P[j.]ID=%llu to be swallowed by id=%llu \n",
@@ -450,10 +450,6 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                             }
 #endif
 
-// DAA: no need for this now - we shouldn't be here if defined(BH_GRAVCAPTURE_GAS)
-//#if defined(BH_GRAVCAPTURE_GAS) // && !defined(BH_GRAVCAPTURE_NONGAS)
-//                            p = 0;
-//#endif
                             
                             w = get_random_number(P[j].ID);
                             if(w < p)

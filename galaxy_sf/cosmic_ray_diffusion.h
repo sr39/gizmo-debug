@@ -47,7 +47,7 @@
             double q_direct = d_scalar * kernel.dp[k] * rinv*rinv;
 #ifdef MAGNETIC
             grad_ij[k] = MINMOD_G(q_grad , q_direct);
-            if(q_grad*q_direct < 0) {if(fabs(q_direct) > 2.*fabs(q_grad)) {grad_ij[k] = 0.0;}}
+            if(q_grad*q_direct < 0) {if(fabs(q_direct) > 5.*fabs(q_grad)) {grad_ij[k] = 0.0;}}
 #else
             grad_ij[k] = MINMOD(q_grad , q_direct);
 #endif
@@ -81,7 +81,7 @@
         double d_scalar_b = b_hll * d_scalar;
         double f_direct = Face_Area_Norm*d_scalar_b*rinv/All.cf_atime;
         double check_for_stability_sign = d_scalar*cmag;
-        if((check_for_stability_sign < 0) && (fabs(f_direct) > 0.005*fabs(cmag))) {cmag = 0;}
+        if((check_for_stability_sign < 0) && (fabs(f_direct) > 1.*fabs(cmag))) {cmag = 0;}
         cmag *= -diffusion_wt; /* multiply through coefficient to get flux */
         
 #endif // end of SPH/NOT SPH check
