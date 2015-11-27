@@ -81,7 +81,7 @@
         double d_scalar_b = b_hll * d_scalar;
         double f_direct = Face_Area_Norm*d_scalar_b*rinv/All.cf_atime;
         double check_for_stability_sign = d_scalar*cmag;
-        if((check_for_stability_sign < 0) && (fabs(f_direct) > 2.*fabs(cmag))) {cmag = 0;}
+        if((check_for_stability_sign < 0) && (fabs(f_direct) > 0.005*fabs(cmag))) {cmag = 0;}
         cmag *= -diffusion_wt; /* multiply through coefficient to get flux */
         
 #endif // end of SPH/NOT SPH check

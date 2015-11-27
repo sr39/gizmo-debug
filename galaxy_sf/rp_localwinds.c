@@ -63,18 +63,18 @@ void radiation_pressure_winds_consolidated(void)
             star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
             if( (star_age < 0.1) && (P[i].Mass > 0) && (P[i].DensAroundStar > 0) )
             {
-                //RtauMax = P[i].Hsml*All.cf_atime * (2.0 * KAPPA_UV * P[i].Hsml*P[i].DensAroundStar/(All.cf_atime*All.cf_atime) * All.UnitDensity_in_cgs*All.HubbleParam*All.UnitLength_in_cm);
-                RtauMax = P[i].Hsml*All.cf_atime / (2.0 * KAPPA_UV * P[i].Hsml*P[i].DensAroundStar/(All.cf_atime*All.cf_atime) * All.UnitDensity_in_cgs*All.HubbleParam*All.UnitLength_in_cm);
+                RtauMax = P[i].Hsml*All.cf_atime * (2.0 * KAPPA_UV * P[i].Hsml*P[i].DensAroundStar/(All.cf_atime*All.cf_atime) * All.UnitDensity_in_cgs*All.HubbleParam*All.UnitLength_in_cm);
 
                 RtauMax /= All.cf_atime;
-                //RtauMax += 5.*P[i].Hsml;
-                RtauMax += PPP[i].Hsml;
-                //double rmax0 = 10.0 / unitlength_in_kpc;
-                double rmax0 = 1.0 / unitlength_in_kpc;
+                RtauMax += 5.*P[i].Hsml;
+                double rmax0 = 10.0 / unitlength_in_kpc;
                 if(RtauMax > rmax0) RtauMax = rmax0;
+                /*
                 rmax0 = 10.0*PPP[i].Hsml;
                 if(RtauMax > rmax0) RtauMax = rmax0;                
                 rmax0 = 0.1 / unitlength_in_kpc;
+                */
+                rmax0 = 1.0 / unitlength_in_kpc;
                 if(RtauMax < rmax0) RtauMax = rmax0;
                 
 #ifndef GALSF_FB_RPWIND_CONTINUOUS

@@ -801,9 +801,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     continue;
                 }
                 // NOW do the actual feedback calculation //
-                wk *= local.Area_weighted_sum[0]; // this way wk matches the value summed above for the weighting //
-                
-                dM = wk * local.Msne;
+                // wk *= local.Area_weighted_sum[0]; // this way wk matches the value summed above for the weighting //
                 
                 /* define initial mass and ejecta velocity in this 'cone' */
                 double v_bw[3]={0}, e_shock=0;
@@ -820,6 +818,10 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     pnorm += pvec[k]*pvec[k];
                 }
                 pnorm = sqrt(pnorm);
+
+                wk = pnorm; // this (vector norm) is the new 'weight function' for our purposes
+                dM = wk * local.Msne;
+
                 /* now, add contribution from relative star-gas particle motion to shock energy */
                 for(k=0;k<3;k++)
                 {
