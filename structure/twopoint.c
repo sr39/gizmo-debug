@@ -20,6 +20,8 @@
 /* Note: This routine will only work correctly for particles of equal mass ! */
 
 
+#ifdef TWOPOINT_FUNCTION_COMPUTATION_ENABLED
+
 #define BINS_TP  40		/* number of bins used */
 #define ALPHA  -1.0		/* slope used in randomly selecting radii around target particles */
 
@@ -541,3 +543,8 @@ int twopoint_ngb_treefind_variable(MyDouble searchcenter[3], MyFloat rsearch, in
   *startnode = -1;
   return 0;
 }
+
+
+
+
+#endif

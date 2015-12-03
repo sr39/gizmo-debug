@@ -134,10 +134,12 @@ int fof_compare_ID_list_ID(const void *a, const void *b);
 void myfree_msg(void *p, char *msg);
 void kspace_neutrinos_init(void);
 
+#ifdef TWOPOINT_FUNCTION_COMPUTATION_ENABLED
 void twopoint(void);
 void twopoint_save(void);
 int twopoint_ngb_treefind_variable(MyDouble searchcenter[3], MyFloat rsearch, int target, int *startnode, int mode, int *nexport, int *nsend_local);
 int twopoint_count_local(int target, int mode, int *nexport, int *nsend_local);
+#endif
 
 void powerspec(int flag, int *typeflag);
 double PowerSpec_Efstathiou(double k);

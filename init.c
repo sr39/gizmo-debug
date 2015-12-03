@@ -864,6 +864,7 @@ void init(void)
         endrun(0);
     }
     
+#ifdef TWOPOINT_FUNCTION_COMPUTATION_ENABLED
     if(RestartFlag == 5)
     {
         /* calculating powerspec and twopoint function */
@@ -886,6 +887,7 @@ void init(void)
         twopoint();
         endrun(0);
     }
+#endif
     
     
     if(RestartFlag == 6)
