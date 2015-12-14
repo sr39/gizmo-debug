@@ -18,7 +18,8 @@
  * used: THE STARTING TIME NEEDS TO BE SET IN THE PARAMETERFILE.
  * Alternatively, the code can be started with restartflag==2, then snapshots
  * from the code can be used as initial conditions-files without having to
- * change the parameterfile.  For gas particles, only the internal energy is
+ * change the parameterfile (except for changing the name of the IC file to the snapshot, 
+ * and ensuring the format tag matches it).  For gas particles, only the internal energy is
  * read, the density and mean molecular weight will be recomputed by the code.
  * When InitGasTemp>0 is given, the gas temperature will be initialzed to this
  * value assuming a mean colecular weight either corresponding to complete

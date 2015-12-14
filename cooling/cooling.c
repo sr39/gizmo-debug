@@ -899,8 +899,7 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
         {
             /* approx to cooling function for solar metallicity and nH=1 cm^(-3) -- want to do something
              much better, definitely, but for now use this just to get some idea of system with cooling to very low-temp */
-            LambdaMol = //10.0 *
-            2.8958629e-26/(pow(T/125.21547,-4.9201887)+pow(T/1349.8649,-1.7287826)+pow(T/6450.0636,-0.30749082));//*nHcgs*nHcgs;
+            LambdaMol = 2.8958629e-26/(pow(T/125.21547,-4.9201887)+pow(T/1349.8649,-1.7287826)+pow(T/6450.0636,-0.30749082));//*nHcgs*nHcgs;
             LambdaMol *= (1-shieldfac);
             double LambdaDust = 0;
 #ifdef COOL_METAL_LINES_BY_SPECIES
