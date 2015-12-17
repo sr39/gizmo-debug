@@ -668,6 +668,14 @@ void blackhole_final_loop(void)
     int i, k, n, bin;
     double  dt;
     double mass_disk, mdot_disk, mbulge, r0;
+
+#ifdef BH_REPOSITION_ON_POTMIN
+    for(n = FirstActiveParticle; n >= 0; n = NextActiveParticle[n])
+        if(P[n].Type == 5)
+            if(BPP(n).BH_MinPot < 0.5 * BHPOTVALUEINIT)
+                for(k = 0; k < 3; k++)
+                    P[n].Pos[k] = BPP(n).BH_MinPotPos[k];
+#endif
     
     for(n = 0; n < TIMEBINS; n++)
     {

@@ -1823,6 +1823,10 @@ extern ALIGN(32) struct particle_data
     } b8;
 #endif
 #endif
+#ifdef BH_REPOSITION_ON_POTMIN
+    MyFloat BH_MinPotPos[3];
+    MyFloat BH_MinPot;
+#endif
 #endif  /* if !defined(DETACH_BLACK_HOLES) */
 #endif  /* if defined(BLACK_HOLES) */
     
@@ -1951,6 +1955,10 @@ extern struct bh_particle_data
     MyLongDouble dBH_accreted_BHMass_radio;
   } b8;
 #endif
+#endif
+#ifdef BH_REPOSITION_ON_POTMIN
+  MyFloat BH_MinPotPos[3];
+  MyFloat BH_MinPot;
 #endif
 }
   *BHP,

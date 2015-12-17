@@ -159,6 +159,14 @@ void blackhole_feed_loop(void)
         for(j = 0; j < nexport; j++)
         {
             place = DataIndexTable[j].Index;
+#ifdef BH_REPOSITION_ON_POTMIN
+            if(BPP(place).BH_MinPot > BlackholeDataOut[j].BH_MinPot)
+            {
+                BPP(place).BH_MinPot = BlackholeDataOut[j].BH_MinPot;
+                for(k = 0; k < 3; k++)
+                    BPP(place).BH_MinPotPos[k] = BlackholeDataOut[j].BH_MinPotPos[k];
+            }
+#endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
             BlackholeTempInfo[P[place].IndexMapToTempStruc].BH_angle_weighted_kernel_sum += BlackholeDataOut[j].BH_angle_weighted_kernel_sum;
 #endif
@@ -205,6 +213,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     
 #ifdef BH_THERMALFEEDBACK
     double energy;
+#endif
+#ifdef BH_REPOSITION_ON_POTMIN
+    MyFloat minpotpos[3] = { 0, 0, 0 }, minpot = BHPOTVALUEINIT;
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat bh_mass_alphadisk;
@@ -336,6 +347,18 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         vrel = sqrt(vrel) / All.cf_atime;       /* do this once and use below */
                         vesc = sqrt(2.0*All.G*(mass+P[j].Mass)/(sqrt(r2)*All.cf_atime) + pow(10.e5/All.UnitVelocity_in_cm_per_s,2));
                         r = sqrt(r2);
+
+#ifdef BH_REPOSITION_ON_POTMIN
+                        /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
+                        if(P[j].Potential < minpot)
+                        {
+                            if(vrel <= vesc)
+                            {
+                                minpot = P[j].Potential;
+                                for(k = 0; k < 3; k++) minpotpos[k] = P[j].Pos[k];
+                            }
+                        }
+#endif
 
                         /* check_for_bh_merger.  Easy.  No Edd limit, just a pos and vel criteria. */
                         if((id != P[j].ID) && (P[j].Mass > 0) && (P[j].Type == 5))	/* we may have a black hole merger */
@@ -526,11 +549,21 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
         BlackholeTempInfo[P[target].IndexMapToTempStruc].BH_angle_weighted_kernel_sum += BH_angle_weighted_kernel_sum;  /* need to correct target index */
 #endif
+#ifdef BH_REPOSITION_ON_POTMIN
+        BPP(target).BH_MinPot = minpot;
+        for(k = 0; k < 3; k++)
+            BPP(target).BH_MinPotPos[k] = minpotpos[k];
+#endif
     }
     else
     {
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
         BlackholeDataResult[target].BH_angle_weighted_kernel_sum = BH_angle_weighted_kernel_sum;
+#endif
+#ifdef BH_REPOSITION_ON_POTMIN
+        BlackholeDataResult[target].BH_MinPot = minpot;
+        for(k = 0; k < 3; k++)
+            BlackholeDataResult[target].BH_MinPotPos[k] = minpotpos[k];
 #endif
     }
     return 0;
