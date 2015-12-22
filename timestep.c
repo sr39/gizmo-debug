@@ -509,6 +509,26 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
                     double dt_conduction = 0.5 * L_cr*L_cr / (1.0e-33 + SphP[p].CosmicRayDiffusionCoeff);
                     // since we use DIFFUSIVITIES, not CONDUCTIVITIES, we dont need any other powers to get the right units //
+#ifdef GALSF
+                    /* for multi-physics problems, we will use a more aggressive timestep criterion
+                     based on whether or not the cosmic ray physics are relevant for what we are modeling */
+                    if((CRPressureGradScaleLength > 5.*L_particle*All.cf_atime) || (dt_conduction*SphP[p].DtCosmicRayEnergy <= 1.e-3*SphP[p].CosmicRayEnergy))
+                    {
+                        if((CRPressureGradScaleLength > 10.*L_particle*All.cf_atime) &&
+                           (dt_conduction*fabs(SphP[p].DtCosmicRayEnergy) <= 1.e-5*SphP[p].CosmicRayEnergy))
+                        {
+                            dt_conduction = DMIN(0.5 * L_cr_weak*L_cr_weak / (1.0e-33 + SphP[p].CosmicRayDiffusionCoeff),
+                                                 (1.e-37+1.e-5*SphP[p].CosmicRayEnergy) / (1.e-37 + fabs(SphP[p].DtCosmicRayEnergy)));
+                        } else {
+                            if(Get_Particle_CosmicRayPressure(p) < 1.e-3 * SphP[p].Pressure)
+                            {
+                                dt_conduction = DMIN(0.5 * L_cr_weak*L_cr_weak / (1.0e-33 + SphP[p].CosmicRayDiffusionCoeff),
+                                                     (1.e-37+1.e-3*SphP[p].CosmicRayEnergy) / (1.e-37 + fabs(SphP[p].DtCosmicRayEnergy)));
+                            }
+                        }
+                        
+                    }
+#endif
                     if(dt_conduction < dt) dt = dt_conduction;
                 }
             }
