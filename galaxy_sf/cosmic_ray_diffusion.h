@@ -84,7 +84,7 @@
             double du_ij_cond = 1.0*DMIN(CR_egy_i, CR_egy_j);
             if(check_for_stability_sign<0) {du_ij_cond *= 1.e-2;}
             if(fabs(diffusion_wt)>du_ij_cond) {diffusion_wt *= du_ij_cond/fabs(diffusion_wt);}
-            Fluxes.CosmicRayPressure = diffusion_wt / dt_hydrostep;
+            Fluxes.CosmicRayPressure += diffusion_wt / dt_hydrostep;
         } // if(diffusion_wt > 0)
         
     } // close check that kappa and particle masses are positive
