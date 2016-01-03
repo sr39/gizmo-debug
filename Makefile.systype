@@ -12,10 +12,11 @@
 #############
 
 
+SYSTYPE="Darter"
 #SYSTYPE="Stampede"
 #SYSTYPE="Zwicky"
 #SYSTYPE="MacBookPro"
-SYSTYPE="Quest"
+#SYSTYPE="Quest"
 #SYSTYPE="odyssey"
 #SYSTYPE="SciNet"
 #SYSTYPE="Pleiades-Haswell"

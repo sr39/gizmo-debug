@@ -172,6 +172,36 @@ endif
 
 
 
+#----------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Darter")
+CC       =  cc
+CXX      =  CC
+FC       =  ftn -nofor_main
+OPTIMIZE = -O3 -ipo -no-prec-div -static -xHost  # speed
+OPTIMIZE += -g  # compiler warnings
+#OPTIMIZE += -parallel -openmp  # openmp (comment out this line if OPENMP not used)
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -parallel -openmp  # openmp required compiler flags
+endif
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = #
+MKL_LIBS = #
+GSL_INCL = #
+GSL_LIBS = #
+FFTW_INCL= #
+FFTW_LIBS= #
+HDF5INCL = -DH5_USE_16_API
+HDF5LIB  = #
+MPICHLIB = #
+OPT     += -DUSE_MPI_IN_PLACE
+## modules to load:
+## module swap PrgEnv-cray PrgEnv-intel
+## module load intel gsl cray-hdf5-parallel fftw/2.1.5.9
+endif
+
+
 #----------------------------
 ifeq ($(SYSTYPE),"MacBookPro")
 CC       =  mpicc
