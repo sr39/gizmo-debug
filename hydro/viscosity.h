@@ -33,75 +33,13 @@
         wt_i *= -1.; wt_j *= -1.;
         int do_non_mhd = 1;
         
-#ifdef HYDRO_SPH
-        /* SPH anisotropic viscosity equations */
-        double Face_Area_Norm = local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * SphP[j].Density);
-        
-#ifdef MAGNETIC
-        double BPred[3],Bproj=0, BMag=0;
-        for(k=0;k<3;k++)
-        {
-            BPred[k] = local.BPred[k] + BPred_j[k];
-            Bproj += BPred[k] * kernel.dp[k];
-            BMag += BPred[k] * BPred[k];
-        }
-        if(BMag > 0)
-        {
-            /* Braginskii formulation of leading-order anisotropic viscosity */
-            do_non_mhd = 0; // only do the MHD loop here! //
-            BMag = sqrt(BMag);
-            for(k=0;k<3;k++) {BPred[k] /= BMag;}
-            Bproj /= BMag;
-            double rhs = 0;
-            for(k_v=0;k_v<3;k_v++)
-            {
-                double tmp;
-                double tmp_kv = BPred[k_v]*BPred[k_v] - 1./3.;
-                double b_tensor_dot_face = 0;
-                // note that because of the symmetry of the tensors here, the order of k,k_v doesn't matter //
-                for(k=0;k<3;k++)
-                {
-                    if(k==k_v) {tmp=tmp_kv;} else {tmp=BPred[k_v]*BPred[k];}
-                    rhs += tmp * kernel.dp[k_v] * kernel.dv[k];
-                }
-            }
-            rhs /= (kernel.r * kernel.r * kernel.r);
-            for(k_v=0;k_v<3;k_v++) {cmag[k_v] = Face_Area_Norm * eta * (3.*BPred[k_v]*Bproj - kernel.dp[k_v]) * rhs;} // units vcode/rcode
-        }
-#endif
-        /* standard Navier-Stokes equations: viscosity is decomposed into the shear and bulk viscosity terms */
-        if(do_non_mhd==1)
-        {
-            double divv=0;
-            for(k=0;k<3;k++) {divv += kernel.dv[k] * kernel.dp[k];}
-            divv *= (zeta - eta*(2./3.));
-            
-            double Pxx = 2.*eta*kernel.dv[0]*kernel.dp[0] + divv;
-            double Pyy = 2.*eta*kernel.dv[1]*kernel.dp[1] + divv;
-            double Pzz = 2.*eta*kernel.dv[2]*kernel.dp[2] + divv;
-            double Pxy = eta * (kernel.dv[0]*kernel.dp[1] + kernel.dv[1]*kernel.dp[0]);
-            double Pxz = eta * (kernel.dv[0]*kernel.dp[2] + kernel.dv[2]*kernel.dp[0]);
-            double Pyz = eta * (kernel.dv[1]*kernel.dp[2] + kernel.dv[2]*kernel.dp[1]);
-            
-            double r3inv = Face_Area_Norm / (kernel.r * kernel.r * kernel.r);
-            cmag[0] = (Pxx*kernel.dp[0] + Pxy*kernel.dp[1] + Pxz*kernel.dp[2]) * r3inv;
-            cmag[1] = (Pxy*kernel.dp[0] + Pyy*kernel.dp[1] + Pyz*kernel.dp[2]) * r3inv;
-            cmag[2] = (Pxz*kernel.dp[0] + Pyz*kernel.dp[1] + Pzz*kernel.dp[2]) * r3inv;
-        }
-        for(k_v=0;k_v<3;k_v++) {cmag[k_v]*=-All.cf_a2inv;} // sign of the above is flipped: units=physical
-        
-        
-#else // not SPH
-        
-        
-        
         
 #ifdef MAGNETIC
         /* should use the solution in the appropriate face of the Riemann problem for interface values */
         double B_interface[3],B_interface_mag2=0;
         for(k=0;k<3;k++)
         {
-            B_interface[k] = Riemann_out.Face_B[k];
+            B_interface[k] = bhat[k] * bhat_mag;
             B_interface_mag2 += B_interface[k]*B_interface[k];
         }
         double bhat_dot_gradvhat = 1;
@@ -241,7 +179,6 @@
             for(k=0;k<3;k++) {cmag[k] *= lim_corr;}
         }
         
-#endif // end of SPH/NOT SPH check
         
         /* now add a flux-limiter to prevent overshoot (even when the directions are correct) */
         double cmag_E = cmag[0]*v_interface[0] + cmag[1]*v_interface[1] + cmag[2]*v_interface[2];

@@ -21,16 +21,6 @@
     if((kappa_i>0)&&(kappa_j>0)&&(local.Mass>0)&&(P[j].Mass>0))
     {
         double d_scalar = scalar_i - scalar_j;
-#ifdef HYDRO_SPH
-        // SPH: use the sph 'effective areas' oriented along the lines between particles and direct-difference gradients
-        double Face_Area_Norm = local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * SphP[j].Density);
-        double diffusion_wt = -Face_Area_Norm * (d_scalar*rinv) * All.cf_atime; // multiplies implied gradient by face area: should give physical units //
-#ifdef MAGNETIC
-        kappa_i *= Bpro2_i; kappa_j *= Bpro2_j;
-#endif
-        double cmag = diffusion_wt * (2.*kappa_i*kappa_j/(kappa_i+kappa_j)); // geometric-weighted kappa (see Cleary & Monaghan '99)
-        double check_for_stability_sign = 1;
-#else
         
         // NOT SPH: Now we use the more accurate finite-volume formulation, with the effective faces we have already calculated //
         double *grad_i = local.Gradients.CosmicRayPressure;
@@ -81,11 +71,9 @@
         double d_scalar_b = b_hll * d_scalar;
         double f_direct = Face_Area_Norm*d_scalar_b*rinv/All.cf_atime;
         double check_for_stability_sign = d_scalar*cmag;
-        if((check_for_stability_sign < 0) && (fabs(f_direct) > 0.005*fabs(cmag))) {cmag = 0;}
+        if((check_for_stability_sign < 0) && (fabs(f_direct) > HLL_DIFFUSION_OVERSHOOT_FACTOR*fabs(cmag))) {cmag = 0;}
         cmag *= -diffusion_wt; /* multiply through coefficient to get flux */
-        
-#endif // end of SPH/NOT SPH check
-        
+                
         /* follow that with a flux limiter as well */
         diffusion_wt = dt_hydrostep * cmag; // all in physical units //
         if(fabs(diffusion_wt) > 0)
