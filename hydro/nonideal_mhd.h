@@ -29,19 +29,6 @@ if((local.Mass > 0) && (P[j].Mass > 0))
         // define the current J //
         double J_current[3], d_scalar[3], rinv2 = rinv*rinv;
         for(k=0;k<3;k++) {d_scalar[k] = local.BPred[k] - BPred_j[k];}
-#ifdef HYDRO_SPH
-        // here we use the implicit direct gradient estimator: using J=grad.cross.B //
-        J_current[0] = (kernel.dp[2]*d_scalar[1] - kernel.dp[1]*d_scalar[2]) * rinv2;
-        J_current[1] = (kernel.dp[0]*d_scalar[2] - kernel.dp[2]*d_scalar[0]) * rinv2;
-        J_current[2] = (kernel.dp[1]*d_scalar[0] - kernel.dp[0]*d_scalar[1]) * rinv2;
-        // SPH: use the sph 'effective areas' oriented along the lines between particles and direct-difference gradients
-        double Face_Area_Norm = local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * SphP[j].Density) / All.cf_a2inv; // physical units
-        double Face_Area_Vec[3]; for(k=0;k<3;k++) {Face_Area_Vec[k] = Face_Area_Norm * kernel.dp[k] * rinv;}
-        // determine unit vector orientation of magnetic fields //
-        double bhat[3], bhat_mag=0;
-        for(k=0;k<3;k++) {bhat[k]=0.5*(local.BPred[k]+BPred_j[k]); bhat_mag+=bhat[k]*bhat[k];}
-        if(bhat_mag>0) {bhat_mag=sqrt(bhat_mag); for(k=0;k<3;k++) {bhat[k]/=bhat_mag;}}
-#else
         double J_direct[3];
         for(k=0;k<3;k++)
         {
@@ -56,7 +43,6 @@ if((local.Mass > 0) && (P[j].Mass > 0))
             J_direct[k] = rinv2*(kernel.dp[k_xyz_A]*d_scalar[k_xyz_B]-kernel.dp[k_xyz_B]*d_scalar[k_xyz_A]);
             if(J_current[k]*J_direct[k] < 0) {if(fabs(J_direct[k]) > 2.*fabs(J_current[k])) {J_current[k] = 0.0;}}
         }
-#endif
         // calculate the actual fluxes //
         double b_flux[3]={0}, JcrossB[3], JcrossBcrossB[3];
         JcrossB[0] = (bhat[2]*J_current[1]-bhat[1]*J_current[2]);
@@ -74,7 +60,6 @@ if((local.Mass > 0) && (P[j].Mass > 0))
         bflux_from_nonideal_effects[1] = Face_Area_Vec[2]*b_flux[0] - Face_Area_Vec[0]*b_flux[2];
         bflux_from_nonideal_effects[2] = Face_Area_Vec[0]*b_flux[1] - Face_Area_Vec[1]*b_flux[0];
         
-#ifndef HYDRO_SPH
         // ok now construct the numerical fluxes based on the numerical diffusion coefficients and the direct-difference values between elements
         double eta_0 = v_hll * kernel.r * All.cf_atime; // standard numerical diffusivity needed for stabilizing fluxes
         double eta_ohmic_0=0,eta_ad_0=0,eta_hall_0=0,q=0; // now limit the numerical diffusivity to avoid unphysically fast diffusion
@@ -99,7 +84,7 @@ if((local.Mass > 0) && (P[j].Mass > 0))
             double db_corr = bflux_from_nonideal_effects[k] + db_direct[k];
             bflux_from_nonideal_effects[k] = MINMOD(bflux_from_nonideal_effects[k], db_corr);
         }
-#endif
+
         // finally add one more flux-limiter to prevent the change in B from exceeding a large threshold in a single timestep //
         double cmag_B2 = bhat_mag * (bhat[0]*bflux_from_nonideal_effects[0]+bhat[1]*bflux_from_nonideal_effects[1]+bhat[2]*bflux_from_nonideal_effects[2]);
         if(dt_hydrostep > 0)
