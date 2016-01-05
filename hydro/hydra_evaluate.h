@@ -313,7 +313,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #define HLL_correction(ui,uj,wt,kappa) (k_hll = v_hll * (wt) * kernel.r * All.cf_atime / fabs(kappa),\
                                         k_hll = (0.2 + k_hll) / (0.2 + k_hll + k_hll*k_hll),\
                                         -1.0*k_hll*Face_Area_Norm*v_hll*((ui)-(uj)))
-#if !defined(MAGNETIC) || defined(GALSF) || defined(COOLING)
+#if !defined(MAGNETIC) || defined(GALSF) || defined(COOLING) || defined(BLACKHOLES)
 #define HLL_DIFFUSION_OVERSHOOT_FACTOR  0.005
 #else
 #define HLL_DIFFUSION_OVERSHOOT_FACTOR  1.0

@@ -40,15 +40,19 @@
         for(k_species=0;k_species<NUM_METAL_SPECIES;k_species++)
         {
             cmag = 0.0;
+            double grad_dot_x_ij = 0.0;
             d_scalar = local.Metallicity[k_species]-P[j].Metallicity[k_species];
             for(k=0;k<3;k++)
             {
                 double grad_ij = wt_i*local.Gradients.Metallicity[k_species][k] + wt_j*SphP[j].Gradients.Metallicity[k_species][k];
                 double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv;
+                grad_dot_x_ij += grad_ij * kernel.dp[k];
                 grad_ij = MINMOD(grad_ij , grad_direct);
                 cmag += Face_Area_Vec[k] * grad_ij;
             }
-            double hll_corr = rho_ij * HLL_correction(local.Metallicity[k_species], P[j].Metallicity[k_species], rho_ij, diffusion_wt_physical) / (-diffusion_wt);
+            double d_scalar_tmp = d_scalar - grad_dot_x_ij;
+            double d_scalar_hll = MINMOD(d_scalar , d_scalar_tmp);
+            double hll_corr = rho_ij * HLL_correction(d_scalar_hll, 0, rho_ij, diffusion_wt_physical) / (-diffusion_wt);
             double cmag_corr = cmag + hll_corr;
             cmag = MINMOD(1.5*cmag, cmag_corr);
             double f_direct = Face_Area_Norm*d_scalar*rinv;
