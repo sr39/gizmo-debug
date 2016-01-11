@@ -35,10 +35,10 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
                 double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv;
                 grad_dot_x_ij += grad * kernel.dp[k];
                 grad = MINMOD_G( grad , grad_direct );
-#if (HLL_DIFFUSION_OVERSHOOT_FACTOR > 0.1)
-                double grad_direct_vs_abs_fac = 5.0;
-#else
+#if defined(GALSF) || defined(COOLING) || defined(BLACKHOLES)
                 double grad_direct_vs_abs_fac = 2.0;
+#else
+                double grad_direct_vs_abs_fac = 5.0;
 #endif
                 if(grad*grad_direct < 0) {if(fabs(grad_direct) > grad_direct_vs_abs_fac*fabs(grad)) {grad = 0.0;}}
                 cmag += Face_Area_Vec[k] * grad;

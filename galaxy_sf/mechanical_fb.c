@@ -812,7 +812,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 for(k=0; k<3; k++)
                 {
 #ifdef GALSF_FB_SNE_NONISOTROPIZED
-                    pvec[k] = -wk * kernel.dp[k] * rinv;
+                    pvec[k] = -wk * kernel.dp[k] / kernel.r;
 #else
                     double q;
                     q = 0;
