@@ -408,7 +408,7 @@ void init(void)
 #endif
 #ifdef GALSF_FB_SNE_HEATING
             P[i].SNe_ThisTimeStep = 0;
-            int k; for(k=0;k<7;k++) {P[i].Area_weighted_sum[k] = 0;}
+            int k; for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {P[i].Area_weighted_sum[k] = 0;}
 #endif
 #ifdef GALSF_FB_GASRETURN
             P[i].MassReturn_ThisTimeStep = 0;

@@ -1762,7 +1762,12 @@ extern ALIGN(32) struct particle_data
     
 #ifdef GALSF_FB_SNE_HEATING
     MyFloat SNe_ThisTimeStep; /* flag that indicated number of SNe for the particle in the timestep */
-    MyFloat Area_weighted_sum[7]; /* normalized weights for particles in kernel weighted by area, not mass */
+#ifdef GALSF_FB_SNE_NONISOTROPIZED
+#define AREA_WEIGHTED_SUM_ELEMENTS 1
+#else
+#define AREA_WEIGHTED_SUM_ELEMENTS 7
+#endif
+    MyFloat Area_weighted_sum[AREA_WEIGHTED_SUM_ELEMENTS]; /* normalized weights for particles in kernel weighted by area, not mass */
 #endif
 #ifdef GALSF_FB_GASRETURN
     MyFloat MassReturn_ThisTimeStep; /* gas return from stellar winds */
