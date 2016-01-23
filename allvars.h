@@ -1775,6 +1775,7 @@ extern ALIGN(32) struct particle_data
 #if (GALSF_FB_SNE_HEATING == 2) // code for non-isotropic
 #define GALSF_FB_SNE_NONISOTROPIZED
 #endif
+#endif
 
 #ifdef GALSF_FB_SNE_NONISOTROPIZED
 #define AREA_WEIGHTED_SUM_ELEMENTS 1
