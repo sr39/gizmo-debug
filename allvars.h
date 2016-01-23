@@ -112,6 +112,24 @@
 #endif
 
 
+
+#ifdef SINGLE_STAR_FORMATION
+#define GALSF // master switch needed to enable various frameworks
+#define GALSF_SFR_VIRIAL_SF_CRITERION 2 // only allow star formation in virialized sub-regions meeting Jeans threshold
+#define METALS  // metals should be active for stellar return
+#define BLACKHOLES // need to have black holes active since these are our sink particles
+#define BH_SWALLOWGAS // need to swallow gas [part of sink model]
+#define BH_ALPHADISK_ACCRETION // swallowed gas goes to disk
+#define BH_GRAVCAPTURE_GAS // use gravitational capture swallow criterion
+#define BH_CALC_DISTANCES // store distance information for feedback modules
+//#GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory
+#endif
+
+
+
+
+
+
 #ifdef CONSTRAINED_GRADIENT_MHD
 /* make sure mid-point gradient calculation for cleaning terms is enabled */
 #ifndef CONSTRAINED_GRADIENT_MHD_MIDPOINT
@@ -943,10 +961,6 @@ extern int N_stars;
 extern int N_BHs;
 #endif
 
-#ifdef SINKS
-extern int NumSinks;
-#endif
-
 extern long long Ntype[6];	/*!< total number of particles of each type */
 extern int NtypeLocal[6];	/*!< local number of particles of each type */
 
@@ -1618,12 +1632,6 @@ extern struct global_data_all_processes
     char EosTable[100];
 #endif
 
-#ifdef SINKS
-  int TotNumSinks;
-  double SinkHsml;
-  double SinkDensThresh;
-#endif
-
 #ifdef NUCLEAR_NETWORK
   char NetworkRates[100];
   char NetworkPartFunc[100];
@@ -1762,6 +1770,12 @@ extern ALIGN(32) struct particle_data
     
 #ifdef GALSF_FB_SNE_HEATING
     MyFloat SNe_ThisTimeStep; /* flag that indicated number of SNe for the particle in the timestep */
+
+#if !(EXPAND_PREPROCESSOR_(GALSF_FB_SNE_HEATING) == 1) // check whether a numerical value is assigned
+#if (GALSF_FB_SNE_HEATING == 2) // code for non-isotropic
+#define GALSF_FB_SNE_NONISOTROPIZED
+#endif
+
 #ifdef GALSF_FB_SNE_NONISOTROPIZED
 #define AREA_WEIGHTED_SUM_ELEMENTS 1
 #else

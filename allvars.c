@@ -157,9 +157,6 @@ int N_stars;
 int N_BHs;
 #endif
 
-#ifdef SINKS
-int NumSinks;
-#endif
 
 long long Ntype[6];		/*!< total number of particles of each type */
 int NtypeLocal[6];		/*!< local number of particles of each type */

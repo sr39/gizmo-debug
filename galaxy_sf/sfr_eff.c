@@ -329,6 +329,9 @@ double get_starformation_rate(int i)
         double q2 = SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / (HYDROGEN_MASSFRAC*1.0e3*PROTONMASS);
         double MJ_solar = 2.*q*q*q/sqrt(q2);
         if(MJ_solar > 1000.) {alpha_vir = 100.;}
+#ifdef SINGLE_STAR_FORMATION
+        if(MJ_solar > 100.) {alpha_vir = 100.;}
+#endif
     }
 #endif
 #if (GALSF_SFR_VIRIAL_SF_CRITERION > 1)
@@ -393,7 +396,7 @@ void cooling_and_starformation(void)
   unsigned int bits;
   double dt, dtime, mass_of_star, p, prob, rate_in_msunperyear, sfrrate, totsfrrate;
   double sum_sm, total_sm, sm=0, rate, sum_mass_stars, total_sum_mass_stars;
-#ifdef BH_POPIII_SEEDS
+#if defined(BH_POPIII_SEEDS) || defined(SINGLE_STAR_FORMATION)
   int num_bhformed=0, tot_bhformed=0;
   double GradRho;
 #endif
@@ -541,7 +544,6 @@ void cooling_and_starformation(void)
 		      /* here we turn the gas particle itself into a star */
 		      Stars_converted++;
 		      stars_converted++;
-
 		      sum_mass_stars += P[i].Mass;
 
 		      P[i].Type = 4;
@@ -555,6 +557,25 @@ void cooling_and_starformation(void)
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 P[i].Mass = SphP[i].MassTrue + SphP[i].dMass;
 #endif
+                
+
+#ifdef SINGLE_STAR_FORMATION
+                P[i].Type = 5;
+                num_bhformed++;
+                P[i].BH_Mass = All.SeedBlackHoleMass;
+#ifdef BH_ALPHADISK_ACCRETION
+                P[i].BH_Mass_AlphaDisk = DMAX(0, P[i].Mass-P[i].BH_Mass);
+#endif
+#ifdef BH_COUNTPROGS
+                P[i].BH_CountProgs = 1;
+#endif
+                P[i].BH_Mdot = 0;
+#ifdef BH_PHOTONMOMENTUM
+                P[i].BH_disk_hr = 0.333333;
+#endif
+                P[i].DensAroundStar = SphP[i].Density;
+#endif // SINGLE_STAR_FORMATION
+                
 		    } /* closes final generation from original gas particle */
 		  else
 		    {
@@ -679,18 +700,18 @@ if(All.WindMomentumLoading)
 #endif /* GALSF_FB_RPWIND_DO_IN_SFCALC */
 
     
-#ifdef BH_POPIII_SEEDS
+#if defined(BH_POPIII_SEEDS) || defined(SINGLE_STAR_FORMATION)
   MPI_Allreduce(&num_bhformed, &tot_bhformed, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
   if(tot_bhformed > 0)
   {
       if(ThisTask==0)
       {
-      printf("POP III BH formation: %d gas particles converted into BHs \n",tot_bhformed);
+      printf("BH/Sink formation: %d gas particles converted into BHs \n",tot_bhformed);
       fflush(stdout);
       }
       All.TotBHs += tot_bhformed;
   } // if(tot_bhformed > 0)
-#endif // BH_POPIII_SEEDS
+#endif
 
   MPI_Allreduce(&stars_spawned, &tot_spawned, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&stars_converted, &tot_converted, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);

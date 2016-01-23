@@ -228,9 +228,6 @@ void begrun(void)
         All.SofteningBulge = all.SofteningBulge;
         All.SofteningStars = all.SofteningStars;
         All.SofteningBndry = all.SofteningBndry;
-#ifdef SINKS
-        All.SinkHsml = all.SinkHsml;
-#endif
 
       All.MaxHsml = all.MaxHsml;
       All.MaxRMSDisplacementFac = all.MaxRMSDisplacementFac;
@@ -1673,16 +1670,6 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "star_Teff");
         addr[nt] = &All.star_Teff;
         id[nt++] = REAL;
-#endif
-
-#ifdef SINKS
-      strcpy(tag[nt], "SinkHsml");
-      addr[nt] = &All.SinkHsml;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "SinkDensThresh");
-      addr[nt] = &All.SinkDensThresh;
-      id[nt++] = REAL;
 #endif
 
 #ifdef ADAPTIVE_GRAVSOFT_FORALL

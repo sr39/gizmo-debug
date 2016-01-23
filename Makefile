@@ -615,10 +615,6 @@ OBJS    += galaxy_sf/blackholes/blackhole_swallow_and_kick.o
 INCL    += galaxy_sf/blackholes/blackhole.h
 endif
 
-ifeq (SINKS,$(findstring SINKS,$(CONFIGVARS)))
-OBJS    += galaxy_sf/sinks.o
-endif
-
 ifeq (SCFPOTENTIAL,$(findstring SCFPOTENTIAL,$(CONFIGVARS)))
 OBJS    += modules/potentials/scf.o modules/potentials/scf_util.o
 endif

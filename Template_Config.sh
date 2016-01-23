@@ -188,9 +188,9 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #------------------ Galaxy formation / Star formation / Supermassive BH Models (with feedback)
 ####################################################################################################
 #---- basic/master switches ---- #
+#SINGLE_STAR_FORMATION          # master switch for single star formation model: sink particles representing -individual- stars
 #GALSF                          # master switch for galactic star formation model: enables SF, stellar ages, metals, generations, etc.
 #METALS                         # enable metallicities (with multiple species optional) for gas and stars
-#SINKS                          # add sink particles (SF studies)
 ##GALSF_GENERATIONS=1           # the number of stars a gas particle may spawn (defaults to 1, set otherwise)
 ##-----------------------------------------------------------------------------------------------------------------------------
 #----- old sub-grid models (for large-volume simulations) ---- #
@@ -221,8 +221,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #----- physical stellar feedback mechanisms ---- #
 #GALSF_FB_GASRETURN              # Paul Torrey's addition for stochastic gas return (modified for continuous return)
 #GALSF_FB_HII_HEATING            # gas within HII regions around young stars is photo-heated to 10^4 K
-#GALSF_FB_SNE_HEATING            # time-dependent explosions from SNe (I & II) in shockwave radii around stars
-#GALSF_FB_SNE_NONISOTROPIZED     # does not apply tensor re-normalization of SNe momentum deposition to force exact cancellation
+#GALSF_FB_SNE_HEATING=1          # time-dependent explosions from SNe (I & II) in shockwave radii around stars (values: 0=tensor-isotropized in all directions; 1=tensor-symmetrized, so momentum-conserving; 2=no tensor re-normalization [non-isotropic]
 #GALSF_FB_RPROCESS_ENRICHMENT=6  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 6=extended model)
 #GALSF_FB_RT_PHOTONMOMENTUM      # continuous acceleration from starlight (uses luminosity tree)
 #GALSF_FB_LOCAL_UV_HEATING       # use local estimate of spectral information for photoionization and photoelectric heating
