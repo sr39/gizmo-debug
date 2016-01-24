@@ -453,13 +453,19 @@ integertime get_timestep(int p,		/*!< particle index */
             dt_courant = All.CourantFac * (L_particle*All.cf_atime) / csnd;
             if(dt_courant < dt) dt = dt_courant;
 
+            double dt_prefac_diffusion;
+            dt_prefac_diffusion = 0.5;
+#if defined(GALSF) || defined(DIFFUSION_OPTIMIZERS)
+            dt_prefac_diffusion = 1.8;
+#endif
+            
 #ifdef CONDUCTION
             {
                 double L_cond_inv = sqrt(SphP[p].Gradients.InternalEnergy[0]*SphP[p].Gradients.InternalEnergy[0] +
                                          SphP[p].Gradients.InternalEnergy[1]*SphP[p].Gradients.InternalEnergy[1] +
                                          SphP[p].Gradients.InternalEnergy[2]*SphP[p].Gradients.InternalEnergy[2]) / SphP[p].InternalEnergy;
                 double L_cond = DMAX(L_particle , 1./(L_cond_inv + 1./L_particle)) * All.cf_atime;
-                double dt_conduction = 0.5 * L_cond*L_cond / (1.0e-33 + SphP[p].Kappa_Conduction);
+                double dt_conduction = dt_prefac_diffusion * L_cond*L_cond / (1.0e-33 + SphP[p].Kappa_Conduction);
                 // since we use CONDUCTIVITIES, not DIFFUSIVITIES, we need to add a power of density to get the right units //
                 dt_conduction *= SphP[p].Density * All.cf_a3inv;
                 if(dt_conduction < dt) dt = dt_conduction;
@@ -484,7 +490,7 @@ integertime get_timestep(int p,		/*!< particle index */
                 double L_cond_inv = sqrt(b_grad / (1.e-37 + b_mag));
                 double L_cond = DMAX(L_particle , 1./(L_cond_inv + 1./L_particle)) * All.cf_atime;
                 double diff_coeff = SphP[p].Eta_MHD_OhmicResistivity_Coeff + SphP[p].Eta_MHD_HallEffect_Coeff + SphP[p].Eta_MHD_AmbiPolarDiffusion_Coeff;
-                double dt_conduction = 0.5 * L_cond*L_cond / (1.0e-37 + diff_coeff);
+                double dt_conduction = dt_prefac_diffusion * L_cond*L_cond / (1.0e-37 + diff_coeff);
                 if(dt_conduction < dt) dt = dt_conduction;
             }
 #endif
@@ -497,36 +503,31 @@ integertime get_timestep(int p,		/*!< particle index */
                     double CRPressureGradScaleLength = Get_CosmicRayGradientLength(p);
                     double L_cr_weak = CRPressureGradScaleLength;
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + 1./(L_particle*All.cf_atime)));
-                    double L_cr = L_cr_strong; // true diffusion requires the stronger timestep criterion be applied
+                    double coeff_inv = L_cr_strong * dt_prefac_diffusion / (1.e-33 + SphP[p].CosmicRayDiffusionCoeff);
+                    double dt_conduction =  L_cr_strong * coeff_inv; /* true diffusion requires the stronger timestep criterion be applied */
 #ifdef COSMIC_RAYS_DISABLE_DIFFUSION
-                    L_cr = L_cr_weak; // streaming allows weaker timestep criterion because it's really an advection equation
-#else
+                    dt_conduction = L_cr_weak * coeff_inv; /* streaming allows weaker timestep criterion because it's really an advection equation */
+#endif
 #ifndef COSMIC_RAYS_DISABLE_STREAMING
                     /* estimate whether diffusion is streaming-dominated: use stronger/weaker criterion accordingly */
                     double diffusion_from_streaming = Get_CosmicRayStreamingVelocity(p) * CRPressureGradScaleLength;
-                    if(diffusion_from_streaming > 0.75*SphP[p].CosmicRayDiffusionCoeff) {L_cr = L_cr_weak;}
+                    if(diffusion_from_streaming > 0.75*SphP[p].CosmicRayDiffusionCoeff) {dt_conduction = L_cr_weak * coeff_inv;}
 #endif
-#endif
-                    double dt_conduction = 0.5 * L_cr*L_cr / (1.0e-33 + SphP[p].CosmicRayDiffusionCoeff);
-                    // since we use DIFFUSIVITIES, not CONDUCTIVITIES, we dont need any other powers to get the right units //
 #ifdef GALSF
                     /* for multi-physics problems, we will use a more aggressive timestep criterion
                      based on whether or not the cosmic ray physics are relevant for what we are modeling */
-                    if((CRPressureGradScaleLength > 5.*L_particle*All.cf_atime) || (dt_conduction*SphP[p].DtCosmicRayEnergy <= 1.e-3*SphP[p].CosmicRayEnergy))
+                    if((SphP[p].CosmicRayEnergy==0)||(SphP[p].DtCosmicRayEnergy==0))
                     {
-                        if((CRPressureGradScaleLength > 10.*L_particle*All.cf_atime) &&
-                           (dt_conduction*fabs(SphP[p].DtCosmicRayEnergy) <= 1.e-5*SphP[p].CosmicRayEnergy))
+                        dt_conduction = 10. * dt;
+                    } else {
+                        double delta_cr = dt_conduction*fabs(SphP[p].DtCosmicRayEnergy);
+                        double dL_cr = CRPressureGradScaleLength / (L_particle*All.cf_atime);
+                        if((dL_cr > 2.) || (delta_cr < 1.e-2*SphP[p].CosmicRayEnergy))
                         {
-                            dt_conduction = DMIN(0.5 * L_cr_weak*L_cr_weak / (1.0e-33 + SphP[p].CosmicRayDiffusionCoeff),
-                                                 (1.e-37+1.e-5*SphP[p].CosmicRayEnergy) / (1.e-37 + fabs(SphP[p].DtCosmicRayEnergy)));
-                        } else {
-                            if(Get_Particle_CosmicRayPressure(p) < 1.e-3 * SphP[p].Pressure)
-                            {
-                                dt_conduction = DMIN(0.5 * L_cr_weak*L_cr_weak / (1.0e-33 + SphP[p].CosmicRayDiffusionCoeff),
-                                                     (1.e-37+1.e-3*SphP[p].CosmicRayEnergy) / (1.e-37 + fabs(SphP[p].DtCosmicRayEnergy)));
-                            }
+                            double dt_weak = DMIN(L_cr_weak*coeff_inv , (delta_cr + 1.e-3*SphP[p].CosmicRayEnergy)/fabs(SphP[p].DtCosmicRayEnergy));
+                            if((dL_cr > 3.) && (delta_cr < 1.e-3*SphP[p].CosmicRayEnergy)) dt_conduction = dt_weak;
+                            if(Get_Particle_CosmicRayPressure(p) < 1.e-2*SphP[p].Pressure) dt_conduction = dt_weak;
                         }
-                        
                     }
 #endif
                     if(dt_conduction < dt) dt = dt_conduction;
@@ -544,7 +545,7 @@ integertime get_timestep(int p,		/*!< particle index */
                     double gradETmag=0; for(k=0;k<3;k++) {gradETmag += SphP[p].Gradients.E_gamma_ET[kf][k]*SphP[p].Gradients.E_gamma_ET[kf][k];}
                     double L_ETgrad_inv = sqrt(gradETmag) / (1.e-37 + SphP[p].E_gamma[kf] * SphP[p].Density/P[p].Mass);
                     double L_RT_diffusion = DMAX(L_particle , 1./(L_ETgrad_inv + 1./L_particle)) * All.cf_atime;
-                    double dt_rt_diffusion = 0.5 * L_RT_diffusion*L_RT_diffusion / (1.0e-33 + rt_diffusion_coefficient(p,kf));
+                    double dt_rt_diffusion = dt_prefac_diffusion * L_RT_diffusion*L_RT_diffusion / (1.0e-33 + rt_diffusion_coefficient(p,kf));
                     if(dt_rt_diffusion < dt) dt = dt_rt_diffusion;
                 }
 #endif
