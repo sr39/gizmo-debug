@@ -233,6 +233,7 @@ void begrun(void)
       All.MaxRMSDisplacementFac = all.MaxRMSDisplacementFac;
 
       All.ErrTolForceAcc = all.ErrTolForceAcc;
+      All.NumFilesPerSnapshot = all.NumFilesPerSnapshot;
       All.NumFilesWrittenInParallel = all.NumFilesWrittenInParallel;
       All.TreeDomainUpdateFrequency = all.TreeDomainUpdateFrequency;
 
