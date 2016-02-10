@@ -350,6 +350,12 @@
 #define DOGRAD_SOUNDSPEED 1
 #endif
 
+#if defined(CONDUCTION) || defined(VISCOSITY) || defined(TURB_DIFFUSION) || defined(MHD_NON_IDEAL) || (defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_DIFFUSION)) || (defined(RT_DIFFUSION_EXPLICIT) && !defined(RT_EVOLVE_FLUX))
+#ifndef DISABLE_SUPER_TIMESTEPPING
+//#define SUPER_TIMESTEP_DIFFUSION
+#endif
+#endif
+
 
 
 /*------- Things that are always recommended -------*/
@@ -1238,6 +1244,7 @@ extern struct global_data_all_processes
 
   double BoxSize;		/*!< Boxsize in case periodic boundary conditions are used */
 
+    
   /* Code options */
 
   int ComovingIntegrationOn;	/*!< flags that comoving integration is enabled */
@@ -2035,6 +2042,10 @@ extern struct sph_particle_data
     MyFloat CosmicRayDiffusionCoeff;/*!< diffusion coefficient kappa for cosmic ray fluid */
 #endif
     
+#ifdef SUPER_TIMESTEP_DIFFUSION
+    MyDouble Super_Timestep_Dt_Explicit; /*!< records the explicit step being used to scale the sub-steps for the super-stepping */
+    int Super_Timestep_j; /*!< records which sub-step if the super-stepping cycle the particle is in [needed for adaptive steps] */
+#endif
     
     /* matrix of the primitive variable gradients: rho, P, vx, vy, vz, B, phi */
     struct

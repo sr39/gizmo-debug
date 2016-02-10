@@ -767,6 +767,10 @@ void init(void)
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         PPPZ[i].AGS_zeta = 0;
 #endif
+#ifdef SUPER_TIMESTEP_DIFFUSION
+        SphP[i].Super_Timestep_Dt_Explicit = 0;
+        SphP[i].Super_Timestep_j = 0;
+#endif
 #ifdef GALSF_FB_LOCAL_UV_HEATING
         SphP[i].RadFluxUV = 0;
         SphP[i].RadFluxEUV = 0;

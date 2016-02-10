@@ -365,6 +365,7 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #EVALPOTENTIAL                  # computes gravitational potential
 #MHD_ALTERNATIVE_LEAPFROG_SCHEME # use alternative leapfrog where magnetic fields are treated like potential/positions (per Federico Stasyszyn's suggestion): still testing
 #FREEZE_HYDRO                   # zeros all fluxes from RP and doesn't let particles move (for testing additional physics layers)
+#SUPER_TIMESTEP_DIFFUSION       # use super-timestepping to accelerate integration of diffusion operators [for testing or if there are stability concerns]
 ####################################################################################################
 
 
