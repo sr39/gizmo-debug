@@ -1331,7 +1331,7 @@ void hydro_gradient_calc(void)
             /* fraction of H at which maximum reconstruction is allowed (=0.5 for 'standard'); for pure hydro we can
              be a little more aggresive and the equations are still stable (but this is as far as you want to push it) */
             double a_limiter = 0.25; if(SphP[i].ConditionNumber>100) a_limiter=DMIN(0.5, 0.25 + 0.25 * (SphP[i].ConditionNumber-100)/100);
-#if !defined(MAGNETIC)
+#if !defined(MAGNETIC) && !defined(GALSF)
             h_lim=PPP[i].Hsml; stol=0.1;
 #endif
 #ifdef AGGRESSIVE_SLOPE_LIMITERS

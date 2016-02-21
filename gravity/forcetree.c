@@ -112,7 +112,7 @@ int force_treebuild(int npart, struct unbind_data *mp)
     
 #ifdef BH_CALC_DISTANCES
     int i;
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) { P[i].min_dist_to_bh=1e9; }
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) { P[i].min_dist_to_bh=1e37; }
 #endif
     
     do
@@ -1545,7 +1545,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double incident_flux_agn=0;
 #endif
 #ifdef BH_CALC_DISTANCES
-    double min_dist_to_bh2=1e20;
+    double min_dist_to_bh2=1e37;
 #endif
     
     
