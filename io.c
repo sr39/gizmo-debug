@@ -2073,7 +2073,7 @@ int blockpresent(enum iofields blocknr)
             break;
             
         case IO_RAD_ACCEL:
-#if defined(RT_RAD_PRESSURE_OUPUT)
+#if defined(RT_RAD_PRESSURE_OUTPUT)
             return 1;
 #else
             return 0;
