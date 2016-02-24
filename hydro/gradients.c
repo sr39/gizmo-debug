@@ -1338,6 +1338,9 @@ void hydro_gradient_calc(void)
             h_lim = PPP[i].Hsml; a_limiter *= 0.5; stol = 0.125;
 #endif
             
+#ifdef SINGLE_STAR_FORMATION
+            SphP[i].Density_Relative_Maximum_in_Kernel = GasGradDataPasser[i].Maxima.Density;
+#endif
             local_slopelimiter(SphP[i].Gradients.Density,GasGradDataPasser[i].Maxima.Density,GasGradDataPasser[i].Minima.Density,a_limiter,h_lim,stol);
             local_slopelimiter(SphP[i].Gradients.Pressure,GasGradDataPasser[i].Maxima.Pressure,GasGradDataPasser[i].Minima.Pressure,a_limiter,h_lim,stol);
             stol_tmp = stol;

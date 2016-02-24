@@ -845,9 +845,16 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
         AGN_LambdaPre = 0;
     } else {
         AGN_LambdaPre = SphP[target].RadFluxAGN * (3.9/2.0) * All.UnitMass_in_g/(All.UnitLength_in_cm*All.UnitLength_in_cm)*All.HubbleParam*All.cf_a2inv; /* proper units */
+#ifdef SINGLE_STAR_FORMATION
+        /* here we are hijacking this module to approximate dust heating/cooling */
+        /* assuming heating/cooling balance defines the target temperature: */
+        AGN_T_Compton = pow( AGN_LambdaPre / 5.67e-5 , 0.25); // (sigma*T^4 = Flux_incident)
+        AGN_LambdaPre = 1.e37 * (6.652e-25 * (4.*1.381e-16 / (9.109e-28*2.998e10*2.998e10)));
+#else
         /* now have incident flux, need to convert to relevant pre-factor for heating rate */
         AGN_LambdaPre *= 6.652e-25; /* sigma_T for absorption */
         AGN_LambdaPre *= (4.*1.381e-16)/(9.109e-28*2.998e10*2.998e10); /* times 4*k_B/(me*c^2) */
+#endif
     }
 #endif
 
@@ -926,7 +933,7 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
       else
 	LambdaCmptn = 0;
 
-#ifdef BH_COMPTON_HEATING
+#if defined(BH_COMPTON_HEATING) && !defined(SINGLE_STAR_FORMATION)
 	if(T > AGN_T_Compton)
 	{
         LambdaCmptn = AGN_LambdaPre * (T - AGN_T_Compton) * ne/nHcgs;

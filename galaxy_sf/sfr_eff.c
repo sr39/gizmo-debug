@@ -243,7 +243,7 @@ void set_units_sfr(void)
 /* Routine to actually determine the SFR assigned to an individual gas particle at each time */
 double get_starformation_rate(int i)
 {
-    double rateOfSF,tsfr,y;
+    double rateOfSF,tsfr,y; y=0;
     int flag;
 #ifdef GALSF_EFFECTIVE_EQS
     double factorEVP, egyhot, ne, tcool, x, cloudmass;
@@ -313,6 +313,12 @@ double get_starformation_rate(int i)
     /* add thermal support, although it is almost always irrelevant */
     double cs_eff = Particle_effective_soundspeed_i(i);
     double k_cs = cs_eff / (Get_Particle_Size(i)*All.cf_atime);
+#ifdef SINGLE_STAR_FORMATION
+    double press_grad_length = 0;
+    for(j=0;j<3;j++) {press_grad_length += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
+    press_grad_length = All.cf_atime * DMAX(Get_Particle_Size(i) , SphP[i].Pressure / (1.e-37 + sqrt(press_grad_length))); 
+    k_cs = cs_eff / press_grad_length;    
+#endif
     dv2abs += 2.*k_cs*k_cs; // account for thermal pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
     
     //double alpha_vir = 0.2387 * dv2abs / (All.G * SphP[i].Density * All.cf_a3inv); // coefficient here was for old form, with only divv information
@@ -321,30 +327,44 @@ double get_starformation_rate(int i)
     
 #if !(EXPAND_PREPROCESSOR_(GALSF_SFR_VIRIAL_SF_CRITERION) == 1)
     /* the above macro checks if GALSF_SFR_VIRIAL_SF_CRITERION has been assigned a numerical value */
-#if (GALSF_SFR_VIRIAL_SF_CRITERION > 0)
+#if (GALSF_SFR_VIRIAL_SF_CRITERION > 0) || (GALSF_SFR_VIRIAL_SF_CRITERION == 2)
     if(alpha_vir < 1.0)
     {
         /* check if Jeans mass is remotely close to solar; if not, dont allow it to form 'stars' */
         double q = cs_eff * All.UnitVelocity_in_cm_per_s / (0.2e5);
         double q2 = SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / (HYDROGEN_MASSFRAC*1.0e3*PROTONMASS);
         double MJ_solar = 2.*q*q*q/sqrt(q2);
-        if(MJ_solar > 1000.) {alpha_vir = 100.;}
+        double MJ_crit = 1000.;
 #ifdef SINGLE_STAR_FORMATION
-        if(MJ_solar > 100.) {alpha_vir = 100.;}
+        MJ_crit = 1.e4;
 #endif
+        if(MJ_solar > MJ_crit) {alpha_vir = 100.;}
     }
 #endif
 #if (GALSF_SFR_VIRIAL_SF_CRITERION > 1)
     if(alpha_vir >= 1.0) {rateOfSF *= 0.0;}
 #endif
 #endif
-    
     if((alpha_vir<1.0)||(SphP[i].Density*All.cf_a3inv>100.*All.PhysDensThresh)) {rateOfSF *= 1.0;} else {rateOfSF *= 0.0015;}
     // PFH: note the latter flag is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! //
     
     //  if( divv>=0 ) rateOfSF=0; // restrict to convergent flows (optional) //
     //  rateOfSF *= 1.0/(1.0 + alpha_vir); // continuous cutoff w alpha_vir instead of sharp (optional) //
 #endif // GALSF_SFR_VIRIAL_SF_CRITERION
+    
+#ifdef SINGLE_STAR_FORMATION
+    rateOfSF *= 1.0e5; // make sink formation guaranteed to happen, where it can
+    // restrict to convergent flows //
+    {
+        int k; double divv=0; for(k=0;k<3;k++) {divv += SphP[i].Gradients.Velocity[k][k] * All.cf_a2inv;}
+        if(All.ComovingIntegrationOn) {divv += 3.*All.cf_hubble_a;}
+        if(divv >= 0) {rateOfSF=0;} 
+    }
+    if(SphP[i].Density_Relative_Maximum_in_Kernel > 0) {rateOfSF=0;} // restrict to local density/potential maxima //
+#ifdef BH_CALC_DISTANCES
+    if(P[i].min_dist_to_bh < PPP[i].Hsml) {rateOfSF=0;} // restrict to particles without a sink in their kernel //
+#endif
+#endif // SINGLE_STAR_FORMATION 
     
     return rateOfSF;
 }
@@ -399,6 +419,7 @@ void cooling_and_starformation(void)
 #if defined(BH_POPIII_SEEDS) || defined(SINGLE_STAR_FORMATION)
   int num_bhformed=0, tot_bhformed=0;
   double GradRho;
+  GradRho=0;
 #endif
 #if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) && defined(GALSF_FB_RPWIND_LOCAL)
   double total_n_wind,total_m_wind,total_mom_wind,total_prob_kick,avg_v_kick,momwt_avg_v_kick,avg_taufac;

@@ -808,6 +808,9 @@ integertime get_timestep(int p,		/*!< particle index */
 #if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
             dt_accr *= All.BAL_f_accretion;
 #endif // BH_BAL_WINDS
+#ifdef SINGLE_STAR_FORMATION
+            dt_accr = 0.1 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
+#endif
 #else
             dt_accr = 0.05 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
 #endif // defined(BH_GRAVCAPTURE_GAS) || defined(BH_BAL_WINDS)

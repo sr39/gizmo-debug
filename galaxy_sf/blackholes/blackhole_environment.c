@@ -342,11 +342,10 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         vrel = sqrt(vrel) / All.cf_atime;
                         
                         r2=0; for(k=0;k<3;k++) r2+=dP[k]*dP[k];
-                        vbound = sqrt(2.0*All.G*(mass+P[j].Mass)/(sqrt(r2)*All.cf_atime) + pow(10.e5/All.UnitVelocity_in_cm_per_s,2));
-                        
-                        double cs=0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}
+                        double dr_code = sqrt(r2);
+                        vbound = bh_vesc(j, mass, dr_code);
                         if(vrel < vbound) { /* bound */
-                            if( All.ForceSoftening[5]*(1.0-(vrel*vrel+cs*cs)/(vbound*vbound))/sqrt(r2) > 1.0 ) { /* apocenter within 2.8*epsilon (softening length) */
+                            if( bh_check_boundedness(j,vrel,vbound,dr_code)==1 ) { /* apocenter within 2.8*epsilon (softening length) */
                                 
                                 /* CAVEAT: when two BHs share some neighbours, this double counts the accretion */
                                 /* DAA: looks like this is true always since SwallowID=0 has just been initialized...
@@ -355,7 +354,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                                 {
                                     out.mass_to_swallow_edd += P[j].Mass;
                                 } /* P[j].SwallowID < id */
-                            } /* if( All.ForceSoftening[5]*(1.0-vrel*vrel/(csnd*csnd))/sqrt(r2) > 1.0 ) */
+                            } /* if( apocenter in tolerance range ) */
                         } /* if(vrel < vbound) */
                     } /* type check */
 #endif // BH_GRAVCAPTURE_GAS
