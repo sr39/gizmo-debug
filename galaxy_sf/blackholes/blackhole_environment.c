@@ -276,12 +276,24 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                     if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
 #ifdef BH_DYNFRICTION
+#ifdef BH_DYNFRICTION_STARS_ONLY
+                    if( P[j].Type==4 || ((P[j].Type==2||P[j].Type==3) && !(All.ComovingIntegrationOn)) )
+                    {
+                        if(P[j].Mass>out.DF_mmax_particles) out.DF_mmax_particles=P[j].Mass;
+                        for (k=0;k<3;k++)
+                        {
+                            out.DF_mean_vel[k] += wt*dv[k];
+                            out.DF_rms_vel += wt*dv[k]*dv[k];
+                        }
+                    }
+#else
+                    if(P[j].Mass>out.DF_mmax_particles) out.DF_mmax_particles=P[j].Mass;     // DAA: note this can include dark matter BUT Malt below not !
                     for (k=0;k<3;k++)
                     {
                         out.DF_mean_vel[k] += wt*dv[k];
                         out.DF_rms_vel += wt*dv[k]*dv[k];
-                        if(P[j].Mass>out.DF_mmax_particles) out.DF_mmax_particles=P[j].Mass;
                     }
+#endif
 #endif
                     if(P[j].Type==0) /* we found gas in BH's kernel */
                     {

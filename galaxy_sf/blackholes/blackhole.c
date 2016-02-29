@@ -242,12 +242,16 @@ void normalize_temp_info_struct(int i)
     if(BlackholeTempInfo[i].Mgas_in_Kernel > 0)
     {
         BlackholeTempInfo[i].BH_InternalEnergy /= BlackholeTempInfo[i].Mgas_in_Kernel;
+
+/*                           DAA: shoud normalize by TOTAL MASS in kernel not just gas !! (see below)
 #ifdef BH_DYNFRICTION
         BlackholeTempInfo[i].DF_rms_vel /= BlackholeTempInfo[i].Mgas_in_Kernel;
         BlackholeTempInfo[i].DF_rms_vel = sqrt(BlackholeTempInfo[i].DF_rms_vel) / All.cf_atime;
         for(k=0;k<3;k++)
             BlackholeTempInfo[i].DF_mean_vel[k] /= BlackholeTempInfo[i].Mgas_in_Kernel * All.cf_atime;
 #endif
+*/
+
 #if defined(BH_BONDI) || defined(BH_DRAG)
         for(k=0;k<3;k++)
             BlackholeTempInfo[i].BH_SurroundingGasVel[k] /= BlackholeTempInfo[i].Mgas_in_Kernel * All.cf_atime;
@@ -263,6 +267,22 @@ void normalize_temp_info_struct(int i)
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK_COLLIMATED) || defined(BH_GRAVACCRETION)
     for(k=0;k<3;k++)
         BlackholeTempInfo[i].Jalt_in_Kernel[k] += BlackholeTempInfo[i].Jgas_in_Kernel[k];  // Jalt is now TOTAL angular momentum inside BH kernel !
+#endif
+
+#ifdef BH_DYNFRICTION
+    double Mass_in_Kernel;
+#ifdef BH_DYNFRICTION_STARS_ONLY
+    Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel - BlackholeTempInfo[i].Mgas_in_Kernel;
+#else
+    Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel;
+#endif
+    if(Mass_in_Kernel > 0)
+    {
+        BlackholeTempInfo[i].DF_rms_vel /= Mass_in_Kernel;
+        BlackholeTempInfo[i].DF_rms_vel = sqrt(BlackholeTempInfo[i].DF_rms_vel) / All.cf_atime;
+        for(k=0;k<3;k++)
+            BlackholeTempInfo[i].DF_mean_vel[k] /= Mass_in_Kernel * All.cf_atime;
+    }
 #endif
     
 }
@@ -599,12 +619,22 @@ void set_blackhole_drag(int i, int n, double dt)
         /* now the Coulomb logarithm */
         fac = 50. * 3.086e21 / (All.UnitLength_in_cm/All.HubbleParam); /* impact parameter */
         fac_friction *= log(1. + fac * bhvel_df / (All.G * bh_mass));
+#ifdef BH_DYNFRICTION_INCREASE
+       fac_friction *= BH_DYNFRICTION_INCREASE;
+#else
         /* now we add a correction to only apply this force if M_BH is not >> <m_particles> */
         fac_friction *= 1 / (1 + bh_mass / (5.*BlackholeTempInfo[i].DF_mmax_particles));
+#endif
         /* now the dimensional part of the force */
         // fac = (BlackholeTempInfo[i].Mgas_in_Kernel+BlackholeTempInfo[i].Malt_in_Kernel) /         DAA: Malt_in_Kernel is total mass already
-        fac = BlackholeTempInfo[i].Malt_in_Kernel /
-        ( (4*M_PI/3) * pow(PPP[n].Hsml*All.cf_atime,3) ); /* mean density of all mass inside kernel */
+        double Mass_in_Kernel;
+#ifdef BH_DYNFRICTION_STARS_ONLY
+        Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel - BlackholeTempInfo[i].Mgas_in_Kernel;
+#else
+        Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel;
+#endif
+        //fac = BlackholeTempInfo[i].Malt_in_Kernel / ( (4*M_PI/3) * pow(PPP[n].Hsml*All.cf_atime,3) ); /* mean density of all mass inside kernel */
+        fac = Mass_in_Kernel / ( (4*M_PI/3) * pow(PPP[n].Hsml*All.cf_atime,3) ); /* mean density of all mass inside kernel */
         fac_friction *= 4*M_PI * All.G * All.G * fac * bh_mass / (bhvel_df*sqrt(bhvel_df));
         /* now apply this to the actual acceleration */
         if(fac_friction<0) fac_friction=0; if(isnan(fac_friction)) fac_friction=0;

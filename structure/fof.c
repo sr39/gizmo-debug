@@ -2141,6 +2141,10 @@ void fof_make_black_holes(void)
       }
 #endif
 
+#ifdef BH_INCREASE_DYNAMIC_MASS
+      P[import_indices[n]].Mass *= BH_INCREASE_DYNAMIC_MASS;    // DAA
+#endif
+
 #ifdef BH_ALPHADISK_ACCRETION                                     // DAA: this should be outside of BH_SEED_STAR_MASS_FRACTION ...
       BPP(import_indices[n]).BH_Mass_AlphaDisk = 0;
 #endif

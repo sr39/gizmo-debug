@@ -300,7 +300,11 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     /* DAA: increase the effective mass-loading of BAL winds to reach the desired momentum flux given the outflow velocity "All.BAL_v_outflow" chosen
        --> appropriate for cosmological simulations where particles are effectively kicked from ~kpc scales
            (i.e. we need lower velocity and higher mass outflow rates compared to accretion disk scales) - */
-    f_accreted = 1. / ( 1. + BH_BAL_KICK_MOMENTUM_FLUX * All.BlackHoleRadiativeEfficiency * (C / All.UnitVelocity_in_cm_per_s) / All.BAL_v_outflow );
+    if(All.BAL_v_outflow > 0){
+        f_accreted = 1. / ( 1. + BH_BAL_KICK_MOMENTUM_FLUX * All.BlackHoleRadiativeEfficiency * (C / All.UnitVelocity_in_cm_per_s) / All.BAL_v_outflow );
+    }else{
+        f_accreted = All.BAL_f_accretion;
+    }
 #else
     f_accreted = All.BAL_f_accretion;
 #endif
@@ -350,7 +354,11 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 
 #ifdef BH_REPOSITION_ON_POTMIN
                         /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
+#ifdef BH_REPOSITION_ON_POTMIN_STAR
+                        if( (P[j].Potential < minpot) && (P[j].Type == 4) )   // DAA: only if it is star particle
+#else
                         if(P[j].Potential < minpot)
+#endif
                         {
                             if(vrel <= vesc)
                             {

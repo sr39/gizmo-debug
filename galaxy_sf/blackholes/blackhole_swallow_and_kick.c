@@ -482,7 +482,11 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                         /* DAA: make sure f_accreted=0 for analytic accretion rate estimator IF mass conservations is NOT required yet */
                         if((bh_mass_withdisk - mass) > 0){    
 #ifdef BH_BAL_KICK_MOMENTUM_FLUX
-                            f_accreted = 1. / ( 1. + BH_BAL_KICK_MOMENTUM_FLUX * All.BlackHoleRadiativeEfficiency * (C / All.UnitVelocity_in_cm_per_s) / All.BAL_v_outflow );
+                            if(All.BAL_v_outflow > 0){
+                                f_accreted = 1. / ( 1. + BH_BAL_KICK_MOMENTUM_FLUX * All.BlackHoleRadiativeEfficiency * (C / All.UnitVelocity_in_cm_per_s) / All.BAL_v_outflow );
+                            }else{
+                                f_accreted = All.BAL_f_accretion;
+                            }
 #else
                             f_accreted = All.BAL_f_accretion; 
 #endif

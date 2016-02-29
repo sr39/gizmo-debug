@@ -714,7 +714,8 @@ void density(void)
 #endif
                 
 #ifdef BLACK_HOLES
-                if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius;}
+                //if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius;}
+                if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius / All.cf_atime;}  // DAA: MaxAccretionRadius is now defined in params.txt in PHYSICAL units
 #endif
 
                 redo_particle = 0;

@@ -269,12 +269,16 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##BH_BAL_KICK_MOMENTUM_FLUX=10  # DAA: increase the effective mass-loading of BAL winds to reach the desired momentum flux in units of L_bol/c (needs BH_BAL_KICK)
 #------------ use the BH_DRAG options only in cosmological cases where M_BH is not >> other particle masses
 #BH_DYNFRICTION                 # apply dynamical friction force to the BHs when m_bh not >> other particle mass
+#BH_DYNFRICTION_INCREASE=100    # DAA: Increase dynamic friction by this factor (requires BH_DYNFRICTION)
+#BH_DYNFRICTION_STARS_ONLY      # DAA: consider dynamic friction by stars only (requires BH_DYNFRICTION)
 ##BH_DRAG=1                     # Drag on black-holes due to accretion (w real mdot); set =2 to boost as if BH is accreting at eddington
 #------ output options
 #BH_OUTPUT_MOREINFO             # DAA: output additional info to "blackhole_details"
 ##-----------------------------------------------------------------------------------------------------
 #------------ deprecated or de-bugging options (most have been combined or optimized into the functions above, here for legacy)
-##BH_REPOSITION_ON_POTMIN       # repositions hole on potential minimum (requires EVALPOTENTIAL)
+#BH_REPOSITION_ON_POTMIN       # repositions hole on potential minimum (requires EVALPOTENTIAL)
+#BH_REPOSITION_ON_POTMIN_STAR     # DAA: repositions hole on potential minimum of stars
+#BH_INCREASE_DYNAMIC_MASS=1000    # DAA: Increase the dynamic (real) particle mass by this factor
 ##DETACH_BLACK_HOLES            # Insert an independent data structure for BHs (currently exlicitly depends on SEPARATE_STELLARDOMAINDECOMP)
 ##BH_SEED_STAR_MASS_FRACTION=0.02 # minimum star mass fraction for BH seeding
 ##-----------------------------------------------------------------------------------------------------
