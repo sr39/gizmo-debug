@@ -252,7 +252,6 @@ int compare_length_values(const void *a, const void *b);
 double rho_dot(double z, void *params);
 double bhgrowth(double z1, double z2);
 
-
 int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend_local);
 
 double INLINE_FUNC Get_Particle_Size(int i);
@@ -732,10 +731,6 @@ int pmtidaltensor_nonperiodic_fourier(int component, int grnr);
 void check_tidaltensor_periodic(int particle_ID);
 void check_tidaltensor_nonperiodic(int particle_ID);
 #endif
-#endif
-
-#ifdef SINKS
-void do_sinks(void);
 #endif
 
 #ifdef SCFPOTENTIAL

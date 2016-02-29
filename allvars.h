@@ -112,6 +112,41 @@
 #endif
 
 
+
+#ifdef SINGLE_STAR_FORMATION
+#define GALSF // master switch needed to enable various frameworks
+#define GALSF_SFR_VIRIAL_SF_CRITERION 2 // only allow star formation in virialized sub-regions meeting Jeans threshold
+#define METALS  // metals should be active for stellar return
+#define BLACK_HOLES // need to have black holes active since these are our sink particles
+#define BH_SWALLOWGAS // need to swallow gas [part of sink model]
+#define BH_ALPHADISK_ACCRETION // swallowed gas goes to disk
+#define BH_GRAVCAPTURE_GAS // use gravitational capture swallow criterion
+#define BH_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
+//#GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory
+#ifdef SINGLE_STAR_FB_HEATING
+#define GALSF_FB_RT_PHOTONMOMENTUM  // turn on FIRE RT approximation: no Type-4 particles so don't worry about its approximations
+#define BH_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework. make sure BH_FluxMomentumFactor=0 to avoid launching winds this way!!!
+#define BH_COMPTON_HEATING // turn on the heating term: this just calculates incident BH-particle flux, to be used in the cooling routine
+#endif
+#ifdef SINGLE_STAR_FB_JETS
+#define BH_BAL_WINDS // use kinetic feedback module for protostellar jets
+#endif
+// if not using grackle modules, need to make sure appropriate cooling is enabled
+#if defined(COOLING) && !defined(GRACKLE)
+#ifndef COOL_LOW_TEMPERATURES
+#define COOL_LOW_TEMPERATURES // make sure low-temperature cooling is enabled!
+#endif
+#ifndef COOL_METAL_LINES_BY_SPECIES
+#define COOL_METAL_LINES_BY_SPECIES // metal-based cooling enabled
+#endif
+#endif
+#endif // SINGLE_STAR_FORMATION
+
+
+
+
+
+
 #ifdef CONSTRAINED_GRADIENT_MHD
 /* make sure mid-point gradient calculation for cleaning terms is enabled */
 #ifndef CONSTRAINED_GRADIENT_MHD_MIDPOINT
@@ -330,6 +365,12 @@
 
 #if defined(EOS_GENERAL)
 #define DOGRAD_SOUNDSPEED 1
+#endif
+
+#if defined(CONDUCTION) || defined(VISCOSITY) || defined(TURB_DIFFUSION) || defined(MHD_NON_IDEAL) || (defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_DIFFUSION)) || (defined(RT_DIFFUSION_EXPLICIT) && !defined(RT_EVOLVE_FLUX))
+#ifndef DISABLE_SUPER_TIMESTEPPING
+//#define SUPER_TIMESTEP_DIFFUSION
+#endif
 #endif
 
 
@@ -943,10 +984,6 @@ extern int N_stars;
 extern int N_BHs;
 #endif
 
-#ifdef SINKS
-extern int NumSinks;
-#endif
-
 extern long long Ntype[6];	/*!< total number of particles of each type */
 extern int NtypeLocal[6];	/*!< local number of particles of each type */
 
@@ -1224,6 +1261,7 @@ extern struct global_data_all_processes
 
   double BoxSize;		/*!< Boxsize in case periodic boundary conditions are used */
 
+    
   /* Code options */
 
   int ComovingIntegrationOn;	/*!< flags that comoving integration is enabled */
@@ -1618,12 +1656,6 @@ extern struct global_data_all_processes
     char EosTable[100];
 #endif
 
-#ifdef SINKS
-  int TotNumSinks;
-  double SinkHsml;
-  double SinkDensThresh;
-#endif
-
 #ifdef NUCLEAR_NETWORK
   char NetworkRates[100];
   char NetworkPartFunc[100];
@@ -1762,6 +1794,13 @@ extern ALIGN(32) struct particle_data
     
 #ifdef GALSF_FB_SNE_HEATING
     MyFloat SNe_ThisTimeStep; /* flag that indicated number of SNe for the particle in the timestep */
+
+#if !(EXPAND_PREPROCESSOR_(GALSF_FB_SNE_HEATING) == 1) // check whether a numerical value is assigned
+#if (GALSF_FB_SNE_HEATING == 2) // code for non-isotropic
+#define GALSF_FB_SNE_NONISOTROPIZED
+#endif
+#endif
+
 #ifdef GALSF_FB_SNE_NONISOTROPIZED
 #define AREA_WEIGHTED_SUM_ELEMENTS 1
 #else
@@ -2028,6 +2067,14 @@ extern struct sph_particle_data
     MyFloat CosmicRayDiffusionCoeff;/*!< diffusion coefficient kappa for cosmic ray fluid */
 #endif
     
+#ifdef SUPER_TIMESTEP_DIFFUSION
+    MyDouble Super_Timestep_Dt_Explicit; /*!< records the explicit step being used to scale the sub-steps for the super-stepping */
+    int Super_Timestep_j; /*!< records which sub-step if the super-stepping cycle the particle is in [needed for adaptive steps] */
+#endif
+    
+#ifdef SINGLE_STAR_FORMATION
+    MyFloat Density_Relative_Maximum_in_Kernel; /*!< hold density_max-density_i, for particle i, so we know if its a local maximum */
+#endif
     
     /* matrix of the primitive variable gradients: rho, P, vx, vy, vz, B, phi */
     struct

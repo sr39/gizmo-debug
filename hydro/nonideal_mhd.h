@@ -28,11 +28,11 @@ if((local.Mass > 0) && (P[j].Mass > 0))
     {
         // define the current J //
         double J_current[3], d_scalar[3], rinv2 = rinv*rinv;
+        double J_direct[3]={0}, Jmag=0, grad_dot_x_ij[3]={0};
         for(k=0;k<3;k++) {d_scalar[k] = local.BPred[k] - BPred_j[k];}
-        double J_direct[3];
         for(k=0;k<3;k++)
         {
-            int k_xyz_A, k_xyz_B;
+            int k_xyz_A, k_xyz_B, k2;
             if(k==0) {k_xyz_A=2; k_xyz_B=1;}
             if(k==1) {k_xyz_A=0; k_xyz_B=2;}
             if(k==2) {k_xyz_A=1; k_xyz_B=0;}
@@ -41,8 +41,11 @@ if((local.Mass > 0) && (P[j].Mass > 0))
             J_current[k] = tmp_grad_B - tmp_grad_A; // determine contribution to J //
             // calculate the 'direct' J needed for stabilizing numerical diffusion terms //
             J_direct[k] = rinv2*(kernel.dp[k_xyz_A]*d_scalar[k_xyz_B]-kernel.dp[k_xyz_B]*d_scalar[k_xyz_A]);
-            if(J_current[k]*J_direct[k] < 0) {if(fabs(J_direct[k]) > 2.*fabs(J_current[k])) {J_current[k] = 0.0;}}
+            if(J_current[k]*J_direct[k] < 0) {if(fabs(J_direct[k]) > 5.*fabs(J_current[k])) {J_current[k] = 0.0;}}
+            Jmag += J_current[k]*J_current[k];
+            for(k2=0;k2<3;k2++) {grad_dot_x_ij[k] += 0.5*(local.Gradients.B[k][k2]+SphP[j].Gradients.B[k][k2]) * kernel.dp[k2];}
         }
+        
         // calculate the actual fluxes //
         double b_flux[3]={0}, JcrossB[3], JcrossBcrossB[3];
         JcrossB[0] = (bhat[2]*J_current[1]-bhat[1]*J_current[2]);
@@ -79,17 +82,31 @@ if((local.Mass > 0) && (P[j].Mass > 0))
         db_direct[0] = Face_Area_Vec[1]*b_flux_direct[2] - Face_Area_Vec[2]*b_flux_direct[1];
         db_direct[1] = Face_Area_Vec[2]*b_flux_direct[0] - Face_Area_Vec[0]*b_flux_direct[2];
         db_direct[2] = Face_Area_Vec[0]*b_flux_direct[1] - Face_Area_Vec[1]*b_flux_direct[0];
+        
+        double bfluxmag = 0;
+        for(k=0;k<3;k++) {bfluxmag += bflux_from_nonideal_effects[k]*bflux_from_nonideal_effects[k];}
+        bfluxmag /= (1.e-37 + Jmag * eta_max*eta_max * Face_Area_Norm*Face_Area_Norm);
+        
         for(k=0;k<3;k++)
         {
-            double db_corr = bflux_from_nonideal_effects[k] + db_direct[k];
-            bflux_from_nonideal_effects[k] = MINMOD(bflux_from_nonideal_effects[k], db_corr);
+            double d_scalar_tmp = d_scalar[k] - grad_dot_x_ij[k];
+            double d_scalar_hll = MINMOD(d_scalar[k] , d_scalar_tmp);
+            double hll_corr = bfluxmag * HLL_correction(d_scalar_hll,0.,1.,eta_max);
+            double db_corr = bflux_from_nonideal_effects[k] + hll_corr;
+            bflux_from_nonideal_effects[k] = MINMOD(1.1*bflux_from_nonideal_effects[k], db_corr);
+            if(hll_corr!=0)
+            {
+                double db_direct_tmp = fabs(db_direct[k]) * hll_corr / fabs(hll_corr);
+                if((bflux_from_nonideal_effects[k]*db_direct_tmp < 0) && (fabs(db_direct_tmp) > 1.0*fabs(bflux_from_nonideal_effects[k]))) {bflux_from_nonideal_effects[k]=0;}
+            }
+            if((bflux_from_nonideal_effects[k]*db_direct[k] < 0) && (fabs(db_direct[k]) > 10.0*fabs(bflux_from_nonideal_effects[k]))) {bflux_from_nonideal_effects[k]=0;}
         }
-
+        
         // finally add one more flux-limiter to prevent the change in B from exceeding a large threshold in a single timestep //
         double cmag_B2 = bhat_mag * (bhat[0]*bflux_from_nonideal_effects[0]+bhat[1]*bflux_from_nonideal_effects[1]+bhat[2]*bflux_from_nonideal_effects[2]);
         if(dt_hydrostep > 0)
         {
-            double cmag_lim = 0.1 * bhat_mag*bhat_mag / dt_hydrostep;
+            double cmag_lim = 0.01 * bhat_mag*bhat_mag / dt_hydrostep;
             if(fabs(cmag_B2) > cmag_lim)
             {
                 double corr_visc = cmag_lim / fabs(cmag_B2);

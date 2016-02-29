@@ -816,10 +816,36 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #else
                     double q;
                     q = 0;
+                    
+#if !(EXPAND_PREPROCESSOR_(GALSF_FB_SNE_HEATING) == 1) // check whether a numerical value is assigned
+#if (GALSF_FB_SNE_HEATING == 1) // code for symmetrized but non-isotropic
+#define DO_SYMMETRIZED_SNE_HEATING_ONLY_BUT_NOT_FULLY_ISOTROPIC
+#endif
+#endif
+                    
+#ifdef DO_SYMMETRIZED_SNE_HEATING_ONLY_BUT_NOT_FULLY_ISOTROPIC
+                    int i1=2*k+1, i2=i1+1;
+                    if((local.Area_weighted_sum[i2]<1.e30)&&(local.Area_weighted_sum[i1]<1.e30))
+                    {
+                        double rr = local.Area_weighted_sum[i1]/local.Area_weighted_sum[i2];
+                        double rr2 = rr * rr;
+                        if(wk_vec[i1] != 0)
+                        {
+                            q += local.Area_weighted_sum[0] * wk_vec[i1] * sqrt(0.5*(1.0+rr2));
+                        } else {
+                            q += local.Area_weighted_sum[0] * wk_vec[i2] * sqrt(0.5*(1.0+1.0/rr2));
+                        }
+                    } else {
+                        q += local.Area_weighted_sum[0] * (wk_vec[i1] + wk_vec[i2]);
+                    }
+                    pvec[k] = -q;
+#else
                     if(k==0) {q=wk_vec[1]*local.Area_weighted_sum[1] + wk_vec[2]*local.Area_weighted_sum[2];}
                     if(k==1) {q=wk_vec[3]*local.Area_weighted_sum[3] + wk_vec[4]*local.Area_weighted_sum[4];}
                     if(k==2) {q=wk_vec[5]*local.Area_weighted_sum[5] + wk_vec[6]*local.Area_weighted_sum[6];}
                     pvec[k] = -q/4.; // factor of 4 accounts for our normalization of each directional component below to be =P (given by properly integrating over a unit sphere)
+#endif
+
 #endif
                     pnorm += pvec[k]*pvec[k];
                 }

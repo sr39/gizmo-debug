@@ -453,16 +453,33 @@ integertime get_timestep(int p,		/*!< particle index */
             dt_courant = All.CourantFac * (L_particle*All.cf_atime) / csnd;
             if(dt_courant < dt) dt = dt_courant;
 
+            double dt_prefac_diffusion;
+            dt_prefac_diffusion = 0.5;
+#if defined(GALSF) || defined(DIFFUSION_OPTIMIZERS)
+            dt_prefac_diffusion = 1.8;
+#endif
+#ifdef SUPER_TIMESTEP_DIFFUSION
+            double dt_superstep_explicit = 1.e10 * dt;
+#endif
+            
+            
+            
 #ifdef CONDUCTION
             {
                 double L_cond_inv = sqrt(SphP[p].Gradients.InternalEnergy[0]*SphP[p].Gradients.InternalEnergy[0] +
                                          SphP[p].Gradients.InternalEnergy[1]*SphP[p].Gradients.InternalEnergy[1] +
                                          SphP[p].Gradients.InternalEnergy[2]*SphP[p].Gradients.InternalEnergy[2]) / SphP[p].InternalEnergy;
                 double L_cond = DMAX(L_particle , 1./(L_cond_inv + 1./L_particle)) * All.cf_atime;
-                double dt_conduction = 0.5 * L_cond*L_cond / (1.0e-33 + SphP[p].Kappa_Conduction);
+                double dt_conduction = dt_prefac_diffusion * L_cond*L_cond / (MIN_REAL_NUMBER + SphP[p].Kappa_Conduction);
                 // since we use CONDUCTIVITIES, not DIFFUSIVITIES, we need to add a power of density to get the right units //
                 dt_conduction *= SphP[p].Density * All.cf_a3inv;
-                if(dt_conduction < dt) dt = dt_conduction;
+#ifdef SUPER_TIMESTEP_DIFFUSION
+                if(dt_conduction < dt_superstep_explicit) dt_superstep_explicit = dt_conduction; // explicit time-step
+                double dt_advective = dt_conduction * DMAX(1,DMAX(L_particle , 1/(MIN_REAL_NUMBER + L_cond_inv))*All.cf_atime / L_cond);
+                if(dt_advective < dt) dt = dt_advective; // 'advective' timestep: needed to limit super-stepping
+#else
+                if(dt_conduction < dt) dt = dt_conduction; // normal explicit time-step
+#endif
             }
 #endif
 
@@ -484,8 +501,14 @@ integertime get_timestep(int p,		/*!< particle index */
                 double L_cond_inv = sqrt(b_grad / (1.e-37 + b_mag));
                 double L_cond = DMAX(L_particle , 1./(L_cond_inv + 1./L_particle)) * All.cf_atime;
                 double diff_coeff = SphP[p].Eta_MHD_OhmicResistivity_Coeff + SphP[p].Eta_MHD_HallEffect_Coeff + SphP[p].Eta_MHD_AmbiPolarDiffusion_Coeff;
-                double dt_conduction = 0.5 * L_cond*L_cond / (1.0e-37 + diff_coeff);
-                if(dt_conduction < dt) dt = dt_conduction;
+                double dt_conduction = dt_prefac_diffusion * L_cond*L_cond / (1.0e-37 + diff_coeff);
+#ifdef SUPER_TIMESTEP_DIFFUSION
+                if(dt_conduction < dt_superstep_explicit) dt_superstep_explicit = dt_conduction; // explicit time-step
+                double dt_advective = dt_conduction * DMAX(1,DMAX(L_particle , 1/(MIN_REAL_NUMBER + L_cond_inv))*All.cf_atime / L_cond);
+                if(dt_advective < dt) dt = dt_advective; // 'advective' timestep: needed to limit super-stepping
+#else
+                if(dt_conduction < dt) dt = dt_conduction; // normal explicit time-step
+#endif
             }
 #endif
             
@@ -494,42 +517,51 @@ integertime get_timestep(int p,		/*!< particle index */
             {
                 if(Get_Particle_CosmicRayPressure(p) > 1.0e-20)
                 {
+                    int explicit_timestep_on;
                     double CRPressureGradScaleLength = Get_CosmicRayGradientLength(p);
                     double L_cr_weak = CRPressureGradScaleLength;
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + 1./(L_particle*All.cf_atime)));
-                    double L_cr = L_cr_strong; // true diffusion requires the stronger timestep criterion be applied
+                    double coeff_inv = L_cr_strong * dt_prefac_diffusion / (1.e-33 + SphP[p].CosmicRayDiffusionCoeff);
+                    double dt_conduction =  L_cr_strong * coeff_inv; /* true diffusion requires the stronger timestep criterion be applied */
+                    explicit_timestep_on = 1;
 #ifdef COSMIC_RAYS_DISABLE_DIFFUSION
-                    L_cr = L_cr_weak; // streaming allows weaker timestep criterion because it's really an advection equation
-#else
+                    dt_conduction = L_cr_weak * coeff_inv; /* streaming allows weaker timestep criterion because it's really an advection equation */
+                    explicit_timestep_on = 0;
+#endif
 #ifndef COSMIC_RAYS_DISABLE_STREAMING
                     /* estimate whether diffusion is streaming-dominated: use stronger/weaker criterion accordingly */
                     double diffusion_from_streaming = Get_CosmicRayStreamingVelocity(p) * CRPressureGradScaleLength;
-                    if(diffusion_from_streaming > 0.75*SphP[p].CosmicRayDiffusionCoeff) {L_cr = L_cr_weak;}
+                    if(diffusion_from_streaming > 0.75*SphP[p].CosmicRayDiffusionCoeff) {dt_conduction = L_cr_weak * coeff_inv; explicit_timestep_on = 0;}
 #endif
-#endif
-                    double dt_conduction = 0.5 * L_cr*L_cr / (1.0e-33 + SphP[p].CosmicRayDiffusionCoeff);
-                    // since we use DIFFUSIVITIES, not CONDUCTIVITIES, we dont need any other powers to get the right units //
 #ifdef GALSF
                     /* for multi-physics problems, we will use a more aggressive timestep criterion
                      based on whether or not the cosmic ray physics are relevant for what we are modeling */
-                    if((CRPressureGradScaleLength > 5.*L_particle*All.cf_atime) || (dt_conduction*SphP[p].DtCosmicRayEnergy <= 1.e-3*SphP[p].CosmicRayEnergy))
+                    if((SphP[p].CosmicRayEnergy==0)||(SphP[p].DtCosmicRayEnergy==0))
                     {
-                        if((CRPressureGradScaleLength > 10.*L_particle*All.cf_atime) &&
-                           (dt_conduction*fabs(SphP[p].DtCosmicRayEnergy) <= 1.e-5*SphP[p].CosmicRayEnergy))
+                        dt_conduction = 10. * dt;
+                    } else {
+                        double delta_cr = dt_conduction*fabs(SphP[p].DtCosmicRayEnergy);
+                        double dL_cr = CRPressureGradScaleLength / (L_particle*All.cf_atime);
+                        if((dL_cr > 2.) || (delta_cr < 1.e-3*SphP[p].CosmicRayEnergy))
                         {
-                            dt_conduction = DMIN(0.5 * L_cr_weak*L_cr_weak / (1.0e-33 + SphP[p].CosmicRayDiffusionCoeff),
-                                                 (1.e-37+1.e-5*SphP[p].CosmicRayEnergy) / (1.e-37 + fabs(SphP[p].DtCosmicRayEnergy)));
-                        } else {
-                            if(Get_Particle_CosmicRayPressure(p) < 1.e-3 * SphP[p].Pressure)
-                            {
-                                dt_conduction = DMIN(0.5 * L_cr_weak*L_cr_weak / (1.0e-33 + SphP[p].CosmicRayDiffusionCoeff),
-                                                     (1.e-37+1.e-3*SphP[p].CosmicRayEnergy) / (1.e-37 + fabs(SphP[p].DtCosmicRayEnergy)));
-                            }
+                            double dt_weak = DMIN(L_cr_weak*coeff_inv , (delta_cr + 1.e-4*SphP[p].CosmicRayEnergy)/fabs(SphP[p].DtCosmicRayEnergy));
+                            if((dL_cr > 3.) && (delta_cr < 1.e-4*SphP[p].CosmicRayEnergy)) {dt_conduction = dt_weak; explicit_timestep_on = 0;}
                         }
-                        
                     }
 #endif
-                    if(dt_conduction < dt) dt = dt_conduction;
+#ifdef SUPER_TIMESTEP_DIFFUSION
+                    if(explicit_timestep_on==1)
+                    {
+                        if(dt_prefac_diffusion > 1) {dt_conduction *= 0.5;}                        
+                        if(dt_conduction < dt_superstep_explicit) dt_superstep_explicit = dt_conduction; // explicit time-step
+                        double dt_advective = dt_conduction * DMAX(1 , DMAX(L_cr_strong,L_cr_weak)/L_cr_strong);
+                        if(dt_advective < dt) dt = dt_advective; // 'advective' timestep: needed to limit super-stepping
+                    } else {
+                        if(dt_conduction < dt) dt = dt_conduction; // this is an advective timestep and super-stepping doesn't apply
+                    }
+#else
+                    if(dt_conduction < dt) dt = dt_conduction; // normal explicit time-step
+#endif
                 }
             }
 #endif
@@ -544,14 +576,19 @@ integertime get_timestep(int p,		/*!< particle index */
                     double gradETmag=0; for(k=0;k<3;k++) {gradETmag += SphP[p].Gradients.E_gamma_ET[kf][k]*SphP[p].Gradients.E_gamma_ET[kf][k];}
                     double L_ETgrad_inv = sqrt(gradETmag) / (1.e-37 + SphP[p].E_gamma[kf] * SphP[p].Density/P[p].Mass);
                     double L_RT_diffusion = DMAX(L_particle , 1./(L_ETgrad_inv + 1./L_particle)) * All.cf_atime;
-                    double dt_rt_diffusion = 0.5 * L_RT_diffusion*L_RT_diffusion / (1.0e-33 + rt_diffusion_coefficient(p,kf));
-                    if(dt_rt_diffusion < dt) dt = dt_rt_diffusion;
+                    double dt_rt_diffusion = dt_prefac_diffusion * L_RT_diffusion*L_RT_diffusion / (1.0e-33 + rt_diffusion_coefficient(p,kf));
+#ifdef SUPER_TIMESTEP_DIFFUSION
+                    if(dt_rt_diffusion < dt_superstep_explicit) dt_superstep_explicit = dt_rt_diffusion; // explicit time-step
+                    double dt_advective = dt_rt_diffusion * DMAX(1,DMAX(L_particle , 1/(MIN_REAL_NUMBER + L_ETgrad_inv))*All.cf_atime / L_RT_diffusion);
+                    if(dt_advective < dt) dt = dt_advective; // 'advective' timestep: needed to limit super-stepping
+#else
+                    if(dt_rt_diffusion < dt) dt = dt_rt_diffusion; // normal explicit time-step
+#endif
                 }
 #endif
-#if !defined(RT_DIFFUSION_CG) /* with the fully-implicit solver, we do not require a CFL-like criterion on timesteps (much larger steps allowed) */
+                /* even with the fully-implicit solver, we require a CFL-like criterion on timesteps (much larger steps allowed for stability, but not accuracy) */
 				dt_courant = All.CourantFac * (L_particle*All.cf_atime) / (RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s)); /* courant-type criterion, using the reduced speed of light */
 				if(dt_courant < dt) dt = dt_courant;
-#endif
             }
 #endif
     
@@ -573,7 +610,13 @@ integertime get_timestep(int p,		/*!< particle index */
                 double visc_coeff = sqrt(SphP[p].Eta_ShearViscosity*SphP[p].Eta_ShearViscosity + SphP[p].Zeta_BulkViscosity*SphP[p].Zeta_BulkViscosity);
                 double dt_viscosity = 0.25 * L_visc*L_visc / (1.0e-33 + visc_coeff) * SphP[p].Density * All.cf_a3inv;
                 // since we use VISCOSITIES, not DIFFUSIVITIES, we need to add a power of density to get the right units //
-                if(dt_viscosity < dt) dt = dt_viscosity;
+#ifdef SUPER_TIMESTEP_DIFFUSION
+                if(dt_viscosity < dt_superstep_explicit) dt_superstep_explicit = dt_viscosity; // explicit time-step
+                double dt_advective = dt_viscosity * DMAX(1,DMAX(L_particle , 1/(MIN_REAL_NUMBER + dv_mag))*All.cf_atime / L_visc);
+                if(dt_advective < dt) dt = dt_advective; // 'advective' timestep: needed to limit super-stepping
+#else
+                if(dt_viscosity < dt) dt = dt_viscosity; // normal explicit time-step
+#endif
             }
 #endif
             
@@ -593,7 +636,13 @@ integertime get_timestep(int p,		/*!< particle index */
                     L_tdiff = 1./(L_tdiff_inv + 1./(1.0*L_particle)) * All.cf_atime;
                     dt_tdiff = 1.0 * L_tdiff*L_tdiff / (1.0e-33 + SphP[p].TD_DiffCoeff);
                     // here, we use DIFFUSIVITIES, so there is no extra density power in the equation //
-                    if(dt_tdiff < dt) dt = dt_tdiff;
+#ifdef SUPER_TIMESTEP_DIFFUSION
+                    if(dt_tdiff < dt_superstep_explicit) dt_superstep_explicit = dt_tdiff; // explicit time-step
+                    double dt_advective = dt_tdiff * DMAX(1,DMAX(L_particle , 1/(MIN_REAL_NUMBER + L_tdiff_inv))*All.cf_atime / L_tdiff);
+                    if(dt_advective < dt) dt = dt_advective; // 'advective' timestep: needed to limit super-stepping
+#else
+                    if(dt_tdiff < dt) dt = dt_tdiff; // normal explicit time-step
+#endif
                 }
 #endif
             }
@@ -649,7 +698,62 @@ integertime get_timestep(int p,		/*!< particle index */
             }
 #endif
             
-        }
+            
+#ifdef SUPER_TIMESTEP_DIFFUSION
+            /* now use the timestep information above to limit the super-stepping timestep */
+            {
+                int N_substeps = 5; /*!< number of sub-steps per super-timestep for super-timestepping algorithm */
+                double nu_substeps = 0.04; /*!< damping parameter (0<nu<1), optimal behavior around ~1/sqrt[N_substeps] */
+                
+                /*!< pre-calculate the multipliers needed for the super-timestep sub-step */
+                if(SphP[p].Super_Timestep_j == 0) {SphP[p].Super_Timestep_Dt_Explicit = dt_superstep_explicit;} // reset dt_explicit //
+                double j_p_super = (double)(SphP[p].Super_Timestep_j + 1);
+                double dt_superstep = SphP[p].Super_Timestep_Dt_Explicit / ((nu_substeps+1) + (nu_substeps-1) * cos(M_PI * (2*j_p_super - 1) / (2*(double)N_substeps)));
+
+                double dt_touse = dt_superstep;
+                if((dt <= dt_superstep)||(SphP[p].Super_Timestep_j > 0))
+                {
+                    /* if(dt <= dt_superstep): other constraints beat our super-step, so it doesn't matter: iterate */
+                    /* if(SphP[p].Super_Timestep_j > 0): don't break mid-cycle, so iterate */
+                    SphP[p].Super_Timestep_j++; if(SphP[p].Super_Timestep_j>=N_substeps) {SphP[p].Super_Timestep_j=0;} /*!< increment substep 'j' and loop if it cycles fully */
+                } else {
+                    /* ok, j=0 and dt > dt_superstep [the next super-step matters for starting a new cycle]: think about whether to start */
+                    double dt_pred = dt_superstep * All.cf_hubble_a;
+                    if(dt_pred > All.MaxSizeTimestep) {dt_pred = All.MaxSizeTimestep;}
+                    if(dt_pred < All.MinSizeTimestep) {dt_pred = All.MinSizeTimestep;}
+                    /* convert our physical timestep into the dimensionless units of the code */
+                    integertime ti_min=TIMEBASE, ti_step = (integertime) (dt_pred / All.Timebase_interval);
+                    /* check against valid limits */
+                    if(ti_step<=1) {ti_step=2;}
+                    if(ti_step>=TIMEBASE) {ti_step=TIMEBASE-1;}
+                    while(ti_min > ti_step) {ti_min >>= 1;}  /* make it a power 2 subdivision */
+                    ti_step = ti_min;
+                    /* now turn it into a timebin */
+                    int bin = get_timestep_bin(ti_step);
+                    int binold = P[p].TimeBin;
+                    if(bin > binold)  /* timestep wants to increase: check whether it wants to move into a valid timebin */
+                    {
+                        while(TimeBinActive[bin] == 0 && bin > binold) {bin--;} /* make sure the new step is synchronized */
+                    }
+                    /* now convert this -back- to a physical timestep */
+                    double dt_allowed = (bin ? (((integertime) 1) << bin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+                    if(dt_superstep > 1.5*dt_allowed)
+                    {
+                        /* the next allowed timestep [because of synchronization] is not big enough to fit the 'big step' 
+                            part of the super-stepping cycle. rather than 'waste' our timestep which will knock us into a 
+                            lower bin and defeat the super-stepping, we simply take the -safe- explicit timestep and 
+                            wait until the desired time-bin synchs up, so we can super-step */
+                        dt_touse = dt_superstep_explicit; // use the safe [normal explicit] timestep and -do not- cycle j //
+                    } else {
+                        /* ok, we can jump up in bins to use our super-step; begin the cycle! */
+                        SphP[p].Super_Timestep_j++; if(SphP[p].Super_Timestep_j>=N_substeps) {SphP[p].Super_Timestep_j=0;}
+                    }
+                }
+                if(dt < dt_touse) {dt = dt_touse;} // set the actual timestep [now that we've appropriately checked everything above] //
+            }
+#endif
+            
+        } // closes if(P[p].Type == 0) [gas particle check] //
     
     
 #ifdef SIDM
@@ -704,6 +808,9 @@ integertime get_timestep(int p,		/*!< particle index */
 #if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
             dt_accr *= All.BAL_f_accretion;
 #endif // BH_BAL_WINDS
+#ifdef SINGLE_STAR_FORMATION
+            dt_accr = 0.1 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
+#endif
 #else
             dt_accr = 0.05 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
 #endif // defined(BH_GRAVCAPTURE_GAS) || defined(BH_BAL_WINDS)
@@ -720,6 +827,7 @@ integertime get_timestep(int p,		/*!< particle index */
     } // if(P[p].Type == 5)
 #endif // BLACK_HOLES
     
+
     
     /* convert the physical timestep to dloga if needed. Note: If comoving integration has not been selected, All.cf_hubble_a=1. */
     dt *= All.cf_hubble_a;

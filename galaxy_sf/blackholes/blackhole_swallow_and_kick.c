@@ -238,7 +238,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     MyFloat mdot,dt;
 #endif
     
-    MyFloat dir[3],norm,mom=0;
+    MyFloat dir[3], norm, mom;
+    mom=0; norm=0; dir[0]=0;
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK_COLLIMATED)
     MyFloat *Jgas_in_Kernel;
 #endif

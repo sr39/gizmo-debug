@@ -117,6 +117,40 @@ void blackhole_accretion(void)
 }
 
 
+/* calculate escape velocity to use for bounded-ness calculations relative to the BH */
+double bh_vesc(MyIDType j, double mass, double r_code)
+{
+    double cs_to_add_km_s = 10.0; /* we can optionally add a 'fudge factor' to v_esc to set a minimum value; useful for galaxy applications */
+#if defined(SINGLE_STAR_FORMATION) || defined(BH_SEED_GROWTH_TESTS)
+    cs_to_add_km_s = 0.0;
+#endif
+    cs_to_add_km_s *= 1.e5/All.UnitVelocity_in_cm_per_s;
+    return sqrt(2.0*All.G*(mass+P[j].Mass)/(r_code*All.cf_atime) + cs_to_add_km_s*cs_to_add_km_s);
+}
+
+/* check whether a particle is sufficiently bound to the BH to qualify for 'gravitational capture' */
+int bh_check_boundedness(MyIDType j, double vrel, double vesc, double dr_code)
+{
+    /* if pair is a gas particle make sure to account for its thermal pressure */
+    double cs = 0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}
+#if defined(SINGLE_STAR_FORMATION) 
+    cs = 0;
+#endif
+    double v2 = (vrel*vrel+cs*cs)/(vesc*vesc);
+    int bound = 0;
+    if(v2 < 1) 
+    {
+        double apocenter = dr_code / (1.0-v2);
+        double apocenter_max = All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
+#if defined(SINGLE_STAR_FORMATION) || defined(BH_SEED_GROWTH_TESTS)
+        double r_j = All.ForceSoftening[P[j].Type];
+        if(P[j].Type==0) {r_j = DMAX(r_j , PPP[j].Hsml);}
+        apocenter_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
+#endif
+        if(apocenter < apocenter_max) {bound = 1;}
+    }
+    return bound;
+}
 
 
 
@@ -125,6 +159,9 @@ void blackhole_accretion(void)
     radiation pressure and the bal winds */
 double bh_angleweight_localcoupling(int j, double hR, double theta)
 {
+#ifdef SINGLE_STAR_FORMATION
+    return 1;
+#endif
 #ifndef BH_PHOTONMOMENTUM
     // for now, if only BH_BAL_WINDS enabled, assume isotropic //
     return P[j].Hsml*P[j].Hsml;
@@ -144,6 +181,12 @@ double bh_angleweight_localcoupling(int j, double hR, double theta)
     rely this for things like the long-range radiation pressure and compton heating) */
 double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz, int mode)
 {
+#ifdef SINGLE_STAR_FORMATION
+    double bh_lum = bh_lum_input;
+    if(mode==1) bh_lum *= All.BlackHoleFeedbackFactor * All.BlackHoleRadiativeEfficiency * 4.597e20 * All.HubbleParam/All.UnitTime_in_s;
+    return bh_lum;
+#else
+
     double bh_lum = bh_lum_input;
     if(bh_lum <= 0) return 0;
     if(isnan(hR)) return 0;
@@ -171,6 +214,7 @@ double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, doubl
     if(y>1.441) y=1.441; if(y<-5.0) y=-5.0;
     y*=2.3026; // so we can take exp, instead of pow //
     return exp(y) * bh_lum;
+#endif
 }
 #endif /* end of #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) */
 
@@ -433,6 +477,12 @@ void set_blackhole_mdot(int i, int n, double dt)
         pow( BPP(n).BH_Mass*All.UnitMass_in_g / (All.HubbleParam * 1.0e8*SOLAR_MASS) , -5./14. ) * // mbh dependence
         pow( BPP(n).BH_Mass_AlphaDisk*All.UnitMass_in_g / (All.HubbleParam * 1.0e8*SOLAR_MASS) , 10./7. ) * // m_disk dependence
         pow( DMIN(0.2,DMIN(PPP[n].Hsml,All.ForceSoftening[5])*All.cf_atime*All.UnitLength_in_cm/(All.HubbleParam * 3.086e18)) , -25./14. ); // r_disk dependence
+
+#ifdef SINGLE_STAR_FORMATION
+        mdot = All.BlackHoleAccretionFactor * 1.0e-5 * BPP(n).BH_Mass_AlphaDisk / (SEC_PER_YEAR/All.UnitTime_in_s) * 
+            pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass),2); 
+#endif
+
     }
 #endif
     

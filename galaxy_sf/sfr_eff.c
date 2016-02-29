@@ -227,7 +227,7 @@ int determine_sf_flag(int i)
 void set_units_sfr(void)
 {
     All.OverDensThresh = All.CritOverDensity * All.OmegaBaryon * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
-    All.PhysDensThresh = All.CritPhysDensity * PROTONMASS / HYDROGEN_MASSFRAC / All.UnitDensity_in_cgs;
+    All.PhysDensThresh = All.CritPhysDensity * PROTONMASS / (HYDROGEN_MASSFRAC * All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam);
     
 #ifdef GALSF_EFFECTIVE_EQS
     double meanweight = 4 / (1 + 3 * HYDROGEN_MASSFRAC);	/* note: assuming NEUTRAL GAS */
@@ -243,7 +243,7 @@ void set_units_sfr(void)
 /* Routine to actually determine the SFR assigned to an individual gas particle at each time */
 double get_starformation_rate(int i)
 {
-    double rateOfSF,tsfr,y;
+    double rateOfSF,tsfr,y; y=0;
     int flag;
 #ifdef GALSF_EFFECTIVE_EQS
     double factorEVP, egyhot, ne, tcool, x, cloudmass;
@@ -313,6 +313,12 @@ double get_starformation_rate(int i)
     /* add thermal support, although it is almost always irrelevant */
     double cs_eff = Particle_effective_soundspeed_i(i);
     double k_cs = cs_eff / (Get_Particle_Size(i)*All.cf_atime);
+#ifdef SINGLE_STAR_FORMATION
+    double press_grad_length = 0;
+    for(j=0;j<3;j++) {press_grad_length += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
+    press_grad_length = All.cf_atime * DMAX(Get_Particle_Size(i) , SphP[i].Pressure / (1.e-37 + sqrt(press_grad_length))); 
+    k_cs = cs_eff / press_grad_length;    
+#endif
     dv2abs += 2.*k_cs*k_cs; // account for thermal pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
     
     //double alpha_vir = 0.2387 * dv2abs / (All.G * SphP[i].Density * All.cf_a3inv); // coefficient here was for old form, with only divv information
@@ -321,27 +327,44 @@ double get_starformation_rate(int i)
     
 #if !(EXPAND_PREPROCESSOR_(GALSF_SFR_VIRIAL_SF_CRITERION) == 1)
     /* the above macro checks if GALSF_SFR_VIRIAL_SF_CRITERION has been assigned a numerical value */
-#if (GALSF_SFR_VIRIAL_SF_CRITERION > 0)
+#if (GALSF_SFR_VIRIAL_SF_CRITERION > 0) || (GALSF_SFR_VIRIAL_SF_CRITERION == 2)
     if(alpha_vir < 1.0)
     {
         /* check if Jeans mass is remotely close to solar; if not, dont allow it to form 'stars' */
         double q = cs_eff * All.UnitVelocity_in_cm_per_s / (0.2e5);
         double q2 = SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / (HYDROGEN_MASSFRAC*1.0e3*PROTONMASS);
         double MJ_solar = 2.*q*q*q/sqrt(q2);
-        if(MJ_solar > 1000.) {alpha_vir = 100.;}
+        double MJ_crit = 1000.;
+#ifdef SINGLE_STAR_FORMATION
+        MJ_crit = 1.e4;
+#endif
+        if(MJ_solar > MJ_crit) {alpha_vir = 100.;}
     }
 #endif
 #if (GALSF_SFR_VIRIAL_SF_CRITERION > 1)
     if(alpha_vir >= 1.0) {rateOfSF *= 0.0;}
 #endif
 #endif
-    
     if((alpha_vir<1.0)||(SphP[i].Density*All.cf_a3inv>100.*All.PhysDensThresh)) {rateOfSF *= 1.0;} else {rateOfSF *= 0.0015;}
     // PFH: note the latter flag is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! //
     
     //  if( divv>=0 ) rateOfSF=0; // restrict to convergent flows (optional) //
     //  rateOfSF *= 1.0/(1.0 + alpha_vir); // continuous cutoff w alpha_vir instead of sharp (optional) //
 #endif // GALSF_SFR_VIRIAL_SF_CRITERION
+    
+#ifdef SINGLE_STAR_FORMATION
+    rateOfSF *= 1.0e5; // make sink formation guaranteed to happen, where it can
+    // restrict to convergent flows //
+    {
+        int k; double divv=0; for(k=0;k<3;k++) {divv += SphP[i].Gradients.Velocity[k][k] * All.cf_a2inv;}
+        if(All.ComovingIntegrationOn) {divv += 3.*All.cf_hubble_a;}
+        if(divv >= 0) {rateOfSF=0;} 
+    }
+    if(SphP[i].Density_Relative_Maximum_in_Kernel > 0) {rateOfSF=0;} // restrict to local density/potential maxima //
+#ifdef BH_CALC_DISTANCES
+    if(P[i].min_dist_to_bh < PPP[i].Hsml) {rateOfSF=0;} // restrict to particles without a sink in their kernel //
+#endif
+#endif // SINGLE_STAR_FORMATION 
     
     return rateOfSF;
 }
@@ -393,9 +416,10 @@ void cooling_and_starformation(void)
   unsigned int bits;
   double dt, dtime, mass_of_star, p, prob, rate_in_msunperyear, sfrrate, totsfrrate;
   double sum_sm, total_sm, sm=0, rate, sum_mass_stars, total_sum_mass_stars;
-#ifdef BH_POPIII_SEEDS
+#if defined(BH_POPIII_SEEDS) || defined(SINGLE_STAR_FORMATION)
   int num_bhformed=0, tot_bhformed=0;
   double GradRho;
+  GradRho=0;
 #endif
 #if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) && defined(GALSF_FB_RPWIND_LOCAL)
   double total_n_wind,total_m_wind,total_mom_wind,total_prob_kick,avg_v_kick,momwt_avg_v_kick,avg_taufac;
@@ -541,7 +565,6 @@ void cooling_and_starformation(void)
 		      /* here we turn the gas particle itself into a star */
 		      Stars_converted++;
 		      stars_converted++;
-
 		      sum_mass_stars += P[i].Mass;
 
 		      P[i].Type = 4;
@@ -555,6 +578,25 @@ void cooling_and_starformation(void)
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 P[i].Mass = SphP[i].MassTrue + SphP[i].dMass;
 #endif
+                
+
+#ifdef SINGLE_STAR_FORMATION
+                P[i].Type = 5;
+                num_bhformed++;
+                P[i].BH_Mass = All.SeedBlackHoleMass;
+#ifdef BH_ALPHADISK_ACCRETION
+                P[i].BH_Mass_AlphaDisk = DMAX(0, P[i].Mass-P[i].BH_Mass);
+#endif
+#ifdef BH_COUNTPROGS
+                P[i].BH_CountProgs = 1;
+#endif
+                P[i].BH_Mdot = 0;
+#ifdef BH_PHOTONMOMENTUM
+                P[i].BH_disk_hr = 0.333333;
+#endif
+                P[i].DensAroundStar = SphP[i].Density;
+#endif // SINGLE_STAR_FORMATION
+                
 		    } /* closes final generation from original gas particle */
 		  else
 		    {
@@ -679,18 +721,18 @@ if(All.WindMomentumLoading)
 #endif /* GALSF_FB_RPWIND_DO_IN_SFCALC */
 
     
-#ifdef BH_POPIII_SEEDS
+#if defined(BH_POPIII_SEEDS) || defined(SINGLE_STAR_FORMATION)
   MPI_Allreduce(&num_bhformed, &tot_bhformed, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
   if(tot_bhformed > 0)
   {
       if(ThisTask==0)
       {
-      printf("POP III BH formation: %d gas particles converted into BHs \n",tot_bhformed);
+      printf("BH/Sink formation: %d gas particles converted into BHs \n",tot_bhformed);
       fflush(stdout);
       }
       All.TotBHs += tot_bhformed;
   } // if(tot_bhformed > 0)
-#endif // BH_POPIII_SEEDS
+#endif
 
   MPI_Allreduce(&stars_spawned, &tot_spawned, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&stars_converted, &tot_converted, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);

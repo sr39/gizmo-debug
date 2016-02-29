@@ -345,10 +345,6 @@ void calculate_non_standard_physics(void)
     }
 #endif
     
-#ifdef SINKS
-    do_sinks();
-#endif
-    
 #ifdef SCF_HYBRID
     SCF_do_center_of_mass_correction(0.75, 10.0 * SCF_HQ_A, 0.01, 1000);
 #endif

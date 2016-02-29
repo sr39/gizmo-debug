@@ -221,7 +221,8 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     MyFloat bh_mass_alphadisk;
 #endif
 #if defined(BH_SWALLOWGAS)
-    double w=0,p=0,mass_markedswallow=0,bh_mass_withdisk=0;
+    double w,p,mass_markedswallow,bh_mass_withdisk;
+    w=0; p=0; mass_markedswallow=0; bh_mass_withdisk=0;
 #endif
     
     
@@ -321,6 +322,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         startnode = Nodes[startnode].u.d.nextnode;	/* open it */
     }
     
+    int particles_swallowed_this_bh_this_process = 0;
+    int particles_swallowed_this_bh_this_process_max = 1;
+    
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
     BH_angle_weighted_kernel_sum = 0;
 #endif
@@ -344,13 +348,12 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                     r2=0; for(k=0;k<3;k++) r2+=dpos[k]*dpos[k];
                     
                     if(r2 < h_i2)
-                    {
-                        
+                    {                    
+                        r = sqrt(r2);
                         vrel = 0;
                         for(k=0;k<3;k++) vrel += (P[j].Vel[k] - velocity[k])*(P[j].Vel[k] - velocity[k]);
                         vrel = sqrt(vrel) / All.cf_atime;       /* do this once and use below */
-                        vesc = sqrt(2.0*All.G*(mass+P[j].Mass)/(sqrt(r2)*All.cf_atime) + pow(10.e5/All.UnitVelocity_in_cm_per_s,2));
-                        r = sqrt(r2);
+                        vesc = bh_vesc(j, mass, r);
 
 #ifdef BH_REPOSITION_ON_POTMIN
                         /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
@@ -391,8 +394,10 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 
                                     //if(P[j].SwallowID < id && P[j].ID < id) // makes it so only one swallows the other
                                     // DAA: makes it so that the most massive BH swallows the other - simplifies analysis
+#ifndef SINGLE_STAR_FORMATION
                                     if((P[j].SwallowID == 0) && (BPP(j).BH_Mass < bh_mass)) 
                                         P[j].SwallowID = id;
+#endif
                                 }
                             }
                         } // if(P[j].Type == 5) //
@@ -404,11 +409,10 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
                         if(P[j].Type != 5)
                         {
-                            double cs=0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}
-                            if(vrel < vesc){ /* bound */
-                                if( All.ForceSoftening[5]*(1.0-(vrel*vrel+cs*cs)/(vesc*vesc))/r > 1.0 )
-                                { /* apocenter within 2.8*epsilon (softening length) */
-                                    
+                            if((vrel < vesc) && (particles_swallowed_this_bh_this_process < particles_swallowed_this_bh_this_process_max))
+                            { /* bound */
+                                if( bh_check_boundedness(j,vrel,vesc,r)==1 )
+                                { /* apocenter within target distance */        
 #ifdef BH_GRAVCAPTURE_NONGAS
                                     /* simply swallow non-gas particle if BH_GRAVCAPTURE_NONGAS enabled */
                                     if((P[j].Type != 0) && (P[j].SwallowID < id)) P[j].SwallowID = id;
@@ -435,12 +439,16 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                         }
 #else //if defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
                                         /* in other cases, just swallow the particle */
-                                        if(P[j].SwallowID < id) P[j].SwallowID = id;            
+                                        if(P[j].SwallowID < id) 
+                                        {
+                                            P[j].SwallowID = id;
+                                            particles_swallowed_this_bh_this_process++;
+                                        }
 #endif //else defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
                                     } //if (P[j].Type == 0)
 #endif //ifdef BH_GRAVCAPTURE_GAS
                                     
-                                } // if( All.ForceSoftening[5]*(1.0-vrel*vrel/(vesc*vesc))/sqrt(r2) > 1.0 )
+                                } // if( apocenter in tolerance range )
                             } // if(vrel < vesc)
                         } //if(P[j].Type != 5)
 #endif // if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)

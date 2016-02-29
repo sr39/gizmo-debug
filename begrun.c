@@ -91,7 +91,7 @@ void begrun(void)
   set_units();
   set_cosmo_factors_for_current_time();
   All.Time = All.TimeBegin;
-
+    
 #ifdef COOLING
   InitCool();
 #endif
@@ -228,14 +228,12 @@ void begrun(void)
         All.SofteningBulge = all.SofteningBulge;
         All.SofteningStars = all.SofteningStars;
         All.SofteningBndry = all.SofteningBndry;
-#ifdef SINKS
-        All.SinkHsml = all.SinkHsml;
-#endif
 
       All.MaxHsml = all.MaxHsml;
       All.MaxRMSDisplacementFac = all.MaxRMSDisplacementFac;
 
       All.ErrTolForceAcc = all.ErrTolForceAcc;
+      All.NumFilesPerSnapshot = all.NumFilesPerSnapshot;
       All.NumFilesWrittenInParallel = all.NumFilesWrittenInParallel;
       All.TreeDomainUpdateFrequency = all.TreeDomainUpdateFrequency;
 
@@ -445,7 +443,7 @@ void set_units(void)
   /* for historical reasons, we need to convert to "All.MaxSfrTimescale", defined as the SF timescale in code units at the critical physical
      density given above. use the dimensionless SfEffPerFreeFall (which has been read in) to calculate this. This must be done -BEFORE- calling set_units_sfr) */
 #ifndef GALSF_EFFECTIVE_EQS
-  All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3*M_PI / (32 * All.G * (All.CritPhysDensity * meanweight * 1.67e-24 / All.UnitDensity_in_cgs)));
+  All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3.*M_PI / (32. * All.G * (All.CritPhysDensity * meanweight * 1.67e-24 / (All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam))));
 #endif
   set_units_sfr();
 #endif
@@ -1673,16 +1671,6 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "star_Teff");
         addr[nt] = &All.star_Teff;
         id[nt++] = REAL;
-#endif
-
-#ifdef SINKS
-      strcpy(tag[nt], "SinkHsml");
-      addr[nt] = &All.SinkHsml;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "SinkDensThresh");
-      addr[nt] = &All.SinkDensThresh;
-      id[nt++] = REAL;
 #endif
 
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
