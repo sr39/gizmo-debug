@@ -35,7 +35,9 @@ static struct blackholedata_in
     MyDouble Pos[3];
     MyFloat Vel[3];
 #ifdef BH_GRAVACCRETION_BTOD
-    MyFloat Jalt[3];
+    //MyFloat Jalt[3];
+    MyFloat Jgas[3];
+    MyFloat Jstar[3];
 #endif
     MyFloat Hsml;
     MyIDType ID;
@@ -278,6 +280,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 #ifdef BH_DYNFRICTION
 #ifdef BH_DYNFRICTION_STARS_ONLY
                     if( P[j].Type==4 || ((P[j].Type==2||P[j].Type==3) && !(All.ComovingIntegrationOn)) )
+#endif
                     {
                         if(P[j].Mass>out.DF_mmax_particles) out.DF_mmax_particles=P[j].Mass;
                         for (k=0;k<3;k++)
@@ -286,22 +289,18 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                             out.DF_rms_vel += wt*dv[k]*dv[k];
                         }
                     }
-#else
-                    if(P[j].Mass>out.DF_mmax_particles) out.DF_mmax_particles=P[j].Mass;     // DAA: note this can include dark matter BUT Malt below not !
-                    for (k=0;k<3;k++)
-                    {
-                        out.DF_mean_vel[k] += wt*dv[k];
-                        out.DF_rms_vel += wt*dv[k]*dv[k];
-                    }
 #endif
-#endif
-                    if(P[j].Type==0) /* we found gas in BH's kernel */
+                    if(P[j].Type==0)
                     {
+                        /* we found gas in BH's kernel */
                         out.Mgas_in_Kernel += wt;
+                        out.Sfr_in_Kernel += SphP[j].Sfr;
                         out.BH_InternalEnergy += wt*SphP[j].InternalEnergy;
+                        out.Jgas_in_Kernel[0] += wt*(dP[1]*dv[2] - dP[2]*dv[1]);
+                        out.Jgas_in_Kernel[1] += wt*(dP[2]*dv[0] - dP[0]*dv[2]);
+                        out.Jgas_in_Kernel[2] += wt*(dP[0]*dv[1] - dP[1]*dv[0]);
+/* DAA: this is done always now
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK_COLLIMATED) || defined(BH_GRAVACCRETION) 
-         /* DAA: now we need Jgas for GRAVACCRETION as well
-            Note that Jalt_in_Kernel will be updated to be the TOTAL Angular momentum (including gas) in normalize_temp_info_struct */
                         out.Jgas_in_Kernel[0] += wt*(dP[1]*dv[2] - dP[2]*dv[1]);
                         out.Jgas_in_Kernel[1] += wt*(dP[2]*dv[0] - dP[0]*dv[2]);
                         out.Jgas_in_Kernel[2] += wt*(dP[0]*dv[1] - dP[1]*dv[0]);
@@ -310,6 +309,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         out.Jalt_in_Kernel[1] += wt*(dP[2]*dv[0] - dP[0]*dv[2]);
                         out.Jalt_in_Kernel[2] += wt*(dP[0]*dv[1] - dP[1]*dv[0]);
 #endif
+*/
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
                         u=0;
                         for(k=0;k<3;k++) u+=dP[k]*dP[k];
@@ -325,11 +325,18 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         }
 #endif
                     }
-#ifdef BH_GRAVACCRETION_BTOD    // DAA: we need only star particles here
-                    else if( P[j].Type==4 || ((P[j].Type==2||P[j].Type==3) && !(All.ComovingIntegrationOn)) ) {
-#else 
-                    else { /* not gas, not BH */
-#endif
+                    else if( P[j].Type==4 || ((P[j].Type==2||P[j].Type==3) && !(All.ComovingIntegrationOn)) ) 
+                    {
+                        /* stars */
+                        out.Mstar_in_Kernel += wt;
+                        out.Jstar_in_Kernel[0] += wt*(dP[1]*dv[2] - dP[2]*dv[1]);
+                        out.Jstar_in_Kernel[1] += wt*(dP[2]*dv[0] - dP[0]*dv[2]);
+                        out.Jstar_in_Kernel[2] += wt*(dP[0]*dv[1] - dP[1]*dv[0]);
+                    }
+                    else 
+                    { 
+                        /* dark matter */
+                        // DAA: Jalt_in_Kernel/Malt_in_Kernel are updated to be TOTAL Angular momentum/mass in normalize_temp_info_struct()
                         out.Malt_in_Kernel += wt;
                         out.Jalt_in_Kernel[0] += wt*(dP[1]*dv[2] - dP[2]*dv[1]);
                         out.Jalt_in_Kernel[1] += wt*(dP[2]*dv[0] - dP[0]*dv[2]);
@@ -466,7 +473,9 @@ void blackhole_environment_second_loop(void)
             {
                 BlackholeDataIn[j].Pos[k] = P[place].Pos[k];
                 BlackholeDataIn[j].Vel[k] = P[place].Vel[k];
-                BlackholeDataIn[j].Jalt[k] = BlackholeTempInfo[mod_index].Jalt_in_Kernel[k];    // DAA: Jalt_in_Kernel is available after first environment loop
+                //BlackholeDataIn[j].Jalt[k] = BlackholeTempInfo[mod_index].Jalt_in_Kernel[k];    // DAA: J is available after first environment loop
+                BlackholeDataIn[j].Jgas[k] = BlackholeTempInfo[mod_index].Jgas_in_Kernel[k];
+                BlackholeDataIn[j].Jstar[k] = BlackholeTempInfo[mod_index].Jstar_in_Kernel[k];
             }
             BlackholeDataIn[j].Hsml = PPP[place].Hsml;
             BlackholeDataIn[j].ID = P[place].ID;
@@ -541,9 +550,11 @@ void blackhole_environment_second_loop(void)
             place = DataIndexTable[j].Index;
             mod_index = P[place].IndexMapToTempStruc;
  /*         DAA: make sure we don't mess up other variables in BlackholeTempInfo, we only need to update Mbulge_in_Kernel 
- *          out2particle_blackhole(&BlackholeDataPasserOut[j], P[place].IndexMapToTempStruc, 1); 
+            out2particle_blackhole(&BlackholeDataPasserOut[j], P[place].IndexMapToTempStruc, 1); 
  */
-            BlackholeTempInfo[mod_index].Mbulge_in_Kernel += BlackholeDataPasserOut[j].Mbulge_in_Kernel;
+            //BlackholeTempInfo[mod_index].Mbulge_in_Kernel += BlackholeDataPasserOut[j].Mbulge_in_Kernel;
+            BlackholeTempInfo[mod_index].MgasBulge_in_Kernel += BlackholeDataPasserOut[j].MgasBulge_in_Kernel;
+            BlackholeTempInfo[mod_index].MstarBulge_in_Kernel += BlackholeDataPasserOut[j].MstarBulge_in_Kernel;
         } // for(j = 0; j < nexport; j++)
         myfree(BlackholeDataPasserOut);
         myfree(BlackholeDataPasserResult);
@@ -563,11 +574,13 @@ int blackhole_environment_second_evaluate(int target, int mode, int *nexport, in
 {
     /* initialize variables before SPH loop is started */
     int startnode, numngb, j, n, listindex=0, mod_index;
-    MyFloat *pos, h_i, *vel, *Jalt;
+    MyFloat *pos, h_i, *vel, *Jgas, *Jstar; //*Jalt;
     MyIDType id;
 
     double dP[3],dv[3],J_tmp[3],wt;
-    double Mbulge_tmp=0;
+    //double Mbulge_tmp=0;
+    double MgasBulge_tmp, MstarBulge_tmp;
+    MgasBulge_tmp=0; MstarBulge_tmp=0;
 
     /* these are the BH properties */
     if(mode == 0)
@@ -577,7 +590,9 @@ int blackhole_environment_second_evaluate(int target, int mode, int *nexport, in
         h_i = PPP[target].Hsml;
         id = P[target].ID;
         mod_index = P[target].IndexMapToTempStruc;  /* the index of the BlackholeTempInfo should we modify*/
-        Jalt = BlackholeTempInfo[mod_index].Jalt_in_Kernel;   // DAA: Jalt_in_Kernel is available after first environment loop
+        //Jalt = BlackholeTempInfo[mod_index].Jalt_in_Kernel;   // DAA: Jalt_in_Kernel is available after first environment loop
+        Jgas = BlackholeTempInfo[mod_index].Jgas_in_Kernel;
+        Jstar = BlackholeTempInfo[mod_index].Jstar_in_Kernel;
     }
     else
     {
@@ -586,7 +601,9 @@ int blackhole_environment_second_evaluate(int target, int mode, int *nexport, in
         h_i = BlackholeDataGet[target].Hsml;
         id = BlackholeDataGet[target].ID;
         mod_index = 0;                              /* this is not used for mode==1, but this avoids compiler error */
-        Jalt = BlackholeDataGet[target].Jalt;
+        //Jalt = BlackholeDataGet[target].Jalt;
+        Jgas = BlackholeDataGet[target].Jgas;
+        Jstar = BlackholeDataGet[target].Jstar;
     }
 
     if(h_i < 0) return -1;
@@ -630,30 +647,60 @@ int blackhole_environment_second_evaluate(int target, int mode, int *nexport, in
                     if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
 
-                    if( (P[j].Type==0) || (P[j].Type==4) ) /* we found gas/stars in BH's kernel */
+                    /* DAA: separeted for GAS and STARS below
+                    if( (P[j].Type==0) || (P[j].Type==4) )
                     {
-                        // DAA: jx,jy,jz, are independent of 'a' because ~ m*r*v, vphys=v/a, rphys=r*a //
                         J_tmp[0] = wt*(dP[1]*dv[2] - dP[2]*dv[1]);
                         J_tmp[1] = wt*(dP[2]*dv[0] - dP[0]*dv[2]);
                         J_tmp[2] = wt*(dP[0]*dv[1] - dP[1]*dv[0]);
 
-                        if( (J_tmp[0]*Jalt[0] + J_tmp[1]*Jalt[1] + J_tmp[2]*Jalt[2]) < 0 )         /* for gas and stars */
+                        if( (J_tmp[0]*Jalt[0] + J_tmp[1]*Jalt[1] + J_tmp[2]*Jalt[2]) < 0 ) 
+                        {
+                            Mbulge_tmp += 2.0 * wt;
+                        }
+                    }                   
+                    */
+
+                    // DAA: jx,jy,jz, are independent of 'a' because ~ m*r*v, vphys=v/a, rphys=r*a //
+                    J_tmp[0] = wt*(dP[1]*dv[2] - dP[2]*dv[1]);
+                    J_tmp[1] = wt*(dP[2]*dv[0] - dP[0]*dv[2]);
+                    J_tmp[2] = wt*(dP[0]*dv[1] - dP[1]*dv[0]);
+
+                    if(P[j].Type==0)
+                    {
+                        /* GAS */
+                        if( (J_tmp[0]*Jgas[0] + J_tmp[1]*Jgas[1] + J_tmp[2]*Jgas[2]) < 0 )  
                         {
                             /* DAA: assume the bulge component contains as many particles with positive azimuthal velocities  
                                as with negative azimuthal velocities relative to the angular momentum vector */
-                            Mbulge_tmp += 2.0 * wt;
+                            MgasBulge_tmp += 2.0 * wt;
                         }
                     }
-
+                    else if( P[j].Type==4 || ((P[j].Type==2||P[j].Type==3) && !(All.ComovingIntegrationOn)) )
+                    {
+                        /* STARS */
+                        if( (J_tmp[0]*Jstar[0] + J_tmp[1]*Jstar[1] + J_tmp[2]*Jstar[2]) < 0 )   
+                        {
+                            MstarBulge_tmp += 2.0 * wt;
+                        }
+                    }
 
 
                 } // ( (P[j].Mass > 0) && (P[j].Type != 5) && (P[j].ID != id) )
             } // for(n = 0; n < numngb; n++)
 
             if(mode == 0) /* local -> send directly to local temp struct */
-                BlackholeTempInfo[mod_index].Mbulge_in_Kernel = Mbulge_tmp;
+            {
+                //BlackholeTempInfo[mod_index].Mbulge_in_Kernel = Mbulge_tmp;
+                BlackholeTempInfo[mod_index].MgasBulge_in_Kernel = MgasBulge_tmp;
+                BlackholeTempInfo[mod_index].MstarBulge_in_Kernel = MstarBulge_tmp;
+            }
             else
-                BlackholeDataPasserResult[target].Mbulge_in_Kernel = Mbulge_tmp;
+            {
+                //BlackholeDataPasserResult[target].Mbulge_in_Kernel = Mbulge_tmp;
+                BlackholeDataPasserResult[target].MgasBulge_in_Kernel = MgasBulge_tmp;
+                BlackholeDataPasserResult[target].MstarBulge_in_Kernel = MstarBulge_tmp;
+            }
 
         } // while(startnode >= 0)
 

@@ -2422,14 +2422,23 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyLongDouble accreted_BH_Mass;
     MyLongDouble accreted_momentum[3];
     MyLongDouble Mgas_in_Kernel;
+    MyLongDouble Mstar_in_Kernel;
     MyLongDouble Malt_in_Kernel;
+    MyLongDouble Sfr_in_Kernel;
+    MyLongDouble Jgas_in_Kernel[3];
+    MyLongDouble Jstar_in_Kernel[3];
     MyLongDouble Jalt_in_Kernel[3];
 #ifdef BH_GRAVACCRETION_BTOD
-    MyLongDouble Mbulge_in_Kernel;
+    //MyLongDouble Mbulge_in_Kernel;
+    MyLongDouble MgasBulge_in_Kernel;
+    MyLongDouble MstarBulge_in_Kernel;
 #endif
+/* DAA: defined always now
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK_COLLIMATED) || defined(BH_GRAVACCRETION)  
     MyLongDouble Jgas_in_Kernel[3];
+    MyLongDouble Jstar_in_Kernel[3];
 #endif
+*/
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
     MyLongDouble GradRho_in_Kernel[3];
     MyFloat BH_angle_weighted_kernel_sum;

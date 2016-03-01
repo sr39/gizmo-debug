@@ -953,6 +953,12 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 dP_sum += dP;
                 dP_boost_sum += dP * mom_boost_fac;
 
+                // DAA: print line added to avoid "PANIC! Face_Area_Norm=-nan issue"...
+                if( (!isfinite(pnorm)) || (!isfinite(local.Msne)) || (!isfinite(mom_boost_fac)) || (!isfinite(v_bw[0])) || (!isfinite(v_bw[1])) || (!isfinite(v_bw[2])) )   
+                {
+                    printf("\n mechanical_fb: ID=%u ptype=%u mass=%g x/y/z=%g/%g/%g vx/vy/vz=%g/%g/%g pnorm=%g local.Msne=%g mom_boost_fac=%g v_bw=%g/%g/%g \n", P[j].ID, P[j].Type, P[j].Mass, P[j].Pos[0],P[j].Pos[1],P[j].Pos[2], P[j].Vel[0],P[j].Vel[1],P[j].Vel[2], pnorm, local.Msne, mom_boost_fac, v_bw[0],v_bw[1],v_bw[2]);fflush(stdout);
+                }
+                                                                     
                 /* actually do the injection */
                 double q0 = All.cf_atime * (pnorm*local.Msne/P[j].Mass) * mom_boost_fac;
                 for(k=0; k<3; k++)
