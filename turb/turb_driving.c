@@ -293,11 +293,15 @@ void set_turb_ampl(void)
             mpi_printf("updating dudt_*\n");
             for(i=0; i < N_gas; i++)
             {
-                SphP[i].DuDt_diss = SphP[i].EgyDiss / P[i].Mass / delta;
-                SphP[i].EgyDiss = 0;
-                
-                SphP[i].DuDt_drive = SphP[i].EgyDrive / P[i].Mass / delta;
-                SphP[i].EgyDrive = 0;
+                if(P[i].Mass > 0)
+                {
+                    SphP[i].DuDt_diss = SphP[i].EgyDiss / P[i].Mass / delta;
+                    SphP[i].EgyDiss = 0;
+                    SphP[i].DuDt_drive = SphP[i].EgyDrive / P[i].Mass / delta;
+                    SphP[i].EgyDrive = 0;
+                } else {
+                    SphP[i].DuDt_diss = SphP[i].EgyDiss = SphP[i].DuDt_drive = SphP[i].EgyDrive = 0;
+                }
             }
         }
         
@@ -365,6 +369,8 @@ void add_turb_accel()
                 {
                     SphP[i].TurbAccel[j] = acc[j];
                 }
+            } else {
+                SphP[i].TurbAccel[0]=SphP[i].TurbAccel[1]=SphP[i].TurbAccel[2]=0;
             }
         }
     }

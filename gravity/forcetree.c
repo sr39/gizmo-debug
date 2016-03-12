@@ -571,6 +571,7 @@ void force_update_node_recursive(int no, int sib, int father)
 #ifdef BH_PHOTONMOMENTUM
         MyFloat bh_lum,bh_lum_hR,bh_lum_grad[3];
         bh_lum=bh_lum_hR=bh_lum_grad[0]=bh_lum_grad[1]=bh_lum_grad[2]=0;
+	    MyFloat bh_lum_unitfactor = All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s/All.UnitTime_in_s * All.HubbleParam * (SOLAR_MASS/SOLAR_LUM); // convert bh luminosity to our tree units
 #endif
 #ifdef BH_CALC_DISTANCES
         MyFloat bh_mass=0;
@@ -719,7 +720,7 @@ void force_update_node_recursive(int no, int sib, int father)
                     {
                         if((pa->Mass>0)&&(pa->DensAroundStar>0)&&(pa->BH_Mdot>0))
                         {
-                            double BHLum = All.BlackHoleFeedbackFactor * pa->BH_Mdot * All.BlackHoleRadiativeEfficiency * (2.998e10*2.998e10/All.UnitTime_in_s)/(3.9/2.0) * All.HubbleParam;
+			                double BHLum = bh_lum_bol(pa->BH_Mdot, pa->BH_Mass) * bh_lum_unitfactor;
                             bh_lum += BHLum;
                             bh_lum_hR += BHLum * pa->BH_disk_hr;
                             for(k=0;k<3;k++) {bh_lum_grad[k] += BHLum * pa->GradRho[k];}
@@ -1536,6 +1537,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     
 #ifdef BH_PHOTONMOMENTUM
     double mass_bhlum=0;
+    MyFloat bh_lum_unitfactor = All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s/All.UnitTime_in_s * All.HubbleParam * (SOLAR_MASS/SOLAR_LUM); // convert bh luminosity to our tree units
 #endif
 #ifdef GALSF_FB_LOCAL_UV_HEATING
     double incident_flux_uv=0;
@@ -1792,7 +1794,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     int active_check = rt_get_source_luminosity(no,sigma_eff,lum);
                     int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {if(active_check) {mass_stellarlum[kf]=lum[kf];} else {mass_stellarlum[kf]=0;}}
 #ifdef BH_PHOTONMOMENTUM
-                    mass_bhlum=0; if(P[no].Type==5) {mass_bhlum = bh_angleweight(P[no].BH_Mdot, P[no].GradRho, P[no].BH_disk_hr, dx,dy,dz, 1);}
+                    mass_bhlum=0; 
+		            if(P[no].Type==5) 
+		            {
+			            double bhlum_t = bh_lum_bol(P[no].BH_Mdot, P[no].BH_Mass) * bh_lum_unitfactor;
+			            mass_bhlum = bh_angleweight(bhlum_t, P[no].GradRho, P[no].BH_disk_hr, dx,dy,dz);
+		            }
 #endif
                 }
 #endif
@@ -2034,7 +2041,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
                     NEAREST_XYZ(bh_dx,bh_dy,bh_dz,-1);
 #endif
-                    double bh_r2 = bh_dx * bh_dx + bh_dy * bh_dy + bh_dz * bh_dz + (nop->len)*(nop->len);
+                    double bh_r2 = bh_dx * bh_dx + bh_dy * bh_dy + bh_dz * bh_dz; // + (nop->len)*(nop->len);
                     if(bh_r2 < min_dist_to_bh2) { min_dist_to_bh2 = bh_r2;}
                 }
 #endif
@@ -2052,7 +2059,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     dx_stellarlum = dx; dy_stellarlum = dy; dz_stellarlum = dz;
 #endif
 #ifdef BH_PHOTONMOMENTUM
-                    mass_bhlum = bh_angleweight(nop->bh_lum, nop->bh_lum_grad, nop->bh_lum_hR, dx_stellarlum,dy_stellarlum,dz_stellarlum, 0);
+                    mass_bhlum = bh_angleweight(nop->bh_lum, nop->bh_lum_grad, nop->bh_lum_hR, dx_stellarlum,dy_stellarlum,dz_stellarlum);
 #endif
                 }
 #endif

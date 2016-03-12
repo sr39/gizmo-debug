@@ -213,6 +213,9 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
     Esne51 = All.SNeIIEnergyFrac*n_sn_0;
     unit_egy_SNe = 1.0e51/(All.UnitEnergy_in_cgs/All.HubbleParam);
     Msne = 10.5; //average ejecta mass for single event (normalized to give total mass loss correctly)
+#ifdef SINGLE_STAR_FORMATION
+    Msne = P[i].Mass; // conserve mass and destroy the star completely
+#endif
     if(star_age > agemax) Msne=1.4; // SnIa
     
 #ifdef METALS
@@ -357,6 +360,11 @@ void particle2in_addFB_winds(struct addFBdata_in *in, int i)
     M_wind = P[i].Mass * P[i].MassReturn_ThisTimeStep;
     E_wind = GasSpecEnergy*T_corr*M_wind;
     wind_velocity = sqrt(2.0*E_wind/M_wind);
+#ifdef SINGLE_STAR_FORMATION
+    double m_msun = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS); 
+    wind_velocity = 616.e5 * sqrt((1.+0.1125*m_msun)/(1.+0.0125*m_msun)) * pow(m_msun,0.131); // same as scaling below from size-mass relation+eddington factor
+    wind_velocity /= All.UnitVelocity_in_cm_per_s; // put into code units
+#endif
     wind_momentum = M_wind*wind_velocity;
     
     for(k = 0; k < 3; k++)
@@ -789,6 +797,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 wk = 0.5 * (1 - 1/sqrt(1 + sph_area / (M_PI*kernel.r*kernel.r)));
                 //wk = P[j].Mass / SphP[j].Density;
                 
+                if(wk <= 0) continue; // no point in going further, there's no physical weight here
+                
                 double wk_vec[AREA_WEIGHTED_SUM_ELEMENTS]; wk_vec[0] = wk;
 #ifndef GALSF_FB_SNE_NONISOTROPIZED
                 if(kernel.dp[0]>0) {wk_vec[1]=wk*kernel.dp[0]/kernel.r; wk_vec[2]=0;} else {wk_vec[1]=0; wk_vec[2]=wk*kernel.dp[0]/kernel.r;}
@@ -1116,6 +1126,9 @@ void determine_where_SNe_occur()
     mpi_npossible=mpi_nhosttotal=mpi_ntotal=mpi_ptotal=mpi_dtmean=mpi_rmean=0;
 #ifdef GALSF_FB_GASRETURN
     double D_RETURN_FRAC = 0.01; // fraction of particle mass to return on a recycling step //
+#ifdef SINGLE_STAR_FORMATION
+    D_RETURN_FRAC = 1.0e-7; // needs to be much smaller to have quasi-continuous winds on these scales //
+#endif
 #endif
     
     if(All.Time<=0) return;
@@ -1156,6 +1169,18 @@ void determine_where_SNe_occur()
         // SNe component //
         if(All.SNeIIEnergyFrac>0)
         {
+#ifdef SINGLE_STAR_FORMATION
+	    /* here we are determining SNe for individual stars, so it happens deterministically at the end of their lives */
+            double m_sol = P[i].Mass * (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS)); // M/Msun 
+	        P[i].SNe_ThisTimeStep = 0;
+	        if(m_sol > 8.) // minimum mass for SNe
+	        { 
+	            double l_sol = bh_lum_bol(0,P[i].Mass) * (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)); // L/Lsun
+	            double lifetime = 9.6 * (m_sol/l_sol); // standard lifetime (in Gyr): this gives first SNe at 3Myr
+		        if(star_age >= lifetime) {P[i].SNe_ThisTimeStep = 1; ntotal++; nhosttotal++;}
+	        }
+#else 
+	    /* here we are determining an expected SNe rate, so SNe occur stochastically but with an age dependence in the population */
             if(star_age > agemin)
             {
                 if((star_age>=agemin)&&(star_age<=agebrk))
@@ -1194,6 +1219,7 @@ void determine_where_SNe_occur()
                 ntotal += n_sn_0;
                 if(n_sn_0>0) nhosttotal++;
             } // if(star_age > agemin) //
+#endif
         }
         dtmean += dt;
         
@@ -1201,6 +1227,16 @@ void determine_where_SNe_occur()
         // Stellar Winds component //
         if(All.GasReturnFraction>0)
         {
+#ifdef SINGLE_STAR_FORMATION
+	        /* use a standard scaling from e.g. Castor, Abbot, & Klein */
+	        double L_sol = bh_lum_bol(0, P[i].Mass) * All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM); // L in solar
+	        double M_sol = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS); // M in solar
+	        double gam = DMIN(0.5,3.2e-5*L_sol/M_sol); // Eddington factor (~L/Ledd for winds), capped at 1/2 for sanity reasons
+	        double alpha = 0.5 + 0.4/(1. + 16./M_sol); // approximate scaling for alpha factor with stellar type (weak effect)
+	        double q0 = (1.-alpha)*gam / (1.-gam); double k0=1./30.; //k is a normalization factor in the model
+	        double mdot = 2.338 * alpha * pow(L_sol,7./8.) * pow(M_sol,0.1845) * (1./q0) * pow(q0*k0,1./alpha); // in Msun/Gyr
+	        p = mdot / M_sol; // mass fraction returned per Gyr
+#else
             p=0.0;
             if(star_age<=0.001){p=11.6846;} else {
                 if(star_age<=0.0035){p=11.6846*(0.01+P[i].Metallicity[0]/All.SolarAbundances[0])*
@@ -1209,12 +1245,15 @@ void determine_where_SNe_occur()
                             p=1.03*pow(star_age,-1.1)/(12.9-log(star_age));
                         }}}
             p *= 1.4 * 0.291175; // to give expected return fraction from stellar winds alone (~17%) //
-            p *= All.GasReturnFraction * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam);
             if(star_age < 0.1) {p *= calculate_relative_light_to_mass_ratio_from_imf(i);} // late-time independent of massive stars
-            // this is the fraction of the particle mass expected to return in the timestep //
+#endif
+            p *= All.GasReturnFraction * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam); // fraction of particle mass expected to return in the timestep //
             p = 1.0 - exp(-p); // need to account for p>1 cases //
-            if(get_random_number(P[i].ID + 5) < p/D_RETURN_FRAC) // ok, have a mass return event //
-                P[i].MassReturn_ThisTimeStep = D_RETURN_FRAC;
+	        P[i].MassReturn_ThisTimeStep = 0; // zero mass return out
+	        double n_wind_0 = (double)floor(p/D_RETURN_FRAC); // if p >> return frac, should have > 1 event, so we inject the correct wind mass
+            p -= n_wind_0*D_RETURN_FRAC;
+	        P[i].MassReturn_ThisTimeStep += n_wind_0*D_RETURN_FRAC; // add this in, then determine if there is a 'remainder' to be added as well
+            if(get_random_number(P[i].ID + 5) < p/D_RETURN_FRAC) {P[i].MassReturn_ThisTimeStep += D_RETURN_FRAC;}
         }
 #endif
         

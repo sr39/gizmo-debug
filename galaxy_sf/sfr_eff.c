@@ -123,6 +123,10 @@ void assign_imf_properties_from_starforming_gas(MyIDType i)
     is otherwise (for all purposes) our 'default' choice */
 double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i)
 {
+#ifdef SINGLE_STAR_FORMATION
+    double unit_lsun_msun = (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)) / (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS));
+    return bh_lum_bol(0, P[i].Mass) / P[i].Mass * unit_lsun_msun; 
+#endif
 #ifdef GALSF_SFR_IMF_VARIATION
     /* more accurate version from David Guszejnov's IMF calculations (ok for Mturnover in range 0.01-100) */
     double log_mimf = log10(P[i].IMF_Mturnover);
@@ -173,6 +177,9 @@ double evaluate_stellar_age_Gyr(double stellar_tform)
 /* return the (solar-scaled) light-to-mass ratio of an SSP with a given age; used throughout */
 double evaluate_l_over_m_ssp(double stellar_age_in_gyr)
 {
+#ifdef SINGLE_STAR_FORMATION
+    return 1;
+#endif
     // original SB99 tracks
     /*
     if(stellar_age_in_gyr < 0.0029)
@@ -595,6 +602,10 @@ void cooling_and_starformation(void)
                 P[i].BH_disk_hr = 0.333333;
 #endif
                 P[i].DensAroundStar = SphP[i].Density;
+#ifdef SINGLE_STAR_PROMOTION
+                P[i].ProtoStellarAge = All.Time; // record the proto-stellar age instead of age
+		        P[i].PreMainSeq_Tracker = 1;
+#endif
 #endif // SINGLE_STAR_FORMATION
                 
 		    } /* closes final generation from original gas particle */
@@ -769,6 +780,10 @@ if(All.WindMomentumLoading)
       fprintf(FdSfr, "%g %g %g %g %g\n", All.Time, total_sm, totsfrrate, rate_in_msunperyear, total_sum_mass_stars);
       fflush(FdSfr);
     } // thistask==0
+
+
+    if(tot_converted+tot_spawned > 0) {rearrange_particle_sequence();}
+
     CPU_Step[CPU_COOLINGSFR] += measure_time();
 } /* end of main sfr_cooling routine!!! */
 
