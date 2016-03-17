@@ -788,6 +788,13 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double sph_area = fabs(local.V_i*local.V_i*kernel.dwk + V_j*V_j*dwk_j);
                 wk = 0.5 * (1 - 1/sqrt(1 + sph_area / (M_PI*kernel.r*kernel.r)));
                 //wk = P[j].Mass / SphP[j].Density;
+
+                /* DAA: make sure we don't have wk=0 here */
+                if(wk <= 0)
+                {
+                  printf("\n mechanical_fb: ID=%u ptype=%u mass=%g wk=%g sph_area=%g kernel.r=%g local.V_i=%g kernel.dwk=%g V_j=%g dwk_j=%g \n", P[j].ID, P[j].Type, P[j].Mass, wk, sph_area, kernel.r, local.V_i, kernel.dwk, V_j, dwk_j);fflush(stdout);
+                  continue;
+                }
                 
                 double wk_vec[AREA_WEIGHTED_SUM_ELEMENTS]; wk_vec[0] = wk;
 #ifndef GALSF_FB_SNE_NONISOTROPIZED

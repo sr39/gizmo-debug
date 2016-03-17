@@ -316,9 +316,12 @@ void normalize_temp_info_struct(int i)
     BlackholeTempInfo[i].Malt_in_Kernel += (BlackholeTempInfo[i].Mgas_in_Kernel + BlackholeTempInfo[i].Mstar_in_Kernel);
     for(k=0;k<3;k++)  // Jalt is now TOTAL angular momentum inside BH kernel !
         BlackholeTempInfo[i].Jalt_in_Kernel[k] += (BlackholeTempInfo[i].Jgas_in_Kernel[k] + BlackholeTempInfo[i].Jstar_in_Kernel[k]);
+
 #ifdef BH_DYNFRICTION
     double Mass_in_Kernel;
-#ifdef BH_DYNFRICTION_STARS_ONLY
+#if (BH_DYNFRICTION == 1)    // DAA: dark matter + stars
+    Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel - BlackholeTempInfo[i].Mgas_in_Kernel;
+#elif (BH_DYNFRICTION == 2)  // DAA: stars only
     Mass_in_Kernel = BlackholeTempInfo[i].Mstar_in_Kernel;
 #else
     Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel;
@@ -665,26 +668,34 @@ void set_blackhole_drag(int i, int n, double dt)
         bh_mass += BPP(n).BH_Mass_AlphaDisk;
 #endif
         double bhvel_df=0; for(k=0;k<3;k++) bhvel_df += BlackholeTempInfo[i].DF_mean_vel[k]*BlackholeTempInfo[i].DF_mean_vel[k];
+        double fac, fac_friction;
+#ifdef BH_DYNFRICTION_INCREASE
+        /* DAA: neglect the term  [erf(x) - 2*x*exp(-x^2)/sqrt(pi)] 
+           this is equivalent to take the upper limit  rho( < v ) --> rho */
+        fac = 50. * 3.086e21 / (All.UnitLength_in_cm/All.HubbleParam); /* impact parameter */
+        fac_friction = log(1. + fac * bhvel_df / (All.G * bh_mass));   /* Coulomb logarithm */
+        /* apply increase factor but still limit friction force if M_BH >> m_particle */
+        fac_friction *= BH_DYNFRICTION_INCREASE / (1 + bh_mass / (100.*BlackholeTempInfo[i].DF_mmax_particles));
+#else
         /* First term is approximation of the error function */
-        double fac = 8 * (M_PI - 3) / (3 * M_PI * (4. - M_PI));
+        fac = 8 * (M_PI - 3) / (3 * M_PI * (4. - M_PI));
         x = sqrt(bhvel_df) / (sqrt(2) * BlackholeTempInfo[i].DF_rms_vel);
-        double fac_friction =  x / fabs(x) * sqrt(1 - exp(-x * x * (4 / M_PI + fac * x * x) / (1 + fac * x * x))) - 2 * x / sqrt(M_PI) * exp(-x * x);
+        fac_friction =  x / fabs(x) * sqrt(1 - exp(-x * x * (4 / M_PI + fac * x * x) / (1 + fac * x * x))) - 2 * x / sqrt(M_PI) * exp(-x * x);
         /* now the Coulomb logarithm */
         fac = 50. * 3.086e21 / (All.UnitLength_in_cm/All.HubbleParam); /* impact parameter */
-        fac_friction *= log(1. + fac * bhvel_df / (All.G * bh_mass));
-#ifdef BH_DYNFRICTION_INCREASE
-       fac_friction *= BH_DYNFRICTION_INCREASE;
-#else
+        fac_friction *= log(1. + fac * bhvel_df / (All.G * bh_mass));        
         /* now we add a correction to only apply this force if M_BH is not >> <m_particles> */
         fac_friction *= 1 / (1 + bh_mass / (5.*BlackholeTempInfo[i].DF_mmax_particles));
 #endif
         /* now the dimensional part of the force */
         // fac = (BlackholeTempInfo[i].Mgas_in_Kernel+BlackholeTempInfo[i].Malt_in_Kernel) /         DAA: Malt_in_Kernel is total mass already
         double Mass_in_Kernel;
-#ifdef BH_DYNFRICTION_STARS_ONLY
-        Mass_in_Kernel = BlackholeTempInfo[i].Mstar_in_Kernel;
+#if (BH_DYNFRICTION == 1)    // DAA: dark matter + stars
+    Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel - BlackholeTempInfo[i].Mgas_in_Kernel;
+#elif (BH_DYNFRICTION == 2)  // DAA: stars only
+    Mass_in_Kernel = BlackholeTempInfo[i].Mstar_in_Kernel;
 #else
-        Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel;
+    Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel;
 #endif
         //fac = BlackholeTempInfo[i].Malt_in_Kernel / ( (4*M_PI/3) * pow(PPP[n].Hsml*All.cf_atime,3) ); /* mean density of all mass inside kernel */
         fac = Mass_in_Kernel / ( (4*M_PI/3) * pow(PPP[n].Hsml*All.cf_atime,3) ); /* mean density of all mass inside kernel */
@@ -695,9 +706,6 @@ void set_blackhole_drag(int i, int n, double dt)
             P[n].GravAccel[k] += All.cf_atime*All.cf_atime * fac_friction * BlackholeTempInfo[i].DF_mean_vel[k];
     }
 #endif
-    
-    
-    
     
     
 }
@@ -840,7 +848,7 @@ void blackhole_final_loop(void)
 #endif
 
 #ifdef BH_OUTPUT_MOREINFO
-        fprintf(FdBlackHolesDetails, "%g %u  %g %g %g %g %g %g  %g %g %g %g %g %g %g %g  %2.7f %2.7f %2.7f  %2.7f %2.7f %2.7f  %g %g %g  %g %g %g\n",
+        fprintf(FdBlackHolesDetails, "%2.12f %u  %g %g %g %g %g %g  %g %g %g %g %g %g %g %g  %2.10f %2.10f %2.10f  %2.7f %2.7f %2.7f  %g %g %g  %g %g %g\n",
                 All.Time, P[n].ID,  P[n].Mass, BPP(n).BH_Mass, mass_disk, BPP(n).BH_Mdot, mdot_disk, dt,
                 BPP(n).DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy, BlackholeTempInfo[i].Sfr_in_Kernel,
                 BlackholeTempInfo[i].Mgas_in_Kernel, BlackholeTempInfo[i].Mstar_in_Kernel, MgasBulge, MstarBulge, r0,

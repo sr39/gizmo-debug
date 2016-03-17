@@ -245,8 +245,10 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##-----------------------------------------------------------------------------------------------------
 #BLACK_HOLES                    # enables Black-Holes (master switch)
 #------ seed models
-#BH_HOST_TO_SEED_RATIO=1000     # Min stellar mass for seeding is BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass
+#BH_HOST_TO_SEED_RATIO=1000     # DAA: Min FOF stellar mass for seeding is BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass
                                 # Requires FOF with linking type including star particles (MinFoFMassForNewSeed and massDMpart are ignored)
+#BH_SEED_FROM_STAR_PARTICLE     # DAA: star particle on potential minimum gets converted into a BH (default is densest gas particle)
+                                # Requires FOF with linking type including star particles and EVALPOTENTIAL
 #BH_POPIII_SEEDS                # BHs seeded on-the-fly from dense, low-metallicity gas
 #------ accretion models/options
 #BH_SWALLOWGAS                  # enables stochastic accretion of gas particles consistent with growth rate of hole
@@ -268,9 +270,8 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##BH_BAL_KICK_COLLIMATED        # DAA: winds follow the direction of angular momentum within Kernel (only for BH_BAL_KICK winds)
 ##BH_BAL_KICK_MOMENTUM_FLUX=10  # DAA: increase the effective mass-loading of BAL winds to reach the desired momentum flux in units of L_bol/c (needs BH_BAL_KICK)
 #------------ use the BH_DRAG options only in cosmological cases where M_BH is not >> other particle masses
-#BH_DYNFRICTION                 # apply dynamical friction force to the BHs when m_bh not >> other particle mass
+#BH_DYNFRICTION=0               # DAA: apply dynamical friction force to the BHs when m_bh not >> other particle mass: 0=[DM+stars+gas] (default); 1=[DM+stars]; 2=[stars]
 #BH_DYNFRICTION_INCREASE=100    # DAA: Increase dynamic friction by this factor (requires BH_DYNFRICTION)
-#BH_DYNFRICTION_STARS_ONLY      # DAA: consider dynamic friction by stars only (requires BH_DYNFRICTION)
 ##BH_DRAG=1                     # Drag on black-holes due to accretion (w real mdot); set =2 to boost as if BH is accreting at eddington
 #------ output options
 #BH_OUTPUT_MOREINFO             # DAA: output additional info to "blackhole_details"

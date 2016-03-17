@@ -277,8 +277,11 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                     if(pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
                     if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
+
 #ifdef BH_DYNFRICTION
-#ifdef BH_DYNFRICTION_STARS_ONLY
+#if (BH_DYNFRICTION == 1)    // DAA: dark matter + stars
+                    if( !(P[j].Type==0) )
+#elif (BH_DYNFRICTION == 2)  // DAA: stars only
                     if( P[j].Type==4 || ((P[j].Type==2||P[j].Type==3) && !(All.ComovingIntegrationOn)) )
 #endif
                     {
@@ -290,6 +293,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         }
                     }
 #endif
+
                     if(P[j].Type==0)
                     {
                         /* we found gas in BH's kernel */

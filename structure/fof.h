@@ -66,7 +66,10 @@ typedef struct
   MyOutputFloat BH_Mass;
   MyOutputFloat BH_Mdot;
   MyOutputFloat MaxDens;
-  int index_maxdens, task_maxdens;
+#ifdef BH_SEED_FROM_STAR_PARTICLE
+  MyOutputFloat MinPot;
+#endif
+  int index_maxdens, task_maxdens;    // DAA: these will hold info for MinPot rather than MaxDens if BH_SEED_FROM_STAR_PARTICLE
 #endif
 
 #ifdef SUBFIND

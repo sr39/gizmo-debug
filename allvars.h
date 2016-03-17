@@ -312,6 +312,13 @@
 #endif
 
 
+#if defined(BLACK_HOLES) && (defined(BH_REPOSITION_ON_POTMIN) || defined(BH_SEED_FROM_STAR_PARTICLE))
+#ifndef EVALPOTENTIAL
+#define EVALPOTENTIAL
+#endif
+#endif
+
+
 #ifdef EVALPOTENTIAL
 #ifndef COMPUTE_POTENTIAL_ENERGY
 #define COMPUTE_POTENTIAL_ENERGY

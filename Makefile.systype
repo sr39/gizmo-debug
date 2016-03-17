@@ -17,6 +17,7 @@
 #SYSTYPE="Zwicky"
 #SYSTYPE="MacBookPro"
 SYSTYPE="Quest"
+#SYSTYPE="QuestTest"
 #SYSTYPE="odyssey"
 #SYSTYPE="SciNet"
 #SYSTYPE="Pleiades-Haswell"
