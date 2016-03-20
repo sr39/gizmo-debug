@@ -468,7 +468,11 @@ void ags_density(void)
                 
                 double minsoft = All.ForceSoftening[P[i].Type];
                 double maxsoft = All.MaxHsml;
+#if !(EXPAND_PREPROCESSOR_(ADAPTIVE_GRAVSOFT_FORALL) == 1)
+                maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * All.ForceSoftening[P[i].Type]);
+#else
                 maxsoft = DMIN(maxsoft, 50.0 * All.ForceSoftening[P[i].Type]);
+#endif
 #ifdef PMGRID
                 /*!< this gives the maximum allowed gravitational softening when using the TreePM method.
                  *  The quantity is given in units of the scale used for the force split (ASMTH) */
@@ -716,7 +720,11 @@ void ags_density(void)
                 double minsoft = All.ForceSoftening[P[i].Type];
                 minsoft = DMAX(minsoft, 5.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[P[i].Type]);
                 double maxsoft = All.MaxHsml;
+#if !(EXPAND_PREPROCESSOR_(ADAPTIVE_GRAVSOFT_FORALL) == 1)
+                maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * All.ForceSoftening[P[i].Type]);
+#else
                 maxsoft = DMIN(maxsoft, 50.0 * All.ForceSoftening[P[i].Type]);
+#endif
 #ifdef PMGRID
                 maxsoft = DMIN(maxsoft, 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
 #endif
