@@ -135,6 +135,8 @@ double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i)
 #endif
 #ifdef GALSF_SFR_IMF_SAMPLING
     double mu = 0.01 * P[i].Mass * All.UnitMass_in_g / All.HubbleParam / (1.989e33); // 1 O-star per 100 Msun
+    double age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+    if(age > 0.003) {mu *= 0.326 * (0.003 / age);} // expectation value is declining with time, so 'effective multiplier' is larger
     return P[i].IMF_NumMassiveStars / mu;
 #endif
     return 1; // Chabrier or Kroupa IMF //
