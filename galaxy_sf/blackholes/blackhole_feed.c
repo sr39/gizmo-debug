@@ -284,7 +284,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     hinv = 1 / h_i;
     hinv3 = hinv * hinv * hinv;
 #if defined(BH_GRAVCAPTURE_GAS) && defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
-    meddington = (4 * M_PI * GRAVITY * C * PROTONMASS / (All.BlackHoleRadiativeEfficiency * C * C * THOMPSON)) * (bh_mass/All.HubbleParam) * All.UnitTime_in_s;
+    meddington = bh_eddington_mdot(bh_mass);
     medd_max_accretable = All.BlackHoleEddingtonFactor * meddington * dt;
     eddington_factor = mass_to_swallow_edd / medd_max_accretable;   /* if <1 no problem, if >1, need to not set some swallowIDs */
 #endif
@@ -520,11 +520,11 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                             
 #ifdef BH_THERMALFEEDBACK
 #ifdef UNIFIED_FEEDBACK
-                            meddington = (4*M_PI*GRAVITY*C*PROTONMASS/(All.BlackHoleRadiativeEfficiency*C*C*THOMPSON))*bh_mass*All.UnitTime_in_s/All.HubbleParam;
+                            meddington = bh_eddington_mdot(bh_mass);
                             if(mdot > All.RadioThreshold * meddington)
 #endif
                             {
-                                energy = All.BlackHoleFeedbackFactor*All.BlackHoleRadiativeEfficiency * mdot*dt * pow(C/All.UnitVelocity_in_cm_per_s,2);
+                                energy = bh_lum_bol(mdot, bh_mass) * dt;
                                 if(rho > 0)
                                     SphP[j].Injected_BH_Energy += (wk/rho) * energy * P[j].Mass;
                             }

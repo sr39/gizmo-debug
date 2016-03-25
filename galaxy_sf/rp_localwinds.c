@@ -35,6 +35,10 @@ void radiation_pressure_winds_consolidated(void)
     total_n_wind=total_m_wind=total_mom_wind=total_prob_kick=avg_v_kick=momwt_avg_v_kick=avg_taufac=0;
     totMPI_n_wind=totMPI_m_wind=totMPI_mom_wind=totMPI_prob_kick=totMPI_avg_v=totMPI_pwt_avg_v=totMPI_taufac=0;
     double sigma_eff_0, RtauMax = 0;
+    double age_thold = 0.1;
+#ifdef SINGLE_STAR_FORMATION
+    age_thold = 1.0e10; 
+#endif      
     
     
     if(All.WindMomentumLoading<=0) return;
@@ -61,7 +65,7 @@ void radiation_pressure_winds_consolidated(void)
 #endif
             
             star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
-            if( (star_age < 0.1) && (P[i].Mass > 0) && (P[i].DensAroundStar > 0) )
+            if( (star_age < age_thold) && (P[i].Mass > 0) && (P[i].DensAroundStar > 0) )
             {
                 RtauMax = P[i].Hsml*All.cf_atime * (2.0 * KAPPA_UV * P[i].Hsml*P[i].DensAroundStar/(All.cf_atime*All.cf_atime) * All.UnitDensity_in_cgs*All.HubbleParam*All.UnitLength_in_cm);
 
@@ -80,6 +84,10 @@ void radiation_pressure_winds_consolidated(void)
 #ifndef GALSF_FB_RPWIND_CONTINUOUS
                 /* if kicks are stochastic, we don't want to waste time doing a neighbor search every timestep;
                  it can be much faster to pre-estimate the kick probabilities */
+		        double v_wind_threshold = 15.e5 / All.UnitVelocity_in_cm_per_s;
+#ifdef SINGLE_STAR_FORMATION
+		        v_wind_threshold = 0.2e5 / All.UnitVelocity_in_cm_per_s;
+#endif
                 rho=P[i].DensAroundStar; h=P[i].Hsml;
                 v = sqrt( All.G * (P[i].Mass + NORM_COEFF*rho*h*h*h) / (h*All.cf_atime) );
                 //vq = 1.82*(65.748e5/All.UnitVelocity_in_cm_per_s) * pow(P[i].Mass*unitmass_in_msun/1.0e6,0.25);
@@ -91,9 +99,9 @@ void radiation_pressure_winds_consolidated(void)
                 if(vq<v) v=vq;
                 //if(vq>v) v=vq;
                 v *= WindInitialVelocityBoost;
-                if(v<=15.e5/All.UnitVelocity_in_cm_per_s) v=15.e5/All.UnitVelocity_in_cm_per_s;
+                if(v<=v_wind_threshold) v=v_wind_threshold;
                 lm_ssp = evaluate_l_over_m_ssp(star_age);
-                if(star_age < 0.1) {lm_ssp *= calculate_relative_light_to_mass_ratio_from_imf(i);}
+                if(star_age < age_thold) {lm_ssp *= calculate_relative_light_to_mass_ratio_from_imf(i);}
                 dE_over_c = lm_ssp * (4.0/2.0) * (P[i].Mass*All.UnitMass_in_g/All.HubbleParam); // L in CGS
                 dE_over_c *= (dt*All.UnitTime_in_s/All.HubbleParam) / 2.9979e10; // dE/c in CGS
                 dv_units = KAPPA_IR * dE_over_c / (4*M_PI * All.UnitLength_in_cm*All.UnitLength_in_cm*All.cf_atime*All.cf_atime);
@@ -189,12 +197,12 @@ void radiation_pressure_winds_consolidated(void)
                         v = sqrt( All.G * (P[i].Mass + NORM_COEFF*rho*h*h*h) / (h*All.cf_atime) );
                         if (vq<v) v=vq;
                         //if (vq>v) v=vq;
-                        v *= WindInitialVelocityBoost; if (v<=15.e5/All.UnitVelocity_in_cm_per_s) v=15.e5/All.UnitVelocity_in_cm_per_s;
+                        v *= WindInitialVelocityBoost; if(v<=v_wind_threshold) v=v_wind_threshold;
 #endif
 #ifdef GALSF_FB_RPWIND_CONTINUOUS
                         /* if GALSF_FB_RPWIND_CONTINUOUS is not set, these have already been calculated above */
                         lm_ssp = evaluate_l_over_m_ssp(star_age);
-                        if(star_age < 0.1) {lm_ssp *= calculate_relative_light_to_mass_ratio_from_imf(i);}
+			            if(star_age < age_thold) {lm_ssp *= calculate_relative_light_to_mass_ratio_from_imf(i);}
                         dE_over_c = lm_ssp * (4.0/2.0) * (P[i].Mass*All.UnitMass_in_g/All.HubbleParam); // L in CGS
                         dE_over_c *= (dt*All.UnitTime_in_s/All.HubbleParam) / 2.9979e10; // dE/c in CGS
                         dv_units = KAPPA_IR * dE_over_c / (4*M_PI * All.UnitLength_in_cm*All.UnitLength_in_cm*All.cf_atime*All.cf_atime);

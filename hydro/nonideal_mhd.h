@@ -24,6 +24,7 @@ if((local.Mass > 0) && (P[j].Mass > 0))
     
     // only go further if these are non-zero //
     double eta_max = DMAX(eta_ohmic , DMAX(eta_hall, eta_ad));
+    int k_xyz_A=0, k_xyz_B=0;
     if(eta_max > 0)
     {
         // define the current J //
@@ -32,7 +33,7 @@ if((local.Mass > 0) && (P[j].Mass > 0))
         for(k=0;k<3;k++) {d_scalar[k] = local.BPred[k] - BPred_j[k];}
         for(k=0;k<3;k++)
         {
-            int k_xyz_A, k_xyz_B, k2;
+            int k2;
             if(k==0) {k_xyz_A=2; k_xyz_B=1;}
             if(k==1) {k_xyz_A=0; k_xyz_B=2;}
             if(k==2) {k_xyz_A=1; k_xyz_B=0;}

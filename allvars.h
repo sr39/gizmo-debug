@@ -118,9 +118,19 @@
 #define GALSF_SFR_VIRIAL_SF_CRITERION 2 // only allow star formation in virialized sub-regions meeting Jeans threshold
 #define METALS  // metals should be active for stellar return
 #define BLACK_HOLES // need to have black holes active since these are our sink particles
+#ifdef SINGLE_STAR_ACCRETION
 #define BH_SWALLOWGAS // need to swallow gas [part of sink model]
+#define BH_GRAVCAPTURE_GAS // use gravitational capture swallow criterion for resolved gravitational capture
+#if (SINGLE_STAR_ACCRETION > 0)
 #define BH_ALPHADISK_ACCRETION // swallowed gas goes to disk
-#define BH_GRAVCAPTURE_GAS // use gravitational capture swallow criterion
+#endif
+#if (SINGLE_STAR_ACCRETION > 1)
+#define BH_BONDI 0 // use Bondi accretion for diffuse gas
+#endif
+#if (SINGLE_STAR_ACCRETION > 2)
+#define BH_SUBGRIDBHVARIABILITY // model sub-grid [unresolved] variability in accretion rates for Bondi
+#endif
+#endif
 #define BH_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
 //#GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory
 #ifdef SINGLE_STAR_FB_HEATING
@@ -130,6 +140,13 @@
 #endif
 #ifdef SINGLE_STAR_FB_JETS
 #define BH_BAL_WINDS // use kinetic feedback module for protostellar jets
+#endif
+#ifdef SINGLE_STAR_PROMOTION
+#define GALSF_FB_GASRETURN // stellar winds [scaled appropriately for particle masses]
+#define GALSF_FB_HII_HEATING // FIRE approximate photo-ionization [for particle masses; could also use real-RT]
+#define GALSF_FB_SNE_HEATING 1 // allow SNe in promoted stars [at end of main sequence lifetimes]
+#define GALSF_FB_RPWIND_LOCAL // local radiation pressure [scaled with mass, single-scattering term here]
+#define GALSF_FB_RPWIND_CONTINUOUS // force the local rad-pressure term to be continuous instead of small impulses
 #endif
 // if not using grackle modules, need to make sure appropriate cooling is enabled
 #if defined(COOLING) && !defined(GRACKLE)
@@ -1883,6 +1900,11 @@ extern ALIGN(32) struct particle_data
     
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
+#endif
+    
+#ifdef SINGLE_STAR_PROMOTION
+    MyFloat ProtoStellarAge; /*!< record the proto-stellar age instead of age */
+    MyFloat PreMainSeq_Tracker; /*!< track evolution from protostar to ZAMS star */
 #endif
     
 #ifdef SIDM
