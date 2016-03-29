@@ -2319,13 +2319,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                                 if((zeta != 0) && (u < 1))
                                 {
                                     kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
-                                    fac += 2 * (zeta/pmass) * dWdr / sqrt(r2 + 0.0001/(h_inv*h_inv));   // 0.5 * zeta * omega * dWdr / r;
+                                    fac += -2 * (zeta/pmass) * dWdr / sqrt(r2 + 0.0001/(h_inv*h_inv));   // 0.5 * zeta * omega * dWdr / r;
                                 }
                             } else {
                                 if((zeta_sec != 0) && (u_p < 1)) // secondary is adaptively-softened particle (set above)
                                 {
                                     kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
-                                    fac += 2 * (zeta_sec/pmass) * dWdr / sqrt(r2 + 0.0001/(h_p_inv*h_p_inv));
+                                    fac += -2 * (zeta_sec/pmass) * dWdr / sqrt(r2 + 0.0001/(h_p_inv*h_p_inv));
                                 }
                             }
                         } // if(ptype==ptype_sec)

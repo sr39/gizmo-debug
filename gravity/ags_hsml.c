@@ -131,7 +131,7 @@ struct kernel_density
 
 void ags_density(void)
 {
-  MyFloat *Left, *Right;
+  MyFloat *Left, *Right, *AGS_Prev;
   int i, j, k, ndone, ndone_flag, npleft, iter = 0;
   int ngrp, recvTask, place;
   long long ntot;
@@ -147,7 +147,8 @@ void ags_density(void)
   int particle_set_to_maxhsml_flag = 0;
 
   CPU_Step[CPU_AGSDENSMISC] += measure_time();
-
+  AGS_Prev = (MyFloat *) mymalloc("AGS_Prev", NumPart * sizeof(MyFloat));
+    
   long long NTaskTimesNumPart;
   NTaskTimesNumPart = maxThreads * NumPart;
   Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
@@ -158,7 +159,10 @@ void ags_density(void)
   for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
       if(ags_density_isactive(i))
-              Left[i] = Right[i] = 0;
+      {
+          Left[i] = Right[i] = 0;
+          AGS_Prev[i] = PPP[i].AGS_Hsml;
+      }
     }
 
   /* allocate buffers to arrange communication */
@@ -466,26 +470,9 @@ void ags_density(void)
                 /* now check whether we have enough neighbours */
                 redo_particle = 0;
                 
-                double minsoft = All.ForceSoftening[P[i].Type];
-                double maxsoft = All.MaxHsml;
-#if !(EXPAND_PREPROCESSOR_(ADAPTIVE_GRAVSOFT_FORALL) == 1)
-                maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * All.ForceSoftening[P[i].Type]);
-#ifdef PMGRID
-                /*!< this gives the maximum allowed gravitational softening when using the TreePM method.
-                 *  The quantity is given in units of the scale used for the force split (ASMTH) */
-                maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
-#endif
-#else
-                maxsoft = DMIN(maxsoft, 50.0 * All.ForceSoftening[P[i].Type]);
-#ifdef PMGRID
-                maxsoft = DMIN(maxsoft, 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
-#endif
-#endif
-
-#ifdef BLACK_HOLES
-                if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius;}
-#endif
-                
+                double min_tmp = ags_return_minsoft(i);
+                double minsoft = DMAX(All.ForceSoftening[P[i].Type] , DMIN(min_tmp, AGS_Prev[i])); // this ensures softening doesnt shrink when self-accel is too large already
+                double maxsoft = ags_return_maxsoft(i);
                 desnumngb = All.AGS_DesNumNgb;
                 desnumngbdev = All.AGS_MaxNumNgbDeviation;
                 if(All.Time==All.TimeBegin) {if(All.AGS_MaxNumNgbDeviation > 0.05) desnumngbdev=0.05;}
@@ -719,21 +706,9 @@ void ags_density(void)
         {
             if((P[i].Mass>0)&&(PPP[i].AGS_Hsml>0)&&(PPP[i].NumNgb>0))
             {
-                
-                double minsoft = All.ForceSoftening[P[i].Type];
-                minsoft = DMAX(minsoft, 5.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[P[i].Type]);
-                double maxsoft = All.MaxHsml;
-#if !(EXPAND_PREPROCESSOR_(ADAPTIVE_GRAVSOFT_FORALL) == 1)
-                maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * All.ForceSoftening[P[i].Type]);
-#ifdef PMGRID
-                maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
-#endif
-#else
-                maxsoft = DMIN(maxsoft, 50.0 * All.ForceSoftening[P[i].Type]);
-#ifdef PMGRID
-                maxsoft = DMIN(maxsoft, 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
-#endif
-#endif
+                double min_tmp = ags_return_minsoft(i);
+                double minsoft = DMAX(All.ForceSoftening[P[i].Type] , DMIN(min_tmp, AGS_Prev[i])); // this ensures softening doesnt shrink when self-accel is too large already
+                double maxsoft = ags_return_maxsoft(i);
                 /* check that we're within the 'valid' range for adaptive softening terms, otherwise zeta=0 */
                 if((fabs(PPP[i].NumNgb-All.AGS_DesNumNgb)/All.AGS_DesNumNgb < 0.05)
                    &&(PPP[i].AGS_Hsml <= 0.99*maxsoft)&&(PPP[i].AGS_Hsml >= 1.01*minsoft)
@@ -753,7 +728,8 @@ void ags_density(void)
             }
         }
     }
-
+    myfree(AGS_Prev);
+    
     /* collect some timing information */
     
     t1 = WallclockTime = my_second();
@@ -972,6 +948,43 @@ int ags_density_isactive(MyIDType i)
     // if(density_isactive(i)) return 0;
     /* would have already been handled in hydro density routine [yes, BUT, that only searches for gas neighbors] */
     return 1;
+}
+
+/* routine to return the maximum allowed softening */
+double ags_return_maxsoft(MyIDType i)
+{
+    double maxsoft = All.MaxHsml; // overall maximum - nothing is allowed to exceed this
+#if !(EXPAND_PREPROCESSOR_(ADAPTIVE_GRAVSOFT_FORALL) == 1)
+    maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * All.ForceSoftening[P[i].Type]); // user-specified maximum
+#ifdef PMGRID
+    /*!< this gives the maximum allowed gravitational softening when using the TreePM method.
+     *  The quantity is given in units of the scale used for the force split (ASMTH) */
+    maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
+#endif
+#else
+    maxsoft = DMIN(maxsoft, 50.0 * All.ForceSoftening[P[i].Type]);
+#ifdef PMGRID
+    maxsoft = DMIN(maxsoft, 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
+#endif
+#endif
+#ifdef BLACK_HOLES
+    if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius;}
+#endif
+    return maxsoft;
+}
+
+/* routine to return the minimum allowed softening */
+double ags_return_minsoft(MyIDType i)
+{
+    double minsoft = All.ForceSoftening[P[i].Type]; // this is the user-specified minimum
+    /* now need to restrict: dont allow 'self-acceleration' to be larger than actual gravitational accelerations! */
+    double acc_mag = P[i].GravAccel[0]*P[i].GravAccel[0] + P[i].GravAccel[1]*P[i].GravAccel[1] + P[i].GravAccel[2]*P[i].GravAccel[2];
+#ifdef PMGRID
+    acc_mag += P[i].GravPM[0]*P[i].GravPM[0] + P[i].GravPM[1]*P[i].GravPM[1] + P[i].GravPM[2]*P[i].GravPM[2];
+#endif
+    acc_mag = All.cf_a2inv * sqrt(acc_mag);
+    double h_lim_acc = 16.0 * sqrt(All.G * P[i].Mass / acc_mag) / All.cf_atime;
+    return DMAX(h_lim_acc, minsoft);
 }
 
 

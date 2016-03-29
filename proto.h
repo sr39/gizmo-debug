@@ -769,6 +769,8 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
 void *ags_density_evaluate_primary(void *p);
 void *ags_density_evaluate_secondary(void *p);
 int ags_density_isactive(MyIDType i);
+double ags_return_maxsoft(MyIDType i);
+double ags_return_minsoft(MyIDType i);
 #endif
 
 #ifdef ALTERNATIVE_PSORT

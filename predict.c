@@ -130,7 +130,7 @@ void drift_particle(int i, integertime time1)
 #endif
     
     double divv_fac = P[i].Particle_DivVel * dt_drift;
-    double divv_fac_max = 1.5;
+    double divv_fac_max = 0.3; //1.5; // don't allow Hsml to change too much in predict-step //
     if(divv_fac > +divv_fac_max) divv_fac = +divv_fac_max;
     if(divv_fac < -divv_fac_max) divv_fac = -divv_fac_max;
     
