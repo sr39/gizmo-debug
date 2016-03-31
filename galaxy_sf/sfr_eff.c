@@ -326,7 +326,12 @@ double get_starformation_rate(int i)
     double press_grad_length = 0;
     for(j=0;j<3;j++) {press_grad_length += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
     press_grad_length = All.cf_atime * DMAX(Get_Particle_Size(i) , SphP[i].Pressure / (1.e-37 + sqrt(press_grad_length))); 
-    k_cs = cs_eff / press_grad_length;    
+    k_cs = cs_eff / press_grad_length;
+#ifdef MAGNETIC
+    double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+    double cs_b = sqrt(cs_eff*cs_eff + bmag/SphP[i].Density);
+    k_cs = cs_b / (Get_Particle_Size(i)*All.cf_atime);
+#endif
 #endif
     dv2abs += 2.*k_cs*k_cs; // account for thermal pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
     

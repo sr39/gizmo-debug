@@ -879,7 +879,7 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
 #ifdef SINGLE_STAR_FORMATION
         /* here we are hijacking this module to approximate dust heating/cooling */
         /* assuming heating/cooling balance defines the target temperature: */
-        AGN_T_Compton = pow( AGN_LambdaPre / 5.67e-5 , 0.25); // (sigma*T^4 = Flux_incident)
+        AGN_T_Compton = pow( 1.0e4 + AGN_LambdaPre / 5.67e-5 , 0.25); // (sigma*T^4 = Flux_incident)
         if(AGN_T_Compton < Tmin) {AGN_T_Compton=Tmin;}
 #else
         /* now have incident flux, need to convert to relevant pre-factor for heating rate */

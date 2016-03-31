@@ -134,7 +134,7 @@ double bh_lum_bol(double mdot, double mass)
 #ifdef SINGLE_STAR_FORMATION
     double m_solar = mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS);
     /* if below the deuterium burning limit, just use the potential energy efficiency at the surface of a jupiter-density object */
-    if(m_solar < 0.012) {lum = mdot * c_code*c_code * 5.e-8 * pow(m_solar/0.00095,2./3.);} 
+    //if(m_solar < 0.012) {lum = mdot * c_code*c_code * 5.e-8 * pow(m_solar/0.00095,2./3.);}
     /* now for pre-main sequence, need to also check the mass-luminosity relation */
     if(m_solar >= 0.012)
     {

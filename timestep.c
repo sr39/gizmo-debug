@@ -422,7 +422,7 @@ integertime get_timestep(int p,		/*!< particle index */
         double divVel = P[p].Particle_DivVel;
         if(divVel != 0)
         {
-            dt_divv = 0.5 / fabs(All.cf_a2inv * divVel);
+            dt_divv = 0.25 / fabs(All.cf_a2inv * divVel);
             if(dt_divv < dt) {dt = dt_divv;}
         }
     }
