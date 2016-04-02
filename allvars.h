@@ -1893,7 +1893,8 @@ extern ALIGN(32) struct particle_data
     
 #ifdef SINGLE_STAR_PROMOTION
     MyFloat ProtoStellarAge; /*!< record the proto-stellar age instead of age */
-    MyFloat PreMainSeq_Tracker; /*!< track evolution from protostar to ZAMS star */
+    //MyFloat PreMainSeq_Tracker; /*!< track evolution from protostar to ZAMS star */
+    MyFloat ProtoStellar_Radius; /*!< protostellar radius (also tracks evolution from protostar to ZAMS star) */
 #endif
     
 #ifdef SIDM

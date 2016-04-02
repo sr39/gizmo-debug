@@ -493,7 +493,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                             if(mdot > All.RadioThreshold * meddington)
 #endif
                             {
-                                energy = bh_lum_bol(mdot, bh_mass) * dt;
+                                energy = bh_lum_bol(mdot, bh_mass, -1) * dt;
                                 if(rho > 0)
                                     SphP[j].Injected_BH_Energy += (wk/rho) * energy * P[j].Mass;
                             }

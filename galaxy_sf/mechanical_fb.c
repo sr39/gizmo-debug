@@ -797,7 +797,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 wk = 0.5 * (1 - 1/sqrt(1 + sph_area / (M_PI*kernel.r*kernel.r)));
                 //wk = P[j].Mass / SphP[j].Density;
                 
-                if(wk <= 0) continue; // no point in going further, there's no physical weight here
+                if((wk <= 0)||(isnan(wk))) continue; // no point in going further, there's no physical weight here
                 
                 double wk_vec[AREA_WEIGHTED_SUM_ELEMENTS]; wk_vec[0] = wk;
 #ifndef GALSF_FB_SNE_NONISOTROPIZED
@@ -1175,7 +1175,7 @@ void determine_where_SNe_occur()
 	        P[i].SNe_ThisTimeStep = 0;
 	        if(m_sol > 8.) // minimum mass for SNe
 	        { 
-	            double l_sol = bh_lum_bol(0,P[i].Mass) * (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)); // L/Lsun
+	            double l_sol = bh_lum_bol(0,P[i].Mass,i) * (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)); // L/Lsun
 	            double lifetime = 9.6 * (m_sol/l_sol); // standard lifetime (in Gyr): this gives first SNe at 3Myr
 		        if(star_age >= lifetime) {P[i].SNe_ThisTimeStep = 1; ntotal++; nhosttotal++;}
 	        }
@@ -1229,7 +1229,7 @@ void determine_where_SNe_occur()
         {
 #ifdef SINGLE_STAR_FORMATION
 	        /* use a standard scaling from e.g. Castor, Abbot, & Klein */
-	        double L_sol = bh_lum_bol(0, P[i].Mass) * All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM); // L in solar
+	        double L_sol = bh_lum_bol(0, P[i].Mass, i) * All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM); // L in solar
 	        double M_sol = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS); // M in solar
 	        double gam = DMIN(0.5,3.2e-5*L_sol/M_sol); // Eddington factor (~L/Ledd for winds), capped at 1/2 for sanity reasons
 	        double alpha = 0.5 + 0.4/(1. + 16./M_sol); // approximate scaling for alpha factor with stellar type (weak effect)

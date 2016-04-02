@@ -125,7 +125,7 @@ double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i)
 {
 #ifdef SINGLE_STAR_FORMATION
     double unit_lsun_msun = (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)) / (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS));
-    return bh_lum_bol(0, P[i].Mass) / P[i].Mass * unit_lsun_msun; 
+    return bh_lum_bol(0, P[i].Mass, i) / P[i].Mass * unit_lsun_msun;
 #endif
 #ifdef GALSF_SFR_IMF_VARIATION
     /* more accurate version from David Guszejnov's IMF calculations (ok for Mturnover in range 0.01-100) */
@@ -611,7 +611,8 @@ void cooling_and_starformation(void)
                 P[i].DensAroundStar = SphP[i].Density;
 #ifdef SINGLE_STAR_PROMOTION
                 P[i].ProtoStellarAge = All.Time; // record the proto-stellar age instead of age
-		        P[i].PreMainSeq_Tracker = 1;
+                P[i].ProtoStellar_Radius = 100. * (P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS);
+                //P[i].PreMainSeq_Tracker = 1;
 #endif
 #endif // SINGLE_STAR_FORMATION
                 

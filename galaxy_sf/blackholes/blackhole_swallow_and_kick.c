@@ -338,7 +338,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     int accreted_BH_progs = 0;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
-    mom = bh_lum_bol(mdot, bh_mass) * dt / (C / All.UnitVelocity_in_cm_per_s);
+    mom = bh_lum_bol(mdot, bh_mass, -1) * dt / (C / All.UnitVelocity_in_cm_per_s);
     mom_wt = 0;
 #endif
     

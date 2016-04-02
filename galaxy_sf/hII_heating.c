@@ -82,7 +82,7 @@ void HII_heating_singledomain(void)
              }
              lm_ssp *= calculate_relative_light_to_mass_ratio_from_imf(i);
 #ifdef SINGLE_STAR_FORMATION
-	        double l_sol = bh_lum_bol(0,P[i].Mass) * (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)); // L/Lsun
+	        double l_sol = bh_lum_bol(0,P[i].Mass,i) * (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)); // L/Lsun
 	        double m_sol = P[i].Mass * (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS)); // M/Msun 
 	        double r_sol = pow(m_sol, 0.738); // R/Rsun
 	        double T_eff = 5780. * pow(l_sol/(r_sol*r_sol), 0.25); // ZAMS effective temperature
