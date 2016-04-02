@@ -329,11 +329,8 @@ void add_along_lines_of_sight(void)
 		      ne = SphP[n].Ne;
                 utherm = DMAX(All.MinEgySpec, SphP[i].InternalEnergyPred);
 
-		      AbundanceRatios(utherm, SphP[n].Density * All.cf_a3inv, &ne, &nh0, &nHeII);
-
-		      meanWeight = 4.0 / (3 * HYDROGEN_MASSFRAC + 1 + 4 * HYDROGEN_MASSFRAC * ne);
-
-		      temp = meanWeight * PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * utherm * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
+		      double mu_in = 1;
+		      temp = ThermalProperties(utherm, SphP[n].Density * All.cf_a3inv, &ne, &nh0, &nHeII, &mu_in, n);
 
 		      /* do total gas */
 		      weight = P[n].Mass * wk;

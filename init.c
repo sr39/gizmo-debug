@@ -408,7 +408,7 @@ void init(void)
 #endif
 #ifdef GALSF_FB_SNE_HEATING
             P[i].SNe_ThisTimeStep = 0;
-            int k; for(k=0;k<7;k++) {P[i].Area_weighted_sum[k] = 0;}
+            int k; for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {P[i].Area_weighted_sum[k] = 0;}
 #endif
 #ifdef GALSF_FB_GASRETURN
             P[i].MassReturn_ThisTimeStep = 0;
@@ -767,6 +767,10 @@ void init(void)
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         PPPZ[i].AGS_zeta = 0;
 #endif
+#ifdef SUPER_TIMESTEP_DIFFUSION
+        SphP[i].Super_Timestep_Dt_Explicit = 0;
+        SphP[i].Super_Timestep_j = 0;
+#endif
 #ifdef GALSF_FB_LOCAL_UV_HEATING
         SphP[i].RadFluxUV = 0;
         SphP[i].RadFluxEUV = 0;
@@ -864,6 +868,7 @@ void init(void)
         endrun(0);
     }
     
+#ifdef TWOPOINT_FUNCTION_COMPUTATION_ENABLED
     if(RestartFlag == 5)
     {
         /* calculating powerspec and twopoint function */
@@ -886,6 +891,7 @@ void init(void)
         twopoint();
         endrun(0);
     }
+#endif
     
     
     if(RestartFlag == 6)

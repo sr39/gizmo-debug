@@ -130,7 +130,7 @@ void drift_particle(int i, integertime time1)
 #endif
     
     double divv_fac = P[i].Particle_DivVel * dt_drift;
-    double divv_fac_max = 1.5;
+    double divv_fac_max = 0.3; //1.5; // don't allow Hsml to change too much in predict-step //
     if(divv_fac > +divv_fac_max) divv_fac = +divv_fac_max;
     if(divv_fac < -divv_fac_max) divv_fac = -divv_fac_max;
     
@@ -152,9 +152,16 @@ void drift_particle(int i, integertime time1)
             double maxsoft = All.MaxHsml;
             if(density_isactive(i)==0)
             {
+#if !(EXPAND_PREPROCESSOR_(ADAPTIVE_GRAVSOFT_FORALL) == 1)
+                maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * All.ForceSoftening[P[i].Type]);
+#ifdef PMGRID
+                maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
+#endif
+#else
                 maxsoft = DMIN(maxsoft, 50.0 * All.ForceSoftening[P[i].Type]);
 #ifdef PMGRID
-                maxsoft = DMIN(maxsoft, 0.5 * All.Asmth[0]);
+                maxsoft = DMIN(maxsoft, 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
+#endif
 #endif
             }
             PPP[i].AGS_Hsml *= exp((double)divv_fac / ((double)NUMDIMS));

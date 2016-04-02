@@ -56,8 +56,10 @@ double ref_mass_factor(MyIDType i)
 {
     double ref_factor=1.0;
 #ifdef BH_CALC_DISTANCES
+#ifndef SINGLE_STAR_FORMATION
     ref_factor = sqrt(P[i].min_dist_to_bh + 0.0001);
     if(ref_factor>1.0) { ref_factor = 1.0; }
+#endif 
 #endif
     return ref_factor;
 }

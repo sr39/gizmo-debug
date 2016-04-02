@@ -102,7 +102,7 @@ int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum)
         if(P[i].Type==5) {if(sigma_0<0) return 1; active_check=1; fac += 0.0001 * P[i].BH_Mdot * pow(C / All.UnitVelocity_in_cm_per_s, 2);}
 #endif
 #ifdef RT_ILIEV_TEST1
-        if(P[i].Type==4) {if(sigma_0<0) return 1; active_check=1; fac += 5.0e48;} // 5e48 in ionizing photons per second //
+        if(P[i].Type==4) {if(sigma_0<0) return 1; active_check=1; fac += 5.0e48 * (13.6*ELECTRONVOLT_IN_ERGS) * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs);} // 5e48 in ionizing photons per second //
 #else
         if(P[i].Type==4) {if(sigma_0<0) return 1; active_check=1; fac += (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.IonizingLuminosityPerSolarMass_cgs * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs);} // flux from star particles according to mass
 #endif

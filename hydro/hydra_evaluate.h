@@ -26,10 +26,11 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifndef HYDRO_SPH
     struct Input_vec_Riemann Riemann_vec;
     struct Riemann_outputs Riemann_out;
-    double face_area_dot_vel, face_vel_i=0, face_vel_j=0;
-    double Face_Area_Vec[3], Face_Area_Norm = 0;
+    double face_area_dot_vel;
     face_area_dot_vel = 0;
 #endif
+    double face_vel_i=0, face_vel_j=0, Face_Area_Norm=0, Face_Area_Vec[3];
+
 #ifdef HYDRO_MESHLESS_FINITE_MASS
     double epsilon_entropic_eos_big = 0.5; // can be anything from (small number=more diffusive, less accurate entropy conservation) to ~1.1-1.3 (least diffusive, most noisy)
     double epsilon_entropic_eos_small = 1.e-3; // should be << epsilon_entropic_eos_big
@@ -279,19 +280,31 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 
                 
                 
-#ifndef HYDRO_SPH
+//#ifndef HYDRO_SPH
                 /* the following macros are useful for all the diffusion operations below: this is the diffusion term associated
                     with the HLL reimann problem solution. This adds numerical diffusion (albeit limited to the magnitude of the 
                     physical diffusion coefficients), but stabilizes the relevant equations */
+#ifdef HYDRO_SPH
+        face_vel_i = face_vel_j = 0;
+        for(k=0;k<3;k++) 
+        {
+        face_vel_i += local.Vel[k] * kernel.dp[k] / (kernel.r * All.cf_atime); 
+        face_vel_j += SphP[j].VelPred[k] * kernel.dp[k] / (kernel.r * All.cf_atime);
+        }
+        // SPH: use the sph 'effective areas' oriented along the lines between particles and direct-difference gradients
+        Face_Area_Norm = local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * SphP[j].Density);
+        for(k=0;k<3;k++) {Face_Area_Vec[k] = Face_Area_Norm * kernel.dp[k]/kernel.r;}
+#endif
+
 #ifdef MAGNETIC
-                double bhat[3]={Riemann_out.Face_B[0],Riemann_out.Face_B[1],Riemann_out.Face_B[2]};
+                double bhat[3]={0.5*(local.BPred[0]+BPred_j[0])*All.cf_a2inv,0.5*(local.BPred[1]+BPred_j[1])*All.cf_a2inv,0.5*(local.BPred[2]+BPred_j[2])*All.cf_a2inv};
                 double bhat_mag=bhat[0]*bhat[0]+bhat[1]*bhat[1]+bhat[2]*bhat[2];
                 if(bhat_mag>0) {bhat_mag=sqrt(bhat_mag); bhat[0]/=bhat_mag; bhat[1]/=bhat_mag; bhat[2]/=bhat_mag;}
                 v_hll = 0.5*fabs(face_vel_i-face_vel_j) + DMAX(magneticspeed_i,magneticspeed_j);
 #define B_dot_grad_weights(grad_i,grad_j) {if(bhat_mag<=0) {b_hll=1;} else {double q_tmp_sum=0,b_tmp_sum=0; for(k=0;k<3;k++) {\
                                            double q_tmp=0.5*(grad_i[k]+grad_j[k]); q_tmp_sum+=q_tmp*q_tmp; b_tmp_sum+=bhat[k]*q_tmp;}\
                                            if((b_tmp_sum!=0)&&(q_tmp_sum>0)) {b_hll=fabs(b_tmp_sum)/sqrt(q_tmp_sum); b_hll*=b_hll;} else {b_hll=0;}}}
-#define HLL_DIFFUSION_COMPROMISE_FACTOR 2.0 //1.1
+#define HLL_DIFFUSION_COMPROMISE_FACTOR 1.1
 #else
                 v_hll = 0.5*fabs(face_vel_i-face_vel_j) + DMAX(kernel.sound_i,kernel.sound_j);
 #define B_dot_grad_weights(grad_i,grad_j) {b_hll=1;}
@@ -300,6 +313,10 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #define HLL_correction(ui,uj,wt,kappa) (k_hll = v_hll * (wt) * kernel.r * All.cf_atime / fabs(kappa),\
                                         k_hll = (0.2 + k_hll) / (0.2 + k_hll + k_hll*k_hll),\
                                         -1.0*k_hll*Face_Area_Norm*v_hll*((ui)-(uj)))
+#if !defined(MAGNETIC) || defined(GALSF) || defined(COOLING) || defined(BLACKHOLES)
+#define HLL_DIFFUSION_OVERSHOOT_FACTOR  0.005
+#else
+#define HLL_DIFFUSION_OVERSHOOT_FACTOR  1.0
 #endif
                 
 

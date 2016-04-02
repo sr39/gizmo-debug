@@ -95,7 +95,7 @@ void apply_grain_dragforce(void)
                         lorentz_units /= All.UnitVelocity_in_cm_per_s / (All.UnitTime_in_s / All.HubbleParam); // converts it to code-units acceleration
 
                         /* calculate the grain charge following Draine & Sutin */
-                        double cs_cgs = cs / All.UnitVelocity_in_cm_per_s;
+                        double cs_cgs = cs * All.UnitVelocity_in_cm_per_s;
                         double tau_draine_sutin = R_grain_cgs * (2.3*PROTONMASS) * (cs_cgs*cs_cgs) / (ELECTRONCHARGE*ELECTRONCHARGE);
                         double Z_grain = -DMAX( 1./(1. + sqrt(1.0e-3/tau_draine_sutin)) , 2.5*tau_draine_sutin );
                         if(isnan(Z_grain)||(Z_grain>=0)) {Z_grain=0;}

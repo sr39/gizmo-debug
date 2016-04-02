@@ -134,10 +134,12 @@ int fof_compare_ID_list_ID(const void *a, const void *b);
 void myfree_msg(void *p, char *msg);
 void kspace_neutrinos_init(void);
 
+#ifdef TWOPOINT_FUNCTION_COMPUTATION_ENABLED
 void twopoint(void);
 void twopoint_save(void);
 int twopoint_ngb_treefind_variable(MyDouble searchcenter[3], MyFloat rsearch, int target, int *startnode, int mode, int *nexport, int *nsend_local);
 int twopoint_count_local(int target, int mode, int *nexport, int *nsend_local);
+#endif
 
 void powerspec(int flag, int *typeflag);
 double PowerSpec_Efstathiou(double k);
@@ -249,7 +251,6 @@ void find_CM_of_biggest_group(void);
 int compare_length_values(const void *a, const void *b);
 double rho_dot(double z, void *params);
 double bhgrowth(double z1, double z2);
-
 
 int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend_local);
 
@@ -507,7 +508,7 @@ char *GetMultiSpeciesFilename(int i, int hk);
 #endif
 
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
-double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz, int mode);
+double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz);
 double bh_angleweight_localcoupling(int j, double hR, double theta);
 #endif
 
@@ -732,10 +733,6 @@ void check_tidaltensor_nonperiodic(int particle_ID);
 #endif
 #endif
 
-#ifdef SINKS
-void do_sinks(void);
-#endif
-
 #ifdef SCFPOTENTIAL
 void SCF_do_center_of_mass_correction(double fac_rad, double start_rad, double fac_part, int max_iter);
 void SCF_write(int task);
@@ -772,6 +769,8 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
 void *ags_density_evaluate_primary(void *p);
 void *ags_density_evaluate_secondary(void *p);
 int ags_density_isactive(MyIDType i);
+double ags_return_maxsoft(MyIDType i);
+double ags_return_minsoft(MyIDType i);
 #endif
 
 #ifdef ALTERNATIVE_PSORT

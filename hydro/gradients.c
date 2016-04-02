@@ -447,8 +447,8 @@ void local_slopelimiter(double *grad, double valmax, double valmin, double alim,
         if(shoot_tol > 0)
         {
             double abs_max = DMAX(fabs_max,fabs_min);
-            //cfac *= DMIN(abs_min + shoot_tol*abs_max, abs_max);
-            cfac *= DMAX(DMIN(shoot_tol*abs_max,2.0*abs_min) , abs_min);
+            cfac *= DMIN(abs_min + shoot_tol*abs_max, abs_max);
+            //cfac *= DMAX(DMIN(shoot_tol*abs_max,2.0*abs_min) , abs_min);
         } else {
             cfac *= abs_min;
         }
@@ -1154,17 +1154,14 @@ void hydro_gradient_calc(void)
 
 #if defined(CONDUCTION_SPITZER) || defined(VISCOSITY_BRAGINSKII) || (defined(MHD_NON_IDEAL) && defined(COOLING))
             /* get the neutral fraction */
-            double nHeII, temperature, u, ne, nh0, mu, yhelium = 0;
+            double ion_frac, nHeII, temperature, u, ne, nh0 = 0, mu_meanwt=1;
             ne = SphP[i].Ne;
             u = DMAX(All.MinEgySpec, SphP[i].InternalEnergy); // needs to be in code units
-            AbundanceRatios(u, SphP[i].Density*All.cf_a3inv, &ne, &nh0, &nHeII, i);
-            yhelium = (1 - HYDROGEN_MASSFRAC) / (4 * HYDROGEN_MASSFRAC);
-            mu = (1 + 4 * yhelium) / (1 + yhelium + ne);
-            temperature = GAMMA_MINUS1 / BOLTZMANN * u * PROTONMASS * mu;
+	        temperature = ThermalProperties(u, SphP[i].Density*All.cf_a3inv, &ne, &nh0, &nHeII, &mu_meanwt, i);
 #ifdef GALSF_FB_HII_HEATING
             if(SphP[i].DelayTimeHII>0 || SphP[i].Ne>=1.15789) nh0=0;
-#endif
-            double ion_frac = DMIN(DMAX(0,1.-nh0),1);
+#endif 
+	        ion_frac = DMIN(DMAX(0,1.-nh0),1);
 #endif
             
             
@@ -1226,33 +1223,97 @@ void hydro_gradient_calc(void)
             
 #ifdef MHD_NON_IDEAL
             {
-                double mu_unit = 4.0*M_PI; // 4PI for Gaussian units
-#ifdef COOLING
-                double n_elec = SphP[i].Ne; // electron number per particle
-                double ionized_frac = ion_frac;
-                double mean_molecular_weight = mu; // mean molecular weight in g
+                /* calculations below follow Wurster,Price,+Bate 2016, who themselves follow Wardle 2007 and Keith & Wardle 2014, for the equation sets */
+#ifdef COOLING 
+		        double mean_molecular_weight = mu_meanwt;
 #else
-                double mean_molecular_weight = PROTONMASS; // mean molecular weight in g
-                double n_elec = 1;
-                double ionized_frac = n_elec;
-                double temperature = GAMMA_MINUS1 / BOLTZMANN * (SphP[i].InternalEnergy*All.UnitPressure_in_cgs/All.UnitDensity_in_cgs) * mean_molecular_weight;
+		        double mean_molecular_weight = 2.38; // molecular H2, +He with solar mass fractions and metals
+		        double temperature = GAMMA_MINUS1 / BOLTZMANN * (SphP[i].InternalEnergy*All.UnitPressure_in_cgs/All.UnitDensity_in_cgs) * (mean_molecular_weight*PROTONMASS);
 #endif
-                double density_cgs = SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam; // mass density (cgs) //
-                double density_ions = ionized_frac * density_cgs; // assume all the mass is in ions, with global charge neutrality
-                double numden_e = n_elec * density_cgs / mean_molecular_weight; // number density of electrons (cgs) //
+		        // define some variables we need below //
+		        double zeta_cr = 1.0e-17; // cosmic ray ionization rate (fixed as constant for non-CR runs)
+#ifdef COSMIC_RAYS
+		        double u_cr = ((SphP[target].CosmicRayEnergyPred / P[target].Mass * SphP[target].Density * All.cf_a3inv) * (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam)); // cgs
+		        zeta_cr = u_cr * 2.2e-6; // convert to ionization rate
+#endif
+                double a_grain_micron = 0.1; // effective size of grains that matter at these densities
+                double m_ion = 24.3; // Mg dominates ions in dense gas [where this is relevant]; this is ion mass in units of proton mass
+		        double f_dustgas = 0.01;
+#ifdef METALS
+		        f_dustgas = 0.5 * P[i].Metallicity[0]; // constant dust-to-metals ratio
+#endif
+		        // now everything should be fully-determined (given the inputs above and the known properties of the gas) //
+                double m_neutral = mean_molecular_weight; // in units of the proton mass
+		        double ag01 = a_grain_micron/0.1;
+		        double m_grain = 7.51e9 * ag01*ag01*ag01; // grain mass [internal density =3 g/cm^3]
+		        double rho = SphP[i].Density*All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam; // density in cgs 
+                double n_eff = rho / PROTONMASS;
+
+                // calculate ionization fraction in dense gas //
+                // use rate coefficients k to estimate grain charge 
+                double k0 = 1.95e-4 * sqrt(temperature); // prefactor for rate coefficient for electron-grain collisions
+                double ngr_ngas = (m_neutral/m_grain) * f_dustgas; // number of grains per neutral 
+                double psi_prefac = 167.1 / (ag01 * temperature); // e*e/(a_grain*k_boltzmann*T): Z_grain = psi/psi_prefac where psi is constant determines charge
+                double alpha = zeta_cr * psi_prefac / (ngr_ngas*ngr_ngas * k0 * (n_eff/m_neutral)); // coefficient for equation that determines Z_grain
+                // psi solves the equation: psi = alpha * (exp[psi] - y/(1+psi)) where y=sqrt(m_ion/m_electron); note the solution for small alpha is independent of m_ion, only large alpha
+                //   (where the non-ideal effects are weak, generally) produces a difference: at very high-T, appropriate m_ion should be hydrogen+helium, but in this limit our cooling 
+                //    routines will already correctly determine the ionization states. so we can safely adopt Mg as our ion of consideration 
+                double psi = 0.0;
+                if(alpha > 10.) {psi = -0.5188024552836319 + 0.4021932106900916*log(m_ion*PROTONMASS/ELECTRONMASS);} // solution for large alpha [>~10]
+                else if(alpha > 0.01) {
+                    double q = -0.5188024552836319 + 0.4021932106900916*log(m_ion*PROTONMASS/ELECTRONMASS); 
+                    psi = q + 0.0506874458592827 * (6.555958004203513 - q) * (-0.22387211385683392 + pow(alpha,-0.65)); // interpolates between low/high limits 
+                } else {
+                  double q=-log(alpha); psi = q*(1+log(q)/(q-1)); // solution for small alpha [<~0.01], independent of m_ion
+                } 
+                if(psi <= 0) {psi=0;}
+                double k_e = k0 * exp(psi); // e-grain collision rate coefficient
+                double k_i = k0 * sqrt(ELECTRONMASS / (m_ion*PROTONMASS)) * (1 + psi); // i-grain collision rate coefficient
+                double n_elec = zeta_cr / (ngr_ngas * k_e); // electron number density
+                double n_ion = zeta_cr / (ngr_ngas * k_i); // ion number density
+                double Z_grain = psi / psi_prefac; // mean grain charge
+#ifdef COOLING  
+                /* at high temperatures, the calculation above breaks down and we should use the fractions from the cooling routines. however this is usually the limit
+                    where non-ideal effects are irrelevant */
+                double ne_cool = ne * 0.76 * n_eff; // 0.76 from assumed H fraction in code, ne is free electrons per H //
+                if((temperature > 8000.)||(ne_cool > n_elec))
+                {
+                    n_elec = ne_cool; 
+                    n_ion = n_elec;
+                    Z_grain = 0.0; // we can basically neglect the grain charge in this limit //
+                }
+#endif
+                // now define more variables we will need below //
                 double gizmo2gauss = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); // convert to B-field to gauss (units)
-                double bmag = 0; for(k=0;k<3;k++) {bmag += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);} // get magnitude of B //
-                if(bmag<=0) {bmag=0;} else {bmag = sqrt(bmag) * All.cf_a2inv * gizmo2gauss;} // B-field magnitude in Gauss
-                
-                double gamma_e = 8.3e-9 * DMAX( 1.0, sqrt(temperature/100.) ) / (2. * mean_molecular_weight);
-                double gamma_i = 2.0e-9 * sqrt(PROTONMASS/mean_molecular_weight) / mean_molecular_weight;
-                
-                double eta_ohmic = (C * C * ELECTRONMASS * mean_molecular_weight) / (mu_unit * gamma_e * ELECTRONCHARGE*ELECTRONCHARGE * n_elec);
-                double eta_hall = (C * bmag) / (mu_unit * ELECTRONCHARGE * numden_e);
-                double eta_ad = (bmag * bmag) / (mu_unit * gamma_i * density_cgs * density_ions);
-                
+                double B_Gauss = 0; for(k=0;k<3;k++) {B_Gauss += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);} // get magnitude of B //
+                if(B_Gauss<=0) {B_Gauss=0;} else {B_Gauss = sqrt(B_Gauss) * All.cf_a2inv * gizmo2gauss;} // B-field magnitude in Gauss
+                double xe = n_elec / n_eff;
+                double xi = n_ion / n_eff;
+                double xg = ngr_ngas;
+                // get collision rates/cross sections for different species //
+                double nu_g = 7.90e-6 * ag01*ag01 * sqrt(temperature/m_neutral) / (m_neutral+m_grain); // Pinto & Galli 2008
+                double nu_ei = 51.*xe*pow(temperature,-1.5); // Pandey & Wardle 2008 (e-ion)
+                double nu_e = nu_ei + 6.21e-9*pow(temperature/100.,0.65)/m_neutral; // Pinto & Galli 2008 for latter (e-neutral)
+                double nu_i = (xe/xi)*nu_ei + 1.57e-9/(m_neutral+m_ion); // // Pandey & Wardle 2008 for former (e-ion), Pinto & Galli 2008 for latter (i-neutral)
+                // use the cross sections to determine the hall parameters and conductivities //
+                double beta_prefac = ELECTRONCHARGE * B_Gauss / (PROTONMASS * C * n_eff);
+                double beta_i = beta_prefac / (m_ion * nu_i); // standard beta factors (Hall parameters) 
+                double beta_e = beta_prefac / (ELECTRONMASS/PROTONMASS * nu_e);
+                double beta_g = beta_prefac / (m_grain * nu_g) * Z_grain;
+                double be_inv = 1/(1 + beta_e*beta_e), bi_inv = 1/(1 + beta_i*beta_i), bg_inv = 1/(1 + beta_g*beta_g);
+                double sigma_O = xe*beta_e + xi*beta_i + xg*Z_grain*beta_g; // ohmic conductivity
+                double sigma_H = -xe*be_inv + xi*bi_inv - xg*Z_grain*bg_inv; // hall conductivity
+                double sigma_P = xe*beta_e*be_inv + xi*beta_i*bi_inv + xg*Z_grain*beta_g*bg_inv; // pedersen conductivity
+                // now we can finally calculate the diffusivities // 
+                double eta_prefac = B_Gauss * C / (4 * M_PI * ELECTRONCHARGE * n_eff );
+                double eta_O = eta_prefac / sigma_O;
+                double sigma_perp2 = sigma_H*sigma_H + sigma_P*sigma_P;
+                double eta_H = eta_prefac * sigma_H / sigma_perp2;
+                double eta_A = eta_prefac * (sigma_P/sigma_perp2 - 1/sigma_O);
+                eta_O = DMAX(0,eta_O); eta_H = DMAX(0,eta_H); eta_A = DMAX(0,eta_A); // check against unphysical negative diffusivities
+                // convert units to code units     
                 double units_cgs_to_code = All.UnitTime_in_s / (All.UnitLength_in_cm * All.UnitLength_in_cm) * All.HubbleParam; // convert coefficients (L^2/t) to code units [physical]
-                eta_ohmic *= units_cgs_to_code; eta_hall *= units_cgs_to_code; eta_ad *= units_cgs_to_code;
+                double eta_ohmic = eta_O*units_cgs_to_code, eta_hall = eta_H*units_cgs_to_code, eta_ad = eta_A*units_cgs_to_code;
                 
                 SphP[i].Eta_MHD_OhmicResistivity_Coeff = eta_ohmic;     /*!< Ohmic resistivity coefficient [physical units of L^2/t] */
                 SphP[i].Eta_MHD_HallEffect_Coeff = eta_hall;            /*!< Hall effect coefficient [physical units of L^2/t] */
@@ -1331,8 +1392,15 @@ void hydro_gradient_calc(void)
             /* fraction of H at which maximum reconstruction is allowed (=0.5 for 'standard'); for pure hydro we can
              be a little more aggresive and the equations are still stable (but this is as far as you want to push it) */
             double a_limiter = 0.25; if(SphP[i].ConditionNumber>100) a_limiter=DMIN(0.5, 0.25 + 0.25 * (SphP[i].ConditionNumber-100)/100);
+#if !defined(MAGNETIC) && !defined(GALSF)
+            h_lim=PPP[i].Hsml; stol=0.1;
+#endif
 #ifdef AGGRESSIVE_SLOPE_LIMITERS
             h_lim = PPP[i].Hsml; a_limiter *= 0.5; stol = 0.125;
+#endif
+            
+#ifdef SINGLE_STAR_FORMATION
+            SphP[i].Density_Relative_Maximum_in_Kernel = GasGradDataPasser[i].Maxima.Density;
 #endif
             local_slopelimiter(SphP[i].Gradients.Density,GasGradDataPasser[i].Maxima.Density,GasGradDataPasser[i].Minima.Density,a_limiter,h_lim,stol);
             local_slopelimiter(SphP[i].Gradients.Pressure,GasGradDataPasser[i].Maxima.Pressure,GasGradDataPasser[i].Minima.Pressure,a_limiter,h_lim,stol);
@@ -1506,6 +1574,14 @@ void hydro_gradient_calc(void)
                 SphP[i].CosmicRayDiffusionCoeff *= All.CosmicRayDiffusionCoeff;
 #endif
                 if((SphP[i].CosmicRayDiffusionCoeff<=0)||(isnan(SphP[i].CosmicRayDiffusionCoeff))) {SphP[i].CosmicRayDiffusionCoeff=0;}
+#ifdef GALSF
+                /* for multi-physics problems, we suppress diffusion where it is irrelevant */
+                {
+                    double P_cr_Ratio = Get_Particle_CosmicRayPressure(i) / (MIN_REAL_NUMBER + SphP[i].Pressure);
+                    double P_min = 1.0e-2; if(P_cr_Ratio < P_min) {SphP[i].CosmicRayDiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
+                    P_min = 1.0e-4; if(P_cr_Ratio < P_min) {SphP[i].CosmicRayDiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
+                }
+#endif
             } else {
                 SphP[i].CosmicRayDiffusionCoeff = 0;
             }
@@ -1601,6 +1677,9 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
             for(n = 0; n < numngb; n++)
             {
                 j = ngblist[n];
+                if(P[j].Type != 0) continue;
+                if(j >= N_gas) continue;
+
                 int TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
 #ifndef SHEARING_BOX // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //
                 if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
@@ -1788,9 +1867,9 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     if(kernel.r > out.MaxDistance) {out.MaxDistance = kernel.r;}
                     if(swap_to_j) {if(kernel.r > GasGradDataPasser[j].MaxDistance) {GasGradDataPasser[j].MaxDistance = kernel.r;}}
 
-                    double dd = SphP[j].Density - local.GQuant.Density;
-                    MINMAX_CHECK(dd,out.Minima.Density,out.Maxima.Density);
-                    if(swap_to_j) {MINMAX_CHECK(-dd,GasGradDataPasser[j].Minima.Density,GasGradDataPasser[j].Maxima.Density);}
+                    double d_rho = SphP[j].Density - local.GQuant.Density;
+                    MINMAX_CHECK(d_rho,out.Minima.Density,out.Maxima.Density);
+                    if(swap_to_j) {MINMAX_CHECK(-d_rho,GasGradDataPasser[j].Minima.Density,GasGradDataPasser[j].Maxima.Density);}
 
                     double dp = SphP[j].Pressure - local.GQuant.Pressure;
                     MINMAX_CHECK(dp,out.Minima.Pressure,out.Maxima.Pressure);
@@ -1905,7 +1984,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                         for(k=0;k<3;k++)
                         {
                             double wk_xyz_i = -kernel.wk_i * kernel.dp[k]; /* sign is important here! */
-                            out.Gradients[k].Density += wk_xyz_i * dd;
+                            out.Gradients[k].Density += wk_xyz_i * d_rho;
                             out.Gradients[k].Pressure += wk_xyz_i * dp;
                             for(k2=0;k2<3;k2++) {out.Gradients[k].Velocity[k2] += wk_xyz_i * dv[k2];}
 #ifdef DOGRAD_INTERNAL_ENERGY
@@ -1943,7 +2022,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                         for(k=0;k<3;k++)
                         {
                             double wk_xyz_j = -kernel.wk_j * kernel.dp[k]; /* sign is important here! (note dp-dd signs cancel) */
-                            SphP[j].Gradients.Density[k] += wk_xyz_j * dd;
+                            SphP[j].Gradients.Density[k] += wk_xyz_j * d_rho;
                             SphP[j].Gradients.Pressure[k] += wk_xyz_j * dp;
                             for(k2=0;k2<3;k2++) {SphP[j].Gradients.Velocity[k2][k] += wk_xyz_j * dv[k2];}
 #ifdef DOGRAD_INTERNAL_ENERGY

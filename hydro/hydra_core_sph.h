@@ -13,6 +13,9 @@
     double vdotr2_phys = kernel.vdotr2;
     if(All.ComovingIntegrationOn) vdotr2_phys -= All.cf_hubble_a2 * r2;
     V_j = P[j].Mass / SphP[j].Density;
+#ifdef COSMIC_RAYS
+    Fluxes.CosmicRayPressure = 0;
+#endif
     
     /* --------------------------------------------------------------------------------- */
     /* --------------------------------------------------------------------------------- */

@@ -72,7 +72,7 @@ struct addFBdata_in
     MyFloat SNe_v_ejecta;
     MyDouble Msne;
     MyDouble unit_mom_SNe;
-    MyFloat Area_weighted_sum[7];
+    MyFloat Area_weighted_sum[AREA_WEIGHTED_SUM_ELEMENTS];
 #ifdef METALS
     MyDouble yields[NUM_METAL_SPECIES];
 #endif
@@ -85,7 +85,7 @@ struct addFBdata_in
 
 struct addFBdata_out
 {
-    MyFloat Area_weighted_sum[7];
+    MyFloat Area_weighted_sum[AREA_WEIGHTED_SUM_ELEMENTS];
     MyFloat M_coupled;
 }
 *AddFBDataResult, *AddFBDataOut;
@@ -162,7 +162,7 @@ void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i)
     in->Msne = 0.01 * (double)P[i].RProcessEvent_ThisTimeStep / ((double)((All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS)); // mass ejected ~0.01*M_sun; only here for bookkeeping //
     in->unit_mom_SNe = 0;
     in->SNe_v_ejecta = 0.;
-    for(k=0;k<7;k++) {in->Area_weighted_sum[k] = 1/(MIN_REAL_NUMBER+fabs(P[i].Area_weighted_sum[k]));}
+    for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {in->Area_weighted_sum[k] = 1/(MIN_REAL_NUMBER+fabs(P[i].Area_weighted_sum[k]));}
 #endif
 }
 
@@ -213,6 +213,9 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
     Esne51 = All.SNeIIEnergyFrac*n_sn_0;
     unit_egy_SNe = 1.0e51/(All.UnitEnergy_in_cgs/All.HubbleParam);
     Msne = 10.5; //average ejecta mass for single event (normalized to give total mass loss correctly)
+#ifdef SINGLE_STAR_FORMATION
+    Msne = P[i].Mass; // conserve mass and destroy the star completely
+#endif
     if(star_age > agemax) Msne=1.4; // SnIa
     
 #ifdef METALS
@@ -284,7 +287,7 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
     in->Msne = Msne;
     in->SNe_v_ejecta = SNe_v_ejecta;
     in->unit_mom_SNe = unit_mom_SNe;
-    for(k=0;k<7;k++) {in->Area_weighted_sum[k] = 1/(MIN_REAL_NUMBER+fabs(P[i].Area_weighted_sum[k]));}
+    for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {in->Area_weighted_sum[k] = 1/(MIN_REAL_NUMBER+fabs(P[i].Area_weighted_sum[k]));}
 #ifdef GALSF_TURNOFF_COOLING_WINDS
     /* calculate the 'blast radius' and 'cooling turnoff time' used by this model */
     double n0 = P[i].DensAroundStar*All.cf_a3inv*All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / PROTONMASS;
@@ -357,6 +360,11 @@ void particle2in_addFB_winds(struct addFBdata_in *in, int i)
     M_wind = P[i].Mass * P[i].MassReturn_ThisTimeStep;
     E_wind = GasSpecEnergy*T_corr*M_wind;
     wind_velocity = sqrt(2.0*E_wind/M_wind);
+#ifdef SINGLE_STAR_FORMATION
+    double m_msun = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS); 
+    wind_velocity = 616.e5 * sqrt((1.+0.1125*m_msun)/(1.+0.0125*m_msun)) * pow(m_msun,0.131); // same as scaling below from size-mass relation+eddington factor
+    wind_velocity /= All.UnitVelocity_in_cm_per_s; // put into code units
+#endif
     wind_momentum = M_wind*wind_velocity;
     
     for(k = 0; k < 3; k++)
@@ -369,7 +377,7 @@ void particle2in_addFB_winds(struct addFBdata_in *in, int i)
     in->Msne = M_wind;
     in->SNe_v_ejecta = wind_velocity;
     in->unit_mom_SNe = wind_momentum;
-    for(k=0;k<7;k++) {in->Area_weighted_sum[k] = 1/(MIN_REAL_NUMBER+fabs(P[i].Area_weighted_sum[k]));}
+    for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {in->Area_weighted_sum[k] = 1/(MIN_REAL_NUMBER+fabs(P[i].Area_weighted_sum[k]));}
 #endif // GALSF_FB_GASRETURN //
 }
 
@@ -379,7 +387,7 @@ void out2particle_addFB(struct addFBdata_out *out, int i, int mode, int feedback
 {
     if(feedback_type==-1)
     {
-        int k; for(k=0;k<7;k++) {ASSIGN_ADD(P[i].Area_weighted_sum[k], out->Area_weighted_sum[k], mode);}
+        int k; for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {ASSIGN_ADD(P[i].Area_weighted_sum[k], out->Area_weighted_sum[k], mode);}
     } else {
         P[i].Mass -= out->M_coupled;
         if(P[i].Mass<0) P[i].Mass=0;
@@ -787,22 +795,25 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(V_j<0 || isnan(V_j)) {V_j=0;}
                 double sph_area = fabs(local.V_i*local.V_i*kernel.dwk + V_j*V_j*dwk_j);
                 wk = 0.5 * (1 - 1/sqrt(1 + sph_area / (M_PI*kernel.r*kernel.r)));
+                //wk = P[j].Mass / SphP[j].Density;
                 
-                double wk_vec[7]; wk_vec[0] = wk;
+                if((wk <= 0)||(isnan(wk))) continue; // no point in going further, there's no physical weight here
+                
+                double wk_vec[AREA_WEIGHTED_SUM_ELEMENTS]; wk_vec[0] = wk;
+#ifndef GALSF_FB_SNE_NONISOTROPIZED
                 if(kernel.dp[0]>0) {wk_vec[1]=wk*kernel.dp[0]/kernel.r; wk_vec[2]=0;} else {wk_vec[1]=0; wk_vec[2]=wk*kernel.dp[0]/kernel.r;}
                 if(kernel.dp[1]>0) {wk_vec[3]=wk*kernel.dp[1]/kernel.r; wk_vec[4]=0;} else {wk_vec[3]=0; wk_vec[4]=wk*kernel.dp[1]/kernel.r;}
                 if(kernel.dp[2]>0) {wk_vec[5]=wk*kernel.dp[2]/kernel.r; wk_vec[6]=0;} else {wk_vec[5]=0; wk_vec[6]=wk*kernel.dp[2]/kernel.r;}
+#endif
                 
                 // if feedback_type==-1, this is a pre-calc loop to get the relevant weights for coupling //
                 if(feedback_type==-1)
                 {
-                    for(k=0;k<7;k++) out.Area_weighted_sum[k] += wk_vec[k];
+                    for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) out.Area_weighted_sum[k] += wk_vec[k];
                     continue;
                 }
                 // NOW do the actual feedback calculation //
                 wk *= local.Area_weighted_sum[0]; // this way wk matches the value summed above for the weighting //
-                
-                dM = wk * local.Msne;
                 
                 /* define initial mass and ejecta velocity in this 'cone' */
                 double v_bw[3]={0}, e_shock=0;
@@ -810,15 +821,49 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double pvec[3]={0};
                 for(k=0; k<3; k++)
                 {
+#ifdef GALSF_FB_SNE_NONISOTROPIZED
+                    pvec[k] = -wk * kernel.dp[k] / kernel.r;
+#else
                     double q;
                     q = 0;
+                    
+#if !(EXPAND_PREPROCESSOR_(GALSF_FB_SNE_HEATING) == 1) // check whether a numerical value is assigned
+#if (GALSF_FB_SNE_HEATING == 1) // code for symmetrized but non-isotropic
+#define DO_SYMMETRIZED_SNE_HEATING_ONLY_BUT_NOT_FULLY_ISOTROPIC
+#endif
+#endif
+                    
+#ifdef DO_SYMMETRIZED_SNE_HEATING_ONLY_BUT_NOT_FULLY_ISOTROPIC
+                    int i1=2*k+1, i2=i1+1;
+                    if((local.Area_weighted_sum[i2]<1.e30)&&(local.Area_weighted_sum[i1]<1.e30))
+                    {
+                        double rr = local.Area_weighted_sum[i1]/local.Area_weighted_sum[i2];
+                        double rr2 = rr * rr;
+                        if(wk_vec[i1] != 0)
+                        {
+                            q += local.Area_weighted_sum[0] * wk_vec[i1] * sqrt(0.5*(1.0+rr2));
+                        } else {
+                            q += local.Area_weighted_sum[0] * wk_vec[i2] * sqrt(0.5*(1.0+1.0/rr2));
+                        }
+                    } else {
+                        q += local.Area_weighted_sum[0] * (wk_vec[i1] + wk_vec[i2]);
+                    }
+                    pvec[k] = -q;
+#else
                     if(k==0) {q=wk_vec[1]*local.Area_weighted_sum[1] + wk_vec[2]*local.Area_weighted_sum[2];}
                     if(k==1) {q=wk_vec[3]*local.Area_weighted_sum[3] + wk_vec[4]*local.Area_weighted_sum[4];}
                     if(k==2) {q=wk_vec[5]*local.Area_weighted_sum[5] + wk_vec[6]*local.Area_weighted_sum[6];}
                     pvec[k] = -q/4.; // factor of 4 accounts for our normalization of each directional component below to be =P (given by properly integrating over a unit sphere)
+#endif
+
+#endif
                     pnorm += pvec[k]*pvec[k];
                 }
                 pnorm = sqrt(pnorm);
+
+                wk = pnorm; // this (vector norm) is the new 'weight function' for our purposes
+                dM = wk * local.Msne;
+
                 /* now, add contribution from relative star-gas particle motion to shock energy */
                 for(k=0;k<3;k++)
                 {
@@ -1081,6 +1126,9 @@ void determine_where_SNe_occur()
     mpi_npossible=mpi_nhosttotal=mpi_ntotal=mpi_ptotal=mpi_dtmean=mpi_rmean=0;
 #ifdef GALSF_FB_GASRETURN
     double D_RETURN_FRAC = 0.01; // fraction of particle mass to return on a recycling step //
+#ifdef SINGLE_STAR_FORMATION
+    D_RETURN_FRAC = 1.0e-7; // needs to be much smaller to have quasi-continuous winds on these scales //
+#endif
 #endif
     
     if(All.Time<=0) return;
@@ -1121,6 +1169,18 @@ void determine_where_SNe_occur()
         // SNe component //
         if(All.SNeIIEnergyFrac>0)
         {
+#ifdef SINGLE_STAR_FORMATION
+	    /* here we are determining SNe for individual stars, so it happens deterministically at the end of their lives */
+            double m_sol = P[i].Mass * (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS)); // M/Msun 
+	        P[i].SNe_ThisTimeStep = 0;
+	        if(m_sol > 8.) // minimum mass for SNe
+	        { 
+	            double l_sol = bh_lum_bol(0,P[i].Mass,i) * (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)); // L/Lsun
+	            double lifetime = 9.6 * (m_sol/l_sol); // standard lifetime (in Gyr): this gives first SNe at 3Myr
+		        if(star_age >= lifetime) {P[i].SNe_ThisTimeStep = 1; ntotal++; nhosttotal++;}
+	        }
+#else 
+	    /* here we are determining an expected SNe rate, so SNe occur stochastically but with an age dependence in the population */
             if(star_age > agemin)
             {
                 if((star_age>=agemin)&&(star_age<=agebrk))
@@ -1159,6 +1219,7 @@ void determine_where_SNe_occur()
                 ntotal += n_sn_0;
                 if(n_sn_0>0) nhosttotal++;
             } // if(star_age > agemin) //
+#endif
         }
         dtmean += dt;
         
@@ -1166,6 +1227,16 @@ void determine_where_SNe_occur()
         // Stellar Winds component //
         if(All.GasReturnFraction>0)
         {
+#ifdef SINGLE_STAR_FORMATION
+	        /* use a standard scaling from e.g. Castor, Abbot, & Klein */
+	        double L_sol = bh_lum_bol(0, P[i].Mass, i) * All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM); // L in solar
+	        double M_sol = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS); // M in solar
+	        double gam = DMIN(0.5,3.2e-5*L_sol/M_sol); // Eddington factor (~L/Ledd for winds), capped at 1/2 for sanity reasons
+	        double alpha = 0.5 + 0.4/(1. + 16./M_sol); // approximate scaling for alpha factor with stellar type (weak effect)
+	        double q0 = (1.-alpha)*gam / (1.-gam); double k0=1./30.; //k is a normalization factor in the model
+	        double mdot = 2.338 * alpha * pow(L_sol,7./8.) * pow(M_sol,0.1845) * (1./q0) * pow(q0*k0,1./alpha); // in Msun/Gyr
+	        p = mdot / M_sol; // mass fraction returned per Gyr
+#else
             p=0.0;
             if(star_age<=0.001){p=11.6846;} else {
                 if(star_age<=0.0035){p=11.6846*(0.01+P[i].Metallicity[0]/All.SolarAbundances[0])*
@@ -1174,12 +1245,15 @@ void determine_where_SNe_occur()
                             p=1.03*pow(star_age,-1.1)/(12.9-log(star_age));
                         }}}
             p *= 1.4 * 0.291175; // to give expected return fraction from stellar winds alone (~17%) //
-            p *= All.GasReturnFraction * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam);
             if(star_age < 0.1) {p *= calculate_relative_light_to_mass_ratio_from_imf(i);} // late-time independent of massive stars
-            // this is the fraction of the particle mass expected to return in the timestep //
+#endif
+            p *= All.GasReturnFraction * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam); // fraction of particle mass expected to return in the timestep //
             p = 1.0 - exp(-p); // need to account for p>1 cases //
-            if(get_random_number(P[i].ID + 5) < p/D_RETURN_FRAC) // ok, have a mass return event //
-                P[i].MassReturn_ThisTimeStep = D_RETURN_FRAC;
+	        P[i].MassReturn_ThisTimeStep = 0; // zero mass return out
+	        double n_wind_0 = (double)floor(p/D_RETURN_FRAC); // if p >> return frac, should have > 1 event, so we inject the correct wind mass
+            p -= n_wind_0*D_RETURN_FRAC;
+	        P[i].MassReturn_ThisTimeStep += n_wind_0*D_RETURN_FRAC; // add this in, then determine if there is a 'remainder' to be added as well
+            if(get_random_number(P[i].ID + 5) < p/D_RETURN_FRAC) {P[i].MassReturn_ThisTimeStep += D_RETURN_FRAC;}
         }
 #endif
         

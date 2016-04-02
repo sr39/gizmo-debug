@@ -1338,9 +1338,6 @@ void set_softenings(void)
             All.SofteningTable[5] = All.SofteningBndryMaxPhys / All.Time;
         else
             All.SofteningTable[5] = All.SofteningBndry;
-#ifdef SINKS
-        All.SofteningTable[5] = All.SinkHsml / All.Time * All.HubbleParam;
-#endif
     }
     else
     {
@@ -1350,9 +1347,6 @@ void set_softenings(void)
         All.SofteningTable[3] = All.SofteningBulge;
         All.SofteningTable[4] = All.SofteningStars;
         All.SofteningTable[5] = All.SofteningBndry;
-#ifdef SINKS
-        All.SofteningTable[5] = All.SinkHsml;
-#endif
     }
     for(i = 0; i < 6; i++)
     {

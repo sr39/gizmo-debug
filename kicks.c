@@ -461,14 +461,24 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
 #endif
 #endif
 #endif
+    
 #ifdef NUCLEAR_NETWORK
     for(j = 0; j < EOS_NSPECIES; j++) {SphP[i].xnuc[j] += SphP[i].dxnuc[j] * dt_entr * All.UnitTime_in_s;}    
     network_normalize(SphP[i].xnuc, &SphP[i].InternalEnergy, &All.nd, &All.nw);
 #endif
+    
 #ifdef COSMIC_RAYS
-    double CR_Egy = SphP[i].CosmicRayEnergy + SphP[i].DtCosmicRayEnergy * dt_entr;
-    if(CR_Egy < 0.5*SphP[i].CosmicRayEnergy) {SphP[i].CosmicRayEnergy *= 0.5;} else {SphP[i].CosmicRayEnergy = CR_Egy;}
+    double dCR = SphP[i].DtCosmicRayEnergy * dt_entr;
+    if(dCR < -0.5*SphP[i].CosmicRayEnergy) {dCR=-0.5*SphP[i].CosmicRayEnergy;}
+#ifdef GALSF
+    double dCRmax = DMAX(0.5*SphP[i].CosmicRayEnergy , 0.1*SphP[i].InternalEnergy*P[i].Mass);
+#else
+    double dCRmax = 2.0 * SphP[i].CosmicRayEnergy;
 #endif
+    if(dCR > dCRmax) {dCR=dCRmax;}
+    SphP[i].CosmicRayEnergy += dCR;
+#endif
+    
 #ifdef RADTRANSFER
     rt_update_driftkick(i,dt_entr,0);
 #endif

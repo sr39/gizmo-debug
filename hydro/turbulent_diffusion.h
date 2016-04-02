@@ -18,37 +18,16 @@
 /* --------------------------------------------------------------------------------- */
 {
 #ifdef TURB_DIFF_METALS // turbulent diffusion of metals (passive scalar mixing) //
-    
-#ifdef HYDRO_SPH
-    /* out.dA_dt +=  diffusion_wt*(local.A-P[j].A) // this is the template for all turbulent diffusion terms */
-    double diffusion_wt = (local.TD_DiffCoeff + SphP[j].TD_DiffCoeff) * P[j].Mass * kernel.rho_ij_inv * kernel.dwk_ij / kernel.r * All.cf_a2inv;
-    /* note, units of TD_DiffCoeff have already been corrected so that this combination has physical units */
-    double diffusion_wt_dt = diffusion_wt * dt_hydrostep;
-    if(fabs(diffusion_wt_dt)>0.01)
-    {
-        diffusion_wt *= 0.01/fabs(diffusion_wt_dt);
-        diffusion_wt_dt = diffusion_wt * dt_hydrostep;
-    }
-    if((local.Mass>0)&&(P[j].Mass>0))
-    {
-        double diffusion_wt_dt_m = 2. * local.Mass * diffusion_wt_dt;
-        double diffusion_m_min = 0.05 * DMIN(local.Mass,P[j].Mass);
-        if(diffusion_wt_dt_m > 0) if(diffusion_wt_dt_m >  diffusion_m_min) diffusion_wt_dt_m =  diffusion_m_min;
-            if(diffusion_wt_dt_m < 0) if(diffusion_wt_dt_m < -diffusion_m_min) diffusion_wt_dt_m = -diffusion_m_min;
-                for(k=0;k<NUM_METAL_SPECIES;k++)
-                {
-                    out.Dyield[k] += diffusion_wt_dt_m * (local.Metallicity[k] - P[j].Metallicity[k]);
-                    P[j].Metallicity[k] -= diffusion_wt_dt_m * (local.Metallicity[k] - P[j].Metallicity[k]) / P[j].Mass;
-                }
-    }
-    
-#else // ends SPH portion of these routines
-    
+        
     if((local.Mass>0)&&(P[j].Mass>0)&&((local.TD_DiffCoeff>0)||(SphP[j].TD_DiffCoeff>0)))
     {
         double wt_i=0.5, wt_j=0.5, cmag, d_scalar;
         double diffusion_wt = wt_i*local.TD_DiffCoeff + wt_j*SphP[j].TD_DiffCoeff; // arithmetic mean
+#ifdef HYDRO_SPH
+        diffusion_wt *= 0.5*(local.Density + SphP[j].Density)*All.cf_a3inv;
+#else
         diffusion_wt *= Riemann_out.Face_Density;
+#endif
         double diffusion_wt_physical = diffusion_wt;
         diffusion_wt /= All.cf_atime; // based on units TD_DiffCoeff is defined with, this makes it physical for a dimensionless quantity gradient below
         /* calculate implied mass flux 'across the boundary' to prevent excessively large coefficients */
@@ -61,19 +40,23 @@
         for(k_species=0;k_species<NUM_METAL_SPECIES;k_species++)
         {
             cmag = 0.0;
+            double grad_dot_x_ij = 0.0;
             d_scalar = local.Metallicity[k_species]-P[j].Metallicity[k_species];
             for(k=0;k<3;k++)
             {
                 double grad_ij = wt_i*local.Gradients.Metallicity[k_species][k] + wt_j*SphP[j].Gradients.Metallicity[k_species][k];
                 double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv;
+                grad_dot_x_ij += grad_ij * kernel.dp[k];
                 grad_ij = MINMOD(grad_ij , grad_direct);
                 cmag += Face_Area_Vec[k] * grad_ij;
             }
-            double hll_corr = rho_ij * HLL_correction(local.Metallicity[k_species], P[j].Metallicity[k_species], rho_ij, diffusion_wt_physical) / (-diffusion_wt);
+            double d_scalar_tmp = d_scalar - grad_dot_x_ij;
+            double d_scalar_hll = MINMOD(d_scalar , d_scalar_tmp);
+            double hll_corr = rho_ij * HLL_correction(d_scalar_hll, 0, rho_ij, diffusion_wt_physical) / (-diffusion_wt);
             double cmag_corr = cmag + hll_corr;
             cmag = MINMOD(1.5*cmag, cmag_corr);
             double f_direct = Face_Area_Norm*d_scalar*rinv;
-            if((d_scalar*cmag < 0) && (fabs(f_direct) > fabs(cmag))) {cmag = 0;}
+            if((d_scalar*cmag < 0) && (fabs(f_direct) > HLL_DIFFUSION_OVERSHOOT_FACTOR*fabs(cmag))) {cmag = 0;}
             
             cmag *= -diffusion_wt_z;
             if(fabs(cmag) > 0)
@@ -86,6 +69,5 @@
         }
     }
     
-#endif
 #endif
 }

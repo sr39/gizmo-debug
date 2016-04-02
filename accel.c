@@ -128,6 +128,11 @@ void compute_hydro_densities_and_forces(void)
         }
 #endif
 
+    } else {
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+        ags_density(); // if there are no gas particles but ags-all is active, still need to enter this loop //
+        force_update_hmax();    /* update kernel lengths in tree */
+#endif
     }
 }
 

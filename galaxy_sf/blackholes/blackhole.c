@@ -118,6 +118,90 @@ void blackhole_accretion(void)
 
 
 
+/* return the eddington accretion-rate = L_edd/(epsilon_r*c*c) */
+double bh_eddington_mdot(double bh_mass)
+{
+    return (4 * M_PI * GRAVITY*C * PROTONMASS / (All.BlackHoleRadiativeEfficiency * C * C * THOMPSON)) * (bh_mass/All.HubbleParam) * All.UnitTime_in_s;
+}
+
+
+/* return the bh luminosity given some accretion rate and mass (allows for non-standard models: radiatively inefficient flows, stellar sinks, etc) */
+double bh_lum_bol(double mdot, double mass, long id)
+{
+    double c_code = C / All.UnitVelocity_in_cm_per_s;
+    double lum = All.BlackHoleRadiativeEfficiency * mdot * c_code*c_code;
+
+#ifdef SINGLE_STAR_FORMATION
+    double m_solar = mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS);
+    /* if below the deuterium burning limit, just use the potential energy efficiency at the surface of a jupiter-density object */
+    //if(m_solar < 0.012) {lum = mdot * c_code*c_code * 5.e-8 * pow(m_solar/0.00095,2./3.);}
+    /* now for pre-main sequence, need to also check the mass-luminosity relation */
+    double lum_sol = 0;
+    if(m_solar >= 0.012)
+    {
+        if(m_solar < 0.43) {lum_sol = 0.185 * m_solar*m_solar;}
+        else if(m_solar < 2.) {lum_sol = m_solar*m_solar*m_solar*m_solar;}
+        else if(m_solar < 53.9) {lum_sol = 1.5 * m_solar*m_solar*m_solar * sqrt(m_solar);}
+        else {lum_sol = 32000. * m_solar;}
+    }
+    if(id > 0)
+    {
+        // account for pre-main sequence evolution //
+        if(P[id].Type == 5)
+        {
+            double T4000_4 = pow(m_solar , 0.55); // protostellar temperature along Hayashi track
+            double l_kh = 0.2263 * P[id].ProtoStellar_Radius*P[id].ProtoStellar_Radius * T4000_4; // luminosity from KH contraction
+            if(l_kh > lum_sol) {lum_sol = l_kh;} // if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
+        }
+    }
+    lum_sol *= SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s);
+    lum += lum_sol;
+#endif
+
+    return All.BlackHoleFeedbackFactor * lum;
+}
+
+
+/* calculate escape velocity to use for bounded-ness calculations relative to the BH */
+double bh_vesc(MyIDType j, double mass, double r_code)
+{
+    double cs_to_add_km_s = 10.0; /* we can optionally add a 'fudge factor' to v_esc to set a minimum value; useful for galaxy applications */
+#if defined(SINGLE_STAR_FORMATION) || defined(BH_SEED_GROWTH_TESTS)
+    cs_to_add_km_s = 0.0;
+#endif
+    cs_to_add_km_s *= 1.e5/All.UnitVelocity_in_cm_per_s;
+    double m_eff = mass+P[j].Mass;
+    if(P[j].Type==0)
+    {
+//        m_eff += 3. * 4.*M_PI/3. * r_code*r_code*r_code * SphP[j].Density;
+    }
+    return sqrt(2.0*All.G*(m_eff)/(r_code*All.cf_atime) + cs_to_add_km_s*cs_to_add_km_s);
+}
+
+/* check whether a particle is sufficiently bound to the BH to qualify for 'gravitational capture' */
+int bh_check_boundedness(MyIDType j, double vrel, double vesc, double dr_code)
+{
+    /* if pair is a gas particle make sure to account for its thermal pressure */
+    double cs = 0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}
+#if defined(SINGLE_STAR_FORMATION) 
+    cs = 0;
+#endif
+    double v2 = (vrel*vrel+cs*cs)/(vesc*vesc);
+    int bound = 0;
+    if(v2 < 1) 
+    {
+        double apocenter = dr_code / (1.0-v2);
+        double apocenter_max = All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
+#if defined(SINGLE_STAR_FORMATION) || defined(BH_SEED_GROWTH_TESTS)
+        double r_j = All.ForceSoftening[P[j].Type];
+        if(P[j].Type==0) {r_j = DMAX(r_j , PPP[j].Hsml);}
+        apocenter_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
+#endif
+        if(apocenter < apocenter_max) {bound = 1;}
+    }
+    return bound;
+}
+
 
 
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
@@ -125,6 +209,9 @@ void blackhole_accretion(void)
     radiation pressure and the bal winds */
 double bh_angleweight_localcoupling(int j, double hR, double theta)
 {
+#ifdef SINGLE_STAR_FORMATION
+    return 1;
+#endif
 #ifndef BH_PHOTONMOMENTUM
     // for now, if only BH_BAL_WINDS enabled, assume isotropic //
     return P[j].Hsml*P[j].Hsml;
@@ -142,8 +229,12 @@ double bh_angleweight_localcoupling(int j, double hR, double theta)
 
 /* function below is used for long-range black hole radiation fields -- used only in the forcetree routines (where they 
     rely this for things like the long-range radiation pressure and compton heating) */
-double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz, int mode)
+double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz)
 {
+#ifdef SINGLE_STAR_FORMATION
+    return bh_lum_input;
+#else
+
     double bh_lum = bh_lum_input;
     if(bh_lum <= 0) return 0;
     if(isnan(hR)) return 0;
@@ -156,7 +247,6 @@ double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, doubl
     if(cos_theta<0) cos_theta *= -1;
     if(isnan(cos_theta)) return 0;
     if(cos_theta <= 0) return 0;
-    if(mode==1) bh_lum *= All.BlackHoleFeedbackFactor * All.BlackHoleRadiativeEfficiency * 4.597e20 * All.HubbleParam/All.UnitTime_in_s;
     if(cos_theta >= 1) return 1.441 * bh_lum;
     
     double hRe=hR; if(hRe<0.1) hRe=0.1; if(hRe>0.5) hRe=0.5;
@@ -171,6 +261,7 @@ double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, doubl
     if(y>1.441) y=1.441; if(y<-5.0) y=-5.0;
     y*=2.3026; // so we can take exp, instead of pow //
     return exp(y) * bh_lum;
+#endif
 }
 #endif /* end of #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) */
 
@@ -292,7 +383,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 #endif
     
 #ifdef BH_ENFORCE_EDDINGTON_LIMIT
-    meddington = (4 * M_PI * GRAVITY * C * PROTONMASS / (All.BlackHoleRadiativeEfficiency * C * C * THOMPSON) ) * (BPP(n).BH_Mass/All.HubbleParam) * All.UnitTime_in_s;
+    meddington = bh_eddington_mdot(BPP(n).BH_Mass);
 #endif
     
     
@@ -413,6 +504,12 @@ void set_blackhole_mdot(int i, int n, double dt)
         pow( BPP(n).BH_Mass*All.UnitMass_in_g / (All.HubbleParam * 1.0e8*SOLAR_MASS) , -5./14. ) * // mbh dependence
         pow( BPP(n).BH_Mass_AlphaDisk*All.UnitMass_in_g / (All.HubbleParam * 1.0e8*SOLAR_MASS) , 10./7. ) * // m_disk dependence
         pow( DMIN(0.2,DMIN(PPP[n].Hsml,All.ForceSoftening[5])*All.cf_atime*All.UnitLength_in_cm/(All.HubbleParam * 3.086e18)) , -25./14. ); // r_disk dependence
+
+#ifdef SINGLE_STAR_FORMATION
+        mdot = All.BlackHoleAccretionFactor * 1.0e-5 * BPP(n).BH_Mass_AlphaDisk / (SEC_PER_YEAR/All.UnitTime_in_s) * 
+            pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass),2); 
+#endif
+
     }
 #endif
     
@@ -551,9 +648,7 @@ void set_blackhole_drag(int i, int n, double dt)
     int k;
     double meddington;
     
-    meddington = (4 * M_PI * GRAVITY * C * PROTONMASS /
-                  (All.BlackHoleRadiativeEfficiency * C * C * THOMPSON) ) *
-    (BPP(n).BH_Mass/All.HubbleParam) * All.UnitTime_in_s;
+    meddington = bh_eddington_mdot(BPP(n).BH_Mass);
     
 #ifdef BH_DRAG
     /* add a drag force for the black-holes, accounting for the accretion */
@@ -668,6 +763,9 @@ void blackhole_final_loop(void)
     int i, k, n, bin;
     double  dt;
     double mass_disk, mdot_disk, mbulge, r0;
+#ifdef SINGLE_STAR_PROMOTION
+    int count_bhelim=0, tot_bhelim;
+#endif   
     
     for(n = 0; n < TIMEBINS; n++)
     {
@@ -765,14 +863,65 @@ void blackhole_final_loop(void)
         TimeBin_BH_mass[bin] += BPP(n).BH_Mass;
         TimeBin_BH_dynamicalmass[bin] += P[n].Mass;
         TimeBin_BH_Mdot[bin] += BPP(n).BH_Mdot;
-        if(BPP(n).BH_Mass > 0)
-            TimeBin_BH_Medd[bin] += BPP(n).BH_Mdot / BPP(n).BH_Mass;
+        if(BPP(n).BH_Mass > 0) {TimeBin_BH_Medd[bin] += BPP(n).BH_Mdot / BPP(n).BH_Mass;}
 #ifdef BH_BUBBLES
         if(BPP(n).BH_Mass_bubbles > 0 && BPP(n).BH_Mass_bubbles > All.BlackHoleRadioTriggeringFactor * BPP(n).BH_Mass_ini) num_activebh++;
 #endif
         
+
+#ifdef SINGLE_STAR_PROMOTION
+        double m_initial = DMAX(1.e-37 , (BPP(n).BH_Mass - dm)); // mass before the accretion
+        double mu = DMAX(0, dm/m_initial); // relative mass accreted
+        //double m_initial_msun = m_initial * (All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS));
+        //double t_premainseq = 50.0e6 / pow(m_initial_msun,2.5); // lifetime at previous mass
+        //t_premainseq /= (All.UnitTime_in_s/(All.HubbleParam * SEC_PER_YEAR));
+        ///* compute evolution of 'tracker' [here modeled on self-similar contraction along Hayashi line on Kelvin-Helmholtz timescale, with accretion 'puffing up' the star */
+        //BPP(n).PreMainSeq_Tracker = (BPP(n).PreMainSeq_Tracker * exp(-dt/t_premainseq) + mu) / (1. + mu);
+        
+        double m_solar = BPP(n).BH_Mass * (All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS)); // mass in solar units
+        double T4000_4 = pow(m_solar, 0.55); // (temperature/4000K)^4 along Hayashi track
+        double lum_sol = 0.0; // get the main-sequence luminosity
+        if(m_solar > 0.012)
+        {
+            if(m_solar < 0.43) {lum_sol = 0.185 * m_solar*m_solar;}
+            else if(m_solar < 2.) {lum_sol = m_solar*m_solar*m_solar*m_solar;}
+            else if(m_solar < 53.9) {lum_sol = 1.5 * m_solar*m_solar*m_solar * sqrt(m_solar);}
+            else {lum_sol = 32000. * m_solar;}
+        }
+        double R_Hayashi_Henyey = 2.1 * sqrt(lum_sol / T4000_4); // size below which, at the temperature above, contraction must occur along the Henyey track at constant luminosity
+        double t_R_evol = 0, contraction_factor = 0; // timescale for contraction
+        if(BPP(n).ProtoStellar_Radius <= R_Hayashi_Henyey)
+        {
+            // currently on Henyey track, contracting at constant Luminosity
+            t_R_evol = 1.815e7 * m_solar*m_solar / (BPP(n).ProtoStellar_Radius * lum_sol) / (All.UnitTime_in_s/(All.HubbleParam * SEC_PER_YEAR)); // contraction timescale
+            contraction_factor = 1. / (1. + dt/t_R_evol);
+        } else {
+            // currently on Hayashi track, contracting at constant Temperature
+            t_R_evol = 8.021e7 * m_solar*m_solar / (BPP(n).ProtoStellar_Radius*BPP(n).ProtoStellar_Radius*BPP(n).ProtoStellar_Radius * T4000_4) / (All.UnitTime_in_s/(All.HubbleParam * SEC_PER_YEAR)); // contraction timescale
+            contraction_factor = 1. / pow(1 + 3.*dt/t_R_evol, 1./3.);
+        }
+        double r_new = 100. * m_solar; // size if newly-formed protostar
+        BPP(n).ProtoStellar_Radius = (BPP(n).ProtoStellar_Radius * contraction_factor + r_new * mu) / (1. + mu); // new size (contraction + accretion both accounted for)
+        double R_main_sequence_ignition; // main sequence radius - where contraction should halt
+        if(m_solar <= 1) {R_main_sequence_ignition = pow(m_solar,0.8);} else {R_main_sequence_ignition = pow(m_solar,0.57);}
+        
+        //if(BPP(n).PreMainSeq_Tracker < 0.36787944117144233) // if drops below 1/e [one t_premainseq timescale, in the absence of accretion], promote //
+        if(BPP(n).ProtoStellar_Radius <= R_main_sequence_ignition)
+        {
+            P[n].Type = 4; // convert type
+            count_bhelim++; // note one fewer BH-type particle
+            P[n].StellarAge = All.Time; // mark the new ZAMS age according to the current time
+            P[n].Mass = DMAX(P[n].Mass , BPP(n).BH_Mass + BPP(n).BH_Mass_AlphaDisk);
+        }
+#endif
+        
     } // for(i=0; i<N_active_loc_BHs; i++)
     
+    
+#ifdef SINGLE_STAR_PROMOTION
+    MPI_Allreduce(&count_bhelim, &tot_bhelim, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    All.TotBHs -= tot_bhelim; 
+#endif
     
 }
 

@@ -98,10 +98,10 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #TURB_DIFF_ENERGY               # turbulent diffusion of internal energy (conduction with effective turbulent coefficients)
 #TURB_DIFF_VELOCITY             # turbulent diffusion of momentum (viscosity with effective turbulent coefficients)
 ##-----------------------------------------------------------------------------------------------------
-##-----------------------------------------------------------------------------------------------------
-#---------------------------------------- Aerodynamic Particles
-#---------------------------------------- (this is developed by P. Hopkins as part of the FIRE package: the same FIRE authorship & approval policies apply, see below)
-#GRAIN_FLUID                    # two-fluid medium with aerodynamically-coupled grains (particle type 3 are grains); default is Stokes drag
+## ----------------------------------------------------------------------------------------------------
+# --------------------------------------- Aerodynamic Particles
+# --------------------------------------- (this is developed by P. Hopkins as part of the FIRE package: the same FIRE authorship & approval policies apply, see below)
+#GRAIN_FLUID                    # aerodynamically-coupled grains (particle type 3 are grains); default is Stokes drag
 #GRAIN_EPSTEIN=1                # uses the cross section for molecular hydrogen (times this number) to calculate Epstein drag
 #GRAIN_BACKREACTION             # account for momentum of grains pushing back on gas (from drag terms)
 #GRAIN_LORENTZFORCE             # charged grains feel Lorentz forces (requires MAGNETIC)
@@ -132,10 +132,10 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ## -----------------------------------------------------------------------------------------------------
 # ---------------------------------------- Adaptive Grav. Softening (including Lagrangian conservation terms!)
 #ADAPTIVE_GRAVSOFT_FORGAS       # allows variable softening length (=Hsml) for gas particles
-#ADAPTIVE_GRAVSOFT_FORALL       # enable adaptive gravitational softening lengths for all particle types
+#ADAPTIVE_GRAVSOFT_FORALL=100   # enable adaptive gravitational softening lengths for all particle types
                                 # (ADAPTIVE_GRAVSOFT_FORGAS should be disabled). the softening is set to the distance
                                 # enclosing a neighbor number set in the parameter file. baryons search for other baryons,
-                                # dm for dm, sidm for sidm, etc.
+                                # dm for dm, sidm for sidm, etc. If set to numerical value, the maximum softening is this times All.ForceSoftening[for appropriate particle type]
 ## -----------------------------------------------------------------------------------------------------
 #NOGRAVITY                      # turn off self-gravity (compatible with analytic_gravity)
 #GRAVITY_NOT_PERIODIC           # self-gravity is not periodic, even though the rest of the box is periodic
@@ -187,10 +187,12 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ####################################################################################################
 #------------------ Galaxy formation / Star formation / Supermassive BH Models (with feedback)
 ####################################################################################################
+##-----------------------------------------------------------------------------------------------------
+#-------------------------------------- Galaxy formation and galactic star formation
+##-----------------------------------------------------------------------------------------------------
 #---- basic/master switches ---- #
 #GALSF                          # master switch for galactic star formation model: enables SF, stellar ages, metals, generations, etc.
 #METALS                         # enable metallicities (with multiple species optional) for gas and stars
-#SINKS                          # add sink particles (SF studies)
 ##GALSF_GENERATIONS=1           # the number of stars a gas particle may spawn (defaults to 1, set otherwise)
 ##-----------------------------------------------------------------------------------------------------------------------------
 #----- old sub-grid models (for large-volume simulations) ---- #
@@ -221,7 +223,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #----- physical stellar feedback mechanisms ---- #
 #GALSF_FB_GASRETURN              # Paul Torrey's addition for stochastic gas return (modified for continuous return)
 #GALSF_FB_HII_HEATING            # gas within HII regions around young stars is photo-heated to 10^4 K
-#GALSF_FB_SNE_HEATING            # time-dependent heating from SNe (I & II) in shockwave radii around stars
+#GALSF_FB_SNE_HEATING=1          # time-dependent explosions from SNe (I & II) in shockwave radii around stars (values: 0=tensor-isotropized in all directions; 1=tensor-symmetrized, so momentum-conserving; 2=no tensor re-normalization [non-isotropic]
 #GALSF_FB_RPROCESS_ENRICHMENT=6  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 6=extended model)
 #GALSF_FB_RT_PHOTONMOMENTUM      # continuous acceleration from starlight (uses luminosity tree)
 #GALSF_FB_LOCAL_UV_HEATING       # use local estimate of spectral information for photoionization and photoelectric heating
@@ -232,18 +234,17 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##GALSF_FB_RPWIND_CONTINUOUS	# wind accel term is continuous (more expensive and introduces more artificial dissipation)
 ##GALSF_FB_RPWIND_DO_IN_SFCALC	# do IR wind loop in SFR routine (allows fof clump-finding, useful for very IR-thick, but slow)
 ##GALSF_FB_RPWIND_FROMSFR       # drive radiation pressure with gas SFR (instead of default, which is nearby young stars)
-
-
 ##-----------------------------------------------------------------------------------------------------
+
+
 ##-----------------------------------------------------------------------------------------------------
 #-------------------------------------- SMBH/AGN stuff; also heavily expanded with PFH models
-##-----------------------------------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------------------------------
 #------ PFH physical models for black hole growth and feedback: these are the FIRE simulation modules, their use follows the same FIRE policy above
 #------ The original GADGET-3 BH model (only: BLACK_HOLES,BH_SWALLOWGAS,BH_BONDI,BH_DRAG) follow the GADGET-3 Springel & Hernquist policy above
 ##-----------------------------------------------------------------------------------------------------
 #BLACK_HOLES                    # enables Black-Holes (master switch)
-# ----- seed models
+#------ seed models
 #BH_HOST_TO_SEED_RATIO=1000     # Min stellar mass for seeding is BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass
                                 # Requires FOF with linking type including star particles (MinFoFMassForNewSeed and massDMpart are ignored)
 #BH_POPIII_SEEDS                # BHs seeded on-the-fly from dense, low-metallicity gas
@@ -257,7 +258,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##BH_BONDI=0                    # Bondi-Hoyle style accretion model: 0=default (with velocity); 1=dont use gas velocity with sound speed; 2=variable-alpha tweak (Booth & Schaye 2009)
 #BH_SUBGRIDBHVARIABILITY        # model variability below resolved dynamical time for BH
 #BH_CALC_DISTANCES              # calculate distances for all particles to closest BH for, e.g., refinement
-# ----- feedback models/options
+#------ feedback models/options
 #BH_BAL_WINDS                   # particles within the BH kernel are given mass, momentum, and energy continuously as high-vel BAL winds
 #BH_PHOTONMOMENTUM              # continuous long-range IR radiation pressure acceleration from BH (needs GALSF_FB_RT_PHOTONMOMENTUM)
 #BH_HII_HEATING                 # photo-ionization feedback from BH (needs GALSF_FB_HII_HEATING)
@@ -269,7 +270,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #------------ use the BH_DRAG options only in cosmological cases where M_BH is not >> other particle masses
 #BH_DYNFRICTION                 # apply dynamical friction force to the BHs when m_bh not >> other particle mass
 ##BH_DRAG=1                     # Drag on black-holes due to accretion (w real mdot); set =2 to boost as if BH is accreting at eddington
-# ----- output options
+#------ output options
 #BH_OUTPUT_MOREINFO             # DAA: output additional info to "blackhole_details"
 ##-----------------------------------------------------------------------------------------------------
 #------------ deprecated or de-bugging options (most have been combined or optimized into the functions above, here for legacy)
@@ -283,6 +284,8 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #EBUB_PROPTO_BHAR               # Energy content of the bubbles with cosmic time evolves as an integrated BHAR(z) over a Salpeter time (Di Matteo 2003 eq. [11])
 #BH_BUBBLES                     # calculate bubble energy directly from the black hole accretion rate
 #UNIFIED_FEEDBACK               # activates BH_THERMALFEEDBACK at high Mdot and BH_BUBBLES FEEDBACK al low Mdot
+##-----------------------------------------------------------------------------------------------------
+
 ####################################################################################################
 
 
@@ -341,6 +344,8 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #EOS_ENFORCE_ADIABAT=(1.0)      # if set, this forces gas to lie -exactly- along the adiabat P=EOS_ENFORCE_ADIABAT*(rho^GAMMA)
 #AGGRESSIVE_SLOPE_LIMITERS      # use the original GIZMO paper (more aggressive) slope-limiters. more accurate for smooth problems, but
                                 # these can introduce numerical instability in problems with poorly-resolved large noise or density contrasts (e.g. multi-phase, self-gravitating flows)
+#ENERGY_ENTROPY_SWITCH_IS_ACTIVE # enable energy-entropy switch as described in GIZMO methods paper. This can greatly improve performance on some problems where the
+                                # the flow is very cold and highly super-sonic. it can cause problems in multi-phase flows with strong cooling, though, and is not compatible with non-barytropic equations of state
 #TEST_FOR_IDUNIQUENESS          # explicitly check if particles have unique id numbers (only use for special behaviors)
 #LONGIDS                        # use long ints for IDs (needed for super-large simulations)
 #ASSIGN_NEW_IDS                 # assign IDs on startup instead of reading from ICs
@@ -365,6 +370,7 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #EVALPOTENTIAL                  # computes gravitational potential
 #MHD_ALTERNATIVE_LEAPFROG_SCHEME # use alternative leapfrog where magnetic fields are treated like potential/positions (per Federico Stasyszyn's suggestion): still testing
 #FREEZE_HYDRO                   # zeros all fluxes from RP and doesn't let particles move (for testing additional physics layers)
+#SUPER_TIMESTEP_DIFFUSION       # use super-timestepping to accelerate integration of diffusion operators [for testing or if there are stability concerns]
 ####################################################################################################
 
 
@@ -416,6 +422,7 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #SUBFIND_RESHUFFLE_CATALOGUE
 #SUBFIND_RESHUFFLE_AND_POTENTIAL    #needs -DSUBFIND_RESHUFFLE_CATALOGUE and COMPUTE_POTENTIAL_ENERGY
 #SUBFIND_DENSITY_AND_POTENTIAL      #only calculated density and potential and write them into snapshot
+#TWOPOINT_FUNCTION_COMPUTATION_ENABLED #calculate mass 2point function by enabling and setting restartflag=5
 ####################################################################################################
 
 
@@ -466,6 +473,17 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 
 
 
+####################################################################################################
+##-----------------------------------------------------------------------------------------------------
+#-------------------------------------- Star formation with -individual- stars [sink particles]: from PFH
+##-----------------------------------------------------------------------------------------------------
+#SINGLE_STAR_FORMATION          # master switch for single star formation model: sink particles representing -individual- stars
+#SINGLE_STAR_ACCRETION=3        # proto-stellar accretion: 0=grav capture only; 1+=alpha-disk accretion onto protostar; 2+=bondi accretion of diffuse gas; 3+=sub-grid variability
+#SINGLE_STAR_FB_HEATING         # proto-stellar heating: luminosity determined by BlackHoleRadiativeEfficiency (typical ~5e-7)
+#SINGLE_STAR_FB_JETS            # protostellar jets: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow
+#SINGLE_STAR_PROMOTION          # proto-stars become ZAMS stars at end of pre-main sequence lifetime. FIRE feedback modules kick in, but using appropriate luminosities and temperatures for each
+##-----------------------------------------------------------------------------------------------------
+####################################################################################################
 
 
 

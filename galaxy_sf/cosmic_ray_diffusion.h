@@ -21,16 +21,6 @@
     if((kappa_i>0)&&(kappa_j>0)&&(local.Mass>0)&&(P[j].Mass>0))
     {
         double d_scalar = scalar_i - scalar_j;
-#ifdef HYDRO_SPH
-        // SPH: use the sph 'effective areas' oriented along the lines between particles and direct-difference gradients
-        double Face_Area_Norm = local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * SphP[j].Density);
-        double diffusion_wt = -Face_Area_Norm * (d_scalar*rinv) * All.cf_atime; // multiplies implied gradient by face area: should give physical units //
-#ifdef MAGNETIC
-        kappa_i *= Bpro2_i; kappa_j *= Bpro2_j;
-#endif
-        double cmag = diffusion_wt * (2.*kappa_i*kappa_j/(kappa_i+kappa_j)); // geometric-weighted kappa (see Cleary & Monaghan '99)
-        double check_for_stability_sign = 1;
-#else
         
         // NOT SPH: Now we use the more accurate finite-volume formulation, with the effective faces we have already calculated //
         double *grad_i = local.Gradients.CosmicRayPressure;
@@ -39,15 +29,16 @@
         
         double diffusion_wt = 0.5*(kappa_i+kappa_j);
         int do_isotropic = 1;
-        double b_hll=1, cmag=0, wt_i=0.5, wt_j=0.5;
+        double b_hll=1, cmag=0, wt_i=0.5, wt_j=0.5, grad_dot_x_ij = 0;
         double grad_ij[3];
         for(k=0;k<3;k++)
         {
             double q_grad = wt_i*grad_i[k] + wt_j*grad_j[k];
             double q_direct = d_scalar * kernel.dp[k] * rinv*rinv;
+            grad_dot_x_ij += q_grad * kernel.dp[k];
 #ifdef MAGNETIC
             grad_ij[k] = MINMOD_G(q_grad , q_direct);
-            if(q_grad*q_direct < 0) {if(fabs(q_direct) > 2.*fabs(q_grad)) {grad_ij[k] = 0.0;}}
+            if(q_grad*q_direct < 0) {if(fabs(q_direct) > 5.*fabs(q_grad)) {grad_ij[k] = 0.0;}}
 #else
             grad_ij[k] = MINMOD(q_grad , q_direct);
 #endif
@@ -74,18 +65,18 @@
         cmag /= All.cf_atime; // cmag has units of u/r -- convert to physical
         
         /* obtain HLL correction terms for Reimann problem solution */
-        double hll_corr = b_hll * flux_wt * HLL_correction(scalar_i,scalar_j, flux_wt, diffusion_wt) / (-diffusion_wt);
+        double d_scalar_tmp = d_scalar - grad_dot_x_ij;
+        double d_scalar_hll = MINMOD(d_scalar , d_scalar_tmp);
+        double hll_corr = b_hll * flux_wt * HLL_correction(d_scalar_hll, 0, flux_wt, diffusion_wt) / (-diffusion_wt);
         double cmag_corr = cmag + hll_corr;
         cmag = MINMOD(HLL_DIFFUSION_COMPROMISE_FACTOR*cmag, cmag_corr);
         /* slope-limiter to ensure heat always flows from hot to cold */
         double d_scalar_b = b_hll * d_scalar;
         double f_direct = Face_Area_Norm*d_scalar_b*rinv/All.cf_atime;
         double check_for_stability_sign = d_scalar*cmag;
-        if((check_for_stability_sign < 0) && (fabs(f_direct) > 0.005*fabs(cmag))) {cmag = 0;}
+        if((check_for_stability_sign < 0) && (fabs(f_direct) > HLL_DIFFUSION_OVERSHOOT_FACTOR*fabs(cmag))) {cmag = 0;}
         cmag *= -diffusion_wt; /* multiply through coefficient to get flux */
-        
-#endif // end of SPH/NOT SPH check
-        
+                
         /* follow that with a flux limiter as well */
         diffusion_wt = dt_hydrostep * cmag; // all in physical units //
         if(fabs(diffusion_wt) > 0)

@@ -27,32 +27,33 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
             
             double d_scalar = scalar_i - scalar_j;
             double conduction_wt = 0.5*(kappa_i+kappa_j) * All.cf_a3inv/All.cf_atime;  // weight factor and conversion to physical units
-#ifdef HYDRO_SPH
-            double Face_Area_Norm = local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * SphP[j].Density);
-            double d_ET[6];
-            for(k=0;k<6;k++) {d_ET[k] = scalar_i*local.ET[k_freq][k] - scalar_j*SphP[j].ET[k_freq][k];}
-            double flux_tmp = conduction_wt * (d_ET[0]*kernel.dp[0]*kernel.dp[0] + d_ET[1]*kernel.dp[1]*kernel.dp[1] + d_ET[2]*kernel.dp[2]*kernel.dp[2] +
-                                               2.*(d_ET[3]*kernel.dp[0]*kernel.dp[1] + d_ET[4]*kernel.dp[1]*kernel.dp[2] +
-                                                   d_ET[5]*kernel.dp[0]*kernel.dp[2])) / (1.e-37 + kernel.r * kernel.r * kernel.r);
-            double cmag = -Face_Area_Norm * flux_tmp;
-            cmag = MINMOD(cmag , -conduction_wt*Face_Area_Norm*d_scalar*rinv);
-#else
-            double cmag=0.;
+            double cmag=0., grad_norm=0, grad_dot_x_ij=0.0;
             for(k=0;k<3;k++)
             {
                 /* the flux is determined by the energy density gradient */
                 double grad = 0.5 * (local.Gradients.E_gamma_ET[k_freq][k] + SphP[j].Gradients.E_gamma_ET[k_freq][k]);
                 double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv;
+                grad_dot_x_ij += grad * kernel.dp[k];
                 grad = MINMOD_G( grad , grad_direct );
-                if(grad*grad_direct < 0) {if(fabs(grad_direct) > 2.*fabs(grad)) {grad = 0.0;}}
+#if defined(GALSF) || defined(COOLING) || defined(BLACKHOLES)
+                double grad_direct_vs_abs_fac = 2.0;
+#else
+                double grad_direct_vs_abs_fac = 5.0;
+#endif
+                if(grad*grad_direct < 0) {if(fabs(grad_direct) > grad_direct_vs_abs_fac*fabs(grad)) {grad = 0.0;}}
                 cmag += Face_Area_Vec[k] * grad;
+                grad_norm += grad*grad;
             }
+            double A_dot_grad_alignment = cmag*cmag / (Face_Area_Norm*Face_Area_Norm * grad_norm);
             /* here we add the HLL-like correction term. this greatly reduces noise and improves the stability of the diffusion.
             	however it comes at the cost of (significant) additional numerical diffusion */
-            double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + c_light;
+            double v_eff_light = DMIN(c_light , SphP[j].Kappa_RT[k_freq] / (Get_Particle_Size(j)*All.cf_atime));
+            double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + v_eff_light;
             double q = 0.5 * c_hll * kernel.r * All.cf_atime / fabs(1.e-37 + 0.5*(kappa_i+kappa_j));
             q = (0.2 + q) / (0.2 + q + q*q);
-            double hll_tmp = -q * Face_Area_Norm * c_hll * d_scalar/(-conduction_wt);
+            double d_scalar_tmp = d_scalar - grad_dot_x_ij;
+            double d_scalar_hll = MINMOD(d_scalar , d_scalar_tmp);
+            double hll_tmp = -A_dot_grad_alignment * q * Face_Area_Norm * c_hll * d_scalar_hll/(-conduction_wt);
             
             /* add asymptotic-preserving correction so that numerical flux doesn't dominate in optically thick limit */
             double tau_c_j = Get_Particle_Size(j)*All.cf_atime * SphP[j].Kappa_RT[k_freq]*SphP[j].Density*All.cf_a3inv; // = L_particle / (lambda_mean_free_path) = L*kappa*rho //
@@ -62,17 +63,19 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
             double thold_hll = 2.0*fabs(cmag);
             if(fabs(hll_tmp)>thold_hll) {hll_tmp*=thold_hll/fabs(hll_tmp);}
             double cmag_corr = cmag + hll_tmp;
-            cmag = MINMOD(1.5*cmag, cmag_corr);
+            cmag = MINMOD(HLL_DIFFUSION_COMPROMISE_FACTOR*cmag, cmag_corr);
             /* flux-limiter to ensure flow is always down the local gradient */
             double f_direct = (1./9.) * Face_Area_Norm*d_scalar*rinv;
             double check_for_stability_sign = d_scalar*cmag;
-            if((check_for_stability_sign < 0) && (fabs(f_direct) > 0.005*fabs(cmag))) {cmag = 0;}
+            if((check_for_stability_sign < 0) && (fabs(f_direct) > HLL_DIFFUSION_OVERSHOOT_FACTOR*fabs(cmag))) {cmag = 0;}
             cmag *= -conduction_wt; // multiplies through the coefficient to get actual flux //
-#endif
+
             // prevent super-luminal local fluxes //
             double R_flux = fabs(cmag) / (3. * Face_Area_Norm * c_light * fabs(d_scalar) + 1.e-37);
             R_flux = (1. + 12.*R_flux) / (1. + 12.*R_flux*(1.+R_flux)); // 12 arbitrary but >>1 gives good behavior here //
+#ifndef FREEZE_HYDRO
             cmag *= R_flux;
+#endif
             cmag *= dt_hydrostep; // all in physical units //
             if(fabs(cmag) > 0)
             {

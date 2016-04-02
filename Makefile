@@ -557,7 +557,6 @@ GRAVITY_OBJS  = gravity/forcetree.o gravity/cosmology.o gravity/pm_periodic.o gr
 
 HYDRO_OBJS = hydro/hydra_master.o hydro/density.o hydro/gradients.o eos/eos.o
 
-STRUCTURE_OBJS = structure/twopoint.o
 
 L3_OBJS =
 
@@ -573,7 +572,7 @@ OBJS  =  main.o accel.o  timestep.o init.o restart.o io.o \
          domain.o driftfac.o kicks.o ngb.o compile_time_info.o merge_split.o
 FOBJS =
 
-OBJS	+= $(GRAVITY_OBJS) $(HYDRO_OBJS) $(SYSTEM_OBJS) $(STRUCTURE_OBJS)
+OBJS	+= $(GRAVITY_OBJS) $(HYDRO_OBJS) $(SYSTEM_OBJS)
 OBJS	+= $(L3_OBJS)
 
 INCL    += allvars.h proto.h gravity/forcetree.h domain.h system/myqsort.h kernel.h eos/eos.h Makefile \
@@ -595,6 +594,10 @@ ifeq (GALSF_FB_HII_HEATING,$(findstring GALSF_FB_HII_HEATING,$(CONFIGVARS)))
 OBJS    += galaxy_sf/hII_heating.o
 endif
 
+ifeq (TWOPOINT_FUNCTION_COMPUTATION_ENABLED,$(findstring TWOPOINT_FUNCTION_COMPUTATION_ENABLED,$(CONFIGVARS)))
+OBJS    += structure/twopoint.o
+endif
+
 ifeq (GALSF_FB_SNE_HEATING,$(findstring GALSF_FB_SNE_HEATING,$(CONFIGVARS)))
 OBJS    += galaxy_sf/mechanical_fb.o
 endif
@@ -612,9 +615,15 @@ OBJS    += galaxy_sf/blackholes/blackhole_swallow_and_kick.o
 INCL    += galaxy_sf/blackholes/blackhole.h
 endif
 
-ifeq (SINKS,$(findstring SINKS,$(CONFIGVARS)))
-OBJS    += galaxy_sf/sinks.o
+
+ifeq (SINGLE_STAR,$(findstring SINGLE_STAR,$(CONFIGVARS)))
+OBJS	+= radiation/rt_utilities.o radiation/rt_CGmethod.o radiation/rt_source_injection.o radiation/rt_chem.o radiation/rt_cooling.o
+OBJS    += galaxy_sf/sfr_eff.o galaxy_sf/hII_heating.o galaxy_sf/mechanical_fb.o galaxy_sf/rp_localwinds.o
+OBJS    += galaxy_sf/blackholes/blackhole.o galaxy_sf/blackholes/blackhole_util.o galaxy_sf/blackholes/blackhole_environment.o galaxy_sf/blackholes/blackhole_feed.o galaxy_sf/blackholes/blackhole_swallow_and_kick.o
+INCL    += galaxy_sf/blackholes/blackhole.h
 endif
+
+
 
 ifeq (SCFPOTENTIAL,$(findstring SCFPOTENTIAL,$(CONFIGVARS)))
 OBJS    += modules/potentials/scf.o modules/potentials/scf_util.o

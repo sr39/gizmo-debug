@@ -385,11 +385,10 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #elif (GRACKLE_CHEMISTRY > 0)
                     *fp++ = SphP[pindex].grHI;
 #else
-                    double u, ne, nh0 = 0;
-                    double nHeII;
+                    double u, ne, nh0 = 0, mu = 1, temp, nHeII;
                     ne = SphP[pindex].Ne;
                     u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy); // needs to be in code units
-                    AbundanceRatios(u, SphP[pindex].Density * All.cf_a3inv, &ne, &nh0, &nHeII, pindex);
+		            temp  = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, &ne, &nh0, &nHeII, &mu, pindex);
 #ifdef GALSF_FB_HII_HEATING
                     if(SphP[pindex].DelayTimeHII>0 || SphP[pindex].Ne>=1.15789) nh0=0;
 #endif
@@ -2073,7 +2072,7 @@ int blockpresent(enum iofields blocknr)
             break;
             
         case IO_RAD_ACCEL:
-#if defined(RT_RAD_PRESSURE_OUPUT)
+#if defined(RT_RAD_PRESSURE_OUTPUT)
             return 1;
 #else
             return 0;

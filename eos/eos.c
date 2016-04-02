@@ -66,6 +66,7 @@ double get_pressure(int i)
     double NJeans = 4; // set so that resolution = lambda_Jeans/NJeans -- fragmentation with Jeans/Toomre scales below this will be artificially suppressed now
     double xJeans = (NJeans * NJeans / GAMMA) * All.G * h_eff*h_eff * SphP[i].Density * SphP[i].Density * All.cf_afac1/All.cf_atime;
     if(xJeans>press) press=xJeans;
+    SphP[i].SoundSpeed = sqrt(GAMMA * press / Particle_density_for_energy_i(i));
 #endif
     
     return press;
