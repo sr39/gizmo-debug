@@ -80,7 +80,7 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
             if(fabs(cmag) > 0)
             {
                 // enforce a flux limiter for stability (to prevent overshoot) //
-                double thold_hll = 0.25 * DMIN(fabs(scalar_i*V_i),fabs(scalar_j*V_j));
+                double thold_hll = 0.25 * DMIN(fabs(scalar_i*V_i-scalar_j*V_j),DMAX(fabs(scalar_i*V_i),fabs(scalar_j*V_j)));
                 if(check_for_stability_sign<0) {thold_hll *= 1.e-2;}
                 if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
                 Fluxes_E_gamma[k_freq] += cmag / dt_hydrostep;
@@ -97,7 +97,7 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
 {
     int k_freq;
     double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + c_light;
-    double thold_hll_0 = 2.0;
+    double thold_hll_0 = 0.1, thold_hll_0RE=1.1;
     for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
     {
         Fluxes_E_gamma[k_freq] = 0;
@@ -106,13 +106,15 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
         double scalar_j = SphP[j].E_gamma_Pred[k_freq] / V_j;
         if((scalar_i>0)&&(scalar_j>0)&&(local.Mass>0)&&(P[j].Mass>0)&&(dt_hydrostep>0))
         {
-            
             double d_scalar = scalar_i - scalar_j;
-            double cmag=0., cmag_flux[3]={0};
+            double cmag=0., cmag_flux[3]={0}, grad_norm=0;
             for(k=0;k<3;k++)
             {
                 /* the flux is already known (its explicitly evolved, rather than determined by the gradient of the energy density */
-                cmag += Face_Area_Vec[k] * 0.5*(local.Flux[k_freq][k]/V_i + SphP[j].Flux_Pred[k_freq][k]/V_j); /* remember, our 'flux' variable is a volume-integral */
+                double grad = 0.5*(local.Flux[k_freq][k]/V_i + SphP[j].Flux_Pred[k_freq][k]/V_j);
+                grad_norm += grad*grad;
+                cmag += Face_Area_Vec[k] * grad; /* remember, our 'flux' variable is a volume-integral */
+                
                 int k_xyz=k, k_et_al, k_et_loop[3];
                 if(k_xyz==0) {k_et_loop[0]=0; k_et_loop[1]=3; k_et_loop[2]=5;}
                 if(k_xyz==1) {k_et_loop[0]=3; k_et_loop[1]=1; k_et_loop[2]=4;}
@@ -122,38 +124,58 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
                     cmag_flux[k_xyz] += c_light*c_light * Face_Area_Vec[k_et_al] * 0.5*(scalar_i*local.ET[k_freq][k_et_loop[k_et_al]] + scalar_j*SphP[j].ET[k_freq][k_et_loop[k_et_al]]);
                 }
             }
+            
+            double A_dot_grad_alignment = cmag*cmag / (Face_Area_Norm*Face_Area_Norm * grad_norm);
+            double v_eff_light = DMIN(c_light , SphP[j].Kappa_RT[k_freq] / (Get_Particle_Size(j)*All.cf_atime));
+            c_hll = 0.5*fabs(face_vel_i-face_vel_j) + v_eff_light;
+            
             /* add asymptotic-preserving correction so that numerical flux doesn't unphysically dominate in optically thick limit */
             double tau_c_j = Get_Particle_Size(j)*All.cf_atime * SphP[j].Kappa_RT[k_freq]*SphP[j].Density*All.cf_a3inv; // = L_particle / (lambda_mean_free_path) = L*kappa*rho //
             double hll_corr = 1./(1. + 1.5*DMAX(tau_c_i[k_freq],tau_c_j));
             /* q below is a limiter to try and make sure the diffusion speed given by the hll flux doesn't exceed the diffusion speed in the diffusion limit */
             double q = 0.5 * c_hll * kernel.r * All.cf_atime / fabs(1.e-37 + 0.5*(local.DiffusionCoeff[k_freq]+rt_diffusion_coefficient(j,k_freq))); q = (0.2 + q) / (0.2 + q + q*q);
+            double renormerFAC = DMIN(1.,fabs(A_dot_grad_alignment * q * hll_corr));
+            
             double hll_tmp = -Face_Area_Norm * c_hll * d_scalar; /* simple HLL term for frame moving at 1/2 inter-particle velocity: here not limited */
-            hll_tmp *= q * hll_corr;
+            hll_tmp *= renormerFAC;
+            
             double thold_hll = thold_hll_0*fabs(cmag);
             if(fabs(hll_tmp)>thold_hll) {hll_tmp *= thold_hll/fabs(hll_tmp);}
             double cmag_corr = cmag + hll_tmp;
-            cmag = MINMOD(1.5*cmag, cmag_corr);
+            cmag = MINMOD(thold_hll_0RE*cmag, cmag_corr);
+            
             /* flux-limiter to ensure flow is always down the local gradient [no 'uphill' flow] */
-            double f_direct = -Face_Area_Norm * c_hll * d_scalar;
-            if((d_scalar*cmag < 0) && (fabs(f_direct) > fabs(cmag))) {cmag = 0;}
+            double f_direct = -Face_Area_Norm * c_hll * d_scalar * renormerFAC;
+            if((f_direct*cmag < 0) && (fabs(f_direct) > fabs(cmag))) {cmag = 0;}
+            
             cmag *= dt_hydrostep; // all in physical units //
             if(fabs(cmag) > 0)
             {
                 // enforce a flux limiter for stability (to prevent overshoot) //
-                thold_hll = 0.25 * DMIN(fabs(scalar_i*V_i),fabs(scalar_j*V_j));
+                thold_hll = 0.25 * DMIN(fabs(scalar_i*V_i-scalar_j*V_j),DMAX(fabs(scalar_i*V_i),fabs(scalar_j*V_j)));
                 if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
                 Fluxes_E_gamma[k_freq] += cmag / dt_hydrostep;
             } // if(conduction_wt > 0)
             
             for(k=0;k<3;k++)
             {
-                double d_flux = local.Flux[k_freq][k]/V_i - SphP[j].Flux_Pred[k_freq][k]/V_j;
-                hll_tmp = -Face_Area_Norm * c_hll * d_flux;
-                thold_hll = thold_hll_0*fabs(cmag_flux[k]);
-                if(fabs(hll_tmp)>thold_hll) {hll_tmp *= thold_hll/fabs(hll_tmp);}
-                double cmag_tmp = cmag_flux[k] + hll_tmp;
-                cmag_flux[k] = MINMOD(1.5*cmag_flux[k], cmag_tmp);
-                Fluxes_Flux[k_freq][k] += cmag_flux[k];
+                double flux_i=local.Flux[k_freq][k], flux_j=SphP[j].Flux_Pred[k_freq][k];
+                double d_flux =  flux_i/V_i - flux_j/V_j;
+                hll_tmp = -Face_Area_Norm * c_hll * d_flux * renormerFAC;
+                if(fabs(hll_tmp) > 0)
+                {
+                    thold_hll = thold_hll_0 * fabs(cmag_flux[k]);
+                    if(fabs(hll_tmp) > thold_hll) {hll_tmp *= thold_hll/fabs(hll_tmp);}
+                    double cmag_tmp = cmag_flux[k] + hll_tmp;
+                    cmag_flux[k] = MINMOD(thold_hll_0RE*cmag_flux[k], cmag_tmp);
+                }
+                cmag_flux[k] *= dt_hydrostep;
+                if(fabs(cmag_flux[k]) > 0)
+                {
+                    thold_hll = 1.e-37 + 2.0 * DMIN(fabs(flux_i-flux_j),DMAX(fabs(flux_i),fabs(flux_j)));
+                    if(fabs(cmag_flux[k])>thold_hll) {cmag_flux[k] *= thold_hll/fabs(cmag_flux[k]);}
+                    Fluxes_Flux[k_freq][k] += cmag_flux[k] / dt_hydrostep;
+                }
             }
         } // close check that energy and masses are positive
     }

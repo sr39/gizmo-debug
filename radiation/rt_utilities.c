@@ -208,9 +208,12 @@ void rt_eddington_update_calculation(MyIDType j)
     double n_flux_j[3]={0}, fmag_j, V_j_inv = SphP[j].Density / P[j].Mass;
     for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
     {
-        fmag_j=0; for(k=0;k<3;k++) {fmag_j += SphP[j].Flux_Pred[k_freq][k] * V_j_inv;}
-        if(fmag_j<=0) {fmag_j=0;} else {fmag_j=sqrt(fmag_j); for(k=0;k<3;k++) {n_flux_j[k] = SphP[j].Flux_Pred[k_freq][k] * V_j_inv / fmag_j;}}
-        double f_chifac = DMAX(0, DMIN(1, fmag_j / (c_light * SphP[j].E_gamma_Pred[k_freq] * V_j_inv)));
+        double flux_vol[3]; for(k=0;k<3;k++) {flux_vol[k] = SphP[j].Flux[k_freq][k] * V_j_inv;}
+        fmag_j = 0; for(k=0;k<3;k++) {fmag_j += flux_vol[k]*flux_vol[k];}
+        if(fmag_j <= 0) {fmag_j=0;} else {fmag_j=sqrt(fmag_j); for(k=0;k<3;k++) {n_flux_j[k]=flux_vol[k]/fmag_j;}}
+        double f_chifac = RT_SPEEDOFLIGHT_REDUCTION * fmag_j / (c_light * SphP[j].E_gamma[k_freq] * V_j_inv);
+        if(f_chifac < 0) {f_chifac=0;}
+        if(f_chifac > 1) {f_chifac=1;}
         double chi_j = (3.+4.*f_chifac*f_chifac) / (5. + 2.*sqrt(4. - 3.*f_chifac*f_chifac));
         double chifac_iso_j = 0.5 * (1.-chi_j);
         double chifac_n_j = 0.5 * (3.*chi_j-1.);

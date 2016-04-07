@@ -984,6 +984,7 @@ double ags_return_minsoft(MyIDType i)
 #endif
     acc_mag = All.cf_a2inv * sqrt(acc_mag);
     double h_lim_acc = 16.0 * sqrt(All.G * P[i].Mass / acc_mag) / All.cf_atime;
+    h_lim_acc *= All.AGS_DesNumNgb / 32.;
     return DMAX(h_lim_acc, minsoft);
 }
 
