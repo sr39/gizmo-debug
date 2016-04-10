@@ -67,6 +67,9 @@ struct Riemann_outputs
 #ifdef SAVE_FACE_VFIELD
     MyDouble Face_Vel[3];
 #endif
+#ifdef TURB_DIFF_METALS
+    MyDouble Mdot_estimated;
+#endif
     struct Conserved_var_Riemann Fluxes;
 };
 struct rotation_matrix
@@ -334,9 +337,21 @@ void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs
         Riemann_out->Face_Density = 0.5*(Riemann_vec.L.rho + Riemann_vec.R.rho);
 #endif
     }
+#endif // cooling/galsf
+#endif // eos_general
+#endif // magnetic
+
+#ifdef TURB_DIFF_METALS
+    {
+        double rho_k,s_k,v_k,cs_m = DMAX(Riemann_vec.L.cs,Riemann_vec.R.cs);
+#ifdef MAGNETIC
+        double v_line_L = Riemann_vec.L.v[0]*n_unit[0] + Riemann_vec.L.v[1]*n_unit[1] + Riemann_vec.L.v[2]*n_unit[2];
+        double v_line_R = Riemann_vec.R.v[0]*n_unit[0] + Riemann_vec.R.v[1]*n_unit[1] + Riemann_vec.R.v[2]*n_unit[2];
 #endif
-#endif
-#endif
+        if(Riemann_out->S_M>0) {rho_k=Riemann_vec.L.rho; v_k=v_line_L; s_k=DMIN(v_line_L,v_line_R)-cs_m;} else {rho_k=Riemann_vec.R.rho; v_k=v_line_R; s_k=DMAX(v_line_L,v_line_R)+cs_m;}
+        if(s_k != Riemann_out->S_M) {Riemann_out->Mdot_estimated=rho_k*Riemann_out->S_M*(s_k-v_k)/(s_k-Riemann_out->S_M);} else {Riemann_out->Mdot_estimated=0;}
+    }
+#endif // turb_diff_metals
 }
 
 

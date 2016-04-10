@@ -271,7 +271,9 @@
         if((Riemann_out.P_M>0)&&(!isnan(Riemann_out.P_M)))
         {
             if(All.ComovingIntegrationOn) {for(k=0;k<3;k++) v_frame[k] /= All.cf_atime;}
-            
+#ifdef TURB_DIFF_METALS
+            mdot_estimated = Riemann_out.Mdot_estimated * Face_Area_Norm;
+#endif            
             
 #if defined(HYDRO_MESHLESS_FINITE_MASS) && !defined(MAGNETIC)
             double facenorm_pm = Face_Area_Norm * Riemann_out.P_M;

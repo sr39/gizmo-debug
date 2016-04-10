@@ -63,6 +63,10 @@
             {
                 double zlim = 0.5*DMIN(DMIN(0.5*fabs(DMIN(local.Mass,P[j].Mass)*d_scalar),local.Mass*local.Metallicity[k_species]),P[j].Mass*P[j].Metallicity[k_species]);
                 if(fabs(cmag)>zlim) {cmag*=zlim/fabs(cmag);}
+#ifndef HYDRO_SPH
+                double dmet = (P[j].Metallicity[k_species]-local.Metallicity[k_species]) * fabs(mdot_estimated) * dt_hydrostep;
+                cmag = MINMOD(dmet,cmag); // limiter based on mass exchange from MFV HLLC solver //
+#endif
                 out.Dyield[k_species] += cmag;
                 P[j].Metallicity[k_species] -= cmag / P[j].Mass;
             }

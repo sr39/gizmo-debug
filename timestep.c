@@ -625,24 +625,11 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef TURB_DIFFUSION
             {
 #ifdef TURB_DIFF_METALS
-                int k_species,kt;
+                int k_species; double L_tdiff = L_particle * All.cf_atime; // don't use gradient b/c ill-defined pre-enrichment
                 for(k_species=0;k_species<NUM_METAL_SPECIES;k_species++)
                 {
-                    double L_tdiff_inv,L_tdiff,dt_tdiff;
-                    L_tdiff_inv=0;
-                    for(kt=0;kt<3;kt++) {L_tdiff_inv+=SphP[p].Gradients.Metallicity[k_species][kt]*SphP[p].Gradients.Metallicity[k_species][kt];}
-                    L_tdiff_inv /= (1.0e-33 + P[p].Metallicity[k_species]*P[p].Metallicity[k_species]);
-                    L_tdiff_inv = sqrt(L_tdiff_inv);
-                    L_tdiff = 1./(L_tdiff_inv + 1./(1.0*L_particle)) * All.cf_atime;
-                    dt_tdiff = 1.0 * L_tdiff*L_tdiff / (1.0e-33 + SphP[p].TD_DiffCoeff);
-                    // here, we use DIFFUSIVITIES, so there is no extra density power in the equation //
-#ifdef SUPER_TIMESTEP_DIFFUSION
-                    if(dt_tdiff < dt_superstep_explicit) dt_superstep_explicit = dt_tdiff; // explicit time-step
-                    double dt_advective = dt_tdiff * DMAX(1,DMAX(L_particle , 1/(MIN_REAL_NUMBER + L_tdiff_inv))*All.cf_atime / L_tdiff);
-                    if(dt_advective < dt) dt = dt_advective; // 'advective' timestep: needed to limit super-stepping
-#else
+                    double dt_tdiff = L_tdiff*L_tdiff / (1.0e-33 + SphP[p].TD_DiffCoeff); // here, we use DIFFUSIVITIES, so there is no extra density power in the equation //
                     if(dt_tdiff < dt) dt = dt_tdiff; // normal explicit time-step
-#endif
                 }
 #endif
             }

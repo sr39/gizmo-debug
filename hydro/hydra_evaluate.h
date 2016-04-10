@@ -236,6 +236,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     if(KE > SphP[j].MaxKineticEnergyNgb) SphP[j].MaxKineticEnergyNgb = KE;
                 }
 #endif
+#ifdef TURB_DIFF_METALS
+                double mdot_estimated = 0;
+#endif
                 
                 /* --------------------------------------------------------------------------------- */
                 /* calculate the kernel functions (centered on both 'i' and 'j') */
