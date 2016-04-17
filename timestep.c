@@ -399,7 +399,9 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / ac);
     }
-#if defined(GALSF) && defined(GALSF_FB_SNE_HEATING)
+#endif
+
+#if (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)) && defined(GALSF) && defined(GALSF_FB_SNE_HEATING)
     if(((P[p].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[p].Type == 2)||(P[p].Type==3))))&&(P[p].Mass>0))
     {
         if((All.ComovingIntegrationOn))
@@ -409,8 +411,6 @@ integertime get_timestep(int p,		/*!< particle index */
             dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * ags_h / ac);
         }
     }
-#endif
-
 #endif
 
     
@@ -569,10 +569,10 @@ integertime get_timestep(int p,		/*!< particle index */
             
 #if defined(RADTRANSFER)
             {
-#if defined(RT_DIFFUSION_EXPLICIT) && !defined(RT_EVOLVE_FLUX) /* for explicit diffusion, we include the usual second-order diffusion timestep */
                 int kf;
                 for(kf=0;kf<N_RT_FREQ_BINS;kf++)
                 {
+#if defined(RT_DIFFUSION_EXPLICIT) && !defined(RT_EVOLVE_FLUX) /* for explicit diffusion, we include the usual second-order diffusion timestep */
                     double gradETmag=0; for(k=0;k<3;k++) {gradETmag += SphP[p].Gradients.E_gamma_ET[kf][k]*SphP[p].Gradients.E_gamma_ET[kf][k];}
                     double L_ETgrad_inv = sqrt(gradETmag) / (1.e-37 + SphP[p].E_gamma[kf] * SphP[p].Density/P[p].Mass);
                     double L_RT_diffusion = DMAX(L_particle , 1./(L_ETgrad_inv + 1./L_particle)) * All.cf_atime;
@@ -584,9 +584,16 @@ integertime get_timestep(int p,		/*!< particle index */
 #else
                     if(dt_rt_diffusion < dt) dt = dt_rt_diffusion; // normal explicit time-step
 #endif
-                }
+#else
+                    /* // candidate timestep limiter for M1 method //
+                    double RT_Flux_Mag = 0.0; for(k=0;k<3;k++) {RT_Flux_Mag += SphP[p].Flux[kf][k]*SphP[p].Flux[kf][k];}
+                    double L_Flux_Mag = sqrt(RT_Flux_Mag) / (1.e-37 + rt_diffusion_coefficient(p,kf) * SphP[p].E_gamma[kf] * SphP[p].Density/P[p].Mass);
+                    double L_RT_diffusion = DMAX(L_particle, 1./(L_Flux_Mag + 1./L_particle)) * All.cf_atime;
+                    double dt_rt_diffusion = dt_prefac_diffusion * L_RT_diffusion*L_RT_diffusion/ (1.0e-33 + rt_diffusion_coefficient(p,kf));
+                    */
 #endif
-                /* even with the fully-implicit solver, we require a CFL-like criterion on timesteps (much larger steps allowed for stability, but not accuracy) */
+                }
+                /* even with a fully-implicit solver, we require a CFL-like criterion on timesteps (much larger steps allowed for stability, but not accuracy) */
 				dt_courant = All.CourantFac * (L_particle*All.cf_atime) / (RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s)); /* courant-type criterion, using the reduced speed of light */
 				if(dt_courant < dt) dt = dt_courant;
             }

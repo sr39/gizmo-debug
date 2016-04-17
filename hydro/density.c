@@ -146,10 +146,6 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
     ASSIGN_ADD(PPP[i].DhsmlNgbFactor, out->DhsmlNgb, mode);
     ASSIGN_ADD(P[i].Particle_DivVel, out->Particle_DivVel,   mode);
     
-#if defined(ADAPTIVE_GRAVSOFT_FORALL)
-    ASSIGN_ADD(PPPZ[i].AGS_zeta, out->AGS_zeta,   mode);
-#endif
-    
     if(P[i].Type == 0)
     {
         ASSIGN_ADD(SphP[i].Density, out->Rho, mode);
@@ -1074,17 +1070,10 @@ void density(void)
             
             
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-            /* non-gas particles handled here should generally have zeta=0, because their softening is not defined by their density, but
-             by a different particle type, which doesn't respond self-consistently if the particles suddenly 'appear' in this list
-             (physically, need to think about star particles 'softening' in this respect) */
-            PPPZ[i].AGS_zeta = 0;
-            //if(P[i].Type > -1)//
+            /* non-gas particles are handled separately, in the ags_hsml routine */
             if(P[i].Type==0)
-#else
-            if(P[i].Type==0)
-#endif
             {
+                PPPZ[i].AGS_zeta = 0;
                 double zeta_0 = 0; // 2.0 * P[i].Mass*P[i].Mass * PPP[i].Hsml*PPP[i].Hsml; // self-value of zeta if no neighbors are found //
                 if((PPP[i].Hsml > 0)&&(PPP[i].NumNgb > 0))
                 {
@@ -1228,7 +1217,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #endif
                     
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
-                    out.AGS_zeta += mass_j * kernel_gravity(u, kernel.hinv, kernel.hinv3, 0);
+                    if(local.Type == 0) {out.AGS_zeta += mass_j * kernel_gravity(u, kernel.hinv, kernel.hinv3, 0);}
 #endif
                     /* for everything below, we do NOT include the particle self-contribution! */
                     if(kernel.r > 0)

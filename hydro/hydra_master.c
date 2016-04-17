@@ -688,17 +688,16 @@ void hydro_final_operations_and_cleanup(void)
             // = du/dlna -3*(gamma-1)*u ; then dlna/dt = H(z) =  All.cf_hubble_a //
             
             
-#ifdef RT_RAD_PRESSURE_EDDINGTON
-            /* calculate the radiation pressure force from the gradient of the Eddington tensor */
+#ifdef RT_RAD_PRESSURE_FORCES
+            /* calculate the radiation pressure force */
             double radacc[3]; radacc[0]=radacc[1]=radacc[2]=0; int k2;
             // a = kappa*F/c = Gradients.E_gamma_ET[gradient of photon energy density] / rho[gas_density] //
             for(k=0;k<3;k++)
                 for(k2=0;k2<N_RT_FREQ_BINS;k2++)
                 {
-#ifdef RT_EVOLVE_FLUX
+#if defined(RT_EVOLVE_FLUX)
                     radacc[k] += SphP[i].Kappa_RT[k2] * SphP[i].Flux_Pred[k2][k] / (C / All.UnitVelocity_in_cm_per_s); // no speed of light reduction multiplier here //
-#endif
-#ifdef RT_EVOLVE_EDDINGTON_TENSOR
+#elif defined(RT_EVOLVE_EDDINGTON_TENSOR)
                     radacc[k] += -SphP[i].Lambda_FluxLim[k2] * SphP[i].Gradients.E_gamma_ET[k2][k] / SphP[i].Density;
 #endif
                 }

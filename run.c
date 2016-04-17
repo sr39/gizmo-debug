@@ -252,7 +252,7 @@ void calculate_non_standard_physics(void)
     }
 #endif
 
-#ifdef RT_CHEM_PHOTOION
+#if defined(RT_CHEM_PHOTOION) && (!defined(COOLING) || defined(RT_COOLING_PHOTOHEATING_OLDFORMAT))
     /* chemistry updated at sub-stepping as well */
     rt_update_chemistry();
     if(Flag_FullStep) {rt_write_chemistry_stats();}

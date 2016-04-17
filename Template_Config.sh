@@ -291,6 +291,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 
 
 
+
 ####################################################################################################
 #-------------------------------------- Driven turbulence (for turbulence tests, large-eddy sims)
 #-------------------------------- users of these routines should cite Bauer & Springel 2012, MNRAS, 423, 3102, and thank A. Bauer for providing the core algorithms
@@ -427,25 +428,39 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 
 
 
-####################################################################################################
-#--------------------------------------- Radiative Transfer & Radiation Hydrodynamics
-####################################################################################################
+
+############################################################################################################################
+##-----------------------------------------------------------------------------------------------------
+#-------------------------------------- Star formation with -individual- stars [sink particles]: from PFH [proprietary development with Matt Orr and David Guszejnov; modules not to be used without authors permission]
+##-----------------------------------------------------------------------------------------------------
+#SINGLE_STAR_FORMATION          # master switch for single star formation model: sink particles representing -individual- stars
+#SINGLE_STAR_ACCRETION=3        # proto-stellar accretion: 0=grav capture only; 1+=alpha-disk accretion onto protostar; 2+=bondi accretion of diffuse gas; 3+=sub-grid variability
+#SINGLE_STAR_FB_HEATING         # proto-stellar heating: luminosity determined by BlackHoleRadiativeEfficiency (typical ~5e-7)
+#SINGLE_STAR_FB_JETS            # protostellar jets: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow
+#SINGLE_STAR_PROMOTION          # proto-stars become ZAMS stars at end of pre-main sequence lifetime. FIRE feedback modules kick in, but using appropriate luminosities and temperatures for each
+############################################################################################################################
+
+
+
+
+############################################################################################################################
+#--------------------------------------- Radiative Transfer & Radiation Hydrodynamics:
+#--------------------------------------------- modules developed by David Khatami: not for use without authors permission
+############################################################################################################################
 #--------------------- methods for calculating photon propagation (one of these MUST be on for RT)
 #RT_FIRE                                # RT solved using the FIRE (local extinction with the Sobolev approximation at source and absorption points)
 #RT_OTVET                               # RT solved using the OTVET approximation (optically thin Eddington tensor, but interpolated to thick when appropriate)
 #RT_M1                                  # RT solved using the M1 approximation (solve fluxes and tensors with M1 closure; gives better shadowing; currently only compatible with explicit diffusion solver)
 #RT_FLUXLIMITEDDIFFUSION                # RT solved using the flux-limited diffusion approximation (constant, always-isotropic Eddington tensor)
 #--------------------- solvers (numerical) --------------------------------------------------------
-#RT_DIFFUSION_EXPLICIT                  # solve the diffusion part of the RT equations (if needed) explicitly (accurate but needs -small- timesteps); otherwise implicit with Conjugate Gradient iteration (Petkova & Springel)
 #RT_SPEEDOFLIGHT_REDUCTION=1            # set to a number <1 to use the 'reduced speed of light' approximation for photon propagation (C_eff=C_true*RT_SPEEDOFLIGHT_REDUCTION)
-#--------------------- radiation pressure options -------------------------------------------------
-#RT_RAD_PRESSURE_EDDINGTON              # calculate radiation pressure from eddington tensor
-#RT_RAD_PRESSURE_OUTPUT                 # print radiation pressure to file (requires some extra variables to save it)
+#RT_DIFFUSION_IMPLICIT                  # solve the diffusion part of the RT equations (if needed) implicitly with Conjugate Gradient iteration (Petkova+Springel): less accurate and only works with some methods, but allows larger timesteps [otherwise more accurate explicit used]
 #--------------------- coupled radiation-gas chemistry networks -----------------------------------
-#RT_CHEM_PHOTOION=2                     # RT used to calculate photo-ionization of gas (1=H only, 2=H+He)
-#RT_PHOTOION_MULTIFREQUENCY             # enables multi-frequency radiation transport for ionizing photons. Integration variable is the ionising intensity J_nu
 #RT_PHOTOION_SOURCES=1+16+32            # source list for ionizing photons given by bitflag (1=2^0=gas[sfr-based],16=2^4=new stars[mass-based],32=2^5=BH)
-#RT_COOLING_PHOTOHEATING                # includes photoheating and cooling (using RT information)
+#RT_CHEM_PHOTOION=2                     # RT used to calculate photo-ionization of gas (1=H only [singe-band], 2=H+He [four-band])
+#--------------------- radiation pressure options -------------------------------------------------
+#RT_DISABLE_RAD_PRESSURE                # turn off radiation pressure forces (included by default)
+#RT_RAD_PRESSURE_OUTPUT                 # print radiation pressure to file (requires some extra variables to save it)
 ##-----------------------------------------------------------------------------------------------------
 #------------ test-problem, deprecated, or de-bugging functions
 ##-----------------------------------------------------------------------------------------------------
@@ -454,8 +469,11 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #RT_SEPARATELY_TRACK_LUMPOS             # keep luminosity vs. mass positions separate in tree (useful if running in tree-only mode)
 #RT_DISABLE_FLUXLIMITER                 # removes the flux-limiter from the diffusion operations (default is to include it when using the relevant approximations)
 #RT_HYDROGEN_GAS_ONLY                   # sets hydrogen fraction to 1.0 (used for certain idealized chemistry calculations)
+#RT_COOLING_PHOTOHEATING_OLDFORMAT      # includes photoheating and cooling (using RT information), doing just the photo-heating [for more general cooling physics, enable COOLING]
 #RT_FIRE_FIX_SPECTRAL_SHAPE             # enable with GALSF_FB_RT_PHOTONMOMENTUM to use a fixed SED shape set in parameterfile for all incident fluxes
+#RT_DISABLE_UV_BACKGROUND               # disable extenal UV background in cooling functions (to isolate pure effects of local RT, or if simulating the background directly)
 ####################################################################################################
+
 
 
 
@@ -472,18 +490,6 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 
 
 
-
-####################################################################################################
-##-----------------------------------------------------------------------------------------------------
-#-------------------------------------- Star formation with -individual- stars [sink particles]: from PFH
-##-----------------------------------------------------------------------------------------------------
-#SINGLE_STAR_FORMATION          # master switch for single star formation model: sink particles representing -individual- stars
-#SINGLE_STAR_ACCRETION=3        # proto-stellar accretion: 0=grav capture only; 1+=alpha-disk accretion onto protostar; 2+=bondi accretion of diffuse gas; 3+=sub-grid variability
-#SINGLE_STAR_FB_HEATING         # proto-stellar heating: luminosity determined by BlackHoleRadiativeEfficiency (typical ~5e-7)
-#SINGLE_STAR_FB_JETS            # protostellar jets: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow
-#SINGLE_STAR_PROMOTION          # proto-stars become ZAMS stars at end of pre-main sequence lifetime. FIRE feedback modules kick in, but using appropriate luminosities and temperatures for each
-##-----------------------------------------------------------------------------------------------------
-####################################################################################################
 
 
 

@@ -26,6 +26,7 @@ void rt_get_sigma(void)
     rt_sigma_HI[0] = 6.3e-18 * fac; // cross-section (blackbody-weighted) for photons
     nu[0] = 13.6; // minimum frequency [in eV] of photons of interest
     rt_nu_eff_eV[0] = 13.6; // typical blackbody-weighted frequency [in eV] of photons of interest: to convert energies to numbers
+    G_HI[0] = rt_nu_eff_eV[0]*ELECTRONVOLT_IN_ERGS / All.UnitEnergy_in_cgs * All.HubbleParam; // absorption cross-section weighted photon energy in code units
     
 #else
     

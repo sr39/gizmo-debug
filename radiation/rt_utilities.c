@@ -396,7 +396,7 @@ void rt_get_lum_for_spectral_bin_stars(double T_eff, double luminosity_fraction[
 /***********************************************************************************************************/
 void rt_get_lum_gas(int target, double *je)
 {
-#ifdef RT_COOLING_PHOTOHEATING // routine below only makes sense (currently) with its coupled cooling routines //
+#ifdef RT_COOLING_PHOTOHEATING_OLDFORMAT // routine below only makes sense (currently) with its coupled cooling routines //
     int j;
     double temp, entropy, molecular_weight, kT, BB_l, BB_r, next, sigma_SB=5.6704e-5, u_cooling, u_BB, d_nu;
     

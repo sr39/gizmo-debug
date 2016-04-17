@@ -22,43 +22,42 @@
     if((local.Mass>0)&&(P[j].Mass>0)&&((local.TD_DiffCoeff>0)||(SphP[j].TD_DiffCoeff>0)))
     {
         double wt_i=0.5, wt_j=0.5, cmag, d_scalar;
-        double diffusion_wt = wt_i*local.TD_DiffCoeff + wt_j*SphP[j].TD_DiffCoeff; // arithmetic mean
+        double diffusion_wt = wt_i*local.TD_DiffCoeff + wt_j*SphP[j].TD_DiffCoeff; // physical
 #ifdef HYDRO_SPH
-        diffusion_wt *= 0.5*(local.Density + SphP[j].Density)*All.cf_a3inv;
+        diffusion_wt *= 0.5*(local.Density + SphP[j].Density)*All.cf_a3inv; // physical
 #else
-        diffusion_wt *= Riemann_out.Face_Density;
+        diffusion_wt *= Riemann_out.Face_Density; // physical
 #endif
-        double diffusion_wt_physical = diffusion_wt;
-        diffusion_wt /= All.cf_atime; // based on units TD_DiffCoeff is defined with, this makes it physical for a dimensionless quantity gradient below
         /* calculate implied mass flux 'across the boundary' to prevent excessively large coefficients */
-        double massflux = fabs( Face_Area_Norm * diffusion_wt_physical / (DMIN(kernel.h_i,kernel.h_j)*All.cf_atime) * dt_hydrostep / (DMIN(local.Mass,P[j].Mass)) );
+        double massflux = fabs( Face_Area_Norm * diffusion_wt / (DMIN(kernel.h_i,kernel.h_j)*All.cf_atime) * dt_hydrostep / (DMIN(local.Mass,P[j].Mass)) );
         if(massflux > 0.25) {diffusion_wt *= 0.25/massflux;}
         
         int k_species;
-        double diffusion_wt_z = diffusion_wt * dt_hydrostep;
-        double rho_i = local.Density*All.cf_a3inv, rho_j = SphP[j].Density*All.cf_a3inv, rho_ij = 0.5*(rho_i+rho_j);
+        double rho_i = local.Density*All.cf_a3inv, rho_j = SphP[j].Density*All.cf_a3inv, rho_ij = 0.5*(rho_i+rho_j); // physical
         for(k_species=0;k_species<NUM_METAL_SPECIES;k_species++)
         {
             cmag = 0.0;
             double grad_dot_x_ij = 0.0;
-            d_scalar = local.Metallicity[k_species]-P[j].Metallicity[k_species];
+            d_scalar = local.Metallicity[k_species]-P[j].Metallicity[k_species]; // physical
             for(k=0;k<3;k++)
             {
-                double grad_ij = wt_i*local.Gradients.Metallicity[k_species][k] + wt_j*SphP[j].Gradients.Metallicity[k_species][k];
-                double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv;
-                grad_dot_x_ij += grad_ij * kernel.dp[k];
+                double grad_ij = wt_i*local.Gradients.Metallicity[k_species][k] + wt_j*SphP[j].Gradients.Metallicity[k_species][k]; // 1/code length
+                double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv; // 1/code length
+                grad_dot_x_ij += grad_ij * kernel.dp[k]; // physical
                 grad_ij = MINMOD(grad_ij , grad_direct);
-                cmag += Face_Area_Vec[k] * grad_ij;
+                cmag += Face_Area_Vec[k] * grad_ij; // 1/code length
             }
-            double d_scalar_tmp = d_scalar - grad_dot_x_ij;
+            cmag /= All.cf_atime; // cmag has units of 1/r -- convert to physical
+
+            double d_scalar_tmp = d_scalar - grad_dot_x_ij; // physical
             double d_scalar_hll = MINMOD(d_scalar , d_scalar_tmp);
-            double hll_corr = rho_ij * HLL_correction(d_scalar_hll, 0, rho_ij, diffusion_wt_physical) / (-diffusion_wt);
+            double hll_corr = rho_ij * HLL_correction(d_scalar_hll, 0, rho_ij, diffusion_wt) / (-diffusion_wt); // physical
             double cmag_corr = cmag + hll_corr;
             cmag = MINMOD(1.5*cmag, cmag_corr);
-            double f_direct = Face_Area_Norm*d_scalar*rinv;
-            if((d_scalar*cmag < 0) && (fabs(f_direct) > HLL_DIFFUSION_OVERSHOOT_FACTOR*fabs(cmag))) {cmag = 0;}
+            double f_direct = Face_Area_Norm*d_scalar*rinv/All.cf_atime; // physical
+            if((f_direct*cmag < 0) && (fabs(f_direct) > HLL_DIFFUSION_OVERSHOOT_FACTOR*fabs(cmag))) {cmag = 0;}
             
-            cmag *= -diffusion_wt_z;
+            cmag *= -diffusion_wt * dt_hydrostep; // physical
             if(fabs(cmag) > 0)
             {
                 double zlim = 0.5*DMIN(DMIN(0.5*fabs(DMIN(local.Mass,P[j].Mass)*d_scalar),local.Mass*local.Metallicity[k_species]),P[j].Mass*P[j].Metallicity[k_species]);

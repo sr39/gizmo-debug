@@ -1362,7 +1362,7 @@ void hydro_gradient_calc(void)
                             diffusion limit (since whatever we come up with here will be multiplied by lambda in the relevant forces/etc: therefore 
                             we need to multiply chifac_iso by a power of 3 (because this goes to I/3, but also when lambda->1/3) */
 						//chi=1./3.; // pure isotropic
-#ifdef RT_RAD_PRESSURE_EDDINGTON
+#ifdef RT_RAD_PRESSURE_FORCES
 						chi=1.; // pure optically-thin // may be needed for RP problems
 #endif
                         double chifac_iso=3.*(1-chi)/2., chifac_ot=(3.*chi-1.)/2.;
@@ -1463,7 +1463,7 @@ void hydro_gradient_calc(void)
             {
                 /* estimate local turbulent diffusion coefficient from velocity gradients using Smagorinsky mixing model: 
                     we do this after slope-limiting to prevent the estimated velocity gradients from being unphysically large */
-                double h_turb = Get_Particle_Size(i);
+                double h_turb = Get_Particle_Size(i) * All.cf_atime; // physical
                 if(h_turb > 0)
                 {
                     // overall normalization //
@@ -1486,18 +1486,18 @@ void hydro_gradient_calc(void)
                                                          SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2])));
                     // slope-limit and convert to physical units //
                     double shearfac_max = 0.5 * sqrt(SphP[i].VelPred[0]*SphP[i].VelPred[0]+SphP[i].VelPred[1]*SphP[i].VelPred[1]+SphP[i].VelPred[2]*SphP[i].VelPred[2]) / h_turb;
-                    shear_factor = DMIN(shear_factor , shearfac_max); // physical units altogether //
+                    shear_factor = DMIN(shear_factor , shearfac_max) * All.cf_a2inv; // physical
                     // ok, combine to get the diffusion coefficient //
-                    SphP[i].TD_DiffCoeff = turb_prefactor * shear_factor;
+                    SphP[i].TD_DiffCoeff = turb_prefactor * shear_factor; // physical
                 } else {
                     SphP[i].TD_DiffCoeff = 0;
                 }
 #ifdef TURB_DIFF_ENERGY
-                SphP[i].Kappa_Conduction = All.ConductionCoeff * SphP[i].TD_DiffCoeff * SphP[i].Density * All.cf_a3inv;
+                SphP[i].Kappa_Conduction = All.ConductionCoeff * SphP[i].TD_DiffCoeff * SphP[i].Density * All.cf_a3inv; // physical
 #endif
 #ifdef TURB_DIFF_VELOCITY
-                SphP[i].Eta_ShearViscosity = All.ShearViscosityCoeff * SphP[i].TD_DiffCoeff * SphP[i].Density * All.cf_a3inv;
-                SphP[i].Zeta_BulkViscosity = All.BulkViscosityCoeff * SphP[i].TD_DiffCoeff * SphP[i].Density * All.cf_a3inv;
+                SphP[i].Eta_ShearViscosity = All.ShearViscosityCoeff * SphP[i].TD_DiffCoeff * SphP[i].Density * All.cf_a3inv; // physical
+                SphP[i].Zeta_BulkViscosity = All.BulkViscosityCoeff * SphP[i].TD_DiffCoeff * SphP[i].Density * All.cf_a3inv; // physical
 #endif
             }
 #endif

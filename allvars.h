@@ -231,6 +231,9 @@
 #endif
 // need source injection enabled to define emissivity
 #define RT_SOURCE_INJECTION
+#if !defined(RT_DIFFUSION_IMPLICIT) && !defined(RT_DIFFUSION_EXPLICIT)
+#define RT_DIFFUSION_EXPLICIT // default to explicit (more accurate) solver //
+#endif
 #endif
 
 /* options for M1 module */
@@ -253,6 +256,7 @@
 #endif
 #endif
 
+
 /* decide which diffusion method to use (for any diffusion-based method) */
 #if defined(RT_DIFFUSION) && !defined(RT_DIFFUSION_EXPLICIT)
 #define RT_DIFFUSION_CG
@@ -266,14 +270,21 @@
 #define RT_EVOLVE_NGAMMA
 #endif
 
-#if ((defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_EDDINGTON) || defined(RT_DIFFUSION_EXPLICIT)) && !defined(RT_EVOLVE_FLUX)) && !defined(RT_EVOLVE_EDDINGTON_TENSOR)
+/* enable radiation pressure forces unless they have been explicitly disabled */
+#if defined(RADTRANSFER) && !defined(RT_DISABLE_RAD_PRESSURE)
+#define RT_RAD_PRESSURE_FORCES
+#endif
+
+#if ((defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_FORCES) || defined(RT_DIFFUSION_EXPLICIT)) && !defined(RT_EVOLVE_FLUX)) && !defined(RT_EVOLVE_EDDINGTON_TENSOR)
 #define RT_EVOLVE_EDDINGTON_TENSOR
 #endif
 
 /* enable appropriate chemistry flags if we are using the photoionization modules */
 #if defined(RT_CHEM_PHOTOION)
 #if (RT_CHEM_PHOTOION > 1)
+/* enables multi-frequency radiation transport for ionizing photons. Integration variable is the ionising intensity J_nu */
 #define RT_CHEM_PHOTOION_HE
+#define RT_PHOTOION_MULTIFREQUENCY // if using He-ionization, default to multi-frequency RT [otherwise doesn't make sense] //
 #endif
 #endif
 
@@ -286,7 +297,7 @@
 #endif
 
 /* cooling must be enabled for RT cooling to function */
-#if defined(RT_COOLING) && !defined(COOLING)
+#if defined(RT_COOLING_PHOTOHEATING_OLDFORMAT) && !defined(COOLING)
 #define COOLING
 #endif
 
@@ -2257,6 +2268,8 @@ extern struct sph_particle_data
 #endif
 #endif
 #endif
+    
+    
     
     
 #ifdef EOS_GENERAL

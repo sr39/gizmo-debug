@@ -18,21 +18,20 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
     for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
     {
         Fluxes_E_gamma[k_freq] = 0;
-        double kappa_i = local.DiffusionCoeff[k_freq];
-        double kappa_j = rt_diffusion_coefficient(j,k_freq);
-        if((kappa_i>0)&&(kappa_j>0)&&(local.Mass>0)&&(P[j].Mass>0))
+        double kappa_ij = 0.5 * (local.DiffusionCoeff[k_freq] + rt_diffusion_coefficient(j,k_freq)); // physical
+        if((kappa_ij>0)&&(local.Mass>0)&&(P[j].Mass>0))
         {
-            double scalar_i = local.E_gamma[k_freq] / V_i; // volumetric photon number density in this frequency bin //
+            double scalar_i = local.E_gamma[k_freq] / V_i; // volumetric photon number density in this frequency bin (1/code volume) //
             double scalar_j = SphP[j].E_gamma_Pred[k_freq] / V_j;
             
-            double d_scalar = scalar_i - scalar_j;
-            double conduction_wt = 0.5*(kappa_i+kappa_j) * All.cf_a3inv/All.cf_atime;  // weight factor and conversion to physical units
+            double d_scalar = (scalar_i - scalar_j); // units (1/code volume)
+            double conduction_wt = kappa_ij * All.cf_a3inv/All.cf_atime;  // weight factor and conversion to physical units
             double cmag=0., grad_norm=0, grad_dot_x_ij=0.0;
             for(k=0;k<3;k++)
             {
                 /* the flux is determined by the energy density gradient */
-                double grad = 0.5 * (local.Gradients.E_gamma_ET[k_freq][k] + SphP[j].Gradients.E_gamma_ET[k_freq][k]);
-                double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv;
+                double grad = 0.5 * (local.Gradients.E_gamma_ET[k_freq][k] + SphP[j].Gradients.E_gamma_ET[k_freq][k]); // (1/(code volume*code length))
+                double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv; // (1/(code volume*code length))
                 grad_dot_x_ij += grad * kernel.dp[k];
                 grad = MINMOD_G( grad , grad_direct );
 #if defined(GALSF) || defined(COOLING) || defined(BLACKHOLES)
@@ -44,19 +43,20 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
                 cmag += Face_Area_Vec[k] * grad;
                 grad_norm += grad*grad;
             }
-            double A_dot_grad_alignment = cmag*cmag / (Face_Area_Norm*Face_Area_Norm * grad_norm);
+            double A_dot_grad_alignment = cmag*cmag / (Face_Area_Norm*Face_Area_Norm * grad_norm); // dimensionless
+            cmag *= -conduction_wt; // multiplies through the coefficient to get actual flux (physical) //
+
             /* here we add the HLL-like correction term. this greatly reduces noise and improves the stability of the diffusion.
             	however it comes at the cost of (significant) additional numerical diffusion */
-            double v_eff_light = DMIN(c_light , SphP[j].Kappa_RT[k_freq] / (Get_Particle_Size(j)*All.cf_atime));
+            double v_eff_light = DMIN(c_light , kappa_ij / (Get_Particle_Size(j)*All.cf_atime)); // physical
             double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + v_eff_light;
-            double q = 0.5 * c_hll * kernel.r * All.cf_atime / fabs(1.e-37 + 0.5*(kappa_i+kappa_j));
-            q = (0.2 + q) / (0.2 + q + q*q);
-            double d_scalar_tmp = d_scalar - grad_dot_x_ij;
-            double d_scalar_hll = MINMOD(d_scalar , d_scalar_tmp);
-            double hll_tmp = -A_dot_grad_alignment * q * Face_Area_Norm * c_hll * d_scalar_hll/(-conduction_wt);
+            double q = 0.5 * c_hll * kernel.r * All.cf_atime / fabs(1.e-37 + kappa_ij); q = (0.2 + q) / (0.2 + q + q*q); // physical
+            double d_scalar_tmp = d_scalar - grad_dot_x_ij; // (1/code volume)
+            double d_scalar_hll = MINMOD(d_scalar , d_scalar_tmp) * All.cf_a3inv; // physical
+            double hll_tmp = -A_dot_grad_alignment * q * Face_Area_Norm * c_hll * d_scalar_hll; // physical
             
             /* add asymptotic-preserving correction so that numerical flux doesn't dominate in optically thick limit */
-            double tau_c_j = Get_Particle_Size(j)*All.cf_atime * SphP[j].Kappa_RT[k_freq]*SphP[j].Density*All.cf_a3inv; // = L_particle / (lambda_mean_free_path) = L*kappa*rho //
+            double tau_c_j = Get_Particle_Size(j)*All.cf_atime * SphP[j].Kappa_RT[k_freq]*SphP[j].Density*All.cf_a3inv; // = L_particle / (lambda_mean_free_path) = L*kappa*rho (physical) //
             double hll_corr = 1./(1. + 1.5*DMAX(tau_c_i[k_freq],tau_c_j));
             hll_tmp *= hll_corr;
             
@@ -65,13 +65,12 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
             double cmag_corr = cmag + hll_tmp;
             cmag = MINMOD(HLL_DIFFUSION_COMPROMISE_FACTOR*cmag, cmag_corr);
             /* flux-limiter to ensure flow is always down the local gradient */
-            double f_direct = (1./9.) * Face_Area_Norm*d_scalar*rinv;
-            double check_for_stability_sign = d_scalar*cmag;
+            double f_direct = -conduction_wt * (1./9.) * Face_Area_Norm*d_scalar*rinv; // physical
+            double check_for_stability_sign = f_direct*cmag;
             if((check_for_stability_sign < 0) && (fabs(f_direct) > HLL_DIFFUSION_OVERSHOOT_FACTOR*fabs(cmag))) {cmag = 0;}
-            cmag *= -conduction_wt; // multiplies through the coefficient to get actual flux //
 
             // prevent super-luminal local fluxes //
-            double R_flux = fabs(cmag) / (3. * Face_Area_Norm * c_light * fabs(d_scalar) + 1.e-37);
+            double R_flux = fabs(cmag) / (3. * Face_Area_Norm * c_light * (fabs(d_scalar)*All.cf_a3inv) + 1.e-37); // physical
             R_flux = (1. + 12.*R_flux) / (1. + 12.*R_flux*(1.+R_flux)); // 12 arbitrary but >>1 gives good behavior here //
 #ifndef FREEZE_HYDRO
             cmag *= R_flux;
@@ -80,7 +79,7 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
             if(fabs(cmag) > 0)
             {
                 // enforce a flux limiter for stability (to prevent overshoot) //
-                double thold_hll = 0.25 * DMIN(fabs(scalar_i*V_i-scalar_j*V_j),DMAX(fabs(scalar_i*V_i),fabs(scalar_j*V_j)));
+                double thold_hll = 0.25 * DMIN(fabs(scalar_i*V_i-scalar_j*V_j),DMAX(fabs(scalar_i*V_i),fabs(scalar_j*V_j))); // physical
                 if(check_for_stability_sign<0) {thold_hll *= 1.e-2;}
                 if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
                 Fluxes_E_gamma[k_freq] += cmag / dt_hydrostep;
@@ -102,7 +101,7 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
     {
         Fluxes_E_gamma[k_freq] = 0;
         Fluxes_Flux[k_freq][0]=Fluxes_Flux[k_freq][1]=Fluxes_Flux[k_freq][2]=0;
-        double scalar_i = local.E_gamma[k_freq] / V_i; // volumetric photon number density in this frequency bin //
+        double scalar_i = local.E_gamma[k_freq] / V_i; // volumetric photon number density in this frequency bin (1/code volume)//
         double scalar_j = SphP[j].E_gamma_Pred[k_freq] / V_j;
         if((scalar_i>0)&&(scalar_j>0)&&(local.Mass>0)&&(P[j].Mass>0)&&(dt_hydrostep>0))
         {
@@ -124,16 +123,16 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
                     cmag_flux[k_xyz] += c_light*c_light * Face_Area_Vec[k_et_al] * 0.5*(scalar_i*local.ET[k_freq][k_et_loop[k_et_al]] + scalar_j*SphP[j].ET[k_freq][k_et_loop[k_et_al]]);
                 }
             }
-            
-            double A_dot_grad_alignment = cmag*cmag / (Face_Area_Norm*Face_Area_Norm * grad_norm);
-            double v_eff_light = DMIN(c_light , SphP[j].Kappa_RT[k_freq] / (Get_Particle_Size(j)*All.cf_atime));
-            c_hll = 0.5*fabs(face_vel_i-face_vel_j) + v_eff_light;
-            
+            double A_dot_grad_alignment = cmag*cmag / (Face_Area_Norm*Face_Area_Norm * grad_norm); // dimensionless
+
             /* add asymptotic-preserving correction so that numerical flux doesn't unphysically dominate in optically thick limit */
+            double kappa_ij = 0.5 * (local.DiffusionCoeff[k_freq] + rt_diffusion_coefficient(j,k_freq)); // physical
+            double v_eff_light = DMIN(c_light , kappa_ij / (Get_Particle_Size(j)*All.cf_atime)); // physical
+            c_hll = 0.5*fabs(face_vel_i-face_vel_j) + v_eff_light; // physical
             double tau_c_j = Get_Particle_Size(j)*All.cf_atime * SphP[j].Kappa_RT[k_freq]*SphP[j].Density*All.cf_a3inv; // = L_particle / (lambda_mean_free_path) = L*kappa*rho //
             double hll_corr = 1./(1. + 1.5*DMAX(tau_c_i[k_freq],tau_c_j));
             /* q below is a limiter to try and make sure the diffusion speed given by the hll flux doesn't exceed the diffusion speed in the diffusion limit */
-            double q = 0.5 * c_hll * kernel.r * All.cf_atime / fabs(1.e-37 + 0.5*(local.DiffusionCoeff[k_freq]+rt_diffusion_coefficient(j,k_freq))); q = (0.2 + q) / (0.2 + q + q*q);
+            double q = 0.5 * c_hll * kernel.r * All.cf_atime / fabs(1.e-37 + kappa_ij); q = (0.2 + q) / (0.2 + q + q*q); // physical
             double renormerFAC = DMIN(1.,fabs(A_dot_grad_alignment * q * hll_corr));
             
             double hll_tmp = -Face_Area_Norm * c_hll * d_scalar; /* simple HLL term for frame moving at 1/2 inter-particle velocity: here not limited */
