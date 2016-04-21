@@ -288,12 +288,27 @@
 #endif
 #endif
 
+
+#if defined(RT_XRAY)
+#if (RT_XRAY == 1)
+#define RT_SOFT_XRAY
+#endif
+#if (RT_XRAY == 2)
+#define RT_HARD_XRAY
+#endif
+#if (RT_XRAY == 3)
+#define RT_SOFT_XRAY
+#define RT_HARD_XRAY
+#endif
+#endif
+
+
 /* default to speed-of-light equal to actual speed-of-light, and stars as photo-ionizing sources */
 #ifndef RT_SPEEDOFLIGHT_REDUCTION
 #define RT_SPEEDOFLIGHT_REDUCTION 1.0
 #endif
-#ifndef RT_PHOTOION_SOURCES
-#define RT_PHOTOION_SOURCES 16
+#ifndef RT_SOURCES
+#define RT_SOURCES 16
 #endif
 
 /* cooling must be enabled for RT cooling to function */
@@ -473,14 +488,77 @@ typedef  int integertime;
 
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
-#if defined(RT_PHOTOION_MULTIFREQUENCY)
-#define N_RT_FREQ_BINS 4
-#elif defined(GALSF_FB_RT_PHOTONMOMENTUM)
-#define N_RT_FREQ_BINS 3
+#define RT_BIN0 (-1)
+
+#ifndef RT_CHEM_PHOTOION
+#define RT_FREQ_BIN_H0 (RT_BIN0+0)
 #else
-#define N_RT_FREQ_BINS 1
+#define RT_FREQ_BIN_H0 (RT_BIN0+1)
 #endif
+
+#ifndef RT_PHOTOION_MULTIFREQUENCY
+#define RT_FREQ_BIN_He0 (RT_FREQ_BIN_H0+0)
+#define RT_FREQ_BIN_He1 (RT_FREQ_BIN_He0+0)
+#define RT_FREQ_BIN_He2 (RT_FREQ_BIN_He1+0)
+#else
+#define RT_FREQ_BIN_He0 (RT_FREQ_BIN_H0+1)
+#define RT_FREQ_BIN_He1 (RT_FREQ_BIN_He0+1)
+#define RT_FREQ_BIN_He2 (RT_FREQ_BIN_He1+1)
 #endif
+
+#ifndef GALSF_FB_RT_PHOTONMOMENTUM
+#define RT_FREQ_BIN_FIRE_UV (RT_FREQ_BIN_He2+0)
+#define RT_FREQ_BIN_FIRE_OPT (RT_FREQ_BIN_FIRE_UV+0)
+#define RT_FREQ_BIN_FIRE_IR (RT_FREQ_BIN_FIRE_OPT+0)
+#else
+#define RT_FREQ_BIN_FIRE_UV (RT_FREQ_BIN_He2+1)
+#define RT_FREQ_BIN_FIRE_OPT (RT_FREQ_BIN_FIRE_UV+1)
+#define RT_FREQ_BIN_FIRE_IR (RT_FREQ_BIN_FIRE_OPT+1)
+#endif
+
+#ifndef RT_SOFT_XRAY
+#define RT_FREQ_BIN_SOFT_XRAY (RT_FREQ_BIN_FIRE_IR+0)
+#else
+#define RT_FREQ_BIN_SOFT_XRAY (RT_FREQ_BIN_FIRE_IR+1)
+#endif
+
+#ifndef RT_HARD_XRAY
+#define RT_FREQ_BIN_HARD_XRAY (RT_FREQ_BIN_SOFT_XRAY+0)
+#else
+#define RT_FREQ_BIN_HARD_XRAY (RT_FREQ_BIN_SOFT_XRAY+1)
+#endif
+
+#ifndef RT_PHOTOELECTRIC
+#define RT_FREQ_BIN_PHOTOELECTRIC (RT_FREQ_BIN_HARD_XRAY+0)
+#else
+#define RT_FREQ_BIN_PHOTOELECTRIC (RT_FREQ_BIN_HARD_XRAY+1)
+#endif
+
+#ifndef RT_LYMAN_WERNER
+#define RT_FREQ_BIN_LYMAN_WERNER (RT_FREQ_BIN_PHOTOELECTRIC+0)
+#else
+#define RT_FREQ_BIN_LYMAN_WERNER (RT_FREQ_BIN_PHOTOELECTRIC+1)
+#endif
+
+#ifndef RT_OPTICAL_NIR
+#define RT_FREQ_BIN_OPTICAL_NIR (RT_FREQ_BIN_LYMAN_WERNER+0)
+#else
+#define RT_FREQ_BIN_OPTICAL_NIR (RT_FREQ_BIN_LYMAN_WERNER+1)
+#endif
+
+
+/* be sure to add all new wavebands to these lists, or else we will run into problems */
+/* ALSO, the IR bin here should be the last bin: add additional bins ABOVE this line */
+#ifndef RT_INFRARED
+#define RT_FREQ_BIN_INFRARED (RT_FREQ_BIN_OPTICAL_NIR+0)
+#else
+#define RT_FREQ_BIN_INFRARED (RT_FREQ_BIN_OPTICAL_NIR+1)
+#endif
+
+#define N_RT_FREQ_BINS (RT_FREQ_BIN_INFRARED+1)
+
+#endif // #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
+
 
 #ifndef  MULTIPLEDOMAINS
 #define  MULTIPLEDOMAINS     8
@@ -2254,6 +2332,11 @@ extern struct sph_particle_data
 #endif
 #ifdef RT_RAD_PRESSURE_OUTPUT
     MyFloat RadAccel[3];
+#endif
+#ifdef RT_INFRARED
+    MyFloat Radiation_Temperature_4; /* IR radiation field temperature (evolved variable ^4 power, for convenience) */
+    MyFloat Dt_E_gamma_T4_weighted_IR; /* IR radiation temperature-weighted time derivative of photon energy (evolved variable ^4 power, for convenience) */
+    MyFloat Dust_Temperature_4; /* Dust temperature (evolved variable ^4 power, for convenience) */
 #endif
 #ifdef RT_CHEM_PHOTOION
     MyFloat HI;                  /* HI fraction */

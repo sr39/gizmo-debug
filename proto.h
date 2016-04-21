@@ -470,6 +470,7 @@ void stochastic_gas_return_singledomain(void);
 
 #ifdef GALSF_FB_HII_HEATING
 void HII_heating_singledomain(void);
+double particle_ionizing_luminosity_in_cgs(long i);
 #ifdef GALSF_FB_HII_HEATING_USEMULTIDOMAINSHARE
 void HII_heating_withMPIcomm(void);
 int HIIheating_RHIIest(int target);

@@ -455,9 +455,13 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #--------------------- solvers (numerical) --------------------------------------------------------
 #RT_SPEEDOFLIGHT_REDUCTION=1            # set to a number <1 to use the 'reduced speed of light' approximation for photon propagation (C_eff=C_true*RT_SPEEDOFLIGHT_REDUCTION)
 #RT_DIFFUSION_IMPLICIT                  # solve the diffusion part of the RT equations (if needed) implicitly with Conjugate Gradient iteration (Petkova+Springel): less accurate and only works with some methods, but allows larger timesteps [otherwise more accurate explicit used]
-#--------------------- coupled radiation-gas chemistry networks -----------------------------------
-#RT_PHOTOION_SOURCES=1+16+32            # source list for ionizing photons given by bitflag (1=2^0=gas[sfr-based],16=2^4=new stars[mass-based],32=2^5=BH)
-#RT_CHEM_PHOTOION=2                     # RT used to calculate photo-ionization of gas (1=H only [singe-band], 2=H+He [four-band])
+#--------------------- physics: wavelengths+coupled RT-chemistry networks -----------------------------------
+#RT_SOURCES=1+16+32                     # source list for ionizing photons given by bitflag (1=2^0=gas,16=2^4=new stars,32=2^5=BH)
+#RT_CHEM_PHOTOION=2                     # ionizing photons: 1=H-only [single-band], 2=H+He [four-band]
+#RT_XRAY=3                              # x-rays: 1=soft (0.5-2 keV), 2=hard (>2 keV), 3=soft+hard; used for Compton-heating
+#RT_INFRARED                            # infrared: photons absorbed in other bands are down-graded to IR: IR radiation + dust + gas temperatures evolved independently
+#RT_PHOTOELECTRIC                       # far-uv (8-13.6eV): track photo-electric heating photons + their dust interactions 
+#RT_OPTICAL_NIR                         # optical+near-ir: 3600 Angstrom-3 micron (where direct stellar emission dominates) 
 #--------------------- radiation pressure options -------------------------------------------------
 #RT_DISABLE_RAD_PRESSURE                # turn off radiation pressure forces (included by default)
 #RT_RAD_PRESSURE_OUTPUT                 # print radiation pressure to file (requires some extra variables to save it)

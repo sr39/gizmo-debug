@@ -18,7 +18,7 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
     for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
     {
         Fluxes_E_gamma[k_freq] = 0;
-        double kappa_ij = 0.5 * (local.DiffusionCoeff[k_freq] + rt_diffusion_coefficient(j,k_freq)); // physical
+        double kappa_ij = 0.5 * (local.RT_DiffusionCoeff[k_freq] + rt_diffusion_coefficient(j,k_freq)); // physical
         if((kappa_ij>0)&&(local.Mass>0)&&(P[j].Mass>0))
         {
             double scalar_i = local.E_gamma[k_freq] / V_i; // volumetric photon number density in this frequency bin (1/code volume) //
@@ -82,7 +82,12 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
                 double thold_hll = 0.25 * DMIN(fabs(scalar_i*V_i-scalar_j*V_j),DMAX(fabs(scalar_i*V_i),fabs(scalar_j*V_j))); // physical
                 if(check_for_stability_sign<0) {thold_hll *= 1.e-2;}
                 if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
-                Fluxes_E_gamma[k_freq] += cmag / dt_hydrostep;
+                cmag /= dt_hydrostep;
+                Fluxes_E_gamma[k_freq] += cmag;
+#ifdef RT_INFRARED
+                // define advected radiation temperature based on direction of net radiation flow //
+                if(k_freq==RT_FREQ_BIN_INFRARED) {if(Fluxes_E_gamma[k_freq] > 0) {Fluxes_E_gamma_T4_weighted_IR = cmag*SphP[j].Radiation_Temperature_4;} else {Fluxes_E_gamma_T4_weighted_IR = cmag*local.Radiation_Temperature_4;}}
+#endif
             } // if(conduction_wt > 0)
             
         } // close check that kappa and particle masses are positive
@@ -107,6 +112,7 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
         {
             double d_scalar = scalar_i - scalar_j;
             double cmag=0., cmag_flux[3]={0}, grad_norm=0;
+            double kappa_ij = 0.5 * (local.RT_DiffusionCoeff[k_freq] + rt_diffusion_coefficient(j,k_freq)); // physical
             for(k=0;k<3;k++)
             {
                 /* the flux is already known (its explicitly evolved, rather than determined by the gradient of the energy density */
@@ -126,7 +132,6 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
             double A_dot_grad_alignment = cmag*cmag / (Face_Area_Norm*Face_Area_Norm * grad_norm); // dimensionless
 
             /* add asymptotic-preserving correction so that numerical flux doesn't unphysically dominate in optically thick limit */
-            double kappa_ij = 0.5 * (local.DiffusionCoeff[k_freq] + rt_diffusion_coefficient(j,k_freq)); // physical
             double v_eff_light = DMIN(c_light , kappa_ij / (Get_Particle_Size(j)*All.cf_atime)); // physical
             c_hll = 0.5*fabs(face_vel_i-face_vel_j) + v_eff_light; // physical
             double tau_c_j = Get_Particle_Size(j)*All.cf_atime * SphP[j].Kappa_RT[k_freq]*SphP[j].Density*All.cf_a3inv; // = L_particle / (lambda_mean_free_path) = L*kappa*rho //
@@ -153,14 +158,21 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
                 // enforce a flux limiter for stability (to prevent overshoot) //
                 thold_hll = 0.25 * DMIN(fabs(scalar_i*V_i-scalar_j*V_j),DMAX(fabs(scalar_i*V_i),fabs(scalar_j*V_j)));
                 if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
-                Fluxes_E_gamma[k_freq] += cmag / dt_hydrostep;
+                cmag /= dt_hydrostep;
+                Fluxes_E_gamma[k_freq] += cmag;
+#ifdef RT_INFRARED
+                // define advected radiation temperature based on direction of net radiation flow //
+                if(k_freq==RT_FREQ_BIN_INFRARED) {if(Fluxes_E_gamma[k_freq] > 0) {Fluxes_E_gamma_T4_weighted_IR = cmag*SphP[j].Radiation_Temperature_4;} else {Fluxes_E_gamma_T4_weighted_IR = cmag*local.Radiation_Temperature_4;}}
+#endif
             } // if(conduction_wt > 0)
             
             for(k=0;k<3;k++)
             {
+                thold_hll_0 = 0.5; thold_hll_0RE = 1.5;
+                //thold_hll_0 = 1.0; thold_hll_0RE = 2.0;
                 double flux_i=local.Flux[k_freq][k], flux_j=SphP[j].Flux_Pred[k_freq][k];
                 double d_flux =  flux_i/V_i - flux_j/V_j;
-                hll_tmp = -Face_Area_Norm * c_hll * d_flux * renormerFAC;
+                hll_tmp = -Face_Area_Norm * c_hll * d_flux; // * renormerFAC;
                 if(fabs(hll_tmp) > 0)
                 {
                     thold_hll = thold_hll_0 * fabs(cmag_flux[k]);
@@ -171,7 +183,7 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
                 cmag_flux[k] *= dt_hydrostep;
                 if(fabs(cmag_flux[k]) > 0)
                 {
-                    thold_hll = 1.e-37 + 2.0 * DMIN(fabs(flux_i-flux_j),DMAX(fabs(flux_i),fabs(flux_j)));
+                    thold_hll = 1.e-37 + 1.0 * DMAX(V_j*scalar_j*c_light, DMAX(V_i*scalar_i*c_light, DMAX(fabs(flux_i),fabs(flux_j))));
                     if(fabs(cmag_flux[k])>thold_hll) {cmag_flux[k] *= thold_hll/fabs(cmag_flux[k]);}
                     Fluxes_Flux[k_freq][k] += cmag_flux[k] / dt_hydrostep;
                 }

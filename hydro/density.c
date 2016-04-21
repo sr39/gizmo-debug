@@ -699,13 +699,13 @@ void density(void)
                 if((P[i].Type!=0)&&(P[i].Type!=5))
                 {
                     desnumngb = All.DesNumNgb;
-                    if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
-                    desnumngbdev = desnumngb / 2; // enforcing exact number not important
 #ifdef GALSF
+                    if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
                     // if we're finding this for feedback routines, there isn't any good reason to search beyond a modest physical radius //
                     double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
                     maxsoft = 2.0 / unitlength_in_kpc;
 #endif
+                    desnumngbdev = desnumngb / 2; // enforcing exact number not important
                 }
 #endif
                 
@@ -1361,10 +1361,7 @@ int density_isactive(int n)
 #endif
     
 #if defined(RT_SOURCE_INJECTION)
-    if(P[n].Type == 4) return 1;
-#endif
-#if defined(RT_CHEM_PHOTOION)
-    if((1 << P[n].Type) & (RT_PHOTOION_SOURCES)) return 1;
+    if((1 << P[n].Type) & (RT_SOURCES)) return 1;
 #endif
     
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES

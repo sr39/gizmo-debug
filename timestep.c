@@ -577,6 +577,12 @@ integertime get_timestep(int p,		/*!< particle index */
                     double L_ETgrad_inv = sqrt(gradETmag) / (1.e-37 + SphP[p].E_gamma[kf] * SphP[p].Density/P[p].Mass);
                     double L_RT_diffusion = DMAX(L_particle , 1./(L_ETgrad_inv + 1./L_particle)) * All.cf_atime;
                     double dt_rt_diffusion = dt_prefac_diffusion * L_RT_diffusion*L_RT_diffusion / (1.0e-33 + rt_diffusion_coefficient(p,kf));
+                    if(SphP[p].Lambda_FluxLim[kf] < 1) {dt_rt_diffusion *= 1./(SphP[p].Lambda_FluxLim[kf]);}
+                    double dt_advective = dt_rt_diffusion * DMAX(1,DMAX(L_particle , 1/(MIN_REAL_NUMBER + L_ETgrad_inv))*All.cf_atime / L_RT_diffusion);
+                    if(dt_advective > dt_rt_diffusion) {dt_rt_diffusion *= 1. + (1.-SphP[p].Lambda_FluxLim[kf]) * (dt_advective/dt_rt_diffusion-1.);}
+                    if((SphP[p].Lambda_FluxLim[kf] <= 0)||(dt_rt_diffusion<=0)) {dt_rt_diffusion = 1.e9 * dt;}
+                    if((SphP[p].E_gamma[kf] <= MIN_REAL_NUMBER) || (SphP[p].E_gamma_Pred[kf] <= MIN_REAL_NUMBER)) {dt_rt_diffusion = dt_advective;}
+
 #ifdef SUPER_TIMESTEP_DIFFUSION
                     if(dt_rt_diffusion < dt_superstep_explicit) dt_superstep_explicit = dt_rt_diffusion; // explicit time-step
                     double dt_advective = dt_rt_diffusion * DMAX(1,DMAX(L_particle , 1/(MIN_REAL_NUMBER + L_ETgrad_inv))*All.cf_atime / L_RT_diffusion);
@@ -584,13 +590,6 @@ integertime get_timestep(int p,		/*!< particle index */
 #else
                     if(dt_rt_diffusion < dt) dt = dt_rt_diffusion; // normal explicit time-step
 #endif
-#else
-                    /* // candidate timestep limiter for M1 method //
-                    double RT_Flux_Mag = 0.0; for(k=0;k<3;k++) {RT_Flux_Mag += SphP[p].Flux[kf][k]*SphP[p].Flux[kf][k];}
-                    double L_Flux_Mag = sqrt(RT_Flux_Mag) / (1.e-37 + rt_diffusion_coefficient(p,kf) * SphP[p].E_gamma[kf] * SphP[p].Density/P[p].Mass);
-                    double L_RT_diffusion = DMAX(L_particle, 1./(L_Flux_Mag + 1./L_particle)) * All.cf_atime;
-                    double dt_rt_diffusion = dt_prefac_diffusion * L_RT_diffusion*L_RT_diffusion/ (1.0e-33 + rt_diffusion_coefficient(p,kf));
-                    */
 #endif
                 }
                 /* even with a fully-implicit solver, we require a CFL-like criterion on timesteps (much larger steps allowed for stability, but not accuracy) */

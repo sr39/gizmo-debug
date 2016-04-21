@@ -531,7 +531,7 @@ void force_update_node_recursive(int no, int sib, int father)
     MyFloat stellar_lum[N_RT_FREQ_BINS], sigma_eff=0;
     for(j=0;j<N_RT_FREQ_BINS;j++) {stellar_lum[j]=0;}
 #ifdef RT_FIRE
-    sigma_eff = 0.955 * All.UnitMass_in_g*All.HubbleParam * All.cf_a2inv / (All.UnitLength_in_cm*All.UnitLength_in_cm);
+    sigma_eff = 0.955 * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm); // (should be in physical, not comoving units)
 #endif
 #endif
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
@@ -1720,8 +1720,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     {
         fac_stellum_0 = - 1.15 * All.PhotonMomentum_Coupled_Fraction * 1.626e-11 * (soft * soft / (pow((float)All.DesNumNgb,0.66) * pmass)) /
             (All.G * All.UnitVelocity_in_cm_per_s * All.HubbleParam / All.UnitTime_in_s) / All.cf_a2inv;
-        sigma_eff = 0.955 * All.UnitMass_in_g*All.HubbleParam * All.cf_a2inv / (All.UnitLength_in_cm*All.UnitLength_in_cm);
-        double sigma_eff_abs = 0.955 * All.cf_a2inv * 0.333*pow((float)All.DesNumNgb,0.66) * pmass / (soft*soft); // *(Z/Zsolar) for metal-dept
+        sigma_eff = 0.955 * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm); // (should be in -physical-, not comoving units now) //
+        double sigma_eff_abs = 0.955 * 0.333*pow((float)All.DesNumNgb,0.66) * pmass / (soft*soft/All.cf_a2inv); // (physical units) *(Z/Zsolar) for metal-dept
         int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {fac_stellum[kf] = 1 - exp(-rt_kappa(0,kf)*sigma_eff_abs);}
     }
 #endif
@@ -2419,13 +2419,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if(r >= soft) {fac=1./(r2*r);} else {h_inv=1./soft; h3_inv=h_inv*h_inv*h_inv; u=r*h_inv; fac=kernel_gravity(u,h_inv,h3_inv,1);}
                 if((soft>r)&&(soft>0)) fac *= (r2/(soft*soft)); // don't allow cross-section > r2
 #ifdef GALSF_FB_LOCAL_UV_HEATING
-                int i_uv_k = 0;
-                incident_flux_uv += (0.079577*fac*r) * mass_stellarlum[i_uv_k];// * shortrange_table[tabindex];
-                if((mass_stellarlum[N_RT_FREQ_BINS-1]<mass_stellarlum[i_uv_k])&&(mass_stellarlum[N_RT_FREQ_BINS-1]>0)) // if this -isn't- satisfied, no chance you are optically thin to EUV //
+                incident_flux_uv += (0.079577*fac*r) * mass_stellarlum[RT_FREQ_BIN_FIRE_UV];// * shortrange_table[tabindex];
+                if((mass_stellarlum[RT_FREQ_BIN_FIRE_IR]<mass_stellarlum[RT_FREQ_BIN_FIRE_UV])&&(mass_stellarlum[RT_FREQ_BIN_FIRE_IR]>0)) // if this -isn't- satisfied, no chance you are optically thin to EUV //
                 {
                     // here, use ratio and linear scaling of escape with tau to correct to the escape fraction for the correspondingly higher EUV kappa: factor ~2000 is KAPPA_EUV/KAPPA_UV
-                    incident_flux_euv += (0.079577*fac*r) * mass_stellarlum[i_uv_k] * (All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV) *
-                                                                                       ((mass_stellarlum[i_uv_k]+mass_stellarlum[N_RT_FREQ_BINS-1])/(mass_stellarlum[i_uv_k]+mass_stellarlum[N_RT_FREQ_BINS-1]*(2042.6))));
+                    incident_flux_euv += (0.079577*fac*r) * mass_stellarlum[RT_FREQ_BIN_FIRE_UV] * (All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV) *
+                                                                                       ((mass_stellarlum[RT_FREQ_BIN_FIRE_UV]+mass_stellarlum[RT_FREQ_BIN_FIRE_IR])/(mass_stellarlum[RT_FREQ_BIN_FIRE_UV]+mass_stellarlum[RT_FREQ_BIN_FIRE_IR]*(2042.6))));
                 } else {
                     // here, just enforce a minimum escape fraction //
                     double m_lum_total = 0; int ks_q; for(ks_q=0;ks_q<N_RT_FREQ_BINS;ks_q++) {m_lum_total += mass_stellarlum[ks_q];}

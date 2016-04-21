@@ -233,12 +233,15 @@ struct hydrodata_in
 #ifdef RT_DIFFUSION_EXPLICIT
     MyDouble E_gamma[N_RT_FREQ_BINS];
     MyDouble Kappa_RT[N_RT_FREQ_BINS];
-    MyDouble DiffusionCoeff[N_RT_FREQ_BINS];
+    MyDouble RT_DiffusionCoeff[N_RT_FREQ_BINS];
 #if defined(RT_EVOLVE_FLUX) || defined(HYDRO_SPH)
     MyDouble ET[N_RT_FREQ_BINS][6];
 #endif
 #ifdef RT_EVOLVE_FLUX
     MyDouble Flux[N_RT_FREQ_BINS][3];
+#endif
+#ifdef RT_INFRARED
+    MyDouble Radiation_Temperature_4;
 #endif
 #endif
     
@@ -309,6 +312,9 @@ struct hydrodata_out
     
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
     MyFloat Dt_E_gamma[N_RT_FREQ_BINS];
+#if defined(RT_INFRARED)
+    MyFloat Dt_E_gamma_T4_weighted_IR;
+#endif
 #endif
 #if defined(RT_EVOLVE_FLUX)
     MyFloat Dt_Flux[N_RT_FREQ_BINS][3];
@@ -415,7 +421,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     {
         in->E_gamma[k] = SphP[i].E_gamma_Pred[k];
         in->Kappa_RT[k] = SphP[i].Kappa_RT[k];
-        in->DiffusionCoeff[k] = rt_diffusion_coefficient(i,k);
+        in->RT_DiffusionCoeff[k] = rt_diffusion_coefficient(i,k);
 #if defined(RT_EVOLVE_FLUX) || defined(HYDRO_SPH)
         int k_dir;
         for(k_dir=0;k_dir<6;k_dir++) in->ET[k][k_dir] = SphP[i].ET[k][k_dir];
@@ -424,6 +430,9 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
         for(k_dir=0;k_dir<3;k_dir++) in->Flux[k][k_dir] = SphP[i].Flux_Pred[k][k_dir];
 #endif
     }
+#ifdef RT_INFRARED
+        in->Radiation_Temperature_4 = SphP[i].Radiation_Temperature_4;
+#endif
 #endif
 
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
@@ -505,6 +514,9 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
     
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
     for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_E_gamma[k] += out->Dt_E_gamma[k];}
+#if defined(RT_INFRARED)
+    SphP[i].Dt_E_gamma_T4_weighted_IR += out->Dt_E_gamma_T4_weighted_IR;
+#endif
 #endif
 #if defined(RT_EVOLVE_FLUX)
     for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Flux[k][k_dir] += out->Dt_Flux[k][k_dir];}}
@@ -833,6 +845,9 @@ void hydro_force(void)
 #endif
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
             for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_E_gamma[k] = 0;}
+#if defined(RT_INFRARED)
+            SphP[i].Dt_E_gamma_T4_weighted_IR = 0;
+#endif
 #endif
 #if defined(RT_EVOLVE_FLUX)
             for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Flux[k][k_dir] = 0;}}

@@ -239,6 +239,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef TURB_DIFF_METALS
                 double mdot_estimated = 0;
 #endif
+#if defined(RT_INFRARED)
+                double Fluxes_E_gamma_T4_weighted_IR = 0;
+#endif
                 
                 /* --------------------------------------------------------------------------------- */
                 /* calculate the kernel functions (centered on both 'i' and 'j') */
@@ -370,6 +373,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 out.DtInternalEnergy += Fluxes.p;
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
                 for(k=0;k<N_RT_FREQ_BINS;k++) {out.Dt_E_gamma[k] += Fluxes_E_gamma[k];}
+#if defined(RT_INFRARED)
+                out.Dt_E_gamma_T4_weighted_IR += Fluxes_E_gamma_T4_weighted_IR;
+#endif
 #endif
 #ifdef RT_EVOLVE_FLUX
                 for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {out.Dt_Flux[k][k_dir] += Fluxes_Flux[k][k_dir];}}
@@ -430,6 +436,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     SphP[j].DtInternalEnergy -= Fluxes.p;
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
                     for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[j].Dt_E_gamma[k] -= Fluxes_E_gamma[k];}
+#if defined(RT_INFRARED)
+                    SphP[j]..Dt_E_gamma_T4_weighted_IR -= Fluxes_E_gamma_T4_weighted_IR;
+#endif
 #endif
 #ifdef RT_EVOLVE_FLUX
                     for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[j].Dt_Flux[k][k_dir] -= Fluxes_Flux[k][k_dir];}}

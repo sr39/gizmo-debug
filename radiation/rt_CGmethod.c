@@ -53,7 +53,7 @@ static struct rt_cg_data_in
     MyFloat Density;
     MyFloat Hsml;
     MyFloat ET[N_RT_FREQ_BINS][6];
-    MyDouble DiffusionCoeff[N_RT_FREQ_BINS];
+    MyDouble RT_DiffusionCoeff[N_RT_FREQ_BINS];
     //MyDouble Lambda[N_RT_FREQ_BINS];
 }
 *rt_cg_DataIn, *rt_cg_DataGet;
@@ -85,7 +85,7 @@ void particle2in_rt_cg(struct rt_cg_data_in *in, MyIDType i)
     in->Hsml = PPP[i].Hsml;
     in->Mass = P[i].Mass;
     in->Density = SphP[i].Density;
-    for(k=0; k<N_RT_FREQ_BINS; k++) in->DiffusionCoeff[k] = rt_diffusion_coefficient(i,k);
+    for(k=0; k<N_RT_FREQ_BINS; k++) in->RT_DiffusionCoeff[k] = rt_diffusion_coefficient(i,k);
     //for(k=0; k<N_RT_FREQ_BINS; k++) in->Lambda[k] = SphP[i].Lambda_FluxLim[k];
 }
 
@@ -522,7 +522,7 @@ int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, doubl
 #endif
                         double tensor = (ET_ij[0]*dp[0]*dp[0] + ET_ij[1]*dp[1]*dp[1] + ET_ij[2]*dp[2]*dp[2]
                                          + 2.*ET_ij[3]*dp[0]*dp[1] + 2.*ET_ij[4]*dp[1]*dp[2] + 2.*ET_ij[5]*dp[2]*dp[0]) / r2;
-                        double kappa_ij = 0.5*(local.DiffusionCoeff[k] + rt_diffusion_coefficient(j,k));
+                        double kappa_ij = 0.5*(local.RT_DiffusionCoeff[k] + rt_diffusion_coefficient(j,k));
                         double fac = tensor_norm * tensor * kappa_ij;
                         out.matrixmult_out[k] -= fac * matrixmult_in[k][j];
                         out.matrixmult_sum[k] += fac;
