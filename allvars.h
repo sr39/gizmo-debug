@@ -1814,7 +1814,9 @@ extern ALIGN(32) struct particle_data
 {
     short int Type;                 /*!< flags particle type.  0=gas, 1=halo, 2=disk, 3=bulge, 4=stars, 5=bndry */
     short int TimeBin;
-    MyIDType ID;
+    MyIDType ID;                    /*! < unique ID of particle (assigned at beginning of the simulation) */
+    MyIDType ID_child_number;       /*! < child number for particles 'split' from main (retain ID, get new child number) */
+    short int ID_generation;        /*! < generation (need to track for particle-splitting to ensure each 'child' gets a unique child number */
     
     integertime Ti_begstep;         /*!< marks start of current timestep of particle on integer timeline */
     integertime Ti_current;         /*!< current time of the particle */
@@ -2621,6 +2623,8 @@ enum iofields
 { IO_POS,
   IO_VEL,
   IO_ID,
+  IO_CHILD_ID,
+  IO_GENERATION_ID,
   IO_MASS,
   IO_SECONDORDERMASS,
   IO_U,

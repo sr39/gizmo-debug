@@ -301,6 +301,23 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                 P[offset + n].ID = *ip++;
             break;
             
+            
+        case IO_CHILD_ID:		// particle child ID //
+            if(RestartFlag == 2)
+            {
+                for(n = 0; n < pc; n++)
+                    P[offset + n].ID_child_number = *ip++;
+            }
+            break;
+
+        case IO_GENERATION_ID:		// particle generation ID //
+            if(RestartFlag == 2)
+            {
+                for(n = 0; n < pc; n++)
+                    P[offset + n].ID_generation = *ip++;
+            }
+            break;
+
         case IO_MASS:		/* particle mass */
             for(n = 0; n < pc; n++)
                 P[offset + n].Mass = *fp++;

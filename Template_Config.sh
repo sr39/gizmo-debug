@@ -355,6 +355,7 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #COOLING_OPERATOR_SPLIT         # do the hydro heating/cooling in operator-split fashion from chemical/radiative. slightly more accurate when tcool >> tdyn, but much noisier when tcool << tdyn
 #PARTICLE_EXCISION              # enable dynamical excision (remove particles within some radius)
 
+
 #USE_MPI_IN_PLACE               # MPI debugging: makes AllGatherV compatible with MPI_IN_PLACE definitions in some MPI libraries
 #NO_ISEND_IRECV_IN_DOMAIN       # MPI debugging
 #FIX_PATHSCALE_MPI_STATUS_IGNORE_BUG # MPI debugging

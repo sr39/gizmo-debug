@@ -289,16 +289,23 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     TimeBinCount[P[j].TimeBin]++;
     PrevInTimeBin[j] = i;
     NextInTimeBin[j] = NextInTimeBin[i];
-    if(NextInTimeBin[i] >= 0)
-        PrevInTimeBin[NextInTimeBin[i]] = j;
+    if(NextInTimeBin[i] >= 0) {PrevInTimeBin[NextInTimeBin[i]] = j;}
     NextInTimeBin[i] = j;
-    if(LastInTimeBin[P[i].TimeBin] == i)
-        LastInTimeBin[P[i].TimeBin] = j;
-    /* the particle needs an ID: we give it a bit-flip from the original particle to signify the split */
+    if(LastInTimeBin[P[i].TimeBin] == i) {LastInTimeBin[P[i].TimeBin] = j;}
+    // need to assign new particle a unique ID:
+    /*
+        -- old method -- we gave it a bit-flip from the original particle to signify the split 
+        (problem is, this will eventually roll over into itself and/or overlap, and/or overflow buffers, if we allow multiple splits)
     unsigned int bits;
     int SPLIT_GENERATIONS = 4;
     for(bits = 0; SPLIT_GENERATIONS > (1 << bits); bits++);
     P[i].ID += ((MyIDType) 1 << (sizeof(MyIDType) * 8 - bits));
+    */
+    // new method: preserve the original "ID" field, but assign a unique -child- ID: this is unique up to ~32 *GENERATIONS* of repeated splitting!
+    P[j].ID_child_number = P[i].ID_child_number + (1 << P[i].ID_generation); // particle 'i' retains its child number; this ensures uniqueness
+    P[i].ID_generation++; if(P[i].ID_generation > 30) {P[i].ID_generation=0;} // roll over at 32 generations (unlikely to ever reach this)
+    P[j].ID_generation = P[i].ID_generation; // ok, all set!
+    
     /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
     SphP[i].ConditionNumber *= 10.0;
     SphP[j].ConditionNumber = SphP[i].ConditionNumber;
