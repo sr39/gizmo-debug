@@ -231,6 +231,7 @@ int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum)
 #endif // RT_HARD_XRAY
 
     
+#ifdef RADTRANSFER
     /* generic sub routines for gas as a source term */
     if((1 << P[i].Type) & (RT_SOURCES)) // check if the particle falls into one of the allowed source types
     {
@@ -241,6 +242,7 @@ int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum)
             int k; for(k=0;k<N_RT_FREQ_BINS;k++) {lum[k] += SphP[i].Je[k];}        
         }
     }
+#endif
     
     /* need to renormalize ALL sources for reduced speed of light */
     {int k; for(k=0;k<N_RT_FREQ_BINS;k++) {lum[k] *= RT_SPEEDOFLIGHT_REDUCTION;}}
