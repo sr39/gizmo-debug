@@ -39,8 +39,8 @@ void rt_get_sigma(void)
     
     /* now we use the multi-bin spectral information */
     int N_BINS_FOR_IONIZATION = 4;
-    double nu_vec[N_BINS_FOR_IONIZATION]={13.6, 24.6, 54.4, 70.0}
-    int i_vec[N_BINS_FOR_IONIZATION]={RT_FREQ_BIN_H0, RT_FREQ_BIN_He0, RT_FREQ_BIN_He1, RT_FREQ_BIN_He2} 
+    double nu_vec[N_BINS_FOR_IONIZATION] = {13.6, 24.6, 54.4, 70.0};
+    int i_vec[N_BINS_FOR_IONIZATION] = {RT_FREQ_BIN_H0, RT_FREQ_BIN_He0, RT_FREQ_BIN_He1, RT_FREQ_BIN_He2};
     
     int i, j, integral=10000;
     double e, d_nu, e_start, e_end, sum_HI_sigma=0, sum_HI_G=0, hc=C*PLANCK, T_eff=All.star_Teff, I_nu, sig, f, fac_two;

@@ -125,7 +125,7 @@ int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum)
             } else {
                 l_band = 2.14e36 / (x_age * sqrt(x_age)) * fac;
             } // 0.1 solar, with nebular. very weak metallicity dependence, with slightly slower decay in time for lower-metallicity pops; effect smaller than binaries
-            lum[RT_FREQ_BIN_PHOTOELECTRIC] = l_band // band luminosity //
+            lum[RT_FREQ_BIN_PHOTOELECTRIC] = l_band; // band luminosity //
         }
     }
 #endif
@@ -456,7 +456,7 @@ void rt_update_driftkick(MyIDType i, double dt_entr, int mode)
     double c_light = (C / All.UnitVelocity_in_cm_per_s) * RT_SPEEDOFLIGHT_REDUCTION;
     double E_gamma_tot = 0; // dust temperature defined by total radiation energy density //
     {int j; for(j=0;j<N_RT_FREQ_BINS;j++) {E_gamma_tot += SphP[i].E_gamma[j];}}
-    double u_gamma = E_gamma_tot * (SphP[i].Density*All.cf_a3inv/P[target].Mass) * All.UnitPressure_in_cgs * All.HubbleParam*All.HubbleParam; // photon energy density in CGS //
+    double u_gamma = E_gamma_tot * (SphP[i].Density*All.cf_a3inv/P[i].Mass) * All.UnitPressure_in_cgs * All.HubbleParam*All.HubbleParam; // photon energy density in CGS //
     SphP[i].Dust_Temperature_4 = c_light * u_gamma / (4. * 5.67e-5); // estimated effective temperature of local rad field in equilibrium with dust emission //
 #endif
     for(k_tmp=0; k_tmp<N_RT_FREQ_BINS; k_tmp++)
@@ -479,7 +479,7 @@ void rt_update_driftkick(MyIDType i, double dt_entr, int mode)
             dd0 += total_emission_rate; // add the summed absorption as emissivity here // 
             if(fabs(abs_0)>0) 
             {
-                SphP[i].Dust_Temperature_4 = total_emission_rate * (SphP[j].Density*All.cf_a3inv/P[j].Mass) / (4. * fabs(abs_0) / c_light); // flux units
+                SphP[i].Dust_Temperature_4 = total_emission_rate * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (4. * fabs(abs_0) / c_light); // flux units
                 SphP[i].Dust_Temperature_4 *= (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam * All.UnitVelocity_in_cm_per_s) / (5.67e-5); // convert to cgs
             }
             if(mode==0)

@@ -130,6 +130,7 @@ double bh_lum_bol(double mdot, double mass, long id)
 {
     double c_code = C / All.UnitVelocity_in_cm_per_s;
     double lum = All.BlackHoleRadiativeEfficiency * mdot * c_code*c_code;
+    //double lum_edd = All.BlackHoleRadiativeEfficiency * bh_eddington_mdot(mass) * c_code*c_code; if(lum > lum_edd) {lum = lum_edd;} // cap -luminosity- at eddington -luminosity-
 
 #ifdef SINGLE_STAR_FORMATION
     double m_solar = mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS);
