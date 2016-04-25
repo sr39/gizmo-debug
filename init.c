@@ -726,6 +726,12 @@ void init(void)
         disp_setup_smoothinglengths();
 #endif
     
+#if defined GALSF_SFR_IMF_VARIATION
+    for(i = 0; i < NumPart; i++)
+    {
+        P[i].IMF_Mturnover = 2.0; // reset to normal IMF
+    }
+#endif
 
 #if defined(TURB_DRIVING)
     {
