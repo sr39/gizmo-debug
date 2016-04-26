@@ -949,7 +949,9 @@ void read_file(char *fname, int readTask, int lastTask)
 #endif
                                 continue;	/* ignore all other blocks in initial conditions */
             
-            
+
+            if(RestartFlag == 0 && (blocknr == IO_GENERATION_ID || blocknr == IO_CHILD_ID)) continue;
+
 #ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
             if(blocknr == IO_POT)
                 continue;
