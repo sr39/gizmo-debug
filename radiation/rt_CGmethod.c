@@ -71,13 +71,13 @@ double rt_diffusion_cg_vector_multiply(double *a, double *b);
 double rt_diffusion_cg_vector_sum(double *a);
 void rt_diffusion_cg_matrix_multiply(double **matrixmult_in, double **matrixmult_out, double **matrixmult_sum);
 int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, double **matrixmult_out, double **matrixmult_sum, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void particle2in_rt_cg(struct rt_cg_data_in *in, MyIDType i);
+void particle2in_rt_cg(struct rt_cg_data_in *in, int i);
 void *rt_diffusion_cg_evaluate_primary(void *p, double **matrixmult_in, double **matrixmult_out, double **matrixmult_sum);
 void *rt_diffusion_cg_evaluate_secondary(void *p, double **matrixmult_in, double **matrixmult_out, double **matrixmult_sum);
 
 
 /*! subroutine to insert the data needed to be passed to other processors: here for convenience, match to structure above  */
-void particle2in_rt_cg(struct rt_cg_data_in *in, MyIDType i)
+void particle2in_rt_cg(struct rt_cg_data_in *in, int i)
 {
     int k;
     for(k=0; k<3; k++) {in->Pos[k] = P[i].Pos[k];}

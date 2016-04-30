@@ -240,7 +240,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double mdot_estimated = 0;
 #endif
 #if defined(RT_INFRARED)
-                double Fluxes_E_gamma_T4_weighted_IR = 0;
+                double Fluxes_E_gamma_T_weighted_IR = 0;
 #endif
                 
                 /* --------------------------------------------------------------------------------- */
@@ -374,7 +374,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
                 for(k=0;k<N_RT_FREQ_BINS;k++) {out.Dt_E_gamma[k] += Fluxes_E_gamma[k];}
 #if defined(RT_INFRARED)
-                out.Dt_E_gamma_T4_weighted_IR += Fluxes_E_gamma_T4_weighted_IR;
+                out.Dt_E_gamma_T_weighted_IR += Fluxes_E_gamma_T_weighted_IR;
 #endif
 #endif
 #ifdef RT_EVOLVE_FLUX
@@ -437,7 +437,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
                     for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[j].Dt_E_gamma[k] -= Fluxes_E_gamma[k];}
 #if defined(RT_INFRARED)
-                    SphP[j].Dt_E_gamma_T4_weighted_IR -= Fluxes_E_gamma_T4_weighted_IR;
+                    SphP[j].Dt_E_gamma_T_weighted_IR -= Fluxes_E_gamma_T_weighted_IR;
 #endif
 #endif
 #ifdef RT_EVOLVE_FLUX

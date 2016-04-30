@@ -392,7 +392,6 @@ void begrun(void)
 #endif
 #ifdef RT_CHEM_PHOTOION
     rt_get_sigma();
-    rt_get_lum_for_spectral_bin_stars(All.star_Teff, precalc_stellar_luminosity_fraction);
 #endif
 #if defined(RT_DIFFUSION_CG)
     All.Radiation_Ti_begstep = 0;
@@ -1691,7 +1690,7 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 
-#ifdef RT_CHEM_PHOTOION
+#if defined(RT_CHEM_PHOTOION) && !defined(GALSF_FB_HII_HEATING)
         strcpy(tag[nt], "IonizingLuminosityPerSolarMass_cgs");
         addr[nt] = &All.IonizingLuminosityPerSolarMass_cgs;
         id[nt++] = REAL;

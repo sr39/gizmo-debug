@@ -951,7 +951,10 @@ void read_file(char *fname, int readTask, int lastTask)
             
 
             if(RestartFlag == 0 && (blocknr == IO_GENERATION_ID || blocknr == IO_CHILD_ID)) continue;
-
+#if defined(NO_CHILD_IDS_IN_ICS) || defined(ASSIGN_NEW_IDS)
+            if(blocknr == IO_GENERATION_ID || blocknr == IO_CHILD_ID) continue;
+#endif
+            
 #ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
             if(blocknr == IO_POT)
                 continue;

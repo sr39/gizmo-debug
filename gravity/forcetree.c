@@ -1531,7 +1531,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double dx_stellarlum=0, dy_stellarlum=0, dz_stellarlum=0, sigma_eff=0;
     int valid_gas_particle_for_rt = 0;
 #ifdef RT_OTVET
-    double RT_ET[N_RT_FREQ_BINS][6]={0};
+    double RT_ET[N_RT_FREQ_BINS][6]={{0}};
 #endif
 #endif
     

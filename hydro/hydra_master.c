@@ -241,7 +241,7 @@ struct hydrodata_in
     MyDouble Flux[N_RT_FREQ_BINS][3];
 #endif
 #ifdef RT_INFRARED
-    MyDouble Radiation_Temperature_4;
+    MyDouble Radiation_Temperature;
 #endif
 #endif
     
@@ -313,7 +313,7 @@ struct hydrodata_out
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
     MyFloat Dt_E_gamma[N_RT_FREQ_BINS];
 #if defined(RT_INFRARED)
-    MyFloat Dt_E_gamma_T4_weighted_IR;
+    MyFloat Dt_E_gamma_T_weighted_IR;
 #endif
 #endif
 #if defined(RT_EVOLVE_FLUX)
@@ -431,7 +431,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
 #endif
     }
 #ifdef RT_INFRARED
-        in->Radiation_Temperature_4 = SphP[i].Radiation_Temperature_4;
+        in->Radiation_Temperature = SphP[i].Radiation_Temperature;
 #endif
 #endif
 
@@ -515,7 +515,7 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
     for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_E_gamma[k] += out->Dt_E_gamma[k];}
 #if defined(RT_INFRARED)
-    SphP[i].Dt_E_gamma_T4_weighted_IR += out->Dt_E_gamma_T4_weighted_IR;
+    SphP[i].Dt_E_gamma_T_weighted_IR += out->Dt_E_gamma_T_weighted_IR;
 #endif
 #endif
 #if defined(RT_EVOLVE_FLUX)
@@ -846,7 +846,7 @@ void hydro_force(void)
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
             for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_E_gamma[k] = 0;}
 #if defined(RT_INFRARED)
-            SphP[i].Dt_E_gamma_T4_weighted_IR = 0;
+            SphP[i].Dt_E_gamma_T_weighted_IR = 0;
 #endif
 #endif
 #if defined(RT_EVOLVE_FLUX)

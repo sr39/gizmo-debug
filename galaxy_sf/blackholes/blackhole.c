@@ -164,7 +164,7 @@ double bh_lum_bol(double mdot, double mass, long id)
 
 
 /* calculate escape velocity to use for bounded-ness calculations relative to the BH */
-double bh_vesc(MyIDType j, double mass, double r_code)
+double bh_vesc(int j, double mass, double r_code)
 {
     double cs_to_add_km_s = 10.0; /* we can optionally add a 'fudge factor' to v_esc to set a minimum value; useful for galaxy applications */
 #if defined(SINGLE_STAR_FORMATION)
@@ -180,7 +180,7 @@ double bh_vesc(MyIDType j, double mass, double r_code)
 }
 
 /* check whether a particle is sufficiently bound to the BH to qualify for 'gravitational capture' */
-int bh_check_boundedness(MyIDType j, double vrel, double vesc, double dr_code)
+int bh_check_boundedness(int j, double vrel, double vesc, double dr_code)
 {
     /* if pair is a gas particle make sure to account for its thermal pressure */
     double cs = 0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}

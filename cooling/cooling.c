@@ -979,6 +979,9 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
 #if defined(SINGLE_STAR_FORMATION) && defined(BH_COMPTON_HEATING)
             Tdust = AGN_T_Compton;
 #endif
+#ifdef RT_INFRARED
+            if(target >= 0) {Tdust = SphP[target].Dust_Temperature;}
+#endif
             if(T > Tdust) {LambdaDust = 1.116e-32 * (T-Tdust)*sqrt(T)*(1.-0.8*exp(-75./T)) * (Z[0]/All.SolarAbundances[0]);}  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
 #endif
             Lambda += LambdaMol + LambdaDust;
@@ -1052,6 +1055,9 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
         double Tdust = 30.;
 #if defined(SINGLE_STAR_FORMATION) && defined(BH_COMPTON_HEATING)
         Tdust = AGN_T_Compton;
+#endif
+#ifdef RT_INFRARED
+        if(target >= 0) {Tdust = SphP[target].Dust_Temperature;}
 #endif
         if(T < Tdust) {Heat += 1.116e-32 * (Tdust-T)*sqrt(T)*(1.-0.8*exp(-75./T)) * (Z[0]/All.SolarAbundances[0]);} // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
 #endif

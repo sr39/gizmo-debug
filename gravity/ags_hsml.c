@@ -935,7 +935,7 @@ void *ags_density_evaluate_secondary(void *p)
 
 
 /* routine to determine if we need to use ags_density to calculate Hsml */
-int ags_density_isactive(MyIDType i)
+int ags_density_isactive(int i)
 {
     if(P[i].TimeBin < 0) return 0; /* check our 'marker' for particles which have finished
                                         iterating to an Hsml solution (if they have, dont do them again) */
@@ -951,7 +951,7 @@ int ags_density_isactive(MyIDType i)
 }
 
 /* routine to return the maximum allowed softening */
-double ags_return_maxsoft(MyIDType i)
+double ags_return_maxsoft(int i)
 {
     double maxsoft = All.MaxHsml; // overall maximum - nothing is allowed to exceed this
 #if !(EXPAND_PREPROCESSOR_(ADAPTIVE_GRAVSOFT_FORALL) == 1)
@@ -974,7 +974,7 @@ double ags_return_maxsoft(MyIDType i)
 }
 
 /* routine to return the minimum allowed softening */
-double ags_return_minsoft(MyIDType i)
+double ags_return_minsoft(int i)
 {
     double minsoft = All.ForceSoftening[P[i].Type]; // this is the user-specified minimum
     /* now need to restrict: dont allow 'self-acceleration' to be larger than actual gravitational accelerations! */

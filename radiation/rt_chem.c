@@ -12,7 +12,7 @@
 #ifdef RT_CHEM_PHOTOION
 
 /* return photon number density in physical code units */
-double rt_return_photon_number_density(MyIDType i, int k)
+double rt_return_photon_number_density(int i, int k)
 {
     return SphP[i].E_gamma[k] * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (rt_nu_eff_eV[k]*ELECTRONVOLT_IN_ERGS / All.UnitEnergy_in_cgs * All.HubbleParam);
 }
@@ -38,19 +38,24 @@ void rt_get_sigma(void)
 #else
     
     /* now we use the multi-bin spectral information */
-    int N_BINS_FOR_IONIZATION = 4;
+#define N_BINS_FOR_IONIZATION 4
     double nu_vec[N_BINS_FOR_IONIZATION] = {13.6, 24.6, 54.4, 70.0};
     int i_vec[N_BINS_FOR_IONIZATION] = {RT_FREQ_BIN_H0, RT_FREQ_BIN_He0, RT_FREQ_BIN_He1, RT_FREQ_BIN_He2};
     
     int i, j, integral=10000;
-    double e, d_nu, e_start, e_end, sum_HI_sigma=0, sum_HI_G=0, hc=C*PLANCK, T_eff=All.star_Teff, I_nu, sig, f, fac_two;
+    double e, d_nu, e_start, e_end, sum_HI_sigma=0, sum_HI_G=0, hc=C*PLANCK, I_nu, sig, f, fac_two, T_eff, sum_egy_allbands=0;
+#ifdef GALSF_FB_HII_HEATING
+    T_eff = 1.0e5;
+#else 
+    T_eff = All.star_Teff;
+#endif
     fac_two = ELECTRONVOLT_IN_ERGS / All.UnitEnergy_in_cgs * All.HubbleParam;
 #ifdef RT_CHEM_PHOTOION_HE
     double sum_HeI_sigma=0, sum_HeII_sigma=0, sum_HeI_G=0, sum_HeII_G=0;
 #endif    
     for(k = 0; k < N_BINS_FOR_IONIZATION; k++)
     {
-        i = i_vec[k]
+        i = i_vec[k];
         e_start = nu[i] = nu_vec[k];
         if(k==N_BINS_FOR_IONIZATION-1) {e_end = 500.;} else {e_end = nu_vec[k+1];} 
         d_nu = (e_end - e_start) / (float)(integral - 1);
@@ -58,12 +63,12 @@ void rt_get_sigma(void)
 #ifdef RT_CHEM_PHOTOION_HE
         rt_sigma_HeI[i] = rt_sigma_HeII[i] = G_HeI[i] = G_HeII[i] = 0.0;
 #endif
-        double n_photon_sum = 0.0;
+        double n_photon_sum = 0.0, sum_energy = 0.0;
         for(j = 0; j < integral; j++)
         {
             e = e_start + j * d_nu;
             I_nu = 2.0 * pow(e * ELECTRONVOLT_IN_ERGS, 3) / (hc * hc) / (exp(e * ELECTRONVOLT_IN_ERGS / (BOLTZMANN * T_eff)) - 1.0);
-            rt_nu_eff_eV[i] += d_nu * I_nu;
+            sum_energy += d_nu * I_nu;
             n_photon_sum += d_nu * I_nu / e;
             if(nu[i] >= 13.6)
             {
@@ -95,10 +100,13 @@ void rt_get_sigma(void)
             }
 #endif
         }
-        rt_nu_eff_eV[i] /= n_photon_sum;
+        rt_nu_eff_eV[i] = sum_energy / n_photon_sum;
+        precalc_stellar_luminosity_fraction[i] = sum_energy;
+        sum_egy_allbands += sum_energy;
     }
     for(i = 0; i < N_RT_FREQ_BINS; i++)
     {
+        precalc_stellar_luminosity_fraction[i] /= sum_egy_allbands;
         if(nu[i] >= 13.6)
         {
             rt_sigma_HI[i] *= fac / sum_HI_sigma;

@@ -1527,7 +1527,7 @@ extern struct global_data_all_processes
   integertime Radiation_Ti_endstep;
 #endif
 
-#ifdef RT_CHEM_PHOTOION
+#if defined(RT_CHEM_PHOTOION) && !defined(GALSF_FB_HII_HEATING)
     double IonizingLuminosityPerSolarMass_cgs;
     double star_Teff;
 #endif
@@ -2336,9 +2336,9 @@ extern struct sph_particle_data
     MyFloat RadAccel[3];
 #endif
 #ifdef RT_INFRARED
-    MyFloat Radiation_Temperature_4; /* IR radiation field temperature (evolved variable ^4 power, for convenience) */
-    MyFloat Dt_E_gamma_T4_weighted_IR; /* IR radiation temperature-weighted time derivative of photon energy (evolved variable ^4 power, for convenience) */
-    MyFloat Dust_Temperature_4; /* Dust temperature (evolved variable ^4 power, for convenience) */
+    MyFloat Radiation_Temperature; /* IR radiation field temperature (evolved variable ^4 power, for convenience) */
+    MyFloat Dt_E_gamma_T_weighted_IR; /* IR radiation temperature-weighted time derivative of photon energy (evolved variable ^4 power, for convenience) */
+    MyFloat Dust_Temperature; /* Dust temperature (evolved variable ^4 power, for convenience) */
 #endif
 #ifdef RT_CHEM_PHOTOION
     MyFloat HI;                  /* HI fraction */

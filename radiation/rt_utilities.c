@@ -51,7 +51,7 @@ extern pthread_mutex_t mutex_partnodedrift;
 /***********************************************************************************************************/
 /* routine which returns the luminosity for the desired source particles, as a function of whatever the user desires, in the relevant bands */
 /***********************************************************************************************************/
-int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum)
+int rt_get_source_luminosity(int i, double sigma_0, double *lum)
 {
     int active_check = 0;
     
@@ -89,7 +89,14 @@ int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum)
         lum[RT_FREQ_BIN_FIRE_IR]  = L * (1-f_uv-f_op);
     }
 #endif
-    
+
+#if defined(RT_INFRARED)
+    /* can add direct infrared sources, but default to no direct IR (just re-emitted light) */
+    if((1 << P[i].Type) & (RT_SOURCES))
+    {
+        lum[RT_FREQ_BIN_INFRARED] = 0.0;
+    }
+#endif
     
 #if defined(RT_OPTICAL_NIR)
     /* Optical-NIR approximate spectra for stars as used in the FIRE (Hopkins et al.) models */
@@ -146,7 +153,7 @@ int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum)
             } else {
                 l_band = 0.962e36 * pow(x_age,-1.6) * exp(-x_age/117.6) * fac;
             } // 0.1 solar, with nebular. very weak metallicity dependence, with slightly slower decay in time for lower-metallicity pops; effect smaller than binaries
-            lum[RT_FREQ_BIN_PHOTOELECTRIC] = l_band // band luminosity //
+            lum[RT_FREQ_BIN_LYMAN_WERNER] = l_band; // band luminosity //
         }
     }
 #endif
@@ -160,18 +167,18 @@ int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum)
         double fac = 0;
 #if defined(GALSF_FB_HII_HEATING)
         /* calculate ionizing flux based on actual stellar or BH physics */
-        if(sigma_0<0) {return 1;} active_check=1; 
-        fac += particle_ionizing_luminosity_in_cgs(i) * (All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs));
-#else         
-        /* ionizing flux (crudely estimated) from old (Petkova & Springel) implementation */
-#if defined(BLACK_HOLES)
-        if(P[i].Type==5) {if(sigma_0<0) {return 1;} active_check=1; fac += 0.0001 * P[i].BH_Mdot * pow(C / All.UnitVelocity_in_cm_per_s, 2);}
-#endif
+        if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
+        {
+            if(sigma_0<0) {return 1;} active_check=1;
+            fac += particle_ionizing_luminosity_in_cgs(i) * (All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs));
+        }
+#else
 #ifdef RT_ILIEV_TEST1
         if(P[i].Type==4) {if(sigma_0<0) {return 1;} active_check=1; fac += 5.0e48 * (13.6*ELECTRONVOLT_IN_ERGS) * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs);} // 5e48 in ionizing photons per second //
 #else
         if(P[i].Type==4) {if(sigma_0<0) {return 1;} active_check=1; fac += (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.IonizingLuminosityPerSolarMass_cgs * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs);} // flux from star particles according to mass
 #endif
+#endif // GALSF_FB_HII_HEATING else
 #if defined(RT_PHOTOION_MULTIFREQUENCY)
         // we should have pre-tabulated how much luminosity gets assigned to each different waveband according to the following function //
         lum[RT_FREQ_BIN_He0]=lum[RT_FREQ_BIN_He1]=lum[RT_FREQ_BIN_He2]=0;
@@ -179,7 +186,6 @@ int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum)
 #else
         lum[RT_FREQ_BIN_H0] += fac;
 #endif
-#endif // GALSF_FB_HII_HEATING else
     }
 #endif // RT_CHEM_PHOTOION
 
@@ -255,7 +261,7 @@ int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum)
 /***********************************************************************************************************/
 /* calculate the opacity for use in radiation transport operations [in physical code units = L^2/M] */
 /***********************************************************************************************************/
-double rt_kappa(MyIDType i, int k_freq)
+double rt_kappa(int i, int k_freq)
 {    
     
 #ifdef RT_CHEM_PHOTOION
@@ -272,7 +278,7 @@ double rt_kappa(MyIDType i, int k_freq)
 #endif
 
 
-#if defined(RT_HARD_XRAY) || defined(RT_SOFT_XRAY) || defined(RT_PHOTOELECTRIC) || defined (GALSF_FB_RT_PHOTONMOMENTUM) || defined(RT_OPTICAL_NIR)
+#if defined(RT_HARD_XRAY) || defined(RT_SOFT_XRAY) || defined(RT_PHOTOELECTRIC) || defined (GALSF_FB_RT_PHOTONMOMENTUM) || defined(RT_OPTICAL_NIR) || defined(RT_LYMAN_WERNER) || defined(RT_INFRARED)
     double fac = All.UnitMass_in_g * All.HubbleParam / (All.UnitLength_in_cm * All.UnitLength_in_cm); /* units */
     double Zfac = 1.0; // assume solar metallicity 
 #ifdef METALS
@@ -294,7 +300,7 @@ double rt_kappa(MyIDType i, int k_freq)
 #endif
 #ifdef RT_PHOTOELECTRIC
     /* opacity comes primarily from dust (ignoring H2 molecular opacities here) */
-    if(k_freq==RT_FREQ_BIN_PHOTOELECTRIC) {return 2000.*Zfac * fac;}
+    if(k_freq==RT_FREQ_BIN_PHOTOELECTRIC) {return 2000. * DMAX(1.e-4,Zfac) * fac;}
 #endif
 #ifdef RT_LYMAN_WERNER
     /* opacity from molecular H2 and dust (dominant at higher-metallicity) should be included */
@@ -302,14 +308,18 @@ double rt_kappa(MyIDType i, int k_freq)
 #endif
 #ifdef RT_OPTICAL_NIR
     /* opacity comes primarily from dust */
-    if(k_freq==RT_FREQ_BIN_PHOTOELECTRIC) {return 180.*Zfac * fac;}
+    if(k_freq==RT_FREQ_BIN_OPTICAL_NIR) {return 180.*Zfac * fac;}
 #endif
 #ifdef RT_INFRARED
     /* IR with dust opacity */
     if(k_freq==RT_FREQ_BIN_INFRARED)
     {
-        double T_dust_em_4 = SphP[i].Dust_Temperature_4; // dust temperature in K^4 //
-        double TR4 = SphP[i].Radiation_Temperature_4; // radiation temperature in K^4 //
+        if(isnan(SphP[i].Dust_Temperature)) {SphP[i].Dust_Temperature=10;} // reset baseline
+        if(isnan(SphP[i].Radiation_Temperature) || SphP[i].Radiation_Temperature<=0) {SphP[i].Radiation_Temperature=10;} // reset baseline
+        
+        double T_dust_em = SphP[i].Dust_Temperature; // dust temperature in K //
+        double Trad = SphP[i].Radiation_Temperature; // radiation temperature in K //
+        if(Trad <= 0) {Trad = 5600.;}
         double kappa = 0.0; 
         /* opacities are from tables of Semenov et al 2003; we use their 'standard' 
             model, for each -dust- temperature range (which gives a different dust composition, 
@@ -322,19 +332,19 @@ double rt_kappa(MyIDType i, int k_freq)
             the deviations from the fit functions are much smaller than the deviations owing 
             to different grain composition choices (porous/non, composite/non, 5-layer/aggregated/etc) 
             in Semenov et al's paper */
-        if(T_dust_em_4 < 5.06e12) // < 1500 K, dust is present
+        if(T_dust_em < 1500.) // < 1500 K, dust is present
         {
-            double x = log10(TR4) - 8.; // needed for fitting functions to opacities (may come up with cheaper function later)
+            double x = 4.*log10(Trad) - 8.; // needed for fitting functions to opacities (may come up with cheaper function later)
             double dx_excess=0; if(x > 7.) {dx_excess=x-7.; x=7.;} // cap for maximum temperatures at which fit-functions should be used //
             if(x < -4.) {x=-4.;} // cap for minimum temperatures at which fit functions below should be used //
-            if(T_dust_em_4 < 6.55e8) // Tdust < 160 K (all dust constituents present)
+            if(T_dust_em < 160.) // Tdust < 160 K (all dust constituents present)
             {
                 kappa = exp(0.72819004 + 0.75142468*x - 0.07225763*x*x - 0.01159257*x*x*x + 0.00249064*x*x*x*x);
-            } else if(T_dust_em_4 < 5.72e9) { // 160 < Tdust < 275 (no ice present)
+            } else if(T_dust_em < 275.) { // 160 < Tdust < 275 (no ice present)
                 kappa = exp(0.16658241 + 0.70072926*x - 0.04230367*x*x - 0.01133852*x*x*x + 0.0021335*x*x*x*x);
-            } else if(T_dust_em_4 < 3.26e10) { // 275 < Tdust < 425 (no ice or volatile organics present)
+            } else if(T_dust_em < 425.) { // 275 < Tdust < 425 (no ice or volatile organics present)
                 kappa = exp(0.03583845 + 0.68374146*x - 0.03791989*x*x - 0.01135789*x*x*x + 0.00212918*x*x*x*x);        
-            } else if(T_dust_em_4 < 2.14e11) { // 425 < Tdust < 680 (silicates, iron, & troilite present)
+            } else if(T_dust_em < 680.) { // 425 < Tdust < 680 (silicates, iron, & troilite present)
                 kappa = exp(-0.76576135 + 0.57053532*x - 0.0122809*x*x - 0.01037311*x*x*x + 0.00197672*x*x*x*x);
             } else { // 680 < Tdust < 1500 (silicates & iron present)
                 kappa = exp(-2.23863222 + 0.81223269*x + 0.08010633*x*x + 0.00862152*x*x*x - 0.00271909*x*x*x*x);
@@ -342,7 +352,7 @@ double rt_kappa(MyIDType i, int k_freq)
             if(dx_excess > 0) {kappa *= exp(0.57*dx_excess);} // assumes kappa scales linearly with temperature (1/lambda) above maximum in fit; pretty good approximation //
             kappa *= Zfac; // the above are all dust opacities, so they scale with metallicity
         }
-        if(kappa < 0.35) {kappa = 0.35;} // Thompson scattering (sets floor)
+        kappa += 0.35; // Thompson scattering
         return kappa * fac; // convert units and return
     }
 #endif
@@ -376,7 +386,7 @@ double rt_kappa(MyIDType i, int k_freq)
     gives the change in the energy density from absorptions (the sink term) */
 /***********************************************************************************************************/
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
-double rt_absorption_rate(MyIDType i, int k_freq)
+double rt_absorption_rate(int i, int k_freq)
 {
     /* should be equal to (C * Kappa_opacity * rho) */
     return RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s) * rt_kappa(i, k_freq) * SphP[i].Density*All.cf_a3inv;
@@ -391,7 +401,7 @@ double rt_absorption_rate(MyIDType i, int k_freq)
 /***********************************************************************************************************/
 /* returns the photon diffusion coefficient = fluxlimiter * c_light / (kappa_opacity * density)  [physical units] */
 /***********************************************************************************************************/
-double rt_diffusion_coefficient(MyIDType i, int k_freq)
+double rt_diffusion_coefficient(int i, int k_freq)
 {
     double c_light = (C / All.UnitVelocity_in_cm_per_s) * RT_SPEEDOFLIGHT_REDUCTION;
     return SphP[i].Lambda_FluxLim[k_freq] * c_light / (1.e-37 + SphP[i].Kappa_RT[k_freq] * SphP[i].Density*All.cf_a3inv);
@@ -402,7 +412,7 @@ double rt_diffusion_coefficient(MyIDType i, int k_freq)
 /***********************************************************************************************************/
 /* calculate the eddington tensor according to the M1 formalism (for use with that solver, obviously) */
 /***********************************************************************************************************/
-void rt_eddington_update_calculation(MyIDType j)
+void rt_eddington_update_calculation(int j)
 {
 #ifdef RT_M1
     int k_freq, k;
@@ -449,7 +459,7 @@ void rt_eddington_update_calculation(MyIDType j)
     mode = 1 == predict/drift operation (update the predicted quantities)
  */
 /***********************************************************************************************************/
-void rt_update_driftkick(MyIDType i, double dt_entr, int mode)
+void rt_update_driftkick(int i, double dt_entr, int mode)
 {
 #if defined(RT_EVOLVE_NGAMMA)
     int kf, k_tmp; 
@@ -459,7 +469,8 @@ void rt_update_driftkick(MyIDType i, double dt_entr, int mode)
     double E_gamma_tot = 0; // dust temperature defined by total radiation energy density //
     {int j; for(j=0;j<N_RT_FREQ_BINS;j++) {E_gamma_tot += SphP[i].E_gamma[j];}}
     double u_gamma = E_gamma_tot * (SphP[i].Density*All.cf_a3inv/P[i].Mass) * All.UnitPressure_in_cgs * All.HubbleParam*All.HubbleParam; // photon energy density in CGS //
-    SphP[i].Dust_Temperature_4 = c_light * u_gamma / (4. * 5.67e-5); // estimated effective temperature of local rad field in equilibrium with dust emission //
+    double Dust_Temperature_4 = All.UnitVelocity_in_cm_per_s * c_light * u_gamma / (4. * 5.67e-5); // estimated effective temperature of local rad field in equilibrium with dust emission //
+    SphP[i].Dust_Temperature = sqrt(sqrt(Dust_Temperature_4));
 #endif
     for(k_tmp=0; k_tmp<N_RT_FREQ_BINS; k_tmp++)
     {
@@ -472,29 +483,46 @@ void rt_update_driftkick(MyIDType i, double dt_entr, int mode)
         if(mode==0) {e0 = SphP[i].E_gamma[kf];} else {e0 = SphP[i].E_gamma_Pred[kf];}
         double dd0 = SphP[i].Je[kf];
         double a0 = -rt_absorption_rate(i,kf);
-        double abs_0;
-        abs_0 = a0;
 #ifdef RT_INFRARED
         if(kf == RT_FREQ_BIN_INFRARED)
         {
-            double total_emission_rate = E_abs_tot + fabs(abs_0)*e0;
-            dd0 += total_emission_rate; // add the summed absorption as emissivity here // 
-            if(fabs(abs_0)>0) 
+            double T_cmb = 2.73 / All.cf_atime; // don't let dust or radiation temperatures drop below T_cmb //
+            if((mode==0) && (SphP[i].Dt_E_gamma[kf]!=0) && (dt_entr!=0)) // only update temperatures on kick operations //
             {
-                SphP[i].Dust_Temperature_4 = total_emission_rate * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (4. * fabs(abs_0) / c_light); // flux units
-                SphP[i].Dust_Temperature_4 *= (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam * All.UnitVelocity_in_cm_per_s) / (5.67e-5); // convert to cgs
+                // advected radiation changes temperature of radiation field, before absorption //
+                double dE_fac = SphP[i].Dt_E_gamma[kf] * dt_entr; // change in energy from advection
+                double dTE_fac = SphP[i].Dt_E_gamma_T_weighted_IR * dt_entr; // T-weighted change from advection
+                double dE_abs = -e0 * (1. - exp(a0*dt_entr)); // change in energy from absorption
+                double rfac=1; if(dE_fac < -0.5*(e0+dE_abs)) {rfac=fabs(0.5*(e0+dE_abs))/fabs(dE_fac);} else {if(dE_fac > 0.5*e0) {rfac=0.5*e0/dE_fac;}}
+                dE_fac*=rfac; dTE_fac*=rfac; // limit temperature change from advection to prevent spurious divergences
+                
+                double T_max = DMAX(SphP[i].Radiation_Temperature , dE_fac / dTE_fac);
+                SphP[i].Radiation_Temperature = (e0 + dE_fac) / (MIN_REAL_NUMBER + DMAX(0., e0 / SphP[i].Radiation_Temperature + dTE_fac));
+                SphP[i].Radiation_Temperature = DMIN(SphP[i].Radiation_Temperature, T_max);
+                a0 = -rt_absorption_rate(i,kf); // update absorption rate using the new radiation temperature //
             }
-            if(mode==0)
+            double total_emission_rate = E_abs_tot + fabs(a0)*e0;
+            dd0 += total_emission_rate; // add the summed absorption as emissivity here //
+            if(fabs(a0)>0)
             {
-                double dE_fac = SphP[i].Dt_E_gamma[kf] * dt_entr; if(dE_fac < -0.5*e0) {dE_fac = -0.5*e0;}
-                SphP[i].Radiation_Temperature_4 = 
-                      SphP[i].Radiation_Temperature_4 * e0*exp(a0*dt_entr) // amount remaining from previous step
-                    + SphP[i].Dust_Temperature_4 * dd0*dt_entr // injected in by radiation 
-                    + SphP[i].Dt_E_gamma_T4_weighted_IR * dt_entr)  // advected radiation
-                    / (e0*exp(a0*dt_entr) + dd0*dt_entr + dE_fac + MIN_REAL_NUMBER); // divide by total energy
+                Dust_Temperature_4 = total_emission_rate * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (4. * (MIN_REAL_NUMBER + fabs(a0)) / c_light); // flux units
+                Dust_Temperature_4 *= (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam * All.UnitVelocity_in_cm_per_s) / (5.67e-5); // convert to cgs
+                SphP[i].Dust_Temperature = sqrt(sqrt(Dust_Temperature_4));
+                if(SphP[i].Dust_Temperature < T_cmb) {SphP[i].Dust_Temperature = T_cmb;} // dust temperature shouldn't be below CMB
             }
+            if(mode==0) // only update temperatures on kick operations //
+            {
+                // dust absorption and re-emission brings T_rad towards T_dust: //
+                double dE_abs = -e0 * (1. - exp(a0*dt_entr)); // change in energy from absorption
+                double T_max = DMAX(SphP[i].Radiation_Temperature , SphP[i].Dust_Temperature); // should not exceed either initial temperature //
+                SphP[i].Radiation_Temperature = (e0 + dE_abs + dd0*dt_entr) / ((e0 + dE_abs) / SphP[i].Radiation_Temperature + dd0*dt_entr / SphP[i].Dust_Temperature);
+                SphP[i].Radiation_Temperature = DMIN(SphP[i].Radiation_Temperature, T_max);
+            }
+            if(SphP[i].Radiation_Temperature < T_cmb) {SphP[i].Radiation_Temperature = T_cmb;} // radiation temperature shouldn't be below CMB
         }
 #endif
+        double abs_0;
+        abs_0 = a0;
         if(e0>0) {a0 += SphP[i].Dt_E_gamma[kf]/e0;} else {dd0+=SphP[i].Dt_E_gamma[kf];}
         if(dd0*dt_entr != 0 && dd0*dt_entr < -0.5*e0) {dd0=-0.5*e0/dt_entr;}
         double ef;
@@ -574,9 +602,9 @@ void rt_set_simple_inits(void)
 #endif
             }
 #ifdef RT_INFRARED
-            SphP[i].Dust_Temperature_4 = 0;
-            SphP[i].Radiation_Temperature_4 = 0;
-            SphP[i].Dt_E_gamma_T4_weighted_IR = 0;
+            SphP[i].Dust_Temperature = 0;
+            SphP[i].Radiation_Temperature = 0;
+            SphP[i].Dt_E_gamma_T_weighted_IR = 0;
 #endif
 #ifdef RT_RAD_PRESSURE_OUTPUT
             for(k=0;k<3;k++) {SphP[i].RadAccel[k]=0;}
@@ -603,76 +631,12 @@ void rt_set_simple_inits(void)
 
 
 
-#ifdef RT_CHEM_PHOTOION
-/***********************************************************************************************************/
-/* this tabulates the fraction of the ionizing luminosity (normalized to some total)
- from stars with a given effective temperature T_eff [in Kelvin], across the bands specified by the intervals nu[*]
- -- this is just a subroutine here to be called by the routine above in getting source luminosity */
-/***********************************************************************************************************/
-void rt_get_lum_for_spectral_bin_stars(double T_eff, double luminosity_fraction[N_RT_FREQ_BINS])
-{
-    int i, j, integral = 10000;
-    double I_nu, sum, d_nu, e, e_start, e_end, hc = C * PLANCK, R_eff = 7.0e11;
-    
-    for(i = 0, sum = 0; i < N_RT_FREQ_BINS; i++)
-    {
-        e_start = nu[i]; if(i==N_RT_FREQ_BINS-1) {e_end = nu[N_RT_FREQ_BINS-1] + 500.;} else {e_end = nu[i+1];} // nu defines intervals to integrate
-        d_nu = (e_end - e_start) / (float)(integral - 1);
-        for(j=0, luminosity_fraction[i]=0.0; j<integral; j++)
-        {
-            e = e_start + j*d_nu; // integrate the Planck function to get the total photon number in the interval //
-            I_nu = 2.0 * pow(e * ELECTRONVOLT_IN_ERGS, 3) / (hc * hc) / (exp(e * ELECTRONVOLT_IN_ERGS / (BOLTZMANN * T_eff)) - 1.0);
-            luminosity_fraction[i] += 4.0 * M_PI * R_eff * R_eff * M_PI * I_nu / e * d_nu / PLANCK; // number/s
-        }
-        sum += luminosity_fraction[i];
-    }
-    /* normalize to unity; note that if we wanted a fast version of this function, the normalization means all the constants above are
-     redundant and can trivially be thrown out, to [slightly] save time. but right now only called once, so no big deal */
-    for(i = 0; i < N_RT_FREQ_BINS; i++) {luminosity_fraction[i] /= sum;}
 
-    /* above we have calculated the relative number of ionizing photons in each bin. since we work in energy units, we need to 
-        renormalize this to an equivalent energy-fraction per bin. we do this by simply converting relative to our 'canonical' 
-        equivalent ionizing photon luminosity of 13.6eV */
-    for(i = 0; i < N_RT_FREQ_BINS; i++) {luminosity_fraction[i] *= rt_nu_eff_eV[i] / 13.6;}
-    
-    if(ThisTask == 0)
-    {
-        printf("Calc Stellar spectra, for T_eff=%g, \n",T_eff);
-        for(i = 0; i < N_RT_FREQ_BINS; i++) {printf(" -- spectra: bin=%d nu=%g luminosity_fraction=%g \n",i,nu[i],luminosity_fraction[i]);}
-        fflush(stdout);
-    }
-}
 /***********************************************************************************************************/
-/* this is the same as the above, but for gas */
+/* optional routine to distribute cooling or other sources from gas: currently empty */
 /***********************************************************************************************************/
 void rt_get_lum_gas(int target, double *je)
 {
-#ifdef RT_COOLING_PHOTOHEATING_OLDFORMAT // routine below only makes sense (currently) with its coupled cooling routines //
-    int j;
-    double temp, entropy, molecular_weight, kT, BB_l, BB_r, next, sigma_SB=5.6704e-5, u_cooling, u_BB, d_nu;
-    
-    /* ??? needs fixing with fixed cooling routines */
-    molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[target].Ne);
-    temp =  SphP[target].Pressure * (molecular_weight * PROTONMASS / All.UnitMass_in_g * All.HubbleParam) / (BOLTZMANN / All.UnitEnergy_in_cgs * All.HubbleParam);
-    kT = temp * BOLTZMANN;
-    entropy = SphP[target].Pressure * pow(SphP[target].Density * All.cf_a3inv, -1 * GAMMA);
-    u_cooling = rt_get_cooling_rate(target, entropy) / (SphP[target].Density * All.cf_a3inv);
-    
-    u_BB = sigma_SB * pow(temp, 4) ; // erg/cm^2
-    u_BB /= P[target].Mass * All.UnitEnergy_in_cgs / All.HubbleParam; //energy/cm^2/mass
-    
-    double prefac = -u_cooling/u_BB * M_PI / (C*C*PLANCK*PLANCK*PLANCK) * ELECTRONVOLT_IN_ERGS / All.UnitEnergy_in_cgs * All.HubbleParam;
-    for(j = 0; j < N_RT_FREQ_BINS; j++)
-    {
-        if(j==N_RT_FREQ_BINS-1) {next = nu[N_RT_FREQ_BINS-1] + 500.;} else {next = nu[j+1];}
-        d_nu = next - nu[j];
-        
-        BB_r = pow(next * ELECTRONVOLT_IN_ERGS, 3) / (exp(next * ELECTRONVOLT_IN_ERGS / (kT)) - 1.0);
-        BB_l = pow(nu[j] * ELECTRONVOLT_IN_ERGS, 3) / (exp(nu[j] * ELECTRONVOLT_IN_ERGS / (kT)) - 1.0);
-        je[j] += prefac * (BB_l / nu[j] + BB_r / next) * d_nu * rt_nu_eff_eV[j]; // gives energy per unit time, as it should //
-    }
-#endif
 }
-#endif
 
 

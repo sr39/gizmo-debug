@@ -456,9 +456,9 @@ void local_slopelimiter(double *grad, double valmax, double valmin, double alim,
     }
 }
 
-void construct_gradient(double *grad, MyIDType i);
+void construct_gradient(double *grad, int i);
 
-void construct_gradient(double *grad, MyIDType i)
+void construct_gradient(double *grad, int i)
 {
     /* check if the matrix is well-conditioned: otherwise we will use the 'standard SPH-like' derivative estimation */
     if(SHOULD_I_USE_SPH_GRADIENTS(SphP[i].ConditionNumber))

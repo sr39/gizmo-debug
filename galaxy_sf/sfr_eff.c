@@ -27,7 +27,7 @@
 #if defined(GALSF_SFR_IMF_VARIATION) || defined(GALSF_SFR_IMF_SAMPLING)
 /* function to determine what the IMF of a new star particle will be, based 
     on the gas properties of the particle out of which it forms */
-void assign_imf_properties_from_starforming_gas(MyIDType i)
+void assign_imf_properties_from_starforming_gas(int i)
 {
     
 #ifdef GALSF_SFR_IMF_VARIATION
@@ -121,7 +121,7 @@ void assign_imf_properties_from_starforming_gas(MyIDType i)
 
 /* return the light-to-mass ratio, for the IMF of a given particle, relative to the Chabrier/Kroupa IMF which 
     is otherwise (for all purposes) our 'default' choice */
-double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i)
+double calculate_relative_light_to_mass_ratio_from_imf(int i)
 {
 #ifdef SINGLE_STAR_FORMATION
     double unit_lsun_msun = (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)) / (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS));

@@ -27,7 +27,7 @@
 
 /*! Here we can insert any desired criteria for particle mergers: by default, this will occur
     when particles fall below some minimum mass threshold */
-int does_particle_need_to_be_merged(MyIDType i)
+int does_particle_need_to_be_merged(int i)
 {
 #ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
@@ -41,7 +41,7 @@ int does_particle_need_to_be_merged(MyIDType i)
 
 /*! Here we can insert any desired criteria for particle splitting: by default, this will occur
     when particles become too massive, but it could also be done when Hsml gets very large, densities are high, etc */
-int does_particle_need_to_be_split(MyIDType i)
+int does_particle_need_to_be_split(int i)
 {
 #ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
@@ -52,7 +52,7 @@ int does_particle_need_to_be_split(MyIDType i)
 }
 
 /*! A multiplcative factor that determines the target mass of a particle for the (de)refinement routines */
-double ref_mass_factor(MyIDType i)
+double ref_mass_factor(int i)
 {
     double ref_factor=1.0;
 #ifdef BH_CALC_DISTANCES
@@ -244,7 +244,7 @@ void merge_and_split_particles(void)
 /*! This is the routine that does the particle splitting. Note this is a tricky operation if we're not using meshes to divide the volume, 
     so care needs to be taken modifying this so that it's done in a way that is (1) conservative, (2) minimizes perturbations to the 
     volumetric quantities of the flow, and (3) doesn't crash the tree or lead to particle 'overlap' */
-void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, double r2_nearest)
+void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nearest)
 {
     double mass_of_new_particle;
     if(NumPart + n_particles_split >= All.MaxPart)
@@ -430,7 +430,7 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     all conserved quantities are appropriately dealt with. This also requires some care, to be 
     done appropriately, but is a little bit less sensitive and more well-defined compared to 
     particle splitting */
-void merge_particles_ij(MyIDType i, MyIDType j)
+void merge_particles_ij(int i, int j)
 {
     int k;
     if(P[i].Mass <= 0)
