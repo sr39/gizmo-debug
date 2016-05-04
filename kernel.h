@@ -142,7 +142,7 @@
 #if (KERNEL_FUNCTION == 8) // quadratic 2-step kernel ('magic kernel' for image filtering is this in 2d with KERNEL_U0=1/3)
 #define KERNEL_CORE_SIZE (1.0/2.0)
 #if !defined(KERNEL_U0)
-#define KERNEL_U0        (0.6) // set to anything between 0 (most 'peaked') to 1 ('flattest'): values ~0.55-0.59 minimize second derivative
+#define KERNEL_U0        (0.2) // set to anything between 0 (most 'peaked') to 1 ('flattest'): values ~0.55-0.59 minimize second derivative
 #endif
 #if (NUMDIMS==1)
 #define  KERNEL_NORM  (3.0/(2.0 + KERNEL_U0)) /*!< For 1D-normalized kernel */
