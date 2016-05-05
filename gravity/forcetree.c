@@ -2157,6 +2157,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 }
                 else		/* check relative opening criterion */
                 {
+                    /* force node to open if we are within the gravitational softening length */
+                    if((r2 < (soft+0.6*nop->len)*(soft+0.6*nop->len)) || (r2 < (nop->maxsoft+0.6*nop->len)*(nop->maxsoft+0.6*nop->len)))
+                    {
+                        no = nop->u.d.nextnode;
+                        continue;
+                    }
+                    
 #ifdef DO_NOT_BRACH_IF
                     if((mass * nop->len * nop->len > r2 * r2 * aold) |
                        ((pdxx < 0.60 * nop->len) & (pdyy < 0.60 * nop->len) & (pdzz < 0.60 * nop->len)))
@@ -2283,7 +2290,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         if((r>0) && (u<1) && (pmass>0)) // checks that these aren't the same particle
                         {
                             kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
-                            fac += (zeta/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
+                            fac -= (zeta/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
                         } // if(ptype==0)
                         
                         if(zeta_sec != 0) // secondary is adaptively-softened particle (set above)
@@ -2291,7 +2298,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                                 if((r>0) && (u_p<1) && (pmass>0))
                                 {
                                     kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
-                                    fac += (zeta_sec/pmass) * dWdr / r;
+                                    fac -= (zeta_sec/pmass) * dWdr / r;
                                 } // if(zeta_sec != 0)
                     } // if(ptype==ptype_sec)
 #else
@@ -2319,13 +2326,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                                 if((zeta != 0) && (u < 1))
                                 {
                                     kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
-                                    fac += 2. * (zeta/pmass) * dWdr / sqrt(r2 + 0.0001/(h_inv*h_inv));   // 0.5 * zeta * omega * dWdr / r;
+                                    fac -= 2. * (zeta/pmass) * dWdr / sqrt(r2 + 0.0001/(h_inv*h_inv));   // 0.5 * zeta * omega * dWdr / r;
                                 }
                             } else {
                                 if((zeta_sec != 0) && (u_p < 1)) // secondary is adaptively-softened particle (set above)
                                 {
                                     kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
-                                    fac += 2. * (zeta_sec/pmass) * dWdr / sqrt(r2 + 0.0001/(h_p_inv*h_p_inv));
+                                    fac -= 2. * (zeta_sec/pmass) * dWdr / sqrt(r2 + 0.0001/(h_p_inv*h_p_inv));
                                 }
                             }
                         } // if(ptype==ptype_sec)
@@ -3256,6 +3263,14 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                 }
                 else		/* check relative opening criterion */
                 {
+                    
+                    /* force node to open if we are within the gravitational softening length */
+                    if((r2 < (soft+0.6*nop->len)*(soft+0.6*nop->len)) || (r2 < (nop->maxsoft+0.6*nop->len)*(nop->maxsoft+0.6*nop->len)))
+                    {
+                        no = nop->u.d.nextnode;
+                        continue;
+                    }
+
 #ifdef DO_NOT_BRACH_IF
                     if((mass * nop->len * nop->len > r2 * r2 * aold) |
                        ((fabs(dxx) < 0.60 * nop->len) & (fabs(dyy) < 0.60 * nop->len) & (fabs(dzz) <
