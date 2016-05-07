@@ -424,11 +424,21 @@ integertime get_timestep(int p,		/*!< particle index */
     /* make sure smoothing length of non-gas particles doesn't change too much in one timestep */
     if(P[p].Type > 0)
     {
-        double divVel = P[p].Particle_DivVel;
-        if(divVel != 0)
+        if(PPP[p].AGS_Hsml > 1.01*All.ForceSoftening[P[p].Type])
         {
-            dt_divv = 0.25 / fabs(All.cf_a2inv * divVel);
-            if(dt_divv < dt) {dt = dt_divv;}
+            double divVel = fabs(P[p].Particle_DivVel);
+            double tmp_divVel = 0, tmp_ags_h = PPP[p].AGS_Hsml;
+            int k; for(k=0;k<3;k++) {tmp_divVel += P[p].Vel[k]*P[p].Vel[k];}
+#ifdef GALSF
+            if(((P[p].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[p].Type == 2)||(P[p].Type==3))))&&(P[p].Mass>0)) {tmp_ags_h = DMAX(tmp_ags_h , PPP[p].Hsml);}
+#endif
+            tmp_divVel = sqrt(tmp_divVel) / tmp_ags_h;
+            divVel = All.cf_a2inv * DMIN(divVel , tmp_divVel);
+            if(divVel != 0)
+            {
+                dt_divv = 0.25 / divVel;
+                if(dt_divv < dt) {dt = dt_divv;}
+            }
         }
     }
 #endif

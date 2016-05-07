@@ -577,6 +577,9 @@ void density(void)
                 } else {
                     PPP[i].NumNgb = PPP[i].DhsmlNgbFactor = P[i].Particle_DivVel = 0;
                 }
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+                if(P[i].Type > 0) {PPP[i].Particle_DivVel = 0;}
+#endif
                 
                 // inverse of SPH volume element (to satisfy constraint implicit in Lagrange multipliers)
                 if(PPP[i].DhsmlNgbFactor > -0.9)	/* note: this would be -1 if only a single particle at zero lag is found */
