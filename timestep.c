@@ -406,8 +406,13 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         if((All.ComovingIntegrationOn))
         {
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+            double ags_h = DMAX(PPP[p].AGS_Hsml , DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]));
+            ags_h = DMIN(ags_h, DMAX(100.*All.ForceSoftening[P[p].Type] , 10.*PPP[p].AGS_Hsml));
+#else
             double ags_h = DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]);
             ags_h = DMIN(ags_h, 10.*All.ForceSoftening[P[p].Type]);
+#endif
             dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * ags_h / ac);
         }
     }
