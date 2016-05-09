@@ -126,11 +126,12 @@ void blackhole_environment_loop(void)
         }
         myfree(BlackholeDataIn);
    
-        /*  DAA: PasserResult cycles over nimport!  PasserOut cycles over nexport!
-        BlackholeDataPasserResult = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserResult", nexport * sizeof(struct blackhole_temp_particle_data));
-        BlackholeDataPasserOut = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserOut", nimport * sizeof(struct blackhole_temp_particle_data)); */
+        /*  DAA: PasserResult cycles over nimport!  PasserOut cycles over nexport! */
         BlackholeDataPasserResult = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserResult", nimport * sizeof(struct blackhole_temp_particle_data));
-        BlackholeDataPasserOut = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserOut", nexport * sizeof(struct blackhole_temp_particle_data));        
+        BlackholeDataPasserOut = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserOut", nexport * sizeof(struct blackhole_temp_particle_data));
+        
+        memset( &BlackholeDataPasserResult[0], 0, nimport * sizeof(struct blackhole_temp_particle_data)  );
+        memset( &BlackholeDataPasserOut[0],    0, nexport * sizeof(struct blackhole_temp_particle_data)  );
 
         /* now do the particles that were sent to us */
         for(j = 0; j < nimport; j++)
@@ -310,6 +311,26 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         for(k=0;k<3;k++)
                         {
                             out.BH_SurroundingGasVel[k] += wt*dv[k];
+                        }
+#endif
+#if defined(BH_COV_FRAC)
+                        int np;
+                        double dtheta, ptheta;
+                        u=0;
+                        for(k=0;k<3;k++) u+=dP[k]*dP[k];		// u=R; dP_k = dx,dy,dz
+                        ptheta = Get_Particle_Size(j) / u;  // particle size (rad)
+                        if(ptheta>3.14159/4.0) ptheta=3.14159/4.0;
+                        for(np=0;np<NUM_HEALPY_PIX;np++)
+                        {
+                            dtheta = 0;
+                            for(k=0;k<3;k++) dtheta += dP[k] * All.HealPy_xyz[k][np];
+                            dtheta /= u;
+                            dtheta = acos( dtheta ); 	// should return between 0 and pi  -- particle to pixel (rad)
+                            if(dtheta < ptheta)
+                            {
+                                // printf(" covered a pixel!   dtheta=%g   ptheta=%g  r=%g \n", dtheta, ptheta, u);
+                                out.BH_HealPy_Cov[np] = 1;
+                            }
                         }
 #endif
                     }

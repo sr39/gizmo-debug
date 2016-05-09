@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "../../proto.h"
 #include "../../allvars.h"
 
@@ -21,7 +22,7 @@
 /* function for allocating temp BH data struc needed for feedback routines*/
 void blackhole_start(void)
 {
-    int i, j, Nbh;
+    int i, Nbh;
     
     /* count the num BHs on this task */
     N_active_loc_BHs=0;
@@ -37,10 +38,12 @@ void blackhole_start(void)
     /* allocate the blackhole temp struct -- defined in blackhole.h */
     if(N_active_loc_BHs>0)
     {
-        BlackholeTempInfo = mymalloc("BlackholeTempInfo", N_active_loc_BHs * sizeof(struct blackhole_temp_particle_data));
+        BlackholeTempInfo = (struct blackhole_temp_particle_data *) mymalloc("BlackholeTempInfo", N_active_loc_BHs * sizeof(struct blackhole_temp_particle_data));
     } else {
-        BlackholeTempInfo = mymalloc("BlackholeTempInfo", 1 * sizeof(struct blackhole_temp_particle_data));    // allocate dummy, necessary?
+        BlackholeTempInfo = (struct blackhole_temp_particle_data *) mymalloc("BlackholeTempInfo", 1 * sizeof(struct blackhole_temp_particle_data));
     }
+    
+    memset( &BlackholeTempInfo[0], 0, N_active_loc_BHs * sizeof(struct blackhole_temp_particle_data) );
     
     Nbh=0;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
@@ -48,38 +51,6 @@ void blackhole_start(void)
         if(P[i].Type ==5)
         {
             BlackholeTempInfo[Nbh].index = i;               /* only meaningful field set here */
-            BlackholeTempInfo[Nbh].BH_InternalEnergy = 0;
-            BlackholeTempInfo[Nbh].accreted_Mass = 0;
-            BlackholeTempInfo[Nbh].accreted_BH_Mass = 0;
-            BlackholeTempInfo[Nbh].Mgas_in_Kernel=0;
-            BlackholeTempInfo[Nbh].Malt_in_Kernel=0;
-#ifdef BH_GRAVACCRETION_BTOD
-            BlackholeTempInfo[Nbh].Mbulge_in_Kernel=0;
-#endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
-            BlackholeTempInfo[Nbh].BH_angle_weighted_kernel_sum=0;
-#endif
-#ifdef BH_DYNFRICTION
-            BlackholeTempInfo[Nbh].DF_rms_vel=0;
-            BlackholeTempInfo[Nbh].DF_mmax_particles=0;
-#endif
-            for(j=0;j<3;j++)
-            {
-                BlackholeTempInfo[Nbh].Jalt_in_Kernel[j]=0;
-                BlackholeTempInfo[Nbh].accreted_momentum[j]=0;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_GRAVACCRETION)  
-                BlackholeTempInfo[Nbh].Jgas_in_Kernel[j]=0;
-#endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
-                BlackholeTempInfo[Nbh].GradRho_in_Kernel[j]=0;
-#endif
-#ifdef BH_DYNFRICTION
-                BlackholeTempInfo[Nbh].DF_mean_vel[j]=0;
-#endif
-#if defined(BH_BONDI) || defined(BH_DRAG)
-                BlackholeTempInfo[Nbh].BH_SurroundingGasVel[j]=0;
-#endif
-            }
             Nbh++;
         }
     }
@@ -177,6 +148,10 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
 #endif
 #if defined(BH_GRAVCAPTURE_GAS)
     ASSIGN_ADD(BlackholeTempInfo[target].mass_to_swallow_edd, out->mass_to_swallow_edd, mode);
+#endif
+#if defined(BH_COV_FRAC)
+    for(k=0;k<NUM_HEALPY_PIX;k++)
+        ASSIGN_ADD(BlackholeTempInfo[target].BH_HealPy_Cov[k], out->BH_HealPy_Cov[k], mode);
 #endif
 }
 
@@ -305,3 +280,31 @@ int ngb_treefind_blackhole(MyDouble searchcenter[3], MyFloat hsml, int target, i
     return numngb;
 }
 
+#ifdef BH_COV_FRAC
+void init_bh_cov_frac_heal(void)
+{
+    FILE *ptr_file;
+    int iii=0, jjj=0;
+    char buf[1000];
+    char * pch;
+    
+    ptr_file =fopen("healpix_4_vecs.txt", "r");
+    if (!ptr_file)
+        endrun(666);            // The sign of the beast
+    
+    while (fgets(buf,1000, ptr_file)!=NULL)
+    {
+        pch = strtok (buf," ");
+        jjj=0;
+        while (pch != NULL)
+        {
+            if(jjj<3) All.HealPy_xyz[jjj][iii] = atof( pch );
+            pch = strtok (NULL, " ");
+            jjj++;
+        }
+        iii++;
+    }
+    fclose(ptr_file);
+    
+}
+#endif

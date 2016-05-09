@@ -292,6 +292,13 @@ double INLINE_FUNC hubble_function_external(double a);
 #endif
 
 void blackhole_accretion(void);
+#ifdef BH_WIND_SPAWN
+int blackhole_spawn_particle_wind_shell( MyIDType i, MyIDType dummy_sph_i_to_clone );
+void spawn_bh_wind_feedback(void);
+#endif
+#ifdef BH_COV_FRAC
+void init_bh_cov_frac_heal(void)
+#endif
 int blackhole_evaluate(int target, int mode, int *nexport, int *nsend_local);
 int blackhole_evaluate_swallow(int target, int mode, int *nexport, int *nsend_local);
 

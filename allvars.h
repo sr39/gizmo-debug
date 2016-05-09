@@ -326,6 +326,9 @@
 #define DO_DENSITY_AROUND_STAR_PARTICLES
 #endif
 
+#ifdef BH_COV_FRAC
+#define NUM_HEALPY_PIX 192  // TODO:  Set this with Config or param options.  Hard coding for now
+#endif
 
 #if !defined(HYDRO_SPH) && !defined(MAGNETIC) && !defined(COSMIC_RAYS)
 //#define ENERGY_ENTROPY_SWITCH_IS_ACTIVE
@@ -1624,7 +1627,7 @@ extern struct global_data_all_processes
   double AGBGasEnergy;
 #endif
     
-#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
+#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK) || defined(BH_WIND_SPAWN)
     double BAL_f_accretion;
     double BAL_v_outflow;
 #endif
@@ -1702,6 +1705,13 @@ extern struct global_data_all_processes
   double SeedBlackHoleMinRedshift; /*!< Minimum redshift where BH seeds are allowed */
 #ifdef BH_ALPHADISK_ACCRETION
   double SeedAlphaDiskMass;         /*!< Seed alpha disk mass */
+#endif
+#ifdef BH_COV_FRAC
+  double HealPy_xyz[3][NUM_HEALPY_PIX];  /*!< Locations of pixels in heal pix scheme */
+#endif
+    
+#ifdef BH_WIND_SPAWN
+  double BH_wind_spawn_mass;        /*!< target mass for feedback particles to be spawned */
 #endif
   double MinFoFMassForNewSeed;      /*!< Halo mass required before new seed is put in */
   double BlackHoleNgbFactor;        /*!< Factor by which the SPH neighbour should be increased/decreased */
@@ -1940,7 +1950,12 @@ extern ALIGN(32) struct particle_data
 #if defined(BLACK_HOLES)
     MyIDType SwallowID;
     int IndexMapToTempStruc;   /*!< allows for mapping to BlackholeTempInfo struc */
-
+#ifdef BH_WIND_SPAWN
+    MyFloat unspawned_wind_mass;    /*!< tabulates the wind mass which has not yet been spawned */
+#endif
+#ifdef BH_COV_FRAC
+    MyFloat cov_frac;
+#endif
 #if !defined(DETACH_BLACK_HOLES)
 #ifdef BH_COUNTPROGS
     int BH_CountProgs;
@@ -2088,6 +2103,9 @@ extern struct bh_particle_data
 #ifdef BH_ALPHADISK_ACCRETION
   MyFloat BH_Mass_AlphaDisk;
 #endif
+#ifdef BH_COV_FRAC
+  MyFloat cov_frac;
+#endif
   int     BH_TimeBinGasNeighbor;
 #ifdef BH_BUBBLES
   MyFloat BH_Mass_bubbles;
@@ -2109,6 +2127,9 @@ extern struct bh_particle_data
     MyLongDouble dBH_accreted_BHMass_radio;
   } b8;
 #endif
+#endif
+#ifdef BH_WIND_SPAWN
+    MyFloat unspawned_wind_mass;    /*!< tabulates the wind mass which has not yet been spawned */
 #endif
 }
   *BHP,
@@ -2562,6 +2583,10 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 
 #if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;        /*!< gives the mass we want to swallow that contributes to eddington */
+#endif
+    
+#if defined(BH_COV_FRAC)
+    int BH_HealPy_Cov[NUM_HEALPY_PIX];
 #endif
 
 }

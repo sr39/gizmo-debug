@@ -1135,7 +1135,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
         
-#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
+#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK) || defined(BH_WIND_SPAWN)
         strcpy(tag[nt],"BAL_f_accretion");
         addr[nt] = &All.BAL_f_accretion;
         id[nt++] = REAL;
@@ -1463,6 +1463,12 @@ void read_parameter_file(char *fname)
 #ifdef DETACH_BLACK_HOLES
       strcpy(tag[nt], "BHFormationFactor");
       addr[nt] = &All.BHfactor;
+      id[nt++] = REAL;
+#endif
+        
+#ifdef BH_WIND_SPAWN
+      strcpy(tag[nt], "BH_wind_spawn_mass");
+      addr[nt] = &All.BH_wind_spawn_mass;
       id[nt++] = REAL;
 #endif
 

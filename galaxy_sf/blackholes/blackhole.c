@@ -357,6 +357,14 @@ void normalize_temp_info_struct(int i)
         BlackholeTempInfo[i].Jalt_in_Kernel[k] += BlackholeTempInfo[i].Jgas_in_Kernel[k];  // Jalt is now TOTAL angular momentum inside BH kernel !
 #endif
     
+#if defined(BH_COV_FRAC)
+    double sum=0;
+    for(k=0;k<NUM_HEALPY_PIX;k++)
+        if(BlackholeTempInfo[i].BH_HealPy_Cov[k]>0)  sum += 1.0;
+    sum /= (1.0*NUM_HEALPY_PIX);
+    BPP(BlackholeTempInfo[i].index).cov_frac = sum;
+    printf(" \n \n cov_frac = %g \n \n ", BPP(BlackholeTempInfo[i].index).cov_frac );
+#endif
 }
 
 
@@ -832,7 +840,16 @@ void blackhole_final_loop(void)
 #endif
 #endif // ifdef BH_BAL_WINDS
         
+#ifdef BH_WIND_SPAWN
+        double dm_wind = (1.-All.BAL_f_accretion) / All.BAL_f_accretion * dm;
+        if(dm_wind > P[n].Mass) {dm_wind = P[n].Mass;}
+        if(dm_wind > BPP(n).BH_Mass_AlphaDisk) {dm_wind = BPP(n).BH_Mass_AlphaDisk;}
 
+        BPP(n).unspawned_wind_mass += dm_wind;
+        P[n].Mass -= dm_wind;
+        BPP(n).BH_Mass_AlphaDisk -= dm_wind;
+#endif
+        
         /* DAA: dump the results to the 'blackhole_details' files */
 
         mass_disk=0; mdot_disk=0; mbulge=0; r0=0;
