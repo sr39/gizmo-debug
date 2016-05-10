@@ -33,7 +33,9 @@ int does_particle_need_to_be_merged(int i)
     return 0;
 #else
 #ifdef BH_WIND_SPAWN
-    if( (P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]) > All.BAL_v_outflow*All.BAL_v_outflow/100.0) return 0;
+    MyFloat vr2 = P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2] ;
+    MyFloat r2  = P[i].Pos[0]*P[i].Pos[0] + P[i].Pos[1]*P[i].Pos[1] + P[i].Pos[2]*P[i].Pos[2] ;
+    if( (r2 < 1.0) && (vr2 > All.BAL_v_outflow*All.BAL_v_outflow/100.0)) return 0;
 #endif
     if(P[i].Mass <= 0) return 0;
     if(P[i].Mass <= (All.MinMassForParticleMerger* ref_mass_factor(i))) return 1;
@@ -50,7 +52,9 @@ int does_particle_need_to_be_split(int i)
     return 0;
 #else
 #ifdef BH_WIND_SPAWN
-    if( (P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]) > All.BAL_v_outflow*All.BAL_v_outflow/100.0) return 0;
+    MyFloat vr2 = P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2] ;
+    MyFloat r2  = P[i].Pos[0]*P[i].Pos[0] + P[i].Pos[1]*P[i].Pos[1] + P[i].Pos[2]*P[i].Pos[2] ;
+    if( (r2 < 1.0) && (vr2 > All.BAL_v_outflow*All.BAL_v_outflow/100.0)) return 0;
 #endif
     if(P[i].Mass >= (All.MaxMassForParticleSplit * ref_mass_factor(i))) return 1;
     return 0;

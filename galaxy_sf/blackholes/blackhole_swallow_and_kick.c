@@ -796,7 +796,7 @@ void spawn_bh_wind_feedback(void)
     MPI_Allreduce(&n_particles_split, &MPI_n_particles_split, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     if(ThisTask == 0)
     {
-        printf("Particle BH spawn check: %d particles spawned \n", n_particles_split); fflush(stdout);
+        printf("Particle BH spawn check: %d particles spawned \n", MPI_n_particles_split); fflush(stdout);
     }
     /* rearrange_particle_sequence -must- be called immediately after this routine! */
     All.TotNumPart += (long long)MPI_n_particles_split;
@@ -924,9 +924,10 @@ int blackhole_spawn_particle_wind_shell( MyIDType i, MyIDType dummy_sph_i_to_clo
         P[j].Pos[1] =  P[i].Pos[1] + dy;
         P[j].Pos[2] =  P[i].Pos[2] + dz;
         
-        P[j].Vel[0] =  P[i].Vel[0] + dx / d_r * All.BAL_v_outflow;
-        P[j].Vel[1] =  P[i].Vel[1] + dy / d_r * All.BAL_v_outflow;
-        P[j].Vel[2] =  P[i].Vel[2] + dz / d_r * All.BAL_v_outflow;
+        MyFloat time_factor = All.Time * All.Time / (All.Time * All.Time + 0.005 * 0.005);
+        P[j].Vel[0] =  P[i].Vel[0] + dx / d_r * All.BAL_v_outflow * time_factor;
+        P[j].Vel[1] =  P[i].Vel[1] + dy / d_r * All.BAL_v_outflow * time_factor;
+        P[j].Vel[2] =  P[i].Vel[2] + dz / d_r * All.BAL_v_outflow * time_factor;
         
         /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
         force_add_star_to_tree(i, j);// (buggy)
