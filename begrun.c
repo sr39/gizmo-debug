@@ -279,6 +279,34 @@ void begrun(void)
 #ifdef BLACK_HOLES
       All.BlackHoleMaxAccretionRadius = all.BlackHoleMaxAccretionRadius;
 #endif
+#ifdef GALSF_FB_RPWIND_LOCAL
+        All.WindMomentumLoading = all.WindMomentumLoading;
+#endif
+#ifdef GALSF_FB_SNE_HEATING
+        All.SNeIIEnergyFrac = all.SNeIIEnergyFrac;
+#endif
+#ifdef GALSF_FB_HII_HEATING
+        All.HIIRegion_fLum_Coupled = all.HIIRegion_fLum_Coupled;
+#endif
+#ifdef RT_FIRE
+        All.PhotonMomentum_Coupled_Fraction = all.PhotonMomentum_Coupled_Fraction;
+#endif
+#ifdef GALSF_FB_RT_PHOTONMOMENTUM
+        All.PhotonMomentum_fUV = all.PhotonMomentum_fUV;
+        All.PhotonMomentum_fOPT = all.PhotonMomentum_fOPT;
+#endif
+#if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_SNE_HEATING)
+        All.GasReturnFraction = all.GasReturnFraction;
+#endif
+#ifdef GALSF_FB_GASRETURN
+        All.AGBGasEnergy = all.AGBGasEnergy;
+#endif
+#ifdef COSMIC_RAYS
+#ifdef GALSF_FB_SNE_HEATING
+        All.CosmicRay_SNeFraction = all.CosmicRay_SNeFraction;
+#endif
+        All.CosmicRayDiffusionCoeff = all.CosmicRayDiffusionCoeff;
+#endif
 
 #ifdef DARKENERGY
       All.DarkEnergyParam = all.DarkEnergyParam;
@@ -364,7 +392,6 @@ void begrun(void)
 #endif
 #ifdef RT_CHEM_PHOTOION
     rt_get_sigma();
-    rt_get_lum_for_spectral_bin_stars(All.star_Teff, precalc_stellar_luminosity_fraction);
 #endif
 #if defined(RT_DIFFUSION_CG)
     All.Radiation_Ti_begstep = 0;
@@ -1663,7 +1690,7 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 
-#ifdef RT_CHEM_PHOTOION
+#if defined(RT_CHEM_PHOTOION) && !defined(GALSF_FB_HII_HEATING)
         strcpy(tag[nt], "IonizingLuminosityPerSolarMass_cgs");
         addr[nt] = &All.IonizingLuminosityPerSolarMass_cgs;
         id[nt++] = REAL;

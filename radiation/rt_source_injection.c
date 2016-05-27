@@ -48,14 +48,14 @@ static struct rt_sourcedata_in
 *RT_SourceDataIn, *RT_SourceDataGet;
 
 /* declare subroutines */
-void rt_particle2in_source(struct rt_sourcedata_in *in, MyIDType i);
+void rt_particle2in_source(struct rt_sourcedata_in *in, int i);
 int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
 void *rt_sourceinjection_evaluate_primary(void *p);
 void *rt_sourceinjection_evaluate_secondary(void *p);
 
 
 /*! subroutine to insert the data needed to be passed to other processors: here for convenience, match to structure above  */
-void rt_particle2in_source(struct rt_sourcedata_in *in, MyIDType i)
+void rt_particle2in_source(struct rt_sourcedata_in *in, int i)
 {
     int k;
     for(k=0; k<3; k++) {in->Pos[k] = P[i].Pos[k];}

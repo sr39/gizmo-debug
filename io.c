@@ -336,7 +336,25 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     n++;
                 }
             break;
-            
+
+        case IO_CHILD_ID:		/* particle 'child' ID (for splits/mergers) */
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *ip++ = P[pindex].ID_child_number;
+                    n++;
+                }
+            break;
+
+        case IO_GENERATION_ID:	/* particle ID generation (for splits/mergers) */
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *ip++ = P[pindex].ID_generation;
+                    n++;
+                }
+            break;
+
         case IO_MASS:		/* particle mass */
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
@@ -1397,7 +1415,15 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_ID:
             bytes_per_blockelement = sizeof(MyIDType);
             break;
-            
+
+        case IO_CHILD_ID:
+            bytes_per_blockelement = sizeof(MyIDType);
+            break;
+
+        case IO_GENERATION_ID:
+            bytes_per_blockelement = sizeof(short int);
+            break;
+
         case IO_BHPROGS:
         case IO_TRUENGB:
         case IO_AGS_NGBS:
@@ -1600,7 +1626,19 @@ int get_datatype_in_block(enum iofields blocknr)
             typekey = 0;		/* native int */
 #endif
             break;
-            
+
+        case IO_CHILD_ID:
+#ifdef LONGIDS
+            typekey = 2;		/* native long long */
+#else
+            typekey = 0;		/* native int */
+#endif
+            break;
+
+        case IO_GENERATION_ID:
+            typekey = 0;		/* native int */
+            break;
+
         case IO_TRUENGB:
         case IO_BHPROGS:
             typekey = 0;		/* native int */
@@ -1639,6 +1677,8 @@ int get_values_per_blockelement(enum iofields blocknr)
             break;
             
         case IO_ID:
+        case IO_CHILD_ID:
+        case IO_GENERATION_ID:
         case IO_MASS:
         case IO_BH_DIST:
         case IO_SECONDORDERMASS:
@@ -1828,6 +1868,8 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_ACCEL:
         case IO_TSTP:
         case IO_ID:
+        case IO_CHILD_ID:
+        case IO_GENERATION_ID:
         case IO_POT:
         case IO_SECONDORDERMASS:
         case IO_AGS_SOFT:
@@ -2049,6 +2091,8 @@ int blockpresent(enum iofields blocknr)
         case IO_POS:
         case IO_VEL:
         case IO_ID:
+        case IO_CHILD_ID:
+        case IO_GENERATION_ID:
         case IO_MASS:
         case IO_U:
         case IO_RHO:
@@ -2600,6 +2644,12 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_VEL:
             strncpy(label, "VEL ", 4);
             break;
+        case IO_CHILD_ID:
+            strncpy(label, "IDch", 4);
+            break;
+        case IO_GENERATION_ID:
+            strncpy(label, "IDgn", 4);
+            break;
         case IO_ID:
             strncpy(label, "ID  ", 4);
             break;
@@ -2941,6 +2991,12 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_ID:
             strcpy(buf, "ParticleIDs");
+            break;
+        case IO_CHILD_ID:
+            strcpy(buf, "ParticleChildIDsNumber");
+            break;
+        case IO_GENERATION_ID:
+            strcpy(buf, "ParticleIDGenerationNumber");
             break;
         case IO_MASS:
             strcpy(buf, "Masses");

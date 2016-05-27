@@ -130,7 +130,7 @@ void drift_particle(int i, integertime time1)
 #endif
     
     double divv_fac = P[i].Particle_DivVel * dt_drift;
-    double divv_fac_max = 1.5;
+    double divv_fac_max = 0.3; //1.5; // don't allow Hsml to change too much in predict-step //
     if(divv_fac > +divv_fac_max) divv_fac = +divv_fac_max;
     if(divv_fac < -divv_fac_max) divv_fac = -divv_fac_max;
     
@@ -420,7 +420,7 @@ double INLINE_FUNC Get_Particle_Expected_Area(double h)
 }
 
 
-/* return the estimated local column from integrating the gradient in the density (separated here for convenience) */
+/* return the estimated local column (physical units) from integrating the gradient in the density (separated here for convenience) */
 double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h)
 {
     double gradrho_mag;
@@ -434,7 +434,7 @@ double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, dou
         //if(include_h > 0) gradrho_mag += include_h * rho * (hsml * (0.124 + 11.45 / (26.55 + All.DesNumNgb))); // quick-and-dirty approximation to the effective neighbor number needed here
         // account for the fact that 'h' is much larger than the inter-particle separation //
     }
-    return gradrho_mag; // *(Z/Zsolar) add metallicity dependence
+    return gradrho_mag * All.cf_a2inv; // (physical units) // *(Z/Zsolar) add metallicity dependence
 }
 
 

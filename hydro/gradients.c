@@ -456,9 +456,9 @@ void local_slopelimiter(double *grad, double valmax, double valmin, double alim,
     }
 }
 
-void construct_gradient(double *grad, MyIDType i);
+void construct_gradient(double *grad, int i);
 
-void construct_gradient(double *grad, MyIDType i)
+void construct_gradient(double *grad, int i)
 {
     /* check if the matrix is well-conditioned: otherwise we will use the 'standard SPH-like' derivative estimation */
     if(SHOULD_I_USE_SPH_GRADIENTS(SphP[i].ConditionNumber))
@@ -1345,6 +1345,8 @@ void hydro_gradient_calc(void)
                                            SphP[i].Gradients.E_gamma_ET[k_freq][2] * SphP[i].Gradients.E_gamma_ET[k_freq][2]) / (1.e-37 + SphP[i].E_gamma_Pred[k_freq] * SphP[i].Density/(1.e-37+P[i].Mass));
                         R = R_ET; // testing; appears more accurate //
                         R = DMAX(R,R_ET); // R_ET may always be less than R, though
+                        double Rmin = 1./(200.*Get_Particle_Size(i));
+                        if(R < Rmin) {R=Rmin;}
                         R /= (1.e-37 + All.cf_atime * SphP[i].Kappa_RT[k_freq] * (SphP[i].Density*All.cf_a3inv)); /* dimensionless (all in physical) */
                         /* now we can apply the actual slope-limiter function desired */
                         R_ET = 1.*R;
@@ -1362,8 +1364,8 @@ void hydro_gradient_calc(void)
                             diffusion limit (since whatever we come up with here will be multiplied by lambda in the relevant forces/etc: therefore 
                             we need to multiply chifac_iso by a power of 3 (because this goes to I/3, but also when lambda->1/3) */
 						//chi=1./3.; // pure isotropic
-#ifdef RT_RAD_PRESSURE_EDDINGTON
-						chi=1.; // pure optically-thin // may be needed for RP problems
+#ifdef RT_RAD_PRESSURE_FORCES
+//						chi=1.; // pure optically-thin // may be needed for RP problems
 #endif
                         double chifac_iso=3.*(1-chi)/2., chifac_ot=(3.*chi-1.)/2.;
 #ifdef RT_DIFFUSION_CG
@@ -1463,7 +1465,7 @@ void hydro_gradient_calc(void)
             {
                 /* estimate local turbulent diffusion coefficient from velocity gradients using Smagorinsky mixing model: 
                     we do this after slope-limiting to prevent the estimated velocity gradients from being unphysically large */
-                double h_turb = Get_Particle_Size(i);
+                double h_turb = Get_Particle_Size(i) * All.cf_atime; // physical
                 if(h_turb > 0)
                 {
                     // overall normalization //
@@ -1486,18 +1488,18 @@ void hydro_gradient_calc(void)
                                                          SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2])));
                     // slope-limit and convert to physical units //
                     double shearfac_max = 0.5 * sqrt(SphP[i].VelPred[0]*SphP[i].VelPred[0]+SphP[i].VelPred[1]*SphP[i].VelPred[1]+SphP[i].VelPred[2]*SphP[i].VelPred[2]) / h_turb;
-                    shear_factor = DMIN(shear_factor , shearfac_max); // physical units altogether //
+                    shear_factor = DMIN(shear_factor , shearfac_max) * All.cf_a2inv; // physical
                     // ok, combine to get the diffusion coefficient //
-                    SphP[i].TD_DiffCoeff = turb_prefactor * shear_factor;
+                    SphP[i].TD_DiffCoeff = turb_prefactor * shear_factor; // physical
                 } else {
                     SphP[i].TD_DiffCoeff = 0;
                 }
 #ifdef TURB_DIFF_ENERGY
-                SphP[i].Kappa_Conduction = All.ConductionCoeff * SphP[i].TD_DiffCoeff * SphP[i].Density * All.cf_a3inv;
+                SphP[i].Kappa_Conduction = All.ConductionCoeff * SphP[i].TD_DiffCoeff * SphP[i].Density * All.cf_a3inv; // physical
 #endif
 #ifdef TURB_DIFF_VELOCITY
-                SphP[i].Eta_ShearViscosity = All.ShearViscosityCoeff * SphP[i].TD_DiffCoeff * SphP[i].Density * All.cf_a3inv;
-                SphP[i].Zeta_BulkViscosity = All.BulkViscosityCoeff * SphP[i].TD_DiffCoeff * SphP[i].Density * All.cf_a3inv;
+                SphP[i].Eta_ShearViscosity = All.ShearViscosityCoeff * SphP[i].TD_DiffCoeff * SphP[i].Density * All.cf_a3inv; // physical
+                SphP[i].Zeta_BulkViscosity = All.BulkViscosityCoeff * SphP[i].TD_DiffCoeff * SphP[i].Density * All.cf_a3inv; // physical
 #endif
             }
 #endif
@@ -1563,9 +1565,6 @@ void hydro_gradient_calc(void)
                 p_scale *= (All.UnitLength_in_cm / All.HubbleParam * All.cf_atime) / (3.086e21); /* physical pressure scale length in units of kpc */
                 if(p_scale > 1) {p_scale=1;}
                 kappa_diff *= pow( p_scale * p_scale * R_GV / b_muG, 1./3.); /* these should all be dimensionless here */
-                /* now we apply a limiter to prevent the coefficient from becoming too large: cosmic rays cannot stream/diffuse with v_diff > c */
-                double kappa_diff_vel = kappa_diff * GAMMA_COSMICRAY_MINUS1 / CRPressureGradScaleLength * All.UnitVelocity_in_cm_per_s;
-                kappa_diff *= 1 / (1 + kappa_diff_vel/3.e10); /* caps maximum here */
                 SphP[i].CosmicRayDiffusionCoeff += kappa_diff; /* should be in physical units */
 #endif                
 #ifdef COSMIC_RAYS_DIFFUSION_CONSTANT
@@ -1573,6 +1572,10 @@ void hydro_gradient_calc(void)
 #else
                 SphP[i].CosmicRayDiffusionCoeff *= All.CosmicRayDiffusionCoeff;
 #endif
+                /* now we apply a limiter to prevent the coefficient from becoming too large: cosmic rays cannot stream/diffuse with v_diff > c */
+                double diffusion_velocity_limit = 0.1 * C; /* maximum diffusion velocity (set <C if desired) */
+                double kappa_diff_vel = SphP[i].CosmicRayDiffusionCoeff * GAMMA_COSMICRAY_MINUS1 / CRPressureGradScaleLength * All.UnitVelocity_in_cm_per_s;
+                SphP[i].CosmicRayDiffusionCoeff *= 1 / (1 + kappa_diff_vel/diffusion_velocity_limit); /* caps maximum here */
                 if((SphP[i].CosmicRayDiffusionCoeff<=0)||(isnan(SphP[i].CosmicRayDiffusionCoeff))) {SphP[i].CosmicRayDiffusionCoeff=0;}
 #ifdef GALSF
                 /* for multi-physics problems, we suppress diffusion where it is irrelevant */

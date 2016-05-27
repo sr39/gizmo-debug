@@ -675,6 +675,8 @@ void init(void)
 #ifdef ASSIGN_NEW_IDS
     assign_unique_ids();
 #endif
+    /* assign other ID parameters needed */
+    for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}
     
 #ifdef TEST_FOR_IDUNIQUENESS
     test_id_uniqueness();
@@ -724,6 +726,12 @@ void init(void)
         disp_setup_smoothinglengths();
 #endif
     
+#if defined GALSF_SFR_IMF_VARIATION
+    for(i = 0; i < NumPart; i++)
+    {
+        P[i].IMF_Mturnover = 2.0; // reset to normal IMF
+    }
+#endif
 
 #if defined(TURB_DRIVING)
     {

@@ -705,7 +705,7 @@ void *disp_density_evaluate_secondary(void *p)
 
 
 /* routine to determine if we need to use disp_density to calculate Hsml */
-int disp_density_isactive(MyIDType i)
+int disp_density_isactive(int i)
 {
     if(P[i].TimeBin < 0) return 0;
     if(P[i].Type > 0) return 0; // only gas particles //

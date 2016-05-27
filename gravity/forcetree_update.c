@@ -112,7 +112,6 @@ void force_kick_node(int i, MyDouble * dp)
 	Extnodes[no].vmax = vmax;
 
       Nodes[no].u.d.bitflags |= (1 << BITFLAG_NODEHASBEENKICKED);
-
       Extnodes[no].Ti_lastkicked = All.Ti_Current;
 
       if(Nodes[no].u.d.bitflags & (1 << BITFLAG_TOPLEVEL))	/* top-level tree-node reached */

@@ -50,11 +50,11 @@ long long report_comittable_memory(long long *MemTotal,
                                    long long *SwapFree);
 
 void merge_and_split_particles(void);
-int does_particle_need_to_be_merged(MyIDType i);
-int does_particle_need_to_be_split(MyIDType i);
-double ref_mass_factor(MyIDType i);
-void merge_particles_ij(MyIDType i, MyIDType j);
-void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, double r2_nearest);
+int does_particle_need_to_be_merged(int i);
+int does_particle_need_to_be_split(int i);
+double ref_mass_factor(int i);
+void merge_particles_ij(int i, int j);
+void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nearest);
 
 void do_first_halfstep_kick(void);
 void do_second_halfstep_kick(void);
@@ -447,7 +447,7 @@ double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, dou
 #ifdef GALSF
 double evaluate_stellar_age_Gyr(double stellar_tform);
 double evaluate_l_over_m_ssp(double stellar_age_in_gyr);
-double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i);
+double calculate_relative_light_to_mass_ratio_from_imf(int i);
 #endif
 #if defined(GALSF_FB_RPWIND_LOCAL) && defined(GALSF_FB_RPWIND_FROMSTARS)
 int ngb_treefind_newstars(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode, int *nexport, int *nsend_local);
@@ -470,6 +470,7 @@ void stochastic_gas_return_singledomain(void);
 
 #ifdef GALSF_FB_HII_HEATING
 void HII_heating_singledomain(void);
+double particle_ionizing_luminosity_in_cgs(long i);
 #ifdef GALSF_FB_HII_HEATING_USEMULTIDOMAINSHARE
 void HII_heating_withMPIcomm(void);
 int HIIheating_RHIIest(int target);
@@ -534,7 +535,7 @@ void disp_density(void);
 int disp_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
 void *disp_density_evaluate_primary(void *p);
 void *disp_density_evaluate_secondary(void *p);
-int disp_density_isactive(MyIDType i);
+int disp_density_isactive(int i);
 #endif
 
 #ifdef PM_HIRES_REGION_CLIPDM
@@ -656,12 +657,12 @@ void pm_setup_nonperiodic_kernel(void);
 
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
-int rt_get_source_luminosity(MyIDType i, double sigma_0, double *lum);
-double rt_kappa(MyIDType j, int k_freq);
-double rt_absorption_rate(MyIDType i, int k_freq);
-double rt_diffusion_coefficient(MyIDType i, int k_freq);
-void rt_eddington_update_calculation(MyIDType j);
-void rt_update_driftkick(MyIDType i, double dt_entr, int mode);
+int rt_get_source_luminosity(int i, double sigma_0, double *lum);
+double rt_kappa(int j, int k_freq);
+double rt_absorption_rate(int i, int k_freq);
+double rt_diffusion_coefficient(int i, int k_freq);
+void rt_eddington_update_calculation(int j);
+void rt_update_driftkick(int i, double dt_entr, int mode);
 #endif
 #ifdef RT_SOURCE_INJECTION
 void rt_source_injection(void);
@@ -669,13 +670,14 @@ void rt_source_injection(void);
 
 #ifdef RADTRANSFER
 void rt_set_simple_inits(void);
+void rt_get_lum_gas(int target, double *je);
 
 #ifdef RT_DIFFUSION_CG
 void rt_diffusion_cg_solve(void);
 #endif
 
 #ifdef RT_CHEM_PHOTOION
-double rt_return_photon_number_density(MyIDType i, int k);
+double rt_return_photon_number_density(int i, int k);
 void rt_update_chemistry(void);
 void rt_get_sigma(void);
 double rt_GetCoolingTime(int i, double u, double rho);
@@ -684,8 +686,6 @@ double rt_DoCooling(int, double);
 double rt_DoHeating(int, double);
 double rt_get_cooling_rate(int i, double entropy);
 void rt_write_chemistry_stats(void);
-void rt_get_lum_for_spectral_bin_stars(double T_eff, double luminosity_fraction[N_RT_FREQ_BINS]);
-void rt_get_lum_gas(int target, double *je);
 #endif
 
 #endif
@@ -768,7 +768,9 @@ void ags_density(void);
 int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
 void *ags_density_evaluate_primary(void *p);
 void *ags_density_evaluate_secondary(void *p);
-int ags_density_isactive(MyIDType i);
+int ags_density_isactive(int i);
+double ags_return_maxsoft(int i);
+double ags_return_minsoft(int i);
 #endif
 
 #ifdef ALTERNATIVE_PSORT

@@ -531,7 +531,7 @@ void force_update_node_recursive(int no, int sib, int father)
     MyFloat stellar_lum[N_RT_FREQ_BINS], sigma_eff=0;
     for(j=0;j<N_RT_FREQ_BINS;j++) {stellar_lum[j]=0;}
 #ifdef RT_FIRE
-    sigma_eff = 0.955 * All.UnitMass_in_g*All.HubbleParam * All.cf_a2inv / (All.UnitLength_in_cm*All.UnitLength_in_cm);
+    sigma_eff = 0.955 * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm); // (should be in physical, not comoving units)
 #endif
 #endif
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
@@ -720,7 +720,7 @@ void force_update_node_recursive(int no, int sib, int father)
                     {
                         if((pa->Mass>0)&&(pa->DensAroundStar>0)&&(pa->BH_Mdot>0))
                         {
-			                double BHLum = bh_lum_bol(pa->BH_Mdot, pa->BH_Mass) * bh_lum_unitfactor;
+			                double BHLum = bh_lum_bol(pa->BH_Mdot, pa->BH_Mass, p) * bh_lum_unitfactor;
                             bh_lum += BHLum;
                             bh_lum_hR += BHLum * pa->BH_disk_hr;
                             for(k=0;k<3;k++) {bh_lum_grad[k] += BHLum * pa->GradRho[k];}
@@ -1531,7 +1531,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double dx_stellarlum=0, dy_stellarlum=0, dz_stellarlum=0, sigma_eff=0;
     int valid_gas_particle_for_rt = 0;
 #ifdef RT_OTVET
-    double RT_ET[N_RT_FREQ_BINS][6]={0};
+    double RT_ET[N_RT_FREQ_BINS][6]={{0}};
 #endif
 #endif
     
@@ -1720,8 +1720,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     {
         fac_stellum_0 = - 1.15 * All.PhotonMomentum_Coupled_Fraction * 1.626e-11 * (soft * soft / (pow((float)All.DesNumNgb,0.66) * pmass)) /
             (All.G * All.UnitVelocity_in_cm_per_s * All.HubbleParam / All.UnitTime_in_s) / All.cf_a2inv;
-        sigma_eff = 0.955 * All.UnitMass_in_g*All.HubbleParam * All.cf_a2inv / (All.UnitLength_in_cm*All.UnitLength_in_cm);
-        double sigma_eff_abs = 0.955 * All.cf_a2inv * 0.333*pow((float)All.DesNumNgb,0.66) * pmass / (soft*soft); // *(Z/Zsolar) for metal-dept
+        sigma_eff = 0.955 * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm); // (should be in -physical-, not comoving units now) //
+        double sigma_eff_abs = 0.955 * 0.333*pow((float)All.DesNumNgb,0.66) * pmass / (soft*soft/All.cf_a2inv); // (physical units) *(Z/Zsolar) for metal-dept
         int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {fac_stellum[kf] = 1 - exp(-rt_kappa(0,kf)*sigma_eff_abs);}
     }
 #endif
@@ -1797,7 +1797,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     mass_bhlum=0; 
 		            if(P[no].Type==5) 
 		            {
-			            double bhlum_t = bh_lum_bol(P[no].BH_Mdot, P[no].BH_Mass) * bh_lum_unitfactor;
+			            double bhlum_t = bh_lum_bol(P[no].BH_Mdot, P[no].BH_Mass, no) * bh_lum_unitfactor;
 			            mass_bhlum = bh_angleweight(bhlum_t, P[no].GradRho, P[no].BH_disk_hr, dx,dy,dz);
 		            }
 #endif
@@ -2157,6 +2157,16 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 }
                 else		/* check relative opening criterion */
                 {
+                    /* force node to open if we are within the gravitational softening length */
+#if !(defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE))
+                    double soft = All.ForceSoftening[ptype];
+#endif
+                    if((r2 < (soft+0.6*nop->len)*(soft+0.6*nop->len)) || (r2 < (nop->maxsoft+0.6*nop->len)*(nop->maxsoft+0.6*nop->len)))
+                    {
+                        no = nop->u.d.nextnode;
+                        continue;
+                    }
+                    
 #ifdef DO_NOT_BRACH_IF
                     if((mass * nop->len * nop->len > r2 * r2 * aold) |
                        ((pdxx < 0.60 * nop->len) & (pdyy < 0.60 * nop->len) & (pdzz < 0.60 * nop->len)))
@@ -2283,7 +2293,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         if((r>0) && (u<1) && (pmass>0)) // checks that these aren't the same particle
                         {
                             kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
-                            fac += (zeta/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
+                            fac -= (zeta/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
                         } // if(ptype==0)
                         
                         if(zeta_sec != 0) // secondary is adaptively-softened particle (set above)
@@ -2291,7 +2301,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                                 if((r>0) && (u_p<1) && (pmass>0))
                                 {
                                     kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
-                                    fac += (zeta_sec/pmass) * dWdr / r;
+                                    fac -= (zeta_sec/pmass) * dWdr / r;
                                 } // if(zeta_sec != 0)
                     } // if(ptype==ptype_sec)
 #else
@@ -2319,13 +2329,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                                 if((zeta != 0) && (u < 1))
                                 {
                                     kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
-                                    fac += 2 * (zeta/pmass) * dWdr / sqrt(r2 + 0.0001/(h_inv*h_inv));   // 0.5 * zeta * omega * dWdr / r;
+                                    fac -= 2. * (zeta/pmass) * dWdr / sqrt(r2 + 0.0001/(h_inv*h_inv));   // 0.5 * zeta * omega * dWdr / r;
                                 }
                             } else {
                                 if((zeta_sec != 0) && (u_p < 1)) // secondary is adaptively-softened particle (set above)
                                 {
                                     kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
-                                    fac += 2 * (zeta_sec/pmass) * dWdr / sqrt(r2 + 0.0001/(h_p_inv*h_p_inv));
+                                    fac -= 2. * (zeta_sec/pmass) * dWdr / sqrt(r2 + 0.0001/(h_p_inv*h_p_inv));
                                 }
                             }
                         } // if(ptype==ptype_sec)
@@ -2419,13 +2429,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if(r >= soft) {fac=1./(r2*r);} else {h_inv=1./soft; h3_inv=h_inv*h_inv*h_inv; u=r*h_inv; fac=kernel_gravity(u,h_inv,h3_inv,1);}
                 if((soft>r)&&(soft>0)) fac *= (r2/(soft*soft)); // don't allow cross-section > r2
 #ifdef GALSF_FB_LOCAL_UV_HEATING
-                int i_uv_k = 0;
-                incident_flux_uv += (0.079577*fac*r) * mass_stellarlum[i_uv_k];// * shortrange_table[tabindex];
-                if((mass_stellarlum[N_RT_FREQ_BINS-1]<mass_stellarlum[i_uv_k])&&(mass_stellarlum[N_RT_FREQ_BINS-1]>0)) // if this -isn't- satisfied, no chance you are optically thin to EUV //
+                incident_flux_uv += (0.079577*fac*r) * mass_stellarlum[RT_FREQ_BIN_FIRE_UV];// * shortrange_table[tabindex];
+                if((mass_stellarlum[RT_FREQ_BIN_FIRE_IR]<mass_stellarlum[RT_FREQ_BIN_FIRE_UV])&&(mass_stellarlum[RT_FREQ_BIN_FIRE_IR]>0)) // if this -isn't- satisfied, no chance you are optically thin to EUV //
                 {
                     // here, use ratio and linear scaling of escape with tau to correct to the escape fraction for the correspondingly higher EUV kappa: factor ~2000 is KAPPA_EUV/KAPPA_UV
-                    incident_flux_euv += (0.079577*fac*r) * mass_stellarlum[i_uv_k] * (All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV) *
-                                                                                       ((mass_stellarlum[i_uv_k]+mass_stellarlum[N_RT_FREQ_BINS-1])/(mass_stellarlum[i_uv_k]+mass_stellarlum[N_RT_FREQ_BINS-1]*(2042.6))));
+                    incident_flux_euv += (0.079577*fac*r) * mass_stellarlum[RT_FREQ_BIN_FIRE_UV] * (All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV) *
+                                                                                       ((mass_stellarlum[RT_FREQ_BIN_FIRE_UV]+mass_stellarlum[RT_FREQ_BIN_FIRE_IR])/(mass_stellarlum[RT_FREQ_BIN_FIRE_UV]+mass_stellarlum[RT_FREQ_BIN_FIRE_IR]*(2042.6))));
                 } else {
                     // here, just enforce a minimum escape fraction //
                     double m_lum_total = 0; int ks_q; for(ks_q=0;ks_q<N_RT_FREQ_BINS;ks_q++) {m_lum_total += mass_stellarlum[ks_q];}
@@ -3257,6 +3266,17 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                 }
                 else		/* check relative opening criterion */
                 {
+                    
+                    /* force node to open if we are within the gravitational softening length */
+#if !(defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE))
+                    double soft = All.ForceSoftening[ptype];
+#endif
+                    if((r2 < (soft+0.6*nop->len)*(soft+0.6*nop->len)) || (r2 < (nop->maxsoft+0.6*nop->len)*(nop->maxsoft+0.6*nop->len)))
+                    {
+                        no = nop->u.d.nextnode;
+                        continue;
+                    }
+
 #ifdef DO_NOT_BRACH_IF
                     if((mass * nop->len * nop->len > r2 * r2 * aold) |
                        ((fabs(dxx) < 0.60 * nop->len) & (fabs(dyy) < 0.60 * nop->len) & (fabs(dzz) <
