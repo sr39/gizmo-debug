@@ -340,7 +340,7 @@ OPTIMIZE = -O3 -ip -funroll-loops -no-prec-div -fp-model fast=2 -xAVX # Sandy or
 endif
 OPTIMIZE += -Wall # compiler warnings
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
-OPTIMIZE += -parallel -openmp
+OPTIMIZE += -parallel -qopenmp
 endif
 GMP_INCL =
 GMP_LIBS =
