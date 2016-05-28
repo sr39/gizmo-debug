@@ -1512,12 +1512,13 @@ void hydro_gradient_calc(void)
             {
                 SphP[i].CosmicRayDiffusionCoeff = 0;
                 double CRPressureGradScaleLength = Get_CosmicRayGradientLength(i);
+                double CR_kappa_streaming = 0;
 #ifndef COSMIC_RAYS_DISABLE_STREAMING
                 /* self-consistently calculate the diffusion coefficients for cosmic ray fluids; first the streaming part of this (kappa~v_stream*L_CR_grad)
                  following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
                 double v_streaming = Get_CosmicRayStreamingVelocity(i);
                 /* the diffusivity is now just the product of these two coefficients */
-                SphP[i].CosmicRayDiffusionCoeff += v_streaming * CRPressureGradScaleLength; /* all physical units */
+                CR_kappa_streaming = v_streaming * CRPressureGradScaleLength; /* all physical units */
 #endif
 #ifndef COSMIC_RAYS_DISABLE_DIFFUSION
                 /* now we calculate the 'traditional' diffusion part of this: kappa~v_CR*r_gyro * B_bulk^2/(B_random[scale~r_gyro]^2)
@@ -1572,6 +1573,7 @@ void hydro_gradient_calc(void)
 #else
                 SphP[i].CosmicRayDiffusionCoeff *= All.CosmicRayDiffusionCoeff;
 #endif
+                SphP[i].CosmicRayDiffusionCoeff += CR_kappa_streaming;
                 /* now we apply a limiter to prevent the coefficient from becoming too large: cosmic rays cannot stream/diffuse with v_diff > c */
                 double diffusion_velocity_limit = 0.1 * C; /* maximum diffusion velocity (set <C if desired) */
                 double kappa_diff_vel = SphP[i].CosmicRayDiffusionCoeff * GAMMA_COSMICRAY_MINUS1 / CRPressureGradScaleLength * All.UnitVelocity_in_cm_per_s;
