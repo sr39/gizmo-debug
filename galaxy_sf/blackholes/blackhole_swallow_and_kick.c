@@ -814,7 +814,7 @@ int blackhole_spawn_particle_wind_shell( MyIDType i, MyIDType dummy_sph_i_to_clo
 {
     printf(" spiltting BH %d using SphP particle %d\n", i, dummy_sph_i_to_clone);
     double mass_of_new_particle, total_mass_in_winds, dt;
-    int n_wind_to_spawn, n_particles_split;
+    int n_wind_to_spawn, n_particles_split, bin;
     long j;
     
 #ifndef WAKEUP
@@ -838,7 +838,7 @@ int blackhole_spawn_particle_wind_shell( MyIDType i, MyIDType dummy_sph_i_to_clo
         endrun(8888);
     }
     
-    int k; double phi,cos_theta;
+    int k, jjj; double phi,cos_theta;
     k=0;
     phi = 2.0*M_PI*get_random_number(i+1+ThisTask); // random from 0 to 2pi //
     cos_theta = 2.0*(get_random_number(i+3+2*ThisTask)-0.5); // random between 1 to -1 //
@@ -847,6 +847,10 @@ int blackhole_spawn_particle_wind_shell( MyIDType i, MyIDType dummy_sph_i_to_clo
 #ifndef NOGRAVITY
     d_r = DMAX(d_r , 2.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0]);
 #endif
+    
+    for (bin = 0; bin < TIMEBINS; bin++)
+        if (TimeBinCount[bin] > 0)
+            break;
     
     /* find the first non-gas particle and move it to the end of the particle list */
     for(j = NumPart; j < NumPart + n_particles_split; j++) {
@@ -861,7 +865,8 @@ int blackhole_spawn_particle_wind_shell( MyIDType i, MyIDType dummy_sph_i_to_clo
         /* set the pointers equal to one another -- all quantities get copied, we only have to modify what needs changing */
         P[j]    = P[dummy_sph_i_to_clone];
         SphP[j] = SphP[dummy_sph_i_to_clone];
-        P[j].TimeBin = P[i].TimeBin;            // put this particle on the BH time step
+        P[j].TimeBin = bin;            // put this particle on the lowest active time bin
+        P[j].dt_step = bin ? (((integertime) 1) << bin) : 0;
         
         /* the particle needs to be 'born active' and added to the active set */
         NextActiveParticle[j] = FirstActiveParticle;
@@ -869,14 +874,22 @@ int blackhole_spawn_particle_wind_shell( MyIDType i, MyIDType dummy_sph_i_to_clo
         NumForceUpdate++;
         
         /* likewise add it to the counters that register how many particles are in each timebin */
-        TimeBinCount[P[j].TimeBin]++;
+        TimeBinCount[bin]++;
+        TimeBinCountSph[bin]++;
         PrevInTimeBin[j] = i;
-        NextInTimeBin[j] = NextInTimeBin[i];
-        if(NextInTimeBin[i] >= 0)
-            PrevInTimeBin[NextInTimeBin[i]] = j;
-        NextInTimeBin[i] = j;
-        if(LastInTimeBin[P[i].TimeBin] == i)
-            LastInTimeBin[P[i].TimeBin] = j;
+        
+        if(FirstInTimeBin[bin] < 0){  // only particle in this time bin on this task
+            FirstInTimeBin[bin] = j;
+            LastInTimeBin[bin] = j;
+            NextInTimeBin[j] = -1;
+            PrevInTimeBin[j] = -1;
+        } else {                      // there is already at least one particle; add this one "to the front" of the list
+            NextInTimeBin[j] = FirstInTimeBin[bin];
+            PrevInTimeBin[j] = -1;
+            PrevInTimeBin[FirstInTimeBin[bin]] = j;
+            FirstInTimeBin[bin] = j;
+        }
+
         
         /* the particle needs an ID: we give it a bit-flip from the original particle to signify the split */
         unsigned int bits;
@@ -886,10 +899,83 @@ int blackhole_spawn_particle_wind_shell( MyIDType i, MyIDType dummy_sph_i_to_clo
         
         /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
         SphP[j].ConditionNumber *= 10.0;
+
+        SphP[j].Density=1e-10;
+        SphP[j].Pressure=1e-10;
+        P[j].Hsml = All.SofteningTable[0];
+        PPP[j].Hsml = All.SofteningTable[0];
+        
+        SphP[j].InternalEnergy = 1e4 / (  PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g  );
+        SphP[j].InternalEnergyPred = SphP[j].InternalEnergy;
+        
+        for(jjj = 0; jjj < 3; jjj++) SphP[j].HydroAccel[jjj] = 0;
+        
+        P[i].Particle_DivVel = 0;
+        SphP[j].DtInternalEnergy = 0;
+
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
+        SphP[j].MaxKineticEnergyNgb = 0;
+#endif
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+        SphP[j].dMass = 0;
+        SphP[j].DtMass = 0;
+        SphP[j].MassTrue = P[j].Mass;
+        for(jjj=0;jjj<3;jjj++) SphP[j].GravWorkTerm[jjj] = 0;
+#endif
+        
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
+        PPPZ[j].AGS_zeta = 0;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+        PPP[j].AGS_Hsml = PPP[j].Hsml;
+#endif
+#endif
+        
+#ifdef CONDUCTION
+        SphP[j].Kappa_Conduction = 0;
+#endif
+#ifdef MHD_NON_IDEAL
+        SphP[j].Eta_MHD_OhmicResistivity_Coeff = 0;
+        SphP[j].Eta_MHD_HallEffect_Coeff = 0;
+        SphP[j].Eta_MHD_AmbiPolarDiffusion_Coeff = 0;
+#endif
+#ifdef VISCOSITY
+        SphP[j].Eta_ShearViscosity = 0;
+        SphP[j].Zeta_BulkViscosity = 0;
+#endif
+        
+        
+#ifdef TURB_DIFFUSION
+        SphP[j].TD_DiffCoeff = 0;
+#endif
+        
+#if defined(GALSF_SUBGRID_WINDS) && defined(GALSF_SUBGRID_VARIABLEVELOCITY)
+        SphP[j].HostHaloMass = 0;
+#endif // GALSF_SUBGRID_WINDS //
+#ifdef GALSF_FB_HII_HEATING
+        SphP[j].DelayTimeHII = 0;
+#endif
+#ifdef GALSF_TURNOFF_COOLING_WINDS
+        SphP[j].DelayTimeCoolingSNe = 0;
+#endif
+#ifdef GALSF
+        SphP[j].Sfr = 0;
+#endif
+#ifdef SPHAV_CD10_VISCOSITY_SWITCH
+        SphP[j].alpha = 0.0;
+#endif
+#if defined(BH_THERMALFEEDBACK)
+        SphP[j].Injected_BH_Energy = 0;
+#endif
         
         /* assign masses to both particles (so they sum correctly) */
         P[j].Mass = mass_of_new_particle;
         P[i].Mass -= P[j].Mass;
+        
+#define BH_CONST_MASS_TEST
+#ifdef BH_CONST_MASS_TEST
+        P[i].Mass = All.SeedBlackHoleMass;
+#endif
+        
         //#ifdef MAGNETIC
         // splitting with B fields not implemented for BH winds!
         //#endif
