@@ -148,22 +148,8 @@ void drift_particle(int i, integertime time1)
     {
         if(dt_drift>0)
         {
-            double minsoft = All.ForceSoftening[P[i].Type];
-            double maxsoft = All.MaxHsml;
-            if(density_isactive(i)==0)
-            {
-#if !(EXPAND_PREPROCESSOR_(ADAPTIVE_GRAVSOFT_FORALL) == 1)
-                maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * All.ForceSoftening[P[i].Type]);
-#ifdef PMGRID
-                maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
-#endif
-#else
-                maxsoft = DMIN(maxsoft, 50.0 * All.ForceSoftening[P[i].Type]);
-#ifdef PMGRID
-                maxsoft = DMIN(maxsoft, 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
-#endif
-#endif
-            }
+            double minsoft = ags_return_minsoft(i);
+            double maxsoft = ags_return_maxsoft(i);
             PPP[i].AGS_Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
             if(PPP[i].AGS_Hsml < minsoft) {PPP[i].AGS_Hsml = minsoft;}
             if(PPP[i].AGS_Hsml > maxsoft) {PPP[i].AGS_Hsml = maxsoft;}

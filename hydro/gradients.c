@@ -1512,12 +1512,13 @@ void hydro_gradient_calc(void)
             {
                 SphP[i].CosmicRayDiffusionCoeff = 0;
                 double CRPressureGradScaleLength = Get_CosmicRayGradientLength(i);
+                double CR_kappa_streaming = 0;
 #ifndef COSMIC_RAYS_DISABLE_STREAMING
                 /* self-consistently calculate the diffusion coefficients for cosmic ray fluids; first the streaming part of this (kappa~v_stream*L_CR_grad)
                  following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
                 double v_streaming = Get_CosmicRayStreamingVelocity(i);
                 /* the diffusivity is now just the product of these two coefficients */
-                SphP[i].CosmicRayDiffusionCoeff += v_streaming * CRPressureGradScaleLength; /* all physical units */
+                CR_kappa_streaming = v_streaming * CRPressureGradScaleLength; /* all physical units */
 #endif
 #ifndef COSMIC_RAYS_DISABLE_DIFFUSION
                 /* now we calculate the 'traditional' diffusion part of this: kappa~v_CR*r_gyro * B_bulk^2/(B_random[scale~r_gyro]^2)
@@ -1572,17 +1573,22 @@ void hydro_gradient_calc(void)
 #else
                 SphP[i].CosmicRayDiffusionCoeff *= All.CosmicRayDiffusionCoeff;
 #endif
+                SphP[i].CosmicRayDiffusionCoeff += CR_kappa_streaming;
                 /* now we apply a limiter to prevent the coefficient from becoming too large: cosmic rays cannot stream/diffuse with v_diff > c */
-                double diffusion_velocity_limit = 0.1 * C; /* maximum diffusion velocity (set <C if desired) */
-                double kappa_diff_vel = SphP[i].CosmicRayDiffusionCoeff * GAMMA_COSMICRAY_MINUS1 / CRPressureGradScaleLength * All.UnitVelocity_in_cm_per_s;
+                double diffusion_velocity_limit = 1.0 * C; /* maximum diffusion velocity (set <C if desired) */
+#ifdef GALSF
+                diffusion_velocity_limit = 0.01 * C;
+#endif
+                double Lscale = DMIN(Get_Particle_Size(i)*All.cf_atime , CRPressureGradScaleLength);
+                double kappa_diff_vel = SphP[i].CosmicRayDiffusionCoeff * GAMMA_COSMICRAY_MINUS1 / Lscale * All.UnitVelocity_in_cm_per_s;
                 SphP[i].CosmicRayDiffusionCoeff *= 1 / (1 + kappa_diff_vel/diffusion_velocity_limit); /* caps maximum here */
                 if((SphP[i].CosmicRayDiffusionCoeff<=0)||(isnan(SphP[i].CosmicRayDiffusionCoeff))) {SphP[i].CosmicRayDiffusionCoeff=0;}
 #ifdef GALSF
                 /* for multi-physics problems, we suppress diffusion where it is irrelevant */
                 {
                     double P_cr_Ratio = Get_Particle_CosmicRayPressure(i) / (MIN_REAL_NUMBER + SphP[i].Pressure);
-                    double P_min = 1.0e-2; if(P_cr_Ratio < P_min) {SphP[i].CosmicRayDiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
-                    P_min = 1.0e-4; if(P_cr_Ratio < P_min) {SphP[i].CosmicRayDiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
+                    double P_min = 3.0e-2; if(P_cr_Ratio < P_min) {SphP[i].CosmicRayDiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
+                    P_min = 1.0e-3; if(P_cr_Ratio < P_min) {SphP[i].CosmicRayDiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
                 }
 #endif
             } else {

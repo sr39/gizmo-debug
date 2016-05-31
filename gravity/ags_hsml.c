@@ -944,9 +944,6 @@ int ags_density_isactive(int i)
         PPP[i].AGS_Hsml = PPP[i].Hsml; // gas sees gas, these are identical
         return 0; // don't actually need to do the loop //
     }
-    
-    // if(density_isactive(i)) return 0;
-    /* would have already been handled in hydro density routine [yes, BUT, that only searches for gas neighbors] */
     return 1;
 }
 
