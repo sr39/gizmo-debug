@@ -1547,7 +1547,7 @@ void hydro_gradient_calc(void)
                     the pressure gradient scale length */
                 p_scale = 0.0; for(k=0;k<3;k++) {p_scale += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
                 p_scale = SphP[i].Pressure / (1.e-33 + sqrt(p_scale));
-                double p_scale_min = 0.01 * Get_Particle_Size(i); // sets a 'floor' at some multiple of the particle size (unresolved below this) //
+                double p_scale_min = 0.5 * Get_Particle_Size(i); // sets a 'floor' at some multiple of the particle size (unresolved below this) //
                 p_scale = sqrt(p_scale_min*p_scale_min + p_scale*p_scale);
                 double p_scale_max = 100.*PPP[i].Hsml; // sets a maximum beyond which we have no meaningful information //
                 p_scale = 1./(1./p_scale + 1./p_scale_max); // code units here //
@@ -1556,15 +1556,15 @@ void hydro_gradient_calc(void)
                 /* define the driving scale by the pressure scale length */
                 for(k=0;k<3;k++) {p_scale += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
                 p_scale = SphP[i].Pressure / (1.e-33 + sqrt(p_scale));
-                double p_scale_min = 0.01 * Get_Particle_Size(i); /* sets a 'floor' at some multiple of the particle size (unresolved below this) */
+                double p_scale_min = 0.5 * Get_Particle_Size(i); /* sets a 'floor' at some multiple of the particle size (unresolved below this) */
                 p_scale = sqrt(p_scale_min*p_scale_min + p_scale*p_scale);
-                double p_scale_max = 1000.*PPP[i].Hsml; /* sets a maximum beyond which we have no meaningful information */
+                double p_scale_max = 100.*PPP[i].Hsml; /* sets a maximum beyond which we have no meaningful information */
                 p_scale = 1./(1./p_scale + 1./p_scale_max); /* code units here */
                 /* here we need sqrt(P/4e-14 erg/cm^3); convert pressure to physical units and multiply this out */
                 b_muG = sqrt( SphP[i].Pressure * All.cf_a3inv * All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam / 4.0e-14 );
 #endif
                 p_scale *= (All.UnitLength_in_cm / All.HubbleParam * All.cf_atime) / (3.086e21); /* physical pressure scale length in units of kpc */
-                if(p_scale > 1) {p_scale=1;}
+                if(p_scale > 10) {p_scale=10;} // limit at 10 kpc
                 kappa_diff *= pow( p_scale * p_scale * R_GV / b_muG, 1./3.); /* these should all be dimensionless here */
                 SphP[i].CosmicRayDiffusionCoeff += kappa_diff; /* should be in physical units */
 #endif                
