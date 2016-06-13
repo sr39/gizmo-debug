@@ -955,8 +955,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 SphP[j].InternalEnergyPred += e_shock;
 #ifdef GALSF_TURNOFF_COOLING_WINDS
                 /* if the sub-grid 'cooling turnoff' model is enabled, turn off cooling for the 'blastwave timescale' */
-                dP = 7.08 * pow(Esne51*SphP[j].Density*density_to_n,0.34) * pow(SphP[j].Pressure*pressure_to_p4,-0.70)
-                / (All.UnitTime_in_Megayears/All.HubbleParam);
+                dP = 7.08 * pow(Esne51*SphP[j].Density*density_to_n,0.34) * pow(SphP[j].Pressure*pressure_to_p4,-0.70) / (All.UnitTime_in_Megayears/All.HubbleParam);
                 if(dP>SphP[j].DelayTimeCoolingSNe) SphP[j].DelayTimeCoolingSNe=dP;
 #else
                 /* inject momentum */
