@@ -545,7 +545,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 #ifndef COSMIC_RAYS_DISABLE_STREAMING
                     /* estimate whether diffusion is streaming-dominated: use stronger/weaker criterion accordingly */
-                    double diffusion_from_streaming = Get_CosmicRayStreamingVelocity(p) * CRPressureGradScaleLength;
+                    double diffusion_from_streaming = (GAMMA_COSMICRAY/GAMMA_COSMICRAY_MINUS1) * Get_CosmicRayStreamingVelocity(p) * CRPressureGradScaleLength;
                     if(diffusion_from_streaming > 0.75*SphP[p].CosmicRayDiffusionCoeff) {dt_conduction = L_cr_weak * coeff_inv; explicit_timestep_on = 0;}
 #endif
 #ifdef GALSF

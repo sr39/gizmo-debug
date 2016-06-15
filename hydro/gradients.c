@@ -1518,7 +1518,7 @@ void hydro_gradient_calc(void)
                  following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
                 double v_streaming = Get_CosmicRayStreamingVelocity(i);
                 /* the diffusivity is now just the product of these two coefficients */
-                CR_kappa_streaming = v_streaming * CRPressureGradScaleLength; /* all physical units */
+                CR_kappa_streaming = (GAMMA_COSMICRAY/GAMMA_COSMICRAY_MINUS1) * v_streaming * CRPressureGradScaleLength; /* all physical units */
 #endif
 #ifndef COSMIC_RAYS_DISABLE_DIFFUSION
                 /* now we calculate the 'traditional' diffusion part of this: kappa~v_CR*r_gyro * B_bulk^2/(B_random[scale~r_gyro]^2)
