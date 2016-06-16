@@ -39,9 +39,9 @@ double CallGrackle(double u_old, double rho, double dt, double *ne_guess, int ta
     
     gr_float density, metal_density, energy, velx, vely, velz;
     gr_float cooling_time, temperature, pressure, gamma;
-    velx          = SphP[i].VelPred[0];
-    vely          = SphP[i].VelPred[1];
-    velz          = SphP[i].VelPred[2];
+    velx          = SphP[target].VelPred[0];
+    vely          = SphP[target].VelPred[1];
+    velz          = SphP[target].VelPred[2];
     density       = rho;
     energy        = u_old;
 #ifdef METALS
