@@ -9,7 +9,7 @@
 
 #include "../cooling/cooling.h"
 
-#if defined(RT_COOLING_PHOTOHEATING)
+#if defined(RT_COOLING_PHOTOHEATING_OLDFORMAT)
 
 /* rate1 : photoheating for a blackbody spectrum */
 /* rate2 : recombination cooling rate */

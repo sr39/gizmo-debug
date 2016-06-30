@@ -233,12 +233,15 @@ struct hydrodata_in
 #ifdef RT_DIFFUSION_EXPLICIT
     MyDouble E_gamma[N_RT_FREQ_BINS];
     MyDouble Kappa_RT[N_RT_FREQ_BINS];
-    MyDouble DiffusionCoeff[N_RT_FREQ_BINS];
+    MyDouble RT_DiffusionCoeff[N_RT_FREQ_BINS];
 #if defined(RT_EVOLVE_FLUX) || defined(HYDRO_SPH)
     MyDouble ET[N_RT_FREQ_BINS][6];
 #endif
 #ifdef RT_EVOLVE_FLUX
     MyDouble Flux[N_RT_FREQ_BINS][3];
+#endif
+#ifdef RT_INFRARED
+    MyDouble Radiation_Temperature;
 #endif
 #endif
     
@@ -309,6 +312,9 @@ struct hydrodata_out
     
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
     MyFloat Dt_E_gamma[N_RT_FREQ_BINS];
+#if defined(RT_INFRARED)
+    MyFloat Dt_E_gamma_T_weighted_IR;
+#endif
 #endif
 #if defined(RT_EVOLVE_FLUX)
     MyFloat Dt_Flux[N_RT_FREQ_BINS][3];
@@ -415,7 +421,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     {
         in->E_gamma[k] = SphP[i].E_gamma_Pred[k];
         in->Kappa_RT[k] = SphP[i].Kappa_RT[k];
-        in->DiffusionCoeff[k] = rt_diffusion_coefficient(i,k);
+        in->RT_DiffusionCoeff[k] = rt_diffusion_coefficient(i,k);
 #if defined(RT_EVOLVE_FLUX) || defined(HYDRO_SPH)
         int k_dir;
         for(k_dir=0;k_dir<6;k_dir++) in->ET[k][k_dir] = SphP[i].ET[k][k_dir];
@@ -424,6 +430,9 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
         for(k_dir=0;k_dir<3;k_dir++) in->Flux[k][k_dir] = SphP[i].Flux_Pred[k][k_dir];
 #endif
     }
+#ifdef RT_INFRARED
+        in->Radiation_Temperature = SphP[i].Radiation_Temperature;
+#endif
 #endif
 
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
@@ -505,6 +514,9 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
     
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
     for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_E_gamma[k] += out->Dt_E_gamma[k];}
+#if defined(RT_INFRARED)
+    SphP[i].Dt_E_gamma_T_weighted_IR += out->Dt_E_gamma_T_weighted_IR;
+#endif
 #endif
 #if defined(RT_EVOLVE_FLUX)
     for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Flux[k][k_dir] += out->Dt_Flux[k][k_dir];}}
@@ -643,11 +655,11 @@ void hydro_final_operations_and_cleanup(void)
             SphP[i].DtCosmicRayEnergy += dt_cosmicray_energy_adiabatic;
             SphP[i].DtInternalEnergy -= dt_cosmicray_energy_adiabatic;
             /* adiabatic term from Hubble expansion (needed for cosmological integrations */
-            if(All.ComovingIntegrationOn) {SphP[i].DtCosmicRayEnergy -= SphP[i].CosmicRayEnergyPred * All.cf_hubble_a;}
+            if(All.ComovingIntegrationOn) {SphP[i].DtCosmicRayEnergy -= 3*GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred * All.cf_hubble_a;}
 #ifndef COSMIC_RAYS_DISABLE_STREAMING
             /* energy transfer from CRs to gas due to the streaming instability (mediated by high-frequency Alfven waves, but they thermalize quickly
                 (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
-            double cr_stream_cool = -SphP[i].CosmicRayEnergyPred * Get_CosmicRayStreamingVelocity(i) / Get_CosmicRayGradientLength(i);
+            double cr_stream_cool = -SphP[i].CosmicRayEnergyPred * GAMMA_COSMICRAY_MINUS1 * Get_CosmicRayStreamingVelocity(i) / Get_CosmicRayGradientLength(i);
 #ifdef MAGNETIC
             /* account here for the fact that the streaming velocity can be suppressed by the requirement of motion along field lines */
             double B_dot_gradP=0.0, B2_tot=0.0, Pgrad2_tot=0.0;
@@ -688,17 +700,16 @@ void hydro_final_operations_and_cleanup(void)
             // = du/dlna -3*(gamma-1)*u ; then dlna/dt = H(z) =  All.cf_hubble_a //
             
             
-#ifdef RT_RAD_PRESSURE_EDDINGTON
-            /* calculate the radiation pressure force from the gradient of the Eddington tensor */
+#ifdef RT_RAD_PRESSURE_FORCES
+            /* calculate the radiation pressure force */
             double radacc[3]; radacc[0]=radacc[1]=radacc[2]=0; int k2;
             // a = kappa*F/c = Gradients.E_gamma_ET[gradient of photon energy density] / rho[gas_density] //
             for(k=0;k<3;k++)
                 for(k2=0;k2<N_RT_FREQ_BINS;k2++)
                 {
-#ifdef RT_EVOLVE_FLUX
+#if defined(RT_EVOLVE_FLUX)
                     radacc[k] += SphP[i].Kappa_RT[k2] * SphP[i].Flux_Pred[k2][k] / (C / All.UnitVelocity_in_cm_per_s); // no speed of light reduction multiplier here //
-#endif
-#ifdef RT_EVOLVE_EDDINGTON_TENSOR
+#elif defined(RT_EVOLVE_EDDINGTON_TENSOR)
                     radacc[k] += -SphP[i].Lambda_FluxLim[k2] * SphP[i].Gradients.E_gamma_ET[k2][k] / SphP[i].Density;
 #endif
                 }
@@ -834,6 +845,9 @@ void hydro_force(void)
 #endif
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
             for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_E_gamma[k] = 0;}
+#if defined(RT_INFRARED)
+            SphP[i].Dt_E_gamma_T_weighted_IR = 0;
+#endif
 #endif
 #if defined(RT_EVOLVE_FLUX)
             for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Flux[k][k_dir] = 0;}}

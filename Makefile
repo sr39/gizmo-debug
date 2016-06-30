@@ -82,6 +82,13 @@ PERL     =  /usr/bin/perl
 RESULT     := $(shell CONFIG=$(CONFIG) PERL=$(PERL) make -f config-makefile)
 CONFIGVARS := $(shell cat GIZMO_config.h)
 
+ifeq (FIRE_PHYSICS_DEFAULTS,$(findstring FIRE_PHYSICS_DEFAULTS,$(CONFIGVARS)))  # using 'fire default' instead of all the above
+    CONFIGVARS += COOLING COOL_LOW_TEMPERATURES COOL_METAL_LINES_BY_SPECIES
+    CONFIGVARS += GALSF METALS GALSF_SFR_MOLECULAR_CRITERION GALSF_SFR_VIRIAL_SF_CRITERION=0
+    CONFIGVARS += GALSF_FB_GASRETURN GALSF_FB_HII_HEATING GALSF_FB_SNE_HEATING=1 GALSF_FB_RT_PHOTONMOMENTUM
+    CONFIGVARS += GALSF_FB_LOCAL_UV_HEATING GALSF_FB_RPWIND_LOCAL GALSF_FB_RPROCESS_ENRICHMENT=6 GALSF_SFR_IMF_VARIATION
+endif
+
 
 CC       = mpicc        # sets the C-compiler (default)
 CXX       = mpiCC       # sets the C++-compiler (default)
@@ -340,7 +347,7 @@ OPTIMIZE = -O3 -ip -funroll-loops -no-prec-div -fp-model fast=2 -xAVX # Sandy or
 endif
 OPTIMIZE += -Wall # compiler warnings
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
-OPTIMIZE += -parallel -openmp
+OPTIMIZE += -parallel -qopenmp
 endif
 GMP_INCL =
 GMP_LIBS =

@@ -301,6 +301,23 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                 P[offset + n].ID = *ip++;
             break;
             
+            
+        case IO_CHILD_ID:		// particle child ID //
+            if(RestartFlag == 2)
+            {
+                for(n = 0; n < pc; n++)
+                    P[offset + n].ID_child_number = *ip++;
+            }
+            break;
+
+        case IO_GENERATION_ID:		// particle generation ID //
+            if(RestartFlag == 2)
+            {
+                for(n = 0; n < pc; n++)
+                    P[offset + n].ID_generation = *ip++;
+            }
+            break;
+
         case IO_MASS:		/* particle mass */
             for(n = 0; n < pc; n++)
                 P[offset + n].Mass = *fp++;
@@ -932,6 +949,11 @@ void read_file(char *fname, int readTask, int lastTask)
 #endif
                                 continue;	/* ignore all other blocks in initial conditions */
             
+
+            if(RestartFlag == 0 && (blocknr == IO_GENERATION_ID || blocknr == IO_CHILD_ID)) continue;
+#if defined(NO_CHILD_IDS_IN_ICS) || defined(ASSIGN_NEW_IDS)
+            if(blocknr == IO_GENERATION_ID || blocknr == IO_CHILD_ID) continue;
+#endif
             
 #ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
             if(blocknr == IO_POT)

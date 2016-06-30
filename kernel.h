@@ -139,18 +139,21 @@
 #endif
 
 
-#if (KERNEL_FUNCTION == 8) // quadratic 2-step kernel ('magic kernel' for image filtering)
+#if (KERNEL_FUNCTION == 8) // quadratic 2-step kernel ('magic kernel' for image filtering is this in 2d with KERNEL_U0=1/3)
 #define KERNEL_CORE_SIZE (1.0/2.0)
+#if !defined(KERNEL_U0)
+#define KERNEL_U0        (0.2) // set to anything between 0 (most 'peaked') to 1 ('flattest'): values ~0.55-0.59 minimize second derivative
+#endif
 #if (NUMDIMS==1)
-#define  KERNEL_NORM  (9.0/8.0)        	         /*!< For 1D-normalized kernel */
+#define  KERNEL_NORM  (3.0/(2.0 + KERNEL_U0)) /*!< For 1D-normalized kernel */
 #define  KERNEL_NMIN  2 // minimum number of neighbors for this kernel and dimension
 #define  KERNEL_NMAX  8 // maximum number of neighbors for this kernel and dimension
 #elif (NUMDIMS==2)
-#define  KERNEL_NORM  (54.0/(13.0*M_PI))	         /*!< For 2D-normalized kernel */
+#define  KERNEL_NORM  (6.0/(M_PI*(1 + KERNEL_U0 + KERNEL_U0*KERNEL_U0))) /*!< For 2D-normalized kernel */
 #define  KERNEL_NMIN  12
 #define  KERNEL_NMAX  24
 #else
-#define  KERNEL_NORM  (81.0/(16.0*M_PI))             /*!< For 3D-normalized kernel */
+#define  KERNEL_NORM  (15.0/(2.0*M_PI*(1+KERNEL_U0)*(1+KERNEL_U0*KERNEL_U0))) /*!< For 3D-normalized kernel */
 #define  KERNEL_NMIN  30
 #define  KERNEL_NMAX  64
 #endif
@@ -318,17 +321,17 @@ static inline void kernel_main(double u, double hinv3, double hinv4,
 
     
 #if (KERNEL_FUNCTION == 8) /* quadratic '2-part' kernel */
-    if(u < 1.0/3.0)
+    if(u < KERNEL_U0)
     {
         if(mode >= 0)
-            *dwk = -6*u;
+            *dwk = -2*u/KERNEL_U0;
         if(mode <= 0)
-            *wk = 1-3*u*u;
+            *wk = 1-u*u/KERNEL_U0;
     } else {
         if(mode >= 0)
-            *dwk = -3*(1-u);
+            *dwk = -2*(1-u)/(1-KERNEL_U0);
         if(mode <= 0)
-            *wk = 1.5*(1-u)*(1-u);
+            *wk = (1-u)*(1-u)/(1-KERNEL_U0);
     }
 #endif
     

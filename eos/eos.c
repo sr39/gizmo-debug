@@ -140,7 +140,7 @@ double Get_CosmicRayGradientLength(int i)
     double L_mean_free_path = (3.e25 / nH_cgs) / (All.UnitLength_in_cm / All.HubbleParam);
     L_gradient_max = DMIN(L_gradient_max, L_mean_free_path);
     
-    double CRPressureGradScaleLength = GAMMA_COSMICRAY/GAMMA_COSMICRAY_MINUS1 * Get_Particle_CosmicRayPressure(i) / sqrt(1.0e-33 + CRPressureGradMag) * All.cf_atime;
+    double CRPressureGradScaleLength = Get_Particle_CosmicRayPressure(i) / sqrt(1.0e-33 + CRPressureGradMag) * All.cf_atime;
     if(CRPressureGradScaleLength > 0) {CRPressureGradScaleLength = 1.0/(1.0/CRPressureGradScaleLength + 1.0/L_gradient_max);} else {CRPressureGradScaleLength=0;}
     CRPressureGradScaleLength = sqrt(L_gradient_min*L_gradient_min + CRPressureGradScaleLength*CRPressureGradScaleLength);
     return CRPressureGradScaleLength; /* this is returned in -physical- units */

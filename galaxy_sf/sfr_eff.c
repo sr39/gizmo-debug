@@ -27,7 +27,7 @@
 #if defined(GALSF_SFR_IMF_VARIATION) || defined(GALSF_SFR_IMF_SAMPLING)
 /* function to determine what the IMF of a new star particle will be, based 
     on the gas properties of the particle out of which it forms */
-void assign_imf_properties_from_starforming_gas(MyIDType i)
+void assign_imf_properties_from_starforming_gas(int i)
 {
     
 #ifdef GALSF_SFR_IMF_VARIATION
@@ -53,7 +53,7 @@ void assign_imf_properties_from_starforming_gas(MyIDType i)
     
     /* now we need to record all the properties we care to save about the star-forming gas, for the sake of later use: */
     int j,k;
-    double NH = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1) * All.cf_a2inv;
+    double NH = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1);
     double dv2abs_tot = 0; /* calculate complete velocity dispersion (including hubble-flow correction) in physical units */
     for(j=0;j<3;j++)
     {
@@ -121,7 +121,7 @@ void assign_imf_properties_from_starforming_gas(MyIDType i)
 
 /* return the light-to-mass ratio, for the IMF of a given particle, relative to the Chabrier/Kroupa IMF which 
     is otherwise (for all purposes) our 'default' choice */
-double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i)
+double calculate_relative_light_to_mass_ratio_from_imf(int i)
 {
 #ifdef SINGLE_STAR_FORMATION
     double unit_lsun_msun = (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)) / (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS));
@@ -294,13 +294,13 @@ double get_starformation_rate(int i)
     
 #ifdef GALSF_SFR_MOLECULAR_CRITERION
     /* Krumholz & Gnedin fitting function for f_H2 as a function of local properties */
-    double tau_fmol = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1) * All.cf_a2inv;
+    double tau_fmol = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1);
     tau_fmol *= (0.1 + P[i].Metallicity[0]/All.SolarAbundances[0]);
     if(tau_fmol>0) {
-        tau_fmol *= 434.78*All.UnitDensity_in_cgs*All.HubbleParam*All.UnitLength_in_cm;
-        y = 0.756*(1+3.1*pow(P[i].Metallicity[0]/All.SolarAbundances[0],0.365));
-        y = log(1+0.6*y+0.01*y*y)/(0.6*tau_fmol);
-        y = 1-0.75*y/(1+0.25*y);
+        tau_fmol *= 434.78 * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam;
+        y = 0.756 * (1 + 3.1*pow(P[i].Metallicity[0]/All.SolarAbundances[0],0.365));
+        y = log(1 + 0.6*y + 0.01*y*y) / (0.6*tau_fmol);
+        y = 1 - 0.75*y/(1 + 0.25*y);
         if(y<0) y=0; if(y>1) y=1;
         rateOfSF *= y;
     } // if(tau_fmol>0)
@@ -521,7 +521,7 @@ void cooling_and_starformation(void)
             if ( (SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) && (P[i].Metallicity[0]/All.SolarAbundances[0] < 0.1) )
             {
                 GradRho = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1);
-                GradRho *= (All.UnitDensity_in_cgs*All.cf_a3inv) * (All.UnitLength_in_cm*All.cf_atime) * All.HubbleParam;
+                GradRho *= All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam
                 /* surface dens in g/cm^2; threshold for bound cluster formation in our experiments is ~2 g/cm^2 (10^4 M_sun/pc^2) */
                 if (GradRho > 0.1)
                 {

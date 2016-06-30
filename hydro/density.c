@@ -146,10 +146,6 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
     ASSIGN_ADD(PPP[i].DhsmlNgbFactor, out->DhsmlNgb, mode);
     ASSIGN_ADD(P[i].Particle_DivVel, out->Particle_DivVel,   mode);
     
-#if defined(ADAPTIVE_GRAVSOFT_FORALL)
-    ASSIGN_ADD(PPPZ[i].AGS_zeta, out->AGS_zeta,   mode);
-#endif
-    
     if(P[i].Type == 0)
     {
         ASSIGN_ADD(SphP[i].Density, out->Rho, mode);
@@ -581,6 +577,9 @@ void density(void)
                 } else {
                     PPP[i].NumNgb = PPP[i].DhsmlNgbFactor = P[i].Particle_DivVel = 0;
                 }
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+                if(P[i].Type > 0) {PPP[i].Particle_DivVel = 0;}
+#endif
                 
                 // inverse of SPH volume element (to satisfy constraint implicit in Lagrange multipliers)
                 if(PPP[i].DhsmlNgbFactor > -0.9)	/* note: this would be -1 if only a single particle at zero lag is found */
@@ -703,13 +702,13 @@ void density(void)
                 if((P[i].Type!=0)&&(P[i].Type!=5))
                 {
                     desnumngb = All.DesNumNgb;
-                    if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
-                    desnumngbdev = desnumngb / 2; // enforcing exact number not important
 #ifdef GALSF
+                    if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
                     // if we're finding this for feedback routines, there isn't any good reason to search beyond a modest physical radius //
                     double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
                     maxsoft = 2.0 / unitlength_in_kpc;
 #endif
+                    desnumngbdev = desnumngb / 2; // enforcing exact number not important
                 }
 #endif
                 
@@ -1074,17 +1073,10 @@ void density(void)
             
             
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-            /* non-gas particles handled here should generally have zeta=0, because their softening is not defined by their density, but
-             by a different particle type, which doesn't respond self-consistently if the particles suddenly 'appear' in this list
-             (physically, need to think about star particles 'softening' in this respect) */
-            PPPZ[i].AGS_zeta = 0;
-            //if(P[i].Type > -1)//
+            /* non-gas particles are handled separately, in the ags_hsml routine */
             if(P[i].Type==0)
-#else
-            if(P[i].Type==0)
-#endif
             {
+                PPPZ[i].AGS_zeta = 0;
                 double zeta_0 = 0; // 2.0 * P[i].Mass*P[i].Mass * PPP[i].Hsml*PPP[i].Hsml; // self-value of zeta if no neighbors are found //
                 if((PPP[i].Hsml > 0)&&(PPP[i].NumNgb > 0))
                 {
@@ -1228,7 +1220,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #endif
                     
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
-                    out.AGS_zeta += mass_j * kernel_gravity(u, kernel.hinv, kernel.hinv3, 0);
+                    if(local.Type == 0) {out.AGS_zeta += mass_j * kernel_gravity(u, kernel.hinv, kernel.hinv3, 0);}
 #endif
                     /* for everything below, we do NOT include the particle self-contribution! */
                     if(kernel.r > 0)
@@ -1372,10 +1364,7 @@ int density_isactive(int n)
 #endif
     
 #if defined(RT_SOURCE_INJECTION)
-    if(P[n].Type == 4) return 1;
-#endif
-#if defined(RT_CHEM_PHOTOION)
-    if((1 << P[n].Type) & (RT_PHOTOION_SOURCES)) return 1;
+    if((1 << P[n].Type) & (RT_SOURCES)) return 1;
 #endif
     
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES

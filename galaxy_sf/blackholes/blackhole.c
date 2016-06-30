@@ -130,6 +130,7 @@ double bh_lum_bol(double mdot, double mass, long id)
 {
     double c_code = C / All.UnitVelocity_in_cm_per_s;
     double lum = All.BlackHoleRadiativeEfficiency * mdot * c_code*c_code;
+    //double lum_edd = All.BlackHoleRadiativeEfficiency * bh_eddington_mdot(mass) * c_code*c_code; if(lum > lum_edd) {lum = lum_edd;} // cap -luminosity- at eddington -luminosity-
 
 #ifdef SINGLE_STAR_FORMATION
     double m_solar = mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS);
@@ -163,10 +164,10 @@ double bh_lum_bol(double mdot, double mass, long id)
 
 
 /* calculate escape velocity to use for bounded-ness calculations relative to the BH */
-double bh_vesc(MyIDType j, double mass, double r_code)
+double bh_vesc(int j, double mass, double r_code)
 {
     double cs_to_add_km_s = 10.0; /* we can optionally add a 'fudge factor' to v_esc to set a minimum value; useful for galaxy applications */
-#if defined(SINGLE_STAR_FORMATION) || defined(BH_SEED_GROWTH_TESTS)
+#if defined(SINGLE_STAR_FORMATION)
     cs_to_add_km_s = 0.0;
 #endif
     cs_to_add_km_s *= 1.e5/All.UnitVelocity_in_cm_per_s;
@@ -179,7 +180,7 @@ double bh_vesc(MyIDType j, double mass, double r_code)
 }
 
 /* check whether a particle is sufficiently bound to the BH to qualify for 'gravitational capture' */
-int bh_check_boundedness(MyIDType j, double vrel, double vesc, double dr_code)
+int bh_check_boundedness(int j, double vrel, double vesc, double dr_code)
 {
     /* if pair is a gas particle make sure to account for its thermal pressure */
     double cs = 0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}
@@ -192,7 +193,7 @@ int bh_check_boundedness(MyIDType j, double vrel, double vesc, double dr_code)
     {
         double apocenter = dr_code / (1.0-v2);
         double apocenter_max = All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
-#if defined(SINGLE_STAR_FORMATION) || defined(BH_SEED_GROWTH_TESTS)
+#if defined(SINGLE_STAR_FORMATION) || defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
         double r_j = All.ForceSoftening[P[j].Type];
         if(P[j].Type==0) {r_j = DMAX(r_j , PPP[j].Hsml);}
         apocenter_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));

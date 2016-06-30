@@ -148,22 +148,8 @@ void drift_particle(int i, integertime time1)
     {
         if(dt_drift>0)
         {
-            double minsoft = All.ForceSoftening[P[i].Type];
-            double maxsoft = All.MaxHsml;
-            if(density_isactive(i)==0)
-            {
-#if !(EXPAND_PREPROCESSOR_(ADAPTIVE_GRAVSOFT_FORALL) == 1)
-                maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * All.ForceSoftening[P[i].Type]);
-#ifdef PMGRID
-                maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
-#endif
-#else
-                maxsoft = DMIN(maxsoft, 50.0 * All.ForceSoftening[P[i].Type]);
-#ifdef PMGRID
-                maxsoft = DMIN(maxsoft, 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
-#endif
-#endif
-            }
+            double minsoft = ags_return_minsoft(i);
+            double maxsoft = ags_return_maxsoft(i);
             PPP[i].AGS_Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
             if(PPP[i].AGS_Hsml < minsoft) {PPP[i].AGS_Hsml = minsoft;}
             if(PPP[i].AGS_Hsml > maxsoft) {PPP[i].AGS_Hsml = maxsoft;}
@@ -420,7 +406,7 @@ double INLINE_FUNC Get_Particle_Expected_Area(double h)
 }
 
 
-/* return the estimated local column from integrating the gradient in the density (separated here for convenience) */
+/* return the estimated local column (physical units) from integrating the gradient in the density (separated here for convenience) */
 double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h)
 {
     double gradrho_mag;
@@ -434,7 +420,7 @@ double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, dou
         //if(include_h > 0) gradrho_mag += include_h * rho * (hsml * (0.124 + 11.45 / (26.55 + All.DesNumNgb))); // quick-and-dirty approximation to the effective neighbor number needed here
         // account for the fact that 'h' is much larger than the inter-particle separation //
     }
-    return gradrho_mag; // *(Z/Zsolar) add metallicity dependence
+    return gradrho_mag * All.cf_a2inv; // (physical units) // *(Z/Zsolar) add metallicity dependence
 }
 
 
