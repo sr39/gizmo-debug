@@ -6,8 +6,10 @@
  *   It was based on a similar file in GADGET3 by Volker Springel (volker.springel@h-its.org),
  *   but the physical modules for black hole accretion and feedback have been
  *   replaced, and the algorithm for their coupling is new to GIZMO.  This file was modified
- *   on 1/9/15 by Paul Torrey (ptorrey@mit.edu) for clairity by parsing the existing code into
- *   smaller files and routines.
+ *   on 1/9/15 by Paul Torrey (ptorrey@mit.edu) for clarity by parsing the existing code into
+ *   smaller files and routines.  Some communication and black hole structures were modified
+ *   to reduce memory usage. Cleanup, de-bugging, and consolidation of routines by Xiangcheng Ma
+ *   (xchma@caltech.edu) followed on 05/15/15; re-integrated by PFH.
  */
 
 #ifndef gizmo_blackhole_h
@@ -33,6 +35,10 @@ void blackhole_final_loop(void);
 /* blackhole_environment.c */
 void blackhole_environment_loop(void);
 int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSend_local);
+#ifdef BH_GRAVACCRETION_BTOD   // DAA
+void blackhole_environment_second_loop(void);
+int blackhole_environment_second_evaluate(int target, int mode, int *nexport, int *nSend_local);
+#endif
 
 /* blackhole_swallow_and_kick.c */
 void blackhole_swallow_and_kick_loop(void);
@@ -46,6 +52,10 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target, int mode);
 
 //void check_for_bh_merger(int j, MyIDType id);
+double bh_eddington_mdot(double bh_mass);
+double bh_lum_bol(double mdot, double mass, long id);
+int bh_check_boundedness(int j, double vrel, double vesc, double dr_code);
+double bh_vesc(int j, double mass, double r_code);
 void normalize_temp_info_struct(int i);
 void set_blackhole_mdot(int i, int n, double dt);
 void set_blackhole_new_mass(int i, int n, double dt);

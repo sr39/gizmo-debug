@@ -43,7 +43,7 @@ extern pthread_mutex_t mutex_partnodedrift;
         should be taken care of in the factors
         All.cf_afac1/2/3, which will correctly assign between the two --
  B_code = a*a * B_physical (comoving magnetic fields)
- Phi_code = B_code*v_code (damping field for Dedner divergence cleaning)
+ Phi_code = B_code*v_code = a^3 * Phi_physical (damping field for Dedner divergence cleaning)
     (note: spec egy of phi field is: phi*phi/(2*mu0*rho*ch*ch); compare Bfield is B*B/(mu0*rho);
     so [phi]~[B]*[ch], where ch is the signal velocity used in the damping equation);
 
@@ -110,6 +110,12 @@ extern pthread_mutex_t mutex_partnodedrift;
 
 
 
+/* determine if we need to evolve the radiation fields in the hydro routine with the flag below */
+#if defined(RT_EVOLVE_NGAMMA)
+#define RT_EVOLVE_NGAMMA_IN_HYDRO
+#endif
+
+
 static double fac_mu, fac_vsic_fix;
 #ifdef MAGNETIC
 static double fac_magnetic_pressure;
@@ -153,11 +159,9 @@ struct kernel_hydra
 #endif
 #ifdef MAGNETIC
     double b2_i, b2_j;
+    double alfven2_i, alfven2_j;
 #ifdef HYDRO_SPH
     double mf_i, mf_j;
-#endif
-#if defined(MAGNETIC_SIGNALVEL)
-    double alfven2_i, alfven2_j;
 #endif
 #endif // MAGNETIC //
 };
@@ -181,8 +185,8 @@ struct hydrodata_in
     MyFloat ConditionNumber;
     MyFloat InternalEnergyPred;
     MyFloat SoundSpeed;
-    MyIDType ID;
     int Timestep;
+    MyFloat DhsmlNgbFactor;
 #ifdef HYDRO_SPH
     MyFloat DhsmlHydroSumFactor;
     MyFloat alpha;
@@ -212,6 +216,9 @@ struct hydrodata_in
 #ifdef DOGRAD_SOUNDSPEED
         MyDouble SoundSpeed[3];
 #endif
+#if defined(RT_DIFFUSION_EXPLICIT) && defined(RT_EVOLVE_EDDINGTON_TENSOR)
+        MyDouble E_gamma_ET[N_RT_FREQ_BINS][3];
+#endif
     } Gradients;
     MyFloat NV_T[3][3];
     
@@ -223,6 +230,20 @@ struct hydrodata_in
     MyFloat Metallicity[NUM_METAL_SPECIES];
 #endif
     
+#ifdef RT_DIFFUSION_EXPLICIT
+    MyDouble E_gamma[N_RT_FREQ_BINS];
+    MyDouble Kappa_RT[N_RT_FREQ_BINS];
+    MyDouble RT_DiffusionCoeff[N_RT_FREQ_BINS];
+#if defined(RT_EVOLVE_FLUX) || defined(HYDRO_SPH)
+    MyDouble ET[N_RT_FREQ_BINS][6];
+#endif
+#ifdef RT_EVOLVE_FLUX
+    MyDouble Flux[N_RT_FREQ_BINS][3];
+#endif
+#ifdef RT_INFRARED
+    MyDouble Radiation_Temperature;
+#endif
+#endif
     
 #ifdef TURB_DIFFUSION
     MyFloat TD_DiffCoeff;
@@ -232,6 +253,12 @@ struct hydrodata_in
     MyFloat Kappa_Conduction;
 #endif
 
+#ifdef MHD_NON_IDEAL
+    MyFloat Eta_MHD_OhmicResistivity_Coeff;
+    MyFloat Eta_MHD_HallEffect_Coeff;
+    MyFloat Eta_MHD_AmbiPolarDiffusion_Coeff;
+#endif
+    
 #ifdef VISCOSITY
     MyFloat Eta_ShearViscosity;
     MyFloat Zeta_BulkViscosity;
@@ -239,7 +266,7 @@ struct hydrodata_in
     
 #ifdef MAGNETIC
     MyFloat BPred[3];
-#if defined(TRICCO_RESISTIVITY_SWITCH)
+#if defined(SPH_TP12_ARTIFICIAL_RESISTIVITY)
     MyFloat Balpha;
 #endif
 #ifdef DIVBCLEANING_DEDNER
@@ -270,7 +297,9 @@ struct hydrodata_out
     MyLongDouble DtInternalEnergy;
     //MyLongDouble dInternalEnergy; //manifest-indiv-timestep-debug//
     MyFloat MaxSignalVel;
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
     MyFloat MaxKineticEnergyNgb;
+#endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     MyLongDouble DtMass;
     MyLongDouble dMass;
@@ -281,12 +310,24 @@ struct hydrodata_out
     MyFloat Dyield[NUM_METAL_SPECIES];
 #endif
     
+#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
+    MyFloat Dt_E_gamma[N_RT_FREQ_BINS];
+#if defined(RT_INFRARED)
+    MyFloat Dt_E_gamma_T_weighted_IR;
+#endif
+#endif
+#if defined(RT_EVOLVE_FLUX)
+    MyFloat Dt_Flux[N_RT_FREQ_BINS][3];
+#endif
+    
 #if defined(MAGNETIC)
     MyDouble Face_Area[3];
     MyFloat DtB[3];
     MyFloat divB;
 #if defined(DIVBCLEANING_DEDNER)
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME // mass-based phi-flux
     MyFloat DtPhi;
+#endif
     MyFloat DtB_PhiCorr[3];
 #endif
 #endif // MAGNETIC //
@@ -320,9 +361,14 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     in->Pressure = SphP[i].Pressure;
     in->InternalEnergyPred = SphP[i].InternalEnergyPred;
     in->SoundSpeed = Particle_effective_soundspeed_i(i);
-    in->ID = P[i].ID;
     in->Timestep = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0);
     in->ConditionNumber = SphP[i].ConditionNumber;
+#ifdef CONSTRAINED_GRADIENT_MHD
+    /* since it is not used elsewhere, we can use the sign of the condition number as a bit 
+        to conveniently indicate the status of the parent particle flag, for the constrained gradients */
+    if(SphP[i].FlagForConstrainedGradients == 0) {in->ConditionNumber *= -1;}
+#endif
+    in->DhsmlNgbFactor = PPP[i].DhsmlNgbFactor;
 #ifdef HYDRO_SPH
     in->DhsmlHydroSumFactor = SphP[i].DhsmlHydroSumFactor;
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
@@ -365,8 +411,30 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
 #ifdef DOGRAD_SOUNDSPEED
         in->Gradients.SoundSpeed[k] = SphP[i].Gradients.SoundSpeed[k];
 #endif
+#if defined(RT_DIFFUSION_EXPLICIT) && defined(RT_EVOLVE_EDDINGTON_TENSOR)
+        for(j=0;j<N_RT_FREQ_BINS;j++) {in->Gradients.E_gamma_ET[j][k] = SphP[i].Gradients.E_gamma_ET[j][k];}
+#endif
     }
-    
+
+#ifdef RT_DIFFUSION_EXPLICIT
+    for(k=0;k<N_RT_FREQ_BINS;k++)
+    {
+        in->E_gamma[k] = SphP[i].E_gamma_Pred[k];
+        in->Kappa_RT[k] = SphP[i].Kappa_RT[k];
+        in->RT_DiffusionCoeff[k] = rt_diffusion_coefficient(i,k);
+#if defined(RT_EVOLVE_FLUX) || defined(HYDRO_SPH)
+        int k_dir;
+        for(k_dir=0;k_dir<6;k_dir++) in->ET[k][k_dir] = SphP[i].ET[k][k_dir];
+#endif
+#ifdef RT_EVOLVE_FLUX
+        for(k_dir=0;k_dir<3;k_dir++) in->Flux[k][k_dir] = SphP[i].Flux_Pred[k][k_dir];
+#endif
+    }
+#ifdef RT_INFRARED
+        in->Radiation_Temperature = SphP[i].Radiation_Temperature;
+#endif
+#endif
+
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
     for(k=0;k<NUM_METAL_SPECIES;k++) {in->Metallicity[k] = P[i].Metallicity[k];}
 #endif
@@ -378,6 +446,13 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
 #ifdef CONDUCTION
     in->Kappa_Conduction = SphP[i].Kappa_Conduction;
 #endif
+    
+#ifdef MHD_NON_IDEAL
+    in->Eta_MHD_OhmicResistivity_Coeff = SphP[i].Eta_MHD_OhmicResistivity_Coeff;
+    in->Eta_MHD_HallEffect_Coeff = SphP[i].Eta_MHD_HallEffect_Coeff;
+    in->Eta_MHD_AmbiPolarDiffusion_Coeff = SphP[i].Eta_MHD_AmbiPolarDiffusion_Coeff;
+#endif
+    
 
 #ifdef VISCOSITY
     in->Eta_ShearViscosity = SphP[i].Eta_ShearViscosity;
@@ -386,7 +461,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     
 #ifdef MAGNETIC
     for(k = 0; k < 3; k++) {in->BPred[k] = Get_Particle_BField(i,k);}
-#if defined(TRICCO_RESISTIVITY_SWITCH)
+#if defined(SPH_TP12_ARTIFICIAL_RESISTIVITY)
     in->Balpha = SphP[i].Balpha;
 #endif
 #ifdef DIVBCLEANING_DEDNER
@@ -398,7 +473,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     in->CosmicRayPressure = Get_Particle_CosmicRayPressure(i);
     in->CosmicRayDiffusionCoeff = SphP[i].CosmicRayDiffusionCoeff;
 #endif
-    
+
 }
 
 
@@ -424,15 +499,29 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
 #endif
     if(SphP[i].MaxSignalVel < out->MaxSignalVel)
         SphP[i].MaxSignalVel = out->MaxSignalVel;
-
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
     if(SphP[i].MaxKineticEnergyNgb < out->MaxKineticEnergyNgb)
         SphP[i].MaxKineticEnergyNgb = out->MaxKineticEnergyNgb;
-    
+#endif
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
     for(k=0;k<NUM_METAL_SPECIES;k++)
-        P[i].Metallicity[k] += out->Dyield[k] / P[i].Mass;
+    {
+        double z_tmp = P[i].Metallicity[k] + out->Dyield[k] / P[i].Mass;
+        z_tmp = DMAX(z_tmp , 0.5 * P[i].Metallicity[k]);
+        P[i].Metallicity[k] = z_tmp;
+    }
 #endif
     
+#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
+    for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_E_gamma[k] += out->Dt_E_gamma[k];}
+#if defined(RT_INFRARED)
+    SphP[i].Dt_E_gamma_T_weighted_IR += out->Dt_E_gamma_T_weighted_IR;
+#endif
+#endif
+#if defined(RT_EVOLVE_FLUX)
+    for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Flux[k][k_dir] += out->Dt_Flux[k][k_dir];}}
+#endif
+
     
 #if defined(MAGNETIC)
     /* can't just do DtB += out-> DtB, because for SPH methods, the induction equation is solved in the density loop; need to simply add it here */
@@ -443,7 +532,9 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
     }
     SphP[i].divB += out->divB;
 #if defined(DIVBCLEANING_DEDNER)
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME // mass-based phi-flux
     SphP[i].DtPhi += out->DtPhi;
+#endif
     for(k=0;k<3;k++) {SphP[i].DtB_PhiCorr[k] += out->DtB_PhiCorr[k];}
 #endif // Dedner //
 #endif // MAGNETIC //
@@ -523,7 +614,11 @@ void hydro_final_operations_and_cleanup(void)
                 }
             }
             
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME // mass-based phi-flux
             SphP[i].DtPhi *= magnorm_closure;
+#else
+            SphP[i].DtPhi = 0;
+#endif
             if((!isnan(SphP[i].divB))&&(PPP[i].Hsml>0)&&(SphP[i].divB!=0)&&(SphP[i].Density>0))
             {
                 double tmp_ded = 0.5 * SphP[i].MaxSignalVel / (fac_mu*All.cf_atime); // has units of v_physical now
@@ -533,7 +628,8 @@ void hydro_final_operations_and_cleanup(void)
                 b2_max = 100.0 * fabs( sqrt(b2_max) * All.cf_a2inv * P[i].Mass / (SphP[i].Density*All.cf_a3inv) * 1.0 / (PPP[i].Hsml*All.cf_atime) );
                 if(fabs(SphP[i].divB) > b2_max) {SphP[i].divB *= b2_max / fabs(SphP[i].divB);}
                 /* ok now can apply this to get the growth rate of phi */
-                SphP[i].DtPhi -= tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB;
+                // SphP[i].DtPhi -= tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB;
+                SphP[i].DtPhi -= tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * SphP[i].divB * SphP[i].Density*All.cf_a3inv; // mass-based phi-flux
             }
 #endif
 #endif // MAGNETIC
@@ -552,13 +648,35 @@ void hydro_final_operations_and_cleanup(void)
 #endif
                 SphP[i].HydroAccel[k] /= P[i].Mass; /* we solved for momentum flux */
             }
+            
 #ifdef COSMIC_RAYS
             /* need to account for the adiabatic heating/cooling of the cosmic ray fluid, here: its an ultra-relativistic fluid with gamma=4/3 */
             double dt_cosmicray_energy_adiabatic = -GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred * (P[i].Particle_DivVel*All.cf_a2inv);
             SphP[i].DtCosmicRayEnergy += dt_cosmicray_energy_adiabatic;
             SphP[i].DtInternalEnergy -= dt_cosmicray_energy_adiabatic;
-            if(All.ComovingIntegrationOn) SphP[i].DtCosmicRayEnergy -= SphP[i].CosmicRayEnergyPred * All.cf_hubble_a;
+            /* adiabatic term from Hubble expansion (needed for cosmological integrations */
+            if(All.ComovingIntegrationOn) {SphP[i].DtCosmicRayEnergy -= 3*GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred * All.cf_hubble_a;}
+#ifndef COSMIC_RAYS_DISABLE_STREAMING
+            /* energy transfer from CRs to gas due to the streaming instability (mediated by high-frequency Alfven waves, but they thermalize quickly
+                (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
+            double cr_stream_cool = -SphP[i].CosmicRayEnergyPred * GAMMA_COSMICRAY_MINUS1 * Get_CosmicRayStreamingVelocity(i) / Get_CosmicRayGradientLength(i);
+#ifdef MAGNETIC
+            /* account here for the fact that the streaming velocity can be suppressed by the requirement of motion along field lines */
+            double B_dot_gradP=0.0, B2_tot=0.0, Pgrad2_tot=0.0;
+            for(k=0;k<3;k++)
+            {
+                double b_to_use = Get_Particle_BField(i,k);
+                B2_tot += b_to_use * b_to_use;
+                Pgrad2_tot += SphP[i].Gradients.CosmicRayPressure[k] * SphP[i].Gradients.CosmicRayPressure[k];
+                B_dot_gradP += b_to_use * SphP[i].Gradients.CosmicRayPressure[k];
+            }
+            cr_stream_cool *= (B_dot_gradP * B_dot_gradP) / (1.e-37 + B2_tot * Pgrad2_tot);
 #endif
+            SphP[i].DtCosmicRayEnergy += cr_stream_cool;
+            SphP[i].DtInternalEnergy -= cr_stream_cool;
+#endif
+#endif
+            
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             SphP[i].DtInternalEnergy -= SphP[i].InternalEnergyPred * SphP[i].DtMass;
 #endif
@@ -574,29 +692,38 @@ void hydro_final_operations_and_cleanup(void)
             SphP[i].DtInternalEnergy /= P[i].Mass;
             /* ok, now: HydroAccel = dv/dt, DtInternalEnergy = du/dt (energy per unit mass) */
             
+            /* zero out hydrodynamic PdV work terms if the particle is at the maximum smoothing, these will be incorrect */
+            if(PPP[i].Hsml >= 0.99*All.MaxHsml) {SphP[i].DtInternalEnergy = 0;}
+            
             // need to explicitly include adiabatic correction from the hubble-flow (for drifting) here //
             if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*GAMMA_MINUS1 * SphP[i].InternalEnergyPred * All.cf_hubble_a;
             // = du/dlna -3*(gamma-1)*u ; then dlna/dt = H(z) =  All.cf_hubble_a //
             
-#ifdef EOS_DEGENERATE
-            /* DtInternalEnergy stores the energy change rate in internal units */
-            SphP[i].DtInternalEnergy *= All.UnitEnergy_in_cgs / All.UnitTime_in_s;
-#endif
             
-        
-            
-#ifdef RT_RAD_PRESSURE
-            /* radiative accelerations */
-            if(All.Time != All.TimeBegin)
-                for(k = 0; k < 3; k++)
+#ifdef RT_RAD_PRESSURE_FORCES
+            /* calculate the radiation pressure force */
+            double radacc[3]; radacc[0]=radacc[1]=radacc[2]=0; int k2;
+            // a = kappa*F/c = Gradients.E_gamma_ET[gradient of photon energy density] / rho[gas_density] //
+            for(k=0;k<3;k++)
+                for(k2=0;k2<N_RT_FREQ_BINS;k2++)
                 {
-                    SphP[i].RadAccel[k] = 0.0;
-                    for(j = 0; j < N_RT_FREQ_BINS; j++)
-                        SphP[i].RadAccel[k] += SphP[i].n_gamma[j] * nu[j];
-                    SphP[i].RadAccel[k] *= SphP[i].n[k] / P[i].Mass * ELECTRONVOLT_IN_ERGS /
-                    All.UnitEnergy_in_cgs * All.HubbleParam / (C / All.UnitVelocity_in_cm_per_s) / dt / SphP[i].Density;
-                }
+#if defined(RT_EVOLVE_FLUX)
+                    radacc[k] += SphP[i].Kappa_RT[k2] * SphP[i].Flux_Pred[k2][k] / (C / All.UnitVelocity_in_cm_per_s); // no speed of light reduction multiplier here //
+#elif defined(RT_EVOLVE_EDDINGTON_TENSOR)
+                    radacc[k] += -SphP[i].Lambda_FluxLim[k2] * SphP[i].Gradients.E_gamma_ET[k2][k] / SphP[i].Density;
 #endif
+                }
+            for(k=0;k<3;k++)
+            {
+#ifdef RT_RAD_PRESSURE_OUTPUT
+                SphP[i].RadAccel[k] = radacc[k];
+#else
+                SphP[i].HydroAccel[k] += radacc[k];
+#endif
+            } 
+#endif
+
+            
             
             
 #ifdef GALSF_SUBGRID_WINDS
@@ -654,10 +781,10 @@ void hydro_final_operations_and_cleanup(void)
         if(P[i].Type == 0)
         {
             /* evaluate network here, but do it only for high enough temperatures */
-            if(SphP[i].temp > All.NetworkTempThreshold)
+            if(SphP[i].Temperature > All.NetworkTempThreshold)
             {
                 nuc_particles++;
-                network_integrate(SphP[i].temp, SphP[i].Density * All.UnitDensity_in_cgs, SphP[i].xnuc,
+                network_integrate(SphP[i].Temperature, SphP[i].Density * All.UnitDensity_in_cgs, SphP[i].xnuc,
                                   SphP[i].dxnuc, dt*All.UnitTime_in_s, &dedt_nuc, NULL, &All.nd, &All.nw);
                 SphP[i].DtInternalEnergy += dedt_nuc * All.UnitEnergy_in_cgs / All.UnitTime_in_s;
             }
@@ -703,7 +830,9 @@ void hydro_force(void)
         if(P[i].Type==0)
         {
             SphP[i].MaxSignalVel = -1.e10;
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
             SphP[i].MaxKineticEnergyNgb = -1.e10;
+#endif
             SphP[i].DtInternalEnergy = 0;//SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
             for(k=0;k<3;k++)
             {
@@ -713,6 +842,15 @@ void hydro_force(void)
             SphP[i].DtMass = 0;
             SphP[i].dMass = 0;
             for(k=0;k<3;k++) SphP[i].GravWorkTerm[k] = 0;
+#endif
+#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
+            for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_E_gamma[k] = 0;}
+#if defined(RT_INFRARED)
+            SphP[i].Dt_E_gamma_T_weighted_IR = 0;
+#endif
+#endif
+#if defined(RT_EVOLVE_FLUX)
+            for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Flux[k][k_dir] = 0;}}
 #endif
             
 #ifdef MAGNETIC
@@ -751,7 +889,7 @@ void hydro_force(void)
     
     /* --------------------------------------------------------------------------------- */
     /* allocate buffers to arrange communication */
-    int NTaskTimesNumPart;
+    long long NTaskTimesNumPart;
     NTaskTimesNumPart = maxThreads * NumPart;
     Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
     All.BunchSize = (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
@@ -763,7 +901,7 @@ void hydro_force(void)
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
     CPU_Step[CPU_HYDMISC] += measure_time();
     t0 = my_second();
-    NextParticle = FirstActiveParticle;	/* beginn with this index */
+    NextParticle = FirstActiveParticle;	/* begin with this index */
     
     do
     {
@@ -862,7 +1000,10 @@ void hydro_force(void)
         
         n_exported += Nexport;
         for(j = 0; j < NTask; j++)
+        {
             Send_count[j] = 0;
+            Recv_count[j] = 0;
+        }
         for(j = 0; j < Nexport; j++)
             Send_count[DataIndexTable[j].Task]++;
         

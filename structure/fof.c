@@ -11,6 +11,9 @@
 #include "../allvars.h"
 #include "../proto.h"
 
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
+
 #ifdef HAVE_HDF5
 #include <hdf5.h>
 #endif
@@ -199,9 +202,9 @@ void fof_fof(int num)
   MPI_Allreduce(&mass, &masstot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   if(All.TotN_gas)
-    rhodm = (All.Omega0 - All.OmegaBaryon) * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
+    rhodm = (All.Omega0 - All.OmegaBaryon) * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
   else
-    rhodm = All.Omega0 * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
+    rhodm = All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
 
   LinkL = LINKLENGTH * pow(masstot / ndmtot / rhodm, 1.0 / 3);
 
@@ -400,8 +403,10 @@ void fof_fof(int num)
     printf("computation of group properties took = %g sec\n", timediff(t0, t1));
 
 #ifdef BLACK_HOLES
-  if(num < 0)
-    fof_make_black_holes();
+  if(num < 0){   // Make BHs in every call to fof_fof (including the group finding for each snapshot)
+      if(All.Time < 1.0/(1.0+All.SeedBlackHoleMinRedshift)) { fof_make_black_holes(); }
+      else {  printf("skipping black hole seeding at a = %g \n", All.Time); }
+  }
 #endif
 
 #if defined(GALSF_SUBGRID_WINDS) && defined(GALSF_SUBGRID_VARIABLEVELOCITY)
@@ -620,10 +625,10 @@ void fof_find_groups(void)
 		      /* get the particles */
 		      MPI_Sendrecv(&FoFDataIn[Send_offset[recvTask]],
 				   Send_count[recvTask] * sizeof(struct fofdata_in), MPI_BYTE,
-				   recvTask, TAG_DENS_A,
+				   recvTask, TAG_FOF_A,
 				   &FoFDataGet[Recv_offset[recvTask]],
 				   Recv_count[recvTask] * sizeof(struct fofdata_in), MPI_BYTE,
-				   recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				   recvTask, TAG_FOF_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		    }
 		}
 	    }
@@ -656,10 +661,10 @@ void fof_find_groups(void)
 		      /* get the particles */
 		      MPI_Sendrecv(&FoFDataResult[Recv_offset[recvTask]],
 				   Recv_count[recvTask] * sizeof(char),
-				   MPI_BYTE, recvTask, TAG_DENS_B,
+				   MPI_BYTE, recvTask, TAG_FOF_B,
 				   &FoFDataOut[Send_offset[recvTask]],
 				   Send_count[recvTask] * sizeof(char),
-				   MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				   MPI_BYTE, recvTask, TAG_FOF_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		    }
 		}
 	    }
@@ -946,10 +951,10 @@ void fof_compile_catalogue(void)
 	      /* get the group info */
 	      MPI_Sendrecv(&FOF_GList[Send_offset[recvTask]],
 			   Send_count[recvTask] * sizeof(fof_group_list), MPI_BYTE,
-			   recvTask, TAG_DENS_A,
+			   recvTask, TAG_FOF_C,
 			   &get_FOF_GList[Recv_offset[recvTask]],
 			   Recv_count[recvTask] * sizeof(fof_group_list), MPI_BYTE,
-			   recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			   recvTask, TAG_FOF_C, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	    }
 	}
     }
@@ -1019,10 +1024,10 @@ void fof_compile_catalogue(void)
 	      /* get the group info */
 	      MPI_Sendrecv(&get_FOF_GList[Recv_offset[recvTask]],
 			   Recv_count[recvTask] * sizeof(fof_group_list), MPI_BYTE,
-			   recvTask, TAG_DENS_A,
+			   recvTask, TAG_FOF_D,
 			   &FOF_GList[Send_offset[recvTask]],
 			   Send_count[recvTask] * sizeof(fof_group_list), MPI_BYTE,
-			   recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			   recvTask, TAG_FOF_D, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	    }
 	}
     }
@@ -1072,12 +1077,7 @@ void fof_compute_group_properties(int gr, int start, int len)
   Group[gr].BH_Mass = 0;
   Group[gr].BH_Mdot = 0;
   Group[gr].index_maxdens = Group[gr].task_maxdens = -1;
-#ifdef BH_SEED_ON_POTMIN
-  Group[gr].MaxDens = 1e30;
-#else
   Group[gr].MaxDens = 0;
-#endif
-
 #endif
 
   for(k = 0; k < 3; k++)
@@ -1122,36 +1122,22 @@ void fof_compute_group_properties(int gr, int start, int len)
 #if defined(GALSF_SUBGRID_WINDS) && !defined(BH_SEED_STAR_MASS_FRACTION)
 	  if(SphP[index].DelayTime == 0)
 #endif
-#ifdef BH_SEED_ON_POTMIN
-	    /* 
-	       printf("Trying seeding on pot %e, minpot=-%e\n", P[index].Potential,Group[gr].MaxDens);
-	     */
-	    if(P[index].Potential < Group[gr].MaxDens)
-	      {
-		Group[gr].MaxDens = P[index].Potential;
-		Group[gr].index_maxdens = index;
-		Group[gr].task_maxdens = ThisTask;
-	      }
-#else
 	    if(SphP[index].Density > Group[gr].MaxDens)
 	      {
 		Group[gr].MaxDens = SphP[index].Density;
 		Group[gr].index_maxdens = index;
 		Group[gr].task_maxdens = ThisTask;
 	      }
-#endif
 	}
 #endif
 
-      for(j = 0; j < 3; j++)
-	{
-	  xyz[j] = P[index].Pos[j];
-#ifdef PERIODIC
-	  xyz[j] = fof_periodic(xyz[j] - Group[gr].FirstPos[j]);
-#endif
-	  Group[gr].CM[j] += P[index].Mass * xyz[j];
-	  Group[gr].Vel[j] += P[index].Mass * P[index].Vel[j];
-	}
+        for(j = 0; j < 3; j++) {xyz[j] = P[index].Pos[j] - Group[gr].FirstPos[j];}
+        NEAREST_XYZ(xyz[0],xyz[1],xyz[2],-1);
+        for(j = 0; j < 3; j++)
+        {
+            Group[gr].CM[j] += P[index].Mass * xyz[j];
+            Group[gr].Vel[j] += P[index].Mass * P[index].Vel[j];
+        }
     }
 }
 
@@ -1199,10 +1185,10 @@ void fof_exchange_group_data(void)
 	      /* get the group data */
 	      MPI_Sendrecv(&Group[Send_offset[recvTask]],
 			   Send_count[recvTask] * sizeof(group_properties), MPI_BYTE,
-			   recvTask, TAG_DENS_A,
+			   recvTask, TAG_FOF_E,
 			   &get_Group[Recv_offset[recvTask]],
 			   Recv_count[recvTask] * sizeof(group_properties), MPI_BYTE,
-			   recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			   recvTask, TAG_FOF_E, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	    }
 	}
     }
@@ -1235,11 +1221,7 @@ void fof_exchange_group_data(void)
 #ifdef BLACK_HOLES
       Group[start].BH_Mdot += get_Group[i].BH_Mdot;
       Group[start].BH_Mass += get_Group[i].BH_Mass;
-#ifdef BH_SEED_ON_POTMIN
-      if(get_Group[i].MaxDens < Group[start].MaxDens)
-#else
       if(get_Group[i].MaxDens > Group[start].MaxDens)
-#endif
 	{
 	  Group[start].MaxDens = get_Group[i].MaxDens;
 	  Group[start].index_maxdens = get_Group[i].index_maxdens;
@@ -1247,15 +1229,13 @@ void fof_exchange_group_data(void)
 	}
 #endif
 
-      for(j = 0; j < 3; j++)
-	{
-	  xyz[j] = get_Group[i].CM[j] / get_Group[i].Mass + get_Group[i].FirstPos[j];
-#ifdef PERIODIC
-	  xyz[j] = fof_periodic(xyz[j] - Group[start].FirstPos[j]);
-#endif
-	  Group[start].CM[j] += get_Group[i].Mass * xyz[j];
-	  Group[start].Vel[j] += get_Group[i].Vel[j];
-	}
+        for(j = 0; j < 3; j++) {xyz[j] = get_Group[i].CM[j] / get_Group[i].Mass + get_Group[i].FirstPos[j] - Group[start].FirstPos[j];}
+        NEAREST_XYZ(xyz[0],xyz[1],xyz[2],1);
+        for(j = 0; j < 3; j++)
+        {
+            Group[start].CM[j] += get_Group[i].Mass * xyz[j];
+            Group[start].Vel[j] += get_Group[i].Vel[j];
+        }
     }
 
   myfree(get_Group);
@@ -1274,10 +1254,8 @@ void fof_finish_group_properties(void)
 	    {
 	      Group[i].Vel[j] /= Group[i].Mass;
 
-	      cm[j] = Group[i].CM[j] / Group[i].Mass;
-#ifdef PERIODIC
-	      cm[j] = fof_periodic_wrap(cm[j] + Group[i].FirstPos[j]);
-#endif
+            cm[j] = Group[i].CM[j] / Group[i].Mass + Group[i].FirstPos[j];
+            cm[j] = WRAP_POSITION_UNIFORM_BOX(cm[j]);
 	      Group[i].CM[j] = cm[j];
 	    }
 	}
@@ -1751,10 +1729,10 @@ void fof_find_nearest_dmparticle(void)
 		      /* get the particles */
 		      MPI_Sendrecv(&FoFDataIn[Send_offset[recvTask]],
 				   Send_count[recvTask] * sizeof(struct fofdata_in), MPI_BYTE,
-				   recvTask, TAG_DENS_A,
+				   recvTask, TAG_FOF_F,
 				   &FoFDataGet[Recv_offset[recvTask]],
 				   Recv_count[recvTask] * sizeof(struct fofdata_in), MPI_BYTE,
-				   recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				   recvTask, TAG_FOF_F, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		    }
 		}
 	    }
@@ -1779,10 +1757,10 @@ void fof_find_nearest_dmparticle(void)
 		      /* send the results */
 		      MPI_Sendrecv(&FoFDataResult[Recv_offset[recvTask]],
 				   Recv_count[recvTask] * sizeof(struct fofdata_out),
-				   MPI_BYTE, recvTask, TAG_DENS_B,
+				   MPI_BYTE, recvTask, TAG_FOF_G,
 				   &FoFDataOut[Send_offset[recvTask]],
 				   Send_count[recvTask] * sizeof(struct fofdata_out),
-				   MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				   MPI_BYTE, recvTask, TAG_FOF_G, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		    }
 		}
 
@@ -1927,17 +1905,15 @@ int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int
 
 	  for(n = 0; n < numngb_inbox; n++)
 	    {
-	      j = Ngblist[n];
-	      dx = pos[0] - P[j].Pos[0];
-	      dy = pos[1] - P[j].Pos[1];
-	      dz = pos[2] - P[j].Pos[2];
-#ifdef PERIODIC			/*  now find the closest image in the given box size  */
-            dx = NEAREST_X(dx);
-            dy = NEAREST_Y(dy);
-            dz = NEAREST_Z(dz);
+            j = Ngblist[n];
+            dx = pos[0] - P[j].Pos[0];
+            dy = pos[1] - P[j].Pos[1];
+            dz = pos[2] - P[j].Pos[2];
+#ifdef PERIODIC
+            NEAREST_XYZ(dx,dy,dz,1);
 #endif
-	      r2 = dx * dx + dy * dy + dz * dz;
-	      if(r2 < r2max && r2 < h * h)
+            r2 = dx * dx + dy * dy + dz * dz;
+            if(r2 < r2max && r2 < h * h)
 		{
 		  index = j;
 		  r2max = r2;
@@ -1991,6 +1967,9 @@ void fof_make_black_holes(void)
   int i, j, n, ntot;
   int nexport, nimport, recvTask, level;
   int *import_indices, *export_indices;
+  gsl_rng *random_generator_forbh;
+  double random_number_forbh=0, unitmass_in_msun;
+    
 #ifdef BH_SEED_STAR_MASS_FRACTION
   float *import_fofmass, *export_fofmass;
 #else
@@ -2007,6 +1986,9 @@ void fof_make_black_holes(void)
 
   for(i = 0; i < Ngroups; i++)
     {
+#ifdef BH_HOST_TO_SEED_RATIO
+      if(Group[i].MassType[4] > BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass)
+#else
 #ifndef BH_SEED_STAR_MASS_FRACTION
       if(Group[i].LenType[1] * massDMpart >=
 	 (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
@@ -2014,6 +1996,7 @@ void fof_make_black_holes(void)
       if(Group[i].MassType[4] > BH_SEED_STAR_MASS_FRACTION * All.MinFoFMassForNewSeed
 	 && Group[i].LenType[2] == 0)
 #endif
+#endif //ifdef BH_HOST_TO_SEED_RATIO
 	if(Group[i].LenType[5] == 0)
 	  {
 	    if(Group[i].index_maxdens >= 0)
@@ -2047,6 +2030,9 @@ void fof_make_black_holes(void)
 
   for(i = 0; i < Ngroups; i++)
     {
+#ifdef BH_HOST_TO_SEED_RATIO
+      if(Group[i].MassType[4] > BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass)
+#else
 #ifndef BH_SEED_STAR_MASS_FRACTION
       if(Group[i].LenType[1] * massDMpart >=
 	 (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
@@ -2054,6 +2040,7 @@ void fof_make_black_holes(void)
       if(Group[i].MassType[4] > BH_SEED_STAR_MASS_FRACTION * All.MinFoFMassForNewSeed
 	 && Group[i].LenType[2] == 0)
 #endif
+#endif //ifdef BH_HOST_TO_SEED_RATIO
 	if(Group[i].LenType[5] == 0)
 	  {
 #ifdef BH_SEED_STAR_MASS_FRACTION
@@ -2081,18 +2068,18 @@ void fof_make_black_holes(void)
       if(recvTask < NTask)
 	MPI_Sendrecv(&export_indices[Send_offset[recvTask]],
 		     Send_count[recvTask] * sizeof(int),
-		     MPI_BYTE, recvTask, TAG_FOF_E,
+		     MPI_BYTE, recvTask, TAG_FOF_I,
 		     &import_indices[Recv_offset[recvTask]],
 		     Recv_count[recvTask] * sizeof(int),
-		     MPI_BYTE, recvTask, TAG_FOF_E, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		     MPI_BYTE, recvTask, TAG_FOF_I, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 #ifdef BH_SEED_STAR_MASS_FRACTION
       if(recvTask < NTask)
 	MPI_Sendrecv(&export_fofmass[Send_offset[recvTask]],
 		     Send_count[recvTask] * sizeof(float),
-		     MPI_BYTE, recvTask, TAG_FOF_M,
+		     MPI_BYTE, recvTask, TAG_FOF_J,
 		     &import_fofmass[Recv_offset[recvTask]],
 		     Recv_count[recvTask] * sizeof(float),
-		     MPI_BYTE, recvTask, TAG_FOF_M, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		     MPI_BYTE, recvTask, TAG_FOF_J, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 #endif
     }
 
@@ -2134,15 +2121,30 @@ void fof_make_black_holes(void)
 #ifdef GALSF
       P[import_indices[n]].StellarAge = All.Time;
 #endif
+
 #ifdef BH_SEED_STAR_MASS_FRACTION
       BPP(import_indices[n]).BH_Mass =
 	All.SeedBlackHoleMass * import_fofmass[n] / (BH_SEED_STAR_MASS_FRACTION * All.MinFoFMassForNewSeed);
 #else
-      BPP(import_indices[n]).BH_Mass = All.SeedBlackHoleMass;
-#ifdef BH_ALPHADISK_ACCRETION
+      if(All.SeedBlackHoleMassSigma > 0)
+      {
+        /* compute gaussian random number: mean=0, sigma=All.SeedBlackHoleMassSigma */
+        random_generator_forbh = gsl_rng_alloc(gsl_rng_ranlxd1);
+        gsl_rng_set(random_generator_forbh,P[import_indices[n]].ID+17);
+        random_number_forbh = gsl_ran_gaussian(random_generator_forbh, All.SeedBlackHoleMassSigma);
+        BPP(import_indices[n]).BH_Mass = pow( 10., log10(All.SeedBlackHoleMass) + random_number_forbh );
+        unitmass_in_msun = (All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS;
+        if( BPP(import_indices[n]).BH_Mass < 100./unitmass_in_msun )
+          BPP(import_indices[n]).BH_Mass = 100./unitmass_in_msun;            // DAA: enforce lower limit of Mseed = 100 x Msun
+      }else{
+          BPP(import_indices[n]).BH_Mass = All.SeedBlackHoleMass;
+      }
+#endif
+
+#ifdef BH_ALPHADISK_ACCRETION                                     // DAA: this should be outside of BH_SEED_STAR_MASS_FRACTION ...
       BPP(import_indices[n]).BH_Mass_AlphaDisk = 0;
 #endif
-#endif
+
       BPP(import_indices[n]).BH_Mdot = 0;
 
 #ifdef BH_COUNTPROGS
@@ -2383,7 +2385,7 @@ void multi_bubbles(void)
 
   if(All.ComovingIntegrationOn)
     {
-      hubble_a = hubble_function(All.Time) / All.Hubble;
+      hubble_a = hubble_function(All.Time) / All.Hubble_H0_CodeUnits;
     }
 
   nheat = tot_nheat = 0;
@@ -2524,17 +2526,14 @@ void multi_bubbles(void)
 
 		  for(n = 0; n < numngb_inbox; n++)
 		    {
-		      j = Ngblist[n];
-		      dx = pos[0] - P[j].Pos[0];
-		      dy = pos[1] - P[j].Pos[1];
-		      dz = pos[2] - P[j].Pos[2];
-
-#ifdef PERIODIC			/*  now find the closest image in the given box size  */
-                dx = NEAREST_X(dx);
-                dy = NEAREST_Y(dy);
-                dz = NEAREST_Z(dz);
+                j = Ngblist[n];
+                dx = pos[0] - P[j].Pos[0];
+                dy = pos[1] - P[j].Pos[1];
+                dz = pos[2] - P[j].Pos[2];
+#ifdef PERIODIC
+                NEAREST_XYZ(dx,dy,dz,1);
 #endif
-		      r2 = dx * dx + dy * dy + dz * dz;
+                r2 = dx * dx + dy * dy + dz * dz;
 
 		      if(r2 < BubbleRadius * BubbleRadius)
 			{
@@ -2594,17 +2593,14 @@ void multi_bubbles(void)
 
 		  for(n = 0; n < numngb_inbox; n++)
 		    {
-		      j = Ngblist[n];
-		      dx = pos[0] - P[j].Pos[0];
-		      dy = pos[1] - P[j].Pos[1];
-		      dz = pos[2] - P[j].Pos[2];
-
-#ifdef PERIODIC			/*  now find the closest image in the given box size  */
-                dx = NEAREST_X(dx);
-                dy = NEAREST_Y(dy);
-                dz = NEAREST_Z(dz);
+                j = Ngblist[n];
+                dx = pos[0] - P[j].Pos[0];
+                dy = pos[1] - P[j].Pos[1];
+                dz = pos[2] - P[j].Pos[2];
+#ifdef PERIODIC
+                NEAREST_XYZ(dx,dy,dz,1);
 #endif
-		      r2 = dx * dx + dy * dy + dz * dz;
+                r2 = dx * dx + dy * dy + dz * dz;
 
 		      if(r2 < BubbleRadius * BubbleRadius)
 			{
@@ -2661,24 +2657,7 @@ void multi_bubbles(void)
 
 
 
-double fof_periodic(double x)
-{
-  if(x >= 0.5 * All.BoxSize)
-    x -= All.BoxSize;
-  if(x < -0.5 * All.BoxSize)
-    x += All.BoxSize;
-  return x;
-}
 
-
-double fof_periodic_wrap(double x)
-{
-  while(x >= All.BoxSize)
-    x -= All.BoxSize;
-  while(x < 0)
-    x += All.BoxSize;
-  return x;
-}
 
 
 int fof_compare_FOF_PList_MinID(const void *a, const void *b)
@@ -3372,9 +3351,9 @@ void read_fof(int num)
 		  recv_ID_list = mymalloc("recv_ID_list", list_of_nids[recvTask] * sizeof(fof_id_list));
 
 		  /* get the particles */
-		  MPI_Sendrecv(ID_list, Nids * sizeof(fof_id_list), MPI_BYTE, recvTask, TAG_DENS_A,
+		  MPI_Sendrecv(ID_list, Nids * sizeof(fof_id_list), MPI_BYTE, recvTask, TAG_FOF_H,
 			       recv_ID_list, list_of_nids[recvTask] * sizeof(fof_id_list), MPI_BYTE,
-			       recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			       recvTask, TAG_FOF_H, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		}
 
 	      for(i = 0, j = 0; i < list_of_nids[recvTask]; i++)

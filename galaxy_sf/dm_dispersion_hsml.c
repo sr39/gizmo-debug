@@ -104,10 +104,8 @@ void disp_density(void)
     
     CPU_Step[CPU_AGSDENSMISC] += measure_time();
     
-    int NTaskTimesNumPart;
-    
+    long long NTaskTimesNumPart;
     NTaskTimesNumPart = maxThreads * NumPart;
-    
     Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
     
     Left = (MyFloat *) mymalloc("Left", NumPart * sizeof(MyFloat));
@@ -301,10 +299,10 @@ void disp_density(void)
                         /* get the particles */
                         MPI_Sendrecv(&DISP_DensDataIn[Send_offset[recvTask]],
                                      Send_count[recvTask] * sizeof(struct disp_densdata_in), MPI_BYTE,
-                                     recvTask, TAG_DENS_A,
+                                     recvTask, TAG_DMDENS_A,
                                      &DISP_DensDataGet[Recv_offset[recvTask]],
                                      Recv_count[recvTask] * sizeof(struct disp_densdata_in), MPI_BYTE,
-                                     recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                                     recvTask, TAG_DMDENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                     }
                 }
             }
@@ -372,10 +370,10 @@ void disp_density(void)
                         /* send the results */
                         MPI_Sendrecv(&DISP_DensDataResult[Recv_offset[recvTask]],
                                      Recv_count[recvTask] * sizeof(struct disp_densdata_out),
-                                     MPI_BYTE, recvTask, TAG_DENS_B,
+                                     MPI_BYTE, recvTask, TAG_DMDENS_B,
                                      &DISP_DensDataOut[Send_offset[recvTask]],
                                      Send_count[recvTask] * sizeof(struct disp_densdata_out),
-                                     MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                                     MPI_BYTE, recvTask, TAG_DMDENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                     }
                 }
                 
@@ -707,7 +705,7 @@ void *disp_density_evaluate_secondary(void *p)
 
 
 /* routine to determine if we need to use disp_density to calculate Hsml */
-int disp_density_isactive(MyIDType i)
+int disp_density_isactive(int i)
 {
     if(P[i].TimeBin < 0) return 0;
     if(P[i].Type > 0) return 0; // only gas particles //

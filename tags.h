@@ -1,4 +1,4 @@
-/* defines tag names for tracking the cpu time used by different parts of the code */
+/* defines tag names for labeling MPI messages to prevent collisions */
 
 /*
  * This file was originally part of the GADGET3 code developed by
@@ -8,7 +8,7 @@
  */
 
 
-#define TAG_N             10      /*!< Various tags used for labelling MPI messages */ 
+#define TAG_N             10      /*!< Various tags used for labeling MPI messages */
 #define TAG_HEADER        11
 #define TAG_PDATA         12
 #define TAG_SPHDATA       13
@@ -36,63 +36,67 @@
 #define TAG_DENS_A        35
 #define TAG_DENS_B        36
 #define TAG_LOCALN        37
+
 #define TAG_BH_A          38
 #define TAG_BH_B          39
-#define TAG_SMOOTH_A      40
-#define TAG_SMOOTH_B      41
-#define TAG_ENRICH_A      42
-#define TAG_CONDUCT_A     43
-#define TAG_CONDUCT_B     44
-#define TAG_FOF_A         45
-#define TAG_FOF_B         46
-#define TAG_FOF_C         47
-#define TAG_FOF_D         48
-#define TAG_FOF_E         49
-#define TAG_FOF_F         50
-#define TAG_FOF_G         51
-#define TAG_HOTNGB_A      52
-#define TAG_HOTNGB_B      53
-#define TAG_SWAP          54
-#define TAG_PM_FOLD       55
-#define TAG_FOF_M         56
+#define TAG_BH_C          40
+#define TAG_BH_D          41
+#define TAG_BH_E          42
+#define TAG_BH_F          43
+#define TAG_BH_G          44
+#define TAG_BH_H          45
+#define TAG_BH_I          46
 
-#ifdef BG_SFR
-#define TAG_STARDATA      60
-#endif
+#define TAG_FOF_A         47
+#define TAG_FOF_B         48
+#define TAG_FOF_C         49
+#define TAG_FOF_D         50
+#define TAG_FOF_E         51
+#define TAG_FOF_F         52
+#define TAG_FOF_G         53
+#define TAG_FOF_H         54
+#define TAG_FOF_I         55
+#define TAG_FOF_J         56
 
-#define TAG_PDATA_SPH     70
-#define TAG_KEY_SPH       71
+#define TAG_SWAP          57
+#define TAG_PM_FOLD       58
 
-#ifdef RADTRANSFER
+#define TAG_AGS_DENS_A    59
+#define TAG_AGS_DENS_B    60
+
+#define TAG_GRDENS_A      61
+#define TAG_GRDENS_B      62
+
+#define TAG_DMDENS_A      63
+#define TAG_DMDENS_B      64
+
+#define TAG_PSRT_A        65
+#define TAG_PDATA_SPH     66
+#define TAG_KEY_SPH       67
+
 #define TAG_RT_A          72
 #define TAG_RT_B          73
-#endif
+#define TAG_RT_C          74
+#define TAG_RT_D          75
 
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-#define TAG_AGS_DENS_A    74
-#define TAG_AGS_DENS_B    75
-#endif
+#define TAG_FBLOOP_1A     80
+#define TAG_FBLOOP_1B     81
+#define TAG_FBLOOP_2A     82
+#define TAG_FBLOOP_2B     83
+#define TAG_FBLOOP_3A     84
+#define TAG_FBLOOP_3B     85
+#define TAG_FBLOOP_4A     86
+#define TAG_FBLOOP_4B     87
+#define TAG_FBLOOP_5A     88
+#define TAG_FBLOOP_5B     89
 
-#if defined(GALSF_FB_SNE_HEATING)
-#define TAG_FBLOOP_A  81
-#define TAG_FBLOOP_B  82
-#endif
+#define TAG_GRADLOOP_A    90
+#define TAG_GRADLOOP_B    91
+#define TAG_GRADLOOP_C    92
 
-#define TAG_INTERLOOP_A  90
-#define TAG_INTERLOOP_B  91
+#define TAG_PDATA_STARS   93
+#define TAG_KEY_STARS     94
+#define TAG_PDATA_BHS     95
+#define TAG_KEY_BHS       96
+#define TAG_BHDATA        97
 
-#ifdef SEPARATE_STELLARDOMAINDECOMP
-#define TAG_PDATA_STARS     118
-#define TAG_KEY_STARS       119
-#endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-#define TAG_PDATA_BHS     120
-#define TAG_KEY_BHS       121
-#define TAG_BHDATA        122
-#endif
-
-#ifdef KD_ALTERNATIVE_GROUP_SORT
-#define TAG_ALTSORT_GRP   130
-#define TAG_ALTSORT_SUB   131
-#define TAG_ALTSORT_IDS   132
-#endif

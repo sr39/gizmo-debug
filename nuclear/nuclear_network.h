@@ -1,18 +1,243 @@
-#ifndef NETWORK_H
-#define NETWORK_H
-
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <sys/types.h>
 #include "../GIZMO_config.h"
+#include "../allvars.h"
+#include "../proto.h"
 
-/*
- *  This code is place-holder, inherited from GADGET3,
- *   to be replaced by David Radice's version (written completely independently)
- */
+#define safe_fgets( str, num, stream ) util_fgets( str, num, stream, __FILE__, __LINE__ )
+#define safe_fread( ptr, size, count, stream ) util_fread( ptr, size, count, stream, __FILE__, __LINE__ )
+
+void myprintf( const char* format, ... );
+char * util_fgets( char *str, int num, FILE *stream, char *file, int line );
+size_t util_fread( void *ptr, size_t size, size_t count, FILE * stream, char *file, int line );
+
+__inline static int imin( int a, int b ) { return a < b ? a : b; }
+__inline static int imax( int a, int b ) { return a > b ? a : b; }
+__inline static double dmin( double a, double b ) { return a < b ? a : b; }
+__inline static double dmax( double a, double b ) { return a > b ? a : b; }
+
+#define VECT_NORM(N, V) ({double VN; int vcc; for(vcc = 0, VN = 0; vcc < (N); vcc++) VN+=((V)[vcc]*(V)[vcc]); VN;})
+
+
+void myprintf(const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+}
+
+char *util_fgets(char *str, int num, FILE * stream, char *file, int line)
+{
+    char *ret = fgets(str, num, stream);
+    if(ret == NULL)
+    {
+        printf("error: fgets in file %s at line %d\n", file, line);
+        endrun(200);
+    }
+    
+    return ret;
+}
+
+size_t util_fread(void *ptr, size_t size, size_t count, FILE * stream, char *file, int line)
+{
+    size_t result = fread(ptr, size, count, stream);
+    if(result != count)
+    {
+        printf("error: fread in file %s at line %d\n", file, line);
+        endrun(201);
+    }
+    
+    return result;
+}
+
+double SwapDouble( double Val );
+float SwapFloat( float Val );
+int SwapInt( int Val );
+int CheckSwap( char* fname, int *swap );
+
+
+double SwapDouble(double Val)
+{
+    double nVal;
+    int i;
+    const char *readFrom = (const char *) &Val;
+    char *writeTo = ((char *) &nVal) + sizeof(nVal);
+    
+    for(i = 0; i < sizeof(Val); ++i)
+    {
+        *(--writeTo) = *(readFrom++);
+    }
+    return nVal;
+}
+
+float SwapFloat(float Val)
+{
+    float nVal;
+    int i;
+    const char *readFrom = (const char *) &Val;
+    char *writeTo = ((char *) &nVal) + sizeof(nVal);
+    
+    for(i = 0; i < sizeof(Val); ++i)
+    {
+        *(--writeTo) = *(readFrom++);
+    }
+    return nVal;
+}
+
+int SwapInt(int Val)
+{
+    int nVal;
+    int i;
+    const char *readFrom = (const char *) &Val;
+    char *writeTo = ((char *) &nVal) + sizeof(nVal);
+    
+    for(i = 0; i < sizeof(Val); ++i)
+    {
+        *(--writeTo) = *(readFrom++);
+    }
+    return nVal;
+}
+
+int CheckSwap(char *fname, int *swap)
+{
+    FILE *fd;
+    off_t fsize, fpos;
+    int blocksize, blockend;
+    
+    if(!(fd = fopen(fname, "r")))
+    {
+        printf("can't open file `%s'.\n", fname);
+        return -1;
+    }
+    
+    fseeko(fd, 0, SEEK_END);
+    fsize = ftello(fd);
+    
+    *swap = 0;
+    fpos = 0;
+    fseeko(fd, 0, SEEK_SET);
+    safe_fread(&blocksize, sizeof(int), 1, fd);
+    while(!feof(fd))
+    {
+        if(fpos + blocksize + 4 > fsize)
+        {
+            *swap += 1;
+            break;
+        }
+        fpos += 4 + blocksize;
+        fseeko(fd, fpos, SEEK_SET);
+        safe_fread(&blockend, sizeof(int), 1, fd);
+        if(blocksize != blockend)
+        {
+            *swap += 1;
+            break;
+        }
+        fpos += 4;
+        if(!fread(&blocksize, sizeof(int), 1, fd))
+            break;
+    }
+    
+    if(*swap == 0)
+    {
+        fclose(fd);
+        return 0;
+    }
+    
+    fpos = 0;
+    fseeko(fd, 0, SEEK_SET);
+    safe_fread(&blocksize, sizeof(int), 1, fd);
+    while(!feof(fd))
+    {
+        blocksize = SwapInt(blocksize);
+        if(fpos + blocksize + 4 > fsize)
+        {
+            *swap += 1;
+            break;
+        }
+        fpos += 4 + blocksize;
+        fseeko(fd, fpos, SEEK_SET);
+        safe_fread(&blockend, sizeof(int), 1, fd);
+        blockend = SwapInt(blockend);
+        if(blocksize != blockend)
+        {
+            *swap += 1;
+            break;
+        }
+        fpos += 4;
+        if(!fread(&blocksize, sizeof(int), 1, fd))
+            break;
+    }
+    
+    fclose(fd);
+    return 0;
+}
+
+
+#if defined(NETWORK_SUPERLU) || defined(NETWORK_PARDISO)
+#define NETWORK_SPARSE 1
+#else
+#define NETWORK_SPARSE 0
+#endif
+
+
+struct network_solver_data {
+    int nsteps;
+    int maxstep;
+    int *steps;
+    int maxiter;
+    int matrixsize;
+    int matrixsize2;
+    int nelements;
+    double *aion;
+    double tolerance;
+    double *dy;
+    double *ynew;
+    double *yscale;
+    network_var *rhs_deriv;
+    double *first_rhs, *rhs;
+    jacob_t jacob;
+    jacob_t mod_jacob;
+    double *x;
+    double *err;
+    double *qcol;
+    double *a;
+    double *alf;
+#if NETWORK_VAR_RHO_T
+    int iTemp;
+#endif
+#if NETWORK_VAR_RHO_T == NETWORK_VAR_RHO
+    int iRho;
+#endif
+#ifdef NETWORK_OUTPUT
+    FILE *fp;
+#endif
+};
+
+struct network_solver_trajectory {
+    int ntimesteps, timestep;
+    double *timesteps;
+    double *rho;
+    double *energy;
+    double *x;
+    double time, maxtime;
+    double mintemp, maxtemp;
+};
+
+struct network_solver_data *network_solver_init( double tolerance, int matrixsize, int nelements, const struct network_nucdata *nucdata );
+void network_solver_deinit( struct network_solver_data *nsd );
+void network_solver_interpolate_trajectory( struct network_solver_trajectory *traj, double time, double *rho, double *energy );
+void network_solver_integrate_traj( const struct network_data *nd, struct network_workspace *nw, struct network_solver_trajectory *traj );
+void network_solver_integrate( double temp, double rho, double *y, double dt, const struct network_data *nd, struct network_workspace *nw );
+
+
 
 #ifdef NETWORK_SCREENING
 #define NETWORK_SEP_YZ
 #endif
 
-#include <stdlib.h>
 
 #if defined(NETWORK_SUPERLU) || defined(NETWORK_PARDISO)
 #define NETWORK_SPARSE 1
@@ -171,4 +396,3 @@ int network_getjacob(const double y[], const network_var *rhs, const struct netw
 int network_part(double temp, const struct network_data *nd, struct network_workspace *nw);
 int getrates(double rho, double temp, double ye, double yz, int compute_derivs, const struct network_data *nd, struct network_workspace *nw);
 
-#endif /* NETWORK_H */

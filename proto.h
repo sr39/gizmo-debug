@@ -50,10 +50,11 @@ long long report_comittable_memory(long long *MemTotal,
                                    long long *SwapFree);
 
 void merge_and_split_particles(void);
-int does_particle_need_to_be_merged(MyIDType i);
-int does_particle_need_to_be_split(MyIDType i);
-void merge_particles_ij(MyIDType i, MyIDType j);
-void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, double r2_nearest);
+int does_particle_need_to_be_merged(int i);
+int does_particle_need_to_be_split(int i);
+double ref_mass_factor(int i);
+void merge_particles_ij(int i, int j);
+void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nearest);
 
 void do_first_halfstep_kick(void);
 void do_second_halfstep_kick(void);
@@ -97,12 +98,26 @@ void execute_resubmit_command(void);
 void make_list_of_active_particles(void);
 void output_extra_log_messages(void);
 
-static inline double DMAX(double a, double b) { return (a > b) ? a : b; } 
+
+static inline double WRAP_POSITION_UNIFORM_BOX(double x)
+{
+    while(x >= All.BoxSize) {x -= All.BoxSize;}
+    while(x < 0) {x += All.BoxSize;}
+    return x;
+}
+
+static inline double DMAX(double a, double b) { return (a > b) ? a : b; }
 static inline double DMIN(double a, double b) { return (a < b) ? a : b; }
 static inline int IMAX(int a, int b) { return (a > b) ? a : b; } 
 static inline int IMIN(int a, int b) { return (a < b) ? a : b; }
 static inline double MINMOD(double a, double b) {return (a>0) ? ((b<0) ? 0 : DMIN(a,b)) : ((b>=0) ? 0 : DMAX(a,b));}
+/* special version of MINMOD below: a is always the "preferred" choice, b the stability-required one. here we allow overshoot, just not opposite signage */
+static inline double MINMOD_G(double a, double b) {return a;}
 
+
+#ifdef SHEARING_BOX
+void calc_shearing_box_pos_offset(void);
+#endif
 
 
 void do_distortion_tensor_kick(int i, double dt_gravkick);
@@ -119,10 +134,12 @@ int fof_compare_ID_list_ID(const void *a, const void *b);
 void myfree_msg(void *p, char *msg);
 void kspace_neutrinos_init(void);
 
+#ifdef TWOPOINT_FUNCTION_COMPUTATION_ENABLED
 void twopoint(void);
 void twopoint_save(void);
 int twopoint_ngb_treefind_variable(MyDouble searchcenter[3], MyFloat rsearch, int target, int *startnode, int mode, int *nexport, int *nsend_local);
 int twopoint_count_local(int target, int mode, int *nexport, int *nsend_local);
+#endif
 
 void powerspec(int flag, int *typeflag);
 double PowerSpec_Efstathiou(double k);
@@ -203,7 +220,6 @@ void output_lines_of_sight(int num);
 integertime find_next_lineofsighttime(integertime time0);
 integertime find_next_gridoutputtime(integertime ti_curr);
 void add_along_lines_of_sight(void);
-double los_periodic(double x);
 void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurrent, int mode);
 
 
@@ -236,14 +252,15 @@ int compare_length_values(const void *a, const void *b);
 double rho_dot(double z, void *params);
 double bhgrowth(double z1, double z2);
 
-
 int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend_local);
 
 double INLINE_FUNC Get_Particle_Size(int i);
 double INLINE_FUNC Particle_density_for_energy_i(int i);
-double INLINE_FUNC Get_Particle_Pressure(int i);
+double INLINE_FUNC Get_Particle_Expected_Area(double h);
 #ifdef COSMIC_RAYS
 double INLINE_FUNC Get_Particle_CosmicRayPressure(int i);
+double Get_CosmicRayGradientLength(int i);
+double Get_CosmicRayStreamingVelocity(int i);
 #endif
 double INLINE_FUNC Particle_effective_soundspeed_i(int i);
 #ifdef MAGNETIC
@@ -296,8 +313,6 @@ int fof_grid_compare(const void *a, const void *b);
 void fof_compile_catalogue(void);
 void fof_save_groups(int num);
 void fof_save_local_catalogue(int num);
-double fof_periodic(double x);
-double fof_periodic_wrap(double x);
 void fof_find_nearest_dmparticle(void);
 int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int *nsend_local);
 
@@ -403,9 +418,6 @@ void move_particles(integertime time1);
 
 void find_next_sync_point_and_drift(void);
 void find_dt_displacement_constraint(double hfac);
-#ifdef RELAXOBJECT
-void determine_relaxfac(void);
-#endif
 #ifdef WAKEUP
 void process_wake_ups(void);
 #endif
@@ -430,11 +442,12 @@ void do_turb_driving_step_first_half(void);
 void do_turb_driving_step_second_half(void);
 #endif
 
+double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h);
+
 #ifdef GALSF
 double evaluate_stellar_age_Gyr(double stellar_tform);
-inline double evaluate_l_over_m_ssp(double stellar_age_in_gyr);
-inline double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h);
-inline double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i);
+double evaluate_l_over_m_ssp(double stellar_age_in_gyr);
+double calculate_relative_light_to_mass_ratio_from_imf(int i);
 #endif
 #if defined(GALSF_FB_RPWIND_LOCAL) && defined(GALSF_FB_RPWIND_FROMSTARS)
 int ngb_treefind_newstars(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode, int *nexport, int *nsend_local);
@@ -457,6 +470,7 @@ void stochastic_gas_return_singledomain(void);
 
 #ifdef GALSF_FB_HII_HEATING
 void HII_heating_singledomain(void);
+double particle_ionizing_luminosity_in_cgs(long i);
 #ifdef GALSF_FB_HII_HEATING_USEMULTIDOMAINSHARE
 void HII_heating_withMPIcomm(void);
 int HIIheating_RHIIest(int target);
@@ -495,7 +509,7 @@ char *GetMultiSpeciesFilename(int i, int hk);
 #endif
 
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
-double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz, int mode);
+double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz);
 double bh_angleweight_localcoupling(int j, double hR, double theta);
 #endif
 
@@ -521,9 +535,14 @@ void disp_density(void);
 int disp_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
 void *disp_density_evaluate_primary(void *p);
 void *disp_density_evaluate_secondary(void *p);
-int disp_density_isactive(MyIDType i);
+int disp_density_isactive(int i);
 #endif
 
+#ifdef PM_HIRES_REGION_CLIPDM
+int ngb_treefind_variable_threads_nongas(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
+                                         int mode, int *exportflag, int *exportnodecount, int *exportindex,
+                                         int *ngblist);
+#endif
 
 void cooling_only(void);
 void count_hot_phase(void);
@@ -637,54 +656,39 @@ double enclosed_mass(double R);
 void pm_setup_nonperiodic_kernel(void);
 
 
+#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
+int rt_get_source_luminosity(int i, double sigma_0, double *lum);
+double rt_kappa(int j, int k_freq);
+double rt_absorption_rate(int i, int k_freq);
+double rt_diffusion_coefficient(int i, int k_freq);
+void rt_eddington_update_calculation(int j);
+void rt_update_driftkick(int i, double dt_entr, int mode);
+#endif
+#ifdef RT_SOURCE_INJECTION
+void rt_source_injection(void);
+#endif
+
 #ifdef RADTRANSFER
-void rt_get_J_nu(int ithis);
-
-void rt_write_stats(void);
-
-/* Eddington tensor computation */
-int eddington_treeevaluate(int target, int mode, int *nexport, int *nsend_local);
-void eddington(void);
-
-int n_treeevaluate(int target, int mode, int *nexport, int *nsend_local);
-void n(void);
-
-/* radiative transfer integration */
-void radtransfer(void);
-double radtransfer_vector_multiply(double *a, double *b);
-double radtransfer_vector_sum(double *a);
-void radtransfer_matrix_multiply(double *in, double *out, double *sum);
-int radtransfer_evaluate(int target, int mode, double *in, double *out, double *sum, int *nexport, int *nsend_local);
-void radtransfer_set_simple_inits(void);
-void radtransfer_update_chemistry(void);
-
-void rt_get_sigma(void);
-void rt_get_lum_stars(void);
+void rt_set_simple_inits(void);
 void rt_get_lum_gas(int target, double *je);
 
+#ifdef RT_DIFFUSION_CG
+void rt_diffusion_cg_solve(void);
+#endif
+
+#ifdef RT_CHEM_PHOTOION
+double rt_return_photon_number_density(int i, int k);
+void rt_update_chemistry(void);
+void rt_get_sigma(void);
 double rt_GetCoolingTime(int i, double u, double rho);
-double radtransfer_cooling_photoheating(int i, double dt);
+double rt_cooling_photoheating(int i, double dt);
 double rt_DoCooling(int, double);
 double rt_DoHeating(int, double);
 double rt_get_cooling_rate(int i, double entropy);
+void rt_write_chemistry_stats(void);
+#endif
 
-/* emission approximation */
-int ngb_treefind_stars(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode,
-		       int *nexport, int *nsend_local);
-void density_sfr(void);
-int density_sfr_evaluate(int target, int mode, int *nexport, int *nsend_local);
-
-void sfr_lum(void);
-int sfr_lum_evaluate(int target, int mode, int *nexport, int *nsend_local);
-
-void gas_lum(void);
-void star_lum(void);
-int star_lum_evaluate(int target, int mode, int *nexport, int *nsend_local);
-
-void bh_lum(void);
-int bh_lum_evaluate(int target, int mode, int *nexport, int *nsend_local);
-
-#endif //end radtransfer
+#endif
 
 
 void find_block(char *label,FILE *fd);
@@ -729,10 +733,6 @@ void check_tidaltensor_nonperiodic(int particle_ID);
 #endif
 #endif
 
-#ifdef SINKS
-void do_sinks(void);
-#endif
-
 #ifdef SCFPOTENTIAL
 void SCF_do_center_of_mass_correction(double fac_rad, double start_rad, double fac_part, int max_iter);
 void SCF_write(int task);
@@ -768,7 +768,9 @@ void ags_density(void);
 int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
 void *ags_density_evaluate_primary(void *p);
 void *ags_density_evaluate_secondary(void *p);
-int ags_density_isactive(MyIDType i);
+int ags_density_isactive(int i);
+double ags_return_maxsoft(int i);
+double ags_return_minsoft(int i);
 #endif
 
 #ifdef ALTERNATIVE_PSORT
@@ -776,9 +778,13 @@ void init_sort_ID(MyIDType *data, int ndata);
 #endif
 
 void hydro_gradient_calc(void);
-int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *GasGrad_evaluate_primary(void *p);
-void *GasGrad_evaluate_secondary(void *p);
+int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
+void *GasGrad_evaluate_primary(void *p, int gradient_iteration);
+void *GasGrad_evaluate_secondary(void *p, int gradient_iteration);
+
+#ifdef PARTICLE_EXCISION
+void apply_excision();
+#endif
 
 #ifdef SIDM
 #include "./sidm/sidm_proto.h"

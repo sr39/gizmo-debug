@@ -131,18 +131,22 @@ void compute_potential(void)
         }
 
         GravDataIn[j].Type = P[place].Type;
-#if defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
         GravDataIn[j].Mass = P[place].Mass;
 #endif
-#if defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(ADAPTIVE_GRAVSOFT_FORALL)
-        if(PPP[place].Hsml > All.ForceSoftening[P[place].Type])
+#if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL)
+        double h_place = PPP[place].Hsml;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+        h_place = PPP[place].AGS_Hsml;
+#endif
+        if(h_place > All.ForceSoftening[P[place].Type])
         {
-            GravDataIn[j].Soft = PPP[place].Hsml;
+            GravDataIn[j].Soft = h_place;
         } else {
             GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];
         }
 #endif
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(GALSF_FB_RT_PHOTONMOMENTUM)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(RT_USE_GRAVTREE)
         if((P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type]))
         {
             GravDataIn[j].Soft = PPP[place].Hsml;
@@ -242,10 +246,11 @@ void compute_potential(void)
         /* remove self-potential */
         P[i].Potential += P[i].Mass / All.SofteningTable[P[i].Type];
         
+#ifdef PERIODIC
         if(All.ComovingIntegrationOn)
-            if(All.PeriodicBoundariesOn)
-                P[i].Potential -= 2.8372975 * pow(P[i].Mass, 2.0 / 3) *
-                pow(All.Omega0 * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G), 1.0 / 3);
+            P[i].Potential -= 2.8372975 * pow(P[i].Mass, 2.0 / 3) *
+            pow(All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G), 1.0 / 3);
+#endif
     }
 #endif
 
@@ -300,7 +305,7 @@ void compute_potential(void)
   if(All.ComovingIntegrationOn)
     {
 #ifndef PERIODIC
-      fac = -0.5 * All.Omega0 * All.Hubble * All.Hubble;
+      fac = -0.5 * All.Omega0 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits;
 
       for(i = 0; i < NumPart; i++)
 	{
@@ -313,7 +318,7 @@ void compute_potential(void)
     }
   else
     {
-      fac = -0.5 * All.OmegaLambda * All.Hubble * All.Hubble;
+      fac = -0.5 * All.OmegaLambda * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits;
       if(fac != 0)
 	{
 	  for(i = 0; i < NumPart; i++)

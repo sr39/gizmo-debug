@@ -59,10 +59,8 @@ void force_kick_node(int i, MyDouble * dp)
   int j, no;
   MyFloat v, vmax;
 
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-    MyFloat stellar_lum_dp[3];
-#endif
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+    MyFloat rt_source_lum_dp[3];
 #endif
 
 #ifdef SCALARFIELD
@@ -76,13 +74,10 @@ void force_kick_node(int i, MyDouble * dp)
 
   for(j = 0; j < 3; j++)
     {
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-        if((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))
-            stellar_lum_dp[j] = dp[j];
-        else
-            stellar_lum_dp[j] = 0;
-#endif
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+        double lum[N_RT_FREQ_BINS];
+        int active_check = rt_get_source_luminosity(i,-1,lum);
+        if(active_check) {rt_source_lum_dp[j]=dp[j];} else {rt_source_lum_dp[j]=0;}
 #endif
 #ifdef SCALARFIELD
       if(P[i].Type != 0)
@@ -105,10 +100,8 @@ void force_kick_node(int i, MyDouble * dp)
       for(j = 0; j < 3; j++)
 	{
 	  Extnodes[no].dp[j] += dp[j];
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-        Extnodes[no].stellar_lum_dp[j] += stellar_lum_dp[j];
-#endif
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+        Extnodes[no].rt_source_lum_dp[j] += rt_source_lum_dp[j];
 #endif
 #ifdef SCALARFIELD
 	  Extnodes[no].dp_dm[j] += dp_dm[j];
@@ -119,7 +112,6 @@ void force_kick_node(int i, MyDouble * dp)
 	Extnodes[no].vmax = vmax;
 
       Nodes[no].u.d.bitflags |= (1 << BITFLAG_NODEHASBEENKICKED);
-
       Extnodes[no].Ti_lastkicked = All.Ti_Current;
 
       if(Nodes[no].u.d.bitflags & (1 << BITFLAG_TOPLEVEL))	/* top-level tree-node reached */
@@ -148,10 +140,8 @@ void force_finish_kick_nodes(void)
   int *counts, *counts_dp, *offset_list, *offset_dp, *offset_vmax;
   MyLongDouble *domainDp_loc, *domainDp_all;
 
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
     MyLongDouble *domainDp_stellarlum_loc, *domainDp_stellarlum_all;
-#endif
 #endif
 #ifdef SCALARFIELD
   MyLongDouble *domainDp_dm_loc, *domainDp_dm_all;
@@ -167,10 +157,8 @@ void force_finish_kick_nodes(void)
   offset_vmax = (int *) mymalloc("offset_vmax", sizeof(int) * NTask);
 
   domainDp_loc = (MyLongDouble *) mymalloc("domainDp_loc", DomainNumChanged * 3 * sizeof(MyLongDouble));
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
     domainDp_stellarlum_loc = (MyLongDouble *) mymalloc("domainDp_stellarlum_loc", DomainNumChanged * 3 * sizeof(MyLongDouble));
-#endif
 #endif
 #ifdef SCALARFIELD
   domainDp_dm_loc = (MyLongDouble *) mymalloc("domainDp_dm_loc", DomainNumChanged * 3 * sizeof(MyLongDouble));
@@ -182,10 +170,8 @@ void force_finish_kick_nodes(void)
       for(j = 0; j < 3; j++)
 	{
 	  domainDp_loc[i * 3 + j] = Extnodes[DomainList[i]].dp[j];
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-        domainDp_stellarlum_loc[i * 3 + j] = Extnodes[DomainList[i]].stellar_lum_dp[j];
-#endif
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+        domainDp_stellarlum_loc[i * 3 + j] = Extnodes[DomainList[i]].rt_source_lum_dp[j];
 #endif
 #ifdef SCALARFIELD
 	  domainDp_dm_loc[i * 3 + j] = Extnodes[DomainList[i]].dp_dm[j];
@@ -214,10 +200,8 @@ void force_finish_kick_nodes(void)
     }
 
   domainDp_all = (MyLongDouble *) mymalloc("domainDp_all", totDomainNumChanged * 3 * sizeof(MyLongDouble));
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
     domainDp_stellarlum_all = (MyLongDouble *) mymalloc("domainDp_stellarlum_all", totDomainNumChanged * 3 * sizeof(MyLongDouble));
-#endif
 #endif
 #ifdef SCALARFIELD
   domainDp_dm_all =
@@ -240,11 +224,9 @@ void force_finish_kick_nodes(void)
   MPI_Allgatherv(domainDp_loc, DomainNumChanged * 3 * sizeof(MyLongDouble), MPI_BYTE,
 		 domainDp_all, counts_dp, offset_dp, MPI_BYTE, MPI_COMM_WORLD);
 
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
     MPI_Allgatherv(domainDp_stellarlum_loc, DomainNumChanged * 3 * sizeof(MyLongDouble), MPI_BYTE,
                    domainDp_stellarlum_all, counts_dp, offset_dp, MPI_BYTE, MPI_COMM_WORLD);
-#endif
 #endif
 #ifdef SCALARFIELD
   MPI_Allgatherv(domainDp_dm_loc, DomainNumChanged * 3 * sizeof(MyLongDouble), MPI_BYTE,
@@ -270,10 +252,8 @@ void force_finish_kick_nodes(void)
 	  for(j = 0; j < 3; j++)
 	    {
 	      Extnodes[no].dp[j] += domainDp_all[3 * i + j];
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-            Extnodes[no].stellar_lum_dp[j] += domainDp_stellarlum_all[3 * i + j];
-#endif
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+            Extnodes[no].rt_source_lum_dp[j] += domainDp_stellarlum_all[3 * i + j];
 #endif
 #ifdef SCALARFIELD
 	      Extnodes[no].dp_dm[j] += domainDp_dm_all[3 * i + j];
@@ -292,20 +272,16 @@ void force_finish_kick_nodes(void)
 
   myfree(domainList_all);
   myfree(domainVmax_all);
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
     myfree(domainDp_stellarlum_all);
-#endif
 #endif
 #ifdef SCALARFIELD
   myfree(domainDp_dm_all);
 #endif
   myfree(domainDp_all);
   myfree(domainVmax_loc);
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
     myfree(domainDp_stellarlum_loc);
-#endif
 #endif
 #ifdef SCALARFIELD
   myfree(domainDp_dm_loc);
@@ -344,14 +320,10 @@ void force_drift_node(int no, int time1)
       else
 	fac = 0;
 
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
         double fac_stellar_lum;
-        if(Nodes[no].stellar_lum)
-            fac_stellar_lum = 1 / Nodes[no].stellar_lum;
-        else
-            fac_stellar_lum = 0;
-#endif
+        double l_tot=0; for(j=0;j<N_RT_FREQ_BINS;j++) {l_tot += (Nodes[no].stellar_lum[j]);}
+        if(l_tot>0) {fac_stellar_lum = 1 / l_tot;} else {fac_stellar_lum = 0;}
 #endif
 
 #ifdef SCALARFIELD
@@ -367,11 +339,9 @@ void force_drift_node(int no, int time1)
 	{
 	  Extnodes[no].vs[j] += fac * FLT(Extnodes[no].dp[j]);
 	  Extnodes[no].dp[j] = 0;
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-        Extnodes[no].stellar_lum_vs[j] += fac_stellar_lum * FLT(Extnodes[no].stellar_lum_dp[j]);
-        Extnodes[no].stellar_lum_dp[j] = 0;
-#endif
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+        Extnodes[no].rt_source_lum_vs[j] += fac_stellar_lum * FLT(Extnodes[no].rt_source_lum_dp[j]);
+        Extnodes[no].rt_source_lum_dp[j] = 0;
 #endif
 #ifdef SCALARFIELD
 	  Extnodes[no].vs_dm[j] += fac_dm * FLT(Extnodes[no].dp_dm[j]);
@@ -389,26 +359,20 @@ void force_drift_node(int no, int time1)
     }
   else
     {
-
       dt_drift_hmax = (time1 - Nodes[no].Ti_current) * All.Timebase_interval;
       dt_drift = dt_drift_hmax;
     }
 
-  for(j = 0; j < 3; j++)
-    Nodes[no].u.d.s[j] += Extnodes[no].vs[j] * dt_drift;
+    for(j = 0; j < 3; j++) {Nodes[no].u.d.s[j] += Extnodes[no].vs[j] * dt_drift;}
   Nodes[no].len += 2 * Extnodes[no].vmax * dt_drift;
 
 #ifdef SCALARFIELD
-  for(j = 0; j < 3; j++)
-    Nodes[no].s_dm[j] += Extnodes[no].vs_dm[j] * dt_drift;
+    for(j = 0; j < 3; j++) {Nodes[no].s_dm[j] += Extnodes[no].vs_dm[j] * dt_drift;}
 #endif
 
 
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-    for(j = 0; j < 3; j++)
-        Nodes[no].stellar_lum_s[j] += Extnodes[no].stellar_lum_vs[j] * dt_drift;
-#endif
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+    for(j = 0; j < 3; j++) {Nodes[no].rt_source_lum_s[j] += Extnodes[no].rt_source_lum_vs[j] * dt_drift;}
 #endif
     
   Extnodes[no].hmax *= exp(Extnodes[no].divVmax * dt_drift_hmax / NUMDIMS);

@@ -83,7 +83,7 @@ static struct ags_densdata_in
 {
   MyDouble Pos[3];
   MyFloat Vel[3];
-  MyFloat Hsml;
+  MyFloat AGS_Hsml;
   int NodeList[NODELISTLENGTH];
   int Type;
 }
@@ -109,7 +109,7 @@ void ags_particle2in_density(struct ags_densdata_in *in, int i)
         in->Pos[k] = P[i].Pos[k];
         in->Vel[k] = P[i].Vel[k];
     }
-    in->Hsml = PPP[i].Hsml;
+    in->AGS_Hsml = PPP[i].AGS_Hsml;
     in->Type = P[i].Type;
 }
 
@@ -131,7 +131,7 @@ struct kernel_density
 
 void ags_density(void)
 {
-  MyFloat *Left, *Right;
+  MyFloat *Left, *Right, *AGS_Prev;
   int i, j, k, ndone, ndone_flag, npleft, iter = 0;
   int ngrp, recvTask, place;
   long long ntot;
@@ -147,11 +147,10 @@ void ags_density(void)
   int particle_set_to_maxhsml_flag = 0;
 
   CPU_Step[CPU_AGSDENSMISC] += measure_time();
-
-  int NTaskTimesNumPart;
-
+  AGS_Prev = (MyFloat *) mymalloc("AGS_Prev", NumPart * sizeof(MyFloat));
+    
+  long long NTaskTimesNumPart;
   NTaskTimesNumPart = maxThreads * NumPart;
-
   Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
 
   Left = (MyFloat *) mymalloc("Left", NumPart * sizeof(MyFloat));
@@ -160,7 +159,10 @@ void ags_density(void)
   for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
       if(ags_density_isactive(i))
-              Left[i] = Right[i] = 0;
+      {
+          Left[i] = Right[i] = 0;
+          AGS_Prev[i] = PPP[i].AGS_Hsml;
+      }
     }
 
   /* allocate buffers to arrange communication */
@@ -341,10 +343,10 @@ void ags_density(void)
 		      /* get the particles */
 		      MPI_Sendrecv(&AGS_DensDataIn[Send_offset[recvTask]],
 				   Send_count[recvTask] * sizeof(struct ags_densdata_in), MPI_BYTE,
-				   recvTask, TAG_DENS_A,
+				   recvTask, TAG_AGS_DENS_A,
 				   &AGS_DensDataGet[Recv_offset[recvTask]],
 				   Recv_count[recvTask] * sizeof(struct ags_densdata_in), MPI_BYTE,
-				   recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				   recvTask, TAG_AGS_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		    }
 		}
 	    }
@@ -412,10 +414,10 @@ void ags_density(void)
 		      /* send the results */
 		      MPI_Sendrecv(&AGS_DensDataResult[Recv_offset[recvTask]],
 				   Recv_count[recvTask] * sizeof(struct ags_densdata_out),
-				   MPI_BYTE, recvTask, TAG_DENS_B,
+				   MPI_BYTE, recvTask, TAG_AGS_DENS_B,
 				   &AGS_DensDataOut[Send_offset[recvTask]],
 				   Send_count[recvTask] * sizeof(struct ags_densdata_out),
-				   MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				   MPI_BYTE, recvTask, TAG_AGS_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		    }
 		}
 
@@ -446,15 +448,20 @@ void ags_density(void)
         tstart = my_second();
         for(i = FirstActiveParticle, npleft = 0; i >= 0; i = NextActiveParticle[i])
         {
-            if((P[i].Mass>0)&&(PPP[i].Hsml>0)&&(PPP[i].NumNgb>0)&&(ags_density_isactive(i)))
+            if(ags_density_isactive(i))
             {
-                /* first use Ngb as summed in neighbor loop to normalize DhsmlNgb and DivVel */
-                PPP[i].DhsmlNgbFactor *= PPP[i].Hsml / (NUMDIMS * PPP[i].NumNgb);
-                P[i].Particle_DivVel /= PPP[i].NumNgb;
-                /* spherical volume of the Kernel (use this to normalize 'effective neighbor number') */
-                PPP[i].NumNgb *= NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS);; /* now we define 'effective neighbor number */
+                if(PPP[i].NumNgb > 0)
+                {
+                    PPP[i].DhsmlNgbFactor *= PPP[i].AGS_Hsml / (NUMDIMS * PPP[i].NumNgb);
+                    P[i].Particle_DivVel /= PPP[i].NumNgb;
+                    /* spherical volume of the Kernel (use this to normalize 'effective neighbor number') */
+                    PPP[i].NumNgb *= NORM_COEFF * pow(PPP[i].AGS_Hsml,NUMDIMS);
+                } else {
+                    PPP[i].NumNgb = PPP[i].DhsmlNgbFactor = P[i].Particle_DivVel = 0;
+                }
                 
-                if(PPP[i].DhsmlNgbFactor > -0.9)
+                // inverse of SPH volume element (to satisfy constraint implicit in Lagrange multipliers)
+                if(PPP[i].DhsmlNgbFactor > -0.9)	/* note: this would be -1 if only a single particle at zero lag is found */
                     PPP[i].DhsmlNgbFactor = 1 / (1 + PPP[i].DhsmlNgbFactor);
                 else
                     PPP[i].DhsmlNgbFactor = 1;
@@ -463,19 +470,9 @@ void ags_density(void)
                 /* now check whether we have enough neighbours */
                 redo_particle = 0;
                 
-                double minsoft = All.ForceSoftening[P[i].Type];
-                double maxsoft = All.MaxHsml;
-                maxsoft = DMIN(maxsoft, 50.0 * All.ForceSoftening[P[i].Type]);
-#ifdef PMGRID
-                /*!< this gives the maximum allowed gravitational softening when using the TreePM method.
-                 *  The quantity is given in units of the scale used for the force split (ASMTH) */
-                maxsoft = DMIN(maxsoft, 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
-#endif
-
-#ifdef BLACK_HOLES
-                if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius;}
-#endif
-                
+                double min_tmp = ags_return_minsoft(i);
+                double minsoft = DMAX(All.ForceSoftening[P[i].Type] , DMIN(min_tmp, AGS_Prev[i])); // this ensures softening doesnt shrink when self-accel is too large already
+                double maxsoft = ags_return_maxsoft(i);
                 desnumngb = All.AGS_DesNumNgb;
                 desnumngbdev = All.AGS_MaxNumNgbDeviation;
                 if(All.Time==All.TimeBegin) {if(All.AGS_MaxNumNgbDeviation > 0.05) desnumngbdev=0.05;}
@@ -483,33 +480,33 @@ void ags_density(void)
                 if(iter > 1) {desnumngbdev = DMIN( 0.25*desnumngb , desnumngbdev * exp(0.1*log(desnumngb/(16.*desnumngbdev))*(double)iter) );}
                 
                 /* check if we are in the 'normal' range between the max/min allowed values */
-                if((PPP[i].NumNgb < (desnumngb - desnumngbdev) && PPP[i].Hsml < 0.99*maxsoft) ||
-                   (PPP[i].NumNgb > (desnumngb + desnumngbdev) && PPP[i].Hsml > 1.01*minsoft))
+                if((PPP[i].NumNgb < (desnumngb - desnumngbdev) && PPP[i].AGS_Hsml < 0.99*maxsoft) ||
+                   (PPP[i].NumNgb > (desnumngb + desnumngbdev) && PPP[i].AGS_Hsml > 1.01*minsoft))
                     redo_particle = 1;
                 
                 /* check maximum kernel size allowed */
                 particle_set_to_maxhsml_flag = 0;
-                if((PPP[i].Hsml >= 0.99*maxsoft) && (PPP[i].NumNgb < (desnumngb - desnumngbdev)))
+                if((PPP[i].AGS_Hsml >= 0.99*maxsoft) && (PPP[i].NumNgb < (desnumngb - desnumngbdev)))
                 {
                     redo_particle = 0;
-                    if(PPP[i].Hsml == maxsoft)
+                    if(PPP[i].AGS_Hsml == maxsoft)
                     {
                         /* iteration at the maximum value is already complete */
                         particle_set_to_maxhsml_flag = 0;
                     } else {
                         /* ok, the particle needs to be set to the maximum, and (if gas) iterated one more time */
                         if(P[i].Type==0) redo_particle = 1;
-                        PPP[i].Hsml = maxsoft;
+                        PPP[i].AGS_Hsml = maxsoft;
                         particle_set_to_maxhsml_flag = 1;
                     }
                 }
                 
                 /* check minimum kernel size allowed */
                 particle_set_to_minhsml_flag = 0;
-                if((PPP[i].Hsml <= 1.01*minsoft) && (PPP[i].NumNgb > (desnumngb + desnumngbdev)))
+                if((PPP[i].AGS_Hsml <= 1.01*minsoft) && (PPP[i].NumNgb > (desnumngb + desnumngbdev)))
                 {
                     redo_particle = 0;
-                    if(PPP[i].Hsml == minsoft)
+                    if(PPP[i].AGS_Hsml == minsoft)
                     {
                         /* this means we've already done an iteration with the MinHsml value, so the
                          neighbor weights, etc, are not going to be wrong; thus we simply stop iterating */
@@ -517,7 +514,7 @@ void ags_density(void)
                     } else {
                         /* ok, the particle needs to be set to the minimum, and (if gas) iterated one more time */
                         if(P[i].Type==0) redo_particle = 1;
-                        PPP[i].Hsml = minsoft;
+                        PPP[i].AGS_Hsml = minsoft;
                         particle_set_to_minhsml_flag = 1;
                     }
                 }
@@ -527,7 +524,7 @@ void ags_density(void)
                     if(iter >= MAXITER - 10)
                     {
                         printf("AGS: i=%d task=%d ID=%llu Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)\n",
-                               i, ThisTask, (unsigned long long) P[i].ID, P[i].Type, PPP[i].Hsml, PPP[i].DhsmlNgbFactor, Left[i], Right[i],
+                               i, ThisTask, (unsigned long long) P[i].ID, P[i].Type, PPP[i].AGS_Hsml, PPP[i].DhsmlNgbFactor, Left[i], Right[i],
                                (float) PPP[i].NumNgb, Right[i] - Left[i], particle_set_to_maxhsml_flag, particle_set_to_minhsml_flag, minsoft,
                                maxsoft, desnumngb, desnumngbdev, redo_particle, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
                         fflush(stdout);
@@ -548,16 +545,16 @@ void ags_density(void)
                     if((particle_set_to_maxhsml_flag==0)&&(particle_set_to_minhsml_flag==0))
                     {
                         if(PPP[i].NumNgb < (desnumngb - desnumngbdev))
-                            Left[i] = DMAX(PPP[i].Hsml, Left[i]);
+                            Left[i] = DMAX(PPP[i].AGS_Hsml, Left[i]);
                         else
                         {
                             if(Right[i] != 0)
                             {
-                                if(PPP[i].Hsml < Right[i])
-                                    Right[i] = PPP[i].Hsml;
+                                if(PPP[i].AGS_Hsml < Right[i])
+                                    Right[i] = PPP[i].AGS_Hsml;
                             }
                             else
-                                Right[i] = PPP[i].Hsml;
+                                Right[i] = PPP[i].AGS_Hsml;
                         }
                         
                         // right/left define upper/lower bounds from previous iterations
@@ -570,22 +567,22 @@ void ags_density(void)
                             {
                                 double jumpvar = PPP[i].DhsmlNgbFactor * log( desnumngb / PPP[i].NumNgb ) / NUMDIMS;
                                 if(iter>1) {if(fabs(jumpvar) < maxjump) {if(jumpvar<0) {jumpvar=-maxjump;} else {jumpvar=maxjump;}}}
-                                PPP[i].Hsml *= exp(jumpvar);
+                                PPP[i].AGS_Hsml *= exp(jumpvar);
                             } else {
-                                PPP[i].Hsml *= 2.0;
+                                PPP[i].AGS_Hsml *= 2.0;
                             }
-                            if((PPP[i].Hsml<Right[i])&&(PPP[i].Hsml>Left[i]))
+                            if((PPP[i].AGS_Hsml<Right[i])&&(PPP[i].AGS_Hsml>Left[i]))
                             {
                                 if(iter > 1)
                                 {
                                     double hfac = exp(maxjump);
-                                    if(PPP[i].Hsml > Right[i] / hfac) {PPP[i].Hsml = Right[i] / hfac;}
-                                    if(PPP[i].Hsml < Left[i] * hfac) {PPP[i].Hsml = Left[i] * hfac;}
+                                    if(PPP[i].AGS_Hsml > Right[i] / hfac) {PPP[i].AGS_Hsml = Right[i] / hfac;}
+                                    if(PPP[i].AGS_Hsml < Left[i] * hfac) {PPP[i].AGS_Hsml = Left[i] * hfac;}
                                 }
                             } else {
-                                if(PPP[i].Hsml>Right[i]) PPP[i].Hsml=Right[i];
-                                if(PPP[i].Hsml<Left[i]) PPP[i].Hsml=Left[i];
-                                PPP[i].Hsml = pow(PPP[i].Hsml * Left[i] * Right[i] , 1.0/3.0);
+                                if(PPP[i].AGS_Hsml>Right[i]) PPP[i].AGS_Hsml=Right[i];
+                                if(PPP[i].AGS_Hsml<Left[i]) PPP[i].AGS_Hsml=Left[i];
+                                PPP[i].AGS_Hsml = pow(PPP[i].AGS_Hsml * Left[i] * Right[i] , 1.0/3.0);
                             }
                         }
                         else
@@ -593,7 +590,7 @@ void ags_density(void)
                             if(Right[i] == 0 && Left[i] == 0)
                             {
                                 char buf[1000];
-                                sprintf(buf, "AGS: Right[i] == 0 && Left[i] == 0 && PPP[i].Hsml=%g\n", PPP[i].Hsml);
+                                sprintf(buf, "AGS: Right[i] == 0 && Left[i] == 0 && PPP[i].AGS_Hsml=%g\n", PPP[i].AGS_Hsml);
                                 terminate(buf);
                             }
                             
@@ -614,17 +611,17 @@ void ags_density(void)
                                     
                                     if(fac < fac_lim+0.231)
                                     {
-                                        PPP[i].Hsml *= exp(fac); // more expensive function, but faster convergence
+                                        PPP[i].AGS_Hsml *= exp(fac); // more expensive function, but faster convergence
                                     }
                                     else
                                     {
-                                        PPP[i].Hsml *= exp(fac_lim+0.231);
+                                        PPP[i].AGS_Hsml *= exp(fac_lim+0.231);
                                         // fac~0.26 leads to expected doubling of number if density is constant,
                                         //   insert this limiter here b/c we don't want to get *too* far from the answer (which we're close to)
                                     }
                                 }
                                 else
-                                    PPP[i].Hsml *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
+                                    PPP[i].AGS_Hsml *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
                             }
                             
                             if(Right[i] > 0 && Left[i] == 0)
@@ -646,21 +643,21 @@ void ags_density(void)
                                     
                                     if(fac > fac_lim-0.231)
                                     {
-                                        PPP[i].Hsml *= exp(fac); // more expensive function, but faster convergence
+                                        PPP[i].AGS_Hsml *= exp(fac); // more expensive function, but faster convergence
                                     }
                                     else
-                                        PPP[i].Hsml *= exp(fac_lim-0.231); // limiter to prevent --too-- far a jump in a single iteration
+                                        PPP[i].AGS_Hsml *= exp(fac_lim-0.231); // limiter to prevent --too-- far a jump in a single iteration
                                 }
                                 else
-                                    PPP[i].Hsml *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
+                                    PPP[i].AGS_Hsml *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
                             }
                         } // closes if[particle_set_to_max/minhsml_flag]
                     } // closes redo_particle
                     /* resets for max/min values */
-                    if(PPP[i].Hsml < minsoft) PPP[i].Hsml = minsoft;
-                    if(particle_set_to_minhsml_flag==1) PPP[i].Hsml = minsoft;
-                    if(PPP[i].Hsml > maxsoft) PPP[i].Hsml = maxsoft;
-                    if(particle_set_to_maxhsml_flag==1) PPP[i].Hsml = maxsoft;
+                    if(PPP[i].AGS_Hsml < minsoft) PPP[i].AGS_Hsml = minsoft;
+                    if(particle_set_to_minhsml_flag==1) PPP[i].AGS_Hsml = minsoft;
+                    if(PPP[i].AGS_Hsml > maxsoft) PPP[i].AGS_Hsml = maxsoft;
+                    if(particle_set_to_maxhsml_flag==1) PPP[i].AGS_Hsml = maxsoft;
                 }
                 else
                     P[i].TimeBin = -P[i].TimeBin - 1;	/* Mark as inactive */
@@ -707,23 +704,19 @@ void ags_density(void)
     {
         if(ags_density_isactive(i))
         {
-            if((P[i].Mass>0)&&(PPP[i].Hsml>0)&&(PPP[i].NumNgb>0))
+            if((P[i].Mass>0)&&(PPP[i].AGS_Hsml>0)&&(PPP[i].NumNgb>0))
             {
-                
-                double minsoft = All.ForceSoftening[P[i].Type];
-                double maxsoft = All.MaxHsml;
-                maxsoft = DMIN(maxsoft, 50.0 * All.ForceSoftening[P[i].Type]);
-#ifdef PMGRID
-                maxsoft = DMIN(maxsoft, 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
-#endif
+                double min_tmp = ags_return_minsoft(i);
+                double minsoft = DMAX(All.ForceSoftening[P[i].Type] , DMIN(min_tmp, AGS_Prev[i])); // this ensures softening doesnt shrink when self-accel is too large already
+                double maxsoft = ags_return_maxsoft(i);
                 /* check that we're within the 'valid' range for adaptive softening terms, otherwise zeta=0 */
                 if((fabs(PPP[i].NumNgb-All.AGS_DesNumNgb)/All.AGS_DesNumNgb < 0.05)
-                   &&(PPP[i].Hsml <= 0.99*maxsoft)&&(PPP[i].Hsml >= 1.01*minsoft)
+                   &&(PPP[i].AGS_Hsml <= 0.99*maxsoft)&&(PPP[i].AGS_Hsml >= 1.01*minsoft)
                    &&(PPP[i].NumNgb >= (All.AGS_DesNumNgb - All.AGS_MaxNumNgbDeviation))
                    &&(PPP[i].NumNgb <= (All.AGS_DesNumNgb + All.AGS_MaxNumNgbDeviation)))
                 {
-                    double ndenNGB = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
-                    PPPZ[i].AGS_zeta *= 0.5 * P[i].Mass * PPP[i].Hsml / (NUMDIMS * ndenNGB) * PPP[i].DhsmlNgbFactor;
+                    double ndenNGB = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].AGS_Hsml,NUMDIMS) );
+                    PPPZ[i].AGS_zeta *= 0.5 * P[i].Mass * PPP[i].AGS_Hsml / (NUMDIMS * ndenNGB) * PPP[i].DhsmlNgbFactor;
                 } else {
                     PPPZ[i].AGS_zeta = 0;
                 }
@@ -735,7 +728,8 @@ void ags_density(void)
             }
         }
     }
-
+    myfree(AGS_Prev);
+    
     /* collect some timing information */
     
     t1 = WallclockTime = my_second();
@@ -775,8 +769,8 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
     else
         local = AGS_DensDataGet[target];
     
-    h2 = local.Hsml * local.Hsml;
-    kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
+    h2 = local.AGS_Hsml * local.AGS_Hsml;
+    kernel_hinv(local.AGS_Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
     
     if(mode == 0)
     {
@@ -792,7 +786,7 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
     {
         while(startnode >= 0)
         {
-            numngb_inbox = ags_ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag,
+            numngb_inbox = ags_ngb_treefind_variable_threads(local.Pos, local.AGS_Hsml, target, &startnode, mode, exportflag,
                                           exportnodecount, exportindex, ngblist, local.Type);
             
             if(numngb_inbox < 0)
@@ -806,10 +800,8 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
-#ifdef PERIODIC /*  now find the closest image in the given box size  */
-                kernel.dp[0] = NEAREST_X(kernel.dp[0]);
-                kernel.dp[1] = NEAREST_Y(kernel.dp[1]);
-                kernel.dp[2] = NEAREST_Z(kernel.dp[2]);
+#ifdef PERIODIC
+                NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1); // find the closest image in the given box size
 #endif
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 if(r2 < h2)
@@ -943,15 +935,55 @@ void *ags_density_evaluate_secondary(void *p)
 
 
 /* routine to determine if we need to use ags_density to calculate Hsml */
-int ags_density_isactive(MyIDType i)
+int ags_density_isactive(int i)
 {
-    if(P[i].TimeBin < 0) return 0;
-    /* check our 'marker' for particles which have finished
-     iterating to an Hsml solution (if they have, dont do them again) */
-    if(density_isactive(i)) return 0;
-    /* would have already been handled in hydro density routine */
+    if(P[i].TimeBin < 0) return 0; /* check our 'marker' for particles which have finished
+                                        iterating to an Hsml solution (if they have, dont do them again) */
+    if(P[i].Type==0)
+    {
+        PPP[i].AGS_Hsml = PPP[i].Hsml; // gas sees gas, these are identical
+        return 0; // don't actually need to do the loop //
+    }
     return 1;
 }
 
+/* routine to return the maximum allowed softening */
+double ags_return_maxsoft(int i)
+{
+    double maxsoft = All.MaxHsml; // overall maximum - nothing is allowed to exceed this
+#if !(EXPAND_PREPROCESSOR_(ADAPTIVE_GRAVSOFT_FORALL) == 1)
+    maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * All.ForceSoftening[P[i].Type]); // user-specified maximum
+#ifdef PMGRID
+    /*!< this gives the maximum allowed gravitational softening when using the TreePM method.
+     *  The quantity is given in units of the scale used for the force split (ASMTH) */
+    maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
+#endif
+#else
+    maxsoft = DMIN(maxsoft, 50.0 * All.ForceSoftening[P[i].Type]);
+#ifdef PMGRID
+    maxsoft = DMIN(maxsoft, 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
+#endif
+#endif
+#ifdef BLACK_HOLES
+    if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius;}
+#endif
+    return maxsoft;
+}
 
-#endif // ADAPTIVE_GRAVSOFT_FORALL //
+/* routine to return the minimum allowed softening */
+double ags_return_minsoft(int i)
+{
+    double minsoft = All.ForceSoftening[P[i].Type]; // this is the user-specified minimum
+    /* now need to restrict: dont allow 'self-acceleration' to be larger than actual gravitational accelerations! */
+    double acc_mag = P[i].GravAccel[0]*P[i].GravAccel[0] + P[i].GravAccel[1]*P[i].GravAccel[1] + P[i].GravAccel[2]*P[i].GravAccel[2];
+#ifdef PMGRID
+    acc_mag += P[i].GravPM[0]*P[i].GravPM[0] + P[i].GravPM[1]*P[i].GravPM[1] + P[i].GravPM[2]*P[i].GravPM[2];
+#endif
+    acc_mag = All.cf_a2inv * sqrt(acc_mag);
+    double h_lim_acc = 16.0 * sqrt(All.G * P[i].Mass / acc_mag) / All.cf_atime;
+    h_lim_acc *= All.AGS_DesNumNgb / 32.;
+    return DMAX(h_lim_acc, minsoft);
+}
+
+
+#endif

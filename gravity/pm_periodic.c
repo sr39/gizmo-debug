@@ -94,7 +94,7 @@ void pm_init_periodic(void)
   int i;
   int slab_to_task_local[PMGRID];
 
-  All.Asmth[0] = ASMTH * All.BoxSize / PMGRID;
+  All.Asmth[0] = ASMTH * All.BoxSize / PMGRID; /* note that these routines REQUIRE a uniform (LONG_X=LONG_Y=LONG_Z=1) box, so we can just use 'BoxSize' */
   All.Rcut[0] = RCUT * All.Asmth[0];
 
   /* Set up the FFTW plan files. */
@@ -282,7 +282,7 @@ void pmforce_periodic(int mode, int *typelist)
   fac *= 1 / (2 * All.BoxSize / PMGRID);	/* for finite differencing */
 
 #ifdef KSPACE_NEUTRINOS
-  double rhocrit = 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
+  double rhocrit = 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
   double kspace_prefac = sqrt(pow(2 * M_PI / All.BoxSize, 3.0)) * All.OmegaNu * rhocrit * pow(All.BoxSize, 3);
 #endif
 
@@ -316,12 +316,7 @@ void pmforce_periodic(int mode, int *typelist)
 	      for(j = 0; j < 3; j++)
 		{
 		  pp[j] = P[i].Pos[j];
-
-		  while(pp[j] < 0)
-		    pp[j] += All.BoxSize;
-
-		  while(pp[j] >= All.BoxSize)
-		    pp[j] -= All.BoxSize;
+            pp[j] = WRAP_POSITION_UNIFORM_BOX(pp[j]);
 		}
 	      pos = pp;
 	    }
@@ -446,12 +441,7 @@ void pmforce_periodic(int mode, int *typelist)
 	      for(j = 0; j < 3; j++)
 		{
 		  pp[j] = P[pindex].Pos[j];
-
-		  while(pp[j] < 0)
-		    pp[j] += All.BoxSize;
-
-		  while(pp[j] >= All.BoxSize)
-		    pp[j] -= All.BoxSize;
+            pp[j] = WRAP_POSITION_UNIFORM_BOX(pp[j]);
 		}
 	      pos = pp;
 	    }
@@ -510,15 +500,15 @@ void pmforce_periodic(int mode, int *typelist)
 		    {
 		      MPI_Sendrecv(localfield_d_data + localfield_offset[recvTask],
 				   localfield_togo[sendTask * NTask + recvTask] * sizeof(d_fftw_real),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_A, import_d_data,
+				   MPI_BYTE, recvTask, TAG_PERIODIC_A, import_d_data,
 				   localfield_togo[recvTask * NTask + sendTask] * sizeof(d_fftw_real),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+				   MPI_BYTE, recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 		      MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 				   localfield_togo[sendTask * NTask + recvTask] * sizeof(large_array_offset),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_B, import_globalindex,
+				   MPI_BYTE, recvTask, TAG_PERIODIC_B, import_globalindex,
 				   localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_B, MPI_COMM_WORLD, &status);
+				   MPI_BYTE, recvTask, TAG_PERIODIC_B, MPI_COMM_WORLD, &status);
 		    }
 		}
 	      else
@@ -661,10 +651,10 @@ void pmforce_periodic(int mode, int *typelist)
 			  MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 				       localfield_togo[sendTask * NTask +
 						       recvTask] * sizeof(large_array_offset), MPI_BYTE,
-				       recvTask, TAG_NONPERIOD_C, import_globalindex,
+				       recvTask, TAG_PERIODIC_C, import_globalindex,
 				       localfield_togo[recvTask * NTask +
 						       sendTask] * sizeof(large_array_offset), MPI_BYTE,
-				       recvTask, TAG_NONPERIOD_C, MPI_COMM_WORLD, &status);
+				       recvTask, TAG_PERIODIC_C, MPI_COMM_WORLD, &status);
 			}
 		    }
 		  else
@@ -685,10 +675,10 @@ void pmforce_periodic(int mode, int *typelist)
 		    {
 		      MPI_Sendrecv(import_data,
 				   localfield_togo[recvTask * NTask + sendTask] * sizeof(fftw_real), MPI_BYTE,
-				   recvTask, TAG_NONPERIOD_A,
+				   recvTask, TAG_PERIODIC_A,
 				   localfield_data + localfield_offset[recvTask],
 				   localfield_togo[sendTask * NTask + recvTask] * sizeof(fftw_real), MPI_BYTE,
-				   recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+				   recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 		      myfree(import_globalindex);
 		      myfree(import_data);
@@ -710,8 +700,7 @@ void pmforce_periodic(int mode, int *typelist)
             for(xx = 0; xx < 3; xx++)
             {
                 pp[xx] = P[i].Pos[xx];
-                while(pp[xx] < 0) pp[xx] += All.BoxSize;
-                while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+                pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
             }
             slab_x = (int) (to_slab_fac * pp[0]);
             slab_y = (int) (to_slab_fac * pp[1]);
@@ -837,10 +826,10 @@ void pmforce_periodic(int mode, int *typelist)
 			      MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 					   localfield_togo[sendTask * NTask +
 							   recvTask] * sizeof(large_array_offset), MPI_BYTE,
-					   recvTask, TAG_NONPERIOD_C, import_globalindex,
+					   recvTask, TAG_PERIODIC_C, import_globalindex,
 					   localfield_togo[recvTask * NTask +
 							   sendTask] * sizeof(large_array_offset), MPI_BYTE,
-					   recvTask, TAG_NONPERIOD_C, MPI_COMM_WORLD, &status);
+					   recvTask, TAG_PERIODIC_C, MPI_COMM_WORLD, &status);
 			    }
 			}
 		      else
@@ -862,10 +851,10 @@ void pmforce_periodic(int mode, int *typelist)
 			{
 			  MPI_Sendrecv(import_data,
 				       localfield_togo[recvTask * NTask + sendTask] * sizeof(fftw_real),
-				       MPI_BYTE, recvTask, TAG_NONPERIOD_A,
+				       MPI_BYTE, recvTask, TAG_PERIODIC_A,
 				       localfield_data + localfield_offset[recvTask],
 				       localfield_togo[sendTask * NTask + recvTask] * sizeof(fftw_real),
-				       MPI_BYTE, recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+				       MPI_BYTE, recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 			  myfree(import_globalindex);
 			  myfree(import_data);
@@ -890,8 +879,7 @@ void pmforce_periodic(int mode, int *typelist)
             for(xx = 0; xx < 3; xx++)
             {
                 pp[xx] = P[i].Pos[xx];
-                while(pp[xx] < 0) pp[xx] += All.BoxSize;
-                while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+                pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
             }
             slab_x = (int) (to_slab_fac * pp[0]);
             slab_y = (int) (to_slab_fac * pp[1]);
@@ -984,8 +972,7 @@ void pmpotential_periodic(void)
         for(xx = 0; xx < 3; xx++)
         {
             pp[xx] = P[i].Pos[xx];
-            while(pp[xx] < 0) pp[xx] += All.BoxSize;
-            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
         slab_y = (int) (to_slab_fac * pp[1]);
@@ -1095,8 +1082,7 @@ void pmpotential_periodic(void)
         for(xx = 0; xx < 3; xx++)
         {
             pp[xx] = P[pindex].Pos[xx];
-            while(pp[xx] < 0) pp[xx] += All.BoxSize;
-            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
         slab_y = (int) (to_slab_fac * pp[1]);
@@ -1145,16 +1131,16 @@ void pmpotential_periodic(void)
 		{
 		  MPI_Sendrecv(localfield_d_data + localfield_offset[recvTask],
 			       localfield_togo[sendTask * NTask + recvTask] * sizeof(d_fftw_real), MPI_BYTE,
-			       recvTask, TAG_NONPERIOD_A,
+			       recvTask, TAG_PERIODIC_A,
 			       import_d_data,
 			       localfield_togo[recvTask * NTask + sendTask] * sizeof(d_fftw_real), MPI_BYTE,
-			       recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+			       recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 		  MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 			       localfield_togo[sendTask * NTask + recvTask] * sizeof(large_array_offset),
-			       MPI_BYTE, recvTask, TAG_NONPERIOD_B, import_globalindex,
+			       MPI_BYTE, recvTask, TAG_PERIODIC_B, import_globalindex,
 			       localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset),
-			       MPI_BYTE, recvTask, TAG_NONPERIOD_B, MPI_COMM_WORLD, &status);
+			       MPI_BYTE, recvTask, TAG_PERIODIC_B, MPI_COMM_WORLD, &status);
 		}
 	    }
 	  else
@@ -1276,9 +1262,9 @@ void pmpotential_periodic(void)
 		{
 		  MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 			       localfield_togo[sendTask * NTask + recvTask] * sizeof(large_array_offset),
-			       MPI_BYTE, recvTask, TAG_NONPERIOD_C, import_globalindex,
+			       MPI_BYTE, recvTask, TAG_PERIODIC_C, import_globalindex,
 			       localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset),
-			       MPI_BYTE, recvTask, TAG_NONPERIOD_C, MPI_COMM_WORLD, &status);
+			       MPI_BYTE, recvTask, TAG_PERIODIC_C, MPI_COMM_WORLD, &status);
 		}
 	    }
 	  else
@@ -1300,10 +1286,10 @@ void pmpotential_periodic(void)
 	    {
 	      MPI_Sendrecv(import_data,
 			   localfield_togo[recvTask * NTask + sendTask] * sizeof(fftw_real), MPI_BYTE,
-			   recvTask, TAG_NONPERIOD_A,
+			   recvTask, TAG_PERIODIC_A,
 			   localfield_data + localfield_offset[recvTask],
 			   localfield_togo[sendTask * NTask + recvTask] * sizeof(fftw_real), MPI_BYTE,
-			   recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+			   recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 	      myfree(import_globalindex);
 	      myfree(import_data);
@@ -1323,8 +1309,7 @@ void pmpotential_periodic(void)
         for(xx = 0; xx < 3; xx++)
         {
             pp[xx] = P[i].Pos[xx];
-            while(pp[xx] < 0) pp[xx] += All.BoxSize;
-            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
         slab_y = (int) (to_slab_fac * pp[1]);
@@ -1735,8 +1720,7 @@ void pmtidaltensor_periodic_diff(void)
         for(xx = 0; xx < 3; xx++)
         {
             pp[xx] = P[i].Pos[xx];
-            while(pp[xx] < 0) pp[xx] += All.BoxSize;
-            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
         slab_y = (int) (to_slab_fac * pp[1]);
@@ -1848,8 +1832,7 @@ void pmtidaltensor_periodic_diff(void)
         for(xx = 0; xx < 3; xx++)
         {
             pp[xx] = P[pindex].Pos[xx];
-            while(pp[xx] < 0) pp[xx] += All.BoxSize;
-            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
         slab_y = (int) (to_slab_fac * pp[1]);
@@ -1945,15 +1928,15 @@ void pmtidaltensor_periodic_diff(void)
 		    {
 		      MPI_Sendrecv(localfield_d_data + localfield_offset[recvTask],
 				   localfield_togo[sendTask * NTask + recvTask] * sizeof(d_fftw_real),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_A, import_d_data,
+				   MPI_BYTE, recvTask, TAG_PERIODIC_A, import_d_data,
 				   localfield_togo[recvTask * NTask + sendTask] * sizeof(d_fftw_real),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+				   MPI_BYTE, recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 		      MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 				   localfield_togo[sendTask * NTask + recvTask] * sizeof(large_array_offset),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_B, import_globalindex,
+				   MPI_BYTE, recvTask, TAG_PERIODIC_B, import_globalindex,
 				   localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_B, MPI_COMM_WORLD, &status);
+				   MPI_BYTE, recvTask, TAG_PERIODIC_B, MPI_COMM_WORLD, &status);
 		    }
 		}
 	      else
@@ -2080,9 +2063,9 @@ void pmtidaltensor_periodic_diff(void)
 		    {
 		      MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 				   localfield_togo[sendTask * NTask + recvTask] * sizeof(large_array_offset),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_C, import_globalindex,
+				   MPI_BYTE, recvTask, TAG_PERIODIC_C, import_globalindex,
 				   localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset),
-				   MPI_BYTE, recvTask, TAG_NONPERIOD_C, MPI_COMM_WORLD, &status);
+				   MPI_BYTE, recvTask, TAG_PERIODIC_C, MPI_COMM_WORLD, &status);
 		    }
 		}
 	      else
@@ -2103,10 +2086,10 @@ void pmtidaltensor_periodic_diff(void)
 		{
 		  MPI_Sendrecv(import_data,
 			       localfield_togo[recvTask * NTask + sendTask] * sizeof(fftw_real), MPI_BYTE,
-			       recvTask, TAG_NONPERIOD_A,
+			       recvTask, TAG_PERIODIC_A,
 			       localfield_data + localfield_offset[recvTask],
 			       localfield_togo[sendTask * NTask + recvTask] * sizeof(fftw_real), MPI_BYTE,
-			       recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+			       recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 		  myfree(import_globalindex);
 		  myfree(import_data);
@@ -2128,8 +2111,7 @@ void pmtidaltensor_periodic_diff(void)
         for(xx = 0; xx < 3; xx++)
         {
             pp[xx] = P[i].Pos[xx];
-            while(pp[xx] < 0) pp[xx] += All.BoxSize;
-            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
         slab_y = (int) (to_slab_fac * pp[1]);
@@ -2332,10 +2314,10 @@ void pmtidaltensor_periodic_diff(void)
 			  MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 				       localfield_togo[sendTask * NTask +
 						       recvTask] * sizeof(large_array_offset), MPI_BYTE,
-				       recvTask, TAG_NONPERIOD_C, import_globalindex,
+				       recvTask, TAG_PERIODIC_C, import_globalindex,
 				       localfield_togo[recvTask * NTask +
 						       sendTask] * sizeof(large_array_offset), MPI_BYTE,
-				       recvTask, TAG_NONPERIOD_C, MPI_COMM_WORLD, &status);
+				       recvTask, TAG_PERIODIC_C, MPI_COMM_WORLD, &status);
 			}
 		    }
 		  else
@@ -2357,10 +2339,10 @@ void pmtidaltensor_periodic_diff(void)
 		    {
 		      MPI_Sendrecv(import_data,
 				   localfield_togo[recvTask * NTask + sendTask] * sizeof(fftw_real), MPI_BYTE,
-				   recvTask, TAG_NONPERIOD_A,
+				   recvTask, TAG_PERIODIC_A,
 				   localfield_data + localfield_offset[recvTask],
 				   localfield_togo[sendTask * NTask + recvTask] * sizeof(fftw_real), MPI_BYTE,
-				   recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+				   recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 		      myfree(import_globalindex);
 		      myfree(import_data);
@@ -2386,8 +2368,7 @@ void pmtidaltensor_periodic_diff(void)
             for(xx = 0; xx < 3; xx++)
             {
                 pp[xx] = P[i].Pos[xx];
-                while(pp[xx] < 0) pp[xx] += All.BoxSize;
-                while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+                pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
             }
             slab_x = (int) (to_slab_fac * pp[0]);
             slab_y = (int) (to_slab_fac * pp[1]);
@@ -2511,8 +2492,7 @@ void pmtidaltensor_periodic_fourier(int component)
         for(xx = 0; xx < 3; xx++)
         {
             pp[xx] = P[i].Pos[xx];
-            while(pp[xx] < 0) pp[xx] += All.BoxSize;
-            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
         slab_y = (int) (to_slab_fac * pp[1]);
@@ -2622,8 +2602,7 @@ void pmtidaltensor_periodic_fourier(int component)
         for(xx = 0; xx < 3; xx++)
         {
             pp[xx] = P[pindex].Pos[xx];
-            while(pp[xx] < 0) pp[xx] += All.BoxSize;
-            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
         slab_y = (int) (to_slab_fac * pp[1]);
@@ -2672,16 +2651,16 @@ void pmtidaltensor_periodic_fourier(int component)
 		{
 		  MPI_Sendrecv(localfield_d_data + localfield_offset[recvTask],
 			       localfield_togo[sendTask * NTask + recvTask] * sizeof(d_fftw_real), MPI_BYTE,
-			       recvTask, TAG_NONPERIOD_A,
+			       recvTask, TAG_PERIODIC_A,
 			       import_d_data,
 			       localfield_togo[recvTask * NTask + sendTask] * sizeof(d_fftw_real), MPI_BYTE,
-			       recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+			       recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 		  MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 			       localfield_togo[sendTask * NTask + recvTask] * sizeof(large_array_offset),
-			       MPI_BYTE, recvTask, TAG_NONPERIOD_B, import_globalindex,
+			       MPI_BYTE, recvTask, TAG_PERIODIC_B, import_globalindex,
 			       localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset),
-			       MPI_BYTE, recvTask, TAG_NONPERIOD_B, MPI_COMM_WORLD, &status);
+			       MPI_BYTE, recvTask, TAG_PERIODIC_B, MPI_COMM_WORLD, &status);
 		}
 	    }
 	  else
@@ -2857,9 +2836,9 @@ void pmtidaltensor_periodic_fourier(int component)
 		{
 		  MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
 			       localfield_togo[sendTask * NTask + recvTask] * sizeof(large_array_offset),
-			       MPI_BYTE, recvTask, TAG_NONPERIOD_C, import_globalindex,
+			       MPI_BYTE, recvTask, TAG_PERIODIC_C, import_globalindex,
 			       localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset),
-			       MPI_BYTE, recvTask, TAG_NONPERIOD_C, MPI_COMM_WORLD, &status);
+			       MPI_BYTE, recvTask, TAG_PERIODIC_C, MPI_COMM_WORLD, &status);
 		}
 	    }
 	  else
@@ -2881,10 +2860,10 @@ void pmtidaltensor_periodic_fourier(int component)
 	    {
 	      MPI_Sendrecv(import_data,
 			   localfield_togo[recvTask * NTask + sendTask] * sizeof(fftw_real), MPI_BYTE,
-			   recvTask, TAG_NONPERIOD_A,
+			   recvTask, TAG_PERIODIC_A,
 			   localfield_data + localfield_offset[recvTask],
 			   localfield_togo[sendTask * NTask + recvTask] * sizeof(fftw_real), MPI_BYTE,
-			   recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+			   recvTask, TAG_PERIODIC_A, MPI_COMM_WORLD, &status);
 
 	      myfree(import_globalindex);
 	      myfree(import_data);
@@ -2904,8 +2883,7 @@ void pmtidaltensor_periodic_fourier(int component)
         for(xx = 0; xx < 3; xx++)
         {
             pp[xx] = P[i].Pos[xx];
-            while(pp[xx] < 0) pp[xx] += All.BoxSize;
-            while(pp[xx] >= All.BoxSize) pp[xx] -= All.BoxSize;
+            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
         slab_y = (int) (to_slab_fac * pp[1]);
@@ -3400,12 +3378,7 @@ void foldonitself(int *typelist)
 
 	  /* make sure that particles are properly box-wrapped */
 	  pp[0] = P[i].Pos[0];
-
-	  while(pp[0] < 0)
-	    pp[0] += All.BoxSize;
-
-	  while(pp[0] >= All.BoxSize)
-	    pp[0] -= All.BoxSize;
+        pp[0] = WRAP_POSITION_UNIFORM_BOX(pp[0]);
 
 	  slab_x = to_slab_fac_folded * pp[0];
 	  slab_xx = slab_x + 1;
@@ -3438,12 +3411,7 @@ void foldonitself(int *typelist)
 
 	  /* make sure that particles are properly box-wrapped */
 	  pp[0] = P[i].Pos[0];
-
-	  while(pp[0] < 0)
-	    pp[0] += All.BoxSize;
-
-	  while(pp[0] >= All.BoxSize)
-	    pp[0] -= All.BoxSize;
+        pp[0] = WRAP_POSITION_UNIFORM_BOX(pp[0]);
 
 	  slab_x = to_slab_fac_folded * pp[0];
 	  slab_xx = slab_x + 1;
@@ -3519,12 +3487,7 @@ void foldonitself(int *typelist)
 		  for(j = 0; j < 3; j++)
 		    {
 		      pp[j] = pos[j];
-
-		      while(pp[j] < 0)
-			pp[j] += All.BoxSize;
-
-		      while(pp[j] >= All.BoxSize)
-			pp[j] -= All.BoxSize;
+                pp[j] = WRAP_POSITION_UNIFORM_BOX(pp[j]);
 		    }
 
 		  slab_x = to_slab_fac_folded * pp[0];

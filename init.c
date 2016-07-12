@@ -30,7 +30,7 @@ void init(void)
     
 #ifdef MAGNETIC
     double a2_fac;
-    double gauss2gizmo = All.UnitMagneticField_in_gauss / sqrt(4.*M_PI*All.UnitPressure_in_cgs);
+    double gauss2gizmo = All.UnitMagneticField_in_gauss / sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam);
     /* NOTE: we will always work -internally- in code units where MU_0 = 1; hence the 4pi here;
         [much simpler, but be sure of your conversions!] */
 #endif
@@ -44,8 +44,7 @@ void init(void)
 #endif
     
     All.Time = All.TimeBegin;
-    set_cosmo_factors_for_current_time();
-    
+    set_cosmo_factors_for_current_time();    
     
     if(RestartFlag == 3 && RestartSnapNum < 0)
     {
@@ -152,11 +151,7 @@ void init(void)
         a2_fac = 1;
 #endif
     }
-    
-#ifdef RADTRANSFER
-    All.Radiation_Ti_begstep = 0;
-#endif
-    
+        
     set_softenings();
     
     All.NumCurrentTiStep = 0;	/* setup some counters */
@@ -202,10 +197,9 @@ void init(void)
     
     
     
-    
-    if(All.ComovingIntegrationOn)
-        if(All.PeriodicBoundariesOn == 1)
-            check_omega();
+#ifdef PERIODIC
+    if(All.ComovingIntegrationOn) check_omega();
+#endif
     
     All.TimeLastStatistics = All.TimeBegin - All.TimeBetStatistics;
 #if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_VARIABLEVELOCITY)
@@ -339,9 +333,9 @@ void init(void)
                 for(i2 = 0; i2 < 3; i2++)
                     GDE_VMATRIX(i,i1,i2) = 0.0;
             /* approximation: initial sream density equals background density */
-            P[i].init_density = All.Omega0 * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
+            P[i].init_density = All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
 #else
-            All.GDEInitStreamDensity = All.Omega0 * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
+            All.GDEInitStreamDensity = All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
 #endif
 #endif
         }
@@ -388,7 +382,7 @@ void init(void)
         if(header.flag_ic_info != FLAG_SECOND_ORDER_ICS)
             P[i].OldAcc = 0;	/* Do not zero in 2lpt case as masses are stored here */
         
-#if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY)
+#if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY)    
         P[i].Potential = 0;
 #endif
 #ifdef GALSF
@@ -396,23 +390,25 @@ void init(void)
         {
             P[i].StellarAge = 0;
 #ifdef GALSF_SFR_IMF_VARIATION
-            P[i].IMF_Mturnover = 2.0;
+            P[i].IMF_Mturnover = 2.0; /* gives a solar-type IMF for our calculations in current code */
+#endif
+#ifdef GALSF_SFR_IMF_SAMPLING
+            P[i].IMF_NumMassiveStars = 0;
 #endif
         }
 #endif
         
-#if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN )
         if(RestartFlag != 1)
         {
+#if defined(DO_DENSITY_AROUND_STAR_PARTICLES)
             P[i].DensAroundStar = 0;
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
             P[i].GradRho[0]=0;
             P[i].GradRho[1]=0;
             P[i].GradRho[2]=1;
 #endif
 #ifdef GALSF_FB_SNE_HEATING
             P[i].SNe_ThisTimeStep = 0;
-            P[i].Area_weighted_sum = 0;
+            int k; for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {P[i].Area_weighted_sum[k] = 0;}
 #endif
 #ifdef GALSF_FB_GASRETURN
             P[i].MassReturn_ThisTimeStep = 0;
@@ -421,7 +417,6 @@ void init(void)
             P[i].RProcessEvent_ThisTimeStep = 0;
 #endif
         }
-#endif
         
 #if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
         if(RestartFlag == 0)
@@ -491,25 +486,23 @@ void init(void)
         if(P[i].Type == 5)
         {
             count_holes++;
-            
-            if(RestartFlag == 0)
-                BPP(i).BH_Mass = All.SeedBlackHoleMass;
-#ifdef BH_ALPHADISK_ACCRETION
-            BPP(i).BH_Mass_AlphaDisk = 0;
-#endif
-#ifdef BH_COUNTPROGS
-            BPP(i).BH_CountProgs = 1;
-#endif
-#ifdef BH_BUBBLES
             if(RestartFlag == 0)
             {
+                BPP(i).BH_Mass = All.SeedBlackHoleMass;
+#ifdef BH_ALPHADISK_ACCRETION
+                BPP(i).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
+#endif
+#ifdef BH_COUNTPROGS
+                BPP(i).BH_CountProgs = 1;
+#endif
+#ifdef BH_BUBBLES
                 BPP(i).BH_Mass_bubbles = All.SeedBlackHoleMass;
                 BPP(i).BH_Mass_ini = All.SeedBlackHoleMass;
 #ifdef UNIFIED_FEEDBACK
                 BPP(i).BH_Mass_radio = All.SeedBlackHoleMass;
 #endif
-            }
 #endif
+            }
         }
 #endif
     }
@@ -542,7 +535,9 @@ void init(void)
         P[i].Particle_DivVel = 0;
         SphP[i].ConditionNumber = 1;
         SphP[i].DtInternalEnergy = 0;
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
         SphP[i].MaxKineticEnergyNgb = 0;
+#endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
         SphP[i].dMass = 0;
         SphP[i].DtMass = 0;
@@ -552,14 +547,18 @@ void init(void)
         
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         PPPZ[i].AGS_zeta = 0;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+        PPP[i].AGS_Hsml = PPP[i].Hsml;
 #endif
-#ifdef EOS_DEGENERATE
-        for(j = 0; j < 3; j++)
-            SphP[i].xnucPred[j] = SphP[i].xnuc[j];
 #endif
         
 #ifdef CONDUCTION
         SphP[i].Kappa_Conduction = 0;
+#endif
+#ifdef MHD_NON_IDEAL
+        SphP[i].Eta_MHD_OhmicResistivity_Coeff = 0;
+        SphP[i].Eta_MHD_HallEffect_Coeff = 0;
+        SphP[i].Eta_MHD_AmbiPolarDiffusion_Coeff = 0;
 #endif
 #ifdef VISCOSITY
         SphP[i].Eta_ShearViscosity = 0;
@@ -605,8 +604,10 @@ void init(void)
         SphP[i].Sfr = 0;
 #endif
 #ifdef COSMIC_RAYS
-        SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy = 0;
-        SphP[i].CosmicRayDiffusionCoeff = SphP[i].DtCosmicRayEnergy = 0;
+        if(RestartFlag == 0) {SphP[i].CosmicRayEnergy = 0;}
+        SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy;
+        SphP[i].CosmicRayDiffusionCoeff = 0;
+        SphP[i].DtCosmicRayEnergy = 0;
 #endif
 #ifdef MAGNETIC
 #if defined B_SET_IN_PARAMS
@@ -622,7 +623,7 @@ void init(void)
             SphP[i].BPred[j] *= a2_fac * gauss2gizmo;
             SphP[i].B[j] = SphP[i].BPred[j];
         }
-#if defined(TRICCO_RESISTIVITY_SWITCH)
+#if defined(SPH_TP12_ARTIFICIAL_RESISTIVITY)
         SphP[i].Balpha = 0.0;
 #endif
 #ifdef DIVBCLEANING_DEDNER
@@ -638,11 +639,11 @@ void init(void)
     }
     
 #ifndef SHEARING_BOX
-#ifdef TWODIMS
+#if (NUMDIMS==2)
     for(i = 0; i < NumPart; i++)
     {
         P[i].Pos[2] = 0;
-        P[i].Vel[2] = 0;
+        //P[i].Vel[2] = 0; // this should be set in the ICs, not here //
         
         P[i].GravAccel[2] = 0;
         
@@ -655,11 +656,11 @@ void init(void)
 #endif
 #endif
     
-#ifdef ONEDIM
+#if (NUMDIMS==1)
     for(i = 0; i < NumPart; i++)
     {
         P[i].Pos[1] = P[i].Pos[2] = 0;
-        P[i].Vel[1] = P[i].Vel[2] = 0;
+        //P[i].Vel[1] = P[i].Vel[2] = 0; // this should be set in the ICs, not here //
         
         P[i].GravAccel[1] = P[i].GravAccel[2] = 0;
         
@@ -674,6 +675,8 @@ void init(void)
 #ifdef ASSIGN_NEW_IDS
     assign_unique_ids();
 #endif
+    /* assign other ID parameters needed */
+    for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}
     
 #ifdef TEST_FOR_IDUNIQUENESS
     test_id_uniqueness();
@@ -687,7 +690,13 @@ void init(void)
 #ifdef SHIFT_BY_HALF_BOX
     for(i = 0; i < NumPart; i++)
         for(j = 0; j < 3; j++)
-            P[i].Pos[j] += 0.5 * All.BoxSize;
+        {
+            double boxtmp = 0;
+            if(j==0) {boxtmp = boxSize_X;}
+            if(j==1) {boxtmp = boxSize_Y;}
+            if(j==2) {boxtmp = boxSize_Z;}
+            P[i].Pos[j] += 0.5 * boxtmp;
+        }
 #endif
     
     
@@ -717,6 +726,12 @@ void init(void)
         disp_setup_smoothinglengths();
 #endif
     
+#if defined GALSF_SFR_IMF_VARIATION
+    for(i = 0; i < NumPart; i++)
+    {
+        P[i].IMF_Mturnover = 2.0; // reset to normal IMF
+    }
+#endif
 
 #if defined(TURB_DRIVING)
     {
@@ -725,38 +740,21 @@ void init(void)
         for(i=0; i< N_gas; i++)
             mass += P[i].Mass;
         MPI_Allreduce(&mass, &glob_mass, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-        All.RefDensity = glob_mass / pow(All.BoxSize, 3);
+        All.RefDensity = glob_mass / (boxSize_X*boxSize_Y*boxSize_Z);
         All.RefInternalEnergy = All.IsoSoundSpeed*All.IsoSoundSpeed / (GAMMA*GAMMA_MINUS1);
     }
 #endif
     
     /* HELLO! This here is where you should insert custom code for hard-wiring the ICs of various test problems */
-    
+
     
     
     density();
     for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
     {
-#ifndef EOS_DEGENERATE
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
-#else
-        for(j = 0; j < EOS_NSPECIES; j++)
-        {
-            SphP[i].dxnuc[j] = 0;
-        }
-        SphP[i].InternalEnergy *= All.UnitEnergy_in_cgs;
-        SphP[i].InternalEnergyPred *= All.UnitEnergy_in_cgs;
-        /* call eos with physical units, energy and entropy are always stored in physical units */
-        SphP[i].temp = -1.0;
         
-        struct eos_result res;
-        eos_calc_egiven(SphP[i].Density * All.UnitDensity_in_cgs, SphP[i].xnuc, SphP[i].InternalEnergy, &SphP[i].temp, &res);
-        SphP[i].Pressure = res.p.v / All.UnitPressure_in_cgs;
-        // Warning: dp_drho is in physical units ...
-        SphP[i].dp_drho = res.p.drho + res.temp * gsl_pow_2(res.p.dtemp / (SphP[i].Density * All.UnitDensity_in_cgs)) / res.e.dtemp;
-#endif
-        
-#if defined(TURB_DRIVING)
+#if defined(TURB_DRIVING) && defined(EOS_ENFORCE_ADIABAT)
         SphP[i].InternalEnergy = All.RefInternalEnergy;
         SphP[i].InternalEnergyPred = All.RefInternalEnergy;
 #endif
@@ -777,14 +775,17 @@ void init(void)
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         PPPZ[i].AGS_zeta = 0;
 #endif
+#ifdef SUPER_TIMESTEP_DIFFUSION
+        SphP[i].Super_Timestep_Dt_Explicit = 0;
+        SphP[i].Super_Timestep_j = 0;
+#endif
 #ifdef GALSF_FB_LOCAL_UV_HEATING
         SphP[i].RadFluxUV = 0;
         SphP[i].RadFluxEUV = 0;
 #endif
 #ifdef BH_COMPTON_HEATING
         SphP[i].RadFluxAGN = 0;
-#endif
-        
+#endif        
         
 #ifdef GRACKLE
         if(RestartFlag == 0)
@@ -827,9 +828,24 @@ void init(void)
         double mpi_mass_min,mpi_mass_max;
         MPI_Allreduce(&mass_min, &mpi_mass_min, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
         MPI_Allreduce(&mass_max, &mpi_mass_max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-        All.MinMassForParticleMerger = 0.50 * mpi_mass_min;
-        All.MaxMassForParticleSplit  = 5.00 * mpi_mass_max;
+        All.MinMassForParticleMerger = 0.49 * mpi_mass_min;
+#ifdef GALSF_GENERATIONS
+        All.MinMassForParticleMerger /= (float)GALSF_GENERATIONS;
+#endif
+        /* All.MaxMassForParticleSplit  = 5.01 * mpi_mass_max; */
+        All.MaxMassForParticleSplit  = 3.01 * mpi_mass_max;
     }
+    
+    
+#ifdef PM_HIRES_REGION_CLIPDM
+    if(RestartFlag != 1)
+    {
+        double mpi_m_hires_max, m_hires_max=0.0;
+        for(i=0; i<NumPart; i++) {if(P[i].Type==1) {if(P[i].Mass > m_hires_max) {m_hires_max=P[i].Mass;}}}
+        MPI_Allreduce(&m_hires_max, &mpi_m_hires_max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+        All.MassOfClippedDMParticles = mpi_m_hires_max;
+    }
+#endif
     
     
     if(RestartFlag == 3)
@@ -860,6 +876,7 @@ void init(void)
         endrun(0);
     }
     
+#ifdef TWOPOINT_FUNCTION_COMPUTATION_ENABLED
     if(RestartFlag == 5)
     {
         /* calculating powerspec and twopoint function */
@@ -882,6 +899,7 @@ void init(void)
         twopoint();
         endrun(0);
     }
+#endif
     
     
     if(RestartFlag == 6)
@@ -912,6 +930,7 @@ void init(void)
 /*! This routine computes the mass content of the box and compares it to the
  * specified value of Omega-matter.  If discrepant, the run is terminated.
  */
+#ifdef PERIODIC
 void check_omega(void)
 {
     double mass = 0, masstot, omega;
@@ -922,7 +941,7 @@ void check_omega(void)
     
     MPI_Allreduce(&mass, &masstot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     
-    omega = masstot / (All.BoxSize * All.BoxSize * All.BoxSize) / (3 * All.Hubble * All.Hubble / (8 * M_PI * All.G));
+    omega = masstot / (boxSize_X*boxSize_Y*boxSize_Z) / (3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G));
 #ifdef TIMEDEPGRAV
     omega *= All.Gini / All.G;
 #endif
@@ -944,7 +963,7 @@ void check_omega(void)
         endrun(1);
     }
 }
-
+#endif
 
 
 /*! This function is used to find an initial kernel length (what used to be called the 
@@ -1022,16 +1041,7 @@ void setup_smoothinglengths(void)
                 PPP[i].Hsml = All.SofteningTable[P[i].Type];
     }
 #endif
-    
-#if defined(RADTRANSFER)
-    if(RestartFlag == 0 || RestartFlag == 2)
-    {
-        for(i = 0; i < NumPart; i++)
-            if(P[i].Type == 4)
-                PPP[i].Hsml = All.SofteningTable[4];
-    }
-#endif
-    
+ 
     density();    
 }
 
@@ -1080,12 +1090,14 @@ void ags_setup_smoothinglengths(void)
                         break;
                     no = p;
                 }
-                PPP[i].Hsml = pow(1.0/NORM_COEFF * All.AGS_DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
+                PPP[i].AGS_Hsml = pow(1.0/NORM_COEFF * All.AGS_DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
                 if(All.SofteningTable[P[i].Type] != 0)
                 {
-                    if((PPP[i].Hsml>1000.*All.SofteningTable[P[i].Type])||(PPP[i].Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
-                        PPP[i].Hsml = All.SofteningTable[P[i].Type];
+                    if((PPP[i].AGS_Hsml>1000.*All.SofteningTable[P[i].Type])||(PPP[i].AGS_Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
+                        PPP[i].AGS_Hsml = All.SofteningTable[P[i].Type];
                 }
+            } else {
+                PPP[i].AGS_Hsml = PPP[i].Hsml;
             }
         }
     }

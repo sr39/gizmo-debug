@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
 #include "../allvars.h"
 #include "../proto.h"
 
@@ -19,12 +22,15 @@
 
 #ifdef GALSF // master switch for compiling the routines below //
 
+#define WindInitialVelocityBoost 1.0 // (optional) boost velocity coupled (fixed momentum)
 
-#ifdef GALSF_SFR_IMF_VARIATION
+#if defined(GALSF_SFR_IMF_VARIATION) || defined(GALSF_SFR_IMF_SAMPLING)
 /* function to determine what the IMF of a new star particle will be, based 
     on the gas properties of the particle out of which it forms */
-void assign_imf_properties_from_starforming_gas(MyIDType i)
+void assign_imf_properties_from_starforming_gas(int i)
 {
+    
+#ifdef GALSF_SFR_IMF_VARIATION
     double h = Get_Particle_Size(i) * All.cf_atime;
     double cs = Particle_effective_soundspeed_i(i) * All.cf_afac3; // actual sound speed in the simulation: might be unphysically high for SF conditions!
     cs = (1.9e4 / All.UnitVelocity_in_cm_per_s); // set to a minimum cooling temperature, for the actual star-forming conditions. for now, just use a constant //
@@ -40,21 +46,98 @@ void assign_imf_properties_from_starforming_gas(MyIDType i)
                          SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[1][1] +
                          SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))) * All.cf_a2inv*All.cf_a2inv;
     double M_sonic = cs*cs*cs*cs / (All.G * dv2_abs * h);
-    M_sonic *= All.UnitMass_in_g / All.Hubble / (1.989e33); // sonic mass in solar units //
+    M_sonic *= All.UnitMass_in_g / All.HubbleParam / (1.989e33); // sonic mass in solar units //
     P[i].IMF_Mturnover = DMAX(0.01,DMIN(M_sonic,100.));
+    P[i].IMF_Mturnover = 2.0; // 'normal' IMF in our definitions
+    
+    
+    /* now we need to record all the properties we care to save about the star-forming gas, for the sake of later use: */
+    int j,k;
+    double NH = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1);
+    double dv2abs_tot = 0; /* calculate complete velocity dispersion (including hubble-flow correction) in physical units */
+    for(j=0;j<3;j++)
+    {
+        for(k=0;k<3;k++)
+        {
+            double vt = SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
+            if(All.ComovingIntegrationOn) {if(j==k) {vt += All.cf_hubble_a;}} /* add hubble-flow correction */
+            dv2abs_tot += vt*vt;
+        }
+    }
+    double acc=0,vel=0;
+    for(k=0;k<3;k++)
+    {
+        double acc_tmp = P[i].GravAccel[k];
+#ifdef PMGRID
+        acc_tmp += P[i].GravPM[k];
+#endif
+        acc_tmp *= All.cf_a2inv;
+        acc += acc_tmp * acc_tmp;
+        vel += SphP[i].VelPred[k]*SphP[i].VelPred[k];
+    }
+    double b_mag = 0;
+#ifdef MAGNETIC
+    double gizmo2gauss = 4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam;
+    for(k=0;k<3;k++) {b_mag += Get_Particle_BField(i,k)*Get_Particle_BField(i,k) * gizmo2gauss;}
+#endif
+    double rad_flux_uv = 1;
+#ifdef GALSF_FB_LOCAL_UV_HEATING
+    rad_flux_uv = SphP[i].RadFluxUV;
+#endif
+    double cr_energy_density = 0;
+#ifdef COSMIC_RAYS
+    cr_energy_density = SphP[i].CosmicRayEnergyPred * SphP[i].Density * All.cf_a3inv / P[i].Mass;
+#endif
+
+    P[i].IMF_FormProps[0] = P[i].IMF_Mturnover; // IMF turnover mass as defined above
+    P[i].IMF_FormProps[1] = SphP[i].Density * All.cf_a3inv; // density
+    P[i].IMF_FormProps[2] = SphP[i].InternalEnergyPred; // thermal internal energy (use to calculate temperature)
+    P[i].IMF_FormProps[3] = Particle_effective_soundspeed_i(i) * All.cf_afac3; // sound speed (not trivially related to temperature if CRs, etc included)
+    P[i].IMF_FormProps[4] = sqrt(dv2_abs); // shear velocity gradient (norm of shear gradient tensor)
+    P[i].IMF_FormProps[5] = h; // particle length/size (inter-particle spacing)
+    P[i].IMF_FormProps[6] = NH; // local gas surface density (our usual estimator) in the cloud where the particle formed
+    P[i].IMF_FormProps[7] = sqrt(dv2abs_tot) * h; // total rms/turbulent velocity dispersion
+    P[i].IMF_FormProps[8] = sqrt(acc); // gravitational acceleration
+    P[i].IMF_FormProps[9] = sqrt(vel); // total velocity (use with acceleration to estimate shear omega, etc)
+    P[i].IMF_FormProps[10] = sqrt(b_mag) * All.cf_a2inv; // magnetic field strength |B|
+    P[i].IMF_FormProps[11] = rad_flux_uv; // incident UV flux normalized to MW 'canonical' (Habing) field value
+    P[i].IMF_FormProps[12] = cr_energy_density; // cosmic ray energy density (if CRs are enabled)
+    
+#endif 
+    
+    
+#ifdef GALSF_SFR_IMF_SAMPLING
+    gsl_rng *random_generator_for_massivestars;
+    random_generator_for_massivestars = gsl_rng_alloc(gsl_rng_ranlxd1);
+    gsl_rng_set(random_generator_for_massivestars, P[i].ID+121);
+    double mu = 0.01 * P[i].Mass * All.UnitMass_in_g / All.HubbleParam / (1.989e33); // 1 O-star per 100 Msun
+    unsigned int k = gsl_ran_poisson(random_generator_for_massivestars, mu);
+    P[i].IMF_NumMassiveStars = (double)k;
+#endif
+    
 }
 #endif
 
 
 /* return the light-to-mass ratio, for the IMF of a given particle, relative to the Chabrier/Kroupa IMF which 
     is otherwise (for all purposes) our 'default' choice */
-inline double calculate_relative_light_to_mass_ratio_from_imf(MyIDType i)
+double calculate_relative_light_to_mass_ratio_from_imf(int i)
 {
+#ifdef SINGLE_STAR_FORMATION
+    double unit_lsun_msun = (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)) / (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS));
+    return bh_lum_bol(0, P[i].Mass, i) / P[i].Mass * unit_lsun_msun;
+#endif
 #ifdef GALSF_SFR_IMF_VARIATION
-    /* more accurate version from David Guszjenov's IMF calculations (ok for Mturnover in range 0.01-100) */
+    /* more accurate version from David Guszejnov's IMF calculations (ok for Mturnover in range 0.01-100) */
     double log_mimf = log10(P[i].IMF_Mturnover);
     return (0.051+0.042*(log_mimf+2)+0.031*(log_mimf+2)*(log_mimf+2)) / 0.31;
     // return pow(P[i].IMF_Mturnover/1.0,0.35);
+#endif
+#ifdef GALSF_SFR_IMF_SAMPLING
+    double mu = 0.01 * P[i].Mass * All.UnitMass_in_g / All.HubbleParam / (1.989e33); // 1 O-star per 100 Msun
+    double age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+    if(age > 0.003) {mu *= 0.326 * (0.003 / age);} // expectation value is declining with time, so 'effective multiplier' is larger
+    return P[i].IMF_NumMassiveStars / mu;
 #endif
     return 1; // Chabrier or Kroupa IMF //
     // return 0.5; // Salpeter IMF down to 0.1 solar //
@@ -75,7 +158,7 @@ double evaluate_stellar_age_Gyr(double stellar_tform)
             x0 = (All.Omega0/(1-All.Omega0))/(a0*a0*a0);
             x2 = (All.Omega0/(1-All.Omega0))/(a2*a2*a2);
             age = (2./(3.*sqrt(1-All.Omega0)))*log(sqrt(x0*x2)/((sqrt(1+x2)-1)*(sqrt(1+x0)+1)));
-            age *= 1./All.Hubble;
+            age *= 1./All.Hubble_H0_CodeUnits;
         } else {
             /* use simple trap rule integration */
             a1 = 0.5*(a0+a2);
@@ -94,8 +177,11 @@ double evaluate_stellar_age_Gyr(double stellar_tform)
 
 
 /* return the (solar-scaled) light-to-mass ratio of an SSP with a given age; used throughout */
-inline double evaluate_l_over_m_ssp(double stellar_age_in_gyr)
+double evaluate_l_over_m_ssp(double stellar_age_in_gyr)
 {
+#ifdef SINGLE_STAR_FORMATION
+    return 1;
+#endif
     // original SB99 tracks
     /*
     if(stellar_age_in_gyr < 0.0029)
@@ -118,23 +204,6 @@ inline double evaluate_l_over_m_ssp(double stellar_age_in_gyr)
 }
 
 
-/* return the estimated local column from integrating the gradient in the density (separated here for convenience) */
-inline double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h)
-{
-    double gradrho_mag;
-    if(rho<=0)
-    {
-        gradrho_mag = 0;
-    } else {
-        gradrho_mag = sqrt(gradrho[0]*gradrho[0]+gradrho[1]*gradrho[1]+gradrho[2]*gradrho[2]);
-        if(gradrho_mag > 0) {gradrho_mag = rho*rho/gradrho_mag;} else {gradrho_mag=0;}
-        if(include_h > 0) if(numngb_ndim > 0) gradrho_mag += include_h * rho * hsml / numngb_ndim; // quick-and-dirty approximation to the effective neighbor number needed here
-        //if(include_h > 0) gradrho_mag += include_h * rho * (hsml * (0.124 + 11.45 / (26.55 + All.DesNumNgb))); // quick-and-dirty approximation to the effective neighbor number needed here
-        // account for the fact that 'h' is much larger than the inter-particle separation //
-    }
-    return gradrho_mag; // *(Z/Zsolar) add metallicity dependence
-}
-
 
 /* check whether conditions for star formation are fulfilled for a given particle */
 int determine_sf_flag(int i)
@@ -144,13 +213,9 @@ int determine_sf_flag(int i)
      * f=0  star formation
      */
     int flag = 1; /* default is normal cooling */
-    if(SphP[i].Density * All.cf_a3inv >= All.PhysDensThresh)
-        flag = 0;
-    if(All.ComovingIntegrationOn)
-        if(SphP[i].Density < All.OverDensThresh)
-            flag = 1;
-    if(P[i].Mass <= 0)
-        flag = 1;
+    if(SphP[i].Density * All.cf_a3inv >= All.PhysDensThresh) {flag = 0;}
+    if(All.ComovingIntegrationOn) {if(SphP[i].Density < All.OverDensThresh) flag = 1;}
+    if(P[i].Mass <= 0) {flag = 1;}
     
 #ifdef GALSF_SUBGRID_WINDS
     if(SphP[i].DelayTime > 0)
@@ -170,8 +235,8 @@ int determine_sf_flag(int i)
 /* simple routine to determine density thresholds and other common units for SF routines */
 void set_units_sfr(void)
 {
-    All.OverDensThresh = All.CritOverDensity * All.OmegaBaryon * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
-    All.PhysDensThresh = All.CritPhysDensity * PROTONMASS / HYDROGEN_MASSFRAC / All.UnitDensity_in_cgs;
+    All.OverDensThresh = All.CritOverDensity * All.OmegaBaryon * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
+    All.PhysDensThresh = All.CritPhysDensity * PROTONMASS / (HYDROGEN_MASSFRAC * All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam);
     
 #ifdef GALSF_EFFECTIVE_EQS
     double meanweight = 4 / (1 + 3 * HYDROGEN_MASSFRAC);	/* note: assuming NEUTRAL GAS */
@@ -187,7 +252,7 @@ void set_units_sfr(void)
 /* Routine to actually determine the SFR assigned to an individual gas particle at each time */
 double get_starformation_rate(int i)
 {
-    double rateOfSF,tsfr,y;
+    double rateOfSF,tsfr,y; y=0;
     int flag;
 #ifdef GALSF_EFFECTIVE_EQS
     double factorEVP, egyhot, ne, tcool, x, cloudmass;
@@ -229,13 +294,13 @@ double get_starformation_rate(int i)
     
 #ifdef GALSF_SFR_MOLECULAR_CRITERION
     /* Krumholz & Gnedin fitting function for f_H2 as a function of local properties */
-    double tau_fmol = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1) * All.cf_a2inv;
+    double tau_fmol = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1);
     tau_fmol *= (0.1 + P[i].Metallicity[0]/All.SolarAbundances[0]);
     if(tau_fmol>0) {
-        tau_fmol *= 434.78*All.UnitDensity_in_cgs*All.HubbleParam*All.UnitLength_in_cm;
-        y = 0.756*(1+3.1*pow(P[i].Metallicity[0]/All.SolarAbundances[0],0.365));
-        y = log(1+0.6*y+0.01*y*y)/(0.6*tau_fmol);
-        y = 1-0.75*y/(1+0.25*y);
+        tau_fmol *= 434.78 * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam;
+        y = 0.756 * (1 + 3.1*pow(P[i].Metallicity[0]/All.SolarAbundances[0],0.365));
+        y = log(1 + 0.6*y + 0.01*y*y) / (0.6*tau_fmol);
+        y = 1 - 0.75*y/(1 + 0.25*y);
         if(y<0) y=0; if(y>1) y=1;
         rateOfSF *= y;
     } // if(tau_fmol>0)
@@ -254,18 +319,66 @@ double get_starformation_rate(int i)
                     vt += All.cf_hubble_a; /* add hubble-flow correction */
             dv2abs += vt*vt;
         }
+    /* add thermal support, although it is almost always irrelevant */
+    double cs_eff = Particle_effective_soundspeed_i(i);
+    double k_cs = cs_eff / (Get_Particle_Size(i)*All.cf_atime);
+#ifdef SINGLE_STAR_FORMATION
+    double press_grad_length = 0;
+    for(j=0;j<3;j++) {press_grad_length += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
+    press_grad_length = All.cf_atime * DMAX(Get_Particle_Size(i) , SphP[i].Pressure / (1.e-37 + sqrt(press_grad_length))); 
+    k_cs = cs_eff / press_grad_length;
+#ifdef MAGNETIC
+    double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+    double cs_b = sqrt(cs_eff*cs_eff + bmag/SphP[i].Density);
+    k_cs = cs_b / (Get_Particle_Size(i)*All.cf_atime);
+#endif
+#endif
+    dv2abs += 2.*k_cs*k_cs; // account for thermal pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
+    
     //double alpha_vir = 0.2387 * dv2abs / (All.G * SphP[i].Density * All.cf_a3inv); // coefficient here was for old form, with only divv information
-    double alpha_vir = dv2abs / (4. * M_PI * All.G * SphP[i].Density * All.cf_a3inv); // 1/4 or 1/8 ? //
-    if(All.ComovingIntegrationOn)
+    double alpha_vir = dv2abs / (8. * M_PI * All.G * SphP[i].Density * All.cf_a3inv); // 1/4 or 1/8 ? //
+
+    
+#if !(EXPAND_PREPROCESSOR_(GALSF_SFR_VIRIAL_SF_CRITERION) == 1)
+    /* the above macro checks if GALSF_SFR_VIRIAL_SF_CRITERION has been assigned a numerical value */
+#if (GALSF_SFR_VIRIAL_SF_CRITERION > 0) || (GALSF_SFR_VIRIAL_SF_CRITERION == 2)
+    if(alpha_vir < 1.0)
     {
-        if((alpha_vir<1.0)||(SphP[i].Density*All.cf_a3inv>100.*All.PhysDensThresh)) {rateOfSF *= 1.0;} else {rateOfSF *= 0.0015;}
-        // PFH: note the latter flag is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! //
-    } else {
-        if(alpha_vir>1.0) {rateOfSF *= 0.0015;} else {rateOfSF *= 1.0;}
+        /* check if Jeans mass is remotely close to solar; if not, dont allow it to form 'stars' */
+        double q = cs_eff * All.UnitVelocity_in_cm_per_s / (0.2e5);
+        double q2 = SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam / (HYDROGEN_MASSFRAC*1.0e3*PROTONMASS);
+        double MJ_solar = 2.*q*q*q/sqrt(q2);
+        double MJ_crit = 1000.;
+#ifdef SINGLE_STAR_FORMATION
+        MJ_crit = 1.e4;
+#endif
+        if(MJ_solar > MJ_crit) {alpha_vir = 100.;}
     }
+#endif
+#if (GALSF_SFR_VIRIAL_SF_CRITERION > 1)
+    if(alpha_vir >= 1.0) {rateOfSF *= 0.0;}
+#endif
+#endif
+    if((alpha_vir<1.0)||(SphP[i].Density*All.cf_a3inv>100.*All.PhysDensThresh)) {rateOfSF *= 1.0;} else {rateOfSF *= 0.0015;}
+    // PFH: note the latter flag is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! //
+    
     //  if( divv>=0 ) rateOfSF=0; // restrict to convergent flows (optional) //
     //  rateOfSF *= 1.0/(1.0 + alpha_vir); // continuous cutoff w alpha_vir instead of sharp (optional) //
 #endif // GALSF_SFR_VIRIAL_SF_CRITERION
+    
+#ifdef SINGLE_STAR_FORMATION
+    rateOfSF *= 1.0e5; // make sink formation guaranteed to happen, where it can
+    // restrict to convergent flows //
+    {
+        int k; double divv=0; for(k=0;k<3;k++) {divv += SphP[i].Gradients.Velocity[k][k] * All.cf_a2inv;}
+        if(All.ComovingIntegrationOn) {divv += 3.*All.cf_hubble_a;}
+        if(divv >= 0) {rateOfSF=0;} 
+    }
+    if(SphP[i].Density_Relative_Maximum_in_Kernel > 0) {rateOfSF=0;} // restrict to local density/potential maxima //
+#ifdef BH_CALC_DISTANCES
+    if(P[i].min_dist_to_bh < PPP[i].Hsml) {rateOfSF=0;} // restrict to particles without a sink in their kernel //
+#endif
+#endif // SINGLE_STAR_FORMATION 
     
     return rateOfSF;
 }
@@ -317,9 +430,10 @@ void cooling_and_starformation(void)
   unsigned int bits;
   double dt, dtime, mass_of_star, p, prob, rate_in_msunperyear, sfrrate, totsfrrate;
   double sum_sm, total_sm, sm=0, rate, sum_mass_stars, total_sum_mass_stars;
-#ifdef BH_POPIII_SEEDS
+#if defined(BH_POPIII_SEEDS) || defined(SINGLE_STAR_FORMATION)
   int num_bhformed=0, tot_bhformed=0;
   double GradRho;
+  GradRho=0;
 #endif
 #if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) && defined(GALSF_FB_RPWIND_LOCAL)
   double total_n_wind,total_m_wind,total_mom_wind,total_prob_kick,avg_v_kick,momwt_avg_v_kick,avg_taufac;
@@ -407,7 +521,7 @@ void cooling_and_starformation(void)
             if ( (SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) && (P[i].Metallicity[0]/All.SolarAbundances[0] < 0.1) )
             {
                 GradRho = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1);
-                GradRho *= (All.UnitDensity_in_cgs*All.cf_a3inv) * (All.UnitLength_in_cm*All.cf_atime) * All.HubbleParam;
+                GradRho *= All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam
                 /* surface dens in g/cm^2; threshold for bound cluster formation in our experiments is ~2 g/cm^2 (10^4 M_sun/pc^2) */
                 if (GradRho > 0.1)
                 {
@@ -454,7 +568,7 @@ void cooling_and_starformation(void)
 #endif /* closes ifdef(BH_POPIII_SEEDS) */ 
 
             /* ok, we're going to make a star! */
-#ifdef GALSF_SFR_IMF_VARIATION
+#if defined(GALSF_SFR_IMF_VARIATION) || defined(GALSF_SFR_IMF_SAMPLING)
             /* if we're allowing for a variable IMF, this is where we will 
                 calculate the IMF properties produced from the gas forming stars */
             assign_imf_properties_from_starforming_gas(i);
@@ -465,7 +579,6 @@ void cooling_and_starformation(void)
 		      /* here we turn the gas particle itself into a star */
 		      Stars_converted++;
 		      stars_converted++;
-
 		      sum_mass_stars += P[i].Mass;
 
 		      P[i].Type = 4;
@@ -473,12 +586,36 @@ void cooling_and_starformation(void)
 		      TimeBinSfr[P[i].TimeBin] -= SphP[i].Sfr;
 
 		      P[i].StellarAge = All.Time;
-#if defined(BLACK_HOLES) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN)
+#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
                 P[i].DensAroundStar = SphP[i].Density;
 #endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 P[i].Mass = SphP[i].MassTrue + SphP[i].dMass;
 #endif
+                
+
+#ifdef SINGLE_STAR_FORMATION
+                P[i].Type = 5;
+                num_bhformed++;
+                P[i].BH_Mass = All.SeedBlackHoleMass;
+#ifdef BH_ALPHADISK_ACCRETION
+                P[i].BH_Mass_AlphaDisk = DMAX(0, P[i].Mass-P[i].BH_Mass);
+#endif
+#ifdef BH_COUNTPROGS
+                P[i].BH_CountProgs = 1;
+#endif
+                P[i].BH_Mdot = 0;
+#ifdef BH_PHOTONMOMENTUM
+                P[i].BH_disk_hr = 0.333333;
+#endif
+                P[i].DensAroundStar = SphP[i].Density;
+#ifdef SINGLE_STAR_PROMOTION
+                P[i].ProtoStellarAge = All.Time; // record the proto-stellar age instead of age
+                P[i].ProtoStellar_Radius = 100. * (P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS);
+                //P[i].PreMainSeq_Tracker = 1;
+#endif
+#endif // SINGLE_STAR_FORMATION
+                
 		    } /* closes final generation from original gas particle */
 		  else
 		    {
@@ -495,7 +632,7 @@ void cooling_and_starformation(void)
 
 		      P[NumPart + stars_spawned] = P[i];
 		      P[NumPart + stars_spawned].Type = 4;
-#if defined(BLACK_HOLES) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN)
+#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
               P[NumPart + stars_spawned].DensAroundStar = SphP[i].Density;
 #endif
 		      NextActiveParticle[NumPart + stars_spawned] = FirstActiveParticle;
@@ -603,18 +740,18 @@ if(All.WindMomentumLoading)
 #endif /* GALSF_FB_RPWIND_DO_IN_SFCALC */
 
     
-#ifdef BH_POPIII_SEEDS
+#if defined(BH_POPIII_SEEDS) || defined(SINGLE_STAR_FORMATION)
   MPI_Allreduce(&num_bhformed, &tot_bhformed, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
   if(tot_bhformed > 0)
   {
       if(ThisTask==0)
       {
-      printf("POP III BH formation: %d gas particles converted into BHs \n",tot_bhformed);
+      printf("BH/Sink formation: %d gas particles converted into BHs \n",tot_bhformed);
       fflush(stdout);
       }
       All.TotBHs += tot_bhformed;
   } // if(tot_bhformed > 0)
-#endif // BH_POPIII_SEEDS
+#endif
 
   MPI_Allreduce(&stars_spawned, &tot_spawned, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&stars_converted, &tot_converted, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -651,6 +788,10 @@ if(All.WindMomentumLoading)
       fprintf(FdSfr, "%g %g %g %g %g\n", All.Time, total_sm, totsfrrate, rate_in_msunperyear, total_sum_mass_stars);
       fflush(FdSfr);
     } // thistask==0
+
+
+    if(tot_converted+tot_spawned > 0) {rearrange_particle_sequence();}
+
     CPU_Step[CPU_COOLINGSFR] += measure_time();
 } /* end of main sfr_cooling routine!!! */
 
@@ -723,7 +864,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
         double HaloConcentrationSlope = -0.15;  /* slope n of mass concentration relation, namely c = c0 * M_200,crit^n */
 
         double r200c, v_esc, c_halo, wind_energy, wind_momentum, wind_mass;
-        double rhocrit = 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
+        double rhocrit = 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
         rhocrit *= All.Omega0/All.cf_a3inv + (1-All.Omega0-All.OmegaLambda)/All.cf_a2inv + All.OmegaLambda; /* physical critical density at redshift z */
 
         r200c = pow(SphP[i].HostHaloMass / (4 * M_PI / 3.0 * 200 * rhocrit), 1.0 / 3.0);	/* physical r_200,crit value, assuming FoF mass = M_200,crit */
@@ -765,7 +906,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
         /* we only weakly revise the model here, to scale velocities with density estimate */
         m_gas_kernel=0; h=PPP[i].Hsml;
         rho_to_launch = SphP[i].Density*All.cf_a3inv;
-        v = All.WindInitialVelocityBoost * (45.0/unitvel_in_km_s) * pow(rho_to_launch*unitrho_in_e10solar_kpc3, 0.25);
+        v = WindInitialVelocityBoost * (45.0/unitvel_in_km_s) * pow(rho_to_launch*unitrho_in_e10solar_kpc3, 0.25);
         if(v<0.01/unitvel_in_km_s) v=0.01/unitvel_in_km_s;
         p = 116 * sm / (P[i].Mass*(v/unitvel_in_km_s));
 #endif
@@ -777,13 +918,12 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
         dummy=0;h=0;numngb_inbox=0;
         h=3.0*PPP[i].Hsml;
         pos=P[i].Pos;
+        m_st_kernel=0; l_st_kernel=0; //l_st_kernel_nonrad=0;
         do {
             numngb_inbox = ngb_treefind_newstars(&pos[0],h,-1,&startnode,0,&dummy,&dummy);
             /* searches for all new stars inside h */
-            m_st_kernel=0; l_st_kernel=0; //l_st_kernel_nonrad=0;
             if(numngb_inbox>0)
             {
-                m_st_kernel=0; l_st_kernel=0;
                 for(n=0; n<numngb_inbox; n++)
                 {
                     j = Ngblist[n];
@@ -913,12 +1053,12 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
 #endif // GALSF_FB_RPWIND_FROMCLUMPS
         
         /* alright, now do calculations on the results to determine speed & loading of kicks */
-        vq= All.WindInitialVelocityBoost*sqrt(All.G*(m_gas_kernel_i+m_st_kernel_i)/(h_kernel_i*All.cf_atime));
-        v = All.WindInitialVelocityBoost*sqrt(All.G*(m_gas_kernel+m_st_kernel)/(h*All.cf_atime));
+        vq= WindInitialVelocityBoost*sqrt(All.G*(m_gas_kernel_i+m_st_kernel_i)/(h_kernel_i*All.cf_atime));
+        v = WindInitialVelocityBoost*sqrt(All.G*(m_gas_kernel+m_st_kernel)/(h*All.cf_atime));
         if(vq>v) v=vq;
         /* compare the velocity from the central star cluster, using the observed cluster size-mass relation */
         if((m_st_kernel==0)&&(m_st_kernel_i>0)) m_st_kernel=m_st_kernel_i;
-        vq=All.WindInitialVelocityBoost*(65.748/unitvel_in_km_s)*pow(m_st_kernel*unitmass_in_e10solar/0.0001,0.25);
+        vq=WindInitialVelocityBoost*(65.748/unitvel_in_km_s)*pow(m_st_kernel*unitmass_in_e10solar/0.0001,0.25);
         vq=vq*1.82;
         /* this corresponds to =G M_star/R_e for a 10^6 Msun cluster, scaling upwards from there;
          note that All.WindEnergyFraction will boost appropriately; should be at least sqrt(2), if want
@@ -1032,7 +1172,7 @@ void init_clouds(void)
       meanweight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));	/* note: assuming FULL ionization */
       u4 = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * 1.0e4;
       u4 *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
-      dens = 1.0e6 * 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
+      dens = 1.0e6 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
 
       if(All.ComovingIntegrationOn)
 	{

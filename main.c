@@ -74,7 +74,7 @@ int main(int argc, char **argv)
 	  printf("Call with <ParameterFile> [<RestartFlag>] [<RestartSnapNum>]\n");
 	  printf("\n");
 	  printf("   RestartFlag    Action\n");
-	  printf("       0          Read iniial conditions and start simulation\n");
+	  printf("       0          Read initial conditions and start simulation\n");
 	  printf("       1          Read restart files and resume simulation\n");
 	  printf("       2          Restart from specified snapshot dump and continue simulation\n");
 	  printf("       3          Run FOF and optionally SUBFIND if enabled\n");

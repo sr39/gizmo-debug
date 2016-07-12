@@ -118,17 +118,19 @@ void drift_particle(int i, integertime time1)
     
     for(j = 0; j < 3; j++)
     {
+#ifndef FREEZE_HYDRO
         P[i].Pos[j] += P[i].Vel[j] * dt_drift;
+#endif
     }
-#ifdef ONEDIM
+#if (NUMDIMS==1)
     P[i].Pos[1]=P[i].Pos[2]=0;
 #endif
-#ifdef TWODIMS
+#if (NUMDIMS==2)
     P[i].Pos[2]=0;
 #endif
     
     double divv_fac = P[i].Particle_DivVel * dt_drift;
-    double divv_fac_max = 1.5;
+    double divv_fac_max = 0.3; //1.5; // don't allow Hsml to change too much in predict-step //
     if(divv_fac > +divv_fac_max) divv_fac = +divv_fac_max;
     if(divv_fac < -divv_fac_max) divv_fac = -divv_fac_max;
     
@@ -146,18 +148,11 @@ void drift_particle(int i, integertime time1)
     {
         if(dt_drift>0)
         {
-            double minsoft = All.ForceSoftening[P[i].Type];
-            double maxsoft = All.MaxHsml;
-            if(density_isactive(i)==0)
-            {
-                maxsoft = DMIN(maxsoft, 50.0 * All.ForceSoftening[P[i].Type]);
-#ifdef PMGRID
-                maxsoft = DMIN(maxsoft, 0.5 * All.Asmth[0]);
-#endif
-            }
-            PPP[i].Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
-            if(PPP[i].Hsml < minsoft) {PPP[i].Hsml = minsoft;}
-            if(PPP[i].Hsml > maxsoft) {PPP[i].Hsml = maxsoft;}
+            double minsoft = ags_return_minsoft(i);
+            double maxsoft = ags_return_maxsoft(i);
+            PPP[i].AGS_Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
+            if(PPP[i].AGS_Hsml < minsoft) {PPP[i].AGS_Hsml = minsoft;}
+            if(PPP[i].AGS_Hsml > maxsoft) {PPP[i].AGS_Hsml = maxsoft;}
         }
     }
 #endif
@@ -193,6 +188,10 @@ void drift_particle(int i, integertime time1)
 #if defined(TURB_DRIVING)
             for(j = 0; j < 3; j++)
                 SphP[i].VelPred[j] += SphP[i].TurbAccel[j] * dt_gravkick;
+#endif
+#ifdef RT_RAD_PRESSURE_OUTPUT
+            for(j = 0; j < 3; j++)
+                SphP[i].VelPred[j] += SphP[i].RadAccel[j] * All.cf_atime * dt_hydrokick;
 #endif
             
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -240,46 +239,18 @@ void drift_particle(int i, integertime time1)
 #endif
             
             
-            
-#ifdef EOS_DEGENERATE
-            {
-                double maxfac = dt_entr;
-                double xnuc, tmpfac;
-                for(j = 0; j < EOS_NSPECIES; j++)
-                {
-                    xnuc = SphP[i].xnucPred[j] + SphP[i].dxnuc[j] * dt_entr;
-                    if(xnuc > 1.0)
-                    {
-                        tmpfac = (1.0 - xnuc) / SphP[i].dxnuc[j];
-                        if(tmpfac < maxfac)
-                            maxfac = tmpfac;
-                    }
-                    if(xnuc < 0.0)
-                    {
-                        tmpfac = (0.0 - xnuc) / SphP[i].dxnuc[j];
-                        if(tmpfac < maxfac)
-                            maxfac = tmpfac;
-                    }
-                }
-                if(maxfac > 0)
-                {
-                    for(j = 0; j < EOS_NSPECIES; j++)
-                    {
-                        SphP[i].xnucPred[j] += SphP[i].dxnuc[j] * maxfac;
-                    }
-                }
-            }
-#endif
-            
             PPP[i].Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
             if(PPP[i].Hsml < All.MinHsml) {PPP[i].Hsml = All.MinHsml;}
             if(PPP[i].Hsml > All.MaxHsml) {PPP[i].Hsml = All.MaxHsml;}
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+            PPP[i].AGS_Hsml = PPP[i].Hsml;
+#endif
             
             drift_sph_extra_physics(i, time0, time1, dt_entr);
 
         
             SphP[i].Pressure = get_pressure(i);
-#ifdef GAMMA_ENFORCE_ADIABAT
+#ifdef EOS_ENFORCE_ADIABAT
             SphP[i].InternalEnergyPred = SphP[i].Pressure / (SphP[i].Density * GAMMA_MINUS1);
 #endif
         }
@@ -288,18 +259,6 @@ void drift_particle(int i, integertime time1)
 }
 
 
-void check_particle_for_temperature_minimum(int i)
-{
-    if(All.MinEgySpec)
-    {
-        if(SphP[i].InternalEnergy < All.MinEgySpec)
-        {
-            SphP[i].InternalEnergy = All.MinEgySpec;
-            SphP[i].DtInternalEnergy = 0;
-            //SphP[i].dInternalEnergy = 0;
-        }
-    }
-}
 
 
 
@@ -311,61 +270,6 @@ void move_particles(integertime time1)
 }
 
 
-/* return the pressure of particle i */
-double get_pressure(int i)
-{
-    MyFloat press = 0;
-    
-#if !defined(EOS_DEGENERATE)
-    /* this is the 'normal' pressure */
-    press = Get_Particle_Pressure(i);
-#endif
-    
-#ifdef GAMMA_ENFORCE_ADIABAT
-    press = GAMMA_ENFORCE_ADIABAT * pow(SphP[i].Density, GAMMA);
-#endif
-    
-#ifdef GALSF_EFFECTIVE_EQS
-    /* modify pressure to 'interpolate' between effective EOS and isothermal */
-    if(SphP[i].Density*All.cf_a3inv >= All.PhysDensThresh)
-        press = All.FactorForSofterEQS * press +
-        (1 - All.FactorForSofterEQS) * All.cf_afac1 * GAMMA_MINUS1 * SphP[i].Density * All.InitGasU;
-#endif
-    
-    
-#ifdef EOS_DEGENERATE
-    /* call tabulated eos with physical units */
-    struct eos_result res;
-    eos_calc_egiven(SphP[i].Density * All.UnitDensity_in_cgs, SphP[i].xnucPred, SphP[i].InternalEnergyPred, &SphP[i].temp, &res);
-    press = res.p.v / All.UnitPressure_in_cgs;
-    SphP[i].dp_drho = (res.p.drho + res.temp * gsl_pow_2(res.p.dtemp / (SphP[i].Density * All.UnitDensity_in_cgs)) / res.e.dtemp);
-#endif
-    
-    
-#ifdef COSMIC_RAYS
-    press += Get_Particle_CosmicRayPressure(i);
-#endif
-    
-    
-#ifdef TRUELOVE_CRITERION_PRESSURE
-    /* add an extra pressure term to suppress fragmentation at/below the explicit resolution scale */
-    MyFloat xJeans;
-    double h_eff = Get_Particle_Size(i);
-#ifdef HYDRO_SPH
-    /* robertson & kravtsov modification of Bate & Burkert formulation */
-    xJeans=(1.83 * 2.0 / GAMMA) * All.G * h_eff * h_eff * SphP[i].Density * SphP[i].Density;
-    xJeans*=1.5; /* above is NJeans=5, this is NJeans=9 */
-#else
-    /* standard finite-volume formulation of this */
-    double NJeans = 4; // set so that resolution = lambda_Jeans/NJeans
-    xJeans = NJeans * NJeans / (M_PI*GAMMA) * All.G * h_eff*h_eff * SphP[i].Density * SphP[i].Density;
-#endif
-    if(All.ComovingIntegrationOn) xJeans *= All.cf_afac1/All.cf_atime;
-    if(xJeans>press) press=xJeans;
-#endif
-    
-    return press;
-}
 
 
 
@@ -376,7 +280,7 @@ void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double
     double BphysVolphys_to_BcodeVolCode = 1 / All.cf_atime;
     for(k=0;k<3;k++) {SphP[i].BPred[k] += SphP[i].DtB[k] * dt_entr * BphysVolphys_to_BcodeVolCode;} // fluxes are always physical, convert to code units //
 #ifdef DIVBCLEANING_DEDNER
-    double PhiphysVolphys_to_PhicodeVolCode = 1;
+    double PhiphysVolphys_to_PhicodeVolCode = 1 / All.cf_a3inv; // for mass-based phi fluxes (otherwise coefficient is 1)
     double dtphi_code = (PhiphysVolphys_to_PhicodeVolCode) * SphP[i].DtPhi;
     SphP[i].PhiPred += dtphi_code  * dt_entr;
     double t_damp = Get_Particle_PhiField_DampingTimeInv(i);
@@ -385,10 +289,19 @@ void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double
         SphP[i].PhiPred *= exp( -dt_entr * t_damp );
     }
 #endif
+#ifdef MHD_ALTERNATIVE_LEAPFROG_SCHEME
+    for(k=0;k<3;k++) {SphP[i].B[k]=SphP[i].BPred[k];}
+#ifdef DIVBCLEANING_DEDNER
+    SphP[i].Phi=SphP[i].PhiPred;
+#endif
+#endif
 #endif
 #ifdef COSMIC_RAYS
     double etmp = SphP[i].CosmicRayEnergyPred + SphP[i].DtCosmicRayEnergy * dt_entr;
     if(etmp<0.5*SphP[i].CosmicRayEnergyPred) {SphP[i].CosmicRayEnergyPred *= 0.5;} else {SphP[i].CosmicRayEnergyPred=etmp;}
+#endif
+#ifdef RADTRANSFER
+    rt_update_driftkick(i,dt_entr,1);
 #endif
 }
 
@@ -406,21 +319,9 @@ void do_box_wrapping(void)
 {
     int i, j;
     double boxsize[3];
-    
-    for(j = 0; j < 3; j++)
-    {
-        boxsize[j] = All.BoxSize;
-    }
-    
-#ifdef LONG_X
-    boxsize[0] *= LONG_X;
-#endif
-#ifdef LONG_Y
-    boxsize[1] *= LONG_Y;
-#endif
-#ifdef LONG_Z
-    boxsize[2] *= LONG_Z;
-#endif
+    boxsize[0] = boxSize_X;
+    boxsize[1] = boxSize_Y;
+    boxsize[2] = boxSize_Z;
     
     for(i = 0; i < NumPart; i++)
     {
@@ -430,14 +331,15 @@ void do_box_wrapping(void)
             {
                 P[i].Pos[j] += boxsize[j];
 #ifdef SHEARING_BOX
-                if(j==0) {
-                    P[i].Vel[SHEARING_BOX_PHI_COORDINATE]-=Shearing_Box_Vel_Offset;
-                    if(P[i].Type==0) SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE]-=Shearing_Box_Vel_Offset;}
-#if (SHEARING_BOX != 1)
-                /* if we're not assuming axisymmetry, we need to shift the coordinates for the shear flow at the boundary */
-                // PFH: needs update for shearing coordinates, if desired //
-                //if(j==0) {P[i].Pos[SHEARING_BOX_PHI_COORDINATE]+= Shearing_Box_Vel_Offset * All.Time;
+                if(j==0)
+                {
+                    P[i].Vel[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;
+                    if(P[i].Type==0) {SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+#if (SHEARING_BOX > 1)
+                    /* if we're not assuming axisymmetry, we need to shift the coordinates for the shear flow at the boundary */
+                    P[i].Pos[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Pos_Offset;
 #endif
+                }
 #endif
             }
             
@@ -445,9 +347,15 @@ void do_box_wrapping(void)
             {
                 P[i].Pos[j] -= boxsize[j];
 #ifdef SHEARING_BOX
-                if(j==0) {
-                    P[i].Vel[SHEARING_BOX_PHI_COORDINATE]+=Shearing_Box_Vel_Offset;
-                    if(P[i].Type==0) SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE]+=Shearing_Box_Vel_Offset;}
+                if(j==0)
+                {
+                    P[i].Vel[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;
+                    if(P[i].Type==0) {SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#if (SHEARING_BOX > 1)
+                    /* if we're not assuming axisymmetry, we need to shift the coordinates for the shear flow at the boundary */
+                    P[i].Pos[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Pos_Offset;
+#endif
+                }
 #endif
             }
         }
@@ -471,62 +379,55 @@ double INLINE_FUNC Get_Particle_Size(int i)
         take that when NumNgb is computed (at the end of the density routine), so we 
         don't have to re-compute it each time. That makes this function fast enough to 
         call -inside- of loops (e.g. hydro computations) */
-#ifdef ONEDIM
+#if (NUMDIMS == 1)
     return 2.00000 * PPP[i].Hsml / PPP[i].NumNgb;
-#else
-#ifdef TWODIMS
+#endif
+#if (NUMDIMS == 2)
     return 1.25331 * PPP[i].Hsml / PPP[i].NumNgb; // sqrt(Pi/2)
-#else
+#endif
+#if (NUMDIMS == 3)
     return 1.61199 * PPP[i].Hsml / PPP[i].NumNgb; // (4pi/3)^(1/3)
 #endif
+}
+
+
+
+double INLINE_FUNC Get_Particle_Expected_Area(double h)
+{
+#if (NUMDIMS == 1)
+    return 2;
+#endif
+#if (NUMDIMS == 2)
+    return 2 * M_PI * h;
+#endif
+#if (NUMDIMS == 3)
+    return 4 * M_PI * h * h;
 #endif
 }
 
 
-
-double INLINE_FUNC Particle_density_for_energy_i(int i)
+/* return the estimated local column (physical units) from integrating the gradient in the density (separated here for convenience) */
+double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h)
 {
-#ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
-    return SphP[i].EgyWtDensity;
-#else
-    return SphP[i].Density;
-#endif
-}
-
-double INLINE_FUNC Get_Particle_Pressure(int i)
-{
-    return GAMMA_MINUS1 * SphP[i].InternalEnergyPred * Particle_density_for_energy_i(i);
-}
-
-#ifdef COSMIC_RAYS
-double INLINE_FUNC Get_Particle_CosmicRayPressure(int i)
-{
-    if((P[i].Mass > 0) && (SphP[i].Density>0) && (SphP[i].CosmicRayEnergyPred > 0))
+    double gradrho_mag;
+    if(rho<=0)
     {
-        return GAMMA_COSMICRAY_MINUS1 * (SphP[i].CosmicRayEnergyPred * SphP[i].Density) / P[i].Mass; // cosmic ray pressure = (4/3-1) * e_cr = 1/3 * (E_cr/Vol) //
+        gradrho_mag = 0;
     } else {
-        return 0;
+        gradrho_mag = sqrt(gradrho[0]*gradrho[0]+gradrho[1]*gradrho[1]+gradrho[2]*gradrho[2]);
+        if(gradrho_mag > 0) {gradrho_mag = rho*rho/gradrho_mag;} else {gradrho_mag=0;}
+        if(include_h > 0) if(numngb_ndim > 0) gradrho_mag += include_h * rho * hsml / numngb_ndim; // quick-and-dirty approximation to the effective neighbor number needed here
+        //if(include_h > 0) gradrho_mag += include_h * rho * (hsml * (0.124 + 11.45 / (26.55 + All.DesNumNgb))); // quick-and-dirty approximation to the effective neighbor number needed here
+        // account for the fact that 'h' is much larger than the inter-particle separation //
     }
+    return gradrho_mag * All.cf_a2inv; // (physical units) // *(Z/Zsolar) add metallicity dependence
 }
-#endif
 
 
-double INLINE_FUNC Particle_effective_soundspeed_i(int i)
-{
-#ifdef EOS_DEGENERATE
-    return sqrt(SphP[i].dp_drho);
-#endif
-#ifdef COSMIC_RAYS
-    if((P[i].Mass > 0) && (SphP[i].Density>0) && (SphP[i].CosmicRayEnergyPred > 0))
-    {
-        return sqrt(GAMMA*GAMMA_MINUS1 * SphP[i].InternalEnergyPred + GAMMA_COSMICRAY*GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred / P[i].Mass);
-    } else {
-        return sqrt(GAMMA*GAMMA_MINUS1 * SphP[i].InternalEnergyPred);
-    }
-#endif
-    /* if nothing above triggers, then we resort to good old-fashioned ideal gas */
-    return sqrt(GAMMA * SphP[i].Pressure / Particle_density_for_energy_i(i));
-}
+
+
+
+
 
 #ifdef MAGNETIC
 double INLINE_FUNC Get_Particle_BField(int i_particle_id, int k_vector_component)
@@ -560,15 +461,7 @@ double Get_DtB_FaceArea_Limiter(int i)
     /* now check how accurately the cell is 'closed': the face areas are ideally zero */
     double area_sum = fabs(SphP[i].Face_Area[0])+fabs(SphP[i].Face_Area[1])+fabs(SphP[i].Face_Area[2]);
     /* but this needs to be normalized to the 'expected' area given Hsml */
-#ifdef ONEDIM
-    double area_norm = 2.;
-#else
-#ifdef TWODIMS
-    double area_norm = 2.*M_PI * PPP[i].Hsml * All.cf_atime;
-#else
-    double area_norm = 4.*M_PI * PPP[i].Hsml*PPP[i].Hsml * All.cf_atime*All.cf_atime;
-#endif
-#endif
+    double area_norm = Get_Particle_Expected_Area(PPP[i].Hsml * All.cf_atime);
     /* ok, with that in hand, define an error tolerance based on this */
     if(area_norm>0)
     {
@@ -593,7 +486,8 @@ double Get_DtB_FaceArea_Limiter(int i)
 #ifdef DIVBCLEANING_DEDNER
 double INLINE_FUNC Get_Particle_PhiField(int i_particle_id)
 {
-    return SphP[i_particle_id].PhiPred * SphP[i_particle_id].Density / P[i_particle_id].Mass;
+    //return SphP[i_particle_id].PhiPred * SphP[i_particle_id].Density / P[i_particle_id].Mass; // volumetric phy-flux (requires extra term compared to mass-based flux)
+    return SphP[i_particle_id].PhiPred / P[i_particle_id].Mass; // mass-based phi-flux
 }
 
 double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)
@@ -613,6 +507,7 @@ double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)
     
     if(PPP[i_particle_id].Hsml > 0)
     {
+        double h_eff = Get_Particle_Size(i_particle_id);
         double vsig2 = 0.5 * All.cf_afac3 * fabs(SphP[i_particle_id].MaxSignalVel);
         double phi_B_eff = 0.0;
         if(vsig2 > 0) {phi_B_eff = Get_Particle_PhiField(i_particle_id) / (All.cf_atime * vsig2);}
@@ -627,8 +522,29 @@ double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)
                   Get_Particle_BField(i_particle_id,2)*Get_Particle_BField(i_particle_id,2) +
                   phi_B_eff*phi_B_eff) / SphP[i_particle_id].Density );
         }
-        double vsig_max = DMAX( DMAX(vsig1,vsig2) , 0.1 * All.FastestWaveSpeed );
-        damping_tinv = 0.5 * All.DivBcleanParabolicSigma * (vsig_max / (All.cf_atime*Get_Particle_Size(i_particle_id)));
+        vsig1 = DMAX(vsig1, vsig2);
+        vsig2 = 0.0;
+        int j,k;
+        for(j=0;j<3;j++) for(k=0;k<3;k++) {vsig2 += SphP[i_particle_id].Gradients.Velocity[j][k]*SphP[i_particle_id].Gradients.Velocity[j][k];}
+        vsig2 = sqrt(vsig2);
+        vsig2 = 3.0 * h_eff * DMAX( vsig2, fabs(P[i_particle_id].Particle_DivVel)) / All.cf_atime;
+        double prefac_fastest = 0.1;
+        double prefac_tinv = 0.5;
+        double area_0 = 0.1;
+#ifdef CONSTRAINED_GRADIENT_MHD
+        prefac_fastest = 1.0;
+        prefac_tinv = 2.0;
+        area_0 = 0.05;
+        vsig2 *= 5.0;
+        if(SphP[i_particle_id].FlagForConstrainedGradients <= 0) prefac_tinv *= 30;
+#endif
+        prefac_tinv *= sqrt(1. + SphP[i_particle_id].ConditionNumber/100.);
+        double area = fabs(SphP[i_particle_id].Face_Area[0]) + fabs(SphP[i_particle_id].Face_Area[1]) + fabs(SphP[i_particle_id].Face_Area[2]);
+        area /= Get_Particle_Expected_Area(PPP[i_particle_id].Hsml);
+        prefac_tinv *= (1. + area/area_0)*(1. + area/area_0);
+        
+        double vsig_max = DMAX( DMAX(vsig1,vsig2) , prefac_fastest * All.FastestWaveSpeed );
+        damping_tinv = prefac_tinv * All.DivBcleanParabolicSigma * (vsig_max / (All.cf_atime * h_eff));
     }
 #endif
 #endif

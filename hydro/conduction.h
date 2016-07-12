@@ -11,133 +11,83 @@
  */
 /* --------------------------------------------------------------------------------- */
 {
-    if((local.Kappa_Conduction>0)&&(SphP[j].Kappa_Conduction>0)&&(local.Mass>0)&&(P[j].Mass>0))
+    double scalar_i = local.InternalEnergyPred; // physical units
+    double scalar_j = SphP[j].InternalEnergyPred; // physical units
+    double kappa_i = local.Kappa_Conduction; // physical units
+    double kappa_j = SphP[j].Kappa_Conduction; // physical units
+    
+    if((kappa_i>0)&&(kappa_j>0)&&(local.Mass>0)&&(P[j].Mass>0))
     {
-#ifdef HYDRO_SPH
-        
-        /* First, we have the usual SPH anisotropic conduction definition */
-        kernel.dwk_ij = 0.5 * (kernel.dwk_i + kernel.dwk_j);
-        double conduction_wt = P[j].Mass * kernel.dwk_ij / (kernel.r * local.Density * SphP[j].Density) * All.cf_atime; // physical units //
-        double du_ij_cond = kernel.spec_egy_u_i - SphP[j].InternalEnergyPred;
-        conduction_wt *= du_ij_cond; // multiply by specific energy difference //
-#ifdef MAGNETIC
-        // account for suppression of conduction along field lines //
-#ifndef MAGNETIC_SIGNALVEL
-        double Bpro2_i=0;
-        double Bpro2_j=0;
-        if(kernel.b2_i>0)
-        {
-            Bpro2_i = local.BPred[0]*kernel.dp[0] + local.BPred[1]*kernel.dp[1] + local.BPred[2]*kernel.dp[2];
-            Bpro2_i *= Bpro2_i / (kernel.b2_i * kernel.r*kernel.r);
-        }
-        if(kernel.b2_j>0)
-        {
-            Bpro2_j = BPred_j[0]*kernel.dp[0] + BPred_j[1]*kernel.dp[1] + BPred_j[2]*kernel.dp[2];
-            Bpro2_j *= Bpro2_j / (kernel.b2_j * kernel.r*kernel.r);
-        }
-#else
-        // these are already calculated in MAGNETIC_SIGNALVEL above
-        Bpro2_i /= kernel.b2_i;
-        Bpro2_j /= kernel.b2_j;
-#endif
-        conduction_wt *= 2.0 * local.Kappa_Conduction*Bpro2_i*SphP[j].Kappa_Conduction*Bpro2_j /
-        (local.Kappa_Conduction*Bpro2_i + SphP[j].Kappa_Conduction*Bpro2_j);
-#else
-        conduction_wt *= 2.0 * local.Kappa_Conduction*SphP[j].Kappa_Conduction/(local.Kappa_Conduction + SphP[j].Kappa_Conduction);
-        // this uses geometric-weighted kappa (as advocated by Cleary & Monaghan '99 for stability):
-        //    equally valid (slightly more accurate, but less stable) is to use arithmetic mean: = (local.Kappa_Conduction + SphP[j].Kappa_Conduction)
-#endif
-        // compute actual change that will occur this timestep //
-        conduction_wt *= dt_hydrostep; // all in physical units //
-        if(fabs(conduction_wt) > 0)
-        {
-            // enforce a limiter for stability (to prevent artificial oscillations) //
-            double du_ij_cond = 0.25*DMIN(DMIN(0.5*fabs(local.Mass*kernel.spec_egy_u_i-P[j].Mass*SphP[j].InternalEnergyPred),local.Mass*kernel.spec_egy_u_i),P[j].Mass*SphP[j].InternalEnergyPred);
-            if(fabs(conduction_wt)>du_ij_cond) {conduction_wt *= du_ij_cond/fabs(conduction_wt);}
-            // now apply time rate of change to particle 'i'
-            Fluxes.p += conduction_wt / dt_hydrostep;
-        } // if(conduction_wt > 0)
-        
-#else
+        double d_scalar = scalar_i - scalar_j;
+        double rho_i, rho_j, rho_ij;
+        rho_i = local.Density*All.cf_a3inv; rho_j = SphP[j].Density*All.cf_a3inv; rho_ij = 0.5*(rho_i+rho_j); // physical units
         
         // NOT SPH: Now we use the more accurate finite-volume formulation, with the effective faces we have already calculated //
+        double *grad_i = local.Gradients.InternalEnergy;  // physical u / code length
+        double *grad_j = SphP[j].Gradients.InternalEnergy;
         
-        double conduction_wt;
-        double wt_i,wt_j;
-        wt_i = wt_j = 0.5;
-        //wt_i = PPP[j].Hsml / (PPP[j].Hsml + local.Hsml); wt_j = 1.-wt_i; // this is consistent with our second-order face location //
-        conduction_wt = wt_i*local.Kappa_Conduction + wt_j*SphP[j].Kappa_Conduction; // arithmetic mean
-        //conduction_wt = 2.0 * (local.Kappa_Conduction * SphP[j].Kappa_Conduction) / (local.Kappa_Conduction + SphP[j].Kappa_Conduction); // geometric mean
-        conduction_wt *= All.cf_atime; // based on units TD_DiffCoeff is defined with, this makes it physical for a dimensionless quantity gradient below
-        /* if we use -DIFFUSIVITIES-, we need a density here; if we use -CONDUCTIVITITIES-, no density */
-        // conduction_wt *= Riemann_out.Face_Density;
-        
-        double cmag = 0.0;
-        double c_max = 0.0;
+        double flux_wt = rho_ij;
+        double diffusion_wt = 0.5*(kappa_i+kappa_j);
+        int do_isotropic = 1;
+        double b_hll=1, cmag=0, wt_i=0.5, wt_j=0.5, grad_dot_x_ij = 0;
+        double grad_ij[3];
+        for(k=0;k<3;k++)
+        {
+            double q_grad = wt_i*grad_i[k] + wt_j*grad_j[k];
+            double q_direct = d_scalar * kernel.dp[k] * rinv*rinv; // physical u / code length
+            grad_dot_x_ij += q_grad * kernel.dp[k]; // physical u
 #ifdef MAGNETIC
-        double B_interface[3];
-        /* should use the solution in the appropriate face of the Riemann problem for interface values */
-        for(k=0;k<3;k++)
-        {
-            //B_interface[k] = 0.5 * (local.BPred[k] + BPred_j[k]) * All.cf_a2inv;
-            B_interface[k] = Riemann_out.Face_B[k];
-        }
-        double B_interface_mag = 0.0;
-        double B_interface_dot_grad_T = 0.0;
-        for(k=0;k<3;k++)
-        {
-            B_interface_dot_grad_T += B_interface[k] * (wt_i*local.Gradients.InternalEnergy[k]
-                                                        + wt_j*SphP[j].Gradients.InternalEnergy[k]);
-            B_interface_mag += B_interface[k] * B_interface[k];
-        }
-        if(B_interface_mag > 0)
-        {
-            for(k=0;k<3;k++)
-            {
-                c_max += Face_Area_Vec[k] * kernel.dp[k];
-                cmag += B_interface[k] * Face_Area_Vec[k];
-            }
-            cmag *= B_interface_dot_grad_T / B_interface_mag;
-        } else {
-            /* no magnetic field; use isotropic conduction equation */
-            for(k=0;k<3;k++)
-            {
-                c_max+=Face_Area_Vec[k] * kernel.dp[k];
-                cmag += Face_Area_Vec[k] * (wt_i*local.Gradients.InternalEnergy[k]
-                                            + wt_j*SphP[j].Gradients.InternalEnergy[k]);
-            }
-        }
+            grad_ij[k] = MINMOD_G(q_grad , q_direct);
+            if(q_grad*q_direct < 0) {if(fabs(q_direct) > 5.*fabs(q_grad)) {grad_ij[k] = 0.0;}}
 #else
-        for(k=0;k<3;k++)
+            grad_ij[k] = MINMOD(q_grad , q_direct);
+#endif
+        }
+#ifdef MAGNETIC
+        if(bhat_mag > 0)
         {
-            c_max += Face_Area_Vec[k] * kernel.dp[k];
-            cmag += Face_Area_Vec[k] * (wt_i*local.Gradients.InternalEnergy[k]
-                                        + wt_j*SphP[j].Gradients.InternalEnergy[k]);
+            do_isotropic = 0;
+            double B_interface_dot_grad_T = 0.0, grad_mag = 0.0;
+            for(k=0;k<3;k++)
+            {
+                B_interface_dot_grad_T += bhat[k] * grad_ij[k];
+                grad_mag += grad_ij[k]*grad_ij[k];
+            }
+            for(k=0;k<3;k++) {cmag += bhat[k] * Face_Area_Vec[k];} // physical
+            cmag *= B_interface_dot_grad_T; // physical / code length
+            if(grad_mag > 0) {grad_mag = sqrt(grad_mag);} else {grad_mag=1;}
+            b_hll = B_interface_dot_grad_T / grad_mag; // physical
+            b_hll *= b_hll; // physical
         }
 #endif
+        if(do_isotropic) {for(k=0;k<3;k++) {cmag += Face_Area_Vec[k] * grad_ij[k];}}
+        cmag /= All.cf_atime; // cmag has units of u/r -- convert to physical
+        
+        /* obtain HLL correction terms for Reimann problem solution */
+        double d_scalar_tmp = d_scalar - grad_dot_x_ij; // physical
+        double d_scalar_hll = MINMOD(d_scalar , d_scalar_tmp);
+        double hll_corr = b_hll * flux_wt * HLL_correction(d_scalar_hll, 0, flux_wt, diffusion_wt) / (-diffusion_wt); // physical
+        double cmag_corr = cmag + hll_corr;
+        cmag = MINMOD(HLL_DIFFUSION_COMPROMISE_FACTOR*cmag, cmag_corr);
         /* slope-limiter to ensure heat always flows from hot to cold */
-        c_max *= rinv*rinv;
-        double du_cond = local.InternalEnergyPred-SphP[j].InternalEnergyPred;
-        cmag = MINMOD(MINMOD(MINMOD(cmag , c_max*du_cond), fabs(c_max)*du_cond) , Face_Area_Norm*du_cond*rinv);
-        //double c_max = 1.0 * Face_Area_Norm * (local.InternalEnergyPred-SphP[j].InternalEnergyPred) * rinv; // inter-particle gradient times tolerance //
-        //cmag = MINMOD(c_max,cmag);
+        double d_scalar_b = b_hll * d_scalar; // physical
+        double f_direct = Face_Area_Norm*d_scalar_b*rinv/All.cf_atime; // physical
+        double check_for_stability_sign = f_direct*cmag; // physical
+        if((check_for_stability_sign < 0) && (fabs(f_direct) > HLL_DIFFUSION_OVERSHOOT_FACTOR*fabs(cmag))) {cmag = 0;}
+        cmag *= -diffusion_wt; /* multiply through coefficient to get flux (physical units) */
         
-        /* now multiply through the coefficient to get the actual flux */
-        cmag *= -conduction_wt;
         
-        /* follow that with a fluxlimiter as well */
-        conduction_wt = dt_hydrostep * cmag; // all in physical units //
-        if(fabs(conduction_wt) > 0)
+        /* follow that with a flux limiter as well */
+        diffusion_wt = dt_hydrostep * cmag; // all in physical units //
+        if(fabs(diffusion_wt) > 0)
         {
             // enforce a flux limiter for stability (to prevent overshoot) //
-            double du_ij_cond = 0.5*DMIN(DMIN(0.5*fabs(DMIN(local.Mass,P[j].Mass)*(local.InternalEnergyPred-SphP[j].InternalEnergyPred)),
-                                              local.Mass*local.InternalEnergyPred),
-                                         P[j].Mass*SphP[j].InternalEnergyPred);
-            if(fabs(conduction_wt)>du_ij_cond) {conduction_wt *= du_ij_cond/fabs(conduction_wt);}
-            Fluxes.p += conduction_wt / dt_hydrostep;
-        } // if(conduction_wt > 0)
-        
-#endif // end of SPH/NOT SPH check
+            //double du_ij_cond = 1.0*DMIN(local.Mass*scalar_i, P[j].Mass*scalar_j);
+            double du_ij_cond = DMIN( 0.25*fabs(local.Mass*scalar_i-P[j].Mass*scalar_j) , DMAX(local.Mass*scalar_i , P[j].Mass*scalar_j));
+            if(check_for_stability_sign<0) {du_ij_cond *= 1.e-2;}
+            if(fabs(diffusion_wt)>du_ij_cond) {diffusion_wt *= du_ij_cond/fabs(diffusion_wt);}
+            Fluxes.p += diffusion_wt / dt_hydrostep;
+        } // if(diffusion_wt > 0)
         
     } // close check that kappa and particle masses are positive
 }

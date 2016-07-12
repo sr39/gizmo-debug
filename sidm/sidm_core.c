@@ -28,7 +28,7 @@
  *  It checks if comoving integration is on and does the necesary change of
  *  variables and units.
  */
-double prob_of_interaction(double r, double h_si, double Vtarget[3], double Vno[3], int dt_step)
+double prob_of_interaction(double mass, double r, double h_si, double Vtarget[3], double Vno[3], int dt_step)
 {
     double dT, dloga, dV, dvx, dvy, dvz, prob,h,hubble_a,mp;
     
@@ -45,7 +45,7 @@ double prob_of_interaction(double r, double h_si, double Vtarget[3], double Vno[
         dloga = (dt_step)*All.Timebase_interval;
         hubble_a = (All.Omega0 / (All.Time * All.Time * All.Time)
                     + (1 - All.Omega0 - All.OmegaLambda) / (All.Time * All.Time) + All.OmegaLambda);
-        hubble_a = All.Hubble * sqrt(hubble_a);
+        hubble_a = All.Hubble_H0_CodeUnits * sqrt(hubble_a);
         dT = dloga/hubble_a;
         
         dV = dV/All.Time; /* Convert from internal velocity p = a^2 dx/dt to peculiar velocity v = a dx/dt*/
@@ -57,7 +57,7 @@ double prob_of_interaction(double r, double h_si, double Vtarget[3], double Vno[
         h = h_si;
     }
     
-    mp =  All.MassTable[1]*All.UnitMass_in_g;
+    mp =   mass * All.UnitMass_in_g;
     prob = mp*All.InteractionCrossSection*dV*dT*g_geo(r/h)/(h*h*h*All.UnitLength_in_cm*All.UnitLength_in_cm);
     
     return prob/2; /* We need the factor of 2 because we are double counting pair interaction probabiliies */

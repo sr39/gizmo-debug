@@ -37,64 +37,58 @@ int old_MaxPart = 0, new_MaxPart;
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel (volker.springel@h-its.org). The code has been modified
  * in part (adding/removing read/write items, allowing for different variables 
- * to be changed or re-initialized on restars, and changing variable units as necessary)
+ * to be changed or re-initialized on restarts, and changing variable units as necessary)
  * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
 void restart(int modus)
 {
-  char buf[200], buf_bak[200], buf_mv[500];
-  double save_PartAllocFactor;
-  int nprocgroup, masterTask, groupTask;
-  struct global_data_all_processes all_task0;
-  int nmulti = MULTIPLEDOMAINS;
-
+    char buf[200], buf_bak[200], buf_mv[500];
+    double save_PartAllocFactor;
+    int nprocgroup, masterTask, groupTask;
+    struct global_data_all_processes all_task0;
+    int nmulti = MULTIPLEDOMAINS;
+    
 #if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  int bhbuffer;
+    int bhbuffer;
 #endif
-
-
-  if(ThisTask == 0 && modus == 0)
+    
+    
+    if(ThisTask == 0 && modus == 0)
     {
-      sprintf(buf, "%s/restartfiles", All.OutputDir);
-      mkdir(buf, 02755);
+        sprintf(buf, "%s/restartfiles", All.OutputDir);
+        mkdir(buf, 02755);
+#ifndef NOCALLSOFSYSTEM
+        int i_Task_iter;
+        for(i_Task_iter=0; i_Task_iter<NTask; i_Task_iter++)
+        {
+            sprintf(buf, "%s/restartfiles/%s.%d", All.OutputDir, All.RestartFile, i_Task_iter);
+            sprintf(buf_bak, "%s/restartfiles/%s.%d.bak", All.OutputDir, All.RestartFile, i_Task_iter);
+            rename(buf,buf_bak); // move old restart files to .bak files //
+        }
+#endif
     }
-  MPI_Barrier(MPI_COMM_WORLD);
-
-  sprintf(buf, "%s/restartfiles/%s.%d", All.OutputDir, All.RestartFile, ThisTask);
-  sprintf(buf_bak, "%s/restartfiles/%s.%d.bak", All.OutputDir, All.RestartFile, ThisTask);
-  sprintf(buf_mv, "mv %s %s", buf, buf_bak);
-
-  if((NTask < All.NumFilesWrittenInParallel))
+    MPI_Barrier(MPI_COMM_WORLD);
+    
+    sprintf(buf, "%s/restartfiles/%s.%d", All.OutputDir, All.RestartFile, ThisTask);
+    sprintf(buf_bak, "%s/restartfiles/%s.%d.bak", All.OutputDir, All.RestartFile, ThisTask);
+    sprintf(buf_mv, "mv %s %s", buf, buf_bak);
+    
+    if((NTask < All.NumFilesWrittenInParallel))
     {
-      printf
-	("Fatal error.\nNumber of processors must be a smaller or equal than `NumFilesWrittenInParallel'.\n");
-      endrun(2131);
+        printf
+        ("Fatal error.\nNumber of processors must be greater than or equal to `NumFilesWrittenInParallel'.\n");
+        endrun(2131);
     }
-
-  nprocgroup = NTask / All.NumFilesWrittenInParallel;
-
-  if((NTask % All.NumFilesWrittenInParallel))
+    
+    nprocgroup = NTask / All.NumFilesWrittenInParallel;
+    
+    if((NTask % All.NumFilesWrittenInParallel))
     {
-      nprocgroup++;
+        nprocgroup++;
     }
 
   masterTask = (ThisTask / nprocgroup) * nprocgroup;
-
-  for(groupTask = 0; groupTask < nprocgroup; groupTask++)
-    {
-      if(ThisTask == (masterTask + groupTask))
-	{
-	  if(!modus)
-	    {
-#ifndef NOCALLSOFSYSTEM
-	      int ret;
-
-	      ret = system(buf_mv);	/* move old restart files to .bak files */
-#endif
-	    }
-	}
-    }
 
   for(groupTask = 0; groupTask < nprocgroup; groupTask++)
     {
@@ -272,6 +266,8 @@ void restart(int modus)
 	  /* now store relevant data for tree */
 
 	  in(&nmulti, modus);
+        in(&NTopleaves, modus);
+        in(&NTopnodes, modus);
 	  if(modus != 0 && nmulti != MULTIPLEDOMAINS)
 	    {
 	      if(ThisTask == 0)
@@ -283,8 +279,6 @@ void restart(int modus)
 	    }
 	  else
 	    {
-	      in(&NTopleaves, modus);
-	      in(&NTopnodes, modus);
 
 	      if(modus)		/* read */
 		{

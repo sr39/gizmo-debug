@@ -45,6 +45,8 @@
 #define ALLOWEXTRAPARAMS        /* don't crash (just warn) if there are extra lines in the input parameterfile */
 #define INHOMOG_GASDISTR_HINT   /* if the gas is distributed very different from collisionless particles, this can helps to avoid problems in the domain decomposition */
 
+#define DO_PREPROCESSOR_EXPAND_(VAL)  VAL ## 1
+#define EXPAND_PREPROCESSOR_(VAL)     DO_PREPROCESSOR_EXPAND_(VAL)
 
 #ifndef DISABLE_SPH_PARTICLE_WAKEUP
 #define WAKEUP   4.1            /* allows 2 timestep bins within kernel */
@@ -72,11 +74,19 @@
 */
 #endif
 
+
+
+/* a 'default' hydro method must be defined: */
+#if !(defined(HYDRO_MESHLESS_FINITE_MASS) || defined(HYDRO_MESHLESS_FINITE_VOLUME) || defined(SPHEQ_TRADITIONAL_SPH) || defined(SPHEQ_DENSITY_INDEPENDENT_SPH))
+#define HYDRO_MESHLESS_FINITE_MASS
+#endif
+
+
 #if (defined(SPHEQ_TRADITIONAL_SPH) || defined(SPHEQ_DENSITY_INDEPENDENT_SPH)) && !defined(HYDRO_SPH)
 #define HYDRO_SPH               /* master flag for SPH: must be enabled if any SPH method is used */
 #endif
 #ifdef HYDRO_SPH
-#ifndef SPHAV_DISABLE_CD10_VISCOSITY
+#ifndef SPHAV_DISABLE_CD10_ARTVISC
 #define SPHAV_CD10_VISCOSITY_SWITCH 0.05   /* Enables Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks) */
 #endif
 #ifndef SPHAV_DISABLE_PM_CONDUCTIVITY
@@ -85,45 +95,282 @@
 #endif
 
 
-#if defined(EOS_DEGENERATE) || defined(COSMIC_RAYS)
-#define NON_IDEAL_EOS
+#include "eos/eos.h"
+
+
+#ifdef FIRE_PHYSICS_DEFAULTS
+#define COOLING
+#define COOL_LOW_TEMPERATURES
+#define COOL_METAL_LINES_BY_SPECIES
+#define GALSF
+#define METALS
+#define GALSF_SFR_MOLECULAR_CRITERION
+#define GALSF_SFR_VIRIAL_SF_CRITERION 0
+#define GALSF_FB_GASRETURN
+#define GALSF_FB_HII_HEATING
+#define GALSF_FB_SNE_HEATING 1
+#define GALSF_FB_RT_PHOTONMOMENTUM
+#define GALSF_FB_LOCAL_UV_HEATING
+#define GALSF_FB_RPWIND_LOCAL
+#define GALSF_FB_RPROCESS_ENRICHMENT 6
+#define GALSF_SFR_IMF_VARIATION
 #endif
+
+
+
 #ifdef COSMIC_RAYS
 #define GAMMA_COSMICRAY (4.0/3.0)
 #define GAMMA_COSMICRAY_MINUS1 (GAMMA_COSMICRAY-1)
 #endif
 
-
-#if defined(CONDUCTION) || defined(TURB_DIFF_ENERGY) || defined(NON_IDEAL_EOS)
-#define DOGRAD_INTERNAL_ENERGY 1
+#if defined(GRACKLE) 
+#if !defined(COOLING)
+#define COOLING
+#endif
+#include <grackle.h>
 #endif
 
-#if defined(NON_IDEAL_EOS)
-#define DOGRAD_SOUNDSPEED 1
+
+
+#ifdef SINGLE_STAR_FORMATION
+#define GALSF // master switch needed to enable various frameworks
+#define GALSF_SFR_VIRIAL_SF_CRITERION 2 // only allow star formation in virialized sub-regions meeting Jeans threshold
+#define METALS  // metals should be active for stellar return
+#define BLACK_HOLES // need to have black holes active since these are our sink particles
+#ifdef SINGLE_STAR_ACCRETION
+#define BH_SWALLOWGAS // need to swallow gas [part of sink model]
+#define BH_GRAVCAPTURE_GAS // use gravitational capture swallow criterion for resolved gravitational capture
+#if (SINGLE_STAR_ACCRETION > 0)
+#define BH_ALPHADISK_ACCRETION // swallowed gas goes to disk
+#endif
+#if (SINGLE_STAR_ACCRETION > 1)
+#define BH_BONDI 0 // use Bondi accretion for diffuse gas
+#endif
+#if (SINGLE_STAR_ACCRETION > 2)
+#define BH_SUBGRIDBHVARIABILITY // model sub-grid [unresolved] variability in accretion rates for Bondi
+#endif
+#endif
+#define BH_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
+//#GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory
+#ifdef SINGLE_STAR_FB_HEATING
+#define GALSF_FB_RT_PHOTONMOMENTUM  // turn on FIRE RT approximation: no Type-4 particles so don't worry about its approximations
+#define BH_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework. make sure BH_FluxMomentumFactor=0 to avoid launching winds this way!!!
+#define BH_COMPTON_HEATING // turn on the heating term: this just calculates incident BH-particle flux, to be used in the cooling routine
+#endif
+#ifdef SINGLE_STAR_FB_JETS
+#define BH_BAL_WINDS // use kinetic feedback module for protostellar jets
+#endif
+#ifdef SINGLE_STAR_PROMOTION
+#define GALSF_FB_GASRETURN // stellar winds [scaled appropriately for particle masses]
+#define GALSF_FB_HII_HEATING // FIRE approximate photo-ionization [for particle masses; could also use real-RT]
+#define GALSF_FB_SNE_HEATING 1 // allow SNe in promoted stars [at end of main sequence lifetimes]
+#define GALSF_FB_RPWIND_LOCAL // local radiation pressure [scaled with mass, single-scattering term here]
+#define GALSF_FB_RPWIND_CONTINUOUS // force the local rad-pressure term to be continuous instead of small impulses
+#endif
+// if not using grackle modules, need to make sure appropriate cooling is enabled
+#if defined(COOLING) && !defined(GRACKLE)
+#ifndef COOL_LOW_TEMPERATURES
+#define COOL_LOW_TEMPERATURES // make sure low-temperature cooling is enabled!
+#endif
+#ifndef COOL_METAL_LINES_BY_SPECIES
+#define COOL_METAL_LINES_BY_SPECIES // metal-based cooling enabled
+#endif
+#endif
+#endif // SINGLE_STAR_FORMATION
+
+
+
+
+
+
+#ifdef CONSTRAINED_GRADIENT_MHD
+/* make sure mid-point gradient calculation for cleaning terms is enabled */
+#ifndef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#define CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#endif
+#endif
+/* these are tolerances for the slope-limiters. we define them here, because the gradient constraint routine needs to
+    be sure to use the -same- values in both the gradients and reimann solver routines */
+#if CONSTRAINED_GRADIENT_MHD
+#if (CONSTRAINED_GRADIENT_MHD > 1)
+#define CONSTRAINED_GRADIENT_MHD_FAC_MINMAX 7.5
+#define CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV 5.0
+#define CONSTRAINED_GRADIENT_MHD_FAC_MED_PM 0.25
+#define CONSTRAINED_GRADIENT_MHD_FAC_MAX_PM 0.25
+#else
+#define CONSTRAINED_GRADIENT_MHD_FAC_MINMAX 7.5
+#define CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV 1.5
+#define CONSTRAINED_GRADIENT_MHD_FAC_MED_PM 0.2
+#define CONSTRAINED_GRADIENT_MHD_FAC_MAX_PM 0.2
+#endif
+#else
+#define CONSTRAINED_GRADIENT_MHD_FAC_MINMAX 2.0
+#define CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV 1.0
+#define CONSTRAINED_GRADIENT_MHD_FAC_MED_PM 0.20
+#define CONSTRAINED_GRADIENT_MHD_FAC_MAX_PM 0.125
 #endif
 
-#if defined(BLACK_HOLES) || defined(RADTRANSFER) || defined(GALSF_FB_RPWIND_FROMSTARS) || defined(BH_POPIII_SEEDS) || defined(GALSF_FB_LOCAL_UV_HEATING) || defined(BH_PHOTONMOMENTUM) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTON_LOCALATTEN )
+
+#if defined(GALSF_FB_RPWIND_LOCAL) && !defined(GALSF_FB_RPWIND_FROMSFR)
+#define GALSF_FB_RPWIND_FROMSTARS
+#endif
+
+/* force 'master' flags to be enabled for the appropriate methods, if we have enabled something using those methods */
+
+/* options for FIRE RT method */
+#if defined(GALSF_FB_RT_PHOTONMOMENTUM)
+#ifndef RT_FIRE
+#define RT_FIRE
+#endif
+#endif
+#if defined(RT_FIRE)
+// use gravity tree for flux propagation
+#define RT_USE_GRAVTREE
+#endif
+
+#ifdef RT_FLUXLIMITEDDIFFUSION
+#define RT_OTVET /* for FLD, we use the OTVET architecture, but then just set the tensor to isotropic */
+#endif
+
+/* options for OTVET module */
+#if defined(RT_OTVET)
+// RADTRANSFER is ON, obviously
+#ifndef RADTRANSFER
+#define RADTRANSFER
+#endif
+// need to solve a diffusion equation
+#ifndef RT_DIFFUSION
+#define RT_DIFFUSION
+#endif
+// use gravity tree for Eddington tensor
+#define RT_USE_GRAVTREE
+// and be sure to track luminosity locations 
+#ifndef RT_SEPARATELY_TRACK_LUMPOS
+#define RT_SEPARATELY_TRACK_LUMPOS
+#endif
+// need source injection enabled to define emissivity
+#define RT_SOURCE_INJECTION
+#if !defined(RT_DIFFUSION_IMPLICIT) && !defined(RT_DIFFUSION_EXPLICIT)
+#define RT_DIFFUSION_EXPLICIT // default to explicit (more accurate) solver //
+#endif
+#endif
+
+/* options for M1 module */
+#if defined(RT_M1)
+// RADTRANSFER is ON, obviously
+#ifndef RADTRANSFER
+#define RADTRANSFER
+#endif
+// need to solve a diffusion equation
+#ifndef RT_DIFFUSION
+#define RT_DIFFUSION
+#endif
+// need source injection enabled to define emissivity
+#define RT_SOURCE_INJECTION
+// and need to evolve fluxes
+#define RT_EVOLVE_FLUX
+// at the moment, this only works for explicit solutions, so set this on
+#ifndef RT_DIFFUSION_EXPLICIT
+#define RT_DIFFUSION_EXPLICIT
+#endif
+#endif
+
+
+/* decide which diffusion method to use (for any diffusion-based method) */
+#if defined(RT_DIFFUSION) && !defined(RT_DIFFUSION_EXPLICIT)
+#define RT_DIFFUSION_CG
+#endif
+/* check if flux-limiting is disabled: it should be on by default with diffusion-based methods */
+#if (defined(RT_DIFFUSION)) && !defined(RT_DISABLE_FLUXLIMITER)
+#define RT_FLUXLIMITER
+#endif
+/* check if we are -explicitly- evolving the radiation field, in which case we need to carry time-derivatives of the field */
+#if defined(RT_DIFFUSION_EXPLICIT)
+#define RT_EVOLVE_NGAMMA
+#endif
+
+/* enable radiation pressure forces unless they have been explicitly disabled */
+#if defined(RADTRANSFER) && !defined(RT_DISABLE_RAD_PRESSURE)
+#define RT_RAD_PRESSURE_FORCES
+#endif
+
+#if ((defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_FORCES) || defined(RT_DIFFUSION_EXPLICIT)) && !defined(RT_EVOLVE_FLUX)) && !defined(RT_EVOLVE_EDDINGTON_TENSOR)
+#define RT_EVOLVE_EDDINGTON_TENSOR
+#endif
+
+/* enable appropriate chemistry flags if we are using the photoionization modules */
+#if defined(RT_CHEM_PHOTOION)
+#if (RT_CHEM_PHOTOION > 1)
+/* enables multi-frequency radiation transport for ionizing photons. Integration variable is the ionising intensity J_nu */
+#define RT_CHEM_PHOTOION_HE
+#define RT_PHOTOION_MULTIFREQUENCY // if using He-ionization, default to multi-frequency RT [otherwise doesn't make sense] //
+#endif
+#endif
+
+
+#if defined(RT_XRAY)
+#if (RT_XRAY == 1)
+#define RT_SOFT_XRAY
+#endif
+#if (RT_XRAY == 2)
+#define RT_HARD_XRAY
+#endif
+#if (RT_XRAY == 3)
+#define RT_SOFT_XRAY
+#define RT_HARD_XRAY
+#endif
+#endif
+
+
+/* default to speed-of-light equal to actual speed-of-light, and stars as photo-ionizing sources */
+#ifndef RT_SPEEDOFLIGHT_REDUCTION
+#define RT_SPEEDOFLIGHT_REDUCTION 1.0
+#endif
+#ifndef RT_SOURCES
+#define RT_SOURCES 16
+#endif
+
+/* cooling must be enabled for RT cooling to function */
+#if defined(RT_COOLING_PHOTOHEATING_OLDFORMAT) && !defined(COOLING)
+#define COOLING
+#endif
+
+#if !defined(RT_USE_GRAVTREE) && defined(RT_NOGRAVITY) && !defined(NOGRAVITY)
+#define NOGRAVITY // safely define NOGRAVITY in this case, otherwise we act like there is gravity except in the final setting of accelerations
+#endif
+
+
+
+#if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER) || defined(GALSF_FB_RPWIND_FROMSTARS) || defined(BH_POPIII_SEEDS) || defined(GALSF_FB_LOCAL_UV_HEATING) || defined(BH_PHOTONMOMENTUM) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(RT_FIRE)
 #define DO_DENSITY_AROUND_STAR_PARTICLES
 #endif
 
 
+#if !defined(HYDRO_SPH) && !defined(MAGNETIC) && !defined(COSMIC_RAYS)
+//#define ENERGY_ENTROPY_SWITCH_IS_ACTIVE
+/* this is a ryu+jones type energy/entropy switch. it can help with some problems, but can also generate significant 
+ errors in other types of problems. in general, even for pure hydro, this isn't recommended; use it for special problems if you know what you are doing. */
+#endif
+
 
 #ifdef MAGNETIC
-/* always-recommended MHD switches -- no excuse for these being off! */
-#define MAGNETIC_SIGNALVEL          /* extend definition of signal velocity by the magneto sonic waves */
-#define ALFVEN_VEL_LIMITER 100      /* Limits the contribution of the Alfven waves to the signal velocity */
-/* usually-recommended MHD switches -- only turn these off for de-bugging */
+/* recommended MHD switches -- only turn these off for de-bugging */
 #define DIVBCLEANING_DEDNER         /* hyperbolic/parabolic div-cleaing (Dedner 2002), with TP improvements */
 /* MHD switches specific to SPH MHD */
 #ifdef HYDRO_SPH
-#define SPH_ARTIFICIAL_RESISTIVITY        /* turns on magnetic dissipation ('artificial resistivity') */
-#define TRICCO_RESISTIVITY_SWITCH   /* uses tricco switch =h*|gradB|/|B| */
+#define SPH_TP12_ARTIFICIAL_RESISTIVITY   /* turns on magnetic dissipation ('artificial resistivity'): uses tricco switch =h*|gradB|/|B| */
 #endif
 #endif
 
 
 #if defined(TURB_DIFF_ENERGY) || defined(TURB_DIFF_VELOCITY) || defined(TURB_DIFF_MASS) || defined(TURB_DIFF_METALS)
 #define TURB_DIFFUSION /* master switch to calculate properties needed for scalar turbulent diffusion/mixing: must enable with any specific version */
+#if defined(TURB_DIFF_VELOCITY) && !defined(VISCOSITY)
+#define VISCOSITY
+#endif
+#if defined(TURB_DIFF_ENERGY) && !defined(CONDUCTION)
+#define CONDUCTION
+#endif
 #endif
 
 
@@ -132,6 +379,8 @@
 #define COMPUTE_POTENTIAL_ENERGY
 #endif
 #endif
+
+
 
 #ifdef SHEARING_BOX
 /* set default compile-time flags for the shearing-box (or shearing-sheet) boundaries */
@@ -161,7 +410,32 @@
 #ifndef ANALYTIC_GRAVITY
 #define ANALYTIC_GRAVITY
 #endif
+/* if self-gravity is on, we need to make sure the gravitational forces are not periodic. this is going to cause some errors at the x/y 'edges', 
+    but for now at least, the periodic gravity routines (particularly the FFT's involved) require a regular periodic map, they cannot handle the 
+    non-standard map that the shearing box represents. */
+#ifndef GRAVITY_NOT_PERIODIC
+#define GRAVITY_NOT_PERIODIC
+#endif
 #endif // SHEARING_BOX
+
+
+
+
+#if defined(CONDUCTION) || defined(EOS_GENERAL)
+#define DOGRAD_INTERNAL_ENERGY 1
+#endif
+
+#if defined(EOS_GENERAL)
+#define DOGRAD_SOUNDSPEED 1
+#endif
+
+#if defined(CONDUCTION) || defined(VISCOSITY) || defined(TURB_DIFFUSION) || defined(MHD_NON_IDEAL) || (defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_DIFFUSION)) || (defined(RT_DIFFUSION_EXPLICIT) && !defined(RT_EVOLVE_FLUX))
+#ifndef DISABLE_SUPER_TIMESTEPPING
+//#define SUPER_TIMESTEP_DIFFUSION
+#endif
+#endif
+
+
 
 /*------- Things that are always recommended -------*/
 
@@ -175,25 +449,13 @@
 #endif
 
 #include "tags.h"
-/*! assert.h: defn of an assertation macro that matches the old PSPH/Gadget-Framework better than standard defn
- */
-#ifndef DEBUG
-#define assert(expr)
-#else
-#ifdef __func__
-#define assert(expr) if (!(expr)) { printf("ASSERTATION FAULT: File: %s -- %s() -- Line: %i -- Assertation (%s) failed.\n", __FILE__, __func__, __LINE__, __STRING(expr) ); fflush(stdout); endrun(1337); }
-#else
-#define assert(expr) if (!(expr)) { printf("ASSERTATION FAULT: File: %s -- Line: %i -- Assertation (%s) failed.\n", __FILE__, __LINE__, __STRING(expr) ); fflush(stdout); endrun(1337); }
-#endif
-#endif
+#include <assert.h>
 
-#ifdef EOS_DEGENERATE
-#include "helm_eos.h"
-#endif
 
 #ifdef NUCLEAR_NETWORK
-#include "network.h"
-#include "integrate.h"
+#include "nuclear/nuclear_network.h"
+void network_normalize(double *x, double *e, const struct network_data *nd, struct network_workspace *nw);
+int network_integrate( double temp, double rho, const double *x, double *dx, double dt, double *dedt, double *drhodt, const struct network_data *nd, struct network_workspace *nw );
 #endif
 
 
@@ -219,15 +481,6 @@
 #define ALIGN(n) 
 #endif
 
-#ifdef PERIODIC
-#define NEAREST_X(x) (((x)>boxHalf_X)?((x)-boxSize_X):(((x)<-boxHalf_X)?((x)+boxSize_X):(x)))
-#define NEAREST_Y(y) (((y)>boxHalf_Y)?((y)-boxSize_Y):(((y)<-boxHalf_Y)?((y)+boxSize_Y):(y)))
-#define NEAREST_Z(z) (((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
-#else
-#define NEAREST_X(x) (x)
-#define NEAREST_Y(y) (y)
-#define NEAREST_Z(z) (z)
-#endif
 
 #define ASSIGN_ADD(x,y,mode) (mode == 0 ? (x=y) : (x+=y))
 
@@ -253,13 +506,78 @@ typedef  int integertime;
 #endif
 
 
-#ifdef RADTRANSFER
-#ifndef RT_MULTI_FREQUENCY
-#define N_RT_FREQ_BINS 1
+#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
+#define RT_BIN0 (-1)
+
+#ifndef RT_CHEM_PHOTOION
+#define RT_FREQ_BIN_H0 (RT_BIN0+0)
 #else
-#define N_RT_FREQ_BINS 4
+#define RT_FREQ_BIN_H0 (RT_BIN0+1)
 #endif
+
+#ifndef RT_PHOTOION_MULTIFREQUENCY
+#define RT_FREQ_BIN_He0 (RT_FREQ_BIN_H0+0)
+#define RT_FREQ_BIN_He1 (RT_FREQ_BIN_He0+0)
+#define RT_FREQ_BIN_He2 (RT_FREQ_BIN_He1+0)
+#else
+#define RT_FREQ_BIN_He0 (RT_FREQ_BIN_H0+1)
+#define RT_FREQ_BIN_He1 (RT_FREQ_BIN_He0+1)
+#define RT_FREQ_BIN_He2 (RT_FREQ_BIN_He1+1)
 #endif
+
+#ifndef GALSF_FB_RT_PHOTONMOMENTUM
+#define RT_FREQ_BIN_FIRE_UV (RT_FREQ_BIN_He2+0)
+#define RT_FREQ_BIN_FIRE_OPT (RT_FREQ_BIN_FIRE_UV+0)
+#define RT_FREQ_BIN_FIRE_IR (RT_FREQ_BIN_FIRE_OPT+0)
+#else
+#define RT_FREQ_BIN_FIRE_UV (RT_FREQ_BIN_He2+1)
+#define RT_FREQ_BIN_FIRE_OPT (RT_FREQ_BIN_FIRE_UV+1)
+#define RT_FREQ_BIN_FIRE_IR (RT_FREQ_BIN_FIRE_OPT+1)
+#endif
+
+#ifndef RT_SOFT_XRAY
+#define RT_FREQ_BIN_SOFT_XRAY (RT_FREQ_BIN_FIRE_IR+0)
+#else
+#define RT_FREQ_BIN_SOFT_XRAY (RT_FREQ_BIN_FIRE_IR+1)
+#endif
+
+#ifndef RT_HARD_XRAY
+#define RT_FREQ_BIN_HARD_XRAY (RT_FREQ_BIN_SOFT_XRAY+0)
+#else
+#define RT_FREQ_BIN_HARD_XRAY (RT_FREQ_BIN_SOFT_XRAY+1)
+#endif
+
+#ifndef RT_PHOTOELECTRIC
+#define RT_FREQ_BIN_PHOTOELECTRIC (RT_FREQ_BIN_HARD_XRAY+0)
+#else
+#define RT_FREQ_BIN_PHOTOELECTRIC (RT_FREQ_BIN_HARD_XRAY+1)
+#endif
+
+#ifndef RT_LYMAN_WERNER
+#define RT_FREQ_BIN_LYMAN_WERNER (RT_FREQ_BIN_PHOTOELECTRIC+0)
+#else
+#define RT_FREQ_BIN_LYMAN_WERNER (RT_FREQ_BIN_PHOTOELECTRIC+1)
+#endif
+
+#ifndef RT_OPTICAL_NIR
+#define RT_FREQ_BIN_OPTICAL_NIR (RT_FREQ_BIN_LYMAN_WERNER+0)
+#else
+#define RT_FREQ_BIN_OPTICAL_NIR (RT_FREQ_BIN_LYMAN_WERNER+1)
+#endif
+
+
+/* be sure to add all new wavebands to these lists, or else we will run into problems */
+/* ALSO, the IR bin here should be the last bin: add additional bins ABOVE this line */
+#ifndef RT_INFRARED
+#define RT_FREQ_BIN_INFRARED (RT_FREQ_BIN_OPTICAL_NIR+0)
+#else
+#define RT_FREQ_BIN_INFRARED (RT_FREQ_BIN_OPTICAL_NIR+1)
+#endif
+
+#define N_RT_FREQ_BINS (RT_FREQ_BIN_INFRARED+1)
+
+#endif // #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
+
 
 #ifndef  MULTIPLEDOMAINS
 #define  MULTIPLEDOMAINS     8
@@ -276,6 +594,15 @@ typedef  int integertime;
 #define  NUMBER_OF_MEASUREMENTS_TO_RECORD  6  /* this is the number of past executions of a timebin that the reported average CPU-times average over */
 
 #define  NODELISTLENGTH      8
+
+
+#define EPSILON_FOR_TREERND_SUBNODE_SPLITTING (1.0e-3) /* define some number << 1; particles with less than this separation will trigger randomized sub-node splitting in the tree.
+                                                            we set it to a global value here so that other sub-routines will know not to force particle separations below this */
+
+#ifdef GALSF_SFR_IMF_VARIATION
+#define N_IMF_FORMPROPS  13  /*!< formation properties of star particles to record for output */
+#endif
+
 
 typedef unsigned long long peanokey;
 
@@ -315,23 +642,32 @@ typedef unsigned long long peanokey;
 #define  report_memory_usage(x, y) printf("Memory manager disabled.\n")
 #endif
 
-#ifndef  GAMMA
+
+#ifdef GAMMA_ENFORCE_ADIABAT
+#define EOS_ENFORCE_ADIABAT (GAMMA_ENFORCE_ADIABAT) /* this allows for either term to be defined, for backwards-compatibility */
+#endif
+
+#if !defined(GAMMA) /* this allows for either term to be defined, for backwards-compatibility */
+#ifndef EOS_GAMMA
 #define  GAMMA         (5.0/3.0)	/*!< adiabatic index of simulated gas */
+#else
+#define  GAMMA         (EOS_GAMMA)
+#endif
 #endif
 
 #define  GAMMA_MINUS1  (GAMMA-1)
 #define  GAMMA_MINUS1_INV  (1./(GAMMA-1))
 
-#ifndef  HYDROGEN_ONLY
+#if !defined(RT_HYDROGEN_GAS_ONLY) || defined(RT_CHEM_PHOTOION_HE)
 #define  HYDROGEN_MASSFRAC 0.76 /*!< mass fraction of hydrogen, relevant only for radiative cooling */
 #else
-#define  HYDROGEN_MASSFRAC 1 /*!< mass fraction of hydrogen, relevant only for radiative cooling */
+#define  HYDROGEN_MASSFRAC 1.0  /*!< mass fraction of hydrogen, relevant only for radiative cooling */
 #endif
 
 #define  MAX_REAL_NUMBER  1e37
 #define  MIN_REAL_NUMBER  1e-37
 
-#ifdef MAGNETIC
+#if (defined(MAGNETIC) && !defined(COOLING))
 #define  CONDITION_NUMBER_DANGER  1.0e7 /*!< condition number above which we will not trust matrix-based gradients */
 #else
 #define  CONDITION_NUMBER_DANGER  1.0e3 /*!< condition number above which we will not trust matrix-based gradients */
@@ -367,6 +703,10 @@ typedef unsigned long long peanokey;
 #define KAPPA_IR 10.0   /* in cm^2/g for solar abundances */
 #define KAPPA_OP 180.0
 #define KAPPA_UV 1800.0
+
+#ifdef GALSF_FB_HII_HEATING
+#define HIIRegion_Temp 1.0e4 /* temperature (in K) of heated gas */
+#endif
 
 
 #ifdef METALS
@@ -479,6 +819,18 @@ typedef double MyInputFloat;
 typedef float MyInputFloat;
 #endif
 
+#ifdef OUTPUT_POSITIONS_IN_DOUBLE
+typedef double MyOutputPosFloat;
+#else
+typedef MyOutputFloat MyOutputPosFloat;
+#endif
+#ifdef INPUT_POSITIONS_IN_DOUBLE
+typedef double MyInputPosFloat;
+#else
+typedef MyInputFloat MyInputPosFloat;
+#endif
+
+
 struct unbind_data
 {
   int index;
@@ -546,28 +898,17 @@ typedef MyDouble MyBigFloat;
 
 #define CPU_STRING_LEN 120
 
-#ifdef ONEDIM
-#define NUMDIMS 1
+#if defined(ONEDIM)
+#define NUMDIMS 1           /* define number of dimensions and volume normalization */
 #define NORM_COEFF 2.0
-#endif
-#ifdef TWODIMS
+#elif defined(TWODIMS)
 #define NUMDIMS 2
 #define NORM_COEFF M_PI
-#endif
-#if !defined(TWODIMS) && !defined(ONEDIM)
-#define NORM_COEFF 4.188790204786  /*!< Coefficient for kernel normalization. Note:  4.0/3 * PI = 4.188790204786 */
+#else
+#define NORM_COEFF 4.188790204786  /* 4pi/3 */
 #define NUMDIMS 3
 #endif
 
-#ifdef KERNEL_QUINTIC
-#define KERNEL_CORE_SIZE (1.0/3.0)
-#else
-#ifdef KERNEL_QUARTIC
-#define KERNEL_CORE_SIZE (2.0/5.0)
-#else
-#define KERNEL_CORE_SIZE (1.0/2.0)
-#endif
-#endif
 
 #define PPP P
 #if defined(ADAPTIVE_GRAVSOFT_FORALL)
@@ -601,21 +942,72 @@ extern MyDouble boxSize_Z, boxHalf_Z, inverse_boxSize_Z;
 #endif
 #endif
 
+
 #ifdef SHEARING_BOX
 extern MyDouble Shearing_Box_Vel_Offset;
+extern MyDouble Shearing_Box_Pos_Offset;
 #endif
 
 
+/****************************************************************************************************************************/
+/* Here we define the box-wrapping macros NEAREST_XYZ and NGB_PERIODIC_LONG_X,NGB_PERIODIC_LONG_Y,NGB_PERIODIC_LONG_Z. 
+ *   The inputs to these functions are (dx_position, dy_position, dz_position, sign), where 
+ *     'sign' = -1 if dx_position = x_test_point - x_reference (reference = particle from which we are doing a calculation), 
+ *     'sign' = +1 if dx_position = x_reference - x_test_point
+ *
+ *   For non-periodic cases these functions are trivial (do nothing, or just take absolute values).
+ *
+ *   For standard periodic cases it will wrap in each dimension, allowing for a different box length in X/Y/Z.
+ *      here the "sign" term is irrelevant. Also NGB_PERIODIC_LONG_X, NGB_PERIODIC_LONG_Y, NGB_PERIODIC_LONG_Z will each 
+ *      compile to only use the x,y, or z information, but all four inputs are required for the sake of completeness 
+ *      and consistency.
+ *
+ *   The reason for the added complexity is for shearing boxes. In this case, the Y(phi)-coordinate for particles being
+ *      wrapped in the X(r)-direction must be modified by a time-dependent term. It also matters for the sign of that 
+ *      term "which side" of the box we are wrapping across (i.e. does the 'virtual particle' -- the test point which is
+ *      not the particle for which we are currently calculating forces, etc -- lie on the '-x' side or the '+x' side)
+ */
+/****************************************************************************************************************************/
+
 #ifdef PERIODIC
-#define NGB_PERIODIC_LONG(x,box,hbox) ((fabs(x)>hbox)?(box-fabs(x)):fabs(x))
-#define NGB_PERIODIC_LONG_X(x) (xtmp=fabs(x),(xtmp>boxHalf_X)?(boxSize_X-xtmp):xtmp)
-#define NGB_PERIODIC_LONG_Y(y) (xtmp=fabs(y),(xtmp>boxHalf_Y)?(boxSize_Y-xtmp):xtmp)
-#define NGB_PERIODIC_LONG_Z(z) (xtmp=fabs(z),(xtmp>boxHalf_Z)?(boxSize_Z-xtmp):xtmp)
+
+#if (SHEARING_BOX > 1)
+/* SHEARING PERIODIC BOX:: 
+    in this case, we have a shearing box with the '1' coordinate being phi, so there is a periodic extra wrap */
+#define NEAREST_XYZ(x,y,z,sign) (\
+x=((x)>boxHalf_X)?((x)-boxSize_X):(((x)<-boxHalf_X)?((x)+boxSize_X):(x)),\
+y -= Shearing_Box_Pos_Offset * sign * (((x)>boxHalf_X)?(1):(((x)<-boxHalf_X)?(-1):(0))),\
+y = ((y)>boxSize_Y)?((y)-boxSize_Y):(((y)<-boxSize_Y)?((y)+boxSize_Y):(y)),\
+y=((y)>boxHalf_Y)?((y)-boxSize_Y):(((y)<-boxHalf_Y)?((y)+boxSize_Y):(y)),\
+z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
+
+#define NGB_PERIODIC_LONG_Y(x,y,z,sign) (\
+xtmp = y - Shearing_Box_Pos_Offset * sign * (((x)>boxHalf_X)?(1):(((x)<-boxHalf_X)?(-1):(0))),\
+xtmp = fabs(((xtmp)>boxSize_Y)?((xtmp)-boxSize_Y):(((xtmp)<-boxSize_Y)?((xtmp)+boxSize_Y):(xtmp))),\
+(xtmp>boxHalf_Y)?(boxSize_Y-xtmp):xtmp)
+
+#define NGB_PERIODIC_LONG_X(x,y,z,sign) (xtmp=fabs(x),(xtmp>boxHalf_X)?(boxSize_X-xtmp):xtmp)
+#define NGB_PERIODIC_LONG_Z(x,y,z,sign) (xtmp=fabs(z),(xtmp>boxHalf_Z)?(boxSize_Z-xtmp):xtmp)
+
 #else
-#define NGB_PERIODIC_LONG(x,box,hbox) fabs(x)
-#define NGB_PERIODIC_LONG_X(x) fabs(x)
-#define NGB_PERIODIC_LONG_Y(y) fabs(y)
-#define NGB_PERIODIC_LONG_Z(z) fabs(z)
+/* STANDARD PERIODIC BOX:: 
+    this box-wraps all three (x,y,z) separation variables when taking position differences */
+#define NEAREST_XYZ(x,y,z,sign) (\
+x=((x)>boxHalf_X)?((x)-boxSize_X):(((x)<-boxHalf_X)?((x)+boxSize_X):(x)),\
+y=((y)>boxHalf_Y)?((y)-boxSize_Y):(((y)<-boxHalf_Y)?((y)+boxSize_Y):(y)),\
+z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
+#define NGB_PERIODIC_LONG_X(x,y,z,sign) (xtmp=fabs(x),(xtmp>boxHalf_X)?(boxSize_X-xtmp):xtmp)
+#define NGB_PERIODIC_LONG_Y(x,y,z,sign) (xtmp=fabs(y),(xtmp>boxHalf_Y)?(boxSize_Y-xtmp):xtmp)
+#define NGB_PERIODIC_LONG_Z(x,y,z,sign) (xtmp=fabs(z),(xtmp>boxHalf_Z)?(boxSize_Z-xtmp):xtmp)
+
+#endif
+
+#else
+/* NON-PERIODIC BOX:: */
+#define NEAREST_XYZ(x,y,z,sign) /* this is an empty macro: nothing will happen to the variables input here */
+#define NGB_PERIODIC_LONG_X(x,y,z,sign) (fabs(x))
+#define NGB_PERIODIC_LONG_Y(x,y,z,sign) (fabs(y))
+#define NGB_PERIODIC_LONG_Z(x,y,z,sign) (fabs(z))
 #endif
 
 #define FACT1 0.366025403785	/* FACT1 = 0.5 * (sqrt(3)-1) */
@@ -627,11 +1019,6 @@ extern MyDouble Shearing_Box_Vel_Offset;
 /*  Global variables                                     */
 /*********************************************************/
 
-#ifdef UM_SEN_H2_SOLOMON_PROCESS
-#define JLWn 23
-extern float JLW[JLWn];
-extern float z_JLW[JLWn];
-#endif
 
 extern int FirstActiveParticle;
 extern int *NextActiveParticle;
@@ -722,10 +1109,6 @@ extern int N_stars;
 extern int N_BHs;
 #endif
 
-#ifdef SINKS
-extern int NumSinks;
-#endif
-
 extern long long Ntype[6];	/*!< total number of particles of each type */
 extern int NtypeLocal[6];	/*!< local number of particles of each type */
 
@@ -756,15 +1139,17 @@ extern int *DomainList, DomainNumChanged;
 
 extern peanokey *Key, *KeySorted;
 
-#ifdef RADTRANSFER
-double lum[N_RT_FREQ_BINS];
+
+#ifdef RT_CHEM_PHOTOION
+double rt_nu_eff_eV[N_RT_FREQ_BINS];
+double precalc_stellar_luminosity_fraction[N_RT_FREQ_BINS];
+double nu[N_RT_FREQ_BINS];
 double rt_sigma_HI[N_RT_FREQ_BINS];
 double rt_sigma_HeI[N_RT_FREQ_BINS];
 double rt_sigma_HeII[N_RT_FREQ_BINS];
 double G_HI[N_RT_FREQ_BINS];
 double G_HeI[N_RT_FREQ_BINS];
 double G_HeII[N_RT_FREQ_BINS];
-double nu[N_RT_FREQ_BINS];
 #endif
 
 extern struct topnode_data
@@ -831,9 +1216,8 @@ extern FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 extern FILE *FdTurb;    /*!< file handle for turb.txt log-file */
 #endif
 
-#ifdef RADTRANSFER
+#ifdef RT_CHEM_PHOTOION
 extern FILE *FdRad;		/*!< file handle for radtransfer.txt log-file. */
-extern FILE *FdStar;		/*!< file handle for lum_star.txt log-file. */
 #endif
 
 #ifdef DISTORTIONTENSORPS
@@ -845,6 +1229,12 @@ extern FILE *FdTidaltensor;     /*!< file handle for tidaltensor.txt log-file. *
 #ifdef BLACK_HOLES
 extern FILE *FdBlackHoles;	/*!< file handle for blackholes.txt log-file. */
 extern FILE *FdBlackHolesDetails;
+#ifdef BH_OUTPUT_MOREINFO
+extern FILE *FdBhMergerDetails;
+#ifdef BH_BAL_KICK
+extern FILE *FdBhWindDetails;
+#endif
+#endif
 #endif
 
 #ifdef DARKENERGY
@@ -853,10 +1243,10 @@ extern FILE *FdDE;  /*!< file handle for darkenergy.txt log-file. */
 
 
 
-
-
-#if defined(COOLING) && defined(GRACKLE)
-#include <grackle.h>
+#if defined(COOLING) && defined(GALSF_EFFECTIVE_EQS)
+#ifndef COOLING_OPERATOR_SPLIT
+#define COOLING_OPERATOR_SPLIT /*!< the Springel-Hernquist EOS depends explicitly on the cooling time in a way that requires de-coupled hydro cooling */
+#endif
 #endif
 
 
@@ -889,6 +1279,7 @@ extern struct global_data_all_processes
 #endif
 #endif
 
+    
 #ifdef SIDM
     unsigned long Ndmsi_thisTask; /*!< Number of DM self-interactions computed at this Task during current time-step */
     unsigned long Ndmsi;          /*!< Sum of Nsi_thisTask over all Tasks. Only the root task keeps track of this	 value.*/
@@ -944,6 +1335,10 @@ extern struct global_data_all_processes
   double ArtCondConstant;
 #endif
     
+#ifdef PM_HIRES_REGION_CLIPDM
+    double MassOfClippedDMParticles; /*!< the mass of high-res DM particles which the low-res particles will target if they enter the highres region */
+#endif
+    
     double MinMassForParticleMerger; /*!< the minimum mass of a gas particle below which it will be merged into a neighbor */
     double MaxMassForParticleSplit; /*!< the maximum mass of a gas particle above which it will be split into a pair */
 
@@ -963,10 +1358,8 @@ extern struct global_data_all_processes
     UnitMass_in_g,		/*!< factor to convert internal mass unit to grams/h */
     UnitVelocity_in_cm_per_s,	/*!< factor to convert intqernal velocity unit to cm/sec */
     UnitLength_in_cm,		/*!< factor to convert internal length unit to cm/h */
-    UnitPressure_in_cgs,	/*!< factor to convert internal pressure unit to cgs units (little 'h' still
-				   around!) */
+    UnitPressure_in_cgs,	/*!< factor to convert internal pressure unit to cgs units (little 'h' still around!) */
     UnitDensity_in_cgs,		/*!< factor to convert internal length unit to g/cm^3*h^2 */
-    UnitCoolingRate_in_cgs,	/*!< factor to convert internal cooling rate to cgs units */
     UnitEnergy_in_cgs,		/*!< factor to convert internal energy to cgs units */
     UnitTime_in_Megayears,	/*!< factor to convert internal time to megayears/h */
     GravityConstantInternal,	/*!< If set to zero in the parameterfile, the internal value of the
@@ -974,14 +1367,16 @@ extern struct global_data_all_processes
 				   units specified. Otherwise the value provided is taken as internal gravity
 				   constant G. */
     G;				/*!< Gravity-constant in internal units */
+#ifdef DISTORTIONTENSORPS
   double UnitDensity_in_Gev_per_cm3; /*!< factor to convert internal density unit to GeV/c^2 / cm^3 */
-  /* Cosmology */
+#endif
+    /* Cosmology */
 
 #ifdef MAGNETIC
   double UnitMagneticField_in_gauss; /*!< factor to convert internal magnetic field (B) unit to gauss (cgs) units */
 #endif
     
-  double Hubble;		/*!< Hubble-constant in internal units */
+  double Hubble_H0_CodeUnits;		/*!< Hubble-constant (unit-ed version: 100 km/s/Mpc) in internal units */
   double Omega0,		/*!< matter density in units of the critical density (at z=0) */
     OmegaLambda,		/*!< vaccum energy density relative to crictical density (at z=0) */
     OmegaBaryon,		/*!< baryon density in units of the critical density (at z=0) */
@@ -991,16 +1386,13 @@ extern struct global_data_all_processes
 
   double BoxSize;		/*!< Boxsize in case periodic boundary conditions are used */
 
+    
   /* Code options */
 
   int ComovingIntegrationOn;	/*!< flags that comoving integration is enabled */
-  int PeriodicBoundariesOn;	/*!< flags that periodic boundaries are enabled */
   int ResubmitOn;		/*!< flags that automatic resubmission of job to queue system is enabled */
   int TypeOfOpeningCriterion;	/*!< determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion */
-  int TypeOfTimestepCriterion;	/*!< gives type of timestep criterion (only 0 supported right now - unlike gadget-1.1) */
   int OutputListOn;		/*!< flags that output times are listed in a specified file */
-  int CoolingOn;		/*!< flags that cooling is enabled */
-  int StarformationOn;		/*!< flags that star formation is enabled */
 
   int HighestActiveTimeBin;
   int HighestOccupiedTimeBin;
@@ -1150,20 +1542,22 @@ extern struct global_data_all_processes
 
 
 #ifdef RADTRANSFER
-  double IonizingLumPerSolarMass;
-  double IonizingLumPerSolarMassPopIII;
-  double IonizingLumPerSFR;
-  double star_Teff;
-  double star_Teff_popIII;
   integertime Radiation_Ti_begstep;
   integertime Radiation_Ti_endstep;
 #endif
 
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
+#if defined(RT_CHEM_PHOTOION) && !defined(GALSF_FB_HII_HEATING)
+    double IonizingLuminosityPerSolarMass_cgs;
+    double star_Teff;
+#endif
+    
+    
+#ifdef RT_FIRE
     double PhotonMomentum_Coupled_Fraction;
+#ifdef GALSF_FB_RT_PHOTONMOMENTUM
     double PhotonMomentum_fUV;
     double PhotonMomentum_fOPT;
-    double PhotonMomentum_fIR;
+#endif
 #ifdef BH_PHOTONMOMENTUM
     double BH_FluxMomentumFactor;
 #endif
@@ -1173,9 +1567,6 @@ extern struct global_data_all_processes
     double Grain_Internal_Density;
     double Grain_Size_Min;
     double Grain_Size_Max;
-#ifdef GRAIN_LORENTZFORCE
-    double Grain_Charge;
-#endif
 #endif
     
 #ifdef COSMIC_RAYS
@@ -1216,7 +1607,6 @@ extern struct global_data_all_processes
     
 #ifdef GALSF_FB_RPWIND_LOCAL
   double WindMomentumLoading;
-  double WindInitialVelocityBoost;
 #endif
     
 #ifdef GALSF_SUBGRID_WINDS
@@ -1232,12 +1622,10 @@ extern struct global_data_all_processes
 
 #ifdef GALSF_FB_SNE_HEATING
   double SNeIIEnergyFrac;
-  double SNeIIBW_Radius_Factor;
 #endif
 
 #ifdef GALSF_FB_HII_HEATING
   double HIIRegion_fLum_Coupled;
-  double HIIRegion_Temp;
 #endif
 
 #endif // GALSF
@@ -1255,7 +1643,7 @@ extern struct global_data_all_processes
   double AGBGasEnergy;
 #endif
     
-#ifdef BH_BAL_WINDS
+#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
     double BAL_f_accretion;
     double BAL_v_outflow;
 #endif
@@ -1309,7 +1697,7 @@ extern struct global_data_all_processes
 #ifdef B_SET_IN_PARAMS
   double BiniX, BiniY, BiniZ;	/*!< Initial values for B */
 #endif
-#ifdef SPH_ARTIFICIAL_RESISTIVITY
+#ifdef SPH_TP12_ARTIFICIAL_RESISTIVITY
   double ArtMagDispConst;	/*!< Sets the parameter \f$\alpha\f$ of the artificial magnetic disipation */
 #endif
 #ifdef DIVBCLEANING_DEDNER
@@ -1319,7 +1707,7 @@ extern struct global_data_all_processes
   double DivBcleanHyperbolicSigma;
 #endif
 #endif /* MAGNETIC */
-
+    
 #if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_VARIABLEVELOCITY)
   double TimeNextOnTheFlyFoF;
   double TimeBetOnTheFlyFoF;
@@ -1328,9 +1716,14 @@ extern struct global_data_all_processes
 #ifdef BLACK_HOLES
   double BlackHoleAccretionFactor;	/*!< Fraction of BH bondi accretion rate */
   double BlackHoleFeedbackFactor;	/*!< Fraction of the black luminosity feed into thermal feedback */
-  double SeedBlackHoleMass;	/*!< Seed black hole mass */
-  double MinFoFMassForNewSeed;	/*!< Halo mass required before new seed is put in */
-  double BlackHoleNgbFactor;	/*!< Factor by which the normal SPH neighbour should be increased/decreased */
+  double SeedBlackHoleMass;         /*!< Seed black hole mass */
+  double SeedBlackHoleMassSigma;    /*!< Standard deviation of init black hole masses */
+  double SeedBlackHoleMinRedshift; /*!< Minimum redshift where BH seeds are allowed */
+#ifdef BH_ALPHADISK_ACCRETION
+  double SeedAlphaDiskMass;         /*!< Seed alpha disk mass */
+#endif
+  double MinFoFMassForNewSeed;      /*!< Halo mass required before new seed is put in */
+  double BlackHoleNgbFactor;        /*!< Factor by which the SPH neighbour should be increased/decreased */
   double BlackHoleMaxAccretionRadius;
   double BlackHoleEddingtonFactor;	/*!< Factor above Eddington */
   double BlackHoleRadiativeEfficiency;  /**< Radiative efficiency determined by the spin value, default value is 0.1 */
@@ -1384,15 +1777,8 @@ extern struct global_data_all_processes
 #endif
 
 
-#ifdef EOS_DEGENERATE
-  char EosTable[100];
-  char EosSpecies[100];
-#endif
-
-#ifdef SINKS
-  int TotNumSinks;
-  double SinkHsml;
-  double SinkDensThresh;
+#ifdef EOS_TABULATED
+    char EosTable[100];
 #endif
 
 #ifdef NUCLEAR_NETWORK
@@ -1403,11 +1789,6 @@ extern struct global_data_all_processes
   struct network_data nd;
   struct network_workspace nw;
   double NetworkTempThreshold;
-#endif
-
-#ifdef RELAXOBJECT
-  double RelaxBaseFac;
-  double RelaxFac;
 #endif
 
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
@@ -1452,7 +1833,9 @@ extern ALIGN(32) struct particle_data
 {
     short int Type;                 /*!< flags particle type.  0=gas, 1=halo, 2=disk, 3=bulge, 4=stars, 5=bndry */
     short int TimeBin;
-    MyIDType ID;
+    MyIDType ID;                    /*! < unique ID of particle (assigned at beginning of the simulation) */
+    MyIDType ID_child_number;       /*! < child number for particles 'split' from main (retain ID, get new child number) */
+    short int ID_generation;        /*! < generation (need to track for particle-splitting to ensure each 'child' gets a unique child number */
     
     integertime Ti_begstep;         /*!< marks start of current timestep of particle on integer timeline */
     integertime Ti_current;         /*!< current time of the particle */
@@ -1522,6 +1905,10 @@ extern ALIGN(32) struct particle_data
 #endif
 #ifdef GALSF_SFR_IMF_VARIATION
     MyFloat IMF_Mturnover; /*!< IMF turnover mass [in solar] (or any other parameter which conveniently describes the IMF) */
+    MyFloat IMF_FormProps[N_IMF_FORMPROPS]; /*!< formation properties of star particles to record for output */
+#endif
+#ifdef GALSF_SFR_IMF_SAMPLING
+    MyFloat IMF_NumMassiveStars; /*!< number of massive stars to associate with this star particle (for feedback) */
 #endif
     
     MyFloat Hsml;                   /*!< search radius around particle for neighbors/interactions */
@@ -1534,7 +1921,19 @@ extern ALIGN(32) struct particle_data
     
 #ifdef GALSF_FB_SNE_HEATING
     MyFloat SNe_ThisTimeStep; /* flag that indicated number of SNe for the particle in the timestep */
-    MyFloat Area_weighted_sum; /* normalized weights for particles in kernel weighted by area, not mass */
+
+#if !(EXPAND_PREPROCESSOR_(GALSF_FB_SNE_HEATING) == 1) // check whether a numerical value is assigned
+#if (GALSF_FB_SNE_HEATING == 2) // code for non-isotropic
+#define GALSF_FB_SNE_NONISOTROPIZED
+#endif
+#endif
+
+#ifdef GALSF_FB_SNE_NONISOTROPIZED
+#define AREA_WEIGHTED_SUM_ELEMENTS 1
+#else
+#define AREA_WEIGHTED_SUM_ELEMENTS 7
+#endif
+    MyFloat Area_weighted_sum[AREA_WEIGHTED_SUM_ELEMENTS]; /* normalized weights for particles in kernel weighted by area, not mass */
 #endif
 #ifdef GALSF_FB_GASRETURN
     MyFloat MassReturn_ThisTimeStep; /* gas return from stellar winds */
@@ -1595,12 +1994,18 @@ extern ALIGN(32) struct particle_data
     } b8;
 #endif
 #endif
-#ifdef BH_REPOSITION_ON_POTMIN
-    MyFloat BH_MinPotPos[3];
-    MyFloat BH_MinPot;
-#endif
 #endif  /* if !defined(DETACH_BLACK_HOLES) */
 #endif  /* if defined(BLACK_HOLES) */
+    
+#ifdef BH_CALC_DISTANCES
+    MyFloat min_dist_to_bh;
+#endif
+    
+#ifdef SINGLE_STAR_PROMOTION
+    MyFloat ProtoStellarAge; /*!< record the proto-stellar age instead of age */
+    //MyFloat PreMainSeq_Tracker; /*!< track evolution from protostar to ZAMS star */
+    MyFloat ProtoStellar_Radius; /*!< protostellar radius (also tracks evolution from protostar to ZAMS star) */
+#endif
     
 #ifdef SIDM
 #ifndef WAKEUP
@@ -1668,6 +2073,7 @@ extern ALIGN(32) struct particle_data
 #endif
     
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
+    MyDouble AGS_Hsml;          /*!< smoothing length (for gravitational forces) */
     MyFloat AGS_zeta;           /*!< factor in the correction term */
 #endif
 }
@@ -1692,7 +2098,7 @@ extern ALIGN(32) struct particle_data
 
 extern struct bh_particle_data
 {
-  unsigned int PID;
+  MyIDType PID;
 #ifdef BH_COUNTPROGS
   int BH_CountProgs;
 #endif
@@ -1722,10 +2128,6 @@ extern struct bh_particle_data
     MyLongDouble dBH_accreted_BHMass_radio;
   } b8;
 #endif
-#endif
-#ifdef BH_REPOSITION_ON_POTMIN
-  MyFloat BH_MinPotPos[3];
-  MyFloat BH_MinPot;
 #endif
 }
   *BHP,
@@ -1774,7 +2176,10 @@ extern struct sph_particle_data
     MyDouble Phi;                   /*!< scalar field for Dedner divergence cleaning */
     MyDouble DtPhi;                 /*!< time derivative of Phi-field */
 #endif
-#if defined(TRICCO_RESISTIVITY_SWITCH)
+#ifdef CONSTRAINED_GRADIENT_MHD
+    int FlagForConstrainedGradients;/*!< flag indicating whether the B-field gradient is a 'standard' one or the constrained-divB version */
+#endif
+#if defined(SPH_TP12_ARTIFICIAL_RESISTIVITY)
     MyFloat Balpha;                 /*!< effective resistivity coefficient */
 #endif
 #endif /* MAGNETIC */
@@ -1787,6 +2192,14 @@ extern struct sph_particle_data
     MyFloat CosmicRayDiffusionCoeff;/*!< diffusion coefficient kappa for cosmic ray fluid */
 #endif
     
+#ifdef SUPER_TIMESTEP_DIFFUSION
+    MyDouble Super_Timestep_Dt_Explicit; /*!< records the explicit step being used to scale the sub-steps for the super-stepping */
+    int Super_Timestep_j; /*!< records which sub-step if the super-stepping cycle the particle is in [needed for adaptive steps] */
+#endif
+    
+#ifdef SINGLE_STAR_FORMATION
+    MyFloat Density_Relative_Maximum_in_Kernel; /*!< hold density_max-density_i, for particle i, so we know if its a local maximum */
+#endif
     
     /* matrix of the primitive variable gradients: rho, P, vx, vy, vz, B, phi */
     struct
@@ -1800,9 +2213,6 @@ extern struct sph_particle_data
         MyDouble Phi[3];
 #endif
 #endif
-#ifdef RADTRANSFER_FLUXLIMITER
-        MyFloat n_gamma[N_RT_FREQ_BINS][3];
-#endif
 #ifdef DOGRAD_SOUNDSPEED
         MyDouble SoundSpeed[3];
 #endif
@@ -1815,11 +2225,17 @@ extern struct sph_particle_data
 #ifdef COSMIC_RAYS
         MyDouble CosmicRayPressure[3];
 #endif
+#ifdef RT_EVOLVE_EDDINGTON_TENSOR
+        MyDouble E_gamma_ET[N_RT_FREQ_BINS][3];
+#endif
     } Gradients;
     MyFloat NV_T[3][3];             /*!< holds the tensor used for gradient estimation */
     MyDouble ConditionNumber;       /*!< condition number of the gradient matrix: needed to ensure stability */
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
     MyDouble MaxKineticEnergyNgb;   /*!< maximum kinetic energy (with respect to neighbors): use for entropy 'switch' */
+#endif
 
+    
 #ifdef HYDRO_SPH
     MyDouble DhsmlHydroSumFactor;   /* for 'traditional' SPH, we need the SPH hydro-element volume estimator */
 #endif
@@ -1906,6 +2322,14 @@ extern struct sph_particle_data
     MyFloat Kappa_Conduction;           /*!< conduction coefficient */
 #endif
 
+    
+#ifdef MHD_NON_IDEAL
+    MyFloat Eta_MHD_OhmicResistivity_Coeff;     /*!< Ohmic resistivity coefficient [physical units of L^2/t] */
+    MyFloat Eta_MHD_HallEffect_Coeff;           /*!< Hall effect coefficient [physical units of L^2/t] */
+    MyFloat Eta_MHD_AmbiPolarDiffusion_Coeff;   /*!< Hall effect coefficient [physical units of L^2/t] */
+#endif
+    
+    
 #if defined(VISCOSITY)
     MyFloat Eta_ShearViscosity;         /*!< shear viscosity coefficient */
     MyFloat Zeta_BulkViscosity;         /*!< bulk viscosity coefficient */
@@ -1913,35 +2337,58 @@ extern struct sph_particle_data
 
     
 #if defined(RADTRANSFER)
-    MyFloat ET[6];                /* eddington tensor - symmetric -> only 6 elements needed */
-    MyFloat Je[N_RT_FREQ_BINS];           /* emmisivity */
+    MyFloat ET[N_RT_FREQ_BINS][6];      /*!< eddington tensor - symmetric -> only 6 elements needed: this is dimensionless by our definition */
+    MyFloat Je[N_RT_FREQ_BINS];         /*!< emissivity (includes sources like stars, as well as gas): units=E_gamma/time  */
+    MyFloat E_gamma[N_RT_FREQ_BINS];    /*!< photon energy (integral of dE_gamma/dvol*dVol) associated with particle [for simple frequency bins, equivalent to photon number] */
+    MyFloat Kappa_RT[N_RT_FREQ_BINS];   /*!< opacity [physical units ~ length^2 / mass]  */
+    MyFloat Lambda_FluxLim[N_RT_FREQ_BINS]; /*!< dimensionless flux-limiter (0<lambda<1) */
+#ifdef RT_EVOLVE_FLUX
+    MyFloat Flux[N_RT_FREQ_BINS][3];    /*!< photon energy flux density (energy/time/area), for methods which track this explicitly (e.g. M1) */
+    MyFloat Flux_Pred[N_RT_FREQ_BINS][3];/*!< predicted photon energy flux density for drift operations (needed for adaptive timestepping) */
+    MyFloat Dt_Flux[N_RT_FREQ_BINS][3]; /*!< time derivative of photon energy flux density */
+#endif
+#ifdef RT_EVOLVE_NGAMMA
+    MyFloat E_gamma_Pred[N_RT_FREQ_BINS]; /*!< predicted E_gamma for drift operations (needed for adaptive timestepping) */
+    MyFloat Dt_E_gamma[N_RT_FREQ_BINS]; /*!< time derivative of photon number in particle (used only with explicit solvers) */
+#endif
+#ifdef RT_RAD_PRESSURE_OUTPUT
+    MyFloat RadAccel[3];
+#endif
+#ifdef RT_INFRARED
+    MyFloat Radiation_Temperature; /* IR radiation field temperature (evolved variable ^4 power, for convenience) */
+    MyFloat Dt_E_gamma_T_weighted_IR; /* IR radiation temperature-weighted time derivative of photon energy (evolved variable ^4 power, for convenience) */
+    MyFloat Dust_Temperature; /* Dust temperature (evolved variable ^4 power, for convenience) */
+#endif
+#ifdef RT_CHEM_PHOTOION
     MyFloat HI;                  /* HI fraction */
     MyFloat HII;                 /* HII fraction */
-    MyFloat elec;               /* electron fraction */
-#ifdef RT_INCLUDE_HE
+#ifndef COOLING
+    MyFloat Ne;               /* electron fraction */
+#endif
+#ifdef RT_CHEM_PHOTOION_HE
     MyFloat HeI;                 /* HeI fraction */
     MyFloat HeII;                 /* HeII fraction */
     MyFloat HeIII;                 /* HeIII fraction */
 #endif
-    MyFloat n_gamma[N_RT_FREQ_BINS];
-#ifdef RT_RAD_PRESSURE
-    MyFloat n[3];
-    MyFloat RadAccel[3];
-#endif
-#ifdef GALSF
-    MyDouble DensitySfr;
-    MyDouble HsmlSfr;
 #endif
 #endif
     
     
-#ifdef EOS_DEGENERATE
-    MyFloat temp;                         /* temperature */
-    MyFloat dp_drho;                      /* derivative of pressure with respect to density at constant entropy */
-    MyFloat xnuc[EOS_NSPECIES];           /* nuclear mass fractions */
-    MyFloat dxnuc[EOS_NSPECIES];          /* change of nuclear mass fractions */
-    MyFloat xnucPred[EOS_NSPECIES];
+    
+    
+#ifdef EOS_GENERAL
+    MyFloat SoundSpeed;                   /* Sound speed */
+#ifdef EOS_CARRIES_TEMPERATURE
+    MyFloat Temperature;                         /* temperature */
 #endif
+#ifdef EOS_CARRIES_YE
+    MyFloat Ye;                           /* Electron fraction */
+#endif
+#ifdef EOS_CARRIES_ABAR
+    MyFloat Abar;                         /* Average atomic weight (in atomic mass units) */
+#endif
+#endif
+    
     
 #ifdef WAKEUP
     short int wakeup;                     /*!< flag to wake up particle */
@@ -2021,11 +2468,11 @@ extern struct data_nodelist
 extern struct gravdata_in
 {
     MyFloat Pos[3];
-#if defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
     MyFloat Mass;
 #endif
     int Type;
-#if defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
     MyFloat Soft;
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
     MyFloat AGS_zeta;
@@ -2047,6 +2494,9 @@ extern struct gravdata_in
 extern struct gravdata_out
 {
     MyLongDouble Acc[3];
+#ifdef RT_OTVET
+    MyLongDouble ET[N_RT_FREQ_BINS][6];
+#endif
 #ifdef GALSF_FB_LOCAL_UV_HEATING
     MyLongDouble RadFluxUV;
     MyLongDouble RadFluxEUV;
@@ -2064,6 +2514,9 @@ extern struct gravdata_out
     MyDouble Vel[3];
     int dt_step_sidm;
     long unsigned int NInteractions;
+#endif
+#ifdef BH_CALC_DISTANCES
+    MyFloat min_dist_to_bh;
 #endif
 }
  *GravDataResult,		/*!< holds the partial results computed for imported particles. Note: We use GravDataResult = GravDataGet, such that the result replaces the imported data */
@@ -2103,9 +2556,14 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyLongDouble Mgas_in_Kernel;
     MyLongDouble Malt_in_Kernel;
     MyLongDouble Jalt_in_Kernel[3];
+#ifdef BH_GRAVACCRETION_BTOD
+    MyLongDouble Mbulge_in_Kernel;
+#endif
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK_COLLIMATED) || defined(BH_GRAVACCRETION)  
+    MyLongDouble Jgas_in_Kernel[3];
+#endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
     MyLongDouble GradRho_in_Kernel[3];
-    MyLongDouble Jgas_in_Kernel[3];
     MyFloat BH_angle_weighted_kernel_sum;
 #endif
 #ifdef BH_DYNFRICTION
@@ -2113,7 +2571,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyFloat DF_rms_vel;
     MyFloat DF_mmax_particles;
 #endif
-#if defined(BH_USE_GASVEL_IN_BONDI) || defined(BH_DRAG)
+#if defined(BH_BONDI) || defined(BH_DRAG)
     MyFloat BH_SurroundingGasVel[3];
 #endif
     
@@ -2121,10 +2579,9 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyFloat mdot_alphadisk;             /*!< gives mdot of mass going into alpha disk */
 #endif
 
-//#if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)    
-    MyFloat mass_to_swallow_total;      /*!< gives the total bound mass we want to swallow in this timestep */
+#if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;        /*!< gives the mass we want to swallow that contributes to eddington */
-//#endif
+#endif
 
 }
 *BlackholeTempInfo, *BlackholeDataPasserResult, *BlackholeDataPasserOut;
@@ -2153,9 +2610,8 @@ extern struct io_header
   double OmegaLambda;		/*!< cosmological constant parameter */
   double HubbleParam;		/*!< Hubble parameter in units of 100 km/sec/Mpc */
   int flag_stellarage;		/*!< flags whether the file contains formation times of star particles */
-  int flag_metals;		/*!< flags whether the file contains metallicity values for gas and star
-				   particles */
-  unsigned int npartTotalHighWord[6];	/*!< High word of the total number of particles of each type */
+  int flag_metals;		/*!< flags whether the file contains metallicity values for gas and star particles */
+  unsigned int npartTotalHighWord[6];	/*!< High word of the total number of particles of each type (needed to combine with npartTotal to allow >2^31 particles of a given type) */
   int flag_doubleprecision;	/*!< flags that snapshot contains double-precision instead of single precision */
 
   int flag_ic_info;             /*!< flag to inform whether IC files are generated with ordinary Zeldovich approximation,
@@ -2177,10 +2633,17 @@ extern struct io_header
 header;				/*!< holds header for snapshot files */
 
 
+
+
+
+
+
 enum iofields
 { IO_POS,
   IO_VEL,
   IO_ID,
+  IO_CHILD_ID,
+  IO_GENERATION_ID,
   IO_MASS,
   IO_SECONDORDERMASS,
   IO_U,
@@ -2190,6 +2653,7 @@ enum iofields
   IO_HSML,
   IO_SFR,
   IO_AGE,
+  IO_GRAINSIZE,
   IO_HSMS,
   IO_Z,
   IO_BHMASS,
@@ -2199,6 +2663,7 @@ enum iofields
   IO_BHMBUB,
   IO_BHMINI,
   IO_BHMRAD,
+  IO_BH_DIST,
   IO_ACRB,
   IO_POT,
   IO_ACCEL,
@@ -2239,7 +2704,8 @@ enum iofields
   IO_ANNIHILATION_RADIATION,
   IO_STREAM_DENSITY,
   IO_EOSTEMP,
-  IO_EOSXNUC,
+  IO_EOSABAR,
+  IO_EOSYE,
   IO_PRESSURE,
   IO_RADGAMMA,
   IO_RAD_ACCEL,
@@ -2261,22 +2727,17 @@ enum iofields
   IO_VDIV,
   IO_VROT,
   IO_VORT,
-
   IO_CHEM,
   IO_DELAYTIME,
-  
   IO_AGS_SOFT,
   IO_AGS_ZETA,
   IO_AGS_OMEGA,
   IO_AGS_CORR,
   IO_AGS_NGBS,
-
   IO_VSTURB_DISS,
   IO_VSTURB_DRIVE,
-  
   IO_MG_PHI,
   IO_MG_ACCEL,
-  
   IO_grHI,
   IO_grHII,
   IO_grHM,
@@ -2354,7 +2815,7 @@ enum siofields
  * ------------------
  */
 
-extern int Nexport, Nimport;
+extern long Nexport, Nimport;
 extern int BufferFullFlag;
 extern int NextParticle;
 extern int NextJ;
@@ -2386,27 +2847,23 @@ extern ALIGN(32) struct NODE
   double GravCost;
   integertime Ti_current;
 
-#ifdef RADTRANSFER
-  MyFloat stellar_s[3];         /*!< enter of mass for the stars in the node*/
-  MyFloat stellar_mass;         /*!< mass in stars in the node*/
+#ifdef RT_USE_GRAVTREE
+  MyFloat stellar_lum[N_RT_FREQ_BINS]; /*!< luminosity in the node*/
 #endif
 
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-    MyFloat stellar_lum;          /*!< luminosity in stars in the node*/
-#ifdef GALSF_FB_RT_PHOTON_LOCALATTEN
-    MyFloat stellar_lum_uv;
-    MyFloat stellar_lum_op;
-    MyFloat stellar_lum_ir;
-#endif
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-    MyFloat stellar_lum_s[3];     /*!< center of luminosity for the stars in the node*/
-#endif
-#endif
 #ifdef BH_PHOTONMOMENTUM
     MyFloat bh_lum;		/*!< luminosity of BHs in the node */
     MyFloat bh_lum_hR;		/*!< local h/R for gas around BH (gives angular dependence) */
     MyFloat bh_lum_grad[3];	/*!< gradient vector for gas around BH (for angular dependence) */
 #endif    
+
+#ifdef BH_CALC_DISTANCES
+    MyFloat bh_mass;      /*!< holds the BH mass in the node.  Used for calculating tree based dist to closest bh */
+#endif
+    
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+    MyFloat rt_source_lum_s[3];     /*!< center of luminosity for sources in the node*/
+#endif
     
   MyFloat maxsoft;		/*!< hold the maximum gravitational softening of particle in the node */
   
@@ -2423,11 +2880,9 @@ extern ALIGN(32) struct NODE
 extern struct extNODE
 {
   MyLongDouble dp[3];
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-#ifdef GALSF_FB_SEPARATELY_TRACK_LUMPOS
-    MyLongDouble stellar_lum_dp[3];
-    MyFloat stellar_lum_vs[3];
-#endif
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+    MyLongDouble rt_source_lum_dp[3];
+    MyFloat rt_source_lum_vs[3];
 #endif
 #ifdef SCALARFIELD
   MyLongDouble dp_dm[3];

@@ -152,7 +152,7 @@ void lineofsight_output(void)
 void find_particles_and_save_them(int num)
 {
   int n, k, count_local, *countlist, counttot, rep;
-  MyFloat dx, dy, r2;
+  MyFloat dx, dy, dz, r2;
   char fname[1000];
   MPI_Status status;
   FILE *fd = 0;
@@ -164,8 +164,10 @@ void find_particles_and_save_them(int num)
     {
       if(P[n].Type == 0)
 	{
-	  dx = los_periodic(P[n].Pos[Los->xaxis] - Los->Xpos);
-	  dy = los_periodic(P[n].Pos[Los->yaxis] - Los->Ypos);
+        dx = P[n].Pos[Los->xaxis] - Los->Xpos;
+        dy = P[n].Pos[Los->yaxis] - Los->Ypos;
+        dz = 0;
+        NEAREST_XYZ(dx,dy,dz,-1);
 
 	  r2 = dx * dx + dy * dy;
 
@@ -282,8 +284,10 @@ void add_along_lines_of_sight(void)
     {
       if(P[n].Type == 0)
 	{
-	  dx = los_periodic(P[n].Pos[Los->xaxis] - Los->Xpos);
-	  dy = los_periodic(P[n].Pos[Los->yaxis] - Los->Ypos);
+        dx = P[n].Pos[Los->xaxis] - Los->Xpos;
+        dy = P[n].Pos[Los->yaxis] - Los->Ypos;
+        dz = 0;
+        NEAREST_XYZ(dx,dy,dz,-1);
 
 	  r2 = dx * dx + dy * dy;
 
@@ -298,7 +302,10 @@ void add_along_lines_of_sight(void)
 
 	      for(iz = iz0; iz <= iz1; iz++)
 		{
-		  dz = los_periodic((iz + 0.5) / PIXELS * All.BoxSize - P[n].Pos[Los->zaxis]);
+            dx = P[n].Pos[Los->xaxis] - Los->Xpos;
+            dy = P[n].Pos[Los->yaxis] - Los->Ypos;
+            dz = (iz + 0.5) / PIXELS * All.BoxSize - P[n].Pos[Los->zaxis];
+            NEAREST_XYZ(dx,dy,dz,-1);
 		  r = sqrt(r2 + dz * dz);
 
 		  if(PPP[n].Hsml > All.BoxSize)
@@ -322,11 +329,8 @@ void add_along_lines_of_sight(void)
 		      ne = SphP[n].Ne;
                 utherm = DMAX(All.MinEgySpec, SphP[i].InternalEnergyPred);
 
-		      AbundanceRatios(utherm, SphP[n].Density * All.cf_a3inv, &ne, &nh0, &nHeII);
-
-		      meanWeight = 4.0 / (3 * HYDROGEN_MASSFRAC + 1 + 4 * HYDROGEN_MASSFRAC * ne);
-
-		      temp = meanWeight * PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * utherm * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
+		      double mu_in = 1;
+		      temp = ThermalProperties(utherm, SphP[n].Density * All.cf_a3inv, &ne, &nh0, &nHeII, &mu_in, n);
 
 		      /* do total gas */
 		      weight = P[n].Mass * wk;
@@ -567,14 +571,5 @@ int find_next_lineofsighttime(int time0)
   return time1;
 }
 
-double los_periodic(double x)
-{
-  if(x >= 0.5 * All.BoxSize)
-    x -= All.BoxSize;
-  if(x < -0.5 * All.BoxSize)
-    x += All.BoxSize;
-
-  return x;
-}
 
 #endif

@@ -15,6 +15,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 {
     int j, k, n, startnode, numngb, kernel_mode, listindex = 0;
     double hinv_i,hinv3_i,hinv4_i,hinv_j,hinv3_j,hinv4_j,V_i,V_j,dt_hydrostep,r2,rinv,rinv_soft,u;
+    double v_hll,k_hll,b_hll; v_hll=k_hll=0,b_hll=1;
     struct kernel_hydra kernel;
     struct hydrodata_in local;
     struct hydrodata_out out;
@@ -25,9 +26,24 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifndef HYDRO_SPH
     struct Input_vec_Riemann Riemann_vec;
     struct Riemann_outputs Riemann_out;
-    double face_area_dot_vel, face_vel_i=0, face_vel_j=0;
-    double Face_Area_Vec[3], Face_Area_Norm = 0;
+    double face_area_dot_vel;
     face_area_dot_vel = 0;
+#endif
+    double face_vel_i=0, face_vel_j=0, Face_Area_Norm=0, Face_Area_Vec[3];
+
+#ifdef HYDRO_MESHLESS_FINITE_MASS
+    double epsilon_entropic_eos_big = 0.5; // can be anything from (small number=more diffusive, less accurate entropy conservation) to ~1.1-1.3 (least diffusive, most noisy)
+    double epsilon_entropic_eos_small = 1.e-3; // should be << epsilon_entropic_eos_big
+    if(All.ComovingIntegrationOn) {epsilon_entropic_eos_big = 0.6; epsilon_entropic_eos_small=1.e-2;}
+#endif
+#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
+    double Fluxes_E_gamma[N_RT_FREQ_BINS];
+    double tau_c_i[N_RT_FREQ_BINS];
+    double Particle_Size_i = pow(local.Mass/local.Density,1./NUMDIMS) * All.cf_atime; // in physical, used below in some routines //
+    for(k=0;k<N_RT_FREQ_BINS;k++) {tau_c_i[k] = Particle_Size_i * local.Kappa_RT[k]*local.Density*All.cf_a3inv;}
+#ifdef RT_EVOLVE_FLUX
+    double Fluxes_Flux[N_RT_FREQ_BINS][3];
+#endif
 #endif
     
     if(mode == 0)
@@ -48,12 +64,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     kernel_hinv(kernel.h_i, &hinv_i, &hinv3_i, &hinv4_i);
     hinv_j=hinv3_j=hinv4_j=0;
     V_i = local.Mass / local.Density;
-    kernel_mode = -1; /* only need wk */
     dt_hydrostep = local.Timestep * All.Timebase_interval / All.cf_hubble_a; /* (physical) timestep */
     out.MaxSignalVel = kernel.sound_i;
-#if defined(HYDRO_SPH)
     kernel_mode = 0; /* need dwk and wk */
-#endif
     double cnumcrit2 = ((double)CONDITION_NUMBER_DANGER)*((double)CONDITION_NUMBER_DANGER) - local.ConditionNumber*local.ConditionNumber;
     //define units used for upwind instead of time-centered formulation//
     //double cs_t_to_comoving_x = All.cf_afac3 / All.cf_atime; /* convert to code (comoving) length units */
@@ -70,7 +83,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef MAGNETIC
     kernel.b2_i = local.BPred[0]*local.BPred[0] + local.BPred[1]*local.BPred[1] + local.BPred[2]*local.BPred[2];
 #if defined(HYDRO_SPH)
-    double magfluxv[3]; magfluxv[0]=magfluxv[1]=magfluxv[2]=0;
+    double magfluxv[3],resistivity_heatflux=0; magfluxv[0]=magfluxv[1]=magfluxv[2]=0;
     kernel.mf_i = local.Mass * fac_magnetic_pressure / (local.Density * local.Density);
     kernel.mf_j = local.Mass * fac_magnetic_pressure;
     // PFH: comoving factors here to convert from B*B/rho to P/rho for accelerations //
@@ -83,13 +96,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     for(k = 0; k < 3; k++)
         mm_i[k][k] -= 0.5 * kernel.b2_i;
 #endif
-#ifdef MAGNETIC_SIGNALVEL
     kernel.alfven2_i = kernel.b2_i * fac_magnetic_pressure / local.Density;
-#ifdef ALFVEN_VEL_LIMITER
-    kernel.alfven2_i = DMIN(kernel.alfven2_i, ALFVEN_VEL_LIMITER * kernel.sound_i*kernel.sound_i);
-#endif
+    kernel.alfven2_i = DMIN(kernel.alfven2_i, 1000. * kernel.sound_i*kernel.sound_i);
     double vcsa2_i = kernel.sound_i*kernel.sound_i + kernel.alfven2_i;
-#endif
 #endif // MAGNETIC //
     
     
@@ -130,7 +139,12 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 int TimeStep_J = (P[j].TimeBin ? (1 << P[j].TimeBin) : 0);
 #ifndef SHEARING_BOX // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //
                 if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
-                if((local.Timestep == TimeStep_J) && (P[j].ID < local.ID)) continue; /* use ID to break degeneracy */
+                /* use relative positions to break degeneracy */
+                if(local.Timestep == TimeStep_J)
+                {
+                    int n0=0; if(local.Pos[n0] == P[j].Pos[n0]) {n0++; if(local.Pos[n0] == P[j].Pos[n0]) n0++;}
+                    if(local.Pos[n0] < P[j].Pos[n0]) continue;
+                }
 #endif
                 if(P[j].Mass <= 0) continue;
                 if(SphP[j].Density <= 0) continue;
@@ -141,9 +155,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
 #ifdef PERIODIC  /* find the closest image in the given box size  */
-                kernel.dp[0] = NEAREST_X(kernel.dp[0]);
-                kernel.dp[1] = NEAREST_Y(kernel.dp[1]);
-                kernel.dp[2] = NEAREST_Z(kernel.dp[2]);
+                NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1);
 #endif
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 kernel.h_j = PPP[j].Hsml;
@@ -190,12 +202,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef DIVBCLEANING_DEDNER
                 double PhiPred_j = Get_Particle_PhiField(j); /* define j phi-field in appropriate units */
 #endif
-#ifdef MAGNETIC_SIGNALVEL
                 kernel.b2_j = BPred_j[0]*BPred_j[0] + BPred_j[1]*BPred_j[1] + BPred_j[2]*BPred_j[2];
                 kernel.alfven2_j = kernel.b2_j * fac_magnetic_pressure / SphP[j].Density;
-#ifdef ALFVEN_VEL_LIMITER
-                kernel.alfven2_j = DMIN(kernel.alfven2_j, ALFVEN_VEL_LIMITER * kernel.sound_j*kernel.sound_j);
-#endif
+                kernel.alfven2_j = DMIN(kernel.alfven2_j, 1000. * kernel.sound_j*kernel.sound_j);
                 double vcsa2_j = kernel.sound_j*kernel.sound_j + kernel.alfven2_j;
                 double Bpro2_j = (BPred_j[0]*kernel.dp[0] + BPred_j[1]*kernel.dp[1] + BPred_j[2]*kernel.dp[2]) / kernel.r;
                 Bpro2_j *= Bpro2_j;
@@ -206,7 +215,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double magneticspeed_i = sqrt(0.5 * (vcsa2_i + sqrt(DMAX((vcsa2_i*vcsa2_i -
                         4 * kernel.sound_i*kernel.sound_i * Bpro2_i*fac_magnetic_pressure/local.Density), 0))));
                 kernel.vsig = magneticspeed_i + magneticspeed_j;
-#endif
+                Bpro2_i /= kernel.b2_i; Bpro2_j /= kernel.b2_j;
 #endif
                 kernel.vdotr2 = kernel.dp[0] * kernel.dv[0] + kernel.dp[1] * kernel.dv[1] + kernel.dp[2] * kernel.dv[2];
                 // hubble-flow correction: need in -code- units, hence extra a2 appearing here //
@@ -219,13 +228,20 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     kernel.vsig -= fac_mu * kernel.vdotr2 * rinv;
 #endif
                 }
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
                 double KE = kernel.dv[0]*kernel.dv[0] + kernel.dv[1]*kernel.dv[1] + kernel.dv[2]*kernel.dv[2];
                 if(KE > out.MaxKineticEnergyNgb) out.MaxKineticEnergyNgb = KE;
                 if(TimeBinActive[P[j].TimeBin])
                 {
                     if(KE > SphP[j].MaxKineticEnergyNgb) SphP[j].MaxKineticEnergyNgb = KE;
                 }
-
+#endif
+#ifdef TURB_DIFF_METALS
+                double mdot_estimated = 0;
+#endif
+#if defined(RT_INFRARED)
+                double Fluxes_E_gamma_T_weighted_IR = 0;
+#endif
                 
                 /* --------------------------------------------------------------------------------- */
                 /* calculate the kernel functions (centered on both 'i' and 'j') */
@@ -251,7 +267,6 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     kernel.wk_j = 0;
                 }
                 
-                
                 /* --------------------------------------------------------------------------------- */
                 /* with the overhead numbers above calculated, we now 'feed into' the "core" 
                     hydro computation (SPH, meshless godunov, etc -- doesn't matter, should all take the same inputs) 
@@ -262,6 +277,57 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #include "hydra_core_sph.h"
 #else
 #include "hydra_core_meshless.h"
+#endif
+                
+#ifdef FREEZE_HYDRO
+                memset(&Fluxes, 0, sizeof(struct Conserved_var_Riemann));
+#endif
+
+
+                
+                
+//#ifndef HYDRO_SPH
+                /* the following macros are useful for all the diffusion operations below: this is the diffusion term associated
+                    with the HLL reimann problem solution. This adds numerical diffusion (albeit limited to the magnitude of the 
+                    physical diffusion coefficients), but stabilizes the relevant equations */
+#ifdef HYDRO_SPH
+        face_vel_i = face_vel_j = 0;
+        for(k=0;k<3;k++) 
+        {
+        face_vel_i += local.Vel[k] * kernel.dp[k] / (kernel.r * All.cf_atime); 
+        face_vel_j += SphP[j].VelPred[k] * kernel.dp[k] / (kernel.r * All.cf_atime);
+        }
+        // SPH: use the sph 'effective areas' oriented along the lines between particles and direct-difference gradients
+        Face_Area_Norm = local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * SphP[j].Density);
+        for(k=0;k<3;k++) {Face_Area_Vec[k] = Face_Area_Norm * kernel.dp[k]/kernel.r;}
+#endif
+
+#ifdef MAGNETIC
+                double bhat[3]={0.5*(local.BPred[0]+BPred_j[0])*All.cf_a2inv,0.5*(local.BPred[1]+BPred_j[1])*All.cf_a2inv,0.5*(local.BPred[2]+BPred_j[2])*All.cf_a2inv};
+                double bhat_mag=bhat[0]*bhat[0]+bhat[1]*bhat[1]+bhat[2]*bhat[2];
+                if(bhat_mag>0) {bhat_mag=sqrt(bhat_mag); bhat[0]/=bhat_mag; bhat[1]/=bhat_mag; bhat[2]/=bhat_mag;}
+                v_hll = 0.5*fabs(face_vel_i-face_vel_j) + DMAX(magneticspeed_i,magneticspeed_j);
+#define B_dot_grad_weights(grad_i,grad_j) {if(bhat_mag<=0) {b_hll=1;} else {double q_tmp_sum=0,b_tmp_sum=0; for(k=0;k<3;k++) {\
+                                           double q_tmp=0.5*(grad_i[k]+grad_j[k]); q_tmp_sum+=q_tmp*q_tmp; b_tmp_sum+=bhat[k]*q_tmp;}\
+                                           if((b_tmp_sum!=0)&&(q_tmp_sum>0)) {b_hll=fabs(b_tmp_sum)/sqrt(q_tmp_sum); b_hll*=b_hll;} else {b_hll=0;}}}
+#define HLL_DIFFUSION_COMPROMISE_FACTOR 1.1
+#else
+                v_hll = 0.5*fabs(face_vel_i-face_vel_j) + DMAX(kernel.sound_i,kernel.sound_j);
+#define B_dot_grad_weights(grad_i,grad_j) {b_hll=1;}
+#define HLL_DIFFUSION_COMPROMISE_FACTOR 1.5
+#endif
+#define HLL_correction(ui,uj,wt,kappa) (k_hll = v_hll * (wt) * kernel.r * All.cf_atime / fabs(kappa),\
+                                        k_hll = (0.2 + k_hll) / (0.2 + k_hll + k_hll*k_hll),\
+                                        -1.0*k_hll*Face_Area_Norm*v_hll*((ui)-(uj)))
+#if !defined(MAGNETIC) || defined(GALSF) || defined(COOLING) || defined(BLACKHOLES)
+#define HLL_DIFFUSION_OVERSHOOT_FACTOR  0.005
+#else
+#define HLL_DIFFUSION_OVERSHOOT_FACTOR  1.0
+#endif
+                
+
+#ifdef MHD_NON_IDEAL
+#include "nonideal_mhd.h"
 #endif
                 
 #ifdef CONDUCTION
@@ -279,6 +345,11 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef COSMIC_RAYS
 #include "../galaxy_sf/cosmic_ray_diffusion.h"
 #endif
+                
+#ifdef RT_DIFFUSION_EXPLICIT
+#include "../radiation/rt_diffusion_explicit.h"
+#endif
+                
                 
                 /* --------------------------------------------------------------------------------- */
                 /* now we will actually assign the hydro variables for the evolution step */
@@ -300,20 +371,33 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     //SphP[j].dMomentum[k] -= Fluxes.v[k] * dt_hydrostep; //manifest-indiv-timestep-debug//
                 }
                 out.DtInternalEnergy += Fluxes.p;
+#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
+                for(k=0;k<N_RT_FREQ_BINS;k++) {out.Dt_E_gamma[k] += Fluxes_E_gamma[k];}
+#if defined(RT_INFRARED)
+                out.Dt_E_gamma_T_weighted_IR += Fluxes_E_gamma_T_weighted_IR;
+#endif
+#endif
+#ifdef RT_EVOLVE_FLUX
+                for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {out.Dt_Flux[k][k_dir] += Fluxes_Flux[k][k_dir];}}
+#endif
 #ifdef MAGNETIC
+#ifndef HYDRO_SPH
+                for(k=0;k<3;k++) {out.Face_Area[k] += Face_Area_Vec[k];}
+#endif
+#ifndef FREEZE_HYDRO
                 for(k=0;k<3;k++) {out.DtB[k]+=Fluxes.B[k];}
                 out.divB += Fluxes.B_normal_corrected;
-#ifdef DIVBCLEANING_DEDNER
+#if defined(DIVBCLEANING_DEDNER) && defined(HYDRO_MESHLESS_FINITE_VOLUME) // mass-based phi-flux
                 out.DtPhi += Fluxes.phi;
 #endif
 #ifdef HYDRO_SPH
                 for(k=0;k<3;k++) {out.DtInternalEnergy+=magfluxv[k]*local.Vel[k]/All.cf_atime;}
+                out.DtInternalEnergy += resistivity_heatflux;
 #else
-                for(k=0;k<3;k++) {out.Face_Area[k] += Face_Area_Vec[k];}
-                double wt_face_sum = Face_Area_Norm * (face_area_dot_vel+face_vel_i);
+                double wt_face_sum = Face_Area_Norm * (-face_area_dot_vel+face_vel_i);
                 out.DtInternalEnergy += 0.5 * kernel.b2_i*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
 #ifdef DIVBCLEANING_DEDNER
-                out.DtPhi += (Riemann_out.phi_normal_mean - local.PhiPred*All.cf_a3inv) * wt_face_sum;
+                //out.DtPhi += (Riemann_out.phi_normal_mean - local.PhiPred*All.cf_a3inv) * wt_face_sum; // now use mass-based phi-flux
                 /*
                 double phi_normal_full = Riemann_out.phi_normal_mean + Riemann_out.phi_normal_db;
                 for(k=0;k<3;k++) {out.DtB_PhiCorr[k] += phi_normal_full * Face_Area_Vec[k];}
@@ -324,6 +408,10 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     out.DtB[k] += Riemann_out.phi_normal_mean * Face_Area_Vec[k];
                     out.DtInternalEnergy += Riemann_out.phi_normal_mean * Face_Area_Vec[k] * local.BPred[k]*All.cf_a2inv;
                 }
+#endif
+#ifdef MHD_NON_IDEAL
+                for(k=0;k<3;k++) {out.DtInternalEnergy += local.BPred[k]*All.cf_a2inv*bflux_from_nonideal_effects[k];}
+#endif
 #endif
 #endif
 #endif // magnetic //
@@ -346,20 +434,33 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                     for(k=0;k<3;k++) {SphP[j].HydroAccel[k] -= Fluxes.v[k];}
                     SphP[j].DtInternalEnergy -= Fluxes.p;
+#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
+                    for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[j].Dt_E_gamma[k] -= Fluxes_E_gamma[k];}
+#if defined(RT_INFRARED)
+                    SphP[j].Dt_E_gamma_T_weighted_IR -= Fluxes_E_gamma_T_weighted_IR;
+#endif
+#endif
+#ifdef RT_EVOLVE_FLUX
+                    for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[j].Dt_Flux[k][k_dir] -= Fluxes_Flux[k][k_dir];}}
+#endif
 #ifdef MAGNETIC
+#ifndef HYDRO_SPH
+                    for(k=0;k<3;k++) {SphP[j].Face_Area[k] -= Face_Area_Vec[k];}
+#endif
+#ifndef FREEZE_HYDRO
                     for(k=0;k<3;k++) {SphP[j].DtB[k]-=Fluxes.B[k];}
                     SphP[j].divB -= Fluxes.B_normal_corrected;
-#ifdef DIVBCLEANING_DEDNER
+#if defined(DIVBCLEANING_DEDNER) && defined(HYDRO_MESHLESS_FINITE_VOLUME) // mass-based phi-flux
                     SphP[j].DtPhi -= Fluxes.phi;
 #endif
 #ifdef HYDRO_SPH
                     for(k=0;k<3;k++) {SphP[j].DtInternalEnergy-=magfluxv[k]*VelPred_j[k]/All.cf_atime;}
+                    SphP[j].DtInternalEnergy += resistivity_heatflux;
 #else
-                    for(k=0;k<3;k++) {SphP[j].Face_Area[k] -= Face_Area_Vec[k];}
-                    double wt_face_sum = Face_Area_Norm * (face_area_dot_vel+face_vel_j);
+                    double wt_face_sum = Face_Area_Norm * (-face_area_dot_vel+face_vel_j);
                     SphP[j].DtInternalEnergy -= 0.5 * kernel.b2_j*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
 #ifdef DIVBCLEANING_DEDNER
-                    SphP[j].DtPhi -= (Riemann_out.phi_normal_mean - PhiPred_j*All.cf_a3inv) * wt_face_sum;
+                    //SphP[j].DtPhi -= (Riemann_out.phi_normal_mean - PhiPred_j*All.cf_a3inv) * wt_face_sum; // mass-based phi-flux
                     /*
                     for(k=0;k<3;k++) {SphP[j].DtB_PhiCorr[k] -= phi_normal_full * Face_Area_Vec[k];;}
                     */
@@ -369,6 +470,10 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                         SphP[j].DtB[k] -= Riemann_out.phi_normal_mean * Face_Area_Vec[k];
                         SphP[j].DtInternalEnergy -= Riemann_out.phi_normal_mean * Face_Area_Vec[k] * BPred_j[k]*All.cf_a2inv;
                     }
+#endif
+#ifdef MHD_NON_IDEAL
+                    for(k=0;k<3;k++) {SphP[j].DtInternalEnergy -= BPred_j[k]*All.cf_a2inv*bflux_from_nonideal_effects[k];}
+#endif
 #endif
 #endif
 #endif // magnetic //
@@ -406,7 +511,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(TimeBinActive[P[j].TimeBin])
                     if(kernel.vsig > SphP[j].MaxSignalVel) SphP[j].MaxSignalVel = kernel.vsig;
 #ifdef WAKEUP
-                if(kernel.vsig > WAKEUP * SphP[j].MaxSignalVel) SphP[j].wakeup = 1;
+                if(kernel.vsig > WAKEUP*SphP[j].MaxSignalVel) SphP[j].wakeup = 1;
 #endif
                 
                 

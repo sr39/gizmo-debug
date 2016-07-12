@@ -43,6 +43,7 @@ MyDouble boxSize_Z, boxHalf_Z, inverse_boxSize_Z;
 
 #ifdef SHEARING_BOX
 MyDouble Shearing_Box_Vel_Offset;
+MyDouble Shearing_Box_Pos_Offset;
 #endif
 
 
@@ -113,12 +114,11 @@ double TimeBin_BH_Mdot[TIMEBINS];
 double TimeBin_BH_Medd[TIMEBINS];
 #endif
 
-#ifdef RADTRANSFER
-double lum[N_RT_FREQ_BINS];
+#ifdef RT_CHEM_PHOTOION
+double nu[N_RT_FREQ_BINS];
 double rt_sigma_HI[N_RT_FREQ_BINS];
 double rt_sigma_HeI[N_RT_FREQ_BINS];
 double rt_sigma_HeII[N_RT_FREQ_BINS];
-double nu[N_RT_FREQ_BINS];
 #endif
 
 
@@ -157,9 +157,6 @@ int N_stars;
 int N_BHs;
 #endif
 
-#ifdef SINKS
-int NumSinks;
-#endif
 
 long long Ntype[6];		/*!< total number of particles of each type */
 int NtypeLocal[6];		/*!< local number of particles of each type */
@@ -241,9 +238,8 @@ FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 FILE *FdTurb;    /*!< file handle for turb.txt log-file */
 #endif
 
-#ifdef RADTRANSFER
+#ifdef RT_CHEM_PHOTOION
 FILE *FdRad;			/*!< file handle for radtransfer.txt log-file. */
-FILE *FdStar;			/*!< file handle for lum_star.txt log-file. */
 #endif
 
 #ifdef DISTORTIONTENSORPS
@@ -255,6 +251,12 @@ FILE *FdTidaltensor;		/*!< file handle for Tidaltensor.txt log-file. */
 #ifdef BLACK_HOLES
 FILE *FdBlackHoles;		/*!< file handle for blackholes.txt log-file. */
 FILE *FdBlackHolesDetails;
+#ifdef BH_OUTPUT_MOREINFO
+FILE *FdBhMergerDetails;
+#ifdef BH_BAL_KICK
+FILE *FdBhWindDetails;
+#endif
+#endif
 #endif
 
 #ifdef DARKENERGY
@@ -341,7 +343,6 @@ struct info_block *InfoBlock;
  */
 struct io_header header;	/*!< holds header for snapshot files */
 
-
 #ifdef BLACK_HOLES
 int N_active_loc_BHs=0;       /*!< number of active black holes on the LOCAL processor */
 struct blackhole_temp_particle_data *BlackholeTempInfo, *BlackholeDataPasserOut, *BlackholeDataPasserResult;
@@ -354,7 +355,7 @@ struct blackhole_temp_particle_data *BlackholeTempInfo, *BlackholeDataPasserOut,
  * ------------------
  */
 
-int Nexport, Nimport;
+long Nexport, Nimport;
 int BufferFullFlag;
 int NextParticle;
 int NextJ;

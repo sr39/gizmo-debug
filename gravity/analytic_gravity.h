@@ -19,6 +19,7 @@ void GravAccel_GrowingDiskPotential(void);
 void GravAccel_StaticNFW(void);
 void GravAccel_RayleighTaylorTest(void);
 void GravAccel_ShearingSheet(void);
+void GravAccel_PaczynskyWiita(void);
 
 
 /* master routine which decides which (if any) analytic gravitational forces are applied */
@@ -36,6 +37,7 @@ void add_analytic_gravitational_forces()
     //GravAccel_KeplerianTestProblem();   // keplerian disk with boundaries for test problem
     //GravAccel_GrowingDiskPotential();   // time-dependent (adiabatically growing) disk
     //GravAccel_StaticNFW();              // spherical NFW profile
+    //GravAccel_PaczynskyWiita();         // Paczynsky-Wiita pseudo-Newtonian potential
 #endif
 }
 
@@ -50,11 +52,14 @@ void GravAccel_ShearingSheet()
         /* centrifugal force term (depends on distance from box center) */
         P[i].GravAccel[0] += 2.*(P[i].Pos[0]-boxHalf_X) * SHEARING_BOX_Q*SHEARING_BOX_OMEGA_BOX_CENTER*SHEARING_BOX_OMEGA_BOX_CENTER;
         /* coriolis force terms */
-        P[i].GravAccel[0] += 2. * SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE] * SHEARING_BOX_OMEGA_BOX_CENTER;
-        P[i].GravAccel[SHEARING_BOX_PHI_COORDINATE] -= 2. * SphP[i].VelPred[0] * SHEARING_BOX_OMEGA_BOX_CENTER;
+        double vp=0;
+        if(P[i].Type==0) {vp=SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE];} else {vp=P[i].Vel[SHEARING_BOX_PHI_COORDINATE];}
+        P[i].GravAccel[0] += 2.*vp * SHEARING_BOX_OMEGA_BOX_CENTER;
+        if(P[i].Type==0) {vp=SphP[i].VelPred[0];} else {vp=P[i].Vel[0];}
+        P[i].GravAccel[SHEARING_BOX_PHI_COORDINATE] -= 2.*vp * SHEARING_BOX_OMEGA_BOX_CENTER;
 #if (SHEARING_BOX==4)
         /* add vertical gravity to the force law */
-        P[i].GravAccel[2] -= SHEARING_BOX_OMEGA_BOX_CENTER*SHEARING_BOX_OMEGA_BOX_CENTER * (P[i].Pos[2]-boxHalf_Z);
+        P[i].GravAccel[2] -= SHEARING_BOX_OMEGA_BOX_CENTER * SHEARING_BOX_OMEGA_BOX_CENTER * (P[i].Pos[2]-boxHalf_Z);
 #endif
     }
 #endif
@@ -120,7 +125,7 @@ void GravAccel_StaticHernquist()
     {
         r = sqrt(P[i].Pos[0] * P[i].Pos[0] + P[i].Pos[1] * P[i].Pos[1] + P[i].Pos[2] * P[i].Pos[2]);
         
-        a = pow(All.G * HQ_M200 / (100 * All.Hubble * All.Hubble), 1.0 / 3) / HQ_C *
+        a = pow(All.G * HQ_M200 / (100 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits), 1.0 / 3) / HQ_C *
         sqrt(2 * (log(1 + HQ_C) - HQ_C / (1 + HQ_C)));
         
         m = HQ_M200 * pow(r / (r + a), 2) * HQ_DARKFRACTION;
@@ -292,11 +297,11 @@ void GravAccel_StaticNFW()
     NFW_BOXCENTERED=1;
 
     /* convert units */
-    double R200 = pow(NFW_M200 * All.G / (100 * All.Hubble * All.Hubble), 1.0 / 3);
+    double R200 = pow(NFW_M200 * All.G / (100 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits), 1.0 / 3);
     double Rs = R200 / NFW_C;
     double Dc = 200.0 / 3 * NFW_C * NFW_C * NFW_C / (log(1 + NFW_C) - NFW_C / (1 + NFW_C));
-    double RhoCrit = 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
-    double V200 = 10 * All.Hubble * R200;
+    double RhoCrit = 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
+    double V200 = 10 * All.Hubble_H0_CodeUnits * R200;
     
     double r0, R, r, m, dx, dy, dz, fac; int i;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
@@ -334,7 +339,7 @@ void GravAccel_StaticNFW()
             m = fac * 4 * M_PI * RhoCrit * Dc *
             (-(Rs * Rs * Rs * (1 + log(Rs))) + Rs * Rs * Rs * (Rs + (R + Rs) * log(R + Rs)) / (R + Rs));
         }
-        fac = V200 * V200 * V200 / (10 * All.G * All.Hubble) / m;
+        fac = V200 * V200 * V200 / (10 * All.G * All.Hubble_H0_CodeUnits) / m;
         if(NFW_Eps > 0.0)
         {
             m = fac * 4 * M_PI * RhoCrit * Dc * (-(Rs * Rs * Rs * (1 - NFW_Eps + log(Rs) - 2 * NFW_Eps * log(Rs) +
@@ -356,7 +361,7 @@ void GravAccel_StaticNFW()
             P[i].GravAccel[2] += -All.G * m * dz / (r * r * r);
             
 #ifdef DISTORTIONTENSORPS
-            double R200 = pow(NFW_M200 * All.G / (100 * All.Hubble * All.Hubble), 1.0 / 3);
+            double R200 = pow(NFW_M200 * All.G / (100 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits), 1.0 / 3);
             double Rs = R200 / NFW_C;
             double K = All.G * NFW_M200 / (Rs * (log(1 + NFW_C) - NFW_C / (1 + NFW_C)));
             double r_red = r / Rs;
@@ -396,4 +401,46 @@ void GravAccel_StaticNFW()
     } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) //
 }
 
+
+
+
+/* Paczysnky Wiita pseudo-Newtonian potential, G = M_sol = c = 1 */
+void GravAccel_PaczynskyWiita()
+{
+    double PACZYNSKY_WIITA_MASS = 1.0; // Mass to use for the Paczynksy-Wiita analytic gravity pseudo-Newtonian potential (in solar masses)
+    double r_g = 2*PACZYNSKY_WIITA_MASS;
+    int i;
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        double r = sqrt(P[i].Pos[0]*P[i].Pos[0]+P[i].Pos[1]*P[i].Pos[1]+P[i].Pos[2]*P[i].Pos[2]);
+        if(r > r_g)
+        {
+            double q = PACZYNSKY_WIITA_MASS/((r - r_g)*(r - r_g));
+            P[i].GravAccel[0] = - q * P[i].Pos[0]/r;
+            P[i].GravAccel[1] = - q * P[i].Pos[1]/r;
+            P[i].GravAccel[2] = - q * P[i].Pos[2]/r;
+        }
+    }
+}
+
+#ifdef PARTICLE_EXCISION
+void apply_excision(void)
+{
+    double EXCISION_MASS = 0; // mass of the excised object. Used to move the excision boundary so as to capture bound objects. If zero the excision boundary will not move
+    double EXCISION_INIT_RADIUS = 0; // initial excision radius
+    double EXCISION_ETA = 1; // remove particles with radius < EXCISION_ETA R_excision
+    double excision_radius = EXCISION_ETA * pow(EXCISION_INIT_RADIUS*EXCISION_INIT_RADIUS*EXCISION_INIT_RADIUS +
+                                                3.*sqrt(2. * All.G * EXCISION_MASS) * pow(EXCISION_INIT_RADIUS, 3./2.) * All.Time +
+                                                9./2. * All.G * EXCISION_MASS * All.Time*All.Time, 1./3.);
+    int i;
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        if(P[i].Type == 0)
+        {
+            double r = sqrt(P[i].Pos[0]*P[i].Pos[0]+P[i].Pos[1]*P[i].Pos[1]+P[i].Pos[2]*P[i].Pos[2]);
+            if(r < excision_radius) P[i].Mass = 0;
+        }
+    }
+}
+#endif
 

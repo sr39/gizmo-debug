@@ -11,6 +11,7 @@
 
 #include "allvars.h"
 #include "proto.h"
+#include "kernel.h"
 
 
 /*! \file begrun.c
@@ -88,10 +89,10 @@ void begrun(void)
 #endif
 
   set_units();
-
-#ifdef COOLING
-  All.Time = All.TimeBegin;
   set_cosmo_factors_for_current_time();
+  All.Time = All.TimeBegin;
+    
+#ifdef COOLING
   InitCool();
 #endif
 
@@ -131,6 +132,7 @@ void begrun(void)
 #else
     Shearing_Box_Vel_Offset = SHEARING_BOX_Q * SHEARING_BOX_OMEGA_BOX_CENTER * boxSize;
 #endif
+    calc_shearing_box_pos_offset();
 #endif
     
 
@@ -154,9 +156,14 @@ void begrun(void)
   GrNr = -1;
 #endif
 
-#ifdef EOS_DEGENERATE
-  eos_init(All.EosTable, All.EosSpecies);
+#ifdef EOS_TABULATED
+    int ierr = eos_init(All.EosTable);
+    if(ierr) {
+        printf("error initializing the eos");
+        endrun(1);
+    }
 #endif
+
 
 #ifdef NUCLEAR_NETWORK
   network_init(All.EosSpecies, All.NetworkRates, All.NetworkPartFunc, All.NetworkMasses,
@@ -221,16 +228,12 @@ void begrun(void)
         All.SofteningBulge = all.SofteningBulge;
         All.SofteningStars = all.SofteningStars;
         All.SofteningBndry = all.SofteningBndry;
-#ifdef SINKS
-        All.SinkHsml = all.SinkHsml;
-#endif
 
       All.MaxHsml = all.MaxHsml;
       All.MaxRMSDisplacementFac = all.MaxRMSDisplacementFac;
 
       All.ErrTolForceAcc = all.ErrTolForceAcc;
-      /* All.TypeOfTimestepCriterion = all.TypeOfTimestepCriterion; */
-      /* All.TypeOfOpeningCriterion = all.TypeOfOpeningCriterion; */
+      All.NumFilesPerSnapshot = all.NumFilesPerSnapshot;
       All.NumFilesWrittenInParallel = all.NumFilesWrittenInParallel;
       All.TreeDomainUpdateFrequency = all.TreeDomainUpdateFrequency;
 
@@ -263,7 +266,7 @@ void begrun(void)
       All.ArtCondConstant = all.ArtCondConstant;
 #endif
 
-#if defined(SPH_ARTIFICIAL_RESISTIVITY)
+#if defined(SPH_TP12_ARTIFICIAL_RESISTIVITY)
       All.ArtMagDispConst = all.ArtMagDispConst;
 #endif
 
@@ -275,6 +278,34 @@ void begrun(void)
 #endif
 #ifdef BLACK_HOLES
       All.BlackHoleMaxAccretionRadius = all.BlackHoleMaxAccretionRadius;
+#endif
+#ifdef GALSF_FB_RPWIND_LOCAL
+        All.WindMomentumLoading = all.WindMomentumLoading;
+#endif
+#ifdef GALSF_FB_SNE_HEATING
+        All.SNeIIEnergyFrac = all.SNeIIEnergyFrac;
+#endif
+#ifdef GALSF_FB_HII_HEATING
+        All.HIIRegion_fLum_Coupled = all.HIIRegion_fLum_Coupled;
+#endif
+#ifdef RT_FIRE
+        All.PhotonMomentum_Coupled_Fraction = all.PhotonMomentum_Coupled_Fraction;
+#endif
+#ifdef GALSF_FB_RT_PHOTONMOMENTUM
+        All.PhotonMomentum_fUV = all.PhotonMomentum_fUV;
+        All.PhotonMomentum_fOPT = all.PhotonMomentum_fOPT;
+#endif
+#if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_SNE_HEATING)
+        All.GasReturnFraction = all.GasReturnFraction;
+#endif
+#ifdef GALSF_FB_GASRETURN
+        All.AGBGasEnergy = all.AGBGasEnergy;
+#endif
+#ifdef COSMIC_RAYS
+#ifdef GALSF_FB_SNE_HEATING
+        All.CosmicRay_SNeFraction = all.CosmicRay_SNeFraction;
+#endif
+        All.CosmicRayDiffusionCoeff = all.CosmicRayDiffusionCoeff;
 #endif
 
 #ifdef DARKENERGY
@@ -305,13 +336,8 @@ void begrun(void)
       strcpy(All.GrackleDataFile, all.GrackleDataFile);
 #endif
 
-#ifdef EOS_DEGENERATE
-      strcpy(All.EosTable, all.EosTable);
-      strcpy(All.EosSpecies, all.EosSpecies);
-#endif
-
-#ifdef RELAXOBJECT
-      All.RelaxBaseFac = all.RelaxBaseFac;
+#ifdef EOS_TABULATED
+        strcpy(All.EosTable, all.EosTable);
 #endif
 
 #ifdef NUCLEAR_NETWORK
@@ -341,7 +367,7 @@ void begrun(void)
 
 
 #ifndef SHEARING_BOX
-#ifdef TWODIMS
+#if (NUMDIMS==2)
   int i;
 
   for(i = 0; i < NumPart; i++)
@@ -362,19 +388,16 @@ void begrun(void)
 
 
 #ifdef RADTRANSFER
-  if(RestartFlag == 0)
-    radtransfer_set_simple_inits();
-  
-  rt_get_sigma();
-
-#ifdef RT_MULTI_FREQUENCY
-#if defined(EDDINGTON_TENSOR_STARS) || defined(EDDINGTON_TENSOR_SFR)
-    rt_get_lum_stars();
+    if(RestartFlag == 0) {rt_set_simple_inits();}
 #endif
+#ifdef RT_CHEM_PHOTOION
+    rt_get_sigma();
+#endif
+#if defined(RT_DIFFUSION_CG)
+    All.Radiation_Ti_begstep = 0;
 #endif
 
-#endif
-
+    
   if(All.ComovingIntegrationOn)
     init_drift_table();
 
@@ -411,7 +434,6 @@ void set_units(void)
 
   All.UnitDensity_in_cgs = All.UnitMass_in_g / pow(All.UnitLength_in_cm, 3);
   All.UnitPressure_in_cgs = All.UnitMass_in_g / All.UnitLength_in_cm / pow(All.UnitTime_in_s, 2);
-  All.UnitCoolingRate_in_cgs = All.UnitPressure_in_cgs / All.UnitTime_in_s;
   All.UnitEnergy_in_cgs = All.UnitMass_in_g * pow(All.UnitLength_in_cm, 2) / pow(All.UnitTime_in_s, 2);
     
 #ifdef DISTORTIONTENSORPS
@@ -420,11 +442,11 @@ void set_units(void)
 #endif
   /* convert some physical input parameters to internal units */
 
-  All.Hubble = HUBBLE * All.UnitTime_in_s;
+  All.Hubble_H0_CodeUnits = HUBBLE * All.UnitTime_in_s;
 
   if(ThisTask == 0)
     {
-      printf("\nHubble (internal units) = %g\n", All.Hubble);
+      printf("\nHubble (internal units) = %g\n", All.Hubble_H0_CodeUnits);
       printf("G (internal units) = %g\n", All.G);
       printf("UnitMass_in_g = %g \n", All.UnitMass_in_g);
       printf("UnitTime_in_s = %g \n", All.UnitTime_in_s);
@@ -448,7 +470,7 @@ void set_units(void)
   /* for historical reasons, we need to convert to "All.MaxSfrTimescale", defined as the SF timescale in code units at the critical physical
      density given above. use the dimensionless SfEffPerFreeFall (which has been read in) to calculate this. This must be done -BEFORE- calling set_units_sfr) */
 #ifndef GALSF_EFFECTIVE_EQS
-  All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3*M_PI / (32 * All.G * (All.CritPhysDensity * meanweight * 1.67e-24 / All.UnitDensity_in_cgs)));
+  All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3.*M_PI / (32. * All.G * (All.CritPhysDensity * meanweight * 1.67e-24 / (All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam))));
 #endif
   set_units_sfr();
 #endif
@@ -483,8 +505,8 @@ void set_units(void)
     All.ConductionCoeff *= coefficient;
 #endif
 #ifdef VISCOSITY_BRAGINSKII
-    All.ShearViscosityCoeff *= 0.423 * coefficient * sqrt((PROTONMASS/ELECTRONMASS) * (HYDROGEN_MASSFRAC + 4.0*(1-HYDROGEN_MASSFRAC)));
-    // the viscosity coefficient eta is identical in these units up to the order-unity constant, and multiplied by sqrt[m_ion/m_electron] //
+    All.ShearViscosityCoeff *= 0.636396 * coefficient * sqrt(ELECTRONMASS / (PROTONMASS * 4.0 / (8 - 5 * (1 - HYDROGEN_MASSFRAC))));
+    // the viscosity coefficient eta is identical in these units up to the order-unity constant, and multiplied by sqrt[m_electron/m_ion] //
     All.BulkViscosityCoeff = 0;
     // no bulk viscosity in the Braginskii-Spitzer formulation //
 #endif
@@ -539,6 +561,23 @@ void open_outputfiles(void)
       printf("error in opening file '%s'\n", buf);
       endrun(1);
     }
+
+#ifdef BH_OUTPUT_MOREINFO
+  sprintf(buf, "%sblackhole_details/bhmergers_%d.txt", All.OutputDir, ThisTask); 
+  if(!(FdBhMergerDetails = fopen(buf, mode)))
+    {
+      printf("error in opening file '%s'\n", buf);
+      endrun(1);
+    }
+#ifdef BH_BAL_KICK
+  sprintf(buf, "%sblackhole_details/bhwinds_%d.txt", All.OutputDir, ThisTask);
+  if(!(FdBhWindDetails = fopen(buf, mode)))
+    {
+      printf("error in opening file '%s'\n", buf);
+      endrun(1);
+    }
+#endif
+#endif
 #endif
 
   if(ThisTask != 0)		/* only the root processors writes to the log files */
@@ -738,23 +777,13 @@ void open_outputfiles(void)
 #endif
     
     
-#ifdef RADTRANSFER
-  sprintf(buf, "%s%s", All.OutputDir, "radtransfer.txt");
+#ifdef RT_CHEM_PHOTOION
+  sprintf(buf, "%s%s", All.OutputDir, "rt_photoion_chem.txt");
   if(!(FdRad = fopen(buf, mode)))
     {
       printf("error in opening file '%s'\n", buf);
       endrun(1);
     }
-
-#ifdef RT_MULTI_FREQUENCY
-  sprintf(buf, "%s%s", All.OutputDir, "star_lum.txt");
-  if(!(FdStar = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-#endif
-
 #endif
 
 #ifdef BLACK_HOLES
@@ -813,6 +842,12 @@ void close_outputfiles(void)
 {
 #ifdef BLACK_HOLES
   fclose(FdBlackHolesDetails);	/* needs to be done by everyone */
+#ifdef BH_OUTPUT_MOREINFO
+  fclose(FdBhMergerDetails);
+#ifdef BH_BAL_KICK
+  fclose(FdBhWindDetails);
+#endif
+#endif
 #endif
 
   if(ThisTask != 0)		/* only the root processors writes to the log files */
@@ -846,11 +881,8 @@ void close_outputfiles(void)
     fclose(FdSneIIHeating);
 #endif
     
-#ifdef RADTRANSFER
+#ifdef RT_CHEM_PHOTOION
   fclose(FdRad);
-#ifdef RT_MULTI_FREQUENCY
-  fclose(FdStar);
-#endif
 #endif
 
 #ifdef BLACK_HOLES
@@ -887,8 +919,6 @@ void read_parameter_file(char *fname)
   void *addr[MAXTAGS];
   char tag[MAXTAGS][50];
   int pnum, errorFlag = 0;
-
-  All.StarformationOn = 0;	/* defaults */
 
   if(sizeof(long long) != 8)
     {
@@ -971,11 +1001,6 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.BoxSize;
       id[nt++] = REAL;
 
-        All.PeriodicBoundariesOn = 0;
-#ifdef PERIODIC
-        All.PeriodicBoundariesOn = 1;
-#endif
-
       strcpy(tag[nt], "MaxMemSize");
       addr[nt] = &All.MaxMemSize;
       id[nt++] = INT;
@@ -1026,12 +1051,6 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.TreeDomainUpdateFrequency;
       id[nt++] = REAL;
 
-        
-        All.TypeOfTimestepCriterion = 0;
-        All.TypeOfOpeningCriterion = 1;
-        /*!< determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion: this
-         should only be changed if you -really- know what you're doing! */
-        
 #ifdef DEVELOPER_MODE
         strcpy(tag[nt], "ErrTolIntAccuracy");
         addr[nt] = &All.ErrTolIntAccuracy;
@@ -1071,7 +1090,7 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.ViscosityAMax;
         id[nt++] = REAL;
 #endif
-#ifdef SPH_ARTIFICIAL_RESISTIVITY
+#ifdef SPH_TP12_ARTIFICIAL_RESISTIVITY
         strcpy(tag[nt], "ArtificialResistivityMax");
         addr[nt] = &All.ArtMagDispConst;
         id[nt++] = REAL;
@@ -1087,68 +1106,7 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.DivBcleanHyperbolicSigma;
         id[nt++] = REAL;
 #endif
-        
-#else
-    /*
-     
-     %- PFH: these are generally not parameters that should be freely-varied. we're
-     %- going to default to hard-coding them, instead, so that only development-level
-     %- users are modifying them. However, if you want to set them, here are some
-     %- reasonable values that you will need to insert into your parameterfile
-     
-     %---- Accuracy of time integration
-     ErrTolIntAccuracy       0.010   % <0.02
-     CourantFac              0.2 	% <0.40
-     MaxRMSDisplacementFac   0.125	% <0.25
-     
-     %---- Tree algorithm, force accuracy, domain update frequency
-     ErrTolTheta                 0.7	    % 0.7=standard
-     ErrTolForceAcc              0.0025	% 0.0025=standard
-     %---- Convergence error for evaluating particle volumes
-     MaxNumNgbDeviation      0.05    % <<DesNumNgb (values<1 are fine)
-     AGS_MaxNumNgbDeviation  2   % same, for adaptive gravsoft: can be much larger
-
-     %--- Dedner Divergence-cleaning Parameters (for MHD)
-     DivBcleaningParabolicSigma      0.2  % <1, ~0.2-0.5 needed for stability
-     DivBcleaningHyperbolicSigma     1.0  % ~1
-     
-     %---------- SPH-Specific Parameters ---------------------------------
-     %---- Artificial viscosity
-     ArtBulkViscConst    1.0     % multiplies 'standard' AV (use 1.0)
-     %---- P&M artificial conductivity (if present); normalized to Alpha_Visc:
-     ArtCondConstant     0.25    % multiplies 'standard' (use 0.25-0.5)
-     %---- Cullen & Dehnen viscosity suppression
-     ViscosityAMin       0.05    % minimum viscosity away from shocks (>0.025)
-     ViscosityAMax       2.00    % maximum viscosity in shocks (>1)
-     %---- Artificial resistivity (for MHD runs)
-     ArtificialResistivityMax    1.  % maximum alpha_B (~1-2) for art. res. (like art. visc)
-     */
-        
-        All.CourantFac = 0.4;
-        All.ErrTolIntAccuracy = 0.02;
-        All.ErrTolTheta = 0.7;
-        All.ErrTolForceAcc = 0.0025;
-        All.MaxRMSDisplacementFac = 0.25;
-#ifdef HYDRO_SPH
-        All.ArtBulkViscConst = 1.0;
-#ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
-        All.ArtCondConstant = 0.25;
-#endif
-#ifdef SPHAV_CD10_VISCOSITY_SWITCH
-        All.ViscosityAMin = 0.05;
-        All.ViscosityAMax = 2.00;
-#endif
-#ifdef SPH_ARTIFICIAL_RESISTIVITY
-        All.ArtMagDispConst = 1.0;
-#endif
-#endif
-#ifdef DIVBCLEANING_DEDNER
-        All.DivBcleanParabolicSigma = 0.2;
-        All.DivBcleanHyperbolicSigma = 1.0;
-#endif
-        
 #endif // closes DEVELOPER_MODE check
-        
         
         
 #ifdef GRAIN_FLUID
@@ -1163,12 +1121,6 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt],"Grain_Size_Max");
         addr[nt] = &All.Grain_Size_Max;
         id[nt++] = REAL;
-        
-#ifdef GRAIN_LORENTZFORCE
-        strcpy(tag[nt],"Grain_Charge");
-        addr[nt] = &All.Grain_Charge;
-        id[nt++] = REAL;
-#endif
 #endif
         
 #if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_SNE_HEATING)
@@ -1183,7 +1135,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
         
-#ifdef BH_BAL_WINDS
+#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
         strcpy(tag[nt],"BAL_f_accretion");
         addr[nt] = &All.BAL_f_accretion;
         id[nt++] = REAL;
@@ -1213,39 +1165,21 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "SNeIIEnergyFrac");
         addr[nt] = &All.SNeIIEnergyFrac;
         id[nt++] = REAL;
-        
-        /*
-        strcpy(tag[nt], "SNeIIBW_Radius_Factor");
-        addr[nt] = &All.SNeIIBW_Radius_Factor;
-        id[nt++] = REAL;
-        */
-        All.SNeIIBW_Radius_Factor = 1.0;
-        /*
-        SNeIIBW_Radius_Factor       1.0     % (optional) boost cooling radius for resolution-check
-         */
 #endif
         
 #ifdef GALSF_FB_HII_HEATING
         strcpy(tag[nt], "HIIRegion_fLum_Coupled");
         addr[nt] = &All.HIIRegion_fLum_Coupled;
         id[nt++] = REAL;
-        
-        /*
-        strcpy(tag[nt], "HIIRegion_Temp");
-        addr[nt] = &All.HIIRegion_Temp;
-        id[nt++] = REAL;
-        */
-        All.HIIRegion_Temp = 10000.0;
-        /*
-         HIIRegion_Temp              10000.  % temperature (in K) of heated gas
-         */
 #endif
 
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
+#ifdef RT_FIRE
         strcpy(tag[nt], "PhotonMomentum_Coupled_Fraction");
         addr[nt] = &All.PhotonMomentum_Coupled_Fraction;
         id[nt++] = REAL;
+#endif
         
+#ifdef GALSF_FB_RT_PHOTONMOMENTUM
         strcpy(tag[nt], "PhotonMomentum_fUV");
         addr[nt] = &All.PhotonMomentum_fUV;
         id[nt++] = REAL;
@@ -1332,22 +1266,12 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.ResubmitOn;
       id[nt++] = INT;
 
-        All.CoolingOn = 0;
-#ifdef COOLING
-        All.CoolingOn = 1;
-#endif
-        
 #ifdef GRACKLE
         strcpy(tag[nt], "GrackleDataFile");
         addr[nt] = All.GrackleDataFile;
         id[nt++] = STRING;
 #endif
         
-        All.StarformationOn = 0;
-#ifdef GALSF
-        All.StarformationOn = 1;
-#endif
-            
       strcpy(tag[nt], "TimeLimitCPU");
       addr[nt] = &All.TimeLimitCPU;
       id[nt++] = REAL;
@@ -1550,11 +1474,26 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.BlackHoleEddingtonFactor;
       id[nt++] = REAL;
 
-
       strcpy(tag[nt], "SeedBlackHoleMass");
       addr[nt] = &All.SeedBlackHoleMass;
       id[nt++] = REAL;
+        
+#ifdef FOF
+      strcpy(tag[nt], "SeedBlackHoleMassSigma");
+      addr[nt] = &All.SeedBlackHoleMassSigma;
+      id[nt++] = REAL;
 
+      strcpy(tag[nt], "SeedBlackHoleMinRedshift");
+      addr[nt] = &All.SeedBlackHoleMinRedshift;
+      id[nt++] = REAL;
+#endif
+  
+#ifdef BH_ALPHADISK_ACCRETION
+      strcpy(tag[nt], "SeedAlphaDiskMass");
+      addr[nt] = &All.SeedAlphaDiskMass;
+      id[nt++] = REAL;
+#endif
+        
       strcpy(tag[nt], "MinFoFMassForNewSeed");
       addr[nt] = &All.MinFoFMassForNewSeed;
       id[nt++] = REAL;
@@ -1584,11 +1523,7 @@ void read_parameter_file(char *fname)
 #endif /* BLACK_HOLES */
 
 #ifdef GALSF
-      All.CritOverDensity = 1000.0;
-      /* this just needs to be some number >> 1, or else we get nonsense. 
-       In cosmological runs, star formation is not allowed below this overdensity, to prevent spurious
-       star formation at very high redshifts */
-
+#ifndef GALSF_EFFECTIVE_EQS
       strcpy(tag[nt], "CritPhysDensity");
       addr[nt] = &All.CritPhysDensity;
       id[nt++] = REAL;
@@ -1600,11 +1535,9 @@ void read_parameter_file(char *fname)
             defined as the SF timescale in code units at the critical physical 
             density given above. use the dimensionless SfEffPerFreeFall
             to calculate this */
-        
+#endif
         
 #ifdef GALSF_EFFECTIVE_EQS
-      All.CritPhysDensity = 0.0; /* this will be calculated by the code below */
-        
       strcpy(tag[nt], "FactorSN");
       addr[nt] = &All.FactorSN;
       id[nt++] = REAL;
@@ -1630,16 +1563,6 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "WindMomentumLoading");
         addr[nt] = &All.WindMomentumLoading;
         id[nt++] = REAL;
-        
-        /*
-        strcpy(tag[nt], "WindInitialVelocityBoost");
-        addr[nt] = &All.WindInitialVelocityBoost;
-        id[nt++] = REAL;
-        */
-        All.WindInitialVelocityBoost = 1.0;
-        /*
-        WindInitialVelocityBoost    1.0     % (optional) boost velocity coupled (fixed momentum)
-        */
 #endif
         
 #ifdef GALSF_SUBGRID_WINDS
@@ -1706,13 +1629,13 @@ void read_parameter_file(char *fname)
 #endif
 
 
-#ifdef CONDUCTION
+#if defined(CONDUCTION)
         strcpy(tag[nt], "ConductionCoeff");
         addr[nt] = &All.ConductionCoeff;
         id[nt++] = REAL;
 #endif
 
-#ifdef VISCOSITY
+#if defined(VISCOSITY)
         strcpy(tag[nt], "ShearViscosityCoeff");
         addr[nt] = &All.ShearViscosityCoeff;
         id[nt++] = REAL;
@@ -1739,14 +1662,10 @@ void read_parameter_file(char *fname)
 #endif
 #endif /* MAGNETIC */
 
-#ifdef EOS_DEGENERATE
-      strcpy(tag[nt], "EosTable");
-      addr[nt] = All.EosTable;
-      id[nt++] = STRING;
-
-      strcpy(tag[nt], "EosSpecies");
-      addr[nt] = All.EosSpecies;
-      id[nt++] = STRING;
+#ifdef EOS_TABULATED
+        strcpy(tag[nt], "EosTable");
+        addr[nt] = All.EosTable;
+        id[nt++] = STRING;
 #endif
 
 #ifdef NUCLEAR_NETWORK
@@ -1771,26 +1690,14 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 
-#ifdef RELAXOBJECT
-      strcpy(tag[nt], "RelaxBaseFac");
-      addr[nt] = &All.RelaxBaseFac;
-      id[nt++] = REAL;
-#endif
-
-#if defined(RADTRANSFER) && defined(RT_MULTI_FREQUENCY)
-      strcpy(tag[nt], "star_Teff");
-      addr[nt] = &All.star_Teff;
-      id[nt++] = REAL;
-#endif
-
-#ifdef SINKS
-      strcpy(tag[nt], "SinkHsml");
-      addr[nt] = &All.SinkHsml;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "SinkDensThresh");
-      addr[nt] = &All.SinkDensThresh;
-      id[nt++] = REAL;
+#if defined(RT_CHEM_PHOTOION) && !defined(GALSF_FB_HII_HEATING)
+        strcpy(tag[nt], "IonizingLuminosityPerSolarMass_cgs");
+        addr[nt] = &All.IonizingLuminosityPerSolarMass_cgs;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "star_Teff");
+        addr[nt] = &All.star_Teff;
+        id[nt++] = REAL;
 #endif
 
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
@@ -2033,6 +1940,63 @@ void read_parameter_file(char *fname)
      them at this point. if any all variable depends on another, it must be set AFTER this point! */
     
 #ifndef DEVELOPER_MODE
+    /*
+     %- PFH: these are generally not parameters that should be freely-varied. we're
+     %- going to default to hard-coding them, instead, so that only development-level
+     %- users are modifying them. However, if you want to set them, here are some
+     %- reasonable values that you will need to insert into your parameterfile
+     
+     %---- Accuracy of time integration
+     ErrTolIntAccuracy       0.010   % <0.02
+     CourantFac              0.2 	% <0.40
+     MaxRMSDisplacementFac   0.125	% <0.25
+     
+     %---- Tree algorithm, force accuracy, domain update frequency
+     ErrTolTheta                 0.7	    % 0.7=standard
+     ErrTolForceAcc              0.0025	% 0.0025=standard
+     %---- Convergence error for evaluating particle volumes
+     MaxNumNgbDeviation      0.05    % <<DesNumNgb (values<1 are fine)
+     AGS_MaxNumNgbDeviation  2   % same, for adaptive gravsoft: can be much larger
+     
+     %--- Dedner Divergence-cleaning Parameters (for MHD)
+     DivBcleaningParabolicSigma      0.2  % <1, ~0.2-0.5 needed for stability
+     DivBcleaningHyperbolicSigma     1.0  % ~1
+     
+     %---------- SPH-Specific Parameters ---------------------------------
+     %---- Artificial viscosity
+     ArtBulkViscConst    1.0     % multiplies 'standard' AV (use 1.0)
+     %---- P&M artificial conductivity (if present); normalized to Alpha_Visc:
+     ArtCondConstant     0.25    % multiplies 'standard' (use 0.25-0.5)
+     %---- Cullen & Dehnen viscosity suppression
+     ViscosityAMin       0.05    % minimum viscosity away from shocks (>0.025)
+     ViscosityAMax       2.00    % maximum viscosity in shocks (>1)
+     %---- Artificial resistivity (for MHD runs)
+     ArtificialResistivityMax    1.  % maximum alpha_B (~1-2) for art. res. (like art. visc)
+     */
+    
+    All.CourantFac = 0.4;
+    All.ErrTolIntAccuracy = 0.02;
+    All.ErrTolTheta = 0.7;
+    All.ErrTolForceAcc = 0.0025;
+    All.MaxRMSDisplacementFac = 0.25;
+#ifdef HYDRO_SPH
+    All.ArtBulkViscConst = 1.0;
+#ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
+    All.ArtCondConstant = 0.25;
+#endif
+#ifdef SPHAV_CD10_VISCOSITY_SWITCH
+    All.ViscosityAMin = 0.05;
+    All.ViscosityAMax = 2.00;
+#endif
+#ifdef SPH_TP12_ARTIFICIAL_RESISTIVITY
+    All.ArtMagDispConst = 1.0;
+#endif
+#endif // sph
+#ifdef DIVBCLEANING_DEDNER
+    All.DivBcleanParabolicSigma = 0.2;
+    All.DivBcleanHyperbolicSigma = 1.0;
+#endif
+
     if(All.ComovingIntegrationOn) {All.ErrTolForceAcc = 0.005; All.ErrTolIntAccuracy = 0.05;}
     All.MaxNumNgbDeviation = All.DesNumNgb / 640.;
 #ifdef GALSF
@@ -2046,13 +2010,26 @@ void read_parameter_file(char *fname)
 #endif
     if(All.AGS_MaxNumNgbDeviation < 0.05) All.AGS_MaxNumNgbDeviation = 0.05;
 #endif
+#endif // closes DEVELOPER_MODE check //
+    
+    
+#ifdef GALSF
+    All.CritOverDensity = 1000.0;
+    /* this just needs to be some number >> 1, or else we get nonsense.
+     In cosmological runs, star formation is not allowed below this overdensity, to prevent spurious
+     star formation at very high redshifts */
 #endif
+#ifdef GALSF_EFFECTIVE_EQS
+    All.CritPhysDensity = 0.0; /* this will be calculated by the code below */
+#endif
+
+    All.TypeOfOpeningCriterion = 1;
+    /*!< determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion: this
+     should only be changed if you -really- know what you're doing! */    
+    
 #ifdef MAGNETIC
     All.CourantFac *= 0.5; //
     /* (PFH) safety factor needed for MHD calc, because people keep using the same CFac as hydro! */
-#endif
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
-    All.PhotonMomentum_fIR = 1 - All.PhotonMomentum_fUV - All.PhotonMomentum_fOPT;
 #endif
 
     /* now we're going to do a bunch of checks */
@@ -2115,7 +2092,7 @@ void read_parameter_file(char *fname)
         endrun(1);
     }
 #endif
-#ifdef SPH_ARTIFICIAL_RESISTIVITY
+#ifdef SPH_TP12_ARTIFICIAL_RESISTIVITY
     if((All.ArtMagDispConst<1)||(All.ArtMagDispConst>2))
     {
         if(ThisTask==0)
@@ -2146,36 +2123,10 @@ void read_parameter_file(char *fname)
     }
     if(!isnan(All.DesNumNgb))
     {
-        double nk_min,nk_max;
-        nk_min=30; nk_max=64;
-#ifdef KERNEL_QUARTIC
-        nk_min=40; nk_max=125;
-#endif
-#ifdef KERNEL_QUINTIC
-        nk_min=60; nk_max=180;
-#endif
-#ifdef ONEDIM
-        nk_min=2; nk_max=8;
-#ifdef KERNEL_QUARTIC
-        nk_min=3; nk_max=8;
-#endif
-#ifdef KERNEL_QUINTIC
-        nk_min=4; nk_max=12;
-#endif
-#endif
-#ifdef TWODIMS
-        nk_min=12; nk_max=24;
-#ifdef KERNEL_QUARTIC
-        nk_min=16; nk_max=32;
-#endif
-#ifdef KERNEL_QUINTIC
-        nk_min=20; nk_max=50;
-#endif
-#endif
-        if((All.DesNumNgb<nk_min)||(All.DesNumNgb>nk_max))
+        if((All.DesNumNgb<KERNEL_NMIN)||(All.DesNumNgb>KERNEL_NMAX))
         {
             if(ThisTask==0)
-                printf("For the kernel chosen, proper sampling and stability requires DesNumNgb must be >%g and <%g \n", nk_min,nk_max);
+                printf("For the kernel chosen, proper sampling and stability requires DesNumNgb must be >%d and <%d \n", KERNEL_NMIN,KERNEL_NMAX);
             endrun(1);
         }
     }
@@ -2188,35 +2139,9 @@ void read_parameter_file(char *fname)
     }
     if(!isnan(All.AGS_DesNumNgb))
     {
-        double nk_min,nk_max;
-        nk_min=30; nk_max=64;
-#ifdef KERNEL_QUARTIC
-        nk_min=40; nk_max=125;
-#endif
-#ifdef KERNEL_QUINTIC
-        nk_min=60; nk_max=180;
-#endif
-#ifdef ONEDIM
-        nk_min=2; nk_max=8;
-#ifdef KERNEL_QUARTIC
-        nk_min=3; nk_max=8;
-#endif
-#ifdef KERNEL_QUINTIC
-        nk_min=4; nk_max=12;
-#endif
-#endif
-#ifdef TWODIMS
-        nk_min=12; nk_max=24;
-#ifdef KERNEL_QUARTIC
-        nk_min=16; nk_max=32;
-#endif
-#ifdef KERNEL_QUINTIC
-        nk_min=20; nk_max=50;
-#endif
-#endif
-        if((All.AGS_DesNumNgb<nk_min)||(All.AGS_DesNumNgb>nk_max))
+        if((All.AGS_DesNumNgb<KERNEL_NMIN)||(All.AGS_DesNumNgb>KERNEL_NMAX))
         {
-            printf("For the kernel chosen, proper sampling and stability requires AGS_DesNumNgb must be >%g and <%g \n", nk_min,nk_max);
+            printf("For the kernel chosen, proper sampling and stability requires AGS_DesNumNgb must be >%d and <%d \n", KERNEL_NMIN,KERNEL_NMAX);
             endrun(1);
         }
         
@@ -2240,72 +2165,6 @@ void read_parameter_file(char *fname)
         endrun(0);
     }
     
-#ifdef PERIODIC
-    if(All.PeriodicBoundariesOn == 0)
-    {
-        if(ThisTask == 0)
-        {
-            printf("Code was compiled with periodic boundary conditions switched on.\n");
-            printf("You must set `PeriodicBoundariesOn=1', or recompile the code.\n");
-        }
-        endrun(0);
-    }
-#else
-    if(All.PeriodicBoundariesOn == 1)
-    {
-        if(ThisTask == 0)
-        {
-            printf("Code was compiled with periodic boundary conditions switched off.\n");
-            printf("You must set `PeriodicBoundariesOn=0', or recompile the code.\n");
-        }
-        endrun(0);
-    }
-#endif
-    
-    
-#ifdef EDDINGTON_TENSOR_BH
-#ifndef BLACK_HOLES
-    if(ThisTask == 0)
-    {
-        printf("Code was compiled with EDDINGTON_TENSOR_BH, but not with BLACK_HOLES.\n");
-        printf("Switch on BLACK_HOLES.\n");
-    }
-    endrun(0);
-#endif
-#endif
-    
-#ifdef COOLING
-    if(All.CoolingOn == 0)
-    {
-        if(ThisTask == 0)
-        {
-            printf("Code was compiled with cooling switched on.\n");
-            printf("You must set `CoolingOn=1', or recompile the code.\n");
-        }
-        endrun(0);
-    }
-#else
-    if(All.CoolingOn == 1)
-    {
-        if(ThisTask == 0)
-        {
-            printf("Code was compiled with cooling switched off.\n");
-            printf("You must set `CoolingOn=0', or recompile the code.\n");
-        }
-        endrun(0);
-    }
-#endif
-    
-    if(All.TypeOfTimestepCriterion >= 3)
-    {
-        if(ThisTask == 0)
-        {
-            printf("The specified timestep criterion\n");
-            printf("is not valid\n");
-        }
-        endrun(0);
-    }
-    
 #if defined(LONG_X) ||  defined(LONG_Y) || defined(LONG_Z)
 #ifndef NOGRAVITY
     if(ThisTask == 0)
@@ -2316,38 +2175,6 @@ void read_parameter_file(char *fname)
     endrun(0);
 #endif
 #endif
-    
-#ifdef GALSF
-    if(All.StarformationOn == 0)
-    {
-        if(ThisTask == 0)
-        {
-            printf("Code was compiled with star formation switched on.\n");
-            printf("You must set `StarformationOn=1', or recompile the code.\n");
-        }
-        endrun(0);
-    }
-    if(All.CoolingOn == 0)
-    {
-        if(ThisTask == 0)
-        {
-            printf("You try to use the code with star formation enabled,\n");
-            printf("but you did not switch on cooling.\nThis mode is not supported.\n");
-        }
-        endrun(0);
-    }
-#else
-    if(All.StarformationOn == 1)
-    {
-        if(ThisTask == 0)
-        {
-            printf("Code was compiled with star formation switched off.\n");
-            printf("You must set `StarformationOn=0', or recompile the code.\n");
-        }
-        endrun(0);
-    }
-#endif
-    
     
     
 #ifdef TIMEDEPDE

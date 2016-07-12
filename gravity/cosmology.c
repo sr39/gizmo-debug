@@ -35,7 +35,7 @@ double INLINE_FUNC hubble_function(double a)
 #else
     + All.OmegaLambda;
 #endif
-    hubble_a = All.Hubble * sqrt(hubble_a);
+    hubble_a = All.Hubble_H0_CodeUnits * sqrt(hubble_a);
 #endif
 #ifdef TIMEDEPGRAV
     hubble_a *= dHfak(a);

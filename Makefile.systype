@@ -12,11 +12,14 @@
 #############
 
 
-#SYSTYPE="Stampede"
-SYSTYPE="Zwicky"
+SYSTYPE="Stampede"
+#SYSTYPE="Zwicky"
 #SYSTYPE="MacBookPro"
+#SYSTYPE="Quest"
 #SYSTYPE="odyssey"
 #SYSTYPE="SciNet"
+#SYSTYPE="Pleiades-Haswell"
+#SYSTYPE="Pleiades-SIBridge"
 #SYSTYPE="Ranger_intel"
 #SYSTYPE="Ranger_pgi"
 #SYSTYPE="Darwin"

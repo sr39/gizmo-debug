@@ -11,12 +11,16 @@
 #define TOL_ITER 1.e-6
 #define NMAX_ITER 1000
 
+#ifdef CONSTRAINED_GRADIENT_MHD
+#define DEDNER_IMPLICIT_LIMITER 0.25
+#else 
 #define DEDNER_IMPLICIT_LIMITER 0.75
+#endif
 
 #if defined(TURB_DIFFUSION)
 #define SAVE_FACE_DENSITY 1
 #endif
-#if (defined(CONDUCTION) || defined(COSMIC_RAYS) || defined(VISCOSITY)) && defined(MAGNETIC)
+#if defined(MAGNETIC)
 #define SAVE_FACE_BFIELD 1
 #endif
 #if defined(VISCOSITY) && defined(MAGNETIC)
@@ -63,6 +67,9 @@ struct Riemann_outputs
 #ifdef SAVE_FACE_VFIELD
     MyDouble Face_Vel[3];
 #endif
+#ifdef TURB_DIFF_METALS
+    MyDouble Mdot_estimated;
+#endif
     struct Conserved_var_Riemann Fluxes;
 };
 struct rotation_matrix
@@ -78,7 +85,7 @@ struct rotation_matrix
 /* --------------------------------------------------------------------------------- */
 static inline double actual_slopelimiter(double dQ_1, double dQ_2);
 static inline double get_dQ_from_slopelimiter(double dQ_1, MyFloat grad[3], struct kernel_hydra kernel, double rinv);
-void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3]);
+void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3], double press_tot_limiter);
 double guess_for_pressure(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out,
                           double v_line_L, double v_line_R, double cs_L, double cs_R);
 void sample_reimann_standard(double S, struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out,
@@ -95,18 +102,18 @@ void HLLC_fluxes(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *R
                  double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R, double S_L, double S_R);
 void get_wavespeeds_and_pressure_star(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
                                       double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R,
-                                      double *S_L_out, double *S_R_out);
+                                      double *S_L_out, double *S_R_out, double press_tot_limiter);
 void Riemann_solver_Rusanov(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
                             double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R);
 void HLLC_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
-                         double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R);
+                         double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R, double press_tot_limiter);
 void convert_face_to_flux(struct Riemann_outputs *Riemann_out, double n_unit[3]);
 int iterative_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out,
                               double v_line_L, double v_line_R, double cs_L, double cs_R);
 void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloat Grad_Q_j[3],
-                             double distance_from_i[3], double distance_from_j[3], double *Q_L, double *Q_R, int order);
+                             double distance_from_i[3], double distance_from_j[3], double *Q_L, double *Q_R, int mode);
 #ifdef MAGNETIC
-void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out);
+void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double press_tot_limiter);
 void rotate_states_to_face(struct Input_vec_Riemann *Riemann_vec, double n_unit[3], struct rotation_matrix *rot_matrix);
 void rotate_fluxes_back_to_lab(struct Riemann_outputs *Riemann_out, struct rotation_matrix rot_matrix);
 #endif
@@ -118,9 +125,9 @@ void rotate_fluxes_back_to_lab(struct Riemann_outputs *Riemann_out, struct rotat
 /*  (reconstruction and slope-limiter from P. Hopkins) */
 /* --------------------------------------------------------------------------------- */
 void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloat Grad_Q_j[3],
-                             double distance_from_i[3], double distance_from_j[3], double *Q_L, double *Q_R, int order)
+                             double distance_from_i[3], double distance_from_j[3], double *Q_L, double *Q_R, int mode)
 {
-    if(order==0)
+    if(mode == 0)
     {
         /* zeroth order reconstruction: this case is trivial */
         *Q_R = Q_i;
@@ -137,24 +144,53 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
     /* here we do our slightly-fancy slope-limiting */
     double Qmin,Qmax,Qmed,Qmax_eff,Qmin_eff,fac,Qmed_max,Qmed_min;
 #ifdef MAGNETIC
-    double fac_minmax = 0.5; //0.375; /* 0.5, 0.1 works; 1.0 unstable; 0.75 is stable but begins to 'creep' */
-    double fac_meddev = 0.375; //0.25; /* 0.25,0.375 work well; 0.5 unstable; 0.44 is on-edge */
+    double fac_minmax;
+    double fac_meddev;
+    if(mode == 1)
+    {
+        fac_minmax = 0.5; //0.375; /* 0.5, 0.1 works; 1.0 unstable; 0.75 is stable but begins to 'creep' */
+        fac_meddev = 0.375; //0.25; /* 0.25,0.375 work well; 0.5 unstable; 0.44 is on-edge */
+    }
+    if(mode == 2)
+    {
+#ifdef CONSTRAINED_GRADIENT_MHD
+        fac_minmax = 0.0;
+        fac_meddev = 0.0;
+#else
+        fac_minmax = 0.0;
+        fac_meddev = 0.25;
+#endif
+    }
+    if(mode == -1)
+    {
+        fac_minmax = CONSTRAINED_GRADIENT_MHD_FAC_MINMAX;
+        fac_meddev = CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV;
+    }
 #else
     double fac_minmax = 0.5; /* 0.5, 0.1 works; 1.0 unstable; 0.75 is stable but begins to 'creep' */
     double fac_meddev = 0.375; /* 0.25,0.375 work well; 0.5 unstable; 0.44 is on-edge */
+#ifdef AGGRESSIVE_SLOPE_LIMITERS
+    fac_minmax=0.75;
+    fac_meddev=0.40;
+#endif
 #endif
     /* get the max/min vals, difference, and midpoint value */
     Qmed = 0.5*(Q_i+Q_j);
     if(Q_i<Q_j) {Qmax=Q_j; Qmin=Q_i;} else {Qmax=Q_i; Qmin=Q_j;}
     fac = fac_minmax * (Qmax-Qmin);
+    if(mode == -1) {fac += CONSTRAINED_GRADIENT_MHD_FAC_MAX_PM * fabs(Qmed);}
     Qmax_eff = Qmax + fac; /* 'overshoot tolerance' */
     Qmin_eff = Qmin - fac; /* 'undershoot tolerance' */
     /* check if this implies a sign from the min/max values: if so, we re-interpret the derivative as a
      logarithmic derivative to prevent sign changes from occurring */
-    if(Qmax<0) {if(Qmax_eff>0) Qmax_eff=Qmax*Qmax/(Qmax-(Qmax_eff-Qmax));} // works with 0.5,0.1 //
-    if(Qmin>0) {if(Qmin_eff<0) Qmin_eff=Qmin*Qmin/(Qmin+(Qmin-Qmin_eff));}
+    if(mode > 0)
+    {
+        if(Qmax<0) {if(Qmax_eff>0) Qmax_eff=Qmax*Qmax/(Qmax-(Qmax_eff-Qmax));} // works with 0.5,0.1 //
+        if(Qmin>0) {if(Qmin_eff<0) Qmin_eff=Qmin*Qmin/(Qmin+(Qmin-Qmin_eff));}
+    }
     /* also allow tolerance to over/undershoot the exact midpoint value in the reconstruction */
     fac = fac_meddev * (Qmax-Qmin);
+    if(mode == -1) {fac += CONSTRAINED_GRADIENT_MHD_FAC_MED_PM * fabs(Qmed);}
     Qmed_max = Qmed + fac;
     Qmed_min = Qmed - fac;
     if(Qmed_max>Qmax_eff) Qmed_max=Qmax_eff;
@@ -166,11 +202,21 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
         if(*Q_R>Qmed_max) *Q_R=Qmed_max;
         if(*Q_L>Qmax_eff) *Q_L=Qmax_eff;
         if(*Q_L<Qmed_min) *Q_L=Qmed_min;
+/*
+#if defined(MAGNETIC) && !defined(CONSTRAINED_GRADIENT_MHD)
+        if(mode > 0) {if(*Q_R > *Q_L) {*Q_R = 0.5*(*Q_R + *Q_L); *Q_L=*Q_R;}} // causes strong diffusion in Gresho and RTMHD: limit conditions of use
+#endif
+*/
     } else {
         if(*Q_R>Qmax_eff) *Q_R=Qmax_eff;
         if(*Q_R<Qmed_min) *Q_R=Qmed_min;
         if(*Q_L<Qmin_eff) *Q_L=Qmin_eff;
         if(*Q_L>Qmed_max) *Q_L=Qmed_max;
+/*
+#if defined(MAGNETIC) && !defined(CONSTRAINED_GRADIENT_MHD)
+        if(mode > 0) {if(*Q_R < *Q_L) {*Q_R = 0.5*(*Q_R + *Q_L); *Q_L=*Q_R;}} // causes strong diffusion in Gresho and RTMHD: limit conditions of use
+#endif
+*/
     }
     /* done! */
 }
@@ -211,7 +257,7 @@ static inline double get_dQ_from_slopelimiter(double dQ_1, MyFloat grad[3], stru
 /* Master Riemann solver routine: call this, it will call sub-routines */
 /*  (written by P. Hopkins, this is just a wrapper though for the various sub-routines) */
 /* --------------------------------------------------------------------------------- */
-void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3])
+void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3], double press_tot_limiter)
 {
     if((Riemann_vec.L.p < 0 && Riemann_vec.R.p < 0)||(Riemann_vec.L.rho < 0)||(Riemann_vec.R.rho < 0))
     {
@@ -243,28 +289,19 @@ void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs
         Riemann_vec.L.phi *= All.cf_a3inv;
         Riemann_vec.R.phi *= All.cf_a3inv;
 #endif
-#ifdef NON_IDEAL_EOS
+#ifdef EOS_GENERAL
         Riemann_vec.L.cs *= All.cf_afac3;
         Riemann_vec.R.cs *= All.cf_afac3;
         Riemann_vec.L.u /= All.cf_afac1;
         Riemann_vec.R.u /= All.cf_afac1;
 #endif
     }
-#ifndef NON_IDEAL_EOS
+#ifndef EOS_GENERAL
     /* here we haven't reconstructed the sound speeds and internal energies explicitly, so need to do it from pressure, density */
     Riemann_vec.L.cs = sqrt(GAMMA * Riemann_vec.L.p / Riemann_vec.L.rho);
     Riemann_vec.R.cs = sqrt(GAMMA * Riemann_vec.R.p / Riemann_vec.R.rho);
     Riemann_vec.L.u  = Riemann_vec.L.p / (GAMMA_MINUS1 * Riemann_vec.L.rho);
     Riemann_vec.R.u  = Riemann_vec.R.p / (GAMMA_MINUS1 * Riemann_vec.R.rho);
-#endif
-#ifdef COSMIC_RAYS
-    /*
-        double u_cr;
-        u_cr = (Riemann_vec.L.p / Riemann_vec.L.rho - GAMMA_MINUS1 * Riemann_vec.L.u) / GAMMA_COSMICRAY_MINUS1;
-        if(u_cr > 0) {Riemann_vec.L.u += u_cr;}
-        u_cr = (Riemann_vec.R.p / Riemann_vec.R.rho - GAMMA_MINUS1 * Riemann_vec.R.u) / GAMMA_COSMICRAY_MINUS1;
-        if(u_cr > 0) {Riemann_vec.R.u += u_cr;}
-    */
 #endif
     
 #ifdef MAGNETIC
@@ -272,7 +309,7 @@ void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs
     /* rotate the state to the face, so we can use the 1D riemann solver */
     rotate_states_to_face(&Riemann_vec, n_unit, &rot_matrix);
     /* send it to our 1D MHD solver, which will try several solutions until it gets a positive pressure */
-    HLLD_Riemann_solver(Riemann_vec, Riemann_out);
+    HLLD_Riemann_solver(Riemann_vec, Riemann_out, press_tot_limiter);
     /* rotate the returned fluxes back to the lab frame */
     rotate_fluxes_back_to_lab(Riemann_out, rot_matrix);
 
@@ -285,22 +322,36 @@ void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs
     double v_line_L = Riemann_vec.L.v[0]*n_unit[0] + Riemann_vec.L.v[1]*n_unit[1] + Riemann_vec.L.v[2]*n_unit[2];
     double v_line_R = Riemann_vec.R.v[0]*n_unit[0] + Riemann_vec.R.v[1]*n_unit[1] + Riemann_vec.R.v[2]*n_unit[2];
     
-    HLLC_Riemann_solver(Riemann_vec, Riemann_out, n_unit, v_line_L, v_line_R, cs_L, cs_R, h_L, h_R);
-#ifdef NON_IDEAL_EOS
+    HLLC_Riemann_solver(Riemann_vec, Riemann_out, n_unit, v_line_L, v_line_R, cs_L, cs_R, h_L, h_R, press_tot_limiter);
+#ifdef EOS_GENERAL
     /* check if HLLC failed: if so, compute the Rusanov flux instead */
     if((Riemann_out->P_M<=0)||(isnan(Riemann_out->P_M)))
         Riemann_solver_Rusanov(Riemann_vec, Riemann_out, n_unit, v_line_L, v_line_R, cs_L, cs_R, h_L, h_R);
 #else
+#if !defined(COOLING) && !defined(GALSF)
     /* go straight to the expensive but exact solver (only for hydro with polytropic eos!) */
-    if((Riemann_out->P_M<=0)||(isnan(Riemann_out->P_M)))
+    if((Riemann_out->P_M<=0)||(isnan(Riemann_out->P_M))||(Riemann_out->P_M>press_tot_limiter))
     {
         Riemann_solver_exact(Riemann_vec, Riemann_out, n_unit, v_line_L, v_line_R, cs_L, cs_R, h_L, h_R);
 #ifdef SAVE_FACE_DENSITY
         Riemann_out->Face_Density = 0.5*(Riemann_vec.L.rho + Riemann_vec.R.rho);
 #endif
     }
+#endif // cooling/galsf
+#endif // eos_general
+#endif // magnetic
+
+#ifdef TURB_DIFF_METALS
+    {
+        double rho_k,s_k,v_k,cs_m = DMAX(Riemann_vec.L.cs,Riemann_vec.R.cs);
+#ifdef MAGNETIC
+        double v_line_L = Riemann_vec.L.v[0]*n_unit[0] + Riemann_vec.L.v[1]*n_unit[1] + Riemann_vec.L.v[2]*n_unit[2];
+        double v_line_R = Riemann_vec.R.v[0]*n_unit[0] + Riemann_vec.R.v[1]*n_unit[1] + Riemann_vec.R.v[2]*n_unit[2];
 #endif
-#endif
+        if(Riemann_out->S_M>0) {rho_k=Riemann_vec.L.rho; v_k=v_line_L; s_k=DMIN(v_line_L,v_line_R)-cs_m;} else {rho_k=Riemann_vec.R.rho; v_k=v_line_R; s_k=DMAX(v_line_L,v_line_R)+cs_m;}
+        if(s_k != Riemann_out->S_M) {Riemann_out->Mdot_estimated=rho_k*Riemann_out->S_M*(s_k-v_k)/(s_k-Riemann_out->S_M);} else {Riemann_out->Mdot_estimated=0;}
+    }
+#endif // turb_diff_metals
 }
 
 
@@ -314,10 +365,10 @@ void Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs
 /* -------------------------------------------------------------------------------------------------------------- */
 /* HLLC: hydro (no MHD) */
 void HLLC_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
-                        double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R)
+                        double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R, double press_tot_limiter)
 {
     double S_L,S_R;
-    get_wavespeeds_and_pressure_star(Riemann_vec, Riemann_out, n_unit,  v_line_L, v_line_R, cs_L, cs_R, h_L, h_R, &S_L, &S_R);
+    get_wavespeeds_and_pressure_star(Riemann_vec, Riemann_out, n_unit,  v_line_L, v_line_R, cs_L, cs_R, h_L, h_R, &S_L, &S_R, press_tot_limiter);
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     /* check if we have a valid solution, and if so, compute the fluxes */
     if((Riemann_out->P_M>0)&&(!isnan(Riemann_out->P_M)))
@@ -381,7 +432,7 @@ void Riemann_solver_Rusanov(struct Input_vec_Riemann Riemann_vec, struct Riemann
 /*  (written by P. Hopkins) */
 void get_wavespeeds_and_pressure_star(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double n_unit[3],
                                       double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R,
-                                      double *S_L_out, double *S_R_out)
+                                      double *S_L_out, double *S_R_out, double press_tot_limiter)
 {
     /* Gaburov: 'simplest' HLLC discretization with weighting scheme */
     double PT_L = Riemann_vec.L.p;
@@ -393,7 +444,7 @@ void get_wavespeeds_and_pressure_star(struct Input_vec_Riemann Riemann_vec, stru
     Riemann_out->S_M = ((PT_R-PT_L) + rho_wt_L*v_line_L - rho_wt_R*v_line_R) / (rho_wt_L - rho_wt_R);
     Riemann_out->P_M = (PT_L*rho_wt_R - PT_R*rho_wt_L + rho_wt_L*rho_wt_R*(v_line_R - v_line_L)) / (rho_wt_R - rho_wt_L);
 
-    if((Riemann_out->P_M <= 0)||(isnan(Riemann_out->P_M)))
+    if((Riemann_out->P_M <= 0)||(isnan(Riemann_out->P_M))||(Riemann_out->P_M>press_tot_limiter))
     {
         /* failed: compute Roe-averaged values (Roe 1981) [roe-averaging not strictly necessary for HLLC, though it improves accuracy */
         /* note that enthalpy H=(Etotal+P)/d is averaged, with Etotal=Ekinetic+Einternal (Einternal=P/(gamma-1)) */
@@ -405,7 +456,7 @@ void get_wavespeeds_and_pressure_star(struct Input_vec_Riemann Riemann_vec, stru
         double vz_roe = (sqrt_rho_L*Riemann_vec.L.v[2] + sqrt_rho_R*Riemann_vec.R.v[2]) * sqrt_rho_inv;
         /* compute velocity along the line connecting the nodes, and max/min wave speeds */
         double v_line_roe = vx_roe*n_unit[0] + vy_roe*n_unit[1] + vz_roe*n_unit[2];
-#ifndef NON_IDEAL_EOS
+#ifndef EOS_GENERAL
         double h_roe  = (sqrt_rho_L*h_L  + sqrt_rho_R*h_R) * sqrt_rho_inv;
         double cs_roe = sqrt(DMAX(1.e-30, GAMMA_MINUS1*(h_roe - 0.5*(vx_roe*vx_roe+vy_roe*vy_roe+vz_roe*vz_roe))));
 #else
@@ -422,7 +473,7 @@ void get_wavespeeds_and_pressure_star(struct Input_vec_Riemann Riemann_vec, stru
         Riemann_out->P_M = Riemann_vec.L.rho * (v_line_L-S_L)*(v_line_L-Riemann_out->S_M) + PT_L;
         /* p_M = p_L* = p_R*  */
 
-        if((Riemann_out->P_M <= 0)||(isnan(Riemann_out->P_M)))
+        if((Riemann_out->P_M <= 0)||(isnan(Riemann_out->P_M))||(Riemann_out->P_M>press_tot_limiter))
         {
             /* failed again! try the simple primitive-variable estimate (as we would for Rusanov) */
             Riemann_out->P_M = 0.5*((PT_L + PT_R) + (v_line_L-v_line_R)*0.25*(Riemann_vec.L.rho+Riemann_vec.R.rho)*(cs_L+cs_R));
@@ -1022,7 +1073,7 @@ void convert_face_to_flux(struct Riemann_outputs *Riemann_out, double n_unit[3])
 /*   (written by P. Hopkins) */
 /* -------------------------------------------------------------------------------------------------------------- */
 /* HLLD: (MHD) */
-void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out)
+void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_outputs *Riemann_out, double press_tot_limiter)
 {
     double v_frame = 0; /* frame velocity (in the direction of its normal): this will be used below! */
     double SMALL_NUMBER = 1.0e-11;
@@ -1055,20 +1106,40 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     /* use this to compute the corrected face-centered fields (recall Bx = constant through all states) */
     Bx = 0.5*(Riemann_vec.L.B[0]+Riemann_vec.R.B[0]);
     Riemann_out->B_normal_corrected = Bx;
+
 #ifdef DIVBCLEANING_DEDNER
     /* use the solution for the modified Bx, given the action of the phi-field; 
         however this must be slope-limited to ensure the 'corrected' Bx remains stable */
+#if !defined(CONSTRAINED_GRADIENT_MHD) || defined(COOLING) || defined(GALSF)
+    /* this is the formulation from E. Gaburov assuming -two- wavespeeds (cL and cR); this down-weights the correction term
+     under some circumstances, which appears to increase stability */
+    double cL = Riemann_out->cfast_L; // may want to try with correction for approach speed; this helps to stabilize things in the cL=cR case
+    double cR = Riemann_out->cfast_R;
+    double corr_norm = 1;
+    double cinv = 1.0 / (cL+cR);
+    Riemann_out->B_normal_corrected = cinv*(Riemann_vec.L.B[0]*cL + Riemann_vec.R.B[0]*cR);
+    double corr_p = cinv*(Riemann_vec.L.phi-Riemann_vec.R.phi);
+    double corr_p_abs = fabs(corr_p);
+    double corr_b_abs = DEDNER_IMPLICIT_LIMITER * fabs(Riemann_out->B_normal_corrected);
+    if(corr_p_abs > corr_b_abs) {corr_norm *= corr_b_abs/corr_p_abs;}
+    Riemann_out->B_normal_corrected += corr_norm * corr_p;
+    Riemann_out->phi_normal_mean = corr_norm * cinv * (cL*Riemann_vec.R.phi + cR*Riemann_vec.L.phi);
+    Riemann_out->phi_normal_db = corr_norm * cinv * cL * cR * (Riemann_vec.L.B[0]-Riemann_vec.R.B[0]);
+#else
+    /* this is the 'default' Dedner formulation, which uses a single (maximum) wavespeed for the interface */
+    c_eff += DMAX( 0. , Riemann_vec.L.v[0]-Riemann_vec.R.v[0] );
+    // add approach speed, since this is a signal velocity (and that's what we use for growing phi)
     double corr_norm = 1.0;
     double corr_p = 0.5*(Riemann_vec.L.phi-Riemann_vec.R.phi)/c_eff;
     double corr_p_abs = fabs(corr_p);
     double corr_b_abs = DEDNER_IMPLICIT_LIMITER * fabs(Bx);
     if(corr_p_abs > corr_b_abs) {corr_norm *= corr_b_abs/corr_p_abs;}
-    /* ok, now we should have a properly slope-limited reconstruction of Bnorm */
-    
     Riemann_out->B_normal_corrected += corr_norm * corr_p;
     Riemann_out->phi_normal_mean = 0.5 * corr_norm * (Riemann_vec.R.phi+Riemann_vec.L.phi);
     Riemann_out->phi_normal_db = corr_norm * 0.5*(c_eff*(Riemann_vec.L.B[0]-Riemann_vec.R.B[0]));
 #endif
+#endif
+    
     /* and set the normal component of B to the corrected value */
     Bx = Riemann_out->B_normal_corrected; // need to re-set this using the updated value of Bx //
     Riemann_vec.L.B[0] = Bx;
@@ -1103,7 +1174,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     
     
     /* now we need to check if these guesses are reasonable; otherwise, use a different wavespeed estimate */
-    if((P_M<=0)||(isnan(P_M)))
+    if((P_M<=0)||(isnan(P_M))||(P_M>press_tot_limiter))
     {
         double sqrt_rho_L = sqrt(Riemann_vec.L.rho);
         double sqrt_rho_R = sqrt(Riemann_vec.R.rho);
@@ -1120,7 +1191,7 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
         P_M = PT_L + rho_wt_L*(S_M-vxL);
         
         /* ok, are the roe-averaged wavespeed guesses reasonable? */
-        if((P_M<=0)||(isnan(P_M)))
+        if((P_M<=0)||(isnan(P_M))||(P_M>press_tot_limiter))
         {
             double S_plus = DMAX(fabs(vxL),fabs(vxR)) + c_eff;
             S_L=-S_plus; S_R=S_plus;
@@ -1420,8 +1491,9 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
 
     /* alright, we've gotten successful HLLD fluxes! */
     Riemann_out->Fluxes.B[0] = -v_frame * Bx;
-#ifdef DIVBCLEANING_DEDNER
-    Riemann_out->Fluxes.phi = -v_frame * Riemann_out->phi_normal_mean; // need to use the proper phi from the updated problem //
+#if defined(DIVBCLEANING_DEDNER) && defined(HYDRO_MESHLESS_FINITE_VOLUME)
+    //Riemann_out->Fluxes.phi = -Interface_State->v[0] * Interface_State->rho * Riemann_out->phi_normal_mean; // potentially improved phi-flux for MFV with mass-based fluxes
+    //Riemann_out->Fluxes.phi = -v_frame * Riemann_out->phi_normal_mean; // need to use the proper phi from the updated problem // mass-based phi-fluxes don't require this 
     //Riemann_out->Fluxes.phi -= All.DivBcleanHyperbolicSigma * c_eff*c_eff * Bx;
 #endif
     Riemann_out->S_M=v_frame;

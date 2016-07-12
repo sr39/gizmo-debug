@@ -206,6 +206,9 @@ void set_non_standard_physics_for_current_time(void)
 
 void calculate_non_standard_physics(void)
 {
+#ifdef PARTICLE_EXCISION
+    apply_excision();
+#endif
     
 #ifdef GALSF
     /* PFH set of feedback routines */
@@ -213,7 +216,9 @@ void calculate_non_standard_physics(void)
 #endif
     
 #if defined(TURB_DRIVING)
+#ifdef EOS_ENFORCE_ADIABAT
     reset_turb_temp();
+#endif
 #if defined(POWERSPEC_GRID)
     if(All.Time >= All.TimeNextTurbSpectrum)
     {
@@ -223,68 +228,37 @@ void calculate_non_standard_physics(void)
 #endif
 #endif
     
-#ifdef GRAIN_FLUID
-    apply_grain_dragforce();
-#endif
-        
     
 #ifdef RADTRANSFER
-    double timeeach = 0, timeall = 0, tstart = 0, tend = 0;
-    if(Flag_FullStep)		/* only do it for full timesteps */
+    
+#if defined(RT_SOURCE_INJECTION)
+    if(Flag_FullStep) {rt_source_injection();} /* source injection into neighbor gas particles (only on full timesteps) */
+#endif
+    
+#if defined(RT_DIFFUSION_CG)
+    /* use the CG method to solve the RT diffusion equation implicitly for all particles */
+    if(Flag_FullStep) /* only do it for full timesteps */
     {
+        if(ThisTask == 0) {printf("start CG iteration for radiative transfer (diffusion equation)...\n"); fflush(stdout);}
         All.Radiation_Ti_endstep = All.Ti_Current;
-        
-        if(ThisTask == 0)
-        {
-            printf("Start Eddington tensor computation...\n");
-            fflush(stdout);
-        }
-        eddington();
-#ifdef RT_RAD_PRESSURE
-        n();
-#endif
-        if(ThisTask == 0)
-        {
-            printf("done Eddington tensor! \n");
-            fflush(stdout);
-        }
-#ifdef EDDINGTON_TENSOR_SFR
-        density_sfr();
-        sfr_lum();
-#endif
-#ifdef EDDINGTON_TENSOR_STARS
-        star_lum();
-#endif
-#ifdef EDDINGTON_TENSOR_GAS
-        gas_lum();
-#endif
-#ifdef EDDINGTON_TENSOR_BH
-        bh_lum();
-#endif
-        /***** evolve the transport of radiation *****/
-        if(ThisTask == 0)
-        {
-            printf("start radtransfer...\n");
-            fflush(stdout);
-        }
+        double timeeach = 0, timeall = 0, tstart = 0, tend = 0;
         tstart = my_second();
-        radtransfer();
+        rt_diffusion_cg_solve();
         tend = my_second();
         timeeach = timediff(tstart, tend);
         MPI_Allreduce(&timeeach, &timeall, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-        if(ThisTask == 0)
-        {
-            printf("time consumed is %g \n", timeall);
-            printf("done with radtransfer! \n");
-            fflush(stdout);
-        }
+        if(ThisTask == 0) {printf("done with CG iteration for radiative transfer (time consumed = %g)! \n",timeall); fflush(stdout);}
         All.Radiation_Ti_begstep = All.Radiation_Ti_endstep;
     }
+#endif
+
+#if defined(RT_CHEM_PHOTOION) && (!defined(COOLING) || defined(RT_COOLING_PHOTOHEATING_OLDFORMAT))
     /* chemistry updated at sub-stepping as well */
-    radtransfer_update_chemistry();
-    if(Flag_FullStep)             /* only do it for full timesteps */
-        rt_write_stats();
-#endif // closes RADTRANSFER
+    rt_update_chemistry();
+    if(Flag_FullStep) {rt_write_chemistry_stats();}
+#endif
+    
+#endif
     
     
 #ifdef BLACK_HOLES
@@ -298,7 +272,11 @@ void calculate_non_standard_physics(void)
 #if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_VARIABLEVELOCITY)
 #ifdef FOF
     /* this will find new black hole seed halos and/or assign host halo masses for the variable wind model */
+#if !defined(GALSF_SUBGRID_VARIABLEVELOCITY)   // BH seeding only at z > All.SeedBlackHoleMinRedshift
+    if((All.Time < 1.0/(1.0+All.SeedBlackHoleMinRedshift)) && (All.Time >= All.TimeNextOnTheFlyFoF))
+#else
     if(All.Time >= All.TimeNextOnTheFlyFoF)
+#endif
     {
 #ifdef BH_SEED_STAR_MASS_FRACTION
         fof_fof(-2);
@@ -367,10 +345,6 @@ void calculate_non_standard_physics(void)
     }
 #endif
     
-#ifdef SINKS
-    do_sinks();
-#endif
-    
 #ifdef SCF_HYBRID
     SCF_do_center_of_mass_correction(0.75, 10.0 * SCF_HQ_A, 0.01, 1000);
 #endif
@@ -382,8 +356,10 @@ void compute_statistics(void)
 {
     if((All.Time - All.TimeLastStatistics) >= All.TimeBetStatistics)
     {
+#if !defined(EVALPOTENTIAL)          // DAA: compute_potential is not defined if EVALPOTENTIAL is on... check!
 #ifdef COMPUTE_POTENTIAL_ENERGY
         compute_potential();
+#endif
 #endif
         energy_statistics();	/* compute and output energy statistics */
         
@@ -494,6 +470,9 @@ void find_next_sync_point_and_drift(void)
     All.Time = All.TimeBegin + All.Ti_Current * All.Timebase_interval;
 
   set_cosmo_factors_for_current_time();
+#ifdef SHEARING_BOX
+    calc_shearing_box_pos_offset();
+#endif
 
 #ifdef TIMEDEPGRAV
   All.G = All.Gini * dGfak(All.Time);

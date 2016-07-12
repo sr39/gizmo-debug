@@ -30,16 +30,11 @@ void apply_grain_dragforce(void)
 {
     
     CPU_Step[CPU_MISC] += measure_time();
-    if(ThisTask == 0)
-    {
-        printf("Beginning Grain Drag Force\n");
-        fflush(stdout);
-    }
     
     int i, k;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        if(P[i].Type != 0)
+        if((P[i].Type != 0)&&(P[i].Type != 4))
         {
             if(P[i].Gas_Density > 0)
             {
@@ -47,9 +42,11 @@ void apply_grain_dragforce(void)
                 if(dt > 0)
                 {
                     double cs = sqrt( GAMMA * GAMMA_MINUS1 * P[i].Gas_InternalEnergy);
-                    double R_grain = P[i].Grain_Size;
+                    double R_grain_cgs = P[i].Grain_Size;
+                    double R_grain_code = R_grain_cgs / (All.UnitLength_in_cm / All.HubbleParam);
                     double rho_gas = P[i].Gas_Density * All.cf_a3inv;
-                    double rho_grain = All.Grain_Internal_Density;
+                    double rho_grain_physical = All.Grain_Internal_Density; // cgs units //
+                    double rho_grain_code = rho_grain_physical / (All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam); // code units //
                     double vgas_mag = 0.0;
                     for(k=0;k<3;k++) {vgas_mag+=(P[i].Gas_Velocity[k]-P[i].Vel[k])*(P[i].Gas_Velocity[k]-P[i].Vel[k]);}
                     
@@ -58,7 +55,7 @@ void apply_grain_dragforce(void)
                     {
                         vgas_mag = sqrt(vgas_mag) / All.cf_atime;
                         double x0 = 0.469993 * vgas_mag/cs; // (3/8)*sqrt[pi/2]*|vgas-vgrain|/cs //
-                        double tstop_inv = 1.59577 * rho_gas * cs / (R_grain * rho_grain); // 2*sqrt[2/pi] * 1/tstop //
+                        double tstop_inv = 1.59577 * rho_gas * cs / (R_grain_code * rho_grain_code); // 2*sqrt[2/pi] * 1/tstop //
 #ifdef GRAIN_EPSTEIN
                         double mu = 2.3 * PROTONMASS;
                         double temperature = mu * (P[i].Gas_InternalEnergy*All.UnitEnergy_in_cgs*All.HubbleParam/All.UnitMass_in_g) / BOLTZMANN;
@@ -66,36 +63,56 @@ void apply_grain_dragforce(void)
                         cross_section /= (All.UnitLength_in_cm * All.UnitLength_in_cm / (All.HubbleParam*All.HubbleParam));
                         double n_mol = rho_gas / (mu * All.HubbleParam/All.UnitMass_in_g);
                         double mean_free_path = 1 / (n_mol * cross_section); // should be in code units now //
-                        double corr_mfp = R_grain / ((9./4.) * mean_free_path);
+                        double corr_mfp = R_grain_code / ((9./4.) * mean_free_path);
                         if(corr_mfp > 1) {tstop_inv /= corr_mfp;}
 #endif
                         double C1 = (-1-sqrt(1+x0*x0)) / x0;
-                        double C2 = C1 * exp( dt * tstop_inv );
-                        double xf = -2 * C2 / (C2*C2 -1);
+                        double xf = 0.0;
+                        double dt_tinv = dt * tstop_inv;
+                        if(dt_tinv < 100.)
+                        {
+                            double C2 = C1 * exp( dt_tinv );
+                            xf = -2 * C2 / (C2*C2 -1);
+                        }
                         double slow_fac = 1 - xf / x0;
                         // note that, with an external (gravitational) acceleration, we can still solve this equation for the relevant update //
 
                         double external_forcing[3];
-                        for(k=0;k<3;k++) {external_forcing[k]=0};
-                        
+                        for(k=0;k<3;k++) {external_forcing[k] = 0;}
+                        /* this external_forcing parameter includes additional grain-specific forces. note that -anything- which imparts an 
+                            identical acceleration onto gas and dust will cancel in the terms in t_stop, and just act like a 'normal' acceleration
+                            on the dust. for this reason the gravitational acceleration doesn't need to enter our 'external_forcing' parameter */
 #ifdef GRAIN_LORENTZFORCE
-                        /* Lorentz force on a grain = Z*e/c * (v_grain x B) */
+                        /* Lorentz force on a grain = Z*e/c * ([v_grain-v_gas] x B) */
                         double v_cross_B[3];
-                        v_cross_B[0] = P[i].Vel[1]*P[i].Gas_B[2] - P[i].Vel[2]*P[i].Gas_B[1];
-                        v_cross_B[1] = P[i].Vel[2]*P[i].Gas_B[0] - P[i].Vel[0]*P[i].Gas_B[2];
-                        v_cross_B[2] = P[i].Vel[0]*P[i].Gas_B[1] - P[i].Vel[1]*P[i].Gas_B[0];
+                        v_cross_B[0] = (P[i].Vel[1]-P[i].Gas_Velocity[1])*P[i].Gas_B[2] - (P[i].Vel[2]-P[i].Gas_Velocity[2])*P[i].Gas_B[1];
+                        v_cross_B[1] = (P[i].Vel[2]-P[i].Gas_Velocity[2])*P[i].Gas_B[0] - (P[i].Vel[0]-P[i].Gas_Velocity[0])*P[i].Gas_B[2];
+                        v_cross_B[2] = (P[i].Vel[0]-P[i].Gas_Velocity[0])*P[i].Gas_B[1] - (P[i].Vel[1]-P[i].Gas_Velocity[1])*P[i].Gas_B[0];
 
-                        grain_mass = (4.*M_PI/3.) * P[i].Grain_Size*P[i].Grain_Size*P[i].Grain_Size * All.Grain_Internal_Density; // code units
-                        double lorentz_units = sqrt(4.*M_PI*All.UnitPressure_in_cgs); // code B to Gauss
+                        double grain_mass = (4.*M_PI/3.) * R_grain_code*R_grain_code*R_grain_code * rho_grain_code; // code units
+                        double lorentz_units = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam); // code B to Gauss
                         lorentz_units *= (ELECTRONCHARGE/C) * All.UnitVelocity_in_cm_per_s / (All.UnitMass_in_g / All.HubbleParam); // converts acceleration to cgs
                         lorentz_units /= All.UnitVelocity_in_cm_per_s / (All.UnitTime_in_s / All.HubbleParam); // converts it to code-units acceleration
 
-                        double grain_charge_cinv = All.Grain_Charge / grain_mass * lorentz_units;
+                        /* calculate the grain charge following Draine & Sutin */
+                        double cs_cgs = cs * All.UnitVelocity_in_cm_per_s;
+                        double tau_draine_sutin = R_grain_cgs * (2.3*PROTONMASS) * (cs_cgs*cs_cgs) / (ELECTRONCHARGE*ELECTRONCHARGE);
+                        double Z_grain = -DMAX( 1./(1. + sqrt(1.0e-3/tau_draine_sutin)) , 2.5*tau_draine_sutin );
+                        if(isnan(Z_grain)||(Z_grain>=0)) {Z_grain=0;}
+                        
+                        double grain_charge_cinv = Z_grain / grain_mass * lorentz_units;
                         for(k=0;k<3;k++) {external_forcing[k] += grain_charge_cinv * v_cross_B[k];}
+                        /* note: if grains moving super-sonically with respect to gas, and charge equilibration time is much shorter than the 
+                            streaming/dynamical timescales, then the charge is slightly reduced, because the ion collision rate is increased while the 
+                            electron collision rate is increased less (since electrons are moving much faster, we assume the grain is still sub-sonic 
+                            relative to the electron sound speed. in this case, for the large-grain limit, the Draine & Sutin results can be generalized; 
+                            the full expressions are messy but can be -approximated- fairly well for Mach numbers ~3-30 by simply 
+                            suppressing the equilibrium grain charge by a power ~exp[-0.04*mach]  (weak effect, though can be significant for mach>10) */
 #endif
                         
                         double delta_egy = 0;
                         double delta_mom[3];
+                        double dv[3];
                         for(k=0; k<3; k++)
                         {
                             /* measure the imparted energy and momentum as if there were no external acceleration */
@@ -106,7 +123,17 @@ void apply_grain_dragforce(void)
                             /* now calculate the updated velocity accounting for any external, non-standard accelerations */
                             double vdrift = 0;
                             if(tstop_inv > 0) {vdrift = external_forcing[k] / (tstop_inv * sqrt(1+x0*x0));}
-                            P[i].Vel[k] = v_init + slow_fac * (P[i].Gas_Velocity[k] - v_init + vdrift);
+                            dv[k] = slow_fac * (P[i].Gas_Velocity[k] - v_init + vdrift);
+                            if(isnan(vdrift)||isnan(slow_fac)) {dv[k] = 0;}
+                            /* note, we can directly apply this by taking P[i].Vel[k] += dv[k]; but this is not as accurate as our
+                                normal leapfrog integration scheme.
+                                we can also account for the -gas- acceleration, by including it like vdrift;
+                                for a constant t_stop, the gas acceleration term appears as 
+                                P[i].Vel[l] += Gas_Accel[k] * dt + slow_fac * (Gas-Accel[k] / tstop_inv) */
+                            /* note that we solve the equations with an external acceleration already (external_forcing above): therefore add to forces
+                             like gravity that are acting on the gas and dust in the same manner (in terms of acceleration) */
+                            P[i].GravAccel[k] += dv[k] / dt;
+                            //P[i].Vel[k] += dv[k];
                         }
 
                     
@@ -273,9 +300,7 @@ void grain_collisions(void)
                 if(dt > 0)
                 {
                     soundspeed = Particle_effective_soundspeed_i(i);
-                    R_grain = P[i].Grain_Size; // grain size in --code-- units //
-                    
-                    
+                    R_grain = P[i].Grain_Size; // grain size in --cgs-- units //
                 } // closes check for if(dt > 0)
             } // closes check for if(P[i].Gas_Density > 0)
         } // closes check for if(P[i].Type != 0)
@@ -419,10 +444,10 @@ void grain_density(void)
                         /* get the particles */
                         MPI_Sendrecv(&GrnDensDataIn[Send_offset[recvTask]],
                                      Send_count[recvTask] * sizeof(struct grain_densdata_in), MPI_BYTE,
-                                     recvTask, TAG_DENS_A,
+                                     recvTask, TAG_GRDENS_A,
                                      &GrnDensDataGet[Recv_offset[recvTask]],
                                      Recv_count[recvTask] * sizeof(struct grain_densdata_in), MPI_BYTE,
-                                     recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                                     recvTask, TAG_GRDENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                     }
                 }
             }
@@ -462,10 +487,10 @@ void grain_density(void)
                         /* send the results */
                         MPI_Sendrecv(&GrnDensDataResult[Recv_offset[recvTask]],
                                      Recv_count[recvTask] * sizeof(struct grain_densdata_out),
-                                     MPI_BYTE, recvTask, TAG_DENS_B,
+                                     MPI_BYTE, recvTask, TAG_GRDENS_B,
                                      &GrnDensDataOut[Send_offset[recvTask]],
                                      Send_count[recvTask] * sizeof(struct grain_densdata_out),
-                                     MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                                     MPI_BYTE, recvTask, TAG_GRDENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                     }
                 }
             }
@@ -534,146 +559,146 @@ void grain_density(void)
              }
              */
         }
-        while(ntot > 0);
-        
-        
-        myfree(DataNodeList);
-        myfree(DataIndexTable);
-        myfree(Ngblist);
-        //myfree(Right);
-        //myfree(Left);
-        
-        /* mark as active again */
-        /*
-         for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-         if(P[i].TimeBin < 0)
-         P[i].TimeBin = -P[i].TimeBin - 1;
-         */
-        
-        /* collect some timing information */
-        t1 = WallclockTime = my_second();
-        timeall += timediff(t0, t1);
-        
-        timecomp = timecomp1 + timecomp2;
-        timewait = timewait1 + timewait2;
-        timecomm = timecommsumm1 + timecommsumm2;
-        
-        CPU_Step[CPU_DENSCOMPUTE] += timecomp;
-        CPU_Step[CPU_DENSWAIT] += timewait;
-        CPU_Step[CPU_DENSCOMM] += timecomm;
-        CPU_Step[CPU_DENSMISC] += timeall - (timecomp + timewait + timecomm);
+    } while(ntot > 0); /* closes the check for particles that need iteration */
+    
+    
+    myfree(DataNodeList);
+    myfree(DataIndexTable);
+    myfree(Ngblist);
+    //myfree(Right);
+    //myfree(Left);
+    
+    /* mark as active again */
+    /*
+     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+     if(P[i].TimeBin < 0)
+     P[i].TimeBin = -P[i].TimeBin - 1;
+     */
+    
+    /* collect some timing information */
+    t1 = WallclockTime = my_second();
+    timeall += timediff(t0, t1);
+    
+    timecomp = timecomp1 + timecomp2;
+    timewait = timewait1 + timewait2;
+    timecomm = timecommsumm1 + timecommsumm2;
+    
+    CPU_Step[CPU_DENSCOMPUTE] += timecomp;
+    CPU_Step[CPU_DENSWAIT] += timewait;
+    CPU_Step[CPU_DENSCOMM] += timecomm;
+    CPU_Step[CPU_DENSMISC] += timeall - (timecomp + timewait + timecomm);
+
+} // done with routine!
+
+
+
+
+
+/*! core of sph density computation, adapted to search for grains now */
+int grain_density_evaluate(int target, int mode, int *nexport, int *nsend_local)
+{
+    int j, n;
+    int startnode, numngb, numngb_inbox, listindex = 0;
+    double h, h2, fac, hinv, hinv3, hinv4, wk, dwk;
+    double dx, dy, dz, r, r2, u, mass_j;
+    MyLongDouble sum_variable;
+    MyLongDouble rho;
+    MyLongDouble weighted_numngb;
+    MyLongDouble gasvel[3];
+    MyDouble *pos;
+    MyFloat *vel;
+    gasvel[0] = gasvel[1] = gasvel[2] = 0;
+    rho = weighted_numngb = 0;
+    
+    if(mode == 0)
+    {
+        pos = P[target].Pos;
+        h = PPP[target].Hsml;
+        vel = P[target].Vel;
+    }
+    else
+    {
+        pos = GrnDensDataGet[target].Pos;
+        vel = GrnDensDataGet[target].Vel;
+        h = GrnDensDataGet[target].Hsml;
     }
     
-    
-    
-    
-    
-    
-    /*! core of sph density computation, adapted to search for grains now */
-    int grain_density_evaluate(int target, int mode, int *nexport, int *nsend_local)
-    {
-        int j, n;
-        int startnode, numngb, numngb_inbox, listindex = 0;
-        double h, h2, fac, hinv, hinv3, hinv4, wk, dwk;
-        double dx, dy, dz, r, r2, u, mass_j;
-        MyLongDouble sum_variable;
-        MyLongDouble rho;
-        MyLongDouble weighted_numngb;
-        MyLongDouble gasvel[3];
-        MyDouble *pos;
-        MyFloat *vel;
-        gasvel[0] = gasvel[1] = gasvel[2] = 0;
-        rho = weighted_numngb = 0;
-        
-        if(mode == 0)
-        {
-            pos = P[target].Pos;
-            h = PPP[target].Hsml;
-            vel = P[target].Vel;
-        }
-        else
-        {
-            pos = GrnDensDataGet[target].Pos;
-            vel = GrnDensDataGet[target].Vel;
-            h = GrnDensDataGet[target].Hsml;
-        }
-        
-        h2 = h * h;
-        hinv = 1.0 / h;
-#ifndef  TWODIMS
-        hinv3 = hinv * hinv * hinv;
-#else
-        hinv3 = hinv * hinv / boxSize_Z;
+    h2 = h * h;
+    hinv = 1.0 / h;
+#if (NUMDIMS==1)
+    hinv3 = hinv / (boxSize_Y * boxSize_Z);
 #endif
-        hinv4 = hinv3 * hinv;
-        
-        if(mode == 0)
-        {
-            startnode = All.MaxPart;	/* root node */
-        }
-        else
-        {
-            startnode = GrnDensDataGet[target].NodeList[0];
-            startnode = Nodes[startnode].u.d.nextnode;	/* open it */
-        }
-        
-        numngb = 0;
+#if (NUMDIMS==2)
+    hinv3 = hinv * hinv / boxSize_Z;
+#endif
+#if (NUMDIMS==3)
+    hinv3 = hinv * hinv * hinv;
+#endif
+    hinv4 = hinv3 * hinv;
+    
+    if(mode == 0)
+    {
+        startnode = All.MaxPart;	/* root node */
+    }
+    else
+    {
+        startnode = GrnDensDataGet[target].NodeList[0];
+        startnode = Nodes[startnode].u.d.nextnode;	/* open it */
+    }
+    
+    numngb = 0;
+    while(startnode >= 0)
+    {
         while(startnode >= 0)
         {
-            while(startnode >= 0)
+            numngb_inbox = grain_ngb_treefind_variable(pos, h, target, &startnode, mode, nexport, nsend_local);
+            if(numngb_inbox < 0) return -1;
+            
+            for(n = 0; n < numngb_inbox; n++)
             {
-                numngb_inbox = grain_ngb_treefind_variable(pos, h, target, &startnode, mode, nexport, nsend_local);
-                if(numngb_inbox < 0) return -1;
-                
-                for(n = 0; n < numngb_inbox; n++)
-                {
-                    j = Ngblist[n];
-                    if(P[j].Mass == 0) continue;
-                    dx = pos[0] - P[j].Pos[0];
-                    dy = pos[1] - P[j].Pos[1];
-                    dz = pos[2] - P[j].Pos[2];
+                j = Ngblist[n];
+                if(P[j].Mass == 0) continue;
+                dx = pos[0] - P[j].Pos[0];
+                dy = pos[1] - P[j].Pos[1];
+                dz = pos[2] - P[j].Pos[2];
 #ifdef PERIODIC			/*  now find the closest image in the given box size  */
-                    dx = NEAREST_X(dx);
-                    dy = NEAREST_Y(dy);
-                    dz = NEAREST_Z(dz);
+                NEAREST_XYZ(dx,dy,dz,1);
 #endif
-                    r2 = dx*dx + dy*dy + dz*dz;
-                    if(r2 < h2)
-                    {
-                        numngb++;
-                        r = sqrt(r2);
-                        u = r * hinv;
-                        wk = hinv3*kernel_wk(u);
-                        dwk = hinv4*kernel_dwk(u);
-                        mass_j = P[j].Mass;
-                        rho += FLT(mass_j * wk);
-                        weighted_numngb += FLT(NORM_COEFF * wk / hinv3);
-                        MyDouble VelPred_j[3];
-                        for(k=0;k<3;k++) {VelPred_j[k]=SphP[j].VelPred[k];}
+                r2 = dx*dx + dy*dy + dz*dz;
+                if(r2 < h2)
+                {
+                    numngb++;
+                    r = sqrt(r2);
+                    u = r * hinv;
+                    wk = hinv3*kernel_wk(u);
+                    dwk = hinv4*kernel_dwk(u);
+                    mass_j = P[j].Mass;
+                    rho += FLT(mass_j * wk);
+                    weighted_numngb += FLT(NORM_COEFF * wk / hinv3);
+                    MyDouble VelPred_j[3];
+                    for(k=0;k<3;k++) {VelPred_j[k]=SphP[j].VelPred[k];}
 #ifdef SHEARING_BOX
-                        if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                        if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+                    if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                    if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
-                        gasvel[0] += FLT(mass_j * wk * VelPred_j[0]);
-                        gasvel[1] += FLT(mass_j * wk * VelPred_j[1]);
-                        gasvel[2] += FLT(mass_j * wk * VelPred_j[2]);
-                    }
+                    gasvel[0] += FLT(mass_j * wk * VelPred_j[0]);
+                    gasvel[1] += FLT(mass_j * wk * VelPred_j[1]);
+                    gasvel[2] += FLT(mass_j * wk * VelPred_j[2]);
                 }
             }
         }
-        
-        if(mode == 1)
-        {
-            listindex++;
-            if(listindex < NODELISTLENGTH)
-            {
-                startnode = GrnDensDataGet[target].NodeList[listindex];
-                if(startnode >= 0)
-                    startnode = Nodes[startnode].u.d.nextnode;	/* open it */
-            }
-        }
     }
     
+    if(mode == 1)
+    {
+        listindex++;
+        if(listindex < NODELISTLENGTH)
+        {
+            startnode = GrnDensDataGet[target].NodeList[listindex];
+            if(startnode >= 0)
+                startnode = Nodes[startnode].u.d.nextnode;	/* open it */
+        }
+    }
     if(mode == 0)
     {
         P[target].Grain_Density = rho;
@@ -738,13 +763,13 @@ int grain_ngb_treefind_variable(MyDouble searchcenter[3], MyFloat hsml, int targ
                 drift_particle(p, All.Ti_Current);
             
             dist = hsml;
-            dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0]);
+            dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
             if(dx > dist)
                 continue;
-            dy = NGB_PERIODIC_LONG_Y(P[p].Pos[1] - searchcenter[1]);
+            dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
             if(dy > dist)
                 continue;
-            dz = NGB_PERIODIC_LONG_Z(P[p].Pos[2] - searchcenter[2]);
+            dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
             if(dz > dist)
                 continue;
             if(dx * dx + dy * dy + dz * dz > dist * dist)
@@ -826,13 +851,13 @@ int grain_ngb_treefind_variable(MyDouble searchcenter[3], MyFloat hsml, int targ
             no = current->u.d.sibling;	/* in case the node can be discarded */
             
             dist = hsml + 0.5 * current->len;;
-            dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0]);
+            dx = NGB_PERIODIC_LONG_X(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
             if(dx > dist)
                 continue;
-            dy = NGB_PERIODIC_LONG_Y(current->center[1] - searchcenter[1]);
+            dy = NGB_PERIODIC_LONG_Y(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
             if(dy > dist)
                 continue;
-            dz = NGB_PERIODIC_LONG_Z(current->center[2] - searchcenter[2]);
+            dz = NGB_PERIODIC_LONG_Z(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
             if(dz > dist)
                 continue;
             /* now test against the minimal sphere enclosing everything */

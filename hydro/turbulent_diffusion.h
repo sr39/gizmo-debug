@@ -17,139 +17,59 @@
  */
 /* --------------------------------------------------------------------------------- */
 {
-#ifdef HYDRO_SPH
-    double diffusion_wt,diffusion_wt_dt,dv2_ij,diffusion_wt_dt_m,diff_vi_dot_r,diffusion_du_ij;
-    /* out.dA_dt +=  diffusion_wt*(local.A-P[j].A) // this is the template for all turbulent diffusion terms */
-    diffusion_wt = (local.TD_DiffCoeff + SphP[j].TD_DiffCoeff) * P[j].Mass * kernel.rho_ij_inv * kernel.dwk_ij / kernel.r;
-    /* note, units of TD_DiffCoeff have already been corrected so that this combination has physical units */
-    diffusion_wt_dt = diffusion_wt * dt_hydrostep;
-    if(fabs(diffusion_wt_dt)>0.01)
-    {
-        diffusion_wt *= 0.01/fabs(diffusion_wt_dt);
-        diffusion_wt_dt = diffusion_wt * dt_hydrostep;
-    }
-#ifdef TURB_DIFF_ENERGY  // turbulent thermal energy diffusion //
-    diffusion_du_ij = kernel.spec_egy_u_i - SphP[j].InternalEnergyPred;
-    Fluxes.p += local.Mass * diffusion_wt * diffusion_du_ij;
-#endif
-#ifdef TURB_DIFF_VELOCITY // turbulent 'velocity diffusion': this is a turbulent effective viscosity
-    double diff_vdotr2_phys = kernel.vdotr2;
-    if(All.ComovingIntegrationOn) diff_vdotr2_phys -= All.cf_hubble_a2 * r2;
-        if(diff_vdotr2_phys < 0)
-        {
-            diffusion_wt_dt_m = KERNEL_CORE_SIZE * 0.5 * (kernel.h_i + kernel.h_j);
-            dv2_ij = local.Mass * fac_mu*fac_mu * diffusion_wt * kernel.vdotr2 / ((r2 + 0.0001*diffusion_wt_dt_m*diffusion_wt_dt_m) * All.cf_atime);
-            Fluxes.v[0] += dv2_ij * kernel.dp[0]; /* momentum (physical units) */
-            Fluxes.v[1] += dv2_ij * kernel.dp[1];
-            Fluxes.v[2] += dv2_ij * kernel.dp[2];
-            diff_vi_dot_r = local.Vel[0]*kernel.dp[0] + local.Vel[1]*kernel.dp[1] + local.Vel[2]*kernel.dp[2];
-            Fluxes.p += dv2_ij * (diff_vi_dot_r - 0.5*diff_vdotr2_phys) / All.cf_atime; /* remember, this is -total- energy now */
-        }
-#endif
 #ifdef TURB_DIFF_METALS // turbulent diffusion of metals (passive scalar mixing) //
-    if((local.Mass>0)&&(P[j].Mass>0))
-    {
-        diffusion_wt_dt_m = 0.25 * (P[j].Mass + local.Mass) * diffusion_wt_dt;
-        double diffusion_m_min = 0.01 * DMIN(local.Mass,P[j].Mass);
-        if(diffusion_wt_dt_m > 0) if(diffusion_wt_dt_m >  diffusion_m_min) diffusion_wt_dt_m =  diffusion_m_min;
-            if(diffusion_wt_dt_m < 0) if(diffusion_wt_dt_m < -diffusion_m_min) diffusion_wt_dt_m = -diffusion_m_min;
-                for(k=0;k<NUM_METAL_SPECIES;k++)
-                {
-                    out.Dyield[k] += diffusion_wt_dt_m * (local.Metallicity[k] - P[j].Metallicity[k]);
-                    P[j].Metallicity[k] -= diffusion_wt_dt_m * (local.Metallicity[k] - P[j].Metallicity[k]) / P[j].Mass;
-                }
-    }
-#endif
-    
-#else // ends SPH portion of these routines
-    
+        
     if((local.Mass>0)&&(P[j].Mass>0)&&((local.TD_DiffCoeff>0)||(SphP[j].TD_DiffCoeff>0)))
     {
-        double diffusion_wt;
-        double wt_i,wt_j;
-        wt_i = wt_j = 0.5;
-        //wt_i = PPP[j].Hsml / (PPP[j].Hsml + local.Hsml); wt_j = 1.-wt_i; // this is consistent with our second-order face location //
-        diffusion_wt = wt_i*local.TD_DiffCoeff + wt_j*SphP[j].TD_DiffCoeff; // arithmetic mean
-        //diffusion_wt = 2.0 * (local.TD_DiffCoeff * SphP[j].TD_DiffCoeff) / (local.TD_DiffCoeff + SphP[j].TD_DiffCoeff); // geometric mean
-        
-        diffusion_wt *= All.cf_atime; // based on units TD_DiffCoeff is defined with, this makes it physical for a dimensionless quantity gradient below
-        //diffusion_wt *= (wt_i*local.Density + wt_j*SphP[j].Density) * All.cf_a3inv; // mean density; should really use solution to the Riemann problem here;
-        diffusion_wt *= Riemann_out.Face_Density;
-        
-        /* calculate the implied mass flux 'across the boundary' from the sub-grid model,
-         so that we can apply a slope-limiter; this is needed for stability */
-        double massflux = 0.0;
-        for(k=0;k<3;k++) {massflux+=Face_Area_Vec[k]*Face_Area_Vec[k];}
-        massflux = fabs( sqrt(massflux) * diffusion_wt /
-                        (DMIN(kernel.h_i,kernel.h_j) * All.cf_atime)
-                        * dt_hydrostep / (DMIN(local.Mass,P[j].Mass)) );
+        double wt_i=0.5, wt_j=0.5, cmag, d_scalar;
+        double diffusion_wt = wt_i*local.TD_DiffCoeff + wt_j*SphP[j].TD_DiffCoeff; // physical
+#ifdef HYDRO_SPH
+        diffusion_wt *= 0.5*(local.Density + SphP[j].Density)*All.cf_a3inv; // physical
+#else
+        diffusion_wt *= Riemann_out.Face_Density; // physical
+#endif
+        /* calculate implied mass flux 'across the boundary' to prevent excessively large coefficients */
+        double massflux = fabs( Face_Area_Norm * diffusion_wt / (DMIN(kernel.h_i,kernel.h_j)*All.cf_atime) * dt_hydrostep / (DMIN(local.Mass,P[j].Mass)) );
         if(massflux > 0.25) {diffusion_wt *= 0.25/massflux;}
         
-#ifdef TURB_DIFF_ENERGY  // turbulent thermal energy diffusion //
-        double diff_u = 0.0;
-        for(k=0;k<3;k++)
-        {
-            diff_u += Face_Area_Vec[k] * (wt_i*local.Gradients.InternalEnergy[k]
-                                        + wt_j*SphP[j].Gradients.InternalEnergy[k]);
-        }
-        double c_max = 2.0 * Face_Area_Norm * (local.InternalEnergyPred-SphP[j].InternalEnergyPred) * rinv; // inter-particle gradient times tolerance //
-        diff_u = -diffusion_wt * MINMOD(c_max,diff_u);
-
-        double conduction_wt = dt_hydrostep * diff_u; // all in physical units //
-        if(fabs(conduction_wt) > 0)
-        {
-            // enforce a flux limiter for stability (to prevent overshoot) //
-            double du_ij_cond = 0.5*DMIN(DMIN(0.5*fabs(DMIN(local.Mass,P[j].Mass)*(local.InternalEnergyPred-SphP[j].InternalEnergyPred)),
-                                              local.Mass*local.InternalEnergyPred),
-                                         P[j].Mass*SphP[j].InternalEnergyPred);
-            if(fabs(conduction_wt)>du_ij_cond) {diff_u *= du_ij_cond/fabs(conduction_wt);}
-            Fluxes.p += diff_u;
-        } // if(conduction_wt > 0)
-#endif
-#ifdef TURB_DIFF_VELOCITY // turbulent 'velocity diffusion': this is a turbulent effective viscosity
-        double diff_vdotr2_phys = kernel.vdotr2;
-        if(All.ComovingIntegrationOn) diff_vdotr2_phys -= All.cf_hubble_a2 * r2;
-            if(diff_vdotr2_phys < 0)
-            {
-                int k_v;
-                double diffusion_wt_v = diffusion_wt / All.cf_atime; // needed because Vcode = a * Vphys in gradient below
-                for(k_v=0;k_v<3;k_v++)
-                {
-                    double diff_tmp = 0.0;
-                    for(k=0;k<3;k++)
-                    {
-                        diff_tmp += Face_Area_Vec[k] * (wt_i*local.Gradients.Velocity[k_v][k]
-                                                      + wt_j*SphP[j].Gradients.Velocity[k_v][k]);
-                    }
-                    double c_max = 2.0 * Face_Area_Norm * (local.Vel[k_v]-VelPred_j[k_v]) * rinv; // inter-particle gradient times tolerance //
-                    diff_tmp = -diffusion_wt_v * MINMOD(c_max,diff_tmp);
-                    Fluxes.v[k_v] += diff_tmp;
-                    Fluxes.p += diff_tmp * 0.5*(local.Vel[k_v] + VelPred_j[k_v])/All.cf_atime;
-                }
-            }
-#endif
-#ifdef TURB_DIFF_METALS // turbulent diffusion of metals (passive scalar mixing) //
         int k_species;
-        double diffusion_wt_z = diffusion_wt * dt_hydrostep;
+        double rho_i = local.Density*All.cf_a3inv, rho_j = SphP[j].Density*All.cf_a3inv, rho_ij = 0.5*(rho_i+rho_j); // physical
         for(k_species=0;k_species<NUM_METAL_SPECIES;k_species++)
         {
-            double diff_tmp = 0.0;
+            cmag = 0.0;
+            double grad_dot_x_ij = 0.0;
+            d_scalar = local.Metallicity[k_species]-P[j].Metallicity[k_species]; // physical
             for(k=0;k<3;k++)
             {
-                diff_tmp += Face_Area_Vec[k] * (wt_i*local.Gradients.Metallicity[k_species][k]
-                                              + wt_j*SphP[j].Gradients.Metallicity[k_species][k]);
+                double grad_ij = wt_i*local.Gradients.Metallicity[k_species][k] + wt_j*SphP[j].Gradients.Metallicity[k_species][k]; // 1/code length
+                double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv; // 1/code length
+                grad_dot_x_ij += grad_ij * kernel.dp[k]; // physical
+                grad_ij = MINMOD(grad_ij , grad_direct);
+                cmag += Face_Area_Vec[k] * grad_ij; // 1/code length
             }
-            double c_max = 2.0 * Face_Area_Norm * (local.Metallicity[k_species]-P[j].Metallicity[k_species]) * rinv; // inter-particle gradient times tolerance //
-            diff_tmp = -diffusion_wt_z * MINMOD(c_max,diff_tmp);
+            cmag /= All.cf_atime; // cmag has units of 1/r -- convert to physical
 
-            double zlim = 0.5*DMIN(DMIN(0.5*fabs(DMIN(local.Mass,P[j].Mass)*(local.Metallicity[k_species]-P[j].Metallicity[k_species])),
-                                              local.Mass*local.Metallicity[k_species]),
-                                                P[j].Mass*P[j].Metallicity[k_species]);
-            if(fabs(diff_tmp)>zlim) {diff_tmp*=zlim/fabs(diff_tmp);}
-            out.Dyield[k_species] += diff_tmp;
-            P[j].Metallicity[k_species] -= diff_tmp / P[j].Mass;
-        }
+            double d_scalar_tmp = d_scalar - grad_dot_x_ij; // physical
+            double d_scalar_hll = MINMOD(d_scalar , d_scalar_tmp);
+            double hll_corr = rho_ij * HLL_correction(d_scalar_hll, 0, rho_ij, diffusion_wt) / (-diffusion_wt); // physical
+            double cmag_corr = cmag + hll_corr;
+            cmag = MINMOD(1.5*cmag, cmag_corr);
+            double f_direct = Face_Area_Norm*d_scalar*rinv/All.cf_atime; // physical
+            if((f_direct*cmag < 0) && (fabs(f_direct) > HLL_DIFFUSION_OVERSHOOT_FACTOR*fabs(cmag))) {cmag = 0;}
+            
+            cmag *= -diffusion_wt * dt_hydrostep; // physical
+            if(fabs(cmag) > 0)
+            {
+                double zlim = 0.5*DMIN(DMIN(0.5*fabs(DMIN(local.Mass,P[j].Mass)*d_scalar),local.Mass*local.Metallicity[k_species]),P[j].Mass*P[j].Metallicity[k_species]);
+                if(fabs(cmag)>zlim) {cmag*=zlim/fabs(cmag);}
+#ifndef HYDRO_SPH
+                double dmet = (P[j].Metallicity[k_species]-local.Metallicity[k_species]) * fabs(mdot_estimated) * dt_hydrostep;
+                cmag = MINMOD(dmet,cmag); // limiter based on mass exchange from MFV HLLC solver //
 #endif
+                out.Dyield[k_species] += cmag;
+                P[j].Metallicity[k_species] -= cmag / P[j].Mass;
+            }
+        }
     }
     
 #endif

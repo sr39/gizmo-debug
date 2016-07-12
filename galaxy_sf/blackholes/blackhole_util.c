@@ -14,6 +14,8 @@
  *   smaller files and routines. The main functional difference is that BlackholeTempInfo
  *   is now allocated only for N_active_loc_BHs, rather than NumPart (as was done before).  Some
  *   extra index gymnastics are required to follow this change through in the MPI comm routines.
+ *   Cleanup, de-bugging, and consolidation of routines by Xiangcheng Ma
+ *   (xchma@caltech.edu) followed on 05/15/15; re-integrated by PFH.
  */
 
 /* function for allocating temp BH data struc needed for feedback routines*/
@@ -39,7 +41,7 @@ void blackhole_start(void)
     } else {
         BlackholeTempInfo = mymalloc("BlackholeTempInfo", 1 * sizeof(struct blackhole_temp_particle_data));    // allocate dummy, necessary?
     }
-
+    
     Nbh=0;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
@@ -51,6 +53,9 @@ void blackhole_start(void)
             BlackholeTempInfo[Nbh].accreted_BH_Mass = 0;
             BlackholeTempInfo[Nbh].Mgas_in_Kernel=0;
             BlackholeTempInfo[Nbh].Malt_in_Kernel=0;
+#ifdef BH_GRAVACCRETION_BTOD
+            BlackholeTempInfo[Nbh].Mbulge_in_Kernel=0;
+#endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
             BlackholeTempInfo[Nbh].BH_angle_weighted_kernel_sum=0;
 #endif
@@ -62,14 +67,16 @@ void blackhole_start(void)
             {
                 BlackholeTempInfo[Nbh].Jalt_in_Kernel[j]=0;
                 BlackholeTempInfo[Nbh].accreted_momentum[j]=0;
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_GRAVACCRETION)  
+                BlackholeTempInfo[Nbh].Jgas_in_Kernel[j]=0;
+#endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
                 BlackholeTempInfo[Nbh].GradRho_in_Kernel[j]=0;
-                BlackholeTempInfo[Nbh].Jgas_in_Kernel[j]=0;
 #endif
 #ifdef BH_DYNFRICTION
                 BlackholeTempInfo[Nbh].DF_mean_vel[j]=0;
 #endif
-#if defined(BH_USE_GASVEL_IN_BONDI) || defined(BH_DRAG)
+#if defined(BH_BONDI) || defined(BH_DRAG)
                 BlackholeTempInfo[Nbh].BH_SurroundingGasVel[j]=0;
 #endif
             }
@@ -80,8 +87,8 @@ void blackhole_start(void)
     /* all future loops can now take the following form:
      for(i=0; i<N_active_loc_BHs; i++)
      {
-         i_old = BlackholeTempInfo[i].index;
-         ...
+     i_old = BlackholeTempInfo[i].index;
+     ...
      }
      */
     
@@ -91,7 +98,6 @@ void blackhole_start(void)
 /* function for freeing temp BH data struc needed for feedback routines*/
 void blackhole_end(void)
 {
-//    long i;
     int bin;
     double mdot, mdot_in_msun_per_year;
     double mass_real, total_mass_real, medd, total_mdoteddington;
@@ -117,8 +123,7 @@ void blackhole_end(void)
     {
         /* convert to solar masses per yr */
         mdot_in_msun_per_year = total_mdot * (All.UnitMass_in_g / SOLAR_MASS) / (All.UnitTime_in_s / SEC_PER_YEAR);
-        total_mdoteddington *= 1.0 / ((4 * M_PI * GRAVITY * C * PROTONMASS /
-                                       (All.BlackHoleRadiativeEfficiency * C * C * THOMPSON)) * All.UnitTime_in_s / All.HubbleParam);
+        total_mdoteddington *= 1.0 / bh_eddington_mdot(1); 
         fprintf(FdBlackHoles, "%g %d %g %g %g %g %g\n",
                 All.Time, All.TotBHs, total_mass_holes, total_mdot, mdot_in_msun_per_year,
                 total_mass_real, total_mdoteddington);
@@ -126,9 +131,12 @@ void blackhole_end(void)
     }
     
     fflush(FdBlackHolesDetails);
-    
-    
-    
+#ifdef BH_OUTPUT_MOREINFO
+    fflush(FdBhMergerDetails);
+#ifdef BH_BAL_KICK
+    fflush(FdBhWindDetails);
+#endif
+#endif
     myfree(BlackholeTempInfo);
 }
 
@@ -154,29 +162,27 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
         if(out->DF_mmax_particles > BlackholeTempInfo[target].DF_mmax_particles)
             BlackholeTempInfo[target].DF_mmax_particles = out->DF_mmax_particles;
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_GRAVACCRETION)  // DAA: need Jgas for GRAVACCRETION as well
     for(k=0;k<3;k++)
     {
         ASSIGN_ADD(BlackholeTempInfo[target].Jgas_in_Kernel[k],out->Jgas_in_Kernel[k],mode);
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
         ASSIGN_ADD(BlackholeTempInfo[target].GradRho_in_Kernel[k],out->GradRho_in_Kernel[k],mode);
+#endif
     }
 #endif
-#if defined(BH_USE_GASVEL_IN_BONDI) || defined(BH_DRAG)
+#if defined(BH_BONDI) || defined(BH_DRAG)
     for(k=0;k<3;k++)
         ASSIGN_ADD(BlackholeTempInfo[target].BH_SurroundingGasVel[k],out->BH_SurroundingGasVel[k],mode);
 #endif
-#if defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVCAPTURE_NOGAS)
-
-    ASSIGN_ADD(BlackholeTempInfo[target].mass_to_swallow_total, out->mass_to_swallow_total, mode);
+#if defined(BH_GRAVCAPTURE_GAS)
     ASSIGN_ADD(BlackholeTempInfo[target].mass_to_swallow_edd, out->mass_to_swallow_edd, mode);
-
 #endif
 }
 
 
 
-int ngb_treefind_blackhole(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode,
-                           int *nexport, int *nsend_local)
+int ngb_treefind_blackhole(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode, int *nexport, int *nsend_local)
 {
     int numngb, no, p, task, nexport_save;
     struct NODE *current;
@@ -198,7 +204,7 @@ int ngb_treefind_blackhole(MyDouble searchcenter[3], MyFloat hsml, int target, i
             no = Nextnode[no];
             
             /* make sure we get all the particle types we need */
-#if defined(BH_REPOSITION_ON_POTMIN) || defined(BH_GRAVCAPTURE_SWALLOWS) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_NOGAS) || defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_DYNFRICTION)
+#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_NONGAS) || defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_DYNFRICTION)
             if(P[p].Type < 0)
                 continue;
 #else
@@ -206,13 +212,13 @@ int ngb_treefind_blackhole(MyDouble searchcenter[3], MyFloat hsml, int target, i
                 continue;
 #endif
             dist = hsml;
-            dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0]);
+            dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
             if(dx > dist)
                 continue;
-            dy = NGB_PERIODIC_LONG_Y(P[p].Pos[1] - searchcenter[1]);
+            dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
             if(dy > dist)
                 continue;
-            dz = NGB_PERIODIC_LONG_Z(P[p].Pos[2] - searchcenter[2]);
+            dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
             if(dz > dist)
                 continue;
             if(dx * dx + dy * dy + dz * dz > dist * dist)
@@ -277,13 +283,13 @@ int ngb_treefind_blackhole(MyDouble searchcenter[3], MyFloat hsml, int target, i
             no = current->u.d.sibling;	/* in case the node can be discarded */
             
             dist = hsml + 0.5 * current->len;;
-            dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0]);
+            dx = NGB_PERIODIC_LONG_X(current->center[0] - searchcenter[0], current->center[1] - searchcenter[1], current->center[2] - searchcenter[2], -1);
             if(dx > dist)
                 continue;
-            dy = NGB_PERIODIC_LONG_Y(current->center[1] - searchcenter[1]);
+            dy = NGB_PERIODIC_LONG_Y(current->center[0] - searchcenter[0], current->center[1] - searchcenter[1], current->center[2] - searchcenter[2], -1);
             if(dy > dist)
                 continue;
-            dz = NGB_PERIODIC_LONG_Z(current->center[2] - searchcenter[2]);
+            dz = NGB_PERIODIC_LONG_Z(current->center[0] - searchcenter[0], current->center[1] - searchcenter[1], current->center[2] - searchcenter[2], -1);
             if(dz > dist)
                 continue;
             /* now test against the minimal sphere enclosing everything */
@@ -298,3 +304,4 @@ int ngb_treefind_blackhole(MyDouble searchcenter[3], MyFloat hsml, int target, i
     *startnode = -1;
     return numngb;
 }
+

@@ -82,20 +82,7 @@ void do_second_halfstep_kick(void)
             }
             do_the_kick(i, tstart, tend, P[i].Ti_current, 1);
             if(TimeBinActive[P[i].TimeBin])
-            {
-                if(P[i].Type == 0 && P[i].Mass > 0)
-                {
-                    set_predicted_sph_quantities_for_extra_physics(i);
-#ifdef EOS_DEGENERATE
-                    for(j = 0; j < 3; j++)
-                        SphP[i].xnucPred[j] = SphP[i].xnuc[j];
-#endif
-                    SphP[i].Pressure = get_pressure(i);
-#ifdef GAMMA_ENFORCE_ADIABAT
-                    SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = SphP[i].Pressure / (SphP[i].Density * GAMMA_MINUS1);
-#endif
-                }
-            }
+                set_predicted_sph_quantities_for_extra_physics(i);
         }
     } // for(i = 0; i < NumPart; i++) //
     
@@ -232,9 +219,13 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             /* calculate the contribution to the energy change from the mass fluxes in the gravitation field */
             for(j=0;j<3;j++) {dEnt_Gravity += -(SphP[i].GravWorkTerm[j] * All.cf_atime * dt_hydrokick) * grav_acc[j];}
 #endif
-            double dEnt = SphP[i].InternalEnergy + SphP[i].DtInternalEnergy * dt_hydrokick + dEnt_Gravity;
+            double du_tot = SphP[i].DtInternalEnergy * dt_hydrokick + dEnt_Gravity;
+#if defined(COOLING) && !defined(COOLING_OPERATOR_SPLIT)
+            if(mode == 1) {du_tot = 0;}
+#endif
+            double dEnt = SphP[i].InternalEnergy + du_tot;
             
-#if !defined(HYDRO_SPH) && !defined(MAGNETIC) && !defined(COSMIC_RAYS)
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
             /* if we're using a Riemann solver, we include an energy/entropy-type switch to ensure
                 that we don't corrupt the temperature evolution of extremely cold, adiabatic flows */
             /* MHD tests suggest that this switch often does more harm than good: we will
@@ -274,7 +265,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                     SphP[i].DtB[j] = (1./3.) * SphP[i].B[j]*All.cf_atime * P[i].Particle_DivVel*All.cf_a2inv;
                 }
 #ifdef DIVBCLEANING_DEDNER
-                SphP[i].DtPhi = (1./3.) * SphP[i].Phi * P[i].Particle_DivVel*All.cf_a2inv;
+                SphP[i].DtPhi = (1./3.) * (SphP[i].Phi*All.cf_a3inv) * P[i].Particle_DivVel*All.cf_a2inv; // cf_a3inv from mass-based phi-fluxes
 #endif
 #endif
                 if(All.ComovingIntegrationOn) SphP[i].DtInternalEnergy -= 3*GAMMA_MINUS1 * SphP[i].InternalEnergyPred * All.cf_hubble_a;
@@ -283,7 +274,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                 SphP[i].dMass = SphP[i].DtMass = 0;
 #endif
             }
-#endif // closes do_entropy check
+#endif // closes ENERGY_ENTROPY_SWITCH_IS_ACTIVE
             
             if(dEnt < 0.5*SphP[i].InternalEnergy) {SphP[i].InternalEnergy *= 0.5;} else {SphP[i].InternalEnergy = dEnt;}
             check_particle_for_temperature_minimum(i); /* if we've fallen below the minimum temperature, force the 'floor' */
@@ -294,15 +285,16 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
         {
             dp[j] = 0;
             if(P[i].Type==0)
+            {
                 dp[j] += mass_pred * SphP[i].HydroAccel[j] * All.cf_atime * dt_hydrokick; // convert to code units
-#ifdef RT_RAD_PRESSURE
-            if(P[i].Type==0)
-                dp[j] += mass_pred * SphP[i].RadAccel[j] * dt_hydrokick;
+#ifdef TURB_DRIVING
+                dp[j] += mass_pred * SphP[i].TurbAccel[j] * dt_gravkick;
 #endif
+#ifdef RT_RAD_PRESSURE_OUTPUT
+                dp[j] += mass_pred * SphP[i].RadAccel[j] * All.cf_atime * dt_hydrokick;
+#endif
+            }
             dp[j] += mass_pred * P[i].GravAccel[j] * dt_gravkick;
-#ifdef RELAXOBJECT
-            dp[j] -= mass_pred * P[i].Vel[j] * All.RelaxFac * dt_gravkick;
-#endif
             P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
         }
 
@@ -368,16 +360,37 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 
 void set_predicted_sph_quantities_for_extra_physics(int i)
 {
+    if(P[i].Type == 0 && P[i].Mass > 0)
+    {
+        int k; k=0;
 #if defined(MAGNETIC)
-    int k;
-    for(k=0;k<3;k++) {SphP[i].BPred[k] = SphP[i].B[k];}
+#ifndef MHD_ALTERNATIVE_LEAPFROG_SCHEME
+        for(k=0;k<3;k++) {SphP[i].BPred[k] = SphP[i].B[k];}
 #if defined(DIVBCLEANING_DEDNER)
-    SphP[i].PhiPred = SphP[i].Phi;
+        SphP[i].PhiPred = SphP[i].Phi;
+#endif
 #endif
 #endif
 #ifdef COSMIC_RAYS
-    SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy;
+        SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy;
 #endif
+#if defined(RT_EVOLVE_NGAMMA)
+        int kf;
+        for(kf=0;kf<N_RT_FREQ_BINS;kf++)
+        {
+            SphP[i].E_gamma_Pred[kf] = SphP[i].E_gamma[kf];
+#if defined(RT_EVOLVE_FLUX)
+            for(k=0;k<3;k++) SphP[i].Flux_Pred[kf][k] = SphP[i].Flux[kf][k];
+#endif
+        }
+        rt_eddington_update_calculation(i);
+#endif
+        
+        SphP[i].Pressure = get_pressure(i);
+#ifdef EOS_ENFORCE_ADIABAT
+        SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = SphP[i].Pressure / (SphP[i].Density * GAMMA_MINUS1);
+#endif
+    }
 }
 
 
@@ -386,10 +399,11 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
 {
     int j; j=0;
 #ifdef MAGNETIC
+#ifndef MHD_ALTERNATIVE_LEAPFROG_SCHEME
     double BphysVolphys_to_BcodeVolCode = 1 / All.cf_atime;
     for(j = 0; j < 3; j++) {SphP[i].B[j] += SphP[i].DtB[j] * dt_entr * BphysVolphys_to_BcodeVolCode;} // fluxes are always physical, convert to code units //
 #ifdef DIVBCLEANING_DEDNER
-    double PhiphysVolphys_to_PhicodeVolCode = 1;
+    double PhiphysVolphys_to_PhicodeVolCode = 1 / All.cf_a3inv; // for mass-based phi-fluxes (otherwise is just "1")
     /* phi units are [vcode][Bcode]=a^3 * vphys*Bphys */
     if(SphP[i].Density > 0)
     {
@@ -410,7 +424,7 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
             if(phi_phys_abs > 1000. * phi_max_tolerance * vb_phy_abs)
             {
                 /* this indicates a serious problem! issue a warning and zero phi */
-                printf("MAJOR GROWTH ERROR IN PHI-FIELD: phi_phys_abs=%g vb_phy_abs=%g vsig_max=%g b_phys=%g particle_id_i=%d dtphi_code=%g Pressure=%g rho=%g x/y/z=%g/%g/%g vx/vy/vz=%g/%g/%g Bx/By/Bz=%g/%g/%g h=%g u=%g m=%g phi=%g bin=%d SigVel=%g a=%g \n",
+                printf("WARNING: MAJOR GROWTH IN PHI-FIELD: phi_phys_abs=%g vb_phy_abs=%g vsig_max=%g b_phys=%g particle_id_i=%d dtphi_code=%g Pressure=%g rho=%g x/y/z=%g/%g/%g vx/vy/vz=%g/%g/%g Bx/By/Bz=%g/%g/%g h=%g u=%g m=%g phi=%g bin=%d SigVel=%g a=%g \n",
                        phi_phys_abs,vb_phy_abs,vsig_max,b_phys,i,SphP[i].DtPhi,
                        SphP[i].Pressure,SphP[i].Density,P[i].Pos[0],P[i].Pos[1],P[i].Pos[2],
                        P[i].Vel[0],P[i].Vel[1],P[i].Vel[2],SphP[i].B[0],SphP[i].B[1],SphP[i].B[2],
@@ -446,15 +460,27 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
     }
 #endif
 #endif
-#ifdef NUCLEAR_NETWORK
-    for(j = 0; j < EOS_NSPECIES; j++)
-        SphP[i].xnuc[j] += SphP[i].dxnuc[j] * dt_entr * All.UnitTime_in_s;
+#endif
     
+#ifdef NUCLEAR_NETWORK
+    for(j = 0; j < EOS_NSPECIES; j++) {SphP[i].xnuc[j] += SphP[i].dxnuc[j] * dt_entr * All.UnitTime_in_s;}    
     network_normalize(SphP[i].xnuc, &SphP[i].InternalEnergy, &All.nd, &All.nw);
 #endif
+    
 #ifdef COSMIC_RAYS
-    double CR_Egy = SphP[i].CosmicRayEnergy + SphP[i].DtCosmicRayEnergy * dt_entr;
-    if(CR_Egy < 0.5*SphP[i].CosmicRayEnergy) {SphP[i].CosmicRayEnergy *= 0.5;} else {SphP[i].CosmicRayEnergy = CR_Egy;}
+    double dCR = SphP[i].DtCosmicRayEnergy * dt_entr;
+    if(dCR < -0.5*SphP[i].CosmicRayEnergy) {dCR=-0.5*SphP[i].CosmicRayEnergy;}
+#ifdef GALSF
+    double dCRmax = DMAX(0.5*SphP[i].CosmicRayEnergy , 0.1*SphP[i].InternalEnergy*P[i].Mass);
+#else
+    double dCRmax = 2.0 * SphP[i].CosmicRayEnergy;
+#endif
+    if(dCR > dCRmax) {dCR=dCRmax;}
+    SphP[i].CosmicRayEnergy += dCR;
+#endif
+    
+#ifdef RADTRANSFER
+    rt_update_driftkick(i,dt_entr,0);
 #endif
 }
 

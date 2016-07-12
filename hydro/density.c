@@ -146,10 +146,6 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
     ASSIGN_ADD(PPP[i].DhsmlNgbFactor, out->DhsmlNgb, mode);
     ASSIGN_ADD(P[i].Particle_DivVel, out->Particle_DivVel,   mode);
     
-#if defined(ADAPTIVE_GRAVSOFT_FORALL)
-    ASSIGN_ADD(PPPZ[i].AGS_zeta, out->AGS_zeta,   mode);
-#endif
-    
     if(P[i].Type == 0)
     {
         ASSIGN_ADD(SphP[i].Density, out->Rho, mode);
@@ -255,10 +251,8 @@ void density(void)
 
   CPU_Step[CPU_DENSMISC] += measure_time();
 
-  int NTaskTimesNumPart;
-
+  long long NTaskTimesNumPart;
   NTaskTimesNumPart = maxThreads * NumPart;
-
   Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
 
   Left = (MyFloat *) mymalloc("Left", NumPart * sizeof(MyFloat));
@@ -270,7 +264,7 @@ void density(void)
         {
             Left[i] = Right[i] = 0;
 #ifdef BLACK_HOLES
-            P[i].SwallowID = 0;
+            P[i].SwallowID = 0;   
 #endif
         }
     } /* done with intial zero-out loop */
@@ -583,6 +577,9 @@ void density(void)
                 } else {
                     PPP[i].NumNgb = PPP[i].DhsmlNgbFactor = P[i].Particle_DivVel = 0;
                 }
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+                if(P[i].Type > 0) {PPP[i].Particle_DivVel = 0;}
+#endif
                 
                 // inverse of SPH volume element (to satisfy constraint implicit in Lagrange multipliers)
                 if(PPP[i].DhsmlNgbFactor > -0.9)	/* note: this would be -1 if only a single particle at zero lag is found */
@@ -600,13 +597,13 @@ void density(void)
                         this will tell us how robust our procedure is (and let us know if we need to expand the neighbor number */
                     ConditionNumber=CNumHolder=0;
                     for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {ConditionNumber += SphP[i].NV_T[k1][k2]*SphP[i].NV_T[k1][k2];}}
-#ifdef ONEDIM
+#if (NUMDIMS==1)
                     /* one-dimensional case */
                     for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Tinv[k1][k2]=0;}}
                     detT = SphP[i].NV_T[0][0];
                     if(SphP[i].NV_T[0][0]!=0 && !isnan(SphP[i].NV_T[0][0])) Tinv[0][0] = 1/detT; /* only one non-trivial element in 1D! */
 #endif
-#ifdef TWODIMS
+#if (NUMDIMS==2)
                     /* two-dimensional case */
                     for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Tinv[k1][k2]=0;}}
                     detT = SphP[i].NV_T[0][0]*SphP[i].NV_T[1][1] - SphP[i].NV_T[0][1]*SphP[i].NV_T[1][0];
@@ -618,7 +615,7 @@ void density(void)
                         Tinv[1][1] = SphP[i].NV_T[0][0] / detT;
                     }
 #endif
-#if !defined(ONEDIM) && !defined(TWODIMS)
+#if (NUMDIMS==3)
                     /* three-dimensional case */
                     detT = SphP[i].NV_T[0][0] * SphP[i].NV_T[1][1] * SphP[i].NV_T[2][2] +
                         SphP[i].NV_T[0][1] * SphP[i].NV_T[1][2] * SphP[i].NV_T[2][0] +
@@ -681,7 +678,7 @@ void density(void)
                 if(P[i].Type == 5)
                 {
                     desnumngb = All.DesNumNgb * All.BlackHoleNgbFactor;
-                    desnumngbdev = 4 * (All.BlackHoleNgbFactor+1);
+                    desnumngbdev = 4 * (All.BlackHoleNgbFactor+1);     
                 }
 #endif
 
@@ -704,14 +701,14 @@ void density(void)
                  own estimators+neighbor loops, anyways, so this is just to get some nearby particles */
                 if((P[i].Type!=0)&&(P[i].Type!=5))
                 {
-                    desnumngb = All.DesNumNgb * ncorr_ngb;
-                    if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
-                    desnumngbdev = desnumngb / 4; // enforcing exact number not important
+                    desnumngb = All.DesNumNgb;
 #ifdef GALSF
+                    if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
                     // if we're finding this for feedback routines, there isn't any good reason to search beyond a modest physical radius //
                     double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
                     maxsoft = 2.0 / unitlength_in_kpc;
 #endif
+                    desnumngbdev = desnumngb / 2; // enforcing exact number not important
                 }
 #endif
                 
@@ -761,6 +758,13 @@ void density(void)
                     }
                 }
                 
+#ifdef GALSF
+                if((All.ComovingIntegrationOn)&&(All.Time>All.TimeBegin))
+                {
+                    if((P[i].Type==4)&&(iter>1)&&(PPP[i].NumNgb>4)&&(PPP[i].NumNgb<100)&&(redo_particle==1)) {redo_particle=0;}
+                }
+#endif    
+                
                 if((redo_particle==0)&&(P[i].Type == 0))
                 {
                     /* ok we have reached the desired number of neighbors: save the condition number for next timestep */
@@ -793,6 +797,7 @@ void density(void)
                             /* this one should be ok */
                             npleft--;
                             P[i].TimeBin = -P[i].TimeBin - 1;	/* Mark as inactive */
+                            SphP[i].ConditionNumber = ConditionNumber;
                             continue;
                         }
                     
@@ -860,7 +865,7 @@ void density(void)
                                     double slope = PPP[i].DhsmlNgbFactor;
                                     if(iter>2 && slope<1) slope = 0.5*(slope+1);
                                     fac = fac_lim * slope; // account for derivative in making the 'corrected' guess
-                                    if(iter>=10)
+                                    if(iter>=4)
                                         if(PPP[i].DhsmlNgbFactor==1) fac *= 10; // tries to help with being trapped in small steps
                                     
                                     if(fac < fac_lim+0.231)
@@ -892,7 +897,7 @@ void density(void)
                                     double slope = PPP[i].DhsmlNgbFactor;
                                     if(iter>2 && slope<1) slope = 0.5*(slope+1);
                                     fac = fac_lim * slope; // account for derivative in making the 'corrected' guess
-                                    if(iter>=10)
+                                    if(iter>=4)
                                         if(PPP[i].DhsmlNgbFactor==1) fac *= 10; // tries to help with being trapped in small steps
                                     
                                     if(fac > fac_lim-0.231)
@@ -1034,9 +1039,14 @@ void density(void)
 #ifndef HYDRO_SPH
                 if((PPP[i].Hsml > 0)&&(PPP[i].NumNgb > 0))
                 {
-                    SphP[i].Density = P[i].Mass * PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
+                    SphP[i].Density = P[i].Mass * PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) ); // divide mass by volume
                 } else {
-                    SphP[i].Density = 0;
+                    if(PPP[i].Hsml <= 0)
+                    {
+                        SphP[i].Density = 0; // in this case, give up, no meaningful volume
+                    } else {
+                        SphP[i].Density = P[i].Mass / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) ); // divide mass (lone particle) by volume
+                    }
                 }
 #endif
                 SphP[i].Pressure = get_pressure(i);		// should account for density independent pressure
@@ -1063,30 +1073,25 @@ void density(void)
             
             
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-            /* non-gas particles handled here should generally have zeta=0, because their softening is not defined by their density, but
-             by a different particle type, which doesn't respond self-consistently if the particles suddenly 'appear' in this list
-             (physically, need to think about star particles 'softening' in this respect) */
-            PPPZ[i].AGS_zeta = 0;
-            //if(P[i].Type > -1)//
+            /* non-gas particles are handled separately, in the ags_hsml routine */
             if(P[i].Type==0)
-#else
-            if(P[i].Type==0)
-#endif
             {
+                PPPZ[i].AGS_zeta = 0;
+                double zeta_0 = 0; // 2.0 * P[i].Mass*P[i].Mass * PPP[i].Hsml*PPP[i].Hsml; // self-value of zeta if no neighbors are found //
                 if((PPP[i].Hsml > 0)&&(PPP[i].NumNgb > 0))
                 {
                     /* the zeta terms ONLY control errors if we maintain the 'correct' neighbor number: for boundary
                         particles, it can actually be worse. so we need to check whether we should use it or not */
-                    if(fabs(PPP[i].NumNgb-All.DesNumNgb)/All.DesNumNgb < 0.05)
+                    if((PPP[i].Hsml > 1.01*All.MinHsml) && (PPP[i].Hsml < 0.99*All.MaxHsml) &&
+                        (fabs(PPP[i].NumNgb-All.DesNumNgb)/All.DesNumNgb < 0.05))
                     {
                         double ndenNGB = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
                         PPPZ[i].AGS_zeta *= 0.5 * P[i].Mass * PPP[i].Hsml / (NUMDIMS * ndenNGB) * PPP[i].DhsmlNgbFactor;
                     } else {
-                        PPPZ[i].AGS_zeta = 0;
+                        PPPZ[i].AGS_zeta = zeta_0;
                     }
                 } else {
-                    PPPZ[i].AGS_zeta = 0;
+                    PPPZ[i].AGS_zeta = zeta_0;
                 }
             }
 #endif
@@ -1172,9 +1177,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
     {
         while(startnode >= 0)
         {
-            numngb_inbox =
-            ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag,
-                                          exportnodecount, exportindex, ngblist);
+            numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             
             if(numngb_inbox < 0) return -1;
             
@@ -1191,10 +1194,8 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
-#ifdef PERIODIC			/*  find the closest image in the given box size  */
-                kernel.dp[0] = NEAREST_X(kernel.dp[0]);
-                kernel.dp[1] = NEAREST_Y(kernel.dp[1]);
-                kernel.dp[2] = NEAREST_Z(kernel.dp[2]);
+#ifdef PERIODIC
+                NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1);
 #endif
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 
@@ -1219,7 +1220,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #endif
                     
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
-                    out.AGS_zeta += mass_j * kernel_gravity(u, kernel.hinv, kernel.hinv3, 0);
+                    if(local.Type == 0) {out.AGS_zeta += mass_j * kernel_gravity(u, kernel.hinv, kernel.hinv3, 0);}
 #endif
                     /* for everything below, we do NOT include the particle self-contribution! */
                     if(kernel.r > 0)
@@ -1355,18 +1356,15 @@ void *density_evaluate_secondary(void *p)
 int density_isactive(int n)
 {
     /* first check our 'marker' for particles which have finished iterating to an Hsml solution (if they have, dont do them again) */
-    if(P[n].TimeBin < 0)
-        return 0;
+    if(P[n].TimeBin < 0) return 0;
     
 #if defined(GRAIN_FLUID)
     /* all particles can potentially interact with the gas in this mode, if drag > 0 */
-    if(P[n].Type >= 0)
-        return 1;
+    if(P[n].Type >= 0) return 1;
 #endif
     
-#if (defined(RADTRANSFER) && defined(EDDINGTON_TENSOR_STARS))
-    if(P[n].Type == 4)
-        return 1;
+#if defined(RT_SOURCE_INJECTION)
+    if((1 << P[n].Type) & (RT_SOURCES)) return 1;
 #endif
     
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
@@ -1382,21 +1380,24 @@ int density_isactive(int n)
 #if defined(GALSF_FB_RPROCESS_ENRICHMENT)
         if(P[n].RProcessEvent_ThisTimeStep>0) return 1;
 #endif
+#if defined(GALSF)
         if(P[n].DensAroundStar<=0) return 1;
         // only do stellar age evaluation if we have to //
-        float star_age=0;
-        star_age = evaluate_stellar_age_Gyr(P[n].StellarAge);
-        if(star_age < 0.035) return 1;
+        if(All.ComovingIntegrationOn==0)
+        {
+            float star_age=0;
+            star_age = evaluate_stellar_age_Gyr(P[n].StellarAge);
+            if(star_age < 0.035) return 1;
+        }
+#endif
     }
 #endif
     
 #ifdef BLACK_HOLES
-    if(P[n].Type == 5)
-        return 1;
+    if(P[n].Type == 5) return 1;
 #endif
     
-    if(P[n].Type == 0 && P[n].Mass > 0)
-        return 1;
+    if(P[n].Type == 0 && P[n].Mass > 0) return 1;
     
     return 0;
 }

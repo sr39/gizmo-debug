@@ -50,7 +50,7 @@ double growthfactor_integ(double a, void *param)
 {
   double s;
 
-  s = hubble_function(a) / All.Hubble * sqrt(a * a * a);
+  s = hubble_function(a) / All.Hubble_H0_CodeUnits * sqrt(a * a * a);
 
   return pow(sqrt(a) / s, 3);
 }

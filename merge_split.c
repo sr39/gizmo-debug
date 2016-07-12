@@ -13,6 +13,7 @@
 
 #include "./allvars.h"
 #include "./proto.h"
+#include "./kernel.h"
 
 
 /*! This file contains the operations needed for merging/splitting gas particles/cells on-the-fly in the simulations. 
@@ -26,22 +27,42 @@
 
 /*! Here we can insert any desired criteria for particle mergers: by default, this will occur
     when particles fall below some minimum mass threshold */
-int does_particle_need_to_be_merged(MyIDType i)
+int does_particle_need_to_be_merged(int i)
 {
-    if(P[i].Mass <= 0) return 0;
-    if(P[i].Mass <= All.MinMassForParticleMerger) return 1;
+#ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
+#else
+    if(P[i].Mass <= 0) return 0;
+    if(P[i].Mass <= (All.MinMassForParticleMerger* ref_mass_factor(i))) return 1;
+    return 0;
+#endif
 }
 
 
 /*! Here we can insert any desired criteria for particle splitting: by default, this will occur
     when particles become too massive, but it could also be done when Hsml gets very large, densities are high, etc */
-int does_particle_need_to_be_split(MyIDType i)
+int does_particle_need_to_be_split(int i)
 {
-    if(P[i].Mass >= All.MaxMassForParticleSplit) return 1;
+#ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
+#else
+    if(P[i].Mass >= (All.MaxMassForParticleSplit * ref_mass_factor(i))) return 1;
+    return 0;
+#endif
 }
 
+/*! A multiplcative factor that determines the target mass of a particle for the (de)refinement routines */
+double ref_mass_factor(int i)
+{
+    double ref_factor=1.0;
+#ifdef BH_CALC_DISTANCES
+#ifndef SINGLE_STAR_FORMATION
+    ref_factor = sqrt(P[i].min_dist_to_bh + 0.0001);
+    if(ref_factor>1.0) { ref_factor = 1.0; }
+#endif 
+#endif
+    return ref_factor;
+}
 
 
 /*! This is the master routine to actually determine if mergers/splits need to be performed, and if so, to do them
@@ -60,6 +81,70 @@ void merge_and_split_particles(void)
     /* loop over active particles */
     for(i=0; i<NumPart; i++)
     {
+#ifdef PM_HIRES_REGION_CLIPDM
+        /* here we need to check whether a low-res DM particle is surrounded by all high-res particles, 
+            in which case we clip its mass down or split it to prevent the most problematic contamination artifacts */
+        if(((P[i].Type==2)||(P[i].Type==3)||(P[i].Type==5))&&(TimeBinActive[P[i].TimeBin]))
+        {
+#ifdef BLACKHOLES
+            if(P[i].Type==5) continue;
+#endif
+            /* do a neighbor loop ON THE SAME DOMAIN to determine the neighbors */
+            int n_search_min = 32;
+            int n_search_max = 320;
+            double h_search_max = 10. * All.ForceSoftening[P[i].Type];
+            double h_search_min = 0.1 * All.ForceSoftening[P[i].Type];
+            double h_guess; numngb_inbox=0; int NITER=0, NITER_MAX=30;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+            h_guess = PPP[i].AGS_Hsml; if(h_guess > h_search_max) {h_search_max=h_guess;} if(h_guess < h_search_min) {h_search_min=h_guess;}
+#else
+            h_guess = 5.0 * All.ForceSoftening[P[i].Type];
+#endif
+            startnode=All.MaxPart; 
+            do {
+                numngb_inbox = ngb_treefind_variable_threads_nongas(P[i].Pos,h_guess,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist);
+                if((numngb_inbox < n_search_min) && (h_guess < h_search_max) && (NITER < NITER_MAX))
+                {
+                    h_guess *= 1.27;
+                    startnode=All.MaxPart; // this will trigger the while loop to continue
+                }
+                if((numngb_inbox > n_search_max) && (h_guess > h_search_min) && (NITER < NITER_MAX))
+                {
+                    h_guess /= 1.25;
+                    startnode=All.MaxPart; // this will trigger the while loop to continue
+                }
+                NITER++;
+            } while(startnode >= 0);
+            int do_clipping = 0;
+            if(numngb_inbox >= n_search_min-1) // if can't find enough neighbors, don't clip //
+            {
+                do_clipping = 1;
+                for(n=0; n<numngb_inbox; n++)
+                {
+                    j = Ngblist[n];
+                    if(j == i) {if(numngb_inbox > 1) continue;}
+#ifdef BLACKHOLES
+                    if((P[j].Type == 2) || (P[j].Type == 3))
+#else
+                    if((P[j].Type == 2) || (P[j].Type == 3) || (P[j].Type == 5))
+#endif
+                    {
+                        /* found a neighbor with a low-res particle type, so don't clip this particle */
+                        do_clipping = 0;
+                        break;
+                    }
+                } // for(n=0; n<numngb_inbox; n++)
+            }
+            //printf("Particle %d clipping %d low/hi-res DM: neighbors=%d h_search=%g soft=%g iterations=%d \n",i,do_clipping,numngb_inbox,h_guess,All.ForceSoftening[P[i].Type],NITER);
+            if(do_clipping)
+            {
+                /* ok, the particle has neighbors but is completely surrounded by high-res particles, it should be clipped */
+                printf("Particle %d clipping low/hi-res DM: neighbors=%d h_search=%g soft=%g iterations=%d \n",i,numngb_inbox,h_guess,All.ForceSoftening[P[i].Type],NITER);
+                P[i].Type = 1; // 'graduate' to high-res DM particle
+                P[i].Mass = All.MassOfClippedDMParticles; // set mass to the 'safe' mass of typical high-res particles
+            }
+        }
+#endif
         /* check if we're a gas particle */
         if((P[i].Type==0)&&(TimeBinActive[P[i].TimeBin]))
         {
@@ -110,7 +195,12 @@ void merge_and_split_particles(void)
                         /* make sure we're not taking the same particle */
                         if((j>=0)&&(j!=i))
                         {
-                            int k; double r2=0; for(k=0;k<3;k++) {r2+=(P[i].Pos[k]-P[j].Pos[k])*(P[i].Pos[k]-P[j].Pos[k]);}
+                            double dp[3]; int k; double r2=0;
+                            for(k=0;k<3;k++) {dp[k]=P[i].Pos[k]-P[j].Pos[k];}
+#ifdef PERIODIC
+                            NEAREST_XYZ(dp[0],dp[1],dp[2],1);
+#endif
+                            for(k=0;k<3;k++) {r2+=dp[k]*dp[k];}
                             if(r2<threshold_val) {threshold_val=r2; target_for_merger=j;} // position-based //
                         }
                     } // for(n=0; n<numngb_inbox; n++)
@@ -125,6 +215,13 @@ void merge_and_split_particles(void)
             /* alright, particle splitting operations are complete! */
         } // P[i].Type==0
     } // for(i = 0; i < NumPart; i++)
+#ifdef PERIODIC
+    /* map the particles back onto the box (make sure they get wrapped if they go off the edges). this is redundant here,
+     because we only do splits in the beginning of a domain decomposition step, where this will be called as soon as
+     the particle re-order is completed. but it is still useful to keep here in case this changes (and to note what needs
+     to be done for any more complicated splitting operations */
+    do_box_wrapping();
+#endif
     myfree(Ngblist);
     MPI_Allreduce(&n_particles_merged, &MPI_n_particles_merged, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&n_particles_split, &MPI_n_particles_split, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -147,7 +244,7 @@ void merge_and_split_particles(void)
 /*! This is the routine that does the particle splitting. Note this is a tricky operation if we're not using meshes to divide the volume, 
     so care needs to be taken modifying this so that it's done in a way that is (1) conservative, (2) minimizes perturbations to the 
     volumetric quantities of the flow, and (3) doesn't crash the tree or lead to particle 'overlap' */
-void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, double r2_nearest)
+void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nearest)
 {
     double mass_of_new_particle;
     if(NumPart + n_particles_split >= All.MaxPart)
@@ -164,12 +261,20 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     k=0;
     phi = 2.0*M_PI*get_random_number(i+1+ThisTask); // random from 0 to 2pi //
     cos_theta = 2.0*(get_random_number(i+3+2*ThisTask)-0.5); // random between 1 to -1 //
+    double d_r = 0.25 * KERNEL_CORE_SIZE*PPP[i].Hsml; // needs to be epsilon*Hsml where epsilon<<1, to maintain stability //
+    double r_near = 0.35 * sqrt(r2_nearest);
+    d_r = DMIN(d_r , r_near); // use a 'buffer' to limit to some multiple of the distance to the nearest particle //
+    /*
     double r_near = sqrt(r2_nearest);
     double hsml = Get_Particle_Size(i);
     if(hsml < r_near) {hsml = r_near;}
     r_near *= 0.35;
     double d_r = 0.25 * hsml; // needs to be epsilon*Hsml where epsilon<<1, to maintain stability //
     d_r = DMAX( DMAX(0.1*r_near , 0.005*hsml) , DMIN(d_r , r_near) ); // use a 'buffer' to limit to some multiple of the distance to the nearest particle //
+    */ // the change above appears to cause some numerical instability //
+#ifndef NOGRAVITY
+    d_r = DMAX(d_r , 2.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0]);
+#endif
     
     /* find the first non-gas particle and move it to the end of the particle list */
     long j = NumPart + n_particles_split;
@@ -184,16 +289,23 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     TimeBinCount[P[j].TimeBin]++;
     PrevInTimeBin[j] = i;
     NextInTimeBin[j] = NextInTimeBin[i];
-    if(NextInTimeBin[i] >= 0)
-        PrevInTimeBin[NextInTimeBin[i]] = j;
+    if(NextInTimeBin[i] >= 0) {PrevInTimeBin[NextInTimeBin[i]] = j;}
     NextInTimeBin[i] = j;
-    if(LastInTimeBin[P[i].TimeBin] == i)
-        LastInTimeBin[P[i].TimeBin] = j;
-    /* the particle needs an ID: we give it a bit-flip from the original particle to signify the split */
+    if(LastInTimeBin[P[i].TimeBin] == i) {LastInTimeBin[P[i].TimeBin] = j;}
+    // need to assign new particle a unique ID:
+    /*
+        -- old method -- we gave it a bit-flip from the original particle to signify the split 
+        (problem is, this will eventually roll over into itself and/or overlap, and/or overflow buffers, if we allow multiple splits)
     unsigned int bits;
-    int SPLIT_GENERATIONS = 10;
+    int SPLIT_GENERATIONS = 4;
     for(bits = 0; SPLIT_GENERATIONS > (1 << bits); bits++);
     P[i].ID += ((MyIDType) 1 << (sizeof(MyIDType) * 8 - bits));
+    */
+    // new method: preserve the original "ID" field, but assign a unique -child- ID: this is unique up to ~32 *GENERATIONS* of repeated splitting!
+    P[j].ID_child_number = P[i].ID_child_number + (1 << P[i].ID_generation); // particle 'i' retains its child number; this ensures uniqueness
+    P[i].ID_generation++; if(P[i].ID_generation > 30) {P[i].ID_generation=0;} // roll over at 32 generations (unlikely to ever reach this)
+    P[j].ID_generation = P[i].ID_generation; // ok, all set!
+    
     /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
     SphP[i].ConditionNumber *= 10.0;
     SphP[j].ConditionNumber = SphP[i].ConditionNumber;
@@ -224,6 +336,19 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     /* ideally, particle-splits should be accompanied by a re-partition of the density via the density() call
         for the particles affected, after the tree-reconstruction, with quantities like B used to re-calculate after */
 #endif
+#ifdef RADTRANSFER
+    for(k=0;k<N_RT_FREQ_BINS;k++)
+    {
+        SphP[j].E_gamma[k] += mass_of_new_particle * SphP[i].E_gamma[k];
+        SphP[i].E_gamma[k] -= SphP[j].E_gamma[k];
+#if defined(RT_EVOLVE_NGAMMA)
+        SphP[j].E_gamma_Pred[k] += mass_of_new_particle * SphP[i].E_gamma_Pred[k];
+        SphP[i].E_gamma_Pred[k] -= SphP[j].E_gamma_Pred[k];
+        SphP[j].Dt_E_gamma[k] += mass_of_new_particle * SphP[i].Dt_E_gamma[k];
+        SphP[i].Dt_E_gamma[k] -= SphP[j].Dt_E_gamma[k];
+#endif
+    }
+#endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     double dmass = mass_of_new_particle * SphP[i].DtMass;
     SphP[j].DtMass = dmass;
@@ -243,7 +368,7 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     
     /* shift the particle locations according to the random number we drew above */
     double dx, dy, dz;
-#ifdef ONEDIM 
+#if (NUMDIMS == 1)
     dy=dz=0; dx=d_r; // here the split direction is trivial //
 #else
     /* in 2D and 3D its not so trivial how to split the directions */
@@ -251,7 +376,7 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     dx = d_r * sin_theta * cos(phi);
     dy = d_r * sin_theta * sin(phi);
     dz = d_r * cos_theta;
-#ifdef TWODIMS
+#if (NUMDIMS == 2)
     dz=0; dx=d_r*cos(phi); dy=d_r*sin(phi);
 #endif
     double norm=0, dp[3]; int m; dp[0]=dp[1]=dp[2]=0;
@@ -288,6 +413,10 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     P[j].Pos[1] -= dy;
     P[i].Pos[2] += dz;
     P[j].Pos[2] -= dz;
+    /* this is allowed to push particles over the 'edges' of periodic boxes, because we will call the box-wrapping routine immediately below. 
+        but it is important that the periodicity of the box be accounted for in relative positions and that we correct for this before allowing
+        any other operations on the particles */
+    
     /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
     force_add_star_to_tree(i, j);// (buggy)
     /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
@@ -301,7 +430,7 @@ void split_particle_i(MyIDType i, int n_particles_split, MyIDType i_nearest, dou
     all conserved quantities are appropriately dealt with. This also requires some care, to be 
     done appropriately, but is a little bit less sensitive and more well-defined compared to 
     particle splitting */
-void merge_particles_ij(MyIDType i, MyIDType j)
+void merge_particles_ij(int i, int j)
 {
     int k;
     if(P[i].Mass <= 0)
@@ -351,20 +480,28 @@ void merge_particles_ij(MyIDType i, MyIDType j)
 #endif
 
     /* make sure to update the conserved variables correctly: mass and momentum are easy, energy is non-trivial */
-    double egy_old = 0, pos_new_xyz = 0;
+    double egy_old = 0;
     egy_old += mtot * (wt_j*SphP[j].InternalEnergy + wt_i*SphP[i].InternalEnergy); // internal energy //
+    double pos_new_xyz[3], dp[3];
+    /* for periodic boxes, we need to (arbitrarily) pick one position as our coordinate center. we pick i. then everything defined in 
+        position differences relative to i. the final position will be appropriately box-wrapped after these operations are completed */
+    for(k=0;k<3;k++) {dp[k]=P[j].Pos[k]-P[i].Pos[k];}
+#ifdef PERIODIC
+    NEAREST_XYZ(dp[0],dp[1],dp[2],-1);
+#endif
+    for(k=0;k<3;k++) {pos_new_xyz[k] = P[i].Pos[k] + wt_j * dp[k];}
+
     for(k=0;k<3;k++)
     {
         egy_old += mtot*wt_j * 0.5 * P[j].Vel[k]*P[j].Vel[k]*All.cf_a2inv; // kinetic energy (j) //
         egy_old += mtot*wt_i * 0.5 * P[i].Vel[k]*P[i].Vel[k]*All.cf_a2inv; // kinetic energy (i) //
         // gravitational energy terms need to be added (including work for moving particles 'together') //
-        pos_new_xyz = wt_j*P[j].Pos[k] + wt_i*P[i].Pos[k];
         // Egrav = m*g*h = m * (-grav_acc) * (position relative to zero point) //
-        egy_old += mtot*wt_j * (P[j].Pos[k] - pos_new_xyz)*All.cf_atime * (-P[j].GravAccel[k])*All.cf_a2inv; // work (j) //
-        egy_old += mtot*wt_i * (P[i].Pos[k] - pos_new_xyz)*All.cf_atime * (-P[i].GravAccel[k])*All.cf_a2inv; // work (i) //
+        egy_old += mtot*wt_j * (P[i].Pos[k]+dp[k] - pos_new_xyz[k])*All.cf_atime * (-P[j].GravAccel[k])*All.cf_a2inv; // work (j) //
+        egy_old += mtot*wt_i * (P[i].Pos[k] - pos_new_xyz[k])*All.cf_atime * (-P[i].GravAccel[k])*All.cf_a2inv; // work (i) //
 #ifdef PMGRID
-        egy_old += mtot*wt_j * (P[j].Pos[k] - pos_new_xyz)*All.cf_atime * (-P[j].GravPM[k])*All.cf_a2inv; // work (j) [PMGRID] //
-        egy_old += mtot*wt_i * (P[i].Pos[k] - pos_new_xyz)*All.cf_atime * (-P[i].GravPM[k])*All.cf_a2inv; // work (i) [PMGRID] //
+        egy_old += mtot*wt_j * (P[i].Pos[k]+dp[k] - pos_new_xyz[k])*All.cf_atime * (-P[j].GravPM[k])*All.cf_a2inv; // work (j) [PMGRID] //
+        egy_old += mtot*wt_i * (P[i].Pos[k] - pos_new_xyz[k])*All.cf_atime * (-P[i].GravPM[k])*All.cf_a2inv; // work (i) [PMGRID] //
 #endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
         SphP[j].GravWorkTerm[k] = 0; // since we're accounting for the work above and dont want to accidentally double-count //
@@ -382,7 +519,7 @@ void merge_particles_ij(MyIDType i, MyIDType j)
     }
     for(k=0;k<3;k++)
     {
-        P[j].Pos[k] = wt_j*P[j].Pos[k] + wt_i*P[i].Pos[k]; // center-of-mass conserving //
+        P[j].Pos[k] = pos_new_xyz[k]; // center-of-mass conserving //
         P[j].Vel[k] = wt_j*P[j].Vel[k] + wt_i*P[i].Vel[k]; // momentum-conserving //
         SphP[j].VelPred[k] = wt_j*SphP[j].VelPred[k] + wt_i*SphP[i].VelPred[k]; // momentum-conserving //
         P[j].GravAccel[k] = wt_j*P[j].GravAccel[k] + wt_i*P[i].GravAccel[k]; // force-conserving //
@@ -426,22 +563,30 @@ void merge_particles_ij(MyIDType i, MyIDType j)
     SphP[j].MaxSignalVel = sqrt(SphP[j].MaxSignalVel*SphP[j].MaxSignalVel + SphP[i].MaxSignalVel*SphP[i].MaxSignalVel); /* need to be conservative */
     PPP[j].Hsml = pow(pow(PPP[j].Hsml,NUMDIMS)+pow(PPP[i].Hsml,NUMDIMS),1.0/NUMDIMS); /* sum the volume of the two particles */
     SphP[j].ConditionNumber = SphP[j].ConditionNumber + SphP[i].ConditionNumber; /* sum to be conservative */
+#ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
     SphP[j].MaxKineticEnergyNgb = DMAX(SphP[j].MaxKineticEnergyNgb,SphP[i].MaxKineticEnergyNgb); /* for the entropy/energy switch condition */
-
-    // below, we need to take care of additional physics //
-#ifdef EOS_DEGENERATE
-    SphP[j].temp = wt_j*SphP[j].temp + wt_i*SphP[i].temp;
-    SphP[j].dp_drho = wt_j*SphP[j].dp_drho + wt_i*SphP[i].dp_drho;
-    for(k=0;k<EOS_NSPECIES;k++)
-    {
-        SphP[j].xnuc[k] = wt_j*SphP[j].xnuc[k] + wt_i*SphP[i].xnuc[k];
-        SphP[j].dxnuc[k] = wt_j*SphP[j].dxnuc[k] + wt_i*SphP[i].dxnuc[k];
-        SphP[j].xnucPred[k] = wt_j*SphP[j].xnucPred[k] + wt_i*SphP[i].xnucPred[k];
-    }
 #endif
+    
+    // below, we need to take care of additional physics //
 #if defined(RADTRANSFER)
-    for(k=0;k<6;k++) SphP[j].ET[k] = wt_j*SphP[j].ET[k] + wt_i*SphP[i].ET[k];
-    for(k=0;k<N_RT_FREQ_BINS;k++) SphP[j].n_gamma[k] = wt_j*SphP[j].n_gamma[k] + wt_i*SphP[i].n_gamma[k];
+    for(k=0;k<N_RT_FREQ_BINS;k++)
+    {
+        int k_dir;
+        for(k_dir=0;k_dir<6;k_dir++) SphP[j].ET[k][k_dir] = wt_j*SphP[j].ET[k][k_dir] + wt_i*SphP[i].ET[k][k_dir];
+        SphP[j].E_gamma[k] = SphP[j].E_gamma[k] + SphP[i].E_gamma[k]; /* this is a photon number, so its conserved (we simply add) */
+#if defined(RT_EVOLVE_NGAMMA)
+        SphP[j].E_gamma_Pred[k] = SphP[j].E_gamma_Pred[k] + SphP[i].E_gamma_Pred[k];
+        SphP[j].Dt_E_gamma[k] = SphP[j].Dt_E_gamma[k] + SphP[i].Dt_E_gamma[k];
+#endif
+#if defined(RT_EVOLVE_FLUX)
+        for(k_dir=0;k_dir<3;k_dir++)
+        {
+            SphP[j].Flux[k][k_dir] = SphP[j].Flux[k][k_dir] + SphP[i].Flux[k][k_dir];
+            SphP[j].Flux_Pred[k][k_dir] = SphP[j].Flux_Pred[k][k_dir] + SphP[i].Flux_Pred[k][k_dir];
+            SphP[j].Dt_Flux[k][k_dir] = SphP[j].Dt_Flux[k][k_dir] + SphP[i].Dt_Flux[k][k_dir];
+        }
+#endif
+    }
 #endif
 #ifdef METALS
     for(k=0;k<NUM_METAL_SPECIES;k++)
@@ -456,6 +601,8 @@ void merge_particles_ij(MyIDType i, MyIDType j)
         P[i].dp[k] += P[i].Mass*P[i].Vel[k] - p_old_i[k];
         P[j].dp[k] += P[j].Mass*P[j].Vel[k] - p_old_j[k];
     }
+    /* call the pressure routine to re-calculate pressure (and sound speeds) as needed */
+    SphP[j].Pressure = get_pressure(j);
     return;
 }
 
