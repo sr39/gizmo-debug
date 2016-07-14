@@ -1265,6 +1265,10 @@ void read_parameter_file(char *fname)
       strcpy(tag[nt], "ResubmitOn");
       addr[nt] = &All.ResubmitOn;
       id[nt++] = INT;
+        
+      strcpy(tag[nt], "ExtraRef");
+      addr[nt] = &All.ExtraRef;
+      id[nt++] = INT;
 
 #ifdef GRACKLE
         strcpy(tag[nt], "GrackleDataFile");
@@ -1500,6 +1504,10 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
         
+      strcpy(tag[nt], "SpawnPostReverseShock");
+      addr[nt] = &All.SpawnPostReverseShock;
+      id[nt++] = INT;
+
       strcpy(tag[nt], "MinFoFMassForNewSeed");
       addr[nt] = &All.MinFoFMassForNewSeed;
       id[nt++] = REAL;

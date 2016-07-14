@@ -646,6 +646,8 @@ void set_blackhole_new_mass(int i, int n, double dt)
 #endif
 #endif
     
+    BPP(n).BH_Mass           =    All.SeedBlackHoleMass;
+    BPP(n).BH_Mass_AlphaDisk =    All.SeedAlphaDiskMass;
 }
 
 

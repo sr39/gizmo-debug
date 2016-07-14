@@ -460,6 +460,11 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
     
     
+    MyFloat v  = sqrt(P[p].Vel[0]*P[p].Vel[0] + P[p].Vel[1]*P[p].Vel[1] + P[p].Vel[2]*P[p].Vel[2]) + 1.0 ;
+    MyFloat r  = sqrt(P[p].Pos[0]*P[p].Pos[0] + P[p].Pos[1]*P[p].Pos[1] + P[p].Pos[2]*P[p].Pos[2]) + 0.001 ;
+    MyFloat dt_torrey = 0.05 * r / v;
+    if(dt_torrey < dt) dt = dt_torrey;
+    
     if((P[p].Type == 0) && (P[p].Mass > 0))
         {
             csnd = 0.5 * SphP[p].MaxSignalVel * All.cf_afac3;
