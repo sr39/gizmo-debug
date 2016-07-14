@@ -18,7 +18,7 @@
     double kappa_i = local.CosmicRayDiffusionCoeff; // physical units
     double kappa_j = SphP[j].CosmicRayDiffusionCoeff;
     
-    if((kappa_i>0)&&(kappa_j>0)&&(local.Mass>0)&&(P[j].Mass>0))
+    if(((kappa_i>0)||(kappa_j>0))&&(local.Mass>0)&&(P[j].Mass>0))
     {
         double d_scalar = scalar_i - scalar_j;
         
@@ -84,7 +84,7 @@
             // enforce a flux limiter for stability (to prevent overshoot) //
             double CR_egy_i = local.CosmicRayPressure*V_i / GAMMA_COSMICRAY_MINUS1; // (E_cr = Volume * (Pressure/(GAMMA_CR-1))) - this is physical units //
             double CR_egy_j = CosmicRayPressure_j*V_j / GAMMA_COSMICRAY_MINUS1;
-            double du_ij_cond = 1.0*DMIN(CR_egy_i, CR_egy_j);
+            double du_ij_cond = DMAX(DMIN( fabs(CR_egy_i-CR_egy_j) , DMAX(CR_egy_i , CR_egy_j)) , DMIN(CR_egy_i , CR_egy_j));
             if(check_for_stability_sign<0) {du_ij_cond *= 1.e-2;}
             if(fabs(diffusion_wt)>du_ij_cond) {diffusion_wt *= du_ij_cond/fabs(diffusion_wt);}
             Fluxes.CosmicRayPressure += diffusion_wt / dt_hydrostep;
