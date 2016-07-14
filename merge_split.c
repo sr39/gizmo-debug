@@ -38,7 +38,9 @@ int does_particle_need_to_be_merged(int i)
     if( (r2 < 1.0) && (vr2 > All.BAL_v_outflow*All.BAL_v_outflow/100.0)) return 0;
 #endif
     if(P[i].Mass <= 0) return 0;
-    if(P[i].Mass <= (All.MinMassForParticleMerger* ref_mass_factor(i))) return 1;
+    double fac = All.Time * All.Time / (0.001*0.001 + All.Time * All.Time);
+    if(P[i].Mass <= (All.MinMassForParticleMerger* ref_mass_factor(i)) && 
+      ( (P[i].Hsml * fac < 0.5 * P[i].min_dist_to_bh*P[i].min_dist_to_bh) ) ) return 1;
     return 0;
 #endif
 }
@@ -55,6 +57,10 @@ int does_particle_need_to_be_split(int i)
     MyFloat vr2 = P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2] ;
     MyFloat r2  = P[i].Pos[0]*P[i].Pos[0] + P[i].Pos[1]*P[i].Pos[1] + P[i].Pos[2]*P[i].Pos[2] ;
     if( (r2 < 1.0) && (vr2 > All.BAL_v_outflow*All.BAL_v_outflow/100.0)) return 0;
+    
+    double fac = All.Time * All.Time / (0.001*0.001 + All.Time * All.Time);
+    if( (P[i].Hsml * fac > P[i].min_dist_to_bh*P[i].min_dist_to_bh) && (All.ExtraRef==1) ) return 1;
+    
 #endif
     if(P[i].Mass >= (All.MaxMassForParticleSplit * ref_mass_factor(i))) return 1;
     return 0;

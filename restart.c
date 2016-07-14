@@ -173,6 +173,8 @@ void restart(int modus)
 		("it seems you have reduced(!) 'PartAllocFactor' below the value of %g needed to load the restart file.\n",
 		 NumPart / (((double) All.TotNumPart) / NTask));
 	      printf("fatal error\n");
+              printf("  All.TotNumPart = %d  NTask = %d  NumPart = %d  All.MaxPart = %d  \n", 
+                       All.TotNumPart,  NTask,  NumPart,  All.MaxPart);
 	      endrun(22);
 	    }
 

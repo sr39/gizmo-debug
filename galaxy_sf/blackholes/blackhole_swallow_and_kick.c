@@ -824,7 +824,7 @@ int blackhole_spawn_particle_wind_shell( MyIDType i, MyIDType dummy_sph_i_to_clo
 #endif
     
     /* here is where the details of the split are coded, the rest is bookkeeping */
-    total_mass_in_winds  = BPP(i).unspawned_wind_mass; // += dm_wind;BPP(i).BH_Mdot * dt;
+    total_mass_in_winds  = BPP(i).unspawned_wind_mass * All.BlackHoleFeedbackFactor; // += dm_wind;BPP(i).BH_Mdot * dt;
     n_wind_to_spawn      = ceil( total_mass_in_winds / (1.0*All.BH_wind_spawn_mass) );
     mass_of_new_particle = total_mass_in_winds / (1.0* n_wind_to_spawn) ;
     n_particles_split    = n_wind_to_spawn;
@@ -905,7 +905,12 @@ int blackhole_spawn_particle_wind_shell( MyIDType i, MyIDType dummy_sph_i_to_clo
         P[j].Hsml = All.SofteningTable[0];
         PPP[j].Hsml = All.SofteningTable[0];
         
-        SphP[j].InternalEnergy = 1e4 / (  PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g  );
+        if(All.SpawnPostReverseShock==1)
+        {
+            SphP[j].InternalEnergy = 1.2e10 / (  PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g  );
+        } else {
+            SphP[j].InternalEnergy = 1e4 / (  PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g  );
+        }
         SphP[j].InternalEnergyPred = SphP[j].InternalEnergy;
         
         for(jjj = 0; jjj < 3; jjj++) SphP[j].HydroAccel[jjj] = 0;
@@ -1011,9 +1016,16 @@ int blackhole_spawn_particle_wind_shell( MyIDType i, MyIDType dummy_sph_i_to_clo
         P[j].Pos[2] =  P[i].Pos[2] + dz;
         
         MyFloat time_factor = All.Time * All.Time / (All.Time * All.Time + 0.005 * 0.005);
-        P[j].Vel[0] =  P[i].Vel[0] + dx / d_r * All.BAL_v_outflow * time_factor;
-        P[j].Vel[1] =  P[i].Vel[1] + dy / d_r * All.BAL_v_outflow * time_factor;
-        P[j].Vel[2] =  P[i].Vel[2] + dz / d_r * All.BAL_v_outflow * time_factor;
+        if(All.SpawnPostReverseShock==1)
+        {
+            P[j].Vel[0] =  P[i].Vel[0] + dx / d_r * All.BAL_v_outflow/4.0 * time_factor;
+            P[j].Vel[1] =  P[i].Vel[1] + dy / d_r * All.BAL_v_outflow/4.0 * time_factor;
+            P[j].Vel[2] =  P[i].Vel[2] + dz / d_r * All.BAL_v_outflow/4.0 * time_factor;
+        } else {
+            P[j].Vel[0] =  P[i].Vel[0] + dx / d_r * All.BAL_v_outflow * time_factor;
+            P[j].Vel[1] =  P[i].Vel[1] + dy / d_r * All.BAL_v_outflow * time_factor;
+            P[j].Vel[2] =  P[i].Vel[2] + dz / d_r * All.BAL_v_outflow * time_factor;
+        }
         
         /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
         force_add_star_to_tree(i, j);// (buggy)

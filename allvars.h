@@ -1725,6 +1725,7 @@ extern struct global_data_all_processes
 #ifdef BH_ALPHADISK_ACCRETION
   double SeedAlphaDiskMass;         /*!< Seed alpha disk mass */
 #endif
+  int SpawnPostReverseShock;
 #ifdef BH_COV_FRAC
   double HealPy_xyz[3][NUM_HEALPY_PIX];  /*!< Locations of pixels in heal pix scheme */
 #endif
@@ -1831,6 +1832,7 @@ extern struct global_data_all_processes
 #if defined(COOLING) && defined(GRACKLE)
     code_units GrackleUnits;
 #endif
+  int ExtraRef;
 }
 All;
 
