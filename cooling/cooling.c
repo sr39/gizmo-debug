@@ -577,7 +577,8 @@ double convert_u_to_temp(double u, double rho, double *ne_guess, int target)
 	  printf("-> temp= %g ne=%g\n", temp, *ne_guess);
     }
     while(
-          ((fabs(temp - temp_old) > 0.1 * temp) ||
+          ((fabs(temp - temp_old) > 0.25 * temp) ||
+           ((fabs(temp - temp_old) > 0.1 * temp) && (temp > 20.)) ||
            ((fabs(temp - temp_old) > 1.0e-3 * temp) && (temp > 200.))) && iter < MAXITER);
 
   if(iter >= MAXITER)
@@ -652,7 +653,11 @@ void find_abundances_and_rates(double logT, double rho, double *ne_guess, int ta
   flow = 1 - fhi;
 
   if(*ne_guess == 0)
-    *ne_guess = 1.0;
+  {
+      *ne_guess = 1.0;
+      if(logT < 3.8) {*ne_guess = 0.1;}
+      if(logT < 2) {*ne_guess = 1.e-10;}
+  }
 
     double local_gammamultiplier=1;
 #ifdef GALSF_FB_LOCAL_UV_HEATING

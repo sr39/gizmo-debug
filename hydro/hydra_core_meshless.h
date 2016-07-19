@@ -31,6 +31,8 @@
     /* now we're ready to compute the volume integral of the fluxes (or equivalently an 'effective area'/face orientation) */
     /* ------------------------------------------------------------------------------------------------------------------- */
     double wt_i,wt_j;
+    wt_i=V_i; wt_j=V_j;
+/*
 #ifdef AGGRESSIVE_SLOPE_LIMITERS
     wt_i=V_i; wt_j=V_j;
 #else
@@ -42,6 +44,7 @@
     if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.50) {wt_i=wt_j=(V_i*PPP[j].Hsml+V_j*local.Hsml)/(local.Hsml+PPP[j].Hsml);} else {wt_i=V_i; wt_j=V_j;}
 #endif
 #endif
+*/
     if(SphP[j].ConditionNumber*SphP[j].ConditionNumber > 1.0e12 + cnumcrit2)
     {
         /* the effective gradient matrix is ill-conditioned: for stability, we revert to the "RSPH" EOM */
@@ -80,7 +83,25 @@
         Face_Area_Norm = sqrt(Face_Area_Norm);
         for(k=0;k<3;k++) {n_unit[k] = Face_Area_Vec[k] / Face_Area_Norm;}
         
+        /* check if face area exceeds maximum geometric allowed limit (can occur when particles with -very- different
+            Hsml interact at the edge of the kernel, must be limited to geometric max to prevent numerical instability */
+        double Amax = Amax_i; // minimum of area "i" or area "j": this is "i"
+        if(V_j < V_i) // if Vj<Vi, Aj<Ai, so we need to use A_j
+        {
+#if (NUMDIMS==2)
+            Amax = 2. * sqrt(V_j/M_PI); // 2d Aj
+#endif
+#if (NUMDIMS==3)
+            Amax = M_PI * pow((3.*V_j)/(4.*M_PI), 2./3.); // 3d Aj
+#endif
+        }
+        if(Face_Area_Norm > Amax)
+        {
+            Face_Area_Norm = Amax; /* set the face area to the maximum limit, and reset the face vector as well */
+            for(k=0;k<3;k++) {Face_Area_Vec[k] = n_unit[k] * Face_Area_Norm;} /* direction is preserved, just area changes */
+        }
 
+        
         /* --------------------------------------------------------------------------------- */
         /* extrapolate the conserved quantities to the interaction face between the particles */
         /* first we define some useful variables for the extrapolation */
