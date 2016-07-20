@@ -895,7 +895,9 @@ int blackhole_spawn_particle_wind_shell( MyIDType i, MyIDType dummy_sph_i_to_clo
         unsigned int bits;
         int SPLIT_GENERATIONS = 4;
         for(bits = 0; SPLIT_GENERATIONS > (1 << bits); bits++);
-        P[j].ID += ((MyIDType) 1 << (sizeof(MyIDType) * 8 - bits));
+        /* correction:  We are using a fixed wind ID, to allow for trivial wind particle identification */
+        P[j].ID = All.AGNWindID;
+//#+= ((MyIDType) 1 << (sizeof(MyIDType) * 8 - bits));
         
         /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
         SphP[j].ConditionNumber *= 10.0;

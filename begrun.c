@@ -1270,6 +1270,12 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.ExtraRef;
       id[nt++] = INT;
 
+      strcpy(tag[nt], "AGNWindGradType");
+      addr[nt] = &All.AGNWindGradType;
+      id[nt++] = INT;
+
+      All.AGNWindID = 1234568912345;
+
 #ifdef GRACKLE
         strcpy(tag[nt], "GrackleDataFile");
         addr[nt] = All.GrackleDataFile;

@@ -1833,6 +1833,8 @@ extern struct global_data_all_processes
     code_units GrackleUnits;
 #endif
   int ExtraRef;
+  int AGNWindGradType;
+  MyIDType AGNWindID;
 }
 All;
 
