@@ -62,9 +62,11 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
         if(sigma_0<0) {return 1;} active_check = 1;
         double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
         double L = P[i].Mass * evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(i);
+        if((L<=0)||(star_age<=0)||(isnan(star_age))||(isnan(L))) {L=0; star_age=0;}
         double f_uv, f_op;
 #ifndef RT_FIRE_FIX_SPECTRAL_SHAPE
         double sigma_eff = sigma_0 * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,P[i].DensAroundStar,PPP[i].NumNgb,0);
+        if((sigma_eff <= 0)||(isnan(sigma_eff))) {sigma_eff=0;}
         if(star_age <= 0.0025) {f_op=0.09;} else {
             if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));
             } else {f_op=1-0.8410937/(1+sqrt((star_age-0.006)/0.3));}}

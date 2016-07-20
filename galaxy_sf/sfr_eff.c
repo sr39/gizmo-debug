@@ -172,6 +172,7 @@ double evaluate_stellar_age_Gyr(double stellar_tform)
         age=All.Time-stellar_tform;
     }
     age *= 0.001*All.UnitTime_in_Megayears/All.HubbleParam; // convert to absolute Gyr
+    if((age<=1.e-9)||(isnan(age))) {age=1.e-9;}
     return age;
 }
 
@@ -201,6 +202,7 @@ double evaluate_l_over_m_ssp(double stellar_age_in_gyr)
         double log_age = log10(stellar_age_in_gyr/0.0035);
         return 1500.*pow(10.,-1.8*log_age+0.3*log_age*log_age-0.025*log_age*log_age*log_age);
     }
+    return 0;
 }
 
 
