@@ -48,11 +48,27 @@ void run(void)
     
     while(1)			/* main timestep iteration loop */
     {
+        int i;
+        double local_max_u=0.0, global_max_u, global_max_t;
+        for(i = 0; i < NumPart; i++)
+           if(P[i].Type==0)
+               local_max_u = DMAX( local_max_u, SphP[i].InternalEnergy );
+
+        MPI_Allreduce(&local_max_u, &global_max_u, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+        double XH = 0.76;
+        double yhelium_0 = (1 - XH) / (4 * XH);
+        double mhboltz = PROTONMASS / BOLTZMANN;
+
+        global_max_t = (GAMMA_MINUS1 * global_max_u * mhboltz * (1 + 4 * yhelium_0) / (1 + 1.0 + yhelium_0));
+
+        if(ThisTask==0)  printf("Golbal Maximum SphP.u = %g (Max Temperature = %g) \n", global_max_u, global_max_t);
+
+
         compute_statistics();	/* regular statistics outputs (like total energy) */
         
         write_cpu_log();		/* output some CPU usage log-info (accounts for everything needed up to the current sync-point) */
         
-        if(All.Ti_Current >= TIMEBASE)	/* check whether we reached the final time */
+        if( (All.Ti_Current >= TIMEBASE) || (global_max_t > 1e11))	/* check whether we reached the final time */
         {
             if(ThisTask == 0)
                 printf("\nFinal time=%g reached. Simulation ends.\n", All.TimeMax);

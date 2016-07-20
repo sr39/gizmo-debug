@@ -108,10 +108,39 @@
         
         
         /* now we do the reconstruction (second-order reconstruction at the face) */
-        reconstruct_face_states(local.Density, local.Gradients.Density, SphP[j].Density, SphP[j].Gradients.Density,
-                                distance_from_i, distance_from_j, &Riemann_vec.L.rho, &Riemann_vec.R.rho, 1);
-        reconstruct_face_states(local.Pressure, local.Gradients.Pressure, SphP[j].Pressure, SphP[j].Gradients.Pressure,
-                                distance_from_i, distance_from_j, &Riemann_vec.L.p, &Riemann_vec.R.p, 1);
+        if(All.AGNWindGradType==0){	// Try to do all gradient reconstructions
+            reconstruct_face_states(local.Density, local.Gradients.Density, SphP[j].Density, SphP[j].Gradients.Density,
+                                    distance_from_i, distance_from_j, &Riemann_vec.L.rho, &Riemann_vec.R.rho, 1);
+            reconstruct_face_states(local.Pressure, local.Gradients.Pressure, SphP[j].Pressure, SphP[j].Gradients.Pressure,
+                                    distance_from_i, distance_from_j, &Riemann_vec.L.p, &Riemann_vec.R.p, 1);
+        } else if(All.AGNWindGradType==1){  // Gradients are limited for particles with ID = WindID *or* vrel > 5000 km/s
+            double vr2=0.0;
+            for(k=0;k<3;k++) vr2 += (VelPred_j[k]-local.Vel[k]) * (VelPred_j[k]-local.Vel[k]);
+
+            if( (P[j].ID==All.AGNWindID) || (vr2>5000.*5000.) )
+            {
+                reconstruct_face_states(local.Density, local.Gradients.Density, SphP[j].Density, SphP[j].Gradients.Density,
+                                    distance_from_i, distance_from_j, &Riemann_vec.L.rho, &Riemann_vec.R.rho, 0);
+                reconstruct_face_states(local.Pressure, local.Gradients.Pressure, SphP[j].Pressure, SphP[j].Gradients.Pressure,
+                                    distance_from_i, distance_from_j, &Riemann_vec.L.p, &Riemann_vec.R.p, 0);
+            } else {
+                reconstruct_face_states(local.Density, local.Gradients.Density, SphP[j].Density, SphP[j].Gradients.Density,
+                                    distance_from_i, distance_from_j, &Riemann_vec.L.rho, &Riemann_vec.R.rho, 1);
+                reconstruct_face_states(local.Pressure, local.Gradients.Pressure, SphP[j].Pressure, SphP[j].Gradients.Pressure,
+                                    distance_from_i, distance_from_j, &Riemann_vec.L.p, &Riemann_vec.R.p, 1);
+            }
+
+
+        } else if(All.AGNWindGradType==2){  // No gradients are used
+            reconstruct_face_states(local.Density, local.Gradients.Density, SphP[j].Density, SphP[j].Gradients.Density,
+                                    distance_from_i, distance_from_j, &Riemann_vec.L.rho, &Riemann_vec.R.rho, 0);
+            reconstruct_face_states(local.Pressure, local.Gradients.Pressure, SphP[j].Pressure, SphP[j].Gradients.Pressure,
+                                    distance_from_i, distance_from_j, &Riemann_vec.L.p, &Riemann_vec.R.p, 0);
+        } else {
+            printf("Unrecognized All.AGNWindGradType.  Exiting\n");
+            exit(12132); // The address of the beast
+        }
+
 #ifdef EOS_GENERAL
         reconstruct_face_states(local.InternalEnergyPred, local.Gradients.InternalEnergy, SphP[j].InternalEnergyPred, SphP[j].Gradients.InternalEnergy,
                                 distance_from_i, distance_from_j, &Riemann_vec.L.u, &Riemann_vec.R.u, 1);
