@@ -64,6 +64,13 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     kernel_hinv(kernel.h_i, &hinv_i, &hinv3_i, &hinv4_i);
     hinv_j=hinv3_j=hinv4_j=0;
     V_i = local.Mass / local.Density;
+    double Amax_i = MAX_REAL_NUMBER;
+#if (NUMDIMS==2)
+    Amax_i = 2. * sqrt(V_i/M_PI);
+#endif
+#if (NUMDIMS==3)
+    Amax_i = M_PI * pow((3.*V_i)/(4.*M_PI), 2./3.);
+#endif    
     dt_hydrostep = local.Timestep * All.Timebase_interval / All.cf_hubble_a; /* (physical) timestep */
     out.MaxSignalVel = kernel.sound_i;
     kernel_mode = 0; /* need dwk and wk */
