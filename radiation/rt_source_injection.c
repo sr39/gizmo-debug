@@ -265,8 +265,8 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
     if(mode == 0) {rt_particle2in_source(&local, target);} else {local = RT_SourceDataGet[target];}
     /* basic calculations */
     if(local.Hsml<=0) return 0; // zero-extent kernel, no particles //
-    double hinv, hinv3, hinv4, h2=local.Hsml*local.Hsml;
-    kernel_hinv(local.Hsml, &hinv, &hinv3, &hinv4);
+    double hinv, hinv3, hinv4, h2=4.*local.Hsml*local.Hsml;
+    kernel_hinv(2.*local.Hsml, &hinv, &hinv3, &hinv4);
     
     /* Now start the actual operations for this particle */
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = RT_SourceDataGet[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;/* open it */}
@@ -274,7 +274,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
     {
         while(startnode >= 0)
         {
-            numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+            numngb_inbox = ngb_treefind_variable_threads(local.Pos, 2.*local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             if(numngb_inbox < 0) {return -1;}
             for(n = 0; n < numngb_inbox; n++)
             {
