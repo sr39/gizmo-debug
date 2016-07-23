@@ -82,6 +82,13 @@ PERL     =  /usr/bin/perl
 RESULT     := $(shell CONFIG=$(CONFIG) PERL=$(PERL) make -f config-makefile)
 CONFIGVARS := $(shell cat GIZMO_config.h)
 
+ifeq (FIRE_PHYSICS_DEFAULTS,$(findstring FIRE_PHYSICS_DEFAULTS,$(CONFIGVARS)))  # using 'fire default' instead of all the above
+    CONFIGVARS += COOLING COOL_LOW_TEMPERATURES COOL_METAL_LINES_BY_SPECIES
+    CONFIGVARS += GALSF METALS GALSF_SFR_MOLECULAR_CRITERION GALSF_SFR_VIRIAL_SF_CRITERION=0
+    CONFIGVARS += GALSF_FB_GASRETURN GALSF_FB_HII_HEATING GALSF_FB_SNE_HEATING=1 GALSF_FB_RT_PHOTONMOMENTUM
+    CONFIGVARS += GALSF_FB_LOCAL_UV_HEATING GALSF_FB_RPWIND_LOCAL GALSF_FB_RPROCESS_ENRICHMENT=6 GALSF_SFR_IMF_VARIATION
+endif
+
 
 CC       = mpicc        # sets the C-compiler (default)
 CXX       = mpiCC       # sets the C++-compiler (default)
@@ -268,6 +275,10 @@ CXX      =  mpicpc
 FC       =  mpiifort -nofor_main
 OPTIMIZE = -O3 -funroll-loops
 OPTIMIZE += -g -Wall # compiler warnings
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -fopenmp # openmp required compiler flags
+FC       = $(CC)
+endif
 GMP_INCL = #
 GMP_LIBS = #
 MKL_INCL = -I$(MKL_HOME)/include
@@ -334,8 +345,9 @@ ifeq ($(SYSTYPE),"Quest")
 CC       =  mpiicc
 CXX      =  mpiicpc
 FC       =  $(CC)
+##OPTIMIZE = -O1 -funroll-loops ## if the below (more aggressive) optimizations are causing problems, use this
 OPTIMIZE = -O2 -xhost -ipo -funroll-loops -no-prec-div -fp-model fast=2
-OPTIMIZE += -g -Wall
+OPTIMIZE += -g -Wall -no-prec-div -ipo -heap-arrays
 GMP_INCL = #
 GMP_LIBS = #
 MKL_INCL = -I$(MKLROOT)/include
@@ -368,7 +380,7 @@ OPTIMIZE = -O3 -ip -funroll-loops -no-prec-div -fp-model fast=2 -xAVX # Sandy or
 endif
 OPTIMIZE += -Wall # compiler warnings
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
-OPTIMIZE += -parallel -openmp
+OPTIMIZE += -parallel -qopenmp
 endif
 GMP_INCL =
 GMP_LIBS =
@@ -461,7 +473,6 @@ OPT     += -DNOCALLSOFSYSTEM -DNO_ISEND_IRECV_IN_DOMAIN -DMPICH_IGNORE_CXX_SEEK
 ##   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/share/apps/binutils-amd/070220/lib64
 ## 
 endif
-
 
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"odyssey")

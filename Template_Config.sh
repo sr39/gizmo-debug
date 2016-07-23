@@ -215,6 +215,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #--------- core development team of the FIRE simulations: P. Hopkins, E. Quataert, D. Keres, C.A. Faucher-Giguere.
 #--------- Papers using these modules must offer co-authorship to the members of the FIRE development team.
 ##-----------------------------------------------------------------------------------------------------
+#FIRE_PHYSICS_DEFAULTS           # enable default set of FIRE physics packages (see details below)
 #---- star formation law ---- #
 #GALSF_SFR_MOLECULAR_CRITERION	 # estimates molecular fraction in SF-ing gas, only SF from that is allowed
 #GALSF_SFR_VIRIAL_SF_CRITERION=0 # only allow star formation in virialized sub-regions (alpha<1) (0/no value='default'; 1=0+Jeans criterion; 2=1+'strict' (zero sf if not bound))
@@ -223,7 +224,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #----- physical stellar feedback mechanisms ---- #
 #GALSF_FB_GASRETURN              # Paul Torrey's addition for stochastic gas return (modified for continuous return)
 #GALSF_FB_HII_HEATING            # gas within HII regions around young stars is photo-heated to 10^4 K
-#GALSF_FB_SNE_HEATING=1          # time-dependent explosions from SNe (I & II) in shockwave radii around stars (values: 0=tensor-isotropized in all directions; 1=tensor-symmetrized, so momentum-conserving; 2=no tensor re-normalization [non-isotropic]
+#GALSF_FB_SNE_HEATING=1          # time-dependent explosions from SNe (I & II) in shockwave radii around stars (values: 0=force-gridded evenly in xyz; 1=tensor-symmetrized (momentum-conserving); 2=no tensor re-normalization [non-isotropic]
 #GALSF_FB_RPROCESS_ENRICHMENT=6  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 6=extended model)
 #GALSF_FB_RT_PHOTONMOMENTUM      # continuous acceleration from starlight (uses luminosity tree)
 #GALSF_FB_LOCAL_UV_HEATING       # use local estimate of spectral information for photoionization and photoelectric heating

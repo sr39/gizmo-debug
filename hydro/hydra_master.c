@@ -655,11 +655,11 @@ void hydro_final_operations_and_cleanup(void)
             SphP[i].DtCosmicRayEnergy += dt_cosmicray_energy_adiabatic;
             SphP[i].DtInternalEnergy -= dt_cosmicray_energy_adiabatic;
             /* adiabatic term from Hubble expansion (needed for cosmological integrations */
-            if(All.ComovingIntegrationOn) {SphP[i].DtCosmicRayEnergy -= SphP[i].CosmicRayEnergyPred * All.cf_hubble_a;}
+            if(All.ComovingIntegrationOn) {SphP[i].DtCosmicRayEnergy -= 3*GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred * All.cf_hubble_a;}
 #ifndef COSMIC_RAYS_DISABLE_STREAMING
             /* energy transfer from CRs to gas due to the streaming instability (mediated by high-frequency Alfven waves, but they thermalize quickly
                 (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
-            double cr_stream_cool = -SphP[i].CosmicRayEnergyPred * Get_CosmicRayStreamingVelocity(i) / Get_CosmicRayGradientLength(i);
+            double cr_stream_cool = -SphP[i].CosmicRayEnergyPred * GAMMA_COSMICRAY_MINUS1 * Get_CosmicRayStreamingVelocity(i) / Get_CosmicRayGradientLength(i);
 #ifdef MAGNETIC
             /* account here for the fact that the streaming velocity can be suppressed by the requirement of motion along field lines */
             double B_dot_gradP=0.0, B2_tot=0.0, Pgrad2_tot=0.0;

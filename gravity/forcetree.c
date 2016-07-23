@@ -3268,7 +3268,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                 {
                     
                     /* force node to open if we are within the gravitational softening length */
-#if !(defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE))
+#if defined(NOGRAVITY) || defined(RT_NOGRAVITY) || (!(defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE)))
                     double soft = All.ForceSoftening[ptype];
 #endif
                     if((r2 < (soft+0.6*nop->len)*(soft+0.6*nop->len)) || (r2 < (nop->maxsoft+0.6*nop->len)*(nop->maxsoft+0.6*nop->len)))

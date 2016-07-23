@@ -1421,7 +1421,7 @@ void hydro_gradient_calc(void)
 #endif
 #ifdef COSMIC_RAYS
             stol_tmp = stol;
-            local_slopelimiter(SphP[i].Gradients.CosmicRayPressure,GasGradDataPasser[i].Maxima.CosmicRayPressure,GasGradDataPasser[i].Minima.CosmicRayPressure,a_limiter,h_lim,DMAX(stol,stol_diffusion));
+            //local_slopelimiter(SphP[i].Gradients.CosmicRayPressure,GasGradDataPasser[i].Maxima.CosmicRayPressure,GasGradDataPasser[i].Minima.CosmicRayPressure,a_limiter,h_lim,DMAX(stol,stol_diffusion));
 #endif
 #ifdef DOGRAD_SOUNDSPEED
             local_slopelimiter(SphP[i].Gradients.SoundSpeed,GasGradDataPasser[i].Maxima.SoundSpeed,GasGradDataPasser[i].Minima.SoundSpeed,a_limiter,h_lim,stol);
@@ -1512,12 +1512,13 @@ void hydro_gradient_calc(void)
             {
                 SphP[i].CosmicRayDiffusionCoeff = 0;
                 double CRPressureGradScaleLength = Get_CosmicRayGradientLength(i);
+                double CR_kappa_streaming = 0;
 #ifndef COSMIC_RAYS_DISABLE_STREAMING
                 /* self-consistently calculate the diffusion coefficients for cosmic ray fluids; first the streaming part of this (kappa~v_stream*L_CR_grad)
                  following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
                 double v_streaming = Get_CosmicRayStreamingVelocity(i);
                 /* the diffusivity is now just the product of these two coefficients */
-                SphP[i].CosmicRayDiffusionCoeff += v_streaming * CRPressureGradScaleLength; /* all physical units */
+                CR_kappa_streaming = (GAMMA_COSMICRAY/GAMMA_COSMICRAY_MINUS1) * v_streaming * CRPressureGradScaleLength; /* all physical units */
 #endif
 #ifndef COSMIC_RAYS_DISABLE_DIFFUSION
                 /* now we calculate the 'traditional' diffusion part of this: kappa~v_CR*r_gyro * B_bulk^2/(B_random[scale~r_gyro]^2)
@@ -1546,7 +1547,7 @@ void hydro_gradient_calc(void)
                     the pressure gradient scale length */
                 p_scale = 0.0; for(k=0;k<3;k++) {p_scale += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
                 p_scale = SphP[i].Pressure / (1.e-33 + sqrt(p_scale));
-                double p_scale_min = 0.01 * Get_Particle_Size(i); // sets a 'floor' at some multiple of the particle size (unresolved below this) //
+                double p_scale_min = 0.5 * Get_Particle_Size(i); // sets a 'floor' at some multiple of the particle size (unresolved below this) //
                 p_scale = sqrt(p_scale_min*p_scale_min + p_scale*p_scale);
                 double p_scale_max = 100.*PPP[i].Hsml; // sets a maximum beyond which we have no meaningful information //
                 p_scale = 1./(1./p_scale + 1./p_scale_max); // code units here //
@@ -1555,15 +1556,15 @@ void hydro_gradient_calc(void)
                 /* define the driving scale by the pressure scale length */
                 for(k=0;k<3;k++) {p_scale += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
                 p_scale = SphP[i].Pressure / (1.e-33 + sqrt(p_scale));
-                double p_scale_min = 0.01 * Get_Particle_Size(i); /* sets a 'floor' at some multiple of the particle size (unresolved below this) */
+                double p_scale_min = 0.5 * Get_Particle_Size(i); /* sets a 'floor' at some multiple of the particle size (unresolved below this) */
                 p_scale = sqrt(p_scale_min*p_scale_min + p_scale*p_scale);
-                double p_scale_max = 1000.*PPP[i].Hsml; /* sets a maximum beyond which we have no meaningful information */
+                double p_scale_max = 100.*PPP[i].Hsml; /* sets a maximum beyond which we have no meaningful information */
                 p_scale = 1./(1./p_scale + 1./p_scale_max); /* code units here */
                 /* here we need sqrt(P/4e-14 erg/cm^3); convert pressure to physical units and multiply this out */
                 b_muG = sqrt( SphP[i].Pressure * All.cf_a3inv * All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam / 4.0e-14 );
 #endif
                 p_scale *= (All.UnitLength_in_cm / All.HubbleParam * All.cf_atime) / (3.086e21); /* physical pressure scale length in units of kpc */
-                if(p_scale > 1) {p_scale=1;}
+                if(p_scale > 10) {p_scale=10;} // limit at 10 kpc
                 kappa_diff *= pow( p_scale * p_scale * R_GV / b_muG, 1./3.); /* these should all be dimensionless here */
                 SphP[i].CosmicRayDiffusionCoeff += kappa_diff; /* should be in physical units */
 #endif                
@@ -1572,17 +1573,22 @@ void hydro_gradient_calc(void)
 #else
                 SphP[i].CosmicRayDiffusionCoeff *= All.CosmicRayDiffusionCoeff;
 #endif
+                SphP[i].CosmicRayDiffusionCoeff += CR_kappa_streaming;
                 /* now we apply a limiter to prevent the coefficient from becoming too large: cosmic rays cannot stream/diffuse with v_diff > c */
-                double diffusion_velocity_limit = 0.1 * C; /* maximum diffusion velocity (set <C if desired) */
-                double kappa_diff_vel = SphP[i].CosmicRayDiffusionCoeff * GAMMA_COSMICRAY_MINUS1 / CRPressureGradScaleLength * All.UnitVelocity_in_cm_per_s;
+                double diffusion_velocity_limit = 1.0 * C; /* maximum diffusion velocity (set <C if desired) */
+#ifdef GALSF
+                diffusion_velocity_limit = 0.01 * C;
+#endif
+                double Lscale = DMIN(Get_Particle_Size(i)*All.cf_atime , CRPressureGradScaleLength);
+                double kappa_diff_vel = SphP[i].CosmicRayDiffusionCoeff * GAMMA_COSMICRAY_MINUS1 / Lscale * All.UnitVelocity_in_cm_per_s;
                 SphP[i].CosmicRayDiffusionCoeff *= 1 / (1 + kappa_diff_vel/diffusion_velocity_limit); /* caps maximum here */
                 if((SphP[i].CosmicRayDiffusionCoeff<=0)||(isnan(SphP[i].CosmicRayDiffusionCoeff))) {SphP[i].CosmicRayDiffusionCoeff=0;}
 #ifdef GALSF
                 /* for multi-physics problems, we suppress diffusion where it is irrelevant */
                 {
                     double P_cr_Ratio = Get_Particle_CosmicRayPressure(i) / (MIN_REAL_NUMBER + SphP[i].Pressure);
-                    double P_min = 1.0e-2; if(P_cr_Ratio < P_min) {SphP[i].CosmicRayDiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
-                    P_min = 1.0e-4; if(P_cr_Ratio < P_min) {SphP[i].CosmicRayDiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
+                    double P_min = 3.0e-2; if(P_cr_Ratio < P_min) {SphP[i].CosmicRayDiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
+                    P_min = 1.0e-3; if(P_cr_Ratio < P_min) {SphP[i].CosmicRayDiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
                 }
 #endif
             } else {

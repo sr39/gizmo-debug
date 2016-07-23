@@ -721,6 +721,12 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef GALSF_TURNOFF_COOLING_WINDS
     double pressure_to_p4 = (1/All.cf_afac1)*density_to_n*(All.UnitEnergy_in_cgs/All.UnitMass_in_g) / 1.0e4;
 #endif
+    
+#if defined(COSMIC_RAYS) && defined(GALSF_FB_SNE_HEATING)
+    // account for energy going into CRs, so we don't 'double count' //
+    if(local.SNe_v_ejecta > 5.0e7 / All.UnitVelocity_in_cm_per_s) {local.SNe_v_ejecta *= sqrt(1-All.CosmicRay_SNeFraction);}
+#endif
+    
     // now define quantities that will be used below //
     double Esne51;
     Esne51 = 0.5*local.SNe_v_ejecta*local.SNe_v_ejecta*local.Msne / unit_egy_SNe;
@@ -828,12 +834,14 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     q = 0;
                     
 #if !(EXPAND_PREPROCESSOR_(GALSF_FB_SNE_HEATING) == 1) // check whether a numerical value is assigned
-#if (GALSF_FB_SNE_HEATING == 1) // code for symmetrized but non-isotropic
-#define DO_SYMMETRIZED_SNE_HEATING_ONLY_BUT_NOT_FULLY_ISOTROPIC
+#if (GALSF_FB_SNE_HEATING == 0) // code for symmetrized but non-isotropic
+//#define DO_SYMMETRIZED_SNE_HEATING_ONLY_BUT_NOT_FULLY_ISOTROPIC
+#define DO_FULLY_ISOTROPIZED_SNE_HEATING
 #endif
 #endif
                     
-#ifdef DO_SYMMETRIZED_SNE_HEATING_ONLY_BUT_NOT_FULLY_ISOTROPIC
+//#ifdef DO_SYMMETRIZED_SNE_HEATING_ONLY_BUT_NOT_FULLY_ISOTROPIC
+#ifndef DO_FULLY_ISOTROPIZED_SNE_HEATING
                     int i1=2*k+1, i2=i1+1;
                     if((local.Area_weighted_sum[i2]<1.e30)&&(local.Area_weighted_sum[i1]<1.e30))
                     {
@@ -937,8 +945,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 {
                     /* a fraction of the *INITIAL* energy goes into cosmic rays [this is -not- affected by the radiative losses above] */
                     double dE_init_coupled = 0.5 * dM * local.SNe_v_ejecta * local.SNe_v_ejecta;
-                    SphP[j].CosmicRayEnergy += All.CosmicRay_SNeFraction * dE_init_coupled;
-                    SphP[j].CosmicRayEnergyPred += All.CosmicRay_SNeFraction * dE_init_coupled;
+                    SphP[j].CosmicRayEnergy += All.CosmicRay_SNeFraction/(1-All.CosmicRay_SNeFraction) * dE_init_coupled;
+                    SphP[j].CosmicRayEnergyPred += All.CosmicRay_SNeFraction/(1-All.CosmicRay_SNeFraction) * dE_init_coupled;
                 }
 #endif
                 /* inject the post-shock energy and momentum (convert to specific units as needed first) */
@@ -947,8 +955,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 SphP[j].InternalEnergyPred += e_shock;
 #ifdef GALSF_TURNOFF_COOLING_WINDS
                 /* if the sub-grid 'cooling turnoff' model is enabled, turn off cooling for the 'blastwave timescale' */
-                dP = 7.08 * pow(Esne51*SphP[j].Density*density_to_n,0.34) * pow(SphP[j].Pressure*pressure_to_p4,-0.70)
-                / (All.UnitTime_in_Megayears/All.HubbleParam);
+                dP = 7.08 * pow(Esne51*SphP[j].Density*density_to_n,0.34) * pow(SphP[j].Pressure*pressure_to_p4,-0.70) / (All.UnitTime_in_Megayears/All.HubbleParam);
                 if(dP>SphP[j].DelayTimeCoolingSNe) SphP[j].DelayTimeCoolingSNe=dP;
 #else
                 /* inject momentum */

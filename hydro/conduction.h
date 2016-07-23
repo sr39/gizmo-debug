@@ -82,7 +82,8 @@
         if(fabs(diffusion_wt) > 0)
         {
             // enforce a flux limiter for stability (to prevent overshoot) //
-            double du_ij_cond = 1.0*DMIN(local.Mass*scalar_i, P[j].Mass*scalar_j);
+            //double du_ij_cond = 1.0*DMIN(local.Mass*scalar_i, P[j].Mass*scalar_j);
+            double du_ij_cond = DMIN( 0.25*fabs(local.Mass*scalar_i-P[j].Mass*scalar_j) , DMAX(local.Mass*scalar_i , P[j].Mass*scalar_j));
             if(check_for_stability_sign<0) {du_ij_cond *= 1.e-2;}
             if(fabs(diffusion_wt)>du_ij_cond) {diffusion_wt *= du_ij_cond/fabs(diffusion_wt);}
             Fluxes.p += diffusion_wt / dt_hydrostep;
