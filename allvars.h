@@ -2749,7 +2749,7 @@ enum iofields
   IO_grDI,
   IO_grDII,
   IO_grHDI,
-    
+  IO_OSTAR,  
   IO_LASTENTRY			/* This should be kept - it signals the end of the list */
 };
 
