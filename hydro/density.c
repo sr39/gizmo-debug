@@ -709,7 +709,7 @@ void density(void)
                 if((P[i].Type!=0)&&(P[i].Type!=5))
                 {
                     desnumngb = All.DesNumNgb;
-#ifdef (RT_SOURCE_INJECTION)
+#if defined(RT_SOURCE_INJECTION)
                     if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
 #endif
 #ifdef GALSF
