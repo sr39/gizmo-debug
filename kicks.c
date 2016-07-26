@@ -469,14 +469,23 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
     
 #ifdef COSMIC_RAYS
     double dCR = SphP[i].DtCosmicRayEnergy * dt_entr;
-    if(dCR < -0.5*SphP[i].CosmicRayEnergy) {dCR=-0.5*SphP[i].CosmicRayEnergy;}
+    if(SphP[i].CosmicRayEnergy > 0)
+    {
+        double t0=0.9;
+        if(dCR<-t0*SphP[i].CosmicRayEnergy)
+        {
+            double dtmp = t0 + dCR/SphP[i].CosmicRayEnergy;
+            if(fabs(dtmp) > 20.) {SphP[i].CosmicRayEnergy *= 1.e-10; dCR=0;} else {dCR=0; SphP[i].CosmicRayEnergy *= (1.-t0)*exp(dtmp);}
+        }
+    }
 #ifdef GALSF
-    double dCRmax = DMAX(0.5*SphP[i].CosmicRayEnergy , 0.1*SphP[i].InternalEnergy*P[i].Mass);
+    double dCRmax = DMAX(0.5*SphP[i].CosmicRayEnergy , 0.01*SphP[i].InternalEnergy*P[i].Mass);
 #else
     double dCRmax = 2.0 * SphP[i].CosmicRayEnergy;
 #endif
     if(dCR > dCRmax) {dCR=dCRmax;}
     SphP[i].CosmicRayEnergy += dCR;
+    if((SphP[i].CosmicRayEnergy < 0) || (isnan(SphP[i].CosmicRayEnergy))) {SphP[i].CosmicRayEnergy=0;}
 #endif
     
 #ifdef RADTRANSFER

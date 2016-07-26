@@ -390,7 +390,7 @@ void out2particle_addFB(struct addFBdata_out *out, int i, int mode, int feedback
         int k; for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {ASSIGN_ADD(P[i].Area_weighted_sum[k], out->Area_weighted_sum[k], mode);}
     } else {
         P[i].Mass -= out->M_coupled;
-        if(P[i].Mass<0) P[i].Mass=0;
+        if((P[i].Mass<0)||(isnan(P[i].Mass))) {P[i].Mass=0;}
     }
 }
 
@@ -724,7 +724,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_SNE_HEATING)
     // account for energy going into CRs, so we don't 'double count' //
-    if(local.SNe_v_ejecta > 5.0e7 / All.UnitVelocity_in_cm_per_s) {local.SNe_v_ejecta *= sqrt(1-All.CosmicRay_SNeFraction);}
+    if(local.SNe_v_ejecta > 2.0e8 / All.UnitVelocity_in_cm_per_s) {local.SNe_v_ejecta *= sqrt(1-All.CosmicRay_SNeFraction);}
 #endif
     
     // now define quantities that will be used below //
@@ -820,6 +820,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 }
                 // NOW do the actual feedback calculation //
                 wk *= local.Area_weighted_sum[0]; // this way wk matches the value summed above for the weighting //
+                
+                if((wk <= 0)||(isnan(wk))) continue;
                 
                 /* define initial mass and ejecta velocity in this 'cone' */
                 double v_bw[3]={0}, e_shock=0;
@@ -941,7 +943,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                 
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_SNE_HEATING)
-                if(local.SNe_v_ejecta > 5.0e7 / All.UnitVelocity_in_cm_per_s)
+                if(local.SNe_v_ejecta > 2.0e8 / All.UnitVelocity_in_cm_per_s)
                 {
                     /* a fraction of the *INITIAL* energy goes into cosmic rays [this is -not- affected by the radiative losses above] */
                     double dE_init_coupled = 0.5 * dM * local.SNe_v_ejecta * local.SNe_v_ejecta;

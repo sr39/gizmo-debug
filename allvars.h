@@ -1915,9 +1915,13 @@ extern ALIGN(32) struct particle_data
     MyFloat NumNgb;                 /*!< neighbor number around particle */
     MyFloat DhsmlNgbFactor;        /*!< correction factor needed for varying kernel lengths */
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
-    MyFloat DensAroundStar;
-    MyFloat GradRho[3];
+    MyFloat DensAroundStar;         /*!< gas density in the neighborhood of the collisionless particle (evaluated from neighbors) */
+    MyFloat GradRho[3];             /*!< gas density gradient evaluated simply from the neighboring particles, for collisionless centers */
 #endif
+#if defined(RT_SOURCE_INJECTION)
+    MyFloat KernelSum_Around_RT_Source; /*!< kernel summation around sources for radiation injection (save so can be different from 'density') */
+#endif
+
     
 #ifdef GALSF_FB_SNE_HEATING
     MyFloat SNe_ThisTimeStep; /* flag that indicated number of SNe for the particle in the timestep */

@@ -73,6 +73,9 @@ static struct densdata_out
 #ifdef HYDRO_SPH
     MyLongDouble DhsmlHydroSumFactor;
 #endif
+#ifdef RT_SOURCE_INJECTION
+    MyLongDouble KernelSum_Around_RT_Source;
+#endif
     
 #ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
     MyLongDouble EgyRho;
@@ -199,6 +202,10 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
         ASSIGN_ADD(P[i].DensAroundStar, out->Rho, mode);
         for(k = 0; k<3; k++) {ASSIGN_ADD(P[i].GradRho[k], out->GradRho[k], mode);}
     }
+#endif
+    
+#if defined(RT_SOURCE_INJECTION)
+    if((1 << P[i].Type) & (RT_SOURCES)) {ASSIGN_ADD(P[i].KernelSum_Around_RT_Source, out->KernelSum_Around_RT_Source, mode);}
 #endif
     
 
@@ -702,6 +709,9 @@ void density(void)
                 if((P[i].Type!=0)&&(P[i].Type!=5))
                 {
                     desnumngb = All.DesNumNgb;
+#ifdef (RT_SOURCE_INJECTION)
+                    if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
+#endif
 #ifdef GALSF
                     if(desnumngb < 64.0) {desnumngb = 64.0;} // we do want a decent number to ensure the area around the particle is 'covered'
                     // if we're finding this for feedback routines, there isn't any good reason to search beyond a modest physical radius //
@@ -1209,6 +1219,9 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     
                     out.Ngb += kernel.wk;
                     out.Rho += kernel.mj_wk;
+#if defined(RT_SOURCE_INJECTION)
+                    if((1 << local.Type) & (RT_SOURCES)) {out.KernelSum_Around_RT_Source += 1.-u*u;}
+#endif
                     out.DhsmlNgb += -(NUMDIMS * kernel.hinv * kernel.wk + u * kernel.dwk);
 #ifdef HYDRO_SPH
                     double mass_eff = mass_j;

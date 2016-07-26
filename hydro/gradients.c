@@ -1016,6 +1016,7 @@ void hydro_gradient_calc(void)
 #endif
 #ifdef COSMIC_RAYS
             construct_gradient(SphP[i].Gradients.CosmicRayPressure,i);
+            int is_particle_local_extremum = 0; // test for local extremum to revert to lower-order reconstruction if necessary
 #endif
 #ifdef DOGRAD_SOUNDSPEED
             construct_gradient(SphP[i].Gradients.SoundSpeed,i);
@@ -1422,6 +1423,7 @@ void hydro_gradient_calc(void)
 #ifdef COSMIC_RAYS
             stol_tmp = stol;
             //local_slopelimiter(SphP[i].Gradients.CosmicRayPressure,GasGradDataPasser[i].Maxima.CosmicRayPressure,GasGradDataPasser[i].Minima.CosmicRayPressure,a_limiter,h_lim,DMAX(stol,stol_diffusion));
+            if((GasGradDataPasser[i].Maxima.CosmicRayPressure==0)||(GasGradDataPasser[i].Minima.CosmicRayPressure==0)) {is_particle_local_extremum = 1;}
 #endif
 #ifdef DOGRAD_SOUNDSPEED
             local_slopelimiter(SphP[i].Gradients.SoundSpeed,GasGradDataPasser[i].Maxima.SoundSpeed,GasGradDataPasser[i].Minima.SoundSpeed,a_limiter,h_lim,stol);
@@ -1579,7 +1581,7 @@ void hydro_gradient_calc(void)
 #ifdef GALSF
                 diffusion_velocity_limit = 0.01 * C;
 #endif
-                double Lscale = DMIN(Get_Particle_Size(i)*All.cf_atime , CRPressureGradScaleLength);
+                double Lscale = DMIN(20.*Get_Particle_Size(i)*All.cf_atime , CRPressureGradScaleLength);
                 double kappa_diff_vel = SphP[i].CosmicRayDiffusionCoeff * GAMMA_COSMICRAY_MINUS1 / Lscale * All.UnitVelocity_in_cm_per_s;
                 SphP[i].CosmicRayDiffusionCoeff *= 1 / (1 + kappa_diff_vel/diffusion_velocity_limit); /* caps maximum here */
                 if((SphP[i].CosmicRayDiffusionCoeff<=0)||(isnan(SphP[i].CosmicRayDiffusionCoeff))) {SphP[i].CosmicRayDiffusionCoeff=0;}
@@ -1587,10 +1589,11 @@ void hydro_gradient_calc(void)
                 /* for multi-physics problems, we suppress diffusion where it is irrelevant */
                 {
                     double P_cr_Ratio = Get_Particle_CosmicRayPressure(i) / (MIN_REAL_NUMBER + SphP[i].Pressure);
-                    double P_min = 3.0e-2; if(P_cr_Ratio < P_min) {SphP[i].CosmicRayDiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
-                    P_min = 1.0e-3; if(P_cr_Ratio < P_min) {SphP[i].CosmicRayDiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
+                    double P_min = 1.0e-4; if(P_cr_Ratio < P_min) {SphP[i].CosmicRayDiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
+                    P_min = 1.0e-6; if(P_cr_Ratio < P_min) {SphP[i].CosmicRayDiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
                 }
 #endif
+                if(is_particle_local_extremum==1) {SphP[i].CosmicRayDiffusionCoeff *= -1;} // negative here codes for local extrema
             } else {
                 SphP[i].CosmicRayDiffusionCoeff = 0;
             }

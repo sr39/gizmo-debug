@@ -36,12 +36,12 @@ extern pthread_mutex_t mutex_partnodedrift;
 
 #ifdef RT_SOURCE_INJECTION
 
-/*! Structure for communication during the density computation. Holds data that is sent to other processors  */
+/*! Structure for communication during the kernel computation. Holds data that is sent to other processors  */
 static struct rt_sourcedata_in
 {
     MyDouble Pos[3];
     MyFloat Hsml;
-    MyFloat Density;
+    MyFloat KernelSum_Around_RT_Source;
     MyFloat Luminosity[N_RT_FREQ_BINS];
     int NodeList[NODELISTLENGTH];
 }
@@ -60,7 +60,8 @@ void rt_particle2in_source(struct rt_sourcedata_in *in, int i)
     int k;
     for(k=0; k<3; k++) {in->Pos[k] = P[i].Pos[k];}
     in->Hsml = PPP[i].Hsml;
-    if(P[i].Type==0) {in->Density = SphP[i].Density;} else {in->Density = P[i].DensAroundStar;}
+    //if(P[i].Type==0) {in->KernelSum_Around_RT_Source = SphP[i].Density;} else {in->KernelSum_Around_RT_Source = P[i].DensAroundStar;}
+    in->KernelSum_Around_RT_Source = P[i].KernelSum_Around_RT_Source;
     /* luminosity is set to zero here for gas particles because their self-illumination is handled trivially in a single loop, earlier */
     double lum[N_RT_FREQ_BINS];
     int active_check = rt_get_source_luminosity(i,0,lum);
@@ -265,8 +266,8 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
     if(mode == 0) {rt_particle2in_source(&local, target);} else {local = RT_SourceDataGet[target];}
     /* basic calculations */
     if(local.Hsml<=0) return 0; // zero-extent kernel, no particles //
-    double hinv, hinv3, hinv4, h2=4.*local.Hsml*local.Hsml;
-    kernel_hinv(2.*local.Hsml, &hinv, &hinv3, &hinv4);
+    double hinv, hinv3, hinv4, h2=local.Hsml*local.Hsml;
+    kernel_hinv(local.Hsml, &hinv, &hinv3, &hinv4);
     
     /* Now start the actual operations for this particle */
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = RT_SourceDataGet[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;/* open it */}
@@ -274,7 +275,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
     {
         while(startnode >= 0)
         {
-            numngb_inbox = ngb_treefind_variable_threads(local.Pos, 2.*local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+            numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             if(numngb_inbox < 0) {return -1;}
             for(n = 0; n < numngb_inbox; n++)
             {
@@ -289,10 +290,11 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 if(r2<=0) continue; // same particle //
                 if(r2>=h2) continue; // outside kernel //
                 // calculate kernel quantities //
-                double wk, dwk, u = sqrt(r2) * hinv;
-                kernel_main(u, hinv3, hinv4, &wk, &dwk, -1);
+                //double wk, dwk, u = sqrt(r2) * hinv;
+                //kernel_main(u, hinv3, hinv4, &wk, &dwk, -1); // traditional kernel
+                //wk *= P[j].Mass / local.KernelSum_Around_RT_Source;
+                double wk = (1 - r2*hinv*hinv) / local.KernelSum_Around_RT_Source;
                 // now actually apply the kernel distribution
-                wk *= P[j].Mass / local.Density;
                 for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[j].Je[k] += wk * local.Luminosity[k];}
             } // for(n = 0; n < numngb; n++)
         } // while(startnode >= 0)
