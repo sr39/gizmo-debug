@@ -551,7 +551,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef GALSF
                     /* for multi-physics problems, we will use a more aggressive timestep criterion
                      based on whether or not the cosmic ray physics are relevant for what we are modeling */
-                    /*
+                    //
                     if((SphP[p].CosmicRayEnergy==0)||(SphP[p].DtCosmicRayEnergy==0))
                     {
                         dt_conduction = 10. * dt;
@@ -564,7 +564,7 @@ integertime get_timestep(int p,		/*!< particle index */
                             if((dL_cr > 3.) && (delta_cr < 1.e-4*SphP[p].CosmicRayEnergy)) {dt_conduction = dt_weak; explicit_timestep_on = 0;}
                         }
                     }
-                    */
+                    //
 #endif
 #ifdef SUPER_TIMESTEP_DIFFUSION
                     if(explicit_timestep_on==1)

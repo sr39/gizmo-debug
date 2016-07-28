@@ -193,7 +193,7 @@ void merge_and_split_particles(void)
                     {
                         j = Ngblist[n];
                         /* make sure we're not taking the same particle */
-                        if((j>=0)&&(j!=i))
+                        if((j>=0)&&(j!=i)&&(P[j].Type==0))
                         {
                             double dp[3]; int k; double r2=0;
                             for(k=0;k<3;k++) {dp[k]=P[i].Pos[k]-P[j].Pos[k];}
@@ -206,7 +206,7 @@ void merge_and_split_particles(void)
                     } // for(n=0; n<numngb_inbox; n++)
                     if(target_for_merger>=0)
                     {
-                        /* some neighbors were found, we can true we're not going to crash the tree by splitting */
+                        /* some neighbors were found, we can trust we're not going to crash the tree by splitting */
                         split_particle_i(i, n_particles_split,target_for_merger,threshold_val);
                         n_particles_split++;
                     }
@@ -253,6 +253,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
         fflush(stdout);
         endrun(8888);
     }
+    if(P[i].Type != 0) {printf("SPLITTING NON-GAS-PARTICLE: i=%d ID=%d Type=%d \n",i,P[i].ID,P[i].Type); fflush(stdout); endrun(8889);}
     
     /* here is where the details of the split are coded, the rest is bookkeeping */
     mass_of_new_particle = 0.5;
@@ -279,8 +280,10 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
     /* find the first non-gas particle and move it to the end of the particle list */
     long j = NumPart + n_particles_split;
     /* set the pointers equal to one another -- all quantities get copied, we only have to modify what needs changing */
-    P[j] = P[i];
-    SphP[j] = SphP[i];
+    P[j] = P[i]; SphP[j] = SphP[i];
+    //memcpy(P[j],P[i],sizeof(struct particle_data)); // safer copy to make sure we don't just end up with a pointer re-direct
+    //memcpy(SphP[j],SphP[i],sizeof(struct sph_particle_data)); // safer copy to make sure we don't just end up with a pointer re-direct
+
     /* the particle needs to be 'born active' and added to the active set */
     NextActiveParticle[j] = FirstActiveParticle;
     FirstActiveParticle = j;
@@ -302,7 +305,8 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
     P[i].ID += ((MyIDType) 1 << (sizeof(MyIDType) * 8 - bits));
     */
     // new method: preserve the original "ID" field, but assign a unique -child- ID: this is unique up to ~32 *GENERATIONS* of repeated splitting!
-    P[j].ID_child_number = P[i].ID_child_number + (1 << P[i].ID_generation); // particle 'i' retains its child number; this ensures uniqueness
+    //P[j].ID_child_number = P[i].ID_child_number + (1 << P[i].ID_generation); // particle 'i' retains its child number; this ensures uniqueness
+    P[j].ID_child_number = P[i].ID_child_number + (MyIDType)(1 << ((int)P[i].ID_generation)); // particle 'i' retains its child number; this ensures uniqueness
     P[i].ID_generation++; if(P[i].ID_generation > 30) {P[i].ID_generation=0;} // roll over at 32 generations (unlikely to ever reach this)
     P[j].ID_generation = P[i].ID_generation; // ok, all set!
     
@@ -432,6 +436,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
     particle splitting */
 void merge_particles_ij(int i, int j)
 {
+    if((P[i].Type != 0)||(P[j].Type != 0)) {printf("MERGING NON-GAS-PARTICLE: i=%d ID=%d Type=%d j=%d ID=%d Type=%d \n",i,P[i].ID,P[i].Type,j,P[j].ID,P[j].Type); fflush(stdout); endrun(8889);}
     int k;
     if(P[i].Mass <= 0)
     {
