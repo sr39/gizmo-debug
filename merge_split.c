@@ -33,6 +33,7 @@ int does_particle_need_to_be_merged(int i)
     return 0;
 #else
     if(P[i].Mass <= 0) return 0;
+    if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*ref_mass_factor(i))) return 0;
     if(P[i].Mass <= (All.MinMassForParticleMerger* ref_mass_factor(i))) return 1;
     return 0;
 #endif
