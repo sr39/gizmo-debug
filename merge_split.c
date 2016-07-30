@@ -145,15 +145,19 @@ void merge_and_split_particles(void)
             }
         }
 #endif
-        /* check if we're a gas particle */
-        if((P[i].Type==0)&&(TimeBinActive[P[i].TimeBin]))
+        
+#if defined(GALSF)
+        if(((P[i].Type==0)||(P[i].Type==4))&&(TimeBinActive[P[i].TimeBin])) /* if SF active, allow star particles to merge if they get too small */
+#else
+        if((P[i].Type==0)&&(TimeBinActive[P[i].TimeBin])) /* default mode, only gas particles merged */
+#endif
         {
             /* we have a gas particle, ask if it needs to be merged */
             if(does_particle_need_to_be_merged(i))
             {
                 /* if merging: do a neighbor loop ON THE SAME DOMAIN to determine the target */
                 startnode=All.MaxPart;
-                numngb_inbox = ngb_treefind_variable_threads(P[i].Pos,PPP[i].Hsml,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist);
+                numngb_inbox = ngb_treefind_variable_threads_targeted(P[i].Pos,PPP[i].Hsml,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist,P[i].Type);
                 if(numngb_inbox>0)
                 {
                     target_for_merger = -1;
@@ -163,7 +167,7 @@ void merge_and_split_particles(void)
                     {
                         j = Ngblist[n];
                         /* make sure we're not taking the same particle (and that its available to be merged into)! */
-                        if((j>=0)&&(j!=i)&&(P[j].Type==0)&&(P[j].Mass > P[i].Mass)&&(P[i].Mass+P[j].Mass < All.MaxMassForParticleSplit))
+                        if((j>=0)&&(j!=i)&&(P[j].Type==P[i].Type)&&(P[j].Mass > P[i].Mass)&&(P[i].Mass+P[j].Mass < All.MaxMassForParticleSplit))
                         {
                             if(P[j].Mass<threshold_val) {threshold_val=P[j].Mass; target_for_merger=j;} // mass-based //
                         }
@@ -177,13 +181,16 @@ void merge_and_split_particles(void)
                 } // if(numngb_inbox>0)
             } // if(does_particle_need_to_be_merged(i))
             /* alright, the particle merger operations are complete! */
-            
-            /* now ask if the particle needs to be split */
+        }
+        
+        /* now ask if the particle needs to be split */
+        if((P[i].Type==0)&&(TimeBinActive[P[i].TimeBin])) /* default mode, only gas particles split */
+        {
             if(does_particle_need_to_be_split(i))
             {
                 /* if splitting: do a neighbor loop ON THE SAME DOMAIN to determine the nearest particle (so dont overshoot it) */
                 startnode=All.MaxPart;
-                numngb_inbox = ngb_treefind_variable_threads(P[i].Pos,PPP[i].Hsml,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist);
+                numngb_inbox = ngb_treefind_variable_threads_targeted(P[i].Pos,PPP[i].Hsml,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist,P[i].Type);
                 if(numngb_inbox>0)
                 {
                     target_for_merger = -1;
@@ -193,7 +200,7 @@ void merge_and_split_particles(void)
                     {
                         j = Ngblist[n];
                         /* make sure we're not taking the same particle */
-                        if((j>=0)&&(j!=i)&&(P[j].Type==0))
+                        if((j>=0)&&(j!=i)&&(P[j].Type==P[i].Type))
                         {
                             double dp[3]; int k; double r2=0;
                             for(k=0;k<3;k++) {dp[k]=P[i].Pos[k]-P[j].Pos[k];}
@@ -213,7 +220,7 @@ void merge_and_split_particles(void)
                 } // if(numngb_inbox>0)
             }
             /* alright, particle splitting operations are complete! */
-        } // P[i].Type==0
+        } // P[i].Type & active timebin check
     } // for(i = 0; i < NumPart; i++)
 #ifdef PERIODIC
     /* map the particles back onto the box (make sure they get wrapped if they go off the edges). this is redundant here,
@@ -436,7 +443,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
     particle splitting */
 void merge_particles_ij(int i, int j)
 {
-    if((P[i].Type != 0)||(P[j].Type != 0)) {printf("MERGING NON-GAS-PARTICLE: i=%d ID=%d Type=%d j=%d ID=%d Type=%d \n",i,P[i].ID,P[i].Type,j,P[j].ID,P[j].Type); fflush(stdout); endrun(8889);}
+    if((P[i].Type != 0)||(P[j].Type != 0)) {printf("Merging non-gas particle: ij=%d/%d ID=%d/%d type=%d/%d mass=%g/%g \n",i,j,P[i].ID,P[j].ID,P[i].Type,P[j].Type,P[i].Mass,P[j].Mass); fflush(stdout);}
     int k;
     if(P[i].Mass <= 0)
     {
@@ -451,6 +458,51 @@ void merge_particles_ij(int i, int j)
     double mtot = P[j].Mass + P[i].Mass;
     double wt_i = P[i].Mass / mtot;
     double wt_j = P[j].Mass / mtot;
+    
+    // block for merging non-gas particles (much simpler, assume collisionless)
+    if((P[i].Type>0)&&(P[j].Type>0))
+    {
+        double pos_new_xyz[3], dp[3];
+        for(k=0;k<3;k++) {dp[k]=P[j].Pos[k]-P[i].Pos[k];}
+#ifdef PERIODIC
+        NEAREST_XYZ(dp[0],dp[1],dp[2],-1);
+#endif
+        for(k=0;k<3;k++) {pos_new_xyz[k] = P[i].Pos[k] + wt_j * dp[k];}
+        
+        double p_old_i[3],p_old_j[3];
+        for(k=0;k<3;k++)
+        {
+            p_old_i[k] = P[i].Mass * P[i].Vel[k];
+            p_old_j[k] = P[j].Mass * P[j].Vel[k];
+        }
+        for(k=0;k<3;k++)
+        {
+            P[j].Pos[k] = pos_new_xyz[k]; // center-of-mass conserving //
+            P[j].Vel[k] = wt_j*P[j].Vel[k] + wt_i*P[i].Vel[k]; // momentum-conserving //
+            P[j].GravAccel[k] = wt_j*P[j].GravAccel[k] + wt_i*P[i].GravAccel[k]; // force-conserving //
+#ifdef PMGRID
+            P[j].GravPM[k] = wt_j*P[j].GravPM[k] + wt_i*P[i].GravPM[k]; // force-conserving //
+#endif
+        }
+        PPP[j].Hsml = pow(pow(PPP[j].Hsml,NUMDIMS)+pow(PPP[i].Hsml,NUMDIMS),1.0/NUMDIMS);
+#ifdef METALS
+        for(k=0;k<NUM_METAL_SPECIES;k++)
+            P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k]; /* metal-mass conserving */
+#endif
+        /* finally zero out the particle mass so it will be deleted */
+        P[i].Mass = 0;
+        P[j].Mass = mtot;
+        for(k=0;k<3;k++)
+        {
+            /* momentum shift for passing to tree (so we know how to move it) */
+            P[i].dp[k] += P[i].Mass*P[i].Vel[k] - p_old_i[k];
+            P[j].dp[k] += P[j].Mass*P[j].Vel[k] - p_old_j[k];
+        }
+        return;
+    } // closes merger of non-gas particles, only gas particles will see the blocks below //
+    
+    
+    // now we have to deal with gas particle mergers //
     if(P[i].TimeBin < P[j].TimeBin)
     {
 #ifdef WAKEUP
