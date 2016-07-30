@@ -137,6 +137,8 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
     size_t bytes, all_bytes;
     double t0, t1;
     
+    /* call first -before- a merge-split, to be sure particles are in the correct order in the tree */
+    rearrange_particle_sequence();
     if((All.Ti_Current > All.TimeBegin)&&(do_particle_mergesplit_key==1))
     {
         merge_and_split_particles();

@@ -111,8 +111,8 @@ void assign_imf_properties_from_starforming_gas(int i)
     random_generator_for_massivestars = gsl_rng_alloc(gsl_rng_ranlxd1);
     gsl_rng_set(random_generator_for_massivestars, P[i].ID+121);
     double mu = 0.01 * P[i].Mass * All.UnitMass_in_g / All.HubbleParam / (1.989e33); // 1 O-star per 100 Msun
-    unsigned int k = gsl_ran_poisson(random_generator_for_massivestars, mu);
-    P[i].IMF_NumMassiveStars = (double)k;
+    unsigned int kk = gsl_ran_poisson(random_generator_for_massivestars, mu);
+    P[i].IMF_NumMassiveStars = (double)kk;
 #endif
     
 }
@@ -172,7 +172,7 @@ double evaluate_stellar_age_Gyr(double stellar_tform)
         age=All.Time-stellar_tform;
     }
     age *= 0.001*All.UnitTime_in_Megayears/All.HubbleParam; // convert to absolute Gyr
-    if((age<=1.e-9)||(isnan(age))) {age=1.e-9;}
+    if((age<=1.e-5)||(isnan(age))) {age=1.e-5;}
     return age;
 }
 
@@ -335,7 +335,9 @@ double get_starformation_rate(int i)
     k_cs = cs_b / (Get_Particle_Size(i)*All.cf_atime);
 #endif
 #endif
+#if !defined(COSMIC_RAYS)
     dv2abs += 2.*k_cs*k_cs; // account for thermal pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
+#endif
     
     //double alpha_vir = 0.2387 * dv2abs / (All.G * SphP[i].Density * All.cf_a3inv); // coefficient here was for old form, with only divv information
     double alpha_vir = dv2abs / (8. * M_PI * All.G * SphP[i].Density * All.cf_a3inv); // 1/4 or 1/8 ? //

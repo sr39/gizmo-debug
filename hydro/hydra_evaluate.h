@@ -202,6 +202,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 kernel.vsig = kernel.sound_i + kernel.sound_j;
 #ifdef COSMIC_RAYS
                 double CosmicRayPressure_j = Get_Particle_CosmicRayPressure(j); /* compute this for use below */
+                //double Streaming_Loss_Term = 0; // alternative evaluation of streaming+diffusion losses: still experimental //
 #endif
 #ifdef MAGNETIC
                 double BPred_j[3];
@@ -425,6 +426,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 
 #ifdef COSMIC_RAYS
                 out.DtCosmicRayEnergy += Fluxes.CosmicRayPressure;
+                //out.DtCosmicRayEnergy -= Streaming_Loss_Term; out.DtInternalEnergy += Streaming_Loss_Term; // alternative evaluation of streaming loss term, still experimental
 #endif
                 
                 //out.dInternalEnergy += Fluxes.p * dt_hydrostep; //manifest-indiv-timestep-debug//
@@ -487,6 +489,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 
 #ifdef COSMIC_RAYS
                     SphP[j].DtCosmicRayEnergy -= Fluxes.CosmicRayPressure;
+                    //SphP[j].DtCosmicRayEnergy -= Streaming_Loss_Term; SphP[j].DtInternalEnergy += Streaming_Loss_Term; // alternative evaluation of streaming loss term, still experimental
 #endif
                 }
 #endif

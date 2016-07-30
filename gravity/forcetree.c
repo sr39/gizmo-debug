@@ -1774,7 +1774,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 r2 = dx * dx + dy * dy + dz * dz;
                 
                 mass = P[no].Mass;
-                
+
+                /* only proceed if the mass is positive and there is separation! */
+                if((r2 > 0) && (mass > 0))
+                {
+
 #ifdef BH_CALC_DISTANCES
                 if(P[no].Type == 5)             /* found a BH particle in grav calc */
                 {
@@ -1922,7 +1926,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 } // if((1 << ptype) & (SIDM))
                 
 #endif // SIDM
-                
+                } // closes (if((r2 > 0) && (mass > 0))) check
                 
                 if(TakeLevel >= 0)
                 {
@@ -2245,6 +2249,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 
             }
             
+            if((r2 > 0) && (mass > 0)) // only go forward if mass positive and there is separation
+            {
+            
             r = sqrt(r2);
             
             if(r >= h)
@@ -2289,11 +2296,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     // these are the same particles for which the kernel lengths are computed
                     if(ags_gravity_kernel_shared_check(ptype, ptype_sec))
                     {
-                        double dWdr, wp;
+                        double dWdr, wp, fac_corr = 0;
                         if((r>0) && (u<1) && (pmass>0)) // checks that these aren't the same particle
                         {
                             kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
-                            fac -= (zeta/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
+                            fac_corr += -(zeta/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
                         } // if(ptype==0)
                         
                         if(zeta_sec != 0) // secondary is adaptively-softened particle (set above)
@@ -2301,15 +2308,17 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                                 if((r>0) && (u_p<1) && (pmass>0))
                                 {
                                     kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
-                                    fac -= (zeta_sec/pmass) * dWdr / r;
+                                    fac_corr += -(zeta_sec/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
                                 } // if(zeta_sec != 0)
+                        if(!isnan(fac_corr)) {fac += fac_corr;}
                     } // if(ptype==ptype_sec)
 #else
                     if(h_p_inv < h_inv)
                     {
                         h_p3_inv = h_p_inv * h_p_inv * h_p_inv;
                         u_p = r * h_p_inv;
-                        fac = mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1);
+                        double fac2 = mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1);
+                        if(!isnan(fac2)) {fac=fac2;}
                     }
                     // correction only applies to 'shared-kernel' particles: so this needs to check if
                     // these are the same particles for which the kernel lengths are computed
@@ -2318,32 +2327,33 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     /* since these modules imply nonstandard cross-particel interactions for certain types, need to limit the correction terms here */
                     if((ptype>0) && (ptype<4) && (ptype_sec>0) && (ptype_sec<4) && (r > 0) && (pmass > 0))
 #else
-                    if((r > 0) && (pmass > 0))
+                    if((r > 0) && (pmass > 0)) // check for entering correction terms
 #endif
                     {
                         if(ags_gravity_kernel_shared_check(ptype, ptype_sec))
                         {
-                            double dWdr, wp;
+                            double dWdr, wp, fac_corr=0;
                             if(h_p_inv >= h_inv)
                             {
                                 if((zeta != 0) && (u < 1))
                                 {
                                     kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
-                                    fac -= 2. * (zeta/pmass) * dWdr / sqrt(r2 + 0.0001/(h_inv*h_inv));   // 0.5 * zeta * omega * dWdr / r;
+                                    fac_corr += -2. * (zeta/pmass) * dWdr / sqrt(r2 + 0.0001/(h_inv*h_inv));   // 0.5 * zeta * omega * dWdr / r;
                                 }
                             } else {
                                 if((zeta_sec != 0) && (u_p < 1)) // secondary is adaptively-softened particle (set above)
                                 {
                                     kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
-                                    fac -= 2. * (zeta_sec/pmass) * dWdr / sqrt(r2 + 0.0001/(h_p_inv*h_p_inv));
+                                    fac_corr += -2. * (zeta_sec/pmass) * dWdr / sqrt(r2 + 0.0001/(h_p_inv*h_p_inv));
                                 }
                             }
+                            if(!isnan(fac_corr)) {fac += fac_corr;}
                         } // if(ptype==ptype_sec)
-                    }
+                    } // check for entering correction terms
 #endif
-                }
-                
+                } // closes (if((h_p_inv > 0) && (ptype_sec > -1)))
 #endif // #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) //
+
                 
 #ifdef EVALPOTENTIAL
                 facpot = mass * kernel_gravity(u, h_inv, h3_inv, -1);
@@ -2356,8 +2366,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 else
                     fac2 = mass * h5_inv * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u);
 #endif
-            } // closes r < h clause
+            } // closes r < h (else) clause
             
+                
 #ifdef PMGRID
             tabindex = (int) (asmthfac * r);
             if(tabindex < NTAB && tabindex >= 0)
@@ -2485,7 +2496,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
                 fac *= fac2; acc_x += FLT(dx_stellarlum * fac); acc_y += FLT(dy_stellarlum * fac); acc_z += FLT(dz_stellarlum * fac);
 #endif
-            }
+            } // closes if(valid_gas_particle_for_rt)
 #endif // RT_USE_GRAVTREE
             
             
@@ -2520,10 +2531,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     acc_y += FLT(dy_dm * fac);
                     acc_z += FLT(dz_dm * fac);
                 }
-            }
+            } // closes if(ptype != 0)
 #endif // SCALARFIELD //
-        }
-        
+                
+        } // closes (if((r2 > 0) && (mass > 0))) check
+            
+        } // closes inner (while(no>=0)) check
         if(mode == 1)
         {
             listindex++;
@@ -2536,8 +2549,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     no = Nodes[no].u.d.nextnode;	/* open it */
                 }
             }
-        }
-    }
+        } // closes (mode == 1) check
+    } // closes outer (while(no>=0)) check
+    
     
 #ifdef SIDM
     /* some final SIDM operations before writing back to the particles */
@@ -2806,6 +2820,7 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
             {
                 openflag = 0;
                 r2 = dx * dx + dy * dy + dz * dz;
+                if(r2 <= 0) {r2=MIN_REAL_NUMBER;}
                 if(All.ErrTolTheta)	/* check Barnes-Hut opening criterion */
                 {
                     if(nop->len * nop->len > r2 * All.ErrTolTheta * All.ErrTolTheta)

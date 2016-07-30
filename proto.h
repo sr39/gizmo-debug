@@ -120,6 +120,11 @@ void calc_shearing_box_pos_offset(void);
 #endif
 
 
+int ngb_treefind_variable_threads_targeted(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
+                                           int mode, int *exportflag, int *exportnodecount, int *exportindex,
+                                           int *ngblist, int type_of_target_particles);
+
+
 void do_distortion_tensor_kick(int i, double dt_gravkick);
 void set_predicted_sph_quantities_for_extra_physics(int i);
 void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, double dt_entr);
