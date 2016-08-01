@@ -855,7 +855,7 @@ integertime get_timestep(int p,		/*!< particle index */
         dt = dt_displacement;
     
     
-    if(dt < All.MinSizeTimestep)
+    if((dt < All.MinSizeTimestep)||(((integertime) (dt / All.Timebase_interval)) <= 1))
     {
 #ifdef STOP_WHEN_BELOW_MINTIMESTEP
         printf("warning: Timestep wants to be below the limit `MinSizeTimestep'\n");
