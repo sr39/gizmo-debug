@@ -470,8 +470,8 @@ void ags_density(void)
                 /* now check whether we have enough neighbours */
                 redo_particle = 0;
                 
-                double min_tmp = ags_return_minsoft(i);
-                double minsoft = DMAX(All.ForceSoftening[P[i].Type] , DMIN(min_tmp, AGS_Prev[i])); // this ensures softening doesnt shrink when self-accel is too large already
+                double minsoft = ags_return_minsoft(i);
+                minsoft = DMAX(All.ForceSoftening[P[i].Type] , DMIN(min_tmp, AGS_Prev[i])); // this ensures softening doesnt shrink when self-accel is too large already
                 double maxsoft = ags_return_maxsoft(i);
                 desnumngb = All.AGS_DesNumNgb;
                 desnumngbdev = All.AGS_MaxNumNgbDeviation;
@@ -706,8 +706,8 @@ void ags_density(void)
         {
             if((P[i].Mass>0)&&(PPP[i].AGS_Hsml>0)&&(PPP[i].NumNgb>0))
             {
-                double min_tmp = ags_return_minsoft(i);
-                double minsoft = DMAX(All.ForceSoftening[P[i].Type] , DMIN(min_tmp, AGS_Prev[i])); // this ensures softening doesnt shrink when self-accel is too large already
+                double minsoft = ags_return_minsoft(i);
+                minsoft = DMAX(All.ForceSoftening[P[i].Type] , DMIN(min_tmp, AGS_Prev[i])); // this ensures softening doesnt shrink when self-accel is too large already
                 double maxsoft = ags_return_maxsoft(i);
                 /* check that we're within the 'valid' range for adaptive softening terms, otherwise zeta=0 */
                 if((fabs(PPP[i].NumNgb-All.AGS_DesNumNgb)/All.AGS_DesNumNgb < 0.05)
