@@ -433,6 +433,7 @@ void pmforce_periodic(int mode, int *typelist)
       for(i = 0; i < num_on_grid; i += 8)
 	{
 	  pindex = (part[i].partindex >> 3);
+        if(P[pindex].Mass<=0) continue;
 
         /* possible bugfix: Y.Feng:  (was if(mode)) */
 	  if(mode > -1)
@@ -1076,6 +1077,7 @@ void pmpotential_periodic(void)
   for(i = 0; i < num_on_grid; i += 8)
     {
       pindex = (part[i].partindex >> 3);
+        if(P[pindex].Mass<=0) continue;
 
         /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
         /* make sure that particles are properly box-wrapped */
@@ -1826,6 +1828,7 @@ void pmtidaltensor_periodic_diff(void)
       for(i = 0; i < num_on_grid; i += 8)
 	{
 	  pindex = (part[i].partindex >> 3);
+        if(P[pindex].Mass<=0) continue;
 
         /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
         /* make sure that particles are properly box-wrapped */
@@ -2596,6 +2599,7 @@ void pmtidaltensor_periodic_fourier(int component)
   for(i = 0; i < num_on_grid; i += 8)
     {
       pindex = (part[i].partindex >> 3);
+        if(P[pindex].Mass<=0) continue;
 
         /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
         /* make sure that particles are properly box-wrapped */
@@ -3036,7 +3040,7 @@ void powerspec(int flag, int *typeflag)
   tstart = my_second();
 
   for(i = 0, mass = 0; i < NumPart; i++)
-    if(typeflag[P[i].Type])
+    if(typeflag[P[i].Type] && (P[i].Mass>0))
       mass += P[i].Mass;
 
   MPI_Allreduce(&mass, &power_spec_totmass, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -3403,8 +3407,8 @@ void foldonitself(int *typelist)
 
       for(i = istart, nbuf = 0; i < NumPart; i++)
 	{
-	  if(typelist[P[i].Type] == 0)
-	    continue;
+	  if(typelist[P[i].Type] == 0) continue;
+        if(P[i].Mass <= 0) continue;
 
 	  if(nbuf + 1 >= buf_capacity)
 	    break;

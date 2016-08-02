@@ -500,7 +500,18 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-       
+            
+        case IO_OSTAR:
+#ifdef GALSF_SFR_IMF_SAMPLING
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = P[pindex].IMF_NumMassiveStars;
+                    n++;
+                  }
+#endif
+            break;
+
         case IO_GRAINSIZE:		/* grain size */
 #ifdef GRAIN_FLUID
             for(n = 0; n < pc; pindex++)
@@ -1451,6 +1462,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_HSML:
         case IO_SFR:
         case IO_AGE:
+        case IO_OSTAR:
         case IO_GRAINSIZE:
         case IO_DELAYTIME:
         case IO_HSMS:
@@ -1700,6 +1712,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_HSML:
         case IO_SFR:
         case IO_AGE:
+        case IO_OSTAR:
         case IO_GRAINSIZE:
         case IO_DELAYTIME:
         case IO_HSMS:
@@ -1972,7 +1985,14 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
             return nstars;
 #endif
             break;
-
+            
+        case IO_OSTAR:
+            for(i = 0; i < 6; i++)
+                if(i != 4)
+                    typelist[i] = 0;
+            return nstars;
+            break;
+             
         case IO_GRAINSIZE:
             nngb = 0;
             for(i = 0; i < 6; i++)
@@ -2299,6 +2319,14 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
             
+        case IO_OSTAR:
+#ifdef GALSF_SFR_IMF_SAMPLING
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+
         case IO_COSMICRAY_ENERGY:
 #ifdef COSMIC_RAYS
             return 1;
@@ -2779,6 +2807,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_IMF:
             strncpy(label, "IMF ", 4);
             break;
+        case IO_OSTAR:
+            strncpy(label, "IMF ", 4);
+            break;    
         case IO_COSMICRAY_ENERGY:
             strncpy(label, "CREG ", 4);
             break;
@@ -3130,6 +3161,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_IMF:
             strcpy(buf, "IMFFormationProperties");
             break;
+        case IO_OSTAR:
+            strcpy(buf, "OStarNumber");
+            break;    
         case IO_COSMICRAY_ENERGY:
             strcpy(buf, "CosmicRayEnergy");
             break;

@@ -817,6 +817,7 @@ int pmforce_nonperiodic(int grnr)
       for(i = 0; i < num_on_grid; i += 8)
 	{
 	  pindex = (part[i].partindex >> 3);
+        if(P[pindex].Mass<=0) continue;
 
 	  slab_x = (int) (to_slab_fac * (P[pindex].Pos[0] - All.Corner[grnr][0]));
 	  slab_y = (int) (to_slab_fac * (P[pindex].Pos[1] - All.Corner[grnr][1]));
@@ -1691,6 +1692,7 @@ int pmpotential_nonperiodic(int grnr)
   for(i = 0; i < num_on_grid; i += 8)
     {
       pindex = (part[i].partindex >> 3);
+        if(P[pindex].Mass<=0) continue;
 
       slab_x = (int) (to_slab_fac * (P[pindex].Pos[0] - All.Corner[grnr][0]));
       slab_y = (int) (to_slab_fac * (P[pindex].Pos[1] - All.Corner[grnr][1]));
@@ -2182,6 +2184,7 @@ int pmtidaltensor_nonperiodic_diff(int grnr)
       for(i = 0; i < num_on_grid; i += 8)
 	{
 	  pindex = (part[i].partindex >> 3);
+        if(P[pindex].Mass<=0) continue;
 
 	  slab_x = (int) (to_slab_fac * (P[pindex].Pos[0] - All.Corner[grnr][0]));
 	  slab_y = (int) (to_slab_fac * (P[pindex].Pos[1] - All.Corner[grnr][1]));
@@ -2882,6 +2885,7 @@ int pmtidaltensor_nonperiodic_fourier(int grnr, int component)
   for(i = 0; i < num_on_grid; i += 8)
     {
       pindex = (part[i].partindex >> 3);
+        if(P[pindex].Mass<=0) continue;
 
       slab_x = (int) (to_slab_fac * (P[pindex].Pos[0] - All.Corner[grnr][0]));
       slab_y = (int) (to_slab_fac * (P[pindex].Pos[1] - All.Corner[grnr][1]));

@@ -45,26 +45,27 @@
 #endif
 #endif
 */
-    if(SphP[j].ConditionNumber*SphP[j].ConditionNumber > 1.0e12 + cnumcrit2)
+    /* the effective gradient matrix is well-conditioned: we can safely use the consistent EOM */
+    // note the 'default' formulation from Lanson and Vila takes wt_i=V_i, wt_j=V_j; but this assumes negligible variation in h between particles;
+    //      it is more accurate to use a centered wt (centered face area), which we get by linear interpolation //
+    double facenormal_dot_dp = 0;
+    for(k=0;k<3;k++)
     {
-        /* the effective gradient matrix is ill-conditioned: for stability, we revert to the "RSPH" EOM */
+        Face_Area_Vec[k] = kernel.wk_i * wt_i * (local.NV_T[k][0]*kernel.dp[0] + local.NV_T[k][1]*kernel.dp[1] + local.NV_T[k][2]*kernel.dp[2])
+                         + kernel.wk_j * wt_j * (SphP[j].NV_T[k][0]*kernel.dp[0] + SphP[j].NV_T[k][1]*kernel.dp[1] + SphP[j].NV_T[k][2]*kernel.dp[2]);
+        Face_Area_Vec[k] *= All.cf_atime*All.cf_atime; /* Face_Area_Norm has units of area, need to convert to physical */
+        Face_Area_Norm += Face_Area_Vec[k]*Face_Area_Vec[k];
+        facenormal_dot_dp += Face_Area_Vec[k] * kernel.dp[k]; /* check that face points same direction as vector normal: should be true for positive-definite (well-conditioned) NV_T */
+    }
+    if((SphP[j].ConditionNumber*SphP[j].ConditionNumber > 1.0e12 + cnumcrit2) || (facenormal_dot_dp < 0))
+    {
+        /* the effective gradient matrix is ill-conditioned (or not positive-definite!): for stability, we revert to the "RSPH" EOM */
         Face_Area_Norm = -(wt_i*V_i*kernel.dwk_i + wt_j*V_j*kernel.dwk_j) / kernel.r;
         Face_Area_Norm *= All.cf_atime*All.cf_atime; /* Face_Area_Norm has units of area, need to convert to physical */
         Face_Area_Vec[0] = Face_Area_Norm * kernel.dp[0];
         Face_Area_Vec[1] = Face_Area_Norm * kernel.dp[1];
         Face_Area_Vec[2] = Face_Area_Norm * kernel.dp[2];
         Face_Area_Norm = Face_Area_Norm * Face_Area_Norm * r2;
-    } else {
-        /* the effective gradient matrix is well-conditioned: we can safely use the consistent EOM */
-        // note the 'default' formulation from Lanson and Vila takes wt_i=V_i, wt_j=V_j; but this assumes negligible variation in h between particles;
-        //      it is more accurate to use a centered wt (centered face area), which we get by linear interpolation //
-        for(k=0;k<3;k++)
-        {
-            Face_Area_Vec[k] = kernel.wk_i * wt_i * (local.NV_T[k][0]*kernel.dp[0] + local.NV_T[k][1]*kernel.dp[1] + local.NV_T[k][2]*kernel.dp[2])
-                       + kernel.wk_j * wt_j * (SphP[j].NV_T[k][0]*kernel.dp[0] + SphP[j].NV_T[k][1]*kernel.dp[1] + SphP[j].NV_T[k][2]*kernel.dp[2]);
-            Face_Area_Vec[k] *= All.cf_atime*All.cf_atime; /* Face_Area_Norm has units of area, need to convert to physical */
-            Face_Area_Norm += Face_Area_Vec[k]*Face_Area_Vec[k];
-        }
     }
     if(Face_Area_Norm == 0)
     {
@@ -129,49 +130,21 @@
         
         
         /* now we do the reconstruction (second-order reconstruction at the face) */
-        if(All.AGNWindGradType==0){	// Try to do all gradient reconstructions
-            reconstruct_face_states(local.Density, local.Gradients.Density, SphP[j].Density, SphP[j].Gradients.Density,
-                                    distance_from_i, distance_from_j, &Riemann_vec.L.rho, &Riemann_vec.R.rho, 1);
-            reconstruct_face_states(local.Pressure, local.Gradients.Pressure, SphP[j].Pressure, SphP[j].Gradients.Pressure,
-                                    distance_from_i, distance_from_j, &Riemann_vec.L.p, &Riemann_vec.R.p, 1);
-        } else if(All.AGNWindGradType==1){  // Gradients are limited for particles with ID = WindID *or* vrel > 5000 km/s
-            double vr2=0.0;
-            for(k=0;k<3;k++) vr2 += (VelPred_j[k]-local.Vel[k]) * (VelPred_j[k]-local.Vel[k]);
-
-            if( (P[j].ID==All.AGNWindID) || (vr2>5000.*5000.) )
-            {
-                reconstruct_face_states(local.Density, local.Gradients.Density, SphP[j].Density, SphP[j].Gradients.Density,
-                                    distance_from_i, distance_from_j, &Riemann_vec.L.rho, &Riemann_vec.R.rho, 0);
-                reconstruct_face_states(local.Pressure, local.Gradients.Pressure, SphP[j].Pressure, SphP[j].Gradients.Pressure,
-                                    distance_from_i, distance_from_j, &Riemann_vec.L.p, &Riemann_vec.R.p, 0);
-            } else {
-                reconstruct_face_states(local.Density, local.Gradients.Density, SphP[j].Density, SphP[j].Gradients.Density,
-                                    distance_from_i, distance_from_j, &Riemann_vec.L.rho, &Riemann_vec.R.rho, 1);
-                reconstruct_face_states(local.Pressure, local.Gradients.Pressure, SphP[j].Pressure, SphP[j].Gradients.Pressure,
-                                    distance_from_i, distance_from_j, &Riemann_vec.L.p, &Riemann_vec.R.p, 1);
-            }
-
-
-        } else if(All.AGNWindGradType==2){  // No gradients are used
-            reconstruct_face_states(local.Density, local.Gradients.Density, SphP[j].Density, SphP[j].Gradients.Density,
-                                    distance_from_i, distance_from_j, &Riemann_vec.L.rho, &Riemann_vec.R.rho, 0);
-            reconstruct_face_states(local.Pressure, local.Gradients.Pressure, SphP[j].Pressure, SphP[j].Gradients.Pressure,
-                                    distance_from_i, distance_from_j, &Riemann_vec.L.p, &Riemann_vec.R.p, 0);
-        } else {
-            printf("Unrecognized All.AGNWindGradType.  Exiting\n");
-            exit(12132); // The address of the beast
-        }
-
+        int recon_mode = 1; // default to 'normal' reconstruction: some special physics will set this to zero for low-order reconstructions
+        reconstruct_face_states(local.Density, local.Gradients.Density, SphP[j].Density, SphP[j].Gradients.Density,
+                                distance_from_i, distance_from_j, &Riemann_vec.L.rho, &Riemann_vec.R.rho, recon_mode);
+        reconstruct_face_states(local.Pressure, local.Gradients.Pressure, SphP[j].Pressure, SphP[j].Gradients.Pressure,
+                                distance_from_i, distance_from_j, &Riemann_vec.L.p, &Riemann_vec.R.p, recon_mode);
 #ifdef EOS_GENERAL
         reconstruct_face_states(local.InternalEnergyPred, local.Gradients.InternalEnergy, SphP[j].InternalEnergyPred, SphP[j].Gradients.InternalEnergy,
-                                distance_from_i, distance_from_j, &Riemann_vec.L.u, &Riemann_vec.R.u, 1);
+                                distance_from_i, distance_from_j, &Riemann_vec.L.u, &Riemann_vec.R.u, recon_mode);
         reconstruct_face_states(kernel.sound_i, local.Gradients.SoundSpeed, kernel.sound_j, SphP[j].Gradients.SoundSpeed,
-                                distance_from_i, distance_from_j, &Riemann_vec.L.cs, &Riemann_vec.R.cs, 1);
+                                distance_from_i, distance_from_j, &Riemann_vec.L.cs, &Riemann_vec.R.cs, recon_mode);
 #endif
         for(k=0;k<3;k++)
         {
             reconstruct_face_states(local.Vel[k]-v_frame[k], local.Gradients.Velocity[k], VelPred_j[k]-v_frame[k], SphP[j].Gradients.Velocity[k],
-                                    distance_from_i, distance_from_j, &Riemann_vec.L.v[k], &Riemann_vec.R.v[k], 1);
+                                    distance_from_i, distance_from_j, &Riemann_vec.L.v[k], &Riemann_vec.R.v[k], recon_mode);
         }
 #ifdef MAGNETIC
         int slim_mode = 1;
@@ -251,6 +224,7 @@
 #ifdef AGGRESSIVE_SLOPE_LIMITERS
         press_tot_limiter *= 100.0; // large number
 #endif
+        if(recon_mode==0) {press_tot_limiter = DMAX(press_tot_limiter , DMAX(DMAX(local.Pressure,SphP[j].Pressure),2.*DMAX(local.Density,SphP[j].Density)*v2_approach));}
         
         
         /* --------------------------------------------------------------------------------- */
@@ -275,7 +249,7 @@
             Riemann_vec.R.cs = kernel.sound_i; Riemann_vec.L.cs = kernel.sound_j;
 #endif
             Riemann_solver(Riemann_vec, &Riemann_out, n_unit, 1.4*press_tot_limiter);
-            if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>2.0*press_tot_limiter))
+            if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M)))
             {
                 /* ignore any velocity difference between the particles: this should gaurantee we have a positive pressure! */
                 Riemann_vec.R.p = local.Pressure; Riemann_vec.L.p = SphP[j].Pressure;

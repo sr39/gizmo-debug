@@ -375,11 +375,15 @@ void HLLC_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
         HLLC_fluxes(Riemann_vec, Riemann_out, n_unit,  v_line_L, v_line_R, cs_L, cs_R, h_L, h_R, S_L, S_R);
 #else
 #ifdef SAVE_FACE_DENSITY
-    Riemann_out->Face_Density = 0.5 * (Riemann_vec.L.rho*(S_L-v_line_L)/(S_L-Riemann_out->S_M) +
-                                       Riemann_vec.R.rho*(S_R-v_line_R)/(S_R-Riemann_out->S_M));
-    if(Riemann_out->S_M==S_L) {Riemann_out->Face_Density=Riemann_vec.L.rho;}
-    if(Riemann_out->S_M==S_R) {Riemann_out->Face_Density=Riemann_vec.R.rho;}
-    if((Riemann_out->P_M<=0)&&(!isnan(Riemann_out->P_M))) {Riemann_out->Face_Density = 0.5*(Riemann_vec.L.rho+Riemann_vec.R.rho);}
+    if((Riemann_out->S_M==0) || ((Riemann_out->P_M<=0)&&(!isnan(Riemann_out->P_M))))
+    {
+        Riemann_out->Face_Density = 0.5*(Riemann_vec.L.rho+Riemann_vec.R.rho);
+    } else {
+        Riemann_out->Face_Density = 0.5 * (Riemann_vec.L.rho*(S_L-v_line_L)/(S_L-Riemann_out->S_M) +
+                                           Riemann_vec.R.rho*(S_R-v_line_R)/(S_R-Riemann_out->S_M));
+        if(Riemann_out->S_M==S_L) {Riemann_out->Face_Density=Riemann_vec.L.rho;}
+        if(Riemann_out->S_M==S_R) {Riemann_out->Face_Density=Riemann_vec.R.rho;}
+    }
 #endif
 #endif
 }
@@ -434,53 +438,64 @@ void get_wavespeeds_and_pressure_star(struct Input_vec_Riemann Riemann_vec, stru
                                       double v_line_L, double v_line_R, double cs_L, double cs_R, double h_L, double h_R,
                                       double *S_L_out, double *S_R_out, double press_tot_limiter)
 {
-    /* Gaburov: 'simplest' HLLC discretization with weighting scheme */
-    double PT_L = Riemann_vec.L.p;
-    double PT_R = Riemann_vec.R.p;
-    double S_L = DMIN(v_line_L,v_line_R) - DMAX(cs_L,cs_R);
-    double S_R = DMAX(v_line_L,v_line_R) + DMAX(cs_L,cs_R);
-    double rho_wt_L = Riemann_vec.L.rho*(S_L-v_line_L);
-    double rho_wt_R = Riemann_vec.R.rho*(S_R-v_line_R);
-    Riemann_out->S_M = ((PT_R-PT_L) + rho_wt_L*v_line_L - rho_wt_R*v_line_R) / (rho_wt_L - rho_wt_R);
-    Riemann_out->P_M = (PT_L*rho_wt_R - PT_R*rho_wt_L + rho_wt_L*rho_wt_R*(v_line_R - v_line_L)) / (rho_wt_R - rho_wt_L);
-
-    if((Riemann_out->P_M <= 0)||(isnan(Riemann_out->P_M))||(Riemann_out->P_M>press_tot_limiter))
+    double S_L, S_R;
+    
+    /* first, check for vacuum conditions, not accounted for in the standard HLLC scheme */
+    if((v_line_R - v_line_L) > DMAX(cs_L,cs_R))
     {
-        /* failed: compute Roe-averaged values (Roe 1981) [roe-averaging not strictly necessary for HLLC, though it improves accuracy */
-        /* note that enthalpy H=(Etotal+P)/d is averaged, with Etotal=Ekinetic+Einternal (Einternal=P/(gamma-1)) */
-        double sqrt_rho_L = sqrt(Riemann_vec.L.rho);
-        double sqrt_rho_R = sqrt(Riemann_vec.R.rho);
-        double sqrt_rho_inv = 1 / (sqrt_rho_L + sqrt_rho_R);
-        double vx_roe = (sqrt_rho_L*Riemann_vec.L.v[0] + sqrt_rho_R*Riemann_vec.R.v[0]) * sqrt_rho_inv;
-        double vy_roe = (sqrt_rho_L*Riemann_vec.L.v[1] + sqrt_rho_R*Riemann_vec.R.v[1]) * sqrt_rho_inv;
-        double vz_roe = (sqrt_rho_L*Riemann_vec.L.v[2] + sqrt_rho_R*Riemann_vec.R.v[2]) * sqrt_rho_inv;
-        /* compute velocity along the line connecting the nodes, and max/min wave speeds */
-        double v_line_roe = vx_roe*n_unit[0] + vy_roe*n_unit[1] + vz_roe*n_unit[2];
-#ifndef EOS_GENERAL
-        double h_roe  = (sqrt_rho_L*h_L  + sqrt_rho_R*h_R) * sqrt_rho_inv;
-        double cs_roe = sqrt(DMAX(1.e-30, GAMMA_MINUS1*(h_roe - 0.5*(vx_roe*vx_roe+vy_roe*vy_roe+vz_roe*vz_roe))));
-#else
-        double cs_roe = (sqrt_rho_L*cs_L  + sqrt_rho_R*cs_R) * sqrt_rho_inv;
-#endif
-        S_R = DMAX(v_line_R + cs_R , v_line_roe + cs_roe);
-        S_L = DMIN(v_line_L - cs_L , v_line_roe - cs_roe);
-        rho_wt_R =  Riemann_vec.R.rho * (S_R - v_line_R);
-        rho_wt_L = -Riemann_vec.L.rho * (S_L - v_line_L); /* note the sign */
-        /* contact wave speed (speed at contact surface): */
-        Riemann_out->S_M = ((rho_wt_R*v_line_R + rho_wt_L*v_line_L) + (PT_L - PT_R)) / (rho_wt_R + rho_wt_L);
-        /* S_M = v_line_L* = v_line_R* = v_line_M --- this is the speed at interface */
-        /* contact pressure (pressure at contact surface): */
-        Riemann_out->P_M = Riemann_vec.L.rho * (v_line_L-S_L)*(v_line_L-Riemann_out->S_M) + PT_L;
-        /* p_M = p_L* = p_R*  */
-
+        Riemann_out->P_M = MIN_REAL_NUMBER; Riemann_out->S_M = S_L = S_R = 0;
+    } else {
+        /* Gaburov: 'simplest' HLLC discretization with weighting scheme */
+        double PT_L = Riemann_vec.L.p;
+        double PT_R = Riemann_vec.R.p;
+        S_L = DMIN(v_line_L,v_line_R) - DMAX(cs_L,cs_R);
+        S_R = DMAX(v_line_L,v_line_R) + DMAX(cs_L,cs_R);
+        double rho_wt_L = Riemann_vec.L.rho*(S_L-v_line_L);
+        double rho_wt_R = Riemann_vec.R.rho*(S_R-v_line_R);
+        Riemann_out->S_M = ((PT_R-PT_L) + rho_wt_L*v_line_L - rho_wt_R*v_line_R) / (rho_wt_L - rho_wt_R);
+        Riemann_out->P_M = (PT_L*rho_wt_R - PT_R*rho_wt_L + rho_wt_L*rho_wt_R*(v_line_R - v_line_L)) / (rho_wt_R - rho_wt_L);
+        if(Riemann_out->P_M <= MIN_REAL_NUMBER) {Riemann_out->P_M = MIN_REAL_NUMBER; Riemann_out->S_M = S_L = S_R = 0;}
+        
         if((Riemann_out->P_M <= 0)||(isnan(Riemann_out->P_M))||(Riemann_out->P_M>press_tot_limiter))
         {
-            /* failed again! try the simple primitive-variable estimate (as we would for Rusanov) */
-            Riemann_out->P_M = 0.5*((PT_L + PT_R) + (v_line_L-v_line_R)*0.25*(Riemann_vec.L.rho+Riemann_vec.R.rho)*(cs_L+cs_R));
-            /* compute the new wave speeds from it */
-            Riemann_out->S_M = 0.5*(v_line_R+v_line_L) + 2.0*(PT_L-PT_R)/((Riemann_vec.L.rho+Riemann_vec.R.rho)*(cs_L+cs_R));
-            double S_plus = DMAX(DMAX(fabs(v_line_L - cs_L), fabs(v_line_R - cs_R)), DMAX(fabs(v_line_L + cs_L), fabs(v_line_R + cs_R)));
-            S_L=-S_plus; S_R=S_plus; if(Riemann_out->S_M<S_L) Riemann_out->S_M=S_L; if(Riemann_out->S_M>S_R) Riemann_out->S_M=S_R;
+            /* failed: compute Roe-averaged values (Roe 1981) [roe-averaging not strictly necessary for HLLC, though it improves accuracy */
+            /* note that enthalpy H=(Etotal+P)/d is averaged, with Etotal=Ekinetic+Einternal (Einternal=P/(gamma-1)) */
+            double sqrt_rho_L = sqrt(Riemann_vec.L.rho);
+            double sqrt_rho_R = sqrt(Riemann_vec.R.rho);
+            double sqrt_rho_inv = 1 / (sqrt_rho_L + sqrt_rho_R);
+            double vx_roe = (sqrt_rho_L*Riemann_vec.L.v[0] + sqrt_rho_R*Riemann_vec.R.v[0]) * sqrt_rho_inv;
+            double vy_roe = (sqrt_rho_L*Riemann_vec.L.v[1] + sqrt_rho_R*Riemann_vec.R.v[1]) * sqrt_rho_inv;
+            double vz_roe = (sqrt_rho_L*Riemann_vec.L.v[2] + sqrt_rho_R*Riemann_vec.R.v[2]) * sqrt_rho_inv;
+            /* compute velocity along the line connecting the nodes, and max/min wave speeds */
+            double v_line_roe = vx_roe*n_unit[0] + vy_roe*n_unit[1] + vz_roe*n_unit[2];
+#ifndef EOS_GENERAL
+            double h_roe  = (sqrt_rho_L*h_L  + sqrt_rho_R*h_R) * sqrt_rho_inv;
+            double cs_roe = sqrt(DMAX(1.e-30, GAMMA_MINUS1*(h_roe - 0.5*(vx_roe*vx_roe+vy_roe*vy_roe+vz_roe*vz_roe))));
+#else
+            double cs_roe = (sqrt_rho_L*cs_L  + sqrt_rho_R*cs_R) * sqrt_rho_inv;
+#endif
+            S_R = DMAX(v_line_R + cs_R , v_line_roe + cs_roe);
+            S_L = DMIN(v_line_L - cs_L , v_line_roe - cs_roe);
+            rho_wt_R =  Riemann_vec.R.rho * (S_R - v_line_R);
+            rho_wt_L = -Riemann_vec.L.rho * (S_L - v_line_L); /* note the sign */
+            /* contact wave speed (speed at contact surface): */
+            Riemann_out->S_M = ((rho_wt_R*v_line_R + rho_wt_L*v_line_L) + (PT_L - PT_R)) / (rho_wt_R + rho_wt_L);
+            /* S_M = v_line_L* = v_line_R* = v_line_M --- this is the speed at interface */
+            /* contact pressure (pressure at contact surface): */
+            Riemann_out->P_M = Riemann_vec.L.rho * (v_line_L-S_L)*(v_line_L-Riemann_out->S_M) + PT_L;
+            if(Riemann_out->P_M <= MIN_REAL_NUMBER) {Riemann_out->P_M = MIN_REAL_NUMBER; Riemann_out->S_M = S_L = S_R = 0;}
+            /* p_M = p_L* = p_R*  */
+            
+            if((Riemann_out->P_M <= 0)||(isnan(Riemann_out->P_M))||(Riemann_out->P_M>press_tot_limiter))
+            {
+                /* failed again! try the simple primitive-variable estimate (as we would for Rusanov) */
+                Riemann_out->P_M = 0.5*((PT_L + PT_R) + (v_line_L-v_line_R)*0.25*(Riemann_vec.L.rho+Riemann_vec.R.rho)*(cs_L+cs_R));
+                /* compute the new wave speeds from it */
+                Riemann_out->S_M = 0.5*(v_line_R+v_line_L) + 2.0*(PT_L-PT_R)/((Riemann_vec.L.rho+Riemann_vec.R.rho)*(cs_L+cs_R));
+                double S_plus = DMAX(DMAX(fabs(v_line_L - cs_L), fabs(v_line_R - cs_R)), DMAX(fabs(v_line_L + cs_L), fabs(v_line_R + cs_R)));
+                S_L=-S_plus; S_R=S_plus; if(Riemann_out->S_M<S_L) Riemann_out->S_M=S_L; if(Riemann_out->S_M>S_R) Riemann_out->S_M=S_R;
+                if(Riemann_out->P_M <= MIN_REAL_NUMBER) {Riemann_out->P_M = MIN_REAL_NUMBER; Riemann_out->S_M = S_L = S_R = 0;}
+            }
         }
     }
     *S_L_out = S_L; *S_R_out = S_R;
@@ -1172,6 +1187,9 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
     P_M = PT_L + rho_wt_L*(S_M-vxL);
     /* P_M = (PT_L*rho_wt_R - PT_R*rho_wt_L + rho_wt_L*rho_wt_R*(vxR - vxL)) / (rho_wt_R - rho_wt_L); */
     
+    /* trap for vacuum solution, important! */
+    int within_sampled_vacuum = 0; // no vacuum (default)
+    if((vxR - vxL) > c_eff) {P_M = MIN_REAL_NUMBER; within_sampled_vacuum = 1;}
     
     /* now we need to check if these guesses are reasonable; otherwise, use a different wavespeed estimate */
     if((P_M<=0)||(isnan(P_M))||(P_M>press_tot_limiter))
@@ -1202,292 +1220,303 @@ void HLLD_Riemann_solver(struct Input_vec_Riemann Riemann_vec, struct Riemann_ou
             P_M = PT_L + rho_wt_L*(S_M-vxL);
         }
     }
+    if(P_M <= MIN_REAL_NUMBER) {P_M = MIN_REAL_NUMBER; within_sampled_vacuum = 1;}
     
     /* done trying different wavespeed estimates. we'll enter the flux computation if we have a valid pressure. 
         if not, this will return to the main hydro routine, and a lower-order reconstruction will be attempted */
     
-#if defined(HYDRO_MESHLESS_FINITE_MASS)
-    v_frame = S_M; /* in the lagrangian scheme, we must calculate fluxes consistent with the assumption
-                    that there is zero mass flux. this gives that result for the HLLC/D flux */
-#endif
-    
-    if((P_M > 0)&&(!isnan(P_M)))
+    if(within_sampled_vacuum == 1)
     {
-        /* alright, we have a valid solution! we can now compute the HLLD fluxes */
-        if(v_frame <= S_M)
+        
+        /* ok, we are supersonically separating, the only safe thing to do is to assign no fluxes of conserved quantities */
+        P_M = MIN_REAL_NUMBER; S_M = v_frame = Riemann_out->B_normal_corrected = Riemann_out->phi_normal_mean = Riemann_out->phi_normal_db = 0; // vanishing //
+        memset(&Riemann_out->Fluxes, 0, sizeof(struct Conserved_var_Riemann)); // set all fluxes to vanish //
+        memset(&Interface_State, 0, sizeof(struct Conserved_var_Riemann)); // interface state is also vanishing (for subsequent fluxes) //
+        
+    } else {
+        
+#if defined(HYDRO_MESHLESS_FINITE_MASS)
+        v_frame = S_M; /* in the lagrangian scheme, we must calculate fluxes consistent with the assumption
+                        that there is zero mass flux. this gives that result for the HLLC/D flux */
+#endif
+        if((P_M > 0)&&(!isnan(P_M)))
         {
-            /* v_frame <= S_M : we're in the left fan */
-            tmp = Riemann_vec.L.v[0]*Riemann_vec.L.v[0]+Riemann_vec.L.v[1]*Riemann_vec.L.v[1]+Riemann_vec.L.v[2]*Riemann_vec.L.v[2];
-            e_L = Riemann_vec.L.u*Riemann_vec.L.rho + 0.5*B2_L + 0.5*Riemann_vec.L.rho*tmp;
-            vdotB_L = Riemann_vec.L.v[0]*Riemann_vec.L.B[0]+Riemann_vec.L.v[1]*Riemann_vec.L.B[1]+Riemann_vec.L.v[2]*Riemann_vec.L.B[2];
-            Riemann_out->Fluxes.rho = Riemann_vec.L.rho * vxL;
-            Riemann_out->Fluxes.p = (e_L + PT_L) * vxL - vdotB_L * Bx;
-            Riemann_out->Fluxes.v[0] = Riemann_out->Fluxes.rho * vxL - Bx2 + PT_L;
-            Riemann_out->Fluxes.v[1] = Riemann_out->Fluxes.rho * Riemann_vec.L.v[1] - Riemann_vec.L.B[1]*Bx;
-            Riemann_out->Fluxes.v[2] = Riemann_out->Fluxes.rho * Riemann_vec.L.v[2] - Riemann_vec.L.B[2]*Bx;
-            Riemann_out->Fluxes.B[0] = 0;
-            Riemann_out->Fluxes.B[1] = Riemann_vec.L.B[1] * vxL - Bx * Riemann_vec.L.v[1];
-            Riemann_out->Fluxes.B[2] = Riemann_vec.L.B[2] * vxL - Bx * Riemann_vec.L.v[2];
-            if(v_frame < S_L)
+            /* alright, we have a valid solution! we can now compute the HLLD fluxes */
+            if(v_frame <= S_M)
             {
-                /* left state */
-                if(v_frame != 0)
+                /* v_frame <= S_M : we're in the left fan */
+                tmp = Riemann_vec.L.v[0]*Riemann_vec.L.v[0]+Riemann_vec.L.v[1]*Riemann_vec.L.v[1]+Riemann_vec.L.v[2]*Riemann_vec.L.v[2];
+                e_L = Riemann_vec.L.u*Riemann_vec.L.rho + 0.5*B2_L + 0.5*Riemann_vec.L.rho*tmp;
+                vdotB_L = Riemann_vec.L.v[0]*Riemann_vec.L.B[0]+Riemann_vec.L.v[1]*Riemann_vec.L.B[1]+Riemann_vec.L.v[2]*Riemann_vec.L.B[2];
+                Riemann_out->Fluxes.rho = Riemann_vec.L.rho * vxL;
+                Riemann_out->Fluxes.p = (e_L + PT_L) * vxL - vdotB_L * Bx;
+                Riemann_out->Fluxes.v[0] = Riemann_out->Fluxes.rho * vxL - Bx2 + PT_L;
+                Riemann_out->Fluxes.v[1] = Riemann_out->Fluxes.rho * Riemann_vec.L.v[1] - Riemann_vec.L.B[1]*Bx;
+                Riemann_out->Fluxes.v[2] = Riemann_out->Fluxes.rho * Riemann_vec.L.v[2] - Riemann_vec.L.B[2]*Bx;
+                Riemann_out->Fluxes.B[0] = 0;
+                Riemann_out->Fluxes.B[1] = Riemann_vec.L.B[1] * vxL - Bx * Riemann_vec.L.v[1];
+                Riemann_out->Fluxes.B[2] = Riemann_vec.L.B[2] * vxL - Bx * Riemann_vec.L.v[2];
+                if(v_frame < S_L)
                 {
-                    /* correct for frame velocity if it is non-zero */
-                    Riemann_out->Fluxes.rho -= v_frame * Riemann_vec.L.rho;
-                    Riemann_out->Fluxes.p -= v_frame * e_L;
-                    for(k=0;k<3;k++)
+                    /* left state */
+                    if(v_frame != 0)
                     {
-                        Riemann_out->Fluxes.v[k] -= v_frame * Riemann_vec.L.rho * Riemann_vec.L.v[k];
-                        if(k>0) Riemann_out->Fluxes.B[k] -= v_frame * Riemann_vec.L.B[k];
+                        /* correct for frame velocity if it is non-zero */
+                        Riemann_out->Fluxes.rho -= v_frame * Riemann_vec.L.rho;
+                        Riemann_out->Fluxes.p -= v_frame * e_L;
+                        for(k=0;k<3;k++)
+                        {
+                            Riemann_out->Fluxes.v[k] -= v_frame * Riemann_vec.L.rho * Riemann_vec.L.v[k];
+                            if(k>0) Riemann_out->Fluxes.B[k] -= v_frame * Riemann_vec.L.B[k];
+                        }
+                        Interface_State = &Riemann_vec.L;
                     }
-                    Interface_State = &Riemann_vec.L;
-                }
-            } else {
-                U_s.rho = rho_wt_L / (S_L - S_M);
-                double sqrt_rho_star = sqrt(U_s.rho);
-                double S_star = S_M - fabs(Bx) / sqrt_rho_star;
-                tmp = rho_wt_L * (S_L - S_M) - Bx2;
-                U_s.v[0] = S_M;
-                U_s.B[0] = Bx;
-                if(fabs(tmp) < SMALL_NUMBER * P_M)
-                {
-                    U_s.v[1] = Riemann_vec.L.v[1];
-                    U_s.v[2] = Riemann_vec.L.v[2];
-                    U_s.B[1] = Riemann_vec.L.B[1];
-                    U_s.B[2] = Riemann_vec.L.B[2];
                 } else {
-                    tmp = 1/tmp;
-                    tmp2 = tmp * (S_M - vxL) * Bx;
-                    U_s.v[1] = Riemann_vec.L.v[1] - Riemann_vec.L.B[1] * tmp2;
-                    U_s.v[2] = Riemann_vec.L.v[2] - Riemann_vec.L.B[2] * tmp2;
-                    tmp2 = tmp * (rho_wt_L*(S_L-vxL) - Bx2);
-                    U_s.B[1] = Riemann_vec.L.B[1] * tmp2;
-                    U_s.B[2] = Riemann_vec.L.B[2] * tmp2;
-                }
-                double vdotB_star = U_s.v[0]*U_s.B[0] + U_s.v[1]*U_s.B[1] + U_s.v[2]*U_s.B[2];
-                U_s.p = (e_L*(S_L-vxL) - PT_L*vxL + P_M*S_M + Bx*(vdotB_L-vdotB_star)) / (S_L-S_M);
-                /* F_L - S_L*U_L :: */
-                Riemann_out->Fluxes.rho -= S_L * Riemann_vec.L.rho;
-                Riemann_out->Fluxes.p -= S_L * e_L;
-                for(k=0;k<3;k++)
-                {
-                    Riemann_out->Fluxes.v[k] -= S_L * Riemann_vec.L.rho * Riemann_vec.L.v[k];
-                    if(k>0) Riemann_out->Fluxes.B[k] -= S_L * Riemann_vec.L.B[k];
-                }
-                
-                if((v_frame <= S_star) || (0.5*Bx2 < SMALL_NUMBER * P_M))
-                {
-                    /* left Alfven wave :: F_L - S_L*U_L + (S_L-a_x)*U_star */
-                    /* note also: if Bx=0, the star-star state is the same as the star-state, so can just finish here! */
-                    double dS = S_L - v_frame;
-                    Riemann_out->Fluxes.rho += dS * U_s.rho;
-                    Riemann_out->Fluxes.p += dS * U_s.p;
-                    for(k=0;k<3;k++)
-                    {
-                        Riemann_out->Fluxes.v[k] += dS * U_s.rho * U_s.v[k];
-                        if(k>0) Riemann_out->Fluxes.B[k] += dS * U_s.B[k];
-                    }
-                    Interface_State = &U_s;
-
-                } else {
-                    /* ok the star and star-star states are different, need to compute them separately */
-                    /* left contact wave :: F_L - S_L*U_L - (S_Lstar-S_L)*U_star + (S_Lstar-a_x)*U_starstar */
-                    double dS = S_L - S_star;
-                    Riemann_out->Fluxes.rho += dS * U_s.rho;
-                    Riemann_out->Fluxes.p += dS * U_s.p;
-                    for(k=0;k<3;k++)
-                    {
-                        Riemann_out->Fluxes.v[k] += dS * U_s.rho * U_s.v[k];
-                        if(k>0) Riemann_out->Fluxes.B[k] += dS * U_s.B[k];
-                    }
-                    /* now we just need the star-star state to finish */
-                    U_ss.rho = U_s.rho;
-                    U_ss.p = U_s.p;
-                    for(k=0;k<3;k++) {U_ss.v[k]=U_s.v[k]; U_ss.B[k]=U_s.B[k];}
-                    U_ss.rho = U_s.rho;
-                    U_ss.v[0] = S_M;
-                    U_ss.B[0] = Bx;
-                    double sign_Bx = 1.0;
-                    if(Bx < 0) sign_Bx = -1.0;
-                    
-                    /* getting the middle states requires both sides: get the necessary R quantities */
-                    V_s.rho = rho_wt_R / (S_R - S_M);
-                    double sqrt_rho_star_alt = sqrt(V_s.rho);
-                    double irhowt = 1/(sqrt_rho_star + sqrt_rho_star_alt);
-                    tmp = rho_wt_R * (S_R - S_M) - Bx2;
-                    if(fabs(tmp) < SMALL_NUMBER * P_M)
-                    {
-                        V_s.v[1] = Riemann_vec.R.v[1];
-                        V_s.v[2] = Riemann_vec.R.v[2];
-                        V_s.B[1] = Riemann_vec.R.B[1];
-                        V_s.B[2] = Riemann_vec.R.B[2];
-                    } else {
-                        tmp = 1/tmp;
-                        tmp2 = tmp * (S_M - vxR) * Bx;
-                        V_s.v[1] = Riemann_vec.R.v[1] - Riemann_vec.R.B[1] * tmp2;
-                        V_s.v[2] = Riemann_vec.R.v[2] - Riemann_vec.R.B[2] * tmp2;
-                        tmp2 = tmp * (rho_wt_R*(S_R-vxR) - Bx2);
-                        V_s.B[1] = Riemann_vec.R.B[1] * tmp2;
-                        V_s.B[2] = Riemann_vec.R.B[2] * tmp2;
-                    }
-                    for(k=1;k<3;k++)
-                    {
-                        U_ss.v[k] = irhowt * (sqrt_rho_star*U_s.v[k] + sqrt_rho_star_alt*V_s.v[k] +
-                                              (V_s.B[k]-U_s.B[k])*sign_Bx);
-                        U_ss.B[k] = irhowt * (sqrt_rho_star*V_s.B[k] + sqrt_rho_star_alt*U_s.B[k] +
-                                              sqrt_rho_star*sqrt_rho_star_alt*(V_s.v[k]-U_s.v[k])*sign_Bx);
-                    }
-                    double vdotB_ss = U_ss.v[0]*U_ss.B[0] + U_ss.v[1]*U_ss.B[1] + U_ss.v[2]*U_ss.B[2];
-                    U_ss.p = U_s.p - sqrt_rho_star * (vdotB_star - vdotB_ss) * sign_Bx;
-                    dS = S_star - v_frame;
-                    Riemann_out->Fluxes.rho += dS * U_ss.rho;
-                    Riemann_out->Fluxes.p += dS * U_ss.p;
-                    for(k=0;k<3;k++)
-                    {
-                        Riemann_out->Fluxes.v[k] += dS * U_ss.rho * U_ss.v[k];
-                        if(k>0) Riemann_out->Fluxes.B[k] += dS * U_ss.B[k];
-                    }
-                    Interface_State = &U_ss;
-                }
-            }
-            
-        } else {
-            /* v_frame > S_M : we're in the right fan */
-            tmp = Riemann_vec.R.v[0]*Riemann_vec.R.v[0]+Riemann_vec.R.v[1]*Riemann_vec.R.v[1]+Riemann_vec.R.v[2]*Riemann_vec.R.v[2];
-            e_R = Riemann_vec.R.u*Riemann_vec.R.rho + 0.5*B2_R + 0.5*Riemann_vec.R.rho*tmp;
-            vdotB_R = Riemann_vec.R.v[0]*Riemann_vec.R.B[0]+Riemann_vec.R.v[1]*Riemann_vec.R.B[1]+Riemann_vec.R.v[2]*Riemann_vec.R.B[2];
-            Riemann_out->Fluxes.rho = Riemann_vec.R.rho * vxR;
-            Riemann_out->Fluxes.p = (e_R + PT_R) * vxR - vdotB_R * Bx;
-            Riemann_out->Fluxes.v[0] = Riemann_out->Fluxes.rho * vxR - Bx2 + PT_R;
-            Riemann_out->Fluxes.v[1] = Riemann_out->Fluxes.rho * Riemann_vec.R.v[1] - Riemann_vec.R.B[1]*Bx;
-            Riemann_out->Fluxes.v[2] = Riemann_out->Fluxes.rho * Riemann_vec.R.v[2] - Riemann_vec.R.B[2]*Bx;
-            Riemann_out->Fluxes.B[0] = 0;
-            Riemann_out->Fluxes.B[1] = Riemann_vec.R.B[1] * vxR - Bx * Riemann_vec.R.v[1];
-            Riemann_out->Fluxes.B[2] = Riemann_vec.R.B[2] * vxR - Bx * Riemann_vec.R.v[2];
-            if(v_frame >= S_R)
-            {
-                /* right state */
-                if(v_frame != 0)
-                {
-                    /* correct for frame velocity if it is non-zero */
-                    Riemann_out->Fluxes.rho -= v_frame * Riemann_vec.R.rho;
-                    Riemann_out->Fluxes.p -= v_frame * e_R;
-                    for(k=0;k<3;k++)
-                    {
-                        Riemann_out->Fluxes.v[k] -= v_frame * Riemann_vec.R.rho * Riemann_vec.R.v[k];
-                        if(k>0) Riemann_out->Fluxes.B[k] -= v_frame * Riemann_vec.R.B[k];
-                    }
-                    Interface_State = &Riemann_vec.R;
-                }
-            } else {
-                U_s.rho = rho_wt_R / (S_R - S_M);
-                double sqrt_rho_star = sqrt(U_s.rho);
-                double inv_sqrt_rho_star = 1 / sqrt_rho_star;
-                double S_star = S_M + fabs(Bx) * inv_sqrt_rho_star;
-                U_s.v[0] = S_M;
-                U_s.B[0] = Bx;
-                tmp = rho_wt_R * (S_R - S_M) - Bx2;
-                if(fabs(tmp) < SMALL_NUMBER * P_M)
-                {
-                    U_s.v[1] = Riemann_vec.R.v[1];
-                    U_s.v[2] = Riemann_vec.R.v[2];
-                    U_s.B[1] = Riemann_vec.R.B[1];
-                    U_s.B[2] = Riemann_vec.R.B[2];
-                } else {
-                    tmp = 1/tmp;
-                    tmp2 = tmp * (S_M - vxR) * Bx;
-                    U_s.v[1] = Riemann_vec.R.v[1] - Riemann_vec.R.B[1] * tmp2;
-                    U_s.v[2] = Riemann_vec.R.v[2] - Riemann_vec.R.B[2] * tmp2;
-                    tmp2 = tmp * (rho_wt_R*(S_R-vxR) - Bx2);
-                    U_s.B[1] = Riemann_vec.R.B[1] * tmp2;
-                    U_s.B[2] = Riemann_vec.R.B[2] * tmp2;
-                }
-                double vdotB_star = U_s.v[0]*U_s.B[0] + U_s.v[1]*U_s.B[1] + U_s.v[2]*U_s.B[2];
-                U_s.p = (e_R*(S_R-vxR) - PT_R*vxR + P_M*S_M + Bx*(vdotB_R-vdotB_star)) / (S_R-S_M);
-                /* F_R - S_R*U_R :: */
-                Riemann_out->Fluxes.rho -= S_R * Riemann_vec.R.rho;
-                Riemann_out->Fluxes.p -= S_R * e_R;
-                for(k=0;k<3;k++)
-                {
-                    Riemann_out->Fluxes.v[k] -= S_R * Riemann_vec.R.rho * Riemann_vec.R.v[k];
-                    if(k>0) Riemann_out->Fluxes.B[k] -= S_R * Riemann_vec.R.B[k];
-                }
-                
-                if((v_frame >= S_star) || (0.5*Bx2 < SMALL_NUMBER * P_M))
-                {
-                    /* right Alfven wave :: F_R - S_R*U_R + (S_R-a_x)*U_star */
-                    /* note also: if Bx=0, the star-star state is the same as the star-state, so can just finish here! */
-                    double dS = S_R - v_frame;
-                    Riemann_out->Fluxes.rho += dS * U_s.rho;
-                    Riemann_out->Fluxes.p += dS * U_s.p;
-                    for(k=0;k<3;k++)
-                    {
-                        Riemann_out->Fluxes.v[k] += dS * U_s.rho * U_s.v[k];
-                        if(k>0) Riemann_out->Fluxes.B[k] += dS * U_s.B[k];
-                    }
-                    Interface_State = &U_s;
-                    
-                } else {
-                    /* ok the star and star-star states are different, need to compute them separately */
-                    /* right contact wave :: F_R - S_R*U_R - (S_Rstar-S_R)*U_star + (S_Rstar-a_x)*U_starstar */
-                    double dS = S_R - S_star;
-                    Riemann_out->Fluxes.rho += dS * U_s.rho;
-                    Riemann_out->Fluxes.p += dS * U_s.p;
-                    for(k=0;k<3;k++)
-                    {
-                        Riemann_out->Fluxes.v[k] += dS * U_s.rho * U_s.v[k];
-                        if(k>0) Riemann_out->Fluxes.B[k] += dS * U_s.B[k];
-                    }
-                    /* now we just need the star-star state to finish */
-                    U_ss.rho = U_s.rho;
-                    U_ss.v[0] = S_M;
-                    U_ss.B[0] = Bx;
-                    double sign_Bx = 1.0;
-                    if(Bx < 0) sign_Bx = -1.0;
-                    
-                    /* getting the middle states requires both sides: get the necessary R quantities */
-                    V_s.rho = rho_wt_L / (S_L - S_M);
-                    double sqrt_rho_star_alt = sqrt(V_s.rho);
-                    double irhowt = 1/(sqrt_rho_star + sqrt_rho_star_alt);
+                    U_s.rho = rho_wt_L / (S_L - S_M);
+                    double sqrt_rho_star = sqrt(U_s.rho);
+                    double S_star = S_M - fabs(Bx) / sqrt_rho_star;
                     tmp = rho_wt_L * (S_L - S_M) - Bx2;
+                    U_s.v[0] = S_M;
+                    U_s.B[0] = Bx;
                     if(fabs(tmp) < SMALL_NUMBER * P_M)
                     {
-                        V_s.v[1] = Riemann_vec.L.v[1];
-                        V_s.v[2] = Riemann_vec.L.v[2];
-                        V_s.B[1] = Riemann_vec.L.B[1];
-                        V_s.B[2] = Riemann_vec.L.B[2];
+                        U_s.v[1] = Riemann_vec.L.v[1];
+                        U_s.v[2] = Riemann_vec.L.v[2];
+                        U_s.B[1] = Riemann_vec.L.B[1];
+                        U_s.B[2] = Riemann_vec.L.B[2];
                     } else {
                         tmp = 1/tmp;
                         tmp2 = tmp * (S_M - vxL) * Bx;
-                        V_s.v[1] = Riemann_vec.L.v[1] - Riemann_vec.L.B[1] * tmp2;
-                        V_s.v[2] = Riemann_vec.L.v[2] - Riemann_vec.L.B[2] * tmp2;
+                        U_s.v[1] = Riemann_vec.L.v[1] - Riemann_vec.L.B[1] * tmp2;
+                        U_s.v[2] = Riemann_vec.L.v[2] - Riemann_vec.L.B[2] * tmp2;
                         tmp2 = tmp * (rho_wt_L*(S_L-vxL) - Bx2);
-                        V_s.B[1] = Riemann_vec.L.B[1] * tmp2;
-                        V_s.B[2] = Riemann_vec.L.B[2] * tmp2;
+                        U_s.B[1] = Riemann_vec.L.B[1] * tmp2;
+                        U_s.B[2] = Riemann_vec.L.B[2] * tmp2;
                     }
-                    for(k=1;k<3;k++)
-                    {
-                        U_ss.v[k] = irhowt * (sqrt_rho_star*U_s.v[k] + sqrt_rho_star_alt*V_s.v[k] +
-                                              (U_s.B[k]-V_s.B[k])*sign_Bx);
-                        U_ss.B[k] = irhowt * (sqrt_rho_star*V_s.B[k] + sqrt_rho_star_alt*U_s.B[k] +
-                                              sqrt_rho_star*sqrt_rho_star_alt*(U_s.v[k]-V_s.v[k])*sign_Bx);
-                    }
-                    double vdotB_ss = U_ss.v[0]*U_ss.B[0] + U_ss.v[1]*U_ss.B[1] + U_ss.v[2]*U_ss.B[2];
-                    U_ss.p = U_s.p + sqrt_rho_star * (vdotB_star - vdotB_ss) * sign_Bx;
-                    dS = S_star - v_frame;
-                    Riemann_out->Fluxes.rho += dS * U_ss.rho;
-                    Riemann_out->Fluxes.p += dS * U_ss.p;
+                    double vdotB_star = U_s.v[0]*U_s.B[0] + U_s.v[1]*U_s.B[1] + U_s.v[2]*U_s.B[2];
+                    U_s.p = (e_L*(S_L-vxL) - PT_L*vxL + P_M*S_M + Bx*(vdotB_L-vdotB_star)) / (S_L-S_M);
+                    /* F_L - S_L*U_L :: */
+                    Riemann_out->Fluxes.rho -= S_L * Riemann_vec.L.rho;
+                    Riemann_out->Fluxes.p -= S_L * e_L;
                     for(k=0;k<3;k++)
                     {
-                        Riemann_out->Fluxes.v[k] += dS * U_ss.rho * U_ss.v[k];
-                        if(k>0) Riemann_out->Fluxes.B[k] += dS * U_ss.B[k];
+                        Riemann_out->Fluxes.v[k] -= S_L * Riemann_vec.L.rho * Riemann_vec.L.v[k];
+                        if(k>0) Riemann_out->Fluxes.B[k] -= S_L * Riemann_vec.L.B[k];
                     }
-                    Interface_State = &U_ss;
+                    
+                    if((v_frame <= S_star) || (0.5*Bx2 < SMALL_NUMBER * P_M))
+                    {
+                        /* left Alfven wave :: F_L - S_L*U_L + (S_L-a_x)*U_star */
+                        /* note also: if Bx=0, the star-star state is the same as the star-state, so can just finish here! */
+                        double dS = S_L - v_frame;
+                        Riemann_out->Fluxes.rho += dS * U_s.rho;
+                        Riemann_out->Fluxes.p += dS * U_s.p;
+                        for(k=0;k<3;k++)
+                        {
+                            Riemann_out->Fluxes.v[k] += dS * U_s.rho * U_s.v[k];
+                            if(k>0) Riemann_out->Fluxes.B[k] += dS * U_s.B[k];
+                        }
+                        Interface_State = &U_s;
+                        
+                    } else {
+                        /* ok the star and star-star states are different, need to compute them separately */
+                        /* left contact wave :: F_L - S_L*U_L - (S_Lstar-S_L)*U_star + (S_Lstar-a_x)*U_starstar */
+                        double dS = S_L - S_star;
+                        Riemann_out->Fluxes.rho += dS * U_s.rho;
+                        Riemann_out->Fluxes.p += dS * U_s.p;
+                        for(k=0;k<3;k++)
+                        {
+                            Riemann_out->Fluxes.v[k] += dS * U_s.rho * U_s.v[k];
+                            if(k>0) Riemann_out->Fluxes.B[k] += dS * U_s.B[k];
+                        }
+                        /* now we just need the star-star state to finish */
+                        U_ss.rho = U_s.rho;
+                        U_ss.p = U_s.p;
+                        for(k=0;k<3;k++) {U_ss.v[k]=U_s.v[k]; U_ss.B[k]=U_s.B[k];}
+                        U_ss.rho = U_s.rho;
+                        U_ss.v[0] = S_M;
+                        U_ss.B[0] = Bx;
+                        double sign_Bx = 1.0;
+                        if(Bx < 0) sign_Bx = -1.0;
+                        
+                        /* getting the middle states requires both sides: get the necessary R quantities */
+                        V_s.rho = rho_wt_R / (S_R - S_M);
+                        double sqrt_rho_star_alt = sqrt(V_s.rho);
+                        double irhowt = 1/(sqrt_rho_star + sqrt_rho_star_alt);
+                        tmp = rho_wt_R * (S_R - S_M) - Bx2;
+                        if(fabs(tmp) < SMALL_NUMBER * P_M)
+                        {
+                            V_s.v[1] = Riemann_vec.R.v[1];
+                            V_s.v[2] = Riemann_vec.R.v[2];
+                            V_s.B[1] = Riemann_vec.R.B[1];
+                            V_s.B[2] = Riemann_vec.R.B[2];
+                        } else {
+                            tmp = 1/tmp;
+                            tmp2 = tmp * (S_M - vxR) * Bx;
+                            V_s.v[1] = Riemann_vec.R.v[1] - Riemann_vec.R.B[1] * tmp2;
+                            V_s.v[2] = Riemann_vec.R.v[2] - Riemann_vec.R.B[2] * tmp2;
+                            tmp2 = tmp * (rho_wt_R*(S_R-vxR) - Bx2);
+                            V_s.B[1] = Riemann_vec.R.B[1] * tmp2;
+                            V_s.B[2] = Riemann_vec.R.B[2] * tmp2;
+                        }
+                        for(k=1;k<3;k++)
+                        {
+                            U_ss.v[k] = irhowt * (sqrt_rho_star*U_s.v[k] + sqrt_rho_star_alt*V_s.v[k] +
+                                                  (V_s.B[k]-U_s.B[k])*sign_Bx);
+                            U_ss.B[k] = irhowt * (sqrt_rho_star*V_s.B[k] + sqrt_rho_star_alt*U_s.B[k] +
+                                                  sqrt_rho_star*sqrt_rho_star_alt*(V_s.v[k]-U_s.v[k])*sign_Bx);
+                        }
+                        double vdotB_ss = U_ss.v[0]*U_ss.B[0] + U_ss.v[1]*U_ss.B[1] + U_ss.v[2]*U_ss.B[2];
+                        U_ss.p = U_s.p - sqrt_rho_star * (vdotB_star - vdotB_ss) * sign_Bx;
+                        dS = S_star - v_frame;
+                        Riemann_out->Fluxes.rho += dS * U_ss.rho;
+                        Riemann_out->Fluxes.p += dS * U_ss.p;
+                        for(k=0;k<3;k++)
+                        {
+                            Riemann_out->Fluxes.v[k] += dS * U_ss.rho * U_ss.v[k];
+                            if(k>0) Riemann_out->Fluxes.B[k] += dS * U_ss.B[k];
+                        }
+                        Interface_State = &U_ss;
+                    }
+                }
+                
+            } else {
+                /* v_frame > S_M : we're in the right fan */
+                tmp = Riemann_vec.R.v[0]*Riemann_vec.R.v[0]+Riemann_vec.R.v[1]*Riemann_vec.R.v[1]+Riemann_vec.R.v[2]*Riemann_vec.R.v[2];
+                e_R = Riemann_vec.R.u*Riemann_vec.R.rho + 0.5*B2_R + 0.5*Riemann_vec.R.rho*tmp;
+                vdotB_R = Riemann_vec.R.v[0]*Riemann_vec.R.B[0]+Riemann_vec.R.v[1]*Riemann_vec.R.B[1]+Riemann_vec.R.v[2]*Riemann_vec.R.B[2];
+                Riemann_out->Fluxes.rho = Riemann_vec.R.rho * vxR;
+                Riemann_out->Fluxes.p = (e_R + PT_R) * vxR - vdotB_R * Bx;
+                Riemann_out->Fluxes.v[0] = Riemann_out->Fluxes.rho * vxR - Bx2 + PT_R;
+                Riemann_out->Fluxes.v[1] = Riemann_out->Fluxes.rho * Riemann_vec.R.v[1] - Riemann_vec.R.B[1]*Bx;
+                Riemann_out->Fluxes.v[2] = Riemann_out->Fluxes.rho * Riemann_vec.R.v[2] - Riemann_vec.R.B[2]*Bx;
+                Riemann_out->Fluxes.B[0] = 0;
+                Riemann_out->Fluxes.B[1] = Riemann_vec.R.B[1] * vxR - Bx * Riemann_vec.R.v[1];
+                Riemann_out->Fluxes.B[2] = Riemann_vec.R.B[2] * vxR - Bx * Riemann_vec.R.v[2];
+                if(v_frame >= S_R)
+                {
+                    /* right state */
+                    if(v_frame != 0)
+                    {
+                        /* correct for frame velocity if it is non-zero */
+                        Riemann_out->Fluxes.rho -= v_frame * Riemann_vec.R.rho;
+                        Riemann_out->Fluxes.p -= v_frame * e_R;
+                        for(k=0;k<3;k++)
+                        {
+                            Riemann_out->Fluxes.v[k] -= v_frame * Riemann_vec.R.rho * Riemann_vec.R.v[k];
+                            if(k>0) Riemann_out->Fluxes.B[k] -= v_frame * Riemann_vec.R.B[k];
+                        }
+                        Interface_State = &Riemann_vec.R;
+                    }
+                } else {
+                    U_s.rho = rho_wt_R / (S_R - S_M);
+                    double sqrt_rho_star = sqrt(U_s.rho);
+                    double inv_sqrt_rho_star = 1 / sqrt_rho_star;
+                    double S_star = S_M + fabs(Bx) * inv_sqrt_rho_star;
+                    U_s.v[0] = S_M;
+                    U_s.B[0] = Bx;
+                    tmp = rho_wt_R * (S_R - S_M) - Bx2;
+                    if(fabs(tmp) < SMALL_NUMBER * P_M)
+                    {
+                        U_s.v[1] = Riemann_vec.R.v[1];
+                        U_s.v[2] = Riemann_vec.R.v[2];
+                        U_s.B[1] = Riemann_vec.R.B[1];
+                        U_s.B[2] = Riemann_vec.R.B[2];
+                    } else {
+                        tmp = 1/tmp;
+                        tmp2 = tmp * (S_M - vxR) * Bx;
+                        U_s.v[1] = Riemann_vec.R.v[1] - Riemann_vec.R.B[1] * tmp2;
+                        U_s.v[2] = Riemann_vec.R.v[2] - Riemann_vec.R.B[2] * tmp2;
+                        tmp2 = tmp * (rho_wt_R*(S_R-vxR) - Bx2);
+                        U_s.B[1] = Riemann_vec.R.B[1] * tmp2;
+                        U_s.B[2] = Riemann_vec.R.B[2] * tmp2;
+                    }
+                    double vdotB_star = U_s.v[0]*U_s.B[0] + U_s.v[1]*U_s.B[1] + U_s.v[2]*U_s.B[2];
+                    U_s.p = (e_R*(S_R-vxR) - PT_R*vxR + P_M*S_M + Bx*(vdotB_R-vdotB_star)) / (S_R-S_M);
+                    /* F_R - S_R*U_R :: */
+                    Riemann_out->Fluxes.rho -= S_R * Riemann_vec.R.rho;
+                    Riemann_out->Fluxes.p -= S_R * e_R;
+                    for(k=0;k<3;k++)
+                    {
+                        Riemann_out->Fluxes.v[k] -= S_R * Riemann_vec.R.rho * Riemann_vec.R.v[k];
+                        if(k>0) Riemann_out->Fluxes.B[k] -= S_R * Riemann_vec.R.B[k];
+                    }
+                    
+                    if((v_frame >= S_star) || (0.5*Bx2 < SMALL_NUMBER * P_M))
+                    {
+                        /* right Alfven wave :: F_R - S_R*U_R + (S_R-a_x)*U_star */
+                        /* note also: if Bx=0, the star-star state is the same as the star-state, so can just finish here! */
+                        double dS = S_R - v_frame;
+                        Riemann_out->Fluxes.rho += dS * U_s.rho;
+                        Riemann_out->Fluxes.p += dS * U_s.p;
+                        for(k=0;k<3;k++)
+                        {
+                            Riemann_out->Fluxes.v[k] += dS * U_s.rho * U_s.v[k];
+                            if(k>0) Riemann_out->Fluxes.B[k] += dS * U_s.B[k];
+                        }
+                        Interface_State = &U_s;
+                        
+                    } else {
+                        /* ok the star and star-star states are different, need to compute them separately */
+                        /* right contact wave :: F_R - S_R*U_R - (S_Rstar-S_R)*U_star + (S_Rstar-a_x)*U_starstar */
+                        double dS = S_R - S_star;
+                        Riemann_out->Fluxes.rho += dS * U_s.rho;
+                        Riemann_out->Fluxes.p += dS * U_s.p;
+                        for(k=0;k<3;k++)
+                        {
+                            Riemann_out->Fluxes.v[k] += dS * U_s.rho * U_s.v[k];
+                            if(k>0) Riemann_out->Fluxes.B[k] += dS * U_s.B[k];
+                        }
+                        /* now we just need the star-star state to finish */
+                        U_ss.rho = U_s.rho;
+                        U_ss.v[0] = S_M;
+                        U_ss.B[0] = Bx;
+                        double sign_Bx = 1.0;
+                        if(Bx < 0) sign_Bx = -1.0;
+                        
+                        /* getting the middle states requires both sides: get the necessary R quantities */
+                        V_s.rho = rho_wt_L / (S_L - S_M);
+                        double sqrt_rho_star_alt = sqrt(V_s.rho);
+                        double irhowt = 1/(sqrt_rho_star + sqrt_rho_star_alt);
+                        tmp = rho_wt_L * (S_L - S_M) - Bx2;
+                        if(fabs(tmp) < SMALL_NUMBER * P_M)
+                        {
+                            V_s.v[1] = Riemann_vec.L.v[1];
+                            V_s.v[2] = Riemann_vec.L.v[2];
+                            V_s.B[1] = Riemann_vec.L.B[1];
+                            V_s.B[2] = Riemann_vec.L.B[2];
+                        } else {
+                            tmp = 1/tmp;
+                            tmp2 = tmp * (S_M - vxL) * Bx;
+                            V_s.v[1] = Riemann_vec.L.v[1] - Riemann_vec.L.B[1] * tmp2;
+                            V_s.v[2] = Riemann_vec.L.v[2] - Riemann_vec.L.B[2] * tmp2;
+                            tmp2 = tmp * (rho_wt_L*(S_L-vxL) - Bx2);
+                            V_s.B[1] = Riemann_vec.L.B[1] * tmp2;
+                            V_s.B[2] = Riemann_vec.L.B[2] * tmp2;
+                        }
+                        for(k=1;k<3;k++)
+                        {
+                            U_ss.v[k] = irhowt * (sqrt_rho_star*U_s.v[k] + sqrt_rho_star_alt*V_s.v[k] +
+                                                  (U_s.B[k]-V_s.B[k])*sign_Bx);
+                            U_ss.B[k] = irhowt * (sqrt_rho_star*V_s.B[k] + sqrt_rho_star_alt*U_s.B[k] +
+                                                  sqrt_rho_star*sqrt_rho_star_alt*(U_s.v[k]-V_s.v[k])*sign_Bx);
+                        }
+                        double vdotB_ss = U_ss.v[0]*U_ss.B[0] + U_ss.v[1]*U_ss.B[1] + U_ss.v[2]*U_ss.B[2];
+                        U_ss.p = U_s.p + sqrt_rho_star * (vdotB_star - vdotB_ss) * sign_Bx;
+                        dS = S_star - v_frame;
+                        Riemann_out->Fluxes.rho += dS * U_ss.rho;
+                        Riemann_out->Fluxes.p += dS * U_ss.p;
+                        for(k=0;k<3;k++)
+                        {
+                            Riemann_out->Fluxes.v[k] += dS * U_ss.rho * U_ss.v[k];
+                            if(k>0) Riemann_out->Fluxes.B[k] += dS * U_ss.B[k];
+                        }
+                        Interface_State = &U_ss;
+                    }
                 }
             }
-        }
-    } // if((P_M > 0)&&(!isnan(P_M))) //
+        } // if((P_M > 0)&&(!isnan(P_M))) //
+    } // within_sampled_vacuum check //
 
     /* alright, we've gotten successful HLLD fluxes! */
     Riemann_out->Fluxes.B[0] = -v_frame * Bx;

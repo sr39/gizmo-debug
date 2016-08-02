@@ -969,6 +969,7 @@ extern MyDouble Shearing_Box_Pos_Offset;
  *      wrapped in the X(r)-direction must be modified by a time-dependent term. It also matters for the sign of that 
  *      term "which side" of the box we are wrapping across (i.e. does the 'virtual particle' -- the test point which is
  *      not the particle for which we are currently calculating forces, etc -- lie on the '-x' side or the '+x' side)
+ *      (note after all that: if very careful, sign -cancels- within the respective convention, for the type of wrapping below)
  */
 /****************************************************************************************************************************/
 
@@ -978,14 +979,14 @@ extern MyDouble Shearing_Box_Pos_Offset;
 /* SHEARING PERIODIC BOX:: 
     in this case, we have a shearing box with the '1' coordinate being phi, so there is a periodic extra wrap */
 #define NEAREST_XYZ(x,y,z,sign) (\
-x=((x)>boxHalf_X)?((x)-boxSize_X):(((x)<-boxHalf_X)?((x)+boxSize_X):(x)),\
-y -= Shearing_Box_Pos_Offset * sign * (((x)>boxHalf_X)?(1):(((x)<-boxHalf_X)?(-1):(0))),\
+y += Shearing_Box_Pos_Offset * (((x)>boxHalf_X)?(1):(((x)<-boxHalf_X)?(-1):(0))),\
 y = ((y)>boxSize_Y)?((y)-boxSize_Y):(((y)<-boxSize_Y)?((y)+boxSize_Y):(y)),\
 y=((y)>boxHalf_Y)?((y)-boxSize_Y):(((y)<-boxHalf_Y)?((y)+boxSize_Y):(y)),\
+x=((x)>boxHalf_X)?((x)-boxSize_X):(((x)<-boxHalf_X)?((x)+boxSize_X):(x)),\
 z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
 
 #define NGB_PERIODIC_LONG_Y(x,y,z,sign) (\
-xtmp = y - Shearing_Box_Pos_Offset * sign * (((x)>boxHalf_X)?(1):(((x)<-boxHalf_X)?(-1):(0))),\
+xtmp = y + Shearing_Box_Pos_Offset * (((x)>boxHalf_X)?(1):(((x)<-boxHalf_X)?(-1):(0))),\
 xtmp = fabs(((xtmp)>boxSize_Y)?((xtmp)-boxSize_Y):(((xtmp)<-boxSize_Y)?((xtmp)+boxSize_Y):(xtmp))),\
 (xtmp>boxHalf_Y)?(boxSize_Y-xtmp):xtmp)
 
@@ -1929,9 +1930,13 @@ extern ALIGN(32) struct particle_data
     MyFloat NumNgb;                 /*!< neighbor number around particle */
     MyFloat DhsmlNgbFactor;        /*!< correction factor needed for varying kernel lengths */
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
-    MyFloat DensAroundStar;
-    MyFloat GradRho[3];
+    MyFloat DensAroundStar;         /*!< gas density in the neighborhood of the collisionless particle (evaluated from neighbors) */
+    MyFloat GradRho[3];             /*!< gas density gradient evaluated simply from the neighboring particles, for collisionless centers */
 #endif
+#if defined(RT_SOURCE_INJECTION)
+    MyFloat KernelSum_Around_RT_Source; /*!< kernel summation around sources for radiation injection (save so can be different from 'density') */
+#endif
+
     
 #ifdef GALSF_FB_SNE_HEATING
     MyFloat SNe_ThisTimeStep; /* flag that indicated number of SNe for the particle in the timestep */
@@ -2778,7 +2783,7 @@ enum iofields
   IO_grDI,
   IO_grDII,
   IO_grHDI,
-    
+  IO_OSTAR,  
   IO_LASTENTRY			/* This should be kept - it signals the end of the list */
 };
 

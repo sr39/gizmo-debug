@@ -652,6 +652,7 @@ void hydro_final_operations_and_cleanup(void)
 #ifdef COSMIC_RAYS
             /* need to account for the adiabatic heating/cooling of the cosmic ray fluid, here: its an ultra-relativistic fluid with gamma=4/3 */
             double dt_cosmicray_energy_adiabatic = -GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred * (P[i].Particle_DivVel*All.cf_a2inv);
+            if(dt_cosmicray_energy_adiabatic*dt > 0.5*SphP[i].CosmicRayEnergyPred) {dt_cosmicray_energy_adiabatic = -(SphP[i].CosmicRayEnergyPred/dt) * (1 - exp(-GAMMA_COSMICRAY_MINUS1 * dt * (P[i].Particle_DivVel*All.cf_a2inv)));}
             SphP[i].DtCosmicRayEnergy += dt_cosmicray_energy_adiabatic;
             SphP[i].DtInternalEnergy -= dt_cosmicray_energy_adiabatic;
             /* adiabatic term from Hubble expansion (needed for cosmological integrations */
