@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <string.h>
 #include "../../proto.h"
 #include "../../allvars.h"
 
@@ -149,10 +148,6 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
 #if defined(BH_GRAVCAPTURE_GAS)
     ASSIGN_ADD(BlackholeTempInfo[target].mass_to_swallow_edd, out->mass_to_swallow_edd, mode);
 #endif
-#if defined(BH_COV_FRAC)
-    for(k=0;k<NUM_HEALPY_PIX;k++)
-        ASSIGN_ADD(BlackholeTempInfo[target].BH_HealPy_Cov[k], out->BH_HealPy_Cov[k], mode);
-#endif
 }
 
 
@@ -280,31 +275,3 @@ int ngb_treefind_blackhole(MyDouble searchcenter[3], MyFloat hsml, int target, i
     return numngb;
 }
 
-#ifdef BH_COV_FRAC
-void init_bh_cov_frac_heal(void)
-{
-    FILE *ptr_file;
-    int iii=0, jjj=0;
-    char buf[1000];
-    char * pch;
-    
-    ptr_file =fopen("healpix_4_vecs.txt", "r");
-    if (!ptr_file)
-        endrun(666);            // The sign of the beast
-    
-    while (fgets(buf,1000, ptr_file)!=NULL)
-    {
-        pch = strtok (buf," ");
-        jjj=0;
-        while (pch != NULL)
-        {
-            if(jjj<3) All.HealPy_xyz[jjj][iii] = atof( pch );
-            pch = strtok (NULL, " ");
-            jjj++;
-        }
-        iii++;
-    }
-    fclose(ptr_file);
-    
-}
-#endif

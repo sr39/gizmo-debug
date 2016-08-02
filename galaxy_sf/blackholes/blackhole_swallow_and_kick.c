@@ -106,9 +106,6 @@ void blackhole_swallow_and_kick_loop(void)
 #else
             BlackholeDataIn[j].Dt = P[place].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
-#if defined(BH_COV_FRAC)
-            BlackholeDataIn[j].cov_frac = BPP(place).cov_frac;
-#endif
             memcpy(BlackholeDataIn[j].NodeList,DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
         }
         
@@ -228,9 +225,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     MyFloat *pos, h_i, bh_mass;     // hinv
 #if defined(BH_BAL_WINDS)
     MyFloat *velocity, hinv, hinv3, m_wind, e_wind;
-#ifdef BH_COV_FRAC
-    MyFloat max_fac, fac;
-#endif
 #endif
     MyFloat f_accreted=0;
 #ifdef BH_BAL_KICK
@@ -260,9 +254,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #ifdef GALSF
     double accreted_age = 1;
-#endif
-#if defined(BH_COV_FRAC)
-    MyFloat cov_frac;
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat accreted_BH_mass_alphadisk;   
@@ -300,9 +291,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #elif defined(BH_BAL_KICK_COLLIMATED)
         Jgas_in_Kernel = BlackholeTempInfo[P[target].IndexMapToTempStruc].Jgas_in_Kernel;
 #endif
-#if defined(BH_COV_FRAC)
-        cov_frac = BPP(target).cov_frac;
-#endif
         mod_index = P[target].IndexMapToTempStruc;  /* the index of the BlackholeTempInfo should we modify*/
     }
     else
@@ -330,9 +318,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
         BH_disk_hr = BlackholeDataGet[target].BH_disk_hr;
         BH_angle_weighted_kernel_sum = BlackholeDataGet[target].BH_angle_weighted_kernel_sum;
-#endif
-#if defined(BH_COV_FRAC)
-        cov_frac = BlackholeDataGet[target].cov_frac;
 #endif
     }
 
@@ -546,9 +531,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
                         for(k = 0, norm = 0; k < 3; k++) norm += dir[k]*dir[k];
                         if(norm<=0) {dir[0]=0;dir[1]=0;dir[2]=1;norm=1;} else {norm=sqrt(norm);}
-#ifdef BH_COV_FRAC
-                        double max_norm = (1.0/4.0) * (SphP[j].hsml/norm) * (SphP[j].hsml/norm);
-#endif
                         for(k = 0; k < 3; k++)
                         {
                             P[j].Vel[k] += v_kick*All.cf_atime*dir[k]/norm;
@@ -597,29 +579,16 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                             if(norm>0)
                             {
                                 norm=sqrt(norm); for(k=0;k<3;k++) dir[k]/=norm;
-#ifdef BH_COV_FRAC
-                                max_fac = 0.25 * (P[j].Hsml/norm) * (P[j].Hsml/norm);
-#endif
                                 /* cos_theta with respect to disk of BH is given by dot product of r and Jgas */
                                 for(norm=0,k=0;k<3;k++) norm += dir[k]*Jgas_in_Kernel[k];
                                 theta = acos(fabs(norm));
                                 /* inject radiation pressure */
 #ifdef BH_PHOTONMOMENTUM
                                 /* now we get the weight function based on what we calculated earlier */
-#if !defined(BH_COV_FRAC)
                                 mom_wt = All.BH_FluxMomentumFactor * bh_angleweight_localcoupling(j,BH_disk_hr,theta) / BH_angle_weighted_kernel_sum;
-#else
-                                fac = bh_angleweight_localcoupling(j,BH_disk_hr,theta) / BH_angle_weighted_kernel_sum;
-                                if(fac > max_fac) fac = max_fac;
-                                mom_wt = All.BH_FluxMomentumFactor * fac;
-#endif
                                 if(BH_angle_weighted_kernel_sum<=0) mom_wt=0;
                                 /* add initial L/c optical/UV coupling to the gas at the dust sublimation radius */
                                 double v_kick = mom_wt * mom / P[j].Mass;
-                                
-#ifdef BH_COV_FRAC
-                                v_kick *= cov_frac;
-#endif
                                 
                                 for(k = 0; k < 3; k++)
                                 {
@@ -632,22 +601,17 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 mom_wt = bh_angleweight_localcoupling(j,BH_disk_hr,theta) / BH_angle_weighted_kernel_sum;
                                 
                                 fac = bh_angleweight_localcoupling(j,BH_disk_hr,theta) / BH_angle_weighted_kernel_sum;
-                                if(fac > max_fac) fac = max_fac;
+                                //if(fac > max_fac) fac = max_fac;
                                 mom_wt = fac;	//bh_angleweight_localcoupling(j,BH_disk_hr,theta) / BH_angle_weighted_kernel_sum;
                                 m_wind = mom_wt * All.BlackHoleFeedbackFactor * (1-All.BAL_f_accretion)/(All.BAL_f_accretion) * mdot*dt; /* mass to couple */
-                                // ptorrey edit:  this ramps up the BAL winds slowly to their full value around 10 Myrs
-                                m_wind *=  All.Time * All.Time / (0.01 * 0.01 + All.Time * All.Time);
                                 if(BH_angle_weighted_kernel_sum<=0) m_wind=0;
                                 
-                                
-//#Numerically, I would recommend handing this as follows:
 //1. check if (Vw-V0)*rhat <= 0   [ equivalently, check if   |Vw| <= V0*rhat ]
 //2. if (1) is False, the wind will catch the particle, couple mass, momentum, energy, according to the equations above
-//3. if (1) is True, the wind will not catch the particle, or will only asymptotically catch it as it escapes to infinity. For the sake of mass conservation in the disk, I think it is easiest to treat this like the 'marginal' case where the wind barely catches the particle. In this case, add the mass normally, but no momentum, and no energy, giving:
+//3. if (1) is True, the wind will not catch the particle, or will only asymptotically catch it. For the sake of mass conservation in the disk, I think it is easiest to treat this like the 'marginal' case where the wind barely catches the particle. In this case, add the mass normally, but no momentum, and no energy, giving:
 //dm = m_wind
 //dV = 0
-//du = -mu*u0   [you decrease the thermal energy of the particle slightly to account for adding more 'cold' material to it; but make sure this doesn't take it to <0, so restrict mu<1/2 or so in this step]
-                                
+//du = -mu*u0   [decrease the thermal energy slightly to account for adding more 'cold' material to it]
                                 
                                 double dvr_gas_to_bh, dr_gas_to_bh;
                                 for(dvr_gas_to_bh=dr_gas_to_bh=0, k=0;k<3;k++)
@@ -656,12 +620,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                     dr_gas_to_bh  += (pos[k]-P[j].Pos[k]) * (pos[k]-P[j].Pos[k]);
                                 }
                                 dvr_gas_to_bh /= dr_gas_to_bh ;
-                                //                                dvr_gas_to_bh = sqrt( dvr_gas_to_bh * dvr_gas_to_bh );
-
                                 
                                 /* add wind mass to particle, correcting density as needed */
-
-                                
                                 if(P[j].Hsml<=0)
                                 {
                                     if(SphP[j].Density>0){SphP[j].Density*=(1+m_wind/P[j].Mass);} else {SphP[j].Density=m_wind*hinv3;}
@@ -671,9 +631,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 P[j].Mass += m_wind;                                 
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                                 SphP[j].MassTrue += m_wind;
-#endif
-#ifdef BH_COV_FRAC
-                                m_wind *= cov_frac;  // correct this here:  mass is conserved, but momentum (velocity) is reduced
 #endif
                                 /* now add wind momentum to particle */
                                 if(dvr_gas_to_bh < All.BAL_v_outflow)   // gas moving away from BH at v < BAL speed
@@ -693,6 +650,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                     e_wind *= 1 / P[j].Mass;
                                     SphP[j].InternalEnergy += e_wind;
                                     SphP[j].InternalEnergyPred += e_wind;
+                                } else {	// gas moving away from BH at wind speed already.
+				    if(SphP[j].InternalEnergy * ( P[j].Mass - m_wind ) / P[j].Mass > 0)
+                                        SphP[j].InternalEnergy = SphP[j].InternalEnergy * ( P[j].Mass - m_wind ) / P[j].Mass;
                                 }
 #endif // if defined(BH_BAL_WINDS) && !defined(BH_BAL_KICK)
                             } // norm > 0
@@ -769,8 +729,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     
     return 0;
 } /* closes bh_evaluate_swallow */
-
-
 
 
 

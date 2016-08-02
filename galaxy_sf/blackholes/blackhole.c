@@ -357,14 +357,6 @@ void normalize_temp_info_struct(int i)
         BlackholeTempInfo[i].Jalt_in_Kernel[k] += BlackholeTempInfo[i].Jgas_in_Kernel[k];  // Jalt is now TOTAL angular momentum inside BH kernel !
 #endif
     
-#if defined(BH_COV_FRAC)
-    double sum=0;
-    for(k=0;k<NUM_HEALPY_PIX;k++)
-        if(BlackholeTempInfo[i].BH_HealPy_Cov[k]>0)  sum += 1.0;
-    sum /= (1.0*NUM_HEALPY_PIX);
-    BPP(BlackholeTempInfo[i].index).cov_frac = sum;
-    printf(" \n \n cov_frac = %g \n \n ", BPP(BlackholeTempInfo[i].index).cov_frac );
-#endif
 }
 
 
@@ -646,8 +638,10 @@ void set_blackhole_new_mass(int i, int n, double dt)
 #endif
 #endif
     
+#ifdef BH_WIND_SPAWN	// This is not done properly.  All spawn simulations use a fixed BH mass for now...
     BPP(n).BH_Mass           =    All.SeedBlackHoleMass;
     BPP(n).BH_Mass_AlphaDisk =    All.SeedAlphaDiskMass;
+#endif
 }
 
 

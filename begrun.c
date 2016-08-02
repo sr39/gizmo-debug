@@ -1143,6 +1143,15 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt],"BAL_v_outflow");
         addr[nt] = &All.BAL_v_outflow;
         id[nt++] = REAL;
+#ifdef BH_WIND_SPAWN
+        strcpy(tag[nt], "SpawnPostReverseShock");
+        addr[nt] = &All.SpawnPostReverseShock;
+        id[nt++] = INT;
+
+        strcpy(tag[nt], "BH_wind_spawn_mass");
+        addr[nt] = &All.BH_wind_spawn_mass;
+        id[nt++] = REAL;
+#endif
 #endif
         
 #ifdef BH_PHOTONMOMENTUM
@@ -1264,14 +1273,6 @@ void read_parameter_file(char *fname)
 
       strcpy(tag[nt], "ResubmitOn");
       addr[nt] = &All.ResubmitOn;
-      id[nt++] = INT;
-        
-      strcpy(tag[nt], "ExtraRef");
-      addr[nt] = &All.ExtraRef;
-      id[nt++] = INT;
-
-      strcpy(tag[nt], "AGNWindGradType");
-      addr[nt] = &All.AGNWindGradType;
       id[nt++] = INT;
 
       All.AGNWindID = 1913298393;	// this seems weird, but is the bitshifted version of 1234568912345 for not long IDs.
@@ -1475,12 +1476,6 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.BHfactor;
       id[nt++] = REAL;
 #endif
-        
-#ifdef BH_WIND_SPAWN
-      strcpy(tag[nt], "BH_wind_spawn_mass");
-      addr[nt] = &All.BH_wind_spawn_mass;
-      id[nt++] = REAL;
-#endif
 
       strcpy(tag[nt], "BlackHoleAccretionFactor");
       addr[nt] = &All.BlackHoleAccretionFactor;
@@ -1510,10 +1505,6 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
         
-      strcpy(tag[nt], "SpawnPostReverseShock");
-      addr[nt] = &All.SpawnPostReverseShock;
-      id[nt++] = INT;
-
       strcpy(tag[nt], "MinFoFMassForNewSeed");
       addr[nt] = &All.MinFoFMassForNewSeed;
       id[nt++] = REAL;

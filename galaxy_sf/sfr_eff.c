@@ -264,7 +264,9 @@ double get_starformation_rate(int i)
     return 0;
 #endif
     
+#ifdef BH_WIND_SPAWN
     if(P[i].ID == All.AGNWindID) return 0;
+#endif
 
     flag = 1;			/* default is normal cooling */
     if(SphP[i].Density*All.cf_a3inv >= All.PhysDensThresh)

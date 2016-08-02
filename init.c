@@ -251,11 +251,6 @@ void init(void)
 	    }
     }
     
-    
-#ifdef BH_COV_FRAC
-    init_bh_cov_frac_heal();
-#endif
-    
 #ifdef SIDM
     init_self_interactions();
 #endif

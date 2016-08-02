@@ -41,9 +41,6 @@ static struct blackholedata_in
 #if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;
 #endif
-#if defined(BH_COV_FRAC)
-    MyFloat cov_frac;
-#endif
 }
 *BlackholeDataIn, *BlackholeDataGet;
 

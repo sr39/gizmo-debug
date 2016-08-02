@@ -82,7 +82,21 @@ void find_timesteps(void)
     
     if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin || dt_displacement == 0)
         find_dt_displacement_constraint(All.cf_hubble_a * All.cf_atime * All.cf_atime);
-    
+ 
+    if(All.HighestActiveTimeBin >= All.HighestOccupiedTimeBin-5)
+    {
+        double local_max_u=0.0, global_max_u, global_max_t;
+        for(i = 0; i < NumPart; i++)
+           if(P[i].Type==0)
+               local_max_u = DMAX( local_max_u, SphP[i].InternalEnergy );
+
+        MPI_Allreduce(&local_max_u, &global_max_u, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
+        double u_to_temp_fac = PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
+
+        global_max_t = global_max_u * u_to_temp_fac;
+        if(ThisTask==0)  printf("Golbal Maximum SphP.u = %g (Max Temperature = %g) \n", global_max_u, global_max_t);
+    }   
     
 #ifdef DIVBCLEANING_DEDNER
     /* need to calculate the global fastest wave speed to manage the damping terms stably */
@@ -459,17 +473,6 @@ integertime get_timestep(int p,		/*!< particle index */
     }
 #endif
     
-    
-    MyFloat v  = sqrt(P[p].Vel[0]*P[p].Vel[0] + P[p].Vel[1]*P[p].Vel[1] + P[p].Vel[2]*P[p].Vel[2]) + 1.0 ;
-    MyFloat r  = sqrt(P[p].Pos[0]*P[p].Pos[0] + P[p].Pos[1]*P[p].Pos[1] + P[p].Pos[2]*P[p].Pos[2]) + 0.001 ;
-    MyFloat dt_torrey = 0.001 * r / v;
-
-    if(dt_torrey < dt) dt = dt_torrey;
-
-//    if(P[p].ID == All.AGNWindID) dt_torrey = 1e-6;
-//    if(dt_torrey < dt) dt = dt_torrey;
-
-
     
     if((P[p].Type == 0) && (P[p].Mass > 0))
         {
