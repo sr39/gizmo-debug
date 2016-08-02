@@ -102,7 +102,6 @@
             for(k=0;k<3;k++) {Face_Area_Vec[k] = n_unit[k] * Face_Area_Norm;} /* direction is preserved, just area changes */
         }
 
-        
         /* --------------------------------------------------------------------------------- */
         /* extrapolate the conserved quantities to the interaction face between the particles */
         /* first we define some useful variables for the extrapolation */
@@ -232,6 +231,14 @@
         /* --------------------------------------------------------------------------------- */
         Riemann_solver(Riemann_vec, &Riemann_out, n_unit, press_tot_limiter);
         /* before going on, check to make sure we have a valid Riemann solution */
+
+        if((P[j].ID == All.AGNWindID) && (local.Mass < 2.0 * All.BH_wind_spawn_mass)){      // looks like two wind particles found each other.  be skeptical.
+            Riemann_out.P_M=1e-20;
+            Riemann_out.S_M=0.0;
+            Face_Area_Norm = 0;
+            for(k=0;k<3;k++) {Face_Area_Vec[k] = 0.0;}
+        }
+
         if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>1.4*press_tot_limiter))
         {
             /* go to a linear reconstruction of P, rho, and v, and re-try */
@@ -288,7 +295,6 @@
             }
         } // closes loop of alternative reconstructions if invalid pressures are found //
         
-        
         /* --------------------------------------------------------------------------------- */
         /* Calculate the fluxes (EQUATION OF MOTION) -- all in physical units -- */
         /* --------------------------------------------------------------------------------- */
@@ -335,6 +341,17 @@
             }
             if(SphP[j].ConditionNumber*SphP[j].ConditionNumber > cnumcrit2) {use_entropic_energy_equation=1;}
             if(use_entropic_energy_equation) {Fluxes.p = du_new;}
+
+
+//            if((P[j].ID == All.AGNWindID) && (local.Mass < 2.0 * All.BH_wind_spawn_mass)){      // looks like two wind particles found each other.  be skeptical.
+//                printf("BAL/reimann: Riemann_out.Fluxes.rho = %16.8f  Riemann_out.Fluxes.p = %16.8f  Riemann_out.Fluxes.v = (%16.2f|%16.2f|%16.2f)  Face_Area_Norm = %f Riemann_out.S_M = %f Riemann_out.P_M = %f \n",
+//                                     Riemann_out.Fluxes.rho,
+//                                     Fluxes.p,
+//                                     Fluxes.v[0], Fluxes.v[1], Fluxes.v[2],
+//                                     Face_Area_Norm, Riemann_out.S_M, Riemann_out.P_M   );
+//
+//            }
+
 #endif
             
 #else
@@ -349,6 +366,15 @@
                 Riemann_out.Fluxes.p += (0.5*v_frame[k]*v_frame[k])*Riemann_out.Fluxes.rho;
                 Riemann_out.Fluxes.v[k] += v_frame[k] * Riemann_out.Fluxes.rho; /* just boost by frame vel (as we would in non-moving frame) */
 #endif
+            }
+
+            if((P[j].ID == All.AGNWindID) && (local.Mass < 2.0 * All.BH_wind_spawn_mass)){	// looks like two wind particles found each other.  be skeptical.
+                printf("BAL/reimann: Riemann_out.Fluxes.rho = %16.8f  Riemann_out.Fluxes.p = %16.8f  Riemann_out.Fluxes.v = (%16.2f|%16.2f|%16.2f)  Face_Area_Norm = %f \n", 
+                                     Riemann_out.Fluxes.rho, 
+                                     Riemann_out.Fluxes.p,
+                                     Riemann_out.Fluxes.v[0], Riemann_out.Fluxes.v[1], Riemann_out.Fluxes.v[2],
+                                     Face_Area_Norm   );
+
             }
 #ifdef MAGNETIC
             for(k=0;k<3;k++) {Riemann_out.Fluxes.B[k] += -v_frame[k] * Riemann_out.B_normal_corrected;} /* v dotted into B along the normal to the face (careful of sign here) */
@@ -420,7 +446,10 @@
                 }
                 if(SphP[j].ConditionNumber*SphP[j].ConditionNumber > cnumcrit2) {use_entropic_energy_equation=1;}
                 // alright, if we've come this far, we need to subtract -off- the thermal energy part of the flux, and replace it //
-                if(use_entropic_energy_equation) {Fluxes.p += du_new - du_old;}
+                if(use_entropic_energy_equation) {
+                    Fluxes.p += du_new - du_old;
+                    if(P[j].ID == All.BALWindID) printf("BALWARNING WARNING WARNING: A BAL wind particle thinks it's in an adiabatic flow... \n")
+                }
             }
 #endif // closes MFM check // 
 

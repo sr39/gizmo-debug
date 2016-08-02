@@ -59,7 +59,10 @@ void run(void)
         double yhelium_0 = (1 - XH) / (4 * XH);
         double mhboltz = PROTONMASS / BOLTZMANN;
 
-        global_max_t = (GAMMA_MINUS1 * global_max_u * mhboltz * (1 + 4 * yhelium_0) / (1 + 1.0 + yhelium_0));
+        double u_to_temp_fac = PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
+
+        global_max_t = global_max_u * u_to_temp_fac;
+//#(GAMMA_MINUS1 * global_max_u * mhboltz * (1 + 4 * yhelium_0) / (1 + 1.0 + yhelium_0));
 
         if(ThisTask==0)  printf("Golbal Maximum SphP.u = %g (Max Temperature = %g) \n", global_max_u, global_max_t);
 
@@ -68,7 +71,7 @@ void run(void)
         
         write_cpu_log();		/* output some CPU usage log-info (accounts for everything needed up to the current sync-point) */
         
-        if( (All.Ti_Current >= TIMEBASE) || (global_max_t > 1e11))	/* check whether we reached the final time */
+        if( (All.Ti_Current >= TIMEBASE) || (global_max_t > 20.0*1.2e10 * (All.BAL_v_outflow*All.BAL_v_outflow/9e8)))	/* check whether we reached the final time */
         {
             if(ThisTask == 0)
                 printf("\nFinal time=%g reached. Simulation ends.\n", All.TimeMax);

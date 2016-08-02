@@ -847,6 +847,8 @@ int blackhole_spawn_particle_wind_shell( MyIDType i, MyIDType dummy_sph_i_to_clo
 #ifndef NOGRAVITY
     d_r = DMAX(d_r , 2.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0]);
 #endif
+
+    d_r = DMIN(0.0001, d_r);
     
     for (bin = 0; bin < TIMEBINS; bin++)
         if (TimeBinCount[bin] > 0)
@@ -862,6 +864,8 @@ int blackhole_spawn_particle_wind_shell( MyIDType i, MyIDType dummy_sph_i_to_clo
         cos_theta = 2.0*(get_random_number(j+3+2*ThisTask)-0.5); // random between 1 to -1 //
         double d_r = 0.25 * KERNEL_CORE_SIZE*PPP[i].Hsml; // epsilon*Hsml; epsilon<<1, to maintain stability //
         
+        d_r = DMIN(0.0001, d_r);
+
         /* set the pointers equal to one another -- all quantities get copied, we only have to modify what needs changing */
         P[j]    = P[dummy_sph_i_to_clone];
         SphP[j] = SphP[dummy_sph_i_to_clone];
@@ -1018,6 +1022,7 @@ int blackhole_spawn_particle_wind_shell( MyIDType i, MyIDType dummy_sph_i_to_clo
         P[j].Pos[2] =  P[i].Pos[2] + dz;
         
         MyFloat time_factor = All.Time * All.Time / (All.Time * All.Time + 0.005 * 0.005);
+        time_factor = 1.0;
         if(All.SpawnPostReverseShock==1)
         {
             P[j].Vel[0] =  P[i].Vel[0] + dx / d_r * All.BAL_v_outflow/4.0 * time_factor;

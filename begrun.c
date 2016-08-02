@@ -1274,7 +1274,7 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.AGNWindGradType;
       id[nt++] = INT;
 
-      All.AGNWindID = 1234568912345;
+      All.AGNWindID = 1913298393;	// this seems weird, but is the bitshifted version of 1234568912345 for not long IDs.
 
 #ifdef GRACKLE
         strcpy(tag[nt], "GrackleDataFile");
