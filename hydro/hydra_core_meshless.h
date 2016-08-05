@@ -19,14 +19,13 @@
     /* define volume elements and interface position */
     /* --------------------------------------------------------------------------------- */
     V_j = P[j].Mass / SphP[j].Density;
-    /*
-#if defined(HYDRO_MESHLESS_FINITE_VOLUME) || defined(CONSTRAINED_GRADIENT_MHD)
     s_star_ij = 0;
-#else
-    s_star_ij = 0.5 * kernel.r * (PPP[j].Hsml - local.Hsml) / (local.Hsml + PPP[j].Hsml);
+    //
+#if !defined(CONSTRAINED_GRADIENT_MHD)
+     //s_star_ij = 0.5 * kernel.r * (PPP[j].Hsml - local.Hsml) / (local.Hsml + PPP[j].Hsml); // old test, doesn't account for Hsml changing for condition number reasons
+     s_star_ij = 0.5 * kernel.r * (local.Density - SphP[j].Density) / (local.Density + SphP[j].Density); // frame with zero mass flux in a first-order reconstruction //
 #endif
-    */
-    s_star_ij = 0;
+    //
     /* ------------------------------------------------------------------------------------------------------------------- */
     /* now we're ready to compute the volume integral of the fluxes (or equivalently an 'effective area'/face orientation) */
     /* ------------------------------------------------------------------------------------------------------------------- */
