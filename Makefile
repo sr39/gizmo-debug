@@ -461,6 +461,20 @@ HDF5INCL =  -DH5_USE_16_API
 HDF5LIB  =  -lhdf5 -lz
 endif
 
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"antares")
+CC       =  mpicc     # sets the C-compiler
+OPT      +=  -DMPICH_IGNORE_CXX_SEEK
+FC       =  $(CC)
+OPTIMIZE = -g -O2 -Wall -Wno-unused-but-set-variable
+GSL_INCL = -I/home/ptorrey/local/gsl-2.1/include
+GSL_LIBS = -L/home/ptorrey/local/gsl-2.1/lib -lgsl -lm
+FFTW_INCL= -I/home/ptorrey/local/fftw-2.1.5/include
+FFTW_LIBS= -L/home/ptorrey/local/fftw-2.1.5/libGSL_INCL
+MPICHLIB =
+HDF5INCL =  -DH5_USE_16_API
+HDF5LIB  =  -lhdf5 -lz
+endif
 
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"CITA")

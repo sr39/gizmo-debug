@@ -101,7 +101,7 @@
             for(k=0;k<3;k++) {Face_Area_Vec[k] = n_unit[k] * Face_Area_Norm;} /* direction is preserved, just area changes */
         }
 
-        
+
         /* --------------------------------------------------------------------------------- */
         /* extrapolate the conserved quantities to the interaction face between the particles */
         /* first we define some useful variables for the extrapolation */
@@ -231,6 +231,14 @@
         /* --------------------------------------------------------------------------------- */
         Riemann_solver(Riemann_vec, &Riemann_out, n_unit, press_tot_limiter);
         /* before going on, check to make sure we have a valid Riemann solution */
+#ifdef BH_WIND_SPAWN
+        if((P[j].ID == All.AGNWindID) && (local.Mass < 2.0 * All.BH_wind_spawn_mass)){      // looks like two wind particles found each other.  be skeptical.
+            Riemann_out.P_M=1e-20;
+            Riemann_out.S_M=0.0;
+            Face_Area_Norm = 0;
+            for(k=0;k<3;k++) {Face_Area_Vec[k] = 0.0;}
+        }
+#endif
         if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>1.4*press_tot_limiter))
         {
             /* go to a linear reconstruction of P, rho, and v, and re-try */
@@ -286,7 +294,6 @@
                 }
             }
         } // closes loop of alternative reconstructions if invalid pressures are found //
-        
         
         /* --------------------------------------------------------------------------------- */
         /* Calculate the fluxes (EQUATION OF MOTION) -- all in physical units -- */

@@ -1644,7 +1644,7 @@ extern struct global_data_all_processes
   double AGBGasEnergy;
 #endif
     
-#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
+#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK) || defined(BH_WIND_SPAWN)
     double BAL_f_accretion;
     double BAL_v_outflow;
 #endif
@@ -1722,6 +1722,11 @@ extern struct global_data_all_processes
   double SeedBlackHoleMinRedshift; /*!< Minimum redshift where BH seeds are allowed */
 #ifdef BH_ALPHADISK_ACCRETION
   double SeedAlphaDiskMass;         /*!< Seed alpha disk mass */
+#endif
+#ifdef BH_WIND_SPAWN
+  double BH_wind_spawn_mass;        /*!< target mass for feedback particles to be spawned */
+  int SpawnPostReverseShock;
+  MyIDType AGNWindID;
 #endif
   double MinFoFMassForNewSeed;      /*!< Halo mass required before new seed is put in */
   double BlackHoleNgbFactor;        /*!< Factor by which the SPH neighbour should be increased/decreased */
@@ -1964,7 +1969,9 @@ extern ALIGN(32) struct particle_data
 #if defined(BLACK_HOLES)
     MyIDType SwallowID;
     int IndexMapToTempStruc;   /*!< allows for mapping to BlackholeTempInfo struc */
-
+#ifdef BH_WIND_SPAWN
+    MyFloat unspawned_wind_mass;    /*!< tabulates the wind mass which has not yet been spawned */
+#endif
 #if !defined(DETACH_BLACK_HOLES)
 #ifdef BH_COUNTPROGS
     int BH_CountProgs;
@@ -2133,6 +2140,9 @@ extern struct bh_particle_data
     MyLongDouble dBH_accreted_BHMass_radio;
   } b8;
 #endif
+#endif
+#ifdef BH_WIND_SPAWN
+    MyFloat unspawned_wind_mass;    /*!< tabulates the wind mass which has not yet been spawned */
 #endif
 }
   *BHP,

@@ -1135,7 +1135,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
         
-#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
+#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK) || defined(BH_WIND_SPAWN)
         strcpy(tag[nt],"BAL_f_accretion");
         addr[nt] = &All.BAL_f_accretion;
         id[nt++] = REAL;
@@ -1143,6 +1143,15 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt],"BAL_v_outflow");
         addr[nt] = &All.BAL_v_outflow;
         id[nt++] = REAL;
+#ifdef BH_WIND_SPAWN
+        strcpy(tag[nt], "SpawnPostReverseShock");
+        addr[nt] = &All.SpawnPostReverseShock;
+        id[nt++] = INT;
+
+        strcpy(tag[nt], "BH_wind_spawn_mass");
+        addr[nt] = &All.BH_wind_spawn_mass;
+        id[nt++] = REAL;
+#endif
 #endif
         
 #ifdef BH_PHOTONMOMENTUM
@@ -2009,6 +2018,9 @@ void read_parameter_file(char *fname)
     All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 32.;
 #endif
     if(All.AGS_MaxNumNgbDeviation < 0.05) All.AGS_MaxNumNgbDeviation = 0.05;
+#endif
+#ifdef BH_WIND_SPAWN
+      All.AGNWindID = 1913298393;       // this seems weird, but is the bitshifted version of 1234568912345 for not long IDs.
 #endif
 #endif // closes DEVELOPER_MODE check //
     

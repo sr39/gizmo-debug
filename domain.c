@@ -147,6 +147,13 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
     rearrange_particle_sequence();
     /* must be called after merge_and_split_particles, and should always be called before new domains are built */
 
+#ifdef BH_WIND_SPAWN
+    if((All.Ti_Current > All.TimeBegin)&&(do_particle_mergesplit_key==1))
+    {
+        spawn_bh_wind_feedback();
+    }
+#endif
+    
     UseAllParticles = UseAllTimeBins;
     
     CPU_Step[CPU_MISC] += measure_time();
