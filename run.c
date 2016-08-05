@@ -289,6 +289,14 @@ void calculate_non_standard_physics(void)
             All.TimeNextOnTheFlyFoF += All.TimeBetOnTheFlyFoF;
     }
 #endif // ifdef FOF
+#ifdef BH_WIND_SPAWN
+    if(GlobNumForceUpdate > All.TreeDomainUpdateFrequency * All.TotNumPart)
+    {
+        spawn_bh_wind_feedback();
+        rearrange_particle_sequence();
+        force_treebuild(NumPart, NULL);
+    }
+#endif
 #endif // ifdef BLACK_HOLES or GALSF_SUBGRID_VARIABLEVELOCITY
     
     
