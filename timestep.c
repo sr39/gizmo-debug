@@ -83,20 +83,17 @@ void find_timesteps(void)
     if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin || dt_displacement == 0)
         find_dt_displacement_constraint(All.cf_hubble_a * All.cf_atime * All.cf_atime);
  
+#ifdef BH_WIND_SPAWN
     if(All.HighestActiveTimeBin >= All.HighestOccupiedTimeBin-5)
     {
         double local_max_u=0.0, global_max_u, global_max_t;
-        for(i = 0; i < NumPart; i++)
-           if(P[i].Type==0)
-               local_max_u = DMAX( local_max_u, SphP[i].InternalEnergy );
-
+        for(i = 0; i < NumPart; i++) {if(P[i].Type==0) {local_max_u = DMAX( local_max_u, SphP[i].InternalEnergy );}}
         MPI_Allreduce(&local_max_u, &global_max_u, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-
         double u_to_temp_fac = PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
-
         global_max_t = global_max_u * u_to_temp_fac;
-        if(ThisTask==0)  printf("Golbal Maximum SphP.u = %g (Max Temperature = %g) \n", global_max_u, global_max_t);
-    }   
+        if(ThisTask==0)  printf("Global Maximum SphP.u = %g (Max Temperature = %g) \n", global_max_u, global_max_t);
+    }
+#endif
     
 #ifdef DIVBCLEANING_DEDNER
     /* need to calculate the global fastest wave speed to manage the damping terms stably */
