@@ -2039,7 +2039,7 @@ void read_parameter_file(char *fname)
     /*!< determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion: this
      should only be changed if you -really- know what you're doing! */    
     
-#if defined(MAGNETIC) || defined(HYDRO_MESHLESS_FINITE_VOLUME)
+#if defined(MAGNETIC) || defined(HYDRO_MESHLESS_FINITE_VOLUME) || defined(BH_WIND_SPAWN)
     if(All.CourantFac > 0.2) {All.CourantFac = 0.2;} //
     /* (PFH) safety factor needed for MHD calc, because people keep using the same CFac as hydro! */
 #endif

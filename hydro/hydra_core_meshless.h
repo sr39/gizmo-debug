@@ -126,12 +126,29 @@
         for(k=0;k<3;k++) {v_frame[k] = rinv * (-s_i*VelPred_j[k] + s_j*local.Vel[k]);} // allows for face to be off-center (to second-order)
         // (note that in the above, the s_i/s_j terms are crossed with the opposing velocity terms: this is because the face is closer to the
         //   particle with the smaller smoothing length; so it's values are slightly up-weighted //
+    
+        /* we need the face velocities, dotted into the face vector, for correction back to the lab frame */
+        for(k=0;k<3;k++) {face_vel_i+=local.Vel[k]*n_unit[k]; face_vel_j+=VelPred_j[k]*n_unit[k];}
+        face_vel_i /= All.cf_atime; face_vel_j /= All.cf_atime;
+        face_area_dot_vel = rinv*(-s_i*face_vel_j + s_j*face_vel_i);
+        
+        /* also will need approach velocities to determine maximum upwind pressure */
+        double v2_approach = 0;
+        double vdotr2_phys = kernel.vdotr2;
+        if(All.ComovingIntegrationOn) {vdotr2_phys -= All.cf_hubble_a2 * r2;}
+        vdotr2_phys *= 1/(kernel.r * All.cf_atime);
+        if(vdotr2_phys < 0) {v2_approach = vdotr2_phys*vdotr2_phys;}
+        double vdotf2_phys = face_vel_i - face_vel_j; // need to be careful of sign here //
+        if(vdotf2_phys < 0) {v2_approach = DMAX( v2_approach , vdotf2_phys*vdotf2_phys );}
         
         
         /* now we do the reconstruction (second-order reconstruction at the face) */
         int recon_mode = 1; // default to 'normal' reconstruction: some special physics will set this to zero for low-order reconstructions
 #ifdef BH_WIND_SPAWN
         if((P[j].ID==All.AGNWindID)||(local.ConditionNumber<0)) {recon_mode = 0;} // one of the particles is a wind particle: use a low-order reconstruction for safety
+#endif
+#if defined(GALSF) || defined(COOLING)
+        if(fabs(vdotr2_phys)*All.UnitVelocity_in_cm_per_s > 1.0e8) {recon_mode = 0;} // particle approach/recession velocity > 1000 km/s: be extra careful here!
 #endif
         reconstruct_face_states(local.Density, local.Gradients.Density, SphP[j].Density, SphP[j].Gradients.Density,
                                 distance_from_i, distance_from_j, &Riemann_vec.L.rho, &Riemann_vec.R.rho, recon_mode);
@@ -163,6 +180,7 @@
                                 distance_from_i, distance_from_j, &Riemann_vec.L.phi, &Riemann_vec.R.phi, 2);
 #endif
 #endif
+        
 
 #ifdef DO_HALFSTEP_FOR_MESHLESS_METHODS
         /* advance the faces a half-step forward in time (given our leapfrog scheme, this actually has
@@ -194,20 +212,8 @@
         }
 #endif
         
-        /* we need the face velocities, dotted into the face vector, for correction back to the lab frame */
-        for(k=0;k<3;k++) {face_vel_i+=local.Vel[k]*n_unit[k]; face_vel_j+=VelPred_j[k]*n_unit[k];}
-        face_vel_i /= All.cf_atime; face_vel_j /= All.cf_atime;
-        face_area_dot_vel = rinv*(-s_i*face_vel_j + s_j*face_vel_i);
-
-        /* also will need approach velocities to determine maximum upwind pressure */
-        double v2_approach = 0;
-        double vdotr2_phys = kernel.vdotr2;
-        if(All.ComovingIntegrationOn) {vdotr2_phys -= All.cf_hubble_a2 * r2;}
-        vdotr2_phys *= 1/(kernel.r * All.cf_atime);
-        if(vdotr2_phys < 0) {v2_approach = vdotr2_phys*vdotr2_phys;}
-        double vdotf2_phys = face_vel_i - face_vel_j; // need to be careful of sign here //
-        if(vdotf2_phys < 0) {v2_approach = DMAX( v2_approach , vdotf2_phys*vdotf2_phys );}
-        
+       
+        /* estimate maximum upwind pressure */
         double press_i_tot = local.Pressure + local.Density * v2_approach;
         double press_j_tot = SphP[j].Pressure + SphP[j].Density * v2_approach;
 #ifdef MAGNETIC
