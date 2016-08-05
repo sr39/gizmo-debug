@@ -735,8 +735,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #ifdef BH_WIND_SPAWN
 void spawn_bh_wind_feedback(void)
 {
-    int i, n_particles_split = 0, MPI_n_particles_split;
-    MyIDType dummy_gas_tag=0;
+    int i, n_particles_split = 0, MPI_n_particles_split, dummy_gas_tag=0;
     for(i = 0; i < NumPart; i++)
         if(P[i].Type==0)
         {
@@ -744,13 +743,14 @@ void spawn_bh_wind_feedback(void)
             break;
         }
     
-    for(i = 0; i < NumPart; i++)
-        if(P[i].Type ==5)
-        {
-            printf("attempting to spawn feedback particles for BH %d on Task %d \n", i, ThisTask);  fflush(stdout);
-            n_particles_split += blackhole_spawn_particle_wind_shell( i , dummy_gas_tag);
-        }
-    
+    /* don't loop or go forward if there are no gas particles in the domain, or the code will crash */
+    if(dummy_gas_tag >= 0)
+        for(i = 0; i < NumPart; i++)
+            if(P[i].Type ==5)
+            {
+                printf("attempting to spawn feedback particles for BH %d on Task %d \n", i, ThisTask);  fflush(stdout);
+                n_particles_split += blackhole_spawn_particle_wind_shell( i , dummy_gas_tag);
+            }
     MPI_Allreduce(&n_particles_split, &MPI_n_particles_split, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     if(ThisTask == 0)
     {
@@ -768,7 +768,7 @@ void spawn_bh_wind_feedback(void)
 
 
 /*! this code copies what was used in merge_split.c for the gas particle split case */
-int blackhole_spawn_particle_wind_shell( MyIDType i, MyIDType dummy_sph_i_to_clone )
+int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
 {
     printf(" spiltting BH %d using SphP particle %d\n", i, dummy_sph_i_to_clone);
     double mass_of_new_particle, total_mass_in_winds, dt;
@@ -859,7 +859,6 @@ int blackhole_spawn_particle_wind_shell( MyIDType i, MyIDType dummy_sph_i_to_clo
         for(bits = 0; SPLIT_GENERATIONS > (1 << bits); bits++);
         /* correction:  We are using a fixed wind ID, to allow for trivial wind particle identification */
         P[j].ID = All.AGNWindID;
-//#+= ((MyIDType) 1 << (sizeof(MyIDType) * 8 - bits));
         
         /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
         SphP[j].ConditionNumber *= 10.0;

@@ -130,6 +130,9 @@
         
         /* now we do the reconstruction (second-order reconstruction at the face) */
         int recon_mode = 1; // default to 'normal' reconstruction: some special physics will set this to zero for low-order reconstructions
+#ifdef BH_WIND_SPAWN
+        if((P[j].ID==All.AGNWindID)||(local.ConditionNumber<0)) {recon_mode = 0;} // one of the particles is a wind particle: use a low-order reconstruction for safety
+#endif
         reconstruct_face_states(local.Density, local.Gradients.Density, SphP[j].Density, SphP[j].Gradients.Density,
                                 distance_from_i, distance_from_j, &Riemann_vec.L.rho, &Riemann_vec.R.rho, recon_mode);
         reconstruct_face_states(local.Pressure, local.Gradients.Pressure, SphP[j].Pressure, SphP[j].Gradients.Pressure,
@@ -232,12 +235,8 @@
         Riemann_solver(Riemann_vec, &Riemann_out, n_unit, press_tot_limiter);
         /* before going on, check to make sure we have a valid Riemann solution */
 #ifdef BH_WIND_SPAWN
-        if((P[j].ID == All.AGNWindID) && (local.Mass < 2.0 * All.BH_wind_spawn_mass)){      // looks like two wind particles found each other.  be skeptical.
-            Riemann_out.P_M=1e-20;
-            Riemann_out.S_M=0.0;
-            Face_Area_Norm = 0;
-            for(k=0;k<3;k++) {Face_Area_Vec[k] = 0.0;}
-        }
+        // check if two wind-spawned particles found each other
+        //if((P[j].ID==All.AGNWindID)&&(local.ConditionNumber<0)) {Riemann_out.P_M=1.e-20; Riemann_out.S_M=0.; Face_Area_Norm=0.; for(k=0;k<3;k++) {Face_Area_Vec[k]=0.;}}
 #endif
         if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>1.4*press_tot_limiter))
         {

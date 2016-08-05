@@ -298,7 +298,7 @@ double INLINE_FUNC hubble_function_external(double a);
 
 void blackhole_accretion(void);
 #ifdef BH_WIND_SPAWN
-int blackhole_spawn_particle_wind_shell( MyIDType i, MyIDType dummy_sph_i_to_clone );
+int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone );
 void spawn_bh_wind_feedback(void);
 #endif
 int blackhole_evaluate(int target, int mode, int *nexport, int *nsend_local);
