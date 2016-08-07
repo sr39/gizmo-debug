@@ -2087,6 +2087,10 @@ extern ALIGN(32) struct particle_data
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     MyDouble AGS_Hsml;          /*!< smoothing length (for gravitational forces) */
     MyFloat AGS_zeta;           /*!< factor in the correction term */
+    MyDouble AGS_vsig;          /*!< signal velocity of particle approach, to properly time-step */
+#if defined(WAKEUP)
+    short int wakeup;                     /*!< flag to wake up particle */
+#endif
 #endif
 }
  *P,				/*!< holds particle data on local processor */
@@ -2405,7 +2409,7 @@ extern struct sph_particle_data
 #endif
     
     
-#ifdef WAKEUP
+#if defined(WAKEUP) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
     short int wakeup;                     /*!< flag to wake up particle */
 #endif
     

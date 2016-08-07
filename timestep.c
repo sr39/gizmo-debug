@@ -437,19 +437,10 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         if(PPP[p].AGS_Hsml > 1.01*All.ForceSoftening[P[p].Type])
         {
-            double divVel = fabs(P[p].Particle_DivVel);
-            double tmp_divVel = 0, tmp_ags_h = PPP[p].AGS_Hsml;
-            int k; for(k=0;k<3;k++) {tmp_divVel += P[p].Vel[k]*P[p].Vel[k];}
-#ifdef GALSF
-            if(((P[p].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[p].Type == 2)||(P[p].Type==3))))&&(P[p].Mass>0)) {tmp_ags_h = DMAX(tmp_ags_h , PPP[p].Hsml);}
-#endif
-            tmp_divVel = sqrt(tmp_divVel) / tmp_ags_h;
-            divVel = All.cf_a2inv * DMIN(divVel , tmp_divVel);
-            if(divVel != 0)
-            {
-                dt_divv = 0.25 / divVel;
-                if(dt_divv < dt) {dt = dt_divv;}
-            }
+            double dt_divv = 0.25 / (MIN_REAL_NUMBER + All.cf_a2inv*fabs(P[p].Particle_DivVel));
+            if(dt_divv < dt) {dt = dt_divv;}
+            double dt_cour = All.CourantFac * (KERNEL_CORE_SIZE*PPP[p].AGS_Hsml*All.cf_atime) / (MIN_REAL_NUMBER + 0.5*P[p].AGS_vsig*All.cf_afac3);
+            if(dt_cour < dt) {dt = dt_cour;}
         }
     }
 #endif
@@ -1116,13 +1107,14 @@ void process_wake_ups(void)
     
     for(i = 0; i < NumPart; i++)
     {
-        if(P[i].Type != 0)
-            continue;
+#if !defined(ADAPTIVE_GRAVSOFT_FORALL)
+        if(P[i].Type != 0) {continue;} // only gas particles can be awakened
+#endif
         
         if(P[i].Mass <= 0)
             continue;
         
-        if(!SphP[i].wakeup)
+        if(!PPPZ[i].wakeup)
             continue;
         
         binold = P[i].TimeBin;

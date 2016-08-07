@@ -876,7 +876,7 @@ void hydro_force(void)
             SphP[i].DtCosmicRayEnergy = 0;
 #endif
 #ifdef WAKEUP
-            SphP[i].wakeup = 0;
+            PPPZ[i].wakeup = 0;
 #endif
         }
     

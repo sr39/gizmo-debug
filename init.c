@@ -729,6 +729,10 @@ void init(void)
         P[i].IMF_Mturnover = 2.0; // reset to normal IMF
     }
 #endif
+    
+#if defined(WAKEUP) && defined(ADAPTIVE_GRAVSOFT_FORALL)
+    for(i=0;i<NumPart;i++) {P[i].wakeup=0;}
+#endif
 
 #if defined(TURB_DRIVING)
     {
@@ -776,6 +780,9 @@ void init(void)
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         PPPZ[i].AGS_zeta = 0;
+#endif
+#ifdef WAKEUP
+        if(RestartFlag!=0) {PPPZ[i].wakeup=0;}
 #endif
 #ifdef SUPER_TIMESTEP_DIFFUSION
         SphP[i].Super_Timestep_Dt_Explicit = 0;

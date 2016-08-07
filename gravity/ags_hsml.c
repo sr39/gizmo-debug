@@ -32,6 +32,8 @@ extern pthread_mutex_t mutex_partnodedrift;
  */
 
 
+#define AGS_DSOFT_TOL (0.75)    // amount by which softening lengths are allowed to vary in single timesteps //
+
 /*! this routine is called by the adaptive gravitational softening neighbor search and forcetree (for application 
     of the appropriate correction terms), to determine which particle types "talk to" which other particle types 
     (i.e. which particle types you search for to determine the softening radii for gravity). For effectively volume-filling
@@ -94,6 +96,7 @@ static struct ags_densdata_out
     MyLongDouble Ngb;
     MyLongDouble DhsmlNgb;
     MyLongDouble AGS_zeta;
+    MyLongDouble AGS_vsig;
     MyLongDouble Particle_DivVel;
 }
  *AGS_DensDataResult, *AGS_DensDataOut;
@@ -117,6 +120,7 @@ void ags_out2particle_density(struct ags_densdata_out *out, int i, int mode)
 {
     ASSIGN_ADD(PPP[i].NumNgb, out->Ngb, mode);
     ASSIGN_ADD(PPPZ[i].AGS_zeta, out->AGS_zeta,   mode);
+    if(out->AGS_vsig > PPP[i].AGS_vsig) {PPP[i].AGS_vsig = out->AGS_vsig;}
     ASSIGN_ADD(P[i].Particle_DivVel, out->Particle_DivVel,   mode);
     ASSIGN_ADD(PPP[i].DhsmlNgbFactor, out->DhsmlNgb, mode);
 }
@@ -162,6 +166,10 @@ void ags_density(void)
       {
           Left[i] = Right[i] = 0;
           AGS_Prev[i] = PPP[i].AGS_Hsml;
+          P[i].AGS_vsig = 0;
+#ifdef WAKEUP
+          P[i].wakeup = 0;
+#endif
       }
     }
 
@@ -461,7 +469,7 @@ void ags_density(void)
                 }
                 
                 // inverse of SPH volume element (to satisfy constraint implicit in Lagrange multipliers)
-                if(PPP[i].DhsmlNgbFactor > -0.9)	/* note: this would be -1 if only a single particle at zero lag is found */
+                if(PPP[i].DhsmlNgbFactor > -0.5)	/* note: this would be -1 if only a single particle at zero lag is found */
                     PPP[i].DhsmlNgbFactor = 1 / (1 + PPP[i].DhsmlNgbFactor);
                 else
                     PPP[i].DhsmlNgbFactor = 1;
@@ -471,8 +479,9 @@ void ags_density(void)
                 redo_particle = 0;
                 
                 double minsoft = ags_return_minsoft(i);
-                minsoft = DMAX(All.ForceSoftening[P[i].Type] , DMIN(min_tmp, AGS_Prev[i])); // this ensures softening doesnt shrink when self-accel is too large already
                 double maxsoft = ags_return_maxsoft(i);
+                minsoft = DMAX(minsoft , AGS_Prev[i]*AGS_TOL);
+                maxsoft = DMIN(maxsoft , AGS_Prev[i]/AGS_TOL);
                 desnumngb = All.AGS_DesNumNgb;
                 desnumngbdev = All.AGS_MaxNumNgbDeviation;
                 if(All.Time==All.TimeBegin) {if(All.AGS_MaxNumNgbDeviation > 0.05) desnumngbdev=0.05;}
@@ -707,8 +716,9 @@ void ags_density(void)
             if((P[i].Mass>0)&&(PPP[i].AGS_Hsml>0)&&(PPP[i].NumNgb>0))
             {
                 double minsoft = ags_return_minsoft(i);
-                minsoft = DMAX(All.ForceSoftening[P[i].Type] , DMIN(min_tmp, AGS_Prev[i])); // this ensures softening doesnt shrink when self-accel is too large already
                 double maxsoft = ags_return_maxsoft(i);
+                minsoft = DMAX(minsoft , AGS_Prev[i]*AGS_TOL);
+                maxsoft = DMIN(maxsoft , AGS_Prev[i]/AGS_TOL);
                 /* check that we're within the 'valid' range for adaptive softening terms, otherwise zeta=0 */
                 if((fabs(PPP[i].NumNgb-All.AGS_DesNumNgb)/All.AGS_DesNumNgb < 0.05)
                    &&(PPP[i].AGS_Hsml <= 0.99*maxsoft)&&(PPP[i].AGS_Hsml >= 1.01*minsoft)
@@ -782,6 +792,7 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
         startnode = Nodes[startnode].u.d.nextnode;	/* open it */
     }
     
+    double fac_mu = -3 / (All.cf_afac3 * All.cf_atime);
     while(startnode >= 0)
     {
         while(startnode >= 0)
@@ -812,10 +823,10 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
 
                     out.Ngb += kernel.wk;
                     out.DhsmlNgb += -(NUMDIMS * kernel.hinv * kernel.wk + u * kernel.dwk);
-                    out.AGS_zeta += P[j].Mass * kernel_gravity(u, kernel.hinv, kernel.hinv3, 0);
 
                     if(kernel.r > 0)
                     {
+                        out.AGS_zeta += P[j].Mass * kernel_gravity(u, kernel.hinv, kernel.hinv3, 0);
                         if(P[j].Type==0)
                         {
                             kernel.dv[0] = local.Vel[0] - SphP[j].VelPred[0];
@@ -829,6 +840,16 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #ifdef SHEARING_BOX
                         if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {kernel.dv[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
                         if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {kernel.dv[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+#endif
+                        double v_dot_r = kernel.dp[0] * kernel.dv[0] + kernel.dp[1] * kernel.dv[1] + kernel.dp[2] * kernel.dv[2];
+                        double vsig = 0.5 * fabs( fac_mu * v_dot_r / kernel.r );
+                        if(TimeBinActive[P[j].TimeBin]) {if(vsig > P[j].AGS_vsig) P[j].AGS_vsig = vsig;}
+                        if(vsig > out.AGS_vsig) {out.AGS_vsig = vsig;}
+#ifdef WAKEUP
+                        if(vsig > WAKEUP*P[j].AGS_vsig) {P[j].wakeup = 1;}
+#if defined(GALSF)
+                        if((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) {P[j].wakeup = 0;} // don't wakeup star particles, or risk 2x-counting feedback events! //
+#endif
 #endif
                         out.Particle_DivVel -= kernel.dwk * (kernel.dp[0] * kernel.dv[0] + kernel.dp[1] * kernel.dv[1] + kernel.dp[2] * kernel.dv[2]) / kernel.r;
                         /* this is the -particle- divv estimator, which determines how Hsml will evolve */
@@ -973,16 +994,7 @@ double ags_return_maxsoft(int i)
 /* routine to return the minimum allowed softening */
 double ags_return_minsoft(int i)
 {
-    double minsoft = All.ForceSoftening[P[i].Type]; // this is the user-specified minimum
-    /* now need to restrict: dont allow 'self-acceleration' to be larger than actual gravitational accelerations! */
-    double acc_mag = P[i].GravAccel[0]*P[i].GravAccel[0] + P[i].GravAccel[1]*P[i].GravAccel[1] + P[i].GravAccel[2]*P[i].GravAccel[2];
-#ifdef PMGRID
-    acc_mag += P[i].GravPM[0]*P[i].GravPM[0] + P[i].GravPM[1]*P[i].GravPM[1] + P[i].GravPM[2]*P[i].GravPM[2];
-#endif
-    acc_mag = All.cf_a2inv * sqrt(acc_mag);
-    double h_lim_acc = 16.0 * sqrt(All.G * P[i].Mass / acc_mag) / All.cf_atime;
-    h_lim_acc *= All.AGS_DesNumNgb / 32.;
-    return DMAX(h_lim_acc, minsoft);
+    return All.ForceSoftening[P[i].Type]; // this is the user-specified minimum
 }
 
 

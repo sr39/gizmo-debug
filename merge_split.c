@@ -521,7 +521,7 @@ void merge_particles_ij(int i, int j)
     if(P[i].TimeBin < P[j].TimeBin)
     {
 #ifdef WAKEUP
-        SphP[j].wakeup = 1;
+        PPPZ[j].wakeup = 1;
 #endif
     }
     double dm_i=0,dm_j=0,de_i=0,de_j=0,dp_i[3],dp_j[3],dm_ij,de_ij,dp_ij[3];
