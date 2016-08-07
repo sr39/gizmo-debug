@@ -167,7 +167,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
     {
         lum[RT_FREQ_BIN_H0] = 0; // begin from zero //
         double fac = 0;
-#if defined(GALSF_FB_HII_HEATING)
+#if defined(GALSF)
         /* calculate ionizing flux based on actual stellar or BH physics */
         if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
         {
@@ -180,7 +180,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
 #else
         if(P[i].Type==4) {if(sigma_0<0) {return 1;} active_check=1; fac += (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.IonizingLuminosityPerSolarMass_cgs * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs);} // flux from star particles according to mass
 #endif
-#endif // GALSF_FB_HII_HEATING else
+#endif // GALSF else
 #if defined(RT_PHOTOION_MULTIFREQUENCY)
         // we should have pre-tabulated how much luminosity gets assigned to each different waveband according to the following function //
         lum[RT_FREQ_BIN_He0]=lum[RT_FREQ_BIN_He1]=lum[RT_FREQ_BIN_He2]=0;

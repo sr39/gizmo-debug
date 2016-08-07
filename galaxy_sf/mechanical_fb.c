@@ -390,7 +390,7 @@ void out2particle_addFB(struct addFBdata_out *out, int i, int mode, int feedback
         int k; for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {ASSIGN_ADD(P[i].Area_weighted_sum[k], out->Area_weighted_sum[k], mode);}
     } else {
         P[i].Mass -= out->M_coupled;
-        if(P[i].Mass<0) P[i].Mass=0;
+        if((P[i].Mass<0)||(isnan(P[i].Mass))) {P[i].Mass=0;}
     }
 }
 
@@ -724,7 +724,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_SNE_HEATING)
     // account for energy going into CRs, so we don't 'double count' //
-    if(local.SNe_v_ejecta > 5.0e7 / All.UnitVelocity_in_cm_per_s) {local.SNe_v_ejecta *= sqrt(1-All.CosmicRay_SNeFraction);}
+    if(local.SNe_v_ejecta > 2.0e8 / All.UnitVelocity_in_cm_per_s) {local.SNe_v_ejecta *= sqrt(1-All.CosmicRay_SNeFraction);}
 #endif
     
     // now define quantities that will be used below //
@@ -820,6 +820,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 }
                 // NOW do the actual feedback calculation //
                 wk *= local.Area_weighted_sum[0]; // this way wk matches the value summed above for the weighting //
+                
+                if((wk <= 0)||(isnan(wk))) continue;
                 
                 /* define initial mass and ejecta velocity in this 'cone' */
                 double v_bw[3]={0}, e_shock=0;
@@ -941,7 +943,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                 
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_SNE_HEATING)
-                if(local.SNe_v_ejecta > 5.0e7 / All.UnitVelocity_in_cm_per_s)
+                if(local.SNe_v_ejecta > 2.0e8 / All.UnitVelocity_in_cm_per_s)
                 {
                     /* a fraction of the *INITIAL* energy goes into cosmic rays [this is -not- affected by the radiative losses above] */
                     double dE_init_coupled = 0.5 * dM * local.SNe_v_ejecta * local.SNe_v_ejecta;
@@ -1243,19 +1245,24 @@ void determine_where_SNe_occur()
 	        double q0 = (1.-alpha)*gam / (1.-gam); double k0=1./30.; //k is a normalization factor in the model
 	        double mdot = 2.338 * alpha * pow(L_sol,7./8.) * pow(M_sol,0.1845) * (1./q0) * pow(q0*k0,1./alpha); // in Msun/Gyr
 	        p = mdot / M_sol; // mass fraction returned per Gyr
+            p *= All.GasReturnFraction * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam); // fraction of particle mass expected to return in the timestep //
+            p = 1.0 - exp(-p); // need to account for p>1 cases //
 #else
             p=0.0;
+            double ZZ = P[i].Metallicity[0]/All.SolarAbundances[0];
+            if(ZZ>3) {ZZ=3;}
+            if(ZZ<0.01) {ZZ=0.01;}
             if(star_age<=0.001){p=11.6846;} else {
-                if(star_age<=0.0035){p=11.6846*(0.01+P[i].Metallicity[0]/All.SolarAbundances[0])*
-                    pow(10.,1.838*(0.79+log10(P[i].Metallicity[0]/All.SolarAbundances[0]))*(log10(star_age)-(-3.00)));} else {
+                if(star_age<=0.0035){p=11.6846*ZZ*
+                    pow(10.,1.838*(0.79+log10(ZZ))*(log10(star_age)-(-3.00)));} else {
                         if(star_age<=0.1){p=72.1215*pow(star_age/0.0035,-3.25)+0.0103;} else {
                             p=1.03*pow(star_age,-1.1)/(12.9-log(star_age));
                         }}}
-            p *= 1.4 * 0.291175; // to give expected return fraction from stellar winds alone (~17%) //
             if(star_age < 0.1) {p *= calculate_relative_light_to_mass_ratio_from_imf(i);} // late-time independent of massive stars
-#endif
             p *= All.GasReturnFraction * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam); // fraction of particle mass expected to return in the timestep //
             p = 1.0 - exp(-p); // need to account for p>1 cases //
+            p *= 1.4 * 0.291175; // to give expected return fraction from stellar winds alone (~17%) //
+#endif
 	        P[i].MassReturn_ThisTimeStep = 0; // zero mass return out
 	        double n_wind_0 = (double)floor(p/D_RETURN_FRAC); // if p >> return frac, should have > 1 event, so we inject the correct wind mass
             p -= n_wind_0*D_RETURN_FRAC;

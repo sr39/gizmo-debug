@@ -609,6 +609,22 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
 
+        case IO_COSMICRAY_ENERGY:
+#ifdef COSMIC_RAYS            
+             for(n = 0; n < pc; n++)
+                SphP[offset + n].CosmicRayEnergy = *fp++;
+#endif
+            break;
+
+        case IO_OSTAR:
+#ifdef GALSF_SFR_IMF_SAMPLING           
+             for(n = 0; n < pc; n++)
+                P[offset + n].IMF_NumMassiveStars = *fp++;
+#endif
+            break;
+
+
+
         case IO_AGS_OMEGA:
         case IO_AGS_CORR:
         case IO_AGS_NGBS:
@@ -643,7 +659,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_TSTP:
         case IO_DBDT:
         case IO_IMF:
-        case IO_COSMICRAY_ENERGY:
         case IO_DIVB:
         case IO_ABVC:
         case IO_COOLRATE:

@@ -82,7 +82,18 @@ void find_timesteps(void)
     
     if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin || dt_displacement == 0)
         find_dt_displacement_constraint(All.cf_hubble_a * All.cf_atime * All.cf_atime);
-    
+ 
+#ifdef BH_WIND_SPAWN
+    if(All.HighestActiveTimeBin >= All.HighestOccupiedTimeBin-5)
+    {
+        double local_max_u=0.0, global_max_u, global_max_t;
+        for(i = 0; i < NumPart; i++) {if(P[i].Type==0) {local_max_u = DMAX( local_max_u, SphP[i].InternalEnergy );}}
+        MPI_Allreduce(&local_max_u, &global_max_u, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+        double u_to_temp_fac = PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
+        global_max_t = global_max_u * u_to_temp_fac;
+        if(ThisTask==0)  printf("Global Maximum SphP.u = %g (Max Temperature = %g) \n", global_max_u, global_max_t);
+    }
+#endif
     
 #ifdef DIVBCLEANING_DEDNER
     /* need to calculate the global fastest wave speed to manage the damping terms stably */
@@ -426,19 +437,10 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         if(PPP[p].AGS_Hsml > 1.01*All.ForceSoftening[P[p].Type])
         {
-            double divVel = fabs(P[p].Particle_DivVel);
-            double tmp_divVel = 0, tmp_ags_h = PPP[p].AGS_Hsml;
-            int k; for(k=0;k<3;k++) {tmp_divVel += P[p].Vel[k]*P[p].Vel[k];}
-#ifdef GALSF
-            if(((P[p].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[p].Type == 2)||(P[p].Type==3))))&&(P[p].Mass>0)) {tmp_ags_h = DMAX(tmp_ags_h , PPP[p].Hsml);}
-#endif
-            tmp_divVel = sqrt(tmp_divVel) / tmp_ags_h;
-            divVel = All.cf_a2inv * DMIN(divVel , tmp_divVel);
-            if(divVel != 0)
-            {
-                dt_divv = 0.25 / divVel;
-                if(dt_divv < dt) {dt = dt_divv;}
-            }
+            double dt_divv = 0.25 / (MIN_REAL_NUMBER + All.cf_a2inv*fabs(P[p].Particle_DivVel));
+            if(dt_divv < dt) {dt = dt_divv;}
+            double dt_cour = All.CourantFac * (KERNEL_CORE_SIZE*PPP[p].AGS_Hsml*All.cf_atime) / (MIN_REAL_NUMBER + 0.5*P[p].AGS_vsig*All.cf_afac3);
+            if(dt_cour < dt) {dt = dt_cour;}
         }
     }
 #endif
@@ -536,7 +538,7 @@ integertime get_timestep(int p,		/*!< particle index */
                     double CRPressureGradScaleLength = Get_CosmicRayGradientLength(p);
                     double L_cr_weak = CRPressureGradScaleLength;
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + 1./(L_particle*All.cf_atime)));
-                    double coeff_inv = 0.67 * L_cr_strong * dt_prefac_diffusion / (1.e-33 + SphP[p].CosmicRayDiffusionCoeff * GAMMA_COSMICRAY_MINUS1);
+                    double coeff_inv = 0.67 * L_cr_strong * dt_prefac_diffusion / (1.e-33 + fabs(SphP[p].CosmicRayDiffusionCoeff) * GAMMA_COSMICRAY_MINUS1);
                     double dt_conduction =  L_cr_strong * coeff_inv; /* true diffusion requires the stronger timestep criterion be applied */
                     explicit_timestep_on = 1;
 #ifdef COSMIC_RAYS_DISABLE_DIFFUSION
@@ -546,11 +548,12 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifndef COSMIC_RAYS_DISABLE_STREAMING
                     /* estimate whether diffusion is streaming-dominated: use stronger/weaker criterion accordingly */
                     double diffusion_from_streaming = (GAMMA_COSMICRAY/GAMMA_COSMICRAY_MINUS1) * Get_CosmicRayStreamingVelocity(p) * CRPressureGradScaleLength;
-                    if(diffusion_from_streaming > 0.75*SphP[p].CosmicRayDiffusionCoeff) {dt_conduction = L_cr_weak * coeff_inv; explicit_timestep_on = 0;}
+                    if(diffusion_from_streaming > 0.75*fabs(SphP[p].CosmicRayDiffusionCoeff)) {dt_conduction = L_cr_weak * coeff_inv; explicit_timestep_on = 0;}
 #endif
 #ifdef GALSF
                     /* for multi-physics problems, we will use a more aggressive timestep criterion
                      based on whether or not the cosmic ray physics are relevant for what we are modeling */
+                    //
                     if((SphP[p].CosmicRayEnergy==0)||(SphP[p].DtCosmicRayEnergy==0))
                     {
                         dt_conduction = 10. * dt;
@@ -563,6 +566,7 @@ integertime get_timestep(int p,		/*!< particle index */
                             if((dL_cr > 3.) && (delta_cr < 1.e-4*SphP[p].CosmicRayEnergy)) {dt_conduction = dt_weak; explicit_timestep_on = 0;}
                         }
                     }
+                    //
 #endif
 #ifdef SUPER_TIMESTEP_DIFFUSION
                     if(explicit_timestep_on==1)
@@ -592,7 +596,6 @@ integertime get_timestep(int p,		/*!< particle index */
                     double L_ETgrad_inv = sqrt(gradETmag) / (1.e-37 + SphP[p].E_gamma[kf] * SphP[p].Density/P[p].Mass);
                     double L_RT_diffusion = DMAX(L_particle , 1./(L_ETgrad_inv + 1./L_particle)) * All.cf_atime;
                     double dt_rt_diffusion = dt_prefac_diffusion * L_RT_diffusion*L_RT_diffusion / (1.0e-33 + rt_diffusion_coefficient(p,kf));
-                    if(SphP[p].Lambda_FluxLim[kf] < 1) {dt_rt_diffusion *= 1./(SphP[p].Lambda_FluxLim[kf]);}
                     double dt_advective = dt_rt_diffusion * DMAX(1,DMAX(L_particle , 1/(MIN_REAL_NUMBER + L_ETgrad_inv))*All.cf_atime / L_RT_diffusion);
                     if(dt_advective > dt_rt_diffusion) {dt_rt_diffusion *= 1. + (1.-SphP[p].Lambda_FluxLim[kf]) * (dt_advective/dt_rt_diffusion-1.);}
                     if((SphP[p].Lambda_FluxLim[kf] <= 0)||(dt_rt_diffusion<=0)) {dt_rt_diffusion = 1.e9 * dt;}
@@ -854,7 +857,7 @@ integertime get_timestep(int p,		/*!< particle index */
         dt = dt_displacement;
     
     
-    if(dt < All.MinSizeTimestep)
+    if((dt < All.MinSizeTimestep)||(((integertime) (dt / All.Timebase_interval)) <= 1))
     {
 #ifdef STOP_WHEN_BELOW_MINTIMESTEP
         printf("warning: Timestep wants to be below the limit `MinSizeTimestep'\n");
@@ -1104,13 +1107,14 @@ void process_wake_ups(void)
     
     for(i = 0; i < NumPart; i++)
     {
-        if(P[i].Type != 0)
-            continue;
+#if !defined(ADAPTIVE_GRAVSOFT_FORALL)
+        if(P[i].Type != 0) {continue;} // only gas particles can be awakened
+#endif
         
         if(P[i].Mass <= 0)
             continue;
         
-        if(!SphP[i].wakeup)
+        if(!PPPZ[i].wakeup)
             continue;
         
         binold = P[i].TimeBin;

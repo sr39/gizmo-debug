@@ -126,11 +126,12 @@ void blackhole_environment_loop(void)
         }
         myfree(BlackholeDataIn);
    
-        /*  DAA: PasserResult cycles over nimport!  PasserOut cycles over nexport!
-        BlackholeDataPasserResult = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserResult", nexport * sizeof(struct blackhole_temp_particle_data));
-        BlackholeDataPasserOut = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserOut", nimport * sizeof(struct blackhole_temp_particle_data)); */
+        /*  DAA: PasserResult cycles over nimport!  PasserOut cycles over nexport! */
         BlackholeDataPasserResult = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserResult", nimport * sizeof(struct blackhole_temp_particle_data));
-        BlackholeDataPasserOut = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserOut", nexport * sizeof(struct blackhole_temp_particle_data));        
+        BlackholeDataPasserOut = (struct blackhole_temp_particle_data *) mymalloc("BlackholeDataPasserOut", nexport * sizeof(struct blackhole_temp_particle_data));
+        
+        memset( &BlackholeDataPasserResult[0], 0, nimport * sizeof(struct blackhole_temp_particle_data)  );
+        memset( &BlackholeDataPasserOut[0],    0, nexport * sizeof(struct blackhole_temp_particle_data)  );
 
         /* now do the particles that were sent to us */
         for(j = 0; j < nimport; j++)

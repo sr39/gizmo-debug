@@ -638,6 +638,10 @@ void set_blackhole_new_mass(int i, int n, double dt)
 #endif
 #endif
     
+#ifdef BH_WIND_SPAWN	// This is not done properly.  All spawn simulations use a fixed BH mass for now...
+    BPP(n).BH_Mass           =    All.SeedBlackHoleMass;
+    BPP(n).BH_Mass_AlphaDisk =    All.SeedAlphaDiskMass;
+#endif
 }
 
 
@@ -832,7 +836,16 @@ void blackhole_final_loop(void)
 #endif
 #endif // ifdef BH_BAL_WINDS
         
+#ifdef BH_WIND_SPAWN
+        double dm_wind = (1.-All.BAL_f_accretion) / All.BAL_f_accretion * dm;
+        if(dm_wind > P[n].Mass) {dm_wind = P[n].Mass;}
+        if(dm_wind > BPP(n).BH_Mass_AlphaDisk) {dm_wind = BPP(n).BH_Mass_AlphaDisk;}
 
+        BPP(n).unspawned_wind_mass += dm_wind;
+        P[n].Mass -= dm_wind;
+        BPP(n).BH_Mass_AlphaDisk -= dm_wind;
+#endif
+        
         /* DAA: dump the results to the 'blackhole_details' files */
 
         mass_disk=0; mdot_disk=0; mbulge=0; r0=0;
