@@ -605,9 +605,6 @@ void init(void)
 #endif
 #ifdef COSMIC_RAYS
         if(RestartFlag == 0) {SphP[i].CosmicRayEnergy = 0;}
-        SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy;
-        SphP[i].CosmicRayDiffusionCoeff = 0;
-        SphP[i].DtCosmicRayEnergy = 0;
 #endif
 #ifdef MAGNETIC
 #if defined B_SET_IN_PARAMS
@@ -676,7 +673,7 @@ void init(void)
     assign_unique_ids();
 #endif
     /* assign other ID parameters needed */
-    for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}
+    if(RestartFlag==0) {for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}}
     
 #ifdef TEST_FOR_IDUNIQUENESS
     test_id_uniqueness();
@@ -732,6 +729,10 @@ void init(void)
         P[i].IMF_Mturnover = 2.0; // reset to normal IMF
     }
 #endif
+    
+#if defined(WAKEUP) && defined(ADAPTIVE_GRAVSOFT_FORALL)
+    for(i=0;i<NumPart;i++) {P[i].wakeup=0;}
+#endif
 
 #if defined(TURB_DRIVING)
     {
@@ -764,6 +765,11 @@ void init(void)
         for(j=0;j<3;j++) {SphP[i].B[j] = SphP[i].BPred[j] * P[i].Mass / SphP[i].Density;} // convert to the conserved unit V*B //
         for(j=0;j<3;j++) {SphP[i].BPred[j]=SphP[i].B[j]; SphP[i].DtB[j]=0;}
 #endif
+#ifdef COSMIC_RAYS
+        SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy;
+        SphP[i].CosmicRayDiffusionCoeff = 0;
+        SphP[i].DtCosmicRayEnergy = 0;
+#endif
         //SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
         SphP[i].DtInternalEnergy = 0;
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -774,6 +780,9 @@ void init(void)
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         PPPZ[i].AGS_zeta = 0;
+#endif
+#ifdef WAKEUP
+        if(RestartFlag!=0) {PPPZ[i].wakeup=0;}
 #endif
 #ifdef SUPER_TIMESTEP_DIFFUSION
         SphP[i].Super_Timestep_Dt_Explicit = 0;

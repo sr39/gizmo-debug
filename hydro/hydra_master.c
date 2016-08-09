@@ -368,6 +368,10 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
         to conveniently indicate the status of the parent particle flag, for the constrained gradients */
     if(SphP[i].FlagForConstrainedGradients == 0) {in->ConditionNumber *= -1;}
 #endif
+#ifdef BH_WIND_SPAWN
+    /* as above, use sign of condition number as a bitflag to indicate if this is, or is not, a wind particle */
+    if(P[i].ID == All.AGNWindID) {in->ConditionNumber *= -1;}
+#endif
     in->DhsmlNgbFactor = PPP[i].DhsmlNgbFactor;
 #ifdef HYDRO_SPH
     in->DhsmlHydroSumFactor = SphP[i].DhsmlHydroSumFactor;
@@ -652,6 +656,7 @@ void hydro_final_operations_and_cleanup(void)
 #ifdef COSMIC_RAYS
             /* need to account for the adiabatic heating/cooling of the cosmic ray fluid, here: its an ultra-relativistic fluid with gamma=4/3 */
             double dt_cosmicray_energy_adiabatic = -GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred * (P[i].Particle_DivVel*All.cf_a2inv);
+            if(dt_cosmicray_energy_adiabatic*dt > 0.5*SphP[i].CosmicRayEnergyPred) {dt_cosmicray_energy_adiabatic = -(SphP[i].CosmicRayEnergyPred/dt) * (1 - exp(-GAMMA_COSMICRAY_MINUS1 * dt * (P[i].Particle_DivVel*All.cf_a2inv)));}
             SphP[i].DtCosmicRayEnergy += dt_cosmicray_energy_adiabatic;
             SphP[i].DtInternalEnergy -= dt_cosmicray_energy_adiabatic;
             /* adiabatic term from Hubble expansion (needed for cosmological integrations */
@@ -871,7 +876,7 @@ void hydro_force(void)
             SphP[i].DtCosmicRayEnergy = 0;
 #endif
 #ifdef WAKEUP
-            SphP[i].wakeup = 0;
+            PPPZ[i].wakeup = 0;
 #endif
         }
     
