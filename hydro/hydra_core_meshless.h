@@ -19,14 +19,13 @@
     /* define volume elements and interface position */
     /* --------------------------------------------------------------------------------- */
     V_j = P[j].Mass / SphP[j].Density;
-    /*
-#if defined(HYDRO_MESHLESS_FINITE_VOLUME) || defined(CONSTRAINED_GRADIENT_MHD)
     s_star_ij = 0;
-#else
-    s_star_ij = 0.5 * kernel.r * (PPP[j].Hsml - local.Hsml) / (local.Hsml + PPP[j].Hsml);
+    //
+#if !defined(CONSTRAINED_GRADIENT_MHD)
+     //s_star_ij = 0.5 * kernel.r * (PPP[j].Hsml - local.Hsml) / (local.Hsml + PPP[j].Hsml); // old test, doesn't account for Hsml changing for condition number reasons
+     s_star_ij = 0.5 * kernel.r * (local.Density - SphP[j].Density) / (local.Density + SphP[j].Density); // frame with zero mass flux in a first-order reconstruction //
 #endif
-    */
-    s_star_ij = 0;
+    //
     /* ------------------------------------------------------------------------------------------------------------------- */
     /* now we're ready to compute the volume integral of the fluxes (or equivalently an 'effective area'/face orientation) */
     /* ------------------------------------------------------------------------------------------------------------------- */
@@ -45,26 +44,27 @@
 #endif
 #endif
 */
-    if(SphP[j].ConditionNumber*SphP[j].ConditionNumber > 1.0e12 + cnumcrit2)
+    /* the effective gradient matrix is well-conditioned: we can safely use the consistent EOM */
+    // note the 'default' formulation from Lanson and Vila takes wt_i=V_i, wt_j=V_j; but this assumes negligible variation in h between particles;
+    //      it is more accurate to use a centered wt (centered face area), which we get by linear interpolation //
+    double facenormal_dot_dp = 0;
+    for(k=0;k<3;k++)
     {
-        /* the effective gradient matrix is ill-conditioned: for stability, we revert to the "RSPH" EOM */
+        Face_Area_Vec[k] = kernel.wk_i * wt_i * (local.NV_T[k][0]*kernel.dp[0] + local.NV_T[k][1]*kernel.dp[1] + local.NV_T[k][2]*kernel.dp[2])
+                         + kernel.wk_j * wt_j * (SphP[j].NV_T[k][0]*kernel.dp[0] + SphP[j].NV_T[k][1]*kernel.dp[1] + SphP[j].NV_T[k][2]*kernel.dp[2]);
+        Face_Area_Vec[k] *= All.cf_atime*All.cf_atime; /* Face_Area_Norm has units of area, need to convert to physical */
+        Face_Area_Norm += Face_Area_Vec[k]*Face_Area_Vec[k];
+        facenormal_dot_dp += Face_Area_Vec[k] * kernel.dp[k]; /* check that face points same direction as vector normal: should be true for positive-definite (well-conditioned) NV_T */
+    }
+    if((SphP[j].ConditionNumber*SphP[j].ConditionNumber > 1.0e12 + cnumcrit2) || (facenormal_dot_dp < 0))
+    {
+        /* the effective gradient matrix is ill-conditioned (or not positive-definite!): for stability, we revert to the "RSPH" EOM */
         Face_Area_Norm = -(wt_i*V_i*kernel.dwk_i + wt_j*V_j*kernel.dwk_j) / kernel.r;
         Face_Area_Norm *= All.cf_atime*All.cf_atime; /* Face_Area_Norm has units of area, need to convert to physical */
         Face_Area_Vec[0] = Face_Area_Norm * kernel.dp[0];
         Face_Area_Vec[1] = Face_Area_Norm * kernel.dp[1];
         Face_Area_Vec[2] = Face_Area_Norm * kernel.dp[2];
         Face_Area_Norm = Face_Area_Norm * Face_Area_Norm * r2;
-    } else {
-        /* the effective gradient matrix is well-conditioned: we can safely use the consistent EOM */
-        // note the 'default' formulation from Lanson and Vila takes wt_i=V_i, wt_j=V_j; but this assumes negligible variation in h between particles;
-        //      it is more accurate to use a centered wt (centered face area), which we get by linear interpolation //
-        for(k=0;k<3;k++)
-        {
-            Face_Area_Vec[k] = kernel.wk_i * wt_i * (local.NV_T[k][0]*kernel.dp[0] + local.NV_T[k][1]*kernel.dp[1] + local.NV_T[k][2]*kernel.dp[2])
-                       + kernel.wk_j * wt_j * (SphP[j].NV_T[k][0]*kernel.dp[0] + SphP[j].NV_T[k][1]*kernel.dp[1] + SphP[j].NV_T[k][2]*kernel.dp[2]);
-            Face_Area_Vec[k] *= All.cf_atime*All.cf_atime; /* Face_Area_Norm has units of area, need to convert to physical */
-            Face_Area_Norm += Face_Area_Vec[k]*Face_Area_Vec[k];
-        }
     }
     if(Face_Area_Norm == 0)
     {
@@ -101,7 +101,7 @@
             for(k=0;k<3;k++) {Face_Area_Vec[k] = n_unit[k] * Face_Area_Norm;} /* direction is preserved, just area changes */
         }
 
-        
+
         /* --------------------------------------------------------------------------------- */
         /* extrapolate the conserved quantities to the interaction face between the particles */
         /* first we define some useful variables for the extrapolation */
@@ -126,23 +126,44 @@
         for(k=0;k<3;k++) {v_frame[k] = rinv * (-s_i*VelPred_j[k] + s_j*local.Vel[k]);} // allows for face to be off-center (to second-order)
         // (note that in the above, the s_i/s_j terms are crossed with the opposing velocity terms: this is because the face is closer to the
         //   particle with the smaller smoothing length; so it's values are slightly up-weighted //
+    
+        /* we need the face velocities, dotted into the face vector, for correction back to the lab frame */
+        for(k=0;k<3;k++) {face_vel_i+=local.Vel[k]*n_unit[k]; face_vel_j+=VelPred_j[k]*n_unit[k];}
+        face_vel_i /= All.cf_atime; face_vel_j /= All.cf_atime;
+        face_area_dot_vel = rinv*(-s_i*face_vel_j + s_j*face_vel_i);
+        
+        /* also will need approach velocities to determine maximum upwind pressure */
+        double v2_approach = 0;
+        double vdotr2_phys = kernel.vdotr2;
+        if(All.ComovingIntegrationOn) {vdotr2_phys -= All.cf_hubble_a2 * r2;}
+        vdotr2_phys *= 1/(kernel.r * All.cf_atime);
+        if(vdotr2_phys < 0) {v2_approach = vdotr2_phys*vdotr2_phys;}
+        double vdotf2_phys = face_vel_i - face_vel_j; // need to be careful of sign here //
+        if(vdotf2_phys < 0) {v2_approach = DMAX( v2_approach , vdotf2_phys*vdotf2_phys );}
         
         
         /* now we do the reconstruction (second-order reconstruction at the face) */
+        int recon_mode = 1; // default to 'normal' reconstruction: some special physics will set this to zero for low-order reconstructions
+#ifdef BH_WIND_SPAWN
+        if((P[j].ID==All.AGNWindID)||(local.ConditionNumber<0)) {recon_mode = 0;} // one of the particles is a wind particle: use a low-order reconstruction for safety
+#endif
+#if defined(GALSF) || defined(COOLING)
+        if(fabs(vdotr2_phys)*All.UnitVelocity_in_cm_per_s > 1.0e8) {recon_mode = 0;} // particle approach/recession velocity > 1000 km/s: be extra careful here!
+#endif
         reconstruct_face_states(local.Density, local.Gradients.Density, SphP[j].Density, SphP[j].Gradients.Density,
-                                distance_from_i, distance_from_j, &Riemann_vec.L.rho, &Riemann_vec.R.rho, 1);
+                                distance_from_i, distance_from_j, &Riemann_vec.L.rho, &Riemann_vec.R.rho, recon_mode);
         reconstruct_face_states(local.Pressure, local.Gradients.Pressure, SphP[j].Pressure, SphP[j].Gradients.Pressure,
-                                distance_from_i, distance_from_j, &Riemann_vec.L.p, &Riemann_vec.R.p, 1);
+                                distance_from_i, distance_from_j, &Riemann_vec.L.p, &Riemann_vec.R.p, recon_mode);
 #ifdef EOS_GENERAL
         reconstruct_face_states(local.InternalEnergyPred, local.Gradients.InternalEnergy, SphP[j].InternalEnergyPred, SphP[j].Gradients.InternalEnergy,
-                                distance_from_i, distance_from_j, &Riemann_vec.L.u, &Riemann_vec.R.u, 1);
+                                distance_from_i, distance_from_j, &Riemann_vec.L.u, &Riemann_vec.R.u, recon_mode);
         reconstruct_face_states(kernel.sound_i, local.Gradients.SoundSpeed, kernel.sound_j, SphP[j].Gradients.SoundSpeed,
-                                distance_from_i, distance_from_j, &Riemann_vec.L.cs, &Riemann_vec.R.cs, 1);
+                                distance_from_i, distance_from_j, &Riemann_vec.L.cs, &Riemann_vec.R.cs, recon_mode);
 #endif
         for(k=0;k<3;k++)
         {
             reconstruct_face_states(local.Vel[k]-v_frame[k], local.Gradients.Velocity[k], VelPred_j[k]-v_frame[k], SphP[j].Gradients.Velocity[k],
-                                    distance_from_i, distance_from_j, &Riemann_vec.L.v[k], &Riemann_vec.R.v[k], 1);
+                                    distance_from_i, distance_from_j, &Riemann_vec.L.v[k], &Riemann_vec.R.v[k], recon_mode);
         }
 #ifdef MAGNETIC
         int slim_mode = 1;
@@ -159,6 +180,7 @@
                                 distance_from_i, distance_from_j, &Riemann_vec.L.phi, &Riemann_vec.R.phi, 2);
 #endif
 #endif
+        
 
 #ifdef DO_HALFSTEP_FOR_MESHLESS_METHODS
         /* advance the faces a half-step forward in time (given our leapfrog scheme, this actually has
@@ -190,20 +212,8 @@
         }
 #endif
         
-        /* we need the face velocities, dotted into the face vector, for correction back to the lab frame */
-        for(k=0;k<3;k++) {face_vel_i+=local.Vel[k]*n_unit[k]; face_vel_j+=VelPred_j[k]*n_unit[k];}
-        face_vel_i /= All.cf_atime; face_vel_j /= All.cf_atime;
-        face_area_dot_vel = rinv*(-s_i*face_vel_j + s_j*face_vel_i);
-
-        /* also will need approach velocities to determine maximum upwind pressure */
-        double v2_approach = 0;
-        double vdotr2_phys = kernel.vdotr2;
-        if(All.ComovingIntegrationOn) {vdotr2_phys -= All.cf_hubble_a2 * r2;}
-        vdotr2_phys *= 1/(kernel.r * All.cf_atime);
-        if(vdotr2_phys < 0) {v2_approach = vdotr2_phys*vdotr2_phys;}
-        double vdotf2_phys = face_vel_i - face_vel_j; // need to be careful of sign here //
-        if(vdotf2_phys < 0) {v2_approach = DMAX( v2_approach , vdotf2_phys*vdotf2_phys );}
-        
+       
+        /* estimate maximum upwind pressure */
         double press_i_tot = local.Pressure + local.Density * v2_approach;
         double press_j_tot = SphP[j].Pressure + SphP[j].Density * v2_approach;
 #ifdef MAGNETIC
@@ -222,6 +232,7 @@
 #ifdef AGGRESSIVE_SLOPE_LIMITERS
         press_tot_limiter *= 100.0; // large number
 #endif
+        if(recon_mode==0) {press_tot_limiter = DMAX(press_tot_limiter , DMAX(DMAX(local.Pressure,SphP[j].Pressure),2.*DMAX(local.Density,SphP[j].Density)*v2_approach));}
         
         
         /* --------------------------------------------------------------------------------- */
@@ -229,6 +240,10 @@
         /* --------------------------------------------------------------------------------- */
         Riemann_solver(Riemann_vec, &Riemann_out, n_unit, press_tot_limiter);
         /* before going on, check to make sure we have a valid Riemann solution */
+#ifdef BH_WIND_SPAWN
+        // check if two wind-spawned particles found each other
+        //if((P[j].ID==All.AGNWindID)&&(local.ConditionNumber<0)) {Riemann_out.P_M=1.e-20; Riemann_out.S_M=0.; Face_Area_Norm=0.; for(k=0;k<3;k++) {Face_Area_Vec[k]=0.;}}
+#endif
         if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>1.4*press_tot_limiter))
         {
             /* go to a linear reconstruction of P, rho, and v, and re-try */
@@ -246,7 +261,7 @@
             Riemann_vec.R.cs = kernel.sound_i; Riemann_vec.L.cs = kernel.sound_j;
 #endif
             Riemann_solver(Riemann_vec, &Riemann_out, n_unit, 1.4*press_tot_limiter);
-            if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>2.0*press_tot_limiter))
+            if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M)))
             {
                 /* ignore any velocity difference between the particles: this should gaurantee we have a positive pressure! */
                 Riemann_vec.R.p = local.Pressure; Riemann_vec.L.p = SphP[j].Pressure;
@@ -284,7 +299,6 @@
                 }
             }
         } // closes loop of alternative reconstructions if invalid pressures are found //
-        
         
         /* --------------------------------------------------------------------------------- */
         /* Calculate the fluxes (EQUATION OF MOTION) -- all in physical units -- */

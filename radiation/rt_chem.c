@@ -60,8 +60,10 @@ void rt_get_sigma(void)
         if(k==N_BINS_FOR_IONIZATION-1) {e_end = 500.;} else {e_end = nu_vec[k+1];} 
         d_nu = (e_end - e_start) / (float)(integral - 1);
         rt_sigma_HI[i] = G_HI[i] = rt_nu_eff_eV[i] = 0.0;
+        sum_HI_sigma = sum_HI_G = 0.0;
 #ifdef RT_CHEM_PHOTOION_HE
         rt_sigma_HeI[i] = rt_sigma_HeII[i] = G_HeI[i] = G_HeII[i] = 0.0;
+        sum_HeI_sigma = sum_HeII_sigma = sum_HeI_G = sum_HeII_G = 0.0;
 #endif
         double n_photon_sum = 0.0, sum_energy = 0.0;
         for(j = 0; j < integral; j++)
@@ -102,11 +104,7 @@ void rt_get_sigma(void)
         }
         rt_nu_eff_eV[i] = sum_energy / n_photon_sum;
         precalc_stellar_luminosity_fraction[i] = sum_energy;
-        sum_egy_allbands += sum_energy;
-    }
-    for(i = 0; i < N_RT_FREQ_BINS; i++)
-    {
-        precalc_stellar_luminosity_fraction[i] /= sum_egy_allbands;
+
         if(nu[i] >= 13.6)
         {
             rt_sigma_HI[i] *= fac / sum_HI_sigma;
@@ -124,7 +122,11 @@ void rt_get_sigma(void)
             G_HeII[i] *= fac_two / sum_HeII_G;
         }
 #endif
+         sum_egy_allbands += sum_energy;
     }
+
+    for(i = 0; i < N_BINS_FOR_IONIZATION; i++){precalc_stellar_luminosity_fraction[i] /= sum_egy_allbands;}
+    
     if(ThisTask == 0) {for(i = 0; i < N_RT_FREQ_BINS; i++) {printf("%g %g | %g %g | %g %g\n",rt_sigma_HI[i]/fac, G_HI[i]/fac_two,rt_sigma_HeI[i]/fac, G_HeI[i]/fac_two,rt_sigma_HeII[i]/fac, G_HeII[i]/fac_two);}}
 #endif
 }

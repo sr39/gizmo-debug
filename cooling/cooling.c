@@ -721,11 +721,11 @@ void find_abundances_and_rates(double logT, double rho, double *ne_guess, int ta
             gJHe0ne = gJHe0 * local_gammamultiplier / necgs * shieldfac;
             gJHepne = gJHep * local_gammamultiplier / necgs * shieldfac;
         }
-#if defined(RT_CHEM_PHOTOION)
-        /* add in photons from explicit radiative transfer (on top of assumed background) */
 #if defined(RT_DISABLE_UV_BACKGROUND)
         gJH0ne = gJHe0ne = gJHepne = 0;
 #endif
+#if defined(RT_CHEM_PHOTOION)
+        /* add in photons from explicit radiative transfer (on top of assumed background) */
         if(target >= 0)
         {
             int k; double c_light_ne = C / (necgs * All.UnitLength_in_cm / All.HubbleParam); // want physical cgs units for quantities below
@@ -1017,11 +1017,11 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
 
 
         if(J_UV != 0) {Heat += local_gammamultiplier * (nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) / nHcgs * shieldfac;} // shieldfac allows for self-shielding from background
-#if defined(RT_CHEM_PHOTOION)
-        /* add in photons from explicit radiative transfer (on top of assumed background) */
 #if defined(RT_DISABLE_UV_BACKGROUND)
         Heat = 0;
 #endif
+#if defined(RT_CHEM_PHOTOION)
+        /* add in photons from explicit radiative transfer (on top of assumed background) */
         if(target >= 0)
         {
             int k; double c_light_nH = C / (nHcgs * All.UnitLength_in_cm / All.HubbleParam) * All.UnitEnergy_in_cgs / All.HubbleParam; // want physical cgs units for quantities below
