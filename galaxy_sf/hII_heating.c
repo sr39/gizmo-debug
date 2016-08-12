@@ -14,8 +14,7 @@
  */
 
 
-#if defined(GALSF_FB_HII_HEATING)
-
+#if defined(GALSF_FB_HII_HEATING) || (defined(RT_CHEM_PHOTOION) && defined(GALSF))
 
 double particle_ionizing_luminosity_in_cgs(long i)
 {
@@ -51,9 +50,14 @@ double particle_ionizing_luminosity_in_cgs(long i)
     lm_ssp *= (1.95*P[i].Mass*All.UnitMass_in_g/All.HubbleParam); // convert to luminosity from L/M
     if(lm_ssp <= 0) {lm_ssp=0;} // trap for negative values (shouldnt happen)
     if(isnan(lm_ssp)) {lm_ssp=0;} // trap for nans (if stellar age routine cant evaluate non-zero value)
-    return All.HIIRegion_fLum_Coupled * lm_ssp;
+    return lm_ssp;
 }
 
+
+#endif
+
+
+#if defined(GALSF_FB_HII_HEATING)
 
 /* this version of the HII routine only communicates with
      particles on the same processor */
@@ -102,7 +106,7 @@ void HII_heating_singledomain(void)
 #endif
          if(dt<=0) continue; // don't keep going with this loop
          
-         stellum = particle_ionizing_luminosity_in_cgs(i);
+         stellum = All.HIIRegion_fLum_Coupled * particle_ionizing_luminosity_in_cgs(i);
          if(stellum <= 0) continue;
          pos = P[i].Pos;
          rho = P[i].DensAroundStar;

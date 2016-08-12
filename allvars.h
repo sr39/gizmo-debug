@@ -1547,7 +1547,7 @@ extern struct global_data_all_processes
   integertime Radiation_Ti_endstep;
 #endif
 
-#if defined(RT_CHEM_PHOTOION) && !defined(GALSF_FB_HII_HEATING)
+#if defined(RT_CHEM_PHOTOION) && !(defined(GALSF_FB_HII_HEATING) || defined(GALSF))
     double IonizingLuminosityPerSolarMass_cgs;
     double star_Teff;
 #endif
