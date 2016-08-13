@@ -327,9 +327,9 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
     P[i].ID += ((MyIDType) 1 << (sizeof(MyIDType) * 8 - bits));
     */
     // new method: preserve the original "ID" field, but assign a unique -child- ID: this is unique up to ~32 *GENERATIONS* of repeated splitting!
-    //P[j].ID_child_number = P[i].ID_child_number + (1 << P[i].ID_generation); // particle 'i' retains its child number; this ensures uniqueness
     P[j].ID_child_number = P[i].ID_child_number + (MyIDType)(1 << ((int)P[i].ID_generation)); // particle 'i' retains its child number; this ensures uniqueness
-    P[i].ID_generation++; if(P[i].ID_generation > 30) {P[i].ID_generation=0;} // roll over at 32 generations (unlikely to ever reach this)
+    P[i].ID_generation = P[i].ID_generation + 1;
+    if(P[i].ID_generation > 30) {P[i].ID_generation=0;} // roll over at 32 generations (unlikely to ever reach this)
     P[j].ID_generation = P[i].ID_generation; // ok, all set!
     
     /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
