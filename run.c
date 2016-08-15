@@ -232,7 +232,12 @@ void calculate_non_standard_physics(void)
 #ifdef RADTRANSFER
     
 #if defined(RT_SOURCE_INJECTION)
-    if(Flag_FullStep) {rt_source_injection();} /* source injection into neighbor gas particles (only on full timesteps) */
+#if !defined(GALSF)
+    if(Flag_FullStep) 
+#endif
+    {
+        rt_source_injection(); /* source injection into neighbor gas particles (only on full timesteps) */
+    }
 #endif
     
 #if defined(RT_DIFFUSION_CG)

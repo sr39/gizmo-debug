@@ -44,8 +44,8 @@ void rt_get_sigma(void)
     
     int i, j, integral=10000;
     double e, d_nu, e_start, e_end, sum_HI_sigma=0, sum_HI_G=0, hc=C*PLANCK, I_nu, sig, f, fac_two, T_eff, sum_egy_allbands=0;
-#ifdef GALSF_FB_HII_HEATING
-    T_eff = 1.0e5;
+#if defined(GALSF_FB_HII_HEATING) || defined(GALSF)
+    T_eff = 4.0e4;
 #else 
     T_eff = All.star_Teff;
 #endif

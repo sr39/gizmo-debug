@@ -1547,7 +1547,7 @@ extern struct global_data_all_processes
   integertime Radiation_Ti_endstep;
 #endif
 
-#if defined(RT_CHEM_PHOTOION) && !defined(GALSF_FB_HII_HEATING)
+#if defined(RT_CHEM_PHOTOION) && !(defined(GALSF_FB_HII_HEATING) || defined(GALSF))
     double IonizingLuminosityPerSolarMass_cgs;
     double star_Teff;
 #endif
@@ -1841,7 +1841,7 @@ extern ALIGN(32) struct particle_data
     short int TimeBin;
     MyIDType ID;                    /*! < unique ID of particle (assigned at beginning of the simulation) */
     MyIDType ID_child_number;       /*! < child number for particles 'split' from main (retain ID, get new child number) */
-    short int ID_generation;        /*! < generation (need to track for particle-splitting to ensure each 'child' gets a unique child number */
+    int ID_generation;              /*! < generation (need to track for particle-splitting to ensure each 'child' gets a unique child number */
     
     integertime Ti_begstep;         /*!< marks start of current timestep of particle on integer timeline */
     integertime Ti_current;         /*!< current time of the particle */
