@@ -150,13 +150,16 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
             
             /* flux-limiter to ensure flow is always down the local gradient [no 'uphill' flow] */
             double f_direct = -Face_Area_Norm * c_hll * d_scalar * renormerFAC;
-            if((f_direct*cmag < 0) && (fabs(f_direct) > fabs(cmag))) {cmag = 0;}
+            double sign_c0 = f_direct*cmag;
+            if((sign_c0 < 0) && (fabs(f_direct) > fabs(cmag))) {cmag = 0;}
             
             cmag *= dt_hydrostep; // all in physical units //
             if(fabs(cmag) > 0)
             {
                 // enforce a flux limiter for stability (to prevent overshoot) //
                 thold_hll = 0.25 * DMIN(fabs(scalar_i*V_i-scalar_j*V_j),DMAX(fabs(scalar_i*V_i),fabs(scalar_j*V_j)));
+                if(sign_c0 < 0) {thold_hll *= 1.e-2;}
+
                 if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
                 cmag /= dt_hydrostep;
                 Fluxes_E_gamma[k_freq] += cmag;
@@ -180,10 +183,20 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
                     double cmag_tmp = cmag_flux[k] + hll_tmp;
                     cmag_flux[k] = MINMOD(thold_hll_0RE*cmag_flux[k], cmag_tmp);
                 }
+
+                double f_direct = -Face_Area_Norm * c_hll * d_flux; // * renormerFAC;
+                double sign_agreement = f_direct*cmag_flux[k];
+                if((sign_agreement < 0) && (fabs(f_direct) > fabs(cmag_flux[k]))) {cmag = 0;}
+
                 cmag_flux[k] *= dt_hydrostep;
                 if(fabs(cmag_flux[k]) > 0)
                 {
-                    thold_hll = 1.e-37 + 1.0 * DMAX(V_j*scalar_j*c_light, DMAX(V_i*scalar_i*c_light, DMAX(fabs(flux_i),fabs(flux_j))));
+                    thold_hll = DMIN( DMAX( DMIN(fabs(flux_i),fabs(flux_j)) , fabs(flux_i-flux_j) ) , DMAX(fabs(flux_i),fabs(flux_j)) );
+                    double fii=V_i*scalar_i*c_light, fjj=V_j*scalar_j*c_light;
+                    double tij = DMIN( DMAX( DMIN(fabs(fii),fabs(fjj)) , fabs(fii-fjj) ) , DMAX(fabs(fii),fabs(fjj)) );
+                    thold_hll = 0.25 * DMAX( thold_hll , 0.5*tij );
+                    if(sign_agreement < 0) {thold_hll *= 0.01;}
+
                     if(fabs(cmag_flux[k])>thold_hll) {cmag_flux[k] *= thold_hll/fabs(cmag_flux[k]);}
                     Fluxes_Flux[k_freq][k] += cmag_flux[k] / dt_hydrostep;
                 }

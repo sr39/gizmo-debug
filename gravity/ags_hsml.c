@@ -480,8 +480,8 @@ void ags_density(void)
                 
                 double minsoft = ags_return_minsoft(i);
                 double maxsoft = ags_return_maxsoft(i);
-                minsoft = DMAX(minsoft , AGS_Prev[i]*AGS_TOL);
-                maxsoft = DMIN(maxsoft , AGS_Prev[i]/AGS_TOL);
+                minsoft = DMAX(minsoft , AGS_Prev[i]*AGS_DSOFT_TOL);
+                maxsoft = DMIN(maxsoft , AGS_Prev[i]/AGS_DSOFT_TOL);
                 desnumngb = All.AGS_DesNumNgb;
                 desnumngbdev = All.AGS_MaxNumNgbDeviation;
                 if(All.Time==All.TimeBegin) {if(All.AGS_MaxNumNgbDeviation > 0.05) desnumngbdev=0.05;}
@@ -717,8 +717,8 @@ void ags_density(void)
             {
                 double minsoft = ags_return_minsoft(i);
                 double maxsoft = ags_return_maxsoft(i);
-                minsoft = DMAX(minsoft , AGS_Prev[i]*AGS_TOL);
-                maxsoft = DMIN(maxsoft , AGS_Prev[i]/AGS_TOL);
+                minsoft = DMAX(minsoft , AGS_Prev[i]*AGS_DSOFT_TOL);
+                maxsoft = DMIN(maxsoft , AGS_Prev[i]/AGS_DSOFT_TOL);
                 /* check that we're within the 'valid' range for adaptive softening terms, otherwise zeta=0 */
                 if((fabs(PPP[i].NumNgb-All.AGS_DesNumNgb)/All.AGS_DesNumNgb < 0.05)
                    &&(PPP[i].AGS_Hsml <= 0.99*maxsoft)&&(PPP[i].AGS_Hsml >= 1.01*minsoft)
