@@ -674,6 +674,10 @@ void init(void)
 #endif
     /* assign other ID parameters needed */
     if(RestartFlag==0) {for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}}
+#ifdef NO_CHILD_IDS_IN_ICS
+    if(RestartFlag != 1) {for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}}
+#endif
+    
     
 #ifdef TEST_FOR_IDUNIQUENESS
     test_id_uniqueness();
