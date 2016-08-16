@@ -1432,9 +1432,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             break;
 
         case IO_GENERATION_ID:
-            bytes_per_blockelement = sizeof(short int);
-            break;
-
         case IO_BHPROGS:
         case IO_TRUENGB:
         case IO_AGS_NGBS:
@@ -1648,9 +1645,6 @@ int get_datatype_in_block(enum iofields blocknr)
             break;
 
         case IO_GENERATION_ID:
-            typekey = 0;		/* native int */
-            break;
-
         case IO_TRUENGB:
         case IO_BHPROGS:
             typekey = 0;		/* native int */

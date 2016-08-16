@@ -33,6 +33,9 @@ extern pthread_mutex_t mutex_partnodedrift;
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
+#if defined(GALSF)
+#define RT_DUMP_PHOTONS_DISCRETELY_NOT_CONTINUOUSLY
+#endif
 
 #ifdef RT_SOURCE_INJECTION
 
@@ -65,9 +68,17 @@ void rt_particle2in_source(struct rt_sourcedata_in *in, int i)
     /* luminosity is set to zero here for gas particles because their self-illumination is handled trivially in a single loop, earlier */
     double lum[N_RT_FREQ_BINS];
     int active_check = rt_get_source_luminosity(i,0,lum);
+    double dt = 1; // make this do nothing unless flags below are set:
+#if defined(RT_DUMP_PHOTONS_DISCRETELY_NOT_CONTINUOUSLY)
+#ifndef WAKEUP
+    dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+#else
+    dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
+#endif
+#endif
     for(k=0; k<N_RT_FREQ_BINS; k++)
     {
-        if(P[i].Type==0 || active_check==0) {in->Luminosity[k]=0;} else {in->Luminosity[k] = lum[k];}
+        if(P[i].Type==0 || active_check==0) {in->Luminosity[k]=0;} else {in->Luminosity[k] = lum[k] * dt;}
     }
 }
 
@@ -295,7 +306,15 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 //wk *= P[j].Mass / local.KernelSum_Around_RT_Source;
                 double wk = (1 - r2*hinv*hinv) / local.KernelSum_Around_RT_Source;
                 // now actually apply the kernel distribution
-                for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[j].Je[k] += wk * local.Luminosity[k];}
+                for(k=0;k<N_RT_FREQ_BINS;k++) 
+                {
+                    double dE = wk * local.Luminosity[k];
+#if defined(RT_DUMP_PHOTONS_DISCRETELY_NOT_CONTINUOUSLY)
+                    SphP[j].E_gamma[k] += dE; SphP[j].E_gamma_Pred[k] += dE; // dump discreetly (noisier, but works smoothly with large timebin hierarchy)
+#else
+                    SphP[j].Je[k] += dE; // treat continuously
+#endif
+                }
             } // for(n = 0; n < numngb; n++)
         } // while(startnode >= 0)
 #ifndef DONOTUSENODELIST

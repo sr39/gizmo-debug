@@ -388,13 +388,13 @@ void begrun(void)
 
 
 #ifdef RADTRANSFER
-    if(RestartFlag == 0) {rt_set_simple_inits();}
+#if defined(RT_DIFFUSION_CG)
+    All.Radiation_Ti_begstep = 0;
 #endif
 #ifdef RT_CHEM_PHOTOION
     rt_get_sigma();
 #endif
-#if defined(RT_DIFFUSION_CG)
-    All.Radiation_Ti_begstep = 0;
+    if(RestartFlag == 0) {rt_set_simple_inits();}
 #endif
 
     
@@ -1699,7 +1699,7 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 
-#if defined(RT_CHEM_PHOTOION) && !defined(GALSF_FB_HII_HEATING)
+#if defined(RT_CHEM_PHOTOION) && !(defined(GALSF_FB_HII_HEATING) || defined(GALSF))
         strcpy(tag[nt], "IonizingLuminosityPerSolarMass_cgs");
         addr[nt] = &All.IonizingLuminosityPerSolarMass_cgs;
         id[nt++] = REAL;

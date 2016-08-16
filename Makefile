@@ -600,6 +600,12 @@ ifeq (GALSF_FB_HII_HEATING,$(findstring GALSF_FB_HII_HEATING,$(CONFIGVARS)))
 OBJS    += galaxy_sf/hII_heating.o
 endif
 
+ifeq (RT_CHEM_PHOTOION,$(findstring RT_CHEM_PHOTOION,$(CONFIGVARS)))
+OBJS    += galaxy_sf/hII_heating.o
+endif
+
+
+
 ifeq (TWOPOINT_FUNCTION_COMPUTATION_ENABLED,$(findstring TWOPOINT_FUNCTION_COMPUTATION_ENABLED,$(CONFIGVARS)))
 OBJS    += structure/twopoint.o
 endif
