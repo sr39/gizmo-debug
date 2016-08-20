@@ -33,8 +33,8 @@ extern pthread_mutex_t mutex_partnodedrift;
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
-#if defined(GALSF)
-#define RT_DUMP_PHOTONS_DISCRETELY_NOT_CONTINUOUSLY
+#if defined(GALSF) && !defined(RT_INJECT_PHOTONS_DISCRETELY)
+#define RT_INJECT_PHOTONS_DISCRETELY
 #endif
 
 #ifdef RT_SOURCE_INJECTION
@@ -69,7 +69,7 @@ void rt_particle2in_source(struct rt_sourcedata_in *in, int i)
     double lum[N_RT_FREQ_BINS];
     int active_check = rt_get_source_luminosity(i,0,lum);
     double dt = 1; // make this do nothing unless flags below are set:
-#if defined(RT_DUMP_PHOTONS_DISCRETELY_NOT_CONTINUOUSLY)
+#if defined(RT_INJECT_PHOTONS_DISCRETELY)
 #ifndef WAKEUP
     dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
@@ -309,7 +309,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 for(k=0;k<N_RT_FREQ_BINS;k++) 
                 {
                     double dE = wk * local.Luminosity[k];
-#if defined(RT_DUMP_PHOTONS_DISCRETELY_NOT_CONTINUOUSLY)
+#if defined(RT_INJECT_PHOTONS_DISCRETELY)
                     SphP[j].E_gamma[k] += dE; SphP[j].E_gamma_Pred[k] += dE; // dump discreetly (noisier, but works smoothly with large timebin hierarchy)
 #else
                     SphP[j].Je[k] += dE; // treat continuously
