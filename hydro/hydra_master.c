@@ -368,6 +368,10 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
         to conveniently indicate the status of the parent particle flag, for the constrained gradients */
     if(SphP[i].FlagForConstrainedGradients == 0) {in->ConditionNumber *= -1;}
 #endif
+#ifdef BH_WIND_SPAWN
+    /* as above, use sign of condition number as a bitflag to indicate if this is, or is not, a wind particle */
+    if(P[i].ID == All.AGNWindID) {in->ConditionNumber *= -1;}
+#endif
     in->DhsmlNgbFactor = PPP[i].DhsmlNgbFactor;
 #ifdef HYDRO_SPH
     in->DhsmlHydroSumFactor = SphP[i].DhsmlHydroSumFactor;
@@ -652,6 +656,7 @@ void hydro_final_operations_and_cleanup(void)
 #ifdef COSMIC_RAYS
             /* need to account for the adiabatic heating/cooling of the cosmic ray fluid, here: its an ultra-relativistic fluid with gamma=4/3 */
             double dt_cosmicray_energy_adiabatic = -GAMMA_COSMICRAY_MINUS1 * SphP[i].CosmicRayEnergyPred * (P[i].Particle_DivVel*All.cf_a2inv);
+            if(dt_cosmicray_energy_adiabatic*dt > 0.5*SphP[i].CosmicRayEnergyPred) {dt_cosmicray_energy_adiabatic = -(SphP[i].CosmicRayEnergyPred/dt) * (1 - exp(-GAMMA_COSMICRAY_MINUS1 * dt * (P[i].Particle_DivVel*All.cf_a2inv)));}
             SphP[i].DtCosmicRayEnergy += dt_cosmicray_energy_adiabatic;
             SphP[i].DtInternalEnergy -= dt_cosmicray_energy_adiabatic;
             /* adiabatic term from Hubble expansion (needed for cosmological integrations */
@@ -704,15 +709,22 @@ void hydro_final_operations_and_cleanup(void)
             /* calculate the radiation pressure force */
             double radacc[3]; radacc[0]=radacc[1]=radacc[2]=0; int k2;
             // a = kappa*F/c = Gradients.E_gamma_ET[gradient of photon energy density] / rho[gas_density] //
-            for(k=0;k<3;k++)
-                for(k2=0;k2<N_RT_FREQ_BINS;k2++)
+            double L_particle = Get_Particle_Size(i)*All.cf_atime; // particle effective size/slab thickness
+            double Sigma_particle = P[i].Mass / (M_PI*L_particle*L_particle); // effective surface density through particle
+            double abs_per_kappa_dt = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s) * (SphP[i].Density*All.cf_a3inv) * dt; // fractional absorption over timestep
+            for(k2=0;k2<N_RT_FREQ_BINS;k2++)
+            {
+                // want to average over volume (through-slab) and over time (over absorption): both give one 'slab_fac' below //
+                double slabfac = slab_averaging_function(SphP[i].Kappa_RT[k2]*Sigma_particle) * slab_averaging_function(SphP[i].Kappa_RT[k2]*abs_per_kappa_dt);
+                for(k=0;k<3;k++)
                 {
 #if defined(RT_EVOLVE_FLUX)
-                    radacc[k] += SphP[i].Kappa_RT[k2] * SphP[i].Flux_Pred[k2][k] / (C / All.UnitVelocity_in_cm_per_s); // no speed of light reduction multiplier here //
+                    radacc[k] += slabfac * SphP[i].Kappa_RT[k2] * SphP[i].Flux_Pred[k2][k] / (C / All.UnitVelocity_in_cm_per_s); // no speed of light reduction multiplier here //
 #elif defined(RT_EVOLVE_EDDINGTON_TENSOR)
-                    radacc[k] += -SphP[i].Lambda_FluxLim[k2] * SphP[i].Gradients.E_gamma_ET[k2][k] / SphP[i].Density;
+                    radacc[k] += -slabfac * SphP[i].Lambda_FluxLim[k2] * SphP[i].Gradients.E_gamma_ET[k2][k] / SphP[i].Density;
 #endif
                 }
+            }
             for(k=0;k<3;k++)
             {
 #ifdef RT_RAD_PRESSURE_OUTPUT
@@ -871,7 +883,7 @@ void hydro_force(void)
             SphP[i].DtCosmicRayEnergy = 0;
 #endif
 #ifdef WAKEUP
-            SphP[i].wakeup = 0;
+            PPPZ[i].wakeup = 0;
 #endif
         }
     

@@ -10,7 +10,7 @@ No, the code title is not an acronym, I just liked it. It refers both to the cod
 
 The BitBucket site is where I will post code updates, news, and documentation, so check back regularly. If you have code issues, feature requests, bugs, or just questions, use the (public) BitBucket issue tracker and wiki pages. 
 
-The main reference for the numerical methods, setting up the code, code policies, branching etc, is the user's guide, available through download on the bitbucket site or at my website: 
+The main reference for the numerical methods, setting up the code, code policies, branching etc, is the user's guide, available as the file "gizmo_documentation.html" in the "scripts" folder as part of this repository, or through download on the bitbucket site or at my website: 
 
 http://www.tapir.caltech.edu/~phopkins/Site/GIZMO_files/gizmo_documentation.html
 

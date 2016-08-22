@@ -31,7 +31,6 @@ extern pthread_mutex_t mutex_partnodedrift;
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
-#define tiny 1e-20
 
 
 /***********************************************************************************************************
@@ -54,6 +53,17 @@ extern pthread_mutex_t mutex_partnodedrift;
 int rt_get_source_luminosity(int i, double sigma_0, double *lum)
 {
     int active_check = 0;
+    
+
+#if defined(RADTRANSFER) && (defined(GALSF))
+    /* restrict the star particles acting as sources, because they need their own sub-loops */
+    if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
+    {
+        double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+	    if((star_age > 0.1)||(star_age <= 0)||(isnan(star_age))) return 0;
+    }
+#endif
+
     
 #ifdef GALSF_FB_RT_PHOTONMOMENTUM
     /* three-band (UV, OPTICAL, IR) approximate spectra for stars as used in the FIRE (Hopkins et al.) models */
@@ -167,7 +177,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
     {
         lum[RT_FREQ_BIN_H0] = 0; // begin from zero //
         double fac = 0;
-#if defined(GALSF_FB_HII_HEATING)
+#if defined(GALSF) || defined(GALSF_FB_HII_HEATING)
         /* calculate ionizing flux based on actual stellar or BH physics */
         if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
         {
@@ -180,7 +190,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
 #else
         if(P[i].Type==4) {if(sigma_0<0) {return 1;} active_check=1; fac += (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.IonizingLuminosityPerSolarMass_cgs * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs);} // flux from star particles according to mass
 #endif
-#endif // GALSF_FB_HII_HEATING else
+#endif // GALSF else
 #if defined(RT_PHOTOION_MULTIFREQUENCY)
         // we should have pre-tabulated how much luminosity gets assigned to each different waveband according to the following function //
         lum[RT_FREQ_BIN_He0]=lum[RT_FREQ_BIN_He1]=lum[RT_FREQ_BIN_He2]=0;
@@ -269,9 +279,9 @@ double rt_kappa(int i, int k_freq)
 #ifdef RT_CHEM_PHOTOION
     /* opacity to ionizing radiation for Petkova & Springel bands. note rt_update_chemistry is where ionization is actually calculated */
     double nH_over_Density = HYDROGEN_MASSFRAC / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
-    double kappa = nH_over_Density * (SphP[i].HI + tiny) * rt_sigma_HI[k_freq];
+    double kappa = nH_over_Density * (SphP[i].HI + MIN_REAL_NUMBER) * rt_sigma_HI[k_freq];
 #if defined(RT_CHEM_PHOTOION_HE) && defined(RT_PHOTOION_MULTIFREQUENCY)
-    kappa += nH_over_Density * ((SphP[i].HeI + tiny) * rt_sigma_HeI[k_freq] + (SphP[i].HeII + tiny) * rt_sigma_HeII[k_freq]);
+    kappa += nH_over_Density * ((SphP[i].HeI + MIN_REAL_NUMBER) * rt_sigma_HeI[k_freq] + (SphP[i].HeII + MIN_REAL_NUMBER) * rt_sigma_HeII[k_freq]);
     if(k_freq==RT_FREQ_BIN_He0)  {return kappa;}
     if(k_freq==RT_FREQ_BIN_He1)  {return kappa;}
     if(k_freq==RT_FREQ_BIN_He2)  {return kappa;}
@@ -483,8 +493,8 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #endif
         double e0;
         if(mode==0) {e0 = SphP[i].E_gamma[kf];} else {e0 = SphP[i].E_gamma_Pred[kf];}
-        double dd0 = SphP[i].Je[kf];
         double a0 = -rt_absorption_rate(i,kf);
+        double total_de_dt = SphP[i].Je[kf] + SphP[i].Dt_E_gamma[kf];
 #ifdef RT_INFRARED
         if(kf == RT_FREQ_BIN_INFRARED)
         {
@@ -503,8 +513,8 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 SphP[i].Radiation_Temperature = DMIN(SphP[i].Radiation_Temperature, T_max);
                 a0 = -rt_absorption_rate(i,kf); // update absorption rate using the new radiation temperature //
             }
-            double total_emission_rate = E_abs_tot + fabs(a0)*e0;
-            dd0 += total_emission_rate; // add the summed absorption as emissivity here //
+            double total_emission_rate = E_abs_tot + fabs(a0)*e0 + SphP[i].Je[kf]; // add the summed absorption as emissivity here //
+            total_de_dt = total_emission_rate + SphP[i].Dt_E_gamma[kf];
             if(fabs(a0)>0)
             {
                 Dust_Temperature_4 = total_emission_rate * (SphP[i].Density*All.cf_a3inv/P[i].Mass) / (4. * (MIN_REAL_NUMBER + fabs(a0)) / c_light); // flux units
@@ -517,42 +527,36 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 // dust absorption and re-emission brings T_rad towards T_dust: //
                 double dE_abs = -e0 * (1. - exp(a0*dt_entr)); // change in energy from absorption
                 double T_max = DMAX(SphP[i].Radiation_Temperature , SphP[i].Dust_Temperature); // should not exceed either initial temperature //
-                SphP[i].Radiation_Temperature = (e0 + dE_abs + dd0*dt_entr) / ((e0 + dE_abs) / SphP[i].Radiation_Temperature + dd0*dt_entr / SphP[i].Dust_Temperature);
+                SphP[i].Radiation_Temperature = (e0 + dE_abs + total_emission_rate*dt_entr) / ((e0 + dE_abs) / SphP[i].Radiation_Temperature + total_emission_rate*dt_entr / SphP[i].Dust_Temperature);
                 SphP[i].Radiation_Temperature = DMIN(SphP[i].Radiation_Temperature, T_max);
             }
             if(SphP[i].Radiation_Temperature < T_cmb) {SphP[i].Radiation_Temperature = T_cmb;} // radiation temperature shouldn't be below CMB
         }
 #endif
-        double abs_0;
-        abs_0 = a0;
-        if(e0>0) {a0 += SphP[i].Dt_E_gamma[kf]/e0;} else {dd0+=SphP[i].Dt_E_gamma[kf];}
-        if(dd0*dt_entr != 0 && dd0*dt_entr < -0.5*e0) {dd0=-0.5*e0/dt_entr;}
-        double ef;
-        double q_left = (dd0+a0*e0)*dt_entr;
-        double q_right = (e0 + dd0/a0)*(exp(a0*dt_entr)-1);
-        if(isnan(q_right)) {q_right=2.0*q_left;}
-        if(fabs(q_left) < fabs(q_right)) {ef = e0 + q_left;} else {ef = e0 + q_right;}
-        if(ef < 0.5*e0) {ef=0.5*e0;}
+        
+        double abs_0 = DMAX(0,fabs(a0)*dt_entr); double slabfac = slab_averaging_function(abs_0); double e_abs_0=exp(-abs_0); if(abs_0>20.) {e_abs_0=0;}
+        double ef = e0 * e_abs_0 + total_de_dt * dt_entr * slabfac; // gives exact solution for dE/dt = -E*abs + de , the 'reduction factor' appropriately suppresses the source term //
+        if((ef < 0)||(isnan(ef))) {ef=0;}
 #ifdef RT_INFRARED
-        if(kf != RT_FREQ_BIN_INFRARED) {E_abs_tot += 0.5*(e0 + ef) * fabs(abs_0);} // timestep-averaged absorption from this band
+        if(kf != RT_FREQ_BIN_INFRARED) {E_abs_tot += 0.5*(e0 + ef) * fabs(a0);} // timestep-averaged absorption from this band
 #endif
         if(mode==0) {SphP[i].E_gamma[kf] = ef;} else {SphP[i].E_gamma_Pred[kf] = ef;}
 
-
 #if defined(RT_EVOLVE_FLUX)
-        if(SphP[i].E_gamma[kf]<MIN_REAL_NUMBER) {SphP[i].E_gamma[kf]=MIN_REAL_NUMBER;}
-        if(SphP[i].E_gamma_Pred[kf]<MIN_REAL_NUMBER) {SphP[i].E_gamma_Pred[kf]=MIN_REAL_NUMBER;}
-        int k_dir;
+        int k_dir; double f_mag=0;
         for(k_dir=0;k_dir<3;k_dir++)
         {
-            double f0;
-            dd0 = SphP[i].Dt_Flux[kf][k_dir];
-            if(mode==0) {f0 = SphP[i].Flux[kf][k_dir];} else {f0 = SphP[i].Flux_Pred[kf][k_dir];}
-            q_left = (dd0+abs_0*f0)*dt_entr;
-            q_right = (f0+dd0/abs_0)*(exp(abs_0*dt_entr)-1.);
-            if(isnan(q_right)) {q_right=2.0*q_left;}
-            if(fabs(q_left) < fabs(q_right)) {f0+=q_left;} else {f0+=q_right;}
-            if(mode==0) {SphP[i].Flux[kf][k_dir] = f0;} else {SphP[i].Flux_Pred[kf][k_dir] = f0;}
+            double flux_0;
+            if(mode==0) {flux_0 = SphP[i].Flux[kf][k_dir];} else {flux_0 = SphP[i].Flux_Pred[kf][k_dir];}
+            double flux_f = flux_0 * e_abs_0 + SphP[i].Dt_Flux[kf][k_dir] * dt_entr * slabfac; // gives exact solution for dE/dt = -E*abs + de , the 'reduction factor' appropriately suppresses the source term //
+            if(mode==0) {SphP[i].Flux[kf][k_dir] = flux_f;} else {SphP[i].Flux_Pred[kf][k_dir] = flux_f;}
+            f_mag += flux_f*flux_f; // magnitude of flux vector
+        }
+        if(f_mag > 0)
+        {
+            // limit the flux according the physical (optically thin) maximum //
+            f_mag=sqrt(f_mag); double fmag_max = 1.1 * (C/All.UnitVelocity_in_cm_per_s) * ef; // maximum flux should be optically-thin limit: e_gamma/C: here allow some tolerance for numerical leapfrogging in timestepping
+            if(f_mag > fmag_max) {for(k_dir=0;k_dir<3;k_dir++) {if(mode==0) {SphP[i].Flux[kf][k_dir] *= fmag_max/f_mag;} else {SphP[i].Flux_Pred[kf][k_dir] *= fmag_max/f_mag;}}}
         }
 #endif
     }
@@ -579,30 +583,6 @@ void rt_set_simple_inits(void)
         if(P[i].Type == 0)
         {
             int k;
-            for(k = 0; k < N_RT_FREQ_BINS; k++)
-            {
-                SphP[i].E_gamma[k] = tiny;
-                SphP[i].ET[k][0]=SphP[i].ET[k][1]=SphP[i].ET[k][2]=1./3.; SphP[i].ET[k][3]=SphP[i].ET[k][4]=SphP[i].ET[k][5]=0;
-                SphP[i].Je[k] = 0;
-                SphP[i].Kappa_RT[k] = tiny;
-                SphP[i].Lambda_FluxLim[k] = 1;
-#ifdef RT_EVOLVE_NGAMMA
-                SphP[i].E_gamma_Pred[k] = SphP[i].E_gamma[k];
-                SphP[i].Dt_E_gamma[k] = 0;
-#endif
-#if defined(RT_EVOLVE_FLUX)
-                for(k=0;k<N_RT_FREQ_BINS;k++)
-                {
-                    int k_dir;
-                    for(k_dir=0;k_dir<3;k_dir++)
-                    {
-                        SphP[i].Flux[k][k_dir] = 0;
-                        SphP[i].Flux_Pred[k][k_dir] = SphP[i].Flux[k][k_dir];
-                        SphP[i].Dt_Flux[k][k_dir] = 0;
-                    }
-                }
-#endif
-            }
 #ifdef RT_INFRARED
             SphP[i].Dust_Temperature = 0;
             SphP[i].Radiation_Temperature = 0;
@@ -612,17 +592,36 @@ void rt_set_simple_inits(void)
             for(k=0;k<3;k++) {SphP[i].RadAccel[k]=0;}
 #endif
 #ifdef RT_CHEM_PHOTOION
-            SphP[i].HII = tiny;
+            SphP[i].HII = MIN_REAL_NUMBER;
             SphP[i].HI = 1.0 - SphP[i].HII;
             SphP[i].Ne = SphP[i].HII;
 #ifdef RT_CHEM_PHOTOION_HE
             double fac = (1-HYDROGEN_MASSFRAC) / (4.0 * HYDROGEN_MASSFRAC);
-            SphP[i].HeIII = tiny * fac;
-            SphP[i].HeII = tiny * fac;
+            SphP[i].HeIII = MIN_REAL_NUMBER * fac;
+            SphP[i].HeII = MIN_REAL_NUMBER * fac;
             SphP[i].HeI = (1.0 - SphP[i].HeII - SphP[i].HeIII) * fac;
             SphP[i].Ne += SphP[i].HeII + 2.0 * SphP[i].HeIII;
 #endif
 #endif
+            for(k = 0; k < N_RT_FREQ_BINS; k++)
+            {
+                SphP[i].E_gamma[k] = MIN_REAL_NUMBER;
+                SphP[i].ET[k][0]=SphP[i].ET[k][1]=SphP[i].ET[k][2]=1./3.; SphP[i].ET[k][3]=SphP[i].ET[k][4]=SphP[i].ET[k][5]=0;
+                SphP[i].Je[k] = 0;
+                SphP[i].Kappa_RT[k] = rt_kappa(i,k);
+                SphP[i].Lambda_FluxLim[k] = 1;
+#ifdef RT_EVOLVE_NGAMMA
+                SphP[i].E_gamma_Pred[k] = SphP[i].E_gamma[k];
+                SphP[i].Dt_E_gamma[k] = 0;
+#endif
+#ifdef RT_EVOLVE_FLUX
+                int k_dir;
+                for(k_dir=0;k_dir<3;k_dir++)
+                {
+                    SphP[i].Flux_Pred[k][k_dir] = SphP[i].Flux[k][k_dir] = SphP[i].Dt_Flux[k][k_dir] = 0;
+                }
+#endif
+            }
         }
     }
 }
@@ -640,5 +639,18 @@ void rt_set_simple_inits(void)
 void rt_get_lum_gas(int target, double *je)
 {
 }
+
+
+
+/***********************************************************************************************************/
+/* below returns (1-exp(-x))/x , which is needed for averages through slabs and over time for radiative quantities. here for convenience */
+/***********************************************************************************************************/
+double slab_averaging_function(double x)
+{
+    /* this fitting function is accurate to ~0.1% at all x, and extrapolates to the correct limits without the pathological behaviors of (1-exp(-x))/x for very small/large x */
+    return (1.00000000000 + x*(0.21772719088733913 + x*(0.047076512011644776 + x*0.005068307557496351))) /
+           (1.00000000000 + x*(0.71772719088733920 + x*(0.239273440788647680 + x*(0.046750496137263675 + x*0.005068307557496351))));
+}
+
 
 

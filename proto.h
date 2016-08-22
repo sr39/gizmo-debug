@@ -297,6 +297,10 @@ double INLINE_FUNC hubble_function_external(double a);
 #endif
 
 void blackhole_accretion(void);
+#ifdef BH_WIND_SPAWN
+int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone );
+void spawn_bh_wind_feedback(void);
+#endif
 int blackhole_evaluate(int target, int mode, int *nexport, int *nsend_local);
 int blackhole_evaluate_swallow(int target, int mode, int *nexport, int *nsend_local);
 
@@ -473,9 +477,12 @@ int grain_ngb_treefind_variable(MyDouble searchcenter[3], MyFloat hsml, int targ
 void stochastic_gas_return_singledomain(void);
 #endif
 
+#if defined(GALSF_FB_HII_HEATING) || (defined(RT_CHEM_PHOTOION) && defined(GALSF))
+double particle_ionizing_luminosity_in_cgs(long i);
+#endif
+
 #ifdef GALSF_FB_HII_HEATING
 void HII_heating_singledomain(void);
-double particle_ionizing_luminosity_in_cgs(long i);
 #ifdef GALSF_FB_HII_HEATING_USEMULTIDOMAINSHARE
 void HII_heating_withMPIcomm(void);
 int HIIheating_RHIIest(int target);
@@ -676,6 +683,7 @@ void rt_source_injection(void);
 #ifdef RADTRANSFER
 void rt_set_simple_inits(void);
 void rt_get_lum_gas(int target, double *je);
+double slab_averaging_function(double x);
 
 #ifdef RT_DIFFUSION_CG
 void rt_diffusion_cg_solve(void);

@@ -32,6 +32,11 @@ int does_particle_need_to_be_merged(int i)
 #ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
 #else
+#ifdef BH_WIND_SPAWN
+    MyFloat vr2 = P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2] ;
+    MyFloat r2  = P[i].Pos[0]*P[i].Pos[0] + P[i].Pos[1]*P[i].Pos[1] + P[i].Pos[2]*P[i].Pos[2] ;
+    if( (r2 < 1.0) && (vr2 > All.BAL_v_outflow*All.BAL_v_outflow/100.0)) return 0;
+#endif
     if(P[i].Mass <= 0) return 0;
     if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*ref_mass_factor(i))) return 0;
     if(P[i].Mass <= (All.MinMassForParticleMerger* ref_mass_factor(i))) return 1;
@@ -47,6 +52,15 @@ int does_particle_need_to_be_split(int i)
 #ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
 #else
+#ifdef BH_WIND_SPAWN
+    MyFloat vr2 = P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2] ;
+    MyFloat r2  = P[i].Pos[0]*P[i].Pos[0] + P[i].Pos[1]*P[i].Pos[1] + P[i].Pos[2]*P[i].Pos[2] ;
+    if( (r2 < 1.0) && (vr2 > All.BAL_v_outflow*All.BAL_v_outflow/100.0)) return 0;
+    
+    double fac = All.Time * All.Time / (0.001*0.001 + All.Time * All.Time);
+    if( (P[i].Hsml * fac > sqrt(P[i].min_dist_to_bh+0.005) ) && (All.ExtraRef==1) ) return 1;
+    
+#endif
     if(P[i].Mass >= (All.MaxMassForParticleSplit * ref_mass_factor(i))) return 1;
     return 0;
 #endif
@@ -313,9 +327,9 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
     P[i].ID += ((MyIDType) 1 << (sizeof(MyIDType) * 8 - bits));
     */
     // new method: preserve the original "ID" field, but assign a unique -child- ID: this is unique up to ~32 *GENERATIONS* of repeated splitting!
-    //P[j].ID_child_number = P[i].ID_child_number + (1 << P[i].ID_generation); // particle 'i' retains its child number; this ensures uniqueness
     P[j].ID_child_number = P[i].ID_child_number + (MyIDType)(1 << ((int)P[i].ID_generation)); // particle 'i' retains its child number; this ensures uniqueness
-    P[i].ID_generation++; if(P[i].ID_generation > 30) {P[i].ID_generation=0;} // roll over at 32 generations (unlikely to ever reach this)
+    P[i].ID_generation = P[i].ID_generation + 1;
+    if(P[i].ID_generation > 30) {P[i].ID_generation=0;} // roll over at 32 generations (unlikely to ever reach this)
     P[j].ID_generation = P[i].ID_generation; // ok, all set!
     
     /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
@@ -507,7 +521,7 @@ void merge_particles_ij(int i, int j)
     if(P[i].TimeBin < P[j].TimeBin)
     {
 #ifdef WAKEUP
-        SphP[j].wakeup = 1;
+        PPPZ[j].wakeup = 1;
 #endif
     }
     double dm_i=0,dm_j=0,de_i=0,de_j=0,dp_i[3],dp_j[3],dm_ij,de_ij,dp_ij[3];
