@@ -56,7 +56,7 @@ void blackhole_accretion(void)
                                       If using gravcap the desired mass accretion rate is calculated and set to BlackholeTempInfo.mass_to_swallow_edd
                                       */
 
-#ifdef BH_GRAVACCRETION_BTOD
+#ifdef BH_GRAVACCRETION
     //if(ThisTask == 0)  printf("Blackhole: evaluating black-hole environment (second loop)\n");
     blackhole_environment_second_loop();    /* populates BlackholeTempInfo based on surrounding gas (blackhole_environment.c).
                                                Here we compute quantities that require knowledge of previous environment variables
@@ -334,16 +334,6 @@ void normalize_temp_info_struct(int i)
     if(BlackholeTempInfo[i].Mgas_in_Kernel > 0)
     {
         BlackholeTempInfo[i].BH_InternalEnergy /= BlackholeTempInfo[i].Mgas_in_Kernel;
-
-/*                           DAA: shoud normalize by TOTAL MASS in kernel not just gas !! (see below)
-#ifdef BH_DYNFRICTION
-        BlackholeTempInfo[i].DF_rms_vel /= BlackholeTempInfo[i].Mgas_in_Kernel;
-        BlackholeTempInfo[i].DF_rms_vel = sqrt(BlackholeTempInfo[i].DF_rms_vel) / All.cf_atime;
-        for(k=0;k<3;k++)
-            BlackholeTempInfo[i].DF_mean_vel[k] /= BlackholeTempInfo[i].Mgas_in_Kernel * All.cf_atime;
-#endif
-*/
-
 #if defined(BH_BONDI) || defined(BH_DRAG)
         for(k=0;k<3;k++)
             BlackholeTempInfo[i].BH_SurroundingGasVel[k] /= BlackholeTempInfo[i].Mgas_in_Kernel * All.cf_atime;
@@ -354,18 +344,13 @@ void normalize_temp_info_struct(int i)
         BlackholeTempInfo[i].BH_InternalEnergy = 0;
     }
 
-    /* add GAS mass/angular momentum to the TOTAL mass/angular momentum */
-/*    BlackholeTempInfo[i].Malt_in_Kernel += BlackholeTempInfo[i].Mgas_in_Kernel;            // Malt is now TOTAL mass inside BH kernel !
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK_COLLIMATED) || defined(BH_GRAVACCRETION)
-    for(k=0;k<3;k++)
-        BlackholeTempInfo[i].Jalt_in_Kernel[k] += BlackholeTempInfo[i].Jgas_in_Kernel[k];  // Jalt is now TOTAL angular momentum inside BH kernel !
-#endif
-*/
+    // DAA: add GAS/STAR mass/angular momentum to the TOTAL mass/angular momentum in kernel
     BlackholeTempInfo[i].Malt_in_Kernel += (BlackholeTempInfo[i].Mgas_in_Kernel + BlackholeTempInfo[i].Mstar_in_Kernel);
-    for(k=0;k<3;k++)  // Jalt is now TOTAL angular momentum inside BH kernel !
+    for(k=0;k<3;k++)
         BlackholeTempInfo[i].Jalt_in_Kernel[k] += (BlackholeTempInfo[i].Jgas_in_Kernel[k] + BlackholeTempInfo[i].Jstar_in_Kernel[k]);
 
 #ifdef BH_DYNFRICTION
+    // DAA: normalize by the appropriate MASS in kernel depending on selected option
     double Mass_in_Kernel;
 #if (BH_DYNFRICTION == 1)    // DAA: dark matter + stars
     Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel - BlackholeTempInfo[i].Mgas_in_Kernel;
@@ -427,26 +412,11 @@ void set_blackhole_mdot(int i, int n, double dt)
 
         r0_for_bhar = PPP[n].Hsml * All.cf_atime; /* convert to physical units */
 
-        /* DAA: Malt_in_Kernel is now the total mass already --> updated in normalize_temp_info_struct at the end of blackhole_environment_loop
-        m_tmp_for_bhar = BlackholeTempInfo[i].Mgas_in_Kernel + BlackholeTempInfo[i].Malt_in_Kernel; */
-        //m_tmp_for_bhar = BlackholeTempInfo[i].Malt_in_Kernel;
-
-#ifdef BH_GRAVACCRETION_BTOD
-        m_tmp_for_bhar = BlackholeTempInfo[i].Mgas_in_Kernel + BlackholeTempInfo[i].Mstar_in_Kernel;
-        //mdisk_for_bhar = m_tmp_for_bhar - BlackholeTempInfo[i].Mbulge_in_Kernel;
-        mdisk_for_bhar = m_tmp_for_bhar - BlackholeTempInfo[i].MstarBulge_in_Kernel;
-        f_disk_for_bhar = mdisk_for_bhar / m_tmp_for_bhar;
-        if(mdisk_for_bhar>0){
-           fgas_for_bhar = BlackholeTempInfo[i].Mgas_in_Kernel / mdisk_for_bhar;
-        }else{
-           fgas_for_bhar =0;
-        }
-#else
+#if (BH_GRAVACCRETION == 1)
         m_tmp_for_bhar = BlackholeTempInfo[i].Malt_in_Kernel;
         j_tmp_for_bhar=0;
+        // DAA: Jalt_in_Kernel is now the TOTAL angular momentum (need to subtract Jgas here)
         for(k=0;k<3;k++)
-            /* DAA: note that Jalt_in_Kernel is now the TOTAL angular momentum (we need to subtract Jgas here) 
-            j_tmp_for_bhar += BlackholeTempInfo[i].Jalt_in_Kernel[k]*BlackholeTempInfo[i].Jalt_in_Kernel[k]; */
             j_tmp_for_bhar += (BlackholeTempInfo[i].Jalt_in_Kernel[k] - BlackholeTempInfo[i].Jgas_in_Kernel[k]) * 
                               (BlackholeTempInfo[i].Jalt_in_Kernel[k] - BlackholeTempInfo[i].Jgas_in_Kernel[k]);
         j_tmp_for_bhar=sqrt(j_tmp_for_bhar);
@@ -457,7 +427,18 @@ void set_blackhole_mdot(int i, int n, double dt)
         f_disk_for_bhar = fgas_for_bhar + (1.75*j_tmp_for_bhar/fac);
         if(f_disk_for_bhar>1) f_disk_for_bhar=1;
         mdisk_for_bhar = m_tmp_for_bhar * f_disk_for_bhar;
-#endif // ifdef BH_GRAVACCRETION_BTOD
+#else
+        /* DAA: default torque rate based on kinematic B/D decomposition as in Angles-Alcazar et al. */
+        m_tmp_for_bhar = BlackholeTempInfo[i].Mgas_in_Kernel + BlackholeTempInfo[i].Mstar_in_Kernel;
+        //mdisk_for_bhar = m_tmp_for_bhar - BlackholeTempInfo[i].Mbulge_in_Kernel;
+        mdisk_for_bhar = m_tmp_for_bhar - BlackholeTempInfo[i].MstarBulge_in_Kernel;
+        f_disk_for_bhar = mdisk_for_bhar / m_tmp_for_bhar;
+        if(mdisk_for_bhar>0){
+           fgas_for_bhar = BlackholeTempInfo[i].Mgas_in_Kernel / mdisk_for_bhar;
+        }else{
+           fgas_for_bhar = 0;
+        }
+#endif  // if(BH_GRAVACCRETION == 1)
 
         
         if((f_disk_for_bhar<=0)||(bh_mass <=0)||(fgas_for_bhar<=0)||(m_tmp_for_bhar<=0))
@@ -741,11 +722,11 @@ void set_blackhole_drag(int i, int n, double dt)
         // fac = (BlackholeTempInfo[i].Mgas_in_Kernel+BlackholeTempInfo[i].Malt_in_Kernel) /         DAA: Malt_in_Kernel is total mass already
         double Mass_in_Kernel;
 #if (BH_DYNFRICTION == 1)    // DAA: dark matter + stars
-    Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel - BlackholeTempInfo[i].Mgas_in_Kernel;
+        Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel - BlackholeTempInfo[i].Mgas_in_Kernel;
 #elif (BH_DYNFRICTION == 2)  // DAA: stars only
-    Mass_in_Kernel = BlackholeTempInfo[i].Mstar_in_Kernel;
+        Mass_in_Kernel = BlackholeTempInfo[i].Mstar_in_Kernel;
 #else
-    Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel;
+        Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel;
 #endif
         //fac = BlackholeTempInfo[i].Malt_in_Kernel / ( (4*M_PI/3) * pow(PPP[n].Hsml*All.cf_atime,3) ); /* mean density of all mass inside kernel */
         fac = Mass_in_Kernel / ( (4*M_PI/3) * pow(PPP[n].Hsml*All.cf_atime,3) ); /* mean density of all mass inside kernel */
@@ -896,17 +877,15 @@ void blackhole_final_loop(void)
 #endif
         
         /* DAA: dump the results to the 'blackhole_details' files */
-
-        mass_disk=0; mdot_disk=0; MgasBulge=0; MstarBulge=0; r0=0;
+        mass_disk=0; mdot_disk=0; MgasBulge=0; MstarBulge=0;
+        r0 = PPP[n].Hsml * All.cf_atime;
 #ifdef BH_ALPHADISK_ACCRETION
         mass_disk = BPP(n).BH_Mass_AlphaDisk;
         mdot_disk = BlackholeTempInfo[i].mdot_alphadisk;
 #endif
-#ifdef BH_GRAVACCRETION_BTOD
-        //mbulge =  BlackholeTempInfo[i].Mbulge_in_Kernel;
+#ifdef BH_GRAVACCRETION
         MgasBulge = BlackholeTempInfo[i].MgasBulge_in_Kernel;
         MstarBulge = BlackholeTempInfo[i].MstarBulge_in_Kernel;
-        r0 = PPP[n].Hsml * All.cf_atime;       
 #endif
 
 #ifdef BH_OUTPUT_MOREINFO
