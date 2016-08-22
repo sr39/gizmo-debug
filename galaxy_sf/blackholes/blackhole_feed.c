@@ -357,8 +357,8 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 
 #ifdef BH_REPOSITION_ON_POTMIN
                         /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
-#ifdef BH_REPOSITION_ON_POTMIN_STAR
-                        if( (P[j].Potential < minpot) && (P[j].Type == 4) )   // DAA: only if it is star particle
+#if (BH_REPOSITION_ON_POTMIN == 1) 
+                        if( (P[j].Potential < minpot) && (P[j].Type == 4) )   // DAA: only if it is a star particle
 #else
                         if(P[j].Potential < minpot)
 #endif

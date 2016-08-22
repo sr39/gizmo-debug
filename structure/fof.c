@@ -2163,17 +2163,17 @@ void fof_make_black_holes(void)
         BPP(import_indices[n]).BH_Mass = pow( 10., log10(All.SeedBlackHoleMass) + random_number_forbh );
         unitmass_in_msun = (All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS;
         if( BPP(import_indices[n]).BH_Mass < 100./unitmass_in_msun )
-          BPP(import_indices[n]).BH_Mass = 100./unitmass_in_msun;            // DAA: enforce lower limit of Mseed = 100 x Msun
+          BPP(import_indices[n]).BH_Mass = 100./unitmass_in_msun;      // DAA: enforce lower limit of Mseed = 100 x Msun
       }else{
           BPP(import_indices[n]).BH_Mass = All.SeedBlackHoleMass;
       }
 #endif
 
 #ifdef BH_INCREASE_DYNAMIC_MASS
-      P[import_indices[n]].Mass *= BH_INCREASE_DYNAMIC_MASS;    // DAA
+      P[import_indices[n]].Mass *= BH_INCREASE_DYNAMIC_MASS;
 #endif
 
-#ifdef BH_ALPHADISK_ACCRETION                                     // DAA: this should be outside of BH_SEED_STAR_MASS_FRACTION ...
+#ifdef BH_ALPHADISK_ACCRETION                                
       BPP(import_indices[n]).BH_Mass_AlphaDisk = 0;
 #endif
 
@@ -2194,7 +2194,6 @@ void fof_make_black_holes(void)
 //#ifndef BH_SEED_STAR_MASS_FRACTION
 #if !( defined(BH_SEED_STAR_MASS_FRACTION) || defined(BH_SEED_FROM_STAR_PARTICLE) )
       Stars_converted++;
-
       TimeBinCountSph[P[import_indices[n]].TimeBin]--;
 #endif
 
