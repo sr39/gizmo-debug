@@ -100,8 +100,9 @@
             double prefac_duij = 0.25, flux_multiplier = 1;
             if((local.CosmicRayDiffusionCoeff<0)||(SphP[j].CosmicRayDiffusionCoeff<0)) {prefac_duij = 0.05;}
             double du_ij_cond = prefac_duij * DMAX(DMIN( fabs(CR_egy_i-CR_egy_j) , DMAX(CR_egy_i , CR_egy_j)) , DMIN(CR_egy_i , CR_egy_j));
+            if(diffusion_wt > 0) {du_ij_cond=DMIN(du_ij_cond,0.5*CR_egy_j);} else {du_ij_cond=DMIN(du_ij_cond,0.5*CR_egy_i);} // prevent flux from creating negative values //
             if(fabs(diffusion_wt)>du_ij_cond) {flux_multiplier = du_ij_cond/fabs(diffusion_wt);}
-            diffusion_wt *= flux_multiplier;
+            diffusion_wt *= flux_multiplier;            
             Fluxes.CosmicRayPressure += diffusion_wt / dt_hydrostep;
             /*
             double x_dot_A=0; for(k=0;k<3;k++) {x_dot_A+=kernel.dp[k]*Face_Area_Vec[k];}

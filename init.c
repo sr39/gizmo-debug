@@ -674,6 +674,10 @@ void init(void)
 #endif
     /* assign other ID parameters needed */
     if(RestartFlag==0) {for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}}
+#ifdef NO_CHILD_IDS_IN_ICS
+    if(RestartFlag != 1) {for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}}
+#endif
+    
     
 #ifdef TEST_FOR_IDUNIQUENESS
     test_id_uniqueness();
@@ -729,6 +733,10 @@ void init(void)
         P[i].IMF_Mturnover = 2.0; // reset to normal IMF
     }
 #endif
+    
+#if defined(WAKEUP) && defined(ADAPTIVE_GRAVSOFT_FORALL)
+    for(i=0;i<NumPart;i++) {P[i].wakeup=0;}
+#endif
 
 #if defined(TURB_DRIVING)
     {
@@ -776,6 +784,9 @@ void init(void)
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         PPPZ[i].AGS_zeta = 0;
+#endif
+#ifdef WAKEUP
+        if(RestartFlag!=0) {PPPZ[i].wakeup=0;}
 #endif
 #ifdef SUPER_TIMESTEP_DIFFUSION
         SphP[i].Super_Timestep_Dt_Explicit = 0;

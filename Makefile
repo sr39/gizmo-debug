@@ -394,6 +394,65 @@ endif
 
 
 #----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Mira")
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+CC       = mpixlc_r # xl compilers appear to give significant speedup vs gcc
+CXX      = mpixlcxx_r # _r for thread-safe versions, desired with openmp
+OPTIMIZE = -openmp -qsmp=omp:noauto # -fopenmp for gcc or bgclang
+else
+CC       = mpixlc
+CXX      = mpixlcxx
+OPTIMIZE =
+endif
+FC       =  $(CC)
+OPTIMIZE += -O3 -static -qnostrict -lm -ldl #-lpthread
+OPTIMIZE += -g #-qlist -qsource -qreport -qlistopt # compiler warnings: qlist, etc produce list of opts
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = #
+MKL_LIBS = #
+GSL_INCL = -I$(MIRA_GSL_INC)
+GSL_LIBS = -lm -ldl -lpthread -L$(MIRA_GSL_LIB) -lgsl
+FFTW_INCL= -I$(MIRA_FFTW2_INC)
+FFTW_LIBS= -L$(MIRA_FFTW2_LIB)
+HDF5INCL = -I$(MIRA_HDF5_INC) -DH5_USE_16_API -I$(MIRA_SZIP_INC) -I$(MIRA_LZIP_INC)
+HDF5LIB  = -L$(MIRA_SZIP_LIB) -lszip -L$(MIRA_LZIP_LIB) -lz -L$(MIRA_HDF5_LIB) -lhdf5 -lz -lszip
+MPICHLIB = #
+OPT     += -DUSE_MPI_IN_PLACE
+##
+## in .bashrc, need to define environmental variables:
+##   export MIRA_HDF5_INC=/soft/libraries/hdf5/current/cnk-xl/current/include
+##   export MIRA_HDF5_LIB=/soft/libraries/hdf5/current/cnk-xl/current/lib
+##   export MIRA_GSL_INC=/soft/libraries/3rdparty/gsl/1.9/xl/include
+##   export MIRA_GSL_LIB=/soft/libraries/3rdparty/gsl/1.9/xl/lib
+##   export MIRA_SZIP_INC=/soft/libraries/alcf/current/xl/SZIP/include
+##   export MIRA_SZIP_LIB=/soft/libraries/alcf/current/xl/SZIP/lib
+##   export MIRA_LZIP_INC=/soft/libraries/alcf/current/xl/ZLIB/include
+##   export MIRA_LZIP_LIB=/soft/libraries/alcf/current/xl/ZLIB/lib
+##   export MIRA_FFTW2_INC=/home/phopkins/fftw/include
+##   export MIRA_FFTW2_LIB=/home/phopkins/fftw/lib
+##   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$MIRA_LZIP_LIB:$MIRA_SZIP_LIB:$MIRA_FFTW2_LIB:$MIRA_GSL_LIB:$MIRA_HDF5_LIB:/bgsys/drivers/ppcfloor/comm/lib
+##
+## for HDF5,GSL,LZIP,SZIP these link to the current general-use versions of these libraries. the last command (adding these to the LD_LIBRARY_PATH)
+##   is also critical, since they are not in the paths by default and it will be unable to find them even with the links above.
+## for FFTW2, the pre-compiled libraries do not contain the correct mpi libraries, so you will have to compile your own. FFTW2 is installed and
+##   compiled in the directory shown for me: you have to install it and link it yourself since the directory cannot be shared. for the gcc
+##   compilers above, FFTW should be compiled with the following settings:
+##     for xl compilers:
+##       ./configure --prefix=$HOME/fftw --enable-mpi --enable-type-prefix --enable-float LDFLAGS=-L$HOME/lib CFLAGS=-I$HOME/include CC=mpixlc
+##
+## also in your .soft file, you want to enable:
+##   for XL compilers:
+##     +mpiwrapper-xl
+##     +python
+##     @default
+## to load the mpi compilers and mpi wrappers, and MPICH libraries (python there is optional)
+## xl appears to provide some improvement over gcc; xl-ndebug provides no noticeable further improvement, despite being more unsafe
+endif
+
+
+
+#----------------------------------------------------------------------------------------------
 ifeq (Pleiades,$(findstring Pleiades,$(SYSTYPE)))
 CC       =  icc -lmpi
 CXX      =  icc -lmpi -lmpi++
@@ -515,6 +574,20 @@ HDF5INCL =  -DH5_USE_16_API
 HDF5LIB  =  -lhdf5 -lz
 endif
 
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"antares")
+CC       =  mpicc     # sets the C-compiler
+OPT      +=  -DMPICH_IGNORE_CXX_SEEK
+FC       =  $(CC)
+OPTIMIZE = -g -O2 -Wall -Wno-unused-but-set-variable
+GSL_INCL = -I/home/ptorrey/local/gsl-2.1/include
+GSL_LIBS = -L/home/ptorrey/local/gsl-2.1/lib -lgsl -lm
+FFTW_INCL= -I/home/ptorrey/local/fftw-2.1.5/include
+FFTW_LIBS= -L/home/ptorrey/local/fftw-2.1.5/libGSL_INCL
+MPICHLIB =
+HDF5INCL =  -DH5_USE_16_API
+HDF5LIB  =  -lhdf5 -lz
+endif
 
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"CITA")
@@ -639,6 +712,12 @@ endif
 ifeq (GALSF_FB_HII_HEATING,$(findstring GALSF_FB_HII_HEATING,$(CONFIGVARS)))
 OBJS    += galaxy_sf/hII_heating.o
 endif
+
+ifeq (RT_CHEM_PHOTOION,$(findstring RT_CHEM_PHOTOION,$(CONFIGVARS)))
+OBJS    += galaxy_sf/hII_heating.o
+endif
+
+
 
 ifeq (TWOPOINT_FUNCTION_COMPUTATION_ENABLED,$(findstring TWOPOINT_FUNCTION_COMPUTATION_ENABLED,$(CONFIGVARS)))
 OBJS    += structure/twopoint.o

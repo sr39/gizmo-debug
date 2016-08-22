@@ -521,7 +521,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(TimeBinActive[P[j].TimeBin])
                     if(kernel.vsig > SphP[j].MaxSignalVel) SphP[j].MaxSignalVel = kernel.vsig;
 #ifdef WAKEUP
-                if(kernel.vsig > WAKEUP*SphP[j].MaxSignalVel) SphP[j].wakeup = 1;
+                if(kernel.vsig > WAKEUP*SphP[j].MaxSignalVel) PPPZ[j].wakeup = 1;
 #endif
                 
                 

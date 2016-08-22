@@ -298,7 +298,7 @@ void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double
 #endif
 #ifdef COSMIC_RAYS
     double etmp = SphP[i].CosmicRayEnergyPred + SphP[i].DtCosmicRayEnergy * dt_entr;
-    if(etmp<0.01*SphP[i].CosmicRayEnergyPred) {SphP[i].CosmicRayEnergyPred *= 0.01;} else {SphP[i].CosmicRayEnergyPred=etmp;}
+    if(etmp<1.e-4*SphP[i].CosmicRayEnergyPred) {SphP[i].CosmicRayEnergyPred *= 1.e-4;} else {SphP[i].CosmicRayEnergyPred=etmp;}
 #endif
 #ifdef RADTRANSFER
     rt_update_driftkick(i,dt_entr,1);

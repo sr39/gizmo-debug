@@ -1378,7 +1378,18 @@ int density_isactive(int n)
 #endif
     
 #if defined(RT_SOURCE_INJECTION)
-    if((1 << P[n].Type) & (RT_SOURCES)) return 1;
+    if((1 << P[n].Type) & (RT_SOURCES)) 
+    {
+#if defined(GALSF)
+       if(((P[n].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[n].Type == 2)||(P[n].Type==3))))&&(P[n].Mass>0)) 
+        {
+            double star_age = evaluate_stellar_age_Gyr(P[n].StellarAge);
+	        if((star_age < 0.1)&&(star_age > 0)&&(!isnan(star_age))) return 1;
+        }
+#else
+        if(Flag_FullStep) {return 1;} // only do on full timesteps
+#endif
+    }
 #endif
     
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES

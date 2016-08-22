@@ -388,13 +388,13 @@ void begrun(void)
 
 
 #ifdef RADTRANSFER
-    if(RestartFlag == 0) {rt_set_simple_inits();}
+#if defined(RT_DIFFUSION_CG)
+    All.Radiation_Ti_begstep = 0;
 #endif
 #ifdef RT_CHEM_PHOTOION
     rt_get_sigma();
 #endif
-#if defined(RT_DIFFUSION_CG)
-    All.Radiation_Ti_begstep = 0;
+    if(RestartFlag == 0) {rt_set_simple_inits();}
 #endif
 
     
@@ -1135,7 +1135,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
         
-#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
+#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK) || defined(BH_WIND_SPAWN)
         strcpy(tag[nt],"BAL_f_accretion");
         addr[nt] = &All.BAL_f_accretion;
         id[nt++] = REAL;
@@ -1143,6 +1143,15 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt],"BAL_v_outflow");
         addr[nt] = &All.BAL_v_outflow;
         id[nt++] = REAL;
+#ifdef BH_WIND_SPAWN
+        strcpy(tag[nt], "SpawnPostReverseShock");
+        addr[nt] = &All.SpawnPostReverseShock;
+        id[nt++] = INT;
+
+        strcpy(tag[nt], "BH_wind_spawn_mass");
+        addr[nt] = &All.BH_wind_spawn_mass;
+        id[nt++] = REAL;
+#endif
 #endif
         
 #ifdef BH_PHOTONMOMENTUM
@@ -1690,7 +1699,7 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 
-#if defined(RT_CHEM_PHOTOION) && !defined(GALSF_FB_HII_HEATING)
+#if defined(RT_CHEM_PHOTOION) && !(defined(GALSF_FB_HII_HEATING) || defined(GALSF))
         strcpy(tag[nt], "IonizingLuminosityPerSolarMass_cgs");
         addr[nt] = &All.IonizingLuminosityPerSolarMass_cgs;
         id[nt++] = REAL;
@@ -2010,6 +2019,9 @@ void read_parameter_file(char *fname)
 #endif
     if(All.AGS_MaxNumNgbDeviation < 0.05) All.AGS_MaxNumNgbDeviation = 0.05;
 #endif
+#ifdef BH_WIND_SPAWN
+      All.AGNWindID = 1913298393;       // this seems weird, but is the bitshifted version of 1234568912345 for not long IDs.
+#endif
 #endif // closes DEVELOPER_MODE check //
     
     
@@ -2027,8 +2039,8 @@ void read_parameter_file(char *fname)
     /*!< determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion: this
      should only be changed if you -really- know what you're doing! */    
     
-#ifdef MAGNETIC
-    All.CourantFac *= 0.5; //
+#if defined(MAGNETIC) || defined(HYDRO_MESHLESS_FINITE_VOLUME) || defined(BH_WIND_SPAWN)
+    if(All.CourantFac > 0.2) {All.CourantFac = 0.2;} //
     /* (PFH) safety factor needed for MHD calc, because people keep using the same CFac as hydro! */
 #endif
 

@@ -264,6 +264,10 @@ double get_starformation_rate(int i)
     return 0;
 #endif
     
+#ifdef BH_WIND_SPAWN
+    if(P[i].ID == All.AGNWindID) return 0;
+#endif
+
     flag = 1;			/* default is normal cooling */
     if(SphP[i].Density*All.cf_a3inv >= All.PhysDensThresh)
     flag = 0;
@@ -525,7 +529,7 @@ void cooling_and_starformation(void)
             if ( (SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) && (P[i].Metallicity[0]/All.SolarAbundances[0] < 0.1) )
             {
                 GradRho = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1);
-                GradRho *= All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam
+                GradRho *= All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam;
                 /* surface dens in g/cm^2; threshold for bound cluster formation in our experiments is ~2 g/cm^2 (10^4 M_sun/pc^2) */
                 if (GradRho > 0.1)
                 {

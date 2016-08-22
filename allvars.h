@@ -973,6 +973,7 @@ extern MyDouble Shearing_Box_Pos_Offset;
  *      wrapped in the X(r)-direction must be modified by a time-dependent term. It also matters for the sign of that 
  *      term "which side" of the box we are wrapping across (i.e. does the 'virtual particle' -- the test point which is
  *      not the particle for which we are currently calculating forces, etc -- lie on the '-x' side or the '+x' side)
+ *      (note after all that: if very careful, sign -cancels- within the respective convention, for the type of wrapping below)
  */
 /****************************************************************************************************************************/
 
@@ -982,14 +983,14 @@ extern MyDouble Shearing_Box_Pos_Offset;
 /* SHEARING PERIODIC BOX:: 
     in this case, we have a shearing box with the '1' coordinate being phi, so there is a periodic extra wrap */
 #define NEAREST_XYZ(x,y,z,sign) (\
-x=((x)>boxHalf_X)?((x)-boxSize_X):(((x)<-boxHalf_X)?((x)+boxSize_X):(x)),\
-y -= Shearing_Box_Pos_Offset * sign * (((x)>boxHalf_X)?(1):(((x)<-boxHalf_X)?(-1):(0))),\
+y += Shearing_Box_Pos_Offset * (((x)>boxHalf_X)?(1):(((x)<-boxHalf_X)?(-1):(0))),\
 y = ((y)>boxSize_Y)?((y)-boxSize_Y):(((y)<-boxSize_Y)?((y)+boxSize_Y):(y)),\
 y=((y)>boxHalf_Y)?((y)-boxSize_Y):(((y)<-boxHalf_Y)?((y)+boxSize_Y):(y)),\
+x=((x)>boxHalf_X)?((x)-boxSize_X):(((x)<-boxHalf_X)?((x)+boxSize_X):(x)),\
 z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
 
 #define NGB_PERIODIC_LONG_Y(x,y,z,sign) (\
-xtmp = y - Shearing_Box_Pos_Offset * sign * (((x)>boxHalf_X)?(1):(((x)<-boxHalf_X)?(-1):(0))),\
+xtmp = y + Shearing_Box_Pos_Offset * (((x)>boxHalf_X)?(1):(((x)<-boxHalf_X)?(-1):(0))),\
 xtmp = fabs(((xtmp)>boxSize_Y)?((xtmp)-boxSize_Y):(((xtmp)<-boxSize_Y)?((xtmp)+boxSize_Y):(xtmp))),\
 (xtmp>boxHalf_Y)?(boxSize_Y-xtmp):xtmp)
 
@@ -1553,7 +1554,7 @@ extern struct global_data_all_processes
   integertime Radiation_Ti_endstep;
 #endif
 
-#if defined(RT_CHEM_PHOTOION) && !defined(GALSF_FB_HII_HEATING)
+#if defined(RT_CHEM_PHOTOION) && !(defined(GALSF_FB_HII_HEATING) || defined(GALSF))
     double IonizingLuminosityPerSolarMass_cgs;
     double star_Teff;
 #endif
@@ -1650,7 +1651,7 @@ extern struct global_data_all_processes
   double AGBGasEnergy;
 #endif
     
-#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
+#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK) || defined(BH_WIND_SPAWN)
     double BAL_f_accretion;
     double BAL_v_outflow;
 #endif
@@ -1728,6 +1729,11 @@ extern struct global_data_all_processes
   double SeedBlackHoleMinRedshift; /*!< Minimum redshift where BH seeds are allowed */
 #ifdef BH_ALPHADISK_ACCRETION
   double SeedAlphaDiskMass;         /*!< Seed alpha disk mass */
+#endif
+#ifdef BH_WIND_SPAWN
+  double BH_wind_spawn_mass;        /*!< target mass for feedback particles to be spawned */
+  int SpawnPostReverseShock;
+  MyIDType AGNWindID;
 #endif
   double MinFoFMassForNewSeed;      /*!< Halo mass required before new seed is put in */
   double BlackHoleNgbFactor;        /*!< Factor by which the SPH neighbour should be increased/decreased */
@@ -1842,7 +1848,7 @@ extern ALIGN(32) struct particle_data
     short int TimeBin;
     MyIDType ID;                    /*! < unique ID of particle (assigned at beginning of the simulation) */
     MyIDType ID_child_number;       /*! < child number for particles 'split' from main (retain ID, get new child number) */
-    short int ID_generation;        /*! < generation (need to track for particle-splitting to ensure each 'child' gets a unique child number */
+    int ID_generation;              /*! < generation (need to track for particle-splitting to ensure each 'child' gets a unique child number */
     
     integertime Ti_begstep;         /*!< marks start of current timestep of particle on integer timeline */
     integertime Ti_current;         /*!< current time of the particle */
@@ -1970,7 +1976,9 @@ extern ALIGN(32) struct particle_data
 #if defined(BLACK_HOLES)
     MyIDType SwallowID;
     int IndexMapToTempStruc;   /*!< allows for mapping to BlackholeTempInfo struc */
-
+#ifdef BH_WIND_SPAWN
+    MyFloat unspawned_wind_mass;    /*!< tabulates the wind mass which has not yet been spawned */
+#endif
 #if !defined(DETACH_BLACK_HOLES)
 #ifdef BH_COUNTPROGS
     int BH_CountProgs;
@@ -2090,6 +2098,10 @@ extern ALIGN(32) struct particle_data
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     MyDouble AGS_Hsml;          /*!< smoothing length (for gravitational forces) */
     MyFloat AGS_zeta;           /*!< factor in the correction term */
+    MyDouble AGS_vsig;          /*!< signal velocity of particle approach, to properly time-step */
+#if defined(WAKEUP)
+    short int wakeup;                     /*!< flag to wake up particle */
+#endif
 #endif
 }
  *P,				/*!< holds particle data on local processor */
@@ -2147,6 +2159,9 @@ extern struct bh_particle_data
 #ifdef BH_REPOSITION_ON_POTMIN
   MyFloat BH_MinPotPos[3];
   MyFloat BH_MinPot;
+#endif
+#ifdef BH_WIND_SPAWN
+    MyFloat unspawned_wind_mass;    /*!< tabulates the wind mass which has not yet been spawned */
 #endif
 }
   *BHP,
@@ -2409,7 +2424,7 @@ extern struct sph_particle_data
 #endif
     
     
-#ifdef WAKEUP
+#if defined(WAKEUP) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
     short int wakeup;                     /*!< flag to wake up particle */
 #endif
     
