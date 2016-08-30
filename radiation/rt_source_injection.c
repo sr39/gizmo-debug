@@ -163,7 +163,7 @@ void rt_source_injection(void)
             if(NextParticle == save_NextParticle)
             {
                 /* in this case, the buffer is too small to process even a single particle */
-                endrun(116608);
+                endrun(116610);
             }
             int new_export = 0;
             for(j = 0, k = 0; j < Nexport; j++)
