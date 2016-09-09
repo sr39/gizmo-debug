@@ -1963,7 +1963,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #ifdef HYDRO_SPH
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
                     out.alpha_limiter += NV_MYSIGN(SphP[j].NV_DivVel) * P[j].Mass * kernel.wk_i;
-                    SphP[j].alpha_limiter += NV_MYSIGN(local.NV_DivVel) * local.Mass * kernel.wk_j;
+                    if(swap_to_j) SphP[j].alpha_limiter += NV_MYSIGN(local.NV_DivVel) * local.Mass * kernel.wk_j;
 #endif
 #ifdef MAGNETIC
                     double mji_dwk_r = P[j].Mass * kernel.dwk_i / kernel.r;
