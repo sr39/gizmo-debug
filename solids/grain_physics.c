@@ -280,12 +280,12 @@ void grain_collisions(void)
     Ngblist = (int *) mymalloc(NumPart * sizeof(int));
     
     CPU_Step[CPU_MISC] += measure_time();
+#ifndef IO_REDUCED_MODE
     if(ThisTask == 0)
     {
         printf("Beginning Grain Collisions & Interactions \n");
-        fflush(stdout);
     }
-    
+#endif
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         if(P[i].Type == 3)
@@ -547,7 +547,6 @@ void grain_density(void)
              {
              printf("ngb (grain) iteration %d: need to repeat for %d%09d particles.\n", iter,
              (int) (ntot / 1000000000), (int) (ntot % 1000000000));
-             fflush(stdout);
              }
              
              if(iter > MAXITER)

@@ -44,6 +44,10 @@
 #define MYSORT                  /* use our custom sort (as opposed to C default, which is compiler-dependent) */
 #define ALLOWEXTRAPARAMS        /* don't crash (just warn) if there are extra lines in the input parameterfile */
 #define INHOMOG_GASDISTR_HINT   /* if the gas is distributed very different from collisionless particles, this can helps to avoid problems in the domain decomposition */
+#ifndef OUTPUT_ADDITIONAL_RUNINFO
+#define IO_REDUCED_MODE
+#endif
+
 
 #define DO_PREPROCESSOR_EXPAND_(VAL)  VAL ## 1
 #define EXPAND_PREPROCESSOR_(VAL)     DO_PREPROCESSOR_EXPAND_(VAL)
@@ -1184,12 +1188,15 @@ extern int NumPartGroup;
 
 extern char ParameterFile[100];	/*!< file name of parameterfile used for starting the simulation */
 
-extern FILE *FdInfo,		/*!< file handle for info.txt log-file. */
- *FdEnergy,			/*!< file handle for energy.txt log-file. */
- *FdTimings,			/*!< file handle for timings.txt log-file. */
- *FdBalance,			/*!< file handle for balance.txt log-file. */
- *FdCPU,			/*!< file handle for cpu.txt log-file. */
- *FdTimebin;
+extern FILE
+#ifndef IO_REDUCED_MODE
+ *FdTimebin,    /*!< file handle for timebin.txt log-file. */
+ *FdInfo,       /*!< file handle for info.txt log-file. */
+ *FdEnergy,     /*!< file handle for energy.txt log-file. */
+ *FdTimings,    /*!< file handle for timings.txt log-file. */
+ *FdBalance,    /*!< file handle for balance.txt log-file. */
+#endif
+ *FdCPU;        /*!< file handle for cpu.txt log-file. */
 
 #ifdef SCFPOTENTIAL
 extern FILE *FdSCF;
@@ -1200,9 +1207,6 @@ extern FILE *FdSfr;		/*!< file handle for sfr.txt log-file. */
 #endif
 
 
-#ifdef GALSF_FB_GASRETURN
-extern FILE *FdGasReturn;	/*!< file handle for GasReturn.txt log-file */
-#endif
 #ifdef GALSF_FB_RPWIND_LOCAL
 extern FILE *FdMomWinds;	/*!< file handle for MomWinds.txt log-file */
 #endif

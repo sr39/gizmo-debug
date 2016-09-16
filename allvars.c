@@ -207,12 +207,15 @@ int NumPartGroup;
 
 char ParameterFile[100];	/*!< file name of parameterfile used for starting the simulation */
 
-FILE *FdInfo,			/*!< file handle for info.txt log-file. */
- *FdEnergy,			/*!< file handle for energy.txt log-file. */
- *FdTimings,			/*!< file handle for timings.txt log-file. */
- *FdBalance,			/*!< file handle for balance.txt log-file. */
- *FdCPU,			/*!< file handle for cpu.txt log-file. */
- *FdTimebin;
+FILE
+#ifndef IO_REDUCED_MODE
+*FdTimebin,    /*!< file handle for timebin.txt log-file. */
+*FdInfo,       /*!< file handle for info.txt log-file. */
+*FdEnergy,     /*!< file handle for energy.txt log-file. */
+*FdTimings,    /*!< file handle for timings.txt log-file. */
+*FdBalance,    /*!< file handle for balance.txt log-file. */
+#endif
+*FdCPU;        /*!< file handle for cpu.txt log-file. */
 
 #ifdef SCFPOTENTIAL
 FILE *FdSCF;
@@ -220,9 +223,6 @@ FILE *FdSCF;
 
 #ifdef GALSF
 FILE *FdSfr;			/*!< file handle for sfr.txt log-file. */
-#endif
-#ifdef GALSF_FB_GASRETURN
-FILE *FdGasReturn;		/*!< file handle for GasReturn.txt log-file */
 #endif
 #ifdef GALSF_FB_RPWIND_LOCAL
 FILE *FdMomWinds;	/*!< file handle for MomWinds.txt log-file */

@@ -346,11 +346,12 @@ void powerspec_turb(int filenr)
 
   double tend = my_second();
   
+#ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
       printf("end turbulent power spectra  took %g seconds\n", timediff(tstart, tend));
-      fflush(stdout);
     }
+#endif
 }
 
 
@@ -508,13 +509,13 @@ double powerspec_turb_obtain_fields(void)
 
   double tstart = my_second();
 
+#ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
-      printf("Start finding nearest gas-particle for mesh-cell centers (presently allocated=%g MB)\n",
-	     AllocatedBytes / (1024.0 * 1024.0));
-      fflush(stdout);
+      printf("Start finding nearest gas-particle for mesh-cell centers (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
     }
-  
+#endif
+    
   large_array_offset i, n, Ncount = ((large_array_offset)nslab_x) * (POWERSPEC_GRID * POWERSPEC_GRID);  /* number of grid points on the local slab */
 
   powerspec_turb_nearest_distance = (float *) mymalloc("powerspec_turb_nearest_distance", sizeof(float) * Ncount);
@@ -583,13 +584,12 @@ double powerspec_turb_obtain_fields(void)
 	  DataGet = (struct data_in *) mymalloc("DataGet", nimport * sizeof(struct data_in));
 	  DataIn = (struct data_in *) mymalloc("DataIn", nexport * sizeof(struct data_in));
 
+#ifndef IO_REDUCED_MODE
 	  if(ThisTask == 0)
 	    {
-	      printf("still finding nearest... (presently allocated=%g MB)\n",
-		     AllocatedBytes / (1024.0 * 1024.0));
-	      fflush(stdout);
+	      printf("still finding nearest... (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
 	    }
-
+#endif
 	  for(j = 0; j < nexport; j++)
 	    {
 	      place = DataIndexTable[j].Index;
@@ -739,10 +739,6 @@ double powerspec_turb_obtain_fields(void)
             double x = (xx + 0.5) / POWERSPEC_GRID * boxSize_X;
             double y = (yy + 0.5) / POWERSPEC_GRID * boxSize_Y;
             double z = (zz + 0.5) / POWERSPEC_GRID * boxSize_Z;
-	      
-		  printf("i=%d task=%d Hsml=%g  pos=(%g|%g|%g)\n",
-			 (int)i, ThisTask, powerspec_turb_nearest_hsml[i], x, y, z);
-		  fflush(stdout);
 		}
 	    }
 	  else
@@ -755,12 +751,12 @@ double powerspec_turb_obtain_fields(void)
       if(ntot > 0)
 	{
 	  iter++;
+#ifndef IO_REDUCED_MODE
 	  if(iter > 0 && ThisTask == 0)
 	    {
 	      printf("powespec_vel nearest iteration %d: need to repeat for %lld particles.\n", iter, ntot);
-	      fflush(stdout);
 	    }
-	  
+#endif
 	  if(iter > MAXITER)
 	    terminate("failed to converge");
 	}
@@ -774,8 +770,7 @@ double powerspec_turb_obtain_fields(void)
   myfree(powerspec_turb_nearest_hsml);
   myfree(powerspec_turb_nearest_distance);
 
-  if(ThisTask == 0)
-    printf("done finding velocity field\n");
+    if(ThisTask == 0) {printf("done finding velocity field\n");}
 
   double tend = my_second();
   return timediff(tstart, tend);

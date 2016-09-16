@@ -928,8 +928,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                             
                         }
                     }
-                    
-                    fflush(stderr);
+                    //fflush(stderr);
                     n++;
                     fp += 9;
                 }
@@ -4036,7 +4035,9 @@ void mpi_printf(const char *fmt, ...)
         va_list l;
         va_start(l, fmt);
         vprintf(fmt, l);
+#ifndef IO_REDUCED_MODE
         fflush(stdout);
+#endif
         va_end(l);
     }
 }

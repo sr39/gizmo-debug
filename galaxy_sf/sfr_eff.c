@@ -754,8 +754,10 @@ if(All.WindMomentumLoading)
   {
       if(ThisTask==0)
       {
+#ifndef IO_REDUCED_MODE
       printf("BH/Sink formation: %d gas particles converted into BHs \n",tot_bhformed);
-      fflush(stdout);
+      //fflush(stdout);
+#endif
       }
       All.TotBHs += tot_bhformed;
   } // if(tot_bhformed > 0)
@@ -767,10 +769,12 @@ if(All.WindMomentumLoading)
     {
       if(ThisTask == 0)
 	{
+#ifndef IO_REDUCED_MODE
 	  printf("SFR: spawned %d stars, converted %d gas particles into stars\n",
 		 tot_spawned, tot_converted);
-	  fflush(stdout);
-	}
+	  //fflush(stdout);
+#endif
+    }
       All.TotNumPart += tot_spawned;
       All.TotN_gas -= tot_converted;
       NumPart += stars_spawned;
@@ -782,21 +786,25 @@ if(All.WindMomentumLoading)
     if(TimeBinCount[bin])
       sfrrate += TimeBinSfr[bin];
 
-  MPI_Allreduce(&sfrrate, &totsfrrate, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Reduce(&sum_sm, &total_sm, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-  MPI_Reduce(&sum_mass_stars, &total_sum_mass_stars, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-  if(ThisTask == 0)
+#ifdef IO_REDUCED_MODE
+    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
+#endif
     {
-      if(All.TimeStep > 0)
-        rate = total_sm / (All.TimeStep / (All.cf_atime*All.cf_hubble_a));
-      else
-        rate = 0;
-      /* convert to solar masses per yr */
-      rate_in_msunperyear = rate * (All.UnitMass_in_g / SOLAR_MASS) / (All.UnitTime_in_s / SEC_PER_YEAR);
-      fprintf(FdSfr, "%g %g %g %g %g\n", All.Time, total_sm, totsfrrate, rate_in_msunperyear, total_sum_mass_stars);
-      fflush(FdSfr);
-    } // thistask==0
-
+        MPI_Allreduce(&sfrrate, &totsfrrate, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+        MPI_Reduce(&sum_sm, &total_sm, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&sum_mass_stars, &total_sum_mass_stars, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        if(ThisTask == 0)
+        {
+            if(All.TimeStep > 0)
+                rate = total_sm / (All.TimeStep / (All.cf_atime*All.cf_hubble_a));
+            else
+                rate = 0;
+            /* convert to solar masses per yr */
+            rate_in_msunperyear = rate * (All.UnitMass_in_g / SOLAR_MASS) / (All.UnitTime_in_s / SEC_PER_YEAR);
+            fprintf(FdSfr, "%g %g %g %g %g\n", All.Time, total_sm, totsfrrate, rate_in_msunperyear, total_sum_mass_stars);
+            fflush(FdSfr);
+        } // thistask==0
+    }
 
     if(tot_converted+tot_spawned > 0) {rearrange_particle_sequence();}
 
@@ -1245,12 +1253,14 @@ void init_clouds(void)
       All.BlackHoleRefSoundspeed = sqrt(GAMMA * GAMMA_MINUS1 * egyeff);
 #endif
 
+#ifndef IO_REDUCED_MODE
       if(ThisTask == 0)
 	{
 	  printf("Run-away sets in for dens=%g\n", thresholdStarburst);
 	  printf("Dynamic range for quiescent star formation= %g\n", thresholdStarburst / All.PhysDensThresh);
 	  fflush(stdout);
 	}
+#endif
 
       if(All.ComovingIntegrationOn)
 	{

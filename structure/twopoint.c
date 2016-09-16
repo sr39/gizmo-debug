@@ -74,12 +74,13 @@ void twopoint(void)
   double mass, masstot;
   void *state_buffer;
 
-
+#ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
       printf("begin two-point correlation function...\n");
       fflush(stdout);
     }
+#endif
 
   tstart = my_second();
 
@@ -286,15 +287,19 @@ void twopoint(void)
       Rbin[i] = exp((i + 0.5) / binfac + logR0);
     }
 
+#ifndef IO_REDUCED_MODE
   twopoint_save();
-
+#endif
+    
   tend = my_second();
 
+#ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
       printf("end two-point: Took=%g seconds.\n", timediff(tstart, tend));
       fflush(stdout);
     }
+#endif
 }
 
 

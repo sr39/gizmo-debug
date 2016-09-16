@@ -210,8 +210,6 @@ void HII_heating_singledomain(void)
                  already_ionized = 1;
                } // if(do_ionize==1) 
               mionized += prob*m_effective;
-              //printf("H2_A: i %d j %d doit %d prob %g mionized %g meff %g \n",
-              // i,j,do_ionize,prob,mionized,m_effective);fflush(stdout);
             } // if((r<=RHII)&&(already_ionized==0)&&(mionized<mionizable)) 
 
             /* if nearest un-ionized particle, mark as such */
@@ -241,8 +239,6 @@ void HII_heating_singledomain(void)
               SphP[j].DelayTimeHII = dt;
             } // if(do_ionize==1)
             mionized += prob*m_effective;
-            //printf("H2_N: i %d j %d doit %d prob %g mionized %g meff %g \n",
-            //  i,j,do_ionize,prob,mionized,m_effective);fflush(stdout);
           } // if((mionized<mionizable)&&(jnearest>=0))
 
 
@@ -271,10 +267,6 @@ void HII_heating_singledomain(void)
                startnode=All.MaxPart; // this will trigger the while loop to continue
              } // if((RHII >= 5.0*RHII_initial)||(RHII>=RHIIMAX)||(NITER_HIIFB >= MAX_N_ITERATIONS_HIIFB))
             } // if(mionized < 0.95*mionizable) 
- 
-          //printf("i %d mionized %g mionizable %g RHII %g RHII_i %g RHII_max %g RHIImult %g NITER %d \n",
-          //  i,mionized,mionizable,RHII,RHII_initial,RHIIMAX,RHIImultiplier,NITER_HIIFB);fflush(stdout);
-
        NITER_HIIFB++;
        } while(startnode >= 0);
      total_m_ionized += mionized;

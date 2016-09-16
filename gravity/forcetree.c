@@ -1718,10 +1718,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double fac_stellum[N_RT_FREQ_BINS],fac_stellum_0=0;
     if(valid_gas_particle_for_rt)
     {
-        fac_stellum_0 = - 1.15 * All.PhotonMomentum_Coupled_Fraction * 1.626e-11 * (soft * soft / (pow((float)All.DesNumNgb,0.66) * pmass)) /
-            (All.G * All.UnitVelocity_in_cm_per_s * All.HubbleParam / All.UnitTime_in_s) / All.cf_a2inv;
+        double sigma_particle =  pmass / (soft*soft) * pow( (float)All.DesNumNgb, 0.66 ) * All.cf_a2inv;
+        fac_stellum_0 = - 1.15 * All.PhotonMomentum_Coupled_Fraction * (1.626e-11 / sigma_particle) /
+            (All.G * All.UnitVelocity_in_cm_per_s * All.HubbleParam / All.UnitTime_in_s);
         sigma_eff = 0.955 * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm); // (should be in -physical-, not comoving units now) //
-        double sigma_eff_abs = 0.955 * 0.333*pow((float)All.DesNumNgb,0.66) * pmass / (soft*soft/All.cf_a2inv); // (physical units) *(Z/Zsolar) for metal-dept
+        double sigma_eff_abs = 0.333 * 0.955 * sigma_particle; // (physical units) *(Z/Zsolar) for metal-dept
         int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {fac_stellum[kf] = 1 - exp(-rt_kappa(0,kf)*sigma_eff_abs);}
     }
 #endif
@@ -3742,12 +3743,6 @@ void ewald_init(void)
 #endif
     if((fd = fopen(buf, "r")))
     {
-        if(ThisTask == 0)
-        {
-            printf("\nreading Ewald tables from file `%s'\n", buf);
-            fflush(stdout);
-        }
-        
         my_fread(&fcorrx[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
         my_fread(&fcorry[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
         my_fread(&fcorrz[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
@@ -3759,7 +3754,9 @@ void ewald_init(void)
         if(ThisTask == 0)
         {
             printf("\nNo Ewald tables in file `%s' found.\nRecomputing them...\n", buf);
+#ifndef IO_REDUCED_MODE
             fflush(stdout);
+#endif
         }
         
         /* ok, let's recompute things. Actually, we do that in parallel. */
@@ -3778,11 +3775,13 @@ void ewald_init(void)
                     {
                         if(ThisTask == 0)
                         {
+#ifndef IO_REDUCED_MODE
                             if((count % (len / 20)) == 0)
                             {
                                 printf("%4.1f percent done\n", count / (len / 100.0));
                                 fflush(stdout);
                             }
+#endif
                         }
                         
                         x[0] = 0.5 * ((double) i) / EN;
@@ -3815,7 +3814,6 @@ void ewald_init(void)
         if(ThisTask == 0)
         {
             printf("\nwriting Ewald tables to file `%s'\n", buf);
-            fflush(stdout);
             if((fd = fopen(buf, "w")))
             {
                 my_fwrite(&fcorrx[0][0][0], sizeof(MyFloat), (EN + 1) * (EN + 1) * (EN + 1), fd);
@@ -3841,7 +3839,6 @@ void ewald_init(void)
     if(ThisTask == 0)
     {
         printf("initialization of periodic boundaries finished.\n");
-        fflush(stdout);
     }
 #endif // #ifndef NOGRAVITY
 }
