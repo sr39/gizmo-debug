@@ -446,14 +446,19 @@ void set_blackhole_mdot(int i, int n, double dt)
                    pow(f_disk_for_bhar,5./2.) * pow(bh_mass,1./6.) *
                    pow(r0_for_bhar,-3./2.) / (1 + f0_for_bhar/fgas_for_bhar);
             
+#ifndef IO_REDUCED_MODE
             printf("BH GravAcc Eval :: mdot %g BHaccFac %g Norm %g fdisk %g bh_8 %g fgas %g f0 %g mdisk_9 %g r0_100 %g \n\n",
                    mdot,All.BlackHoleAccretionFactor,fac,
-                   f_disk_for_bhar,bh_mass,fgas_for_bhar,f0_for_bhar,mdisk_for_bhar,r0_for_bhar);fflush(stdout);
+                   f_disk_for_bhar,bh_mass,fgas_for_bhar,f0_for_bhar,mdisk_for_bhar,r0_for_bhar);
+            //fflush(stdout);
+#endif
         } // if(f_disk_for_bhar<=0)
 
     } else {  // if(BlackholeTempInfo[i].Mgas_in_Kernel > 0)
-
-        printf("BH: Mgas_in_Kernel = %g \n", BlackholeTempInfo[i].Mgas_in_Kernel); fflush(stdout);
+#ifndef IO_REDUCED_MODE
+        printf("BH: Mgas_in_Kernel = %g \n", BlackholeTempInfo[i].Mgas_in_Kernel);
+        //fflush(stdout);
+#endif
     }
 #endif // ifdef BH_GRAVACCRETION
     
@@ -537,10 +542,6 @@ void set_blackhole_mdot(int i, int n, double dt)
                 varsg2=gsl_ran_ugaussian(random_generator_forbh);
                 time_var_subgridvar=fac*pow(omega_ri*dt,-((float)jsub)/n0_sgrid_elements) + 2.*M_PI*varsg1;
                 mdot *= exp( norm_subgrid*cos(time_var_subgridvar)*varsg2 );
-                /*
-                 printf("SUBGRIDVAR :: mdot %g x %g cosx %g om_ri %g All_t %g dt %g nsubgridvar %ld n0 %g norm %g jsub %d ru %g rg %g \n",
-                 mdot,x,cos(x),omega_ri,All.Time,dt,nsubgridvar,n0_sgrid_elements,norm_subgrid,jsub,varsg1,varsg2);fflush(stdout);
-                 */
             }}
         gsl_rng_free(random_generator_forbh);
     } // if(mdot > 0)

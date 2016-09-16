@@ -1296,6 +1296,9 @@ void determine_where_SNe_occur()
     MPI_Reduce(&npossible, &mpi_npossible, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if(ThisTask == 0)
     {
+#ifdef IO_REDUCED_MODE
+        if(mpi_ntotal > 0 && mpi_nhosttotal > 0 && mpi_dtmean > 0)
+#endif
         if(mpi_npossible>0)
         {
             mpi_dtmean /= mpi_npossible;

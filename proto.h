@@ -30,7 +30,6 @@ void write_parameters_attributes_in_hdf5(hid_t handle);
 void write_units_attributes_in_hdf5(hid_t handle);
 void write_constants_attributes_in_hdf5(hid_t handle);
 #endif
-void report_VmRSS(void);
 void output_compile_time_options(void);
 
 void report_pinning(void);
@@ -514,7 +513,7 @@ void luminosity_heating_gasoline(void);
 /*double GetMetalLambda(double, double);*/
 double getSpCoolTableVal(long i,long j,long k,long tblK);
 double GetCoolingRateWSpecies(double nHcgs, double logT, double *Z);
-double GetLambdaSpecies(int k_species, double nHcgs, double logT, double fHe);
+double GetLambdaSpecies(long k_index, long index_x0y0, long index_x0y1, long index_x1y0, long index_x1y1, double dx, double dy, double dz, double mdz);
 void LoadMultiSpeciesTables(void);
 void ReadMultiSpeciesTables(int iT);
 char *GetMultiSpeciesFilename(int i, int hk);
@@ -566,7 +565,9 @@ int dissolvegas(void);
 void do_box_wrapping(void);
 double enclosed_mass(double R);
 void endrun(int);
+#ifndef IO_REDUCED_MODE
 void energy_statistics(void);
+#endif
 void ensure_neighbours(void);
 
 void output_log_messages(void);

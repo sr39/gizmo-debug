@@ -118,9 +118,9 @@ void gravity_tree(void)
     /* construct tree if needed */
     if(TreeReconstructFlag)
     {
-        if(ThisTask == 0)
-            printf("Tree construction.  (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
-        
+#ifndef IO_REDUCED_MODE
+        if(ThisTask == 0) printf("Tree construction.  (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
+#endif
         CPU_Step[CPU_MISC] += measure_time();
         
         force_treebuild(NumPart, NULL);
@@ -129,15 +129,18 @@ void gravity_tree(void)
         
         TreeReconstructFlag = 0;
         
-        if(ThisTask == 0)
-            printf("Tree construction done.\n");
+#ifndef IO_REDUCED_MODE
+        if(ThisTask == 0) printf("Tree construction done.\n");
+#endif
     }
     
 #ifndef NOGRAVITY
     
     /* allocate buffers to arrange communication */
-    if(ThisTask == 0)
-        printf("Begin tree force.  (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
+#ifdef IO_REDUCED_MODE
+    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
+#endif
+    if(ThisTask == 0) printf("Begin tree force.  (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
     
     All.BunchSize =
     (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
@@ -149,8 +152,10 @@ void gravity_tree(void)
     DataNodeList =
     (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
     
-    if(ThisTask == 0)
-        printf("All.BunchSize=%d\n", All.BunchSize);
+#ifdef IO_REDUCED_MODE
+    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
+#endif
+    if(ThisTask == 0) printf("All.BunchSize=%d\n", All.BunchSize);
     
     Ewaldcount = 0;
     Costtotal = 0;
@@ -853,10 +858,7 @@ void gravity_tree(void)
 #endif
 #endif
     
-    
-    if(ThisTask == 0)
-        printf("tree is done.\n");
-    
+        
 #else /* gravity is switched off */
     t0 = my_second();
     
@@ -891,7 +893,6 @@ void gravity_tree(void)
     if(ThisTask == 0)
     {
         printf("Starting SCF calculation...\n");
-        fflush(stdout);
     }
     
     /* reset the expansion coefficients to zero */
@@ -915,7 +916,6 @@ void gravity_tree(void)
     if(ThisTask == 0)
     {
         printf("calculated and collected coefficients.\n");
-        fflush(stdout);
     }
     
 #else
@@ -935,7 +935,6 @@ void gravity_tree(void)
     {
         printf("sampled coefficients with old/new seed = %ld/%ld         min/max=%ld/%ld\n", old_seed, scf_seed,
                global_seed_min, global_seed_max);
-        fflush(stdout);
     }
 #endif
     
@@ -971,12 +970,6 @@ void gravity_tree(void)
 #ifdef SCF_HYBRID
         }
 #endif
-    }
-    
-    if(ThisTask == 0)
-    {
-        printf("done.\n");
-        fflush(stdout);
     }
 #endif
     
@@ -1044,6 +1037,7 @@ void gravity_tree(void)
     }
 #endif
     
+#ifndef IO_REDUCED_MODE
     if(ThisTask == 0)
     {
         fprintf(FdTimings, "Step= %d  t= %g  dt= %g \n", All.NumCurrentTiStep, All.Time, All.TimeStep);
@@ -1068,9 +1062,11 @@ void gravity_tree(void)
         
         fflush(FdTimings);
     }
+#endif
     
     CPU_Step[CPU_TREEMISC] += measure_time();
     
+#ifndef IO_REDUCED_MODE
     double costtotal_new = 0, sum_costtotal_new;
     if(TakeLevel >= 0)
     {
@@ -1082,6 +1078,7 @@ void gravity_tree(void)
                    (sum_costtotal - sum_costtotal_new) / sum_costtotal);
         /* can be non-zero if THREAD_SAFE_COSTS is not used (and due to round-off errors). */
     }
+#endif
 }
 
 

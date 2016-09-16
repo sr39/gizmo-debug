@@ -249,11 +249,15 @@ void merge_and_split_particles(void)
     MPI_Allreduce(&n_particles_split, &MPI_n_particles_split, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     if(ThisTask == 0)
     {
-        printf("Particle split/merge check: %d particles merged, %d particles split \n",
-               MPI_n_particles_merged,MPI_n_particles_split);
-        fflush(stdout);
+        if(MPI_n_particles_merged > 0 || MPI_n_particles_split > 0)
+        {
+            printf("Particle split/merge check: %d particles merged, %d particles split \n", MPI_n_particles_merged,MPI_n_particles_split);
+#ifndef IO_REDUCED_MODE
+            fflush(stdout);
+#endif
+        }
     }
-    /* the reduction or increase of n_part by MPI_n_particles_merged will occur in rearrange_particle_sequence, which -must- 
+    /* the reduction or increase of n_part by MPI_n_particles_merged will occur in rearrange_particle_sequence, which -must-
         be called immediately after this routine! */
     All.TotNumPart += (long long)MPI_n_particles_split;
     All.TotN_gas += (long long)MPI_n_particles_split;
@@ -275,7 +279,12 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
         fflush(stdout);
         endrun(8888);
     }
-    if(P[i].Type != 0) {printf("SPLITTING NON-GAS-PARTICLE: i=%d ID=%d Type=%d \n",i,P[i].ID,P[i].Type); fflush(stdout); endrun(8889);}
+    if(P[i].Type != 0)
+    {
+        printf("SPLITTING NON-GAS-PARTICLE: i=%d ID=%d Type=%d \n",i,P[i].ID,P[i].Type);
+        fflush(stdout);
+        endrun(8889);
+    }
     
     /* here is where the details of the split are coded, the rest is bookkeeping */
     mass_of_new_particle = 0.5;
@@ -458,7 +467,13 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
     particle splitting */
 void merge_particles_ij(int i, int j)
 {
-    if((P[i].Type != 0)||(P[j].Type != 0)) {printf("Merging non-gas particle: ij=%d/%d ID=%d/%d type=%d/%d mass=%g/%g \n",i,j,P[i].ID,P[j].ID,P[i].Type,P[j].Type,P[i].Mass,P[j].Mass); fflush(stdout);}
+#ifndef IO_REDUCED_MODE
+    if((P[i].Type != 0)||(P[j].Type != 0))
+    {
+        printf("Merging non-gas particle: ij=%d/%d ID=%d/%d type=%d/%d mass=%g/%g \n",i,j,P[i].ID,P[j].ID,P[i].Type,P[j].Type,P[i].Mass,P[j].Mass);
+        fflush(stdout);
+    }
+#endif
     int k;
     if(P[i].Mass <= 0)
     {
@@ -785,9 +800,13 @@ void rearrange_particle_sequence(void)
     
     if(ThisTask == 0)
     {
-        printf("Rearrange: Eliminated %d/%d gas/star particles and merged away %d black holes.\n",
-               tot_gaselim, tot_elim - tot_gaselim - tot_bhelim, tot_bhelim);
+        if(tot_elim > 0)
+        {
+        printf("Rearrange: Eliminated %d/%d gas/star particles and merged away %d black holes.\n", tot_gaselim, tot_elim - tot_gaselim - tot_bhelim, tot_bhelim);
+#ifndef IO_REDUCED_MODE
         fflush(stdout);
+#endif
+        }
     }
     
     All.TotNumPart -= tot_elim;

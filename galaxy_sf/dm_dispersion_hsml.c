@@ -434,7 +434,6 @@ void disp_density(void)
                         ("DM disp: i=%d task=%d ID=%llu Type=%d Hsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g\n   pos=(%g|%g|%g)\n",
                          i, ThisTask, (unsigned long long) P[i].ID, P[i].Type, SphP[i].HsmlDM, Left[i], Right[i],
                          (float) SphP[i].NumNgbDM, Right[i] - Left[i], P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
-                        fflush(stdout);
                     }
                     
                     // right/left define upper/lower bounds from previous iterations
@@ -495,7 +494,6 @@ void disp_density(void)
             {
                 printf("DM disp: ngb iteration %d: need to repeat for %d%09d particles.\n", iter,
                        (int) (ntot / 1000000000), (int) (ntot % 1000000000));
-                fflush(stdout);
             }
             if(iter > MAXITER)
             {

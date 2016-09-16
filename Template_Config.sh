@@ -335,6 +335,7 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #OUTPUTLINEOFSIGHT_PARTICLES
 #POWERSPEC_ON_OUTPUT            # compute and output power spectra (not used)
 #RECOMPUTE_POTENTIAL_ON_OUTPUT	# update potential every output even it EVALPOTENTIAL is set
+#OUTPUT_ADDITIONAL_RUNINFO      # enables extended simulation output data (can slow down machines significantly in massively-parallel runs)
 ####################################################################################################
 
 

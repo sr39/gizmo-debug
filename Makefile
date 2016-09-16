@@ -183,7 +183,7 @@ endif
 ifeq ($(SYSTYPE),"MacBookPro")
 CC       =  mpicc
 CXX      =  mpiccxx
-FC       =  mpifort
+FC       =  $(CC) #mpifort
 OPTIMIZE = -O1 -funroll-loops
 OPTIMIZE += -g -Wall # compiler warnings
 GMP_INCL = #
@@ -335,6 +335,35 @@ OPT     += -DUSE_MPI_IN_PLACE
 ## modules to load:
 ##module load mpi/intel-mpi-4.1.0 gsl/1.16-intel hdf5/1.8.12-serial fftw/2.1.5-intel
 endif
+
+
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Titan")
+CC       =  cc
+CXX      =  CC
+FC       =  $(CC) #ftn
+OPTIMIZE = -O3 -ipo -funroll-loops -no-prec-div -fp-model fast=2 -static
+OPTIMIZE += -g
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -openmp # (intel) openmp required compiler flags
+FC       = $(CC)
+endif
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = #
+MKL_LIBS = #
+GSL_INCL = -I$(GSL_DIR)/include
+GSL_LIBS = -L$(GSL_DIR)/lib -lgsl -lgslcblas -lm
+FFTW_INCL= -I/opt/cray/fftw/2.1.5.8/include
+FFTW_LIBS= -L/opt/cray/fftw/2.1.5.8/lib
+HDF5INCL = -I$(HDF5_DIR)/include -DH5_USE_16_API
+HDF5LIB  = -L$(HDF5_DIR)/lib -lhdf5 -lz
+MPICHLIB =
+OPT     += -DUSE_MPI_IN_PLACE
+endif
+## in your .bashrc file, include
+## module swap PrgEnv-pgi PrgEnv-intel
+## module load cray-hdf5-parallel fftw/2.1.5.8 gsl mercurial
 
 
 

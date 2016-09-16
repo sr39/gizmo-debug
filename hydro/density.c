@@ -780,9 +780,10 @@ void density(void)
                     /* ok we have reached the desired number of neighbors: save the condition number for next timestep */
                     if(ConditionNumber > 1000.0 * (double)CONDITION_NUMBER_DANGER)
                     {
+#ifndef IO_REDUCED_MODE
                         printf("Warning: Condition number=%g CNum_prevtimestep=%g Num_Ngb=%g desnumngb=%g Hsml=%g Hsml_min=%g Hsml_max=%g\n",
                                ConditionNumber,SphP[i].ConditionNumber,PPP[i].NumNgb,desnumngb,PPP[i].Hsml,All.MinHsml,All.MaxHsml);
-                        fflush(stdout);
+#endif
                     }
                     SphP[i].ConditionNumber = ConditionNumber;
                 }
@@ -795,7 +796,6 @@ void density(void)
                                i, ThisTask, (unsigned long long) P[i].ID, P[i].Type, PPP[i].Hsml, PPP[i].DhsmlNgbFactor, Left[i], Right[i],
                                (float) PPP[i].NumNgb, Right[i] - Left[i], particle_set_to_maxhsml_flag, particle_set_to_minhsml_flag, minsoft,
                                maxsoft, desnumngb, desnumngbdev, redo_particle, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
-                        fflush(stdout);
                     }
                     
                     /* need to redo this particle */
@@ -940,9 +940,11 @@ void density(void)
             iter++;
             if(iter > 0 && ThisTask == 0)
             {
+#ifdef IO_REDUCED_MODE
+                if(iter > 10)
+#endif
                 printf("ngb iteration %d: need to repeat for %d%09d particles.\n", iter,
                        (int) (ntot / 1000000000), (int) (ntot % 1000000000));
-                fflush(stdout);
             }
             if(iter > MAXITER)
             {

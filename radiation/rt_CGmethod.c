@@ -188,7 +188,9 @@ void rt_diffusion_cg_solve(void)
             
             /* broadcast and decide if we need to keep iterating */
             MPI_Allreduce(&maxrel, &glob_maxrel, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-            if(ThisTask == 0) {printf("CG iteration: iter=%3d  |res|/|x|=%12.6g  maxrel=%12.6g  |x|=%12.6g |res|=%12.6g\n", iter, res / sum, glob_maxrel, sum, res); fflush(stdout);}
+#ifndef IO_REDUCED_MODE
+            if(ThisTask == 0) {printf("CG iteration: iter=%3d  |res|/|x|=%12.6g  maxrel=%12.6g  |x|=%12.6g |res|=%12.6g\n", iter, res / sum, glob_maxrel, sum, res); //fflush(stdout);}
+#endif
             if(iter >= 1 && (res <= ACCURACY * sum || iter >= MAX_ITER)) {done_key[k]=1; ndone++;}
         }
         iter++;
@@ -197,8 +199,9 @@ void rt_diffusion_cg_solve(void)
     while(ndone < N_RT_FREQ_BINS);
     
     /* success! */
-    if(ThisTask == 0) {printf("%d iterations performed\n", iter); fflush(stdout);}
-    
+#ifndef IO_REDUCED_MODE
+    if(ThisTask == 0) {printf("%d iterations performed\n", iter); //fflush(stdout);}
+#endif
     /* update the intensity */
     for(j = 0; j < N_gas; j++)
         if(P[j].Type == 0)
