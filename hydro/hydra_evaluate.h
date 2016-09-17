@@ -368,7 +368,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(fabs(dmass_holder) > dmass_limiter) {dmass_holder *= dmass_limiter / fabs(dmass_holder);}
                 out.dMass += dmass_holder;
                 out.DtMass += Fluxes.rho;
-                SphP[j].dMass -= dmass_holder; 
+#ifndef SHEARING_BOX
+                SphP[j].dMass -= dmass_holder;
+#endif
                 double gravwork[3]; gravwork[0]=Fluxes.rho*kernel.dp[0]; gravwork[1]=Fluxes.rho*kernel.dp[1]; gravwork[2]=Fluxes.rho*kernel.dp[2];
                 for(k=0;k<3;k++) {out.GravWorkTerm[k] += gravwork[k];}
 #endif
