@@ -78,7 +78,6 @@ void   sub_turb_parent_halo_accel(double dx, double dy, double dz, double *acc);
 double sub_turb_enclosed_mass(double r, double msub, double vmax, double radvmax, double c);
 
 
-int powerspec_turb_treefind(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode, int *nexport, int *nsend_local);
 int powerspec_turb_find_nearest_evaluate(int target, int mode, int *nexport, int *nsend_local);
 void powerspec_turb_calc_dispersion(void);
 double powerspec_turb_obtain_fields(void);
@@ -121,7 +120,7 @@ void calc_shearing_box_pos_offset(void);
 
 int ngb_treefind_variable_threads_targeted(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
                                            int mode, int *exportflag, int *exportnodecount, int *exportindex,
-                                           int *ngblist, int type_of_target_particles);
+                                           int *ngblist, int TARGET_BITMASK);
 
 
 void do_distortion_tensor_kick(int i, double dt_gravkick);
@@ -306,9 +305,6 @@ int blackhole_evaluate_swallow(int target, int mode, int *nexport, int *nsend_lo
 int  blackhole_compare_key(const void *a, const void *b);
 
 
-int ngb_treefind_fof_nearest(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode,
-			     int *nexport, int *nsend_local, int MyFOF_PRIMARY_LINK_TYPES);
-
 void fof_fof(int num);
 void fof_import_ghosts(void);
 void fof_course_binning(void);
@@ -346,7 +342,7 @@ int blockpresent(enum iofields blocknr);
 void fill_write_buffer(enum iofields blocknr, int *pindex, int pc, int type);
 void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type);
 
-int get_particles_in_block(enum iofields blocknr, int *typelist);
+long get_particles_in_block(enum iofields blocknr, int *typelist);
 
 int get_bytes_per_blockelement(enum iofields blocknr, int mode);
 
@@ -457,9 +453,6 @@ double evaluate_stellar_age_Gyr(double stellar_tform);
 double evaluate_l_over_m_ssp(double stellar_age_in_gyr);
 double calculate_relative_light_to_mass_ratio_from_imf(int i);
 #endif
-#if defined(GALSF_FB_RPWIND_LOCAL) && defined(GALSF_FB_RPWIND_FROMSTARS)
-int ngb_treefind_newstars(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode, int *nexport, int *nsend_local);
-#endif
 
 #ifdef GRAIN_FLUID
 void apply_grain_dragforce(void);
@@ -468,7 +461,6 @@ void grain_collisions(void);
 void grain_density(void);
 int grain_density_evaluate(int target, int mode, int *nexport, int *nsend_local);
 int grain_density_isactive(int n);
-int grain_ngb_treefind_variable(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode, int *nexport, int *nsend_local);
 #endif
 #endif
 
@@ -537,11 +529,7 @@ int blackhole_evaluate_PREPASS(int target, int mode, int *nexport, int *nSend_lo
 #endif
 
 #ifdef  GALSF_SUBGRID_DMDISPERSION
-int disp_gravity_kernel_shared_check(short int particle_type_primary, short int particle_type_secondary);
 void disp_setup_smoothinglengths(void);
-int dm_disp_ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
-                                       int mode, int *exportflag, int *exportnodecount, int *exportindex,
-                                       int *ngblist, int type_of_searching_particle);
 void disp_density(void);
 int disp_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
 void *disp_density_evaluate_primary(void *p);
@@ -549,11 +537,6 @@ void *disp_density_evaluate_secondary(void *p);
 int disp_density_isactive(int i);
 #endif
 
-#ifdef PM_HIRES_REGION_CLIPDM
-int ngb_treefind_variable_threads_nongas(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
-                                         int mode, int *exportflag, int *exportnodecount, int *exportindex,
-                                         int *ngblist);
-#endif
 
 void cooling_only(void);
 void count_hot_phase(void);
@@ -772,12 +755,9 @@ double gnlm_var(int n, int l, int m);
 double hnlm_var(int n, int l, int m);
 #endif
 
-int ags_gravity_kernel_shared_check(short int particle_type_primary, short int particle_type_secondary);
+int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
 void ags_setup_smoothinglengths(void);
-int ags_ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
-                                      int mode, int *exportflag, int *exportnodecount, int *exportindex,
-                                      int *ngblist, int type_of_searching_particle);
 void ags_density(void);
 int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
 void *ags_density_evaluate_primary(void *p);

@@ -936,7 +936,8 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
         pos=P[i].Pos;
         m_st_kernel=0; l_st_kernel=0; //l_st_kernel_nonrad=0;
         do {
-            numngb_inbox = ngb_treefind_newstars(&pos[0],h,-1,&startnode,0,&dummy,&dummy);
+            numngb_inbox = ngb_treefind_variable_threads_targeted(pos, h, -1, &startnode, 0, &dummy, &dummy, &dummy, Ngblist, 16); // search for particles of type 4: 2^4=16
+            
             /* searches for all new stars inside h */
             if(numngb_inbox>0)
             {
@@ -961,7 +962,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
             m_gas_kernel=0; pos=P[i].Pos;
             startnode = All.MaxPart; dummy=0;
             do {
-                numngb_inbox = ngb_treefind_variable(pos,h,-1,&startnode,0,&dummy,&dummy);
+                numngb_inbox = ngb_treefind_variable_targeted(pos,h,-1,&startnode,0,&dummy,&dummy,1); // search for gas: 2^0=1
                 if(numngb_inbox>0) for(n=0; n<numngb_inbox; n++) m_gas_kernel+=P[Ngblist[n]].Mass;
             } while(startnode >= 0);
             //printf("wind h %g numngb %d m_gas_kernel %g \n",h,numngb_inbox,m_gas_kernel);
@@ -986,7 +987,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
             h=3.0*PPP[k].Hsml; pos=P[k].Pos;
             dmax1w=SphP[k].Density; vq=0;
             do {
-                numngb_inbox=ngb_treefind_variable(pos,h,-1,&startnode,0,&dummy,&dummy);
+                numngb_inbox=ngb_treefind_variable_targeted(pos,h,-1,&startnode,0,&dummy,&dummy,1); // search for gas: 2^0=1
                 if(numngb_inbox>0) {
                     for(n=0; n<numngb_inbox; n++) {
                         j = Ngblist[n];
@@ -1028,7 +1029,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
             startnode = All.MaxPart; dummy=0;
             do {
                 pos=P[k].Pos;
-                numngb_inbox = ngb_treefind_variable(pos,h,-1,&startnode,0,&dummy,&dummy);
+                numngb_inbox = ngb_treefind_variable_targeted(pos,h,-1,&startnode,0,&dummy,&dummy,1); // search for gas: 2^0=1
                 if(numngb_inbox>0) for(n=0; n<numngb_inbox; n++) m_gas_kernel+=P[Ngblist[n]].Mass;
             } while(startnode >= 0);
         }
@@ -1038,7 +1039,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
         startnode = All.MaxPart; dummy=0;
         do {
             pos=P[k].Pos;
-            numngb_inbox = ngb_treefind_newstars(pos,h,-1,&startnode,0,&dummy,&dummy);
+            numngb_inbox = ngb_treefind_variable_threads_targeted(pos, h, -1, &startnode, 0, &dummy, &dummy, &dummy, Ngblist, 16); // search for particles of type 4: 2^4=16
             stcom_pos[0]=0.0;stcom_pos[1]=0.0;stcom_pos[2]=0.0;
             if(numngb_inbox>0) { for(n=0; n<numngb_inbox; n++) {
                 star_age = evaluate_stellar_age_Gyr(P[Ngblist[n]].StellarAge);

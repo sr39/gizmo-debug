@@ -107,9 +107,7 @@ struct GasGraddata_in
     MyFloat PhiGrad[3];
 #endif
 #endif
-#ifndef DONOTUSENODELIST
     int NodeList[NODELISTLENGTH];
-#endif
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
     MyFloat NV_DivVel;
 #endif
@@ -721,11 +719,8 @@ void hydro_gradient_calc(void)
             {
                 place = DataIndexTable[j].Index;
                 particle2in_GasGrad(&GasGradDataIn[j], place, gradient_iteration);
-#ifndef DONOTUSENODELIST
                 memcpy(GasGradDataIn[j].NodeList,
                        DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
-#endif
-                
             }
             
             /* exchange particle data */
@@ -1179,6 +1174,17 @@ void hydro_gradient_calc(void)
                 for(k=0;k<3;k++) {du_conduction += SphP[i].Gradients.InternalEnergy[k] * SphP[i].Gradients.InternalEnergy[k];}
                 double temp_scale_length = SphP[i].InternalEnergyPred / sqrt(du_conduction) * All.cf_atime;
                 SphP[i].Kappa_Conduction /= (1 + 4.2 * electron_free_path / temp_scale_length); // should be in physical units //
+
+#ifdef DIFFUSION_OPTIMIZERS
+                double cs = Particle_effective_soundspeed_i(i);
+#ifdef MAGNETIC
+                double vA_2 = 0.0; for(k=0;k<3;k++) {vA_2 += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+                vA_2 *= All.cf_afac1 / (All.cf_atime * SphP[i].Density);
+                cs = DMIN(1.e4*cs , sqrt(cs*cs+vA_2));
+#endif
+                cs *= All.cf_afac3;
+                SphP[i].Kappa_Conduction = DMIN(SphP[i].Kappa_Conduction , 42.85 * SphP[i].Density*All.cf_a3inv * cs * DMIN(20.*Get_Particle_Size(i)*All.cf_atime , temp_scale_length));
+#endif
 #endif
             }
 #endif
@@ -1216,6 +1222,9 @@ void hydro_gradient_calc(void)
                 double eta_sat = (SphP[i].Density*All.cf_a3inv) * cs / (ion_free_path * (1 + 4.2 * ion_free_path / vel_scale_length));
                 if(eta_sat <= 0) SphP[i].Eta_ShearViscosity=0;
                 if(SphP[i].Eta_ShearViscosity>0) {SphP[i].Eta_ShearViscosity = 1. / (1./SphP[i].Eta_ShearViscosity + 1./eta_sat);} // again, all physical units //
+#ifdef DIFFUSION_OPTIMIZERS
+                //SphP[i].Eta_ShearViscosity = DMIN(SphP[i].Eta_ShearViscosity , SphP[i].Density*All.cf_a3inv * cs * DMAX(Get_Particle_Size(i)*All.cf_atime , vel_scale_length));
+#endif
 #endif
             }
 #endif
@@ -2088,7 +2097,6 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
             } // numngb loop
         } // while(startnode)
         
-#ifndef DONOTUSENODELIST
         if(mode == 1)
         {
             listindex++;
@@ -2099,7 +2107,6 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     startnode = Nodes[startnode].u.d.nextnode;	/* open it */
             }
         }
-#endif
     }
     
     

@@ -76,9 +76,7 @@ struct addFBdata_in
 #ifdef METALS
     MyDouble yields[NUM_METAL_SPECIES];
 #endif
-#ifndef DONOTUSENODELIST
     int NodeList[NODELISTLENGTH];
-#endif
 }
 *AddFBDataIn, *AddFBDataGet;
 
@@ -556,11 +554,8 @@ void mechanical_fb_calc(int feedback_type)
         {
             place = DataIndexTable[j].Index;
             particle2in_addFB(&AddFBDataIn[j], place, feedback_type);
-#ifndef DONOTUSENODELIST
             memcpy(AddFBDataIn[j].NodeList,
                    DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
-#endif
-            
         }
         
         /* exchange particle data */
@@ -991,7 +986,6 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
             } // for(n = 0; n < numngb; n++)
         } // while(startnode >= 0)
         
-#ifndef DONOTUSENODELIST
         if(mode == 1)
         {
             listindex++;
@@ -1002,7 +996,6 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     startnode = Nodes[startnode].u.d.nextnode;	/* open it */
             }
         } // if(mode == 1)
-#endif
     } // while(startnode >= 0)
     
     /* Now collect the result at the right place */

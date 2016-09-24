@@ -1841,9 +1841,9 @@ int get_values_per_blockelement(enum iofields blocknr)
  *  based on the information in the header-structure.  It also flags particle
  *  types that are present in the block in the typelist array.
  */
-int get_particles_in_block(enum iofields blocknr, int *typelist)
+long get_particles_in_block(enum iofields blocknr, int *typelist)
 {
-    int i, nall, nsel, ntot_withmasses, ngas, nstars, nngb;
+    long i, nall, nsel, ntot_withmasses, ngas, nstars, nngb;
     
     nall = 0;
     nsel = 0;

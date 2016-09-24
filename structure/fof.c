@@ -765,9 +765,7 @@ int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend
 	  if(mode == -1)
 	    *nexport = 0;
 
-	  numngb_inbox =
-	    ngb_treefind_fof_primary(pos, LinkL, target, &startnode, mode, nexport, nsend_local,
-				     MyFOF_PRIMARY_LINK_TYPES);
+	  numngb_inbox = ngb_treefind_fof_primary(pos, LinkL, target, &startnode, mode, nexport, nsend_local, MyFOF_PRIMARY_LINK_TYPES);
 
 	  if(numngb_inbox < 0)
 	    return -1;
@@ -1896,12 +1894,9 @@ int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int
     {
       while(startnode >= 0)
 	{
-	  numngb_inbox =
-	    ngb_treefind_fof_nearest(pos, h, target, &startnode, mode, nexport, nsend_local,
-				     MyFOF_PRIMARY_LINK_TYPES);
+	  numngb_inbox = ngb_treefind_variable_targeted(pos, h, target, &startnode, mode, nexport, nsend_local, MyFOF_PRIMARY_LINK_TYPES); // MyFOF_PRIMARY_LINK_TYPES defines which types of particles we search for
 
-	  if(numngb_inbox < 0)
-	    return -1;
+        if(numngb_inbox < 0) {return -1;}
 
 	  for(n = 0; n < numngb_inbox; n++)
 	    {
@@ -2522,7 +2517,7 @@ void multi_bubbles(void)
 	      startnode = All.MaxPart;
 	      do
 		{
-		  numngb_inbox = ngb_treefind_variable(pos, BubbleRadius, -1, &startnode, 0, &dummy, &dummy);
+		  numngb_inbox = ngb_treefind_variable_targeted(pos, BubbleRadius, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas: 2^0=1
 
 		  for(n = 0; n < numngb_inbox; n++)
 		    {
@@ -2589,7 +2584,7 @@ void multi_bubbles(void)
 
 	      do
 		{
-		  numngb_inbox = ngb_treefind_variable(pos, BubbleRadius, -1, &startnode, 0, &dummy, &dummy);
+		  numngb_inbox = ngb_treefind_variable_targeted(pos, BubbleRadius, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas: 2^0=1
 
 		  for(n = 0; n < numngb_inbox; n++)
 		    {

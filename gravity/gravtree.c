@@ -74,7 +74,7 @@ void sum_top_level_node_costfactors(void);
 void gravity_tree(void)
 {
     long long n_exported = 0;
-    int i, j, maxnumnodes, iter = 0;
+    int i, j, maxnumnodes, iter;
     double t0, t1;
     double timeall = 0, timetree1 = 0, timetree2 = 0;
     double timetree, timewait, timecomm;
@@ -82,6 +82,7 @@ void gravity_tree(void)
     double sum_costtotal, ewaldtot;
     double maxt, sumt, maxt1, sumt1, maxt2, sumt2, sumcommall, sumwaitall;
     double plb, plb_max;
+    iter = 0;
     
 #ifdef FIXEDTIMEINFIRSTPHASE
     int counter;
@@ -279,7 +280,7 @@ void gravity_tree(void)
         for(Ewald_iter = 0; Ewald_iter <= ewald_max; Ewald_iter++)
         {
             
-            NextParticle = FirstActiveParticle;	/* beginn with this index */
+            NextParticle = FirstActiveParticle;	/* begin with this index */
             
             do
             {

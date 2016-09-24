@@ -38,38 +38,36 @@ extern pthread_mutex_t mutex_partnodedrift;
     of the appropriate correction terms), to determine which particle types "talk to" which other particle types 
     (i.e. which particle types you search for to determine the softening radii for gravity). For effectively volume-filling
     fluids like gas or dark matter, it makes sense for this to be 'matched' to particles of the same type. For other 
-    particle types like stars or black holes, it's more ambiguous, and requires some judgement on the part of the user. */
-int ags_gravity_kernel_shared_check(short int particle_type_primary, short int particle_type_secondary)
+    particle types like stars or black holes, it's more ambiguous, and requires some judgement on the part of the user. 
+    The routine specifically returns a bitflag which defines all valid particles to which a particle of type 'primary' 
+    can 'see': i.e. SUM(2^n), where n are all the particle types desired for neighbor finding,
+    so e.g. if you want particle types 0 and 4, set the bitmask = 17 = 1 + 16 = 2^0 + 2^4
+ */
+int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary)
 {
     /* gas particles see gas particles */
-    if(particle_type_primary == 0)
-        return (particle_type_secondary==particle_type_primary);
+    if(particle_type_primary == 0) {return 1;}
 
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
 #ifdef BLACK_HOLES
     /* black hole particles see gas */
-    if(particle_type_primary == 5)
-        return (particle_type_secondary == 0);
+    if(particle_type_primary == 5) {return 1;}
 #endif
 #ifdef GALSF
     /* stars see baryons (any type) */
     if(All.ComovingIntegrationOn)
     {
-        if(particle_type_primary == 4)
-            return ((particle_type_secondary==0)||(particle_type_secondary==4));
+        if(particle_type_primary == 4) {return 17;} // 2^0+2^4
     } else {
-        if((particle_type_primary == 4)||(particle_type_primary == 2)||(particle_type_primary == 3))
-            return ((particle_type_secondary==0)||(particle_type_secondary==4)||(particle_type_secondary == 2)||(particle_type_secondary == 3));
+        if((particle_type_primary == 4)||(particle_type_primary == 2)||(particle_type_primary == 3)) {return 29;} // 2^0+2^2+2^3+2^4
     }
 #endif
 #ifdef SIDM
     /* SIDM particles see other SIDM particles */
-    if((1 << particle_type_primary) & (SIDM))
-        return ((1 << particle_type_secondary) & (SIDM));
+    if((1 << particle_type_primary) & (SIDM)) {return SIDM;}
 #endif
-    
     /* if we haven't been caught by one of the above checks, we simply return whether or not we see 'ourselves' */
-    return (particle_type_primary == particle_type_secondary);
+    return (1 << particle_type_primary);
 #endif
     
     return 0;
@@ -782,6 +780,7 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
     
     h2 = local.AGS_Hsml * local.AGS_Hsml;
     kernel_hinv(local.AGS_Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
+    int AGS_kernel_shared_BITFLAG = ags_gravity_kernel_shared_BITFLAG(local.Type); // determine allowed particle types for search for adaptive gravitational softening terms
     
     if(mode == 0)
     {
@@ -793,13 +792,15 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
         startnode = Nodes[startnode].u.d.nextnode;	/* open it */
     }
     
+    
+    
     double fac_mu = -3 / (All.cf_afac3 * All.cf_atime);
     while(startnode >= 0)
     {
         while(startnode >= 0)
         {
-            numngb_inbox = ags_ngb_treefind_variable_threads(local.Pos, local.AGS_Hsml, target, &startnode, mode, exportflag,
-                                          exportnodecount, exportindex, ngblist, local.Type);
+            numngb_inbox = ngb_treefind_variable_threads_targeted(local.Pos, local.AGS_Hsml, target, &startnode, mode, exportflag,
+                                          exportnodecount, exportindex, ngblist, AGS_kernel_shared_BITFLAG);
             
             if(numngb_inbox < 0)
                 return -1;

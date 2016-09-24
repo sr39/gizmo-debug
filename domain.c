@@ -926,23 +926,23 @@ int domain_check_memory_bound(int multipledomains)
 
 void domain_exchange(void)
 {
-  int count_togo = 0, count_togo_sph = 0, count_get = 0, count_get_sph = 0;
-  int *count, *count_sph, *offset, *offset_sph;
-  int *count_recv, *count_recv_sph, *offset_recv, *offset_recv_sph;
-  int i, n, ngrp, no, target;
+  long count_togo = 0, count_togo_sph = 0, count_get = 0, count_get_sph = 0;
+  long *count, *count_sph, *offset, *offset_sph;
+  long *count_recv, *count_recv_sph, *offset_recv, *offset_recv_sph;
+  long i, n, ngrp, no, target;
   struct particle_data *partBuf;
   struct sph_particle_data *sphBuf;
   peanokey *keyBuf;
 
-  count = (int *) mymalloc("count", NTask * sizeof(int));
-  count_sph = (int *) mymalloc("count_sph", NTask * sizeof(int));
-  offset = (int *) mymalloc("offset", NTask * sizeof(int));
-  offset_sph = (int *) mymalloc("offset_sph", NTask * sizeof(int));
+  count = (long *) mymalloc("count", NTask * sizeof(long));
+  count_sph = (long *) mymalloc("count_sph", NTask * sizeof(long));
+  offset = (long *) mymalloc("offset", NTask * sizeof(long));
+  offset_sph = (long *) mymalloc("offset_sph", NTask * sizeof(long));
 
-  count_recv = (int *) mymalloc("count_recv", NTask * sizeof(int));
-  count_recv_sph = (int *) mymalloc("count_recv_sph", NTask * sizeof(int));
-  offset_recv = (int *) mymalloc("offset_recv", NTask * sizeof(int));
-  offset_recv_sph = (int *) mymalloc("offset_recv_sph", NTask * sizeof(int));
+  count_recv = (long *) mymalloc("count_recv", NTask * sizeof(long));
+  count_recv_sph = (long *) mymalloc("count_recv_sph", NTask * sizeof(long));
+  offset_recv = (long *) mymalloc("offset_recv", NTask * sizeof(long));
+  offset_recv_sph = (long *) mymalloc("offset_recv_sph", NTask * sizeof(long));
 
 #ifdef SEPARATE_STELLARDOMAINDECOMP
   int count_togo_stars = 0, count_get_stars = 0;
@@ -973,10 +973,10 @@ void domain_exchange(void)
       }
 #endif
 
-  int prec_offset, prec_count;
-  int *decrease;
+  long prec_offset, prec_count;
+  long *decrease;
 
-  decrease = (int *) mymalloc("decrease", NTask * sizeof(int));
+  decrease = (long *) mymalloc("decrease", NTask * sizeof(long));
 
   for(i = 1, offset_sph[0] = 0, decrease[0] = 0; i < NTask; i++)
     {
@@ -1164,7 +1164,7 @@ void domain_exchange(void)
 	}
     }
 
-  int count_totget;
+  long count_totget;
 
   count_totget = count_get_sph;
 #ifdef SEPARATE_STELLARDOMAINDECOMP

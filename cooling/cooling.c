@@ -1724,10 +1724,9 @@ double GetCoolingRateWSpecies(double nHcgs, double logT, double *Z)
     /* pre-calculate the indices for density and temperature, then we just need to call the tables by species */
     int ixmax=40, iymax=175;
     int ix0, iy0, ix1, iy1;
-    double i1, i2, j1, j2, w1, w2, u1;
     double dx, dy, dz, mdz;
     long i_T=iymax+1, inHT=i_T*(ixmax+1);
-    if(All.ComovingIntegrationOn && All.SpeciesTableInUse<48) {dz=log10(1/All.Time)*48; dz=dz-(int)dz; mdz=1-dz;} else {dz=0;}
+    if(All.ComovingIntegrationOn && All.SpeciesTableInUse<48) {dz=log10(1/All.Time)*48; dz=dz-(int)dz; mdz=1-dz;} else {dz=0; mdz=1;}
     
     dx = (log10(nHcgs)-(-8.0))/(0.0-(-8.0))*ixmax;
     dy = (logT-2.0)/(9.0-2.0)*iymax;

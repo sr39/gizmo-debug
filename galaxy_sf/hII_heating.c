@@ -162,9 +162,7 @@ void HII_heating_singledomain(void)
          jnearest=-1; rnearest=1.0e10;
          R_search = RHII;
          if(h_i>R_search) R_search=h_i;
-           numngb =
-           ngb_treefind_variable_threads(pos, R_search, -1, &startnode, 0, &dummy,
-                                         &dummy, &dummy, Ngblist);
+         numngb = ngb_treefind_variable_threads(pos, R_search, -1, &startnode, 0, &dummy, &dummy, &dummy, Ngblist);
          if(numngb>0)
          {
          for(n = 0; n < numngb; n++)

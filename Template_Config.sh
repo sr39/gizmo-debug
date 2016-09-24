@@ -360,7 +360,7 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 
 
 #USE_MPI_IN_PLACE               # MPI debugging: makes AllGatherV compatible with MPI_IN_PLACE definitions in some MPI libraries
-#NO_ISEND_IRECV_IN_DOMAIN       # MPI debugging
+#NO_ISEND_IRECV_IN_DOMAIN       # MPI debugging: slower, but fixes memory errors during exchange in the domain decomposition (ANY RUN with >2e9 particles MUST SET THIS OR FAIL!)
 #FIX_PATHSCALE_MPI_STATUS_IGNORE_BUG # MPI debugging
 #MPISENDRECV_SIZELIMIT=100      # MPI debugging
 #MPISENDRECV_CHECKSUM           # MPI debugging
