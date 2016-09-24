@@ -1506,7 +1506,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double pos_x, pos_y, pos_z, aold;
 #ifdef PMGRID
     int tabindex;
-    double eff_dist, rcut, asmth, asmthfac, rcut2, dist;
+    double eff_dist, rcut, asmth, asmthfac, rcut2, dist, xtmp;
+    dist = 0;
 #endif
     MyLongDouble acc_x, acc_y, acc_z;
     // cache some global vars in local vars to help compiler with alias analysis
@@ -1521,7 +1522,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double fac2, h_tidal, h_inv_tidal, h3_inv_tidal, h5_inv_tidal, fac_tidal;
     MyDouble tidal_tensorps[3][3];
 #endif
-#ifdef DO_NOT_BRACH_IF
+#if defined(DO_NOT_BRACH_IF) && defined(PMGRID)
     double dxx, dyy, dzz, pdxx, pdyy, pdzz;
 #endif
     
@@ -1557,7 +1558,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE)
     double soft=0, pmass;
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
-    double h_p_inv=0, h_p3_inv=0, u_p=0, zeta, ptype_sec=-1, zeta_sec=0;
+    double h_p_inv=0, h_p3_inv=0, u_p=0, zeta, zeta_sec=0;
+    int ptype_sec=-1;
 #endif
 #endif
 #ifdef EVALPOTENTIAL
@@ -1656,6 +1658,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
     /* quick check if particle has mass: if not, we won't deal with it */
     if(pmass<=0) return 0;
+    int AGS_kernel_shared_BITFLAG = ags_gravity_kernel_shared_BITFLAG(ptype); // determine allowed particle types for correction terms for adaptive gravitational softening terms
 #endif
 #ifdef PMGRID
     rcut2 = rcut * rcut;
@@ -2104,7 +2107,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 /* check whether we can stop walking along this branch */
                 if(r2 > rcut2)
                 {
-                    double xtmp;
                     eff_dist = rcut + 0.5 * nop->len;
                     dist = NGB_PERIODIC_LONG_X(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
                     if(dist > eff_dist)
@@ -2172,7 +2174,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         continue;
                     }
                     
-#ifdef DO_NOT_BRACH_IF
+#if defined(DO_NOT_BRACH_IF) && defined(PMGRID)
                     if((mass * nop->len * nop->len > r2 * r2 * aold) |
                        ((pdxx < 0.60 * nop->len) & (pdyy < 0.60 * nop->len) & (pdzz < 0.60 * nop->len)))
                     {
@@ -2295,7 +2297,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     }
                     // correction only applies to 'shared-kernel' particles: so this needs to check if
                     // these are the same particles for which the kernel lengths are computed
-                    if(ags_gravity_kernel_shared_check(ptype, ptype_sec))
+                    if((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG))
                     {
                         double dWdr, wp, fac_corr = 0;
                         if((r>0) && (u<1) && (pmass>0)) // checks that these aren't the same particle
@@ -2331,7 +2333,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     if((r > 0) && (pmass > 0)) // check for entering correction terms
 #endif
                     {
-                        if(ags_gravity_kernel_shared_check(ptype, ptype_sec))
+                        if((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG))
                         {
                             double dWdr, wp, fac_corr=0;
                             if(h_p_inv >= h_inv)
@@ -3077,8 +3079,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
         ptype = GravDataGet[target].Type;
         aold = All.ErrTolForceAcc * GravDataGet[target].OldAcc;
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
-        if(ptype == 0)
-            soft = GravDataGet[target].Soft;
+        if(ptype == 0) {soft = GravDataGet[target].Soft;}
 #endif
 #if defined(PMGRID) && defined(PM_PLACEHIGHRESREGION)
         if(pmforce_is_particle_high_res(ptype, GravDataGet[target].Pos))
@@ -3284,7 +3285,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                 {
                     
                     /* force node to open if we are within the gravitational softening length */
-#if defined(NOGRAVITY) || defined(RT_NOGRAVITY) || (!(defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE)))
+#if defined(NOGRAVITY) || defined(RT_NOGRAVITY) || (!(defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)))
                     double soft = All.ForceSoftening[ptype];
 #endif
                     if((r2 < (soft+0.6*nop->len)*(soft+0.6*nop->len)) || (r2 < (nop->maxsoft+0.6*nop->len)*(nop->maxsoft+0.6*nop->len)))

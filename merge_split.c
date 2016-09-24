@@ -96,6 +96,7 @@ void merge_and_split_particles(void)
     /* loop over active particles */
     for(i=0; i<NumPart; i++)
     {
+        int Pi_BITFLAG = (1 << (int)P[i].Type); // bitflag for particles of type matching "i", used for restricting neighbor search
 #ifdef PM_HIRES_REGION_CLIPDM
         /* here we need to check whether a low-res DM particle is surrounded by all high-res particles, 
             in which case we clip its mass down or split it to prevent the most problematic contamination artifacts */
@@ -117,7 +118,7 @@ void merge_and_split_particles(void)
 #endif
             startnode=All.MaxPart; 
             do {
-                numngb_inbox = ngb_treefind_variable_threads_nongas(P[i].Pos,h_guess,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist);
+                numngb_inbox = ngb_treefind_variable_threads_targeted(P[i].Pos,h_guess,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist,62); // search for all particle types -except- gas: 62=2^1+2^2+2^3+2^4+2^5
                 if((numngb_inbox < n_search_min) && (h_guess < h_search_max) && (NITER < NITER_MAX))
                 {
                     h_guess *= 1.27;
@@ -172,7 +173,7 @@ void merge_and_split_particles(void)
             {
                 /* if merging: do a neighbor loop ON THE SAME DOMAIN to determine the target */
                 startnode=All.MaxPart;
-                numngb_inbox = ngb_treefind_variable_threads_targeted(P[i].Pos,PPP[i].Hsml,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist,P[i].Type);
+                numngb_inbox = ngb_treefind_variable_threads_targeted(P[i].Pos,PPP[i].Hsml,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist,Pi_BITFLAG); // search for particles of matching type
                 if(numngb_inbox>0)
                 {
                     target_for_merger = -1;
@@ -205,7 +206,7 @@ void merge_and_split_particles(void)
             {
                 /* if splitting: do a neighbor loop ON THE SAME DOMAIN to determine the nearest particle (so dont overshoot it) */
                 startnode=All.MaxPart;
-                numngb_inbox = ngb_treefind_variable_threads_targeted(P[i].Pos,PPP[i].Hsml,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist,P[i].Type);
+                numngb_inbox = ngb_treefind_variable_threads_targeted(P[i].Pos,PPP[i].Hsml,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist,Pi_BITFLAG); // search for particles of matching type
                 if(numngb_inbox>0)
                 {
                     target_for_merger = -1;

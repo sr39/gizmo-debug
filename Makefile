@@ -239,6 +239,48 @@ endif
 
 
 #----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Wheeler")
+CC       = mpicc ## gcc compilers, for intel replace this with mpiicc
+CXX      = mpicpc ## gcc compilers, for intel replace this with mpiicpc
+FC       = $(CC)
+#OPTIMIZE = -Wall -g -O3 -xHOST -ipo -no-prec-div -fp-model fast=2 -fast-transcendentals -funroll-loops ## optimizations for intel compilers
+##OPTIMIZE += -pg ## profiling for intel compilers
+OPTIMIZE = -g -O2 -ffast-math -funroll-loops -finline-functions -funswitch-loops -fpredictive-commoning -fgcse-after-reload -fipa-cp-clone  ## optimizations for gcc compilers (1/2)
+OPTIMIZE += -ftree-loop-distribute-patterns -ftree-slp-vectorize -fvect-cost-model -ftree-partial-pre   ## optimizations for gcc compilers (2/2)
+#OPTIMIZE += -pg -fprofile -fprofile-arcs -ftest-coverage -fprofile-generate ## full profiling, for gcc compilers
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -fopenmp # openmp required compiler flags
+FC       = $(CC)
+endif
+GMP_INCL =
+GMP_LIBS =
+MKL_INCL =
+MKL_LIBS =
+GSL_INCL = -I$(GSL_HOME)/include
+GSL_LIBS = -L$(GSL_HOME)/lib
+FFTW_INCL= -I$(FFTW2_HOME)/include
+FFTW_LIBS= -L$(FFTW2_HOME)/lib
+HDF5INCL = -I$(HDF5_HOME)/include -DH5_USE_16_API
+HDF5LIB  = -L$(HDF5_HOME)/lib -lhdf5 -lz
+MPICHLIB = #
+OPT     += -DUSE_MPI_IN_PLACE
+## modules to load (intel compilers):
+## module load intel/17 gsl/2.1 hdf5/1.8.17
+## or for gcc compilers:
+## module load gcc/5.3.0 openmpi/2.0.1 gsl/2.1 hdf5/1.8.17
+## -- currently fftw2 is running from a custom install, but it should soon be fully module-supported (current module doesnt have mpi)
+##     it is built in my directory with the config flags:
+##      ./configure --prefix=$HOME/fftw_intel --enable-mpi --enable-type-prefix --enable-float CC=mpiicc CFLAGS='-O3 -fstrict-aliasing -malign-double -fomit-frame-pointer'
+##      linked via the above FFTW2_HOME=$HOME/fftw_intel (where the libraries are installed)
+##      (for a gcc compiler version, just omit the "CC" and "CFLAGS" flags above)
+## in your job submission script, be sure to run gizmo with the following (if using intel compilers, otherwise this is irrelevant):
+##   export I_MPI_DAPL_TRANSLATION_CACHE=0
+##   before your "mpirun", (or include it in your .bashrc and source that before running): this is necessary or else the communication over DAPL will generate MPI memory errors
+##
+endif
+
+
+#----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Zwicky")
 CC       =  mpicc
 CXX      =  mpicpc

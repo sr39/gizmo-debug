@@ -44,7 +44,8 @@ int N_BH_idx;
 
 void read_ic(char *fname)
 {
-    int i, num_files, rest_files, ngroups, gr, filenr, masterTask, lastTask, groupMaster;
+    long i;
+    int num_files, rest_files, ngroups, gr, filenr, masterTask, lastTask, groupMaster;
     double u_init, molecular_weight;
     char buf[500];
     
@@ -82,8 +83,7 @@ void read_ic(char *fname)
     while(rest_files > NTask)
     {
         sprintf(buf, "%s.%d", fname, ThisTask + (rest_files - NTask));
-        if(All.ICFormat == 3)
-            sprintf(buf, "%s.%d.hdf5", fname, ThisTask + (rest_files - NTask));
+        if(All.ICFormat == 3) {sprintf(buf, "%s.%d.hdf5", fname, ThisTask + (rest_files - NTask));}
 #if defined(SAVE_HSML_IN_IC_ORDER) || defined(SUBFIND_RESHUFFLE_CATALOGUE)
         FileNr = ThisTask + (rest_files - NTask);
 #endif
@@ -251,7 +251,7 @@ void read_ic(char *fname)
  */
 void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 {
-    int n, k;
+    long n, k;
     MyInputFloat *fp;
     MyInputPosFloat *fp_pos;
     MyIDType *ip;
@@ -963,6 +963,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #if defined(NO_CHILD_IDS_IN_ICS) || defined(ASSIGN_NEW_IDS)
             if(blocknr == IO_GENERATION_ID || blocknr == IO_CHILD_ID) continue;
 #endif
+            if((RestartFlag == 0) && (All.InitGasTemp > 0) && (blocknr == IO_U)) continue;
             
 #ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
             if(blocknr == IO_POT)
@@ -1390,10 +1391,10 @@ int find_files(char *fname)
 void get_particle_numbers(char *fname, int num_files)
 {
     char buf[1000];
-    int blksize1, blksize2;
+    long blksize1, blksize2;
     char label[4];
-    int nextblock;
-    int i, j;
+    long nextblock;
+    long i, j;
     
     printf("num_files=%d\n", num_files);
     

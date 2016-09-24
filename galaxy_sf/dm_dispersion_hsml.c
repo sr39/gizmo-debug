@@ -40,19 +40,6 @@ extern pthread_mutex_t mutex_partnodedrift;
 
 #ifdef GALSF_SUBGRID_DMDISPERSION
 
-
-/*! this routine checks that we have the 'correct' particles talking to one another (primary=gas, secondary=dm) */
-int disp_gravity_kernel_shared_check(short int particle_type_primary, short int particle_type_secondary)
-{
-    /* gas particles see DM particles */
-    if(particle_type_primary == 0)
-        return (particle_type_secondary==1);
-    /* (only bother with high-resolution DM particles; otherwise this won't trigger) */
-    return 0;
-}
-
-
-
 /*! Structure for communication during the density computation. Holds data that is sent to other processors.
  */
 static struct disp_densdata_in
@@ -590,8 +577,8 @@ int disp_density_evaluate(int target, int mode, int *exportflag, int *exportnode
     {
         while(startnode >= 0)
         {
-            numngb_inbox = dm_disp_ngb_treefind_variable_threads(local.Pos, local.HsmlDM, target, &startnode, mode, exportflag,
-                                                                 exportnodecount, exportindex, ngblist, 0);
+            numngb_inbox = ngb_treefind_variable_threads_targeted(local.Pos, local.HsmlDM, target, &startnode, mode, exportflag,
+                                                                 exportnodecount, exportindex, ngblist, 2); // search for high-res DM particles only: 2^1 = 2
             if(numngb_inbox < 0) return -1;
             for(n = 0; n < numngb_inbox; n++)
             {
