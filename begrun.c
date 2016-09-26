@@ -547,6 +547,7 @@ void open_outputfiles(void)
   MPI_Barrier(MPI_COMM_WORLD);
 
 #ifdef BLACK_HOLES
+#ifndef IO_REDUCED_MODE
   /* Note: This is done by everyone */
   if(ThisTask == 0)
     {
@@ -555,7 +556,6 @@ void open_outputfiles(void)
     }
   MPI_Barrier(MPI_COMM_WORLD);
 
-#ifndef IO_REDUCED_MODE
   sprintf(buf, "%sblackhole_details/blackhole_details_%d.txt", All.OutputDir, ThisTask);
   if(!(FdBlackHolesDetails = fopen(buf, mode)))
     {
