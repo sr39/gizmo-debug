@@ -35,7 +35,7 @@ extern struct blackhole_temp_particle_data *BlackholeTempInfo;
 void blackhole_accretion(void)
 {
     if(All.TimeStep == 0.) return; /* no evolution */
-    if(ThisTask == 0)  {printf("Begin black-hole operations...\n");}
+    if(ThisTask == 0)  {printf("Start black-hole operations...\n");}
     long i; for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* zero out accretion */
     blackhole_start();              /* allocates and cleans BlackholeTempInfo struct */
     
@@ -832,7 +832,7 @@ void blackhole_final_operations(void)
         BPP(n).BH_Mass_AlphaDisk -= dm_wind;
 #endif
         
-        /* DAA: dump the results to the 'blackhole_details' files */
+        /* dump the results to the 'blackhole_details' files */
         mass_disk=0; mdot_disk=0; MgasBulge=0; MstarBulge=0;
         r0 = PPP[n].Hsml * All.cf_atime;
 #ifdef BH_ALPHADISK_ACCRETION

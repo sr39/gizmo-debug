@@ -190,7 +190,7 @@ void GravAccel_GrowingDiskPotential()
     double r_disk_table[14] = {1.0, 5.071, 7.513, 6.787, 6.162, 3.277, 4.772, 3.964, 3.418, 2.511, 2.463, 1.503, 1.005, 1.150}; // disk scale length in code units
     double z_disk_table[14] = {1.0, 4.185, 8.971, 5.089, 3.532, 3.057, 4.557, 2.117, 1.828, 0.809, 0.217, 0.148, 0.335, 0.404}; // disk scale height in code units
     /* before the particle loop, interpolate the relevant quantities to the simulation time */
-    double t=All.Time, dt=0, r2, dp[3], Zterm, Rterm, Rterm2, myfacR; int i, i0, i1, k;
+    double t=All.Time, dt=0, r2, dp[3], Zterm, Rterm, Rterm2, myfacR; int i, i0=0, i1=0, k;
     if(t<=t_disk_table[0])
     {
         i0=i1=0;
@@ -225,16 +225,16 @@ void GravAccel_GrowingDiskPotential()
 void GravAccel_KeplerianOrbit()
 {
     double dp[3], r, r2; int i;
-    dp[0]=P[i].Pos[0]; dp[1]=P[i].Pos[1]; dp[2]=P[i].Pos[2];
-#ifdef ANALYTIC_GRAVITY_ANCHOR_TO_PARTICLE
-    int k; for(k = 0; k < 3; k++) {dp[k] = -P[i].min_xyz_to_bh[k];}
-#endif
-#if defined(PERIODIC)
-    dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y;
-#endif
-    r2 = dp[0]*dp[0] + dp[1]*dp[1]; r = sqrt(r2);
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
+        dp[0]=P[i].Pos[0]; dp[1]=P[i].Pos[1]; dp[2]=P[i].Pos[2];
+#ifdef ANALYTIC_GRAVITY_ANCHOR_TO_PARTICLE
+        int k; for(k = 0; k < 3; k++) {dp[k] = -P[i].min_xyz_to_bh[k];}
+#endif
+#if defined(PERIODIC)
+        dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y;
+#endif
+        r2 = dp[0]*dp[0] + dp[1]*dp[1]; r = sqrt(r2);
         P[i].GravAccel[0] = -dp[0] / (r2 * r);
         P[i].GravAccel[0] = -dp[1] / (r2 * r);
         P[i].GravAccel[2] = 0;
