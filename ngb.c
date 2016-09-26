@@ -51,7 +51,7 @@ extern pthread_mutex_t mutex_nexport, mutex_partnodedrift;
 
 
 
-#ifdef DO_NOT_BRACH_IF
+#ifdef REDUCE_TREEWALK_BRANCHING
 /* definitions and filter sub-routine for reduced branching, vectorized version of tree walk algorithm [more computations, but more 
     vector-friendly, so whether it speeds things up or not depends on your machine] */
 #ifdef __xlC__
@@ -69,7 +69,7 @@ int ngb_filter_variables(long long numngb, int list[], t_vector * center, t_vect
 int ngb_filter_variables(long long numngb, int list[], t_vector * center, t_vector * box, t_vector * hbox, MyFloat hsml, int searchbothways_mode)
 {
     int numngb_old = numngb, *comp, no;
-    if(!(comp = ALLOC_STACK(numngb_old*sizeof(long long)))) {printf("Failed to allocate additional memory for `comp' (%lu Mbytes), switch off 'DO_NOT_BRACH_IF'.\n", numngb_old*sizeof(long long)); endrun(124);}
+    if(!(comp = ALLOC_STACK(numngb_old*sizeof(long long)))) {printf("Failed to allocate additional memory for `comp' (%lu Mbytes), switch off 'REDUCE_TREEWALK_BRANCHING'.\n", numngb_old*sizeof(long long)); endrun(124);}
     numngb = 0;
     MyDouble dist = hsml;
     for(no = 0; no < numngb_old; no++)
@@ -89,7 +89,7 @@ int ngb_filter_variables(long long numngb, int list[], t_vector * center, t_vect
     if(numngb_old > 0) {for(no = 0; no < numngb_old; no++) {if(comp[no]) {list[numngb++] = list[no];}}}
     return (int) numngb;
 }
-#endif // DO_NOT_BRACH_IF
+#endif // REDUCE_TREEWALK_BRANCHING
 
 
 
@@ -181,7 +181,7 @@ int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int target,
 #ifdef PERIODIC
     MyDouble xtmp;
 #endif
-#ifdef DO_NOT_BRACH_IF
+#ifdef REDUCE_TREEWALK_BRANCHING
     t_vector box, hbox, vcenter;
 #ifdef PERIODIC
     INIT_VECTOR3(boxSize_X, boxSize_Y, boxSize_Z, &box);
@@ -208,7 +208,7 @@ int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int target,
             if(mode == 0)
                 continue;
             
-#ifndef DO_NOT_BRACH_IF
+#ifndef REDUCE_TREEWALK_BRANCHING
             dist = hsml;
             dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
             if(dx > dist) continue;
@@ -281,7 +281,7 @@ int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int target,
                 if(current->u.d.bitflags & (1 << BITFLAG_TOPLEVEL))	/* we reached a top-level node again, which means that we are done with the branch */
                 {
                     *startnode = -1;
-#ifndef DO_NOT_BRACH_IF
+#ifndef REDUCE_TREEWALK_BRANCHING
                     return numngb;
 #else
                     return ngb_filter_variables(numngb, Ngblist, &vcenter, &box, &hbox, hsml, 0);
@@ -329,7 +329,7 @@ int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int target,
                                 {
                                     if(((1 << P[p].Type) & (MyFOF_PRIMARY_LINK_TYPES)))
                                     {
-#ifndef DO_NOT_BRACH_IF
+#ifndef REDUCE_TREEWALK_BRANCHING
                                         dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
                                         dy = NGB_PERIODIC_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
                                         dz = NGB_PERIODIC_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
@@ -360,7 +360,7 @@ int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int target,
     }
     
     *startnode = -1;
-#ifndef DO_NOT_BRACH_IF
+#ifndef REDUCE_TREEWALK_BRANCHING
     return numngb;
 #else
     return ngb_filter_variables(numngb, Ngblist, &vcenter, &box, &hbox, hsml, 0);

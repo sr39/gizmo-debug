@@ -859,6 +859,7 @@ void blackhole_final_loop(void)
         r0 = PPP[n].Hsml * All.cf_atime;       
 #endif
 
+#ifndef IO_REDUCED_MODE
 #ifdef BH_OUTPUT_MOREINFO
         fprintf(FdBlackHolesDetails, "%g %u  %g %g %g %g %g %g  %g %g %g %g %g %g  %2.7f %2.7f %2.7f  %2.7f %2.7f %2.7f  %g %g %g\n",
                 All.Time, P[n].ID,  P[n].Mass, BPP(n).BH_Mass, mass_disk, BPP(n).BH_Mdot, mdot_disk, dt,
@@ -871,6 +872,7 @@ void blackhole_final_loop(void)
                 P[n].ID, All.Time, BPP(n).BH_Mass, mass_disk, P[n].Mass, BPP(n).BH_Mdot, mdot_disk,              
                 P[n].DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy,             // DAA: DensAroundStar is actually not defined in BHP->BPP...
                 P[n].Pos[0], P[n].Pos[1], P[n].Pos[2]);
+#endif
 #endif
 
         

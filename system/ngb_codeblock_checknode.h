@@ -33,7 +33,7 @@
 #else
 /* this is the 'normal' operation mode */
 
-#ifdef DO_NOT_BRACH_IF
+#ifdef REDUCE_TREEWALK_BRANCHING
     // On the Power platform it is more efficient to compute all conditions first and then perform a single branch (on current Intel processors this is equally fast)
     MyDouble dist2 = dist + FACT1*current->len;
     dx = NGB_PERIODIC_LONG_X(current->center[0] - vcenter.d[0], current->center[1] - vcenter.d[1], current->center[2] - vcenter.d[2],-1);

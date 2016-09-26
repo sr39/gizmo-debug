@@ -379,6 +379,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                     /* this is a BH-BH merger */
                     if(P[j].Type == 5)
                     {
+#ifndef IO_REDUCED_MODE
 #ifdef BH_OUTPUT_MOREINFO
                         fprintf(FdBhMergerDetails,"%g  %u %g %2.7f %2.7f %2.7f  %u %g %2.7f %2.7f %2.7f\n",
                               All.Time,  id,bh_mass,pos[0],pos[1],pos[2],  P[j].ID,BPP(j).BH_Mass,P[j].Pos[0],P[j].Pos[1],P[j].Pos[2]);
@@ -387,7 +388,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 "ThisTask=%d, time=%g: id=%u swallows %u (%g %g)\n",
                                 ThisTask, All.Time, id, P[j].ID, bh_mass, BPP(j).BH_Mass);
 #endif
-                        
+#endif
                         accreted_mass    += FLT(P[j].Mass);
                         accreted_BH_mass += FLT(BPP(j).BH_Mass);
 #ifdef BH_ALPHADISK_ACCRETION

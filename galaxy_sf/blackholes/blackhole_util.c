@@ -1,4 +1,15 @@
+#include <mpi.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
+#include <math.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#ifdef HAVE_HDF5
+#include <hdf5.h>
+#endif
 #include "../../proto.h"
 #include "../../allvars.h"
 
@@ -68,45 +79,55 @@ void blackhole_start(void)
 /* function for freeing temp BH data struc needed for feedback routines*/
 void blackhole_end(void)
 {
-    int bin;
-    double mdot, mdot_in_msun_per_year;
-    double mass_real, total_mass_real, medd, total_mdoteddington;
-    double mass_holes, total_mass_holes, total_mdot;
-    
-    /* sum up numbers to print for summary of the BH step (blackholes.txt) */
-    mdot = mass_holes = mass_real = medd = 0;
-    for(bin = 0; bin < TIMEBINS; bin++)
+#ifdef IO_REDUCED_MODE
+    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
+#endif
     {
-        if(TimeBinCount[bin])
+        int bin;
+        double mdot, mdot_in_msun_per_year;
+        double mass_real, total_mass_real, medd, total_mdoteddington;
+        double mass_holes, total_mass_holes, total_mdot;
+        
+        /* sum up numbers to print for summary of the BH step (blackholes.txt) */
+        mdot = mass_holes = mass_real = medd = 0;
+        for(bin = 0; bin < TIMEBINS; bin++)
         {
-            mass_holes += TimeBin_BH_mass[bin];
-            mass_real += TimeBin_BH_dynamicalmass[bin];
-            mdot += TimeBin_BH_Mdot[bin];
-            medd += TimeBin_BH_Medd[bin];
+            if(TimeBinCount[bin])
+            {
+                mass_holes += TimeBin_BH_mass[bin];
+                mass_real += TimeBin_BH_dynamicalmass[bin];
+                mdot += TimeBin_BH_Mdot[bin];
+                medd += TimeBin_BH_Medd[bin];
+            }
         }
-    }
-    MPI_Reduce(&mass_holes, &total_mass_holes, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&mass_real, &total_mass_real, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&mdot, &total_mdot, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&medd, &total_mdoteddington, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if(ThisTask == 0)
-    {
-        /* convert to solar masses per yr */
-        mdot_in_msun_per_year = total_mdot * (All.UnitMass_in_g / SOLAR_MASS) / (All.UnitTime_in_s / SEC_PER_YEAR);
-        total_mdoteddington *= 1.0 / bh_eddington_mdot(1); 
-        fprintf(FdBlackHoles, "%g %d %g %g %g %g %g\n",
-                All.Time, All.TotBHs, total_mass_holes, total_mdot, mdot_in_msun_per_year,
-                total_mass_real, total_mdoteddington);
-        fflush(FdBlackHoles);
-    }
-    
-    fflush(FdBlackHolesDetails);
+        MPI_Reduce(&mass_holes, &total_mass_holes, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&mass_real, &total_mass_real, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&mdot, &total_mdot, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&medd, &total_mdoteddington, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        if((ThisTask == 0) && (total_mdot > 0) && (total_mass_real > 0))
+        {
+            /* convert to solar masses per yr */
+            mdot_in_msun_per_year = total_mdot * (All.UnitMass_in_g / SOLAR_MASS) / (All.UnitTime_in_s / SEC_PER_YEAR);
+            total_mdoteddington *= 1.0 / bh_eddington_mdot(1);
+            fprintf(FdBlackHoles, "%g %d %g %g %g %g %g\n",
+                    All.Time, All.TotBHs, total_mass_holes, total_mdot, mdot_in_msun_per_year,
+                    total_mass_real, total_mdoteddington);
+        }
+#ifdef IO_REDUCED_MODE
+        if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
+#endif
+        {fflush(FdBlackHoles);}
+
+#ifndef IO_REDUCED_MODE
+        fflush(FdBlackHolesDetails);
 #ifdef BH_OUTPUT_MOREINFO
-    fflush(FdBhMergerDetails);
+        fflush(FdBhMergerDetails);
 #ifdef BH_BAL_KICK
-    fflush(FdBhWindDetails);
+        fflush(FdBhWindDetails);
 #endif
 #endif
+#endif
+    }
     myfree(BlackholeTempInfo);
 }
 

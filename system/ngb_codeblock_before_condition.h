@@ -14,7 +14,7 @@
 #ifdef PERIODIC
   MyDouble xtmp;
 #endif
-#ifdef DO_NOT_BRACH_IF
+#ifdef REDUCE_TREEWALK_BRANCHING
   t_vector box, hbox, vcenter;
 #ifdef PERIODIC
   INIT_VECTOR3(boxSize_X, boxSize_Y, boxSize_Z, &box);

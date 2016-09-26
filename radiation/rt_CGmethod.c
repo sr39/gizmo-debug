@@ -565,64 +565,17 @@ int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, doubl
 /* routine for initial loop of particles on local processor (and determination of which need passing) */
 void *rt_diffusion_cg_evaluate_primary(void *p, double **matrixmult_in, double **matrixmult_out, double **matrixmult_sum)
 {
-    int i, j, *exportflag, *exportnodecount, *exportindex, *ngblist, thread_id = *(int *) p;
-    ngblist = Ngblist + thread_id * NumPart;
-    exportflag = Exportflag + thread_id * NTask;
-    exportnodecount = Exportnodecount + thread_id * NTask;
-    exportindex = Exportindex + thread_id * NTask;
-    /* Note: exportflag is local to each thread */
-    for(j = 0; j < NTask; j++) {exportflag[j] = -1;}
-    while(1)
-    {
-        int exitFlag = 0;
-        LOCK_NEXPORT;
-#ifdef _OPENMP
-#pragma omp critical(_nexport_)
-#endif
-        {
-            if(BufferFullFlag != 0 || NextParticle < 0)
-            {
-                exitFlag = 1;
-            }
-            else
-            {
-                i = NextParticle;
-                ProcessedFlag[i] = 0;
-                NextParticle = NextActiveParticle[NextParticle];
-            }
-        }
-        UNLOCK_NEXPORT;
-        if(exitFlag) {break;}
-        if((P[i].Type == 0) && (PPP[i].NumNgb > 0) && (PPP[i].Hsml > 0) && (P[i].Mass) > 0)
-        {
-            if(rt_diffusion_cg_evaluate(i, 0, matrixmult_in, matrixmult_out, matrixmult_sum, exportflag, exportnodecount, exportindex, ngblist) < 0) {break;} // export buffer has filled up //
-        }
-        ProcessedFlag[i] = 1; /* particle successfully finished */
-    }
-    return NULL;
+#define CONDITION_FOR_EVALUATION if((P[i].Type==0)&&(PPP[i].NumNgb>0)&&(PPP[i].Hsml>0)&&(P[i].Mass>0))
+#define EVALUATION_CALL rt_diffusion_cg_evaluate(i,0,matrixmult_in,matrixmult_out,matrixmult_sum,exportflag,exportnodecount,exportindex,ngblist)
+#include "../system/code_block_primary_loop_evaluation.h"
+#undef CONDITION_FOR_EVALUATION
+#undef EVALUATION_CALL
 }
-
-
-/* routine for looping over passed particles (with multi-threading): note here we dont need to check for activity, because nothing inactive is passed */
 void *rt_diffusion_cg_evaluate_secondary(void *p, double **matrixmult_in, double **matrixmult_out, double **matrixmult_sum)
 {
-    int j, dummy, *ngblist, thread_id = *(int *) p;
-    ngblist = Ngblist + thread_id * NumPart;
-    while(1)
-    {
-        LOCK_NEXPORT;
-#ifdef _OPENMP
-#pragma omp critical(_nexport_)
-#endif
-        {
-            j = NextJ;
-            NextJ++;
-        }
-        UNLOCK_NEXPORT;
-        if(j >= Nimport) {break;}
-        rt_diffusion_cg_evaluate(j, 1, matrixmult_in, matrixmult_out, matrixmult_sum, &dummy, &dummy, &dummy, ngblist);
-    }
-    return NULL;
+#define EVALUATION_CALL rt_diffusion_cg_evaluate(j, 1, matrixmult_in, matrixmult_out, matrixmult_sum, &dummy, &dummy, &dummy, ngblist);
+#include "../system/code_block_secondary_loop_evaluation.h"
+#undef EVALUATION_CALL
 }
 
 #endif

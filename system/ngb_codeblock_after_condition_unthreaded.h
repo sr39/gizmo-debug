@@ -1,7 +1,7 @@
 if(P[p].Ti_current != ti_Current)
 drift_particle(p, ti_Current);
 
-#ifndef DO_NOT_BRACH_IF
+#ifndef REDUCE_TREEWALK_BRANCHING
 dist = hsml;
 dx = NGB_PERIODIC_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 if(dx > dist) continue;
@@ -63,7 +63,7 @@ else
         if(current->u.d.bitflags & (1 << BITFLAG_TOPLEVEL))	/* we reached a top-level node again, which means that we are done with the branch */
         {
             *startnode = -1;
-#ifndef DO_NOT_BRACH_IF
+#ifndef REDUCE_TREEWALK_BRANCHING
             return numngb;
 #else
             return ngb_filter_variables(numngb, Ngblist, &vcenter, &box, &hbox, hsml, 0);
@@ -90,7 +90,7 @@ else
 }
 
 *startnode = -1;
-#ifndef DO_NOT_BRACH_IF
+#ifndef REDUCE_TREEWALK_BRANCHING
 return numngb;
 #else
 return ngb_filter_variables(numngb, Ngblist, &vcenter, &box, &hbox, hsml, 0);
