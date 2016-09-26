@@ -5,8 +5,7 @@
 
 /* allocate buffers to arrange communication */
 int j, k, ngrp, ndone, ndone_flag, recvTask, place, save_NextParticle;
-long long n_exported = 0;
-long long NTaskTimesNumPart;
+long long NTaskTimesNumPart, n_exported = 0;
 NTaskTimesNumPart = maxThreads * NumPart;
 Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
 All.BunchSize = (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) + sizeof(struct DATA_IN_STRUCT) + sizeof(struct DATA_OUT_STRUCT) + sizemax(sizeof(struct DATA_IN_STRUCT),sizeof(struct DATA_OUT_STRUCT))));
@@ -43,11 +42,7 @@ do
             ProcessedFlag[NextParticle] = 2;
             NextParticle = NextActiveParticle[NextParticle];
         }
-        if(NextParticle == save_NextParticle)
-        {
-            /* in this case, the buffer is too small to process even a single particle */
-            endrun(116609);
-        }
+        if(NextParticle == save_NextParticle) {endrun(116609);} /* in this case, the buffer is too small to process even a single particle */
         int new_export = 0;
         for(j = 0, k = 0; j < Nexport; j++)
         {
@@ -111,7 +106,7 @@ do
         }
     }
     myfree(DATA_IN_VEC);
-    rt_cg_DataResult = (struct DATA_OUT_STRUCT *) mymalloc("rt_cg_DataResult", Nimport * sizeof(struct DATA_OUT_STRUCT));
+    DATA_RESULT_VEC = (struct DATA_OUT_STRUCT *) mymalloc("rt_cg_DataResult", Nimport * sizeof(struct DATA_OUT_STRUCT));
     DATA_OUT_VEC = (struct DATA_OUT_STRUCT *) mymalloc("rt_cg_DataOut", Nexport * sizeof(struct DATA_OUT_STRUCT));
     /* now do the particles that were sent to us */
     NextJ = 0;
@@ -137,7 +132,7 @@ do
             if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
             {
                 /* send the results */
-                MPI_Sendrecv(&rt_cg_DataResult[Recv_offset[recvTask]],
+                MPI_Sendrecv(&DATA_RESULT_VEC[Recv_offset[recvTask]],
                              Recv_count[recvTask] * sizeof(struct DATA_OUT_STRUCT), MPI_BYTE, recvTask, TAG_RT_B,
                              &DATA_OUT_VEC[Send_offset[recvTask]],
                              Send_count[recvTask] * sizeof(struct DATA_OUT_STRUCT), MPI_BYTE, recvTask, TAG_RT_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -156,7 +151,7 @@ do
         }
     }
     myfree(DATA_OUT_VEC);
-    myfree(rt_cg_DataResult);
+    myfree(DATA_RESULT_VEC);
     myfree(DATA_GET_VEC);
 }
 while(ndone < NTask);

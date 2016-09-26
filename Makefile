@@ -353,29 +353,56 @@ endif
 
 
 #----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Darter")
+CC       =  cc
+CXX      =  CC
+FC       =  ftn -nofor_main
+OPTIMIZE = -O3 -ipo -no-prec-div -static -xHost  # speed
+OPTIMIZE += -g  # compiler warnings
+#OPTIMIZE += -parallel -openmp  # openmp (comment out this line if OPENMP not used)
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -parallel -openmp  # openmp required compiler flags
+endif
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = #
+MKL_LIBS = #
+GSL_INCL = #
+GSL_LIBS = #
+FFTW_INCL= #
+FFTW_LIBS= #
+HDF5INCL = -DH5_USE_16_API
+HDF5LIB  = #
+MPICHLIB = #
+OPT     += -DUSE_MPI_IN_PLACE
+## modules to load:
+## module swap PrgEnv-cray PrgEnv-intel
+## module load intel gsl cray-hdf5-parallel fftw/2.1.5.9
+endif
+
+
+#----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Quest")
-CC       =  mpiicc
-CXX      =  mpiicpc
+CC       =  mpicc
+CXX      =  mpic++
 FC       =  $(CC)
-##OPTIMIZE = -O1 -funroll-loops ## if the below (more aggressive) optimizations are causing problems, use this
 OPTIMIZE = -O2 -xhost -ipo -funroll-loops -no-prec-div -fp-model fast=2
-OPTIMIZE += -g -Wall -no-prec-div -ipo -heap-arrays
 GMP_INCL = #
 GMP_LIBS = #
 MKL_INCL = -I$(MKLROOT)/include
 MKL_LIBS = -L$(MKLROOT)/lib/intel64 -lm -lmkl_core -lmkl_sequential -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_blacs_intelmpi_lp64
-GSL_INCL = -I/software/gsl/1.16-intel/include
-GSL_LIBS = -L/software/gsl/1.16-intel/lib -lgsl -lgslcblas -lm
-FFTW_INCL= -I/software/FFTW/2.1.5-intel/include
-FFTW_LIBS= -L/software/FFTW/2.1.5-intel/lib
-HDF5INCL = -I/software/hdf5/1.8.12-serial/include -DH5_USE_16_API
-HDF5LIB  = -L/software/hdf5/1.8.12-serial/lib -lhdf5 -lz
-#MPICHLIB =
+GSL_INCL = -I/projects/b1026/pascal/software/gsl/1.16/include
+GSL_LIBS = -L/projects/b1026/pascal/software/gsl/1.16/lib -lgsl -lgslcblas -lm
+FFTW_INCL= -I/projects/b1026/pascal/software/fftw/2.1.5-mvp/include
+FFTW_LIBS= -L/projects/b1026/pascal/software/fftw/2.1.5-mvp/lib
+HDF5INCL = -I/projects/b1026/pascal/software/hdf5/1.8.12/include -DH5_USE_16_API
+HDF5LIB  = -L/projects/b1026/pascal/software/hdf5/1.8.12/lib -lhdf5 -lz
+MPICHLIB = -lmpich
 OPT     += -DUSE_MPI_IN_PLACE
-## debugging:
-#OPT     += -check_mpi -genv I_MPI_DEBUG 5
-## modules to load:
-##module load mpi/intel-mpi-4.1.0 gsl/1.16-intel hdf5/1.8.12-serial fftw/2.1.5-intel
+#### modules to load:
+#module load mpi/mvapich2-intel2013.2
+#module use /projects/b1026/pascal/software/modules
+#module load hdf5/1.8.12.1 gsl/1.16 fftw/2.1.5-mvp
 endif
 
 
@@ -434,7 +461,7 @@ FFTW_LIBS= -L$(MIRA_FFTW2_LIB)
 HDF5INCL = -I$(MIRA_HDF5_INC) -DH5_USE_16_API -I$(MIRA_SZIP_INC) -I$(MIRA_LZIP_INC)
 HDF5LIB  = -L$(MIRA_SZIP_LIB) -lszip -L$(MIRA_LZIP_LIB) -lz -L$(MIRA_HDF5_LIB) -lhdf5 -lz -lszip
 MPICHLIB = #
-OPT     += -DUSE_MPI_IN_PLACE
+OPT     += -DUSE_MPI_IN_PLACE -DREDUCE_TREEWALK_BRANCHING
 ##
 ## in .bashrc, need to define environmental variables:
 ##   export MIRA_HDF5_INC=/soft/libraries/hdf5/current/cnk-xl/current/include

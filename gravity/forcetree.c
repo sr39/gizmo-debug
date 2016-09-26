@@ -54,36 +54,24 @@ static int tree_allocated_flag = 0;
 
 
 #ifdef OMP_NUM_THREADS
-extern pthread_mutex_t mutex_nexport, mutex_partnodedrift, mutex_workcount;
+extern pthread_mutex_t mutex_nexport, mutex_partnodedrift;
 
 #define LOCK_NEXPORT         pthread_mutex_lock(&mutex_nexport);
 #define UNLOCK_NEXPORT       pthread_mutex_unlock(&mutex_nexport);
 #define LOCK_PARTNODEDRIFT   pthread_mutex_lock(&mutex_partnodedrift);
 #define UNLOCK_PARTNODEDRIFT pthread_mutex_unlock(&mutex_partnodedrift);
-
 /*! The cost computation for the tree-gravity (required for the domain
  decomposition) is not exactly thread-safe if THREAD_SAFE_COSTS is not defined.
  However using locks for an exactly thread-safe cost computiation results in a
  significant (~25%) performance penalty in the tree-walk while having only an
  extremely small effect on the obtained costs. The domain decomposition should
- thus not be significantly changed if THREAD_SAFE_COSTS is not used.*/
-#ifdef THREAD_SAFE_COSTS
-#define LOCK_WORKCOUNT       pthread_mutex_lock(&mutex_workcount);
-#define UNLOCK_WORKCOUNT     pthread_mutex_unlock(&mutex_workcount);
+ thus not be significantly changed if THREAD_SAFE_COSTS is not used.
+ (modern code no longer includes this option - need to consult legacy code) */
 #else
-#define LOCK_WORKCOUNT
-#define UNLOCK_WORKCOUNT
-#endif
-
-#else
-
 #define LOCK_NEXPORT
 #define UNLOCK_NEXPORT
 #define LOCK_PARTNODEDRIFT
 #define UNLOCK_PARTNODEDRIFT
-#define LOCK_WORKCOUNT
-#define UNLOCK_WORKCOUNT
-
 #endif
 
 
@@ -1966,17 +1954,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif // SIDM
                 } // closes (if((r2 > 0) && (mass > 0))) check
                 
-                if(TakeLevel >= 0)
-                {
-                    LOCK_WORKCOUNT;
-#ifdef _OPENMP
-#ifdef THREAD_SAFE_COSTS
-#pragma omp critical(_workcount_)
-#endif
-#endif
-                    P[no].GravCost[TakeLevel] += 1.0;
-                    UNLOCK_WORKCOUNT;
-                }
+                if(TakeLevel >= 0) {P[no].GravCost[TakeLevel] += 1.0;}
                 no = Nextnode[no];
             }
             else			/* we have an  internal node */
@@ -2277,18 +2255,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 }
 #endif
                 
-                if(TakeLevel >= 0)
-                {
-                    LOCK_WORKCOUNT;
-#ifdef _OPENMP
-#ifdef THREAD_SAFE_COSTS
-#pragma omp critical(_workcount_)
-#endif
-#endif
-                    nop->GravCost += 1.0;
-                    UNLOCK_WORKCOUNT;
-                }
-                
+                if(TakeLevel >= 0) {nop->GravCost += 1.0;}
                 no = nop->u.d.sibling;	/* ok, node can be used */
                 
             }
