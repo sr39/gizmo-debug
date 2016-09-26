@@ -34,86 +34,43 @@ extern struct blackhole_temp_particle_data *BlackholeTempInfo;
  *  It is called in calculate_non_standard_physics in run.c */
 void blackhole_accretion(void)
 {
-    
-    if (All.TimeStep == 0.){
-        //if (ThisTask == 0) printf("Time step equals to 0. Should skip BH.\n");
-        return;
-    }
-    
-    long i;
-    
-    for(i = 0; i < NumPart; i++) P[i].SwallowID = 0;
-    
-    
-    if(ThisTask == 0)  printf("Blackhole: beginning black-hole accretion\n");
+    if(All.TimeStep == 0.) return; /* no evolution */
+    if(ThisTask == 0)  {printf("Begin black-hole operations...\n");}
+    long i; for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* zero out accretion */
     blackhole_start();              /* allocates and cleans BlackholeTempInfo struct */
     
-    
-    
     /* this is the PRE-PASS loop.*/
-    //if(ThisTask == 0)  printf("Blackhole: evaluating black-hole environment\n");
     blackhole_environment_loop();    /* populates BlackholeTempInfo based on surrounding gas (blackhole_environment.c).
-                                      If using gravcap the desired mass accretion rate is calculated and set to BlackholeTempInfo.mass_to_swallow_edd
-                                      */
-
+                                      If using gravcap the desired mass accretion rate is calculated and set to BlackholeTempInfo.mass_to_swallow_edd */
 #ifdef BH_GRAVACCRETION
-    //if(ThisTask == 0)  printf("Blackhole: evaluating black-hole environment (second loop)\n");
     blackhole_environment_second_loop();    /* populates BlackholeTempInfo based on surrounding gas (blackhole_environment.c).
                                                Here we compute quantities that require knowledge of previous environment variables
                                                --> Bulge-Disk kinematic decomposition for gravitational torque accretion  */
 #endif
- 
-
     /*----------------------------------------------------------------------
      Now do a first set of local operations based on BH environment calculation:
      calculate mdot, dynamical friction, and other 'BH-centric' operations.
      No MPI comm necessary.
      ----------------------------------------------------------------------*/
-    
-    //if(ThisTask == 0)  printf("Blackhole: setting black-hole properties\n");
-    blackhole_properties_loop();       /* do 'BH-centric' operations such as dyn-fric, mdot, etc.
-                                        This loop is at the end of this file.  */
-    
-    
-    
+    blackhole_properties_loop();       /* do 'BH-centric' operations such as dyn-fric, mdot, etc. This loop is at the end of this file.  */
     /*----------------------------------------------------------------------
      Now we perform a second pass over the black hole environment.
      Re-evaluate the decision to stochastically swallow gas if we exceed eddington.
      Use the above info to determine the weight functions for feedback
      ----------------------------------------------------------------------*/
-    
-    //if(ThisTask == 0)  printf("Blackhole: marking gas to swallow\n");
-    blackhole_feed_loop();       /* BH mergers and gas/star/dm accretion events are evaluated
-                                  - P[j].SwallowID's are set
-                                  */
-    
-    
-    
+    blackhole_feed_loop();       /* BH mergers and gas/star/dm accretion events are evaluated - P[j].SwallowID's are set */
     /*----------------------------------------------------------------------
      Now we do a THIRD pass over the particles, and
      this is where we can do the actual 'swallowing' operations
      (blackhole_evaluate_swallow), and 'kicking' operations
      ----------------------------------------------------------------------*/
-    
-    //if(ThisTask == 0)  printf("Blackhole: injecting feedback\n");
     blackhole_swallow_and_kick_loop();
-    
-    
-    
-    //if(ThisTask == 0) printf("Blackhole: doing whatever goes in the final loop\n");
-    blackhole_final_loop();     /* this is causing problems with the alpha disk ?! */
-    
     /*----------------------------------------------------------------------
-     ------------------------------------------------------------------------
      Now do final operations on the results from the last pass
-     ------------------------------------------------------------------------
      ----------------------------------------------------------------------*/
-    
-    
+    blackhole_final_operations(); /* final operations on the BH with tabulated quantities (not a neighbor loop) */
     blackhole_end();            /* frees BlackholeTempInfo; cleans up */
-    
-    for(i = 0; i < NumPart; i++)  P[i].SwallowID = 0;
-    
+    for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* re-zero accretion */
 }
 
 
@@ -312,7 +269,7 @@ void blackhole_properties_loop(void)
         set_blackhole_new_mass(i, n, dt);
 
         
-        /* results dumped to 'blackhole_details' files at the end of blackhole_final_loop
+        /* results dumped to 'blackhole_details' files at the end of blackhole_final_operations
                 so that BH mass is corrected for mass loss to radiation/bal outflows */
 
     }// for(i=0; i<N_active_loc_BHs; i++)
@@ -457,9 +414,11 @@ void set_blackhole_mdot(int i, int n, double dt)
                    pow(f_disk_for_bhar,5./2.) * pow(bh_mass,1./6.) *
                    pow(r0_for_bhar,-3./2.) / (1 + f0_for_bhar/fgas_for_bhar);
             
+#ifndef IO_REDUCED_MODE
             printf("BH GravAcc Eval :: mdot %g BHaccFac %g Norm %g fdisk %g bh_8 %g fgas %g f0 %g mdisk_9 %g r0_100 %g \n\n",
                    mdot,All.BlackHoleAccretionFactor,fac,
-                   f_disk_for_bhar,bh_mass,fgas_for_bhar,f0_for_bhar,mdisk_for_bhar,r0_for_bhar);fflush(stdout);
+                   f_disk_for_bhar,bh_mass,fgas_for_bhar,f0_for_bhar,mdisk_for_bhar,r0_for_bhar);
+#endif
         } // if(f_disk_for_bhar<=0)
 
     } // if(BlackholeTempInfo[i].Mgas_in_Kernel > 0)
@@ -545,10 +504,6 @@ void set_blackhole_mdot(int i, int n, double dt)
                 varsg2=gsl_ran_ugaussian(random_generator_forbh);
                 time_var_subgridvar=fac*pow(omega_ri*dt,-((float)jsub)/n0_sgrid_elements) + 2.*M_PI*varsg1;
                 mdot *= exp( norm_subgrid*cos(time_var_subgridvar)*varsg2 );
-                /*
-                 printf("SUBGRIDVAR :: mdot %g x %g cosx %g om_ri %g All_t %g dt %g nsubgridvar %ld n0 %g norm %g jsub %d ru %g rg %g \n",
-                 mdot,x,cos(x),omega_ri,All.Time,dt,nsubgridvar,n0_sgrid_elements,norm_subgrid,jsub,varsg1,varsg2);fflush(stdout);
-                 */
             }}
         gsl_rng_free(random_generator_forbh);
     } // if(mdot > 0)
@@ -786,7 +741,7 @@ void set_blackhole_long_range_rp(int i, int n)
 
 
 
-void blackhole_final_loop(void)
+void blackhole_final_operations(void)
 {
     int i, k, n, bin;
     double  dt;
@@ -889,7 +844,8 @@ void blackhole_final_loop(void)
         MstarBulge = BlackholeTempInfo[i].MstarBulge_in_Kernel;
 #endif
 
-#ifdef BH_OUTPUT_MOREINFO
+#ifndef IO_REDUCED_MODE
+#if defined(BH_OUTPUT_MOREINFO)
         fprintf(FdBlackHolesDetails, "%2.12f %u  %g %g %g %g %g %g  %g %g %g %g %g %g %g %g  %2.10f %2.10f %2.10f  %2.7f %2.7f %2.7f  %g %g %g  %g %g %g\n",
                 All.Time, P[n].ID,  P[n].Mass, BPP(n).BH_Mass, mass_disk, BPP(n).BH_Mdot, mdot_disk, dt,
                 BPP(n).DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy, BlackholeTempInfo[i].Sfr_in_Kernel,
@@ -903,7 +859,7 @@ void blackhole_final_loop(void)
                 P[n].DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy,             // DAA: DensAroundStar is actually not defined in BHP->BPP...
                 P[n].Pos[0], P[n].Pos[1], P[n].Pos[2]);
 #endif
-
+#endif
         
         bin = P[n].TimeBin;
         TimeBin_BH_mass[bin] += BPP(n).BH_Mass;

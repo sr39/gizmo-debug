@@ -391,14 +391,11 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                 }
                                 else
                                 {
-                                    printf("MARKING_BH_MERGER: P[j.]ID=%llu to be swallowed by id=%llu \n",
-                                           (unsigned long long) P[j].ID, (unsigned long long) id);
-
-                                    //if(P[j].SwallowID < id && P[j].ID < id) // makes it so only one swallows the other
-                                    // DAA: makes it so that the most massive BH swallows the other - simplifies analysis
+#ifndef IO_REDUCED_MODE
+                                    printf("MARKING_BH_MERGER: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) id);
+#endif
 #ifndef SINGLE_STAR_FORMATION
-                                    if((P[j].SwallowID == 0) && (BPP(j).BH_Mass < bh_mass)) 
-                                        P[j].SwallowID = id;
+                                    if((P[j].SwallowID == 0) && (BPP(j).BH_Mass < bh_mass)) {P[j].SwallowID = id;} // most massive BH swallows the other - simplifies analysis
 #endif
                                 }
                             }
@@ -430,14 +427,12 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                         p /= All.BAL_f_accretion; // we need to accrete more, then remove the mass in winds
 #endif
                                         w = get_random_number(P[j].ID);
-                                        if(w < p) {
-                                            printf("MARKING_BH_FOOD: P[j.]ID=%llu to be swallowed by id=%llu \n",
-                                                   (unsigned long long) P[j].ID, (unsigned long long) id);
+                                        if(w < p)
+                                        {
+#ifndef IO_REDUCED_MODE
+                                            printf("MARKING_BH_FOOD: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) id);
+#endif
                                             if(P[j].SwallowID < id) P[j].SwallowID = id;
-                                        } else { /* w < p */
-                                            printf("MARKING_BH_FOOD (will be rejected): P[j.]ID=%llu to be swallowed by id=%llu \n",
-                                                   (unsigned long long) P[j].ID, (unsigned long long) id);
-                                            //if(P[j].SwallowID < id)  P[j].SwallowID = id; // rejected
                                         }
 #else //if defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
                                         /* in other cases, just swallow the particle */
@@ -495,8 +490,10 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                             w = get_random_number(P[j].ID);
                             if(w < p)
                             {
+#ifndef IO_REDUCED_MODE
                                 printf("MARKING_BH_FOOD: j %d w %g p %g TO_BE_SWALLOWED \n",j,w,p);
-                                if(P[j].SwallowID < id) 
+#endif
+                                if(P[j].SwallowID < id)
                                 {
                                    P[j].SwallowID = id;
 #ifdef BH_BAL_KICK
