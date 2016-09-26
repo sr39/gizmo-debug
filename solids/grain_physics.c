@@ -536,27 +536,7 @@ void grain_density(void)
             }
             tend = my_second();
             timecomp1 += timediff(tstart, tend);
-            sumup_large_ints(1, &npleft, &ntot);
-            
-            /*
-             if(ntot > 0)
-             {
-             iter++;
-             
-             if(iter > 0 && ThisTask == 0)
-             {
-             printf("ngb (grain) iteration %d: need to repeat for %d%09d particles.\n", iter,
-             (int) (ntot / 1000000000), (int) (ntot % 1000000000));
-             }
-             
-             if(iter > MAXITER)
-             {
-             printf("failed to converge in neighbour iteration in grain_density()\n");
-             fflush(stdout);
-             endrun(1155);
-             }
-             }
-             */
+            sumup_large_ints(1, &npleft, &ntot);            
         }
     } while(ntot > 0); /* closes the check for particles that need iteration */
     

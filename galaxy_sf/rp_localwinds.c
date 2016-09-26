@@ -48,7 +48,6 @@ void radiation_pressure_winds_consolidated(void)
     if(ThisTask == 0)
     {
         printf("Beginning Local Radiation-Pressure Acceleration\n");
-        //fflush(stdout);
     } // if(ThisTask == 0)
 #endif
     
@@ -341,13 +340,19 @@ void radiation_pressure_winds_consolidated(void)
                         totMPI_avg_v /= totMPI_n_wind;
                         totMPI_pwt_avg_v /= totMPI_mom_wind;
                     }
-                    printf("Momentum Wind Feedback: Time=%g Nkicked=%g (L/c)dt=%g Momkicks=%g V_avg=%g tau_j_mean=%g \n",
-                           All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_pwt_avg_v); fflush(stdout);
                     fprintf(FdMomWinds, "%lg %g %g %g %g %g \n",
                             All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_pwt_avg_v);
-                    fflush(FdMomWinds);
+#ifndef IO_REDUCED_MODE
+                    printf("Momentum Wind Feedback: Time=%g Nkicked=%g (L/c)dt=%g Momkicks=%g V_avg=%g tau_j_mean=%g \n",
+                           All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_pwt_avg_v);
+                    fflush(stdout);
+#endif
                 }
             }
+#ifdef IO_REDUCED_MODE
+            if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
+#endif
+            {fflush(FdMomWinds);}
         } // if(ThisTask==0)
         
         //  CPU_Step[CPU_LOCALWIND] += measure_time();

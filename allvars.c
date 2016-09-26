@@ -214,6 +214,15 @@ FILE
 *FdEnergy,     /*!< file handle for energy.txt log-file. */
 *FdTimings,    /*!< file handle for timings.txt log-file. */
 *FdBalance,    /*!< file handle for balance.txt log-file. */
+#ifdef RT_CHEM_PHOTOION
+FILE *FdRad;			/*!< file handle for radtransfer.txt log-file. */
+#endif
+#ifdef TURB_DRIVING
+FILE *FdTurb;    /*!< file handle for turb.txt log-file */
+#endif
+#ifdef DARKENERGY
+FILE *FdDE;			/*!< file handle for darkenergy.txt log-file. */
+#endif
 #endif
 *FdCPU;        /*!< file handle for cpu.txt log-file. */
 
@@ -234,14 +243,6 @@ FILE *FdHIIHeating;	/*!< file handle for HIIheating.txt log-file */
 FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 #endif
 
-#ifdef TURB_DRIVING
-FILE *FdTurb;    /*!< file handle for turb.txt log-file */
-#endif
-
-#ifdef RT_CHEM_PHOTOION
-FILE *FdRad;			/*!< file handle for radtransfer.txt log-file. */
-#endif
-
 #ifdef DISTORTIONTENSORPS
 #ifdef PMGRID
 FILE *FdTidaltensor;		/*!< file handle for Tidaltensor.txt log-file. */
@@ -250,6 +251,7 @@ FILE *FdTidaltensor;		/*!< file handle for Tidaltensor.txt log-file. */
 
 #ifdef BLACK_HOLES
 FILE *FdBlackHoles;		/*!< file handle for blackholes.txt log-file. */
+#ifndef IO_REDUCED_MODE
 FILE *FdBlackHolesDetails;
 #ifdef BH_OUTPUT_MOREINFO
 FILE *FdBhMergerDetails;
@@ -258,10 +260,8 @@ FILE *FdBhWindDetails;
 #endif
 #endif
 #endif
-
-#ifdef DARKENERGY
-FILE *FdDE;			/*!< file handle for darkenergy.txt log-file. */
 #endif
+
 
 
 

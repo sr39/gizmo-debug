@@ -555,13 +555,13 @@ void open_outputfiles(void)
     }
   MPI_Barrier(MPI_COMM_WORLD);
 
+#ifndef IO_REDUCED_MODE
   sprintf(buf, "%sblackhole_details/blackhole_details_%d.txt", All.OutputDir, ThisTask);
   if(!(FdBlackHolesDetails = fopen(buf, mode)))
     {
       printf("error in opening file '%s'\n", buf);
       endrun(1);
     }
-
 #ifdef BH_OUTPUT_MOREINFO
   sprintf(buf, "%sblackhole_details/bhmergers_%d.txt", All.OutputDir, ThisTask); 
   if(!(FdBhMergerDetails = fopen(buf, mode)))
@@ -576,6 +576,7 @@ void open_outputfiles(void)
       printf("error in opening file '%s'\n", buf);
       endrun(1);
     }
+#endif
 #endif
 #endif
 #endif
@@ -730,7 +731,7 @@ void open_outputfiles(void)
 #endif
     
     
-#ifdef RT_CHEM_PHOTOION
+#if defined(RT_CHEM_PHOTOION) && !defined(IO_REDUCED_MODE)
   sprintf(buf, "%s%s", All.OutputDir, "rt_photoion_chem.txt");
   if(!(FdRad = fopen(buf, mode)))
     {
@@ -748,7 +749,7 @@ void open_outputfiles(void)
     }
 #endif
 
-#ifdef TURB_DRIVING
+#if defined(TURB_DRIVING) && !defined(IO_REDUCED_MODE)
   sprintf(buf, "%s%s", All.OutputDir, "turb.txt");
   if(!(FdTurb = fopen(buf, mode)))
     {
@@ -758,7 +759,7 @@ void open_outputfiles(void)
 #endif
 
 
-#ifdef DARKENERGY
+#if defined(DARKENERGY) && !defined(IO_REDUCED_MODE)
   sprintf(buf, "%s%s", All.OutputDir, "darkenergy.txt");
   if(!(FdDE = fopen(buf, mode)))
     {
@@ -786,66 +787,6 @@ void open_outputfiles(void)
 
 }
 
-
-
-
-/*!  This function closes the global log-files.
- */
-void close_outputfiles(void)
-{
-#ifdef BLACK_HOLES
-  fclose(FdBlackHolesDetails);	/* needs to be done by everyone */
-#ifdef BH_OUTPUT_MOREINFO
-  fclose(FdBhMergerDetails);
-#ifdef BH_BAL_KICK
-  fclose(FdBhWindDetails);
-#endif
-#endif
-#endif
-
-  if(ThisTask != 0)		/* only the root processors writes to the log files */
-    return;
-
-    fclose(FdCPU);
-#ifndef IO_REDUCED_MODE
-    fclose(FdTimebin);
-    fclose(FdInfo);
-    fclose(FdEnergy);
-    fclose(FdTimings);
-    fclose(FdBalance);
-#endif
-    
-#ifdef SCFPOTENTIAL
-  fclose(FdSCF);
-#endif
-
-#ifdef GALSF
-  fclose(FdSfr);
-#endif
-
-#ifdef GALSF_FB_RPWIND_LOCAL
-    fclose(FdMomWinds);
-#endif
-#ifdef GALSF_FB_HII_HEATING
-    fclose(FdHIIHeating);
-#endif
-#ifdef GALSF_FB_SNE_HEATING
-    fclose(FdSneIIHeating);
-#endif
-    
-#ifdef RT_CHEM_PHOTOION
-  fclose(FdRad);
-#endif
-
-#ifdef BLACK_HOLES
-  fclose(FdBlackHoles);
-#endif
-
-#ifdef DARKENERGY
-  fclose(FdDE);
-#endif
-
-}
 
 
 

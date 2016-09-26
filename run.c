@@ -1126,32 +1126,29 @@ void output_extra_log_messages(void)
     log_self_interactions();
 #endif
     
-#if defined(TURB_DRIVING)
+#if defined(TURB_DRIVING) && !defined(IO_REDUCED_MODE)
     log_turb_temp();
 #endif
     
-    if(ThisTask == 0)
+#if defined(DARKENERGY) && !defined(IO_REDUCED_MODE)
+    if((ThisTask == 0) && (All.ComovingIntegrationOn == 1)
     {
-#ifdef DARKENERGY
-        if(All.ComovingIntegrationOn == 1)
-        {
-            double hubble_a;
-            
-            hubble_a = hubble_function(All.Time);
-            fprintf(FdDE, "%d %g %e ", All.NumCurrentTiStep, All.Time, hubble_a);
+        double hubble_a;
+        
+        hubble_a = hubble_function(All.Time);
+        fprintf(FdDE, "%d %g %e ", All.NumCurrentTiStep, All.Time, hubble_a);
 #ifndef TIMEDEPDE
-            fprintf(FdDE, "%e ", All.DarkEnergyParam);
+        fprintf(FdDE, "%e ", All.DarkEnergyParam);
 #else
-            fprintf(FdDE, "%e %e ", get_wa(All.Time), DarkEnergy_a(All.Time));
+        fprintf(FdDE, "%e %e ", get_wa(All.Time), DarkEnergy_a(All.Time));
 #endif
 #ifdef TIMEDEPGRAV
-            fprintf(FdDE, "%e %e", dHfak(All.Time), dGfak(All.Time));
+        fprintf(FdDE, "%e %e", dHfak(All.Time), dGfak(All.Time));
 #endif
-            fprintf(FdDE, "\n");
-            fflush(FdDE);
-        }
-#endif
+        fprintf(FdDE, "\n");
+        fflush(FdDE);
     }
+#endif
 }
 
 

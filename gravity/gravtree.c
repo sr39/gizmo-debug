@@ -595,6 +595,9 @@ void gravity_tree(void)
                     if(GravDataOut[j].min_dist_to_bh < P[place].min_dist_to_bh)
                     {
                         P[place].min_dist_to_bh = GravDataOut[j].min_dist_to_bh;
+                        P[place].min_xyz_to_bh[0] = GravDataOut[j].min_xyz_to_bh[0];
+                        P[place].min_xyz_to_bh[1] = GravDataOut[j].min_xyz_to_bh[1];
+                        P[place].min_xyz_to_bh[2] = GravDataOut[j].min_xyz_to_bh[2];
                     }
 #endif
                     if(Ewald_iter==0) /* don't allow for an infinite hierarchy of these moments, or you will get nonsense */

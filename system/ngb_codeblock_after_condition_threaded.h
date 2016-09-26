@@ -12,7 +12,7 @@ if(P[p].Ti_current != ti_Current)
     UNLOCK_PARTNODEDRIFT;
 }
 
-#ifndef DO_NOT_BRACH_IF
+#ifndef REDUCE_TREEWALK_BRANCHING
 #if (SEARCHBOTHWAYS==1)
 dist = DMAX(PPP[p].Hsml, hsml);
 #else
@@ -97,7 +97,7 @@ else
         if(current->u.d.bitflags & (1 << BITFLAG_TOPLEVEL))	/* we reached a top-level node again, which means that we are done with the branch */
         {
             *startnode = -1;
-#ifndef DO_NOT_BRACH_IF
+#ifndef REDUCE_TREEWALK_BRANCHING
             return numngb;
 #else
             return ngb_filter_variables(numngb, ngblist, &vcenter, &box, &hbox, hsml, SEARCHBOTHWAYS);
@@ -137,7 +137,7 @@ else
 }
 
 *startnode = -1;
-#ifndef DO_NOT_BRACH_IF
+#ifndef REDUCE_TREEWALK_BRANCHING
 return numngb;
 #else
 return ngb_filter_variables(numngb, ngblist, &vcenter, &box, &hbox, hsml, SEARCHBOTHWAYS);

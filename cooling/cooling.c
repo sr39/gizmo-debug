@@ -1416,7 +1416,7 @@ void ReadMultiSpeciesTables(int iT)
         for(j=0;j<i_nH;j++) {
             for(k=0;k<i_Temp;k++) {
                 r=fread(&SpCoolTable0[i*i_nH*i_Temp + j*i_Temp + k],sizeof(float),1,fdcool);
-                if(r!=1) {printf(" Reached Cooling EOF! \n"); //fflush(stdout);
+                if(r!=1) {printf(" Reached Cooling EOF! \n"); 
                 }
             }}}
     fclose(fdcool);
@@ -1440,7 +1440,7 @@ void ReadMultiSpeciesTables(int iT)
             for(j=0;j<i_nH;j++) {
                 for(k=0;k<i_Temp;k++) {
                     r=fread(&SpCoolTable1[i*i_nH*i_Temp + j*i_Temp + k],sizeof(float),1,fdcool);
-                    if(r!=1) {printf(" Reached Cooling EOF! \n"); //fflush(stdout);
+                    if(r!=1) {printf(" Reached Cooling EOF! \n");
                     }
                 }}}
         fclose(fdcool);

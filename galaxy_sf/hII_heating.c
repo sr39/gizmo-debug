@@ -281,16 +281,22 @@ void HII_heating_singledomain(void)
    MPI_Reduce(&avg_RHII, &totMPI_avg_RHII, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
    if(ThisTask == 0)
    {
-     if(totMPI_m_ionizing>0) {
-     totMPI_avg_RHII /= totMPI_m_ionizing;
-     printf("HII PhotoHeating: Time=%g: %g sources with L_tot/erg=%g ; M_ionized=%g ; <R_HII>=%g \n",
-       All.Time,totMPI_m_ionizing,totMPI_l_ionizing,totMPI_m_ionized,totMPI_avg_RHII);
-     fflush(stdout);
-     fprintf(FdHIIHeating, "%lg %g %g %g %g \n",
-       All.Time,totMPI_m_ionizing,totMPI_l_ionizing,totMPI_m_ionized,totMPI_avg_RHII);
-     fflush(FdHIIHeating);
+     if(totMPI_m_ionizing>0)
+       {
+           totMPI_avg_RHII /= totMPI_m_ionizing;
+#ifndef IO_REDUCED_MODE
+           printf("HII PhotoHeating: Time=%g: %g sources with L_tot/erg=%g ; M_ionized=%g ; <R_HII>=%g \n",
+                All.Time,totMPI_m_ionizing,totMPI_l_ionizing,totMPI_m_ionized,totMPI_avg_RHII);
+           fflush(stdout);
+#endif
+           fprintf(FdHIIHeating, "%lg %g %g %g %g \n",
+                   All.Time,totMPI_m_ionizing,totMPI_l_ionizing,totMPI_m_ionized,totMPI_avg_RHII);
      }
-   }
+#ifdef IO_REDUCED_MODE
+       if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
+#endif
+       {fflush(FdHIIHeating);}
+   } // ThisTask == 0
 
 //  CPU_Step[CPU_HIIHEATING] += measure_time();
 

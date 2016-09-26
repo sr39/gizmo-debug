@@ -725,9 +725,13 @@ if(All.WindMomentumLoading)
     MPI_Reduce(&avg_v_kick, &totMPI_avg_v, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&momwt_avg_v_kick, &totMPI_pwt_avg_v, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&avg_taufac, &totMPI_taufac, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+#ifdef IO_REDUCED_MODE
+    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
+#endif
     if(ThisTask == 0)
     {
-        if(totMPI_n_wind>0) {
+        if(totMPI_n_wind>0)
+        {
             totMPI_avg_v /= totMPI_n_wind;
             totMPI_pwt_avg_v /= totMPI_prob_kick;
             totMPI_taufac /= totMPI_n_wind;
@@ -735,13 +739,13 @@ if(All.WindMomentumLoading)
             printf("Momentum Wind Feedback: Time=%g Nkicked=%g Mkicked=%g Momkicks=%g dPdtkick=%g V_avg=%g V_momwt_avg=%g Tau_avg=%g \n",
                    All.Time,totMPI_n_wind,totMPI_m_wind,totMPI_mom_wind,totMPI_prob_kick,totMPI_avg_v,
                    totMPI_pwt_avg_v,totMPI_taufac);
-            fflush(stdout);
-        }
-        if(totMPI_n_wind>0) {
             fprintf(FdMomWinds, "%lg %g %g %g %g %g %g %g \n",
                     All.Time,totMPI_n_wind,totMPI_m_wind,totMPI_mom_wind,totMPI_prob_kick,totMPI_avg_v,
                     totMPI_pwt_avg_v,totMPI_taufac);
-            fflush(FdMomWinds); 
+#ifndef IO_REDUCED_MODE
+            fflush(stdout);
+#endif
+            fflush(FdMomWinds); // can flush because in reduced mode, only written on highest timesteps
         }
     }
 }
@@ -756,7 +760,6 @@ if(All.WindMomentumLoading)
       {
 #ifndef IO_REDUCED_MODE
       printf("BH/Sink formation: %d gas particles converted into BHs \n",tot_bhformed);
-      //fflush(stdout);
 #endif
       }
       All.TotBHs += tot_bhformed;
@@ -772,7 +775,6 @@ if(All.WindMomentumLoading)
 #ifndef IO_REDUCED_MODE
 	  printf("SFR: spawned %d stars, converted %d gas particles into stars\n",
 		 tot_spawned, tot_converted);
-	  //fflush(stdout);
 #endif
     }
       All.TotNumPart += tot_spawned;
@@ -802,7 +804,7 @@ if(All.WindMomentumLoading)
             /* convert to solar masses per yr */
             rate_in_msunperyear = rate * (All.UnitMass_in_g / SOLAR_MASS) / (All.UnitTime_in_s / SEC_PER_YEAR);
             fprintf(FdSfr, "%g %g %g %g %g\n", All.Time, total_sm, totsfrrate, rate_in_msunperyear, total_sum_mass_stars);
-            fflush(FdSfr);
+            fflush(FdSfr); // can flush it, because only occuring on master steps anyways
         } // thistask==0
     }
 

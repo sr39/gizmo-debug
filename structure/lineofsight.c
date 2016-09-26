@@ -87,7 +87,6 @@ void lineofsight_output(void)
   if(ThisTask == 0)
     {
       printf("Line of sight output! ThisTask=%d Time=%g  NextTime=%g\n", ThisTask, All.Time, ti);
-      //fflush(stdout);
     }
 #endif
   H_a = hubble_function(All.Time);

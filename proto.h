@@ -434,7 +434,6 @@ void allocate_commbuffers(void);
 void allocate_memory(void);
 void begrun(void);
 void check_omega(void);
-void close_outputfiles(void);
 void compute_accelerations(void);
 void compute_global_quantities_of_system(void);
 void compute_potential(void);

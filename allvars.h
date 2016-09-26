@@ -424,6 +424,17 @@
 
 
 
+#if defined(ANALYTIC_GRAVITY)
+#if !(EXPAND_PREPROCESSOR_(ANALYTIC_GRAVITY) == 1)
+#if (ANALYTIC_GRAVITY > 0)
+#define ANALYTIC_GRAVITY_ANCHOR_TO_PARTICLE /* ok, analytic gravity is defined with a numerical value > 0, indicating we should use this flag */
+#ifndef BH_CALC_DISTANCES
+#define BH_CALC_DISTANCES
+#endif
+#endif
+#endif
+#endif
+
 
 #if defined(CONDUCTION) || defined(EOS_GENERAL)
 #define DOGRAD_INTERNAL_ENERGY 1
@@ -1197,6 +1208,15 @@ extern FILE
  *FdEnergy,     /*!< file handle for energy.txt log-file. */
  *FdTimings,    /*!< file handle for timings.txt log-file. */
  *FdBalance,    /*!< file handle for balance.txt log-file. */
+#ifdef RT_CHEM_PHOTOION
+extern FILE *FdRad;		/*!< file handle for radtransfer.txt log-file. */
+#endif
+#ifdef TURB_DRIVING
+extern FILE *FdTurb;    /*!< file handle for turb.txt log-file */
+#endif
+#ifdef DARKENERGY
+extern FILE *FdDE;  /*!< file handle for darkenergy.txt log-file. */
+#endif
 #endif
  *FdCPU;        /*!< file handle for cpu.txt log-file. */
 
@@ -1207,8 +1227,6 @@ extern FILE *FdSCF;
 #ifdef GALSF
 extern FILE *FdSfr;		/*!< file handle for sfr.txt log-file. */
 #endif
-
-
 #ifdef GALSF_FB_RPWIND_LOCAL
 extern FILE *FdMomWinds;	/*!< file handle for MomWinds.txt log-file */
 #endif
@@ -1219,14 +1237,6 @@ extern FILE *FdHIIHeating;	/*!< file handle for HIIheating.txt log-file */
 extern FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 #endif
 
-#ifdef TURB_DRIVING
-extern FILE *FdTurb;    /*!< file handle for turb.txt log-file */
-#endif
-
-#ifdef RT_CHEM_PHOTOION
-extern FILE *FdRad;		/*!< file handle for radtransfer.txt log-file. */
-#endif
-
 #ifdef DISTORTIONTENSORPS
 #ifdef PMGRID
 extern FILE *FdTidaltensor;     /*!< file handle for tidaltensor.txt log-file. */
@@ -1235,6 +1245,7 @@ extern FILE *FdTidaltensor;     /*!< file handle for tidaltensor.txt log-file. *
 
 #ifdef BLACK_HOLES
 extern FILE *FdBlackHoles;	/*!< file handle for blackholes.txt log-file. */
+#ifndef IO_REDUCED_MODE
 extern FILE *FdBlackHolesDetails;
 #ifdef BH_OUTPUT_MOREINFO
 extern FILE *FdBhMergerDetails;
@@ -1243,9 +1254,6 @@ extern FILE *FdBhWindDetails;
 #endif
 #endif
 #endif
-
-#ifdef DARKENERGY
-extern FILE *FdDE;  /*!< file handle for darkenergy.txt log-file. */
 #endif
 
 
@@ -2017,6 +2025,7 @@ extern ALIGN(32) struct particle_data
     
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
+    MyFloat min_xyz_to_bh[3];
 #endif
     
 #ifdef SINGLE_STAR_PROMOTION
@@ -2542,6 +2551,7 @@ extern struct gravdata_out
 #endif
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
+    MyFloat min_xyz_to_bh[3];
 #endif
 }
  *GravDataResult,		/*!< holds the partial results computed for imported particles. Note: We use GravDataResult = GravDataGet, such that the result replaces the imported data */
@@ -2884,6 +2894,7 @@ extern ALIGN(32) struct NODE
 
 #ifdef BH_CALC_DISTANCES
     MyFloat bh_mass;      /*!< holds the BH mass in the node.  Used for calculating tree based dist to closest bh */
+    MyFloat bh_pos[3];    /*!< holds the mass-weighted position of the the actual black holes within the node */
 #endif
     
 #ifdef RT_SEPARATELY_TRACK_LUMPOS

@@ -1008,111 +1008,42 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 } // int addFB_evaluate
 
 
-
-
+int addFB_evaluate_active_check(int i, int feedback_type);
+int addFB_evaluate_active_check(int i, int feedback_type)
+{
+    if(P[i].Type <= 1) return 0;
+    if(P[i].Mass <= 0) return 0;
+    if(PPP[i].Hsml <= 0) return 0;
+    if(PPP[i].NumNgb <= 0) return 0;
+#ifdef GALSF_FB_SNE_HEATING
+    if(P[i].SNe_ThisTimeStep>0) {if(feedback_type==-1 || feedback_type==0) return 1;}
+#endif
+#ifdef GALSF_FB_GASRETURN
+    if(P[i].MassReturn_ThisTimeStep>0) {if(feedback_type==-1 || feedback_type==1) return 1;}
+#endif
+#ifdef GALSF_FB_RPROCESS_ENRICHMENT
+    if(P[i].RProcessEvent_ThisTimeStep>0) {if(feedback_type==-1 || feedback_type==2) return 1;}
+#endif
+    return 0;
+}
 
 
 void *addFB_evaluate_primary(void *p, int feedback_type)
 {
-    int thread_id = *(int *) p;
-    int i, j;
-    int *exportflag, *exportnodecount, *exportindex, *ngblist;
-    int active_check = 0;
-    
-    ngblist = Ngblist + thread_id * NumPart;
-    exportflag = Exportflag + thread_id * NTask;
-    exportnodecount = Exportnodecount + thread_id * NTask;
-    exportindex = Exportindex + thread_id * NTask;
-    
-    /* Note: exportflag is local to each thread */
-    for(j = 0; j < NTask; j++)
-        exportflag[j] = -1;
-    
-    while(1)
-    {
-        int exitFlag = 0;
-        LOCK_NEXPORT;
-#ifdef _OPENMP
-#pragma omp critical(_nexport_)
-#endif
-        {
-            if(BufferFullFlag != 0 || NextParticle < 0)
-            {
-                exitFlag = 1;
-            }
-            else
-            {
-                i = NextParticle;
-                ProcessedFlag[i] = 0;
-                NextParticle = NextActiveParticle[NextParticle];
-            }
-        }
-        UNLOCK_NEXPORT;
-        if(exitFlag)
-            break;
-        
-        active_check = 0;
-        if(PPP[i].NumNgb > 0 && PPP[i].Hsml > 0 && P[i].Mass > 0)
-        {
-#ifdef GALSF_FB_SNE_HEATING
-            if(P[i].SNe_ThisTimeStep>0)
-                if(feedback_type==-1 || feedback_type==0)
-                    active_check = 1;
-#endif
-#ifdef GALSF_FB_GASRETURN
-            if(P[i].MassReturn_ThisTimeStep>0)
-                if(feedback_type==-1 || feedback_type==1)
-                    active_check = 1;
-#endif
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
-            if(P[i].RProcessEvent_ThisTimeStep>0)
-                if(feedback_type==-1 || feedback_type==2)
-                    active_check = 1;
-#endif
-        }
-        
-        if(active_check==1)
-        {
-            if(addFB_evaluate(i, 0, exportflag, exportnodecount, exportindex, ngblist, feedback_type) < 0)
-                break;		// export buffer has filled up //
-        }
-        
-        ProcessedFlag[i] = 1; /* particle successfully finished */
-    }
-    
-    return NULL;
+#define CONDITION_FOR_EVALUATION if(addFB_evaluate_active_check(i,feedback_type)==1)
+#define EVALUATION_CALL addFB_evaluate(i, 0, exportflag, exportnodecount, exportindex, ngblist, feedback_type)
+#include "../system/code_block_primary_loop_evaluation.h"
+#undef CONDITION_FOR_EVALUATION
+#undef EVALUATION_CALL
 }
-
-
-
-
 void *addFB_evaluate_secondary(void *p, int feedback_type)
 {
-    int thread_id = *(int *) p;
-    int j, dummy, *ngblist;
-    
-    ngblist = Ngblist + thread_id * NumPart;
-    
-    while(1)
-    {
-        LOCK_NEXPORT;
-#ifdef _OPENMP
-#pragma omp critical(_nexport_)
-#endif
-        {
-            j = NextJ;
-            NextJ++;
-        }
-        UNLOCK_NEXPORT;
-        
-        if(j >= Nimport)
-            break;
-        
-        addFB_evaluate(j, 1, &dummy, &dummy, &dummy, ngblist, feedback_type);
-    }
-    
-    return NULL;
+#define EVALUATION_CALL addFB_evaluate(j, 1, &dummy, &dummy, &dummy, ngblist, feedback_type);
+#include "../system/code_block_secondary_loop_evaluation.h"
+#undef EVALUATION_CALL
 }
+
+
 
 
 
@@ -1298,9 +1229,12 @@ void determine_where_SNe_occur()
             mpi_rmean /= mpi_npossible;
             fprintf(FdSneIIHeating, "%lg %g %g %g %g %g %g \n",
                     All.Time,mpi_npossible,mpi_nhosttotal,mpi_ntotal,mpi_ptotal,mpi_dtmean,mpi_rmean);
-            fflush(FdSneIIHeating);
         }
-    } // if(ThisTask == 0) //
+#ifdef IO_REDUCED_MODE
+        if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
+#endif
+        {fflush(FdSneIIHeating);}
+} // if(ThisTask == 0) //
     
 } // void determine_where_SNe_occur() //
 

@@ -347,13 +347,15 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                             {
                                 if(vrel > BH_CSND_FRAC_BH_MERGE * vesc)
                                 {
-#ifdef BH_OUTPUT_MOREINFO           // DAA: BH merger info will be saved in a separate output file 
+#ifndef IO_REDUCED_MODE
+#ifdef BH_OUTPUT_MOREINFO           // DAA: BH merger info will be saved in a separate output file
                                     printf("ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n",
                                             ThisTask, All.Time, id, P[j].ID, vrel, vesc);
 #else
                                     fprintf(FdBlackHolesDetails,
                                             "ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n",
                                             ThisTask, All.Time, id, P[j].ID, vrel, vesc);
+#endif
 #endif
                                 }
                                 else

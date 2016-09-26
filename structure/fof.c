@@ -159,9 +159,10 @@ void fof_fof(int num)
 
   if(ThisTask == 0)
     {
-      printf("\nBegin to compute FoF group catalogues...  (presently allocated=%g MB)\n",
-	     AllocatedBytes / (1024.0 * 1024.0));
-      fflush(stdout);
+      printf("\nBegin to compute FoF group catalogues...  (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
+#ifndef IO_REDUCED_MODE
+        fflush(stdout);
+#endif
     }
 
   CPU_Step[CPU_MISC] += measure_time();
@@ -213,6 +214,7 @@ void fof_fof(int num)
     LinkL /= 3;
 #endif
 
+#ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
       printf("\nComoving linking length: %g    ", LinkL);
@@ -224,6 +226,7 @@ void fof_fof(int num)
       printf("(presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
       fflush(stdout);
     }
+#endif
 
   FOF_PList =
     (struct fof_particle_list *) mymalloc("FOF_PList", NumPart *
@@ -361,13 +364,15 @@ void fof_fof(int num)
 					 IMAX(NgroupsExt, TotNgroups / NTask + 1));
 #endif
 
+#ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
       printf("group properties are now allocated.. (presently allocated=%g MB)\n",
 	     AllocatedBytes / (1024.0 * 1024.0));
       fflush(stdout);
     }
-
+#endif
+    
   for(i = 0, start = 0; i < NgroupsExt; i++)
     {
       while(FOF_PList[start].MinID < FOF_GList[i].MinID)
@@ -440,13 +445,14 @@ void fof_fof(int num)
   myfree(FOF_GList);
   myfree(FOF_PList);
 
+#ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
       printf("Finished computing FoF groups.  (presently allocated=%g MB)\n\n",
 	     AllocatedBytes / (1024.0 * 1024.0));
       fflush(stdout);
     }
-
+#endif
 
   CPU_Step[CPU_FOF] += measure_time();
 
@@ -476,12 +482,13 @@ void fof_find_groups(void)
   char *FoFDataOut, *FoFDataResult, *MarkedFlag, *ChangedFlag;
   double t0, t1;
 
+#ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
       printf("\nStart linking particles (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
       fflush(stdout);
     }
-
+#endif
 
   /* allocate buffers to arrange communication */
 
@@ -523,6 +530,7 @@ void fof_find_groups(void)
   t1 = my_second();
 
 
+#ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
       printf
@@ -535,7 +543,8 @@ void fof_find_groups(void)
 	     AllocatedBytes / (1024.0 * 1024.0));
       fflush(stdout);
     }
-
+#endif
+    
   for(i = 0; i < NumPart; i++)
     {
       MinIDOld[i] = MinID[Head[i]];
@@ -696,6 +705,7 @@ void fof_find_groups(void)
 
       t1 = my_second();
 
+#ifndef IO_REDUCED_MODE
       if(ThisTask == 0)
 	{
 	  printf("have done %d%09d cross links (processed %d%09d, took %g sec)\n",
@@ -703,7 +713,7 @@ void fof_find_groups(void)
 		 (int) (ntot / 1000000000), (int) (ntot % 1000000000), timediff(t0, t1));
 	  fflush(stdout);
 	}
-
+#endif
 
       /* let's check out which particles have changed their MinID */
       for(i = 0; i < NumPart; i++)
@@ -727,11 +737,13 @@ void fof_find_groups(void)
   myfree(DataIndexTable);
   myfree(Ngblist);
 
+#ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
       printf("Local groups found.\n\n");
       fflush(stdout);
     }
+#endif
 }
 
 
@@ -1285,12 +1297,14 @@ void fof_save_groups(int num)
   char buf[500];
   double t0, t1;
 
+#ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
       printf("start global sorting of group catalogues\n");
       fflush(stdout);
     }
-
+#endif
+    
   t0 = my_second();
 
   /* assign group numbers (at this point, both Group and FOF_GList are sorted by MinID) */
@@ -1442,13 +1456,14 @@ void fof_save_groups(int num)
 #endif
 
   t1 = my_second();
+#ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
       printf("Group catalogues globally sorted. took = %g sec\n", timediff(t0, t1));
       printf("starting saving of group catalogue\n");
       fflush(stdout);
     }
-
+#endif
   t0 = my_second();
 
   if(ThisTask == 0)
@@ -1481,11 +1496,13 @@ void fof_save_groups(int num)
 
   t1 = my_second();
 
+#ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
       printf("Group catalogues saved. took = %g sec\n", timediff(t0, t1));
       fflush(stdout);
     }
+#endif
 }
 
 
@@ -1619,13 +1636,14 @@ void fof_find_nearest_dmparticle(void)
   int i, j, n, ntot, dummy;
   int ndone, ndone_flag, ngrp, recvTask, place, nexport, nimport, npleft, iter;
 
+#ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
       printf("Start finding nearest dm-particle (presently allocated=%g MB)\n",
 	     AllocatedBytes / (1024.0 * 1024.0));
       fflush(stdout);
     }
-
+#endif
   fof_nearest_distance = (float *) mymalloc("fof_nearest_distance", sizeof(float) * NumPart);
   fof_nearest_hsml = (float *) mymalloc("fof_nearest_hsml", sizeof(float) * NumPart);
 
@@ -1695,13 +1713,14 @@ void fof_find_nearest_dmparticle(void)
 	  FoFDataGet = (struct fofdata_in *) mymalloc("FoFDataGet", nimport * sizeof(struct fofdata_in));
 	  FoFDataIn = (struct fofdata_in *) mymalloc("FoFDataIn", nexport * sizeof(struct fofdata_in));
 
+#ifndef IO_REDUCED_MODE
 	  if(ThisTask == 0)
 	    {
 	      printf("still finding nearest... (presently allocated=%g MB)\n",
 		     AllocatedBytes / (1024.0 * 1024.0));
 	      fflush(stdout);
 	    }
-
+#endif
 	  for(j = 0; j < nexport; j++)
 	    {
 	      place = DataIndexTable[j].Index;
@@ -1827,12 +1846,16 @@ void fof_find_nearest_dmparticle(void)
       if(ntot > 0)
 	{
 	  iter++;
+#ifndef IO_REDUCED_MODE
 	  if(iter > 0 && ThisTask == 0)
+#else
+      if(iter > 10 && ThisTask == 0)
+#endif
 	    {
 	      printf("fof-nearest iteration %d: need to repeat for %d particles.\n", iter, ntot);
 	      fflush(stdout);
 	    }
-
+#endif
 	  if(iter > MAXITER)
 	    {
 	      printf("failed to converge in fof-nearest\n");
@@ -1850,11 +1873,13 @@ void fof_find_nearest_dmparticle(void)
   myfree(fof_nearest_hsml);
   myfree(fof_nearest_distance);
 
+#ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
       printf("done finding nearest dm-particle\n");
       fflush(stdout);
     }
+#endif
 }
 
 
@@ -2080,12 +2105,13 @@ void fof_make_black_holes(void)
 
   MPI_Allreduce(&nimport, &ntot, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
+#ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
       printf("\nMaking %d new black hole particles\n\n", ntot);
       fflush(stdout);
     }
-
+#endif
   All.TotBHs += ntot;
 
   for(n = 0; n < nimport; n++)
@@ -2566,6 +2592,7 @@ void multi_bubbles(void)
 	      totE_bubble *= All.UnitEnergy_in_cgs;
 
 
+#ifndef IO_REDUCED_MODE
 	      if(ThisTask == 0)
 		{
 		  if(logical == 1)
@@ -2577,7 +2604,7 @@ void multi_bubbles(void)
 		    }
 		  fflush(stdout);
 		}
-
+#endif
 	      /* now find particles in Bubble again, and inject energy */
 
 	      startnode = All.MaxPart;
@@ -2852,13 +2879,14 @@ void read_fof(int num)
   int fof_compare_P_SubNr(const void *a, const void *b);
 
 
+#ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
       printf("\nTrying to read preexisting FoF group catalogues...  (presently allocated=%g MB)\n",
 	     AllocatedBytes / (1024.0 * 1024.0));
       fflush(stdout);
     }
-
+#endif
   domain_Decomposition(1, 0, 0);
 
   force_treefree();
@@ -2938,8 +2966,9 @@ void read_fof(int num)
 		}
 
 	      printf("reading '%s'\n", fname);
+#ifndef IO_REDUCED_MODE
 	      fflush(stdout);
-
+#endif
 	      my_fread(&ngroups, sizeof(int), 1, fd);
 	      my_fread(&TotNgroups, sizeof(int), 1, fd);
 	      my_fread(&nids, sizeof(int), 1, fd);
@@ -3023,9 +3052,10 @@ void read_fof(int num)
 		  endrun(1184132);
 		}
 
+#ifndef IO_REDUCED_MODE
 	      printf("reading '%s'\n", fname);
 	      fflush(stdout);
-
+#endif
 	      my_fread(&ngroups, sizeof(int), 1, fd);
 	      my_fread(&TotNgroups, sizeof(int), 1, fd);
 	      my_fread(&nids, sizeof(int), 1, fd);
@@ -3126,10 +3156,10 @@ void read_fof(int num)
 		  printf("can't read file `%s`\n", fname);
 		  endrun(11831);
 		}
-
+#ifndef IO_REDUCED_MODE
 	      printf("reading '%s'\n", fname);
 	      fflush(stdout);
-
+#endif
 	      my_fread(&Ngroups, sizeof(int), 1, fd);
 	      my_fread(&TotNgroups, sizeof(int), 1, fd);
 	      my_fread(&Nids, sizeof(int), 1, fd);
@@ -3179,21 +3209,20 @@ void read_fof(int num)
 
 	      fclose(fd);
 
-
+#ifndef IO_REDUCED_MODE
 	      printf("reading '%s'\n", fname);
 	      fflush(stdout);
-
-
+#endif
 	      sprintf(fname, "%s/groups_%03d/%s_%03d.%d", All.OutputDir, num, "group_ids", num, ThisTask);
 	      if(!(fd = fopen(fname, "r")))
 		{
 		  printf("can't read file `%s`\n", fname);
 		  endrun(1184132);
 		}
-
+#ifndef IO_REDUCED_MODE
 	      printf("reading '%s'\n", fname);
 	      fflush(stdout);
-
+#endif
 	      my_fread(&Ngroups, sizeof(int), 1, fd);
 	      my_fread(&TotNgroups, sizeof(int), 1, fd);
 	      my_fread(&Nids, sizeof(int), 1, fd);
