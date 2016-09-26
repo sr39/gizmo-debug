@@ -37,7 +37,6 @@ void ngb_treebuild(void)
 /* define pragmas, etc, as needed for OPENMP directives for threaded routines below */
 #ifdef OMP_NUM_THREADS
 extern pthread_mutex_t mutex_nexport, mutex_partnodedrift;
-
 #define LOCK_NEXPORT         pthread_mutex_lock(&mutex_nexport);
 #define UNLOCK_NEXPORT       pthread_mutex_unlock(&mutex_nexport);
 #define LOCK_PARTNODEDRIFT   pthread_mutex_lock(&mutex_partnodedrift);
