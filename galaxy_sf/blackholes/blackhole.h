@@ -30,7 +30,7 @@ void blackhole_end(void);
 
 /* blackholes.c */
 void blackhole_properties_loop(void);
-void blackhole_final_loop(void);
+void blackhole_final_operations(void);
 
 /* blackhole_environment.c */
 void blackhole_environment_loop(void);

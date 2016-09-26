@@ -209,9 +209,6 @@ void blackhole_swallow_and_kick_loop(void)
     {
         printf("Accretion done: swallowed %d gas, %d star, %d dm, and %d BH particles\n",
                Ntot_gas_swallowed, Ntot_star_swallowed, Ntot_dm_swallowed, Ntot_BH_swallowed);
-#ifndef IO_REDUCED_MODE
-        fflush(stdout);
-#endif
     }
     
 }
@@ -369,13 +366,12 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                 j = Ngblist[n];
                 
                 /* we've found a particle to be swallowed.  This could be a BH merger, DM particle, or baryon w/ feedback */
-                // DAA: make sure it has not been accreted previously
-                if(P[j].SwallowID == id && P[j].Mass > 0)  
+                if(P[j].SwallowID == id && P[j].Mass > 0)
                 {
+#ifndef IO_REDUCED_MODE
                     printf("found particle P[j].ID = %llu with P[j].SwallowID = %llu of type P[j].Type = %d nearby id = %llu \n",
                            (unsigned long long) P[j].ID, (unsigned long long) P[j].SwallowID, P[j].Type, (unsigned long long) id);
-
-
+#endif
                     /* this is a BH-BH merger */
                     if(P[j].Type == 5)
                     {
@@ -441,11 +437,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                     {
 #ifndef IO_REDUCED_MODE
                         printf("BH_swallow_DM: j %d Type(j) %d  M(j) %g V(j).xyz %g/%g/%g P(j).xyz %g/%g/%g p(i).xyz %g/%g/%g \n",
-                               j,P[j].Type,
-                               P[j].Mass,
-                               P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],
-                               P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],pos[0],pos[1],pos[2]);
-                        fflush(stdout);
+                               j,P[j].Type,P[j].Mass,P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],pos[0],pos[1],pos[2]);
 #endif
                         accreted_mass += FLT(P[j].Mass);
                         accreted_BH_mass += FLT(P[j].Mass);
@@ -552,11 +544,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #ifndef IO_REDUCED_MODE
                         printf("BAL kick: P[j].ID %llu ID %llu Type(j) %d f_acc %g M(j) %g V(j).xyz %g/%g/%g P(j).xyz %g/%g/%g p(i).xyz %g/%g/%g v_out %g \n",
                                    (unsigned long long) P[j].ID, (unsigned long long) P[j].SwallowID,P[j].Type, All.BAL_f_accretion,P[j].Mass,
-                                   P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],
-                                   P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],
-                                   pos[0],pos[1],pos[2],
-                                   v_kick);
-                        fflush(stdout);
+                                   P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],pos[0],pos[1],pos[2],v_kick);
 #ifdef BH_OUTPUT_MOREINFO
                         fprintf(FdBhWindDetails,"%g  %u %g  %2.7f %2.7f %2.7f  %2.7f %2.7f %2.7f  %g %g %g  %u  %2.7f %2.7f %2.7f\n",
                               All.Time, P[j].ID, P[j].Mass,  P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],  P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],
@@ -762,15 +750,14 @@ void spawn_bh_wind_feedback(void)
         for(i = 0; i < NumPart; i++)
             if(P[i].Type ==5)
             {
+#ifndef IO_REDUCED_MODE
                 printf("attempting to spawn feedback particles for BH %d on Task %d \n", i, ThisTask);
+#endif
                 n_particles_split += blackhole_spawn_particle_wind_shell( i , dummy_gas_tag);
             }
     MPI_Allreduce(&n_particles_split, &MPI_n_particles_split, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 #ifndef IO_REDUCED_MODE
-    if(ThisTask == 0)
-    {
-        printf("Particle BH spawn check: %d particles spawned \n", MPI_n_particles_split); fflush(stdout);
-    }
+    if(ThisTask == 0) {printf("Particle BH spawn check: %d particles spawned \n", MPI_n_particles_split);}
 #endif
     /* rearrange_particle_sequence -must- be called immediately after this routine! */
     All.TotNumPart += (long long)MPI_n_particles_split;
@@ -786,7 +773,9 @@ void spawn_bh_wind_feedback(void)
 /*! this code copies what was used in merge_split.c for the gas particle split case */
 int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
 {
-    printf(" spiltting BH %d using SphP particle %d\n", i, dummy_sph_i_to_clone);
+#ifndef IO_REDUCED_MODE
+    printf(" splitting BH %d using SphP particle %d\n", i, dummy_sph_i_to_clone);
+#endif
     double mass_of_new_particle, total_mass_in_winds, dt;
     int n_wind_to_spawn, n_particles_split, bin;
     long j;
@@ -803,8 +792,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
     mass_of_new_particle = total_mass_in_winds / (1.0* n_wind_to_spawn) ;
     n_particles_split    = n_wind_to_spawn;
     
+#ifndef IO_REDUCED_MODE
     printf("want to create %g mass in wind with %d new particles each of mass %g \n", total_mass_in_winds, n_particles_split, mass_of_new_particle);
-    
+#endif
     if(NumPart + n_particles_split >= All.MaxPart)
     {
         printf ("On Task=%d with NumPart=%d we try to split a particle. Sorry, no space left...(All.MaxPart=%d)\n", ThisTask, NumPart, All.MaxPart);
