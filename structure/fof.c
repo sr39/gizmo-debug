@@ -1088,6 +1088,9 @@ void fof_compute_group_properties(int gr, int start, int len)
   Group[gr].BH_Mdot = 0;
   Group[gr].index_maxdens = Group[gr].task_maxdens = -1;
   Group[gr].MaxDens = 0;
+#ifdef BH_SEED_FROM_STAR_PARTICLE
+  Group[gr].MinPot = BHPOTVALUEINIT;
+#endif
 #endif
 
   for(k = 0; k < 3; k++)
@@ -1117,12 +1120,25 @@ void fof_compute_group_properties(int gr, int start, int len)
       if(P[index].Type == 0)
 	Group[gr].Sfr += SphP[index].Sfr;
 #endif
+
 #ifdef BLACK_HOLES
       if(P[index].Type == 5)
 	{
 	  Group[gr].BH_Mdot += BPP(index).BH_Mdot;
 	  Group[gr].BH_Mass += BPP(index).BH_Mass;
 	}
+
+#ifdef BH_SEED_FROM_STAR_PARTICLE
+
+      if( (P[index].Type == 4) && (P[index].Potential < Group[gr].MinPot) )
+        {
+          Group[gr].MinPot = P[index].Potential;
+          Group[gr].index_maxdens = index;
+          Group[gr].task_maxdens = ThisTask;
+        }
+
+#else // BH_SEED_FROM_STAR_PARTICLE
+
 #ifdef BH_SEED_STAR_MASS_FRACTION
       if(P[index].Type == 4)
 #else
@@ -1139,7 +1155,10 @@ void fof_compute_group_properties(int gr, int start, int len)
 		Group[gr].task_maxdens = ThisTask;
 	      }
 	}
-#endif
+
+#endif // BH_SEED_FROM_STAR_PARTICLE
+
+#endif // BLACK_HOLES
 
         for(j = 0; j < 3; j++) {xyz[j] = P[index].Pos[j] - Group[gr].FirstPos[j];}
         NEAREST_XYZ(xyz[0],xyz[1],xyz[2],-1);
@@ -1231,12 +1250,21 @@ void fof_exchange_group_data(void)
 #ifdef BLACK_HOLES
       Group[start].BH_Mdot += get_Group[i].BH_Mdot;
       Group[start].BH_Mass += get_Group[i].BH_Mass;
+#ifdef BH_SEED_FROM_STAR_PARTICLE
+      if(get_Group[i].MinPot < Group[start].MinPot)
+        {
+          Group[start].MinPot = get_Group[i].MinPot;
+          Group[start].index_maxdens = get_Group[i].index_maxdens;     // "index" and "task" refer to MinPot here
+          Group[start].task_maxdens = get_Group[i].task_maxdens;
+        }
+#else
       if(get_Group[i].MaxDens > Group[start].MaxDens)
 	{
 	  Group[start].MaxDens = get_Group[i].MaxDens;
 	  Group[start].index_maxdens = get_Group[i].index_maxdens;
 	  Group[start].task_maxdens = get_Group[i].task_maxdens;
 	}
+#endif
 #endif
 
         for(j = 0; j < 3; j++) {xyz[j] = get_Group[i].CM[j] / get_Group[i].Mass + get_Group[i].FirstPos[j] - Group[start].FirstPos[j];}
@@ -2116,7 +2144,7 @@ void fof_make_black_holes(void)
 
   for(n = 0; n < nimport; n++)
     {
-#ifdef BH_SEED_STAR_MASS_FRACTION
+#if defined(BH_SEED_STAR_MASS_FRACTION) || defined(BH_SEED_FROM_STAR_PARTICLE)
       if(P[import_indices[n]].Type != 4)
 #else
       if(P[import_indices[n]].Type != 0)
@@ -2156,13 +2184,17 @@ void fof_make_black_holes(void)
         BPP(import_indices[n]).BH_Mass = pow( 10., log10(All.SeedBlackHoleMass) + random_number_forbh );
         unitmass_in_msun = (All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS;
         if( BPP(import_indices[n]).BH_Mass < 100./unitmass_in_msun )
-          BPP(import_indices[n]).BH_Mass = 100./unitmass_in_msun;            // DAA: enforce lower limit of Mseed = 100 x Msun
+          BPP(import_indices[n]).BH_Mass = 100./unitmass_in_msun;      // enforce lower limit of Mseed = 100 x Msun
       }else{
           BPP(import_indices[n]).BH_Mass = All.SeedBlackHoleMass;
       }
 #endif
 
-#ifdef BH_ALPHADISK_ACCRETION                                     // DAA: this should be outside of BH_SEED_STAR_MASS_FRACTION ...
+#ifdef BH_INCREASE_DYNAMIC_MASS
+      P[import_indices[n]].Mass *= BH_INCREASE_DYNAMIC_MASS;
+#endif
+
+#ifdef BH_ALPHADISK_ACCRETION                                
       BPP(import_indices[n]).BH_Mass_AlphaDisk = 0;
 #endif
 
@@ -2180,9 +2212,9 @@ void fof_make_black_holes(void)
 #endif
 #endif
 
-#ifndef BH_SEED_STAR_MASS_FRACTION
+//#ifndef BH_SEED_STAR_MASS_FRACTION
+#if !( defined(BH_SEED_STAR_MASS_FRACTION) || defined(BH_SEED_FROM_STAR_PARTICLE) )
       Stars_converted++;
-
       TimeBinCountSph[P[import_indices[n]].TimeBin]--;
 #endif
 

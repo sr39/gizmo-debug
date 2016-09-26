@@ -247,16 +247,16 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##-----------------------------------------------------------------------------------------------------
 #BLACK_HOLES                    # enables Black-Holes (master switch)
 #------ seed models
-#BH_HOST_TO_SEED_RATIO=1000     # DAA: Min FOF stellar mass for seeding is BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass
+#BH_HOST_TO_SEED_RATIO=1000     # Min FOF stellar mass for seeding is BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass
                                 #   Requires FOF with linking type including star particles (MinFoFMassForNewSeed and massDMpart in the param file are ignored)
-#BH_SEED_FROM_STAR_PARTICLE     # DAA: star particle on FOF potential minimum gets converted into a BH (default is densest gas particle)
+#BH_SEED_FROM_STAR_PARTICLE     # star particle on FOF potential minimum gets converted into a BH (default is densest gas particle)
 #BH_POPIII_SEEDS                # BHs seeded on-the-fly from dense, low-metallicity gas
 #------ accretion models/options
 #BH_SWALLOWGAS                  # enables stochastic accretion of gas particles consistent with growth rate of hole
 #BH_ALPHADISK_ACCRETION         # gas accreted into 'virtual' alpha-disk, and from there onto the BH
 #BH_GRAVCAPTURE_GAS             # accretion determined only by resolved gravitational capture by the BH (for gas particles)
 #BH_GRAVCAPTURE_NONGAS          # as BH_GRAVCAPTURE_GAS, but applies to non-gas particles (can be enabled with other accretion models for gas)
-#BH_GRAVACCRETION=0             # DAA: Gravitational torque accretion estimator from Hopkins & Quataert (2011):
+#BH_GRAVACCRETION=0             # Gravitational torque accretion estimator from Hopkins & Quataert (2011):
                                 #   [=0] for kinematic B/D decomposition as in Angles-Alcazar et al. (default) and [=1] for approximate f_disk evaluation
 ##BH_BONDI=0                    # Bondi-Hoyle style accretion model: 0=default (with velocity); 1=dont use gas velocity with sound speed; 2=variable-alpha tweak (Booth & Schaye 2009)
 #BH_SUBGRIDBHVARIABILITY        # model variability below resolved dynamical time for BH
@@ -268,18 +268,18 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #BH_COMPTON_HEATING             # enable Compton heating/cooling from BHs in cooling function (needs BH_PHOTONMOMENTUM)
 ##BH_THERMALFEEDBACK            # couple a fraction of the BH luminosity into surrounding gas as thermal energy (DiMatteo/Springel/Hernquist model)
 ##BH_BAL_KICK                   # do BAL winds with stochastic particle kicks at specified velocity (instead of continuous wind solution - requires BH_SWALLOWGAS - )
-##BH_BAL_KICK_COLLIMATED        # DAA: winds follow the direction of angular momentum within Kernel (only for BH_BAL_KICK winds)
-##BH_BAL_KICK_MOMENTUM_FLUX=10  # DAA: increase the effective mass-loading of BAL winds to reach the desired momentum flux in units of L_bol/c (needs BH_BAL_KICK)
+##BH_BAL_KICK_COLLIMATED        # winds follow the direction of angular momentum within Kernel (only for BH_BAL_KICK winds)
+##BH_BAL_KICK_MOMENTUM_FLUX=10  # increase the effective mass-loading of BAL winds to reach the desired momentum flux in units of L_bol/c (needs BH_BAL_KICK)
 #------------ use the BH_DRAG options only in cosmological cases where M_BH is not >> other particle masses
-#BH_DYNFRICTION=0               # DAA: apply dynamical friction force to the BHs when m_bh not >> other particle mass: 0=[DM+stars+gas] (default); 1=[DM+stars]; 2=[stars]
-##BH_DYNFRICTION_INCREASE=10    # DAA: artificially increase dynamic friction by this factor (requires BH_DYNFRICTION)
-#BH_INCREASE_DYNAMIC_MASS=100   # DAA: Increase the dynamic particle mass by this factor at the time of FOF seeding
+#BH_DYNFRICTION=0               # apply dynamical friction force to the BHs when m_bh not >> other particle mass: 0=[DM+stars+gas] (default); 1=[DM+stars]; 2=[stars]
+##BH_DYNFRICTION_INCREASE=10    # artificially increase dynamic friction by this factor (requires BH_DYNFRICTION)
+#BH_INCREASE_DYNAMIC_MASS=100   # Increase the dynamic particle mass by this factor at the time of FOF seeding
 ##BH_DRAG=1                     # Drag on black-holes due to accretion (w real mdot); set =2 to boost as if BH is accreting at eddington
 #------ output options
-#BH_OUTPUT_MOREINFO             # DAA: output additional info to "blackhole_details"
+#BH_OUTPUT_MOREINFO             # output additional info to "blackhole_details"
 ##-----------------------------------------------------------------------------------------------------
 #------------ deprecated or de-bugging options (most have been combined or optimized into the functions above, here for legacy)
-#BH_REPOSITION_ON_POTMIN=0      # DAA: reposition black hole on potential minimum (requires EVALPOTENTIAL). [set =1 to "jump" onto STARS only]
+#BH_REPOSITION_ON_POTMIN=0      # reposition black hole on potential minimum (requires EVALPOTENTIAL). [set =1 to "jump" onto STARS only]
 ##DETACH_BLACK_HOLES            # Insert an independent data structure for BHs (currently explicitly depends on SEPARATE_STELLARDOMAINDECOMP)
 ##BH_SEED_STAR_MASS_FRACTION=0.02 # minimum star mass fraction for BH seeding
 ##-----------------------------------------------------------------------------------------------------

@@ -378,6 +378,13 @@
 #endif
 
 
+#if defined(BLACK_HOLES) && (defined(BH_REPOSITION_ON_POTMIN) || defined(BH_SEED_FROM_STAR_PARTICLE))
+#ifndef EVALPOTENTIAL
+#define EVALPOTENTIAL
+#endif
+#endif
+
+
 #ifdef EVALPOTENTIAL
 #ifndef COMPUTE_POTENTIAL_ENERGY
 #define COMPUTE_POTENTIAL_ENERGY
@@ -2020,6 +2027,10 @@ extern ALIGN(32) struct particle_data
     } b8;
 #endif
 #endif
+#ifdef BH_REPOSITION_ON_POTMIN
+    MyFloat BH_MinPotPos[3];
+    MyFloat BH_MinPot;
+#endif
 #endif  /* if !defined(DETACH_BLACK_HOLES) */
 #endif  /* if defined(BLACK_HOLES) */
     
@@ -2159,6 +2170,10 @@ extern struct bh_particle_data
     MyLongDouble dBH_accreted_BHMass_radio;
   } b8;
 #endif
+#endif
+#ifdef BH_REPOSITION_ON_POTMIN
+  MyFloat BH_MinPotPos[3];
+  MyFloat BH_MinPot;
 #endif
 #ifdef BH_WIND_SPAWN
     MyFloat unspawned_wind_mass;    /*!< tabulates the wind mass which has not yet been spawned */
@@ -2588,14 +2603,16 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyLongDouble accreted_Mass;
     MyLongDouble accreted_BH_Mass;
     MyLongDouble accreted_momentum[3];
-    MyLongDouble Mgas_in_Kernel;
+    MyLongDouble Mgas_in_Kernel;                 // mass/angular momentum for GAS/STAR/TOTAL components computed always now
+    MyLongDouble Mstar_in_Kernel;
     MyLongDouble Malt_in_Kernel;
-    MyLongDouble Jalt_in_Kernel[3];
-#ifdef BH_GRAVACCRETION_BTOD
-    MyLongDouble Mbulge_in_Kernel;
-#endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK_COLLIMATED) || defined(BH_GRAVACCRETION)  
+    MyLongDouble Sfr_in_Kernel;
     MyLongDouble Jgas_in_Kernel[3];
+    MyLongDouble Jstar_in_Kernel[3];
+    MyLongDouble Jalt_in_Kernel[3];
+#ifdef BH_GRAVACCRETION
+    MyLongDouble MgasBulge_in_Kernel;
+    MyLongDouble MstarBulge_in_Kernel;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
     MyLongDouble GradRho_in_Kernel[3];
