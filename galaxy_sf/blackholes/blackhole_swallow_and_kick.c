@@ -486,7 +486,11 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                         /* DAA: make sure f_accreted=0 for analytic accretion rate estimator IF mass conservations is NOT required yet */
                         if((bh_mass_withdisk - mass) > 0){    
 #ifdef BH_BAL_KICK_MOMENTUM_FLUX
-                            f_accreted = 1. / ( 1. + BH_BAL_KICK_MOMENTUM_FLUX * All.BlackHoleRadiativeEfficiency * (C / All.UnitVelocity_in_cm_per_s) / All.BAL_v_outflow );
+                            if(All.BAL_v_outflow > 0){
+                                f_accreted = 1. / ( 1. + BH_BAL_KICK_MOMENTUM_FLUX * All.BlackHoleRadiativeEfficiency * (C / All.UnitVelocity_in_cm_per_s) / All.BAL_v_outflow );
+                            }else{
+                                f_accreted = All.BAL_f_accretion;
+                            }
 #else
                             f_accreted = All.BAL_f_accretion; 
 #endif
@@ -540,6 +544,10 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                             P[j].Vel[k] += v_kick*All.cf_atime*dir[k]/norm;
                             SphP[j].VelPred[k] += v_kick*All.cf_atime*dir[k]/norm;
                         }
+#ifdef GALSF_SUBGRID_WINDS
+                        // DAA: if sub-grid galactic winds are decoupled from the hydro, we decouple the BH kick winds as well
+                        SphP[j].DelayTime = All.WindFreeTravelMaxTimeFactor / All.cf_hubble_a;
+#endif  
 
 #ifndef IO_REDUCED_MODE
                         printf("BAL kick: P[j].ID %llu ID %llu Type(j) %d f_acc %g M(j) %g V(j).xyz %g/%g/%g P(j).xyz %g/%g/%g p(i).xyz %g/%g/%g v_out %g \n",
@@ -547,7 +555,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                    P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],
                                    P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],
                                    pos[0],pos[1],pos[2],
-                                   All.BAL_v_outflow);
+                                   v_kick);
                         fflush(stdout);
 #ifdef BH_OUTPUT_MOREINFO
                         fprintf(FdBhWindDetails,"%g  %u %g  %2.7f %2.7f %2.7f  %2.7f %2.7f %2.7f  %g %g %g  %u  %2.7f %2.7f %2.7f\n",

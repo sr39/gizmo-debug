@@ -159,6 +159,14 @@ void blackhole_feed_loop(void)
         for(j = 0; j < nexport; j++)
         {
             place = DataIndexTable[j].Index;
+#ifdef BH_REPOSITION_ON_POTMIN
+            if(BPP(place).BH_MinPot > BlackholeDataOut[j].BH_MinPot)
+            {
+                BPP(place).BH_MinPot = BlackholeDataOut[j].BH_MinPot;
+                for(k = 0; k < 3; k++)
+                    BPP(place).BH_MinPotPos[k] = BlackholeDataOut[j].BH_MinPotPos[k];
+            }
+#endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
             BlackholeTempInfo[P[place].IndexMapToTempStruc].BH_angle_weighted_kernel_sum += BlackholeDataOut[j].BH_angle_weighted_kernel_sum;
 #endif
@@ -205,6 +213,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     
 #ifdef BH_THERMALFEEDBACK
     double energy;
+#endif
+#ifdef BH_REPOSITION_ON_POTMIN
+    MyFloat minpotpos[3] = { 0, 0, 0 }, minpot = BHPOTVALUEINIT;
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat bh_mass_alphadisk;
@@ -290,7 +301,11 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     /* DAA: increase the effective mass-loading of BAL winds to reach the desired momentum flux given the outflow velocity "All.BAL_v_outflow" chosen
        --> appropriate for cosmological simulations where particles are effectively kicked from ~kpc scales
            (i.e. we need lower velocity and higher mass outflow rates compared to accretion disk scales) - */
-    f_accreted = 1. / ( 1. + BH_BAL_KICK_MOMENTUM_FLUX * All.BlackHoleRadiativeEfficiency * (C / All.UnitVelocity_in_cm_per_s) / All.BAL_v_outflow );
+    if(All.BAL_v_outflow > 0){
+        f_accreted = 1. / ( 1. + BH_BAL_KICK_MOMENTUM_FLUX * All.BlackHoleRadiativeEfficiency * (C / All.UnitVelocity_in_cm_per_s) / All.BAL_v_outflow );
+    }else{
+        f_accreted = All.BAL_f_accretion;
+    }
 #else
     f_accreted = All.BAL_f_accretion;
 #endif
@@ -339,6 +354,22 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         for(k=0;k<3;k++) vrel += (P[j].Vel[k] - velocity[k])*(P[j].Vel[k] - velocity[k]);
                         vrel = sqrt(vrel) / All.cf_atime;       /* do this once and use below */
                         vesc = bh_vesc(j, mass, r);
+
+#ifdef BH_REPOSITION_ON_POTMIN
+                        /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
+#if (BH_REPOSITION_ON_POTMIN == 1) 
+                        if( (P[j].Potential < minpot) && (P[j].Type == 4) )   // DAA: only if it is a star particle
+#else
+                        if(P[j].Potential < minpot)
+#endif
+                        {
+                            if(vrel <= vesc)
+                            {
+                                minpot = P[j].Potential;
+                                for(k = 0; k < 3; k++) minpotpos[k] = P[j].Pos[k];
+                            }
+                        }
+#endif
 
                         /* check_for_bh_merger.  Easy.  No Edd limit, just a pos and vel criteria. */
                         if((id != P[j].ID) && (P[j].Mass > 0) && (P[j].Type == 5))	/* we may have a black hole merger */
@@ -536,11 +567,21 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
         BlackholeTempInfo[P[target].IndexMapToTempStruc].BH_angle_weighted_kernel_sum += BH_angle_weighted_kernel_sum;  /* need to correct target index */
 #endif
+#ifdef BH_REPOSITION_ON_POTMIN
+        BPP(target).BH_MinPot = minpot;
+        for(k = 0; k < 3; k++)
+            BPP(target).BH_MinPotPos[k] = minpotpos[k];
+#endif
     }
     else
     {
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
         BlackholeDataResult[target].BH_angle_weighted_kernel_sum = BH_angle_weighted_kernel_sum;
+#endif
+#ifdef BH_REPOSITION_ON_POTMIN
+        BlackholeDataResult[target].BH_MinPot = minpot;
+        for(k = 0; k < 3; k++)
+            BlackholeDataResult[target].BH_MinPotPos[k] = minpotpos[k];
 #endif
     }
     return 0;
