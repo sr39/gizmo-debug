@@ -1598,9 +1598,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef GALSF_FB_LOCAL_UV_HEATING
     double incident_flux_uv=0;
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
     double incident_flux_euv=0;
-#endif 
 #endif
 #ifdef BH_COMPTON_HEATING
     double incident_flux_agn=0;
@@ -2509,6 +2507,17 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
 		incident_flux_euv += (0.079577*fac*r) * mass_stellarlum_euv; // EUV luminosity is now explicitly tracked in the force tree, rather than 
 		                                                             // estimated from the UV and IR bins. 
+#else 
+		if((mass_stellarlum[RT_FREQ_BIN_FIRE_IR]<mass_stellarlum[RT_FREQ_BIN_FIRE_UV])&&(mass_stellarlum[RT_FREQ_BIN_FIRE_IR]>0)) // if this -isn't- satisfied, no chance you are optically thin to EUV // 
+		  {
+                    // here, use ratio and linear scaling of escape with tau to correct to the escape fraction for the correspondingly higher EUV kappa: factor ~2000 is KAPPA_EUV/KAPPA_UV
+                    incident_flux_euv += (0.079577*fac*r) * mass_stellarlum[RT_FREQ_BIN_FIRE_UV] * (All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV) *
+												    ((mass_stellarlum[RT_FREQ_BIN_FIRE_UV]+mass_stellarlum[RT_FREQ_BIN_FIRE_IR])/(mass_stellarlum[RT_FREQ_BIN_FIRE_UV]+mass_stellarlum[RT_FREQ_BIN_FIRE_IR]*(2042.6))));
+		  } else {
+		  // here, just enforce a minimum escape fraction // 
+		  double m_lum_total = 0; int ks_q; for(ks_q=0;ks_q<N_RT_FREQ_BINS;ks_q++) {m_lum_total += mass_stellarlum[ks_q];}
+		  incident_flux_euv += All.PhotonMomentum_fUV * (0.079577*fac*r) * m_lum_total;
+                }
 #endif
                 // don't multiply by shortrange_table since that is to prevent 2x-counting by PMgrid (which never happens here) //
 #endif
@@ -2639,9 +2648,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef GALSF_FB_LOCAL_UV_HEATING
         if(valid_gas_particle_for_rt) SphP[target].RadFluxUV = incident_flux_uv;
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
         if(valid_gas_particle_for_rt) SphP[target].RadFluxEUV = incident_flux_euv;
-#endif 
 #endif
 #ifdef BH_COMPTON_HEATING
         if(valid_gas_particle_for_rt) SphP[target].RadFluxAGN = incident_flux_agn;
@@ -2673,9 +2680,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef GALSF_FB_LOCAL_UV_HEATING
         GravDataResult[target].RadFluxUV = incident_flux_uv;
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
         GravDataResult[target].RadFluxEUV = incident_flux_euv;
-#endif
 #endif
 #ifdef BH_COMPTON_HEATING
         GravDataResult[target].RadFluxAGN = incident_flux_agn;
