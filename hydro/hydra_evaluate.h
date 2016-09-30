@@ -13,13 +13,14 @@
 /* --------------------------------------------------------------------------------- */
 int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist)
 {
-    int j, k, n, startnode, numngb, kernel_mode, listindex = 0;
+    int j, k, n, startnode, numngb, kernel_mode, listindex;
     double hinv_i,hinv3_i,hinv4_i,hinv_j,hinv3_j,hinv4_j,V_i,V_j,dt_hydrostep,r2,rinv,rinv_soft,u;
     double v_hll,k_hll,b_hll; v_hll=k_hll=0,b_hll=1;
     struct kernel_hydra kernel;
     struct hydrodata_in local;
     struct hydrodata_out out;
     struct Conserved_var_Riemann Fluxes;
+    listindex = 0;
     memset(&out, 0, sizeof(struct hydrodata_out));
     memset(&kernel, 0, sizeof(struct kernel_hydra));
     memset(&Fluxes, 0, sizeof(struct Conserved_var_Riemann));
@@ -368,7 +369,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(fabs(dmass_holder) > dmass_limiter) {dmass_holder *= dmass_limiter / fabs(dmass_holder);}
                 out.dMass += dmass_holder;
                 out.DtMass += Fluxes.rho;
-                SphP[j].dMass -= dmass_holder; 
+#ifndef SHEARING_BOX
+                SphP[j].dMass -= dmass_holder;
+#endif
                 double gravwork[3]; gravwork[0]=Fluxes.rho*kernel.dp[0]; gravwork[1]=Fluxes.rho*kernel.dp[1]; gravwork[2]=Fluxes.rho*kernel.dp[2];
                 for(k=0;k<3;k++) {out.GravWorkTerm[k] += gravwork[k];}
 #endif
