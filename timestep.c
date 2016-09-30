@@ -1080,9 +1080,9 @@ void process_wake_ups(void)
     
     MPI_Allreduce(&ti_next_kick, &ti_next_kick_global, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
     
-    if(ThisTask == 0)
-        printf("predicting next timestep: %g\n", (ti_next_kick_global - All.Ti_Current) * All.Timebase_interval);
-    
+#ifndef IO_REDUCED_MODE
+    if(ThisTask == 0) printf("predicting next timestep: %g\n", (ti_next_kick_global - All.Ti_Current) * All.Timebase_interval);
+#endif
     max_time_bin_active = 0;
     /* get the highest bin, that is active next time */
     for(n = 0; n < TIMEBINS; n++)
