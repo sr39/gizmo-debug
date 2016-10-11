@@ -1683,7 +1683,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     rcut2 = rcut * rcut;
     asmthfac = 0.5 / asmth * (NTAB / 3.0);
 #endif
-    
+
+#ifdef MT_SIDM
+#endif
     
 #ifdef SIDM
     double dist_to_center2, dist_to_open, kick_x, kick_y, kick_z, kick_target[3], kick_no[3];
