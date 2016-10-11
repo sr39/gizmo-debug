@@ -1883,7 +1883,6 @@ void fof_find_nearest_dmparticle(void)
 	      printf("fof-nearest iteration %d: need to repeat for %d particles.\n", iter, ntot);
 	      fflush(stdout);
 	    }
-#endif
 	  if(iter > MAXITER)
 	    {
 	      printf("failed to converge in fof-nearest\n");
@@ -2027,7 +2026,7 @@ void fof_make_black_holes(void)
     massDMpart = All.MassTable[1];
   else
     massDMpart = All.massDMpart;
-#endif
+#endif // BH_SEED_STAR_MASS_FRACTION
 
   for(n = 0; n < NTask; n++)
     Send_count[n] = 0;
@@ -2212,7 +2211,6 @@ void fof_make_black_holes(void)
 #endif
 #endif
 
-//#ifndef BH_SEED_STAR_MASS_FRACTION
 #if !( defined(BH_SEED_STAR_MASS_FRACTION) || defined(BH_SEED_FROM_STAR_PARTICLE) )
       Stars_converted++;
       TimeBinCountSph[P[import_indices[n]].TimeBin]--;
@@ -2230,7 +2228,9 @@ void fof_make_black_holes(void)
   myfree(import_indices);
 }
 
-#endif
+#endif // BLACK_HOLES
+
+
 
 #if defined(GALSF_SUBGRID_WINDS) && defined(GALSF_SUBGRID_VARIABLEVELOCITY)
 
@@ -2365,7 +2365,8 @@ void fof_assign_HostHaloMass(void)	/* assigns mass of host FoF group to SphP[].H
   qsort(FOF_GList, NgroupsExt, sizeof(fof_group_list), fof_compare_FOF_GList_MinID);	/* restore original order */
 }
 
-#endif
+#endif // defined(GALSF_SUBGRID_WINDS) && defined(GALSF_SUBGRID_VARIABLEVELOCITY)
+
 
 #ifdef BUBBLES
 
@@ -2405,7 +2406,7 @@ void find_CM_of_biggest_group(void)
     }
 }
 
-#endif
+#endif // BUBBLES
 
 
 
@@ -2707,7 +2708,7 @@ void multi_bubbles(void)
 
 }
 
-#endif
+#endif // MULTI_BUBBLES
 
 
 
@@ -3476,6 +3477,6 @@ int fof_compare_P_SubNr(const void *a, const void *b)
   return 0;
 }
 
-#endif /* of SUBFIND_READ_FOF */
+#endif // SUBFIND_READ_FOF
 
 #endif /* of FOF */

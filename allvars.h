@@ -2077,7 +2077,6 @@ extern ALIGN(32) struct particle_data
         MyFloat density_sum;
     } w;
 #endif
-    
 #ifdef SAVE_HSML_IN_IC_ORDER
     MyIDType ID_ic_order;
 #endif
