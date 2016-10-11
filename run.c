@@ -50,6 +50,9 @@ void run(void)
     {
         compute_statistics();	/* regular statistics outputs (like total energy) */
         
+#ifdef IO_REDUCED_MODE
+        if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
+#endif
         write_cpu_log();		/* output some CPU usage log-info (accounts for everything needed up to the current sync-point) */
         
         if(All.Ti_Current >= TIMEBASE)	/* check whether we reached the final time */
