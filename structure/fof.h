@@ -1,5 +1,6 @@
 #ifndef FOF_H
 #define FOF_H
+#include "../allvars.h"
 
 /* variables for fof.c code */
 /*
@@ -7,9 +8,6 @@
  * Volker Springel (volker.springel@h-its.org). It is here in GIZMO
  * as legacy code at the moment, and needs to be re-written or removed.
  */
-
-
-#include "../allvars.h"
 
 void fof_exchange_group_data(void);
 int fof_compare_FOF_PList_MinID(const void *a, const void *b);
@@ -24,12 +22,9 @@ int fof_compare_Group_MinID(const void *a, const void *b);
 int fof_compare_ID_list_GrNrID(const void *a, const void *b);
 int fof_compare_Group_MinIDTask_MinID(const void *a, const void *b);
 int fof_compare_Group_Len(const void *a, const void *b);
-
 void fof_finish_group_properties(void);
-
 int compare_group_mass_ID(const void *a, const void *b);
 void fof_assign_HostHaloMass(void);
-
 extern int Ngroups, TotNgroups;
 extern long long TotNids;
 
@@ -90,6 +85,7 @@ typedef struct
 #endif
 
 } group_properties;
+extern group_properties *Group;
 
 typedef struct
 {
@@ -97,18 +93,14 @@ typedef struct
   unsigned int GrNr;
 } fof_id_list;
 
-extern group_properties *Group;
 
 #ifdef ALTERNATIVE_PSORT
 void fof_sort_FOF_GList_LocCountTaskDiffMinID (fof_group_list *data, int ndata);
-
 void fof_sort_FOF_GList_ExtCountMinID (fof_group_list *data, int ndata);
-
 void fof_sort_Group_GrNr (group_properties *data, int ndata);
-
 void fof_sort_ID_list_GrNrID (fof_id_list *data, int ndata);
 #endif
 
 
 
-#endif
+#endif // FOF_H

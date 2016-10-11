@@ -2071,11 +2071,11 @@ void read_parameter_file(char *fname)
     }
     
 #if defined(LONG_X) ||  defined(LONG_Y) || defined(LONG_Z)
-#ifndef NOGRAVITY
+#if !defined(NOGRAVITY) && !defined(GRAVITY_NOT_PERIODIC) && (defined(PERIODIC) || defined(PMGRID))
     if(ThisTask == 0)
     {
-        printf("Code was compiled with LONG_X/Y/Z, but not with NOGRAVITY.\n");
-        printf("Stretched periodic boxes are not implemented for gravity yet.\n");
+        printf("Code was compiled with LONG_X/Y/Z and either PERIODIC or PMGRID, but not with NOGRAVITY or GRAVITY_NOT_PERIODIC.\n");
+        printf("The gravitational solver does not allow stretched-periodic boxes (cubic-box periodic or non-periodic gravity required).\n");
     }
     endrun(0);
 #endif
