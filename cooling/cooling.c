@@ -970,11 +970,10 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
 
   nHcgs = XH * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
 
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
 #ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
   if(target >= 0)
       gJH0_local = SphP[target].RadFluxEUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
-#endif
 #else 
     if((target >= 0) && (gJH0 > 0))
       {
@@ -982,6 +981,7 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
         local_gammamultiplier = 1 + local_gammamultiplier/gJH0;
       }
 #endif 
+#endif
     
     /*  Find the density at which selfshielding typically begins. */
 #ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
