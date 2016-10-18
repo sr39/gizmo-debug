@@ -149,6 +149,8 @@ struct GasGraddata_out_iter
 #ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
     MyDouble PhiGrad[3];
 #endif
+#else 
+    MyFloat dummy;
 #endif
 }
 *GasGradDataResult_iter, *GasGradDataOut_iter;
