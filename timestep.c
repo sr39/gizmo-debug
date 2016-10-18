@@ -959,7 +959,7 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
                 count[P[i].Type]++;
                 v[P[i].Type] += P[i].Vel[0] * P[i].Vel[0] + P[i].Vel[1] * P[i].Vel[1] + P[i].Vel[2] * P[i].Vel[2];
                 if(mim[P[i].Type] > P[i].Mass) {mim[P[i].Type] = P[i].Mass;}
-                mnm[6] += P[i].Mass;
+                mnm[P[i].Type] += P[i].Mass;
             }
         }
         
