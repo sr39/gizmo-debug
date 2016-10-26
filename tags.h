@@ -100,3 +100,7 @@
 #define TAG_KEY_BHS       96
 #define TAG_BHDATA        97
 
+#ifdef CHIMES 
+#define TAG_CHIMESDATA 98 
+#define TAG_ABUNDATA 99 
+#endif 

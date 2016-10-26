@@ -1053,14 +1053,22 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
-#if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
+#ifdef METALS 
         strcpy(tag[nt],"InitMetallicity");
         addr[nt] = &All.InitMetallicityinSolar;
         id[nt++] = REAL;
-        
+#endif
+
+#if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)        
         strcpy(tag[nt],"InitStellarAge");
         addr[nt] = &All.InitStellarAgeinGyr;
         id[nt++] = REAL;
+
+#ifdef GALSF_ALT_INIT_STAR
+        strcpy(tag[nt],"UniformAgeFraction");
+        addr[nt] = &All.UniformAgeFraction;
+        id[nt++] = REAL;
+#endif 
 #endif
         
 #ifdef GALSF_FB_SNE_HEATING
@@ -1720,6 +1728,136 @@ void read_parameter_file(char *fname)
       id[nt++] = INT;
 #endif
 
+#ifdef CHIMES   
+      strcpy(tag[nt], "Chimes_data_path");
+      addr[nt] = ChimesDataPath;
+      id[nt++] = STRING;
+  
+      strcpy(tag[nt], "PhotoIon_table_path");
+      addr[nt] = ChimesGlobalVars.PhotoIonTablePath;
+      id[nt++] = STRING;
+  
+      strcpy(tag[nt], "Thermal_Evolution_On");
+      addr[nt] = &ChimesGlobalVars.ThermEvolOn;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "Chemistry_eqm");
+      addr[nt] = &ForceEqOn;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "Reduction_On");
+      addr[nt] = &ChimesGlobalVars.reductionOn;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "StaticMolCooling");
+      addr[nt] = &ChimesGlobalVars.StaticMolCooling;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "CellSelfShielding_On");
+      addr[nt] = &ChimesGlobalVars.cellSelfShieldingOn;
+      id[nt++] = INT;
+  
+      strcpy(tag[nt], "Shielding_length_factor");
+      addr[nt] = &shielding_length_factor;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "Reduction_N_Ions_Low");
+      addr[nt] = &ChimesGlobalVars.n_ions_low;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "Reduction_N_Ions_Med");
+      addr[nt] = &ChimesGlobalVars.n_ions_med;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "Reduction_N_Ions_High");
+      addr[nt] = &ChimesGlobalVars.n_ions_high;
+      id[nt++] = INT;
+  
+      strcpy(tag[nt], "Grain_Temperature");
+      addr[nt] = &ChimesGlobalVars.grain_temperature;
+      id[nt++] = REAL;
+  
+      strcpy(tag[nt], "CR_rate");
+      addr[nt] = &cr_rate;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "macrostep_tolerance");
+      addr[nt] = &ChimesGlobalVars.time_tolerance;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "min_macrostep");
+      addr[nt] = &ChimesGlobalVars.min_subcyclestep;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "max_mol_temperature");
+      addr[nt] = &ChimesGlobalVars.T_mol;
+      id[nt++] = REAL;
+  
+      strcpy(tag[nt], "Isotropic_photon_density");
+      addr[nt] = &isotropic_photon_density;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "TemperatureEqm_Thresh");
+      addr[nt] = &ChimesGlobalVars.T_EqThresh;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "relativeTolerance");
+      addr[nt] = &ChimesGlobalVars.relativeTolerance;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "absoluteTolerance");
+      addr[nt] = &ChimesGlobalVars.absoluteTolerance;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "thermalAbsoluteTolerance");
+      addr[nt] = &ChimesGlobalVars.thermalAbsoluteTolerance;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "scale_metal_tolerances");
+      addr[nt] = &ChimesGlobalVars.scale_metal_tolerances;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "IncludeCarbon");
+      addr[nt] = &ChimesGlobalVars.element_included[0];
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "IncludeNitrogen");
+      addr[nt] = &ChimesGlobalVars.element_included[1];
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "IncludeOxygen");
+      addr[nt] = &ChimesGlobalVars.element_included[2];
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "IncludeNeon");
+      addr[nt] = &ChimesGlobalVars.element_included[3];
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "IncludeMagnesium");
+      addr[nt] = &ChimesGlobalVars.element_included[4];
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "IncludeSilicon");
+      addr[nt] = &ChimesGlobalVars.element_included[5];
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "IncludeSulphur");
+      addr[nt] = &ChimesGlobalVars.element_included[6];
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "IncludeCalcium");
+      addr[nt] = &ChimesGlobalVars.element_included[7];
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "IncludeIron");
+      addr[nt] = &ChimesGlobalVars.element_included[8];
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "N_chimes_full_output_freq");
+      addr[nt] = &N_chimes_full_output_freq;
+      id[nt++] = INT;
+#endif 
+
 
         if((fd = fopen(fname, "r")))
         {
@@ -1835,7 +1973,15 @@ void read_parameter_file(char *fname)
     
     /* now communicate the relevant parameters to the other processes */
     MPI_Bcast(&All, sizeof(struct global_data_all_processes), MPI_BYTE, 0, MPI_COMM_WORLD);
-    
+#ifdef CHIMES 
+    MPI_Bcast(&ChimesGlobalVars, sizeof(struct globalVariables), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&ChimesDataPath, 500 * sizeof(char), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&isotropic_photon_density, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&shielding_length_factor, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&cr_rate, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&N_chimes_full_output_freq, sizeof(int), MPI_BYTE, 0, MPI_COMM_WORLD); 
+    MPI_Bcast(&ForceEqOn, sizeof(int), MPI_BYTE, 0, MPI_COMM_WORLD); 
+#endif 
     
     
     /* ok, -NOW- we can properly read the "All" variables; we should do any if/then checks on

@@ -387,6 +387,13 @@ CC       =  mpicc
 CXX      =  mpic++
 FC       =  $(CC)
 OPTIMIZE = -O2 -xhost -ipo -funroll-loops -no-prec-div -fp-model fast=2
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -parallel -openmp 
+endif
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
+CHIMESINCL = -I/home/ajr882/sundials/include  
+CHIMESLIBS = -L/home/ajr882/sundials/lib -lsundials_cvode -lsundials_kinsol -lsundials_nvecserial 
+endif 
 GMP_INCL = #
 GMP_LIBS = #
 MKL_INCL = -I$(MKLROOT)/include
@@ -815,6 +822,10 @@ ifeq (GRACKLE,$(findstring GRACKLE,$(CONFIGVARS)))
 OBJS    += cooling/grackle.o
 endif
 
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
+OBJS    += cooling/chimes/chimes.o cooling/chimes/cooling.o cooling/chimes/init_chimes.o cooling/chimes/init_chimes_parallel.o cooling/chimes/interpol.o cooling/chimes/optimise.o cooling/chimes/rate_coefficients.o cooling/chimes/rate_equations.o cooling/chimes/set_rates.o 
+endif
+
 ifeq (BUBBLES,$(findstring BUBBLES,$(CONFIGVARS)))
 OBJS    += modules/bubbles/bubbles.o
 endif
@@ -861,6 +872,10 @@ endif
 
 CFLAGS = $(OPTIONS) $(GSL_INCL) $(FFTW_INCL) $(HDF5INCL) $(GMP_INCL) $(GRACKLEINCL)
 
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS))) 
+CFLAGS += $(CHIMESINCL) 
+endif 
+
 ifeq (VIP,$(findstring VIP,$(CONFIGVARS)))
 FFLAGS = $(FOPTIONS)
 else
@@ -878,6 +893,10 @@ FFTW = $(FFTW_LIBS)  $(FFTW_LIBNAMES)
 
 
 LIBS   = -lm $(HDF5LIB) -g $(MPICHLIB) $(GSL_LIBS) -lgsl -lgslcblas $(FFTW) $(GRACKLELIBS)
+
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS))) 
+LIBS += $(CHIMESLIBS) 
+endif 
 
 ifeq (OMP_NUM_THREADS,$(findstring OMP_NUM_THREADS,$(CONFIGVARS))) 
 LIBS   +=  -lpthread

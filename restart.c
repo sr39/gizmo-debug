@@ -17,6 +17,10 @@
 
 static FILE *fd;
 
+#ifdef CHIMES 
+static double *sphAbundancesBuf;
+#endif 
+
 static void in(int *x, int modus);
 static void byten(void *x, int n, int modus);
 
@@ -52,7 +56,10 @@ void restart(int modus)
 #if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
     int bhbuffer;
 #endif
-    
+
+#ifdef CHIMES 
+    int partIndex, abunIndex; 
+#endif 
     
     if(ThisTask == 0 && modus == 0)
     {
@@ -199,6 +206,39 @@ void restart(int modus)
 		}
 	      /* Sph-Particle data  */
 	      byten(&SphP[0], N_gas * sizeof(struct sph_particle_data), modus);
+
+#ifdef CHIMES 
+	      sphAbundancesBuf = (double *) malloc(N_gas * ChimesGlobalVars.totalNumberOfSpecies * sizeof(double));
+
+	      if (!modus) /* write */
+		{
+		  /* Read abundance arrays into buffer */
+		  for (partIndex = 0; partIndex < N_gas; partIndex++)
+		    {
+		      for (abunIndex = 0; abunIndex < ChimesGlobalVars.totalNumberOfSpecies; abunIndex++)
+			sphAbundancesBuf[(partIndex * ChimesGlobalVars.totalNumberOfSpecies) + abunIndex] = ChimesGasVars[partIndex].abundances[abunIndex];
+		    }
+		}
+
+	      /* Abundance buffer */
+	      byten(&sphAbundancesBuf[0], N_gas * ChimesGlobalVars.totalNumberOfSpecies * sizeof(double), modus);
+	      /* GasVars */
+	      byten(&ChimesGasVars[0], N_gas * sizeof(struct gasVariables), modus);
+			  
+	      if (modus) /* read */
+		{
+		  for (partIndex = 0; partIndex < N_gas; partIndex++)
+		    {
+		      /* Allocate memory for abundance arrays */
+		      allocate_gas_abundances_memory(&(ChimesGasVars[partIndex]), &ChimesGlobalVars);
+		      
+		      /* Read abundances from buffer */
+		      for (abunIndex = 0; abunIndex < ChimesGlobalVars.totalNumberOfSpecies; abunIndex++)
+			ChimesGasVars[partIndex].abundances[abunIndex] = sphAbundancesBuf[(partIndex * ChimesGlobalVars.totalNumberOfSpecies) + abunIndex];
+		    }
+		}
+	      free(sphAbundancesBuf); 
+#endif
 	    }
 
 	  /* write state of random number generator */
@@ -337,7 +377,6 @@ void restart(int modus)
 
       domain_Decomposition(0, 0, 0);
     }
-
 }
 
 

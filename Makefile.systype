@@ -12,11 +12,11 @@
 #############
 
 
-SYSTYPE="Stampede"
+#SYSTYPE="Stampede"
 #SYSTYPE="Zwicky"
 #SYSTYPE="Wheeler"
 #SYSTYPE="MacBookPro"
-#SYSTYPE="Quest"
+SYSTYPE="Quest"
 #SYSTYPE="Darter"
 #SYSTYPE="odyssey"
 #SYSTYPE="antares"

@@ -292,7 +292,13 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             
         case IO_ID:		/* particle ID */
             for(n = 0; n < pc; n++)
+	      {
                 P[offset + n].ID = *ip++;
+#ifdef CHIMES 
+		if (type == 0)
+		  ChimesGasVars[offset + n].ID = P[offset + n].ID; 
+#endif 
+	      }
             break;
             
             
@@ -301,6 +307,10 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             {
                 for(n = 0; n < pc; n++)
                     P[offset + n].ID_child_number = *ip++;
+#ifdef CHIMES 
+		if (type == 0)
+		  ChimesGasVars[offset + n].ID_child_number = P[offset + n].ID_child_number; 
+#endif 
             }
             break;
 
@@ -373,8 +383,10 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             
         case IO_NE:		/* electron abundance */
 #if defined(COOLING) || defined(RT_CHEM_PHOTOION)
+#ifndef CHIMES 
             for(n = 0; n < pc; n++)
                 SphP[offset + n].Ne = *fp++;
+#endif 
 #endif
             break;
             
@@ -603,6 +615,20 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
 
+#ifdef CHIMES 
+        case IO_CHIMES_ABUNDANCES: 
+	  for (n = 0; n < pc; n++) 
+	    {
+	      allocate_gas_abundances_memory(&(ChimesGasVars[offset + n]), &ChimesGlobalVars); 
+	      for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++)
+		ChimesGasVars[offset + n].abundances[k] = (double) (*fp++);
+	    }
+	  break; 
+	  
+        case IO_CHIMES_REDUCED: 
+	  break; 
+#endif 
+
         case IO_COSMICRAY_ENERGY:
 #ifdef COSMIC_RAYS            
              for(n = 0; n < pc; n++)
@@ -616,8 +642,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                 P[offset + n].IMF_NumMassiveStars = *fp++;
 #endif
             break;
-
-
 
         case IO_AGS_OMEGA:
         case IO_AGS_CORR:
@@ -950,6 +974,9 @@ void read_file(char *fname, int readTask, int lastTask)
 #ifdef EOS_CARRIES_YE
                    && blocknr != IO_EOSYE
 #endif
+#ifdef CHIMES 
+		   && blocknr != IO_CHIMES_ABUNDANCES 
+#endif 
                    )
 #if defined(DISTORTIONTENSORPS) && defined(GDE_READIC)
                     if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_SHEET_ORIENTATION))

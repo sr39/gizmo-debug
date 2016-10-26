@@ -932,7 +932,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 SphP[j].MassTrue += dM;
 #endif
                 /* inject metals */
-#ifdef METALS
+#if defined(METALS) && !defined(GALSF_FB_NOENRICHMENT) 
                 u=dM/P[j].Mass; if(u>1) u=1;
                 for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=(1-u)*P[j].Metallicity[k]+u*local.yields[k];}
 #endif
