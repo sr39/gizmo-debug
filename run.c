@@ -975,6 +975,9 @@ void write_cpu_log(void)
 	      "i/o           %10.2f  %5.1f%%\n"
 	      "peano         %10.2f  %5.1f%%\n"
 	      "sfrcool       %10.2f  %5.1f%%\n"
+#ifdef CHIMES 
+	      "sfrcoolimbal  %10.2f  %5.1f%%\n" 
+#endif 
 	      "blackholes    %10.2f  %5.1f%%\n"
 	      "fof/subfind   %10.2f  %5.1f%%\n"
 #ifdef GRAIN_FLUID
@@ -1036,6 +1039,9 @@ void write_cpu_log(void)
 #else
     0.,0.,
 #endif
+#ifdef CHIMES 
+    All.CPU_Sum[CPU_COOLSFRIMBAL], (All.CPU_Sum[CPU_COOLSFRIMBAL]) / All.CPU_Sum[CPU_ALL] * 100, 
+#endif 
 #ifdef BLACK_HOLES
     All.CPU_Sum[CPU_BLACKHOLES], (All.CPU_Sum[CPU_BLACKHOLES]) / All.CPU_Sum[CPU_ALL] * 100,
 #else

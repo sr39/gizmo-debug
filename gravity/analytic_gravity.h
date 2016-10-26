@@ -28,7 +28,7 @@ void add_analytic_gravitational_forces()
 #ifdef ANALYTIC_GRAVITY
     //GravAccel_RayleighTaylorTest();     // vertical potential for RT tests
     //GravAccel_StaticPlummerSphere();    // plummer sphere
-    //GravAccel_StaticHernquist();        // hernquist sphere
+    GravAccel_StaticHernquist();        // hernquist sphere
     //GravAccel_StaticIsothermalSphere(); // singular or cored isothermal sphere
     //GravAccel_KeplerianOrbit();         // keplerian disk
     //GravAccel_KeplerianTestProblem();   // keplerian disk with boundaries for test problem
@@ -119,9 +119,9 @@ void GravAccel_StaticPlummerSphere()
 /* static Hernquist Profile (parameters specified in the routine below) */
 void GravAccel_StaticHernquist()
 {
-    double HQ_M200 = 95.2401;
-    double HQ_C = 9.0;
-    double HQ_DARKFRACTION = 0.9;
+    double HQ_M200 = 10.0;
+    double HQ_C = 8.0;
+    double HQ_DARKFRACTION = 0.9810657;
 
     double r, r2, dp[3], m, a; int i, k;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])

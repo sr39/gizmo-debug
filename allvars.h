@@ -134,7 +134,28 @@
 #include <grackle.h>
 #endif
 
-
+#ifdef CHIMES 
+#include "./cooling/chimes/allvars.h" 
+extern struct gasVariables *ChimesGasVars; 
+extern struct globalVariables ChimesGlobalVars; 
+extern char ChimesDataPath[500]; 
+extern double isotropic_photon_density;  
+extern double shielding_length_factor; 
+extern double cr_rate; 
+extern int ForceEqOn; 
+extern int Chimes_incl_full_output; 
+extern int N_chimes_full_output_freq; 
+extern struct All_rate_variables_structure *AllRates;
+extern struct Reactions_Structure *all_reactions_root;
+extern struct Reactions_Structure *nonmolecular_reactions_root;
+extern double *dustG_arr; 
+extern double *H2_dissocJ_arr; 
+#ifdef OPENMP   
+extern struct All_rate_variables_structure **AllRates_omp;
+extern struct Reactions_Structure **all_reactions_root_omp;
+extern struct Reactions_Structure **nonmolecular_reactions_root_omp;
+#endif
+#endif 
 
 #ifdef SINGLE_STAR_FORMATION
 #define GALSF // master switch needed to enable various frameworks
@@ -680,7 +701,7 @@ typedef unsigned long long peanokey;
 #define  GAMMA_MINUS1  (GAMMA-1)
 #define  GAMMA_MINUS1_INV  (1./(GAMMA-1))
 
-#if !defined(RT_HYDROGEN_GAS_ONLY) || defined(RT_CHEM_PHOTOION_HE)
+#if !(defined(RT_HYDROGEN_GAS_ONLY) || defined(CHIMES_HYDROGEN_ONLY)) || defined(RT_CHEM_PHOTOION_HE) 
 #define  HYDROGEN_MASSFRAC 0.76 /*!< mass fraction of hydrogen, relevant only for radiative cooling */
 #else
 #define  HYDROGEN_MASSFRAC 1.0  /*!< mass fraction of hydrogen, relevant only for radiative cooling */
@@ -919,7 +940,12 @@ typedef MyDouble MyBigFloat;
 #define CPU_AGSDENSMISC    39
 #define CPU_SIDMSCATTER    40
 #define CPU_SIDMCELLOPEN   41
+#ifdef CHIMES 
+#define CPU_COOLSFRIMBAL   42
+#define CPU_PARTS          43  /* this gives the number of parts above (must be last) */
+#else 
 #define CPU_PARTS          42  /* this gives the number of parts above (must be last) */
+#endif 
 
 #define CPU_STRING_LEN 120
 
@@ -1659,9 +1685,15 @@ extern struct global_data_all_processes
   double GasReturnFraction;
 #endif
     
-#if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
+#ifdef METALS 
   double InitMetallicityinSolar;
+#endif 
+
+#if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
   double InitStellarAgeinGyr;
+#ifdef GALSF_ALT_INIT_STAR
+  double UniformAgeFraction; 
+#endif 
 #endif
 
 #ifdef GALSF_FB_GASRETURN
@@ -2322,9 +2354,11 @@ extern struct sph_particle_data
 #endif
 
 #ifdef COOLING
+#ifndef CHIMES 
   MyFloat Ne;  /*!< electron fraction, expressed as local electron number
 		    density normalized to the hydrogen number density. Gives
 		    indirectly ionization state and mean molecular weight. */
+#endif 
 #endif
 #ifdef GALSF
   MyFloat Sfr;                      /*!< particle star formation rate */
@@ -2807,6 +2841,12 @@ enum iofields
   IO_grDII,
   IO_grHDI,
   IO_OSTAR,  
+#ifdef CHIMES 
+  IO_CHIMES_ABUNDANCES, 
+  IO_CHIMES_MU, 
+  IO_CHIMES_REDUCED, 
+  IO_CHIMES_NH,
+#endif 
   IO_LASTENTRY			/* This should be kept - it signals the end of the list */
 };
 

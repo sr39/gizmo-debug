@@ -42,6 +42,10 @@ void init(void)
 #ifdef DISTORTIONTENSORPS
     int i1, i2;
 #endif
+
+#ifdef CHIMES 
+    double H_mass_fraction, He_mass_fraction; 
+#endif 
     
     All.Time = All.TimeBegin;
     set_cosmo_factors_for_current_time();    
@@ -417,7 +421,22 @@ void init(void)
 #if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
         if(RestartFlag == 0)
         {
-            P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (All.UnitTime_in_Megayears*0.001) * get_random_number(P[i].ID + 3);
+#ifdef GALSF_ALT_INIT_STAR
+	  if (P[i].Type == 2) 
+	    {
+	      // Disk stars 
+	      double p_rand; 
+	      p_rand = get_random_number(P[i].ID + 10); 
+	      if (p_rand < All.UniformAgeFraction) 
+		P[i].StellarAge = -All.InitStellarAgeinGyr / (All.UnitTime_in_Megayears*0.001) * get_random_number(P[i].ID + 3);
+	      else 
+		P[i].StellarAge = -All.InitStellarAgeinGyr / (All.UnitTime_in_Megayears*0.001); 
+	    }
+	  else 
+	    P[i].StellarAge = -All.InitStellarAgeinGyr / (All.UnitTime_in_Megayears*0.001);
+#else 
+	  P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (All.UnitTime_in_Megayears*0.001) * get_random_number(P[i].ID + 3);
+#endif 
         }
 #endif
         
@@ -441,10 +460,28 @@ void init(void)
         
         
 #ifdef METALS
+#ifdef SOLAR_ABUNDANCES_WIERSMA09 
+	All.SolarAbundances[0]=0.0129; 
+#else
         All.SolarAbundances[0]=0.02;        // all metals (by mass); present photospheric abundances from Asplund et al. 2009 (Z=0.0134, proto-solar=0.0142) in notes;
                                             //   also Anders+Grevesse 1989 (older, but hugely-cited compilation; their Z=0.0201, proto-solar=0.0213)
+#endif
+
 #ifdef COOL_METAL_LINES_BY_SPECIES
         if (NUM_METAL_SPECIES>=10) {
+#ifdef SOLAR_ABUNDANCES_WIERSMA09 
+	// Use solar abundances from Table 1 of Wiersma et al. 2009, MNRAS, 393, 99 
+            All.SolarAbundances[1]=0.2806;    // He  (11.0 in units where log[H]=12 -> Y = 0.2806 [Hydrogen X=0.7065])
+            All.SolarAbundances[2]=2.07e-3; // C   (8.39 -> 2.07e-3)
+            All.SolarAbundances[3]=8.36e-4; // N   (7.93 -> 8.36e-4)
+            All.SolarAbundances[4]=5.49e-3; // O   (8.69 -> 5.49e-3)
+            All.SolarAbundances[5]=1.41e-3; // Ne  (8.00 -> 1.41e-3)
+            All.SolarAbundances[6]=5.91e-4; // Mg  (7.54 -> 5.91e-4)
+            All.SolarAbundances[7]=6.83e-4; // Si  (7.54 -> 6.83e-4)
+            All.SolarAbundances[8]=4.09e-4; // S   (7.27 -> 4.09e-4)
+            All.SolarAbundances[9]=6.44e-5; // Ca  (6.36 -> 6.44e-5)
+            All.SolarAbundances[10]=1.1e-3; // Fe (7.45 -> 1.10e-3)
+#else 
             All.SolarAbundances[1]=0.28;    // He  (10.93 in units where log[H]=12, so photospheric mass fraction -> Y=0.2485 [Hydrogen X=0.7381]; Anders+Grevesse Y=0.2485, X=0.7314)
             All.SolarAbundances[2]=3.26e-3; // C   (8.43 -> 2.38e-3, AG=3.18e-3)
             All.SolarAbundances[3]=1.32e-3; // N   (7.83 -> 0.70e-3, AG=1.15e-3)
@@ -455,6 +492,7 @@ void init(void)
             All.SolarAbundances[8]=6.44e-4; // S   (7.12 -> 3.12e-4, AG=3.80e-4)
             All.SolarAbundances[9]=1.01e-4; // Ca  (6.34 -> 0.65e-4, AG=0.67e-4)
             All.SolarAbundances[10]=1.73e-3; // Fe (7.50 -> 1.31e-3, AG=1.92e-3)
+#endif // SOLAR_ABUNDANCES_WIERSMA09 
         }
 #endif // COOL_METAL_LINES_BY_SPECIES
 #ifdef GALSF_FB_RPROCESS_ENRICHMENT
@@ -463,16 +501,49 @@ void init(void)
 #endif
         
         if(RestartFlag == 0) {
-#if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
-            P[i].Metallicity[0] = All.InitMetallicityinSolar*All.SolarAbundances[0];
-#else
-            P[i].Metallicity[0] = 0;
-#endif
-            /* initialize abundance ratios. for now, assume solar */
-            for(j=0;j<NUM_METAL_SPECIES;j++) P[i].Metallicity[j]=All.SolarAbundances[j]*P[i].Metallicity[0]/All.SolarAbundances[0];
-            /* need to allow for a primordial He abundance */
-            if(NUM_METAL_SPECIES>=10) P[i].Metallicity[1]=0.25+(All.SolarAbundances[1]-0.25)*P[i].Metallicity[0]/All.SolarAbundances[0];
+	  P[i].Metallicity[0] = All.InitMetallicityinSolar*All.SolarAbundances[0]; 
+
+	  /* initialize abundance ratios. for now, assume solar */
+	  for(j=0;j<NUM_METAL_SPECIES;j++) P[i].Metallicity[j]=All.SolarAbundances[j]*P[i].Metallicity[0]/All.SolarAbundances[0];
+	  /* need to allow for a primordial He abundance */
+	  if(NUM_METAL_SPECIES>=10) P[i].Metallicity[1]=0.25+(All.SolarAbundances[1]-0.25)*P[i].Metallicity[0]/All.SolarAbundances[0];
         } // if(RestartFlag == 0)
+
+#ifdef CHIMES 
+#ifdef COOL_METAL_LINES_BY_SPECIES 
+	if (P[i].Type == 0) 
+	  {
+	    H_mass_fraction = 1.0 - (P[i].Metallicity[0] + P[i].Metallicity[1]); 
+	    ChimesGasVars[i].element_abundances[0] = P[i].Metallicity[1] / (4.0 * H_mass_fraction);   // He 
+	    ChimesGasVars[i].element_abundances[1] = P[i].Metallicity[2] / (12.0 * H_mass_fraction);  // C 
+	    ChimesGasVars[i].element_abundances[2] = P[i].Metallicity[3] / (14.0 * H_mass_fraction);  // N 
+	    ChimesGasVars[i].element_abundances[3] = P[i].Metallicity[4] / (16.0 * H_mass_fraction);  // O 
+	    ChimesGasVars[i].element_abundances[4] = P[i].Metallicity[5] / (20.0 * H_mass_fraction);  // Ne 
+	    ChimesGasVars[i].element_abundances[5] = P[i].Metallicity[6] / (24.0 * H_mass_fraction);  // Mg 
+	    ChimesGasVars[i].element_abundances[6] = P[i].Metallicity[7] / (28.0 * H_mass_fraction);  // Si 
+	    ChimesGasVars[i].element_abundances[7] = P[i].Metallicity[8] / (32.0 * H_mass_fraction);  // S 
+	    ChimesGasVars[i].element_abundances[8] = P[i].Metallicity[9] / (40.0 * H_mass_fraction);  // Ca 
+	    ChimesGasVars[i].element_abundances[9] = P[i].Metallicity[10] / (56.0 * H_mass_fraction); // Fe 
+	  }
+#else 
+	if (ThisTask == 0)
+	  {
+	    printf("ERROR: Config flags CHIMES and METALS are switched on, but COOL_METAL_LINES_BY_SPECIES is switched off. \n"); 
+	    printf("If you want to include metals with CHIMES, you will also need to switch on COOL_METAL_LINES_BY_SPECIES. Aborting. \n"); 
+	    endrun(202); 
+	  }
+#endif // COOL_METAL_LINES_BY_SPECIES 
+#endif // CHIMES 
+#else 
+#ifdef CHIMES 
+	if (P[i].Type == 0) 
+	  {
+	    H_mass_fraction = HYDROGEN_MASSFRAC; 
+	    ChimesGasVars[i].element_abundances[0] = (1.0 - H_mass_fraction) / (4.0 * H_mass_fraction);  // He 
+	    for (j = 1; j < 10; j++) 
+	      ChimesGasVars[i].element_abundances[j] = 0.0; 
+	  }
+#endif // CHIMES 
 #endif // METALS
         
         
@@ -573,7 +644,9 @@ void init(void)
 #endif
             SphP[i].Density = -1;
 #ifdef COOLING
+#ifndef CHIMES 
             SphP[i].Ne = 1.0;
+#endif 
 #endif
 #ifdef GALSF_FB_LOCAL_UV_HEATING
             SphP[i].RadFluxUV = 0;
@@ -669,11 +742,34 @@ void init(void)
     assign_unique_ids();
 #endif
     /* assign other ID parameters needed */
-    if(RestartFlag==0) {for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}}
-#ifdef NO_CHILD_IDS_IN_ICS
-    if(RestartFlag != 1) {for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}}
+
+    if(RestartFlag==0)
+      {
+        for(i = 0; i < NumPart; i++)
+          {
+            P[i].ID_child_number = 0;
+            P[i].ID_generation = 0;
+          }
+#ifdef CHIMES
+	if (P[i].Type == 0)
+	  ChimesGasVars[i].ID_child_number = P[i].ID_child_number;
 #endif
-    
+      }
+
+#ifdef NO_CHILD_IDS_IN_ICS
+    if(RestartFlag != 1)
+      {
+        for(i = 0; i < NumPart; i++)
+          {
+            P[i].ID_child_number = 0;
+            P[i].ID_generation = 0;
+#ifdef CHIMES
+            if (P[i].Type == 0)
+              ChimesGasVars[i].ID_child_number = P[i].ID_child_number;
+#endif
+          }
+      }
+#endif
     
 #ifdef TEST_FOR_IDUNIQUENESS
     test_id_uniqueness();

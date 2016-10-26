@@ -311,6 +311,17 @@ double get_starformation_rate(int i)
         rateOfSF *= y;
     } // if(tau_fmol>0)
 #endif // GALSF_SFR_MOLECULAR_CRITERION
+
+#ifdef CHIMES_SFR_MOLECULAR_CRITERION 
+    /* This is similar to GALSF_SFR_MOLECULAR_CRITERION, except that 
+     * the H2 fraction is taken from the CHIMES network. */
+    y = ChimesGasVars[i].abundances[H2] * 2.0; 
+    if (y < 0) 
+      y = 0.0; 
+    if (y > 1) 
+      y = 1.0; 
+    rateOfSF *= y; 
+#endif 
     
     
 #ifdef GALSF_SFR_VIRIAL_SF_CRITERION
@@ -459,12 +470,59 @@ void cooling_and_starformation(void)
 
   for(bits = 0; GALSF_GENERATIONS > (1 << bits); bits++);
 
+#if defined(CHIMES) && defined(OPENMP)
+  /* Determine indices of active particles. */
+  int N_active = 0; 
+  for (i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+#if defined(GALSF_EFFECTIVE_EQS)  
+      if(determine_sf_flag(i) == 1)
+#endif
+	N_active++; 
+    }
+  int *active_indices; 
+  active_indices = (int *) malloc(N_active * sizeof(int)); 
+  int j = 0; 
+  for (i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+#if defined(GALSF_EFFECTIVE_EQS)  
+      if(determine_sf_flag(i) == 1)
+#endif
+	{
+	  active_indices[j] = i; 
+	  j++; 
+	}
+    }
+
+#pragma omp parallel private(i, j, dt, dtime) 
+  {
+
+#pragma omp for schedule(dynamic) 
+  for(j = 0; j < N_active; j++)
+    {
+      i = active_indices[j]; 
+#ifndef GALSF_TURNOFF_COOLING_WINDS
+      do_the_cooling_for_particle(i); /* actual cooling subroutine for particle i */
+#else
+      dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval;
+      dtime = dt / All.cf_hubble_a; /*  the actual time-step */
+      if(SphP[i].DelayTimeCoolingSNe<=0)
+	do_the_cooling_for_particle(i); /* actual cooling subroutine for particle i */
+      else 
+	SphP[i].DelayTimeCoolingSNe -= dtime; /* 'counts down' until cooling is restored */
+#endif // GALSF_TURNOFF_COOLING_WINDS
+    }
+  } // End of parallel block. 
+
+  free(active_indices); 
+#endif // CHIMES && OPENMP 
+
   for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
       if((P[i].Type == 0)&&(P[i].Mass>0))
 	{
 	  dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval;
-      dtime = dt / All.cf_hubble_a; /*  the actual time-step */
+	  dtime = dt / All.cf_hubble_a; /*  the actual time-step */
 
 	  flag = determine_sf_flag(i); /* check condition for SF: 1=normal cooling, 0=star formation */
 
@@ -472,6 +530,7 @@ void cooling_and_starformation(void)
       if(flag==1)
 #endif
         {
+#if !(defined(CHIMES) && defined(OPENMP)) 
 #ifndef GALSF_TURNOFF_COOLING_WINDS
             do_the_cooling_for_particle(i); /* actual cooling subroutine for particle i */
 #else
@@ -481,6 +540,7 @@ void cooling_and_starformation(void)
             } else {
                 SphP[i].DelayTimeCoolingSNe -= dtime; /* 'counts down' until cooling is restored */
             }
+#endif
 #endif
             SphP[i].Sfr = 0; /* will be reset below if flag==0 */
         }
@@ -497,15 +557,15 @@ void cooling_and_starformation(void)
 
 	      /* the upper bits of the gas particle ID store how many stars this gas particle gas already generated */
 	      if(bits == 0)
-            number_of_stars_generated = 0;
+		number_of_stars_generated = 0;
 	      else
-            number_of_stars_generated = (P[i].ID >> (sizeof(MyIDType) * 8 - bits));
+		number_of_stars_generated = (P[i].ID >> (sizeof(MyIDType) * 8 - bits));
 
 	      mass_of_star = P[i].Mass / (GALSF_GENERATIONS - number_of_stars_generated);
-            if(number_of_stars_generated >= GALSF_GENERATIONS-1) mass_of_star=P[i].Mass;
+	      if(number_of_stars_generated >= GALSF_GENERATIONS-1) mass_of_star=P[i].Mass;
 
-          SphP[i].Sfr = sm / dtime *
-            (All.UnitMass_in_g / SOLAR_MASS) / (All.UnitTime_in_s / SEC_PER_YEAR);
+	      SphP[i].Sfr = sm / dtime *
+		(All.UnitMass_in_g / SOLAR_MASS) / (All.UnitTime_in_s / SEC_PER_YEAR);
 	      if(dtime>0) TimeBinSfr[P[i].TimeBin] += SphP[i].Sfr;
 
           prob = P[i].Mass / mass_of_star * (1 - exp(-p));
@@ -709,11 +769,17 @@ void cooling_and_starformation(void)
 #endif
         }
 #endif
-
 	} /* End of If Type = 0 */
     } /* end of main loop over active particles, huzzah! */
 
-
+#ifdef CHIMES 
+  /* There may be large work-load imbalances when the chemistry is 
+   * being integrated, so we want to record the time spent by MPI tasks 
+   * waiting for the remaining tasks to finish. */ 
+  CPU_Step[CPU_COOLINGSFR] += measure_time(); 
+  MPI_Barrier(MPI_COMM_WORLD); 
+  CPU_Step[CPU_COOLSFRIMBAL] += measure_time();
+#endif 
 
 #if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) && defined(GALSF_FB_RPWIND_LOCAL)
 if(All.WindMomentumLoading)

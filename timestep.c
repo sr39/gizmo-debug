@@ -52,6 +52,9 @@ void set_cosmo_factors_for_current_time(void)
         All.cf_hubble_a = hubble_function(All.Time); /* hubble_function(a) = H(a) = H(z) */
         /* dt_code * v_code/r_code = All.cf_hubble_a2 * dt_phys * v_phys/r_phys */
         All.cf_hubble_a2 = All.Time * All.Time * hubble_function(All.Time);
+#ifdef CHIMES 
+	ChimesGlobalVars.cmb_temperature = 2.725 / All.cf_atime; 
+#endif 
     }
     else
     {
@@ -63,6 +66,9 @@ void set_cosmo_factors_for_current_time(void)
         All.cf_afac3 = 1;
         All.cf_hubble_a = 1;
         All.cf_hubble_a2 = 1;
+#ifdef CHIMES 
+	ChimesGlobalVars.cmb_temperature = 2.725; 
+#endif 
     }
 }
 

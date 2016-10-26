@@ -132,10 +132,17 @@ double CPU_Step[CPU_PARTS];
 char CPU_Symbol[CPU_PARTS] =
   { '-', '*', '=', ';', '<', '[', '^', ':', '.', '~', '|', '+', '"', '/', '`', ',', '>', '@', '#', '&', '$',
   ']', '(', '?', ')', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '\\', '%', '{', '}'
+#ifdef CHIMES 
+    , 'Z', 'Y', 'X', 'U' 
+#endif 
 };
 char CPU_SymbolImbalance[CPU_PARTS] =
   { 'a', 't', 'u', 'v', 'b', 'w', 'd', 'r', 'h', 'm', 'n', 'l', 'o', 'p', 's', 'f', 'i', 'g', 'c', 'e', 'x',
   'y', 'z', 'A', 'I', 'W', 'T', 'V', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'
+#ifdef CHIMES 
+    , 'Q', 'R', 'S', 'T' 
+#endif 
+
 };
 char CPU_String[CPU_STRING_LEN + 1];
 

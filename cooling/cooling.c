@@ -9,7 +9,6 @@
 
 #include "./cooling.h"
 
-
 /*
  * This file contains the routines for optically-thin cooling (generally aimed towards simulations of the ISM, 
  *   galaxy formation, and cosmology). A wide range of heating/cooling processes are included, including 
@@ -68,13 +67,65 @@ static double nH0, nHp, nHep, nHe0, nHepp;
 
 static double DoCool_u_old_input, DoCool_rho_input, DoCool_dt_input, DoCool_ne_guess_input;
 
-
-
+#ifdef CHIMES 
+struct gasVariables *ChimesGasVars; 
+struct globalVariables ChimesGlobalVars; 
+char ChimesDataPath[500]; 
+double isotropic_photon_density;  
+double shielding_length_factor; 
+double cr_rate; 
+int ForceEqOn, N_chimes_full_output_freq; 
+int Chimes_incl_full_output = 1; 
+struct All_rate_variables_structure *AllRates;
+struct Reactions_Structure *all_reactions_root;
+struct Reactions_Structure *nonmolecular_reactions_root;
+double *dustG_arr; 
+double *H2_dissocJ_arr; 
+#ifdef OPENMP
+struct All_rate_variables_structure **AllRates_omp; 
+struct Reactions_Structure **all_reactions_root_omp; 
+struct Reactions_Structure **nonmolecular_reactions_root_omp; 
+#endif 
+#endif 
 
 /* this is just a simple loop if all we're doing is cooling (no star formation) */
 void cooling_only(void)
 {
     int i;
+
+#if defined(CHIMES) && defined(OPENMP)
+  /* Determine indices of active particles. */
+  int N_active = 0; 
+  for (i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+      if(P[i].Type == 0 && P[i].Mass > 0)
+	N_active++; 
+    }
+
+  int *active_indices; 
+  active_indices = (int *) malloc(N_active * sizeof(int)); 
+  int j = 0; 
+  for (i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+      if(P[i].Type == 0 && P[i].Mass > 0)
+	{
+	  active_indices[j] = i; 
+	  j++; 
+	}
+    }
+
+#pragma omp parallel private(i, j) 
+  {
+
+#pragma omp for schedule(dynamic) 
+  for(j = 0; j < N_active; j++)
+    {
+      i = active_indices[j]; 
+      do_the_cooling_for_particle(i);
+    }
+  } // End of parallel block 
+  free(active_indices); 
+#else 
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         if(P[i].Type == 0 && P[i].Mass > 0)
@@ -82,6 +133,17 @@ void cooling_only(void)
             do_the_cooling_for_particle(i);
         } // if(P[i].Type == 0 && P[i].Mass > 0)
     } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+#endif // CHIMES && OPENMP
+
+#ifdef CHIMES 
+  /* There may be large work-load imbalances when the chemistry is 
+   * being integrated, so we want to record the time spent by tasks 
+   * waiting for the remaining tasks to finish. */ 
+  CPU_Step[CPU_COOLINGSFR] += measure_time(); 
+  MPI_Barrier(MPI_COMM_WORLD); 
+  CPU_Step[CPU_COOLSFRIMBAL] += measure_time();
+#endif 
+
 } // void cooling_only(void)
 
 
@@ -96,8 +158,11 @@ void do_the_cooling_for_particle(int i)
     double dtime = dt / All.cf_hubble_a; /*  the actual time-step */
     if((P[i].TimeBin)&&(dt>0)&&(P[i].Mass>0)&&(P[i].Type==0))  // upon start-up, need to protect against dt==0 //
     {
-        
+#ifndef CHIMES         
         double ne = SphP[i].Ne;	/* electron abundance (gives ionization state and mean molecular weight) */
+#else 
+	double ne = 0.0;  // ne is not used when CHIMES is switched on. 
+#endif 
         double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);
 #ifdef GALSF_FB_HII_HEATING
         double u_to_temp_fac = PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
@@ -147,7 +212,9 @@ void do_the_cooling_for_particle(int i)
                 if(SphP[i].DtInternalEnergy<0) SphP[i].DtInternalEnergy=0;
                 //if(SphP[i].dInternalEnergy<0) SphP[i].dInternalEnergy=0; //manifest-indiv-timestep-debug//
             }
+#ifndef CHIMES 	    
             SphP[i].Ne = 1.0 + 2.0*yhelium(i);
+#endif 
         }
 #endif // GALSF_FB_HII_HEATING
         
@@ -177,7 +244,9 @@ void do_the_cooling_for_particle(int i)
          is set, then DtInternalEnergy carries information from the hydro loop which is only half-stepped here, so is -not- updated. 
          if the flag is not set (default), then the full hydro-heating is accounted for in the cooling loop, so it should be re-zeroed here */
         SphP[i].InternalEnergy = unew;
+#ifndef CHIMES 
         SphP[i].Ne = ne;
+#endif 
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
         SphP[i].Pressure = get_pressure(i);
 #ifndef COOLING_OPERATOR_SPLIT
@@ -233,8 +302,93 @@ double DoCooling(double u_old, double rho, double dt, double *ne_guess, int targ
 #endif
     return DMAX(u,All.MinEgySpec);
 #endif
+
+#ifdef CHIMES 
+    /* Check that the gasVars structure matches the corresponding 
+     * particle structure. */ 
+    if ((ChimesGasVars[target].ID != P[target].ID) || (ChimesGasVars[target].ID_child_number != P[target].ID_child_number)) 
+      {
+	printf("ERROR: ChimesGasVars[%d].ID = %u, ChimesGasVars[%d].ID_child_number = %u, P[%d].ID = %u, P[%d].ID_child_number = %u. \n", target, ChimesGasVars[target].ID, target, ChimesGasVars[target].ID_child_number, target, P[target].ID, target, P[target].ID_child_number); 
+	endrun(201); 
+      } 
+
+    /* Update the gasVars for this particle. */
+    double u_old_cgs = u_old * All.UnitPressure_in_cgs / All.UnitDensity_in_cgs; 
+    double rho_cgs = rho * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam; 
+
+#ifdef COOL_METAL_LINES_BY_SPECIES 
+    double H_mass_fraction = 1.0 - (P[target].Metallicity[0] + P[target].Metallicity[1]); 
+#else 
+    double H_mass_fraction = XH; 
+#endif 
+      
+    ChimesGasVars[target].temperature = convert_u_to_temp(u_old_cgs, rho_cgs, ne_guess, target); 
+    ChimesGasVars[target].nH_tot = H_mass_fraction * rho_cgs / PROTONMASS; 
+    ChimesGasVars[target].isotropic_photon_density[0] = isotropic_photon_density; 
+    ChimesGasVars[target].dust_G_parameter[0] = dustG_arr[0]; 
+    ChimesGasVars[target].H2_dissocJ[0] = H2_dissocJ_arr[0]; 
+    ChimesGasVars[target].cr_rate = cr_rate; 
+    ChimesGasVars[target].hydro_timestep = dt * All.UnitTime_in_s / All.HubbleParam; 
+    ChimesGasVars[target].ForceEqOn = ForceEqOn; 
+    ChimesGasVars[target].divVel = (All.HubbleParam / All.UnitTime_in_s) * P[target].Particle_DivVel; 
+    if (All.ComovingIntegrationOn)
+      {
+	ChimesGasVars[target].divVel *= All.cf_a2inv;
+	ChimesGasVars[target].divVel += 3 * All.HubbleParam * All.cf_hubble_a / All.UnitTime_in_s;  /* Term due to Hubble expansion */
+      }
+    ChimesGasVars[target].divVel = fabs(ChimesGasVars[target].divVel); 
+
+#ifndef COOLING_OPERATOR_SPLIT 
+    ChimesGasVars[target].constant_heating_rate = ChimesGasVars[target].nH_tot * SphP[target].DtInternalEnergy; 
+#else 
+    ChimesGasVars[target].constant_heating_rate = 0.0 
+#endif 
     
+#ifdef CHIMES_SOBOLEV_SHIELDING 
+    double surface_density; 
+    surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1); 
+    surface_density *= All.cf_a2inv * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm; // converts to cgs
+    ChimesGasVars[target].cell_size = shielding_length_factor * surface_density / rho_cgs; 
+    ChimesGasVars[target].doppler_broad = 7.1;  // km/s. For now, just set this constant. Thermal broadening is also added within CHIMES. 
+#else 
+    ChimesGasVars[target].cell_size = 1.0; 
+    ChimesGasVars[target].doppler_broad = 7.1; 
+#endif
+
+    // If there is an EoS, need to set TempFloor to that instead. 
+#ifndef GALSF_FB_HII_HEATING
+    ChimesGasVars[target].TempFloor = All.MinGasTemp; 
+#else 
+    if (SphP[target].DelayTimeHII > 0) 
+      ChimesGasVars[target].TempFloor = HIIRegion_Temp; 
+    else 
+      ChimesGasVars[target].TempFloor = All.MinGasTemp; 
+#endif 
+
+#ifdef METALS     
+    /* NOTE: Currently the element abundances are not updated after 
+     * metal enrichment. We need to add this!. */ 
+    ChimesGasVars[target].metallicity = P[target].Metallicity[0] / 0.0129;  // In Zsol. CHIMES uses Zsol = 0.0129. 
+#else 
+    ChimesGasVars[target].metallicity = 0.0; 
+#endif 
     
+    /* Call CHIMES to evolve the chemistry and temperature over 
+     * the hydro timestep. */ 
+#ifdef OPENMP 
+    int ThisThread = omp_get_thread_num(); 
+    chimes_network(&(ChimesGasVars[target]), &ChimesGlobalVars, AllRates_omp[ThisThread], all_reactions_root_omp[ThisThread], nonmolecular_reactions_root_omp[ThisThread]); 
+#else 
+    chimes_network(&(ChimesGasVars[target]), &ChimesGlobalVars, AllRates, all_reactions_root, nonmolecular_reactions_root); 
+#endif
+    
+    // Compute updated internal energy 
+    u = ChimesGasVars[target].temperature * BOLTZMANN / (GAMMA_MINUS1 * PROTONMASS * calculate_mean_molecular_weight(&(ChimesGasVars[target]), &ChimesGlobalVars)); 
+    u *= All.UnitDensity_in_cgs / All.UnitPressure_in_cgs;  // code units 
+    
+    return DMAX(u, All.MinEgySpec);
+
+#else     
   DoCool_u_old_input = u_old;
   DoCool_rho_input = rho;
   DoCool_dt_input = dt;
@@ -315,6 +469,7 @@ double DoCooling(double u_old, double rho, double dt, double *ne_guess, int targ
     }
 
   u *= All.UnitDensity_in_cgs / All.UnitPressure_in_cgs;	/* to internal units */
+#endif 
 
   return u;
 }
@@ -467,7 +622,7 @@ double DoInstabilityCooling(double m_old, double u, double rho, double dt, doubl
 
 void cool_test(void)
 {
-#if !defined(COOL_METAL_LINES_BY_SPECIES)
+#if !defined(COOL_METAL_LINES_BY_SPECIES) && !defined(CHIMES) 
     double uin, rhoin, tempin, muin, nein;
     
     uin = 6.01329e+09;
@@ -542,6 +697,9 @@ double yhelium(int target)
  */
 double convert_u_to_temp(double u, double rho, double *ne_guess, int target)
 {
+#ifdef CHIMES 
+  return u * GAMMA_MINUS1 * PROTONMASS * calculate_mean_molecular_weight(&(ChimesGasVars[target]), &ChimesGlobalVars) / BOLTZMANN; 
+#else 
   double temp, temp_old, temp_new, max = 0, ne_old;
   double mu;
   int iter = 0;
@@ -596,6 +754,7 @@ double convert_u_to_temp(double u, double rho, double *ne_guess, int target)
     if(log10(temp)<Tmin) temp=pow(10.0,Tmin);
 
   return temp;
+#endif 
 }
 
 
@@ -1735,7 +1894,6 @@ void InitCool(void)
 {
     if(ThisTask == 0)
         printf("Initializing cooling ...\n");
-    
     All.Time = All.TimeBegin;
     set_cosmo_factors_for_current_time();
     
@@ -1743,6 +1901,44 @@ void InitCool(void)
     InitGrackle();
 #endif
     
+#ifdef CHIMES
+    ChimesGlobalVars.updatePhotonFluxOn = 0; 
+    ChimesGlobalVars.InitIonState = 0; 
+    ChimesGlobalVars.print_debug_statements = 0; 
+    sprintf(ChimesGlobalVars.BenTablesPath, "%s/bens_tables/", ChimesDataPath); 
+    sprintf(ChimesGlobalVars.AdditionalRatesTablesPath, "%s/additional_rates.hdf5", ChimesDataPath); 
+    sprintf(ChimesGlobalVars.EqAbundanceTablePath, "%s/DummyTable.hdf5", ChimesDataPath); 
+    sprintf(ChimesGlobalVars.MolecularTablePath, "%s/molecular_cooling_table.hdf5", ChimesDataPath); 
+    
+    // Currently, we only support a single UV spectrum. 
+    // We will add further options later. 
+    ChimesGlobalVars.N_spectra = 1; 
+
+    // The following arrays will store the dust_G and H2_dissocJ 
+    // parameters from the spectrum data files. 
+    dustG_arr = (double *) malloc(ChimesGlobalVars.N_spectra * sizeof(double)); 
+    H2_dissocJ_arr = (double *) malloc(ChimesGlobalVars.N_spectra * sizeof(double)); 
+
+    if (NTask < 11) 
+      init_chimes(&ChimesGlobalVars, &AllRates, &all_reactions_root, &nonmolecular_reactions_root, dustG_arr, H2_dissocJ_arr); 
+    else 
+      init_chimes_parallel(&ChimesGlobalVars, &AllRates, &all_reactions_root, &nonmolecular_reactions_root, dustG_arr, H2_dissocJ_arr); 
+
+#ifdef OPENMP 
+    int i; 
+    free_all_rates_structure(AllRates, &ChimesGlobalVars); 
+    free_reactions_list(all_reactions_root); 
+    free_reactions_list(nonmolecular_reactions_root); 
+    
+    AllRates_omp = (struct All_rate_variables_structure **) malloc(maxThreads * sizeof(struct All_rate_variables_structure *)); 
+    all_reactions_root_omp = (struct Reactions_Structure **) malloc(maxThreads * sizeof(struct Reactions_Structure *)); 
+    nonmolecular_reactions_root_omp = (struct Reactions_Structure **) malloc(maxThreads * sizeof(struct Reactions_Structure *)); 
+    
+    for (i = 0; i < maxThreads; i++) 
+      init_chimes_omp(&ChimesGlobalVars, &AllRates_omp[i], &all_reactions_root_omp[i], &nonmolecular_reactions_root_omp[i]); 
+#endif 
+
+#else 
     InitCoolMemory();
     MakeCoolingTable();
     ReadIonizeParams("TREECOOL");
@@ -1750,6 +1946,7 @@ void InitCool(void)
 #ifdef COOL_METAL_LINES_BY_SPECIES
     LoadMultiSpeciesTables();
 #endif
+#endif 
 }
 
 

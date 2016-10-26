@@ -92,6 +92,12 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #SELFSHIELDING_FITTING_FORMULA  # use the Rahmati+2013 self-shielding fitting formula as an approximation to Radiative Transfer
 #GRACKLE                        # enable GRACKLE: cooling+chemistry package (requires COOLING above; https://grackle.readthedocs.org/en/latest )
 #GRACKLE_CHEMISTRY=1            # choose GRACKLE cooling chemistry: (0)=tabular, (1)=Atomic, (2)=(1)+H2+H2I+H2II, (3)=(2)+DI+DII+HD
+#CHIMES                          # enable CHIMES: cooling & chemistry package. Requires COOLING above. Also, requires COOL_METAL_LINES_BY_SPECIES to include metals. 
+#CHIMES_HYDROGEN_ONLY        # Hydrogen-only. This is ignored if METALS are also set. 
+#CHIMES_SOBOLEV_SHIELDING        # Enables local self-shielding over a Sobolev-like length scale. 
+#CHIMES_SFR_MOLECULAR_CRITERION  # As GALSF_SFR_MOLECULAR_CRITERION, but using the H2 fraction from CHIMES. 
+#CHIMES_REDUCED_OUTPUT           # Full CHIMES abundance array only output in some snapshots. 
+#CHIMES_NH_OUTPUT                # Write out column densities of gas particles to snapshots. 
 ##-----------------------------------------------------------------------------------------------------
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- Smagorinsky Turbulent Eddy Diffusion Model
@@ -196,6 +202,8 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #---- basic/master switches ---- #
 #GALSF                          # master switch for galactic star formation model: enables SF, stellar ages, metals, generations, etc.
 #METALS                         # enable metallicities (with multiple species optional) for gas and stars
+#SOLAR_ABUNDANCES_WIERSMA09      # Use solar abundances from Table 1 of Wiersma et al. 2009, MNRAS, 393, 99 (req. METALS) 
+#GALSF_ALT_INIT_STAR          # Some fraction of initial disk stars is given a uniform age distribution, remainder are fixed 
 ##GALSF_GENERATIONS=1           # the number of stars a gas particle may spawn (defaults to 1, set otherwise)
 ##-----------------------------------------------------------------------------------------------------------------------------
 #----- old sub-grid models (for large-volume simulations) ---- #
@@ -226,6 +234,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #GALSF_SFR_IMF_SAMPLING          # discretely sample the IMF: simplified model with quantized number of massive stars
 #----- physical stellar feedback mechanisms ---- #
 #GALSF_FB_GASRETURN              # Paul Torrey's addition for stochastic gas return (modified for continuous return)
+#GALSF_FB_NOENRICHMENT           # Disables injection of metals from SNe & winds. Mass, momentum and energy are still injected. 
 #GALSF_FB_HII_HEATING            # gas within HII regions around young stars is photo-heated to 10^4 K
 #GALSF_FB_SNE_HEATING=1          # time-dependent explosions from SNe (I & II) in shockwave radii around stars (values: 0=force-gridded in xyz (WRONG-for testing only!); 1=tensor-symmetrized (momentum-conserving; USE ME); 2=no tensor re-normalization [non-conservative!]
 #GALSF_FB_RPROCESS_ENRICHMENT=6  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 6=extended model)
@@ -327,6 +336,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 # --------------------------------------- Output/Input options
 ####################################################################################################
 HAVE_HDF5						# needed when HDF5 I/O support is desired
+OUTPUT_ADDITIONAL_RUNINFO       # disables the 'reduced io' mode. 
 #OUTPUT_IN_DOUBLEPRECISION      # snapshot files will be written in double precision
 #INPUT_IN_DOUBLEPRECISION       # input files assumed to be in double precision (otherwise float is assumed)
 #OUTPUT_POSITIONS_IN_DOUBLE     # input/output files in single, but positions in double (used in hires, hi-dynamic range sims when positions differ by < float accuracy)
