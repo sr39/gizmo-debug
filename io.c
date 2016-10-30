@@ -563,7 +563,9 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 if(P[pindex].Type == type)
                 {
                     for(k = 0; k < NUM_METAL_SPECIES; k++)
+                    {
                         fp[k] = P[pindex].Metallicity[k];
+                    }
                     fp += NUM_METAL_SPECIES;
                     n++;
                 }
