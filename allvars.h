@@ -118,6 +118,11 @@
 #define GALSF_FB_RPWIND_LOCAL
 #define GALSF_FB_RPROCESS_ENRICHMENT 6
 #define GALSF_SFR_IMF_VARIATION
+#define PROTECT_FROZEN_FIRE
+#else
+#if (defined(COOLING) && defined(GALSF) && defined(GALSF_FB_SNE_HEATING)) && !defined(FIRE_UNPROTECT_FROZEN)
+#define PROTECT_FROZEN_FIRE
+#endif
 #endif
 
 
@@ -355,6 +360,8 @@
 /* this is a ryu+jones type energy/entropy switch. it can help with some problems, but can also generate significant 
  errors in other types of problems. in general, even for pure hydro, this isn't recommended; use it for special problems if you know what you are doing. */
 #endif
+
+
 
 
 #ifdef MAGNETIC
