@@ -55,3 +55,17 @@ void mt_calculate_cross_section(double Vtarget[3], double Vno[3], double *CrossS
 
 	CrossSection = All.mtSIDMparameterA * pow(dV, All.mtSIDMparameterarpha); 
 }
+
+double mt_prob_of_interaction(double density, double Vtarget[3], double Vno[3], double CrossSection, double dt)
+{
+	double prob, dV, dvx, dvy, dvz;
+	
+	dvx = Vno[0]-Vtarget[0];
+	dvy = Vno[1]-Vtarget[1];
+	dvz = Vno[2]-Vtarget[2];
+	dV = sqrt(dvx*dvx + dvy*dvy + dvz*dvz);
+
+	prob = density * dV * CrossSection * dt;
+
+	return prob * 0.5;
+}
