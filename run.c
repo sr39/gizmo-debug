@@ -926,17 +926,17 @@ void write_cpu_log(void)
 
   CPUThisRun += CPU_Step[0];
 
-  for(i = 0; i < CPU_PARTS; i++)
-    CPU_Step[i] = 0;
-
+    for(i = 0; i < CPU_PARTS; i++) {CPU_Step[i] = 0;}
+    if(ThisTask == 0)
+    {
+        for(i = 0; i < CPU_PARTS; i++) {All.CPU_Sum[i] += avg_CPU_Step[i];}
+    }
+        
 #ifdef IO_REDUCED_MODE
-    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
+    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) // only do the actual -print- operation on global timesteps
 #endif
   if(ThisTask == 0)
     {
-      for(i = 0; i < CPU_PARTS; i++)
-	All.CPU_Sum[i] += avg_CPU_Step[i];
-
       fprintf(FdCPU, "Step %d, Time: %g, CPUs: %d\n", All.NumCurrentTiStep, All.Time, NTask);
       fprintf(FdCPU,
 	      "total         %10.2f  %5.1f%%\n"

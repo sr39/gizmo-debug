@@ -236,6 +236,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##GALSF_FB_RPWIND_CONTINUOUS	# wind accel term is continuous (more expensive and introduces more artificial dissipation)
 ##GALSF_FB_RPWIND_DO_IN_SFCALC	# do IR wind loop in SFR routine (allows fof clump-finding, useful for very IR-thick, but slow)
 ##GALSF_FB_RPWIND_FROMSFR       # drive radiation pressure with gas SFR (instead of default, which is nearby young stars)
+##FIRE_UNPROTECT_FROZEN         # by default, FIRE-2 code version is 'frozen' so it cannot be changed by any code updates. this removes the protection, so you will use whatever the newest algorithms in GIZMO are, but use it with CAUTION since the algorithm may NOT agree with the other FIRE runs
 ##-----------------------------------------------------------------------------------------------------
 
 
@@ -340,6 +341,7 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #OUTPUTLINEOFSIGHT_PARTICLES
 #POWERSPEC_ON_OUTPUT            # compute and output power spectra (not used)
 #RECOMPUTE_POTENTIAL_ON_OUTPUT	# update potential every output even it EVALPOTENTIAL is set
+#TWOPOINT_FUNCTION_COMPUTATION_ENABLED #calculate mass 2point function by enabling and setting restartflag=5
 #OUTPUT_ADDITIONAL_RUNINFO      # enables extended simulation output data (can slow down machines significantly in massively-parallel runs)
 ####################################################################################################
 
@@ -354,6 +356,7 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
                                 # these can introduce numerical instability in problems with poorly-resolved large noise or density contrasts (e.g. multi-phase, self-gravitating flows)
 #ENERGY_ENTROPY_SWITCH_IS_ACTIVE # enable energy-entropy switch as described in GIZMO methods paper. This can greatly improve performance on some problems where the
                                 # the flow is very cold and highly super-sonic. it can cause problems in multi-phase flows with strong cooling, though, and is not compatible with non-barytropic equations of state
+#FORCE_ENTROPIC_EOS_BELOW=(0.01) # set (manually) the alternative energy-entropy switch which is enabled by default in MFM/MFV: if relative velocities are below this threshold, it uses the entropic EOS
 #TEST_FOR_IDUNIQUENESS          # explicitly check if particles have unique id numbers (only use for special behaviors)
 #LONGIDS                        # use long ints for IDs (needed for super-large simulations)
 #ASSIGN_NEW_IDS                 # assign IDs on startup instead of reading from ICs
@@ -401,21 +404,28 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #------------------ This is originally developed as part of GADGET-3 (SUBFIND) by V. Springel
 #------------------ Use of these modules follows the GADGET-3 policies described above
 ####################################################################################################
-#FOF                                # enable FoF output
+##-----------------------------------------------------------------------------------------------------
+#-------------------------------------- Friends-of-friends on-the-fly finder options (source in fof.c)
+##-----------------------------------------------------------------------------------------------------
+#FOF                                # enable FoF searching on-the-fly and outputs
+#LINKLENGTH=0.16                    # Linkinglength for FoF (default=0.2)
 #FOF_PRIMARY_LINK_TYPES=2           # 2^type for the primary dark matter type
 #FOF_SECONDARY_LINK_TYPES=1+16+32   # 2^type for the types linked to nearest primaries
-#FOF_GROUP_MIN_LEN=32               # default is 32
-#SUBFIND                            # enables substructure finder
 #DENSITY_SPLIT_BY_TYPE=1+2+16+32    # 2^type for whch the densities should be calculated seperately
+#FOF_GROUP_MIN_LEN=32               # default is 32
+#ORDER_SNAPSHOTS_BY_ID              # order particles in snapshots by particle IDs (only works for simulations with NO GAS)
+#KD_CHOOSE_LINKING_LENGTH           # alternative way to estimate the linking length
+##-----------------------------------------------------------------------------------------------------
+#-------------------------------------- Subhalo on-the-fly finder options (needs "subfind" source code)
+##-----------------------------------------------------------------------------------------------------
+#SUBFIND                            # enables substructure finder
 #MAX_NGB_CHECK=3                    # Max numbers of neighbours for sattlepoint detection (default = 2)
 #SAVE_MASS_TAB                      # Saves the an additional array with the masses of the different components
 #SUBFIND_SAVE_PARTICLELISTS         # Saves also phase-space and type variables parallel to IDs
 #SO_VEL_DISPERSIONS                 # computes velocity dispersions for as part of FOF SO-properties
-#ORDER_SNAPSHOTS_BY_ID
-#SAVE_HSML_IN_IC_ORDER              # will store the hsml-values in the order of the particles in the IC file
 #ONLY_PRODUCE_HSML_FILES            # only carries out density estimate
+#SAVE_HSML_IN_IC_ORDER              # will store the hsml-values in the order of the particles in the IC file
 #KEEP_HSML_AS_GUESS                 # keep using hsml for gas particles in subfind_density
-#LINKLENGTH=0.16                    # Linkinglength for FoF (default=0.2)
 #NO_GAS_CLOUDS                      # Do not accept pure gaseous substructures
 #WRITE_SUB_IN_SNAP_FORMAT           # Save subfind results in snap format
 #DUSTATT=11                         # Includes dust attenuation into the luminosity calculation (using 11 radial bins)
@@ -424,7 +434,6 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #SUBFIND_COUNT_BIG_HALOS=1e4        # Adds extra blocks for Halos with M_TopHat > SUBFIND_COUNT_BIG_HALOS
 #KD_CHOOSE_PSUBFIND_LIMIT           # Increases the limit for the parallel subfind to the maximum possible
 #KD_ALTERNATIVE_GROUP_SORT          # Alternative way to sort the Groups/SubGroupe before writing
-#KD_CHOOSE_LINKING_LENGTH           # Special way to estimate the linking length
 #SUBFIND_READ_FOF
 #SUBFIND_COLLECTIVE_STAGE1
 #SUBFIND_COLLECTIVE_STAGE2
@@ -432,7 +441,6 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #SUBFIND_RESHUFFLE_CATALOGUE
 #SUBFIND_RESHUFFLE_AND_POTENTIAL    #needs -DSUBFIND_RESHUFFLE_CATALOGUE and COMPUTE_POTENTIAL_ENERGY
 #SUBFIND_DENSITY_AND_POTENTIAL      #only calculated density and potential and write them into snapshot
-#TWOPOINT_FUNCTION_COMPUTATION_ENABLED #calculate mass 2point function by enabling and setting restartflag=5
 ####################################################################################################
 
 
