@@ -12,6 +12,7 @@
 #############
 
 
+#SYSTYPE="Comet"
 SYSTYPE="Stampede"
 #SYSTYPE="Zwicky"
 #SYSTYPE="Wheeler"

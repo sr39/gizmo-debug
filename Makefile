@@ -179,6 +179,35 @@ endif
 
 
 
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Comet")
+CC       =  mpicc
+CXX      =  mpicxx
+FC       =  mpif90 -nofor-main
+OPTIMIZE = -O3 -no-prec-div -xHost  # -static -ipo  -fast  # speed
+OPTIMIZE += -g #-Wall # compiler warnings
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -parallel -openmp  # openmp required compiler flags
+endif
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = #
+MKL_LIBS = #
+GSL_INCL = -I/opt/gsl/2.1/intel/include
+GSL_LIBS = -L/opt/gsl/2.1/intel/lib
+FFTW_INCL= -I/opt/fftw/2.1.5/intel/mvapich2_ib/include
+FFTW_LIBS= -L/opt/fftw/2.1.5/intel/mvapich2_ib/lib
+HDF5INCL = -I/opt/hdf5/intel/mvapich2_ib/include -DH5_USE_16_API
+HDF5LIB  = -L/opt/hdf5/intel/mvapich2_ib/lib -lhdf5 -lz
+MPICHLIB = #
+OPT     += -DUSE_MPI_IN_PLACE
+## modules to load:
+#module purge
+#module load gnutools intel mvapich2_ib gsl hdf5 fftw/2.1.5
+endif
+
+
+
 #----------------------------
 ifeq ($(SYSTYPE),"MacBookPro")
 CC       =  mpicc
