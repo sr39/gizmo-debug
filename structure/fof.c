@@ -1877,7 +1877,7 @@ void fof_find_nearest_dmparticle(void)
 #ifndef IO_REDUCED_MODE
 	  if(iter > 0 && ThisTask == 0)
 #else
-      if(iter > 10 && ThisTask == 0)
+          if(iter > 10 && ThisTask == 0)
 #endif
 	    {
 	      printf("fof-nearest iteration %d: need to repeat for %d particles.\n", iter, ntot);
