@@ -94,7 +94,7 @@ void cooling_parent_routine(void)
             if(P[i].Type != 0) {continue;} /* only gas cools */
             if(P[i].Mass <= 0) {continue;} /* only non-zero mass particles cool */
 #ifdef GALSF_EFFECTIVE_EQS
-            if(SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) && ((All.ComovingIntegrationOn==0) || (SphP[i].Density>=All.OverDensThresh)) {continue;} /* no cooling for effective-eos star-forming particles */
+            if((SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) && ((All.ComovingIntegrationOn==0) || (SphP[i].Density>=All.OverDensThresh))) {continue;} /* no cooling for effective-eos star-forming particles */
 #endif
 #ifdef GALSF_TURNOFF_COOLING_WINDS
             if(SphP[i].DelayTimeCoolingSNe > 0) {continue;} /* no cooling for particles marked in delayed cooling */
