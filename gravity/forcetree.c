@@ -2111,7 +2111,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     NEAREST_XYZ(bh_dx,bh_dy,bh_dz,-1);
 #endif
                     double bh_r2 = bh_dx * bh_dx + bh_dy * bh_dy + bh_dz * bh_dz; // + (nop->len)*(nop->len);
-                    if(bh_r2 < min_dist_to_bh2) { min_dist_to_bh2 = bh_r2;}
                     if(bh_r2 < min_dist_to_bh2)
                         {
                             min_dist_to_bh2 = bh_r2;
