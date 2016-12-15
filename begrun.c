@@ -1099,6 +1099,15 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
+#ifdef MT_SIDM
+				strcpy(tag[nt], "mtSIDMparameterA");
+				addr[nt] = &All.mtSIDMparameterA;
+				id[nt++] = REAL;
+
+				strcpy(tag[nt], "mtSIDMparameterarpha");
+				addr[nt] = &All.mtSIDMparameterarpha;
+				id[nt++] = REAL;
+#endif
 
 #ifdef SUBFIND
       strcpy(tag[nt], "ErrTolThetaSubfind");
