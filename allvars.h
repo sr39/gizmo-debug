@@ -1311,6 +1311,10 @@ extern struct global_data_all_processes
 #endif
 #endif
 
+#ifdef MT_SIDM
+		double mtSIDMparameterA; /* use to determin self-interaction cross section */
+		double mtSIDMparameterarpha; /* use to determin self-interaction cross section */
+#endif
     
 #ifdef SIDM
     unsigned long Ndmsi_thisTask; /*!< Number of DM self-interactions computed at this Task during current time-step */
@@ -3010,6 +3014,10 @@ extern int FB_Seed;
 
 #ifdef SIDM
 #include "./sidm/sidm_allvars.h"
+#endif
+
+#ifdef MT_SIDM
+#include "./mt_sidm/mt_sidm_allvars.h"
 #endif
 
 #endif  /* ALLVARS_H  - please do not put anything below this line */
