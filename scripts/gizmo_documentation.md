@@ -86,7 +86,7 @@ Some (not all!) current features (with their status) include:
 
 (20) On-the-fly radiation transport and radiation hydrodynamics using any of several methods: the LEBRON (locally-extincted background radiation in optically-thin networks) approximation, the M1 (1st-moment), flux-limited diffusion (FLD), or optically thin variable eddington tensor (OTVET) approximations. Arbitrary, modular combinations of wavebands are implemented and can be mixed-and-matched. Full radiation pressure, radiative coupling to ionization and heating/cooling networks is supported.
 
-(21) Nuclear reaction networks for explosions/SNe/etc (mostly in place; needs debugging - working version in David Radice's development branch).
+(21) Nuclear reaction networks for explosions/SNe/etc (mostly in place; needs debugging).
 
 (22) Special relativistic MHD (early development stages, not in current repository code).
 
@@ -493,7 +493,7 @@ These options determine which hydro solver is used (see the section in this guid
     ##-----------------------------------------------------------------------------------------------------
     #---------------------------------------- Gas Equations-of-State
     #EOS_GAMMA=(5.0/3.0)            # Polytropic Index of Gas (for an ideal gas law): if not set and no other (more complex) EOS set, defaults to GAMMA=5/3
-    #EOS_HELMHOLTZ                  # Use Timmes & Swesty 2000 EOS (for e.g. stellar or degenerate equations of state; developed by D. Radice; use requires explicit pre-approval)
+    #EOS_HELMHOLTZ                  # Use Timmes & Swesty 2000 EOS (for e.g. stellar or degenerate equations of state)
     ## -----------------------------------------------------------------------------------------------------
     # --------------------------------- Magneto-Hydrodynamics
     # ---------------------------------  these modules are public, but if used, the user should also cite the MHD-specific GIZMO methods paper
@@ -553,7 +553,7 @@ These options determine which hydro solver is used (see the section in this guid
 
 **EOS\_GAMMA**: Sets the polytropic equation of state to use for gas. This will be used instantaneously for operator-split hydro even if cooling or complicated heating is used. Overridden if EOS\_HELMHOLTZ is used. If not set, Gamma=5/3 is used.    
 
-**EOS\_HELMHOLTZ**: The gas will use the Timmes & Swesty 2000 equation of state (for e.g. stellar or degenerate gas equations of state). This is a standard Helmholtz EOS approach. The module was developed by David Radice; use requires explicit pre-approval.
+**EOS\_HELMHOLTZ**: The gas will use the Timmes & Swesty 2000 equation of state (for e.g. stellar or degenerate gas equations of state). This is a standard Helmholtz EOS approach.
 
 **MAGNETIC**: Enables magnetohydrodynamics (default is ideal MHD). The code will evolve magnetic fields along with everything else, evolving the induction equation, magnetic forces, etc. Specific sub-options (if you wish to disable different parts of the MHD calculation can be found in allvars.h under the "MAGNETIC" heading). Currently, this is done for SPH following Tricco+Price and for non-SPH methods following Gaburov+Nitadori. Both methods use the hyperbolic-parabolic Dedner 2002 scheme for "divergence cleaning" (maintaining the $\nabla\cdot{\bf B}=0$ constraint, which is numerically challenging). Snapshots will include the B-field and div.B. We always use the units convention $\mu_{0} = 1$ for MHD. The MHD code works in both "regular" and co-moving integrations.
 

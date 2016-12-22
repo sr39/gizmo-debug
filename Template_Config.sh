@@ -60,7 +60,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##-----------------------------------------------------------------------------------------------------
 #---------------------------------------- Gas Equations-of-State
 #EOS_GAMMA=(5.0/3.0)            # Polytropic Index of Gas (for an ideal gas law): if not set and no other (more complex) EOS set, defaults to GAMMA=5/3
-#EOS_HELMHOLTZ                  # Use Timmes & Swesty 2000 EOS (for e.g. stellar or degenerate equations of state; developed by D. Radice; use requires explicit pre-approval)
+#EOS_HELMHOLTZ                  # Use Timmes & Swesty 2000 EOS (for e.g. stellar or degenerate equations of state)
 ## -----------------------------------------------------------------------------------------------------
 # --------------------------------- Magneto-Hydrodynamics
 # ---------------------------------  these modules are public, but if used, the user should also cite the MHD-specific GIZMO methods paper
