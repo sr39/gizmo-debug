@@ -1722,9 +1722,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     asmthfac = 0.5 / asmth * (NTAB / 3.0);
 #endif
 
-#ifdef MT_SIDM
-#endif
-    
 #ifdef SIDM
     double dist_to_center2, dist_to_open, kick_x, kick_y, kick_z, kick_target[3], kick_no[3];
     double prob, prob_tmp, max_prob, h_si, dx_nc, dy_nc, dz_nc;
@@ -1940,21 +1937,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     h = All.ForceSoftening[P[no].Type];
 #endif
                 
-#ifdef MT_SIDM
-                /* here is where we call the core of the SIDM calculation for DM particle-particle interactions */
-                /* check if target particle is an SIDM candidate */
-                if((1 << ptype) & (MT_SIDM))
-                {
-                    /* ok, now check if neighbor particle is also SIDM-active */
-                    if((1 << P[no].Type) & (MT_SIDM))
-                    {
-                        /* ok, now check against self-interactions */
-                        if(targetID != P[no].ID)
-                        {
-                            sidm_tstart = my_second();
-                            r = sqrt(r2);
-
-#endif
                 
 #ifdef SIDM
                 /* here is where we call the core of the SIDM calculation for DM particle-particle interactions */
