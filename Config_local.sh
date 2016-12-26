@@ -443,10 +443,3 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #NETWORK_OUTPUT_BINARY
 ####################################################################################################
 
-
-
-##--------- Tanaka -----------
-MT_SIDM
-
-
-
