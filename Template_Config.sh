@@ -462,7 +462,7 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 
 ############################################################################################################################
 #--------------------------------------- Radiative Transfer & Radiation Hydrodynamics:
-#--------------------------------------------- modules developed by David Khatami: not for use without authors permission
+#--------------------------------------------- modules developed by PFH & David Khatami: not for use without authors permission
 ############################################################################################################################
 #--------------------- methods for calculating photon propagation (one of these MUST be on for RT)
 #RT_FIRE                                # RT solved using the FIRE (local extinction with the Sobolev approximation at source and absorption points)
