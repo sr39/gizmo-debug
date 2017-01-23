@@ -725,9 +725,14 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     // now define quantities that will be used below //
     double Esne51;
     Esne51 = 0.5*local.SNe_v_ejecta*local.SNe_v_ejecta*local.Msne / unit_egy_SNe;
-    double RsneKPC, RsneKPC_0;//, RsneMAX;
-    RsneKPC=0.; //RsneMAX=local.Hsml;
-    RsneKPC_0=(0.0284/unitlength_in_kpc) * pow(1+Esne51,0.286); //Cioffi: weak external pressure
+    double RsneKPC = 0.; //RsneMAX = local.Hsml;
+    double RsneKPC_0 = (0.0284/unitlength_in_kpc);
+    if(feedback_type == 0) // check for SNe specifically
+    {
+        RsneKPC_0 *= pow(1+Esne51,0.286); //SNe: using scaling from Cioffi with weak external pressure
+    } else {
+        RsneKPC_0 *= pow(Esne51,0.286); // ensures smooth conservation for winds and tracers as mass-loading goes to vanishingly small values
+    }
     
     
     
@@ -1186,6 +1191,21 @@ void determine_where_SNe_occur()
             p *= All.GasReturnFraction * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam); // fraction of particle mass expected to return in the timestep //
             p = 1.0 - exp(-p); // need to account for p>1 cases //
             p *= 1.4 * 0.291175; // to give expected return fraction from stellar winds alone (~17%) //
+
+            /* // updated fit from M Grudic. More accurate for early times. 
+               //     Needs to add the above call for later times (t >~ 0.02-0.1 Gyr) since late-time AGB loss is not strongly
+               //     metallicity-dependent (as fit below only includes line-driven winds).
+            double f1 = 4.68 * pow(ZZ, 0.87); // fit for fractional mass loss in first 1.5Myr
+            double f3 = 0.44 * pow(ZZ, 0.77); // fit fractional mass loss from 20Myr onward
+            if(star_age<=0.0015){p = f1;} else {
+                if(star_age<=0.004){p = f1 * pow(star_age/0.0015,2.1);} else {
+                    if(star_age<=0.02){p = f1 * 7.844 * pow(star_age/0.004, 0.621335*log(0.1275*f3/f1));} else {
+                        p = f3 * pow(star_age/0.02, -1.1);
+                    }}}
+             if(star_age < 0.1) {p *= calculate_relative_light_to_mass_ratio_from_imf(i);} // late-time independent of massive stars
+             p *= All.GasReturnFraction * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam); // fraction of particle mass expected to return in the timestep //
+             p = 1.0 - exp(-p); // need to account for p>1 cases //
+            */
 #endif
 	        P[i].MassReturn_ThisTimeStep = 0; // zero mass return out
 	        double n_wind_0 = (double)floor(p/D_RETURN_FRAC); // if p >> return frac, should have > 1 event, so we inject the correct wind mass
