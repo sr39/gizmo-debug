@@ -719,7 +719,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_SNE_HEATING)
     // account for energy going into CRs, so we don't 'double count' //
-    if(local.SNe_v_ejecta > 2.0e8 / All.UnitVelocity_in_cm_per_s) {local.SNe_v_ejecta *= sqrt(1-All.CosmicRay_SNeFraction);}
+    if((local.SNe_v_ejecta > 2.0e8 / All.UnitVelocity_in_cm_per_s) && (feedback_type == 0)) {local.SNe_v_ejecta *= sqrt(1-All.CosmicRay_SNeFraction);}
 #endif
     
     // now define quantities that will be used below //
@@ -943,7 +943,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                 
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_SNE_HEATING)
-                if(local.SNe_v_ejecta > 2.0e8 / All.UnitVelocity_in_cm_per_s)
+                if((local.SNe_v_ejecta > 2.0e8 / All.UnitVelocity_in_cm_per_s) && (feedback_type == 0))
                 {
                     /* a fraction of the *INITIAL* energy goes into cosmic rays [this is -not- affected by the radiative losses above] */
                     double dE_init_coupled = 0.5 * dM * local.SNe_v_ejecta * local.SNe_v_ejecta;
