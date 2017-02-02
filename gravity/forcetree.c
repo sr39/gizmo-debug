@@ -517,7 +517,15 @@ void force_update_node_recursive(int no, int sib, int father)
 #endif
 #ifdef RT_USE_GRAVTREE
     MyFloat stellar_lum[N_RT_FREQ_BINS], sigma_eff=0; 
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+    double chimes_stellar_lum_G0[CHIMES_LOCAL_UV_NBINS]; 
+    double chimes_stellar_lum_ion[CHIMES_LOCAL_UV_NBINS]; 
+    for (j = 0; j < CHIMES_LOCAL_UV_NBINS; j++) 
+      {
+	chimes_stellar_lum_G0[j] = 0.0; 
+	chimes_stellar_lum_ion[j] = 0.0; 
+      }
+#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
     MyFloat stellar_lum_euv = 0;
 #endif 
     for(j=0;j<N_RT_FREQ_BINS;j++) {stellar_lum[j]=0;}
@@ -623,7 +631,13 @@ void force_update_node_recursive(int no, int sib, int father)
                         vs[2] += (Nodes[p].u.d.mass * Extnodes[p].vs[2]);
 #ifdef RT_USE_GRAVTREE
                         for(k=0;k<N_RT_FREQ_BINS;k++) {stellar_lum[k] += (Nodes[p].stellar_lum[k]);}
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+			for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+			  {
+			    chimes_stellar_lum_G0[k] += Nodes[p].chimes_stellar_lum_G0[k]; 
+			    chimes_stellar_lum_ion[k] += Nodes[p].chimes_stellar_lum_ion[k]; 
+			  }
+#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
 			stellar_lum_euv += Nodes[p].stellar_lum_euv; 
 #endif 
 #endif
@@ -696,7 +710,11 @@ void force_update_node_recursive(int no, int sib, int father)
                     
 #ifdef RT_USE_GRAVTREE
                     double lum[N_RT_FREQ_BINS];
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+		    double chimes_lum_G0[CHIMES_LOCAL_UV_NBINS]; 
+		    double chimes_lum_ion[CHIMES_LOCAL_UV_NBINS]; 
+		    int active_check = rt_get_source_luminosity(p,sigma_eff,lum,chimes_lum_G0, chimes_lum_ion);
+#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
 		    double L_EUV; 
                     int active_check = rt_get_source_luminosity(p,sigma_eff,lum,&L_EUV);
 #else 
@@ -705,7 +723,13 @@ void force_update_node_recursive(int no, int sib, int father)
                     if(active_check)
                     {
                         double l_sum = 0; for(k=0;k<N_RT_FREQ_BINS;k++) {stellar_lum[k] += lum[k]; l_sum += lum[k];}
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+			for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+			  {
+			    chimes_stellar_lum_G0[k] += chimes_lum_G0[k]; 
+			    chimes_stellar_lum_ion[k] += chimes_lum_ion[k]; 
+			  }
+#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
 			stellar_lum_euv += L_EUV; 
 #endif 
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
@@ -874,7 +898,13 @@ void force_update_node_recursive(int no, int sib, int father)
         Nodes[no].GravCost = 0;
 #ifdef RT_USE_GRAVTREE
         for(k=0;k<N_RT_FREQ_BINS;k++) {Nodes[no].stellar_lum[k] = stellar_lum[k];}
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+	for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+	  {
+	    Nodes[no].chimes_stellar_lum_G0[k] = chimes_stellar_lum_G0[k]; 
+	    Nodes[no].chimes_stellar_lum_ion[k] = chimes_stellar_lum_ion[k]; 
+	  }
+#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
 	Nodes[no].stellar_lum_euv = stellar_lum_euv; 
 #endif
 #endif
@@ -986,7 +1016,10 @@ void force_exchange_pseudodata(void)
 #endif
 #ifdef RT_USE_GRAVTREE
         MyFloat stellar_lum[N_RT_FREQ_BINS];
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+        double chimes_stellar_lum_G0[CHIMES_LOCAL_UV_NBINS]; 
+        double chimes_stellar_lum_ion[CHIMES_LOCAL_UV_NBINS]; 
+#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
         MyFloat stellar_lum_euv; 
 #endif 
 #endif
@@ -1048,7 +1081,13 @@ void force_exchange_pseudodata(void)
 #endif
 #ifdef RT_USE_GRAVTREE
             int k; for(k=0;k<N_RT_FREQ_BINS;k++) {DomainMoment[i].stellar_lum[k] = Nodes[no].stellar_lum[k];}
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+	    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+	      {
+		DomainMoment[i].chimes_stellar_lum_G0[k] = Nodes[no].chimes_stellar_lum_G0[k]; 
+		DomainMoment[i].chimes_stellar_lum_ion[k] = Nodes[no].chimes_stellar_lum_ion[k]; 
+	      }
+#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
 	    DomainMoment[i].stellar_lum_euv = Nodes[no].stellar_lum_euv; 
 #endif 
 #endif
@@ -1134,7 +1173,13 @@ void force_exchange_pseudodata(void)
 #endif
 #ifdef RT_USE_GRAVTREE
                     int k; for(k=0;k<N_RT_FREQ_BINS;k++) {Nodes[no].stellar_lum[k] = DomainMoment[i].stellar_lum[k];}
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+		    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		      {
+			Nodes[no].chimes_stellar_lum_G0[k] = DomainMoment[i].chimes_stellar_lum_G0[k]; 
+			Nodes[no].chimes_stellar_lum_ion[k] = DomainMoment[i].chimes_stellar_lum_ion[k]; 
+		      }
+#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
 		    Nodes[no].stellar_lum_euv = DomainMoment[i].stellar_lum_euv; 
 #endif 
 #endif
@@ -1187,7 +1232,15 @@ void force_treeupdate_pseudos(int no)
     
 #ifdef RT_USE_GRAVTREE
     MyFloat stellar_lum[N_RT_FREQ_BINS];
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+    double chimes_stellar_lum_G0[CHIMES_LOCAL_UV_NBINS]; 
+    double chimes_stellar_lum_ion[CHIMES_LOCAL_UV_NBINS]; 
+    for (j = 0; j < CHIMES_LOCAL_UV_NBINS; j++) 
+      {
+	chimes_stellar_lum_G0[j] = 0.0; 
+	chimes_stellar_lum_ion[j] = 0.0; 
+      } 
+#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
     MyFloat stellar_lum_euv = 0; 
 #endif 
 #endif
@@ -1254,7 +1307,13 @@ void force_treeupdate_pseudos(int no)
             s[2] += (Nodes[p].u.d.mass * Nodes[p].u.d.s[2]);
 #ifdef RT_USE_GRAVTREE
             int k; for(k=0;k<N_RT_FREQ_BINS;k++) {stellar_lum[k] += (Nodes[p].stellar_lum[k]);}
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+	    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+	      {
+		chimes_stellar_lum_G0[k] += Nodes[p].chimes_stellar_lum_G0[k]; 
+		chimes_stellar_lum_ion[k] += Nodes[p].chimes_stellar_lum_ion[k]; 
+	      }
+#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
 	    stellar_lum_euv += Nodes[p].stellar_lum_euv; 
 #endif 
 #endif
@@ -1398,7 +1457,13 @@ void force_treeupdate_pseudos(int no)
     Nodes[no].u.d.mass = mass;
 #ifdef RT_USE_GRAVTREE
     int k; for(k=0;k<N_RT_FREQ_BINS;k++) {Nodes[no].stellar_lum[k] = stellar_lum[k];}
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+      { 
+	Nodes[no].chimes_stellar_lum_G0[k] = chimes_stellar_lum_G0[k]; 
+	Nodes[no].chimes_stellar_lum_ion[k] = chimes_stellar_lum_ion[k]; 
+      } 
+#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
     Nodes[no].stellar_lum_euv = stellar_lum_euv; 
 #endif 
 #endif
@@ -1581,10 +1646,18 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     
 #ifdef RT_USE_GRAVTREE
     double mass_stellarlum[N_RT_FREQ_BINS];
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+    int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) {mass_stellarlum[k_freq]=0;}
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+    double chimes_mass_stellarlum_G0[CHIMES_LOCAL_UV_NBINS]; 
+    double chimes_mass_stellarlum_ion[CHIMES_LOCAL_UV_NBINS]; 
+    for (k_freq = 0; k_freq < CHIMES_LOCAL_UV_NBINS; k_freq++) 
+      {
+	chimes_mass_stellarlum_G0[k_freq] = 0.0; 
+	chimes_mass_stellarlum_ion[k_freq] = 0.0; 
+      }
+#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
     double mass_stellarlum_euv = 0;
 #endif
-    int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) {mass_stellarlum[k_freq]=0;}
     double dx_stellarlum=0, dy_stellarlum=0, dz_stellarlum=0, sigma_eff=0;
     int valid_gas_particle_for_rt = 0;
 #ifdef RT_OTVET
@@ -1599,6 +1672,15 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef GALSF_FB_LOCAL_UV_HEATING
     double incident_flux_uv=0;
     double incident_flux_euv=0;
+#ifdef CHIMES 
+    double chimes_flux_G0[CHIMES_LOCAL_UV_NBINS]; 
+    double chimes_flux_ion[CHIMES_LOCAL_UV_NBINS]; 
+    for (k_freq = 0; k_freq < CHIMES_LOCAL_UV_NBINS; k_freq++) 
+      {
+	chimes_flux_G0[k_freq] = 0.0; 
+	chimes_flux_ion[k_freq] = 0.0; 
+      } 
+#endif 
 #endif
 #ifdef BH_COMPTON_HEATING
     double incident_flux_agn=0;
@@ -1859,14 +1941,32 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 {
                     dx_stellarlum=dx; dy_stellarlum=dy; dz_stellarlum=dz;
                     double lum[N_RT_FREQ_BINS];
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+		    double chimes_lum_G0[CHIMES_LOCAL_UV_NBINS]; 
+		    double chimes_lum_ion[CHIMES_LOCAL_UV_NBINS]; 
+		    int active_check = rt_get_source_luminosity(no,sigma_eff,lum, chimes_lum_G0, chimes_lum_ion);
+#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
 		    double L_EUV; 
                     int active_check = rt_get_source_luminosity(no,sigma_eff,lum, &L_EUV);
 #else 
                     int active_check = rt_get_source_luminosity(no,sigma_eff,lum);
 #endif 
                     int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {if(active_check) {mass_stellarlum[kf]=lum[kf];} else {mass_stellarlum[kf]=0;}}
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+		    for (kf = 0; kf < CHIMES_LOCAL_UV_NBINS; kf++) 
+		      { 
+			if (active_check) 
+			  {
+			    chimes_mass_stellarlum_G0[kf] = chimes_lum_G0[kf]; 
+			    chimes_mass_stellarlum_ion[kf] = chimes_lum_ion[kf]; 
+			  } 
+			else 
+			  {
+			    chimes_mass_stellarlum_G0[kf] = 0.0; 
+			    chimes_mass_stellarlum_ion[kf] = 0.0; 
+			  } 
+		      } 
+#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
 		    if (active_check) 
 		      mass_stellarlum_euv = L_EUV; 
 		    else 
@@ -2126,7 +2226,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if(valid_gas_particle_for_rt)	/* we have a (valid) gas particle as target */
                 {
                     int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {mass_stellarlum[kf] = nop->stellar_lum[kf];}
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+		    for (kf = 0; kf < CHIMES_LOCAL_UV_NBINS; kf++) 
+		      { 
+			chimes_mass_stellarlum_G0[kf] = nop->chimes_stellar_lum_G0[kf]; 
+			chimes_mass_stellarlum_ion[kf] = nop->chimes_stellar_lum_ion[kf]; 
+		      }
+#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
 		    mass_stellarlum_euv = nop->stellar_lum_euv; 
 #endif 
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
@@ -2504,7 +2610,15 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if((soft>r)&&(soft>0)) fac *= (r2/(soft*soft)); // don't allow cross-section > r2
 #ifdef GALSF_FB_LOCAL_UV_HEATING
                 incident_flux_uv += (0.079577*fac*r) * mass_stellarlum[RT_FREQ_BIN_FIRE_UV];// * shortrange_table[tabindex];
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+#ifdef CHIMES 
+		int chimes_k; 
+		double chimes_fac = 0.079577 * fac * r / pow(All.UnitLength_in_cm / All.HubbleParam, 2.0);  // 1/(4 * pi * r^2), in cm^-2 
+		for (chimes_k = 0; chimes_k < CHIMES_LOCAL_UV_NBINS; chimes_k++) 
+		  { 
+		    chimes_flux_G0[chimes_k] += chimes_fac * chimes_mass_stellarlum_G0[chimes_k];   // Habing flux units 
+		    chimes_flux_ion[chimes_k] += chimes_fac * chimes_mass_stellarlum_ion[chimes_k]; // cm^-2 s^-1 
+		  } 
+#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
 		incident_flux_euv += (0.079577*fac*r) * mass_stellarlum_euv; // EUV luminosity is now explicitly tracked in the force tree, rather than 
 		                                                             // estimated from the UV and IR bins. 
 #else 
@@ -2649,6 +2763,17 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef GALSF_FB_LOCAL_UV_HEATING
         if(valid_gas_particle_for_rt) SphP[target].RadFluxUV = incident_flux_uv;
         if(valid_gas_particle_for_rt) SphP[target].RadFluxEUV = incident_flux_euv;
+#ifdef CHIMES 
+	if (valid_gas_particle_for_rt) 
+	  {
+	    int kc; 
+	    for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) 
+	      {
+		SphP[target].Chimes_G0[kc] = chimes_flux_G0[kc]; 
+		SphP[target].Chimes_fluxPhotIon[kc] = chimes_flux_ion[kc]; 
+	      } 
+	  }
+#endif 
 #endif
 #ifdef BH_COMPTON_HEATING
         if(valid_gas_particle_for_rt) SphP[target].RadFluxAGN = incident_flux_agn;
@@ -2681,6 +2806,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef GALSF_FB_LOCAL_UV_HEATING
         GravDataResult[target].RadFluxUV = incident_flux_uv;
         GravDataResult[target].RadFluxEUV = incident_flux_euv;
+#ifdef CHIMES 
+	int kc; 
+	for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) 
+	  {
+	    GravDataResult[target].Chimes_G0[kc] = chimes_flux_G0[kc]; 
+	    GravDataResult[target].Chimes_fluxPhotIon[kc] = chimes_flux_ion[kc]; 
+	  }
+#endif 
 #endif
 #ifdef BH_COMPTON_HEATING
         GravDataResult[target].RadFluxAGN = incident_flux_agn;

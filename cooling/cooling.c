@@ -156,6 +156,12 @@ void do_the_cooling_for_particle(int i)
     double unew;
     double dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval;
     double dtime = dt / All.cf_hubble_a; /*  the actual time-step */
+
+#ifdef AJR_SLOW_COOL 
+    if (All.Time < All.slow_cool_time) 
+      dtime *= pow(All.Time / All.slow_cool_time, 3.0); 
+#endif 
+
     if((P[i].TimeBin)&&(dt>0)&&(P[i].Mass>0)&&(P[i].Type==0))  // upon start-up, need to protect against dt==0 //
     {
 #ifndef CHIMES         
@@ -324,11 +330,25 @@ double DoCooling(double u_old, double rho, double dt, double *ne_guess, int targ
       
     ChimesGasVars[target].temperature = convert_u_to_temp(u_old_cgs, rho_cgs, ne_guess, target); 
     ChimesGasVars[target].nH_tot = H_mass_fraction * rho_cgs / PROTONMASS; 
+
+    // Extragalactic UV background 
     ChimesGasVars[target].isotropic_photon_density[0] = isotropic_photon_density; 
     ChimesGasVars[target].dust_G_parameter[0] = dustG_arr[0]; 
     ChimesGasVars[target].H2_dissocJ[0] = H2_dissocJ_arr[0]; 
-    ChimesGasVars[target].cr_rate = cr_rate; 
+
+#ifdef GALSF_FB_LOCAL_UV_HEATING
+    int kc; 
+    for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) 
+      { 
+	ChimesGasVars[target].isotropic_photon_density[kc + 1] = SphP[target].Chimes_fluxPhotIon[kc] / 3.0e10; 
+	ChimesGasVars[target].dust_G_parameter[kc + 1] = SphP[target].Chimes_G0[kc] / DMAX(SphP[target].Chimes_fluxPhotIon[kc], 1.0e-300); 
+	ChimesGasVars[target].H2_dissocJ[kc + 1] = ChimesGasVars[target].dust_G_parameter[kc + 1] * (H2_dissocJ_arr[kc + 1] / dustG_arr[kc + 1]); 
+      }
+#endif 
+
+    ChimesGasVars[target].cr_rate = cr_rate;  // For now, assume a constant cr_rate. 
     ChimesGasVars[target].hydro_timestep = dt * All.UnitTime_in_s / All.HubbleParam; 
+
     ChimesGasVars[target].ForceEqOn = ForceEqOn; 
     ChimesGasVars[target].divVel = (All.HubbleParam / All.UnitTime_in_s) * P[target].Particle_DivVel; 
     if (All.ComovingIntegrationOn)
@@ -1913,6 +1933,10 @@ void InitCool(void)
     // Currently, we only support a single UV spectrum. 
     // We will add further options later. 
     ChimesGlobalVars.N_spectra = 1; 
+
+#ifdef GALSF_FB_LOCAL_UV_HEATING
+    ChimesGlobalVars.N_spectra += CHIMES_LOCAL_UV_NBINS; 
+#endif 
 
     // The following arrays will store the dust_G and H2_dissocJ 
     // parameters from the spectrum data files. 
