@@ -313,6 +313,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #BH_REPOSITION_ON_POTMIN=0      # reposition black hole on potential minimum (requires EVALPOTENTIAL). [set =1 to "jump" onto STARS only]
 ##DETACH_BLACK_HOLES            # Insert an independent data structure for BHs (currently explicitly depends on SEPARATE_STELLARDOMAINDECOMP)
 ##BH_SEED_STAR_MASS_FRACTION=0.02 # minimum star mass fraction for BH seeding
+##BH_SEED_GROWTH_TESTS          # Currently testing options for BH seeding 
 ##-----------------------------------------------------------------------------------------------------
 #-------------------------------------- AGN-Bubble feedback (D. Sijacki)
 #-------------------------------- use of these routines requires explicit pre-approval by developer D. Sijacki
