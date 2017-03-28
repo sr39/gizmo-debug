@@ -1975,18 +1975,7 @@ extern ALIGN(32) struct particle_data
     
 #ifdef GALSF_FB_SNE_HEATING
     MyFloat SNe_ThisTimeStep; /* flag that indicated number of SNe for the particle in the timestep */
-
-#if !(EXPAND_PREPROCESSOR_(GALSF_FB_SNE_HEATING) == 1) // check whether a numerical value is assigned
-#if (GALSF_FB_SNE_HEATING == 2) // code for non-isotropic
-#define GALSF_FB_SNE_NONISOTROPIZED
-#endif
-#endif
-
-#ifdef GALSF_FB_SNE_NONISOTROPIZED
-#define AREA_WEIGHTED_SUM_ELEMENTS 1
-#else
-#define AREA_WEIGHTED_SUM_ELEMENTS 7
-#endif
+#define AREA_WEIGHTED_SUM_ELEMENTS 11 /* number of weights needed for full momentum-and-energy conserving system */
     MyFloat Area_weighted_sum[AREA_WEIGHTED_SUM_ELEMENTS]; /* normalized weights for particles in kernel weighted by area, not mass */
 #endif
 #ifdef GALSF_FB_GASRETURN
