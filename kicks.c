@@ -373,6 +373,9 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
 #endif
 #ifdef COSMIC_RAYS
         SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy;
+#ifdef COSMIC_RAYS_M1
+        for(k=0;k<3;k++) {SphP[i].CosmicRayFluxPred[k] = SphP[i].CosmicRayFlux[k];}
+#endif
 #endif
 #if defined(RT_EVOLVE_NGAMMA)
         int kf;
@@ -470,6 +473,16 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
 #endif
     
 #ifdef COSMIC_RAYS
+#ifdef COSMIC_RAYS_M1
+    // this is the exact solution for the CR flux-update equation over a finite timestep dt: 
+    //   it needs to be solved this way [implicitly] as opposed to explicitly for dt because
+    //   in the limit of dt_cr_dimless being large, the problem exactly approaches the diffusive solution
+    double cr_speed = COSMIC_RAYS_M1;// * (C/All.UnitVelocity_in_cm_per_s);
+    double dt_cr_dimless = dt_entr * cr_speed*cr_speed / fabs(SphP[i].CosmicRayDiffusionCoeff);
+    double q_cr=0.; if((dt_cr_dimless > 0)&&(dt_cr_dimless < 20.)) {q_cr = exp(-dt_cr_dimless);}
+    int kcr; for(kcr=0;kcr<3;kcr++) {SphP[i].CosmicRayFlux[kcr] = q_cr*SphP[i].CosmicRayFlux[kcr] + (1.-q_cr)*SphP[i].DtCosmicRayFlux[kcr];}
+#endif
+    // now we update the CR energies. since this is positive-definite, some additional care is needed //
     double dCR = SphP[i].DtCosmicRayEnergy * dt_entr;
 #ifdef GALSF
     double dCRmax = DMAX(0.5*SphP[i].CosmicRayEnergy , 0.01*SphP[i].InternalEnergy*P[i].Mass);

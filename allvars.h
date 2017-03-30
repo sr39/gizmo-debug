@@ -2245,6 +2245,11 @@ extern struct sph_particle_data
     MyFloat CosmicRayEnergyPred;    /*!< total energy of cosmic ray fluid (the conserved variable) */
     MyFloat DtCosmicRayEnergy;      /*!< time derivative of cosmic ray energy */
     MyFloat CosmicRayDiffusionCoeff;/*!< diffusion coefficient kappa for cosmic ray fluid */
+#ifdef COSMIC_RAYS_M1
+    MyFloat CosmicRayFlux[3];       /*!< CR flux vector [explicitly evolved] - conserved-variable */
+    MyFloat CosmicRayFluxPred[3];   /*!< CR flux vector [explicitly evolved] - conserved-variable */
+    MyFloat DtCosmicRayFlux[3];     /*!< time-derivative of CR flux vector */
+#endif
 #endif
     
 #ifdef SUPER_TIMESTEP_DIFFUSION
