@@ -1590,7 +1590,9 @@ void hydro_gradient_calc(void)
                 SphP[i].CosmicRayDiffusionCoeff *= All.CosmicRayDiffusionCoeff;
 #endif
                 SphP[i].CosmicRayDiffusionCoeff += CR_kappa_streaming;
+#if !defined(COSMIC_RAYS_M1)
                 /* now we apply a limiter to prevent the coefficient from becoming too large: cosmic rays cannot stream/diffuse with v_diff > c */
+                // [all of this only applies if we are using the pure-diffusion description: the M1-type description should -not- use a limiter here, or negative kappa]
                 double diffusion_velocity_limit = 1.0 * C; /* maximum diffusion velocity (set <C if desired) */
 #ifdef GALSF
                 diffusion_velocity_limit = 0.01 * C;
@@ -1608,8 +1610,9 @@ void hydro_gradient_calc(void)
                 }
 #endif
                 if(is_particle_local_extremum==1) {SphP[i].CosmicRayDiffusionCoeff *= -1;} // negative here codes for local extrema
+#endif // COSMIC_RAYS_M1
             } else {
-                SphP[i].CosmicRayDiffusionCoeff = 0;
+                SphP[i].CosmicRayDiffusionCoeff = MIN_REAL_NUMBER;
             }
 #endif
         }

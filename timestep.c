@@ -579,6 +579,11 @@ integertime get_timestep(int p,		/*!< particle index */
                         if(dt_conduction < dt) dt = dt_conduction; // this is an advective timestep and super-stepping doesn't apply
                     }
 #else
+#ifdef COSMIC_RAYS_M1
+                    double cr_speed = COSMIC_RAYS_M1;// * (C/All.UnitVelocity_in_cm_per_s);
+                    double dt_courant_CR = All.CourantFac * (L_particle*All.cf_atime) / cr_speed;
+                    if(dt_conduction < dt_courant_CR) {dt_conduction = dt_courant_CR;}
+#endif
                     if(dt_conduction < dt) dt = dt_conduction; // normal explicit time-step
 #endif
                 }

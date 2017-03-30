@@ -188,8 +188,11 @@ void do_the_cooling_for_particle(int i)
             -- We use the estimate for combined hadronic + Coulomb losses from Volk 1996, Ensslin 1997, as updated in Guo & Oh 2008: */
         double ne_cgs = ((0.78 + 0.22*ne*XH) / PROTONMASS) * (SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam);
         double CR_coolingrate_perunitenergy = -7.51e-16 * ne_cgs * (All.UnitTime_in_s / All.HubbleParam); // converts cgs to code units //
-        double CR_Egy_new = SphP[i].CosmicRayEnergyPred * exp(CR_coolingrate_perunitenergy * dtime);
-        SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy = CR_Egy_new;
+        double q_CR_cool = exp(CR_coolingrate_perunitenergy * dtime);
+        SphP[i].CosmicRayEnergyPred *= q_CR_cool; SphP[i].CosmicRayEnergy *= q_CR_cool;
+#ifdef COSMIC_RAYS_M1
+        int kCR; for(kCR=0;kCR<3;kCR++) {SphP[i].CosmicRayFlux[kCR] *= q_CR_cool; SphP[i].CosmicRayFluxPred[kCR] *= q_CR_cool;}
+#endif
 #endif
         
         
