@@ -13,7 +13,7 @@
 /* --------------------------------------------------------------------------------- */
 {
     double cosmo_unit = All.cf_a3inv;
-    double scalar_i = local.CosmicRayPressure * cosmo_unit;
+    double scalar_i = local.CosmicRayPressure * cosmo_unit; // physical units
     double scalar_j = CosmicRayPressure_j * cosmo_unit;
     double kappa_i = fabs(local.CosmicRayDiffusionCoeff); // physical units
     double kappa_j = fabs(SphP[j].CosmicRayDiffusionCoeff);
@@ -23,7 +23,7 @@
     {
 #ifndef COSMIC_RAYS_M1
         // NOT SPH: Now we use the more accurate finite-volume formulation, with the effective faces we have already calculated //
-        double *grad_i = local.Gradients.CosmicRayPressure;
+        double *grad_i = local.Gradients.CosmicRayPressure; // units = E/[L_comoving^4]
         double *grad_j = SphP[j].Gradients.CosmicRayPressure;
         double flux_wt = 1;
         double diffusion_wt = 0.5*(kappa_i+kappa_j);
@@ -32,9 +32,9 @@
         double grad_ij[3];
         for(k=0;k<3;k++)
         {
-            double q_grad = wt_i*grad_i[k] + wt_j*grad_j[k];
-            double q_direct = d_scalar * kernel.dp[k] * rinv*rinv;
-            grad_dot_x_ij += q_grad * kernel.dp[k];
+            double q_grad = (wt_i*grad_i[k] + wt_j*grad_j[k]) * cosmo_unit; // units = E/[L_phys^3 * L_comoving]
+            double q_direct = d_scalar * kernel.dp[k] * rinv*rinv; // units = E/[L_phys^3 * L_comoving]
+            grad_dot_x_ij += q_grad * kernel.dp[k]; // units = E/L_phys^3
 #ifdef MAGNETIC
             grad_ij[k] = MINMOD_G(q_grad , q_direct);
             if(q_grad*q_direct < 0) {if(fabs(q_direct) > 5.*fabs(q_grad)) {grad_ij[k] = 0.0;}}
@@ -59,30 +59,30 @@
                 B_interface_dot_grad_T += bhat[k] * grad_ij[k];
                 cmag += bhat[k] * Face_Area_Vec[k];
             }
-            cmag *= B_interface_dot_grad_T;
-            b_hll = B_interface_dot_grad_T / grad_mag;
+            cmag *= B_interface_dot_grad_T; // L_phys^2 * E/[L_phys^3 * L_comoving] ~ E / (L_phys*L_comoving)
+            b_hll = B_interface_dot_grad_T / grad_mag; // dimensionless
             b_hll *= b_hll;
         }
 #endif
-        if(do_isotropic) {for(k=0;k<3;k++) {cmag += Face_Area_Vec[k] * grad_ij[k];}}
-        cmag /= All.cf_atime; // cmag has units of u/r -- convert to physical
+        if(do_isotropic) {for(k=0;k<3;k++) {cmag += Face_Area_Vec[k] * grad_ij[k];}} // L_phys^2 * E/[L_phys^3 * L_comoving] ~ E / (L_phys*L_comoving)
+        cmag /= All.cf_atime; // cmag has units of [E/(L_phys*L_comoving)] -- convert to physical
         
         double check_for_stability_sign = 1; /* if we are using the zeroth-order method, no HLL flux, etc is needed */
         if((local.CosmicRayDiffusionCoeff>=0)&&(SphP[j].CosmicRayDiffusionCoeff>=0))
         {
             /* obtain HLL correction terms for Reimann problem solution */
-            double d_scalar_tmp = d_scalar - grad_dot_x_ij;
+            double d_scalar_tmp = d_scalar - grad_dot_x_ij; // both in physical units
             double d_scalar_hll = MINMOD(d_scalar , d_scalar_tmp);
-            double hll_corr = b_hll * flux_wt * HLL_correction(d_scalar_hll, 0, flux_wt, diffusion_wt) / (-diffusion_wt);
-            double cmag_corr = cmag + hll_corr;
-            cmag = MINMOD(HLL_DIFFUSION_COMPROMISE_FACTOR*cmag, cmag_corr);
+            double hll_corr = b_hll * flux_wt * HLL_correction(d_scalar_hll, 0, flux_wt, diffusion_wt) / (-diffusion_wt); // physical units
+            double cmag_corr = cmag + hll_corr; // physical units
+            cmag = MINMOD(HLL_DIFFUSION_COMPROMISE_FACTOR*cmag, cmag_corr); // physical units
             /* slope-limiter to ensure heat always flows from hot to cold */
-            double d_scalar_b = b_hll * d_scalar;
-            double f_direct = Face_Area_Norm*d_scalar_b*rinv/All.cf_atime;
+            double d_scalar_b = b_hll * d_scalar; // physical units
+            double f_direct = Face_Area_Norm * d_scalar_b * (rinv/All.cf_atime); // physical units
             check_for_stability_sign = d_scalar*cmag;
             if((check_for_stability_sign < 0) && (fabs(f_direct) > HLL_DIFFUSION_OVERSHOOT_FACTOR*fabs(cmag))) {cmag = 0;}
         }
-        cmag *= -diffusion_wt; /* multiply through coefficient to get flux */
+        cmag *= -diffusion_wt; /* multiply through coefficient to get flux; all physical units here */
         
         /* follow that with a flux limiter as well */
         diffusion_wt = dt_hydrostep * cmag; // all in physical units //
@@ -97,7 +97,7 @@
             if(diffusion_wt > 0) {du_ij_cond=DMIN(du_ij_cond,0.5*CR_egy_j);} else {du_ij_cond=DMIN(du_ij_cond,0.5*CR_egy_i);} // prevent flux from creating negative values //
             if(fabs(diffusion_wt)>du_ij_cond) {flux_multiplier = du_ij_cond/fabs(diffusion_wt);}
             diffusion_wt *= flux_multiplier;
-            Fluxes.CosmicRayPressure += diffusion_wt / dt_hydrostep;
+            Fluxes.CosmicRayPressure += diffusion_wt / dt_hydrostep; // physical units, as needed
         } // if(diffusion_wt > 0)
         
         
@@ -105,33 +105,33 @@
         
         
         double c_light = COSMIC_RAYS_M1;// * (C/All.UnitVelocity_in_cm_per_s);
-        double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + c_light;
+        double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + c_light; // physical
         double cmag=0., cmag_flux[3]={0}, flux_norm=0, flux_i[3]={0}, flux_j[3]={0}, thold_hll;
         double kappa_ij = 0.5 * (kappa_i+kappa_j); // physical
+        double V_i_phys = V_i / All.cf_a3inv;
+        double V_j_phys = V_j / All.cf_a3inv;
         /* calculate the eigenvalues for the HLLE flux-weighting */
         for(k=0;k<3;k++)
         {
             /* the flux is already known (its explicitly evolved, rather than determined by the gradient of the energy density */
-            flux_i[k] = local.CosmicRayFlux[k]/V_i; flux_j[k] = SphP[j].CosmicRayFlux[k]/V_j;
+            flux_i[k] = local.CosmicRayFlux[k]/V_i_phys; flux_j[k] = SphP[j].CosmicRayFlux[k]/V_j_phys; // this needs to be in physical units
             double flux_ij = 0.5*(flux_i[k] + flux_j[k]);
             flux_norm += flux_ij*flux_ij;
-            cmag += Face_Area_Vec[k] * flux_ij; /* remember, our 'flux' variable is a volume-integral */
-            cmag_flux[k] = c_light*c_light * Face_Area_Vec[k] * 0.5*(scalar_i + scalar_j);
+            cmag += Face_Area_Vec[k] * flux_ij; // remember, our 'flux' variable is a volume-integral; physical units here//
+            cmag_flux[k] = c_light*c_light * Face_Area_Vec[k] * 0.5*(scalar_i + scalar_j); // all physical units here
         }
         flux_norm = sqrt(flux_norm) + MIN_REAL_NUMBER;
         double cos_theta_face_flux = cmag / (Face_Area_Norm * flux_norm); // angle between flux and face vector normal
         if(cos_theta_face_flux < -1) {cos_theta_face_flux=-1;} else {if(cos_theta_face_flux > 1) {cos_theta_face_flux=1;}}
         
         /* add asymptotic-preserving correction so that numerical flux doesn't unphysically dominate in optically thick limit */
-        double L_eff_j = Get_Particle_Size(j)*All.cf_atime;
+        double L_eff_j = Get_Particle_Size(j)*All.cf_atime; // physical
         double v_eff_light = DMIN(c_light , kappa_ij / L_eff_j); // physical
         c_hll = 0.5*fabs(face_vel_i-face_vel_j) + v_eff_light; // physical
-        double tau_c_j = L_eff_j * c_light / kappa_j; // = L_particle / (lambda_mean_free_path) = L*kappa*rho //
-        double tau_c_i = L_eff_j * c_light / kappa_i; // ??? properly pre-calc before hydro-eval loop!!! // = L_particle / (lambda_mean_free_path) = L*kappa*rho //
-        double hll_corr = 1./(1. + 1.5*DMAX(tau_c_i,tau_c_j));
+        double hll_corr = 1. / (1. + 1.5 * c_light * DMAX(L_eff_j/kappa_j , Particle_Size_i/kappa_i)); // all physical units
         /* q below is a limiter to try and make sure the diffusion speed given by the hll flux doesn't exceed the diffusion speed in the diffusion limit */
-        double q = 0.5 * c_hll * kernel.r * All.cf_atime / fabs(1.e-37 + kappa_ij); q = (0.2 + q) / (0.2 + q + q*q); // physical
-        double renormerFAC = DMIN(1.,fabs(cos_theta_face_flux*cos_theta_face_flux * q * hll_corr));
+        double q = 0.5 * c_hll * (kernel.r * All.cf_atime) / fabs(1.e-37 + kappa_ij); q = (0.2 + q) / (0.2 + q + q*q); // physical
+        double renormerFAC = DMIN(1.,fabs(cos_theta_face_flux*cos_theta_face_flux * q * hll_corr)); // physical
         
         /* flux-limiter to ensure flow is always down the local gradient [no 'uphill' flow] */
         double f_direct = -Face_Area_Norm * c_hll * d_scalar * renormerFAC; // simple HLL term for frame moving at 1/2 inter-particle velocity: here not limited //
@@ -147,29 +147,29 @@
             }
             // enforce a flux limiter for stability (to prevent overshoot) //
             cmag *= dt_hydrostep; // all in physical units //
-            double sVi = scalar_i*V_i, sVj = scalar_j*V_j;
+            double sVi = scalar_i*V_i_phys, sVj = scalar_j*V_j_phys; // physical units
             thold_hll = 0.25 * DMIN(fabs(sVi-sVj), DMAX(fabs(sVi), fabs(sVj)));
             if(sign_c0 < 0) {thold_hll *= 1.e-2;} // if opposing signs, restrict this term //
             if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
             cmag /= dt_hydrostep;
-            Fluxes.CosmicRayPressure = cmag;
+            Fluxes.CosmicRayPressure = cmag; // physical, as it needs to be
         } // cmag != 0
         
         /* flux-limiters to prevent overshoot for flux-fluxes */
         for(k=0;k<3;k++)
         {
-            double f_direct = Face_Area_Norm * c_hll * c_light * (scalar_i - scalar_j) * kernel.dp[k]*rinv;
+            double f_direct = Face_Area_Norm * c_hll * c_light * (scalar_i - scalar_j) * (kernel.dp[k]*rinv); // physical
             double sign_agreement = f_direct * cmag_flux[k];
             if((sign_agreement < 0) && (fabs(f_direct) > fabs(cmag_flux[k]))) {cmag_flux[k] = 0;}
             if(cmag_flux[k] != 0)
             {
                 cmag_flux[k] *= dt_hydrostep;
-                thold_hll = DMIN( DMAX( DMIN(fabs(local.CosmicRayFlux[k]), fabs(SphP[j].CosmicRayFluxPred[k])) , fabs(local.CosmicRayFlux[k]-SphP[j].CosmicRayFluxPred[k]) ) , DMAX(fabs(local.CosmicRayFlux[k]), fabs(SphP[j].CosmicRayFluxPred[k])) );
-                double fii=V_i*scalar_i*c_light, fjj=V_j*scalar_j*c_light;
+                thold_hll = DMIN( DMAX( DMIN(fabs(local.CosmicRayFlux[k]), fabs(SphP[j].CosmicRayFluxPred[k])) , fabs(local.CosmicRayFlux[k]-SphP[j].CosmicRayFluxPred[k]) ) , DMAX(fabs(local.CosmicRayFlux[k]), fabs(SphP[j].CosmicRayFluxPred[k])) ); // units are physical
+                double fii=V_i_phys*scalar_i*c_light, fjj=V_j_phys*scalar_j*c_light; // physical units
                 double tij = DMIN( DMAX( DMIN(fabs(fii),fabs(fjj)) , fabs(fii-fjj) ) , DMAX(fabs(fii),fabs(fjj)) );
                 thold_hll = 0.25 * DMAX( thold_hll , 0.5*tij );
                 if(fabs(cmag_flux[k])>thold_hll) {cmag_flux[k] *= thold_hll/fabs(cmag_flux[k]);}
-                Fluxes.CosmicRayFlux[k] = cmag_flux[k] / dt_hydrostep * (kappa_ij/(c_light*c_light));
+                Fluxes.CosmicRayFlux[k] = cmag_flux[k] / dt_hydrostep * (kappa_ij/(c_light*c_light)); // physical
             }
         }
 #ifdef MAGNETIC
