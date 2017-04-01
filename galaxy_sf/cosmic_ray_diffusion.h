@@ -19,7 +19,7 @@
     double kappa_j = fabs(SphP[j].CosmicRayDiffusionCoeff);
     double d_scalar = scalar_i - scalar_j;
     
-    if(((kappa_i>0)||(kappa_j>0))&&(local.Mass>0)&&(P[j].Mass>0)&&(dt_hydrostep>0))
+    if(((kappa_i>0)||(kappa_j>0))&&(local.Mass>0)&&(P[j].Mass>0)&&(dt_hydrostep>0)&&(Face_Area_Norm>0))
     {
 #ifndef COSMIC_RAYS_M1
         // NOT SPH: Now we use the more accurate finite-volume formulation, with the effective faces we have already calculated //
@@ -130,7 +130,7 @@
         c_hll = 0.5*fabs(face_vel_i-face_vel_j) + v_eff_light; // physical
         double hll_corr = 1. / (1. + 1.5 * c_light * DMAX(L_eff_j/kappa_j , Particle_Size_i/kappa_i)); // all physical units
         /* q below is a limiter to try and make sure the diffusion speed given by the hll flux doesn't exceed the diffusion speed in the diffusion limit */
-        double q = 0.5 * c_hll * (kernel.r * All.cf_atime) / fabs(1.e-37 + kappa_ij); q = (0.2 + q) / (0.2 + q + q*q); // physical
+        double q = 0.5 * c_hll * (kernel.r * All.cf_atime) / fabs(MIN_REAL_NUMBER + kappa_ij); q = (0.2 + q) / (0.2 + q + q*q); // physical
         double renormerFAC = DMIN(1.,fabs(cos_theta_face_flux*cos_theta_face_flux * q * hll_corr)); // physical
         
         /* flux-limiter to ensure flow is always down the local gradient [no 'uphill' flow] */

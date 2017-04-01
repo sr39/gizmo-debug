@@ -14,7 +14,7 @@
 int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist)
 {
     int j, k, n, startnode, numngb, kernel_mode, listindex;
-    double hinv_i,hinv3_i,hinv4_i,hinv_j,hinv3_j,hinv4_j,V_i,V_j,dt_hydrostep,r2,rinv,rinv_soft,u;
+    double hinv_i,hinv3_i,hinv4_i,hinv_j,hinv3_j,hinv4_j,V_i,V_j,dt_hydrostep,r2,rinv,rinv_soft,u,Particle_Size_i;
     double v_hll,k_hll,b_hll; v_hll=k_hll=0,b_hll=1;
     struct kernel_hydra kernel;
     struct hydrodata_in local;
@@ -31,7 +31,6 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     face_area_dot_vel = 0;
 #endif
     double face_vel_i=0, face_vel_j=0, Face_Area_Norm=0, Face_Area_Vec[3];
-    double Particle_Size_i; Particle_Size_i = pow(local.Mass/local.Density,1./NUMDIMS) * All.cf_atime; // in physical, used below in some routines //
 
 #ifdef HYDRO_MESHLESS_FINITE_MASS
     double epsilon_entropic_eos_big = 0.5; // can be anything from (small number=more diffusive, less accurate entropy conservation) to ~1.1-1.3 (least diffusive, most noisy)
@@ -43,15 +42,6 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #endif
 
-#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
-    double Fluxes_E_gamma[N_RT_FREQ_BINS];
-    double tau_c_i[N_RT_FREQ_BINS];
-    for(k=0;k<N_RT_FREQ_BINS;k++) {tau_c_i[k] = Particle_Size_i * local.Kappa_RT[k]*local.Density*All.cf_a3inv;}
-#ifdef RT_EVOLVE_FLUX
-    double Fluxes_Flux[N_RT_FREQ_BINS][3];
-#endif
-#endif
-    
     if(mode == 0)
     {
         particle2in_hydra(&local, target); // this setup allows for all the fields we need to define (don't hard-code here)
@@ -70,6 +60,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     kernel_hinv(kernel.h_i, &hinv_i, &hinv3_i, &hinv4_i);
     hinv_j=hinv3_j=hinv4_j=0;
     V_i = local.Mass / local.Density;
+    Particle_Size_i = pow(V_i,1./NUMDIMS) * All.cf_atime; // in physical, used below in some routines //
     double Amax_i = MAX_REAL_NUMBER;
 #if (NUMDIMS==2)
     Amax_i = 2. * sqrt(V_i/M_PI);
@@ -113,7 +104,16 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     kernel.alfven2_i = DMIN(kernel.alfven2_i, 1000. * kernel.sound_i*kernel.sound_i);
     double vcsa2_i = kernel.sound_i*kernel.sound_i + kernel.alfven2_i;
 #endif // MAGNETIC //
-    
+
+#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
+    double Fluxes_E_gamma[N_RT_FREQ_BINS];
+    double tau_c_i[N_RT_FREQ_BINS];
+    for(k=0;k<N_RT_FREQ_BINS;k++) {tau_c_i[k] = Particle_Size_i * local.Kappa_RT[k]*local.Density*All.cf_a3inv;}
+#ifdef RT_EVOLVE_FLUX
+    double Fluxes_Flux[N_RT_FREQ_BINS][3];
+#endif
+#endif
+
     
     /* --------------------------------------------------------------------------------- */
     /* Now start the actual SPH computation for this particle */

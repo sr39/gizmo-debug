@@ -298,11 +298,14 @@ void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double
 #endif
 #ifdef COSMIC_RAYS
 #ifdef COSMIC_RAYS_M1
-    // as kicks.c, this is the exact update to ensure proper limiting behavior // 
-    double cr_speed = COSMIC_RAYS_M1;// * (C/All.UnitVelocity_in_cm_per_s);
-    double dt_cr_dimless = dt_entr * cr_speed*cr_speed / fabs(SphP[i].CosmicRayDiffusionCoeff);
-    double q_cr=0.; if((dt_cr_dimless > 0)&&(dt_cr_dimless < 20.)) {q_cr = exp(-dt_cr_dimless);}
-    int kCR; for(kCR=0;kCR<3;kCR++) {SphP[i].CosmicRayFluxPred[kCR] = q_cr*SphP[i].CosmicRayFluxPred[kCR] + (1.-q_cr)*SphP[i].DtCosmicRayFlux[kCR];}
+    if(dt_entr > 0)
+    {
+        // as kicks.c, this is the exact update to ensure proper limiting behavior //
+        double cr_speed = COSMIC_RAYS_M1;// * (C/All.UnitVelocity_in_cm_per_s);
+        double dt_cr_dimless = dt_entr * cr_speed*cr_speed / (MIN_REAL_NUMBER + fabs(SphP[i].CosmicRayDiffusionCoeff));
+        double q_cr=0.; if((dt_cr_dimless > 0)&&(dt_cr_dimless < 20.)) {q_cr = exp(-dt_cr_dimless);}
+        int kCR; for(kCR=0;kCR<3;kCR++) {SphP[i].CosmicRayFluxPred[kCR] = q_cr*SphP[i].CosmicRayFluxPred[kCR] + (1.-q_cr)*SphP[i].DtCosmicRayFlux[kCR];}
+    }
 #endif
     double etmp = SphP[i].CosmicRayEnergyPred + SphP[i].DtCosmicRayEnergy * dt_entr;
     if(etmp<1.e-4*SphP[i].CosmicRayEnergyPred) {SphP[i].CosmicRayEnergyPred *= 1.e-4;} else {SphP[i].CosmicRayEnergyPred=etmp;}
