@@ -49,6 +49,18 @@
         double grad_mag = 0.0;
         for(k=0;k<3;k++) {grad_mag += grad_ij[k]*grad_ij[k];}
         if(grad_mag > 0) {grad_mag = sqrt(grad_mag);} else {grad_mag=MIN_REAL_NUMBER;}
+        if((local.CosmicRayDiffusionCoeff<0)||(SphP[j].CosmicRayDiffusionCoeff<0)) // codes for local maximum: need lower-order gradient estimator
+        {
+            double gmag_a=0,gmag_b=0,g0=grad_mag*grad_mag;
+            for(k=0;k<3;k++) {gmag_a += grad_i[k]*grad_i[k]; gmag_b += grad_j[k]*grad_j[k];}
+            double gnew = DMAX(g0,DMAX(gmag_a,gmag_b));
+            if(gnew > 0)
+            {
+                gnew = sqrt(gnew);
+                for(k=0;k<3;k++) {grad_ij[k] / grad_mag * gnew;}
+                grad_mag = gnew;
+            }
+        }
 #ifdef MAGNETIC
         if(bhat_mag > 0)
         {
@@ -82,6 +94,7 @@
             check_for_stability_sign = d_scalar*cmag;
             if((check_for_stability_sign < 0) && (fabs(f_direct) > HLL_DIFFUSION_OVERSHOOT_FACTOR*fabs(cmag))) {cmag = 0;}
         }
+        if(check_for_stability_sign<0) {cmag=0;}
         cmag *= -diffusion_wt; /* multiply through coefficient to get flux; all physical units here */
         
         /* follow that with a flux limiter as well */
@@ -94,7 +107,7 @@
             double prefac_duij = 0.25, flux_multiplier = 1;
             if((local.CosmicRayDiffusionCoeff<0)||(SphP[j].CosmicRayDiffusionCoeff<0)) {prefac_duij = 0.05;}
             double du_ij_cond = prefac_duij * DMAX(DMIN( fabs(CR_egy_i-CR_egy_j) , DMAX(CR_egy_i , CR_egy_j)) , DMIN(CR_egy_i , CR_egy_j));
-            if(diffusion_wt > 0) {du_ij_cond=DMIN(du_ij_cond,0.5*CR_egy_j);} else {du_ij_cond=DMIN(du_ij_cond,0.5*CR_egy_i);} // prevent flux from creating negative values //
+            if(diffusion_wt > 0) {du_ij_cond=DMIN(du_ij_cond,0.25*CR_egy_j);} else {du_ij_cond=DMIN(du_ij_cond,0.25*CR_egy_i);} // prevent flux from creating negative values //
             if(fabs(diffusion_wt)>du_ij_cond) {flux_multiplier = du_ij_cond/fabs(diffusion_wt);}
             diffusion_wt *= flux_multiplier;
             Fluxes.CosmicRayPressure += diffusion_wt / dt_hydrostep; // physical units, as needed

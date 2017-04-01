@@ -309,6 +309,15 @@ void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double
 #endif
     double etmp = SphP[i].CosmicRayEnergyPred + SphP[i].DtCosmicRayEnergy * dt_entr;
     if(etmp<1.e-4*SphP[i].CosmicRayEnergyPred) {SphP[i].CosmicRayEnergyPred *= 1.e-4;} else {SphP[i].CosmicRayEnergyPred=etmp;}
+    /* now need to account for the adiabatic heating/cooling of the cosmic ray fluid, here: its an ultra-relativistic fluid with gamma=4/3 */
+    double d_div = (-GAMMA_COSMICRAY_MINUS1 * P[i].Particle_DivVel*All.cf_a2inv) * dt_entr;
+    /* adiabatic term from Hubble expansion (needed for cosmological integrations */
+    if(All.ComovingIntegrationOn) {d_div += (-3.*GAMMA_COSMICRAY_MINUS1 * All.cf_hubble_a) * dt_entr;}
+    double uCR_i=SphP[i].CosmicRayEnergyPred/P[i].Mass, dCR_div=DMIN(uCR_i*d_div,0.5*SphP[i].InternalEnergyPred);
+    if(d_div < -0.5) {dCR_div=uCR_i*(exp(d_div)-1.);}
+    SphP[i].CosmicRayEnergyPred += dCR_div*P[i].Mass;
+    SphP[i].InternalEnergyPred -= dCR_div;
+    if((SphP[i].CosmicRayEnergyPred < 0) || (isnan(SphP[i].CosmicRayEnergyPred))) {SphP[i].CosmicRayEnergyPred=0;}
 #endif
 #ifdef RADTRANSFER
     rt_update_driftkick(i,dt_entr,1);

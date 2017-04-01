@@ -668,15 +668,7 @@ void hydro_final_operations_and_cleanup(void)
                 SphP[i].HydroAccel[k] /= P[i].Mass; /* we solved for momentum flux */
             }
             
-#ifdef COSMIC_RAYS
-            /* need to account for the adiabatic heating/cooling of the cosmic ray fluid, here: its an ultra-relativistic fluid with gamma=4/3 */
-            double dt_cosmicray_energy_adiabatic = -GAMMA_COSMICRAY_MINUS1 * (P[i].Particle_DivVel*All.cf_a2inv);
-            if(dt_cosmicray_energy_adiabatic*dt < -0.5) {dt_cosmicray_energy_adiabatic = (exp(dt_cosmicray_energy_adiabatic*dt)-1.)/dt;}
-            SphP[i].DtCosmicRayEnergy += SphP[i].CosmicRayEnergyPred * dt_cosmicray_energy_adiabatic;
-            SphP[i].DtInternalEnergy -= SphP[i].CosmicRayEnergyPred * dt_cosmicray_energy_adiabatic;
-            /* adiabatic term from Hubble expansion (needed for cosmological integrations */
-            if(All.ComovingIntegrationOn) {SphP[i].DtCosmicRayEnergy += (-3*GAMMA_COSMICRAY_MINUS1 * All.cf_hubble_a) * SphP[i].CosmicRayEnergyPred;}
-#ifndef COSMIC_RAYS_DISABLE_STREAMING
+#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_STREAMING)
             /* energy transfer from CRs to gas due to the streaming instability (mediated by high-frequency Alfven waves, but they thermalize quickly
                 (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
             double cr_stream_cool = -GAMMA_COSMICRAY_MINUS1 * Get_CosmicRayStreamingVelocity(i) / Get_CosmicRayGradientLength(i);
@@ -694,8 +686,8 @@ void hydro_final_operations_and_cleanup(void)
 #endif
             SphP[i].DtCosmicRayEnergy += SphP[i].CosmicRayEnergyPred * cr_stream_cool;
             SphP[i].DtInternalEnergy -= SphP[i].CosmicRayEnergyPred * cr_stream_cool;
-#endif
-#endif
+#endif // CRs
+            
             
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             SphP[i].DtInternalEnergy -= SphP[i].InternalEnergyPred * SphP[i].DtMass;
