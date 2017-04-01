@@ -1436,7 +1436,7 @@ void hydro_gradient_calc(void)
 #endif
 #ifdef COSMIC_RAYS
             stol_tmp = stol;
-            local_slopelimiter(SphP[i].Gradients.CosmicRayPressure,GasGradDataPasser[i].Maxima.CosmicRayPressure,GasGradDataPasser[i].Minima.CosmicRayPressure,a_limiter,h_lim,DMAX(stol,stol_diffusion));
+            local_slopelimiter(SphP[i].Gradients.CosmicRayPressure,GasGradDataPasser[i].Maxima.CosmicRayPressure,GasGradDataPasser[i].Minima.CosmicRayPressure,DMAX(1.,a_limiter),h_lim,0.);
             if((GasGradDataPasser[i].Maxima.CosmicRayPressure==0)||(GasGradDataPasser[i].Minima.CosmicRayPressure==0)) {is_particle_local_extremum = 1;}
 #endif
 #ifdef DOGRAD_SOUNDSPEED
