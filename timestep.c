@@ -815,10 +815,10 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef BLACK_HOLES
     if(P[p].Type == 5)
     {
+        double dt_accr = 1.e-2 * 4.2e7 * SEC_PER_YEAR / All.UnitTime_in_s;
         if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
         {
-            double dt_accr;
-#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK) 
+#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
             /* really want prefactor to be ratio of median gas mass to bh mass */
             dt_accr = 0.001 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
 #if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
@@ -830,15 +830,18 @@ integertime get_timestep(int p,		/*!< particle index */
 #else
             dt_accr = 0.05 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
 #endif // defined(BH_GRAVCAPTURE_GAS) || defined(BH_BAL_WINDS)
-            
-            if(dt_accr > 0 && dt_accr < dt)
-                dt = dt_accr;
         } // if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
+#ifdef BH_SEED_GROWTH_TESTS
+            double dt_evol = 1.e4 * SEC_PER_YEAR / All.UnitTime_in_s;
+#ifdef TURB_DRIVING
+            if(dt_evol > 1.e-3*All.StDecay) {dt_evol=1.e-3*All.StDecay;}
+#endif
+            if(dt_accr > dt_evol) {dt_accr=dt_evol;}
+#endif
+            if(dt_accr > 0 && dt_accr < dt) {dt = dt_accr;}
         
-        double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? (1 << BPP(p).BH_TimeBinGasNeighbor) : 0) *
-        All.Timebase_interval / All.cf_hubble_a;
-        if(dt > dt_ngbs && dt_ngbs > 0)
-            dt = 1.01 * dt_ngbs;
+        double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? (1 << BPP(p).BH_TimeBinGasNeighbor) : 0) * All.Timebase_interval / All.cf_hubble_a;
+        if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs;}
         
     } // if(P[p].Type == 5)
 #endif // BLACK_HOLES

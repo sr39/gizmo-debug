@@ -1239,13 +1239,13 @@ extern FILE
  *FdTimings,    /*!< file handle for timings.txt log-file. */
  *FdBalance,    /*!< file handle for balance.txt log-file. */
 #ifdef RT_CHEM_PHOTOION
-extern FILE *FdRad;		/*!< file handle for radtransfer.txt log-file. */
+ *FdRad,		/*!< file handle for radtransfer.txt log-file. */
 #endif
 #ifdef TURB_DRIVING
-extern FILE *FdTurb;    /*!< file handle for turb.txt log-file */
+ *FdTurb,       /*!< file handle for turb.txt log-file */
 #endif
 #ifdef DARKENERGY
-extern FILE *FdDE;  /*!< file handle for darkenergy.txt log-file. */
+ *FdDE,         /*!< file handle for darkenergy.txt log-file. */
 #endif
 #endif
  *FdCPU;        /*!< file handle for cpu.txt log-file. */
