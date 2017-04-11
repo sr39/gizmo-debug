@@ -196,7 +196,7 @@ double c_light = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s);
             /* alright, now we limit the flux-of-flux terms */
             for(k=0;k<3;k++)
             {
-                double hll_mult_dmin = 1
+                double hll_mult_dmin = 1;
                 double f_direct = -0.5 * Face_Area_Norm * c_hll * (flux_i[k] - flux_j[k]) * renormerFAC; // [physical units]
                 if(f_direct != 0) // calculate diffusive HLL flux for the flux-of-flux //
                 {
