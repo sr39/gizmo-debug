@@ -326,8 +326,8 @@ double rt_kappa(int i, int k_freq)
     /* IR with dust opacity */
     if(k_freq==RT_FREQ_BIN_INFRARED)
     {
-        if(isnan(SphP[i].Dust_Temperature)) {SphP[i].Dust_Temperature=10;} // reset baseline
-        if(isnan(SphP[i].Radiation_Temperature) || SphP[i].Radiation_Temperature<=0) {SphP[i].Radiation_Temperature=10;} // reset baseline
+        if(isnan(SphP[i].Dust_Temperature) || SphP[i].Dust_Temperature<=0) {SphP[i].Dust_Temperature=DMAX(10.,2.73/All.cf_atime);} // reset baseline
+        if(isnan(SphP[i].Radiation_Temperature) || SphP[i].Radiation_Temperature<=0) {SphP[i].Radiation_Temperature=DMAX(10.,2.73/All.cf_atime);} // reset baseline
         
         double T_dust_em = SphP[i].Dust_Temperature; // dust temperature in K //
         double Trad = SphP[i].Radiation_Temperature; // radiation temperature in K //
@@ -438,18 +438,11 @@ void rt_eddington_update_calculation(int j)
         if(fmag_j <= 0) {fmag_j=0;} else {fmag_j=sqrt(fmag_j); for(k=0;k<3;k++) {n_flux_j[k]=flux_vol[k]/fmag_j;}}
         double f_chifac = RT_SPEEDOFLIGHT_REDUCTION * fmag_j / (c_light * SphP[j].E_gamma[k_freq] * V_j_inv);
         f_chifac = fmag_j / (1.e-37 + c_light * SphP[j].E_gamma[k_freq] * V_j_inv);
+        if(f_chifac < 0) {f_chifac=0;}
         if(fmag_j <= 0) {f_chifac = 0;}
-        // restrict values of f_chifac to physical range. also, 
-        //   impose additional condition: if optically thick locally, use isotropic tensor
+        // restrict values of f_chifac to physical range.  
+        //   [optional, not here]: impose additional condition: if optically thick locally, use isotropic tensor
         double f_min = 0.01, f_max = 0.99;
-        double lam_mfp_inv = SphP[j].Kappa_RT[k_freq] * (SphP[j].Density*All.cf_a3inv);
-        double Particle_Size_j = Get_Particle_Size(j)*All.cf_atime; // this + gradient scale length gives local NH around particle
-        double gradscalelen=0; for(k=0;k<3;k++) {gradscalelen += SphP[j].Gradients.Density[k]*SphP[j].Gradients.Density[k];}
-        if(gradscalelen > 0) {gradscalelen=sqrt(gradscalelen);} else {gradscalelen=0;}
-        gradscalelen = Particle_Size_j + SphP[j].Density / (MIN_REAL_NUMBER + gradscalelen) * All.cf_atime;
-        Particle_Size_j = DMIN(gradscalelen , 10.*Particle_Size_j); // limit for case of nearly-flat gradients to a few times local smoothing
-        f_max = DMIN( f_max , exp(-Particle_Size_j*lam_mfp_inv) ); // restrict to isotropic for optically thick, vs anisotropic for optically thin cases
-    
         if((f_chifac < f_min) || (isnan(f_chifac))) {f_chifac = f_min;}
         if(f_chifac > f_max) {f_chifac = f_max;}
         double chi_j = (3.+4.*f_chifac*f_chifac) / (5. + 2.*sqrt(4. - 3.*f_chifac*f_chifac));
@@ -595,8 +588,8 @@ void rt_set_simple_inits(void)
         {
             int k;
 #ifdef RT_INFRARED
-            SphP[i].Dust_Temperature = 0;
-            SphP[i].Radiation_Temperature = 0;
+            SphP[i].Dust_Temperature = DMAX(10.,2.73/All.cf_atime); // in K, floor = CMB temperature or 10K
+            SphP[i].Radiation_Temperature = SphP[i].Dust_Temperature;
             SphP[i].Dt_E_gamma_T_weighted_IR = 0;
 #endif
 #ifdef RT_RAD_PRESSURE_OUTPUT
