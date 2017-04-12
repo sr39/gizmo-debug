@@ -169,15 +169,19 @@
         } // cmag != 0
         
         /* flux-limiters to prevent overshoot for flux-fluxes */
+        double hll_mult_dmin = 1;
         for(k=0;k<3;k++)
         {
-            double hll_mult_dmin = 1;
             double f_direct = -0.5 * Face_Area_Norm * c_hll * (flux_i[k] - flux_j[k]) * renormerFAC; // [physical units]
             if(f_direct != 0) // calculate diffusive HLL flux for the flux-of-flux //
             {
                 thold_hll = fabs(cmag_flux[k]) / fabs(f_direct);
                 if(thold_hll < hll_mult_dmin) {hll_mult_dmin = thold_hll;}
             }
+        }
+        for(k=0;k<3;k++)
+        {
+            double f_direct = -0.5 * Face_Area_Norm * c_hll * (flux_i[k] - flux_j[k]) * renormerFAC; // [physical units]
             cmag_flux[k] += hll_mult_dmin * f_direct; // add diffusive flux //
             double sign_agreement = f_direct * cmag_flux[k];
             if((sign_agreement < 0) && (fabs(f_direct) > fabs(cmag_flux[k]))) {cmag_flux[k] = 0;}
