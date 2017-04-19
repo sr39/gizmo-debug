@@ -387,6 +387,41 @@ endif
 
 
 #----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Comet")
+CC       =  mpicc
+CXX      =  mpiCC
+FC       =  $(CC)
+OPTIMIZE = -O3 -xhost -ipo -funroll-loops -no-prec-div -fp-model fast=2  # speed
+OPTIMIZE += -g -Wall # compiler warnings
+#OPTIMIZE += -parallel -openmp  # openmp (comment out this line if OPENMP not used)
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -parallel -openmp  # openmp required compiler flags
+endif
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = -I/opt/intel/composer_xe_2013_sp1.2.144/mkl/include
+MKL_LIBS = -L/opt/intel/composer_xe_2013_sp1.2.144/mkl/lib -mkl=sequential
+##MKL_LIBS = -L/opt/mvapich2/intel/ib/lib -lm -lmkl_core -lmkl_sequential -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_blacs_intelmpi_lp64
+GSL_INCL = -I/opt/gsl/2.1/intel/include
+GSL_LIBS = -L/opt/gsl/2.1/intel/lib
+FFTW_INCL= -I/opt/fftw/2.1.5/intel/mvapich2_ib/include
+FFTW_LIBS= -L/opt/fftw/2.1.5/intel/mvapich2_ib/lib
+HDF5INCL = -I/opt/hdf5/intel/mvapich2_ib/include -DH5_USE_16_API
+HDF5LIB  = -L/opt/hdf5/intel/mvapich2_ib/lib -lhdf5 -lz
+MPICHLIB = -L/opt/mvapich2/intel/ib/lib
+#MPICHLIB = -L/opt/openmpi/intel/ib/lib
+OPT     += -DUSE_MPI_IN_PLACE
+## modules to load:
+## module load gsl intel hdf5 mvapich2_ib fftw/2.1.5
+##  -- performance is very similar with impi (intel-mpi) instead of mpavich2,
+##   if preferred use that with MPICHLIB line uncommented
+## newest version of code needed for compatibility with calls in MPI-2 libraries
+endif
+#----------------------------------------------------------------------------------------------
+
+
+
+#----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Darter")
 CC       =  cc
 CXX      =  CC

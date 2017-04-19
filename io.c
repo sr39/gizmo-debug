@@ -1968,12 +1968,12 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             return nngb;
             break;
 
+
         case IO_IMF:
-            for(i = 0; i < 6; i++)
-                if(i != 4)
-                    typelist[i] = 0;
-            return nstars;
+            for(i = 1; i < 6; i++) {if(i != 4 && i != 5) {typelist[i] = 0;}}
+            return nstars + header.npart[5];
             break;
+            
             
         case IO_TRUENGB:
             nngb = ngas;
