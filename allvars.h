@@ -1239,13 +1239,13 @@ extern FILE
  *FdTimings,    /*!< file handle for timings.txt log-file. */
  *FdBalance,    /*!< file handle for balance.txt log-file. */
 #ifdef RT_CHEM_PHOTOION
-extern FILE *FdRad;		/*!< file handle for radtransfer.txt log-file. */
+ *FdRad,		/*!< file handle for radtransfer.txt log-file. */
 #endif
 #ifdef TURB_DRIVING
-extern FILE *FdTurb;    /*!< file handle for turb.txt log-file */
+ *FdTurb,       /*!< file handle for turb.txt log-file */
 #endif
 #ifdef DARKENERGY
-extern FILE *FdDE;  /*!< file handle for darkenergy.txt log-file. */
+ *FdDE,         /*!< file handle for darkenergy.txt log-file. */
 #endif
 #endif
  *FdCPU;        /*!< file handle for cpu.txt log-file. */
@@ -1974,18 +1974,7 @@ extern ALIGN(32) struct particle_data
     
 #ifdef GALSF_FB_SNE_HEATING
     MyFloat SNe_ThisTimeStep; /* flag that indicated number of SNe for the particle in the timestep */
-
-#if !(EXPAND_PREPROCESSOR_(GALSF_FB_SNE_HEATING) == 1) // check whether a numerical value is assigned
-#if (GALSF_FB_SNE_HEATING == 2) // code for non-isotropic
-#define GALSF_FB_SNE_NONISOTROPIZED
-#endif
-#endif
-
-#ifdef GALSF_FB_SNE_NONISOTROPIZED
-#define AREA_WEIGHTED_SUM_ELEMENTS 1
-#else
-#define AREA_WEIGHTED_SUM_ELEMENTS 7
-#endif
+#define AREA_WEIGHTED_SUM_ELEMENTS 11 /* number of weights needed for full momentum-and-energy conserving system */
     MyFloat Area_weighted_sum[AREA_WEIGHTED_SUM_ELEMENTS]; /* normalized weights for particles in kernel weighted by area, not mass */
 #endif
 #ifdef GALSF_FB_GASRETURN
@@ -2255,6 +2244,11 @@ extern struct sph_particle_data
     MyFloat CosmicRayEnergyPred;    /*!< total energy of cosmic ray fluid (the conserved variable) */
     MyFloat DtCosmicRayEnergy;      /*!< time derivative of cosmic ray energy */
     MyFloat CosmicRayDiffusionCoeff;/*!< diffusion coefficient kappa for cosmic ray fluid */
+#ifdef COSMIC_RAYS_M1
+    MyFloat CosmicRayFlux[3];       /*!< CR flux vector [explicitly evolved] - conserved-variable */
+    MyFloat CosmicRayFluxPred[3];   /*!< CR flux vector [explicitly evolved] - conserved-variable */
+    MyFloat DtCosmicRayFlux[3];     /*!< time-derivative of CR flux vector */
+#endif
 #endif
     
 #ifdef SUPER_TIMESTEP_DIFFUSION

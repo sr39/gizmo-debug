@@ -1419,7 +1419,7 @@ void hydro_gradient_calc(void)
 #ifdef SINGLE_STAR_FORMATION
             SphP[i].Density_Relative_Maximum_in_Kernel = GasGradDataPasser[i].Maxima.Density;
 #endif
-            local_slopelimiter(SphP[i].Gradients.Density,GasGradDataPasser[i].Maxima.Density,GasGradDataPasser[i].Minima.Density,a_limiter,h_lim,stol);
+            local_slopelimiter(SphP[i].Gradients.Density,GasGradDataPasser[i].Maxima.Density,GasGradDataPasser[i].Minima.Density,a_limiter,h_lim,0);
             local_slopelimiter(SphP[i].Gradients.Pressure,GasGradDataPasser[i].Maxima.Pressure,GasGradDataPasser[i].Minima.Pressure,a_limiter,h_lim,stol);
             stol_tmp = stol;
 #if defined(VISCOSITY)
@@ -1436,7 +1436,7 @@ void hydro_gradient_calc(void)
 #endif
 #ifdef COSMIC_RAYS
             stol_tmp = stol;
-            local_slopelimiter(SphP[i].Gradients.CosmicRayPressure,GasGradDataPasser[i].Maxima.CosmicRayPressure,GasGradDataPasser[i].Minima.CosmicRayPressure,a_limiter,h_lim,DMAX(stol,stol_diffusion));
+            local_slopelimiter(SphP[i].Gradients.CosmicRayPressure,GasGradDataPasser[i].Maxima.CosmicRayPressure,GasGradDataPasser[i].Minima.CosmicRayPressure,DMAX(1.,a_limiter),h_lim,0.);
             if((GasGradDataPasser[i].Maxima.CosmicRayPressure==0)||(GasGradDataPasser[i].Minima.CosmicRayPressure==0)) {is_particle_local_extremum = 1;}
 #endif
 #ifdef DOGRAD_SOUNDSPEED
@@ -1590,7 +1590,9 @@ void hydro_gradient_calc(void)
                 SphP[i].CosmicRayDiffusionCoeff *= All.CosmicRayDiffusionCoeff;
 #endif
                 SphP[i].CosmicRayDiffusionCoeff += CR_kappa_streaming;
+#if !defined(COSMIC_RAYS_M1)
                 /* now we apply a limiter to prevent the coefficient from becoming too large: cosmic rays cannot stream/diffuse with v_diff > c */
+                // [all of this only applies if we are using the pure-diffusion description: the M1-type description should -not- use a limiter here, or negative kappa]
                 double diffusion_velocity_limit = 1.0 * C; /* maximum diffusion velocity (set <C if desired) */
 #ifdef GALSF
                 diffusion_velocity_limit = 0.01 * C;
@@ -1608,8 +1610,9 @@ void hydro_gradient_calc(void)
                 }
 #endif
                 if(is_particle_local_extremum==1) {SphP[i].CosmicRayDiffusionCoeff *= -1;} // negative here codes for local extrema
+#endif // COSMIC_RAYS_M1
             } else {
-                SphP[i].CosmicRayDiffusionCoeff = 0;
+                SphP[i].CosmicRayDiffusionCoeff = MIN_REAL_NUMBER;
             }
 #endif
         }
