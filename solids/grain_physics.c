@@ -7,6 +7,7 @@
 
 #include "../allvars.h"
 #include "../proto.h"
+#include "../kernel.h"
 
 /*
  
@@ -138,8 +139,8 @@ void apply_grain_dragforce(void)
 
                     
 #ifdef GRAIN_BACKREACTION
-                        double dvel, degy, r2nearest, *pos,h,h2,hinv,hinv3,r2,rho,u,wk;;
-                        int N_MAX_KERNEL,N_MIN_KERNEL,MAXITER_FB,NITER,startnode,dummy,numngb_inbox,jnearest,i,j,k,n;
+                        double dvel, degy, r2nearest, *pos,h,h2,hinv,hinv3,hinv4,r2,rho,u,wk,dwk;
+                        int N_MAX_KERNEL,N_MIN_KERNEL,MAXITER_FB,NITER,startnode,dummy,numngb_inbox,jnearest,j,k,n;
                         Ngblist = (int *) mymalloc("Ngblist",NumPart * sizeof(int));
                         
                         /* now add in a loop to find particles in same domain, share back the
@@ -149,7 +150,7 @@ void apply_grain_dragforce(void)
                         h=PPP[i].Hsml; if(h<=0) h=All.SofteningTable[0];
                         do {
                             numngb_inbox = ngb_treefind_variable_targeted(pos,h,-1,&startnode,0,&dummy,&dummy,1); // search for gas: 2^0=1
-                            h2=h*h; hinv=1/h; hinv3=hinv*hinv*hinv; rho=0;
+                            h2=h*h; hinv=1/h; hinv3=hinv*hinv*hinv; hinv4=hinv3*hinv; rho=0;
                             if((numngb_inbox>=N_MIN_KERNEL)&&(numngb_inbox<=N_MAX_KERNEL))
                             {
                                 jnearest=0;r2nearest=1.0e10;
@@ -162,7 +163,7 @@ void apply_grain_dragforce(void)
                                     }
                                     if ((r2<=h2)&&(P[j].Mass>0)&&(SphP[j].Density>0)) {
                                         u=sqrt(r2)*hinv;
-                                        wk=hinv3*kernel_wk(u);
+                                        kernel_main(u,hinv3,hinv4,&wk,&dwk,0);
                                         rho += (P[j].Mass*wk);
                                     }
                                 } /* for(n=0; n<numngb_inbox; n++) */
@@ -205,7 +206,8 @@ void apply_grain_dragforce(void)
                                     if ((r2<=h2)&&(P[j].Mass>0)&&(SphP[j].Density>0))
                                     {
                                         u=sqrt(r2)*hinv;
-                                        wk=P[j].Mass * hinv3*kernel_wk(u) / rho;
+                                        kernel_main(u,hinv3,hinv4,&wk,&dwk,0);
+                                        wk *= P[j].Mass / rho;
                                         degy=0;
                                         MyDouble VelPred_j[3];
                                         for(k=0;k<3;k++) {VelPred_j[k]=P[j].Vel[k];}
@@ -649,8 +651,7 @@ int grain_density_evaluate(int target, int mode, int *nexport, int *nsend_local)
                     numngb++;
                     r = sqrt(r2);
                     u = r * hinv;
-                    wk = hinv3*kernel_wk(u);
-                    dwk = hinv4*kernel_dwk(u);
+                    kernel_main(u,hinv3,hinv4,&wk,&dwk,0);
                     mass_j = P[j].Mass;
                     rho += FLT(mass_j * wk);
                     weighted_numngb += FLT(NORM_COEFF * wk / hinv3);
