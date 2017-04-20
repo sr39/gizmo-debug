@@ -367,11 +367,10 @@ void grain_density(void)
     
     /* allocate buffers to arrange communication */
     Ngblist = (int *) mymalloc(NumPart * sizeof(int));
-    All.BunchSize =
-    (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
+    size_t MyBufferSize = All.BufferSize;
+    All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
                                              sizeof(struct grain_densdata_in) + sizeof(struct grain_densdata_out) +
-                                             sizemax(sizeof(struct grain_densdata_in),
-                                                     sizeof(struct grain_densdata_out))));
+                                             sizemax(sizeof(struct grain_densdata_in),sizeof(struct grain_densdata_out))));
     DataIndexTable = (struct data_index *) mymalloc(All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc(All.BunchSize * sizeof(struct data_nodelist));
     

@@ -54,7 +54,8 @@ void savepositions(int num)
         if(ThisTask == 0)
             printf("\nwriting snapshot file #%d... \n", num);
         
-        if(!(CommBuffer = mymalloc("CommBuffer", bytes = All.BufferSize * 1024 * 1024)))
+        size_t MyBufferSize = All.BufferSize;
+        if(!(CommBuffer = mymalloc("CommBuffer", bytes = MyBufferSize * 1024 * 1024)))
         {
             printf("failed to allocate memory for `CommBuffer' (%g MB).\n", bytes / (1024.0 * 1024.0));
             endrun(2);
@@ -3599,7 +3600,8 @@ void write_file(char *fname, int writeTask, int lastTask)
         {
             bytes_per_blockelement = get_bytes_per_blockelement(blocknr, 0);
             
-            blockmaxlen = (size_t) ((All.BufferSize * 1024 * 1024) / bytes_per_blockelement);
+            size_t MyBufferSize = All.BufferSize;
+            blockmaxlen = (size_t) ((MyBufferSize * 1024 * 1024) / bytes_per_blockelement);
             
             npart = get_particles_in_block(blocknr, &typelist[0]);
             

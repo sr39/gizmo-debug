@@ -840,7 +840,8 @@ void read_file(char *fname, int readTask, int lastTask)
         
         allocate_memory();
         
-        if(!(CommBuffer = mymalloc("CommBuffer", bytes = All.BufferSize * 1024 * 1024)))
+        size_t MyBufferSize = All.BufferSize;
+        if(!(CommBuffer = mymalloc("CommBuffer", bytes = MyBufferSize * 1024 * 1024)))
         {
             printf("failed to allocate memory for `CommBuffer' (%g MB).\n", bytes / (1024.0 * 1024.0));
             endrun(2);
@@ -1013,7 +1014,8 @@ void read_file(char *fname, int readTask, int lastTask)
             
             bytes_per_blockelement = get_bytes_per_blockelement(blocknr, 1);
             
-            blockmaxlen = (size_t) ((All.BufferSize * 1024 * 1024) / bytes_per_blockelement);
+            size_t MyBufferSize = All.BufferSize;
+            blockmaxlen = (size_t) ((MyBufferSize * 1024 * 1024) / bytes_per_blockelement);
             
             npart = get_particles_in_block(blocknr, &typelist[0]);
             
