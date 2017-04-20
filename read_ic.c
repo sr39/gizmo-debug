@@ -827,9 +827,11 @@ void read_file(char *fname, int readTask, int lastTask)
         
         All.MaxPart = (int) (All.PartAllocFactor * (All.TotNumPart / NTask));
         All.MaxPartSph = (int) (All.PartAllocFactor * (All.TotN_gas / NTask));	/* sets the maximum number of particles that may reside on a processor */
+#ifdef ALLOW_IMBALANCED_GASPARTICLELOAD
         All.MaxPartSph = All.MaxPart; // PFH: increasing All.MaxPartSph according to this line can allow better load-balancing in some cases. however it leads to more memory problems
         // (PFH: needed to revert the change -- i.e. INCLUDE the line above: commenting it out, while it improved memory useage, causes some instability in the domain decomposition for
         //   sufficiently irregular trees. overall more stable behavior with the 'buffer', albeit at the expense of memory )
+#endif
         
 #if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
         if(All.TotBHs == 0)
