@@ -492,14 +492,13 @@ void hydro_gradient_calc(void)
     long long NTaskTimesNumPart;
     GasGradDataPasser = (struct temporary_data_topass *) mymalloc("GasGradDataPasser",N_gas * sizeof(struct temporary_data_topass));
     NTaskTimesNumPart = maxThreads * NumPart;
-    All.BunchSize = (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
+    size_t MyBufferSize = All.BufferSize;
+    All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
                                                              sizeof(struct GasGraddata_in) +
                                                              sizeof(struct GasGraddata_out) +
-                                                             sizemax(sizeof(struct GasGraddata_in),
-                                                                     sizeof(struct GasGraddata_out))));
+                                                             sizemax(sizeof(struct GasGraddata_in),sizeof(struct GasGraddata_out))));
     CPU_Step[CPU_DENSMISC] += measure_time();
     t0 = my_second();
-    
     Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
@@ -753,7 +752,7 @@ void hydro_gradient_calc(void)
             {
                 GasGradDataResult = (struct GasGraddata_out *) mymalloc("GasGradDataResult", Nimport * sizeof(struct GasGraddata_out));
                 GasGradDataOut = (struct GasGraddata_out *) mymalloc("GasGradDataOut", Nexport * sizeof(struct GasGraddata_out));
-                //                report_memory_usage(&HighMark_GasGrad, "GRADIENTS_LOOP");
+                report_memory_usage(&HighMark_GasGrad, "GRADIENTS_LOOP");
             } else {
                 GasGradDataResult_iter = (struct GasGraddata_out_iter *) mymalloc("GasGradDataResult_iter", Nimport * sizeof(struct GasGraddata_out_iter));
                 GasGradDataOut_iter = (struct GasGraddata_out_iter *) mymalloc("GasGradDataOut_iter", Nexport * sizeof(struct GasGraddata_out_iter));
