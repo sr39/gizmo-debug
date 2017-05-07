@@ -55,8 +55,8 @@ void apply_grain_dragforce(void)
                     if(vgas_mag > 0)
                     {
                         vgas_mag = sqrt(vgas_mag) / All.cf_atime;
-                        double x0 = 0.469993 * vgas_mag/cs; // (3/8)*sqrt[pi/2]*|vgas-vgrain|/cs //
-                        double tstop_inv = 1.59577 * rho_gas * cs / (R_grain_code * rho_grain_code); // 2*sqrt[2/pi] * 1/tstop //
+                        double x0 = 0.469993*sqrt(GAMMA) * vgas_mag/cs; // (3/8)*sqrt[pi/2]*|vgas-vgrain|/cs //
+                        double tstop_inv = 1.59577/sqrt(GAMMA) * rho_gas * cs / (R_grain_code * rho_grain_code); // 2*sqrt[2/pi] * 1/tstop //
 #ifdef GRAIN_EPSTEIN
                         double mu = 2.3 * PROTONMASS;
                         double temperature = mu * (P[i].Gas_InternalEnergy*All.UnitEnergy_in_cgs*All.HubbleParam/All.UnitMass_in_g) / BOLTZMANN;

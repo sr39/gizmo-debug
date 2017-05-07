@@ -618,6 +618,7 @@ integertime get_timestep(int p,		/*!< particle index */
                 /* even with a fully-implicit solver, we require a CFL-like criterion on timesteps (much larger steps allowed for stability, but not accuracy) */
                 dt_courant = All.CourantFac * (L_particle*All.cf_atime) / (RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s)); /* courant-type criterion, using the reduced speed of light */
 #ifdef RT_M1
+                dt_rad = dt_courant;
                 double L_RT_diffusion = L_particle*All.cf_atime;
                 for(kf=0;kf<N_RT_FREQ_BINS;kf++)
                 {

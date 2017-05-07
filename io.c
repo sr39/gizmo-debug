@@ -373,10 +373,10 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #elif (GRACKLE_CHEMISTRY > 0)
                     *fp++ = SphP[pindex].grHI;
 #else
-                    double u, ne, nh0 = 0, mu = 1, temp, nHeII;
+                    double u, ne, nh0 = 0, mu = 1, temp, nHeII, nhp, nHe0, nHepp;
                     ne = SphP[pindex].Ne;
                     u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy); // needs to be in code units
-		            temp  = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, &ne, &nh0, &nHeII, &mu, pindex);
+                    temp = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
 #ifdef GALSF_FB_HII_HEATING
                     if(SphP[pindex].DelayTimeHII>0) nh0=0;
 #endif
@@ -775,7 +775,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     double ne = SphP[pindex].Ne;
                     /* get cooling time */
                     u = SphP[pindex].InternalEnergyPred;
-                    tcool = GetCoolingTime(u, SphP[pindex].Density * All.cf_a3inv, &ne, i);
+                    tcool = GetCoolingTime(u, SphP[pindex].Density * All.cf_a3inv, ne, i);
                     /* convert cooling time with current thermal energy to du/dt */
                     if(tcool != 0)
                         *fp++ = u / tcool;

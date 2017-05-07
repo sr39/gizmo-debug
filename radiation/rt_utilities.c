@@ -545,9 +545,10 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             photons absorbed in one band are re-radiated [or up/down-scattered] into another. 
             this must be hard-coded to maintain conservation (as opposed to treated as a source term) 
           -----------------------------------------------------------------------------------------------------*/
+        if(fabs(a0)*dt_entr > 50.) {a0 *= 50./(fabs(a0)*dt_entr);}
         double abs_0 = DMAX(0,fabs(a0)*dt_entr); double slabfac = slab_averaging_function(abs_0); double e_abs_0=exp(-abs_0); if(abs_0>100.) {e_abs_0=0;}
         /* since we're taking exponentials and inverses of some large numbers here, need to be careful not to let floating point errors cause nan's */
-        if((dt_entr <= 0.)||(a0 >= 0.)||(abs_0 <= 0.)) {abs_0=0.; slabfac=e_abs_0=1.;} else {if(abs_0 < 1.e-5) {slabfac=1.-0.5*abs_0; e_abs_0 = 1.-abs_0;} else {if(abs_0 > 20.) {slabfac = 1./abs_0; e_abs_0 = 0.;}}}
+        if((dt_entr <= 0.)||(a0 >= 0.)||(abs_0 <= 0.)) {abs_0=0.; slabfac=e_abs_0=1.;} else {if(abs_0 < 1.e-5) {slabfac=1.-0.5*abs_0; e_abs_0 = 1.-abs_0;} else {if(abs_0 > 100.) {slabfac = 1./abs_0; e_abs_0 = 0.;}}}
         double e0_postabs = e0*e_abs_0, de_postabs = total_de_dt * dt_entr * slabfac, f_min = 0.01;
         if(e0_postabs+de_postabs < f_min*e0_postabs) {slabfac *= fabs((1.-f_min)*e0_postabs)/(fabs(de_postabs)+MIN_REAL_NUMBER);}
 
