@@ -1151,10 +1151,10 @@ void hydro_gradient_calc(void)
 
 #if defined(CONDUCTION_SPITZER) || defined(VISCOSITY_BRAGINSKII) || (defined(MHD_NON_IDEAL) && defined(COOLING))
             /* get the neutral fraction */
-            double ion_frac, nHeII, temperature, u, ne, nh0 = 0, mu_meanwt=1;
+            double ion_frac, nHe0, nHepp, nhp, nHeII, temperature, u, ne, nh0 = 0, mu_meanwt=1;
             ne = SphP[i].Ne;
             u = DMAX(All.MinEgySpec, SphP[i].InternalEnergy); // needs to be in code units
-	        temperature = ThermalProperties(u, SphP[i].Density*All.cf_a3inv, &ne, &nh0, &nHeII, &mu_meanwt, i);
+            temperature = ThermalProperties(u, SphP[i].Density*All.cf_a3inv, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
 #ifdef GALSF_FB_HII_HEATING
             if(SphP[i].DelayTimeHII>0) nh0=0;
 #endif 
