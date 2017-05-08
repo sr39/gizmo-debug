@@ -153,7 +153,7 @@ void HII_heating_singledomain(void)
          mionized=0.0;
          total_m_ionizable += mionizable;
          h_i2=h_i*h_i;
-         u_to_temp_fac = PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
+         u_to_temp_fac = 0.59 * PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
          uion = HIIRegion_Temp / u_to_temp_fac;
          startnode = All.MaxPart;     /* root node */
          jnearest=-1; rnearest=1.0e10; dummy=0; NITER_HIIFB=0;
