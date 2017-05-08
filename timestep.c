@@ -635,6 +635,18 @@ integertime get_timestep(int p,		/*!< particle index */
                 }
                 if(dt_rad > 1.e3*dt_courant) {dt_rad = 1.e3*dt_courant;}
                 if(dt_courant > dt_rad) {dt_rad = dt_courant;}
+#if defined(RT_CHEM_PHOTOION)
+                /* since we're allowing rather large timesteps above in special conditions, make sure this doesn't overshoot the recombination time for the opacity to 
+                    change, which can happen particularly for ionizing photons */
+                if(kf==RT_FREQ_BIN_H0)
+                {
+                    double ne_cgs = (SphP[p].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
+                    double dt_recombination = All.CourantFac * (3.3e12/ne_cgs) / (All.UnitTime_in_s / All.HubbleParam);
+                    double dt_change = 1.e10*dt; if((SphP[p].E_gamma[kf] > 0)&&(fabs(SphP[p].Dt_E_gamma[kf])>0)) {dt_change = SphP[p].E_gamma[kf] / fabs(SphP[p].Dt_E_gamma[kf]);}
+                    dt_recombination = DMAX(DMAX(dt_recombination, dt_change), dt_courant);
+                    if(dt_recombination < dt_rad) {dt_rad = dt_recombination;}
+q                }
+#endif
 #else
                 if(dt_courant < dt_rad) {dt_rad = dt_courant;}
 #endif
