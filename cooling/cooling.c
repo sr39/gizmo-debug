@@ -138,13 +138,8 @@ void do_the_cooling_for_particle(int i)
         /* set internal energy to minimum level if marked as ionized by stars */
         if(SphP[i].DelayTimeHII > 0)
         {
-            if(unew<uion)
-            {
-                unew=uion;
-                if(SphP[i].DtInternalEnergy<0) SphP[i].DtInternalEnergy=0;
-                //if(SphP[i].dInternalEnergy<0) SphP[i].dInternalEnergy=0; //manifest-indiv-timestep-debug//
-            }
-            SphP[i].Ne = 1.0 + 2.0*yhelium(i);
+            if(unew<uion) {unew=uion; if(SphP[i].DtInternalEnergy<0) SphP[i].DtInternalEnergy=0;}
+            SphP[i].Ne = 1.0 + 2.0*yhelium(i); /* fully ionized */
         }
 #endif // GALSF_FB_HII_HEATING
         
@@ -674,10 +669,10 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     bH0 = flow * BetaH0[j] + fhi * BetaH0[j + 1];
     bHep = flow * BetaHep[j] + fhi * BetaHep[j + 1];
     bff = flow * Betaff[j] + fhi * Betaff[j + 1];
-#ifdef RT_CHEM_PHOTOION
     if(target >= 0)
     {
         SphP[target].Ne = n_elec;
+#ifdef RT_CHEM_PHOTOION
         SphP[target].HI = nH0;
         SphP[target].HII = nHp;
 #ifdef RT_CHEM_PHOTOION_HE
@@ -685,8 +680,8 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
         SphP[target].HeII = nHep;
         SphP[target].HeIII = nHepp;
 #endif
-    }
 #endif
+    }
     *nH0_guess=nH0; *nHe0_guess=nHe0; *nHp_guess=nHp; *nHep_guess=nHep; *nHepp_guess=nHepp; *ne_guess=n_elec; /* write to send back */
     
     /* now check if we want to return the ionization/recombination heating/cooling rates calculated with all the above quantities */
@@ -736,6 +731,9 @@ double ThermalProperties(double u, double rho, int target, double *mu_guess, dou
     rho *= All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;	/* convert to physical cgs units */
     u *= All.UnitPressure_in_cgs / All.UnitDensity_in_cgs;
     temp = convert_u_to_temp(u, rho, target, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess);
+#ifdef GALSF_FB_HII_HEATING
+    if(target >= 0) {if(SphP[target].DelayTimeHII > 0) {SphP[target].Ne = 1.0 + 2.0*yhelium(target);}} /* fully ionized */
+#endif
     *mu_guess = get_mu(temp, rho, ne_guess, target);
     return temp;
 }

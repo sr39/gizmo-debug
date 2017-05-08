@@ -204,6 +204,7 @@ void HII_heating_singledomain(void)
                {
                    SphP[j].InternalEnergy = uion;
                    SphP[j].InternalEnergyPred = SphP[j].InternalEnergy;
+                   SphP[j].Ne = 1.0 + 2.0*yhelium(j); /* fully ionized */
                  SphP[j].DelayTimeHII = dt;
                  already_ionized = 1;
                } // if(do_ionize==1) 
@@ -234,6 +235,7 @@ void HII_heating_singledomain(void)
             {
                 SphP[j].InternalEnergy = uion;
                 SphP[j].InternalEnergyPred = SphP[j].InternalEnergy;
+                SphP[j].Ne = 1.0 + 2.0*yhelium(j); /* fully ionized */
               SphP[j].DelayTimeHII = dt;
             } // if(do_ionize==1)
             mionized += prob*m_effective;
