@@ -618,15 +618,19 @@ integertime get_timestep(int p,		/*!< particle index */
                 /* even with a fully-implicit solver, we require a CFL-like criterion on timesteps (much larger steps allowed for stability, but not accuracy) */
                 dt_courant = All.CourantFac * (L_particle*All.cf_atime) / (RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s)); /* courant-type criterion, using the reduced speed of light */
 #ifdef RT_M1
+#ifndef GALSF
                 dt_rad = dt_courant;
+#endif
                 double L_RT_diffusion = L_particle*All.cf_atime;
                 for(kf=0;kf<N_RT_FREQ_BINS;kf++)
                 {
                     double dt_rt_diffusion = dt_prefac_diffusion * L_RT_diffusion*L_RT_diffusion / (MIN_REAL_NUMBER + rt_diffusion_coefficient(p,kf));
+#ifdef GALSF
                     /* ignore particles where the radiation energy density is basically non-existant */
                     if((SphP[p].E_gamma[kf] <= MIN_REAL_NUMBER) ||
                        (SphP[p].E_gamma_Pred[kf] <= MIN_REAL_NUMBER) ||
                        (SphP[p].E_gamma[kf] < 1.e-5*P[p].Mass*SphP[p].InternalEnergy)) {dt_rt_diffusion = 1.e10 * dt;}
+#endif
                     if(dt_rt_diffusion < dt_rad) dt_rad = dt_rt_diffusion;
                 }
                 if(dt_rad > 1.e3*dt_courant) {dt_rad = 1.e3*dt_courant;}
