@@ -434,8 +434,8 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #PREVENT_PARTICLE_MERGE_SPLIT   # don't allow gas particle splitting/merging operations
 #COOLING_OPERATOR_SPLIT         # do the hydro heating/cooling in operator-split fashion from chemical/radiative. slightly more accurate when tcool >> tdyn, but much noisier when tcool << tdyn
 #PARTICLE_EXCISION              # enable dynamical excision (remove particles within some radius)
-#MERGESPLIT_HARDCODE_MAX_MASS=(1.0e4)   # manually set maximum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
-#MERGESPLIT_HARDCODE_MIN_MASS=(1.0e3)   # manually set minimum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
+#MERGESPLIT_HARDCODE_MAX_MASS=(1.0e-6)   # manually set maximum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
+#MERGESPLIT_HARDCODE_MIN_MASS=(1.0e-7)   # manually set minimum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
 
 
 #USE_MPI_IN_PLACE               # MPI debugging: makes AllGatherV compatible with MPI_IN_PLACE definitions in some MPI libraries
