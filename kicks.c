@@ -494,6 +494,7 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
 #endif
     if(dCR > dCRmax) {dCR=dCRmax;}
     SphP[i].CosmicRayEnergy += dCR;
+    if((SphP[i].CosmicRayEnergy < 0) || (isnan(SphP[i].CosmicRayEnergy))) {SphP[i].CosmicRayEnergy=0;}
     /* now need to account for the adiabatic heating/cooling of the cosmic ray fluid, here: its an ultra-relativistic fluid with gamma=4/3 */
     double d_div = (-GAMMA_COSMICRAY_MINUS1 * P[i].Particle_DivVel*All.cf_a2inv) * dt_entr;
     /* adiabatic term from Hubble expansion (needed for cosmological integrations */
