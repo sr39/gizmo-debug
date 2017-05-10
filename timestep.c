@@ -645,7 +645,7 @@ integertime get_timestep(int p,		/*!< particle index */
                     double dt_change = 1.e10*dt; if((SphP[p].E_gamma[kf] > 0)&&(fabs(SphP[p].Dt_E_gamma[kf])>0)) {dt_change = SphP[p].E_gamma[kf] / fabs(SphP[p].Dt_E_gamma[kf]);}
                     dt_recombination = DMAX(DMAX(dt_recombination, dt_change), dt_courant);
                     if(dt_recombination < dt_rad) {dt_rad = dt_recombination;}
-q                }
+                }
 #endif
 #else
                 if(dt_courant < dt_rad) {dt_rad = dt_courant;}
