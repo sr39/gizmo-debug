@@ -101,8 +101,23 @@ void apply_grain_dragforce(void)
                         double Z_grain = -DMAX( 1./(1. + sqrt(1.0e-3/tau_draine_sutin)) , 2.5*tau_draine_sutin );
                         if(isnan(Z_grain)||(Z_grain>=0)) {Z_grain=0;}
                         
-                        double grain_charge_cinv = Z_grain / grain_mass * lorentz_units;
-                        for(k=0;k<3;k++) {external_forcing[k] += grain_charge_cinv * v_cross_B[k];}
+                        /* define unit vectors and B for evolving the lorentz force */
+                        double bhat[3]={0}, bmag=0, dv[3]={0}, efield[3]={0}, efield_coeff=0;
+                        for(k=0;k<3;k++) {bhat[k]=P[i].Gas_B[k]; bmag[k]+=bhat[k]*bhat[k]; dv[k]=P[i].Vel[k]-P[i].Gas_Velocity[k];}
+                        if(bmag>0) {bmag=sqrt(bmag); for(k=0;k<3;k++) {bhat[k]/=bmag;}} else {bmag=0;}
+                        double lorentz_coeff = (0.5*dt) * bmag * Z_grain / grain_mass * lorentz_units; // multiply in full timestep //
+                        
+                        /* now apply the boris integrator */
+                        double v_m[3]={0}, v_t[3]={0}, v_p[3]={0}, vcrosst[3]={0};
+                        for(k=0;k<3;k++) {v_m[k] = dv[k] + 0.5*efield_coeff*efield[k];} // half-step from E-field
+                        /* cross-product for rotation */
+                        vcrosst[0] = v_m[1]*bhat[2] - v_m[2]*bhat[1]; vcrosst[1] = v_m[2]*bhat[0] - v_m[0]*bhat[2]; vcrosst[2] = v_m[0]*bhat[1] - v_m[1]*bhat[0];
+                        for(k=0;k<3;k++) {v_t[k] = v_m[k] + lorentz_coeff * vcrosst[k];} // first half-rotation
+                        vcrosst[0] = v_t[1]*bhat[2] - v_t[2]*bhat[1]; vcrosst[1] = v_t[2]*bhat[0] - v_t[0]*bhat[2]; vcrosst[2] = v_t[0]*bhat[1] - v_t[1]*bhat[0];
+                        for(k=0;k<3;k++) {v_p[k] = v_m[k] + (2.*lorentz_coeff/(1.+lorentz_coeff*lorentz_coeff)) * vcrosst[k];} // second half-rotation
+                        for(k=0;k<3;k++) {v_p[k] += 0.5*efield_coeff*efield[k];} // half-step from E-field
+                        /* calculate effective acceleration from discrete step in velocity */
+                        for(k=0;k<3;k++) {external_forcing[k] += (v_p[k] - dv[k]) / dt;}
                         /* note: if grains moving super-sonically with respect to gas, and charge equilibration time is much shorter than the 
                             streaming/dynamical timescales, then the charge is slightly reduced, because the ion collision rate is increased while the 
                             electron collision rate is increased less (since electrons are moving much faster, we assume the grain is still sub-sonic 
