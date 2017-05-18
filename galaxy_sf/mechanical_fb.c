@@ -735,6 +735,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
             if(beta_egycon > 20.) {psi_egycon = 1./(2.*beta_egycon);} // replace with series expansion to avoid roundoff error at high beta
             if(beta_cool > 0.5) {psi_cool = 1./(2.*beta_cool);} // for cooling limit, only need upper limit to psi, all else will use less energy
         }
+#ifdef PROTECT_FROZEN_FIRE
+        psi_egycon = psi_cool = 1;
+#endif
     }
     
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_SNE_HEATING)
