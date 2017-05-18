@@ -775,7 +775,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     double ne = SphP[pindex].Ne;
                     /* get cooling time */
                     u = SphP[pindex].InternalEnergyPred;
-                    tcool = GetCoolingTime(u, SphP[pindex].Density * All.cf_a3inv, ne, i);
+                    tcool = GetCoolingTime(u, SphP[pindex].Density * All.cf_a3inv, ne, pindex);
                     /* convert cooling time with current thermal energy to du/dt */
                     if(tcool != 0)
                         *fp++ = u / tcool;

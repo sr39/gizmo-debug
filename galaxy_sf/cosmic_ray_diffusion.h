@@ -146,6 +146,8 @@
         double q = 0.5 * c_hll * (kernel.r * All.cf_atime) / fabs(MIN_REAL_NUMBER + kappa_ij); q = (0.2 + q) / (0.2 + q + q*q); // physical
         double renormerFAC = DMIN(1.,fabs(cos_theta_face_flux*cos_theta_face_flux * q * hll_corr)); // physical
         
+        cmag *= GAMMA_COSMICRAY;
+
         /* flux-limiter to ensure flow is always down the local gradient [no 'uphill' flow] */
         double f_direct = -Face_Area_Norm * c_hll * d_scalar * renormerFAC; // simple HLL term for frame moving at 1/2 inter-particle velocity: here not limited //
         double sign_c0 = f_direct * cmag;
