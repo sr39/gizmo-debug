@@ -31,17 +31,13 @@
     /* ------------------------------------------------------------------------------------------------------------------- */
     double wt_i,wt_j;
     wt_i=V_i; wt_j=V_j;
-#ifdef PROTECT_FROZEN_FIRE
-#ifdef AGGRESSIVE_SLOPE_LIMITERS
-    wt_i=V_i; wt_j=V_j;
-#else
-#ifdef COOLING
+#if (!defined(FIRE_UNPROTECT_FROZEN) || (SLOPE_LIMITER_TOLERANCE == 0)) && (SLOPE_LIMITER_TOLERANCE != 2)
+#if defined(COOLING) || (SLOPE_LIMITER_TOLERANCE==0)
     //wt_i=wt_j = 2.*V_i*V_j / (V_i + V_j); // more conservatively, could use DMIN(V_i,V_j), but that is less accurate
     if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.25) {wt_i=wt_j=2.*V_i*V_j/(V_i+V_j);} else {wt_i=V_i; wt_j=V_j;}
 #else
     //wt_i=wt_j = (V_i*PPP[j].Hsml + V_j*local.Hsml) / (local.Hsml+PPP[j].Hsml); // should these be H, or be -effective sizes- //
     if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.50) {wt_i=wt_j=(V_i*PPP[j].Hsml+V_j*local.Hsml)/(local.Hsml+PPP[j].Hsml);} else {wt_i=V_i; wt_j=V_j;}
-#endif
 #endif
 #endif
     /* the effective gradient matrix is well-conditioned: we can safely use the consistent EOM */
@@ -84,6 +80,7 @@
         Face_Area_Norm = sqrt(Face_Area_Norm);
         for(k=0;k<3;k++) {n_unit[k] = Face_Area_Vec[k] / Face_Area_Norm;}
         
+#ifndef PROTECT_FROZEN_FIRE
         /* check if face area exceeds maximum geometric allowed limit (can occur when particles with -very- different
             Hsml interact at the edge of the kernel, must be limited to geometric max to prevent numerical instability */
         double Amax = Amax_i; // minimum of area "i" or area "j": this is "i"
@@ -96,12 +93,13 @@
             Amax = M_PI * pow((3.*V_j)/(4.*M_PI), 2./3.); // 3d Aj
 #endif
         }
+        Amax *= 2.0;
         if(Face_Area_Norm > Amax)
         {
             Face_Area_Norm = Amax; /* set the face area to the maximum limit, and reset the face vector as well */
             for(k=0;k<3;k++) {Face_Area_Vec[k] = n_unit[k] * Face_Area_Norm;} /* direction is preserved, just area changes */
         }
-
+#endif
 
         /* --------------------------------------------------------------------------------- */
         /* extrapolate the conserved quantities to the interaction face between the particles */
@@ -219,7 +217,7 @@
 #ifdef EOS_GENERAL
         press_tot_limiter *= 2.0;
 #endif
-#ifdef AGGRESSIVE_SLOPE_LIMITERS
+#if (SLOPE_LIMITER_TOLERANCE==2)
         press_tot_limiter *= 100.0; // large number
 #endif
         if(recon_mode==0) {press_tot_limiter = DMAX(press_tot_limiter , DMAX(DMAX(local.Pressure,SphP[j].Pressure),2.*DMAX(local.Density,SphP[j].Density)*v2_approach));}
@@ -305,7 +303,7 @@
             for(k=0;k<3;k++) {Fluxes.v[k] = facenorm_pm * n_unit[k];} /* total momentum flux */
             Fluxes.p = facenorm_pm * (Riemann_out.S_M + face_area_dot_vel); // default: total energy flux = v_frame.dot.mom_flux //
             
-#ifndef AGGRESSIVE_SLOPE_LIMITERS
+#if (SLOPE_LIMITER_TOLERANCE < 2)
             /* for MFM, do the face correction for adiabatic flows here */
             int use_entropic_energy_equation = 0;
             double du_new = 0;
@@ -388,7 +386,7 @@
 #endif
 #endif // MAGNETIC
 
-#if defined(HYDRO_MESHLESS_FINITE_MASS) && !defined(AGGRESSIVE_SLOPE_LIMITERS)
+#if defined(HYDRO_MESHLESS_FINITE_MASS) && (SLOPE_LIMITER_TOLERANCE < 2)
             /* for MFM, do the face correction for adiabatic flows here */
             double SM_over_ceff = fabs(Riemann_out.S_M) / DMIN(kernel.sound_i,kernel.sound_j); // for now use sound speed here (more conservative) vs magnetosonic speed //
             /* if SM is sufficiently large, we do nothing to the equations */

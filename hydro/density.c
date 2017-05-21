@@ -7,10 +7,10 @@
 #include "../allvars.h"
 #include "../proto.h"
 #include "../kernel.h"
-#ifdef OMP_NUM_THREADS
+#ifdef PTHREADS_NUM_THREADS
 #include <pthread.h>
 #endif
-#ifdef OMP_NUM_THREADS
+#ifdef PTHREADS_NUM_THREADS
 extern pthread_mutex_t mutex_nexport;
 extern pthread_mutex_t mutex_partnodedrift;
 #define LOCK_NEXPORT     pthread_mutex_lock(&mutex_nexport);
@@ -278,15 +278,11 @@ void density(void)
 
   /* allocate buffers to arrange communication */
   size_t MyBufferSize = All.BufferSize;
-  All.BunchSize =
-    (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
+  All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
 					     sizeof(struct densdata_in) + sizeof(struct densdata_out) +
-					     sizemax(sizeof(struct densdata_in),
-						     sizeof(struct densdata_out))));
-  DataIndexTable =
-    (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
-  DataNodeList =
-    (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
+					     sizemax(sizeof(struct densdata_in),sizeof(struct densdata_out))));
+  DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
+  DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
 
   t0 = my_second();
 
@@ -309,10 +305,10 @@ void density(void)
 
 	  tstart = my_second();
 
-#ifdef OMP_NUM_THREADS
-	  pthread_t mythreads[OMP_NUM_THREADS - 1];
+#ifdef PTHREADS_NUM_THREADS
+	  pthread_t mythreads[PTHREADS_NUM_THREADS - 1];
 
-	  int threadid[OMP_NUM_THREADS - 1];
+	  int threadid[PTHREADS_NUM_THREADS - 1];
 
 	  pthread_attr_t attr;
 
@@ -323,7 +319,7 @@ void density(void)
 
 	  TimerFlag = 0;
 
-	  for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+	  for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
 	    {
 	      threadid[j] = j + 1;
 	      pthread_create(&mythreads[j], &attr, density_evaluate_primary, &threadid[j]);
@@ -341,8 +337,8 @@ void density(void)
 	    density_evaluate_primary(&mainthreadid);	/* do local particles and prepare export list */
 	  }
 
-#ifdef OMP_NUM_THREADS
-	  for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+#ifdef PTHREADS_NUM_THREADS
+	  for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
 	    pthread_join(mythreads[j], NULL);
 #endif
 
@@ -488,8 +484,8 @@ void density(void)
 
 	  NextJ = 0;
 
-#ifdef OMP_NUM_THREADS
-	  for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+#ifdef PTHREADS_NUM_THREADS
+	  for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
 	    pthread_create(&mythreads[j], &attr, density_evaluate_secondary, &threadid[j]);
 #endif
 #ifdef _OPENMP
@@ -504,8 +500,8 @@ void density(void)
 	    density_evaluate_secondary(&mainthreadid);
 	  }
 
-#ifdef OMP_NUM_THREADS
-	  for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+#ifdef PTHREADS_NUM_THREADS
+	  for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
 	    pthread_join(mythreads[j], NULL);
 
 	  pthread_mutex_destroy(&mutex_partnodedrift);

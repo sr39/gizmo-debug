@@ -47,7 +47,6 @@ void begrun(void)
 #endif
   if(ThisTask == 0)
     {
-      printf("\nThis is GIZMO, version %s.\n", GIZMO_VERSION);
       printf("\nRunning on %d MPI tasks.\n", NTask);
 #ifdef _OPENMP
 #pragma omp parallel private(tid)
@@ -61,9 +60,6 @@ void begrun(void)
 	 */
       }
 #endif
-      printf("\nCode was compiled with settings:\n\n");
-
-      output_compile_time_options();
 
       printf("Size of particle structure       %d  [bytes]\n", (int) sizeof(struct particle_data));
       printf("\nSize of sph particle structure   %d  [bytes]\n", (int) sizeof(struct sph_particle_data));
@@ -288,7 +284,7 @@ void begrun(void)
 #ifdef GALSF_FB_HII_HEATING
         All.HIIRegion_fLum_Coupled = all.HIIRegion_fLum_Coupled;
 #endif
-#ifdef RT_FIRE
+#ifdef RT_LEBRON
         All.PhotonMomentum_Coupled_Fraction = all.PhotonMomentum_Coupled_Fraction;
 #endif
 #ifdef GALSF_FB_RT_PHOTONMOMENTUM
@@ -470,7 +466,7 @@ void set_units(void)
   /* for historical reasons, we need to convert to "All.MaxSfrTimescale", defined as the SF timescale in code units at the critical physical
      density given above. use the dimensionless SfEffPerFreeFall (which has been read in) to calculate this. This must be done -BEFORE- calling set_units_sfr) */
 #ifndef GALSF_EFFECTIVE_EQS
-  All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3.*M_PI / (32. * All.G * (All.CritPhysDensity * meanweight * 1.67e-24 / (All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam))));
+  All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3.*M_PI / (32. * All.G * (All.CritPhysDensity * meanweight * PROTONMASS / (All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam))));
 #endif
   set_units_sfr();
 #endif
@@ -1054,7 +1050,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
-#if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
+#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
         strcpy(tag[nt],"InitMetallicity");
         addr[nt] = &All.InitMetallicityinSolar;
         id[nt++] = REAL;
@@ -1076,7 +1072,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
-#ifdef RT_FIRE
+#ifdef RT_LEBRON
         strcpy(tag[nt], "PhotonMomentum_Coupled_Fraction");
         addr[nt] = &All.PhotonMomentum_Coupled_Fraction;
         id[nt++] = REAL;
@@ -2118,10 +2114,10 @@ void read_parameter_file(char *fname)
     
     
     
-#ifdef OMP_NUM_THREADS
+#ifdef PTHREADS_NUM_THREADS
 #ifdef _OPENMP
     if(ThisTask == 0)
-        printf("OMP_NUM_THREADS is incompatible with enabling OpenMP in the compiler options \n");
+        printf("PTHREADS_NUM_THREADS is incompatible with enabling OpenMP in the compiler options \n");
     endrun(0);
 #endif
 #endif
