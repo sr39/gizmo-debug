@@ -60,7 +60,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##-----------------------------------------------------------------------------------------------------
 #---------------------------------------- Gas Equations-of-State
 #EOS_GAMMA=(5.0/3.0)            # Polytropic Index of Gas (for an ideal gas law): if not set and no other (more complex) EOS set, defaults to GAMMA=5/3
-#EOS_HELMHOLTZ                  # Use Timmes & Swesty 2000 EOS (for e.g. stellar or degenerate equations of state; developed by D. Radice; use requires explicit pre-approval)
+#EOS_HELMHOLTZ                  # Use Timmes & Swesty 2000 EOS (for e.g. stellar or degenerate equations of state)
 ## -----------------------------------------------------------------------------------------------------
 # --------------------------------- Magneto-Hydrodynamics
 # ---------------------------------  these modules are public, but if used, the user should also cite the MHD-specific GIZMO methods paper
@@ -111,11 +111,23 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #---------------------------------------- Cosmic Rays
 #---------------------------------------- (this is developed by P. Hopkins as part of the FIRE package: the same FIRE authorship & approval policies apply, see below)
 #COSMIC_RAYS                    # two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anisotropic diffusion, streaming, injection by SNe
+#COSMIC_RAYS_M1=(500.)          # solve the CR transport in the M1 limit [second-order expansion of the collisionless boltzmann eqn]; value here is the streaming speed in code units
 #COSMIC_RAYS_DISABLE_STREAMING  # turn off CR streaming (propagation is purely advective+diffusion; warning: this can severely under-estimate CR losses to Alfven waves)
 #COSMIC_RAYS_DISABLE_DIFFUSION  # turn off CR diffusion (leaves streaming intact, simply disables 'microscopic+turbulent' CR diffusion terms)
 #COSMIC_RAYS_DISABLE_COOLING    # turn off CR heating/cooling interactions with gas (catastrophic losses, hadronic interactions, etc; only adiabatic PdV work terms remain)
 #COSMIC_RAYS_DIFFUSION_CONSTANT # replaces physical CR diffusion with constant coefficient (equal to value of CosmicRayDiffusionCoeff in code units); turn off streaming to make this the ONLY transport
 ##-----------------------------------------------------------------------------------------------------
+####################################################################################################
+
+
+
+####################################################################################################
+# ------------------------------------- Driven turbulence (for turbulence tests, large-eddy sims)
+# ------------------------------- users of these routines should cite Bauer & Springel 2012, MNRAS, 423, 3102, and thank A. Bauer for providing the core algorithms
+####################################################################################################
+#TURB_DRIVING                   # turns on turbulent driving/stirring. see begrun for parameters that must be set
+#POWERSPEC_GRID=128             # activates on-the-fly calculation of the turbulent velocity, vorticity, and smoothed-velocity power spectra
+#ADJ_BOX_POWERSPEC              # compiles in a code module that allows via restart-flag 6 the calculation of a gas velocity power spectrum of a snapshot with an adjustable box (user defined center and size)
 ####################################################################################################
 
 
@@ -186,8 +198,24 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 
 
 ####################################################################################################
-#------------------ Galaxy formation / Star formation / Supermassive BH Models (with feedback)
+# --------------------------------------- On the fly FOF groupfinder
+# ----------------- This is originally developed as part of GADGET-3 by V. Springel
 ####################################################################################################
+##-----------------------------------------------------------------------------------------------------
+#-------------------------------------- Friends-of-friends on-the-fly finder options (source in fof.c)
+##-----------------------------------------------------------------------------------------------------
+#FOF                                # enable FoF searching on-the-fly and outputs (set parameter LINKLENGTH=x to control LinkingLength; default=0.2)
+#FOF_PRIMARY_LINK_TYPES=2           # 2^type for the primary dark matter type
+#FOF_SECONDARY_LINK_TYPES=1+16+32   # 2^type for the types linked to nearest primaries
+#DENSITY_SPLIT_BY_TYPE=1+2+16+32    # 2^type for whch the densities should be calculated seperately
+#FOF_GROUP_MIN_LEN=32               # default is 32
+####################################################################################################
+
+
+
+####################################################################################################-
+#------------------ Galaxy formation / Star formation / Supermassive BH Models (with feedback)
+####################################################################################################-
 ##-----------------------------------------------------------------------------------------------------
 #-------------------------------------- Galaxy formation and galactic star formation
 ##-----------------------------------------------------------------------------------------------------
@@ -226,7 +254,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #GALSF_FB_GASRETURN              # Paul Torrey's addition for stochastic gas return (modified for continuous return)
 #GALSF_FB_HII_HEATING            # gas within HII regions around young stars is photo-heated to 10^4 K
 #GALSF_FB_SNE_HEATING=1          # time-dependent explosions from SNe (I & II) in shockwave radii around stars (values: 0=force-gridded in xyz (WRONG-for testing only!); 1=tensor-symmetrized (momentum-conserving; USE ME); 2=no tensor re-normalization [non-conservative!]
-#GALSF_FB_RPROCESS_ENRICHMENT=6  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 6=extended model)
+#GALSF_FB_RPROCESS_ENRICHMENT=4  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model)
 #GALSF_FB_RT_PHOTONMOMENTUM      # continuous acceleration from starlight (uses luminosity tree)
 #GALSF_FB_LOCAL_UV_HEATING       # use local estimate of spectral information for photoionization and photoelectric heating
 #GALSF_FB_RPWIND_LOCAL           # turn on local radiation pressure coupling to gas
@@ -240,6 +268,8 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##-----------------------------------------------------------------------------------------------------
 
 
+
+####################################################################################################-
 ##-----------------------------------------------------------------------------------------------------
 #-------------------------------------- SMBH/AGN stuff; also heavily expanded with PFH models
 ##-----------------------------------------------------------------------------------------------------
@@ -249,7 +279,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #BLACK_HOLES                    # enables Black-Holes (master switch)
 #------ seed models
 #BH_HOST_TO_SEED_RATIO=1000     # Min FOF stellar mass for seeding is BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass
-                                #   Requires FOF with linking type including star particles (MinFoFMassForNewSeed and massDMpart in the param file are ignored)
+                                #-  Requires FOF with linking type including star particles (MinFoFMassForNewSeed and massDMpart in the param file are ignored)
 #BH_SEED_FROM_STAR_PARTICLE     # star particle on FOF potential minimum gets converted into a BH (default is densest gas particle)
 #BH_POPIII_SEEDS                # BHs seeded on-the-fly from dense, low-metallicity gas
 #------ accretion models/options
@@ -258,7 +288,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #BH_GRAVCAPTURE_GAS             # accretion determined only by resolved gravitational capture by the BH (for gas particles)
 #BH_GRAVCAPTURE_NONGAS          # as BH_GRAVCAPTURE_GAS, but applies to non-gas particles (can be enabled with other accretion models for gas)
 #BH_GRAVACCRETION=0             # Gravitational torque accretion estimator from Hopkins & Quataert (2011):
-                                #   [=0] for kinematic B/D decomposition as in Angles-Alcazar et al. (default) and [=1] for approximate f_disk evaluation
+                                #-  [=0] for kinematic B/D decomposition as in Angles-Alcazar et al. (default) and [=1] for approximate f_disk evaluation
 ##BH_BONDI=0                    # Bondi-Hoyle style accretion model: 0=default (with velocity); 1=dont use gas velocity with sound speed; 2=variable-alpha tweak (Booth & Schaye 2009)
 #BH_SUBGRIDBHVARIABILITY        # model variability below resolved dynamical time for BH
 #BH_CALC_DISTANCES              # calculate distances for all particles to closest BH for, e.g., refinement
@@ -271,6 +301,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ##BH_BAL_KICK                   # do BAL winds with stochastic particle kicks at specified velocity (instead of continuous wind solution - requires BH_SWALLOWGAS - )
 ##BH_BAL_KICK_COLLIMATED        # winds follow the direction of angular momentum within Kernel (only for BH_BAL_KICK winds)
 ##BH_BAL_KICK_MOMENTUM_FLUX=10  # increase the effective mass-loading of BAL winds to reach the desired momentum flux in units of L_bol/c (needs BH_BAL_KICK)
+##BH_WIND_SPAWN
 #------------ use the BH_DRAG options only in cosmological cases where M_BH is not >> other particle masses
 #BH_DYNFRICTION=0               # apply dynamical friction force to the BHs when m_bh not >> other particle mass: 0=[DM+stars+gas] (default); 1=[DM+stars]; 2=[stars]
 ##BH_DYNFRICTION_INCREASE=10    # artificially increase dynamic friction by this factor (requires BH_DYNFRICTION)
@@ -283,6 +314,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #BH_REPOSITION_ON_POTMIN=0      # reposition black hole on potential minimum (requires EVALPOTENTIAL). [set =1 to "jump" onto STARS only]
 ##DETACH_BLACK_HOLES            # Insert an independent data structure for BHs (currently explicitly depends on SEPARATE_STELLARDOMAINDECOMP)
 ##BH_SEED_STAR_MASS_FRACTION=0.02 # minimum star mass fraction for BH seeding
+##BH_SEED_GROWTH_TESTS          # Currently testing options for BH seeding 
 ##-----------------------------------------------------------------------------------------------------
 #-------------------------------------- AGN-Bubble feedback (D. Sijacki)
 #-------------------------------- use of these routines requires explicit pre-approval by developer D. Sijacki
@@ -292,24 +324,60 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #BH_BUBBLES                     # calculate bubble energy directly from the black hole accretion rate
 #UNIFIED_FEEDBACK               # activates BH_THERMALFEEDBACK at high Mdot and BH_BUBBLES FEEDBACK al low Mdot
 ##-----------------------------------------------------------------------------------------------------
-
-####################################################################################################
-
+####################################################################################################-
 
 
 
+############################################################################################################################-
+##-----------------------------------------------------------------------------------------------------
+#-------------------------------------- Star formation with -individual- stars [sink particles]: from PFH [proprietary development with Matt Orr and David Guszejnov; modules not to be used without authors permission]
+##-----------------------------------------------------------------------------------------------------
+#SINGLE_STAR_FORMATION          # master switch for single star formation model: sink particles representing -individual- stars
+#SINGLE_STAR_ACCRETION=3        # proto-stellar accretion: 0=grav capture only; 1+=alpha-disk accretion onto protostar; 2+=bondi accretion of diffuse gas; 3+=sub-grid variability
+#SINGLE_STAR_FB_HEATING         # proto-stellar heating: luminosity determined by BlackHoleRadiativeEfficiency (typical ~5e-7)
+#SINGLE_STAR_FB_JETS            # protostellar jets: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow
+#SINGLE_STAR_PROMOTION          # proto-stars become ZAMS stars at end of pre-main sequence lifetime. FIRE feedback modules kick in, but using appropriate luminosities and temperatures for each
+############################################################################################################################-
 
-####################################################################################################
-#-------------------------------------- Driven turbulence (for turbulence tests, large-eddy sims)
-#-------------------------------- users of these routines should cite Bauer & Springel 2012, MNRAS, 423, 3102, and thank A. Bauer for providing the core algorithms
-####################################################################################################
-#TURB_DRIVING                   # turns on turbulent driving/stirring. see begrun for parameters that must be set
-#POWERSPEC_GRID=128             # activates on-the-fly calculation of the turbulent velocity, vorticity, and smoothed-velocity power spectra
-#ADJ_BOX_POWERSPEC              # compiles in a code module that allows via restart-flag 6 the calculation of a gas velocity power spectrum of a snapshot with an adjustable box (user defined center and size)
-####################################################################################################
 
 
-
+############################################################################################################################-
+#--------------------------------------- Radiative Transfer & Radiation Hydrodynamics:
+#--------------------------------------------- modules developed by PFH & David Khatami: not for use without authors permission
+############################################################################################################################-
+#--------------------- methods for calculating photon propagation (one, and only one, of these MUST be on for RT)
+#RT_LEBRON                              # RT solved using the LEBRON approximation (locally-extincted background radiation in optically-thin networks; default in the FIRE simulations)
+#RT_OTVET                               # RT solved using the OTVET approximation (optically thin Eddington tensor, but interpolated to thick when appropriate)
+#RT_M1                                  # RT solved using the M1 approximation (solve fluxes and tensors with M1 closure; gives better shadowing; currently only compatible with explicit diffusion solver)
+#RT_FLUXLIMITEDDIFFUSION                # RT solved using the flux-limited diffusion approximation (constant, always-isotropic Eddington tensor)
+#--------------------- solvers (numerical) --------------------------------------------------------
+#RT_SPEEDOFLIGHT_REDUCTION=1            # set to a number <1 to use the 'reduced speed of light' approximation for photon propagation (C_eff=C_true*RT_SPEEDOFLIGHT_REDUCTION)
+#RT_DIFFUSION_IMPLICIT                  # solve the diffusion part of the RT equations (if needed) implicitly with Conjugate Gradient iteration (Petkova+Springel): less accurate and only works with some methods, but allows larger timesteps [otherwise more accurate explicit used]
+#--------------------- physics: wavelengths+coupled RT-chemistry networks -----------------------------------
+#RT_SOURCES=1+16+32                     # source list for ionizing photons given by bitflag (1=2^0=gas,16=2^4=new stars,32=2^5=BH)
+#RT_CHEM_PHOTOION=2                     # ionizing photons: 1=H-only [single-band], 2=H+He [four-band]
+#RT_XRAY=3                              # x-rays: 1=soft (0.5-2 keV), 2=hard (>2 keV), 3=soft+hard; used for Compton-heating
+#RT_INFRARED                            # infrared: photons absorbed in other bands are down-graded to IR: IR radiation + dust + gas temperatures evolved independently
+#RT_PHOTOELECTRIC                       # far-uv (8-13.6eV): track photo-electric heating photons + their dust interactions
+#RT_LYMAN_WERNER                        # specific lyman-werner [narrow H2 dissociating] band
+#RT_OPTICAL_NIR                         # optical+near-ir: 3600 Angstrom-3 micron (where direct stellar emission dominates)
+#RT_INFRARED                            # IR radiative transfer: follows IR as a gray body with individually evolved dust, gas, and radiation temperatures
+#--------------------- radiation pressure options -------------------------------------------------
+#RT_DISABLE_RAD_PRESSURE                # turn off radiation pressure forces (included by default)
+#RT_RAD_PRESSURE_OUTPUT                 # print radiation pressure to file (requires some extra variables to save it)
+##-----------------------------------------------------------------------------------------------------
+#------------ test-problem, deprecated, or de-bugging functions
+##-----------------------------------------------------------------------------------------------------
+#RT_NOGRAVITY                           # turn off gravity: if using an RT method that needs the gravity tree (FIRE, OTVET), use this -instead- of NOGRAVITY to safely turn off gravitational forces
+#RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR # when RT_DIFFUSION_CG is enabled, modifies the Eddington tensor to the fully anisotropic version (less stable CG iteration)
+#RT_SEPARATELY_TRACK_LUMPOS             # keep luminosity vs. mass positions separate in tree (useful if running in tree-only mode)
+#RT_DISABLE_FLUXLIMITER                 # removes the flux-limiter from the diffusion operations (default is to include it when using the relevant approximations)
+#RT_HYDROGEN_GAS_ONLY                   # sets hydrogen fraction to 1.0 (used for certain idealized chemistry calculations)
+#RT_COOLING_PHOTOHEATING_OLDFORMAT      # includes photoheating and cooling (using RT information), doing just the photo-heating [for more general cooling physics, enable COOLING]
+#RT_FIRE_FIX_SPECTRAL_SHAPE             # enable with GALSF_FB_RT_PHOTONMOMENTUM to use a fixed SED shape set in parameterfile for all incident fluxes
+#RT_DISABLE_UV_BACKGROUND               # disable extenal UV background in cooling functions (to isolate pure effects of local RT, or if simulating the background directly)
+#RT_INJECT_PHOTONS_DISCRETELY           # do photon injection in discrete packets, instead of sharing a continuous source function. works better with adaptive timestepping (default with GALSF)
+####################################################################################################-
 
 
 
@@ -317,7 +385,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 # --------------------------------------- Multi-Threading (parallelization) options
 ####################################################################################################
 #OPENMP=2                       # Masterswitch for explicit OpenMP implementation
-#OMP_NUM_THREADS=4              # custom PTHREADs implementation (don't enable with OPENMP)
+#PTHREADS_NUM_THREADS=4         # custom PTHREADs implementation (don't enable with OPENMP)
 ####################################################################################################
 
 
@@ -352,6 +420,7 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 ####################################################################################################
 #DEVELOPER_MODE                 # allows you to modify various numerical parameters (courant factor, etc) at run-time
 #EOS_ENFORCE_ADIABAT=(1.0)      # if set, this forces gas to lie -exactly- along the adiabat P=EOS_ENFORCE_ADIABAT*(rho^GAMMA)
+#SLOPE_LIMITER_TOLERANCE=1      # sets the slope-limiters used. higher=more aggressive (less diffusive, but less stable). 1=default. 0=conservative. use on problems where sharp density contrasts in poor particle arrangement may cause errors. 2=same as AGGRESSIVE_SLOPE_LIMITERS below
 #AGGRESSIVE_SLOPE_LIMITERS      # use the original GIZMO paper (more aggressive) slope-limiters. more accurate for smooth problems, but
                                 # these can introduce numerical instability in problems with poorly-resolved large noise or density contrasts (e.g. multi-phase, self-gravitating flows)
 #ENERGY_ENTROPY_SWITCH_IS_ACTIVE # enable energy-entropy switch as described in GIZMO methods paper. This can greatly improve performance on some problems where the
@@ -365,6 +434,8 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #PREVENT_PARTICLE_MERGE_SPLIT   # don't allow gas particle splitting/merging operations
 #COOLING_OPERATOR_SPLIT         # do the hydro heating/cooling in operator-split fashion from chemical/radiative. slightly more accurate when tcool >> tdyn, but much noisier when tcool << tdyn
 #PARTICLE_EXCISION              # enable dynamical excision (remove particles within some radius)
+#MERGESPLIT_HARDCODE_MAX_MASS=(1.0e-6)   # manually set maximum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
+#MERGESPLIT_HARDCODE_MIN_MASS=(1.0e-7)   # manually set minimum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
 
 
 #USE_MPI_IN_PLACE               # MPI debugging: makes AllGatherV compatible with MPI_IN_PLACE definitions in some MPI libraries
@@ -384,131 +455,63 @@ HAVE_HDF5						# needed when HDF5 I/O support is desired
 #MHD_ALTERNATIVE_LEAPFROG_SCHEME # use alternative leapfrog where magnetic fields are treated like potential/positions (per Federico Stasyszyn's suggestion): still testing
 #FREEZE_HYDRO                   # zeros all fluxes from RP and doesn't let particles move (for testing additional physics layers)
 #SUPER_TIMESTEP_DIFFUSION       # use super-timestepping to accelerate integration of diffusion operators [for testing or if there are stability concerns]
+#ALLOW_IMBALANCED_GASPARTICLELOAD # increases All.MaxPartSph to All.MaxPart: can allow better load-balancing in some cases, but uses more memory. But use me if you run into errors where it can't fit the domain (where you would increase PartAllocFac, but can't for some reason)
 ####################################################################################################
 
 
 
 
 
-####################################################################################################
-####################################################################################################
-##
-## LEGACY CODE & PARTIALLY-IMPLEMENTED FEATURES: BEWARE EVERYTHING BELOW THIS LINE !!!
-##
-####################################################################################################
-####################################################################################################
+####################################################################################################-
+####################################################################################################-
+##-
+##- LEGACY CODE & PARTIALLY-IMPLEMENTED FEATURES: BEWARE EVERYTHING BELOW THIS LINE !!!
+##-
+####################################################################################################-
+####################################################################################################-
 
 
-####################################################################################################
-#---------------------------------------- On the fly FOF groupfinder
+####################################################################################################-
+#---------------------------------------- Subhalo on-the-fly finder options (needs "subfind" source code)
 #------------------ This is originally developed as part of GADGET-3 (SUBFIND) by V. Springel
 #------------------ Use of these modules follows the GADGET-3 policies described above
-####################################################################################################
-##-----------------------------------------------------------------------------------------------------
-#-------------------------------------- Friends-of-friends on-the-fly finder options (source in fof.c)
-##-----------------------------------------------------------------------------------------------------
-#FOF                                # enable FoF searching on-the-fly and outputs
-#LINKLENGTH=0.16                    # Linkinglength for FoF (default=0.2)
-#FOF_PRIMARY_LINK_TYPES=2           # 2^type for the primary dark matter type
-#FOF_SECONDARY_LINK_TYPES=1+16+32   # 2^type for the types linked to nearest primaries
-#DENSITY_SPLIT_BY_TYPE=1+2+16+32    # 2^type for whch the densities should be calculated seperately
-#FOF_GROUP_MIN_LEN=32               # default is 32
-#ORDER_SNAPSHOTS_BY_ID              # order particles in snapshots by particle IDs (only works for simulations with NO GAS)
-#KD_CHOOSE_LINKING_LENGTH           # alternative way to estimate the linking length
-##-----------------------------------------------------------------------------------------------------
-#-------------------------------------- Subhalo on-the-fly finder options (needs "subfind" source code)
-##-----------------------------------------------------------------------------------------------------
-#SUBFIND                            # enables substructure finder
-#MAX_NGB_CHECK=3                    # Max numbers of neighbours for sattlepoint detection (default = 2)
-#SAVE_MASS_TAB                      # Saves the an additional array with the masses of the different components
-#SUBFIND_SAVE_PARTICLELISTS         # Saves also phase-space and type variables parallel to IDs
-#SO_VEL_DISPERSIONS                 # computes velocity dispersions for as part of FOF SO-properties
-#ONLY_PRODUCE_HSML_FILES            # only carries out density estimate
-#SAVE_HSML_IN_IC_ORDER              # will store the hsml-values in the order of the particles in the IC file
-#KEEP_HSML_AS_GUESS                 # keep using hsml for gas particles in subfind_density
-#NO_GAS_CLOUDS                      # Do not accept pure gaseous substructures
-#WRITE_SUB_IN_SNAP_FORMAT           # Save subfind results in snap format
-#DUSTATT=11                         # Includes dust attenuation into the luminosity calculation (using 11 radial bins)
-#OBSERVER_FRAME                     # If defined, use CB07 Observer Frame Luminosities, otherwise CB07 Rest Frame Luminosities
-#SO_BAR_INFO                        # Adds temperature, Lx, bfrac, etc to Groups
-#SUBFIND_COUNT_BIG_HALOS=1e4        # Adds extra blocks for Halos with M_TopHat > SUBFIND_COUNT_BIG_HALOS
-#KD_CHOOSE_PSUBFIND_LIMIT           # Increases the limit for the parallel subfind to the maximum possible
-#KD_ALTERNATIVE_GROUP_SORT          # Alternative way to sort the Groups/SubGroupe before writing
-#SUBFIND_READ_FOF
-#SUBFIND_COLLECTIVE_STAGE1
-#SUBFIND_COLLECTIVE_STAGE2
-#SUBFIND_ALTERNATIVE_COLLECTIVE
-#SUBFIND_RESHUFFLE_CATALOGUE
-#SUBFIND_RESHUFFLE_AND_POTENTIAL    #needs -DSUBFIND_RESHUFFLE_CATALOGUE and COMPUTE_POTENTIAL_ENERGY
-#SUBFIND_DENSITY_AND_POTENTIAL      #only calculated density and potential and write them into snapshot
-####################################################################################################
+####################################################################################################-
+#SUBFIND                            #- enables substructure finder
+#MAX_NGB_CHECK=3                    #- Max numbers of neighbours for sattlepoint detection (default = 2)
+#SAVE_MASS_TAB                      #- Saves the an additional array with the masses of the different components
+#SUBFIND_SAVE_PARTICLELISTS         #- Saves also phase-space and type variables parallel to IDs
+#SO_VEL_DISPERSIONS                 #- computes velocity dispersions for as part of FOF SO-properties
+#ONLY_PRODUCE_HSML_FILES            #- only carries out density estimate
+#SAVE_HSML_IN_IC_ORDER              #- will store the hsml-values in the order of the particles in the IC file
+#KEEP_HSML_AS_GUESS                 #- keep using hsml for gas particles in subfind_density
+#NO_GAS_CLOUDS                      #- Do not accept pure gaseous substructures
+#WRITE_SUB_IN_SNAP_FORMAT           #- Save subfind results in snap format
+#DUSTATT=11                         #- Includes dust attenuation into the luminosity calculation (using 11 radial bins)
+#OBSERVER_FRAME                     #- If defined, use CB07 Observer Frame Luminosities, otherwise CB07 Rest Frame Luminosities
+#SO_BAR_INFO                        #- Adds temperature, Lx, bfrac, etc to Groups
+#SUBFIND_COUNT_BIG_HALOS=1e4        #- Adds extra blocks for Halos with M_TopHat > SUBFIND_COUNT_BIG_HALOS
+#KD_CHOOSE_PSUBFIND_LIMIT           #- Increases the limit for the parallel subfind to the maximum possible
+#KD_ALTERNATIVE_GROUP_SORT          #- Alternative way to sort the Groups/SubGroupe before writing
+#SUBFIND_READ_FOF                   #-
+#SUBFIND_COLLECTIVE_STAGE1          #-
+#SUBFIND_COLLECTIVE_STAGE2          #-
+#SUBFIND_ALTERNATIVE_COLLECTIVE     #-
+#SUBFIND_RESHUFFLE_CATALOGUE        #-
+#SUBFIND_RESHUFFLE_AND_POTENTIAL    #- needs -DSUBFIND_RESHUFFLE_CATALOGUE and COMPUTE_POTENTIAL_ENERGY
+#SUBFIND_DENSITY_AND_POTENTIAL      #- only calculated density and potential and write them into snapshot
+####################################################################################################-
 
 
 
-
-############################################################################################################################
-##-----------------------------------------------------------------------------------------------------
-#-------------------------------------- Star formation with -individual- stars [sink particles]: from PFH [proprietary development with Matt Orr and David Guszejnov; modules not to be used without authors permission]
-##-----------------------------------------------------------------------------------------------------
-#SINGLE_STAR_FORMATION          # master switch for single star formation model: sink particles representing -individual- stars
-#SINGLE_STAR_ACCRETION=3        # proto-stellar accretion: 0=grav capture only; 1+=alpha-disk accretion onto protostar; 2+=bondi accretion of diffuse gas; 3+=sub-grid variability
-#SINGLE_STAR_FB_HEATING         # proto-stellar heating: luminosity determined by BlackHoleRadiativeEfficiency (typical ~5e-7)
-#SINGLE_STAR_FB_JETS            # protostellar jets: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow
-#SINGLE_STAR_PROMOTION          # proto-stars become ZAMS stars at end of pre-main sequence lifetime. FIRE feedback modules kick in, but using appropriate luminosities and temperatures for each
-############################################################################################################################
-
-
-
-
-############################################################################################################################
-#--------------------------------------- Radiative Transfer & Radiation Hydrodynamics:
-#--------------------------------------------- modules developed by David Khatami: not for use without authors permission
-############################################################################################################################
-#--------------------- methods for calculating photon propagation (one of these MUST be on for RT)
-#RT_FIRE                                # RT solved using the FIRE (local extinction with the Sobolev approximation at source and absorption points)
-#RT_OTVET                               # RT solved using the OTVET approximation (optically thin Eddington tensor, but interpolated to thick when appropriate)
-#RT_M1                                  # RT solved using the M1 approximation (solve fluxes and tensors with M1 closure; gives better shadowing; currently only compatible with explicit diffusion solver)
-#RT_FLUXLIMITEDDIFFUSION                # RT solved using the flux-limited diffusion approximation (constant, always-isotropic Eddington tensor)
-#--------------------- solvers (numerical) --------------------------------------------------------
-#RT_SPEEDOFLIGHT_REDUCTION=1            # set to a number <1 to use the 'reduced speed of light' approximation for photon propagation (C_eff=C_true*RT_SPEEDOFLIGHT_REDUCTION)
-#RT_DIFFUSION_IMPLICIT                  # solve the diffusion part of the RT equations (if needed) implicitly with Conjugate Gradient iteration (Petkova+Springel): less accurate and only works with some methods, but allows larger timesteps [otherwise more accurate explicit used]
-#--------------------- physics: wavelengths+coupled RT-chemistry networks -----------------------------------
-#RT_SOURCES=1+16+32                     # source list for ionizing photons given by bitflag (1=2^0=gas,16=2^4=new stars,32=2^5=BH)
-#RT_CHEM_PHOTOION=2                     # ionizing photons: 1=H-only [single-band], 2=H+He [four-band]
-#RT_XRAY=3                              # x-rays: 1=soft (0.5-2 keV), 2=hard (>2 keV), 3=soft+hard; used for Compton-heating
-#RT_INFRARED                            # infrared: photons absorbed in other bands are down-graded to IR: IR radiation + dust + gas temperatures evolved independently
-#RT_PHOTOELECTRIC                       # far-uv (8-13.6eV): track photo-electric heating photons + their dust interactions 
-#RT_OPTICAL_NIR                         # optical+near-ir: 3600 Angstrom-3 micron (where direct stellar emission dominates) 
-#--------------------- radiation pressure options -------------------------------------------------
-#RT_DISABLE_RAD_PRESSURE                # turn off radiation pressure forces (included by default)
-#RT_RAD_PRESSURE_OUTPUT                 # print radiation pressure to file (requires some extra variables to save it)
-##-----------------------------------------------------------------------------------------------------
-#------------ test-problem, deprecated, or de-bugging functions
-##-----------------------------------------------------------------------------------------------------
-#RT_NOGRAVITY                           # turn off gravity: if using an RT method that needs the gravity tree (FIRE, OTVET), use this -instead- of NOGRAVITY to safely turn off gravitational forces
-#RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR # when RT_DIFFUSION_CG is enabled, modifies the Eddington tensor to the fully anisotropic version (less stable CG iteration)
-#RT_SEPARATELY_TRACK_LUMPOS             # keep luminosity vs. mass positions separate in tree (useful if running in tree-only mode)
-#RT_DISABLE_FLUXLIMITER                 # removes the flux-limiter from the diffusion operations (default is to include it when using the relevant approximations)
-#RT_HYDROGEN_GAS_ONLY                   # sets hydrogen fraction to 1.0 (used for certain idealized chemistry calculations)
-#RT_COOLING_PHOTOHEATING_OLDFORMAT      # includes photoheating and cooling (using RT information), doing just the photo-heating [for more general cooling physics, enable COOLING]
-#RT_FIRE_FIX_SPECTRAL_SHAPE             # enable with GALSF_FB_RT_PHOTONMOMENTUM to use a fixed SED shape set in parameterfile for all incident fluxes
-#RT_DISABLE_UV_BACKGROUND               # disable extenal UV background in cooling functions (to isolate pure effects of local RT, or if simulating the background directly)
-#RT_INJECT_PHOTONS_DISCRETELY           # do photon injection in discrete packets, instead of sharing a continuous source function. works better with adaptive timestepping (default with GALSF)
-####################################################################################################
-
-
-
-
-####################################################################################################
+####################################################################################################-
 #--------------------------------------- nuclear network
 #-------------------------------- (these are currently non-functional and should not be used)
-####################################################################################################
+####################################################################################################-
 #NUCLEAR_NETWORK
-#FIXED_TEMPERATURE
 #NEGLECT_DTDY_TERMS
 #NETWORK_OUTPUT
 #NETWORK_OUTPUT_BINARY
-####################################################################################################
+####################################################################################################-
 
 
 

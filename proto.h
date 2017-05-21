@@ -264,6 +264,7 @@ double INLINE_FUNC Get_Particle_Expected_Area(double h);
 double INLINE_FUNC Get_Particle_CosmicRayPressure(int i);
 double Get_CosmicRayGradientLength(int i);
 double Get_CosmicRayStreamingVelocity(int i);
+double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode);
 #endif
 double INLINE_FUNC Particle_effective_soundspeed_i(int i);
 #ifdef MAGNETIC
@@ -438,7 +439,7 @@ void compute_accelerations(void);
 void compute_global_quantities_of_system(void);
 void compute_potential(void);
 void construct_timetree(void);
-void cooling_and_starformation(void);
+void star_formation_parent_routine(void);
 
 #if defined(TURB_DRIVING)
 void do_turb_driving_step_first_half(void);
@@ -537,7 +538,7 @@ int disp_density_isactive(int i);
 #endif
 
 
-void cooling_only(void);
+void cooling_parent_routine(void);
 void count_hot_phase(void);
 void delete_node(int i);
 void density(void);
@@ -575,7 +576,6 @@ void hydro_force(void);
 void init(void);
 void do_the_cooling_for_particle(int i);
 double get_starformation_rate(int i);
-int determine_sf_flag(int i);
 void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double tsfr, double x, double rateOfSF);
 void init_clouds(void);
 void integrate_sfr(void);

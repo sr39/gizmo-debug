@@ -52,9 +52,23 @@
 #define DO_PREPROCESSOR_EXPAND_(VAL)  VAL ## 1
 #define EXPAND_PREPROCESSOR_(VAL)     DO_PREPROCESSOR_EXPAND_(VAL)
 
-#ifndef DISABLE_SPH_PARTICLE_WAKEUP
-#define WAKEUP   4.1            /* allows 2 timestep bins within kernel */
+
+#if !defined(SLOPE_LIMITER_TOLERANCE)
+#if defined(AGGRESSIVE_SLOPE_LIMITERS)
+#define SLOPE_LIMITER_TOLERANCE 2
+#else
+#define SLOPE_LIMITER_TOLERANCE 1
 #endif
+#endif
+
+#ifndef DISABLE_SPH_PARTICLE_WAKEUP
+#if (SLOPE_LIMITER_TOLERANCE > 0)
+#define WAKEUP   4.1            /* allows 2 timestep bins within kernel */
+#else 
+#define WAKEUP   2.1            /* allows only 1-separated timestep bins within kernel */
+#endif
+#endif
+
 
 #ifdef PMGRID
 #define PM_ENLARGEREGION 1.1    /* enlarges PMGRID region as the simulation evolves */
@@ -99,6 +113,7 @@
 #endif
 
 
+
 #include "eos/eos.h"
 
 
@@ -108,6 +123,7 @@
 #define COOL_METAL_LINES_BY_SPECIES
 #define GALSF
 #define METALS
+#define TURB_DIFF_METALS
 #define GALSF_SFR_MOLECULAR_CRITERION
 #define GALSF_SFR_VIRIAL_SF_CRITERION 0
 #define GALSF_FB_GASRETURN
@@ -116,7 +132,7 @@
 #define GALSF_FB_RT_PHOTONMOMENTUM
 #define GALSF_FB_LOCAL_UV_HEATING
 #define GALSF_FB_RPWIND_LOCAL
-#define GALSF_FB_RPROCESS_ENRICHMENT 6
+#define GALSF_FB_RPROCESS_ENRICHMENT 4
 #define GALSF_SFR_IMF_VARIATION
 #define PROTECT_FROZEN_FIRE
 #else
@@ -146,6 +162,7 @@
 #define GALSF_SFR_VIRIAL_SF_CRITERION 2 // only allow star formation in virialized sub-regions meeting Jeans threshold
 #define METALS  // metals should be active for stellar return
 #define BLACK_HOLES // need to have black holes active since these are our sink particles
+#define GALSF_SFR_IMF_VARIATION // save extra information about sinks when they form
 #ifdef SINGLE_STAR_ACCRETION
 #define BH_SWALLOWGAS // need to swallow gas [part of sink model]
 #define BH_GRAVCAPTURE_GAS // use gravitational capture swallow criterion for resolved gravitational capture
@@ -228,11 +245,11 @@
 
 /* options for FIRE RT method */
 #if defined(GALSF_FB_RT_PHOTONMOMENTUM)
-#ifndef RT_FIRE
-#define RT_FIRE
+#ifndef RT_LEBRON
+#define RT_LEBRON
 #endif
 #endif
-#if defined(RT_FIRE)
+#if defined(RT_LEBRON)
 // use gravity tree for flux propagation
 #define RT_USE_GRAVTREE
 #endif
@@ -350,7 +367,7 @@
 
 
 
-#if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER) || defined(GALSF_FB_RPWIND_FROMSTARS) || defined(BH_POPIII_SEEDS) || defined(GALSF_FB_LOCAL_UV_HEATING) || defined(BH_PHOTONMOMENTUM) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(RT_FIRE)
+#if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER) || defined(GALSF_FB_RPWIND_FROMSTARS) || defined(BH_POPIII_SEEDS) || defined(GALSF_FB_LOCAL_UV_HEATING) || defined(BH_PHOTONMOMENTUM) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(RT_LEBRON)
 #define DO_DENSITY_AROUND_STAR_PARTICLES
 #endif
 
@@ -1223,13 +1240,13 @@ extern FILE
  *FdTimings,    /*!< file handle for timings.txt log-file. */
  *FdBalance,    /*!< file handle for balance.txt log-file. */
 #ifdef RT_CHEM_PHOTOION
-extern FILE *FdRad;		/*!< file handle for radtransfer.txt log-file. */
+ *FdRad,		/*!< file handle for radtransfer.txt log-file. */
 #endif
 #ifdef TURB_DRIVING
-extern FILE *FdTurb;    /*!< file handle for turb.txt log-file */
+ *FdTurb,       /*!< file handle for turb.txt log-file */
 #endif
 #ifdef DARKENERGY
-extern FILE *FdDE;  /*!< file handle for darkenergy.txt log-file. */
+ *FdDE,         /*!< file handle for darkenergy.txt log-file. */
 #endif
 #endif
  *FdCPU;        /*!< file handle for cpu.txt log-file. */
@@ -1582,7 +1599,7 @@ extern struct global_data_all_processes
 #endif
     
     
-#ifdef RT_FIRE
+#ifdef RT_LEBRON
     double PhotonMomentum_Coupled_Fraction;
 #ifdef GALSF_FB_RT_PHOTONMOMENTUM
     double PhotonMomentum_fUV;
@@ -1664,7 +1681,7 @@ extern struct global_data_all_processes
   double GasReturnFraction;
 #endif
     
-#if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
+#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
   double InitMetallicityinSolar;
   double InitStellarAgeinGyr;
 #endif
@@ -1960,18 +1977,7 @@ extern ALIGN(32) struct particle_data
     
 #ifdef GALSF_FB_SNE_HEATING
     MyFloat SNe_ThisTimeStep; /* flag that indicated number of SNe for the particle in the timestep */
-
-#if !(EXPAND_PREPROCESSOR_(GALSF_FB_SNE_HEATING) == 1) // check whether a numerical value is assigned
-#if (GALSF_FB_SNE_HEATING == 2) // code for non-isotropic
-#define GALSF_FB_SNE_NONISOTROPIZED
-#endif
-#endif
-
-#ifdef GALSF_FB_SNE_NONISOTROPIZED
-#define AREA_WEIGHTED_SUM_ELEMENTS 1
-#else
-#define AREA_WEIGHTED_SUM_ELEMENTS 7
-#endif
+#define AREA_WEIGHTED_SUM_ELEMENTS 11 /* number of weights needed for full momentum-and-energy conserving system */
     MyFloat Area_weighted_sum[AREA_WEIGHTED_SUM_ELEMENTS]; /* normalized weights for particles in kernel weighted by area, not mass */
 #endif
 #ifdef GALSF_FB_GASRETURN
@@ -2091,11 +2097,6 @@ extern ALIGN(32) struct particle_data
 #ifdef SUBFIND_ALTERNATIVE_COLLECTIVE
     peanokey Key;
 #endif
-#endif
-    
-#if defined(ORDER_SNAPSHOTS_BY_ID) && !defined(SUBFIND)
-    int     GrNr;
-    int     SubNr;
 #endif
     
     float GravCost[GRAVCOSTLEVELS];   /*!< weight factor used for balancing the work-load */
@@ -2246,6 +2247,11 @@ extern struct sph_particle_data
     MyFloat CosmicRayEnergyPred;    /*!< total energy of cosmic ray fluid (the conserved variable) */
     MyFloat DtCosmicRayEnergy;      /*!< time derivative of cosmic ray energy */
     MyFloat CosmicRayDiffusionCoeff;/*!< diffusion coefficient kappa for cosmic ray fluid */
+#ifdef COSMIC_RAYS_M1
+    MyFloat CosmicRayFlux[3];       /*!< CR flux vector [explicitly evolved] - conserved-variable */
+    MyFloat CosmicRayFluxPred[3];   /*!< CR flux vector [explicitly evolved] - conserved-variable */
+    MyFloat DtCosmicRayFlux[3];     /*!< time-derivative of CR flux vector */
+#endif
 #endif
     
 #ifdef SUPER_TIMESTEP_DIFFUSION

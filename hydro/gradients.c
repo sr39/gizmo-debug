@@ -7,7 +7,7 @@
 #include "../allvars.h"
 #include "../proto.h"
 #include "../kernel.h"
-#ifdef OMP_NUM_THREADS
+#ifdef PTHREADS_NUM_THREADS
 #include <pthread.h>
 #endif
 
@@ -46,7 +46,7 @@
 #endif
 
 
-#ifdef OMP_NUM_THREADS
+#ifdef PTHREADS_NUM_THREADS
 extern pthread_mutex_t mutex_nexport;
 extern pthread_mutex_t mutex_partnodedrift;
 #define LOCK_NEXPORT     pthread_mutex_lock(&mutex_nexport);
@@ -492,14 +492,13 @@ void hydro_gradient_calc(void)
     long long NTaskTimesNumPart;
     GasGradDataPasser = (struct temporary_data_topass *) mymalloc("GasGradDataPasser",N_gas * sizeof(struct temporary_data_topass));
     NTaskTimesNumPart = maxThreads * NumPart;
-    All.BunchSize = (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
+    size_t MyBufferSize = All.BufferSize;
+    All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
                                                              sizeof(struct GasGraddata_in) +
                                                              sizeof(struct GasGraddata_out) +
-                                                             sizemax(sizeof(struct GasGraddata_in),
-                                                                     sizeof(struct GasGraddata_out))));
+                                                             sizemax(sizeof(struct GasGraddata_in),sizeof(struct GasGraddata_out))));
     CPU_Step[CPU_DENSMISC] += measure_time();
     t0 = my_second();
-    
     Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
@@ -591,9 +590,9 @@ void hydro_gradient_calc(void)
             /* do local particles and prepare export list */
             tstart = my_second();
             
-#ifdef OMP_NUM_THREADS
-            pthread_t mythreads[OMP_NUM_THREADS - 1];
-            int threadid[OMP_NUM_THREADS - 1];
+#ifdef PTHREADS_NUM_THREADS
+            pthread_t mythreads[PTHREADS_NUM_THREADS - 1];
+            int threadid[PTHREADS_NUM_THREADS - 1];
             pthread_attr_t attr;
             
             pthread_attr_init(&attr);
@@ -603,7 +602,7 @@ void hydro_gradient_calc(void)
             
             TimerFlag = 0;
             
-            for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+            for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
             {
                 threadid[j] = j + 1;
                 pthread_create(&mythreads[j], &attr, GasGrad_evaluate_primary, &threadid[j]);
@@ -621,8 +620,8 @@ void hydro_gradient_calc(void)
                 GasGrad_evaluate_primary(&mainthreadid, gradient_iteration);	/* do local particles and prepare export list */
             }
             
-#ifdef OMP_NUM_THREADS
-            for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+#ifdef PTHREADS_NUM_THREADS
+            for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
                 pthread_join(mythreads[j], NULL);
 #endif
             
@@ -753,7 +752,7 @@ void hydro_gradient_calc(void)
             {
                 GasGradDataResult = (struct GasGraddata_out *) mymalloc("GasGradDataResult", Nimport * sizeof(struct GasGraddata_out));
                 GasGradDataOut = (struct GasGraddata_out *) mymalloc("GasGradDataOut", Nexport * sizeof(struct GasGraddata_out));
-                //                report_memory_usage(&HighMark_GasGrad, "GRADIENTS_LOOP");
+                report_memory_usage(&HighMark_GasGrad, "GRADIENTS_LOOP");
             } else {
                 GasGradDataResult_iter = (struct GasGraddata_out_iter *) mymalloc("GasGradDataResult_iter", Nimport * sizeof(struct GasGraddata_out_iter));
                 GasGradDataOut_iter = (struct GasGraddata_out_iter *) mymalloc("GasGradDataOut_iter", Nexport * sizeof(struct GasGraddata_out_iter));
@@ -763,8 +762,8 @@ void hydro_gradient_calc(void)
             tstart = my_second();
             NextJ = 0;
             
-#ifdef OMP_NUM_THREADS
-            for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+#ifdef PTHREADS_NUM_THREADS
+            for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
                 pthread_create(&mythreads[j], &attr, GasGrad_evaluate_secondary, &threadid[j]);
 #endif
 #ifdef _OPENMP
@@ -779,8 +778,8 @@ void hydro_gradient_calc(void)
                 GasGrad_evaluate_secondary(&mainthreadid, gradient_iteration);
             }
             
-#ifdef OMP_NUM_THREADS
-            for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+#ifdef PTHREADS_NUM_THREADS
+            for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
                 pthread_join(mythreads[j], NULL);
             
             pthread_mutex_destroy(&mutex_partnodedrift);
@@ -1152,12 +1151,12 @@ void hydro_gradient_calc(void)
 
 #if defined(CONDUCTION_SPITZER) || defined(VISCOSITY_BRAGINSKII) || (defined(MHD_NON_IDEAL) && defined(COOLING))
             /* get the neutral fraction */
-            double ion_frac, nHeII, temperature, u, ne, nh0 = 0, mu_meanwt=1;
+            double ion_frac, nHe0, nHepp, nhp, nHeII, temperature, u, ne, nh0 = 0, mu_meanwt=1;
             ne = SphP[i].Ne;
             u = DMAX(All.MinEgySpec, SphP[i].InternalEnergy); // needs to be in code units
-	        temperature = ThermalProperties(u, SphP[i].Density*All.cf_a3inv, &ne, &nh0, &nHeII, &mu_meanwt, i);
+            temperature = ThermalProperties(u, SphP[i].Density*All.cf_a3inv, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
 #ifdef GALSF_FB_HII_HEATING
-            if(SphP[i].DelayTimeHII>0 || SphP[i].Ne>=1.15789) nh0=0;
+            if(SphP[i].DelayTimeHII>0) nh0=0;
 #endif 
 	        ion_frac = DMIN(DMAX(0,1.-nh0),1);
 #endif
@@ -1409,14 +1408,17 @@ void hydro_gradient_calc(void)
 #if !defined(MAGNETIC) && !defined(GALSF)
             h_lim=PPP[i].Hsml; stol=0.1;
 #endif
-#ifdef AGGRESSIVE_SLOPE_LIMITERS
+#if (SLOPE_LIMITER_TOLERANCE == 2)
             h_lim = PPP[i].Hsml; a_limiter *= 0.5; stol = 0.125;
+#endif
+#if (SLOPE_LIMITER_TOLERANCE == 0)
+            a_limiter *= 2.0; stol = 0.0;
 #endif
             
 #ifdef SINGLE_STAR_FORMATION
             SphP[i].Density_Relative_Maximum_in_Kernel = GasGradDataPasser[i].Maxima.Density;
 #endif
-            local_slopelimiter(SphP[i].Gradients.Density,GasGradDataPasser[i].Maxima.Density,GasGradDataPasser[i].Minima.Density,a_limiter,h_lim,stol);
+            local_slopelimiter(SphP[i].Gradients.Density,GasGradDataPasser[i].Maxima.Density,GasGradDataPasser[i].Minima.Density,a_limiter,h_lim,0);
             local_slopelimiter(SphP[i].Gradients.Pressure,GasGradDataPasser[i].Maxima.Pressure,GasGradDataPasser[i].Minima.Pressure,a_limiter,h_lim,stol);
             stol_tmp = stol;
 #if defined(VISCOSITY)
@@ -1433,7 +1435,7 @@ void hydro_gradient_calc(void)
 #endif
 #ifdef COSMIC_RAYS
             stol_tmp = stol;
-            local_slopelimiter(SphP[i].Gradients.CosmicRayPressure,GasGradDataPasser[i].Maxima.CosmicRayPressure,GasGradDataPasser[i].Minima.CosmicRayPressure,a_limiter,h_lim,DMAX(stol,stol_diffusion));
+            local_slopelimiter(SphP[i].Gradients.CosmicRayPressure,GasGradDataPasser[i].Maxima.CosmicRayPressure,GasGradDataPasser[i].Minima.CosmicRayPressure,DMAX(1.,a_limiter),h_lim,0.);
             if((GasGradDataPasser[i].Maxima.CosmicRayPressure==0)||(GasGradDataPasser[i].Minima.CosmicRayPressure==0)) {is_particle_local_extremum = 1;}
 #endif
 #ifdef DOGRAD_SOUNDSPEED
@@ -1483,7 +1485,7 @@ void hydro_gradient_calc(void)
                 {
                     // overall normalization //
                     double C_Smagorinsky_Lilly = 0.15; // this is the standard Smagorinsky-Lilly constant, calculated from Kolmogorov theory: should be 0.1-0.2 //
-                    double turb_prefactor = All.TurbDiffusion_Coefficient * C_Smagorinsky_Lilly*C_Smagorinsky_Lilly * sqrt(2.0);
+                    double turb_prefactor = 0.25 * All.TurbDiffusion_Coefficient * C_Smagorinsky_Lilly*C_Smagorinsky_Lilly * sqrt(2.0);
                     // then scale with inter-particle spacing //
                     turb_prefactor *= h_turb*h_turb;
                     // calculate frobenius norm of symmetric shear velocity gradient tensor //
@@ -1587,7 +1589,9 @@ void hydro_gradient_calc(void)
                 SphP[i].CosmicRayDiffusionCoeff *= All.CosmicRayDiffusionCoeff;
 #endif
                 SphP[i].CosmicRayDiffusionCoeff += CR_kappa_streaming;
+#if !defined(COSMIC_RAYS_M1)
                 /* now we apply a limiter to prevent the coefficient from becoming too large: cosmic rays cannot stream/diffuse with v_diff > c */
+                // [all of this only applies if we are using the pure-diffusion description: the M1-type description should -not- use a limiter here, or negative kappa]
                 double diffusion_velocity_limit = 1.0 * C; /* maximum diffusion velocity (set <C if desired) */
 #ifdef GALSF
                 diffusion_velocity_limit = 0.01 * C;
@@ -1605,8 +1609,9 @@ void hydro_gradient_calc(void)
                 }
 #endif
                 if(is_particle_local_extremum==1) {SphP[i].CosmicRayDiffusionCoeff *= -1;} // negative here codes for local extrema
+#endif // COSMIC_RAYS_M1
             } else {
-                SphP[i].CosmicRayDiffusionCoeff = 0;
+                SphP[i].CosmicRayDiffusionCoeff = MIN_REAL_NUMBER;
             }
 #endif
         }

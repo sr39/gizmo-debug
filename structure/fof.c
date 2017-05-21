@@ -177,7 +177,6 @@ void fof_fof(int num)
 #endif
 
   for(i = 0, ndm = 0, mass = 0; i < NumPart; i++)
-#ifdef KD_CHOOSE_LINKING_LENGTH
     {
 #ifdef BH_SEED_STAR_MASS_FRACTION
       if(num == -2)
@@ -192,13 +191,6 @@ void fof_fof(int num)
       if(((1 << P[i].Type) & (DENSITY_SPLIT_BY_TYPE)))
 	mass += P[i].Mass;
     }
-#else
-    if(((1 << P[i].Type) & (MyFOF_PRIMARY_LINK_TYPES)))
-      {
-	ndm++;
-	mass += P[i].Mass;
-      }
-#endif
   sumup_large_ints(1, &ndm, &ndmtot);
   MPI_Allreduce(&mass, &masstot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
@@ -494,13 +486,11 @@ void fof_find_groups(void)
 
   Ngblist = (int *) mymalloc("Ngblist", NumPart * sizeof(int));
 
-  All.BunchSize =
-    (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
+    size_t MyBufferSize = All.BufferSize;
+    All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
 					     2 * sizeof(struct fofdata_in)));
-  DataIndexTable =
-    (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
-  DataNodeList =
-    (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
+    DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
+    DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
 
   NonlocalFlag = (char *) mymalloc("NonlocalFlag", NumPart * sizeof(char));
   MarkedFlag = (char *) mymalloc("MarkedFlag", NumPart * sizeof(char));
@@ -1688,14 +1678,12 @@ void fof_find_nearest_dmparticle(void)
 
   Ngblist = (int *) mymalloc("Ngblist", NumPart * sizeof(int));
 
-  All.BunchSize =
-    (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
+    size_t MyBufferSize = All.BufferSize;
+    All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
 					     sizeof(struct fofdata_in) + sizeof(struct fofdata_out) +
 					     sizemax(sizeof(struct fofdata_in), sizeof(struct fofdata_out))));
-  DataIndexTable =
-    (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
-  DataNodeList =
-    (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
+    DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
+    DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
 
 
   iter = 0;
