@@ -185,35 +185,6 @@ endif
 
 
 
-#----------------------------------------------------------------------------------------------
-ifeq ($(SYSTYPE),"Comet")
-CC       =  mpicc
-CXX      =  mpicxx
-FC       =  mpif90 -nofor-main
-OPTIMIZE = -O3 -no-prec-div -xHost  # -static -ipo  -fast  # speed
-OPTIMIZE += -g #-Wall # compiler warnings
-ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
-OPTIMIZE += -parallel -openmp  # openmp required compiler flags
-endif
-GMP_INCL = #
-GMP_LIBS = #
-MKL_INCL = #
-MKL_LIBS = #
-GSL_INCL = -I/opt/gsl/2.1/intel/include
-GSL_LIBS = -L/opt/gsl/2.1/intel/lib
-FFTW_INCL= -I/opt/fftw/2.1.5/intel/mvapich2_ib/include
-FFTW_LIBS= -L/opt/fftw/2.1.5/intel/mvapich2_ib/lib
-HDF5INCL = -I/opt/hdf5/intel/mvapich2_ib/include -DH5_USE_16_API
-HDF5LIB  = -L/opt/hdf5/intel/mvapich2_ib/lib -lhdf5 -lz
-MPICHLIB = #
-OPT     += -DUSE_MPI_IN_PLACE
-## modules to load:
-#module purge
-#module load gnutools intel mvapich2_ib gsl hdf5 fftw/2.1.5
-endif
-
-
-
 #----------------------------
 ifeq ($(SYSTYPE),"MacBookPro")
 CC       =  mpicc
@@ -415,6 +386,35 @@ MPICHLIB =
 endif
 
 
+
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Iron")
+CC       =   mpicc     # sets the C-compiler
+OPT      +=  -DMPICH_IGNORE_CXX_SEEK
+#OPTIMIZE =   -std=c99 -O3 -g -Wall -Wno-unused-but-set-variable -Wno-uninitialized -Wno-unknown-pragmas -Wno-unused-function -march=native
+OPTIMIZE =   -std=c99 -O3 -fno-tree-vectorize -march=native
+OPTIMIZE += -g   #-Wall # compiler warnings
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE +=  -fopenmp
+endif
+GSL_INCL =  -I$(GSLDIR)/include
+GSL_LIBS =  -L$(GSLDIR)/lib
+FFTW_INCL=  -I$(FFTW2DIR)/include
+FFTW_LIBS=  -L$(FFTW2DIR)/lib
+MPICHLIB =
+HDF5INCL =  -I$(HDF5DIR)/include -DH5_USE_16_API
+HDF5LIB  =  -L$(HDF5DIR)/lib -lhdf5 -lz
+GMP_INCL =  #-I$(GMPDIR)/include
+GMP_LIBs =  #-L$(GMPDIR)/lib
+#module load slurm
+#module add gcc
+#module load openmpi2/2.0.2-hfi
+#module add lib/hdf5
+#module add lib/fftw2/2.1.5-openmpi2
+#module add lib/gsl
+endif
+
+
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Comet")
 CC       =  mpicc
@@ -445,6 +445,32 @@ OPT     += -DUSE_MPI_IN_PLACE
 ##  -- performance is very similar with impi (intel-mpi) instead of mpavich2,
 ##   if preferred use that with MPICHLIB line uncommented
 ## newest version of code needed for compatibility with calls in MPI-2 libraries
+endif
+
+ifeq ($(SYSTYPE),"Comet_orig")
+CC       =  mpicc
+CXX      =  mpicxx
+FC       =  mpif90 -nofor-main
+OPTIMIZE = -O3 -no-prec-div -xHost  # -static -ipo  -fast  # speed
+OPTIMIZE += -g #-Wall # compiler warnings
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -parallel -openmp  # openmp required compiler flags
+endif
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = #
+MKL_LIBS = #
+GSL_INCL = -I/opt/gsl/2.1/intel/include
+GSL_LIBS = -L/opt/gsl/2.1/intel/lib
+FFTW_INCL= -I/opt/fftw/2.1.5/intel/mvapich2_ib/include
+FFTW_LIBS= -L/opt/fftw/2.1.5/intel/mvapich2_ib/lib
+HDF5INCL = -I/opt/hdf5/intel/mvapich2_ib/include -DH5_USE_16_API
+HDF5LIB  = -L/opt/hdf5/intel/mvapich2_ib/lib -lhdf5 -lz
+MPICHLIB = #
+OPT     += -DUSE_MPI_IN_PLACE
+## modules to load:
+#module purge
+#module load gnutools intel mvapich2_ib gsl hdf5 fftw/2.1.5
 endif
 #----------------------------------------------------------------------------------------------
 
