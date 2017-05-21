@@ -12,14 +12,15 @@
 #############
 
 
-#SYSTYPE="Comet"
-SYSTYPE="Stampede"
+#SYSTYPE="Stampede"
 #SYSTYPE="Zwicky"
 #SYSTYPE="Wheeler"
 #SYSTYPE="MacBookPro"
 #SYSTYPE="Quest"
+SYSTYPE="Iron"
 #SYSTYPE="Darter"
 #SYSTYPE="Comet"
+#SYSTYPE="Comet_orig"
 #SYSTYPE="odyssey"
 #SYSTYPE="antares"
 #SYSTYPE="Pleiades-Haswell"
