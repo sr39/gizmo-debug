@@ -199,6 +199,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     if(dCR > dCRmax) {dCR=dCRmax;} // don't allow excessively large values
     if(dCR < -eCR) {dCR=-eCR;} // don't allow it to go negative
     eCR += dCR; if((eCR<0)||(isnan(eCR))) {eCR=0;}
+    if(mode==0) {SphP[i].CosmicRayEnergy=eCR;} else {SphP[i].CosmicRayEnergyPred=eCR;} // updated energy
     double eCR_0 = eCR; // save this value for below
     
     /* now need to account for the adiabatic heating/cooling of the cosmic ray fluid, here: its an ultra-relativistic fluid with gamma=4/3 */
