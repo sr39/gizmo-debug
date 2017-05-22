@@ -473,36 +473,7 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
 #endif
     
 #ifdef COSMIC_RAYS
-#ifdef COSMIC_RAYS_M1
-    if(dt_entr > 0)
-    {
-        // this is the exact solution for the CR flux-update equation over a finite timestep dt:
-        //   it needs to be solved this way [implicitly] as opposed to explicitly for dt because
-        //   in the limit of dt_cr_dimless being large, the problem exactly approaches the diffusive solution
-        double cr_speed = COSMIC_RAYS_M1;// * (C/All.UnitVelocity_in_cm_per_s);
-        double dt_cr_dimless = dt_entr * cr_speed*cr_speed / (MIN_REAL_NUMBER + fabs(SphP[i].CosmicRayDiffusionCoeff));
-        double q_cr=0.; if((dt_cr_dimless > 0)&&(dt_cr_dimless < 20.)) {q_cr = exp(-dt_cr_dimless);}
-        int kcr; for(kcr=0;kcr<3;kcr++) {SphP[i].CosmicRayFlux[kcr] = q_cr*SphP[i].CosmicRayFlux[kcr] + (1.-q_cr)*SphP[i].DtCosmicRayFlux[kcr];}
-    }
-#endif
-    // now we update the CR energies. since this is positive-definite, some additional care is needed //
-    double dCR = SphP[i].DtCosmicRayEnergy * dt_entr;
-#ifdef GALSF
-    double dCRmax = DMAX(0.5*SphP[i].CosmicRayEnergy , 0.01*SphP[i].InternalEnergy*P[i].Mass);
-#else
-    double dCRmax = 2.0 * SphP[i].CosmicRayEnergy;
-#endif
-    if(dCR > dCRmax) {dCR=dCRmax;}
-    SphP[i].CosmicRayEnergy += dCR;
-    /* now need to account for the adiabatic heating/cooling of the cosmic ray fluid, here: its an ultra-relativistic fluid with gamma=4/3 */
-    double d_div = (-GAMMA_COSMICRAY_MINUS1 * P[i].Particle_DivVel*All.cf_a2inv) * dt_entr;
-    /* adiabatic term from Hubble expansion (needed for cosmological integrations */
-    if(All.ComovingIntegrationOn) {d_div += (-3.*GAMMA_COSMICRAY_MINUS1 * All.cf_hubble_a) * dt_entr;}
-    double uCR_i=SphP[i].CosmicRayEnergy/P[i].Mass, dCR_div=DMIN(uCR_i*d_div,0.5*SphP[i].InternalEnergy);
-    if(d_div < -0.5) {dCR_div=uCR_i*(exp(d_div)-1.);}
-    SphP[i].CosmicRayEnergy += dCR_div*P[i].Mass;
-    SphP[i].InternalEnergy -= dCR_div;
-    if((SphP[i].CosmicRayEnergy < 0) || (isnan(SphP[i].CosmicRayEnergy))) {SphP[i].CosmicRayEnergy=0;}
+    CosmicRay_Update_DriftKick(i,dt_entr,0);
 #endif
     
 #ifdef RADTRANSFER

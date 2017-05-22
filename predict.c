@@ -297,27 +297,7 @@ void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double
 #endif
 #endif
 #ifdef COSMIC_RAYS
-#ifdef COSMIC_RAYS_M1
-    if(dt_entr > 0)
-    {
-        // as kicks.c, this is the exact update to ensure proper limiting behavior //
-        double cr_speed = COSMIC_RAYS_M1;// * (C/All.UnitVelocity_in_cm_per_s);
-        double dt_cr_dimless = dt_entr * cr_speed*cr_speed / (MIN_REAL_NUMBER + fabs(SphP[i].CosmicRayDiffusionCoeff));
-        double q_cr=0.; if((dt_cr_dimless > 0)&&(dt_cr_dimless < 20.)) {q_cr = exp(-dt_cr_dimless);}
-        int kCR; for(kCR=0;kCR<3;kCR++) {SphP[i].CosmicRayFluxPred[kCR] = q_cr*SphP[i].CosmicRayFluxPred[kCR] + (1.-q_cr)*SphP[i].DtCosmicRayFlux[kCR];}
-    }
-#endif
-    double etmp = SphP[i].CosmicRayEnergyPred + SphP[i].DtCosmicRayEnergy * dt_entr;
-    if(etmp<1.e-4*SphP[i].CosmicRayEnergyPred) {SphP[i].CosmicRayEnergyPred *= 1.e-4;} else {SphP[i].CosmicRayEnergyPred=etmp;}
-    /* now need to account for the adiabatic heating/cooling of the cosmic ray fluid, here: its an ultra-relativistic fluid with gamma=4/3 */
-    double d_div = (-GAMMA_COSMICRAY_MINUS1 * P[i].Particle_DivVel*All.cf_a2inv) * dt_entr;
-    /* adiabatic term from Hubble expansion (needed for cosmological integrations */
-    if(All.ComovingIntegrationOn) {d_div += (-3.*GAMMA_COSMICRAY_MINUS1 * All.cf_hubble_a) * dt_entr;}
-    double uCR_i=SphP[i].CosmicRayEnergyPred/P[i].Mass, dCR_div=DMIN(uCR_i*d_div,0.5*SphP[i].InternalEnergyPred);
-    if(d_div < -0.5) {dCR_div=uCR_i*(exp(d_div)-1.);}
-    SphP[i].CosmicRayEnergyPred += dCR_div*P[i].Mass;
-    SphP[i].InternalEnergyPred -= dCR_div;
-    if((SphP[i].CosmicRayEnergyPred < 0) || (isnan(SphP[i].CosmicRayEnergyPred))) {SphP[i].CosmicRayEnergyPred=0;}
+    CosmicRay_Update_DriftKick(i,dt_entr,1);
 #endif
 #ifdef RADTRANSFER
     rt_update_driftkick(i,dt_entr,1);
