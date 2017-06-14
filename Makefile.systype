@@ -13,7 +13,7 @@
 
 
 SYSTYPE="Stampede"
-#SYSTYPE="Stampede-KNL"
+#SYSTYPE="Stampede2"
 #SYSTYPE="Zwicky"
 #SYSTYPE="Wheeler"
 #SYSTYPE="MacBookPro"
