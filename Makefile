@@ -184,7 +184,8 @@ OPT     += -DUSE_MPI_IN_PLACE
 ##
 endif
 
-ifeq ($(SYSTYPE),"Stampede-KNL")
+
+ifeq ($(SYSTYPE),"Stampede2")
 CC       =  mpicc
 CXX      =  mpic++
 FC       =  mpif90 -nofor_main
@@ -207,7 +208,18 @@ HDF5INCL = -I$(TACC_HDF5_INC) -DH5_USE_16_API
 HDF5LIB  = -L$(TACC_HDF5_LIB) -lhdf5 -lz
 MPICHLIB =
 OPT     += -DUSE_MPI_IN_PLACE
-## modules to load:  intel impi gsl hdf5 fftw2 
+##
+## module load TACC intel impi hdf5 gsl fftw2
+## note the KNL system has a large number of slow cores, so some changes to 'usual' compilation parameters are advised:
+##  - recommend running with ~16 mpi tasks/node. higher [32 or 64] usually involves a performance hit unless the problem is more scale-able;
+##     use the remaining nodes in OPENMP. Do not use >64 MPI tasks/node [need ~4 cores free for management] and do not use >2 threads/core
+##     [should never have >128 threads/node] -- the claimed 4 hardware threads/core includes non-FP threads which will severely slow performance.
+##     so 'default' would be ~16 tasks/node, OMP_NUM_THREADS=8.
+##  - because of the large core/thread count, MULTIPLEDOMAINS should be set low, MULTIPLEDOMAINS=1 ideally [already problem is heavily-divided].
+##     - likewise be careful with domain decomposition, TreeDomainUpdateFrequency param [so don't spend very long running domain decompositions]
+##  - memory is large per node: for 16 tasks/node, large MaxMemSize=5450 is reasonable, with BufferSize=450, and large PartAllocFactor=40 can be used
+##  - run job with "tacc_affinity" on.
+##
 endif
 
 
