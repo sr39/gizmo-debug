@@ -545,6 +545,39 @@ endif
 
 
 #----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"BlueWaters")
+CC       =  cc
+CXX      =  CC
+FC       =  $(CC) #ftn
+OPTIMIZE = -O3 -ipo -funroll-loops -no-prec-div -fp-model fast=2 -static
+OPTIMIZE += -g
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -fopenmp # (intel) openmp required compiler flags
+FC       = $(CC)
+endif
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = #
+MKL_LIBS = #
+GSL_INCL = -I$(GSL_DIR)/include
+GSL_LIBS = -L$(GSL_DIR)/lib -lgsl -lgslcblas -lm
+FFTW_INCL= -I$(FFTW_DIR)/include
+FFTW_LIBS= -L$(FFTW_DIR)/lib
+HDF5INCL = -I$(HDF5_DIR)/include -DH5_USE_16_API
+HDF5LIB  = -L$(HDF5_DIR)/lib -lhdf5 -lz
+MPICHLIB =
+OPT     += -DUSE_MPI_IN_PLACE
+endif
+## in your .bashrc file, include
+## module load cray-hdf5-parallel fftw/2.1.5.9 gsl
+## compiler comparison: cray ok, intel good, gnu very slow (underflows for some reason are very bad
+##   on the AMD chips), pgi good. not surprisingly intel/pgi do best.
+## module swap PrgEnv-pgi PrgEnv-intel
+## module load cray-hdf5-parallel fftw/2.1.5.8 gsl mercurial
+
+
+
+#----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Mira")
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 CC       = mpixlc_r # xl compilers appear to give significant speedup vs gcc
@@ -618,26 +651,27 @@ OPTIMIZE += -Wall # compiler warnings
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -parallel -qopenmp
 endif
+MATHLIBS = /nasa/pkgsrc/sles12/2016Q4/views/math-libs
 GMP_INCL =
 GMP_LIBS =
-GSL_INCL =
-GSL_LIBS =
+GSL_INCL = -I$(MATHLIBS)/include
+GSL_LIBS = -L$(MATHLIBS)/lib
 FFTW_INCL= -I$(FFTW2_HOME)/include
 FFTW_LIBS= -L$(FFTW2_HOME)/lib
-HDF5INCL = -I$(HDF5)/include -DH5_USE_16_API
-HDF5LIB  = -L$(HDF5)/lib -lhdf5 -lz -L/nasa/szip/2.1/lib -lsz
+HDF5INCL = -DH5_USE_16_API
+HDF5LIB  = -lhdf5 -lz -L/nasa/szip/2.1/lib -lsz
 MPICHLIB =
 OPT     += -DUSE_MPI_IN_PLACE
 endif
 ##
 ## Notes:
-##   1. modules to load:
-##          module load comp-intel mpi-sgi/mpt hdf5/1.8.3/intel/mpt gsl python/2.7.9 szip
+##   1. modules to load (math-libs is added now, this is needed to include GSL):
+##          module load comp-intel mpi-sgi/mpt hdf5/1.8.18_mpt szip python math-libs
 ##   2. make sure you set the correct core-type: runs submitted to the wrong cores will not run
 ##   3. FFTW2: the pre-existing installation on Pleiades is incomplete and problematic.
 ##      you will need to install your own in your home directory. when building the library, use
 ##          ./configure --prefix=$HOME/fftw --enable-mpi --enable-type-prefix --enable-float
-##      where "$HOME/fftw" can be renamed but is the install director (should be your home directory);
+##      where "$HOME/fftw" can be renamed but is the install directory (should be your home directory);
 ##      then you need to define the variable (here or in your bashrc file)
 ##          FFTW2_HOME=$HOME/fftw
 ##      (matching what you used for the installation) so that the code can find fftw2
