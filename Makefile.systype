@@ -12,7 +12,8 @@
 #############
 
 
-SYSTYPE="Stampede"
+SYSTYPE="BlueWaters"
+#SYSTYPE="Stampede"
 #SYSTYPE="Stampede2"
 #SYSTYPE="Zwicky"
 #SYSTYPE="Wheeler"

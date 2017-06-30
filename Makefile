@@ -552,7 +552,7 @@ FC       =  $(CC) #ftn
 OPTIMIZE = -O3 -ipo -funroll-loops -no-prec-div -fp-model fast=2 -static
 OPTIMIZE += -g
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
-OPTIMIZE += -fopenmp # (intel) openmp required compiler flags
+OPTIMIZE += -parallel -qopenmp # (intel) openmp required compiler flags
 FC       = $(CC)
 endif
 GMP_INCL = #
@@ -573,7 +573,8 @@ endif
 ## compiler comparison: cray ok, intel good, gnu very slow (underflows for some reason are very bad
 ##   on the AMD chips), pgi good. not surprisingly intel/pgi do best.
 ## module swap PrgEnv-pgi PrgEnv-intel
-## module load cray-hdf5-parallel fftw/2.1.5.8 gsl mercurial
+## module load cray-hdf5-parallel fftw/2.1.5.9 gsl
+##
 
 
 
@@ -636,6 +637,7 @@ endif
 
 
 
+
 #----------------------------------------------------------------------------------------------
 ifeq (Pleiades,$(findstring Pleiades,$(SYSTYPE)))
 CC       =  icc -lmpi
@@ -666,7 +668,7 @@ endif
 ##
 ## Notes:
 ##   1. modules to load (math-libs is added now, this is needed to include GSL):
-##          module load comp-intel mpi-sgi/mpt hdf5/1.8.18_mpt szip python math-libs
+##          module load comp-intel mpi-sgi/mpt hdf5/1.8.18_mpt szip math-libs
 ##   2. make sure you set the correct core-type: runs submitted to the wrong cores will not run
 ##   3. FFTW2: the pre-existing installation on Pleiades is incomplete and problematic.
 ##      you will need to install your own in your home directory. when building the library, use
