@@ -90,7 +90,7 @@ BUILDINFO = "Build on $(HOSTNAME) by $(USER) from $(HG_BRANCH):$(HG_COMMIT) at $
 
 ifeq (FIRE_PHYSICS_DEFAULTS,$(findstring FIRE_PHYSICS_DEFAULTS,$(CONFIGVARS)))  # using 'fire default' instead of all the above
     CONFIGVARS += COOLING COOL_LOW_TEMPERATURES COOL_METAL_LINES_BY_SPECIES
-    CONFIGVARS += GALSF METALS TURB_DIFF_METALS GALSF_SFR_MOLECULAR_CRITERION GALSF_SFR_VIRIAL_SF_CRITERION=0
+    CONFIGVARS += GALSF METALS TURB_DIFF_METALS TURB_DIFF_METALS_LOWORDER GALSF_SFR_MOLECULAR_CRITERION GALSF_SFR_VIRIAL_SF_CRITERION=0
     CONFIGVARS += GALSF_FB_GASRETURN GALSF_FB_HII_HEATING GALSF_FB_SNE_HEATING=1 GALSF_FB_RT_PHOTONMOMENTUM
     CONFIGVARS += GALSF_FB_LOCAL_UV_HEATING GALSF_FB_RPWIND_LOCAL GALSF_FB_RPROCESS_ENRICHMENT=4
 #    CONFIGVARS += GALSF_SFR_IMF_VARIATION
@@ -359,9 +359,9 @@ endif
 
 #------------------------------------------------------------------------------
 ifeq ($(SYSTYPE), "Edison")
-CC	 =  mpicc
-CXX	 =  mpipc
-FC	 =  $(CC)
+CC       =  cc #instead ofmpicc
+CXX      =  CC #instead of mpipc
+FC       =  ftn #instead of $(CC)
 OPTIMIZE =  -O3 -funroll-loops -ffast-math -finline-functions -funswitch-loops
 OPTIMIZE += -g -Wall -fpredictive-commoning -fgcse-after-reload -fvect-cost-model
 ifeq (OPENMP, $(findstring OPENMP,$(CONFIGVARS)))
@@ -549,7 +549,8 @@ ifeq ($(SYSTYPE),"BlueWaters")
 CC       =  cc
 CXX      =  CC
 FC       =  $(CC) #ftn
-OPTIMIZE = -O3 -ipo -funroll-loops -no-prec-div -fp-model fast=2 -static
+#OPTIMIZE = -O3 -ipo -funroll-loops -no-prec-div -fp-model fast=2 -static
+OPTIMIZE = -fast -no-ipo
 OPTIMIZE += -g
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -parallel -qopenmp # (intel) openmp required compiler flags
