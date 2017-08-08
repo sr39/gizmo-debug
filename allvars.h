@@ -190,6 +190,7 @@
 #endif
 #ifdef SINGLE_STAR_FB_JETS
 #define BH_BAL_WINDS // use kinetic feedback module for protostellar jets
+#define BH_BAL_KICK // (for this, use the simple kicking module, it's not worth the expense of the other) 
 #endif
 #ifdef SINGLE_STAR_PROMOTION
 #define GALSF_FB_GASRETURN // stellar winds [scaled appropriately for particle masses]

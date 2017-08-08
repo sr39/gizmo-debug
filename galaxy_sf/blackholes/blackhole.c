@@ -92,7 +92,9 @@ double bh_lum_bol(double mdot, double mass, long id)
 #ifdef SINGLE_STAR_FORMATION
     double m_solar = mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS);
     /* if below the deuterium burning limit, just use the potential energy efficiency at the surface of a jupiter-density object */
-    //if(m_solar < 0.012) {lum = mdot * c_code*c_code * 5.e-8 * pow(m_solar/0.00095,2./3.);}
+    double rad_eff_protostar = 5.0e-7;
+    if(m_solar < 0.012) {rad_eff_protostar = 5.e-8 * pow(m_solar/0.00095,2./3.);}
+    lum = rad_eff_protostar * mdot * c_code*c_code;
     /* now for pre-main sequence, need to also check the mass-luminosity relation */
     double lum_sol = 0;
     if(m_solar >= 0.012)
@@ -155,10 +157,12 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code)
     {
         double apocenter = dr_code / (1.0-v2);
         double apocenter_max = All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
+        if(P[j].Type==5) {apocenter_max += MAX_REAL_NUMBER;} // default is to be unrestrictive for BH-BH mergers //
 #if defined(SINGLE_STAR_FORMATION) || defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
         double r_j = All.ForceSoftening[P[j].Type];
         if(P[j].Type==0) {r_j = DMAX(r_j , PPP[j].Hsml);}
         apocenter_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
+        if(P[j].Type==5) {apocenter_max = DMIN(apocenter_max , 3.*All.ForceSoftening[5]);}
 #ifdef BH_SEED_GROWTH_TESTS
         apocenter_max += MAX_REAL_NUMBER;
 #endif
