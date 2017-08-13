@@ -12,13 +12,14 @@
 #############
 
 
+SYSTYPE="BlueWaters"
 #SYSTYPE="Stampede"
-#SYSTYPE="Stampede-KNL"
+#SYSTYPE="Stampede2"
 #SYSTYPE="Zwicky"
 #SYSTYPE="Wheeler"
 #SYSTYPE="MacBookPro"
 #SYSTYPE="Quest"
-SYSTYPE="Iron"
+#SYSTYPE="Iron"
 #SYSTYPE="Darter"
 #SYSTYPE="Comet"
 #SYSTYPE="Comet_orig"
