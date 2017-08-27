@@ -550,8 +550,8 @@ ifeq ($(SYSTYPE),"BlueWaters")
 CC       =  cc
 CXX      =  CC
 FC       =  $(CC) #ftn
-OPTIMIZE = -O3 -ipo -funroll-loops -no-prec-div -fp-model fast=2 -static
-#OPTIMIZE = -fast -no-ipo
+#OPTIMIZE = -O3 -ipo -funroll-loops -no-prec-div -fp-model fast=2 -static
+OPTIMIZE = -fast -no-ipo
 #OPTIMIZE += -g
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -parallel -qopenmp -fopenmp # (intel) openmp required compiler flags
