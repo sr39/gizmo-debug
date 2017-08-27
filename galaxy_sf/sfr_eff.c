@@ -305,7 +305,7 @@ double get_starformation_rate(int i)
     double k_cs = cs_eff / (Get_Particle_Size(i)*All.cf_atime);
 #ifdef SINGLE_STAR_FORMATION
     double press_grad_length = 0;
-    for(j=0;j<3;j++) {press_grad_length += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
+    for(k=0;k<3;k++) {press_grad_length += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
     press_grad_length = All.cf_atime * DMAX(Get_Particle_Size(i) , SphP[i].Pressure / (1.e-37 + sqrt(press_grad_length))); 
     k_cs = cs_eff / press_grad_length;
 #ifdef MAGNETIC
