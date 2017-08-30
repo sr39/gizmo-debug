@@ -610,9 +610,9 @@ CXX      =  CC
 FC       =  $(CC) #ftn
 #OPTIMIZE = -O3 -ipo -funroll-loops -no-prec-div -fp-model fast=2 -static
 OPTIMIZE = -fast -no-ipo
-OPTIMIZE += -g
+#OPTIMIZE += -g
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
-OPTIMIZE += -parallel -qopenmp # (intel) openmp required compiler flags
+OPTIMIZE += -parallel -qopenmp -fopenmp # (intel) openmp required compiler flags
 FC       = $(CC)
 endif
 GMP_INCL = #
@@ -625,16 +625,48 @@ FFTW_INCL= -I$(FFTW_DIR)/include
 FFTW_LIBS= -L$(FFTW_DIR)/lib
 HDF5INCL = -I$(HDF5_DIR)/include -DH5_USE_16_API
 HDF5LIB  = -L$(HDF5_DIR)/lib -lhdf5 -lz
-MPICHLIB =
+MPICHLIB = -lmpich_intel
 OPT     += -DUSE_MPI_IN_PLACE
 endif
 ## in your .bashrc file, include
-## module load cray-hdf5-parallel fftw/2.1.5.9 gsl
-## compiler comparison: cray ok, intel good, gnu very slow (underflows for some reason are very bad
-##   on the AMD chips), pgi good. not surprisingly intel/pgi do best.
-## module swap PrgEnv-pgi PrgEnv-intel
-## module load cray-hdf5-parallel fftw/2.1.5.9 gsl
+##    module swap PrgEnv-cray PrgEnv-intel
+##    module load cray-hdf5-parallel fftw/2.1.5.9 gsl bwpy szip
+##    umask 022
+##    ulimit -s unlimited
 ##
+## NOTE: everything above is for intel compilers. PGI performs almost as well (within 5%) and has OpenACC, much better for GPU/xk nodes.
+##  to use PGI, replace PrgEnv-intel with PrgEnv-pgi everywhere here, and replace the optimize line with:
+##  OPTIMIZE = -m64 -mcmodel=medium -Mdalign -Mllalign -Munroll -O3 -fastsse -Mipa=fast -fast -Msafeptr
+##
+## example run submission script:
+##
+##  #!/bin/bash
+##  #PBS -N NAME                 # name as desired
+##  #PBS -q debug                # debug or normal or whatever queue
+##  #PBS -l nodes=NNODES:ppn=32:xe   # PPN=32, essentially always; nodes=NNODES (set to number)
+##  ##PBS -l flags=preemptee     # makes job pre-emptable: receives discount for time used
+##  ##PBS -l minwclimit=23:10:00  -l walltime=48:00:00  # flexible clock time (set min/max) - often gets on machine faster
+##  #PBS -l walltime=00:15:00    # fixed run-time, set appropriately
+##  #PBS -j oe                   # outputs
+##  #PBS -o run.out              # outputs
+##  #PBS -V                      # carry over variables
+##  cd $PBS_O_WORKDIR            # run in submission directory
+##  . /opt/modules/default/init/bash # NEEDED to add module commands to shell
+##  source $HOME/.bashrc         # source your bash shortcuts, etc
+##  module swap PrgEnv-cray PrgEnv-intel    # make sure correct compilers [intel here] loaded
+##  module load intel cray-hdf5-parallel fftw/2.1.5.9 gsl szip   # make sure correct modules loaded
+##  export MPICH_RANK_REORDER_METHOD=0  # very slightly improved balance for this domain-ordering
+##  #export OMP_PROC_BIND=spread        # turn on for OpenMP runs
+##  #export OMP_PLACES=threads          # turn on for OpenMP runs
+##  #export OMP_NUM_THREADS=NOMP        # turn on for OpenMP runs, NOMP=number of threads (=1 if not using OpenMP, in everything below)
+##  aprun -N NMPINODE -d NOMP -S SNODENUM -ss -n NTOTAL -j 1 ./GIZMO ./params.txt 1>gizmo.out 2>gizmo.err
+##  ## (in the above:
+##  ##     NMPINODE = 16/NOMP = number of MPI tasks per node.
+##  ##     -d NOMP = specifies spacing/skipping of CPUs for multi-threaded alignment
+##  ##     -S SNODENUM : set SNODENUM = 4/NOMP. If using >4 OpenMP threads, this segment should be removed
+##  ##     NTOTAL = NNODES*NMPINODE = total number of MPI tasks (not number of processors)
+##  ##     here "-ss" does memory-binding, which reduces errors given how GIZMO pre-allocates. "-j 1" prevents integer-cores sharing the same FPU, which massively slows down our runs
+##  ##
 
 
 
