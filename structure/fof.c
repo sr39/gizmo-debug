@@ -177,7 +177,7 @@ void fof_fof(int num)
 #endif
 
   for(i = 0, ndm = 0, mass = 0; i < NumPart; i++)
-//#ifdef KD_CHOOSE_LINKING_LENGTH                       // DAA: fixing error introduced when deleting KD_CHOOSE_LINKING_LENGTH option
+//#ifdef KD_CHOOSE_LINKING_LENGTH                       // DAA: fixing error introduced when KD_CHOOSE_LINKING_LENGTH was deleted
 //    {
 //#ifdef BH_SEED_STAR_MASS_FRACTION
 //      if(num == -2)
