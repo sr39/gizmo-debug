@@ -345,7 +345,7 @@ void set_blackhole_mdot(int i, int n, double dt)
     double mdot=0;
     int k; k=0;
 #ifdef BH_GRAVACCRETION
-    double m_tmp_for_bhar, mdisk_for_bhar, bh_mass, fac;
+    double m_tmp_for_bhar, mdisk_for_bhar, mbulge_for_bhar, bh_mass, fac;
     double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar;
     double f0_for_bhar;
 #endif
@@ -399,8 +399,9 @@ void set_blackhole_mdot(int i, int n, double dt)
 #else
         /* DAA: default torque rate based on kinematic B/D decomposition as in Angles-Alcazar et al. */
         m_tmp_for_bhar = BlackholeTempInfo[i].Mgas_in_Kernel + BlackholeTempInfo[i].Mstar_in_Kernel;
-        //mdisk_for_bhar = m_tmp_for_bhar - BlackholeTempInfo[i].Mbulge_in_Kernel;
-        mdisk_for_bhar = m_tmp_for_bhar - BlackholeTempInfo[i].MstarBulge_in_Kernel;
+        mbulge_for_bhar = BlackholeTempInfo[i].MstarBulge_in_Kernel; 
+        if(mbulge_for_bhar>BlackholeTempInfo[i].Mstar_in_Kernel) mbulge_for_bhar=BlackholeTempInfo[i].Mstar_in_Kernel;
+        mdisk_for_bhar = m_tmp_for_bhar - mbulge_for_bhar;
         f_disk_for_bhar = mdisk_for_bhar / m_tmp_for_bhar;
         if(mdisk_for_bhar>0){
            fgas_for_bhar = BlackholeTempInfo[i].Mgas_in_Kernel / mdisk_for_bhar;
@@ -855,7 +856,7 @@ void blackhole_final_operations(void)
         MstarBulge = BlackholeTempInfo[i].MstarBulge_in_Kernel;
 #endif
 
-#ifndef IO_REDUCED_MODE
+//#ifndef IO_REDUCED_MODE   DAA-IO: BH_OUTPUT_MOREINFO overrides IO_REDUCED_MOD
 #if defined(BH_OUTPUT_MOREINFO)
         fprintf(FdBlackHolesDetails, "%2.12f %u  %g %g %g %g %g %g  %g %g %g %g %g %g %g %g  %2.10f %2.10f %2.10f  %2.7f %2.7f %2.7f  %g %g %g  %g %g %g\n",
                 All.Time, P[n].ID,  P[n].Mass, BPP(n).BH_Mass, mass_disk, BPP(n).BH_Mdot, mdot_disk, dt,
@@ -865,6 +866,7 @@ void blackhole_final_operations(void)
                 BlackholeTempInfo[i].Jgas_in_Kernel[0], BlackholeTempInfo[i].Jgas_in_Kernel[1], BlackholeTempInfo[i].Jgas_in_Kernel[2],
                 BlackholeTempInfo[i].Jstar_in_Kernel[0], BlackholeTempInfo[i].Jstar_in_Kernel[1], BlackholeTempInfo[i].Jstar_in_Kernel[2] );
 #else
+#ifndef IO_REDUCED_MODE
         fprintf(FdBlackHolesDetails, "BH=%u %g %g %g %g %g %g %g %g   %2.7f %2.7f %2.7f\n",
                 P[n].ID, All.Time, BPP(n).BH_Mass, mass_disk, P[n].Mass, BPP(n).BH_Mdot, mdot_disk,              
                 P[n].DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy,             // DAA: DensAroundStar is actually not defined in BHP->BPP...

@@ -429,6 +429,35 @@ MPICHLIB =
 endif
 
 
+
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Iron")
+CC       =   mpicc     # sets the C-compiler
+OPT      +=  -DMPICH_IGNORE_CXX_SEEK
+#OPTIMIZE =   -std=c99 -O3 -g -Wall -Wno-unused-but-set-variable -Wno-uninitialized -Wno-unknown-pragmas -Wno-unused-function -march=native
+OPTIMIZE =   -std=c99 -O3 -fno-tree-vectorize -march=native
+OPTIMIZE += -g   #-Wall # compiler warnings
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE +=  -fopenmp
+endif
+GSL_INCL =  -I$(GSLDIR)/include
+GSL_LIBS =  -L$(GSLDIR)/lib
+FFTW_INCL=  -I$(FFTW2DIR)/include
+FFTW_LIBS=  -L$(FFTW2DIR)/lib
+MPICHLIB =
+HDF5INCL =  -I$(HDF5DIR)/include -DH5_USE_16_API
+HDF5LIB  =  -L$(HDF5DIR)/lib -lhdf5 -lz
+GMP_INCL =  #-I$(GMPDIR)/include
+GMP_LIBs =  #-L$(GMPDIR)/lib
+#module load slurm
+#module add gcc
+#module load openmpi2/2.0.2-hfi
+#module add lib/hdf5
+#module add lib/fftw2/2.1.5-openmpi2
+#module add lib/gsl
+endif
+
+
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Comet")
 CC       =  mpicc
@@ -499,6 +528,9 @@ CC       =  mpicc
 CXX      =  mpic++
 FC       =  $(CC)
 OPTIMIZE = -O2 -xhost -ipo -funroll-loops -no-prec-div -fp-model fast=2
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -parallel -openmp  # openmp required compiler flags
+endif
 GMP_INCL = #
 GMP_LIBS = #
 MKL_INCL = -I$(MKLROOT)/include
