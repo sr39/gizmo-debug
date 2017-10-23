@@ -323,6 +323,9 @@ OPT     += -DUSE_MPI_IN_PLACE
 ##   export I_MPI_DAPL_TRANSLATION_CACHE=0
 ##   before your "mpirun", (or include it in your .bashrc and source that before running): this is necessary or else the communication over DAPL will generate MPI memory errors
 ##
+## note that with the newer builds of HDF5 on the machine, you may need to add the line
+## export HDF5_DISABLE_VERSION_CHECK=1
+##  to your .bashrc file, or it will think the wrong HDF5 file is linked and crash (even though it is fine)
 endif
 
 
