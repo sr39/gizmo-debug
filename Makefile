@@ -608,6 +608,7 @@ endif
 ## in your .bashrc file, include
 ##    module swap PrgEnv-cray PrgEnv-intel
 ##    module load cray-hdf5-parallel fftw/2.1.5.9 gsl bwpy szip
+##    module swap intel intel/17.0.4.196
 ##    umask 022
 ##    ulimit -s unlimited
 ##
@@ -626,25 +627,29 @@ endif
 ##  #PBS -l walltime=00:15:00    # fixed run-time, set appropriately
 ##  #PBS -j oe                   # outputs
 ##  #PBS -o run.out              # outputs
-##  #PBS -V                      # carry over variables
 ##  cd $PBS_O_WORKDIR            # run in submission directory
 ##  . /opt/modules/default/init/bash # NEEDED to add module commands to shell
 ##  source $HOME/.bashrc         # source your bash shortcuts, etc
 ##  module swap PrgEnv-cray PrgEnv-intel    # make sure correct compilers [intel here] loaded
 ##  module load intel cray-hdf5-parallel fftw/2.1.5.9 gsl szip   # make sure correct modules loaded
-##  export MPICH_RANK_REORDER_METHOD=0  # very slightly improved balance for this domain-ordering
-##  #export OMP_PROC_BIND=spread        # turn on for OpenMP runs
-##  #export OMP_PLACES=threads          # turn on for OpenMP runs
-##  #export OMP_NUM_THREADS=NOMP        # turn on for OpenMP runs, NOMP=number of threads (=1 if not using OpenMP, in everything below)
-##  aprun -N NMPINODE -d NOMP -S SNODENUM -ss -n NTOTAL -j 1 ./GIZMO ./params.txt 1>gizmo.out 2>gizmo.err
+##  module swap intel intel/17.0.4.196
+##  export KMP_AFFINITY=disabled  # include if and only if you are using intel17+ compilers, needed to leverage newer cache optimizations
+##  export OMP_NUM_THREADS=NOMP        # turn on for OpenMP runs, NOMP=number of threads (=1 if not using OpenMP, in everything below)
+##  aprun -S SNODENUM -cc numa_node -N NMPINODE -d NOMP -n NTOTAL ./GIZMO ./params.txt 1>gizmo.out 2>gizmo.err
 ##  ## (in the above:
-##  ##     NMPINODE = 16/NOMP = number of MPI tasks per node.
-##  ##     -d NOMP = specifies spacing/skipping of CPUs for multi-threaded alignment
-##  ##     -S SNODENUM : set SNODENUM = 4/NOMP. If using >4 OpenMP threads, this segment should be removed
+##  ##     -S SNODENUM : set SNODENUM = NMPINODE/4 = 8/NOMP. This is how many MPI tasks per die (4 dies per node) -- prevents memory issues
+##  ##        which can dramatically slow down code by threads spawning without local access to memory.
+##  ##        If using >8 OpenMP threads (so this would be <1), this command should be removed.
+##  ##     -N NMPINODE : set NMPINODE = 32/NOMP = number of MPI tasks per node. BW has 32 integer-cores per node, with this structure all can be used; even though every pair shares 1 FP core.
+##  ##     -d NOMP = specifies spacing/skipping of CPUs for multi-threaded alignment: set equal to NOMP
 ##  ##     NTOTAL = NNODES*NMPINODE = total number of MPI tasks (not number of processors)
-##  ##     here "-ss" does memory-binding, which reduces errors given how GIZMO pre-allocates. "-j 1" prevents integer-cores sharing the same FPU, which massively slows down our runs
+##  ##     (in previous notes, had "-ss" do memory-binding, and "-j 1" prevents integer-cores sharing the same FPU, but this is better handled by the numa_node memory strategy)
 ##  ##
-
+##
+##  For FIRE runs, generally reasonable with OPENMP off or set =2,4,8. Any higher over-runs the die, not good.
+##  May be some (small) performance improvement from using newest Intel MPI: in .bashrc and run-file add line "module swap intel intel/17.0.4.196" after the lines
+##   that load intel compilers, and in run-file, before OPENMP definition, include line "export KMP_AFFINITY=disabled" (this is necessary with OpenMP in intel17+ or performance will suffer)
+##
 
 
 #----------------------------------------------------------------------------------------------
