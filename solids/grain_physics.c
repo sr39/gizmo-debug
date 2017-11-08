@@ -57,10 +57,10 @@ void apply_grain_dragforce(void)
                         vgas_mag = sqrt(vgas_mag) / All.cf_atime;
                         double x0 = 0.469993*sqrt(GAMMA) * vgas_mag/cs; // (3/8)*sqrt[pi/2]*|vgas-vgrain|/cs //
                         double tstop_inv = 1.59577/sqrt(GAMMA) * rho_gas * cs / (R_grain_code * rho_grain_code); // 2*sqrt[2/pi] * 1/tstop //
-#ifdef GRAIN_EPSTEIN
+#ifdef GRAIN_EPSTEIN_STOKES
                         double mu = 2.3 * PROTONMASS;
                         double temperature = mu * (P[i].Gas_InternalEnergy*All.UnitEnergy_in_cgs*All.HubbleParam/All.UnitMass_in_g) / BOLTZMANN;
-                        double cross_section = GRAIN_EPSTEIN * 2.0e-15 * (1. + 70./temperature);
+                        double cross_section = GRAIN_EPSTEIN_STOKES * 2.0e-15 * (1. + 70./temperature);
                         cross_section /= (All.UnitLength_in_cm * All.UnitLength_in_cm / (All.HubbleParam*All.HubbleParam));
                         double n_mol = rho_gas / (mu * All.HubbleParam/All.UnitMass_in_g);
                         double mean_free_path = 1 / (n_mol * cross_section); // should be in code units now //

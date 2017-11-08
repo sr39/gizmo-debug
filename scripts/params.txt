@@ -7,43 +7,51 @@
 %       Phil Hopkins [phopkins@caltech.edu] for GIZMO.
 %-------------------------------------------------------------------------
 
-%----  Relevant files
-InitCondFile  /work/01799/phopkins/sim_ICs/ics_z10n192_B1hr 
-OutputDir     /scratch/01799/phopkins/B1_lr_fixg_51 
+%----  Relevant files (filenames and directories)
+InitCondFile  /pathname/to/my/ic/file/filename_without_hd5_extension
+OutputDir     output
 
-%---- File formats 
-ICFormat    1  % 1=binary, 3=hdf5, 4=cluster 
-SnapFormat  3  % 1=binary, 3=hdf5 
+%---- File formats (input and output)
+ICFormat    3  % 1=unformatted (gadget) binary, 3=hdf5, 4=cluster
+SnapFormat  3  % 1=unformatted (gadget) binary, 3=hdf5
+
 
 %---- Output parameters 
 RestartFile                 restart 
 SnapshotFileBase            snapshot 
 OutputListOn                1  % =1 to use list in "OutputListFilename" 
-OutputListFilename          output_times.txt  % list of times for snaps 
-NumFilesPerSnapshot         1 
+OutputListFilename          output_times.txt  % list of times (in code units) for snaps
+NumFilesPerSnapshot         1
 NumFilesWrittenInParallel   16  % must be < N_processors & power of 2
 
 %---- Output frequency 
-TimeOfFirstSnapshot     0.1 
-TimeBetSnapshot         1.1 
-TimeBetStatistics       0.05 
+TimeOfFirstSnapshot     0.1  % time (code units) of first snapshot
+TimeBetSnapshot         1.1  % time between (if OutputListOn=0), code units
+TimeBetStatistics       0.05 % time between additional statistics (e.g. energy)
 
-%---- CPU-time limits 
-TimeLimitCPU            100000  % in seconds 
+%---- CPU run-time and checkpointing time-limits
+TimeLimitCPU            100000  % in seconds
 CpuTimeBetRestartFile   7200  	% in seconds 
 ResubmitOn              0 
 ResubmitCommand         my-scriptfile 
 
-%----- Memory allocation
-MaxMemSize          1800    % sets maximum MPI process memory use in MByte 
-PartAllocFactor     5.0     % memory load allowed for better cpu balance 
-BufferSize          100     % in MByte 
+%---- Desired simulation beginning and end times (in code units) for run
+TimeBegin   0.01    % Beginning of the simulation
+TimeMax     1.0     % End of the simulation
 
-%---- Characteristics of run 
-TimeBegin   0.01    % Beginning of the simulation 
-TimeMax     1.0     % End of the simulation 
+%---- Maximum and minimum timesteps allowed
+MaxSizeTimestep         0.005   % in code units, set for your problem
+MinSizeTimestep         1.0e-12 % set this very low, or get the wrong answer
 
-%---- Cosmological parameters 
+
+%---- System of units
+UnitLength_in_cm            3.085678e21     % 1.0 kpc/h
+UnitMass_in_g               1.989e43          % 1.0e10 solar masses/h
+UnitVelocity_in_cm_per_s    1.0e5           % 1 km/sec
+UnitMagneticField_in_gauss  1.0               % 1 gauss
+GravityConstantInternal     0                % calculated by code if =0
+
+%---- Cosmological parameters
 ComovingIntegrationOn   1       % is it cosmological? (yes=1, no=0)
 BoxSize                 10000.  % in code units
 Omega0                  0.27    % =0 for non-cosmological
@@ -51,34 +59,31 @@ OmegaLambda             0.73    % =0 for non-cosmological
 OmegaBaryon             0.044   % =0 for non-cosmological
 HubbleParam             0.7     % little 'h'; =1 for non-cosmological runs
 
-%---- Accuracy of time integration 
-MaxSizeTimestep         0.005   % in code units, set for your problem
-MinSizeTimestep         1.0e-12 % set this very low, or risk stability
 
-%---- Tree algorithm, force accuracy, domain update frequency 
-TreeDomainUpdateFrequency   0.005	% 0.0005-0.05, dept on core+particle number  
+%----- Memory allocation
+MaxMemSize          1800    % sets maximum MPI process memory use in MByte
+PartAllocFactor     5.0     % memory load allowed for better cpu balance
+BufferSize          100     % in MByte
 
-%---- System of units 
-UnitLength_in_cm            3.085678e21     % 1.0 kpc/h
-UnitMass_in_g               1.989e43  	    % 1.0e10 solar masses/h
-UnitVelocity_in_cm_per_s    1.0e5   	    % 1 km/sec
-UnitMagneticField_in_gauss  1.0   	        % 1 gauss
-GravityConstantInternal     0		        % calculated by code if =0
+%---- Rebuild domains when >this fraction of particles active
+TreeDomainUpdateFrequency   0.005    % 0.0005-0.05, dept on core+particle number
 
-%---- Initial temperature & temperature floor 
-InitGasTemp     300	    % set by IC file if =0 
+
+%---- (Optional) Initial hydro temperature & temperature floor (in Kelvin)
+InitGasTemp     300	    % set by IC file if =0
 MinGasTemp      10.	    % don't set <10 in explicit feedback runs, otherwise 0
 
-%---- Density/volume estimation (kernel) 
-DesNumNgb               32      % 32 for standard kernel, 60-114 for quintic 
+%---- Hydro reconstruction (kernel) parameters
+DesNumNgb               32      % domain-reconstruction kernel number: 32 standard, 60-114 for quintic
 MaxHsml                 1.0e10  % minimum gas kernel length (some very large value to prevent errors)
 MinGasHsmlFractional    0       % minimum kernel length relative to gas force softening (<= 1)
+
 
 %---- Gravitational softening lengths 
 %----- Softening lengths per particle type. If ADAPTIVE_GRAVSOFT is set, these  
 %-------- are the minimum softening allowed for each type ------- 
 %-------- (units are co-moving for cosmological integrations)
-SofteningGas    0.001    % gas (type=0) (in units above, =1 pc softening)
+SofteningGas    0.001    % gas (particle type=0) (in co-moving code units)
 SofteningHalo   0.020    % dark matter/collisionless particles (type=1)
 SofteningDisk   0.150    % collisionless particles (type=2)
 SofteningBulge  0.500    % collisionless particles (type=3)
@@ -87,8 +92,8 @@ SofteningBndry  0.001    % black holes (if active), or collisionless (type=5)
 %---- if these are set in cosmo runs, SofteningX switches from comoving to physical
 %------- units when the comoving value exceeds the choice here
 %------- (these are ignored, and *only* the above are used, for non-cosmo runs)
-SofteningGasMaxPhys     0.0005    % switch to 0.5pc physical below z=1 
-SofteningHaloMaxPhys    0.010 
+SofteningGasMaxPhys     0.0005  % e.g. switch to 0.5pc physical below z=1
+SofteningHaloMaxPhys    0.010
 SofteningDiskMaxPhys    0.075 
 SofteningBulgeMaxPhys   0.250 
 SofteningStarsMaxPhys   0.0005 
@@ -156,7 +161,7 @@ WindEfficiency          2.0     % mass-loading (Mdot_wind = SFR * WindEfficiency
 WindEnergyFraction      0.06    % fraction of SNe energy in winds (sets velocity) 
 WindFreeTravelMaxTime   0.1     % 'free-stream time' in units of t_Hubble(z)
 WindFreeTravelDensFac   0.1     % 'free-stream' until density < this * CritPhysDensity
-%------- alternative winds (GALSF_SUBGRID_DMDISPERSION or GALSF_SUBGRID_VARIABLEVELOCITY)
+%------- alternative winds (set GALSF_SUBGRID_WIND_SCALING == 1 or 2)
 %------- (scaling with local dark matter properties, as Dave/Oppenheimer/Mannucci/Illustris)
 VariableWindVelFactor    1.0    % wind velocity relative to estimated halo v_escape
 VariableWindSpecMomentum 5000.  % wind momentum per unit stellar mass (code velocity units)
@@ -206,8 +211,14 @@ BAL_f_accretion              0.5        % fraction of gas swallowed by BH (BH_BA
 BAL_v_outflow                30000	    % velocity (km/s) of BAL outflow (BH_BAL_WINDS) 
 
 
+
+%-------------------------------------------------------------------------
+%------------------ GRACKLE cooling module -----------------
+%-------------------------------------------------------------------------
+
 %-------------- Grackle UVB file (GRACKLE on)
 GrackleDataFile		     CloudyData_UVB=HM2012.h5
+
 
 
 %-------------------------------------------------------------------------

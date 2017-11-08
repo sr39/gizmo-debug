@@ -1351,7 +1351,7 @@ void read_parameter_file(char *fname)
 #endif
 
 
-#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_VARIABLEVELOCITY)
+#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)
       strcpy(tag[nt], "TimeBetOnTheFlyFoF");
       addr[nt] = &All.TimeBetOnTheFlyFoF;
       id[nt++] = REAL;
@@ -1481,7 +1481,7 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.WindFreeTravelDensFac;
       id[nt++] = REAL;
 
-#if defined (GALSF_SUBGRID_VARIABLEVELOCITY) || defined(GALSF_SUBGRID_DMDISPERSION)
+#if (GALSF_SUBGRID_WIND_SCALING>0)
       strcpy(tag[nt], "VariableWindVelFactor");
       addr[nt] = &All.VariableWindVelFactor;
       id[nt++] = REAL;

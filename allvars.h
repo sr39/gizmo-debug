@@ -373,7 +373,7 @@
 
 
 
-#if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER) || defined(GALSF_FB_RPWIND_FROMSTARS) || defined(BH_POPIII_SEEDS) || defined(GALSF_FB_LOCAL_UV_HEATING) || defined(BH_PHOTONMOMENTUM) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(RT_LEBRON)
+#if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER)
 #define DO_DENSITY_AROUND_STAR_PARTICLES
 #endif
 
@@ -1663,11 +1663,14 @@ extern struct global_data_all_processes
 #endif
     
 #ifdef GALSF_SUBGRID_WINDS
+#ifndef GALSF_SUBGRID_WIND_SCALING
+#define GALSF_SUBGRID_WIND_SCALING=0 // default to constant-velocity winds //
+#endif
   double WindEfficiency;
   double WindEnergyFraction;
   double WindFreeTravelMaxTimeFactor;  /* maximum free travel time in units of the Hubble time at the current simulation redshift */
   double WindFreeTravelDensFac;
-#if defined(GALSF_SUBGRID_VARIABLEVELOCITY) || defined(GALSF_SUBGRID_DMDISPERSION)
+#if (GALSF_SUBGRID_WIND_SCALING>0)
   double VariableWindVelFactor;  /* wind velocity in units of the halo escape velocity */
   double VariableWindSpecMomentum;  /* momentum available for wind per unit mass of stars formed, in internal velocity units */
 #endif
@@ -1761,7 +1764,7 @@ extern struct global_data_all_processes
 #endif
 #endif /* MAGNETIC */
     
-#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_VARIABLEVELOCITY)
+#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)
   double TimeNextOnTheFlyFoF;
   double TimeBetOnTheFlyFoF;
 #endif
@@ -2345,10 +2348,10 @@ extern struct sph_particle_data
 #endif
 #ifdef GALSF_SUBGRID_WINDS
   MyFloat DelayTime;                /*!< remaining maximum decoupling time of wind particle */
-#ifdef GALSF_SUBGRID_VARIABLEVELOCITY
+#if (GALSF_SUBGRID_WIND_SCALING==1)
   MyFloat HostHaloMass;             /*!< host halo mass estimator for wind launching velocity */
 #endif
-#ifdef GALSF_SUBGRID_DMDISPERSION
+#if (GALSF_SUBGRID_WIND_SCALING==2)
   MyFloat HsmlDM;                   /*!< smoothing length to find neighboring dark matter particles */
   MyDouble NumNgbDM;                /*!< number of neighbor dark matter particles */
   MyDouble DM_Vx, DM_Vy, DM_Vz, DM_VelDisp; /*!< surrounding DM velocity and velocity dispersion */

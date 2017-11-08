@@ -27,12 +27,8 @@
 
 #ifndef FRACTION_TP
 #define FRACTION_TP  0.2
-#endif /* fraction of particles selected for sphere
-          placement. Will be scaled with total
-          particle number so that a fixed value
-          should give roughly the same noise level
-          in the meaurement, indpendent of
-          simulation size */
+#endif
+/* above sets fraction of particles selected for sphere placement. Will be scaled with total particle number so that a fixed value should give roughly the same noise level in the meaurement, indpendent of simulation size */
 
 struct twopointdata_in
 {

@@ -177,28 +177,11 @@ void fof_fof(int num)
 #endif
 
   for(i = 0, ndm = 0, mass = 0; i < NumPart; i++)
-//#ifdef KD_CHOOSE_LINKING_LENGTH                       // DAA: fixing error introduced when KD_CHOOSE_LINKING_LENGTH was deleted
-//    {
-//#ifdef BH_SEED_STAR_MASS_FRACTION
-//      if(num == -2)
-//	{
-//	  if(P[i].Type == 1)
-//	    ndm++;
-//	}
-//     else
-//#endif
-//      if(((1 << P[i].Type) & (MyFOF_PRIMARY_LINK_TYPES)))
-//	ndm++;
-//      if(((1 << P[i].Type) & (DENSITY_SPLIT_BY_TYPE)))
-//	mass += P[i].Mass;
-//    }
-//#else
     if(((1 << P[i].Type) & (MyFOF_PRIMARY_LINK_TYPES)))
       {
         ndm++;
         mass += P[i].Mass;
       }
-//#endif
   sumup_large_ints(1, &ndm, &ndmtot);
   MPI_Allreduce(&mass, &masstot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
@@ -414,9 +397,11 @@ void fof_fof(int num)
   }
 #endif
 
-#if defined(GALSF_SUBGRID_WINDS) && defined(GALSF_SUBGRID_VARIABLEVELOCITY)
+#if defined(GALSF_SUBGRID_WINDS)
+#if (GALSF_SUBGRID_WIND_SCALING==1)
   if(num < 0)
     fof_assign_HostHaloMass();
+#endif
 #endif
 
 #ifdef BUBBLES
@@ -2033,11 +2018,9 @@ void fof_make_black_holes(void)
       if(Group[i].MassType[4] > BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass)
 #else
 #ifndef BH_SEED_STAR_MASS_FRACTION
-      if(Group[i].LenType[1] * massDMpart >=
-	 (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
+      if(Group[i].LenType[1] * massDMpart >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
 #else
-      if(Group[i].MassType[4] > BH_SEED_STAR_MASS_FRACTION * All.MinFoFMassForNewSeed
-	 && Group[i].LenType[2] == 0)
+      if(Group[i].MassType[4] > BH_SEED_STAR_MASS_FRACTION * All.MinFoFMassForNewSeed && Group[i].LenType[2] == 0)
 #endif
 #endif //ifdef BH_HOST_TO_SEED_RATIO
 	if(Group[i].LenType[5] == 0)
@@ -2077,11 +2060,9 @@ void fof_make_black_holes(void)
       if(Group[i].MassType[4] > BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass)
 #else
 #ifndef BH_SEED_STAR_MASS_FRACTION
-      if(Group[i].LenType[1] * massDMpart >=
-	 (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
+      if(Group[i].LenType[1] * massDMpart >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
 #else
-      if(Group[i].MassType[4] > BH_SEED_STAR_MASS_FRACTION * All.MinFoFMassForNewSeed
-	 && Group[i].LenType[2] == 0)
+      if(Group[i].MassType[4] > BH_SEED_STAR_MASS_FRACTION * All.MinFoFMassForNewSeed && Group[i].LenType[2] == 0)
 #endif
 #endif //ifdef BH_HOST_TO_SEED_RATIO
 	if(Group[i].LenType[5] == 0)
@@ -2228,7 +2209,8 @@ void fof_make_black_holes(void)
 
 
 
-#if defined(GALSF_SUBGRID_WINDS) && defined(GALSF_SUBGRID_VARIABLEVELOCITY)
+#if defined(GALSF_SUBGRID_WINDS)
+#if (GALSF_SUBGRID_WIND_SCALING==1)
 
 struct group_mass_MinID
 {
@@ -2361,7 +2343,8 @@ void fof_assign_HostHaloMass(void)	/* assigns mass of host FoF group to SphP[].H
   qsort(FOF_GList, NgroupsExt, sizeof(fof_group_list), fof_compare_FOF_GList_MinID);	/* restore original order */
 }
 
-#endif // defined(GALSF_SUBGRID_WINDS) && defined(GALSF_SUBGRID_VARIABLEVELOCITY)
+#endif
+#endif // defined(GALSF_SUBGRID_WINDS) && defined(GALSF_SUBGRID_WIND_SCALING==1)
 
 
 #ifdef BUBBLES
