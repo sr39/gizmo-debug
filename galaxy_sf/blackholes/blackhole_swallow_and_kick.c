@@ -923,9 +923,11 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
         SphP[j].TD_DiffCoeff = 0;
 #endif
         
-#if defined(GALSF_SUBGRID_WINDS) && defined(GALSF_SUBGRID_VARIABLEVELOCITY)
+#if defined(GALSF_SUBGRID_WINDS)
+#if (GALSF_SUBGRID_WIND_SCALING==1)
         SphP[j].HostHaloMass = 0;
-#endif // GALSF_SUBGRID_WINDS //
+#endif
+#endif
 #ifdef GALSF_FB_HII_HEATING
         SphP[j].DelayTimeHII = 0;
 #endif

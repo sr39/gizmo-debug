@@ -92,7 +92,8 @@ void run(void)
         
         compute_grav_accelerations();	/* compute gravitational accelerations for synchronous particles */
 
-#ifdef GALSF_SUBGRID_DMDISPERSION
+#ifdef GALSF_SUBGRID_WINDS
+#if (GALSF_SUBGRID_WIND_SCALING==2)
         // Need to figure out how frequently we calculate this; below is pretty rough //
 #ifdef PMGRID
         if(All.Ti_Current == All.PM_Ti_endstep && get_random_number(1+All.Ti_Current) < 0.05)
@@ -102,6 +103,7 @@ void run(void)
         {
             disp_density(); /* compute the DM velocity dispersion around gas particles every 20 PM steps, should be sufficient */
         }
+#endif
 #endif
 
 #if (defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPROCESS_ENRICHMENT))
@@ -280,10 +282,10 @@ void calculate_non_standard_physics(void)
 #endif
     
     
-#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_VARIABLEVELOCITY)
+#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)
 #ifdef FOF
     /* this will find new black hole seed halos and/or assign host halo masses for the variable wind model */
-#if !defined(GALSF_SUBGRID_VARIABLEVELOCITY)   // BH seeding only at z > All.SeedBlackHoleMinRedshift
+#if !(GALSF_SUBGRID_WIND_SCALING==1)   // BH seeding only at z > All.SeedBlackHoleMinRedshift
     if((All.Time < 1.0/(1.0+All.SeedBlackHoleMinRedshift)) && (All.Time >= All.TimeNextOnTheFlyFoF))
 #else
     if(All.Time >= All.TimeNextOnTheFlyFoF)
@@ -308,7 +310,7 @@ void calculate_non_standard_physics(void)
         force_treebuild(NumPart, NULL);
     }
 #endif
-#endif // ifdef BLACK_HOLES or GALSF_SUBGRID_VARIABLEVELOCITY
+#endif // ifdef BLACK_HOLES or GALSF_SUBGRID_WINDS
     
     
 #ifdef COOLING	/**** radiative cooling and star formation *****/

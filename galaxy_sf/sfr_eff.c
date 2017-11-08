@@ -650,7 +650,7 @@ void star_formation_parent_routine(void)
 #endif
         } // closes check of flag==0 for star-formation operation
 
-#if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) || defined(GALSF_SUBGRID_WINDS) || defined(GALSF_SUBGRID_VARIABLEVELOCITY) || defined(GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPSERSION)
+#if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) || defined(GALSF_SUBGRID_WINDS)
         if( (flag==0 || All.ComovingIntegrationOn==0) &&
            (P[i].Mass>0) && (P[i].Type==0) && (dtime>0) && (All.Time>0) )
         {
@@ -778,7 +778,7 @@ if(All.WindMomentumLoading)
 
 
 
-#if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) || defined(GALSF_SUBGRID_WINDS) || defined(GALSF_SUBGRID_VARIABLEVELOCITY) || defined(GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPSERSION)
+#if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) || defined(GALSF_SUBGRID_WINDS)
 void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvtau_return[4])
 {
     int j;
@@ -800,42 +800,18 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
     int ngb_run_cntr,kmin,k;
     double dmin1w,dmax1w,dmax2w;
 #endif
-#ifdef GALSF_WINDS_ISOTROPIC
-    double theta, phi;
-#endif
 
+    
 #ifdef GALSF_SUBGRID_WINDS
+
+#if (GALSF_SUBGRID_WIND_SCALING == 0)
     /* this is the simple, old standard wind model, with constant velocity & loading with SFR */
     p = All.WindEfficiency * sm / P[i].Mass;
     v = sqrt(2 * All.WindEnergyFraction*All.FactorSN*All.EgySpecSN / (1 - All.FactorSN) / All.WindEfficiency);
     prob = 1 - exp(-p);
 #endif
     
-
-#ifdef GALSF_SUBGRID_DMDISPERSION
-    /* wind model where launching scales with halo/galaxy bulk properties (as in Vogelsberger's simulations) */
-    if(SphP[i].DM_VelDisp > 0 && sm > 0)
-    {
-        double wind_energy, wind_momentum, wind_mass;
-        v = All.VariableWindVelFactor * SphP[i].DM_VelDisp;  /* physical wind velocity */
-        //      if(v < 50.0) v = 50.0;
-        wind_momentum = sm * All.VariableWindSpecMomentum;
-        wind_energy = sm * All.WindEnergyFraction * All.FactorSN * All.EgySpecSN / (1 - All.FactorSN);
-        wind_mass = (wind_energy + sqrt(wind_energy * wind_energy + v * v * wind_momentum * wind_momentum)) / (v * v);
-        /* wind mass for this particle, assuming the wind is first given the energy wind_energy and then the momentum wind_momentum */
-        p = wind_mass / P[i].Mass;
-    }
-    else
-    {
-        v = 0;
-        p = 0;
-    }
-    prob = 1 - exp(-p);
-#endif
-    
-    
-    
-#ifdef GALSF_SUBGRID_VARIABLEVELOCITY
+#if (GALSF_SUBGRID_WIND_SCALING == 1)
     /* wind model where launching scales with halo/galaxy bulk properties (as in Romeel's simulations) */
     if(SphP[i].HostHaloMass > 0 && sm > 0)
     {
@@ -866,6 +842,29 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
     }
     prob = 1 - exp(-p);
 #endif
+    
+#if (GALSF_SUBGRID_WIND_SCALING == 2)
+    /* wind model where launching scales with halo/galaxy bulk properties (as in Vogelsberger's simulations) */
+    if(SphP[i].DM_VelDisp > 0 && sm > 0)
+    {
+        double wind_energy, wind_momentum, wind_mass;
+        v = All.VariableWindVelFactor * SphP[i].DM_VelDisp;  /* physical wind velocity */
+        //      if(v < 50.0) v = 50.0;
+        wind_momentum = sm * All.VariableWindSpecMomentum;
+        wind_energy = sm * All.WindEnergyFraction * All.FactorSN * All.EgySpecSN / (1 - All.FactorSN);
+        wind_mass = (wind_energy + sqrt(wind_energy * wind_energy + v * v * wind_momentum * wind_momentum)) / (v * v);
+        /* wind mass for this particle, assuming the wind is first given the energy wind_energy and then the momentum wind_momentum */
+        p = wind_mass / P[i].Mass;
+    }
+    else
+    {
+        v = 0;
+        p = 0;
+    }
+    prob = 1 - exp(-p);
+#endif
+    
+#endif // GALSF_SUBGRID_WINDS
     
     
     
@@ -1093,14 +1092,6 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
 #ifdef GALSF_FB_RPWIND_FROMSTARS
         for(j=0;j<3;j++) dir[j]=-P[i].GradRho[j]; // default is along opacity gradient //
 #endif
-        
-#if defined(GALSF_WINDS_POLAR) || !defined(GALSF_FB_RPWIND_FROMSTARS) // polar wind (defined by acel.cross.vel)
-        dir[0] = P[i].GravAccel[1] * P[i].Vel[2] - P[i].GravAccel[2] * P[i].Vel[1];
-        dir[1] = P[i].GravAccel[2] * P[i].Vel[0] - P[i].GravAccel[0] * P[i].Vel[2];
-        dir[2] = P[i].GravAccel[0] * P[i].Vel[1] - P[i].GravAccel[1] * P[i].Vel[0];
-        if(get_random_number(P[i].ID + 5) < 0.5) {for(j=0;j<3;j++) dir[j]=-dir[j];}
-#endif
-        
 #ifdef GALSF_FB_RPWIND_FROMCLUMPS // in this case wind is directed from the local clump center //
         if(i != k)
         {
@@ -1109,12 +1100,25 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
             for(j=0;j<3;j++) dir[j]=P[kmin].Pos[j]-P[i].Pos[j];
         }
 #endif
+    
+#if !defined(GALSF_WINDS_ORIENTATION) && !defined(GALSF_FB_RPWIND_FROMSTARS) && !defined(GALSF_FB_RPWIND_FROMCLUMPS)
+#define GALSF_WINDS_ORIENTATION 0
+#endif
         
-#ifdef GALSF_WINDS_ISOTROPIC // here the direction is random //
-        theta = acos(2 * get_random_number(P[i].ID + 3) - 1);
-        phi = 2 * M_PI * get_random_number(P[i].ID + 4);
+#if (GALSF_WINDS_ORIENTATION==0) // random wind direction
+        double theta = acos(2 * get_random_number(P[i].ID + 3) - 1);
+        double phi = 2 * M_PI * get_random_number(P[i].ID + 4);
         dir[0] = sin(theta) * cos(phi); dir[1] = sin(theta) * sin(phi); dir[2] = cos(theta);
         if(get_random_number(P[i].ID + 5) < 0.5) {for(j=0;j<3;j++) dir[j]=-dir[j];}
+#endif
+#if (GALSF_WINDS_ORIENTATION==1) || !defined(GALSF_FB_RPWIND_FROMSTARS) // polar wind (defined by accel.cross.vel)
+        dir[0] = P[i].GravAccel[1] * P[i].Vel[2] - P[i].GravAccel[2] * P[i].Vel[1];
+        dir[1] = P[i].GravAccel[2] * P[i].Vel[0] - P[i].GravAccel[0] * P[i].Vel[2];
+        dir[2] = P[i].GravAccel[0] * P[i].Vel[1] - P[i].GravAccel[1] * P[i].Vel[0];
+        if(get_random_number(P[i].ID + 5) < 0.5) {for(j=0;j<3;j++) dir[j]=-dir[j];}
+#endif
+#if (GALSF_WINDS_ORIENTATION==2)
+        for(j=0;j<3;j++) dir[j]=-P[i].GradRho[j]; // along density gradient //
 #endif
         
         // now actually do the kick for the wind //
@@ -1130,7 +1134,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
 #endif
     } /* if(get_random_number(P[i].ID + 2) < prob) */
 }
-#endif // defined(GALSF_FB_RPWIND_DO_IN_SFCALC) || defined(GALSF_SUBGRID_WINDS) || defined(GALSF_SUBGRID_VARIABLEVELOCITY) //
+#endif // defined(GALSF_FB_RPWIND_DO_IN_SFCALC) || defined(GALSF_SUBGRID_WINDS)
 
 
 

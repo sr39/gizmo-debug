@@ -341,8 +341,8 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 
 #if defined(BH_GRAVCAPTURE_GAS)
                     /* XM: I formally distinguish BH_GRAVCAPTURE_GAS and BH_GRAVCAPTURE_NONGAS. The former applies to
-                     gas ONLY, as an accretion model. The later can be combined with any accreton model.
-                     Currently, I only allow gas acretion to contribute to BH_Mdot (consistent with the energy radiating away).
+                     gas ONLY, as an accretion model. The later can be combined with any accretion model.
+                     Currently, I only allow gas accretion to contribute to BH_Mdot (consistent with the energy radiating away).
                      For star particles, if there is an alpha-disk, they are captured to the disk. If not, they directly go
                      to the hole, without any contribution to BH_Mdot and feedback. This can be modified in the swallow loop
                      for other purposes. */

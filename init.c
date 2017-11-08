@@ -195,7 +195,7 @@ void init(void)
 #endif
     
     All.TimeLastStatistics = All.TimeBegin - All.TimeBetStatistics;
-#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_VARIABLEVELOCITY)
+#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)
     All.TimeNextOnTheFlyFoF = All.TimeBegin;
 #endif
     
@@ -583,7 +583,7 @@ void init(void)
 #ifdef GALSF_SUBGRID_WINDS
         if(RestartFlag == 0)
             SphP[i].DelayTime = 0;
-#ifdef GALSF_SUBGRID_VARIABLEVELOCITY
+#if (GALSF_SUBGRID_WIND_SCALING==1)
         SphP[i].HostHaloMass = 0;
 #endif
 #endif // GALSF_SUBGRID_WINDS //
@@ -715,9 +715,11 @@ void init(void)
         ags_setup_smoothinglengths();
 #endif
     
-#ifdef GALSF_SUBGRID_DMDISPERSION
+#ifdef GALSF_SUBGRID_WINDS
+#if (GALSF_SUBGRID_WIND_SCALING==2)
     if(RestartFlag != 3 && RestartFlag != 5)
         disp_setup_smoothinglengths();
+#endif
 #endif
     
 #if defined GALSF_SFR_IMF_VARIATION
@@ -1126,7 +1128,8 @@ void ags_setup_smoothinglengths(void)
 #endif // ADAPTIVE_GRAVSOFT_FORALL
 
 
-#ifdef GALSF_SUBGRID_DMDISPERSION
+#ifdef (GALSF_SUBGRID_WINDS)
+#if (GALSF_SUBGRID_WIND_SCALING==2)
 void disp_setup_smoothinglengths(void)
 {
     int i, no, p;
@@ -1160,6 +1163,7 @@ void disp_setup_smoothinglengths(void)
     }
     disp_density();
 }
+#endif
 #endif
 
 
