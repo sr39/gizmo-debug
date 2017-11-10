@@ -201,7 +201,7 @@ SeedBlackHoleMinRedshift     2.0        % minimum redshift where new BH particle
 SeedBlackHoleMassSigma       0.5        % lognormal standard deviation (in dex) in initial BH seed masses
 %----- (specific options for on-the-fly friends-of-friends based BH seeding: FOF on)
 MinFoFMassForNewSeed         10.	    % minimum mass of FOF group (stars or DM) to get seed, in code units
-TimeBetOnTheFlyFoF           200000     % cpu time (in sec) between FoF searches
+TimeBetOnTheFlyFoF           1.01       % time (in code units, e.g. scale-factor) between on-the-fly FOF searches
 %--- accretion
 BlackHoleAccretionFactor     1.0	    % multiplier for mdot (relative to model)
 BlackHoleEddingtonFactor     1.0	    % fraction of eddington to cap (can be >1) 

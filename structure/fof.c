@@ -1946,11 +1946,6 @@ void fof_make_black_holes(void)
   int *import_indices, *export_indices;
   gsl_rng *random_generator_forbh;
   double random_number_forbh=0, unitmass_in_msun;
-  double massDMpart;
-  if(All.MassTable[1] > 0)
-    massDMpart = All.MassTable[1];
-  else
-    massDMpart = All.massDMpart;
 
   for(n = 0; n < NTask; n++)
     Send_count[n] = 0;
@@ -1958,7 +1953,7 @@ void fof_make_black_holes(void)
   for(i = 0; i < Ngroups; i++)
     {
 #if (BH_SEED_FROM_FOF==0)
-    if(Group[i].LenType[1] * massDMpart >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
+    if(Group[i].MassType[1] >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
 #elif (BH_SEED_FROM_FOF==1)
     if(Group[i].MassType[4] > All.MinFoFMassForNewSeed)
 #endif
@@ -1992,7 +1987,7 @@ void fof_make_black_holes(void)
   for(i = 0; i < Ngroups; i++)
     {
 #if (BH_SEED_FROM_FOF==0)
-        if(Group[i].LenType[1] * massDMpart >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
+        if(Group[i].MassType[1] >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
 #elif (BH_SEED_FROM_FOF==1)
         if(Group[i].MassType[4] > All.MinFoFMassForNewSeed)
 #endif
@@ -2298,13 +2293,6 @@ void multi_bubbles(void)
   float *GroupCM_common_z, *GroupCM_dum_z;
   int logical;
   int *nn_heat, *disp;
-  double massDMpart;
-
-  if(All.MassTable[1] > 0)
-    massDMpart = All.MassTable[1];
-  else
-    massDMpart = All.massDMpart;
-
 
   if(All.ComovingIntegrationOn)
     {
@@ -2316,20 +2304,7 @@ void multi_bubbles(void)
 
   logical = 0;
 
-  for(k = 0; k < Ngroups; k++)
-    {
-      if(massDMpart > 0)
-	{
-	  if(Group[k].LenType[1] * massDMpart >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
-	    nheat++;
-	}
-      else
-	{
-	  printf("The DM particles mass is zero! I will stop.\n");
-	  endrun(0);
-	}
-
-    }
+  for(k = 0; k < Ngroups; k++) {if(Group[k].MassType[1] >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed) nheat++;}
 
   MPI_Allreduce(&nheat, &tot_nheat, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
@@ -2363,9 +2338,7 @@ void multi_bubbles(void)
 
       for(k = 0, i = 0; k < Ngroups; k++)
 	{
-	  if(massDMpart > 0)
-	    {
-	      if(Group[k].LenType[1] * massDMpart >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
+	      if(Group[k].MassType[1] >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
 		{
 		  GroupCM_dum_x[i] = Group[k].CM[0];
 		  GroupCM_dum_y[i] = Group[k].CM[1];
@@ -2375,12 +2348,6 @@ void multi_bubbles(void)
 
 		  i++;
 		}
-	    }
-	  else
-	    {
-	      printf("The DM particles mass is zero! I will stop.\n");
-	      endrun(0);
-	    }
 	}
 
       MPI_Allgatherv(GroupMassType_dum, nheat, MPI_DOUBLE, GroupMassType_common, nn_heat, disp, MPI_DOUBLE,

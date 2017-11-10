@@ -1296,11 +1296,6 @@ void read_parameter_file(char *fname)
       strcpy(tag[nt], "ClusterMass200");
       addr[nt] = &All.ClusterMass200;
       id[nt++] = REAL;
-
-      strcpy(tag[nt], "massDMpart");
-      addr[nt] = &All.massDMpart;
-      id[nt++] = REAL;
-
 #endif
 
 #ifdef BH_BUBBLES
@@ -1398,12 +1393,6 @@ void read_parameter_file(char *fname)
       strcpy(tag[nt], "BlackHoleRadiativeEfficiency");
       addr[nt] = &All.BlackHoleRadiativeEfficiency;
       id[nt++] = REAL;
-
-#ifdef FOF
-      strcpy(tag[nt], "massDMpart");
-      addr[nt] = &All.massDMpart;
-      id[nt++] = REAL;
-#endif
 
       strcpy(tag[nt], "BlackHoleFeedbackFactor");
       addr[nt] = &All.BlackHoleFeedbackFactor;
