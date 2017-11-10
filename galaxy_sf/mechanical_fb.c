@@ -872,10 +872,11 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     v_bw[k] = local.SNe_v_ejecta*pvec[k]/pnorm + (local.Vel[k]-P[j].Vel[k])/All.cf_atime;
                     e_shock += v_bw[k]*v_bw[k];
                 }
-                double mj_preshock = P[j].Mass;
-                double dM_ejecta_in = dM;
-                double massratio_ejecta = dM_ejecta_in / (dM_ejecta_in + P[j].Mass);
-                double mu_j = P[j].Mass / (dM + P[j].Mass); 
+                double mj_preshock, dM_ejecta_in, massratio_ejecta, mu_j;
+                mj_preshock = P[j].Mass;
+                dM_ejecta_in = dM;
+                massratio_ejecta = dM_ejecta_in / (dM_ejecta_in + P[j].Mass);
+                mu_j = P[j].Mass / (dM + P[j].Mass);
                 e_shock *= pnorm * 0.5*local.Msne * mu_j;
                 
                 
@@ -1246,8 +1247,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 }
                 pnorm = sqrt(pnorm); // this (vector norm) is the new 'weight function' for our purposes
                 dM_ejecta_in = pnorm * local.Msne;
-                double mj_preshock = P[j].Mass;
-                double massratio_ejecta = dM_ejecta_in / (dM_ejecta_in + P[j].Mass);
+                double mj_preshock, massratio_ejecta;
+                mj_preshock = P[j].Mass;
+                massratio_ejecta = dM_ejecta_in / (dM_ejecta_in + P[j].Mass);
                 
                 /* inject actual mass from mass return */
                 if(P[j].Hsml<=0) {if(SphP[j].Density>0){SphP[j].Density*=(1+dM_ejecta_in/P[j].Mass);} else {SphP[j].Density=dM_ejecta_in*kernel.hinv3;}} else {SphP[j].Density+=kernel_zero*dM_ejecta_in*hinv3_j;}
@@ -1414,6 +1416,7 @@ void determine_where_SNe_occur()
     agemin=0.003401; agebrk=0.01037; agemax=0.03753; // in Gyr //
     // converts rate to code units //
     RSNeFac=(All.UnitTime_in_Megayears/All.HubbleParam) * (All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS;
+    n_sn_0=0;
     
     // loop over particles //
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])

@@ -285,17 +285,9 @@ void calculate_non_standard_physics(void)
 #if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)
 #ifdef FOF
     /* this will find new black hole seed halos and/or assign host halo masses for the variable wind model */
-#if !(GALSF_SUBGRID_WIND_SCALING==1)   // BH seeding only at z > All.SeedBlackHoleMinRedshift
-    if((All.Time < 1.0/(1.0+All.SeedBlackHoleMinRedshift)) && (All.Time >= All.TimeNextOnTheFlyFoF))
-#else
     if(All.Time >= All.TimeNextOnTheFlyFoF)
-#endif
     {
-#ifdef BH_SEED_STAR_MASS_FRACTION
-        fof_fof(-2);
-#else
         fof_fof(-1);
-#endif
         if(All.ComovingIntegrationOn)
             All.TimeNextOnTheFlyFoF *= All.TimeBetOnTheFlyFoF;
         else
@@ -1231,16 +1223,6 @@ void check_particles_info(const char *func, const char *file, int linenr)
 	  endrun(712411);
 	}
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-      if(P[i].Type == 5)
-	if(BHP[P[i].pt.BHID].PID != i)
-	  {
-	    printf("task=%d:  error in cross-indexes for bh-particle %d ID %llu\n", ThisTask, i,
-		   (unsigned long long) P[i].ID);
-	    fflush(stdout);
-	    endrun(712413);
-	  }
-#endif
     }
 
   if(ThisTask == 0)

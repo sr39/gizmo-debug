@@ -78,7 +78,7 @@ void apply_grain_dragforce(void)
                         double slow_fac = 1 - xf / x0;
                         // note that, with an external (gravitational) acceleration, we can still solve this equation for the relevant update //
 
-                        double external_forcing[3];
+                        double dv[3]={0}, external_forcing[3]={0};
                         for(k=0;k<3;k++) {external_forcing[k] = 0;}
                         /* this external_forcing parameter includes additional grain-specific forces. note that -anything- which imparts an 
                             identical acceleration onto gas and dust will cancel in the terms in t_stop, and just act like a 'normal' acceleration
@@ -102,8 +102,8 @@ void apply_grain_dragforce(void)
                         if(isnan(Z_grain)||(Z_grain>=0)) {Z_grain=0;}
                         
                         /* define unit vectors and B for evolving the lorentz force */
-                        double bhat[3]={0}, bmag=0, dv[3]={0}, efield[3]={0}, efield_coeff=0;
-                        for(k=0;k<3;k++) {bhat[k]=P[i].Gas_B[k]; bmag[k]+=bhat[k]*bhat[k]; dv[k]=P[i].Vel[k]-P[i].Gas_Velocity[k];}
+                        double bhat[3]={0}, bmag=0, efield[3]={0}, efield_coeff=0;
+                        for(k=0;k<3;k++) {bhat[k]=P[i].Gas_B[k]; bmag+=bhat[k]*bhat[k]; dv[k]=P[i].Vel[k]-P[i].Gas_Velocity[k];}
                         if(bmag>0) {bmag=sqrt(bmag); for(k=0;k<3;k++) {bhat[k]/=bmag;}} else {bmag=0;}
                         double lorentz_coeff = (0.5*dt) * bmag * Z_grain / grain_mass * lorentz_units; // multiply in full timestep //
                         
@@ -128,7 +128,6 @@ void apply_grain_dragforce(void)
                         
                         double delta_egy = 0;
                         double delta_mom[3];
-                        double dv[3];
                         for(k=0; k<3; k++)
                         {
                             /* measure the imparted energy and momentum as if there were no external acceleration */

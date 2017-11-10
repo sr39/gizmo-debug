@@ -195,7 +195,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     MyFloat *pos, h_i, *vel, hinv;
     MyIDType id;
     
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyFloat hinv3, wk, dwk, u;
     u=wk=dwk=0;
 #endif
@@ -234,7 +234,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     
     if(h_i < 0) return -1;
     hinv = 1./h_i;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     hinv3 = hinv*hinv*hinv;
 #endif
     
@@ -304,7 +304,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         out.Jgas_in_Kernel[0] += wt*(dP[1]*dv[2] - dP[2]*dv[1]);
                         out.Jgas_in_Kernel[1] += wt*(dP[2]*dv[0] - dP[0]*dv[2]);
                         out.Jgas_in_Kernel[2] += wt*(dP[0]*dv[1] - dP[1]*dv[0]);
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
                         u=0;
                         for(k=0;k<3;k++) u+=dP[k]*dP[k];
                         u=sqrt(u)/h_i;

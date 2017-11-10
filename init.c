@@ -306,7 +306,7 @@ void init(void)
         for(i1 = 0; i1 < 6; i1++)
             for(i2 = 0; i2 < 6; i2++)
             {
-                if((i1 == i2))
+                if(i1 == i2)
                     P[i].distortion_tensorps[i1][i2] = 1.0;
                 else
                     P[i].distortion_tensorps[i1][i2] = 0.0;
@@ -1128,7 +1128,7 @@ void ags_setup_smoothinglengths(void)
 #endif // ADAPTIVE_GRAVSOFT_FORALL
 
 
-#ifdef (GALSF_SUBGRID_WINDS)
+#if defined(GALSF_SUBGRID_WINDS)
 #if (GALSF_SUBGRID_WIND_SCALING==2)
 void disp_setup_smoothinglengths(void)
 {

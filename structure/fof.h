@@ -60,13 +60,12 @@ typedef struct
 #ifdef BLACK_HOLES
   MyOutputFloat BH_Mass;
   MyOutputFloat BH_Mdot;
-  MyOutputFloat MaxDens;
-#ifdef BH_SEED_FROM_STAR_PARTICLE
+#ifdef BH_SEED_FROM_FOF
   MyOutputFloat MinPot;
+  int index_maxdens, task_maxdens;
 #endif
-  int index_maxdens, task_maxdens;    // these will hold info for MinPot rather than MaxDens if BH_SEED_FROM_STAR_PARTICLE
 #endif
-
+    
 #ifdef SUBFIND
   int Nsubs;
   int FirstSub;

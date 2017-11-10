@@ -63,9 +63,6 @@ void begrun(void)
 
       printf("Size of particle structure       %d  [bytes]\n", (int) sizeof(struct particle_data));
       printf("\nSize of sph particle structure   %d  [bytes]\n", (int) sizeof(struct sph_particle_data));
-#ifdef DETACH_BLACK_HOLES
-      printf("\nSize of BH particle structure    %d  [bytes]\n\n", (int) sizeof(struct bh_particle_data));
-#endif
 
     }
 
@@ -566,7 +563,7 @@ void open_outputfiles(void)
       printf("error in opening file '%s'\n", buf);
       endrun(1);
     }
-#ifdef BH_BAL_KICK
+#ifdef BH_WIND_KICK
   sprintf(buf, "%sblackhole_details/bhwinds_%d.txt", All.OutputDir, ThisTask);
   if(!(FdBhWindDetails = fopen(buf, mode)))
     {
@@ -1025,7 +1022,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
         
-#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK) || defined(BH_WIND_SPAWN)
+#if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
         strcpy(tag[nt],"BAL_f_accretion");
         addr[nt] = &All.BAL_f_accretion;
         id[nt++] = REAL;
@@ -1034,12 +1031,12 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.BAL_v_outflow;
         id[nt++] = REAL;
 #ifdef BH_WIND_SPAWN
-        strcpy(tag[nt], "SpawnPostReverseShock");
-        addr[nt] = &All.SpawnPostReverseShock;
-        id[nt++] = INT;
+        strcpy(tag[nt], "BAL_internal_temperature");
+        addr[nt] = &All.BAL_internal_temperature;
+        id[nt++] = REAL;
 
-        strcpy(tag[nt], "BH_wind_spawn_mass");
-        addr[nt] = &All.BH_wind_spawn_mass;
+        strcpy(tag[nt], "BAL_wind_particle_mass");
+        addr[nt] = &All.BAL_wind_particle_mass;
         id[nt++] = REAL;
 #endif
 #endif
@@ -1358,13 +1355,6 @@ void read_parameter_file(char *fname)
 #endif
 
 #ifdef BLACK_HOLES
-
-#ifdef DETACH_BLACK_HOLES
-      strcpy(tag[nt], "BHFormationFactor");
-      addr[nt] = &All.BHfactor;
-      id[nt++] = REAL;
-#endif
-
       strcpy(tag[nt], "BlackHoleAccretionFactor");
       addr[nt] = &All.BlackHoleAccretionFactor;
       id[nt++] = REAL;
@@ -1377,7 +1367,7 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.SeedBlackHoleMass;
       id[nt++] = REAL;
         
-#ifdef FOF
+#if defined(BH_SEED_FROM_FOF) || defined(BH_SEED_FROM_LOCALGAS)
       strcpy(tag[nt], "SeedBlackHoleMassSigma");
       addr[nt] = &All.SeedBlackHoleMassSigma;
       id[nt++] = REAL;

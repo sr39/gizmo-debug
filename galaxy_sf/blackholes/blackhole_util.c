@@ -124,7 +124,7 @@ void blackhole_end(void)
         fflush(FdBlackHolesDetails);
 #ifdef BH_OUTPUT_MOREINFO
         fflush(FdBhMergerDetails);
-#ifdef BH_BAL_KICK
+#ifdef BH_WIND_KICK
         fflush(FdBhWindDetails);
 #endif
 #endif
@@ -161,7 +161,7 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
         if(out->DF_mmax_particles > BlackholeTempInfo[target].DF_mmax_particles)
             BlackholeTempInfo[target].DF_mmax_particles = out->DF_mmax_particles;
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     for(k=0;k<3;k++)
     {
         //ASSIGN_ADD(BlackholeTempInfo[target].Jgas_in_Kernel[k],out->Jgas_in_Kernel[k],mode);     

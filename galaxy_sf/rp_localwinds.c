@@ -25,7 +25,7 @@ void radiation_pressure_winds_consolidated(void)
 {
     MyDouble *pos;
     int N_MAX_KERNEL,N_MIN_KERNEL,MAXITER_FB,NITER,startnode,dummy,numngb_inbox,i,j,k,n;
-    double dx,dy,dz,r2,u,h,hinv,hinv3,wk,rho,wt_sum,p_random,p_cumulative;
+    double dx,dy,dz,r2,u,h,hinv,hinv3,wk,rho,wt_sum,p_random,p_cumulative; p_cumulative=0; p_random=0;
     double star_age,lm_ssp,dv_units,dE_over_c,unitmass_in_msun;
     double prob,dt,v,vq=0,dv_imparted,dv_imparted_uv,norm,dir[3];
     double total_n_wind,total_m_wind,total_mom_wind,total_prob_kick,avg_v_kick,momwt_avg_v_kick,avg_taufac;

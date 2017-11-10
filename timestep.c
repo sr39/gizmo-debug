@@ -851,18 +851,18 @@ integertime get_timestep(int p,		/*!< particle index */
         double dt_accr = 1.e-2 * 4.2e7 * SEC_PER_YEAR / All.UnitTime_in_s;
         if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
         {
-#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
+#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
             /* really want prefactor to be ratio of median gas mass to bh mass */
             dt_accr = 0.001 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
-#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
+#if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
             dt_accr *= All.BAL_f_accretion;
-#endif // BH_BAL_WINDS
+#endif // BH_WIND_CONTINUOUS
 #ifdef SINGLE_STAR_FORMATION
             dt_accr = 0.1 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
 #endif
 #else
             dt_accr = 0.05 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
-#endif // defined(BH_GRAVCAPTURE_GAS) || defined(BH_BAL_WINDS)
+#endif // defined(BH_GRAVCAPTURE_GAS) || defined(BH_WIND_CONTINUOUS)
         } // if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
 #ifdef BH_SEED_GROWTH_TESTS
             double dt_evol = 1.e4 * SEC_PER_YEAR / All.UnitTime_in_s;

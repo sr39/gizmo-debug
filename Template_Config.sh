@@ -6,6 +6,11 @@
 #       options that apply to your run. If you modify any of these options,
 #       make sure that you recompile the whole code by typing "make clean; make".
 #
+#  Consult the User Guide before enabling any option. Some modules are proprietary -- access to them
+#    must be granted separately by the code authors (just having the code does NOT grant permission).
+#    Even public modules have citations which must be included if the module is used for published work,
+#    these are all given in the User Guide.
+#
 # This file was originally part of the GADGET3 code developed by
 #   Volker Springel (volker.springel@h-its.org). The code has been modified
 #   substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO (to add new modules and clean
@@ -42,7 +47,7 @@
 #HYDRO_MESHLESS_FINITE_VOLUME   # Moving (quasi-Lagrangian) finite-volume Godunov method
 ## -----------------------------------------------------------------------------------------------------
 # --------------------------------------- SPH methods:
-#SPHEQ_DENSITY_INDEPENDENT_SPH  # force SPH to use the 'pressure-sph' formulation ("modern" SPH)
+#SPHEQ_DENSITY_INDEPENDENT_SPH  # force SPH to use the 'pressure-sph' formulation ('P-SPH')
 #SPHEQ_TRADITIONAL_SPH          # force SPH to use the 'density-sph' (GADGET-2 & GASOLINE SPH)
 # --------------------------------------- SPH artificial diffusion options (use with SPH; not relevant for Godunov/Mesh modes)
 #SPHAV_DISABLE_CD10_ARTVISC     # Disable Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks); just use Balsara switch
@@ -60,7 +65,7 @@
 ## ----------------------------------------------------------------------------------------------------
 # --------------------------------------- Gas Equations-of-State
 #EOS_GAMMA=(5.0/3.0)            # Polytropic Index of Gas (for an ideal gas law): if not set and no other (more complex) EOS set, defaults to GAMMA=5/3
-#EOS_HELMHOLTZ                  # Use Timmes & Swesty 2000 EOS (for e.g. stellar or degenerate equations of state)
+#EOS_HELMHOLTZ                  # Use Timmes & Swesty 2000 EOS (for e.g. stellar or degenerate equations of state); if additional tables needed, download at http://www.tapir.caltech.edu/~phopkins/public/helm_table.dat
 ## -----------------------------------------------------------------------------------------------------
 # --------------------------------- Magneto-Hydrodynamics
 # ---------------------------------  these modules are public, but if used, the user should also cite the MHD-specific GIZMO methods paper
@@ -86,10 +91,10 @@
 # --------------------------   a form which allows them to be modular. Users are free to use the GRACKLE modules and standard 'COOLING' flags,
 # --------------------------   provided proper credit/citations are provided to the relevant methods papers given in the Users Guide ---
 # --------------------------   but all users should cite Hopkins et al. 2017 (arXiv:1702.06148), where Appendix B details the cooling physics
-#COOLING                        # enables radiative cooling and heating: if GALSF, also external UV background read from file "TREECOOL"
+#COOLING                        # enables radiative cooling and heating: if GALSF, also external UV background read from file "TREECOOL" (included in the cooling folder)
 #COOL_LOW_TEMPERATURES          # allow fine-structure and molecular cooling to ~10 K; account for optical thickness and line-trapping effects with proper opacities
-#COOL_METAL_LINES_BY_SPECIES    # use full multi-species-dependent cooling tables ( https://dl.dropbox.com/u/16659252/spcool_tables.tgz ); requires METALS on
-#GRACKLE                        # enable GRACKLE: cooling+chemistry package (requires COOLING above; https://grackle.readthedocs.org/en/latest )
+#COOL_METAL_LINES_BY_SPECIES    # use full multi-species-dependent cooling tables ( http://www.tapir.caltech.edu/~phopkins/public/spcool_tables.tgz ); requires METALS on; cite Wiersma et al. 2009 (MNRAS, 393, 99) in addition to Hopkins et al. 2017 (arXiv:1702.06148)
+#GRACKLE                        # enable GRACKLE: cooling+chemistry package (requires COOLING above; https://grackle.readthedocs.org/en/latest ); see GRACKLE code for their required citations
 #GRACKLE_CHEMISTRY=1            # choose GRACKLE cooling chemistry: (0)=tabular, (1)=Atomic, (2)=(1)+H2+H2I+H2II, (3)=(2)+DI+DII+HD
 #METALS                         # enable metallicities (with multiple species optional) for gas and stars [must be included in ICs or injected via dynamical feedback; needed for some routines]
 ## ----------------------------------------------------------------------------------------------------
@@ -148,7 +153,7 @@
 #ADAPTIVE_GRAVSOFT_FORALL=100   # enable adaptive gravitational softening lengths for all particle types
                                 # (ADAPTIVE_GRAVSOFT_FORGAS should be disabled). the softening is set to the distance
                                 # enclosing a neighbor number set in the parameter file. baryons search for other baryons,
-                                # dm for dm, sidm for sidm, etc. If set to numerical value, the maximum softening is this times All.ForceSoftening[for appropriate particle type]
+                                # dm for dm, sidm for sidm, etc. If set to numerical value, the maximum softening is this times All.ForceSoftening[for appropriate particle type]. cite Hopkins et al., arXiv:1702.06148
 ## -----------------------------------------------------------------------------------------------------
 #NOGRAVITY                      # turn off self-gravity (compatible with analytic_gravity)
 #GRAVITY_NOT_PERIODIC           # self-gravity is not periodic, even though the rest of the box is periodic
@@ -157,25 +162,10 @@
                                 #  > 0 (e.g. =1), then BH_CALC_DISTANCES will be enabled, and it will use the nearest BH particle as the center for analytic gravity computations
                                 #  (edit "gravity/analytic_gravity.h" to actually assign the analytic gravitational forces)
 ## ----------------------------------------------------------------------------------------------------
-#--------------------------------------- Self-Interacting DM (Rocha et al. 2012)
-#-------------------------------- use of these routines requires explicit pre-approval by developers
-#--------------------------------    J. Bullock or M. Boylan-Kolchin (acting for M. Rocha); approved users please cite Rocha et al., MNRAS 2013, 430, 81 and Robles et al, 2017 (arXiv:1706.07514).
-#SIDM=2                         # Self-interacting particle types (specify the particle types which are self-interacting DM
-                                # with a bit mask, as for PM_PLACEHIGHRESREGION above (see description)
-                                # (previous "DMDISK_INTERACTIONS" is identical to setting SIDM=2+4)
-##-----------------------------------------------------------------------------------------------------
-#--------------------------------------- SCF (potential expansion in basis functions)
-#-------------------------------- use of these routines requires explicit pre-approval by developers M. Vogelsberger & L. Hernquist
-#SCFPOTENTIAL                   # turn SCF on/off
-#SCF_HYBRID=1                   # =1:tree:stars<->stars,DM<->DM,stars->DM/SCF:stars<-DM =2:tree:stars<->stars,stars->DM/SCF:stars<-DM,DM<->DM
-#SCF_HQ_MASS=95.2401            # mass of halo of expansion basis
-#SCF_HQ_A=29.7754               # scale length of halo of expansion basis
-#SCF_NEFF=5000000               # effective particle number in halo
-#SCF_NMAX=1                     # maximum n for expansion cut-off
-#SCF_LMAX=1                     # maximum l for expansion cut-off
-#SCF_SCALEFAC                   # readin scale factors for coefficients from file scf_scalefac.dat
-##-----------------------------------------------------------------------------------------------------
-#SCALARFIELD                    # Gravity is mediated by a long-range scalar field instead of DE or DM
+#--------------------------------------- Self-Interacting DM (Rocha et al. 2012) and Scalar-field DM (Robles et al.)
+#--------------------------------    use of these routines requires explicit pre-approval by developers J. Bullock or M. Boylan-Kolchin (acting for M. Rocha); approved users please cite Rocha et al., MNRAS 2013, 430, 81 and Robles et al, 2017 (arXiv:1706.07514).
+#SIDM=2                         # Self-interacting particle types (specify the particle types which are self-interacting DM with a bit mask, as for PM_PLACEHIGHRESREGION above (see description); previous "DMDISK_INTERACTIONS" is identical to setting SIDM=2+4
+#SCALARFIELD                    # Gravity is mediated by a long-range scalar field instead of DE or DM (cite Robles et al., arXiv:1503.00799)
 ## ----------------------------------------------------------------------------------------------------
 # -------------------------------------- Dark energy (flags to allow complicated equations of state)
 #DARKENERGY                     # enables Dark Energy with non-trivial equations-of-state (master switch)
@@ -183,17 +173,7 @@
 #EXTERNALHUBBLE                 # reads the hubble function from the DE file (pre-tabulated)
 #TIMEDEPGRAV                    # rescales H and G according to DE model (pre-tabulated)
 ## ----------------------------------------------------------------------------------------------------
-#------------------------------- Fine-grained phase space structure analysis (M. Vogelsberger)
-#-------------------------------- use of these routines requires explicit pre-approval by developer M. Vogelsberger
-#DISTORTIONTENSORPS             # main switch: integrate phase-space distortion tensor
-#OUTPUT_DISTORTIONTENSORPS      # write phase-space distortion tensor to snapshot
-#OUTPUT_TIDALTENSORPS           # write configuration-space tidal tensor to snapshot
-#OUTPUT_LAST_CAUSTIC            # write info on last passed caustic to snapshot
-#GDE_TYPES=2+4+8+16+32          # track GDE for these types
-#GDE_READIC                     # read initial sheet orientation/initial density/initial caustic count from ICs
-#GDE_LEAN                       # lean version of GDE
-## ----------------------------------------------------------------------------------------------------
-#EOS_TRUELOVE_PRESSURE          # adds artificial pressure floor force Jeans length above resolution scale (means you will get the wrong answer, but things will look smooth)
+#EOS_TRUELOVE_PRESSURE          # adds artificial pressure floor force Jeans length above resolution scale (means you can get the wrong answer, but things will look smooth).  cite Robertson & Kravtsov 2008, ApJ, 680, 1083
 ####################################################################################################
 
 
@@ -227,7 +207,7 @@
 #GALSF_SFR_VIRIAL_SF_CRITERION=0 # only allow star formation in virialized sub-regions (alpha<1) (0/no value='default'; 1=0+Jeans criterion; 2=1+'strict' (zero sf if not bound)). Cite Hopkins, Narayanan, & Murray 2013 (MNRAS, 432, 2647) and Hopkins et al., 2017a, arXiv:1702.06148
 #GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory. Cite Guszejnov, Hopkins, & Ma 2017, MNRAS, 472, 2107
 #GALSF_SFR_IMF_SAMPLING          # discretely sample the IMF: simplified model with quantized number of massive stars. Cite Kung-Yi Su, Hopkins, et al., Hayward, et al., 2017, "Discrete Effects in Stellar Feedback: Individual Supernovae, Hypernovae, and IMF Sampling in Dwarf Galaxies". 
-##GALSF_GENERATIONS=1            # the number of star particles a gas particle may spawn (defaults to 1, set otherwise)
+#GALSF_GENERATIONS=1             # the number of star particles a gas particle may spawn (defaults to 1, set otherwise)
 ## ----------------------------------------------------------------------------------------------------------------------------
 # ---- sub-grid models (for large-volume simulations or modest/low resolution galaxy simulations) -----------------------------
 # -------- these are all ultimately variations of the Springel & Hernquist 2005 sub-grid models for the ISM, star formation,
@@ -235,19 +215,19 @@
 # -------- you should contact those authors (Lars Hernquist & Volker Springel)
 # -----------------------------------------------------------------------------------------------------------------------------
 #GALSF_EFFECTIVE_EQS            # Springel-Hernquist 'effective equation of state' model for the ISM and star formation [cite Springel & Hernquist, MNRAS, 2003, 339, 289]
-#GALSF_SUBGRID_WINDS            # sub-grid winds ('kicks' as in Oppenheimer+Dave,Springel+Hernquist,Boothe+Schaye,etc): enable this master switch for basic functionality
-#GALSF_SUBGRID_WIND_SCALING=0   # set wind velocity scaling: 0 (default)=constant v [and mass-loading]; 1=velocity scales with halo mass (Oppenheimer+Dave), requires FOF modules; 2=scale with local DM dispersion as Vogelsberger 13
+#GALSF_SUBGRID_WINDS            # sub-grid winds ('kicks' as in Oppenheimer+Dave,Springel+Hernquist,Boothe+Schaye,etc): enable this master switch for basic functionality [cite Springel & Hernquist, MNRAS, 2003, 339, 289]
+#GALSF_SUBGRID_WIND_SCALING=0   # set wind velocity scaling: 0 (default)=constant v [and mass-loading]; 1=velocity scales with halo mass (cite Oppenheimer & Dave, 2006, MNRAS, 373, 1265), requires FOF modules; 2=scale with local DM dispersion as Vogelsberger 13 (cite Zhu & Li, ApJ, 2016, 831, 52)
 #GALSF_WINDS_ORIENTATION=0      # directs wind orientation [0=isotropic/random, 1=polar, 2=along density gradient]
-#GALSF_TURNOFF_COOLING_WINDS    # turn off cooling for SNe-heated particles (as Stinson+ 2006 GASOLINE model; requires GALSF_FB_SNE_HEATING; use by permission of developer P. Hopkins)
-#GALSF_GASOLINE_RADHEATING      # heat gas with luminosity from young stars (as Stinson+ 2013 GASOLINE model; requires GALSF_FB_SNE_HEATING; use by permission of developer P. Hopkins)
+#GALSF_TURNOFF_COOLING_WINDS    # turn off cooling for SNe-heated particles (as Stinson+ 2006 GASOLINE model, cite it); requires GALSF_FB_SNE_HEATING; use by permission of developer P. Hopkins)
+#GALSF_GASOLINE_RADHEATING      # heat gas with luminosity from young stars (as Stinson+ 2013 GASOLINE model, cite it); requires GALSF_FB_SNE_HEATING; use by permission of developer P. Hopkins)
 ## ----------------------------------------------------------------------------------------------------
-#------ PFH physical models for star formation and feedback: these are the FIRE simulation modules (Hopkins et al. 2014) ------ ##
+#------ PFH physical models for star formation and feedback: these are the FIRE simulation modules (Hopkins et al. 2014, Hopkins et al., 2017a, arXiv:1702.06148) ------ ##
 #--------- Their use follows the FIRE authorship policy. Modules are NOT to be used without authors permission (including P. Hopkins, E. Quataert, D. Keres, and C.A. Faucher-Giguere),
 #---------    even if you are already using the development GIZMO code. (PFH does not have sole authority to grant permission for the modules)
 #--------- New projects using these modules must FIRST be PRE-APPROVED by the collaboration (after permission to use the modules has been explicitly granted),
 #--------- and subsequently are required to follow the collaboration's paper approval and submission policies
 ##-----------------------------------------------------------------------------------------------------
-#FIRE_PHYSICS_DEFAULTS           # enable default set of FIRE physics packages (see details below)
+#FIRE_PHYSICS_DEFAULTS           # enable default set of FIRE physics packages (see details below); note use policy above
 #----------- physical stellar feedback mechanisms (sub-modules of the FIRE_PHYSICS_DEFAULTS; these cannot be turned off and on individually without extreme care, they have complicated inter-dependencies) ---- #
 ##----------------------GALSF_FB_GASRETURN              # Paul Torrey's addition for stochastic gas return (modified for continuous return)
 ##----------------------GALSF_FB_HII_HEATING            # gas within HII regions around young stars is photo-heated to 10^4 K
@@ -284,58 +264,54 @@
 ####################################################################################################
 # ---------------- Black Holes (Sink-Particles with Accretion and Feedback)
 ####################################################################################################
-#BLACK_HOLES                     # master switch to enable BHs
+#BLACK_HOLES                    # master switch to enable BHs
 ## ----------------------------------------------------------------------------------------------------
-# ----- seeding / BH-particle creation
+# ----- seeding / BH-particle spawning
 ## ----------------------------------------------------------------------------------------------------
-#BH_HOST_TO_SEED_RATIO=1000      # Min FOF stellar mass for seeding is BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass [Requires FOF with linking type including star particles (MinFoFMassForNewSeed and massDMpart in the param file are ignored)]
-#BH_SEED_FROM_STAR_PARTICLE      # star particle on FOF potential minimum gets converted into a BH (default is densest gas particle)
-#BH_SEED_STAR_MASS_FRACTION=0.02 # minimum star mass fraction for BH seeding
-#BH_POPIII_SEEDS                 # BHs seeded on-the-fly from dense, low-metallicity gas; criteria define-able in modular fashion in sfr_eff.c
+#BH_SEED_FROM_FOF=0             # use FOF on-the-fly to seed BHs in massive FOF halos; =0 uses DM groups, =1 uses stellar [type=4] groups; requires FOF with linking type including relevant particles (cite Angles-Alcazar et al., MNRAS, 2017, arXiv:1707.03832)
+#BH_SEED_FROM_LOCALGAS          # BHs seeded on-the-fly from dense, low-metallicity gas (no FOF), like star formation; criteria define-able in modular fashion in sfr_eff.c (function return_probability_of_this_forming_bh_from_seed_model). cite Grudic et al. (arXiv:1612.05635) and Lamberts et al. (MNRAS, 2016, 463, L31)
+#BH_INCREASE_DYNAMIC_MASS=100   # increase the particle dynamical mass by this factor at the time of BH seeding
 ## ----------------------------------------------------------------------------------------------------
-# ----- dynamics
-# ----------- use the BH_DRAG options only in cosmological cases where M_BH is not >> other particle masses
+# ----- dynamics (when BH mass is not >> other particle masses, it will artificially get kicked and not sink via dynamical friction; these 're-anchor' the BH for low-res sims)
 ## ----------------------------------------------------------------------------------------------------
-#BH_DYNFRICTION=0                # apply dynamical friction force to the BHs when m_bh not >> other particle mass: 0=[DM+stars+gas] (default); 1=[DM+stars]; 2=[stars]
-##BH_DYNFRICTION_INCREASE=10     # artificially increase dynamic friction by this factor (requires BH_DYNFRICTION)
-#BH_INCREASE_DYNAMIC_MASS=100    # Increase the dynamic particle mass by this factor at the time of FOF seeding
-##BH_DRAG=1                      # Drag on black-holes due to accretion (w real mdot); set =2 to boost as if BH is accreting at eddington
-##BH_REPOSITION_ON_POTMIN=0      # reposition black hole on potential minimum (requires EVALPOTENTIAL). [set =1 to "jump" onto STARS only]
+#BH_DYNFRICTION=0               # apply explicit dynamical friction force to the BHs when m_bh not >> other particle mass: 0=[DM+stars+gas]; 1=[DM+stars]; >1 simply multiplies the DF force by this number (cite Tremmel, Governato, Volonteri, & Quinn,2015, MNRAS, 451, 1868)
+#BH_DRAG=1                      # drag force on BH due to accretion; =1 uses actual mdot, =2 boost as if BH is accreting at eddington. cite Springel, Di Matteo, and Hernquist, 2005, MNRAS, 361, 776
+#BH_REPOSITION_ON_POTMIN=0      # reposition black hole on potential minimum (requires EVALPOTENTIAL). [set =1 to "jump" onto STARS only]
 ## ----------------------------------------------------------------------------------------------------
-# ----- accretion models/options
+# ----- accretion models (modules for gas or other particle accretion)
 ## ----------------------------------------------------------------------------------------------------
-#BH_SWALLOWGAS                  # enables stochastic accretion of gas particles consistent with growth rate of hole
-#BH_ALPHADISK_ACCRETION         # gas accreted into 'virtual' alpha-disk, and from there onto the BH
-#BH_GRAVCAPTURE_GAS             # accretion determined only by resolved gravitational capture by the BH (for gas particles)
-#BH_GRAVCAPTURE_NONGAS          # as BH_GRAVCAPTURE_GAS, but applies to non-gas particles (can be enabled with other accretion models for gas)
-#BH_GRAVACCRETION=0             # Gravitational torque accretion estimator from Hopkins & Quataert (2011):
-                                #  [=0] for kinematic B/D decomposition as in Angles-Alcazar et al. (default) and [=1] for approximate f_disk evaluation
-##BH_BONDI=0                    # Bondi-Hoyle style accretion model: 0=default (with velocity); 1=dont use gas velocity with sound speed; 2=variable-alpha tweak (Booth & Schaye 2009)
-#BH_SUBGRIDBHVARIABILITY        # model variability below resolved dynamical time for BH
+#BH_SWALLOWGAS                  # 'master switch' for accretion (should always be enabled if accretion is on). enables BH to actually eliminate gas particles and take their mass.
+#BH_ALPHADISK_ACCRETION         # gas accreted goes into a 'virtual' alpha-disk (mass reservoir), which then accretes onto the BH at the viscous rate (determining luminosity, etc). cite GIZMO methods (or PFH private communication)
+#BH_SUBGRIDBHVARIABILITY        # model variability below resolved dynamical time for BH (convolve accretion rate with a uniform power spectrum of fluctuations on timescales below the minimum resolved dynamical time). cite Hopkins & Quataert 2011, MNRAS, 415, 1027
+#BH_GRAVCAPTURE_NONGAS          # accretion determined only by resolved gravitational capture by the BH, for non-gas particles (can be enabled with other accretion models for gas). cite Hopkins et al., 2016, MNRAS, 458, 816
+## ----
+#BH_GRAVCAPTURE_GAS             # accretion determined only by resolved gravitational capture by the BH (for gas particles). cite Hopkins et al., 2016, MNRAS, 458, 816
+#BH_GRAVACCRETION=0             # Gravitational torque accretion estimator from Hopkins & Quataert (2011): [=0] for kinematic B/D decomposition as in Angles-Alcazar et al. (default) and [=1] for approximate f_disk evaluation. cite Hopkins & Quataert 2011, MNRAS, 415, 1027 and Angles-Alcazar et al. 2017, MNRAS, 464, 2840
+#BH_BONDI=0                     # Bondi-Hoyle style accretion model: 0=default (with velocity); 1=dont use gas velocity with sound speed; 2=variable-alpha tweak (Booth & Schaye 2009). cite Springel, Di Matteo, and Hernquist, 2005, MNRAS, 361, 776
 ## ----------------------------------------------------------------------------------------------------
 # ----- feedback models/options
 ## ----------------------------------------------------------------------------------------------------
-#BH_BAL_WINDS                   # particles within the BH kernel are given mass, momentum, and energy continuously as high-vel BAL winds
-#BH_PHOTONMOMENTUM              # continuous long-range IR radiation pressure acceleration from BH (needs GALSF_FB_RT_PHOTONMOMENTUM)
-#BH_HII_HEATING                 # photo-ionization feedback from BH (needs GALSF_FB_HII_HEATING)
-#BH_COMPTON_HEATING             # enable Compton heating/cooling from BHs in cooling function (needs BH_PHOTONMOMENTUM)
-##BH_THERMALFEEDBACK            # couple a fraction of the BH luminosity into surrounding gas as thermal energy (DiMatteo/Springel/Hernquist model)
-##BH_BAL_KICK                   # do BAL winds with stochastic particle kicks at specified velocity (instead of continuous wind solution - requires BH_SWALLOWGAS - )
-##BH_BAL_KICK_COLLIMATED        # winds follow the direction of angular momentum within Kernel (only for BH_BAL_KICK winds)
-##BH_BAL_KICK_MOMENTUM_FLUX=10  # increase the effective mass-loading of BAL winds to reach the desired momentum flux in units of L_bol/c (needs BH_BAL_KICK)
-##BH_WIND_SPAWN                 # spawn virtual particles for BH winds [in-development; contact Paul Torrey]
+# -- thermal (pure thermal energy injection around BH particle, proportional to BH accretion rate)
+#BH_THERMALFEEDBACK             # constant fraction of luminosity coupled in kernel around BH. cite Springel, Di Matteo, and Hernquist, 2005, MNRAS, 361, 776
+# -- mechanical (wind from accretion disk/BH with specified mass/momentum/energy-loading relative to accretion rate)
+#BH_WIND_CONTINUOUS=0           # gas in kernel given continuous wind flux (energy/momentum/etc). =0 for isotropic, =1 for collimated. cite Hopkins et al., 2016, MNRAS, 458, 816
+#BH_WIND_KICK=1                 # gas in kernel given stochastic 'kicks' at fixed velocity. (>0=isotropic, <0=collimated, absolute value sets momentum-loading in L/c units). cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840
+#BH_WIND_SPAWN                  # spawn virtual 'wind' particles to carry BH winds out [in development by Paul Torrey]. use requires permissions from P. Torrey and PFH (requires permission, this module is not fully de-bugged and methods not published)
+# -- radiative: [FIRE] these currently are built on the architecture of the FIRE stellar FB modules, and require some of those be active. their use therefore follows FIRE policies (see details above).
+#BH_COMPTON_HEATING             # enable Compton heating/cooling from BHs in cooling function (needs BH_PHOTONMOMENTUM). cite Hopkins et al., 2016, MNRAS, 458, 816
+#BH_HII_HEATING                 # photo-ionization feedback from BH (needs GALSF_FB_HII_HEATING). cite Hopkins et al., arXiv:1702.06148
+#BH_PHOTONMOMENTUM              # continuous long-range IR radiation pressure acceleration from BH (needs GALSF_FB_RT_PHOTONMOMENTUM). cite Hopkins et al., arXiv:1702.06148
 ## ----------------------------------------------------------------------------------------------------
 # ----- output options
 ## ----------------------------------------------------------------------------------------------------
-#BH_OUTPUT_MOREINFO             # output additional info to "blackhole_details"
-#BH_CALC_DISTANCES              # calculate distances for all particles to closest BH for, e.g., refinement
+#BH_OUTPUT_MOREINFO             # output additional info to "blackhole_details" (use caution: files can get VERY large if many BHs exist)
+#BH_CALC_DISTANCES              # calculate distances for all particles to closest BH for, e.g., refinement, external potentials, etc. cite Garrison-Kimmel et al., MNRAS, 2017, 471, 1709
 ## ----------------------------------------------------------------------------------------------------
 #------------ deprecated or de-bugging options (most have been combined or optimized into the functions above, here for legacy)
-##---------------------DETACH_BLACK_HOLES               # Insert an independent data structure for BHs (currently explicitly depends on SEPARATE_STELLARDOMAINDECOMP)
 ##---------------------BH_SEED_GROWTH_TESTS             #- Currently testing options for BH seeding
 ##-----------------------------------------------------------------------------------------------------
 #-------------------------------------- AGN-Bubble feedback (D. Sijacki; legacy GADGET-3 code here)
-#-------------------------------- use of these routines requires explicit pre-approval by developer D. Sijacki
+#-------------------------------- use of these routines requires explicit pre-approval by developer D. Sijacki (they are legacy code and not developed for GIZMO, and should only be used with permissions and appropriate development)
 ##---------------------BUBBLES                        # generation of hot bubbles in an isolated halo or the the biggest halo in the run
 ##---------------------MULTI_BUBBLES                  # hot bubbles in all haloes above certain mass threshold (works only with FOF and without BUBBLES)
 ##---------------------EBUB_PROPTO_BHAR               # Energy content of the bubbles with cosmic time evolves as an integrated BHAR(z) over a Salpeter time (Di Matteo 2003 eq. [11])
@@ -532,6 +508,36 @@
 #NETWORK_OUTPUT_BINARY
 ####################################################################################################-
 
+
+
+
+####################################################################################################-
+##----------------------------------------------------------------------------------------------------
+#--------------------------------------- on the fly analysis of phase structure and potentials in DM simulations
+#---------------------------------------  (this code works, but requires additional modules not part of GIZMO but from GADGET-3,
+#---------------------------------------   where they were developed. users who wish to incorporate a new version/fix this are welcome)
+##----------------------------------------------------------------------------------------------------
+#------------------------------- Fine-grained phase space structure analysis (M. Vogelsberger)
+#-------------------------------- use of these routines requires explicit pre-approval by developer M. Vogelsberger
+#DISTORTIONTENSORPS             #- main switch: integrate phase-space distortion tensor
+#OUTPUT_DISTORTIONTENSORPS      #- write phase-space distortion tensor to snapshot
+#OUTPUT_TIDALTENSORPS           #- write configuration-space tidal tensor to snapshot
+#OUTPUT_LAST_CAUSTIC            #- write info on last passed caustic to snapshot
+#GDE_TYPES=2+4+8+16+32          #- track GDE for these types
+#GDE_READIC                     #- read initial sheet orientation/initial density/initial caustic count from ICs
+#GDE_LEAN                       #- lean version of GDE
+##-----------------------------------------------------------------------------------------------------
+#--------------------------------------- SCF (potential expansion in basis functions)
+#-------------------------------- use of these routines requires explicit pre-approval by developers M. Vogelsberger & L. Hernquist
+#SCFPOTENTIAL                   #- turn SCF on/off
+#SCF_HYBRID=1                   #- =1:tree:stars<->stars,DM<->DM,stars->DM/SCF:stars<-DM =2:tree:stars<->stars,stars->DM/SCF:stars<-DM,DM<->DM
+#SCF_HQ_MASS=95.2401            #- mass of halo of expansion basis
+#SCF_HQ_A=29.7754               #- scale length of halo of expansion basis
+#SCF_NEFF=5000000               #- effective particle number in halo
+#SCF_NMAX=1                     #- maximum n for expansion cut-off
+#SCF_LMAX=1                     #- maximum l for expansion cut-off
+#SCF_SCALEFAC                   #- read-in scale factors for coefficients from file scf_scalefac.dat (must be created by user)
+####################################################################################################-
 
 
 

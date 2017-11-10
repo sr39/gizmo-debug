@@ -168,7 +168,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     if(dt_entr <= 0) {return 0;} // no update
     int k;
     double eCR, u0;
-    if(mode==0) {eCR=SphP[i].CosmicRayEnergy; u0=SphP[i].InternalEnergy;} else {eCR=SphP[i].CosmicRayEnergyPred; SphP[i].InternalEnergyPred;} // initial energy
+    if(mode==0) {eCR=SphP[i].CosmicRayEnergy; u0=SphP[i].InternalEnergy;} else {eCR=SphP[i].CosmicRayEnergyPred; u0=SphP[i].InternalEnergyPred;} // initial energy
     if(eCR < 0) {eCR=0;} // limit to physical values
     
 #ifdef COSMIC_RAYS_M1

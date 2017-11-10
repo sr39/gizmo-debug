@@ -228,10 +228,6 @@
         /* --------------------------------------------------------------------------------- */
         Riemann_solver(Riemann_vec, &Riemann_out, n_unit, press_tot_limiter);
         /* before going on, check to make sure we have a valid Riemann solution */
-#ifdef BH_WIND_SPAWN
-        // check if two wind-spawned particles found each other
-        //if((P[j].ID==All.AGNWindID)&&(local.ConditionNumber<0)) {Riemann_out.P_M=1.e-20; Riemann_out.S_M=0.; Face_Area_Norm=0.; for(k=0;k<3;k++) {Face_Area_Vec[k]=0.;}}
-#endif
         if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>1.4*press_tot_limiter))
         {
             /* go to a linear reconstruction of P, rho, and v, and re-try */

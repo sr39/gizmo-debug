@@ -174,7 +174,7 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code)
 
 
 
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
 /* weight function for local (short-range) coupling terms from the black hole, including the single-scattering 
     radiation pressure and the bal winds */
 double bh_angleweight_localcoupling(int j, double hR, double theta)
@@ -182,10 +182,13 @@ double bh_angleweight_localcoupling(int j, double hR, double theta)
 #ifdef SINGLE_STAR_FORMATION
     return 1;
 #endif
-#ifndef BH_PHOTONMOMENTUM
-    // for now, if only BH_BAL_WINDS enabled, assume isotropic //
-    return P[j].Hsml*P[j].Hsml;
+    
+#if defined(BH_WIND_CONTINUOUS)
+#if (BH_WIND_CONTINUOUS==0)
+    return P[j].Hsml*P[j].Hsml; // default is to assume isotropic
 #endif
+#endif
+    /* optionally below: Nathan Roth's estimate of angular dependence for the momentum flux vs angle for a torus-type configuration */
     double b0,c0,f;
     // nathans 'B' and 'C' functions //
     b0=8.49403/(1.17286+hR);
@@ -197,6 +200,7 @@ double bh_angleweight_localcoupling(int j, double hR, double theta)
 }
 
 
+#if defined(BH_PHOTONMOMENTUM)
 /* function below is used for long-range black hole radiation fields -- used only in the forcetree routines (where they 
     rely this for things like the long-range radiation pressure and compton heating) */
 double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz)
@@ -233,7 +237,8 @@ double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, doubl
     return exp(y) * bh_lum;
 #endif
 }
-#endif /* end of #if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) */
+#endif
+#endif /* end of #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) */
 
 
 
@@ -267,7 +272,7 @@ void blackhole_properties_loop(void)
         //normalize_temp_info_struct(i);
         
 
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
         set_blackhole_long_range_rp( i,  n);
 #endif
         
@@ -346,7 +351,7 @@ void set_blackhole_mdot(int i, int n, double dt)
     int k; k=0;
 #ifdef BH_GRAVACCRETION
     double m_tmp_for_bhar, mdisk_for_bhar, mbulge_for_bhar, bh_mass, fac;
-    double r0_for_bhar,j_tmp_for_bhar,fgas_for_bhar,f_disk_for_bhar;
+    double r0_for_bhar,fgas_for_bhar,f_disk_for_bhar;
     double f0_for_bhar;
 #endif
 #ifdef BH_SUBGRIDBHVARIABILITY
@@ -383,7 +388,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 
 #if (BH_GRAVACCRETION == 1)
         m_tmp_for_bhar = BlackholeTempInfo[i].Malt_in_Kernel;
-        j_tmp_for_bhar=0;
+        double j_tmp_for_bhar=0;
         // DAA: Jalt_in_Kernel is now the TOTAL angular momentum (need to subtract Jgas here)
         for(k=0;k<3;k++)
             j_tmp_for_bhar += (BlackholeTempInfo[i].Jalt_in_Kernel[k] - BlackholeTempInfo[i].Jgas_in_Kernel[k]) * 
@@ -527,21 +532,21 @@ void set_blackhole_mdot(int i, int n, double dt)
     /* if there -is- an alpha-disk, protect the alpha-disk not to be over-depleted (i.e. overshooting into negative alpha-disk masses) */
     if(dt>0)
     {
-#ifdef BH_BAL_WINDS
+#ifdef BH_WIND_CONTINUOUS
         if(mdot > BPP(n).BH_Mass_AlphaDisk/dt*All.BAL_f_accretion) mdot = BPP(n).BH_Mass_AlphaDisk/dt*All.BAL_f_accretion;
 #else 
         if(mdot > BPP(n).BH_Mass_AlphaDisk/dt) mdot = BPP(n).BH_Mass_AlphaDisk/dt;
 #endif
     }
-#ifdef BH_BAL_KICK
+#ifdef BH_WIND_KICK
     /* DAA: correct the mdot into the accretion disk for the mass loss in "kick" winds 
-       Note that for BH_BAL_WINDS the wind mass is removed in the final loop */
+       Note that for BH_WIND_CONTINUOUS the wind mass is removed in the final loop */
     BlackholeTempInfo[i].mdot_alphadisk *= All.BAL_f_accretion;
 #endif
 
 #else // BH_ALPHADISK_ACCRETION
 
-#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
+#if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
     /* if there is no alpha-disk, the BHAR defined above is really an mdot into the accretion disk. the rate -to the hole- should be corrected for winds */
     mdot *= All.BAL_f_accretion;
 #endif
@@ -573,13 +578,13 @@ void set_blackhole_new_mass(int i, int n, double dt)
     if(BPP(n).BH_Mdot <= 0) {BPP(n).BH_Mdot=0;}
 
 /* DAA:
- for BH_BAL_WINDS
+ for BH_WIND_CONTINUOUS
     - we accrete the winds first, either explicitly to the BH or implicitly into the disk -
     - then we remove the wind mass in the final loop
- for BH_BAL_KICK
+ for BH_WIND_KICK
     - the BH grows according to the mdot set above (including the mass loss in winds)
     - if there is an alpha-disk, the mass going out in winds has been subtracted from mdot_alphadisk  
- for BH_BAL_KICK + BH_GRAVCAPTURE_GAS 
+ for BH_WIND_KICK + BH_GRAVCAPTURE_GAS 
     - the ratio of BH/disk growth-to-outflow rate is enforced explicitly in blackhole_swallow_and_kick */ 
 
 #ifdef BH_ALPHADISK_ACCRETION
@@ -594,7 +599,7 @@ void set_blackhole_new_mass(int i, int n, double dt)
 
 #else // #ifdef BH_ALPHADISK_ACCRETION
 
-#ifdef BH_BAL_WINDS
+#ifdef BH_WIND_CONTINUOUS
     // accrete the winds first, then remove the wind mass in the final loop
     BPP(n).BH_Mass += BPP(n).BH_Mdot * dt / All.BAL_f_accretion; 
 #else
@@ -613,10 +618,6 @@ void set_blackhole_new_mass(int i, int n, double dt)
 #endif
 #endif
     
-#ifdef BH_WIND_SPAWN	// This is not done properly.  All spawn simulations use a fixed BH mass for now...
-    BPP(n).BH_Mass           =    All.SeedBlackHoleMass;
-    BPP(n).BH_Mass_AlphaDisk =    All.SeedAlphaDiskMass;
-#endif
 }
 
 
@@ -668,14 +669,6 @@ void set_blackhole_drag(int i, int n, double dt)
 #endif
         double bhvel_df=0; for(k=0;k<3;k++) bhvel_df += BlackholeTempInfo[i].DF_mean_vel[k]*BlackholeTempInfo[i].DF_mean_vel[k];
         double fac, fac_friction;
-#ifdef BH_DYNFRICTION_INCREASE
-        /* DAA: neglect the term  [erf(x) - 2*x*exp(-x^2)/sqrt(pi)] 
-           this is equivalent to take the upper limit  rho( < v ) --> rho */
-        fac = 50. * 3.086e21 / (All.UnitLength_in_cm/All.HubbleParam); /* impact parameter */
-        fac_friction = log(1. + fac * bhvel_df / (All.G * bh_mass));   /* Coulomb logarithm */
-        /* apply increase factor but still limit friction force if M_BH >> m_particle */
-        fac_friction *= BH_DYNFRICTION_INCREASE / (1 + bh_mass / (100.*BlackholeTempInfo[i].DF_mmax_particles));
-#else
         /* First term is approximation of the error function */
         fac = 8 * (M_PI - 3) / (3 * M_PI * (4. - M_PI));
         x = sqrt(bhvel_df) / (sqrt(2) * BlackholeTempInfo[i].DF_rms_vel);
@@ -685,16 +678,13 @@ void set_blackhole_drag(int i, int n, double dt)
         fac_friction *= log(1. + fac * bhvel_df / (All.G * bh_mass));        
         /* now we add a correction to only apply this force if M_BH is not >> <m_particles> */
         fac_friction *= 1 / (1 + bh_mass / (5.*BlackholeTempInfo[i].DF_mmax_particles));
-#endif
         /* now the dimensional part of the force */
-        // fac = (BlackholeTempInfo[i].Mgas_in_Kernel+BlackholeTempInfo[i].Malt_in_Kernel) /         DAA: Malt_in_Kernel is total mass already
-        double Mass_in_Kernel;
+        double Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel;
 #if (BH_DYNFRICTION == 1)    // DAA: dark matter + stars
         Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel - BlackholeTempInfo[i].Mgas_in_Kernel;
-#elif (BH_DYNFRICTION == 2)  // DAA: stars only
-        Mass_in_Kernel = BlackholeTempInfo[i].Mstar_in_Kernel;
-#else
-        Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel;
+#endif
+#if (BH_DYNFRICTION > 1)
+        Mass_in_Kernel *= BH_DYNFRICTION;
 #endif
         //fac = BlackholeTempInfo[i].Malt_in_Kernel / ( (4*M_PI/3) * pow(PPP[n].Hsml*All.cf_atime,3) ); /* mean density of all mass inside kernel */
         fac = Mass_in_Kernel / ( (4*M_PI/3) * pow(PPP[n].Hsml*All.cf_atime,3) ); /* mean density of all mass inside kernel */
@@ -711,7 +701,7 @@ void set_blackhole_drag(int i, int n, double dt)
 #endif
 
 
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
 void set_blackhole_long_range_rp(int i, int n)
 {
     int k;
@@ -744,7 +734,7 @@ void set_blackhole_long_range_rp(int i, int n)
          but before the forcetree update and walk; otherwise, this won't be used correctly there */
     }
 }
-#endif // if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+#endif // if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
 
 
 
@@ -818,8 +808,8 @@ void blackhole_final_operations(void)
         BPP(n).BH_Mass -= radiation_loss;
         
         /* subtract the BAL wind mass from P[n].Mass && (BPP(n).BH_Mass || BPP(n).BH_Mass_AlphaDisk) */
-        // DAA: note that the mass loss in winds for BH_BAL_KICK has already been taken into account
-#ifdef BH_BAL_WINDS
+        // DAA: note that the mass loss in winds for BH_WIND_KICK has already been taken into account
+#ifdef BH_WIND_CONTINUOUS
         double dm_wind = (1.-All.BAL_f_accretion) / All.BAL_f_accretion * dm;
         if(dm_wind > P[n].Mass) {dm_wind = P[n].Mass;}
         
@@ -832,7 +822,7 @@ void blackhole_final_operations(void)
         P[n].Mass -= dm_wind;
         BPP(n).BH_Mass -= dm_wind;
 #endif
-#endif // ifdef BH_BAL_WINDS
+#endif // ifdef BH_WIND_CONTINUOUS
         
 #ifdef BH_WIND_SPAWN
         double dm_wind = (1.-All.BAL_f_accretion) / All.BAL_f_accretion * dm;

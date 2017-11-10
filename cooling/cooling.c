@@ -28,12 +28,13 @@
 
 /* these are variables of the cooling tables. they are static but this shouldnt be a problem for shared-memory structure because
     they are only defined once in a global operation, then locked for particle-by-particle operations */
+/* requires the cooling table TREECOOL, which is included in the GIZMO source in the cooling directory */
 #define NCOOLTAB  2000 /* defines size of cooling table */
 static double Tmin = 0.0, Tmax = 9.0, deltaT; /* minimum/maximum temp, in log10(T/K) and temperature gridding: will be appropriately set in make_cooling_tables subroutine below */
 static double *BetaH0, *BetaHep, *Betaff, *AlphaHp, *AlphaHep, *Alphad, *AlphaHepp, *GammaeH0, *GammaeHe0, *GammaeHep; // UV background parameters
 #ifdef COOL_METAL_LINES_BY_SPECIES
 /* if this is enabled, the cooling table files should be in a folder named 'spcool_tables' in the run directory.
- cooling tables can be downloaded at: https://dl.dropbox.com/u/16659252/spcool_tables.tgz */
+ cooling tables can be downloaded at: http://www.tapir.caltech.edu/~phopkins/public/spcool_tables.tgz */
 static float *SpCoolTable0, *SpCoolTable1;
 #endif
 /* these are constants of the UV background at a given redshift: they are interpolated from TREECOOL but then not modified particle-by-particle */
@@ -754,7 +755,7 @@ extern FILE *fd;
 double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 {
     double n_elec=n_elec_guess, nH0, nHe0, nHp, nHep, nHepp; /* ionization states [computed below] */
-    double Lambda, Heat, LambdaExc, LambdaIon, LambdaRec, LambdaFF, LambdaCmptn, LambdaExcH0, LambdaExcHep, LambdaIonH0, LambdaIonHe0, LambdaIonHep;
+    double Lambda, Heat, LambdaFF, LambdaCmptn, LambdaExcH0, LambdaExcHep, LambdaIonH0, LambdaIonHe0, LambdaIonHep;
     double LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, redshift, T, NH_SS_z, shieldfac, LambdaMol, LambdaMetal;
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
     LambdaMol=0; LambdaMetal=0; LambdaCmptn=0; NH_SS_z=NH_SS;
@@ -793,7 +794,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
     
 #ifdef BH_COMPTON_HEATING
-    double AGN_LambdaPre,AGN_T_Compton;
+    double AGN_LambdaPre, AGN_T_Compton;
     AGN_T_Compton = 2.0e7; /* approximate from Sazonov et al. */
     if(target < 0) {
         AGN_LambdaPre = 0;
@@ -885,7 +886,13 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         if(T > AGN_T_Compton)
         {
             LambdaCmptn = AGN_LambdaPre * (T - AGN_T_Compton) * n_elec/nHcgs;
-            if(LambdaCmptn > 2.19e-21/sqrt(T/1.0e8)) LambdaCmptn=2.19e-21/sqrt(T/1.0e8);
+            if(T > 10.*AGN_T_Compton)
+            {
+                double LambdaCmptn_var = (AGN_LambdaPre/1.e-26) * (T/1.e9) / nHcgs;
+                LambdaCmptn_var = 2.55e-19 * pow( (LambdaCmptn_var*LambdaCmptn_var*LambdaCmptn_var) * (1.e9/T) , 0.2 );
+                if(LambdaCmptn > LambdaCmptn_var) {LambdaCmptn = LambdaCmptn_var;}
+                //if(LambdaCmptn > 2.19e-21/sqrt(T/1.0e8)) LambdaCmptn=2.19e-21/sqrt(T/1.0e8);
+            }
             Lambda += LambdaCmptn;
         }
 #endif
@@ -1022,16 +1029,19 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
           LambdaCmptn = 5.65e-36 * n_elec * (T - 2.73 * (1. + redshift)) * pow(1. + redshift, 4.) / nHcgs;
       }
       else {LambdaCmptn = 0;}
+
 #if defined(BH_COMPTON_HEATING) && !defined(SINGLE_STAR_FORMATION)
         /* Relativistic compton cooling from an AGN source */
         LambdaCmptn += AGN_LambdaPre * (T - AGN_T_Compton) * (T/1.5e9)/(1-exp(-T/1.5e9)) * n_elec/nHcgs;
+        /* per CAFG's calculations, we should note that at very high temperatures, the rate-limiting step may be
+         the Coulomb collisions moving energy from protons to e-; which if slow will prevent efficient e- cooling */
+        double LambdaCmptn_var = (AGN_LambdaPre/1.e-26) * (T/1.e9) / nHcgs;
+        LambdaCmptn_var = 2.55e-19 * pow( (LambdaCmptn_var*LambdaCmptn_var*LambdaCmptn_var) * (1.e9/T) , 0.2 );
+        if(LambdaCmptn > LambdaCmptn_var) {LambdaCmptn = LambdaCmptn_var;}
+        //if(LambdaCmptn > 2.19e-21/sqrt(T/1.0e8)) LambdaCmptn=2.19e-21/sqrt(T/1.0e8);
 #endif
         
       Lambda = LambdaFF + LambdaCmptn;
-
-      /* per CAFG's calculations, we should note that at very high temperatures, the rate-limiting step may be
-         the Coulomb collisions moving energy from protons to e-; which if slow will prevent efficient e- cooling */
-      if(Lambda > 2.19e-21/sqrt(T/1.0e8)) Lambda=2.19e-21/sqrt(T/1.0e8);
     }
     
     
@@ -1132,13 +1142,9 @@ void MakeCoolingTable(void)
     int i;
     double T,Tfact;
     
-    if(All.MinGasTemp > 0.0)
-        Tmin = log10(All.MinGasTemp); // Tmin = log10(0.1 * All.MinGasTemp);
-    else
-        Tmin = 1.0;
-    
+    if(All.MinGasTemp > 0.0) {Tmin = log10(All.MinGasTemp);} else {Tmin=1.0;}    
     deltaT = (Tmax - Tmin) / NCOOLTAB;
-    double ethmin = pow(10.0, Tmin) * (1. + YHELIUM_0) / ((1. + 4. * YHELIUM_0) * (PROTONMASS / BOLTZMANN) * GAMMA_MINUS1); /* minimum internal energy for neutral gas */
+    //double ethmin = pow(10.0, Tmin) * (1. + YHELIUM_0) / ((1. + 4. * YHELIUM_0) * (PROTONMASS / BOLTZMANN) * GAMMA_MINUS1); /* minimum internal energy for neutral gas */
     /* minimum internal energy for neutral gas */
     for(i = 0; i <= NCOOLTAB; i++)
     {

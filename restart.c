@@ -49,9 +49,6 @@ void restart(int modus)
     struct global_data_all_processes all_task0;
     int nmulti = MULTIPLEDOMAINS;
     
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-    int bhbuffer;
-#endif
     
     
     if(ThisTask == 0 && modus == 0)
@@ -147,13 +144,6 @@ void restart(int modus)
 #endif
           new_MaxPart = All.MaxPart;
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-		  if(All.TotBHs == 0)
-		    All.MaxPartBH = All.PartAllocFactor * (All.TotN_gas / NTask) * All.BHfactor;
-		  else
-		    All.MaxPartBH = All.PartAllocFactor * (All.TotBHs / NTask +
-							   (All.TotN_gas / NTask) * All.BHfactor);
-#endif
 
 		  save_PartAllocFactor = -1;
 		}
@@ -237,33 +227,6 @@ void restart(int modus)
         in(&Stars_converted, modus);
 #endif
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-	  in(&N_BHs, modus);
-	  if(!modus)
-	    bhbuffer = sizeof(struct bh_particle_data);
-	  in(&bhbuffer, modus);
-	  if(modus && bhbuffer != sizeof(struct bh_particle_data))
-	    {
-	      printf
-		("in file <%s> :: sizes of the current bh particle data and of the stored bh particle data are different! (%d vs %d bytes)\n",
-		 buf, bhbuffer, (int) sizeof(struct bh_particle_data));
-	      endrun(23);
-	    }
-
-	  if(N_BHs > 0)
-	    {
-	      if(N_BHs > All.MaxPartBH)
-		{
-		  printf
-		    ("BH: it seems you have reduced(!) 'PartAllocFactor' below the value of %g needed to load the restart file.\n",
-		     N_BHs / (((double) All.TotBHs) / NTask));
-		  printf("fatal error\n");
-		  endrun(2222);
-		}
-	      /* Sph-Particle data  */
-	      byten(&BHP[0], N_BHs * sizeof(struct bh_particle_data), modus);
-	    }
-#endif
 
 	  /* now store relevant data for tree */
 

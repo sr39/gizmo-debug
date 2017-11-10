@@ -33,9 +33,11 @@ int does_particle_need_to_be_merged(int i)
     return 0;
 #else
 #ifdef BH_WIND_SPAWN
-    MyFloat vr2 = P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2] ;
-    MyFloat r2  = P[i].Pos[0]*P[i].Pos[0] + P[i].Pos[1]*P[i].Pos[1] + P[i].Pos[2]*P[i].Pos[2] ;
-    if( (r2 < 1.0) && (vr2 > All.BAL_v_outflow*All.BAL_v_outflow/100.0)) return 0;
+    if(P[i].ID == All.AGNWindID)
+    {
+        MyFloat vr2 = P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2] ;
+        if(vr2 <= 0.01 * All.BAL_v_outflow*All.BAL_v_outflow) return 1;
+    }
 #endif
     if(P[i].Mass <= 0) return 0;
     if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*ref_mass_factor(i))) return 0;
@@ -53,13 +55,7 @@ int does_particle_need_to_be_split(int i)
     return 0;
 #else
 #ifdef BH_WIND_SPAWN
-    MyFloat vr2 = P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2] ;
-    MyFloat r2  = P[i].Pos[0]*P[i].Pos[0] + P[i].Pos[1]*P[i].Pos[1] + P[i].Pos[2]*P[i].Pos[2] ;
-    if( (r2 < 1.0) && (vr2 > All.BAL_v_outflow*All.BAL_v_outflow/100.0)) return 0;
-    
-    double fac = All.Time * All.Time / (0.001*0.001 + All.Time * All.Time);
-    if( (P[i].Hsml * fac > sqrt(P[i].min_dist_to_bh+0.005) ) && (All.ExtraRef==1) ) return 1;
-    
+    if(P[i].ID == All.AGNWindID) return 0;
 #endif
     if(P[i].Mass >= (All.MaxMassForParticleSplit * ref_mass_factor(i))) return 1;
     return 0;
@@ -185,6 +181,9 @@ void merge_and_split_particles(void)
                         /* make sure we're not taking the same particle (and that its available to be merged into)! */
                         if((j>=0)&&(j!=i)&&(P[j].Type==P[i].Type)&&(P[j].Mass > P[i].Mass)&&(P[i].Mass+P[j].Mass < All.MaxMassForParticleSplit))
                         {
+#ifdef BH_WIND_SPAWN
+                            if(P[j].ID != All.AGNWindID)
+#endif
                             if(P[j].Mass<threshold_val) {threshold_val=P[j].Mass; target_for_merger=j;} // mass-based //
                         }
                     } // for(n=0; n<numngb_inbox; n++)

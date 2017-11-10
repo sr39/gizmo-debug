@@ -189,8 +189,8 @@
 #define BH_COMPTON_HEATING // turn on the heating term: this just calculates incident BH-particle flux, to be used in the cooling routine
 #endif
 #ifdef SINGLE_STAR_FB_JETS
-#define BH_BAL_WINDS // use kinetic feedback module for protostellar jets
-#define BH_BAL_KICK // (for this, use the simple kicking module, it's not worth the expense of the other) 
+//#define BH_WIND_CONTINUOUS 0
+#define BH_WIND_KICK 1 // use kinetic feedback module for protostellar jets (for this, use the simple kicking module, it's not worth the expense of the other)
 #endif
 #ifdef SINGLE_STAR_PROMOTION
 #define GALSF_FB_GASRETURN // stellar winds [scaled appropriately for particle masses]
@@ -408,7 +408,7 @@
 #endif
 
 
-#if defined(BLACK_HOLES) && (defined(BH_REPOSITION_ON_POTMIN) || defined(BH_SEED_FROM_STAR_PARTICLE))
+#if defined(BLACK_HOLES) && (defined(BH_REPOSITION_ON_POTMIN) || defined(BH_SEED_FROM_FOF))
 #ifndef EVALPOTENTIAL
 #define EVALPOTENTIAL
 #endif
@@ -538,7 +538,7 @@ int network_integrate( double temp, double rho, const double *x, double *dx, dou
 
 
 
-#define  GIZMO_VERSION   "0.5"	/*!< code version string */
+#define  GIZMO_VERSION   "2017"	/*!< code version string */
 
 #ifndef  GALSF_GENERATIONS
 #define  GALSF_GENERATIONS     1	/*!< Number of star particles that may be created per gas particle */
@@ -1096,7 +1096,7 @@ extern double TimeBin_BH_mass[TIMEBINS];
 extern double TimeBin_BH_dynamicalmass[TIMEBINS];
 extern double TimeBin_BH_Mdot[TIMEBINS];
 extern double TimeBin_BH_Medd[TIMEBINS];
-#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_NONGAS) || defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS) || defined(BH_DYNFRICTION)
+#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_NONGAS) || defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_DYNFRICTION)
 #define BH_NEIGHBOR_BITFLAG 63 /* allow all particle types in the BH search: 63=2^0+2^1+2^2+2^3+2^4+2^5 */
 #else
 #define BH_NEIGHBOR_BITFLAG 33 /* only search for particles of types 0 and 5 (gas and black holes) around a primary BH particle */
@@ -1159,9 +1159,6 @@ extern int NumPart;		/*!< number of particles on the LOCAL processor */
 extern int N_gas;		/*!< number of gas particles on the LOCAL processor  */
 #ifdef SEPARATE_STELLARDOMAINDECOMP
 extern int N_stars;
-#endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-extern int N_BHs;
 #endif
 
 extern long long Ntype[6];	/*!< total number of particles of each type */
@@ -1287,7 +1284,7 @@ extern FILE *FdBlackHoles;	/*!< file handle for blackholes.txt log-file. */
 extern FILE *FdBlackHolesDetails;
 #ifdef BH_OUTPUT_MOREINFO
 extern FILE *FdBhMergerDetails;
-#ifdef BH_BAL_KICK
+#ifdef BH_WIND_KICK
 extern FILE *FdBhWindDetails;
 #endif
 #endif
@@ -1326,10 +1323,6 @@ extern struct global_data_all_processes
 
 #ifdef BLACK_HOLES
   int TotBHs;
-#if defined(DETACH_BLACK_HOLES)
-  int MaxPartBH;
-  double BHfactor;
-#endif
 #endif
 
     
@@ -1664,7 +1657,7 @@ extern struct global_data_all_processes
     
 #ifdef GALSF_SUBGRID_WINDS
 #ifndef GALSF_SUBGRID_WIND_SCALING
-#define GALSF_SUBGRID_WIND_SCALING=0 // default to constant-velocity winds //
+#define GALSF_SUBGRID_WIND_SCALING 0 // default to constant-velocity winds //
 #endif
   double WindEfficiency;
   double WindEnergyFraction;
@@ -1699,7 +1692,7 @@ extern struct global_data_all_processes
   double AGBGasEnergy;
 #endif
     
-#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK) || defined(BH_WIND_SPAWN)
+#if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
     double BAL_f_accretion;
     double BAL_v_outflow;
 #endif
@@ -1779,8 +1772,8 @@ extern struct global_data_all_processes
   double SeedAlphaDiskMass;         /*!< Seed alpha disk mass */
 #endif
 #ifdef BH_WIND_SPAWN
-  double BH_wind_spawn_mass;        /*!< target mass for feedback particles to be spawned */
-  int SpawnPostReverseShock;
+  double BAL_wind_particle_mass;        /*!< target mass for feedback particles to be spawned */
+  double BAL_internal_temperature;
   MyIDType AGNWindID;
 #endif
   double MinFoFMassForNewSeed;      /*!< Halo mass required before new seed is put in */
@@ -2016,7 +2009,6 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_WIND_SPAWN
     MyFloat unspawned_wind_mass;    /*!< tabulates the wind mass which has not yet been spawned */
 #endif
-#if !defined(DETACH_BLACK_HOLES)
 #ifdef BH_COUNTPROGS
     int BH_CountProgs;
 #endif
@@ -2026,7 +2018,7 @@ extern ALIGN(32) struct particle_data
 #endif
     MyFloat BH_Mdot;
     int BH_TimeBinGasNeighbor;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyFloat BH_disk_hr;
 #endif
 #ifdef BH_BUBBLES
@@ -2054,7 +2046,6 @@ extern ALIGN(32) struct particle_data
     MyFloat BH_MinPotPos[3];
     MyFloat BH_MinPot;
 #endif
-#endif  /* if !defined(DETACH_BLACK_HOLES) */
 #endif  /* if defined(BLACK_HOLES) */
     
 #ifdef BH_CALC_DISTANCES
@@ -2114,14 +2105,6 @@ extern ALIGN(32) struct particle_data
     int dt_step;
 #endif
     
-#if defined(DETACH_BLACK_HOLES)
-    union
-    {
-        unsigned int BHID;
-        unsigned int MetID;
-    } pt;
-#endif
-    
 #ifdef SCF_HYBRID
     MyDouble GravAccelSum[3];
     MyFloat MassBackup;
@@ -2151,58 +2134,7 @@ extern ALIGN(32) struct particle_data
 #endif
 
 #if defined(BLACK_HOLES)
-#if defined(DETACH_BLACK_HOLES)
-
-#define BPP(i) BHP[P[(i)].pt.BHID]
-
-extern struct bh_particle_data
-{
-  MyIDType PID;
-#ifdef BH_COUNTPROGS
-  int BH_CountProgs;
-#endif
-  MyFloat BH_Mass;
-  MyFloat BH_Mdot;
-#ifdef BH_ALPHADISK_ACCRETION
-  MyFloat BH_Mass_AlphaDisk;
-#endif
-  int     BH_TimeBinGasNeighbor;
-#ifdef BH_BUBBLES
-  MyFloat BH_Mass_bubbles;
-  MyFloat BH_Mass_ini;
-#ifdef UNIFIED_FEEDBACK
-  MyFloat BH_Mass_radio;
-#endif
-#endif
-#ifdef BH_BUBBLES
-  union
-  {
-    MyFloat BH_accreted_BHMass_bubbles;
-    MyLongDouble dBH_accreted_BHMass_bubbles;
-  } b7;
-#ifdef UNIFIED_FEEDBACK
-  union
-  {
-    MyFloat BH_accreted_BHMass_radio;
-    MyLongDouble dBH_accreted_BHMass_radio;
-  } b8;
-#endif
-#endif
-#ifdef BH_REPOSITION_ON_POTMIN
-  MyFloat BH_MinPotPos[3];
-  MyFloat BH_MinPot;
-#endif
-#ifdef BH_WIND_SPAWN
-    MyFloat unspawned_wind_mass;    /*!< tabulates the wind mass which has not yet been spawned */
-#endif
-}
-  *BHP,
-  *DomainBHBuf;
-#else
-
 #define BPP(i) P[(i)]
-
-#endif
 #endif
 
 
@@ -2618,6 +2550,7 @@ extern struct info_block
 
 extern int N_active_loc_BHs;    /*!< number of active black holes on the LOCAL processor */
 
+
 extern struct blackhole_temp_particle_data       // blackholedata_topass
 {
     MyIDType index;
@@ -2636,7 +2569,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyLongDouble MgasBulge_in_Kernel;
     MyLongDouble MstarBulge_in_Kernel;
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyLongDouble GradRho_in_Kernel[3];
     MyFloat BH_angle_weighted_kernel_sum;
 #endif
