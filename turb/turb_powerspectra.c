@@ -106,7 +106,8 @@ void powerspec_turb(int filenr)
   if(ThisTask == 0)
     printf("Start turbulent powerspec computation\n");
 
-  double tstart = my_second();
+  double tstart, tend;
+  tstart = my_second();
 
   /* Set up the FFTW plan  */
   fft_forward_plan = rfftw3d_mpi_create_plan(MPI_COMM_WORLD, POWERSPEC_GRID, POWERSPEC_GRID, POWERSPEC_GRID,
@@ -344,7 +345,7 @@ void powerspec_turb(int filenr)
 
   rfftwnd_mpi_destroy_plan(fft_forward_plan);
 
-  double tend = my_second();
+  tend = my_second();
   
 #ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
@@ -727,6 +728,7 @@ double powerspec_turb_obtain_fields(void)
 	      /* need to redo this particle */
 	      npleft++;
 	      powerspec_turb_nearest_hsml[i] *= 2.0;
+/*
 	      if(iter >= MAXITER - 10)
 		{
 		  int xx = i / (POWERSPEC_GRID * POWERSPEC_GRID);
@@ -734,10 +736,11 @@ double powerspec_turb_obtain_fields(void)
 		  int zz = (i - xx * POWERSPEC_GRID * POWERSPEC_GRID - yy * POWERSPEC_GRID); 
 		  xx += slabstart_x;
 		  
-            double x = (xx + 0.5) / POWERSPEC_GRID * boxSize_X;
-            double y = (yy + 0.5) / POWERSPEC_GRID * boxSize_Y;
-            double z = (zz + 0.5) / POWERSPEC_GRID * boxSize_Z;
+            //double x = (xx + 0.5) / POWERSPEC_GRID * boxSize_X;
+            //double y = (yy + 0.5) / POWERSPEC_GRID * boxSize_Y;
+            //double z = (zz + 0.5) / POWERSPEC_GRID * boxSize_Z;
 		}
+*/
 	    }
 	  else
 	    {

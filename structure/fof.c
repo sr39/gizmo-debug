@@ -138,24 +138,9 @@ void fof_fof(int num)
   endrun(0);
 #endif
 
-#ifdef BH_SEED_STAR_MASS_FRACTION
-  if(num < -1)			/* only for BH seeding ! */
-    {
-      MyFOF_PRIMARY_LINK_TYPES = 16;
-      MyFOF_SECONDARY_LINK_TYPES = 4 + 32;
-      MyFOF_GROUP_MIN_LEN = 10;
-    }
-  else
-    {
-      MyFOF_PRIMARY_LINK_TYPES = FOF_PRIMARY_LINK_TYPES;
-      MyFOF_SECONDARY_LINK_TYPES = FOF_SECONDARY_LINK_TYPES;
-      MyFOF_GROUP_MIN_LEN = FOF_GROUP_MIN_LEN;
-    }
-#else
   MyFOF_PRIMARY_LINK_TYPES = FOF_PRIMARY_LINK_TYPES;
   MyFOF_SECONDARY_LINK_TYPES = FOF_SECONDARY_LINK_TYPES;
   MyFOF_GROUP_MIN_LEN = FOF_GROUP_MIN_LEN;
-#endif
 
   if(ThisTask == 0)
     {
@@ -192,20 +177,10 @@ void fof_fof(int num)
 
   LinkL = LINKLENGTH * pow(masstot / ndmtot / rhodm, 1.0 / 3);
 
-#ifdef BH_SEED_STAR_MASS_FRACTION
-  if(num == -2)
-    LinkL /= 3;
-#endif
-
 #ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
       printf("\nComoving linking length: %g    ", LinkL);
-#ifdef BH_SEED_STAR_MASS_FRACTION
-      if(num == -2)
-	printf("\n      linking on star particles for BH seeding (prim=%d, sec=%d, Nmin=%d) ...",
-	       MyFOF_PRIMARY_LINK_TYPES, MyFOF_SECONDARY_LINK_TYPES, MyFOF_GROUP_MIN_LEN);
-#endif
       printf("(presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
       fflush(stdout);
     }
@@ -390,10 +365,9 @@ void fof_fof(int num)
   if(ThisTask == 0)
     printf("computation of group properties took = %g sec\n", timediff(t0, t1));
 
-#ifdef BLACK_HOLES
+#ifdef BH_SEED_FROM_FOF
   if(num < 0){   // Make BHs in every call to fof_fof (including the group finding for each snapshot)
-      if(All.Time < 1.0/(1.0+All.SeedBlackHoleMinRedshift)) { fof_make_black_holes(); }
-      else {  printf("skipping black hole seeding at a = %g \n", All.Time); }
+      if(All.Time < 1.0/(1.0+All.SeedBlackHoleMinRedshift)) { fof_make_black_holes(); } else {  printf("skipping black hole seeding at a = %g \n", All.Time); }
   }
 #endif
 
@@ -1069,10 +1043,9 @@ void fof_compute_group_properties(int gr, int start, int len)
 #ifdef BLACK_HOLES
   Group[gr].BH_Mass = 0;
   Group[gr].BH_Mdot = 0;
-  Group[gr].index_maxdens = Group[gr].task_maxdens = -1;
-  Group[gr].MaxDens = 0;
-#ifdef BH_SEED_FROM_STAR_PARTICLE
+#ifdef BH_SEED_FROM_FOF
   Group[gr].MinPot = BHPOTVALUEINIT;
+  Group[gr].index_maxdens = Group[gr].task_maxdens = -1;
 #endif
 #endif
 
@@ -1111,36 +1084,19 @@ void fof_compute_group_properties(int gr, int start, int len)
 	  Group[gr].BH_Mass += BPP(index).BH_Mass;
 	}
 
-#ifdef BH_SEED_FROM_STAR_PARTICLE
-
-      if( (P[index].Type == 4) && (P[index].Potential < Group[gr].MinPot) )
+#ifdef BH_SEED_FROM_FOF
+#if (BH_SEED_FROM_FOF==0)
+      if(P[index].Type==0)
+#elif (BH_SEED_FROM_FOF==1)
+      if(P[index].Type==4)
+#endif
+         if(P[index].Potential < Group[gr].MinPot)
         {
           Group[gr].MinPot = P[index].Potential;
           Group[gr].index_maxdens = index;
           Group[gr].task_maxdens = ThisTask;
         }
-
-#else // BH_SEED_FROM_STAR_PARTICLE
-
-#ifdef BH_SEED_STAR_MASS_FRACTION
-      if(P[index].Type == 4)
-#else
-      if(P[index].Type == 0)
 #endif
-	{
-#if defined(GALSF_SUBGRID_WINDS) && !defined(BH_SEED_STAR_MASS_FRACTION)
-	  if(SphP[index].DelayTime == 0)
-#endif
-	    if(SphP[index].Density > Group[gr].MaxDens)
-	      {
-		Group[gr].MaxDens = SphP[index].Density;
-		Group[gr].index_maxdens = index;
-		Group[gr].task_maxdens = ThisTask;
-	      }
-	}
-
-#endif // BH_SEED_FROM_STAR_PARTICLE
-
 #endif // BLACK_HOLES
 
         for(j = 0; j < 3; j++) {xyz[j] = P[index].Pos[j] - Group[gr].FirstPos[j];}
@@ -1233,20 +1189,13 @@ void fof_exchange_group_data(void)
 #ifdef BLACK_HOLES
       Group[start].BH_Mdot += get_Group[i].BH_Mdot;
       Group[start].BH_Mass += get_Group[i].BH_Mass;
-#ifdef BH_SEED_FROM_STAR_PARTICLE
+#ifdef BH_SEED_FROM_FOF
       if(get_Group[i].MinPot < Group[start].MinPot)
         {
           Group[start].MinPot = get_Group[i].MinPot;
           Group[start].index_maxdens = get_Group[i].index_maxdens;     // "index" and "task" refer to MinPot here
           Group[start].task_maxdens = get_Group[i].task_maxdens;
         }
-#else
-      if(get_Group[i].MaxDens > Group[start].MaxDens)
-	{
-	  Group[start].MaxDens = get_Group[i].MaxDens;
-	  Group[start].index_maxdens = get_Group[i].index_maxdens;
-	  Group[start].task_maxdens = get_Group[i].task_maxdens;
-	}
 #endif
 #endif
 
@@ -1988,7 +1937,7 @@ int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int
 
 
 
-#ifdef BLACK_HOLES
+#ifdef BH_SEED_FROM_FOF
 
 void fof_make_black_holes(void)
 {
@@ -1997,32 +1946,22 @@ void fof_make_black_holes(void)
   int *import_indices, *export_indices;
   gsl_rng *random_generator_forbh;
   double random_number_forbh=0, unitmass_in_msun;
-    
-#ifdef BH_SEED_STAR_MASS_FRACTION
-  float *import_fofmass, *export_fofmass;
-#else
   double massDMpart;
-
   if(All.MassTable[1] > 0)
     massDMpart = All.MassTable[1];
   else
     massDMpart = All.massDMpart;
-#endif // BH_SEED_STAR_MASS_FRACTION
 
   for(n = 0; n < NTask; n++)
     Send_count[n] = 0;
 
   for(i = 0; i < Ngroups; i++)
     {
-#ifdef BH_HOST_TO_SEED_RATIO
-      if(Group[i].MassType[4] > BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass)
-#else
-#ifndef BH_SEED_STAR_MASS_FRACTION
-      if(Group[i].LenType[1] * massDMpart >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
-#else
-      if(Group[i].MassType[4] > BH_SEED_STAR_MASS_FRACTION * All.MinFoFMassForNewSeed && Group[i].LenType[2] == 0)
+#if (BH_SEED_FROM_FOF==0)
+    if(Group[i].LenType[1] * massDMpart >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
+#elif (BH_SEED_FROM_FOF==1)
+    if(Group[i].MassType[4] > All.MinFoFMassForNewSeed)
 #endif
-#endif //ifdef BH_HOST_TO_SEED_RATIO
 	if(Group[i].LenType[5] == 0)
 	  {
 	    if(Group[i].index_maxdens >= 0)
@@ -2046,32 +1985,19 @@ void fof_make_black_holes(void)
 
   import_indices = mymalloc("import_indices", nimport * sizeof(int));
   export_indices = mymalloc("export_indices", nexport * sizeof(int));
-#ifdef BH_SEED_STAR_MASS_FRACTION
-  import_fofmass = mymalloc("import_fofmass", nimport * sizeof(float));
-  export_fofmass = mymalloc("export_fofmass", nexport * sizeof(float));
-#endif
 
   for(n = 0; n < NTask; n++)
     Send_count[n] = 0;
 
   for(i = 0; i < Ngroups; i++)
     {
-#ifdef BH_HOST_TO_SEED_RATIO
-      if(Group[i].MassType[4] > BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass)
-#else
-#ifndef BH_SEED_STAR_MASS_FRACTION
-      if(Group[i].LenType[1] * massDMpart >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
-#else
-      if(Group[i].MassType[4] > BH_SEED_STAR_MASS_FRACTION * All.MinFoFMassForNewSeed && Group[i].LenType[2] == 0)
+#if (BH_SEED_FROM_FOF==0)
+        if(Group[i].LenType[1] * massDMpart >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
+#elif (BH_SEED_FROM_FOF==1)
+        if(Group[i].MassType[4] > All.MinFoFMassForNewSeed)
 #endif
-#endif //ifdef BH_HOST_TO_SEED_RATIO
 	if(Group[i].LenType[5] == 0)
 	  {
-#ifdef BH_SEED_STAR_MASS_FRACTION
-	    if(Group[i].index_maxdens >= 0)
-	      export_fofmass[Send_offset[Group[i].task_maxdens] +
-			     Send_count[Group[i].task_maxdens]] = Group[i].MassType[4];
-#endif
 	    if(Group[i].index_maxdens >= 0)
 	      export_indices[Send_offset[Group[i].task_maxdens] +
 			     Send_count[Group[i].task_maxdens]++] = Group[i].index_maxdens;
@@ -2080,10 +2006,6 @@ void fof_make_black_holes(void)
 
   memcpy(&import_indices[Recv_offset[ThisTask]], &export_indices[Send_offset[ThisTask]],
 	 Send_count[ThisTask] * sizeof(int));
-#ifdef BH_SEED_STAR_MASS_FRACTION
-  memcpy(&import_fofmass[Recv_offset[ThisTask]], &export_fofmass[Send_offset[ThisTask]],
-	 Send_count[ThisTask] * sizeof(float));
-#endif
 
   for(level = 1; level < (1 << PTask); level++)
     {
@@ -2096,15 +2018,6 @@ void fof_make_black_holes(void)
 		     &import_indices[Recv_offset[recvTask]],
 		     Recv_count[recvTask] * sizeof(int),
 		     MPI_BYTE, recvTask, TAG_FOF_I, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-#ifdef BH_SEED_STAR_MASS_FRACTION
-      if(recvTask < NTask)
-	MPI_Sendrecv(&export_fofmass[Send_offset[recvTask]],
-		     Send_count[recvTask] * sizeof(float),
-		     MPI_BYTE, recvTask, TAG_FOF_J,
-		     &import_fofmass[Recv_offset[recvTask]],
-		     Recv_count[recvTask] * sizeof(float),
-		     MPI_BYTE, recvTask, TAG_FOF_J, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-#endif
     }
 
   MPI_Allreduce(&nimport, &ntot, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -2120,37 +2033,19 @@ void fof_make_black_holes(void)
 
   for(n = 0; n < nimport; n++)
     {
-#if defined(BH_SEED_STAR_MASS_FRACTION) || defined(BH_SEED_FROM_STAR_PARTICLE)
-      if(P[import_indices[n]].Type != 4)
-#else
-      if(P[import_indices[n]].Type != 0)
+#if (BH_SEED_FROM_FOF==0)
+        if(P[import_indices[n]].Type != 0)
+#elif (BH_SEED_FROM_FOF==1)
+        if(P[import_indices[n]].Type != 4)
 #endif
 	endrun(7772);
 
       P[import_indices[n]].Type = 5;	/* make it a black hole particle */
-#ifdef DETACH_BLACK_HOLES
-      if(N_BHs + 1 > All.MaxPartBH)
-	{
-	  printf
-	    ("On Task=%d with NumPart=%d I tried to make too many BH. Sorry, no space left...(All.MaxPartBH=%d)\n",
-	     ThisTask, NumPart, All.MaxPartBH);
-	  fflush(stdout);
-	  endrun(8890);
-	}
-
-      P[import_indices[n]].pt.BHID = N_BHs;
-      BHP[N_BHs].PID = import_indices[n];
-      N_BHs++;
-#endif
 
 #ifdef GALSF
       P[import_indices[n]].StellarAge = All.Time;
 #endif
 
-#ifdef BH_SEED_STAR_MASS_FRACTION
-      BPP(import_indices[n]).BH_Mass =
-	All.SeedBlackHoleMass * import_fofmass[n] / (BH_SEED_STAR_MASS_FRACTION * All.MinFoFMassForNewSeed);
-#else
       if(All.SeedBlackHoleMassSigma > 0)
       {
         /* compute gaussian random number: mean=0, sigma=All.SeedBlackHoleMassSigma */
@@ -2164,7 +2059,6 @@ void fof_make_black_holes(void)
       }else{
           BPP(import_indices[n]).BH_Mass = All.SeedBlackHoleMass;
       }
-#endif
 
 #ifdef BH_INCREASE_DYNAMIC_MASS
       P[import_indices[n]].Mass *= BH_INCREASE_DYNAMIC_MASS;
@@ -2188,7 +2082,7 @@ void fof_make_black_holes(void)
 #endif
 #endif
 
-#if !( defined(BH_SEED_STAR_MASS_FRACTION) || defined(BH_SEED_FROM_STAR_PARTICLE) )
+#if (BH_SEED_FROM_FOF != 1)
       Stars_converted++;
       TimeBinCountSph[P[import_indices[n]].TimeBin]--;
 #endif
@@ -2197,15 +2091,11 @@ void fof_make_black_holes(void)
 
   All.TotN_gas -= ntot;
 
-#ifdef BH_SEED_STAR_MASS_FRACTION
-  myfree(export_fofmass);
-  myfree(import_fofmass);
-#endif
   myfree(export_indices);
   myfree(import_indices);
 }
 
-#endif // BLACK_HOLES
+#endif // BH_SEED_FROM_FOF
 
 
 
@@ -2430,8 +2320,7 @@ void multi_bubbles(void)
     {
       if(massDMpart > 0)
 	{
-	  if(Group[k].LenType[1] * massDMpart >=
-	     (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
+	  if(Group[k].LenType[1] * massDMpart >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
 	    nheat++;
 	}
       else
@@ -2476,8 +2365,7 @@ void multi_bubbles(void)
 	{
 	  if(massDMpart > 0)
 	    {
-	      if(Group[k].LenType[1] * massDMpart >=
-		 (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
+	      if(Group[k].LenType[1] * massDMpart >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
 		{
 		  GroupCM_dum_x[i] = Group[k].CM[0];
 		  GroupCM_dum_y[i] = Group[k].CM[1];
@@ -2758,12 +2646,12 @@ int fof_compare_FOF_GList_LocCountTaskDiffMinID(const void *a, const void *b)
   if(((fof_group_list *) a)->MinID > ((fof_group_list *) b)->MinID)
     return +1;
 
-  if(labs(((fof_group_list *) a)->ExtCount - ((fof_group_list *) a)->MinIDTask) <
-     labs(((fof_group_list *) b)->ExtCount - ((fof_group_list *) b)->MinIDTask))
+  if((((fof_group_list *) a)->ExtCount - ((fof_group_list *) a)->MinIDTask) <
+     (((fof_group_list *) b)->ExtCount - ((fof_group_list *) b)->MinIDTask))
     return -1;
 
-  if(labs(((fof_group_list *) a)->ExtCount - ((fof_group_list *) a)->MinIDTask) >
-     labs(((fof_group_list *) b)->ExtCount - ((fof_group_list *) b)->MinIDTask))
+  if((((fof_group_list *) a)->ExtCount - ((fof_group_list *) a)->MinIDTask) >
+     (((fof_group_list *) b)->ExtCount - ((fof_group_list *) b)->MinIDTask))
     return +1;
 
   return 0;

@@ -116,13 +116,13 @@ AGS_DesNumNgb           32  % neighbor number for calculating adaptive gravsoft
 %------------------------------------------------------------
 
 %---- Magneto-Hydrodynamics Parameters (MAGNETIC on)
-%--- Initial B-Field Strengths (if B_SET_IN_PARAMS on, otherwise read from IC file)
+%----- Initial B-Field Strengths (if B_SET_IN_PARAMS on, otherwise read from IC file)
 BiniX   1.0e-8    % initial B_x, in code units
 BiniY   1.0e-8    % initial B_y, in code units
 BiniZ   1.0e-8    % initial B_z, in code units
 
 %---- Thermal Conduction (CONDUCTION on)
-%--- set coefficient kappa [code units] or, if CONDUCTION_SPITZER on, multiplies value
+%----- set coefficient kappa [code units] or, if CONDUCTION_SPITZER on, multiplies value
 ConductionCoeff  1.0  % set/multiply conduction coefficient
 
 %---- Navier-Stokes Viscosity (VISCOSITY on)
@@ -133,9 +133,13 @@ BulkViscosityCoeff      1.0     % set/multiply bulk viscosity coefficient
 %---- Turbulent Diffusion Master Switch (TURB_DIFFUSION on)
 TurbDiffusionCoefficient 1.0    % Normalizes diffusion rates relative to Smagorinsky-Lilly theory [best calibration] (~0.5-2)
 
-%--- Cosmic Ray + Gas Fluids (COSMIC_RAYS)
+%---- Cosmic Ray + Gas Fluids (COSMIC_RAYS on)
 CosmicRayDiffusionCoeff     1.0     % multiplies anisotropic diffusion/streaming coefficients
 
+%---- Dust-Gas Mixtures (GRAIN_FLUID on)
+Grain_Internal_Density      1.0     % internal/material density of grains in g/cm^3
+Grain_Size_Min              1.e-6   % minimum grain size in cm
+Grain_Size_Max              1.e-4   % maximum grain size in cm
 
 
 %-------------------------------------------------------------------------
@@ -168,7 +172,7 @@ VariableWindSpecMomentum 5000.  % wind momentum per unit stellar mass (code velo
 
 
 
-%-------------- FIRE (PFH) explicit star formation & feedback model
+%-------------- FIRE (PFH) explicit star formation & feedback model (FIRE on)
 %--- initial metallicity of gas & stars in simulation 
 InitMetallicity             0.0001  % initial gas+stellar metallicity (in solar)
 InitStellarAge              0.001   % initial mean age (in Gyr; for stars in sim ICs)
@@ -192,24 +196,25 @@ CosmicRay_SNeFraction       0.1     % fraction of SNe ejecta kinetic energy into
 %-------------- Black Hole accretion & formation (BLACK_HOLES on)
 %--- formation/seeding  
 SeedBlackHoleMass            1.0e-7 	% initial mass (on-the-fly or single galaxy)
-SeedAlphaDiskMass            0.0        % initial mass in the alpha disk (for idealized tests: if BH_ALPHADISK_ACCRETION on)
+SeedAlphaDiskMass            0.0        % initial mass in the alpha disk (BH_ALPHADISK_ACCRETION)
+SeedBlackHoleMinRedshift     2.0        % minimum redshift where new BH particles are seeded (lower-z ceases seeding)
+SeedBlackHoleMassSigma       0.5        % lognormal standard deviation (in dex) in initial BH seed masses
 %----- (specific options for on-the-fly friends-of-friends based BH seeding: FOF on)
-MinFoFMassForNewSeed         10.	    % log(M_stars) for on-the-fly FoF seeding
-TimeBetOnTheFlyFoF           200000     % time (in sec) between FoF searches
-SeedBlackHoleMinRedshift     2.0        % this minimum redshift where new BH particles are seeded via FoF
-SeedBlackHoleMassSigma       0.5        % log normal standard deviation in the init BH seed masses from FoF
+MinFoFMassForNewSeed         10.	    % minimum mass of FOF group (stars or DM) to get seed, in code units
+TimeBetOnTheFlyFoF           200000     % cpu time (in sec) between FoF searches
 %--- accretion
-BlackHoleAccretionFactor     1.0	    % multiplier for mdot 
+BlackHoleAccretionFactor     1.0	    % multiplier for mdot (relative to model)
 BlackHoleEddingtonFactor     1.0	    % fraction of eddington to cap (can be >1) 
 BlackHoleNgbFactor           3.0	    % multiplier for kernel neighbors for BH 
-BlackHoleMaxAccretionRadius  0.02	    % max radius for BH neighbor search/accretion 
-BlackHoleRadiativeEfficiency 0.1        % radiative efficiency 
+BlackHoleMaxAccretionRadius  0.02	    % max radius for BH neighbor search/accretion (code units)
+BlackHoleRadiativeEfficiency 0.1        % radiative efficiency (for accretion and feedback)
 %--- feedback 
 BlackHoleFeedbackFactor      1.0	    % generic feedback strength multiplier 
 BH_FluxMomentumFactor        1.0	    % multiply radiation pressure (BH_PHOTONMOMENTUM) 
-BAL_f_accretion              0.5        % fraction of gas swallowed by BH (BH_BAL_WINDS) 
-BAL_v_outflow                30000	    % velocity (km/s) of BAL outflow (BH_BAL_WINDS) 
-
+BAL_f_accretion              0.5        % fraction of gas swallowed by BH (BH_WIND options)
+BAL_v_outflow                30000	    % velocity (km/s) of BAL outflow (BH_WIND options)
+BAL_internal_temperature     1.0e4      % internal temperature (K) of BAL outflow (BH_WIND_SPAWN)
+BAL_wind_particle_mass       1.e-10     % mass of 'virtual wind particles' in code units (BH_WIND_SPAWN)
 
 
 %-------------------------------------------------------------------------

@@ -38,9 +38,6 @@ static unsigned long FileNr;
 static long long *NumPartPerFile;
 #endif
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-int N_BH_idx;
-#endif
 
 void read_ic(char *fname)
 {
@@ -62,10 +59,6 @@ void read_ic(char *fname)
     NumPart = 0;
     N_gas = 0;
     All.TotNumPart = 0;
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-    N_BHs = 0;
-    N_BH_idx = 0;
-#endif
     
     num_files = find_files(fname);
     
@@ -164,7 +157,7 @@ void read_ic(char *fname)
     
     
 #if defined(BLACK_HOLES)
-#if defined(BH_SWALLOWGAS) || defined(BH_BONDI) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_POPIII_SEEDS)
+#if defined(BH_SWALLOWGAS) || defined(BH_BONDI) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_SEED_FROM_LOCALGAS)
     if(RestartFlag == 0)
     {
         All.MassTable[5] = 0;
@@ -193,16 +186,6 @@ void read_ic(char *fname)
 #endif
     
     
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-    for(i = N_BH_idx = 0; i < NumPart; i++)
-        if(P[i].Type == 5)
-        {
-            BHP[N_BH_idx].PID = i;
-            P[i].pt.BHID = N_BH_idx;
-            
-            N_BH_idx++;
-        }
-#endif
     
     u_init = (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.InitGasTemp;
     u_init *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;	/* unit conversion */
@@ -456,12 +439,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_BHMASS:
 #ifdef BLACK_HOLES
             for(n = 0; n < pc; n++)
-#if !defined(DETACH_BLACK_HOLES)
                 P[offset + n].BH_Mass = *fp++;
-#else
-            BHP[N_BH_idx + n].BH_Mass = *fp++;
-            N_BH_idx += pc;
-#endif
 #endif
             break;
             
@@ -471,36 +449,21 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_BHMASSALPHA:
 #ifdef BH_ALPHADISK_ACCRETION
             for(n = 0; n < pc; n++)
-#if !defined(DETACH_BLACK_HOLES)
                 P[offset + n].BH_Mass_AlphaDisk = *fp++;
-#else
-            BHP[N_BH_idx + n].BH_Mass_AlphaDisk = *fp++;
-            N_BH_idx += pc;
-#endif
 #endif
             break;
             
         case IO_BHMDOT:
 #ifdef BLACK_HOLES
             for(n = 0; n < pc; n++)
-#if !defined(DETACH_BLACK_HOLES)
                 P[offset + n].BH_Mdot = *fp++;
-#else
-            BHP[N_BH_idx + n].BH_Mdot = *fp++;
-            N_BH_idx += pc;
-#endif
 #endif
             break;
             
         case IO_BHPROGS:
 #ifdef BH_COUNTPROGS
             for(n = 0; n < pc; n++)
-#if !defined(DETACH_BLACK_HOLES)
                 P[offset + n].BH_CountProgs = *fp++;
-#else
-            BHP[N_BH_idx + n].BH_CountProgs = *fp++;
-            N_BH_idx += pc;
-#endif
 #endif
             break;
             
@@ -833,12 +796,6 @@ void read_file(char *fname, int readTask, int lastTask)
         //   sufficiently irregular trees. overall more stable behavior with the 'buffer', albeit at the expense of memory )
 #endif
         
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-        if(All.TotBHs == 0)
-            All.MaxPartBH = All.PartAllocFactor * (All.TotN_gas / NTask) * All.BHfactor;
-        else
-            All.MaxPartBH = All.PartAllocFactor * (All.TotBHs / NTask + (All.TotN_gas / NTask) * All.BHfactor);
-#endif
         
         allocate_memory();
         
@@ -1066,17 +1023,6 @@ void read_file(char *fname, int readTask, int lastTask)
                                     endrun(1313);
                                 }
                             
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-                            switch (blocknr)
-                            {
-                                case IO_BHMASS:
-                                case IO_BHMASSALPHA:
-                                case IO_BHMDOT:
-                                case IO_BHPROGS:
-                                    N_BH_idx = N_BHs;
-                                    break;
-                            }
-#endif
                             
                             do
                             {
@@ -1261,10 +1207,6 @@ void read_file(char *fname, int readTask, int lastTask)
         
         if(type == 0)
             N_gas += n_for_this_task;
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-        if(type == 5)
-            N_BHs += n_for_this_task;
-#endif
     }
     
     if(ThisTask == readTask)

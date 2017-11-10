@@ -153,10 +153,6 @@ int N_gas;			/*!< number of gas particles on the LOCAL processor  */
 #ifdef SEPARATE_STELLARDOMAINDECOMP
 int N_stars;
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-int N_BHs;
-#endif
-
 
 long long Ntype[6];		/*!< total number of particles of each type */
 int NtypeLocal[6];		/*!< local number of particles of each type */
@@ -256,7 +252,7 @@ FILE *FdBlackHoles;		/*!< file handle for blackholes.txt log-file. */
 FILE *FdBlackHolesDetails;
 #ifdef BH_OUTPUT_MOREINFO
 FILE *FdBhMergerDetails;
-#ifdef BH_BAL_KICK
+#ifdef BH_WIND_KICK
 FILE *FdBhWindDetails;
 #endif
 #endif
@@ -304,10 +300,6 @@ struct particle_data *P,	/*!< holds particle data on local processor */
  */
 struct sph_particle_data *SphP,	/*!< holds SPH particle data on local processor */
  *DomainSphBuf;			/*!< buffer for SPH particle data in domain decomposition */
-
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-struct bh_particle_data *BHP;
-#endif
 
 peanokey *DomainKeyBuf;
 

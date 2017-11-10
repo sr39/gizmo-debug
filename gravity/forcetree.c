@@ -1537,7 +1537,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     
 #ifdef DISTORTIONTENSORPS
     int i1, i2;
-    double fac2, h_tidal, h_inv_tidal, h3_inv_tidal, h5_inv_tidal, fac_tidal;
+    double fac2, h_tidal, h_inv_tidal, h3_inv_tidal, h5_inv, h5_inv_tidal, fac_tidal;
     MyDouble tidal_tensorps[3][3];
 #endif
 #if defined(REDUCE_TREEWALK_BRANCHING) && defined(PMGRID)

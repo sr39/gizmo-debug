@@ -428,6 +428,9 @@ void process_wake_ups(void);
 #endif
 
 void set_units_sfr(void);
+#ifdef BH_SEED_FROM_LOCALGAS
+double return_probability_of_this_forming_bh_from_seed_model(int i);
+#endif
 
 void gravity_forcetest(void);
 
@@ -511,8 +514,10 @@ void ReadMultiSpeciesTables(int iT);
 char *GetMultiSpeciesFilename(int i, int hk);
 #endif
 
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#ifdef BH_PHOTONMOMENTUM
 double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz);
+#endif
 double bh_angleweight_localcoupling(int j, double hR, double theta);
 #endif
 
@@ -536,6 +541,7 @@ int disp_density_evaluate(int target, int mode, int *exportflag, int *exportnode
 void *disp_density_evaluate_primary(void *p);
 void *disp_density_evaluate_secondary(void *p);
 int disp_density_isactive(int i);
+#endif
 #endif
 
 

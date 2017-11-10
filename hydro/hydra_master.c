@@ -713,6 +713,7 @@ void hydro_final_operations_and_cleanup(void)
             
             
 #ifdef RT_RAD_PRESSURE_FORCES
+#if defined(RT_EVOLVE_FLUX)
             /* calculate the radiation pressure force */
             double radacc[3]; radacc[0]=radacc[1]=radacc[2]=0; int k2;
             // a = kappa*F/c = Gradients.E_gamma_ET[gradient of photon energy density] / rho[gas_density] //
@@ -725,12 +726,10 @@ void hydro_final_operations_and_cleanup(void)
                 double slabfac = slab_averaging_function(SphP[i].Kappa_RT[k2]*Sigma_particle) * slab_averaging_function(SphP[i].Kappa_RT[k2]*abs_per_kappa_dt);
                 for(k=0;k<3;k++)
                 {
-#if defined(RT_EVOLVE_FLUX)
                     radacc[k] += slabfac * SphP[i].Kappa_RT[k2] * (SphP[i].Flux_Pred[k2][k] * SphP[i].Density/P[i].Mass) / (RT_SPEEDOFLIGHT_REDUCTION * C / All.UnitVelocity_in_cm_per_s);
-#elif defined(RT_EVOLVE_EDDINGTON_TENSOR)
+//#elif defined(RT_EVOLVE_EDDINGTON_TENSOR)
                     /* // -- moved for OTVET+FLD to drift-kick operation to deal with limiters more accurately -- // */
                     //radacc[k] += -slabfac * SphP[i].Lambda_FluxLim[k2] * SphP[i].Gradients.E_gamma_ET[k2][k] / SphP[i].Density; // no speed of light reduction multiplier here //
-#endif
                 }
             }
             for(k=0;k<3;k++)
@@ -741,6 +740,7 @@ void hydro_final_operations_and_cleanup(void)
                 SphP[i].HydroAccel[k] += radacc[k];
 #endif
             } 
+#endif
 #endif
 
             
