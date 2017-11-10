@@ -1781,9 +1781,6 @@ extern struct global_data_all_processes
   double BlackHoleMaxAccretionRadius;
   double BlackHoleEddingtonFactor;	/*!< Factor above Eddington */
   double BlackHoleRadiativeEfficiency;  /**< Radiative efficiency determined by the spin value, default value is 0.1 */
-#ifdef FOF
-  double massDMpart;
-#endif
 #ifdef MODIFIEDBONDI
   double BlackHoleRefDensity;
   double BlackHoleRefSoundspeed;
@@ -1819,7 +1816,6 @@ extern struct global_data_all_processes
 #if defined(MULTI_BUBBLES) && defined(FOF)
 #ifndef BLACK_HOLES
   double MinFoFMassForNewSeed;	/*!< Halo mass required before new seed is put in */
-  double massDMpart;
 #endif
   double BubbleDistance;
   double BubbleRadius;
