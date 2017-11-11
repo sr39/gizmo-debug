@@ -533,7 +533,7 @@ void star_formation_parent_routine(void)
                 P[i].Mass *= BH_INCREASE_DYNAMIC_MASS;
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
-                P[i].BH_Mass_AlphaDisk = 0;
+                P[i].BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
 #endif
 #ifdef BH_COUNTPROGS
                 P[i].BH_CountProgs = 1;
@@ -585,7 +585,7 @@ void star_formation_parent_routine(void)
                 num_bhformed++;
                 P[i].BH_Mass = All.SeedBlackHoleMass;
 #ifdef BH_ALPHADISK_ACCRETION
-                P[i].BH_Mass_AlphaDisk = DMAX(0, P[i].Mass-P[i].BH_Mass);
+                P[i].BH_Mass_AlphaDisk = DMAX(DMAX(0, P[i].Mass-P[i].BH_Mass), All.SeedAlphaDiskMass);
 #endif
 #ifdef BH_COUNTPROGS
                 P[i].BH_CountProgs = 1;

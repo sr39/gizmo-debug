@@ -51,6 +51,12 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
         local = HydroDataGet[target]; // this setup allows for all the fields we need to define (don't hard-code here)
     }
     
+    /* certain particles should never enter the loop: check for these */
+    if(local.Mass <= 0) return 0;
+#ifdef GALSF_SUBGRID_WINDS
+    if(local.DelayTime > 0) {return 0;}
+#endif
+    
     /* --------------------------------------------------------------------------------- */
     /* pre-define Particle-i based variables (so we save time in the loop below) */
     /* --------------------------------------------------------------------------------- */

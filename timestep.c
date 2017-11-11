@@ -855,7 +855,7 @@ integertime get_timestep(int p,		/*!< particle index */
             /* really want prefactor to be ratio of median gas mass to bh mass */
             dt_accr = 0.001 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
-            dt_accr *= All.BAL_f_accretion;
+            dt_accr *= DMAX(0.1, All.BAL_f_accretion);
 #endif // BH_WIND_CONTINUOUS
 #ifdef SINGLE_STAR_FORMATION
             dt_accr = 0.1 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
