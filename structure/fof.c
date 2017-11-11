@@ -2060,7 +2060,7 @@ void fof_make_black_holes(void)
 #endif
 
 #ifdef BH_ALPHADISK_ACCRETION                                
-      BPP(import_indices[n]).BH_Mass_AlphaDisk = 0;
+      BPP(import_indices[n]).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
 #endif
 
       BPP(import_indices[n]).BH_Mdot = 0;

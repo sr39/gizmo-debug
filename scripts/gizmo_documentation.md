@@ -78,7 +78,7 @@
         + [Driven Turbulence (Large-Eddy Simulations)](#params-optional-turb)
     + [Developer-Mode Parameters](#params-debug)
 9. [Snapshot & Initial Condition Files](#snaps)
-    + [Initial Conditions](#snaps-ics)
+    + [Initial Conditions (Making & Reading Them)](#snaps-ics)
     + [Snapshots](#snaps-snaps)
     + [Units](#snaps-units)
     + [Reading Snapshots (Examples)](#snaps-reading)
@@ -2209,22 +2209,42 @@ When running the code with an SPH hydro solver, some additional parameters are r
 # 9. Snapshot & Initial Condition Files 
 
 <a name="snaps-ics"></a>
-## Initial Conditions 
+## Initial Conditions (Making & Reading Them)
+
+
+<a name="snaps-ics-icsformats"></a>
+### _File Formats and Necessary Fields_ 
 
 GIZMO initial conditions are **exactly** identical to GADGET. Any GADGET-compatible IC should be trivially useable in GIZMO, and vice versa.
 
-The possible file formats for initial conditions are the same as those for snapshot files, and are selected with the ICFormat parameter. However, only the blocks up to and including the gas temperature (if gas particles are included) need to be present -- this means initial positions, masses, and velocities of all particles, and [for gas] the initial internal energies. That information, plus the relevant header data (which you can see an example of in the "make_IC.py" file in the scripts folder of the code) is all you need for an IC file. Things like gas densities, kernel lengths and all further blocks need not be provided. In preparing initial conditions for simulations with gas particles, the temperature block can be filled with zero values, in which case the initial gas temperature is set in the parameterfile with the InitGasTemp parameter. However, even when this is done, the temperature block must still be present. Note that the field Time in the header will be ignored when GIZMO is reading an initial conditions file. Instead, you have to set the time of the start of the simulation with the TimeBegin option in the parameterfile.
+The possible file formats for initial conditions are the same as those for snapshot files, and are selected with the ICFormat parameter. In fact, any valid snapshot file is also automatically a valid IC file. However, only the blocks up to and including the gas temperature (if gas particles are included) need to be present (so an IC file can have significantly less information than a full snapshot file). The IC file must include the initial positions, masses, and velocities of all particles, and [for gas] the initial internal energies. That information, plus the relevant header data (which you can see an example of in the "make_IC.py" file in the scripts folder of the code) is all you need for an IC file. Things like gas densities, kernel lengths and all further blocks need not be provided. In preparing initial conditions for simulations with gas particles, the temperature block can be filled with zero values, in which case the initial gas temperature is set in the parameterfile with the InitGasTemp parameter. However, even when this is done, the temperature block must still be present. Note that the field Time in the header will be ignored when GIZMO is reading an initial conditions file. Instead, you have to set the time of the start of the simulation with the TimeBegin option in the parameterfile.
 
-A large number of codes exist which can generate IC files for different types of GIZMO problems (again, anything that will generate ICs for GADGET will work for GIZMO). For cosmological simulations, the MUSIC code (hosted [here](https://bitbucket.org/ohahn/music)) is a fantastic utility to construct both large-volume and "zoom-in" simulations (with or without baryons). Other commonly used codes work as well (such as [NGenIC](https://www.h-its.org/tap-software-en/ngenic-code/), [S-GenIC](https://github.com/sbird/S-GenIC), [2LPT](http://cosmo.nyu.edu/roman/2LPT/), or [CICsASS](http://faculty.washington.edu/mcquinn/Init_Cond_Code.html) which allows for baryon-DM velocity offsets, or [FalconIC](https://falconb.org/) for modified-gravity ICs). For simulations of isolated galaxies and galaxy mergers, the most popular code is probably the many variants of Volker Springel's MakeDisk (or MakeGalaxy) code, which is not public but widely available upon request from Volker or collaborators. A similar code, perhaps somewhat less flexible, is [PyICs](https://github.com/jakobherpich/pyICs). Popular options also include codes like [GALIC](https://www.h-its.org/tap-software-en/galic-code/) which can generate arbitrary collisionless halo+disk+bulge systems (just not gas), or [StarScream](https://github.com/jayjaybillings/starscream) for collisionless systems, or [GalStep](https://github.com/ruggiero/galstep) designed for disks. Various cosmological and isolated-galaxy ICs are also public, for example from the [AGORA simulations](https://sites.google.com/site/santacruzcomparisonproject/details). 
+For details on actually reading the ICs (feeding them into the simulations), see the section in this Guide on Compiling & Using the Code (which walks you through how to actually read an IC into GIZMO. The section below on snapshots has much more detailed information on the actual *file formats* which can be used for GIZMO ICs.
 
-For ISM and star formation simulations, [MakeCloud](https://github.com/omgspace/MakeCloud) is a public code to generate ICs for turbulent clouds (hydro or MHD), with arbitrary initial rotation, written by Mike Grudic at Caltech.
 
-For many applications, you can generate your own ICs. In the "scripts" folder of the source code, the routine "make_IC.py" is a simple python script which generates a ready-to-go initial condition for GIZMO. This is a good starting point if you plan to build your own ICs -- it will show you what you need and how to set it up.
+<a name="snaps-ics-icsgenerators"></a>
+### _Generating Initial Conditions Files_ 
+
+
+A large number of codes exist which can generate IC files for different types of GIZMO problems (again, anything that will generate ICs for GADGET will work for GIZMO). Here are (just a few) examples to get you started:
+
++ Cosmological simulations (large-volume and "zoom-in"): For these simulations, the MUSIC code (hosted [here](https://bitbucket.org/ohahn/music)) is a fantastic utility to construct both large-volume and "zoom-in" simulations (with or without baryons). Other commonly used codes work as well (such as [NGenIC](https://www.h-its.org/tap-software-en/ngenic-code/), [S-GenIC](https://github.com/sbird/S-GenIC), [2LPT](http://cosmo.nyu.edu/roman/2LPT/), or [CICsASS](http://faculty.washington.edu/mcquinn/Init_Cond_Code.html) which allows for baryon-DM velocity offsets, or [FalconIC](https://falconb.org/) for modified-gravity ICs).  
+
++ Isolated galaxies and galaxy mergers: the most popular code is probably the many variants of Volker Springel's MakeDisk (or MakeGalaxy) code, which is not public but widely available upon request from Volker or collaborators. A similar code, perhaps somewhat less flexible, is [PyICs](https://github.com/jakobherpich/pyICs). Popular options also include codes like [GALIC](https://www.h-its.org/tap-software-en/galic-code/) which can generate arbitrary collisionless halo+disk+bulge systems (just not gas), or [StarScream](https://github.com/jayjaybillings/starscream) for collisionless systems, or [GalStep](https://github.com/ruggiero/galstep) designed for disks. Various cosmological and isolated-galaxy ICs are also public, for example from the [AGORA simulations](https://sites.google.com/site/santacruzcomparisonproject/details).  
+
++ Clusters and hydrostatic systems: [Toycluster](https://github.com/jdonnert/Toycluster) allows one to set up collisionless systems with gas (hydro or MHD) and more complex sub-structure than allowed by the tools above for single-galaxies and galaxy mergers.  
+
++ ISM, star formation, and proto-stellar disks: [MakeCloud](https://github.com/omgspace/MakeCloud) is a public code to generate ICs for turbulent clouds (hydro or MHD), with arbitrary initial rotation, written by Mike Grudic at Caltech.  
+
++ Fluid dynamics & MHD problems: the [Tests](#tests) portion of this User Guide links to pre-built ICs for dozens of test problems involving setups like multiphase fluid interfaces, shocktubes, spherical explosions, cloud-crushing problems, current sheets, field loops, rotors, Keplerian and galactic disks, and more.  
+
++ Build your own! For many applications, you can generate your own ICs. In the "scripts" folder of the GIZMO source code, the routine "make_IC.py" is a simple python script which generates a ready-to-go initial condition for GIZMO. This is a good starting point if you plan to build your own ICs -- it will show you what you need and how to set it up. All the ICs provided for test problems were built from variants of this script.  
+
 
 <a name="snaps-snaps"></a>
 ## Snapshots 
 
-### _Un-Formatted (GADGET) Binary Format_
+### _Un-Formatted Binary Format_
 
 The un-formatted binary snapshot format is also exactly the same as GADGET (up to the addition of certain output fields when additional physics is active in the simulations). If you are using this (usually for historical reasons), you should check the GADGET users guide, or you can just get the chapter specific to the snapshot format [here](http://www.tapir.caltech.edu/~phopkins/public/gadget_snapshot_chapter.pdf)
 
@@ -2232,7 +2252,7 @@ Unless you have very good reason for using un-formatted binary (historical compa
 
 ### _HDF5 Format_ 
 
-If the hierarchical data format is selected as format for snapshot files (always recommended!) or initial conditions files, GIZMO accesses files with low level HDF5 routines. Advantages of HDF5 lie in its portability (e.g. automatic endianness conversion), generality, ease of reading (different blocks in files appear as meta-data, so if your snapshot includes some extra data from some additional physics, which isn't expected by the routine you're using for snapshot-reading, it won't crash the code or give errors!). There are also a very large number of tools available to easily manipulate or display HDF5 files (for example, the standard python library [h5py](http://www.h5py.org/)). A wealth of information about HDF5 can be found on the [HDF5 Project Website](https://support.hdfgroup.org/HDF5/). 
+If the hierarchical data format is selected as format for snapshot files (always recommended!) or initial conditions files, GIZMO accesses files with low level HDF5 routines. Advantages of HDF5 lie in its portability (e.g. automatic endianness conversion), generality, ease of reading (different blocks in files appear as meta-data, so if your snapshot includes some extra data from some additional physics, which isn't expected by the routine you're using for snapshot-reading, it won't crash the code or give errors!). But the fields expected/required in a GADGET HDF5 file are preserved in GIZMO, so again, everything is cross-compatible between the codes. There are also a very large number of tools available to easily manipulate or display HDF5 files (for example, the standard python library [h5py](http://www.h5py.org/)). A wealth of information about HDF5 can be found on the [HDF5 Project Website](https://support.hdfgroup.org/HDF5/). 
 
 GIZMO stores the snapshot file data in several data groups, which are organized as fol￼lows:
 
@@ -2279,7 +2299,7 @@ In cosmological simulations, many of the units are *co-moving*, and this needs t
     MAGNETIC_FIELD_physical = MAGNETIC_FIELD_code (note that *in* the code, co-moving units are used B_code=a_scale^2 B_phys, but in outputs these are converted to physical)
     DIVERGENCE_DAMPING_FIELD_physical = DIVERGENCE_DAMPING_FIELD_code (again, in-code, psi_physical = a_scale^3 psi_code)
     
-So here, the statement "LENGTH_physical = LENGTH_code * a_scale" means that the code output in the snapshot file must be multiplied by both the specified units "LENGTH_code" (just as described above for non-cosmological snapshots) **and** the correction factor "a_scale" to go from co-moving to physical units. So let's take our example from above with length "1.3" from above. We do the same thing as before, get 1.83 kpc -- but this is co-moving. Let's say this snapshot is at scale-factor a_scale = 0.2 (redshift 4); the physical length is therefore 1.83 kpc * a_scale = 0.366 kpc. 
+So here, the statement `LENGTH_physical = LENGTH_code * a_scale` means that the code output in the snapshot file must be multiplied by both the specified units `LENGTH_code` (just as described above for non-cosmological snapshots) **and** the correction factor `a_scale` to go from co-moving to physical units. So let's take our example from above with length "1.3". We do the same thing as before, get 1.83 kpc -- but this is co-moving. Let's say this snapshot is at scale-factor `a_scale = 0.2` (redshift 4); the physical length is therefore `1.83 kpc * a_scale = 0.366 kpc`. 
 
 Also note that as stated above the "time unit" of the code being "a_scale" means that things like the beginning/end time of the simulations, the timestep size, the formation times of star particles and current "time" saved in snapshots, will be scale factor, in cosmological runs. If you're not sure whether a time-type quantity is actually time or scale-factor, usually a quick sanity check is all that is needed (since scale factor only runs between 0 and 1). But remember, this is only for cosmological runs, for non-cosmological runs, everything is always in physical units.
 
