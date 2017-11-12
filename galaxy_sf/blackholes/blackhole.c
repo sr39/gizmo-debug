@@ -420,16 +420,27 @@ void set_blackhole_mdot(int i, int n, double dt)
         {
             mdot = 0;
         } else {
-            mdisk_for_bhar *= (All.UnitMass_in_g/(All.HubbleParam * 1.0e9*SOLAR_MASS)); /* mdisk/1e9msun */
-            bh_mass *= All.UnitMass_in_g / (All.HubbleParam * 1.0e8*SOLAR_MASS); /* mbh/1e8msun */
+            double mdisk_for_bhar_units = mdisk_for_bhar * (All.UnitMass_in_g/(All.HubbleParam * 1.0e9*SOLAR_MASS)); /* mdisk/1e9msun */
+            double bh_mass_units = bh_mass * All.UnitMass_in_g / (All.HubbleParam * 1.0e8*SOLAR_MASS); /* mbh/1e8msun */
             r0_for_bhar *= All.UnitLength_in_cm/(All.HubbleParam * 3.086e20); /* r0/100pc */
-            f0_for_bhar = 0.31*f_disk_for_bhar*f_disk_for_bhar*pow(mdisk_for_bhar,-1./3.); /* dimensionless factor for equations */
+            f0_for_bhar = 0.31*f_disk_for_bhar*f_disk_for_bhar*pow(mdisk_for_bhar_units,-1./3.); /* dimensionless factor for equations */
             /* basic units (DAA: use alpha=5, i.e. sort of midpoint of plausible range of values alpha=[1,10] from Hopkins and Quataert 2011) */
             fac = (5.0*(SOLAR_MASS/All.UnitMass_in_g)/(SEC_PER_YEAR/All.UnitTime_in_s));
             
-            mdot = All.BlackHoleAccretionFactor * fac * mdisk_for_bhar *
-                   pow(f_disk_for_bhar,5./2.) * pow(bh_mass,1./6.) *
+            mdot = All.BlackHoleAccretionFactor * fac * mdisk_for_bhar_units *
+                   pow(f_disk_for_bhar,5./2.) * pow(bh_mass_units,1./6.) *
                    pow(r0_for_bhar,-3./2.) / (1 + f0_for_bhar/fgas_for_bhar);
+            
+#if (BH_GRAVACCRETION == 2) || (BH_GRAVACCRETION == 3)
+            double r0_acc = PPP[n].Hsml * All.cf_atime; // radius in physical units
+            double menc_all = m_tmp_for_bhar + P[n].Mass; // total enclosed mass in kernel
+            double omega_dyn = sqrt(All.G * menc_all / (r0_acc*r0_acc*r0_acc)); // 1/t_dyn for all mass inside kernel
+            double ff_fac = 1;
+#if (BH_GRAVACCRETION == 2)
+            ff_fac = (mdisk_for_bhar / menc_all) * (mdisk_for_bhar / menc_all); // disk fraction, used for gravito-turbulent estimator
+#endif
+            mdot = All.BlackHoleAccretionFactor * ff_fac * BlackholeTempInfo[i].Mgas_in_Kernel * omega_dyn; // gas accreted on free-fall time with pre-factor ff_fac
+#endif
             
 #ifndef IO_REDUCED_MODE
             printf("BH GravAcc Eval :: mdot %g BHaccFac %g Norm %g fdisk %g bh_8 %g fgas %g f0 %g mdisk_9 %g r0_100 %g \n\n",
@@ -483,16 +494,22 @@ void set_blackhole_mdot(int i, int n, double dt)
     mdot = 0;
     if(BPP(n).BH_Mass_AlphaDisk > 0)
     {
+        /* this below is a more complicated expression using the outer-disk expression from Shakura & Sunyaev. Simpler expression
+            below captures the same physics with considerably less potential to extrapolate to rather odd scalings in extreme regimes */
+        
         mdot = All.BlackHoleAccretionFactor *
-        (2.45 * (SOLAR_MASS/All.UnitMass_in_g)/(SEC_PER_YEAR/All.UnitTime_in_s)) * // normalization
-        pow( 0.1 , 8./7.) * // viscous disk 'alpha'
-        pow( BPP(n).BH_Mass*All.UnitMass_in_g / (All.HubbleParam * 1.0e8*SOLAR_MASS) , -5./14. ) * // mbh dependence
-        pow( BPP(n).BH_Mass_AlphaDisk*All.UnitMass_in_g / (All.HubbleParam * 1.0e8*SOLAR_MASS) , 10./7. ) * // m_disk dependence
-        pow( DMIN(0.2,DMIN(PPP[n].Hsml,All.ForceSoftening[5])*All.cf_atime*All.UnitLength_in_cm/(All.HubbleParam * 3.086e18)) , -25./14. ); // r_disk dependence
-
+            (2.45 * (SOLAR_MASS/All.UnitMass_in_g)/(SEC_PER_YEAR/All.UnitTime_in_s)) * // normalization
+            pow( 0.1 , 8./7.) * // viscous disk 'alpha'
+            pow( BPP(n).BH_Mass*All.UnitMass_in_g / (All.HubbleParam * 1.0e8*SOLAR_MASS) , -5./14. ) * // mbh dependence
+            pow( BPP(n).BH_Mass_AlphaDisk*All.UnitMass_in_g / (All.HubbleParam * 1.0e8*SOLAR_MASS) , 10./7. ) * // m_disk dependence
+            pow( DMIN(0.2,DMIN(PPP[n].Hsml,All.ForceSoftening[5])*All.cf_atime*All.UnitLength_in_cm/(All.HubbleParam * 3.086e18)) , -25./14. ); // r_disk dependence
+        
+        double t_yr = SEC_PER_YEAR / (All.UnitTime_in_s / All.HubbleParam);
+        mdot = BPP(n).BH_Mass_AlphaDisk / (4.2e7 * t_yr) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass), 0.4);
+        
 #ifdef SINGLE_STAR_FORMATION
-        mdot = All.BlackHoleAccretionFactor * 1.0e-5 * BPP(n).BH_Mass_AlphaDisk / (SEC_PER_YEAR/All.UnitTime_in_s) * 
-            pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass),2); 
+        //mdot = All.BlackHoleAccretionFactor * 1.0e-5 * BPP(n).BH_Mass_AlphaDisk / (SEC_PER_YEAR/All.UnitTime_in_s) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass),2);
+        mdot = BPP(n).BH_Mass_AlphaDisk / (1.0e5 * t_yr) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass), 0.4);
 #endif
 
     }
