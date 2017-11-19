@@ -1,3 +1,4 @@
+#ifdef COSMIC_RAYS
 /* --------------------------------------------------------------------------------- */
 /* ... real cosmic ray diffusion/streaming evaluation ...
  *
@@ -211,3 +212,4 @@
 #endif // COSMIC_RAYS_M1
     } // close check that kappa and particle masses are positive
 }
+#endif // COSMIC_RAYS

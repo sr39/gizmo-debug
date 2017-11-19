@@ -335,7 +335,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                 if(P[j].Mass > 0)
                 {
                     for(k=0;k<3;k++) dpos[k] = pos[k] - P[j].Pos[k]; 
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
                     NEAREST_XYZ(dpos[0],dpos[1],dpos[2],1);
 #endif
                     r2=0; for(k=0;k<3;k++) r2+=dpos[k]*dpos[k];
@@ -511,10 +511,6 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #endif
                             
 #ifdef BH_THERMALFEEDBACK
-#ifdef UNIFIED_FEEDBACK
-                            meddington = bh_eddington_mdot(bh_mass);
-                            if(mdot > All.RadioThreshold * meddington)
-#endif
                             {
                                 energy = bh_lum_bol(mdot, bh_mass, -1) * dt;
                                 if(rho > 0)

@@ -461,7 +461,7 @@ void star_formation_parent_routine(void)
         if(SphP[i].DelayTime > 0) {flag=1; SphP[i].DelayTime -= dtime;} /* no star formation for particles in the wind; update our wind delay-time calculations */
         if((SphP[i].DelayTime<0) || (SphP[i].Density*All.cf_a3inv < All.WindFreeTravelDensFac*All.PhysDensThresh)) {SphP[i].DelayTime=0;}
 #endif
-#ifdef GALSF_TURNOFF_COOLING_WINDS
+#ifdef GALSF_FB_TURNOFF_COOLING
         if(SphP[i].DelayTimeCoolingSNe > 0) {flag=1; SphP[i].DelayTimeCoolingSNe -= dtime;} /* no star formation for particles in the wind; update our wind delay-time calculations */
 #endif
         
@@ -543,13 +543,6 @@ void star_formation_parent_routine(void)
                 P[i].BH_disk_hr = 0.333333;
 #endif
                 P[i].DensAroundStar = SphP[i].Density;
-#ifdef BH_BUBBLES
-                P[i].BH_Mass_bubbles = All.SeedBlackHoleMass;
-                P[i].BH_Mass_ini = All.SeedBlackHoleMass;
-#endif
-#ifdef UNIFIED_FEEDBACK
-                P[i].BH_Mass_radio = All.SeedBlackHoleMass;
-#endif
             } else {
 #endif /* closes ifdef(BH_SEED_FROM_LOCALGAS) */ 
 

@@ -116,7 +116,7 @@ AGS_DesNumNgb           32  % neighbor number for calculating adaptive gravsoft
 %------------------------------------------------------------
 
 %---- Magneto-Hydrodynamics Parameters (MAGNETIC on)
-%----- Initial B-Field Strengths (if B_SET_IN_PARAMS on, otherwise read from IC file)
+%----- Initial B-Field Strengths (if MHD_B_SET_IN_PARAMS on, otherwise read from IC file)
 BiniX   1.0e-8    % initial B_x, in code units
 BiniY   1.0e-8    % initial B_y, in code units
 BiniZ   1.0e-8    % initial B_z, in code units
@@ -218,10 +218,10 @@ BAL_wind_particle_mass       1.e-10     % mass of 'virtual wind particles' in co
 
 
 %-------------------------------------------------------------------------
-%------------------ GRACKLE cooling module -----------------
+%------------------ Grackle cooling module -----------------
 %-------------------------------------------------------------------------
 
-%-------------- Grackle UVB file (GRACKLE on)
+%-------------- Grackle UVB file (COOL_GRACKLE on)
 GrackleDataFile		     CloudyData_UVB=HM2012.h5
 
 
@@ -242,3 +242,13 @@ ST_SpectForm   2        % driving pwr-spec: 0=Ek~const; 1=sharp-peak at kc; 2=Ek
 ST_Seed        42       % random number seed for modes (so you can reproduce it)
 IsoSoundSpeed  1.0      % initializes gas sound speed in box to this value
 TimeBetTurbSpectrum 0.5 % time (code units) between evaluations of turb pwrspec
+
+
+%-------------------------------------------------------------------------------------------------
+%------------------ Non-Standard Dark Matter, Dark Energy, Gravity, or Expansion -----------------
+%-------------------------------------------------------------------------------------------------
+
+%-------------- Parameters for non-standard or time-dependent Gravity/Dark Energy/Expansion (GR_TABULATED_COSMOLOGY on)
+DarkEnergyConstantW       -1        % time-independent DE parameter w, used only if no table
+TabulatedCosmologyFile    CosmoTbl  % table with cosmological parameters
+

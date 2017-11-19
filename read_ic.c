@@ -176,7 +176,7 @@ void read_ic(char *fname)
     }
 #endif
     
-#if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_SNE_HEATING)
+#if defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_THERMAL)
     if(RestartFlag == 0)
     {
         All.MassTable[2] = 0;
@@ -184,7 +184,7 @@ void read_ic(char *fname)
         All.MassTable[4] = 0;
     }
 #endif
-    
+
     
     
     u_init = (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.InitGasTemp;
@@ -302,7 +302,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             
             
         case IO_SHEET_ORIENTATION:	/* initial particle sheet orientation */
-#if defined(DISTORTIONTENSORPS) && defined(GDE_READIC)
+#if defined(GDE_DISTORTIONTENSOR) && defined(GDE_READIC)
             for(n = 0; n < pc; n++)
             {
 #ifndef GDE_LEAN
@@ -323,14 +323,14 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             break;
             
         case IO_INIT_DENSITY:	/* initial stream density */
-#if defined(DISTORTIONTENSORPS) && defined(GDE_READIC)
+#if defined(GDE_DISTORTIONTENSOR) && defined(GDE_READIC)
             for(n = 0; n < pc; n++)
                 GDE_INITDENSITY(offset + n) = *fp++;
             break;
 #endif
             
         case IO_CAUSTIC_COUNTER:	/* initial caustic counter */
-#if defined(DISTORTIONTENSORPS) && defined(GDE_READIC)
+#if defined(GDE_DISTORTIONTENSOR) && defined(GDE_READIC)
             for(n = 0; n < pc; n++)
                 P[offset + n].caustic_counter = *fp++;
             break;
@@ -411,7 +411,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_VROT:
             break;
         case IO_VORT:
-#ifdef ADJ_BOX_POWERSPEC
+#ifdef TURB_DRIVING_DUMPSPECTRUM
             if(RestartFlag == 6)
             {
                 for(n = 0; n < pc; n++)
@@ -466,28 +466,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                 P[offset + n].BH_CountProgs = *fp++;
 #endif
             break;
-            
-        case IO_BHMBUB:
-#ifdef BH_BUBBLES
-            for(n = 0; n < pc; n++)
-                P[offset + n].BH_Mass_bubbles = *fp++;
-#endif
-            break;
-            
-        case IO_BHMINI:
-#ifdef BH_BUBBLES
-            for(n = 0; n < pc; n++)
-                P[offset + n].BH_Mass_ini = *fp++;
-#endif
-            break;
-            
-        case IO_BHMRAD:
-#ifdef UNIFIED_FEEDBACK
-            for(n = 0; n < pc; n++)
-                P[offset + n].BH_Mass_radio = *fp++;
-#endif
-            break;
-            
+                        
         case IO_EOSTEMP:
 #ifdef EOS_CARRIES_TEMPERATURE
             for(n = 0; n < pc; n++)
@@ -598,7 +577,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_STRESSDIAG:
         case IO_STRESSOFFDIAG:
         case IO_RAD_ACCEL:
-        case IO_DISTORTIONTENSORPS:
+        case IO_GDE_DISTORTIONTENSOR:
         case IO_HeHII:
         case IO_DI:
         case IO_DII:
@@ -898,7 +877,7 @@ void read_file(char *fname, int readTask, int lastTask)
         if(blockpresent(blocknr))
         {
                 if(RestartFlag == 0 && blocknr > IO_U && blocknr != IO_BFLD
-#ifdef READ_HSML
+#ifdef INPUT_READ_HSML
                    && blocknr != IO_HSML
 #endif
 #ifdef EOS_CARRIES_TEMPERATURE
@@ -911,7 +890,7 @@ void read_file(char *fname, int readTask, int lastTask)
                    && blocknr != IO_EOSYE
 #endif
                    )
-#if defined(DISTORTIONTENSORPS) && defined(GDE_READIC)
+#if defined(GDE_DISTORTIONTENSOR) && defined(GDE_READIC)
                     if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_SHEET_ORIENTATION))
                         if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_INIT_DENSITY))
                             if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_CAUSTIC_COUNTER))
@@ -931,7 +910,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #endif
             
             
-#ifdef B_SET_IN_PARAMS
+#ifdef MHD_B_SET_IN_PARAMS
             if(RestartFlag == 0 && blocknr == IO_BFLD)
                 continue;
 #endif

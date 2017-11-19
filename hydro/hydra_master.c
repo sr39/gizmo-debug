@@ -225,7 +225,7 @@ struct hydrodata_in
     } Gradients;
     MyFloat NV_T[3][3];
     
-#ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
+#ifdef HYDRO_PRESSURE_SPH
     MyFloat EgyWtRho;
 #endif
 
@@ -372,7 +372,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     in->SoundSpeed = Particle_effective_soundspeed_i(i);
     in->Timestep = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0);
     in->ConditionNumber = SphP[i].ConditionNumber;
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
     /* since it is not used elsewhere, we can use the sign of the condition number as a bit 
         to conveniently indicate the status of the parent particle flag, for the constrained gradients */
     if(SphP[i].FlagForConstrainedGradients == 0) {in->ConditionNumber *= -1;}
@@ -391,7 +391,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
 #endif
 #endif
     
-#ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
+#ifdef HYDRO_PRESSURE_SPH
     in->EgyWtRho = SphP[i].EgyWtDensity;
 #endif
     
@@ -761,7 +761,7 @@ void hydro_final_operations_and_cleanup(void)
 #endif
             
             
-#ifdef BND_PARTICLES
+#ifdef BOX_BND_PARTICLES
             /* this flag signals all particles with id=0 are frozen (boundary particles) */
             if(P[i].ID == 0)
             {

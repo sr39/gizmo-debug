@@ -7,16 +7,10 @@
 #include <sys/types.h>
 #include <gsl/gsl_math.h>
 #include <inttypes.h>
-
 #include "../allvars.h"
 #include "../proto.h"
-
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
-
-#ifdef HAVE_HDF5
-#include <hdf5.h>
-#endif
 
 /*! \file fof.c
  *  \brief parallel FoF group finder
@@ -376,16 +370,6 @@ void fof_fof(int num)
   if(num < 0)
     fof_assign_HostHaloMass();
 #endif
-#endif
-
-#ifdef BUBBLES
-  if(num < 0)
-    find_CM_of_biggest_group();
-#endif
-
-#ifdef MULTI_BUBBLES
-  if(num < 0)
-    multi_bubbles();
 #endif
 
   CPU_Step[CPU_FOF] += measure_time();
@@ -832,7 +816,7 @@ void fof_compile_catalogue(void)
 	{
 	  FOF_GList[i].LocCount = 1;
 	  FOF_GList[i].ExtCount = 0;
-#ifdef DENSITY_SPLIT_BY_TYPE
+#ifdef FOF_DENSITY_SPLIT_TYPES
 	  if(((1 << P[FOF_PList[i].Pindex].Type) & (MyFOF_PRIMARY_LINK_TYPES)))
 	    FOF_GList[i].LocDMCount = 1;
 	  else
@@ -844,7 +828,7 @@ void fof_compile_catalogue(void)
 	{
 	  FOF_GList[i].LocCount = 0;
 	  FOF_GList[i].ExtCount = 1;
-#ifdef DENSITY_SPLIT_BY_TYPE
+#ifdef FOF_DENSITY_SPLIT_TYPES
 	  FOF_GList[i].LocDMCount = 0;
 	  if(((1 << P[FOF_PList[i].Pindex].Type) & (MyFOF_PRIMARY_LINK_TYPES)))
 	    FOF_GList[i].ExtDMCount = 1;
@@ -867,7 +851,7 @@ void fof_compile_catalogue(void)
 	{
 	  FOF_GList[start].LocCount += FOF_GList[i].LocCount;
 	  FOF_GList[start].ExtCount += FOF_GList[i].ExtCount;
-#ifdef DENSITY_SPLIT_BY_TYPE
+#ifdef FOF_DENSITY_SPLIT_TYPES
 	  FOF_GList[start].LocDMCount += FOF_GList[i].LocDMCount;
 	  FOF_GList[start].ExtDMCount += FOF_GList[i].ExtDMCount;
 #endif
@@ -950,7 +934,7 @@ void fof_compile_catalogue(void)
 	endrun(124);
 
       FOF_GList[start].ExtCount += get_FOF_GList[i].ExtCount;
-#ifdef DENSITY_SPLIT_BY_TYPE
+#ifdef FOF_DENSITY_SPLIT_TYPES
       FOF_GList[start].ExtDMCount += get_FOF_GList[i].ExtDMCount;
 #endif
     }
@@ -967,7 +951,7 @@ void fof_compile_catalogue(void)
 
       get_FOF_GList[i].ExtCount = FOF_GList[start].ExtCount;
       get_FOF_GList[i].LocCount = FOF_GList[start].LocCount;
-#ifdef DENSITY_SPLIT_BY_TYPE
+#ifdef FOF_DENSITY_SPLIT_TYPES
       get_FOF_GList[i].ExtDMCount = FOF_GList[start].ExtDMCount;
       get_FOF_GList[i].LocDMCount = FOF_GList[start].LocDMCount;
 #endif
@@ -1004,7 +988,7 @@ void fof_compile_catalogue(void)
   /* eliminate all groups that are too small, and count local groups */
   for(i = 0, Ngroups = 0, Nids = 0; i < NgroupsExt; i++)
     {
-#ifdef DENSITY_SPLIT_BY_TYPE
+#ifdef FOF_DENSITY_SPLIT_TYPES
       if(FOF_GList[i].LocDMCount + FOF_GList[i].ExtDMCount < MyFOF_GROUP_MIN_LEN)
 #else
       if(FOF_GList[i].LocCount + FOF_GList[i].ExtCount < MyFOF_GROUP_MIN_LEN)
@@ -1272,7 +1256,7 @@ void fof_save_groups(int num)
     {
       FOF_GList[i].LocCount += FOF_GList[i].ExtCount;	/* total length */
       FOF_GList[i].ExtCount = ThisTask;	/* original task */
-#ifdef DENSITY_SPLIT_BY_TYPE
+#ifdef FOF_DENSITY_SPLIT_TYPES
       FOF_GList[i].LocDMCount += FOF_GList[i].ExtDMCount;	/* total length */
       FOF_GList[i].ExtDMCount = ThisTask;	/* not longer needed/used (hopefully) */
 #endif
@@ -1886,7 +1870,7 @@ int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int
             dx = pos[0] - P[j].Pos[0];
             dy = pos[1] - P[j].Pos[1];
             dz = pos[2] - P[j].Pos[2];
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
             NEAREST_XYZ(dx,dy,dz,1);
 #endif
             r2 = dx * dx + dy * dy + dz * dz;
@@ -2069,14 +2053,6 @@ void fof_make_black_holes(void)
       BPP(import_indices[n]).BH_CountProgs = 1;
 #endif
 
-#ifdef BH_BUBBLES
-      P[import_indices[n]].BH_Mass_bubbles = All.SeedBlackHoleMass;
-      P[import_indices[n]].BH_Mass_ini = All.SeedBlackHoleMass;
-#ifdef UNIFIED_FEEDBACK
-      P[import_indices[n]].BH_Mass_radio = All.SeedBlackHoleMass;
-#endif
-#endif
-
 #if (BH_SEED_FROM_FOF != 1)
       Stars_converted++;
       TimeBinCountSph[P[import_indices[n]].TimeBin]--;
@@ -2230,321 +2206,6 @@ void fof_assign_HostHaloMass(void)	/* assigns mass of host FoF group to SphP[].H
 
 #endif
 #endif // defined(GALSF_SUBGRID_WINDS) && defined(GALSF_SUBGRID_WIND_SCALING==1)
-
-
-#ifdef BUBBLES
-
-void find_CM_of_biggest_group(void)
-{
-  int i, rootcpu;
-  group_properties BiggestGroup;
-
-  parallel_sort(Group, Ngroups, sizeof(group_properties), fof_compare_Group_Len);
-
-  /* the biggest group will now be the first group on the first cpu that has any groups */
-  MPI_Allgather(&Ngroups, 1, MPI_INT, Send_count, 1, MPI_INT, MPI_COMM_WORLD);
-
-  for(rootcpu = 0; Send_count[rootcpu] == 0 && rootcpu < NTask - 1; rootcpu++);
-
-  if(rootcpu == ThisTask)
-    BiggestGroup = Group[0];
-
-  /* bring groups back into original order */
-  parallel_sort(Group, Ngroups, sizeof(group_properties), fof_compare_Group_MinIDTask_MinID);
-
-  MPI_Bcast(&BiggestGroup, sizeof(group_properties), MPI_BYTE, rootcpu, MPI_COMM_WORLD);
-
-  All.BiggestGroupLen = BiggestGroup.Len;
-
-  for(i = 0; i < 3; i++)
-    All.BiggestGroupCM[i] = BiggestGroup.CM[i];
-
-  All.BiggestGroupMass = BiggestGroup.Mass;
-
-  if(ThisTask == 0)
-    {
-      printf("Biggest group length has %d particles.\n", All.BiggestGroupLen);
-      printf("CM of biggest group is: (%g|%g|%g)\n", All.BiggestGroupCM[0], All.BiggestGroupCM[1],
-	     All.BiggestGroupCM[2]);
-      printf("Mass of biggest group is: %g\n", All.BiggestGroupMass);
-    }
-}
-
-#endif // BUBBLES
-
-
-
-#ifdef MULTI_BUBBLES
-void multi_bubbles(void)
-{
-  double phi, theta;
-  double dx, dy, dz, rr, r2, dE;
-  double E_bubble, totE_bubble, hubble_a = 0.0;
-  double BubbleDistance, BubbleRadius, BubbleEnergy;
-  MyFloat Mass_bubble, totMass_bubble;
-  MyFloat pos[3];
-  int numngb, tot_numngb, startnode, numngb_inbox;
-  int n, i, j, k, l, dummy;
-  int nheat, tot_nheat;
-  int eff_nheat, tot_eff_nheat;
-  double *GroupMassType_common, *GroupMassType_dum;
-  float *GroupCM_common_x, *GroupCM_dum_x;
-  float *GroupCM_common_y, *GroupCM_dum_y;
-  float *GroupCM_common_z, *GroupCM_dum_z;
-  int logical;
-  int *nn_heat, *disp;
-
-  if(All.ComovingIntegrationOn)
-    {
-      hubble_a = hubble_function(All.Time) / All.Hubble_H0_CodeUnits;
-    }
-
-  nheat = tot_nheat = 0;
-  eff_nheat = tot_eff_nheat = 0;
-
-  logical = 0;
-
-  for(k = 0; k < Ngroups; k++) {if(Group[k].MassType[1] >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed) nheat++;}
-
-  MPI_Allreduce(&nheat, &tot_nheat, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-
-  if(ThisTask == 0)
-    printf("The total number of clusters to heat is: %d\n", tot_nheat);
-
-
-  nn_heat = mymalloc("nn_heat", NTask * sizeof(int));
-  disp = mymalloc("disp", NTask * sizeof(int));
-
-  MPI_Allgather(&nheat, 1, MPI_INT, nn_heat, 1, MPI_INT, MPI_COMM_WORLD);
-
-  for(k = 1, disp[0] = 0; k < NTask; k++)
-    disp[k] = disp[k - 1] + nn_heat[k - 1];
-
-
-  if(tot_nheat > 0)
-    {
-      GroupMassType_common = mymalloc("GroupMassType_common", tot_nheat * sizeof(double));
-      GroupMassType_dum = mymalloc("GroupMassType_dum", nheat * sizeof(double));
-
-      GroupCM_common_x = mymalloc("GroupCM_common_x", tot_nheat * sizeof(float));
-      GroupCM_dum_x = mymalloc("GroupCM_dum_x", nheat * sizeof(float));
-
-      GroupCM_common_y = mymalloc("GroupCM_common_y", tot_nheat * sizeof(float));
-      GroupCM_dum_y = mymalloc("GroupCM_dum_y", nheat * sizeof(float));
-
-      GroupCM_common_z = mymalloc("GroupCM_common_z", tot_nheat * sizeof(float));
-      GroupCM_dum_z = mymalloc("GroupCM_dum_z", nheat * sizeof(float));
-
-
-      for(k = 0, i = 0; k < Ngroups; k++)
-	{
-	      if(Group[k].MassType[1] >= (All.Omega0 - All.OmegaBaryon) / All.Omega0 * All.MinFoFMassForNewSeed)
-		{
-		  GroupCM_dum_x[i] = Group[k].CM[0];
-		  GroupCM_dum_y[i] = Group[k].CM[1];
-		  GroupCM_dum_z[i] = Group[k].CM[2];
-
-		  GroupMassType_dum[i] = Group[k].Mass;
-
-		  i++;
-		}
-	}
-
-      MPI_Allgatherv(GroupMassType_dum, nheat, MPI_DOUBLE, GroupMassType_common, nn_heat, disp, MPI_DOUBLE,
-		     MPI_COMM_WORLD);
-
-      MPI_Allgatherv(GroupCM_dum_x, nheat, MPI_FLOAT, GroupCM_common_x, nn_heat, disp, MPI_FLOAT,
-		     MPI_COMM_WORLD);
-
-      MPI_Allgatherv(GroupCM_dum_y, nheat, MPI_FLOAT, GroupCM_common_y, nn_heat, disp, MPI_FLOAT,
-		     MPI_COMM_WORLD);
-
-      MPI_Allgatherv(GroupCM_dum_z, nheat, MPI_FLOAT, GroupCM_common_z, nn_heat, disp, MPI_FLOAT,
-		     MPI_COMM_WORLD);
-
-
-      for(l = 0; l < tot_nheat; l++)
-	{
-	  if(All.ComovingIntegrationOn > 0)
-	    {
-	      BubbleDistance =
-		All.BubbleDistance * 1. / All.Time * pow(GroupMassType_common[l] / All.ClusterMass200,
-							 1. / 3.) / pow(hubble_a, 2. / 3.);
-
-	      BubbleRadius =
-		All.BubbleRadius * 1. / All.Time * pow(GroupMassType_common[l] / All.ClusterMass200,
-						       1. / 3.) / pow(hubble_a, 2. / 3.);
-
-	      BubbleEnergy =
-		All.BubbleEnergy * pow(GroupMassType_common[l] / All.ClusterMass200, 5. / 3.) * pow(hubble_a,
-												    2. / 3.);
-
-	      phi = theta = rr = 0.0;
-
-	      phi = 2 * M_PI * get_random_number(0);
-	      theta = acos(2 * get_random_number(0) - 1);
-	      rr = pow(get_random_number(0), 1. / 3.) * BubbleDistance;
-
-	      pos[0] = pos[1] = pos[2] = 0.0;
-
-	      pos[0] = sin(theta) * cos(phi);
-	      pos[1] = sin(theta) * sin(phi);
-	      pos[2] = cos(theta);
-
-	      for(k = 0; k < 3; k++)
-		pos[k] *= rr;
-
-	      pos[0] += GroupCM_common_x[l];
-	      pos[1] += GroupCM_common_y[l];
-	      pos[2] += GroupCM_common_z[l];
-
-
-	      /* First, let's see how many particles are in the bubble */
-
-	      Ngblist = (int *) mymalloc("Ngblist", NumPart * sizeof(int));
-
-	      numngb = 0;
-	      E_bubble = 0.;
-	      Mass_bubble = 0.;
-
-	      startnode = All.MaxPart;
-	      do
-		{
-		  numngb_inbox = ngb_treefind_variable_targeted(pos, BubbleRadius, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas: 2^0=1
-
-		  for(n = 0; n < numngb_inbox; n++)
-		    {
-                j = Ngblist[n];
-                dx = pos[0] - P[j].Pos[0];
-                dy = pos[1] - P[j].Pos[1];
-                dz = pos[2] - P[j].Pos[2];
-#ifdef PERIODIC
-                NEAREST_XYZ(dx,dy,dz,1);
-#endif
-                r2 = dx * dx + dy * dy + dz * dz;
-
-		      if(r2 < BubbleRadius * BubbleRadius)
-			{
-			  numngb++;
-
-                E_bubble += P[j].Mass * SphP[j].InternalEnergyPred;
-			  Mass_bubble += P[j].Mass;
-
-			}
-		    }
-		}
-	      while(startnode >= 0);
-
-
-	      tot_numngb = totE_bubble = totMass_bubble = 0.0;
-
-	      MPI_Allreduce(&numngb, &tot_numngb, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-	      MPI_Allreduce(&E_bubble, &totE_bubble, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-	      MPI_Allreduce(&Mass_bubble, &totMass_bubble, 1, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
-
-
-	      if(tot_numngb == 0)
-		{
-		  tot_numngb = 1;
-		  totMass_bubble = 1;
-		  totE_bubble = 1;
-		  logical = 0;
-		}
-	      else
-		{
-		  logical = 1;
-		  eff_nheat++;
-		}
-
-	      totE_bubble *= All.UnitEnergy_in_cgs;
-
-
-#ifndef IO_REDUCED_MODE
-	      if(ThisTask == 0)
-		{
-		  if(logical == 1)
-		    {
-		      printf("%g, %g, %g, %g, %d, %g, %g, %g\n", GroupMassType_common[l], GroupCM_common_x[l],
-			     GroupCM_common_y[l], GroupCM_common_z[l], tot_numngb, BubbleRadius, BubbleEnergy,
-			     (BubbleEnergy + totE_bubble) / totE_bubble);
-
-		    }
-		  fflush(stdout);
-		}
-#endif
-	      /* now find particles in Bubble again, and inject energy */
-
-	      startnode = All.MaxPart;
-
-	      do
-		{
-		  numngb_inbox = ngb_treefind_variable_targeted(pos, BubbleRadius, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas: 2^0=1
-
-		  for(n = 0; n < numngb_inbox; n++)
-		    {
-                j = Ngblist[n];
-                dx = pos[0] - P[j].Pos[0];
-                dy = pos[1] - P[j].Pos[1];
-                dz = pos[2] - P[j].Pos[2];
-#ifdef PERIODIC
-                NEAREST_XYZ(dx,dy,dz,1);
-#endif
-                r2 = dx * dx + dy * dy + dz * dz;
-
-		      if(r2 < BubbleRadius * BubbleRadius)
-			{
-			  /* with sf on gas particles have mass that is not fixed */
-			  /* energy we want to inject in this particle */
-
-			  if(logical == 1)
-			    dE = ((BubbleEnergy / All.UnitEnergy_in_cgs) / totMass_bubble) * P[j].Mass;
-			  else
-			    dE = 0;
-                
-                SphP[j].InternalEnergy += dE / P[j].Mass;
-			  if(dE > 0 && P[j].ID > 0)
-			    P[j].ID = -P[j].ID;
-
-			}
-		    }
-		}
-	      while(startnode >= 0);
-
-	      myfree(Ngblist);
-
-	    }
-	}
-
-      myfree(GroupCM_dum_z);
-      myfree(GroupCM_common_z);
-      myfree(GroupCM_dum_y);
-      myfree(GroupCM_common_y);
-      myfree(GroupCM_dum_x);
-      myfree(GroupCM_common_x);
-      myfree(GroupMassType_dum);
-      myfree(GroupMassType_common);
-
-      MPI_Allreduce(&eff_nheat, &tot_eff_nheat, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-
-      if(ThisTask == 0)
-	printf("The total effective! number of clusters to heat is: %d\n", eff_nheat);
-
-    }
-  else
-    {
-      printf("There are no clusters to heat. I will stop.\n");
-      endrun(0);
-    }
-
-
-  myfree(disp);
-  myfree(nn_heat);
-
-}
-
-#endif // MULTI_BUBBLES
-
-
 
 
 

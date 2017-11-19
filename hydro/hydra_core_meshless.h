@@ -21,7 +21,7 @@
     V_j = P[j].Mass / SphP[j].Density;
     s_star_ij = 0;
     //
-#if !defined(CONSTRAINED_GRADIENT_MHD)
+#if !defined(MHD_CONSTRAINED_GRADIENT)
      //s_star_ij = 0.5 * kernel.r * (PPP[j].Hsml - local.Hsml) / (local.Hsml + PPP[j].Hsml); // old test, doesn't account for Hsml changing for condition number reasons
      //s_star_ij = 0.5 * kernel.r * (local.Density - SphP[j].Density) / (local.Density + SphP[j].Density); // frame with zero mass flux in a first-order reconstruction //
 #endif
@@ -166,7 +166,7 @@
         }
 #ifdef MAGNETIC
         int slim_mode = 1;
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
         if((local.ConditionNumber < 0) || (SphP[j].FlagForConstrainedGradients == 0)) {slim_mode = 1;} else {slim_mode = -1;}
 #endif
         for(k=0;k<3;k++)

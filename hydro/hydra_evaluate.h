@@ -37,7 +37,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double epsilon_entropic_eos_small = 1.e-3; // should be << epsilon_entropic_eos_big
 #if defined(FORCE_ENTROPIC_EOS_BELOW)
     epsilon_entropic_eos_small = FORCE_ENTROPIC_EOS_BELOW; // if set manually
-#elif !defined(NOGRAVITY)
+#elif !defined(SELFGRAVITY_OFF)
     epsilon_entropic_eos_small = 1.e-2; epsilon_entropic_eos_big = 0.6; // with gravity larger tolerance behaves better on hydrostatic equilibrium problems //
 #endif
 #endif
@@ -83,7 +83,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     //double delta_halfstep_i=0,delta_halfstep_j=0;
     
 #if defined(HYDRO_SPH)
-#ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
+#ifdef HYDRO_PRESSURE_SPH
     kernel.p_over_rho2_i = local.Pressure / (local.EgyWtRho*local.EgyWtRho);
 #else 
     kernel.p_over_rho2_i = local.Pressure / (local.Density*local.Density);
@@ -156,7 +156,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* check if I need to compute this pair-wise interaction from "i" to "j", or skip it and 
                     let it be computed from "j" to "i" */
                 int TimeStep_J = (P[j].TimeBin ? (1 << P[j].TimeBin) : 0);
-#ifndef SHEARING_BOX // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //
+#ifndef BOX_SHEARING // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //
                 if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
                 /* use relative positions to break degeneracy */
                 if(local.Timestep == TimeStep_J)
@@ -173,7 +173,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
-#ifdef PERIODIC  /* find the closest image in the given box size  */
+#ifdef BOX_PERIODIC  /* find the closest image in the given box size  */
                 NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1);
 #endif
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
@@ -193,12 +193,12 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 rinv = 1 / kernel.r;
                 /* we require a 'softener' to prevent numerical madness in interpolating functions */
                 rinv_soft = 1.0 / sqrt(r2 + 0.0001*kernel.h_i*kernel.h_i);
-#ifdef SHEARING_BOX
+#ifdef BOX_SHEARING
                 /* in a shearing box, need to set dv appropriately for the shearing boundary conditions */
                 MyDouble VelPred_j[3];
                 for(k=0;k<3;k++) {VelPred_j[k]=SphP[j].VelPred[k];}
-                if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+                if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #else
                 /* faster to just set a pointer directly */
                 MyDouble *VelPred_j = SphP[j].VelPred;
@@ -380,7 +380,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(fabs(dmass_holder) > dmass_limiter) {dmass_holder *= dmass_limiter / fabs(dmass_holder);}
                 out.dMass += dmass_holder;
                 out.DtMass += Fluxes.rho;
-#ifndef SHEARING_BOX
+#ifndef BOX_SHEARING
                 SphP[j].dMass -= dmass_holder;
 #endif
                 double gravwork[3]; gravwork[0]=Fluxes.rho*kernel.dp[0]; gravwork[1]=Fluxes.rho*kernel.dp[1]; gravwork[2]=Fluxes.rho*kernel.dp[2];
@@ -450,7 +450,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 
                 /* if this is particle j's active timestep, you should sent them the time-derivative
                  information as well, for their subsequent drift operations */
-#ifndef SHEARING_BOX
+#ifndef BOX_SHEARING
                 if(TimeBinActive[P[j].TimeBin])
                 {
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME

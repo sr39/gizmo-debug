@@ -23,19 +23,17 @@
 ####################################################################################################
 # --------------------------------------- Boundary Conditions & Dimensions
 ####################################################################################################
-#PERIODIC                       # Use this if periodic boundaries are needed (otherwise open boundaries are assumed)
-#BND_PARTICLES                  # particles with ID=0 are forced in place (their accelerations are set =0):
-                                # use for special boundary conditions where these particles represent fixed "walls"
-#LONG_X=140                     # modify box dimensions (non-square periodic box): multiply X (PERIODIC and NOGRAVITY required)
-#LONG_Y=1                       # modify box dimensions (non-square periodic box): multiply Y
-#LONG_Z=1                       # modify box dimensions (non-square periodic box): multiply Z
-#REFLECT_BND_X                  # make the x-boundary reflecting (assumes a box 0<x<1, unless PERIODIC is set)
-#REFLECT_BND_Y                  # make the y-boundary reflecting (assumes a box 0<y<1, unless PERIODIC is set)
-#REFLECT_BND_Z                  # make the z-boundary reflecting (assumes a box 0<z<1, unless PERIODIC is set)
-#SHEARING_BOX=1                 # shearing box boundaries: 1=r-z sheet (r,z,phi coordinates), 2=r-phi sheet (r,phi,z), 3=r-phi-z box, 4=as 3, with vertical gravity
-#SHEARING_BOX_Q=(3./2.)         # shearing box q=-dlnOmega/dlnr; will default to 3/2 (Keplerian) if not set
-#ONEDIM                         # Switch for 1D test problems: code only follows the x-line. requires NOGRAVITY, and all y=z=0
-#TWODIMS                        # Switch for 2D test problems: code only follows the xy-plane. requires NOGRAVITY, and all z=0.
+#BOX_PERIODIC               # Use this if periodic boundaries are needed (otherwise open boundaries are assumed)
+#BOX_BND_PARTICLES          # particles with ID=0 are forced in place (their accelerations are set =0): use for special boundary conditions where these particles represent fixed "walls"
+#BOX_LONG_X=140             # modify box dimensions (non-square periodic box): multiply X (BOX_PERIODIC and SELFGRAVITY_OFF required)
+#BOX_LONG_Y=1               # modify box dimensions (non-square periodic box): multiply Y
+#BOX_LONG_Z=1               # modify box dimensions (non-square periodic box): multiply Z
+#BOX_REFLECT_X              # make the x-boundary reflecting (assumes a box 0<x<1, unless BOX_PERIODIC is set)
+#BOX_REFLECT_Y              # make the y-boundary reflecting (assumes a box 0<y<1, unless BOX_PERIODIC is set)
+#BOX_REFLECT_Z              # make the z-boundary reflecting (assumes a box 0<z<1, unless BOX_PERIODIC is set)
+#BOX_SHEARING=1             # shearing box boundaries: 1=r-z sheet (r,z,phi coordinates), 2=r-phi sheet (r,phi,z), 3=r-phi-z box, 4=as 3, with vertical gravity
+#BOX_SHEARING_Q=(3./2.)     # shearing box q=-dlnOmega/dlnr; will default to 3/2 (Keplerian) if not set
+#BOX_SPATIAL_DIMENSION=3    # sets number of spatial dimensions evolved (default=3D). Switch for 1D/2D test problems: if =1, code only follows the x-line (all y=z=0), if =2, only xy-plane (all z=0). requires SELFGRAVITY_OFF
 ####################################################################################################
 
 
@@ -43,15 +41,16 @@
 ####################################################################################################
 # --------------------------------------- Hydro solver method
 ####################################################################################################
-#HYDRO_MESHLESS_FINITE_MASS     # Lagrangian (constant-mass) finite-volume Godunov method
-#HYDRO_MESHLESS_FINITE_VOLUME   # Moving (quasi-Lagrangian) finite-volume Godunov method
+# --------------------------------------- Mesh-free Finite-volume Godunov methods
+#HYDRO_MESHLESS_FINITE_MASS     # solve hydro using the Lagrangian (constant-mass) finite-volume Godunov method
+#HYDRO_MESHLESS_FINITE_VOLUME   # solve hydro using the Moving (quasi-Lagrangian) finite-volume Godunov method
 ## -----------------------------------------------------------------------------------------------------
-# --------------------------------------- SPH methods:
-#SPHEQ_DENSITY_INDEPENDENT_SPH  # force SPH to use the 'pressure-sph' formulation ('P-SPH')
-#SPHEQ_TRADITIONAL_SPH          # force SPH to use the 'density-sph' (GADGET-2 & GASOLINE SPH)
+# --------------------------------------- SPH methods (enable one of these flags to use SPH):
+#HYDRO_PRESSURE_SPH             # solve hydro using SPH with the 'pressure-sph' formulation ('P-SPH')
+#HYDRO_DENSITY_SPH              # solve hydro using SPH with the 'density-sph' formulation (GADGET-2 & GASOLINE SPH)
 # --------------------------------------- SPH artificial diffusion options (use with SPH; not relevant for Godunov/Mesh modes)
-#SPHAV_DISABLE_CD10_ARTVISC     # Disable Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks); just use Balsara switch
-#SPHAV_DISABLE_PM_CONDUCTIVITY  # Disable mixing entropy (J.Read's improved Price-Monaghan conductivity with Cullen-Dehnen switches)
+#SPH_DISABLE_CD10_ARTVISC       # for SPH only: Disable Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks); just use Balsara switch
+#SPH_DISABLE_PM_CONDUCTIVITY    # for SPH only: Disable mixing entropy (J.Read's improved Price-Monaghan conductivity with Cullen-Dehnen switches)
 ## -----------------------------------------------------------------------------------------------------
 # --------------------------------------- Kernel Options
 #KERNEL_FUNCTION=3              # Choose the kernel function (2=quadratic peak, 3=cubic spline [default], 4=quartic spline, 5=quintic spline, 6=Wendland C2, 7=Wendland C4, 8=2-part quadratic)
@@ -71,9 +70,9 @@
 # ---------------------------------  these modules are public, but if used, the user should also cite the MHD-specific GIZMO methods paper
 # ---------------------------------  (Hopkins 2015: 'Accurate, Meshless Methods for Magneto-Hydrodynamics') as well as the standard GIZMO paper
 #MAGNETIC                       # master switch for MHD, regardless of which Hydro solver is used
-#B_SET_IN_PARAMS                # set initial fields (Bx,By,Bz) in parameter file
+#MHD_B_SET_IN_PARAMS            # set initial fields (Bx,By,Bz) in parameter file
 #MHD_NON_IDEAL                  # enable non-ideal MHD terms: Ohmic resistivity, Hall effect, and ambipolar diffusion (solved explicitly); Users should cite Hopkins 2017, MNRAS, 466, 3387, in addition to the MHD paper
-#CONSTRAINED_GRADIENT_MHD=1     # use CG method (in addition to cleaning, optional!) to maintain low divB: set this value to control how aggressive the div-reduction is:
+#MHD_CONSTRAINED_GRADIENT=1     # use CG method (in addition to cleaning, optional!) to maintain low divB: set this value to control how aggressive the div-reduction is:
                                 # 0=minimal (safest), 1=intermediate (recommended), 2=aggressive (less stable), 3+=very aggressive (less stable+more expensive). [Please cite Hopkins, MNRAS, 2016, 462, 576]
 ## ----------------------------------------------------------------------------------------------------
 # -------------------------------------- Conduction
@@ -88,14 +87,14 @@
 ## ----------------------------------------------------------------------------------------------------
 # -------------------------------------- Radiative Cooling physics (mostly geared towards galactic/extragalactic cooling)
 # -------------------------- These modules were originally developed for a combination of proprietary physics modules. However they are now written in
-# --------------------------   a form which allows them to be modular. Users are free to use the GRACKLE modules and standard 'COOLING' flags,
+# --------------------------   a form which allows them to be modular. Users are free to use the Grackle modules and standard 'COOLING' flags,
 # --------------------------   provided proper credit/citations are provided to the relevant methods papers given in the Users Guide ---
 # --------------------------   but all users should cite Hopkins et al. 2017 (arXiv:1702.06148), where Appendix B details the cooling physics
 #COOLING                        # enables radiative cooling and heating: if GALSF, also external UV background read from file "TREECOOL" (included in the cooling folder)
 #COOL_LOW_TEMPERATURES          # allow fine-structure and molecular cooling to ~10 K; account for optical thickness and line-trapping effects with proper opacities
 #COOL_METAL_LINES_BY_SPECIES    # use full multi-species-dependent cooling tables ( http://www.tapir.caltech.edu/~phopkins/public/spcool_tables.tgz ); requires METALS on; cite Wiersma et al. 2009 (MNRAS, 393, 99) in addition to Hopkins et al. 2017 (arXiv:1702.06148)
-#GRACKLE                        # enable GRACKLE: cooling+chemistry package (requires COOLING above; https://grackle.readthedocs.org/en/latest ); see GRACKLE code for their required citations
-#GRACKLE_CHEMISTRY=1            # choose GRACKLE cooling chemistry: (0)=tabular, (1)=Atomic, (2)=(1)+H2+H2I+H2II, (3)=(2)+DI+DII+HD
+#COOL_GRACKLE                   # enable Grackle: cooling+chemistry package (requires COOLING above; https://grackle.readthedocs.org/en/latest ); see Grackle code for their required citations
+#COOL_GRACKLE_CHEMISTRY=1       # choose Grackle cooling chemistry: (0)=tabular, (1)=Atomic, (2)=(1)+H2+H2I+H2II, (3)=(2)+DI+DII+HD
 #METALS                         # enable metallicities (with multiple species optional) for gas and stars [must be included in ICs or injected via dynamical feedback; needed for some routines]
 ## ----------------------------------------------------------------------------------------------------
 # -------------------------------------- Smagorinsky Turbulent Eddy Diffusion Model
@@ -132,8 +131,8 @@
 # ------------------------------- users of these routines should cite Bauer & Springel 2012, MNRAS, 423, 3102, and thank A. Bauer for providing the core algorithms
 ####################################################################################################
 #TURB_DRIVING                   # turns on turbulent driving/stirring. see begrun for parameters that must be set
-#POWERSPEC_GRID=128             # activates on-the-fly calculation of the turbulent velocity, vorticity, and smoothed-velocity power spectra
-#ADJ_BOX_POWERSPEC              # compiles in a code module that allows via restart-flag 6 the calculation of a gas velocity power spectrum of a snapshot with an adjustable box (user defined center and size)
+#TURB_DRIVING_SPECTRUMGRID=128  # activates on-the-fly calculation of the turbulent velocity, vorticity, and smoothed-velocity power spectra, evaluated on a grid of linear-size TURB_DRIVING_SPECTRUMGRID elements
+#TURB_DRIVING_DUMPSPECTRUM      # compiles in a code module that allows via restart-flag 6 the calculation (+immediate output) of a gas velocity power spectrum of a snapshot with an adjustable box (user defined center and size)
 ####################################################################################################
 
 
@@ -146,7 +145,6 @@
 #PM_PLACEHIGHRESREGION=1+2+16   # COSMO enable: particle types to place high-res PMGRID around
 #PM_HIRES_REGION_CLIPPING=1000  # for stability: clips particles that escape the hires region in zoom/isolated sims
 #PM_HIRES_REGION_CLIPDM         # split low-res DM particles that enter high-res region (completely surrounded by high-res)
-#MULTIPLEDOMAINS=64             # Multi-Domain option for the top-tree level: iso=16,COSMO=64-128
 ## -----------------------------------------------------------------------------------------------------
 # ---------------------------------------- Adaptive Grav. Softening (including Lagrangian conservation terms!)
 #ADAPTIVE_GRAVSOFT_FORGAS       # allows variable softening length (=Hsml) for gas particles
@@ -155,23 +153,23 @@
                                 # enclosing a neighbor number set in the parameter file. baryons search for other baryons,
                                 # dm for dm, sidm for sidm, etc. If set to numerical value, the maximum softening is this times All.ForceSoftening[for appropriate particle type]. cite Hopkins et al., arXiv:1702.06148
 ## -----------------------------------------------------------------------------------------------------
-#NOGRAVITY                      # turn off self-gravity (compatible with analytic_gravity)
+#SELFGRAVITY_OFF                # turn off self-gravity (compatible with GRAVITY_ANALYTIC); setting NOGRAVITY gives identical functionality
 #GRAVITY_NOT_PERIODIC           # self-gravity is not periodic, even though the rest of the box is periodic
 ## -----------------------------------------------------------------------------------------------------
-#ANALYTIC_GRAVITY               # Specific analytic gravitational force to use instead of/with self-gravity. If set to a numerical value
+#GRAVITY_ANALYTIC               # Specific analytic gravitational force to use instead of or with self-gravity. If set to a numerical value
                                 #  > 0 (e.g. =1), then BH_CALC_DISTANCES will be enabled, and it will use the nearest BH particle as the center for analytic gravity computations
-                                #  (edit "gravity/analytic_gravity.h" to actually assign the analytic gravitational forces)
+                                #  (edit "gravity/analytic_gravity.h" to actually assign the analytic gravitational forces). 'ANALYTIC_GRAVITY' gives same functionality
 ## ----------------------------------------------------------------------------------------------------
-#--------------------------------------- Self-Interacting DM (Rocha et al. 2012) and Scalar-field DM (Robles et al.)
+#--------------------------------------- Self-Interacting DM (Rocha et al. 2012) and Scalar-field DM
 #--------------------------------    use of these routines requires explicit pre-approval by developers J. Bullock or M. Boylan-Kolchin (acting for M. Rocha); approved users please cite Rocha et al., MNRAS 2013, 430, 81 and Robles et al, 2017 (arXiv:1706.07514).
-#SIDM=2                         # Self-interacting particle types (specify the particle types which are self-interacting DM with a bit mask, as for PM_PLACEHIGHRESREGION above (see description); previous "DMDISK_INTERACTIONS" is identical to setting SIDM=2+4
-#SCALARFIELD                    # Gravity is mediated by a long-range scalar field instead of DE or DM (cite Robles et al., arXiv:1503.00799)
+#DM_SIDM=2                      # Self-interacting particle types (specify the particle types which are self-interacting DM with a bit mask, as for PM_PLACEHIGHRESREGION above (see description); previous "DMDISK_INTERACTIONS" is identical to setting DM_SIDM=2+4
+#DM_SCALARFIELD_SCREENING       # Gravity is mediated by a long-range scalar field, with dynamical screening (primarily alternative DE models)
 ## ----------------------------------------------------------------------------------------------------
-# -------------------------------------- Dark energy (flags to allow complicated equations of state)
-#DARKENERGY                     # enables Dark Energy with non-trivial equations-of-state (master switch)
-#TIMEDEPDE                      # read w(z) from a DE file (pre-tabulated)
-#EXTERNALHUBBLE                 # reads the hubble function from the DE file (pre-tabulated)
-#TIMEDEPGRAV                    # rescales H and G according to DE model (pre-tabulated)
+# -------------------------------------- arbitrary time-dependent dark energy equations-of-state, expansion histories, or gravitational constants
+#GR_TABULATED_COSMOLOGY         # enable reading tabulated cosmological/gravitational parameters (master switch)
+#GR_TABULATED_COSMOLOGY_W       # read pre-tabulated dark energy equation-of-state w(z)
+#GR_TABULATED_COSMOLOGY_H       # read pre-tabulated hubble function (expansion history) H(z)
+#GR_TABULATED_COSMOLOGY_G       # read pre-tabulated gravitational constant G(z) [also rescales H(z) appropriately]
 ## ----------------------------------------------------------------------------------------------------
 #EOS_TRUELOVE_PRESSURE          # adds artificial pressure floor force Jeans length above resolution scale (means you can get the wrong answer, but things will look smooth).  cite Robertson & Kravtsov 2008, ApJ, 680, 1083
 ####################################################################################################
@@ -189,7 +187,7 @@
 #FOF                                # enable FoF searching on-the-fly and outputs (set parameter LINKLENGTH=x to control LinkingLength; default=0.2)
 #FOF_PRIMARY_LINK_TYPES=2           # 2^type for the primary dark matter type
 #FOF_SECONDARY_LINK_TYPES=1+16+32   # 2^type for the types linked to nearest primaries
-#DENSITY_SPLIT_BY_TYPE=1+2+16+32    # 2^type for whch the densities should be calculated seperately
+#FOF_DENSITY_SPLIT_TYPES=1+2+16+32  # 2^type for whch the densities should be calculated seperately
 #FOF_GROUP_MIN_LEN=32               # default is 32
 ####################################################################################################
 
@@ -210,15 +208,16 @@
 #GALSF_GENERATIONS=1             # the number of star particles a gas particle may spawn (defaults to 1, set otherwise)
 ## ----------------------------------------------------------------------------------------------------------------------------
 # ---- sub-grid models (for large-volume simulations or modest/low resolution galaxy simulations) -----------------------------
-# -------- these are all ultimately variations of the Springel & Hernquist 2005 sub-grid models for the ISM, star formation,
-# -------- and stellar winds. their use follows the GADGET-3 use policies. If you are not sure whether you have permission to use them,
-# -------- you should contact those authors (Lars Hernquist & Volker Springel)
-# -----------------------------------------------------------------------------------------------------------------------------
+# -------- these are all ultimately variations of the Springel & Hernquist 2005 sub-grid models for the ISM, star formation, and winds.
+# -------- Volker has granted permissions for their use, provided users properly cite the sources for the relevant models and scalings (described below)
 #GALSF_EFFECTIVE_EQS            # Springel-Hernquist 'effective equation of state' model for the ISM and star formation [cite Springel & Hernquist, MNRAS, 2003, 339, 289]
 #GALSF_SUBGRID_WINDS            # sub-grid winds ('kicks' as in Oppenheimer+Dave,Springel+Hernquist,Boothe+Schaye,etc): enable this master switch for basic functionality [cite Springel & Hernquist, MNRAS, 2003, 339, 289]
 #GALSF_SUBGRID_WIND_SCALING=0   # set wind velocity scaling: 0 (default)=constant v [and mass-loading]; 1=velocity scales with halo mass (cite Oppenheimer & Dave, 2006, MNRAS, 373, 1265), requires FOF modules; 2=scale with local DM dispersion as Vogelsberger 13 (cite Zhu & Li, ApJ, 2016, 831, 52)
 #GALSF_WINDS_ORIENTATION=0      # directs wind orientation [0=isotropic/random, 1=polar, 2=along density gradient]
-#GALSF_TURNOFF_COOLING_WINDS    # turn off cooling for SNe-heated particles (as Stinson+ 2006 GASOLINE model, cite it); requires GALSF_FB_SNE_HEATING; use by permission of developer P. Hopkins)
+## ----------------------------------------------------------------------------------------------------------------------------
+# ---- pure thermal/scalar stellar feedback models (simplified energy injection; tend to severely over-cool owing to lack of mechanical/kinetic treatment at finite resolution -----------------------------
+#GALSF_FB_THERMAL               # simple 'pure thermal energy dump' feedback: mass, metals, and thermal energy are injected locally in simple kernel-weighted fashion around young stars. currently follows AGORA feedback scheme. cite Kim et al., 2016, ApJ, 833, 202 if used.
+#GALSF_FB_TURNOFF_COOLING       # turn off cooling for SNe-heated particles (as Stinson+ 2006 GASOLINE model, cite it); requires GALSF_FB_SNE_HEATING or GALSF_FB_THERMAL; use by permission of developer P. Hopkins)
 #GALSF_GASOLINE_RADHEATING      # heat gas with luminosity from young stars (as Stinson+ 2013 GASOLINE model, cite it); requires GALSF_FB_SNE_HEATING; use by permission of developer P. Hopkins)
 ## ----------------------------------------------------------------------------------------------------
 #------ PFH physical models for star formation and feedback: these are the FIRE simulation modules (Hopkins et al. 2014, Hopkins et al., 2017a, arXiv:1702.06148) ------ ##
@@ -293,11 +292,11 @@
 ## ----------------------------------------------------------------------------------------------------
 # -- thermal (pure thermal energy injection around BH particle, proportional to BH accretion rate)
 #BH_THERMALFEEDBACK             # constant fraction of luminosity coupled in kernel around BH. cite Springel, Di Matteo, and Hernquist, 2005, MNRAS, 361, 776
-# -- mechanical (wind from accretion disk/BH with specified mass/momentum/energy-loading relative to accretion rate)
+#--- mechanical (wind from accretion disk/BH with specified mass/momentum/energy-loading relative to accretion rate)
 #BH_WIND_CONTINUOUS=0           # gas in kernel given continuous wind flux (energy/momentum/etc). =0 for isotropic, =1 for collimated. cite Hopkins et al., 2016, MNRAS, 458, 816
 #BH_WIND_KICK=1                 # gas in kernel given stochastic 'kicks' at fixed velocity. (>0=isotropic, <0=collimated, absolute value sets momentum-loading in L/c units). cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840
 #BH_WIND_SPAWN                  # spawn virtual 'wind' particles to carry BH winds out [in development by Paul Torrey]. use requires permissions from P. Torrey and PFH (requires permission, this module is not fully de-bugged and methods not published)
-# -- radiative: [FIRE] these currently are built on the architecture of the FIRE stellar FB modules, and require some of those be active. their use therefore follows FIRE policies (see details above).
+#--- radiative: [FIRE] these currently are built on the architecture of the FIRE stellar FB modules, and require some of those be active. their use therefore follows FIRE policies (see details above).
 #BH_COMPTON_HEATING             # enable Compton heating/cooling from BHs in cooling function (needs BH_PHOTONMOMENTUM). cite Hopkins et al., 2016, MNRAS, 458, 816
 #BH_HII_HEATING                 # photo-ionization feedback from BH (needs GALSF_FB_HII_HEATING). cite Hopkins et al., arXiv:1702.06148
 #BH_PHOTONMOMENTUM              # continuous long-range IR radiation pressure acceleration from BH (needs GALSF_FB_RT_PHOTONMOMENTUM). cite Hopkins et al., arXiv:1702.06148
@@ -309,15 +308,6 @@
 ## ----------------------------------------------------------------------------------------------------
 #------------ deprecated or de-bugging options (most have been combined or optimized into the functions above, here for legacy)
 ##---------------------BH_SEED_GROWTH_TESTS             #- Currently testing options for BH seeding
-##-----------------------------------------------------------------------------------------------------
-#-------------------------------------- AGN-Bubble feedback (D. Sijacki; legacy GADGET-3 code here)
-#-------------------------------- use of these routines requires explicit pre-approval by developer D. Sijacki (they are legacy code and not developed for GIZMO, and should only be used with permissions and appropriate development)
-##---------------------BUBBLES                        # generation of hot bubbles in an isolated halo or the the biggest halo in the run
-##---------------------MULTI_BUBBLES                  # hot bubbles in all haloes above certain mass threshold (works only with FOF and without BUBBLES)
-##---------------------EBUB_PROPTO_BHAR               # Energy content of the bubbles with cosmic time evolves as an integrated BHAR(z) over a Salpeter time (Di Matteo 2003 eq. [11])
-##---------------------BH_BUBBLES                     # calculate bubble energy directly from the black hole accretion rate
-##---------------------UNIFIED_FEEDBACK               # activates BH_THERMALFEEDBACK at high Mdot and BH_BUBBLES FEEDBACK al low Mdot
-## ---------------------------------------------------------------------------------------------------
 ####################################################################################################
 
 
@@ -351,7 +341,7 @@
 ##-----------------------------------------------------------------------------------------------------
 #------------ test-problem, deprecated, or de-bugging functions
 ##-----------------------------------------------------------------------------------------------------
-#RT_NOGRAVITY                           # turn off gravity: if using an RT method that needs the gravity tree (FIRE, OTVET), use this -instead- of NOGRAVITY to safely turn off gravitational forces
+#RT_SELFGRAVITY_OFF                           # turn off gravity: if using an RT method that needs the gravity tree (FIRE, OTVET), use this -instead- of SELFGRAVITY_OFF to safely turn off gravitational forces
 #RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR # when RT_DIFFUSION_CG is enabled, modifies the Eddington tensor to the fully anisotropic version (less stable CG iteration)
 #RT_SEPARATELY_TRACK_LUMPOS             # keep luminosity vs. mass positions separate in tree (useful if running in tree-only mode)
 #RT_DISABLE_FLUXLIMITER                 # removes the flux-limiter from the diffusion operations (default is to include it when using the relevant approximations)
@@ -365,10 +355,11 @@
 
 
 ####################################################################################################
-# --------------------------------------- Multi-Threading (parallelization) options
+# --------------------------------------- Multi-Threading and Parallelization options
 ####################################################################################################
 #OPENMP=2                       # Masterswitch for explicit OpenMP implementation
 #PTHREADS_NUM_THREADS=4         # custom PTHREADs implementation (don't enable with OPENMP)
+#MULTIPLEDOMAINS=16             # Multi-Domain option for the top-tree level (alters load-balancing)
 ####################################################################################################
 
 
@@ -376,25 +367,25 @@
 ####################################################################################################
 # --------------------------------------- Input/Output options
 ####################################################################################################
-#HAVE_HDF5						# needed when HDF5 I/O support is desired
 #OUTPUT_ADDITIONAL_RUNINFO      # enables extended simulation output data (can slow down machines significantly in massively-parallel runs)
 #OUTPUT_IN_DOUBLEPRECISION      # snapshot files will be written in double precision
 #INPUT_IN_DOUBLEPRECISION       # input files assumed to be in double precision (otherwise float is assumed)
 #OUTPUT_POSITIONS_IN_DOUBLE     # input/output files in single, but positions in double (used in hires, hi-dynamic range sims when positions differ by < float accuracy)
 #INPUT_POSITIONS_IN_DOUBLE      # as above, but specific to the ICs file
-#OUTPUTPOTENTIAL                # forces code to compute+output potentials in snapshots
-#OUTPUTACCELERATION             # output physical acceleration of each particle in snapshots
-#OUTPUTCHANGEOFENERGY           # outputs rate-of-change of internal energy of gas particles in snapshots
-#OUTPUT_VORTICITY				# outputs the vorticity vector
-#OUTPUTTIMESTEP                 # outputs timesteps for each particle
-#OUTPUTCOOLRATE					# outputs cooling rate, and conduction rate if enabled
-#OUTPUTLINEOFSIGHT				# enables on-the-fly output of Ly-alpha absorption spectra
-#OUTPUTLINEOFSIGHT_SPECTRUM
-#OUTPUTLINEOFSIGHT_PARTICLES
-#POWERSPEC_ON_OUTPUT            # compute and output power spectra (not used)
-#RECOMPUTE_POTENTIAL_ON_OUTPUT	# update potential every output even it EVALPOTENTIAL is set
-#TWOPOINT_FUNCTION_COMPUTATION_ENABLED #calculate mass 2point function by enabling and setting restartflag=5
-#READ_HSML                      # force reading hsml from IC file (instead of re-computing them; in general this is redundant but useful if special guesses needed)
+#OUTPUT_POTENTIAL               # forces code to compute+output potentials in snapshots
+#OUTPUT_ACCELERATION            # output physical acceleration of each particle in snapshots
+#OUTPUT_CHANGEOFENERGY          # outputs rate-of-change of internal energy of gas particles in snapshots
+#OUTPUT_VORTICITY               # outputs the vorticity vector
+#OUTPUT_TIMESTEP                # outputs timesteps for each particle
+#OUTPUT_COOLRATE                # outputs cooling rate, and conduction rate if enabled
+#OUTPUT_LINEOFSIGHT				# enables on-the-fly output of Ly-alpha absorption spectra
+#OUTPUT_LINEOFSIGHT_SPECTRUM    # computes power spectrum of these (requires additional code integration)
+#OUTPUT_LINEOFSIGHT_PARTICLES   # computes power spectrum of these (requires additional code integration)
+#OUTPUT_POWERSPEC               # compute and output power spectra (not used)
+#OUTPUT_RECOMPUTE_POTENTIAL     # update potential every output even it EVALPOTENTIAL is set
+#INPUT_READ_HSML                # force reading hsml from IC file (instead of re-computing them; in general this is redundant but useful if special guesses needed)
+#OUTPUT_TWOPOINT_ENABLED        # allows user to calculate mass 2-point function by enabling and setting restartflag=5
+#IO_DISABLE_HDF5                # disable HDF5 I/O support (for both reading/writing; use only if HDF5 not install-able)
 ####################################################################################################
 
 
@@ -469,7 +460,7 @@
 ####################################################################################################-
 #---------------------------------------- Subhalo on-the-fly finder options (needs "subfind" source code)
 #------------------ This is originally developed as part of GADGET-3 (SUBFIND) by V. Springel
-#------------------ Use of these modules follows the GADGET-3 policies described above
+#------------------ Use of these modules follows the GADGET-3 permissions; if you are not sure, contact Volker
 ####################################################################################################-
 #SUBFIND                            #- enables substructure finder
 #MAX_NGB_CHECK=3                    #- Max numbers of neighbours for sattlepoint detection (default = 2)
@@ -503,11 +494,9 @@
 #-------------------------------- (these are currently non-functional and should not be used)
 ####################################################################################################-
 #NUCLEAR_NETWORK
-#NEGLECT_DTDY_TERMS
-#NETWORK_OUTPUT
-#NETWORK_OUTPUT_BINARY
+#NUCLEARNET_NEGLECT_DTDY_TERMS
+#NUCLEARNET_OUTPUT_TIMEEVOLUTION
 ####################################################################################################-
-
 
 
 
@@ -519,13 +508,13 @@
 ##----------------------------------------------------------------------------------------------------
 #------------------------------- Fine-grained phase space structure analysis (M. Vogelsberger)
 #-------------------------------- use of these routines requires explicit pre-approval by developer M. Vogelsberger
-#DISTORTIONTENSORPS             #- main switch: integrate phase-space distortion tensor
-#OUTPUT_DISTORTIONTENSORPS      #- write phase-space distortion tensor to snapshot
-#OUTPUT_TIDALTENSORPS           #- write configuration-space tidal tensor to snapshot
-#OUTPUT_LAST_CAUSTIC            #- write info on last passed caustic to snapshot
+#GDE_DISTORTIONTENSOR           #- main switch: integrate phase-space distortion tensor
 #GDE_TYPES=2+4+8+16+32          #- track GDE for these types
 #GDE_READIC                     #- read initial sheet orientation/initial density/initial caustic count from ICs
 #GDE_LEAN                       #- lean version of GDE
+#OUTPUT_DISTORTIONTENSOR        #- write phase-space distortion tensor to snapshot
+#OUTPUT_TIDALTENSORPS           #- write configuration-space tidal tensor to snapshot
+#OUTPUT_LAST_CAUSTIC            #- write info on last passed caustic to snapshot
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- SCF (potential expansion in basis functions)
 #-------------------------------- use of these routines requires explicit pre-approval by developers M. Vogelsberger & L. Hernquist
@@ -538,8 +527,6 @@
 #SCF_LMAX=1                     #- maximum l for expansion cut-off
 #SCF_SCALEFAC                   #- read-in scale factors for coefficients from file scf_scalefac.dat (must be created by user)
 ####################################################################################################-
-
-
 
 
 

@@ -7,11 +7,6 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
-#ifdef HAVE_HDF5
-#include <hdf5.h>
-#endif
-
 #include "allvars.h"
 #include "proto.h"
 
@@ -155,7 +150,7 @@ void savepositions(int num)
     }
 #endif
     
-#ifdef POWERSPEC_ON_OUTPUT
+#ifdef OUTPUT_POWERSPEC
     if(RestartFlag != 4)
     {
         if(ThisTask == 0)
@@ -187,7 +182,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     float *fp_single;
     integertime dt_step;
     
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
     MyFloat boxSize;
 #endif
 #ifdef PMGRID
@@ -195,11 +190,11 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
     double dt_gravkick, dt_hydrokick;
     
-#ifdef OUTPUTCOOLRATE
+#ifdef OUTPUT_COOLRATE
     double tcool, u;
 #endif
     
-#if (defined(OUTPUT_DISTORTIONTENSORPS) || defined(OUTPUT_TIDALTENSORPS))
+#if (defined(OUTPUT_DISTORTIONTENSOR) || defined(OUTPUT_TIDALTENSORPS))
     MyBigFloat half_kick_add[6][6];
     int l;
 #endif
@@ -223,7 +218,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
         dt_gravkick_pm = (All.Ti_Current - (All.PM_Ti_begstep + All.PM_Ti_endstep) / 2) * All.Timebase_interval;
 #endif
     
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
     MyBigFloat flde, psde;
 #endif
     
@@ -244,7 +239,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     for(k = 0; k < 3; k++)
                     {
                         fp_pos[k] = P[pindex].Pos[k];
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
                         boxSize = All.BoxSize;
                         if(k==0) {boxSize = boxSize_X;}
                         if(k==1) {boxSize = boxSize_Y;}
@@ -370,7 +365,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 {
 #if defined(RT_CHEM_PHOTOION)
                     *fp++ = SphP[pindex].HI;
-#elif (GRACKLE_CHEMISTRY > 0)
+#elif (COOL_GRACKLE_CHEMISTRY > 0)
                     *fp++ = SphP[pindex].grHI;
 #else
                     double u, ne, nh0 = 0, mu = 1, temp, nHeII, nhp, nHe0, nHepp;
@@ -543,7 +538,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_POT:		/* gravitational potential */
-#if defined(OUTPUTPOTENTIAL)  || defined(SUBFIND_RESHUFFLE_AND_POTENTIAL)
+#if defined(OUTPUT_POTENTIAL)  || defined(SUBFIND_RESHUFFLE_AND_POTENTIAL)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -565,7 +560,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_ACCEL:		/* acceleration */
-#ifdef OUTPUTACCELERATION
+#ifdef OUTPUT_ACCELERATION
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -585,7 +580,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_DTENTR:		/* rate of change of internal energy */
-#ifdef OUTPUTCHANGEOFENERGY
+#ifdef OUTPUT_CHANGEOFENERGY
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -619,7 +614,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_TSTP:		/* timestep  */
-#ifdef OUTPUTTIMESTEP
+#ifdef OUTPUT_TIMESTEP
             
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
@@ -768,7 +763,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_COOLRATE:		/* current cooling rate of particle  */
-#ifdef OUTPUTCOOLRATE
+#ifdef OUTPUT_COOLRATE
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -783,7 +778,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                         *fp++ = 0;
                     n++;
                 }
-#endif // OUTPUTCOOLRATE
+#endif // OUTPUT_COOLRATE
             break;
             
         case IO_CONDRATE:		/* current heating/cooling due to thermal conduction  */
@@ -837,39 +832,6 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
             
-        case IO_BHMBUB:
-#ifdef BH_BUBBLES
-            for(n = 0; n < pc; pindex++)
-                if(P[pindex].Type == type)
-                {
-                    *fp++ = P[pindex].BH_Mass_bubbles;
-                    n++;
-                }
-#endif
-            break;
-            
-        case IO_BHMINI:
-#ifdef BH_BUBBLES
-            for(n = 0; n < pc; pindex++)
-                if(P[pindex].Type == type)
-                {
-                    *fp++ = P[pindex].BH_Mass_ini;
-                    n++;
-                }
-#endif
-            break;
-            
-        case IO_BHMRAD:
-#ifdef UNIFIED_FEEDBACK
-            for(n = 0; n < pc; pindex++)
-                if(P[pindex].Type == type)
-                {
-                    *fp++ = P[pindex].BH_Mass_radio;
-                    n++;
-                }
-#endif
-            break;
-            
         case IO_ACRB:
 #ifdef BLACK_HOLES
             for(n = 0; n < pc; pindex++)
@@ -908,9 +870,9 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
             
-        case IO_DISTORTIONTENSORPS:
+        case IO_GDE_DISTORTIONTENSOR:
             /* full 6D phase-space distortion tensor from GDE integration */
-#ifdef OUTPUT_DISTORTIONTENSORPS
+#ifdef OUTPUT_DISTORTIONTENSOR
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -931,7 +893,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_CAUSTIC_COUNTER:
             /* caustic counter */
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -943,7 +905,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_FLOW_DETERMINANT:
             /* physical NON-CUTOFF corrected stream determinant = 1.0/normed stream density * 1.0/initial stream density */
-#if defined(DISTORTIONTENSORPS) && !defined(GDE_LEAN)
+#if defined(GDE_DISTORTIONTENSOR) && !defined(GDE_LEAN)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -956,7 +918,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_STREAM_DENSITY:
             /* physical CUTOFF corrected stream density = normed stream density * initial stream density */
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -968,7 +930,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_PHASE_SPACE_DETERMINANT:
             /* determinant of phase-space distortion tensor -> should be 1 due to Liouville theorem */
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -981,7 +943,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_ANNIHILATION_RADIATION:
             /* time integrated stream density in physical units */
-#if defined(DISTORTIONTENSORPS) && !defined(GDE_LEAN)
+#if defined(GDE_DISTORTIONTENSOR) && !defined(GDE_LEAN)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1028,7 +990,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_SHEET_ORIENTATION:
             /* initial orientation of the CDM sheet where the particle started */
-#if defined(DISTORTIONTENSORPS) && (!defined(GDE_LEAN) || defined(GDE_READIC))
+#if defined(GDE_DISTORTIONTENSOR) && (!defined(GDE_LEAN) || defined(GDE_READIC))
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1048,7 +1010,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_INIT_DENSITY:
             /* initial stream density in physical units  */
-#if defined(DISTORTIONTENSORPS) && (!defined(GDE_LEAN) || defined(GDE_READIC))
+#if defined(GDE_DISTORTIONTENSOR) && (!defined(GDE_LEAN) || defined(GDE_READIC))
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1228,7 +1190,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
             
         case IO_grHI:
-#if (GRACKLE_CHEMISTRY >= 1)
+#if (COOL_GRACKLE_CHEMISTRY >= 1)
             for(n = 0; n < pc; pindex++){
                 if(P[pindex].Type == type){
                     *fp++ = SphP[pindex].grHI;
@@ -1239,7 +1201,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_grHII:
-#if (GRACKLE_CHEMISTRY >= 1)
+#if (COOL_GRACKLE_CHEMISTRY >= 1)
             for(n = 0; n < pc; pindex++){
                 if(P[pindex].Type == type){
                     *fp++ = SphP[pindex].grHII;
@@ -1250,7 +1212,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_grHM:
-#if (GRACKLE_CHEMISTRY >= 1)
+#if (COOL_GRACKLE_CHEMISTRY >= 1)
             for(n = 0; n < pc; pindex++){
                 if(P[pindex].Type == type){
                     *fp++ = SphP[pindex].grHM;
@@ -1261,7 +1223,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_grHeI:
-#if (GRACKLE_CHEMISTRY >= 1)
+#if (COOL_GRACKLE_CHEMISTRY >= 1)
             for(n = 0; n < pc; pindex++){
                 if(P[pindex].Type == type){
                     *fp++ = SphP[pindex].grHeI;
@@ -1272,7 +1234,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_grHeII:
-#if (GRACKLE_CHEMISTRY >= 1)
+#if (COOL_GRACKLE_CHEMISTRY >= 1)
             for(n = 0; n < pc; pindex++){
                 if(P[pindex].Type == type){
                     *fp++ = SphP[pindex].grHeII;
@@ -1283,7 +1245,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_grHeIII:
-#if (GRACKLE_CHEMISTRY >= 1)
+#if (COOL_GRACKLE_CHEMISTRY >= 1)
             for(n = 0; n < pc; pindex++){
                 if(P[pindex].Type == type){
                     *fp++ = SphP[pindex].grHeIII;
@@ -1294,7 +1256,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_grH2I:
-#if (GRACKLE_CHEMISTRY >= 2)
+#if (COOL_GRACKLE_CHEMISTRY >= 2)
             for(n = 0; n < pc; pindex++){
                 if(P[pindex].Type == type){
                     *fp++ = SphP[pindex].grH2I;
@@ -1305,7 +1267,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_grH2II:
-#if (GRACKLE_CHEMISTRY >= 2)
+#if (COOL_GRACKLE_CHEMISTRY >= 2)
             for(n = 0; n < pc; pindex++){
                 if(P[pindex].Type == type){
                     *fp++ = SphP[pindex].grH2II;
@@ -1316,7 +1278,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_grDI:
-#if (GRACKLE_CHEMISTRY >= 3)
+#if (COOL_GRACKLE_CHEMISTRY >= 3)
             for(n = 0; n < pc; pindex++){
                 if(P[pindex].Type == type){
                     *fp++ = SphP[pindex].grDI;
@@ -1327,7 +1289,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_grDII:
-#if (GRACKLE_CHEMISTRY >= 3)
+#if (COOL_GRACKLE_CHEMISTRY >= 3)
             for(n = 0; n < pc; pindex++){
                 if(P[pindex].Type == type){
                     *fp++ = SphP[pindex].grDII;
@@ -1338,7 +1300,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_grHDI:
-#if (GRACKLE_CHEMISTRY >= 3)
+#if (COOL_GRACKLE_CHEMISTRY >= 3)
             for(n = 0; n < pc; pindex++){
                 if(P[pindex].Type == type){
                     *fp++ = SphP[pindex].grHDI;
@@ -1456,9 +1418,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_BHMASSALPHA:
         case IO_ACRB:
         case IO_BHMDOT:
-        case IO_BHMBUB:
-        case IO_BHMINI:
-        case IO_BHMRAD:
         case IO_CAUSTIC_COUNTER:
         case IO_FLOW_DETERMINANT:
         case IO_STREAM_DENSITY:
@@ -1546,7 +1505,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
                 bytes_per_blockelement = 9 * sizeof(MyOutputFloat);
             break;
             
-        case IO_DISTORTIONTENSORPS:
+        case IO_GDE_DISTORTIONTENSOR:
             if(mode)
                 bytes_per_blockelement = 36 * sizeof(MyInputFloat);
             else
@@ -1705,9 +1664,6 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_ACRB:
         case IO_BHMDOT:
         case IO_BHPROGS:
-        case IO_BHMBUB:
-        case IO_BHMINI:
-        case IO_BHMRAD:
         case IO_CAUSTIC_COUNTER:
         case IO_FLOW_DETERMINANT:
         case IO_STREAM_DENSITY:
@@ -1781,7 +1737,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_TIDALTENSORPS:
             values = 9;
             break;
-        case IO_DISTORTIONTENSORPS:
+        case IO_GDE_DISTORTIONTENSOR:
             values = 36;
             break;
         case IO_ANNIHILATION_RADIATION:
@@ -2007,9 +1963,6 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_BHMASSALPHA:
         case IO_ACRB:
         case IO_BHMDOT:
-        case IO_BHMBUB:
-        case IO_BHMINI:
-        case IO_BHMRAD:
         case IO_BHPROGS:
             for(i = 0; i < 6; i++)
                 if(i != 5)
@@ -2018,7 +1971,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             break;
             
         case IO_TIDALTENSORPS:
-        case IO_DISTORTIONTENSORPS:
+        case IO_GDE_DISTORTIONTENSOR:
         case IO_CAUSTIC_COUNTER:
         case IO_FLOW_DETERMINANT:
         case IO_STREAM_DENSITY:
@@ -2181,7 +2134,7 @@ int blockpresent(enum iofields blocknr)
             break;
             
         case IO_POT:
-#if defined(OUTPUTPOTENTIAL) || defined(SUBFIND_RESHUFFLE_AND_POTENTIAL)
+#if defined(OUTPUT_POTENTIAL) || defined(SUBFIND_RESHUFFLE_AND_POTENTIAL)
             return 1;
 #else
             return 0;
@@ -2199,7 +2152,7 @@ int blockpresent(enum iofields blocknr)
             
             
         case IO_ACCEL:
-#ifdef OUTPUTACCELERATION
+#ifdef OUTPUT_ACCELERATION
             return 1;
 #else
             return 0;
@@ -2208,7 +2161,7 @@ int blockpresent(enum iofields blocknr)
             
             
         case IO_DTENTR:
-#ifdef OUTPUTCHANGEOFENERGY
+#ifdef OUTPUT_CHANGEOFENERGY
             return 1;
 #else
             return 0;
@@ -2232,7 +2185,7 @@ int blockpresent(enum iofields blocknr)
             break;
             
         case IO_TSTP:
-#ifdef OUTPUTTIMESTEP
+#ifdef OUTPUT_TIMESTEP
             return 1;
 #else
             return 0;
@@ -2349,7 +2302,7 @@ int blockpresent(enum iofields blocknr)
             
             
         case IO_COOLRATE:
-#ifdef OUTPUTCOOLRATE
+#ifdef OUTPUT_COOLRATE
             return 1;
 #else
             return 0;
@@ -2396,24 +2349,7 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
-            
-        case IO_BHMBUB:
-        case IO_BHMINI:
-#ifdef BH_BUBBLES
-            return 1;
-#else
-            return 0;
-#endif
-            break;
-            
-        case IO_BHMRAD:
-#ifdef UNIFIED_FEEDBACK
-            return 1;
-#else
-            return 0;
-#endif
-            break;
-            
+                        
             
         case IO_TIDALTENSORPS:
 #ifdef OUTPUT_TIDALTENSORPS
@@ -2421,43 +2357,43 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-        case IO_DISTORTIONTENSORPS:
-#ifdef OUTPUT_DISTORTIONTENSORPS
+        case IO_GDE_DISTORTIONTENSOR:
+#ifdef OUTPUT_DISTORTIONTENSOR
             return 1;
 #else
             return 0;
 #endif
             
         case IO_CAUSTIC_COUNTER:
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
             return 1;
 #else
             return 0;
 #endif
             
         case IO_FLOW_DETERMINANT:
-#if defined(DISTORTIONTENSORPS) && !defined(GDE_LEAN)
+#if defined(GDE_DISTORTIONTENSOR) && !defined(GDE_LEAN)
             return 1;
 #else
             return 0;
 #endif
             
         case IO_STREAM_DENSITY:
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
             return 1;
 #else
             return 0;
 #endif
             
         case IO_PHASE_SPACE_DETERMINANT:
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
             return 1;
 #else
             return 0;
 #endif
             
         case IO_ANNIHILATION_RADIATION:
-#if defined(DISTORTIONTENSORPS) && !defined(GDE_LEAN)
+#if defined(GDE_DISTORTIONTENSOR) && !defined(GDE_LEAN)
             return 1;
 #else
             return 0;
@@ -2471,14 +2407,14 @@ int blockpresent(enum iofields blocknr)
 #endif
             
         case IO_SHEET_ORIENTATION:
-#if defined(DISTORTIONTENSORPS) && (!defined(GDE_LEAN) || defined(GDE_READIC))
+#if defined(GDE_DISTORTIONTENSOR) && (!defined(GDE_LEAN) || defined(GDE_READIC))
             return 1;
 #else
             return 0;
 #endif
             
         case IO_INIT_DENSITY:
-#if defined(DISTORTIONTENSORPS) && (!defined(GDE_LEAN) || defined(GDE_READIC))
+#if defined(GDE_DISTORTIONTENSOR) && (!defined(GDE_LEAN) || defined(GDE_READIC))
             return 1;
 #else
             return 0;
@@ -2586,7 +2522,7 @@ int blockpresent(enum iofields blocknr)
         case IO_grHeI:
         case IO_grHeII:
         case IO_grHeIII:
-#if (GRACKLE_CHEMISTRY >= 1)
+#if (COOL_GRACKLE_CHEMISTRY >= 1)
             return 1;
 #else
             return 0;
@@ -2595,7 +2531,7 @@ int blockpresent(enum iofields blocknr)
             
         case IO_grH2I:
         case IO_grH2II:
-#if (GRACKLE_CHEMISTRY >= 2)
+#if (COOL_GRACKLE_CHEMISTRY >= 2)
             return 1;
 #else
             return 0;
@@ -2605,7 +2541,7 @@ int blockpresent(enum iofields blocknr)
         case IO_grDI:
         case IO_grDII:
         case IO_grHDI:
-#if (GRACKLE_CHEMISTRY >= 3)
+#if (COOL_GRACKLE_CHEMISTRY >= 3)
             return 1;
 #else
             return 0;
@@ -2823,19 +2759,10 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_BHPROGS:
             strncpy(label, "BHPC", 4);
             break;
-        case IO_BHMBUB:
-            strncpy(label, "BHMB", 4);
-            break;
-        case IO_BHMINI:
-            strncpy(label, "BHMI", 4);
-            break;
-        case IO_BHMRAD:
-            strncpy(label, "BHMR", 4);
-            break;
         case IO_TIDALTENSORPS:
             strncpy(label, "TIPS", 4);
             break;
-        case IO_DISTORTIONTENSORPS:
+        case IO_GDE_DISTORTIONTENSOR:
             strncpy(label, "DIPS", 4);
             break;
         case IO_CAUSTIC_COUNTER:
@@ -3177,19 +3104,10 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_BHPROGS:
             strcpy(buf, "BH_NProgs");
             break;
-        case IO_BHMBUB:
-            strcpy(buf, "BH_Mass_bubbles");
-            break;
-        case IO_BHMINI:
-            strcpy(buf, "BH_Mass_ini");
-            break;
-        case IO_BHMRAD:
-            strcpy(buf, "BH_Mass_radio");
-            break;
         case IO_TIDALTENSORPS:
             strcpy(buf, "TidalTensorPS");
             break;
-        case IO_DISTORTIONTENSORPS:
+        case IO_GDE_DISTORTIONTENSOR:
             strcpy(buf, "DistortionTensorPS");
             break;
         case IO_CAUSTIC_COUNTER:
