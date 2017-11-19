@@ -132,8 +132,8 @@ else
 endif
 endif
 else
-# or if POWERSPEC_GRID is activated
-ifeq (POWERSPEC_GRID, $(findstring POWERSPEC_GRID, $(CONFIGVARS)))
+# or if TURB_DRIVING_SPECTRUMGRID is activated
+ifeq (TURB_DRIVING_SPECTRUMGRID, $(findstring TURB_DRIVING_SPECTRUMGRID, $(CONFIGVARS)))
 ifeq (NOTYPEPREFIX_FFTW,$(findstring NOTYPEPREFIX_FFTW,$(CONFIGVARS)))  # fftw installed without type prefix?
   FFTW_LIBNAMES = -lrfftw_mpi -lfftw_mpi -lrfftw -lfftw
 else
@@ -913,13 +913,13 @@ endif
 
 
 
-ifneq (HAVE_HDF5,$(findstring HAVE_HDF5,$(CONFIGVARS)))
+ifeq (IO_DISABLE_HDF5,$(findstring IO_DISABLE_HDF5,$(CONFIGVARS)))
 HDF5INCL =
 HDF5LIB  =
 endif
 
 
-ifeq (GRACKLE,$(findstring GRACKLE,$(CONFIGVARS)))
+ifeq (COOL_GRACKLE,$(findstring COOL_GRACKLE,$(CONFIGVARS)))
 OPT += -DCONFIG_BFLOAT_8
 else
 GRACKLEINCL =
@@ -980,12 +980,16 @@ endif
 
 
 
-ifeq (TWOPOINT_FUNCTION_COMPUTATION_ENABLED,$(findstring TWOPOINT_FUNCTION_COMPUTATION_ENABLED,$(CONFIGVARS)))
+ifeq (OUTPUT_TWOPOINT_ENABLED,$(findstring OUTPUT_TWOPOINT_ENABLED,$(CONFIGVARS)))
 OBJS    += structure/twopoint.o
 endif
 
 ifeq (GALSF_FB_SNE_HEATING,$(findstring GALSF_FB_SNE_HEATING,$(CONFIGVARS)))
 OBJS    += galaxy_sf/mechanical_fb.o
+endif
+
+ifeq (GALSF_FB_THERMAL,$(findstring GALSF_FB_THERMAL,$(CONFIGVARS)))
+OBJS    += galaxy_sf/thermal_fb.o
 endif
 
 ifeq (GALSF_FB_RPWIND_LOCAL,$(findstring GALSF_FB_RPWIND_LOCAL,$(CONFIGVARS)))
@@ -1020,7 +1024,7 @@ OBJS    += structure/fof.o
 INCL	+= structure/fof.h
 endif
 
-ifeq (OUTPUTLINEOFSIGHT,$(findstring OUTPUTLINEOFSIGHT,$(CONFIGVARS)))
+ifeq (OUTPUT_LINEOFSIGHT,$(findstring OUTPUT_LINEOFSIGHT,$(CONFIGVARS)))
 OBJS    += structure/lineofsight.o
 endif
 
@@ -1029,12 +1033,8 @@ OBJS    += cooling/cooling.o
 INCL	+= cooling/cooling.h
 endif
 
-ifeq (GRACKLE,$(findstring GRACKLE,$(CONFIGVARS)))
+ifeq (COOL_GRACKLE,$(findstring COOL_GRACKLE,$(CONFIGVARS)))
 OBJS    += cooling/grackle.o
-endif
-
-ifeq (BUBBLES,$(findstring BUBBLES,$(CONFIGVARS)))
-OBJS    += modules/bubbles/bubbles.o
 endif
 
 ifeq (EOS_HELMHOLTZ,$(findstring EOS_HELMHOLTZ,$(CONFIGVARS)))
@@ -1048,7 +1048,7 @@ ifeq (IMPOSE_PINNING,$(findstring IMPOSE_PINNING,$(CONFIGVARS)))
 OBJS	+= system/pinning.o
 endif
 
-ifeq (DISTORTIONTENSORPS,$(findstring DISTORTIONTENSORPS,$(CONFIGVARS)))
+ifeq (GDE_DISTORTIONTENSOR,$(findstring GDE_DISTORTIONTENSOR,$(CONFIGVARS)))
 OBJS	+= modules/phasespace/phasespace.o modules/phasespace/phasespace_math.o
 endif
 
@@ -1063,7 +1063,7 @@ OBJS	+= subfind/subfind.o subfind/subfind_vars.o subfind/subfind_collective.o su
 INCL	+= subfind/subfind.h
 endif
 
-ifeq (SIDM,$(findstring SIDM,$(CONFIGVARS)))
+ifeq (DM_SIDM,$(findstring DM_SIDM,$(CONFIGVARS)))
 OBJS    +=  sidm/sidm_core.o sidm/sidm_allvars.o
 INCL    +=  sidm/sidm_proto.h
 endif

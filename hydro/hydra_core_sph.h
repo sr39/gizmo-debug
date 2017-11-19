@@ -26,7 +26,7 @@
     /* 'Standard' (Lagrangian) Density Formulation: the acceleration term is identical whether we use 'entropy' or 'energy' sph */
     /* (this step is the same in both 'Lagrangian' and 'traditional' SPH */
 
-#ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
+#ifdef HYDRO_PRESSURE_SPH
     /* Pressure-Energy and/or Pressure-Entropy form of SPH (using 'constant mass in kernel' h-constraint */
     /* -- note that, using appropriate definitions, both forms have an identical EOM in appearance here -- */
     double p_over_rho2_j = SphP[j].Pressure / (SphP[j].EgyWtDensity * SphP[j].EgyWtDensity);
@@ -72,7 +72,7 @@
     double mj_r = P[j].Mass / kernel.r;
     double mf_i = kernel.mf_i * mj_r * kernel.dwk_i;
     double mf_j = kernel.mf_j * mj_r * kernel.dwk_j / (SphP[j].Density * SphP[j].Density);
-#ifndef SPHEQ_DENSITY_INDEPENDENT_SPH
+#ifndef HYDRO_PRESSURE_SPH
     mf_i *= (1 + local.DhsmlHydroSumFactor / P[j].Mass);
     mf_j *= (1 + SphP[j].DhsmlHydroSumFactor / local.Mass);
 #endif

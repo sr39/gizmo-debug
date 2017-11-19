@@ -7,9 +7,6 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#ifdef HAVE_HDF5
-#include <hdf5.h>
-#endif
 #include "../../proto.h"
 #include "../../allvars.h"
 

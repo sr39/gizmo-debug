@@ -92,7 +92,7 @@ void check_particle_for_temperature_minimum(int i)
 
 double INLINE_FUNC Particle_density_for_energy_i(int i)
 {
-#ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
+#ifdef HYDRO_PRESSURE_SPH
     return SphP[i].EgyWtDensity;
 #endif
     return SphP[i].Density;

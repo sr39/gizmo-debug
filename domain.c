@@ -151,7 +151,7 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
         old_MaxPart = 0;
     }
     
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
     do_box_wrapping();		/* map the particles back onto the box */
 #endif
     

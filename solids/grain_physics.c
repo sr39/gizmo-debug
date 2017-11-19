@@ -225,9 +225,9 @@ void apply_grain_dragforce(void)
                                         degy=0;
                                         MyDouble VelPred_j[3];
                                         for(k=0;k<3;k++) {VelPred_j[k]=P[j].Vel[k];}
-#ifdef SHEARING_BOX
-                                        if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                                        if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#ifdef BOX_SHEARING
+                                        if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                                        if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
                                         for(k=0; k<3; k++)
                                         {
@@ -247,9 +247,9 @@ void apply_grain_dragforce(void)
                                 degy=0;
                                 MyDouble VelPred_j[3];
                                 for(k=0;k<3;k++) {VelPred_j[k]=P[j].Vel[k];}
-#ifdef SHEARING_BOX
-                                if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                                if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#ifdef BOX_SHEARING
+                                if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                                if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
                                 for(k=0; k<3; k++)
                                 {
@@ -655,7 +655,7 @@ int grain_density_evaluate(int target, int mode, int *nexport, int *nsend_local)
                 dx = pos[0] - P[j].Pos[0];
                 dy = pos[1] - P[j].Pos[1];
                 dz = pos[2] - P[j].Pos[2];
-#ifdef PERIODIC			/*  now find the closest image in the given box size  */
+#ifdef BOX_PERIODIC			/*  now find the closest image in the given box size  */
                 NEAREST_XYZ(dx,dy,dz,1);
 #endif
                 r2 = dx*dx + dy*dy + dz*dz;
@@ -670,9 +670,9 @@ int grain_density_evaluate(int target, int mode, int *nexport, int *nsend_local)
                     weighted_numngb += FLT(NORM_COEFF * wk / hinv3);
                     MyDouble VelPred_j[3];
                     for(k=0;k<3;k++) {VelPred_j[k]=SphP[j].VelPred[k];}
-#ifdef SHEARING_BOX
-                    if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                    if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#ifdef BOX_SHEARING
+                    if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                    if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
                     gasvel[0] += FLT(mass_j * wk * VelPred_j[0]);
                     gasvel[1] += FLT(mass_j * wk * VelPred_j[1]);

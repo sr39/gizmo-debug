@@ -625,16 +625,6 @@ void set_blackhole_new_mass(int i, int n, double dt)
 
 #endif // #else BH_ALPHADISK_ACCRETION
 
-
-    
-#ifdef BH_BUBBLES
-    BPP(n).BH_Mass_bubbles += (1. - All.BlackHoleRadiativeEfficiency) * BPP(n).BH_Mdot * dt;
-#ifdef UNIFIED_FEEDBACK
-    if(BPP(n).BH_Mdot < All.RadioThreshold * meddington)
-        BPP(n).BH_Mass_radio += (1. - All.BlackHoleRadiativeEfficiency) * BPP(n).BH_Mdot * dt;
-#endif
-#endif
-    
 }
 
 
@@ -800,13 +790,6 @@ void blackhole_final_operations(void)
             } //for(k = 0; k < 3; k++)
             P[n].Mass += BlackholeTempInfo[i].accreted_Mass;
             BPP(n).BH_Mass += BlackholeTempInfo[i].accreted_BH_Mass;
-#ifdef BH_BUBBLES
-            BPP(n).BH_Mass_bubbles += BPP(n).b7.BH_accreted_BHMass_bubbles;
-#ifdef UNIFIED_FEEDBACK
-            BPP(n).BH_Mass_radio += BPP(n).b8.BH_accreted_BHMass_radio;
-#endif
-#endif
-            
         } // if(((BlackholeTempInfo[n].accreted_Mass>0)||(BlackholeTempInfo[n].accreted_BH_Mass>0)) && P[n].Mass > 0)
         
         
@@ -886,9 +869,6 @@ void blackhole_final_operations(void)
         TimeBin_BH_dynamicalmass[bin] += P[n].Mass;
         TimeBin_BH_Mdot[bin] += BPP(n).BH_Mdot;
         if(BPP(n).BH_Mass > 0) {TimeBin_BH_Medd[bin] += BPP(n).BH_Mdot / BPP(n).BH_Mass;}
-#ifdef BH_BUBBLES
-        if(BPP(n).BH_Mass_bubbles > 0 && BPP(n).BH_Mass_bubbles > All.BlackHoleRadioTriggeringFactor * BPP(n).BH_Mass_ini) num_activebh++;
-#endif
         
 
 #ifdef SINGLE_STAR_PROMOTION

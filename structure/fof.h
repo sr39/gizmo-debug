@@ -34,7 +34,7 @@ typedef struct
   MyIDType MinIDTask;
   int LocCount;
   int ExtCount;
-#ifdef DENSITY_SPLIT_BY_TYPE
+#ifdef FOF_DENSITY_SPLIT_TYPES
   int LocDMCount;
   int ExtDMCount;
 #endif
@@ -94,10 +94,10 @@ typedef struct
 
 
 #ifdef ALTERNATIVE_PSORT
-void fof_sort_FOF_GList_LocCountTaskDiffMinID (fof_group_list *data, int ndata);
-void fof_sort_FOF_GList_ExtCountMinID (fof_group_list *data, int ndata);
-void fof_sort_Group_GrNr (group_properties *data, int ndata);
-void fof_sort_ID_list_GrNrID (fof_id_list *data, int ndata);
+void fof_sort_FOF_GList_LocCountTaskDiffMinID(fof_group_list *data, int ndata);
+void fof_sort_FOF_GList_ExtCountMinID(fof_group_list *data, int ndata);
+void fof_sort_Group_GrNr(group_properties *data, int ndata);
+void fof_sort_ID_list_GrNrID(fof_id_list *data, int ndata);
 #endif
 
 

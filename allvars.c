@@ -24,24 +24,24 @@
 
 
 
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
 MyDouble boxSize, boxHalf, inverse_boxSize;
 
-#ifdef LONG_X
+#ifdef BOX_LONG_X
 MyDouble boxSize_X, boxHalf_X, inverse_boxSize_X;
 #else
 #endif
-#ifdef LONG_Y
+#ifdef BOX_LONG_Y
 MyDouble boxSize_Y, boxHalf_Y, inverse_boxSize_Y;
 #else
 #endif
-#ifdef LONG_Z
+#ifdef BOX_LONG_Z
 MyDouble boxSize_Z, boxHalf_Z, inverse_boxSize_Z;
 #else
 #endif
 #endif
 
-#ifdef SHEARING_BOX
+#ifdef BOX_SHEARING
 MyDouble Shearing_Box_Vel_Offset;
 MyDouble Shearing_Box_Pos_Offset;
 #endif
@@ -216,7 +216,7 @@ FILE
 #ifdef TURB_DRIVING
 *FdTurb,        /*!< file handle for turb.txt log-file */
 #endif
-#ifdef DARKENERGY
+#ifdef GR_TABULATED_COSMOLOGY
 *FdDE,			/*!< file handle for darkenergy.txt log-file. */
 #endif
 #endif
@@ -239,7 +239,7 @@ FILE *FdHIIHeating;	/*!< file handle for HIIheating.txt log-file */
 FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 #endif
 
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
 #ifdef PMGRID
 FILE *FdTidaltensor;		/*!< file handle for Tidaltensor.txt log-file. */
 #endif

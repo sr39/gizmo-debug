@@ -147,7 +147,7 @@ void compute_stellar_feedback(void)
     CPU_Step[CPU_MISC] += measure_time();
 
     /* first, check the mechanical sources of feedback */
-#if defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPROCESS_ENRICHMENT)
+#ifdef GALSF_FB_SNE_HEATING
 #ifndef USE_ORIGINAL_FIRE2_SNE_COUPLING_SCHEME
     mechanical_fb_calc(-2); /* compute weights for coupling [first weight-calculation pass] */
 #endif
@@ -165,7 +165,13 @@ void compute_stellar_feedback(void)
     mechanical_fb_calc(2); /* do the R-process element injection */
     CPU_Step[CPU_GASRETURN] += measure_time();
 #endif
-#endif // (defined(GALSF_FB_SNE_HEATING)||defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPROCESS_ENRICHMENT))
+#endif // GALSF_FB_SNE_HEATING
+    
+    
+    /* alternatively use the pure-thermal/scalar sub-grid feedback model */
+#ifdef GALSF_FB_THERMAL
+    thermal_fb_calc();
+#endif
     
     /* alternatively use the 'turn off cooling' sub-grid feedback model */
 #ifdef GALSF_GASOLINE_RADHEATING

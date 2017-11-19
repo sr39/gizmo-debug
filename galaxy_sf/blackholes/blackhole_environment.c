@@ -266,15 +266,15 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                     dP[0] = P[j].Pos[0]-pos[0];
                     dP[1] = P[j].Pos[1]-pos[1];
                     dP[2] = P[j].Pos[2]-pos[2];
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
                     NEAREST_XYZ(dP[0],dP[1],dP[2],-1); /*  find the closest image in the given box size  */
 #endif
                     dv[0] = P[j].Vel[0]-vel[0];
                     dv[1] = P[j].Vel[1]-vel[1];
                     dv[2] = P[j].Vel[2]-vel[2];
-#ifdef SHEARING_BOX
-                    if(pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                    if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#ifdef BOX_SHEARING
+                    if(pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                    if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
 
 #ifdef BH_DYNFRICTION
@@ -620,15 +620,15 @@ int blackhole_environment_second_evaluate(int target, int mode, int *nexport, in
                     dP[0] = P[j].Pos[0]-pos[0];
                     dP[1] = P[j].Pos[1]-pos[1];
                     dP[2] = P[j].Pos[2]-pos[2];
-#ifdef PERIODIC           
+#ifdef BOX_PERIODIC           
                     NEAREST_XYZ(dP[0],dP[1],dP[2],-1); /*  find the closest image in the given box size  */
 #endif
                     dv[0] = P[j].Vel[0]-vel[0];
                     dv[1] = P[j].Vel[1]-vel[1];
                     dv[2] = P[j].Vel[2]-vel[2];
-#ifdef SHEARING_BOX
-                    if(pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                    if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#ifdef BOX_SHEARING
+                    if(pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                    if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
 
                     // DAA: jx,jy,jz, are independent of 'a' because ~ m*r*v, vphys=v/a, rphys=r*a //

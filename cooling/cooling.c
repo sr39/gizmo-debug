@@ -75,7 +75,7 @@ void cooling_parent_routine(void)
 #ifdef GALSF_EFFECTIVE_EQS
             if((SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) && ((All.ComovingIntegrationOn==0) || (SphP[i].Density>=All.OverDensThresh))) {continue;} /* no cooling for effective-eos star-forming particles */
 #endif
-#ifdef GALSF_TURNOFF_COOLING_WINDS
+#ifdef GALSF_FB_TURNOFF_COOLING
             if(SphP[i].DelayTimeCoolingSNe > 0) {continue;} /* no cooling for particles marked in delayed cooling */
 #endif
             do_the_cooling_for_particle(i);
@@ -206,7 +206,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     double u, du, u_lower, u_upper, ratefact, LambdaNet;
     int iter=0, iter_upper=0, iter_lower=0;
     
-#ifdef GRACKLE
+#ifdef COOL_GRACKLE
 #ifndef COOLING_OPERATOR_SPLIT
     /* because grackle uses a pre-defined set of libraries, we can't properly incorporate the hydro heating
      into the cooling subroutine. instead, we will use the approximate treatment below to split the step */
@@ -284,7 +284,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
  */
 double GetCoolingTime(double u_old, double rho, double ne_guess, int target)
 {
-#if defined(GRACKLE) && !defined(GALSF_EFFECTIVE_EQS)
+#if defined(COOL_GRACKLE) && !defined(GALSF_EFFECTIVE_EQS)
     double LambdaNet = CallGrackle(u_old, rho, 0.0, ne_guess, target, 1);
     if(LambdaNet >= 0) LambdaNet = 0.0;
     return LambdaNet * All.HubbleParam / All.UnitTime_in_s;
@@ -1489,7 +1489,7 @@ void InitCool(void)
     All.Time = All.TimeBegin;
     set_cosmo_factors_for_current_time();
     
-#ifdef GRACKLE
+#ifdef COOL_GRACKLE
     InitGrackle();
 #endif
     

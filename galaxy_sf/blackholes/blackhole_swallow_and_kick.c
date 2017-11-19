@@ -173,12 +173,6 @@ void blackhole_swallow_and_kick_loop(void)
 #ifdef BH_ALPHADISK_ACCRETION
             BPP(place).BH_Mass_AlphaDisk += BlackholeDataOut[j].BH_Mass_AlphaDisk;
 #endif
-#ifdef BH_BUBBLES
-            BPP(place).b7.dBH_accreted_BHMass_bubbles += BlackholeDataOut[j].BH_Mass_bubbles;
-#ifdef UNIFIED_FEEDBACK
-            BPP(place).b8.dBH_accreted_BHMass_radio += BlackholeDataOut[j].BH_Mass_radio;
-#endif
-#endif
             for(k = 0; k < 3; k++)
                 BlackholeTempInfo[P[place].IndexMapToTempStruc].accreted_momentum[k] += BlackholeDataOut[j].accreted_momentum[k];
 #ifdef BH_COUNTPROGS
@@ -246,10 +240,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     double BH_angle_weighted_kernel_sum, mom_wt;
     MyFloat theta,BH_disk_hr,kernel_zero,dwk;
     kernel_main(0.0,1.0,1.0,&kernel_zero,&dwk,-1);
-#endif
-#ifdef BH_BUBBLES
-    MyLongDouble accreted_BH_mass_bubbles = 0;
-    MyLongDouble accreted_BH_mass_radio = 0;
 #endif
 #ifdef GALSF
     double accreted_age = 1;
@@ -392,13 +382,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #ifdef BH_ALPHADISK_ACCRETION
                         accreted_BH_mass_alphadisk += FLT(BPP(j).BH_Mass_AlphaDisk);
 #endif
-                        
-#ifdef BH_BUBBLES
-                        accreted_BH_mass_bubbles += FLT(BPP(j).BH_Mass_bubbles - BPP(j).BH_Mass_ini);
-#ifdef UNIFIED_FEEDBACK
-                        accreted_BH_mass_radio += FLT(BPP(j).BH_Mass_radio - BPP(j).BH_Mass_ini);
-#endif
-#endif
                         for(k = 0; k < 3; k++)
                             accreted_momentum[k] += FLT(BPP(j).BH_Mass * P[j].Vel[k]);
 #ifdef BH_COUNTPROGS
@@ -413,13 +396,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                         P[j].Mass = 0;
                         BPP(j).BH_Mass = 0;
                         BPP(j).BH_Mdot = 0;
-#ifdef BH_BUBBLES
-                        BPP(j).BH_Mass_bubbles = 0;
-                        BPP(j).BH_Mass_ini = 0;
-#ifdef UNIFIED_FEEDBACK
-                        BPP(j).BH_Mass_radio = 0;
-#endif
-#endif
 #ifdef GALSF
                         accreted_age = P[j].StellarAge;
 #endif
@@ -678,14 +654,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
         // DAA: could be better to include this in BlackholeTempInfo and update BH_Mass_AlphaDisk only at the end (like Mass and BH_Mass)
         BPP(target).BH_Mass_AlphaDisk += accreted_BH_mass_alphadisk;
 #endif
-        for(k = 0; k < 3; k++)
-            BlackholeTempInfo[mod_index].accreted_momentum[k] = accreted_momentum[k];
-#ifdef BH_BUBBLES
-        BPP(target).b7.dBH_accreted_BHMass_bubbles = accreted_BH_mass_bubbles;
-#ifdef UNIFIED_FEEDBACK
-        BPP(target).b8.dBH_accreted_BHMass_radio = accreted_BH_mass_radio;
-#endif
-#endif
+        for(k = 0; k < 3; k++) {BlackholeTempInfo[mod_index].accreted_momentum[k] = accreted_momentum[k];}
 #ifdef BH_COUNTPROGS
         BPP(target).BH_CountProgs += accreted_BH_progs;
 #endif
@@ -701,14 +670,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #ifdef BH_ALPHADISK_ACCRETION
         BlackholeDataResult[target].BH_Mass_AlphaDisk = accreted_BH_mass_alphadisk;
 #endif
-        for(k = 0; k < 3; k++)
-            BlackholeDataResult[target].accreted_momentum[k] = accreted_momentum[k];
-#ifdef BH_BUBBLES
-        BlackholeDataResult[target].BH_Mass_bubbles = accreted_BH_mass_bubbles;
-#ifdef UNIFIED_FEEDBACK
-        BlackholeDataResult[target].BH_Mass_radio = accreted_BH_mass_radio;
-#endif
-#endif
+        for(k = 0; k < 3; k++) {BlackholeDataResult[target].accreted_momentum[k] = accreted_momentum[k];}
 #ifdef BH_COUNTPROGS
         BlackholeDataResult[target].BH_CountProgs = accreted_BH_progs;
 #endif
@@ -793,7 +755,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
     double cos_theta = 2.0*(get_random_number(i+3+2*ThisTask)-0.5); // random between 1 to -1 //
     double d_r = 0.25 * KERNEL_CORE_SIZE*PPP[i].Hsml; // needs to be epsilon*Hsml where epsilon<<1, to maintain stability //
     
-#ifndef NOGRAVITY
+#ifndef SELFGRAVITY_OFF
     d_r = DMAX(d_r , 2.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0]);
 #endif
     d_r = DMIN(0.0001, d_r);
@@ -894,7 +856,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
 #ifdef GALSF_FB_HII_HEATING
         SphP[j].DelayTimeHII = 0;
 #endif
-#ifdef GALSF_TURNOFF_COOLING_WINDS
+#ifdef GALSF_FB_TURNOFF_COOLING
         SphP[j].DelayTimeCoolingSNe = 0;
 #endif
 #ifdef GALSF
