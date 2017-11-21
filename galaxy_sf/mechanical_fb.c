@@ -1124,6 +1124,15 @@ void determine_where_SNe_occur()
                 if(star_age>agemax)
                     RSNe = 5.3e-8 + 1.6e-5*exp(-0.5*((star_age-0.05)/0.01)*((star_age-0.05)/0.01));
                 // delayed population (constant rate)  +  prompt population (gaussian) //
+
+#ifdef AJR_SUPPRESS_SN 
+		// At the beginning of the simulation, suppress RSNe by some factor. 
+		if (All.Time < All.sn_suppress_time1) 
+		  RSNe *= All.sn_suppress_fac; 
+		else if (All.Time < All.sn_suppress_time2) 
+		  RSNe *= pow(10.0, log10(All.sn_suppress_fac) * (1.0 - ((All.Time - All.sn_suppress_time1) / (All.sn_suppress_time2 - All.sn_suppress_time1)))); 
+#endif 
+
                 p = dt * (RSNe*RSNeFac) * P[i].Mass;
                 double renorm = calculate_relative_light_to_mass_ratio_from_imf(i);
 #ifdef GALSF_SFR_IMF_SAMPLING
@@ -1210,14 +1219,86 @@ void determine_where_SNe_occur()
 #endif
         
     } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) //
-    
-    
+
     MPI_Reduce(&dtmean, &mpi_dtmean, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&rmean, &mpi_rmean, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&ptotal, &mpi_ptotal, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&nhosttotal, &mpi_nhosttotal, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&ntotal, &mpi_ntotal, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&npossible, &mpi_npossible, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+#ifdef EXTRA_SNE_OUTPUT 
+    struct SNe_output_buffer *SNe_buf_send, *SNe_buf_recv; 
+    SNe_buf_send = (struct SNe_output_buffer *) malloc(((int) nhosttotal) * sizeof(struct SNe_output_buffer)); 
+    int buf_index = 0; 
+    int j; 
+    double *nhosttotal_per_task; 
+
+    for (i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) 
+      {
+        if(All.ComovingIntegrationOn) if(P[i].Type != 4) continue;
+        if(All.ComovingIntegrationOn==0) if((P[i].Type<2)||(P[i].Type>4)) continue;
+
+	if (P[i].SNe_ThisTimeStep > 0) 
+	  {
+	    SNe_buf_send[buf_index].ID = P[i].ID; 
+	    SNe_buf_send[buf_index].N_SNe = P[i].SNe_ThisTimeStep; 
+	    for (j = 0; j < 3; j++) 
+	      SNe_buf_send[buf_index].Pos[j] = P[i].Pos[j]; 
+	    SNe_buf_send[buf_index].rho = P[i].DensAroundStar; 
+#ifdef METALS 
+	    SNe_buf_send[buf_index].Zgas = P[i].MetalDensAroundStar / (P[i].DensAroundStar + 1.0e-100); // The 1e-100 prevents division by zero.  
+#endif 
+	    buf_index += 1; 
+	  }
+      }
+
+    if (ThisTask == 0) 
+      nhosttotal_per_task = (double *) malloc(NTask * sizeof(double)); 
+
+    MPI_Gather(&nhosttotal, 1, MPI_DOUBLE, nhosttotal_per_task, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD); 
+    
+    if (ThisTask == 0) 
+      {
+	SNe_buf_recv = (struct SNe_output_buffer *) malloc(((int) mpi_nhosttotal) * sizeof(struct SNe_output_buffer)); 
+
+	for (buf_index = 0; buf_index < nhosttotal; buf_index++) 
+	  SNe_buf_recv[buf_index] = SNe_buf_send[buf_index]; 
+	   
+	buf_index = nhosttotal; 
+	for (j = 1; j < NTask; j++) 
+	  {
+	    MPI_Recv(SNe_buf_recv + buf_index, ((int) mpi_nhosttotal) * sizeof(struct SNe_output_buffer), MPI_BYTE, j, TAG_SNE, MPI_COMM_WORLD, MPI_STATUS_IGNORE); 
+	    buf_index += nhosttotal_per_task[j]; 
+	  }
+      }
+    else 
+      MPI_Send(SNe_buf_send, ((int) nhosttotal) * sizeof(struct SNe_output_buffer), MPI_BYTE, 0, TAG_SNE, MPI_COMM_WORLD); 
+
+    MPI_Barrier(MPI_COMM_WORLD); 
+
+    if (ThisTask == 0) 
+      {
+	for (j = 0; j < mpi_nhosttotal; j++) 
+	  {
+#ifndef LONGIDS 
+	    fprintf(FdSNeExtra, "%u  %.6f  %d  %.6e  %.6e  %.6e  %.6e  %.6f \n", SNe_buf_recv[j].ID, All.Time, SNe_buf_recv[j].N_SNe, SNe_buf_recv[j].Pos[0], SNe_buf_recv[j].Pos[1], SNe_buf_recv[j].Pos[2], SNe_buf_recv[j].rho, SNe_buf_recv[j].Zgas); 
+#else 
+	    fprintf(FdSNeExtra, "%llu  %.6f  %d  %.6e  %.6e  %.6e  %.6e  %.6f \n", SNe_buf_recv[j].ID, All.Time, SNe_buf_recv[j].N_SNe, SNe_buf_recv[j].Pos[0], SNe_buf_recv[j].Pos[1], SNe_buf_recv[j].Pos[2], SNe_buf_recv[j].rho, SNe_buf_recv[j].Zgas); 
+#endif 
+	  }
+	fflush(FdSNeExtra); 
+      }
+
+    if (ThisTask == 0) 
+      {
+	free(SNe_buf_recv); 
+	free(nhosttotal_per_task); 
+      }
+
+    free(SNe_buf_send); 
+#endif 
+    
     if(ThisTask == 0)
     {
 #ifdef IO_REDUCED_MODE

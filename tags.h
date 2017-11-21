@@ -104,3 +104,7 @@
 #define TAG_CHIMESDATA 98 
 #define TAG_ABUNDATA 99 
 #endif 
+
+#ifdef EXTRA_SNE_OUTPUT 
+#define TAG_SNE 100 
+#endif 

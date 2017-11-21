@@ -588,10 +588,10 @@ double k4(void)
 double k8(double T, double nHtotal, double xH, double xH2, double xHe)
 {
   double ncr_H = pow(10.0, (3.0 - 0.416 * log10(T/1.0e4) - 0.327 * pow(log10(T/1.0e4), 2)));
-  double ncr_H2 = pow(10.0, (4.845 - 1.3 * log10(T/1.0e4) + 1.62 * pow(log(T/1.0e4), 2)));
+  double ncr_H2 = pow(10.0, (4.845 - 1.3 * log10(T/1.0e4) + 1.62 * pow(log10(T/1.0e4), 2)));
   double ncr_He = pow(10.0, (5.0792 * (1.0 - 1.23e-5 * (T - 2000.0))));
   
-  double ncr_inv = (xH / ncr_H) + (xH2 / ncr_H2) + (xHe / ncr_He);
+  double ncr_inv = (xH / ncr_H) + (2.0 * xH2 / ncr_H2) + (xHe / ncr_He);
   double ncr;
   double kLTE, k0, intermediate;
   kLTE = 1.91e-9 * pow(T, 0.136) * exp(-53407.1 / T);
@@ -611,9 +611,9 @@ double k8(double T, double nHtotal, double xH, double xH2, double xHe)
 double k9(double T, double nHtotal, double xH, double xH2, double xHe)
 {
   double ncr_H = pow(10.0, (3.0 - 0.416 * log10(T/1.0e4) - 0.327 * pow(log10(T/1.0e4), 2)));
-  double ncr_H2 = pow(10.0, (4.845 - 1.3 * log10(T/1.0e4) + 1.62 * pow(log(T/1.0e4), 2)));
+  double ncr_H2 = pow(10.0, (4.845 - 1.3 * log10(T/1.0e4) + 1.62 * pow(log10(T/1.0e4), 2)));
   double ncr_He = pow(10.0, (5.0792 * (1.0 - 1.23e-5 * (T - 2000.0))));
-  double ncr_inv = (xH / ncr_H) + (xH2 / ncr_H2) + (xHe / ncr_He);
+  double ncr_inv = (xH / ncr_H) + (2.0 * xH2 / ncr_H2) + (xHe / ncr_He);
   double ncr;
   double kLTE, k0, intermediate;
   
@@ -725,9 +725,9 @@ double k86(double T)
 double k88(double T, double nHtotal, double xH, double xH2, double xHe)
 {
   double ncr_H = pow(10.0, (3.0 - 0.416 * log10(T/1.0e4) - 0.327 * pow(log10(T/1.0e4), 2)));
-  double ncr_H2 = pow(10.0, (4.845 - 1.3 * log10(T/1.0e4) + 1.62 * pow(log(T/1.0e4), 2)));
+  double ncr_H2 = pow(10.0, (4.845 - 1.3 * log10(T/1.0e4) + 1.62 * pow(log10(T/1.0e4), 2)));
   double ncr_He = pow(10.0, (5.0792 * (1.0 - 1.23e-5 * (T - 2000.0))));
-  double ncr_inv = (xH / ncr_H) + (xH2 / ncr_H2) + (xHe / ncr_He);
+  double ncr_inv = (xH / ncr_H) + (2.0 * xH2 / ncr_H2) + (xHe / ncr_He);
   double ncr;
   double log_kLTE, log_k0, intermediate;
   
