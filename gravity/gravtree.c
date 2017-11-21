@@ -599,6 +599,17 @@ void gravity_tree(void)
 #ifdef GALSF_FB_LOCAL_UV_HEATING
                         if(P[place].Type==0) SphP[place].RadFluxUV += GravDataOut[j].RadFluxUV;
                         if(P[place].Type==0) SphP[place].RadFluxEUV += GravDataOut[j].RadFluxEUV;
+#ifdef CHIMES 			
+			if (P[place].Type == 0) 
+			  { 
+			    int kc; 
+			    for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) 
+			      {
+				SphP[place].Chimes_G0[kc] += GravDataOut[j].Chimes_G0[kc]; 
+				SphP[place].Chimes_fluxPhotIon[kc] += GravDataOut[j].Chimes_fluxPhotIon[kc]; 
+			      }
+			  }
+#endif 
 #endif
 #ifdef BH_COMPTON_HEATING
                         if(P[place].Type==0) SphP[place].RadFluxAGN += GravDataOut[j].RadFluxAGN;
@@ -654,16 +665,10 @@ void gravity_tree(void)
             P[i].GravAccel[j] = P[i].GravAccelSum[j];
     }
 #endif
-    
-    
-    
-    
-    
+        
     myfree(DataNodeList);
     myfree(DataIndexTable);
-    
-    
-    
+        
     /* assign node cost to particles */
     if(TakeLevel >= 0)
     {

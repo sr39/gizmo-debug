@@ -204,6 +204,10 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 #METALS                         # enable metallicities (with multiple species optional) for gas and stars
 #SOLAR_ABUNDANCES_WIERSMA09      # Use solar abundances from Table 1 of Wiersma et al. 2009, MNRAS, 393, 99 (req. METALS) 
 #GALSF_ALT_INIT_STAR          # Some fraction of initial disk stars is given a uniform age distribution, remainder are fixed 
+#AJR_STAR_AGE                 # At the beginning of the simulation, new stars are initialised w/ a non-zero age 
+#AJR_SUPPRESS_SN              # At the beginning of the simulation, suppress the SNe rate (both Type Ia and Type II) 
+#AJR_SLOW_SF                  # Reduce SfPerFreefallTime near the beginning of the simulation 
+#AJR_SLOW_COOL                  # Reduce CHIMES hydro_timestep near the beginning of the simulation 
 ##GALSF_GENERATIONS=1           # the number of stars a gas particle may spawn (defaults to 1, set otherwise)
 ##-----------------------------------------------------------------------------------------------------------------------------
 #----- old sub-grid models (for large-volume simulations) ---- #
@@ -337,6 +341,7 @@ HYDRO_MESHLESS_FINITE_MASS      # Lagrangian (constant-mass) finite-volume Godun
 ####################################################################################################
 HAVE_HDF5						# needed when HDF5 I/O support is desired
 OUTPUT_ADDITIONAL_RUNINFO       # disables the 'reduced io' mode. 
+EXTRA_SNE_OUTPUT                # Records time, location and local properties of individual SNe. 
 #OUTPUT_IN_DOUBLEPRECISION      # snapshot files will be written in double precision
 #INPUT_IN_DOUBLEPRECISION       # input files assumed to be in double precision (otherwise float is assumed)
 #OUTPUT_POSITIONS_IN_DOUBLE     # input/output files in single, but positions in double (used in hires, hi-dynamic range sims when positions differ by < float accuracy)

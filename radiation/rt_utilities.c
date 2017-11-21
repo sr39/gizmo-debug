@@ -47,10 +47,46 @@ extern pthread_mutex_t mutex_partnodedrift;
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
 
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+/* The following routines are fitting functions that are used to 
+ * obtain the luminosities in the 6-13.6 eV energy band (i.e. G0) 
+ * and the >13.6 eV band (i.e. H-ionising), which will be used 
+ * by CHIMES. These functions were fit to Starburst99 models 
+ * that used the Geneva 2012/13 tracks with v=0.4 rotation 
+ * and Z=0.002 metallicity. */ 
+
+double chimes_G0_luminosity(double stellar_age, double stellar_mass)
+{
+  // stellar_age in Myr. 
+  // stellar_mass (current, not initial) in Msol. 
+  // return value in Habing units * cm^2. 
+  double zeta = 1.0627616e36; 
+  if (stellar_age < 3.71) 
+    return stellar_mass * exp(89.55 + (0.121 * pow(stellar_age, 1.457))); 
+  else 
+    return stellar_mass * zeta * pow(691.63 / stellar_age, 1.418) * pow(1.0 + pow(stellar_age / 691.63, 3.786), -0.489); 
+}
+
+double chimes_ion_luminosity(double stellar_age, double stellar_mass) 
+{
+  // stellar_age in Myr. 
+  // stellar_mass (current, not initial) in Msol. 
+  // return value in s^-1. 
+  double zeta = 1.6482021e36; 
+  if (stellar_age < 3.71) 
+    return stellar_mass * exp(107.31 + (0.16 * pow(stellar_age, 0.756))); 
+  else 
+    return stellar_mass * zeta * pow(1118.68 / stellar_age, 4.265) * pow(1.0 + pow(stellar_age / 1118.68, 2.537), -4.44); 
+}
+#endif 
+
+
 /***********************************************************************************************************/
 /* routine which returns the luminosity for the desired source particles, as a function of whatever the user desires, in the relevant bands */
 /***********************************************************************************************************/
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+int rt_get_source_luminosity(int i, double sigma_0, double *lum, double *chimes_lum_G0, double *chimes_lum_ion)
+#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
 int rt_get_source_luminosity(int i, double sigma_0, double *lum, double *L_EUV)
 #else 
 int rt_get_source_luminosity(int i, double sigma_0, double *lum)
@@ -110,6 +146,34 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
         lum[RT_FREQ_BIN_FIRE_UV]  = L * f_uv;
         lum[RT_FREQ_BIN_FIRE_OPT] = L * f_op;
         lum[RT_FREQ_BIN_FIRE_IR]  = L * (1-f_uv-f_op);
+
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+	int age_bin, j; 
+	double log_age_Myr = log10(star_age * 1000.0); 
+	double stellar_mass = P[i].Mass * All.UnitMass_in_g / SOLAR_MASS; 
+	if (log_age_Myr < CHIMES_LOCAL_UV_AGE_LOW) 
+	  age_bin = 0; 
+	else if (log_age_Myr < CHIMES_LOCAL_UV_AGE_MID) 
+	  age_bin = (int) ((log_age_Myr - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW) + 1; 
+	else 
+	  { 
+	    age_bin = (int) (((log_age_Myr - CHIMES_LOCAL_UV_AGE_MID) / CHIMES_LOCAL_UV_DELTA_AGE_HI) + ((CHIMES_LOCAL_UV_AGE_MID - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW)) + 1; 
+	    if (age_bin > CHIMES_LOCAL_UV_NBINS - 1) 
+	      age_bin = CHIMES_LOCAL_UV_NBINS - 1; 
+	  } 
+	
+	for (j = 0; j < CHIMES_LOCAL_UV_NBINS; j++) 
+	  {
+	    chimes_lum_G0[j] = 0.0; 
+	    chimes_lum_ion[j] = 0.0; 
+	  }
+	
+#ifndef ALTERNATE_SHIELDING_LOCAL_SOURCES
+	double tau_euv = sigma_eff * KAPPA_EUV; // Attenuated by HI, so no metallicity dependence. 
+#endif 
+	chimes_lum_G0[age_bin] = chimes_G0_luminosity(star_age * 1000.0, stellar_mass) * exp(-tau_uv); 
+	chimes_lum_ion[age_bin] = chimes_ion_luminosity(star_age * 1000.0, stellar_mass) * exp(-tau_euv); 
+#endif 
 
 #ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
 	/* For the luminosity of ionising radiation, take the UV band (which has already been attenuated 

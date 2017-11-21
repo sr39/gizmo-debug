@@ -603,7 +603,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	  break; 
 
         case IO_CHIMES_REDUCED: 
-#ifdef CHIMES_REDUCED_OUTPUT: 
+#ifdef CHIMES_REDUCED_OUTPUT 
 	  for (n = 0; n < pc; pindex++) 
 	    if (P[pindex].Type == type) 
 	      {
@@ -632,6 +632,43 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	      }
 #endif // CHIMES_NH_OUTPUT 
 	  break;
+
+        case IO_CHIMES_STAR_SIGMA:
+#if defined(CHIMES_NH_OUTPUT) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+		*fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,PPP[pindex].Hsml,P[pindex].DensAroundStar,PPP[pindex].NumNgb,0) * 0.955 * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm));  // g cm^-2 
+		  n++;
+	      }
+#endif 
+	  break;
+
+        case IO_CHIMES_FLUX_G0: 
+#ifdef GALSF_FB_LOCAL_UV_HEATING 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+		for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		  fp[k] = (MyOutputFloat) SphP[pindex].Chimes_G0[k]; 
+		fp += CHIMES_LOCAL_UV_NBINS; 
+		n++; 
+	      }
+#endif 
+	  break; 
+
+        case IO_CHIMES_FLUX_ION: 
+#ifdef GALSF_FB_LOCAL_UV_HEATING 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+		for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		  fp[k] = (MyOutputFloat) SphP[pindex].Chimes_fluxPhotIon[k]; 
+		fp += CHIMES_LOCAL_UV_NBINS; 
+		n++; 
+	      }
+#endif 
+	  break; 
 #endif // CHIMES
             
         case IO_POT:		/* gravitational potential */
@@ -1664,6 +1701,35 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
                 bytes_per_blockelement = sizeof(MyOutputFloat);
 #endif 
 	    break; 
+
+        case IO_CHIMES_STAR_SIGMA: 
+#if defined(CHIMES_NH_OUTPUT) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+            if(mode)
+                bytes_per_blockelement = sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = sizeof(MyOutputFloat);
+#endif 
+	    break;
+
+        case IO_CHIMES_FLUX_G0: 
+#ifdef GALSF_FB_LOCAL_UV_HEATING 
+            if(mode)
+                bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyOutputFloat);
+#endif 
+            break;
+
+        case IO_CHIMES_FLUX_ION: 
+#ifdef GALSF_FB_LOCAL_UV_HEATING 
+            if(mode)
+                bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyOutputFloat);
+#endif 
+            break;
+
+ 
 #endif
             
         case IO_TIDALTENSORPS:
@@ -1919,6 +1985,30 @@ int get_values_per_blockelement(enum iofields blocknr)
 	  values = 0; 
 #endif 
 	  break; 
+
+        case IO_CHIMES_STAR_SIGMA: 
+#if defined(CHIMES_NH_OUTPUT) && defined(GALSF_FB_LOCAL_UV_HEATING)  
+	  values = 1; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_FLUX_G0: 
+#ifdef GALSF_FB_LOCAL_UV_HEATING 
+	  values = CHIMES_LOCAL_UV_NBINS; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_FLUX_ION: 
+#ifdef GALSF_FB_LOCAL_UV_HEATING 
+	  values = CHIMES_LOCAL_UV_NBINS; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
 #endif      
             
         case IO_IMF:
@@ -2097,9 +2187,25 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
                     typelist[i] = 0;
             return nstars + header.npart[5];
 #else
+#ifdef EXTRA_SNE_OUTPUT; 
+	    nngb = nstars; 
+	    typelist[0] = 0; 
+	    typelist[1] = 0; 
+	    typelist[5] = 0; 
+	    if (All.ComovingIntegrationOn) 
+	      {
+		typelist[2] = 0; 
+		typelist[3] = 0; 
+	      } 
+	    else 
+	      nngb += header.npart[2] + header.npart[3]; 
+	    return nngb; 
+	    break; 
+#else 
             if(i != 4)
                 typelist[i] = 0;
             return nstars;
+#endif 
 #endif
             break;
             
@@ -2175,6 +2281,33 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
 	  break; 
 
         case IO_CHIMES_NH: 
+	  for (i = 1; i < 6; i++) 
+	    typelist[i] = 0; 
+	  return ngas; 
+	  break; 
+
+        case IO_CHIMES_STAR_SIGMA: 
+	  nngb = nstars; 
+	  typelist[0] = 0; 
+	  typelist[1] = 0; 
+	  typelist[5] = 0; 
+	  if (All.ComovingIntegrationOn) 
+	    {
+	      typelist[2] = 0; 
+	      typelist[3] = 0; 
+	    } 
+	  else 
+	    nngb += header.npart[2] + header.npart[3]; 
+	  return nngb; 
+	  break; 
+
+        case IO_CHIMES_FLUX_G0: 
+	  for (i = 1; i < 6; i++) 
+	    typelist[i] = 0; 
+	  return ngas; 
+	  break; 
+
+        case IO_CHIMES_FLUX_ION: 
 	  for (i = 1; i < 6; i++) 
 	    typelist[i] = 0; 
 	  return ngas; 
@@ -2351,6 +2484,30 @@ int blockpresent(enum iofields blocknr)
         case IO_CHIMES_NH:
 #ifdef CHIMES_NH_OUTPUT 
 	  return 1;
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_STAR_SIGMA: 
+#if defined(CHIMES_NH_OUTPUT) && defined(GALSF_FB_LOCAL_UV_HEATING)  
+	  return 1; 
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_FLUX_G0: 
+#ifdef GALSF_FB_LOCAL_UV_HEATING 
+	  return 1; 
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_FLUX_ION: 
+#ifdef GALSF_FB_LOCAL_UV_HEATING 
+	  return 1; 
 #else 
 	  return 0; 
 #endif 
@@ -2942,6 +3099,15 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_CHIMES_NH: 
 	    strncpy(label, "CHNH", 4); 
 	    break; 
+        case IO_CHIMES_STAR_SIGMA: 
+	  strncpy(label, "CHST", 4); 
+	  break; 
+        case IO_CHIMES_FLUX_G0: 
+	  strncpy(label, "CHGO", 4); 
+	  break; 
+        case IO_CHIMES_FLUX_ION: 
+	  strncpy(label, "CHIO", 4); 
+	  break; 
 #endif      
         case IO_POT:
             strncpy(label, "POT ", 4);
@@ -3310,6 +3476,15 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_CHIMES_NH: 
 	    strcpy(buf, "ChimesColumnDensity"); 
 	    break; 
+        case IO_CHIMES_STAR_SIGMA: 
+	  strcpy(buf, "SigmaEff"); 
+	  break; 
+        case IO_CHIMES_FLUX_G0: 
+	  strcpy(buf, "ChimesFluxG0"); 
+	  break; 
+        case IO_CHIMES_FLUX_ION: 
+	  strcpy(buf, "ChimesFluxIon"); 
+	  break; 
 #endif 
         case IO_POT:
             strcpy(buf, "Potential");

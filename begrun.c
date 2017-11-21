@@ -729,8 +729,16 @@ void open_outputfiles(void)
         endrun(1);
     }  
 #endif
-    
-    
+
+#ifdef EXTRA_SNE_OUTPUT 
+    sprintf(buf, "%s%s", All.OutputDir, "ExtraSNeOutput.txt");
+    if(!(FdSNeExtra = fopen(buf, mode)))
+    {
+        printf("error in opening file '%s'\n", buf);
+        endrun(1);
+    }  
+#endif 
+
 #if defined(RT_CHEM_PHOTOION) && !defined(IO_REDUCED_MODE)
   sprintf(buf, "%s%s", All.OutputDir, "rt_photoion_chem.txt");
   if(!(FdRad = fopen(buf, mode)))
@@ -1858,6 +1866,71 @@ void read_parameter_file(char *fname)
       id[nt++] = INT;
 #endif 
 
+#ifdef STATIC_HERNQUIST_POTENTIAL 
+      strcpy(tag[nt], "HQ_M200");
+      addr[nt] = &All.HQ_M200;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "HQ_C");
+      addr[nt] = &All.HQ_C;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "HQ_DARKFRACTION");
+      addr[nt] = &All.HQ_DARKFRACTION;
+      id[nt++] = REAL;
+#endif 
+
+#ifdef AJR_SLOW_SF 
+      strcpy(tag[nt], "slow_sf_time1");
+      addr[nt] = &All.slow_sf_time1;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "slow_sf_time2");
+      addr[nt] = &All.slow_sf_time2;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "slow_sf_eps");
+      addr[nt] = &All.slow_sf_eps;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "slow_sf_thresh");
+      addr[nt] = &All.slow_sf_thresh;
+      id[nt++] = REAL;
+#endif 
+
+#ifdef AJR_SLOW_COOL 
+      strcpy(tag[nt], "slow_cool_time");
+      addr[nt] = &All.slow_cool_time;
+      id[nt++] = REAL;
+#endif 
+
+#ifdef AJR_STAR_AGE 
+      strcpy(tag[nt], "star_age_time");
+      addr[nt] = &All.star_age_time;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "star_age_init");
+      addr[nt] = &All.star_age_init;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "star_age_slowdown");
+      addr[nt] = &All.star_age_slowdown; 
+      id[nt++] = REAL;
+#endif 
+
+#ifdef AJR_SUPPRESS_SN 
+      strcpy(tag[nt], "sn_suppress_time1");
+      addr[nt] = &All.sn_suppress_time1;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "sn_suppress_time2");
+      addr[nt] = &All.sn_suppress_time2;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "sn_suppress_fac");
+      addr[nt] = &All.sn_suppress_fac;
+      id[nt++] = REAL;
+#endif 
 
         if((fd = fopen(fname, "r")))
         {

@@ -150,6 +150,16 @@ extern struct Reactions_Structure *all_reactions_root;
 extern struct Reactions_Structure *nonmolecular_reactions_root;
 extern double *dustG_arr; 
 extern double *H2_dissocJ_arr; 
+#ifdef GALSF_FB_LOCAL_UV_HEATING
+// The following defines the stellar age bins 
+// that we will use to define the UV spectra 
+// from stars used in CHIMES. 
+#define CHIMES_LOCAL_UV_NBINS 8 
+#define CHIMES_LOCAL_UV_AGE_LOW 0.0 
+#define CHIMES_LOCAL_UV_DELTA_AGE_LOW 0.2 
+#define CHIMES_LOCAL_UV_AGE_MID 1.0 
+#define CHIMES_LOCAL_UV_DELTA_AGE_HI 1.0 
+#endif 
 #ifdef OPENMP   
 extern struct All_rate_variables_structure **AllRates_omp;
 extern struct Reactions_Structure **all_reactions_root_omp;
@@ -366,7 +376,7 @@ extern struct Reactions_Structure **nonmolecular_reactions_root_omp;
 
 
 
-#if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER) || defined(GALSF_FB_RPWIND_FROMSTARS) || defined(BH_POPIII_SEEDS) || defined(GALSF_FB_LOCAL_UV_HEATING) || defined(BH_PHOTONMOMENTUM) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(RT_FIRE)
+#if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER) || defined(GALSF_FB_RPWIND_FROMSTARS) || defined(BH_POPIII_SEEDS) || defined(GALSF_FB_LOCAL_UV_HEATING) || defined(BH_PHOTONMOMENTUM) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(RT_FIRE) || defined(EXTRA_SNE_OUTPUT) 
 #define DO_DENSITY_AROUND_STAR_PARTICLES
 #endif
 
@@ -746,7 +756,7 @@ typedef unsigned long long peanokey;
 #define KAPPA_IR 10.0   /* in cm^2/g for solar abundances */
 #define KAPPA_OP 180.0
 #define KAPPA_UV 1800.0
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+#if defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) || (defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING)) 
 #define KAPPA_EUV 3.7e6  /* Gas opacity, for ionising radiation */ 
 #endif 
 
@@ -1272,6 +1282,10 @@ extern FILE *FdHIIHeating;	/*!< file handle for HIIheating.txt log-file */
 #ifdef GALSF_FB_SNE_HEATING
 extern FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 #endif
+
+#ifdef EXTRA_SNE_OUTPUT 
+extern FILE *FdSNeExtra;        /*!< file handle for ExtraSNeOutput.txt log-file */ 
+#endif 
 
 #ifdef DISTORTIONTENSORPS
 #ifdef PMGRID
@@ -1879,10 +1893,38 @@ extern struct global_data_all_processes
   int FourierGrid;     /*dimension of the Fourier transform (actual size is FourierGrid^3)*/
 #endif
 
+#ifdef STATIC_HERNQUIST_POTENTIAL 
+  double HQ_M200;          /* M200 mass of the halo, in code units. */ 
+  double HQ_C;             /* Halo concentration. */ 
+  double HQ_DARKFRACTION;  /* Fraction of halo mass in dark matter. */ 
+#endif 
     
 #if defined(COOLING) && defined(GRACKLE)
     code_units GrackleUnits;
 #endif
+
+#ifdef AJR_SLOW_SF 
+  double slow_sf_time1; 
+  double slow_sf_time2; 
+  double slow_sf_eps; 
+  double slow_sf_thresh; 
+#endif 
+
+#ifdef AJR_SLOW_COOL 
+  double slow_cool_time; 
+#endif 
+
+#ifdef AJR_STAR_AGE 
+  double star_age_time; 
+  double star_age_init; 
+  double star_age_slowdown; 
+#endif 
+
+#ifdef AJR_SUPPRESS_SN 
+  double sn_suppress_time1; 
+  double sn_suppress_time2; 
+  double sn_suppress_fac; 
+#endif 
 }
 All;
 
@@ -1979,7 +2021,7 @@ extern ALIGN(32) struct particle_data
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
     MyFloat DensAroundStar;         /*!< gas density in the neighborhood of the collisionless particle (evaluated from neighbors) */
     MyFloat GradRho[3];             /*!< gas density gradient evaluated simply from the neighboring particles, for collisionless centers */
-#if defined(METALS) && defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
+#if defined METALS && (defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) || defined(EXTRA_SNE_OUTPUT)) 
     MyFloat MetalDensAroundStar;    /*!< Density of metals around star particle (evaluated from neighbours). */ 
 #endif 
 #endif
@@ -2339,6 +2381,10 @@ extern struct sph_particle_data
 #ifdef GALSF_FB_LOCAL_UV_HEATING
     MyFloat RadFluxUV;              /*!< local UV field strength */
     MyFloat RadFluxEUV;             /*!< local (ionizing/hard) UV field strength */
+#ifdef CHIMES 
+    double Chimes_G0[CHIMES_LOCAL_UV_NBINS];    /*!< 6-13.6 eV flux, in Habing units */ 
+    double Chimes_fluxPhotIon[CHIMES_LOCAL_UV_NBINS];  /*!< ionising flux (>13.6 eV), in cm^-2 s^-1 */ 
+#endif 
 #endif
 #ifdef BH_COMPTON_HEATING
     MyFloat RadFluxAGN;             /*!< local AGN flux */
@@ -2588,6 +2634,10 @@ extern struct gravdata_out
 #ifdef GALSF_FB_LOCAL_UV_HEATING
     MyLongDouble RadFluxUV;
     MyLongDouble RadFluxEUV;
+#ifdef CHIMES 
+    double Chimes_G0[CHIMES_LOCAL_UV_NBINS]; 
+    double Chimes_fluxPhotIon[CHIMES_LOCAL_UV_NBINS]; 
+#endif 
 #endif
 #ifdef BH_COMPTON_HEATING
     MyLongDouble RadFluxAGN;
@@ -2846,6 +2896,9 @@ enum iofields
   IO_CHIMES_MU, 
   IO_CHIMES_REDUCED, 
   IO_CHIMES_NH,
+  IO_CHIMES_STAR_SIGMA, 
+  IO_CHIMES_FLUX_G0, 
+  IO_CHIMES_FLUX_ION, 
 #endif 
   IO_LASTENTRY			/* This should be kept - it signals the end of the list */
 };
@@ -2946,7 +2999,10 @@ extern ALIGN(32) struct NODE
 
 #ifdef RT_USE_GRAVTREE
   MyFloat stellar_lum[N_RT_FREQ_BINS]; /*!< luminosity in the node*/
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+  double chimes_stellar_lum_G0[CHIMES_LOCAL_UV_NBINS]; 
+  double chimes_stellar_lum_ion[CHIMES_LOCAL_UV_NBINS]; 
+#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
   MyFloat stellar_lum_euv;             /*!< luminosity of ionising radiation in the node */
 #endif 
 #endif
@@ -3045,6 +3101,19 @@ extern int FB_Seed;
 #ifdef SIDM
 #include "./sidm/sidm_allvars.h"
 #endif
+
+#ifdef EXTRA_SNE_OUTPUT 
+struct SNe_output_buffer 
+{ 
+  MyIDType ID; 
+  int N_SNe; 
+  double Pos[3]; 
+  double rho; 
+#ifdef METALS 
+  double Zgas;
+#endif  
+}; 
+#endif 
 
 #endif  /* ALLVARS_H  - please do not put anything below this line */
 
