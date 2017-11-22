@@ -1391,6 +1391,10 @@ void hydro_gradient_calc(void)
             }
 #endif // ifdef radtransfer
             
+#if defined(EOS_ELASTIC)
+            // update time-derivative of stress tensor (needs to be done before slope-limiting to use full velocity gradient information) //
+            elastic_body_update_driftkick(i,1.,2);
+#endif
             
             /* finally, we need to apply a sensible slope limiter to the gradients, to prevent overshooting */
             double stol = 0.0;

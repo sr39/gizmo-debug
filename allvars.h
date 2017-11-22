@@ -109,7 +109,7 @@
 #define HYDRO_SPH               /* master flag for SPH: must be enabled if any SPH method is used */
 #endif
 #ifdef HYDRO_SPH
-#ifndef SPH_DISABLE_CD10_ARTVISC
+#if !defined(SPH_DISABLE_CD10_ARTVISC) && !(defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)) // fancy viscosity switches assume positive pressures //
 #define SPHAV_CD10_VISCOSITY_SWITCH 0.05   /* Enables Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks) */
 #endif
 #ifndef SPH_DISABLE_PM_CONDUCTIVITY
@@ -711,7 +711,6 @@ typedef unsigned long long peanokey;
 #define  PEANOCELLS_SAVE_KEYS (((peanokey)1)<<(3*BITS_PER_DIMENSION_SAVE_KEYS))
 
 
-#define  check_particles()          check_particles_info( __FUNCTION__, __FILE__, __LINE__)
 
 #define  terminate(x) {char termbuf[2000]; sprintf(termbuf, "code termination on task=%d, function '%s()', file '%s', line %d: '%s'\n", ThisTask, __FUNCTION__, __FILE__, __LINE__, x); printf("%s", termbuf); fflush(stdout); MPI_Abort(MPI_COMM_WORLD, 1); exit(0);}
 
@@ -1835,7 +1834,9 @@ extern struct global_data_all_processes
 #endif
 #endif
 
-
+#if defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)
+  float Tillotson_EOS_params[7][12]; /*! < holds parameters for Tillotson EOS for solids */
+#endif
 
 #ifdef EOS_TABULATED
     char EosTable[100];
@@ -2365,13 +2366,21 @@ extern struct sph_particle_data
 #ifdef EOS_GENERAL
     MyFloat SoundSpeed;                   /* Sound speed */
 #ifdef EOS_CARRIES_TEMPERATURE
-    MyFloat Temperature;                         /* temperature */
+    MyFloat Temperature;                  /* Temperature */
 #endif
 #ifdef EOS_CARRIES_YE
     MyFloat Ye;                           /* Electron fraction */
 #endif
 #ifdef EOS_CARRIES_ABAR
     MyFloat Abar;                         /* Average atomic weight (in atomic mass units) */
+#endif
+#if defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)
+    int CompositionType;                  /* define the composition of the material */
+#endif
+#ifdef EOS_ELASTIC
+    MyDouble Elastic_Stress_Tensor[3][3]; /* deviatoric stress tensor */
+    MyDouble Elastic_Stress_Tensor_Pred[3][3];
+    MyDouble Dt_Elastic_Stress_Tensor[3][3];
 #endif
 #endif
     
@@ -2694,6 +2703,8 @@ enum iofields
   IO_EOSABAR,
   IO_EOSYE,
   IO_PRESSURE,
+  IO_EOSCS,
+  IO_EOSCOMP,
   IO_RADGAMMA,
   IO_RAD_ACCEL,
   IO_EDDINGTON_TENSOR,

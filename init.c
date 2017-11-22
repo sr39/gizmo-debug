@@ -719,8 +719,9 @@ void init(void)
     density();
     for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
     {
+        int k;
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
-        
+
 #if defined(TURB_DRIVING) && defined(EOS_ENFORCE_ADIABAT)
         SphP[i].InternalEnergy = All.RefInternalEnergy;
         SphP[i].InternalEnergyPred = All.RefInternalEnergy;
@@ -743,6 +744,14 @@ void init(void)
             SphP[i].DtCosmicRayFlux[j]=0;    
         }
 #endif
+#endif
+#if defined(EOS_ELASTIC)
+        if(RestartFlag != 1)
+        {
+            for(k=0;k<3;k++) {for(j=0;j<3;j++) {SphP[i].Dt_Elastic_Stress_Tensor[j][k] = SphP[i].Elastic_Stress_Tensor_Pred[j][k] = SphP[i].Elastic_Stress_Tensor[j][k] = 0;}}
+        } else {
+            for(k=0;k<3;k++) {for(j=0;j<3;j++) {SphP[i].Elastic_Stress_Tensor_Pred[j][k] = SphP[i].Elastic_Stress_Tensor[j][k]; SphP[i].Dt_Elastic_Stress_Tensor[j][k] = 0;}}
+        }
 #endif
         //SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
         SphP[i].DtInternalEnergy = 0;

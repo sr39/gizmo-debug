@@ -41,6 +41,10 @@ double get_pressure(int i)
 #endif
 
     
+#ifdef EOS_TILLOTSON
+    press = calculate_eos_tillotson(i);
+#endif
+    
 #ifdef EOS_ENFORCE_ADIABAT
     press = EOS_ENFORCE_ADIABAT * pow(SphP[i].Density, GAMMA);
 #endif
@@ -235,7 +239,5 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     return 1;
 }
 #endif
-
-
 
 
