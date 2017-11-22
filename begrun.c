@@ -1488,53 +1488,53 @@ void read_parameter_file(char *fname)
 
 #ifdef EOS_TILLOTSON
         strcpy(tag[nt], "Tillotson_EOS_params_a");
-        addr[nt] = &All.Tillotson_EOS_params[0][0];
+        addr[nt] = &All.Tillotson_EOS_params_a;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "Tillotson_EOS_params_b");
-        addr[nt] = &All.Tillotson_EOS_params[0][1];
+        addr[nt] = &All.Tillotson_EOS_params_b;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "Tillotson_EOS_params_u_0");
-        addr[nt] = &All.Tillotson_EOS_params[0][2];
+        addr[nt] = &All.Tillotson_EOS_params_u_0;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "Tillotson_EOS_params_rho_0");
-        addr[nt] = &All.Tillotson_EOS_params[0][3];
+        addr[nt] = &All.Tillotson_EOS_params_rho_0;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "Tillotson_EOS_params_A");
-        addr[nt] = &All.Tillotson_EOS_params[0][4];
+        addr[nt] = &All.Tillotson_EOS_params_A;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "Tillotson_EOS_params_B");
-        addr[nt] = &All.Tillotson_EOS_params[0][5];
+        addr[nt] = &All.Tillotson_EOS_params_B;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "Tillotson_EOS_params_u_s");
-        addr[nt] = &All.Tillotson_EOS_params[0][6];
+        addr[nt] = &All.Tillotson_EOS_params_u_s;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "Tillotson_EOS_params_u_s_prime");
-        addr[nt] = &All.Tillotson_EOS_params[0][7];
+        addr[nt] = &All.Tillotson_EOS_params_u_s_prime;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "Tillotson_EOS_params_alpha");
-        addr[nt] = &All.Tillotson_EOS_params[0][8];
+        addr[nt] = &All.Tillotson_EOS_params_alpha;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "Tillotson_EOS_params_beta");
-        addr[nt] = &All.Tillotson_EOS_params[0][9];
+        addr[nt] = &All.Tillotson_EOS_params_beta;
         id[nt++] = REAL;
 #endif
 
 #ifdef EOS_ELASTIC
         strcpy(tag[nt], "Tillotson_EOS_params_mu");
-        addr[nt] = &All.Tillotson_EOS_params[0][10];
+        addr[nt] = &All.Tillotson_EOS_params_mu;
         id[nt++] = REAL;
         
         strcpy(tag[nt], "Tillotson_EOS_params_Y0");
-        addr[nt] = &All.Tillotson_EOS_params[0][11];
+        addr[nt] = &All.Tillotson_EOS_params_Y0;
         id[nt++] = REAL;
 #endif
         

@@ -25,22 +25,21 @@
 /* routine that defines the Tillotson EOS parameters for various solid and liquid materials */
 void tillotson_eos_init(void)
 {   // order: parameter a,b,u0,rho0,A,B,u_s,u_s_prime,alpha,beta,elastic shear modulus, hugoniot elastic limit [all cgs] //
-    
-#ifdef EOS_ELASTIC_DEBUG
-    All.Tillotson_EOS_params[0][0]=0;
-    All.Tillotson_EOS_params[0][1]=0;
-    All.Tillotson_EOS_params[0][2]=1.e20;
-    All.Tillotson_EOS_params[0][3]=1;
-    All.Tillotson_EOS_params[0][4]=1;
-    All.Tillotson_EOS_params[0][5]=0;
-    All.Tillotson_EOS_params[0][6]=1.e20;
-    All.Tillotson_EOS_params[0][7]=1.e20;
-    All.Tillotson_EOS_params[0][8]=0;
-    All.Tillotson_EOS_params[0][9]=0;
-    All.Tillotson_EOS_params[0][10]=0.22;
-    All.Tillotson_EOS_params[0][11]=1.e20;
-#endif
-    
+
+    // first initialize the custom parameters from the parameterfile //
+    All.Tillotson_EOS_params[0][0]=Tillotson_EOS_params_a;
+    All.Tillotson_EOS_params[0][1]=Tillotson_EOS_params_b;
+    All.Tillotson_EOS_params[0][2]=Tillotson_EOS_params_u_0;
+    All.Tillotson_EOS_params[0][3]=Tillotson_EOS_params_rho_0;
+    All.Tillotson_EOS_params[0][4]=Tillotson_EOS_params_A;
+    All.Tillotson_EOS_params[0][5]=Tillotson_EOS_params_B;
+    All.Tillotson_EOS_params[0][6]=Tillotson_EOS_params_u_s;
+    All.Tillotson_EOS_params[0][7]=Tillotson_EOS_params_u_s_prime;
+    All.Tillotson_EOS_params[0][8]=Tillotson_EOS_params_alpha;
+    All.Tillotson_EOS_params[0][9]=Tillotson_EOS_params_beta;
+    All.Tillotson_EOS_params[0][10]=Tillotson_EOS_params_mu;
+    All.Tillotson_EOS_params[0][11]=Tillotson_EOS_params_Y0;
+    // now initialize pre-computed material properties //
     double qtmp[6][12]={
         {0.5,1.3,1.60e11,2.700,1.80e11,1.80e11,3.50e10,1.80e11,5.0,5.0,2.17e11,3.8e10},  // granite
         {0.5,1.5,4.87e12,2.700,2.67e11,2.67e11,4.72e10,1.82e11,5.0,5.0,2.27e11,3.5e10},  // basalt
