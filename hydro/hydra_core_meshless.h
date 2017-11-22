@@ -27,7 +27,7 @@
             kernel_main(0.5, 1., 1., &wk_0, &dwk_tmp, -1); // use kernels because of their stability properties: here weight for 'mean separation'
             kernel_main(0.5*r_over_h_eff, 1., 1., &wk_r, &dwk_tmp, -1); // here weight for actual half-separation
             double wt_corr = wk_r / wk_0; // weighting function
-            dummy_pressure *= 1 - 0.2 * wt_corr*wt_corr*wt_corr*wt_corr; // actual limiting function (if close enough, pressure reverses to repulsive //
+            dummy_pressure *= 1 - 1.*0.2 * wt_corr*wt_corr*wt_corr*wt_corr; // actual limiting function (if close enough, pressure reverses to repulsive (pre-factor of ~1-2 before 0.2 here) //
         }
     }
 #endif
