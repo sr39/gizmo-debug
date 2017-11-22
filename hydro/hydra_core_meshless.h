@@ -11,6 +11,26 @@
     double s_star_ij,s_i,s_j,v_frame[3],n_unit[3];
     double distance_from_i[3],distance_from_j[3];
     face_area_dot_vel=face_vel_i=face_vel_j=Face_Area_Norm=0;
+    double Pressure_i = local.Pressure, Pressure_j = SphP[j].Pressure;
+    double dummy_pressure = 0;
+#if defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)
+    /* negative pressures are allowed, but dealt with below by a constant shift and re-shift, which should be invariant for HLLC with the MFM method */
+    if((Pressure_i<0)||(Pressure_j<0))
+    {
+        dummy_pressure = -DMIN(Pressure_i,Pressure_j);
+        Pressure_i += dummy_pressure; Pressure_j += dummy_pressure;
+        /* we still need to include an effective stress for large negative pressures when elements are too close, to prevent tensile instability */
+        double h_eff = 0.5*(Particle_Size_i + Get_Particle_Size(j)*All.cf_atime); // effective inter-particle spacing around these elements
+        if(kernel.r < 2.*h_eff) // check if close
+        {
+            double r_over_h_eff = kernel.r / h_eff, wk_0, wk_r, dwk_tmp; // define separation relative to mean
+            kernel_main(0.5, 1., 1., &wk_0, &dwk_tmp, -1); // use kernels because of their stability properties: here weight for 'mean separation'
+            kernel_main(0.5*r_over_h_eff, 1., 1., &wk_r, &dwk_tmp, -1); // here weight for actual half-separation
+            double wt_corr = wk_r / wk_0; // weighting function
+            dummy_pressure *= 1 - 0.2 * wt_corr*wt_corr*wt_corr*wt_corr; // actual limiting function (if close enough, pressure reverses to repulsive //
+        }
+    }
+#endif
 #ifdef COSMIC_RAYS
     Fluxes.CosmicRayPressure = 0;
 #endif
@@ -151,7 +171,7 @@
 #endif
         reconstruct_face_states(local.Density, local.Gradients.Density, SphP[j].Density, SphP[j].Gradients.Density,
                                 distance_from_i, distance_from_j, &Riemann_vec.L.rho, &Riemann_vec.R.rho, recon_mode);
-        reconstruct_face_states(local.Pressure, local.Gradients.Pressure, SphP[j].Pressure, SphP[j].Gradients.Pressure,
+        reconstruct_face_states(Pressure_i, local.Gradients.Pressure, Pressure_j, SphP[j].Gradients.Pressure,
                                 distance_from_i, distance_from_j, &Riemann_vec.L.p, &Riemann_vec.R.p, recon_mode);
 #ifdef EOS_GENERAL
         reconstruct_face_states(local.InternalEnergyPred, local.Gradients.InternalEnergy, SphP[j].InternalEnergyPred, SphP[j].Gradients.InternalEnergy,
@@ -190,8 +210,8 @@
         {
             Riemann_vec.R.rho -= dt_half * local.Density * local.Gradients.Velocity[k][k];
             Riemann_vec.L.rho -= dt_half * SphP[j].Density * SphP[j].Gradients.Velocity[k][k];
-            Riemann_vec.R.p -= dt_half * GAMMA * local.Pressure * local.Gradients.Velocity[k][k];
-            Riemann_vec.L.p -= dt_half * GAMMA * SphP[j].Pressure * SphP[j].Gradients.Velocity[k][k];
+            Riemann_vec.R.p -= dt_half * GAMMA * Pressure_i * local.Gradients.Velocity[k][k];
+            Riemann_vec.L.p -= dt_half * GAMMA * Pressure_j * SphP[j].Gradients.Velocity[k][k];
             double dv_l_half = -dt_half * local.Gradients.Pressure[k] / local.Density;
             double dv_r_half = -dt_half * SphP[j].Gradients.Pressure[k] / SphP[j].Density;
             Riemann_vec.R.v[k] += 0.5 * (dv_l_half - dv_r_half);
@@ -202,8 +222,8 @@
         
        
         /* estimate maximum upwind pressure */
-        double press_i_tot = local.Pressure + local.Density * v2_approach;
-        double press_j_tot = SphP[j].Pressure + SphP[j].Density * v2_approach;
+        double press_i_tot = Pressure_i + local.Density * v2_approach;
+        double press_j_tot = Pressure_j + SphP[j].Density * v2_approach;
 #ifdef MAGNETIC
         press_i_tot += 0.5 * kernel.b2_i * fac_magnetic_pressure;
         press_j_tot += 0.5 * kernel.b2_j * fac_magnetic_pressure;
@@ -220,8 +240,11 @@
 #if (SLOPE_LIMITER_TOLERANCE==2)
         press_tot_limiter *= 100.0; // large number
 #endif
-        if(recon_mode==0) {press_tot_limiter = DMAX(press_tot_limiter , DMAX(DMAX(local.Pressure,SphP[j].Pressure),2.*DMAX(local.Density,SphP[j].Density)*v2_approach));}
-        
+        if(recon_mode==0) {press_tot_limiter = DMAX(press_tot_limiter , DMAX(DMAX(Pressure_i,Pressure_j),2.*DMAX(local.Density,SphP[j].Density)*v2_approach));}
+#if defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)
+        press_tot_limiter = 1.e10*(press_tot_limiter+1.); // it is unclear how this particular limiter behaves for solid-body EOS's, so for now, disable it in these cases
+#endif
+
         
         /* --------------------------------------------------------------------------------- */
         /* Alright! Now we're actually ready to solve the Riemann problem at the particle interface */
@@ -231,7 +254,7 @@
         if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>1.4*press_tot_limiter))
         {
             /* go to a linear reconstruction of P, rho, and v, and re-try */
-            Riemann_vec.R.p = local.Pressure; Riemann_vec.L.p = SphP[j].Pressure;
+            Riemann_vec.R.p = Pressure_i; Riemann_vec.L.p = Pressure_j;
             Riemann_vec.R.rho = local.Density; Riemann_vec.L.rho = SphP[j].Density;
             for(k=0;k<3;k++) {Riemann_vec.R.v[k]=local.Vel[k]-v_frame[k]; Riemann_vec.L.v[k]=VelPred_j[k]-v_frame[k];}
 #ifdef MAGNETIC
@@ -248,7 +271,7 @@
             if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M)))
             {
                 /* ignore any velocity difference between the particles: this should gaurantee we have a positive pressure! */
-                Riemann_vec.R.p = local.Pressure; Riemann_vec.L.p = SphP[j].Pressure;
+                Riemann_vec.R.p = Pressure_i; Riemann_vec.L.p = Pressure_j;
                 Riemann_vec.R.rho = local.Density; Riemann_vec.L.rho = SphP[j].Density;
                 for(k=0;k<3;k++) {Riemann_vec.R.v[k]=0; Riemann_vec.L.v[k]=0;}
 #ifdef MAGNETIC
@@ -295,11 +318,12 @@
 #endif            
             
 #if defined(HYDRO_MESHLESS_FINITE_MASS) && !defined(MAGNETIC)
+            Riemann_out.P_M -= dummy_pressure; // correct back to (allowed) negative pressures //
             double facenorm_pm = Face_Area_Norm * Riemann_out.P_M;
             for(k=0;k<3;k++) {Fluxes.v[k] = facenorm_pm * n_unit[k];} /* total momentum flux */
             Fluxes.p = facenorm_pm * (Riemann_out.S_M + face_area_dot_vel); // default: total energy flux = v_frame.dot.mom_flux //
             
-#if (SLOPE_LIMITER_TOLERANCE < 2)
+#if (SLOPE_LIMITER_TOLERANCE < 2) && !(defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)) // below is defined for adiabatic ideal fluids, don't use for materials
             /* for MFM, do the face correction for adiabatic flows here */
             int use_entropic_energy_equation = 0;
             double du_new = 0;
@@ -316,7 +340,7 @@
                 if(SM_over_ceff > epsilon_entropic_eos_small && cnum2 < cnumcrit2)
                 {
                     double du_old = facenorm_pm * (Riemann_out.S_M + face_area_dot_vel);
-                    if(local.Pressure/local.Density > SphP[j].Pressure/SphP[j].Density)
+                    if(Pressure_i/local.Density > Pressure_j/SphP[j].Density)
                     {
                         double dtoj = -du_old + facenorm_pm * face_vel_j;
                         if(dtoj > 0) {use_entropic_energy_equation=0;} else {
@@ -404,7 +428,7 @@
                 double cnum2 = SphP[j].ConditionNumber*SphP[j].ConditionNumber;
                 if(SM_over_ceff > epsilon_entropic_eos_small && cnum2 < cnumcrit2)
                 {
-                    if(local.Pressure/local.Density > SphP[j].Pressure/SphP[j].Density)
+                    if(Pressure_i/local.Density > Pressure_j/SphP[j].Density)
                     {
                         double dtoj = -du_old + facenorm_pm * face_vel_j;
                         if(dtoj > 0) {use_entropic_energy_equation=0;} else {

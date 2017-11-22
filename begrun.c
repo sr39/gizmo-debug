@@ -157,7 +157,11 @@ void begrun(void)
     }
 #endif
 
+#ifdef EOS_TILLOTSON
+  tillotson_eos_init();
+#endif
 
+    
 #ifdef NUCLEAR_NETWORK
   network_init(All.EosSpecies, All.NetworkRates, All.NetworkPartFunc, All.NetworkMasses,
 	       All.NetworkWeakrates, &All.nd);
@@ -1482,6 +1486,59 @@ void read_parameter_file(char *fname)
         id[nt++] = STRING;
 #endif
 
+#ifdef EOS_TILLOTSON
+        strcpy(tag[nt], "Tillotson_EOS_params_a");
+        addr[nt] = &All.Tillotson_EOS_params[0][0];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_b");
+        addr[nt] = &All.Tillotson_EOS_params[0][1];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_u_0");
+        addr[nt] = &All.Tillotson_EOS_params[0][2];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_rho_0");
+        addr[nt] = &All.Tillotson_EOS_params[0][3];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_A");
+        addr[nt] = &All.Tillotson_EOS_params[0][4];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_B");
+        addr[nt] = &All.Tillotson_EOS_params[0][5];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_u_s");
+        addr[nt] = &All.Tillotson_EOS_params[0][6];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_u_s_prime");
+        addr[nt] = &All.Tillotson_EOS_params[0][7];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_alpha");
+        addr[nt] = &All.Tillotson_EOS_params[0][8];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_beta");
+        addr[nt] = &All.Tillotson_EOS_params[0][9];
+        id[nt++] = REAL;
+#endif
+
+#ifdef EOS_ELASTIC
+        strcpy(tag[nt], "Tillotson_EOS_params_mu");
+        addr[nt] = &All.Tillotson_EOS_params[0][10];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_Y0");
+        addr[nt] = &All.Tillotson_EOS_params[0][11];
+        id[nt++] = REAL;
+#endif
+        
+        
 #ifdef NUCLEAR_NETWORK
       strcpy(tag[nt], "NetworkRates");
       addr[nt] = All.NetworkRates;
@@ -1817,6 +1874,9 @@ void read_parameter_file(char *fname)
     All.MaxNumNgbDeviation = All.DesNumNgb / 64.;
 #endif
     if(All.MaxNumNgbDeviation < 0.05) All.MaxNumNgbDeviation = 0.05;
+#ifdef EOS_ELASTIC
+    All.MaxNumNgbDeviation /= 5.0;
+#endif
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 64.;
 #ifdef GALSF
@@ -1829,6 +1889,7 @@ void read_parameter_file(char *fname)
 #endif
 #endif // closes DEVELOPER_MODE check //
     
+
     
 #ifdef GALSF
     All.CritOverDensity = 1000.0;
@@ -2148,3 +2209,4 @@ void readjust_timebase(double TimeMax_old, double TimeMax_new)
 
   All.TimeMax = TimeMax_new;
 }
+

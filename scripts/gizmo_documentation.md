@@ -77,6 +77,7 @@
         + [Grackle Cooling Module](#params-optional-grackle)
         + [Driven Turbulence (Large-Eddy Simulations)](#params-optional-turb)
         + [Non-Standard Dark Matter, Dark Energy, Gravity, or Expansion](#params-optional-expansion)
+        + [Solid Body and Impact Simulations](#params-optional-impact)
     + [Developer-Mode Parameters](#params-debug)
 9. [Snapshot & Initial Condition Files](#snaps)
     + [Initial Conditions (Making & Reading Them)](#snaps-ics)
@@ -90,9 +91,10 @@
     + [Fluid Mixing Tests](#tests-mixing) (e.g. [Kelvin-Helmholtz](#tests-mixing-kh), [Rayleigh-Taylor](#tests-mixing-rt), ['blob test'](#tests-mixing-blob))
     + [Self-Gravity & Cosmological Tests](#tests-grav) (e.g. [Evrard collapse](#tests-grav-evrard), [Zeldovich pancakes](#tests-grav-zeldovich), ['Santa Barbara Cluster'](#tests-grav-sbcluster), [galactic disks](#tests-grav-galdisk))
     + [Magneto-Hydrodynamics Tests](#tests-mhd) (e.g. waves, shocktubes, field-loops, current sheets, Orszag-Tang vortex, rotors, MRI, jets, MHD-mixing/gravity)
+    + [Elasto-Dynamics Tests](#tests-elastic) (e.g. bouncing rubber cylinders)
 12. [Useful Additional Resources](#faqs)
     + [Visualization, Radiative Transfer, and Plotting](#faqs-vis)
-    + [Halo-Finding and Sub-Structure Identification](#faqs-halofinders)
+    + [Halo/Group-Finding and Structure Identification](#faqs-halofinders)
     + [Other Analysis Tools](#faqs-otheranalysistools)
     + [General Super-Computing Questions](#faqs-generalsupercomputing)
 13. [Disclaimer](#disclaimer)
@@ -147,7 +149,7 @@ Some (not all!) current features (with their status) include:
 
 (9) Cosmological integration (large-volume cosmological simulations and "zoom-ins" both supported). 
 
-(10) Arbitrary gas and degenerate matter equations of state (arbitrary polytropes are trivially specified, as are multi-fluid mixtures. More complicated degenerate and stellar equations of state are also handled). 
+(10) Arbitrary gas and degenerate matter equations of state, with equations of state for solid bodies and impact simulations as well as stars, white dwarfs, and neutron stars (arbitrary polytropes are also trivially specified, as are multi-fluid mixtures. More complicated degenerate, stellar, and solid equations of state are also handled with a variety of degrees of complexity). 
 
 (11) Self-interacting dark matter and multi-species (mixed) dark matter physics are supported, with arbitrary (specify-able) cross sections. Scalar field gravity (imported from GADGET) is also supported.
 
@@ -241,30 +243,30 @@ Users who violate these policies will have their access to the private version[s
 
 You are encouraged to study and modify this code (public or private)! Please, if you have ideas for interesting physics to add, add it! You are only asked to do a few things, to make your experience and that of everyone else much easier. 
 
-1. **Communicate Your Plans.** As the lead developer (PFH), I'd really appreciate knowing what kinds of physics you're adding. It may be that someone else has already done this, or that there is partial code already in place, to save you a huge amount of effort.
++ **Communicate Your Plans.** As the lead developer (PFH), I'd really appreciate knowing what kinds of physics you're adding. It may be that someone else has already done this, or that there is partial code already in place, to save you a huge amount of effort.
 
-2. **Build your modifications as a branch to the Bitbucket repository.** The repository is designed to make it very easy to branch, modify, and re-integrate codes, use it to make everything easy! This will make it very easy for you to keep your version of the code up-to-date even after you branched it (rather than it being frozen to an old version). It will also make it easy if you want to ever push back into the main code. Otherwise your code will not be supported.
++ **Build your modifications as a branch to the Bitbucket repository.** The repository is designed to make it very easy to branch, modify, and re-integrate codes, use it to make everything easy! This will make it very easy for you to keep your version of the code up-to-date even after you branched it (rather than it being frozen to an old version). It will also make it easy if you want to ever push back into the main code. Otherwise your code will not be supported.
 
-3. **Always protect against conflicts.** Non-standard code extensions should always be written such that they can be switched off if not needed, and have no side effects on existing code. Normally this means that they have to be enclosed in conditional compilation precompiler statements (#ifdef), especially if variables in the global structures of the code need to be allocated for the extension. However, if the extension's execution can also be controlled at run-time by simple variables, then consider introducing a parameterfile-variable to control the extension. In general, the number of Makefile symbols to control conditional compilation should be kept to a minimum.
++ **Always protect against conflicts.** Non-standard code extensions should always be written such that they can be switched off if not needed, and have no side effects on existing code. Normally this means that they have to be enclosed in conditional compilation precompiler statements (#ifdef), especially if variables in the global structures of the code need to be allocated for the extension. However, if the extension's execution can also be controlled at run-time by simple variables, then consider introducing a parameterfile-variable to control the extension. In general, the number of Makefile symbols to control conditional compilation should be kept to a minimum.
 
-4. Do not place any substantial piece of code belonging to your extension into existing functions of the code. Write your own functions for the code extension, and only place a function call (if needed bracketed by an #ifdef) into the appropriate place of the primary code. Also, place your extension functions into separate source files. The source files for any new module should go into their own folder, with an appropriate name -- just like the existing modules in the code for things like hydro, gravity, galaxy formation, etc. Otherwise the code will quickly become impossible to manage.
++ Do not place any substantial piece of code belonging to your extension into existing functions of the code. Write your own functions for the code extension, and only place a function call (if needed bracketed by an #ifdef) into the appropriate place of the primary code. Also, place your extension functions into separate source files. The source files for any new module should go into their own folder, with an appropriate name -- just like the existing modules in the code for things like hydro, gravity, galaxy formation, etc. Otherwise the code will quickly become impossible to manage.
 
-5. If you're willing to push the changes back and share them, it adds incredibly to the value of the code and (likely) to your own citation rates. Consider it!
++ If you're willing to push the changes back and share them, it adds incredibly to the value of the code and (likely) to your own citation rates. Consider it!
 
 
 ### _General Code-style Principles (Good Practices)_:
 
-1. Code formatting: Try to be consistent with the code formatting of the main code, which is more or less GNU-style, with a few small differences. You can run the indent-command with the options: 
++ Code formatting: Try to be consistent with the code formatting of the main code, which is more or less GNU-style, with a few small differences. You can run the indent-command with the options: 
 
         indent -gnu -npsl -npcs -nbs -nsaf -nsai -nsaw -nprs -bap -pmt -l110 *.c
 
     on your source file(s) to make the indention consistent.
 
-2. Name functions all in lower case as a "command" that is descriptive of what the function does. Words are separated by underscores, e.g. calculate\_normal\_vector\_for\_triangle(...). For all functions, input arguments should come first, output arguments last.
++ Name functions all in lower case as a "command" that is descriptive of what the function does. Words are separated by underscores, e.g. calculate\_normal\_vector\_for\_triangle(...). For all functions, input arguments should come first, output arguments last.
 
-3. Global variables (which should be kept to a minimum!) start with an upper case character. They are nouns, with words separated by mixed lower/upper case characters, and contain no underscores. Use abbreviations that are clear, e.g. NumForceCalculations.
++ Global variables (which should be kept to a minimum!) start with an upper case character. They are nouns, with words separated by mixed lower/upper case characters, and contain no underscores. Use abbreviations that are clear, e.g. NumForceCalculations.
 
-4. Local variables start with lowercase, and should have descriptive names too, except for simple loop iterators and the like. Try to narrow the scope of a variable as much as possible, for example by declaring them inside a block where they are needed. Declaration and initialization should be combined in one command where possible, e.g.
++ Local variables start with lowercase, and should have descriptive names too, except for simple loop iterators and the like. Try to narrow the scope of a variable as much as possible, for example by declaring them inside a block where they are needed. Declaration and initialization should be combined in one command where possible, e.g.
 
         int n = get_particle_count();
 
@@ -274,15 +276,15 @@ You are encouraged to study and modify this code (public or private)! Please, if
         n = get_particle_count();
 
 
-5. Avoid repetition of code, write a function instead. Break up long functions into smaller more manageable pieces.
++ Avoid repetition of code, write a function instead. Break up long functions into smaller more manageable pieces.
 
-6. Preprocessor macros (compile-time flags) that have arguments should be avoided if possible (do whatever you can to minimize the number of compile-time flags. If needed, their names should be fully capitalized. They should always be named with a consistent scheme (as currently in the code, where for example all the galaxy star formation flags begin with "GALSF\_").
++ Preprocessor macros (compile-time flags) that have arguments should be avoided if possible (do whatever you can to minimize the number of compile-time flags. If needed, their names should be fully capitalized. They should always be named with a consistent scheme (as currently in the code, where for example all the galaxy star formation flags begin with "GALSF\_").
 
-7. Magic numbers (including numerical constants) in the code should be avoided and instead be replaced by a symbolic constant(all uppercase) declared with #ifdef in a header file.
++ Magic numbers (including numerical constants) in the code should be avoided and instead be replaced by a symbolic constant(all uppercase) declared with #ifdef in a header file.
 
-8. Address all warnings emitted by the compiler when compiled with "-Wall". Unless there are very or necessary good reasons, the code should compile without any warning (not without a crash, without a *warning*).
++ Address all warnings emitted by the compiler when compiled with "-Wall". Unless there are very or necessary good reasons, the code should compile without any warning (not without a crash, without a *warning*).
 
-9. Include consistent commenting in your code. The meaning of all global variables should be commented where they are introduced, ideally with doxygen syntax, e.g:
++ Include consistent commenting in your code. The meaning of all global variables should be commented where they are introduced, ideally with doxygen syntax, e.g:
 
         int MyGlobalCount; /*!< counts the number of timesteps */
 
@@ -635,12 +637,18 @@ These options set different fluid physics. This includes changing the equation o
 #---------------------------------------- Gas Equations-of-State
 #EOS_GAMMA=(5.0/3.0)            # Polytropic Index of Gas (for an ideal gas law): if not set and no other (more complex) EOS set, defaults to EOS_GAMMA=5/3
 #EOS_HELMHOLTZ                  # Use Timmes & Swesty 2000 EOS (for e.g. stellar or degenerate equations of state); if additional tables needed, download at http://www.tapir.caltech.edu/~phopkins/public/helm_table.dat
+#EOS_TILLOTSON                  # Use Tillotson (1962) EOS (for solid/liquid+vapor bodies, impacts); custom EOS params can be specified or pre-computed materials used. see User Guide and Deng et al., arXiv:1711.04589
+#EOS_ELASTIC                    # treat fluid as elastic or plastic (or visco-elastic) material, obeying Hooke's law with full stress terms and von Mises yield model. custom EOS params can be specified or pre-computed materials used.
 ## ----------------------------------------------------------------------------------------------------
 ```
 
 **EOS\_GAMMA**: Sets the polytropic equation of state to use for gas. This will be used instantaneously for operator-split hydro even if cooling or complicated heating is used. Overridden if EOS\_HELMHOLTZ is used. If not set, Gamma=5/3 is used.    
 
-**EOS\_HELMHOLTZ**: The gas will use the Timmes & Swesty 2000 equation of state (for e.g. stellar or degenerate gas equations of state). This is a standard Helmholtz EOS approach.
+**EOS\_HELMHOLTZ**: The gas will use the Timmes & Swesty 2000 equation of state (for e.g. stellar or degenerate gas equations of state). The electron fraction and mean atomic weight are taken as input parameters (specified in the IC file or calculated on-the-fly if the appropriate physics is included); the EOS then takes these, the density, and internal energy, and returns the pressure, temperature, and entropy of the system, needed for the hydrodynamic solver. This is a standard Helmholtz EOS approach, and standard parameters of the EOS can be edited in the files in the `helmholtz` folder.
+
+**EOS\_TILLOTSON**: The gas particles (Type=0) will use a Tillotson EOS (Tilloson 1962, "Metallic equations of state for hypervelocity impact," Tech. rep., General Dynamics, San Diego CA, General Atomic Div.). This is designed for solid or liquid bodies and solid/liquid+vapor mixtures, particularly popular for simulating solid bodies and their impacts (e.g. asteroid collisions, moon-impact simulations, comet impacts in water, etc). When this flag is active, all particles of Type=0 have an assigned material composition specified by the parameter "CompositionType" (which should be specified in the initial conditions file, or otherwise hard-coded somehow into the start-up operations). This will invoke pre-tabulated equations of state for different compositions: CompositionType=1,2,3,4,5,6 corresponds to granite,basalt,iron,ice,olivine/dunite,or water, respectively (with parameters compiled in Reinhardt+Stadel 2017,MNRAS,467,4252, Table A1). If CompositionType=0, a custom EOS will be used specified by the parameters in the parameterfile (if no particles have CompositionType=0, then these parameters will be ignored). The Lagrangian methods in GIZMO are particularly well-suited to these simulations; for detailed demonstrations and example simulations, see Deng et al., arXiv:1711.04589. Note because of the composition assumptions, this should only be used with fixed-mass methods (MFM or SPH). Users of this module should cite Reinhardt+Stadel for the equations-of-state (unless a new one is used/implemented), and Deng et al. for the numerical implementation.
+
+**EOS\_ELASTIC**: The "gas" particles (Type=0) will be treated as elastic or plastic or visco-elastic substances (for e.g. solid-body models and collisions). In addition to normal isotropic pressure (obeying whatever equation-of-state is specified), the full anisotropic stress forces are solved. The deviatoric stress tensor is evolved according to Hooke's law, with a von Mises yield model to account for plasticity. When active, the user must specify the shear modulus and elastic limit in the parameterfile, or specify a material composition for each particle if `EOS_TILLOTSON` is active (in which case one of the pre-tabulated compositions can be used). Note because of the composition assumptions, this should only be used with fixed-mass methods (MFM or SPH). 
 
 
 <a name="config-fluids-mhd"></a>
@@ -690,7 +698,7 @@ These options set different fluid physics. This includes changing the equation o
 
 **CONDUCTION\_SPITZER**: Calculate the thermal conductivities of the gas self-consistently following Spitzer, accounting for saturation (when the gradient scale lengths approach the electron mean free paths). If this is off, the coefficients are simply constants set by hand. In addition to the conduction methods paper, cite Su et al., 2017, MNRAS, 471, 144, where these calculations were presented and the numerical calculation of said terms was developed.
 
-**VISCOSITY**: Turn on physical, isotropic or anisotropic viscosity. By default this enables Navier-Stokes viscosity, with shear and bulk viscosities set in the parameterfile. The operator-splitting is similar to that for conduction. Again this is implemented for both SPH and MFM/MFV modes; but the MFM/MFV mode is much more accurate and highly recommended. If you are going to use SPH, be sure to use a very large kernel. Timesteps are again appropriately limited for solving the physical equations here. As with conduction, in the pure-hydro case, isotropic viscosity is assumed. If MAGNETIC is on, then the physically correct anisotropic tensor viscosity is used. The methods paper for these implementations is Hopkins 2017, MNRAS, 466, 3387; please cite this if these modules are used.
+**VISCOSITY**: Turn on physical, isotropic or anisotropic viscosity. By default this enables Navier-Stokes viscosity, with shear and bulk viscosities set in the parameterfile. The operator-splitting is similar to that for conduction. Again this is implemented for both SPH and MFM/MFV modes; but the MFM/MFV mode is much more accurate and highly recommended. If you are going to use SPH, be sure to use a very large kernel. Timesteps are again appropriately limited for solving the physical equations here. As with conduction, in the pure-hydro case, isotropic viscosity is assumed. If MAGNETIC is on, then the physically correct anisotropic tensor viscosity is used. For material simulations, one can simulate visco-elastic materials by setting the appropriate shear and bulk viscosity modulus, and these can be made to depend on local material properties by editing the lines in `gradients.c` where the particle-carried local coefficients `SphP[i].Eta_ShearViscosity` and `SphP[i].Zeta_BulkViscosity` are set (if `EOS_TILLOTSON` is set, one can assign different properties to different materials specified in the `CompositionType` flag). The methods paper for these implementations is Hopkins 2017, MNRAS, 466, 3387; please cite this if these modules are used.
 
 **VISCOSITY\_BRAGINSKII**: Calculates the leading-order coefficients for viscosity in ideal MHD for an ionized plasma following Braginskii. If this is off, the viscosity coefficients are simply set by hand. In addition to the conduction/viscosity methods paper, cite Su et al., 2017, MNRAS, 471, 144, where these calculations were presented and the numerical calculation of said terms was developed.
 
@@ -2172,6 +2180,8 @@ These parameters control the optional module for stirred/driven turbulence (set 
 
 **TimeBetTurbSpectrum**: If TURB\_DRIVING\_SPECTRUMGRID is set, this determines the time interval at which the power spectra are saved.
 
+
+
 <a name="params-optional-expansion"></a>
 ### _Non-Standard Dark Matter, Dark Energy, Gravity, or Expansion_ 
 
@@ -2191,6 +2201,31 @@ These parameters control the optional module for stirred/driven turbulence (set 
 
 Here Column (1) is scale factor ($a=1/(1+z)$). Column (2) is the Dark Energy equation-of-state $w(z)$, used if `GR_TABULATED_COSMOLOGY_W` is enabled. Column (3) is the Hubble function $E(z)$, e.g. for concordance $\Lambda$-CDM is just $E(z) = \sqrt{\Omega_{m}\,a^{-3}+\Omega_{K}\,a^{-2}+\Omega_{\Lambda}}$ -- note the normalization is still set by $H_{0}$ set as usual in the cosmological units of the parameterfile. This is used if `GR_TABULATED_COSMOLOGY_H` is enabled. If you want to use this with "standard" dark energy, just set the $w(z)$ values to $-1$ at all times. Columns (4)-(5) are used only if `GR_TABULATED_COSMOLOGY_G` is enabled. (4) Re-normalizes the gravitational contant $G$ at each time -- the default is the value set in the usual fashion in either the parameterfile above, or by the code, and then it will be multiplied by this number. Column (5) multiples the Hubble function by an appropruate multiplicative correction factor at each time. If you have pre-tabulated the correct $H(z)$ yourself already, just write this into column (3) and set column (5) to unity at all times. 
 
+
+
+<a name="params-optional-impact"></a>
+### _Solid Body and Impact Simulations_ 
+
+```bash
+%-------------- Parameters for custom Tillotson equation-of-state (EOS_TILLOTSON on)
+%--- In ICs, set "CompositionType": 0=custom,1=granite,2=basalt,3=iron,4=ice,5=olivine/dunite,6=water;
+%---   their EOS parameters will be set accordingly. If CompositionType=0, the custom parameters below
+%---   are used, matched to the definitions in Table A1 of Reinhardt+Stadel 2017,MNRAS,467,4252 (below is iron)
+Tillotson_EOS_params_a          0.5     % a parameter [dimensionless]
+Tillotson_EOS_params_b          1.5     % b parameter [dimensionless]
+Tillotson_EOS_params_u_0        9.5e10  % u_0 parameter in [erg/g]
+Tillotson_EOS_params_rho_0      7.86    % rho_0 parameter in [g/cm^3]
+Tillotson_EOS_params_A          1.28e12 % A parameter in [erg/cm^3]
+Tillotson_EOS_params_B          1.05e12 % B parameter in [erg/cm^3]
+Tillotson_EOS_params_u_s        1.42e10 % u_s parameter in [erg/g]
+Tillotson_EOS_params_u_s_prime  8.45e10 % u_s^prime parameter in [erg/g]
+Tillotson_EOS_params_alpha      5.0     % alpha parameter [dimensionless]
+Tillotson_EOS_params_beta       5.0     % beta parameter [dimensionless]
+Tillotson_EOS_params_mu         7.75e11 % elastic shear modulus in [erg/cm^3]   (used if EOS_ELASTIC is on)
+Tillotson_EOS_params_Y0         8.5e10  % hugoniot elastic limit in [erg/cm^3]  (used if EOS_ELASTIC is on)
+```
+
+These parameters are used if the `EOS_TILLOTSON` and/or `EOS_ELASTIC` flags are used to activate the equations-of-state and elastic dynamics for different solid+vapor bodies (for e.g. impact simulations or solid-body interactions). When this flag is active, all particles of Type=0 have an assigned material composition specified by the parameter "CompositionType". This will invoke pre-tabulated equations of state for granite, basalt, iron, ice, olivine/dunite, or water (as described above), but if CompositionType=0, a custom EOS will be used, specified by the parameters in the parameterfile (if no particles have CompositionType=0, then these parameters will be ignored). These are specified above, in cgs units, following the notation convention in Reinhardt+Stadel 2017,MNRAS,467,4252. The example given is for iron, but any additional species can be added this way.
 
 
 
@@ -2280,13 +2315,13 @@ For details on actually reading the ICs (feeding them into the simulations), see
 
 A large number of codes exist which can generate IC files for different types of GIZMO problems (again, anything that will generate ICs for GADGET will work for GIZMO). Here are (just a few) examples to get you started:
 
-+ Cosmological simulations (large-volume and "zoom-in"): For these simulations, the MUSIC code (hosted [here](https://bitbucket.org/ohahn/music)) is a fantastic utility to construct both large-volume and "zoom-in" simulations (with or without baryons). Other commonly used codes work as well (such as [NGenIC](https://www.h-its.org/tap-software-en/ngenic-code/), [S-GenIC](https://github.com/sbird/S-GenIC), [2LPT](http://cosmo.nyu.edu/roman/2LPT/), or [CICsASS](http://faculty.washington.edu/mcquinn/Init_Cond_Code.html) which allows for baryon-DM velocity offsets, or [FalconIC](https://falconb.org/) for modified-gravity ICs).  
++ Cosmological simulations (large-volume and "zoom-in"): For these simulations, the MUSIC code (hosted [here](https://bitbucket.org/ohahn/music)) is a fantastic utility to construct both large-volume and "zoom-in" simulations (with or without baryons). Other commonly used codes work as well (such as [NGenIC](https://www.h-its.org/tap-software-en/ngenic-code/), [S-GenIC](https://github.com/sbird/S-GenIC), [2LPT](http://cosmo.nyu.edu/roman/2LPT/), [ZInCo](https://ascl.net/1511.022), or [CICsASS](http://faculty.washington.edu/mcquinn/Init_Cond_Code.html) which allows for baryon-DM velocity offsets, or [FalconIC](https://falconb.org/) for modified-gravity ICs).  
 
-+ Isolated galaxies and galaxy mergers: the most popular code is probably the many variants of Volker Springel's MakeDisk (or MakeGalaxy) code, which is not public but widely available upon request from Volker or collaborators. A similar code, perhaps somewhat less flexible, is [PyICs](https://github.com/jakobherpich/pyICs). Popular options also include codes like [GALIC](https://www.h-its.org/tap-software-en/galic-code/) which can generate arbitrary collisionless halo+disk+bulge systems (just not gas), or [StarScream](https://github.com/jayjaybillings/starscream) for collisionless systems, or [GalStep](https://github.com/ruggiero/galstep) designed for disks. Various cosmological and isolated-galaxy ICs are also public, for example from the [AGORA simulations](https://sites.google.com/site/santacruzcomparisonproject/details).  
++ Isolated galaxies and galaxy mergers: the most popular code is probably the many variants of Volker Springel's MakeDisk (or MakeGalaxy) code, which is not public but widely available upon request from Volker or collaborators. A more powerful code designed to implement true equilibrium initial distribution functions and arbitrary multi-component galaxies is [DICE](https://ascl.net/1607.002). Two similar codes built on this original code include [GalStep](http://ascl.net/code/v/1821) and, perhaps somewhat less flexible, [PyICs](https://github.com/jakobherpich/pyICs). Popular options also include codes like [GALIC](https://www.h-its.org/tap-software-en/galic-code/) which can generate arbitrary collisionless halo+disk+bulge systems (just not gas), or [StarScream](https://github.com/jayjaybillings/starscream) for collisionless systems, or [GalStep](https://github.com/ruggiero/galstep) designed for disks. Various cosmological and isolated-galaxy ICs are also public, for example from the [AGORA simulations](https://sites.google.com/site/santacruzcomparisonproject/details).  
 
-+ Clusters and hydrostatic systems: [Toycluster](https://github.com/jdonnert/Toycluster) allows one to set up collisionless systems with gas (hydro or MHD) and more complex sub-structure than allowed by the tools above for single-galaxies and galaxy mergers.  
++ Clusters and hydrostatic systems: [Toycluster](https://github.com/jdonnert/Toycluster) allows one to set up collisionless systems with gas (hydro or MHD) and more complex sub-structure than allowed by the tools above for single-galaxies and galaxy mergers. [CluStep](http://ascl.net/code/v/1822) is designed to generate equilibrium smooth cluster halos.
 
-+ ISM, star formation, and proto-stellar disks: [MakeCloud](https://github.com/omgspace/MakeCloud) is a public code to generate ICs for turbulent clouds (hydro or MHD), with arbitrary initial rotation, written by Mike Grudic at Caltech.  
++ ISM, star formation, and proto-stellar disks: [MakeCloud](https://github.com/omgspace/MakeCloud) is a public code to generate ICs for turbulent clouds (hydro or MHD), with arbitrary initial rotation, written by Mike Grudic at Caltech. Many of the "isolated galaxy" codes above (particularly one such as [DICE](https://ascl.net/1607.002)) can be fairly easily scaled to generate equilibrium proto-stellar or proto-planetary disks.
 
 + Fluid dynamics & MHD problems: the [Tests](#tests) portion of this User Guide links to pre-built ICs for dozens of test problems involving setups like multiphase fluid interfaces, shocktubes, spherical explosions, cloud-crushing problems, current sheets, field loops, rotors, Keplerian and galactic disks, and more.  
 
@@ -2360,6 +2395,8 @@ One more minor note: the "kernel length" (or, for SPH, the "smoothing length") s
 
 <a name="snaps-reading"></a>
 ## Reading Snapshots (Examples) 
+
+First note that there are many, many public codes and libraries (for python, IDL, C, and other languages) which can read and interact with GIZMO snapshots (or GADGET snapshots, which follow the same format). This includes for example [YT](http://yt-project.org/), [PynBody](https://ascl.net/1305.002), [PyGadgetReader](https://ascl.net/1411.001), [SPHGR](https://ascl.net/1502.012), [PyGad](https://ascl.net/code/v/1569), and more general tools like [MESHOID](https://github.com/omgspace/meshoid), [vaex](http://vaex.astro.rug.nl/), [Glue](http://glueviz.org/en/stable/), [TOPCAT](http://www.star.bris.ac.uk/~mbt/topcat/). Even more examples are given in the "Additional Resources" section below. But it is important to understand directly what is in your snapshots, in case these codes are not appropriate for your analysis (or you are running simulations with different physics). 
 
 In the source code, the folder "scripts" contains two routines to read output snapshots: "readsnap.pro" and "readsnap.py". The former is for IDL, the latter for python, but they function similarly. These can be used as a guide to illustrate how to read the snapshots. Note that these routines are specific to snapshots from simulations run including certain specific physics, and may have to be modified for the specific physics and conditions under which you run your simulation.
 
@@ -3176,6 +3213,38 @@ The current sheet test is the only one with multiple initial conditions: as disc
 
 As above, please explore these freely. 
 
+
+
+
+<a name="tests-elastic"></a>
+## Elasto-Dynamics Tests 
+
+I have begun testing the elastic and solid-body dynamics portions of the code. Thus far they have been vetted on a number of simple wave tests, as well as a couple of basic dynamics tests. Since there is not a formal methods paper for these specific modules, this remains relatively un-documented and currently there is just one example problem below. Users of the code are encouraged to develop additional test problems and contribute them, as well as to explore and expand this portion of the code functionality. 
+
+
+<a name="tests-elastic-rubberrings"></a>
+### Bouncing Rubber Cylinders
+
+This is the colliding/bouncing rubber ring/cylinder test studied in a large number of papers (e.g. Swegle 'SPH in Tension', memo, Sandia National Laboratories, 1992; Sulsky et al., 1995, Comp. Phys. Comm; Monaghan 2000, J. Comp. Phys; Gray et al., 2001, Comp. Methods. Appl. Mech. Eng.). Two rings (between annuli $r=3-4$, in code units) in 2D (representing infinite cylinders) with density $\rho_{0}$ and equation-of-state $P=c_{s}^{2}(\rho-\rho_{0})$, approach at velocity $\pm 0.059\,c_{s}$, collide, bounce, and move away, oscillating (deforming) internally as they do. In code units, $c_{s}=\rho_{0}=1$, and the shear modulus of the material is set to $\mu=0.22$. The desired equation of state is achieved by setting the appropriate parameters for the more general custom Tillotson equation-of-state.
+
+This is a powerful and useful test because while simple, it is actually quite demanding in several respects. Most notably, many algorithms suffer from the "tensile instability" and the rings artificially "crack" or fragment on their collision. If the algorithm is too dissipative, the rings will "stick" rather than bounce. Very small asymmetries in the initial conditions are amplified strongly in the "bounce," so the problem tests the symmetry of the code algorithms. If the elastic forces are not correctly computed, the rings will have no restoring forces and will not oscillate after the bounce. If the equation of state and hydro solver cannot properly handle negative pressures, the rings will diffuse outwards before and after collision. 
+
+Initial conditions: "ring\_collision\_ics.hdf5"
+
+Parameterfile: "ring\_collision.params"
+
+In Config.sh, enable: 
+
+    HYDRO_MESHLESS_FINITE_MASS
+    BOX_SPATIAL_DIMENSION=2
+    SELFGRAVITY_OFF
+    EOS_TILLOTSON
+    EOS_ELASTIC
+    KERNEL_FUNCTION=5
+    
+The choice of `KERNEL_FUNCTION=5` is optional here. Experiment with different kernels, but be sure to set the parameter DesNumNgb accordingly; for e.g. `KERNEL_FUNCTION=3` (or 6), use 20, `KERNEL_FUNCTION=5` (or 7), use 40. SPH, for example, performs noticably better using the Wendland kernels on this test (while for MFM it makes a much smaller difference). The choice of hydro solver is also arbitrary -- however, recall that because of the material assumptions, the elasto-dynamics modules in the code are only designed to work with fixed-mass methods (MFM or SPH variants). 
+
+
 ***
 
 <a name="faqs"></a>
@@ -3190,7 +3259,11 @@ Many questions I get about GIZMO are actually questions about how to visualize a
 
 + [Examples on Phil's website](http://www.tapir.caltech.edu/~phopkins/Site/animations/) -- This isn't code, but some example visualizations of simulations all run with GIZMO, to give you an idea of the kinds of things you can produce (of course you'll notice the heavy bias towards galaxy-formation simulations here, when there's a tremendous amount of other stuff, but I haven't set up a more general gallery yet). 
 
-+ [YT](http://yt-project.org/) -- A great, open-source ptyhon visualization tool with tremendous toolkits. It's widely-used by GIZMO users and perfectly compatible with our outputs.
++ [YT](http://yt-project.org/) is a great, open-source ptyhon visualization tool with tremendous toolkits. It's widely-used by GIZMO users and perfectly compatible with our outputs. It's probably got the most active user-development community of any of these toolkits, so its functionality is changing fairly regularly.
+
++ [GlNEMO2](https://ascl.net/1110.008) is an excellent tool for interactive visualization. Its really designed for real-time interaction with the data-sets, exploring them and visualizing them on-the-fly using an extremely fast openGL rendering interface to explore them, pan and zoom around interactively, but it can also generate high-quality renders as well.
+
++ [Gaepsi](https://ascl.net/1108.005) is another, albeit older interactive-visualization tool designed for cosmological simulations, which can render large Lagrangian gas and collisionless particle data sets quickly and efficiently.
 
 + [TOPCAT](http://www.star.bris.ac.uk/~mbt/topcat/) is a longstanding analysis and plotting package written in Java. Observers like it because they can download online data sets directly into it via the Virtual Observatory, but it will also read simulation data (which could make it useful for simulation/observation comparisons). It was recently updated for the Gaia data release and is actively maintained by Mark Taylor with funding from the UK STFC. It offers an extremely useful "data brushing" mode, where selections made in one plot are highlighted in others, that is really useful for studying multidimensional correlations.
 
@@ -3200,12 +3273,17 @@ Many questions I get about GIZMO are actually questions about how to visualize a
 
 + [VisIt](https://wci.llnl.gov/simulation/computer-codes/visit/) is a popular interactive visualization software package. Davide Radice developed a package of VISIT plugins to make GIZMO compatible, for his applications (these may not immediately work for all possible GIZMO outputs, since some contain different fields -- in that case, you may need to modify the plugins appropriately). See the "visit" folder (within the "scripts" directory) of the GIZMO source code, to see the README and make files needed for building the appropriate GIZMO plugins.
 
-For more detailed radiative transfer performed on the simulations, there are many popular tools again. Some popular codes like Sedona and RadMC3D require input in a grid form. This can be generated via many different visualization codes (e.g. YT), or by custom routines pretty easily (e.g. some of the libraries linked above). Other popular codes like [SKIRT](https://github.com/SKIRT/SKIRT8) or [SUNRISE](https://bitbucket.org/lutorm/sunrise) will work "out of the box" with GIZMO. I know of at least 15 different radiative transfer codes that have been run on GIZMO outputs within the first year of its existence (for different purposes), so there are many different options depending on the science you want to do.
+For more detailed radiative transfer performed on the simulations, there are many popular tools again. 
 
++ Full, multi-wavelength radiative transfer: Many popular codes like [SKIRT](https://github.com/SKIRT/SKIRT8) or [SUNRISE](https://bitbucket.org/lutorm/sunrise) will work "out of the box" with GIZMO. Some other popular codes like Sedona and RadMC3D require input in a grid form. This can be generated via many different visualization codes (e.g. YT), or by custom routines pretty easily (e.g. some of the libraries linked above). I know of at least 15 different radiative transfer codes that have been run on GIZMO outputs within the first year of its existence (for different purposes), so there are many different options depending on the science you want to do.
+
++ Mock spectra: Various codes exist specifically to generate mock spectra or absorption spectra from the simulations, for example [Trident](http://trident-project.org/) for general line-of-sight ray tracing and absorption-line spectra or [FSFE](https://ascl.net/1710.012) for mock quasar absorption-line spectra in cosmological boxes.
+
++ Many more specific codes exist, for example [pyXSIM](https://ascl.net/1608.002) is a code designed specifically to generate synthetic X-ray observations, which is compatible with our simulation outputs.
 
 
 <a name="faqs-halofinders"></a>
-## Halo-Finding and Sub-Structure Identification (Post-Processing)
+## Halo/Group-Finding and Structure Identification (Post-Processing)
 
 Many people ask about automated tools for halo-finding or structure identification in the simulations. This is a quite large and mature industry onto itself, on which many many papers have been written. I'll just note a couple popular codes that people commonly use to process GIZMO outputs:
 
@@ -3214,6 +3292,10 @@ Many people ask about automated tools for halo-finding or structure identificati
 + [Rockstar](https://bitbucket.org/gfcstanford/rockstar): The Rockstar halo finder is another halo finder designed for cosmological simulations, with the most important distinction from AHF being that it searches in phase-space, as opposed to real-space only, which can make a large difference for sub-structure.
 
 + [HOP2](https://github.com/omgspace/HOP2): General-purpose self-gravitating structure finder for isolated simulations (useful for finding things like clumps or star clusters in the simulations, as opposed to DM halos defined in the more traditional cosmological fashion). Requires snapshots with gravitational potential data.  
+
++ General Group-finding: Many other analysis tools such as [YT](http://yt-project.org/), [SPHGR](https://ascl.net/1502.012), [PyGad](https://ascl.net/code/v/1569) also have their own internal group-finders or wrappers for tools such as Rockstar. These are particularly useful if, for example, you wish to identify groups of particles of a given type which are not "normally" searched in codes like AHF or Rockstar (e.g. searches for certain types of baryonic particles to identify young star clusters or molecular clouds/clumps). 
+
++ Power Spectra: Although there is some in-code functionality to compute power spectra in GIZMO, a variety of public codes exist specifically to efficiently compute various types of power spectra from the simulation outputs, including for example [GenPK](https://ascl.net/1706.006), [computePK](https://ascl.net/1403.015), and [POWMES](https://ascl.net/1110.017).
 
 
 <a name="faqs-otheranalysistools"></a>
@@ -3225,6 +3307,7 @@ While there are a huge number of analysis tools, and users can of course write a
 
 + [MESHOID](https://github.com/omgspace/meshoid): Useful Python module for analyzing particle data. Computes neighbour lists, smoothing lengths and meshless derivatives just like GIZMO, and has methods for kernel-to-grid deposition for slice/projection plots. This is extremely useful when you want to do something like re-construct the gradients of some field (say, density) in post-processing, which weren't saved by the outputs directly. Its also a great tool for actual plotting and analysis.
 
++ [PynBody](https://ascl.net/1305.002), [PyGadgetReader](https://ascl.net/1411.001), [SPHGR](https://ascl.net/1502.012), and [PyGad](https://ascl.net/code/v/1569) are all python modules designed for easy reading and interaction with the simulation outputs. These are general analysis tools which have a variety of functionality associated with them. [YT](http://yt-project.org/), as described above, also has these tools (in addition to its pure visualization functions). 
 
 
 <a name="faqs-generalsupercomputing"></a>

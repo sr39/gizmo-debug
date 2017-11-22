@@ -362,7 +362,7 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
 {
     if(P[i].Type == 0 && P[i].Mass > 0)
     {
-        int k; k=0;
+        int k, kf; k=0, kf=0;
 #if defined(MAGNETIC)
 #ifndef MHD_ALTERNATIVE_LEAPFROG_SCHEME
         for(k=0;k<3;k++) {SphP[i].BPred[k] = SphP[i].B[k];}
@@ -378,7 +378,6 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
 #endif
 #endif
 #if defined(RT_EVOLVE_NGAMMA)
-        int kf;
         for(kf=0;kf<N_RT_FREQ_BINS;kf++)
         {
             SphP[i].E_gamma_Pred[kf] = SphP[i].E_gamma[kf];
@@ -387,6 +386,9 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
 #endif
         }
         rt_eddington_update_calculation(i);
+#endif
+#ifdef EOS_ELASTIC
+        for(k=0;k<3;k++) {for(kf=0;kf<3;kf++) {SphP[i].Elastic_Stress_Tensor_Pred[k][kf]=SphP[i].Elastic_Stress_Tensor[k][kf];}}
 #endif
         
         SphP[i].Pressure = get_pressure(i);
@@ -478,6 +480,10 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
     
 #ifdef RADTRANSFER
     rt_update_driftkick(i,dt_entr,0);
+#endif
+
+#ifdef EOS_ELASTIC
+    elastic_body_update_driftkick(i,dt_entr,0);
 #endif
 }
 

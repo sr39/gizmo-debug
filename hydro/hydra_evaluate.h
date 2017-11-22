@@ -345,6 +345,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #define HLL_DIFFUSION_OVERSHOOT_FACTOR  1.0
 #endif
                 
+#ifdef EOS_ELASTIC
+#include "../solids/elastic_stress_tensor_force.h"
+#endif
 
 #ifdef MHD_NON_IDEAL
 #include "nonideal_mhd.h"
