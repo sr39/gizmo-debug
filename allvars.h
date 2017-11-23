@@ -1835,19 +1835,7 @@ extern struct global_data_all_processes
 #endif
 
 #if defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)
-  float Tillotson_EOS_params[7][12]; /*! < holds parameters for Tillotson EOS for solids */
-    float Tillotson_EOS_params_a;
-    float Tillotson_EOS_params_b;
-    float Tillotson_EOS_params_u_0;
-    float Tillotson_EOS_params_rho_0;
-    float Tillotson_EOS_params_A;
-    float Tillotson_EOS_params_B;
-    float Tillotson_EOS_params_u_s;
-    float Tillotson_EOS_params_u_s_prime;
-    float Tillotson_EOS_params_alpha;
-    float Tillotson_EOS_params_beta;
-    float Tillotson_EOS_params_mu;
-    float Tillotson_EOS_params_Y0;
+  double Tillotson_EOS_params[7][12]; /*! < holds parameters for Tillotson EOS for solids */
 #endif
 
 #ifdef EOS_TABULATED

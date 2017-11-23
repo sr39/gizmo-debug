@@ -1091,7 +1091,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     {
                         int kf;
                         for(kf = 0; kf < 3; kf++)
-                            fp[k] = SphP[pindex].Elastic_Stress_Tensor[kf][k];
+                            fp[3*k + kf] = SphP[pindex].Elastic_Stress_Tensor[kf][k];
                     }
                     n++;
                     fp += 9;
@@ -1145,7 +1145,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     {
                         int kf;
                         for(kf = 0; kf < N_RT_FREQ_BINS; kf++)
-                            fp[k] = SphP[pindex].ET[kf][k];
+                            fp[3*k + kf] = SphP[pindex].ET[kf][k];
                     }
                     n++;
                     fp += 6*N_RT_FREQ_BINS;
