@@ -24,24 +24,24 @@
 
 
 
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
 MyDouble boxSize, boxHalf, inverse_boxSize;
 
-#ifdef LONG_X
+#ifdef BOX_LONG_X
 MyDouble boxSize_X, boxHalf_X, inverse_boxSize_X;
 #else
 #endif
-#ifdef LONG_Y
+#ifdef BOX_LONG_Y
 MyDouble boxSize_Y, boxHalf_Y, inverse_boxSize_Y;
 #else
 #endif
-#ifdef LONG_Z
+#ifdef BOX_LONG_Z
 MyDouble boxSize_Z, boxHalf_Z, inverse_boxSize_Z;
 #else
 #endif
 #endif
 
-#ifdef SHEARING_BOX
+#ifdef BOX_SHEARING
 MyDouble Shearing_Box_Vel_Offset;
 MyDouble Shearing_Box_Pos_Offset;
 #endif
@@ -153,10 +153,6 @@ int N_gas;			/*!< number of gas particles on the LOCAL processor  */
 #ifdef SEPARATE_STELLARDOMAINDECOMP
 int N_stars;
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-int N_BHs;
-#endif
-
 
 long long Ntype[6];		/*!< total number of particles of each type */
 int NtypeLocal[6];		/*!< local number of particles of each type */
@@ -220,7 +216,7 @@ FILE
 #ifdef TURB_DRIVING
 *FdTurb,        /*!< file handle for turb.txt log-file */
 #endif
-#ifdef DARKENERGY
+#ifdef GR_TABULATED_COSMOLOGY
 *FdDE,			/*!< file handle for darkenergy.txt log-file. */
 #endif
 #endif
@@ -243,7 +239,7 @@ FILE *FdHIIHeating;	/*!< file handle for HIIheating.txt log-file */
 FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 #endif
 
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
 #ifdef PMGRID
 FILE *FdTidaltensor;		/*!< file handle for Tidaltensor.txt log-file. */
 #endif
@@ -251,11 +247,12 @@ FILE *FdTidaltensor;		/*!< file handle for Tidaltensor.txt log-file. */
 
 #ifdef BLACK_HOLES
 FILE *FdBlackHoles;		/*!< file handle for blackholes.txt log-file. */
-#ifndef IO_REDUCED_MODE
+//#ifndef IO_REDUCED_MODE   DAA-IO: BH_OUTPUT_MOREINFO overrides IO_REDUCED_MODE
+#if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
 FILE *FdBlackHolesDetails;
 #ifdef BH_OUTPUT_MOREINFO
 FILE *FdBhMergerDetails;
-#ifdef BH_BAL_KICK
+#ifdef BH_WIND_KICK
 FILE *FdBhWindDetails;
 #endif
 #endif
@@ -303,10 +300,6 @@ struct particle_data *P,	/*!< holds particle data on local processor */
  */
 struct sph_particle_data *SphP,	/*!< holds SPH particle data on local processor */
  *DomainSphBuf;			/*!< buffer for SPH particle data in domain decomposition */
-
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-struct bh_particle_data *BHP;
-#endif
 
 peanokey *DomainKeyBuf;
 

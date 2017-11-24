@@ -90,7 +90,7 @@ BUILDINFO = "Build on $(HOSTNAME) by $(USER) from $(HG_BRANCH):$(HG_COMMIT) at $
 
 ifeq (FIRE_PHYSICS_DEFAULTS,$(findstring FIRE_PHYSICS_DEFAULTS,$(CONFIGVARS)))  # using 'fire default' instead of all the above
     CONFIGVARS += COOLING COOL_LOW_TEMPERATURES COOL_METAL_LINES_BY_SPECIES
-    CONFIGVARS += GALSF METALS TURB_DIFF_METALS GALSF_SFR_MOLECULAR_CRITERION GALSF_SFR_VIRIAL_SF_CRITERION=0
+    CONFIGVARS += GALSF METALS TURB_DIFF_METALS TURB_DIFF_METALS_LOWORDER GALSF_SFR_MOLECULAR_CRITERION GALSF_SFR_VIRIAL_SF_CRITERION=0
     CONFIGVARS += GALSF_FB_GASRETURN GALSF_FB_HII_HEATING GALSF_FB_SNE_HEATING=1 GALSF_FB_RT_PHOTONMOMENTUM
     CONFIGVARS += GALSF_FB_LOCAL_UV_HEATING GALSF_FB_RPWIND_LOCAL GALSF_FB_RPROCESS_ENRICHMENT=4
 #    CONFIGVARS += GALSF_SFR_IMF_VARIATION
@@ -132,8 +132,8 @@ else
 endif
 endif
 else
-# or if POWERSPEC_GRID is activated
-ifeq (POWERSPEC_GRID, $(findstring POWERSPEC_GRID, $(CONFIGVARS)))
+# or if TURB_DRIVING_SPECTRUMGRID is activated
+ifeq (TURB_DRIVING_SPECTRUMGRID, $(findstring TURB_DRIVING_SPECTRUMGRID, $(CONFIGVARS)))
 ifeq (NOTYPEPREFIX_FFTW,$(findstring NOTYPEPREFIX_FFTW,$(CONFIGVARS)))  # fftw installed without type prefix?
   FFTW_LIBNAMES = -lrfftw_mpi -lfftw_mpi -lrfftw -lfftw
 else
@@ -291,7 +291,8 @@ FC       = $(CC)
 #OPTIMIZE = -Wall -g -O3 -xHOST -ipo -no-prec-div -fp-model fast=2 -fast-transcendentals -funroll-loops ## optimizations for intel compilers
 ##OPTIMIZE += -pg ## profiling for intel compilers
 OPTIMIZE = -g -O2 -ffast-math -funroll-loops -finline-functions -funswitch-loops -fpredictive-commoning -fgcse-after-reload -fipa-cp-clone  ## optimizations for gcc compilers (1/2)
-OPTIMIZE += -ftree-loop-distribute-patterns -ftree-slp-vectorize -fvect-cost-model -ftree-partial-pre   ## optimizations for gcc compilers (2/2)
+OPTIMIZE += -ftree-loop-distribute-patterns -fvect-cost-model -ftree-partial-pre   ## optimizations for gcc compilers (2/2)
+#OPTIMIZE += -ftree-loop-distribute-patterns -ftree-slp-vectorize -fvect-cost-model -ftree-partial-pre   ## optimizations for gcc compilers (2/2)
 #OPTIMIZE += -pg -fprofile -fprofile-arcs -ftest-coverage -fprofile-generate ## full profiling, for gcc compilers
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -fopenmp # openmp required compiler flags
@@ -322,6 +323,9 @@ OPT     += -DUSE_MPI_IN_PLACE
 ##   export I_MPI_DAPL_TRANSLATION_CACHE=0
 ##   before your "mpirun", (or include it in your .bashrc and source that before running): this is necessary or else the communication over DAPL will generate MPI memory errors
 ##
+## note that with the newer builds of HDF5 on the machine, you may need to add the line
+## export HDF5_DISABLE_VERSION_CHECK=1
+##  to your .bashrc file, or it will think the wrong HDF5 file is linked and crash (even though it is fine)
 endif
 
 
@@ -359,9 +363,9 @@ endif
 
 #------------------------------------------------------------------------------
 ifeq ($(SYSTYPE), "Edison")
-CC	 =  mpicc
-CXX	 =  mpipc
-FC	 =  $(CC)
+CC       =  cc #instead ofmpicc
+CXX      =  CC #instead of mpipc
+FC       =  ftn #instead of $(CC)
 OPTIMIZE =  -O3 -funroll-loops -ffast-math -finline-functions -funswitch-loops
 OPTIMIZE += -g -Wall -fpredictive-commoning -fgcse-after-reload -fvect-cost-model
 ifeq (OPENMP, $(findstring OPENMP,$(CONFIGVARS)))
@@ -422,6 +426,35 @@ MPICHLIB =
 ##    module load intel intelmpi gsl fftw/2.1.5-intel-intelmpi4 use.experimental hdf5/intelmpi/1.8.9
 ##    OPTIMIZE =  -O2 -m64 -mt_mpi -openmp -xhost -g -debug parallel -mcmodel=medium -funroll-loops -Wall
 ##
+endif
+
+
+
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Iron")
+CC       =   mpicc     # sets the C-compiler
+OPT      +=  -DMPICH_IGNORE_CXX_SEEK
+#OPTIMIZE =   -std=c99 -O3 -g -Wall -Wno-unused-but-set-variable -Wno-uninitialized -Wno-unknown-pragmas -Wno-unused-function -march=native
+OPTIMIZE =   -std=c99 -O3 -fno-tree-vectorize -march=native
+OPTIMIZE += -g   #-Wall # compiler warnings
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE +=  -fopenmp
+endif
+GSL_INCL =  -I$(GSLDIR)/include
+GSL_LIBS =  -L$(GSLDIR)/lib
+FFTW_INCL=  -I$(FFTW2DIR)/include
+FFTW_LIBS=  -L$(FFTW2DIR)/lib
+MPICHLIB =
+HDF5INCL =  -I$(HDF5DIR)/include -DH5_USE_16_API
+HDF5LIB  =  -L$(HDF5DIR)/lib -lhdf5 -lz
+GMP_INCL =  #-I$(GMPDIR)/include
+GMP_LIBs =  #-L$(GMPDIR)/lib
+#module load slurm
+#module add gcc
+#module load openmpi2/2.0.2-hfi
+#module add lib/hdf5
+#module add lib/fftw2/2.1.5-openmpi2
+#module add lib/gsl
 endif
 
 
@@ -495,6 +528,9 @@ CC       =  mpicc
 CXX      =  mpic++
 FC       =  $(CC)
 OPTIMIZE = -O2 -xhost -ipo -funroll-loops -no-prec-div -fp-model fast=2
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -parallel -openmp  # openmp required compiler flags
+endif
 GMP_INCL = #
 GMP_LIBS = #
 MKL_INCL = -I$(MKLROOT)/include
@@ -549,10 +585,11 @@ ifeq ($(SYSTYPE),"BlueWaters")
 CC       =  cc
 CXX      =  CC
 FC       =  $(CC) #ftn
-OPTIMIZE = -O3 -ipo -funroll-loops -no-prec-div -fp-model fast=2 -static
-OPTIMIZE += -g
+#OPTIMIZE = -O3 -ipo -funroll-loops -no-prec-div -fp-model fast=2 -static
+OPTIMIZE = -fast -no-ipo
+#OPTIMIZE += -g
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
-OPTIMIZE += -parallel -qopenmp # (intel) openmp required compiler flags
+OPTIMIZE += -parallel -qopenmp -fopenmp # (intel) openmp required compiler flags
 FC       = $(CC)
 endif
 GMP_INCL = #
@@ -565,17 +602,54 @@ FFTW_INCL= -I$(FFTW_DIR)/include
 FFTW_LIBS= -L$(FFTW_DIR)/lib
 HDF5INCL = -I$(HDF5_DIR)/include -DH5_USE_16_API
 HDF5LIB  = -L$(HDF5_DIR)/lib -lhdf5 -lz
-MPICHLIB =
+MPICHLIB = -lmpich_intel
 OPT     += -DUSE_MPI_IN_PLACE
 endif
 ## in your .bashrc file, include
-## module load cray-hdf5-parallel fftw/2.1.5.9 gsl
-## compiler comparison: cray ok, intel good, gnu very slow (underflows for some reason are very bad
-##   on the AMD chips), pgi good. not surprisingly intel/pgi do best.
-## module swap PrgEnv-pgi PrgEnv-intel
-## module load cray-hdf5-parallel fftw/2.1.5.9 gsl
+##    module swap PrgEnv-cray PrgEnv-intel
+##    module load cray-hdf5-parallel fftw/2.1.5.9 gsl bwpy szip
+##    module swap intel intel/17.0.4.196
+##    umask 022
+##    ulimit -s unlimited
 ##
-
+## NOTE: everything above is for intel compilers. PGI performs almost as well (within 5%) and has OpenACC, much better for GPU/xk nodes.
+##  to use PGI, replace PrgEnv-intel with PrgEnv-pgi everywhere here, and replace the optimize line with:
+##  OPTIMIZE = -m64 -mcmodel=medium -Mdalign -Mllalign -Munroll -O3 -fastsse -Mipa=fast -fast -Msafeptr
+##
+## example run submission script:
+##
+##  #!/bin/bash
+##  #PBS -N NAME                 # name as desired
+##  #PBS -q debug                # debug or normal or whatever queue
+##  #PBS -l nodes=NNODES:ppn=32:xe   # PPN=32, essentially always; nodes=NNODES (set to number)
+##  ##PBS -l flags=preemptee     # makes job pre-emptable: receives discount for time used
+##  ##PBS -l minwclimit=23:10:00  -l walltime=48:00:00  # flexible clock time (set min/max) - often gets on machine faster
+##  #PBS -l walltime=00:15:00    # fixed run-time, set appropriately
+##  #PBS -j oe                   # outputs
+##  #PBS -o run.out              # outputs
+##  cd $PBS_O_WORKDIR            # run in submission directory
+##  . /opt/modules/default/init/bash # NEEDED to add module commands to shell
+##  source $HOME/.bashrc         # source your bash shortcuts, etc
+##  module swap PrgEnv-cray PrgEnv-intel    # make sure correct compilers [intel here] loaded
+##  module load intel cray-hdf5-parallel fftw/2.1.5.9 gsl szip   # make sure correct modules loaded
+##  module swap intel intel/17.0.4.196
+##  export KMP_AFFINITY=disabled  # include if and only if you are using intel17+ compilers, needed to leverage newer cache optimizations
+##  export OMP_NUM_THREADS=NOMP        # turn on for OpenMP runs, NOMP=number of threads (=1 if not using OpenMP, in everything below)
+##  aprun -S SNODENUM -cc numa_node -N NMPINODE -d NOMP -n NTOTAL ./GIZMO ./params.txt 1>gizmo.out 2>gizmo.err
+##  ## (in the above:
+##  ##     -S SNODENUM : set SNODENUM = NMPINODE/4 = 8/NOMP. This is how many MPI tasks per die (4 dies per node) -- prevents memory issues
+##  ##        which can dramatically slow down code by threads spawning without local access to memory.
+##  ##        If using >8 OpenMP threads (so this would be <1), this command should be removed.
+##  ##     -N NMPINODE : set NMPINODE = 32/NOMP = number of MPI tasks per node. BW has 32 integer-cores per node, with this structure all can be used; even though every pair shares 1 FP core.
+##  ##     -d NOMP = specifies spacing/skipping of CPUs for multi-threaded alignment: set equal to NOMP
+##  ##     NTOTAL = NNODES*NMPINODE = total number of MPI tasks (not number of processors)
+##  ##     (in previous notes, had "-ss" do memory-binding, and "-j 1" prevents integer-cores sharing the same FPU, but this is better handled by the numa_node memory strategy)
+##  ##
+##
+##  For FIRE runs, generally reasonable with OPENMP off or set =2,4,8. Any higher over-runs the die, not good.
+##  May be some (small) performance improvement from using newest Intel MPI: in .bashrc and run-file add line "module swap intel intel/17.0.4.196" after the lines
+##   that load intel compilers, and in run-file, before OPENMP definition, include line "export KMP_AFFINITY=disabled" (this is necessary with OpenMP in intel17+ or performance will suffer)
+##
 
 
 #----------------------------------------------------------------------------------------------
@@ -839,13 +913,13 @@ endif
 
 
 
-ifneq (HAVE_HDF5,$(findstring HAVE_HDF5,$(CONFIGVARS)))
+ifeq (IO_DISABLE_HDF5,$(findstring IO_DISABLE_HDF5,$(CONFIGVARS)))
 HDF5INCL =
 HDF5LIB  =
 endif
 
 
-ifeq (GRACKLE,$(findstring GRACKLE,$(CONFIGVARS)))
+ifeq (COOL_GRACKLE,$(findstring COOL_GRACKLE,$(CONFIGVARS)))
 OPT += -DCONFIG_BFLOAT_8
 else
 GRACKLEINCL =
@@ -884,7 +958,7 @@ OBJS	+= $(L3_OBJS)
 INCL    += allvars.h proto.h gravity/forcetree.h domain.h system/myqsort.h kernel.h eos/eos.h Makefile \
 
 
-ifeq (GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION,$(findstring GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION,$(CONFIGVARS)))
+ifeq (GALSF_SUBGRID_WINDS,$(findstring GALSF_SUBGRID_WINDS,$(CONFIGVARS)))
 OBJS    += galaxy_sf/dm_dispersion_hsml.o
 endif
 
@@ -906,12 +980,16 @@ endif
 
 
 
-ifeq (TWOPOINT_FUNCTION_COMPUTATION_ENABLED,$(findstring TWOPOINT_FUNCTION_COMPUTATION_ENABLED,$(CONFIGVARS)))
+ifeq (OUTPUT_TWOPOINT_ENABLED,$(findstring OUTPUT_TWOPOINT_ENABLED,$(CONFIGVARS)))
 OBJS    += structure/twopoint.o
 endif
 
 ifeq (GALSF_FB_SNE_HEATING,$(findstring GALSF_FB_SNE_HEATING,$(CONFIGVARS)))
 OBJS    += galaxy_sf/mechanical_fb.o
+endif
+
+ifeq (GALSF_FB_THERMAL,$(findstring GALSF_FB_THERMAL,$(CONFIGVARS)))
+OBJS    += galaxy_sf/thermal_fb.o
 endif
 
 ifeq (GALSF_FB_RPWIND_LOCAL,$(findstring GALSF_FB_RPWIND_LOCAL,$(CONFIGVARS)))
@@ -946,7 +1024,7 @@ OBJS    += structure/fof.o
 INCL	+= structure/fof.h
 endif
 
-ifeq (OUTPUTLINEOFSIGHT,$(findstring OUTPUTLINEOFSIGHT,$(CONFIGVARS)))
+ifeq (OUTPUT_LINEOFSIGHT,$(findstring OUTPUT_LINEOFSIGHT,$(CONFIGVARS)))
 OBJS    += structure/lineofsight.o
 endif
 
@@ -955,12 +1033,8 @@ OBJS    += cooling/cooling.o
 INCL	+= cooling/cooling.h
 endif
 
-ifeq (GRACKLE,$(findstring GRACKLE,$(CONFIGVARS)))
+ifeq (COOL_GRACKLE,$(findstring COOL_GRACKLE,$(CONFIGVARS)))
 OBJS    += cooling/grackle.o
-endif
-
-ifeq (BUBBLES,$(findstring BUBBLES,$(CONFIGVARS)))
-OBJS    += modules/bubbles/bubbles.o
 endif
 
 ifeq (EOS_HELMHOLTZ,$(findstring EOS_HELMHOLTZ,$(CONFIGVARS)))
@@ -974,7 +1048,7 @@ ifeq (IMPOSE_PINNING,$(findstring IMPOSE_PINNING,$(CONFIGVARS)))
 OBJS	+= system/pinning.o
 endif
 
-ifeq (DISTORTIONTENSORPS,$(findstring DISTORTIONTENSORPS,$(CONFIGVARS)))
+ifeq (GDE_DISTORTIONTENSOR,$(findstring GDE_DISTORTIONTENSOR,$(CONFIGVARS)))
 OBJS	+= modules/phasespace/phasespace.o modules/phasespace/phasespace_math.o
 endif
 
@@ -989,7 +1063,7 @@ OBJS	+= subfind/subfind.o subfind/subfind_vars.o subfind/subfind_collective.o su
 INCL	+= subfind/subfind.h
 endif
 
-ifeq (SIDM,$(findstring SIDM,$(CONFIGVARS)))
+ifeq (DM_SIDM,$(findstring DM_SIDM,$(CONFIGVARS)))
 OBJS    +=  sidm/sidm_core.o sidm/sidm_allvars.o
 INCL    +=  sidm/sidm_proto.h
 endif

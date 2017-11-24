@@ -31,8 +31,8 @@
 
 
 
-#if defined(CONSTRAINED_GRADIENT_MHD)
-#if (CONSTRAINED_GRADIENT_MHD > 1)
+#if defined(MHD_CONSTRAINED_GRADIENT)
+#if (MHD_CONSTRAINED_GRADIENT > 1)
 #define NUMBER_OF_GRADIENT_ITERATIONS 3
 #else
 #define NUMBER_OF_GRADIENT_ITERATIONS 2
@@ -71,7 +71,7 @@ struct Quantities_for_Gradients
     MyDouble Phi;
 #endif
 #endif
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
     MyDouble Metallicity[NUM_METAL_SPECIES];
 #endif
 #ifdef RT_EVOLVE_EDDINGTON_TENSOR
@@ -100,10 +100,10 @@ struct GasGraddata_in
     MyFloat Mass;
     MyFloat Hsml;
     int Timestep;
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
     MyFloat NV_T[3][3];
     MyFloat BGrad[3][3];
-#ifdef CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV
+#ifdef MHD_CONSTRAINED_GRADIENT_FAC_MEDDEV
     MyFloat PhiGrad[3];
 #endif
 #endif
@@ -128,7 +128,7 @@ struct GasGraddata_out
     MyFloat DtB[3];
 #endif
 #endif
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
     MyFloat Face_Area[3];
     MyFloat FaceDotB;
     MyFloat FaceCrossX[3][3];
@@ -144,9 +144,9 @@ struct GasGraddata_out
 
 struct GasGraddata_out_iter
 {
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
     MyFloat FaceDotB;
-#ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#ifdef MHD_CONSTRAINED_GRADIENT_MIDPOINT
     MyDouble PhiGrad[3];
 #endif
 #else 
@@ -164,11 +164,11 @@ static struct temporary_data_topass
     struct Quantities_for_Gradients Maxima;
     struct Quantities_for_Gradients Minima;
     MyFloat MaxDistance;
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
     MyDouble FaceDotB;
     MyDouble FaceCrossX[3][3];
     MyDouble BGrad[3][3];
-#ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#ifdef MHD_CONSTRAINED_GRADIENT_MIDPOINT
     MyDouble PhiGrad[3];
 #endif
 #endif
@@ -196,7 +196,7 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
     if(in->Mass < 0) {in->Mass = 0;}
     if(SHOULD_I_USE_SPH_GRADIENTS(SphP[i].ConditionNumber)) {in->Mass *= -1;}
     in->Timestep = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0);
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
     if(gradient_iteration > 0)
         if(SphP[i].FlagForConstrainedGradients <= 0)
             in->Mass = 0;
@@ -208,7 +208,7 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
             in->BGrad[j][k] = SphP[i].Gradients.B[j][k];
             in->NV_T[j][k] = SphP[i].NV_T[j][k];
         }
-#ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#ifdef MHD_CONSTRAINED_GRADIENT_MIDPOINT
         in->PhiGrad[j] = SphP[i].Gradients.Phi[j];
 #endif
     }
@@ -216,7 +216,7 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
     {
         for(k = 0; k < 3; k++) {in->GQuant.B[k] = Get_Particle_BField(i,k);}
         in->GQuant.Density = SphP[i].Density;
-#ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#ifdef MHD_CONSTRAINED_GRADIENT_MIDPOINT
         in->GQuant.Phi = Get_Particle_PhiField(i);
 #endif
     }
@@ -235,7 +235,7 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
         in->GQuant.Phi = Get_Particle_PhiField(i);
 #endif
 #endif
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
         for(k = 0; k < NUM_METAL_SPECIES; k++)
             in->GQuant.Metallicity[k] = P[i].Metallicity[k];
 #endif
@@ -271,10 +271,10 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
 
 static inline void out2particle_GasGrad_iter(struct GasGraddata_out_iter *out, int i, int mode, int gradient_iteration)
 {
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
     {
         ASSIGN_ADD_PRESET(GasGradDataPasser[i].FaceDotB,out->FaceDotB,mode);
-#ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#ifdef MHD_CONSTRAINED_GRADIENT_MIDPOINT
         int k;
         for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].PhiGrad[k],out->PhiGrad[k],mode);}
 #endif
@@ -286,10 +286,10 @@ static inline void out2particle_GasGrad_iter(struct GasGraddata_out_iter *out, i
 
 static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int mode, int gradient_iteration)
 {
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
     {
         ASSIGN_ADD_PRESET(GasGradDataPasser[i].FaceDotB,out->FaceDotB,mode);
-#ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#ifdef MHD_CONSTRAINED_GRADIENT_MIDPOINT
         int k;
         for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].PhiGrad[k],out->Gradients[k].Phi,mode);}
 #endif
@@ -352,7 +352,7 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
 #endif
         
         
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
         for(j=0;j<3;j++)
         {
             ASSIGN_ADD_PRESET(SphP[i].Face_Area[j],out->Face_Area[j],mode);
@@ -370,7 +370,7 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
             MIN_ADD(GasGradDataPasser[i].Minima.B[j],out->Minima.B[j],mode);
             for(k=0;k<3;k++)
             {
-#ifndef CONSTRAINED_GRADIENT_MHD
+#ifndef MHD_CONSTRAINED_GRADIENT
                 ASSIGN_ADD_PRESET(SphP[i].Gradients.B[j][k],out->Gradients[k].B[j],mode);
 #endif
             }
@@ -379,14 +379,14 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
 #ifdef DIVBCLEANING_DEDNER
         MAX_ADD(GasGradDataPasser[i].Maxima.Phi,out->Maxima.Phi,mode);
         MIN_ADD(GasGradDataPasser[i].Minima.Phi,out->Minima.Phi,mode);
-#ifndef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#ifndef MHD_CONSTRAINED_GRADIENT_MIDPOINT
         for(k=0;k<3;k++)
             ASSIGN_ADD_PRESET(SphP[i].Gradients.Phi[k],out->Gradients[k].Phi,mode);
 #endif
 #endif
 #endif // closes MAGNETIC
         
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
         for(j=0;j<NUM_METAL_SPECIES;j++)
         {
             MAX_ADD(GasGradDataPasser[i].Maxima.Metallicity[j],out->Maxima.Metallicity[j],mode);
@@ -536,16 +536,16 @@ void hydro_gradient_calc(void)
                 SphP[i].Gradients.SoundSpeed[k] = 0;
 #endif
 #ifdef MAGNETIC
-#ifndef CONSTRAINED_GRADIENT_MHD
+#ifndef MHD_CONSTRAINED_GRADIENT
                 for(k2=0;k2<3;k2++) {SphP[i].Gradients.B[k2][k] = 0;}
 #else
                 SphP[i].Face_Area[k] = 0;
 #endif
-#if defined(DIVBCLEANING_DEDNER) && !defined(CONSTRAINED_GRADIENT_MHD_MIDPOINT)
+#if defined(DIVBCLEANING_DEDNER) && !defined(MHD_CONSTRAINED_GRADIENT_MIDPOINT)
                 SphP[i].Gradients.Phi[k] = 0;
 #endif
 #endif
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
                 for(k2=0;k2<NUM_METAL_SPECIES;k2++) {SphP[i].Gradients.Metallicity[k2][k] = 0;}
 #endif
 #ifdef RT_EVOLVE_EDDINGTON_TENSOR
@@ -564,9 +564,9 @@ void hydro_gradient_calc(void)
         for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
             if(P[i].Type==0)
             {
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
                 GasGradDataPasser[i].FaceDotB = 0;
-#ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#ifdef MHD_CONSTRAINED_GRADIENT_MIDPOINT
                 for(k=0;k<3;k++) {GasGradDataPasser[i].PhiGrad[k] = 0;}
 #endif
 #endif
@@ -860,7 +860,7 @@ void hydro_gradient_calc(void)
         
         
         /* here, we insert intermediate operations on the results, from the iterations we have completed */
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
         for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
             if(P[i].Type == 0)
             {
@@ -881,7 +881,7 @@ void hydro_gradient_calc(void)
                                     SphP[i].BPred[0]*SphP[i].BPred[0]+SphP[i].BPred[1]*SphP[i].BPred[1]+SphP[i].BPred[2]*SphP[i].BPred[2]);
                 double tmp = 3.0e3 * fabs(SphP[i].divB) * PPP[i].Hsml / tmp_d;
                 double alim = 1. + DMIN(1.,tmp*tmp);
-#if (CONSTRAINED_GRADIENT_MHD <= 1)
+#if (MHD_CONSTRAINED_GRADIENT <= 1)
                 double dbmax=0, dbgrad=0;
                 double dh=0.25*PPP[i].Hsml; // need to be more aggressive with new wt_i,wt_j formalism
                 for(k=0;k<3;k++)
@@ -973,7 +973,7 @@ void hydro_gradient_calc(void)
                                     SphP[i].Gradients.B[k][k1] = GB0[k][k1] + nnorm*(SphP[i].Gradients.B[k][k1]+ecorr[k][k1] - GB0[k][k1]);
                                 }
                                 /* slope-limit the corrected gradients again, but with a more tolerant slope-limiter */
-#if (CONSTRAINED_GRADIENT_MHD <= 1)
+#if (MHD_CONSTRAINED_GRADIENT <= 1)
                                 local_slopelimiter(SphP[i].Gradients.B[k],
                                                    GasGradDataPasser[i].Maxima.B[k],GasGradDataPasser[i].Minima.B[k],
                                                    0.25, PPP[i].Hsml, 0.25);
@@ -982,7 +982,7 @@ void hydro_gradient_calc(void)
                         } // closes j_gloop loop
                     } // closes fsum/dmag check
                 } // closes FlagForConstrainedGradients check
-#ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#ifdef MHD_CONSTRAINED_GRADIENT_MIDPOINT
                 double a_limiter = 0.25; if(SphP[i].ConditionNumber>100) a_limiter=DMIN(0.5, 0.25 + 0.25 * (SphP[i].ConditionNumber-100)/100);
                 /* copy everything from the structure holding phi-gradients (needed so they dont change mid-loop) */
                 for(k=0;k<3;k++) {SphP[i].Gradients.Phi[k] = GasGradDataPasser[i].PhiGrad[k];}
@@ -1018,14 +1018,14 @@ void hydro_gradient_calc(void)
             construct_gradient(SphP[i].Gradients.SoundSpeed,i);
 #endif
 #ifdef MAGNETIC
-#ifndef CONSTRAINED_GRADIENT_MHD
+#ifndef MHD_CONSTRAINED_GRADIENT
             for(k=0;k<3;k++) {construct_gradient(SphP[i].Gradients.B[k],i);}
 #endif
-#if defined(DIVBCLEANING_DEDNER) && !defined(CONSTRAINED_GRADIENT_MHD_MIDPOINT)
+#if defined(DIVBCLEANING_DEDNER) && !defined(MHD_CONSTRAINED_GRADIENT_MIDPOINT)
             construct_gradient(SphP[i].Gradients.Phi,i);
 #endif
 #endif
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
             for(k=0;k<NUM_METAL_SPECIES;k++) {construct_gradient(SphP[i].Gradients.Metallicity[k],i);}
 #endif
 #ifdef RT_EVOLVE_EDDINGTON_TENSOR
@@ -1244,7 +1244,7 @@ void hydro_gradient_calc(void)
 		        // define some variables we need below //
 		        double zeta_cr = 1.0e-17; // cosmic ray ionization rate (fixed as constant for non-CR runs)
 #ifdef COSMIC_RAYS
-		        double u_cr = ((SphP[target].CosmicRayEnergyPred / P[target].Mass * SphP[target].Density * All.cf_a3inv) * (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam)); // cgs
+                double u_cr = ((SphP[i].CosmicRayEnergyPred / P[i].Mass * SphP[i].Density * All.cf_a3inv) * (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam)); // cgs
 		        zeta_cr = u_cr * 2.2e-6; // convert to ionization rate
 #endif
                 double a_grain_micron = 0.1; // effective size of grains that matter at these densities
@@ -1441,7 +1441,7 @@ void hydro_gradient_calc(void)
 #ifdef DOGRAD_SOUNDSPEED
             local_slopelimiter(SphP[i].Gradients.SoundSpeed,GasGradDataPasser[i].Maxima.SoundSpeed,GasGradDataPasser[i].Minima.SoundSpeed,a_limiter,h_lim,stol);
 #endif
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
             for(k1=0;k1<NUM_METAL_SPECIES;k1++)
                 local_slopelimiter(SphP[i].Gradients.Metallicity[k1],GasGradDataPasser[i].Maxima.Metallicity[k1],GasGradDataPasser[i].Minima.Metallicity[k1],a_limiter,h_lim,DMAX(stol,stol_diffusion));
 #endif
@@ -1453,7 +1453,7 @@ void hydro_gradient_calc(void)
             }
 #endif
 #ifdef MAGNETIC
-#ifndef CONSTRAINED_GRADIENT_MHD
+#ifndef MHD_CONSTRAINED_GRADIENT
             double v_tmp = P[i].Mass / SphP[i].Density;
             double tmp_d = sqrt(1.0e-37 + (2. * All.cf_atime/All.cf_afac1 * SphP[i].Pressure*v_tmp*v_tmp) +
                                 SphP[i].BPred[0]*SphP[i].BPred[0]+SphP[i].BPred[1]*SphP[i].BPred[1]+SphP[i].BPred[2]*SphP[i].BPred[2]);
@@ -1468,7 +1468,7 @@ void hydro_gradient_calc(void)
             for(k1=0;k1<3;k1++)
                 local_slopelimiter(SphP[i].Gradients.B[k1],GasGradDataPasser[i].Maxima.B[k1],GasGradDataPasser[i].Minima.B[k1],alim2,h_lim,stol_tmp);
 #endif
-#if defined(DIVBCLEANING_DEDNER) && !defined(CONSTRAINED_GRADIENT_MHD_MIDPOINT)
+#if defined(DIVBCLEANING_DEDNER) && !defined(MHD_CONSTRAINED_GRADIENT_MIDPOINT)
             local_slopelimiter(SphP[i].Gradients.Phi,GasGradDataPasser[i].Maxima.Phi,GasGradDataPasser[i].Minima.Phi,a_limiter,h_lim,stol);
 #endif
 #endif
@@ -1709,7 +1709,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 if(j >= N_gas) continue;
 
                 int TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
-#ifndef SHEARING_BOX // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //
+#ifndef BOX_SHEARING // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //
                 if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
                 /* use relative positions to break degeneracy */
                 if(local.Timestep == TimeStep_J)
@@ -1727,7 +1727,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
-#ifdef PERIODIC			/*  now find the closest image in the given box size  */
+#ifdef BOX_PERIODIC			/*  now find the closest image in the given box size  */
                 NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1);
 #endif
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
@@ -1745,7 +1745,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 {
                     kernel.dwk_i = kernel.wk_i = 0;
                 }
-#if defined(CONSTRAINED_GRADIENT_MHD)
+#if defined(MHD_CONSTRAINED_GRADIENT)
                 if(kernel.r < h_j)
 #else
                 if((kernel.r < h_j) && (swap_to_j))
@@ -1769,7 +1769,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 }
                 
                 
-#if defined(CONSTRAINED_GRADIENT_MHD)
+#if defined(MHD_CONSTRAINED_GRADIENT)
                 double V_j = P[j].Mass / SphP[j].Density;
                 double Face_Area_Vec[3];
                 double wt_i,wt_j;
@@ -1819,12 +1819,12 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                         Q_R = local.GQuant.B[k] + db_cR;
                         double Qmax, Qmin, Qmed = 0.5*(local.GQuant.B[k] + Bjk);
                         if(local.GQuant.B[k] < Bjk) {Qmax=Bjk; Qmin=local.GQuant.B[k];} else {Qmax=local.GQuant.B[k]; Qmin=Bjk;}
-                        double fac = CONSTRAINED_GRADIENT_MHD_FAC_MINMAX * (Qmax-Qmin);
-                        fac += CONSTRAINED_GRADIENT_MHD_FAC_MAX_PM * fabs(Qmed);
+                        double fac = MHD_CONSTRAINED_GRADIENT_FAC_MINMAX * (Qmax-Qmin);
+                        fac += MHD_CONSTRAINED_GRADIENT_FAC_MAX_PM * fabs(Qmed);
                         double Qmax_eff = Qmax + fac;
                         double Qmin_eff = Qmin - fac;
-                        fac = CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV * (Qmax-Qmin);
-                        fac += CONSTRAINED_GRADIENT_MHD_FAC_MED_PM * fabs(Qmed);
+                        fac = MHD_CONSTRAINED_GRADIENT_FAC_MEDDEV * (Qmax-Qmin);
+                        fac += MHD_CONSTRAINED_GRADIENT_FAC_MED_PM * fabs(Qmed);
                         double Qmed_max = Qmed + fac;
                         double Qmed_min = Qmed - fac;
                         if(Qmed_max>Qmax_eff) Qmed_max=Qmax_eff;
@@ -1852,7 +1852,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     if(swap_to_j) GasGradDataPasser[j].FaceDotB -= Face_Area_Vec[k] * (Bjk + Q_R);
                 }
                 
-#if defined(CONSTRAINED_GRADIENT_MHD_MIDPOINT)
+#if defined(MHD_CONSTRAINED_GRADIENT_MIDPOINT)
                 /* this will fit the gradient at the -midpoint- as opposed to at the j locations, i.e.
                  attempting to minimize the quantity phi_L - phi_R, at face locations */
                 double dphi = Get_Particle_PhiField(j) - local.GQuant.Phi;
@@ -1907,8 +1907,8 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     for(k=0;k<3;k++)
                     {
                         dv[k] = SphP[j].VelPred[k] - local.GQuant.Velocity[k];
-#ifdef SHEARING_BOX
-                        if(k==SHEARING_BOX_PHI_COORDINATE)
+#ifdef BOX_SHEARING
+                        if(k==BOX_SHEARING_PHI_COORDINATE)
                         {
                             if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[k] -= Shearing_Box_Vel_Offset;}
                             if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[k] += Shearing_Box_Vel_Offset;}
@@ -1943,12 +1943,12 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                         if(swap_to_j) {MINMAX_CHECK(-dB[k],GasGradDataPasser[j].Minima.B[k],GasGradDataPasser[j].Maxima.B[k]);}
                     }
 #endif
-#if defined(DIVBCLEANING_DEDNER) && !defined(CONSTRAINED_GRADIENT_MHD_MIDPOINT)
+#if defined(DIVBCLEANING_DEDNER) && !defined(MHD_CONSTRAINED_GRADIENT_MIDPOINT)
                     double dphi = Get_Particle_PhiField(j) - local.GQuant.Phi;
                     MINMAX_CHECK(dphi,out.Minima.Phi,out.Maxima.Phi);
                     if(swap_to_j) {MINMAX_CHECK(-dphi,GasGradDataPasser[j].Minima.Phi,GasGradDataPasser[j].Maxima.Phi);}
 #endif
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
                     double dmetal[NUM_METAL_SPECIES];
                     for(k = 0; k < NUM_METAL_SPECIES; k++)
                     {
@@ -2026,11 +2026,11 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #endif
 #ifdef MAGNETIC
                             for(k2=0;k2<3;k2++) {out.Gradients[k].B[k2] += wk_xyz_i * dB[k2];}
-#if defined(DIVBCLEANING_DEDNER) && !defined(CONSTRAINED_GRADIENT_MHD_MIDPOINT)
+#if defined(DIVBCLEANING_DEDNER) && !defined(MHD_CONSTRAINED_GRADIENT_MIDPOINT)
                             out.Gradients[k].Phi += wk_xyz_i * dphi;
 #endif
 #endif
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
                             for(k2=0;k2<NUM_METAL_SPECIES;k2++) {out.Gradients[k].Metallicity[k2] += wk_xyz_i * dmetal[k2];}
 #endif
 #ifdef RT_EVOLVE_EDDINGTON_TENSOR
@@ -2063,16 +2063,16 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                             SphP[j].Gradients.SoundSpeed[k] += wk_xyz_j * dc;
 #endif
 #ifdef MAGNETIC
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
                             for(k2=0;k2<3;k2++) {GasGradDataPasser[j].BGrad[k2][k] += wk_xyz_j * dB[k2];}
 #else
                             for(k2=0;k2<3;k2++) {SphP[j].Gradients.B[k2][k] += wk_xyz_j * dB[k2];}
 #endif
-#if defined(DIVBCLEANING_DEDNER) && !defined(CONSTRAINED_GRADIENT_MHD_MIDPOINT)
+#if defined(DIVBCLEANING_DEDNER) && !defined(MHD_CONSTRAINED_GRADIENT_MIDPOINT)
                             SphP[j].Gradients.Phi[k] += wk_xyz_j * dphi;
 #endif
 #endif
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
                             for(k2=0;k2<NUM_METAL_SPECIES;k2++) {SphP[j].Gradients.Metallicity[k2][k] += wk_xyz_j * dmetal[k2];}
 #endif
 #ifdef RT_EVOLVE_EDDINGTON_TENSOR

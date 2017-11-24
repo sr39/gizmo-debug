@@ -1,64 +1,145 @@
 #![our mascot](gizmo_smaller.png) GIZMO Users Guide 
 ***
 #Table of Contents
-1. Code Overview
-2. Feature Set (+notes on the public code)
-3. Code Development, Authorship, Citation, & Sharing Guidelines
-4. Hydro Solvers
-5. Similarities & Differences from GADGET (+other codes)
-6. Compiling and Using the Code (a very brief tutorial)
-7. Config.sh (Setting compile-time options)
-8. The Parameterfile (Setting run-time parameters)
-9. Snapshot & Initial Condition Files
-10. Log Outputs & Diagnostic Files
-11. Test Problems
-12. Disclaimer
+1. [Code Overview](#codeoverview)
+2. [Feature (Physics Module) Set](#features)
+    + [Notes on public vs. proprietary code modules](#features-private)
+3. [Code Use, Authorship, Citation, Sharing, & Development Rules](#requirements)
+    + [Use, Authorship, & Citation Requirements](#requirements-authorship)
+    + [Code Sharing Guidelines](#requirements-sharing)
+    + [Code Development & Extensions (New Physics and Code)](#requirements-development)
+4. [Hydro Solvers](#hydro)
+    + [MFV](#hydro-mfv), [MFM](#hydro-mfm), [SPH](#hydro-sph), [other](#hydro-mmm) 
+5. [Similarities & Differences from GADGET (+other codes)](#gadget)
+    + [What's the same?](#gadget-same), [What's not?](#gadget-different), [Code modes](#gadget-mimic)
+6. [Compiling and Using the Code (a very brief tutorial)](#tutorial)
+    + [Compilation Requirements](#tutorial-requirements)
+    + [Starting & Running the Code](#tutorial-running)  
+    + [Restarting a Run](#tutorial-restart) 
+7. [Config.sh (Setting compile-time options)](#config)
+    + [Overview](#config-overview)
+    + [Boundary Conditions & Dimensions] (#config-boundaries)
+    + [Hydro Solver Method] (#config-hydro)
+    + [Additional Fluid Physics] (#config-fluids)
+        + [Equations-of-State] (#config-fluids-eos)
+        + [Magnetic Fields] (#config-fluids-mhd)
+        + [Conduction & Viscosity] (#config-fluids-navierstokes)
+        + [Radiative Cooling] (#config-fluids-cooling)
+        + [Passive Scalars, Metals, & Sub-Grid Turbulent Mixing] (#config-fluids-metalsturb)
+        + [Dust-Gas Mixtures] (#config-fluids-dust)
+        + [Cosmic Rays] (#config-fluids-cosmicrays)
+    + [Turbulent 'Stirring' (Large Eddy Simulations)] (#config-turb)
+    + [Gravity & Cosmological Integrations] (#config-gravity)
+        + [Numerical Solvers & Optimization] (#config-gravity-numerics)
+        + [Adaptive Force Softenings] (#config-gravity-adaptive)
+        + [External Fields and/or Disabling Gravity] (#config-gravity-external)
+        + [Non-Standard Dark Matter, Dark Energy, Gravity, or Expansion] (#config-gravity-nonstandardDM)
+        + [On-the-Fly Analysis] (#config-gravity-analysis)
+        + [Artificial Pressure Floors] (#config-gravity-pressure)
+    + [On-the-Fly Group (Halo, Galaxy, Cluster, etc) Finding] (#config-fof)
+    + [Galaxy & Galactic Star Formation Options] (#config-galsf)
+        + [Star Formation Criteria/Particle Spawning] (#config-galsf-sflaw)
+        + [Sub-Grid Feedback Models] (#config-galsf-fb)
+        + [Explicit (Resolved) Feedback Models] (#config-galsf-fire)
+    + [Single-Star Formation (IMF, Individual Stars, and Sink-Particles)] (#config-sf)
+    + [SuperMassive Black Hole Options] (#config-bh)
+        + [Seeding and BH-Creation] (#config-bh-seed)
+        + [BH Dynamics (Dynamical Friction, Drag)] (#config-bh-dynamics)
+        + [BH Accretion Models] (#config-bh-accretion)
+        + [BH Feedback Models] (#config-bh-feedback)
+    + [Radiation Hydrodynamics] (#config-rhd)
+        + [Radiation Transport Methods] (#config-rhd-methods)
+        + [Numerical Solvers & Optimization] (#config-rhd-numerical)
+        + [Frequencies/Wavebands Evolved] (#config-rhd-freqs)
+        + [Additional Options] (#config-rhd-special)
+    + [Multi-Threading (Parallelization) Options] (#config-openmp)
+    + [Input/Output Options] (#config-io)
+    + [De-Bugging and Special Code Behaviors] (#config-debug)
+        + [General De-Bugging and Special Behaviors] (#config-debug-general)
+        + [Hydrodynamics] (#config-debug-hydro)
+        + [Additional Fluid Physics and Gravity] (#config-debug-fluids)
+        + [Particle IDs] (#config-debug-ids)
+        + [Particle Merging/Splitting/Deletion/Boundaries] (#config-debug-mergedelete)
+        + [MPI & Parallel-FFTW De-Bugging] (#config-debug-mpi)
+        + [Load-Balancing] (#config-debug-loadbalance)
+8. [The Parameterfile (Setting run-time parameters)](#params)
+    + [Generic (Always-Required) Parameters](#params-generic)
+        + [Filenames, Directories, & Formats](#params-generic-files)
+        + [Output Parameters](#params-generic-outputs)
+        + [TimeStepping and Run Begin & End Times](#params-generic-times)
+        + [Units & Cosmological Parameters](#params-generic-units)
+        + [Memory & Load-Balancing (Domain) Parameters](#params-generic-memory)
+        + [Hydro Parameters](#params-generic-hydro)
+        + [Gravity Parameters](#params-generic-gravity)
+    + [Parameters of Optional Physics Modules (Examples)](#params-optional)
+        + [Additional Fluid Physics](#params-optional-fluids)
+        + [Star, Black Hole, and Galaxy Formation](#params-optional-sf)
+        + [Grackle Cooling Module](#params-optional-grackle)
+        + [Driven Turbulence (Large-Eddy Simulations)](#params-optional-turb)
+        + [Non-Standard Dark Matter, Dark Energy, Gravity, or Expansion](#params-optional-expansion)
+    + [Developer-Mode Parameters](#params-debug)
+9. [Snapshot & Initial Condition Files](#snaps)
+    + [Initial Conditions (Making & Reading Them)](#snaps-ics)
+    + [Snapshots](#snaps-snaps)
+    + [Units](#snaps-units)
+    + [Reading Snapshots (Examples)](#snaps-reading)
+10. [Log Outputs & Diagnostic Files](#logs)
+11. [Test Problems](#tests)
+    + [Equilibrium and Steady-State Tests](#tests-eqm) (e.g. [soundwaves](#tests-eqm-soundwave), ['square test'](#tests-eqm-square), [Gresho vortex](#tests-eqm-gresho), [Keplerian disks](#tests-eqm-keplerian))
+    + [Shock and Non-Linear Jump Tests](#tests-shocks) (e.g. [shock tubes](#tests-shocks-sod), [interacting blastwaves](#tests-shocks-woodward), [Sedov explosions](#tests-shocks-sedov), [Noh implosions](#tests-shocks-noh))
+    + [Fluid Mixing Tests](#tests-mixing) (e.g. [Kelvin-Helmholtz](#tests-mixing-kh), [Rayleigh-Taylor](#tests-mixing-rt), ['blob test'](#tests-mixing-blob))
+    + [Self-Gravity & Cosmological Tests](#tests-grav) (e.g. [Evrard collapse](#tests-grav-evrard), [Zeldovich pancakes](#tests-grav-zeldovich), ['Santa Barbara Cluster'](#tests-grav-sbcluster), [galactic disks](#tests-grav-galdisk))
+    + [Magneto-Hydrodynamics Tests](#tests-mhd) (e.g. waves, shocktubes, field-loops, current sheets, Orszag-Tang vortex, rotors, MRI, jets, MHD-mixing/gravity)
+12. [Useful Additional Resources](#faqs)
+    + [Visualization, Radiative Transfer, and Plotting](#faqs-vis)
+    + [Halo-Finding and Sub-Structure Identification](#faqs-halofinders)
+    + [Other Analysis Tools](#faqs-otheranalysistools)
+    + [General Super-Computing Questions](#faqs-generalsupercomputing)
+13. [Disclaimer](#disclaimer)
 
 ***
 
-# 1. Code Overview
+<a name="codeoverview"></a>
+# 1. Code Overview 
 
-Hi everybody!
+Welcome to **GIZMO**.
 
-This is **GIZMO** (we were calling this beta, then alpha, let's say version 1 now).
+The simulation code **GIZMO** is a flexible, multi-method mhd+gravity+radiation code, with a wide range of different multi-physics modules described in the "Feature Set" below. The code is descended from P-GADGET, itself descended from GADGET-2, is compatible with GADGET analysis/output code, initial conditions, and code modules. GIZMO is not an acronym, I just liked it -- it refers both to the code's multi-purpose applications and to its historical relationship to GADGET.
 
-No, the code title is not an acronym, I just liked it. It refers both to the code's multi-purpose applications and to its historical relationship to GADGET.
+The code is extensively documented. **Please read the User Guide** before asking questions of me or other users: most questions I get are already answered here.
 
-The simulation code **GIZMO** is a flexible, multi-method mhd+gravity+radiation code. The code includes a hydro solver using the Lagrangian finite-mass method, a meshless finite-volume (arbitrary Lagrangian-Eulerian) method, moving meshes (in development), the "pressure-sph" method, as well as "traditional" SPH. Self-gravity is solved fast, with a BH-Tree (optionally a hybrid PM-Tree for periodic boundaries), with adaptive gravitational softenings. Hydrodynamics and gravity are both optional. The code is descended from P-GADGET, itself descended from GADGET-2, and many of the naming conventions remain (for the sake of compatibility with the large library of GADGET work and analysis software). 
+The code is written in standard ANSI C, and should run on all parallel platforms that support MPI. The portability of the code has been confirmed on a large number of systems -- if it can run GADGET (and it almost certainly can), it can run GIZMO.
 
-Currently available modules include things like: hydrodynamics, magnetic fields, full radiation-hydrodynamics (with a flexible module that allows one to trivially 'swap out' the frequencies being integrated), cosmological integrations, star/planet/galaxy/black hole formation with feedback from stars and black holes (both explicit, detailed models and sub-grid models), self-interacting dark matter, adaptive gravitational resolution, anisotropic (Braginkskii) conduction and viscosity, non-ideal MHD, sub-grid eddy diffusion models, large-eddy and/or shearing boxes, the ability to insert arbitrary external gravitational fields, integration in non-standard cosmologies, sink particles, "dust fluids" (particulate-gas interactions), cosmic rays (via the fluid approximation), nuclear+degenerate equations of state, and more (see feature set below).
+The main reference for the numerical methods (the original hydro+gravity solver) is the paper [here](http://www.tapir.caltech.edu/~phopkins/docs/gizmo.pdf). In everything else in this guide, the paper will be heavily referenced, and it is recommended that you read it before attempting to use the code. It should be especially useful if you wish to extend/modify the code. 
 
-The code is written in standard ANSI C, and should run on all parallel platforms that support MPI. The portability of the code has been confirmed on a large number of systems -- if it can run GADGET (and it almost certainly can), it can run GIZMO. 
+The users guides here will borrow in parts from the GADGET-2 users guide (available [here](http://www.mpa-garching.mpg.de/gadget/users-guide.pdf)), where the functionality and syntax is similar. For more details on the backbone of GADGET, which underpins some aspects here and will be referenced, see the original GADGET-2 methods paper [here](http://adsabs.harvard.edu/cgi-bin/nph-bib_query?bibcode=2005MNRAS.364.1105S&db_key=AST).
 
-The main reference for the numerical methods (the original hydro+gravity solver) is the paper [here](http://www.tapir.caltech.edu/~phopkins/docs/gizmo.pdf). In everything else in this wiki, the paper will be heavily referenced, and it is recommended that you read it before attempting to use the code. It should be especially useful if you wish to extend/modify the code. 
+The Bitbucket site is where I will post code updates, news, and documentation, so check back regularly. The public code website is [here](http://www.tapir.caltech.edu/~phopkins/Site/GIZMO.html), and the active development code repository (where the action is) is hosted on Bitbucket [here](https://bitbucket.org/phopkins/gizmo).
 
-The users guides here will also borrow heavily from the GADGET-2 users guide, where the functionality and syntax is similar. If you don't have a copy, get it [here](http://www.mpa-garching.mpg.de/gadget/users-guide.pdf). For more details on the backbone of GADGET, which underpins some aspects here and will be referenced, see the original GADGET-2 methods paper [here](http://adsabs.harvard.edu/cgi-bin/nph-bib_query?bibcode=2005MNRAS.364.1105S&db_key=AST).
-
-The code wiki on the bitbucket site is where I will post code updates, news, and documentation, so check back regularly. The public code website is [here](http://www.tapir.caltech.edu/~phopkins/Site/GIZMO.html), and the active development code repository (where the action is) is hosted on Bitbucket [here](https://bitbucket.org/phopkins/gizmo).
-
-**GIZMO** was written by me, Philip F. Hopkins, although the codebase builds heavily on Volker Springel's GADGET code. If you find the code useful, please reference the code paper in all studies using simulations run with **GIZMO**. You should also reference the GADGET paper for the domain decomposition and N-body algorithms. 
+**GIZMO** was written by me, Philip F. Hopkins (PFH), although the codebase builds heavily on Volker Springel's GADGET code. If you find the code useful, please reference the code paper in all studies using simulations run with **GIZMO**. You should also reference the GADGET paper for the domain decomposition and N-body algorithms. Various modules have their own methods papers that should be cited if they are used; these are specified in the "Config.sh (Setting compile-time options)" section of this Guide.
 
 
 
 ***
 
-# 2. Feature Set
+<a name="features"></a>
+# 2. Feature Set 
 
 The GIZMO code is a flexible, massively parallel, multi-purpose fluid dynamics + gravity code.
 
 Some (not all!) current features (with their status) include:
 
-(1) Hydrodynamics using any of several fundamentally different methods (smoothed particle hydrodynamics - both 'traditional' and 'modern', lagrangian finite mass, meshless finite volume, and moving mesh, for example)
+(1) Hydrodynamics using any of several fundamentally different methods (Lagrangian finite-element mesh-free Godunov schemes, smoothed particle hydrodynamics both 'traditional' and 'modern', and experimental moving-mesh techniques)
 
 (2) Ideal and non-ideal Magneto-hydrodynamics (fully implemented for all methods in the code), including Ohmic resistivity, ambipolar diffusion, and the Hall effect.
 
-(3) Anisotropic conduction and viscosity ("real" Navier-Stokes or Spitzer-Braginskii conduction and viscosity solved explicitly; the correct anisotropic, field-parallel formulation of these is used if MHD is active)
+(3) Anisotropic conduction and viscosity ("real" Navier-Stokes or Spitzer-Braginskii conduction and viscosity solved explicitly, with dynamically calculated coefficients; the correct anisotropic, field-parallel formulation of these is used if MHD is active)
 
 (4) Turbulent eddy diffusion (Smagorinski eddy diffusion model for grid-scale turbulence)
 
 (5) Radiative heating+cooling (photo-ionization, photo-electric, dust, Compton, Brehmstrahhlung, recombination, fine structure, molecular, species-by-species metal line cooling; these can be followed in both optically-thin and thick limits)
 
-(6) Dust-gas mixtures (aerodynamically coupled "fluids" of dust-grains). The treatment is flexible and can handle both sub and super-sonic cases, compressible fluids, grain-gas back-reaction, and grain-grain collisions.
+(6) Dust-gas mixtures (aerodynamically coupled "fluids" of dust-grains). The treatment is flexible and can handle both sub and super-sonic cases, compressible fluids, grain-gas back-reaction, and grain-grain collisions, with arbitrary dust drag laws (Epstein, Stokes, Coulomb drag) and Lorentz forces on charged grains.
 
 (7) Self-gravity for arbitrary geometries and boundary conditions is handled with a flexible, fast tree-code, with the option for a particle-mesh solver for large-scale cosmological simulations. N-body (collisionless) particles are trivially supported. Fully adaptive gravitational softenings are supported for all fluids and particle types. If desired, arbitrary analytic potentials/forces can be added trivially by writing a single function in the pre-existing module.
 
@@ -76,11 +157,11 @@ Some (not all!) current features (with their status) include:
 
 (14) Star formation on galactic or sub-galactic scales: conversion of gas into stars or sink particles according to arbitrary star formation laws. These represent stellar populations, suitable for massive star cluster, galaxy, or cosmological large-volume calculations.
 
-(15) Feedback from stars: injection of mass, metals, energy, momentum, etc. from SNe, stellar winds, stellar radiation, etc. These follow the FIRE suite of simulations, or if desired the sub-grid models from Springel+Hernquist and Dave et al. (in which winds are kicked out of galaxies and the ISM is studied using a parameterized "effective equation of state") can be enabled (for example to compare to the results from AREPO and the Illustris or EAGLE projects, which use these models).
+(15) Feedback from stars: injection of mass, metals, energy, momentum, etc. from SNe, stellar winds, stellar radiation, etc. Different groups have implemented different physics: for example the FIRE physics, or the models from Springel+Hernquist and Dave et al. (in which winds are kicked out of galaxies and the ISM is studied using a parameterized "effective equation of state") can be enabled (for example to compare to the results from AREPO and the Illustris or EAGLE projects, which use these models). 
 
 (16) Separately tracked passive scalar fields (e.g. metals and arbitrary tracer species). These can be included in arbitrary numbers with simple modular functions for their injection. Currently, R-process enrichment and abundances are one such set.
 
-(17) Black holes: on-the-fly formation/seeding, growth via various accretion models, and feedback in the form of radiation, accretion disk winds, jets, "bubbles", etc. Sub-grid accretion disk prescriptions or explicit capture of gas for sufficiently high-resolution simulations are both available. Dynamical friction forces can be explicitly added, or followed self-consistently. BH-BH mergers are supported and tracked.
+(17) Black holes: on-the-fly formation/seeding, growth via various accretion models, and feedback in the form of radiation, accretion disk winds, jets, "bubbles", etc. Sub-grid accretion disk prescriptions or explicit capture of gas for sufficiently high-resolution simulations are both available. Dynamical friction forces can be explicitly added, or followed self-consistently. BH-BH mergers are supported and tracked. 
 
 (18) Cosmic ray physics on ISM, single-cloud or SNe, sub-galactic through cosmological scales. This includes injection via stars and SNe, MHD-dependent transport via advection, diffusion, and streaming (both isotropic and anisotropic, magnetic-field dependent terms), adiabatic heating/cooling, and catastrophic and coulomb losses and subsequent gas heating. 
 
@@ -101,63 +182,83 @@ Some (not all!) current features (with their status) include:
 (26) Hybrid OPENMP/MPI architecture, together with many optimizations to the domain decomposition, allow for flexible, massively parallel performance.
 
 
-## Important Notes on the Public Code: 
+<a name="features-private"></a>
+## Important Notes on Public vs. Proprietary Code 
 
-If you're using the public version of the code, many of these features will not be available (and many of the detailed descriptions of these features, which follow in this guide, will not apply to you). The public version is provided for purposes of code testing, development, comparison, and education, as well as a wide range of interesting physics problems which require (magneto)hydrodynamics+gravity. However it does not include many of the added physics above. The reasons are (1) that some of these features are designed for very specific problems, and not designed to be used as a 'black box' (i.e. they are not designed for a public code, to be compiled in general ways for general problems, etc), and (2) many have been developed not by me, but by other collaborators and peers, and they would prefer these modules are not made public at this time. If you want to use some of these physics, please contact me directly. 
+If you're using the public version of the code, several of these features will not be available (and many of the detailed descriptions of these features, which follow in this guide, will not apply to you). The public version is provided for purposes of code testing, development, comparison, and education, as well as a wide range of interesting physics problems which require (magneto)hydrodynamics+gravity. However it does not include several of the added physics above. The reasons are that (1) some of these features are designed for very specific problems, and not designed to be used as a 'black box' (e.g. they are not built to safely compile in a modular way, as required of all code pushed to the public version); (2) some are actively in development and not yet de-bugged (these may be incorporated in public code once they are tested); and (2) many have been developed not by me, but by other collaborators and peers, and they would prefer these modules are not made public at this time. If you want to use some of these physics, please contact me directly. 
 
+Access to the development code, however, *DOES NOT* imply permission to use any modules identified as proprietary either in the README or User Guide or Template\_Config.sh (code description). These are modules being actively developed or used by their original authors to finish PhD theses and related projects. For example, the set of modules identified as part of the FIRE project are specifically developed by a collaboration which has its own authorship and collaboration policies (akin to many observational collaborations). I (PFH) do not have sole authority (even though I am a member of that collaboration) to grant anyone permission to use those parts of the code.  If in doubt about whether use of a given module is permitted, *ask*.
+
+Permission to access and use the development code, and any modules therein, is *not transferrable*. If you have postdocs/students/collaborators, they must request permission as well. You should not distribute copies of the development code. If you move on from the original project for which permissions were granted, you must re-request permissions. Permission is granted only for the originally specified use purposes. 
 
 ***
 
-# 3. Code Development, Authorship, Citation, & Sharing Guidelines
+<a name="requirements"></a>
+# 3. Code Use, Authorship, Citation, Sharing, & Development Rules 
 
-## Authorship, Citation & Acknowledgement Guidelines
+<a name="requirements-authorship"></a>
+## Use, Authorship, & Citation Requirements
 
-### Citation Requirements
+### _Citation Requirements_:
 
-Any paper using **GIZMO** should, at a minimum, cite the methods paper: Hopkins 2015 ("A New Class of Accurate, Mesh-Free Hydrodynamics Methods"). You should also cite the **GADGET** methods paper (Springel, 2005, MNRAS, 364, 1105) for the domain decomposition and N-body algorithms. Papers using the MHD version of the code should also cite the MHD methods paper: Hopkins & Raives 2015 ("Accurate, Meshless Methods for Magneto-Hydrodynamics"). Anisotropic diffusion operators (conduction, viscosity, radiation, cosmic rays, non-ideal MHD, passive scalar diffusion) should site Hopkins 2016 ("Anisotropic Diffusion in Mesh-Free Numerical Magnetohydrodynamics").
+Any paper using **GIZMO** should, at a minimum, cite the methods paper: Hopkins 2015 ("A New Class of Accurate, Mesh-Free Hydrodynamics Methods"). You should also cite the **GADGET** methods paper (Springel, 2005, MNRAS, 364, 1105) for the domain decomposition and N-body algorithms. 
 
-### Authorship Requirements & Acceptable Use: Public Code
+When using specific modules, the relevant code papers must also be cited: for example, papers using the MHD version of the code should cite the MHD methods paper: Hopkins & Raives 2015 ("Accurate, Meshless Methods for Magneto-Hydrodynamics"). Anisotropic diffusion operators (conduction, viscosity, radiation, cosmic rays, non-ideal MHD, passive scalar diffusion) should site Hopkins 2016 ("Anisotropic Diffusion in Mesh-Free Numerical Magnetohydrodynamics"). The citations required for the various code modules are all given in the "Config.sh (Setting Compile-Time Options)" section of this Guide, where the modules are described. 
 
-If you are using the public version of **GIZMO**, there are no requirements for offering authorship of papers resulting from the code, only the citation request above. Enjoy!
+Remember, these modules were developed at great expense in both time and grant funding by their authors. Moreover readers may want to see more detailed numerical tests. So please, respect the citation requirements for all modules or your access to **GIZMO** will be revoked.
 
-### Authorship Requirements & Acceptable Use: Private Code
+### _Authorship Requirements & Acceptable Use: Public Code_:
 
-However, if you are using the private/development version of the code, it is important to note that many of the modules are *not* public and are *not* provided for common use under *any* license whatsoever. It is not acceptable to use these for any work without the explicit consent of the authors of these modules. In general, access to the development version of the code is granted *only* on the condition that all users understand and agree to this, and will *only* use non-public modules which they have developed themselves or for which they have explicitly gotten the approval of the relevant authors. 
+If you are using the public version of **GIZMO**, there are no requirements for offering authorship of papers resulting from the code, only the citation requirements above.
 
-In the "Template\_Config.sh" file included in the code, many of the relevant modules specifically outline their guidelines. But if you are unsure, please contact the developers. If you do not know whether or not you have permission to use some module, and it is *not* in the public code, the only safe assumption is that you *do not* have that permission.
+### _Authorship Requirements & Acceptable Use: Private Code_:
 
-Many of the modules are specifically developed either as part of the FIRE project or are imported from GADGET-3, these have specific, known policies. Any projects using the FIRE stellar and/or black hole feedback physics routines must be agreed to by the entire FIRE core development team (P. Hopkins, D. Keres, C.A. Faucher-Giguere, and E. Quataert), and the FIRE collaboration has a requirement that authorship be offered to all the team members and papers be distributed internally among the collaboration before they are made public. GADGET-3 has long-standing user policies set by its main developer, V. Springel; if you had permissions to use a given module in GADGET-3, it is safe to assume that permission extends to its imported version in GIZMO, but if you are unsure, Volker is the person to contact. Many other modules were developed by individual students/postdocs, as part of their ongoing research, and are proprietary - they can only be used with explicit permission from the developer.
+However, if you are using the private/development version of the code, it is important to note that many of the modules are *not* provided for common use under *any* license whatsoever, regardless of whether or not you have permission to 'use the full code.' It is not acceptable to use these modules for any work without the explicit consent of the authors of these modules. In general, access to the development version of the code is granted *only* on the condition that all users understand and agree to this, and will *only* use non-public modules which they have developed themselves or for which they have explicitly gotten the approval of the relevant authors. 
 
-## Code Sharing Guidelines
+In the "Template\_Config.sh" file included in the code, many of the relevant modules specifically outline their guidelines -- modules are specifically described as requiring consent of various authors or groups for their use. Again, these permissions are required to use these modules in any scientific work; access to the development code does not imply permission to use any modules labeled as proprietary anywhere in the User Guide, "Template\_Config.sh" file, README, or source code.
 
-The public version of the code is free software, distributed under the GNU General Public License (http://www.gnu.org/copyleft/gpl.html). This implies that you may freely distribute and copy the software. You may also modify it as you wish, and distribute these modified versions as long as you indicate prominently any changes you made in the original code, and as long as you leave the copyright notices, and the no-warranty notice intact. Please read the General Public License for more details. Note that the authors retain their copyright on the code. 
+But if you are unsure whether or not you have permission to use a module, please contact the developers. If you do not know whether or not you have permission to use some module, and it is *not* in the public code, the only safe assumption is that you *do not* have that permission.
 
-The private version of the code is closed and can only be shared with the explicit permission of the author (P. Hopkins). Any sub-section of the non-public code can only be shared, distributed, or incorporated into other work with the explicit permission of the author and the developer(s) of the relevant code (see the policies for acceptable use, above). 
+For example, a few of the modules in GIZMO are specifically developed either as part of the FIRE project or are imported from GADGET-3, these have specific, known policies. Any projects using the FIRE stellar and/or black hole feedback physics routines must be agreed to by the entire FIRE core development team (PFH, D. Keres, C.A. Faucher-Giguere, and E. Quataert), and the FIRE collaboration has a requirement that project plans be approved by the collaboration before work begins, and that authorship be offered to all the team members and papers be distributed internally among the collaboration before they are made public. GADGET-3 has long-standing user policies set by its main developer, V. Springel; if you had permissions to use a specific module in GADGET-3, it is probably safe to assume that permission extends to its imported version in GIZMO, but if you are unsure and the code is not public, Volker is the person to contact. Many other modules were developed by individual students/postdocs, as part of their ongoing research, and are proprietary - they can only be used with explicit permission from the developer.
+
+Users who violate these policies will have their access to the private version[s] of **GIZMO** immediate revoked.
 
 
-## Code Development & Extensions (New Physics and Code):
+<a name="requirements-sharing"></a>
+## Code Sharing Guidelines 
+
+The public version of the code is free software, distributed under the [GNU General Public License](http://www.gnu.org/copyleft/gpl.html). This implies that you may freely distribute and copy the public code. You may also modify it as you wish, and distribute these modified versions as long as you indicate prominently any changes you made in the original code, and as long as you leave the copyright notices, and the no-warranty notice intact. Please read the General Public License for more details. Note that the authors retain their copyright on the code. 
+
+The private version of the code is closed and can only be shared with the explicit permission of the author (PFH). Any sub-section of the non-public code can only be shared, distributed, or incorporated into other work with the explicit permission of the author and the developer(s) of the relevant code (see the policies for acceptable use, above). 
+
+It should go without saying, but **permissions are not transferrable.** If you are working with collaborators, postdocs, or students, they must request permission as well to access the development code, and their permissions are restricted to the same set of modules as the project lead. Do not distribute tarballs of the private code to others; they should be accessing the development repository if they are using the development code. Permission is granted on a project basis: if the scope of the project changes, or if new modules are needed, or any proprietary parts of the code requested, permission must be re-requested. 
+
+Users who violate these policies will have their access to the private version[s] of **GIZMO** immediate revoked.
+
+
+<a name="requirements-development"></a>
+## Code Development & Extensions (New Physics and Code) 
 
 You are encouraged to study and modify this code (public or private)! Please, if you have ideas for interesting physics to add, add it! You are only asked to do a few things, to make your experience and that of everyone else much easier. 
 
-1. **Communicate Your Plans.** As the lead developer (P. Hopkins), I'd really appreciate knowing what kinds of physics you're adding. It may be that someone else has already done this, or that there is partial code already in place, to save you a huge amount of effort.
+1. **Communicate Your Plans.** As the lead developer (PFH), I'd really appreciate knowing what kinds of physics you're adding. It may be that someone else has already done this, or that there is partial code already in place, to save you a huge amount of effort.
 
 2. **Build your modifications as a branch to the Bitbucket repository.** The repository is designed to make it very easy to branch, modify, and re-integrate codes, use it to make everything easy! This will make it very easy for you to keep your version of the code up-to-date even after you branched it (rather than it being frozen to an old version). It will also make it easy if you want to ever push back into the main code. Otherwise your code will not be supported.
 
 3. **Always protect against conflicts.** Non-standard code extensions should always be written such that they can be switched off if not needed, and have no side effects on existing code. Normally this means that they have to be enclosed in conditional compilation precompiler statements (#ifdef), especially if variables in the global structures of the code need to be allocated for the extension. However, if the extension's execution can also be controlled at run-time by simple variables, then consider introducing a parameterfile-variable to control the extension. In general, the number of Makefile symbols to control conditional compilation should be kept to a minimum.
 
-4. Do not place any substantial piece of code belonging to your extension into existing functions of the code. Write your own functions for the code extension, and only place a function call (if needed bracketed by an #ifdef) into the appropriate place of the primary code. Also, place your extension functions into separate
-source files. The source files for any new module should go into their own folder, with an appropriate name -- just like the existing modules in the code for things like hydro, gravity, galaxy formation, etc. Otherwise the code will quickly become impossible to manage. 
+4. Do not place any substantial piece of code belonging to your extension into existing functions of the code. Write your own functions for the code extension, and only place a function call (if needed bracketed by an #ifdef) into the appropriate place of the primary code. Also, place your extension functions into separate source files. The source files for any new module should go into their own folder, with an appropriate name -- just like the existing modules in the code for things like hydro, gravity, galaxy formation, etc. Otherwise the code will quickly become impossible to manage.
 
 5. If you're willing to push the changes back and share them, it adds incredibly to the value of the code and (likely) to your own citation rates. Consider it!
 
 
-### General code-style principles:
+### _General Code-style Principles (Good Practices)_:
 
 1. Code formatting: Try to be consistent with the code formatting of the main code, which is more or less GNU-style, with a few small differences. You can run the indent-command with the options: 
 
         indent -gnu -npsl -npcs -nbs -nsaf -nsai -nsaw -nprs -bap -pmt -l110 *.c
 
-on your source file(s) to make the indention consistent.
+    on your source file(s) to make the indention consistent.
 
 2. Name functions all in lower case as a "command" that is descriptive of what the function does. Words are separated by underscores, e.g. calculate\_normal\_vector\_for\_triangle(...). For all functions, input arguments should come first, output arguments last.
 
@@ -175,69 +276,77 @@ on your source file(s) to make the indention consistent.
 
 5. Avoid repetition of code, write a function instead. Break up long functions into smaller more manageable pieces.
 
-6. Preprocessor macros that have arguments should be avoided whenever possible. If needed, their names should be fully capitalized.
+6. Preprocessor macros (compile-time flags) that have arguments should be avoided if possible (do whatever you can to minimize the number of compile-time flags. If needed, their names should be fully capitalized. They should always be named with a consistent scheme (as currently in the code, where for example all the galaxy star formation flags begin with "GALSF\_").
 
 7. Magic numbers (including numerical constants) in the code should be avoided and instead be replaced by a symbolic constant(all uppercase) declared with #ifdef in a header file.
 
-8. Address all warnings emitted by the compiler when compiled with "-Wall". Unless there are good reasons, the code should compile without any warning.
+8. Address all warnings emitted by the compiler when compiled with "-Wall". Unless there are very or necessary good reasons, the code should compile without any warning (not without a crash, without a *warning*).
 
 9. Include consistent commenting in your code. The meaning of all global variables should be commented where they are introduced, ideally with doxygen syntax, e.g:
 
         int MyGlobalCount; /*!< counts the number of timesteps */
 
-Functions should be preceded by a brief explanation of what the function does, including warnings/instructions, if any, about how the function may be used, e.g.:
+    Functions should be preceded by a brief explanation of what the function does, including warnings/instructions, if any, about how the function may be used, e.g.:
 
-    /*!
-     * Insert the point P[i] into the list of active particles. Return 
-     * the new number of active paticles.
-    */
-    int insert_point_into_active_list(int i)
-    {
-    ...
-    }
+        /*!
+         * Insert the point P[i] into the list of active particles. Return 
+         * the new number of active paticles.
+        */
+        int insert_point_into_active_list(int i)
+        {
+        ...
+        }
 
-You do not need to state here *how* the function achieves what it does, but this can be stated if appropriated in comments in the function body. There, avoid superfluous comments that just reflect what's obvious from the code anyway. Instead, focus on comments that help one to quickly understand/check what the code tries to do at an algorithmic level. If complicated formulae are implemented, try to include in a comment a reference to the equation that is implemented. Avoid c++ style comments in C-code.
+    You do not need to state here *how* the function achieves what it does, but this can be stated if appropriated in comments in the function body. There, avoid superfluous comments that just reflect what's obvious from the code anyway. Instead, focus on comments that help one to quickly understand/check what the code tries to do at an algorithmic level. If complicated formulae are implemented, try to include in a comment a reference to the equation that is implemented. Avoid c++ style comments in C-code.
 
 
 ***
 
-# 4. Hydro Solvers
+<a name="hydro"></a>
+# 4. Hydro Solvers 
 
 GIZMO is unique in that it allows the user (at compile time) to choose the method with which they would like to solve the hydrodynamic equations. This flexibility goes far deeper than in most codes. We're not talking about the difference between e.g. different Riemann solvers or different ways of writing the SPH equation of motion, we're talking about totally different hydro methods (e.g. SPH vs. not-SPH).
 
 Here are the current solvers, with some descriptions: 
 
-## MFV (Meshless Finite-Volume) Method:
+<a name="hydro-mfv"></a>
+## MFV (Meshless Finite-Volume) Method: 
 
 Enabled by HYDRO\_MESHLESS\_FINITE\_VOLUME: This method was developed in pieces by many people in the fluid dynamics community, and the foundations for this implementation (as well as various convergence proofs, etc) are given in Lanson & Vila 2008 (papers [here](http://www.researchgate.net/publication/220179584_Renormalized_Meshfree_Schemes_II_Convergence_for_Scalar_Conservation_Laws) and [here](http://www.researchgate.net/publication/220179273_Renormalized_Meshfree_Schemes_I_Consistency_Stability_and_Hybrid_Methods_for_Conservation_Laws)). It is an evolution of the first implementation for astrophysical use in Gaburov & Nitadori 2010 ([paper here](http://arxiv.org/abs/1006.4159)). The method uses a kernel function to partition the volume (unlike SPH, the partition is analytically exact and only serves to divide the volume -- it is not a 'smoothing function'); it then derives a second-order accurate and consistent set of hydrodynamic equations from that partition. The discretized equations define an "effective face" for the particles (the "partition generating points" the same way that particles define the "mesh generating points" for moving mesh methods), across which an exactly conservative Riemann problem is solved with a Godunov-type scheme. The method is simultaneously second-order accurate and fully conservative (see the methods paper for demonstrations). It is very similar to moving-mesh methods, and captures contact discontinuities more accurately than any of the other methods below. Particles will gain and lose mass because of the Lagrangian deformation of fluid meaning that the particle motion only represents motion of the center of mass: the method is therefore "quasi-Lagrangian". On-the-fly (fully conservative) particle splitting and merging prevents particle masses from becoming too disparate. 
 
 
-## MFM (Lagrangian Meshless Finite-Mass) Method:
+<a name="hydro-mfm"></a>
+## MFM (Lagrangian Meshless Finite-Mass) Method: 
 
 Enabled by HYDRO\_MESHLESS\_FINITE\_MASS: This method is similar to the meshless finite volume method, except that when solving the Riemann problem between particles, we implicitly assume a deformation of the face between the particles such that there is no mass flux between the particles (essentially, we solve the Riemann problem not for the "fixed" face located halfway between the two particles, but for the -Lagrangian- face moving with the mass sheet that defined the "original" face). Thus the particle masses stay fixed (at least under hydro operations). The method is therefore "Lagrangian" in that fluid elements can be trivially tracked with time. As shown in the methods paper, this is still a second-order consistent method. However, it does introduce a second-order (non-linear) error in the advection equation: basically, when we implicitly re-map to the next timestep, the "new" face does not exactly match the Lagrangian deformation used in the step before. So we trade a small amount of accuracy at fixed resolution for the convenience of tracking a fixed Lagrangian fluid element and guaranteeing that we don't have wildly different particle masses interacting gravitationally (which can seed noise). On some problems where advection would be very large and the problem is coupled to self-gravity (so differing particle masses can introduce noise), this is the most accurate of the methods in GIZMO. This is the preferred "default" method.
 
 
-## SPH (Smoothed-Particle Hydrodynamics):
+<a name="hydro-sph"></a>
+## SPH (Smoothed-Particle Hydrodynamics): 
 
 This is SPH, well-known from astrophysics and fluid dynamics (going back to Gingold & Monaghan 1977). A kernel function is used to smooth volumetric field quantities. From these approximate (smoothed values), the equations of motion are derived. All the formulations of SPH supported here are derived from the modern "Lagrangian" formulation (see [Springel & Hernquist 2002](http://adsabs.harvard.edu/cgi-bin/nph-bib_query?bibcode=2002MNRAS.333..649S&db_key=AST)), in which the equations of motion are derived from a particle Lagrangian, and so are manifestly conservative. All of the SPH methods used, by default, include the most current bleeding-edge formulations of things like artificial dissipation (viscosity, conductivity, diffusion), higher-order kernels, corrections for adaptive kernel softenings, timestepping, etc.
 
 The SPH methods supported come in two flavors: 
 
-(a) Enabled by SPHEQ\_DENSITY\_INDEPENDENT\_SPH: This enables the "pressure SPH" or "density-independent SPH" from Hopkins 2013 ([see paper here](http://arxiv.org/abs/1206.5006)) or Saitoh and Makino 2013. This computes both the density and pressure (all volumetric quantities) from direct kernel-smoothing, and self-consistently propagates these into the equation of motion. This solves the "surface tension" problem well-known in "traditional" SPH (in which the two sides of a contact discontinuity see different pressures, leading to a surface-tension-like repulsive term across the discontinuity). The tradeoff for this is greater noise and diffusion at pressure discontinuities (shocks), as well as less accurate energy conservation in radiative cooling steps. 
+(a) Enabled by HYDRO\_PRESSURE\_SPH: This enables the "pressure SPH" or "density-independent SPH" from Hopkins 2013 ([see paper here](http://arxiv.org/abs/1206.5006)) or Saitoh and Makino 2013. This computes both the density and pressure (all volumetric quantities) from direct kernel-smoothing, and self-consistently propagates these into the equation of motion. This solves the "surface tension" problem well-known in "traditional" SPH (in which the two sides of a contact discontinuity see different pressures, leading to a surface-tension-like repulsive term across the discontinuity). The tradeoff for this is greater noise and diffusion at pressure discontinuities (shocks), as well as less accurate energy conservation in radiative cooling steps. 
 
-(b) Enabled by SPHEQ\_TRADITIONAL\_SPH: This is the "traditional" or "density" form of SPH, in which only the density is kernel-averaged, and the pressure is computed from this plus the particle-carried entropy or internal energy.
+(b) Enabled by HYDRO\_DENSITY\_SPH: This is the "traditional" or "density" form of SPH, in which only the density is kernel-averaged, and the pressure is computed from this plus the particle-carried entropy or internal energy.
 
 Note that --any-- SPH method, no matter how accurate the artificial dissipation terms is, or which form of the equation of motion is used, is not second-order consistent. This is the origin of the well-known fact that SPH only converges (formally speaking) in the limit where the number of neighbors inside the kernel goes to infinity at the same time that the total number of neighbors also goes to infinity. See the methods paper for more discussion of this point. As a result, for almost any problem you can think of, SPH at fixed resolution is substantially less accurate, and converges less rapidly, compared to other methods in GIZMO. It is, however, exceptionally stable (numerically speaking): in conditions which would crash any other hydro solver, SPH will keep running (this is not necessarily an advantage, however: if it would crash the other solvers, SPH may well give you the --wrong-- answer. It will just give you an answer.)
 
-## MMM (Moving Mesh Method):
 
-Moving meshes are currently partially implemented. Check back soon!
+<a name="hydro-mmm"></a>
+## MMM (Moving Mesh Method): 
+
+Moving meshes are currently partially implemented. Check back!
 
 ***
 
-# 5. Similarities & Differences from GADGET (+other codes)
+<a name="gadget"></a>
+# 5. Similarities & Differences from GADGET (+other codes) 
 
-## What's the same as GADGET?
+<a name="gadget-same"></a>
+## What's the same as GADGET? 
 
 GIZMO is originally descended from the GADGET source code, and owes an incredible debt to GADGET's creator Volker Springel. 
 
@@ -249,8 +358,8 @@ The snapshot formation is also identical. This includes both "GADGET-format" (un
 
 Long story short, we want to take advantage of the large community using, developing for, and analyzing GADGET simulations: it should be trivial (require essentially nothing changed) to analyze and make ICs for GIZMO simulations instead, it should require almost no extra time to run GIZMO simulations if you've run GADGET simulations before, and it should be very easy to port code written for GADGET directly into the GIZMO source.
 
-
-## What's different?
+<a name="gadget-different"></a>
+## What's different? 
 
 That said, GIZMO is a totally different code from GADGET "under the hood" in many ways. 
 
@@ -260,31 +369,32 @@ But the differences go deeper as well. The actual method for solving the hydrody
 
 Even for the N-body code, there have been substantial improvements and revisions to the original GADGET structure. The data structures are somewhat different (for memory reasons), the domain decomposition has been heavily optimized and made more flexible, especially for runs with hybrid openmp+mpi use, the tree walk code has been consolidated, the gravity solver restructured to allow more modular behavior (e.g. additions of external potentials, exotic dark matter or dark energy physics, etc), and the gravitational softenings are now fully adaptive for all particle types (as opposed to fixed). So don't expect to run GIZMO in even pure N-Body mode and expect to get exactly the same answer as you would with GADGET!
 
-## How do you make GIZMO "act like" another code?
+<a name="gadget-mimic"></a>
+## How do you make GIZMO "act like" another code? 
 
 But, you ask, what if I want to make GIZMO act more like code X? Well, you shouldn't (each code is optimized for its own design). But you still want to? Ok, fine, here's what you can do to get some approximation, for some popular codes:
 
 **GADGET**: Turn on the compiler flags:
-
-    SPHEQ_TRADITIONAL_SPH
-    DISABLE_SPH_PARTICLE_WAKEUP
-    SPHAV_DISABLE_CD10_ARTVISC
-    SPHAV_DISABLE_PM_CONDUCTIVITY
-    
+```bash
+HYDRO_DENSITY_SPH
+DISABLE_SPH_PARTICLE_WAKEUP
+SPH_DISABLE_CD10_ARTVISC
+SPH_DISABLE_PM_CONDUCTIVITY
+```    
 and turn off (along with all additional fluid physics):
-    
-    HYDRO_MESHLESS_FINITE_MASS
-    HYDRO_MESHLESS_FINITE_VOLUME
-    ADAPTIVE_GRAVSOFT_FORGAS
-    ADAPTIVE_GRAVSOFT_FORALL
-    
+```bash
+HYDRO_MESHLESS_FINITE_MASS
+HYDRO_MESHLESS_FINITE_VOLUME
+ADAPTIVE_GRAVSOFT_FORGAS
+ADAPTIVE_GRAVSOFT_FORALL
+```    
 If you're using cooling/star formation enable only the master switches and the flags labeled "old sub-grid models" (no "new" or "PFH" models). Use 32 neighbors, and an artificial viscosity constant=1.
 
 **GASOLINE**: do everything for as above for GADGET, then enable TURB\_DIFF\_ENERGY. You should also go into the "hydro\_core\_sph.h" file and uncomment the lines under "GASOLINE-like equation of motion" (this will make the equation of motion revert to the Gingold+Monaghan form)
 
 **RSPH**: be very careful, this method is not conservative and will blow up for all but the most basic test problems. follow the GADGET procedure and then uncomment the lines under "RSPH equation of motion" in "hydro\_core\_sph.h"
 
-**PHANTOM**: our SPH MHD formulation is identical to the most current version from Tricco+Price. The adaptive gravitational softenings for gas follow Price+Monaghan (also similar). For the standard hydro, turn on the flag SPHEQ\_TRADITIONAL\_SPH (and ideally enable the Morris+Monaghan artificial viscosity, but if not, just use the "old" artificial viscosity by turning on SPHAV\_DISABLE\_CD10\_ARTVISC). Disable the HYDRO\_MESHLESS\_FINITE\_MASS and HYDRO\_MESHLESS\_FINITE\_VOLUME methods. The quintic kernel is optional (but recommended).
+**PHANTOM**: our SPH MHD formulation is identical to the most current version from Tricco+Price. The adaptive gravitational softenings for gas follow Price+Monaghan (also similar). For the standard hydro, turn on the flag HYDRO\_DENSITY\_SPH (and ideally enable the Morris+Monaghan artificial viscosity, but if not, just use the "old" artificial viscosity by turning on SPH\_DISABLE\_CD10\_ARTVISC). Disable the HYDRO\_MESHLESS\_FINITE\_MASS and HYDRO\_MESHLESS\_FINITE\_VOLUME methods. The quintic kernel is optional (but recommended).
 
 **SPHS**: this one is a bit trickier. At least use the quintic kernel, but ideally you'd insert the same triangular kernel used in SPHS with the much-larger required number of neighbors (they use 442). Follow the instructions otherwise for GASOLINE, except disable TURB\_DIFF\_ENERGY and enable SPHAV\_CD10\_VISCOSITY\_SWITCH+SPHAV\_ARTIFICIAL\_CONDUCTIVITY (set the artificial conductivity constant to a high value, >=1).
 
@@ -294,33 +404,34 @@ If you're using cooling/star formation enable only the master switches and the f
 
 ***
 
-# 6. Compiling and Using the Code (a very brief tutorial)
+<a name="tutorial"></a>
+# 6. Compiling and Running the Code (a brief tutorial) 
 
-## Compilation requirements
+<a name="tutorial-requirements"></a>
+## Compilation requirements 
 
-First, get a copy of the source code from the bitbucket repository: https://bitbucket.org/phopkins/gizmo/
+First, get a copy of the source code from the [Bitbucket Repository](https://bitbucket.org/phopkins/gizmo/) (https://bitbucket.org/phopkins/gizmo/).
 
 (If you don't know how to do this, follow the how-to guides from bitbucket telling you how to use and pull code to a Mercurial repository). This is a version-controlled Mercurial repository. We use this instead of simply putting the source code in a tarball because it allows you to see all versions, fork your own for modifications without interfering with the main branch, and merge changes back in an orderly and well-controlled manner. But if you just want a tarball, see the "Downloads" page on the repository website.
 
 Now, the code requires a few non-standard libraries to run. On most clusters, these are considered standard and can be loaded through some sort of module system. Consult your local sysadmin or the user guide for your machine for details. For many of the computers at national centers (or if you're at any of the schools where many of our other users are located), the Makefile within the source code will already have notes specifically telling you how to load the modules for that machine. For example, on the XSEDE "Stampede" machine, you just need to include the line "module load intel mvapich2 gsl hdf5 fftw2" in your .bashrc or .bash\_profile file (or enter it into the command line before compiling), then link to the libraries in the Makefile as is currently done (open the Makefile and search "Stampede" to see it).
 
-These libraries include: MPI, GSL, HDF5, and FFTW2: 
+These libraries include: MPI, GSL, FFTW2, and HDF5: 
 
-1. mpi - the ‘Message Passing Interface’ (version 1.0 or higher). Many vendor supplied versions exist, in addition to excellent open source implementations, e.g.
-MPICH (http://www-unix.mcs.anl.gov/mpi/mpich), or
-LAM (http://www.lam-mpi.org).
++ mpi - the ‘Message Passing Interface’ (version 1.0 or higher). Many vendor supplied versions exist, in addition to excellent open source implementations, e.g.
+MPICH ([`http://www-unix.mcs.anl.gov/mpi/mpich`](http://www-unix.mcs.anl.gov/mpi/mpich)), or LAM ([`http://www.lam-mpi.org`](http://www.lam-mpi.org)). 
 
-2. gsl - the GNU scientific library. This open-source package can be obtained at http://www.gnu.org/software/gsl, for example. This is used for numerical integration for pre-computing various tables
++ gsl - the GNU scientific library. This open-source package can be obtained at [`http://www.gnu.org/software/gsl`](http://www.gnu.org/software/gsl), for example. This is used for numerical integration for pre-computing various tables
 
-3. fftw2 - the ‘Fastest Fourier Transform in the West’. This open-source package can be obtained at http://www.fftw.org. Note that the MPI-capable version 2.x of FFTW is required: version 3.x changes many of the calling and naming conventions (if someone wishes to upgrade the code for FFTW3, it would be welcome). FFTW is only needed for simulations that use the TreePM algorithm.
++ fftw2 - the ‘Fastest Fourier Transform in the West’. This open-source package can be obtained at [`http://www.fftw.org`](http://www.fftw.org). Note that the MPI-capable version 2.x of FFTW is required: version 3.x changes many of the calling and naming conventions (if someone wishes to upgrade the code for FFTW3, it would be welcome). FFTW is only needed for simulations that use the TreePM algorithm.
 
-4. hdf5 - the ‘Hierarchical Data Format’ (version 5.0 or higher, available at http://hdf.ncsa.uiuc.edu/HDF5). This optional library is only needed when one wants to read or write snapshot files in HDF format. It is possible to compile and use the code without this library.
++ hdf5 - the ‘Hierarchical Data Format’ (version 5.0 or higher, available at [`http://hdf.ncsa.uiuc.edu/HDF5`](http://hdf.ncsa.uiuc.edu/HDF5)). This optional library is only needed when one wants to read or write snapshot files in HDF format, although this is strongly recommended (and the default code behavior). It is possible to compile and use the code without this library.
 
 Note that FFTW needs to be compiled with parallel support enabled. This can be achieved by passing the option - -enable-mpi to its configure script. You also need to match the appropriate prefix (single or double precision or "noprefix", to the compiled version of FFTW): flags for the appropriate prefix are in the Config.sh file, or can be directly included in the Makefile.
 
 The code package includes various .c and .h files, folders with different modules, and the following critical files: 
 
-1. Makefile: this actually controls the code compilation. A number of systems have been pre-defined here, you should follow these examples to add other system-types. Slight adjustments of the makefile will be needed if any of the above libraries is not installed in a standard location on your system. Also, compiler optimisation options may need adjustment, depending on the C-compiler that is used. The provided makefile is compatible with GNU- make, i.e. typing make or gmake should then build the executable. For example, for the "Stampede" system described above, the Makefile includes the machine-specific set of options: 
++ Makefile: this actually controls the code compilation. A number of systems have been pre-defined here, you should follow these examples to add other system-types. Slight adjustments of the makefile will be needed if any of the above libraries is not installed in a standard location on your system. Also, compiler optimisation options may need adjustment, depending on the C-compiler that is used. The provided makefile is compatible with GNU- make, i.e. typing make or gmake should then build the executable. For example, for the "Stampede" system described above, the Makefile includes the machine-specific set of options: 
 
         ifeq ($(SYSTYPE),"Stampede") # checks if we are in Stampede according to the Makefile.systype file
         CC       =  mpicc # mpi c compiler
@@ -338,16 +449,17 @@ The code package includes various .c and .h files, folders with different module
 
     Once the parameters for your machine have been entered into the Makefile, you should not ever need to modify it again, unless you modify the source code and add files which need to be compiled (advanced users only!)
 
-2. Makefile.systype: This is where you actually specify the machine on which you are running. Simply uncomment your system and comment out all other lines. For example, for the same "Stampede" system described above, we would simply un-comment the line
++ Makefile.systype: This is where you actually specify the machine on which you are running. Simply uncomment your system and comment out all other lines. For example, for the same "Stampede" system described above, we would simply un-comment the line
 
         SYSTYPE="Stampede"
 
     If you add a new system, add a block like the above description for Stampede to the Makefile, then add a line with the matching machine name to Makefile.systype. Then you and other users only need to comment/uncomment one line to control compilations!
 
-3. Config.sh: This file contains a number of compile-time options, which determine the type of simulations, physics included -- most everything you need to control at compile time. Once you've got the libraries linked and Makefile.systype set for your machine, all different types of simulations will just amount to changing settings in Config.sh (as well as the run-time initial conditions and paramterfiles, of course). On another page, we explain these options. 
++ Config.sh: This file contains a number of compile-time options, which determine the type of simulations, physics included -- most everything you need to control at compile time. Once you've got the libraries linked and Makefile.systype set for your machine, all different types of simulations will just amount to changing settings in Config.sh (as well as the run-time initial conditions and paramterfiles, of course). On another page, we explain these options. 
 
 
-## Starting and Running the Code
+<a name="tutorial-running"></a>
+## Starting and Running the Code 
 
 To start a simulation, invoke the executable with a command like
 
@@ -360,7 +472,8 @@ The code does not need to be recompiled for a different number of processors, or
 While GIZMO runs, it will print out various log-messages that inform you about the code activity. If you run a simulation interactively (as in the above call), these log-messages will appear on the screen, but you can also re-direct them to a file. For normal runs at any cluster computer, you will usually have to put the "mpirun" comment into a script file submitted to the computing queue (again, see your computers users guide) -- in this case, it will automatically pipe standard output/error messages to files, but you may still want to specify filenames in the script.
 
 
-## Interrupting a run
+<a name="tutorial-interrupt"></a>
+### _Interrupting a run_
 
 Run interruption works just like in GADGET. From that users guide: 
 Usually, a single submission to a queue system will not provide enough CPU-time to process a big production run. Therefore, a running simulation can be interrupted after any timestep, and resumed at the very same place later on. If the CPU-time limit is specified correctly in the parameter file, the code will interrupt itself automatically before the CPU-time limit expires, and write a set of ‘restart’-files. Actually, each processor writes its own restart file. These restart-files can be used to continue the run conveniently (see below).
@@ -371,9 +484,11 @@ Sometimes you may want to interrupt the code manually with the possibility to re
 
 The code will then write a restart-file and terminate itself after the current timestep is completed, and the file ‘stop’ will be erased automatically. Restart files are also generated when the last timestep of a simulation has been completed. They can be used if one later wants to extend the simulation beyond the original final time.
 
-## Restarting a run
+<a name="tutorial-restart"></a>
+## Restarting a run 
 
-### Restarting from restart-files
+<a name="tutorial-restart-restartfile"></a>
+### _Restarting from restart-files_
 
 This also functions just like GADGET-2: Quoting that users guide: To resume a run from restart-files, start the code with an optional flag in the form
 
@@ -386,7 +501,8 @@ When the code is started with the restart-flag, the parameterfile is parsed, but
 It is important to not forget the 1 if you want to restart – otherwise the simulation will restart from scratch, i.e. by reading in the initial conditions again! Also note that upon restarting from restart-files, the number of processors used for a simulation cannot be changed. Also note that restart files can in general not be transferred to another system, and that their structure is completely different than that of snapshot files. If you want to continue a simulation on another system or with a different number of processors, restarting from a snapshot file is the method of choice. This will be discussed next.
 
 
-### Restarting from snapshot-files
+<a name="tutorial-restart-snapshot"></a>
+### _Restarting from snapshot-files_
 
 This also works just like GADGET-2: There are two possibilities to restart a simulation from a previous snapshot-file. 
 
@@ -397,287 +513,341 @@ An alternative to this somewhat inconvenient procedure is to restart the code wi
 Note that the restart from snapshot files allows a change of the number of processors used for the simulation. This is not possible if you restart from restart-files. However, restarting from restart-files is the preferred method to resume a simulation, because it is much faster, and it minimizes possible perturbations in the time integration scheme of a running simulation (restarting from a snapshot forces the individual timestep scheme to be resynchronized). Because in general not all the particles are synchronized at the time of writing a snapshot file (the others are first-order predicted to the output time), a small perturbation in the time integration is introduced when restarting from a snapshot file.
 
 
+***
 
+<a name="config"></a>
+# 7. Config.sh (Setting compile-time options) 
 
-
-# 7. Config.sh (Setting compile-time options)
-
+<a name="config-overview"></a>
 ## Overview 
 
-Many options in GIZMO are controlled with compile-time options in the file "Config.sh" rather than run-time options in the parameterfile. This is done, following GADGET-2, in order to allow the generation of highly optimized binaries by the compiler, even when the underlying source allows for many different ways to run the code. Unfortunately, this technique has the disadvantage that different simulations may require different binary executables. If several simulations are run concurrently, there is hence the danger that a simulation is started or resumed with the ‘wrong’ binary. You should therefore always produce a separate executable for each simulation that is run. A good strategy for doing this in practice is to make a copy of the whole simulation source code together with its makefile in the output directory of each simulation run, and then use this copy to compile the code and to run the simulation. The code and its settings become then a logical part of the output generated in the simulation directory. -- (V. Springel). (Trust me, if you don't do this, it will quickly become impossible to know what version of the code was used to run any simulation -- P. Hopkins).
+Many options in GIZMO are controlled with compile-time options in the file "Config.sh" rather than run-time options in the parameterfile. This is done, following GADGET-2, in order to allow the generation of highly optimized binaries by the compiler, even when the underlying source allows for many different ways to run the code. Unfortunately, this technique has the disadvantage that different simulations may require different binary executables. If several simulations are run concurrently, there is hence the danger that a simulation is started or resumed with the ‘wrong’ binary. You should therefore always produce a separate executable for each simulation that is run. A good strategy for doing this in practice is to make a copy of the whole simulation source code together with its makefile in the output directory of each simulation run, and then use this copy to compile the code and to run the simulation. The code and its settings become then a logical part of the output generated in the simulation directory. -- (V. Springel). (Trust me, if you don't do this, it will quickly become impossible to know what version of the code was used to run any simulation -- PFH).
 
-The Config.sh file contains a dummy list of all available compile-time code options (with short descriptions), with most of them commented out by default. To activate a certain feature, the corresponding parameter should be un-commented, and given the desired value, where appropriate. Included in the source code is an example "Template\_Config.sh" for you to use - change the settings appropriately and copy it to "Config.sh".
+The "Template\_Config.sh" file contains a dummy list of all available compile-time code options (with short descriptions), with most of them commented out by default. To activate a certain feature, the corresponding parameter should be un-commented (and given the desired value, where appropriate) and copied into "Config.sh".
+
+The "Template\_Config.sh" also contains critical information (also listed below, but check both) about whether a given module is proprietary (which means permissions must be requested of the code developers for use, even if you have access to the nominally full/development code) or free-to-use for users of the development code. Please follow the citation guidelines and cite the relevant code papers whenever you use a given module.
 
 Whenever you change one of the makefile options described below, a full recompilation of the code is necessary: it must be done "from scratch" so you have to type "make clean" in the source directory followed by "make".
 
+Below, we describe the entire contents of the "Template\_Config.sh" file, in groups based on their type.
 
 
-## Options in Config.sh
+<a name="config-boundaries"></a>
+## Boundary Conditions & Dimensions 
 
-Below, we give the entire contents of the currently-vetted Config.sh options for the beta version of GIZMO. In Config.sh, they are "blocked" into groups which reflect the categories which they affect. We will list the raw code in Config.sh for each block, and follow with more detailed descriptions.
+```bash
+#################################################################################################### 
+#--------------------------------------- Boundary Conditions & Dimensions 
+#################################################################################################### 
+#BOX_PERIODIC               # Use this if periodic boundaries are needed (otherwise open boundaries are assumed)
+#BOX_BND_PARTICLES          # particles with ID=0 are forced in place (their accelerations are set =0): use for special boundary conditions where these particles represent fixed "walls"
+#BOX_LONG_X=140             # modify box dimensions (non-square periodic box): multiply X (BOX_PERIODIC and SELFGRAVITY_OFF required)
+#BOX_LONG_Y=1               # modify box dimensions (non-square periodic box): multiply Y
+#BOX_LONG_Z=1               # modify box dimensions (non-square periodic box): multiply Z
+#BOX_REFLECT_X              # make the x-boundary reflecting (assumes a box 0<x<1, unless BOX_PERIODIC is set)
+#BOX_REFLECT_Y              # make the y-boundary reflecting (assumes a box 0<y<1, unless BOX_PERIODIC is set)
+#BOX_REFLECT_Z              # make the z-boundary reflecting (assumes a box 0<z<1, unless BOX_PERIODIC is set)
+#BOX_SHEARING=1             # shearing box boundaries: 1=r-z sheet (r,z,phi coordinates), 2=r-phi sheet (r,phi,z), 3=r-phi-z box, 4=as 3, with vertical gravity
+#BOX_SHEARING_Q=(3./2.)     # shearing box q=-dlnOmega/dlnr; will default to 3/2 (Keplerian) if not set
+#BOX_SPATIAL_DIMENSION=3    # sets number of spatial dimensions evolved (default=3D). Switch for 1D/2D test problems: if =1, code only follows the x-line (all y=z=0), if =2, only xy-plane (all z=0). requires SELFGRAVITY_OFF
+####################################################################################################
+```  
+    
+These options determine basic aspects of the boundary conditions and dimensionality of the problem. Because these completely change the nature of the solvers and neighbor searches, they must be set at compile (not run) time.  
 
-### Boundary Conditions & Dimensions
+    
+**BOX\_PERIODIC**: set this if you want to have periodic boundary conditions.     
 
-    #################################################################################################### 
-    #--------------------------------------- Boundary Conditions & Dimensions 
-    #################################################################################################### 
-    #PERIODIC                       # Use this if periodic boundaries are needed (otherwise open boundaries are assumed)
-    #BND_PARTICLES                  # particles with ID=0 are forced in place (their accelerations are set =0):
-                                    # use for special boundary conditions where these particles represent fixed "walls"
-    #LONG_X=140                     # modify box dimensions (non-square periodic box): multiply X (PERIODIC and NOGRAVITY required)
-    #LONG_Y=1                       # modify box dimensions (non-square periodic box): multiply Y
-    #LONG_Z=1                       # modify box dimensions (non-square periodic box): multiply Z
-    #REFLECT_BND_X                  # make the x-boundary reflecting (assumes a box 0<x<1, unless PERIODIC is set)
-    #REFLECT_BND_Y                  # make the y-boundary reflecting (assumes a box 0<y<1, unless PERIODIC is set)
-    #REFLECT_BND_Z                  # make the z-boundary reflecting (assumes a box 0<z<1, unless PERIODIC is set)
-    #SHEARING_BOX=1                 # shearing box boundaries: 1=r-z sheet (r,z,phi coordinates), 2=r-phi sheet (r,phi,z), 3=r-phi-z box, 4=as 3, with vertical gravity
-    #SHEARING_BOX_Q=(3./2.)         # shearing box q=-dlnOmega/dlnr; will default to 3/2 (Keplerian) if not set
-    #ONEDIM                         # Switch for 1D test problems: code only follows the x-line. requires NOGRAVITY, and all y=z=0
-    #TWODIMS                        # Switch for 2D test problems: code only follows the xy-plane. requires NOGRAVITY, and all z=0.
-    ####################################################################################################
+**BOX\_BND\_PARTICLES**: If this is set, particles with a particle-ID equal to zero do not receive any hydrodynamic acceleration. This can be useful for idealized tests, where these particles represent fixed ‘walls’. They can also be modified in kicks.c to give reflecting boundary conditions. 
 
-These options determine basic aspects of the boundary conditions and dimensionality of the problem. Because these completely change the nature of the solvers and neighbor searches, they must be set at compile (not run) time.
+**BOX\_LONG X/Y/Z**: These options can only be used together with BOX\_PERIODIC and SELFGRAVITY\_OFF. When set, they make the periodic simulation box rectangular with dimensions BOX\_LONG\_? times BoxSize in each of the ?=X,Y,Z axes. 
 
-**PERIODIC**: set this if you want to have periodic boundary conditions.     
+**BOX\_REFLECT X/Y/Z**: This makes the boundaries reflecting; set X/Y/Z for the appropriate of the axes you want to be reflecting, of course. If the box is open (non-periodic), then this will *assume* the box of interest stretches from 0-1 in each reflecting coordinate (the non-reflecting dimensions of the box can be anything). If the box is periodic (totally compatible, but the 'reflect' will override the 'periodic' term), the dimensions will follow the box size and LONG options set above.
 
-**BND\_PARTICLES**: If this is set, particles with a particle-ID equal to zero do not receive any hydrodynamic acceleration. This can be useful for idealized tests, where these particles represent fixed ‘walls’. They can also be modified in kicks.c to give reflecting boundary conditions. 
+**BOX\_SHEARING**: This enables shearing-box boundary conditions. It should be set to different values corresponding to the type of shearing box. (=1) is a 2D un-stratified shearing-sheet in the r-z plane. note that if this is set, the output coordinates (0,1,2) correspond to (r,z,phi). (=2) is a 2D shearing sheet in the r-phi plane; coordinates (0,1,2)=(r,phi,z). (=3) is a full 3D box, (0,1,2)=(r,phi,z). (=4) is the full box but vertically stratified (with vertical gravity). 
 
-**LONG X/Y/Z**: These options can only be used together with PERIODIC and NOGRAVITY. When set, they make the periodic simulation box rectangular with dimensions LONG\_? times BoxSize in each of the ?=X,Y,Z axes. 
+**BOX\_SHEARING\_Q**: This sets the "q" parameter for shearing boxes. q=-dln(Omega)/dln(R), =3/2 for a Keplerian disk or =1 for a constant-Vc disk. If this isn't set but BOX\_SHEARING is, it will default to =3/2 (Keplerian).
 
-**REFLECT\_BND X/Y/Z**: This makes the boundaries reflecting; set X/Y/Z for the appropriate of the axes you want to be reflecting, of course. If the box is open (non-periodic), then this will *assume* the box of interest stretches from 0-1 in each reflecting coordinate (the non-reflecting dimensions of the box can be anything). If the box is periodic (totally compatible, but the 'reflect' will override the 'periodic' term), the dimensions will follow the box size and LONG options set above.
-
-**SHEARING\_BOX**: This enables shearing-box boundary conditions. It should be set to different values corresponding to the type of shearing box. (=1) is a 2D un-stratified shearing-sheet in the r-z plane. note that if this is set, the output coordinates (0,1,2) correspond to (r,z,phi). (=2) is a 2D shearing sheet in the r-phi plane; coordinates (0,1,2)=(r,phi,z). (=3) is a full 3D box, (0,1,2)=(r,phi,z). (=4) is the full box but vertically stratified (with vertical gravity). 
-
-**SHEARING\_BOX\_Q**: This sets the "q" parameter for shearing boxes. q=-dln(Omega)/dln(R), =3/2 for a Keplerian disk or =1 for a constant-Vc disk. If this isn't set but SHEARING\_BOX is, it will default to =3/2 (Keplerian).
-
-**ONEDIM/TWODIMS**: The code follows only 2d hydrodynamics in the x-axis or xy-plane. This only works with NOGRAVITY and if all coordinates of the non-active axes are zero. 
+**BOX\_SPATIAL\_DIMENSION**: This determines how many dimensions will actually be evolved for the simulation. If not set, defaults to 3 (3D x,y,z). If set =1, the simulation will be one-dimensional, and only follow the x-line, with all $y=z=0$ ($y=z=0$ should be set in the initial conditions, or it may cause the code to crash). If set =2, the simulation will be two-dimensional, and only follow the x-y plane, with all $z=0$ (again, make sure $z=0$ is set in the initial conditions). Higher-than-three dimensional systems are not implemented (sorry, no hyper-cubes). This only works with SELFGRAVITY\_OFF (gravity off, or the radiation version of this). 
 
 
-
-### Hydro Solver Method
+<a name="config-hydro"></a>
+## Hydro Solver Method 
      
-    ####################################################################################################
-    #--------------------------------------- Hydro solver method
-    ####################################################################################################
-    #HYDRO_MESHLESS_FINITE_MASS         # Lagrangian (constant-mass) finite-volume Godunov method
-    #HYDRO_MESHLESS_FINITE_VOLUME       # Moving (quasi-Lagrangian) finite-volume Godunov method
-    ##-----------------------------------------------------------------------------------------------------
-    #--------------------------------------- SPH methods:
-    #SPHEQ_DENSITY_INDEPENDENT_SPH      # force SPH to use the 'pressure-sph' formulation ("modern" SPH)
-    #SPHEQ_TRADITIONAL_SPH              # force SPH to use the 'density-sph' (GADGET-2 & GASOLINE SPH)
-    #--------------------------------------- SPH diffusion options (use with SPH; not relevant for Godunov/Mesh modes)
-    #SPHAV_DISABLE_CD10_ARTVISC         # Disable Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks); just use Balsara switch
-    #SPHAV_DISABLE_PM_CONDUCTIVITY      # Disable mixing entropy (J.Read's improved Price-Monaghan conductivity with Cullen-Dehnen switches)
-    ##-----------------------------------------------------------------------------------------------------
-    #--------------------------------------- Kernel Options
-    #KERNEL_FUNCTION=3                  # Choose the kernel function (2=quadratic peak, 3=cubic spline [default], 4=quartic spline, 5=quintic spline, 6=Wendland C2, 7=Wendland C4)
-    ####################################################################################################
+
+```bash
+####################################################################################################
+# --------------------------------------- Hydro solver method
+####################################################################################################
+# --------------------------------------- Mesh-free Finite-volume Godunov methods
+#HYDRO_MESHLESS_FINITE_MASS     # solve hydro using the Lagrangian (constant-mass) finite-volume Godunov method
+#HYDRO_MESHLESS_FINITE_VOLUME   # solve hydro using the Moving (quasi-Lagrangian) finite-volume Godunov method
+## -----------------------------------------------------------------------------------------------------
+# --------------------------------------- SPH methods (enable one of these flags to use SPH):
+#HYDRO_PRESSURE_SPH             # solve hydro using SPH with the 'pressure-sph' formulation ('P-SPH')
+#HYDRO_DENSITY_SPH              # solve hydro using SPH with the 'density-sph' formulation (GADGET-2 & GASOLINE SPH)
+# --------------------------------------- SPH artificial diffusion options (use with SPH; not relevant for Godunov/Mesh modes)
+#SPH_DISABLE_CD10_ARTVISC       # for SPH only: Disable Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks); just use Balsara switch
+#SPH_DISABLE_PM_CONDUCTIVITY    # for SPH only: Disable mixing entropy (J.Read's improved Price-Monaghan conductivity with Cullen-Dehnen switches)
+## -----------------------------------------------------------------------------------------------------
+# --------------------------------------- Kernel Options
+#KERNEL_FUNCTION=3              # Choose the kernel function (2=quadratic peak, 3=cubic spline [default], 4=quartic spline, 5=quintic spline, 6=Wendland C2, 7=Wendland C4, 8=2-part quadratic)
+####################################################################################################
+```
      
-These options determine which hydro solver is used (see the section in this guide about the differences between the different hydro methods).
+These options determine which hydro solver is used (see the section in this guide about the differences between the different hydro methods). Make sure you enable **ONLY ONE** method labeled `HYDRO_...` (i.e. don't enable both `HYDRO_MESHLESS_FINITE_MASS` and `HYDRO_MESHLESS_FINITE_VOLUME` or `HYDRO_PRESSURE_SPH`, etc.), or the code will not behave correctly. 
 
 **HYDRO\_MESHLESS\_FINITE\_MASS**: Use the MFM (Meshless Finite Mass) method to solve hydro.
 
 **HYDRO\_MESHLESS\_FINITE\_VOLUME**: Use the MFV (Meshless Finite Volume) method to solve hydro.
 
-**SPHEQ\_DENSITY\_INDEPENDENT\_SPH**: Use SPH to solve hydro, specifically the Lagrangian "pressure-energy" formulation from Hopkins 2013.
+**HYDRO\_PRESSURE\_SPH**: Use SPH to solve hydro, specifically the Lagrangian "pressure-energy" formulation from Hopkins 2013.
 
-**SPHEQ\_TRADITIONAL\_SPH**: Use SPH to solve hydro, specifically the Lagrangian "density" formulation from Springel and Hernquist 2002. 
+**HYDRO\_DENSITY\_SPH**: Use SPH to solve hydro, specifically the Lagrangian "density" formulation from Springel and Hernquist 2002. 
 
-**SPHAV\_DISABLE\_CD10\_ARTVISC**: Disable the matrix-based higher-order gradient switch from Cullen & Dehnen 2010 for the SPH artificial viscosity (a switch to attempt to "turn down" artificial viscosity away from shocks). If it is disabled, the older Morris 1987 constant artificial viscosity + Balsara switch method (as in GADGET) is used. This is only relevant if using an SPH method. 
+**SPH\_DISABLE\_CD10\_ARTVISC**: This option is relevant if and only if you are using one of the SPH methods. If turned on, it will disable the matrix-based higher-order gradient switch from Cullen & Dehnen 2010 for the SPH artificial viscosity (a switch to attempt to "turn down" artificial viscosity away from shocks). Instead, the older Morris 1987 constant artificial viscosity + Balsara switch method (as in GADGET) is used.
 
-**SPHAV\_DISABLE\_PM\_CONDUCTIVITY**: Disable Price & Monaghan 2008-like "artificial conductivity" -- an artificial thermal diffusion term designed to smear out contact discontinuities and shocks in SPH so that SPH can better treat them and ensuing fluid instabilities (at the cost of substantially increased diffusion and loss of entropy conservation). This is only relevant if using an SPH method.
+**SPH\_DISABLE\_PM\_CONDUCTIVITY**: This option is relevant if and only if you are using one of the SPH methods. If turned on, it will disable Price & Monaghan 2008-like "artificial conductivity" -- an artificial thermal diffusion term designed to smear out contact discontinuities and shocks in SPH so that SPH can better treat them and ensuing fluid instabilities (at the cost of substantially increased diffusion and loss of entropy conservation). 
 
 **KERNEL\_FUNCTION**: This option allows you to replace the standard cubic spline kernel (used for the volume partition with any of the non-moving mesh methods, and for gravitational softening in any method including moving meshes) with alternative kernel functions (all defined in the file kernel.h). Kernels currently implemented include: 1=linear ramp (~1-r); this is not generally recommended (it has certain well-known numerical problems), but is useful for some testing purposes. 2=quadratic 'peaked' kernel (~(1-r)^2). This is use-able for MFM/MFV methods, but should not be used for SPH, since it does not have a well-defined derivative at r=0 (the kernel derivative is a fundamental quantity in SPH, but meaningless in MFM/MFV). Still it is more noisy than higher-order kernels. 3=default (cubic spline). The recommended number of neighbors for the cubic spline is ~32 (in 3D). 4=Morris 1996 quartic spline. The recommended number of neighbors is ~45-62 (in 3D). 5=Morris 1996 quintic spline. Recommended ~64-128 neighbors (in 3D). 6=Wendland C2 kernel (see Cullen & Dehnen 2010 for details of this kernel). Recommend 3D 45-80 neighbors. In SPH, this kernel produces somewhat larger zeroth-order errors in density estimation compare to the quartic spline, but does not suffer the particle pairing instability. 7=Wendland C4 kernel (64-180 3D neighbors). Higher-order kernels are more expensive and more diffusive. They are usually not recommended if moving mesh mode, MFM-mode, or MFV-mode is used. But if SPH is used, convergence requires (technically) infinite neighbor number. So even though this is more expensive, and more diffusive, it is the only way to "beat down" the zeroth and first-order inconsistency error terms which appear in all SPH formulations. 
 
 
-### Additional Fluid Physics
 
-     
-    ####################################################################################################
-    # --------------------------------------- Additional Fluid Physics
-    ####################################################################################################
-    ##-----------------------------------------------------------------------------------------------------
-    #---------------------------------------- Gas Equations-of-State
-    #EOS_GAMMA=(5.0/3.0)            # Polytropic Index of Gas (for an ideal gas law): if not set and no other (more complex) EOS set, defaults to GAMMA=5/3
-    #EOS_HELMHOLTZ                  # Use Timmes & Swesty 2000 EOS (for e.g. stellar or degenerate equations of state)
-    ## -----------------------------------------------------------------------------------------------------
-    # --------------------------------- Magneto-Hydrodynamics
-    # ---------------------------------  these modules are public, but if used, the user should also cite the MHD-specific GIZMO methods paper
-    # ---------------------------------  (Hopkins 2015: 'Accurate, Meshless Methods for Magneto-Hydrodynamics') as well as the standard GIZMO paper
-    #MAGNETIC                       # master switch for MHD, regardless of which Hydro solver is used
-    #B_SET_IN_PARAMS                # set initial fields (Bx,By,Bz) in parameter file
-    #MHD_NON_IDEAL                  # enable non-ideal MHD terms: Ohmic resistivity, Hall effect, and ambipolar diffusion (solved explicitly)
-    #CONSTRAINED_GRADIENT_MHD=1     # use CG method to maintain low divB: set this value to control how aggressive the div-reduction is:
-                                    # 0=minimal (safest), 1=intermediate (recommended), 2=aggressive (less stable), 3+=very aggressive (less stable+more expensive)
-    ##-----------------------------------------------------------------------------------------------------
-    ##-----------------------------------------------------------------------------------------------------
-    #--------------------------------------- Conduction
-    #CONDUCTION                     # Thermal conduction solved *explicitly*: isotropic if MAGNETIC off, otherwise anisotropic
-    #CONDUCTION_SPITZER             # Spitzer conductivity accounting for saturation: otherwise conduction coefficient is constant
-    ##-----------------------------------------------------------------------------------------------------
-    ##-----------------------------------------------------------------------------------------------------
-    #--------------------------------------- Viscosity
-    #VISCOSITY                      # Navier-stokes equations solved *explicitly*: isotropic coefficients if MAGNETIC off, otherwise anisotropic
-    #VISCOSITY_BRAGINSKII           # Braginskii viscosity tensor for ideal MHD
-    ##-----------------------------------------------------------------------------------------------------
-    ##-----------------------------------------------------------------------------------------------------
-    #--------------------------------------- Radiative Cooling physics (mostly geared towards galactic/extragalactic cooling)
-    #--------------------------- These modules were originally developed for a combination of -proprietary- physics modules. they can only be used with
-    #--------------------------- permission from the authors. email P. Hopkins to obtain the relevant permissions for the cooling routines of interest.
-    #COOLING                        # enables radiative cooling and heating: if GALSF, also external UV background read from file "TREECOOL"
-    #COOL_LOW_TEMPERATURES          # allow fine-structure and molecular cooling to ~10 K; account for optical thickness and line-trapping effects with proper opacities
-    #COOL_METAL_LINES_BY_SPECIES    # use full multi-species-dependent cooling tables ( https://dl.dropbox.com/u/16659252/spcool_tables.tgz )
-    #GRACKLE                        # enable GRACKLE: cooling+chemistry package (requires COOLING above; https://grackle.readthedocs.org/en/latest )
-    #GRACKLE_CHEMISTRY=1            # choose GRACKLE cooling chemistry: (0)=tabular, (1)=Atomic, (2)=(1)+H2+H2I+H2II, (3)=(2)+DI+DII+HD
-    ##-----------------------------------------------------------------------------------------------------
-    ##-----------------------------------------------------------------------------------------------------
-    #--------------------------------------- Smagorinsky Turbulent Eddy Diffusion Model
-    #---------------------------------------- (this is developed by P. Hopkins as part of the FIRE package: the same FIRE authorship & approval policies apply, see below)
-    #TURB_DIFF_METALS               # turbulent diffusion of metals (passive scalars)
-    #TURB_DIFF_ENERGY               # turbulent diffusion of internal energy (conduction with effective turbulent coefficients)
-    #TURB_DIFF_VELOCITY             # turbulent diffusion of momentum (viscosity with effective turbulent coefficients)
-    ##-----------------------------------------------------------------------------------------------------
-    ## ----------------------------------------------------------------------------------------------------
-    # --------------------------------------- Aerodynamic Particles
-    # --------------------------------------- (this is developed by P. Hopkins as part of the FIRE package: the same FIRE authorship & approval policies apply, see below)
-    #GRAIN_FLUID                    # aerodynamically-coupled grains (particle type 3 are grains); default is Stokes drag
-    #GRAIN_EPSTEIN=1                # uses the cross section for molecular hydrogen (times this number) to calculate Epstein drag
-    #GRAIN_BACKREACTION             # account for momentum of grains pushing back on gas (from drag terms)
-    #GRAIN_LORENTZFORCE             # charged grains feel Lorentz forces (requires MAGNETIC)
-    #GRAIN_COLLISIONS               # model collisions between grains (super-particles; so this is stochastic)
-    ##-----------------------------------------------------------------------------------------------------
-    ##-----------------------------------------------------------------------------------------------------
-    #---------------------------------------- Cosmic Rays
-    #---------------------------------------- (this is developed by P. Hopkins as part of the FIRE package: the same FIRE authorship & approval policies apply, see below)
-    #COSMIC_RAYS                    # two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anisotropic diffusion, streaming, injection by SNe
-    #COSMIC_RAYS_DISABLE_STREAMING  # turn off CR streaming (propagation is purely advective+diffusion; warning: this can severely under-estimate CR losses to Alfven waves)
-    #COSMIC_RAYS_DISABLE_DIFFUSION  # turn off CR diffusion (leaves streaming intact, simply disables 'microscopic+turbulent' CR diffusion terms)
-    #COSMIC_RAYS_DISABLE_COOLING    # turn off CR heating/cooling interactions with gas (catastrophic losses, hadronic interactions, etc; only adiabatic PdV work terms remain)
-    #COSMIC_RAYS_DIFFUSION_CONSTANT # replaces physical CR diffusion with constant coefficient (equal to value of CosmicRayDiffusionCoeff in code units); turn off streaming to make this the ONLY transport
-    ##-----------------------------------------------------------------------------------------------------
-    ####################################################################################################
+<a name="config-fluids"></a>
+## Additional Fluid Physics 
+
+```bash
+####################################################################################################
+# --------------------------------------- Additional Fluid Physics
+####################################################################################################
+```
+
 
 These options set different fluid physics. This includes changing the equation of state, treating magnetic fields with ideal or non-ideal MHD, enabling explicit conduction, viscosity, and passive scalar diffusion, modeling turbulent eddy diffusivity, explicit integration of aerodynamic particles in fluid or relativistic ("cosmic ray") fluids, enabling radiative cooling and on-the-fly chemistry in the fluids, and so on.
 
+
+<a name="config-fluids-eos"></a>
+### _Equations-of-State_
+
+
+```bash
+##-----------------------------------------------------------------------------------------------------
+#---------------------------------------- Gas Equations-of-State
+#EOS_GAMMA=(5.0/3.0)            # Polytropic Index of Gas (for an ideal gas law): if not set and no other (more complex) EOS set, defaults to EOS_GAMMA=5/3
+#EOS_HELMHOLTZ                  # Use Timmes & Swesty 2000 EOS (for e.g. stellar or degenerate equations of state); if additional tables needed, download at http://www.tapir.caltech.edu/~phopkins/public/helm_table.dat
+## ----------------------------------------------------------------------------------------------------
+```
 
 **EOS\_GAMMA**: Sets the polytropic equation of state to use for gas. This will be used instantaneously for operator-split hydro even if cooling or complicated heating is used. Overridden if EOS\_HELMHOLTZ is used. If not set, Gamma=5/3 is used.    
 
 **EOS\_HELMHOLTZ**: The gas will use the Timmes & Swesty 2000 equation of state (for e.g. stellar or degenerate gas equations of state). This is a standard Helmholtz EOS approach.
 
-**MAGNETIC**: Enables magnetohydrodynamics (default is ideal MHD). The code will evolve magnetic fields along with everything else, evolving the induction equation, magnetic forces, etc. Specific sub-options (if you wish to disable different parts of the MHD calculation can be found in allvars.h under the "MAGNETIC" heading). Currently, this is done for SPH following Tricco+Price and for non-SPH methods following Gaburov+Nitadori. Both methods use the hyperbolic-parabolic Dedner 2002 scheme for "divergence cleaning" (maintaining the $\nabla\cdot{\bf B}=0$ constraint, which is numerically challenging). Snapshots will include the B-field and div.B. We always use the units convention $\mu_{0} = 1$ for MHD. The MHD code works in both "regular" and co-moving integrations.
 
-**B\_SET\_IN\_PARAMS**: Set the initial magnetic fields to a constant value in the parameterfile (specifying Bx/By/Bz, in Gauss). If this is enabled the code will search for this in the parameterfile (unless you are restarting from a restart or snapshot file with flags 1 or 2), otherwise, it will assume the fields are given in the initial conditions file (with a Bx/y/z value for every particle). 
+<a name="config-fluids-mhd"></a>
+### _Magnetic Fields_
 
-**MHD\_NON\_IDEAL**: Enables non-ideal MHD terms, specifically Ohmic resistivity, ambipolar diffusion, and the Hall effect. These are solved operator-split from the ideal MHD Reimann problem, as anisotropic diffusion terms appearing in the induction equation. Currently the numerical implementation of the induction equation terms is well-tested. However, the coefficients, which the code attempts to calculate based on the physical state of the gas, require careful calibration and testing for physical problems of interest.
+```bash
+## -----------------------------------------------------------------------------------------------------
+# --------------------------------- Magneto-Hydrodynamics
+# ---------------------------------  these modules are public, but if used, the user should also cite the MHD-specific GIZMO methods paper
+# ---------------------------------  (Hopkins 2015: 'Accurate, Meshless Methods for Magneto-Hydrodynamics') as well as the standard GIZMO paper
+#MAGNETIC                       # master switch for MHD, regardless of which Hydro solver is used
+#MHD_B_SET_IN_PARAMS                # set initial fields (Bx,By,Bz) in parameter file
+#MHD_NON_IDEAL                  # enable non-ideal MHD terms: Ohmic resistivity, Hall effect, and ambipolar diffusion (solved explicitly); Users should cite Hopkins 2017, MNRAS, 466, 3387, in addition to the MHD paper
+#MHD_CONSTRAINED_GRADIENT=1     # use CG method (in addition to cleaning, optional!) to maintain low divB: set this value to control how aggressive the div-reduction is:
+                                # 0=minimal (safest), 1=intermediate (recommended), 2=aggressive (less stable), 3+=very aggressive (less stable+more expensive). [Please cite Hopkins, MNRAS, 2016, 462, 576]
+##-----------------------------------------------------------------------------------------------------
+```
 
-**CONSTRAINED\_GRADIENT\_MHD**: Activate this to use the hybrid constrained-gradient method of Hopkins 2015 to further reduce div-B errors (beyond the standard Dedner 2002 scheme described above, which is always enabled when you turn on MAGNETIC). This will perform an extra iteration over particles in the gradient step, to iteratively solve for the reconstruction at faces which goes through all particle-averaged central values and minimizes the divergence errors, while also minimizing the least-squares divergence from the default gradient estimator-based reconstruction at the faces. It is slightly more expensive, but nearly as accurate as constrained-transport methods (which preserve div-B to machine accuracy) in most problems. See the methods paper: Hopkins 2015. You can choose how aggressively you wish to control the errors by setting this value: 0=minimal (safest and most stable, but relatively diffusive formulation which does less to control divergences), 1=intermediate (recommended case), 2=aggressive (this will be somewhat more expensive, doing an additional iteration, and uses weaker slope-limiters, which allows more successful divergence control, but can sacrifice numerical stability on certain types of problems). 
+**MAGNETIC**: Enables magnetohydrodynamics (default is ideal MHD). The code will evolve magnetic fields along with everything else, evolving the induction equation, magnetic forces, etc. Specific sub-options (if you wish to disable different parts of the MHD calculation can be found in allvars.h under the "MAGNETIC" heading). Currently, this is done for SPH following Tricco+Price and for non-SPH methods following Gaburov+Nitadori. Both methods use the hyperbolic-parabolic Dedner 2002 scheme for "divergence cleaning" (maintaining the $\nabla\cdot{\bf B}=0$ constraint, which is numerically challenging). Snapshots will include the B-field and $\nabla\cdot{\bf B}$. We always use the units convention $\mu_{0} = 1$ for MHD. The MHD code works in both "regular" and co-moving integrations.
+
+**MHD\_B\_SET\_IN\_PARAMS**: Set the initial magnetic fields to a constant value in the parameterfile (specifying Bx/By/Bz, in Gauss). If this is enabled the code will search for this in the parameterfile (unless you are restarting from a restart or snapshot file with flags 1 or 2), otherwise, it will assume the fields are given in the initial conditions file (with a Bx/y/z value for every particle). 
+
+**MHD\_NON\_IDEAL**: Enables non-ideal MHD terms, specifically Ohmic resistivity, ambipolar diffusion, and the Hall effect. These are solved operator-split from the ideal MHD Reimann problem, as anisotropic diffusion terms appearing in the induction equation. Currently the numerical implementation of the induction equation terms is well-tested; the developer (PFH) asks that you cite the methods paper Hopkins 2017, MNRAS, 466, 3387, in addition to the GIZMO MHD methods paper, if you use these. However, the coefficients, which the code attempts to calculate based on the physical state of the gas, require careful calibration and testing for physical problems of interest, and authors should explore these for themselves. 
+
+**MHD\_CONSTRAINED\_GRADIENT**: Activate this to use the hybrid constrained-gradient method of Hopkins 2015 to further reduce div-B errors (beyond the standard Dedner 2002 scheme described above, which is always enabled when you turn on MAGNETIC). This will perform an extra iteration over particles in the gradient step, to iteratively solve for the reconstruction at faces which goes through all particle-averaged central values and minimizes the divergence errors, while also minimizing the least-squares divergence from the default gradient estimator-based reconstruction at the faces. It is slightly more expensive, but nearly as accurate as constrained-transport methods (which preserve div-B to machine accuracy) in most problems. See the methods paper: Hopkins 2015. You can choose how aggressively you wish to control the errors by setting this value: 0=minimal (safest and most stable, but relatively diffusive formulation which does less to control divergences), 1=intermediate (recommended case), 2=aggressive (this will be somewhat more expensive, doing an additional iteration, and uses weaker slope-limiters, which allows more successful divergence control, but can sacrifice numerical stability on certain types of problems). Please cite Hopkins, MNRAS, 2016, 462, 576, if you use these methods, as they were first presented therein.
 
 
-**CONDUCTION**: Turn on physical, isotropic or anisotropic thermal conduction. This enables physical conduction for irregular particle/grid distributions, implemented in an operator-split manner. If MAGNETIC is off, the conduction is assumed to be isotropic; if MAGNETIC is on, the conduction is anisotropic (according to the magnetic field direction as it should be). This is implemented for both SPH (following Cleary+Monaghan 1999) and MFM/MFV modes (derived from scratch for our meshless formalism, but very similar to known implementations in moving-mesh finite-volume methods).  For SPH, be careful: conduction relies on the (noisy and zeroth-order inconsistent) SPH second-derivative operator. So a large kernel is especially useful to minimize the systematic errors. For MFM/MFV methods, the consistent finite-volume formulation is used; this is far more accurate, less noisy, and converges more rapidly, especially for the anisotropic case. In either case, since we solve the conduction equations explicitly, a stronger timestep restriction is necessary (since the equations are parabolic); this is self-consistently calculated. 
+<a name="config-fluids-navierstokes"></a>
+### _Conduction & Viscosity_
 
-**CONDUCTION\_SPITZER**: Calculate the thermal conductivities of the gas self-consistently following Spitzer, accounting for saturation (when the gradient scale lengths approach the electron mean free paths). If this is off, the coefficients are simply constants set by hand.
+```bash
+##-----------------------------------------------------------------------------------------------------
+#--------------------------------------- Conduction
+#------------------------------------------ [Please cite and read the methods paper Hopkins 2017, MNRAS, 466, 3387]
+#CONDUCTION                     # Thermal conduction solved *explicitly*: isotropic if MAGNETIC off, otherwise anisotropic
+#CONDUCTION_SPITZER             # Spitzer conductivity accounting for saturation: otherwise conduction coefficient is constant  [cite Su et al., 2017, MNRAS, 471, 144, in addition to the conduction methods paper above]
+##-----------------------------------------------------------------------------------------------------
+##-----------------------------------------------------------------------------------------------------
+#--------------------------------------- Viscosity
+#------------------------------------------ [Please cite and read the methods paper Hopkins 2017, MNRAS, 466, 3387]
+#VISCOSITY                      # Navier-stokes equations solved *explicitly*: isotropic coefficients if MAGNETIC off, otherwise anisotropic
+#VISCOSITY_BRAGINSKII           # Braginskii viscosity tensor for ideal MHD    [cite Su et al., 2017, MNRAS, 471, 144, in addition to the conduction methods paper above]
+##-----------------------------------------------------------------------------------------------------
+```
 
-**VISCOSITY**: Turn on physical, isotropic or anisotropic viscosity. By default this enables Navier-Stokes viscosity, with shear and bulk viscosities set in the parameterfile. The operator-splitting is similar to that for conduction. Again this is implemented for both SPH and MFM/MFV modes; but the MFM/MFV mode is much more accurate and highly recommended. If you are going to use SPH, be sure to use a very large kernel. Timesteps are again appropriately limited for solving the physical equations here. As with conduction, in the pure-hydro case, isotropic viscosity is assumed. If MAGNETIC is on, then the physically correct anisotropic tensor viscosity is used. 
+**CONDUCTION**: Turn on physical, isotropic or anisotropic thermal conduction. This enables physical conduction for irregular particle/grid distributions, implemented in an operator-split manner. If MAGNETIC is off, the conduction is assumed to be isotropic; if MAGNETIC is on, the conduction is anisotropic (according to the magnetic field direction as it should be). This is implemented for both SPH (following Cleary+Monaghan 1999) and MFM/MFV modes (derived from scratch for our meshless formalism, but very similar to known implementations in moving-mesh finite-volume methods).  For SPH, be careful: conduction relies on the (noisy and zeroth-order inconsistent) SPH second-derivative operator. So a large kernel is especially useful to minimize the systematic errors. For MFM/MFV methods, the consistent finite-volume formulation is used; this is far more accurate, less noisy, and converges more rapidly, especially for the anisotropic case. In either case, since we solve the conduction equations explicitly, a stronger timestep restriction is necessary (since the equations are parabolic); this is self-consistently calculated. The methods paper for these implementations is Hopkins 2017, MNRAS, 466, 3387; please cite this if these modules are used.
 
-**VISCOSITY\_BRAGINSKII**: Calculates the leading-order coefficients for viscosity in ideal MHD for an ionized plasma following Braginskii. If this is off, the viscosity coefficients are simply set by hand.
+**CONDUCTION\_SPITZER**: Calculate the thermal conductivities of the gas self-consistently following Spitzer, accounting for saturation (when the gradient scale lengths approach the electron mean free paths). If this is off, the coefficients are simply constants set by hand. In addition to the conduction methods paper, cite Su et al., 2017, MNRAS, 471, 144, where these calculations were presented and the numerical calculation of said terms was developed.
 
-**COOLING**: Enables radiative cooling, following Katz et al. 1996, with many extensions. The standard cooling module is designed for galactic and cosmological simulations, and so assumes optically thin radiative cooling, including heating+cooling from H and He ionization+recombination, collisional, free-free, and Compton effects. With this enabled, the ionization+recombination requires an assumption for the UV background, specified in tabular format in the "TREECOOL" file (which must be placed in the run directory). A copy of this file is included in the source and on the bitbucket download page. The computed cooling rates effectively extend from ~10^4 K to 10^9 K. Other heating and cooling processes including local radiative heating, photo-electric heating, molecular, dust, and fine structure heating/cooling, metal line cooling, nuclear (fission/fusion) heating, and more can be enabled by other compile-time switches.
+**VISCOSITY**: Turn on physical, isotropic or anisotropic viscosity. By default this enables Navier-Stokes viscosity, with shear and bulk viscosities set in the parameterfile. The operator-splitting is similar to that for conduction. Again this is implemented for both SPH and MFM/MFV modes; but the MFM/MFV mode is much more accurate and highly recommended. If you are going to use SPH, be sure to use a very large kernel. Timesteps are again appropriately limited for solving the physical equations here. As with conduction, in the pure-hydro case, isotropic viscosity is assumed. If MAGNETIC is on, then the physically correct anisotropic tensor viscosity is used. The methods paper for these implementations is Hopkins 2017, MNRAS, 466, 3387; please cite this if these modules are used.
 
-**COOL\_LOW\_TEMPERATURES**: Adds fine-structure and molecular cooling, to extend the cooling curves down to ~10 K. The cooling rates at low-temperatures are explicitly metal-species-dependent if COOL\_METAL\_LINES\_BY\_SPECIES is also enabled. These follow CLOUDY calculations including the molecular physics, as outlined in Robertson & Kravtsov 2008 (ApJ, 680, 1083). Requires COOLING enabled.
+**VISCOSITY\_BRAGINSKII**: Calculates the leading-order coefficients for viscosity in ideal MHD for an ionized plasma following Braginskii. If this is off, the viscosity coefficients are simply set by hand. In addition to the conduction/viscosity methods paper, cite Su et al., 2017, MNRAS, 471, 144, where these calculations were presented and the numerical calculation of said terms was developed.
 
-**COOL\_METAL\_LINES\_BY\_SPECIES**: Uses full multi-species-dependent metal-line cooling tables. The tables correspond to CLOUDY runs following Wiersma et al. 2009 (MNRAS, 393, 99). This requires that METALS and COOLING are on. When active, the code will follow 11 species independently (H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe, in addition to the "total" metallicity), with heating/cooling computed for each assuming its optically thin (and self-consistently computing the ionization states).
 
-**GRACKLE**: Enables GRACKLE. This replaces the default cooling routines with the public cooling and chemistry package available at the url given. Note that this requires the separate installation of the GRACKLE libraries - these are independent, open source code which is not in any way affiliated with GIZMO. Once the libraries are installed, and all the relevant paths are appropriately linked (see the lines activated in the Makefile when GRACKLE is active), this will turn on the relevant code to compile with those libraries and build a set of wrappers to those routines, using them instead of the otherwise default cooling routines.
+<a name="config-fluids-cooling"></a>
+### _Radiative Cooling_
 
-**GRACKLE\_CHEMISTRY**: Chooses the cooling chemistry to be used for the GRACKLE package. 0=tabular (just use pre-computed cooling tables as a function of temperature and density; the simplest option). 1=Assume atomic chemistry (i.e. actually compute ionization, but not molecular chemistry). 2=atomic plus limited molecular chemistry. 3=atomic plus more extended molecular chemistry (still limited to primordial species). 
+```bash
+##-----------------------------------------------------------------------------------------------------
+# -------------------------------------- Radiative Cooling physics (mostly geared towards galactic/extragalactic cooling)
+# -------------------------- These modules were originally developed for a combination of proprietary physics modules. However they are now written in
+# --------------------------   a form which allows them to be modular. Users are free to use the Grackle modules and standard 'COOLING' flags,
+# --------------------------   provided proper credit/citations are provided to the relevant methods papers given in the Users Guide ---
+# --------------------------   but all users should cite Hopkins et al. 2017 (arXiv:1702.06148), where Appendix B details the cooling physics
+#COOLING                        # enables radiative cooling and heating: if GALSF, also external UV background read from file "TREECOOL" (included in the cooling folder)
+#COOL_LOW_TEMPERATURES          # allow fine-structure and molecular cooling to ~10 K; account for optical thickness and line-trapping effects with proper opacities
+#COOL_METAL_LINES_BY_SPECIES    # use full multi-species-dependent cooling tables ( http://www.tapir.caltech.edu/~phopkins/public/spcool_tables.tgz ); requires METALS on; cite Wiersma et al. 2009 (MNRAS, 393, 99) in addition to Hopkins et al. 2017 (arXiv:1702.06148)
+#COOL_GRACKLE                   # enable Grackle: cooling+chemistry package (requires COOLING above; https://grackle.readthedocs.org/en/latest ); see Grackle code for their required citations
+#COOL_GRACKLE_CHEMISTRY=1       # choose Grackle cooling chemistry: (0)=tabular, (1)=Atomic, (2)=(1)+H2+H2I+H2II, (3)=(2)+DI+DII+HD
+##-----------------------------------------------------------------------------------------------------
+```
 
-**TURB\_DIFF\_METALS**/**TURB\_DIFF\_ENERGY**/**TURB\_DIFF\_VELOCITY**: Enables turbulent diffusion following the Smagorinsky (1963) eddy mixing model. This model assumes that for a scalar A, the diffusion time derivative follows $\nabla\cdot(K\nabla A)$, where the diffusion coefficient $K = C\,|S|\,h^2$ where h is the interparticle spacing, C is a dimensionless constant set in the parameterfile, and |S| is the norm of the trace-free shear tensor. Essentially this assumes that the grid-scale velocity gradients are unstable and become a cascade, mixing scalars on the eddy turnover time. TURB\_DIFF\_ENERGY enables diffusion of thermal energy, TURB\_DIFF\_VELOCITY of momentum (essentially a true 'turbulent viscosity'), and TURB\_DIFF\_METALS of metals (treated as passive scalars). All follow the same scaling (required for consistency). The SPH implementation of this is similar to that in Shen et al. 2009, with some numerical tweaks to improve accuracy, conservation, and integration stability; the MFM/MFV implementation follows our more accurate modeling of diffusion terms as described above for conduction and viscosity.
+**COOLING**: Enables radiative cooling, following Katz et al. 1996, with many extensions. The standard cooling module is designed for galactic and cosmological simulations, and so assumes optically thin radiative cooling, including heating+cooling from H and He ionization+recombination, collisional, free-free, and Compton effects. With this enabled, the ionization+recombination requires an assumption for the UV background, specified in tabular format in the "TREECOOL" file (which must be placed in the run directory). A copy of this file is included in the source and on the bitbucket download page. The computed cooling rates effectively extend from ~10^4 K to 10^9 K. Other heating and cooling processes including local radiative heating, photo-electric heating, molecular, dust, and fine structure heating/cooling, metal line cooling, nuclear (fission/fusion) heating, and more can be enabled by other compile-time switches (they are not automatically included in this switch). Any cooling associated with metal species requires METALS be enabled and particles have a defined metallicity field. Anyone using this should cite Hopkins et al. 2017 (arXiv:1702.06148, also available [here](http://www.tapir.caltech.edu/~phopkins/public/notes_numerical_FIRE.pdf)); a complete list (and description of the physics and fitting functions) of all cooling physics included is given in their Appendix B [the parts enabled by this piece of the code include all components/terms above 10^4 K, except for the **COOL\_METAL\_LINES\_BY\_SPECIES** terms described below]. 
 
-**GRAIN\_FLUID**: Enables the treatment of grain 'super-particles' (which will be assigned particle type=3), which couple to the gas via aerodynamic forces. The grain drag equations are solved semi-implicitly for a neutral gas. Arbitrary size spectra can be used, as the grains are 'super-particles' so they sample the population in a Monte-Carlo fashion. The implementation of the drag equations here explicitly allows for compressible (non-constant density) gas, and supersonic or sub-sonic gas flows and relative grain-gas motion; this is especially important in GMC-like environments. Parameters of the grain population are specific in the parameterfile. By default, grains are assumed to be in the Stokes regime (size much smaller than the gas mean free path); this makes their dynamics independent of the absolute value of various fluid quantities.
+**COOL\_LOW\_TEMPERATURES**: Adds fine-structure and molecular cooling, to extend the cooling curves down to ~10 K. The cooling rates at low-temperatures are explicitly metal-species-dependent if COOL\_METAL\_LINES\_BY\_SPECIES is also enabled. These follow CLOUDY calculations including the molecular physics, generally following the approach outlined in Robertson & Kravtsov 2008 (ApJ, 680, 1083), with a large number of additional improvements to the cooling physics and explicit accounting for photo-electric and other terms. Requires COOLING enabled; any cooling associated with metal species requires METALS be enabled and particles have a defined metallicity field. Note that while this includes an approximate treatment of optically-thick cooling, it is designed for simulations of star and galaxy formation and should not be extrapolated to dense systems (e.g. stars, planetary atmospheres, etc) and does not even attempt to include physics such as neutrino cooling. Anyone using this should cite Hopkins et al. 2017 (arXiv:1702.06148); a complete list (and description of the physics and fitting functions) of all cooling physics included is given in their Appendix B [the parts enabled by this piece of the code include all components/terms below 10^4 K].
 
-**GRAIN\_EPSTEIN**: Uses the physical units of the code (and specified grain parameters) to calculate whether or not grains are actually in the Epstein (size greater than gas mean free path) or Stokes regime, and modifies the aerodynamic equations appropriately. This is important for very large grains or dense, hot systems, and for terrestrial systems. To determine the gas mean-free path, the cross-section for molecular hydrogen is assumed; however by setting GRAIN\_EPSTEIN to a value not equal to unity, this cross section is multiplied by that value. This is useful to represent different atmospheric compositions, for example.
+**COOL\_METAL\_LINES\_BY\_SPECIES**: Uses full multi-species-dependent metal-line cooling tables. The tables correspond to CLOUDY runs following Wiersma et al. 2009 (MNRAS, 393, 99). This requires that METALS and COOLING are on. When active, the code will follow 11 species independently (H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe, in addition to the "total" metallicity), with heating/cooling computed for each assuming its optically thin (and self-consistently computing the ionization states). Users should cite Wiersma et al. 2009 (MNRAS, 393, 99) and Hopkins et al. 2017 (arXiv:1702.06148). 
 
-**GRAIN\_LORENTZFORCE**: Explicitly account for the Lorentz forces on grains. Requires that grain charge be specified in the parameterfile, in dimensionless units of electron charge (Alternative model assuming the grains obey charge equilibrium following Draine and Sutin is also implemented). Requires MAGNETIC be active.
+**COOL_GRACKLE**: Enables Grackle. This replaces the default cooling routines with the public cooling and chemistry package available at the url given. Note that this requires the separate installation of the Grackle libraries - these are independent, open source code which is not in any way affiliated with GIZMO. You can get them at: [`https://grackle.readthedocs.org/en/latest`](https://grackle.readthedocs.org/en/latest). Once the libraries are installed, and all the relevant paths are appropriately linked (see the lines activated in the Makefile when COOL_GRACKLE is active), this will turn on the relevant code to compile with those libraries and build a set of wrappers to those routines, using them instead of the otherwise default cooling routines. In addition to the standard GIZMO methods paper[s], users of these modules should cite the Grackle methods papers.
+
+**COOL_GRACKLE\_CHEMISTRY**: Chooses the cooling chemistry to be used for the Grackle package. 0=tabular (just use pre-computed cooling tables as a function of temperature and density; the simplest option). 1=Assume atomic chemistry (i.e. actually compute ionization, but not molecular chemistry). 2=atomic plus limited molecular chemistry. 3=atomic plus more extended molecular chemistry (still limited to primordial species). Any cooling associated with metal species requires METALS be enabled and particles have a defined metallicity field. In addition to the standard GIZMO methods paper[s], users of these modules should cite the Grackle methods papers.
+
+
+<a name="config-fluids-metalsturb"></a>
+### _Passive Scalars, Metals, & Sub-Grid Turbulent Mixing_
+
+```bash
+##-----------------------------------------------------------------------------------------------------
+#--------------------------------------- Smagorinsky Turbulent Eddy Diffusion Model
+#---------------------------------------- Users of these modules should cite Hopkins et al. 2017 (arXiv:1702.06148) and Colbrook et al. (arXiv:1610.06590)
+#METALS                         # enable metallicities (with multiple species optional) for gas and stars [must be included in ICs or injected via dynamical feedback; needed for some routines]
+#TURB_DIFF_METALS               # turbulent diffusion of metals (passive scalars); requires METALS
+#TURB_DIFF_ENERGY               # turbulent diffusion of internal energy (conduction with effective turbulent coefficients)
+#TURB_DIFF_VELOCITY             # turbulent diffusion of momentum (viscosity with effective turbulent coefficients)
+##-----------------------------------------------------------------------------------------------------
+```
+
+
+**METALS**: Enables tracking metallicities/passive scalars associated with gas and stars. Enrichment will be handled by the different specific physics modules below (e.g. some of the star formation modules attempt to inject metals on-the-fly), or can be added to the initial conditions (or specified in the parameterfile, if you wish to initialize the simulation to a uniform metallicity and set of abundance ratios). This specific flag does not require GALSF be enabled; if you turn it on without GALSF metals are treated as fixed by the ICs or passive scalars which can diffuse if e.g. models for turbulent metal diffusion are enabled, and can act in the metal-line cooling routines (they just do not have a dynamical mechanism for enrichment). Citation is not required for the specific passive-scalar routines, but the relevant cooling and diffusion routines do ask for appropriate citations.
+
+**TURB\_DIFF\_METALS**/**TURB\_DIFF\_ENERGY**/**TURB\_DIFF\_VELOCITY**: Enables turbulent diffusion following the Smagorinsky (1963) eddy mixing model. This model assumes that for a scalar A, the diffusion time derivative follows $\nabla\cdot(K\nabla A)$, where the diffusion coefficient $K = C\,|S|\,h^2$ where h is the interparticle spacing, C is a dimensionless constant set in the parameterfile, and |S| is the norm of the trace-free shear tensor. Essentially this assumes that the grid-scale velocity gradients are unstable and become a cascade, mixing scalars on the eddy turnover time. TURB\_DIFF\_ENERGY enables diffusion of thermal energy, TURB\_DIFF\_VELOCITY of momentum (essentially a true 'turbulent viscosity'), and TURB\_DIFF\_METALS of metals (treated as passive scalars, requires METALS enabled). All follow the same scaling (required for consistency). The SPH implementation of this is similar to that in Shen et al. 2009, with some numerical tweaks to improve accuracy, conservation, and integration stability; the MFM/MFV implementation follows our more accurate modeling of diffusion terms as described above for conduction and viscosity, with limiters based on a hybrid MFV-solution to prevent excessive diffusivity in many circumstances. Users of these modules should cite Hopkins et al. 2017 (arXiv:1702.06148) and Colbrook et al. (arXiv:1610.06590); a detailed description of the numerical methodology is given in the arXiv:1702.06148 paper, Appendix F3. 
+
+
+<a name="config-fluids-dust"></a>
+### _Dust-Gas Mixtures_
+
+
+```bash
+## ----------------------------------------------------------------------------------------------------
+# --------------------------------------- Aerodynamic Particles
+# ----------------------------- (This is developed by P. Hopkins, who requests that you inform him of planned projects with these modules
+# ------------------------------  because he is supervising several students using them as well, and there are some components still in active development.
+# ------------------------------  Users should cite: Hopkins & Lee 2016, MNRAS, 456, 4174, and Lee, Hopkins, & Squire 2017, MNRAS, 469, 3532, for the numerical methods
+#GRAIN_FLUID                    # aerodynamically-coupled grains (particle type 3 are grains); default is Stokes drag
+#GRAIN_EPSTEIN_STOKES=1         # uses the cross section for molecular hydrogen (times this number) to calculate Epstein-Stokes drag (will use calculate which applies and use appropriate value)
+#GRAIN_BACKREACTION             # account for momentum of grains pushing back on gas (from drag terms)
+#GRAIN_LORENTZFORCE             # charged grains feel Lorentz forces (requires MAGNETIC)
+#GRAIN_COLLISIONS               # model collisions between grains (super-particles; so this is stochastic)
+##-----------------------------------------------------------------------------------------------------
+```
+
+**GRAIN\_FLUID**: Enables the treatment of grain 'super-particles' (which will be assigned particle type=3), which couple to the gas via aerodynamic forces. The grain drag equations are solved semi-implicitly for a neutral gas. Arbitrary size spectra can be used, as the grains are 'super-particles' so they sample the population in a Monte-Carlo fashion. The implementation of the drag equations here explicitly allows for compressible (non-constant density) gas, and supersonic or sub-sonic gas flows and relative grain-gas motion; this is especially important in GMC-like environments. Parameters of the grain population are specific in the parameterfile. By default, grains are assumed to be in the Epstein regime (size much smaller than the gas mean free path); this makes their dynamics independent of the absolute value of various fluid quantities. These modules are made free to use for users of the development code, but as the developer of the modules, PFH asks that you please inform him of planned projects using the modules -- this is because there are several undergraduate and graduate students working with him on projects involving these physics, so we can hopefully avoid any project "collisions." Users of this module (or *any* of the GRAIN modules) should cite the methods papers for the basic integration scheme: Hopkins & Lee 2016, MNRAS, 456, 4174, and Lee, Hopkins, & Squire 2017, MNRAS, 469, 3532. The Hopkins & Lee paper contains details and tests of the integration scheme: although there are some (much simpler) tracer-particle integration schemes which produce large integration errors between the dust and gas, it is shown there that this scheme produces only about ~0.05 dex of artificial numerical scatter in the separation between dust and gas under "worst case" conditions.
+
+**GRAIN\_EPSTEIN\_STOKES**: Uses the physical units of the code (and specified grain parameters) to calculate whether or not grains are actually in the Epstein (size smaller than gas mean free path) or Stokes regime, and modifies the aerodynamic equations appropriately. This is important for very large grains or dense, hot systems, and for terrestrial systems. To determine the gas mean-free path, the cross-section for molecular hydrogen is assumed; however by setting GRAIN\_EPSTEIN to a value not equal to unity, this cross section is multiplied by that value. This is useful to represent different atmospheric compositions, for example. 
+
+**GRAIN\_LORENTZFORCE**: Explicitly account for the Lorentz forces on grains (integrated efficiently with a semi-implicit Boris integrator scheme that can accurately preserve gyro orbits, even with numerical discretization errors). The grain charge is calculated self-consistently from grain sizes and densities and ambient gas conditions, assuming the grains obey local charge equilibrium (following Draine and Sutin 1987). Requires MAGNETIC be active. See Lee, Hopkins, & Squire 2017, MNRAS, 469, 3532, for details and examples.
 
 **GRAIN\_COLLISIONS**: Enables grain-grain collisions. At the moment this is partially implemented.
 
-**GRAIN\_BACKREACTION**: Explicitly account for the momentum deposited into the grain population (modify the gas momentum appropriately). This requires specifying the absolute dust-to-gas ratio and other physical parameters. 
+**GRAIN\_BACKREACTION**: Explicitly account for the momentum deposited into the grain population (modify the gas momentum appropriately). This requires specifying the absolute dust-to-gas ratio and other physical parameters -- that is done in the initial conditions (when the actual masses of dust 'super-particles' is assigned), although it can easily be done in the `init.c` file as well (hard-coding some dust-to-gas ratio). In either case, the dust super-particle masses define the total mass of dust, which in turn determines the strength of its force on the gas (if this is dis-abled, the total mass in dust in the system has no dynamical effect). This module is currently being tested, but should appear shortly in a methods and initial results paper (Moseley et al., 2018).
 
-**COSMIC\_RAYS**: Enable treatment of the gas as a mixed fluid of 'regular' gas and cosmic rays. This is appropriate for the limit where the cosmic ray mean free path is short, so it can be considered in the fluid limit. We then solve the appropriate equations for a two-fluid system, where the cosmic ray fluid component is an ultra-relativistic ($\gamma=4/3$) fluid. In the simplest case, cosmic ray (CR) transport by advection, diffusion, and streaming (both isotropic and anisotropic) is calculated explicitly, along with multi-fluid shocks and the Riemann solutions, and adiabatic heating/cooling of the CR. The diffusion and streaming operators are derived for both SPH and MFM/MFV modes of the code following the other diffusion operators (conduction, viscosity, etc) described above. The coefficients are calculated self-consistently in the code, following Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, and Ensslin 2011. In the weak-magnetic field case, the streaming velocity which enters into the diffusion-like propagation operator is approximated with the gas sound speed; but if MAGNETIC is on, the code interpolates between this and the Alfven velocity (for the strong-field case) appropriately. The coefficients are $(c_{s}^{2}+v_{A}^{2})^{1/2}\,h_{\rm CR} / |\nabla P_{\rm CR}|$, where $c_{s}$ is the thermal sound speed, $v_{A}$ the Alfven speed, $h_{\rm CR}$ is the cosmic ray enthalpy, and $P_{\rm CR}$ is the cosmic ray pressure. If MAGNETIC is on, the diffusion and streaming operations are correctly done for the anisotropic case (along field lines). If COOLING is active, the cosmic ray fluid is assumed to lose energy through Coulomb interactions and decays (catastrophic cooling), and a fraction of the Coulomb interaction energy goes into heating the gas (accounted for in the cooling routines); the rates for these are calculated following Volk et al. 1996, Ensslin et al. 1997, Mannheim & Schilickeiser 1994, and Guo & Oh 2008. If GALSF\_FB\_SNE\_HEATING is active, then CRs are injected into the gas via supernovae explosions (a fraction, typically $\sim10\%$, of each SNe ejecta kinetic energy is assumed to go into the CR population). 
+
+<a name="config-fluids-cosmicrays"></a>
+### _Cosmic Rays_
+
+```bash
+##-----------------------------------------------------------------------------------------------------
+#---------------------------------------- Cosmic Rays
+#---------------------------------------- (this is developed by P. Hopkins as part of the FIRE package: the same FIRE authorship & approval policies apply, see below)
+#COSMIC_RAYS                    # two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anisotropic diffusion, streaming, injection by SNe
+#COSMIC_RAYS_M1=(500.)          # solve the CR transport in the M1 limit [second-order expansion of the collisionless boltzmann eqn]; value here is the streaming speed in code units
+#COSMIC_RAYS_DISABLE_STREAMING  # turn off CR streaming (propagation is purely advective+diffusion; warning: this can severely under-estimate CR losses to Alfven waves)
+#COSMIC_RAYS_DISABLE_DIFFUSION  # turn off CR diffusion (leaves streaming intact, simply disables 'microscopic+turbulent' CR diffusion terms)
+#COSMIC_RAYS_DISABLE_COOLING    # turn off CR heating/cooling interactions with gas (catastrophic losses, hadronic interactions, etc; only adiabatic PdV work terms remain)
+#COSMIC_RAYS_DIFFUSION_CONSTANT # replaces physical CR diffusion with constant coefficient (equal to value of CosmicRayDiffusionCoeff in code units); turn off streaming to make this the ONLY transport
+##-----------------------------------------------------------------------------------------------------
+####################################################################################################
+```
+
+
+
+**COSMIC\_RAYS**: Enable treatment of the gas as a mixed fluid of 'regular' gas and cosmic rays. This is appropriate for the limit where the cosmic ray mean free path is short, so it can be considered in the fluid limit. We then solve the appropriate equations for a two-fluid system, where the cosmic ray fluid component is an ultra-relativistic ($\gamma=4/3$) fluid. In the simplest case, cosmic ray (CR) transport by advection, diffusion, and streaming (both isotropic and anisotropic) is calculated explicitly, along with multi-fluid shocks and the Riemann solutions, and adiabatic heating/cooling of the CR. The diffusion and streaming operators are derived for both SPH and MFM/MFV modes of the code following the other diffusion operators (conduction, viscosity, etc) described above. The coefficients are calculated self-consistently in the code, following Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, and Ensslin 2011. In the weak-magnetic field case, the streaming velocity which enters into the diffusion-like propagation operator is approximated with the gas sound speed; but if MAGNETIC is on, the code interpolates between this and the Alfven velocity (for the strong-field case) appropriately. The coefficients are $(c_{s}^{2}+v_{A}^{2})^{1/2}\,h_{\rm CR} / |\nabla P_{\rm CR}|$, where $c_{s}$ is the thermal sound speed, $v_{A}$ the Alfven speed, $h_{\rm CR}$ is the cosmic ray enthalpy, and $P_{\rm CR}$ is the cosmic ray pressure. If MAGNETIC is on, the diffusion and streaming operations are correctly done for the anisotropic case (along field lines). If COOLING is active, the cosmic ray fluid is assumed to lose energy through Coulomb interactions and decays (catastrophic cooling), and a fraction of the Coulomb interaction energy goes into heating the gas (accounted for in the cooling routines); the rates for these are calculated following Volk et al. 1996, Ensslin et al. 1997, Mannheim & Schilickeiser 1994, and Guo & Oh 2008. If GALSF\_FB\_SNE\_HEATING is active, then CRs are injected into the gas via supernovae explosions (a fraction, typically $\sim10\%$, of each SNe ejecta kinetic energy is assumed to go into the CR population). Currently the methods paper for this is being written, and first results prepared, by several members of the FIRE collaboration, so for now use of these modules follows FIRE policies (although use for simulations very different from FIRE, e.g. plasma physics/ISM physics would likely be possible at this stage, the authors must still be contacted for permissions). Additional details of the modules are described in the `notes_cosmicrays` file ([http://www.tapir.caltech.edu/~phopkins/public/notes_cosmicrays.pdf](http://www.tapir.caltech.edu/~phopkins/public/notes_cosmicrays.pdf)), until the methods paper is published.
+
+
+**COSMIC\_RAYS_M1**: Integrate the diffusive part of the cosmic-ray transport using the M1 moments expansion, rather than a pure diffusion equation. This is nominally more accurate (just like with radiation) since it allows for a smooth and self-consistent transition between free-streaming and diffusive limits for the CRs, at the expense of extra variables tracked and a smaller timestep if the full transport speed is used (approximately the speed of light). If a "reduced speed of light"-type approximation is desired, this parameter should be set to the value equal to the desired cosmic-ray free-streaming speed, in code units. This module is still being tested.
 
 **COSMIC\_RAYS\_DISABLE\_STREAMING**/**COSMIC\_RAYS\_DISABLE\_DIFFUSION**/**COSMIC\_RAYS\_DISABLE\_COOLING**/**COSMIC\_RAYS\_DIFFUSION\_CONSTANT**: These disable various cosmic-ray options (all require COSMIC\_RAYS be active). Disabling streaming means propagation is purely advective plus diffusion; in physical situations this can severely under-estimate CR losses to Alfven waves (i.e. severely over-estimate how much energy density can be maintained in CRs). Disabling diffusion disables the diffusion terms from microphysical and turbulent diffusion (not streaming terms). Disabling cooling turns off the CR cooling/loss terms including catastrophic losses, hadronic interactions, and streaming losses; only the adiabatic PdV work terms remain. Finally setting the diffusion constant flag replaces the physical CR diffusion coefficietn with a constant coefficient (equal to value of the parameterfile CosmicRayDiffusionCoeff in code units). 
 
 
-
-
-
-### Gravity & Cosmological Integration Options     
+<a name="config-turb"></a>
+## Turbulent 'Stirring' (Large Eddy Simulations) 
      
+    
+```bash
+####################################################################################################
+# ------------------------------------- Driven turbulence (for turbulence tests, large-eddy sims)
+# ------------------------------- users of these routines should cite Bauer & Springel 2012, MNRAS, 423, 3102, and thank A. Bauer for providing the core algorithms
+####################################################################################################
+#TURB_DRIVING                   # turns on turbulent driving/stirring. see begrun for parameters that must be set
+#TURB_DRIVING_SPECTRUMGRID=128  # activates on-the-fly calculation of the turbulent velocity, vorticity, and smoothed-velocity power spectra, evaluated on a grid of linear-size TURB_DRIVING_SPECTRUMGRID elements
+#TURB_DRIVING_DUMPSPECTRUM      # compiles in a code module that allows via restart-flag 6 the calculation (+immediate output) of a gas velocity power spectrum of a snapshot with an adjustable box (user defined center and size)
+####################################################################################################
+```
 
-    ####################################################################################################
-    ## ------------------------ Gravity & Cosmological Integration Options ---------------------------------
-    ####################################################################################################
-    # --------------------------------------- TreePM Options (recommended for cosmological sims)
-    #PMGRID=512                     # COSMO enable: resolution of particle-mesh grid
-    #PM_PLACEHIGHRESREGION=1+2+16   # COSMO enable: particle types to place high-res PMGRID around
-    #PM_HIRES_REGION_CLIPPING=1000  # for stability: clips particles that escape the hires region in zoom/isolated sims
-    #PM_HIRES_REGION_CLIPDM         # split low-res DM particles that enter high-res region (completely surrounded by high-res)
-    #MULTIPLEDOMAINS=64             # Multi-Domain option for the top-tree level: iso=16,COSMO=64-128
-    ## -----------------------------------------------------------------------------------------------------
-    # ---------------------------------------- Adaptive Grav. Softening (including Lagrangian conservation terms!)
-    #ADAPTIVE_GRAVSOFT_FORGAS       # allows variable softening length (=Hsml) for gas particles
-    #ADAPTIVE_GRAVSOFT_FORALL=100   # enable adaptive gravitational softening lengths for all particle types
-                                    # (ADAPTIVE_GRAVSOFT_FORGAS should be disabled). the softening is set to the distance
-                                    # enclosing a neighbor number set in the parameter file. baryons search for other baryons,
-                                    # dm for dm, sidm for sidm, etc.
-    ## -----------------------------------------------------------------------------------------------------
-    #NOGRAVITY                      # turn off self-gravity (compatible with analytic_gravity)
-    #GRAVITY_NOT_PERIODIC           # self-gravity is not periodic, even though the rest of the box is periodic
-    ## -----------------------------------------------------------------------------------------------------
-    #ANALYTIC_GRAVITY               # Specific analytic gravitational force to use instead of/with self-gravity
-                                    #  (edit these to assign specific parameters desired in "gravity/analytic_gravity.h")
-    ##-----------------------------------------------------------------------------------------------------
-    #--------------------------------------- Self-Interacting DM (Rocha et al. 2012)
-    #-------------------------------- use of these routines requires explicit pre-approval by developers
-    #--------------------------------    P. Hopkins & J. Bullock or M. Boylan-Kolchin (acting for M. Rocha)
-    #SIDM=2                         # Self-interacting particle types (specify the particle types which are self-interacting DM
-                                    # with a bit mask, as for PM_PLACEHIGHRESREGION above (see description)
-                                    # (previous "DMDISK_INTERACTIONS" is identical to setting SIDM=2+4)
-    ##-----------------------------------------------------------------------------------------------------
-    #--------------------------------------- SCF (potential expansion in basis functions)
-    #-------------------------------- use of these routines requires explicit pre-approval by developers M. Vogelsberger & L. Hernquist
-    #SCFPOTENTIAL                   # turn SCF on/off
-    #SCF_HYBRID=1                   # =1:tree:stars<->stars,DM<->DM,stars->DM/SCF:stars<-DM =2:tree:stars<->stars,stars->DM/SCF:stars<-DM,DM<->DM
-    #SCF_HQ_MASS=95.2401            # mass of halo of expansion basis
-    #SCF_HQ_A=29.7754               # scale length of halo of expansion basis
-    #SCF_NEFF=5000000               # effective particle number in halo
-    #SCF_NMAX=1                     # maximum n for expansion cut-off
-    #SCF_LMAX=1                     # maximum l for expansion cut-off
-    #SCF_SCALEFAC                   # readin scale factors for coefficients from file scf_scalefac.dat
-    ##-----------------------------------------------------------------------------------------------------
-    #SCALARFIELD                    # Gravity is mediated by a long-range scalar field instead of DE or DM
-    ##-----------------------------------------------------------------------------------------------------
-    #--------------------------------------- Dark energy (flags to allow complicated equations of state)
-    #DARKENERGY                     # enables Dark Energy with non-trivial equations-of-state (master switch)
-    #TIMEDEPDE                      # read w(z) from a DE file (pre-tabulated)
-    #EXTERNALHUBBLE                 # reads the hubble function from the DE file (pre-tabulated)
-    #TIMEDEPGRAV                    # rescales H and G according to DE model (pre-tabulated)
-    ##-----------------------------------------------------------------------------------------------------
-    #------------------------------- Fine-grained phase space structure analysis (M. Vogelsberger)
-    #-------------------------------- use of these routines requires explicit pre-approval by developer M. Vogelsberger
-    #DISTORTIONTENSORPS             # main switch: integrate phase-space distortion tensor
-    #OUTPUT_DISTORTIONTENSORPS      # write phase-space distortion tensor to snapshot
-    #OUTPUT_TIDALTENSORPS           # write configuration-space tidal tensor to snapshot
-    #OUTPUT_LAST_CAUSTIC            # write info on last passed caustic to snapshot
-    #GDE_TYPES=2+4+8+16+32          # track GDE for these types
-    #GDE_READIC                     # read initial sheet orientation/initial density/initial caustic count from ICs
-    #GDE_LEAN                       # lean version of GDE
-    ##-----------------------------------------------------------------------------------------------------
-    #EOS_TRUELOVE_PRESSURE          # adds artificial pressure floor force Jeans length above resolution scale (means you will get the wrong answer, but things will look smooth)
-    ####################################################################################################
+These flags enable explicit turbulent 'stirring' of the simulation volume, as in 'driven turbulence' or 'large eddy' simulations.
+
+**TURB\_DRIVING**: This activates a module, based closely on the original GADGET results shared by Andreas Bauer, to include a turbulent driving routine. It assumes a periodic box (BOX\_PERIODIC on), which is then stirred as in Schmidt 2008, Federrath 2010, Price 2010: a small range of modes (which range set in the parameterfile) are driven in Fourier space as an Ornstein-Uhlenbeck process, with the compressive part of the acceleration optionally projected out via a Helmholtz decomposition in Fourier space so that the driving is purely incompressible/solenoidal (most appropriate for sub-sonic turbulence). The parameters of the driving are set in the parameterfile as described below. Users of this module should cite Bauer and Springel 2012, MNRAS, 423, 3102, as described above.
+
+**TURB\_DRIVING\_SPECTRUMGRID**: This activates on-the-fly calculation of the turbulent velocity, vorticity, density, and smoothed-velocity power spectra; the power spectra are calculated over a range of modes and dumped to files titled "powerspec\_X\_NNN.txt" where NNN is the file number and X denotes the quantity the power spectrum is taken of (e.g. velocity, smoothed velocity, etc). The columns in these outputs are (1) k (Fourier mode number), (2) power per mode at k, (3) number of modes in the discrete interval in k, and (4) total discrete power over all modes at that k. To convert to a 'normal' power spectrum, and get e.g. the power per log-interval in k, take column (2) times the cube of column (1). The value to which you set TURB\_DRIVING\_SPECTRUMGRID determines the grid linear size (in each dimension) to which the quantities will be projected in taking the power spectrum. Users of this module should cite Bauer and Springel 2012, MNRAS, 423, 3102, as described above.
+
+**TURB\_DRIVING\_DUMPSPECTRUM**: Compiles in a code module that allows via restart-flag 6 the calculation of a gas velocity power spectrum of a snapshot with an adjustable box (user defined center and size). Use this if you want to compute a power spectrum from an existing snapshot which was produced without TURB\_DRIVING\_SPECTRUMGRID active. Users of this module should cite Bauer and Springel 2012, MNRAS, 423, 3102, as described above.
+
+
+
+<a name="config-gravity"></a>
+## Gravity & Cosmological Integrations 
+     
+```bash
+####################################################################################################
+## ------------------------ Gravity & Cosmological Integration Options ---------------------------------
+####################################################################################################
+```
      
 These options all pertain to the gravity solver in the code. They determine how gravity is solved an allow for explicit modifications to the gravitional fields, periodicity of gravity, cosmological expansion history and integration, force softenings, and non-physical terms to prevent self-gravity in certain regimes (such as "artificial pressure" terms)
 
+
+<a name="config-gravity-numerics"></a>
+### _Numerical Solvers & Optimization_
+
+```bash
+# --------------------------------------- TreePM Options (recommended for cosmological sims)
+#PMGRID=512                     # COSMO enable: resolution of particle-mesh grid
+#PM_PLACEHIGHRESREGION=1+2+16   # COSMO enable: particle types to place high-res PMGRID around
+#PM_HIRES_REGION_CLIPPING=1000  # for stability: clips particles that escape the hires region in zoom/isolated sims
+#PM_HIRES_REGION_CLIPDM         # split low-res DM particles that enter high-res region (completely surrounded by high-res)
+##-----------------------------------------------------------------------------------------------------
+```
 
 **PMGRID**: This enables the TreePM method, i.e. the long-range force is computed with a PM-algorithm, and the short range force with the tree. The parameter has to be set to the 1-D size of the mesh that should be used, e.g. 64, 96, 128, etc. The mesh dimensions need not necessarily be a power of two, but the FFT is fastest for such a choice. Note: If the simulation is not in a periodic box, then a FFT method for vacuum boundaries is employed, using a mesh with dimension twice that specified by PMGRID.
 
@@ -687,132 +857,281 @@ These options all pertain to the gravity solver in the code. They determine how 
 
 **PM\_HIRES\_REGION\_CLIPDM**: Particle split low-resolution (type =2,3) dark matter particles that are completely surrounded by only high-resolution particles (types 0,1,4). This is done to prevent N-body effects if low-res particles contaminate high-res regions of a zoom-in box. However, it can lead to unstable "splitting chains", so should be used with caution.
 
-**MULTIPLEDOMAINS**: This subdivides the tree into smaller sub-domains which can be independently moved to different processors. This makes domain de-composition dramatically less dependent on spatial co-location), at the cost of increased communication. Experiment with values here to see what works best -- in general, for problems with greater degrees of inhomogeneity, a higher value of this parameter can help.
-     
+
+<a name="config-gravity-adaptive"></a>
+### _Adaptive Force Softenings_
+
+
+```bash
+## -----------------------------------------------------------------------------------------------------
+# ---------------------------------------- Adaptive Grav. Softening (including Lagrangian conservation terms!)
+#ADAPTIVE_GRAVSOFT_FORGAS       # allows variable softening length (=Hsml) for gas particles
+#ADAPTIVE_GRAVSOFT_FORALL=100   # enable adaptive gravitational softening lengths for all particle types
+                                # (ADAPTIVE_GRAVSOFT_FORGAS should be disabled). the softening is set to the distance
+                                # enclosing a neighbor number set in the parameter file. baryons search for other baryons,
+                                # dm for dm, sidm for sidm, etc. If set to numerical value, the maximum softening is this times All.ForceSoftening[for appropriate particle type]. cite Hopkins et al., arXiv:1702.06148
+##-----------------------------------------------------------------------------------------------------
+```
+
 **ADAPTIVE\_GRAVSOFT\_FORGAS**: When this option is set, the gravitational softening lengths used for gas particles is tied to their kernel length/cell size. This is always recommended, since it means the gravitational equations (Poissons equation) is solved using the **same** mass distribution as the hydrodynamics. Otherwise, using different softenings for hydro and gravity, one obtains inconsistent solutions that many studies have shown will produce unphysical artifacts and may not converge. Unlike GADGET, the adaptive softening is done using the fully-conservative Lagrangian formulation similar to Price+Monaghan 2007 (modified for several important differences in e.g. how we calculate these lengths), which prevents significant energy conservation errors. 
 
-**ADAPTIVE\_GRAVSOFT\_FORALL**: This uses adaptive kernel softenings for all particle types (i.e. all kernel softenings are set to some multiple of the distance to N nearest neighbors), again with appropriate conservation terms. If desired, one could modify the code so particles only consider the kernel softening between particles of the same type -- our default choice however is that the baryons define their own softenings (so if e.g. a new star is born, it will not suddenly dramatically change softening by searching for other stars, but at least immediately retain the softening the gas particle from which it formed found), and dark matter defines its own softenings (approximating it as a volume-filling fluid). If self-interacting dark matter is enabled, all self-interacting types are matched to self-interacting types, and vice versa. Enabling this adds the expense of a neighbor search for non-gas particles, and requires a Courant-like timestep condition for the collisionless particles, but allows greater accuracy in computing gravitational forces and much more flexible spatial resolution (since what is really fixed in an N-body code is the mass resolution). To avoid some redundancies in the compilation, if this is enabled, ADAPTIVE\_GRAVSOFT\_FORGAS should be disabled. This can be set to a numerical value, which sets the **maximum** softening to that value times the minimum (set in the parameterfile).
+**ADAPTIVE\_GRAVSOFT\_FORALL**: This uses adaptive kernel softenings for all particle types (i.e. all kernel softenings are set to some multiple of the distance to N nearest neighbors), again with appropriate conservation terms. If desired, one could modify the code so particles only consider the kernel softening between particles of the same type -- our default choice however is that the baryons define their own softenings (so if e.g. a new star is born, it will not suddenly dramatically change softening by searching for other stars, but at least immediately retain the softening the gas particle from which it formed found), and dark matter defines its own softenings (approximating it as a volume-filling fluid). If self-interacting dark matter is enabled, all self-interacting types are matched to self-interacting types, and vice versa. Enabling this adds the expense of a neighbor search for non-gas particles, and requires a Courant-like timestep condition for the collisionless particles, but allows greater accuracy in computing gravitational forces and much more flexible spatial resolution (since what is really fixed in an N-body code is the mass resolution). To avoid some redundancies in the compilation, if this is enabled, ADAPTIVE\_GRAVSOFT\_FORGAS should be disabled. This can be set to a numerical value, which sets the **maximum** softening to that value times the minimum (set in the parameterfile). In addition to the standard GIZMO methods paper, users of this module should cite Hopkins et al., arXiv:1702.06148, where the timestepping criteria and tests of this are developed.
 
-**NOGRAVITY**: This switches off gravity. Makes only sense for pure hydro simulations in non-expanding space. 
+
+<a name="config-gravity-external"></a>
+### _External Fields and/or Disabling Gravity_
+
+```bash
+## -----------------------------------------------------------------------------------------------------
+#SELFGRAVITY_OFF                # turn off self-gravity (compatible with GRAVITY_ANALYTIC); setting NOGRAVITY gives identical functionality
+#GRAVITY_NOT_PERIODIC           # self-gravity is not periodic, even though the rest of the box is periodic
+## -----------------------------------------------------------------------------------------------------
+#GRAVITY_ANALYTIC               # Specific analytic gravitational force to use instead of or with self-gravity. If set to a numerical value
+                                #  > 0 (e.g. =1), then BH_CALC_DISTANCES will be enabled, and it will use the nearest BH particle as the center for analytic gravity computations
+                                #  (edit "gravity/analytic_gravity.h" to actually assign the analytic gravitational forces). 'ANALYTIC_GRAVITY' gives same functionality
+##-----------------------------------------------------------------------------------------------------
+```
+
+
+**SELFGRAVITY\_OFF**: This switches off gravity, for e.g. pure hydro simulations in non-expanding space.
 
 **GRAVITY\_NOT\_PERIODIC**: Makes gravity non-periodic (when the overall box is periodic); useful for some special problems where you need periodic gas boundaries, but don't want periodic gravity.
 
-**ANALYTIC\_GRAVITY**: Add a specific analytic gravitational force. The analytic function is specified in the file "gravity/analytic\_gravity.h", specifically in the routine "add\_analytic\_gravitational\_forces". Youll see a number of analytic functions already pre-defined there for you, but can always add more or change them. This can be used in addition to the standard self-gravity calculation (if e.g. you want to simulate just gas with its self-gravity in some fixed halo or other potential) or in addition to "NOGRAVITY" if you wish to disable self-gravity but still impose some external potential (as in e.g. a Rayleigh-Taylor problem). 
-                                   
-**SIDM**: Enables self-interacting dark matter as implemented by M. Rocha. Like PM\_PLACEHIGHRESREGION, the parameter needs to be set to an integer that encodes the particle types that make up the SIDM particles in the form of a bit mask. For example, if types 1 and 2 are the SIDM particles, then the parameter should be set to SIDM = 6 = 2 + 4 (i.e. 2^1 + 2^2). This allows for arbitrary combinations of SIDM particle types. Note that the legacy flag "DMDISK\_INTERACTIONS" is now implicit in this (its identical to setting SIDM=2+4).
-
-**SCALARFIELD**: Replaces the normal newtonian gravity by a scalar-field force. Look at the code if you want to get a better handle on or modify the scalar field parameters. Used for studying alternative gravity and dark matter theories.
-
-**DARKENERGY**: Master switch to enable cosmological integrations with non-standard equations of state/expansion histories. In this mode, the local gravitational forces will still be Newtonian, but the cosmological history will be different. This then allows the sub-switches **TIMEDEPDE** which will read the dark energy equation of state w(z) from a pre-tabulated file (specified in the parameterfile by "DarkEnergyFile"). **EXTERNALHUBBLE** will read the Hubble function H(z) itself from this file. **TIMEDEPGRAV** will also read the value of G(z), the gravitational constant (i.e. allows for time-varying gravitational constant, albeit with an "instantaneously" Newton force).
-
-**DISTORTIONTENSORPS**: Fine-grained phase-space structure of the dark matter is tracked on the fly, according to the algorithm developed and originally implemented in GADGET by M. Vogelsberger. This is useful for on-the-fly studies of dark matter annihilation, and weak lensing (basically looking for caustics). The sub-options allow different outputs to track the various quantities computed.
-
-**EOS\_TRUELOVE\_PRESSURE**: Adds a pressure term to the equations of motion following Truelove 1997, to prevent any fragmentation via self-gravity for which the "bottom scale" (the Jeans length) is smaller than the resolution limit. Note that this is commonly said to prevent "numerical fragmentation" but that is incorrect - the fragmentation it prevents is, in fact, physical (and should happen if we are solving the correct equations). Rather, this term artificially suppresses this fragmentation according to a desired threshold, so that only well-resolved structures appear in the simulation (even if those structures are physically incorrect). Therefore, the results using this criterion are inherently resolution-dependent, and it should be used with caution. It will also tend to corrupt the temperature evolution of gas which is strongly dominated by the artificial pressure term. In any case, this is done in a manner that couples only to pressure, not to the internal energy or temperature of the gas (so the temperatures still becomes "correctly" cold, but artificial collapse below the resolution limit is suppressed). 
-
-                
-### Galaxy & Galactic Star Formation Options     
+**GRAVITY\_ANALYTIC**: Add a specific analytic gravitational force. The analytic function is specified in the file "gravity/analytic\_gravity.h", specifically in the routine "add\_analytic\_gravitational\_forces". Youll see a number of analytic functions already pre-defined there for you, but can always add more or change them. This can be used in addition to the standard self-gravity calculation (if e.g. you want to simulate just gas with its self-gravity in some fixed halo or other potential) or in addition to "SELFGRAVITY\_OFF" if you wish to disable self-gravity but still impose some external potential (as in e.g. a Rayleigh-Taylor problem). 
 
 
-This is a large set of flags which control the physics of galaxy-scale star formation. Here star formation refers to the formation of stellar populations, not the explicit resolution of individual stars and explicit resolution of their masses. That is handled by a different set of flags below. 
+<a name="config-gravity-nonstandardDM"></a>
+### _Non-Standard Dark Matter, Dark Energy, Gravity, or Expansion_ 
+
+```bash
+##-----------------------------------------------------------------------------------------------------
+#--------------------------------------- Self-Interacting DM (Rocha et al. 2012) and Scalar-field DM
+#--------------------------------    use of these routines requires explicit pre-approval by developers J. Bullock or M. Boylan-Kolchin (acting for M. Rocha); approved users please cite Rocha et al., MNRAS 2013, 430, 81 and Robles et al, 2017 (arXiv:1706.07514).
+#DM_SIDM=2                      # Self-interacting particle types (specify the particle types which are self-interacting DM with a bit mask, as for PM_PLACEHIGHRESREGION above (see description); previous "DMDISK_INTERACTIONS" is identical to setting DM_SIDM=2+4
+#DM_SCALARFIELD_SCREENING       # Gravity is mediated by a long-range scalar field, with dynamical screening (primarily alternative DE models)
+##-----------------------------------------------------------------------------------------------------
+# -------------------------------------- arbitrary time-dependent dark energy equations-of-state, expansion histories, or gravitational constants
+#GR_TABULATED_COSMOLOGY         # enable reading tabulated cosmological/gravitational parameters (master switch)
+#GR_TABULATED_COSMOLOGY_W       # read pre-tabulated dark energy equation-of-state w(z)
+#GR_TABULATED_COSMOLOGY_H       # read pre-tabulated hubble function (expansion history) H(z)
+#GR_TABULATED_COSMOLOGY_G       # read pre-tabulated gravitational constant G(z) [also rescales H(z) appropriately]
+##-----------------------------------------------------------------------------------------------------
+```
+    
+                    
+                    
+**DM\_SIDM**: Enables self-interacting dark matter as implemented by M. Rocha, James Bullock, and Mike Boylan-Kolchin. Like PM\_PLACEHIGHRESREGION, the parameter needs to be set to an integer that encodes the particle types that make up the SIDM particles in the form of a bit mask. For example, if types 1 and 2 are the SIDM particles, then the parameter should be set to DM\_SIDM = 6 = 2 + 4 (i.e. 2^1 + 2^2). This allows for arbitrary combinations of SIDM particle types. Note that the legacy flag "DMDISK\_INTERACTIONS" is now implicit in this (its identical to setting DM\_SIDM=2+4). This module as-written is proprietary and users must obtain permissions from the developers (JB and MBK) for use in scientific products. However if users wish to use the implemented architecture and replace the actual self-interaction kernel with their own, they are free to do so provided they have been given permission to use the development code for these purposes. Users should cite Rocha et al., MNRAS 2013, 430, 81 and Robles et al, 2017 (arXiv:1706.07514).
+
+**DM_SCALARFIELD_SCREENING**: Replaces the normal newtonian gravity by a screened scalar-field force. Look at the code if you want to get a better handle on or modify the scalar field parameters (these can trivially be made time-dependent, for example). Used for studying alternative gravity and dark matter theories -- primarily alternatives to dark energy involving dynamical screening. 
+
+**GR\_TABULATED\_COSMOLOGY**: Master switch to enable cosmological integrations or regular simulations with non-standard, time-dependent dark energy equations-of-state, expansion histories, or gravitational constants. In this mode, the local gravitational forces will still be Newtonian, but the cosmological history will be different (and the gravitational constant G can, in principle, vary with time). This then allows the sub-switches **GR\_TABULATED\_COSMOLOGY\_W** which will read the dark energy equation of state w(z) from a pre-tabulated file (specified in the parameterfile by "TabulatedCosmologyFile"). For a constant $w(z)=w$, this just amounts to replacing the constant $\Lambda \rightarrow \Lambda_{0}\,a^{-3\,(1+w)}$ in the Hubble function. For a time-varying $w$, the expression used is the integral expression $\Lambda \rightarrow \Lambda_{0}\,\exp{\{ \int_{1}^{a}\,\frac{3\,(1+w[a^{\prime}])}{a^{\prime}}\,d a^{\prime} \}}$. The parameter **GR\_TABULATED\_COSMOLOGY\_H** will read the Hubble function H(z) itself from this file. **GR\_TABULATED\_COSMOLOGY\_G** will also read the value of G(z), the gravitational constant (i.e. allows for time-varying gravitational constant, albeit with an "instantaneously" Newton force). Note that these options will not self-consistently alter the power spectrum of initial conditions. To use the same cosmological initial conditions (assuming these are chosen early enough so that linear growth theory applies) intending to get roughly the same $z=0$ power spectrum, for example, one should change the starting scale factor (or redshift) in the parameterfile so that the linear growth factors match appropriately for the intended "initial time" -- i.e. so $g^{0}(z=0)/g^{0}(z_{\rm ICs}^{\rm original}) = g^{\prime}(z=0)/g^{\prime}(z_{\rm ICs}^{\rm new})$, where $g^{0}$ is the growth factor in the "original" cosmology for which the ICs were built to be used starting at redshift $z_{\rm ICs}^{\rm original}$ and $g^{\prime}$ is the growth factor in the new, modified cosmology and $z_{\rm ICs}^{\rm new}$ is the new starting redshift. Similarly, the initial velocity field should be re-scaled by the factor $[H^{\prime}(z_{\rm ICs}^{\rm new})\,\Omega^{\prime}(z_{\rm ICs}^{\rm new})^{0.6}]/[H^{0}(z_{\rm ICs}^{\rm original})\,\Omega^{0}(z_{\rm ICs}^{\rm original})^{0.6}]$. See the parameters description below for more details. 
 
 
-    #################################################################################################### 
-    #------------------ Galaxy formation / Star formation (with feedback) 
-    #################################################################################################### 
-    # ---- basic/master switches ---- # 
-    #GALSF                           # master switch for galactic star formation model: enables SF, stellar ages, metals, generations, etc. 
-    #METALS                          # enable metallicities (with multiple species optional) for gas and stars 
-    ##GALSF_GENERATIONS=1           # the number of stars a gas particle may spawn (defaults to 1, set otherwise) 
-    ##----------------------------------------------------------------------------------------------------- 
-    #################################################################################################### 
+<a name="config-gravity-analysis"></a>
+### _On-the-Fly Analysis_ 
 
-First, there are several 'master switches' for galaxy formation and star formation. 
+```bash
+#------------------------------- Fine-grained phase space structure analysis (M. Vogelsberger)
+#-------------------------------- use of these routines requires explicit pre-approval by developer M. Vogelsberger
+#GDE_DISTORTIONTENSOR           #- main switch: integrate phase-space distortion tensor
+#GDE_TYPES=2+4+8+16+32          #- track GDE for these types
+#GDE_READIC                     #- read initial sheet orientation/initial density/initial caustic count from ICs
+#GDE_LEAN                       #- lean version of GDE
+#OUTPUT_DISTORTIONTENSOR        #- write phase-space distortion tensor to snapshot
+#OUTPUT_TIDALTENSORPS           #- write configuration-space tidal tensor to snapshot
+#OUTPUT_LAST_CAUSTIC            #- write info on last passed caustic to snapshot
+##-----------------------------------------------------------------------------------------------------
+```
 
-**GALSF**: Enables star formation, tracking of 'star particles' and their associated quantities (ages, etc). Required for everything else in this block. Requires COOLING on.
+**GDE_DISTORTIONTENSOR**: Fine-grained phase-space structure of the dark matter is tracked on the fly, according to the algorithm developed and originally implemented in GADGET by M. Vogelsberger. This is useful for on-the-fly studies of dark matter annihilation, and weak lensing (basically looking for caustics). The sub-options allow different outputs to track the various quantities computed. Users who wish to use these modules should contact Mark Vogelberger for permissions, who wrote them for GADGET -- they are in GIZMO as legacy code and are not developed by PFH. 
 
-**METALS**: Enables tracking metallicities/passive scalars associated with gas and stars. Enrichment will be handled by the different physics modules below.
+
+<a name="config-gravity-pressure"></a>
+### _Artificial Pressure Floors_ 
+
+```bash
+##-----------------------------------------------------------------------------------------------------
+#EOS_TRUELOVE_PRESSURE          # adds artificial pressure floor force Jeans length above resolution scale (means you can get the wrong answer, but things will look smooth).  cite Robertson & Kravtsov 2008, ApJ, 680, 1083
+##-----------------------------------------------------------------------------------------------------
+```
+  
+**EOS\_TRUELOVE\_PRESSURE**: Adds a pressure term to the equations of motion following Truelove 1997, to prevent any fragmentation via self-gravity for which the "bottom scale" (the Jeans length) is smaller than the resolution limit. Note that this is commonly said to prevent "numerical fragmentation" but that is not really correct - the fragmentation it prevents is, in fact, physical (and should happen if we are solving the correct equations). Rather, this term artificially suppresses this fragmentation according to a desired threshold, so that only well-resolved structures appear in the simulation (even if those structures are physically incorrect). Therefore, the results using this criterion are inherently resolution-dependent, and it should be used with caution (it is not a 'cure' but a numerical side-step, and users should be careful). It can also tend to corrupt the temperature evolution of gas which is strongly dominated by the artificial pressure term. In any case, this is done in a manner that couples only to pressure, not to the internal energy or temperature of the gas (so the temperatures still becomes "correctly" cold, but artificial collapse below the resolution limit is suppressed). Users of this module should cite Robertson & Kravtsov 2008, ApJ, 680, 1083.
+
+
+
+
+
+<a name="config-fof"></a>
+## On-the-Fly Group (Halo, Galaxy, Cluster, etc) Finding 
+
+```bash
+####################################################################################################
+# --------------------------------------- On the fly FOF groupfinder
+# ----------------- This is originally developed as part of GADGET-3 by V. Springel
+# ----------------- Users of any of these modules should cite Springel et al., MNRAS, 2001, 328, 726 for the numerical methods.
+####################################################################################################
+## ----------------------------------------------------------------------------------------------------
+# ------------------------------------- Friends-of-friends on-the-fly finder options (source in fof.c)
+# -----------------------------------------------------------------------------------------------------
+#FOF                                # enable FoF searching on-the-fly and outputs (set parameter LINKLENGTH=x to control LinkingLength; default=0.2)
+#FOF_PRIMARY_LINK_TYPES=2           # 2^type for the primary dark matter type
+#FOF_SECONDARY_LINK_TYPES=1+16+32   # 2^type for the types linked to nearest primaries
+#FOF_DENSITY_SPLIT_TYPES=1+2+16+32  # 2^type for whch the densities should be calculated seperately
+#FOF_GROUP_MIN_LEN=32               # default is 32
+####################################################################################################
+```
+
+These flags enable group finding via an on-the-fly FOF finder which is run at intervals set by the run-time parameters. This is most commonly used for halo finding in cosmological simulations, to build on-the-fly halo catalogues, or to simply track halos for purposes of seeding black holes and other on-the-fly physics. Users of *any* of these modules should cite Springel et al., MNRAS, 2001, 328, 726 for the numerical methods.
+
+**FOF**: Master switch required for all modules in this block and any SUBFIND implementation. The default FOF linking length is 0.2 times the mean inter-particle separation of the desired type. This can be adjusted by adding the compiler parameter **LINKLENGTH** set to some desired value.
+
+**FOF\_PRIMARY\_LINK\_TYPES**: This sets the primary particle type for the linking/group-finding. For dark matter, this is typically particle-type 1, which means setting the parameter to 2. The parameter is set as a bit-wise value (see notes in the gravity section)
+
+**FOF\_SECONDARY\_LINK\_TYPES**: This is the list of particle types (set bit-wise again) which should be linked to the primaries, i.e.\ other particle types that should be included in the FOF group-building and associated with different halos/groups.
+
+**FOF\_DENSITY\_SPLIT\_TYPES**: The list of particle types (set bit-wise again) which should have separately-calculated densities for linking purposes. If e.g.\ you are halo-finding in a cosmological simulation with star formation, this may need to separate dark matter and stars that have wildly different density distributions, or it will give spurious results.
+
+**FOF\_GROUP\_MIN\_LEN**: Minimum size for a saved FOF group (in terms of total particle number). Set as desired.
+
+
+
+
+<a name="config-galsf"></a>
+## Galaxy & Galactic Star Formation Options 
+
+
+This is a large set of flags which control the physics of galaxy-scale star formation. Here star formation refers to the formation of stellar populations, not the explicit resolution of individual stars and explicit resolution of their masses. That is handled by a different set of flags below. Several of the following flags are proprietary and/or in active development, and have their own use policies, so please be careful.
+
+
+```bash
+#################################################################################################### 
+#-------------------------------------- Galaxy formation and galactic star formation
+##-----------------------------------------------------------------------------------------------------
+#GALSF                           # master switch for galactic star formation model: enables SF, stellar ages, generations, etc. [cite Springel+Hernquist 2003, MNRAS, 339, 289]
+#################################################################################################### 
+```
+
+First, there is the 'master switch' for galaxy formation and star formation.
+
+**GALSF**: Enables star formation, tracking of 'star particles' and their associated quantities (ages, etc). Required for everything else in this block. Requires COOLING on. These follow the algorithmic star formation model wherein gas elements are individually converted into star particles (on a probabilistic basis, from a smooth continuum star formation rate) as originally described in Springel & Hernquist, 2003, MNRAS, 339, 289 (and that paper should be cited for their use). Use of this module alone is permitted with the use of the development version of the GIZMO code, but the different specific star formation and (especially) stellar feedback sub-routines below have their own, separate permissions and use policies.
+
+
+
+<a name="config-galsf-sflaw"></a>
+### _Star Formation Criteria/Particle Spawning_ 
+
+```bash
+#################################################################################################### 
+## ----------------------------------------------------------------------------------------------------
+# --- star formation law/particle spawning (additional options: otherwise all star particles will reflect IMF-averaged populations and form strictly based on a density criterion) ---- #
+## ----------------------------------------------------------------------------------------------------
+#GALSF_SFR_MOLECULAR_CRITERION   # estimates molecular/self-shielded fraction in SF-ing gas, only SF from that is allowed. Cite Krumholz & Gnedin (ApJ 2011 729 36) and Hopkins et al., 2017a, arXiv:1702.06148
+#GALSF_SFR_VIRIAL_SF_CRITERION=0 # only allow star formation in virialized sub-regions (alpha<1) (0/no value='default'; 1=0+Jeans criterion; 2=1+'strict' (zero sf if not bound)). Cite Hopkins, Narayanan, & Murray 2013 (MNRAS, 432, 2647) and Hopkins et al., 2017a, arXiv:1702.06148
+#GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory. Cite Guszejnov, Hopkins, & Ma 2017, MNRAS, 472, 2107
+#GALSF_SFR_IMF_SAMPLING          # discretely sample the IMF: simplified model with quantized number of massive stars. Cite Kung-Yi Su, Hopkins, et al., Hayward, et al., 2017, "Discrete Effects in Stellar Feedback: Individual Supernovae, Hypernovae, and IMF Sampling in Dwarf Galaxies". 
+#GALSF_GENERATIONS=1             # the number of star particles a gas particle may spawn (defaults to 1, set otherwise)
+## ----------------------------------------------------------------------------------------------------------------------------
+####################################################################################################
+```
+    
+These parameters control the star formation criteria (used to determine when and how star particles are spawned from gas) and algorithmic aspects of the star particle 'spawning'. Use of these specific modules is permitted, as described below, as part of the use of the development code, and users are of course encouraged to modify things like the detailed criteria for spawning star/sink particles based on their specific applications; however proper citations should be included in any published work, to the papers which developed these physics and numerical models.
+
+**GALSF\_SFR\_MOLECULAR\_CRITERION**: Enables molecular-gas dependent star formation. This estimates the molecular fraction $f_{H2}$ in a gas particle, and corrects the calculated star formation rate by this factor (only allowing star formation from the molecules). It uses the fitting functions from Krumholz & Gnedin (ApJ 2011 729 36), as a function of local column density and metallicity. In evolved galaxies, for a high density threshold for SF (n>~100 cm^-3), the molecular fractions are very near unity so this has no effect, but it costs almost nothing to add this criterion to simulations, and it can be useful in lower-resolution simulations to approximate regions where gas can self-shield and cool. Any publications using this module should cite both Krumholz & Gnedin (ApJ 2011 729 36) and Hopkins et al., 2017a, arXiv:1702.06148 (Appendix C describes the algorithm in detail). 
+
+**GALSF\_SFR\_VIRIAL\_SF\_CRITERION**: This requires that only gas which is locally self-gravitating forms stars. Self-gravity is calculated via the local virial parameter following Hopkins, Narayanan, & Murray 2013 (arXiv:1303.0285); see that paper for details. This is useful for e.g. mergers and cosmological runs because it is adaptive -- so even if the mean galaxy density is >> your SF threshold, this will only allow SF in the bound sub-regions. However, it can be expensive, since it forces you to resolve those (often very high-density) regions. Physically, this corresponds to the results of idealized turbulent cloud simulations and observations of actual star forming regions (see e.g. Padoan et al.), which show bound clouds have SF efficiencies of ~100% per free-fall time, while unbound clouds have negligible SF. Setting to =0 or no numerical value is the default model. Setting =1 also requires the thermal Jeans mass be below 1000 solar masses (i.e. that fragmentation to stellar masses is possible). Setting =2 requires this and completely zeros any star formation in non-bound regions (otherwise, for numerical reasons, a region with density greater than 100 times the threshold density for star formation will be given a more tolerant criterion on the assumption it has collapsed via self-gravity). Any publications using this module should cite both Hopkins, Narayanan, & Murray 2013 (arXiv:1303.0285) and Hopkins et al., 2017a, arXiv:1702.06148 (Appendix C describes the algorithm in detail). 
+
+**GALSF\_SFR\_IMF\_VARIATION**: Self consistently computes the IMF for each star particle from its parent gas properties at the time of formation. This uses the Hopkins/Guszejnov/Hennebelle/Chabrier model, if desired, but the default is a universal IMF. The IMF is then used self-consistently for feedback calculations throughout the simulation. This will also save and dump in snapshots a large number of properties of the star-forming clouds from which every star particle formed, for use in IMF models. This is currently in development by David Guszejnov and PFH, please contact us if you wish to use the module, as it is still in early testing phases and, while modular, requires the IMF scalings desired be input in a specific form. Users should cite Guszejnov, Hopkins, & Ma 2017, MNRAS, 472, 2107. 
+
+**GALSF\_SFR\_IMF\_SAMPLING**: Enables stochastic sampling from the IMF. When a star particle forms, a discrete integer number of massive stars is chosen based on its mass and IMF. These appropriately scale the feedback properties and are lost in SNe. This is potentially important when the particle masses are very small, so that one would otherwise be associating a small fraction of an O-star to each star particle. Note that this module, in isolation, won't do anything. Your stellar evolution/feedback modules must be appropriately coded so that they will use this flag to correctly parse the individual sampling. Users should cite Kung-Yi Su, Hopkins, et al., Hayward, et al., 2017, "Discrete Effects in Stellar Feedback: Individual Supernovae, Hypernovae, and IMF Sampling in Dwarf Galaxies". 
 
 **GALSF\_GENERATIONS**: This sets the number of 'generations' or independent star particles which can be spawned from a single gas particle. If not set, it defaults to 1. If set to an integer larger than 1, each gas particle can spawn multiple stars. Useful in some rare cosmological circumstances, but using values >1 tends to make simulations much more expensive and more poorly load-balanced, so use with caution.
 
+<a name="config-galsf-fb"></a>
+### _Sub-Grid Feedback Models_ 
 
+
+```bash
+#################################################################################################### 
+## ----------------------------------------------------------------------------------------------------------------------------
+# ---- sub-grid models (for large-volume simulations or modest/low resolution galaxy simulations) -----------------------------
+# -------- these are all ultimately variations of the Springel & Hernquist 2005 sub-grid models for the ISM, star formation, and winds.
+# -------- Volker has granted permissions for their use, provided users properly cite the sources for the relevant models and scalings (described below)
+#GALSF_EFFECTIVE_EQS            # Springel-Hernquist 'effective equation of state' model for the ISM and star formation [cite Springel & Hernquist, MNRAS, 2003, 339, 289]
+#GALSF_SUBGRID_WINDS            # sub-grid winds ('kicks' as in Oppenheimer+Dave,Springel+Hernquist,Boothe+Schaye,etc): enable this master switch for basic functionality [cite Springel & Hernquist, MNRAS, 2003, 339, 289]
+#GALSF_SUBGRID_WIND_SCALING=0   # set wind velocity scaling: 0 (default)=constant v [and mass-loading]; 1=velocity scales with halo mass (cite Oppenheimer & Dave, 2006, MNRAS, 373, 1265), requires FOF modules; 2=scale with local DM dispersion as Vogelsberger 13 (cite Zhu & Li, ApJ, 2016, 831, 52)
+#GALSF_WINDS_ORIENTATION=0      # directs wind orientation [0=isotropic/random, 1=polar, 2=along density gradient]
+## ----------------------------------------------------------------------------------------------------------------------------
+# ---- pure thermal/scalar stellar feedback models (simplified energy injection; tend to severely over-cool owing to lack of mechanical/kinetic treatment at finite resolution -----------------------------
+#GALSF_FB_THERMAL               # simple 'pure thermal energy dump' feedback: mass, metals, and thermal energy are injected locally in simple kernel-weighted fashion around young stars. currently follows AGORA feedback scheme. cite Kim et al., 2016, ApJ, 833, 202 if used.
+#GALSF_FB_TURNOFF_COOLING       # turn off cooling for SNe-heated particles (as Stinson+ 2006 GASOLINE model, cite it); requires GALSF_FB_SNE_HEATING or GALSF_FB_THERMAL; use by permission of developer P. Hopkins)
+#GALSF_GASOLINE_RADHEATING      # heat gas with luminosity from young stars (as Stinson+ 2013 GASOLINE model, cite it); requires GALSF_FB_SNE_HEATING; use by permission of developer P. Hopkins)
+## ----------------------------------------------------------------------------------------------------
+#################################################################################################### 
+```
+
+These flags relate to popular 'sub-grid' models for star formation and feedback. These models replace explicit resolution of the ISM with simple analytic model approximations, and "tuned" models for galactic winds designed to reproduce the stellar mass function. These are useful for comparison studies or for large-volume cosmological simulations where the resolution is ~100pc - kpc, but more explicit ISM physics, wind, and star formation models are also available in the code for small-scale simulations.
+
+**GALSF\_EFFECTIVE\_EQS**: This enables the 'effective equation of state' (EOS) model originally developed by Springel & Hernquist, MNRAS, 2003, 339, 289. We point the interested reader to that paper for the detailed description (and that paper should be cited, if this is used). This replaces explicit resolution of a multi-phase ISM (as well as any cooling below ~10^4 K) with a stiff EOS for gas above some modest density (a single-phase polytropic gas), motivated by a McKee & Ostriker-like analytic toy model for a two-phase ISM. The parameters describing this EOS are specified in the parameterfile. This is the model used in GADGET-2/3 and AREPO, and in many major simulation projects ("Illustris", "OWLS", "Eagle", the Oppenheimer & Dave IGM studies, and more). Note that this is a module for the rather complex physical model for the effective EOS developed therein; if you simply want to insert a pure-polytropic EOS above some density, this can be accomplished by instead adding a single line in the "get_pressure" subroutine in "eos.c" (see what is done with the EOS\_ENFORCE\_ADIABAT or EOS\_TRUELOVE\_PRESSURE flags, for example). Volker Springel originally developed this module for GADGET-3, but he has allowed us to make it public in the current GIZMO form (with slightly modified implementation), on the understanding that users will properly credit the papers that actually developed these modules. Users should specifically cite Springel & Hernquist, MNRAS, 2003, 339, 289.
+
+**GALSF\_SUBGRID\_WINDS**: This enables sub-grid "decoupled" winds: essentially, for every unit mass stars formed, some proportional mass is forced out of the galaxy at a desired velocity, with the "mass loading" set by hand in the parameterfile. As above, this is the 'base' numerical model used in GADGET-2/3 and AREPO, and in many major simulation projects ("OWLS", "Eagle", "Illustris", etc). One can choose to allow the winds to be hydrodynamically de-coupled, or immediately recoupled, using parameterfile options. Users should cite Springel & Hernquist, MNRAS, 2003, 339, 289.
+
+**GALSF\_SUBGRID\_WIND\_SCALING**: The value of this parameter determines the scalings for the sub-grid wind model employed (requires GALSF\_SUBGRID\_WINDS). (0) Fixed (constant) wind velocity and mass-loading. Users should cite Springel & Hernquist, MNRAS, 2003, 339, 289. (1) Prescription developed by Oppenheimer & Dave, in which the halo mass (calculated in the on-the-fly friends-of-friends algorithm, which must be enabled), to launch the winds at the escape velocity with a mass-dependent mass-loading designed to reproduce the observed stellar mass function. Users should cite Oppenheimer & Dave, 2006, MNRAS, 373, 1265. (2) Uses the local DM velocity dispersion (kernel-computed around gas, no FOF required) to estimate escape velocity (otherwise acts like model "1") and mass-loading. This is the method used in the Illustris simulations (Vogelsberger et al.), and implemented in GIZMO by Q. Zhu. Users should cite Zhu & Li, ApJ, 2016, 831, 52.
+
+**GALSF\_WINDS\_ORIENTATION**: Enabling this forces the sub-grid winds to have a desired orientation. 0=isotropic (the particle "kicks" are uniformly randomly oriented), 1=polar (the particle kicks are directed along the direction given by the cross of the particle velocity and acceleration, which should be the polar axis in a disk), 2=along the local density gradient. If not set, and the wind model does not otherwise have a default preference built-in, the default will be isotropic. Users should cite the appropriate paper for the winds model they have adopted/implemented (see notes above). 
+
+**GALSF\_FB\_THERMAL**: This implements a simple "pure thermal energy dump" feedback: mass, metals, and thermal energy are injected locally in simple kernel-weighted fashion around young stars. The kernel follows a typical SPH-like density kernel, so the deposition is effectively mass-weighted (as opposed to e.g. a more accurate solid-angle weighting). This is an extremely simplified local model for stellar feedback, **not** a model for mechanical feedback (which, critically, must include the actual momentum and solve for wind/SNe shock properties at the resolved interface with the ISM -- this module ignores all of that, which is done instead by completely different routines in `mechanical_fb.c`). As is well-known, owing to the neglect of these terms, such implementations will tend to over-cool (rather severely) at the resolution of typical galaxy simulations (for demonstrations, see Hopkins et al., arXiv:1707.07010). However, this implementation is potentially useful either (a) at extremely high mass resolution (particle masses $\ll 100\,M_{\odot}$), or (b) for historical comparison, as many models in the literature use this. The current implementation, for example, uses by default the AGORA project feedback model, in which the core-collapse SNe energy, mass, and metals of the entire stellar population (of each star particle) are injected in a single step, in a simple kernel-weighted fashion, when the particle reaches 5 Myr age. If you use this, cite the implementation and methods paper for the module: Kim et al., 2016 ApJ, 833, 202.
+
+
+**GALSF\_FB\_TURNOFF\_COOLING**: This enables the 'blastwave' or 'cooling turnoff' model developed by Stinson et al. 2006 in GASOLINE. SNe occur (this requires GALSF\_FB\_SNE\_HEATING or GALSF\_FB\_THERMAL is on), and when they do, a fixed fraction of their energy is coupled thermally to the gas, which is then not allowed to cool for some long timescale (set analytically following Stinson et al. 2006), typically ~10^7-10^8 years (much longer than the physical cooling time of the gas). This is the model used a in wide range of GASOLINE projects (ERIS, MAGICC, etc). Users should cite Stinson et al. 2006 for the physical prescriptions, and consult PFH when using this module (the implementation in GIZMO has been tested under some conditions, but turning off cooling can produce strange interactions with cooling and heating routines under various circumstances so must be treated with caution).
+
+**GALSF\_GASOLINE\_RADHEATING**: This adds the sub-grid 'radiative heating' model from Stinson et al. 2013, also developed for GASOLINE. It requires GALSF\_FB\_TURNOFF\_COOLING is enabled. When on, this couples 100% of stellar luminosity as a heating term to gas particles, although it does not turn off their cooling along with the coupling (this is not necessarily physical, but reflects the choices made in that original paper). Users should cite Stinson et al. 2013 for the physical prescriptions, and consult PFH when using this module (the implementation in GIZMO has been tested under some conditions, but such a large heating rate can produce strange interactions with cooling and heating routines under various circumstances so must be treated with caution).
+
+
+
+<a name="config-galsf-fire"></a>
+### _Explicit (Resolved) Feedback Models_ 
     #################################################################################################### 
-    ##----------------------------------------------------------------------------------------------------- 
-    # ---- old sub-grid models (for large-volume simulations) ---- # 
-    #GALSF_EFFECTIVE_EQS            # 'effective equation of state' model for the ISM and star formation 
-    #GALSF_SUBGRID_WINDS            # sub-grid winds ('kicks' as in Oppenheimer+Dave,Springel+Hernquist,Boothe+Schaye,etc) 
-    #GALSF_SUBGRID_VARIABLEVELOCITY # winds with velocity scaling based on halo properties (Oppenheimer+Dave); req.GALSF_SUBGRID_WINDS 
-    #GALSF_SUBGRID_DM_DISPERSION #wind velocity scaling based on MV 13 paper, as used in Illustris. req.GALSF_SUBGRID_WINDS
-    #GALSF_WINDS_ISOTROPIC          # forces winds to have a random orientation (works with both subgrid+explicit winds) 
-    #GALSF_WINDS_POLAR              # forces winds to have polar orientation (works for sub-grid winds) 
-    #GALSF_TURNOFF_COOLING_WINDS    # turn off cooling for SNe-heated particles (as Stinson+ GASOLINE model) 
-    #GALSF_GASOLINE_RADHEATING      # heat gas with luminosity from young stars (as Stinson+ 2013 GASOLINE model) 
-    ##----------------------------------------------------------------------------------------------------- 
+    ##-----------------------------------------------------------------------------------------------------
+    #------ PFH physical models for star formation and feedback: these are the FIRE simulation modules (Hopkins et al. 2014) ------ ##
+    #--------- Their use follows the FIRE authorship policy. Modules are NOT to be used without authors permission (including P. Hopkins, E. Quataert, D. Keres, and C.A. Faucher-Giguere),
+    #---------    even if you are already using the development GIZMO code. (PFH does not have sole authority to grant permission for the modules)
+    #--------- New projects using these modules must FIRST be PRE-APPROVED by the collaboration (after permission to use the modules has been explicitly granted),
+    #--------- and subsequently are required to follow the collaborations paper approval and submission policies
+    ##-----------------------------------------------------------------------------------------------------
+    #FIRE_PHYSICS_DEFAULTS           # enable default set of FIRE physics packages (see details below)
+    #----------- physical stellar feedback mechanisms (sub-modules of the FIRE_PHYSICS_DEFAULTS; these cannot be turned off and on individually without extreme care, they have complicated inter-dependencies) ---- #
+    ##----------------------GALSF_FB_GASRETURN              # Paul Torreys addition for stochastic gas return (modified for continuous return)
+    ##----------------------GALSF_FB_HII_HEATING            # gas within HII regions around young stars is photo-heated to 10^4 K
+    ##----------------------GALSF_FB_SNE_HEATING=1          # time-dependent explosions from SNe (I & II) in shockwave radii around stars (values: 0=force-gridded in xyz (WRONG-for testing only!); 1=tensor-symmetrized (momentum-conserving; USE ME); 2=no tensor re-normalization [non-conservative!]
+    ##----------------------GALSF_FB_RPROCESS_ENRICHMENT=4  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model)
+    ##----------------------GALSF_FB_RT_PHOTONMOMENTUM      # continuous acceleration from starlight (uses luminosity tree)
+    ##----------------------GALSF_FB_LOCAL_UV_HEATING       # use local estimate of spectral information for photoionization and photoelectric heating
+    ##----------------------GALSF_FB_RPWIND_LOCAL           # turn on local radiation pressure coupling to gas
+    ##-----------------------------------------------------------------------------------------------------
+    #----------- deprecated options (most have been combined or optimized into the functions above, here for legacy purposes only)
+    ##----------------------GALSF_FB_RPWIND_FROMCLUMPS	    # clump-find to for wind angles (deprecated; now use density routine to find)
+    ##----------------------GALSF_FB_RPWIND_CONTINUOUS	    # wind accel term is continuous (more expensive and introduces more artificial dissipation)
+    ##----------------------GALSF_FB_RPWIND_DO_IN_SFCALC	# do IR wind loop in SFR routine (allows fof clump-finding, useful for very IR-thick, but slow)
+    ##----------------------GALSF_FB_RPWIND_FROMSFR         # drive radiation pressure with gas SFR (instead of default, which is nearby young stars)
+    ##----------------------FIRE_UNPROTECT_FROZEN           # by default, FIRE-2 code version is 'frozen' so it cannot be changed by any code updates. this removes the protection, so you will use whatever the newest algorithms in GIZMO are, but use it with CAUTION since the algorithm may NOT agree with the other FIRE runs
+    ##-----------------------------------------------------------------------------------------------------
     #################################################################################################### 
 
-These flags relate to popular 'sub-grid' models for star formation and feedback. These models replace explicit resolution of the ISM with simple analytic toy model approximations, and "tuned" models for galactic winds designed to reproduce the stellar mass function. These are useful for comparison studies or for very large-volume cosmological simulations where the resolution is ~kpc, but considerably more accurate ISM physics, wind, and star formation models are available in the code.
+These flags control the feedback models used in the series of FIRE papers, and replace the older sub-grid feedback with more realistic, explicit tracking of multiple forms of feedback physics (without free or tuned parameters). 
 
-**GALSF\_EFFECTIVE\_EQS**: This enables the 'effective equation of state' (EOS) model originally developed by Springel & Hernquist, MNRAS, 2003, 339, 289. We point the interested reader to that paper for the detailed description. This replaces explicit resolution of a multi-phase ISM (as well as any cooling below ~10^4 K) with a stiff EOS for gas above some modest density (a single-phase polytropic gas), motivated by a McKee & Ostriker-like analytic toy model for a two-phase ISM. The parameters describing this EOS are specified in the parameterfile. This is the model used in GADGET-2/3 and AREPO, and in many major simulation projects ("Illustris", "OWLS", "Eagle", the Oppenheimer & Dave IGM studies, and more). 
+As noted above, these modules are proprietary and are not to be used without the explicit permission of the FIRE collaboration core development team, consisting of PFH, D. Keres, C.A. Faucher-Giguere, and E. Quataert. I (PFH) do not have the ability to grant permissions alone, so permission to use the development code does not constitute permission to use all of the modules below. Projects using these modules are subject to the FIRE collaboration standard policies (projects must be pre-approved and posted to the collaboration, authorship offered, collaboration citation policies followed, etc.).
 
-**GALSF\_SUBGRID\_WINDS**: This enables sub-grid "decoupled" winds: essentially, for every unit mass stars formed, some proportional mass is forced out of the galaxy at a fixed velocity, with the "mass loading" set by hand in the parameterfile. As above, this is the model used in GADGET-2/3 and AREPO, and in many major simulation projects ("OWLS", "Eagle", etc).
-
-**GALSF\_SUBGRID\_VARIABLEVELOCITY**: This extends the 'GALSF\_SUBGRID\_WINDS' by combining them with a prescription developed by Oppenheimer & Dave, in which the halo mass (calculated in the on-the-fly friends-of-friends algorithm, which must be enabled), to launch the winds at the escape velocity with a mass-dependent mass-loading designed to reproduce the observed stellar mass function. This is the model used in projects such as "Illustris" and the Oppenheimer & Dave IGM studies. Requires that GALSF\_SUBGRID\_WINDS is also on.
-
-**GALSF\_SUBGRID\_DM\_DISPERSION**: This acts like 'GALSF\_SUBGRID\_VARIABLEVELOCITY', but uses the local DM velocity dispersion (kernel-computed around gas) to determine wind-launching properties. This is the method used in the Illustris runs (Vogelsberger et al.), and implemented in GIZMO by Q. Zhu. This allows sub-grid winds without requiring subhalo finding or FOF routines; particularly useful for zoom-in runs.
-
-**GALSF\_WINDS\_ISOTROPIC**: Enabling this forces the sub-grid winds to be isotropic (the particle "kicks" are uniformly randomly oriented). 
-
-**GALSF\_WINDS\_POLAR**: Enabling this forces the sub-grid winds to be polar (the particle kicks are directed along the direction given by the cross of the particle velocity and acceleration, which should be the polar axis in a disk).
-
-**GALSF\_TURNOFF\_COOLING\_WINDS**: This enables the 'blastwave' or 'cooling turnoff' model developed by Stinson et al. in GASOLINE. SNe occur (this requires GALSF\_FB\_SNE\_HEATING is on), and when they do, a fixed fraction of their energy is coupled thermally to the gas, which is then not allowed to cool for some long timescale (set analytically following Stinson et al. 2006), typically ~10^7-10^8 years. This is the model used a in wide range of GASOLINE projects (ERIS, MAGICC, etc).
-
-**GALSF\_GASOLINE\_RADHEATING**: This adds the sub-grid 'radiative heating' model from Stinson et al. 2013, also developed for GASOLINE. It requires GALSF\_TURNOFF\_COOLING\_WINDS is enabled. When on, this couples 100% of stellar luminosity as a heating term to gas particles, although it does not turn off their cooling along with the coupling.
-
-
-    #################################################################################################### 
-    ##----------------------------------------------------------------------------------------------------- 
-    ## ------ PFH physical models for star formation and feedback ------ ## 
-	#FIRE_PHYSICS_DEFAULTS           # enable default set of FIRE physics packages (see details below)
-    # ---- star formation law ---- # 
-    #GALSF_SFR_MOLECULAR_CRITERION	# estimates molecular fraction in SF-ing gas, only SF from that is allowed 
-    #GALSF_SFR_VIRIAL_SF_CRITERION=0 # only allow star formation in virialized sub-regions (alpha<1) (0/no value='default'; 1=0+Jeans criterion; 2=1+'strict' (zero sf if not bound))
-    #GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory
-    #GALSF_SFR_IMF_SAMPLING          # discretely sample the IMF: simplified model with quantized number of massive stars
-    # ---- physical stellar feedback mechanisms ---- # 
-    #GALSF_FB_GASRETURN              # Paul Torreys addition for stochastic gas return (modified for continuous return) 
-    #GALSF_FB_HII_HEATING            # gas within HII regions around young stars is photo-heated to 10^4 K 
-	#GALSF_FB_SNE_HEATING=1          # time-dependent explosions from SNe (I & II) in shockwave radii around stars (values: 0=force-gridded in xyz (WRONG-for testing only!); 1=tensor-symmetrized (momentum-conserving; USE ME); 2=no tensor re-normalization [non-conservative!]
-    #GALSF_FB_RPROCESS_ENRICHMENT=6  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 6=extended model)
-    #GALSF_FB_RT_PHOTONMOMENTUM      # continuous acceleration from starlight (uses luminosity tree) 
-    #GALSF_FB_LOCAL_UV_HEATING       # use local estimate of spectral information for photoionization and photoelectric heating 
-    #GALSF_FB_RPWIND_LOCAL           # turn on local radiation pressure coupling to gas 
-    ##----------------------------------------------------------------------------------------------------- 
-    # ----------- deprecated options (most have been combined or optimized into the functions above, here for legacy) 
-	##GALSF_FB_RPWIND_FROMCLUMPS	# clump-find to for wind angles (deprecated; now use density routine to find)
-	##GALSF_FB_RPWIND_CONTINUOUS	# wind accel term is continuous (more expensive and introduces more artificial dissipation)
-	##GALSF_FB_RPWIND_DO_IN_SFCALC	# do IR wind loop in SFR routine (allows fof clump-finding, useful for very IR-thick, but slow)
-	##GALSF_FB_RPWIND_FROMSFR       # drive radiation pressure with gas SFR (instead of default, which is nearby young stars)
-    ##FIRE_UNPROTECT_FROZEN         # by default, FIRE-2 code version is 'frozen' so it cannot be changed by any code updates. this removes the protection, so you will use whatever the newest algorithms in GIZMO are, but use it with CAUTION since the algorithm may NOT agree with the other FIRE runs
-    #################################################################################################### 
-
-These flags control the feedback models used in the series of FIRE papers, and replace the older sub-grid feedback with more realistic, explicit tracking of multiple forms of feedback physics (without any free or tuned parameters). 
+The numerical details and physics are described in great detail in Hopkins et al., 2017a, (arXiv:1702.06148) and Hopkins et al., 2017b (arXiv:1707.07010). Both of these papers should be cited in any publication using these modules (in addition to following the FIRE collaboration citation policies).
 
 **FIRE\_PHYSICS\_DEFAULTS**: Enables the FIRE modules, default values for all below (see FIRE wiki for more details on recommended settings and compiler flags for FIRE simulations). FIRE simulations always should use **exactly** the same code-base and code options -- make sure you consult the FIRE wiki to be sure you are using the correct frozen code version, flags, parameter-settings, etc, so that your run is exactly the same source code and options as all other FIRE runs (all FIRE runs requre this).
 
-**GALSF\_SFR\_MOLECULAR\_CRITERION**: Enables molecular-gas dependent star formation. This estimates the molecular fraction $f_{H2}$ in a gas particle, and corrects the calculated star formation rate by this factor (only allowing star formation from the molecules). It uses the fitting functions from Krumholz & Gnedin (ApJ 2011 729 36), as a function of local column density and metallicity. In evolved galaxies, for a high density threshold for SF (n>~100 cm^-3), the molecular fractions are very near unity so this has no effect, but it costs almost nothing to add this criterion to simulations, and it can be useful in lower-resolution simulations to approximate regions where gas can self-shield and cool.
-
-**GALSF\_SFR\_VIRIAL\_SF\_CRITERION**: This requires that only gas which is locally self-gravitating forms stars. Self-gravity is calculated via the local virial parameter following Hopkins, Narayanan, & Murray 2013 (arXiv:1303.0285); see that paper for details. This is useful for e.g. mergers and cosmological runs because it is adaptive -- so even if the mean galaxy density is >> your SF threshold, this will only allow SF in the bound sub-regions. However, it can be expensive, since it forces you to resolve those (often very high-density) regions. Physically, this corresponds to the results of idealized turbulent cloud simulations and observations of actual star forming regions (see e.g. Padoan et al.), which show bound clouds have SF efficiencies of ~100% per free-fall time, while unbound clouds have negligible SF. Setting to =0 or no numerical value is the default model. Setting =1 also requires the thermal Jeans mass be below 1000 solar masses (i.e. that fragmentation to stellar masses is possible). Setting =2 requires this and completely zeros any star formation in non-bound regions (otherwise, for numerical reasons, a region with density greater than 100 times the threshold density for star formation will be given a more tolerant criterion on the assumption it has collapsed via self-gravity). 
-
-**GALSF\_SFR\_IMF\_VARIATION**: Self consistently computes the IMF for each star particle from its parent gas properties at the time of formation. This uses the Hopkins/Guszejnov/Hennebelle/Chabrier model, if desired, but the default is a universal IMF. The IMF is then used self-consistently for feedback calculations throughout the simulation. This will also save and dump in snapshots a large number of properties of the star-forming clouds from which every star particle formed, for use in IMF models.
-
-**GALSF\_SFR\_IMF\_SAMPLING**: Enables stochastic sampling from the IMF. When a star particle forms, a discrete integer number of massive stars is chosen based on its mass and IMF. These appropriately scale the feedback properties and are lost in SNe. This is potentially important when the particle masses are very small, so that one would otherwise be associating a small fraction of an O-star to each star particle. 
-
-**GALSF\_FB\_GASRETURN**: Enables gas mass recycling and energy deposition from stellar winds. Mass is moved from star particles to nearby gas, together with the appropriate metal, momentum, and energy content, according to the time, metallicity, and mass-dependent yields from all wind sources in Starburst99. So at early times, for example, when O-star winds dominate, the returned material is very high energy, but later (when AGB winds dominate), it is much lower-energy.
+**GALSF\_FB\_GASRETURN**: Enables gas mass recycling and energy deposition from stellar winds. Mass is moved from star particles to nearby gas, together with the appropriate metal, momentum, and energy content, according to the time, metallicity, and mass-dependent yields from all wind sources in Starburst99. So at early times, for example, when O-star winds dominate, the returned material is very high energy, but later (when AGB winds dominate), it is much lower-energy. This requires **GALSF\_FB\_SNE\_HEATING** in order to work properly.
 
 **GALSF\_FB\_HII\_HEATING**: Enables local photo-ionization heating by young star particles. This calculates the total number of ionizing photons per unit time from Starburst99 for each star, and then makes a stromgren approximation -- moving outward from the star, it ionizes every un-ionized particle until it runs out of photons. those particles are flagged so that they cant cool below some minimum temperature ~10^4 K (set in the parameterfile) for the rest of the timestep (and are heated to that temperature if already below it). This is not meant to mock up cosmological photo-ionization, and in fact will cut off before it gets to the relevant distances (for speed/stability reasons) -- it doesnt include effects like scattering or redshifting out of resonance or finite light travel time that are necessary for those scales.
 
-**GALSF\_FB\_SNE\_HEATING**: Enables SNe explosions. This includes both Type-II (rates from Starburst99) and Type-I (with a fitting function for both prompt and delayed components from Manucci et al. 2006). The rates are continuous (and fully time+metallicity dependent), and each timestep the number of SNe associated with a given particle is drawn from a Poisson distribution with the appropriate expectation value. Then the physical SNe energy, momentum, mass, and metals are deposited in gas within a kernel of the star particle. This can be set to an integer value for numerical testing purposes to experiment with different SNe coupling schemes, which are (for example) con-conservative or act like a grid code (regardless of the particle arrangement) -- such modes are NOT RECOMMENDED and should never be used except for testing purposes. Unless you know what you are doing, always set this flag =1 (the default value).
+**GALSF\_FB\_SNE\_HEATING**: Enables explicit tracking of SNe explosions. This includes both Type-II (rates from Starburst99) and Type-I (with a fitting function for both prompt and delayed components from Manucci et al. 2006). The rates are continuous (and fully time+metallicity dependent), and each timestep the number of SNe associated with a given particle is drawn from a Poisson distribution with the appropriate expectation value. Then the physical SNe energy, momentum, mass, and metals are deposited in gas within a kernel of the star particle. This can be set to an integer value for numerical testing purposes to experiment with different SNe coupling schemes, which are (for example) con-conservative or act like a grid code (regardless of the particle arrangement) -- such modes are NOT RECOMMENDED and should never be used except for testing purposes. Unless you know what you are doing, always set this flag =1 (the default value).
 
-**GALSF\_FB\_RPROCESS\_ENRICHMENT**: This will make the code track an additional set of "dummy" elements (which do not have any dynamical effects). The motivation was to study a wide range of models for R-process element enrichment via neutron-star mergers, but this could easily be used to study any passive scalars in the ISM. The value GALSF\_FB\_RPROCESS\_ENRICHMENT should be set to an integer giving the number of dummy species. The default GALSF\_FB\_RPROCESS\_ENRICHMENT=6 will follow the default code for 6 different models of R-process enrichment (each of the 6 follows a different rate of events, yield per event, and/or number of neighbors over which the yields are shared). The additional metals will be appended to the usual metallicity array in the snapshot, following after the "usual" elements in order. For the default implementation here, the assumed enrichment for each species is (0) 'default' (rate is 1e-5 event/Msun/Myr after tmin=3e7 yr, zero before, and elements shared to all neighbors), (1) tmin=3e6 yr, (2) tmin=1e7 yr, (3) tmin=1e8 yr, (4) rate=3e-6, (5) rate=3e-5.
+**GALSF\_FB\_RPROCESS\_ENRICHMENT**: This will make the code track an additional set of "dummy" elements (which do not have any dynamical effects). The motivation was to study a wide range of models for R-process element enrichment via neutron-star mergers, but this could easily be used to study any passive scalars in the ISM. The value GALSF\_FB\_RPROCESS\_ENRICHMENT should be set to an integer giving the number of dummy species. The default GALSF\_FB\_RPROCESS\_ENRICHMENT=4 will follow the default code for 4 different models of R-process enrichment (each of the 4 follows a different delay-time distribution). The additional metals will be appended to the usual metallicity array in the snapshot, following after the "usual" elements in order. For the default implementation here, the assumed enrichment for each species is (0) rate = 1e-5 event/Msun/Myr after tmin=3e7 yr, zero before, and elements shared to all neighbors, (1) tmin=3e6 yr, rate=1e-5, (2) tmin=3e7 yr, rate=1e-6, (3) tmin=3e6 yr, rate=1e-6. This flag requires **GALSF\_FB\_SNE\_HEATING** to work properly.
 
 **GALSF\_FB\_RT\_PHOTONMOMENTUM**: Enable long-range radiation pressure effects. Specifically, enabling GALSF\_FB\_RT\_PHOTONMOMENTUM calculates the luminosity of each star particle (in standard fashion from Starburst99) and feeds it into the gravity tree as a repulsive 1/r^2 force, with the 'strength' at each point determined by the relevant absorption cross-section (integrated over three crude wavelength intervals in UV, optical, and IR - thats an approximation to a full spectrum, which compared to the other uncertainties here is actually quite accurate). The relevant code is in the "forcetree.c" code. Because its incorporated into the gravtree structure, it incurs very little cost and has no problems with the tree being spread across multiple processors, etc. If GALSF\_FB\_RT\_PHOTONMOMENTUM *and* RT\_FIRE\_FIX\_SPECTRAL\_SHAPE are enabled, then the spectral shape of the emission is assumed to be *uniform* everywhere in time and space in the simulation (the luminosity from each star changes, but the SED shape -- i.e. relative amount in UV/optical/IR -- is fixed). The fraction of the emission in each wavelength interval is then set 'by hand' with the parameters PhotonMomentum\_fUV/PhotonMomentum\_fOPT in the parameterfile. If RT\_FIRE\_FIX\_SPECTRAL\_SHAPE is *disabled* (the default), then the SED shape emerging from each local region around each star particle is calculated self-consistently, by calculating the 'initial' emission as a function of stellar age (the Starburst99 spectrum) and then attenuating it with the opacity estimated from the local density and density gradients. In this case, the parameters PhotonMomentum\_fUV and PhotonMomentum\_fOPT set a *minimum* escape fraction from each star particle in these wavelengths.
 
@@ -822,131 +1141,233 @@ These flags control the feedback models used in the series of FIRE papers, and r
 
 **GALSF\_FB\_SEPARATELY\_TRACK\_LUMPOS**: This forces the moments of the luminosity distribution to be tracked separately from the stellar mass in the tree code: it has a very small effect on any outputs and is not compatible with Tree-PM mode, but it can be slightly more accurate and useful for debugging when running the code in Tree-only mode with the different models above that propagate light through the tree.
 
-**GALSF\_FB\_RPWIND\_DO\_IN\_SFCALC**/**GALSF\_FB\_RPWIND\_FROMCLUMPS**/**GALSF\_FB\_RPWIND\_CONTINUOUS**: These modules control the older, 'clump-finding'-based calculation method used to estimate the IR radiation pressure. They require 'WINDS' activated as well. With GALSF\_FB\_RPWIND\_DO\_IN\_SFCALC enabled, the code searches around each active gas particle for local stars and density peaks, and calculates the radiation transfer via a friends-of-friends calculation of the gas 'clump' surrounding the star-forming region. If GALSF\_FB\_RPWIND\_FROMCLUMPS is enabled the velocity is directed away from the clump center (as in flux-limited diffusion), otherwise away from the stars. If GALSF\_FB\_RPWIND\_CONTINUOUS is enabled, the flux is continuous as opposed to discretized into small events (which speeds up the calculation considerably).
+**GALSF\_FB\_RPWIND\_DO\_IN\_SFCALC**/**GALSF\_FB\_RPWIND\_FROMCLUMPS**/**GALSF\_FB\_RPWIND\_CONTINUOUS**: These modules control the older, 'clump-finding'-based calculation method used to estimate the IR radiation pressure in Hopkins, Murray, & Quataert 2011 (they have not been used for science publications since that time). They require 'WINDS' activated as well. With GALSF\_FB\_RPWIND\_DO\_IN\_SFCALC enabled, the code searches around each active gas particle for local stars and density peaks, and calculates the radiation transfer via a friends-of-friends calculation of the gas 'clump' surrounding the star-forming region. If GALSF\_FB\_RPWIND\_FROMCLUMPS is enabled the velocity is directed away from the clump center (as in flux-limited diffusion), otherwise away from the stars. If GALSF\_FB\_RPWIND\_CONTINUOUS is enabled, the flux is continuous as opposed to discretized into small events (which speeds up the calculation considerably). As noted above these options are deprecated and no longer actively developed, so their use is discouraged unless there is a specific scientific justification. 
 
 **FIRE\_UNPROTECT\_FROZEN**: by default, FIRE-2 code version is 'frozen' so it cannot be changed by any code updates (to ensure published FIRE simulations use exactly the same source code). this removes the protection, so you will use whatever the newest algorithms in GIZMO are, but use it with CAUTION since the algorithm may NOT agree with the other FIRE runs. this is intended for de-bugging purposes only. production and published FIRE simulations should use only the appropriate frozen version of the code.
 
 
-### Single-Star Formation Options     
+
+
+<a name="config-sf"></a>
+## Single-Star Formation (IMF, Individual Stars, and Sink-Particles) 
 
     ############################################################################################################################
     ##-----------------------------------------------------------------------------------------------------
-    #-------------------------------------- Star formation with -individual- stars [sink particles]: from PFH [proprietary development with Matt Orr and David Guszejnov; modules not to be used without authors permission]
+    #-------------------------------------- Star formation with -individual- stars [sink particles]: from PFH [proprietary development with Mike Grudic and David Guszejnov; modules not to be used without authors permission]
     ##-----------------------------------------------------------------------------------------------------
     #SINGLE_STAR_FORMATION          # master switch for single star formation model: sink particles representing -individual- stars
-    #SINGLE_STAR_ACCRETION=3        # proto-stellar accretion: 0=grav capture only; 1+=alpha-disk accretion onto protostar; 2+=bondi accretion of diffuse gas; 3+=sub-grid variability
+    #SINGLE_STAR_ACCRETION=3        # proto-stellar accretion: 0=grav capture only; 1+=alpha-disk accretion onto protostar; 2+=bondi accretion of diffuse gas; 3+=sub-grid variability 
     #SINGLE_STAR_FB_HEATING         # proto-stellar heating: luminosity determined by BlackHoleRadiativeEfficiency (typical ~5e-7)
     #SINGLE_STAR_FB_JETS            # protostellar jets: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow
     #SINGLE_STAR_PROMOTION          # proto-stars become ZAMS stars at end of pre-main sequence lifetime. FIRE feedback modules kick in, but using appropriate luminosities and temperatures for each
     ############################################################################################################################
 
-This set of flags controls *single* star formation physics. This means individual stars are mass-resolved sink particles, with individual masses and evolutionary tracks (as opposed to the 'GALSF' suite of options described above, where the star formation is galaxy or cluster-scale or larger, and star particles represent an ensemble of stars). This is relevant for simulations of star clusters with resolved individual stars, simulations of the origins of the stellar initial mass function, or individual protostar/planet formation simulations. This is all under active development by PFH, and remains proprietary. Please consult and request permission before using any piece of this code. 
+This set of flags controls *single* star formation physics. This means individual stars are mass-resolved sink particles, with individual masses and evolutionary tracks (as opposed to the 'GALSF' suite of options described above, where the star formation is galaxy or cluster-scale or larger, and star particles represent an ensemble of stars). This is relevant for simulations of star clusters with resolved individual stars, simulations of the origins of the stellar initial mass function, or individual protostar/planet formation simulations. 
 
-**SINGLE\_STAR\_FORMATION**: Master switch. Must be on for any of the other modules within this block to work. With this enabled, star (sink) particles are spawned according to the same basic requirements that appear in the 'GALSF' block, using the same Parameterfile options: there is a minimum density (set in the parameterfile), but also the proto-sink region must be self-gravitating, Jeans unstable, self-shielding, the local gas density maximum within its neighbor kernel, have a converging velocity field, and not have another sink within the neighbor kernel. If these are all met, the gas particle is immediately converted into a star particle. Details of the modules are described in the 'singlestar_notes' file on the Bitbucket site, until the methods paper is published.
+This is all under active development by PFH, and remains proprietary (primarily because parts of these modules are still in very active development and not debugged, while other parts are production-ready). Please consult and request permission before using any piece of this code (and expect to be recruited info refining the modules in need of de-bugging).
+
+**SINGLE\_STAR\_FORMATION**: Master switch. Must be on for any of the other modules within this block to work. With this enabled, star (sink) particles are spawned according to the same basic requirements that appear in the 'GALSF' block, using the same Parameterfile options: there is a minimum density (set in the parameterfile), but also the proto-sink region must be self-gravitating, Jeans unstable, self-shielding, the local gas density maximum within its neighbor kernel, have a converging velocity field, and not have another sink within the neighbor kernel. If these are all met, the gas particle is immediately converted into a star particle. Details of the modules are described in the `notes_singlestar` file ([http://www.tapir.caltech.edu/~phopkins/public/notes_singlestar.pdf](http://www.tapir.caltech.edu/~phopkins/public/notes_singlestar.pdf)), until the methods paper is published.
 
 **SINGLE_STAR_ACCRETION**: Enables accretion onto sinks after they form. This chooses the model: 0=accrete via direct gravitational capture of bound gas particles only; 1=gravitational capture goes into an alpha-disk, which then accretes onto the protostar smoothly according to a sub-grid alpha-disk model; 2=as '1' but also adds Bondi-Hoyle-Littleton accretion of diffuse gas from the neighbor kernel around the sink; 3=as '2' but adds an explicit sub-grid variability from a random power spectrum with fluctuations on all timescales (mean-conserving) to represent bursty accretion on small scales
 
-**SINGLE\_STAR\_FB\_HEATING**: Adds feedback from accreting proto-stars in the form of heating via their accretion luminosity. This performs a LEBRON-method radiation hydrodynamic simulation, with the stellar luminosity coming out in the IR. If the radiation hydro module is changed, whatever radiation hydro method is chosen will be used. The accretion luminosity scales with the accretion rate given the radiative efficiency, set by the run-time parameter BlackHoleRadiativeEfficiency
+**SINGLE\_STAR\_FB\_HEATING**: Adds feedback from accreting proto-stars in the form of heating via their accretion luminosity. This performs a LEBRON-method radiation hydrodynamic simulation, with the stellar luminosity coming out in the IR. If the radiation hydro module is changed, whatever radiation hydro method is chosen will be used. The accretion luminosity scales with the accretion rate given the radiative efficiency, set by the run-time parameter BlackHoleRadiativeEfficiency. 
 
 **SINGLE\_STAR\_FB\_JETS**: Adds feedback from proto-stellar jets. This acts as as kinematic outflows with a specified outflow rate and velocity set in the same manner as black hole-driven accretion-disk outflows, using the run-time parameters BAL\_f\_accretion and BAL\_v\_outflow. 
 
 **SINGLE\_STAR\_PROMOTION**: If enabled, the proto-stars are explicitly evolved on the pre-main sequence (allowing for dynamical accretion to modify their pre-main-sequence lifetimes), and when they reach the zero-age main sequence, they are promoted to main-sequence stars. The module then enables feedback from these stars including: radiation pressure, photo-electric and photo-ionization heating, stellar mass-loss (winds), and supernovae. The rates of these are all tabulated appropriately from standard evolution tracks for the stellar mass, age and metallicity. The algorithmic implementation uses the FIRE modules (so the same restrictions for use apply). 
 
 
-
-### SuperMassive Black Hole Options     
+<a name="config-bh"></a>
+## SuperMassive Black Hole Options
      
-    #################################################################################################### 
-    #-------------------------------------- SMBH/AGN stuff; also heavily expanded with PFH models 
-    #################################################################################################### 
-    #BLACK_HOLES                     # enables Black-Holes (master switch) 
-    # ----- seed models 
-    #BH_HOST_TO_SEED_RATIO=1000     # Min FOF stellar mass for seeding is BH_HOST_TO_SEED_RATIO * All.SeedBlackHoleMass. Requires FOF with linking type including star particles (MinFoFMassForNewSeed and massDMpart in the param file are ignored)
-    #BH_SEED_FROM_STAR_PARTICLE     # star particle on FOF potential minimum gets converted into a BH (default is densest gas particle)
-    #BH_POPIII_SEEDS                # BHs seeded on-the-fly from dense, low-metallicity gas
-    # ----- accretion models/options 
-    #BH_SWALLOWGAS                  # enables stochastic accretion of gas particles consistent with growth rate of hole
-    #BH_ALPHADISK_ACCRETION         # gas accreted into 'virtual' alpha-disk, and from there onto the BH
-    #BH_GRAVCAPTURE_GAS             # accretion determined only by resolved gravitational capture by the BH (for gas particles)
-    #BH_GRAVCAPTURE_NONGAS          # as BH_GRAVCAPTURE_GAS, but applies to non-gas particles (can be enabled with other accretion models for gas)
-    #BH_GRAVACCRETION=0             # Gravitational torque accretion estimator from Hopkins & Quataert (2011): [=0] for kinematic B/D decomposition as in Angles-Alcazar et al. (default) and [=1] for approximate f_disk evaluation
-    #BH_BONDI=0                    # Bondi-Hoyle style accretion model: 0=default (with velocity); 1=dont use gas velocity with sound speed; 2=variable-alpha tweak (Booth & Schaye 2009)
-    #BH_SUBGRIDBHVARIABILITY        # model variability below resolved dynamical time for BH
-    #BH_CALC_DISTANCES              # calculate distances for all particles to closest BH for, e.g., refinement
-    #------ feedback models/options
-    #BH_BAL_WINDS                   # particles within the BH kernel are given mass, momentum, and energy continuously as high-vel BAL winds
-    #BH_PHOTONMOMENTUM              # continuous long-range IR radiation pressure acceleration from BH (needs GALSF_FB_RT_PHOTONMOMENTUM)
-    #BH_HII_HEATING                 # photo-ionization feedback from BH (needs GALSF_FB_HII_HEATING)
-    #BH_COMPTON_HEATING             # enable Compton heating/cooling from BHs in cooling function (needs BH_PHOTONMOMENTUM)
-    #BH_THERMALFEEDBACK            # couple a fraction of the BH luminosity into surrounding gas as thermal energy (DiMatteo/Springel/Hernquist model)
-    #BH_BAL_KICK                   # do BAL winds with stochastic particle kicks at specified velocity (instead of continuous wind solution - requires BH_SWALLOWGAS - )
-    #BH_BAL_KICK_COLLIMATED        # winds follow the direction of angular momentum within Kernel (only for BH_BAL_KICK winds)
-    #BH_BAL_KICK_MOMENTUM_FLUX=10  # increase the effective mass-loading of BAL winds to reach the desired momentum flux in units of L_bol/c (needs BH_BAL_KICK)
-    #------------ use the BH_DRAG options only in cosmological cases where M_BH is not >> other particle masses
-    #BH_DYNFRICTION=0               # apply dynamical friction force to the BHs when m_bh not >> other particle mass: 0=[DM+stars+gas] (default); 1=[DM+stars]; 2=[stars]
-    #BH_DYNFRICTION_INCREASE=10    # artificially increase dynamic friction by this factor (requires BH_DYNFRICTION)
-    #BH_INCREASE_DYNAMIC_MASS=100   # Increase the dynamic particle mass by this factor at the time of FOF seeding
-    #BH_DRAG=1                     # Drag on black-holes due to accretion (w real mdot); set =2 to boost as if BH is accreting at eddington
-    #------ output options
-    #BH_OUTPUT_MOREINFO             # output additional info to "blackhole_details"
-    ##-----------------------------------------------------------------------------------------------------
-    #------------ deprecated or de-bugging options (most have been combined or optimized into the functions above, here for legacy)
-    #BH_REPOSITION_ON_POTMIN=0      # reposition black hole on potential minimum (requires EVALPOTENTIAL). [set =1 to "jump" onto STARS only]
-    #DETACH_BLACK_HOLES            # Insert an independent data structure for BHs (currently explicitly depends on SEPARATE_STELLARDOMAINDECOMP)
-    #BH_SEED_STAR_MASS_FRACTION=0.02 # minimum star mass fraction for BH seeding
-    ##-----------------------------------------------------------------------------------------------------
-    #-------------------------------------- AGN-Bubble feedback (D. Sijacki)
-    #-------------------------------- use of these routines requires explicit pre-approval by developer D. Sijacki
-    #BUBBLES                        # generation of hot bubbles in an isolated halo or the the biggest halo in the run
-    #MULTI_BUBBLES                  # hot bubbles in all haloes above certain mass threshold (works only with FOF and without BUBBLES)
-    #EBUB_PROPTO_BHAR               # Energy content of the bubbles with cosmic time evolves as an integrated BHAR(z) over a Salpeter time (Di Matteo 2003 eq. [11])
-    #BH_BUBBLES                     # calculate bubble energy directly from the black hole accretion rate
-    #UNIFIED_FEEDBACK               # activates BH_THERMALFEEDBACK at high Mdot and BH_BUBBLES FEEDBACK al low Mdot
-    ##-----------------------------------------------------------------------------------------------------
+     
+This set of flags controls the physics of black holes (or really, compact accreting objects/sink particles of any mass). This includes their formation/seeding (on-the-fly in simulations), their accretion, growth, dynamics in the code, and feedback (radiative and mechanical). All of these modules are under some degree of development; some as part of existing PhD theses or other projects such as FIRE, and therefore these have their own permissions rules (as always, access to the development code does not necessarily imply permissions to use all these modules). If you aren't sure you have permissions to use a given module, consult PFH and the relevant authors of the code before using any of these aspects of the code. Additional details of the modules are described in the `notes_blackholes` file ([http://www.tapir.caltech.edu/~phopkins/public/notes_blackholes.pdf](http://www.tapir.caltech.edu/~phopkins/public/notes_blackholes.pdf)), until the methods paper is published.
+
+     
+     
+    ####################################################################################################
+    # ---------------- Black Holes (Sink-Particles with Accretion and Feedback)
+    ####################################################################################################
+    #BLACK_HOLES                    # master switch to enable BHs
     ####################################################################################################
 
-This set of flags controls the physics of super-massive black holes (or really, black holes or compact accreting objects of any mass). This includes their formation/seeding (on-the-fly in simulations), their accretion, growth, dynamics in the code, and feedback (radiative and mechanical). All of these modules are under active development. Most have been explicitly developed as part of the FIRE project, and the same permissions apply. The exceptions are the basic seeding, thermal feedback, and Bondi accretion modules, which follow the Springel-Hernquist models and use permissions. Please consult PFH and the relevant authors of the code before using these aspects of the code.
-     
 **BLACK\_HOLES**: Master switch for BH physics. Must be on for any BH-related physics to work. BHs will always be particle type 5.
 
-**BH\_POPIII\_SEEDS**: Activate “on-the-fly” seeding of BHs. When a gas particle is flagged as being "turned into" a star particle, then we assign it some probability of instead turning into a “seed” BH, where the probability increases in higher-surface density, lower-metallicity gas (default values in the code assume the probability increases significantly above a surface density 1 g/cm^2 and below metallicity 0.01 solar).
-
-**BH\_SWALLOWGAS**: Allow the BH to actually consume gas particles. Required for any accretion model. Unless set otherwise by a specific compile flag, the accretion is stochastic, as in Springel et al. 2005 MNRAS 361 776 and Di Matteo et al. 2005 Nature 433 604 (see those papers for more details). The "black hole" mass is separately tracked from the particle mass (according to whatever accretion model). If the black hole mass becomes larger than the particle mass, then nearby neighbor particles are "swallowed" with some probability until the mass is balanced. This is done so that total particle mass in the simulation is properly conserved, without generating arbitrarily large mis-matches in the masses of different particle types.
-
-**BH\_ALPHADISK\_ACCRETION**: Enables a sub-grid model for an "alpha-disk" (a traditional Shakura & Sunyaev viscous disk) around the BH particle. If this is off, accretion into the BH will be instantaneous (whenever the large-scale accretion model determines there is accretion). If this is on, mass is accreted into the viscous disk, then accreted continuously out of that disk onto the BH at a rate following Shakura & Sunyaev (crudely this approaches Eddington when the mass in the disk approaches the pre-existing BH mass); both the BH mass and the viscous disk mass are separately and continuously followed. Note that although BH growth may be strictly limited at Eddington, accretion into the outer accretion disk is not. This smooths out the actual BH accretion rate over the viscous timescale.
-
-**BH\_GRAVCAPTURE\_GAS**/**BH\_GRAVCAPTURE\_NONGAS**: BH\_GRAVCAPTURE\_GAS enables gas accretion via explicit resolution of direct gravitational capture of particles: if gas particles are located within the accretion radius (the minimum resolved softening around the BH), then this uses their position and relative velocity with respect to the BH particle we check whether (a) it is gravitationally bound to the BH, and (b) whether the apo-centric radius of the particle about the BH is also within the accretion radius. If both are true, we consider the particle "captured" and immediately add its mass to the BH accretion disk (if BH\_ALPHADISK\_ACCRETION is enabled, otherwise it is added directly to the BH). Use this only if you want to force the code to resolve accretion into the viscous disk (i.e. this is for very high-res simulations). Otherwise de-activate this and use a "sub-grid" accretion rate estimator. BH\_GRAVCAPTURE\_NONGAS does the same, for non-gas particle types (stars/dark matter; note that BH-BH mergers are always allowed, and handled separately from these flags). If this is on, dark matter is always added directly to the BH, while stars add to the accretion disk if BH\_ALPHADISK\_ACCRETION is on, otherwise to the BH (but does not contribute towards feedback or the Eddington limit, i.e. acting as if it is not tidally disrupted). Note that BH\_GRAVCAPTURE\_NONGAS can be turned on with other models (below) for gas accretion.
-
-**BH\_GRAVACCRETION**: Enables the "unresolved limit" accretion rate estimator based on gravitational torques from Hopkins & Quataert 2011, MNRAS, 2011, 415, 1027. This was specifically designed to reproduce the accretion rate resolved in several hundred simulations from large galactic scales (~1-100 pc) into the accretion disk (<0.1 pc). The dominant mechanism of angular momentum transfer on all of these scales is torques due to gravitational instabilities in the gas plus stellar disk; we refer to that paper for details, but in general this accretion rate estimator is more accurate by a factor of $\sim 10^{4} - 10^8$ compared to e.g. the Bondi estimators below, or the "viscous" or "gravitoturbulent" estimators (on scales outside the inner accretion disk, which this is not designed to reproduce). Quantities such as the gas angular momentum around the BH are calculated on the fly and used in the accretion rate estimation.
-
-**BH\_BONDI**/**BH\_USE\_GASVEL\_IN\_BONDI**/**BH\_VARIABLE\_ACCRETION\_FACTOR**: Enable BH\_BONDI to estimate the “unresolved limit” accretion rate via the Bondi-Hoyle formula used in old GADGET and current AREPO runs. Turn on BH\_USE\_GASVEL\_IN\_BONDI to use the gas velocity instead of just the sound speed in the Bondi-Hoyle rate (the denominator becomes $(c_{s}^2 + |{\bf v}_{\rm gas}-{\bf v}_{\rm BH}|^2)^{3/2}$). Turn on BH\_VARIABLE\_ACCRETION\_FACTOR if you want to slightly modify the pre-factor in front of the Bondi rate (giving it a power-law density dependence); this is set up to exactly match the variant accretion rate prescription in Booth & Schaye, and subsequent papers (OWLS, EAGLE, etc.).
-
-**BH\_SUBGRIDBHVARIABILITY**: This enables a model for AGN variability on very small timescales, corresponding to internal variability in e.g. the un-resolved accretion disk. This is 'smoothed over' by finite resolution; however, we can crudely approximate it by including an explicit power-spectrum of  fluctuations in dM/dt, integrated from frequencies of infinity down to 1/dt where dt is the simulation timestep (typically ~100 yr in the galaxy centers). We do this following Hopkins & Quataert 2012: assuming fluctuations in ln(dM/dt) follow a Gaussian random walk with equal power per logarithmic time interval from tmin (the orbital time at the innermost stable circular orbit for a non-rotating BH) to tmax (the dynamical time at the resolved BH kernel/accretion radius).
-
-**BH\_BAL\_WINDS**: Enables feedback from accretion-disk winds. This corresponds to observed ubiquitous AGN winds with velocities ~500-30,000 km/s. This is intended to represent the winds not at their generating scale, but on larger scales where the winds become hydro-dynamic, and so their basic properties are summarized by two parameters: a mass loading ($\dot{M}_{\rm wind} / \dot{M}_{\rm BH}$) and launch velocity. These are set in the parameterfile, and define the time-dependent mass, momentum, and energy flux, which can be continuously "injected" into the gas surrounding the BH.
-
-**BH\_PHOTONMOMENTUM**: Turn on to enable BH radiation pressure feedback. This follows the mechanisms used to couple stellar radiation pressure to the gas, but with additional corrections for the non-isotropic geometry of the BH accretion disk and obscuration from the torus region, including single-scattering at the dust sublimation radius and IR scattering outside this; this follows the fitting functions taken directly from full radiative transfer calculations by N. Roth (private communication, but see Roth et al. 2012, arXiv:1204.0063, for details). You can set the strength of this mechanism in the parameterfile separately from the other BH feedback mechanisms.
-
-**BH\_HII\_HEATING**: Turn on to enable BH photo-ionization feedback. This requires GALSF\_FB\_HII\_HEATING (the stellar photo-ionization feedback module) is also enabled. Then photo-ionization is treated from the BH identically to that from the stars, modulo the shape and magnitude of the ionizing spectrum, which is calculated for the BH luminosity following the empirical quasar spectral templates in Hopkins, Richards, & Hernquist 2007.
-
-**BH\_COMPTON\_HEATING**: Turn on to enable Compton heating/cooling of gas by the BH radiation field, following Sazonov et al. 2004. Since heating/cooling is dominated by hard X-ray/IR photons, respectively, the heating spectrum is simply scaled by an inverse square law, with a fixed Compton temperature ~3e7 K (see that paper for details). We also follow Faucher-Giguere & Quataert 2012 and do not allow the Compton+free-free cooling rate to exceed the Coulomb energy transfer rate between ions and electrons calculated for an ion temperature T in the limit where the electrons are efficiently cooling. Requires COOLING on. This requires BH\_PHOTONMOMENTUM is turned on (so the code can propogate the BH flux), but is independent of the strength you set for BH\_PHOTONMOMENTUM in the parameterfile.
-
-**BH\_THERMALFEEDBACK**: Enables the old GADGET or AREPO “quasar feedback” model where a fixed fraction of the BH luminosity (set in the parameterfile as BlackHoleFeedbackFactor) is coupled to the surrounding gas as purely thermal energy.
-
-**BH\_DYNFRICTION**: Activates and explicit dynamical friction force for BHs: when the BH mass is smaller than the mass of its neighbor particles, but the physical BH mass should be much larger than the mass of the stars/gas/dark matter it is moving through, it is assigned an additional force based on the standard analytic Chandrasekhar dynamical friction formula, using the neighbor velocity, density, and mass distribution.
-
-**BH\_DRAG**/**BH\_STRONG\_DRAG**: Rather than follow dynamical friction, BH\_DRAG simply enables a drag force on the BH proportional to the accretion rate, and acting to damp BH motion relative to the gas which it is moving through. If BH\_STRONG\_DRAG is enabled, the force is always as strong as it would be if the BH were accreting at Eddington.
+BH particles, like star particles, carry a number of additional variables with them that are used by the code and saved in the snapshot outputs. See the sections below about snapshots for details on those outputs. For example, a BH particle has a "BH mass" (mass of the assumed BH, which can be arbitrarily small) and a "particle/dynamical mass" (mass of the actual particle in the code, which is used for the gravity equations, etc). The latter can, in principle, be much larger than the BH mass (so the BH is 'sub-grid' in mass, in these cases). 
 
 
+<a name="config-bh-seed"></a>
+### _Seeding and BH-Creation_ 
 
-### Radiation Hydrodynamics Options
+BH particles can, of course, be placed in the initial conditions. But if you want them to be spontaneously generated over the course of the simulation, one of these options must be set to determine the rule by which BHs are "spawned."
 
-This set of options controls the explicit radiation-hydrodynamics options in the code. These flags allow you to integrate radiation explicitly or implicitly in the simulations. The code is written to be fully modular: this means you can choose things like the transport algorithm, solver, effective speed of light, frequencies/bands to be tracked, physics of their source functions and opacities and interactions with matter, and chemical networks *independently*. Any new additions to these modules should follow the same policies. Thus the user can 'pick and choose' the set of solvers and wavebands that is most appropriate for their problem. This is recently-developed by PFH and David Khatami. Please consult the authors before using any part of the code (some of it may not be fully-debugged, some of it may be currently in-use by a student for an existing project)
+All seed models require certain parameters in the parameterfile: (1) `SeedBlackHoleMass` = the actual seed BH mass, in code units. (2) `SeedBlackHoleMinRedshift` = the minimum redshift where seeding is allowed -- at redshifts below this, no seeds will be created. (3) `SeedBlackHoleMassSigma` = logarithmic dispersion in BH mass, in dex -- BHs will be spawned with a random mass drawn from a lognormal with this width.
+
+```bash
+####################################################################################################
+## ----------------------------------------------------------------------------------------------------
+# ----- seeding / BH-particle spawning
+## ----------------------------------------------------------------------------------------------------
+#BH_SEED_FROM_FOF=0             # use FOF on-the-fly to seed BHs in massive FOF halos; =0 uses DM groups, =1 uses stellar [type=4] groups; requires FOF with linking type including relevant particles (cite Angles-Alcazar et al., MNRAS, 2017, arXiv:1707.03832)
+##BH_SEED_FROM_LOCALGAS         # BHs seeded on-the-fly from dense, low-metallicity gas (no FOF), like star formation; criteria define-able in modular fashion in sfr_eff.c (function return_probability_of_this_forming_bh_from_seed_model). cite Grudic et al. (arXiv:1612.05635) and Lamberts et al. (MNRAS, 2016, 463, L31)
+##BH_INCREASE_DYNAMIC_MASS=100  # increase the particle dynamical mass by this factor at the time of BH seeding
+####################################################################################################
+```
+
+**BH\_SEED\_FROM\_FOF**: The code will run an on-the-fly friends-of-friends group finder, and when a group exceeds a critical mass and does not already contain a BH, one will be created from one of the particles which is a member of that group (the particle at the potential minimum of the group). This module requires FOF is active (obviously), with a linking type that includes the relevant particle types being used for the actual seeding. This flag can be set to one of two values at present. If "0", then the dark-matter groups are used to identify the FOF parent halos, and the BH particle is spawned from the gas particle at the potential minimum (among gas particles in the halo). If "1", then the groups used are *stars* (e.g. stellar galaxies as opposed to halos), and the BH is spawned from the star particle at the potential minimum. In the parameterfile, several parameters must be set: (1) `MinFoFMassForNewSeed` = minimum FOF group mass (in code units) for seeding. Note if the FOF parent group is DM, this is the DM halo mass, if the FOF parent group is stars, this is the stellar mass. (2) `TimeBetOnTheFlyFoF` = time (in code units, so scale factor for cosmological runs) between forcing FOF searches for BH seeding. Users of this module should cite Angles-Alcazar et al., MNRAS, 2017, arXiv:1707.03832.
+
+**BH\_SEED\_FROM\_LOCALGAS**: Activate “on-the-fly” seeding of BHs based on local gas properties (instead of FOF group-finding), more appropriate for e.g. highly-resolved (zoom-in or sub-galactic) simulations. When a gas particle is flagged as being "turned into" a star particle, then we assign it some probability of instead turning into a “seed” BH, where the probability is specified by an arbitrary user function (`return_probability_of_this_forming_bh_from_seed_model` in the file `sfr_eff.c`). The coded example there has a probability that increases strongly in higher-surface density, lower-metallicity gas (default values in the code assume the probability increases significantly above a surface density 1 g/cm^2 and below metallicity 0.01 solar), motivated by the simulations and stellar evolution calculations in Grudic et al. (arXiv:1612.05635) and Lamberts et al. (MNRAS, 2016, 463, L31); please cite these if you use something like these default values. But users are encouraged to code up their own seeding prescriptions here.
+
+**BH\_INCREASE\_DYNAMIC\_MASS**: Increases the particle dynamical mass (the total particle mass which enters the gravity equations, as distinct from the 'black hole' mass) by the specified factor (its default value will be the particle mass of whatever is being 'converted' into the BH), when a BH seed is assigned. Used in some circumstances to address the BH dynamics questions below, or as a sub-grid model for BH formation in massive star clusters. 
 
 
+<a name="config-bh-dynamics"></a>
+### _BH Dynamics (Dynamical Friction, Drag)_ 
+
+In cosmological simulations with poor resolution, it is commonly the case that the BHs have mass smaller than the mass of typical neighbor particles, even though the physical BH mass should be large compared to the mass of the true individual stars (let alone DM particles) it is moving through. This has an important consequence: rather than sinking to the galaxy center via dynamical friction, the BH will not be 'special' (or can even get kicked around from numerical N-body noise). These options address this with some fixes of varying realism and efficacy.
+
+```bash
+####################################################################################################
+## ----------------------------------------------------------------------------------------------------
+# ----- dynamics (when BH mass is not >> other particle masses, it will artificially get kicked and not sink via dynamical friction; these 're-anchor' the BH for low-res sims)
+## ----------------------------------------------------------------------------------------------------
+#BH_DYNFRICTION=0                # apply explicit dynamical friction force to the BHs when m_bh not >> other particle mass: 0=[DM+stars+gas]; 1=[DM+stars]; >1 simply multiplies the DF force by this number (cite Tremmel, Governato, Volonteri, & Quinn,2015, MNRAS, 451, 1868)
+##BH_DRAG=1                      # drag force on BH due to accretion; =1 uses actual mdot, =2 boost as if BH is accreting at eddington. cite Springel, Di Matteo, and Hernquist, 2005, MNRAS, 361, 776
+##BH_REPOSITION_ON_POTMIN=0      # reposition black hole on potential minimum (requires EVALPOTENTIAL). [set =1 to "jump" onto STARS only]
+####################################################################################################
+```
+
+**BH\_DYNFRICTION**: Activates an explicit dynamical friction force for BHs based on the standard analytic Chandrasekhar dynamical friction formula, using the neighbor velocity, density, and mass distribution. Details of the equations solved are given in the `notes_blackholes` file. By default this uses all mass in the kernel. However sometimes (if it is very clumpy owing to local structure, or noisy at low resolution) one may wish to ignore the gas, which can be done by setting this flag =1. It may also be the case that one wishes to multiply the dynamical friction force by a large factor (to make it "stronger" artificially in order to better anchor the BH), this can be accomplished by setting the flag to any value >1. If you use this flag, cite Tremmel, Governato, Volonteri, & Quinn,2015, MNRAS, 451, 1868 for the methods (our implementation follows their paper).
+
+**BH\_DRAG**: Rather than follow dynamical friction, BH\_DRAG simply enables a drag force on the BH proportional to the accretion rate, and acting to damp BH motion relative to the gas which it is moving through. If this is set to "1," the force is always as strong as it would be if the BH were accreting at Eddington (otherwise the actual accretion rate is used, so if the BH is not accreting rapidly, it effectively feels no drag force). If you use this flag, cite Springel, Di Matteo, and Hernquist, 2005, MNRAS, 361, 776.
+
+**BH\_REPOSITION\_ON\_POTMIN**: This is the most extreme option, and it simply anchors the BH particle to the potential minimum (it will re-position every timestep to the location of the potential minimum within the kernel). Set=0 to use the potential minimum among all neighbors, =1 uses the potential minimum of stars only.
+
+
+<a name="config-bh-accretion"></a>
+### _BH Accretion Models_ 
+
+Black holes accrete, but this accretion is generally taking place at scales (the Schwartzschild radius) well below the resolution of the simulations. Therefore different sub-grid models are present to mimic accretion both into an un-resolved accretion disk around the BH, and from that onto the BH itself. All of the accretion models below should enable the BH\_SWALLOWGAS flag.
+
+The accretion models involve several parameterfile settings. `BlackHoleAccretionFactor` arbitrarily multiplies the calculated accretion rate by a constant factor (so its default value is =1). `BlackHoleEddingtonFactor` caps the maximum accretion rate at this multiple of the Eddington limit (so Eddington-limited accretion sets this =1, un-limited accretion sets this to some huge value). `BlackHoleNgbFactor` multiplies the standard kernel neighbor number -- it is recommended this value be set to a few, since some of these estimators rely on things like bulge-disk decomposition inside the kernel (which requires a decent number of elements). `BlackHoleMaxAccretionRadius` sets the maximum radius (in code units) out to which the BH will search for neighbors to achieve this neighbor number (so that it doesnt go indefinitely far, if there is little gas within the radius around the BH). `BlackHoleRadiativeEfficiency` sets the radiative efficiency, important for both feedback and for determining what fraction of mass actually ends up in the BH versus is lost to radiation.
+
+```bash
+####################################################################################################
+## ----------------------------------------------------------------------------------------------------
+# ----- accretion models (modules for gas or other particle accretion)
+## ----------------------------------------------------------------------------------------------------
+#BH_SWALLOWGAS                  # 'master switch' for accretion (should always be enabled if accretion is on). enables BH to actually eliminate gas particles and take their mass.
+#BH_ALPHADISK_ACCRETION         # gas accreted goes into a 'virtual' alpha-disk (mass reservoir), which then accretes onto the BH at the viscous rate (determining luminosity, etc). cite GIZMO methods (or PFH private communication)
+#BH_SUBGRIDBHVARIABILITY        # model variability below resolved dynamical time for BH (convolve accretion rate with a uniform power spectrum of fluctuations on timescales below the minimum resolved dynamical time). cite Hopkins & Quataert 2011, MNRAS, 415, 1027
+#BH_GRAVCAPTURE_NONGAS          # accretion determined only by resolved gravitational capture by the BH, for non-gas particles (can be enabled with other accretion models for gas). cite Hopkins et al., 2016, MNRAS, 458, 816
+## ----
+#BH_GRAVCAPTURE_GAS             # accretion determined only by resolved gravitational capture by the BH (for gas particles). cite Hopkins et al., 2016, MNRAS, 458, 816
+#BH_GRAVACCRETION=0             # Gravitational torque accretion estimator from Hopkins & Quataert (2011): [=0] B/D decomposition from Angles-Alcazar et al. (default), [=1] approximate f_disk, [=2] gravito-turbulent scaling, [=3] fixed accretion per dynamical time. cite Hopkins & Quataert 2011, MNRAS, 415, 1027 and Angles-Alcazar et al. 2017, MNRAS, 464, 2840
+##BH_BONDI=0                    # Bondi-Hoyle style accretion model: 0=default (with velocity); 1=dont use gas velocity with sound speed; 2=variable-alpha tweak (Booth & Schaye 2009). cite Springel, Di Matteo, and Hernquist, 2005, MNRAS, 361, 776
+####################################################################################################
+```
+
+
+**BH\_SWALLOWGAS**: Allow the BH to actually consume gas particles. Required for any accretion model. Unless set otherwise by a specific compile flag, the accretion is stochastic, as in Springel et al. 2005 MNRAS 361 776 and Di Matteo et al. 2005 Nature 433 604 (see those papers for more details). The "black hole" mass is separately tracked from the particle mass (according to whatever accretion model). If the black hole mass becomes larger than the particle mass (possible for some choices of parameters below), then nearby neighbor particles are immediately "swallowed" with some probability until the mass is balanced. This is done so that total particle mass in the simulation is properly conserved, without generating arbitrarily large mis-matches in the masses of different particle types.
+
+**BH\_ALPHADISK\_ACCRETION**: Enables a sub-grid model for an "alpha-disk" (a traditional Shakura & Sunyaev viscous disk) around the BH particle. If this is off, accretion into the BH will be instantaneous (whenever the large-scale accretion model determines there is accretion). If this is on, mass is accreted into the viscous disk, then accreted continuously out of that disk onto the BH at a rate following Shakura & Sunyaev (crudely this approaches Eddington when the mass in the disk approaches the pre-existing BH mass); both the BH mass and the viscous disk mass are separately and continuously followed. Note that although BH growth may be strictly limited at Eddington, accretion into the outer accretion disk is not. This smooths out the actual BH accretion rate over the viscous timescale. If you use this module, cite the GIZMO methods paper for now, since this has not been actually published.
+
+
+**BH\_SUBGRIDBHVARIABILITY**: This enables a model for AGN variability on very small timescales, corresponding to internal variability in e.g. the un-resolved accretion disk. This is 'smoothed over' by finite resolution; however, we can crudely approximate it by including an explicit power-spectrum of  fluctuations in dM/dt, integrated from frequencies of infinity down to 1/dt where dt is the simulation timestep (typically ~100 yr in the galaxy centers). We do this following Hopkins & Quataert 2011: assuming fluctuations in ln(dM/dt) follow a Gaussian random walk with equal power per logarithmic time interval from tmin (the orbital time at the innermost stable circular orbit for a non-rotating BH) to tmax (the dynamical time at the resolved BH kernel/accretion radius). If you use this module, cite Hopkins & Quataert 2011, MNRAS, 415, 1027 (the prescription is presented in their footnote 5).
+
+
+**BH\_GRAVCAPTURE\_GAS**/**BH\_GRAVCAPTURE\_NONGAS**: BH\_GRAVCAPTURE\_GAS enables gas accretion via explicit resolution of direct gravitational capture of particles: if gas particles are located within the accretion radius (the minimum resolved softening around the BH), then this uses their position and relative velocity with respect to the BH particle we check whether (a) it is gravitationally bound to the BH, and (b) whether the apo-centric radius of the particle about the BH is also within the accretion radius. If both are true, we consider the particle "captured" and immediately add its mass to the BH accretion disk (if BH\_ALPHADISK\_ACCRETION is enabled, otherwise it is added directly to the BH). Use this only if you want to force the code to resolve accretion into the viscous disk (i.e. this is for very high-res simulations). Otherwise de-activate this and use a "sub-grid" accretion rate estimator. BH\_GRAVCAPTURE\_NONGAS does the same, for non-gas particle types (stars/dark matter; note that BH-BH mergers are always allowed, and handled separately from these flags). If this is on, dark matter is always added directly to the BH, while stars add to the accretion disk if BH\_ALPHADISK\_ACCRETION is on, otherwise to the BH (but does not contribute towards feedback or the Eddington limit, i.e. acting as if it is not tidally disrupted). Note that BH\_GRAVCAPTURE\_NONGAS can be turned on with other models (below) for gas accretion. If you use this module, cite Hopkins et al., 2016, MNRAS, 458, 816 (where this was developed and studied in detail).
+
+
+**BH\_GRAVACCRETION**: Enables the "unresolved limit" accretion rate estimator based on gravitational torques from Hopkins & Quataert 2011, MNRAS, 415, 1027. This was specifically designed to reproduce the accretion rate resolved in several hundred simulations from large galactic scales (~1-100 pc) into the accretion disk (<0.1 pc). The dominant mechanism of angular momentum transfer on all of these scales is torques due to gravitational instabilities in the gas plus stellar disk; we refer to that paper for details, but in general this accretion rate estimator can be more accurate by a factor of $\sim 10^{4} - 10^8$ compared to e.g. the Bondi estimators below (on scales outside the inner accretion disk, which this is not designed to reproduce). Quantities such as the gas angular momentum around the BH are calculated on the fly and used in the accretion rate estimation. Two variants here (setting =0 or =1) use two slightly different estimators to calculate the angular momentum and disk-mass-fraction around the BH (which enter the accretion rate determination). Setting to [=2] or [=3] uses a simpler gravito-turbulent scaling for the properties of the outer disk, probably more appropriate (or at least more stable) if the outer region is on scales below a kpc or so, highly super-sonically turbulent, and either "thick" or extremely gas-rich (so the thin-disk approximation made in settings [=0] and [=1] doesnt apply). For [=2], the same numbers are calculated for "inputs" but a simpler, turbulent-disk motivated scaling for Mdot is used. For [=3], the scaling is reduced to simply assume a constant efficiency per dynamical time, which is then set in the parameterfile. If you use any variant of this module, cite Hopkins & Quataert 2011, MNRAS, 415, 1027 (and Angles-Alcazar et al. 2017, MNRAS, 464, 2840 for additional numerical details, including how the on-the-fly bulge-disk decomposition is performed).
+
+
+**BH\_BONDI**: Enable BH\_BONDI to estimate the BH accretion rate from the Bondi-Hoyle formula. Note that a large number of studies have shown this is not a good approximation to periods of high BH accretion, since it assumes the gas has no angular momentum (when, in fact, understanding gas accretion onto BHs from large scales is primarily an angular momentum problem). Contrary to some claims in the literature, there is no Bondi-Hoyle formula that "accounts" for angular momentum -- the actual scalings in the angular-momentum dominated regime resemble the gravito-turbulent and gravitational-torque accretion models discussed above, which have qualitatively different dimensional scalings (nearly independent of BH mass and sound speed, for example, where Bondi-Hoyle depends strongly on both of these). Still, the Bondi-Hoyle limit is potentially relevant for either situations (1) where the BH is accreting smoothly from a hot, hydrostatic, pressure-supported atmosphere, or (2) where a 'seed' BH is moving through the ISM (on scales where it does not strongly influence the potential), closer to the regime the Bondi-Hoyle accretion theory was designed to represent. The `notes_blackholes` file has additional details of the scalings adopted. The default (=0) implementation is standard Bondi-Hoyle theory, accounting for BH-gas relative velocities (the denominator is $(c_{s}^2 + |{\bf v}_{\rm gas}-{\bf v}_{\rm BH}|^2)^{3/2}$). Set (=1) to ignore the relative velocity and use just the sound speed. Set (=2) to slightly modify the pre-factor in front of the Bondi rate (giving it a power-law density dependence), which will exactly Booth & Schaye 2009, and subsequent papers (OWLS, EAGLE, etc.). If you use this module, cite Springel, Di Matteo, and Hernquist, 2005, MNRAS, 361, 776.
+
+Note that you should only activate at most one of the flags **BH\_BONDI**, **BH\_GRAVACCRETION**, or **BH\_GRAVCAPTURE\_GAS**. These are coded assuming one determines the model for the BH accretion rate of gas, and will give incorrect or un-predictable results if more than one are enabled. You can, however, enable **BH\_GRAVCAPTURE\_NONGAS** "on top of" any of these gas accretion models.
+
+
+
+<a name="config-bh-feedback"></a>
+### _BH Feedback Models_ 
+
+BHs also act through a variety of "feedback" channels. GIZMO includes a range of detailed hydrodynamic and radiative feedback models for BHs. However, just like for stellar feedback, some of these are under active development or are proprietary with different permissions: these will be clarified below.
+
+These models also involve their own parameterfile settings, in addition to those required for the BH accretion models. These are detailed below. 
+
+```bash
+####################################################################################################
+## ----------------------------------------------------------------------------------------------------
+# ----- feedback models/options
+## ----------------------------------------------------------------------------------------------------
+# -- thermal (pure thermal energy injection around BH particle, proportional to BH accretion rate)
+#BH_THERMALFEEDBACK             # constant fraction of luminosity coupled in kernel around BH. cite Springel, Di Matteo, and Hernquist, 2005, MNRAS, 361, 776
+#--- mechanical (wind from accretion disk/BH with specified mass/momentum/energy-loading relative to accretion rate)
+#BH_WIND_CONTINUOUS=0           # gas in kernel given continuous wind flux (energy/momentum/etc). =0 for isotropic, =1 for collimated. cite Hopkins et al., 2016, MNRAS, 458, 816
+#BH_WIND_KICK=1                 # gas in kernel given stochastic 'kicks' at fixed velocity. (>0=isotropic, <0=collimated, absolute value sets momentum-loading in L/c units). cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840
+#BH_WIND_SPAWN                  # spawn virtual 'wind' particles to carry BH winds out [in development by Paul Torrey]. use requires permissions from P. Torrey and PFH (requires permission, this module is not fully de-bugged and methods not published)
+#--- radiative: [FIRE] these currently are built on the architecture of the FIRE stellar FB modules, and require some of those be active. their use therefore follows FIRE policies (see details above).
+#BH_COMPTON_HEATING             # enable Compton heating/cooling from BHs in cooling function (needs BH_PHOTONMOMENTUM). cite Hopkins et al., 2016, MNRAS, 458, 816
+#BH_HII_HEATING                 # photo-ionization feedback from BH (needs GALSF_FB_HII_HEATING). cite Hopkins et al., arXiv:1702.06148
+#BH_PHOTONMOMENTUM              # continuous long-range IR radiation pressure acceleration from BH (needs GALSF_FB_RT_PHOTONMOMENTUM). cite Hopkins et al., arXiv:1702.06148
+####################################################################################################
+```
+
+
+**BH\_THERMALFEEDBACK**: Enables the GADGET/AREPO AGN feedback model, where a fixed fraction of the BH luminosity (set in the parameterfile as `BlackHoleFeedbackFactor`) is coupled to the surrounding gas as purely thermal energy, distributed among the gas particles within the kernel of the BH (the same ones that determine the BH accretion rate) in a kernel-weighted fashion. Users should cite Springel, Di Matteo, and Hernquist, 2005, MNRAS, 361, 776.
+
+**BH\_WIND\_CONTINUOUS**/**BH\_WIND\_KICK**/**BH\_WIND\_SPAWN**: These enable mechanical feedback from BH particles. This corresponds to observed ubiquitous AGN winds with velocities ~500-30,000 km/s, or hydrodynamic jets (if collimated). This is intended to represent the winds not at their initial launching radius, but on larger scales where the winds become hydro-dynamic, and so their basic properties are summarized by two parameters: a mass loading ($\dot{M}_{\rm wind} / \dot{M}_{\rm BH}$) and launch velocity. These are set in the parameterfile, and define the time-dependent mass, momentum, and energy flux. The "notes" document for black holes explains in detail how these relate to physical values. The parameterfile must include `BlackHoleFeedbackFactor`, which multiplies the mass and momentum-loading of the wind (so default=1), `BAL_f_accretion`, which determines the "base" mass-loading of the wind (ratio of what goes into the BH versus wind at the accretion disk; this is then multiplied by `BlackHoleFeedbackFactor` to effectively determine the total mass-loading of the wind on coupling scales), and `BAL_v_outflow`, which determines the wind launch velocity. The difference between the modules is in how they operate, algorithmically. 
+
+**BH\_WIND\_CONTINUOUS**: Wind mass and kinetic luminosity are continuously "injected" into the gas surrounding the BH. Set =0 for isotropic winds, =1 for collimated winds using the estimates from Roth et al. 2012, ApJ, 759, 36 for the angular dependence. If you use this module, cite Hopkins et al., 2016, MNRAS, 458, 816 (where the model and its scalings were first developed and presented; also see that paper for more tests and numerical details).
+
+**BH\_WIND\_KICK**: Gas in kernel given stochastic "kicks" at fixed velocity. Set <0 for isotropic (radial) kicks, >0 for collimated kicks (all kicks along axis of angular momentum vector of material inside the BH kernel). For historical compatibility, the absolute value of this parameter can be set to an arbitrary value, which sets the momentum-loading of the wind at coupling in units of L/c from the BH -- however this is redundant with the `BlackHoleFeedbackFactor` parameter (do not set both). If you use this module, cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840. 
+
+**BH\_WIND\_SPAWN**: This will spawn 'wind' particles to carry BH winds out [in development by Paul Torrey]. This is the most flexible and accurate algorithm, allowing arbitrary collimation (e.g. jets), and allowing particles to carry arbitrary combinations of thermal/kinetic/magnetic/cosmic ray energies, and allowing one to accurately capture reverse shocks (which are otherwise implicitly lost in the continuous and kicking strategies, unless the mass inside the free-streaming radius of the outflow is extremely well-resolved). However it is also numerically the most expensive and requires care in use. Use requires permissions from P. Torrey and PFH (this module is not fully de-bugged and methods are not published yet, hence it is not yet free-to-use). In addition to parameters above, user must set `BAL_internal_temperature` (which determines the internal temperature of the BAL wind, in K) and `BAL_wind_particle_mass` (mass of the virtual particles, in code units). 
+
+
+**BH\_COMPTON\_HEATING**: Turn on to enable Compton heating/cooling of gas by the BH radiation field, following Sazonov et al. 2004. Since heating/cooling is dominated by hard X-ray/IR photons, respectively, the heating spectrum is simply scaled by an inverse square law, with a fixed Compton temperature ~3e7 K (see that paper for details). We also follow Faucher-Giguere & Quataert 2012 and do not allow the Compton+free-free cooling rate to exceed the Coulomb energy transfer rate between ions and electrons calculated for an ion temperature T in the limit where the electrons are efficiently cooling. Requires COOLING on. This requires BH\_PHOTONMOMENTUM is turned on (so the code can propogate the BH flux), but is independent of the strength you set for BH\_PHOTONMOMENTUM in the parameterfile. Note that this uses some algorithms which are proprietary -- use of this module in and of itself is allowed, but does not imply permissions to use all or develop the other connected/dependent modules on their own. If you use this module, cite the methods and physics test paper where it was presented, Hopkins et al., 2016, MNRAS, 458, 816.
+
+**BH\_HII\_HEATING**: Turn on to enable BH photo-ionization feedback. This requires GALSF\_FB\_HII\_HEATING (the stellar photo-ionization feedback module) is also enabled. Then photo-ionization is treated from the BH identically to that from the stars, modulo the shape and magnitude of the ionizing spectrum, which is calculated for the BH luminosity following the empirical quasar spectral templates in Hopkins, Richards, & Hernquist 2007. This uses the FIRE HII-heating algorithms and implementation (Hopkins et al., arXiv:1702.06148), so its use follows FIRE policies -- it is proprietary and not free-to-use even for users of the development code, without explicit permissions from the FIRE collaboration [see notes above for the FIRE modules in the stellar feedback section].
+
+**BH\_PHOTONMOMENTUM**: Turn on to enable BH radiation pressure feedback. This follows the mechanisms used to couple stellar radiation pressure to the gas, but with additional corrections for the non-isotropic geometry of the BH accretion disk and obscuration from the torus region, including single-scattering at the dust sublimation radius and IR scattering outside this; this follows the fitting functions taken directly from full radiative transfer calculations by N. Roth (private communication, but see Roth et al. 2012, arXiv:1204.0063, for details). You can set the strength of this mechanism in the parameterfile separately from the other BH feedback mechanisms with the multiplier `BH_FluxMomentumFactor` (default =1). This uses the FIRE radiation pressure algorithms and implementation (Hopkins et al., arXiv:1702.06148), so its use follows FIRE policies -- it is proprietary and not free-to-use even for users of the development code, without explicit permissions from the FIRE collaboration [see notes above for the FIRE modules in the stellar feedback section].
+
+
+
+<a name="config-bh-additionalbhoptions"></a>
+### _BH Output/Additional Options_ 
+
+These are miscellaneous additional BH options.
+
+```bash
+####################################################################################################
+## ----------------------------------------------------------------------------------------------------
+# ----- output options
+## ----------------------------------------------------------------------------------------------------
+#BH_OUTPUT_MOREINFO             # output additional info to "blackhole_details" (use caution: files can get VERY large if many BHs exist)
+#BH_CALC_DISTANCES              # calculate distances for all particles to closest BH for, e.g., refinement, external potentials, etc. cite Garrison-Kimmel et al., MNRAS, 2017, 471, 1709
+## ----------------------------------------------------------------------------------------------------
+####################################################################################################
+```
+
+**BH_OUTPUT_MOREINFO**: Outputs a number of additional details and useful information to the "blackhole\_details" files tracking individual BH particles. Coded by Daniel Angles-Alcazar. One important caveat: if your simulation has a large number of BH particles, these files can blow up to enormously large values, so be careful.
+
+**BH_CALC_DISTANCES**: Calculates the position of the nearest BH particle at all times, to all particles, and their position relative to it. This can be useful for various feedback algorithms, but also for on-the-fly refinement criteria (for example, super-Lagrangian refinement schemes which depend on the distance to the BH), or for inputing analytic gravitational potential terms (e.g. if one wishes to evolve a background halo+disk potential which is smooth, in a simulation focused on detailed gas only around the BH, one can treat them analytically using this approach. If you use this for science results, please cite Garrison-Kimmel et al., MNRAS, 2017, 471, 1709 where it was developed (and used for the gravitational-potential models). 
+     
+
+
+<a name="config-rhd"></a>
+## Radiation Hydrodynamics 
+
+This set of options controls the explicit radiation-hydrodynamics options in the code. These flags allow you to integrate radiation explicitly or implicitly in the simulations. The code is written to be fully modular: this means you can choose things like the transport algorithm, solver, effective speed of light, frequencies/bands to be tracked, physics of their source functions and opacities and interactions with matter, and chemical networks *independently*. Any new additions to these modules should follow the same policies. Thus the user can 'pick and choose' the set of solvers and wavebands that is most appropriate for their problem. This is recently-developed (and still in progress in some respects) by PFH with extensive input from grad students David Khatami, Mike Grudic, and Nathan Butcher (very special thanks also go to Alessandro Lupi). Please consult the authors before using any part of the code (some of it may not be fully-debugged, some of it may be currently in-use by a student for an existing project) -- it is proprietary at this stage (at least until some of the key methods papers are completed).
+
+
+<a name="config-rhd-methods"></a>
+### _Radiation Transport Methods_
+    
     ############################################################################################################################
     #--------------------------------------- Radiative Transfer & Radiation Hydrodynamics:
-    #--------------------------------------------- modules developed by PFH & David Khatami: not for use without authors permission
+    #--------------------------------------------- modules developed by PFH with David Khatami, Mike Grudic, and Nathan Butcher
+    #---------------------------------------------  (special thanks to Alessandro Lupi): not for use without authors permission [these are proprietary because still in development before public release]
     ############################################################################################################################
     #--------------------- methods for calculating photon propagation (one, and only one, of these MUST be on for RT)
     #RT_LEBRON                              # RT solved using the LEBRON approximation (locally-extincted background radiation in optically-thin networks; default in the FIRE simulations)
@@ -957,15 +1378,20 @@ This set of options controls the explicit radiation-hydrodynamics options in the
 
 This block controls the algorithm used to actually *transport* the radiation (indendent of the sources, absorption, bands, effects of the radiation, and even the solver for the transport equations). Because the exact radiation-hydro equations are to expensive to solve on-the-fly in full generality, each module here makes some approximation to simplify the transport equations. Consider carefully whether those approximations are valid or acceptable for your problem -- none of these (nor any on-the-fly method in the literature) is truly exact, even in the infinite-resolution limit.
 
-**RT\_LEBRON**: Propagate radiation using the LEBRON (locally-extincted background radiation in optically-thin networks) approximation from Hopkins et al. 2012 (MNRAS 2012, 421, 3488) and 2017 (see RT\_notes.pdf on bitbucket site until the paper is published). This is the default radiation transport approximation in the FIRE simulations, but the pure radiation hydro model is separable from the rest of the FIRE physics. See the methods paper from 2017 for a discussion of the actual approximations made in the module. This approximation is distinct from moments-based methods in that it actually correctly allows rays to propagate through one another and exactly reduces to the correct solutions for optically thin media for arbitrary source distributions. However it does not capture shadowing (unlike M1) and is not manifestly photon-conserving.
+A detailed methods paper with the numerical methods and tests for these modules is in preparation (PFH et al., 2018), but not yet submitted. The modules are therefore proprietary and require explicit permission from PFH to use. However their development is active and I encourage users who can contribute to the codebase to do so (after obtaining the appropriate permissions and checking with the developers of this code), in order to help make these modules fully-ready for public release.
+
+
+**RT\_LEBRON**: Propagate radiation using the LEBRON (locally-extincted background radiation in optically-thin networks) approximation from Hopkins et al. 2012 (MNRAS 2012, 421, 3488) and Hopkins et al., 2017, arXiv:1702.06148 (where Appendix E gives a complete description of the numerical implementation). This is the default radiation transport approximation in the FIRE simulations, but the pure radiation hydro model is separable from the rest of the FIRE physics (although at the moment, the way it is coded anchors it to the particular set of bands used in the FIRE simulations -- it is in principle fully modular to work with the arbitrary set of frequencies here, but this hasn't been fully-updated yet). See the methods paper from 2017 for a discussion of the actual approximations made in the module. This approximation is distinct from moments-based methods in that it actually correctly allows rays to propagate through one another and exactly reduces to the correct solutions for optically thin media for arbitrary source distributions. However it does not capture shadowing (unlike M1) and is not manifestly photon-conserving. If you are given permission to use these modules in scientific work, please citeHopkins et al. 2012 (MNRAS 2012, 421, 3488) and Hopkins et al., 2017, arXiv:1702.06148.
 
 **RT\_FLUXLIMITEDDIFFUSION**: Propagate radiation using the FLD (flux-limited diffusion) approximation. This is a zeroth-order moments closure of the RT equations, reducing them to diffusion, valid in the optically thick limit. Like all moments methods, it cannot reproduce photons moving through one another correctly, but is manifestly photon-conserving. It cannot capture shadowing.
 
-**RT\_OTVET**: Propagate radiation using the OTVET (optically-thin eddington tensor) approximation (Gnedin+Abel 2001). This is nearly-identical to flux-limited diffusion, in that it is a zeroth-order moments closure of the RT equations valid in the optically thick limit, but it uses the eddington tensor calculated as in the LEBRON method from optically thin media to more accurately capture photon propagation directions in that limit (less accurate in the true optically-thick limit). Like all moments methods, it cannot reproduce photons moving through one another correctly, but is manifestly photon-conserving. It cannot capture shadowing.
+**RT\_OTVET**: Propagate radiation using the OTVET (optically-thin eddington tensor) approximation (Gnedin+Abel 2001). This is nearly-identical to flux-limited diffusion, in that it is a zeroth-order moments closure of the RT equations valid in the optically thick limit, but it uses the eddington tensor calculated as in the LEBRON method from optically thin media to more accurately capture photon propagation directions in that limit (less accurate in the true optically-thick limit). Like all moments methods, it cannot reproduce photons moving through one another correctly, but is manifestly photon-conserving. It cannot capture shadowing. Please also cite Gnedin+Abel 2001, New Astronomy, 6, 437.
 
-**RT\_M1**: Propagate radiation using the M1 (first-moment) approximation (Levermore 1984). This expands to one moment higher than FLD/OTVET so a pair of advection equations for flux and energy are solved. It is manifestly photon-conserving and captures shadowing, at the cost of noise and grid effects from propagating vector transport. But like all moments methods, it cannot capture collisionless rays passing through one another.
+**RT\_M1**: Propagate radiation using the M1 (first-moment) approximation (Levermore 1984). This expands to one moment higher than FLD/OTVET so a pair of advection equations for flux and energy are solved. It is manifestly photon-conserving and captures shadowing, at the cost of noise and grid effects from propagating vector transport. But like all moments methods, it cannot capture collisionless rays passing through one another. Please also cite Rosdahl et al., 2013, MNRAS, 436, 2188, whose implementation of M1 in RAMSES is an approximate template for the GIZMO implementation (but a more detailed methods paper is on the way).
 
 
+<a name="config-rhd-numerical"></a>
+### _Numerical Solvers & Optimization_ 
     ############################################################################################################################
     #--------------------- solvers (numerical) --------------------------------------------------------
     #RT_SPEEDOFLIGHT_REDUCTION=1            # set to a number <1 to use the 'reduced speed of light' approximation for photon propagation (C_eff=C_true*RT_SPEEDOFLIGHT_REDUCTION)
@@ -976,33 +1402,42 @@ This governs decisions of *how* the transport algorithm above is solved, for exa
 
 **RT\_SPEEDOFLIGHT\_REDUCTION**: Set to a value below unity to enable the 'reduced speed of light' approximation, reduced by this factor
 
-**RT\_DIFFUSION\_IMPLICIT**: Solve the diffusion part of the RT equations fully-implicitly using a Conjugate Gradient iteration. This allows much larger timesteps if a pure-diffusion (FLD or OTVET) method us used, but in non-linear problems with a deep timestep hierarchy this can be problematic because it requires a global solve. For M1 or LEBRON methods, there is no speedup so this will not be used.
+**RT\_DIFFUSION\_IMPLICIT**: Solve the diffusion part of the RT equations fully-implicitly using a Conjugate Gradient iteration. This allows much larger timesteps if a pure-diffusion (FLD or OTVET) method us used, but in non-linear problems with a deep timestep hierarchy this can be problematic because it requires a global solve. For M1 or LEBRON methods, there is no speedup so this will not be used. If this is used, please also cite Petkova & Springel, MNRAS, 2009, 396, 1383 for the CG-iteration method.
 
+
+<a name="config-rhd-freqs"></a>
+### _Frequencies/Wavebands Evolved_
 
     ############################################################################################################################
     #--------------------- physics: wavelengths+coupled RT-chemistry networks -----------------------------------
     #RT_SOURCES=1+16+32                     # source list for ionizing photons given by bitflag (1=2^0=gas,16=2^4=new stars,32=2^5=BH)
-    #RT_CHEM_PHOTOION=2                     # ionizing photons: 1=H-only [single-band], 2=H+He [four-band]
     #RT_XRAY=3                              # x-rays: 1=soft (0.5-2 keV), 2=hard (>2 keV), 3=soft+hard; used for Compton-heating
-    #RT_INFRARED                            # infrared: photons absorbed in other bands are down-graded to IR: IR radiation + dust + gas temperatures evolved independently
+    #RT_CHEM_PHOTOION=2                     # ionizing photons: 1=H-only [single-band], 2=H+He [four-band]
+    #RT_LYMAN_WERNER                        # specific lyman-werner [narrow H2 dissociating] band
     #RT_PHOTOELECTRIC                       # far-uv (8-13.6eV): track photo-electric heating photons + their dust interactions
     #RT_OPTICAL_NIR                         # optical+near-ir: 3600 Angstrom-3 micron (where direct stellar emission dominates)
+    #RT_INFRARED                            # infrared: photons absorbed in other bands are down-graded to IR: IR radiation + dust + gas temperatures evolved independently
     ############################################################################################################################
 
 This governs the wavelengths and source functions to be solved in the code. Note that one can choose an arbitrary combination of source particle types and wavebands -- the code is modular so any set of bands is perfectly valid. For any given band, of course, the source functions and opacities must actually exist. If you wish to add a band to the code, you can do so by adding the appropriate source function and opacity functions to the existing functions "rt\_get\_source\_luminosity" and "rt\_kappa" within the file "rt\_utilities.c". Follow the template that exists there now. 
 
-**RT\_SOURCES**: Particle types which can act as radiation sources. This should be set as a bitmask (see notes on gravity flags)
+As above, a methods paper with the details for these modules is in preparation (PFH et al., 2018), but not yet public. The modules are proprietary and require explicit permission from PFH to use. However their development is active and I encourage users who can contribute to the codebase to do so, in order to make these modules fully-ready for public release.
 
-**RT\_CHEM\_PHOTOION**: Follow RT for ionizing photon bands. Value determines which bands: 1=H-only (single-band), 2=H+He (four-band treatment for different detailed SED shapes). If the standard COOLING modules are turned on, this will directly enter the photo-ionization and cooling module calculations for photo-ionization heating.
+**RT\_SOURCES**: Particle types which can act as radiation sources. This should be set as a bitmask (see notes on gravity flags)
 
 **RT\_XRAY**: Follow RT for X-ray bands. Value determines which bands: 1=soft (0.5-2 keV), 2=hard (>2 keV), 3=soft+hard. If the standard COOLING modules are turned on, this will directly enter the cooling module calculations for Compton heating.
 
-**RT\_PHOTOELECTRIC**: Follow RT for a photo-electric heating band (far-UV from 8-13.6eV). If the standard COOLING modules are turned on, this will directly enter the cooling module calculations for the photo-electric heating rate (using the local dust properties and photo-electric band photon densities). 
+**RT\_LYMAN\_WERNER**: Follow RT for Lyman-Werner band (H2-dissociating) flux. Sources and opacities are implemented, but self-consistent chemistry linking this to the H2 fraction is not yet fully-developed. Partial implementation in standard cooling; this physics can easily be linked to the Grackle cooling libraries as well.
+
+**RT\_PHOTOELECTRIC**: Follow RT for a photo-electric heating band (far-UV from 8-13.6eV). If the standard COOLING modules are turned on, this will directly enter the cooling module calculations for the photo-electric heating rate (using the local dust properties and photo-electric band photon densities).  
 
 **RT\_OPTICAL\_NIR**: Follow RT for an optical-NIR band (from 3600 angstrom to 3 microns), where direct stellar emission dominates. 
 
 **RT\_INFRARED**: Follow RT for IR bands. The IR band is treated slightly differently from the other bands; rather than follow many narrow bands to treat a detailed IR spectrum, the follow the IR as a quasi-blackbody spectrum with a single band. However, the IR radiation temperature, dust temperature, and gas temperatures are strictly de-coupled and evolved independently according to the correct equations (they can of course come into equilibrium in sufficiently dense environments). The opacities and source functions account for this, and for the local dust abundance (if dust tracking is not explicit, this is scaled to a constant dust-to-metals ratio). Photons absorbed in other bands *except* for the ionizing bands (or others, if the user specifies by hand in the code) are assumed to down-grade into the IR and be re-emitted there. The explicitly solved dust temperatures and IR radiation temperatures are used in the cooling functions if the standard COOLING module is enabled.
 
+
+<a name="config-rhd-special"></a>
+### _Additional Options_
 
     ############################################################################################################################
     #--------------------- radiation pressure options -------------------------------------------------
@@ -1020,98 +1455,63 @@ Flags governing the radiation pressure terms (photon momentum transfer to gas), 
 
 
 
-
-### Turbulent 'Stirring' (Large Eddy Simulation) Options
      
-    ####################################################################################################
-    #-------------------------------------- Driven turbulence (for turbulence tests, large-eddy sims)
-    ####################################################################################################
-    #TURB_DRIVING           # turns on turbulent driving/stirring. see begrun for parameters that must be set
-    #POWERSPEC_GRID=128     # activates on-the-fly calculation of the turbulent velocity, vorticity, and smoothed-velocity power spectra
-    #ADJ_BOX_POWERSPEC      # compiles in a code module that allows via restart-flag 6 the calculation of a gas velocity power spectrum of a snapshot with an adjustable box (user defined center and size)
-    ####################################################################################################
-
-These flags enable explicit turbulent 'stirring' of the simulation volume, as in 'driven turbulence' or 'large eddy' simulations.
-
-**TURB\_DRIVING**: This activates a module, based closely on the original GADGET results shared by Andreas Bauer, to include a turbulent driving routine. It assumes a periodic box (PERIODIC on), which is then stirred as in Schmidt 2008, Federrath 2010, Price 2010: a small range of modes (which range set in the parameterfile) are driven in Fourier space as an Ornstein-Uhlenbeck process, with the compressive part of the acceleration optionally projected out via a Helmholtz decomposition in Fourier space so that the driving is purely incompressible/solenoidal (most appropriate for sub-sonic turbulence). The parameters of the driving are set in the parameterfile as described below.
-
-**POWERSPEC\_GRID**: This activates on-the-fly calculation of the turbulent velocity, vorticity, density, and smoothed-velocity power spectra; the power spectra are calculated over a range of modes and dumped to files titled "powerspec\_X\_NNN.txt" where NNN is the file number and X denotes the quantity the power spectrum is taken of (e.g. velocity, smoothed velocity, etc). The columns in these outputs are (1) k (Fourier mode number), (2) power per mode at k, (3) number of modes in the discrete interval in k, and (4) total discrete power over all modes at that k. To convert to a 'normal' power spectrum, and get e.g. the power per log-interval in k, take column (2) times the cube of column (1). The value to which you set POWERSPEC\_GRID determines the grid linear size (in each dimension) to which the quantities will be projected in taking the power spectrum. 
-
-**ADJ\_BOX\_POWERSPEC**: Compiles in a code module that allows via restart-flag 6 the calculation of a gas velocity power spectrum of a snapshot with an adjustable box (user defined center and size). Use this if you want to compute a power spectrum from an existing snapshot which was produced without POWERSPEC\_GRID active.
-
-
-
-### On-the-Fly Group (Halo, Galaxy, Cluster, etc) Finding
-
-    ####################################################################################################
-    #---------------------------------------- On the fly FOF groupfinder
-    #------------------ This is originally developed as part of GADGET-3 by V. Springel
-    ####################################################################################################
-    ##-----------------------------------------------------------------------------------------------------
-    #-------------------------------------- Friends-of-friends on-the-fly finder options (source in fof.c)
-    ##-----------------------------------------------------------------------------------------------------
-    #FOF                                # enable FoF searching on-the-fly and outputs (set parameter LINKLENGTH=x to control LinkingLength; default=0.2)
-    #FOF_PRIMARY_LINK_TYPES=2           # 2^type for the primary dark matter type
-    #FOF_SECONDARY_LINK_TYPES=1+16+32   # 2^type for the types linked to nearest primaries
-    #DENSITY_SPLIT_BY_TYPE=1+2+16+32    # 2^type for whch the densities should be calculated seperately
-    #FOF_GROUP_MIN_LEN=32               # default is 32
-    ####################################################################################################
-
-These flags enable group finding via an on-the-fly FOF finder which is run at intervals set by the run-time parameters. This is most commonly used for halo finding in cosmological simulations, to build on-the-fly halo catalogues, or to simply track halos for purposes of seeding black holes and other on-the-fly physics.
-
-**FOF**: Master switch required for all modules in this block and any SUBFIND implementation. The default FOF linking length is 0.2 times the mean inter-particle separation of the desired type. This can be adjusted by adding the compiler parameter **LINKLENGTH** set to some desired value.
-
-**FOF\_PRIMARY\_LINK\_TYPES**: This sets the primary particle type for the linking/group-finding. For dark matter, this is typically particle-type 1, which means setting the parameter to 2. The parameter is set as a bit-wise value (see notes in the gravity section)
-
-**FOF\_SECONDARY\_LINK\_TYPES**: This is the list of particle types (set bit-wise again) which should be linked to the primaries, i.e.\ other particle types that should be included in the FOF group-building and associated with different halos/groups.
-
-**DENSITY\_SPLIT\_BY\_TYPE**: The list of particle types (set bit-wise again) which should have separately-calculated densities for linking purposes. If e.g.\ you are halo-finding in a cosmological simulation with star formation, this may need to separate dark matter and stars that have wildly different density distributions, or it will give spurious results.
-
-**FOF\_GROUP\_MIN\_LEN**: Minimum size for a saved FOF group (in terms of total particle number). Set as desired.
-
-
-
+<a name="config-openmp"></a>
+## Multi-Threading (Parallelization) Options 
      
-### Multi-Threading (Parallelization) Options
-     
-    #################################################################################################### 
-    #--------------------------------------- Multi-Threading (parallelization) options 
-    #################################################################################################### 
-    #OPENMP=2                       # Masterswitch for explicit OpenMP implementation 
-    #PTHREADS_NUM_THREADS=4         # custom PTHREADs implementation (dont enable with OPENMP) 
-    #################################################################################################### 
+    
+```bash
+####################################################################################################
+# --------------------------------------- Multi-Threading and Parallelization options
+####################################################################################################
+#OPENMP=2                       # Masterswitch for explicit OpenMP implementation
+#PTHREADS_NUM_THREADS=4         # custom PTHREADs implementation (don't enable with OPENMP)
+#MULTIPLEDOMAINS=16             # Multi-Domain option for the top-tree level (alters load-balancing)
+####################################################################################################
+```
 
 These flags govern the implementation of multi-threading in the code. Must be enabled and set appropriately to run multi-threaded code.
      
 **OPENMP**: This enables the code to run in hybrid OpenMP-MPI (multi-threaded) mode. If you enable this, you need to edit the makefile compile command appropriately to be sure you are actually compiling with the required flags for OPENMP (on many machines the code will still compile and appear to be working normally, but you wont actually be multi-threading!). For example, on the XSEDE Stampede machine "-parallel -openmp" are added to the intel compiler OPT line. Set the value of OPENMP equal to the number of threads per MPI process. This can be anything from 1 (which is not useful, so make it at least 2 if you enable it at all) to the number of MPI cores on the node (some systems allow more threads than cores, but you should read up on your machine before you attempt anything like that). In the submission script for the job, you will also usually need to specify a flag for the number of threads you are using -- again, consult the guide for your local machine for running in hybrid OpenMP+MPI mode. The OpenMP threads use shared memory, so they must be on the same node; but only certain parts of the code can be multi-threaded. In general, this option is here to both allow larger parallelization and better code scaling for large simulations, and to help deal with memory errors (since OpenMP is shared memory, two threads on two cores will have effectively double the memory of two MPI processes on two cores). However, the gains (or losses) are highly dependent on both the specific problem, resolution, processor number, and machine configuration. You should experiment with this setting to get an idea of which values may be useful.
 
 **PTHREADS\_NUM\_THREADS**: This functions like OPENMP, but implements a custom PTHREADS multi-threading implementation. While more highly customized, the compilers for OpenMP have improved to the point where, for the same hybrid configurations, OPENMP is usually faster. That said, this can still be useful for some machines (particularly older ones) and certain highly customized applications.
+
+**MULTIPLEDOMAINS**: This subdivides the tree into smaller sub-domains which can be independently moved to different processors. This makes domain de-composition dramatically less dependent on spatial co-location), at the cost of increased communication. Experiment with values here to see what works best -- in general, for problems with greater degrees of inhomogeneity, a higher value of this parameter can help.
+
+
      
+<a name="config-io"></a>
+## Input/Output Options 
      
-### Output/Input Options     
-     
-    #################################################################################################### 
-    #--------------------------------------- Output/Input options 
-    #################################################################################################### 
-    #HAVE_HDF5						# needed when HDF5 I/O support is desired
-    #OUTPUT_ADDITIONAL_RUNINFO      # enables extended simulation output data (can slow down machines significantly in massively-parallel runs)
-    #OUTPUT_IN_DOUBLEPRECISION      # snapshot files will be written in double precision 
-    #INPUT_IN_DOUBLEPRECISION       # input files assumed to be in double precision (otherwise float is assumed) 
-    #OUTPUT_POSITIONS_IN_DOUBLE     # input/output files in single, but positions in double (used in hires, hi-dynamic range sims when positions differ by < float accuracy)
-    #INPUT_POSITIONS_IN_DOUBLE      # as above, but specific to the ICs file
-    #RECOMPUTE_POTENTIAL_ON_OUTPUT	# update potential every output even if EVALPOTENTIAL is set 
-    #OUTPUTPOTENTIAL                # forces code to compute+output potentials in snapshots 
-    #OUTPUTACCELERATION             # output physical acceleration of each particle in snapshots 
-    #OUTPUTCHANGEOFENERGY           # outputs rate-of-change of internal energy of gas particles in snapshots 
-    #OUTPUT_VORTICITY				# outputs the vorticity vector 
-    #OUTPUTTIMESTEP                 # outputs timesteps for each particle 
-    #OUTPUTCOOLRATE					# outputs cooling rate, and conduction rate if enabled 
-    #OUTPUTLINEOFSIGHT				# enables on-the-fly output of Ly-alpha absorption spectra 
-    #################################################################################################### 
+```bash
+####################################################################################################
+# --------------------------------------- Input/Output options
+####################################################################################################
+#OUTPUT_ADDITIONAL_RUNINFO      # enables extended simulation output data (can slow down machines significantly in massively-parallel runs)
+#OUTPUT_IN_DOUBLEPRECISION      # snapshot files will be written in double precision
+#INPUT_IN_DOUBLEPRECISION       # input files assumed to be in double precision (otherwise float is assumed)
+#OUTPUT_POSITIONS_IN_DOUBLE     # input/output files in single, but positions in double (used in hires, hi-dynamic range sims when positions differ by < float accuracy)
+#INPUT_POSITIONS_IN_DOUBLE      # as above, but specific to the ICs file
+#OUTPUT_POTENTIAL               # forces code to compute+output potentials in snapshots
+#OUTPUT_ACCELERATION            # output physical acceleration of each particle in snapshots
+#OUTPUT_CHANGEOFENERGY          # outputs rate-of-change of internal energy of gas particles in snapshots
+#OUTPUT_VORTICITY               # outputs the vorticity vector
+#OUTPUT_TIMESTEP                # outputs timesteps for each particle
+#OUTPUT_COOLRATE                # outputs cooling rate, and conduction rate if enabled
+#OUTPUT_LINEOFSIGHT				# enables on-the-fly output of Ly-alpha absorption spectra
+#OUTPUT_LINEOFSIGHT_SPECTRUM    # computes power spectrum of these (requires additional code integration)
+#OUTPUT_LINEOFSIGHT_PARTICLES   # computes power spectrum of these (requires additional code integration)
+#OUTPUT_POWERSPEC               # compute and output power spectra (not used)
+#OUTPUT_RECOMPUTE_POTENTIAL     # update potential every output even it EVALPOTENTIAL is set
+#INPUT_READ_HSML                # force reading hsml from IC file (instead of re-computing them; in general this is redundant but useful if special guesses needed)
+#OUTPUT_TWOPOINT_ENABLED            # allows user to calculate mass 2-point function by enabling and setting restartflag=5
+#IO_DISABLE_HDF5                # disable HDF5 I/O support (for reading/writing; use only if HDF5 not install-able)
+####################################################################################################
+```
      
 These flags govern snapshot outputs (what is saved and how it is saved).
 
-**HAVE\_HDF5**: If this is set, the code will be compiled with support for input and output in the HDF5 format. You need to have the HDF5 libraries and headers installed on your computer for this option to work. The HDF5 format can then be selected as format "3" in the parameterfile.
+**IO\_DISABLE\_HDF5**: If this is set, the code will be compiled without support for input and output in the HDF5 format. You need to have the HDF5 libraries and headers installed on your computer for the code to compile otherwise (which you should do). The HDF5 format format is normally format "3" in the parameterfile. Without it, the code will resort to the un-formatted fortran binary as the only option (format "1"), which is not recommended.
 
 **OUTPUT\_ADDITIONAL\_RUNINFO**: This enables various outputs that are disabled by default. This includes outputs like 'cpu.txt' every timestep instead of only on the super-steps, far more output in the stdout outputs, checking for 'stop' files for checkpointing every timestep, outputing the extended blackhole\_details.txt files, etc. On machines with slow I/O, this can be a major slow-down and bottleneck for the code. On machines with fast I/O, this is much less of an issue. It depends strongly on the run. But most of the extra output is only needed for de-bugging.
 
@@ -1123,66 +1523,101 @@ These flags govern snapshot outputs (what is saved and how it is saved).
 
 **INPUT\_POSITIONS\_IN\_DOUBLE**: Tells the code to assume the positions in the input file are in double precision (even if the rest of the file is not).
 
-**RECOMPUTE\_POTENTIAL\_ON\_OUTPUT**: Re-computes the potential energy of particles, every time an output is written, so that the potential is accurate to the current time (as opposed to drifted from the earlier computation: since potential is not directly used by the code, it is not evaluated at all timesteps). This can add a non-negligible expense to the code.  
+**OUTPUT\_RECOMPUTE\_POTENTIAL**: Re-computes the potential energy of particles, every time an output is written, so that the potential is accurate to the current time (as opposed to drifted from the earlier computation: since potential is not directly used by the code, it is not evaluated at all timesteps). This can add a non-negligible expense to the code.  
 
 The remaining flags in this section all turn on/off additional (optional) outputs to snapshots, which can often be quite useful (but are by default excluded to save on storage requirements). Many other physics modules have additional such output flags hard-wired to output certain quantities used in the module. If youre curious, you should look at the file "io.c" -- under e.g. "get\_dataset\_name" you can see a list of the names of the different datasets which can be output. Here are some of the more common output flags: 
 
-**OUTPUTPOTENTIAL**: Add potential energy to snapshots (under HDF5 buffer header name "Potential")
+**OUTPUT\_POTENTIAL**: Add potential energy to snapshots (under HDF5 buffer header name "Potential")
 
-**OUTPUTACCELERATION**: Add acceleration to snapshots (HDF5 "Acceleration")
+**OUTPUT\_ACCELERATION**: Add acceleration to snapshots (HDF5 "Acceleration")
 
-**OUTPUTCHANGEOFENERGY**: Add time derivative of internal energy to snapshots (HDF5 "RateOfChangeOfInternalEnergy")
+**OUTPUT\_CHANGEOFENERGY**: Add time derivative of internal energy to snapshots (HDF5 "RateOfChangeOfInternalEnergy")
 
 **OUTPUT\_VORTICITY**: Add local vorticity to snapshots (HDF5 "Vorticity")
 
-**OUTPUTTIMESTEP**: Add particle timestep dt to snapshots (HDF5 "TimeStep")
+**OUTPUT\_TIMESTEP**: Add particle timestep dt to snapshots (HDF5 "TimeStep")
 
-**OUTPUTCOOLRATE**: Add particle cooling rate to snapshots (HDF5 "CoolingRate")
+**OUTPUT\_COOLRATE**: Add particle cooling rate to snapshots (HDF5 "CoolingRate")
+
+**INPUT\_READ\_HSML**: Read the initial guess for Hsml from the ICs file. In any case the density routine must be called to determine the "correct" Hsml, but this can be useful if the ICs are irregular so the "guess" the code would normally use to begin the iteration process might be problematic. In general though it is redundant.
 
 
-### De-Bugging and Special Code Behaviors     
+<a name="config-debug"></a>
+## De-Bugging and Special Code Behaviors 
      
-    #################################################################################################### 
-    #-------------------------------------------- De-Bugging & special (test-problem only) behaviors 
-    #################################################################################################### 
-    #DEVELOPER_MODE                 # allows you to modify various numerical parameters (courant factor, etc) at run-time
-    #EOS_ENFORCE_ADIABAT=(1.0)      # if set, this forces gas to lie -exactly- along the adiabat P=GAMMA_ENFORCE_ADIABAT*(rho^GAMMA)
-    #SLOPE_LIMITER_TOLERANCE=1      # sets the slope-limiters used. higher=more aggressive (less diffusive, but less stable). 1=default. 0=conservative. use on problems where sharp density contrasts in poor particle arrangement may cause errors. 2=same as AGGRESSIVE_SLOPE_LIMITERS below
-    #AGGRESSIVE_SLOPE_LIMITERS      # use the original GIZMO paper (more aggressive) slope-limiters. more accurate for smooth problems, but
-                                    # these can introduce numerical instability in problems with poorly-resolved large noise or density contrasts (e.g. multi-phase, self-gravitating flows)
-    #ENERGY_ENTROPY_SWITCH_IS_ACTIVE # enable energy-entropy switch as described in GIZMO methods paper. This can greatly improve performance on some problems where the
-                                    # the flow is very cold and highly super-sonic. it can cause problems in multi-phase flows with strong cooling, though, and is not compatible with non-barytropic equations of state
-    #FORCE_ENTROPIC_EOS_BELOW=(0.01) # set (manually) the alternative energy-entropy switch which is enabled by default in MFM/MFV: if relative velocities are below this threshold, it uses the entropic EOS
-    #TEST_FOR_IDUNIQUENESS          # explicitly check if particles have unique id numbers (only use for special behaviors)
-    #LONGIDS                        # use long ints for IDs (needed for super-large simulations) 
-    #ASSIGN_NEW_IDS                 # assign IDs on startup instead of reading from ICs 
-	#NO_CHILD_IDS_IN_ICS            # IC file does not have child IDs: do not read them (used for compatibility with snapshot restarts from old versions of the code)
-    #READ_HSML                      # reads hsml from IC file 
-    #PREVENT_PARTICLE_MERGE_SPLIT   # don't allow gas particle splitting/merging operations
-    #COOLING_OPERATOR_SPLIT         # do the hydro heating/cooling in operator-split fashion from chemical/radiative. slightly more accurate when tcool >> tdyn, but much noisier when tcool << tdyn
-    #PARTICLE_EXCISION              # enable dynamical excision (remove particles within some radius)     
-    #USE_MPI_IN_PLACE               # MPI debugging: makes AllGatherV compatible with MPI_IN_PLACE definitions in some MPI libraries 
-    #NO_ISEND_IRECV_IN_DOMAIN       # MPI debugging 
-    #FIX_PATHSCALE_MPI_STATUS_IGNORE_BUG # MPI debugging 
-    #MPISENDRECV_SIZELIMIT=100      # MPI debugging 
-    #MPISENDRECV_CHECKSUM           # MPI debugging 
-    #DONOTUSENODELIST               # MPI debugging 
-    #NOTYPEPREFIX_FFTW              # FFTW debugging (fftw-header/libraries accessed without type prefix, adopting whatever was 
-                                    #chosen as default at compile of fftw). Otherwise, the type prefix 'd' for double is used. 
-    #DOUBLEPRECISION_FFTW           # FFTW in double precision to match libraries 
-    #DEBUG                          # enables core-dumps and FPU exceptions 
-    #STOP_WHEN_BELOW_MINTIMESTEP    # forces code to quit when stepsize wants to go below MinSizeTimestep specified in the parameterfile 
-    #SEPARATE_STELLARDOMAINDECOMP   # separate stars (ptype=4) in domain decomposition (only use for debugging) 
-    #DISABLE_SPH_PARTICLE_WAKEUP    # dont let gas particles move to lower timesteps based on neighbor activity (use for debugging) 
-    #EVALPOTENTIAL                  # computes gravitational potential
-    #MHD_ALTERNATIVE_LEAPFROG_SCHEME # use alternative leapfrog where magnetic fields are treated like potential/positions (per Federico Stasyszyn's suggestion): still testing
-    #FREEZE_HYDRO                   # zeros all fluxes from RP and doesn't let particles move (for testing additional physics layers)
-    #SUPER_TIMESTEP_DIFFUSION       # use super-timestepping to accelerate integration of diffusion operators [for testing or if there are stability concerns]
-    #################################################################################################### 
+```bash
+####################################################################################################
+# -------------------------------------------- De-Bugging & special (usually test-problem only) behaviors
+####################################################################################################
+# --------------------
+# ----- General De-Bugging and Special Behaviors
+#DEVELOPER_MODE                 # allows you to modify various numerical parameters (courant factor, etc) at run-time
+#STOP_WHEN_BELOW_MINTIMESTEP    # forces code to quit when stepsize wants to go below MinSizeTimestep specified in the parameterfile
+#DEBUG                          # enables core-dumps and FPU exceptions
+# --------------------
+# ----- Hydrodynamics
+#FREEZE_HYDRO                   # zeros all fluxes from RP and doesn't let particles move (for testing additional physics layers)
+#EOS_ENFORCE_ADIABAT=(1.0)      # if set, this forces gas to lie -exactly- along the adiabat P=EOS_ENFORCE_ADIABAT*(rho^GAMMA)
+#SLOPE_LIMITER_TOLERANCE=1      # sets the slope-limiters used. higher=more aggressive (less diffusive, but less stable). 1=default. 0=conservative. use on problems where sharp density contrasts in poor particle arrangement may cause errors. 2=same as AGGRESSIVE_SLOPE_LIMITERS below
+#AGGRESSIVE_SLOPE_LIMITERS      # use the original GIZMO paper (more aggressive) slope-limiters. more accurate for smooth problems, but
+                                # these can introduce numerical instability in problems with poorly-resolved large noise or density contrasts (e.g. multi-phase, self-gravitating flows)
+#ENERGY_ENTROPY_SWITCH_IS_ACTIVE # enable energy-entropy switch as described in GIZMO methods paper. This can greatly improve performance on some problems where the
+                                # the flow is very cold and highly super-sonic. it can cause problems in multi-phase flows with strong cooling, though, and is not compatible with non-barytropic equations of state
+#FORCE_ENTROPIC_EOS_BELOW=(0.01) # set (manually) the alternative energy-entropy switch which is enabled by default in MFM/MFV: if relative velocities are below this threshold, it uses the entropic EOS
+#DISABLE_SPH_PARTICLE_WAKEUP    # don't let gas particles move to lower timesteps based on neighbor activity (use for debugging)
+# --------------------
+# ----- Additional Fluid Physics and Gravity
+#COOLING_OPERATOR_SPLIT         # do the hydro heating/cooling in operator-split fashion from chemical/radiative. slightly more accurate when tcool >> tdyn, but much noisier when tcool << tdyn
+#MHD_ALTERNATIVE_LEAPFROG_SCHEME # use alternative leapfrog where magnetic fields are treated like potential/positions (per Federico Stasyszyn's suggestion): still testing
+#SUPER_TIMESTEP_DIFFUSION       # use super-timestepping to accelerate integration of diffusion operators [for testing or if there are stability concerns]
+#EVALPOTENTIAL                  # computes gravitational potential
+# --------------------
+# ----- Particle IDs
+#TEST_FOR_IDUNIQUENESS          # explicitly check if particles have unique id numbers (only use for special behaviors)
+#LONGIDS                        # use long ints for IDs (needed for super-large simulations)
+#ASSIGN_NEW_IDS                 # assign IDs on startup instead of reading from ICs
+#NO_CHILD_IDS_IN_ICS            # IC file does not have child IDs: do not read them (used for compatibility with snapshot restarts from old versions of the code)
+# --------------------
+# ----- Particle Merging/Splitting/Deletion/Boundaries
+#PREVENT_PARTICLE_MERGE_SPLIT   # don't allow gas particle splitting/merging operations
+#PARTICLE_EXCISION              # enable dynamical excision (remove particles within some radius)
+#MERGESPLIT_HARDCODE_MAX_MASS=(1.0e-6)   # manually set maximum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
+#MERGESPLIT_HARDCODE_MIN_MASS=(1.0e-7)   # manually set minimum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
+# --------------------
+# ----- MPI & Parallel-FFTW De-Bugging
+#USE_MPI_IN_PLACE               # MPI debugging: makes AllGatherV compatible with MPI_IN_PLACE definitions in some MPI libraries
+#NO_ISEND_IRECV_IN_DOMAIN       # MPI debugging: slower, but fixes memory errors during exchange in the domain decomposition (ANY RUN with >2e9 particles MUST SET THIS OR FAIL!)
+#FIX_PATHSCALE_MPI_STATUS_IGNORE_BUG # MPI debugging
+#MPISENDRECV_SIZELIMIT=100      # MPI debugging
+#MPISENDRECV_CHECKSUM           # MPI debugging
+#DONOTUSENODELIST               # MPI debugging
+#NOTYPEPREFIX_FFTW              # FFTW debugging (fftw-header/libraries accessed without type prefix, adopting whatever was
+                                #   chosen as default at compile of fftw). Otherwise, the type prefix 'd' for double is used.
+#DOUBLEPRECISION_FFTW           # FFTW in double precision to match libraries
+# --------------------
+# ----- Load-Balancing
+#ALLOW_IMBALANCED_GASPARTICLELOAD # increases All.MaxPartSph to All.MaxPart: can allow better load-balancing in some cases, but uses more memory. But use me if you run into errors where it can't fit the domain (where you would increase PartAllocFac, but can't for some reason)
+#SEPARATE_STELLARDOMAINDECOMP   # separate stars (ptype=4) and other non-gas particles in domain decomposition (may help load-balancing)
+####################################################################################################
+```
 
 These are miscellaneous flags for de-bugging and special purpose behaviors. If you don't know what a flag here does, you should not change it. If you do, you should still treat the changes carefully and be sure it is ok for your particular problem.
 
+
+<a name="config-debug-general"></a>
+### _General De-Bugging and Special Behaviors_ 
+
+
 **DEVELOPER\_MODE**: Turn this on to give yourself the option to set many numerical parameters explicitly in the run-time parameterfile. This includes things like the Courant factor and other error tolerance parameters. Otherwise these are hard-coded. Only enable this if you know what you are doing!!!
+
+**STOP\_WHEN\_BELOW\_MINTIMESTEP**: Forces code to quit when stepsize wants to go below MinSizeTimestep specified in the parameterfile.
+
+**DEBUG**: Enables core-dumps and FPU exceptions. Also many log-outputs to stdout and stderr are activated with the DEBUG flag. This will dramatically slow down the code, use it only for debugging.
+
+<a name="config-debug-hydro"></a>
+### _Hydrodynamics_ 
+
+**FREEZE\_HYDRO**: Zeros all fluxes from the Riemann problem, and don't let particles move. This is a special flag useful for for testing additional physics layers in test problems where the normal hydro is not being tested.
 
 **EOS\_ENFORCE\_ADIABAT**: If you turn this on, gas is forced to lie exactly along the adiabat specified. The numerical value is the value of the entropic function -- i.e. at all timesteps, the internal energy is reset such that Pressure = GAMMA\_ENFORCE\_ADIABAT * density^GAMMA. Useful for test problems
 
@@ -1194,6 +1629,23 @@ These are miscellaneous flags for de-bugging and special purpose behaviors. If y
 
 **FORCE\_ENTROPIC\_EOS\_BELOW**: This allows you to set (manually) the alternative energy-entropy switch which is enabled by default in MFM/MFV: if relative velocities (approach mach numbers) are below this threshold relative to the sound speed, it uses the entropic EOS. This is designed to reduce numerical diffusivity much more accurately than the alternative 'energy-entropy' switch above, but this value can be important in highly sub-sonic problems
 
+**DISABLE\_SPH\_PARTICLE\_WAKEUP**: This turns off the codes ability to "wake up" particles: i.e. to move a particle from a large timestep to a smaller one (by default, if the signal velocity of a particle increases, or it is more than a factor of ~2 larger timestep than its neighbor particles, it is forced into shorter timesteps). Disabling this can lead to severe errors in poorly-resolved flows (because particles might "move through" each other), so this flag should only be activated for debugging.
+
+<a name="config-debug-fluids"></a>
+### _Additional Fluid Physics and Gravity_ 
+
+**COOLING\_OPERATOR\_SPLIT**: By default, if COOLING is active, the code will incorporate the hydro work terms into the cooling function which solves for the new temperature fully implicitly. However, enabling this explicitly operator-splits the hydro work update. This is less accurate, but necessary if e.g. you are enabling new cooling physics.
+
+**MHD\_ALTERNATIVE\_LEAPFROG\_SCHEME**: Adopt an alternative leapfrog time-step scheme, where magnetic fields are treated like potential/positions (per Federico Stasyszyn's suggestion): this is still being tested, but may give slightly improved results for certain types of problems (effects do appear to be small, however)
+
+**SUPER\_TIMESTEP\_DIFFUSION**: Employs a super-timestepping scheme to accelerate integration of explicit diffusion operators. This can give a significant speedup on idealized problems. In fully non-linear problems, it is not clear how much this improves performance, and it needs to be carefully vetted for the given problem before it is used.
+
+**EVALPOTENTIAL**: Forces code to evaluate the gravitational potential (not just forces and accelerations) for all particles. Not needed unless de-bugging (even if you set the code to output the potential, you dont need to set this, since it will just evaluate when needed for outputs)
+
+<a name="config-debug-ids"></a>
+### _Particle IDs_ 
+
+
 **TEST\_FOR\_IDUNIQUENESS**: Forces the code to check at startup that all particles have unique IDs.
 
 **LONGIDS**: Use long long type for particle IDs instead of long: this is needed for very large (>2e9 particle) simulations. 
@@ -1202,85 +1654,80 @@ These are miscellaneous flags for de-bugging and special purpose behaviors. If y
 
 **NO\_CHILD\_IDS\_IN\_ICS**: Enable this if you are restarting from a snapshot or restart file and the IC file does not have child IDs: this will force the code not to attempt to read them (used for compatibility with snapshot restarts from old versions of the code)
 
-**READ\_HSML**: Read the initial guess for Hsml from the ICs file. In any case the density routine must be called to determine the "correct" Hsml, but this can be useful if the ICs are irregular so the "guess" the code would normally use to begin the iteration process might be problematic. In general though it is redundant.
+<a name="config-debug-mergedelete"></a>
+### _Particle Merging/Splitting/Deletion/Boundaries_ 
+
 
 **PREVENT\_PARTICLE\_MERGE\_SPLIT**: Do not allow particles to merge or split over the course of the simulation. This is generally useful only for MFV runs, where one wishes to prevent these operations in order to de-bug (check whether splitting/merging is causing problems for the runs).
 
-**COOLING\_OPERATOR\_SPLIT**: By default, if COOLING is active, the code will incorporate the hydro work terms into the cooling function which solves for the new temperature fully implicitly. However, enabling this explicitly operator-splits the hydro work update. This is less accurate, but necessary if e.g. you are enabling new cooling physics.
-
 **PARTICLE\_EXCISION**: Enable dynamical particle excision (removal of particles within/outside of some radius). The user must manually hard-code the conditions for excision. Do so by searching the source code for this flag, and you will find the relevant function where the excision occurs.
 
+**MERGESPLIT\_HARDCODE\_MAX\_MASS**/**MERGESPLIT\_HARDCODE\_MIN\_MASS**: Manually set the maximum/minimum allowed mass for particle merge-split operations, to the value set (in code units). This is useful for snapshot restarts and other special circumstances, when the automated routine (which simply reads the input/snapshot, takes the most/least massive particle and multiples by a safety factor of ~3 in either direction) may produce a range of particle masses larger than desired.
+
+<a name="config-debug-mpi"></a>
+### _MPI & Parallel-FFTW De-Bugging_
+
+
 **USE\_MPI\_IN\_PLACE**/**NO\_ISEND\_IRECV\_IN\_DOMAIN**/**MPISENDRECV\_SIZELIMIT**/**MPISENDRECV\_CHECKSUM**/**DONOTUSENODELIST**: These are very specific flags used to deal with certain non-standard MPI installations and very specific version issues. They may be required on some machines (see the code Makefile). If you are having MPI problems, first check the code on other machines, then (if it works) check various mpi installations on the problem machine, then (if youre still stuck) search these terms in the code to see if one of them might help. Frankly if you arent sure how they interact with your MPI library, you shouldnt be altering them.
+
 
 **NOTYPEPREFIX\_FFTW**: If this is set, the fftw-header/libraries are accessed without type prefix (adopting whatever was chosen as default at compile-time of fftw). Otherwise, the type prefix 'd' for double-precision is used. This is needed on some machines depending on the compilation of FFTW.
 
 **DOUBLEPRECISION\_FFTW**: If this is set, the code will use the double-precision version of FTTW, provided the latter has been explicitly installed with a "d" prefix, and NOTYPEPREFIX FFTW is not set. Otherwise the single precision version ("s" prefix) is used.
 
-**DEBUG**: Enables core-dumps and FPU exceptions. Also many log-outputs to stdout and stderr are activated with the DEBUG flag. This will dramatically slow down the code, use it only for debugging.
+<a name="config-debug-loadbalance"></a>
+### _Load-Balancing_ 
 
-**STOP\_WHEN\_BELOW\_MINTIMESTEP**: Forces code to quit when stepsize wants to go below MinSizeTimestep specified in the parameterfile.
+**ALLOW\_IMBALANCED\_GASPARTICLELOAD**: Increases All.MaxPartSph (maximum number of SPH particles allowed per MPI task, default is PartAllocFac*Number of SPH particles/Number of Tasks) to All.MaxPart (same using all particles instead of SPH particles): can allow better load-balancing in some cases, but uses more memory. But try this flag if you run into errors where it can't fit the domain (where you would increase PartAllocFac, but can't for some reason). It can help to declare 'up front' the memory useage, preventing this error even though the mean memory footprint is larger.
 
 **SEPARATE\_STELLARDOMAINDECOMP**: This will completely separate the star particles in the domain decomposition and memory structures. The implementation is incomplete -- it should only be used for specific debugging.
 
-**DISABLE\_SPH\_PARTICLE\_WAKEUP**: This turns off the codes ability to "wake up" particles: i.e. to move a particle from a large timestep to a smaller one (by default, if the signal velocity of a particle increases, or it is more than a factor of ~2 larger timestep than its neighbor particles, it is forced into shorter timesteps). Disabling this can lead to severe errors in poorly-resolved flows (because particles might "move through" each other), so this flag should only be activated for debugging.
-
-**EVALPOTENTIAL**: Forces code to evaluate the gravitational potential (not just forces and accelerations) for all particles. Not needed unless de-bugging (even if you set the code to output the potential, you dont need to set this, since it will just evaluate when needed for outputs)
-
-**MHD\_ALTERNATIVE\_LEAPFROG\_SCHEME**: Adopt an alternative leapfrog time-step scheme, where magnetic fields are treated like potential/positions (per Federico Stasyszyn's suggestion): this is still being tested, but may give slightly improved results for certain types of problems (effects do appear to be small, however)
-
-**FREEZE\_HYDRO**: Zeros all fluxes from the Riemann problem, and don't let particles move. This is a special flag useful for for testing additional physics layers in test problems where the normal hydro is not being tested.
-
-**SUPER\_TIMESTEP\_DIFFUSION**: Employs a super-timestepping scheme to accelerate integration of explicit diffusion operators. This can give a significant speedup on idealized problems. In fully non-linear problems, it is not clear how much this improves performance, and it needs to be carefully vetted for the given problem before it is used.
-
-
-
 ***
 
-
+<a name="params"></a>
 # 8. The Parameterfile (Setting run-time parameters)
 
 The other thing required to get your run going is a parameterfile in the run directory - this is the file we called "myparameterfile.params" in our guide to using the code. This contains all the run-time parameters for the code. Basically, anything not set in the compile-time flags (in Config.sh) needs to be set in this file. When the run starts, the file will be parsed, and these values will be used for the run. Many of them can be changed on restarts (all can be changed on restarts from snapshots), but you normally don't need to make any changes to the parameterfile when restarting.
 
 In this file, each parameter value is set by specifying a keyword, followed by a numerical value or a character string, separated by whitespace (spaces, tabs) from the keyword. For each keyword, a separate line needs to be used, with the value and keyword appearing on the same line. Between keywords, arbitrary amounts of whitespace (including empty lines) may be used. The sequence of keywords is arbitrary, but each keywords needs to appear exactly once, even if its value is not relevant for the particular simulation (otherwise you’ll get an error message). Note that the keywords are type-sensitive. Lines with a leading ‘%’ are ignored. In lines with keywords, comments may also be added after the specification of the value for the corresponding keyword. Here we will show (piece-by-piece) an example parameterfile, and then discuss each keyword and the meaning of its value.
 
-This example parameterfile is included with the source code, in the folder "scripts" as "params.txt"
+The example parameterfile is included with the source code, in the folder "scripts" as "params.txt"
 
-    %----  Relevant files 
-    InitCondFile  /work/01799/phopkins/sim_ICs/ics_z10n192_B1hr 
-    OutputDir     /scratch/01799/phopkins/B1_lr_fixg_51 
+<a name="params-generic"></a>
+## Generic (Always-Required) Parameters 
 
-    RestartFile         restart 
-    SnapshotFileBase    snapshot 
-    OutputListFilename  output_times.txt  % list of times for snaps 
+<a name="params-generic-files"></a>
+### _Filenames, Directories, & Formats_ 
 
-     
+
+    %----  Relevant files (filenames and directories)
+    InitCondFile  /pathname/to/my/ic/file/filename_without_hd5_extension 
+    OutputDir     output
+
 **InitCondFile**: This sets the filename of the initial conditions to be read in at start-up. Note that the initial conditions file (or files) does not have to reside in the output directory. The initial conditions can be distributed into several files, in the same way as snapshot files. In this case, only the basename without the tailing .n number should be specified as initial conditions filename. The code will recognize the number of files that make up the initial conditions from the header entries, and load all of these files accordingly. There is no constraint for the number of these files in relation to the processor number.
 
 **OutputDir**: This is the pathname of the directory that holds all the output generated by the simulation (snapshot files, restart files, diagnostic files). Note that this directory needs to exist, otherwise an error message will be produced.
 
-**RestartFile**: This is the base filename of the restart files. For the given example parameter value, each processor will write a restart file restart.N, where N is the rank number of the processor.
 
-**SnapshotFileBase**: From this string, the name of the snapshot files is derived by adding an underscore, and the number of the snapshot in a 3-digits format. If NumFilesPerSnapshot>1, each snapshot is distributed into several files, where a group of processors writes simultaneously to a file. In this case, the filenames are also supplemented with a tailing .n, where n designates the number of the file in the group of files representing the snapshot.
-     
+    %---- File formats (input and output)
+    ICFormat    3  % 1=unformatted (gadget) binary, 3=hdf5, 4=cluster
+    SnapFormat  3  % 1=unformatted (gadget) binary, 3=hdf5
 
-## Generic (Always-Required) Parameters
-
-    %---- File formats 
-    ICFormat           1  % 1=binary, 3=hdf5, 4=cluster 
-    SnapFormat         3  % 1=binary, 3=hdf5 
-
-**ICFormat**: This flag selects the file format of the initial conditions read in by the code upon start-up. A value of 1 selects the standard file-format of GADGET-2 (which is identical to the format used for GIZMO), while a value of 2 selects a more convenient variant of this simple binary format (also identical between GADGET/GIZMO). A value of 3 selects the use of HDF5 instead (again, same for GADGET/GIZMO). The structure of these files will be discussed in a separate section below. This should always match the format of the file named in "InitCondFile"
+**ICFormat**: This flag selects the file format of the initial conditions read in by the code upon start-up. A value of 1 selects the standard unformatted binary file-format of GADGET-2 (which is identical to the unformatted binary format used for GIZMO), while a value of 2 selects a more convenient variant of this simple binary format (also identical between GADGET/GIZMO). A value of 3 selects the use of HDF5 binary instead (again, same for GADGET/GIZMO). The structure of these files will be discussed in a separate section below. This should always match the format of the file named in "InitCondFile"
 
 **SnapFormat**: A flag that specifies the file-format to be used for writing snapshot files. The possible format choices are the same as for ICFormat. It is therefore possible to use different formats for the initial conditions and the produced snapshot files.
+
+<a name="params-generic-outputs"></a>
+### _Output Parameters_ 
 
 
     %---- Output parameters 
     RestartFile               restart 
     SnapshotFileBase          snapshot 
     OutputListOn              1 % =1 to use list in "OutputListFilename" 
-    OutputListFilename        output_times.txt  % list of times for snaps 
+    OutputListFilename        output_times.txt  % list of times (in code units) for snaps 
     NumFilesPerSnapshot       1  
-    NumFilesWrittenInParallel 32 % must be < N_processors
+    NumFilesWrittenInParallel   16  % must be < N_processors & power of 2
 
 **RestartFile**: This is the base filename of the restart files. For the given example parameter value, each processor will write a restart file restart.N, where N is the rank number of the processor.
 
@@ -1296,9 +1743,9 @@ This example parameterfile is included with the source code, in the folder "scri
 
      
     %---- Output frequency 
-    TimeOfFirstSnapshot       0.1 
-    TimeBetSnapshot           1.1 
-    TimeBetStatistics         0.05 
+    TimeOfFirstSnapshot     0.1  % time (code units) of first snapshot
+    TimeBetSnapshot         1.1  % time between (if OutputListOn=0), code units
+    TimeBetStatistics       0.05 % time between additional statistics (e.g. energy)
 
 **TimeOfFirstSnapshot**: This variable selects the time for the first snapshot (if OutputListOn=0). Note that the time units are a=1/(1+z) for comoving integrations, while they are physical time for non-comoving integrations.
 
@@ -1307,7 +1754,8 @@ This example parameterfile is included with the source code, in the folder "scri
 **TimeBetStatistics**: This determines the interval of time between two subsequent computations of the total energy of the system. This information is then written to the file given by EnergyFile. A first energy statistics is always produced at the start of the simulation at TimeBegin.
 
 
-    %---- CPU-time limits 
+
+    %---- CPU Run-Time and CheckPointing Time-Limits 
     TimeLimitCPU              100000	% in seconds 
     CpuTimeBetRestartFile     7200  	% in seconds 
     ResubmitOn        0 
@@ -1323,22 +1771,19 @@ code (which is switched on for ResubmitOn=1).
 
 **ResubmitCommand**: If ResubmitOn=1, the code will execute the given command ("my-scriptfile" in this example) when it interrupts the run because the CPU-time limit is about to be exhausted. Usually, "my-scriptfile" should be set to the name of an executable script in which one places the necessary commands for resubmission of the job (with the 1-flag set for restart) to the computing queue. Note that this feature should be used with care – it is always advisable to supervise a running simulation closely.
 
-     
-    %----- Memory alloction 
-    MaxMemSize       1800   % sets maximum MPI process memory use in MByte 
-    PartAllocFactor   5.0   % memory load allowed for better cpu balance 
-    BufferSize        100   % in MByte 
-     
-**MaxMemSize**: Sets the maximum memory allocated per single MPI process (in megabytes). This is pre-allocated, to avoid memory collisions and segmentation faults. If the code tries to exceed this value, it should exit with a meaningful error message that will let you diagnose where the memory consumption exceeded the allocation. Without this, you'd just get a segmentation fault. Note that when running in multi-threaded mode, this is the memory per MPI process so is shared by all the threads on the process.
 
-**PartAllocFactor**: Each processor allocates space for PartAllocFactor times the aver-
-age number of particles per processor. This number needs to be larger than 1 to allow the simulation to achieve a good work-load balance in the domain decomposition, which requires that some particle-load imbalance is accepted for better work-load balance. The specified value for PartAllocFactor acts as a ceiling for the maximum allowed memory imbalance, and the code will observe this limit in the domain decomposition, trying to achieve the best work-load balance within this bound. It is good to make PartAllocFactor as large as possible for the available memory per processor, but values in excess of 3-5 will usually not improve performance any more. The recommended minimum value is ∼ 1.05, but practical choices should be more like 1.5-2.0. For a value of <=1.0 the code will not be able to succeed in the domain decomposition and crash.
+<a name="params-generic-times"></a>
+### _TimeStepping and Run Begin & End Times_ 
 
-**BufferSize**: This specifies the size (in MByte) of a multi-purpose communication buffer
-used by the code in various parts of the parallel algorithms, for example during the force computation and the domain decomposition. The buffer should be large enough to accommodate a ‘fair’ fraction of the particle mix in order to minimise work-load imbalance losses. In practice, sizes between a few to 100 MB offer enough room. Upon start-up, the code informs about how many particles can be fitted into the communication structures during the various parts of the code that make use of them. There is no problem if a small BufferSize is used, except that it can lead to somewhat lower overall performance.
+    %---- Desired simulation beginning and end times (in code units) for run
+    MaxSizeTimestep         0.005   % in code units, set for your problem
+    MinSizeTimestep         1.0e-12 % set this very low, or get the wrong answer
 
+**MaxSizeTimestep**: This parameter sets the maximum timestep a particle may take. This needs to be set to a sensible value in order to protect against too large timesteps for particles with very small acceleration. Usually, a few percent up to tens of percent of the dynamical time of the system gives sufficient accuracy. For cosmological simulations, the parameter specifies max(Delta\_ln\_a), where ln is the natural logarithm and a=1/(1+z) is the scale factor (equivalent to specifying the maximum allowed timestep for cosmological simulations as a fraction of the current Hubble time). A value of 0.025 is about the maximum for cosmological runs, but smaller values give higher accuracy.
+
+**MinSizeTimestep**: If a particle requests a timestep smaller than the specified value, the simulation will issue a warning message and force the timestep to be at least MinSizeTimestep. This can be used to force equal and constant timesteps for all particles. If STOP\_WHEN\_BELOW\_MINTIMESTEP is set in Config.sh, the code will quit instead when this occurs.
      
-    %---- Characteristics of run 
+    %---- Maximum and minimum timesteps allowed
     TimeBegin           0.01      % Beginning of the simulation 
     TimeMax             1.0       % End of the simulation 
 
@@ -1346,43 +1791,10 @@ used by the code in various parts of the parallel algorithms, for example during
      
 **TimeMax**: This marks the end of the simulation. The simulation will run up to this
 point, then write a restart-file, and a snapshot file corresponding to this time (even if the time TimeMax is not in the normal sequence of snapshot files). If TimeMax is increased later on, the simulation can be simply continued from the last restart-file. Note that this last snapshot-file will then be overwritten, since it was a special dump out of the normal sequence. For comoving integrations, the time variable is the expansion factor, e.g. TimeMax=1.0 will stop the simulation at redshift z=0.
-     
-     
-    %---- Cosmological parameters 
-    ComovingIntegrationOn 1 % is it cosmological? (yes=1, no=0)
-    BoxSize               10000.0 % in code units
-    Omega0                0.27 % =0 for non-cosmological
-    OmegaLambda           0.73 % =0 for non-cosmological
-    OmegaBaryon           0.044 % =0 for non-cosmological
-    HubbleParam           0.7  % little 'h'; =1 for non-cosmological runs
+    
 
-**ComovingIntegrationOn**: This flag enables or disables comoving integration in an expanding universe. For ComovingIntegrationOn=0, the code uses plain Newtonian physics with vacuum or periodic boundary conditions. Time, positions, velocities, and masses are measured in the internal system of units, as specified by the selected system of units. For ComovingIntegrationOn=1, the integration is carried out in an expanding universe, using a cosmological model as specified by Omega0, OmegaLambda, etc. In this cosmological mode, coordinates are comoving, and the time variable is the expansion factor itself. If the code has not been compiled with the PERIODIC makefile option, the underlying model makes use of vacuum boundary conditions, i.e. density fluctuations outside the particle distribution are assumed to be zero. This requires that your particle distribution represents a spherical region of space around the origin. If PERIODIC is enabled, the code expects the particle coordinates to lie in the interval [0, BoxSize].
-
-**BoxSize**: The size of the periodic box (in code units) encompassing the simulation volume. This parameter is only relevant if the PERIODIC makefile option is used. Particle coordinates need to lie in the interval [0, BoxSize] in the initial conditions file.     
-     
-**Omega0**: Cosmological matter density parameter in units of the critical density at z=0. Relevant only for comoving integration.
-
-**OmegaLambda**: Cosmological vacuum energy density (cosmological constant) in units of the critical density at z=0. Relevant only for comoving integration. For a geometrically flat universe, one has Omega0 + OmegaLambda = 1. For simulations in Newtonian space, this parameter has to be set to zero.
-
-**OmegaBaryon**: Baryon density in units of the critical density at z=0. Relevant only for comoving integration.
-     
-**HubbleParam**: Value of the Hubble constant in units of 100 km/s/Mpc. This is only used in cosmological integrations when conversions to cgs units are required (e.g. for radiative cooling physics). Note however that the value of HubbleParam is not needed (in fact, it does not enter the computation at all) in purely collisionless simulations. This is because of the definition of GIZMO’s system of units, which eliminates an explicit appearance of the value of the Hubble constant in the dynamical equations.
-     
-     
-    %---- Accuracy of time integration 
-    MaxSizeTimestep          0.005 
-    MinSizeTimestep          1.0e-12 
-
-**MaxSizeTimestep**: This parameter sets the maximum timestep a particle may take. This needs to be set to a sensible value in order to protect against too large timesteps for particles with very small acceleration. Usually, a few percent up to tens of percent of the dynamical time of the system gives sufficient accuracy. For cosmological simulations, the parameter specifies max(Delta\_ln\_a), where ln is the natural logarithm and a=1/(1+z) is the scale factor (equivalent to specifying the maximum allowed timestep for cosmological simulations as a fraction of the current Hubble time). A value of 0.025 is about the maximum for cosmological runs, but smaller values give higher accuracy.
-
-**MinSizeTimestep**: If a particle requests a timestep smaller than the specified value, the simulation will issue a warning message and force the timestep to be at least MinSizeTimestep. This can be used to force equal and constant timesteps for all particles. If STOP\_WHEN\_BELOW\_MINTIMESTEP is set in Config.sh, the code will quit instead when this occurs.
-     
-
-    %---- Tree algorithm, force accuracy, domain update frequency 
-    TreeDomainUpdateFrequency    0.005	% 0.0005-0.05, dept on core+particle number  
-     
-**TreeDomainUpdateFrequency**: A domain decomposition and a full tree construction are not necessarily carried out every single timestep. Instead, properties of tree nodes can be dynamically updated as needed. This can improve the performance of the code if there are many timesteps that advance only a very small fraction of particles (below a percent or so). This parameter determines how often the domain decomposition and the full tree are reconstructed from scratch. A value of TreeUpdateFrequency=0.05, for example, means that the domain decomposition and the tree are reconstructed whenever there have been at least $0.05\,N$ force computations since the last reconstruction, where N is the total particle number. A value of zero for this parameter will reconstruct the tree every timestep. If you find that imbalance (bad load-balancing) dominates runtime (see the cpu.txt file), try decreasing value here: values from 0.0005-0.05 can work well.
-
+<a name="params-generic-units"></a>
+### _Units & Cosmological Parameters_ 
 
     %---- System of units 
     UnitLength_in_cm         3.085678e21	% 1.0 kpc/h
@@ -1400,9 +1812,53 @@ point, then write a restart-file, and a snapshot file corresponding to this time
 **UnitMagneticField\_in\_gauss**: This sets the internal magnetic field unit in Gauss. Needed to be able to read/write input and output files. While actually working, the code will use the appropriate matching units for code pressure, etc.
 
 **GravityConstantInternal**: The numerical value of the gravitational constant G in internal units depends on the system of units you choose. For example, for the numerical choices made above, G=43007.1 in internal units. For GravityConstantInternal=0 the code calculates the value corresponding to the physical value of G for you. Sometimes, you might want to set G yourself. For example, by specifying GravityConstantInternal=1, UnitLength\_in\_cm=1, UnitMass\_in\_g=1, and UnitVelocity\_in\_cm\_per\_s=1, one obtains a ‘natural’ system of units. Note that the code will nevertheless try to use the ‘correct’ value of the Hubble constant even in this case, so you should always set GravityConstantInternal=0 in cosmological integrations.
-
+ 
      
-    %---- Initial temperature & temperature floor 
+    %---- Cosmological parameters 
+    ComovingIntegrationOn 1 % is it cosmological? (yes=1, no=0)
+    BoxSize               10000.0 % in code units
+    Omega0                0.27 % =0 for non-cosmological
+    OmegaLambda           0.73 % =0 for non-cosmological
+    OmegaBaryon           0.044 % =0 for non-cosmological
+    HubbleParam           0.7  % little 'h'; =1 for non-cosmological runs
+
+**ComovingIntegrationOn**: This flag enables or disables comoving integration in an expanding universe. For ComovingIntegrationOn=0, the code uses plain Newtonian physics with vacuum or periodic boundary conditions. Time, positions, velocities, and masses are measured in the internal system of units, as specified by the selected system of units. For ComovingIntegrationOn=1, the integration is carried out in an expanding universe, using a cosmological model as specified by Omega0, OmegaLambda, etc. In this cosmological mode, coordinates are comoving, and the time variable is the expansion factor itself. If the code has not been compiled with the BOX\_PERIODIC makefile option, the underlying model makes use of vacuum boundary conditions, i.e. density fluctuations outside the particle distribution are assumed to be zero. This requires that your particle distribution represents a spherical region of space around the origin. If BOX\_PERIODIC is enabled, the code expects the particle coordinates to lie in the interval [0, BoxSize].
+
+**BoxSize**: The size of the periodic box (in code units) encompassing the simulation volume. This parameter is only relevant if the BOX\_PERIODIC makefile option is used. Particle coordinates need to lie in the interval [0, BoxSize] in the initial conditions file.
+     
+**Omega0**: Cosmological matter density parameter in units of the critical density at z=0. Relevant only for comoving integration.
+
+**OmegaLambda**: Cosmological vacuum energy density (cosmological constant) in units of the critical density at z=0. Relevant only for comoving integration. For a geometrically flat universe, one has Omega0 + OmegaLambda = 1. For simulations in Newtonian space, this parameter has to be set to zero.
+
+**OmegaBaryon**: Baryon density in units of the critical density at z=0. Relevant only for comoving integration.
+     
+**HubbleParam**: Value of the Hubble constant in units of 100 km/s/Mpc. This is only used in cosmological integrations when conversions to cgs units are required (e.g. for radiative cooling physics). Note however that the value of HubbleParam is not needed (in fact, it does not enter the computation at all) in purely collisionless simulations. This is because of the definition of GIZMO’s system of units, which eliminates an explicit appearance of the value of the Hubble constant in the dynamical equations.
+
+<a name="params-generic-memory"></a>
+### _Memory & Load-Balancing (Domain) Parameters_ 
+
+    %----- Memory allocation 
+    MaxMemSize       1800   % sets maximum MPI process memory use in MByte 
+    PartAllocFactor   5.0   % memory load allowed for better cpu balance 
+    BufferSize        100   % in MByte 
+     
+**MaxMemSize**: Sets the maximum memory allocated per single MPI process (in megabytes). This is pre-allocated, to avoid memory collisions and segmentation faults. If the code tries to exceed this value, it should exit with a meaningful error message that will let you diagnose where the memory consumption exceeded the allocation. Without this, you'd just get a segmentation fault. Note that when running in multi-threaded mode, this is the memory per MPI process so is shared by all the threads on the process.
+
+**PartAllocFactor**: Each processor allocates space for PartAllocFactor times the aver-
+age number of particles per processor. This number needs to be larger than 1 to allow the simulation to achieve a good work-load balance in the domain decomposition, which requires that some particle-load imbalance is accepted for better work-load balance. The specified value for PartAllocFactor acts as a ceiling for the maximum allowed memory imbalance, and the code will observe this limit in the domain decomposition, trying to achieve the best work-load balance within this bound. It is good to make PartAllocFactor as large as possible for the available memory per processor, but values in excess of 3-5 will usually not improve performance any more. The recommended minimum value is ∼ 1.05, but practical choices should be more like 1.5-2.0, although for certain highly-imbalanced problems a much larger value may be optimal. For a value of <=1.0 the code will not be able to succeed in the domain decomposition and crash.
+
+**BufferSize**: This specifies the size (in MByte) of a multi-purpose communication buffer
+used by the code in various parts of the parallel algorithms, for example during the force computation and the domain decomposition. The buffer should be large enough to accommodate a ‘fair’ fraction of the particle mix in order to minimise work-load imbalance losses. In practice, sizes between a few to 100 MB offer enough room. Upon start-up, the code informs about how many particles can be fitted into the communication structures during the various parts of the code that make use of them. There is no problem if a small BufferSize is used, except that it can lead to somewhat lower overall performance.
+
+    %---- Rebuild domains when >this fraction of particles active
+    TreeDomainUpdateFrequency    0.005	% 0.0005-0.05, dept on core+particle number  
+     
+**TreeDomainUpdateFrequency**: A domain decomposition and a full tree construction are not necessarily carried out every single timestep. Instead, properties of tree nodes can be dynamically updated as needed. This can improve the performance of the code if there are many timesteps that advance only a very small fraction of particles (below a percent or so). This parameter determines how often the domain decomposition and the full tree are reconstructed from scratch. A value of TreeUpdateFrequency=0.05, for example, means that the domain decomposition and the tree are reconstructed whenever there have been at least $0.05\,N$ force computations since the last reconstruction, where N is the total particle number. A value of zero for this parameter will reconstruct the tree every timestep. If you find that imbalance (bad load-balancing) dominates runtime (see the cpu.txt file), try decreasing value here: values from 0.0005-0.05 can work well.
+
+<a name="params-generic-hydro"></a>
+### _Hydro Parameters_ 
+     
+    %---- (Optional) Initial hydro temperature & temperature floor (in Kelvin)
     InitGasTemp           300	% set by IC file if =0 
     MinGasTemp             10.	% don't set <10 in explicit feedback runs, otherwise 0
 
@@ -1411,9 +1867,9 @@ point, then write a restart-file, and a snapshot file corresponding to this time
 **MinGasTemp**: The minimum allowed gas temperature in Kelvin (this is converted by the code to a minimum thermal energy per unit mass assuming the mean molecular weight of neutral gas). This may be set to zero in principle, but often it is desirable to prevent the gas from becoming too cold, e.g. for resolution reasons or because of lower limits in the implemented cooling function.
 
 
-    %---- Density/volume estimation (kernel) 
-    DesNumNgb               32      % 32 for standard kernel, 60-114 for quintic 
-    MaxHsml                 1.0e10  % some very large value (here to prevent errors)
+    %---- Hydro reconstruction (kernel) parameters
+    DesNumNgb               32      % domain-reconstruction kernel number: 32 standard, 60-114 for quintic
+    MaxHsml                 1.0e10  % minimum gas kernel length (some very large value to prevent errors)
     MinGasHsmlFractional    0       % minimum kernel length relative to gas force softening (<= 1)
      
 **DesNumNgb**: This is the desired "effective" number of particle kernel neighbors, used for both the meshless volume partition, SPH "kernel smoothing", adaptive gravitational force softening, and local interactions of non-standard particles (e.g. dust). We say "effective" because, as is standard, the number is defined to be continuous based on the local number density of particles at the particle/cell position and its size, rather than the discrete actual number of particles inside a sphere (a discontinuous and therefore numerically problematic quantity). Should the value get outside the range plus/minus MaxNumNgbDeviation from DesNumNgb, the code will readjust such that the number of neighbours is again in this range. If the code is run in one or two dimensions, smaller numbers are needed: for 32 in 3D, use ~4-6 in 1D, and ~8-14 in 2D. 
@@ -1422,12 +1878,14 @@ point, then write a restart-file, and a snapshot file corresponding to this time
 
 **MinGasHsmlFractional**: This sets the minimim allowed kernel length in units of the gravitational softening length (specified below) of the gas particles. The kernel length will be prevented from falling below this value (the number of neighbors will be allowed to exceed DesNumNgb). This can be zero (recommended for problems -without- gravity), but in problems with gravity, this "hydro resolution" is meaningless (because there is no gravity on these scales). Don't be misled by papers claiming their "gas resolution" is much better than their "gravity resolution", this exists only for numerical convenience! If adaptive gravitational softening lengths for gas or all particles (ADAPTIVE\_GRAVSOFT\_FORGAS or ADAPTIVE\_GRAVSOFT\_FORALL) is set, this parameter should be set=1. If fixed softenings are used, you can set it to a value ~0.3-0.5, but again we caution the "real" resolution is the gravitational resolution. 
 
+<a name="params-generic-gravity"></a>
+### _Gravity Parameters_ 
 
     %---- Gravitational softening lengths 
     %----- Softening lengths per particle type. If ADAPTIVE_GRAVSOFT is set, these  
     %-------- are the minimum softening allowed for each type ------- 
     %-------- (units are co-moving for cosmological integrations)
-    SofteningGas       0.001    % gas (type=0) (in units above, =1 pc softening)
+    SofteningGas       0.001    % gas (particle type=0) (in co-moving code units)
     SofteningHalo      0.020    % dark matter/collisionless particles (type=1)
     SofteningDisk      0.150    % collisionless particles (type=2)
     SofteningBulge     0.500    % collisionless particles (type=3)
@@ -1435,7 +1893,8 @@ point, then write a restart-file, and a snapshot file corresponding to this time
     SofteningBndry     0.001    % black holes (if active), or collisionless (type=5)
     %---- if these are set in cosmo runs, SofteningX switches from comoving to physical
     %------- units when the comoving value exceeds the choice here
-    SofteningGasMaxPhys       0.0005    % switch to 0.5pc physical below z=1 
+    %------- (these are ignored, and *only* the above are used, for non-cosmo runs)
+    SofteningGasMaxPhys       0.0005  % e.g. switch to 0.5pc physical below z=1 
     SofteningHaloMaxPhys      0.010 
     SofteningDiskMaxPhys      0.075 
     SofteningBulgeMaxPhys     0.250 
@@ -1445,30 +1904,38 @@ point, then write a restart-file, and a snapshot file corresponding to this time
     AGS_DesNumNgb             32  % neighbor number for calculating adaptive gravsoft 
      
 
-The code distinguishes between different particle types. Each type may have a different gravitational softening. As far as gravity is concerned, all the types are treated equivalently by the code, the names ‘Gas’ (Type=0), ‘Halo’ (Type=1), ‘Disk’ (Type=2), ‘Bulge’ (Type=3), ‘Stars’ (Type=4), and ‘Bndry’ (Type=5), are just arbitrary tags, still reflecting our predecessor GADGET-2’s origin as a tool to study colliding galaxies. However, the particles of the first type (‘Gas’) are indeed treated as hydro particles, i.e. they receive an additional hydrodynamic acceleration, and their internal energy per unit mass is evolved as independent thermodynamic variable.
-Gravity is softened with a spline, as outlined in the code paper. 
+**SofteningGas**/**SofteningGasMaxPhys**, etc.: The code distinguishes between different particle types. Each type may have a different gravitational softening. As far as gravity is concerned, all the types are treated equivalently by the code, the names ‘Gas’ (Type=0), ‘Halo’ (Type=1), ‘Disk’ (Type=2), ‘Bulge’ (Type=3), ‘Stars’ (Type=4), and ‘Bndry’ (Type=5), are just arbitrary tags, still reflecting our predecessor GADGET-2’s origin as a tool to study colliding galaxies. However, the particles of the first type (‘Gas’) are indeed treated as hydro particles, i.e. they receive an additional hydrodynamic acceleration, and their internal energy per unit mass is evolved as independent thermodynamic variable.
 
-The softenings quoted here all refer to the roughly equivalent Plummer softening length. Note that for the spline that is actually used, the force will be exactly Newtonian beyond 2.8 times this value. The softening lengths are in internal length units. For comoving integration, the softening refers to the one employed in comoving coordinates, which usually stays fixed during the simulation. However, employing the "MaxPhys" parameters described below the code can also be asked to switch to a fixed softening in physical scale below a certain redshift. In practice, the code uses MIN(SofteningX/(1+z),SofteningXMaxPhys) as the physical softening for particle of type X at a time corresponding to redshift "z". If the run is non-cosmological, the "MaxPhys" parameters are ignored.
+Gravity is softened with a spline, as outlined in the code paper. The softenings quoted here all refer to the roughly equivalent Plummer softening length. Note that for the spline that is actually used, the force will be exactly Newtonian beyond 2.8 times this value. The softening lengths are in internal (code) length units. For comoving integration, the **SofteningX** parameter refers to the one employed in comoving coordinates, which usually stays fixed during the simulation. However, employing the "MaxPhys" parameters described above (**SofteningXMaxPhys**), the code can also be asked to switch to a fixed softening in physical scale below a certain redshift. In practice, the code uses MIN(SofteningX/(1+z),SofteningXMaxPhys) as the physical softening for particle of type X at a time corresponding to redshift "z". If the run is non-cosmological, the "MaxPhys" parameters are ignored.
 
 If adaptive gravitational softenings are used, the softenings are set on-the-fly at all times based on the inter-particle distance. **AGS\_DesNumNgb** and **AGS\_MaxNumNgbDeviation** function exactly like **DesNumNgb** and **MaxNumNgbDeviation**, they are simply applied to particles whose type is not gas, to obtain their appropriate kernel lengths. In general, AGS\_DesNumNgb should be set to the same value as DesNumNgb, but it can be somewhat smaller (especially if, as is required sometimes for SPH-mode simulations, DesNumNgb is larger than the default 32) for the sake of speed. Note that even if adaptive softening is employed, the softening lengths above still need to be set: in this case, these represent the **minimum** allowed softening for a given particle type. This is done to prevent the code from reaching arbitrarily high densities (which would both grind the timestep to zero and represent unphysical resolution, given the limited mass resolution). 
 
 
-     
-## Parameters of Optional Physics Modules
+<a name="params-optional"></a>     
+## Parameters of Optional Physics Modules (Examples) 
+
      
 There are many different, optional modules for additional physics in the code. Many of these use some runtime parameters which should be included in the parameterfile. The role of those parameters and their recommended values depends on the module, and you should look at the code for each module you enable to decide which values are needed. In general, if a required parameter is **not** present, the code will quit on start-up with a clear error message specifying the missing parameter. 
 
 Here, we will list and describe some of these, but this will necessarily be an incomplete list and should not be taken as final. Consult the code for each module to determine what the parameters mean.
 
-
+<a name="params-optional-fluids"></a>
+### _Additional Fluid Physics_ 
 
     %---- Magneto-Hydrodynamics Parameters (MAGNETIC on)
-    %--- Initial B-Field Strengths (if B_SET_IN_PARAMS on, otherwise read from IC file)
+    %--- Initial B-Field Strengths (if MHD_B_SET_IN_PARAMS on, otherwise read from IC file)
     BiniX   1.0e-8    % initial B_x, in code units
     BiniY   1.0e-8    % initial B_y, in code units
     BiniZ   1.0e-8    % initial B_z, in code units
 
-**BiniX/BiniY/BiniZ**: If B\_SET\_IN\_PARAMS is turned on at compile-time, then when starting from an initial condition (not a restart), the B-fields of all gas are initialized to these X/Y/Z values (given here in Gauss, these will be converted to code units). If B\_SET\_IN\_PARAMS is not active, the initial B-fields will be read from the ICs file instead (these values are ignored).
+**BiniX/BiniY/BiniZ**: If MHD\_B\_SET\_IN\_PARAMS is turned on at compile-time, then when starting from an initial condition (not a restart), the B-fields of all gas are initialized to these X/Y/Z values (given here in Gauss, these will be converted to code units). If MHD\_B\_SET\_IN\_PARAMS is not active, the initial B-fields will be read from the ICs file instead (these values are ignored).
+
+
+    %---- Thermal Conduction (CONDUCTION on)
+    %--- set coefficient kappa [code units] or, if CONDUCTION_SPITZER on, multiplies value
+    ConductionCoeff  1.0  % set/multiply conduction coefficient
+
+**ConductionCoeff**: This defines the conductivity ($\kappa$) coefficient, for physical thermal conduction (CONDUCTION on). If "CONDUCTION\_SPITZER" is on, the relevant coefficients are calculated physically; these are simply dimensionless multipliers (if, for example, you run a non-MHD version of the calculation, people often set a multiplier $<1$ to represent suppression by tangled magnetic fields. Of course, since the code correctly handles anisotropic conduction with MHD, you should really use that!). If "CONDUCTION\_SPITZER" is off, these are used directly (they should be given in code units: we use *conductivities* here, not diffusivities, so the units are mass / (time $\times$ length).  
 
 
     %---- Navier-Stokes Viscosity (VISCOSITY on)
@@ -1479,26 +1946,34 @@ Here, we will list and describe some of these, but this will necessarily be an i
 **ShearViscosityCoeff/BulkViscosityCoeff**: These define the shear ($\eta$) and bulk viscosity ($\zeta$) coefficients, for physical Navier-Stokes viscosity (VISCOSITY on). If "VISCOSITY\_BRAGINSKII" is on, the relevant coefficients are calculated physically; these are simply dimensionless multipliers (if, for example, you run a non-MHD version of the calculation, people often set a multiplier $<1$ to represent suppression by tangled magnetic fields. Of course, since the code correctly handles anisotropic viscosity with MHD, you should really use that!). If "VISCOSITY\_BRAGINSKII" is off, these are used directly (they should be given in code units: we use *dynamic viscosities* here, so the units are mass / (time $\times$ length). 
 
 
-    %---- Thermal Conduction (CONDUCTION on)
-    %--- set coefficient kappa [code units] or, if CONDUCTION_SPITZER on, multiplies value
-    ConductionCoeff  1.0  % set/multiply conduction coefficient
-
-**ConductionCoeff**: This defines the conductivity ($\kappa$) coefficient, for physical thermal conduction (CONDUCTION on). If "CONDUCTION\_SPITZER" is on, the relevant coefficients are calculated physically; these are simply dimensionless multipliers (if, for example, you run a non-MHD version of the calculation, people often set a multiplier $<1$ to represent suppression by tangled magnetic fields. Of course, since the code correctly handles anisotropic conduction with MHD, you should really use that!). If "CONDUCTION\_SPITZER" is off, these are used directly (they should be given in code units: we use *conductivities* here, not diffusivities, so the units are mass / (time $\times$ length).  
-
-
     %---- Turbulent Diffusion Master Switch (TURB_DIFFUSION on) 
     TurbDiffusionCoefficient  1.0   % Normalizes diffusion rates, should be ~1 
 
 **TurbDiffusionCoefficient**: Multiplies the dimensionless diffusion coefficient for the Smagorinski turbulent eddy diffusion subgrid-scale model (relative to the value 'recommended' by Smagorinski in three dimensional problems). This multiplies all the diffusion rates set by "TURB\_DIFFUSION\_X" compile-time flags.
 
     
-    %--- Cosmic Ray + Gas Fluids (COSMIC_RAYS)
+    %--- Cosmic Ray + Gas Fluids (COSMIC_RAYS on)
     CosmicRayDiffusionCoeff     1.0     % multiplies anisotropic diffusion/streaming coefficients
     CosmicRay_SNeFraction       0.1     % fraction of SNe ejecta kinetic energy into cosmic rays (~10%)
 
 **CosmicRayDiffusionCoeff**: Multiplies the diffusion coefficients for cosmic ray diffusion/streaming (COSMIC\_RAYS on), by this dimensionless number. As with the diffusion coefficients above, this is often set to some "suppression factor" in pure hydro runs, to mimic the effects of magnetic fields. If MHD is on, the anisotropic cosmic ray diffusion and streaming is solved directly. The coefficients are calculated self-consistently according to the approximate relations described above.
 
 **CosmicRay\_SNeFraction**: If COSMIC\_RAYS and GALSF\_FB\_SNE\_HEATING are both on, then a fraction (typically calculated and observationally inferred to be $\sim 0.1$) of the initial supernova kinetic energy of each explosion is deposited into cosmic rays.
+
+
+
+    %---- Dust-Gas Mixtures (GRAIN_FLUID on)
+    Grain_Internal_Density      1.0     % internal/material density of grains in g/cm^3
+    Grain_Size_Min              1.e-6   % minimum grain size in cm
+    Grain_Size_Max              1.e-4   % maximum grain size in cm
+
+**Grain_Internal_Density**: This specifies the internal or material density of the grains (all grains are assumed to have the same density), in cgs (g/cm^3). This (together with the code units and grain sizes) will determine the grain drag forces.
+
+**Grain_Size_Min**/**Grain_Size_Max**: Minimum/maximum grain size (in cm). By default, the code will uniformly distribute grain "super-particles" in log-size between the minimum and maximum sizes. If you wish to hard-code grain sizes in the initial conditions, or modify the grain size spectrum generated upon startup of the simulation, you just need to modify this line in `init.c` (specifically look for the line containing `All.Grain_Size_Min`, which sets the variable `P[i].Grain_Size` used in the computations).
+
+
+<a name="params-optional-sf"></a>
+### _Star, Black Hole, and Galaxy Formation_ 
 
 
     %---- Star Formation parameters (GALSF on)
@@ -1512,33 +1987,42 @@ Here, we will list and describe some of these, but this will necessarily be an i
      
     %---- sub-grid (Springel+Hernquist/GADGET/AREPO) "effective equation of state" 
     %------- star formation+feedback model (GALSF_EFFECTIVE_EQS on)
-    MaxSfrTimescale      4.0        % in code units
-    TempSupernova        3.0e8      % in Kelvin 
-    TempClouds           1000.0     % in Kelvin 
-    FactorSN             0.1        % SNe coupling frac 
-    FactorEVP            3000.0     % controls Kennicutt normalization 
-    FactorForSofterEQS   1.0        % interpolate between 'stiff' and isothermal EOS
+    MaxSfrTimescale     4.0         % code units (SF timescale at 2-phase threshold)
+    TempSupernova       3.0e8       % in Kelvin (temp of hot gas in 2-phase model)
+    TempClouds          1000.0      % in Kelvin (temp of cold gas in 2-phase model)
+    FactorSN            0.1         % SNe coupling frac (frac of egy retained in hot)
+    FactorEVP           3000.0      % controls Kennicutt normalization 
+    FactorForSofterEQS  1.0         % interpolate between 'stiff' and isothermal EOS
     %------- the sub-grid "decoupled winds" model (GALSF_SUBGRID_WINDS on)
-    WindEfficiency        2.0   % mass-loading (Mdot_wind = SFR * WindEfficiency) 
-    WindEnergyFraction    0.06  % fraction of SNe energy in winds (sets velocity) 
-    WindFreeTravelMaxTime 0.1   % 'free-stream time' in units of t_Hubble(z)
-    WindFreeTravelDensFac 0.1   % 'free-stream' until density < this * CritPhysDensity
+    WindEfficiency          2.0     % mass-loading (Mdot_wind = SFR * WindEfficiency) 
+    WindEnergyFraction      0.06    % fraction of SNe energy in winds (sets velocity) 
+    WindFreeTravelMaxTime   0.1     % 'free-stream time' in units of t_Hubble(z)
+    WindFreeTravelDensFac   0.1     % 'free-stream' until density < this * CritPhysDensity
+    %------- alternative winds (set GALSF_SUBGRID_WIND_SCALING == 1 or 2)
+    %------- (scaling with local dark matter properties, as Dave/Oppenheimer/Mannucci/Illustris)
+    VariableWindVelFactor    1.0    % wind velocity relative to estimated halo v_escape
+    VariableWindSpecMomentum 5000.  % wind momentum per unit stellar mass (code velocity units)
 
 These factors all relate to the popular sub-grid model for star formation and feedback originally developed by Springel & Hernquist, MNRAS, 2003, 339, 289. We point the interested reader to that paper for the detailed description. This replaces explicit resolution of a multi-phase ISM (as well as any cooling below ~10^4 K) with a stiff "effective equation of state" for gas above some modest density, motivated by a McKee & Ostriker-like analytic toy model for a two-phase ISM. This also includes sub-grid "decoupled" winds: essentially, for every unit mass stars formed, some proportional mass is forced out of the galaxy at a fixed velocity or at the escape velocity (depending on compile flags), with the "mass loading" set by hand. This is the model used in GADGET-2/3 and AREPO, and in many major simulation projects ("Illustris", "OWLS", "Eagle", the Oppenheimer & Dave IGM studies, and more).
 
-**MaxSfrTimescale**: This controls the normalization of the SFR. This specifically normalizes the SFR timescale at the threshold density for SF, so effectively determines the efficiency per free-fall time
+**MaxSfrTimescale**: This controls the normalization of the SFR. This specifically normalizes the SFR timescale at the threshold density for SF, so effectively determines the efficiency per free-fall time. Make sure you match this parameter to your choices for things like the critical density for star formation, in order to control the star formation rate at the level you actually intend to set it.
 
-**TempSupernova**/**TempClouds**/**FactorSN**/**FactorEVP**: These control the sub-grid analytic model assumptions about the two-phase medium (temperature of "hot phase" gas, "cold clouds", SNe coupling efficiency, and "evaporation" respectively): see the sub-grid model methods paper for details. Ultimately, these parameters control the exact "stiffness" of the sub-grid equation of state (its effective polytropic index) and the normalization/slope of the Kennicutt law (which is set explicitly by these parameters when the sub-grid models are used). 
+**TempSupernova**/**TempClouds**/**FactorSN**/**FactorEVP**: These control the sub-grid analytic model assumptions about the two-phase medium (temperature of "hot phase" gas, "cold clouds", SNe coupling efficiency, and "evaporation" respectively): see the sub-grid model methods paper for details. Ultimately, these parameters control the exact "stiffness" of the sub-grid equation of state (its effective polytropic index) and the normalization/slope of the Kennicutt law (which is set explicitly by these parameters when the sub-grid models are used). The values above are plausible defaults, but users should experiment to see how this modifies the resulting EOS. 
 
-**FactorForSofterEQS**: Interpolation factor between the "full" or "stiff" Springel & Hernquist effective equation of state and a simple isothermal (10^4 K) equation of state. Set=1 for the S+H effective EOS, =0 for the isothermal case; the interpolation is linear in pressure (at fixed density) in between.
+**FactorForSofterEQS**: Interpolation factor between the "full" or "stiff" Springel & Hernquist effective equation of state and a simple isothermal (10^4 K) equation of state. Set=1 for the S+H effective EOS, =0 for the isothermal case; the interpolation is linear in pressure (at fixed density) in between (so if the 'subgrid' EOS has pressure $P_{\rm subgrid}=100$, and the isothermal eos $P_{\rm iso}=1$, then the interpolated EOS with $q_{\rm eos}=$`FactorForSofterEQS`$=0.25$ will have $P_{\rm effective}=q_{\rm eos}\,P_{\rm subgrid} + (1-q_{\rm eos})\,P_{\rm iso} = 25.75$. 
 
-**WindEfficiency**: Assumed wind mass-loading. The winds are made of particles/cells "kicked" stochastically, at a rate $\dot{M}_{\rm wind} = \epsilon\,\dot{M}_{\ast}$ where $\epsilon=$ WindEfficiency.
+**WindEfficiency**: Assumed wind mass-loading. The winds are made of particles/cells "kicked" stochastically, at a rate $\dot{M}_{\rm wind} = \epsilon\,\dot{M}_{\ast}$ where $\epsilon=$`WindEfficiency`.
 
-**WindEnergyFraction**: Fraction of SNe energy (time and stellar-mass integrated over the IMF and all ages of stellar populations) coupled in the winds. This sets the wind "kick" velocities.
+**WindEnergyFraction**: Fraction of SNe energy (time and stellar-mass integrated over the IMF and all ages of stellar populations) coupled in the winds. This sets the wind "kick" velocities. Test this to determine the launch velocity, the default assumes a Chabrier IMF with a standard $10^{51}$ ergs per SNe.
 
-**WindFreeTravelMaxTime**: Maximum assumed "free travel time" for the wind in units of the Hubble time at the current simulation redshift. If this is >0, the winds are "decoupled" (not allowed to interact via hydrodynamics) until they reach this time or WindFreeTravelLength. This is the standard in e.g. Illustris; for the model used in OWLs, set this =0 (no streaming) and boost the WindEnergyFraction.
+**WindFreeTravelMaxTime**: Maximum assumed "free travel time" for the wind in units of the Hubble time at the current simulation redshift. If this is >0, the winds are "decoupled" (not allowed to interact via hydrodynamics) until they reach this time or WindFreeTravelLength. This is the standard in e.g. Illustris; for the assumption used in the OWLs/EAGLE simulations, set this =0 (no streaming) and boost the WindEnergyFraction instead.
      
 **WindFreeTravelDensFac**: Winds will free-stream until they reach a density equal to this times the critical density at which SF is allowed. Set equal to zero to ignore (or some high value to always trigger it).
+
+**VariableWindVelFactor**: If the config.sh parameter GALSF\_SUBGRID\_WIND\_SCALING is included and set to 1 or 2, a different wind model is included which scales the wind properties with either halo mass or the local DM velocity dispersion. In that case, this parameter multiplies the wind outflow velocity relative to the "default" value estimated in that module. 
+
+**VariableWindSpecMomentum**: If the config.sh parameter GALSF\_SUBGRID\_WIND\_SCALING is included and set to 1 or 2, a different wind model is included which scales the wind properties with either halo mass or the local DM velocity dispersion. In that case, this parameter determines the specific momentum of the wind for purposes of determining the mass-loading. The units are wind momentum per unit stellar mass, so it has the units of the code velocity.
+
 
      
     %-------------- FIRE (PFH) explicit star formation & feedback model 
@@ -1584,26 +2068,40 @@ These parameters control the stellar feedback models developed in the series of 
      
     %-------------- Black Hole accretion & formation (BLACK_HOLES on)
     %--- formation/seeding  
-    MinFoFMassForNewSeed       10.	    % log(M_stars) for on-the-fly FoF seeding 
-    TimeBetOnTheFlyFoF         200000   % time (in sec) between FoF searches 
-    SeedBlackHoleMass          1.0e-7 	% initial mass (on-the-fly or single galaxy) 
-    %--- accretion  
-    BlackHoleAccretionFactor     1.0	% multiplier for mdot 
-    BlackHoleEddingtonFactor     1.0	% fraction of eddington to cap (can be >1) 
-    BlackHoleNgbFactor           3.0	% multiplier for kernel neighbors for BH 
-    BlackHoleMaxAccretionRadius  0.02	% max radius for BH neighbor search/accretion 
-    BlackHoleRadiativeEfficiency 0.1    % radiative efficiency 
+    SeedBlackHoleMass            1.0e-7 	% initial mass (on-the-fly or single galaxy)
+    SeedAlphaDiskMass            0.0        % initial mass in the alpha disk (BH_ALPHADISK_ACCRETION)
+    SeedBlackHoleMinRedshift     2.0        % minimum redshift where new BH particles are seeded (lower-z ceases seeding)
+    SeedBlackHoleMassSigma       0.5        % lognormal standard deviation (in dex) in initial BH seed masses
+    %----- (specific options for on-the-fly friends-of-friends based BH seeding: FOF on)
+    MinFoFMassForNewSeed         10.	    % minimum mass of FOF group (stars or DM) to get seed, in code units
+    TimeBetOnTheFlyFoF           1.01       % time (in code units, e.g. scale-factor) between on-the-fly FOF searches
+    %--- accretion
+    BlackHoleAccretionFactor     1.0	    % multiplier for mdot (relative to model)
+    BlackHoleEddingtonFactor     1.0	    % fraction of eddington to cap (can be >1) 
+    BlackHoleNgbFactor           3.0	    % multiplier for kernel neighbors for BH 
+    BlackHoleMaxAccretionRadius  0.02	    % max radius for BH neighbor search/accretion (code units)
+    BlackHoleRadiativeEfficiency 0.1        % radiative efficiency (for accretion and feedback)
     %--- feedback 
-    BlackHoleFeedbackFactor      1.0	% generic feedback strength multiplier 
-    BH_FluxMomentumFactor        1.0	% multiply radiation pressure (BH_PHOTONMOMENTUM) 
-    BAL_f_accretion              0.5    % fraction of gas swallowed by BH (BH_BAL_WINDS) 
-    BAL_v_outflow              30000	% velocity (km/s) of BAL outflow (BH_BAL_WINDS) 
+    BlackHoleFeedbackFactor      1.0	    % generic feedback strength multiplier 
+    BH_FluxMomentumFactor        1.0	    % multiply radiation pressure (BH_PHOTONMOMENTUM) 
+    BAL_f_accretion              0.5        % fraction of gas swallowed by BH (BH_WIND options)
+    BAL_v_outflow                30000	    % velocity (km/s) of BAL outflow (BH_WIND options)
+    BAL_internal_temperature     1.0e4      % internal temperature (K) of BAL outflow (BH_WIND_SPAWN)
+    BAL_wind_particle_mass       1.e-10     % mass of 'virtual wind particles' in code units (BH_WIND_SPAWN)
 
-These parameters control the sub-grid models for super-massive black holes, enabled by the master compile-time switch BLACK\_HOLES. There are many different compile-time options for the seeding of BH particles, for their accretion physics, and for different feedback physics. However, they are currently controlled by a common set of parameters (e.g. all accretion models use the same "BlackHoleAccretionFactor" term).
+These parameters control the sub-grid models for super-massive black holes, enabled by the master compile-time switch BLACK\_HOLES. There are many different compile-time options for the seeding of BH particles, for their accretion physics, and for different feedback physics. These are described above (Config.sh section) However, they are mostly controlled by a common set of parameters (e.g. all accretion models use the same "BlackHoleAccretionFactor" term).
 
-**MinFoFMassForNewSeed**/**TimeBetOnTheFlyFoF**: These control BH seeding in large-volume cosmological simulations, where an on-the-fly friends-of-friends search is performed every TimeBetOnTheFlyFoF, and halos with a stellar mass $>(10^{\rm MinFoFMassForNewSeed})/M_{\odot}$) are assigned a seed BH.
+**SeedBlackHoleMass**: This gives the initial BH mass (in code units) when an on-the-fly seeding from the FoF method occurs. Likewise for any other on-the-fly seeding (for example, this determines the initial mass of the BHs in the on-the-fly local model, from BH\_SEED\_FROM\_LOCALGAS). In simulations which start with pre-existing BHs (from ICs), this should be set to the initial BH mass in code units (the *particle* mass will be read from the ICs, but GIZMO, as GADGET, separately tracks the "black hole" mass, and unless you construct special ICs that will not be read in). It's easy to forget this! If you restart from a snapshot or restartfile, the BH masses will be read from the file. 
 
-**SeedBlackHoleMass**: This gives the initial BH mass when an on-the-fly seeding from the FoF method occurs. Likewise for any other on-the-fly seeding (for example, this determines the initial mass of the BHs in the on-the-fly population III star model, from BH\_POPIII\_SEEDS). In simulations which start with pre-existing BHs (from ICs), this should be set to the initial BH mass in code units (the *particle* mass will be read from the ICs, but GIZMO, as GADGET, separately tracks the "black hole" mass, and unless you construct special ICs that will not be read in). It's easy to forget this! If you restart from a snapshot or restartfile, the BH masses will be read from the file. 
+**SeedAlphaDiskMass**: Initial mass in the viscous alpha-disk (in code units), when BH\_ALPHADISK\_ACCRETION is enabled. Usually zero, unless you want to initialize BHs rapidly accreting.
+
+**SeedBlackHoleMinRedshift**: Minimum redshift, below which seed BHs will not be spawned on-the-fly (regardless of the seed model in the simulations). 
+
+**SeedBlackHoleMassSigma**: In the seed models which spawn BHs on the fly, this parameter allows them to have random masses drawn from a log-normal distribution. Then **SeedBlackHoleMass** becomes the median/peak of the log-normal, and this specifies with width (in dex) of the distribution function. To fix the BH mass, simply set this to zero.
+
+**MinFoFMassForNewSeed**: This sets the minimum mass of an on-the-fly FOF group which will get a BH seed (if a BH isn't already present), when using the BH\_SEED\_FROM\_FOF flag[s]. The mass is in code units, and refers to either the total mass (if BH\_SEED\_FROM\_FOF=0, where total halo mass is used to identify groups) or stellar mass (if BH\_SEED\_FROM\_FOF=1, where BHs are seeded in stellar groups specifically). 
+
+**TimeBetOnTheFlyFoF**: This specifies the time delay (in code units) between searches for FOF groups for the BH seeding. Searches can happen more frequently, at snapshot points, for example, when the FOF finder would run anyways, but this will periodically force the search. If the run is cosmological, this is a scale-factor, so setting it to 1.1 will force a search every time the scale factor is a factor 1.1 larger (must be >1, in this case); in a non-cosmological run it is just the normal code time unit (like for snapshot spacing). 
 
 **BlackHoleAccretionFactor**: Multiplies the accretion rate relative to the 'default' for whatever chosen accretion model is given by the compile-time choices. It can always be set =0 to prevent BH accretion.
 
@@ -1619,7 +2117,24 @@ These parameters control the sub-grid models for super-massive black holes, enab
 
 **BH\_FluxMomentumFactor**: This serves the same role as BlackHoleFeedbackFactor, specific to the radiation pressure terms from the BH. Currently this is separated just for de-bugging purposes.
 
-**BAL\_f\_accretion**/**BAL\_v\_outflow**: These control the model for accretion disk or broad-absorption line winds from the BH (compiler flag BH\_BAL\_WINDS). BAL\_f\_accretion controls the mass-loading of the winds: a fraction BAL\_f\_accretion of the mass in the inner accretion disk is assumed to be accreted, while (1-BAL\_f\_accretion) is blown out in the wind, with launch velocity BAL\_v\_outflow in km/s. See the paper presenting this model (Hopkins, Faucher-Giguere, Torrey et al. 2014) for more details.
+**BAL\_f\_accretion**/**BAL\_v\_outflow**: These control the model for accretion disk or broad-absorption line winds from the BH (compiler flags beginning with BH\_WINDS). BAL\_f\_accretion controls the mass-loading of the winds: a fraction BAL\_f\_accretion of the mass in the inner accretion disk is assumed to be accreted, while (1-BAL\_f\_accretion) is blown out in the wind, with launch velocity BAL\_v\_outflow in km/s. See the Config.sh discussion, or the `notes_blackholes` file, for more details. 
+
+**BAL\_internal\_temperature**/**BAL\_wind\_particle\_mass**: These options are specific to the module BH\_WIND\_SPAWN, and set the internal temperature (in K) and virtual particle mass (in code units) of the virtual "wind particles" spawned by the BH wind. 
+
+
+
+
+<a name="params-optional-grackle"></a>
+### _Grackle Cooling Module_ 
+
+    %-------------- Grackle UVB file (COOL_GRACKLE on)
+    GrackleDataFile		     CloudyData_UVB=HM2012.h5
+
+**GrackleDataFile**: If the COOL_GRACKLE cooling modules are enabled, the user needs to specify the relevant data file for the pre-compiled UV background files used by Grackle. Additional flags may be needed for more advanced Grackle options.
+
+
+<a name="params-optional-turb"></a>
+### _Driven Turbulence (Large-Eddy Simulations)_ 
 
 
     %-------------- Turbulent stirring parameters (TURB_DRIVING on)
@@ -1653,13 +2168,34 @@ These parameters control the optional module for stirred/driven turbulence (set 
 
 **ST\_Seed**: Random number generator seed for the modes. Given here so you can reproduce the results.
 
-**IsoSoundSpeed**: Sets the initial isothermal sound speed of the simulations. For a truly 'isothermal' test, set GAMMA=1.001, and the temperatures will be re-set as if GAMMA=1 but various unphysical divergences will be avoided. Otherwise this sets the sound speed at the mean density of the box, which will be re-set each timestep to correspond to the chosen ideal gas EOS. 
+**IsoSoundSpeed**: Sets the initial isothermal sound speed of the simulations. For a truly 'isothermal' test, set EOS_GAMMA=1.001, and the temperatures will be re-set as if EOS_GAMMA=1 but various unphysical divergences will be avoided. Otherwise this sets the sound speed at the mean density of the box, which will be re-set each timestep to correspond to the chosen ideal gas EOS. 
 
-**TimeBetTurbSpectrum**: If POWERSPEC\_GRID is set, this determines the time interval at which the power spectra are saved.
+**TimeBetTurbSpectrum**: If TURB\_DRIVING\_SPECTRUMGRID is set, this determines the time interval at which the power spectra are saved.
+
+<a name="params-optional-expansion"></a>
+### _Non-Standard Dark Matter, Dark Energy, Gravity, or Expansion_ 
+
+
+    %-------------- Parameters for non-standard or time-dependent Gravity/Dark Energy/Expansion (GR_TABULATED_COSMOLOGY on)
+    DarkEnergyConstantW       -1	    % time-independent DE parameter w, used only if no table
+    TabulatedCosmologyFile    CosmoTbl  % table with cosmological parameters
+
+**DarkEnergyConstantW**: If `GR_TABULATED_COSMOLOGY` is on, but none of the flags to actually read tabulated data are set (`GR_TABULATED_COSMOLOGY_W`, `GR_TABULATED_COSMOLOGY_H`, `GR_TABULATED_COSMOLOGY_G`), simple setting this parameter allows you to use an arbitrary constant (time-independent) value of the Dark Energy equation-of-state parameter "w". If the table is read, this will be ignored.
+
+**TabulatedCosmologyFile**: If the tabulated data is read, this specifies the name (file-path) of the file which contains the tabulated time-dependent cosmological parameters. The code will assume the file is standard ASCII text, with the relevant data in 5 columns separated by spaces. The format should be:
+
+```bash
+1.00 -1.00 1.00 1.00 1.00
+0.90 -1.05 0.90 1.01 1.00
+```
+
+Here Column (1) is scale factor ($a=1/(1+z)$). Column (2) is the Dark Energy equation-of-state $w(z)$, used if `GR_TABULATED_COSMOLOGY_W` is enabled. Column (3) is the Hubble function $E(z)$, e.g. for concordance $\Lambda$-CDM is just $E(z) = \sqrt{\Omega_{m}\,a^{-3}+\Omega_{K}\,a^{-2}+\Omega_{\Lambda}}$ -- note the normalization is still set by $H_{0}$ set as usual in the cosmological units of the parameterfile. This is used if `GR_TABULATED_COSMOLOGY_H` is enabled. If you want to use this with "standard" dark energy, just set the $w(z)$ values to $-1$ at all times. Columns (4)-(5) are used only if `GR_TABULATED_COSMOLOGY_G` is enabled. (4) Re-normalizes the gravitational contant $G$ at each time -- the default is the value set in the usual fashion in either the parameterfile above, or by the code, and then it will be multiplied by this number. Column (5) multiples the Hubble function by an appropruate multiplicative correction factor at each time. If you have pre-tabulated the correct $H(z)$ yourself already, just write this into column (3) and set column (5) to unity at all times. 
 
 
 
-## Developer-Mode Parameters
+
+<a name="params-debug"></a>
+## Developer-Mode Parameters 
 
 All numerical methods include purely numerical parameters (for example, the Courant Factor), that control things like the error tolerance of the method. There is never a single value of these parameters that works best for all possible problems. However, they should only be modified if you really know what you are doing, or else the results can be disastrous (the code might look fine, but simply give you the wrong answer). GIZMO therefore defaults to hard-coding these to 'compromise' values that work well on a diverse array of test problems (see the methods paper). However, if you enable DEVELOPER\_MODE in Config.sh, you can manually set these to whatever values you desire. BE CAREFUL!!!!
 
@@ -1721,26 +2257,54 @@ When running the code with an SPH hydro solver, some additional parameters are r
 
 ***
 
+<a name="snaps"></a>
+# 9. Snapshot & Initial Condition Files 
 
-# 9. Snapshot & Initial Condition Files
+<a name="snaps-ics"></a>
+## Initial Conditions (Making & Reading Them)
 
-## Initial Conditions
+
+<a name="snaps-ics-icsformats"></a>
+### _File Formats and Necessary Fields_ 
 
 GIZMO initial conditions are **exactly** identical to GADGET. Any GADGET-compatible IC should be trivially useable in GIZMO, and vice versa.
 
-The possible file formats for initial conditions are the same as those for snapshot files, and are selected with the ICFormat parameter. However, only the blocks up to and including the gas temperature (if gas particles are included) need to be present; gas densities, kernel lengths and all further blocks need not be provided. In preparing initial conditions for simulations with gas particles, the temperature block can be filled with zero values, in which case the initial gas temperature is set in the parameterfile with the InitGasTemp parameter. However, even when this is done, the temperature block must still be present. Note that the field Time in the header will be ignored when GIZMO is reading an initial conditions file. Instead, you have to set the time of the start of the simulation with the TimeBegin option in the parameterfile.
+The possible file formats for initial conditions are the same as those for snapshot files, and are selected with the ICFormat parameter. In fact, any valid snapshot file is also automatically a valid IC file. However, only the blocks up to and including the gas temperature (if gas particles are included) need to be present (so an IC file can have significantly less information than a full snapshot file). The IC file must include the initial positions, masses, and velocities of all particles, and [for gas] the initial internal energies. That information, plus the relevant header data (which you can see an example of in the "make_IC.py" file in the scripts folder of the code) is all you need for an IC file. Things like gas densities, kernel lengths and all further blocks need not be provided. In preparing initial conditions for simulations with gas particles, the temperature block can be filled with zero values, in which case the initial gas temperature is set in the parameterfile with the InitGasTemp parameter. However, even when this is done, the temperature block must still be present. Note that the field Time in the header will be ignored when GIZMO is reading an initial conditions file. Instead, you have to set the time of the start of the simulation with the TimeBegin option in the parameterfile.
+
+For details on actually reading the ICs (feeding them into the simulations), see the section in this Guide on Compiling & Using the Code (which walks you through how to actually read an IC into GIZMO. The section below on snapshots has much more detailed information on the actual *file formats* which can be used for GIZMO ICs.
 
 
-## Snapshots
-
-### Binary Format
-
-Our 'standard' snapshot format is also exactly the same as GADGET (up to the addition of certain output fields when additional physics is active in the simulations). You should check the GADGET users guide, or you can just get the chapter specific to the snapshot format [here](http://www.tapir.caltech.edu/~phopkins/public/gadget_snapshot_chapter.pdf)
+<a name="snaps-ics-icsgenerators"></a>
+### _Generating Initial Conditions Files_ 
 
 
-### HDF5 Format 
+A large number of codes exist which can generate IC files for different types of GIZMO problems (again, anything that will generate ICs for GADGET will work for GIZMO). Here are (just a few) examples to get you started:
 
-If the hierarchical data format is selected as format for snapshot files (always recommended!) or initial conditions files, GIZMO accesses files with low level HDF5 routines. Advantages of HDF5 lie in its portability (e.g. automatic endianness conversion) and generality (which however results in somewhat more complicated read and write statements), and in the availability of a number of tools to manipulate or display HDF5 files. A wealth of information about HDF5 can be found on the website of the project.
++ Cosmological simulations (large-volume and "zoom-in"): For these simulations, the MUSIC code (hosted [here](https://bitbucket.org/ohahn/music)) is a fantastic utility to construct both large-volume and "zoom-in" simulations (with or without baryons). Other commonly used codes work as well (such as [NGenIC](https://www.h-its.org/tap-software-en/ngenic-code/), [S-GenIC](https://github.com/sbird/S-GenIC), [2LPT](http://cosmo.nyu.edu/roman/2LPT/), or [CICsASS](http://faculty.washington.edu/mcquinn/Init_Cond_Code.html) which allows for baryon-DM velocity offsets, or [FalconIC](https://falconb.org/) for modified-gravity ICs).  
+
++ Isolated galaxies and galaxy mergers: the most popular code is probably the many variants of Volker Springel's MakeDisk (or MakeGalaxy) code, which is not public but widely available upon request from Volker or collaborators. A similar code, perhaps somewhat less flexible, is [PyICs](https://github.com/jakobherpich/pyICs). Popular options also include codes like [GALIC](https://www.h-its.org/tap-software-en/galic-code/) which can generate arbitrary collisionless halo+disk+bulge systems (just not gas), or [StarScream](https://github.com/jayjaybillings/starscream) for collisionless systems, or [GalStep](https://github.com/ruggiero/galstep) designed for disks. Various cosmological and isolated-galaxy ICs are also public, for example from the [AGORA simulations](https://sites.google.com/site/santacruzcomparisonproject/details).  
+
++ Clusters and hydrostatic systems: [Toycluster](https://github.com/jdonnert/Toycluster) allows one to set up collisionless systems with gas (hydro or MHD) and more complex sub-structure than allowed by the tools above for single-galaxies and galaxy mergers.  
+
++ ISM, star formation, and proto-stellar disks: [MakeCloud](https://github.com/omgspace/MakeCloud) is a public code to generate ICs for turbulent clouds (hydro or MHD), with arbitrary initial rotation, written by Mike Grudic at Caltech.  
+
++ Fluid dynamics & MHD problems: the [Tests](#tests) portion of this User Guide links to pre-built ICs for dozens of test problems involving setups like multiphase fluid interfaces, shocktubes, spherical explosions, cloud-crushing problems, current sheets, field loops, rotors, Keplerian and galactic disks, and more.  
+
++ Build your own! For many applications, you can generate your own ICs. In the "scripts" folder of the GIZMO source code, the routine "make_IC.py" is a simple python script which generates a ready-to-go initial condition for GIZMO. This is a good starting point if you plan to build your own ICs -- it will show you what you need and how to set it up. All the ICs provided for test problems were built from variants of this script.  
+
+
+<a name="snaps-snaps"></a>
+## Snapshots 
+
+### _Un-Formatted Binary Format_
+
+The un-formatted binary snapshot format is also exactly the same as GADGET (up to the addition of certain output fields when additional physics is active in the simulations). If you are using this (usually for historical reasons), you should check the GADGET users guide, or you can just get the chapter specific to the snapshot format [here](http://www.tapir.caltech.edu/~phopkins/public/gadget_snapshot_chapter.pdf)
+
+Unless you have very good reason for using un-formatted binary (historical compatibility for some very special codes), you almost certainly DO NOT want to use this. Unformatted binary means that if even one byte is flipped, it can be difficult or impossible to recover data. Moreover, if your "snapshot reader" doesn't know **exactly** the format (to the byte) and ordering of the data, it will crash or give errors (which means running the code with slightly different options, which will produce different outputs, leads inevitably to in-ability to use the same analysis codes on the simulations). For those reasons this is maintained only for legacy purposes but users are **STRONGLY** advised to use HDF5 wherever possible.
+
+### _HDF5 Format_ 
+
+If the hierarchical data format is selected as format for snapshot files (always recommended!) or initial conditions files, GIZMO accesses files with low level HDF5 routines. Advantages of HDF5 lie in its portability (e.g. automatic endianness conversion), generality, ease of reading (different blocks in files appear as meta-data, so if your snapshot includes some extra data from some additional physics, which isn't expected by the routine you're using for snapshot-reading, it won't crash the code or give errors!). But the fields expected/required in a GADGET HDF5 file are preserved in GIZMO, so again, everything is cross-compatible between the codes. There are also a very large number of tools available to easily manipulate or display HDF5 files (for example, the standard python library [h5py](http://www.h5py.org/)). A wealth of information about HDF5 can be found on the [HDF5 Project Website](https://support.hdfgroup.org/HDF5/). 
 
 GIZMO stores the snapshot file data in several data groups, which are organized as fol￼lows:
 
@@ -1755,22 +2319,26 @@ GIZMO stores the snapshot file data in several data groups, which are organized 
 
 The Header group only contains attributes that hold the fields of the file header in the standard file format of GADGET-2 (see the chapter linked above for details).
 
+<a name="snaps-units"></a>
+## Units 
 
-### Units (some important notes)
+Remember, the units of the code are specified by you, the user, in the parameterfile, when you run the code. The outputs will, of course, be in these units, and the inputs are expected to also be in these units. However sometimes it isn't obvious (in cosmological simulations) whether the units are physical or not. We therefore provide some simple references below.
 
-"Standard" units of code, in a non-cosmological snapshot::
+The "Standard" code units, expected for both initial conditions and snapshots, in a non-cosmological snapshot, are::
 
-    h = H0 / (100 km/s/Mpc) = set by HubbleParam (our default = 0.7) 
-    MASS_code = set by UnitMass_in_g (our default = 10^10 h^-1 M_sun) 
-    LENGTH_code = set by UnitLength_in_cm (our default = 1 h^-1 kpc) 
-    VELOCITY_code = set by UnitVelocity_in_cm_per_s (our default = 1 km/s) 
-    TIME_code = LENGTH_code/VELOCITY_code (our default = 0.978 Gyr) 
-    INTERNAL ENERGY_code = VELOCITY_code^2 (our default = (km/s)^2) 
-    DENSITY_code = MASS_code/(LENGTH_code^3) 
-    MAGNETIC_FIELD_code = set by UnitMagneticField_in_gauss (our default = 1 Gauss)
+    h = H0 / (100 km/s/Mpc) = HubbleParam = (params.txt default = 0.7) 
+    MASS_code = UnitMass_in_g / h = (params.txt default = 10^10 h^-1 M_sun)
+    LENGTH_code = UnitLength_in_cm / h = (params.txt default = 1 h^-1 kpc) 
+    VELOCITY_code = UnitVelocity_in_cm_per_s = (params.txt default = 1 km/s) 
+    TIME_code = LENGTH_code/VELOCITY_code = (params.txt default = 0.978 h^-1 Gyr) 
+    INTERNAL ENERGY_code = VELOCITY_code^2 = (params.txt default = (km/s)^2) 
+    DENSITY_code = MASS_code/(LENGTH_code^3) = (params.txt default = 6.77e-22 h^-2 g/cm^3)
+    MAGNETIC_FIELD_code = UnitMagneticField_in_gauss = (params.txt default = 1 Gauss)
     DIVERGENCE_DAMPING_FIELD_code = MAGNETIC_FIELD_code * VELOCITY_code
 
-In cosmological snapshots, the units are *co-moving*::
+For each of the above "params.txt default" refers just to the default given in the example parameterfile that comes with the source code ("params.txt") in the "scripts" folder. The actual value is set by the variable in the parameterfile as noted. The ambiguity here is the "little h" factor, which is common as a historical note in cosmological simulations. If your simulation is non-cosmological, easiest is to set "h=1" and nothing will care (you don't care about the Hubble flow!) so you don't need to keep track of it. Otherwise it does require some care. So for example, if I set "UnitLength_in_cm" equal to "3.085678e21" in the params.txt file (1 kpc), and "HubbleParam" equal to "0.71", then if something in my snapshot with length units (say, the "x" coordinate position of a particle) has value "1.3", the physical value is given by: snapshot_value x LENGTH_code = 1.3*3.085678e21 cm / 0.71 = 1.83 kpc. 
+
+In cosmological simulations, many of the units are *co-moving*, and this needs to be accounted for::
 
     a_scale = 1/(1+z) = scale factor, also the "time unit" of the code  
     LENGTH_physical = LENGTH_code * a_scale 
@@ -1782,14 +2350,18 @@ In cosmological snapshots, the units are *co-moving*::
     INTERNAL_ENERGY_physical = INTERNAL_ENERGY_code 
     MAGNETIC_FIELD_physical = MAGNETIC_FIELD_code (note that *in* the code, co-moving units are used B_code=a_scale^2 B_phys, but in outputs these are converted to physical)
     DIVERGENCE_DAMPING_FIELD_physical = DIVERGENCE_DAMPING_FIELD_code (again, in-code, psi_physical = a_scale^3 psi_code)
+    
+So here, the statement `LENGTH_physical = LENGTH_code * a_scale` means that the code output in the snapshot file must be multiplied by both the specified units `LENGTH_code` (just as described above for non-cosmological snapshots) **and** the correction factor `a_scale` to go from co-moving to physical units. So let's take our example from above with length "1.3". We do the same thing as before, get 1.83 kpc -- but this is co-moving. Let's say this snapshot is at scale-factor `a_scale = 0.2` (redshift 4); the physical length is therefore `1.83 kpc * a_scale = 0.366 kpc`. 
 
-Note that the "kernel length" (or, for SPH, the "smoothing length") saved in the snapshot is the **maximum** radius out to which neighbors are searched (the 'radius of compact support'). The **resolution scale**, what is called "H\_sml" (the kernel length) or epsilon (the softening length) in the standard convention in the literature, is the scale length/standard deviation of the equivalent Gaussian or Plummer kernel. For our standard kernel, this is =KernelLength/2 (equivalent Gaussian and/or inter-particle spacing -- the grid-code equivalent $\Delta x$) or =KernelLength/2.8 (equivalent Plummer sphere); if you use the quintic kernel (enabled at compile-time), this is =KernelLength/3 (equivalent Gaussian). Something more accurate still like Dehnen & Aly's definition of the minimum stable soundwave wavelength gives ~KernelLength/3 for our standard kernel.
+Also note that as stated above the "time unit" of the code being "a_scale" means that things like the beginning/end time of the simulations, the timestep size, the formation times of star particles and current "time" saved in snapshots, will be scale factor, in cosmological runs. If you're not sure whether a time-type quantity is actually time or scale-factor, usually a quick sanity check is all that is needed (since scale factor only runs between 0 and 1). But remember, this is only for cosmological runs, for non-cosmological runs, everything is always in physical units.
+
+One more minor note: the "kernel length" (or, for SPH, the "smoothing length") saved in the snapshot is the **maximum** radius out to which neighbors are searched (the 'radius of compact support'). The **resolution scale**, what is called "H\_sml" (the kernel length) or epsilon (the softening length) in the standard convention in the literature, is the scale length/standard deviation of the equivalent Gaussian or Plummer kernel. For our standard kernel, this is =KernelLength/2 (equivalent Gaussian and/or inter-particle spacing -- the grid-code equivalent $\Delta x$) or =KernelLength/2.8 (equivalent Plummer sphere); if you use the quintic kernel (enabled at compile-time), this is =KernelLength/3 (equivalent Gaussian). Something more accurate still like Dehnen & Aly's definition of the minimum stable soundwave wavelength gives ~KernelLength/3 for our standard kernel.
 
 
+<a name="snaps-reading"></a>
+## Reading Snapshots (Examples) 
 
-### Reading the snapshots
-
-In the source code, the folder "scripts" contains two routines to read output snapshots: "readsnap.pro" and "readsnap.py". The former is for IDL, the latter for python, but they function similarly. These can be used as a guide to illustrate how to read the snapshots. Note that these routines are specific to snapshots from simulations run including certain common physics, and may have to be modified for the specific physics and conditions under which you run your simulation.
+In the source code, the folder "scripts" contains two routines to read output snapshots: "readsnap.pro" and "readsnap.py". The former is for IDL, the latter for python, but they function similarly. These can be used as a guide to illustrate how to read the snapshots. Note that these routines are specific to snapshots from simulations run including certain specific physics, and may have to be modified for the specific physics and conditions under which you run your simulation.
 
 The routine "readsnap.py" can be called by standard python installations, below we discuss how to use it, for a *specific* example, where we assume one is trying to read the outputs of a cosmological simulation with galaxy formation, star formation, cooling, and super-massive black hole physics enabled at compilation time. You should use this as a guide, not as an exact template for your uses of the code!
 
@@ -1915,10 +2487,12 @@ Some quantities are also specific to black hole particles (Type=5), including:
 **BH\_Mass\_AlphaDisk**: [N]-array (only included if BH\_ALPHADISK\_ACCRETION is active); the mass in the sub-grid viscous BH accretion disk 
 
 ***
+<a name="logs"></a>
+# 10. Log Outputs & Diagnostic Files 
 
-# 10. Log Outputs & Diagnostic Files
 
-## Standard output & error
+<a name="logs-stdout"></a>
+## Standard output & error 
 
 The code will write to standard error in general only when there is an error which is not handled by a "clean" exit/code termination within the code (so it you see a bunch of outputs to stderr, you should try to find out whats happening!). The code will output a very large amount of information to stdout. This is generally channeled through a single master process ("Task 0"), to avoid slowing down processes, but all processes are capable of writing to stdout. It is recommended that you route this to a named file so that you can track it. An example from a single timestep might look like:
 
@@ -2110,7 +2684,7 @@ This is a very technical and hard-to-parse file containing the balance informati
 
 Various specific physics modules (enabled by different compile-time flags) will output their own files. Some examples are given below:
 
-### sfr.txt 
+### sfr.txt
 
 Models with star formation (GALSF on) will output this file. An output looks like: 
 
@@ -2152,13 +2726,14 @@ Columns are (1) simulation time, (2) number of particles active which could (pot
 
 ***
 
-# 11. Test Problems
+<a name="tests"></a>
+# 11. Test Problems 
 
-Here we outline the setup, initial conditions files, and parameterfiles needed to run a number of interesting code test problems. Most of these problems come from the code paper; we refer you to that paper for detailed discussion of each test as well as comparisons between various numerical methods. 
+Here we outline the setup, initial conditions files, and parameterfiles needed to run a large number of interesting code test problems. Most of these problems come from the code paper; we refer you to that paper for detailed discussion of each test as well as comparisons between various numerical methods. 
 
 All the ICs and example parameterfiles mentioned here -- enough to let you run every one of these tests, is available in the directory [here](http://www.tapir.caltech.edu/~phopkins/sims/):
 
-http://www.tapir.caltech.edu/&#126;phopkins/sims/
+[`http://www.tapir.caltech.edu/~phopkins/sims/`](http://www.tapir.caltech.edu/~phopkins/sims/)
 
 The names should be fairly self-explanatory, but are given in the descriptions of each problem, just in case.
 
@@ -2168,10 +2743,11 @@ Similarly, the ICs here are intended to get you started - you could obviously ch
 
 I've also made an effort to "pre-package" these as much as possible, so you can run them with relatively little effort. They don't come with any gaurantees though!
 
+<a name="tests-eqm"></a>
+## Equilibrium and Steady-State Tests 
 
-## Equilibrium and Steady-State Tests
-
-### Linear Traveling Soundwave
+<a name="tests-eqm-soundwave"></a>
+### Linear Traveling Soundwave 
 
 This is a simple linear one-dimensional traveling soundwave, following the example [here](http://www.astro.princeton.edu/~jstone/Athena/tests/linear-waves/linear-waves.html)
 
@@ -2185,18 +2761,18 @@ Note that *most* of the run-time parameter settings in the file are totally irre
 
 Make sure the following flags are set in the Config.sh file:
 
-    PERIODIC
-    ONEDIM
-    NOGRAVITY
-    HAVE_HDF5
+    BOX_PERIODIC
+    BOX_SPATIAL_DIMENSION=1
+    SELFGRAVITY_OFF
     OUTPUT_IN_DOUBLEPRECISION
     INPUT_IN_DOUBLEPRECISION
-    GAMMA=(5.0/3.0)
+    EOS_GAMMA=(5.0/3.0)
 
 Plus, of course, whatever flags are necessary to specify the hydro solver you want to use.
 
 
-### The Square Test
+<a name="tests-eqm-square"></a>
+### The Square Test 
 
 Here we test how well a contact discontinuity can be advected, particularly one with a non-trivial boundary shape. This is a major problem in grid/AMR codes, where there is far too much diffusion. While much improved, it is also surprisingly difficult to maintain a 'clean' edge of the square in SPH, because of spurious surface tension and pressure gradient errors along the discontinuity.
 
@@ -2208,16 +2784,17 @@ Parameterfile is "square.params"
 
 In Config.sh, enable:
 
-    PERIODIC
-    TWODIMS
-    NOGRAVITY
-    HAVE_HDF5
-    GAMMA=1.4
+    BOX_PERIODIC
+    BOX_SPATIAL_DIMENSION=2
+    SELFGRAVITY_OFF
+    EOS_GAMMA=1.4
 
 Plus your hydro solver!
 
 
-### The Gresho Vortex
+<a name="tests-eqm-gresho"></a>
+### The Gresho Vortex 
+
 
 This is the triangular vortex of Gresho and Chan (1980). A two-dimensional gas with uniform $\rho=1$ is initialized in a periodic domain $0 < x < 1$, $0 < y < 1$, with zero radial velocity, and a pressure gradient designed to exactly balance rotational motion (see the code paper for the details of the setup). The problem tests the ability of a code to handle sub-sonic turbulence and control very small pressure gradient errors. 
 
@@ -2229,16 +2806,17 @@ Parameterfile: "gresho.params"
 
 In Config.sh, enable:
 
-    PERIODIC
-    TWODIMS
-    NOGRAVITY
-    HAVE_HDF5
-    GAMMA=(1.4)
+    BOX_PERIODIC
+    BOX_SPATIAL_DIMENSION=2
+    SELFGRAVITY_OFF
+    EOS_GAMMA=(1.4)
     
 In the paper, we evolve this to $t=3$. Many SPH studies only evolve to $t=1$, because this is a particularly challenging problem for SPH (you will find you need to increase the neighbor number substantially to get anything decent looking with SPH methods). If you want to run a grid-code comparison, you should add a constant velocity to the vortex: this wont have any effect on the GIZMO hydro methods, but will substantially change the grid code result (the result with no boost looks prettier, but it is fairly misleading about the accuracy of convergence of the code).
 
     
-### Keplerian Disks
+<a name="tests-eqm-keplerian"></a>
+### Keplerian Disks 
+
 
 We now consider a cold Keplerian disk test problem. This is a critical problem for understanding the ability of codes to conserve angular momentum and follow gas in gravitational orbits for any length of time. Disks, in particular, are ubiquitous in astrophysics, and unlike the vortex problem above are dominated by gravitational acceleration rather than pressure forces (with the rotation velocity often super or trans-sonic); this focuses on that regime.
 
@@ -2256,11 +2834,10 @@ Parameterfile: "keplerian.params"
 
 In Config.sh, enable:
 
-    TWODIMS
-    NOGRAVITY
-    ANALYTIC_GRAVITY
-    HAVE_HDF5
-    GAMMA=(5.0/3.0)
+    BOX_SPATIAL_DIMENSION=2
+    SELFGRAVITY_OFF
+    GRAVITY_ANALYTIC
+    EOS_GAMMA=(5.0/3.0)
     
 And make sure you go into the file gravity/analytic\_gravity.h and un-comment the line:
 
@@ -2269,10 +2846,12 @@ And make sure you go into the file gravity/analytic\_gravity.h and un-comment th
 within the routine "add\_analytic\_gravitational\_forces". Otherwise the code won't know what to use for the analytic gravitational forces.
 
 
-## Shock and Non-Linear Jump Tests
+<a name="tests-shocks"></a>
+## Shock and Non-Linear Jump Tests 
 
 
-### Sod Shock Tube
+<a name="tests-shocks-sod"></a>
+### Sod Shock Tube 
 
 This is a standard Riemann problem (similar to those used in many basic code tests). We set up a one-dimensional Sod shock tube with a left state ($x < 0$) described by $P_{1}=1$, $\rho_{1}=1$, $v_{1}=0$ and right state ($x\ge 0$) with $P_{2}=0.1795$, $\rho_{2}=0.25$, $v_{2}=0$, and $\gamma=1.4$. These parameters follow e.g. Hernquist and Katz 1989, Rasio and Shapiro 1991, Wadsley 2004, Springel 2005, and others. The test is modest resolution, with an initial $100$ particles in the range $-10 < x < 10$ (spacing $\Delta x \approx 0.2$). Note that the box is more extended, but the rest of it is 'filler'. 
 
@@ -2286,18 +2865,18 @@ As in all the tests above *most of the parameters here are irrelevant*, but this
 
 In Config.sh, enable:
 
-    PERIODIC
-    ONEDIM
-    NOGRAVITY
-    HAVE_HDF5
+    BOX_PERIODIC
+    BOX_SPATIAL_DIMENSION=1
+    SELFGRAVITY_OFF
     OUTPUT_IN_DOUBLEPRECISION
     INPUT_IN_DOUBLEPRECISION
-    GAMMA=1.4
+    EOS_GAMMA=1.4
     
 Unlike the 'steady-state' problems, the exact answer here is not the same as the initial conditions. If you go to the same website with the initial conditions and parameterfile, and get the file "shocktube\_exact.txt" you'll have an ASCII table with the exact solution for the shocktube at time $t=5.0$. That file explains the different columns to which we compare in the code paper (density, pressure, velocity, and entropy, as a function of x-position; entropy is defined by the entropic function $s=P/\rho^{\gamma}$ ). If you vary slope limiters, you can see how this affects the 'ringing' of solutions. But all the methods should do fairly well on this test, with subtle differences.
 
+<a name="tests-shocks-woodward"></a>
+### Interacting Blastwaves (Woodward and Colella) 
 
-### Interacting Blastwaves (Woodward and Colella)
 
 Another related one-dimensional test problem is the interaction of two strong blast waves, from Woodward and Colella 1984. We initialize gas with density $\rho=1$, $\gamma=1.4$, $v=0$ in the domain $0< x <1$, with pressure $P=1000$ for $x<0.1$, $P=100$ for $x>0.9$, and $P=0.01$ elsewhere. The boundary conditions are reflective at $x=0$ and $x=1$. This features multiple interactions of strong shocks and rarefactions, and provides a powerful test of Reimann solvers (many crash on this test, and essentially all codes require some hierarchy of solvers as we have implemented). We use $400$ particles initially evenly spaced and equal-mass. In this problem, fixed-grid codes -- even without bulk advection of the problem -- will substantially diffuse the shock jumps because contact discontinuities must be advected. SPH does quite well, actually. MFM and MFV methods do well, but some care is needed to prevent the Reimann solver crashing (true of any Reimann-solver based method). 
 
@@ -2308,19 +2887,19 @@ Parameterfile: "interactblast.params"
 
 In Config.sh, enable:
 
-    BND_PARTICLES
-    REFLECT_BND_X
-    ONEDIM
-    NOGRAVITY
-    HAVE_HDF5
+    BOX_BND_PARTICLES
+    BOX_REFLECT_X
+    BOX_SPATIAL_DIMENSION=1
+    SELFGRAVITY_OFF
     OUTPUT_IN_DOUBLEPRECISION
     INPUT_IN_DOUBLEPRECISION
-    GAMMA=1.4
+    EOS_GAMMA=1.4
 
 The file "interactblast\_exact.txt" has the exact solution at time $t=0.038$. Most versions of the test focus on the comparison of the density as a function of position. In fixed-grid codes, diffusion associated with advecting the contact discontinuities smears out many of the density jumps. SPH should do well. If you experiment with things like neighbor number and condition number criteria for gradient matrices, you may find some of the Riemann-based methods crash, in the extreme shocks presented by this problem. It is also quite sensitive to the choice of time-stepping -- too large a timestep will lead to too big an 'initial' shock propagation, which will lead to slightly offset shock positions. 
 
 
-### Sedov Blastwaves / Point Explosions
+<a name="tests-shocks-sedov"></a>
+### Sedov Blastwaves / Point Explosions 
 
 
 Here we consider a Sedov-Taylor blastwave, a point explosion with large Mach number. This provides a powerful test of the accuracy of code conservation, as well as of how well codes capture shock jumps and preserves symmetry in three dimensions. When adaptive (non-constant) timesteps are used (as they are in our code) this is also an important test of the integration stability of the method (see Saitoh and Makino 2009). 
@@ -2334,15 +2913,16 @@ Parameterfile: "sedov.params"
 
 In Config.sh, enable: 
 
-    PERIODIC
-    NOGRAVITY
-    HAVE_HDF5
-    GAMMA=(5.0/3.0)
+    BOX_PERIODIC
+    SELFGRAVITY_OFF
+    EOS_GAMMA=(5.0/3.0)
 
 The file 'sedov\_exact.txt' gives the analytic solution at time $t=30$ Myr, for the density, temperature, and radial velocity, as a function of radial coordinate from the blastwave center. Be careful, if you compare temperature, that you convert correctly (the analytic solution assumes a fully ionized plasma for the mean molecular weight, for example). Note that, because the problem is self-similar, we can compare any Sedov problem, at any time (so long as the shock is still 'inside' the box), and should obtain an identical result (up to the effective resolution of the explosion: obviously, the further the shock propagates through more particles/cells, the better-resolved). 
 
 
-### The Noh (Spherical Implosion) Problem
+<a name="tests-shocks-noh"></a>
+### The Noh (Spherical Implosion) Problem 
+
 
 Next consider the Noh 1987 test. This is a challenging test: many codes cannot run it without crashing, or run it but see catastrophic examples of the carbuncle instability. Liska & Wendroff 2003 noted only four of eight schemes they studied could actually run the problem. A large domain is initialized with $\rho = 1$, $\gamma=5/3$, vanishing pressure, and a radial inflow (directed towards the origin from all points) with $|{\bf v}| = 1$ ($v_{r} = -1$). The analytic solution involves an infinitely strong shock with constant internal density moving outwards at speed $=1/3$, with a density jump of $4^{3}=64$ at the shock in 3D. 
 
@@ -2352,20 +2932,21 @@ Parameterfile: "noh.params"
 
 In Config.sh, enable: 
 
-    PERIODIC
-    NOGRAVITY
-    HAVE_HDF5
-    GAMMA=(5.0/3.0)
+    BOX_PERIODIC
+    SELFGRAVITY_OFF
+    EOS_GAMMA=(5.0/3.0)
 
 This setup should *not* be compared to the analytic result much past time $t=2$. The reason is that we do not use an inflow boundary condition, we just initialize a very large box. So at much later times, youve run out of inflowing material!
 
 In the paper, we compare the density as a function of radius from the center of the sphere, at time $t=2$ to the analytic solution. The analytic solution should be both spherically symmetric (i.e. not show excessive noise or the 'carbuncle' instability common in grid codes along the grid axes), and should have density jump at position $r=t/3$, where $t$ is the time. Inside the jump the density should be constant $=64$, outside it should be $=(1 + t/r)^2$. 
 
 
+<a name="tests-mixing"></a>
+## Fluid Mixing Tests 
 
-## Fluid Mixing Tests
 
-### Kelvin Helmholtz Instabilities
+<a name="tests-mixing-kh"></a>
+### Kelvin Helmholtz Instabilities 
 
 The KH instability is a common fluid instability in astrophysics. But SPH methods, in particular, have trouble capturing the growth of the instability, and some SPH methods lead to unphysical break-up of the instability in its non-linear stages even when it is accurately captured in the linear growth phase. On the other hand, AMR methods tend to over-diffuse the KH rolls, suppressing small-scale modes and structure in the gas. Because these tests are so common, we include here two different versions of the test problem.
 
@@ -2377,12 +2958,10 @@ Parameterfile: "kh\_mcnally\_2d.params"
 
 In Config.sh, enable: 
 
-    PERIODIC
-    TWODIMS
-    NOGRAVITY
-    HAVE_HDF5
-    NOTEST_FOR_IDUNIQUENESS
-    GAMMA=(5.0/3.0)
+    BOX_PERIODIC
+    BOX_SPATIAL_DIMENSION=2
+    SELFGRAVITY_OFF
+    EOS_GAMMA=(5.0/3.0)
     
 For this test problem, the linear KH growth timescale is $t_{\rm KH}=0.7$. The 'correct' solution cannot be included in a simple table, but you should compare to the solutions in Figs. 13-15 of the methods paper (note that the periodic box can be arbitrarily shifted in the vertical/horizontal directions, so check if your result doesn't exactly 'line up' to the choice used for plotting before you decide its wrong!). Those plots are 2D gas density plots, scaled as described in the paper. By time $t=1$, the initial mode should be growing into the familiar KH 'rolls'; by time $t=1.5$ those rolls should start rolling onto themselves, and by $t=3-5$, their should be multiple internal rolls of each. Finally, by time $t=5-10$, the whole box should be going non-linear: the rolls should begin to overlap and the whole central fluid should begin to 'kink'. 
 
@@ -2394,22 +2973,21 @@ Parameterfile: "kh\_wengen.params"
 
 In Config.sh, enable: 
 
-    PERIODIC
-    LONG_X=32
-    LONG_Y=32
-    LONG_Z=2
-    NOGRAVITY
-    HAVE_HDF5
-    NOTEST_FOR_IDUNIQUENESS
-    GAMMA=(5.0/3.0)
+    BOX_PERIODIC
+    BOX_LONG_X=32
+    BOX_LONG_Y=32
+    BOX_LONG_Z=2
+    SELFGRAVITY_OFF
+    EOS_GAMMA=(5.0/3.0)
 
 
 You should see similar qualitative behavior in this test as in the previous KH test, though here the linear growth time is longer ($=3.5$). Compare this to Fig. 16 in the code paper (note the same caveat about plotting). Since there is no 'smoothing' of the initial boundary, the phase transition in this test should remain sharp well into the non-linear evolution. 
 
 For both versions of the KH test, you may also want to enable MULTIPLEDOMAINS=16 or 32, depending on performance (this is purely there to help with memory allocation and parallelization, since the default IC for this test is quite high-resolution).
 
+<a name="tests-mixing-rt"></a>
+### Rayleigh-Taylor Instabilities 
 
-### Rayleigh-Taylor Instabilities
 
 We now consider the Rayleigh-Taylor (RT) instability, with initial conditions from Abel 2011. In a two-dimensional domain with $0< x <1/2$ (periodic boundaries) and $0< y <1$ (reflecting boundary with particles at initial $y<0.1$ or $y>0.9$ held fixed for the non-grid methods), we take $\gamma=1.4$ and initialize a density profile $\rho(y)=\rho_{1}+(\rho_{2}-\rho_{1})/(1+\exp{[-(y-0.5)/\Delta]})$ where $\rho_{1}=1$ and $\rho_{2}=2$ are the density "below" and "above" the contact discontinuity and $\Delta=0.025$ is its width; initial entropies are assigned so the pressure gradient is in hydrostatic equilibrium with a uniform gravitational acceleration $g=-1/2$ in the $y$ direction (at the interface, $P=\rho_{2}/\gamma=10/7$ so $c_{s}=1$). An initial $y$-velocity perturbation $v_{y} = \delta v_{y}\,(1+\cos{(8\pi\,(x+1/4))})\,(1+\cos{(5\pi\,(y-1/2))})$ with $\delta v_{y}=0.025$ is applied in the range $0.3< y< 0.7$.
 
@@ -2419,15 +2997,14 @@ Parameterfile: "rt.params"
 
 In Config.sh, enable: 
 
-    PERIODIC
-    BND_PARTICLES
-    LONG_X=1
-    LONG_Y=2
-    TWODIMS
-    GAMMA=1.4
-    NOGRAVITY
-    ANALYTIC_GRAVITY
-    HAVE_HDF5
+    BOX_PERIODIC
+    BOX_BND_PARTICLES
+    BOX_LONG_X=1
+    BOX_LONG_Y=2
+    BOX_SPATIAL_DIMENSION=2
+    EOS_GAMMA=1.4
+    SELFGRAVITY_OFF
+    GRAVITY_ANALYTIC
     
     
 And make sure you go into the file gravity/analytic\_gravity.h and un-comment the line:
@@ -2440,8 +3017,9 @@ Like the KH test, there is no trivial analytic solution for this test. However, 
 
 You will find that SPH also has difficulty with this test as well as the KH test. It requires, even in the modern PSPH methods, going to larger neighbor number before reasonable results are obtained. Also, both in the KH and RT tests, PSPH sometimes appears to perform better *without* artificial conductivity terms, which introduce excessive diffusion and unphysically distort the structure of small-wavelength perturbations. However, such terms are necessary to reduce noise in strong shock problems. If you compare grid codes, boost the velocity by a modest amount -- you'll find at this resolution that the RT evolution is severely diffused and slowed-down. Comparing the MFM and MFV methods, you'll find that contact discontinuities are sharper in the MFV method, so for a problem like this it has effectively "higher" resolution.
 
+<a name="tests-mixing-blob"></a>
+### The Blob Test 
 
-### The Blob Test
 
 Next we consider the "blob" test, which is designed to synthesize the fluid mixing instabilities above (as well as ram-pressure stripping) in a more "realistic" example of astrophysical interest representative of a multi-phase medium. The initial conditions come from the Wengen test suite and are described in Agertz 2007 and [here](http://www.astrosim.net/code/doku.php?id=home:codetest:hydrotest:multiphase). We initialize a spherical cloud of uniform density in pressure equilibrium with an ambient medium, in a wind-tunnel with period boundaries. The imposed wind has Mach number $\mathcal{M}=2.7$ (relative to the "ambient" gas) with the cloud having a density $=10$ times larger than the ambient medium. The domain is a periodic rectangle with dimensions $x,\,y,\,z=2000,\,2000,\,6000\,$ kpc (the absolute units are not important), with the cloud centered on $0,\,0,\,-2000\,$ kpc; $9.6\times10^{6}$ particles/cells are initialized in a lattice (with equal-masses in the particle-based methods).
 
@@ -2451,14 +3029,12 @@ Parameterfile: "blob.params"
 
 In Config.sh, enable: 
 
-    PERIODIC
-    LONG_X=1
-    LONG_Y=1
-    LONG_Z=3
-    NOGRAVITY
-    HAVE_HDF5
-    NOTEST_FOR_IDUNIQUENESS
-    GAMMA=(5.0/3.0)
+    BOX_PERIODIC
+    BOX_LONG_X=1
+    BOX_LONG_Y=1
+    BOX_LONG_Z=3
+    SELFGRAVITY_OFF
+    EOS_GAMMA=(5.0/3.0)
     
 You may also want to enable MULTIPLEDOMAINS=16 or 32, depending on performance (this is purely there to help with memory allocation and parallelization, since the default IC for this test is quite high-resolution).
 
@@ -2466,13 +3042,13 @@ Qualitatively, if you make images of the gas density through the $y=0$ plane, yo
 
 A more quantitative comparison is formulated as follows. At each time, measure the total mass in gas with $\rho>0.64\,\rho_{c}$ and $T<0.9\,T_{a}$ (where $\rho_{c}$ and $T_{a}$ are the initial cloud density and ambient temperature). Then normalize this by dividing by the mass you get in the initial condition at $t=0$. This is one way to define a "surviving" cloud mass. This is plotted as a function of time $t$, or $t/\tau_{\rm KH}$ where $\tau_{\rm KH}=2$ is the KH instability growth time across the cloud. Compare this to the results in Fig. 21 of the code paper.
 
-
-## Gravity and Cosmological Tests
+<a name="tests-grav"></a>
+## Gravity and Cosmological Tests 
 
 The next set of test problems all involve self-gravity, coupled to hydrodynamics, and in some cases, cosmological integration.
 
-
-### The Evrard (Spherical Collapse) Test
+<a name="tests-grav-evrard"></a>
+### The Evrard (Spherical Collapse) Test 
 
 This problem comes from Evrard 1988, and is commonly used to test SPH codes, and more recently, grid codes as well. In an infinite, open domain, we initialize a three-dimensional sphere of gas with adiabatic index $\gamma=5/3$, mass $M=1$, radius $R=1$, and initial density profile $\rho(r) = M/(2\pi\,R^{2}\,r) = 1/(2\pi\,r)$ for $r < R$ and $\rho=0$ outside the sphere. The gas is initially at rest and has thermal energy per unit mass $u=0.05$ (much less than the gravitational binding energy). 
 
@@ -2482,8 +3058,7 @@ Parameterfile: "evrard.params"
 
 In Config.sh, enable: 
 
-    HAVE_HDF5
-    GAMMA=(5.0/3.0)
+    EOS_GAMMA=(5.0/3.0)
 
 You should experiment with enabling/disabling ADAPTIVE\_GRAVSOFT\_FORGAS, and varying the gravitational softenings (remember, with ADAPTIVE\_GRAVSOFT\_FORGAS set, the softenings in the parameterfile for gas are the minimum values; otherwise they are constant through the run). See how this changes the results. You may also want to enable MULTIPLEDOMAINS=16 or 32, depending on performance (this is purely there to help with memory allocation and parallelization). 
 
@@ -2491,8 +3066,8 @@ When the simulation begins, the gas free-falls towards $r=0$ under self-gravity,
 
 The file "evrard\_exact.txt" has a solution from a well-vetted, high-order (and much-higher resolution) simulation at time $t=0.8$; specifically we compare the density, entropy (defined by the entropic function $s=P/\rho^{gamma}$ ), and radial velocity of the flow as a function of radius from the center of the sphere. You should find that, because the ICs here are not perfectly smooth, all methods exhibit some noise. But the noise and smoothing of the entropy jump in particular are much more noticeable in SPH, especially when an artificial conductivity is used. Fixed-grid codes will also lose resolution as the sphere collapses.
 
-
-### The Zeldovich Pancake
+<a name="tests-grav-zeldovich"></a>
+### The Zeldovich Pancake 
 
 A standard test for cosmological integration is the "Zeldovich pancake": the evolution of a single Fourier mode density perturbation in an Einstein-de Sitter space. This is a useful test both for scientific reasons (it represents a 'single mode' of large-scale structure formation in cosmology) and for testing a code's ability to deal with cosmological integrations, small-amplitude perturbations, extremely high Mach-number flows and shocks, and highly anisotropic cell/particle arrangements. Following Zeldovich 1970: we initialize a small sinusoidal (wavelength $\lambda=64\,h^{-1}$ Mpc) perturbation in a periodic, cosmological box (see the code paper for details of the setup), with a cold initial temperature (chosen so the pressure forces are negligible). The perturbation is designed so that it collapses into a caustic (density divergence) at finite redshift $z_{c}=1$. The box is 3D, but the the perturbation is just initialized in the $x$-direction, which defines the direction in which collapse occurs. We initialize the particles in a glass, the 'standard practice' for cosmological runs.
 
@@ -2502,10 +3077,9 @@ Parameterfile: "zeldovich.params"
 
 In Config.sh, enable: 
 
-    PERIODIC
+    BOX_PERIODIC
     PMGRID=256 (recommended, see below)
-    HAVE_HDF5
-    GAMMA=(5.0/3.0)
+    EOS_GAMMA=(5.0/3.0)
 
 You should experiment with enabling/disabling ADAPTIVE\_GRAVSOFT\_FORGAS, and varying the gravitational softenings (remember, with ADAPTIVE\_GRAVSOFT\_FORGAS set, the softenings in the parameterfile for gas are the minimum values; otherwise they are constant through the run). See how this changes the results. You may also want to enable MULTIPLEDOMAINS=16 or 32, depending on performance (this is purely there to help with memory allocation and parallelization). You can turn off PMGRID and run in pure tree mode (slower, but should work as well or slightly more accurately), or vary the PMGRID level between e.g. 64-256. 
 
@@ -2513,7 +3087,8 @@ In early phases, $z > z_{c}$ (when pressure forces are negligible), the system s
 
 We note that many codes only test this problem in 1D, but it is actually much more challenging (and representative of the resolution that can be achieved in real simulations) to test it in 3D, as we do here.
 
-### The Santa Barbara Cluster
+<a name="tests-grav-sbcluster"></a>
+### The Santa Barbara Cluster 
 
 We next consider the "Santa Barbara Cluster" from the comparison project in Frenk 1999. This is a standard reference test problem for which many codes have been compared. It is a zoom-in simulation in which a low-resolution cosmological background contains a higher-resolution Lagrangian region which will collapse to form an object of interest (and the region around it) by $z=0$; here chosen so the object represents a rich galaxy cluster in an Einstein-de Sitter Universe. The details of the cluster ICs are described there; briefly, a periodic box of side-length $64\,h^{-1}\,{\rm Mpc}$ is initialized at redshift $z=49$ ($a=1/(1+z)=0.02$),  in a flat Universe with dark matter density $\Omega_{\rm DM}=0.9$, baryonic $\Omega_{\rm b}=0.1$, Hubble constant $H_{0}=100\,h\,{\rm km\,s^{-1}\,Mpc^{-1}}$ with $h=0.5$, and negligible initial gas temperature $T=100\,$ K. The gas is non-radiative (ideal) with $\gamma=5/3$. 
 
@@ -2523,10 +3098,9 @@ Parameterfile: "sbcluster.params"
 
 In Config.sh, enable: 
 
-    PERIODIC
+    BOX_PERIODIC
     PMGRID=64 (recommended, see below)
-    HAVE_HDF5
-    GAMMA=(5.0/3.0)
+    EOS_GAMMA=(5.0/3.0)
 
 You should experiment with enabling/disabling ADAPTIVE\_GRAVSOFT\_FORGAS and ADAPTIVE\_GRAVSOFT\_FORALL, and varying the gravitational softenings (remember, with ADAPTIVE\_GRAVSOFT\_FORGAS set, the softenings in the parameterfile for gas are the minimum values; otherwise they are constant through the run). See how this changes the results. You may also want to enable MULTIPLEDOMAINS=16 or 32, depending on performance (this is purely there to help with memory allocation and parallelization). You can turn off PMGRID and run in pure tree mode (slower, but should work as well or slightly more accurately), or vary the PMGRID level between e.g. 64-256. 
 
@@ -2534,8 +3108,8 @@ Parts of the 'exact' solution for this problem are still the subject of consider
 
 The more controversial aspect of the profile is the central entropy, where people plot $\ln{s}$ (where $s$ is the mass-weighted entropy in concentric spherical shells, with $s=T/\rho^{2/3}$ with $T$ in units of Kelvin, assuming fully ionized plasma so mean molecular weight $=0.59$, and $\rho$ in units of solar masses per cubic Mpc) as a function of radius. Around the scale where the density profile levels out, these profiles begin to diverge with different numerical methods -- fixed-grid codes tend to give a minimum central "core" with $\ln{s}=-2$ being very flat, while TSPH leads to a more power-law like central profile where $\ln{s}$ decreases to values of -4 or -5 at $0.01\,h^{-1}$ Mpc. What you should see is that, if you play around with the numerical method used to solve the hydrodynamics, the gravitational force softening, the choice of Riemann solver, the slope-limiter used in the Riemann problem, and the choice to use (or not use) adaptive gravitational softenings, is that you can reproduce this whole range of behavior. In general, if you make your solver more diffusive, you get a larger entropy core; but even more striking is that if you make the small-scale particle noise in the gravitational field larger (by making the gravitational softening too small or using too-aggressive adaptive softenings), you get larger cores. The large cores seen in AMR codes appear to be artificially generated by small-scale particle noise in the gravitational field seeding weak motions of the fluid relative to the grid, while leads to small shocks and mixing entropy. SPH totally suppresses this, at the cost of suppressing some real mixing. Qualitatively, moving-mesh codes (Springel et al. 2010), our MFM and MFV calculations, and the 'improved/modern' SPH calculations (see e.g. those here and Saitoh and Makino, 2010, 2012), all agree the 'correct' answer lies in-between the old SPH and AMR results, probably closer to the old SPH results but still with significant uncertainties. 
 
-
-### Galactic Disks with and without ISM Physics
+<a name="tests-grav-galdisk"></a>
+### Galactic Disks with and without ISM Physics 
 
 This last test is not really a 'test' (in the sense that there is no 'right' answer) -- it is more a useful example with which to compare different physics, and different methods for solving the hydrodynamics and gravity. The initial condition is an isolated disk galaxy, designed to be run in an open domain. The disk is a very low-resolution analogue of a Milky-Way like galaxy. It has a Hernquist-profile bulge (particle type =3), a stellar disk with initial Toomre Q=1 (particle type=2), an extended Hernquist-profile, isotropic dispersion supported dark matter halo (particle-type=1), a thin gas disk (particle-type=0), and a central super-massive black hole (particle-type=5). If star formation is enabled, the new stars formed from the gas will occupy particle-type=4. The gas and stellar disk are rotating in approximately circular orbits (corrected for the initial gas pressure and stellar velocity dispersion). The disk -- even evolved as an ideal gas -- will develop interesting structure because of self-gravity, and if cooling, star formation, stellar feedback, and/or black hole growth and feedback are enabled, a variety of interesting dynamics can be studied. This represents just one of the kinds of complicated, multi-physics problems for which GIZMO is designed. 
 
@@ -2548,52 +3122,25 @@ Parameterfile: "isodisk.params"
 
 For the "ideal gas" (no star formation or cooling) version of the test, in Config.sh, enable: 
 
-    HAVE_HDF5
-    GAMMA=(5.0/3.0)
+    EOS_GAMMA=(5.0/3.0)
     
 Try doing the same, now with high-temperature cooling above $10^4 K$ assuming an optically thin, primordial H-He mixture: 
 
-    HAVE_HDF5
-    GAMMA=(5.0/3.0)
+    EOS_GAMMA=(5.0/3.0)
     COOLING
     
 If you want to compare the Springel and Hernquist 'effective equation of state' (approximate sub-grid star formation and stellar feedback) models, then enable in Config.sh:
 
-    HAVE_HDF5
-    GAMMA=(5.0/3.0)
+    EOS_GAMMA=(5.0/3.0)
     COOLING
     GALSF
     METALS
     GALSF_EFFECTIVE_EQS
 
-And if you want to compare the Hopkins et al. FIRE models (explicit star formation and stellar feedback), enable: 
-
-    COOLING
-    COOL_LOW_TEMPERATURES
-    COOL_METAL_LINES_BY_SPECIES
-    GALSF
-    METALS
-    GALSF_SFR_MOLECULAR_CRITERION
-    GALSF_SFR_VIRIAL_SF_CRITERION
-    GALSF_FB_GASRETURN
-    GALSF_FB_HII_HEATING
-    GALSF_FB_SNE_HEATING
-    GALSF_FB_RPROCESS_ENRICHMENT=8
-    GALSF_FB_RT_PHOTONMOMENTUM
-    GALSF_FB_RT_PHOTON_LOCALATTEN
-    GALSF_FB_LOCAL_UV_HEATING
-    GALSF_FB_RPWIND_LOCAL
-    GALSF_FB_RPWIND_FROMSTARS
-    BLACK_HOLES
-    BH_SWALLOWGAS
-    BH_GRAVACCRETION
-    HAVE_HDF5
-    GAMMA=(5.0/3.0)
-
-
 You should experiment with enabling/disabling ADAPTIVE\_GRAVSOFT\_FORGAS and ADAPTIVE\_GRAVSOFT\_FORALL, and varying the gravitational softenings (remember, with ADAPTIVE\_GRAVSOFT\_FORGAS set, the softenings in the parameterfile for gas are the minimum values; otherwise they are constant through the run). See how this changes the results. You may also want to enable MULTIPLEDOMAINS=16 or 32, depending on performance (this is purely there to help with memory allocation and parallelization). 
 
-## Magneto-Hydrodynamics Tests
+<a name="tests-mhd"></a>
+## Magneto-Hydrodynamics Tests 
 
 With the release of the MHD methods paper and public version of the MHD code, I have added a suite of MHD test problems. The initial conditions, example parameter files, and list of compile-time (Config.sh) flags which must be set to run each problem are publicly available at the same location as the rest of the files above. 
 
@@ -2623,16 +3170,102 @@ For convenience, rather than list the recommended compile-time options (for Conf
 
 Note that the Rayleigh-Taylor, Kelvin-Helmholtz, Zeldovich pancake, Santa Barbara cluster, and isolated galaxy disk setups are essentially identical to their non-MHD versions, and in most of those cases it is the same IC file needed. You simply compile the code with MAGNETIC turned on (and potentially some other parameters to set the initial magnetic fields, which should be given in the example files above). The other tests are self-contained. 
 
-For many of the problems (any with B\_SET\_IN\_PARAMS as a recommended compile-time option),  you can freely re-set the initial magnetic field by changing the values of BiniX, BiniY, BiniZ in the parameter file. This allows you to easily explore the effects of varying field strength.
+For many of the problems (any with MHD\_B\_SET\_IN\_PARAMS as a recommended compile-time option),  you can freely re-set the initial magnetic field by changing the values of BiniX, BiniY, BiniZ in the parameter file. This allows you to easily explore the effects of varying field strength.
 
 The current sheet test is the only one with multiple initial conditions: as discussed in the paper, the challenge is exploring different initial values of the parameters $A$ and $\beta$. The IC "currentsheet\_A0pt1\_b0pt1\_ics.hdf5" assumes the easy values $A=0.1$, $\beta=0.1$. The IC "currentsheet\_A0pt1\_b1em12\_ics.hdf5" assumes $A=0.1$, $\beta=10^{-12}$, i.e. incredibly strong magnetic fields. The IC "currentsheet\_A1e4\_b0pt1\_ics.hdf5" assumes $A=10^{4}$, $\beta=0.1$, i.e. incredibly large Mach numbers. 
 
 As above, please explore these freely. 
 
+***
+
+<a name="faqs"></a>
+# 12. Useful Additional Resources 
+
+This section addresses some common questions and provides some additional resources for new users, which are not part of GIZMO itself.
+
+<a name="faqs-vis"></a>
+## Visualization, Radiative Transfer, and Plotting
+
+Many questions I get about GIZMO are actually questions about how to visualize and plot data. GIZMO doesnt do this itself, of course, but there are many public codes out there which are compatible with GIZMO and have excellent tools available for visualization. Remember, anything that says it is compatible with "GADGET" formats is compatible with GIZMO outputs. Just a few examples include (thanks to Robyn Sanderson for suggesting several here):
+
++ [Examples on Phil's website](http://www.tapir.caltech.edu/~phopkins/Site/animations/) -- This isn't code, but some example visualizations of simulations all run with GIZMO, to give you an idea of the kinds of things you can produce (of course you'll notice the heavy bias towards galaxy-formation simulations here, when there's a tremendous amount of other stuff, but I haven't set up a more general gallery yet). 
+
++ [YT](http://yt-project.org/) -- A great, open-source ptyhon visualization tool with tremendous toolkits. It's widely-used by GIZMO users and perfectly compatible with our outputs.
+
++ [TOPCAT](http://www.star.bris.ac.uk/~mbt/topcat/) is a longstanding analysis and plotting package written in Java. Observers like it because they can download online data sets directly into it via the Virtual Observatory, but it will also read simulation data (which could make it useful for simulation/observation comparisons). It was recently updated for the Gaia data release and is actively maintained by Mark Taylor with funding from the UK STFC. It offers an extremely useful "data brushing" mode, where selections made in one plot are highlighted in others, that is really useful for studying multidimensional correlations.
+
++ [Glue](http://glueviz.org/en/stable/) is a newer package developed in consultation with astronomers but with some serious professional data scientists behind it.  It has many functionalities similar to TOPCAT, including data brushing, but is based on Python and allows access to the command line from within the GUI and scripting using Python. It's still in beta and my experience was that I could occasionally break it by doing complicated combinations of plots, but the helpdesk (whose name is Tom Robitaille) is really responsive and wants to know about bugs when you find them. Glue has support from the CfA (through Alyssa Goodman's group).
+
++ [vaex](http://vaex.astro.rug.nl/) is developed specifically for fast visualization of huge datasets (and it's lightning fast!), moving back and forth from point plotting to binning depending on which is most informative. It works natively with HDF5 files, which is a nice feature if you want to read in simulations, and is Python based. One very interesting feature is the built-in ability to calculate different information statistics to assess multidimensional correlations: this feature was used for validation of Gaia DR1. Another nice feature is the ability to run on remote data, for example if your data are on a cluster. This package is actively supported (with paid personnel) through the Kapteyn Institute in the Netherlands; the point person there is Maarten Breddels, who is part of their computer staff now but has a PhD in astronomy.
+
++ [VisIt](https://wci.llnl.gov/simulation/computer-codes/visit/) is a popular interactive visualization software package. Davide Radice developed a package of VISIT plugins to make GIZMO compatible, for his applications (these may not immediately work for all possible GIZMO outputs, since some contain different fields -- in that case, you may need to modify the plugins appropriately). See the "visit" folder (within the "scripts" directory) of the GIZMO source code, to see the README and make files needed for building the appropriate GIZMO plugins.
+
+For more detailed radiative transfer performed on the simulations, there are many popular tools again. Some popular codes like Sedona and RadMC3D require input in a grid form. This can be generated via many different visualization codes (e.g. YT), or by custom routines pretty easily (e.g. some of the libraries linked above). Other popular codes like [SKIRT](https://github.com/SKIRT/SKIRT8) or [SUNRISE](https://bitbucket.org/lutorm/sunrise) will work "out of the box" with GIZMO. I know of at least 15 different radiative transfer codes that have been run on GIZMO outputs within the first year of its existence (for different purposes), so there are many different options depending on the science you want to do.
+
+
+
+<a name="faqs-halofinders"></a>
+## Halo-Finding and Sub-Structure Identification (Post-Processing)
+
+Many people ask about automated tools for halo-finding or structure identification in the simulations. This is a quite large and mature industry onto itself, on which many many papers have been written. I'll just note a couple popular codes that people commonly use to process GIZMO outputs:
+
++ [AHF](http://popia.ft.uam.es/AHF/Download.html): The AMIGA halo finder -- another halo finder, this one designed for cosmological simulations, popular for galaxy/halo identification and building merger trees.
+
++ [Rockstar](https://bitbucket.org/gfcstanford/rockstar): The Rockstar halo finder is another halo finder designed for cosmological simulations, with the most important distinction from AHF being that it searches in phase-space, as opposed to real-space only, which can make a large difference for sub-structure.
+
++ [HOP2](https://github.com/omgspace/HOP2): General-purpose self-gravitating structure finder for isolated simulations (useful for finding things like clumps or star clusters in the simulations, as opposed to DM halos defined in the more traditional cosmological fashion). Requires snapshots with gravitational potential data.  
+
+
+<a name="faqs-otheranalysistools"></a>
+## Other Analysis Tools
+
+While there are a huge number of analysis tools, and users can of course write analysis software in any language they like, I highly recommend Python for analysis. It's open source, supported by the national centers (so you can run remotely), and much astronomy code development is based on it. 
+
++ [Python for Astronomers Tutorial](http://python4astronomers.github.io/index.html): It is what it says -- a tutorial on python for astronomers. If you aren't familiar with Python, work through this first.
+
++ [MESHOID](https://github.com/omgspace/meshoid): Useful Python module for analyzing particle data. Computes neighbour lists, smoothing lengths and meshless derivatives just like GIZMO, and has methods for kernel-to-grid deposition for slice/projection plots. This is extremely useful when you want to do something like re-construct the gradients of some field (say, density) in post-processing, which weren't saved by the outputs directly. Its also a great tool for actual plotting and analysis.
+
+
+
+<a name="faqs-generalsupercomputing"></a>
+## General Super-Computing Questions
+
+Questions about computing in general should be directed at the help resources for whatever computers you are using to run GIZMO. This includes things like "I can't get FFTW to compile," and "I can't get GIZMO to compile" (unless its a specific compiler error *internal* to the GIZMO code). But to help get started on submitting jobs, here's some useful resources for users not experienced with these systems.
+
++ [XSEDE](https://portal.xsede.org/#/guest): Go here to create an XSEDE account, necessary to apply for time on the NSF-supported network of super-computers, and to access various machines GIZMO is commonly run on. Lots of questions about super-computing in general are answered there. 
+
++ [Stampede](https://portal.tacc.utexas.edu/user-guides/stampede): One of the XSEDE machines, Stampede (now Stampede2) is hosted at TACC. This is a link to their user guide, the starting point for actually getting anything set up or running on their machines. 
+
+To submit a simulation job, first read up on the machine User Guide (and of course, I'm assuming you have read the code User Guide cover-to-cover). Then compile the code, and put the compiled code (should compile to "GIZMO") in the intended run-time directory with the run-time parameters file (which we will call here "params.txt"). Then submit the job by submitting the relevant script. 
+
+On Stampede1, a script looks like:
+
+    #!/bin/sh
+    #SBATCH -J insert_job_name_here
+    #SBATCH -p normal
+    #SBATCH -t 48:00:00
+    #SBATCH -N 16 -n 256
+    #SBATCH -A TG-AST123456
+
+    #export OMP_NUM_THREADS=2
+    ibrun tacc_affinity ./GIZMO ./params.txt 1>gizmo.out 2>gizmo.err
+
+Where `-p` specifies the queue (default=normal, short runs=development), `-t` specifies the wall-clock runtime (hours:minutes:seconds), `-N` specifies the node number, `-n` the processor numbers. So here we request 16 nodes with a total of 256 MPI processes. Stampede1 has 16 cores per processor, so you can allocate up to `n`=`N`*16 MPI processes (no more, and no less than 1 MPI process per node). `-A` is the account to charge it to. when you log in, the first thing you see should be a list of the accounts you are listed on. If there is only one, you dont need to specify this (it will default to that one). 
+
+The line `export OMP_NUM_THREADS` should have the leading `#` removed if and only if you compile the code in hybrid OPENMP-MPI mode. This sets the number of OPENMP threads. In the Config.sh file used to compile the code, the value of OPENMP must be set/uncommented (e.g. `OPENMP=2`, here) and MUST EXACTLY MATCH the integer value here. Also, since there are now `OMP_NUM_THREADS` number of threads per MPI process, the `-n` above (number of MPI processes) must be lowered. Each thread uses one CPU. So the maximum value of `-n` is `-N` * 16 / `OMP_NUM_THREADS`. 
+
+Finally the last line submits the job, tells it the executable (GIZMO, in the same folder as the job is submitted from), the parameterfile GIZMO should use, and the names of the standard output and error files to write to.
+
+This should be saved in its own file, with NO LEADING WHITESPACE before each line. Let's call the file "run.bsub". The run is then submitted into the queue with the command "sbatch run.bsub". 
+
+Different machines will use different submission scripts, and may have different notation entirely for the commands above, but usually the set of values you must specify is very similar (its just the names that change) -- the user guides for the different machines tell you what their naming conventions are. 
+
+And remember, once you get your simulations running, **ALWAYS BACK UP YOUR DATA** (whatever you're doing, it's just good practice)!
 
 ***
 
-# 12. Disclaimer
+<a name="disclaimer"></a>
+# 13. Disclaimer 
 
 Use this code at your own risk! It is provided without any guarantees of support, accuracy, or even that it will work! While I will do what I can to maintain things and address questions that arise, it is ultimately up to each user to build and maintain their copy of the code. And it is up to you, the user, to understand what the code is doing, and to be responsible for the content of your simulations. No numbers in e.g. the parameterfile and Config file examples are meant to be taken as recommendations: you should do considerable experimentation to determine the most appropriate values for the problem at hand. They will change depending on the problem details and what you are trying to extract. 
 

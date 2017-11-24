@@ -25,7 +25,7 @@ void GravAccel_PaczynskyWiita(void);
 /* master routine which decides which (if any) analytic gravitational forces are applied */
 void add_analytic_gravitational_forces()
 {
-#ifdef ANALYTIC_GRAVITY
+#ifdef GRAVITY_ANALYTIC
     //GravAccel_RayleighTaylorTest();     // vertical potential for RT tests
     //GravAccel_StaticPlummerSphere();    // plummer sphere
     //GravAccel_StaticHernquist();        // hernquist sphere
@@ -35,7 +35,7 @@ void add_analytic_gravitational_forces()
     //GravAccel_GrowingDiskPotential();   // time-dependent (adiabatically growing) disk
     //GravAccel_StaticNFW();              // spherical NFW profile
     //GravAccel_PaczynskyWiita();         // Paczynsky-Wiita pseudo-Newtonian potential
-#ifdef SHEARING_BOX
+#ifdef BOX_SHEARING
     GravAccel_ShearingSheet();            // adds coriolis and centrifugal terms for shearing-sheet approximation
 #endif
 #endif
@@ -45,21 +45,21 @@ void add_analytic_gravitational_forces()
 /* adds coriolis and centrifugal terms for shearing-sheet approximation */
 void GravAccel_ShearingSheet()
 {
-#ifdef SHEARING_BOX
+#ifdef BOX_SHEARING
     int i;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         /* centrifugal force term (depends on distance from box center) */
-        P[i].GravAccel[0] += 2.*(P[i].Pos[0]-boxHalf_X) * SHEARING_BOX_Q*SHEARING_BOX_OMEGA_BOX_CENTER*SHEARING_BOX_OMEGA_BOX_CENTER;
+        P[i].GravAccel[0] += 2.*(P[i].Pos[0]-boxHalf_X) * BOX_SHEARING_Q*BOX_SHEARING_OMEGA_BOX_CENTER*BOX_SHEARING_OMEGA_BOX_CENTER;
         /* coriolis force terms */
         double vp=0;
-        if(P[i].Type==0) {vp=SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE];} else {vp=P[i].Vel[SHEARING_BOX_PHI_COORDINATE];}
-        P[i].GravAccel[0] += 2.*vp * SHEARING_BOX_OMEGA_BOX_CENTER;
+        if(P[i].Type==0) {vp=SphP[i].VelPred[BOX_SHEARING_PHI_COORDINATE];} else {vp=P[i].Vel[BOX_SHEARING_PHI_COORDINATE];}
+        P[i].GravAccel[0] += 2.*vp * BOX_SHEARING_OMEGA_BOX_CENTER;
         if(P[i].Type==0) {vp=SphP[i].VelPred[0];} else {vp=P[i].Vel[0];}
-        P[i].GravAccel[SHEARING_BOX_PHI_COORDINATE] -= 2.*vp * SHEARING_BOX_OMEGA_BOX_CENTER;
-#if (SHEARING_BOX==4)
+        P[i].GravAccel[BOX_SHEARING_PHI_COORDINATE] -= 2.*vp * BOX_SHEARING_OMEGA_BOX_CENTER;
+#if (BOX_SHEARING==4)
         /* add vertical gravity to the force law */
-        P[i].GravAccel[2] -= SHEARING_BOX_OMEGA_BOX_CENTER * SHEARING_BOX_OMEGA_BOX_CENTER * (P[i].Pos[2]-boxHalf_Z);
+        P[i].GravAccel[2] -= BOX_SHEARING_OMEGA_BOX_CENTER * BOX_SHEARING_OMEGA_BOX_CENTER * (P[i].Pos[2]-boxHalf_Z);
 #endif
     }
 #endif
@@ -90,14 +90,14 @@ void GravAccel_StaticPlummerSphere()
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         dp[0]=P[i].Pos[0]; dp[1]=P[i].Pos[1]; dp[2]=P[i].Pos[2];
-#ifdef ANALYTIC_GRAVITY_ANCHOR_TO_PARTICLE
+#ifdef GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE
         for(k = 0; k < 3; k++) {dp[k] = -P[i].min_xyz_to_bh[k];}
 #endif
         r2 = dp[0]*dp[0] + dp[1]*dp[1] + dp[2]*dp[2];
         r = sqrt(r2);
         for(k = 0; k < 3; k++) {P[i].GravAccel[k] += -dp[k] / pow(r2 + 1, 1.5);}
         
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
         double x, y, z, f, f2;
         x = dp[0]; y = dp[1]; z = dp[2];
         f = pow(r2 + 1, 1.5); f2 = pow(r2 + 1, 2.5);
@@ -127,7 +127,7 @@ void GravAccel_StaticHernquist()
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         dp[0]=P[i].Pos[0]; dp[1]=P[i].Pos[1]; dp[2]=P[i].Pos[2];
-#ifdef ANALYTIC_GRAVITY_ANCHOR_TO_PARTICLE
+#ifdef GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE
         for(k = 0; k < 3; k++) {dp[k] = -P[i].min_xyz_to_bh[k];}
 #endif
         r2 = dp[0]*dp[0] + dp[1]*dp[1] + dp[2]*dp[2]; r = sqrt(r2);
@@ -137,7 +137,7 @@ void GravAccel_StaticHernquist()
         {
             for(k = 0; k < 3; k++) {P[i].GravAccel[k] += -All.G * m * dp[k] / (r * r * r);}
             
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
             double x, y, z, r2, r3, f, f2, f3;
             x = dp[0]; y = dp[1]; z = dp[2];
             r2 = r * r; r3 = r * r2; f = r + a; f2 = f * f; f3 = f2 * f;
@@ -169,7 +169,7 @@ void GravAccel_StaticIsothermalSphere()
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         dp[0]=P[i].Pos[0]; dp[1]=P[i].Pos[1]; dp[2]=P[i].Pos[2];
-#ifdef ANALYTIC_GRAVITY_ANCHOR_TO_PARTICLE
+#ifdef GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE
         for(k = 0; k < 3; k++) {dp[k] = -P[i].min_xyz_to_bh[k];}
 #endif
         r2 = dp[0]*dp[0] + dp[1]*dp[1] + dp[2]*dp[2]; r = sqrt(r2);
@@ -207,7 +207,7 @@ void GravAccel_GrowingDiskPotential()
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         dp[0]=P[i].Pos[0]; dp[1]=P[i].Pos[1]; dp[2]=P[i].Pos[2];
-#ifdef ANALYTIC_GRAVITY_ANCHOR_TO_PARTICLE
+#ifdef GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE
         for(k = 0; k < 3; k++) {dp[k] = -P[i].min_xyz_to_bh[k];}
 #endif
         r2 = dp[0]*dp[0] + dp[1]*dp[1];
@@ -228,10 +228,10 @@ void GravAccel_KeplerianOrbit()
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         dp[0]=P[i].Pos[0]; dp[1]=P[i].Pos[1]; dp[2]=P[i].Pos[2];
-#ifdef ANALYTIC_GRAVITY_ANCHOR_TO_PARTICLE
+#ifdef GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE
         int k; for(k = 0; k < 3; k++) {dp[k] = -P[i].min_xyz_to_bh[k];}
 #endif
-#if defined(PERIODIC)
+#if defined(BOX_PERIODIC)
         dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y;
 #endif
         r2 = dp[0]*dp[0] + dp[1]*dp[1]; r = sqrt(r2);
@@ -306,9 +306,9 @@ void GravAccel_StaticNFW()
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         dp[0]=P[i].Pos[0]; dp[1]=P[i].Pos[1]; dp[2]=P[i].Pos[2];
-#ifdef ANALYTIC_GRAVITY_ANCHOR_TO_PARTICLE
+#ifdef GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE
         int k; for(k = 0; k < 3; k++) {dp[k] = -P[i].min_xyz_to_bh[k];}
-#elif defined(PERIODIC)
+#elif defined(BOX_PERIODIC)
         if(NFW_BOXCENTERED) {dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y; dp[2] -= boxHalf_Z;}
 #endif
         r2 = dp[0]*dp[0] + dp[1]*dp[1] + dp[2]*dp[2]; r0 = sqrt(r2);
@@ -354,7 +354,7 @@ void GravAccel_StaticNFW()
             P[i].GravAccel[1] += -All.G * m * dp[1] / (r * r * r);
             P[i].GravAccel[2] += -All.G * m * dp[2] / (r * r * r);
             
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
             double R200 = pow(NFW_M200 * All.G / (100 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits), 1.0 / 3);
             double Rs = R200 / NFW_C;
             double K = All.G * NFW_M200 / (Rs * (log(1 + NFW_C) - NFW_C / (1 + NFW_C)));
@@ -408,7 +408,7 @@ void GravAccel_PaczynskyWiita()
     {
         double dp[3], r2, r;
         dp[0]=P[i].Pos[0]; dp[1]=P[i].Pos[1]; dp[2]=P[i].Pos[2];
-#ifdef ANALYTIC_GRAVITY_ANCHOR_TO_PARTICLE
+#ifdef GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE
         for(k = 0; k < 3; k++) {dp[k] = -P[i].min_xyz_to_bh[k];}
 #endif
         r2 = dp[0]*dp[0] + dp[1]*dp[1] + dp[2]*dp[2]; r = sqrt(r2);
@@ -436,7 +436,7 @@ void apply_excision(void)
         {
             double dp[3], r2, r;
             dp[0]=P[i].Pos[0]; dp[1]=P[i].Pos[1]; dp[2]=P[i].Pos[2];
-#ifdef ANALYTIC_GRAVITY_ANCHOR_TO_PARTICLE
+#ifdef GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE
             int k; for(k = 0; k < 3; k++) {dp[k] = -P[i].min_xyz_to_bh[k];}
 #endif
             r2 = dp[0]*dp[0] + dp[1]*dp[1] + dp[2]*dp[2]; r = sqrt(r2);

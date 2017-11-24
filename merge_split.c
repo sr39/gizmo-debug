@@ -33,9 +33,11 @@ int does_particle_need_to_be_merged(int i)
     return 0;
 #else
 #ifdef BH_WIND_SPAWN
-    MyFloat vr2 = P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2] ;
-    MyFloat r2  = P[i].Pos[0]*P[i].Pos[0] + P[i].Pos[1]*P[i].Pos[1] + P[i].Pos[2]*P[i].Pos[2] ;
-    if( (r2 < 1.0) && (vr2 > All.BAL_v_outflow*All.BAL_v_outflow/100.0)) return 0;
+    if(P[i].ID == All.AGNWindID)
+    {
+        MyFloat vr2 = P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2] ;
+        if(vr2 <= 0.01 * All.BAL_v_outflow*All.BAL_v_outflow) return 1;
+    }
 #endif
     if(P[i].Mass <= 0) return 0;
     if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*ref_mass_factor(i))) return 0;
@@ -53,13 +55,7 @@ int does_particle_need_to_be_split(int i)
     return 0;
 #else
 #ifdef BH_WIND_SPAWN
-    MyFloat vr2 = P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2] ;
-    MyFloat r2  = P[i].Pos[0]*P[i].Pos[0] + P[i].Pos[1]*P[i].Pos[1] + P[i].Pos[2]*P[i].Pos[2] ;
-    if( (r2 < 1.0) && (vr2 > All.BAL_v_outflow*All.BAL_v_outflow/100.0)) return 0;
-    
-    double fac = All.Time * All.Time / (0.001*0.001 + All.Time * All.Time);
-    if( (P[i].Hsml * fac > sqrt(P[i].min_dist_to_bh+0.005) ) && (All.ExtraRef==1) ) return 1;
-    
+    if(P[i].ID == All.AGNWindID) return 0;
 #endif
     if(P[i].Mass >= (All.MaxMassForParticleSplit * ref_mass_factor(i))) return 1;
     return 0;
@@ -70,7 +66,7 @@ int does_particle_need_to_be_split(int i)
 double ref_mass_factor(int i)
 {
     double ref_factor=1.0;
-#if defined(BH_CALC_DISTANCES) && !defined(ANALYTIC_GRAVITY_ANCHOR_TO_PARTICLE)
+#if defined(BH_CALC_DISTANCES) && !defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE)
 #ifndef SINGLE_STAR_FORMATION
     ref_factor = sqrt(P[i].min_dist_to_bh + 0.0001);
     if(ref_factor>1.0) { ref_factor = 1.0; }
@@ -185,6 +181,9 @@ void merge_and_split_particles(void)
                         /* make sure we're not taking the same particle (and that its available to be merged into)! */
                         if((j>=0)&&(j!=i)&&(P[j].Type==P[i].Type)&&(P[j].Mass > P[i].Mass)&&(P[i].Mass+P[j].Mass < All.MaxMassForParticleSplit))
                         {
+#ifdef BH_WIND_SPAWN
+                            if(P[j].ID != All.AGNWindID)
+#endif
                             if(P[j].Mass<threshold_val) {threshold_val=P[j].Mass; target_for_merger=j;} // mass-based //
                         }
                     } // for(n=0; n<numngb_inbox; n++)
@@ -220,7 +219,7 @@ void merge_and_split_particles(void)
                         {
                             double dp[3]; int k; double r2=0;
                             for(k=0;k<3;k++) {dp[k]=P[i].Pos[k]-P[j].Pos[k];}
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
                             NEAREST_XYZ(dp[0],dp[1],dp[2],1);
 #endif
                             for(k=0;k<3;k++) {r2+=dp[k]*dp[k];}
@@ -238,7 +237,7 @@ void merge_and_split_particles(void)
             /* alright, particle splitting operations are complete! */
         } // P[i].Type & active timebin check
     } // for(i = 0; i < NumPart; i++)
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
     /* map the particles back onto the box (make sure they get wrapped if they go off the edges). this is redundant here,
      because we only do splits in the beginning of a domain decomposition step, where this will be called as soon as
      the particle re-order is completed. but it is still useful to keep here in case this changes (and to note what needs
@@ -305,7 +304,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
     double d_r = 0.25 * hsml; // needs to be epsilon*Hsml where epsilon<<1, to maintain stability //
     d_r = DMAX( DMAX(0.1*r_near , 0.005*hsml) , DMIN(d_r , r_near) ); // use a 'buffer' to limit to some multiple of the distance to the nearest particle //
     */ // the change above appears to cause some numerical instability //
-#ifndef NOGRAVITY
+#ifndef SELFGRAVITY_OFF
     d_r = DMAX(d_r , 2.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0]);
 #endif
     
@@ -513,7 +512,7 @@ void merge_particles_ij(int i, int j)
     {
         double pos_new_xyz[3], dp[3];
         for(k=0;k<3;k++) {dp[k]=P[j].Pos[k]-P[i].Pos[k];}
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
         NEAREST_XYZ(dp[0],dp[1],dp[2],-1);
 #endif
         for(k=0;k<3;k++) {pos_new_xyz[k] = P[i].Pos[k] + wt_j * dp[k];}
@@ -592,7 +591,7 @@ void merge_particles_ij(int i, int j)
     /* for periodic boxes, we need to (arbitrarily) pick one position as our coordinate center. we pick i. then everything defined in 
         position differences relative to i. the final position will be appropriately box-wrapped after these operations are completed */
     for(k=0;k<3;k++) {dp[k]=P[j].Pos[k]-P[i].Pos[k];}
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
     NEAREST_XYZ(dp[0],dp[1],dp[2],-1);
 #endif
     for(k=0;k<3;k++) {pos_new_xyz[k] = P[i].Pos[k] + wt_j * dp[k];}
