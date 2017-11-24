@@ -8,7 +8,7 @@
     + [Use, Authorship, & Citation Requirements](#requirements-authorship)
     + [Code Sharing Guidelines](#requirements-sharing)
     + [Code Development & Extensions (New Physics and Code)](#requirements-development)
-4. [Hydro Solvers](#hydro)
+4. [Fluid (Hydro) Solvers](#hydro)
     + [MFV](#hydro-mfv), [MFM](#hydro-mfm), [SPH](#hydro-sph), [other](#hydro-mmm) 
 5. [Similarities & Differences from GADGET (+other codes)](#gadget)
     + [What's the same?](#gadget-same), [What's not?](#gadget-different), [Code modes](#gadget-mimic)
@@ -106,19 +106,17 @@
 
 Welcome to **GIZMO**.
 
-The simulation code **GIZMO** is a flexible, multi-method mhd+gravity+radiation code, with a wide range of different multi-physics modules described in the "Feature Set" below. The code is descended from P-GADGET, itself descended from GADGET-2, is compatible with GADGET analysis/output code, initial conditions, and code modules. GIZMO is not an acronym, I just liked it -- it refers both to the code's multi-purpose applications and to its historical relationship to GADGET.
+The simulation code **GIZMO** is a flexible, massively-parallel, multi-method multi-physics code, with a wide range of different physics modules described in the "Feature Set" below. The code is descended from P-GADGET, itself descended from GADGET-2, and is fully compatible with GADGET analysis codes, initial conditions, and snapshots. GIZMO is not an acronym -- it refers both to the code's multi-purpose applications and to its historical relationship to GADGET.
 
 The code is extensively documented. **Please read the User Guide** before asking questions of me or other users: most questions I get are already answered here.
 
-The code is written in standard ANSI C, and should run on all parallel platforms that support MPI. The portability of the code has been confirmed on a large number of systems -- if it can run GADGET (and it almost certainly can), it can run GIZMO.
+The code is written in standard ANSI C, and should run on all parallel platforms that support MPI. The portability of the code has been confirmed on a large number of systems ranging from a laptop to >1 million threads on national super-computers.
 
-The main reference for the numerical methods (the original hydro+gravity solver) is the paper [here](http://www.tapir.caltech.edu/~phopkins/docs/gizmo.pdf). In everything else in this guide, the paper will be heavily referenced, and it is recommended that you read it before attempting to use the code. It should be especially useful if you wish to extend/modify the code. 
+The original reference for the numerical methods (the original fluid+gravity solver) is the paper [here](http://www.tapir.caltech.edu/~phopkins/docs/gizmo.pdf). It is recommended that you read it before using (or modifying) the code. For more details on GADGET, which underpins some aspects here, see the [GADGET-2 methods paper](http://adsabs.harvard.edu/cgi-bin/nph-bib_query?bibcode=2005MNRAS.364.1105S&db_key=AST) or [GADGET-2 user guide](http://www.mpa-garching.mpg.de/gadget/users-guide.pdf).
 
-The users guides here will borrow in parts from the GADGET-2 users guide (available [here](http://www.mpa-garching.mpg.de/gadget/users-guide.pdf)), where the functionality and syntax is similar. For more details on the backbone of GADGET, which underpins some aspects here and will be referenced, see the original GADGET-2 methods paper [here](http://adsabs.harvard.edu/cgi-bin/nph-bib_query?bibcode=2005MNRAS.364.1105S&db_key=AST).
+The public code website is [here](http://www.tapir.caltech.edu/~phopkins/Site/GIZMO.html), and the active development code repository is hosted on Bitbucket [here](https://bitbucket.org/phopkins/gizmo).
 
-The Bitbucket site is where I will post code updates, news, and documentation, so check back regularly. The public code website is [here](http://www.tapir.caltech.edu/~phopkins/Site/GIZMO.html), and the active development code repository (where the action is) is hosted on Bitbucket [here](https://bitbucket.org/phopkins/gizmo).
-
-**GIZMO** was written by me, Philip F. Hopkins (PFH), although the codebase builds heavily on Volker Springel's GADGET code. If you find the code useful, please reference the code paper in all studies using simulations run with **GIZMO**. You should also reference the GADGET paper for the domain decomposition and N-body algorithms. Various modules have their own methods papers that should be cited if they are used; these are specified in the "Config.sh (Setting compile-time options)" section of this Guide.
+**GIZMO** was written by me, Philip F. Hopkins (PFH), although the codebase builds on parts of Volker Springel's GADGET code. If you find the code useful, please reference the numerical methods paper in all studies using simulations run with **GIZMO**. You should also reference the GADGET paper for the domain decomposition and N-body algorithms. Various modules have their own methods papers that should be cited if they are used; these are specified in the "Config.sh (Setting compile-time options)" section of this Guide.
 
 
 
@@ -127,69 +125,57 @@ The Bitbucket site is where I will post code updates, news, and documentation, s
 <a name="features"></a>
 # 2. Feature Set 
 
-The GIZMO code is a flexible, massively parallel, multi-purpose fluid dynamics + gravity code.
+The GIZMO code is a flexible, massively parallel, multi-purpose fluid dynamics + gravity code. Some (not all!) current physics include:
 
-Some (not all!) current features (with their status) include:
 
-(1) Hydrodynamics using any of several fundamentally different methods (Lagrangian finite-element mesh-free Godunov schemes, smoothed particle hydrodynamics both 'traditional' and 'modern', and experimental moving-mesh techniques)
++ **Hydrodynamics** using any of several fundamentally different methods (e.g. new Lagrangian finite-element Godunov schemes, or various "flavors" of smoothed particle hydrodynamics). 
 
-(2) Ideal and non-ideal Magneto-hydrodynamics (fully implemented for all methods in the code), including Ohmic resistivity, ambipolar diffusion, and the Hall effect.
++ **Ideal and non-ideal magneto-hydrodynamics (MHD)**, including Ohmic resistivity, ambipolar diffusion, and the Hall effect. Coefficients can be set by-hand or calculated self-consistently from the code chemistry.
 
-(3) Anisotropic conduction and viscosity ("real" Navier-Stokes or Spitzer-Braginskii conduction and viscosity solved explicitly, with dynamically calculated coefficients; the correct anisotropic, field-parallel formulation of these is used if MHD is active)
++ **Radiative heating and cooling**, including pre-built libraries with photo-ionization, photo-electric, dust, Compton, Brehmstrahhlung, recombination, fine structure, molecular, species-by-species metal line cooling, or hooks for popular external chemistry and cooling libraries. 
 
-(4) Turbulent eddy diffusion (Smagorinski eddy diffusion model for grid-scale turbulence)
++ **Star formation and stellar feedback** on galactic scales (appropriate for galaxy-formation or ISM studies) or individual-star scales (appropriate for IMF studies or individual proto-stellar disk/planet formation simulations), including conversion of gas into sink particles according to various user-defined criteria (e.g. density, self-gravity, molecular thresholds). This includes mass return and feedback with resolved mass, metal, and energy input into the surrounding ISM, or various popular "sub-grid" galactic wind models. Individual-star formation models include proto-stellar and pre-main-sequence evolution tracks and accretion models.
 
-(5) Radiative heating+cooling (photo-ionization, photo-electric, dust, Compton, Brehmstrahhlung, recombination, fine structure, molecular, species-by-species metal line cooling; these can be followed in both optically-thin and thick limits)
++ **Black holes** including on-the-fly formation and seeding with user-defined criteria (based on local or group properties), mergers, growth via various sub-grid accretion models (with or without models for an un-resolved accretion disk), or via explicitly resolved gravitational capture, and "feedback" in the form of heating, outflows, radiation, or jets, scaled with the accretion rates.
 
-(6) Dust-gas mixtures (aerodynamically coupled "fluids" of dust-grains). The treatment is flexible and can handle both sub and super-sonic cases, compressible fluids, grain-gas back-reaction, and grain-grain collisions, with arbitrary dust drag laws (Epstein, Stokes, Coulomb drag) and Lorentz forces on charged grains.
++ **Elastic and plastic dynamics**, with support for arbitrary Tillotson-type equations-of-state for solid, liquid, or vapor media, negative-pressure media, anisotropic deviatoric stresses and plasticity, von Mises-type yield models for plasticity, and various pre-defined material properties.
 
-(7) Self-gravity for arbitrary geometries and boundary conditions is handled with a flexible, fast tree-code, with the option for a particle-mesh solver for large-scale cosmological simulations. N-body (collisionless) particles are trivially supported. Fully adaptive gravitational softenings are supported for all fluids and particle types. If desired, arbitrary analytic potentials/forces can be added trivially by writing a single function in the pre-existing module.
++ **Arbitrary equations-of-state (EOSs)**, including support for trivially-specifiable modular EOSs, multi-fluid systems, and pre-programmed EOSs for stellar systems or degenerate objects (Helmholtz-type EOSs), as well as solid/liquid/vapor mixtures (Tillotson-type EOSs). 
 
-(8) Periodic, fixed, or reflecting boundary conditions are supported. One, two, or three dimensional calculations are supported for hydrodynamics. Shearing sheets, boxes, and stratified shearing-sheet simulations are also supported. Both the appropriate boundary conditions and source terms are included.
++ **Sink Particles**, with dynamical accretion and formation properties, and user-specified formation conditions from local gas or group properties. 
 
-(9) Cosmological integration (large-volume cosmological simulations and "zoom-ins" both supported). 
++ **Anisotropic conduction and viscosity**, i.e. "real" Navier-Stokes or fully-anisotropic Spitzer-Braginskii conduction and viscosity, with dynamically calculated or arbitrarily chosen coefficients. 
 
-(10) Arbitrary gas and degenerate matter equations of state, with equations of state for solid bodies and impact simulations as well as stars, white dwarfs, and neutron stars (arbitrary polytropes are also trivially specified, as are multi-fluid mixtures. More complicated degenerate, stellar, and solid equations of state are also handled with a variety of degrees of complexity). 
++ **Dust-gas mixtures**, e.g. aerodynamically coupled grains or other particles. The treatment is flexible and can handle both sub and super-sonic cases, compressible fluids, and grain-gas back-reaction, with arbitrary dust drag laws (Epstein, Stokes, Coulomb drag) and Lorentz forces on charged grains from magnetic fields.
 
-(11) Self-interacting dark matter and multi-species (mixed) dark matter physics are supported, with arbitrary (specify-able) cross sections. Scalar field gravity (imported from GADGET) is also supported.
++ **Self-gravity** for arbitrary geometries and boundary conditions, with fully-adaptive Lagrangian gravitational softenings for all fluids and particle types. Arbitrary analytic potentials can be added trivially. 
 
-(12) Cosmological integrations with time-dependent (arbitrarily complex/tabulated) dark energy equations of state, arbitrary behavior of the Hubble constant or gravitational constant as a function of time.
++ **Turbulent eddy diffusion** of passive scalars and dynamical quantities (Smagorinski diffusion for subgrid-scale turbulence).
 
-(13) Sub-grid "single-star" sink particles, with individual stellar accretion, proto-stellar evolution, and both proto-stellar and main sequence evolution and feedback physics including radiation (infrared and ionizing), protostellar jets, stellar winds, supernovae, and more. Suitable for single star, planet, proto-stellar, initial mass function and small star cluster scale simulations.
++ **Shearing boxes** (stratified or unstratified), **"large-eddy simulations"** (driven turbulent boxes with arbitrarily specify-able compressible/solenoidal driving properties), **periodic** (cubical or irregular), **open**, or **reflecting** boundary conditions are also supported, and can be mixed-and-matched along different axes. One, two, or three-dimensional calculations are supported. 
 
-(14) Star formation on galactic or sub-galactic scales: conversion of gas into stars or sink particles according to arbitrary star formation laws. These represent stellar populations, suitable for massive star cluster, galaxy, or cosmological large-volume calculations.
++ **Cosmological integrations** (both large-volume and "zoom-in" cosmological simulations), with support for **"non-standard" cosmological models** including dynamical dark energy equations-of-state, arbitrary user-specified expansion histories (time-dependent Hubble constants), or time-dependent gravitational constants.
 
-(15) Feedback from stars: injection of mass, metals, energy, momentum, etc. from SNe, stellar winds, stellar radiation, etc. Different groups have implemented different physics: for example the FIRE physics, or the models from Springel+Hernquist and Dave et al. (in which winds are kicked out of galaxies and the ISM is studied using a parameterized "effective equation of state") can be enabled (for example to compare to the results from AREPO and the Illustris or EAGLE projects, which use these models). 
++ **Group-finding**, run on-the-fly, for arbitrary combinations of "target" species (e.g. halo or galaxy or cluster-finding).
 
-(16) Separately tracked passive scalar fields (e.g. metals and arbitrary tracer species). These can be included in arbitrary numbers with simple modular functions for their injection. Currently, R-process enrichment and abundances are one such set.
++ **Particle splitting/merging** according to arbitrary user-defined criteria, to allow for super-Lagrangian "hyper-refinement" in some simulations.
 
-(17) Black holes: on-the-fly formation/seeding, growth via various accretion models, and feedback in the form of radiation, accretion disk winds, jets, "bubbles", etc. Sub-grid accretion disk prescriptions or explicit capture of gas for sufficiently high-resolution simulations are both available. Dynamical friction forces can be explicitly added, or followed self-consistently. BH-BH mergers are supported and tracked. 
++ **Passive scalar** fields (e.g. metals and arbitrary tracer species) are followed. These can be included in arbitrary numbers with simple modular functions for their injection. For example, R-process enrichment and abundances are one such set.
 
-(18) Cosmic ray physics on ISM, single-cloud or SNe, sub-galactic through cosmological scales. This includes injection via stars and SNe, MHD-dependent transport via advection, diffusion, and streaming (both isotropic and anisotropic, magnetic-field dependent terms), adiabatic heating/cooling, and catastrophic and coulomb losses and subsequent gas heating. 
++ **Self-interacting dark matter and scalar-field gravity** with multi-species (mixed) dark matter physics are supported, with arbitrary (specify-able) cross sections or screening properties.
 
-(19) On-the-fly halo or group finding, for arbitrary combinations of 'target' species. Subhalo finding compatible with SUBFIND.
++ **Cosmic ray** physics on ISM, single-cloud or SNe, sub-galactic through cosmological scales. This includes injection via stars and SNe, MHD-dependent transport via advection, diffusion, and streaming (both isotropic and anisotropic, magnetic-field dependent terms), adiabatic heating/cooling, and catastrophic and coulomb losses and subsequent gas heating. 
 
-(20) On-the-fly radiation transport and radiation hydrodynamics using any of several methods: the LEBRON (locally-extincted background radiation in optically-thin networks) approximation, the M1 (1st-moment), flux-limited diffusion (FLD), or optically thin variable eddington tensor (OTVET) approximations. Arbitrary, modular combinations of wavebands are implemented and can be mixed-and-matched. Full radiation pressure, radiative coupling to ionization and heating/cooling networks are implemented.
++ **Radiation hydrodynamics** using any of several methods: the LEBRON (locally-extincted background radiation in optically-thin networks) approximation, the M1 (1st-moment), flux-limited diffusion (FLD), or optically thin variable eddington tensor (OTVET) approximations. Arbitrary, modular combinations of wavebands are implemented and can be mixed-and-matched. Full radiation pressure, radiative coupling to ionization and heating/cooling networks are implemented.
 
-(21) Turbulent box 'stirring' or 'large eddy simulations' with arbitrarily specified stirring Mach numbers, ratios of compressible to solenoidal forces, driving scales, and driving power spectra, are fully supported in any number of dimensions.
-
-(22) Nuclear reaction networks for explosions/SNe/etc (mostly in place; needs debugging).
-
-(23) Special relativistic MHD (early development stages, not in current repository code).
-
-(24) Particle splitting+merging: particles can be on-the-fly split and merged according to any arbitrary desired criteria. This is done in a fully-conservative manner.
-
-(25) HDF5 (or binary) snapshots, as well as on-the-fly full restarts for the simulations.
-
-(26) Hybrid OPENMP/MPI architecture, together with many optimizations to the domain decomposition, allow for flexible, massively parallel performance.
 
 
 <a name="features-private"></a>
 ## Important Notes on Public vs. Proprietary Code 
 
-If you're using the public version of the code, several of these features will not be available (and many of the detailed descriptions of these features, which follow in this guide, will not apply to you). The public version is provided for purposes of code testing, development, comparison, and education, as well as a wide range of interesting physics problems which require (magneto)hydrodynamics+gravity. However it does not include several of the added physics above. The reasons are that (1) some of these features are designed for very specific problems, and not designed to be used as a 'black box' (e.g. they are not built to safely compile in a modular way, as required of all code pushed to the public version); (2) some are actively in development and not yet de-bugged (these may be incorporated in public code once they are tested); and (2) many have been developed not by me, but by other collaborators and peers, and they would prefer these modules are not made public at this time. If you want to use some of these physics, please contact me directly. 
+The public version of the code has full functionality for the "core" physics in **GIZMO**, including almost all physics listed above. This is intended for a wide range of science applications, as well as learning, testing, and code methods studies. A few modules are not yet in the public code (i.e. they are only present in the development code, which is not public). Usually, this is because they are in active development and not yet de-bugged or tested at the level required for use "out of the box" -- those modules will be made public as soon as this stage is reached. In some cases, however, it is because a module involves proprietary code developed by others with their own collaboration policies, which must be respected. 
 
-Access to the development code, however, *DOES NOT* imply permission to use any modules identified as proprietary either in the README or User Guide or Template\_Config.sh (code description). These are modules being actively developed or used by their original authors to finish PhD theses and related projects. For example, the set of modules identified as part of the FIRE project are specifically developed by a collaboration which has its own authorship and collaboration policies (akin to many observational collaborations). I (PFH) do not have sole authority (even though I am a member of that collaboration) to grant anyone permission to use those parts of the code.  If in doubt about whether use of a given module is permitted, *ask*.
+If you wish to contribute to the active code development or new physics, first read the use policies below, and then contact me directly. Access to the development code, however, *DOES NOT* imply permission to use any modules identified as proprietary either in the README or User Guide or `Template_Config.sh` file. These are modules being actively developed or used by their original authors to finish PhD theses and related projects. For example, the set of modules identified as part of the FIRE project are specifically developed by a collaboration which has its own authorship and collaboration policies (akin to many observational collaborations). I (PFH) do not have sole authority (even though I am a member of that collaboration) to grant anyone permission to use those parts of the code. If in doubt about whether use of a given module is permitted, *ask*.
 
 Permission to access and use the development code, and any modules therein, is *not transferrable*. If you have postdocs/students/collaborators, they must request permission as well. You should not distribute copies of the development code. If you move on from the original project for which permissions were granted, you must re-request permissions. Permission is granted only for the originally specified use purposes. 
 
@@ -203,7 +189,7 @@ Permission to access and use the development code, and any modules therein, is *
 
 ### _Citation Requirements_:
 
-Any paper using **GIZMO** should, at a minimum, cite the methods paper: Hopkins 2015 ("A New Class of Accurate, Mesh-Free Hydrodynamics Methods"). You should also cite the **GADGET** methods paper (Springel, 2005, MNRAS, 364, 1105) for the domain decomposition and N-body algorithms. 
+Any paper using **GIZMO** should, at a minimum, cite the methods paper: Hopkins 2015 ("A New Class of Accurate, Mesh-Free Hydrodynamics Methods"). You should also cite the **GADGET** methods paper (Springel, 2005, MNRAS, 364, 1105) for the domain decomposition and N-body algorithms.
 
 When using specific modules, the relevant code papers must also be cited: for example, papers using the MHD version of the code should cite the MHD methods paper: Hopkins & Raives 2015 ("Accurate, Meshless Methods for Magneto-Hydrodynamics"). Anisotropic diffusion operators (conduction, viscosity, radiation, cosmic rays, non-ideal MHD, passive scalar diffusion) should site Hopkins 2016 ("Anisotropic Diffusion in Mesh-Free Numerical Magnetohydrodynamics"). The citations required for the various code modules are all given in the "Config.sh (Setting Compile-Time Options)" section of this Guide, where the modules are described. 
 
@@ -215,13 +201,13 @@ If you are using the public version of **GIZMO**, there are no requirements for 
 
 ### _Authorship Requirements & Acceptable Use: Private Code_:
 
-However, if you are using the private/development version of the code, it is important to note that many of the modules are *not* provided for common use under *any* license whatsoever, regardless of whether or not you have permission to 'use the full code.' It is not acceptable to use these modules for any work without the explicit consent of the authors of these modules. In general, access to the development version of the code is granted *only* on the condition that all users understand and agree to this, and will *only* use non-public modules which they have developed themselves or for which they have explicitly gotten the approval of the relevant authors. 
+However, if you are using the development version of the code, it is important to remember that many of the modules are *not* provided for common use under *any* license whatsoever, regardless of whether or not you have permission to see/access them. It is not acceptable to use these modules for any work without the explicit consent of the authors of these modules. In general, access to the development version of the code is granted *only* on the condition that all users understand and agree to this, and will *only* use non-public modules which they have developed themselves or for which they have explicitly gotten the approval of the relevant authors. 
 
-In the "Template\_Config.sh" file included in the code, many of the relevant modules specifically outline their guidelines -- modules are specifically described as requiring consent of various authors or groups for their use. Again, these permissions are required to use these modules in any scientific work; access to the development code does not imply permission to use any modules labeled as proprietary anywhere in the User Guide, "Template\_Config.sh" file, README, or source code.
+In the `Template_Config.sh` file included in the code, many of the relevant modules specifically outline their guidelines -- the relevant modules are specifically described as requiring consent of various authors or groups for their use. Again, these permissions are required to use these modules in any scientific work; access to the development code does not imply permission to use any modules labeled as proprietary anywhere in the User Guide, `Template_Config.sh` file, README, or source code.
 
 But if you are unsure whether or not you have permission to use a module, please contact the developers. If you do not know whether or not you have permission to use some module, and it is *not* in the public code, the only safe assumption is that you *do not* have that permission.
 
-For example, a few of the modules in GIZMO are specifically developed either as part of the FIRE project or are imported from GADGET-3, these have specific, known policies. Any projects using the FIRE stellar and/or black hole feedback physics routines must be agreed to by the entire FIRE core development team (PFH, D. Keres, C.A. Faucher-Giguere, and E. Quataert), and the FIRE collaboration has a requirement that project plans be approved by the collaboration before work begins, and that authorship be offered to all the team members and papers be distributed internally among the collaboration before they are made public. GADGET-3 has long-standing user policies set by its main developer, V. Springel; if you had permissions to use a specific module in GADGET-3, it is probably safe to assume that permission extends to its imported version in GIZMO, but if you are unsure and the code is not public, Volker is the person to contact. Many other modules were developed by individual students/postdocs, as part of their ongoing research, and are proprietary - they can only be used with explicit permission from the developer.
+For example, a few of the modules in GIZMO are specifically developed either as part of the FIRE project or are imported from GADGET-3, these have specific, known policies. Any projects using the FIRE stellar and/or black hole feedback physics routines must be agreed to by the entire FIRE core development team (PFH, D. Keres, C.A. Faucher-Giguere, and E. Quataert), and the FIRE collaboration has a requirement that project plans be approved by the collaboration before work begins, and that authorship be offered to all the team members and papers be distributed internally among the collaboration before they are made public. GADGET-3 has long-standing user policies set by its main developer, V. Springel; if you had permissions to use a specific module in GADGET-3, it is probably safe to assume that permission extends to its imported version in GIZMO, but if you are unsure and the code is not public, Volker is the person to contact. Other modules were developed by individual students/postdocs, as part of their ongoing research, and are proprietary - they can only be used with explicit permission from the developer.
 
 Users who violate these policies will have their access to the private version[s] of **GIZMO** immediate revoked.
 
@@ -233,7 +219,7 @@ The public version of the code is free software, distributed under the [GNU Gene
 
 The private version of the code is closed and can only be shared with the explicit permission of the author (PFH). Any sub-section of the non-public code can only be shared, distributed, or incorporated into other work with the explicit permission of the author and the developer(s) of the relevant code (see the policies for acceptable use, above). 
 
-It should go without saying, but **permissions are not transferrable.** If you are working with collaborators, postdocs, or students, they must request permission as well to access the development code, and their permissions are restricted to the same set of modules as the project lead. Do not distribute tarballs of the private code to others; they should be accessing the development repository if they are using the development code. Permission is granted on a project basis: if the scope of the project changes, or if new modules are needed, or any proprietary parts of the code requested, permission must be re-requested. 
+**Permissions are not transferrable.** If you are working with collaborators, postdocs, or students, they must request permission as well to access the development code, and their permissions are restricted to the same set of modules as the project lead. Do not distribute tarballs of the private code to others; they should be accessing the development repository if they are using the development code. Permission is granted on a project basis: if the scope of the project changes, or if new modules are needed, or any proprietary parts of the code requested, permission must be re-requested. 
 
 Users who violate these policies will have their access to the private version[s] of **GIZMO** immediate revoked.
 
@@ -245,9 +231,9 @@ You are encouraged to study and modify this code (public or private)! Please, if
 
 + **Communicate Your Plans.** As the lead developer (PFH), I'd really appreciate knowing what kinds of physics you're adding. It may be that someone else has already done this, or that there is partial code already in place, to save you a huge amount of effort.
 
-+ **Build your modifications as a branch to the Bitbucket repository.** The repository is designed to make it very easy to branch, modify, and re-integrate codes, use it to make everything easy! This will make it very easy for you to keep your version of the code up-to-date even after you branched it (rather than it being frozen to an old version). It will also make it easy if you want to ever push back into the main code. Otherwise your code will not be supported.
++ **Build your modifications as a branch (or fork) to the Bitbucket repository.** The repository is designed to make it very easy to branch, modify, and re-integrate codes, use it to make everything easy! This will make it very easy for you to keep your version of the code up-to-date even after you branched it (rather than it being frozen to an old version). It will also make it easy if you want to ever push back into the main code. Otherwise your code will not be supported.
 
-+ **Always protect against conflicts.** Non-standard code extensions should always be written such that they can be switched off if not needed, and have no side effects on existing code. Normally this means that they have to be enclosed in conditional compilation precompiler statements (#ifdef), especially if variables in the global structures of the code need to be allocated for the extension. However, if the extension's execution can also be controlled at run-time by simple variables, then consider introducing a parameterfile-variable to control the extension. In general, the number of Makefile symbols to control conditional compilation should be kept to a minimum.
++ **Always protect against conflicts.** Non-standard code extensions should always be written such that they can be switched off, if not needed, and have no side effects on existing code. Normally this means that they have to be enclosed in conditional compilation precompiler statements (#ifdef), especially if variables in the global structures of the code need to be allocated for the extension. However, if the extension's execution can also be controlled at run-time by simple variables, then consider introducing a parameterfile-variable to control the extension. In general, the number of Makefile symbols to control conditional compilation should be kept to a minimum.
 
 + Do not place any substantial piece of code belonging to your extension into existing functions of the code. Write your own functions for the code extension, and only place a function call (if needed bracketed by an #ifdef) into the appropriate place of the primary code. Also, place your extension functions into separate source files. The source files for any new module should go into their own folder, with an appropriate name -- just like the existing modules in the code for things like hydro, gravity, galaxy formation, etc. Otherwise the code will quickly become impossible to manage.
 
@@ -278,9 +264,9 @@ You are encouraged to study and modify this code (public or private)! Please, if
 
 + Avoid repetition of code, write a function instead. Break up long functions into smaller more manageable pieces.
 
-+ Preprocessor macros (compile-time flags) that have arguments should be avoided if possible (do whatever you can to minimize the number of compile-time flags. If needed, their names should be fully capitalized. They should always be named with a consistent scheme (as currently in the code, where for example all the galaxy star formation flags begin with "GALSF\_").
++ Preprocessor macros (compile-time flags) that have arguments should be avoided if possible (but do whatever you can to minimize the number of compile-time flags). If needed, their names should be fully capitalized. They should always be named with a consistent prefix naming scheme (as currently in the code, where for example all the galaxy star formation flags begin with `GALSF_`).
 
-+ Magic numbers (including numerical constants) in the code should be avoided and instead be replaced by a symbolic constant(all uppercase) declared with #ifdef in a header file.
++ Magic numbers (including numerical constants) in the code should be avoided and instead be replaced by a symbolic constant (all uppercase) declared with #ifdef in a header file.
 
 + Address all warnings emitted by the compiler when compiled with "-Wall". Unless there are very or necessary good reasons, the code should compile without any warning (not without a crash, without a *warning*).
 
@@ -305,9 +291,9 @@ You are encouraged to study and modify this code (public or private)! Please, if
 ***
 
 <a name="hydro"></a>
-# 4. Hydro Solvers 
+# 4. Fluid (Hydro) Solvers 
 
-GIZMO is unique in that it allows the user (at compile time) to choose the method with which they would like to solve the hydrodynamic equations. This flexibility goes far deeper than in most codes. We're not talking about the difference between e.g. different Riemann solvers or different ways of writing the SPH equation of motion, we're talking about totally different hydro methods (e.g. SPH vs. not-SPH).
+GIZMO is unique in that it allows the user (at compile time) to choose the method with which they would like to solve the fluid (hydrodynamic, MHD, RHD) equations. This flexibility goes far deeper than in most codes. We're not talking about the difference between e.g. different Riemann solvers or different ways of writing the SPH equation of motion, we're talking about different methods for how the simulation volume is decomposed (e.g. the "grid" underlying everything).
 
 Here are the current solvers, with some descriptions: 
 
@@ -412,28 +398,28 @@ If you're using cooling/star formation enable only the master switches and the f
 <a name="tutorial-requirements"></a>
 ## Compilation requirements 
 
-First, get a copy of the source code from the [Bitbucket Repository](https://bitbucket.org/phopkins/gizmo/) (https://bitbucket.org/phopkins/gizmo/).
+First, get a copy of the source code from the [Public Code Site](http://www.tapir.caltech.edu/~phopkins/Site/GIZMO.html) or the [Bitbucket Repository](https://bitbucket.org/phopkins/gizmo/).
 
-(If you don't know how to do this, follow the how-to guides from bitbucket telling you how to use and pull code to a Mercurial repository). This is a version-controlled Mercurial repository. We use this instead of simply putting the source code in a tarball because it allows you to see all versions, fork your own for modifications without interfering with the main branch, and merge changes back in an orderly and well-controlled manner. But if you just want a tarball, see the "Downloads" page on the repository website.
+If you are using the development code, follow the how-to guides from Bitbucket telling you how to use and pull code from a Mercurial repository (allowing you to see all versions, fork your own for modifications without interfering with the main branch, and merge changes/updates in an orderly manner). If you are using the public code, it should come in a simple tarball.
 
-Now, the code requires a few non-standard libraries to run. On most clusters, these are considered standard and can be loaded through some sort of module system. Consult your local sysadmin or the user guide for your machine for details. For many of the computers at national centers (or if you're at any of the schools where many of our other users are located), the Makefile within the source code will already have notes specifically telling you how to load the modules for that machine. For example, on the XSEDE "Stampede" machine, you just need to include the line "module load intel mvapich2 gsl hdf5 fftw2" in your .bashrc or .bash\_profile file (or enter it into the command line before compiling), then link to the libraries in the Makefile as is currently done (open the Makefile and search "Stampede" to see it).
+The code requires a few common libraries to run. On most clusters, these are considered standard and can be loaded through some sort of module system. Consult your local sysadmin or the user guide for your machine for details. For many of the computers at national centers (or if you're at any of the schools where many of our other users are located), the Makefile within the source code will already have notes specifically telling you how to load the modules for that machine. For example, on the XSEDE "Stampede" machine, you just need to include the line "module load intel mvapich2 gsl hdf5 fftw2" in your `.bashrc` or `.bash_profile` file (or enter it into the command line before compiling), then link to the libraries in the Makefile as is currently done (open the Makefile and search "Stampede" to see these instructions -- there are similar instructions for all other pre-programmed machines within the Makefile, so take a look).
 
-These libraries include: MPI, GSL, FFTW2, and HDF5: 
+The necessary libraries are: MPI, GSL, FFTW2, and HDF5: 
 
-+ mpi - the ‘Message Passing Interface’ (version 1.0 or higher). Many vendor supplied versions exist, in addition to excellent open source implementations, e.g.
++ **MPI** - the ‘Message Passing Interface’ (version 1.0 or higher). Many vendor supplied versions exist, in addition to excellent open source implementations, e.g.
 MPICH ([`http://www-unix.mcs.anl.gov/mpi/mpich`](http://www-unix.mcs.anl.gov/mpi/mpich)), or LAM ([`http://www.lam-mpi.org`](http://www.lam-mpi.org)). 
 
-+ gsl - the GNU scientific library. This open-source package can be obtained at [`http://www.gnu.org/software/gsl`](http://www.gnu.org/software/gsl), for example. This is used for numerical integration for pre-computing various tables
++ **GSL** - the GNU scientific library. This open-source package can be obtained at [`http://www.gnu.org/software/gsl`](http://www.gnu.org/software/gsl), for example. This is used for numerical integration for pre-computing various tables
 
-+ fftw2 - the ‘Fastest Fourier Transform in the West’. This open-source package can be obtained at [`http://www.fftw.org`](http://www.fftw.org). Note that the MPI-capable version 2.x of FFTW is required: version 3.x changes many of the calling and naming conventions (if someone wishes to upgrade the code for FFTW3, it would be welcome). FFTW is only needed for simulations that use the TreePM algorithm.
++ **FFTW2** - the ‘Fastest Fourier Transform in the West’. This open-source package can be obtained at [`http://www.fftw.org`](http://www.fftw.org). Note that the MPI-capable version 2.x of FFTW is required: version 3.x changes many of the calling and naming conventions (if someone wishes to upgrade the code for FFTW3, it would be welcome). FFTW is only needed for simulations that use the TreePM algorithm.
 
-+ hdf5 - the ‘Hierarchical Data Format’ (version 5.0 or higher, available at [`http://hdf.ncsa.uiuc.edu/HDF5`](http://hdf.ncsa.uiuc.edu/HDF5)). This optional library is only needed when one wants to read or write snapshot files in HDF format, although this is strongly recommended (and the default code behavior). It is possible to compile and use the code without this library.
++ **HDF5** - the ‘Hierarchical Data Format’ (version 5.0 or higher, available at [`http://hdf.ncsa.uiuc.edu/HDF5`](http://hdf.ncsa.uiuc.edu/HDF5)). This optional library is only needed when one wants to read or write snapshot files in HDF format, although this is strongly recommended (and the default code behavior). It is possible to compile and use the code without this library.
 
 Note that FFTW needs to be compiled with parallel support enabled. This can be achieved by passing the option - -enable-mpi to its configure script. You also need to match the appropriate prefix (single or double precision or "noprefix", to the compiled version of FFTW): flags for the appropriate prefix are in the Config.sh file, or can be directly included in the Makefile.
 
 The code package includes various .c and .h files, folders with different modules, and the following critical files: 
 
-+ Makefile: this actually controls the code compilation. A number of systems have been pre-defined here, you should follow these examples to add other system-types. Slight adjustments of the makefile will be needed if any of the above libraries is not installed in a standard location on your system. Also, compiler optimisation options may need adjustment, depending on the C-compiler that is used. The provided makefile is compatible with GNU- make, i.e. typing make or gmake should then build the executable. For example, for the "Stampede" system described above, the Makefile includes the machine-specific set of options: 
++ **Makefile**: this actually controls the code compilation. A number of systems have been pre-defined here, you should follow these examples to add other system-types. Slight adjustments of the makefile will be needed if any of the above libraries is not installed in a standard location on your system. Also, compiler optimisation options may need adjustment, depending on the C-compiler that is used. The provided makefile is compatible with GNU- make, i.e. typing make or gmake should then build the executable. For example, for the "Stampede" system described above, the Makefile includes the machine-specific set of options: 
 
         ifeq ($(SYSTYPE),"Stampede") # checks if we are in Stampede according to the Makefile.systype file
         CC       =  mpicc # mpi c compiler
@@ -451,13 +437,13 @@ The code package includes various .c and .h files, folders with different module
 
     Once the parameters for your machine have been entered into the Makefile, you should not ever need to modify it again, unless you modify the source code and add files which need to be compiled (advanced users only!)
 
-+ Makefile.systype: This is where you actually specify the machine on which you are running. Simply uncomment your system and comment out all other lines. For example, for the same "Stampede" system described above, we would simply un-comment the line
++ **Makefile.systype**: This is where you actually specify the machine on which you are running. Simply uncomment your system and comment out all other lines. For example, for the same "Stampede" system described above, we would simply un-comment the line
 
         SYSTYPE="Stampede"
 
     If you add a new system, add a block like the above description for Stampede to the Makefile, then add a line with the matching machine name to Makefile.systype. Then you and other users only need to comment/uncomment one line to control compilations!
 
-+ Config.sh: This file contains a number of compile-time options, which determine the type of simulations, physics included -- most everything you need to control at compile time. Once you've got the libraries linked and Makefile.systype set for your machine, all different types of simulations will just amount to changing settings in Config.sh (as well as the run-time initial conditions and paramterfiles, of course). On another page, we explain these options. 
++ **Config.sh**: This file contains a number of compile-time options, which determine the type of simulations, physics included -- most everything you need to control at compile time. Once you've got the libraries linked and Makefile.systype set for your machine, all different types of simulations will just amount to changing settings in Config.sh (as well as the run-time initial conditions and paramterfiles, of course). On another page, we explain these options. 
 
 
 <a name="tutorial-running"></a>
