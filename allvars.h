@@ -1814,7 +1814,7 @@ extern struct global_data_all_processes
   double BlackHoleFeedbackFactor;	/*!< Fraction of the black luminosity feed into thermal feedback */
   double SeedBlackHoleMass;         /*!< Seed black hole mass */
   double SeedBlackHoleMassSigma;    /*!< Standard deviation of init black hole masses */
-  double SeedBlackHoleMinRedshift; /*!< Minimum redshift where BH seeds are allowed */
+  double SeedBlackHoleMinRedshift;  /*!< Minimum redshift where BH seeds are allowed */
 #ifdef BH_ALPHADISK_ACCRETION
   double SeedAlphaDiskMass;         /*!< Seed alpha disk mass */
 #endif
@@ -1823,7 +1823,9 @@ extern struct global_data_all_processes
   double BAL_internal_temperature;
   MyIDType AGNWindID;
 #endif
+#ifdef BH_SEED_FROM_FOF
   double MinFoFMassForNewSeed;      /*!< Halo mass required before new seed is put in */
+#endif
   double BlackHoleNgbFactor;        /*!< Factor by which the SPH neighbour should be increased/decreased */
   double BlackHoleMaxAccretionRadius;
   double BlackHoleEddingtonFactor;	/*!< Factor above Eddington */

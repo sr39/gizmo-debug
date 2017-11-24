@@ -433,7 +433,7 @@ void set_blackhole_mdot(int i, int n, double dt)
             
 #if (BH_GRAVACCRETION == 2) || (BH_GRAVACCRETION == 3)
             double r0_acc = PPP[n].Hsml * All.cf_atime; // radius in physical units
-            double menc_all = m_tmp_for_bhar + P[n].Mass; // total enclosed mass in kernel
+            double menc_all = m_tmp_for_bhar + P[n].Mass; // total enclosed mass in kernel (note P[n].Mass can be large if BH_INCREASE_DYNAMIC_MASS is set large)
             double omega_dyn = sqrt(All.G * menc_all / (r0_acc*r0_acc*r0_acc)); // 1/t_dyn for all mass inside kernel
             double ff_fac = 1;
 #if (BH_GRAVACCRETION == 2)
@@ -689,8 +689,10 @@ void set_blackhole_drag(int i, int n, double dt)
         double Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel;
 #if (BH_DYNFRICTION == 1)    // DAA: dark matter + stars
         Mass_in_Kernel = BlackholeTempInfo[i].Malt_in_Kernel - BlackholeTempInfo[i].Mgas_in_Kernel;
+#elif (BH_DYNFRICTION == 2)  // DAA: stars only
+        Mass_in_Kernel = BlackholeTempInfo[i].Mstar_in_Kernel;
 #endif
-#if (BH_DYNFRICTION > 1)
+#if (BH_DYNFRICTION > 2)
         Mass_in_Kernel *= BH_DYNFRICTION;
 #endif
         //fac = BlackholeTempInfo[i].Malt_in_Kernel / ( (4*M_PI/3) * pow(PPP[n].Hsml*All.cf_atime,3) ); /* mean density of all mass inside kernel */
