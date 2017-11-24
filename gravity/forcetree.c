@@ -44,7 +44,7 @@ static int last;
 #define NTAB 1000
 /*! variables for short-range lookup table */
 static float shortrange_table[NTAB], shortrange_table_potential[NTAB];
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
 static float shortrange_table_tidal[NTAB];
 #endif
 /*! toggles after first tree-memory allocation, has only influence on log-files */
@@ -76,7 +76,7 @@ extern pthread_mutex_t mutex_nexport, mutex_partnodedrift;
 
 
 
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
 /*! Size of 3D lock-up table for Ewald correction force */
 #define EN  64
 /*! 3D lock-up table for Ewald correction to force and potential. Only one
@@ -512,7 +512,7 @@ void force_update_node_recursive(int no, int sib, int father)
     MyFloat s[3], vs[3], mass;
     struct particle_data *pa;
     
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
     MyFloat s_dm[3], vs_dm[3], mass_dm;
 #endif
 #ifdef RT_USE_GRAVTREE
@@ -565,7 +565,7 @@ void force_update_node_recursive(int no, int sib, int father)
         MyFloat bh_mass=0;
         MyFloat bh_pos_times_mass[3]={0,0,0};   /* position of each black hole in the node times its mass; divide by total mass at the end to get COM */
 #endif
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
         mass_dm = 0;
         s_dm[0] = vs_dm[0] = 0;
         s_dm[1] = vs_dm[1] = 0;
@@ -643,7 +643,7 @@ void force_update_node_recursive(int no, int sib, int father)
                         bh_pos_times_mass[1] += Nodes[p].bh_pos[1] * Nodes[p].bh_mass;
                         bh_pos_times_mass[2] += Nodes[p].bh_pos[2] * Nodes[p].bh_mass;
 #endif
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
                         mass_dm += (Nodes[p].mass_dm);
                         s_dm[0] += (Nodes[p].mass_dm * Nodes[p].s_dm[0]);
                         s_dm[1] += (Nodes[p].mass_dm * Nodes[p].s_dm[1]);
@@ -730,7 +730,7 @@ void force_update_node_recursive(int no, int sib, int father)
 #endif
                     
                     
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
                     if(pa->Type != 0)
                     {
                         mass_dm += (pa->Mass);
@@ -830,7 +830,7 @@ void force_update_node_recursive(int no, int sib, int father)
             bh_lum_hR = 1; bh_lum_grad[0]=bh_lum_grad[1]=bh_lum_grad[2]=0;
         }
 #endif
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
         if(mass_dm)
         {
             s_dm[0] /= mass_dm;
@@ -888,7 +888,7 @@ void force_update_node_recursive(int no, int sib, int father)
                 Nodes[no].bh_pos[2] = bh_pos_times_mass[2] / bh_mass;
             }
 #endif
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
         Nodes[no].s_dm[0] = s_dm[0];
         Nodes[no].s_dm[1] = s_dm[1];
         Nodes[no].s_dm[2] = s_dm[2];
@@ -981,7 +981,7 @@ void force_exchange_pseudodata(void)
         MyFloat bh_mass;
         MyFloat bh_pos[3];
 #endif
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
         MyFloat s_dm[3];
         MyFloat vs_dm[3];
         MyFloat mass_dm;
@@ -1050,7 +1050,7 @@ void force_exchange_pseudodata(void)
             DomainMoment[i].bh_pos[1] = Nodes[no].bh_pos[1];
             DomainMoment[i].bh_pos[2] = Nodes[no].bh_pos[2];
 #endif
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
             DomainMoment[i].s_dm[0] = Nodes[no].s_dm[0];
             DomainMoment[i].s_dm[1] = Nodes[no].s_dm[1];
             DomainMoment[i].s_dm[2] = Nodes[no].s_dm[2];
@@ -1133,7 +1133,7 @@ void force_exchange_pseudodata(void)
                     Nodes[no].bh_pos[1] = DomainMoment[i].bh_pos[1];
                     Nodes[no].bh_pos[2] = DomainMoment[i].bh_pos[2];
 #endif
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
                     Nodes[no].s_dm[0] = DomainMoment[i].s_dm[0];
                     Nodes[no].s_dm[1] = DomainMoment[i].s_dm[1];
                     Nodes[no].s_dm[2] = DomainMoment[i].s_dm[2];
@@ -1166,7 +1166,7 @@ void force_treeupdate_pseudos(int no)
     MyFloat rt_source_lum_s[3];
     MyFloat rt_source_lum_vs[3];
 #endif
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
     MyFloat s_dm[3], vs_dm[3], mass_dm;
 #endif
     
@@ -1191,7 +1191,7 @@ void force_treeupdate_pseudos(int no)
     MyFloat bh_mass=0;
     MyFloat bh_pos_times_mass[3]={0,0,0};
 #endif
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
     mass_dm = 0;
     s_dm[0] = vs_dm[0] = 0;
     s_dm[1] = vs_dm[1] = 0;
@@ -1248,7 +1248,7 @@ void force_treeupdate_pseudos(int no)
             bh_pos_times_mass[1] += Nodes[p].bh_pos[1] * Nodes[p].bh_mass;
             bh_pos_times_mass[2] += Nodes[p].bh_pos[2] * Nodes[p].bh_mass;
 #endif
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
             mass_dm += (Nodes[p].mass_dm);
             s_dm[0] += (Nodes[p].mass_dm * Nodes[p].s_dm[0]);
             s_dm[1] += (Nodes[p].mass_dm * Nodes[p].s_dm[1]);
@@ -1335,7 +1335,7 @@ void force_treeupdate_pseudos(int no)
         bh_lum_hR = 1; bh_lum_grad[0]=bh_lum_grad[1]=bh_lum_grad[2]=0;
     }
 #endif
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
     if(mass_dm)
     {
         s_dm[0] /= mass_dm;
@@ -1391,7 +1391,7 @@ void force_treeupdate_pseudos(int no)
             Nodes[no].bh_pos[2] = bh_pos_times_mass[2] / bh_mass;
         }
 #endif
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
     Nodes[no].s_dm[0] = s_dm[0];
     Nodes[no].s_dm[1] = s_dm[1];
     Nodes[no].s_dm[2] = s_dm[2];
@@ -1535,9 +1535,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     integertime ti_Current = All.Ti_Current;
     double errTol2 = All.ErrTolTheta * All.ErrTolTheta;
     
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
     int i1, i2;
-    double fac2, h_tidal, h_inv_tidal, h3_inv_tidal, h5_inv_tidal, fac_tidal;
+    double fac2, h_tidal, h_inv_tidal, h3_inv_tidal, h5_inv, h5_inv_tidal, fac_tidal;
     MyDouble tidal_tensorps[3][3];
 #endif
 #if defined(REDUCE_TREEWALK_BRANCHING) && defined(PMGRID)
@@ -1571,7 +1571,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
     
     
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
     double dx_dm = 0, dy_dm = 0, dz_dm = 0, mass_dm = 0;
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE)
@@ -1586,7 +1586,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     MyLongDouble pot;
     pot = 0;
 #endif
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
     for(i1 = 0; i1 < 3; i1++)
         for(i2 = 0; i2 < 3; i2++)
             tidal_tensorps[i1][i2] = 0.0;
@@ -1683,8 +1683,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     rcut2 = rcut * rcut;
     asmthfac = 0.5 / asmth * (NTAB / 3.0);
 #endif
-
-#ifdef SIDM
+    
+    
+#ifdef DM_SIDM
     double dist_to_center2, dist_to_open, kick_x, kick_y, kick_z, kick_target[3], kick_no[3];
     double prob, prob_tmp, max_prob, h_si, dx_nc, dy_nc, dz_nc;
     float sidm_tstart, sidm_tend, sidm_tscatter, sidm_tcell;
@@ -1750,7 +1751,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
     
     
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
     /* different tidal field softening */
     h_tidal = All.ForceSoftening[ptype];
     h_inv_tidal = 1.0 / h_tidal;
@@ -1790,7 +1791,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 dx = P[no].Pos[0] - pos_x;
                 dy = P[no].Pos[1] - pos_y;
                 dz = P[no].Pos[2] - pos_z;
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
                 NEAREST_XYZ(dx,dy,dz,-1);
 #endif
                 r2 = dx * dx + dy * dy + dz * dz;
@@ -1834,7 +1835,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
                 
                 
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
                 if(ptype != 0)	/* we have a dark matter particle as target */
                 {
                     if(P[no].Type == 1)
@@ -1889,13 +1890,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
                 
                 
-#ifdef SIDM
+                
+#ifdef DM_SIDM
                 /* here is where we call the core of the SIDM calculation for DM particle-particle interactions */
                 /* check if target particle is an SIDM candidate */
-                if((1 << ptype) & (SIDM))
+                if((1 << ptype) & (DM_SIDM))
                 {
                     /* ok, now check if neighbor particle is also SIDM-active */
-                    if((1 << P[no].Type) & (SIDM))
+                    if((1 << P[no].Type) & (DM_SIDM))
                     {
                         /* ok, now check against self-interactions */
                         if(targetID != P[no].ID)
@@ -1946,10 +1948,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                             sidm_tend = my_second();
                             sidm_tscatter += timediff(sidm_tstart, sidm_tend);
                         } // if(targetID != P[no].ID)
-                    } // if((1 << P[no].Type) & (SIDM))
-                } // if((1 << ptype) & (SIDM))
+                    } // if((1 << P[no].Type) & (DM_SIDM))
+                } // if((1 << ptype) & (DM_SIDM))
                 
-#endif // SIDM
+#endif // DM_SIDM
                 } // closes (if((r2 > 0) && (mass > 0))) check
                 
                 if(TakeLevel >= 0) {P[no].GravCost[TakeLevel] += 1.0;}
@@ -2044,7 +2046,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 dx = nop->u.d.s[0] - pos_x;
                 dy = nop->u.d.s[1] - pos_y;
                 dz = nop->u.d.s[2] - pos_z;
-#if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
+#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
                 NEAREST_XYZ(dx,dy,dz,-1);
 #endif
                 r2 = dx * dx + dy * dy + dz * dz;
@@ -2056,7 +2058,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double bh_dx = nop->bh_pos[0] - pos_x;      /* SHEA:  now using bh_pos instead of center */
                     double bh_dy = nop->bh_pos[1] - pos_y;
                     double bh_dz = nop->bh_pos[2] - pos_z;
-#if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
+#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
                     NEAREST_XYZ(bh_dx,bh_dy,bh_dz,-1);
 #endif
                     double bh_r2 = bh_dx * bh_dx + bh_dy * bh_dy + bh_dz * bh_dz; // + (nop->len)*(nop->len);
@@ -2076,7 +2078,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {mass_stellarlum[kf] = nop->stellar_lum[kf];}
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
                     dx_stellarlum = nop->rt_source_lum_s[0] - pos_x; dy_stellarlum = nop->rt_source_lum_s[1] - pos_y; dz_stellarlum = nop->rt_source_lum_s[2] - pos_z;
-#if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
+#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
                     NEAREST_XYZ(dx_stellarlum,dy_stellarlum,dz_stellarlum,-1);
 #endif
 #else
@@ -2089,7 +2091,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
                 
                 
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
                 if(ptype != 0)	/* we have a dark matter particle as target */
                 {
                     dx_dm = nop->s_dm[0] - pos_x;
@@ -2110,9 +2112,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 dyy = (nop->center[1] - pos_y);
                 dzz = (nop->center[2] - pos_z);
                 eff_dist = rcut + 0.5 * nop->len;
-                pdxx = NGB_PERIODIC_LONG_X(dxx,dyy,dzz,-1);
-                pdyy = NGB_PERIODIC_LONG_Y(dxx,dyy,dzz,-1);
-                pdzz = NGB_PERIODIC_LONG_Z(dxx,dyy,dzz,-1);
+                pdxx = NGB_PERIODIC_BOX_LONG_X(dxx,dyy,dzz,-1);
+                pdyy = NGB_PERIODIC_BOX_LONG_Y(dxx,dyy,dzz,-1);
+                pdzz = NGB_PERIODIC_BOX_LONG_Z(dxx,dyy,dzz,-1);
                 /* check whether we can stop walking along this branch */
                 if((r2 > rcut2) & ((pdxx > eff_dist) | (pdyy > eff_dist) | (pdzz > eff_dist)))
                 {
@@ -2124,19 +2126,19 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if(r2 > rcut2)
                 {
                     eff_dist = rcut + 0.5 * nop->len;
-                    dist = NGB_PERIODIC_LONG_X(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
+                    dist = NGB_PERIODIC_BOX_LONG_X(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
                     if(dist > eff_dist)
                     {
                         no = nop->u.d.sibling;
                         continue;
                     }
-                    dist = NGB_PERIODIC_LONG_Y(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
+                    dist = NGB_PERIODIC_BOX_LONG_Y(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
                     if(dist > eff_dist)
                     {
                         no = nop->u.d.sibling;
                         continue;
                     }
-                    dist = NGB_PERIODIC_LONG_Z(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
+                    dist = NGB_PERIODIC_BOX_LONG_Z(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
                     if(dist > eff_dist)
                     {
                         no = nop->u.d.sibling;
@@ -2146,7 +2148,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #endif // PMGRID //
                 
-#ifdef SIDM
+#ifdef DM_SIDM
                 sidm_tstart = my_second();
                 dx_nc = nop->center[0] - pos_x;
                 dy_nc = nop->center[1] - pos_y;
@@ -2265,7 +2267,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             if(r >= h)
             {
                 fac = mass / (r2 * r);
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
                 /* second derivative of potential needs this factor */
                 fac2 = 3.0 * mass / (r2 * r2 * r);
 #endif
@@ -2278,7 +2280,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if !defined(ADAPTIVE_GRAVSOFT_FORALL) && !defined(ADAPTIVE_GRAVSOFT_FORGAS)
                 h_inv = 1.0 / h;
                 h3_inv = h_inv * h_inv * h_inv;
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
                 h5_inv = h_inv * h_inv * h_inv * h_inv * h_inv;
 #endif
 #endif
@@ -2366,7 +2368,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef EVALPOTENTIAL
                 facpot = mass * kernel_gravity(u, h_inv, h3_inv, -1);
 #endif
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
                 /*second derivatives needed -> calculate them from softend potential,
                  (see Gadget 1 paper and there g2 function). SIGN?! */
                 if(u < 0.5)
@@ -2382,7 +2384,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             if(tabindex < NTAB && tabindex >= 0)
 #endif // PMGRID //
             {
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
                 /* save original fac without shortrange_table facor (needed for tidal field calculation) */
                 fac_tidal = fac;
 #endif
@@ -2392,8 +2394,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
                 
 #ifdef EVALPOTENTIAL
-#if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
+#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
                 pot += FLT(mass * ewald_pot_corr(dx, dy, dz));
+#elif defined(PMGRID)
+                pot += FLT(facpot * shortrange_table_potential[tabindex]);
+#else
+                pot += FLT(facpot);
 #endif
 #endif
                 
@@ -2401,7 +2407,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 acc_y += FLT(dy * fac);
                 acc_z += FLT(dz * fac);
                 
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
                 /*
                  tidal_tensorps[][] = Matrix of second derivatives of grav. potential, symmetric:
                  |Txx Txy Txz|   |tidal_tensorps[0][0] tidal_tensorps[0][1] tidal_tensorps[0][2]|
@@ -2410,17 +2416,17 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                  */
 #ifdef PMGRID
                 tidal_tensorps[0][0] += ((-fac_tidal + dx * dx * fac2) * shortrange_table[tabindex]) +
-                dx * dx * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+                    dx * dx * fac2 / 3.0 * shortrange_table_tidal[tabindex];
                 tidal_tensorps[0][1] += ((dx * dy * fac2) * shortrange_table[tabindex]) +
-                dx * dy * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+                    dx * dy * fac2 / 3.0 * shortrange_table_tidal[tabindex];
                 tidal_tensorps[0][2] += ((dx * dz * fac2) * shortrange_table[tabindex]) +
-                dx * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+                    dx * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
                 tidal_tensorps[1][1] += ((-fac_tidal + dy * dy * fac2) * shortrange_table[tabindex]) +
-                dy * dy * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+                    dy * dy * fac2 / 3.0 * shortrange_table_tidal[tabindex];
                 tidal_tensorps[1][2] += ((dy * dz * fac2) * shortrange_table[tabindex]) +
-                dy * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+                    dy * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
                 tidal_tensorps[2][2] += ((-fac_tidal + dz * dz * fac2) * shortrange_table[tabindex]) +
-                dz * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+                    dz * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
 #else
                 tidal_tensorps[0][0] += (-fac_tidal + dx * dx * fac2);
                 tidal_tensorps[0][1] += (dx * dy * fac2);
@@ -2432,10 +2438,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 tidal_tensorps[1][0] = tidal_tensorps[0][1];
                 tidal_tensorps[2][0] = tidal_tensorps[0][2];
                 tidal_tensorps[2][1] = tidal_tensorps[1][2];
-#endif // DISTORTIONTENSORPS //
-#ifdef EVALPOTENTIAL
-                pot += FLT(facpot * shortrange_table_potential[tabindex]);
-#endif
+#endif // GDE_DISTORTIONTENSOR //
+
             } // closes TABINDEX<NTAB
             
             ninteractions++;
@@ -2508,10 +2512,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif // RT_USE_GRAVTREE
             
             
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
             if(ptype != 0)	/* we have a dark matter particle as target */
             {
-#if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
+#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
                 NEAREST_XYZ(dx_dm,dy_dm,dz_dm,-1);
 #endif
                 r2 = dx_dm * dx_dm + dy_dm * dy_dm + dz_dm * dz_dm;
@@ -2540,7 +2544,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     acc_z += FLT(dz_dm * fac);
                 }
             } // closes if(ptype != 0)
-#endif // SCALARFIELD //
+#endif // DM_SCALARFIELD_SCREENING //
                 
         } // closes (if((r2 > 0) && (mass > 0))) check
             
@@ -2561,7 +2565,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     } // closes outer (while(no>=0)) check
     
     
-#ifdef SIDM
+#ifdef DM_SIDM
     /* some final SIDM operations before writing back to the particles */
     All.Ndmsi_thisTask += si_count;
     if(max_prob < 0.1 && max_prob > 0 && mode == 0 && targetdt_step_sidm > 0)
@@ -2596,10 +2600,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef EVALPOTENTIAL
         P[target].Potential = pot;
 #endif
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
         for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
 #endif
-#ifdef SIDM
+#ifdef DM_SIDM
         P[target].Vel[0] += kick_x; P[target].Vel[1] += kick_y; P[target].Vel[2] += kick_z;
         P[target].dt_step_sidm = targetdt_step_sidm; P[target].NInteractions += si_count;
 #endif
@@ -2628,10 +2632,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef EVALPOTENTIAL
         GravDataResult[target].Potential = pot;
 #endif
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
         for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GravDataResult[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
 #endif
-#ifdef SIDM
+#ifdef DM_SIDM
         GravDataResult[target].Vel[0] = kick_x; GravDataResult[target].Vel[1] = kick_y; GravDataResult[target].Vel[2] = kick_z;
         GravDataResult[target].dt_step_sidm = targetdt_step_sidm; GravDataResult[target].NInteractions = si_count;
 #endif
@@ -2651,7 +2655,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 
 
 
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
 /*! This function computes the Ewald correction, and is needed if periodic
  *  boundary conditions together with a pure tree algorithm are used. Note
  *  that the ordinary tree walk does not carry out this correction directly
@@ -3016,7 +3020,7 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
     
     return cost;
 }
-#endif // #ifdef PERIODIC //
+#endif // #ifdef BOX_PERIODIC //
 
 
 
@@ -3203,7 +3207,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                 dz = nop->u.d.s[2] - pos_z;
             }
             
-#if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
+#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
             NEAREST_XYZ(dx,dy,dz,-1);
 #endif
             r2 = dx * dx + dy * dy + dz * dz;
@@ -3296,7 +3300,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                 {
                     
                     /* force node to open if we are within the gravitational softening length */
-#if defined(NOGRAVITY) || defined(RT_NOGRAVITY) || (!(defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)))
+#if defined(SELFGRAVITY_OFF) || defined(RT_SELFGRAVITY_OFF) || (!(defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)))
                     double soft = All.ForceSoftening[ptype];
 #endif
                     if((r2 < (soft+0.6*nop->len)*(soft+0.6*nop->len)) || (r2 < (nop->maxsoft+0.6*nop->len)*(nop->maxsoft+0.6*nop->len)))
@@ -3397,7 +3401,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                     pot += FLT( fac * mass * kernel_gravity(u, h_inv, 1, -1) );
                 }
             }
-#if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
+#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
             pot += FLT(mass * ewald_pot_corr(dx, dy, dz));
 #endif
         }
@@ -3414,7 +3418,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
     }
     
     /* store result at the proper place */
-#if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUTPOTENTIAL)
+#if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUT_POTENTIAL)
     if(mode == 0)
         P[target].Potential = pot;
     else
@@ -3549,7 +3553,7 @@ int subfind_force_treeevaluate_potential(int target, int mode, int *nexport, int
                 dz = nop->u.d.s[2] - pos_z;
             }
             
-#if defined(PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
+#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
             NEAREST_XYZ(dx,dy,dz,-1);
 #endif
             r2 = dx * dx + dy * dy + dz * dz;
@@ -3666,7 +3670,7 @@ void force_treeallocate(int maxnodes, int maxpart)
             u = 3.0 / NTAB * (i + 0.5);
             shortrange_table[i] = erfc(u) + 2.0 * u / sqrt(M_PI) * exp(-u * u);
             shortrange_table_potential[i] = erfc(u);
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
             shortrange_table_tidal[i] = 4.0 * u * u * u / sqrt(M_PI) * exp(-u * u);
 #endif
         }
@@ -3719,7 +3723,7 @@ void dump_particles(void)
 
 
 
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
 
 /*! This function initializes tables with the correction force and the
  *  correction potential due to the periodic images of a point mass located
@@ -3736,7 +3740,7 @@ void dump_particles(void)
  */
 void ewald_init(void)
 {
-#ifndef NOGRAVITY
+#ifndef SELFGRAVITY_OFF
     int i, j, k, beg, len, size, n, task, count;
     double x[3], force[3];
     char buf[200];
@@ -3854,7 +3858,7 @@ void ewald_init(void)
     {
         printf("initialization of periodic boundaries finished.\n");
     }
-#endif // #ifndef NOGRAVITY
+#endif // #ifndef SELFGRAVITY_OFF
 }
 
 
@@ -3989,6 +3993,6 @@ void ewald_force(int iii, int jjj, int kkk, double x[3], double force[3])
                 }
             }
 }
-#endif // #ifdef PERIODIC //
+#endif // #ifdef BOX_PERIODIC //
 
 

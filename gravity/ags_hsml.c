@@ -62,9 +62,9 @@ int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary)
         if((particle_type_primary == 4)||(particle_type_primary == 2)||(particle_type_primary == 3)) {return 29;} // 2^0+2^2+2^3+2^4
     }
 #endif
-#ifdef SIDM
+#ifdef DM_SIDM
     /* SIDM particles see other SIDM particles */
-    if((1 << particle_type_primary) & (SIDM)) {return SIDM;}
+    if((1 << particle_type_primary) & (DM_SIDM)) {return DM_SIDM;}
 #endif
     /* if we haven't been caught by one of the above checks, we simply return whether or not we see 'ourselves' */
     return (1 << particle_type_primary);
@@ -812,7 +812,7 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
                 NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1); // find the closest image in the given box size
 #endif
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
@@ -838,9 +838,9 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
                             kernel.dv[1] = local.Vel[1] - P[j].Vel[1];
                             kernel.dv[2] = local.Vel[2] - P[j].Vel[2];
                         }
-#ifdef SHEARING_BOX
-                        if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {kernel.dv[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
-                        if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {kernel.dv[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+#ifdef BOX_SHEARING
+                        if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {kernel.dv[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+                        if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {kernel.dv[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
 #endif
                         double v_dot_r = kernel.dp[0] * kernel.dv[0] + kernel.dp[1] * kernel.dv[1] + kernel.dp[2] * kernel.dv[2];
                         double vsig = 0.5 * fabs( fac_mu * v_dot_r / kernel.r );

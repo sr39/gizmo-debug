@@ -210,7 +210,7 @@ struct hydrodata_in
 #if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_M1)
         MyDouble CosmicRayPressure[3];
 #endif
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
         MyDouble Metallicity[NUM_METAL_SPECIES][3];
 #endif
 #ifdef DOGRAD_INTERNAL_ENERGY
@@ -225,7 +225,7 @@ struct hydrodata_in
     } Gradients;
     MyFloat NV_T[3][3];
     
-#ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
+#ifdef HYDRO_PRESSURE_SPH
     MyFloat EgyWtRho;
 #endif
 
@@ -372,7 +372,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     in->SoundSpeed = Particle_effective_soundspeed_i(i);
     in->Timestep = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0);
     in->ConditionNumber = SphP[i].ConditionNumber;
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
     /* since it is not used elsewhere, we can use the sign of the condition number as a bit 
         to conveniently indicate the status of the parent particle flag, for the constrained gradients */
     if(SphP[i].FlagForConstrainedGradients == 0) {in->ConditionNumber *= -1;}
@@ -391,7 +391,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
 #endif
 #endif
     
-#ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
+#ifdef HYDRO_PRESSURE_SPH
     in->EgyWtRho = SphP[i].EgyWtDensity;
 #endif
     
@@ -415,7 +415,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
 #if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_M1)
         in->Gradients.CosmicRayPressure[k] = SphP[i].Gradients.CosmicRayPressure[k];
 #endif
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
         for(j=0;j<NUM_METAL_SPECIES;j++) {in->Gradients.Metallicity[j][k] = SphP[i].Gradients.Metallicity[j][k];}
 #endif
 #ifdef DOGRAD_INTERNAL_ENERGY
@@ -713,6 +713,7 @@ void hydro_final_operations_and_cleanup(void)
             
             
 #ifdef RT_RAD_PRESSURE_FORCES
+#if defined(RT_EVOLVE_FLUX)
             /* calculate the radiation pressure force */
             double radacc[3]; radacc[0]=radacc[1]=radacc[2]=0; int k2;
             // a = kappa*F/c = Gradients.E_gamma_ET[gradient of photon energy density] / rho[gas_density] //
@@ -725,12 +726,10 @@ void hydro_final_operations_and_cleanup(void)
                 double slabfac = slab_averaging_function(SphP[i].Kappa_RT[k2]*Sigma_particle) * slab_averaging_function(SphP[i].Kappa_RT[k2]*abs_per_kappa_dt);
                 for(k=0;k<3;k++)
                 {
-#if defined(RT_EVOLVE_FLUX)
                     radacc[k] += slabfac * SphP[i].Kappa_RT[k2] * (SphP[i].Flux_Pred[k2][k] * SphP[i].Density/P[i].Mass) / (RT_SPEEDOFLIGHT_REDUCTION * C / All.UnitVelocity_in_cm_per_s);
-#elif defined(RT_EVOLVE_EDDINGTON_TENSOR)
+//#elif defined(RT_EVOLVE_EDDINGTON_TENSOR)
                     /* // -- moved for OTVET+FLD to drift-kick operation to deal with limiters more accurately -- // */
                     //radacc[k] += -slabfac * SphP[i].Lambda_FluxLim[k2] * SphP[i].Gradients.E_gamma_ET[k2][k] / SphP[i].Density; // no speed of light reduction multiplier here //
-#endif
                 }
             }
             for(k=0;k<3;k++)
@@ -741,6 +740,7 @@ void hydro_final_operations_and_cleanup(void)
                 SphP[i].HydroAccel[k] += radacc[k];
 #endif
             } 
+#endif
 #endif
 
             
@@ -761,7 +761,7 @@ void hydro_final_operations_and_cleanup(void)
 #endif
             
             
-#ifdef BND_PARTICLES
+#ifdef BOX_BND_PARTICLES
             /* this flag signals all particles with id=0 are frozen (boundary particles) */
             if(P[i].ID == 0)
             {

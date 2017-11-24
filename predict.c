@@ -157,7 +157,7 @@ void drift_particle(int i, integertime time1)
     }
 #endif
     
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
     do_phase_space_drift(i, dt_drift);
 #endif
     
@@ -203,26 +203,26 @@ void drift_particle(int i, integertime time1)
             if(etmp<0.5*SphP[i].InternalEnergyPred) {SphP[i].InternalEnergyPred *= 0.5;} else {SphP[i].InternalEnergyPred=etmp;}
             if(SphP[i].InternalEnergyPred<All.MinEgySpec) SphP[i].InternalEnergyPred=All.MinEgySpec;
             
-#ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
+#ifdef HYDRO_PRESSURE_SPH
             SphP[i].EgyWtDensity *= exp(-divv_fac);
 #endif
             
             /* check for reflecting boundaries: if so, do the reflection! */
-#if defined(REFLECT_BND_X) || defined(REFLECT_BND_Y) || defined(REFLECT_BND_Z)
+#if defined(BOX_REFLECT_X) || defined(BOX_REFLECT_Y) || defined(BOX_REFLECT_Z)
             double box_upper[3]; box_upper[0]=box_upper[1]=box_upper[2]=1;
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
             box_upper[0]=boxSize_X; box_upper[1]=boxSize_Y; box_upper[2]=boxSize_Z;
 #endif
             for(j = 0; j < 3; j++)
             {
                 /* skip the non-reflecting boundaries */
-#ifndef REFLECT_BND_X
+#ifndef BOX_REFLECT_X
                 if(j==0) continue;
 #endif
-#ifndef REFLECT_BND_Y
+#ifndef BOX_REFLECT_Y
                 if(j==1) continue;
 #endif
-#ifndef REFLECT_BND_Z
+#ifndef BOX_REFLECT_Z
                 if(j==2) continue;
 #endif
                 if(P[i].Pos[j] <= 0)
@@ -313,7 +313,7 @@ void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double
  *  has been called, a new domain decomposition should be done, which will
  *  also force a new tree construction.
  */
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
 void do_box_wrapping(void)
 {
     int i, j;
@@ -329,14 +329,14 @@ void do_box_wrapping(void)
             while(P[i].Pos[j] < 0)
             {
                 P[i].Pos[j] += boxsize[j];
-#ifdef SHEARING_BOX
+#ifdef BOX_SHEARING
                 if(j==0)
                 {
-                    P[i].Vel[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;
-                    if(P[i].Type==0) {SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-#if (SHEARING_BOX > 1)
+                    P[i].Vel[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;
+                    if(P[i].Type==0) {SphP[i].VelPred[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+#if (BOX_SHEARING > 1)
                     /* if we're not assuming axisymmetry, we need to shift the coordinates for the shear flow at the boundary */
-                    P[i].Pos[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Pos_Offset;
+                    P[i].Pos[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Pos_Offset;
 #endif
                 }
 #endif
@@ -345,14 +345,14 @@ void do_box_wrapping(void)
             while(P[i].Pos[j] >= boxsize[j])
             {
                 P[i].Pos[j] -= boxsize[j];
-#ifdef SHEARING_BOX
+#ifdef BOX_SHEARING
                 if(j==0)
                 {
-                    P[i].Vel[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;
-                    if(P[i].Type==0) {SphP[i].VelPred[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
-#if (SHEARING_BOX > 1)
+                    P[i].Vel[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;
+                    if(P[i].Type==0) {SphP[i].VelPred[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#if (BOX_SHEARING > 1)
                     /* if we're not assuming axisymmetry, we need to shift the coordinates for the shear flow at the boundary */
-                    P[i].Pos[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Pos_Offset;
+                    P[i].Pos[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Pos_Offset;
 #endif
                 }
 #endif
@@ -497,7 +497,7 @@ double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)
     double damping_tinv = 0.5 * All.DivBcleanParabolicSigma * (SphP[i_particle_id].MaxSignalVel*All.cf_afac3 / (All.cf_atime*Get_Particle_Size(i_particle_id)));
 #else
     double damping_tinv;
-#ifdef NOGRAVITY
+#ifdef SELFGRAVITY_OFF
     damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveSpeed / Get_Particle_Size(i_particle_id); // fastest wavespeed has units of [vphys]
     //double damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveDecay * All.cf_a2inv; // no improvement over fastestwavespeed; decay has units [vphys/rphys]
 #else
@@ -530,7 +530,7 @@ double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id)
         double prefac_fastest = 0.1;
         double prefac_tinv = 0.5;
         double area_0 = 0.1;
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
         prefac_fastest = 1.0;
         prefac_tinv = 2.0;
         area_0 = 0.05;

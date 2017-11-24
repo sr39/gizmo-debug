@@ -112,7 +112,7 @@ void apply_long_range_kick(integertime tstart, integertime tend)
                 P[i].Vel[j] += dvel[j];
                 P[i].dp[j] += P[i].Mass * dvel[j];
             }
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
         do_long_range_phase_space_kick(i, dt_gravkick);
 #endif
     }
@@ -300,21 +300,21 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 
  
         /* check for reflecting boundaries: if so, do the reflection! */
-#if defined(REFLECT_BND_X) || defined(REFLECT_BND_Y) || defined(REFLECT_BND_Z)
+#if defined(BOX_REFLECT_X) || defined(BOX_REFLECT_Y) || defined(BOX_REFLECT_Z)
         double box_upper[3]; box_upper[0]=box_upper[1]=box_upper[2]=1;
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
         box_upper[0]=boxSize_X; box_upper[1]=boxSize_Y; box_upper[2]=boxSize_Z;
 #endif
         for(j = 0; j < 3; j++)
         {
             /* skip the non-reflecting boundaries */
-#ifndef REFLECT_BND_X
+#ifndef BOX_REFLECT_X
             if(j==0) continue;
 #endif
-#ifndef REFLECT_BND_Y
+#ifndef BOX_REFLECT_Y
             if(j==1) continue;
 #endif
-#ifndef REFLECT_BND_Z
+#ifndef BOX_REFLECT_Z
             if(j==2) continue;
 #endif
             if(P[i].Pos[j] <= 0)
@@ -349,7 +349,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
         
         /* set the momentum shift so we know how to move the tree! */
         for(j=0;j<3;j++) {P[i].dp[j] += dp[j];}
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
         /* momentum-space correction for following phase-space distribution (call after momentum-space kicks) */
         do_the_phase_space_kick(i, dt_gravkick);
 #endif

@@ -20,7 +20,7 @@
 
 static double dt_displacement = 0;
 
-#ifdef SHEARING_BOX
+#ifdef BOX_SHEARING
 void calc_shearing_box_pos_offset(void)
 {
     Shearing_Box_Pos_Offset = Shearing_Box_Vel_Offset * All.Time;
@@ -258,7 +258,7 @@ void find_timesteps(void)
         
         P[i].Ti_begstep += ti_step_old;
         
-#if defined(WAKEUP) || defined(SIDM)
+#if defined(WAKEUP)
         P[i].dt_step = ti_step;
 #endif
     }
@@ -805,7 +805,7 @@ integertime get_timestep(int p,		/*!< particle index */
         } // closes if(P[p].Type == 0) [gas particle check] //
     
     
-#ifdef SIDM
+#ifdef DM_SIDM
     /* Reduce time-step if this particle got interaction probabilities > 0.2 during the last time-step */
     if(P[p].dt_step_sidm > 0)
     {
@@ -821,7 +821,7 @@ integertime get_timestep(int p,		/*!< particle index */
     
     
     // add a 'stellar evolution timescale' criterion to the timestep, to prevent too-large jumps in feedback //
-#if defined(YOUNGSTARWINDDRIVING) || defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
+#if defined(YOUNGSTARWINDDRIVING) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
     if(((P[p].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[p].Type == 2)||(P[p].Type==3))))&&(P[p].Mass>0))
     {
         double star_age = evaluate_stellar_age_Gyr(P[p].StellarAge);
@@ -851,18 +851,18 @@ integertime get_timestep(int p,		/*!< particle index */
         double dt_accr = 1.e-2 * 4.2e7 * SEC_PER_YEAR / All.UnitTime_in_s;
         if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
         {
-#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
+#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
             /* really want prefactor to be ratio of median gas mass to bh mass */
             dt_accr = 0.001 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
-#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK)
-            dt_accr *= All.BAL_f_accretion;
-#endif // BH_BAL_WINDS
+#if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
+            dt_accr *= DMAX(0.1, All.BAL_f_accretion);
+#endif // BH_WIND_CONTINUOUS
 #ifdef SINGLE_STAR_FORMATION
             dt_accr = 0.1 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
 #endif
 #else
             dt_accr = 0.05 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
-#endif // defined(BH_GRAVCAPTURE_GAS) || defined(BH_BAL_WINDS)
+#endif // defined(BH_GRAVCAPTURE_GAS) || defined(BH_WIND_CONTINUOUS)
         } // if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
 #ifdef BH_SEED_GROWTH_TESTS
             double dt_evol = 1.e4 * SEC_PER_YEAR / All.UnitTime_in_s;

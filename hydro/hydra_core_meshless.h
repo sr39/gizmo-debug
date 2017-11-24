@@ -21,7 +21,7 @@
     V_j = P[j].Mass / SphP[j].Density;
     s_star_ij = 0;
     //
-#if !defined(CONSTRAINED_GRADIENT_MHD)
+#if !defined(MHD_CONSTRAINED_GRADIENT)
      //s_star_ij = 0.5 * kernel.r * (PPP[j].Hsml - local.Hsml) / (local.Hsml + PPP[j].Hsml); // old test, doesn't account for Hsml changing for condition number reasons
      //s_star_ij = 0.5 * kernel.r * (local.Density - SphP[j].Density) / (local.Density + SphP[j].Density); // frame with zero mass flux in a first-order reconstruction //
 #endif
@@ -166,7 +166,7 @@
         }
 #ifdef MAGNETIC
         int slim_mode = 1;
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
         if((local.ConditionNumber < 0) || (SphP[j].FlagForConstrainedGradients == 0)) {slim_mode = 1;} else {slim_mode = -1;}
 #endif
         for(k=0;k<3;k++)
@@ -228,10 +228,6 @@
         /* --------------------------------------------------------------------------------- */
         Riemann_solver(Riemann_vec, &Riemann_out, n_unit, press_tot_limiter);
         /* before going on, check to make sure we have a valid Riemann solution */
-#ifdef BH_WIND_SPAWN
-        // check if two wind-spawned particles found each other
-        //if((P[j].ID==All.AGNWindID)&&(local.ConditionNumber<0)) {Riemann_out.P_M=1.e-20; Riemann_out.S_M=0.; Face_Area_Norm=0.; for(k=0;k<3;k++) {Face_Area_Vec[k]=0.;}}
-#endif
         if((Riemann_out.P_M<0)||(isnan(Riemann_out.P_M))||(Riemann_out.P_M>1.4*press_tot_limiter))
         {
             /* go to a linear reconstruction of P, rho, and v, and re-try */
