@@ -76,7 +76,7 @@ void blackhole_feed_loop(void)
                 BlackholeDataIn[j].Pos[k] = P[place].Pos[k];
                 BlackholeDataIn[j].Vel[k] = P[place].Vel[k];
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-                BlackholeDataIn[j].Jgas_in_Kernel[k] = P[place].GradRho[k];
+                BlackholeDataIn[j].Jgas_in_Kernel[k] = BlackholeTempInfo[P[place].IndexMapToTempStruc].Jgas_in_Kernel[k];
 #endif
             }
 #if defined(BH_GRAVCAPTURE_GAS)
@@ -246,7 +246,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         velocity = P[target].Vel;
         id = P[target].ID;
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-        Jgas_in_Kernel = P[target].GradRho;
+        Jgas_in_Kernel = BlackholeTempInfo[P[target].IndexMapToTempStruc].Jgas_in_Kernel;
         BH_disk_hr = P[target].BH_disk_hr;
 #endif
 #if defined(BH_GRAVCAPTURE_GAS) && defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
@@ -334,9 +334,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                 j = Ngblist[n];
                 if(P[j].Mass > 0)
                 {
-                    for(k=0;k<3;k++) dpos[k] = pos[k] - P[j].Pos[k]; 
+                    for(k=0;k<3;k++) dpos[k] = P[j].Pos[k] - pos[k];
 #ifdef BOX_PERIODIC
-                    NEAREST_XYZ(dpos[0],dpos[1],dpos[2],1);
+                    NEAREST_XYZ(dpos[0],dpos[1],dpos[2],-1);
 #endif
                     r2=0; for(k=0;k<3;k++) r2+=dpos[k]*dpos[k];
                     
