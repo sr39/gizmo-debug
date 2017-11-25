@@ -162,6 +162,12 @@
 #include "eos/eos.h"
 
 
+#ifdef CBE_INTEGRATOR
+#define ADAPTIVE_GRAVSOFT_FORALL (1000.)
+#define CBE_INTEGRATOR_NBASIS 5
+#endif
+
+
 #ifdef FIRE_PHYSICS_DEFAULTS
 #define COOLING
 #define COOL_LOW_TEMPERATURES
@@ -2104,6 +2110,13 @@ extern ALIGN(32) struct particle_data
     short int wakeup;                     /*!< flag to wake up particle */
 #endif
 #endif
+    
+#ifdef CBE_INTEGRATOR
+    MyFloat CBE_basis_moments[CBE_INTEGRATOR_NBASIS][10];         /* moments per basis function */
+    MyFloat CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10];      /* time-derivative of moments per basis function */
+    MyFloat NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */
+#endif
+
 }
  *P,				/*!< holds particle data on local processor */
  *DomainPartBuf;		/*!< buffer for particle data used in domain decomposition */

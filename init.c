@@ -681,6 +681,9 @@ void init(void)
     if(RestartFlag != 3 && RestartFlag != 5)
         ags_setup_smoothinglengths();
 #endif
+#ifdef CBE_INTEGRATOR
+    do_cbe_initialization();
+#endif
     
 #ifdef GALSF_SUBGRID_WINDS
 #if (GALSF_SUBGRID_WIND_SCALING==2)
