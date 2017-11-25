@@ -2342,6 +2342,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     {
                         if((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG))
                         {
+#ifdef CBE_INTEGRATOR
+#include "cbe_integrator_flux_computation.h"
+#endif
                             double dWdr, wp, fac_corr=0;
                             if(h_p_inv >= h_inv)
                             {

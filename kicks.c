@@ -353,6 +353,9 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
         /* momentum-space correction for following phase-space distribution (call after momentum-space kicks) */
         do_the_phase_space_kick(i, dt_gravkick);
 #endif
+#ifdef CBE_INTEGRATOR
+        do_cbe_drift_kick(i, dt_entr); /* kicks for cbe integration of phase-space distribution function */
+#endif
         
     } // if(TimeBinActive[P[i].TimeBin]) //
 }
