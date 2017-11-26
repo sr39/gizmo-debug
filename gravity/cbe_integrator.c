@@ -20,6 +20,7 @@
 void do_cbe_initialization(void);
 void do_cbe_drift_kick(int i, double dt);
 double do_cbe_nvt_inversion_for_faces(int i);
+void do_cbe_flux_computation(double *moments, double vface_dot_A, double *Area, double *fluxes);
 #endif
 
 // moment ordering convention: 0, x, y, z, xx, yy, zz, xy, xz, yz
@@ -151,6 +152,42 @@ double do_cbe_nvt_inversion_for_faces(int i)
 }
 
 
+/* this computes the actual single-sided fluxes at the face, integrating over a distribution function to use the moments */
+void do_cbe_flux_computation(double *moments, double vface_dot_A, double *Area, double *fluxes)
+{
+    if(moments[0] <= 0) // no mass, no flux
+    {
+        int k; for(k=0;k<10;k++) {fluxes[k]=0;}
+        return;
+    }
+    // couple dot-products must be pre-computed for fluxes //
+    double m_inv = 1. / moments[0]; // need for weighting, below [e.g. v_x = moments[1] / moments[0]]
+    double v[3]; v[0] = m_inv*moments[1]; v[1] = m_inv*moments[2]; v[2] = m_inv*moments[3]; // get velocities
+    double v_dot_A = v[0]*Area[0] + v[1]*Area[1] + v[2]*Area[2]; // v_alpha . A_face
+    double S[6]; // dispersion part of stress tensor (need to subtract mean-v parts
+    S[0] = m_inv*moments[4] - v[0]*v[0]; // xx
+    S[1] = m_inv*moments[5] - v[1]*v[1]; // yy
+    S[2] = m_inv*moments[6] - v[2]*v[2]; // zz
+    S[4] = m_inv*moments[7] - v[0]*v[1]; // xy
+    S[5] = m_inv*moments[8] - v[0]*v[2]; // xz
+    S[6] = m_inv*moments[9] - v[1]*v[2]; // yz
+    double S_dot_A[3]; // what we actually use is this dotted into the face
+    S_dot_A[0] = (S[0]*Area[0] + S[4]*Area[1] + S[5]*Area[2]) * moments[0]; // (S_alpha . A_face)_x * mass
+    S_dot_A[1] = (S[4]*Area[0] + S[1]*Area[1] + S[6]*Area[2]) * moments[0]; // (S_alpha . A_face)_y * mass
+    S_dot_A[2] = (S[5]*Area[0] + S[6]*Area[1] + S[2]*Area[2]) * moments[0]; // (S_alpha . A_face)_z * mass
+    fluxes[0] = (v_dot_A - vface_dot_A) * moments[0]; // calculate and assign mass flux
+    int k; for(k=1;k<10;k++) {fluxes[k] =  (m_inv * moments[k]) * fluxes[0];} // specific flux carried just by mass flux
+    fluxes[1] += S_dot_A[0]; // add momentum flux from stress tensor - x
+    fluxes[2] += S_dot_A[1]; // add momentum flux from stress tensor - y
+    fluxes[3] += S_dot_A[2]; // add momentum flux from stress tensor - z
+    fluxes[4] += 2. * v[0]*S_dot_A[0]; // add stress flux from stress tensor -- xx
+    fluxes[5] += 2. * v[1]*S_dot_A[1]; // add stress flux from stress tensor -- yy
+    fluxes[6] += 2. * v[2]*S_dot_A[2]; // add stress flux from stress tensor -- zz
+    fluxes[7] += v[0]*S_dot_A[1] + v[1]*S_dot_A[0]; // add stress flux from stress tensor -- xy
+    fluxes[8] += v[0]*S_dot_A[2] + v[2]*S_dot_A[0]; // add stress flux from stress tensor -- xz
+    fluxes[9] += v[1]*S_dot_A[2] + v[2]*S_dot_A[1]; // add stress flux from stress tensor -- yz
+    return;
+}
 
 
 #endif
