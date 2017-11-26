@@ -55,20 +55,43 @@
             vface[k] = (rho_i*local.Vel[k] + rho_j*P[i].Vel[k]) / (rho_i+rho_j);
         } // for(k=0;k<3;k++)
         
-        // OK, now we've done the easy bit -- we're ready for the actual flux computations //
+        // OK, now we've done the easy bit -- we're ready for the actual computations //
         
         // first loop over pairs to determine closest a-to-b, closest b-to-a //
-        int matching_basis_j_for_basis_in_i[CBE_INTEGRATOR_NBASIS], matching_basis_i_for_basis_in_j[CBE_INTEGRATOR_NBASIS];
+        int matching_basis_j_for_basis_in_i[CBE_INTEGRATOR_NBASIS], matching_basis_i_for_basis_in_j[CBE_INTEGRATOR_NBASIS], m, m_j;
+        double wt_i[CBE_INTEGRATOR_NBASIS], wt_j[CBE_INTEGRATOR_NBASIS], imag_i[CBE_INTEGRATOR_NBASIS], imag_j[CBE_INTEGRATOR_NBASIS], cos_ij;
+        for(m=0;m<CBE_INTEGRATOR_NBASIS;m++) // first pass to normalize and initialize quantities for both sides
+        {
+            wt_i[m] = -1000.; // large negative value (<-1)
+            wt_j[m] = -1000.; // large negative value (<-1)
+            double norm_tmp;
+            norm_tmp=0; for(k=0;k<3;k++) {norm_tmp += local.CBE_basis_moments[m][k+1]*local.CBE_basis_moments[m][k+1];} // squared weight of momentum (vectors we'll use for matching below //
+            if(norm_tmp > 0) {norm_tmp = 1./sqrt(norm_tmp);} // compute inverse-weight, for use below
+            imag_i[m] = norm_tmp; // assign
+            norm_tmp=0; for(k=0;k<3;k++) {norm_tmp += P[j].CBE_basis_moments[m][k+1]*P[j].CBE_basis_moments[m][k+1];} // squared weight of momentum (vectors we'll use for matching below //
+            if(norm_tmp > 0) {norm_tmp = 1./sqrt(norm_tmp);} // compute inverse-weight, for use below
+            imag_j[m] = norm_tmp; // assign
+        }
         for(m=0;m<CBE_INTEGRATOR_NBASIS;m++)
         {
-            int m_j;
-            for(m_j=m;m_j<CBE_INTEGRATOR_NBASIS;m_j++)
+            for(m_j=0;m_j<CBE_INTEGRATOR_NBASIS;m_j++)
             {
-                
+                cos_ij=0; for(k=1;k<4;k++) {cos_ij += local.CBE_basis_moments[m][k]*P[j].CBE_basis_moments[m_j][k];} // product of vector momenta
+                cos_ij *= imag_i[m] * imag_j[m_j]; // ok this is now the dot product p_hat_i_alpha . p_hat_j_beta
+                if(cos_ij > wt_i[m]) // better match found for i
+                {
+                    wt_i[m] = cos_ij; // note the best match so far
+                    matching_basis_j_for_basis_in_i[m] = m_j; // assign the basis function to the list
+                }
+                if(cos_ij > wt_j[m_j]) // better match found for j
+                {
+                    wt_j[m_j] = cos_ij; // note the best match so far
+                    matching_basis_i_for_basis_in_j[m_j] = m; // assign the basis function to the list
+                }
             }
         } // for(m=0;m<CBE_INTEGRATOR_NBASIS;m++)
         
-        // then loop over each basis for each particle and compute fluxes //
+        // now loop over each basis for each particle and actually compute fluxes //
         double wt_prefac_i = -rho_i / pmass; // normalized the fluxes, no need to re-compute below
         double wt_prefac_j = -rho_j / mass;
         double vface_dot_A = vface[0]*Face_Area_Vec[0] + vface[1]*Face_Area_Vec[1] + vface[2]*Face_Area_Vec[2]; // v_face . A_face
