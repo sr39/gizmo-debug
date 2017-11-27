@@ -797,3 +797,13 @@ void apply_excision();
 #ifdef DM_SIDM
 #include "./sidm/sidm_proto.h"
 #endif
+
+
+#ifdef CBE_INTEGRATOR
+void do_cbe_initialization(void);
+void do_cbe_drift_kick(int i, double dt);
+double do_cbe_nvt_inversion_for_faces(int i);
+void do_cbe_flux_computation(double *moments, double vface_dot_A, double *Area, double *fluxes);
+void do_postgravity_cbe_calcs(int i);
+#endif
+

@@ -2488,9 +2488,16 @@ extern struct gravdata_in
     MyFloat AGS_zeta;
 #endif
 #endif
-#ifdef DM_SIDM
+#if defined(DM_SIDM) || defined(CBE_INTEGRATOR)
     MyFloat Vel[3];
     int dt_step;
+#endif
+#if defined(CBE_INTEGRATOR)
+    double NV_T[3][3];
+    double V_i;
+    double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][10];
+#endif
+#ifdef DM_SIDM
     int dt_step_sidm;
     MyIDType ID;
 #endif
@@ -2524,6 +2531,9 @@ extern struct gravdata_out
     MyDouble Vel[3];
     int dt_step_sidm;
     long unsigned int NInteractions;
+#endif
+#if defined(CBE_INTEGRATOR)
+    double CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10];
 #endif
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
