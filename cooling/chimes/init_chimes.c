@@ -432,7 +432,7 @@ void ReadPhotoIonTables(struct globalVariables *myGlobalVars, char *photoIonTabl
 	      ns += 1;
 	    }
 	}
-    }
+    }  // if current_spectrum == 0 
   
   // The following need to be read in for each UV spectrum. 
   ns = 0;
@@ -689,16 +689,16 @@ void GetNonEqTables(int ns, struct globalVariables *myGlobalVars)
 	{
 	  /* Note that we want to interpolate all of the rates 
 	   * linearly in LOG space, hence take logs here */
-	  chimesRateTables.NonEqIon->NonEqRates[ns].alpharad[i][j] = log10(max(alpharad[i][j], 1.0e-300));
-	  chimesRateTables.NonEqIon->NonEqRates[ns].alphadi[i][j] = log10(max(alphadi[i][j], 1.0e-300));
-	  chimesRateTables.NonEqIon->NonEqRates[ns].betacoll[i][j] = log10(max(betacoll[i][j], 1.0e-300));
+	  chimesRateTables.NonEqIon->NonEqRates[ns].alpharad[i][j] = log10(max(alpharad[i][j], 1.0e-300)); 
+	  chimesRateTables.NonEqIon->NonEqRates[ns].alphadi[i][j] = log10(max(alphadi[i][j], 1.0e-300)); 
+	  chimesRateTables.NonEqIon->NonEqRates[ns].betacoll[i][j] = log10(max(betacoll[i][j], 1.0e-300)); 
 	  chimesRateTables.NonEqIon->NonEqRates[ns].cool[i][j] = log10(max(cool[i][j], 1.0e-300)); /* COOLING RATES ARE POSITIVE!!!*/
 
-	  chimesRateTables.NonEqIon->NonEqRates[ns].CTHrecof[i][j] = log10(max(CTHrecof[i][j], 1.0e-300));
-	  chimesRateTables.NonEqIon->NonEqRates[ns].CTHerecof[i][j] = log10(max(CTHerecof[i][j], 1.0e-300));
+	  chimesRateTables.NonEqIon->NonEqRates[ns].CTHrecof[i][j] = log10(max(CTHrecof[i][j], 1.0e-300)); 
+	  chimesRateTables.NonEqIon->NonEqRates[ns].CTHerecof[i][j] = log10(max(CTHerecof[i][j], 1.0e-300)); 
 
-	  chimesRateTables.NonEqIon->NonEqRates[ns].CTHionof[i][j] = log10(max(CTHionof[i][j], 1.0e-300));   
-	  chimesRateTables.NonEqIon->NonEqRates[ns].CTHeionof[i][j] = log10(max(CTHeionof[i][j], 1.0e-300));
+	  chimesRateTables.NonEqIon->NonEqRates[ns].CTHionof[i][j] = log10(max(CTHionof[i][j], 1.0e-300)); 
+	  chimesRateTables.NonEqIon->NonEqRates[ns].CTHeionof[i][j] = log10(max(CTHeionof[i][j], 1.0e-300)); 
 	}
     }
 
@@ -1116,9 +1116,9 @@ void initialise_bens_tables(struct globalVariables *myGlobalVars, struct All_rat
   chimesRateTables.chianti_cooling_FeII = (double **) malloc(chimesRateTables.chianti_cooling_table_dimensions[0] * sizeof(double *));
   for (i = 0; i < chimesRateTables.chianti_cooling_table_dimensions[0]; i++)
     chimesRateTables.chianti_cooling_FeII[i] = (double *) malloc(chimesRateTables.chianti_cooling_table_dimensions[1] * sizeof(double));
-
-  *this_all_rates = (struct All_rate_variables_structure *) malloc(sizeof(struct All_rate_variables_structure)); 
  
+  *this_all_rates = (struct All_rate_variables_structure *) malloc(sizeof(struct All_rate_variables_structure));
+
   (*this_all_rates)->BensRates = (struct Bens_rate_structure *) malloc(chimesRateTables.NonEqIon->N_Elements * sizeof(struct Bens_rate_structure));
   
   chimesRateTables.NonEqIon->IonIndexBegin = (int *) malloc(chimesRateTables.NonEqIon->N_Elements * sizeof(int));  

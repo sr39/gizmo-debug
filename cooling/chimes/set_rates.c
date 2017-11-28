@@ -196,10 +196,10 @@ void update_rates(struct gasVariables *myGasVars, struct globalVariables *myGlob
   this_all_rates->rate_266 = R266(dust_G, extinction);
   this_all_rates->rate_267 = R267(dust_G, H2_column_density, CO_column_density, extinction, myGlobalVars);
       
-  get_index_1d_mydbl(chimesRateTables.NonEqIon->shieldingColumnDensities, chimesRateTables.NonEqIon->shieldingColumnDimensions[0], log10(HI_column_density), &NHI_index, &dNHI);    
-  get_index_1d_mydbl(chimesRateTables.NonEqIon->shieldingColumnDensities, chimesRateTables.NonEqIon->shieldingColumnDimensions[0], log10(HI_column_density + 3.0 * H2_column_density), &NH_eff_index, &dNH_eff);
-  get_index_1d_mydbl(chimesRateTables.NonEqIon->shieldingColumnDensities, chimesRateTables.NonEqIon->shieldingColumnDimensions[0], log10(HeI_column_density), &NHeI_index, &dNHeI);
-  get_index_1d_mydbl(chimesRateTables.NonEqIon->shieldingColumnDensities, chimesRateTables.NonEqIon->shieldingColumnDimensions[0], log10(HeI_column_density + 0.75 * HeII_column_density), &NHe_eff_index, &dNHe_eff);
+  get_index_1d_mydbl(chimesRateTables.NonEqIon->shieldingColumnDensities, chimesRateTables.NonEqIon->shieldingColumnDimensions[0], log10(max(HI_column_density, 1.0e-50)), &NHI_index, &dNHI);    
+  get_index_1d_mydbl(chimesRateTables.NonEqIon->shieldingColumnDensities, chimesRateTables.NonEqIon->shieldingColumnDimensions[0], log10(max(HI_column_density + 3.0 * H2_column_density, 1.0e-50)), &NH_eff_index, &dNH_eff);
+  get_index_1d_mydbl(chimesRateTables.NonEqIon->shieldingColumnDensities, chimesRateTables.NonEqIon->shieldingColumnDimensions[0], log10(max(HeI_column_density, 1.0e-50)), &NHeI_index, &dNHeI);
+  get_index_1d_mydbl(chimesRateTables.NonEqIon->shieldingColumnDensities, chimesRateTables.NonEqIon->shieldingColumnDimensions[0], log10(max(HeI_column_density + 0.75 * HeII_column_density, 1.0e-50)), &NHe_eff_index, &dNHe_eff);
   for (i = 0; i < chimesRateTables.NonEqIon->N_Elements; i++)
     {
       /* Secondary ionisations from Cosmic Rays; HI & HeI only */
@@ -409,7 +409,7 @@ void set_species_arrays(struct Species_Structure *mySpecies, struct gasVariables
   int i;
   int inclSpeciesFlags[10];
   int inclSpeciesFlag_CO;
-  double min_C_O_abundance; 
+  double min_C_O_abundance;
 
   for (i = 0; i < 10; i++)
     {
@@ -535,7 +535,7 @@ void set_species_arrays(struct Species_Structure *mySpecies, struct gasVariables
       mySpecies[myGlobalVars->speciesIndices[H2Op]].include_species = inclSpeciesFlags[3];
       mySpecies[myGlobalVars->speciesIndices[H3Op]].include_species = inclSpeciesFlags[3];
       mySpecies[myGlobalVars->speciesIndices[O2p]].include_species = inclSpeciesFlags[3];
-      
+
       mySpecies[myGlobalVars->speciesIndices[OH]].element_abundance = myGasVars->element_abundances[3];
       mySpecies[myGlobalVars->speciesIndices[H2O]].element_abundance = myGasVars->element_abundances[3];
       mySpecies[myGlobalVars->speciesIndices[O2]].element_abundance = myGasVars->element_abundances[3];

@@ -414,6 +414,40 @@ endif
 
 
 #----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Quest-intel")
+CC       =  mpicc
+CXX      =  mpic++
+FC       =  $(CC)
+OPTIMIZE = -O2 -xhost -ipo -funroll-loops -no-prec-div -fp-model fast=2
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -parallel -openmp -mt_mpi 
+endif
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
+CHIMESINCL = -I/home/ajr882/sundials/include  
+CHIMESLIBS = -L/home/ajr882/sundials/lib -lsundials_cvode -lsundials_kinsol -lsundials_nvecserial 
+endif 
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = -I$(MKLROOT)/include
+MKL_LIBS = -L$(MKLROOT)/lib/intel64 -lm -lmkl_core -lmkl_sequential -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_blacs_intelmpi_lp64
+GSL_INCL = 
+GSL_LIBS = 
+FFTW_INCL= 
+FFTW_LIBS= 
+HDF5INCL = -DH5_USE_16_API 
+HDF5LIB  = -lhdf5 -lz
+MPICHLIB = 
+OPT     += -DUSE_MPI_IN_PLACE
+#### modules to load:
+#module load intel/2013.2
+#module load mpi/intel-mpi-4.1.0
+#module load hdf5/1.8.12-serial
+#module load gsl/1.16-intel
+#module load fftw/2.1.5-intel
+endif
+
+
+#----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Titan")
 CC       =  cc
 CXX      =  CC

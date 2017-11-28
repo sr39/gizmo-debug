@@ -26,10 +26,10 @@
 
 struct Species_Structure 
 {
-  int include_species;
+  int include_species; 
   double element_abundance; 
-  double creation_rate;
-  double destruction_rate;
+  double creation_rate; 
+  double destruction_rate; 
 };
 
 double k1(int T_index, double dT);
@@ -134,7 +134,7 @@ double k4(void);
 double k8(double T, double nHtotal, double xH, double xH2, double xHe);
 double k9(double T, double nHtotal, double xH, double xH2, double xHe);
 double R52(double Go, double extinction);
-double R53(double NH2, double temperature, double *radiation_intensity, double extinction, double b_5, struct globalVariables *myGlobalVars, struct gasVariables *myGasVars); 
+double R53(double NH2, double temperature, double *radiation_intensity, double extinction, double b_5, struct globalVariables *myGlobalVars, struct gasVariables *myGasVars);
 double k60(double T, double Tgr, double xHI, double dust_ratio);
 double R70(double zeta_H);
 double k84(int T_index, double dT);
@@ -319,7 +319,7 @@ typedef struct
   struct globalVariables *myGlobalVars;
   struct Species_Structure *species;
   struct Reactions_Structure *root_reactions;
-  struct All_rate_variables_structure *this_all_rates;
+  struct All_rate_variables_structure *this_all_rates; 
   double *HI_column;
   double *H2_column;
   double *HeI_column;

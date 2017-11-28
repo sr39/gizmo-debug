@@ -91,9 +91,18 @@ void set_equilibrium_abundances(void *user_data)
       *(data->H2_column) = myGasVars->abundances[myGlobalVars->speciesIndices[H2]] * myGasVars->cell_size * myGasVars->nH_tot;
       *(data->HeI_column) = myGasVars->abundances[myGlobalVars->speciesIndices[HeI]] * myGasVars->cell_size * myGasVars->nH_tot;
       *(data->HeII_column) = myGasVars->abundances[myGlobalVars->speciesIndices[HeII]] * myGasVars->cell_size * myGasVars->nH_tot;
-      *(data->CO_column) = max(myGasVars->abundances[myGlobalVars->speciesIndices[CO]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
-      *(data->H2O_column) = max(myGasVars->abundances[myGlobalVars->speciesIndices[H2O]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
-      *(data->OH_column) = max(myGasVars->abundances[myGlobalVars->speciesIndices[OH]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
+      if (myGlobalVars->speciesIndices[CO] > -1) 
+	*(data->CO_column) = max(myGasVars->abundances[myGlobalVars->speciesIndices[CO]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
+      else 
+	*(data->CO_column) = 0.0; 
+      if (myGlobalVars->speciesIndices[H2O] > -1) 
+	*(data->H2O_column) = max(myGasVars->abundances[myGlobalVars->speciesIndices[H2O]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
+      else 
+	*(data->H2O_column) = 0.0; 
+      if (myGlobalVars->speciesIndices[OH] > -1) 
+	*(data->OH_column) = max(myGasVars->abundances[myGlobalVars->speciesIndices[OH]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
+      else 
+	*(data->OH_column) = 0.0; 
       *(data->extinction) = DUSTEFFSIZE * myGasVars->cell_size * myGasVars->nH_tot * myGasVars->metallicity;
     }
 
@@ -192,9 +201,18 @@ void set_equilibrium_abundances(void *user_data)
 	      *(data->H2_column) = myGasVars->abundances[myGlobalVars->speciesIndices[H2]] * myGasVars->cell_size * myGasVars->nH_tot;
 	      *(data->HeI_column) = myGasVars->abundances[myGlobalVars->speciesIndices[HeI]] * myGasVars->cell_size * myGasVars->nH_tot;
 	      *(data->HeII_column) = myGasVars->abundances[myGlobalVars->speciesIndices[HeII]] * myGasVars->cell_size * myGasVars->nH_tot;
-	      *(data->CO_column) = max(myGasVars->abundances[myGlobalVars->speciesIndices[CO]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
-	      *(data->H2O_column) = max(myGasVars->abundances[myGlobalVars->speciesIndices[H2O]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
-	      *(data->OH_column) = max(myGasVars->abundances[myGlobalVars->speciesIndices[OH]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
+	      if (myGlobalVars->speciesIndices[CO] > -1) 
+		*(data->CO_column) = max(myGasVars->abundances[myGlobalVars->speciesIndices[CO]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
+	      else 
+		*(data->CO_column) = 0.0; 
+	      if (myGlobalVars->speciesIndices[H2O] > -1) 
+		*(data->H2O_column) = max(myGasVars->abundances[myGlobalVars->speciesIndices[H2O]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
+	      else 
+		*(data->H2O_column) = 0.0; 
+	      if (myGlobalVars->speciesIndices[OH] > -1) 
+		*(data->OH_column) = max(myGasVars->abundances[myGlobalVars->speciesIndices[OH]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
+	      else 
+		*(data->OH_column) = 0.0; 
 	      *(data->extinction) = DUSTEFFSIZE * myGasVars->cell_size * myGasVars->nH_tot * myGasVars->metallicity;
 	    }
 
@@ -347,9 +365,18 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
       H2_column_density = myGasVars->abundances[myGlobalVars->speciesIndices[H2]] * myGasVars->cell_size * myGasVars->nH_tot;
       HeI_column_density = myGasVars->abundances[myGlobalVars->speciesIndices[HeI]] * myGasVars->cell_size * myGasVars->nH_tot;
       HeII_column_density = myGasVars->abundances[myGlobalVars->speciesIndices[HeII]] * myGasVars->cell_size * myGasVars->nH_tot;
-      CO_column_density = max(myGasVars->abundances[myGlobalVars->speciesIndices[CO]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
-      H2O_column_density = max(myGasVars->abundances[myGlobalVars->speciesIndices[H2O]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
-      OH_column_density = max(myGasVars->abundances[myGlobalVars->speciesIndices[OH]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
+      if (myGlobalVars->speciesIndices[CO] > -1) 
+	CO_column_density = max(myGasVars->abundances[myGlobalVars->speciesIndices[CO]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
+      else 
+	CO_column_density = 0.0; 
+      if (myGlobalVars->speciesIndices[H2O] > -1) 
+	H2O_column_density = max(myGasVars->abundances[myGlobalVars->speciesIndices[H2O]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
+      else 
+	H2O_column_density = 0.0; 
+      if (myGlobalVars->speciesIndices[OH] > -1) 
+	OH_column_density = max(myGasVars->abundances[myGlobalVars->speciesIndices[OH]], 0.0) * myGasVars->cell_size * myGasVars->nH_tot;
+      else 
+	OH_column_density = 0.0; 
       extinction = DUSTEFFSIZE * myGasVars->cell_size * myGasVars->nH_tot * myGasVars->metallicity;
     }
   else
@@ -398,7 +425,7 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
   data->myGlobalVars = myGlobalVars;
   data->species = species;
   data->root_reactions = root_node_reaction_list; 
-  data->this_all_rates = this_all_rates; 
+  data->this_all_rates = this_all_rates;
   data->HI_column = &HI_column_density;
   data->H2_column = &H2_column_density;
   data->HeI_column = &HeI_column_density;
@@ -460,7 +487,7 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
     {
       y = N_VNew_Serial(network_size);
       if (myGlobalVars->scale_metal_tolerances == 1)
-        abstol_vector = N_VNew_Serial(network_size);
+	abstol_vector = N_VNew_Serial(network_size);
     }
   else
     {
@@ -470,18 +497,18 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
       abstol_vector = N_VNew_Serial(network_size + 1);
       NV_Ith_S(abstol_vector, network_size) = myGlobalVars->thermalAbsoluteTolerance;
     }
-
+      
   i = 0;
   for (j = 0; j < myGlobalVars->totalNumberOfSpecies; j++)
     {
       if (species[j].include_species == 1)
 	{  	
 	  NV_Ith_S(y, i) = myGasVars->abundances[j];
-	  
-	  if (myGlobalVars->scale_metal_tolerances == 1)
-            NV_Ith_S(abstol_vector, i) = myGlobalVars->absoluteTolerance * species[j].element_abundance;
-          else if (myGlobalVars->ThermEvolOn == 1)
-            NV_Ith_S(abstol_vector, i) = myGlobalVars->absoluteTolerance;
+
+	  if (myGlobalVars->scale_metal_tolerances == 1) 
+            NV_Ith_S(abstol_vector, i) = myGlobalVars->absoluteTolerance * species[j].element_abundance; 
+	  else if (myGlobalVars->ThermEvolOn == 1)
+	    NV_Ith_S(abstol_vector, i) = myGlobalVars->absoluteTolerance;
 
 	  i++;
 	}
@@ -538,10 +565,10 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
       t_current_substep = 0.0;
       while (t_current_substep < myGasVars->hydro_timestep)
 	{
-          dt_subcycle = min(dt_subcycle, myGasVars->hydro_timestep - t_current_substep);
-          dt_subcycle = max(dt_subcycle, myGlobalVars->min_subcyclestep);
+	  dt_subcycle = min(dt_subcycle, myGasVars->hydro_timestep - t_current_substep);
+	  dt_subcycle = max(dt_subcycle, myGlobalVars->min_subcyclestep);
 
-          flag = CVode(cvode_mem, dt_subcycle, y, &t, CV_NORMAL);
+	  flag = CVode(cvode_mem, dt_subcycle, y, &t, CV_NORMAL);
 
 	  /* Write the output abundances to the gas cell .
 	   * Note that species not included in the reduced
