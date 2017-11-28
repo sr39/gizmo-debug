@@ -504,6 +504,11 @@ void cooling_and_starformation(void)
   total_n_wind=total_m_wind=total_mom_wind=total_prob_kick=avg_v_kick=momwt_avg_v_kick=avg_taufac=0;
   totMPI_n_wind=totMPI_m_wind=totMPI_mom_wind=totMPI_prob_kick=totMPI_avg_v=totMPI_pwt_avg_v=totMPI_taufac=0;
 #endif
+
+#ifdef CHIMES 
+  if (ThisTask == 0) 
+    printf("Doing chemistry and star formation. \n");
+#endif 
     
   for(bin = 0; bin < TIMEBINS; bin++)
     if(TimeBinActive[bin])
@@ -522,12 +527,12 @@ void cooling_and_starformation(void)
   active_indices = (int *) malloc(N_gas * sizeof(int)); 
   for (i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-      if((P[i].Mass > 0) && (P[i].Type == 0)
+      if((P[i].Mass > 0) && (P[i].Type == 0) 
 #if defined(GALSF_EFFECTIVE_EQS)  
 	 && determine_sf_flag(i) == 1
 #endif
 	 )
-	{
+	{	  
 	  active_indices[N_active] = i; 
 	  N_active++; 
 	}
@@ -535,22 +540,21 @@ void cooling_and_starformation(void)
 
 #pragma omp parallel private(i, j, dt, dtime) 
   {
-
 #pragma omp for schedule(dynamic) 
-  for(j = 0; j < N_active; j++)
-    {
-      i = active_indices[j]; 
+    for(j = 0; j < N_active; j++)
+      {
+	i = active_indices[j]; 
 #ifndef GALSF_TURNOFF_COOLING_WINDS
-      do_the_cooling_for_particle(i); /* actual cooling subroutine for particle i */
-#else
-      dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval;
-      dtime = dt / All.cf_hubble_a; /*  the actual time-step */
-      if(SphP[i].DelayTimeCoolingSNe<=0)
 	do_the_cooling_for_particle(i); /* actual cooling subroutine for particle i */
-      else 
-	SphP[i].DelayTimeCoolingSNe -= dtime; /* 'counts down' until cooling is restored */
+#else
+	dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval;
+	dtime = dt / All.cf_hubble_a; /*  the actual time-step */
+	if(SphP[i].DelayTimeCoolingSNe<=0)
+	  do_the_cooling_for_particle(i); /* actual cooling subroutine for particle i */
+	else 
+	  SphP[i].DelayTimeCoolingSNe -= dtime; /* 'counts down' until cooling is restored */
 #endif // GALSF_TURNOFF_COOLING_WINDS
-    }
+      }
   } // End of parallel block. 
 
   free(active_indices); 
@@ -924,6 +928,11 @@ if(All.WindMomentumLoading)
     if(tot_converted+tot_spawned > 0) {rearrange_particle_sequence();}
 
     CPU_Step[CPU_COOLINGSFR] += measure_time();
+
+#ifdef CHIMES 
+    if (ThisTask == 0) 
+      printf("Chemistry and star formation finished.\n"); 
+#endif 
 } /* end of main sfr_cooling routine!!! */
 
 

@@ -16,10 +16,7 @@ void check_constraint_equations(struct gasVariables *myGasVars, struct globalVar
   int i;
 
   for (i = 0; i < myGlobalVars->totalNumberOfSpecies; i++)
-    {
-      if (myGasVars->abundances[myGlobalVars->speciesIndices[i]] < 0.0)
-	myGasVars->abundances[myGlobalVars->speciesIndices[i]] = 0.0;
-    }
+    myGasVars->abundances[i] = max(myGasVars->abundances[i], 0.0); 
 
   /* Helium */
   if (myGasVars->element_abundances[0] > 0.0)
@@ -736,9 +733,18 @@ int kin_f(N_Vector y, N_Vector ydot, void *user_data)
       *(data->H2_column) = data->myGasVars->abundances[data->myGlobalVars->speciesIndices[H2]] * data->myGasVars->cell_size * data->myGasVars->nH_tot;
       *(data->HeI_column) = data->myGasVars->abundances[data->myGlobalVars->speciesIndices[HeI]] * data->myGasVars->cell_size * data->myGasVars->nH_tot;
       *(data->HeII_column) = data->myGasVars->abundances[data->myGlobalVars->speciesIndices[HeII]] * data->myGasVars->cell_size * data->myGasVars->nH_tot;
-      *(data->CO_column) = max(data->myGasVars->abundances[data->myGlobalVars->speciesIndices[CO]], 0.0) * data->myGasVars->cell_size * data->myGasVars->nH_tot;
-      *(data->H2O_column) = max(data->myGasVars->abundances[data->myGlobalVars->speciesIndices[H2O]], 0.0) * data->myGasVars->cell_size * data->myGasVars->nH_tot;
-      *(data->OH_column) = max(data->myGasVars->abundances[data->myGlobalVars->speciesIndices[OH]], 0.0) * data->myGasVars->cell_size * data->myGasVars->nH_tot;
+      if (data->myGlobalVars->speciesIndices[CO] > -1) 
+	*(data->CO_column) = max(data->myGasVars->abundances[data->myGlobalVars->speciesIndices[CO]], 0.0) * data->myGasVars->cell_size * data->myGasVars->nH_tot;
+      else 
+	*(data->CO_column) = 0.0; 
+      if (data->myGlobalVars->speciesIndices[H2O] > -1) 
+	*(data->H2O_column) = max(data->myGasVars->abundances[data->myGlobalVars->speciesIndices[H2O]], 0.0) * data->myGasVars->cell_size * data->myGasVars->nH_tot;
+      else 
+	*(data->H2O_column) = 0.0; 
+      if (data->myGlobalVars->speciesIndices[OH] > -1) 
+	*(data->OH_column) = max(data->myGasVars->abundances[data->myGlobalVars->speciesIndices[OH]], 0.0) * data->myGasVars->cell_size * data->myGasVars->nH_tot;
+      else 
+	*(data->OH_column) = 0.0; 
       *(data->extinction) = DUSTEFFSIZE * data->myGasVars->cell_size * data->myGasVars->nH_tot * data->myGasVars->metallicity;
     }
 		
@@ -862,9 +868,18 @@ int f(realtype t, N_Vector y, N_Vector ydot, void *user_data)
       *(data->H2_column) = data->myGasVars->abundances[data->myGlobalVars->speciesIndices[H2]] * data->myGasVars->cell_size * data->myGasVars->nH_tot;
       *(data->HeI_column) = data->myGasVars->abundances[data->myGlobalVars->speciesIndices[HeI]] * data->myGasVars->cell_size * data->myGasVars->nH_tot;
       *(data->HeII_column) = data->myGasVars->abundances[data->myGlobalVars->speciesIndices[HeII]] * data->myGasVars->cell_size * data->myGasVars->nH_tot;
-      *(data->CO_column) = max(data->myGasVars->abundances[data->myGlobalVars->speciesIndices[CO]], 0.0) * data->myGasVars->cell_size * data->myGasVars->nH_tot;
-      *(data->H2O_column) = max(data->myGasVars->abundances[data->myGlobalVars->speciesIndices[H2O]], 0.0) * data->myGasVars->cell_size * data->myGasVars->nH_tot;
-      *(data->OH_column) = max(data->myGasVars->abundances[data->myGlobalVars->speciesIndices[OH]], 0.0) * data->myGasVars->cell_size * data->myGasVars->nH_tot;
+      if (data->myGlobalVars->speciesIndices[CO] > -1) 
+	*(data->CO_column) = max(data->myGasVars->abundances[data->myGlobalVars->speciesIndices[CO]], 0.0) * data->myGasVars->cell_size * data->myGasVars->nH_tot;
+      else 
+	*(data->CO_column) = 0.0; 
+      if (data->myGlobalVars->speciesIndices[H2O] > -1) 
+	*(data->H2O_column) = max(data->myGasVars->abundances[data->myGlobalVars->speciesIndices[H2O]], 0.0) * data->myGasVars->cell_size * data->myGasVars->nH_tot;
+      else 
+	*(data->H2O_column) = 0.0; 
+      if (data->myGlobalVars->speciesIndices[OH] > -1) 
+	*(data->OH_column) = max(data->myGasVars->abundances[data->myGlobalVars->speciesIndices[OH]], 0.0) * data->myGasVars->cell_size * data->myGasVars->nH_tot;
+      else 
+	*(data->OH_column) = 0.0; 
       *(data->extinction) = DUSTEFFSIZE * data->myGasVars->cell_size * data->myGasVars->nH_tot * data->myGasVars->metallicity;
     }
 		

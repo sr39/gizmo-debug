@@ -93,6 +93,11 @@ void cooling_only(void)
 {
     int i;
 
+#ifdef CHIMES 
+    if (ThisTask == 0) 
+      printf("Doing chemistry. \n"); 
+#endif 
+
 #if defined(CHIMES) && defined(OPENMP)
   /* Determine indices of active particles. */
   int N_active = 0; 
@@ -101,7 +106,7 @@ void cooling_only(void)
   active_indices = (int *) malloc(N_gas * sizeof(int)); 
   for (i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-      if((P[i].Mass > 0) && (P[i].Type == 0)
+      if(P[i].Type == 0 && P[i].Mass > 0) 
 	{
 	  active_indices[N_active] = i; 
 	  N_active++; 
@@ -136,6 +141,9 @@ void cooling_only(void)
   CPU_Step[CPU_COOLINGSFR] += measure_time(); 
   MPI_Barrier(MPI_COMM_WORLD); 
   CPU_Step[CPU_COOLSFRIMBAL] += measure_time();
+
+  if (ThisTask == 0) 
+    printf("Chemistry finished. \n"); 
 #endif 
 
 } // void cooling_only(void)

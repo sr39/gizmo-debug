@@ -31,19 +31,19 @@ struct gasVariables
   double TempFloor;
   double divVel;                  /* s^-1 */
   double doppler_broad;           /* km s^-1. NOTE: this is ONLY from turbulence; thermal broadening is added later. */
-  volatile double *isotropic_photon_density;  /* cm^-3 */
-  volatile double *directed_flux_magnitude;   /* Units ?? cm^-2 s^-1?? */
+  double *isotropic_photon_density;  /* cm^-3 */
+  double *directed_flux_magnitude;   /* Units ?? cm^-2 s^-1?? */
   double *dust_G_parameter;
-  double *H2_dissocJ;  /* This is n / (isotropic_photon_density * c),
-			* where n is photon number density in the 
-			* band 12.24 eV to 13.51 eV (all in cgs units). */
+  double *H2_dissocJ;             /* This is n / (isotropic_photon_density * c),
+				   * where n is photon number density in the 
+				   * band 12.24 eV to 13.51 eV (all in cgs units). */
   double cr_rate;
   double metallicity;             /* Z / Z_sol */
   double cell_size;               /* cm; use kernel smoothing length in SPH */
   double hydro_timestep;          /* s */
   int ForceEqOn;
   double constant_heating_rate;   /* erg s^-1 cm^-3 */
-  volatile double *abundances;             /* The size of this array will be set by init_chimes() */
+  double *abundances;             /* The size of this array will be set by init_chimes() */
 };
 
 /* This structure contains the global 
@@ -81,7 +81,7 @@ struct globalVariables
   int speciesIndices[TOTSIZE];
   int totalNumberOfSpecies;
   int print_debug_statements;
-  int scale_metal_tolerances;
+  int scale_metal_tolerances; 
 };
 
 /* The following contain the rates tables */
@@ -334,24 +334,6 @@ struct Reactions_Structure
   struct Reactions_Structure *next_reaction;
 };
 
-/* This next structure will hold the current 
- * values of the rate coefficients at the 
- * current temperature. The reaction list will 
- * then point to the variables in this structure. */
- 
-struct Bens_rate_structure
-{
-  /* From Bens model */
-  double *CollisIon;
-  double **PhotoIon;
-  double *cosmicRays;
-  double *Recomb;
-  double *CTHrec;
-  double *CTHion;
-  double *CTHerec;
-  double *CTHeion;
-};
-
 struct All_rate_variables_structure
 {
   /* This will be an array, 
@@ -589,15 +571,29 @@ struct All_rate_variables_structure
 
 double calculate_total_cooling_rate(struct gasVariables *myGasVars, struct globalVariables *myGlobalVars, double HI_column_density, double HeI_column_density, double HeII_column_density, double H2_column_density, double CO_column_density, double H2O_column_density, double OH_column_density, double extinction, struct All_rate_variables_structure *this_all_rates);
 void init_chimes(struct globalVariables *myGlobalVars, struct All_rate_variables_structure **this_all_rates, struct Reactions_Structure **this_all_reactions_root, struct Reactions_Structure **this_nonmolecular_reactions_root, double *dustG_arr, double *H2_dissocJ_arr);
-void init_chimes_parallel(struct globalVariables *myGlobalVars, struct All_rate_variables_structure **this_all_rates, struct Reactions_Structure **this_all_reactions_root, struct Reactions_Structure **this_nonmolecular_reactions_root, double *dustG_arr, double *H2_dissocJ_arr); 
-void init_chimes_omp(struct globalVariables *myGlobalVars, struct All_rate_variables_structure **this_all_rates, struct Reactions_Structure **this_all_reactions_root, struct Reactions_Structure **this_nonmolecular_reactions_root); 
 void initialise_reactions(struct Reactions_Structure *root_node, int incl_mol, struct globalVariables *myGlobalVars, struct All_rate_variables_structure *this_all_rates);
-void free_all_rates_structure(struct All_rate_variables_structure *this_all_rates, struct globalVariables *myGlobalVars); 
-void free_reactions_list(struct Reactions_Structure *root_node); 
 void set_constant_rates(struct gasVariables *myGasVars, struct globalVariables *myGlobalVars, struct All_rate_variables_structure *this_all_rates);
 void update_rates(struct gasVariables *myGasVars, struct globalVariables *myGlobalVars, double HI_column_density, double H2_column_density, double HeI_column_density, double HeII_column_density,  double CO_column_density, double extinction, struct All_rate_variables_structure *this_all_rates);
 void update_T_dependent_rates(struct gasVariables *myGasVars, struct globalVariables *myGlobalVars, struct All_rate_variables_structure *this_all_rates);
 void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGlobalVars, struct All_rate_variables_structure *this_all_rates, struct Reactions_Structure *this_all_reactions_root, struct Reactions_Structure *this_nonmolecular_reactions_root);
+
+/* This next structure will hold the current 
+ * values of the rate coefficients at the 
+ * current temperature. The reaction list will 
+ * then point to the variables in this structure. */
+ 
+struct Bens_rate_structure
+{
+  /* From Bens model */
+  double *CollisIon;
+  double **PhotoIon;
+  double *cosmicRays;
+  double *Recomb;
+  double *CTHrec;
+  double *CTHion;
+  double *CTHerec;
+  double *CTHeion;
+};
 
 enum 
   {

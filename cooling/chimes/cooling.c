@@ -321,10 +321,10 @@ double calculate_total_cooling_rate(struct gasVariables *myGasVars, struct globa
   double total_cooling = 0.0;
 
   get_index_1d_mydbl(chimesRateTables.NonEqIon->Temperatures, chimesRateTables.NonEqIon->N_Temperatures, log10(min(myGasVars->temperature, MAX_TEMPERATURE_FOR_RATES)), &T_index, &dT);
-  get_index_1d_mydbl(chimesRateTables.NonEqIon->shieldingColumnDensities, chimesRateTables.NonEqIon->shieldingColumnDimensions[0], log10(HI_column_density), &NHI_index, &dNHI);
-  get_index_1d_mydbl(chimesRateTables.NonEqIon->shieldingColumnDensities, chimesRateTables.NonEqIon->shieldingColumnDimensions[0], log10(HI_column_density + 3.0 * H2_column_density), &NH_eff_index, &dNH_eff);
-  get_index_1d_mydbl(chimesRateTables.NonEqIon->shieldingColumnDensities, chimesRateTables.NonEqIon->shieldingColumnDimensions[0], log10(HeI_column_density), &NHeI_index, &dNHeI);
-  get_index_1d_mydbl(chimesRateTables.NonEqIon->shieldingColumnDensities, chimesRateTables.NonEqIon->shieldingColumnDimensions[0], log10(HeI_column_density + 0.75 * HeII_column_density), &NHe_eff_index, &dNHe_eff);
+  get_index_1d_mydbl(chimesRateTables.NonEqIon->shieldingColumnDensities, chimesRateTables.NonEqIon->shieldingColumnDimensions[0], log10(max(HI_column_density, 1.0e-50)), &NHI_index, &dNHI);
+  get_index_1d_mydbl(chimesRateTables.NonEqIon->shieldingColumnDensities, chimesRateTables.NonEqIon->shieldingColumnDimensions[0], log10(max(HI_column_density + 3.0 * H2_column_density, 1.0e-50)), &NH_eff_index, &dNH_eff);
+  get_index_1d_mydbl(chimesRateTables.NonEqIon->shieldingColumnDensities, chimesRateTables.NonEqIon->shieldingColumnDimensions[0], log10(max(HeI_column_density, 1.0e-50)), &NHeI_index, &dNHeI);
+  get_index_1d_mydbl(chimesRateTables.NonEqIon->shieldingColumnDensities, chimesRateTables.NonEqIon->shieldingColumnDimensions[0], log10(max(HeI_column_density + 0.75 * HeII_column_density, 1.0e-50)), &NHe_eff_index, &dNHe_eff);
   
   if (log10(myGasVars->temperature) < chimesRateTables.nei_cooling_temperature[chimesRateTables.nei_cooling_table_dimensions[0] - 1])
     {
