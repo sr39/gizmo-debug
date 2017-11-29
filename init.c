@@ -930,6 +930,18 @@ void init(void)
         below/above which particles are merged/split */
     if(RestartFlag != 1)
     {
+#ifdef AJR_TARGET_RESOLUTION 
+      All.MinMassForParticleMerger = 0.49 * All.TargetMassResolution_Msol * SOLAR_MASS / (All.UnitMass_in_g / All.HubbleParam);
+      All.MaxMassForParticleSplit  = 3.01 * All.TargetMassResolution_Msol * SOLAR_MASS / (All.UnitMass_in_g / All.HubbleParam);
+#ifdef GALSF_GENERATIONS
+      All.MinMassForParticleMerger /= (float)GALSF_GENERATIONS;
+#endif
+      if (ThisTask == 0) 
+	{
+	  printf("MinMassForParticleMerger = %.4e Msol\n", All.MinMassForParticleMerger * (All.UnitMass_in_g / All.HubbleParam) / SOLAR_MASS); 
+	  printf("MaxMassForParticleSplit = %.4e Msol\n", All.MaxMassForParticleSplit * (All.UnitMass_in_g / All.HubbleParam) / SOLAR_MASS); 
+	}
+#else 
         double mass_min = MAX_REAL_NUMBER;
         double mass_max = -MAX_REAL_NUMBER;
         for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
@@ -947,6 +959,7 @@ void init(void)
 #endif
         /* All.MaxMassForParticleSplit  = 5.01 * mpi_mass_max; */
         All.MaxMassForParticleSplit  = 3.01 * mpi_mass_max;
+#endif // AJR_TARGET_RESOLUTION  
     }
     
     
