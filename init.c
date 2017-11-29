@@ -722,7 +722,7 @@ void init(void)
     density();
     for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
     {
-        int k;
+        int k; k=0;
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
 
 #if defined(TURB_DRIVING) && defined(EOS_ENFORCE_ADIABAT)

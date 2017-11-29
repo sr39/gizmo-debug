@@ -16,7 +16,6 @@
 
 #ifdef CBE_INTEGRATOR
 
-#define CBE_DEBUG
 
 
 // moment ordering convention: 0, x, y, z, xx, yy, zz, xy, xz, yz
@@ -76,26 +75,27 @@ void do_cbe_drift_kick(int i, double dt)
     // total mass flux should vanish identically -- check this //
     if(ThisTask==0) {printf("Total mass flux == %g (Task=%d i=%d)\n",dmoment[0],ThisTask,i);}
     if(ThisTask==0) {printf("Momentum flux == %g/%g/%g (Task=%d i=%d)\n",dmoment[1],dmoment[2],dmoment[3],ThisTask,i);}
-    if(fabs(m_inv*dmoment[0]) > 0.05) endrun(91918282);
+    if(fabs(minv*dmoment[0]) > 0.05) endrun(91918282);
 #endif
     // define the current velocity, force-sync update to match it //
     for(k=0;k<3;k++) {v0[k] = P[i].Vel[k] / All.cf_atime;} // physical units //
     double biggest_dm = 1.e10;
     for(j=0;j<CBE_INTEGRATOR_NBASIS;j++)
     {
-        double q = (dt*P[i].CBE_basis_moments_dt[j][0]) / (P[i].CBE_basis_moments[j][0] * (1.+m_inv*dmoment[0]));
+        double q = (dt*P[i].CBE_basis_moments_dt[j][0]) / (P[i].CBE_basis_moments[j][0] * (1.+minv*dmoment[0]));
         if(!isnan(q)) {if(q < biggest_dm) {biggest_dm=q;}}
     }
     double nfac = 1; // normalization factor for fluxes below //
-    double threshold_dm = -0.9; // maximum allowed fractional change in m //
+    double threshold_dm;
+    threshold_dm = -0.9; // maximum allowed fractional change in m //
 #ifndef CBE_DEBUG
     if(biggest_dm < threshold_dm) {nfac = threshold_dm/biggest_dm;} // re-normalize flux so it doesn't overshoot //
 #endif
     // ok now do the actual update //
     for(j=0;j<CBE_INTEGRATOR_NBASIS;j++)
     {
-        P[i].CBE_basis_moments[j][0] += nfac * (dt*P[i].CBE_basis_moments_dt[j][0] - P[i].CBE_basis_moments[j][0]*m_inv*dmoment[0]); // update mass (strictly ensuring total mass matches updated particle)
-        for(k=1;k<4;k++) {P[i].CBE_basis_moments[j][k] += nfac * (dt*P[i].CBE_basis_moments_dt[j][k] - P[i].CBE_basis_moments[j][0]*(m_inv*dmoment[k]-v0[k-1]));} // update momentum (strictly ensuring total momentum matches updated particle)
+        P[i].CBE_basis_moments[j][0] += nfac * (dt*P[i].CBE_basis_moments_dt[j][0] - P[i].CBE_basis_moments[j][0]*minv*dmoment[0]); // update mass (strictly ensuring total mass matches updated particle)
+        for(k=1;k<4;k++) {P[i].CBE_basis_moments[j][k] += nfac * (dt*P[i].CBE_basis_moments_dt[j][k] - P[i].CBE_basis_moments[j][0]*(minv*dmoment[k]-v0[k-1]));} // update momentum (strictly ensuring total momentum matches updated particle)
         for(k=4;k<10;k++) {P[i].CBE_basis_moments[j][k] += nfac * (dt*P[i].CBE_basis_moments_dt[j][k]);} // pure dispersion, no re-normalization here
 #ifdef CBE_DEBUG
         // check against negatives //
@@ -122,8 +122,8 @@ void do_cbe_drift_kick(int i, double dt)
 /* routine to invert the NV_T matrix after neighbor pass */
 double do_cbe_nvt_inversion_for_faces(int i)
 {
-    MyDouble *NV_T = P[i].NV_T; // matrix to be inverted //
-    int j,k;
+    MyFloat NV_T[3][3]; int j,k;
+    for(j=0;j<3;j++) {for(k=0;k<3;k++) {NV_T[j][k]=P[i].NV_T[j][k];}} // initialize matrix to be inverted //
     double Tinv[3][3], FrobNorm=0, FrobNorm_inv=0, detT=0;
     for(j=0;j<3;j++) {for(k=0;k<3;k++) {Tinv[j][k]=0;}}
     /* fill in the missing elements of NV_T (it's symmetric, so we saved time not computing these directly) */
@@ -190,13 +190,13 @@ void do_cbe_flux_computation(double *moments, double vface_dot_A, double *Area, 
     S[0] = m_inv*moments[4];// - v[0]*v[0]; // xx
     S[1] = m_inv*moments[5];// - v[1]*v[1]; // yy
     S[2] = m_inv*moments[6];// - v[2]*v[2]; // zz
-    S[4] = m_inv*moments[7];// - v[0]*v[1]; // xy
-    S[5] = m_inv*moments[8];// - v[0]*v[2]; // xz
-    S[6] = m_inv*moments[9];// - v[1]*v[2]; // yz
+    S[3] = m_inv*moments[7];// - v[0]*v[1]; // xy
+    S[4] = m_inv*moments[8];// - v[0]*v[2]; // xz
+    S[5] = m_inv*moments[9];// - v[1]*v[2]; // yz
     double S_dot_A[3]; // what we actually use is this dotted into the face
-    S_dot_A[0] = (S[0]*Area[0] + S[4]*Area[1] + S[5]*Area[2]) * moments[0]; // (S_alpha . A_face)_x * mass
-    S_dot_A[1] = (S[4]*Area[0] + S[1]*Area[1] + S[6]*Area[2]) * moments[0]; // (S_alpha . A_face)_y * mass
-    S_dot_A[2] = (S[5]*Area[0] + S[6]*Area[1] + S[2]*Area[2]) * moments[0]; // (S_alpha . A_face)_z * mass
+    S_dot_A[0] = (S[0]*Area[0] + S[3]*Area[1] + S[4]*Area[2]) * moments[0]; // (S_alpha . A_face)_x * mass
+    S_dot_A[1] = (S[3]*Area[0] + S[1]*Area[1] + S[5]*Area[2]) * moments[0]; // (S_alpha . A_face)_y * mass
+    S_dot_A[2] = (S[4]*Area[0] + S[5]*Area[1] + S[2]*Area[2]) * moments[0]; // (S_alpha . A_face)_z * mass
     fluxes[0] = (v_dot_A - vface_dot_A) * moments[0]; // calculate and assign mass flux
     int k; for(k=1;k<10;k++) {fluxes[k] =  (m_inv * moments[k]) * fluxes[0];} // specific flux carried just by mass flux
     fluxes[1] += S_dot_A[0]; // add momentum flux from stress tensor - x
@@ -222,9 +222,12 @@ void do_cbe_flux_computation(double *moments, double vface_dot_A, double *Area, 
 void do_postgravity_cbe_calcs(int i)
 {
     int j,k;
-    double *mom = P[i].CBE_basis_moments, *dmom = P[i].CBE_basis_moments_dt; double dmom_tot[10]={0}, m_inv = 1./P[i].Mass;
+    double (*mom)[10] = P[i].CBE_basis_moments;
+    double (*dmom)[10] = P[i].CBE_basis_moments_dt;
+    double dmom_tot[10]={0}, m_inv = 1./P[i].Mass;
     for(j=0;j<CBE_INTEGRATOR_NBASIS;j++) {for(k=0;k<10;k++) {dmom_tot[k] += dmom[j][k];}} // total change for each moment
 #ifdef CBE_DEBUG
+    if(ThisTask==0) {printf("mom=%g/%g/%g/%g \n",mom[0][3],mom[2][7],mom[1][5],mom[0][8]);}
     /* total mass change should be zero to floating-point accuracy, so don't need to worry about it, but check! */
     if(ThisTask==0) {printf("PG: Total mass flux == %g (Task=%d i=%d)\n",dmom_tot[0],ThisTask,i);}
     if(ThisTask==0) {printf("PG: Momentum flux == %g/%g/%g (Task=%d i=%d)\n",dmom_tot[1],dmom_tot[2],dmom_tot[3],ThisTask,i);}
