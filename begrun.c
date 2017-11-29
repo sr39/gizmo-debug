@@ -1932,6 +1932,12 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif 
 
+#ifdef AJR_TARGET_RESOLUTION 
+      strcpy(tag[nt], "target_mass_resolution_msol");
+      addr[nt] = &All.TargetMassResolution_Msol;
+      id[nt++] = REAL;
+#endif 
+
         if((fd = fopen(fname, "r")))
         {
             sprintf(buf, "%s%s", fname, "-usedvalues");

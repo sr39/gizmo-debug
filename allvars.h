@@ -1407,6 +1407,10 @@ extern struct global_data_all_processes
     double MinMassForParticleMerger; /*!< the minimum mass of a gas particle below which it will be merged into a neighbor */
     double MaxMassForParticleSplit; /*!< the maximum mass of a gas particle above which it will be split into a pair */
 
+#ifdef AJR_TARGET_RESOLUTION 
+  double TargetMassResolution_Msol; /*!< The target mass resolution, used to determine the min and max mass thresholds for particle merging/splitting. */ 
+#endif 
+
   /* some force counters  */
 
   long long TotNumOfForces;	/*!< counts total number of force computations  */
