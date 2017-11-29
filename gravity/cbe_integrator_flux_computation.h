@@ -1,9 +1,9 @@
 #ifdef CBE_INTEGRATOR
 
-/* --------------------------------------------------------------------------------- */
-/* this is the kernel where the core of the CBE flux computation is performed,
- *  to calculate the relevant fluxes between faces of partciels, within the gravity routine
-/* --------------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------------
+ this is the kernel where the core of the CBE flux computation is performed,
+ to calculate the relevant fluxes between faces of partciels, within the gravity routine
+ --------------------------------------------------------------------------------- */
 {
 /* since we compute both 'sides' fluxes together (and it is an expensive operation), we
     only need to do it once -- we need to figure out which particle is active on the smaller timestep, and

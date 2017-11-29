@@ -7,6 +7,10 @@
 %        BOX_SPATIAL_DIMENSION=2
 %        SELFGRAVITY_OFF
 %        EOS_GAMMA=(5.0/3.0)
+%        KERNEL_FUNCTION=5
+%
+% (The choice of KERNEL_FUNCTION is optional here. Experiment with different kernels.
+%   But be sure to set DesNumNgb accordingly; for e.g. KERNEL_FUNCTION=5 or 7, use 40, =3 or 5, use 20)
 %
 % the parameters above are required for the hydro version of this problem.  
 %   (modulo, of course, the choice of hydro method). For the MHD version of the 
@@ -17,11 +21,26 @@
 %
 % and then set the relevant BiniX, BiniY, BiniZ parameters below
 %
+% note that the default setup of this problem is inviscid, so the small-scale structure is always
+%   'seeded' by grid noise, and there is no "converged" solution in the non-linear structure (the structure
+%   should appear at infinitely small scales, at infinite resolution). Following
+%   Lecoanet et al. 2016 (MNRAS, 455, 4274), to actually obtain define-ably converged solutions,
+%   need to make the system have a finite Reynolds number. To do this, add finite viscosity. So experiment
+%   with the flags:
+%
+%        CONDUCTION
+%        VISCOSITY
+%
+% which are controlled by the flags 'ShearViscosityCoeff', 'BulkViscosityCoeff', 'ConductionCoeff' (see below)
+%
 InitCondFile                       /panfs/ds06/sxs/phopkins/GIZMO_tests/kh/kh_tmp/kh_mcnally_2d_ics
 OutputDir 			               /panfs/ds06/sxs/phopkins/GIZMO_tests/kh/kh_tmp
 BiniX 				               0.07
 BiniY 				               1.0e0
 BiniZ 				               1.0e0
+ConductionCoeff                    0.0002
+ShearViscosityCoeff                0.0002
+BulkViscosityCoeff                 0.0
 UnitMagneticField_in_gauss         1.0
 RestartFile                        restart
 SnapshotFileBase                   snapshot
@@ -57,7 +76,7 @@ MinSizeTimestep                    0
 ErrTolTheta                        0.7
 ErrTolForceAcc                     0.0025
 TreeDomainUpdateFrequency          0.05
-DesNumNgb                          20
+DesNumNgb                          40
 MaxNumNgbDeviation                 0.025
 ArtBulkViscConst                   1
 UnitLength_in_cm                   1

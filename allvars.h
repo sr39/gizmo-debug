@@ -163,7 +163,9 @@
 
 
 #ifdef CBE_INTEGRATOR
-#define ADAPTIVE_GRAVSOFT_FORALL (1000.)
+#ifndef ADAPTIVE_GRAVSOFT_FORALL
+#define ADAPTIVE_GRAVSOFT_FORALL 100000
+#endif
 #define CBE_INTEGRATOR_NBASIS 5
 #endif
 
@@ -2112,8 +2114,8 @@ extern ALIGN(32) struct particle_data
 #endif
     
 #ifdef CBE_INTEGRATOR
-    MyFloat CBE_basis_moments[CBE_INTEGRATOR_NBASIS][10];         /* moments per basis function */
-    MyFloat CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10];      /* time-derivative of moments per basis function */
+    double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][10];         /* moments per basis function */
+    double CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10];      /* time-derivative of moments per basis function */
     MyFloat NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */
 #endif
 

@@ -3052,12 +3052,18 @@ Parameterfile: "kh\_mcnally\_2d.params"
 
 In Config.sh, enable: 
 
+```bash
     BOX_PERIODIC
     BOX_SPATIAL_DIMENSION=2
+    PREVENT_PARTICLE_MERGE_SPLIT
     SELFGRAVITY_OFF
+    KERNEL_FUNCTION=3
     EOS_GAMMA=(5.0/3.0)
-    
+```
+
 For this test problem, the linear KH growth timescale is $t_{\rm KH}=0.7$. The 'correct' solution cannot be included in a simple table, but you should compare to the solutions in Figs. 13-15 of the methods paper (note that the periodic box can be arbitrarily shifted in the vertical/horizontal directions, so check if your result doesn't exactly 'line up' to the choice used for plotting before you decide its wrong!). Those plots are 2D gas density plots, scaled as described in the paper. By time $t=1$, the initial mode should be growing into the familiar KH 'rolls'; by time $t=1.5$ those rolls should start rolling onto themselves, and by $t=3-5$, their should be multiple internal rolls of each. Finally, by time $t=5-10$, the whole box should be going non-linear: the rolls should begin to overlap and the whole central fluid should begin to 'kink'. 
+
+Note that the default setup of this problem is inviscid, so the small-scale structure is always 'seeded' by grid noise, and there is no "converged" solution in the non-linear structure (the structure should appear at infinitely small scales, at infinite resolution). Following Lecoanet et al. 2016 (MNRAS, 455, 4274), to actually obtain define-ably converged solutions, need to make the system have a finite Reynolds number. To do this, add finite viscosity. So experiment with the flags: `CONDUCTION` and `VISCOSITY`, which are controlled by the flags 'ShearViscosityCoeff', 'BulkViscosityCoeff', 'ConductionCoeff' (some examples are in the parameterfile). 
 
 Because it is considered in many papers, we also compare a different KH IC. Specifically, we consider the 3D KH test from the Wengen multiphase test suite available [here](http://www.astrosim.net/code/doku.php?id=home:codetest:hydrotest:multiphase) and described in detail there and in Agertz et al. 2007. Briefly, in a periodic box with size $256,\,256,\,16\,{\rm kpc}$ in the $x,\,y,\,z$ directions (centered on $0,\,0,\,0$), respectively, $\approx10^{6}$ equal-mass particles are initialized in a cubic lattice, with density, temperature, and $x$-velocity $=\rho_{1},\,T_{1},\,v_{1}$ for $|y|<4$ and $=\rho_{2}\,T_{2},\,v_{2}$ for $|y|>4$, with $\rho_{2}=0.5\,\rho_{1}$, $T_{2}=2.0\,T_{1}$, $v_{2}=-v_{1}=40\,{\rm km\,s^{-1}}$. The values for $T_{1}$ are chosen so the sound speed $c_{s,\,2}\approx 8\,|v_{2}|$; the system has constant initial pressure. To trigger instabilities, a sinusoidal velocity perturbation is applied to $v_{y}$ near the boundary, with amplitude $\delta v_{y} = 4\,{\rm km\,s^{-1}}$ and wavelength $\lambda=128\,{\rm kpc}$. 
 
@@ -3077,7 +3083,8 @@ In Config.sh, enable:
 
 You should see similar qualitative behavior in this test as in the previous KH test, though here the linear growth time is longer ($=3.5$). Compare this to Fig. 16 in the code paper (note the same caveat about plotting). Since there is no 'smoothing' of the initial boundary, the phase transition in this test should remain sharp well into the non-linear evolution. 
 
-For both versions of the KH test, you may also want to enable MULTIPLEDOMAINS=16 or 32, depending on performance (this is purely there to help with memory allocation and parallelization, since the default IC for this test is quite high-resolution).
+For both versions of the KH test, you may also want to enable MULTIPLEDOMAINS=16 or 32, depending on performance (this is purely there to help with memory allocation and parallelization, since the default IC for this test is quite high-resolution). You should also experiment with the kernel function and hydro solver, and the `DEVELOPER_MODE` parameters that are set for example in the default parameterfile.
+
 
 <a name="tests-mixing-rt"></a>
 ### Rayleigh-Taylor Instabilities 

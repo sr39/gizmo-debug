@@ -1715,7 +1715,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
     
 #ifdef CBE_INTEGRATOR
-    double local_NV_T[3][3], local_V_i, local_CBE_basis_moments[CBE_INTEGRATOR_NBASIS][10], out_CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10]={0};
+    double local_NV_T[3][3], local_V_i, local_CBE_basis_moments[CBE_INTEGRATOR_NBASIS][10], out_CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10]={{0}};
     if(mode==0)
     {
         int k1, k2;
