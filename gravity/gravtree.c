@@ -101,7 +101,15 @@ void gravity_tree(void)
         for(j = 0; j < PARTICLE_MAX_INTERACTIONS + 1; j++)
             InteractionTable[i][j] = 0;
 #endif
-    
+#ifdef CBE_INTEGRATOR
+    /* need to zero values for active particles (which will be re-calculated) before they are added below */
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        int k1,k2;
+        for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {P[i].CBE_basis_moments_dt[k1][k2] = 0;}}
+    }
+#endif
+
     
     CPU_Step[CPU_MISC] += measure_time();
     
@@ -417,15 +425,22 @@ void gravity_tree(void)
                     
                     GravDataIn[j].Type = P[place].Type;
                     GravDataIn[j].OldAcc = P[place].OldAcc;
-                    for(k = 0; k < 3; k++)
-                        GravDataIn[j].Pos[k] = P[place].Pos[k];
+                    for(k = 0; k < 3; k++) {GravDataIn[j].Pos[k] = P[place].Pos[k];}
                     
 #ifdef DM_SIDM
-                    for(k = 0; k < 3; k++)
-                        GravDataIn[j].Vel[k] = P[place].Vel[k];
+                    for(k = 0; k < 3; k++) {GravDataIn[j].Vel[k] = P[place].Vel[k];}
                     GravDataIn[j].dt_step = P[place].dt_step;
                     GravDataIn[j].dt_step_sidm = P[place].dt_step_sidm;
                     GravDataIn[j].ID = P[place].ID;
+#endif
+#ifdef CBE_INTEGRATOR
+#ifndef DM_SIDM
+                    for(k = 0; k < 3; k++) {GravDataIn[j].Vel[k] = P[place].Vel[k];}
+                    GravDataIn[j].dt_step = P[place].dt_step;
+#endif
+                    GravDataIn[j].V_i = pow(Get_Particle_Size(place), NUMDIMS);
+                    int k2; for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {GravDataIn[j].NV_T[k][k2] = P[place].NV_T[k][k2];}}
+                    for(k=0;k<CBE_INTEGRATOR_NBASIS;k++) {for(k2=0;k2<10;k2++) {GravDataIn[j].CBE_basis_moments[k][k2] = P[place].CBE_basis_moments[k][k2];}}
 #endif
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
                     GravDataIn[j].Mass = P[place].Mass;
@@ -576,7 +591,10 @@ void gravity_tree(void)
                         P[place].NInteractions += GravDataOut[j].NInteractions;
                     }
 #endif
-                    
+#ifdef CBE_INTEGRATOR
+                    int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {P[place].CBE_basis_moments_dt[k1][k2] += GravDataOut[j].CBE_basis_moments_dt[k1][k2];}}
+#endif
+
 #ifdef BH_CALC_DISTANCES
                     /* GravDataOut[j].min_dist_to_bh contains the min dist to particle "P[place]" on another
                      task.  We now check if it is smaller than the current value */
@@ -975,6 +993,10 @@ void gravity_tree(void)
 #endif
     
     add_analytic_gravitational_forces();
+    
+#ifdef CBE_INTEGRATOR
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {do_postgravity_cbe_calcs(i);} // do any final post-tree-walk calcs from the CBE integrator here //
+#endif
     
     
     /* Now the force computation is finished */

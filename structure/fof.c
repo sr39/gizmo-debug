@@ -2015,47 +2015,53 @@ void fof_make_black_holes(void)
 #if (BH_SEED_FROM_FOF==0)
         if(P[import_indices[n]].Type != 0)
 #elif (BH_SEED_FROM_FOF==1)
-        if(P[import_indices[n]].Type != 4)
+            if(P[import_indices[n]].Type != 4)
 #endif
-	endrun(7772);
-
-      P[import_indices[n]].Type = 5;	/* make it a black hole particle */
-
+                endrun(7772);
+        
+        P[import_indices[n]].Type = 5;    /* make it a black hole particle */
 #ifdef GALSF
-      P[import_indices[n]].StellarAge = All.Time;
+        P[import_indices[n]].StellarAge = All.Time; /* reset formation time to match BH formation */
 #endif
-
-      if(All.SeedBlackHoleMassSigma > 0)
-      {
-        /* compute gaussian random number: mean=0, sigma=All.SeedBlackHoleMassSigma */
-        random_generator_forbh = gsl_rng_alloc(gsl_rng_ranlxd1);
-        gsl_rng_set(random_generator_forbh,P[import_indices[n]].ID+17);
-        random_number_forbh = gsl_ran_gaussian(random_generator_forbh, All.SeedBlackHoleMassSigma);
-        BPP(import_indices[n]).BH_Mass = pow( 10., log10(All.SeedBlackHoleMass) + random_number_forbh );
-        unitmass_in_msun = (All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS;
-        if( BPP(import_indices[n]).BH_Mass < 100./unitmass_in_msun )
-          BPP(import_indices[n]).BH_Mass = 100./unitmass_in_msun;      // enforce lower limit of Mseed = 100 x Msun
-      }else{
-          BPP(import_indices[n]).BH_Mass = All.SeedBlackHoleMass;
-      }
-
+        /* generate BH mass */
+        if(All.SeedBlackHoleMassSigma > 0)
+        {
+            /* compute gaussian random number: mean=0, sigma=All.SeedBlackHoleMassSigma */
+            random_generator_forbh = gsl_rng_alloc(gsl_rng_ranlxd1);
+            gsl_rng_set(random_generator_forbh,P[import_indices[n]].ID+17);
+            random_number_forbh = gsl_ran_gaussian(random_generator_forbh, All.SeedBlackHoleMassSigma);
+            BPP(import_indices[n]).BH_Mass = pow( 10., log10(All.SeedBlackHoleMass) + random_number_forbh );
+            unitmass_in_msun = (All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS;
+            if( BPP(import_indices[n]).BH_Mass < 100./unitmass_in_msun )
+                BPP(import_indices[n]).BH_Mass = 100./unitmass_in_msun;      // enforce lower limit of Mseed = 100 x Msun
+        } else {
+            BPP(import_indices[n]).BH_Mass = All.SeedBlackHoleMass;
+        }
+        BPP(import_indices[n]).BH_Mdot = 0;
+        /* set hydro-ish variables */
+        if(BPP(import_indices[n]).Type == 0){
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+            P[import_indices[n]].Mass = SphP[import_indices[n]].MassTrue + SphP[import_indices[n]].dMass;
+#endif
+            P[import_indices[n]].DensAroundStar = SphP[import_indices[n]].Density;
+        }
+        /* set some specific BH variables that are needed below */
+#ifdef BH_PHOTONMOMENTUM
+        P[import_indices[n]].BH_disk_hr = 0.333333;
+#endif
 #ifdef BH_INCREASE_DYNAMIC_MASS
-      P[import_indices[n]].Mass *= BH_INCREASE_DYNAMIC_MASS;
+        P[import_indices[n]].Mass *= BH_INCREASE_DYNAMIC_MASS;
 #endif
-
-#ifdef BH_ALPHADISK_ACCRETION                                
-      BPP(import_indices[n]).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
+#ifdef BH_ALPHADISK_ACCRETION
+        BPP(import_indices[n]).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
 #endif
-
-      BPP(import_indices[n]).BH_Mdot = 0;
-
 #ifdef BH_COUNTPROGS
-      BPP(import_indices[n]).BH_CountProgs = 1;
+        BPP(import_indices[n]).BH_CountProgs = 1;
 #endif
-
+        /* record that we actually made a BH, count numbers for book-keeping in domains */
 #if (BH_SEED_FROM_FOF != 1)
-      Stars_converted++;
-      TimeBinCountSph[P[import_indices[n]].TimeBin]--;
+        Stars_converted++;
+        TimeBinCountSph[P[import_indices[n]].TimeBin]--;
 #endif
 
     }

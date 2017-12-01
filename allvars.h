@@ -109,7 +109,7 @@
 #define HYDRO_SPH               /* master flag for SPH: must be enabled if any SPH method is used */
 #endif
 #ifdef HYDRO_SPH
-#ifndef SPH_DISABLE_CD10_ARTVISC
+#if !defined(SPH_DISABLE_CD10_ARTVISC) && !(defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)) // fancy viscosity switches assume positive pressures //
 #define SPHAV_CD10_VISCOSITY_SWITCH 0.05   /* Enables Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks) */
 #endif
 #ifndef SPH_DISABLE_PM_CONDUCTIVITY
@@ -160,6 +160,14 @@
 
 
 #include "eos/eos.h"
+
+
+#ifdef CBE_INTEGRATOR
+#ifndef ADAPTIVE_GRAVSOFT_FORALL
+#define ADAPTIVE_GRAVSOFT_FORALL 100000
+#endif
+#define CBE_INTEGRATOR_NBASIS 5
+#endif
 
 
 #ifdef FIRE_PHYSICS_DEFAULTS
@@ -711,7 +719,6 @@ typedef unsigned long long peanokey;
 #define  PEANOCELLS_SAVE_KEYS (((peanokey)1)<<(3*BITS_PER_DIMENSION_SAVE_KEYS))
 
 
-#define  check_particles()          check_particles_info( __FUNCTION__, __FILE__, __LINE__)
 
 #define  terminate(x) {char termbuf[2000]; sprintf(termbuf, "code termination on task=%d, function '%s()', file '%s', line %d: '%s'\n", ThisTask, __FUNCTION__, __FILE__, __LINE__, x); printf("%s", termbuf); fflush(stdout); MPI_Abort(MPI_COMM_WORLD, 1); exit(0);}
 
@@ -1815,7 +1822,7 @@ extern struct global_data_all_processes
   double BlackHoleFeedbackFactor;	/*!< Fraction of the black luminosity feed into thermal feedback */
   double SeedBlackHoleMass;         /*!< Seed black hole mass */
   double SeedBlackHoleMassSigma;    /*!< Standard deviation of init black hole masses */
-  double SeedBlackHoleMinRedshift; /*!< Minimum redshift where BH seeds are allowed */
+  double SeedBlackHoleMinRedshift;  /*!< Minimum redshift where BH seeds are allowed */
 #ifdef BH_ALPHADISK_ACCRETION
   double SeedAlphaDiskMass;         /*!< Seed alpha disk mass */
 #endif
@@ -1824,7 +1831,9 @@ extern struct global_data_all_processes
   double BAL_internal_temperature;
   MyIDType AGNWindID;
 #endif
+#ifdef BH_SEED_FROM_FOF
   double MinFoFMassForNewSeed;      /*!< Halo mass required before new seed is put in */
+#endif
   double BlackHoleNgbFactor;        /*!< Factor by which the SPH neighbour should be increased/decreased */
   double BlackHoleMaxAccretionRadius;
   double BlackHoleEddingtonFactor;	/*!< Factor above Eddington */
@@ -1835,7 +1844,9 @@ extern struct global_data_all_processes
 #endif
 #endif
 
-
+#if defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)
+  double Tillotson_EOS_params[7][12]; /*! < holds parameters for Tillotson EOS for solids */
+#endif
 
 #ifdef EOS_TABULATED
     char EosTable[100];
@@ -2101,6 +2112,13 @@ extern ALIGN(32) struct particle_data
     short int wakeup;                     /*!< flag to wake up particle */
 #endif
 #endif
+    
+#ifdef CBE_INTEGRATOR
+    double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][10];         /* moments per basis function */
+    double CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10];      /* time-derivative of moments per basis function */
+    MyFloat NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */
+#endif
+
 }
  *P,				/*!< holds particle data on local processor */
  *DomainPartBuf;		/*!< buffer for particle data used in domain decomposition */
@@ -2365,13 +2383,21 @@ extern struct sph_particle_data
 #ifdef EOS_GENERAL
     MyFloat SoundSpeed;                   /* Sound speed */
 #ifdef EOS_CARRIES_TEMPERATURE
-    MyFloat Temperature;                         /* temperature */
+    MyFloat Temperature;                  /* Temperature */
 #endif
 #ifdef EOS_CARRIES_YE
     MyFloat Ye;                           /* Electron fraction */
 #endif
 #ifdef EOS_CARRIES_ABAR
     MyFloat Abar;                         /* Average atomic weight (in atomic mass units) */
+#endif
+#if defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)
+    int CompositionType;                  /* define the composition of the material */
+#endif
+#ifdef EOS_ELASTIC
+    MyDouble Elastic_Stress_Tensor[3][3]; /* deviatoric stress tensor */
+    MyDouble Elastic_Stress_Tensor_Pred[3][3];
+    MyDouble Dt_Elastic_Stress_Tensor[3][3];
 #endif
 #endif
     
@@ -2464,9 +2490,16 @@ extern struct gravdata_in
     MyFloat AGS_zeta;
 #endif
 #endif
-#ifdef DM_SIDM
+#if defined(DM_SIDM) || defined(CBE_INTEGRATOR)
     MyFloat Vel[3];
     int dt_step;
+#endif
+#if defined(CBE_INTEGRATOR)
+    double NV_T[3][3];
+    double V_i;
+    double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][10];
+#endif
+#ifdef DM_SIDM
     int dt_step_sidm;
     MyIDType ID;
 #endif
@@ -2500,6 +2533,9 @@ extern struct gravdata_out
     MyDouble Vel[3];
     int dt_step_sidm;
     long unsigned int NInteractions;
+#endif
+#if defined(CBE_INTEGRATOR)
+    double CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10];
 #endif
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
@@ -2694,6 +2730,9 @@ enum iofields
   IO_EOSABAR,
   IO_EOSYE,
   IO_PRESSURE,
+  IO_EOSCS,
+  IO_EOS_STRESS_TENSOR,
+  IO_EOSCOMP,
   IO_RADGAMMA,
   IO_RAD_ACCEL,
   IO_EDDINGTON_TENSOR,

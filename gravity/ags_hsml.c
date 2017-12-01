@@ -96,6 +96,9 @@ static struct ags_densdata_out
     MyLongDouble AGS_zeta;
     MyLongDouble AGS_vsig;
     MyLongDouble Particle_DivVel;
+#ifdef CBE_INTEGRATOR
+    MyLongDouble NV_T[3][3];
+#endif
 }
  *AGS_DensDataResult, *AGS_DensDataOut;
 
@@ -121,6 +124,9 @@ void ags_out2particle_density(struct ags_densdata_out *out, int i, int mode)
     if(out->AGS_vsig > PPP[i].AGS_vsig) {PPP[i].AGS_vsig = out->AGS_vsig;}
     ASSIGN_ADD(P[i].Particle_DivVel, out->Particle_DivVel,   mode);
     ASSIGN_ADD(PPP[i].DhsmlNgbFactor, out->DhsmlNgb, mode);
+#ifdef CBE_INTEGRATOR
+    {int j,k; for(k = 0; k < 3; k++) {for(j = 0; j < 3; j++) {ASSIGN_ADD(P[i].NV_T[k][j], out->NV_T[k][j], mode);}}}
+#endif
 }
 
 struct kernel_density
@@ -484,6 +490,10 @@ void ags_density(void)
                 if(All.Time==All.TimeBegin) {if(All.AGS_MaxNumNgbDeviation > 0.05) desnumngbdev=0.05;}
                 /* allow the neighbor tolerance to gradually grow as we iterate, so that we don't spend forever trapped in a narrow iteration */
                 if(iter > 1) {desnumngbdev = DMIN( 0.25*desnumngb , desnumngbdev * exp(0.1*log(desnumngb/(16.*desnumngbdev))*(double)iter) );}
+                
+#ifdef CBE_INTEGRATOR
+                double ConditionNumber = do_cbe_nvt_inversion_for_faces(i); // right now we don't do anything with this, but could use to force expansion of search, as in hydro
+#endif
                 
                 /* check if we are in the 'normal' range between the max/min allowed values */
                 if((PPP[i].NumNgb < (desnumngb - desnumngbdev) && PPP[i].AGS_Hsml < 0.99*maxsoft) ||
@@ -854,6 +864,15 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #endif
                         out.Particle_DivVel -= kernel.dwk * (kernel.dp[0] * kernel.dv[0] + kernel.dp[1] * kernel.dv[1] + kernel.dp[2] * kernel.dv[2]) / kernel.r;
                         /* this is the -particle- divv estimator, which determines how Hsml will evolve */
+                        
+#ifdef CBE_INTEGRATOR
+                        out.NV_T[0][0] +=  kernel.wk * kernel.dp[0] * kernel.dp[0];
+                        out.NV_T[0][1] +=  kernel.wk * kernel.dp[0] * kernel.dp[1];
+                        out.NV_T[0][2] +=  kernel.wk * kernel.dp[0] * kernel.dp[2];
+                        out.NV_T[1][1] +=  kernel.wk * kernel.dp[1] * kernel.dp[1];
+                        out.NV_T[1][2] +=  kernel.wk * kernel.dp[1] * kernel.dp[2];
+                        out.NV_T[2][2] +=  kernel.wk * kernel.dp[2] * kernel.dp[2];
+#endif
                     }
                 }
             }

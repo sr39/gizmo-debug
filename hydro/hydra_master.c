@@ -284,7 +284,12 @@ struct hydrodata_in
     MyDouble CosmicRayFlux[3];
 #endif
 #endif
-
+    
+#ifdef EOS_ELASTIC
+    int CompositionType;
+    MyFloat Elastic_Stress_Tensor[3][3];
+#endif
+    
 #ifndef DONOTUSENODELIST
     int NodeList[NODELISTLENGTH];
 #endif
@@ -488,6 +493,11 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
 #ifdef COSMIC_RAYS_M1
     for(k=0;k<3;k++) {in->CosmicRayFlux[k] = SphP[i].CosmicRayFluxPred[k];}
 #endif
+#endif
+
+#ifdef EOS_ELASTIC
+    in->CompositionType = SphP[i].CompositionType;
+    {int k_v; for(k=0;k<3;k++) {for(k_v=0;k_v<3;k_v++) {in->Elastic_Stress_Tensor[k][k_v] = SphP[i].Elastic_Stress_Tensor_Pred[k][k_v];}}}
 #endif
 
 }

@@ -345,6 +345,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #define HLL_DIFFUSION_OVERSHOOT_FACTOR  1.0
 #endif
                 
+#ifdef EOS_ELASTIC
+#include "../solids/elastic_stress_tensor_force.h"
+#endif
 
 #ifdef MHD_NON_IDEAL
 #include "nonideal_mhd.h"
@@ -539,10 +542,13 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(TimeBinActive[P[j].TimeBin])
                     if(kernel.vsig > SphP[j].MaxSignalVel) SphP[j].MaxSignalVel = kernel.vsig;
 #ifdef WAKEUP
-                if(kernel.vsig > WAKEUP*SphP[j].MaxSignalVel) PPPZ[j].wakeup = 1;
+                if(!(TimeBinActive[P[j].TimeBin]))
+                {
+                    if(kernel.vsig > WAKEUP*SphP[j].MaxSignalVel) PPPZ[j].wakeup = 1;
 #if (SLOPE_LIMITER_TOLERANCE <= 0)
-                if(local.Timestep*WAKEUP < TimeStep_J) PPPZ[j].wakeup = 1;
+                    if(local.Timestep*WAKEUP < TimeStep_J) PPPZ[j].wakeup = 1;
 #endif
+                }
 #endif
                 
                 
