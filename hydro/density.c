@@ -671,12 +671,11 @@ void density(void)
                     }
                     ncorr_ngb=1; cn=SphP[i].ConditionNumber; if(cn>c0) {ncorr_ngb=sqrt(1.0+(cn-c0)/((double)CONDITION_NUMBER_DANGER));} if(ncorr_ngb>2) ncorr_ngb=2;
                 }
-                
                 desnumngb = All.DesNumNgb * ncorr_ngb;
                 desnumngbdev = desnumngbdev_0 * ncorr_ngb;
                 /* allow the neighbor tolerance to gradually grow as we iterate, so that we don't spend forever trapped in a narrow iteration */
                 if(iter > 1) {desnumngbdev = DMIN( 0.25*desnumngb , desnumngbdev * exp(0.1*log(desnumngb/(16.*desnumngbdev))*(double)iter) );}
-
+                
 #ifdef BLACK_HOLES
                 if(P[i].Type == 5)
                 {

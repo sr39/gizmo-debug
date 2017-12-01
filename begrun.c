@@ -157,7 +157,10 @@ void begrun(void)
     }
 #endif
 
-
+#ifdef EOS_TILLOTSON
+    tillotson_eos_init();
+#endif
+    
 #ifdef NUCLEAR_NETWORK
   network_init(All.EosSpecies, All.NetworkRates, All.NetworkPartFunc, All.NetworkMasses,
 	       All.NetworkWeakrates, &All.nd);
@@ -1022,30 +1025,6 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
         
-#if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
-        strcpy(tag[nt],"BAL_f_accretion");
-        addr[nt] = &All.BAL_f_accretion;
-        id[nt++] = REAL;
-        
-        strcpy(tag[nt],"BAL_v_outflow");
-        addr[nt] = &All.BAL_v_outflow;
-        id[nt++] = REAL;
-#ifdef BH_WIND_SPAWN
-        strcpy(tag[nt], "BAL_internal_temperature");
-        addr[nt] = &All.BAL_internal_temperature;
-        id[nt++] = REAL;
-
-        strcpy(tag[nt], "BAL_wind_particle_mass");
-        addr[nt] = &All.BAL_wind_particle_mass;
-        id[nt++] = REAL;
-#endif
-#endif
-        
-#ifdef BH_PHOTONMOMENTUM
-        strcpy(tag[nt],"BH_FluxMomentumFactor");
-        addr[nt] = &All.BH_FluxMomentumFactor;
-        id[nt++] = REAL;
-#endif
 
 #if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(GALSF_FB_THERMAL)
         strcpy(tag[nt],"InitMetallicity");
@@ -1276,65 +1255,95 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.CosmicRayDiffusionCoeff;
         id[nt++] = REAL;
 #endif
-
+        
 
 #if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)
       strcpy(tag[nt], "TimeBetOnTheFlyFoF");
       addr[nt] = &All.TimeBetOnTheFlyFoF;
       id[nt++] = REAL;
 #endif
+        
 
 #ifdef BLACK_HOLES
-      strcpy(tag[nt], "BlackHoleAccretionFactor");
-      addr[nt] = &All.BlackHoleAccretionFactor;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "BlackHoleEddingtonFactor");
-      addr[nt] = &All.BlackHoleEddingtonFactor;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "SeedBlackHoleMass");
-      addr[nt] = &All.SeedBlackHoleMass;
-      id[nt++] = REAL;
+        strcpy(tag[nt], "BlackHoleAccretionFactor");
+        addr[nt] = &All.BlackHoleAccretionFactor;
+        id[nt++] = REAL;
         
+        strcpy(tag[nt], "BlackHoleEddingtonFactor");
+        addr[nt] = &All.BlackHoleEddingtonFactor;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "SeedBlackHoleMass");
+        addr[nt] = &All.SeedBlackHoleMass;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "BlackHoleNgbFactor");
+        addr[nt] = &All.BlackHoleNgbFactor;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "BlackHoleMaxAccretionRadius");
+        addr[nt] = &All.BlackHoleMaxAccretionRadius;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "BlackHoleRadiativeEfficiency");
+        addr[nt] = &All.BlackHoleRadiativeEfficiency;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "BlackHoleFeedbackFactor");
+        addr[nt] = &All.BlackHoleFeedbackFactor;
+        id[nt++] = REAL;
+
 #if defined(BH_SEED_FROM_FOF) || defined(BH_SEED_FROM_LOCALGAS)
-      strcpy(tag[nt], "SeedBlackHoleMassSigma");
-      addr[nt] = &All.SeedBlackHoleMassSigma;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "SeedBlackHoleMinRedshift");
-      addr[nt] = &All.SeedBlackHoleMinRedshift;
-      id[nt++] = REAL;
-#endif
-  
-#ifdef BH_ALPHADISK_ACCRETION
-      strcpy(tag[nt], "SeedAlphaDiskMass");
-      addr[nt] = &All.SeedAlphaDiskMass;
-      id[nt++] = REAL;
+        strcpy(tag[nt], "SeedBlackHoleMassSigma");
+        addr[nt] = &All.SeedBlackHoleMassSigma;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "SeedBlackHoleMinRedshift");
+        addr[nt] = &All.SeedBlackHoleMinRedshift;
+        id[nt++] = REAL;
 #endif
         
-      strcpy(tag[nt], "MinFoFMassForNewSeed");
-      addr[nt] = &All.MinFoFMassForNewSeed;
-      id[nt++] = REAL;
+#ifdef BH_ALPHADISK_ACCRETION
+        strcpy(tag[nt], "SeedAlphaDiskMass");
+        addr[nt] = &All.SeedAlphaDiskMass;
+        id[nt++] = REAL;
+#endif
+        
+#ifdef BH_SEED_FROM_FOF
+        strcpy(tag[nt], "MinFoFMassForNewSeed");
+        addr[nt] = &All.MinFoFMassForNewSeed;
+        id[nt++] = REAL;
+#endif
 
-      strcpy(tag[nt], "BlackHoleNgbFactor");
-      addr[nt] = &All.BlackHoleNgbFactor;
-      id[nt++] = REAL;
+#if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
+        strcpy(tag[nt],"BAL_f_accretion");
+        addr[nt] = &All.BAL_f_accretion;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt],"BAL_v_outflow");
+        addr[nt] = &All.BAL_v_outflow;
+        id[nt++] = REAL;
+#endif
 
-      strcpy(tag[nt], "BlackHoleMaxAccretionRadius");
-      addr[nt] = &All.BlackHoleMaxAccretionRadius;
-      id[nt++] = REAL;
+#ifdef BH_WIND_SPAWN
+        strcpy(tag[nt], "BAL_internal_temperature");
+        addr[nt] = &All.BAL_internal_temperature;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "BAL_wind_particle_mass");
+        addr[nt] = &All.BAL_wind_particle_mass;
+        id[nt++] = REAL;
+#endif
 
-      strcpy(tag[nt], "BlackHoleRadiativeEfficiency");
-      addr[nt] = &All.BlackHoleRadiativeEfficiency;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "BlackHoleFeedbackFactor");
-      addr[nt] = &All.BlackHoleFeedbackFactor;
-      id[nt++] = REAL;
+#ifdef BH_PHOTONMOMENTUM
+        strcpy(tag[nt],"BH_FluxMomentumFactor");
+        addr[nt] = &All.BH_FluxMomentumFactor;
+        id[nt++] = REAL;
+#endif
 
 #endif /* BLACK_HOLES */
 
+        
 #ifdef GALSF
 #ifndef GALSF_EFFECTIVE_EQS
       strcpy(tag[nt], "CritPhysDensity");
@@ -1481,6 +1490,59 @@ void read_parameter_file(char *fname)
         id[nt++] = STRING;
 #endif
 
+#ifdef EOS_TILLOTSON
+        strcpy(tag[nt], "Tillotson_EOS_params_a");
+        addr[nt] = &All.Tillotson_EOS_params[0][0];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_b");
+        addr[nt] = &All.Tillotson_EOS_params[0][1];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_u_0");
+        addr[nt] = &All.Tillotson_EOS_params[0][2];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_rho_0");
+        addr[nt] = &All.Tillotson_EOS_params[0][3];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_A");
+        addr[nt] = &All.Tillotson_EOS_params[0][4];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_B");
+        addr[nt] = &All.Tillotson_EOS_params[0][5];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_u_s");
+        addr[nt] = &All.Tillotson_EOS_params[0][6];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_u_s_prime");
+        addr[nt] = &All.Tillotson_EOS_params[0][7];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_alpha");
+        addr[nt] = &All.Tillotson_EOS_params[0][8];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_beta");
+        addr[nt] = &All.Tillotson_EOS_params[0][9];
+        id[nt++] = REAL;
+#endif
+
+#ifdef EOS_ELASTIC
+        strcpy(tag[nt], "Tillotson_EOS_params_mu");
+        addr[nt] = &All.Tillotson_EOS_params[0][10];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_Y0");
+        addr[nt] = &All.Tillotson_EOS_params[0][11];
+        id[nt++] = REAL;
+#endif
+        
+        
 #ifdef NUCLEAR_NETWORK
       strcpy(tag[nt], "NetworkRates");
       addr[nt] = All.NetworkRates;
@@ -1816,6 +1878,9 @@ void read_parameter_file(char *fname)
     All.MaxNumNgbDeviation = All.DesNumNgb / 64.;
 #endif
     if(All.MaxNumNgbDeviation < 0.05) All.MaxNumNgbDeviation = 0.05;
+#ifdef EOS_ELASTIC
+    All.MaxNumNgbDeviation /= 5.0;
+#endif
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 64.;
 #ifdef GALSF
@@ -1828,6 +1893,7 @@ void read_parameter_file(char *fname)
 #endif
 #endif // closes DEVELOPER_MODE check //
     
+
     
 #ifdef GALSF
     All.CritOverDensity = 1000.0;
@@ -2147,3 +2213,4 @@ void readjust_timebase(double TimeMax_old, double TimeMax_new)
 
   All.TimeMax = TimeMax_new;
 }
+

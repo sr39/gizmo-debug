@@ -1685,14 +1685,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
     
     
+    
 #ifdef DM_SIDM
     double dist_to_center2, dist_to_open, kick_x, kick_y, kick_z, kick_target[3], kick_no[3];
     double prob, prob_tmp, max_prob, h_si, dx_nc, dy_nc, dz_nc;
     float sidm_tstart, sidm_tend, sidm_tscatter, sidm_tcell;
-    MyFloat  targetVel[3], targeth_si;
-    int targetdt_step,targetdt_step_sidm;
+    MyFloat  targeth_si;
+    int targetdt_step_sidm, si_count, i;
     MyIDType targetID;
-    int si_count,i;
     sidm_tcell = sidm_tscatter = 0;
     kick_x = kick_y = kick_z = 0;
     si_count = 0;
@@ -1704,23 +1704,46 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
     if(mode == 0)
     {
-        for(i=0;i<3;i++)
-            targetVel[i] = P[target].Vel[i];
-        targetdt_step = P[target].dt_step;
         targetdt_step_sidm = P[target].dt_step_sidm;
         targetID      = P[target].ID;
     }
     else
     {
-        for(i=0;i<3;i++)
-            targetVel[i] = GravDataGet[target].Vel[i];
-        targetdt_step = GravDataGet[target].dt_step;
         targetdt_step_sidm =  GravDataGet[target].dt_step_sidm;
         targetID      = GravDataGet[target].ID;
     }
 #endif
     
-    
+#ifdef CBE_INTEGRATOR
+    double local_NV_T[3][3], local_V_i, local_CBE_basis_moments[CBE_INTEGRATOR_NBASIS][10], out_CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10]={{0}};
+    if(mode==0)
+    {
+        int k1, k2;
+        local_V_i = pow(Get_Particle_Size(target), NUMDIMS);
+        for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {local_NV_T[k1][k2] = P[target].NV_T[k1][k2];}}
+        for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {local_CBE_basis_moments[k1][k2] = P[target].CBE_basis_moments[k1][k2];}}
+    } else {
+        int k1, k2;
+        local_V_i = GravDataGet[target].V_i;
+        for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {local_NV_T[k1][k2] = GravDataGet[target].NV_T[k1][k2];}}
+        for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {local_CBE_basis_moments[k1][k2] = GravDataGet[target].CBE_basis_moments[k1][k2];}}
+    }
+#endif
+
+#if defined(DM_SIDM) || defined(CBE_INTEGRATOR)
+    int targetdt_step; MyFloat targetVel[3];
+    if(mode==0)
+    {
+        int k2;
+        for(k2=0;k2<3;k2++) {targetVel[k2] = P[target].Vel[k2];}
+        targetdt_step = P[target].dt_step;
+    } else {
+        int k2;
+        for(k2=0;k2<3;k2++) {targetVel[k2] = GravDataGet[target].Vel[k2];}
+        targetdt_step = GravDataGet[target].dt_step;
+    }
+#endif
+
     
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
@@ -2342,6 +2365,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     {
                         if((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG))
                         {
+#ifdef CBE_INTEGRATOR
+#include "cbe_integrator_flux_computation.h"
+#endif
                             double dWdr, wp, fac_corr=0;
                             if(h_p_inv >= h_inv)
                             {
@@ -2607,6 +2633,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         P[target].Vel[0] += kick_x; P[target].Vel[1] += kick_y; P[target].Vel[2] += kick_z;
         P[target].dt_step_sidm = targetdt_step_sidm; P[target].NInteractions += si_count;
 #endif
+#ifdef CBE_INTEGRATOR
+        {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {P[target].CBE_basis_moments_dt[k1][k2] += out_CBE_basis_moments_dt[k1][k2];}}}
+#endif
 #ifdef BH_CALC_DISTANCES
         P[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );
         P[target].min_xyz_to_bh[0] = min_xyz_to_bh[0];   /* remember, dx = x_BH - myx */
@@ -2638,6 +2667,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef DM_SIDM
         GravDataResult[target].Vel[0] = kick_x; GravDataResult[target].Vel[1] = kick_y; GravDataResult[target].Vel[2] = kick_z;
         GravDataResult[target].dt_step_sidm = targetdt_step_sidm; GravDataResult[target].NInteractions = si_count;
+#endif
+#ifdef CBE_INTEGRATOR
+        {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {GravDataResult[target].CBE_basis_moments_dt[k1][k2] += out_CBE_basis_moments_dt[k1][k2];}}}
 #endif
 #ifdef BH_CALC_DISTANCES
         GravDataResult[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );

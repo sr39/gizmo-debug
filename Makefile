@@ -935,7 +935,7 @@ GRAVITY_OBJS  = gravity/forcetree.o gravity/cosmology.o gravity/pm_periodic.o gr
                 gravity/gravtree.o gravity/forcetree_update.o gravity/pm_nonperiodic.o gravity/longrange.o \
                 gravity/ags_hsml.o
 
-HYDRO_OBJS = hydro/hydra_master.o hydro/density.o hydro/gradients.o eos/eos.o
+HYDRO_OBJS = hydro/hydra_master.o hydro/density.o hydro/gradients.o eos/eos.o solids/elastic_physics.o
 
 
 L3_OBJS =
@@ -1043,6 +1043,7 @@ INCL    += eos/helmholtz/helm_wrap.h
 FOBJS   += eos/helmholtz/helm_impl.o eos/helmholtz/helm_wrap.o
 FINCL   += eos/helmholtz/helm_const.dek eos/helmholtz/helm_implno.dek eos/helmholtz/helm_table_storage.dek eos/helmholtz/helm_vector_eos.dek
 endif
+
 
 ifeq (IMPOSE_PINNING,$(findstring IMPOSE_PINNING,$(CONFIGVARS)))
 OBJS	+= system/pinning.o

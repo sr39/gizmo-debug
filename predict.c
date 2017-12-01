@@ -302,6 +302,9 @@ void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double
 #ifdef RADTRANSFER
     rt_update_driftkick(i,dt_entr,1);
 #endif
+#ifdef EOS_ELASTIC
+    elastic_body_update_driftkick(i,dt_entr,1);
+#endif
 }
 
 

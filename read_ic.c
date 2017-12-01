@@ -238,13 +238,15 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
     MyInputFloat *fp;
     MyInputPosFloat *fp_pos;
     MyIDType *ip;
+    int *ip_int;
     float *fp_single;
     
     fp = (MyInputFloat *) CommBuffer;
     fp_pos = (MyInputPosFloat *) CommBuffer;
     fp_single = (float *) CommBuffer;
     ip = (MyIDType *) CommBuffer;
-    
+    ip_int = (int *) CommBuffer;
+
     switch (blocknr)
     {
         case IO_POS:		/* positions */
@@ -463,7 +465,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_BHPROGS:
 #ifdef BH_COUNTPROGS
             for(n = 0; n < pc; n++)
-                P[offset + n].BH_CountProgs = *fp++;
+                P[offset + n].BH_CountProgs = *ip_int++;
 #endif
             break;
                         
@@ -478,6 +480,13 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #ifdef EOS_CARRIES_ABAR
             for(n = 0; n < pc; n++)
                 SphP[offset + n].Abar = *fp++;
+#endif
+            break;
+
+        case IO_EOSCOMP:
+#ifdef EOS_TILLOTSON
+            for(n = 0; n < pc; n++)
+                SphP[offset + n].CompositionType = *ip_int++;
 #endif
             break;
             
@@ -570,6 +579,8 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             /* the other input fields (if present) are not needed to define the
              initial conditions of the code */
             
+        case IO_EOSCS:
+        case IO_EOS_STRESS_TENSOR:
         case IO_SFR:
         case IO_POT:
         case IO_ACCEL:
@@ -888,6 +899,9 @@ void read_file(char *fname, int readTask, int lastTask)
 #endif
 #ifdef EOS_CARRIES_YE
                    && blocknr != IO_EOSYE
+#endif
+#ifdef EOS_TILLOTSON
+                   && blocknr != IO_EOSCOMP
 #endif
                    )
 #if defined(GDE_DISTORTIONTENSOR) && defined(GDE_READIC)

@@ -1070,7 +1070,46 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+
+            case IO_EOSCS:
+#if defined(EOS_GENERAL)
+            for(n = 0; n < pc; pindex++)
+            if(P[pindex].Type == type)
+        {
+            *fp++ = SphP[pindex].SoundSpeed;
+            n++;
+        }
+#endif
+            break;
+
+        case IO_EOS_STRESS_TENSOR:
+#if defined(EOS_ELASTIC)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    for(k = 0; k < 3; k++)
+                    {
+                        int kf;
+                        for(kf = 0; kf < 3; kf++)
+                            fp[3*k + kf] = SphP[pindex].Elastic_Stress_Tensor[kf][k];
+                    }
+                    n++;
+                    fp += 9;
+                }
+#endif
+            break;
+
+            case IO_EOSCOMP:
+#ifdef EOS_TILLOTSON
+            for(n = 0; n < pc; pindex++)
+            if(P[pindex].Type == type)
+        {
+            *ip_int++ = SphP[pindex].CompositionType;
+            n++;
+        }
+#endif
+            break;
+
         case IO_RADGAMMA:
 #ifdef RADTRANSFER
             for(n = 0; n < pc; pindex++)
@@ -1106,7 +1145,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     {
                         int kf;
                         for(kf = 0; kf < N_RT_FREQ_BINS; kf++)
-                            fp[k] = SphP[pindex].ET[kf][k];
+                            fp[3*k + kf] = SphP[pindex].ET[kf][k];
                     }
                     n++;
                     fp += 6*N_RT_FREQ_BINS;
@@ -1364,6 +1403,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             bytes_per_blockelement = sizeof(MyIDType);
             break;
 
+        case IO_EOSCOMP:
         case IO_GENERATION_ID:
         case IO_BHPROGS:
         case IO_TRUENGB:
@@ -1425,6 +1465,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_EOSTEMP:
         case IO_EOSABAR:
         case IO_EOSYE:
+        case IO_EOSCS:
         case IO_PRESSURE:
         case IO_INIT_DENSITY:
         case IO_AGS_SOFT:
@@ -1497,6 +1538,15 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
                 bytes_per_blockelement = (NUM_METAL_SPECIES) * sizeof(MyOutputFloat);
 #endif
             break;
+            
+            
+        case IO_EOS_STRESS_TENSOR:
+            if(mode)
+                bytes_per_blockelement = 9 * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = 9 * sizeof(MyOutputFloat);
+            break;
+
             
         case IO_TIDALTENSORPS:
             if(mode)
@@ -1670,6 +1720,8 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_PHASE_SPACE_DETERMINANT:
         case IO_EOSTEMP:
         case IO_EOSABAR:
+        case IO_EOSCS:
+        case IO_EOSCOMP:
         case IO_EOSYE:
         case IO_PRESSURE:
         case IO_INIT_DENSITY:
@@ -1699,7 +1751,11 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_grHDI:
             values = 1;
             break;
-            
+
+        case IO_EOS_STRESS_TENSOR:
+            values = 9;
+            break;
+
         case IO_EDDINGTON_TENSOR:
 #ifdef RADTRANSFER
             values = (6*N_RT_FREQ_BINS);
@@ -1874,6 +1930,9 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_EOSTEMP:
         case IO_EOSABAR:
         case IO_EOSYE:
+        case IO_EOSCS:
+        case IO_EOS_STRESS_TENSOR:
+        case IO_EOSCOMP:
         case IO_PRESSURE:
         case IO_CHEM:
         case IO_VSTURB_DISS:
@@ -2439,6 +2498,24 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
+        case IO_EOSCS:
+#ifdef EOS_GENERAL
+            return 1;
+#else
+            return 0;
+#endif
+        case IO_EOS_STRESS_TENSOR:
+#ifdef EOS_ELASTIC
+            return 1;
+#else
+            return 0;
+#endif
+        case IO_EOSCOMP:
+#ifdef EOS_TILLOTSON
+            return 1;
+#else
+            return 0;
+#endif
         case IO_EOSABAR:
 #ifdef EOS_CARRIES_ABAR
             return 1;
@@ -2798,6 +2875,15 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_EOSABAR:
             strncpy(label, "ABAR", 4);
             break;
+        case IO_EOSCS:
+            strncpy(label, "EQCS", 4);
+            break;
+        case IO_EOS_STRESS_TENSOR:
+            strncpy(label, "ESTT", 4);
+            break;
+        case IO_EOSCOMP:
+            strncpy(label, "COMP", 4);
+            break;
         case IO_EOSYE:
             strncpy(label, "YE  ", 4);
             break;
@@ -3142,6 +3228,15 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_EOSABAR:
             strcpy(buf, "Abar");
+            break;
+        case IO_EOSCS:
+            strcpy(buf, "SoundSpeed");
+            break;
+        case IO_EOS_STRESS_TENSOR:
+            strcpy(buf, "StressTensor");
+            break;
+        case IO_EOSCOMP:
+            strcpy(buf, "CompositionType");
             break;
         case IO_EOSYE:
             strcpy(buf, "Ye");

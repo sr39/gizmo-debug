@@ -252,3 +252,27 @@ TimeBetTurbSpectrum 0.5 % time (code units) between evaluations of turb pwrspec
 DarkEnergyConstantW       -1        % time-independent DE parameter w, used only if no table
 TabulatedCosmologyFile    CosmoTbl  % table with cosmological parameters
 
+
+%-------------------------------------------------------------
+%------------------ Solid bodies and Impacts -----------------
+%-------------------------------------------------------------
+
+%-------------- Parameters for custom Tillotson equation-of-state (EOS_TILLOTSON on)
+%--- In ICs, set "CompositionType": 0=custom,1=granite,2=basalt,3=iron,4=ice,5=olivine/dunite,6=water;
+%---   their EOS parameters will be set accordingly. If CompositionType=0, the custom parameters below
+%---   are used, matched to the definitions in Table A1 of Reinhardt+Stadel 2017,MNRAS,467,4252 (below is iron)
+Tillotson_EOS_params_a          0.5     % a parameter [dimensionless]
+Tillotson_EOS_params_b          1.5     % b parameter [dimensionless]
+Tillotson_EOS_params_u_0        9.5e10  % u_0 parameter in [erg/g]
+Tillotson_EOS_params_rho_0      7.86    % rho_0 parameter in [g/cm^3]
+Tillotson_EOS_params_A          1.28e12 % A parameter in [erg/cm^3]
+Tillotson_EOS_params_B          1.05e12 % B parameter in [erg/cm^3]
+Tillotson_EOS_params_u_s        1.42e10 % u_s parameter in [erg/g]
+Tillotson_EOS_params_u_s_prime  8.45e10 % u_s^prime parameter in [erg/g]
+Tillotson_EOS_params_alpha      5.0     % alpha parameter [dimensionless]
+Tillotson_EOS_params_beta       5.0     % beta parameter [dimensionless]
+Tillotson_EOS_params_mu         7.75e11 % elastic shear modulus in [erg/cm^3]   (used if EOS_ELASTIC is on)
+Tillotson_EOS_params_Y0         8.5e10  % hugoniot elastic limit in [erg/cm^3]  (used if EOS_ELASTIC is on)
+
+
+

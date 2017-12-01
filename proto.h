@@ -129,6 +129,10 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
 void check_particle_for_temperature_minimum(int i);
 
 double get_pressure(int i);
+#ifdef EOS_TILLOTSON
+double calculate_eos_tillotson(int i);
+void tillotson_eos_init(void);
+#endif
 
 void read_fof(int num);
 int fof_compare_ID_list_ID(const void *a, const void *b);
@@ -198,7 +202,6 @@ void parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (co
 int compare_IDs(const void *a, const void *b);
 void test_id_uniqueness(void);
 
-void check_particles_info(const char *func, const char *file, int linenr);
 
 int io_compare_P_ID(const void *a, const void *b);
 int io_compare_P_GrNr_SubNr(const void *a, const void *b);
@@ -264,6 +267,9 @@ double INLINE_FUNC Get_Particle_CosmicRayPressure(int i);
 double Get_CosmicRayGradientLength(int i);
 double Get_CosmicRayStreamingVelocity(int i);
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode);
+#endif
+#ifdef EOS_ELASTIC
+void elastic_body_update_driftkick(int i, double dt_entr, int mode);
 #endif
 double INLINE_FUNC Particle_effective_soundspeed_i(int i);
 #ifdef MAGNETIC
@@ -791,3 +797,13 @@ void apply_excision();
 #ifdef DM_SIDM
 #include "./sidm/sidm_proto.h"
 #endif
+
+
+#ifdef CBE_INTEGRATOR
+void do_cbe_initialization(void);
+void do_cbe_drift_kick(int i, double dt);
+double do_cbe_nvt_inversion_for_faces(int i);
+void do_cbe_flux_computation(double *moments, double vface_dot_A, double *Area, double *fluxes);
+void do_postgravity_cbe_calcs(int i);
+#endif
+

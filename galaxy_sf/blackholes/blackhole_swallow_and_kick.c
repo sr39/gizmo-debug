@@ -84,9 +84,7 @@ void blackhole_swallow_and_kick_loop(void)
                 BlackholeDataIn[j].Pos[k] = P[place].Pos[k];
                 BlackholeDataIn[j].Vel[k] = P[place].Vel[k];
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
-                BlackholeDataIn[j].Jgas_in_Kernel[k] = P[place].GradRho[k];
-//#elif defined(BH_WIND_KICK)
-//                BlackholeDataIn[j].Jgas_in_Kernel[k] = BlackholeTempInfo[P[place].IndexMapToTempStruc].Jgas_in_Kernel[k]; // alternatively can go along angular momentum vector, but gradrho is actually simpler
+                BlackholeDataIn[j].Jgas_in_Kernel[k] = BlackholeTempInfo[P[place].IndexMapToTempStruc].Jgas_in_Kernel[k];
 #endif
             }
             BlackholeDataIn[j].Hsml = PPP[place].Hsml;
@@ -273,13 +271,12 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
         dt = P[target].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
 #endif
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
+        Jgas_in_Kernel = BlackholeTempInfo[P[target].IndexMapToTempStruc].Jgas_in_Kernel;
+#endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-        Jgas_in_Kernel = P[target].GradRho;
         BH_disk_hr = P[target].BH_disk_hr;
         BH_angle_weighted_kernel_sum = BlackholeTempInfo[P[target].IndexMapToTempStruc].BH_angle_weighted_kernel_sum;
-#elif defined(BH_WIND_KICK)
-        //Jgas_in_Kernel = P[target].GradRho;
-        Jgas_in_Kernel = BlackholeTempInfo[P[target].IndexMapToTempStruc].Jgas_in_Kernel;
 #endif
         mod_index = P[target].IndexMapToTempStruc;  /* the index of the BlackholeTempInfo should we modify*/
     }
@@ -377,7 +374,14 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 ThisTask, All.Time, id, P[j].ID, bh_mass, BPP(j).BH_Mass);
 #endif
 #endif
+
+#ifdef BH_INCREASE_DYNAMIC_MASS
+                        /* the true dynamical mass of the merging BH is P[j].Mass/BH_INCREASE_DYNAMIC_MASS unless exceeded by physical growth
+                         - in the limit BPP(j).BH_Mass > BH_INCREASE_DYNAMIC_MASS x m_b, then bh_mass=P[j].Mass on average and we are good as well  */
+                        accreted_mass    += FLT( DMAX(BPP(j).BH_Mass, P[j].Mass/BH_INCREASE_DYNAMIC_MASS) );
+#else
                         accreted_mass    += FLT(P[j].Mass);
+#endif
                         accreted_BH_mass += FLT(BPP(j).BH_Mass);
 #ifdef BH_ALPHADISK_ACCRETION
                         accreted_BH_mass_alphadisk += FLT(BPP(j).BH_Mass_AlphaDisk);
@@ -565,10 +569,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 /* inject BAL winds, this is the more standard smooth feedback model */
 #if defined(BH_WIND_CONTINUOUS) && !defined(BH_WIND_KICK)
                                 mom_wt = bh_angleweight_localcoupling(j,BH_disk_hr,theta) / BH_angle_weighted_kernel_sum;
-                                
-                                double fac = bh_angleweight_localcoupling(j,BH_disk_hr,theta) / BH_angle_weighted_kernel_sum;
-                                mom_wt = fac;
-                                double m_wind = mom_wt * All.BlackHoleFeedbackFactor * (1-All.BAL_f_accretion)/(All.BAL_f_accretion) * mdot*dt; /* mass to couple */
+                                double m_wind = mom_wt * (1-All.BAL_f_accretion)/(All.BAL_f_accretion) * mdot*dt; /* mass to couple */
                                 if(BH_angle_weighted_kernel_sum<=0) m_wind=0;
                                 
 //1. check if (Vw-V0)*rhat <= 0   [ equivalently, check if   |Vw| <= V0*rhat ]
@@ -606,8 +607,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                         // relative wind-particle velocity (in code units) including BH-particle motion;
                                         norm = All.cf_atime*All.BAL_v_outflow*dir[k] + velocity[k]-P[j].Vel[k];
                                         // momentum conservation gives the following change in velocities
-                                        P[j].Vel[k] += norm * m_wind/P[j].Mass;
-                                        SphP[j].VelPred[k] += norm * m_wind/P[j].Mass;
+                                        P[j].Vel[k] += All.BlackHoleFeedbackFactor * norm * m_wind/P[j].Mass;
+                                        SphP[j].VelPred[k] += All.BlackHoleFeedbackFactor * norm * m_wind/P[j].Mass;
                                         // and the shocked wind energy is given by
                                         e_wind += (norm/All.cf_atime)*(norm/All.cf_atime);
                                     }
@@ -617,7 +618,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                     SphP[j].InternalEnergy += e_wind;
                                     SphP[j].InternalEnergyPred += e_wind;
                                 } else {	// gas moving away from BH at wind speed already.
-				    if(SphP[j].InternalEnergy * ( P[j].Mass - m_wind ) / P[j].Mass > 0)
+                                    if(SphP[j].InternalEnergy * ( P[j].Mass - m_wind ) / P[j].Mass > 0)
                                         SphP[j].InternalEnergy = SphP[j].InternalEnergy * ( P[j].Mass - m_wind ) / P[j].Mass;
                                 }
 #endif // if defined(BH_WIND_CONTINUOUS) && !defined(BH_WIND_KICK)

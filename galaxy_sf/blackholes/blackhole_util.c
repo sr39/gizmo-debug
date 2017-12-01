@@ -161,7 +161,6 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     for(k=0;k<3;k++)
     {
-        //ASSIGN_ADD(BlackholeTempInfo[target].Jgas_in_Kernel[k],out->Jgas_in_Kernel[k],mode);     
         ASSIGN_ADD(BlackholeTempInfo[target].GradRho_in_Kernel[k],out->GradRho_in_Kernel[k],mode);
     }
 #endif
