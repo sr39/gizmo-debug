@@ -1631,14 +1631,17 @@ void hydro_gradient_calc(void)
             
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && (HYDRO_FIX_MESH_MOTION==6)
             /* if the mesh motion is specified to be glass-generating, this is where we apply the appropriate mesh velocity */
-            //if(All.Time > 0) {for(k=0;k<3;k++) {SphP[i].ParticleVel[k] += 0.5 * SphP[i].MaxSignalVel * Get_Particle_Size(i)*Get_Particle_Size(i) * GasGradDataPasser[i].GlassAcc[k];}}
             if(All.Time > 0)
             {
                 double cs_invelunits = Particle_effective_soundspeed_i(i) * All.cf_afac3 * All.cf_atime; // soundspeed, converted to units of code velocity
                 double L_i_code = Get_Particle_Size(i); // particle effective size (in code units)
-                for(k=0;k<3;k++)
+                double dvel[3]={0}, velnorm=0; for(k=0;k<3;k++) {dvel[k] = L_i_code*L_i_code*GasGradDataPasser[i].GlassAcc[k]; velnorm += dvel[k]*dvel[k];} // calculate quantities to use for glass
+                double dtx = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a; // need timestep for limiter below
+                if(velnorm > 0 && dtx > 0)
                 {
-                    SphP[i].ParticleVel[k] += 0.5 * cs_invelunits * (L_i_code*L_i_code*GasGradDataPasser[i].GlassAcc[k]); // limit speed to a fraction of the sound speed, to avoid super-sonic cell re-alignments
+                    velnorm = sqrt(velnorm); // normalization for glass 'force'
+                    double v00 = 0.5 * DMIN(cs_invelunits*(0.5*velnorm) , All.CourantFac*(L_i_code/dtx)/All.cf_a2inv); // limit added velocity of mesh-generating point to Courant factor
+                    for(k=0;k<3;k++) {SphP[i].ParticleVel[k] += v00 * (dvel[k]/velnorm);} // actually add the correction velocity to the mesh velocity
                 }
             }
 #endif
