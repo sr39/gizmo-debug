@@ -181,6 +181,9 @@ struct hydrodata_in
     /* basic hydro variables */
     MyDouble Pos[3];
     MyFloat Vel[3];
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+    MyFloat ParticleVel[3];
+#endif
     MyFloat Hsml;
     MyFloat Mass;
     MyFloat Density;
@@ -368,6 +371,9 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     {
         in->Pos[k] = P[i].Pos[k];
         in->Vel[k] = SphP[i].VelPred[k];
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+        in->ParticleVel[k] = SphP[i].ParticleVel[k];
+#endif
     }
     in->Hsml = PPP[i].Hsml;
     in->Mass = P[i].Mass;
@@ -595,7 +601,13 @@ void hydro_final_operations_and_cleanup(void)
             double dt;
             dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
             
-            
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+            /* signal velocity needs to include rate of gas flow -over- the resolution element, which can be non-zero here */
+            double v2_p = SphP[i].MaxSignalVel*SphP[i].MaxSignalVel;
+            for(k=0;k<3;k++) {v2_p += (SphP[i].VelPred[k]-SphP[i].ParticleVel[k])*(SphP[i].VelPred[k]-SphP[i].ParticleVel[k]);}
+            SphP[i].MaxSignalVel = sqrt(v2_p);
+#endif
+
 #if defined(MAGNETIC)
             /* need to subtract out the source terms proportional to the (non-zero) B-field divergence; to stabilize the scheme */
             for(k = 0; k < 3; k++)
