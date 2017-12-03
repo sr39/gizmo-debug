@@ -496,6 +496,15 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                 SphP[offset + n].Ye = *fp++;
 #endif
             break;
+
+        case IO_PARTVEL:
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==1)||(HYDRO_FIX_MESH_MOTION==2)||(HYDRO_FIX_MESH_MOTION==3))
+            for(n = 0; n < pc; n++)
+                for(k = 0; k < 3; k++)
+                    SphP[offset + n].ParticleVel[k] = *fp++;
+#endif
+            break;
+
             
         case IO_RADGAMMA:
 #ifdef RADTRANSFER
@@ -887,6 +896,7 @@ void read_file(char *fname, int readTask, int lastTask)
         
         if(blockpresent(blocknr))
         {
+                /* blocks only for restartflag == 0 */
                 if(RestartFlag == 0 && blocknr > IO_U && blocknr != IO_BFLD
 #ifdef INPUT_READ_HSML
                    && blocknr != IO_HSML
@@ -902,6 +912,9 @@ void read_file(char *fname, int readTask, int lastTask)
 #endif
 #ifdef EOS_TILLOTSON
                    && blocknr != IO_EOSCOMP
+#endif
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==1)||(HYDRO_FIX_MESH_MOTION==2)||(HYDRO_FIX_MESH_MOTION==3))
+                   && blocknr != IO_PARTVEL
 #endif
                    )
 #if defined(GDE_DISTORTIONTENSOR) && defined(GDE_READIC)
