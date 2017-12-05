@@ -180,7 +180,7 @@
 #include "eos/eos.h"
 
 
-#ifdef CBE_INTEGRATOR
+#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
 #ifndef ADAPTIVE_GRAVSOFT_FORALL
 #define ADAPTIVE_GRAVSOFT_FORALL 100000
 #endif
@@ -2131,12 +2131,17 @@ extern ALIGN(32) struct particle_data
 #endif
 #endif
     
+#ifdef DM_FUZZY
+    MyFloat AGS_Density;                /*!< density calculated corresponding to AGS routine (over interacting DM neighbors) */
+    MyFloat AGS_Gradients_Density[3];   /*!< density gradient calculated corresponding to AGS routine (over interacting DM neighbors) */
+#endif
+#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
+    MyFloat NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */
+#endif
 #ifdef CBE_INTEGRATOR
     double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][10];         /* moments per basis function */
     double CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10];      /* time-derivative of moments per basis function */
-    MyFloat NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */
 #endif
-
 }
  *P,				/*!< holds particle data on local processor */
  *DomainPartBuf;		/*!< buffer for particle data used in domain decomposition */
@@ -2509,13 +2514,18 @@ extern struct gravdata_in
     MyFloat AGS_zeta;
 #endif
 #endif
-#if defined(DM_SIDM) || defined(CBE_INTEGRATOR)
+#if defined(DM_SIDM) || defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
     MyFloat Vel[3];
     int dt_step;
 #endif
-#if defined(CBE_INTEGRATOR)
+#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
     double NV_T[3][3];
     double V_i;
+#endif
+#if defined(DM_FUZZY)
+    double AGS_Gradients_Density[3];
+#endif
+#if defined(CBE_INTEGRATOR)
     double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][10];
 #endif
 #ifdef DM_SIDM
@@ -2553,8 +2563,8 @@ extern struct gravdata_out
     int dt_step_sidm;
     long unsigned int NInteractions;
 #endif
-#if defined(CBE_INTEGRATOR)
-    double CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10];
+#ifdef CBE_INTEGRATOR
+    MyLongDouble CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10];
 #endif
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;

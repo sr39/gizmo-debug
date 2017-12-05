@@ -427,19 +427,22 @@ void gravity_tree(void)
                     GravDataIn[j].OldAcc = P[place].OldAcc;
                     for(k = 0; k < 3; k++) {GravDataIn[j].Pos[k] = P[place].Pos[k];}
                     
-#ifdef DM_SIDM
+#if defined(DM_SIDM) || defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
                     for(k = 0; k < 3; k++) {GravDataIn[j].Vel[k] = P[place].Vel[k];}
                     GravDataIn[j].dt_step = P[place].dt_step;
+#endif
+#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
+                    GravDataIn[j].V_i = pow(Get_Particle_Size_AGS(place), NUMDIMS);
+                    int k2; for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {GravDataIn[j].NV_T[k][k2] = P[place].NV_T[k][k2];}}
+#endif
+#ifdef DM_SIDM
                     GravDataIn[j].dt_step_sidm = P[place].dt_step_sidm;
                     GravDataIn[j].ID = P[place].ID;
 #endif
-#ifdef CBE_INTEGRATOR
-#ifndef DM_SIDM
-                    for(k = 0; k < 3; k++) {GravDataIn[j].Vel[k] = P[place].Vel[k];}
-                    GravDataIn[j].dt_step = P[place].dt_step;
+#ifdef DM_FUZZY
+                    for(k=0;k<3;k++) {GravDataIn[j].AGS_Gradients_Density[k] = P[place].AGS_Gradients_Density[k];}
 #endif
-                    GravDataIn[j].V_i = pow(Get_Particle_Size(place), NUMDIMS);
-                    int k2; for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {GravDataIn[j].NV_T[k][k2] = P[place].NV_T[k][k2];}}
+#ifdef CBE_INTEGRATOR
                     for(k=0;k<CBE_INTEGRATOR_NBASIS;k++) {for(k2=0;k2<10;k2++) {GravDataIn[j].CBE_basis_moments[k][k2] = P[place].CBE_basis_moments[k][k2];}}
 #endif
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
@@ -583,6 +586,7 @@ void gravity_tree(void)
                         P[place].GravAccel[k] += GravDataOut[j].Acc[k];
                     
 #ifdef DM_SIDM
+                    if(Ewald_iter==0)
                     if( (All.ErrTolTheta == 0) || (All.TypeOfOpeningCriterion == 0) ) //else gravity_tree() will be called again for this time-step
                     {
                         for(k = 0; k < 3; k++)
@@ -592,12 +596,13 @@ void gravity_tree(void)
                     }
 #endif
 #ifdef CBE_INTEGRATOR
-                    int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {P[place].CBE_basis_moments_dt[k1][k2] += GravDataOut[j].CBE_basis_moments_dt[k1][k2];}}
+                    if(Ewald_iter==0) {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {P[place].CBE_basis_moments_dt[k1][k2] += GravDataOut[j].CBE_basis_moments_dt[k1][k2];}}}
 #endif
 
 #ifdef BH_CALC_DISTANCES
                     /* GravDataOut[j].min_dist_to_bh contains the min dist to particle "P[place]" on another
                      task.  We now check if it is smaller than the current value */
+                    if(Ewald_iter==0)
                     if(GravDataOut[j].min_dist_to_bh < P[place].min_dist_to_bh)
                     {
                         P[place].min_dist_to_bh = GravDataOut[j].min_dist_to_bh;

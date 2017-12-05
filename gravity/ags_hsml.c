@@ -96,7 +96,7 @@ static struct ags_densdata_out
     MyLongDouble AGS_zeta;
     MyLongDouble AGS_vsig;
     MyLongDouble Particle_DivVel;
-#ifdef CBE_INTEGRATOR
+#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
     MyLongDouble NV_T[3][3];
 #endif
 }
@@ -124,7 +124,7 @@ void ags_out2particle_density(struct ags_densdata_out *out, int i, int mode)
     if(out->AGS_vsig > PPP[i].AGS_vsig) {PPP[i].AGS_vsig = out->AGS_vsig;}
     ASSIGN_ADD(P[i].Particle_DivVel, out->Particle_DivVel,   mode);
     ASSIGN_ADD(PPP[i].DhsmlNgbFactor, out->DhsmlNgb, mode);
-#ifdef CBE_INTEGRATOR
+#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
     {int j,k; for(k = 0; k < 3; k++) {for(j = 0; j < 3; j++) {ASSIGN_ADD(P[i].NV_T[k][j], out->NV_T[k][j], mode);}}}
 #endif
 }
@@ -461,6 +461,9 @@ void ags_density(void)
         {
             if(ags_density_isactive(i))
             {
+#ifdef DM_FUZZY
+                P[i].AGS_Density = P[i].Mass * PPP[i].NumNgb;
+#endif
                 if(PPP[i].NumNgb > 0)
                 {
                     PPP[i].DhsmlNgbFactor *= PPP[i].AGS_Hsml / (NUMDIMS * PPP[i].NumNgb);
@@ -491,8 +494,9 @@ void ags_density(void)
                 /* allow the neighbor tolerance to gradually grow as we iterate, so that we don't spend forever trapped in a narrow iteration */
                 if(iter > 1) {desnumngbdev = DMIN( 0.25*desnumngb , desnumngbdev * exp(0.1*log(desnumngb/(16.*desnumngbdev))*(double)iter) );}
                 
-#ifdef CBE_INTEGRATOR
+#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
                 double ConditionNumber = do_cbe_nvt_inversion_for_faces(i); // right now we don't do anything with this, but could use to force expansion of search, as in hydro
+                if(ConditionNumber > 1e5) {printf("CNUM warning for CBE: ThisTask=%d i=%d ConditionNumber=%g desnumngb=%g NumNgb=%g iter=%d NVT=%g/%g/%g/%g/%g/%g AGS_Hsml=%g \n",ThisTask,i,ConditionNumber,desnumngb,PPP[i].NumNgb,iter,P[i].NV_T[0][0],P[i].NV_T[1][1],P[i].NV_T[2][2],P[i].NV_T[0][1],P[i].NV_T[0][2],P[i].NV_T[1][2],PPP[i].AGS_Hsml);}
 #endif
                 
                 /* check if we are in the 'normal' range between the max/min allowed values */
@@ -857,7 +861,7 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
                         if(TimeBinActive[P[j].TimeBin]) {if(vsig > P[j].AGS_vsig) P[j].AGS_vsig = vsig;}
                         if(vsig > out.AGS_vsig) {out.AGS_vsig = vsig;}
 #ifdef WAKEUP
-                        if(vsig > WAKEUP*P[j].AGS_vsig) {P[j].wakeup = 1;}
+                        if(!(TimeBinActive[P[j].TimeBin]) && (All.Time > All.TimeBegin)) {if(vsig > WAKEUP*P[j].AGS_vsig) {P[j].wakeup = 1;}}
 #if defined(GALSF)
                         if((P[j].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[j].Type == 2)||(P[j].Type==3)))) {P[j].wakeup = 0;} // don't wakeup star particles, or risk 2x-counting feedback events! //
 #endif
@@ -865,7 +869,7 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
                         out.Particle_DivVel -= kernel.dwk * (kernel.dp[0] * kernel.dv[0] + kernel.dp[1] * kernel.dv[1] + kernel.dp[2] * kernel.dv[2]) / kernel.r;
                         /* this is the -particle- divv estimator, which determines how Hsml will evolve */
                         
-#ifdef CBE_INTEGRATOR
+#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
                         out.NV_T[0][0] +=  kernel.wk * kernel.dp[0] * kernel.dp[0];
                         out.NV_T[0][1] +=  kernel.wk * kernel.dp[0] * kernel.dp[1];
                         out.NV_T[0][2] +=  kernel.wk * kernel.dp[0] * kernel.dp[2];
@@ -958,5 +962,23 @@ double ags_return_minsoft(int i)
     return All.ForceSoftening[P[i].Type]; // this is the user-specified minimum
 }
 
+
+/* routine to return effective particle sizes (inter-particle separation) based on AGS_Hsml saved values */
+double INLINE_FUNC Get_Particle_Size_AGS(int i)
+{
+    /* in previous versions of the code, we took NumNgb^(1/NDIMS) here; however, now we
+     take that when NumNgb is computed (at the end of the density routine), so we
+     don't have to re-compute it each time. That makes this function fast enough to
+     call -inside- of loops (e.g. hydro computations) */
+#if (NUMDIMS == 1)
+    return 2.00000 * PPP[i].AGS_Hsml / PPP[i].NumNgb;
+#endif
+#if (NUMDIMS == 2)
+    return 1.25331 * PPP[i].AGS_Hsml / PPP[i].NumNgb; // sqrt(Pi/2)
+#endif
+#if (NUMDIMS == 3)
+    return 1.61199 * PPP[i].AGS_Hsml / PPP[i].NumNgb; // (4pi/3)^(1/3)
+#endif
+}
 
 #endif

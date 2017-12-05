@@ -1678,6 +1678,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     /* quick check if particle has mass: if not, we won't deal with it */
     if(pmass<=0) return 0;
     int AGS_kernel_shared_BITFLAG = ags_gravity_kernel_shared_BITFLAG(ptype); // determine allowed particle types for correction terms for adaptive gravitational softening terms
+    int j0_sec_for_ags = -1;
 #endif
 #ifdef PMGRID
     rcut2 = rcut * rcut;
@@ -1714,32 +1715,43 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     }
 #endif
     
-#ifdef CBE_INTEGRATOR
-    double local_NV_T[3][3], local_V_i, local_CBE_basis_moments[CBE_INTEGRATOR_NBASIS][10], out_CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10]={{0}};
+    
+#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
+    double local_NV_T[3][3], local_V_i;
     if(mode==0)
     {
-        int k1, k2;
-        local_V_i = pow(Get_Particle_Size(target), NUMDIMS);
+        int k1, k2; local_V_i = pow(Get_Particle_Size_AGS(target), NUMDIMS);
         for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {local_NV_T[k1][k2] = P[target].NV_T[k1][k2];}}
-        for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {local_CBE_basis_moments[k1][k2] = P[target].CBE_basis_moments[k1][k2];}}
     } else {
-        int k1, k2;
-        local_V_i = GravDataGet[target].V_i;
+        int k1, k2; local_V_i = GravDataGet[target].V_i;
         for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {local_NV_T[k1][k2] = GravDataGet[target].NV_T[k1][k2];}}
-        for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {local_CBE_basis_moments[k1][k2] = GravDataGet[target].CBE_basis_moments[k1][k2];}}
     }
 #endif
 
-#if defined(DM_SIDM) || defined(CBE_INTEGRATOR)
+    
+#ifdef CBE_INTEGRATOR
+    double local_CBE_basis_moments[CBE_INTEGRATOR_NBASIS][10], out_CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10]={{0}};
+    if(mode==0)
+    {
+        int k1, k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {local_CBE_basis_moments[k1][k2] = P[target].CBE_basis_moments[k1][k2];}}
+    } else {
+        int k1, k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {local_CBE_basis_moments[k1][k2] = GravDataGet[target].CBE_basis_moments[k1][k2];}}
+    }
+#endif
+
+#if defined(DM_FUZZY)
+    double local_AGS_Gradients_Density[3];
+    {int k2; for(k2=0;k2<3;k2++) {if(mode==0) {localAGS_Gradients_Density[k2]=P[target].AGS_Gradients_Density[k2];} else {local_AGS_Gradients_Density[k2]=GravDataGet[target].AGS_Gradients_Density[k2];}}}
+#endif
+    
+#if defined(DM_SIDM) || defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
     int targetdt_step; MyFloat targetVel[3];
     if(mode==0)
     {
-        int k2;
-        for(k2=0;k2<3;k2++) {targetVel[k2] = P[target].Vel[k2];}
+        int k2; for(k2=0;k2<3;k2++) {targetVel[k2] = P[target].Vel[k2];}
         targetdt_step = P[target].dt_step;
     } else {
-        int k2;
-        for(k2=0;k2<3;k2++) {targetVel[k2] = GravDataGet[target].Vel[k2];}
+        int k2; for(k2=0;k2<3;k2++) {targetVel[k2] = GravDataGet[target].Vel[k2];}
         targetdt_step = GravDataGet[target].dt_step;
     }
 #endif
@@ -1879,6 +1891,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
                 /* set secondary softening and zeta term */
                 ptype_sec = P[no].Type;
+                j0_sec_for_ags = no;
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
                 if(ptype_sec == 0)
 #else
@@ -2252,7 +2265,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if (nop->maxsoft > 0) h_p_inv = 1.0 / nop->maxsoft; else h_p_inv = 0;
                 zeta_sec = 0;
                 ptype_sec = -1;
-                
+                j0_sec_for_ags = -1;
+
                 if(h < nop->maxsoft) // compare primary softening to node maximum
                 {
                     if(r2 < nop->maxsoft * nop->maxsoft) // inside node maxsoft! continue down tree
@@ -2367,6 +2381,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         {
 #ifdef CBE_INTEGRATOR
 #include "cbe_integrator_flux_computation.h"
+#endif
+#ifdef DM_FUZZY
+#include "../sidm/dm_fuzzy_flux_computation.h"
 #endif
                             double dWdr, wp, fac_corr=0;
                             if(h_p_inv >= h_inv)
@@ -2669,7 +2686,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         GravDataResult[target].dt_step_sidm = targetdt_step_sidm; GravDataResult[target].NInteractions = si_count;
 #endif
 #ifdef CBE_INTEGRATOR
-        {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {GravDataResult[target].CBE_basis_moments_dt[k1][k2] += out_CBE_basis_moments_dt[k1][k2];}}}
+        {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {GravDataResult[target].CBE_basis_moments_dt[k1][k2] = out_CBE_basis_moments_dt[k1][k2];}}}
 #endif
 #ifdef BH_CALC_DISTANCES
         GravDataResult[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );

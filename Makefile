@@ -979,7 +979,13 @@ ifeq (RT_CHEM_PHOTOION,$(findstring RT_CHEM_PHOTOION,$(CONFIGVARS)))
 OBJS    += galaxy_sf/hII_heating.o
 endif
 
+ifeq (CBE_INTEGRATOR,$(findstring CBE_INTEGRATOR,$(CONFIGVARS)))
+OBJS    += gravity/cbe_integrator.o
+endif
 
+ifeq (DM_FUZZY,$(findstring DM_FUZZY,$(CONFIGVARS)))
+OBJS    += sidm/dm_fuzzy.o
+endif
 
 ifeq (OUTPUT_TWOPOINT_ENABLED,$(findstring OUTPUT_TWOPOINT_ENABLED,$(CONFIGVARS)))
 OBJS    += structure/twopoint.o
