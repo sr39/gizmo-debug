@@ -280,6 +280,9 @@ double INLINE_FUNC Get_Particle_PhiField(int i_particle_id);
 double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id);
 #endif
 #endif
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+double INLINE_FUNC Get_Particle_Size_AGS(int i);
+#endif
 
 double INLINE_FUNC hubble_function(double a);
 #ifdef GR_TABULATED_COSMOLOGY
@@ -808,8 +811,21 @@ void apply_excision();
 #ifdef CBE_INTEGRATOR
 void do_cbe_initialization(void);
 void do_cbe_drift_kick(int i, double dt);
-double do_cbe_nvt_inversion_for_faces(int i);
 void do_cbe_flux_computation(double *moments, double vface_dot_A, double *Area, double *fluxes);
 void do_postgravity_cbe_calcs(int i);
 #endif
+
+#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
+double do_cbe_nvt_inversion_for_faces(int i);
+#endif
+
+#ifdef DM_FUZZY
+void DMGrad_gradient_calc(void);
+int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
+void *DMGrad_evaluate_primary(void *p);
+void *DMGrad_evaluate_secondary(void *p);
+double get_particle_volume_ags(int j);
+#endif
+
+
 

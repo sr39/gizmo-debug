@@ -29,15 +29,17 @@ void do_cbe_initialization(void)
     for(i=0;i<NumPart;i++)
     {
         for(j=0;j<CBE_INTEGRATOR_NBASIS;j++) {for(k=0;k<10;k++) {P[i].CBE_basis_moments_dt[j][k]=0;}} // no time derivatives //
-        double mom_tot[10]={0};
+        double mom_tot[10]={0}, v2=0, v0=0;
+        for(k=0;k<3;k++) {v2+=P[i].Vel[k]*P[i].Vel[k];}
+        if(v2>0) {v0=sqrt(v2);} else {v0=1.e-10;}
         for(j=0;j<CBE_INTEGRATOR_NBASIS;j++)
         {
             for(k=0;k<10;k++)
             {
                 // zeros will be problematic, instead initialize a random distribution //
-                P[i].CBE_basis_moments[j][k] = 1.e-10 * P[i].Mass * get_random_number(P[i].ID + i + 343*ThisTask + 912*k + 781*j);
-                if(k>0 && k<4) {P[i].CBE_basis_moments[j][k] *= P[i].Vel[k];}
-                if(k>=4) {P[i].CBE_basis_moments[j][k] *= P[i].Vel[k]*P[i].Vel[k];}
+                P[i].CBE_basis_moments[j][k] = 1.e-5 * P[i].Mass * (0.01 + get_random_number(P[i].ID + i + 343*ThisTask + 912*k + 781*j));
+                if((k>0)&&(k<4)) {P[i].CBE_basis_moments[j][k] *= 2.*P[i].Vel[k]*(get_random_number(P[i].ID + i + 343*ThisTask + 912*k + 781*j + 2)-0.5) + 1.e-5*v0*(get_random_number(P[i].ID + i + 343*ThisTask + 912*k + 781*j + 2)-0.5);}
+                if(k>=4) {P[i].CBE_basis_moments[j][k] *= (P[i].Vel[k]*P[i].Vel[k] + 1.e-2*v0*v0);}
 #if (NUMDIMS==1)
                 if((k!=0)&&(k!=1)&&(k!=4)) {P[i].CBE_basis_moments[j][k] = 0;}
 #endif
@@ -47,8 +49,11 @@ void do_cbe_initialization(void)
                 mom_tot[k] += P[i].CBE_basis_moments[j][k];
             }
         }
-        P[i].CBE_basis_moments[j][0] *= P[i].Mass / mom_tot[0]; // must normalize to correct mass
-        for(k=0;k<3;k++) {P[i].CBE_basis_moments[j][k+1] -= mom_tot[k+1];} // ensure IC has zero momentum relative to bulk
+        for(j=0;j<CBE_INTEGRATOR_NBASIS;j++)
+        {
+            P[i].CBE_basis_moments[j][0] *= P[i].Mass / mom_tot[0]; // must normalize to correct mass
+            for(k=0;k<3;k++) {P[i].CBE_basis_moments[j][k+1] += P[i].CBE_basis_moments[j][0]*(P[i].Vel[k]-mom_tot[k+1]/P[i].Mass);} // ensure IC has zero momentum relative to bulk
+        }
     }
     return;
 }
@@ -82,20 +87,18 @@ void do_cbe_drift_kick(int i, double dt)
     double biggest_dm = 1.e10;
     for(j=0;j<CBE_INTEGRATOR_NBASIS;j++)
     {
-        double q = (dt*P[i].CBE_basis_moments_dt[j][0]) / (P[i].CBE_basis_moments[j][0] * (1.+minv*dmoment[0]));
+        double q = (dt*P[i].CBE_basis_moments_dt[j][0] - P[i].CBE_basis_moments[j][0]*minv*dmoment[0]) / (P[i].CBE_basis_moments[j][0] * (1.+minv*dmoment[0]));
         if(!isnan(q)) {if(q < biggest_dm) {biggest_dm=q;}}
     }
     double nfac = 1; // normalization factor for fluxes below //
     double threshold_dm;
-    threshold_dm = -0.9; // maximum allowed fractional change in m //
-#ifndef CBE_DEBUG
+    threshold_dm = -0.5; // maximum allowed fractional change in m //
     if(biggest_dm < threshold_dm) {nfac = threshold_dm/biggest_dm;} // re-normalize flux so it doesn't overshoot //
-#endif
     // ok now do the actual update //
     for(j=0;j<CBE_INTEGRATOR_NBASIS;j++)
     {
         P[i].CBE_basis_moments[j][0] += nfac * (dt*P[i].CBE_basis_moments_dt[j][0] - P[i].CBE_basis_moments[j][0]*minv*dmoment[0]); // update mass (strictly ensuring total mass matches updated particle)
-        for(k=1;k<4;k++) {P[i].CBE_basis_moments[j][k] += nfac * (dt*P[i].CBE_basis_moments_dt[j][k] - P[i].CBE_basis_moments[j][0]*(minv*dmoment[k]-v0[k-1]));} // update momentum (strictly ensuring total momentum matches updated particle)
+        for(k=1;k<4;k++) {P[i].CBE_basis_moments[j][k] += nfac * (dt*P[i].CBE_basis_moments_dt[j][k] - P[i].CBE_basis_moments[j][0]*minv*dmoment[k]);} // update momentum (strictly ensuring total momentum matches updated particle)
         for(k=4;k<10;k++) {P[i].CBE_basis_moments[j][k] += nfac * (dt*P[i].CBE_basis_moments_dt[j][k]);} // pure dispersion, no re-normalization here
 #ifdef CBE_DEBUG
         // check against negatives //
@@ -113,6 +116,29 @@ void do_cbe_drift_kick(int i, double dt)
         }
 #endif
     }
+    
+    /* need to deal with cases where one of the basis functions becomes extremely small --
+        below simply takes the biggest and splits it (with small perturbation to velocities
+        for degeneracy-breaking purposes) */
+    double mmax=-1, mmin=1.e10*P[i].Mass; int jmin=-1,jmax=-1;
+    for(j=0;j<CBE_INTEGRATOR_NBASIS;j++)
+    {
+        double m=P[i].CBE_basis_moments[j][0];
+        if(m<mmin) {mmin=m; jmin=j;}
+        if(m>mmax) {mmax=m; jmax=j;}
+    }
+    if(mmin < 1.e-5 * mmax)
+    {
+        double f=0.5;
+        for(k=0;k<10;k++)
+        {
+            double dq = f*P[i].CBE_basis_moments[jmax][k];
+            if(k>0 && k<4) {dq *= 1. + 0.001*(get_random_number(ThisTask+i+32*jmax+12427*k)-0.5);}
+            P[i].CBE_basis_moments[jmax][k] -= dq;
+            P[i].CBE_basis_moments[jmin][k] += dq;
+        }
+    }
+    
     return;
 }
 
@@ -165,7 +191,7 @@ double do_cbe_nvt_inversion_for_faces(int i)
     for(j=0;j<3;j++) {for(k=0;k<3;k++) {NV_T[j][k]=Tinv[j][k];}} // now NV_T holds the inverted matrix elements //
     double ConditionNumber = DMAX(sqrt(FrobNorm * FrobNorm_inv) / NUMDIMS, 1); // = sqrt( ||NV_T^-1||*||NV_T|| ) :: should be ~1 for a well-conditioned matrix //
 #ifdef CBE_DEBUG
-    if(ThisTask==0) {printf("Condition number == %g (Task=%d i=%d)\n",ConditionNumber,ThisTask,i);}
+    if((ThisTask==0)&&(ConditionNumber>100.)) {printf("Condition number == %g (Task=%d i=%d)\n",ConditionNumber,ThisTask,i);}
 #endif
     return ConditionNumber;
 }
@@ -176,11 +202,6 @@ double do_cbe_nvt_inversion_for_faces(int i)
 /* this computes the actual single-sided fluxes at the face, integrating over a distribution function to use the moments */
 void do_cbe_flux_computation(double *moments, double vface_dot_A, double *Area, double *fluxes)
 {
-    if(moments[0] <= 0) // no mass, no flux
-    {
-        int k; for(k=0;k<10;k++) {fluxes[k]=0;}
-        return;
-    }
     // couple dot-products must be pre-computed for fluxes //
     double m_inv = 1. / moments[0]; // need for weighting, below [e.g. v_x = moments[1] / moments[0]]
     double v[3]; v[0] = m_inv*moments[1]; v[1] = m_inv*moments[2]; v[2] = m_inv*moments[3]; // get velocities
@@ -228,6 +249,7 @@ void do_postgravity_cbe_calcs(int i)
     for(j=0;j<CBE_INTEGRATOR_NBASIS;j++) {for(k=0;k<10;k++) {dmom_tot[k] += dmom[j][k];}} // total change for each moment
 #ifdef CBE_DEBUG
     if(ThisTask==0) {printf("mom=%g/%g/%g/%g \n",mom[0][3],mom[2][7],mom[1][5],mom[0][8]);}
+    if(ThisTask==0) {printf("dmom=%g/%g/%g/%g \n",dmom[0][3],dmom[2][7],dmom[1][5],dmom[0][8]);}
     /* total mass change should be zero to floating-point accuracy, so don't need to worry about it, but check! */
     if(ThisTask==0) {printf("PG: Total mass flux == %g (Task=%d i=%d)\n",dmom_tot[0],ThisTask,i);}
     if(ThisTask==0) {printf("PG: Momentum flux == %g/%g/%g (Task=%d i=%d)\n",dmom_tot[1],dmom_tot[2],dmom_tot[3],ThisTask,i);}
@@ -236,7 +258,7 @@ void do_postgravity_cbe_calcs(int i)
     double dv0[3];
     for(k=0;k<3;k++)
     {
-        dv0[k] = m_inv * dmom_tot[k]; // total acceleration
+        dv0[k] = m_inv * dmom_tot[k+1]; // total acceleration
         P[i].GravAccel[k] += dv0[k] / All.cf_a2inv; // write as gravitational acceleration, convert to cosmological units
     }
     // now need to add that shift back into the momentum-change terms //
@@ -252,7 +274,7 @@ void do_postgravity_cbe_calcs(int i)
         dS[4] = dmom[j][8] - m_inv * (dmom[j][1]*mom[j][3] + mom[j][3]*dmom[j][1]) + m_inv*m_inv * dmom[j][0] * mom[j][1]*mom[j][3]; // xz
         dS[5] = dmom[j][9] - m_inv * (dmom[j][2]*mom[j][3] + mom[j][4]*dmom[j][2]) + m_inv*m_inv * dmom[j][0] * mom[j][2]*mom[j][3]; // yz
         dmom[j][0] -= mom[j][0]*(m_inv * dmom_tot[0]); // re-ensure that this is zero to floating-point precision //
-        for(k=1;k<4;k++) {dmom[j][k] -= mom[j][0]*dv0[k];} // shift the momentum flux, so now zero net 'residual' momentum flux //
+        for(k=1;k<4;k++) {dmom[j][k] -= mom[j][0]*dv0[k-1];} // shift the momentum flux, so now zero net 'residual' momentum flux //
         for(k=4;k<10;k++) {dmom[j][k] = dS[k-4];} // set the flux of the stress terms to the change in the dispersion alone //
     } // for(j=0;j<CBE_INTEGRATOR_NBASIS;j++)
     return;
