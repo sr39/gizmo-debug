@@ -1884,6 +1884,10 @@ extern struct global_data_all_processes
   double AGS_DesNumNgb;
   double AGS_MaxNumNgbDeviation;
 #endif
+    
+#ifdef DM_FUZZY
+  double FuzzyDM_Mass_in_eV;
+#endif
 
 #ifdef TURB_DRIVING
   double StDecay;
