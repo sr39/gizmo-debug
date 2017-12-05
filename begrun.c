@@ -1588,6 +1588,12 @@ void read_parameter_file(char *fname)
 #endif
 #endif
 
+#ifdef DM_FUZZY
+        strcpy(tag[nt], "FuzzyDM_Mass_in_eV");
+        addr[nt] = &All.AGS_DesNumNgb;
+        id[nt++] = REAL;
+#endif
+        
 #ifdef TURB_DRIVING
         
 #if defined(TURB_DRIVING_SPECTRUMGRID)

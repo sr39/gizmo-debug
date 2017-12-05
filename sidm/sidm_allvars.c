@@ -10,7 +10,3 @@
 
 MyDouble GeoFactorTable[GEOFACTOR_TABLE_LENGTH];
 MyIDType** InteractionTable;
-
-
-
-
