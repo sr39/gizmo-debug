@@ -102,6 +102,18 @@ void compute_hydro_densities_and_forces(void)
             printf("density & tree-update computation done...\n");
         }
 #endif
+#ifdef TURB_DIFF_DYNAMIC
+#ifndef IO_REDUCED_MODE
+        mpi_printf("start velocity smoothing computation...\n");
+#endif
+        /* This must be called between density and gradient calculations */
+        dynamic_diff_vel_calc();
+
+#ifndef IO_REDUCED_MODE
+        mpi_printf("velocity smoothing done.\n");
+#endif
+#endif
+
         hydro_gradient_calc(); /* calculates the gradients of hydrodynamical quantities  */
 #if defined(COOLING) && defined(GALSF_FB_LOCAL_UV_HEATING)
         selfshield_local_incident_uv_flux();
@@ -115,6 +127,18 @@ void compute_hydro_densities_and_forces(void)
             printf("gradient computation done.\n");
         }
 #endif
+#ifdef TURB_DIFF_DYNAMIC
+#ifndef IO_REDUCED_MODE
+        mpi_printf("start dynamic diffusion calculations...\n");
+#endif
+        /* This MUST be called immediately following gradient calculations */
+        dynamic_diff_calc();
+
+#ifndef IO_REDUCED_MODE
+        mpi_printf("dynamic diffusion calculations done.\n");
+#endif
+#endif
+
         hydro_force();		/* adds hydrodynamical accelerations and computes du/dt  */
 #ifndef IO_REDUCED_MODE
         if(ThisTask == 0)

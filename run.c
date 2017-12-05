@@ -904,6 +904,18 @@ void write_cpu_log(void)
 	      "   agscomm    %10.2f  %5.1f%%\n"
 	      "   agsimbal   %10.2f  %5.1f%%\n"
 #endif
+#ifdef TURB_DIFF_DYNAMIC
+        "dyndiff       %10.2f  %5.1f%%\n"
+        "   compute    %10.2f  %5.1f%%\n"
+        "   comm       %10.2f  %5.1f%%\n"
+        "   wait       %10.2f  %5.1f%%\n"
+        "   misc       %10.2f  %5.1f%%\n"
+        "velsmooth     %10.2f  %5.1f%%\n"
+        "   compute    %10.2f  %5.1f%%\n"
+        "   comm       %10.2f  %5.1f%%\n"
+        "   wait       %10.2f  %5.1f%%\n"
+        "   misc       %10.2f  %5.1f%%\n"
+#endif
 #ifdef DM_SIDM
           "sidm_total    %10.2f  %5.1f%%\n"
           "    scatter   %10.2f  %5.1f%%\n"
@@ -955,6 +967,18 @@ void write_cpu_log(void)
     All.CPU_Sum[CPU_AGSDENSCOMPUTE], (All.CPU_Sum[CPU_AGSDENSCOMPUTE]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_AGSDENSCOMM], (All.CPU_Sum[CPU_AGSDENSCOMM]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_AGSDENSWAIT], (All.CPU_Sum[CPU_AGSDENSWAIT]) / All.CPU_Sum[CPU_ALL] * 100,
+#endif
+#ifdef TURB_DIFF_DYNAMIC
+    (All.CPU_Sum[CPU_DYNDIFFCOMPUTE] + All.CPU_Sum[CPU_DYNDIFFWAIT] + All.CPU_Sum[CPU_DYNDIFFCOMM] + All.CPU_Sum[CPU_DYNDIFFMISC]), (All.CPU_Sum[CPU_DYNDIFFCOMPUTE] + All.CPU_Sum[CPU_DYNDIFFWAIT] + All.CPU_Sum[CPU_DYNDIFFCOMM] + All.CPU_Sum[CPU_DYNDIFFMISC]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DYNDIFFCOMPUTE], (All.CPU_Sum[CPU_DYNDIFFCOMPUTE]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DYNDIFFWAIT], (All.CPU_Sum[CPU_DYNDIFFWAIT]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DYNDIFFCOMM], (All.CPU_Sum[CPU_DYNDIFFCOMM]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DYNDIFFMISC], (All.CPU_Sum[CPU_DYNDIFFMISC]) / All.CPU_Sum[CPU_ALL] * 100,
+    (All.CPU_Sum[CPU_IMPROVDIFFCOMPUTE] + All.CPU_Sum[CPU_IMPROVDIFFWAIT] + All.CPU_Sum[CPU_IMPROVDIFFCOMM] + All.CPU_Sum[CPU_IMPROVDIFFMISC]), (All.CPU_Sum[CPU_IMPROVDIFFCOMPUTE] + All.CPU_Sum[CPU_IMPROVDIFFWAIT] + All.CPU_Sum[CPU_IMPROVDIFFCOMM] + All.CPU_Sum[CPU_IMPROVDIFFMISC]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_IMPROVDIFFCOMPUTE], (All.CPU_Sum[CPU_IMPROVDIFFCOMPUTE]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_IMPROVDIFFWAIT], (All.CPU_Sum[CPU_IMPROVDIFFWAIT]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_IMPROVDIFFCOMM], (All.CPU_Sum[CPU_IMPROVDIFFCOMM]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_IMPROVDIFFMISC], (All.CPU_Sum[CPU_IMPROVDIFFMISC]) / All.CPU_Sum[CPU_ALL] * 100,
 #endif
 #ifdef DM_SIDM
     All.CPU_Sum[CPU_SIDMSCATTER] +  All.CPU_Sum[CPU_SIDMCELLOPEN], (All.CPU_Sum[CPU_SIDMSCATTER] + All.CPU_Sum[CPU_SIDMCELLOPEN])/ All.CPU_Sum[CPU_ALL] * 100,
