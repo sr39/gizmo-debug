@@ -197,6 +197,9 @@ void fof_get_group_velocity(double *cmvel, int gr);
 int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend_local);
 void fof_compute_group_properties(int gr, int start, int len);
 
+#ifdef TURB_DIFF_DYNAMIC
+double INLINE_FUNC Get_Particle_Size_for_turb(int i);
+#endif
 void parallel_sort(void *base, size_t nmemb, size_t size, int (*compar) (const void *, const void *));
 void parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (const void *, const void *), MPI_Comm comm);
 int compare_IDs(const void *a, const void *b);
@@ -795,6 +798,18 @@ void hydro_gradient_calc(void);
 int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
 void *GasGrad_evaluate_primary(void *p, int gradient_iteration);
 void *GasGrad_evaluate_secondary(void *p, int gradient_iteration);
+
+#ifdef TURB_DIFF_DYNAMIC
+void dynamic_diff_calc(void);
+int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int dynamic_iteration);
+void *DynamicDiff_evaluate_primary(void *p, int dynamic_iteration);
+void *DynamicDiff_evaluate_secondary(void *p, int dynamic_iteration);
+
+void diffusion_velocity_calc(void);
+int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
+void *DiffFilter_evaluate_primary(void *p);
+void *DiffFilter_evaluate_secondary(void *p);
+#endif
 
 #ifdef PARTICLE_EXCISION
 void apply_excision();

@@ -652,7 +652,15 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             
             //ptorrey
             break;
-            
+
+        case IO_TURB_DYNAMIC_COEFF:
+#ifdef TURB_DIFF_DYNAMIC
+          for (n = 0; n < pc; n++) {
+            SphP[offset + n].TD_DynDiffCoeff = *fp++;
+          }
+#endif
+            break;
+
         case IO_LASTENTRY:
             endrun(220);
             break;
@@ -968,6 +976,12 @@ void read_file(char *fname, int readTask, int lastTask)
             if(blocknr == IO_HSMS)
                 continue;
             
+#ifdef TURB_DIFF_DYNAMIC
+            if (RestartFlag == 0 && blocknr == IO_TURB_DYNAMIC_COEFF) {
+              continue;
+            }
+#endif
+
             if(ThisTask == readTask)
             {
                 get_dataset_name(blocknr, buf);

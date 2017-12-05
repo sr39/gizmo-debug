@@ -1799,6 +1799,13 @@ extern struct global_data_all_processes
 #endif
 #ifdef TURB_DIFFUSION
   double TurbDiffusion_Coefficient;
+
+#ifdef TURB_DIFF_DYNAMIC
+  double TurbDynamicDiffFac;
+  int TurbDynamicDiffIterations;
+  double TurbDynamicDiffSmoothing;
+  double TurbDynamicDiffMax;
+#endif
 #endif
   
 #if defined(CONDUCTION)
@@ -2137,6 +2144,19 @@ extern ALIGN(32) struct particle_data
     MyFloat NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */
 #endif
 
+#ifdef TURB_DIFF_DYNAMIC
+  MyDouble VelShear_bar[3][3];
+  MyDouble MagShear_bar;
+  MyDouble Velocity_bar[3];
+  MyDouble Velocity_hat[3];
+  MyFloat FilterWidth_bar;
+  MyFloat MaxDistance_for_grad;
+  MyDouble Norm_hat;
+  MyDouble Dynamic_numerator;
+  MyDouble Dynamic_denominator;
+  MyDouble TD_DynDiffCoeff_error;
+  MyDouble TD_DynDiffCoeff_error_default;
+#endif
 }
  *P,				/*!< holds particle data on local processor */
  *DomainPartBuf;		/*!< buffer for particle data used in domain decomposition */
@@ -2327,6 +2347,11 @@ extern struct sph_particle_data
 
 #ifdef TURB_DIFFUSION
   MyFloat TD_DiffCoeff;             /*!< effective diffusion coefficient for sub-grid turbulent diffusion */
+#ifdef TURB_DIFF_DYNAMIC
+  MyDouble h_turb;
+  MyDouble MagShear;
+  MyFloat TD_DynDiffCoeff;          /*!< improved Smag. coefficient (squared) for sub-grid turb. diff. - D. Rennehan */
+#endif
 #endif
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
   MyFloat NV_DivVel;                /*!< quantities specific to the Cullen & Dehnen viscosity switch */
@@ -2795,7 +2820,11 @@ enum iofields
   IO_grDI,
   IO_grDII,
   IO_grHDI,
-  IO_OSTAR,  
+  IO_OSTAR, 
+  IO_TURB_DYNAMIC_COEFF,
+  IO_TURB_DIFF_COEFF,
+  IO_DYNERROR,
+  IO_DYNERRORDEFAULT, 
   IO_LASTENTRY			/* This should be kept - it signals the end of the list */
 };
 

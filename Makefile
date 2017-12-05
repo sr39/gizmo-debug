@@ -1065,6 +1065,10 @@ OBJS	+= subfind/subfind.o subfind/subfind_vars.o subfind/subfind_collective.o su
 INCL	+= subfind/subfind.h
 endif
 
+ifeq (TURB_DIFF_DYNAMIC,$(findstring TURB_DIFF_DYNAMIC,$(CONFIGVARS)))
+OBJS += hydro/dynamic_diffusion.o hydro/dynamic_diffusion_velocities.o
+endif
+
 ifeq (DM_SIDM,$(findstring DM_SIDM,$(CONFIGVARS)))
 OBJS    +=  sidm/sidm_core.o sidm/sidm_allvars.o
 INCL    +=  sidm/sidm_proto.h

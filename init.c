@@ -528,6 +528,32 @@ void init(void)
         
 #ifdef TURB_DIFFUSION
         SphP[i].TD_DiffCoeff = 0;
+
+#ifdef TURB_DIFF_DYNAMIC
+        int u, v;
+        /* start with the standard Smagorinsky-Lilly constant from Kolmogorov theory */
+        SphP[i].TD_DynDiffCoeff = 0.01;
+
+        SphP[i].h_turb = 0;
+        SphP[i].FilterWidth_bar = 0;
+        SphP[i].MagShear_bar = 0;
+        SphP[i].MagShear = 0;
+        SphP[i].Norm_hat = 0;
+        SphP[i].Dynamic_numerator = 0;
+        SphP[i].Dynamic_denominator = 0;
+        SphP[i].TD_DynDiffCoeff_error = 0;
+
+        for (u = 0; u < 3; u++) {
+          if (RestartFlag != 7) {
+            SphP[i].Velocity_bar[u] = 0;
+            SphP[i].Velocity_hat[u] = 0;
+          }
+
+          for (v = 0; v < 3; v++) {
+            SphP[i].VelShear_bar[u][v] = 0;
+          }
+        }
+#endif
 #endif
         
         if(RestartFlag == 0)

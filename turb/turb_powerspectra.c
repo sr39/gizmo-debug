@@ -42,6 +42,10 @@ static int slabstart_x, nslab_x, slabstart_y, nslab_y;
 
 static int fftsize, maxfftsize;
 static fftw_real *velfield[3];
+#ifdef TURB_DIFF_DYNAMIC
+static fftw_real *velbarfield[3];
+static fftw_real *velhatfield[3];
+#endif
 static fftw_real *smoothedvelfield[3];
 static fftw_real *vorticityfield[3];
 static fftw_real *velrhofield[3];
@@ -72,6 +76,10 @@ static struct data_out
 {
   MyFloat Distance;
   MyDouble Vel[3];
+#ifdef TURB_DIFF_DYNAMIC
+  MyDouble VelBar[3];
+  MyDouble VelHat[3];
+#endif
   MyDouble SmoothedVel[3];
   MyDouble Vorticity[3];
   MyDouble Density;
@@ -92,6 +100,10 @@ static double    Kbin[BINS_PS];
 static double    K0, K1;
 static double    binfac;
 static double    vel_disp[3];
+#ifdef TURB_DIFF_DYNAMIC
+static double    velbar_disp[3];
+static double    velhat_disp[3];
+#endif
 static double    velrho_disp[3];
 static double    empty_disp[3] = {0, 0, 0};
 
@@ -125,6 +137,16 @@ void powerspec_turb(int filenr)
   velfield[1] = (fftw_real *) mymalloc("velfield[1]", maxfftsize * sizeof(fftw_real));
   velfield[2] = (fftw_real *) mymalloc("velfield[2]", maxfftsize * sizeof(fftw_real));
 
+#ifdef TURB_DIFF_DYNAMIC
+  velbarfield[0] = (fftw_real *) mymalloc("velbarfield[0]", maxfftsize * sizeof(fftw_real));
+  velbarfield[1] = (fftw_real *) mymalloc("velbarfield[1]", maxfftsize * sizeof(fftw_real));
+  velbarfield[2] = (fftw_real *) mymalloc("velbarfield[2]", maxfftsize * sizeof(fftw_real));
+
+  velhatfield[0] = (fftw_real *) mymalloc("velhatfield[0]", maxfftsize * sizeof(fftw_real));
+  velhatfield[1] = (fftw_real *) mymalloc("velhatfield[1]", maxfftsize * sizeof(fftw_real));
+  velhatfield[2] = (fftw_real *) mymalloc("velhatfield[2]", maxfftsize * sizeof(fftw_real));
+#endif
+
   smoothedvelfield[0] = (fftw_real *) mymalloc("smoothedvelfield[0]", maxfftsize * sizeof(fftw_real));
   smoothedvelfield[1] = (fftw_real *) mymalloc("smoothedvelfield[1]", maxfftsize * sizeof(fftw_real));
   smoothedvelfield[2] = (fftw_real *) mymalloc("smoothedvelfield[2]", maxfftsize * sizeof(fftw_real));
@@ -148,6 +170,16 @@ void powerspec_turb(int filenr)
   memset(velfield[0], 0, maxfftsize * sizeof(fftw_real));
   memset(velfield[1], 0, maxfftsize * sizeof(fftw_real));
   memset(velfield[2], 0, maxfftsize * sizeof(fftw_real));
+
+#ifdef TURB_DIFF_DYNAMIC
+  memset(velbarfield[0], 0, maxfftsize * sizeof(fftw_real));
+  memset(velbarfield[1], 0, maxfftsize * sizeof(fftw_real));
+  memset(velbarfield[2], 0, maxfftsize * sizeof(fftw_real));
+
+  memset(velhatfield[0], 0, maxfftsize * sizeof(fftw_real));
+  memset(velhatfield[1], 0, maxfftsize * sizeof(fftw_real));
+  memset(velhatfield[2], 0, maxfftsize * sizeof(fftw_real));
+#endif
 
   memset(smoothedvelfield[0], 0, maxfftsize * sizeof(fftw_real));
   memset(smoothedvelfield[1], 0, maxfftsize * sizeof(fftw_real));
@@ -198,6 +230,42 @@ void powerspec_turb(int filenr)
   sprintf(fname, "%s/powerspec_vel_%03d.txt", All.OutputDir, filenr);
   powerspec_turb_save(fname, vel_disp);
 
+
+#ifdef TURB_DIFF_DYNAMIC
+  /* Now compute the power spectrum of the velbar quantities */
+
+  for(i = 0; i < BINS_PS; i++)
+    {
+      SumPower[i] = 0;
+      CountModes[i] = 0;
+    }
+
+  powerspec_turb_calc_and_bin_spectrum(velbarfield[0], 1);   /* only here the modes are counted */
+  powerspec_turb_calc_and_bin_spectrum(velbarfield[1], 0);
+  powerspec_turb_calc_and_bin_spectrum(velbarfield[2], 0);
+
+  powerspec_turb_collect();
+
+  sprintf(fname, "%s/powerspec_velbar_%03d.txt", All.OutputDir, filenr);
+  powerspec_turb_save(fname, velbar_disp);
+
+  /* Now compute the power spectrum of the velhat quantities */
+
+  for(i = 0; i < BINS_PS; i++)
+    {
+      SumPower[i] = 0;
+      CountModes[i] = 0;
+    }
+
+  powerspec_turb_calc_and_bin_spectrum(velhatfield[0], 1);   /* only here the modes are counted */
+  powerspec_turb_calc_and_bin_spectrum(velhatfield[1], 0);
+  powerspec_turb_calc_and_bin_spectrum(velhatfield[2], 0);
+
+  powerspec_turb_collect();
+
+  sprintf(fname, "%s/powerspec_velhat_%03d.txt", All.OutputDir, filenr);
+  powerspec_turb_save(fname, velhat_disp);
+#endif
 
   /* Now compute the power spectrum of the smoothed velocities */
 
@@ -339,6 +407,14 @@ void powerspec_turb(int filenr)
   myfree(smoothedvelfield[2]);
   myfree(smoothedvelfield[1]);
   myfree(smoothedvelfield[0]);
+#ifdef TURB_DIFF_DYNAMIC
+  myfree(velhatfield[2]);
+  myfree(velhatfield[1]);
+  myfree(velhatfield[0]);
+  myfree(velbarfield[2]);
+  myfree(velbarfield[1]);
+  myfree(velbarfield[0]);
+#endif
   myfree(velfield[2]);
   myfree(velfield[1]);
   myfree(velfield[0]);
@@ -677,6 +753,16 @@ double powerspec_turb_obtain_fields(void)
 		  velfield[1][ip] = DataOut[j].Vel[1];
 		  velfield[2][ip] = DataOut[j].Vel[2];
 
+#ifdef TURB_DIFF_DYNAMIC
+                  velbarfield[0][ip] = DataOut[j].VelBar[0];
+                  velbarfield[1][ip] = DataOut[j].VelBar[1];
+                  velbarfield[2][ip] = DataOut[j].VelBar[2];
+
+                  velhatfield[0][ip] = DataOut[j].VelHat[0];
+                  velhatfield[1][ip] = DataOut[j].VelHat[1];
+                  velhatfield[2][ip] = DataOut[j].VelHat[2];
+#endif
+
 		  smoothedvelfield[0][ip] = DataOut[j].SmoothedVel[0];
 		  smoothedvelfield[1][ip] = DataOut[j].SmoothedVel[1];
 		  smoothedvelfield[2][ip] = DataOut[j].SmoothedVel[2];
@@ -821,7 +907,87 @@ void powerspec_turb_calc_dispersion(void)
       vel_disp[dim] = vdisp_all / pow(TURB_DRIVING_SPECTRUMGRID, 3);      
     }
 
+#ifdef TURB_DIFF_DYNAMIC
+  /* velbar */
+  for(dim = 0; dim < 3; dim++)
+    {
+      double vsum = 0, vsum_all, vmean, vdisp = 0, vdisp_all;
 
+      for(i=0; i < nslab_x;i++)
+  for(j=0; j< POWERSPEC_GRID; j++)
+    for(k=0; k< POWERSPEC_GRID; k++)
+      {
+        int ip = POWERSPEC_GRID2 * (POWERSPEC_GRID * i + j) + k;
+        
+        vsum += velbarfield[dim][ip];
+      }
+
+      MPI_Allreduce(&vsum, &vsum_all, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      vmean = vsum_all / pow(POWERSPEC_GRID, 3);
+
+      for(i=0; i < nslab_x;i++)
+  for(j=0; j< POWERSPEC_GRID; j++)
+    for(k=0; k< POWERSPEC_GRID; k++)
+      {
+        int ip = POWERSPEC_GRID2 * (POWERSPEC_GRID * i + j) + k;
+
+        velbarfield[dim][ip] -= vmean;
+      }
+
+      for(i=0; i < nslab_x;i++)
+  for(j=0; j< POWERSPEC_GRID; j++)
+    for(k=0; k< POWERSPEC_GRID; k++)
+      {
+        int ip = POWERSPEC_GRID2 * (POWERSPEC_GRID * i + j) + k;
+
+        vdisp += velbarfield[dim][ip] * velbarfield[dim][ip];
+      }
+
+      MPI_Allreduce(&vdisp, &vdisp_all, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+      velbar_disp[dim] = vdisp_all / pow(POWERSPEC_GRID, 3);
+    }
+
+  /* velhat */
+  for(dim = 0; dim < 3; dim++)
+    {
+      double vsum = 0, vsum_all, vmean, vdisp = 0, vdisp_all;
+
+      for(i=0; i < nslab_x;i++)
+  for(j=0; j< POWERSPEC_GRID; j++)
+    for(k=0; k< POWERSPEC_GRID; k++)
+      {
+        int ip = POWERSPEC_GRID2 * (POWERSPEC_GRID * i + j) + k;
+
+        vsum += velhatfield[dim][ip];
+      }
+
+      MPI_Allreduce(&vsum, &vsum_all, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      vmean = vsum_all / pow(POWERSPEC_GRID, 3);
+
+      for(i=0; i < nslab_x;i++)
+  for(j=0; j< POWERSPEC_GRID; j++)
+    for(k=0; k< POWERSPEC_GRID; k++)
+      {
+        int ip = POWERSPEC_GRID2 * (POWERSPEC_GRID * i + j) + k;
+
+        velhatfield[dim][ip] -= vmean;
+      }
+
+      for(i=0; i < nslab_x;i++)
+  for(j=0; j< POWERSPEC_GRID; j++)
+    for(k=0; k< POWERSPEC_GRID; k++)
+      {
+        int ip = POWERSPEC_GRID2 * (POWERSPEC_GRID * i + j) + k;
+
+        vdisp += velhatfield[dim][ip] * velhatfield[dim][ip];
+      }
+
+      MPI_Allreduce(&vdisp, &vdisp_all, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+      velhat_disp[dim] = vdisp_all / pow(POWERSPEC_GRID, 3);
+    }
+#endif
   for(dim = 0; dim < 3; dim++)
     {
       double vsum = 0, vsum_all, vmean, vdisp = 0, vdisp_all;
@@ -967,6 +1133,16 @@ int powerspec_turb_find_nearest_evaluate(int target, int mode, int *nexport, int
 	  velfield[1][ip] = P[index].Vel[1];
 	  velfield[2][ip] = P[index].Vel[2];
 
+#ifdef TURB_DIFF_DYNAMIC
+          velbarfield[0][ip] = SphP[index].Velocity_bar[0];
+          velbarfield[1][ip] = SphP[index].Velocity_bar[1];
+          velbarfield[2][ip] = SphP[index].Velocity_bar[2];
+
+          velhatfield[0][ip] = SphP[index].Velocity_hat[0];
+          velhatfield[1][ip] = SphP[index].Velocity_hat[1];
+          velhatfield[2][ip] = SphP[index].Velocity_hat[2];
+#endif
+
 	  smoothedvelfield[0][ip] = SphP[index].SmoothedVel[0];
 	  smoothedvelfield[1][ip] = SphP[index].SmoothedVel[1];
 	  smoothedvelfield[2][ip] = SphP[index].SmoothedVel[2];
@@ -1006,6 +1182,14 @@ int powerspec_turb_find_nearest_evaluate(int target, int mode, int *nexport, int
 	  DataResult[target].Vel[0] = P[index].Vel[0];
 	  DataResult[target].Vel[1] = P[index].Vel[1];
 	  DataResult[target].Vel[2] = P[index].Vel[2];
+#ifdef TURB_DIFF_DYNAMIC
+          DataResult[target].VelBar[0] = SphP[index].Velocity_bar[0];
+          DataResult[target].VelBar[1] = SphP[index].Velocity_bar[1];
+          DataResult[target].VelBar[2] = SphP[index].Velocity_bar[2];
+          DataResult[target].VelHat[0] = SphP[index].Velocity_hat[0];
+          DataResult[target].VelHat[1] = SphP[index].Velocity_hat[1];
+          DataResult[target].VelHat[2] = SphP[index].Velocity_hat[2];
+#endif
 	  DataResult[target].SmoothedVel[0] = SphP[index].SmoothedVel[0];
 	  DataResult[target].SmoothedVel[1] = SphP[index].SmoothedVel[1];
 	  DataResult[target].SmoothedVel[2] = SphP[index].SmoothedVel[2];
