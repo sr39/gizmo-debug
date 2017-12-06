@@ -1016,7 +1016,15 @@ typedef MyDouble MyBigFloat;
 #define CPU_AGSDENSMISC    39
 #define CPU_SIDMSCATTER    40
 #define CPU_SIDMCELLOPEN   41
-#define CPU_PARTS          42  /* this gives the number of parts above (must be last) */
+#define CPU_DYNDIFFMISC       42
+#define CPU_DYNDIFFCOMPUTE    43
+#define CPU_DYNDIFFWAIT       44
+#define CPU_DYNDIFFCOMM       45
+#define CPU_IMPROVDIFFMISC    46
+#define CPU_IMPROVDIFFCOMPUTE 47
+#define CPU_IMPROVDIFFWAIT    48
+#define CPU_IMPROVDIFFCOMM    49
+#define CPU_PARTS          50  /* this gives the number of parts above (must be last) */
 
 #define CPU_STRING_LEN 120
 
@@ -2144,19 +2152,6 @@ extern ALIGN(32) struct particle_data
     MyFloat NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */
 #endif
 
-#ifdef TURB_DIFF_DYNAMIC
-  MyDouble VelShear_bar[3][3];
-  MyDouble MagShear_bar;
-  MyDouble Velocity_bar[3];
-  MyDouble Velocity_hat[3];
-  MyFloat FilterWidth_bar;
-  MyFloat MaxDistance_for_grad;
-  MyDouble Norm_hat;
-  MyDouble Dynamic_numerator;
-  MyDouble Dynamic_denominator;
-  MyDouble TD_DynDiffCoeff_error;
-  MyDouble TD_DynDiffCoeff_error_default;
-#endif
 }
  *P,				/*!< holds particle data on local processor */
  *DomainPartBuf;		/*!< buffer for particle data used in domain decomposition */
@@ -2469,7 +2464,20 @@ extern struct sph_particle_data
     gr_float grHDI;
 #endif
 #endif
-    
+   
+#ifdef TURB_DIFF_DYNAMIC
+  MyDouble VelShear_bar[3][3];
+  MyDouble MagShear_bar;
+  MyDouble Velocity_bar[3];
+  MyDouble Velocity_hat[3];
+  MyFloat FilterWidth_bar;
+  MyFloat MaxDistance_for_grad;
+  MyDouble Norm_hat;
+  MyDouble Dynamic_numerator;
+  MyDouble Dynamic_denominator;
+  MyDouble TD_DynDiffCoeff_error;
+  MyDouble TD_DynDiffCoeff_error_default;
+#endif 
 }
   *SphP,				/*!< holds SPH particle data on local processor */
   *DomainSphBuf;			/*!< buffer for SPH particle data in domain decomposition */
