@@ -1546,7 +1546,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_grDI:
         case IO_grDII:
         case IO_grHDI:
-        case IO_TURB_DIFF_DYNAMIC_COEFF:
+        case IO_TURB_DYNAMIC_COEFF:
         case IO_TURB_DIFF_COEFF:
         case IO_DYNERROR:
         case IO_DYNERRORDEFAULT:
