@@ -57,21 +57,6 @@
 #
 #############
 
-ifdef SYSTYPE
-SYSTYPE := "$(SYSTYPE)"
--include Makefile.systype
-else
-include Makefile.systype
-endif
-
-ifeq ($(wildcard Makefile.systype), Makefile.systype)
-INCL = Makefile.systype
-else
-INCL =
-endif
-FINCL =
-
-
 CONFIG   =  Config.sh
 PERL     =  /usr/bin/perl
 
@@ -145,6 +130,21 @@ else
 endif
 
 endif
+
+
+ifdef SYSTYPE
+SYSTYPE := "$(SYSTYPE)"
+-include Makefile.systype
+else
+include Makefile.systype
+endif
+
+ifeq ($(wildcard Makefile.systype), Makefile.systype)
+INCL = Makefile.systype
+else
+INCL =
+endif
+FINCL =
 
 
 
