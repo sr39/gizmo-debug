@@ -43,7 +43,7 @@
         rho_i = psi_i * pmass/V_i * All.cf_a3inv; rho_j = psi_j * mass/V_j * All.cf_a3inv;
         // calculate kernel weight functions (for weights below) //
         if(u<1) {kernel_main(u, h3_inv, h3_inv*h_inv, &wk_i, &dummy, -1);} // get wk [these variables all pre-defined if here in loop] //
-        if(u_p<1) {kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wk_j, &dummy, -1);} // likewise these should all be pre-calculated above, already [riding on adaptive gravsoft routines here] //
+        if(r*h_p_inv<1) {kernel_main(r*h_p_inv, h_p_inv*h_p_inv*h_p_inv, h_p_inv*h_p_inv*h_p_inv*h_p_inv, &wk_j, &dummy, -1);} // likewise these should all be pre-calculated above, already [riding on adaptive gravsoft routines here] //
         // calculate effective faces and face velocity between elements //
         for(k=0;k<3;k++)
         {
