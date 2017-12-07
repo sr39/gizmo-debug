@@ -41,9 +41,13 @@
 ####################################################################################################
 # --------------------------------------- Hydro solver method
 ####################################################################################################
-# --------------------------------------- Mesh-free Finite-volume Godunov methods
-#HYDRO_MESHLESS_FINITE_MASS     # solve hydro using the Lagrangian (constant-mass) finite-volume Godunov method
-#HYDRO_MESHLESS_FINITE_VOLUME   # solve hydro using the Moving (quasi-Lagrangian) finite-volume Godunov method
+# --------------------------------------- Finite-volume Godunov methods (choose one, or SPH)
+#HYDRO_MESHLESS_FINITE_MASS     # solve hydro using the mesh-free Lagrangian (fixed-mass) finite-volume Godunov method
+#HYDRO_MESHLESS_FINITE_VOLUME   # solve hydro using the mesh-free (quasi-Lagrangian) finite-volume Godunov method (control mesh motion with HYDRO_FIX_MESH_MOTION)
+#HYDRO_REGULAR_GRID             # solve hydro equations on a regular (recti-linear) Cartesian mesh (grid) with a finite-volume Godunov method
+## -----------------------------------------------------------------------------------------------------
+# --------------------------------------- Options to explicitly control the mesh motion (for use with the MFV or grid solvers): only set for non-standard behavior
+#HYDRO_FIX_MESH_MOTION=0        # mesh with arbitrarily-defined mesh-generating velocities: (0=non-moving, 1=fixed-v [set in ICs] cartesian, 2=fixed-v [ICs] cylindrical, 3=fixed-v [ICs] spherical, 4=analytic function, 5=smoothed-Lagrangian, 6=glass-generating, 6=fully-Lagrangian)
 ## -----------------------------------------------------------------------------------------------------
 # --------------------------------------- SPH methods (enable one of these flags to use SPH):
 #HYDRO_PRESSURE_SPH             # solve hydro using SPH with the 'pressure-sph' formulation ('P-SPH')

@@ -190,18 +190,28 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* --------------------------------------------------------------------------------- */
                 /* calculate a couple basic properties needed: separation, velocity difference (needed for timestepping) */
                 kernel.r = sqrt(r2);
+#ifdef HYDRO_REGULAR_GRID
+                if(kernel.r > 1.1 * Particle_Size_i * sqrt(NUMDIMS)) continue; // only do interactions for the immediate neighbors //
+#endif
                 rinv = 1 / kernel.r;
                 /* we require a 'softener' to prevent numerical madness in interpolating functions */
                 rinv_soft = 1.0 / sqrt(r2 + 0.0001*kernel.h_i*kernel.h_i);
 #ifdef BOX_SHEARING
                 /* in a shearing box, need to set dv appropriately for the shearing boundary conditions */
-                MyDouble VelPred_j[3];
-                for(k=0;k<3;k++) {VelPred_j[k]=SphP[j].VelPred[k];}
+                MyDouble VelPred_j[3]; for(k=0;k<3;k++) {VelPred_j[k]=SphP[j].VelPred[k];}
                 if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
                 if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+                MyDouble ParticleVel_j[3]; for(k=0;k<3;k++) {ParticleVel_j[k]=SphP[j].VelPred[k];}
+                if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {ParticleVel_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {ParticleVel_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#endif
 #else
                 /* faster to just set a pointer directly */
                 MyDouble *VelPred_j = SphP[j].VelPred;
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+                MyDouble *ParticleVel_j = SphP[j].ParticleVel;
+#endif
 #endif
                 kernel.dv[0] = local.Vel[0] - VelPred_j[0];
                 kernel.dv[1] = local.Vel[1] - VelPred_j[1];
@@ -242,7 +252,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(All.ComovingIntegrationOn) kernel.vdotr2 += All.cf_hubble_a2 * r2;
                 if(kernel.vdotr2 < 0)
                 {
-#ifdef HYDRO_SPH
+#if defined(HYDRO_SPH) || defined(HYDRO_MESHLESS_FINITE_VOLUME)
                     kernel.vsig -= 3 * fac_mu * kernel.vdotr2 * rinv;
 #else
                     kernel.vsig -= fac_mu * kernel.vdotr2 * rinv;
@@ -378,8 +388,9 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* now we will actually assign the hydro variables for the evolution step */
                 /* --------------------------------------------------------------------------------- */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-                double dmass_holder = Fluxes.rho * dt_hydrostep;
-                double dmass_limiter = 0.01 * DMAX(0,DMIN(DMIN(local.Mass,SphP[j].MassTrue),P[j].Mass));
+                double dmass_holder = Fluxes.rho * dt_hydrostep, dmass_limiter;
+                if(dmass_holder > 0) {dmass_limiter=P[j].Mass;} else {dmass_limiter=local.Mass;}
+                dmass_limiter *= 0.1;
                 if(fabs(dmass_holder) > dmass_limiter) {dmass_holder *= dmass_limiter / fabs(dmass_holder);}
                 out.dMass += dmass_holder;
                 out.DtMass += Fluxes.rho;

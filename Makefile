@@ -97,6 +97,7 @@ ifeq (FIRE_PHYSICS_DEFAULTS,$(findstring FIRE_PHYSICS_DEFAULTS,$(CONFIGVARS)))  
 endif
 
 
+
 CC       = mpicc        # sets the C-compiler (default)
 CXX       = mpiCC       # sets the C++-compiler (default)
 

@@ -781,6 +781,12 @@ double ags_return_maxsoft(int i);
 double ags_return_minsoft(int i);
 #endif
 
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+void advect_mesh_point(int i, double dt);
+double calculate_face_area_for_cartesian_mesh(double *dp, double rinv, double l_side, double *Face_Area_Vec);
+#endif
+
+
 #ifdef ALTERNATIVE_PSORT
 void init_sort_ID(MyIDType *data, int ndata);
 #endif
