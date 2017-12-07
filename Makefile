@@ -43,11 +43,7 @@
 # (B) set SYSTYPE in Makefile.systype 
 #     This file has priority over your shell variable.:
 #
-#    (1) Copy the file "Template-Makefile.systype"  to  "Makefile.systype"
-#
-#        cp Template-Makefile.systype Makefile.systype 
-#
-#    (2) Uncomment your system in  "Makefile.systype".
+#     Uncomment your system in  "Makefile.systype".
 #
 # If you add an ifeq for a new system below, also add that systype to
 # Template-Makefile.systype
@@ -60,21 +56,6 @@
 #   dealing with new files and filename conventions)
 #
 #############
-
-ifdef SYSTYPE
-SYSTYPE := "$(SYSTYPE)"
--include Makefile.systype
-else
-include Makefile.systype
-endif
-
-ifeq ($(wildcard Makefile.systype), Makefile.systype)
-INCL = Makefile.systype
-else
-INCL =
-endif
-FINCL =
-
 
 CONFIG   =  Config.sh
 PERL     =  /usr/bin/perl
@@ -149,6 +130,21 @@ else
 endif
 
 endif
+
+
+ifdef SYSTYPE
+SYSTYPE := "$(SYSTYPE)"
+-include Makefile.systype
+else
+include Makefile.systype
+endif
+
+ifeq ($(wildcard Makefile.systype), Makefile.systype)
+INCL = Makefile.systype
+else
+INCL =
+endif
+FINCL =
 
 
 
