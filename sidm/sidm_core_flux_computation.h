@@ -9,7 +9,7 @@
             /* ok, now check against self-interactions */
             if(targetID != P[no].ID)
             {
-                sidm_tstart = my_second();
+                double sidm_tstart = my_second();
                 r = sqrt(r2);
 #if defined(ADAPTIVE_GRAVSOFT_FORALL)
                 double h_si = DMAX(targeth_si, All.SIDMSmoothingFactor * DMAX(PPP[no].AGS_Hsml,All.ForceSoftening[P[no].Type]));
@@ -54,7 +54,7 @@
                         }  // if(check_interaction_table(targetID, P[no].ID) == 0)
                     } // if(prob for kick satisfied)
                 } // if(r < 2.0*h_si)
-                sidm_tend = my_second();
+                double sidm_tend = my_second();
                 sidm_tscatter += timediff(sidm_tstart, sidm_tend);
             } // if(targetID != P[no].ID)
         } // if((1 << P[no].Type) & (DM_SIDM))
