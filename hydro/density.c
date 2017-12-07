@@ -7,6 +7,7 @@
 #include "../allvars.h"
 #include "../proto.h"
 #include "../kernel.h"
+#include "../mesh_motion.h"
 #ifdef PTHREADS_NUM_THREADS
 #include <pthread.h>
 #endif
@@ -70,6 +71,9 @@ static struct densdata_out
     MyLongDouble DhsmlNgb;
     MyLongDouble Particle_DivVel;
     MyFloat NV_T[3][3];
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
+    MyDouble ParticleVel[3];
+#endif
 #ifdef HYDRO_SPH
     MyLongDouble DhsmlHydroSumFactor;
 #endif
@@ -152,10 +156,10 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
     if(P[i].Type == 0)
     {
         ASSIGN_ADD(SphP[i].Density, out->Rho, mode);
-
-        for(k = 0; k < 3; k++)
-            for(j = 0; j < 3; j++)
-                ASSIGN_ADD(SphP[i].NV_T[k][j], out->NV_T[k][j], mode);
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
+        for(k=0;k<3;k++) ASSIGN_ADD(SphP[i].ParticleVel[k], out->ParticleVel[k],   mode);
+#endif
+        for(k = 0; k < 3; k++) {for(j = 0; j < 3; j++) {ASSIGN_ADD(SphP[i].NV_T[k][j], out->NV_T[k][j], mode);}}
 
 #ifdef HYDRO_SPH
         ASSIGN_ADD(SphP[i].DhsmlHydroSumFactor, out->DhsmlHydroSumFactor, mode);
@@ -979,6 +983,18 @@ void density(void)
             {
                 if(SphP[i].Density > 0)
                 {
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME)
+                    /* set motion of the mesh-generating points */
+#if (HYDRO_FIX_MESH_MOTION==4)
+                    set_mesh_motion(i); // use user-specified analytic function to define mesh motions //
+#elif ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
+                    double eps_pvel = 0.3; // normalization for how much 'weight' to give to neighbors (unstable if >=0.5)
+                    for(k=0;k<3;k++) {SphP[i].ParticleVel[k] = (1.-eps_pvel)*SphP[i].VelPred[k] + eps_pvel*SphP[i].ParticleVel[k]/SphP[i].Density;} // assign mixture velocity
+#elif (HYDRO_FIX_MESH_MOTION==7)
+                    for(k=0;k<3;k++) {SphP[i].ParticleVel[k] = SphP[i].VelPred[k];} // move with fluid
+#endif
+#endif
+
 #ifdef HYDRO_SPH
 #ifdef HYDRO_PRESSURE_SPH
                     if(SphP[i].InternalEnergyPred > 0)
@@ -1216,6 +1232,9 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     
                     out.Ngb += kernel.wk;
                     out.Rho += kernel.mj_wk;
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
+                    if(local.Type == 0 && kernel.r==0) {int kv; for(kv=0;kv<3;kv++) {out.ParticleVel[kv] += kernel.mj_wk * SphP[j].VelPred[kv];}} // just the self-contribution //
+#endif
 #if defined(RT_SOURCE_INJECTION)
                     if((1 << local.Type) & (RT_SOURCES)) {out.KernelSum_Around_RT_Source += 1.-u*u;}
 #endif
@@ -1252,6 +1271,10 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #ifdef BOX_SHEARING
                         if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {kernel.dv[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
                         if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {kernel.dv[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+#endif
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
+                        // do neighbor contribution to smoothed particle velocity here, after wrap, so can account for shearing boxes correctly //
+                        {int kv; for(kv=0;kv<3;kv++) {out.ParticleVel[kv] += kernel.mj_wk * (local.Vel[kv] - kernel.dv[kv]);}}
 #endif
                         out.Particle_DivVel -= kernel.dwk * (kernel.dp[0] * kernel.dv[0] + kernel.dp[1] * kernel.dv[1] + kernel.dp[2] * kernel.dv[2]) / kernel.r;
                         /* this is the -particle- divv estimator, which determines how Hsml will evolve (particle drift) */

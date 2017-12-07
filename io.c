@@ -1110,6 +1110,21 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
+        case IO_PARTVEL:
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    for(k = 0; k < 3; k++)
+                            fp[k] = SphP[pindex].ParticleVel[k];
+
+                    n++;
+                    fp += 3;
+                }
+#endif
+            break;
+
+            
         case IO_RADGAMMA:
 #ifdef RADTRANSFER
             for(n = 0; n < pc; pindex++)
@@ -1378,6 +1393,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             break;
             
         case IO_VEL:
+        case IO_PARTVEL:
         case IO_ACCEL:
         case IO_VBULK:
         case IO_BFLD:
@@ -1648,6 +1664,7 @@ int get_values_per_blockelement(enum iofields blocknr)
     {
         case IO_POS:
         case IO_VEL:
+        case IO_PARTVEL:
         case IO_ACCEL:
         case IO_BFLD:
         case IO_GRADPHI:
@@ -1882,6 +1899,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             return ntot_withmasses;
             break;
             
+        case IO_PARTVEL:
         case IO_RAD_ACCEL:
         case IO_RADGAMMA:
         case IO_EDDINGTON_TENSOR:
@@ -2529,6 +2547,13 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
 
+        case IO_PARTVEL:
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+            return 1;
+#else
+            return 0;
+#endif
+
             
         case IO_EDDINGTON_TENSOR:
 #if defined(RADTRANSFER)
@@ -2884,6 +2909,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_EOSCOMP:
             strncpy(label, "COMP", 4);
             break;
+        case IO_PARTVEL:
+            strncpy(label, "PVEL", 4);
+            break;
         case IO_EOSYE:
             strncpy(label, "YE  ", 4);
             break;
@@ -3237,6 +3265,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_EOSCOMP:
             strcpy(buf, "CompositionType");
+            break;
+        case IO_PARTVEL:
+            strcpy(buf, "ParticleVelocities");
             break;
         case IO_EOSYE:
             strcpy(buf, "Ye");

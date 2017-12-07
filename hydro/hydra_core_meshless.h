@@ -6,7 +6,12 @@
  */
 /* --------------------------------------------------------------------------------- */
 {
+//#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && !(defined(GALSF) || defined(COOLING))
 //#define DO_HALFSTEP_FOR_MESHLESS_METHODS 1
+//#endif
+#if (SLOPE_LIMITER_TOLERANCE==0)
+#define HYDRO_FACE_AREA_LIMITER // use more restrictive face-area limiter in the simulations [some applications this is useful, but unclear if we can generally apply it] //
+#endif
     
     double s_star_ij,s_i,s_j,v_frame[3],n_unit[3];
     double distance_from_i[3],distance_from_j[3];
@@ -98,9 +103,14 @@
             fflush(stdout);
         }
         Face_Area_Norm = sqrt(Face_Area_Norm);
-        for(k=0;k<3;k++) {n_unit[k] = Face_Area_Vec[k] / Face_Area_Norm;}
         
-#ifndef PROTECT_FROZEN_FIRE
+        /* below, if we are using fixed-grid mode for the code, we manually set the areas to the correct geometric areas */
+#ifdef HYDRO_REGULAR_GRID
+        Face_Area_Norm = calculate_face_area_for_cartesian_mesh(kernel.dp, rinv, Particle_Size_i, Face_Area_Vec);
+#endif
+        
+        for(k=0;k<3;k++) {n_unit[k] = Face_Area_Vec[k] / Face_Area_Norm;} /* define useful unit vector for below */
+#if (defined(HYDRO_FACE_AREA_LIMITER) || !defined(PROTECT_FROZEN_FIRE)) && (HYDRO_FIX_MESH_MOTION >= 5)
         /* check if face area exceeds maximum geometric allowed limit (can occur when particles with -very- different
             Hsml interact at the edge of the kernel, must be limited to geometric max to prevent numerical instability */
         double Amax = Amax_i; // minimum of area "i" or area "j": this is "i"
@@ -143,9 +153,12 @@
         for(k=0;k<3;k++) {distance_from_j[k] = distance_from_i[k] * s_j; distance_from_i[k] *= s_i;}
         //for(k=0;k<3;k++) {v_frame[k] = 0.5 * (VelPred_j[k] + local.Vel[k]);}
         for(k=0;k<3;k++) {v_frame[k] = rinv * (-s_i*VelPred_j[k] + s_j*local.Vel[k]);} // allows for face to be off-center (to second-order)
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME)
+        for(k=0;k<3;k++) {v_frame[k] = rinv * (-s_i*ParticleVel_j[k] + s_j*local.ParticleVel[k]);}
+#endif
         // (note that in the above, the s_i/s_j terms are crossed with the opposing velocity terms: this is because the face is closer to the
         //   particle with the smaller smoothing length; so it's values are slightly up-weighted //
-    
+        
         /* we need the face velocities, dotted into the face vector, for correction back to the lab frame */
         for(k=0;k<3;k++) {face_vel_i+=local.Vel[k]*n_unit[k]; face_vel_j+=VelPred_j[k]*n_unit[k];}
         face_vel_i /= All.cf_atime; face_vel_j /= All.cf_atime;
@@ -181,8 +194,9 @@
 #endif
         for(k=0;k<3;k++)
         {
-            reconstruct_face_states(local.Vel[k]-v_frame[k], local.Gradients.Velocity[k], VelPred_j[k]-v_frame[k], SphP[j].Gradients.Velocity[k],
+            reconstruct_face_states(local.Vel[k], local.Gradients.Velocity[k], VelPred_j[k], SphP[j].Gradients.Velocity[k],
                                     distance_from_i, distance_from_j, &Riemann_vec.L.v[k], &Riemann_vec.R.v[k], recon_mode);
+            Riemann_vec.L.v[k] -= v_frame[k]; Riemann_vec.R.v[k] -= v_frame[k];
         }
 #ifdef MAGNETIC
         int slim_mode = 1;
@@ -234,7 +248,7 @@
 #else 
         press_tot_limiter = 1.1 * All.cf_a3inv * DMAX( press_i_tot , press_j_tot );
 #endif
-#ifdef EOS_GENERAL
+#if defined(EOS_GENERAL) || defined(HYDRO_MESHLESS_FINITE_VOLUME)
         press_tot_limiter *= 2.0;
 #endif
 #if (SLOPE_LIMITER_TOLERANCE==2)
