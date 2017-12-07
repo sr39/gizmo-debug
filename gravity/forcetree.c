@@ -39,6 +39,11 @@
 static int last;
 
 
+/* some modules compute neighbor fluxes explicitly within the force-tree: in these cases, we need to
+    take extra care about opening leaves to ensure possible neighbors are not missed, so defined a flag below for it */
+#if defined(DM_SIDM) || defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
+#define NEIGHBORS_MUST_BE_COMPUTED_EXPLICITLY_IN_FORCETREE
+#endif
 
 /*! length of lock-up table for short-range force kernel in TreePM algorithm */
 #define NTAB 1000
@@ -1685,34 +1690,22 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     asmthfac = 0.5 / asmth * (NTAB / 3.0);
 #endif
     
-    
+
+#ifdef NEIGHBORS_MUST_BE_COMPUTED_EXPLICITLY_IN_FORCETREE
+    double targeth_si;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+    targeth_si = soft;
+#else
+    targeth_si = All.ForceSoftening[ptype];
+#endif
+#endif
+
     
 #ifdef DM_SIDM
-    double dist_to_center2, dist_to_open, kick_x, kick_y, kick_z, kick_target[3], kick_no[3];
-    double prob, prob_tmp, max_prob, h_si, dx_nc, dy_nc, dz_nc;
-    float sidm_tstart, sidm_tend, sidm_tscatter, sidm_tcell;
-    MyFloat  targeth_si;
-    int targetdt_step_sidm, si_count, i;
-    MyIDType targetID;
-    sidm_tcell = sidm_tscatter = 0;
-    kick_x = kick_y = kick_z = 0;
-    si_count = 0;
-    max_prob = 0;
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-    targeth_si = All.SIDMSmoothingFactor * soft;
-#else
-    targeth_si = All.SIDMSmoothingFactor * All.ForceSoftening[ptype];
-#endif
-    if(mode == 0)
-    {
-        targetdt_step_sidm = P[target].dt_step_sidm;
-        targetID      = P[target].ID;
-    }
-    else
-    {
-        targetdt_step_sidm =  GravDataGet[target].dt_step_sidm;
-        targetID      = GravDataGet[target].ID;
-    }
+    targeth_si *= All.SIDMSmoothingFactor;
+    double sidm_kick_x=0, sidm_kick_y=0, sidm_kick_z=0, sidm_tscatter=0, max_prob=0;
+    MyIDType targetID; int targetdt_step_sidm, si_count=0;
+    if(mode == 0) {targetdt_step_sidm = P[target].dt_step_sidm; targetID = P[target].ID;} else {targetdt_step_sidm = GravDataGet[target].dt_step_sidm; targetID = GravDataGet[target].ID;}
 #endif
     
     
@@ -1741,7 +1734,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 
 #if defined(DM_FUZZY)
     double local_AGS_Gradients_Density[3];
-    {int k2; for(k2=0;k2<3;k2++) {if(mode==0) {localAGS_Gradients_Density[k2]=P[target].AGS_Gradients_Density[k2];} else {local_AGS_Gradients_Density[k2]=GravDataGet[target].AGS_Gradients_Density[k2];}}}
+    {int k2; for(k2=0;k2<3;k2++) {if(mode==0) {local_AGS_Gradients_Density[k2]=P[target].AGS_Gradients_Density[k2];} else {local_AGS_Gradients_Density[k2]=GravDataGet[target].AGS_Gradients_Density[k2];}}}
+#ifdef DM_FUZZY_BETTERGRADIENTS
+    double local_AGS_Gradients2_Density[3][3];
+    {int k1,k2; for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {if(mode==0) {local_AGS_Gradients2_Density[k1][k2]=P[target].AGS_Gradients2_Density[k1][k2];} else {local_AGS_Gradients2_Density[k1][k2]=GravDataGet[target].AGS_Gradients2_Density[k1][k2];}}}}
+#endif
 #endif
     
 #if defined(DM_SIDM) || defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
@@ -1925,69 +1922,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     h = All.ForceSoftening[P[no].Type];
 #endif
                 
-                
-                
+
 #ifdef DM_SIDM
-                /* here is where we call the core of the SIDM calculation for DM particle-particle interactions */
-                /* check if target particle is an SIDM candidate */
-                if((1 << ptype) & (DM_SIDM))
-                {
-                    /* ok, now check if neighbor particle is also SIDM-active */
-                    if((1 << P[no].Type) & (DM_SIDM))
-                    {
-                        /* ok, now check against self-interactions */
-                        if(targetID != P[no].ID)
-                        {
-                            sidm_tstart = my_second();
-                            r = sqrt(r2);
-#if defined(ADAPTIVE_GRAVSOFT_FORALL)
-                            h_si = DMAX(targeth_si, All.SIDMSmoothingFactor * DMAX(PPP[no].AGS_Hsml,All.ForceSoftening[P[no].Type]));
-#else
-                            h_si = DMAX(targeth_si, All.SIDMSmoothingFactor * All.ForceSoftening[P[no].Type]);
+#include "../sidm/sidm_core_flux_computation.h"
 #endif
-                            if(r < 2.0*h_si)
-                            {
-                                prob = prob_of_interaction(P[no].Mass, r, h_si, targetVel, P[no].Vel, targetdt_step);
-                                if(prob > max_prob) max_prob = prob;
-                                    
-                                if(prob > 0.2)
-                                {
-                                    if(targetdt_step_sidm == 0 ||
-                                       prob_of_interaction(P[no].Mass, r, h_si, targetVel, P[no].Vel, targetdt_step_sidm) > 0.2)
-                                    {
-                                        targetdt_step_sidm = targetdt_step;
-                                        prob_tmp = prob;
-                                        while(prob_tmp > 0.2)
-                                        {
-                                            targetdt_step_sidm /= 2;
-                                            prob_tmp = prob_of_interaction(P[no].Mass, r, h_si, targetVel, P[no].Vel, targetdt_step_sidm);
-                                        }
-                                    }
-                                } // if(prob > 0.2)
-                                    
-                                if (gsl_rng_uniform(random_generator) < prob)
-                                {
-                                    if(check_interaction_table(targetID, P[no].ID) == 0)
-                                    {
-                                        calculate_interact_kick(targetVel, P[no].Vel, kick_target, kick_no);
-                                        kick_x += kick_target[0];
-                                        kick_y += kick_target[1];
-                                        kick_z += kick_target[2];
-                                        for (i = 0; i < 3 ; i++)
-                                            P[no].Vel[i] += kick_no[i];
-                                        si_count++;
-                                        P[no].NInteractions++;
-                                        update_interaction_table(targetID, P[no].ID);
-                                    }  // if(check_interaction_table(targetID, P[no].ID) == 0)
-                                } // if(prob for kick satisfied) 
-                            } // if(r < 2.0*h_si)
-                            sidm_tend = my_second();
-                            sidm_tscatter += timediff(sidm_tstart, sidm_tend);
-                        } // if(targetID != P[no].ID)
-                    } // if((1 << P[no].Type) & (DM_SIDM))
-                } // if((1 << ptype) & (DM_SIDM))
-                
-#endif // DM_SIDM
                 } // closes (if((r2 > 0) && (mass > 0))) check
                 
                 if(TakeLevel >= 0) {P[no].GravCost[TakeLevel] += 1.0;}
@@ -2184,26 +2122,24 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #endif // PMGRID //
                 
-#ifdef DM_SIDM
-                sidm_tstart = my_second();
-                dx_nc = nop->center[0] - pos_x;
-                dy_nc = nop->center[1] - pos_y;
-                dz_nc = nop->center[2] - pos_z;
-                dist_to_center2 = dx_nc*dx_nc +  dy_nc*dy_nc + dz_nc*dz_nc;
-                dist_to_open = 2.0*targeth_si + nop->len*1.73205/2.0;
-                /* check if any portion the cell lies within the interaction range */
-                if(dist_to_center2  < dist_to_open*dist_to_open)
+                
+#ifdef NEIGHBORS_MUST_BE_COMPUTED_EXPLICITLY_IN_FORCETREE
                 {
-                    /* open cell */
-                    no = nop->u.d.nextnode;
-                    sidm_tend = my_second();
-                    sidm_tcell += timediff(sidm_tstart, sidm_tend);
-                    continue;
-                }
-                else
-                {
-                    sidm_tend = my_second();
-                    sidm_tcell += timediff(sidm_tstart, sidm_tend);
+                    double dx_nc = nop->center[0] - pos_x;
+                    double dy_nc = nop->center[1] - pos_y;
+                    double dz_nc = nop->center[2] - pos_z;
+#ifdef BOX_PERIODIC
+                    NEAREST_XYZ(dx_nc,dy_nc,dz_nc,-1); /* find the closest image in the given box size  */
+#endif
+                    double dist_to_center2 = dx_nc*dx_nc +  dy_nc*dy_nc + dz_nc*dz_nc;
+                    /* check if any portion the cell lies within the interaction range */
+                    double dist_to_open = 2.0*targeth_si + nop->len*1.73205/2.0;
+                    if(dist_to_center2  < dist_to_open*dist_to_open)
+                    {
+                        /* open cell */
+                        no = nop->u.d.nextnode;
+                        continue;
+                    }
                 }
 #endif
                 
@@ -2380,7 +2316,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         if((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG))
                         {
 #ifdef CBE_INTEGRATOR
-#include "cbe_integrator_flux_computation.h"
+#include "../sidm/cbe_integrator_flux_computation.h"
 #endif
 #ifdef DM_FUZZY
 #include "../sidm/dm_fuzzy_flux_computation.h"
@@ -2620,7 +2556,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         }
     }
     CPU_Step[CPU_SIDMSCATTER] += sidm_tscatter;
-    CPU_Step[CPU_SIDMCELLOPEN] += sidm_tcell;
 #endif
     
     
@@ -2647,7 +2582,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
 #endif
 #ifdef DM_SIDM
-        P[target].Vel[0] += kick_x; P[target].Vel[1] += kick_y; P[target].Vel[2] += kick_z;
+        P[target].Vel[0] += sidm_kick_x; P[target].Vel[1] += sidm_kick_y; P[target].Vel[2] += sidm_kick_z;
         P[target].dt_step_sidm = targetdt_step_sidm; P[target].NInteractions += si_count;
 #endif
 #ifdef CBE_INTEGRATOR
@@ -2682,7 +2617,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GravDataResult[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
 #endif
 #ifdef DM_SIDM
-        GravDataResult[target].Vel[0] = kick_x; GravDataResult[target].Vel[1] = kick_y; GravDataResult[target].Vel[2] = kick_z;
+        GravDataResult[target].Vel[0] = sidm_kick_x; GravDataResult[target].Vel[1] = sidm_kick_y; GravDataResult[target].Vel[2] = sidm_kick_z;
         GravDataResult[target].dt_step_sidm = targetdt_step_sidm; GravDataResult[target].NInteractions = si_count;
 #endif
 #ifdef CBE_INTEGRATOR

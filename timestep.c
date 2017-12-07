@@ -445,6 +445,21 @@ integertime get_timestep(int p,		/*!< particle index */
     }
 #endif
 
+
+#ifdef DM_FUZZY
+    if((P[p].Type > 0) && (P[p].AGS_Density > 0))
+    {
+        /* fuzzy DM admits longitudinal waves with group velocity =(hbar/m_dm)*k, so need a courant criterion, but because of scaling with k (like diffusion), timestep is quadratic in resolution */
+        double vgroup_over_k_fuzzy = 591569.000 / ((double)All.FuzzyDM_Mass_in_eV * (double)All.UnitVelocity_in_cm_per_s * (double)All.UnitLength_in_cm/(double)All.HubbleParam); // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
+        double L_particle_ags_x = Get_Particle_Size_AGS(p);
+        double L_gradrho_ags_inv = sqrt(P[p].AGS_Gradients_Density[0]*P[p].AGS_Gradients_Density[0]+P[p].AGS_Gradients_Density[1]*P[p].AGS_Gradients_Density[1]+P[p].AGS_Gradients_Density[2]*P[p].AGS_Gradients_Density[2] + MIN_REAL_NUMBER) / (P[p].AGS_Density + MIN_REAL_NUMBER);
+        double L_eff_ags_gradrho = DMAX(L_particle_ags_x , 1./(L_gradrho_ags_inv + 1./L_particle_ags_x)) * All.cf_atime;
+        double dt_cour_ags_fuzzy = All.CourantFac * (L_eff_ags_gradrho*L_eff_ags_gradrho) / vgroup_over_k_fuzzy;
+        if(dt_cour_ags_fuzzy < dt) {dt = dt_cour_ags_fuzzy;}
+    }
+#endif
+
+
 #ifdef GRAIN_FLUID
     if(P[p].Type > 0)
     {

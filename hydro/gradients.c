@@ -440,7 +440,6 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
 
 
 
-void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol);
 
 void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol)
 {
@@ -457,7 +456,6 @@ void local_slopelimiter(double *grad, double valmax, double valmin, double alim,
         {
             double abs_max = DMAX(fabs_max,fabs_min);
             cfac *= DMIN(abs_min + shoot_tol*abs_max, abs_max);
-            //cfac *= DMAX(DMIN(shoot_tol*abs_max,2.0*abs_min) , abs_min);
         } else {
             cfac *= abs_min;
         }

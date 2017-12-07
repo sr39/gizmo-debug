@@ -1590,7 +1590,7 @@ void read_parameter_file(char *fname)
 
 #ifdef DM_FUZZY
         strcpy(tag[nt], "FuzzyDM_Mass_in_eV");
-        addr[nt] = &All.AGS_DesNumNgb;
+        addr[nt] = &All.FuzzyDM_Mass_in_eV;
         id[nt++] = REAL;
 #endif
         

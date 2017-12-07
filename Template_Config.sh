@@ -535,4 +535,10 @@
 ####################################################################################################-
 
 
+####################################################################################################-
+##--Fuzzy DM implementation (here for testing, being written by PFH, not ready for actual use yet!)
+####################################################################################################-
+#DM_FUZZY                       #- DM particles (Type=1) are described by Bose-Einstein Condensate: within gravity kernel (adaptive), solves quantum pressure tensor for non-linear terms arising from Schroedinger equation for a given particle mass. IN TESTING PLEASE DO NOT USE!!!
+#DM_FUZZY_BETTERGRADIENTS       #- enable with 'DM_FUZZY' for gradients-of-gradients second-order calculation of gradients for more accurate QPT forces.
+####################################################################################################-
 
