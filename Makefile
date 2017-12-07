@@ -980,7 +980,7 @@ OBJS    += galaxy_sf/hII_heating.o
 endif
 
 ifeq (CBE_INTEGRATOR,$(findstring CBE_INTEGRATOR,$(CONFIGVARS)))
-OBJS    += gravity/cbe_integrator.o
+OBJS    += sidm/cbe_integrator.o
 endif
 
 ifeq (DM_FUZZY,$(findstring DM_FUZZY,$(CONFIGVARS)))
@@ -1072,8 +1072,7 @@ INCL	+= subfind/subfind.h
 endif
 
 ifeq (DM_SIDM,$(findstring DM_SIDM,$(CONFIGVARS)))
-OBJS    +=  sidm/sidm_core.o sidm/sidm_allvars.o
-INCL    +=  sidm/sidm_proto.h
+OBJS    +=  sidm/sidm_core.o 
 endif
 
 ifeq (NUCLEAR_NETWORK,$(findstring NUCLEAR_NETWORK,$(CONFIGVARS)))

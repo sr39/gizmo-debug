@@ -377,3 +377,9 @@ int maxThreads = 1;
 #endif
 
 
+#ifdef DM_SIDM
+MyDouble GeoFactorTable[GEOFACTOR_TABLE_LENGTH];
+MyIDType** InteractionTable;
+#endif
+
+

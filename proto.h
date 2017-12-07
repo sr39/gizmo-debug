@@ -798,13 +798,24 @@ void hydro_gradient_calc(void);
 int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
 void *GasGrad_evaluate_primary(void *p, int gradient_iteration);
 void *GasGrad_evaluate_secondary(void *p, int gradient_iteration);
+void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol);
 
 #ifdef PARTICLE_EXCISION
 void apply_excision();
 #endif
 
 #ifdef DM_SIDM
-#include "./sidm/sidm_proto.h"
+double prob_of_interaction(double mass, double r, double h_si,  double Vtarget[3], double Vno[3], int dt_step);
+double g_geo(double r);
+void calculate_interact_kick(double Vtarget[3], double Vno[3], double kick_target[3], double kick_no[3]);
+void init_geofactor_table(void);
+double geofactor_integ(double x, void * params);
+double geofactor_angle_integ(double u, void * params);
+void update_interaction_table(MyIDType id1, MyIDType id2);
+int  check_interaction_table(MyIDType id1, MyIDType id2);
+void AllocateInteractionTable(int x, int y);
+void init_self_interactions();
+void log_self_interactions();
 #endif
 
 
@@ -821,10 +832,24 @@ double do_cbe_nvt_inversion_for_faces(int i);
 
 #ifdef DM_FUZZY
 void DMGrad_gradient_calc(void);
-int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *DMGrad_evaluate_primary(void *p);
-void *DMGrad_evaluate_secondary(void *p);
+int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
+void *DMGrad_evaluate_primary(void *p, int gradient_iteration);
+void *DMGrad_evaluate_secondary(void *p, int gradient_iteration);
 double get_particle_volume_ags(int j);
+#ifdef DM_FUZZY_BETTERGRADIENTS
+void do_dm_fuzzy_flux_computation(double HLLwt, double dp[3], double dv[3],
+                                  double GradRho_L[3], double GradRho_R[3],
+                                  double GradRho2_L[3][3], double GradRho2_R[3][3],
+                                  double rho_L, double rho_R,
+                                  double v_L, double v_R,
+                                  double Area[3], double fluxes[3]);
+#else
+void do_dm_fuzzy_flux_computation(double HLLwt, double dp[3], double dv[3],
+                                  double GradRho_L[3], double GradRho_R[3],
+                                  double rho_L, double rho_R,
+                                  double v_L, double v_R,
+                                  double Area[3], double fluxes[3]);
+#endif
 #endif
 
 

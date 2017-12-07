@@ -109,6 +109,12 @@ void compute_hydro_densities_and_forces(void)
          and the local gradient calculation (GradRho) to
          properly self-shield the particles that had this calculated */
 #endif
+#ifdef DM_FUZZY
+        DMGrad_gradient_calc();
+#ifdef DM_FUZZY_BETTERGRADIENTS
+        DMGrad_gradient_calc();
+#endif
+#endif
 #ifndef IO_REDUCED_MODE
         if(ThisTask == 0)
         {
@@ -136,6 +142,12 @@ void compute_hydro_densities_and_forces(void)
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
         ags_density(); // if there are no gas particles but ags-all is active, still need to enter this loop //
         force_update_hmax();    /* update kernel lengths in tree */
+#ifdef DM_FUZZY
+        DMGrad_gradient_calc();
+#ifdef DM_FUZZY_BETTERGRADIENTS
+        DMGrad_gradient_calc();
+#endif
+#endif
 #endif
     }
 }

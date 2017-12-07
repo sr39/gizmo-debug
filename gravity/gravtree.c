@@ -441,6 +441,9 @@ void gravity_tree(void)
 #endif
 #ifdef DM_FUZZY
                     for(k=0;k<3;k++) {GravDataIn[j].AGS_Gradients_Density[k] = P[place].AGS_Gradients_Density[k];}
+#ifdef DM_FUZZY_BETTERGRADIENTS
+                    {int k2; for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {GravDataIn[j].AGS_Gradients2_Density[k][k2] = P[place].AGS_Gradients2_Density[k][k2];}}}
+#endif
 #endif
 #ifdef CBE_INTEGRATOR
                     for(k=0;k<CBE_INTEGRATOR_NBASIS;k++) {for(k2=0;k2<10;k2++) {GravDataIn[j].CBE_basis_moments[k][k2] = P[place].CBE_basis_moments[k][k2];}}
@@ -589,14 +592,13 @@ void gravity_tree(void)
                     if(Ewald_iter==0)
                     if( (All.ErrTolTheta == 0) || (All.TypeOfOpeningCriterion == 0) ) //else gravity_tree() will be called again for this time-step
                     {
-                        for(k = 0; k < 3; k++)
-                            P[place].Vel[k] += GravDataOut[j].Vel[k];
+                        for(k = 0; k < 3; k++) {P[place].Vel[k] += GravDataOut[j].Vel[k];}
                         P[place].dt_step_sidm = GravDataOut[j].dt_step_sidm;
                         P[place].NInteractions += GravDataOut[j].NInteractions;
                     }
 #endif
 #ifdef CBE_INTEGRATOR
-                    if(Ewald_iter==0) {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {P[place].CBE_basis_moments_dt[k1][k2] += GravDataOut[j].CBE_basis_moments_dt[k1][k2];}}}
+                    if(Ewald_iter==0) if((All.ErrTolTheta == 0) || (All.TypeOfOpeningCriterion == 0)) {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {P[place].CBE_basis_moments_dt[k1][k2] += GravDataOut[j].CBE_basis_moments_dt[k1][k2];}}}
 #endif
 
 #ifdef BH_CALC_DISTANCES

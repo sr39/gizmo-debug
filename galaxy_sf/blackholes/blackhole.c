@@ -427,7 +427,7 @@ void set_blackhole_mdot(int i, int n, double dt)
             /* basic units (DAA: use alpha=5, i.e. sort of midpoint of plausible range of values alpha=[1,10] from Hopkins and Quataert 2011) */
             fac = (5.0*(SOLAR_MASS/All.UnitMass_in_g)/(SEC_PER_YEAR/All.UnitTime_in_s));
             
-            mdot = All.BlackHoleAccretionFactor * fac * mdisk_for_bhar_units *
+            mdot = All.BlackHoleAccretionFactor * fac * (mdisk_for_bhar_units/f_disk_for_bhar) *
                    pow(f_disk_for_bhar,5./2.) * pow(bh_mass_units,1./6.) *
                    pow(r0_for_bhar,-3./2.) / (1 + f0_for_bhar/fgas_for_bhar);
             

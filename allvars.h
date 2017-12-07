@@ -1015,8 +1015,7 @@ typedef MyDouble MyBigFloat;
 #define CPU_AGSDENSCOMM    38
 #define CPU_AGSDENSMISC    39
 #define CPU_SIDMSCATTER    40
-#define CPU_SIDMCELLOPEN   41
-#define CPU_PARTS          42  /* this gives the number of parts above (must be last) */
+#define CPU_PARTS          41  /* this gives the number of parts above (must be last) */
 
 #define CPU_STRING_LEN 120
 
@@ -2138,6 +2137,9 @@ extern ALIGN(32) struct particle_data
 #ifdef DM_FUZZY
     MyFloat AGS_Density;                /*!< density calculated corresponding to AGS routine (over interacting DM neighbors) */
     MyFloat AGS_Gradients_Density[3];   /*!< density gradient calculated corresponding to AGS routine (over interacting DM neighbors) */
+#ifdef DM_FUZZY_BETTERGRADIENTS
+    MyFloat AGS_Gradients2_Density[3][3];   /*!< density gradient calculated corresponding to AGS routine (over interacting DM neighbors) */
+#endif
 #endif
 #if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
     MyFloat NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */
@@ -2528,6 +2530,9 @@ extern struct gravdata_in
 #endif
 #if defined(DM_FUZZY)
     double AGS_Gradients_Density[3];
+#ifdef DM_FUZZY_BETTERGRADIENTS
+    double AGS_Gradients2_Density[3][3];   /*!< density gradient calculated corresponding to AGS routine (over interacting DM neighbors) */
+#endif
 #endif
 #if defined(CBE_INTEGRATOR)
     double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][10];
@@ -3003,7 +3008,12 @@ extern int FB_Seed;
 
 
 #ifdef DM_SIDM
-#include "./sidm/sidm_allvars.h"
+#define GEOFACTOR_TABLE_LENGTH 1000    /*!< length of the table used for the geometric factor spline */
+#define INTERACTION_TABLE_LENGTH 5000  /*!< This should be about the maximum number of interactions expected at each timestep */
+#define PARTICLE_MAX_INTERACTIONS 1000 /*!< Maximum number of interactions a particle can have at each time step */
+
+extern MyDouble GeoFactorTable[GEOFACTOR_TABLE_LENGTH];
+extern MyIDType** InteractionTable;
 #endif
 
 #endif  /* ALLVARS_H  - please do not put anything below this line */
