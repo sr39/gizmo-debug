@@ -135,7 +135,7 @@ void do_cbe_drift_kick(int i, double dt)
             double dq = f*P[i].CBE_basis_moments[jmax][k];
             if(k>0 && k<4) {dq *= 1. + 0.001*(get_random_number(ThisTask+i+32*jmax+12427*k)-0.5);}
             P[i].CBE_basis_moments[jmax][k] -= dq;
-            P[i].CBE_basis_moments[jmin][k] += dq;
+            P[i].CBE_basis_moments[jmin][k] += dq; // since we're just splitting mass, this is ok, since these are all mass-weighted quantities
         }
     }
     
@@ -220,6 +220,10 @@ void do_cbe_flux_computation(double *moments, double vface_dot_A, double *Area, 
     S_dot_A[2] = (S[4]*Area[0] + S[5]*Area[1] + S[2]*Area[2]) * moments[0]; // (S_alpha . A_face)_z * mass
     fluxes[0] = (v_dot_A - vface_dot_A) * moments[0]; // calculate and assign mass flux
     int k; for(k=1;k<10;k++) {fluxes[k] =  (m_inv * moments[k]) * fluxes[0];} // specific flux carried just by mass flux
+if(2==2)
+{
+S_dot_A[0]=S_dot_A[1]=S_dot_A[2]=0;
+
     fluxes[1] += S_dot_A[0]; // add momentum flux from stress tensor - x
     fluxes[2] += S_dot_A[1]; // add momentum flux from stress tensor - y
     fluxes[3] += S_dot_A[2]; // add momentum flux from stress tensor - z
@@ -229,9 +233,9 @@ void do_cbe_flux_computation(double *moments, double vface_dot_A, double *Area, 
     fluxes[7] += v[0]*S_dot_A[1] + v[1]*S_dot_A[0] + fluxes[0]*v[0]*v[1]; // add stress flux from stress tensor -- xy
     fluxes[8] += v[0]*S_dot_A[2] + v[2]*S_dot_A[0] + fluxes[0]*v[0]*v[2]; // add stress flux from stress tensor -- xz
     fluxes[9] += v[1]*S_dot_A[2] + v[2]*S_dot_A[1] + fluxes[0]*v[1]*v[2]; // add stress flux from stress tensor -- yz
+}
     return;
 }
-
 
 
 
@@ -270,12 +274,31 @@ void do_postgravity_cbe_calcs(int i)
         dS[0] = dmom[j][4] - m_inv * (dmom[j][1]*mom[j][1] + mom[j][1]*dmom[j][1]) + m_inv*m_inv * dmom[j][0] * mom[j][1]*mom[j][1]; // xx
         dS[1] = dmom[j][5] - m_inv * (dmom[j][2]*mom[j][2] + mom[j][2]*dmom[j][2]) + m_inv*m_inv * dmom[j][0] * mom[j][2]*mom[j][2]; // yy
         dS[2] = dmom[j][6] - m_inv * (dmom[j][3]*mom[j][3] + mom[j][3]*dmom[j][3]) + m_inv*m_inv * dmom[j][0] * mom[j][3]*mom[j][3]; // zz
-        dS[3] = dmom[j][7] - m_inv * (dmom[j][1]*mom[j][2] + mom[j][2]*dmom[j][1]) + m_inv*m_inv * dmom[j][0] * mom[j][1]*mom[j][2]; // xy
-        dS[4] = dmom[j][8] - m_inv * (dmom[j][1]*mom[j][3] + mom[j][3]*dmom[j][1]) + m_inv*m_inv * dmom[j][0] * mom[j][1]*mom[j][3]; // xz
-        dS[5] = dmom[j][9] - m_inv * (dmom[j][2]*mom[j][3] + mom[j][4]*dmom[j][2]) + m_inv*m_inv * dmom[j][0] * mom[j][2]*mom[j][3]; // yz
+        dS[3] = dmom[j][7] - m_inv * (dmom[j][1]*mom[j][2] + mom[j][1]*dmom[j][2]) + m_inv*m_inv * dmom[j][0] * mom[j][1]*mom[j][2]; // xy
+        dS[4] = dmom[j][8] - m_inv * (dmom[j][1]*mom[j][3] + mom[j][1]*dmom[j][3]) + m_inv*m_inv * dmom[j][0] * mom[j][1]*mom[j][3]; // xz
+        dS[5] = dmom[j][9] - m_inv * (dmom[j][2]*mom[j][3] + mom[j][2]*dmom[j][3]) + m_inv*m_inv * dmom[j][0] * mom[j][2]*mom[j][3]; // yz
         dmom[j][0] -= mom[j][0]*(m_inv * dmom_tot[0]); // re-ensure that this is zero to floating-point precision //
         for(k=1;k<4;k++) {dmom[j][k] -= mom[j][0]*dv0[k-1];} // shift the momentum flux, so now zero net 'residual' momentum flux //
+if(dmom[j][0]>0)
+{
+ for(k=0;k<3;k++) {dS[k]=DMAX(dS[k],0.);}
+}
+
+
         for(k=4;k<10;k++) {dmom[j][k] = dS[k-4];} // set the flux of the stress terms to the change in the dispersion alone //
+
+
+#ifdef CBE_DEBUG
+if(ThisTask==0)
+if((dmom[j][0] > 0) && ((dmom[j][4]<0)||(dmom[j][5]<0)||(dmom[j][6]<0)))
+{
+printf("FLX: i=%d m=%g dmom=%g %g/%g/%g %g/%g/%g %g/%g/%g \n",i,P[i].Mass,dmom[j][0],
+dmom[j][1],dmom[j][2],dmom[j][3],dmom[j][4],dmom[j][5],dmom[j][6],dmom[j][7],
+dmom[j][8],dmom[j][9]);
+fflush(stdout);
+}
+#endif
+
     } // for(j=0;j<CBE_INTEGRATOR_NBASIS;j++)
     return;
 }
