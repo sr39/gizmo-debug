@@ -1181,8 +1181,15 @@ void hydro_gradient_calc(void)
                 double du_conduction=0;
                 for(k=0;k<3;k++) {du_conduction += SphP[i].Gradients.InternalEnergy[k] * SphP[i].Gradients.InternalEnergy[k];}
                 double temp_scale_length = SphP[i].InternalEnergyPred / sqrt(du_conduction) * All.cf_atime;
+#ifdef MAGNETIC
+                // following Jono Squire's notes, the 'Whistler instability' limits the heat flux at high-beta; Komarov et al., arXiv:1711.11462 (2017) //
+                double beta_i=0; for(k=0;k<3;k++) {beta_i += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+                beta_i *= All.cf_afac1 / (All.cf_atime * SphP[i].Density * Particle_effective_soundspeed_i(i)*Particle_effective_soundspeed_i(i));
+                SphP[i].Kappa_Conduction /= (1 + (4.2 + 1./(3.*beta_i)) * electron_free_path / temp_scale_length); // should be in physical units //
+#else
                 SphP[i].Kappa_Conduction /= (1 + 4.2 * electron_free_path / temp_scale_length); // should be in physical units //
-
+#endif
+                
 #ifdef DIFFUSION_OPTIMIZERS
                 double cs = Particle_effective_soundspeed_i(i);
 #ifdef MAGNETIC
@@ -1212,9 +1219,20 @@ void hydro_gradient_calc(void)
                 double ion_free_path = All.ElectronFreePathFactor * SphP[i].InternalEnergyPred * SphP[i].InternalEnergyPred / (SphP[i].Density * All.cf_a3inv);
                 /* need an estimate of the internal energy gradient scale length, which we get by d(P/rho) = P/rho * (dP/P - drho/rho) */
                 double dv_magnitude=0, v_magnitude=0;
+#ifdef MAGNETIC
+                double bhat[3]={0},beta_i=0,bmag=0; for(k=0;k<3;k++) {bhat[k]=Get_Particle_BField(i,k); bmag+=bhat[k]*bhat[k];}
+                double double_dot_dv=0; if(bmag>0) {bmag = sqrt(bmag); for(k=0;k<3;k++) {bhat[k]/=bmag;}}
+                beta_i = bmag*bmag * All.cf_afac1 / (All.cf_atime * SphP[i].Density * Particle_effective_soundspeed_i(i)*Particle_effective_soundspeed_i(i));
+#endif
                 for(k=0;k<3;k++)
                 {
-                    for(k1=0;k1<3;k1++) {dv_magnitude += SphP[i].Gradients.Velocity[k][k1]*SphP[i].Gradients.Velocity[k][k1];}
+                    for(k1=0;k1<3;k1++)
+                    {
+                        dv_magnitude += SphP[i].Gradients.Velocity[k][k1]*SphP[i].Gradients.Velocity[k][k1];
+#ifdef MAGNETIC
+                        double_dot_dv += SphP[i].Gradients.Velocity[k][k1] * bhat[k]*bhat[k1] * All.cf_a2inv; // physical units
+#endif
+                    }
                     v_magnitude += SphP[i].VelPred[k]*SphP[i].VelPred[k];
                 }
                 double vel_scale_length = sqrt( v_magnitude / dv_magnitude ) * All.cf_atime;
@@ -1222,6 +1240,11 @@ void hydro_gradient_calc(void)
                 /* also limit to saturation magnitude ~ signal_speed / lambda_MFP^2 */
                 double cs = Particle_effective_soundspeed_i(i);
 #ifdef MAGNETIC
+                // following Jono Squire's notes, the mirror and firehose instabilities limit pressure anisotropies [which scale as the viscous term inside the gradient: nu_braginskii*(bhat.bhat:grad.v)] to >-2*P_magnetic and <1*P_magnetic
+                double P_effective_visc = SphP[i].Eta_ShearViscosity * double_dot_dv;
+                double P_magnetic = 0.5 * (bmag*All.cf_a2inv) * (bmag*All.cf_a2inv);
+                if(P_effective_visc < -2.*P_magnetic) {SphP[i].Eta_ShearViscosity = 2.*P_magnetic / fabs(double_dot_dv);}
+                if(P_effective_visc > P_magnetic) {SphP[i].Eta_ShearViscosity = P_magnetic / fabs(double_dot_dv);}
                 double vA_2 = 0.0; for(k=0;k<3;k++) {vA_2 += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
                 vA_2 *= All.cf_afac1 / (All.cf_atime * SphP[i].Density);
                 cs = DMIN(1.e4*cs , sqrt(cs*cs+vA_2));

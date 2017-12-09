@@ -211,7 +211,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     /* adiabatic term from Hubble expansion (needed for cosmological integrations */
     if(All.ComovingIntegrationOn) {d_div += (-3.*GAMMA_COSMICRAY_MINUS1 * All.cf_hubble_a) * dt_entr;}
     
-#ifdef COSMIC_RAYS_M1
+#if 0 //def COSMIC_RAYS_M1 // per recent discussions, this is probably not correct -- checking (???)
     // need to get pressure gradient scale-lengths to slope-limit pressure gradient to resovable values //
     double Pmag=0; for(k=0;k<3;k++) {Pmag += SphP[i].Gradients.CosmicRayPressure[k]*SphP[i].Gradients.CosmicRayPressure[k];} // magnitude of pressure gradient
     if((Pmag<=0)||(isnan(Pmag))) {Pmag=0;} else {Pmag=sqrt(Pmag);} // check for unphysical values
