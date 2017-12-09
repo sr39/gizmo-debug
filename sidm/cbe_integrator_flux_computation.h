@@ -38,6 +38,7 @@
 #endif
         // calculate position between particles (psi) term for interpolation
         psi_i = 1. / (1. + h_p_inv/h_inv); // fraction of weight to i
+        psi_i = 0.5;
         psi_j = 1-psi_i; // fraction of weight to j
         // calculate densities. rho never appears without a weight factor prefacing it, so just multiply here to get them; also convert to physical units //
         rho_i = psi_i * pmass/V_i * All.cf_a3inv; rho_j = psi_j * mass/V_j * All.cf_a3inv;
@@ -50,10 +51,40 @@
             Face_Area_Vec[k] = wk_i*V_i * (local_NV_T[k][0]*dp[0] + local_NV_T[k][1]*dp[1] + local_NV_T[k][2]*dp[2])
                              + wk_j*V_j * (P[j].NV_T[k][0]*dp[0] + P[j].NV_T[k][1]*dp[1] + P[j].NV_T[k][2]*dp[2]);
             Face_Area_Vec[k] *= All.cf_atime*All.cf_atime; /* Face_Area_Norm has units of area, need to convert to physical */
-            vface[k] = (rho_i*targetVel[k] + rho_j*P[j].Vel[k]) / (All.cf_atime * (rho_i+rho_j)); // normalized face velocity needed for zero mass flux (in physical units)
+//            vface[k] = (rho_i*targetVel[k] + rho_j*P[j].Vel[k]) / (All.cf_atime * (rho_i+rho_j)); // normalized face velocity needed for zero mass flux (in physical units)
         } // for(k=0;k<3;k++)
-        
+        double vf_0[3], vf0_dot_dp=0;
+        for(k=0;k<3;k++) 
+        {
+            vf_0[k] = 0.5*(targetVel[k] + P[j].Vel[k]) / All.cf_atime;
+            vf0_dot_dp += vf_0[k]*dp[k];
+            
+        }
+        double theta_i[CBE_INTEGRATOR_NBASIS]={0}, theta_j[CBE_INTEGRATOR_NBASIS]={0}, v_wt_sum = 0;
+        for(m=0;m<CBE_INTEGRATOR_NBASIS;m++)
+        {
+            double vi_dot_dp=0, vj_dot_dp=0;
+            for(k=0;k<3;k++)
+            {
+                vi_dot_dp += local_CBE_basis_moments[m][k+1]*dp[k];
+                vj_dot_dp += P[j].CBE_basis_moments[m][k+1]*dp[k];
+            }
+            vi_dot_dp -= vf0_dot_dp;
+            vj_dot_dp -= vf0_dot_dp;
+            if(vi_dot_dp > 0) {theta_i[m]=1;} // receding from interaction face
+            if(vj_dot_dp < 0) {theta_j[m]=1;} // receding from interaction face
+            v_wt_sum += theta_i[m] * rho_i * local_CBE_basis_moments[m][0] / pmass 
+                      + theta_j[m] * rho_j * P[j].CBE_basis_moments[m][0] / mass; // summed weights for interaction
+            for(k=0;k<3;k++)
+            {
+            vface[k] += theta_i[m] * rho_i * local_CBE_basis_moments[m][k+1] / pmass 
+                      + theta_j[m] * rho_j * P[j].CBE_basis_moments[m][k+1] / mass; // summed velocities
+            }
+        }
         // OK, now we've done the easy bit -- we're ready for the actual computations //
+        if(v_wt_sum > 0)
+        {
+        for(k=0;k<3;k++) {vface[k] /= v_wt_sum;} // ensures net mass flux = 0, after accounting for theta_ij weights
         
         // first loop over pairs to determine closest a-to-b, closest b-to-a //
         int matching_basis_j_for_basis_in_i[CBE_INTEGRATOR_NBASIS], matching_basis_i_for_basis_in_j[CBE_INTEGRATOR_NBASIS], m_j;
@@ -98,14 +129,23 @@
         {
             int j_m = matching_basis_j_for_basis_in_i[m], i_m = matching_basis_i_for_basis_in_j[m]; // id matched bases for fluxes below //
             // fluxes from "i" side
+            if(theta_i[m] == 1)
+            {
             do_cbe_flux_computation(local_CBE_basis_moments[m] , vface_dot_A, Face_Area_Vec, flux); // moments are physical, these are as well //
+if(ThisTask==0)
+{
+
+}
             for(k=0;k<10;k++)
             {
                 flux[k] *= wt_prefac_i; // normalize appropriately
                 out_CBE_basis_moments_dt[m][k] += flux[k]; // flux out of "i"
                 if(TimeBinActive[P[j].TimeBin]) {P[j].CBE_basis_moments_dt[j_m][k] -= flux[k];} // flux into "j" (if j is active)
             }
+            }
             // fluxes from "j" side
+            if(theta_j[m] == 1)
+            {
             do_cbe_flux_computation(P[j].CBE_basis_moments[m] , vface_dot_A, Face_Area_Vec, flux); // moments are physical, these are as well //
             for(k=0;k<10;k++)
             {
@@ -113,7 +153,10 @@
                 out_CBE_basis_moments_dt[i_m][k] += flux[k]; // flux out of "i"
                 if(TimeBinActive[P[j].TimeBin]) {P[j].CBE_basis_moments_dt[m][k] -= flux[k];} // flux into "j" (if j is active)
             } // normalize appropriately
+            }
         } // for(m=0;m<CBE_INTEGRATOR_NBASIS;m++)
+        
+        } // v_wt_sum > 0
     } // if(do_cbe_calculation == 1)
 } // master bracket (for variable protection
 #endif
