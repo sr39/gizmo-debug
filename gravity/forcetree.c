@@ -1723,12 +1723,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 
     
 #ifdef CBE_INTEGRATOR
-    double local_CBE_basis_moments[CBE_INTEGRATOR_NBASIS][10], out_CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10]={{0}};
+    double local_CBE_basis_moments[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS], out_CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS]={{0}};
     if(mode==0)
     {
-        int k1, k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {local_CBE_basis_moments[k1][k2] = P[target].CBE_basis_moments[k1][k2];}}
+        int k1, k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {local_CBE_basis_moments[k1][k2] = P[target].CBE_basis_moments[k1][k2];}}
     } else {
-        int k1, k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {local_CBE_basis_moments[k1][k2] = GravDataGet[target].CBE_basis_moments[k1][k2];}}
+        int k1, k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {local_CBE_basis_moments[k1][k2] = GravDataGet[target].CBE_basis_moments[k1][k2];}}
     }
 #endif
 
@@ -2586,7 +2586,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         P[target].dt_step_sidm = targetdt_step_sidm; P[target].NInteractions += si_count;
 #endif
 #ifdef CBE_INTEGRATOR
-        {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {P[target].CBE_basis_moments_dt[k1][k2] += out_CBE_basis_moments_dt[k1][k2];}}}
+        {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {P[target].CBE_basis_moments_dt[k1][k2] += out_CBE_basis_moments_dt[k1][k2];}}}
 #endif
 #ifdef BH_CALC_DISTANCES
         P[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );
@@ -2621,7 +2621,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         GravDataResult[target].dt_step_sidm = targetdt_step_sidm; GravDataResult[target].NInteractions = si_count;
 #endif
 #ifdef CBE_INTEGRATOR
-        {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {GravDataResult[target].CBE_basis_moments_dt[k1][k2] = out_CBE_basis_moments_dt[k1][k2];}}}
+        {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {GravDataResult[target].CBE_basis_moments_dt[k1][k2] = out_CBE_basis_moments_dt[k1][k2];}}}
 #endif
 #ifdef BH_CALC_DISTANCES
         GravDataResult[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );

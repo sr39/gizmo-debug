@@ -124,7 +124,7 @@
         double wt_prefac_i = -rho_i / pmass; // normalized the fluxes, no need to re-compute below
         double wt_prefac_j = -rho_j / mass;
         double vface_dot_A = vface[0]*Face_Area_Vec[0] + vface[1]*Face_Area_Vec[1] + vface[2]*Face_Area_Vec[2]; // v_face . A_face
-        double flux[10]={0};
+        double flux[CBE_INTEGRATOR_NMOMENTS]={0};
         for(m=0;m<CBE_INTEGRATOR_NBASIS;m++)
         {
             int j_m = matching_basis_j_for_basis_in_i[m], i_m = matching_basis_i_for_basis_in_j[m]; // id matched bases for fluxes below //
@@ -136,7 +136,7 @@ if(ThisTask==0)
 {
 
 }
-            for(k=0;k<10;k++)
+            for(k=0;k<CBE_INTEGRATOR_NMOMENTS;k++)
             {
                 flux[k] *= wt_prefac_i; // normalize appropriately
                 out_CBE_basis_moments_dt[m][k] += flux[k]; // flux out of "i"
@@ -147,7 +147,7 @@ if(ThisTask==0)
             if(theta_j[m] == 1)
             {
             do_cbe_flux_computation(P[j].CBE_basis_moments[m] , vface_dot_A, Face_Area_Vec, flux); // moments are physical, these are as well //
-            for(k=0;k<10;k++)
+            for(k=0;k<CBE_INTEGRATOR_NMOMENTS;k++)
             {
                 flux[k] *= wt_prefac_j; // normalize appropriately
                 out_CBE_basis_moments_dt[i_m][k] += flux[k]; // flux out of "i"
