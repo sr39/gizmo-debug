@@ -288,6 +288,10 @@ struct hydrodata_in
 #endif
 #endif
     
+#ifdef GALSF_SUBGRID_WINDS
+    MyDouble DelayTime;
+#endif
+    
 #ifdef EOS_ELASTIC
     int CompositionType;
     MyFloat Elastic_Stress_Tensor[3][3];
@@ -504,6 +508,10 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
 #ifdef EOS_ELASTIC
     in->CompositionType = SphP[i].CompositionType;
     {int k_v; for(k=0;k<3;k++) {for(k_v=0;k_v<3;k_v++) {in->Elastic_Stress_Tensor[k][k_v] = SphP[i].Elastic_Stress_Tensor_Pred[k][k_v];}}}
+#endif
+    
+#ifdef GALSF_SUBGRID_WINDS
+    in->DelayTime = SphP[i].DelayTime;
 #endif
 
 }

@@ -184,7 +184,12 @@
 #ifndef ADAPTIVE_GRAVSOFT_FORALL
 #define ADAPTIVE_GRAVSOFT_FORALL 100000
 #endif
-#define CBE_INTEGRATOR_NBASIS 5
+#define CBE_INTEGRATOR_NBASIS CBE_INTEGRATOR
+#ifdef CBE_INTEGRATOR_SECONDMOMENT
+#define CBE_INTEGRATOR_NMOMENTS 10
+#else
+#define CBE_INTEGRATOR_NMOMENTS 4
+#endif
 #endif
 
 
@@ -2145,8 +2150,8 @@ extern ALIGN(32) struct particle_data
     MyFloat NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */
 #endif
 #ifdef CBE_INTEGRATOR
-    double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][10];         /* moments per basis function */
-    double CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10];      /* time-derivative of moments per basis function */
+    double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];         /* moments per basis function */
+    double CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];      /* time-derivative of moments per basis function */
 #endif
 }
  *P,				/*!< holds particle data on local processor */
@@ -2535,7 +2540,7 @@ extern struct gravdata_in
 #endif
 #endif
 #if defined(CBE_INTEGRATOR)
-    double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][10];
+    double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];
 #endif
 #ifdef DM_SIDM
     int dt_step_sidm;
@@ -2573,7 +2578,7 @@ extern struct gravdata_out
     long unsigned int NInteractions;
 #endif
 #ifdef CBE_INTEGRATOR
-    MyLongDouble CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10];
+    MyLongDouble CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];
 #endif
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;

@@ -106,7 +106,7 @@ void gravity_tree(void)
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         int k1,k2;
-        for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {P[i].CBE_basis_moments_dt[k1][k2] = 0;}}
+        for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {P[i].CBE_basis_moments_dt[k1][k2] = 0;}}
     }
 #endif
 
@@ -446,7 +446,7 @@ void gravity_tree(void)
 #endif
 #endif
 #ifdef CBE_INTEGRATOR
-                    for(k=0;k<CBE_INTEGRATOR_NBASIS;k++) {for(k2=0;k2<10;k2++) {GravDataIn[j].CBE_basis_moments[k][k2] = P[place].CBE_basis_moments[k][k2];}}
+                    for(k=0;k<CBE_INTEGRATOR_NBASIS;k++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {GravDataIn[j].CBE_basis_moments[k][k2] = P[place].CBE_basis_moments[k][k2];}}
 #endif
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
                     GravDataIn[j].Mass = P[place].Mass;
@@ -598,7 +598,7 @@ void gravity_tree(void)
                     }
 #endif
 #ifdef CBE_INTEGRATOR
-                    if(Ewald_iter==0) if((All.ErrTolTheta == 0) || (All.TypeOfOpeningCriterion == 0)) {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {P[place].CBE_basis_moments_dt[k1][k2] += GravDataOut[j].CBE_basis_moments_dt[k1][k2];}}}
+                    if(Ewald_iter==0) if((All.ErrTolTheta == 0) || (All.TypeOfOpeningCriterion == 0)) {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {P[place].CBE_basis_moments_dt[k1][k2] += GravDataOut[j].CBE_basis_moments_dt[k1][k2];}}}
 #endif
 
 #ifdef BH_CALC_DISTANCES
