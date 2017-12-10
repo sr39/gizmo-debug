@@ -372,7 +372,6 @@ double get_starformation_rate(int i)
 #elif (GALSF_SFR_VIRIAL_SF_CRITERION > 1)
     if(alpha_vir >= 1.0) {rateOfSF *= 0.0;}
 #endif
-#endif
 #if (GALSF_SFR_VIRIAL_SF_CRITERION<3)
     if((alpha_vir<1.0)||(SphP[i].Density*All.cf_a3inv>100.*All.PhysDensThresh)) {rateOfSF *= 1.0;} else {rateOfSF *= 0.0015;}
 #endif
@@ -380,6 +379,7 @@ double get_starformation_rate(int i)
     
     
     //  rateOfSF *= 1.0/(1.0 + alpha_vir); // continuous cutoff w alpha_vir instead of sharp (optional) //
+#endif
 #endif // GALSF_SFR_VIRIAL_SF_CRITERION
     
 #ifdef SINGLE_STAR_FORMATION
