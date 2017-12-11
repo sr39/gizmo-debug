@@ -268,7 +268,7 @@ double get_starformation_rate(int i)
     flag = 1;			/* default is normal cooling */
     if(SphP[i].Density*All.cf_a3inv >= All.PhysDensThresh) {flag = 0;}
 #if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
-    else {SphP[i].Boundness = 0.;}
+    else {SphP[i].AlphaVirial_SF_TimeSmoothed = 0.;}
 #endif
     if(All.ComovingIntegrationOn)
     if(SphP[i].Density < All.OverDensThresh)
@@ -321,17 +321,17 @@ double get_starformation_rate(int i)
 #endif
     int j,k;
     for(j=0;j<3;j++)
+    {
         for(k=0;k<3;k++)
         {
             double vt = SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
-            if(All.ComovingIntegrationOn)
-	      if(j==k)
-                    vt += All.cf_hubble_a; /* add hubble-flow correction */
+            if(All.ComovingIntegrationOn) {if(j==k) {vt += All.cf_hubble_a;}} /* add hubble-flow correction */
 #if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
-	    if(j==k) divv += vt;
-#endif  
+            if(j==k) {divv += vt;}
+#endif
             dv2abs += vt*vt;
         }
+    }
     /* add thermal support, although it is almost always irrelevant */
     double cs_eff = Particle_effective_soundspeed_i(i);
     double k_cs = cs_eff / (Get_Particle_Size(i)*All.cf_atime);
@@ -367,8 +367,8 @@ double get_starformation_rate(int i)
     }
 #endif
 #if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
-    SphP[i].Boundness += 8*(1./(1+alpha_vir) - SphP[i].Boundness) * dt/tsfr;
-    if (SphP[i].Boundness < 0.5 || divv>=0) rateOfSF *= 0.0;
+    SphP[i].AlphaVirial_SF_TimeSmoothed += 8.*(1./(1+alpha_vir) - SphP[i].AlphaVirial_SF_TimeSmoothed) * dt/tsfr;
+    if (SphP[i].AlphaVirial_SF_TimeSmoothed < 0.5 || divv >= 0) rateOfSF *= 0.0;
 #elif (GALSF_SFR_VIRIAL_SF_CRITERION > 1)
     if(alpha_vir >= 1.0) {rateOfSF *= 0.0;}
 #endif
