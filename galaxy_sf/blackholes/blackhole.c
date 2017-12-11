@@ -391,8 +391,10 @@ void set_blackhole_mdot(int i, int n, double dt)
         double j_tmp_for_bhar=0;
         // DAA: Jalt_in_Kernel is now the TOTAL angular momentum (need to subtract Jgas here)
         for(k=0;k<3;k++)
+        {
             j_tmp_for_bhar += (BlackholeTempInfo[i].Jalt_in_Kernel[k] - BlackholeTempInfo[i].Jgas_in_Kernel[k]) * 
                               (BlackholeTempInfo[i].Jalt_in_Kernel[k] - BlackholeTempInfo[i].Jgas_in_Kernel[k]);
+        }
         j_tmp_for_bhar=sqrt(j_tmp_for_bhar);
         /* jx,y,z, is independent of 'a_scale' b/c ~ m*r*v, vphys=v/a, rphys=r*a */
         fgas_for_bhar = BlackholeTempInfo[i].Mgas_in_Kernel / m_tmp_for_bhar;
