@@ -390,13 +390,10 @@ double get_starformation_rate(int i)
 /* compute the 'effective eos' cooling/heating, including thermal feedback sources, here */
 void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double tsfr, double x, double rateOfSF)
 {
-    double dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval;
-    double dtime = dt / All.cf_hubble_a; /*  the actual time-step */
-    double factorEVP = pow(SphP[i].Density * All.cf_a3inv / All.PhysDensThresh, -0.8) * All.FactorEVP;
-    double trelax = tsfr * (1 - x) / x / (All.FactorSN * (1 + factorEVP));
-    double egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold;
-    double egyeff = egyhot * (1 - x) + All.EgySpecCold * x;
-    double egycurrent = SphP[i].InternalEnergy, ne=1.0;
+    double dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval, dtime = dt / All.cf_hubble_a; /*  the actual time-step */
+    double factorEVP = pow(SphP[i].Density * All.cf_a3inv / All.PhysDensThresh, -0.8) * All.FactorEVP, trelax = tsfr * (1 - x) / x / (All.FactorSN * (1 + factorEVP));
+    double egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold, egyeff = egyhot * (1 - x) + All.EgySpecCold * x, egycurrent = SphP[i].InternalEnergy, ne;
+    ne=1.0;
 
 #if defined(BH_THERMALFEEDBACK)
     if((SphP[i].Injected_BH_Energy > 0) && (P[i].Mass>0))
