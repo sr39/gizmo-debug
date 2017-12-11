@@ -421,7 +421,7 @@ int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnode
                 
                 /* inject mass */
                 double dM_ejecta_in = wk * local.Msne;
-                if(P[j].Hsml<=0) {if(SphP[j].Density>0){SphP[j].Density*=(1+dM_ejecta_in/P[j].Mass);} else {SphP[j].Density=dM_ejecta_in*kernel.hinv3;}} else {SphP[j].Density+=kernel_zero*dM_ejecta_in*hinv3_j;}
+                if(P[j].Hsml<=0) {if(SphP[j].Density>0){SphP[j].Density*=(1+dM_ejecta_in/P[j].Mass);} else {SphP[j].Density=dM_ejecta_in*kernel.hinv3;}} else {SphP[j].Density+=kernel_zero*dM_ejecta_in/(P[j].Hsml*P[j].Hsml*P[j].Hsml);}
                 SphP[j].Density *= 1 + dM_ejecta_in/P[j].Mass; // inject mass at constant particle volume //
                 P[j].Mass += dM_ejecta_in;
                 out.M_coupled += dM_ejecta_in;
