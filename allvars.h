@@ -2313,6 +2313,9 @@ extern struct sph_particle_data
 #endif
 #ifdef GALSF
   MyFloat Sfr;                      /*!< particle star formation rate */
+#if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
+  MyFloat Boundness;                /*!< dimensionless number > 0.5 if self-gravitating for smoothed virial criterion */
+#endif
 #endif
 #ifdef GALSF_SUBGRID_WINDS
   MyFloat DelayTime;                /*!< remaining maximum decoupling time of wind particle */

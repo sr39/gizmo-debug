@@ -562,6 +562,9 @@ void init(void)
 #endif
 #ifdef GALSF
         SphP[i].Sfr = 0;
+#if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
+	SphP[i].Boundness = 0;
+#endif
 #endif
 #ifdef COSMIC_RAYS
         if(RestartFlag == 0) {SphP[i].CosmicRayEnergy = 0;}
