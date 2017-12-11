@@ -266,15 +266,19 @@ double get_starformation_rate(int i)
 #endif
 
     flag = 1;			/* default is normal cooling */
-    if(SphP[i].Density*All.cf_a3inv >= All.PhysDensThresh)
-    flag = 0;
+    if(SphP[i].Density*All.cf_a3inv >= All.PhysDensThresh) {flag = 0;}
+#if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
+    else {SphP[i].Boundness = 0.;}
+#endif
     if(All.ComovingIntegrationOn)
     if(SphP[i].Density < All.OverDensThresh)
     flag = 1;
     if((flag == 1)||(P[i].Mass<=0))
     return 0;
-    
-    
+#if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
+    double dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval;
+    double dtime = dt / All.cf_hubble_a; /*  the actual time-step */
+#endif
     tsfr = sqrt(All.PhysDensThresh / (SphP[i].Density * All.cf_a3inv)) * All.MaxSfrTimescale;
     if(tsfr<=0) return 0;
     
@@ -312,14 +316,20 @@ double get_starformation_rate(int i)
     
 #ifdef GALSF_SFR_VIRIAL_SF_CRITERION
     double dv2abs = 0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
+#if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
+    double divv = 0;
+#endif
     int j,k;
     for(j=0;j<3;j++)
         for(k=0;k<3;k++)
         {
             double vt = SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
             if(All.ComovingIntegrationOn)
-                if(j==k)
+	      if(j==k)
                     vt += All.cf_hubble_a; /* add hubble-flow correction */
+#if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
+	    if(j==k) divv += vt;
+#endif  
             dv2abs += vt*vt;
         }
     /* add thermal support, although it is almost always irrelevant */
@@ -356,15 +366,20 @@ double get_starformation_rate(int i)
         if(MJ_solar > MJ_crit) {alpha_vir = 100.;}
     }
 #endif
-#if (GALSF_SFR_VIRIAL_SF_CRITERION > 1)
+#if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
+    SphP[i].Boundness += 8*(1./(1+alpha_vir) - SphP[i].Boundness) * dt/tsfr;
+    if (SphP[i].Boundness < 0.5 || divv>=0) rateOfSF *= 0.0;
+#elif (GALSF_SFR_VIRIAL_SF_CRITERION > 1)
     if(alpha_vir >= 1.0) {rateOfSF *= 0.0;}
 #endif
-#endif
+#if (GALSF_SFR_VIRIAL_SF_CRITERION<3)
     if((alpha_vir<1.0)||(SphP[i].Density*All.cf_a3inv>100.*All.PhysDensThresh)) {rateOfSF *= 1.0;} else {rateOfSF *= 0.0015;}
+#endif
     // PFH: note the latter flag is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! //
     
-    //  if( divv>=0 ) rateOfSF=0; // restrict to convergent flows (optional) //
+    
     //  rateOfSF *= 1.0/(1.0 + alpha_vir); // continuous cutoff w alpha_vir instead of sharp (optional) //
+#endif
 #endif // GALSF_SFR_VIRIAL_SF_CRITERION
     
 #ifdef SINGLE_STAR_FORMATION
