@@ -1283,10 +1283,17 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double mom_boost_fac = 1;
                 if(feedback_type == 0)
                 {
+                    double psi0 = 1; // factor to use below for velocity-limiter
                     boost_max *= psi_cool; // appropriately re-weight boost to avoid energy conservation errors [cooling-limit]
                     boost_egycon *= psi_egycon; // appropriately re-weight boost to avoid energy conservation errors [energy-conserving-limit]
-                    if((wk_m_cooling < mj_preshock) || (boost_max < boost_egycon)) {mom_boost_fac = boost_max;} else {mom_boost_fac = boost_egycon;} // limit to cooling case if egy-conserving exceeds terminal boost, or coupled mass short of cooling mass
+                    if((wk_m_cooling < mj_preshock) || (boost_max < boost_egycon)) {mom_boost_fac=boost_max; psi0=DMAX(psi0,psi_cool);} else {mom_boost_fac=boost_egycon; psi0=DMAX(psi0,psi_egycon);} // limit to cooling case if egy-conserving exceeds terminal boost, or coupled mass short of cooling mass
                     if(mom_boost_fac < 1) {mom_boost_fac=1;} // impose lower limit of initial ejecta momentum
+                    // finally account for simple physical limiter: if particle moving away faster than cooling terminal velocity, can't reach that velocity //
+                    double vcool = DMIN(v_cooling/psi0 , v_ejecta_eff/mom_boost_fac); // effective velocity at stalling/cooling radius
+                    double dv_dp_phys = 0; for(k=0;k<3;k++) {dv_dp_phys += (1-massratio_ejecta) * (kernel.dp[k]/kernel.r) * ((local.Vel[k] - P[j].Vel[k])/All.cf_atime);} // recession velocity of particle from SNe
+                    double v_cooling_lim = DMAX( vcool , dv_dp_phys ); // cooling vel can't be smaller than actual vel (note: negative dvdp here automatically returns vcool, as desired)
+                    double boostfac_max = DMIN(1000. , v_ejecta_eff/v_cooling_lim); // boost factor cant exceed velocity limiter - if recession vel large, limits boost
+                    if(mom_boost_fac > boostfac_max) {mom_boost_fac = boostfac_max;} // apply limiter
                 } else {
                     mom_boost_fac = DMIN(boost_egycon , boost_max); // simply take minimum - nothing fancy for winds
                 }
