@@ -556,7 +556,11 @@ integertime get_timestep(int p,		/*!< particle index */
                     if(All.ComovingIntegrationOn) {cr_diffusion_opt = 1;}
                     double CRPressureGradScaleLength = Get_CosmicRayGradientLength(p);
                     double L_cr_weak = CRPressureGradScaleLength;
-                    double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + (1.-cr_diffusion_opt)/(L_particle*All.cf_atime)));
+#if defined(COSMIC_RAYS_M1)
+                    double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + 1./(L_particle*All.cf_atime)));
+#else
+                    double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + (1.-0.5*cr_diffusion_opt)/(L_particle*All.cf_atime)));
+#endif
                     double coeff_inv = 0.67 * L_cr_strong * dt_prefac_diffusion / (1.e-33 + fabs(SphP[p].CosmicRayDiffusionCoeff) * GAMMA_COSMICRAY_MINUS1);
                     double dt_conduction =  L_cr_strong * coeff_inv; /* true diffusion requires the stronger timestep criterion be applied */
                     explicit_timestep_on = 1;
@@ -572,7 +576,6 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef GALSF
                     /* for multi-physics problems, we will use a more aggressive timestep criterion
                      based on whether or not the cosmic ray physics are relevant for what we are modeling */
-                    //
                     if((SphP[p].CosmicRayEnergy==0)||(SphP[p].DtCosmicRayEnergy==0))
                     {
                         dt_conduction = 10. * dt;
@@ -587,7 +590,6 @@ integertime get_timestep(int p,		/*!< particle index */
                             if((dL_cr > thres_dL+1.) && (delta_cr < 0.1*thres_egy*SphP[p].CosmicRayEnergy)) {dt_conduction = dt_weak; explicit_timestep_on = 0;}
                         }
                     }
-                    //
 #endif
 #ifdef SUPER_TIMESTEP_DIFFUSION
                     if(explicit_timestep_on==1)
@@ -603,17 +605,13 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef COSMIC_RAYS_M1
                     if(cr_diffusion_opt==1)
                     {
-                        int k; double crv=0; for(k=0;k<3;k++) {crv+=SphP[p].CosmicRayFlux[k]*SphP[p].CosmicRayFlux[k];}
-                        if((crv > 0) && (SphP[p].CosmicRayEnergy > 0))
+                        if(SphP[p].CosmicRayEnergy > 0)
                         {
-                            crv = sqrt(crv) / SphP[p].CosmicRayEnergy;
-                            double cr_speed = DMIN( COSMIC_RAYS_M1 , crv );
-                            double dt_courant_CR = 2. * All.CourantFac * (L_particle*All.cf_atime) / cr_speed;
+                            double dt_courant_CR = 2. * All.CourantFac * (L_particle*All.cf_atime) / COSMIC_RAYS_M1;
                             if(dt_conduction < dt_courant_CR) {dt_conduction = dt_courant_CR;}
                         } else {dt_conduction=10.*dt;}
                     } else {
-                        double cr_speed = COSMIC_RAYS_M1;// * (C/All.UnitVelocity_in_cm_per_s);
-                        double dt_courant_CR = All.CourantFac * (L_particle*All.cf_atime) / cr_speed;
+                        double dt_courant_CR = All.CourantFac * (L_particle*All.cf_atime) / COSMIC_RAYS_M1;
                         if(dt_conduction < dt_courant_CR) {dt_conduction = dt_courant_CR;}
                     }
 #endif

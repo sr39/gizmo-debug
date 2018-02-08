@@ -120,7 +120,7 @@
         
         double c_light = COSMIC_RAYS_M1;// * (C/All.UnitVelocity_in_cm_per_s);
         double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + c_light; // physical
-        double cmag=0., cmag_flux[3]={0}, flux_norm=0, flux_i[3]={0}, flux_j[3]={0}, thold_hll;
+        double cmag=0., flux_norm=0, flux_i[3]={0}, flux_j[3]={0}, thold_hll;
         double kappa_ij = 0.5 * (kappa_i+kappa_j); // physical
         double V_i_phys = V_i / All.cf_a3inv;
         double V_j_phys = V_j / All.cf_a3inv;
@@ -132,7 +132,6 @@
             double flux_ij = 0.5*(flux_i[k] + flux_j[k]);
             flux_norm += flux_ij*flux_ij;
             cmag += Face_Area_Vec[k] * flux_ij; // remember, our 'flux' variable is a volume-integral; physical units here//
-            cmag_flux[k] = c_light*c_light * Face_Area_Vec[k] * 0.5*(scalar_i + scalar_j); // all physical units here
         }
         flux_norm = sqrt(flux_norm) + MIN_REAL_NUMBER;
         double cos_theta_face_flux = cmag / (Face_Area_Norm * flux_norm); // angle between flux and face vector normal
@@ -146,11 +145,9 @@
         /* q below is a limiter to try and make sure the diffusion speed given by the hll flux doesn't exceed the diffusion speed in the diffusion limit */
         double q = 0.5 * c_hll * (kernel.r * All.cf_atime) / fabs(MIN_REAL_NUMBER + kappa_ij); q = (0.2 + q) / (0.2 + q + q*q); // physical
         double renormerFAC = DMIN(1.,fabs(cos_theta_face_flux*cos_theta_face_flux * q * hll_corr)); // physical
-        
-        cmag *= GAMMA_COSMICRAY;
 
         /* flux-limiter to ensure flow is always down the local gradient [no 'uphill' flow] */
-        double f_direct = -Face_Area_Norm * c_hll * d_scalar * renormerFAC; // simple HLL term for frame moving at 1/2 inter-particle velocity: here not limited //
+        double f_direct = -Face_Area_Norm * c_hll * (d_scalar/GAMMA_COSMICRAY_MINUS1) * renormerFAC; // simple HLL term for frame moving at 1/2 inter-particle velocity: here not limited //
         double sign_c0 = f_direct * cmag;
         if((sign_c0 < 0) && (fabs(f_direct) > fabs(cmag))) {cmag = 0;}
         if(cmag != 0)
@@ -158,57 +155,22 @@
             if(f_direct != 0)
             {
                 thold_hll = 0.5 * fabs(cmag); // add hll term but flux-limited //
+#ifdef GALSF
+                thold_hll = 5.0 * fabs(cmag); // add hll term but flux-limited //
+#endif
                 if(fabs(f_direct) > thold_hll) {f_direct *= thold_hll / fabs(f_direct);}
                 cmag += f_direct;
             }
             // enforce a flux limiter for stability (to prevent overshoot) //
             cmag *= dt_hydrostep; // all in physical units //
-            double sVi = scalar_i*V_i_phys, sVj = scalar_j*V_j_phys; // physical units
-            thold_hll = 0.1 * 0.25 * DMIN(fabs(sVi-sVj), DMAX(fabs(sVi), fabs(sVj)));
-            double thold_hll_lohi = 0.01 * 0.25 * DMIN(fabs(sVi-sVj), DMIN(fabs(sVi), fabs(sVj)));
-            if(sign_c0 < 0) {thold_hll = thold_hll_lohi;} // if opposing signs, restrict this term //
+            double sVi = scalar_i*V_i_phys/GAMMA_COSMICRAY_MINUS1, sVj = scalar_j*V_j_phys/GAMMA_COSMICRAY_MINUS1; // physical units
+            thold_hll = DMAX(DMIN(fabs(sVi), fabs(sVj)), DMIN(fabs(sVi-sVj), DMAX(fabs(sVi), fabs(sVj))));
+            if(sign_c0 < 0) {thold_hll *= 0.01;} // if opposing signs, restrict this term //
             if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
             cmag /= dt_hydrostep;
             Fluxes.CosmicRayPressure = cmag; // physical, as it needs to be
         } // cmag != 0
         
-        /* flux-limiters to prevent overshoot for flux-fluxes */
-        double hll_mult_dmin = 1;
-        for(k=0;k<3;k++)
-        {
-            double f_direct = -0.5 * Face_Area_Norm * c_hll * (flux_i[k] - flux_j[k]) * renormerFAC; // [physical units]
-            if(f_direct != 0) // calculate diffusive HLL flux for the flux-of-flux //
-            {
-                thold_hll = fabs(cmag_flux[k]) / fabs(f_direct);
-                if(thold_hll < hll_mult_dmin) {hll_mult_dmin = thold_hll;}
-            }
-        }
-        for(k=0;k<3;k++)
-        {
-            double f_direct = -0.5 * Face_Area_Norm * c_hll * (flux_i[k] - flux_j[k]) * renormerFAC; // [physical units]
-            cmag_flux[k] += hll_mult_dmin * f_direct; // add diffusive flux //
-            double sign_agreement = f_direct * cmag_flux[k];
-            if((sign_agreement < 0) && (fabs(f_direct) > fabs(cmag_flux[k]))) {cmag_flux[k] = 0;}
-            if(cmag_flux[k] != 0)
-            {
-                cmag_flux[k] *= dt_hydrostep;
-                thold_hll = DMIN( DMAX( DMIN(fabs(local.CosmicRayFlux[k]), fabs(SphP[j].CosmicRayFluxPred[k])) , fabs(local.CosmicRayFlux[k]-SphP[j].CosmicRayFluxPred[k]) ) , DMAX(fabs(local.CosmicRayFlux[k]), fabs(SphP[j].CosmicRayFluxPred[k])) ); // units are physical
-                double fii=V_i_phys*scalar_i*c_light, fjj=V_j_phys*scalar_j*c_light; // physical units
-                double tij = DMIN( DMAX( DMIN(fabs(fii),fabs(fjj)) , fabs(fii-fjj) ) , DMAX(fabs(fii),fabs(fjj)) );
-                thold_hll = 0.25 * DMAX( thold_hll , 0.5*tij );
-                if(fabs(cmag_flux[k])>thold_hll) {cmag_flux[k] *= thold_hll/fabs(cmag_flux[k]);}
-                Fluxes.CosmicRayFlux[k] = cmag_flux[k] / dt_hydrostep * (kappa_ij/(c_light*c_light)); // physical
-            }
-        }
-#ifdef MAGNETIC
-        /* impose anisotropy on final fluxes */
-        if(bhat_mag > 0)
-        {
-            double B_interface_dot_flux = 0.0;
-            for(k=0;k<3;k++) {B_interface_dot_flux += bhat[k] * Fluxes.CosmicRayFlux[k];}
-            for(k=0;k<3;k++) {Fluxes.CosmicRayFlux[k] = bhat[k] * B_interface_dot_flux;}
-        }
-#endif
 #endif // COSMIC_RAYS_M1
     } // close check that kappa and particle masses are positive
 }

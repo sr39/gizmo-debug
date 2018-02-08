@@ -454,9 +454,6 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 
 #ifdef COSMIC_RAYS
                 out.DtCosmicRayEnergy += Fluxes.CosmicRayPressure;
-#ifdef COSMIC_RAYS_M1
-                for(k=0;k<3;k++) {out.DtCosmicRayFlux[k] += Fluxes.CosmicRayFlux[k];}
-#endif
 #endif
                 
                 //out.dInternalEnergy += Fluxes.p * dt_hydrostep; //manifest-indiv-timestep-debug//
@@ -519,9 +516,6 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 
 #ifdef COSMIC_RAYS
                     SphP[j].DtCosmicRayEnergy -= Fluxes.CosmicRayPressure;
-#ifdef COSMIC_RAYS_M1
-                    for(k=0;k<3;k++) {SphP[j].DtCosmicRayFlux[k] -= Fluxes.CosmicRayFlux[k];}
-#endif
 #endif
                 }
 #endif
