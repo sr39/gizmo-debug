@@ -179,11 +179,21 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     // this is the exact solution for the CR flux-update equation over a finite timestep dt:
     //   it needs to be solved this way [implicitly] as opposed to explicitly for dt because
     //   in the limit of dt_cr_dimless being large, the problem exactly approaches the diffusive solution
-    double flux[3]={0}, CR_veff[3]={0}, CR_vmag=0, q_cr = 0, cr_speed = COSMIC_RAYS_M1;// * (C/All.UnitVelocity_in_cm_per_s);
-    double dt_cr_dimless = dt_entr * cr_speed*cr_speed / (MIN_REAL_NUMBER + fabs(SphP[i].CosmicRayDiffusionCoeff));
+    double DtCosmicRayFlux[3]={0}, flux[3]={0}, CR_veff[3]={0}, CR_vmag=0, q_cr = 0, cr_speed = COSMIC_RAYS_M1;// * (C/All.UnitVelocity_in_cm_per_s);
+    for(k=0;k<3;k++) {DtCosmicRayFlux[k] = -fabs(SphP[i].CosmicRayDiffusionCoeff) * (P[i].Mass/SphP[i].Density) * (SphP[i].Gradients.CosmicRayPressure[k]/GAMMA_COSMICRAY_MINUS1);}
+#ifdef MAGNETIC // do projection onto field lines
+    double B0[3]={0}, Bmag2=0, DtCRDotBhat=0;
+    for(k=0;k<3;k++)
+    {
+        if(mode==0) {B0[k]=SphP[i].B[k];} else {B0[k]=SphP[i].BPred[k];}
+        DtCRDotBhat += DtCosmicRayFlux[k] * B0[k]; Bmag2 += B0[k]*B0[k];
+    }
+    if(Bmag2 > 0) {for(k=0;k<3;k++) {DtCosmicRayFlux[k] = DtCRDotBhat * B0[k] / Bmag2;}}
+#endif
+    double dt_cr_dimless = dt_entr * cr_speed*cr_speed * GAMMA_COSMICRAY_MINUS1 / (MIN_REAL_NUMBER + fabs(SphP[i].CosmicRayDiffusionCoeff));
     if((dt_cr_dimless > 0)&&(dt_cr_dimless < 20.)) {q_cr = exp(-dt_cr_dimless);} // factor for CR interpolation
     if(mode==0) {for(k=0;k<3;k++) {flux[k]=SphP[i].CosmicRayFlux[k];}} else {for(k=0;k<3;k++) {flux[k]=SphP[i].CosmicRayFluxPred[k];}}
-    for(k=0;k<3;k++) {flux[k] = q_cr*flux[k] + (1.-q_cr)*SphP[i].DtCosmicRayFlux[k];} // updated flux
+    for(k=0;k<3;k++) {flux[k] = q_cr*flux[k] + (1.-q_cr)*DtCosmicRayFlux[k];} // updated flux
     for(k=0;k<3;k++) {CR_veff[k]=flux[k]/(eCR+MIN_REAL_NUMBER); CR_vmag+=CR_veff[k]*CR_veff[k];} // effective streaming speed
     if((CR_vmag <= 0) || (isnan(CR_vmag))) // check for valid numbers
     {

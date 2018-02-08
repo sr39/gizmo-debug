@@ -352,9 +352,6 @@ struct hydrodata_out
     
 #ifdef COSMIC_RAYS
     MyDouble DtCosmicRayEnergy;
-#ifdef COSMIC_RAYS_M1
-    MyDouble DtCosmicRayFlux[3];
-#endif
 #endif
 
 }
@@ -581,9 +578,6 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
 
 #ifdef COSMIC_RAYS
     SphP[i].DtCosmicRayEnergy += out->DtCosmicRayEnergy;
-#ifdef COSMIC_RAYS_M1
-    for(k=0;k<3;k++) {SphP[i].DtCosmicRayFlux[k] += out->DtCosmicRayFlux[k];}
-#endif
 #endif
 }
 
@@ -919,9 +913,6 @@ void hydro_force(void)
 
 #ifdef COSMIC_RAYS
             SphP[i].DtCosmicRayEnergy = 0;
-#ifdef COSMIC_RAYS_M1
-            for(k=0;k<3;k++) {SphP[i].DtCosmicRayFlux[k] = 0;}
-#endif
 #endif
 #ifdef WAKEUP
             PPPZ[i].wakeup = 0;

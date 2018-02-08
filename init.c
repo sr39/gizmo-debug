@@ -752,7 +752,6 @@ void init(void)
         {
             SphP[i].CosmicRayFlux[j]=0;
             SphP[i].CosmicRayFluxPred[j]=0;
-            SphP[i].DtCosmicRayFlux[j]=0;    
         }
 #endif
 #endif

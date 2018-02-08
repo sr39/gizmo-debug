@@ -413,8 +413,6 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
         SphP[i].CosmicRayFlux[k] -= SphP[j].CosmicRayFlux[k];
         SphP[j].CosmicRayFluxPred[k] = mass_of_new_particle * SphP[i].CosmicRayFluxPred[k];
         SphP[i].CosmicRayFluxPred[k] -= SphP[j].CosmicRayFluxPred[k];
-        SphP[j].DtCosmicRayFlux[k] = mass_of_new_particle * SphP[i].DtCosmicRayFlux[k];
-        SphP[i].DtCosmicRayFlux[k] -= SphP[j].DtCosmicRayFlux[k];
     }
 #endif
 #endif
@@ -706,7 +704,6 @@ void merge_particles_ij(int i, int j)
     {
         SphP[j].CosmicRayFlux[k] += SphP[i].CosmicRayFlux[k];
         SphP[j].CosmicRayFluxPred[k] += SphP[i].CosmicRayFluxPred[k];
-        SphP[j].DtCosmicRayFlux[k] += SphP[i].DtCosmicRayFlux[k];
     }
 #endif
 #endif
