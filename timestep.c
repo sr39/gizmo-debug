@@ -607,7 +607,14 @@ integertime get_timestep(int p,		/*!< particle index */
                     {
                         if(SphP[p].CosmicRayEnergy > 0)
                         {
-                            double dt_courant_CR = 2. * All.CourantFac * (L_particle*All.cf_atime) / COSMIC_RAYS_M1;
+                            double cr_speed = COSMIC_RAYS_M1;
+                            int k; double crv=0; for(k=0;k<3;k++) {crv+=SphP[p].CosmicRayFlux[k]*SphP[p].CosmicRayFlux[k];}
+                            if(crv > 0)
+                            {
+                                crv = sqrt(crv) / SphP[p].CosmicRayEnergy;
+                                cr_speed = DMIN( COSMIC_RAYS_M1 , DMAX(crv , 0.5*COSMIC_RAYS_M1) );
+                            }
+                            double dt_courant_CR = 2. * All.CourantFac * (L_particle*All.cf_atime) / cr_speed;
                             if(dt_conduction < dt_courant_CR) {dt_conduction = dt_courant_CR;}
                         } else {dt_conduction=10.*dt;}
                     } else {
@@ -884,15 +891,15 @@ integertime get_timestep(int p,		/*!< particle index */
         {
 #if defined(BH_GRAVCAPTURE_GAS) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
             /* really want prefactor to be ratio of median gas mass to bh mass */
-            dt_accr = 0.001 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
+            dt_accr = 0.001 * DMAX(BPP(p).BH_Mass, All.MaxMassForParticleSplit) / BPP(p).BH_Mdot;
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
             dt_accr *= DMAX(0.1, All.BAL_f_accretion);
 #endif // BH_WIND_CONTINUOUS
 #ifdef SINGLE_STAR_FORMATION
-            dt_accr = 0.1 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
+            dt_accr = 0.1 * DMAX(BPP(p).BH_Mass, 0.1*All.MinMassForParticleMerger) / BPP(p).BH_Mdot;
 #endif
 #else
-            dt_accr = 0.05 * BPP(p).BH_Mass / BPP(p).BH_Mdot;
+            dt_accr = 0.05 * DMAX(BPP(p).BH_Mass , All.MaxMassForParticleSplit) / BPP(p).BH_Mdot;
 #endif // defined(BH_GRAVCAPTURE_GAS) || defined(BH_WIND_CONTINUOUS)
         } // if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
 #ifdef BH_SEED_GROWTH_TESTS
