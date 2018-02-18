@@ -277,7 +277,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     /* set variables used by RT routines; this must be set only -outside- of iteration, since this is the key chemistry update */
     double u_in=specific_energy_codeunits_toreturn, rho_in=SphP[target].Density*All.cf_a3inv, mu=1, temp, ne=SphP[target].Ne, nHI=SphP[target].HI, nHII=SphP[target].HII, nHeI=1, nHeII=0, nHeIII=0;
     temp = ThermalProperties(u_in, rho_in, target, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
-    SphP[target].HI = nHI; SphP[target].HII = nHp_guess;
+    SphP[target].HI = nHI; SphP[target].HII = nHII;
 #ifdef RT_CHEM_PHOTOION_HE
     SphP[target].HeI = nHeI; SphP[target].HeII = nHeII; SphP[target].HeIII = nHeIII;
 #endif
