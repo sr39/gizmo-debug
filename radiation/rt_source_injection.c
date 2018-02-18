@@ -310,8 +310,8 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 //kernel_main(u, hinv3, hinv4, &wk, &dwk, -1); // traditional kernel
                 //wk *= P[j].Mass / local.KernelSum_Around_RT_Source;
                 double wk = (1 - r2*hinv*hinv) / local.KernelSum_Around_RT_Source;
-                double r = sqrt(r2);
 #if defined(RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION)
+                double r = sqrt(r2);
                 double dv0 = -1. / (RT_SPEEDOFLIGHT_REDUCTION * (C / All.UnitVelocity_in_cm_per_s) * r);
                 double lmax_0 = DMAX(local.Hsml, r);
 #endif
