@@ -271,9 +271,20 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     while(((fabs(du/u) > 3.0e-2)||((fabs(du/u) > 3.0e-4)&&(iter < 10))) && (iter < MAXITER)); /* iteration condition */
     /* crash condition */
     if(iter >= MAXITER) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g target=%d \n",u_old,rho,dt,ne_guess,target); endrun(10);}
+    double specific_energy_codeunits_toreturn = u * All.UnitDensity_in_cgs / All.UnitPressure_in_cgs;    /* in internal units */
+    
+#ifdef RT_CHEM_PHOTOION
+    /* set variables used by RT routines; this must be set only -outside- of iteration, since this is the key chemistry update */
+    double u_in=specific_energy_codeunits_toreturn, rho_in=SphP[target].Density*All.cf_a3inv, mu=1, temp, ne=SphP[target].Ne, nHI=SphP[target].HI, nHII=SphP[target].HII, nHeI=1, nHeII=0, nHeIII=0;
+    temp = ThermalProperties(u_in, rho_in, target, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
+    SphP[target].HI = nHI; SphP[target].HII = nHp_guess;
+#ifdef RT_CHEM_PHOTOION_HE
+    SphP[target].HeI = nHeI; SphP[target].HeII = nHeII; SphP[target].HeIII = nHeIII;
+#endif
+#endif
     
     /* safe return */
-    return u * All.UnitDensity_in_cgs / All.UnitPressure_in_cgs;	/* in internal units */
+    return specific_energy_codeunits_toreturn;
 }
 
 
@@ -351,36 +362,6 @@ double DoInstabilityCooling(double m_old, double u, double rho, double dt, doubl
 
 
 
-void cool_test(void)
-{
-#if !defined(COOL_METAL_LINES_BY_SPECIES)
-    double uin, rhoin, tempin, muin, nein;
-    uin = 6.01329e+09;
-    rhoin = 7.85767e-29;
-    tempin = 2034.0025;
-    muin = 0.691955;
-    nein = (1 + 4 * YHELIUM_0) / muin - (1 + YHELIUM_0);
-    double dtin=1.0e-7;
-    double uout,uint,nH0_guess,nHp_guess,nHe0_guess,nHep_guess,nHepp_guess;
-    int i,target;
-    for(i=0;i<20;i++) {
-        rhoin=SphP[i].Density;
-        nein=SphP[i].Ne;
-        target=i;
-        uin=SphP[i].InternalEnergy;
-        uout=DoCooling(uin,rhoin,dtin,nein,target);
-        printf("%d %d : ne: %g %g \n",ThisTask,target,SphP[i].Ne,nein);
-        nein=SphP[i].Ne;
-        rhoin *= All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;    /* convert to physical cgs units */
-        uint = uin*All.UnitPressure_in_cgs / All.UnitDensity_in_cgs;
-        tempin=convert_u_to_temp(uint, rhoin, target, &nein, &nH0_guess, &nHp_guess, &nHe0_guess, &nHep_guess, &nHepp_guess);
-        printf("%d %d : in: : %g %g %g \n",ThisTask,target,uin,rhoin,nein);
-        printf("%d %d : out: %g %g %g %g %g \n",ThisTask,target,tempin,
-               CoolingRate(log10(tempin),rhoin,nein,target),CoolingRateFromU(uint,rhoin,nein,target),uout,nein);
-        fflush(stdout);
-    }
-#endif
-}
 
 
 
@@ -691,19 +672,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     bH0 = flow * BetaH0[j] + fhi * BetaH0[j + 1];
     bHep = flow * BetaHep[j] + fhi * BetaHep[j + 1];
     bff = flow * Betaff[j] + fhi * Betaff[j + 1];
-    if(target >= 0)
-    {
-        SphP[target].Ne = n_elec;
-#ifdef RT_CHEM_PHOTOION
-        SphP[target].HI = nH0;
-        SphP[target].HII = nHp;
-#ifdef RT_CHEM_PHOTOION_HE
-        SphP[target].HeI = nHe0;
-        SphP[target].HeII = nHep;
-        SphP[target].HeIII = nHepp;
-#endif
-#endif
-    }
+    if(target >= 0) {SphP[target].Ne = n_elec;}
     *nH0_guess=nH0; *nHe0_guess=nHe0; *nHp_guess=nHp; *nHep_guess=nHep; *nHepp_guess=nHepp; *ne_guess=n_elec; /* write to send back */
     
     /* now check if we want to return the ionization/recombination heating/cooling rates calculated with all the above quantities */
