@@ -209,6 +209,15 @@ double CallGrackle(double u_old, double rho, double dt, double ne_guess, int tar
             }
             double nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess;
             convert_u_to_temp(energy, rho, target, &ne_guess, &nH0_guess, &nHp_guess, &nHe0_guess, &nHep_guess, &nHepp_guess); //need to update *ne_guess for tabular!!, this may be wrong
+#ifdef RT_CHEM_PHOTOION
+            if(target >= 0)
+            {
+                SphP[target].HI = nH0_guess; SphP[target].HII = nHp_guess;
+#ifdef RT_CHEM_PHOTOION_HE
+                SphP[target].HeI = nHe0_guess; SphP[target].HeII = nHep_guess; SphP[target].HeIII = nHepp_guess;
+#endif
+            }
+#endif
             returnval = energy;
             break;
         case 1:  //cooling time (table)
