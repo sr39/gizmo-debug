@@ -333,6 +333,41 @@ double DoCooling(double u_old, double rho, double dt, double *ne_guess, int targ
     ChimesGasVars[target].temperature = convert_u_to_temp(u_old_cgs, rho_cgs, ne_guess, target); 
     ChimesGasVars[target].nH_tot = H_mass_fraction * rho_cgs / PROTONMASS; 
 
+#ifdef AJR_VARIABLE_TFLOOR 
+    if ((All.Time < All.TempFloor_time) && (ChimesGasVars[target].temperature < All.MinGasTemp)) 
+      {
+	ChimesGasVars[target].ThermEvolOn = 0; 
+	ChimesGasVars[target].temperature = All.MinGasTemp; 
+      }
+    else 
+      ChimesGasVars[target].ThermEvolOn = All.ChimesThermEvolOn; 
+
+    // If there is an EoS, need to set TempFloor to that instead. 
+    // NOTE: Set the Chimes Tfloor to the FINAL Tfloor, NOT the 
+    // current variable Tfloor. 
+#ifndef GALSF_FB_HII_HEATING
+    ChimesGasVars[target].TempFloor = All.TempFloor_final; 
+#else 
+    if (SphP[target].DelayTimeHII > 0) 
+      ChimesGasVars[target].TempFloor = HIIRegion_Temp; 
+    else 
+      ChimesGasVars[target].TempFloor = All.TempFloor_final; 
+#endif
+
+#else // AJR_VARIABLE_TFLOOR 
+    ChimesGasVars[target].ThermEvolOn = All.ChimesThermEvolOn; 
+
+    // If there is an EoS, need to set TempFloor to that instead. 
+#ifndef GALSF_FB_HII_HEATING
+    ChimesGasVars[target].TempFloor = All.MinGasTemp; 
+#else 
+    if (SphP[target].DelayTimeHII > 0) 
+      ChimesGasVars[target].TempFloor = HIIRegion_Temp; 
+    else 
+      ChimesGasVars[target].TempFloor = All.MinGasTemp; 
+#endif 
+#endif // AJR_VARIABLE_FLOOR 
+ 
     // Extragalactic UV background 
     ChimesGasVars[target].isotropic_photon_density[0] = isotropic_photon_density; 
     ChimesGasVars[target].dust_G_parameter[0] = dustG_arr[0]; 
@@ -376,16 +411,6 @@ double DoCooling(double u_old, double rho, double dt, double *ne_guess, int targ
     ChimesGasVars[target].cell_size = 1.0; 
     ChimesGasVars[target].doppler_broad = 7.1; 
 #endif
-
-    // If there is an EoS, need to set TempFloor to that instead. 
-#ifndef GALSF_FB_HII_HEATING
-    ChimesGasVars[target].TempFloor = All.MinGasTemp; 
-#else 
-    if (SphP[target].DelayTimeHII > 0) 
-      ChimesGasVars[target].TempFloor = HIIRegion_Temp; 
-    else 
-      ChimesGasVars[target].TempFloor = All.MinGasTemp; 
-#endif 
 
 #ifdef METALS     
     /* NOTE: Currently the element abundances are not updated after 

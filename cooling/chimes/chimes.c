@@ -121,8 +121,8 @@ void set_equilibrium_abundances(void *user_data)
        * integration time until the kinsol flag is
        * no longer 2. */
 
-      thermEvolFlag = myGlobalVars->ThermEvolOn;
-      myGlobalVars->ThermEvolOn = 0;
+      thermEvolFlag = myGasVars->ThermEvolOn;
+      myGasVars->ThermEvolOn = 0;
       dt_hydro = myGasVars->hydro_timestep;  
       myGasVars->hydro_timestep = 3.17e11;  // 10 kyr ;
       do
@@ -229,7 +229,7 @@ void set_equilibrium_abundances(void *user_data)
 	} while (flag == 2); // For flag == 1, only integrate once. 
 
       /* Reset ThermEvol flag & dt_hydro. */
-      myGlobalVars->ThermEvolOn = thermEvolFlag;
+      myGasVars->ThermEvolOn = thermEvolFlag;
       myGasVars->hydro_timestep = dt_hydro;
     } 
 
@@ -442,7 +442,7 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
 
   if (myGasVars->ForceEqOn > 0)
     {
-      if (myGlobalVars->ThermEvolOn == 0)
+      if (myGasVars->ThermEvolOn == 0)
 	{
 	  if (myGasVars->ForceEqOn == 1)
 	    set_equilibrium_abundances_from_tables(myGasVars, myGlobalVars);
@@ -483,7 +483,7 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
 
   /* Create a serial vector of length network_size
    * for the initial conditions. */
-  if (myGlobalVars->ThermEvolOn == 0)
+  if (myGasVars->ThermEvolOn == 0)
     {
       y = N_VNew_Serial(network_size);
       if (myGlobalVars->scale_metal_tolerances == 1)
@@ -507,7 +507,7 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
 
 	  if (myGlobalVars->scale_metal_tolerances == 1) 
             NV_Ith_S(abstol_vector, i) = myGlobalVars->absoluteTolerance * species[j].element_abundance; 
-	  else if (myGlobalVars->ThermEvolOn == 1)
+	  else if (myGasVars->ThermEvolOn == 1)
 	    NV_Ith_S(abstol_vector, i) = myGlobalVars->absoluteTolerance;
 
 	  i++;
@@ -541,14 +541,14 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
 
   /* Use CVodeSVtolerances to specify the scalar
    * relative and absolute tolerances. */
-  if ((myGlobalVars->ThermEvolOn == 0) && (myGlobalVars->scale_metal_tolerances == 0))
+  if ((myGasVars->ThermEvolOn == 0) && (myGlobalVars->scale_metal_tolerances == 0))
     flag = CVodeSStolerances(cvode_mem, reltol, abstol_scalar);
   else
     flag = CVodeSVtolerances(cvode_mem, reltol, abstol_vector); 
 
   /* Use CVDense to specify the CVDENSE dense linear
    * solver. */
-  if (myGlobalVars->ThermEvolOn == 0)
+  if (myGasVars->ThermEvolOn == 0)
     flag = CVDense(cvode_mem, network_size);
   else
     flag = CVDense(cvode_mem, network_size + 1);
@@ -585,7 +585,7 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
       
 	  check_constraint_equations(myGasVars, myGlobalVars);
 
-	  if (myGlobalVars->ThermEvolOn == 1)
+	  if (myGasVars->ThermEvolOn == 1)
 	    {
 	      myGasVars->temperature = max(NV_Ith_S(y, network_size) / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS), myGasVars->TempFloor);
 	      /* If T has reached TempFloor, ensure that the thermal 
@@ -605,7 +605,7 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
 	  if (old_network_size != network_size)
 	    {
 	      N_VDestroy_Serial(y);
-	      if (myGlobalVars->ThermEvolOn == 0)
+	      if (myGasVars->ThermEvolOn == 0)
 		{
 		  y = N_VNew_Serial(network_size);
 		  if (myGlobalVars->scale_metal_tolerances == 1)
@@ -630,7 +630,7 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
                     {
                       if (myGlobalVars->scale_metal_tolerances == 1)
                         NV_Ith_S(abstol_vector, i) = myGlobalVars->absoluteTolerance * species[j].element_abundance;
-                      else if (myGlobalVars->ThermEvolOn == 1)
+                      else if (myGasVars->ThermEvolOn == 1)
                         NV_Ith_S(abstol_vector, i) = myGlobalVars->absoluteTolerance;
 
                       i++;
@@ -660,7 +660,7 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
 	  flag = CVodeSetUserData(cvode_mem, data);
 	  flag = CVodeSetMaxNumSteps(cvode_mem, MAXSTEPS);
 	  flag = CVodeInit(cvode_mem, f, 0.0, y);
-	  if (myGlobalVars->ThermEvolOn == 0)
+	  if (myGasVars->ThermEvolOn == 0)
 	    {
 	      if (myGlobalVars->scale_metal_tolerances == 0)
 		flag = CVodeSStolerances(cvode_mem, reltol, abstol_scalar);
@@ -701,14 +701,14 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
       
       check_constraint_equations(myGasVars, myGlobalVars);
 
-      if (myGlobalVars->ThermEvolOn == 1)
+      if (myGasVars->ThermEvolOn == 1)
 	{
 	  myGasVars->temperature = max(NV_Ith_S(y, network_size) / (1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS), myGasVars->TempFloor);
 	}
     }
 
   N_VDestroy_Serial(y);
-  if ((myGlobalVars->ThermEvolOn == 1) || (myGlobalVars->scale_metal_tolerances == 1))
+  if ((myGasVars->ThermEvolOn == 1) || (myGlobalVars->scale_metal_tolerances == 1))
     N_VDestroy_Serial(abstol_vector);
   CVodeFree(&cvode_mem);
 
