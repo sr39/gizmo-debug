@@ -822,7 +822,6 @@ typedef unsigned long long peanokey;
 
 #define DRIFT_TABLE_LENGTH  1000	/*!< length of the lookup table used to hold the drift and kick factors */
 
-
 #define MAXITER 150
 
 #ifndef LINKLENGTH
@@ -1395,6 +1394,15 @@ extern struct global_data_all_processes
   double InitGasTemp;		/*!< may be used to set the temperature in the IC's */
   double InitGasU;		/*!< the same, but converted to thermal energy per unit mass */
   double MinGasTemp;		/*!< may be used to set a floor for the gas temperature */
+#ifdef CHIMES 
+  int ChimesThermEvolOn;        /*!< Flag to determine whether to evolve the temperature in CHIMES. */ 
+#endif 
+#ifdef AJR_VARIABLE_TFLOOR 
+  double TempFloor_init;        /*!< Initial temperature floor, in K */ 
+  double TempFloor_final;       /*!< Final temperature floor, in K */ 
+  double TempFloor_time;        /*!< Initial time over which temperature floor varies, in code units. */ 
+#endif 
+
   double MinEgySpec;		/*!< the minimum allowed temperature expressed as energy per unit mass */
 #ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
   double ArtCondConstant;

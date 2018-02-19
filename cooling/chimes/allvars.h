@@ -42,6 +42,7 @@ struct gasVariables
   double cell_size;               /* cm; use kernel smoothing length in SPH */
   double hydro_timestep;          /* s */
   int ForceEqOn;
+  int ThermEvolOn;
   double constant_heating_rate;   /* erg s^-1 cm^-3 */
   double *abundances;             /* The size of this array will be set by init_chimes() */
 };
@@ -58,7 +59,6 @@ struct globalVariables
   char EqAbundanceTablePath[500];
   char MolecularTablePath[500];
   char AdditionalRatesTablesPath[500];
-  int ThermEvolOn;
   int reductionOn;
   int updatePhotonFluxOn;
   int cellSelfShieldingOn;
