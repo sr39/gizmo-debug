@@ -119,9 +119,11 @@
         
         
         double c_light = COSMIC_RAYS_M1;// * (C/All.UnitVelocity_in_cm_per_s);
+        double kappa_ij = 0.5 * (kappa_i+kappa_j); // physical
+        double L_eff_j = Get_Particle_Size(j)*All.cf_atime; // physical
+        c_light = DMAX( 2.*All.cf_afac3*kernel.vsig , DMIN(COSMIC_RAYS_M1 , kappa_ij/DMIN(Particle_Size_i,L_eff_j)));// * (C/All.UnitVelocity_in_cm_per_s);
         double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + c_light; // physical
         double cmag=0., flux_norm=0, flux_i[3]={0}, flux_j[3]={0}, thold_hll;
-        double kappa_ij = 0.5 * (kappa_i+kappa_j); // physical
         double V_i_phys = V_i / All.cf_a3inv;
         double V_j_phys = V_j / All.cf_a3inv;
         /* calculate the eigenvalues for the HLLE flux-weighting */
@@ -138,7 +140,6 @@
         if(cos_theta_face_flux < -1) {cos_theta_face_flux=-1;} else {if(cos_theta_face_flux > 1) {cos_theta_face_flux=1;}}
         
         /* add asymptotic-preserving correction so that numerical flux doesn't unphysically dominate in optically thick limit */
-        double L_eff_j = Get_Particle_Size(j)*All.cf_atime; // physical
         double v_eff_light = DMIN(c_light , kappa_ij / L_eff_j); // physical
         c_hll = 0.5*fabs(face_vel_i-face_vel_j) + v_eff_light; // physical
         double hll_corr = 1. / (1. + 1.5 * c_light * DMAX(L_eff_j/kappa_j , Particle_Size_i/kappa_i)); // all physical units
@@ -148,6 +149,18 @@
 
         /* flux-limiter to ensure flow is always down the local gradient [no 'uphill' flow] */
         double f_direct = -Face_Area_Norm * c_hll * (d_scalar/GAMMA_COSMICRAY_MINUS1) * renormerFAC; // simple HLL term for frame moving at 1/2 inter-particle velocity: here not limited //
+        renormerFAC = 1;
+        if(dt_hydrostep > 0)
+        {
+            double f_direct_max = 0.25 * fabs(d_scalar) * DMIN(V_i_phys , V_j_phys) / dt_hydrostep;
+            if(fabs(f_direct) > f_direct_max)
+            {
+                f_direct *= f_direct_max / fabs(f_direct);
+                renormerFAC = f_direct_max / fabs(f_direct);
+            }
+        } else {
+            f_direct = 0;
+        }
         double sign_c0 = f_direct * cmag;
         if((sign_c0 < 0) && (fabs(f_direct) > fabs(cmag))) {cmag = 0;}
         if(cmag != 0)
