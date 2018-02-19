@@ -853,7 +853,7 @@ int f(realtype t, N_Vector y, N_Vector ydot, void *user_data)
   /* If Thermal Evolution is switched on, the final element in the
    * vector y is the internal energy (per unit volume). Use this 
    * to update the temperature, and also the rates that depend on T */
-  if (data->myGlobalVars->ThermEvolOn == 1)
+  if (data->myGasVars->ThermEvolOn == 1)
     {
       data->myGasVars->temperature = max(NV_Ith_S(y, data->network_size) / (1.5 * calculate_total_number_density(data->myGasVars->abundances, data->myGasVars->nH_tot, data->myGlobalVars) * BOLTZMANNCGS), 10.1); /* The rates are not defined below ~10 K */
       update_T_dependent_rates(data->myGasVars, data->myGlobalVars, data->this_all_rates);
@@ -930,7 +930,7 @@ int f(realtype t, N_Vector y, N_Vector ydot, void *user_data)
     NV_Ith_S(ydot, i) = data->species[indices[i]].creation_rate - data->species[indices[i]].destruction_rate;
 		
   /* Finally, if Thermal Evolution is switched on, calculate the cooling rate */
-  if (data->myGlobalVars->ThermEvolOn == 1)
+  if (data->myGasVars->ThermEvolOn == 1)
     {
       if (data->myGasVars->temperature > data->myGasVars->TempFloor)
 	NV_Ith_S(ydot, data->network_size) = -calculate_total_cooling_rate(data->myGasVars, data->myGlobalVars, *(data->HI_column), *(data->HeI_column), *(data->HeII_column), *(data->H2_column), *(data->CO_column), *(data->H2O_column), *(data->OH_column), *(data->extinction), data->this_all_rates);		/* Note that network_size is the number of chemcial species, hence No. of eqns = network_size + 1 when ThermEvol is on */

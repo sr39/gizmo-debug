@@ -3144,7 +3144,6 @@ void init_chimes(struct globalVariables *myGlobalVars, struct All_rate_variables
   if (myGlobalVars->print_debug_statements == 1)
     {
       printf("PRINTING GLOBALVARS:\n");
-      printf("myGlobalVars->ThermEvolOn = %i \n ",myGlobalVars->ThermEvolOn);
       printf("myGlobalVars->reductionOn = %i \n ",myGlobalVars->reductionOn);
       printf("myGlobalVars->updatePhotonFluxOn = %i \n ",myGlobalVars->updatePhotonFluxOn);
       printf("myGlobalVars->cellSelfShieldingOn = %i \n ",myGlobalVars->cellSelfShieldingOn);

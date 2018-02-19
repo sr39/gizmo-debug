@@ -64,7 +64,7 @@ double determine_subcyclestep(struct gasVariables *myGasVars, struct globalVaria
   /* This gives the estimated time
    * until T will cross the T_mol 
    * threshold. */
-  if (myGlobalVars->ThermEvolOn == 1)
+  if (myGasVars->ThermEvolOn == 1)
     {
       dt_temp = (myGlobalVars->T_mol - myGasVars->temperature) * 1.5 * calculate_total_number_density(myGasVars->abundances, myGasVars->nH_tot, myGlobalVars) * BOLTZMANNCGS / (- calculate_total_cooling_rate(myGasVars, myGlobalVars, HI_column_density, HeI_column_density, HeII_column_density, H2_column_density, CO_column_density, H2O_column_density, OH_column_density, extinction, this_all_rates));
       if (dt_temp > myGlobalVars->min_subcyclestep && dt_temp < dt_new)
