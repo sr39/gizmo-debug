@@ -149,25 +149,18 @@
 
         /* flux-limiter to ensure flow is always down the local gradient [no 'uphill' flow] */
         double f_direct = -Face_Area_Norm * c_hll * (d_scalar/GAMMA_COSMICRAY_MINUS1) * renormerFAC; // simple HLL term for frame moving at 1/2 inter-particle velocity: here not limited //
-        renormerFAC = 1;
         if(dt_hydrostep > 0)
         {
             double f_direct_max = 0.25 * fabs(d_scalar) * DMIN(V_i_phys , V_j_phys) / dt_hydrostep;
-            if(fabs(f_direct) > f_direct_max)
-            {
-                f_direct *= f_direct_max / fabs(f_direct);
-                renormerFAC = f_direct_max / fabs(f_direct);
-            }
-        } else {
-            f_direct = 0;
-        }
+            if(fabs(f_direct) > f_direct_max) {f_direct *= f_direct_max / fabs(f_direct);}
+        } else {f_direct = 0;}
         double sign_c0 = f_direct * cmag;
         if((sign_c0 < 0) && (fabs(f_direct) > fabs(cmag))) {cmag = 0;}
         if(cmag != 0)
         {
             if(f_direct != 0)
             {
-                thold_hll = 0.5 * fabs(cmag); // add hll term but flux-limited //
+                thold_hll = 1.0 * fabs(cmag); // add hll term but flux-limited //
 #ifdef GALSF
                 thold_hll = 5.0 * fabs(cmag); // add hll term but flux-limited //
 #endif
@@ -178,7 +171,7 @@
             cmag *= dt_hydrostep; // all in physical units //
             double sVi = scalar_i*V_i_phys/GAMMA_COSMICRAY_MINUS1, sVj = scalar_j*V_j_phys/GAMMA_COSMICRAY_MINUS1; // physical units
             thold_hll = DMAX(DMIN(fabs(sVi), fabs(sVj)), DMIN(fabs(sVi-sVj), DMAX(fabs(sVi), fabs(sVj))));
-            if(sign_c0 < 0) {thold_hll *= 0.01;} // if opposing signs, restrict this term //
+            if(sign_c0 < 0) {thold_hll *= 0.001;} // if opposing signs, restrict this term //
             if(fabs(cmag)>thold_hll) {cmag *= thold_hll/fabs(cmag);}
             cmag /= dt_hydrostep;
             Fluxes.CosmicRayPressure = cmag; // physical, as it needs to be
