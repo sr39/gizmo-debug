@@ -161,9 +161,6 @@
             if(f_direct != 0)
             {
                 thold_hll = 1.0 * fabs(cmag); // add hll term but flux-limited //
-#ifdef GALSF
-                thold_hll = 5.0 * fabs(cmag); // add hll term but flux-limited //
-#endif
                 if(fabs(f_direct) > thold_hll) {f_direct *= thold_hll / fabs(f_direct);}
                 cmag += f_direct;
             }
