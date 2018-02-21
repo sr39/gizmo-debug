@@ -1733,11 +1733,15 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 
 #if defined(DM_FUZZY)
+#ifdef DM_FUZZY_POTENTIALFORM
+    if(mode==0) {double local_AGS_QuantumPotential=P[target].local_AGS_QuantumPotential;} else {double local_AGS_QuantumPotential=GravDataGet[target].local_AGS_QuantumPotential;}
+#else
     double local_AGS_Gradients_Density[3];
     {int k2; for(k2=0;k2<3;k2++) {if(mode==0) {local_AGS_Gradients_Density[k2]=P[target].AGS_Gradients_Density[k2];} else {local_AGS_Gradients_Density[k2]=GravDataGet[target].AGS_Gradients_Density[k2];}}}
 #ifdef DM_FUZZY_BETTERGRADIENTS
     double local_AGS_Gradients2_Density[3][3];
     {int k1,k2; for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {if(mode==0) {local_AGS_Gradients2_Density[k1][k2]=P[target].AGS_Gradients2_Density[k1][k2];} else {local_AGS_Gradients2_Density[k1][k2]=GravDataGet[target].AGS_Gradients2_Density[k1][k2];}}}}
+#endif
 #endif
 #endif
     
