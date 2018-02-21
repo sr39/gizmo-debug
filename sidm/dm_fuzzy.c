@@ -521,6 +521,12 @@ void DMGrad_gradient_calc(void)
                 P[i].AGS_Gradients2_Density[0][2] = P[i].AGS_Gradients2_Density[2][0] = tmp;
                 tmp = 0.5*(P[i].AGS_Gradients2_Density[1][2] + P[i].AGS_Gradients2_Density[2][1]);
                 P[i].AGS_Gradients2_Density[1][2] = P[i].AGS_Gradients2_Density[2][1] = tmp;
+#ifdef DM_FUZZY_POTENTIALFORM
+                double f00 = 0.5 * 591569.0 / (All.FuzzyDM_Mass_in_eV * All.UnitVelocity_in_cm_per_s * All.UnitLength_in_cm/All.HubbleParam); // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
+                double d2rho = P[i].AGS_Gradients2_Density[0][0] + P[i].AGS_Gradients2_Density[1][1] + P[i].AGS_Gradients2_Density[2][2]; // laplacian
+                double drho2 = P[i].AGS_Gradients_Density[0]*P[i].AGS_Gradients_Density[0] + P[i].AGS_Gradients_Density[1]*P[i].AGS_Gradients_Density[1] + P[i].AGS_Gradients_Density[2]*P[i].AGS_Gradients_Density[2];
+                P[i].AGS_QuantumPotential = (f00*f00 / P[i].AGS_Density) * (d2rho - 0.5*drho2/P[i].AGS_Density);
+#endif
 #endif
             }
         }
