@@ -2142,12 +2142,7 @@ extern ALIGN(32) struct particle_data
 #ifdef DM_FUZZY
     MyFloat AGS_Density;                /*!< density calculated corresponding to AGS routine (over interacting DM neighbors) */
     MyFloat AGS_Gradients_Density[3];   /*!< density gradient calculated corresponding to AGS routine (over interacting DM neighbors) */
-#ifdef DM_FUZZY_BETTERGRADIENTS
     MyFloat AGS_Gradients2_Density[3][3];   /*!< density gradient calculated corresponding to AGS routine (over interacting DM neighbors) */
-#endif
-#ifdef DM_FUZZY_POTENTIALFORM
-    MyFloat AGS_QuantumPotential;   /*!< quantum potential 'Q' from gradients-of-gradients of density field */
-#endif
 #endif
 #if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
     MyFloat NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */
@@ -2539,14 +2534,8 @@ extern struct gravdata_in
     double V_i;
 #endif
 #if defined(DM_FUZZY)
-#ifdef DM_FUZZY_POTENTIALFORM
-    double AGS_QuantumPotential;   /*!< quantum potential 'Q' from gradients-of-gradients of density field */
-#else
     double AGS_Gradients_Density[3];
-#ifdef DM_FUZZY_BETTERGRADIENTS
     double AGS_Gradients2_Density[3][3];   /*!< density gradient calculated corresponding to AGS routine (over interacting DM neighbors) */
-#endif
-#endif
 #endif
 #if defined(CBE_INTEGRATOR)
     double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];
@@ -2809,6 +2798,8 @@ enum iofields
   IO_CHEM,
   IO_DELAYTIME,
   IO_AGS_SOFT,
+  IO_AGS_RHO,
+  IO_AGS_QPT,
   IO_AGS_ZETA,
   IO_AGS_OMEGA,
   IO_AGS_CORR,

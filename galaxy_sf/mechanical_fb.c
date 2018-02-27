@@ -940,6 +940,10 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* inject cosmic rays */
                 SphP[j].CosmicRayEnergy += pnorm * CR_energy_to_inject;
                 SphP[j].CosmicRayEnergyPred += pnorm * CR_energy_to_inject;
+#ifdef COSMIC_RAYS_M1
+                double dflux = -pnorm * CR_energy_to_inject * COSMIC_RAYS_M1 / kernel.r; // add free-streaming flux of these CRs to the neighbor cells (so initial flux is correct and not from gradient which can suppress transport)
+                for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dflux*kernel.dp[k]; SphP[j].CosmicRayFluxPred[k]+=dflux*kernel.dp[k];}
+#endif
 #endif
                 
                 /* inject the post-shock energy and momentum (convert to specific units as needed first) */

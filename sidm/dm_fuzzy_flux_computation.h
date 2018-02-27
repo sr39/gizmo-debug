@@ -24,13 +24,10 @@ if((ptype==1) && (ptype_sec==1)) // only acts between DM particles of type 1 (ca
         dv[k] = (targetVel[k] - P[j0_sec_for_ags].Vel[k]) / All.cf_atime;
     }
     Face_Area_Norm = sqrt(Face_Area_Norm); vface_i /= Face_Area_Norm; vface_j /= Face_Area_Norm;
+    double dt = targetdt_step * All.Timebase_interval / All.cf_hubble_a, m_mean = 0.5 * ( mass+pmass );
     double HLLwt = (0.5*(wk_i/h3_inv + wk_j/h_p3_inv)) * (h_eff/r); HLLwt = 10.*HLLwt*HLLwt; // strong dissipation terms allowed for very-close particles, where second-derivative diverges, otherwise weak (no diffusion) //
     // actually compute the fluxes now, this is the key routine, below //
-#ifdef DM_FUZZY_BETTERGRADIENTS
-    do_dm_fuzzy_flux_computation(HLLwt, dp, dv, P[j0_sec_for_ags].AGS_Gradients_Density,  local_AGS_Gradients_Density, P[j0_sec_for_ags].AGS_Gradients2_Density, local_AGS_Gradients2_Density, rho_j, rho_i, vface_j, vface_i, Face_Area_Vec, flux);
-#else
-    do_dm_fuzzy_flux_computation(HLLwt, dp, dv, P[j0_sec_for_ags].AGS_Gradients_Density,  local_AGS_Gradients_Density, rho_j, rho_i, vface_j, vface_i, Face_Area_Vec, flux);
-#endif
+    do_dm_fuzzy_flux_computation(HLLwt, dt, m_mean, dp, dv, P[j0_sec_for_ags].AGS_Gradients_Density,  local_AGS_Gradients_Density, P[j0_sec_for_ags].AGS_Gradients2_Density, local_AGS_Gradients2_Density, rho_j, rho_i, vface_j, vface_i, Face_Area_Vec, flux);
     double fac = 1. / (pmass * All.G); // 'flux' now holds dmomentum/dt in physical units; need to convert back to grav-acc routine acceleration units ~ m/r^2 (will be multipled by 'G' later) //
     acc_x += fac*flux[0]; acc_y += fac*flux[1]; acc_z += fac*flux[2]; // assign back to particles
 } // master bracket (for variable protection

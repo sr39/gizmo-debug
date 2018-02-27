@@ -441,14 +441,8 @@ void gravity_tree(void)
 #endif
                     
 #ifdef DM_FUZZY
-#ifdef DM_FUZZY_POTENTIALFORM
-                    GravDataIn[j].local_AGS_QuantumPotential = P[place].local_AGS_QuantumPotential;
-#else
                     for(k=0;k<3;k++) {GravDataIn[j].AGS_Gradients_Density[k] = P[place].AGS_Gradients_Density[k];}
-#ifdef DM_FUZZY_BETTERGRADIENTS
                     {int k2; for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {GravDataIn[j].AGS_Gradients2_Density[k][k2] = P[place].AGS_Gradients2_Density[k][k2];}}}
-#endif
-#endif
 #endif
                     
 #ifdef CBE_INTEGRATOR
