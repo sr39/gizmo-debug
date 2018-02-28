@@ -181,7 +181,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     int *ip_int;
     float *fp_single;
     integertime dt_step;
-    
+   double TIME_physical = (All.UnitTime_in_s / SEC_PER_YEAR) / All.HubbleParam / All.cf_hubble_a; 
 #ifdef BOX_PERIODIC
     MyFloat boxSize;
 #endif
@@ -346,8 +346,56 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     n++;
                 }
             break;
-            
-        case IO_NE:		/* electron abundance */
+
+#ifdef DM_BARYON_INTERACTION
+          case IO_DMRHO:            /* dm_density */
+              for(n = 0; n < pc; pindex++)
+                  if(P[pindex].Type == type)
+                  {
+                      *fp++ = SphP[pindex].dm_density * All.cf_a3inv * All.UnitDensity_in_cgs / All.HubbleParam / All.HubbleParam; /*physical*/
+                      n++;
+                  }
+              break;
+ 
+          case IO_VREL:
+              for(n = 0; n < pc; pindex++)
+                  if(P[pindex].Type == type)
+                  {
+                         double vx = 0, vy = 0, vz = 0, VX = 0, VY = 0, VZ = 0;
+                          vx = SphP[pindex].vx_dm / SphP[pindex].dm_count;
+                          vy = SphP[pindex].vy_dm / SphP[pindex].dm_count;
+                          vz = SphP[pindex].vz_dm / SphP[pindex].dm_count;
+                          VX = SphP[pindex].vx_baryon / SphP[pindex].baryon_count;
+                          VY = SphP[pindex].vy_baryon / SphP[pindex].baryon_count;
+                          VZ = SphP[pindex].vz_baryon / SphP[pindex].baryon_count;
+                          *fp++ = sqrt((vx - VX) * (vx - VX) + (vy - VY) * (vy - VY) + (vz - VZ) * (vz - VZ)) * All.UnitVelocity_in_cm_per_s / All.cf_atime;  /*physical*/
+  //                      *fp++ = sqrt(vx * vx + vy * vy + vz * vz) * All.UnitVelocity_in_cm_per_s     ;
+  //                      *fp++ = SphP[pindex].dm_vrel / SphP[pindex].dm_count * All.UnitVelocity_     in_cm_per_s;
+                        n++;
+                  }
+             break;
+ 
+             case IO_DMCOLL:
+              for(n = 0; n < pc; pindex++)
+                  if(P[pindex].Type == type)
+                  {
+                         double vx = 0, vy = 0, vz = 0, VX = 0, VY = 0, VZ = 0, v_rel;
+                          vx = SphP[pindex].vx_dm / PPP[pindex].dm_NumNgb;
+                          vy = SphP[pindex].vy_dm / PPP[pindex].dm_NumNgb;
+                          vz = SphP[pindex].vz_dm / PPP[pindex].dm_NumNgb;
+                          VX = SphP[pindex].vx_baryon / PPP[pindex].NumNgb;
+                         VY = SphP[pindex].vy_baryon / PPP[pindex].NumNgb;
+                          VZ = SphP[pindex].vz_baryon / PPP[pindex].NumNgb;
+                         v_rel = sqrt((vx - VX) * (vx - VX) + (vy - VY) * (vy - VY) + (vz - VZ) * (vz - VZ));  /*physical*/
+ 
+                      *fp++ = SphP[pindex].dm_coll * v_rel / TIME_physical; /*physical*/
+                      n++;
+ 
+                  }
+             break;
+ #endif            
+ 
+       case IO_NE:		/* electron abundance */
 #if defined(COOLING) || defined(RT_CHEM_PHOTOION)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
@@ -1432,6 +1480,9 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_SECONDORDERMASS:
         case IO_U:
         case IO_RHO:
+        case IO_DMRHO:
+        case IO_VREL:
+        case IO_DMCOLL:
         case IO_NE:
         case IO_NH:
         case IO_HII:
@@ -1687,6 +1738,9 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_SECONDORDERMASS:
         case IO_U:
         case IO_RHO:
+        case IO_DMRHO:
+        case IO_VREL:
+        case IO_DMCOLL:
         case IO_NE:
         case IO_NH:
         case IO_HII:
@@ -1905,6 +1959,9 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_EDDINGTON_TENSOR:
         case IO_U:
         case IO_RHO:
+        case IO_DMRHO:
+        case IO_VREL:
+        case IO_DMCOLL:
         case IO_NE:
         case IO_NH:
         case IO_HII:
@@ -2111,6 +2168,11 @@ int blockpresent(enum iofields blocknr)
         case IO_MASS:
         case IO_U:
         case IO_RHO:
+#ifdef DM_BARYON_INTERACTION
+        case IO_DMRHO:
+        case IO_VREL:
+        case IO_DMCOLL:
+#endif
         case IO_HSML:
             return 1;			/* always present */
             
@@ -2693,6 +2755,15 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_RHO:
             strncpy(label, "RHO ", 4);
             break;
+         case IO_DMRHO:
+            strncpy(label, "DMRHO ", 4);
+            break;
+        case IO_VREL:
+            strncpy(label, "VREL ", 4);
+            break;
+        case IO_DMCOLL:
+            strncpy(label, "DMCOLL ", 4);
+            break;
         case IO_NE:
             strncpy(label, "NE  ", 4);
             break;
@@ -3044,6 +3115,17 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_RHO:
             strcpy(buf, "Density");
             break;
+#ifdef DM_BARYON_INTERACTION
+        case IO_DMRHO:
+            strcpy(buf, "dm_density");
+            break;
+        case IO_VREL:
+            strcpy(buf, "v_rel");
+             break;
+         case IO_DMCOLL:
+             strcpy(buf, "dmcoll");
+             break;
+#endif
         case IO_NE:
             strcpy(buf, "ElectronAbundance");
             break;
