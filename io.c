@@ -1219,6 +1219,30 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
+        case IO_AGS_RHO:        /* Adaptive Gravitational Softening: density */
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = PPP[pindex].AGS_Density;
+                    n++;
+                }
+#endif
+            break;
+        case IO_AGS_QPT:        /* quantum potential (Q) */
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    double f00 = 0.5 * 591569.0 / (All.FuzzyDM_Mass_in_eV * All.UnitVelocity_in_cm_per_s * All.UnitLength_in_cm/All.HubbleParam); // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
+                    double d2rho = P[pindex].AGS_Gradients2_Density[0][0] + P[pindex].AGS_Gradients2_Density[1][1] + P[pindex].AGS_Gradients2_Density[2][2]; // laplacian
+                    double drho2 = P[pindex].AGS_Gradients_Density[0]*P[pindex].AGS_Gradients_Density[0] + P[pindex].AGS_Gradients_Density[1]*P[pindex].AGS_Gradients_Density[1] + P[pindex].AGS_Gradients_Density[2]*P[pindex].AGS_Gradients_Density[2];
+                    double AGS_QuantumPotential = (f00*f00 / P[pindex].AGS_Density) * (d2rho - 0.5*drho2/P[pindex].AGS_Density);
+                    *fp++ = AGS_QuantumPotential;
+                    n++;
+                }
+#endif
+            break;
         case IO_AGS_ZETA:		/* Adaptive Gravitational Softening: zeta */
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) && defined(AGS_OUTPUTZETA)
             for(n = 0; n < pc; pindex++)
@@ -1485,6 +1509,8 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_PRESSURE:
         case IO_INIT_DENSITY:
         case IO_AGS_SOFT:
+        case IO_AGS_RHO:
+        case IO_AGS_QPT:
         case IO_AGS_ZETA:
         case IO_AGS_OMEGA:
         case IO_AGS_CORR:
@@ -1748,6 +1774,8 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_DMHSML_V:
         case IO_DMDENSITY_V:
         case IO_AGS_SOFT:
+        case IO_AGS_RHO:
+        case IO_AGS_QPT:
         case IO_AGS_ZETA:
         case IO_AGS_OMEGA:
         case IO_AGS_CORR:
@@ -1880,6 +1908,8 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_POT:
         case IO_SECONDORDERMASS:
         case IO_AGS_SOFT:
+        case IO_AGS_RHO:
+        case IO_AGS_QPT:
         case IO_AGS_ZETA:
         case IO_AGS_OMEGA:
         case IO_AGS_CORR:
@@ -2588,7 +2618,23 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
-            
+
+        case IO_AGS_RHO:
+#if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+
+        case IO_AGS_QPT:
+#if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+
         case IO_AGS_ZETA:
 #if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(AGS_OUTPUTZETA)
             return 1;
@@ -2948,6 +2994,12 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_AGS_SOFT:
             strncpy(label, "AGSH", 4);
             break;
+        case IO_AGS_RHO:
+            strncpy(label, "ARHO", 4);
+            break;
+        case IO_AGS_QPT:
+            strncpy(label, "AQPT", 4);
+            break;
         case IO_AGS_ZETA:
             strncpy(label, "AGSZ", 4);
             break;
@@ -3298,6 +3350,12 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_AGS_SOFT:
             strcpy(buf, "AGS-Softening");
+            break;
+        case IO_AGS_RHO:
+            strcpy(buf, "AGS-Density");
+            break;
+        case IO_AGS_QPT:
+            strcpy(buf, "AGS-QuantumPotentialQ");
             break;
         case IO_AGS_ZETA:
             strcpy(buf, "AGS-Zeta");

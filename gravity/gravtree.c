@@ -439,12 +439,12 @@ void gravity_tree(void)
                     GravDataIn[j].dt_step_sidm = P[place].dt_step_sidm;
                     GravDataIn[j].ID = P[place].ID;
 #endif
+                    
 #ifdef DM_FUZZY
                     for(k=0;k<3;k++) {GravDataIn[j].AGS_Gradients_Density[k] = P[place].AGS_Gradients_Density[k];}
-#ifdef DM_FUZZY_BETTERGRADIENTS
                     {int k2; for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {GravDataIn[j].AGS_Gradients2_Density[k][k2] = P[place].AGS_Gradients2_Density[k][k2];}}}
 #endif
-#endif
+                    
 #ifdef CBE_INTEGRATOR
                     for(k=0;k<CBE_INTEGRATOR_NBASIS;k++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {GravDataIn[j].CBE_basis_moments[k][k2] = P[place].CBE_basis_moments[k][k2];}}
 #endif
