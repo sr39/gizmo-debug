@@ -355,7 +355,23 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             for(n = 0; n < pc; n++)
                 SphP[offset + n].Density = *fp++;
             break;
-            
+           
+#ifdef DM_BARYON_INTERACTION
+          case IO_DMRHO:            /* dm_density */
+              for(n = 0; n < pc; n++)
+                  SphP[offset + n].dm_density = *fp++;
+              break;
+ 
+          case IO_VREL:            /* relative velocity */
+              for(n = 0; n < pc; n++)
+                  SphP[offset + n].dm_vrel = *fp++;
+              break;
+ 
+         case IO_DMCOLL:
+              for(n = 0; n < pc; n++)
+                   SphP[offset + n].dm_coll = *fp++;
+              break;
+#endif 
         case IO_NE:		/* electron abundance */
 #if defined(COOLING) || defined(RT_CHEM_PHOTOION)
             for(n = 0; n < pc; n++)

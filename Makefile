@@ -57,7 +57,7 @@
 #
 #############
 
-CONFIG   =  Config.sh
+CONFIG   =  Config_local.sh
 PERL     =  /usr/bin/perl
 
 RESULT     := $(shell CONFIG=$(CONFIG) PERL=$(PERL) make -f config-makefile)
@@ -905,6 +905,25 @@ endif
 
 
 #----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"ichihashi")
+ CC       = /home/appl/openmpi-1.4.4-pgi123/bin/mpicc
+ CXX      = /home/appl/openmpi-1.4.4-pgi123/bin/mpiCC
+ FC       = $(CC)
+ #OPTIMIZE = -tp barcelona-64 -fast -Mipa=fast,inline -Munroll -Mvect -O2
+ #OPTIMIZE = -traceback -tp barcelona-64 -Ktrap=fp -Munroll -Mvect -g
+ OPTIMIZE = -tp barcelona-64 -Munroll -Mvect -g
+ GSL_INCL = -I/data/local/include
+ GSL_LIBS = -L/data/local/lib
+ FFTW_INCL= -I/data/local/include
+ FFTW_LIBS= -L/data/local/lib
+ MPICHLIB =
+ HDF5INCL = -I/home/ichihashi/local/lib/hdf5-1.8.17-linux-centos6-x86_64-gcc447-shared/include -DH5_USE_16_API
+ HDF5LIB  = -L/home/ichihashi/local/lib/hdf5-1.8.17-linux-centos6-x86_64-gcc447-shared/lib -lhdf5 -lz
+# HDF5INCL = -I/data/local/include
+# HDF5LIB  = -L/data/local/lib 
+#OPT     += -DH5_USE_16_API
+endif
+
 #----------------------------------------------------------------------------------------------
 #----------------------------------------------------------------------------------------------
 
@@ -1070,6 +1089,11 @@ endif
 ifeq (DM_SIDM,$(findstring DM_SIDM,$(CONFIGVARS)))
 OBJS    +=  sidm/sidm_core.o 
 endif
+
+ifeq (DM_BARYON_INTERACTION,$(findstring DM_BARYON_INTERACTION,$(CONFIGVARS)))
+ OBJS    +=  dm_interaction/dm_density.o dm_interaction/dm_hydro_master.o dm_interaction/dm_interaction.o
+ INCL    +=  dm_interaction/dm_interaction.h dm_interaction/dm_find_prob.h 
+ endif
 
 ifeq (NUCLEAR_NETWORK,$(findstring NUCLEAR_NETWORK,$(CONFIGVARS)))
 OBJS	+=  nuclear/nuclear_network_solver.o nuclear/nuclear_network.o

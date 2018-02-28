@@ -220,6 +220,11 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             for(j=0;j<3;j++) {dEnt_Gravity += -(SphP[i].GravWorkTerm[j] * All.cf_atime * dt_hydrokick) * grav_acc[j];}
 #endif
             double du_tot = SphP[i].DtInternalEnergy * dt_hydrokick + dEnt_Gravity;
+#ifdef DM_BARYON_INTERACTION
+                   du_tot += SphP[i].dm_DtInternalEnergy * dt_hydrokick;//DMとバリオンの相互作用によるバリオンの内部エネルギー増加量
+     //    if(SphP[i].dm_DtInternalEnergy != 0){printf("sphP[i].dtinternal = %e\n",SphP[i].dm_DtInternalEnergy);}
+
+#endif
 #if defined(COOLING) && !defined(COOLING_OPERATOR_SPLIT)
             if(mode == 1) {du_tot = 0;}
 #endif
@@ -293,7 +298,17 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #ifdef RT_RAD_PRESSURE_OUTPUT
                 dp[j] += mass_pred * SphP[i].RadAccel[j] * All.cf_atime * dt_hydrokick;
 #endif
+#ifdef DM_BARYON_INTERACTION
+                dp[j] += mass_pred * SphP[i].baryon_dtVel[j] * All.cf_atime * dt_hydrokick;//DMとバリオンの相互作用によるバリオンの速度変化
+#endif
             }
+#ifdef DM_BARYON_INTERACTION
+             if(P[i].Type == 1)
+             {
+                dp[j] +=mass_pred * P[i].dm_dtVel[j] * All.cf_atime * dt_hydrokick;//DMとバリオンの相互作用によるDMの速度変化
+      //           if(P[i].dm_dtVel[1] != 0){printf("P[i].dm_dtVel = %e\n",P[i].dm_dtVel[1]);}
+             }
+#endif
             dp[j] += mass_pred * P[i].GravAccel[j] * dt_gravkick;
             P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
         }

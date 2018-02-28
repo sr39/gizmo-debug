@@ -817,6 +817,7 @@ typedef unsigned long long peanokey;
 #define  PLANCK      6.6262e-27
 #define  CM_PER_MPC  3.085678e24
 #define  PROTONMASS  1.6726e-24
+#define  DARKMATTERMASS 1.6726e-22
 #define  ELECTRONMASS 9.10953e-28
 #define  THOMPSON     6.65245e-25
 #define  ELECTRONCHARGE  4.8032e-10
@@ -1942,7 +1943,19 @@ extern ALIGN(32) struct particle_data
     
     MyDouble Vel[3];                /*!< particle velocity at its current time */
     MyDouble dp[3];
+
+#ifdef DM_BARYON_INTERACTION
+     MyDouble dm_dtVel[3];
+     int count1;                        /*散乱レート確認*/
+     MyFloat dm_Hsml;        /*!< correction factor needed for varying kernel lengths */
+     MyFloat dm_NumNgb;
+     MyFloat dm_DhsmlNgbFactor;
+     MyFloat dm_Particle_DivVel;
+     MyFloat dm_AGS_zeta;
+#endif
+
     MyFloat Particle_DivVel;        /*!< velocity divergence of neighbors (for predict step) */
+
     
     MyDouble GravAccel[3];          /*!< particle acceleration due to gravity */
 #ifdef PMGRID
@@ -2187,7 +2200,27 @@ extern struct sph_particle_data
     MyDouble GravWorkTerm[3];       /*!< correction term needed for hydro mass flux in gravity */
     MyDouble ParticleVel[3];        /*!< actual velocity of the mesh-generating points */
 #endif
-
+#ifdef DM_BARYON_INTERACTION
+     MyDouble dm_density;
+     MyDouble dm_coll;
+     MyDouble dm_vrel;
+     MyDouble vx_baryon;
+     MyDouble vy_baryon;
+     MyDouble vz_baryon;
+     MyDouble vx_dm;
+     MyDouble vy_dm;
+     MyDouble vz_dm;
+     int      dm_count;
+     int      count0;
+     int      baryon_count;
+     MyDouble dm_DtInternalEnergy;
+     MyDouble baryon_dtVel[3];
+     MyFloat  dm_NV_T[3][3];
+     MyDouble dm_ConditionNumber;
+     MyDouble dm_DhsmlHydroSumFactor;
+     MyFloat  dm_AGS_zeta;
+     MyFloat  dm_NV[3]; 
+#endif
     MyDouble Pressure;              /*!< current pressure */
     MyDouble InternalEnergy;        /*!< internal energy of particle */
     MyDouble InternalEnergyPred;    /*!< predicted value of the internal energy at the current time */
@@ -2719,6 +2752,9 @@ enum iofields
   IO_SECONDORDERMASS,
   IO_U,
   IO_RHO,
+  IO_DMRHO,
+  IO_VREL,
+  IO_DMCOLL,
   IO_NE,
   IO_NH,
   IO_HSML,

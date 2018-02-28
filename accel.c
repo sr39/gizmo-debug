@@ -84,6 +84,9 @@ void compute_hydro_densities_and_forces(void)
         }
 #endif
         density();		/* computes density, and pressure */
+#ifdef DM_BARYON_INTERACTION
+        dm_density();
+#endif
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
         ags_density();
 #endif
@@ -122,6 +125,9 @@ void compute_hydro_densities_and_forces(void)
         }
 #endif
         hydro_force();		/* adds hydrodynamical accelerations and computes du/dt  */
+#ifdef DM_BARYON_INTERACTION
+        dm_hydro_force();
+#endif
 #ifndef IO_REDUCED_MODE
         if(ThisTask == 0)
         {

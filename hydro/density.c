@@ -71,6 +71,12 @@ static struct densdata_out
     MyLongDouble DhsmlNgb;
     MyLongDouble Particle_DivVel;
     MyFloat NV_T[3][3];
+#ifdef DM_BARYON_INTERACTION
+    MyLongDouble vx_baryon;
+    MyLongDouble vy_baryon;
+    MyLongDouble vz_baryon;
+    int baryon_count;
+#endif
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
     MyDouble ParticleVel[3];
 #endif
@@ -160,6 +166,13 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
         for(k=0;k<3;k++) ASSIGN_ADD(SphP[i].ParticleVel[k], out->ParticleVel[k],   mode);
 #endif
         for(k = 0; k < 3; k++) {for(j = 0; j < 3; j++) {ASSIGN_ADD(SphP[i].NV_T[k][j], out->NV_T[k][j], mode);}}
+
+#ifdef DM_BARYON_INTERACTION
+        ASSIGN_ADD(SphP[i].vx_baryon, out->vx_baryon, mode);
+        ASSIGN_ADD(SphP[i].vy_baryon, out->vy_baryon, mode);
+        ASSIGN_ADD(SphP[i].vz_baryon, out->vz_baryon, mode);
+        ASSIGN_ADD(SphP[i].baryon_count, out->baryon_count, mode);
+#endif
 
 #ifdef HYDRO_SPH
         ASSIGN_ADD(SphP[i].DhsmlHydroSumFactor, out->DhsmlHydroSumFactor, mode);
@@ -1229,7 +1242,13 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 0);
                     mass_j = P[j].Mass;
                     kernel.mj_wk = FLT(mass_j * kernel.wk);
-                    
+
+#ifdef DM_BARYON_INTERACTION
+                    out.vx_baryon += SphP[j].VelPred[0];
+                    out.vy_baryon += SphP[j].VelPred[1];
+                    out.vz_baryon += SphP[j].VelPred[2];
+                    out.baryon_count += 1;
+#endif                    
                     out.Ngb += kernel.wk;
                     out.Rho += kernel.mj_wk;
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))

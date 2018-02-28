@@ -224,7 +224,13 @@ void init(void)
     {
         for(j = 0; j < 3; j++)
             P[i].GravAccel[j] = 0;
-        
+ #ifdef DM_BARYON_INTERACTION
+          for(j = 0; j < 3; j++)
+            {P[i].dm_dtVel[j] = 0;}
+         if(P[i].Type == 1){P[i].count1 = 0;}
+         if(P[i].Type == 0){SphP[i].count0 = 0, SphP[i].dm_count = 0, SphP[i].baryon_count = 0;}
+
+#endif    
         /* DISTORTION PARTICLE SETUP */
 #ifdef GDE_DISTORTIONTENSOR
         /*init tidal tensor for first output (not used for calculation) */
@@ -488,12 +494,28 @@ void init(void)
         {
             SphP[i].VelPred[j] = P[i].Vel[j];
             SphP[i].HydroAccel[j] = 0;
+#ifdef DM_BARYON_INTERACTION
+            SphP[i].dm_coll = 0;
+            SphP[i].dm_vrel = 0;
+            SphP[i].vx_dm = 0;
+            SphP[i].vy_dm = 0;
+            SphP[i].vz_dm = 0;
+            SphP[i].vx_baryon = 0;
+            SphP[i].vy_baryon = 0;
+            SphP[i].vz_baryon = 0;
+#endif   
             //SphP[i].dMomentum[j] = 0;//manifest-indiv-timestep-debug//
         }
         
         //SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
         P[i].Particle_DivVel = 0;
+#ifdef DM_BARYON_INTERACTION
+        P[i].dm_Particle_DivVel = 0;
+#endif
         SphP[i].ConditionNumber = 1;
+#ifdef DM_BARYON_INTERACTION
+        SphP[i].dm_ConditionNumber = 1;
+#endif
         SphP[i].DtInternalEnergy = 0;
 #ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
         SphP[i].MaxKineticEnergyNgb = 0;
@@ -509,6 +531,9 @@ void init(void)
         PPPZ[i].AGS_zeta = 0;
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
         PPP[i].AGS_Hsml = PPP[i].Hsml;
+#endif
+#ifdef DM_BARYON_INTERACTION
+        PPP[i].dm_Hsml = PPP[i].Hsml;
 #endif
 #endif
         
@@ -536,6 +561,9 @@ void init(void)
             PPP[i].Hsml = 0;
 #endif
             SphP[i].Density = -1;
+#ifdef DM_BARYON_INTERACTION
+           SphP[i].dm_density =  -1;
+#endif
 #ifdef COOLING
             SphP[i].Ne = 1.0;
 #endif
@@ -680,6 +708,10 @@ void init(void)
     if(RestartFlag != 3 && RestartFlag != 5)
         setup_smoothinglengths();
     
+#ifdef DM_BARYON_INTERACTION
+    if(RestartFlag != 3 && RestartFlag != 5)
+        setup_smoothinglengths2();
+#endif
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     if(RestartFlag != 3 && RestartFlag != 5)
         ags_setup_smoothinglengths();
@@ -723,6 +755,11 @@ void init(void)
     
     
     density();
+
+#ifdef DM_BARYON_INTERACTION
+    dm_density();
+#endif
+
     for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
     {
         int k; k=0;
@@ -765,6 +802,16 @@ void init(void)
 #endif
         //SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
         SphP[i].DtInternalEnergy = 0;
+
+#ifdef DM_BARYON_INTERACTION
+        SphP[i].dm_DtInternalEnergy = 0;
+
+     for(k = 0; k < 3; k++)
+    {
+      SphP[i].baryon_dtVel[k] = 0;
+    }
+#endif
+
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
         SphP[i].dMass = 0;
         SphP[i].DtMass = 0;
@@ -773,6 +820,9 @@ void init(void)
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         PPPZ[i].AGS_zeta = 0;
+#ifdef DM_BARYON_INTERACTION
+        PPPZ[i].dm_AGS_zeta = 0;
+#endif
 #endif
 #ifdef WAKEUP
         if(RestartFlag!=0) {PPPZ[i].wakeup=0;}
@@ -1053,6 +1103,71 @@ void setup_smoothinglengths(void)
     density();    
 }
 
+#ifdef DM_BARYON_INTERACTION
+void setup_smoothinglengths2(void) {
+    int i, no, p;
+    if((RestartFlag == 0)||(RestartFlag==2)) // best for stability if we re-calc Hsml for snapshot restarts //
+     {
+#if defined(DO_DENSITY_AROUND_STAR_PARTICLES) || defined(GRAIN_FLUID)
+         for(i = 0; i < NumPart; i++)
+#else
+            for(i = 0; i < N_gas; i++)
+#endif
+            {
+                no = Father[i];
+
+                while(10 * All.DesNumNgb * P[i].Mass > Nodes[no].u.d.mass)
+                 {
+                     p = Nodes[no].u.d.father;
+
+                    if(p < 0)
+                        break;
+
+                     no = p;
+                }
+
+                 if((RestartFlag == 0)||(P[i].Type != 0)) // if Restartflag==2, use the saved Hsml of the gas as initial guess //
+                {
+
+#ifndef READ_HSML
+#if NUMDIMS == 3
+                     PPP[i].dm_Hsml = pow(3.0 / (4 * M_PI) * All.DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 0.333333) * Nodes[no].len;
+#endif
+#if NUMDIMS == 2
+                     PPP[i].dm_Hsml = pow(1.0 / (M_PI) * All.DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 0.5) * Nodes[no].len;
+#endif
+#if NUMDIMS == 1
+                     PPP[i].dm_Hsml = All.DesNumNgb * (P[i].Mass / Nodes[no].u.d.mass) * Nodes[no].len;
+#endif
+#ifndef NOGRAVITY
+                     if(All.SofteningTable[0] != 0)
+                     {
+                        if((PPP[i].dm_Hsml>100.*All.SofteningTable[0])||(PPP[i].dm_Hsml<=0.01*All.SofteningTable[0])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
+                             PPP[i].dm_Hsml = All.SofteningTable[0];
+                     }
+#else
+
+                     if((Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) PPP[i].dm_Hsml = 1.0;
+#endif
+#endif // READ_HSML
+                 } // closes if((RestartFlag == 0)||(P[i].Type != 0))
+             }
+     }
+
+
+
+#ifdef GRAIN_FLUID
+    if(RestartFlag == 0 || RestartFlag == 2)
+    {
+         for(i = 0; i < NumPart; i++)
+            if(P[i].Type > 0)
+                PPP[i].dm_Hsml = All.SofteningTable[P[i].Type];
+    }
+#endif
+
+   dm_density();
+}
+#endif
 
 void assign_unique_ids(void)
 {
