@@ -111,9 +111,6 @@ void compute_hydro_densities_and_forces(void)
 #endif
 #ifdef DM_FUZZY
         DMGrad_gradient_calc();
-#ifdef DM_FUZZY_BETTERGRADIENTS
-        DMGrad_gradient_calc();
-#endif
 #endif
 #ifndef IO_REDUCED_MODE
         if(ThisTask == 0)
@@ -144,9 +141,6 @@ void compute_hydro_densities_and_forces(void)
         force_update_hmax();    /* update kernel lengths in tree */
 #ifdef DM_FUZZY
         DMGrad_gradient_calc();
-#ifdef DM_FUZZY_BETTERGRADIENTS
-        DMGrad_gradient_calc();
-#endif
 #endif
 #endif
     }

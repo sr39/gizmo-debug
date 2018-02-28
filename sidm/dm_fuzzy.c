@@ -22,76 +22,81 @@
 /* --------------------------------------------------------------------------
  Actual evaluation of fluxes from the quantum pressure tensor
  -------------------------------------------------------------------------- */
-#ifdef DM_FUZZY_BETTERGRADIENTS
-void do_dm_fuzzy_flux_computation(double HLLwt, double dp[3], double dv[3],
+void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double dp[3], double dv[3],
                                   double GradRho_L[3], double GradRho_R[3],
                                   double GradRho2_L[3][3], double GradRho2_R[3][3],
-                                  double rho_L, double rho_R,
-                                  double v_L, double v_R,
+                                  double rho_L, double rho_R, double v_L, double v_R,
                                   double Area[3], double fluxes[3])
-#else
-void do_dm_fuzzy_flux_computation(double HLLwt, double dp[3], double dv[3],
-                                  double GradRho_L[3], double GradRho_R[3],
-                                  double rho_L, double rho_R,
-                                  double v_L, double v_R,
-                                  double Area[3], double fluxes[3])
-#endif
 {
+    if(dt <= 0) return; // no timestep, no flux
     int m,n;
     double f00 = 0.5 * 591569.0 / (All.FuzzyDM_Mass_in_eV * All.UnitVelocity_in_cm_per_s * All.UnitLength_in_cm/All.HubbleParam); // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
     // (0.5=1/2, pre-factor from dimensionless equations; 591569 = hbar/eV in cm^2/s; add mass in eV, and put in code units
-    double f2 = f00*f00, rhoL_i=1./rho_L, rhoR_i=1./rho_R, r2=0, rSi=1./(rho_L+rho_R), Pfrob=0.;
+    double f2 = f00*f00, rhoL_i=1./rho_L, rhoR_i=1./rho_R, r2=0, rSi=1./(rho_L+rho_R);
     for(m=0;m<3;m++) {r2+=dp[m]*dp[m]; fluxes[m]=0;} /* zero fluxes and calculate separation */
+    if(r2 <= 0) return; // same element
     double r=sqrt(r2), wavespeed=2.*f00*(M_PI/r); // approximate k = 2pi/lambda = 2pi/(2*dr) as the maximum k the code will allow locally */
     /* note that the QPT admits waves parallel to k, with wavespeed omega = pm 2*f00*k, so include these for HLLC solution */
     if(v_R - v_L > wavespeed) return; // elements are receding super-sonically, no way to communicate pressure //
-    if(r2 <= 0) return; // same element
     
-    double Face_Area_Norm=0; for(m=0;m<3;m++) {Face_Area_Norm+=Area[m]*Area[m];}
+    double fluxmag=0, Face_Area_Norm=0; for(m=0;m<3;m++) {Face_Area_Norm+=Area[m]*Area[m];}
     Face_Area_Norm=sqrt(Face_Area_Norm);
     
     for(m=0;m<3;m++)
     {
         for(n=0;n<3;n++)
         {
-#ifdef DM_FUZZY_BETTERGRADIENTS 
             double QPT_L = f2*(rhoL_i*GradRho_L[m]*GradRho_L[n] - GradRho2_L[m][n]) * All.cf_a3inv*All.cf_a2inv; // convert grad^2_rho ~ rho/L^2 from code units to physical
             double QPT_R = f2*(rhoR_i*GradRho_R[m]*GradRho_R[n] - GradRho2_R[m][n]) * All.cf_a3inv*All.cf_a2inv; // convert grad^2_rho ~ rho/L^2 from code units to physical
-#else
-            /* calculate second-derivative of density in pair-wise faction across the face */
-            double drho_mn = (GradRho_R[n]-GradRho_L[n]) * dp[m]/ r2; // R=i,L=j, (i-j) should match sense of dp[m] (which it does)
-            /* calculate pressure tensor based on 1st and new 2nd derivative */
-            double QPT_L = f2*(rhoL_i*GradRho_L[m]*GradRho_L[n] - drho_mn) * All.cf_a3inv*All.cf_a2inv; // convert grad^2_rho ~ rho/L^2 from code units to physical
-            double QPT_R = f2*(rhoR_i*GradRho_R[m]*GradRho_R[n] - drho_mn) * All.cf_a3inv*All.cf_a2inv; // convert grad^2_rho ~ rho/L^2 from code units to physical
-#endif
             /* calculate 'star' solution (interface moving with contact wave, since we have a Lagrangian code)
              for HLLC reimann problem based on these pressure tensors */
             double P_star = (QPT_L*rho_R + QPT_R*rho_L) * rSi; // if there were no waves and all at rest
-            Pfrob += P_star*P_star; // Frobenius norm of the pressure tensor
             fluxes[m] += Area[n] * P_star; /* momentum flux into direction 'm' given by Area.Pressure */
             // sign convention here: -Area[m] * (positive definite) => repulsive force, +Area[m] => attractive
         }
+        fluxmag += fluxes[m]*fluxes[m];
     }
-    Pfrob = sqrt(Pfrob/NUMDIMS); // normal pressure if isotropic (normalize for number of dimensions) //
+    fluxmag = sqrt(fluxmag);
+    double fluxmax = 100. * Face_Area_Norm * f2 * 0.5*(rho_L+rho_R) / (r*r); // limiter to prevent crazy values where derivatives are ill-posed (e.g. discontinuities)
+    if(fluxmag > fluxmax) {for(m=0;m<3;m++) {fluxes[m] *= fluxmax/fluxmag;}}
+
     /* now we have to introduce the numerical diffusivity (the up-wind mixing part from the Reimann problem);
      this can have one of a couple forms, but the most accurate and stable appears to be the traditional HLLC form
      which we use by default below */
-    if(v_L > v_R)  // converging flow, upwind dissipation terms appear //
+    //double dvLR = (dv[0]*dp[0] + dv[1]*dp[1] + dv[2]*dp[2]) / r;
+    double dvLR = v_R - v_L;
+    if(dvLR < 0) // converging flow, upwind dissipation terms appear //
     {
-        double Pstar = (v_L-v_R)*(wavespeed + v_L-v_R)*rho_L*rho_R*rSi; // HLLC diffusive term
-        Pstar = DMIN( Pstar , Pfrob * HLLwt ); // limiter for diffusive flux term (otherwise present even with vanishingly weak QPT, not desired here)
+        // estimate wavenumber needed to calculate wavespeed below, for dissipation terms //
+        double g_kL = sqrt(GradRho_L[0]*GradRho_L[0]+GradRho_L[1]*GradRho_L[1]+GradRho_L[2]*GradRho_L[2]); // gradient magnitude
+        double g_kR = sqrt(GradRho_R[0]*GradRho_R[0]+GradRho_R[1]*GradRho_R[1]+GradRho_R[2]*GradRho_R[2]); // gradient magnitude
+        double k_g1 = 0.5*(rhoL_i*g_kL + rhoR_i*g_kR); // gradient scale-length as proxy for wavenumber [crude] //
+        double k_eff=0, k_g2=0, k_g3=0, k_d1 = fabs(rho_L-rho_R)/(0.5*(rho_L+rho_R)) / r; // even cruder delta-based k-estimate
+        if(isnan(k_d1)) {k_d1=0;} // trap for division by zero above (should give zero wavespeed)
+        if(isnan(k_g1)) {k_g1=0;} // trap
+        double k2L = GradRho2_L[0][0]+GradRho2_L[1][1]+GradRho2_L[2][2]; // laplacian
+        double k2R = GradRho2_R[0][0]+GradRho2_R[1][1]+GradRho2_R[2][2]; // laplacian
+        k_g2 = sqrt( (fabs(k2L)+fabs(k2R)) * rSi ); // sqrt of second derivative -- again crude, doesn't necessarily recover full k but lower value
+        k_g3 = 0.5 * sqrt(fabs(k2L-k2R) / (0.5*(g_kL+g_kR)*r)); // third-derivative to first-derivative ratio: exact for resolved wave
+        double k_gtan = (fabs(k2L)+fabs(k2R)) / (MIN_REAL_NUMBER + fabs(g_kL) + fabs(g_kR));
+        if(isnan(k_g2)) {k_g2=0;} // trap
+        if(isnan(k_g3)) {k_g3=0;} // trap
+        if(isnan(k_gtan)) {k_gtan=0;} // trap
+        k_eff = DMIN(DMAX(k_gtan , DMAX(DMAX((3.+HLLwt)*DMAX(k_d1,k_g1), (2.+HLLwt)*k_g2)  , (1.5+HLLwt)*k_g3)) , 1./r);
+        if(isnan(k_eff)) {k_eff=0;} // trap
+        //double Pstar = (Face_Area_Norm/r) * (-dvLR)*(f00*k_eff + (-dvLR))*rho_L*rho_R*rSi; // HLLC diffusive term
+        double Pstar = (-dvLR)*(f00*k_eff + (-dvLR))*rho_L*rho_R*rSi; // HLLC diffusive term
+        fluxmag = 0; for(m=0;m<3;m++) {fluxmag += fluxes[m]*fluxes[m];}
+        fluxmag = sqrt(fluxmag);
         for(m=0;m<3;m++)
         {
-            fluxes[m] += Area[m] * Pstar; /* momentum flux into direction 'm' given by Area.Pressure */
-            //fluxes[m] += Face_Area_Norm * dp[m]/r * Pstar; // assume the face points along the line between particles (very similar, but slightly more stable/diffusive if faces are highly-irregular)
+            //double f_dir = dp[m]*Pstar, fmax = 0.5 * m0 * fabs(dv[m]) / dt; // assume the face points along the line between particles (very similar, but slightly more stable/diffusive if faces are highly-irregular)
+            double f_dir = Area[m]*Pstar, fmax = 0.5 * m0 * fabs(dv[m]) / dt; // assume the face points along the line between particles (very similar, but slightly more stable/diffusive if faces are highly-irregular)
+            fmax = DMAX(fmax, 10.*fluxmag); // limit diffusive flux to multiplier of physical flux
+            if(fabs(f_dir) > fmax) {f_dir *= fmax/fabs(f_dir);} // limit diffusive flux to avoid overshoot (numerical stability of the diffusion terms) //
+            fluxes[m] += f_dir; /* momentum flux into direction 'm' given by Area.Pressure */
         }
     } // approach velocities lead to up-wind mixing
-    /*
-     // HLL solution for a stress tensor with the same sound speed in all directions. Appears more diffusive (as we would expect)
-     double P0_diss = wavespeed *rho_L*rho_R*rSi * sqrt(dv[0]*dv[0]+dv[1]*dv[1]+dv[2]*dv[2]);
-     double n_norm = 1; if(P0_diss > Pfrob*HLLwt) {n_norm = Pfrob*HLLwt / P0_diss;}
-     for(m=0;m<3;m++) {if(dv[m]*dp[m] < 0) {fluxes[m] += n_norm * Face_Area_Norm * (-dv[m]) *wavespeed *rho_L*rho_R*rSi;}}
-     */
     return;
 }
 
@@ -188,9 +193,7 @@ double do_cbe_nvt_inversion_for_faces(int i)
 struct Quantities_for_Gradients_DM
 {
     MyDouble AGS_Density;
-#ifdef DM_FUZZY_BETTERGRADIENTS
     MyDouble AGS_Gradients_Density[3];
-#endif
 };
 
 struct DMGraddata_in
@@ -232,9 +235,7 @@ static inline void particle2in_DMGrad(struct DMGraddata_in *in, int i)
     in->AGS_Hsml = PPP[i].AGS_Hsml;
     in->GQuant.AGS_Density = P[i].AGS_Density;
     in->Type = P[i].Type;
-#ifdef DM_FUZZY_BETTERGRADIENTS
     for(k=0;k<3;k++) {in->GQuant.AGS_Gradients_Density[k] = P[i].AGS_Gradients_Density[k];}
-#endif
 }
 
 #define ASSIGN_ADD_PRESET(x,y,mode) (mode == 0 ? (x=y) : (x+=y))
@@ -252,15 +253,13 @@ static inline void out2particle_DMGrad(struct DMGraddata_out *out, int i, int mo
         MIN_ADD(DMGradDataPasser[i].Minima.AGS_Density,out->Minima.AGS_Density,mode);
         int k; for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients_Density[k],out->Gradients[k].AGS_Density,mode);}
     } else {
-#ifdef DM_FUZZY_BETTERGRADIENTS
-        int k,k2; 
+        int k,k2;
         for(k=0;k<3;k++) 
         {
             MAX_ADD(DMGradDataPasser[i].Maxima.AGS_Gradients_Density[k],out->Maxima.AGS_Gradients_Density[k],mode);
             MIN_ADD(DMGradDataPasser[i].Minima.AGS_Gradients_Density[k],out->Minima.AGS_Gradients_Density[k],mode);
             for(k2=0;k2<3;k2++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients2_Density[k2][k],out->Gradients[k].AGS_Gradients_Density[k2],mode);}
         }
-#endif
     }
 }
 
@@ -282,9 +281,7 @@ void DMGrad_gradient_calc(void)
 {
     /* define the number of iterations needed to compute gradients and optional gradients-of-gradients */
     int gradient_iteration, number_of_gradient_iterations = 1;
-#ifdef DM_FUZZY_BETTERGRADIENTS
     number_of_gradient_iterations = 2; // need extra iteration to get gradients-of-gradients
-#endif
     /* loop over the number of iterations needed to actually compute the gradients fully */
     for(gradient_iteration=0; gradient_iteration<number_of_gradient_iterations; gradient_iteration++)
     {
@@ -505,7 +502,6 @@ void DMGrad_gradient_calc(void)
                     testing this now. if not, we can remove the limiter information entirely and save some time in these computations) */
                 //local_slopelimiter(P[i].AGS_Gradients_Density,DMGradDataPasser[i].Maxima.AGS_Density,DMGradDataPasser[i].Minima.AGS_Density,0.5,PPP[i].AGS_Hsml,0);
             } else {
-#ifdef DM_FUZZY_BETTERGRADIENTS
                 int k;
                 for(k=0;k<3;k++)
                 {
@@ -521,11 +517,10 @@ void DMGrad_gradient_calc(void)
                 P[i].AGS_Gradients2_Density[0][2] = P[i].AGS_Gradients2_Density[2][0] = tmp;
                 tmp = 0.5*(P[i].AGS_Gradients2_Density[1][2] + P[i].AGS_Gradients2_Density[2][1]);
                 P[i].AGS_Gradients2_Density[1][2] = P[i].AGS_Gradients2_Density[2][1] = tmp;
-#endif
             }
         }
         myfree(DMGradDataPasser); /* free the temporary structure we created for the MinMax and additional data passing */
-        if(number_of_gradient_iterations > 1) {MPI_Barrier(MPI_COMM_WORLD);} // force barrier so we know the first derivatives are fully-computed //
+        MPI_Barrier(MPI_COMM_WORLD); // force barrier so we know the first derivatives are fully-computed //
 
         /* collect some timing information */
         t1 = WallclockTime = my_second();
@@ -592,14 +587,12 @@ int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
                     MINMAX_CHECK(d_rho,out.Minima.AGS_Density,out.Maxima.AGS_Density);
                     for(k=0;k<3;k++) {out.Gradients[k].AGS_Density += -kernel.wk_i * kernel.dp[k] * d_rho;} /* sign is important here! */
                 } else {
-#ifdef DM_FUZZY_BETTERGRADIENTS
                     for(k=0;k<3;k++)
                     {
                         double d_grad_rho = P[j].AGS_Gradients_Density[k] - local.GQuant.AGS_Gradients_Density[k];
                         MINMAX_CHECK(d_grad_rho,out.Minima.AGS_Gradients_Density[k],out.Maxima.AGS_Gradients_Density[k]);
                         int k2; for(k2=0;k2<3;k2++) {out.Gradients[k2].AGS_Gradients_Density[k] += -kernel.wk_i * kernel.dp[k2] * d_grad_rho;}
                     }
-#endif
                 } // gradient_iteration
             } // numngb_inbox loop
         } // while(startnode)
