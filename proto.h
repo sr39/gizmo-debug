@@ -836,7 +836,7 @@ int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
 void *DMGrad_evaluate_primary(void *p, int gradient_iteration);
 void *DMGrad_evaluate_secondary(void *p, int gradient_iteration);
 double get_particle_volume_ags(int j);
-void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double dp[3], double dv[3],
+void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double prev_a, double dp[3], double dv[3],
                                   double GradRho_L[3], double GradRho_R[3],
                                   double GradRho2_L[3][3], double GradRho2_R[3][3],
                                   double rho_L, double rho_R,

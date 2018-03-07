@@ -22,7 +22,7 @@
 /* --------------------------------------------------------------------------
  Actual evaluation of fluxes from the quantum pressure tensor
  -------------------------------------------------------------------------- */
-void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double dp[3], double dv[3],
+void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double prev_a, double dp[3], double dv[3],
                                   double GradRho_L[3], double GradRho_R[3],
                                   double GradRho2_L[3][3], double GradRho2_R[3][3],
                                   double rho_L, double rho_R, double v_L, double v_R,
@@ -46,8 +46,8 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double dp[
     {
         for(n=0;n<3;n++)
         {
-            double QPT_L = f2*(rhoL_i*GradRho_L[m]*GradRho_L[n] - GradRho2_L[m][n]) * All.cf_a3inv*All.cf_a2inv; // convert grad^2_rho ~ rho/L^2 from code units to physical
-            double QPT_R = f2*(rhoR_i*GradRho_R[m]*GradRho_R[n] - GradRho2_R[m][n]) * All.cf_a3inv*All.cf_a2inv; // convert grad^2_rho ~ rho/L^2 from code units to physical
+            double QPT_L = f2*(rhoL_i*GradRho_L[m]*GradRho_L[n] - GradRho2_L[m][n]); // convert grad^2_rho ~ rho/L^2 from code units to physical [should already all be physical here]
+            double QPT_R = f2*(rhoR_i*GradRho_R[m]*GradRho_R[n] - GradRho2_R[m][n]); // convert grad^2_rho ~ rho/L^2 from code units to physical [should already all be physical here]
             /* calculate 'star' solution (interface moving with contact wave, since we have a Lagrangian code)
              for HLLC reimann problem based on these pressure tensors */
             double P_star = (QPT_L*rho_R + QPT_R*rho_L) * rSi; // if there were no waves and all at rest
@@ -92,7 +92,7 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double dp[
         {
             //double f_dir = dp[m]*Pstar, fmax = 0.5 * m0 * fabs(dv[m]) / dt; // assume the face points along the line between particles (very similar, but slightly more stable/diffusive if faces are highly-irregular)
             double f_dir = Area[m]*Pstar, fmax = 0.5 * m0 * fabs(dv[m]) / dt; // assume the face points along the line between particles (very similar, but slightly more stable/diffusive if faces are highly-irregular)
-            fmax = DMAX(fmax, 10.*fluxmag); // limit diffusive flux to multiplier of physical flux
+            fmax = DMAX(fmax, 10.*fluxmag); fmax = DMAX(DMIN(fmax , 40.*prev_a), fluxmag); // limit diffusive flux to multiplier of physical flux
             if(fabs(f_dir) > fmax) {f_dir *= fmax/fabs(f_dir);} // limit diffusive flux to avoid overshoot (numerical stability of the diffusion terms) //
             fluxes[m] += f_dir; /* momentum flux into direction 'm' given by Area.Pressure */
         }
