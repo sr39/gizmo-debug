@@ -451,7 +451,7 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         /* fuzzy DM admits longitudinal waves with group velocity =(hbar/m_dm)*k, so need a courant criterion, but because of scaling with k (like diffusion), timestep is quadratic in resolution */
         double vgroup_over_k_fuzzy = 591569.000 / ((double)All.FuzzyDM_Mass_in_eV * (double)All.UnitVelocity_in_cm_per_s * (double)All.UnitLength_in_cm/(double)All.HubbleParam); // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
-        double L_particle_ags_x = Get_Particle_Size_AGS(p);
+        double L_particle_ags_x = Get_Particle_Size_AGS(p) * All.cf_atime;
         double dt_cour_ags_fuzzy = 0.25 * (L_particle_ags_x*L_particle_ags_x) / vgroup_over_k_fuzzy;
         if(dt_cour_ags_fuzzy < dt) {dt = dt_cour_ags_fuzzy;}
     }
