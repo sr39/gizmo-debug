@@ -613,7 +613,7 @@ integertime get_timestep(int p,		/*!< particle index */
                                 cr_speed = DMAX( All.cf_afac3*SphP[p].MaxSignalVel , DMIN(COSMIC_RAYS_M1 , fabs(SphP[p].CosmicRayDiffusionCoeff)/(Get_Particle_Size(p)*All.cf_atime)));// * (C/All.UnitVelocity_in_cm_per_s);
                             }
                             double dt_courant_CR = All.CourantFac * (L_particle*All.cf_atime) / cr_speed;
-                            if(dt_conduction < dt_courant_CR) {dt_conduction = dt_courant_CR;}
+                            if(dt_conduction > dt_courant_CR) {dt_conduction = dt_courant_CR;}
                         } else {dt_conduction=10.*dt;}
                     } else {
                         double dt_courant_CR = All.CourantFac * (L_particle*All.cf_atime) / COSMIC_RAYS_M1;
