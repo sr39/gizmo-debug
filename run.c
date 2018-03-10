@@ -1071,11 +1071,6 @@ void energy_statistics(void)
 
 void output_extra_log_messages(void)
 {
-    
-#if defined(DM_SIDM)
-    log_self_interactions();
-#endif
-    
 #if defined(TURB_DRIVING) && !defined(IO_REDUCED_MODE)
     log_turb_temp();
 #endif

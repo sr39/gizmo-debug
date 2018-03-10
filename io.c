@@ -1082,6 +1082,24 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
+        case IO_CBE_MOMENTS:
+#if defined(CBE_INTEGRATOR)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    for(k = 0; k < CBE_INTEGRATOR_NMOMENTS; k++)
+                    {
+                        int kf;
+                        for(kf = 0; kf < CBE_INTEGRATOR_NBASIS; kf++)
+                            fp[CBE_INTEGRATOR_NMOMENTS*k + kf] = P[pindex].CBE_basis_moments[kf][k];
+                    }
+                    n++;
+                    fp += (CBE_INTEGRATOR_NMOMENTS*CBE_INTEGRATOR_NBASIS);
+            }
+#endif
+            break;
+
+            
         case IO_EOS_STRESS_TENSOR:
 #if defined(EOS_ELASTIC)
             for(n = 0; n < pc; pindex++)
@@ -1099,6 +1117,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
+            
             case IO_EOSCOMP:
 #ifdef EOS_TILLOTSON
             for(n = 0; n < pc; pindex++)
@@ -1590,6 +1609,16 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             break;
 
             
+        case IO_CBE_MOMENTS:
+#ifdef CBE_INTEGRATOR
+            if(mode)
+                bytes_per_blockelement = (CBE_INTEGRATOR_NBASIS*CBE_INTEGRATOR_NMOMENTS) * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = (CBE_INTEGRATOR_NBASIS*CBE_INTEGRATOR_NMOMENTS) * sizeof(MyOutputFloat);
+            break;
+#endif
+
+            
         case IO_TIDALTENSORPS:
             if(mode)
                 bytes_per_blockelement = 9 * sizeof(MyInputFloat);
@@ -1801,6 +1830,14 @@ int get_values_per_blockelement(enum iofields blocknr)
             values = 9;
             break;
 
+        case IO_CBE_MOMENTS:
+#ifdef CBE_INTEGRATOR
+            values = (CBE_INTEGRATOR_NBASIS*CBE_INTEGRATOR_NMOMENTS);
+#else
+            values = 0;
+#endif
+            break;
+
         case IO_EDDINGTON_TENSOR:
 #ifdef RADTRANSFER
             values = (6*N_RT_FREQ_BINS);
@@ -1916,6 +1953,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_AGS_NGBS:
         case IO_MG_PHI:
         case IO_BH_DIST:
+        case IO_CBE_MOMENTS:
             return nall;
             break;
             
@@ -2576,6 +2614,13 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
+            
+        case IO_CBE_MOMENTS:
+#ifdef CBE_INTEGRATOR
+            return 1;
+#else
+            return 0;
+#endif
 
         case IO_PARTVEL:
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -2952,6 +2997,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_EOS_STRESS_TENSOR:
             strncpy(label, "ESTT", 4);
             break;
+        case IO_CBE_MOMENTS:
+            strncpy(label, "VMOM", 4);
+            break;
         case IO_EOSCOMP:
             strncpy(label, "COMP", 4);
             break;
@@ -3314,6 +3362,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_EOS_STRESS_TENSOR:
             strcpy(buf, "StressTensor");
+            break;
+        case IO_CBE_MOMENTS:
+            strcpy(buf, "VlasovMoments");
             break;
         case IO_EOSCOMP:
             strcpy(buf, "CompositionType");
