@@ -83,6 +83,7 @@ double powerspec_turb_obtain_fields(void);
 void powerspec_turb_save(char *fname, double *disp);
 void powerspec_turb_collect(void);
 void powerspec_turb(int filenr);
+void compute_additional_forces_for_all_particles(void);
 
 
 void set_cosmo_factors_for_current_time(void);
@@ -120,6 +121,11 @@ void calc_shearing_box_pos_offset(void);
 int ngb_treefind_variable_threads_targeted(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
                                            int mode, int *exportflag, int *exportnodecount, int *exportindex,
                                            int *ngblist, int TARGET_BITMASK);
+
+int ngb_treefind_pairs_threads_targeted(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
+                                           int mode, int *exportflag, int *exportnodecount, int *exportindex,
+                                           int *ngblist, int TARGET_BITMASK);
+
 
 
 void do_distortion_tensor_kick(int i, double dt_gravkick);
@@ -282,6 +288,7 @@ double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id);
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
 double INLINE_FUNC Get_Particle_Size_AGS(int i);
+double get_particle_volume_ags(int j);
 #endif
 
 double INLINE_FUNC hubble_function(double a);
@@ -782,6 +789,11 @@ void *ags_density_evaluate_secondary(void *p);
 int ags_density_isactive(int i);
 double ags_return_maxsoft(int i);
 double ags_return_minsoft(int i);
+void AGSForce_calc(void);
+int AGSForce_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
+void *AGSForce_evaluate_primary(void *p);
+void *AGSForce_evaluate_secondary(void *p);
+int AGSForce_isactive(int i);
 #endif
 
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -805,28 +817,24 @@ void apply_excision();
 #endif
 
 #ifdef DM_SIDM
-double prob_of_interaction(double mass, double r, double h_si,  double Vtarget[3], double Vno[3], int dt_step);
+double prob_of_interaction(double mass, double r, double h_si, double dV[3], int dt_step);
 double g_geo(double r);
-void calculate_interact_kick(double Vtarget[3], double Vno[3], double kick_target[3], double kick_no[3]);
+void calculate_interact_kick(double dV[3], double kick[3]);
 void init_geofactor_table(void);
 double geofactor_integ(double x, void * params);
 double geofactor_angle_integ(double u, void * params);
-void update_interaction_table(MyIDType id1, MyIDType id2);
-int  check_interaction_table(MyIDType id1, MyIDType id2);
-void AllocateInteractionTable(int x, int y);
 void init_self_interactions();
-void log_self_interactions();
 #endif
 
 
 #ifdef CBE_INTEGRATOR
 void do_cbe_initialization(void);
 void do_cbe_drift_kick(int i, double dt);
-void do_cbe_flux_computation(double *moments, double vface_dot_A, double *Area, double *fluxes);
+double do_cbe_flux_computation(double moments[CBE_INTEGRATOR_NMOMENTS], double vface_dot_A, double Area[3], double fluxes[CBE_INTEGRATOR_NMOMENTS]);
 void do_postgravity_cbe_calcs(int i);
 #endif
 
-#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
+#if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
 double do_cbe_nvt_inversion_for_faces(int i);
 #endif
 
@@ -835,12 +843,10 @@ void DMGrad_gradient_calc(void);
 int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
 void *DMGrad_evaluate_primary(void *p, int gradient_iteration);
 void *DMGrad_evaluate_secondary(void *p, int gradient_iteration);
-double get_particle_volume_ags(int j);
 void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double prev_a, double dp[3], double dv[3],
                                   double GradRho_L[3], double GradRho_R[3],
                                   double GradRho2_L[3][3], double GradRho2_R[3][3],
-                                  double rho_L, double rho_R,
-                                  double v_L, double v_R,
+                                  double rho_L, double rho_R, double dv_Right_minus_Left,
                                   double Area[3], double fluxes[3]);
 #endif
 

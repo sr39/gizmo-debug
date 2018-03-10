@@ -172,7 +172,6 @@ void begrun(void)
 #endif
 
 #ifdef DM_SIDM
-    AllocateInteractionTable(INTERACTION_TABLE_LENGTH, PARTICLE_MAX_INTERACTIONS + 1);
     init_geofactor_table();
 #endif
 
@@ -245,10 +244,6 @@ void begrun(void)
       All.MaxSfrTimescale = all.MaxSfrTimescale;
 #endif
         
-#ifdef DM_SIDM
-        All.SIDMSmoothingFactor = all.SIDMSmoothingFactor;
-#endif
-
 
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
       All.ArtBulkViscConst = all.ArtBulkViscConst;
@@ -1069,10 +1064,6 @@ void read_parameter_file(char *fname)
 #ifdef DM_SIDM
         strcpy(tag[nt], "InteractionCrossSection");
         addr[nt] = &All.InteractionCrossSection;
-        id[nt++] = REAL;
-
-        strcpy(tag[nt], "SIDMSmoothingFactor");
-        addr[nt] = &All.SIDMSmoothingFactor;
         id[nt++] = REAL;
 #endif
 

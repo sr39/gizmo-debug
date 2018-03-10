@@ -180,10 +180,17 @@
 #include "eos/eos.h"
 
 
-#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
+#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY) || defined(DM_SIDM)
 #ifndef ADAPTIVE_GRAVSOFT_FORALL
 #define ADAPTIVE_GRAVSOFT_FORALL 100000
 #endif
+#endif
+
+#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
+#define AGS_FACE_CALCULATION_IS_ACTIVE
+#endif
+
+#if defined(CBE_INTEGRATOR)
 #define CBE_INTEGRATOR_NBASIS CBE_INTEGRATOR
 #ifdef CBE_INTEGRATOR_SECONDMOMENT
 #define CBE_INTEGRATOR_NMOMENTS 10
@@ -451,6 +458,9 @@
 
 #if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER)
 #define DO_DENSITY_AROUND_STAR_PARTICLES
+#if !defined(ALLOW_IMBALANCED_GASPARTICLELOAD)
+#define ALLOW_IMBALANCED_GASPARTICLELOAD
+#endif
 #endif
 
 
@@ -1401,11 +1411,7 @@ extern struct global_data_all_processes
 
     
 #ifdef DM_SIDM
-    unsigned long Ndmsi_thisTask; /*!< Number of DM self-interactions computed at this Task during current time-step */
-    unsigned long Ndmsi;          /*!< Sum of Nsi_thisTask over all Tasks. Only the root task keeps track of this	 value.*/
     MyDouble InteractionCrossSection;  /*!< self-interaction cross-section in [cm^2/g]*/
-    double SIDMSmoothingFactor;  /*!< self-interaction softening length in units of the force softening, i.e. h_sidm
-                                  = All.SIDMSmoothingFactor*All.ForceSoftening[1]  (for -both- adaptive and non-adaptive modes) */
 #endif
     
   int MaxPart;			/*!< This gives the maxmimum number of particles that can be stored on one processor. */
@@ -2144,7 +2150,7 @@ extern ALIGN(32) struct particle_data
     MyFloat AGS_Gradients_Density[3];   /*!< density gradient calculated corresponding to AGS routine (over interacting DM neighbors) */
     MyFloat AGS_Gradients2_Density[3][3];   /*!< density gradient calculated corresponding to AGS routine (over interacting DM neighbors) */
 #endif
-#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
+#if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
     MyFloat NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */
 #endif
 #ifdef CBE_INTEGRATOR
@@ -2525,25 +2531,6 @@ extern struct gravdata_in
     MyFloat AGS_zeta;
 #endif
 #endif
-#if defined(DM_SIDM) || defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
-    MyFloat Vel[3];
-    int dt_step;
-#endif
-#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
-    double NV_T[3][3];
-    double V_i;
-#endif
-#if defined(DM_FUZZY)
-    double AGS_Gradients_Density[3];
-    double AGS_Gradients2_Density[3][3];   /*!< density gradient calculated corresponding to AGS routine (over interacting DM neighbors) */
-#endif
-#if defined(CBE_INTEGRATOR)
-    double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];
-#endif
-#ifdef DM_SIDM
-    int dt_step_sidm;
-    MyIDType ID;
-#endif
     MyFloat OldAcc;
     int NodeList[NODELISTLENGTH];
 }
@@ -2569,14 +2556,6 @@ extern struct gravdata_out
 #endif
 #ifdef GDE_DISTORTIONTENSOR
     MyLongDouble tidal_tensorps[3][3];
-#endif
-#ifdef DM_SIDM
-    MyDouble Vel[3];
-    int dt_step_sidm;
-    long unsigned int NInteractions;
-#endif
-#ifdef CBE_INTEGRATOR
-    MyLongDouble CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];
 #endif
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
@@ -2773,6 +2752,7 @@ enum iofields
   IO_PRESSURE,
   IO_EOSCS,
   IO_EOS_STRESS_TENSOR,
+  IO_CBE_MOMENTS,
   IO_EOSCOMP,
   IO_PARTVEL,
   IO_RADGAMMA,
@@ -3014,11 +2994,7 @@ extern int FB_Seed;
 
 #ifdef DM_SIDM
 #define GEOFACTOR_TABLE_LENGTH 1000    /*!< length of the table used for the geometric factor spline */
-#define INTERACTION_TABLE_LENGTH 5000  /*!< This should be about the maximum number of interactions expected at each timestep */
-#define PARTICLE_MAX_INTERACTIONS 1000 /*!< Maximum number of interactions a particle can have at each time step */
-
 extern MyDouble GeoFactorTable[GEOFACTOR_TABLE_LENGTH];
-extern MyIDType** InteractionTable;
 #endif
 
 #endif  /* ALLVARS_H  - please do not put anything below this line */

@@ -94,22 +94,6 @@ void gravity_tree(void)
 #endif
 #endif
     
-#ifdef DM_SIDM
-    All.Ndmsi_thisTask = 0;
-    All.Ndmsi = 0;
-    for (i = 0; i < INTERACTION_TABLE_LENGTH; i++)
-        for(j = 0; j < PARTICLE_MAX_INTERACTIONS + 1; j++)
-            InteractionTable[i][j] = 0;
-#endif
-#ifdef CBE_INTEGRATOR
-    /* need to zero values for active particles (which will be re-calculated) before they are added below */
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-    {
-        int k1,k2;
-        for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {P[i].CBE_basis_moments_dt[k1][k2] = 0;}}
-    }
-#endif
-
     
     CPU_Step[CPU_MISC] += measure_time();
     
@@ -426,28 +410,6 @@ void gravity_tree(void)
                     GravDataIn[j].Type = P[place].Type;
                     GravDataIn[j].OldAcc = P[place].OldAcc;
                     for(k = 0; k < 3; k++) {GravDataIn[j].Pos[k] = P[place].Pos[k];}
-                    
-#if defined(DM_SIDM) || defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
-                    for(k = 0; k < 3; k++) {GravDataIn[j].Vel[k] = P[place].Vel[k];}
-                    GravDataIn[j].dt_step = P[place].dt_step;
-#endif
-#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
-                    GravDataIn[j].V_i = pow(Get_Particle_Size_AGS(place), NUMDIMS);
-                    int k2; for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {GravDataIn[j].NV_T[k][k2] = P[place].NV_T[k][k2];}}
-#endif
-#ifdef DM_SIDM
-                    GravDataIn[j].dt_step_sidm = P[place].dt_step_sidm;
-                    GravDataIn[j].ID = P[place].ID;
-#endif
-                    
-#ifdef DM_FUZZY
-                    for(k=0;k<3;k++) {GravDataIn[j].AGS_Gradients_Density[k] = P[place].AGS_Gradients_Density[k];}
-                    {int k2; for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {GravDataIn[j].AGS_Gradients2_Density[k][k2] = P[place].AGS_Gradients2_Density[k][k2];}}}
-#endif
-                    
-#ifdef CBE_INTEGRATOR
-                    for(k=0;k<CBE_INTEGRATOR_NBASIS;k++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {GravDataIn[j].CBE_basis_moments[k][k2] = P[place].CBE_basis_moments[k][k2];}}
-#endif
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
                     GravDataIn[j].Mass = P[place].Mass;
 #endif
@@ -584,22 +546,7 @@ void gravity_tree(void)
                 for(j = 0; j < Nexport; j++)
                 {
                     place = DataIndexTable[j].Index;
-                    
-                    for(k = 0; k < 3; k++)
-                        P[place].GravAccel[k] += GravDataOut[j].Acc[k];
-                    
-#ifdef DM_SIDM
-                    if(Ewald_iter==0)
-                    if( (All.ErrTolTheta == 0) || (All.TypeOfOpeningCriterion == 0) ) //else gravity_tree() will be called again for this time-step
-                    {
-                        for(k = 0; k < 3; k++) {P[place].Vel[k] += GravDataOut[j].Vel[k];}
-                        P[place].dt_step_sidm = GravDataOut[j].dt_step_sidm;
-                        P[place].NInteractions += GravDataOut[j].NInteractions;
-                    }
-#endif
-#ifdef CBE_INTEGRATOR
-                    if(Ewald_iter==0) if((All.ErrTolTheta == 0) || (All.TypeOfOpeningCriterion == 0)) {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {P[place].CBE_basis_moments_dt[k1][k2] += GravDataOut[j].CBE_basis_moments_dt[k1][k2];}}}
-#endif
+                    for(k = 0; k < 3; k++) {P[place].GravAccel[k] += GravDataOut[j].Acc[k];}
 
 #ifdef BH_CALC_DISTANCES
                     /* GravDataOut[j].min_dist_to_bh contains the min dist to particle "P[place]" on another
@@ -1001,10 +948,6 @@ void gravity_tree(void)
     
     add_analytic_gravitational_forces();
     
-#ifdef CBE_INTEGRATOR
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {do_postgravity_cbe_calcs(i);} // do any final post-tree-walk calcs from the CBE integrator here //
-#endif
-    
     
     /* Now the force computation is finished */
     
@@ -1036,9 +979,6 @@ void gravity_tree(void)
     plb = (NumPart / ((double) All.TotNumPart)) * NTask;
     MPI_Reduce(&plb, &plb_max, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(&Numnodestree, &maxnumnodes, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-#ifdef DM_SIDM
-    MPI_Reduce(&All.Ndmsi_thisTask, &All.Ndmsi, 1, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-#endif
     
     CPU_Step[CPU_TREEMISC] += timeall - (timetree + timewait + timecomm);
     CPU_Step[CPU_TREEWALK1] += timetree1;

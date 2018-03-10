@@ -355,17 +355,10 @@ int NextJ;
 int TimerFlag;
 
 struct NODE *Nodes_base,	/*!< points to the actual memory allocted for the nodes */
- *Nodes;			/*!< this is a pointer used to access the nodes which is shifted such that Nodes[All.MaxPart]
-				   gives the first allocated node */
-
-
+*Nodes;			/*!< this is a pointer used to access the nodes which is shifted such that Nodes[All.MaxPart] gives the first allocated node */
 struct extNODE *Extnodes, *Extnodes_base;
-
-
 int MaxNodes;			/*!< maximum allowed number of internal nodes */
 int Numnodestree;		/*!< number of (internal) nodes in each tree */
-
-
 int *Nextnode;			/*!< gives next node in tree walk  (nodes array) */
 int *Father;			/*!< gives parent node in tree (Prenodes array) */
 
@@ -379,7 +372,6 @@ int maxThreads = 1;
 
 #ifdef DM_SIDM
 MyDouble GeoFactorTable[GEOFACTOR_TABLE_LENGTH];
-MyIDType** InteractionTable;
 #endif
 
 
