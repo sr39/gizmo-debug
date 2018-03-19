@@ -156,6 +156,19 @@ int ngb_treefind_variable_threads_targeted(MyDouble searchcenter[3], MyFloat hsm
 #undef SEARCHBOTHWAYS
 }
 
+/* identical to above but includes 'both ways' search for interacting neighbors */
+int ngb_treefind_pairs_threads_targeted(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
+                                           int mode, int *exportflag, int *exportnodecount, int *exportindex,
+                                           int *ngblist, int TARGET_BITMASK)
+{
+#include "system/ngb_codeblock_before_condition.h"
+    if(!((1 << P[p].Type) & (TARGET_BITMASK))) continue; // skip anything not of the desired type
+    if(P[p].Mass <= 0) continue; // skip zero-mass particles
+#define SEARCHBOTHWAYS 1 // only need neighbors inside of search radius, not particles 'looking at' primary
+#include "system/ngb_codeblock_after_condition_threaded.h"
+#undef SEARCHBOTHWAYS
+}
+
 
 
 

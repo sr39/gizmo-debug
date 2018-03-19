@@ -172,7 +172,6 @@ void begrun(void)
 #endif
 
 #ifdef DM_SIDM
-    AllocateInteractionTable(INTERACTION_TABLE_LENGTH, PARTICLE_MAX_INTERACTIONS + 1);
     init_geofactor_table();
 #endif
 
@@ -245,10 +244,6 @@ void begrun(void)
       All.MaxSfrTimescale = all.MaxSfrTimescale;
 #endif
         
-#ifdef DM_SIDM
-        All.SIDMSmoothingFactor = all.SIDMSmoothingFactor;
-#endif
-
 
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
       All.ArtBulkViscConst = all.ArtBulkViscConst;
@@ -1070,10 +1065,6 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "InteractionCrossSection");
         addr[nt] = &All.InteractionCrossSection;
         id[nt++] = REAL;
-
-        strcpy(tag[nt], "SIDMSmoothingFactor");
-        addr[nt] = &All.SIDMSmoothingFactor;
-        id[nt++] = REAL;
 #endif
 
 
@@ -1889,9 +1880,9 @@ void read_parameter_file(char *fname)
     All.MaxNumNgbDeviation /= 5.0;
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-    All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 64.;
+    All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 640.;
 #ifdef GALSF
-    All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 32.;
+    All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 64.;
 #endif
     if(All.AGS_MaxNumNgbDeviation < 0.05) All.AGS_MaxNumNgbDeviation = 0.05;
 #endif

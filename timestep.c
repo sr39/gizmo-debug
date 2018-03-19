@@ -439,7 +439,11 @@ integertime get_timestep(int p,		/*!< particle index */
         {
             double dt_divv = 0.25 / (MIN_REAL_NUMBER + All.cf_a2inv*fabs(P[p].Particle_DivVel));
             if(dt_divv < dt) {dt = dt_divv;}
-            double dt_cour = All.CourantFac * (KERNEL_CORE_SIZE*PPP[p].AGS_Hsml*All.cf_atime) / (MIN_REAL_NUMBER + 0.5*P[p].AGS_vsig*All.cf_afac3);
+#ifdef CBE_INTEGRATOR
+            double dt_cour = All.CourantFac * (Get_Particle_Size_AGS(p)*All.cf_atime) / (MIN_REAL_NUMBER + P[p].AGS_vsig*All.cf_afac3);
+#else
+            double dt_cour = All.CourantFac * (Get_Particle_Size_AGS(p)*All.cf_atime) / (MIN_REAL_NUMBER + 0.5*P[p].AGS_vsig*All.cf_afac3);
+#endif
             if(dt_cour < dt) {dt = dt_cour;}
         }
     }
@@ -451,7 +455,7 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         /* fuzzy DM admits longitudinal waves with group velocity =(hbar/m_dm)*k, so need a courant criterion, but because of scaling with k (like diffusion), timestep is quadratic in resolution */
         double vgroup_over_k_fuzzy = 591569.000 / ((double)All.FuzzyDM_Mass_in_eV * (double)All.UnitVelocity_in_cm_per_s * (double)All.UnitLength_in_cm/(double)All.HubbleParam); // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
-        double L_particle_ags_x = Get_Particle_Size_AGS(p);
+        double L_particle_ags_x = Get_Particle_Size_AGS(p) * All.cf_atime;
         double dt_cour_ags_fuzzy = 0.25 * (L_particle_ags_x*L_particle_ags_x) / vgroup_over_k_fuzzy;
         if(dt_cour_ags_fuzzy < dt) {dt = dt_cour_ags_fuzzy;}
     }
@@ -613,7 +617,7 @@ integertime get_timestep(int p,		/*!< particle index */
                                 cr_speed = DMAX( All.cf_afac3*SphP[p].MaxSignalVel , DMIN(COSMIC_RAYS_M1 , fabs(SphP[p].CosmicRayDiffusionCoeff)/(Get_Particle_Size(p)*All.cf_atime)));// * (C/All.UnitVelocity_in_cm_per_s);
                             }
                             double dt_courant_CR = All.CourantFac * (L_particle*All.cf_atime) / cr_speed;
-                            if(dt_conduction < dt_courant_CR) {dt_conduction = dt_courant_CR;}
+                            if(dt_conduction > dt_courant_CR) {dt_conduction = dt_courant_CR;}
                         } else {dt_conduction=10.*dt;}
                     } else {
                         double dt_courant_CR = All.CourantFac * (L_particle*All.cf_atime) / COSMIC_RAYS_M1;
@@ -845,13 +849,8 @@ integertime get_timestep(int p,		/*!< particle index */
     /* Reduce time-step if this particle got interaction probabilities > 0.2 during the last time-step */
     if(P[p].dt_step_sidm > 0)
     {
-        if(P[p].dt_step_sidm < dt)
-            dt = P[p].dt_step_sidm * All.Timebase_interval;
-        else
-            P[p].dt_step_sidm = 0;
-        
-        if(dt < All.MinSizeTimestep)
-            printf("Warning: A Timestep below the limit `MinSizeTimestep' is being used to keep self interaction probabilities smaller than 0.2. dt = %g\n",dt);
+        if(P[p].dt_step_sidm < dt) {dt = P[p].dt_step_sidm * All.Timebase_interval;} else {P[p].dt_step_sidm = 0;}
+        if(dt < All.MinSizeTimestep) {printf("Warning: A Timestep below the limit `MinSizeTimestep' is being used to keep self interaction probabilities smaller than 0.2. dt = %g\n",dt);}
     }
 #endif
     

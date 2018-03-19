@@ -582,6 +582,8 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_AGS_OMEGA:
         case IO_AGS_CORR:
         case IO_AGS_NGBS:
+        case IO_AGS_RHO:
+        case IO_AGS_QPT:
             break;
 
             
@@ -590,6 +592,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             
         case IO_EOSCS:
         case IO_EOS_STRESS_TENSOR:
+        case IO_CBE_MOMENTS:
         case IO_SFR:
         case IO_POT:
         case IO_ACCEL:

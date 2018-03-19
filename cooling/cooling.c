@@ -552,6 +552,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
         }
 #endif
         
+        fac_noneq_cgs = (dt * All.UnitTime_in_s / All.HubbleParam) * necgs; // factor needed below to asses whether timestep is larger/smaller than recombination time
         if(necgs <= 1.e-25 || J_UV == 0)
         {
             gJH0ne = gJHe0ne = gJHepne = 0;
@@ -568,11 +569,11 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 #endif
 #if defined(RT_CHEM_PHOTOION)
         /* add in photons from explicit radiative transfer (on top of assumed background) */
-        if((necgs > 1.e-25)&&(target >= 0))
+        if(target >= 0)
         {
             int k;
             c_light_ne = C / ((MIN_REAL_NUMBER + necgs) * All.UnitLength_in_cm / All.HubbleParam); // want physical cgs units for quantities below
-            double gJH0ne_0=gJH0 * local_gammamultiplier / necgs, gJHe0ne_0=gJHe0 * local_gammamultiplier / necgs, gJHepne_0=gJHep * local_gammamultiplier / necgs; // need a baseline, so we don't over-shoot below
+            double gJH0ne_0=gJH0 * local_gammamultiplier / (MIN_REAL_NUMBER + necgs), gJHe0ne_0=gJHe0 * local_gammamultiplier / (MIN_REAL_NUMBER + necgs), gJHepne_0=gJHep * local_gammamultiplier / (MIN_REAL_NUMBER + necgs); // need a baseline, so we don't over-shoot below
 #if defined(RT_DISABLE_UV_BACKGROUND)
             gJH0ne_0=gJHe0ne_0=gJHepne_0=MAX_REAL_NUMBER;
 #endif

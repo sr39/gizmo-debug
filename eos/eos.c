@@ -207,9 +207,9 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 #endif
     
     // now we update the CR energies. since this is positive-definite, some additional care is needed //
-    double dCR = SphP[i].DtCosmicRayEnergy*dt_entr, dCRmax = 2.*eCR;
+    double dCR = SphP[i].DtCosmicRayEnergy*dt_entr, dCRmax = 1.e10*(eCR+MIN_REAL_NUMBER);
 #ifdef GALSF
-    dCRmax = DMAX(0.5*eCR , 0.01*u0*P[i].Mass);
+    dCRmax = DMAX(2.0*eCR , 0.1*u0*P[i].Mass);
 #endif
     if(dCR > dCRmax) {dCR=dCRmax;} // don't allow excessively large values
     if(dCR < -eCR) {dCR=-eCR;} // don't allow it to go negative
