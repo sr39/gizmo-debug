@@ -33,8 +33,8 @@ void rt_get_sigma(void)
     /* just the hydrogen ionization bin */
     rt_sigma_HI[RT_FREQ_BIN_H0] = 6.3e-18 * fac; // cross-section (blackbody-weighted) for photons
     nu[RT_FREQ_BIN_H0] = 13.6; // minimum frequency [in eV] of photons of interest
-    rt_nu_eff_eV[RT_FREQ_BIN_H0] = 13.6; // typical blackbody-weighted frequency [in eV] of photons of interest: to convert energies to numbers
-    G_HI[RT_FREQ_BIN_H0] = rt_nu_eff_eV[RT_FREQ_BIN_H0]*ELECTRONVOLT_IN_ERGS / All.UnitEnergy_in_cgs * All.HubbleParam; // absorption cross-section weighted photon energy in code units
+    rt_nu_eff_eV[RT_FREQ_BIN_H0] = 27.2; // typical blackbody-weighted frequency [in eV] of photons of interest: to convert energies to numbers
+    G_HI[RT_FREQ_BIN_H0] = (rt_nu_eff_eV[RT_FREQ_BIN_H0]-13.6)*ELECTRONVOLT_IN_ERGS / All.UnitEnergy_in_cgs * All.HubbleParam; // absorption cross-section weighted photon energy in code units
 #else
     
     /* now we use the multi-bin spectral information */

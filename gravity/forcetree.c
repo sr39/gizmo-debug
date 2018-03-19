@@ -41,7 +41,7 @@ static int last;
 
 /* some modules compute neighbor fluxes explicitly within the force-tree: in these cases, we need to
     take extra care about opening leaves to ensure possible neighbors are not missed, so defined a flag below for it */
-#if defined(DM_SIDM) || defined(CBE_INTEGRATOR) || defined(DM_FUZZY) || defined(ADAPTIVE_GRAVSOFT_FORALL)
+#if defined(ADAPTIVE_GRAVSOFT_FORALL)
 #define NEIGHBORS_MUST_BE_COMPUTED_EXPLICITLY_IN_FORCETREE
 #endif
 
@@ -1692,64 +1692,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     
 
 #ifdef NEIGHBORS_MUST_BE_COMPUTED_EXPLICITLY_IN_FORCETREE
-    double targeth_si;
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-    targeth_si = soft;
+    double targeth_si = soft;
 #else
-    targeth_si = All.ForceSoftening[ptype];
+    double targeth_si = All.ForceSoftening[ptype];
 #endif
 #endif
 
     
-#ifdef DM_SIDM
-    targeth_si *= All.SIDMSmoothingFactor;
-    double sidm_kick_x=0, sidm_kick_y=0, sidm_kick_z=0, sidm_tscatter=0, max_prob=0;
-    MyIDType targetID; int targetdt_step_sidm, si_count=0;
-    if(mode == 0) {targetdt_step_sidm = P[target].dt_step_sidm; targetID = P[target].ID;} else {targetdt_step_sidm = GravDataGet[target].dt_step_sidm; targetID = GravDataGet[target].ID;}
-#endif
-    
-    
-#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
-    double local_NV_T[3][3], local_V_i;
-    if(mode==0)
-    {
-        int k1, k2; local_V_i = pow(Get_Particle_Size_AGS(target), NUMDIMS);
-        for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {local_NV_T[k1][k2] = P[target].NV_T[k1][k2];}}
-    } else {
-        int k1, k2; local_V_i = GravDataGet[target].V_i;
-        for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {local_NV_T[k1][k2] = GravDataGet[target].NV_T[k1][k2];}}
-    }
-#endif
-
-    
-#ifdef CBE_INTEGRATOR
-    double local_CBE_basis_moments[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS], out_CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS]={{0}};
-    if(mode==0)
-    {
-        int k1, k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {local_CBE_basis_moments[k1][k2] = P[target].CBE_basis_moments[k1][k2];}}
-    } else {
-        int k1, k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {local_CBE_basis_moments[k1][k2] = GravDataGet[target].CBE_basis_moments[k1][k2];}}
-    }
-#endif
-
-#if defined(DM_FUZZY)
-    double local_AGS_Gradients_Density[3];
-    {int k2; for(k2=0;k2<3;k2++) {if(mode==0) {local_AGS_Gradients_Density[k2]=P[target].AGS_Gradients_Density[k2];} else {local_AGS_Gradients_Density[k2]=GravDataGet[target].AGS_Gradients_Density[k2];}}}
-    double local_AGS_Gradients2_Density[3][3];
-    {int k1,k2; for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {if(mode==0) {local_AGS_Gradients2_Density[k1][k2]=P[target].AGS_Gradients2_Density[k1][k2];} else {local_AGS_Gradients2_Density[k1][k2]=GravDataGet[target].AGS_Gradients2_Density[k1][k2];}}}}
-#endif
-    
-#if defined(DM_SIDM) || defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
-    int targetdt_step; MyFloat targetVel[3];
-    if(mode==0)
-    {
-        int k2; for(k2=0;k2<3;k2++) {targetVel[k2] = P[target].Vel[k2];}
-        targetdt_step = P[target].dt_step;
-    } else {
-        int k2; for(k2=0;k2<3;k2++) {targetVel[k2] = GravDataGet[target].Vel[k2];}
-        targetdt_step = GravDataGet[target].dt_step;
-    }
-#endif
 
     
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
@@ -1919,11 +1869,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if(h < All.ForceSoftening[P[no].Type])
                     h = All.ForceSoftening[P[no].Type];
 #endif
-                
 
-#ifdef DM_SIDM
-#include "../sidm/sidm_core_flux_computation.h"
-#endif
                 } // closes (if((r2 > 0) && (mass > 0))) check
                 
                 if(TakeLevel >= 0) {P[no].GravCost[TakeLevel] += 1.0;}
@@ -2313,12 +2259,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     {
                         if((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG))
                         {
-#ifdef CBE_INTEGRATOR
-#include "../sidm/cbe_integrator_flux_computation.h"
-#endif
-#ifdef DM_FUZZY
-#include "../sidm/dm_fuzzy_flux_computation.h"
-#endif
                             double dWdr, wp, fac_corr=0;
                             if(h_p_inv >= h_inv)
                             {
@@ -2542,21 +2482,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     } // closes outer (while(no>=0)) check
     
     
-#ifdef DM_SIDM
-    /* some final SIDM operations before writing back to the particles */
-    All.Ndmsi_thisTask += si_count;
-    if(max_prob < 0.1 && max_prob > 0 && mode == 0 && targetdt_step_sidm > 0)
-    {
-        while(max_prob < 0.1)
-        {
-            targetdt_step_sidm *= 2;
-            max_prob *= 2.0;
-        }
-    }
-    CPU_Step[CPU_SIDMSCATTER] += sidm_tscatter;
-#endif
-    
-    
     /* store result at the proper place */
     if(mode == 0)
     {
@@ -2578,13 +2503,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef GDE_DISTORTIONTENSOR
         for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
-#endif
-#ifdef DM_SIDM
-        P[target].Vel[0] += sidm_kick_x; P[target].Vel[1] += sidm_kick_y; P[target].Vel[2] += sidm_kick_z;
-        P[target].dt_step_sidm = targetdt_step_sidm; P[target].NInteractions += si_count;
-#endif
-#ifdef CBE_INTEGRATOR
-        {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {P[target].CBE_basis_moments_dt[k1][k2] += out_CBE_basis_moments_dt[k1][k2];}}}
 #endif
 #ifdef BH_CALC_DISTANCES
         P[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );
@@ -2613,13 +2531,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef GDE_DISTORTIONTENSOR
         for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GravDataResult[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
-#endif
-#ifdef DM_SIDM
-        GravDataResult[target].Vel[0] = sidm_kick_x; GravDataResult[target].Vel[1] = sidm_kick_y; GravDataResult[target].Vel[2] = sidm_kick_z;
-        GravDataResult[target].dt_step_sidm = targetdt_step_sidm; GravDataResult[target].NInteractions = si_count;
-#endif
-#ifdef CBE_INTEGRATOR
-        {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {GravDataResult[target].CBE_basis_moments_dt[k1][k2] = out_CBE_basis_moments_dt[k1][k2];}}}
 #endif
 #ifdef BH_CALC_DISTANCES
         GravDataResult[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );

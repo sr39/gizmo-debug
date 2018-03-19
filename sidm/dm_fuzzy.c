@@ -22,10 +22,10 @@
 /* --------------------------------------------------------------------------
  Actual evaluation of fluxes from the quantum pressure tensor
  -------------------------------------------------------------------------- */
-void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double dp[3], double dv[3],
+void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double prev_a, double dp[3], double dv[3],
                                   double GradRho_L[3], double GradRho_R[3],
                                   double GradRho2_L[3][3], double GradRho2_R[3][3],
-                                  double rho_L, double rho_R, double v_L, double v_R,
+                                  double rho_L, double rho_R, double dv_Right_minus_Left,
                                   double Area[3], double fluxes[3])
 {
     if(dt <= 0) return; // no timestep, no flux
@@ -37,7 +37,7 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double dp[
     if(r2 <= 0) return; // same element
     double r=sqrt(r2), wavespeed=2.*f00*(M_PI/r); // approximate k = 2pi/lambda = 2pi/(2*dr) as the maximum k the code will allow locally */
     /* note that the QPT admits waves parallel to k, with wavespeed omega = pm 2*f00*k, so include these for HLLC solution */
-    if(v_R - v_L > wavespeed) return; // elements are receding super-sonically, no way to communicate pressure //
+    if(dv_Right_minus_Left > wavespeed) return; // elements are receding super-sonically, no way to communicate pressure //
     
     double fluxmag=0, Face_Area_Norm=0; for(m=0;m<3;m++) {Face_Area_Norm+=Area[m]*Area[m];}
     Face_Area_Norm=sqrt(Face_Area_Norm);
@@ -46,8 +46,8 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double dp[
     {
         for(n=0;n<3;n++)
         {
-            double QPT_L = f2*(rhoL_i*GradRho_L[m]*GradRho_L[n] - GradRho2_L[m][n]) * All.cf_a3inv*All.cf_a2inv; // convert grad^2_rho ~ rho/L^2 from code units to physical
-            double QPT_R = f2*(rhoR_i*GradRho_R[m]*GradRho_R[n] - GradRho2_R[m][n]) * All.cf_a3inv*All.cf_a2inv; // convert grad^2_rho ~ rho/L^2 from code units to physical
+            double QPT_L = f2*(rhoL_i*GradRho_L[m]*GradRho_L[n] - GradRho2_L[m][n]); // convert grad^2_rho ~ rho/L^2 from code units to physical [should already all be physical here]
+            double QPT_R = f2*(rhoR_i*GradRho_R[m]*GradRho_R[n] - GradRho2_R[m][n]); // convert grad^2_rho ~ rho/L^2 from code units to physical [should already all be physical here]
             /* calculate 'star' solution (interface moving with contact wave, since we have a Lagrangian code)
              for HLLC reimann problem based on these pressure tensors */
             double P_star = (QPT_L*rho_R + QPT_R*rho_L) * rSi; // if there were no waves and all at rest
@@ -63,9 +63,7 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double dp[
     /* now we have to introduce the numerical diffusivity (the up-wind mixing part from the Reimann problem);
      this can have one of a couple forms, but the most accurate and stable appears to be the traditional HLLC form
      which we use by default below */
-    //double dvLR = (dv[0]*dp[0] + dv[1]*dp[1] + dv[2]*dp[2]) / r;
-    double dvLR = v_R - v_L;
-    if(dvLR < 0) // converging flow, upwind dissipation terms appear //
+    if(dv_Right_minus_Left < 0) // converging flow, upwind dissipation terms appear //
     {
         // estimate wavenumber needed to calculate wavespeed below, for dissipation terms //
         double g_kL = sqrt(GradRho_L[0]*GradRho_L[0]+GradRho_L[1]*GradRho_L[1]+GradRho_L[2]*GradRho_L[2]); // gradient magnitude
@@ -84,15 +82,13 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double dp[
         if(isnan(k_gtan)) {k_gtan=0;} // trap
         k_eff = DMIN(DMAX(k_gtan , DMAX(DMAX((3.+HLLwt)*DMAX(k_d1,k_g1), (2.+HLLwt)*k_g2)  , (1.5+HLLwt)*k_g3)) , 1./r);
         if(isnan(k_eff)) {k_eff=0;} // trap
-        //double Pstar = (Face_Area_Norm/r) * (-dvLR)*(f00*k_eff + (-dvLR))*rho_L*rho_R*rSi; // HLLC diffusive term
-        double Pstar = (-dvLR)*(f00*k_eff + (-dvLR))*rho_L*rho_R*rSi; // HLLC diffusive term
+        double Pstar = (-dv_Right_minus_Left)*(f00*k_eff + (-dv_Right_minus_Left))*rho_L*rho_R*rSi; // HLLC diffusive term
         fluxmag = 0; for(m=0;m<3;m++) {fluxmag += fluxes[m]*fluxes[m];}
         fluxmag = sqrt(fluxmag);
         for(m=0;m<3;m++)
         {
-            //double f_dir = dp[m]*Pstar, fmax = 0.5 * m0 * fabs(dv[m]) / dt; // assume the face points along the line between particles (very similar, but slightly more stable/diffusive if faces are highly-irregular)
             double f_dir = Area[m]*Pstar, fmax = 0.5 * m0 * fabs(dv[m]) / dt; // assume the face points along the line between particles (very similar, but slightly more stable/diffusive if faces are highly-irregular)
-            fmax = DMAX(fmax, 10.*fluxmag); // limit diffusive flux to multiplier of physical flux
+            fmax = DMAX(fmax, 10.*fluxmag); fmax = DMAX(DMIN(fmax , 40.*prev_a), fluxmag); // limit diffusive flux to multiplier of physical flux
             if(fabs(f_dir) > fmax) {f_dir *= fmax/fabs(f_dir);} // limit diffusive flux to avoid overshoot (numerical stability of the diffusion terms) //
             fluxes[m] += f_dir; /* momentum flux into direction 'm' given by Area.Pressure */
         }
@@ -102,80 +98,6 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double dp[
 
 
 
-/* --------------------------------------------------------------------------
- very quick sub-routine to get the particle densities from their volumes
- -------------------------------------------------------------------------- */
-double get_particle_volume_ags(int j)
-{
-    double L_j = Get_Particle_Size_AGS(j);
-#if (NUMDIMS==1)
-    return L_j;
-#elif (NUMDIMS==2)
-    return L_j*L_j;
-#else
-    return L_j*L_j*L_j;
-#endif
-}
-
-
-/* --------------------------------------------------------------------------
- Subroutine here exists to calculate the MFM-like effective faces for purposes of face-interaction evaluation
- -------------------------------------------------------------------------- */
-
-#if !defined(CBE_INTEGRATOR) // if this isn't defined, need to define this function here so can calculate the matrix for gradients and faces //
-
-/* routine to invert the NV_T matrix after neighbor pass */
-double do_cbe_nvt_inversion_for_faces(int i)
-{
-    MyFloat NV_T[3][3]; int j,k;
-    for(j=0;j<3;j++) {for(k=0;k<3;k++) {NV_T[j][k]=P[i].NV_T[j][k];}} // initialize matrix to be inverted //
-    double Tinv[3][3], FrobNorm=0, FrobNorm_inv=0, detT=0;
-    for(j=0;j<3;j++) {for(k=0;k<3;k++) {Tinv[j][k]=0;}}
-    /* fill in the missing elements of NV_T (it's symmetric, so we saved time not computing these directly) */
-    NV_T[1][0]=NV_T[0][1]; NV_T[2][0]=NV_T[0][2]; NV_T[2][1]=NV_T[1][2];
-    /* Also, we want to be able to calculate the condition number of the matrix to be inverted, since
-     this will tell us how robust our procedure is (and let us know if we need to expand the neighbor number */
-    for(j=0;j<3;j++) {for(k=0;k<3;k++) {FrobNorm += NV_T[j][k]*NV_T[j][k];}}
-#if (NUMDIMS==1) // 1-D case //
-    detT = NV_T[0][0];
-    if(detT!=0 && !isnan(detT)) {Tinv[0][0] = 1/detT}; /* only one non-trivial element in 1D! */
-#endif
-#if (NUMDIMS==2) // 2-D case //
-    detT = NV_T[0][0]*NV_T[1][1] - NV_T[0][1]*NV_T[1][0];
-    if((detT != 0)&&(!isnan(detT)))
-    {
-        Tinv[0][0] = NV_T[1][1] / detT; Tinv[0][1] = -NV_T[0][1] / detT;
-        Tinv[1][0] = -NV_T[1][0] / detT; Tinv[1][1] = NV_T[0][0] / detT;
-    }
-#endif
-#if (NUMDIMS==3) // 3-D case //
-    detT = NV_T[0][0] * NV_T[1][1] * NV_T[2][2] + NV_T[0][1] * NV_T[1][2] * NV_T[2][0] +
-           NV_T[0][2] * NV_T[1][0] * NV_T[2][1] - NV_T[0][2] * NV_T[1][1] * NV_T[2][0] -
-           NV_T[0][1] * NV_T[1][0] * NV_T[2][2] - NV_T[0][0] * NV_T[1][2] * NV_T[2][1];
-    /* check for zero determinant */
-    if((detT != 0) && !isnan(detT))
-    {
-        Tinv[0][0] = (NV_T[1][1] * NV_T[2][2] - NV_T[1][2] * NV_T[2][1]) / detT;
-        Tinv[0][1] = (NV_T[0][2] * NV_T[2][1] - NV_T[0][1] * NV_T[2][2]) / detT;
-        Tinv[0][2] = (NV_T[0][1] * NV_T[1][2] - NV_T[0][2] * NV_T[1][1]) / detT;
-        Tinv[1][0] = (NV_T[1][2] * NV_T[2][0] - NV_T[1][0] * NV_T[2][2]) / detT;
-        Tinv[1][1] = (NV_T[0][0] * NV_T[2][2] - NV_T[0][2] * NV_T[2][0]) / detT;
-        Tinv[1][2] = (NV_T[0][2] * NV_T[1][0] - NV_T[0][0] * NV_T[1][2]) / detT;
-        Tinv[2][0] = (NV_T[1][0] * NV_T[2][1] - NV_T[1][1] * NV_T[2][0]) / detT;
-        Tinv[2][1] = (NV_T[0][1] * NV_T[2][0] - NV_T[0][0] * NV_T[2][1]) / detT;
-        Tinv[2][2] = (NV_T[0][0] * NV_T[1][1] - NV_T[0][1] * NV_T[1][0]) / detT;
-    }
-#endif
-    for(j=0;j<3;j++) {for(k=0;k<3;k++) {FrobNorm_inv += Tinv[j][k]*Tinv[j][k];}}
-    for(j=0;j<3;j++) {for(k=0;k<3;k++) {P[i].NV_T[j][k]=Tinv[j][k];}} // now P[i].NV_T holds the inverted matrix elements //
-    double ConditionNumber = DMAX(sqrt(FrobNorm * FrobNorm_inv) / NUMDIMS, 1); // = sqrt( ||NV_T^-1||*||NV_T|| ) :: should be ~1 for a well-conditioned matrix //
-#ifdef CBE_DEBUG
-    if((ThisTask==0)&&(ConditionNumber>100.)) {printf("Condition number == %g (Task=%d i=%d)\n",ConditionNumber,ThisTask,i);}
-#endif
-    return ConditionNumber;
-}
-
-#endif // CBE_INTEGRATOR
 
 
 

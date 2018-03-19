@@ -1098,11 +1098,11 @@ void ags_setup_smoothinglengths(void)
                         break;
                     no = p;
                 }
-                PPP[i].AGS_Hsml = pow(1.0/NORM_COEFF * All.AGS_DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
+                PPP[i].AGS_Hsml = 2. * pow(1.0/NORM_COEFF * All.AGS_DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
                 if(All.SofteningTable[P[i].Type] != 0)
                 {
-                    if((PPP[i].AGS_Hsml>1000.*All.SofteningTable[P[i].Type])||(PPP[i].AGS_Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
-                        PPP[i].AGS_Hsml = All.SofteningTable[P[i].Type];
+                    if((PPP[i].AGS_Hsml>ADAPTIVE_GRAVSOFT_FORALL*All.SofteningTable[P[i].Type])||(PPP[i].AGS_Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
+                        PPP[i].AGS_Hsml = sqrt(ADAPTIVE_GRAVSOFT_FORALL) * All.SofteningTable[P[i].Type];
                 }
             } else {
                 PPP[i].AGS_Hsml = PPP[i].Hsml;
