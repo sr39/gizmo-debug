@@ -620,7 +620,8 @@ integertime get_timestep(int p,		/*!< particle index */
                             if(dt_conduction > dt_courant_CR) {dt_conduction = dt_courant_CR;}
                         } else {dt_conduction=10.*dt;}
                     } else {
-                        double dt_courant_CR = All.CourantFac * (L_particle*All.cf_atime) / COSMIC_RAYS_M1;
+                        double dt_courant_CR = 0.4 * (L_particle*All.cf_atime) / COSMIC_RAYS_M1;
+                        dt_conduction = dt_conduction_CR; // per TK, strictly enforce this timestep //
                         if(dt_conduction < dt_courant_CR) {dt_conduction = dt_courant_CR;}
                     }
 #endif

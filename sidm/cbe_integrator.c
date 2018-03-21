@@ -29,7 +29,7 @@ void do_cbe_initialization(void)
     for(i=0;i<NumPart;i++)
     {
         for(j=0;j<CBE_INTEGRATOR_NBASIS;j++) {for(k=0;k<CBE_INTEGRATOR_NMOMENTS;k++) {P[i].CBE_basis_moments_dt[j][k]=0;}} // no time derivatives //
-        double mom_tot[CBE_INTEGRATOR_NMOMENTS]={0}, v2=0, v0=0;
+        double v2=0, v0=0;
         for(k=0;k<3;k++) {v2+=P[i].Vel[k]*P[i].Vel[k];}
         if(v2>0) {v0=sqrt(v2);} else {v0=1.e-10;}
         for(j=0;j<CBE_INTEGRATOR_NBASIS;j++)
@@ -37,23 +37,24 @@ void do_cbe_initialization(void)
             for(k=0;k<CBE_INTEGRATOR_NMOMENTS;k++)
             {
                 // zeros will be problematic, instead initialize a random distribution //
-                P[i].CBE_basis_moments[j][k] = 1.e-5 * P[i].Mass * (0.01 + get_random_number(P[i].ID + i + 343*ThisTask + 912*k + 781*j));
-                if((k>0)&&(k<4)) {P[i].CBE_basis_moments[j][k] *= 2.*P[i].Vel[k]*(get_random_number(P[i].ID + i + 343*ThisTask + 912*k + 781*j + 2)-0.5) + 1.e-5*v0*(get_random_number(P[i].ID + i + 343*ThisTask + 912*k + 781*j + 2)-0.5);}
-                if(k>=4) {P[i].CBE_basis_moments[j][k] *= (P[i].Vel[k]*P[i].Vel[k] + 1.e-2*v0*v0);}
+                if(k==0) {P[i].CBE_basis_moments[j][0] = 1.e-5 * P[i].Mass * (0.5 + 0.01 + get_random_number(P[i].ID + i + 343*ThisTask + 912*k + 781*j));}
+                if((k>0)&&(k<4)) {P[i].CBE_basis_moments[j][k] = P[i].CBE_basis_moments[j][0] * 1.e-4 * (0*2.*P[i].Vel[k]*(get_random_number(P[i].ID + i + 343*ThisTask + 912*k + 781*j + 2)-0.5) + 1.e-5*v0*(get_random_number(P[i].ID + i + 343*ThisTask + 912*k + 781*j + 2)-0.5));}
+                if(k>=4 && k<7) {P[i].CBE_basis_moments[j][k] = P[i].CBE_basis_moments[j][0] * 1.e-15;} //(P[i].Vel[k]*P[i].Vel[k] + 1.e-2*v0*v0 + 1.e-3*1.e-3);}
+                if(k>=7) {P[i].CBE_basis_moments[j][k] = 0;}
 #if (NUMDIMS==1)
                 if((k!=0)&&(k!=1)&&(k!=4)) {P[i].CBE_basis_moments[j][k] = 0;}
 #endif
 #if (NUMDIMS==2)
                 if((k==3)||(k==6)||(k==8)||(k==9)) {P[i].CBE_basis_moments[j][k] = 0;}
 #endif
-                mom_tot[k] += P[i].CBE_basis_moments[j][k];
             }
         }
-        for(j=0;j<CBE_INTEGRATOR_NBASIS;j++)
-        {
-            P[i].CBE_basis_moments[j][0] *= P[i].Mass / mom_tot[0]; // must normalize to correct mass
-            for(k=0;k<3;k++) {P[i].CBE_basis_moments[j][k+1] += P[i].CBE_basis_moments[j][0]*(P[i].Vel[k]-mom_tot[k+1]/P[i].Mass);} // ensure IC has zero momentum relative to bulk
-        }
+        double mom_tot[CBE_INTEGRATOR_NMOMENTS]={0};
+        for(j=0;j<CBE_INTEGRATOR_NBASIS;j++) {for(k=0;k<CBE_INTEGRATOR_NMOMENTS;k++) {mom_tot[k]+=P[i].CBE_basis_moments[j][k];}}
+        for(j=0;j<CBE_INTEGRATOR_NBASIS;j++) {for(k=0;k<CBE_INTEGRATOR_NMOMENTS;k++) {P[i].CBE_basis_moments[j][k] *= P[i].Mass / mom_tot[0];}}
+        for(k=0;k<CBE_INTEGRATOR_NMOMENTS;k++) {mom_tot[k]=0;}
+        for(j=0;j<CBE_INTEGRATOR_NBASIS;j++) {for(k=0;k<CBE_INTEGRATOR_NMOMENTS;k++) {mom_tot[k]+=P[i].CBE_basis_moments[j][k];}}
+        for(j=0;j<CBE_INTEGRATOR_NBASIS;j++) {for(k=1;k<4;k++) {P[i].CBE_basis_moments[j][k] += P[i].CBE_basis_moments[j][0]*(P[i].Vel[k-1]-mom_tot[k]/P[i].Mass);}}
     }
     return;
 }
@@ -80,7 +81,7 @@ void do_cbe_drift_kick(int i, double dt)
     // total mass flux should vanish identically -- check this //
     if(ThisTask==0) {printf("Total mass flux == %g (Task=%d i=%d)\n",dmoment[0],ThisTask,i);}
     if(ThisTask==0) {printf("Momentum flux == %g/%g/%g (Task=%d i=%d)\n",dmoment[1],dmoment[2],dmoment[3],ThisTask,i);}
-    if(fabs(minv*dmoment[0]) > 0.05) endrun(91918282);
+    if(fabs(minv*dmoment[0]) > 0.05) {printf("MF=%g/%g/%g.",minv*dt*P[i].CBE_basis_moments_dt[0][0],minv*dt*P[i].CBE_basis_moments_dt[1][0],minv*dmoment[0]); endrun(91918282);}
 #endif
     // define the current velocity, force-sync update to match it //
     for(k=0;k<3;k++) {v0[k] = P[i].Vel[k] / All.cf_atime;} // physical units //
@@ -92,7 +93,7 @@ void do_cbe_drift_kick(int i, double dt)
     }
     double nfac = 1; // normalization factor for fluxes below //
     double threshold_dm;
-    threshold_dm = -0.5; // maximum allowed fractional change in m //
+    threshold_dm = -0.75; // maximum allowed fractional change in m //
     if(biggest_dm < threshold_dm) {nfac = threshold_dm/biggest_dm;} // re-normalize flux so it doesn't overshoot //
     // ok now do the actual update //
     for(j=0;j<CBE_INTEGRATOR_NBASIS;j++)
@@ -119,6 +120,37 @@ void do_cbe_drift_kick(int i, double dt)
             }
 #endif
         }
+
+        // now a series of checks for ensuring the second-moments retain positive-definite higher-order moments (positive-definite determinants, etc)
+        double eps_tmp = 1.e-8;
+        for(k=4;k<7;k++) {if(P[i].CBE_basis_moments[j][k] < MIN_REAL_NUMBER) {P[i].CBE_basis_moments[j][k]=MIN_REAL_NUMBER;}}
+        double xyMax = sqrt(P[i].CBE_basis_moments[j][4]*P[i].CBE_basis_moments[j][5]) * (1.-eps_tmp); // xy < sqrt[xx*yy]
+        double xzMax = sqrt(P[i].CBE_basis_moments[j][4]*P[i].CBE_basis_moments[j][6]) * (1.-eps_tmp); // xz < sqrt[xx*zz]
+        double yzMax = sqrt(P[i].CBE_basis_moments[j][5]*P[i].CBE_basis_moments[j][6]) * (1.-eps_tmp); // yz < sqrt[yy*zz]
+        if(P[i].CBE_basis_moments[j][7] > xyMax) {P[i].CBE_basis_moments[j][7] = xyMax;}
+        if(P[i].CBE_basis_moments[j][8] > xzMax) {P[i].CBE_basis_moments[j][8] = xzMax;}
+        if(P[i].CBE_basis_moments[j][9] > yzMax) {P[i].CBE_basis_moments[j][9] = yzMax;}
+        if(P[i].CBE_basis_moments[j][7] < -xyMax) {P[i].CBE_basis_moments[j][7] = -xyMax;}
+        if(P[i].CBE_basis_moments[j][8] < -xzMax) {P[i].CBE_basis_moments[j][8] = -xzMax;}
+        if(P[i].CBE_basis_moments[j][9] < -yzMax) {P[i].CBE_basis_moments[j][9] = -yzMax;}
+        double crossnorm = 1;
+        double detSMatrix_Diag = P[i].CBE_basis_moments[j][4]*P[i].CBE_basis_moments[j][5]*P[i].CBE_basis_moments[j][6];
+        double detSMatrix_Cross = 2.*P[i].CBE_basis_moments[j][7]*P[i].CBE_basis_moments[j][8]*P[i].CBE_basis_moments[j][9]
+        - (  P[i].CBE_basis_moments[j][4]*P[i].CBE_basis_moments[j][9]*P[i].CBE_basis_moments[j][9]
+           + P[i].CBE_basis_moments[j][5]*P[i].CBE_basis_moments[j][8]*P[i].CBE_basis_moments[j][8]
+           + P[i].CBE_basis_moments[j][6]*P[i].CBE_basis_moments[j][7]*P[i].CBE_basis_moments[j][7] );
+        if(detSMatrix_Diag <= 0)
+        {
+            crossnorm=0; for(k=4;k<7;k++) {if(P[i].CBE_basis_moments[j][k] < MIN_REAL_NUMBER) {P[i].CBE_basis_moments[j][k]=MIN_REAL_NUMBER;}}
+        } else {
+            if(detSMatrix_Diag + detSMatrix_Cross <= 0)
+            {
+                double crossmin = -detSMatrix_Diag * (1.-eps_tmp);
+                crossnorm = crossmin / detSMatrix_Cross;
+            }
+        }
+        if(crossnorm < 1) {for(k=7;k<10;k++) {P[i].CBE_basis_moments[j][k] *= crossnorm;}}
+
 #endif
     }
     
@@ -132,12 +164,11 @@ void do_cbe_drift_kick(int i, double dt)
         if(m<mmin) {mmin=m; jmin=j;}
         if(m>mmax) {mmax=m; jmax=j;}
     }
-    if(mmin < 1.e-5 * mmax)
+    if((mmin < 1.e-5 * mmax) && (jmin >= 0) && (jmax >= 0) && (All.Time > All.TimeBegin))
     {
-        double f=0.5;
         for(k=0;k<CBE_INTEGRATOR_NMOMENTS;k++)
         {
-            double dq = f*P[i].CBE_basis_moments[jmax][k];
+            double dq = 0.5*P[i].CBE_basis_moments[jmax][k];
             if(k>0 && k<4) {dq *= 1. + 0.001*(get_random_number(ThisTask+i+32*jmax+12427*k)-0.5);}
             P[i].CBE_basis_moments[jmax][k] -= dq;
             P[i].CBE_basis_moments[jmin][k] += dq; // since we're just splitting mass, this is ok, since these are all mass-weighted quantities
@@ -153,12 +184,12 @@ void do_cbe_drift_kick(int i, double dt)
 
 
 /* this computes the actual single-sided fluxes at the face, integrating over a distribution function to use the moments */
-double do_cbe_flux_computation(double moments[CBE_INTEGRATOR_NMOMENTS], double vface_dot_A, double Area[3], double fluxes)
+double do_cbe_flux_computation(double moments[CBE_INTEGRATOR_NMOMENTS], double vface_dot_A, double Area[3], double fluxes[CBE_INTEGRATOR_NMOMENTS])
 {
     // couple dot-products must be pre-computed for fluxes //
     double m_inv = 1. / moments[0]; // need for weighting, below [e.g. v_x = moments[1] / moments[0]]
     double v[3]; v[0] = m_inv*moments[1]; v[1] = m_inv*moments[2]; v[2] = m_inv*moments[3]; // get velocities
-    double v_dot_A = v[0]*Area[0] + v[1]*Area[1] + v[2]*Area[2] - vface_dot_A; // v_alpha . A_face
+    double vsig = v[0]*Area[0] + v[1]*Area[1] + v[2]*Area[2] - vface_dot_A; // v_alpha . A_face
     fluxes[0] = vsig * moments[0]; // calculate and assign mass flux
     int k; for(k=1;k<CBE_INTEGRATOR_NMOMENTS;k++) {fluxes[k] =  (m_inv * moments[k]) * fluxes[0];} // specific flux carried just by mass flux
 
@@ -191,7 +222,7 @@ double do_cbe_flux_computation(double moments[CBE_INTEGRATOR_NMOMENTS], double v
         fluxes[9] += v[1]*S_dot_A[2] + v[2]*S_dot_A[1] + fluxes[0]*v[1]*v[2]; // add stress flux from stress tensor -- yz
     }
 #endif
-    return v_dot_A;
+    return vsig;
 }
 
 

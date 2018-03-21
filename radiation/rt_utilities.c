@@ -573,7 +573,11 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
         {
             rmag = sqrt(rmag); for(kx=0;kx<3;kx++) {radacc[kx] /= rmag;} // normalize
             double rmag_max = de_abs / (P[i].Mass * RT_SPEEDOFLIGHT_REDUCTION * C / All.UnitVelocity_in_cm_per_s); // limit magnitude to absorbed photon momentum
+#if defined(RT_DISABLE_R15_GRADIENTFIX)
             if(rmag > rmag_max) {rmag=rmag_max;}
+#else
+            rmag = rmag_max;
+#endif
             for(kx=0;kx<3;kx++) {if(mode==0) {P[i].Vel[kx]+=radacc[kx]*rmag;} else {SphP[i].VelPred[kx]+=radacc[kx]*rmag;}}
         }}
 #endif

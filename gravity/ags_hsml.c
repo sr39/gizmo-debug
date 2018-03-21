@@ -1177,7 +1177,7 @@ static inline void out2particle_AGSForce(struct AGSForce_data_out *out, int i, i
     for(k=0;k<3;k++) {P[i].GravAccel[k] += out->acc[k];}
 #endif
 #ifdef CBE_INTEGRATOR
-    MAX_ADD(PPP[i].AGS_vsig,out->AGS_vsig);
+    MAX_ADD(PPP[i].AGS_vsig,out->AGS_vsig,mode);
     for(k=0;k<CBE_INTEGRATOR_NBASIS;k++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {ASSIGN_ADD_PRESET(P[i].CBE_basis_moments_dt[k][k2],out->CBE_basis_moments_dt[k][k2],mode);}}
 #endif
 

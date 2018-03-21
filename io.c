@@ -1085,16 +1085,20 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
         case IO_CBE_MOMENTS:
 #if defined(CBE_INTEGRATOR)
             for(n = 0; n < pc; pindex++)
+            {
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < CBE_INTEGRATOR_NMOMENTS; k++)
+                    for(k = 0; k < CBE_INTEGRATOR_NBASIS; k++)
                     {
                         int kf;
-                        for(kf = 0; kf < CBE_INTEGRATOR_NBASIS; kf++)
-                            fp[CBE_INTEGRATOR_NMOMENTS*k + kf] = P[pindex].CBE_basis_moments[kf][k];
+                        for(kf = 0; kf < CBE_INTEGRATOR_NMOMENTS; kf++)
+                        {
+                            fp[CBE_INTEGRATOR_NMOMENTS*k + kf] = P[pindex].CBE_basis_moments[k][kf];
+                        }
                     }
                     n++;
                     fp += (CBE_INTEGRATOR_NMOMENTS*CBE_INTEGRATOR_NBASIS);
+                }
             }
 #endif
             break;
@@ -1179,7 +1183,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     {
                         int kf;
                         for(kf = 0; kf < N_RT_FREQ_BINS; kf++)
-                            fp[3*k + kf] = SphP[pindex].ET[kf][k];
+                            fp[N_RT_FREQ_BINS*k + kf] = SphP[pindex].ET[kf][k];
                     }
                     n++;
                     fp += 6*N_RT_FREQ_BINS;
