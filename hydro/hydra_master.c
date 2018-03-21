@@ -757,7 +757,7 @@ void hydro_final_operations_and_cleanup(void)
                 if(Fmag > 0)
                 {
                     Fmag = sqrt(Fmag);
-                    double Fthin = SphP[j].E_gamma[k_freq] * (RT_SPEEDOFLIGHT_REDUCTION * C / All.UnitVelocity_in_cm_per_s);
+                    double Fthin = SphP[i].E_gamma[k2] * (RT_SPEEDOFLIGHT_REDUCTION * C / All.UnitVelocity_in_cm_per_s);
                     double F_eff = DMAX(Fthin , Fmag);
                     for(k=0;k<3;k++) {radacc[k] += (F_eff/Fmag) * slabfac * SphP[i].Kappa_RT[k2] * (SphP[i].Flux_Pred[k2][k] * SphP[i].Density/P[i].Mass) / (RT_SPEEDOFLIGHT_REDUCTION * C / All.UnitVelocity_in_cm_per_s);}
                 }
