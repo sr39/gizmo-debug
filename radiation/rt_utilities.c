@@ -109,6 +109,24 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
         lum[RT_FREQ_BIN_INFRARED] = 0.0;
     }
 #endif
+
+#if defined(RT_NUV)
+    /* Near-UV approximate spectra (UV/optical spectra, sub-photo-electric, but high-opacity) for stars as used in the FIRE (Hopkins et al.) models */
+    if((1 << P[i].Type) & (RT_SOURCES)) // check if the particle falls into one of the allowed source types
+    {
+        if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
+        {
+            if(sigma_0<0) {return 1;} active_check = 1;
+            double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge), f_op=0;
+            if(star_age <= 0.0025) {f_op=0.09;} else {
+                if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));
+                } else {f_op=1-0.8410937/(1+sqrt((star_age-0.006)/0.3));}}
+            double fac = 3.95e33 * (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs); // converts to code units
+            lum[RT_FREQ_BIN_NUV] = (1-f_op) * fac * evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(i);
+        }
+    }
+#endif
+
     
 #if defined(RT_OPTICAL_NIR)
     /* Optical-NIR approximate spectra for stars as used in the FIRE (Hopkins et al.) models */
@@ -290,7 +308,7 @@ double rt_kappa(int i, int k_freq)
 #endif
 
 
-#if defined(RT_HARD_XRAY) || defined(RT_SOFT_XRAY) || defined(RT_PHOTOELECTRIC) || defined (GALSF_FB_RT_PHOTONMOMENTUM) || defined(RT_OPTICAL_NIR) || defined(RT_LYMAN_WERNER) || defined(RT_INFRARED)
+#if defined(RT_HARD_XRAY) || defined(RT_SOFT_XRAY) || defined(RT_PHOTOELECTRIC) || defined (GALSF_FB_RT_PHOTONMOMENTUM) || defined(RT_NUV) || defined(RT_OPTICAL_NIR) || defined(RT_LYMAN_WERNER) || defined(RT_INFRARED)
     double fac = All.UnitMass_in_g * All.HubbleParam / (All.UnitLength_in_cm * All.UnitLength_in_cm); /* units */
     double Zfac = 1.0; // assume solar metallicity 
 #ifdef METALS
@@ -317,6 +335,10 @@ double rt_kappa(int i, int k_freq)
 #ifdef RT_LYMAN_WERNER
     /* opacity from molecular H2 and dust (dominant at higher-metallicity) should be included */
     if(k_freq==RT_FREQ_BIN_LYMAN_WERNER) {return 2400.*Zfac * fac;} // just dust term for now
+#endif
+#ifdef RT_NUV
+    /* opacity comes primarily from dust */
+    if(k_freq==RT_FREQ_BIN_NUV) {return 1800.*Zfac * fac;}
 #endif
 #ifdef RT_OPTICAL_NIR
     /* opacity comes primarily from dust */
@@ -596,6 +618,10 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #if defined(RT_PHOTOELECTRIC) && defined(RT_INFRARED)
         /* this is direct dust absorption, re-radiated in IR */
         if(kf==RT_FREQ_BIN_PHOTOELECTRIC) {donor_bin=RT_FREQ_BIN_INFRARED;}
+#endif
+#if defined(RT_NUV) && defined(RT_INFRARED)
+        /* this is direct dust absorption, re-radiated in IR */
+        if(kf==RT_FREQ_BIN_NUV) {donor_bin=RT_FREQ_BIN_NUV;}
 #endif
 #if defined(RT_OPTICAL_NIR) && defined(RT_INFRARED)
         /* this is direct dust absorption, re-radiated in IR */
