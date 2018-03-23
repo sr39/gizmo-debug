@@ -322,7 +322,7 @@ double DoCooling(double u_old, double rho, double dt, double *ne_guess, int targ
 
     /* Update the gasVars for this particle. */
     double u_old_cgs = u_old * All.UnitPressure_in_cgs / All.UnitDensity_in_cgs; 
-    double rho_cgs = rho * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam; 
+    double rho_cgs = rho * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam; // NOTE: The rho that is passed to DoCooling() has ALREADY been multiplied by All.cf_a3inv. 
 
 #ifdef COOL_METAL_LINES_BY_SPECIES 
     double H_mass_fraction = 1.0 - (P[target].Metallicity[0] + P[target].Metallicity[1]); 
@@ -398,7 +398,7 @@ double DoCooling(double u_old, double rho, double dt, double *ne_guess, int targ
 #ifndef COOLING_OPERATOR_SPLIT 
     ChimesGasVars[target].constant_heating_rate = ChimesGasVars[target].nH_tot * SphP[target].DtInternalEnergy; 
 #else 
-    ChimesGasVars[target].constant_heating_rate = 0.0 
+    ChimesGasVars[target].constant_heating_rate = 0.0; 
 #endif 
     
 #ifdef CHIMES_SOBOLEV_SHIELDING 

@@ -404,7 +404,7 @@ FFTW_INCL= -I/projects/b1026/pascal/software/fftw/2.1.5-mvp/include
 FFTW_LIBS= -L/projects/b1026/pascal/software/fftw/2.1.5-mvp/lib
 HDF5INCL = -I/projects/b1026/pascal/software/hdf5/1.8.12/include -DH5_USE_16_API
 HDF5LIB  = -L/projects/b1026/pascal/software/hdf5/1.8.12/lib -lhdf5 -lz
-MPICHLIB = -lmpich
+MPICHLIB = -lmpich 
 OPT     += -DUSE_MPI_IN_PLACE
 #### modules to load:
 #module load mpi/mvapich2-intel2013.2
