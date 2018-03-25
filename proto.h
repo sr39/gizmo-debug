@@ -690,6 +690,9 @@ void rt_source_injection(void);
 
 #ifdef RADTRANSFER
 void rt_set_simple_inits(void);
+#if defined(RT_EVOLVE_INTENSITIES)
+void rt_init_intensity_directions(void);
+#endif
 void rt_get_lum_gas(int target, double *je);
 double slab_averaging_function(double x);
 

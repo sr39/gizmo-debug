@@ -379,6 +379,9 @@ void begrun(void)
 
 
 #ifdef RADTRANSFER
+#if defined(RT_EVOLVE_INTENSITIES)
+    rt_init_intensity_directions();
+#endif
 #if defined(RT_DIFFUSION_CG)
     All.Radiation_Ti_begstep = 0;
 #endif

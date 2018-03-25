@@ -176,5 +176,8 @@
         
 #endif // COSMIC_RAYS_M1
     } // close check that kappa and particle masses are positive
+    // actually assign the fluxes //
+    out.DtCosmicRayEnergy += Fluxes.CosmicRayPressure;
+    if(j_is_active_for_fluxes) {SphP[j].DtCosmicRayEnergy -= Fluxes.CosmicRayPressure;}
 }
 #endif // COSMIC_RAYS

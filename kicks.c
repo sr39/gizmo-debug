@@ -380,6 +380,7 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
         for(k=0;k<3;k++) {SphP[i].CosmicRayFluxPred[k] = SphP[i].CosmicRayFlux[k];}
 #endif
 #endif
+        
 #if defined(RT_EVOLVE_NGAMMA)
         for(kf=0;kf<N_RT_FREQ_BINS;kf++)
         {
@@ -390,6 +391,10 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
         }
         rt_eddington_update_calculation(i);
 #endif
+#ifdef RT_EVOLVE_INTENSITIES
+        for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k=0;k<N_RT_INTENSITY_BINS;k++) {SphP[i].Intensity_Pred[kf][k] = SphP[i].Intensity[kf][k];}}
+#endif
+
 #ifdef EOS_ELASTIC
         for(k=0;k<3;k++) {for(kf=0;kf<3;kf++) {SphP[i].Elastic_Stress_Tensor_Pred[k][kf]=SphP[i].Elastic_Stress_Tensor[k][kf];}}
 #endif

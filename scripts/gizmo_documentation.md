@@ -170,7 +170,7 @@ The GIZMO code is a flexible, massively parallel, multi-purpose fluid dynamics +
 
 + **Cosmic ray** physics on ISM, single-cloud or SNe, sub-galactic through cosmological scales. This includes injection via stars and SNe, MHD-dependent transport via advection, diffusion, and streaming (both isotropic and anisotropic, magnetic-field dependent terms), adiabatic heating/cooling, and catastrophic and coulomb losses and subsequent gas heating. 
 
-+ **Radiation hydrodynamics** using any of several methods: the LEBRON (locally-extincted background radiation in optically-thin networks) approximation, the M1 (1st-moment), flux-limited diffusion (FLD), or optically thin variable eddington tensor (OTVET) approximations. Arbitrary, modular combinations of wavebands are implemented and can be mixed-and-matched. Full radiation pressure, radiative coupling to ionization and heating/cooling networks are implemented.
++ **Radiation hydrodynamics** using any of several methods: the LEBRON (locally-extincted background radiation in optically-thin networks) approximation, the M1 (1st-moment), flux-limited diffusion (FLD), or optically thin variable eddington tensor (OTVET) approximations, or explicit on-the-fly ray-tracing. Arbitrary, modular combinations of wavebands are implemented and can be mixed-and-matched. Full radiation pressure, radiative coupling to ionization and heating/cooling networks are implemented.
 
 <a name="features-examples"></a>
 ## Examples of Different Simulations Run with GIZMO
@@ -811,7 +811,7 @@ These options set different fluid physics. This includes changing the equation o
 # ---------------------------------  these modules are public, but if used, the user should also cite the MHD-specific GIZMO methods paper
 # ---------------------------------  (Hopkins 2015: 'Accurate, Meshless Methods for Magneto-Hydrodynamics') as well as the standard GIZMO paper
 #MAGNETIC                       # master switch for MHD, regardless of which Hydro solver is used
-#MHD_B_SET_IN_PARAMS                # set initial fields (Bx,By,Bz) in parameter file
+#MHD_B_SET_IN_PARAMS            # set initial fields (Bx,By,Bz) in parameter file
 #MHD_NON_IDEAL                  # enable non-ideal MHD terms: Ohmic resistivity, Hall effect, and ambipolar diffusion (solved explicitly); Users should cite Hopkins 2017, MNRAS, 466, 3387, in addition to the MHD paper
 #MHD_CONSTRAINED_GRADIENT=1     # use CG method (in addition to cleaning, optional!) to maintain low divB: set this value to control how aggressive the div-reduction is:
                                 # 0=minimal (safest), 1=intermediate (recommended), 2=aggressive (less stable), 3+=very aggressive (less stable+more expensive). [Please cite Hopkins, MNRAS, 2016, 462, 576]
@@ -925,11 +925,12 @@ These options set different fluid physics. This includes changing the equation o
 
 **GRAIN\_EPSTEIN\_STOKES**: Uses the physical units of the code (and specified grain parameters) to calculate whether or not grains are actually in the Epstein (size smaller than gas mean free path) or Stokes regime, and modifies the aerodynamic equations appropriately. This is important for very large grains or dense, hot systems, and for terrestrial systems. To determine the gas mean-free path, the cross-section for molecular hydrogen is assumed; however by setting GRAIN\_EPSTEIN to a value not equal to unity, this cross section is multiplied by that value. This is useful to represent different atmospheric compositions, for example. If this is set and GRAIN\_LORENTZFORCE is also active, it will also compute the Coulomb forces on the grains (because it can calculate grain charges); these will use a simple approximation for the ionization state of the gas (needed for the Coulomb drag term) based on its temperature, unless COOLING is also active in which case this is done self-consistently. 
 
+**GRAIN\_BACKREACTION**: Explicitly account for the momentum deposited into the grain population (modify the gas momentum appropriately). This requires specifying the absolute dust-to-gas ratio and other physical parameters -- that is done in the initial conditions (when the actual masses of dust 'super-particles' is assigned), although it can easily be done in the `init.c` file as well (hard-coding some dust-to-gas ratio). In either case, the dust super-particle masses define the total mass of dust, which in turn determines the strength of its force on the gas (if this is dis-abled, the total mass in dust in the system has no dynamical effect). This module is currently being tested, but should appear shortly in a methods and initial results paper (Moseley et al., 2018).
+
 **GRAIN\_LORENTZFORCE**: Explicitly account for the Lorentz forces on grains (integrated efficiently with a semi-implicit Boris integrator scheme that can accurately preserve gyro orbits, even with numerical discretization errors). The grain charge is calculated self-consistently from grain sizes and densities and ambient gas conditions, assuming the grains obey local charge equilibrium (following Draine and Sutin 1987). Requires MAGNETIC be active. With GRAIN\_EPSTEIN\_STOKES turned on, this will also compute the electro-static (Coulomb) drag on the grains. See Lee, Hopkins, & Squire 2017, MNRAS, 469, 3532, for details and examples.
 
 **GRAIN\_COLLISIONS**: Enables grain-grain collisions. At the moment this is partially implemented.
 
-**GRAIN\_BACKREACTION**: Explicitly account for the momentum deposited into the grain population (modify the gas momentum appropriately). This requires specifying the absolute dust-to-gas ratio and other physical parameters -- that is done in the initial conditions (when the actual masses of dust 'super-particles' is assigned), although it can easily be done in the `init.c` file as well (hard-coding some dust-to-gas ratio). In either case, the dust super-particle masses define the total mass of dust, which in turn determines the strength of its force on the gas (if this is dis-abled, the total mass in dust in the system has no dynamical effect). This module is currently being tested, but should appear shortly in a methods and initial results paper (Moseley et al., 2018).
 
 
 <a name="config-fluids-cosmicrays"></a>
@@ -949,10 +950,7 @@ These options set different fluid physics. This includes changing the equation o
 ####################################################################################################
 ```
 
-
-
 **COSMIC\_RAYS**: Enable treatment of the gas as a mixed fluid of 'regular' gas and cosmic rays. This is appropriate for the limit where the cosmic ray mean free path is short, so it can be considered in the fluid limit. We then solve the appropriate equations for a two-fluid system, where the cosmic ray fluid component is an ultra-relativistic ($\gamma=4/3$) fluid. In the simplest case, cosmic ray (CR) transport by advection, diffusion, and streaming (both isotropic and anisotropic) is calculated explicitly, along with multi-fluid shocks and the Riemann solutions, and adiabatic heating/cooling of the CR. The diffusion and streaming operators are derived for both SPH and MFM/MFV modes of the code following the other diffusion operators (conduction, viscosity, etc) described above. The coefficients are calculated self-consistently in the code, following Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, and Ensslin 2011. In the weak-magnetic field case, the streaming velocity which enters into the diffusion-like propagation operator is approximated with the gas sound speed; but if MAGNETIC is on, the code interpolates between this and the Alfven velocity (for the strong-field case) appropriately. The coefficients are $(c_{s}^{2}+v_{A}^{2})^{1/2}\,h_{\rm CR} / |\nabla P_{\rm CR}|$, where $c_{s}$ is the thermal sound speed, $v_{A}$ the Alfven speed, $h_{\rm CR}$ is the cosmic ray enthalpy, and $P_{\rm CR}$ is the cosmic ray pressure. If MAGNETIC is on, the diffusion and streaming operations are correctly done for the anisotropic case (along field lines). If COOLING is active, the cosmic ray fluid is assumed to lose energy through Coulomb interactions and decays (catastrophic cooling), and a fraction of the Coulomb interaction energy goes into heating the gas (accounted for in the cooling routines); the rates for these are calculated following Volk et al. 1996, Ensslin et al. 1997, Mannheim & Schilickeiser 1994, and Guo & Oh 2008. If GALSF\_FB\_SNE\_HEATING is active, then CRs are injected into the gas via supernovae explosions (a fraction, typically $\sim10\%$, of each SNe ejecta kinetic energy is assumed to go into the CR population). Currently the methods paper for this is being written, and first results prepared, by several members of the FIRE collaboration, so for now use of these modules follows FIRE policies (although use for simulations very different from FIRE, e.g. plasma physics/ISM physics would likely be possible at this stage, the authors must still be contacted for permissions). Additional details of the modules are described in the `notes_cosmicrays` file ([here](http://www.tapir.caltech.edu/~phopkins/public/notes_cosmicrays.pdf) or in the downloads section of the BitBucket site), until the methods paper is published.
-
 
 **COSMIC\_RAYS_M1**: Integrate the diffusive part of the cosmic-ray transport using the M1 moments expansion, rather than a pure diffusion equation. This is nominally more accurate (just like with radiation) since it allows for a smooth and self-consistent transition between free-streaming and diffusive limits for the CRs, at the expense of extra variables tracked and a smaller timestep if the full transport speed is used (approximately the speed of light). If a "reduced speed of light"-type approximation is desired, this parameter should be set to the value equal to the desired cosmic-ray free-streaming speed, in code units. This module is still being tested.
 
@@ -1068,6 +1066,7 @@ These options all pertain to the gravity solver in the code. They determine how 
 #--------------------------------    use of these routines requires explicit pre-approval by developers J. Bullock or M. Boylan-Kolchin (acting for M. Rocha); approved users please cite Rocha et al., MNRAS 2013, 430, 81 and Robles et al, 2017 (arXiv:1706.07514).
 #DM_SIDM=2                      # Self-interacting particle types (specify the particle types which are self-interacting DM with a bit mask, as for PM_PLACEHIGHRESREGION above (see description); previous "DMDISK_INTERACTIONS" is identical to setting DM_SIDM=2+4
 #DM_SCALARFIELD_SCREENING       # Gravity is mediated by a long-range scalar field, with dynamical screening (primarily alternative DE models)
+#DM_FUZZY                       #- DM particles (Type=1) are described by Bose-Einstein Condensate: within gravity kernel (adaptive), solves quantum pressure tensor for non-linear terms arising from Schroedinger equation for a given particle mass.
 ##-----------------------------------------------------------------------------------------------------
 # -------------------------------------- arbitrary time-dependent dark energy equations-of-state, expansion histories, or gravitational constants
 #GR_TABULATED_COSMOLOGY         # enable reading tabulated cosmological/gravitational parameters (master switch)
@@ -1081,7 +1080,9 @@ These options all pertain to the gravity solver in the code. They determine how 
                     
 **DM\_SIDM**: Enables self-interacting dark matter as implemented by M. Rocha, James Bullock, and Mike Boylan-Kolchin. Like PM\_PLACEHIGHRESREGION, the parameter needs to be set to an integer that encodes the particle types that make up the SIDM particles in the form of a bit mask. For example, if types 1 and 2 are the SIDM particles, then the parameter should be set to DM\_SIDM = 6 = 2 + 4 (i.e. 2^1 + 2^2). This allows for arbitrary combinations of SIDM particle types. Note that the legacy flag "DMDISK\_INTERACTIONS" is now implicit in this (its identical to setting DM\_SIDM=2+4). This module as-written is proprietary and users must obtain permissions from the developers (JB and MBK) for use in scientific products. However if users wish to use the implemented architecture and replace the actual self-interaction kernel with their own, they are free to do so provided they have been given permission to use the development code for these purposes. Users should cite Rocha et al., MNRAS 2013, 430, 81 and Robles et al, 2017 (arXiv:1706.07514).
 
-**DM_SCALARFIELD_SCREENING**: Replaces the normal newtonian gravity by a screened scalar-field force. Look at the code if you want to get a better handle on or modify the scalar field parameters (these can trivially be made time-dependent, for example). Used for studying alternative gravity and dark matter theories -- primarily alternatives to dark energy involving dynamical screening. 
+**DM\_SCALARFIELD\_SCREENING**: Replaces the normal newtonian gravity by a screened scalar-field force. Look at the code if you want to get a better handle on or modify the scalar field parameters (these can trivially be made time-dependent, for example). Used for studying alternative gravity and dark matter theories -- primarily alternatives to dark energy involving dynamical screening. 
+
+**DM\_FUZZY**: DM particles (specifically those of Type=1) are treated as an ultra-light boson/scalar-field, i.e. Bose-Einstein Condensate (BEC) or scalar-field or ultra-light or fuzzy dark matter (FDM) models. This in fact can be used for evolving any Bose-Einstein condensate, if desired. Within the gravity kernel (gravity is automatically assumed to be adaptive, necessary for the volume domains over which the equations are integrated to be well-defined), this solves the non-linear Shrodinger-Poisson equation in the Madelung formulation (where the density represents the squared amplitude of the field, and the velocity is the local group velocity of the wavefunction). This looks like the collisionless Euler equations with the addition of a quantum pressure tensor. Details of the implementation are in Hopkins 2018 (in prep). Upon release of this paper the module will be made public, it is currently in final testing stages.
 
 **GR\_TABULATED\_COSMOLOGY**: Master switch to enable cosmological integrations or regular simulations with non-standard, time-dependent dark energy equations-of-state, expansion histories, or gravitational constants. In this mode, the local gravitational forces will still be Newtonian, but the cosmological history will be different (and the gravitational constant G can, in principle, vary with time). This then allows the sub-switches **GR\_TABULATED\_COSMOLOGY\_W** which will read the dark energy equation of state w(z) from a pre-tabulated file (specified in the parameterfile by "TabulatedCosmologyFile"). For a constant $w(z)=w$, this just amounts to replacing the constant $\Lambda \rightarrow \Lambda_{0}\,a^{-3\,(1+w)}$ in the Hubble function. For a time-varying $w$, the expression used is the integral expression $\Lambda \rightarrow \Lambda_{0}\,\exp{\{ \int_{1}^{a}\,\frac{3\,(1+w[a^{\prime}])}{a^{\prime}}\,d a^{\prime} \}}$. The parameter **GR\_TABULATED\_COSMOLOGY\_H** will read the Hubble function H(z) itself from this file. **GR\_TABULATED\_COSMOLOGY\_G** will also read the value of G(z), the gravitational constant (i.e. allows for time-varying gravitational constant, albeit with an "instantaneously" Newton force). Note that these options will not self-consistently alter the power spectrum of initial conditions. To use the same cosmological initial conditions (assuming these are chosen early enough so that linear growth theory applies) intending to get roughly the same $z=0$ power spectrum, for example, one should change the starting scale factor (or redshift) in the parameterfile so that the linear growth factors match appropriately for the intended "initial time" -- i.e. so $g^{0}(z=0)/g^{0}(z_{\rm ICs}^{\rm original}) = g^{\prime}(z=0)/g^{\prime}(z_{\rm ICs}^{\rm new})$, where $g^{0}$ is the growth factor in the "original" cosmology for which the ICs were built to be used starting at redshift $z_{\rm ICs}^{\rm original}$ and $g^{\prime}$ is the growth factor in the new, modified cosmology and $z_{\rm ICs}^{\rm new}$ is the new starting redshift. Similarly, the initial velocity field should be re-scaled by the factor $[H^{\prime}(z_{\rm ICs}^{\rm new})\,\Omega^{\prime}(z_{\rm ICs}^{\rm new})^{0.6}]/[H^{0}(z_{\rm ICs}^{\rm original})\,\Omega^{0}(z_{\rm ICs}^{\rm original})^{0.6}]$. See the parameters description below for more details. 
 
@@ -1102,7 +1103,7 @@ These options all pertain to the gravity solver in the code. They determine how 
 ##-----------------------------------------------------------------------------------------------------
 ```
 
-**GDE_DISTORTIONTENSOR**: Fine-grained phase-space structure of the dark matter is tracked on the fly, according to the algorithm developed and originally implemented in GADGET by M. Vogelsberger. This is useful for on-the-fly studies of dark matter annihilation, and weak lensing (basically looking for caustics). The sub-options allow different outputs to track the various quantities computed. Users who wish to use these modules should contact Mark Vogelberger for permissions, who wrote them for GADGET -- they are in GIZMO as legacy code and are not developed by PFH. 
+**GDE\_DISTORTIONTENSOR**: Fine-grained phase-space structure of the dark matter is tracked on the fly, according to the algorithm developed and originally implemented in GADGET by M. Vogelsberger. This is useful for on-the-fly studies of dark matter annihilation, and weak lensing (basically looking for caustics). The sub-options allow different outputs to track the various quantities computed. Users who wish to use these modules should contact Mark Vogelberger for permissions, who wrote them for GADGET -- they are in GIZMO as legacy code and are not developed by PFH. 
 
 
 <a name="config-gravity-pressure"></a>
@@ -1523,39 +1524,50 @@ This set of options controls the explicit radiation-hydrodynamics options in the
 <a name="config-rhd-methods"></a>
 ### _Radiation Transport Methods_
     
-    ############################################################################################################################
-    #--------------------------------------- Radiative Transfer & Radiation Hydrodynamics:
-    #--------------------------------------------- modules developed by PFH with David Khatami, Mike Grudic, and Nathan Butcher
-    #---------------------------------------------  (special thanks to Alessandro Lupi): not for use without authors permission [these are proprietary because still in development before public release]
-    ############################################################################################################################
-    #--------------------- methods for calculating photon propagation (one, and only one, of these MUST be on for RT)
-    #RT_LEBRON                              # RT solved using the LEBRON approximation (locally-extincted background radiation in optically-thin networks; default in the FIRE simulations)
-    #RT_OTVET                               # RT solved using the OTVET approximation (optically thin Eddington tensor, but interpolated to thick when appropriate)
-    #RT_M1                                  # RT solved using the M1 approximation (solve fluxes and tensors with M1 closure; gives better shadowing; currently only compatible with explicit diffusion solver)
-    #RT_FLUXLIMITEDDIFFUSION                # RT solved using the flux-limited diffusion approximation (constant, always-isotropic Eddington tensor)
-    ############################################################################################################################
+
+```bash
+############################################################################################################################-
+#--------------------------------------- Radiative Transfer & Radiation Hydrodynamics:
+#--------------------------------------------- modules developed by PFH with David Khatami, Mike Grudic, and Nathan Butcher
+#---------------------------------------------  (special thanks to Alessandro Lupi): not for use without authors permission [these are proprietary because still in development before public release]
+############################################################################################################################-
+#--------------------- methods for calculating photon propagation (one, and only one, of these MUST be on for RT)
+#RT_LEBRON                              # RT solved using the ray-based LEBRON approximation (locally-extincted background radiation in optically-thin networks; default in the FIRE simulations)
+#RT_M1                                  # RT solved using the moments-based 1st-order M1 approximation (solve fluxes and tensors with M1 closure; gives better shadowing; currently only compatible with explicit diffusion solver)
+#RT_OTVET                               # RT solved using the moments-based 0th-order OTVET approximation (optically thin Eddington tensor, but interpolated to thick when appropriate)
+#RT_FLUXLIMITEDDIFFUSION                # RT solved using the moments-based 0th-order flux-limited diffusion approximation (constant, always-isotropic Eddington tensor)
+#RT_LOCALRAYGRID=1                      # RT solved using the exact method of Jiang et al. (each cell carries a mesh in phase space of the intensity directions, rays directly solved over the 6+1D direction-space-frequency-time mesh [value=number of polar angles per octant: N_rays=4*value*(value+1)]
+############################################################################################################################-
+```
 
 This block controls the algorithm used to actually *transport* the radiation (indendent of the sources, absorption, bands, effects of the radiation, and even the solver for the transport equations). Because the exact radiation-hydro equations are to expensive to solve on-the-fly in full generality, each module here makes some approximation to simplify the transport equations. Consider carefully whether those approximations are valid or acceptable for your problem -- none of these (nor any on-the-fly method in the literature) is truly exact, even in the infinite-resolution limit.
 
 A detailed methods paper with the numerical methods and tests for these modules is in preparation (PFH et al., 2018), but not yet submitted. The modules are therefore proprietary and require explicit permission from PFH to use. However their development is active and I encourage users who can contribute to the codebase to do so (after obtaining the appropriate permissions and checking with the developers of this code), in order to help make these modules fully-ready for public release.
 
+These methods follow Hopkins and Grudic, arXiv:1803.07573 and attempt to follow the *face-integrated* formulation of the radiative transfer equations for coupling radiation pressure to gas, in order to avoid potentially serious under-estimation of the pressure terms in the vicinity of point sources.
 
-**RT\_LEBRON**: Propagate radiation using the LEBRON (locally-extincted background radiation in optically-thin networks) approximation from Hopkins et al. 2012 (MNRAS 2012, 421, 3488) and Hopkins et al., 2017, arXiv:1702.06148 (where Appendix E gives a complete description of the numerical implementation). This is the default radiation transport approximation in the FIRE simulations, but the pure radiation hydro model is separable from the rest of the FIRE physics (although at the moment, the way it is coded anchors it to the particular set of bands used in the FIRE simulations -- it is in principle fully modular to work with the arbitrary set of frequencies here, but this hasn't been fully-updated yet). See the methods paper from 2017 for a discussion of the actual approximations made in the module. This approximation is distinct from moments-based methods in that it actually correctly allows rays to propagate through one another and exactly reduces to the correct solutions for optically thin media for arbitrary source distributions. However it does not capture shadowing (unlike M1) and is not manifestly photon-conserving. If you are given permission to use these modules in scientific work, please citeHopkins et al. 2012 (MNRAS 2012, 421, 3488) and Hopkins et al., 2017, arXiv:1702.06148.
+
+**RT\_LEBRON**: Propagate radiation using the LEBRON (locally-extincted background radiation in optically-thin networks) approximation from Hopkins et al. 2012 (MNRAS 2012, 421, 3488) and Hopkins et al., 2017, arXiv:1702.06148 (where Appendix E gives a complete description of the numerical implementation). This is the default radiation transport approximation in the FIRE simulations, but the pure radiation hydro model is separable from the rest of the FIRE physics (although at the moment, the way it is coded anchors it to the particular set of bands used in the FIRE simulations -- it is in principle fully modular to work with the arbitrary set of frequencies here, but this hasn't been fully-updated yet). See the methods paper from 2017 for a discussion of the actual approximations made in the module. This approximation is distinct from moments-based methods in that it actually correctly allows rays to propagate through one another and exactly reduces to the correct solutions for optically thin media for arbitrary source distributions. However it does not capture shadowing (unlike M1) and is not manifestly photon-conserving. If you are given permission to use these modules in scientific work, please cite Hopkins et al. 2012 (MNRAS 2012, 421, 3488) and Hopkins et al., 2017, arXiv:1702.06148.
+
+**RT\_M1**: Propagate radiation using the M1 (first-moment) approximation (Levermore 1984). This expands to one moment higher than FLD/OTVET so a pair of advection equations for flux and energy are solved. It is manifestly photon-conserving and captures shadowing, at the cost of noise and grid effects from propagating vector transport. But like all moments methods, it cannot capture collisionless rays passing through one another. Please also cite Rosdahl et al., 2013, MNRAS, 436, 2188, whose implementation of M1 in RAMSES is an approximate template for the GIZMO implementation, and Hopkins and Grudic arXiv:1803.07573 (but a more detailed methods paper is on the way).
 
 **RT\_FLUXLIMITEDDIFFUSION**: Propagate radiation using the FLD (flux-limited diffusion) approximation. This is a zeroth-order moments closure of the RT equations, reducing them to diffusion, valid in the optically thick limit. Like all moments methods, it cannot reproduce photons moving through one another correctly, but is manifestly photon-conserving. It cannot capture shadowing.
 
 **RT\_OTVET**: Propagate radiation using the OTVET (optically-thin eddington tensor) approximation (Gnedin+Abel 2001). This is nearly-identical to flux-limited diffusion, in that it is a zeroth-order moments closure of the RT equations valid in the optically thick limit, but it uses the eddington tensor calculated as in the LEBRON method from optically thin media to more accurately capture photon propagation directions in that limit (less accurate in the true optically-thick limit). Like all moments methods, it cannot reproduce photons moving through one another correctly, but is manifestly photon-conserving. It cannot capture shadowing. Please also cite Gnedin+Abel 2001, New Astronomy, 6, 437.
 
-**RT\_M1**: Propagate radiation using the M1 (first-moment) approximation (Levermore 1984). This expands to one moment higher than FLD/OTVET so a pair of advection equations for flux and energy are solved. It is manifestly photon-conserving and captures shadowing, at the cost of noise and grid effects from propagating vector transport. But like all moments methods, it cannot capture collisionless rays passing through one another. Please also cite Rosdahl et al., 2013, MNRAS, 436, 2188, whose implementation of M1 in RAMSES is an approximate template for the GIZMO implementation (but a more detailed methods paper is on the way).
+**RT\_LOCALRAYGRID**: Propagate radiation using an explicit grid of rays, evolved on top of the spatial mesh of gas resolution elements, following the method of Jiang et al. 2014, ApJS, 213, 7. Essentially, this method integrates the *real* radiative transfer equations directly in the fully 8-dimensional phase space. Each spatial domain (normal gas resolution element) is a phase-space grid, because in addition to the frequency bins, it carries explicitly a grid of angular directions/rays, each of which has a value of the intensity. The intensity is transported across these rays according to a standard finite-volume method. Unlike the other methods here, this does not make any fundamental assumptions throwing out terms -- this is the only method in GIZMO which will, in principle, converge to exact solutions of the full time-dependent radiation-hydrodynamics equations under any circumstances. Of course, this formally requires an infinite number of rays in addition to infinite spatial resolution. The value $N$ set here is the number of independent polar angles of the grid per octant on the unit sphere -- the total number of rays evolved will be $=4 N (N+1)$ (so setting `RT_LOCALRAYGRID=4` means 80 rays are evolved for every frequency bin). So be aware that the computational cost scales steeply with increasing values of this number. 
 
 
 <a name="config-rhd-numerical"></a>
 ### _Numerical Solvers & Optimization_ 
-    ############################################################################################################################
-    #--------------------- solvers (numerical) --------------------------------------------------------
-    #RT_SPEEDOFLIGHT_REDUCTION=1            # set to a number <1 to use the 'reduced speed of light' approximation for photon propagation (C_eff=C_true*RT_SPEEDOFLIGHT_REDUCTION)
-    #RT_DIFFUSION_IMPLICIT                  # solve the diffusion part of the RT equations (if needed) implicitly with Conjugate Gradient iteration (Petkova+Springel): less accurate and only works with some methods, but allows larger timesteps [otherwise more accurate explicit used]
-    ############################################################################################################################
+
+```bash
+############################################################################################################################
+#--------------------- solvers (numerical) --------------------------------------------------------
+#RT_SPEEDOFLIGHT_REDUCTION=1            # set to a number <1 to use the 'reduced speed of light' approximation for photon propagation (C_eff=C_true*RT_SPEEDOFLIGHT_REDUCTION)
+#RT_DIFFUSION_IMPLICIT                  # solve the diffusion part of the RT equations (if needed) implicitly with Conjugate Gradient iteration (Petkova+Springel): less accurate and only works with some methods, but allows larger timesteps [otherwise more accurate explicit used]
+############################################################################################################################
+```
 
 This governs decisions of *how* the transport algorithm above is solved, for example whether the full speed of light is used or a reduce speed-of-light approximation, or whether an implicit or explicit solver is used. 
 
@@ -1567,16 +1579,19 @@ This governs decisions of *how* the transport algorithm above is solved, for exa
 <a name="config-rhd-freqs"></a>
 ### _Frequencies/Wavebands Evolved_
 
-    ############################################################################################################################
-    #--------------------- physics: wavelengths+coupled RT-chemistry networks -----------------------------------
-    #RT_SOURCES=1+16+32                     # source list for ionizing photons given by bitflag (1=2^0=gas,16=2^4=new stars,32=2^5=BH)
-    #RT_XRAY=3                              # x-rays: 1=soft (0.5-2 keV), 2=hard (>2 keV), 3=soft+hard; used for Compton-heating
-    #RT_CHEM_PHOTOION=2                     # ionizing photons: 1=H-only [single-band], 2=H+He [four-band]
-    #RT_LYMAN_WERNER                        # specific lyman-werner [narrow H2 dissociating] band
-    #RT_PHOTOELECTRIC                       # far-uv (8-13.6eV): track photo-electric heating photons + their dust interactions
-    #RT_OPTICAL_NIR                         # optical+near-ir: 3600 Angstrom-3 micron (where direct stellar emission dominates)
-    #RT_INFRARED                            # infrared: photons absorbed in other bands are down-graded to IR: IR radiation + dust + gas temperatures evolved independently
-    ############################################################################################################################
+```bash
+############################################################################################################################
+#--------------------- physics: wavelengths+coupled RT-chemistry networks -----------------------------------
+#RT_SOURCES=1+16+32                     # source list for ionizing photons given by bitflag (1=2^0=gas,16=2^4=new stars,32=2^5=BH)
+#RT_XRAY=3                              # x-rays: 1=soft (0.5-2 keV), 2=hard (>2 keV), 3=soft+hard; used for Compton-heating
+#RT_CHEM_PHOTOION=2                     # ionizing photons: 1=H-only [single-band], 2=H+He [four-band]
+#RT_LYMAN_WERNER                        # specific lyman-werner [narrow H2 dissociating] band
+#RT_PHOTOELECTRIC                       # far-uv (8-13.6eV): track photo-electric heating photons + their dust interactions
+#RT_NUV                                 # near-UV: 1550-3600 Angstrom (where direct stellar emission dominates)
+#RT_OPTICAL_NIR                         # optical+near-ir: 3600 Angstrom-3 micron (where direct stellar emission dominates)
+#RT_INFRARED                            # infrared: photons absorbed in other bands are down-graded to IR: IR radiation + dust + gas temperatures evolved independently
+############################################################################################################################
+```
 
 This governs the wavelengths and source functions to be solved in the code. Note that one can choose an arbitrary combination of source particle types and wavebands -- the code is modular so any set of bands is perfectly valid. For any given band, of course, the source functions and opacities must actually exist. If you wish to add a band to the code, you can do so by adding the appropriate source function and opacity functions to the existing functions "rt\_get\_source\_luminosity" and "rt\_kappa" within the file "rt\_utilities.c". Follow the template that exists there now. 
 
@@ -1586,11 +1601,15 @@ As above, a methods paper with the details for these modules is in preparation (
 
 **RT\_XRAY**: Follow RT for X-ray bands. Value determines which bands: 1=soft (0.5-2 keV), 2=hard (>2 keV), 3=soft+hard. If the standard COOLING modules are turned on, this will directly enter the cooling module calculations for Compton heating.
 
+**RT\_CHEM\_PHOTOION**: Follows RT for H and He photo-ionizing energies (912 Angstrom through 0.5 keV). If set =1, then this is a single band (all ionizing radiation is lumped together, energies 13.6-500 eV). If set =2, then a four-band H+He set is followed, with bands 13.6-24.6, 24.6-54.4, 54.4-70, and 70-500 eV. This allows independent bands for Helium-ionizing and doubly-ionizing photons, and very hard photons. If the standard COOLING modules are turned on, these will directly enter the cooling and ionization state calculations, and full non-equilibrium ionization states for H and He will be evolved.
+
 **RT\_LYMAN\_WERNER**: Follow RT for Lyman-Werner band (H2-dissociating) flux. Sources and opacities are implemented, but self-consistent chemistry linking this to the H2 fraction is not yet fully-developed. Partial implementation in standard cooling; this physics can easily be linked to the Grackle cooling libraries as well.
 
 **RT\_PHOTOELECTRIC**: Follow RT for a photo-electric heating band (far-UV from 8-13.6eV). If the standard COOLING modules are turned on, this will directly enter the cooling module calculations for the photo-electric heating rate (using the local dust properties and photo-electric band photon densities).  
 
-**RT\_OPTICAL\_NIR**: Follow RT for an optical-NIR band (from 3600 angstrom to 3 microns), where direct stellar emission dominates. 
+**RT\_NUV**: Follow RT for a near-UV band (from 1550-3600 Angstrom), where direct stellar emission dominates. 
+
+**RT\_OPTICAL\_NIR**: Follow RT for an optical-NIR band (from 3600 Angstrom to 3 microns), where direct stellar emission dominates. 
 
 **RT\_INFRARED**: Follow RT for IR bands. The IR band is treated slightly differently from the other bands; rather than follow many narrow bands to treat a detailed IR spectrum, the follow the IR as a quasi-blackbody spectrum with a single band. However, the IR radiation temperature, dust temperature, and gas temperatures are strictly de-coupled and evolved independently according to the correct equations (they can of course come into equilibrium in sufficiently dense environments). The opacities and source functions account for this, and for the local dust abundance (if dust tracking is not explicit, this is scaled to a constant dust-to-metals ratio). Photons absorbed in other bands *except* for the ionizing bands (or others, if the user specifies by hand in the code) are assumed to down-grade into the IR and be re-emitted there. The explicitly solved dust temperatures and IR radiation temperatures are used in the cooling functions if the standard COOLING module is enabled.
 
@@ -1598,11 +1617,14 @@ As above, a methods paper with the details for these modules is in preparation (
 <a name="config-rhd-special"></a>
 ### _Additional Options_
 
-    ############################################################################################################################
-    #--------------------- radiation pressure options -------------------------------------------------
-    #RT_DISABLE_RAD_PRESSURE                # turn off radiation pressure forces (included by default)
-    #RT_RAD_PRESSURE_OUTPUT                 # print radiation pressure to file (requires some extra variables to save it)
-    ############################################################################################################################
+```bash
+############################################################################################################################
+#--------------------- radiation pressure options -------------------------------------------------
+#RT_DISABLE_RAD_PRESSURE                # turn off radiation pressure forces (included by default)
+#RT_RAD_PRESSURE_OUTPUT                 # print radiation pressure to file (requires some extra variables to save it)
+#RT_DISABLE_R15_GRADIENTFIX             # for moments [FLD/OTVET/M1]: turn off the Rosdahl+ 2015 approximate 'fix' (on by default) for gradients under-estimating flux when under-resolved by replacing it with E_nu*c
+############################################################################################################################
+```
 
 Flags governing the radiation pressure terms (photon momentum transfer to gas), which are included by default for any RT method
 
@@ -1610,7 +1632,7 @@ Flags governing the radiation pressure terms (photon momentum transfer to gas), 
 
 **RT\_RAD\_PRESSURE\_OUTPUT**: Output radiation pressure terms incident on all gas particles to the simulation snapshots
 
-
+**RT\_DISABLE\_R15\_GRADIENTFIX**: This is relevant for radiation pressure if and only if one of the moments methods (M1/FLD/OTVET) is being used to evolve the radiation. If those methods are used, then by default, for all bands except the infrared, the radiation pressure force is calculated using the approximate fix from Rosdahl et al. 2015, MNRAS, 451, 34 (Appendix B), whereby the optically-thin flux (${\bf F}\rightarrow e_{\nu}c\hat{\bf F}$) is used to replace the explicitly-calculated ${\bf F}$, as the latter is smoothed over ~10 grid cells around any point sources owing to the fact that it depends on numerical sourcing of the relevant gradient terms. This default behavior is generally more accurate in simulations with lots of point sources where the initial single-scattering mean-free-paths are poorly-resolved (e.g. star and galaxy formation simulations). However, if there are not point sources or the mean-free-paths are well-resolved, turning this off will yield more accurate behavior with these methods.
 
 
 
@@ -1635,7 +1657,7 @@ These flags govern the implementation of multi-threading in the code. Must be en
 
 **PTHREADS\_NUM\_THREADS**: This functions like OPENMP, but implements a custom PTHREADS multi-threading implementation. While more highly customized, the compilers for OpenMP have improved to the point where, for the same hybrid configurations, OPENMP is usually faster. That said, this can still be useful for some machines (particularly older ones) and certain highly customized applications.
 
-**MULTIPLEDOMAINS**: This subdivides the tree into smaller sub-domains which can be independently moved to different processors. This makes domain de-composition dramatically less dependent on spatial co-location), at the cost of increased communication. Experiment with values here to see what works best -- in general, for problems with greater degrees of inhomogeneity, a higher value of this parameter can help.
+**MULTIPLEDOMAINS**: This subdivides the tree into smaller sub-domains which can be independently moved to different processors. This makes domain de-composition dramatically less dependent on spatial co-location, at the cost of increased communication and less ability to take advantage of multi-threading. Experiment with values here to see what works best -- in general, for problems with greater degrees of inhomogeneity, a higher value of this parameter can help.
 
 
      
@@ -1837,7 +1859,7 @@ These are miscellaneous flags for de-bugging and special purpose behaviors. If y
 <a name="config-debug-loadbalance"></a>
 ### _Load-Balancing_ 
 
-**ALLOW\_IMBALANCED\_GASPARTICLELOAD**: Increases All.MaxPartSph (maximum number of SPH particles allowed per MPI task, default is PartAllocFac*Number of SPH particles/Number of Tasks) to All.MaxPart (same using all particles instead of SPH particles): can allow better load-balancing in some cases, but uses more memory. But try this flag if you run into errors where it can't fit the domain (where you would increase PartAllocFac, but can't for some reason). It can help to declare 'up front' the memory useage, preventing this error even though the mean memory footprint is larger.
+**ALLOW\_IMBALANCED\_GASPARTICLELOAD**: Increases All.MaxPartSph (maximum number of SPH particles allowed per MPI task, default is PartAllocFac*Number of gas particles/Number of Tasks) to All.MaxPart (same using all particles instead of gas elements): can allow better load-balancing in some cases, but uses more memory. But try this flag if you run into errors where it can't fit the domain (where you would increase PartAllocFac, but can't for some reason). It can help to declare 'up front' the memory useage, preventing this error even though the mean memory footprint is larger. This is essentially required if you are running simulations that involve lots of element-splitting, as one is continuously creating new gas resolution elements, which will overflow memory because of how they have to be ranked.
 
 **SEPARATE\_STELLARDOMAINDECOMP**: This will completely separate the star particles in the domain decomposition and memory structures. The implementation is incomplete -- it should only be used for specific debugging.
 

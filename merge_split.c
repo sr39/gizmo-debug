@@ -273,7 +273,7 @@ void merge_and_split_particles(void)
 void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nearest)
 {
     double mass_of_new_particle;
-    if(NumPart + n_particles_split >= All.MaxPart)
+    if(NumPart + n_particles_split >= All.MaxPartSph)
     {
         printf ("On Task=%d with NumPart=%d we try to split a particle. Sorry, no space left...(All.MaxPart=%d)\n", ThisTask, NumPart, All.MaxPart);
         fflush(stdout);
@@ -351,22 +351,15 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
     /* we evolve the -conserved- VB and Vphi, so this must be partitioned */
     for(k=0;k<3;k++)
     {
-        SphP[j].B[k] = mass_of_new_particle * SphP[i].B[k];
-        SphP[i].B[k] -= SphP[j].B[k];
-        SphP[j].BPred[k] = mass_of_new_particle * SphP[i].BPred[k];
-        SphP[i].BPred[k] -= SphP[j].BPred[k];
-        SphP[j].DtB[k] = mass_of_new_particle * SphP[i].DtB[k];
-        SphP[i].DtB[k] -= SphP[j].DtB[k];
+        SphP[j].B[k] = mass_of_new_particle * SphP[i].B[k]; SphP[i].B[k] -= SphP[j].B[k];
+        SphP[j].BPred[k] = mass_of_new_particle * SphP[i].BPred[k]; SphP[i].BPred[k] -= SphP[j].BPred[k];
+        SphP[j].DtB[k] = mass_of_new_particle * SphP[i].DtB[k]; SphP[i].DtB[k] -= SphP[j].DtB[k];
     }
-    SphP[j].divB = mass_of_new_particle * SphP[i].divB;
-    SphP[i].divB -= SphP[j].divB;
+    SphP[j].divB = mass_of_new_particle * SphP[i].divB; SphP[i].divB -= SphP[j].divB;
 #ifdef DIVBCLEANING_DEDNER
-    SphP[j].Phi = mass_of_new_particle * SphP[i].Phi;
-    SphP[i].Phi -= SphP[j].Phi;
-    SphP[j].DtPhi = mass_of_new_particle * SphP[i].DtPhi;
-    SphP[i].DtPhi -= SphP[j].DtPhi;
-    SphP[j].PhiPred = mass_of_new_particle * SphP[i].PhiPred;
-    SphP[i].PhiPred -= SphP[j].PhiPred;
+    SphP[j].Phi = mass_of_new_particle * SphP[i].Phi; SphP[i].Phi -= SphP[j].Phi;
+    SphP[j].DtPhi = mass_of_new_particle * SphP[i].DtPhi; SphP[i].DtPhi -= SphP[j].DtPhi;
+    SphP[j].PhiPred = mass_of_new_particle * SphP[i].PhiPred; SphP[i].PhiPred -= SphP[j].PhiPred;
 #endif
     /* ideally, particle-splits should be accompanied by a re-partition of the density via the density() call
         for the particles affected, after the tree-reconstruction, with quantities like B used to re-calculate after */
@@ -374,13 +367,27 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
 #ifdef RADTRANSFER
     for(k=0;k<N_RT_FREQ_BINS;k++)
     {
-        SphP[j].E_gamma[k] = mass_of_new_particle * SphP[i].E_gamma[k];
-        SphP[i].E_gamma[k] -= SphP[j].E_gamma[k];
+        int k_dir; k_dir=0;
+        SphP[j].E_gamma[k] = mass_of_new_particle * SphP[i].E_gamma[k]; SphP[i].E_gamma[k] -= SphP[j].E_gamma[k];
 #if defined(RT_EVOLVE_NGAMMA)
-        SphP[j].E_gamma_Pred[k] = mass_of_new_particle * SphP[i].E_gamma_Pred[k];
-        SphP[i].E_gamma_Pred[k] -= SphP[j].E_gamma_Pred[k];
-        SphP[j].Dt_E_gamma[k] = mass_of_new_particle * SphP[i].Dt_E_gamma[k];
-        SphP[i].Dt_E_gamma[k] -= SphP[j].Dt_E_gamma[k];
+        SphP[j].E_gamma_Pred[k] = mass_of_new_particle * SphP[i].E_gamma_Pred[k]; SphP[i].E_gamma_Pred[k] -= SphP[j].E_gamma_Pred[k];
+        SphP[j].Dt_E_gamma[k] = mass_of_new_particle * SphP[i].Dt_E_gamma[k]; SphP[i].Dt_E_gamma[k] -= SphP[j].Dt_E_gamma[k];
+#endif
+#if defined(RT_EVOLVE_FLUX)
+        for(k_dir=0;k_dir<3;k_dir++)
+        {
+            SphP[j].Flux[k][k_dir] = mass_of_new_particle * SphP[i].Flux[k][k_dir]; SphP[i].Flux[k][k_dir] -= SphP[j].Flux[k][k_dir];
+            SphP[j].Flux_Pred[k][k_dir] = mass_of_new_particle * SphP[i].Flux_Pred[k][k_dir]; SphP[i].Flux_Pred[k][k_dir] -= SphP[j].Flux_Pred[k][k_dir];
+            SphP[j].Dt_Flux[k][k_dir] = mass_of_new_particle * SphP[i].Dt_Flux[k][k_dir]; SphP[i].Dt_Flux[k][k_dir] -= SphP[j].Dt_Flux[k][k_dir];
+        }
+#endif
+#ifdef RT_EVOLVE_INTENSITIES
+        for(k_dir=0;k_dir<N_RT_INTENSITY_BINS;k_dir++)
+        {
+            SphP[j].Intensity[k][k_dir] = mass_of_new_particle * SphP[i].Intensity[k][k_dir]; SphP[i].Intensity[k][k_dir] -= SphP[j].Intensity[k][k_dir];
+            SphP[j].Intensity_Pred[k][k_dir] = mass_of_new_particle * SphP[i].Intensity_Pred[k][k_dir]; SphP[i].Intensity_Pred[k][k_dir] -= SphP[j].Intensity_Pred[k][k_dir];
+            SphP[j].Dt_Intensity[k][k_dir] = mass_of_new_particle * SphP[i].Dt_Intensity[k][k_dir]; SphP[i].Dt_Intensity[k][k_dir] -= SphP[j].Dt_Intensity[k][k_dir];
+        }
 #endif
     }
 #endif
@@ -400,19 +407,14 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
     SphP[i].MassTrue -= SphP[j].MassTrue;
 #endif
 #ifdef COSMIC_RAYS
-    SphP[j].CosmicRayEnergy = mass_of_new_particle * SphP[i].CosmicRayEnergy;
-    SphP[i].CosmicRayEnergy -= SphP[j].CosmicRayEnergy;
-    SphP[j].CosmicRayEnergyPred = mass_of_new_particle * SphP[i].CosmicRayEnergyPred;
-    SphP[i].CosmicRayEnergyPred -= SphP[j].CosmicRayEnergyPred;
-    SphP[j].DtCosmicRayEnergy = mass_of_new_particle * SphP[i].DtCosmicRayEnergy;
-    SphP[i].DtCosmicRayEnergy -= SphP[j].DtCosmicRayEnergy;
+    SphP[j].CosmicRayEnergy = mass_of_new_particle * SphP[i].CosmicRayEnergy; SphP[i].CosmicRayEnergy -= SphP[j].CosmicRayEnergy;
+    SphP[j].CosmicRayEnergyPred = mass_of_new_particle * SphP[i].CosmicRayEnergyPred; SphP[i].CosmicRayEnergyPred -= SphP[j].CosmicRayEnergyPred;
+    SphP[j].DtCosmicRayEnergy = mass_of_new_particle * SphP[i].DtCosmicRayEnergy; SphP[i].DtCosmicRayEnergy -= SphP[j].DtCosmicRayEnergy;
 #ifdef COSMIC_RAYS_M1
     for(k=0;k<3;k++)
     {
-        SphP[j].CosmicRayFlux[k] = mass_of_new_particle * SphP[i].CosmicRayFlux[k];
-        SphP[i].CosmicRayFlux[k] -= SphP[j].CosmicRayFlux[k];
-        SphP[j].CosmicRayFluxPred[k] = mass_of_new_particle * SphP[i].CosmicRayFluxPred[k];
-        SphP[i].CosmicRayFluxPred[k] -= SphP[j].CosmicRayFluxPred[k];
+        SphP[j].CosmicRayFlux[k] = mass_of_new_particle * SphP[i].CosmicRayFlux[k]; SphP[i].CosmicRayFlux[k] -= SphP[j].CosmicRayFlux[k];
+        SphP[j].CosmicRayFluxPred[k] = mass_of_new_particle * SphP[i].CosmicRayFluxPred[k]; SphP[i].CosmicRayFluxPred[k] -= SphP[j].CosmicRayFluxPred[k];
     }
 #endif
 #endif
@@ -687,6 +689,14 @@ void merge_particles_ij(int i, int j)
             SphP[j].Flux[k][k_dir] = SphP[j].Flux[k][k_dir] + SphP[i].Flux[k][k_dir];
             SphP[j].Flux_Pred[k][k_dir] = SphP[j].Flux_Pred[k][k_dir] + SphP[i].Flux_Pred[k][k_dir];
             SphP[j].Dt_Flux[k][k_dir] = SphP[j].Dt_Flux[k][k_dir] + SphP[i].Dt_Flux[k][k_dir];
+        }
+#endif
+#ifdef RT_EVOLVE_INTENSITIES
+        for(k_dir=0;k_dir<N_RT_INTENSITY_BINS;k_dir++)
+        {
+            SphP[j].Intensity[k][k_dir] = SphP[j].Intensity[k][k_dir] + SphP[i].Intensity[k][k_dir];
+            SphP[j].Intensity_Pred[k][k_dir] = SphP[j].Intensity_Pred[k][k_dir] + SphP[i].Intensity_Pred[k][k_dir];
+            SphP[j].Dt_Intensity[k][k_dir] = SphP[j].Dt_Intensity[k][k_dir] + SphP[i].Dt_Intensity[k][k_dir];
         }
 #endif
     }
