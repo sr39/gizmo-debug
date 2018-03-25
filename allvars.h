@@ -391,6 +391,19 @@
 #endif
 
 
+/* options for direct/exact Jiang et al. method for direct evolution on an intensity grid */
+#if defined(RT_LOCALRAYGRID)
+#ifndef RADTRANSFER
+#define RADTRANSFER
+#endif
+#define RT_EVOLVE_INTENSITIES
+#define N_RT_INTENSITY_BINS (4*(RT_LOCALRAYGRID)*((RT_LOCALRAYGRID)+1))
+#define RT_INTENSITY_BINS_DOMEGA (4.*M_PI/((double)N_RT_INTENSITY_BINS))
+#define RT_SOURCE_INJECTION
+#endif
+
+
+
 /* decide which diffusion method to use (for any diffusion-based method) */
 #if defined(RT_DIFFUSION) && !defined(RT_DIFFUSION_EXPLICIT)
 #define RT_DIFFUSION_CG
@@ -1677,6 +1690,10 @@ extern struct global_data_all_processes
   integertime Radiation_Ti_begstep;
   integertime Radiation_Ti_endstep;
 #endif
+    
+#ifdef RT_EVOLVE_INTENSITIES
+    double RT_Intensity_Direction[N_RT_INTENSITY_BINS][3];
+#endif
 
 #if defined(RT_CHEM_PHOTOION) && !(defined(GALSF_FB_HII_HEATING) || defined(GALSF))
     double IonizingLuminosityPerSolarMass_cgs;
@@ -2393,6 +2410,11 @@ extern struct sph_particle_data
     MyFloat E_gamma[N_RT_FREQ_BINS];    /*!< photon energy (integral of dE_gamma/dvol*dVol) associated with particle [for simple frequency bins, equivalent to photon number] */
     MyFloat Kappa_RT[N_RT_FREQ_BINS];   /*!< opacity [physical units ~ length^2 / mass]  */
     MyFloat Lambda_FluxLim[N_RT_FREQ_BINS]; /*!< dimensionless flux-limiter (0<lambda<1) */
+#ifdef RT_EVOLVE_INTENSITIES
+    MyFloat Intensity[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS]; /*!< intensity values along different directions, for each frequency */
+    MyFloat Intensity_Pred[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS]; /*!< predicted [drifted] values of intensities */
+    MyFloat Dt_Intensity[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS]; /*!< time derivative of intensities */
+#endif
 #ifdef RT_EVOLVE_FLUX
     MyFloat Flux[N_RT_FREQ_BINS][3];    /*!< photon energy flux density (energy/time/area), for methods which track this explicitly (e.g. M1) */
     MyFloat Flux_Pred[N_RT_FREQ_BINS][3];/*!< predicted photon energy flux density for drift operations (needed for adaptive timestepping) */
