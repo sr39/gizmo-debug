@@ -178,6 +178,10 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
     fac_minmax=0.0;
     fac_meddev=0.0;
 #endif
+#if defined(CRK_FACES) && (SLOPE_LIMITER_TOLERANCE > 0)
+    fac_minmax=0.75; fac_meddev=0.5; // default to aggressive limiters, but with additional limiter below //
+#endif
+
     
     /* get the max/min vals, difference, and midpoint value */
     Qmed = 0.5*(Q_i+Q_j);
@@ -207,22 +211,37 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
         if(*Q_R>Qmed_max) *Q_R=Qmed_max;
         if(*Q_L>Qmax_eff) *Q_L=Qmax_eff;
         if(*Q_L<Qmed_min) *Q_L=Qmed_min;
-/*
-#if defined(MAGNETIC) && !defined(MHD_CONSTRAINED_GRADIENT)
-        if(mode > 0) {if(*Q_R > *Q_L) {*Q_R = 0.5*(*Q_R + *Q_L); *Q_L=*Q_R;}} // causes strong diffusion in Gresho and RTMHD: limit conditions of use
+#if defined(CRK_FACES)
+        if(*Q_R > *Q_L)
+        {
+            double Q0L = *Q_L, Q0R = *Q_R, Qh = 0.5*(Q0L+Q0R);
+            if(Q0R > Q_j)  {if(Qh > Q_j) {*Q_R=Qh; *Q_L=Qh;} else {*Q_R=Q_j; if(Q0L < Q_i) {*Q_L=Q_i;} else {*Q_L=Q0L;}}}
+            if(Q0L < Q_i)  {if(Qh < Q_i) {*Q_L=Qh; *Q_R=Qh;} else {*Q_L=Q_i; if(Q0R > Q_j) {*Q_R=Q_j;} else {*Q_R=Q0R;}}}
+        }
 #endif
-*/
     } else {
         if(*Q_R>Qmax_eff) *Q_R=Qmax_eff;
         if(*Q_R<Qmed_min) *Q_R=Qmed_min;
         if(*Q_L<Qmin_eff) *Q_L=Qmin_eff;
         if(*Q_L>Qmed_max) *Q_L=Qmed_max;
-/*
-#if defined(MAGNETIC) && !defined(MHD_CONSTRAINED_GRADIENT)
-        if(mode > 0) {if(*Q_R < *Q_L) {*Q_R = 0.5*(*Q_R + *Q_L); *Q_L=*Q_R;}} // causes strong diffusion in Gresho and RTMHD: limit conditions of use
+#if defined(CRK_FACES)
+        if(*Q_R < *Q_L)
+        {
+            double Q0L = *Q_L, Q0R = *Q_R, Qh = 0.5*(Q0L+Q0R);
+            if(Q0L > Q_i)  {if(Qh > Q_i) {*Q_L=Qh; *Q_R=Qh;} else {*Q_L=Q_i; if(Q0R < Q_j) {*Q_R=Q_j;} else {*Q_R=Q0R;}}}
+            if(Q0R < Q_j)  {if(Qh < Q_j) {*Q_R=Qh; *Q_L=Qh;} else {*Q_R=Q_j; if(Q0L > Q_i) {*Q_L=Q_i;} else {*Q_L=Q0L;}}}
+        }
 #endif
-*/
     }
+#if defined(CRK_FACES) && defined(CRK_FACES_EXPERIMENTAL_SLOPELIMITERS)
+    double Q0L=*Q_L, Q0R=*Q_R, dQ_ij=fabs(Q_j-Q_i), dQ_LR=fabs(Q0L-Q0R);
+    if(dQ_LR > dQ_ij)
+    {
+        double Q0=0.5*(Q0L+Q0R), dQ0=0.5*(Q0R-Q0L), alpha = dQ_ij/dQ_LR;
+        *Q_R = Q0 + alpha*dQ0; *Q_L = Q0 - alpha*dQ0;
+    }
+#endif
+
     /* done! */
 }
 

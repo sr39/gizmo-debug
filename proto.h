@@ -833,7 +833,7 @@ void init_self_interactions();
 #ifdef CBE_INTEGRATOR
 void do_cbe_initialization(void);
 void do_cbe_drift_kick(int i, double dt);
-double do_cbe_flux_computation(double moments[CBE_INTEGRATOR_NMOMENTS], double vface_dot_A, double Area[3], double fluxes[CBE_INTEGRATOR_NMOMENTS]);
+double do_cbe_flux_computation(double moments[CBE_INTEGRATOR_NMOMENTS], double vface_dot_A, double Area[3], double moments_ngb[CBE_INTEGRATOR_NMOMENTS], double fluxes[CBE_INTEGRATOR_NMOMENTS]);
 void do_postgravity_cbe_calcs(int i);
 #endif
 

@@ -2245,7 +2245,10 @@ extern struct sph_particle_data
 #endif
 #endif /* MAGNETIC */
 
-    
+#if defined(CRK_FACES)
+    MyFloat Tensor_CRK_Face_Corrections[16]; /*!< tensor set for face-area correction terms for the CRK formulation of SPH or MFM/V areas */
+#endif
+
 #ifdef COSMIC_RAYS
     MyFloat CosmicRayEnergy;        /*!< total energy of cosmic ray fluid (the conserved variable) */
     MyFloat CosmicRayEnergyPred;    /*!< total energy of cosmic ray fluid (the conserved variable) */
