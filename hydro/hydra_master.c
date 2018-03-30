@@ -228,6 +228,9 @@ struct hydrodata_in
     } Gradients;
     MyFloat NV_T[3][3];
     
+#if defined(CRK_FACES)
+    MyFloat Tensor_CRK_Face_Corrections[16];
+#endif
 #ifdef HYDRO_PRESSURE_SPH
     MyFloat EgyWtRho;
 #endif
@@ -406,11 +409,13 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
 #ifdef HYDRO_PRESSURE_SPH
     in->EgyWtRho = SphP[i].EgyWtDensity;
 #endif
-    
+#if defined(CRK_FACES)
+    for(k=0;k<16;k++) {in->Tensor_CRK_Face_Corrections[k] = SphP[i].Tensor_CRK_Face_Corrections[k];}
+#endif
+
     int j;
-    for(j=0;j<3;j++)
-        for(k=0;k<3;k++)
-            in->NV_T[j][k] = SphP[i].NV_T[j][k];
+    for(j=0;j<3;j++) {for(k=0;k<3;k++) {in->NV_T[j][k] = SphP[i].NV_T[j][k];}}
+
     
     /* matrix of the conserved variable gradients: rho, u, vx, vy, vz */
     for(k=0;k<3;k++)
@@ -528,6 +533,7 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
     }
     SphP[i].DtInternalEnergy += out->DtInternalEnergy;
     //SphP[i].dInternalEnergy += out->dInternalEnergy; //manifest-indiv-timestep-debug//
+
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     SphP[i].DtMass += out->DtMass;
     SphP[i].dMass += out->dMass;

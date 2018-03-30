@@ -37,10 +37,33 @@ void do_cbe_initialization(void)
             for(k=0;k<CBE_INTEGRATOR_NMOMENTS;k++)
             {
                 // zeros will be problematic, instead initialize a random distribution //
+if(j > 1)
+{
+
                 if(k==0) {P[i].CBE_basis_moments[j][0] = 1.e-5 * P[i].Mass * (0.5 + 0.01 + get_random_number(P[i].ID + i + 343*ThisTask + 912*k + 781*j));}
-                if((k>0)&&(k<4)) {P[i].CBE_basis_moments[j][k] = P[i].CBE_basis_moments[j][0] * 1.e-4 * (0*2.*P[i].Vel[k]*(get_random_number(P[i].ID + i + 343*ThisTask + 912*k + 781*j + 2)-0.5) + 1.e-5*v0*(get_random_number(P[i].ID + i + 343*ThisTask + 912*k + 781*j + 2)-0.5));}
+                if((k>0)&&(k<4)) {P[i].CBE_basis_moments[j][k] = P[i].CBE_basis_moments[j][0] * 1.e-8 * (0*2.*P[i].Vel[k]*(get_random_number(P[i].ID + i + 343*ThisTask + 912*k + 781*j + 2)-0.5) + 1.e-5*v0*(get_random_number(P[i].ID + i + 343*ThisTask + 912*k + 781*j + 2)-0.5));}
                 if(k>=4 && k<7) {P[i].CBE_basis_moments[j][k] = P[i].CBE_basis_moments[j][0] * 1.e-15;} //(P[i].Vel[k]*P[i].Vel[k] + 1.e-2*v0*v0 + 1.e-3*1.e-3);}
                 if(k>=7) {P[i].CBE_basis_moments[j][k] = 0;}
+
+} else {
+
+ P[i].CBE_basis_moments[0][0] = 0.5*P[i].Mass;
+ P[i].CBE_basis_moments[1][0] = 0.5*P[i].Mass;
+ P[i].CBE_basis_moments[0][1] =  1.0*P[i].CBE_basis_moments[0][0];
+ P[i].CBE_basis_moments[1][1] = -1.0*P[i].CBE_basis_moments[1][0];
+ P[i].CBE_basis_moments[0][2] = P[i].CBE_basis_moments[0][3] = 0;
+ P[i].CBE_basis_moments[1][2] = P[i].CBE_basis_moments[1][3] = 0;
+#if (CBE_INTEGRATOR_NMOMENTS > 4)
+ P[i].CBE_basis_moments[0][4] = P[i].CBE_basis_moments[1][4] = 0.5 * P[i].CBE_basis_moments[0][0];
+ P[i].CBE_basis_moments[0][5] = P[i].CBE_basis_moments[1][5] = 0.1 * P[i].CBE_basis_moments[0][0];
+ P[i].CBE_basis_moments[0][6] = P[i].CBE_basis_moments[1][6] = 0.1 * P[i].CBE_basis_moments[0][0];
+ P[i].CBE_basis_moments[0][7] = P[i].CBE_basis_moments[1][7] = 0.0 * P[i].CBE_basis_moments[0][0];
+ P[i].CBE_basis_moments[0][8] = P[i].CBE_basis_moments[1][8] = 0.0 * P[i].CBE_basis_moments[0][0];
+ P[i].CBE_basis_moments[0][9] = P[i].CBE_basis_moments[1][9] = 0.0 * P[i].CBE_basis_moments[0][0];
+#endif
+
+}
+
 #if (NUMDIMS==1)
                 if((k!=0)&&(k!=1)&&(k!=4)) {P[i].CBE_basis_moments[j][k] = 0;}
 #endif
@@ -151,6 +174,20 @@ void do_cbe_drift_kick(int i, double dt)
         }
         if(crossnorm < 1) {for(k=7;k<10;k++) {P[i].CBE_basis_moments[j][k] *= crossnorm;}}
 
+// simplify to 1D dispersion along direction of motion
+if(2==2)
+{
+double S0 = P[i].CBE_basis_moments[j][4]+P[i].CBE_basis_moments[j][5]+P[i].CBE_basis_moments[j][6], vhat[3]={0}, vmag=0;
+for(k=0;k<3;k++) {vhat[k] = P[i].CBE_basis_moments[j][k+1]; vmag += vhat[k]*vhat[k];}
+if(vmag > 0)
+{
+vmag = 1./sqrt(vmag); for(k=0;k<3;k++) {vhat[k] *= vmag;}
+P[i].CBE_basis_moments[j][4] = S0*vhat[0]*vhat[0]; P[i].CBE_basis_moments[j][5] = S0*vhat[1]*vhat[1];
+P[i].CBE_basis_moments[j][6] = S0*vhat[2]*vhat[2]; P[i].CBE_basis_moments[j][7] = S0*vhat[0]*vhat[1];
+P[i].CBE_basis_moments[j][8] = S0*vhat[0]*vhat[2]; P[i].CBE_basis_moments[j][9] = S0*vhat[1]*vhat[2];
+}
+}
+
 #endif
     }
     
@@ -184,7 +221,7 @@ void do_cbe_drift_kick(int i, double dt)
 
 
 /* this computes the actual single-sided fluxes at the face, integrating over a distribution function to use the moments */
-double do_cbe_flux_computation(double moments[CBE_INTEGRATOR_NMOMENTS], double vface_dot_A, double Area[3], double fluxes[CBE_INTEGRATOR_NMOMENTS])
+double do_cbe_flux_computation(double moments[CBE_INTEGRATOR_NMOMENTS], double vface_dot_A, double Area[3], double moments_ngb[CBE_INTEGRATOR_NMOMENTS], double fluxes[CBE_INTEGRATOR_NMOMENTS])
 {
     // couple dot-products must be pre-computed for fluxes //
     double m_inv = 1. / moments[0]; // need for weighting, below [e.g. v_x = moments[1] / moments[0]]
@@ -220,6 +257,17 @@ double do_cbe_flux_computation(double moments[CBE_INTEGRATOR_NMOMENTS], double v
         fluxes[7] += v[0]*S_dot_A[1] + v[1]*S_dot_A[0] + fluxes[0]*v[0]*v[1]; // add stress flux from stress tensor -- xy
         fluxes[8] += v[0]*S_dot_A[2] + v[2]*S_dot_A[0] + fluxes[0]*v[0]*v[2]; // add stress flux from stress tensor -- xz
         fluxes[9] += v[1]*S_dot_A[2] + v[2]*S_dot_A[1] + fluxes[0]*v[1]*v[2]; // add stress flux from stress tensor -- yz
+
+if(2==0) // ???
+{
+double ANorm = sqrt(Area[0]*Area[0]+Area[1]*Area[1]+Area[2]*Area[2]), dv_sig; 
+for(k=0;k<3;k++) {dv_sig = (v[k]-moments_ngb[k+1]/moments_ngb[0])*Area[k];}
+if(vsig == 0) {dv_sig = 0;}
+if(vsig*dv_sig < 0) {dv_sig *= -1;}
+for(k=0;k<10;k++) {fluxes[k] += vsig * (moments[k]-moments_ngb[k]);}
+}
+
+
     }
 #endif
     return vsig;
@@ -272,7 +320,7 @@ void do_postgravity_cbe_calcs(int i)
             for(k=4;k<CBE_INTEGRATOR_NMOMENTS;k++) {P[i].CBE_basis_moments_dt[j][k] = dS[k-4];} // set the flux of the stress terms to the change in the dispersion alone //
 #ifdef CBE_DEBUG
             if(ThisTask==0)
-                if((P[i].CBE_basis_moments_dt[j][0] > 0) && ((P[i].CBE_basis_moments_dt[j][4]<0)||(P[i].CBE_basis_moments_dt[j][5]<0)||(P[i].CBE_basis_moments_dt[j][6]<0)))
+                if((P[i].CBE_basis_moments[j][0] > 0) && (P[i].CBE_basis_moments[j][4]+P[i].CBE_basis_moments[j][5]+P[i].CBE_basis_moments[j][6] < 0))
                 {
                     printf("FLX: i=%d m=%g P[i].CBE_basis_moments_dt=%g %g/%g/%g %g/%g/%g %g/%g/%g \n",i,P[i].Mass,P[i].CBE_basis_moments_dt[j][0],
                            P[i].CBE_basis_moments_dt[j][1],P[i].CBE_basis_moments_dt[j][2],P[i].CBE_basis_moments_dt[j][3],P[i].CBE_basis_moments_dt[j][4],P[i].CBE_basis_moments_dt[j][5],P[i].CBE_basis_moments_dt[j][6],P[i].CBE_basis_moments_dt[j][7],

@@ -477,7 +477,6 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif // magnetic //
 
                 }
-#endif
 
                 /* if we have mass fluxes, we need to have metal fluxes if we're using them (or any other passive scalars) */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -497,7 +496,8 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     }
 #endif
                 }
-                
+#endif
+
                 /* --------------------------------------------------------------------------------- */
                 /* don't forget to save the signal velocity for time-stepping! */
                 /* --------------------------------------------------------------------------------- */

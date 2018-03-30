@@ -119,6 +119,14 @@ struct GasGraddata_in
 
 struct GasGraddata_out
 {
+#if defined(CRK_FACES)
+    MyDouble m0;
+    MyDouble m1[3];
+    MyDouble m2[6];
+    MyDouble dm0[3];
+    MyDouble dm1[3][3];
+    MyDouble dm2[6][3];
+#endif
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && (HYDRO_FIX_MESH_MOTION==6)
     MyFloat GlassAcc[3];
 #endif
@@ -167,6 +175,14 @@ static struct temporary_data_topass
     struct Quantities_for_Gradients Maxima;
     struct Quantities_for_Gradients Minima;
     MyFloat MaxDistance;
+#if defined(CRK_FACES)
+    MyDouble m0;
+    MyDouble m1[3];
+    MyDouble m2[6];
+    MyDouble dm0[3];
+    MyDouble dm1[3][3];
+    MyDouble dm2[6][3];
+#endif
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && (HYDRO_FIX_MESH_MOTION==6)
     MyFloat GlassAcc[3];
 #endif
@@ -306,6 +322,22 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
     {
         int j,k;
         MAX_ADD(GasGradDataPasser[i].MaxDistance,out->MaxDistance,mode);
+        
+#if defined(CRK_FACES)
+        ASSIGN_ADD_PRESET(GasGradDataPasser[i].m0,out->m0,mode);
+        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].dm0[k],out->dm0[k],mode);}
+        for(j=0;j<3;j++)
+        {
+            ASSIGN_ADD_PRESET(GasGradDataPasser[i].m1[j],out->m1[j],mode);
+            for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].dm1[j][k],out->dm1[j][k],mode);}
+        }
+        for(j=0;j<6;j++)
+        {
+            ASSIGN_ADD_PRESET(GasGradDataPasser[i].m2[j],out->m2[j],mode);
+            for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].dm2[j][k],out->dm2[j][k],mode);}
+        }
+#endif
+
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && (HYDRO_FIX_MESH_MOTION==6)
         for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].GlassAcc[k],out->GlassAcc[k],mode);}
 #endif
@@ -1448,7 +1480,11 @@ void hydro_gradient_calc(void)
 #if (SLOPE_LIMITER_TOLERANCE == 0)
             a_limiter *= 2.0; stol = 0.0;
 #endif
-            
+#if defined(CRK_FACES)
+            //a_limiter = 0.5; h_lim = DMAX(PPP[i].Hsml,GasGradDataPasser[i].MaxDistance); stol = 0.0;
+            //a_limiter = 0.25; h_lim = GasGradDataPasser[i].MaxDistance; stol = 0.125;
+#endif
+
 #ifdef SINGLE_STAR_FORMATION
             SphP[i].Density_Relative_Maximum_in_Kernel = GasGradDataPasser[i].Maxima.Density;
 #endif
@@ -1458,8 +1494,7 @@ void hydro_gradient_calc(void)
 #if defined(VISCOSITY)
             stol_tmp = DMAX(stol,stol_diffusion);
 #endif
-            for(k1=0;k1<3;k1++)
-                local_slopelimiter(SphP[i].Gradients.Velocity[k1],GasGradDataPasser[i].Maxima.Velocity[k1],GasGradDataPasser[i].Minima.Velocity[k1],a_limiter,h_lim,stol_tmp);
+            for(k1=0;k1<3;k1++) {local_slopelimiter(SphP[i].Gradients.Velocity[k1],GasGradDataPasser[i].Maxima.Velocity[k1],GasGradDataPasser[i].Minima.Velocity[k1],a_limiter,h_lim,stol_tmp);}
 #ifdef DOGRAD_INTERNAL_ENERGY
             stol_tmp = stol;
 #if defined(CONDUCTION)
@@ -1673,6 +1708,109 @@ void hydro_gradient_calc(void)
             }
 #endif
             
+#if defined(CRK_FACES)
+            {
+                // ok first, load the data from the passer structure into more convenient form //
+                double m0, dm0[3], m1[3], dm1[3][3], m2[3][3], m2i[3][3], dm2[3][3][3], detT;
+                m0 = GasGradDataPasser[i].m0;
+                int k_x, k_y;
+                for(k=0;k<3;k++)
+                {
+                    dm0[k] = GasGradDataPasser[i].dm0[k];
+                    m1[k] = GasGradDataPasser[i].m1[k];
+                    for(k_x=0;k_x<3;k_x++)
+                    {
+                        dm1[k][k_x] = GasGradDataPasser[i].dm1[k][k_x];
+                        int k_tmp;
+                        if((k==0)&&(k_x==0)) {k_tmp=0;}
+                        if((k==1)&&(k_x==1)) {k_tmp=1;}
+                        if((k==2)&&(k_x==2)) {k_tmp=2;}
+                        if((k==0)&&(k_x==1)) {k_tmp=3;}
+                        if((k==1)&&(k_x==0)) {k_tmp=3;}
+                        if((k==0)&&(k_x==2)) {k_tmp=4;}
+                        if((k==2)&&(k_x==0)) {k_tmp=4;}
+                        if((k==1)&&(k_x==2)) {k_tmp=5;}
+                        if((k==2)&&(k_x==1)) {k_tmp=5;}
+                        m2[k][k_x] = GasGradDataPasser[i].m2[k_tmp]; m2i[k][k_x] = 0;
+                        for(k_y=0;k_y<3;k_y++) {dm2[k][k_x][k_y] = GasGradDataPasser[i].dm2[k_tmp][k_y];}
+                    }
+                }
+                // transform from 'mu' variables to 'm' variables for derivatives:
+                for(k=0;k<3;k++) {dm1[k][k] += m0;}
+                for(k=0;k<3;k++) {for(k_x=0;k_x<3;k_x++) {dm2[k][k_x][k_x] += m1[k]; dm2[k_x][k][k_x] += m1[k];}}
+                // now, invert the m2 matrix into the form we will actually use
+#if (NUMDIMS==1) // 1-D case //
+                detT = m2[0][0];
+                if(detT!=0 && !isnan(detT)) {m2i[0][0] = 1/detT}; /* only one non-trivial element in 1D! */
+#endif
+#if (NUMDIMS==2) // 2-D case //
+                detT = m2[0][0]*m2[1][1] - m2[0][1]*m2[1][0];
+                if((detT != 0)&&(!isnan(detT)))
+                {
+                    m2i[0][0] = +m2[1][1] / detT; m2i[0][1] = -m2[0][1] / detT;
+                    m2i[1][0] = -m2[1][0] / detT; m2i[1][1] = +m2[0][0] / detT;
+                }
+#endif
+#if (NUMDIMS==3) // 3-D case //
+                detT = m2[0][0] * m2[1][1] * m2[2][2] + m2[0][1] * m2[1][2] * m2[2][0] +
+                       m2[0][2] * m2[1][0] * m2[2][1] - m2[0][2] * m2[1][1] * m2[2][0] -
+                       m2[0][1] * m2[1][0] * m2[2][2] - m2[0][0] * m2[1][2] * m2[2][1];
+                if((detT != 0) && !isnan(detT))
+                {
+                    m2i[0][0] = (m2[1][1] * m2[2][2] - m2[1][2] * m2[2][1]) / detT;
+                    m2i[0][1] = (m2[0][2] * m2[2][1] - m2[0][1] * m2[2][2]) / detT;
+                    m2i[0][2] = (m2[0][1] * m2[1][2] - m2[0][2] * m2[1][1]) / detT;
+                    m2i[1][0] = (m2[1][2] * m2[2][0] - m2[1][0] * m2[2][2]) / detT;
+                    m2i[1][1] = (m2[0][0] * m2[2][2] - m2[0][2] * m2[2][0]) / detT;
+                    m2i[1][2] = (m2[0][2] * m2[1][0] - m2[0][0] * m2[1][2]) / detT;
+                    m2i[2][0] = (m2[1][0] * m2[2][1] - m2[1][1] * m2[2][0]) / detT;
+                    m2i[2][1] = (m2[0][1] * m2[2][0] - m2[0][0] * m2[2][1]) / detT;
+                    m2i[2][2] = (m2[0][0] * m2[1][1] - m2[0][1] * m2[1][0]) / detT;
+                }
+#endif
+                // now start constructing the actual derivatives we need //
+                double A = 0, B[3] = {0}, Bdotm1 = 0, dB[3][3]={{0}}, dA[3]={0};
+                for(k=0;k<3;k++)
+                {
+                    for(k_x=0;k_x<3;k_x++) {B[k] += -m2i[k][k_x] * m1[k_x];}
+                    Bdotm1 += B[k] * m1[k];
+                }
+                A = 1. / (m0 + Bdotm1);
+                
+                // now the painful part (likely to be errors) -- construct the complicated tensor derivatives contracting all components //
+                double minus_m2i_dm1_dotm1[3]={0}, contracted_twotensor[3][3]={{0}}, contracted_twotensor_x[3][3]={{0}}, contracted_twotensor_dotm1[3]={0};
+                int k_alpha, k_gamma, k_beta, k_delta;
+                for(k_gamma=0; k_gamma<3; k_gamma++)
+                {
+                    for(k_alpha=0;k_alpha<3;k_alpha++)
+                    {
+                        for(k_beta=0;k_beta<3;k_beta++)
+                        {
+                            contracted_twotensor[k_beta][k_gamma] = 0;
+                            for(k_delta=0;k_delta<3;k_delta++) {contracted_twotensor[k_beta][k_gamma] += dm2[k_beta][k_delta][k_gamma] * B[k_delta];}
+                            contracted_twotensor_x[k_alpha][k_gamma] += dm2[k_alpha][k_beta][k_gamma] * B[k_beta];
+                            dB[k_alpha][k_gamma] += -m2i[k_alpha][k_beta] * (dm1[k_beta][k_gamma] + contracted_twotensor[k_beta][k_gamma]);
+                        }
+                        minus_m2i_dm1_dotm1[k_gamma] += 2.*B[k_alpha]*dm1[k_alpha][k_gamma];
+                        contracted_twotensor_dotm1[k_gamma] += B[k_alpha]*contracted_twotensor_x[k_alpha][k_gamma];
+                    }
+                    dA[k_gamma] = -A*A * (dm0[k_gamma] + minus_m2i_dm1_dotm1[k_gamma] + contracted_twotensor_dotm1[k_gamma]);
+                }
+                
+                // collect the final vector and tensor terms actually needed for the face construction
+                double vector_corr[3] = {0}, tensor_corr[3][3] = {{0}};
+                for(k=0;k<3;k++)
+                {
+                    vector_corr[k] = dA[k] + A*B[k];
+                    for(k_x=0;k_x<3;k_x++) {tensor_corr[k][k_x] = B[k]*dA[k_x] + A*dB[k][k_x];}
+                }
+                // assign these to an ordered list (for ease of reference) and to particle. order: A, B[3], (dA+A*B)[3], (dA.B+A.dB)[3][3]
+                SphP[i].Tensor_CRK_Face_Corrections[0] = A;
+                for(k=0;k<3;k++) {SphP[i].Tensor_CRK_Face_Corrections[1+k] = B[k];}
+                for(k=0;k<3;k++) {SphP[i].Tensor_CRK_Face_Corrections[1+3+k] = vector_corr[k];}
+                for(k=0;k<3;k++) {for(k_x=0;k_x<3;k_x++) {SphP[i].Tensor_CRK_Face_Corrections[1+3+3+3*k+k_x] = tensor_corr[k][k_x];}}
+            }
+#endif
             
         }
     
@@ -1735,7 +1873,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
     
     int kernel_mode_i = -1; // only need to calculate wk, by default
     if(sph_gradients_flag_i) kernel_mode_i = 0; // for sph, only need dwk
-#if defined(HYDRO_SPH)
+#if defined(HYDRO_SPH) || defined(CRK_FACES)
     kernel_mode_i = 0; // for some circumstances, we require both wk and dwk //
 #endif
     
@@ -1792,8 +1930,10 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #endif
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 double h_j = PPP[j].Hsml;
-#ifndef HYDRO_SPH
+#if !defined(HYDRO_SPH) && !defined(CRK_FACES)
                 if(r2 <= 0) continue;
+#else
+                if(r2 <= 0) {swap_to_j = 0;}
 #endif
                 if((r2 >= h2_i) && (r2 >= h_j * h_j)) continue;
                 
@@ -1807,7 +1947,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 {
                     kernel.dwk_i = kernel.wk_i = 0;
                 }
-#if defined(MHD_CONSTRAINED_GRADIENT)
+#if defined(MHD_CONSTRAINED_GRADIENT) || defined(CRK_FACES)
                 if(kernel.r < h_j)
 #else
                 if((kernel.r < h_j) && (swap_to_j))
@@ -1816,7 +1956,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     /* ok, we need the j-particle weights, but first check what kind of gradient we are calculating */
                     sph_gradients_flag_j = SHOULD_I_USE_SPH_GRADIENTS(SphP[j].ConditionNumber);
                     int kernel_mode_j;
-#if defined(HYDRO_SPH)
+#if defined(HYDRO_SPH) || defined(CRK_FACES)
                     kernel_mode_j = 0; // for some circumstances, we require both wk and dwk //
 #else
                     if(sph_gradients_flag_j) {kernel_mode_j=0;} else {kernel_mode_j=-1;}
@@ -1965,6 +2105,45 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     MINMAX_CHECK(dp,out.Minima.Pressure,out.Maxima.Pressure);
                     if(swap_to_j) {MINMAX_CHECK(-dp,GasGradDataPasser[j].Minima.Pressure,GasGradDataPasser[j].Maxima.Pressure);}
 
+#if defined(CRK_FACES)
+                    {
+                        double V_i = local.Mass/local.GQuant.Density, V_j = P[j].Mass/SphP[j].Density;
+                        double wk_ij = 0.5*(kernel.wk_i + kernel.wk_j), dwk_ij = 0.5*(kernel.dwk_i + kernel.dwk_j), rinv = 1./(MIN_REAL_NUMBER + kernel.r);
+                        double Vj_wki = V_j*wk_ij, Vj_dwki = V_j*dwk_ij*rinv, Vi_wkj = V_i*wk_ij, Vi_dwkj = V_i*dwk_ij*rinv;
+                        out.m0 += Vj_wki;
+                        for(k=0;k<3;k++) {out.dm0[k] += Vj_dwki*kernel.dp[k];}
+                        for(k2=0;k2<3;k2++)
+                        {
+                            out.m1[k2] += Vj_wki*kernel.dp[k2];
+                            for(k=0;k<3;k++) {out.dm1[k2][k] += Vj_dwki*kernel.dp[k2]*kernel.dp[k];}
+                        }
+                        for(k2=0;k2<6;k2++)
+                        {
+                            int kk0[6]={0,1,2,0,0,1};
+                            int kk1[6]={0,1,2,1,2,2};
+                            out.m2[k2] += Vj_wki*kernel.dp[kk0[k2]]*kernel.dp[kk1[k2]];
+                            for(k=0;k<3;k++) {out.dm2[k2][k] += Vj_dwki*kernel.dp[kk0[k2]]*kernel.dp[kk1[k2]]*kernel.dp[k];}
+                        }
+                        if(swap_to_j)
+                        {
+                            GasGradDataPasser[j].m0 += Vi_wkj;
+                            for(k=0;k<3;k++) {GasGradDataPasser[j].dm0[k] -= Vi_dwkj*kernel.dp[k];}
+                            for(k2=0;k2<3;k2++)
+                            {
+                                GasGradDataPasser[j].m1[k2] -= Vi_wkj*kernel.dp[k2];
+                                for(k=0;k<3;k++) {GasGradDataPasser[j].dm1[k2][k] += Vi_dwkj*kernel.dp[k2]*kernel.dp[k];}
+                            }
+                            for(k2=0;k2<6;k2++)
+                            {
+                                int kk0[6]={0,1,2,0,0,1};
+                                int kk1[6]={0,1,2,1,2,2};
+                                GasGradDataPasser[j].m2[k2] += Vi_wkj*kernel.dp[kk0[k2]]*kernel.dp[kk1[k2]];
+                                for(k=0;k<3;k++) {GasGradDataPasser[j].dm2[k2][k] -= Vi_dwkj*kernel.dp[kk0[k2]]*kernel.dp[kk1[k2]]*kernel.dp[k];}
+                            }
+                        }
+                    }
+#endif
+                    
                     double dv[3];
                     for(k=0;k<3;k++)
                     {

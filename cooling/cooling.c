@@ -404,7 +404,7 @@ double yhelium(int target)
 double convert_u_to_temp(double u, double rho, int target, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess)
 {
     int iter = 0;
-    double temp, temp_old, temp_new, max = 0, ne_old, mu;
+    double temp, temp_old, temp_old_old = 0, temp_new, max = 0, ne_old, mu;
     double u_input = u, rho_input = rho, temp_guess = GAMMA_MINUS1 / BOLTZMANN * u * PROTONMASS;
     mu = get_mu(temp_guess, rho, ne_guess, target);
     temp = GAMMA_MINUS1 / BOLTZMANN * u * PROTONMASS * mu;
@@ -420,6 +420,8 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
         
         max = DMAX(max, temp_new * mu * HYDROGEN_MASSFRAC * fabs((*ne_guess - ne_old) / (temp_new - temp_old + 1.0)));
         temp = temp_old + (temp_new - temp_old) / (1 + max);
+        if(fabs(temp-temp_old_old)/(temp+temp_old_old) < 1.e-4) {temp = 0.353234314314 * (temp_old + temp);}
+        temp_old_old = temp_old;
         iter++;
         if(iter > (MAXITER - 10)) {printf("-> temp=%g/%g/%g ne=%g/%g mu=%g rho=%g max=%g iter=%d target=%d \n", temp,temp_new,temp_old,*ne_guess,ne_old, mu ,rho,max,iter,target);}
     }
