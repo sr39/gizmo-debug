@@ -623,11 +623,11 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #if defined(RT_CHEM_PHOTOION) && defined(RT_OPTICAL_NIR)
             /* assume absorbed ionizing photons are re-emitted via recombination into optical-NIR bins. valid if recombination time is fast.
              more accurately, this should be separately calculated in the cooling rates, and gas treated as a source */
-            if(kf==RT_FREQ_BIN_H0) {donation_target_bin=RT_OPTICAL_NIR;}
+            if(kf==RT_FREQ_BIN_H0) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
 #ifdef RT_PHOTOION_MULTIFREQUENCY
-            if(kf==RT_FREQ_BIN_He0) {donation_target_bin=RT_OPTICAL_NIR;}
-            if(kf==RT_FREQ_BIN_He1) {donation_target_bin=RT_OPTICAL_NIR;}
-            if(kf==RT_FREQ_BIN_He2) {donation_target_bin=RT_OPTICAL_NIR;}
+            if(kf==RT_FREQ_BIN_He0) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
+            if(kf==RT_FREQ_BIN_He1) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
+            if(kf==RT_FREQ_BIN_He2) {donation_target_bin=RT_FREQ_BIN_OPTICAL_NIR;}
 #endif
 #endif
 #if defined(RT_PHOTOELECTRIC) && defined(RT_INFRARED)
