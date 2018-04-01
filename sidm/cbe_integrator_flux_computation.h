@@ -108,7 +108,7 @@
             double flux[CBE_INTEGRATOR_NMOMENTS]={0}, vsig_i=0, vsig_j=0;
             if(theta_i[m] == 1)
             {
-                vsig_i = do_cbe_flux_computation(local_CBE_basis_moments[m] , vface_dot_A, Face_Area_Vec, Pj_CBE_basis_moments[j_m], flux); // moments are physical, these are as well //
+                vsig_i = do_cbe_flux_computation(local_CBE_basis_moments[m] , vface_dot_A, vface, Face_Area_Vec, Pj_CBE_basis_moments[j_m], flux); // moments are physical, these are as well //
                 for(k=0;k<CBE_INTEGRATOR_NMOMENTS;k++)
                 {
                     flux[k] *= wt_prefac_i; // normalize appropriately
@@ -119,7 +119,7 @@
             // fluxes from "j" side
             if(theta_j[m] == 1)
             {
-                vsig_j = do_cbe_flux_computation(Pj_CBE_basis_moments[m] , vface_dot_A, Face_Area_Vec, local_CBE_basis_moments[i_m], flux); // moments are physical, these are as well //
+                vsig_j = do_cbe_flux_computation(Pj_CBE_basis_moments[m] , vface_dot_A, vface, Face_Area_Vec, local_CBE_basis_moments[i_m], flux); // moments are physical, these are as well //
                 for(k=0;k<CBE_INTEGRATOR_NMOMENTS;k++)
                 {
                     flux[k] *= wt_prefac_j; // normalize appropriately
