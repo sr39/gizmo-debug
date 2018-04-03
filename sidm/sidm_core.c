@@ -18,7 +18,7 @@
  *
  *  This file contains the functions and routines necesary for the computation of
  *  the self-interaction probabilities and the velocity kicks due to the interactios.
- *  Originally written by Miguel Rocha, rocham@uci.edu. Oct 2010. Updated on 2014 & again heavily by PFH March 2018
+ *  Originally written by Miguel Rocha, rocham@uci.edu. Oct 2010. Updated on 2014 & re-written by PFH March 2018
  */
 
 /*! This function calculates the interaction probability between two particles.

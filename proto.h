@@ -851,7 +851,7 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double pre
                                   double GradRho_L[3], double GradRho_R[3],
                                   double GradRho2_L[3][3], double GradRho2_R[3][3],
                                   double rho_L, double rho_R, double dv_Right_minus_Left,
-                                  double Area[3], double fluxes[3]);
+                                  double Area[3], double fluxes[3], double AGS_Numerical_QuantumPotential, double *dt_egy_Numerical_QuantumPotential);
 #endif
 
 

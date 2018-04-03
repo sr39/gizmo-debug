@@ -1090,6 +1090,7 @@ struct AGSForce_data_in
 #if defined(DM_FUZZY)
     double AGS_Gradients_Density[3];
     double AGS_Gradients2_Density[3][3];
+    double AGS_Numerical_QuantumPotential;
 #endif
 #if defined(CBE_INTEGRATOR)
     double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];
@@ -1111,6 +1112,7 @@ struct AGSForce_data_out
 #endif
 #ifdef DM_FUZZY
     double acc[3];
+    double AGS_Dt_Numerical_QuantumPotential;
 #endif
 #if defined(CBE_INTEGRATOR)
     double AGS_vsig;
@@ -1149,6 +1151,7 @@ static inline void particle2in_AGSForce(struct AGSForce_data_in *in, int i)
 #if defined(DM_FUZZY)
     for(k=0;k<3;k++) {in->AGS_Gradients_Density[k] = P[i].AGS_Gradients_Density[k];}
     for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {in->AGS_Gradients2_Density[k][k2] = P[i].AGS_Gradients2_Density[k][k2];}}
+    in->AGS_Numerical_QuantumPotential = P[i].AGS_Numerical_QuantumPotential;
 #endif
 #if defined(CBE_INTEGRATOR)
     for(k=0;k<CBE_INTEGRATOR_NBASIS;k++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {in->CBE_basis_moments[k][k2] = P[i].CBE_basis_moments[k][k2];}}
@@ -1175,6 +1178,7 @@ static inline void out2particle_AGSForce(struct AGSForce_data_out *out, int i, i
 #endif
 #ifdef DM_FUZZY
     for(k=0;k<3;k++) {P[i].GravAccel[k] += out->acc[k];}
+    ASSIGN_ADD_PRESET(P[i].AGS_Dt_Numerical_QuantumPotential,out->AGS_Dt_Numerical_QuantumPotential,mode);
 #endif
 #ifdef CBE_INTEGRATOR
     MAX_ADD(PPP[i].AGS_vsig,out->AGS_vsig,mode);
