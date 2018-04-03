@@ -63,9 +63,7 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double pre
     {
         double ftmp = (2./3.)*AGS_Numerical_QuantumPotential*Area[m]; // 2/3 b/c the equation-of-state of the 'quantum pressure tensor' is gamma=5/3 under isotropic compression/expansion //
         *dt_egy_Numerical_QuantumPotential -= 0.5*ftmp*dv[m]; // PdV work from this pressure term //
-#if defined(DM_FUZZY_RETAIN_PRESSURE)
         fluxes[m] += ftmp; // add numerical 'pressure' stored from previous timesteps //
-#endif
     }
     
     /* now we have to introduce the numerical diffusivity (the up-wind mixing part from the Reimann problem);
