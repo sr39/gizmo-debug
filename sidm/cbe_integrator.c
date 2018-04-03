@@ -271,17 +271,6 @@ double do_cbe_flux_computation(double moments[CBE_INTEGRATOR_NMOMENTS], double v
         fluxes[7] += v[0]*S_dot_A[1] + v[1]*S_dot_A[0] + fluxes[0]*v[0]*v[1]; // add stress flux from stress tensor -- xy
         fluxes[8] += v[0]*S_dot_A[2] + v[2]*S_dot_A[0] + fluxes[0]*v[0]*v[2]; // add stress flux from stress tensor -- xz
         fluxes[9] += v[1]*S_dot_A[2] + v[2]*S_dot_A[1] + fluxes[0]*v[1]*v[2]; // add stress flux from stress tensor -- yz
-
-if(2==0) // ???
-{
-double ANorm = sqrt(Area[0]*Area[0]+Area[1]*Area[1]+Area[2]*Area[2]), dv_sig; 
-for(k=0;k<3;k++) {dv_sig = (v[k]-moments_ngb[k+1]/moments_ngb[0])*Area[k];}
-if(vsig == 0) {dv_sig = 0;}
-if(vsig*dv_sig < 0) {dv_sig *= -1;}
-for(k=0;k<10;k++) {fluxes[k] += vsig * (moments[k]-moments_ngb[k]);}
-}
-
-
     }
 #endif
     return vsig * f00_vsig;

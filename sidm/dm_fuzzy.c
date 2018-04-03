@@ -26,13 +26,13 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double pre
                                   double GradRho_L[3], double GradRho_R[3],
                                   double GradRho2_L[3][3], double GradRho2_R[3][3],
                                   double rho_L, double rho_R, double dv_Right_minus_Left,
-                                  double Area[3], double fluxes[3])
+                                  double Area[3], double fluxes[3], double AGS_Numerical_QuantumPotential, double *dt_egy_Numerical_QuantumPotential)
 {
     if(dt <= 0) return; // no timestep, no flux
     int m,n;
     double f00 = 0.5 * 591569.0 / (All.FuzzyDM_Mass_in_eV * All.UnitVelocity_in_cm_per_s * All.UnitLength_in_cm/All.HubbleParam); // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
     // (0.5=1/2, pre-factor from dimensionless equations; 591569 = hbar/eV in cm^2/s; add mass in eV, and put in code units
-    double f2 = f00*f00, rhoL_i=1./rho_L, rhoR_i=1./rho_R, r2=0, rSi=1./(rho_L+rho_R);
+    double f2 = f00*f00, rhoL_i=1./rho_L, rhoR_i=1./rho_R, r2=0, rSi=1./(rho_L+rho_R); *dt_egy_Numerical_QuantumPotential=0;
     for(m=0;m<3;m++) {r2+=dp[m]*dp[m]; fluxes[m]=0;} /* zero fluxes and calculate separation */
     if(r2 <= 0) return; // same element
     double r=sqrt(r2), wavespeed=2.*f00*(M_PI/r); // approximate k = 2pi/lambda = 2pi/(2*dr) as the maximum k the code will allow locally */
@@ -59,10 +59,17 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double pre
     fluxmag = sqrt(fluxmag);
     double fluxmax = 100. * Face_Area_Norm * f2 * 0.5*(rho_L+rho_R) / (r*r); // limiter to prevent crazy values where derivatives are ill-posed (e.g. discontinuities)
     if(fluxmag > fluxmax) {for(m=0;m<3;m++) {fluxes[m] *= fluxmax/fluxmag;}}
-
+    for(m=0;m<3;m++)
+    {
+        double ftmp = (2./3.)*AGS_Numerical_QuantumPotential*Area[m]; // 2/3 b/c the equation-of-state of the 'quantum pressure tensor' is gamma=5/3 under isotropic compression/expansion //
+        *dt_egy_Numerical_QuantumPotential -= 0.5*ftmp*dv[m]; // PdV work from this pressure term //
+#if defined(DM_FUZZY_RETAIN_PRESSURE)
+        fluxes[m] += ftmp; // add numerical 'pressure' stored from previous timesteps //
+#endif
+    }
+    
     /* now we have to introduce the numerical diffusivity (the up-wind mixing part from the Reimann problem);
-     this can have one of a couple forms, but the most accurate and stable appears to be the traditional HLLC form
-     which we use by default below */
+     this can have one of a couple forms, but the most accurate and stable appears to be the traditional HLLC form which we use by default below */
     if(dv_Right_minus_Left < 0) // converging flow, upwind dissipation terms appear //
     {
         // estimate wavenumber needed to calculate wavespeed below, for dissipation terms //
@@ -91,6 +98,7 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double pre
             fmax = DMAX(fmax, 10.*fluxmag); fmax = DMAX(DMIN(fmax , 40.*prev_a), fluxmag); // limit diffusive flux to multiplier of physical flux
             if(fabs(f_dir) > fmax) {f_dir *= fmax/fabs(f_dir);} // limit diffusive flux to avoid overshoot (numerical stability of the diffusion terms) //
             fluxes[m] += f_dir; /* momentum flux into direction 'm' given by Area.Pressure */
+            *dt_egy_Numerical_QuantumPotential -= 0.5 * f_dir * dv[m];
         }
     } // approach velocities lead to up-wind mixing
     return;
@@ -205,6 +213,7 @@ void DMGrad_gradient_calc(void)
     int gradient_iteration, number_of_gradient_iterations = 1;
     number_of_gradient_iterations = 2; // need extra iteration to get gradients-of-gradients
     /* loop over the number of iterations needed to actually compute the gradients fully */
+    if(All.Time==All.TimeBegin) {int i; for(i=FirstActiveParticle; i>=0; i=NextActiveParticle[i]) {P[i].AGS_Numerical_QuantumPotential=0;}}
     for(gradient_iteration=0; gradient_iteration<number_of_gradient_iterations; gradient_iteration++)
     {
         int i, j, k, ngrp, ndone, ndone_flag, recvTask, place, save_NextParticle;
@@ -225,7 +234,7 @@ void DMGrad_gradient_calc(void)
         DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
 
         /* before doing any operations, need to zero the appropriate memory so we can correctly do pair-wise operations */
-        for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {if(P[i].Type==0) {memset(&DMGradDataPasser[i], 0, sizeof(struct temporary_data_topass));}}
+        for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {memset(&DMGradDataPasser[i], 0, sizeof(struct temporary_data_topass));}
         
         /* begin the main gradient loop */
         NextParticle = FirstActiveParticle;    /* begin with this index */
