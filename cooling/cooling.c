@@ -420,7 +420,7 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
         
         max = DMAX(max, temp_new * mu * HYDROGEN_MASSFRAC * fabs((*ne_guess - ne_old) / (temp_new - temp_old + 1.0)));
         temp = temp_old + (temp_new - temp_old) / (1 + max);
-        if(fabs(temp-temp_old_old)/(temp+temp_old_old) < 1.e-4) {double wt=get_random_number(12*iter+340*ThisTask+5435*target); temp=(wt*temp_old + (1.-wt)*temp);}
+        if(fabs(temp-temp_old_old)/(temp+temp_old_old) < 1.e-4) {double wt=get_random_number(12*iter+340*ThisTask+5435*target); temp=(wt*temp_old + (1.-wt)*temp_new);}
         temp_old_old = temp_old;
         iter++;
         if(iter > (MAXITER - 10)) {printf("-> temp=%g/%g/%g ne=%g/%g mu=%g rho=%g max=%g iter=%d target=%d \n", temp,temp_new,temp_old,*ne_guess,ne_old, mu ,rho,max,iter,target);}
