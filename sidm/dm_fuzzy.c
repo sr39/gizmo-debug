@@ -59,12 +59,6 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double pre
     fluxmag = sqrt(fluxmag);
     double fluxmax = 100. * Face_Area_Norm * f2 * 0.5*(rho_L+rho_R) / (r*r); // limiter to prevent crazy values where derivatives are ill-posed (e.g. discontinuities)
     if(fluxmag > fluxmax) {for(m=0;m<3;m++) {fluxes[m] *= fluxmax/fluxmag;}}
-    for(m=0;m<3;m++)
-    {
-        double ftmp = (2./3.)*AGS_Numerical_QuantumPotential*Area[m]; // 2/3 b/c the equation-of-state of the 'quantum pressure tensor' is gamma=5/3 under isotropic compression/expansion //
-        *dt_egy_Numerical_QuantumPotential -= 0.5*ftmp*dv[m]; // PdV work from this pressure term //
-        fluxes[m] += ftmp; // add numerical 'pressure' stored from previous timesteps //
-    }
     
     /* now we have to introduce the numerical diffusivity (the up-wind mixing part from the Reimann problem);
      this can have one of a couple forms, but the most accurate and stable appears to be the traditional HLLC form which we use by default below */
@@ -99,6 +93,13 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double pre
             *dt_egy_Numerical_QuantumPotential -= 0.5 * f_dir * dv[m];
         }
     } // approach velocities lead to up-wind mixing
+
+    for(m=0;m<3;m++)
+    {
+        double ftmp = (2./3.)*AGS_Numerical_QuantumPotential*Area[m]; // 2/3 b/c the equation-of-state of the 'quantum pressure tensor' is gamma=5/3 under isotropic compression/expansion //
+        *dt_egy_Numerical_QuantumPotential -= 0.5*ftmp*dv[m]; // PdV work from this pressure term //
+        fluxes[m] += ftmp; // add numerical 'pressure' stored from previous timesteps //
+    }
     return;
 }
 
