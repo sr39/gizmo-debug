@@ -698,7 +698,7 @@ void spawn_bh_wind_feedback(void)
     
     /* don't loop or go forward if there are no gas particles in the domain, or the code will crash */
     if(dummy_gas_tag >= 0)
-        for(i = 0; i < NumPart; i++)
+        for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
             if(P[i].Type ==5)
             {
 #ifndef IO_REDUCED_MODE
@@ -728,7 +728,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
     printf(" splitting BH %d using SphP particle %d\n", i, dummy_sph_i_to_clone);
 #endif
     double mass_of_new_particle, total_mass_in_winds, dt;
-    int n_wind_to_spawn, n_particles_split, bin; long j;
+    int n_particles_split, bin; long j;
     
 #ifndef WAKEUP
     dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
@@ -737,11 +737,10 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
 #endif
     
     /* here is where the details of the split are coded, the rest is bookkeeping */
-    total_mass_in_winds  = BPP(i).unspawned_wind_mass * All.BlackHoleFeedbackFactor; // += dm_wind;BPP(i).BH_Mdot * dt;
-    n_wind_to_spawn      = ceil( total_mass_in_winds / (1.0*All.BAL_wind_particle_mass) );
-    mass_of_new_particle = total_mass_in_winds / (1.0* n_wind_to_spawn) ;
-    n_particles_split    = n_wind_to_spawn;
-    
+    total_mass_in_winds = BPP(i).unspawned_wind_mass;
+    n_particles_split   = floor( total_mass_in_winds / All.BAL_wind_particle_mass );
+    if( (n_particles_split == 0) || (n_particles_split < 1) ) {return 0;}
+    mass_of_new_particle = total_mass_in_winds / n_particles_split;
 #ifndef IO_REDUCED_MODE
     printf("want to create %g mass in wind with %d new particles each of mass %g \n", total_mass_in_winds, n_particles_split, mass_of_new_particle);
 #endif
@@ -899,6 +898,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
         
         /* assign masses to both particles (so they sum correctly) */
         P[j].Mass = mass_of_new_particle;
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+        SphP[j].MassTrue = P[j].Mass;
+#endif
         P[i].Mass -= P[j].Mass;
         
         /* shift the particle locations according to the random number we drew above */
@@ -931,11 +933,10 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
         P[j].Pos[1] =  P[i].Pos[1] + dy;
         P[j].Pos[2] =  P[i].Pos[2] + dz;
         
-        MyFloat time_factor = All.Time * All.Time / (All.Time * All.Time + 0.005 * 0.005);
-        time_factor = 1.0;
-        P[j].Vel[0] =  P[i].Vel[0] + dx / d_r * All.BAL_v_outflow * time_factor;
-        P[j].Vel[1] =  P[i].Vel[1] + dy / d_r * All.BAL_v_outflow * time_factor;
-        P[j].Vel[2] =  P[i].Vel[2] + dz / d_r * All.BAL_v_outflow * time_factor;
+        P[j].Vel[0] =  P[i].Vel[0] + dx / d_r * All.BAL_v_outflow * All.cf_atime;
+        P[j].Vel[1] =  P[i].Vel[1] + dy / d_r * All.BAL_v_outflow * All.cf_atime;
+        P[j].Vel[2] =  P[i].Vel[2] + dz / d_r * All.BAL_v_outflow * All.cf_atime;
+        SphP[j].VelPred[0] = P[j].Vel[0]; SphP[j].VelPred[1] = P[j].Vel[1]; SphP[j].VelPred[2] = P[j].Vel[2]; 
         
         /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
         force_add_star_to_tree(i, j);// (buggy)

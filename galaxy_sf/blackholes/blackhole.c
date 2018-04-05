@@ -365,11 +365,7 @@ void set_blackhole_mdot(int i, int n, double dt)
     double  soundspeed, bhvel, rho;
 #endif
 #ifdef BH_ENFORCE_EDDINGTON_LIMIT
-    double meddington;
-#endif
-    
-#ifdef BH_ENFORCE_EDDINGTON_LIMIT
-    meddington = bh_eddington_mdot(BPP(n).BH_Mass);
+    double meddington = bh_eddington_mdot(BPP(n).BH_Mass);
 #endif
     
     
@@ -551,7 +547,7 @@ void set_blackhole_mdot(int i, int n, double dt)
     /* if there -is- an alpha-disk, protect the alpha-disk not to be over-depleted (i.e. overshooting into negative alpha-disk masses) */
     if(dt>0)
     {
-#ifdef BH_WIND_CONTINUOUS
+#if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_SPAWN)
         if(mdot > BPP(n).BH_Mass_AlphaDisk/dt*All.BAL_f_accretion) mdot = BPP(n).BH_Mass_AlphaDisk/dt*All.BAL_f_accretion;
 #else 
         if(mdot > BPP(n).BH_Mass_AlphaDisk/dt) mdot = BPP(n).BH_Mass_AlphaDisk/dt;
@@ -565,7 +561,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 
 #else // BH_ALPHADISK_ACCRETION
 
-#if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
+#if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
     /* if there is no alpha-disk, the BHAR defined above is really an mdot into the accretion disk. the rate -to the hole- should be corrected for winds */
     mdot *= All.BAL_f_accretion;
 #endif
@@ -597,7 +593,7 @@ void set_blackhole_new_mass(int i, int n, double dt)
     if(BPP(n).BH_Mdot <= 0) {BPP(n).BH_Mdot=0;}
 
 /* DAA:
- for BH_WIND_CONTINUOUS
+ for BH_WIND_CONTINUOUS or BH_WIND_SPAWN
     - we accrete the winds first, either explicitly to the BH or implicitly into the disk -
     - then we remove the wind mass in the final loop
  for BH_WIND_KICK
@@ -618,7 +614,7 @@ void set_blackhole_new_mass(int i, int n, double dt)
 
 #else // #ifdef BH_ALPHADISK_ACCRETION
 
-#ifdef BH_WIND_CONTINUOUS
+#if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_SPAWN)
     // accrete the winds first, then remove the wind mass in the final loop
     BPP(n).BH_Mass += BPP(n).BH_Mdot * dt / All.BAL_f_accretion; 
 #else
@@ -829,13 +825,18 @@ void blackhole_final_operations(void)
 #endif // ifdef BH_WIND_CONTINUOUS
         
 #ifdef BH_WIND_SPAWN
+        /* DAA: for wind spawning, we only need to subtract the BAL wind mass from BH_Mass (or BH_Mass_AlphaDisk)
+            --> wind mass subtracted from P.Mass in blackhole_spawn_particle_wind_shell()  */
         double dm_wind = (1.-All.BAL_f_accretion) / All.BAL_f_accretion * dm;
         if(dm_wind > P[n].Mass) {dm_wind = P[n].Mass;}
+#if defined(BH_ALPHADISK_ACCRETION)
         if(dm_wind > BPP(n).BH_Mass_AlphaDisk) {dm_wind = BPP(n).BH_Mass_AlphaDisk;}
-
-        BPP(n).unspawned_wind_mass += dm_wind;
-        P[n].Mass -= dm_wind;
         BPP(n).BH_Mass_AlphaDisk -= dm_wind;
+#else
+        if(dm_wind > BPP(n).BH_Mass) {dm_wind = BPP(n).BH_Mass;}
+        BPP(n).BH_Mass -= dm_wind;
+#endif
+        BPP(n).unspawned_wind_mass += dm_wind;
 #endif
         
         /* dump the results to the 'blackhole_details' files */

@@ -29,17 +29,17 @@
     when particles fall below some minimum mass threshold */
 int does_particle_need_to_be_merged(int i)
 {
+    if(P[i].Mass <= 0) return 0;
 #ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
 #else
 #ifdef BH_WIND_SPAWN
     if(P[i].ID == All.AGNWindID)
     {
-        MyFloat vr2 = P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2] ;
-        if(vr2 <= 0.01 * All.BAL_v_outflow*All.BAL_v_outflow) return 1;
+        MyFloat vr2 = (P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]) * All.cf_a2inv; // physical
+        if(vr2 <= 0.01 * All.BAL_v_outflow*All.BAL_v_outflow) {return 1;} else {return 0;} // merge only if velocity condition satisfied, even if surrounded by more massive particles //
     }
 #endif
-    if(P[i].Mass <= 0) return 0;
     if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*ref_mass_factor(i))) return 0;
     if(P[i].Mass <= (All.MinMassForParticleMerger* ref_mass_factor(i))) return 1;
     return 0;

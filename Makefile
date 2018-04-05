@@ -453,6 +453,38 @@ GMP_LIBs =  #-L$(GMPDIR)/lib
 #module add lib/fftw2/2.1.5-openmpi2
 #module add lib/gsl
 endif
+#----------------------------------------------------------------------------------------------
+
+
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Gordon")
+CC       =  mpicc
+CXX      =  mpicxx
+FC       =  $(CC)  #mpif90 -nofor-main
+OPTIMIZE =  -O3 -no-prec-div -xHOST
+OPTIMIZE += -g -Wall # compiler warnings
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -openmp # openmp required compiler flags
+endif
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = -I/opt/intel/composer_xe_2013_sp1.2.144/mkl/include
+MKL_LIBS = -L/opt/intel/composer_xe_2013_sp1.2.144/mkl/lib -mkl=sequential
+GSL_INCL = -I/opt/gsl/2.1/intel/include
+GSL_LIBS = -L/opt/gsl/2.1/intel/lib
+FFTW_INCL= -I/opt/fftw/2.1.5/intel/mvapich2_ib/include
+FFTW_LIBS= -L/opt/fftw/2.1.5/intel/mvapich2_ib/lib
+HDF5INCL = -I/opt/hdf5/intel/mvapich2_ib/include -DH5_USE_16_API
+HDF5LIB  = -L/opt/hdf5/intel/mvapich2_ib/lib -lhdf5 -lz
+MPICHLIB = -L/opt/mvapich2/intel/ib/lib
+OPT     += -DUSE_MPI_IN_PLACE
+## modules to load:
+## module load intel mvapich2_ib
+## module load hdf5
+## module load fftw/2.1.5
+## module load gsl
+endif
+#----------------------------------------------------------------------------------------------
 
 
 #----------------------------------------------------------------------------------------------
