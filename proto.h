@@ -135,6 +135,8 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
 void check_particle_for_temperature_minimum(int i);
 
 double get_pressure(int i);
+double return_user_desired_target_density(int i);
+double return_user_desired_target_pressure(int i);
 #ifdef EOS_TILLOTSON
 double calculate_eos_tillotson(int i);
 void tillotson_eos_init(void);

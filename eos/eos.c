@@ -12,6 +12,34 @@
  */
 
 
+/* this pair of functions: 'return_user_desired_target_density' and 'return_user_desired_target_pressure' should be used
+ together with 'HYDRO_GENERATE_TARGET_MESH'. This will attempt to move the mesh and mass
+ towards the 'target' pressure profile. Use this to build your ICs.
+ The 'desired' pressure and density as a function of particle properties (most commonly, position) should be provided in the function below */
+void return_user_desired_target_density(int i)
+{
+    double dx=P[i].Pos[0]-boxHalf_X, dy=P[i].Pos[1]-boxHalf_Y, dz=P[i].Pos[2]-boxHalf_Z, r=sqrt(dx*dx+dy*dy+dz*dz);
+    return 1 + 0.*r; // uniform density everywhere -- will try to generate a glass //
+    /*
+     // this example would initialize a constant-density (density=rho_0) spherical cloud (radius=r_cloud) with a smooth density 'edge' (width=interp_width) surrounded by an ambient medium of density =rho_0/rho_contrast //
+     double rho_0=1, r_cloud=0.5*boxHalf_X, interp_width=0.1*r_cloud, rho_contrast=10.;
+     return rho_0 * ((1.-1./rho_contrast)*0.5*erfc(2.*(r-r_cloud)/interp_width) + 1./rho_contrast);
+     */
+}
+void return_user_desired_target_pressure(int i)
+{
+    double dx=P[i].Pos[0]-boxHalf_X, dy=P[i].Pos[1]-boxHalf_Y, dz=P[i].Pos[2]-boxHalf_Z, r=sqrt(dx*dx+dy*dy+dz*dz);
+    return 1; // uniform pressure everywhere -- will try to generate a constant-pressure medium //
+    /*
+     // this example would initialize a radial pressure gradient corresponding to a self-gravitating, spherically-symmetric, infinite power-law
+     //   density profile rho ~ r^(-b) -- note to do this right, you need to actually set that power-law for density, too, in 'return_user_desired_target_density' above
+     double b = 2.; return 2.*M_PI/fabs((3.-b)*(1.-b)) * pow(return_user_desired_target_density(i),2) * r*r;
+     */
+}
+
+
+
+
 /* return the pressure of particle i */
 double get_pressure(int i)
 {
@@ -71,6 +99,12 @@ double get_pressure(int i)
     double xJeans = (NJeans * NJeans / GAMMA) * All.G * h_eff*h_eff * SphP[i].Density * SphP[i].Density * All.cf_afac1/All.cf_atime;
     if(xJeans>press) press=xJeans;
     SphP[i].SoundSpeed = sqrt(GAMMA * press / Particle_density_for_energy_i(i));
+#endif
+    
+    
+#if defined(HYDRO_GENERATE_TARGET_MESH)
+    press = return_user_desired_target_pressure(i) * (SphP[i].Density / return_user_desired_target_density(i)); // define pressure by reference to 'desired' fluid quantities //
+    SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = press / (GAMMA_MINUS1 * SphP[i].Density);
 #endif
     
     return press;

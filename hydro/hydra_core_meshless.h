@@ -78,7 +78,7 @@
         facenormal_dot_dp += Face_Area_Vec[k] * kernel.dp[k]; /* check that face points same direction as vector normal: should be true for positive-definite (well-conditioned) NV_T */
     }
     
-#if defined(CRK_FACES)
+#if defined(KERNEL_CRK_FACES)
     {
         // order of Tensor_CRK_Face_Corrections: A, B[3], (dA+A*B)[3], (dA.B+A.dB)[3][3] //
         double wk_ij = 0.5*(kernel.wk_i+kernel.wk_j), dwk_ij = 0.5*(kernel.dwk_i+kernel.dwk_j) / (MIN_REAL_NUMBER + kernel.r);
@@ -169,9 +169,6 @@
         /* --------------------------------------------------------------------------------- */
         s_i =  0.5 * kernel.r;
         s_j = -0.5 * kernel.r;
-        //(simple up-winding formulation: use if desired instead of time-centered fluxes)//
-        //delta_halfstep_i = kernel.sound_i*0.5*dt_hydrostep*cs_t_to_comoving_x; if(delta_halfstep_i>s_i) {delta_halfstep_i=s_i;}
-        //delta_halfstep_j = kernel.sound_j*0.5*dt_hydrostep*cs_t_to_comoving_x; if(delta_halfstep_j>-s_j) {delta_halfstep_j=-s_j;}
 #ifdef DO_HALFSTEP_FOR_MESHLESS_METHODS
         /* advance the faces a half-step forward in time (given our leapfrog scheme, this actually has
             very, very weak effects on the errors. nonetheless it does help a small amount in reducing
@@ -179,8 +176,16 @@
         s_i += 0.5 * dt_hydrostep * (local.Vel[0]*kernel.dp[0] + local.Vel[1]*kernel.dp[1] + local.Vel[2]*kernel.dp[2]) * rinv;
         s_j += 0.5 * dt_hydrostep * (VelPred_j[0]*kernel.dp[0] + VelPred_j[1]*kernel.dp[1] + VelPred_j[2]*kernel.dp[2]) * rinv;
 #endif
-        s_i = s_star_ij - s_i; //+ delta_halfstep_i; /* projection element for gradients */
-        s_j = s_star_ij - s_j; //- delta_halfstep_j;
+#ifdef DO_UPWIND_TIME_CENTERING
+        //(simple up-winding formulation: use if desired instead of time-centered fluxes)//
+        double delta_halfstep_i = kernel.sound_i*0.5*dt_hydrostep*(All.cf_afac3/All.cf_atime); if(delta_halfstep_i>s_i) {delta_halfstep_i=s_i;}
+        double delta_halfstep_j = kernel.sound_j*0.5*dt_hydrostep*(All.cf_afac3/All.cf_atime); if(delta_halfstep_j>-s_j) {delta_halfstep_j=-s_j;}
+        s_i = s_star_ij - s_i + delta_halfstep_i; /* projection element for gradients */
+        s_j = s_star_ij - s_j - delta_halfstep_j;
+#else
+        s_i = s_star_ij - s_i; /* projection element for gradients */
+        s_j = s_star_ij - s_j;
+#endif
         distance_from_i[0]=kernel.dp[0]*rinv; distance_from_i[1]=kernel.dp[1]*rinv; distance_from_i[2]=kernel.dp[2]*rinv;
         for(k=0;k<3;k++) {distance_from_j[k] = distance_from_i[k] * s_j; distance_from_i[k] *= s_i;}
         //for(k=0;k<3;k++) {v_frame[k] = 0.5 * (VelPred_j[k] + local.Vel[k]);}
