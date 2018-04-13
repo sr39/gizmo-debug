@@ -78,10 +78,6 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     out.MaxSignalVel = kernel.sound_i;
     kernel_mode = 0; /* need dwk and wk */
     double cnumcrit2 = ((double)CONDITION_NUMBER_DANGER)*((double)CONDITION_NUMBER_DANGER) - local.ConditionNumber*local.ConditionNumber;
-    //define units used for upwind instead of time-centered formulation//
-    //double cs_t_to_comoving_x = All.cf_afac3 / All.cf_atime; /* convert to code (comoving) length units */
-    //double delta_halfstep_i=0,delta_halfstep_j=0;
-    
 #if defined(HYDRO_SPH)
 #ifdef HYDRO_PRESSURE_SPH
     kernel.p_over_rho2_i = local.Pressure / (local.EgyWtRho*local.EgyWtRho);

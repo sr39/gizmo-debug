@@ -178,7 +178,7 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
     fac_minmax=0.0;
     fac_meddev=0.0;
 #endif
-#if defined(CRK_FACES) && (SLOPE_LIMITER_TOLERANCE > 0)
+#if defined(KERNEL_CRK_FACES) && (SLOPE_LIMITER_TOLERANCE > 0)
     fac_minmax=0.75; fac_meddev=0.5; // default to aggressive limiters, but with additional limiter below //
 #endif
 
@@ -211,7 +211,7 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
         if(*Q_R>Qmed_max) *Q_R=Qmed_max;
         if(*Q_L>Qmax_eff) *Q_L=Qmax_eff;
         if(*Q_L<Qmed_min) *Q_L=Qmed_min;
-#if defined(CRK_FACES)
+#if defined(KERNEL_CRK_FACES)
         if(*Q_R > *Q_L)
         {
             double Q0L = *Q_L, Q0R = *Q_R, Qh = 0.5*(Q0L+Q0R);
@@ -224,7 +224,7 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
         if(*Q_R<Qmed_min) *Q_R=Qmed_min;
         if(*Q_L<Qmin_eff) *Q_L=Qmin_eff;
         if(*Q_L>Qmed_max) *Q_L=Qmed_max;
-#if defined(CRK_FACES)
+#if defined(KERNEL_CRK_FACES)
         if(*Q_R < *Q_L)
         {
             double Q0L = *Q_L, Q0R = *Q_R, Qh = 0.5*(Q0L+Q0R);
@@ -233,7 +233,7 @@ void reconstruct_face_states(double Q_i, MyFloat Grad_Q_i[3], double Q_j, MyFloa
         }
 #endif
     }
-#if defined(CRK_FACES) && defined(CRK_FACES_EXPERIMENTAL_SLOPELIMITERS)
+#if defined(KERNEL_CRK_FACES) && defined(KERNEL_CRK_FACES_EXPERIMENTAL_SLOPELIMITERS)
     double Q0L=*Q_L, Q0R=*Q_R, dQ_ij=fabs(Q_j-Q_i), dQ_LR=fabs(Q0L-Q0R);
     if(dQ_LR > dQ_ij)
     {

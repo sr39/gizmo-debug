@@ -2247,7 +2247,7 @@ extern struct sph_particle_data
 #endif
 #endif /* MAGNETIC */
 
-#if defined(CRK_FACES)
+#if defined(KERNEL_CRK_FACES)
     MyFloat Tensor_CRK_Face_Corrections[16]; /*!< tensor set for face-area correction terms for the CRK formulation of SPH or MFM/V areas */
 #endif
 

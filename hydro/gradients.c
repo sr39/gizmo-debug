@@ -119,7 +119,7 @@ struct GasGraddata_in
 
 struct GasGraddata_out
 {
-#if defined(CRK_FACES)
+#if defined(KERNEL_CRK_FACES)
     MyDouble m0;
     MyDouble m1[3];
     MyDouble m2[6];
@@ -175,7 +175,7 @@ static struct temporary_data_topass
     struct Quantities_for_Gradients Maxima;
     struct Quantities_for_Gradients Minima;
     MyFloat MaxDistance;
-#if defined(CRK_FACES)
+#if defined(KERNEL_CRK_FACES)
     MyDouble m0;
     MyDouble m1[3];
     MyDouble m2[6];
@@ -323,7 +323,7 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
         int j,k;
         MAX_ADD(GasGradDataPasser[i].MaxDistance,out->MaxDistance,mode);
         
-#if defined(CRK_FACES)
+#if defined(KERNEL_CRK_FACES)
         ASSIGN_ADD_PRESET(GasGradDataPasser[i].m0,out->m0,mode);
         for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].dm0[k],out->dm0[k],mode);}
         for(j=0;j<3;j++)
@@ -1480,7 +1480,7 @@ void hydro_gradient_calc(void)
 #if (SLOPE_LIMITER_TOLERANCE == 0)
             a_limiter *= 2.0; stol = 0.0;
 #endif
-#if defined(CRK_FACES)
+#if defined(KERNEL_CRK_FACES)
             //a_limiter = 0.5; h_lim = DMAX(PPP[i].Hsml,GasGradDataPasser[i].MaxDistance); stol = 0.0;
             //a_limiter = 0.25; h_lim = GasGradDataPasser[i].MaxDistance; stol = 0.125;
 #endif
@@ -1708,7 +1708,7 @@ void hydro_gradient_calc(void)
             }
 #endif
             
-#if defined(CRK_FACES)
+#if defined(KERNEL_CRK_FACES)
             {
                 // ok first, load the data from the passer structure into more convenient form //
                 double m0, dm0[3], m1[3], dm1[3][3], m2[3][3], m2i[3][3], dm2[3][3][3], detT;
@@ -1873,7 +1873,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
     
     int kernel_mode_i = -1; // only need to calculate wk, by default
     if(sph_gradients_flag_i) kernel_mode_i = 0; // for sph, only need dwk
-#if defined(HYDRO_SPH) || defined(CRK_FACES)
+#if defined(HYDRO_SPH) || defined(KERNEL_CRK_FACES)
     kernel_mode_i = 0; // for some circumstances, we require both wk and dwk //
 #endif
     
@@ -1930,7 +1930,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #endif
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 double h_j = PPP[j].Hsml;
-#if !defined(HYDRO_SPH) && !defined(CRK_FACES)
+#if !defined(HYDRO_SPH) && !defined(KERNEL_CRK_FACES)
                 if(r2 <= 0) continue;
 #else
                 if(r2 <= 0) {swap_to_j = 0;}
@@ -1947,7 +1947,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 {
                     kernel.dwk_i = kernel.wk_i = 0;
                 }
-#if defined(MHD_CONSTRAINED_GRADIENT) || defined(CRK_FACES)
+#if defined(MHD_CONSTRAINED_GRADIENT) || defined(KERNEL_CRK_FACES)
                 if(kernel.r < h_j)
 #else
                 if((kernel.r < h_j) && (swap_to_j))
@@ -1956,7 +1956,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     /* ok, we need the j-particle weights, but first check what kind of gradient we are calculating */
                     sph_gradients_flag_j = SHOULD_I_USE_SPH_GRADIENTS(SphP[j].ConditionNumber);
                     int kernel_mode_j;
-#if defined(HYDRO_SPH) || defined(CRK_FACES)
+#if defined(HYDRO_SPH) || defined(KERNEL_CRK_FACES)
                     kernel_mode_j = 0; // for some circumstances, we require both wk and dwk //
 #else
                     if(sph_gradients_flag_j) {kernel_mode_j=0;} else {kernel_mode_j=-1;}
@@ -2105,7 +2105,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     MINMAX_CHECK(dp,out.Minima.Pressure,out.Maxima.Pressure);
                     if(swap_to_j) {MINMAX_CHECK(-dp,GasGradDataPasser[j].Minima.Pressure,GasGradDataPasser[j].Maxima.Pressure);}
 
-#if defined(CRK_FACES)
+#if defined(KERNEL_CRK_FACES)
                     {
                         double V_i = local.Mass/local.GQuant.Density, V_j = P[j].Mass/SphP[j].Density;
                         double wk_ij = 0.5*(kernel.wk_i + kernel.wk_j), dwk_ij = 0.5*(kernel.dwk_i + kernel.dwk_j), rinv = 1./(MIN_REAL_NUMBER + kernel.r);
