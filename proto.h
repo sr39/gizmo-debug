@@ -625,7 +625,7 @@ void read_parameter_file(char *fname);
 void rearrange_particle_sequence(void);
 void reorder_gas(void);
 void reorder_particles(void);
-void restart(int mod);
+void restart(int modus);
 void run(void);
 void savepositions(int num);
 void savepositions_ioformat1(int num);
