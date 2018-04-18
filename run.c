@@ -64,21 +64,6 @@ void run(void)
             
             break;
         }
-
-#ifdef AJR_VARIABLE_TFLOOR 
-	if (All.Time < All.TempFloor_time) 
-	  {
-	    All.MinGasTemp = pow(10.0, log10(All.TempFloor_init) + ((All.Time / All.TempFloor_time) * log10(All.TempFloor_final / All.TempFloor_init))); 
-	    if (ThisTask == 0) 
-	      printf("Variable T-Floor: All.MinGasTemp = %.4e \n", All.MinGasTemp); 
-	  }
-	else 
-	  All.MinGasTemp = All.TempFloor_final; 
-
-	/* note: assuming NEUTRAL GAS */
-	All.MinEgySpec = 1 / (4.0 / (1 + 3 * HYDROGEN_MASSFRAC)) * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.MinGasTemp;
-	All.MinEgySpec *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
-#endif 
 	
         find_timesteps();		/* find-timesteps */
         

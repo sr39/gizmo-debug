@@ -656,8 +656,6 @@ void pm_setup_nonperiodic_kernel(void);
 double chimes_G0_luminosity(double stellar_age, double stellar_mass); 
 double chimes_ion_luminosity(double stellar_age, double stellar_mass); 
 int rt_get_source_luminosity(int i, double sigma_0, double *lum, double *chimes_lum_G0, double *chimes_lum_ion); 
-#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
-int rt_get_source_luminosity(int i, double sigma_0, double *lum, double *L_EUV);
 #else 
 int rt_get_source_luminosity(int i, double sigma_0, double *lum);
 #endif 

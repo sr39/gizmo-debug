@@ -108,7 +108,7 @@ static struct densdata_out
 #endif
 #endif
 
-#if defined(METALS) && defined(DO_DENSITY_AROUND_STAR_PARTICLES) && (defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) || defined(EXTRA_SNE_OUTPUT)) 
+#if defined(METALS) && defined(DO_DENSITY_AROUND_STAR_PARTICLES) && defined(EXTRA_SNE_OUTPUT) 
   MyLongDouble Z_Rho; 
 #endif
 
@@ -205,7 +205,7 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
     {
         ASSIGN_ADD(P[i].DensAroundStar, out->Rho, mode);
         for(k = 0; k<3; k++) {ASSIGN_ADD(P[i].GradRho[k], out->GradRho[k], mode);}
-#if defined(METALS) && (defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) || defined(EXTRA_SNE_OUTPUT)) 
+#if defined(METALS) && defined(EXTRA_SNE_OUTPUT) 
 	ASSIGN_ADD(P[i].MetalDensAroundStar, out->Z_Rho, mode);
 #endif 
     }
@@ -1228,7 +1228,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     
                     out.Ngb += kernel.wk;
                     out.Rho += kernel.mj_wk;
-#if defined(METALS) && defined(DO_DENSITY_AROUND_STAR_PARTICLES) && (defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) || defined(EXTRA_SNE_OUTPUT)) 
+#if defined(METALS) && defined(DO_DENSITY_AROUND_STAR_PARTICLES) && defined(EXTRA_SNE_OUTPUT) 
 		    out.Z_Rho += kernel.mj_wk * P[j].Metallicity[0]; 
 #endif
 #if defined(RT_SOURCE_INJECTION)

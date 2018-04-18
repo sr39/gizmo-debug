@@ -525,8 +525,6 @@ void force_update_node_recursive(int no, int sib, int father)
 	chimes_stellar_lum_G0[j] = 0.0; 
 	chimes_stellar_lum_ion[j] = 0.0; 
       }
-#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
-    MyFloat stellar_lum_euv = 0;
 #endif 
     for(j=0;j<N_RT_FREQ_BINS;j++) {stellar_lum[j]=0;}
 #ifdef RT_FIRE
@@ -637,8 +635,6 @@ void force_update_node_recursive(int no, int sib, int father)
 			    chimes_stellar_lum_G0[k] += Nodes[p].chimes_stellar_lum_G0[k]; 
 			    chimes_stellar_lum_ion[k] += Nodes[p].chimes_stellar_lum_ion[k]; 
 			  }
-#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
-			stellar_lum_euv += Nodes[p].stellar_lum_euv; 
 #endif 
 #endif
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
@@ -714,9 +710,6 @@ void force_update_node_recursive(int no, int sib, int father)
 		    double chimes_lum_G0[CHIMES_LOCAL_UV_NBINS]; 
 		    double chimes_lum_ion[CHIMES_LOCAL_UV_NBINS]; 
 		    int active_check = rt_get_source_luminosity(p,sigma_eff,lum,chimes_lum_G0, chimes_lum_ion);
-#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
-		    double L_EUV; 
-                    int active_check = rt_get_source_luminosity(p,sigma_eff,lum,&L_EUV);
 #else 
                     int active_check = rt_get_source_luminosity(p,sigma_eff,lum);
 #endif 
@@ -729,8 +722,6 @@ void force_update_node_recursive(int no, int sib, int father)
 			    chimes_stellar_lum_G0[k] += chimes_lum_G0[k]; 
 			    chimes_stellar_lum_ion[k] += chimes_lum_ion[k]; 
 			  }
-#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
-			stellar_lum_euv += L_EUV; 
 #endif 
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
                         rt_source_lum_s[0] += (l_sum * pa->Pos[0]);
@@ -904,8 +895,6 @@ void force_update_node_recursive(int no, int sib, int father)
 	    Nodes[no].chimes_stellar_lum_G0[k] = chimes_stellar_lum_G0[k]; 
 	    Nodes[no].chimes_stellar_lum_ion[k] = chimes_stellar_lum_ion[k]; 
 	  }
-#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
-	Nodes[no].stellar_lum_euv = stellar_lum_euv; 
 #endif
 #endif
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
@@ -1019,8 +1008,6 @@ void force_exchange_pseudodata(void)
 #if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
         double chimes_stellar_lum_G0[CHIMES_LOCAL_UV_NBINS]; 
         double chimes_stellar_lum_ion[CHIMES_LOCAL_UV_NBINS]; 
-#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
-        MyFloat stellar_lum_euv; 
 #endif 
 #endif
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
@@ -1087,8 +1074,6 @@ void force_exchange_pseudodata(void)
 		DomainMoment[i].chimes_stellar_lum_G0[k] = Nodes[no].chimes_stellar_lum_G0[k]; 
 		DomainMoment[i].chimes_stellar_lum_ion[k] = Nodes[no].chimes_stellar_lum_ion[k]; 
 	      }
-#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
-	    DomainMoment[i].stellar_lum_euv = Nodes[no].stellar_lum_euv; 
 #endif 
 #endif
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
@@ -1179,8 +1164,6 @@ void force_exchange_pseudodata(void)
 			Nodes[no].chimes_stellar_lum_G0[k] = DomainMoment[i].chimes_stellar_lum_G0[k]; 
 			Nodes[no].chimes_stellar_lum_ion[k] = DomainMoment[i].chimes_stellar_lum_ion[k]; 
 		      }
-#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
-		    Nodes[no].stellar_lum_euv = DomainMoment[i].stellar_lum_euv; 
 #endif 
 #endif
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
@@ -1240,8 +1223,6 @@ void force_treeupdate_pseudos(int no)
 	chimes_stellar_lum_G0[j] = 0.0; 
 	chimes_stellar_lum_ion[j] = 0.0; 
       } 
-#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
-    MyFloat stellar_lum_euv = 0; 
 #endif 
 #endif
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
@@ -1313,8 +1294,6 @@ void force_treeupdate_pseudos(int no)
 		chimes_stellar_lum_G0[k] += Nodes[p].chimes_stellar_lum_G0[k]; 
 		chimes_stellar_lum_ion[k] += Nodes[p].chimes_stellar_lum_ion[k]; 
 	      }
-#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
-	    stellar_lum_euv += Nodes[p].stellar_lum_euv; 
 #endif 
 #endif
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
@@ -1463,8 +1442,6 @@ void force_treeupdate_pseudos(int no)
 	Nodes[no].chimes_stellar_lum_G0[k] = chimes_stellar_lum_G0[k]; 
 	Nodes[no].chimes_stellar_lum_ion[k] = chimes_stellar_lum_ion[k]; 
       } 
-#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
-    Nodes[no].stellar_lum_euv = stellar_lum_euv; 
 #endif 
 #endif
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
@@ -1655,8 +1632,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 	chimes_mass_stellarlum_G0[k_freq] = 0.0; 
 	chimes_mass_stellarlum_ion[k_freq] = 0.0; 
       }
-#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
-    double mass_stellarlum_euv = 0;
 #endif
     double dx_stellarlum=0, dy_stellarlum=0, dz_stellarlum=0, sigma_eff=0;
     int valid_gas_particle_for_rt = 0;
@@ -1945,9 +1920,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 		    double chimes_lum_G0[CHIMES_LOCAL_UV_NBINS]; 
 		    double chimes_lum_ion[CHIMES_LOCAL_UV_NBINS]; 
 		    int active_check = rt_get_source_luminosity(no,sigma_eff,lum, chimes_lum_G0, chimes_lum_ion);
-#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
-		    double L_EUV; 
-                    int active_check = rt_get_source_luminosity(no,sigma_eff,lum, &L_EUV);
 #else 
                     int active_check = rt_get_source_luminosity(no,sigma_eff,lum);
 #endif 
@@ -1966,11 +1938,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 			    chimes_mass_stellarlum_ion[kf] = 0.0; 
 			  } 
 		      } 
-#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
-		    if (active_check) 
-		      mass_stellarlum_euv = L_EUV; 
-		    else 
-		      mass_stellarlum_euv = 0; 
 #endif 
 #ifdef BH_PHOTONMOMENTUM
                     mass_bhlum=0; 
@@ -2232,8 +2199,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 			chimes_mass_stellarlum_G0[kf] = nop->chimes_stellar_lum_G0[kf]; 
 			chimes_mass_stellarlum_ion[kf] = nop->chimes_stellar_lum_ion[kf]; 
 		      }
-#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
-		    mass_stellarlum_euv = nop->stellar_lum_euv; 
 #endif 
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
                     dx_stellarlum = nop->rt_source_lum_s[0] - pos_x; dy_stellarlum = nop->rt_source_lum_s[1] - pos_y; dz_stellarlum = nop->rt_source_lum_s[2] - pos_z;
@@ -2618,9 +2583,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 		    chimes_flux_G0[chimes_k] += chimes_fac * chimes_mass_stellarlum_G0[chimes_k];   // Habing flux units 
 		    chimes_flux_ion[chimes_k] += chimes_fac * chimes_mass_stellarlum_ion[chimes_k]; // cm^-2 s^-1 
 		  } 
-#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
-		incident_flux_euv += (0.079577*fac*r) * mass_stellarlum_euv; // EUV luminosity is now explicitly tracked in the force tree, rather than 
-		                                                             // estimated from the UV and IR bins. 
 #else 
 		if((mass_stellarlum[RT_FREQ_BIN_FIRE_IR]<mass_stellarlum[RT_FREQ_BIN_FIRE_UV])&&(mass_stellarlum[RT_FREQ_BIN_FIRE_IR]>0)) // if this -isn't- satisfied, no chance you are optically thin to EUV // 
 		  {
