@@ -1937,6 +1937,12 @@ extern struct global_data_all_processes
   double sn_suppress_time2; 
   double sn_suppress_fac; 
 #endif 
+
+#ifdef AJR_RAPID_SN 
+  double sn_rapid_time1; 
+  double sn_rapid_time2; 
+  double sn_rapid_fac; 
+#endif 
 }
 All;
 

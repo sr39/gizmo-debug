@@ -1962,6 +1962,20 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif 
 
+#ifdef AJR_RAPID_SN  
+      strcpy(tag[nt], "sn_rapid_time1");
+      addr[nt] = &All.sn_rapid_time1;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "sn_rapid_time2");
+      addr[nt] = &All.sn_rapid_time2;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "sn_rapid_fac");
+      addr[nt] = &All.sn_rapid_fac;
+      id[nt++] = REAL;
+#endif 
+
 #ifdef AJR_TARGET_RESOLUTION 
       strcpy(tag[nt], "target_mass_resolution_msol");
       addr[nt] = &All.TargetMassResolution_Msol;
