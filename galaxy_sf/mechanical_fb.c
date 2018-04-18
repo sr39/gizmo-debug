@@ -1068,6 +1068,26 @@ void determine_where_SNe_occur()
     
     // basic variables we will use //
     agemin=0.003401; agebrk=0.01037; agemax=0.03753; // in Gyr //
+
+#ifdef AJR_RAPID_SN 
+    double sn_rapid_fac_t; 
+    if (All.Time < All.sn_rapid_time1) 
+      sn_rapid_fac_t = All.sn_rapid_fac; 
+    else if (All.Time < All.sn_rapid_time2) 
+      sn_rapid_fac_t = ((All.sn_rapid_fac - 1.0) * pow(All.sn_rapid_time1 * All.sn_rapid_time2, 3.0) / (pow(All.Time, 3.0) * (pow(All.sn_rapid_time2, 3.0) - pow(All.sn_rapid_time1, 3.0)))) + ((pow(All.sn_rapid_time2, 3.0) - (100.0 * pow(All.sn_rapid_time1, 3.0))) / (pow(All.sn_rapid_time2, 3.0) - pow(All.sn_rapid_time1, 3.0))); 
+    else 
+      sn_rapid_fac_t = 1.0; 
+    
+    //sn_rapid_fac_t = ((1.0 - All.sn_rapid_fac) * ((All.Time - All.sn_rapid_time1) / (All.sn_rapid_time2 - All.sn_rapid_time1))) + All.sn_rapid_fac; 
+    
+    agemin /= sn_rapid_fac_t; 
+    agebrk /= sn_rapid_fac_t; 
+    agemax /= sn_rapid_fac_t; 
+
+    if (ThisTask == 0) 
+      printf("AJR_RAPID_SN: Time = %.8f, sn_rapid_fac_t = %.2f, agemin = %.6f, agebrk = %.6f, agemax = %.6f\n", All.Time, sn_rapid_fac_t, agemin, agebrk, agemax); 
+#endif 
+
     // converts rate to code units //
     RSNeFac=(All.UnitTime_in_Megayears/All.HubbleParam) * (All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS;
     
@@ -1131,6 +1151,11 @@ void determine_where_SNe_occur()
 		  RSNe *= All.sn_suppress_fac; 
 		else if (All.Time < All.sn_suppress_time2) 
 		  RSNe *= pow(10.0, log10(All.sn_suppress_fac) * (1.0 - ((All.Time - All.sn_suppress_time1) / (All.sn_suppress_time2 - All.sn_suppress_time1)))); 
+#endif 
+
+#ifdef AJR_RAPID_SN
+		if (star_age < agemax) 
+		  RSNe *= sn_rapid_fac_t; 
 #endif 
 
                 p = dt * (RSNe*RSNeFac) * P[i].Mass;

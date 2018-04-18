@@ -468,6 +468,7 @@ void ReadPhotoIonTables_parallel(struct globalVariables *myGlobalVars, char *pho
 	    }
 	  
 	  MPI_Bcast(epsilon, N_arrayCells, MPI_DOUBLE, ns, MPI_COMM_WORLD);
+	  MPI_Barrier(MPI_COMM_WORLD); 
 
 	  if (ThisTask != ns) 
 	    {
