@@ -756,7 +756,7 @@ typedef unsigned long long peanokey;
 #define KAPPA_IR 10.0   /* in cm^2/g for solar abundances */
 #define KAPPA_OP 180.0
 #define KAPPA_UV 1800.0
-#if defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) || (defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING)) 
+#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
 #define KAPPA_EUV 3.7e6  /* Gas opacity, for ionising radiation */ 
 #endif 
 
@@ -1397,11 +1397,6 @@ extern struct global_data_all_processes
 #ifdef CHIMES 
   int ChimesThermEvolOn;        /*!< Flag to determine whether to evolve the temperature in CHIMES. */ 
 #endif 
-#ifdef AJR_VARIABLE_TFLOOR 
-  double TempFloor_init;        /*!< Initial temperature floor, in K */ 
-  double TempFloor_final;       /*!< Final temperature floor, in K */ 
-  double TempFloor_time;        /*!< Initial time over which temperature floor varies, in code units. */ 
-#endif 
 
   double MinEgySpec;		/*!< the minimum allowed temperature expressed as energy per unit mass */
 #ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
@@ -1915,17 +1910,6 @@ extern struct global_data_all_processes
     code_units GrackleUnits;
 #endif
 
-#ifdef AJR_SLOW_SF 
-  double slow_sf_time1; 
-  double slow_sf_time2; 
-  double slow_sf_eps; 
-  double slow_sf_thresh; 
-#endif 
-
-#ifdef AJR_SLOW_COOL 
-  double slow_cool_time; 
-#endif 
-
 #ifdef AJR_STAR_AGE 
   double star_age_time; 
   double star_age_init; 
@@ -2039,7 +2023,7 @@ extern ALIGN(32) struct particle_data
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
     MyFloat DensAroundStar;         /*!< gas density in the neighborhood of the collisionless particle (evaluated from neighbors) */
     MyFloat GradRho[3];             /*!< gas density gradient evaluated simply from the neighboring particles, for collisionless centers */
-#if defined METALS && (defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) || defined(EXTRA_SNE_OUTPUT)) 
+#if defined METALS && defined(EXTRA_SNE_OUTPUT) 
     MyFloat MetalDensAroundStar;    /*!< Density of metals around star particle (evaluated from neighbours). */ 
 #endif 
 #endif
@@ -3020,8 +3004,6 @@ extern ALIGN(32) struct NODE
 #if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
   double chimes_stellar_lum_G0[CHIMES_LOCAL_UV_NBINS]; 
   double chimes_stellar_lum_ion[CHIMES_LOCAL_UV_NBINS]; 
-#elif defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) 
-  MyFloat stellar_lum_euv;             /*!< luminosity of ionising radiation in the node */
 #endif 
 #endif
 

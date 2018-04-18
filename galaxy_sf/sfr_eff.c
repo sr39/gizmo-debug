@@ -216,17 +216,7 @@ int determine_sf_flag(int i)
      */
     int flag = 1; /* default is normal cooling */
 
-#ifdef AJR_SLOW_SF
-    double dens_thresh = All.PhysDensThresh; 
-    if (All.Time < All.slow_sf_time1) 
-      dens_thresh *= All.slow_sf_thresh; 
-    else if (All.Time < All.slow_sf_time2) 
-      dens_thresh *= All.slow_sf_thresh + ((1.0 - All.slow_sf_thresh) * ((All.Time - All.slow_sf_time1) / (All.slow_sf_time2 - All.slow_sf_time1))); 
-    if(SphP[i].Density*All.cf_a3inv >= dens_thresh)
-      flag = 0;
-#else 
     if(SphP[i].Density * All.cf_a3inv >= All.PhysDensThresh) {flag = 0;}
-#endif 
     if(All.ComovingIntegrationOn) {if(SphP[i].Density < All.OverDensThresh) flag = 1;}
     if(P[i].Mass <= 0) {flag = 1;}
     
@@ -280,18 +270,8 @@ double get_starformation_rate(int i)
 #endif
 
     flag = 1;			/* default is normal cooling */
-#ifdef AJR_SLOW_SF
-    double dens_thresh = All.PhysDensThresh; 
-    if (All.Time < All.slow_sf_time1) 
-      dens_thresh *= All.slow_sf_thresh; 
-    else if (All.Time < All.slow_sf_time2) 
-      dens_thresh *= All.slow_sf_thresh + ((1.0 - All.slow_sf_thresh) * ((All.Time - All.slow_sf_time1) / (All.slow_sf_time2 - All.slow_sf_time1))); 
-    if(SphP[i].Density*All.cf_a3inv >= dens_thresh)
-      flag = 0;
-#else 
     if(SphP[i].Density*All.cf_a3inv >= All.PhysDensThresh)
       flag = 0;
-#endif
     if(All.ComovingIntegrationOn)
       if(SphP[i].Density < All.OverDensThresh)
 	flag = 1;
@@ -300,13 +280,6 @@ double get_starformation_rate(int i)
     
     
     tsfr = sqrt(All.PhysDensThresh / (SphP[i].Density * All.cf_a3inv)) * All.MaxSfrTimescale;
-
-#ifdef AJR_SLOW_SF 
-    if (All.Time < All.slow_sf_time1) 
-      tsfr *= All.slow_sf_eps; 
-    else if (All.Time < All.slow_sf_time2)
-      tsfr *= All.slow_sf_eps + ((1.0 - All.slow_sf_eps) * ((All.Time - All.slow_sf_time1) / (All.slow_sf_time2 - All.slow_sf_time1))); 
-#endif 
 
     if(tsfr<=0) return 0;
     
@@ -328,10 +301,6 @@ double get_starformation_rate(int i)
     
     
 #ifdef GALSF_SFR_MOLECULAR_CRITERION
-#ifdef AJR_SLOW_SF 
-    if (All.Time < All.slow_sf_time2) 
-      {
-#endif 
     /* Krumholz & Gnedin fitting function for f_H2 as a function of local properties */
     double tau_fmol = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1);
     tau_fmol *= (0.1 + P[i].Metallicity[0]/All.SolarAbundances[0]);
@@ -343,9 +312,6 @@ double get_starformation_rate(int i)
         if(y<0) y=0; if(y>1) y=1;
         rateOfSF *= y;
     } // if(tau_fmol>0)
-#ifdef AJR_SLOW_SF 
-      }
-#endif 
 #endif // GALSF_SFR_MOLECULAR_CRITERION
 
 #ifdef CHIMES_SFR_MOLECULAR_CRITERION 
@@ -361,10 +327,6 @@ double get_starformation_rate(int i)
     
     
 #ifdef GALSF_SFR_VIRIAL_SF_CRITERION
-#ifdef AJR_SLOW_SF 
-    if (All.Time < All.slow_sf_time2) 
-      {
-#endif 
     double dv2abs = 0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
     int j,k;
     for(j=0;j<3;j++)
@@ -424,9 +386,6 @@ double get_starformation_rate(int i)
     //  if( divv>=0 ) rateOfSF=0; // restrict to convergent flows (optional) //
     //  rateOfSF *= 1.0/(1.0 + alpha_vir); // continuous cutoff w alpha_vir instead of sharp (optional) //
 
-#ifdef AJR_SLOW_SF 
-      }
-#endif 
 #endif // GALSF_SFR_VIRIAL_SF_CRITERION
     
 #ifdef SINGLE_STAR_FORMATION

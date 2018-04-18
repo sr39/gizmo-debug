@@ -75,13 +75,6 @@ void begrun(void)
 
   read_parameter_file(ParameterFile);	/* ... read in parameters for this run */
 
-#ifdef AJR_VARIABLE_TFLOOR 
-  /* Initialise All.MinGasTemp. This will be updated 
-   * properly in run.c */ 
-  All.MinGasTemp = All.TempFloor_init; 
-#endif 
-
-
   mymalloc_init();
 
 #ifdef DEBUG
@@ -217,13 +210,7 @@ void begrun(void)
       All.CpuTimeBetRestartFile = all.CpuTimeBetRestartFile;
       All.ErrTolIntAccuracy = all.ErrTolIntAccuracy;
       All.MinGasHsmlFractional = all.MinGasHsmlFractional;
-#ifdef AJR_VARIABLE_TFLOOR 
-      All.TempFloor_init = all.TempFloor_init;
-      All.TempFloor_final = all.TempFloor_final;
-      All.TempFloor_time = all.TempFloor_time;
-#else 
       All.MinGasTemp = all.MinGasTemp;
-#endif 
 #ifdef CHIMES 
       All.ChimesThermEvolOn = all.ChimesThermEvolOn; 
 #endif 
@@ -1274,23 +1261,9 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.InitGasTemp;
       id[nt++] = REAL;
 
-#ifdef AJR_VARIABLE_TFLOOR 
-      strcpy(tag[nt], "TempFloor_init");
-      addr[nt] = &All.TempFloor_init;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "TempFloor_final");
-      addr[nt] = &All.TempFloor_final;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "TempFloor_time");
-      addr[nt] = &All.TempFloor_time;
-      id[nt++] = REAL;
-#else 
       strcpy(tag[nt], "MinGasTemp");
       addr[nt] = &All.MinGasTemp;
       id[nt++] = REAL;
-#endif 
 
 #ifdef DISTORTIONTENSORPS
       strcpy(tag[nt], "TidalCorrection");
@@ -1907,30 +1880,6 @@ void read_parameter_file(char *fname)
 
       strcpy(tag[nt], "HQ_DARKFRACTION");
       addr[nt] = &All.HQ_DARKFRACTION;
-      id[nt++] = REAL;
-#endif 
-
-#ifdef AJR_SLOW_SF 
-      strcpy(tag[nt], "slow_sf_time1");
-      addr[nt] = &All.slow_sf_time1;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "slow_sf_time2");
-      addr[nt] = &All.slow_sf_time2;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "slow_sf_eps");
-      addr[nt] = &All.slow_sf_eps;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "slow_sf_thresh");
-      addr[nt] = &All.slow_sf_thresh;
-      id[nt++] = REAL;
-#endif 
-
-#ifdef AJR_SLOW_COOL 
-      strcpy(tag[nt], "slow_cool_time");
-      addr[nt] = &All.slow_cool_time;
       id[nt++] = REAL;
 #endif 
 

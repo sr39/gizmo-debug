@@ -402,7 +402,7 @@ void init(void)
             P[i].GradRho[0]=0;
             P[i].GradRho[1]=0;
             P[i].GradRho[2]=1;
-#if defined(METALS) && (defined(ALTERNATE_SHIELDING_LOCAL_SOURCES) || defined(EXTRA_SNE_OUTPUT)) 
+#if defined(METALS) && defined(EXTRA_SNE_OUTPUT) 
 	    P[i].MetalDensAroundStar = 0; 
 #endif 
 #endif

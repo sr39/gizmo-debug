@@ -159,11 +159,6 @@ void do_the_cooling_for_particle(int i)
     double dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval;
     double dtime = dt / All.cf_hubble_a; /*  the actual time-step */
 
-#ifdef AJR_SLOW_COOL 
-    if (All.Time < All.slow_cool_time) 
-      dtime *= pow(All.Time / All.slow_cool_time, 3.0); 
-#endif 
-
     if((P[i].TimeBin)&&(dt>0)&&(P[i].Mass>0)&&(P[i].Type==0))  // upon start-up, need to protect against dt==0 //
     {
 #ifndef CHIMES         
@@ -332,29 +327,6 @@ double DoCooling(double u_old, double rho, double dt, double *ne_guess, int targ
       
     ChimesGasVars[target].temperature = convert_u_to_temp(u_old_cgs, rho_cgs, ne_guess, target); 
     ChimesGasVars[target].nH_tot = H_mass_fraction * rho_cgs / PROTONMASS; 
-
-#ifdef AJR_VARIABLE_TFLOOR 
-    if ((All.Time < All.TempFloor_time) && (ChimesGasVars[target].temperature < All.MinGasTemp)) 
-      {
-	ChimesGasVars[target].ThermEvolOn = 0; 
-	ChimesGasVars[target].temperature = All.MinGasTemp; 
-      }
-    else 
-      ChimesGasVars[target].ThermEvolOn = All.ChimesThermEvolOn; 
-
-    // If there is an EoS, need to set TempFloor to that instead. 
-    // NOTE: Set the Chimes Tfloor to the FINAL Tfloor, NOT the 
-    // current variable Tfloor. 
-#ifndef GALSF_FB_HII_HEATING
-    ChimesGasVars[target].TempFloor = All.TempFloor_final; 
-#else 
-    if (SphP[target].DelayTimeHII > 0) 
-      ChimesGasVars[target].TempFloor = HIIRegion_Temp; 
-    else 
-      ChimesGasVars[target].TempFloor = All.TempFloor_final; 
-#endif
-
-#else // AJR_VARIABLE_TFLOOR 
     ChimesGasVars[target].ThermEvolOn = All.ChimesThermEvolOn; 
 
     // If there is an EoS, need to set TempFloor to that instead. 
@@ -366,7 +338,6 @@ double DoCooling(double u_old, double rho, double dt, double *ne_guess, int targ
     else 
       ChimesGasVars[target].TempFloor = All.MinGasTemp; 
 #endif 
-#endif // AJR_VARIABLE_FLOOR 
  
     // Extragalactic UV background 
     ChimesGasVars[target].isotropic_photon_density[0] = isotropic_photon_density; 
@@ -866,15 +837,6 @@ void find_abundances_and_rates(double logT, double rho, double *ne_guess, int ta
       if(logT < 2) {*ne_guess = 1.e-10;}
   }
 
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
-  double gJH0_local = 0.0;
-#ifdef GALSF_FB_LOCAL_UV_HEATING
-  if (target >= 0)
-    {
-      gJH0_local = SphP[target].RadFluxEUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
-    }
-#endif
-#else 
   double local_gammamultiplier=1;
 #ifdef GALSF_FB_LOCAL_UV_HEATING
   if ((target >= 0) && (gJH0 > 0))
@@ -882,7 +844,6 @@ void find_abundances_and_rates(double logT, double rho, double *ne_guess, int ta
       local_gammamultiplier = SphP[target].RadFluxEUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing) 
       local_gammamultiplier = 1 + local_gammamultiplier/gJH0;
     }
-#endif
 #endif 
     
     /* CAFG: this is the density that we should use for UV background threshold */
@@ -890,24 +851,17 @@ void find_abundances_and_rates(double logT, double rho, double *ne_guess, int ta
     if(shieldfac < 0)
     {
         double NH_SS_z;
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
-	if(gJH0+gJH0_local>0)
-	  NH_SS_z = NH_SS*pow((gJH0+gJH0_local)/1.0e-12,0.66)*pow(10.,0.173*(logT-4.));
-#else 
 	if(gJH0>0)
 	  NH_SS_z = NH_SS*pow(local_gammamultiplier*gJH0/1.0e-12,0.66)*pow(10.,0.173*(logT-4.));
-#endif
 	else
 	  NH_SS_z = NH_SS*pow(10.,0.173*(logT-4.));
 	
-	/* Calculate the selfshielding. */
-	shieldfac = calculate_shieldfac(nHcgs, NH_SS_z);
+	if(nHcgs<100.*NH_SS_z) shieldfac=exp(-nHcgs/NH_SS_z); else shieldfac=0;
 
-#ifndef ALTERNATE_SHIELDING_LOCAL_SOURCES 
 #ifdef COOL_LOW_TEMPERATURES
         if(logT < Tmin+1) shieldfac *= (logT-Tmin); // make cutoff towards Tmin more continuous //
 #endif
-#endif
+
 #ifdef GALSF_EFFECTIVE_EQS
         shieldfac = 1; // self-shielding is implicit in the sub-grid model already //
 #endif
@@ -962,17 +916,10 @@ void find_abundances_and_rates(double logT, double rho, double *ne_guess, int ta
 	}
       else
 	{
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
-	  /* Apply selfshielding */
-	  gJH0ne = ((gJH0 * shieldfac) + gJH0_local) / necgs; 
-	  gJHe0ne = ((gJHe0 * shieldfac) + (gJH0_local * gJHe0 / gJH0)) / necgs; 
-	  gJHepne = ((gJHep * shieldfac) + (gJH0_local * gJHep / gJH0)) / necgs; 
-#else 
 	  /* CAFG: if density exceeds NH_SS, ignore ionizing background. */
 	  gJH0ne = gJH0 * local_gammamultiplier / necgs * shieldfac; // check units, should be = c_light * n_photons_vol * rt_sigma_HI[0] / necgs;
 	  gJHe0ne = gJHe0 * local_gammamultiplier / necgs * shieldfac;
 	  gJHepne = gJHep * local_gammamultiplier / necgs * shieldfac;
-#endif 
 	}
 #if defined(RT_DISABLE_UV_BACKGROUND)
         gJH0ne = gJHe0ne = gJHepne = 0;
@@ -1165,11 +1112,7 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
   }
 #endif
 
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
-  double gJH0_local = 0.0; 
-#else 
   double local_gammamultiplier=1; 
-#endif 
 
   if(logT <= Tmin)
     logT = Tmin + 0.5 * deltaT;	/* floor at Tmin */
@@ -1177,33 +1120,21 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
   nHcgs = XH * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
 
 #ifdef GALSF_FB_LOCAL_UV_HEATING
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
-  if(target >= 0)
-      gJH0_local = SphP[target].RadFluxEUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
-#else 
     if((target >= 0) && (gJH0 > 0))
       {
         local_gammamultiplier = SphP[target].RadFluxEUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing) 
         local_gammamultiplier = 1 + local_gammamultiplier/gJH0;
       }
-#endif 
 #endif
     
     /*  Find the density at which selfshielding typically begins. */
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
-    if(gJH0+gJH0_local>0)
-      NH_SS_z=NH_SS*pow((gJH0+gJH0_local)/1.0e-12,0.66)*pow(10.,0.173*(logT-4.));
-    else
-      NH_SS_z=NH_SS*pow(10.,0.173*(logT-4.));
-#else  
     if(J_UV != 0)
       NH_SS_z=NH_SS*pow(local_gammamultiplier*gJH0/1.0e-12,0.66)*pow(10.,0.173*(logT-4.));
     else
       NH_SS_z=NH_SS*pow(10.,0.173*(logT-4.));
-#endif
 
-    /* Calculate the self-shielding */
-    shieldfac = calculate_shieldfac(nHcgs, NH_SS_z); 
+    if(nHcgs<100.*NH_SS_z) shieldfac=exp(-nHcgs/NH_SS_z); else shieldfac=0;
+
 #ifdef GALSF_EFFECTIVE_EQS
     shieldfac = 1; // self-shielding is implicit in the sub-grid model already //
 #endif
@@ -1328,11 +1259,7 @@ double CoolingRate(double logT, double rho, double *nelec, int target)
 #endif
         
         Heat = 0;  /* Now, collect heating terms */
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
-	if(J_UV != 0) {Heat += ((gJH0 * shieldfac + gJH0_local) / gJH0) * (nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) / nHcgs;} // shieldfac allows for self-shielding from background
-#else 
         if(J_UV != 0) {Heat += local_gammamultiplier * (nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) / nHcgs * shieldfac;} // shieldfac allows for self-shielding from background
-#endif 
 #if defined(RT_DISABLE_UV_BACKGROUND)
         Heat = 0;
 #endif
@@ -2092,13 +2019,8 @@ void selfshield_local_incident_uv_flux(void)
 
                 GradRho = sigma_eff_0 * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1); // in CGS 
                 double tau_nuv = KAPPA_UV * GradRho * (1.0e-3 + P[i].Metallicity[0]/All.SolarAbundances[0]); // optical depth: this part is attenuated by dust //
-#ifdef ALTERNATE_SHIELDING_LOCAL_SOURCES 
-		double tau_euv = KAPPA_EUV * GradRho;   // Attenuated by HI, so no metallicity dependence. 
-                SphP[i].RadFluxEUV *= exp(-tau_euv); 
-#else 
 		double tau_euv = 3.7e6 * GradRho; // optical depth: 912 angstrom kappa_euv: opacity from neutral gas // 
 		SphP[i].RadFluxEUV *= 0.01 + 0.99/(1.0 + 0.8*tau_euv + 0.85*tau_euv*tau_euv); // attenuate (for clumpy medium with 1% scattering) //
-#endif
                 SphP[i].RadFluxUV *= exp(-tau_nuv);
 
                 SphP[i].RadFluxUV *= 1276.19; // convert to Habing units (normalize strength to local MW field)
@@ -2109,39 +2031,5 @@ void selfshield_local_incident_uv_flux(void)
             }}}
 }
 #endif // GALSF_FB_LOCAL_UV_HEATING
-
-
-/* Calculate the photoionization rate divided by the background photoionization rate */
-double calculate_shieldfac(double nHcgs, double NH_SS_z)
-{
-  double shieldfac;
-
-#ifdef SELFSHIELDING_FITTING_FORMULA
-  /* Fitting formula for (total photoionization rate)/(background photoionization rate). From Rahmati+13. */
-  
-  if(All.ComovingIntegrationOn)
-    {
-      if (All.Time < 0.5)
-      {
-        shieldfac = 0.98*pow(1. + pow(nHcgs/NH_SS_z, 1.64), -2.28) + 0.02*pow(1. + nHcgs/NH_SS_z, -0.84); // Rahmati+13 Eq 14 (Fitting formula for z>1)
-      } else {
-        double n0 = pow(10, -2.56);
-        shieldfac = 0.99*pow(1. + pow(nHcgs/n0, 2.83), -1.86) + 0.01*pow(1. + nHcgs/n0, -0.51); // Rahmati+13 Table A2 values, valid for low redshift.
-      }
-    }
-  else
-    {
-      // Use low redshift version when not performing a comoving integration.
-      double n0 = pow(10, -2.56);
-      shieldfac = 0.99*pow(1. + pow(nHcgs/n0, 2.83), -1.86) + 0.01*pow(1. + nHcgs/n0, -0.51); // Rahmati+13 Table A2 values, valid for low redshift.
-    }
-
-#else
-    /* Approximate general self-shielding implementation. */
-    if(nHcgs<100.*NH_SS_z) shieldfac=exp(-nHcgs/NH_SS_z); else shieldfac=0;
-#endif
-
-    return shieldfac;
-}
 
 #endif
