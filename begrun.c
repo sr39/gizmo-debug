@@ -47,8 +47,7 @@ void begrun(void)
 #endif
   if(ThisTask == 0)
     {
-      printf("\nThis is GIZMO, version %s.\n", GIZMO_VERSION);
-      printf("\nRunning on %d MPI tasks.\n", NTask);
+     printf("\nRunning on %d MPI tasks.\n", NTask);
 #ifdef _OPENMP
 #pragma omp parallel private(tid)
       {
@@ -61,15 +60,9 @@ void begrun(void)
 	 */
       }
 #endif
-      printf("\nCode was compiled with settings:\n\n");
-
-      output_compile_time_options();
 
       printf("Size of particle structure       %d  [bytes]\n", (int) sizeof(struct particle_data));
       printf("\nSize of sph particle structure   %d  [bytes]\n", (int) sizeof(struct sph_particle_data));
-#ifdef DETACH_BLACK_HOLES
-      printf("\nSize of BH particle structure    %d  [bytes]\n\n", (int) sizeof(struct bh_particle_data));
-#endif
 
     }
 
@@ -82,8 +75,8 @@ void begrun(void)
   enable_core_dumps_and_fpu_exceptions();
 #endif
 
-#ifdef DARKENERGY
-#ifdef TIMEDEPDE
+#ifdef GR_TABULATED_COSMOLOGY
+#ifdef GR_TABULATED_COSMOLOGY_W
   fwa_init();
 #endif
 #endif
@@ -101,36 +94,36 @@ void begrun(void)
 #endif
 
 
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
   ewald_init();
 #endif
 
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
   boxSize = All.BoxSize;
   boxHalf = 0.5 * All.BoxSize;
   inverse_boxSize = 1. / boxSize;
-#ifdef LONG_X
-  boxHalf_X = boxHalf * LONG_X;
-  boxSize_X = boxSize * LONG_X;
+#ifdef BOX_LONG_X
+  boxHalf_X = boxHalf * BOX_LONG_X;
+  boxSize_X = boxSize * BOX_LONG_X;
   inverse_boxSize_X = 1. / boxSize_X;
 #endif
-#ifdef LONG_Y
-  boxHalf_Y = boxHalf * LONG_Y;
-  boxSize_Y = boxSize * LONG_Y;
+#ifdef BOX_LONG_Y
+  boxHalf_Y = boxHalf * BOX_LONG_Y;
+  boxSize_Y = boxSize * BOX_LONG_Y;
   inverse_boxSize_Y = 1. / boxSize_Y;
 #endif
-#ifdef LONG_Z
-  boxHalf_Z = boxHalf * LONG_Z;
-  boxSize_Z = boxSize * LONG_Z;
+#ifdef BOX_LONG_Z
+  boxHalf_Z = boxHalf * BOX_LONG_Z;
+  boxSize_Z = boxSize * BOX_LONG_Z;
   inverse_boxSize_Z = 1. / boxSize_Z;
 #endif
 #endif
     
-#ifdef SHEARING_BOX
-#ifdef LONG_X
-    Shearing_Box_Vel_Offset = SHEARING_BOX_Q * SHEARING_BOX_OMEGA_BOX_CENTER * boxSize * LONG_X;
+#ifdef BOX_SHEARING
+#ifdef BOX_LONG_X
+    Shearing_Box_Vel_Offset = BOX_SHEARING_Q * BOX_SHEARING_OMEGA_BOX_CENTER * boxSize * BOX_LONG_X;
 #else
-    Shearing_Box_Vel_Offset = SHEARING_BOX_Q * SHEARING_BOX_OMEGA_BOX_CENTER * boxSize;
+    Shearing_Box_Vel_Offset = BOX_SHEARING_Q * BOX_SHEARING_OMEGA_BOX_CENTER * boxSize;
 #endif
     calc_shearing_box_pos_offset();
 #endif
@@ -164,7 +157,10 @@ void begrun(void)
     }
 #endif
 
-
+#ifdef EOS_TILLOTSON
+    tillotson_eos_init();
+#endif
+    
 #ifdef NUCLEAR_NETWORK
   network_init(All.EosSpecies, All.NetworkRates, All.NetworkPartFunc, All.NetworkMasses,
 	       All.NetworkWeakrates, &All.nd);
@@ -175,8 +171,7 @@ void begrun(void)
     init_turb();
 #endif
 
-#ifdef SIDM
-    AllocateInteractionTable(INTERACTION_TABLE_LENGTH, PARTICLE_MAX_INTERACTIONS + 1);
+#ifdef DM_SIDM
     init_geofactor_table();
 #endif
 
@@ -252,10 +247,6 @@ void begrun(void)
       All.MaxSfrTimescale = all.MaxSfrTimescale;
 #endif
         
-#ifdef SIDM
-        All.SIDMSmoothingFactor = all.SIDMSmoothingFactor;
-#endif
-
 
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
       All.ArtBulkViscConst = all.ArtBulkViscConst;
@@ -291,14 +282,14 @@ void begrun(void)
 #ifdef GALSF_FB_HII_HEATING
         All.HIIRegion_fLum_Coupled = all.HIIRegion_fLum_Coupled;
 #endif
-#ifdef RT_FIRE
+#ifdef RT_LEBRON
         All.PhotonMomentum_Coupled_Fraction = all.PhotonMomentum_Coupled_Fraction;
 #endif
 #ifdef GALSF_FB_RT_PHOTONMOMENTUM
         All.PhotonMomentum_fUV = all.PhotonMomentum_fUV;
         All.PhotonMomentum_fOPT = all.PhotonMomentum_fOPT;
 #endif
-#if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_SNE_HEATING)
+#ifdef GALSF_FB_SNE_HEATING
         All.GasReturnFraction = all.GasReturnFraction;
 #endif
 #ifdef GALSF_FB_GASRETURN
@@ -311,8 +302,8 @@ void begrun(void)
         All.CosmicRayDiffusionCoeff = all.CosmicRayDiffusionCoeff;
 #endif
 
-#ifdef DARKENERGY
-      All.DarkEnergyParam = all.DarkEnergyParam;
+#ifdef GR_TABULATED_COSMOLOGY
+      All.DarkEnergyConstantW = all.DarkEnergyConstantW;
 #endif
         
       All.MaxNumNgbDeviation = all.MaxNumNgbDeviation;
@@ -335,7 +326,7 @@ void begrun(void)
       */
       strcpy(All.SnapshotFileBase, all.SnapshotFileBase);
 
-#ifdef GRACKLE
+#ifdef COOL_GRACKLE
       strcpy(All.GrackleDataFile, all.GrackleDataFile);
 #endif
 
@@ -369,7 +360,7 @@ void begrun(void)
   reconstruct_timebins();
 
 
-#ifndef SHEARING_BOX
+#ifndef BOX_SHEARING
 #if (NUMDIMS==2)
   int i;
 
@@ -391,6 +382,9 @@ void begrun(void)
 
 
 #ifdef RADTRANSFER
+#if defined(RT_EVOLVE_INTENSITIES)
+    rt_init_intensity_directions();
+#endif
 #if defined(RT_DIFFUSION_CG)
     All.Radiation_Ti_begstep = 0;
 #endif
@@ -430,7 +424,7 @@ void set_units(void)
     All.G = GRAVITY / pow(All.UnitLength_in_cm, 3) * All.UnitMass_in_g * pow(All.UnitTime_in_s, 2);
   else
     All.G = All.GravityConstantInternal;
-#ifdef TIMEDEPGRAV
+#ifdef GR_TABULATED_COSMOLOGY_G
   All.Gini = All.G;
   All.G = All.Gini * dGfak(All.TimeBegin);
 #endif
@@ -439,7 +433,7 @@ void set_units(void)
   All.UnitPressure_in_cgs = All.UnitMass_in_g / All.UnitLength_in_cm / pow(All.UnitTime_in_s, 2);
   All.UnitEnergy_in_cgs = All.UnitMass_in_g * pow(All.UnitLength_in_cm, 2) / pow(All.UnitTime_in_s, 2);
     
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
   /* 5.609589206e23 is the factor to convert from g to GeV/c^2, the rest comes from All.UnitDensity_in_cgs */
   All.UnitDensity_in_Gev_per_cm3 = 5.609589206e23 / pow(All.UnitLength_in_cm, 3) * All.UnitMass_in_g;
 #endif
@@ -456,7 +450,7 @@ void set_units(void)
       printf("UnitVelocity_in_cm_per_s = %g \n", All.UnitVelocity_in_cm_per_s);
       printf("UnitDensity_in_cgs = %g \n", All.UnitDensity_in_cgs);
       printf("UnitEnergy_in_cgs = %g \n", All.UnitEnergy_in_cgs);
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
       printf("Annihilation radiation units:\n");
       printf("UnitDensity_in_Gev_per_cm3 = %g\n", All.UnitDensity_in_Gev_per_cm3);
 #endif
@@ -473,7 +467,7 @@ void set_units(void)
   /* for historical reasons, we need to convert to "All.MaxSfrTimescale", defined as the SF timescale in code units at the critical physical
      density given above. use the dimensionless SfEffPerFreeFall (which has been read in) to calculate this. This must be done -BEFORE- calling set_units_sfr) */
 #ifndef GALSF_EFFECTIVE_EQS
-  All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3.*M_PI / (32. * All.G * (All.CritPhysDensity * meanweight * 1.67e-24 / (All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam))));
+  All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3.*M_PI / (32. * All.G * (All.CritPhysDensity * meanweight * PROTONMASS / (All.UnitDensity_in_cgs*All.HubbleParam*All.HubbleParam))));
 #endif
   set_units_sfr();
 #endif
@@ -550,7 +544,8 @@ void open_outputfiles(void)
   MPI_Barrier(MPI_COMM_WORLD);
 
 #ifdef BLACK_HOLES
-#ifndef IO_REDUCED_MODE
+//#ifndef IO_REDUCED_MODE  DAA-IO: BH_OUTPUT_MOREINFO overrides IO_REDUCED_MODE
+#if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
   /* Note: This is done by everyone */
   if(ThisTask == 0)
     {
@@ -572,7 +567,7 @@ void open_outputfiles(void)
       printf("error in opening file '%s'\n", buf);
       endrun(1);
     }
-#ifdef BH_BAL_KICK
+#ifdef BH_WIND_KICK
   sprintf(buf, "%sblackhole_details/bhwinds_%d.txt", All.OutputDir, ThisTask);
   if(!(FdBhWindDetails = fopen(buf, mode)))
     {
@@ -770,7 +765,7 @@ void open_outputfiles(void)
 #endif
 
 
-#if defined(DARKENERGY) && !defined(IO_REDUCED_MODE)
+#if defined(GR_TABULATED_COSMOLOGY) && !defined(IO_REDUCED_MODE)
   sprintf(buf, "%s%s", All.OutputDir, "darkenergy.txt");
   if(!(FdDE = fopen(buf, mode)))
     {
@@ -782,12 +777,12 @@ void open_outputfiles(void)
       if(RestartFlag == 0)
 	{
 	  fprintf(FdDE, "nstep time H(a) ");
-#ifndef TIMEDEPDE
+#ifndef GR_TABULATED_COSMOLOGY_W
 	  fprintf(FdDE, "w0 Omega_L ");
 #else
 	  fprintf(FdDE, "w(a) Omega_L ");
 #endif
-#ifdef TIMEDEPGRAV
+#ifdef GR_TABULATED_COSMOLOGY_G
 	  fprintf(FdDE, "dH dG ");
 #endif
 	  fprintf(FdDE, "\n");
@@ -1027,7 +1022,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
         
-#if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_SNE_HEATING)
+#ifdef GALSF_FB_SNE_HEATING
         strcpy(tag[nt],"GasReturnFraction");
         addr[nt] = &All.GasReturnFraction;
         id[nt++] = REAL;
@@ -1039,38 +1034,12 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
         
-#if defined(BH_BAL_WINDS) || defined(BH_BAL_KICK) || defined(BH_WIND_SPAWN)
-        strcpy(tag[nt],"BAL_f_accretion");
-        addr[nt] = &All.BAL_f_accretion;
-        id[nt++] = REAL;
-        
-        strcpy(tag[nt],"BAL_v_outflow");
-        addr[nt] = &All.BAL_v_outflow;
-        id[nt++] = REAL;
-#ifdef BH_WIND_SPAWN
-        strcpy(tag[nt], "SpawnPostReverseShock");
-        addr[nt] = &All.SpawnPostReverseShock;
-        id[nt++] = INT;
 
-        strcpy(tag[nt], "BH_wind_spawn_mass");
-        addr[nt] = &All.BH_wind_spawn_mass;
-        id[nt++] = REAL;
-#endif
-#endif
-        
-#ifdef BH_PHOTONMOMENTUM
-        strcpy(tag[nt],"BH_FluxMomentumFactor");
-        addr[nt] = &All.BH_FluxMomentumFactor;
-        id[nt++] = REAL;
-#endif
-
-#ifdef METALS 
+#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(GALSF_FB_THERMAL)
         strcpy(tag[nt],"InitMetallicity");
         addr[nt] = &All.InitMetallicityinSolar;
         id[nt++] = REAL;
-#endif
-
-#if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)        
+        
         strcpy(tag[nt],"InitStellarAge");
         addr[nt] = &All.InitStellarAgeinGyr;
         id[nt++] = REAL;
@@ -1094,7 +1063,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
-#ifdef RT_FIRE
+#ifdef RT_LEBRON
         strcpy(tag[nt], "PhotonMomentum_Coupled_Fraction");
         addr[nt] = &All.PhotonMomentum_Coupled_Fraction;
         id[nt++] = REAL;
@@ -1112,13 +1081,9 @@ void read_parameter_file(char *fname)
 
         
         
-#ifdef SIDM
+#ifdef DM_SIDM
         strcpy(tag[nt], "InteractionCrossSection");
         addr[nt] = &All.InteractionCrossSection;
-        id[nt++] = REAL;
-
-        strcpy(tag[nt], "SIDMSmoothingFactor");
-        addr[nt] = &All.SIDMSmoothingFactor;
         id[nt++] = REAL;
 #endif
 
@@ -1187,7 +1152,7 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.ResubmitOn;
       id[nt++] = INT;
 
-#ifdef GRACKLE
+#ifdef COOL_GRACKLE
         strcpy(tag[nt], "GrackleDataFile");
         addr[nt] = All.GrackleDataFile;
         id[nt++] = STRING;
@@ -1265,7 +1230,7 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.MinGasTemp;
       id[nt++] = REAL;
 
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
       strcpy(tag[nt], "TidalCorrection");
       addr[nt] = &All.TidalCorrection;
       id[nt++] = REAL;
@@ -1274,7 +1239,7 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.DM_velocity_dispersion;
       id[nt++] = REAL;
 #endif
-#ifdef SCALARFIELD
+#ifdef DM_SCALARFIELD_SCREENING
       strcpy(tag[nt], "ScalarBeta");
       addr[nt] = &All.ScalarBeta;
       id[nt++] = REAL;
@@ -1284,79 +1249,10 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 
-#ifdef OUTPUTLINEOFSIGHT
+#ifdef OUTPUT_LINEOFSIGHT
       strcpy(tag[nt], "TimeFirstLineOfSight");
       addr[nt] = &All.TimeFirstLineOfSight;
       id[nt++] = REAL;
-#endif
-
-
-#if defined(BUBBLES) || defined(MULTI_BUBBLES)
-      strcpy(tag[nt], "BubbleDistance");
-      addr[nt] = &All.BubbleDistance;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "BubbleRadius");
-      addr[nt] = &All.BubbleRadius;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "BubbleTimeInterval");
-      addr[nt] = &All.BubbleTimeInterval;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "BubbleEnergy");
-      addr[nt] = &All.BubbleEnergy;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "FirstBubbleRedshift");
-      addr[nt] = &All.FirstBubbleRedshift;
-      id[nt++] = REAL;
-#endif
-
-#ifdef MULTI_BUBBLES
-      strcpy(tag[nt], "MinFoFMassForNewSeed");
-      addr[nt] = &All.MinFoFMassForNewSeed;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "ClusterMass200");
-      addr[nt] = &All.ClusterMass200;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "massDMpart");
-      addr[nt] = &All.massDMpart;
-      id[nt++] = REAL;
-
-#endif
-
-#ifdef BH_BUBBLES
-      strcpy(tag[nt], "BubbleDistance");
-      addr[nt] = &All.BubbleDistance;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "BubbleRadius");
-      addr[nt] = &All.BubbleRadius;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "BubbleEnergy");
-      addr[nt] = &All.BubbleEnergy;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "BlackHoleRadioTriggeringFactor");
-      addr[nt] = &All.BlackHoleRadioTriggeringFactor;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "DefaultICMDensity");
-      addr[nt] = &All.DefaultICMDensity;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "RadioFeedbackFactor");
-      addr[nt] = &All.RadioFeedbackFactor;
-      id[nt++] = REAL;
-#ifdef UNIFIED_FEEDBACK
-      strcpy(tag[nt], "RadioThreshold");
-      addr[nt] = &All.RadioThreshold;
-      id[nt++] = REAL;
-#endif
 #endif
 
         
@@ -1372,77 +1268,92 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
-
-#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_VARIABLEVELOCITY)
+#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)
       strcpy(tag[nt], "TimeBetOnTheFlyFoF");
       addr[nt] = &All.TimeBetOnTheFlyFoF;
       id[nt++] = REAL;
 #endif
 
 #ifdef BLACK_HOLES
+        strcpy(tag[nt], "BlackHoleAccretionFactor");
+        addr[nt] = &All.BlackHoleAccretionFactor;
+        id[nt++] = REAL;
 
-#ifdef DETACH_BLACK_HOLES
-      strcpy(tag[nt], "BHFormationFactor");
-      addr[nt] = &All.BHfactor;
-      id[nt++] = REAL;
-#endif
-
-      strcpy(tag[nt], "BlackHoleAccretionFactor");
-      addr[nt] = &All.BlackHoleAccretionFactor;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "BlackHoleEddingtonFactor");
-      addr[nt] = &All.BlackHoleEddingtonFactor;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "SeedBlackHoleMass");
-      addr[nt] = &All.SeedBlackHoleMass;
-      id[nt++] = REAL;
+        strcpy(tag[nt], "BlackHoleEddingtonFactor");
+        addr[nt] = &All.BlackHoleEddingtonFactor;
+        id[nt++] = REAL;
         
-#ifdef FOF
-      strcpy(tag[nt], "SeedBlackHoleMassSigma");
-      addr[nt] = &All.SeedBlackHoleMassSigma;
-      id[nt++] = REAL;
+        strcpy(tag[nt], "SeedBlackHoleMass");
+        addr[nt] = &All.SeedBlackHoleMass;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "BlackHoleNgbFactor");
+        addr[nt] = &All.BlackHoleNgbFactor;
+        id[nt++] = REAL;
 
-      strcpy(tag[nt], "SeedBlackHoleMinRedshift");
-      addr[nt] = &All.SeedBlackHoleMinRedshift;
-      id[nt++] = REAL;
+        strcpy(tag[nt], "BlackHoleMaxAccretionRadius");
+        addr[nt] = &All.BlackHoleMaxAccretionRadius;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "BlackHoleRadiativeEfficiency");
+        addr[nt] = &All.BlackHoleRadiativeEfficiency;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "BlackHoleFeedbackFactor");
+        addr[nt] = &All.BlackHoleFeedbackFactor;
+        id[nt++] = REAL;
+
+#if defined(BH_SEED_FROM_FOF) || defined(BH_SEED_FROM_LOCALGAS)
+        strcpy(tag[nt], "SeedBlackHoleMassSigma");
+        addr[nt] = &All.SeedBlackHoleMassSigma;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "SeedBlackHoleMinRedshift");
+        addr[nt] = &All.SeedBlackHoleMinRedshift;
+        id[nt++] = REAL;
 #endif
-  
+        
 #ifdef BH_ALPHADISK_ACCRETION
-      strcpy(tag[nt], "SeedAlphaDiskMass");
-      addr[nt] = &All.SeedAlphaDiskMass;
-      id[nt++] = REAL;
+        strcpy(tag[nt], "SeedAlphaDiskMass");
+        addr[nt] = &All.SeedAlphaDiskMass;
+        id[nt++] = REAL;
 #endif
         
-      strcpy(tag[nt], "MinFoFMassForNewSeed");
-      addr[nt] = &All.MinFoFMassForNewSeed;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "BlackHoleNgbFactor");
-      addr[nt] = &All.BlackHoleNgbFactor;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "BlackHoleMaxAccretionRadius");
-      addr[nt] = &All.BlackHoleMaxAccretionRadius;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "BlackHoleRadiativeEfficiency");
-      addr[nt] = &All.BlackHoleRadiativeEfficiency;
-      id[nt++] = REAL;
-
-#ifdef FOF
-      strcpy(tag[nt], "massDMpart");
-      addr[nt] = &All.massDMpart;
-      id[nt++] = REAL;
+#ifdef BH_SEED_FROM_FOF
+        strcpy(tag[nt], "MinFoFMassForNewSeed");
+        addr[nt] = &All.MinFoFMassForNewSeed;
+        id[nt++] = REAL;
 #endif
 
-      strcpy(tag[nt], "BlackHoleFeedbackFactor");
-      addr[nt] = &All.BlackHoleFeedbackFactor;
-      id[nt++] = REAL;
+#if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
+        strcpy(tag[nt],"BAL_f_accretion");
+        addr[nt] = &All.BAL_f_accretion;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt],"BAL_v_outflow");
+        addr[nt] = &All.BAL_v_outflow;
+        id[nt++] = REAL;
+#endif
+
+#ifdef BH_WIND_SPAWN
+        strcpy(tag[nt], "BAL_internal_temperature");
+        addr[nt] = &All.BAL_internal_temperature;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "BAL_wind_particle_mass");
+        addr[nt] = &All.BAL_wind_particle_mass;
+        id[nt++] = REAL;
+#endif
+
+#ifdef BH_PHOTONMOMENTUM
+        strcpy(tag[nt],"BH_FluxMomentumFactor");
+        addr[nt] = &All.BH_FluxMomentumFactor;
+        id[nt++] = REAL;
+#endif
 
 #endif /* BLACK_HOLES */
 
+        
 #ifdef GALSF
 #ifndef GALSF_EFFECTIVE_EQS
       strcpy(tag[nt], "CritPhysDensity");
@@ -1503,7 +1414,7 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.WindFreeTravelDensFac;
       id[nt++] = REAL;
 
-#if defined (GALSF_SUBGRID_VARIABLEVELOCITY) || defined(GALSF_SUBGRID_DMDISPERSION)
+#if (GALSF_SUBGRID_WIND_SCALING>0)
       strcpy(tag[nt], "VariableWindVelFactor");
       addr[nt] = &All.VariableWindVelFactor;
       id[nt++] = REAL;
@@ -1521,10 +1432,10 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.FactorForSofterEQS;
       id[nt++] = REAL;
 #endif
-#ifdef DARKENERGY
-#ifndef TIMEDEPDE
-      strcpy(tag[nt], "DarkEnergyParam");
-      addr[nt] = &All.DarkEnergyParam;
+#ifdef GR_TABULATED_COSMOLOGY
+#ifndef GR_TABULATED_COSMOLOGY_W
+      strcpy(tag[nt], "DarkEnergyConstantW");
+      addr[nt] = &All.DarkEnergyConstantW;
       id[nt++] = REAL;
 #endif
 #endif
@@ -1535,10 +1446,10 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 
-#ifdef DARKENERGY
-#ifdef TIMEDEPDE
-      strcpy(tag[nt], "DarkEnergyFile");
-      addr[nt] = All.DarkEnergyFile;
+#ifdef GR_TABULATED_COSMOLOGY
+#if defined(GR_TABULATED_COSMOLOGY_W) || defined(GR_TABULATED_COSMOLOGY_G) || defined(GR_TABULATED_COSMOLOGY_H)
+      strcpy(tag[nt], "TabulatedCosmologyFile");
+      addr[nt] = All.TabulatedCosmologyFile;
       id[nt++] = STRING;
 #endif
 #endif
@@ -1568,7 +1479,7 @@ void read_parameter_file(char *fname)
 
 
 #ifdef MAGNETIC
-#ifdef B_SET_IN_PARAMS
+#ifdef MHD_B_SET_IN_PARAMS
       strcpy(tag[nt], "BiniX");
       addr[nt] = &All.BiniX;
       id[nt++] = REAL;
@@ -1589,6 +1500,59 @@ void read_parameter_file(char *fname)
         id[nt++] = STRING;
 #endif
 
+#ifdef EOS_TILLOTSON
+        strcpy(tag[nt], "Tillotson_EOS_params_a");
+        addr[nt] = &All.Tillotson_EOS_params[0][0];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_b");
+        addr[nt] = &All.Tillotson_EOS_params[0][1];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_u_0");
+        addr[nt] = &All.Tillotson_EOS_params[0][2];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_rho_0");
+        addr[nt] = &All.Tillotson_EOS_params[0][3];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_A");
+        addr[nt] = &All.Tillotson_EOS_params[0][4];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_B");
+        addr[nt] = &All.Tillotson_EOS_params[0][5];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_u_s");
+        addr[nt] = &All.Tillotson_EOS_params[0][6];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_u_s_prime");
+        addr[nt] = &All.Tillotson_EOS_params[0][7];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_alpha");
+        addr[nt] = &All.Tillotson_EOS_params[0][8];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_beta");
+        addr[nt] = &All.Tillotson_EOS_params[0][9];
+        id[nt++] = REAL;
+#endif
+
+#ifdef EOS_ELASTIC
+        strcpy(tag[nt], "Tillotson_EOS_params_mu");
+        addr[nt] = &All.Tillotson_EOS_params[0][10];
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Tillotson_EOS_params_Y0");
+        addr[nt] = &All.Tillotson_EOS_params[0][11];
+        id[nt++] = REAL;
+#endif
+        
+        
 #ifdef NUCLEAR_NETWORK
       strcpy(tag[nt], "NetworkRates");
       addr[nt] = All.NetworkRates;
@@ -1633,9 +1597,15 @@ void read_parameter_file(char *fname)
 #endif
 #endif
 
+#ifdef DM_FUZZY
+        strcpy(tag[nt], "FuzzyDM_Mass_in_eV");
+        addr[nt] = &All.FuzzyDM_Mass_in_eV;
+        id[nt++] = REAL;
+#endif
+        
 #ifdef TURB_DRIVING
         
-#if defined(POWERSPEC_GRID)
+#if defined(TURB_DRIVING_SPECTRUMGRID)
         strcpy(tag[nt], "TimeBetTurbSpectrum"); // time (code) between evaluations of turb pwrspec
         addr[nt] = &All.TimeBetTurbSpectrum;
         id[nt++] = REAL;
@@ -1717,7 +1687,7 @@ void read_parameter_file(char *fname)
          */
 #endif
 
-#ifdef ADJ_BOX_POWERSPEC
+#ifdef TURB_DRIVING_DUMPSPECTRUM
       strcpy(tag[nt], "BoxWidth");
       addr[nt] = &All.BoxWidth;
       id[nt++] = REAL;
@@ -2123,10 +2093,13 @@ void read_parameter_file(char *fname)
     All.MaxNumNgbDeviation = All.DesNumNgb / 64.;
 #endif
     if(All.MaxNumNgbDeviation < 0.05) All.MaxNumNgbDeviation = 0.05;
+#ifdef EOS_ELASTIC
+    All.MaxNumNgbDeviation /= 5.0;
+#endif
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-    All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 64.;
+    All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 640.;
 #ifdef GALSF
-    All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 32.;
+    All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 64.;
 #endif
     if(All.AGS_MaxNumNgbDeviation < 0.05) All.AGS_MaxNumNgbDeviation = 0.05;
 #endif
@@ -2162,10 +2135,10 @@ void read_parameter_file(char *fname)
             printf("ErrTolIntAccuracy must be >0 and <0.05 to ensure stability \n");
         endrun(1);
     }
-    if((All.ErrTolTheta<=0.5)||(All.ErrTolTheta>=0.9))
+    if((All.ErrTolTheta<=0.1)||(All.ErrTolTheta>=0.9))
     {
         if(ThisTask==0)
-            printf("ErrTolTheta must be >0.5 and <0.9 to ensure stability \n");
+            printf("ErrTolTheta must be >0.1 and <0.9 to ensure stability \n");
         endrun(1);
     }
     if((All.CourantFac<=0)||(All.CourantFac>0.5))
@@ -2288,23 +2261,23 @@ void read_parameter_file(char *fname)
         endrun(0);
     }
     
-#if defined(LONG_X) ||  defined(LONG_Y) || defined(LONG_Z)
-#ifndef NOGRAVITY
+#if defined(BOX_LONG_X) ||  defined(BOX_LONG_Y) || defined(BOX_LONG_Z)
+#if !defined(SELFGRAVITY_OFF) && !defined(GRAVITY_NOT_PERIODIC) && (defined(BOX_PERIODIC) || defined(PMGRID))
     if(ThisTask == 0)
     {
-        printf("Code was compiled with LONG_X/Y/Z, but not with NOGRAVITY.\n");
-        printf("Stretched periodic boxes are not implemented for gravity yet.\n");
+        printf("Code was compiled with BOX_LONG_X/Y/Z and either BOX_PERIODIC or PMGRID, but not with SELFGRAVITY_OFF or GRAVITY_NOT_PERIODIC.\n");
+        printf("The gravitational solver does not allow stretched-periodic boxes (cubic-box periodic or non-periodic gravity required).\n");
     }
     endrun(0);
 #endif
 #endif
     
     
-#ifdef TIMEDEPDE
-#ifndef DARKENERGY
+#ifdef GR_TABULATED_COSMOLOGY_W
+#ifndef GR_TABULATED_COSMOLOGY
     if(ThisTask == 0)
     {
-        fprintf(stdout, "Code was compiled with TIMEDEPDE, but not with DARKENERGY.\n");
+        fprintf(stdout, "Code was compiled with GR_TABULATED_COSMOLOGY_W, but not with GR_TABULATED_COSMOLOGY.\n");
         fprintf(stdout, "This is not allowed.\n");
     }
     endrun(0);
@@ -2312,33 +2285,13 @@ void read_parameter_file(char *fname)
 #endif
     
     
-#ifdef BH_BUBBLES
-#ifndef BLACK_HOLES
-    if(ThisTask == 0)
-    {
-        printf("Code was compiled with BH_BUBBLES, but not with BLACK_HOLES.\n");
-        printf("This is not allowed.\n");
-    }
-    endrun(0);
-#endif
-    
-#if defined(BUBBLES) || defined(MULTI_BUBBLES) || defined(EBUB_PROPTO_BHAR)
-    if(ThisTask == 0)
-    {
-        printf
-        ("If the code is compiled with BH_BUBBLES, then BUBBLES, MULTI_BUBBLES or EBUB_PROPTO_BHAR options cannot be used.\n");
-        printf("This is not allowed.\n");
-    }
-    endrun(0);
-#endif
-#endif
     
     
     
-#ifdef OMP_NUM_THREADS
+#ifdef PTHREADS_NUM_THREADS
 #ifdef _OPENMP
     if(ThisTask == 0)
-        printf("OMP_NUM_THREADS is incompatible with enabling OpenMP in the compiler options \n");
+        printf("PTHREADS_NUM_THREADS is incompatible with enabling OpenMP in the compiler options \n");
     endrun(0);
 #endif
 #endif

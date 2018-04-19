@@ -61,21 +61,6 @@
 #
 #############
 
-ifdef SYSTYPE
-SYSTYPE := "$(SYSTYPE)"
--include Makefile.systype
-else
-include Makefile.systype
-endif
-
-ifeq ($(wildcard Makefile.systype), Makefile.systype)
-INCL = Makefile.systype
-else
-INCL =
-endif
-FINCL =
-
-
 CONFIG   =  Config.sh
 PERL     =  /usr/bin/perl
 
@@ -84,9 +69,10 @@ CONFIGVARS := $(shell cat GIZMO_config.h)
 
 ifeq (FIRE_PHYSICS_DEFAULTS,$(findstring FIRE_PHYSICS_DEFAULTS,$(CONFIGVARS)))  # using 'fire default' instead of all the above
     CONFIGVARS += COOLING COOL_LOW_TEMPERATURES COOL_METAL_LINES_BY_SPECIES
-    CONFIGVARS += GALSF METALS GALSF_SFR_MOLECULAR_CRITERION GALSF_SFR_VIRIAL_SF_CRITERION=0
+    CONFIGVARS += GALSF METALS TURB_DIFF_METALS TURB_DIFF_METALS_LOWORDER GALSF_SFR_MOLECULAR_CRITERION GALSF_SFR_VIRIAL_SF_CRITERION=0
     CONFIGVARS += GALSF_FB_GASRETURN GALSF_FB_HII_HEATING GALSF_FB_SNE_HEATING=1 GALSF_FB_RT_PHOTONMOMENTUM
-    CONFIGVARS += GALSF_FB_LOCAL_UV_HEATING GALSF_FB_RPWIND_LOCAL GALSF_FB_RPROCESS_ENRICHMENT=6 GALSF_SFR_IMF_VARIATION
+    CONFIGVARS += GALSF_FB_LOCAL_UV_HEATING GALSF_FB_RPWIND_LOCAL GALSF_FB_RPROCESS_ENRICHMENT=4
+#    CONFIGVARS += GALSF_SFR_IMF_VARIATION
 endif
 
 
@@ -125,8 +111,8 @@ else
 endif
 endif
 else
-# or if POWERSPEC_GRID is activated
-ifeq (POWERSPEC_GRID, $(findstring POWERSPEC_GRID, $(CONFIGVARS)))
+# or if TURB_DRIVING_SPECTRUMGRID is activated
+ifeq (TURB_DRIVING_SPECTRUMGRID, $(findstring TURB_DRIVING_SPECTRUMGRID, $(CONFIGVARS)))
 ifeq (NOTYPEPREFIX_FFTW,$(findstring NOTYPEPREFIX_FFTW,$(CONFIGVARS)))  # fftw installed without type prefix?
   FFTW_LIBNAMES = -lrfftw_mpi -lfftw_mpi -lrfftw -lfftw
 else
@@ -141,6 +127,21 @@ else
 endif
 
 endif
+
+
+ifdef SYSTYPE
+SYSTYPE := "$(SYSTYPE)"
+-include Makefile.systype
+else
+include Makefile.systype
+endif
+
+ifeq ($(wildcard Makefile.systype), Makefile.systype)
+INCL = Makefile.systype
+else
+INCL =
+endif
+FINCL =
 
 
 
@@ -177,6 +178,43 @@ OPT     += -DUSE_MPI_IN_PLACE
 ##
 endif
 
+
+ifeq ($(SYSTYPE),"Stampede2")
+CC       =  mpicc
+CXX      =  mpic++
+FC       =  mpif90 -nofor_main
+OPTIMIZE = -O3 -xMIC-AVX512 -ipo -funroll-loops -no-prec-div -fp-model fast=2  # speed
+OPTIMIZE += -g -Wall # compiler warnings
+#OPTIMIZE += -parallel -openmp  # openmp (comment out this line if OPENMP not used)
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -parallel -qopenmp  # openmp required compiler flags
+endif
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = -I$(TACC_MKL_INC)
+MKL_LIBS = -L$(TACC_MKL_LIB) -mkl=sequential
+##MKL_LIBS = -L$(TACC_MKL_LIB) -lm -lmkl_core -lmkl_sequential -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_blacs_intelmpi_lp64
+GSL_INCL = -I$(TACC_GSL_INC)
+GSL_LIBS = -L$(TACC_GSL_LIB)
+FFTW_INCL= -I$(TACC_FFTW2_INC)
+FFTW_LIBS= -L$(TACC_FFTW2_LIB)
+HDF5INCL = -I$(TACC_HDF5_INC) -DH5_USE_16_API
+HDF5LIB  = -L$(TACC_HDF5_LIB) -lhdf5 -lz
+MPICHLIB =
+OPT     += -DUSE_MPI_IN_PLACE
+##
+## module load TACC intel impi hdf5 gsl fftw2
+## note the KNL system has a large number of slow cores, so some changes to 'usual' compilation parameters are advised:
+##  - recommend running with ~16 mpi tasks/node. higher [32 or 64] usually involves a performance hit unless the problem is more scale-able;
+##     use the remaining nodes in OPENMP. Do not use >64 MPI tasks/node [need ~4 cores free for management] and do not use >2 threads/core
+##     [should never have >128 threads/node] -- the claimed 4 hardware threads/core includes non-FP threads which will severely slow performance.
+##     so 'default' would be ~16 tasks/node, OMP_NUM_THREADS=8.
+##  - because of the large core/thread count, MULTIPLEDOMAINS should be set low, MULTIPLEDOMAINS=1 ideally [already problem is heavily-divided].
+##     - likewise be careful with domain decomposition, TreeDomainUpdateFrequency param [so don't spend very long running domain decompositions]
+##  - memory is large per node: for 16 tasks/node, large MaxMemSize=5450 is reasonable, with BufferSize=450, and large PartAllocFactor=40 can be used
+##  - run job with "tacc_affinity" on.
+##
+endif
 
 
 #----------------------------
@@ -246,7 +284,7 @@ FC       = $(CC)
 #OPTIMIZE = -Wall -g -O3 -xHOST -ipo -no-prec-div -fp-model fast=2 -fast-transcendentals -funroll-loops ## optimizations for intel compilers
 ##OPTIMIZE += -pg ## profiling for intel compilers
 OPTIMIZE = -g -O2 -ffast-math -funroll-loops -finline-functions -funswitch-loops -fpredictive-commoning -fgcse-after-reload -fipa-cp-clone  ## optimizations for gcc compilers (1/2)
-OPTIMIZE += -ftree-loop-distribute-patterns -ftree-slp-vectorize -fvect-cost-model -ftree-partial-pre   ## optimizations for gcc compilers (2/2)
+OPTIMIZE += -ftree-loop-distribute-patterns -fvect-cost-model -ftree-partial-pre   ## optimizations for gcc compilers (2/2)
 #OPTIMIZE += -pg -fprofile -fprofile-arcs -ftest-coverage -fprofile-generate ## full profiling, for gcc compilers
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -fopenmp # openmp required compiler flags
@@ -284,7 +322,7 @@ endif
 ifeq ($(SYSTYPE),"Zwicky")
 CC       =  mpicc
 CXX      =  mpicpc
-FC       =  mpiifort -nofor_main
+FC       =  $(CC) ##mpiifort -nofor_main
 OPTIMIZE = -O3 -funroll-loops
 OPTIMIZE += -g -Wall # compiler warnings
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
@@ -310,6 +348,35 @@ OPT     += # -DUSE_MPI_IN_PLACE
 ##       ./configure --prefix=/home/phopkins/fftw --enable-mpi --enable-type-prefix --enable-float --with-gcc
 ##      linked via the above FFTW2_HOME=/home/phopkins/fftw (where the libraries are installed)
 endif
+
+
+#------------------------------------------------------------------------------
+ifeq ($(SYSTYPE), "Edison")
+CC       =  cc #instead ofmpicc
+CXX      =  CC #instead of mpipc
+FC       =  ftn #instead of $(CC)
+OPTIMIZE =  -O3 -funroll-loops -ffast-math -finline-functions -funswitch-loops
+OPTIMIZE += -g -Wall -fpredictive-commoning -fgcse-after-reload -fvect-cost-model
+ifeq (OPENMP, $(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -fopenmp
+endif
+GMP_INCL =
+GMP_LIBS =
+MKL_INCL = -I$(INCLUDE)
+MKL_LIBS = -L$(LIBRARY_PATH) -mkl=sequential
+GSL_INCL = -I$(GSL_DIR)/include
+GSL_LIBS = -L$(GSL_DIR)/lib
+FFTW_INCL= -I$(FFTW_INC)
+FFTW_LIBS= -L$(FFTW_DIR)
+HDF5INCL = -I$(HDF5_INCLUDE_OPTS) -DH5_USE_16_API
+HDF5LIB  = -L$(HDF5_DIR)/lib -lhdf5 -lz
+MPICHLIB =
+OPT     += -DUSE_MPI_IN_PLACE
+##
+## modules to load: intel, impi, gsl, fftw/2.1.5.9, cray-hdf5
+## note: there is a module called "hdf5" which will not work. Use cray-hdf5.
+endif
+#-----------------------------------------------------------------------------
 
 
 
@@ -352,6 +419,103 @@ MPICHLIB =
 endif
 
 
+
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Iron")
+CC       =   mpicc     # sets the C-compiler
+OPT      +=  -DMPICH_IGNORE_CXX_SEEK
+#OPTIMIZE =   -std=c99 -O3 -g -Wall -Wno-unused-but-set-variable -Wno-uninitialized -Wno-unknown-pragmas -Wno-unused-function -march=native
+OPTIMIZE =   -std=c99 -O3 -fno-tree-vectorize -march=native
+OPTIMIZE += -g   #-Wall # compiler warnings
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE +=  -fopenmp
+endif
+GSL_INCL =  -I$(GSLDIR)/include
+GSL_LIBS =  -L$(GSLDIR)/lib
+FFTW_INCL=  -I$(FFTW2DIR)/include
+FFTW_LIBS=  -L$(FFTW2DIR)/lib
+MPICHLIB =
+HDF5INCL =  -I$(HDF5DIR)/include -DH5_USE_16_API
+HDF5LIB  =  -L$(HDF5DIR)/lib -lhdf5 -lz
+GMP_INCL =  #-I$(GMPDIR)/include
+GMP_LIBs =  #-L$(GMPDIR)/lib
+#module load slurm
+#module add gcc
+#module load openmpi2/2.0.2-hfi
+#module add lib/hdf5
+#module add lib/fftw2/2.1.5-openmpi2
+#module add lib/gsl
+endif
+#----------------------------------------------------------------------------------------------
+
+
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Gordon")
+CC       =  mpicc
+CXX      =  mpicxx
+FC       =  $(CC)  #mpif90 -nofor-main
+OPTIMIZE =  -O3 -no-prec-div -xHOST
+OPTIMIZE += -g -Wall # compiler warnings
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -openmp # openmp required compiler flags
+endif
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = -I/opt/intel/composer_xe_2013_sp1.2.144/mkl/include
+MKL_LIBS = -L/opt/intel/composer_xe_2013_sp1.2.144/mkl/lib -mkl=sequential
+GSL_INCL = -I/opt/gsl/2.1/intel/include
+GSL_LIBS = -L/opt/gsl/2.1/intel/lib
+FFTW_INCL= -I/opt/fftw/2.1.5/intel/mvapich2_ib/include
+FFTW_LIBS= -L/opt/fftw/2.1.5/intel/mvapich2_ib/lib
+HDF5INCL = -I/opt/hdf5/intel/mvapich2_ib/include -DH5_USE_16_API
+HDF5LIB  = -L/opt/hdf5/intel/mvapich2_ib/lib -lhdf5 -lz
+MPICHLIB = -L/opt/mvapich2/intel/ib/lib
+OPT     += -DUSE_MPI_IN_PLACE
+## modules to load:
+## module load intel mvapich2_ib
+## module load hdf5
+## module load fftw/2.1.5
+## module load gsl
+endif
+#----------------------------------------------------------------------------------------------
+
+
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Comet")
+CC       =  mpicc
+CXX      =  mpiCC
+FC       =  $(CC)
+OPTIMIZE = -O3 -xhost -ipo -funroll-loops -no-prec-div -fp-model fast=2  # speed
+OPTIMIZE += -g -Wall # compiler warnings
+#OPTIMIZE += -parallel -openmp  # openmp (comment out this line if OPENMP not used)
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -parallel -openmp  # openmp required compiler flags
+endif
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = -I/opt/intel/composer_xe_2013_sp1.2.144/mkl/include
+MKL_LIBS = -L/opt/intel/composer_xe_2013_sp1.2.144/mkl/lib -mkl=sequential
+##MKL_LIBS = -L/opt/mvapich2/intel/ib/lib -lm -lmkl_core -lmkl_sequential -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_blacs_intelmpi_lp64
+GSL_INCL = -I/opt/gsl/2.1/intel/include
+GSL_LIBS = -L/opt/gsl/2.1/intel/lib
+FFTW_INCL= -I/opt/fftw/2.1.5/intel/mvapich2_ib/include
+FFTW_LIBS= -L/opt/fftw/2.1.5/intel/mvapich2_ib/lib
+HDF5INCL = -I/opt/hdf5/intel/mvapich2_ib/include -DH5_USE_16_API
+HDF5LIB  = -L/opt/hdf5/intel/mvapich2_ib/lib -lhdf5 -lz
+MPICHLIB = -L/opt/mvapich2/intel/ib/lib
+#MPICHLIB = -L/opt/openmpi/intel/ib/lib
+OPT     += -DUSE_MPI_IN_PLACE
+## modules to load:
+## module load gsl intel hdf5 mvapich2_ib fftw/2.1.5
+##  -- performance is very similar with impi (intel-mpi) instead of mpavich2,
+##   if preferred use that with MPICHLIB line uncommented
+## newest version of code needed for compatibility with calls in MPI-2 libraries
+endif
+#----------------------------------------------------------------------------------------------
+
+
+
+
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Darter")
 CC       =  cc
@@ -388,7 +552,7 @@ CXX      =  mpic++
 FC       =  $(CC)
 OPTIMIZE = -O2 -xhost -ipo -funroll-loops -no-prec-div -fp-model fast=2
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
-OPTIMIZE += -parallel -openmp 
+OPTIMIZE += -parallel -openmp # openmp required compiler flags 
 endif
 ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
 CHIMESINCL = -I/home/ajr882/sundials/include  
@@ -477,6 +641,78 @@ endif
 
 
 
+ifeq ($(SYSTYPE),"BlueWaters")
+CC       =  cc
+CXX      =  CC
+FC       =  $(CC) #ftn
+#OPTIMIZE = -O3 -ipo -funroll-loops -no-prec-div -fp-model fast=2 -static
+OPTIMIZE = -fast -no-ipo
+#OPTIMIZE += -g
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -parallel -qopenmp -fopenmp # (intel) openmp required compiler flags
+FC       = $(CC)
+endif
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = #
+MKL_LIBS = #
+GSL_INCL = -I$(GSL_DIR)/include
+GSL_LIBS = -L$(GSL_DIR)/lib -lgsl -lgslcblas -lm
+FFTW_INCL= -I$(FFTW_DIR)/include
+FFTW_LIBS= -L$(FFTW_DIR)/lib
+HDF5INCL = -I$(HDF5_DIR)/include -DH5_USE_16_API
+HDF5LIB  = -L$(HDF5_DIR)/lib -lhdf5 -lz
+MPICHLIB = -lmpich_intel
+OPT     += -DUSE_MPI_IN_PLACE
+endif
+## in your .bashrc file, include
+##    module swap PrgEnv-cray PrgEnv-intel
+##    module load cray-hdf5-parallel fftw/2.1.5.9 gsl bwpy szip
+##    module swap intel intel/17.0.4.196
+##    umask 022
+##    ulimit -s unlimited
+##
+## NOTE: everything above is for intel compilers. PGI performs almost as well (within 5%) and has OpenACC, much better for GPU/xk nodes.
+##  to use PGI, replace PrgEnv-intel with PrgEnv-pgi everywhere here, and replace the optimize line with:
+##  OPTIMIZE = -m64 -mcmodel=medium -Mdalign -Mllalign -Munroll -O3 -fastsse -Mipa=fast -fast -Msafeptr
+##
+## example run submission script:
+##
+##  #!/bin/bash
+##  #PBS -N NAME                 # name as desired
+##  #PBS -q debug                # debug or normal or whatever queue
+##  #PBS -l nodes=NNODES:ppn=32:xe   # PPN=32, essentially always; nodes=NNODES (set to number)
+##  ##PBS -l flags=preemptee     # makes job pre-emptable: receives discount for time used
+##  ##PBS -l minwclimit=23:10:00  -l walltime=48:00:00  # flexible clock time (set min/max) - often gets on machine faster
+##  #PBS -l walltime=00:15:00    # fixed run-time, set appropriately
+##  #PBS -j oe                   # outputs
+##  #PBS -o run.out              # outputs
+##  cd $PBS_O_WORKDIR            # run in submission directory
+##  . /opt/modules/default/init/bash # NEEDED to add module commands to shell
+##  source $HOME/.bashrc         # source your bash shortcuts, etc
+##  module swap PrgEnv-cray PrgEnv-intel    # make sure correct compilers [intel here] loaded
+##  module load intel cray-hdf5-parallel fftw/2.1.5.9 gsl szip   # make sure correct modules loaded
+##  module swap intel intel/17.0.4.196
+##  export KMP_AFFINITY=disabled  # include if and only if you are using intel17+ compilers, needed to leverage newer cache optimizations
+##  export OMP_NUM_THREADS=NOMP        # turn on for OpenMP runs, NOMP=number of threads (=1 if not using OpenMP, in everything below)
+##  aprun -S SNODENUM -cc numa_node -N NMPINODE -d NOMP -n NTOTAL ./GIZMO ./params.txt 1>gizmo.out 2>gizmo.err
+##  ## (in the above:
+##  ##     -S SNODENUM : set SNODENUM = NMPINODE/4 = 8/NOMP. This is how many MPI tasks per die (4 dies per node) -- prevents memory issues
+##  ##        which can dramatically slow down code by threads spawning without local access to memory.
+##  ##        If using >8 OpenMP threads (so this would be <1), this command should be removed.
+##  ##     -N NMPINODE : set NMPINODE = 32/NOMP = number of MPI tasks per node. BW has 32 integer-cores per node, with this structure all can be used; even though every pair shares 1 FP core.
+##  ##     -d NOMP = specifies spacing/skipping of CPUs for multi-threaded alignment: set equal to NOMP
+##  ##     NTOTAL = NNODES*NMPINODE = total number of MPI tasks (not number of processors)
+##  ##     (in previous notes, had "-ss" do memory-binding, and "-j 1" prevents integer-cores sharing the same FPU, but this is better handled by the numa_node memory strategy)
+##  ##
+##
+##  For FIRE runs, generally reasonable with OPENMP off or set =2,4,8. Any higher over-runs the die, not good.
+##  May be some (small) performance improvement from using newest Intel MPI: in .bashrc and run-file add line "module swap intel intel/17.0.4.196" after the lines
+##   that load intel compilers, and in run-file, before OPENMP definition, include line "export KMP_AFFINITY=disabled" (this is necessary with OpenMP in intel17+ or performance will suffer)
+##
+
+
+#------------------------------------------------------------------------------
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Mira")
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
@@ -551,26 +787,27 @@ OPTIMIZE += -Wall # compiler warnings
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -parallel -qopenmp
 endif
+MATHLIBS = /nasa/pkgsrc/sles12/2016Q4/views/math-libs
 GMP_INCL =
 GMP_LIBS =
-GSL_INCL =
-GSL_LIBS =
+GSL_INCL = -I$(MATHLIBS)/include
+GSL_LIBS = -L$(MATHLIBS)/lib
 FFTW_INCL= -I$(FFTW2_HOME)/include
 FFTW_LIBS= -L$(FFTW2_HOME)/lib
-HDF5INCL = -I$(HDF5)/include -DH5_USE_16_API
-HDF5LIB  = -L$(HDF5)/lib -lhdf5 -lz -L/nasa/szip/2.1/lib -lsz
+HDF5INCL = -DH5_USE_16_API
+HDF5LIB  = -lhdf5 -lz -L/nasa/szip/2.1/lib -lsz
 MPICHLIB =
 OPT     += -DUSE_MPI_IN_PLACE
 endif
 ##
 ## Notes:
-##   1. modules to load:
-##          module load comp-intel mpi-sgi/mpt hdf5/1.8.3/intel/mpt gsl python/2.7.9 szip
+##   1. modules to load (math-libs is added now, this is needed to include GSL):
+##          module load comp-intel mpi-sgi/mpt hdf5/1.8.18_mpt szip math-libs
 ##   2. make sure you set the correct core-type: runs submitted to the wrong cores will not run
 ##   3. FFTW2: the pre-existing installation on Pleiades is incomplete and problematic.
 ##      you will need to install your own in your home directory. when building the library, use
 ##          ./configure --prefix=$HOME/fftw --enable-mpi --enable-type-prefix --enable-float
-##      where "$HOME/fftw" can be renamed but is the install director (should be your home directory);
+##      where "$HOME/fftw" can be renamed but is the install directory (should be your home directory);
 ##      then you need to define the variable (here or in your bashrc file)
 ##          FFTW2_HOME=$HOME/fftw
 ##      (matching what you used for the installation) so that the code can find fftw2
@@ -736,13 +973,13 @@ endif
 
 
 
-ifneq (HAVE_HDF5,$(findstring HAVE_HDF5,$(CONFIGVARS)))
+ifeq (IO_DISABLE_HDF5,$(findstring IO_DISABLE_HDF5,$(CONFIGVARS)))
 HDF5INCL =
 HDF5LIB  =
 endif
 
 
-ifeq (GRACKLE,$(findstring GRACKLE,$(CONFIGVARS)))
+ifeq (COOL_GRACKLE,$(findstring COOL_GRACKLE,$(CONFIGVARS)))
 OPT += -DCONFIG_BFLOAT_8
 else
 GRACKLEINCL =
@@ -758,7 +995,7 @@ GRAVITY_OBJS  = gravity/forcetree.o gravity/cosmology.o gravity/pm_periodic.o gr
                 gravity/gravtree.o gravity/forcetree_update.o gravity/pm_nonperiodic.o gravity/longrange.o \
                 gravity/ags_hsml.o
 
-HYDRO_OBJS = hydro/hydra_master.o hydro/density.o hydro/gradients.o eos/eos.o
+HYDRO_OBJS = hydro/hydra_master.o hydro/density.o hydro/gradients.o eos/eos.o solids/elastic_physics.o
 
 
 L3_OBJS =
@@ -781,7 +1018,7 @@ OBJS	+= $(L3_OBJS)
 INCL    += allvars.h proto.h gravity/forcetree.h domain.h system/myqsort.h kernel.h eos/eos.h Makefile \
 
 
-ifeq (GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION,$(findstring GALSF_SUBGRID_VARIABLEVELOCITY_DM_DISPERSION,$(CONFIGVARS)))
+ifeq (GALSF_SUBGRID_WINDS,$(findstring GALSF_SUBGRID_WINDS,$(CONFIGVARS)))
 OBJS    += galaxy_sf/dm_dispersion_hsml.o
 endif
 
@@ -801,14 +1038,24 @@ ifeq (RT_CHEM_PHOTOION,$(findstring RT_CHEM_PHOTOION,$(CONFIGVARS)))
 OBJS    += galaxy_sf/hII_heating.o
 endif
 
+ifeq (CBE_INTEGRATOR,$(findstring CBE_INTEGRATOR,$(CONFIGVARS)))
+OBJS    += sidm/cbe_integrator.o
+endif
 
+ifeq (DM_FUZZY,$(findstring DM_FUZZY,$(CONFIGVARS)))
+OBJS    += sidm/dm_fuzzy.o
+endif
 
-ifeq (TWOPOINT_FUNCTION_COMPUTATION_ENABLED,$(findstring TWOPOINT_FUNCTION_COMPUTATION_ENABLED,$(CONFIGVARS)))
+ifeq (OUTPUT_TWOPOINT_ENABLED,$(findstring OUTPUT_TWOPOINT_ENABLED,$(CONFIGVARS)))
 OBJS    += structure/twopoint.o
 endif
 
 ifeq (GALSF_FB_SNE_HEATING,$(findstring GALSF_FB_SNE_HEATING,$(CONFIGVARS)))
 OBJS    += galaxy_sf/mechanical_fb.o
+endif
+
+ifeq (GALSF_FB_THERMAL,$(findstring GALSF_FB_THERMAL,$(CONFIGVARS)))
+OBJS    += galaxy_sf/thermal_fb.o
 endif
 
 ifeq (GALSF_FB_RPWIND_LOCAL,$(findstring GALSF_FB_RPWIND_LOCAL,$(CONFIGVARS)))
@@ -843,7 +1090,7 @@ OBJS    += structure/fof.o
 INCL	+= structure/fof.h
 endif
 
-ifeq (OUTPUTLINEOFSIGHT,$(findstring OUTPUTLINEOFSIGHT,$(CONFIGVARS)))
+ifeq (OUTPUT_LINEOFSIGHT,$(findstring OUTPUT_LINEOFSIGHT,$(CONFIGVARS)))
 OBJS    += structure/lineofsight.o
 endif
 
@@ -852,16 +1099,12 @@ OBJS    += cooling/cooling.o
 INCL	+= cooling/cooling.h
 endif
 
-ifeq (GRACKLE,$(findstring GRACKLE,$(CONFIGVARS)))
+ifeq (COOL_GRACKLE,$(findstring COOL_GRACKLE,$(CONFIGVARS)))
 OBJS    += cooling/grackle.o
 endif
 
 ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
 OBJS    += cooling/chimes/chimes.o cooling/chimes/cooling.o cooling/chimes/init_chimes.o cooling/chimes/init_chimes_parallel.o cooling/chimes/interpol.o cooling/chimes/optimise.o cooling/chimes/rate_coefficients.o cooling/chimes/rate_equations.o cooling/chimes/set_rates.o 
-endif
-
-ifeq (BUBBLES,$(findstring BUBBLES,$(CONFIGVARS)))
-OBJS    += modules/bubbles/bubbles.o
 endif
 
 ifeq (EOS_HELMHOLTZ,$(findstring EOS_HELMHOLTZ,$(CONFIGVARS)))
@@ -875,7 +1118,7 @@ ifeq (IMPOSE_PINNING,$(findstring IMPOSE_PINNING,$(CONFIGVARS)))
 OBJS	+= system/pinning.o
 endif
 
-ifeq (DISTORTIONTENSORPS,$(findstring DISTORTIONTENSORPS,$(CONFIGVARS)))
+ifeq (GDE_DISTORTIONTENSOR,$(findstring GDE_DISTORTIONTENSOR,$(CONFIGVARS)))
 OBJS	+= modules/phasespace/phasespace.o modules/phasespace/phasespace_math.o
 endif
 
@@ -890,9 +1133,8 @@ OBJS	+= subfind/subfind.o subfind/subfind_vars.o subfind/subfind_collective.o su
 INCL	+= subfind/subfind.h
 endif
 
-ifeq (SIDM,$(findstring SIDM,$(CONFIGVARS)))
-OBJS    +=  sidm/sidm_core.o sidm/sidm_allvars.o
-INCL    +=  sidm/sidm_proto.h
+ifeq (DM_SIDM,$(findstring DM_SIDM,$(CONFIGVARS)))
+OBJS    +=  sidm/sidm_core.o 
 endif
 
 ifeq (NUCLEAR_NETWORK,$(findstring NUCLEAR_NETWORK,$(CONFIGVARS)))

@@ -7,10 +7,10 @@
 #include "../allvars.h"
 #include "../proto.h"
 #include "../kernel.h"
-#ifdef OMP_NUM_THREADS
+#ifdef PTHREADS_NUM_THREADS
 #include <pthread.h>
 #endif
-#ifdef OMP_NUM_THREADS
+#ifdef PTHREADS_NUM_THREADS
 extern pthread_mutex_t mutex_nexport;
 extern pthread_mutex_t mutex_partnodedrift;
 #define LOCK_NEXPORT     pthread_mutex_lock(&mutex_nexport);
@@ -32,6 +32,10 @@ extern pthread_mutex_t mutex_partnodedrift;
 /*
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
+
+#if defined(RT_RAD_PRESSURE_FORCES)
+#define RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION // adds correction for un-resolved extinction which cannot generate photon momentum with M1, FLD, OTVET, etc.
+#endif
 
 #if defined(GALSF) && !defined(RT_INJECT_PHOTONS_DISCRETELY)
 #define RT_INJECT_PHOTONS_DISCRETELY
@@ -107,7 +111,8 @@ void rt_source_injection(void)
     long long NTaskTimesNumPart;
     NTaskTimesNumPart = maxThreads * NumPart;
     Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
-    All.BunchSize = (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) + sizeof(struct rt_sourcedata_in) + sizeof(struct rt_sourcedata_in)));
+    size_t MyBufferSize = All.BufferSize;
+    All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) + sizeof(struct rt_sourcedata_in) + sizeof(struct rt_sourcedata_in)));
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
     
@@ -120,16 +125,16 @@ void rt_source_injection(void)
         for(j = 0; j < NTask; j++) {Send_count[j] = 0; Exportflag[j] = -1;}
         
         /* do local particles and prepare export list */
-#ifdef OMP_NUM_THREADS
-        pthread_t mythreads[OMP_NUM_THREADS - 1];
-        int threadid[OMP_NUM_THREADS - 1];
+#ifdef PTHREADS_NUM_THREADS
+        pthread_t mythreads[PTHREADS_NUM_THREADS - 1];
+        int threadid[PTHREADS_NUM_THREADS - 1];
         pthread_attr_t attr;
         pthread_attr_init(&attr);
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
         pthread_mutex_init(&mutex_nexport, NULL);
         pthread_mutex_init(&mutex_partnodedrift, NULL);
         TimerFlag = 0;
-        for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+        for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
         {
             threadid[j] = j + 1;
             pthread_create(&mythreads[j], &attr, rt_sourceinjection_evaluate_primary, &threadid[j]);
@@ -146,8 +151,8 @@ void rt_source_injection(void)
 #endif
             rt_sourceinjection_evaluate_primary(&mainthreadid);	/* do local particles and prepare export list */
         }
-#ifdef OMP_NUM_THREADS
-        for(j = 0; j < OMP_NUM_THREADS - 1; j++) {pthread_join(mythreads[j], NULL);}
+#ifdef PTHREADS_NUM_THREADS
+        for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++) {pthread_join(mythreads[j], NULL);}
 #endif
         if(BufferFullFlag)
         {
@@ -233,8 +238,8 @@ void rt_source_injection(void)
         myfree(RT_SourceDataIn);
         /* now do the particles that were sent to us */
         NextJ = 0;
-#ifdef OMP_NUM_THREADS
-        for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+#ifdef PTHREADS_NUM_THREADS
+        for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
             pthread_create(&mythreads[j], &attr, rt_sourceinjection_evaluate_secondary, &threadid[j]);
 #endif
 #ifdef _OPENMP
@@ -249,8 +254,8 @@ void rt_source_injection(void)
             rt_sourceinjection_evaluate_secondary(&mainthreadid);
         }
         
-#ifdef OMP_NUM_THREADS
-        for(j = 0; j < OMP_NUM_THREADS - 1; j++) {pthread_join(mythreads[j], NULL);}
+#ifdef PTHREADS_NUM_THREADS
+        for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++) {pthread_join(mythreads[j], NULL);}
         pthread_mutex_destroy(&mutex_partnodedrift);
         pthread_mutex_destroy(&mutex_nexport);
         pthread_attr_destroy(&attr);
@@ -294,7 +299,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 if(P[j].Type != 0) continue; // require a gas particle //
                 if(P[j].Mass <= 0) continue; // require the particle has mass //
                 double dp[3]; for(k=0; k<3; k++) {dp[k] = local.Pos[k] - P[j].Pos[k];}
-#ifdef PERIODIC	/* find the closest image in the given box size  */
+#ifdef BOX_PERIODIC	/* find the closest image in the given box size  */
                 NEAREST_XYZ(dp[0],dp[1],dp[2],1);
 #endif
                 double r2=0; for(k=0;k<3;k++) {r2 += dp[k]*dp[k];}
@@ -305,12 +310,49 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 //kernel_main(u, hinv3, hinv4, &wk, &dwk, -1); // traditional kernel
                 //wk *= P[j].Mass / local.KernelSum_Around_RT_Source;
                 double wk = (1 - r2*hinv*hinv) / local.KernelSum_Around_RT_Source;
+#if defined(RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION)
+                double r = sqrt(r2);
+                double dv0 = -1. / (RT_SPEEDOFLIGHT_REDUCTION * (C / All.UnitVelocity_in_cm_per_s) * r);
+                double lmax_0 = DMAX(local.Hsml, r);
+#ifdef RT_EVOLVE_INTENSITIES
+                int kx; double angle_wt_Inu_sum=0, angle_wt_Inu[N_RT_INTENSITY_BINS];
+                // pre-compute a set of weights based on the projection of the particle position along the radial direction for the radiation direction //
+                for(kx=0;kx<N_RT_INTENSITY_BINS;kx++)
+                {
+                    double cos_t=0; int kq; for(kq=0;kq<3;kq++) {cos_t+=dp[kq]*All.RT_Intensity_Direction[kx][kq];}
+                    cos_t *= -1/r;
+                    double wt_function = cos_t*cos_t*cos_t*cos_t;
+                    if(cos_t < 0) {wt_function=0;}
+                    angle_wt_Inu[kx] = wt_function; angle_wt_Inu_sum += angle_wt_Inu[kx];
+                }
+#endif
+#endif
                 // now actually apply the kernel distribution
                 for(k=0;k<N_RT_FREQ_BINS;k++) 
                 {
                     double dE = wk * local.Luminosity[k];
 #if defined(RT_INJECT_PHOTONS_DISCRETELY)
-                    SphP[j].E_gamma[k] += dE; SphP[j].E_gamma_Pred[k] += dE; // dump discreetly (noisier, but works smoothly with large timebin hierarchy)
+                    SphP[j].E_gamma[k] += dE;
+#ifdef RT_EVOLVE_NGAMMA
+                    SphP[j].E_gamma_Pred[k] += dE; // dump discreetly (noisier, but works smoothly with large timebin hierarchy)
+#endif
+#if defined(RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION)
+                    // add discrete photon momentum from un-resolved absorption //
+                    double x_abs = 2. * SphP[j].Kappa_RT[k] * (SphP[j].Density*All.cf_a3inv) * (DMAX(2.*Get_Particle_Size(j),lmax_0)*All.cf_atime); // effective optical depth through particle
+                    double slabfac_x = x_abs * slab_averaging_function(x_abs); // 1-exp(-x)
+                    if(isnan(slabfac_x)||(slabfac_x<=0)) {slabfac_x=0;}
+                    if(slabfac_x>1) {slabfac_x=1;}
+                    double dv = slabfac_x * dv0 * dE / P[j].Mass; // total absorbed momentum (needs multiplication by dp[kv] for directionality)
+                    int kv; for(kv=0;kv<3;kv++) {P[j].Vel[kv] += dv*dp[kv]; SphP[j].VelPred[kv] += dv*dp[kv];}
+#if defined(RT_EVOLVE_FLUX)
+                    double dflux = -dE * (RT_SPEEDOFLIGHT_REDUCTION * (C / All.UnitVelocity_in_cm_per_s)) / r;
+                    for(kv=0;kv<3;kv++) {SphP[j].Flux[k][kv] += dflux*dp[kv]; SphP[j].Flux_Pred[k][kv] += dflux*dp[kv];}
+#endif
+#ifdef RT_EVOLVE_INTENSITIES
+                    double dflux = dE * (RT_SPEEDOFLIGHT_REDUCTION * (C / All.UnitVelocity_in_cm_per_s)) / angle_wt_Inu_sum;
+                    for(kv=0;kv<N_RT_INTENSITY_BINS;kv++) {SphP[j].Intensity[k][kv] += dflux * angle_wt_Inu[N_RT_INTENSITY_BINS]; SphP[j].Intensity_Pred[k][kv] += dflux * angle_wt_Inu[N_RT_INTENSITY_BINS];}
+#endif
+#endif
 #else
                     SphP[j].Je[k] += dE; // treat continuously
 #endif

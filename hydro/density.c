@@ -7,10 +7,11 @@
 #include "../allvars.h"
 #include "../proto.h"
 #include "../kernel.h"
-#ifdef OMP_NUM_THREADS
+#include "../mesh_motion.h"
+#ifdef PTHREADS_NUM_THREADS
 #include <pthread.h>
 #endif
-#ifdef OMP_NUM_THREADS
+#ifdef PTHREADS_NUM_THREADS
 extern pthread_mutex_t mutex_nexport;
 extern pthread_mutex_t mutex_partnodedrift;
 #define LOCK_NEXPORT     pthread_mutex_lock(&mutex_nexport);
@@ -70,6 +71,9 @@ static struct densdata_out
     MyLongDouble DhsmlNgb;
     MyLongDouble Particle_DivVel;
     MyFloat NV_T[3][3];
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
+    MyDouble ParticleVel[3];
+#endif
 #ifdef HYDRO_SPH
     MyLongDouble DhsmlHydroSumFactor;
 #endif
@@ -77,7 +81,7 @@ static struct densdata_out
     MyLongDouble KernelSum_Around_RT_Source;
 #endif
     
-#ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
+#ifdef HYDRO_PRESSURE_SPH
     MyLongDouble EgyRho;
 #endif
 
@@ -156,10 +160,10 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
     if(P[i].Type == 0)
     {
         ASSIGN_ADD(SphP[i].Density, out->Rho, mode);
-
-        for(k = 0; k < 3; k++)
-            for(j = 0; j < 3; j++)
-                ASSIGN_ADD(SphP[i].NV_T[k][j], out->NV_T[k][j], mode);
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
+        for(k=0;k<3;k++) ASSIGN_ADD(SphP[i].ParticleVel[k], out->ParticleVel[k],   mode);
+#endif
+        for(k = 0; k < 3; k++) {for(j = 0; j < 3; j++) {ASSIGN_ADD(SphP[i].NV_T[k][j], out->NV_T[k][j], mode);}}
 
 #ifdef HYDRO_SPH
         ASSIGN_ADD(SphP[i].DhsmlHydroSumFactor, out->DhsmlHydroSumFactor, mode);
@@ -169,7 +173,7 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
         ASSIGN_ADD(PPPZ[i].AGS_zeta, out->AGS_zeta,   mode);
 #endif
 
-#ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
+#ifdef HYDRO_PRESSURE_SPH
         ASSIGN_ADD(SphP[i].EgyWtDensity,   out->EgyRho,   mode);
 #endif
 
@@ -285,15 +289,11 @@ void density(void)
 
   /* allocate buffers to arrange communication */
   size_t MyBufferSize = All.BufferSize;
-  All.BunchSize =
-    (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
+  All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
 					     sizeof(struct densdata_in) + sizeof(struct densdata_out) +
-					     sizemax(sizeof(struct densdata_in),
-						     sizeof(struct densdata_out))));
-  DataIndexTable =
-    (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
-  DataNodeList =
-    (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
+					     sizemax(sizeof(struct densdata_in),sizeof(struct densdata_out))));
+  DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
+  DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
 
   t0 = my_second();
 
@@ -316,10 +316,10 @@ void density(void)
 
 	  tstart = my_second();
 
-#ifdef OMP_NUM_THREADS
-	  pthread_t mythreads[OMP_NUM_THREADS - 1];
+#ifdef PTHREADS_NUM_THREADS
+	  pthread_t mythreads[PTHREADS_NUM_THREADS - 1];
 
-	  int threadid[OMP_NUM_THREADS - 1];
+	  int threadid[PTHREADS_NUM_THREADS - 1];
 
 	  pthread_attr_t attr;
 
@@ -330,7 +330,7 @@ void density(void)
 
 	  TimerFlag = 0;
 
-	  for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+	  for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
 	    {
 	      threadid[j] = j + 1;
 	      pthread_create(&mythreads[j], &attr, density_evaluate_primary, &threadid[j]);
@@ -348,8 +348,8 @@ void density(void)
 	    density_evaluate_primary(&mainthreadid);	/* do local particles and prepare export list */
 	  }
 
-#ifdef OMP_NUM_THREADS
-	  for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+#ifdef PTHREADS_NUM_THREADS
+	  for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
 	    pthread_join(mythreads[j], NULL);
 #endif
 
@@ -495,8 +495,8 @@ void density(void)
 
 	  NextJ = 0;
 
-#ifdef OMP_NUM_THREADS
-	  for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+#ifdef PTHREADS_NUM_THREADS
+	  for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
 	    pthread_create(&mythreads[j], &attr, density_evaluate_secondary, &threadid[j]);
 #endif
 #ifdef _OPENMP
@@ -511,8 +511,8 @@ void density(void)
 	    density_evaluate_secondary(&mainthreadid);
 	  }
 
-#ifdef OMP_NUM_THREADS
-	  for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+#ifdef PTHREADS_NUM_THREADS
+	  for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
 	    pthread_join(mythreads[j], NULL);
 
 	  pthread_mutex_destroy(&mutex_partnodedrift);
@@ -991,8 +991,20 @@ void density(void)
             {
                 if(SphP[i].Density > 0)
                 {
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME)
+                    /* set motion of the mesh-generating points */
+#if (HYDRO_FIX_MESH_MOTION==4)
+                    set_mesh_motion(i); // use user-specified analytic function to define mesh motions //
+#elif ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
+                    double eps_pvel = 0.3; // normalization for how much 'weight' to give to neighbors (unstable if >=0.5)
+                    for(k=0;k<3;k++) {SphP[i].ParticleVel[k] = (1.-eps_pvel)*SphP[i].VelPred[k] + eps_pvel*SphP[i].ParticleVel[k]/SphP[i].Density;} // assign mixture velocity
+#elif (HYDRO_FIX_MESH_MOTION==7)
+                    for(k=0;k<3;k++) {SphP[i].ParticleVel[k] = SphP[i].VelPred[k];} // move with fluid
+#endif
+#endif
+
 #ifdef HYDRO_SPH
-#ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
+#ifdef HYDRO_PRESSURE_SPH
                     if(SphP[i].InternalEnergyPred > 0)
                     {
                         SphP[i].EgyWtDensity /= SphP[i].InternalEnergyPred;
@@ -1213,7 +1225,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
                 NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1);
 #endif
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
@@ -1231,13 +1243,16 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #if defined(METALS) && defined(DO_DENSITY_AROUND_STAR_PARTICLES) && defined(EXTRA_SNE_OUTPUT) 
 		    out.Z_Rho += kernel.mj_wk * P[j].Metallicity[0]; 
 #endif
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
+                    if(local.Type == 0 && kernel.r==0) {int kv; for(kv=0;kv<3;kv++) {out.ParticleVel[kv] += kernel.mj_wk * SphP[j].VelPred[kv];}} // just the self-contribution //
+#endif
 #if defined(RT_SOURCE_INJECTION)
                     if((1 << local.Type) & (RT_SOURCES)) {out.KernelSum_Around_RT_Source += 1.-u*u;}
 #endif
                     out.DhsmlNgb += -(NUMDIMS * kernel.hinv * kernel.wk + u * kernel.dwk);
 #ifdef HYDRO_SPH
                     double mass_eff = mass_j;
-#ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
+#ifdef HYDRO_PRESSURE_SPH
                     mass_eff *= SphP[j].InternalEnergyPred;
                     out.EgyRho += kernel.wk * mass_eff;
 #endif
@@ -1264,9 +1279,13 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                         kernel.dv[0] = local.Vel[0] - SphP[j].VelPred[0];
                         kernel.dv[1] = local.Vel[1] - SphP[j].VelPred[1];
                         kernel.dv[2] = local.Vel[2] - SphP[j].VelPred[2];
-#ifdef SHEARING_BOX
-                        if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {kernel.dv[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
-                        if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {kernel.dv[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+#ifdef BOX_SHEARING
+                        if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {kernel.dv[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+                        if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {kernel.dv[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+#endif
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
+                        // do neighbor contribution to smoothed particle velocity here, after wrap, so can account for shearing boxes correctly //
+                        {int kv; for(kv=0;kv<3;kv++) {out.ParticleVel[kv] += kernel.mj_wk * (local.Vel[kv] - kernel.dv[kv]);}}
 #endif
                         out.Particle_DivVel -= kernel.dwk * (kernel.dp[0] * kernel.dv[0] + kernel.dp[1] * kernel.dv[1] + kernel.dp[2] * kernel.dv[2]) / kernel.r;
                         /* this is the -particle- divv estimator, which determines how Hsml will evolve (particle drift) */
@@ -1345,7 +1364,7 @@ int density_isactive(int n)
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
     if(((P[n].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[n].Type == 2)||(P[n].Type==3))))&&(P[n].Mass>0))
     {
-#if defined(GALSF_FB_SNE_HEATING)
+#if defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_THERMAL)
         /* check if there is going to be a SNe this timestep, in which case, we want the density info! */
         if(P[n].SNe_ThisTimeStep>0) return 1;
 #endif

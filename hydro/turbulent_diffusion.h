@@ -41,8 +41,12 @@
             d_scalar = local.Metallicity[k_species]-P[j].Metallicity[k_species]; // physical
             for(k=0;k<3;k++)
             {
-                double grad_ij = wt_i*local.Gradients.Metallicity[k_species][k] + wt_j*SphP[j].Gradients.Metallicity[k_species][k]; // 1/code length
                 double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv; // 1/code length
+#ifdef TURB_DIFF_METALS_LOWORDER
+                double grad_ij = grad_direct;
+#else
+                double grad_ij = wt_i*local.Gradients.Metallicity[k_species][k] + wt_j*SphP[j].Gradients.Metallicity[k_species][k]; // 1/code length
+#endif
                 grad_dot_x_ij += grad_ij * kernel.dp[k]; // physical
                 grad_ij = MINMOD(grad_ij , grad_direct);
                 cmag += Face_Area_Vec[k] * grad_ij; // 1/code length
@@ -60,7 +64,7 @@
             cmag *= -diffusion_wt * dt_hydrostep; // physical
             if(fabs(cmag) > 0)
             {
-                double zlim = 0.5*DMIN(DMIN(0.5*fabs(DMIN(local.Mass,P[j].Mass)*d_scalar),local.Mass*local.Metallicity[k_species]),P[j].Mass*P[j].Metallicity[k_species]);
+                double zlim = 0.25 * DMIN( DMIN(local.Mass,P[j].Mass)*fabs(d_scalar) , DMAX(local.Mass*local.Metallicity[k_species] , P[j].Mass*P[j].Metallicity[k_species]) );
                 if(fabs(cmag)>zlim) {cmag*=zlim/fabs(cmag);}
 #ifndef HYDRO_SPH
                 double dmet = (P[j].Metallicity[k_species]-local.Metallicity[k_species]) * fabs(mdot_estimated) * dt_hydrostep;

@@ -60,10 +60,6 @@ static int *toGoStars, *toGetStars, *list_N_stars, *list_loadstars;
 //static double *list_workstars;
 #endif
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-static int *toGoBHs, *toGetBHs, *list_N_BHs, *list_loadBHs;
-#endif
-
 static struct local_topnode_data
 {
   peanokey Size;		/*!< number of Peano-Hilbert mesh-cells represented by top-level node */
@@ -104,21 +100,12 @@ static int *domainCountSph;	/*!< a table that gives the total number of SPH part
 static int *domainCountStars;
 #endif
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-static int *domainCountBHs;
-#endif
-
 static int domain_allocated_flag = 0;
 
 static int maxLoad, maxLoadsph;
 #ifdef SEPARATE_STELLARDOMAINDECOMP
 static int maxLoadstars;
 #endif
-
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-static int maxLoadBHs;
-#endif
-
 
 static double totgravcost, gravcost, totsphcost, sphcost;
 static long long totpartcount;
@@ -164,7 +151,7 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
         old_MaxPart = 0;
     }
     
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
     do_box_wrapping();		/* map the particles back onto the box */
 #endif
     
@@ -175,16 +162,6 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
             printf("task=%d:  P[i=%d].Type=%d\n", ThisTask, i, P[i].Type);
             endrun(112411);
         }
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-        if(P[i].Type == 5)
-            if(BHP[P[i].pt.BHID].PID != i)
-            {
-                printf("task=%d:  error in cross-indexes for bh-particle %d ID %llu\n", ThisTask, i,
-                       (unsigned long long) P[i].ID);
-                fflush(stdout);
-                endrun(112413);
-            }
-#endif
     }
     
     
@@ -267,19 +244,6 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
       domainCountStars = (int *) mymalloc("domainCountStars", bytes = (MaxTopNodes * sizeof(int))); all_bytes += bytes;
 #endif
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-      toGoBHs = (int *) mymalloc("toGoBHs", bytes = (sizeof(int) * NTask));
-      all_bytes += bytes;
-      toGetBHs = (int *) mymalloc("toGetBHs", bytes = (sizeof(int) * NTask));
-      all_bytes += bytes;
-      list_N_BHs = (int *) mymalloc("list_N_bhs", bytes = (sizeof(int) * NTask));
-      all_bytes += bytes;
-      list_loadBHs = (int *) mymalloc("list_loadbhs", bytes = (sizeof(int) * NTask));
-      all_bytes += bytes;
-      domainCountBHs = (int *) mymalloc("domainCountBHs", bytes = (MaxTopNodes * sizeof(int)));
-      all_bytes += bytes;
-#endif
-
       topNodes = (struct local_topnode_data *) mymalloc("topNodes", bytes =
 							(MaxTopNodes * sizeof(struct local_topnode_data)));
       all_bytes += bytes;
@@ -301,9 +265,6 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
 #ifdef SEPARATE_STELLARDOMAINDECOMP
       maxLoadstars = (int) (All.MaxPart * REDUC_FAC);
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-      maxLoadBHs = (int) (All.MaxPartBH * REDUC_FAC);
-#endif
 
       report_memory_usage(&HighMark_domain, "DOMAIN");
 
@@ -319,14 +280,6 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
 	}
 
       myfree(topNodes);
-
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-      myfree(domainCountBHs);
-      myfree(list_loadBHs);
-      myfree(list_N_BHs);
-      myfree(toGetBHs);
-      myfree(toGoBHs);
-#endif
 
 #ifdef SEPARATE_STELLARDOMAINDECOMP
       myfree(domainCountStars);
@@ -402,16 +355,6 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
 	  printf("task=%d:  P[i=%d].Type=%d\n", ThisTask, i, P[i].Type);
 	  endrun(111111);
 	}
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-      if(P[i].Type == 5)
-	if(BHP[P[i].pt.BHID].PID != i)
-	  {
-	    printf("task=%d:  error in cross-indexes for bh-particle %d ID %llu\n", ThisTask, i,
-		   (unsigned long long) P[i].ID);
-	    fflush(stdout);
-	    endrun(111113);
-	  }
-#endif
     }
 
 #ifdef PEANOHILBERT
@@ -506,43 +449,45 @@ void domain_allocate_trick(void)
 }
 
 
-
-
-double domain_particle_costfactor(int i)
+/* this function determines how particle work-costs are 'weighted' for load-balancing. if you 
+    have additional, expensive physics which only apply to a subset of particles, it may be worth 
+    up-weighting those particles here, so the code knows to try and spread them around. otherwise, 
+    they may end up all bunched onto the same processor */
+double domain_particle_cost_multiplier(int i)
 {
-    double multiplier = 1.0;
-#if defined(GALSF) && defined(GALSF_FB_SNE_HEATING)
+    double multiplier = 0;
+    
+    if(P[i].Type == 0) /* for gas, weight particles with large neighbor number more, since they require more work */
+    {
+        double nngb_reduced = PPP[i].NumNgb; /* remember, in density.c we reduce this by pow(1/NUMDIMS), for use in other routines: need to correct here */
+#if (NUMDIMS==3)
+        multiplier = nngb_reduced*nngb_reduced*nngb_reduced / All.DesNumNgb;
+#elif (NUMDIMS==2)
+        multiplier = nngb_reduced*nngb_reduced / All.DesNumNgb;
+#else
+        multiplier = nngb_reduced / All.DesNumNgb;
+#endif
+        if(multiplier < 0.5) {multiplier = 0.5;} // floor //
+    } // end gas check
+
+#if defined(GALSF) /* with star formation active, we will up-weight star particles which are active feedback sources */
     if(((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))&&(P[i].Mass>0))
     {
-        float star_age=0;
-        star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
-        if(star_age>0.1) {multiplier=1.25;} else
-        {
-            if(star_age>0.035)
-            {
-                multiplier = 2.0;
-            } else {
-                multiplier = 4.0;
-            }
-        }
+        double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+        if(star_age>0.1) {multiplier = 3.125;} else {if(star_age>0.035) {multiplier = 5.;} else {multiplier = 10.;}}
     }
 #endif
-#if defined(BLACK_HOLES)
-    if(P[i].Type == 5) {multiplier = 10.0;}
-#endif
-
-#ifdef CHIMES 
-    double rho_cgs; 
-    if (P[i].Type == 0) 
-      {
-	rho_cgs = SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam; 
-	if (rho_cgs > 1.67e-24) 
-	  multiplier = 10.0; 
-      }
-#endif 
-
-    return multiplier * (0.1 + P[i].GravCost[TakeLevel]);
+    
+    return multiplier;
 }
+
+
+/* simple function to return costfactor for pure gravity calculation: based just on gravcost calculation, with constant for safety */
+double domain_particle_costfactor(int i)
+{
+    return 0.1 + P[i].GravCost[TakeLevel];
+}
+
 
 
 /*! This function carries out the actual domain decomposition for all
@@ -562,44 +507,21 @@ int domain_decompose(void)
   int maxloadstars;
   //double sumworkstars,maxworkstars;
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  long long sumloadbhs;
-  int maxloadbhs;
-#endif
 
   for(i = 0; i < 6; i++)
     NtypeLocal[i] = 0;
 
   for(i = 0, gravcost = sphcost = 0; i < NumPart; i++)
     {
-#ifdef SUBFIND			
-      if(GrNr >= 0 && P[i].GrNr != GrNr)
-	continue;
+#ifdef SUBFIND
+        if(GrNr >= 0 && P[i].GrNr != GrNr) {continue;}
 #endif
-      NtypeLocal[P[i].Type]++;
-
-        gravcost += domain_particle_costfactor(i);
-        if(P[i].Type == 0)
-        {
-            if(TimeBinActive[P[i].TimeBin] || UseAllParticles)
-                sphcost += 1.0;
-        }
-
-#if defined(GALSF) && defined(GALSF_FB_SNE_HEATING)
-        if(((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))&&(P[i].Mass>0))
-        {
-            if(TimeBinActive[P[i].TimeBin] || UseAllParticles)
-            {
-                float star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
-                if(star_age < 0.035) {sphcost += 4.0;}
-            }
-        }
-#endif
-        
+        NtypeLocal[P[i].Type]++;
+        double wt = domain_particle_cost_multiplier(i);
+        gravcost += (1 + wt) * domain_particle_costfactor(i);
+        if(TimeBinActive[P[i].TimeBin] || UseAllParticles) {sphcost += wt;}
     }
-  /* because Ntype[] is of type `long long', we cannot do a simple
-   * MPI_Allreduce() to sum the total particle numbers 
-   */
+  /* because Ntype[] is of type `long long', we cannot do a simple MPI_Allreduce() to sum the total particle numbers */
   sumup_large_ints(6, NtypeLocal, Ntype);
 
 
@@ -648,9 +570,6 @@ int domain_decompose(void)
       sumloadstars = maxloadstars = 0;
       //sumworkstars = maxworkstars = 0;
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-      sumloadbhs = maxloadbhs = 0;
-#endif
 
       for(i = 0; i < NTask; i++)
 	{
@@ -662,9 +581,6 @@ int domain_decompose(void)
 	  sumloadstars += list_loadstars[i];
       //sumworkstars += list_workstars[i];
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-	  sumloadbhs  += list_loadBHs[i];
-#endif
 
 	  if(list_load[i] > maxload)
 	    maxload = list_load[i];
@@ -675,10 +591,6 @@ int domain_decompose(void)
 #ifdef SEPARATE_STELLARDOMAINDECOMP
 	  if(list_loadstars[i] > maxloadstars)
 	    maxloadstars = list_loadstars[i];
-#endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-	  if(list_loadBHs[i] > maxloadbhs)
-	    maxloadbhs = list_loadBHs[i];
 #endif
 
 	  if(list_work[i] > maxwork)
@@ -777,16 +689,9 @@ int domain_check_memory_bound(int multipledomains)
   //double workstars;
 #endif
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  int BHsload, max_BHsload;
-#endif
-
   max_load = max_sphload = 0;
 #ifdef SEPARATE_STELLARDOMAINDECOMP
   max_starsload = 0;
-#endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  max_BHsload = 0;
 #endif
 
   for(ta = 0; ta < NTask; ta++)
@@ -796,9 +701,6 @@ int domain_check_memory_bound(int multipledomains)
 #ifdef SEPARATE_STELLARDOMAINDECOMP
       starsload = 0;
       //workstars = 0;
-#endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-      BHsload = 0;
 #endif
 
       for(m = 0; m < multipledomains; m++)
@@ -812,9 +714,6 @@ int domain_check_memory_bound(int multipledomains)
 	    starsload += domainCountStars[i];
         //workstars += domainWorkStars[i];
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-	    BHsload += domainCountBHs[i];
-#endif
 	  }
 
       list_load[ta] = load;
@@ -825,9 +724,6 @@ int domain_check_memory_bound(int multipledomains)
       list_loadstars[ta] = starsload;
       //list_workstars[ta] = workstars;
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-      list_loadBHs[ta] = BHsload;
-#endif
 
       if(load > max_load)
 	max_load = load;
@@ -836,10 +732,6 @@ int domain_check_memory_bound(int multipledomains)
 #ifdef SEPARATE_STELLARDOMAINDECOMP
       if(starsload > max_starsload)
 	max_starsload = starsload;
-#endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-      if(BHsload > max_BHsload)
-	max_BHsload = BHsload;
 #endif
     }
 
@@ -850,9 +742,6 @@ int domain_check_memory_bound(int multipledomains)
       sphload = max_sphload;
 #ifdef SEPARATE_STELLARDOMAINDECOMP
       starsload = max_starsload;
-#endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-      BHsload = max_BHsload;
 #endif
 
       for(i = 0; i < NumPart; i++)
@@ -866,19 +755,12 @@ int domain_check_memory_bound(int multipledomains)
 	      if(P[i].Type == 4)
 		starsload++;
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-	      if(P[i].Type == 5)
-		BHsload++;
-#endif
 	    }
 	}
       MPI_Allreduce(&load, &max_load, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
       MPI_Allreduce(&sphload, &max_sphload, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 #ifdef SEPARATE_STELLARDOMAINDECOMP
       MPI_Allreduce(&starsload, &max_starsload, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-#endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-      MPI_Allreduce(&BHsload, &max_BHsload, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 #endif
     }
 #endif
@@ -918,18 +800,6 @@ int domain_check_memory_bound(int multipledomains)
     }
 #endif
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  if(max_BHsload > maxLoadBHs)
-    {
-      if(ThisTask == 0)
-	{
-	  printf("desired memory imbalance=%g  (BHs) (limit=%d, needed=%d)\n",
-		 (max_BHsload * All.PartAllocFactor) / maxLoadBHs, maxLoadBHs, max_BHsload);
-	}
-
-      return 1;
-    }
-#endif
   return 0;
 }
 
@@ -964,24 +834,6 @@ void domain_exchange(void)
   offset_recv_stars = (int *) mymalloc("offset_recv_stars", NTask * sizeof(int));
 #endif
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  int count_togo_BHs = 0, count_get_BHs = 0;
-  int *count_BHs, *offset_BHs;
-  int *count_recv_BHs, *offset_recv_BHs;
-  struct bh_particle_data *BHBuf;
-
-  count_BHs = (int *) mymalloc("count_BHs", NTask * sizeof(int));
-  offset_BHs = (int *) mymalloc("offset_BHs", NTask * sizeof(int));
-  count_recv_BHs = (int *) mymalloc("count_recv_BHs", NTask * sizeof(int));
-  offset_recv_BHs = (int *) mymalloc("offset_recv_BHs", NTask * sizeof(int));
-
-  for(i = 0; i < N_BHs; i++)
-    if(BHP[i].PID >= NumPart || (P[BHP[i].PID].Type & 15) != 5)
-      {
-	printf("Task %d: i=%d/%d, pid=%u, type=%d\n", ThisTask, i, N_BHs, BHP[i].PID, P[BHP[i].PID].Type);
-	endrun(987654);
-      }
-#endif
 
   long prec_offset, prec_count;
   long *decrease;
@@ -1006,15 +858,6 @@ void domain_exchange(void)
   prec_offset = offset_stars[NTask - 1] + toGoStars[NTask - 1];
 #endif
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  offset_BHs[0] = prec_offset;
-  for(i = 1; i < NTask; i++)
-    {
-      offset_BHs[i] = offset_BHs[i - 1] + toGoBHs[i - 1];
-      decrease[i] += toGoBHs[i - 1];
-    }
-  prec_offset = offset_BHs[NTask - 1] + toGoBHs[NTask - 1];
-#endif
 
   offset[0] = prec_offset;
   for(i = 1; i < NTask; i++)
@@ -1035,10 +878,6 @@ void domain_exchange(void)
       count_get_stars += toGetStars[i];
 #endif
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-      count_togo_BHs += toGoBHs[i];
-      count_get_BHs += toGetBHs[i];
-#endif
     }
 
   partBuf = (struct particle_data *) mymalloc("partBuf", count_togo * sizeof(struct particle_data));
@@ -1062,11 +901,6 @@ void domain_exchange(void)
     count_stars[i] = 0;
 #endif
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  BHBuf = (struct bh_particle_data *) mymalloc("BHBuf", count_togo_BHs * sizeof(struct bh_particle_data));
-  for(i = 0; i < NTask; i++)
-    count_BHs[i] = 0;
-#endif
 
   for(n = 0; n < NumPart; n++)
     {
@@ -1113,15 +947,6 @@ void domain_exchange(void)
 	      count_stars[target]++;
 	    }
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-	  else if(P[n].Type == 5)
-	    {
-	      partBuf[offset_BHs[target] + count_BHs[target]] = P[n];
-	      keyBuf[offset_BHs[target] + count_BHs[target]] = Key[n];
-	      BHBuf[offset_BHs[target] - offset_BHs[0] + count_BHs[target]] = BHP[P[n].pt.BHID];
-	      count_BHs[target]++;
-	    }
-#endif
 	  else
 	    {
 	      partBuf[offset[target] + count[target]] = P[n];
@@ -1160,10 +985,6 @@ void domain_exchange(void)
 
 	      P[N_gas - 1] = P[NumPart - 1];
 	      Key[N_gas - 1] = Key[NumPart - 1];
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-	      if((P[N_gas - 1].Type & 15) == 5)
-		BHP[P[N_gas - 1].pt.BHID].PID = N_gas - 1;
-#endif
 
 	      NumPart--;
 	      N_gas--;
@@ -1176,10 +997,6 @@ void domain_exchange(void)
 		{
 		  P[n] = P[NumPart - 1];
 		  Key[n] = Key[NumPart - 1];
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-		  if((P[n].Type & 15) == 5)
-		    BHP[P[n].pt.BHID].PID = n;
-#endif
 		}
 
 	      NumPart--;
@@ -1187,33 +1004,10 @@ void domain_exchange(void)
 	      n--;
 	    }
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-	  else if(P[n].Type == 5)
-	    {
-	      BHP[P[n].pt.BHID] = BHP[N_BHs - 1];
-	      P[BHP[N_BHs - 1].PID].pt.BHID = P[n].pt.BHID;
-
-	      if(n < NumPart - 1)
-		{
-		  P[n] = P[NumPart - 1];
-		  Key[n] = Key[NumPart - 1];
-		  if((P[n].Type & 15) == 5)
-		    BHP[P[n].pt.BHID].PID = n;
-		}
-
-	      NumPart--;
-	      N_BHs--;
-	      n--;
-	    }
-#endif
 	  else
 	    {
 	      P[n] = P[NumPart - 1];
 	      Key[n] = Key[NumPart - 1];
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-	      if((P[n].Type & 15) == 5)
-		BHP[P[n].pt.BHID].PID = n;
-#endif
 	      NumPart--;
 	      n--;
 	    }
@@ -1230,9 +1024,6 @@ void domain_exchange(void)
 #ifdef SEPARATE_STELLARDOMAINDECOMP
   count_totget += count_get_stars;
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  count_totget += count_get_BHs;
-#endif
 
   if(count_totget)
     {
@@ -1240,18 +1031,6 @@ void domain_exchange(void)
       memmove(Key + N_gas + count_totget, Key + N_gas, (NumPart - N_gas) * sizeof(peanokey));
     }
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  for(n = 0; n < N_BHs; n++)
-    {
-      BHP[n].PID += count_totget;
-      if(P[BHP[n].PID].pt.BHID != n)
-	{
-	  printf("[Task %d] some serious error in adjusting the memory before particle exchange\n", ThisTask);
-	  fflush(stdout);
-	  endrun(991001);
-	}
-    }
-#endif
 
   for(i = 0; i < NTask; i++)
     {
@@ -1260,10 +1039,6 @@ void domain_exchange(void)
 #ifdef SEPARATE_STELLARDOMAINDECOMP
       count_recv_stars[i] = toGetStars[i];
       count_recv[i] -= toGetStars[i];
-#endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-      count_recv_BHs[i] = toGetBHs[i];
-      count_recv[i] -= toGetBHs[i];
 #endif
     }
 
@@ -1279,12 +1054,6 @@ void domain_exchange(void)
   prec_count += count_get_stars;
 #endif
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  offset_recv_BHs[0] = prec_count;
-  for(i = 1; i < NTask; i++)
-    offset_recv_BHs[i] = offset_recv_BHs[i - 1] + count_recv_BHs[i - 1];
-  prec_count += count_get_BHs;
-#endif
 
   offset_recv[0] = NumPart - N_gas + prec_count;
 
@@ -1301,9 +1070,6 @@ void domain_exchange(void)
   max_requests += 6; // check this, see what its hardwired to //
 #endif
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  max_requests += 6;
-#endif
 
 #ifdef CHIMES 
   max_requests += 4; 
@@ -1351,22 +1117,6 @@ void domain_exchange(void)
 	    }
 #endif
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-	  if(count_recv_BHs[target] > 0)
-	    {
-	      MPI_Irecv(P + offset_recv_BHs[target],
-			count_recv_BHs[target] * sizeof(struct particle_data), MPI_BYTE, target,
-			TAG_PDATA_BHS, MPI_COMM_WORLD, &requests[n_requests++]);
-
-	      MPI_Irecv(Key + offset_recv_BHs[target], count_recv_BHs[target] * sizeof(peanokey),
-			MPI_BYTE, target, TAG_KEY_BHS, MPI_COMM_WORLD, &requests[n_requests++]);
-
-	      MPI_Irecv(BHP + N_BHs + offset_recv_BHs[target] - offset_recv_stars[NTask - 1] -
-			count_recv_stars[NTask - 1],
-			count_recv_BHs[target] * sizeof(struct bh_particle_data), MPI_BYTE, target,
-			TAG_BHDATA, MPI_COMM_WORLD, &requests[n_requests++]);
-	    }
-#endif
 
 	  if(count_recv[target] > 0)
 	    {
@@ -1421,20 +1171,6 @@ void domain_exchange(void)
 	    }
 #endif
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-	  if(count_BHs[target] > 0)
-	    {
-	      MPI_Isend(partBuf + offset_BHs[target], count_BHs[target] * sizeof(struct particle_data),
-			MPI_BYTE, target, TAG_PDATA_BHS, MPI_COMM_WORLD, &requests[n_requests++]);
-
-	      MPI_Isend(keyBuf + offset_BHs[target], count_BHs[target] * sizeof(peanokey),
-			MPI_BYTE, target, TAG_KEY_BHS, MPI_COMM_WORLD, &requests[n_requests++]);
-
-	      MPI_Isend(BHBuf + offset_BHs[target] - offset_stars[NTask - 1] - count_stars[NTask - 1],
-			count_BHs[target] * sizeof(struct bh_particle_data), MPI_BYTE, target, TAG_BHDATA,
-			MPI_COMM_WORLD, &requests[n_requests++]);
-	    }
-#endif
 
 	  if(count[target] > 0)
 	    {
@@ -1511,29 +1247,6 @@ void domain_exchange(void)
 	    }
 
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-	  if(count_BHs[target] > 0 || count_recv_BHs[target] > 0)
-	    {
-	      MPI_Sendrecv(partBuf + offset_BHs[target], count_BHs[target] * sizeof(struct particle_data),
-			   MPI_BYTE, target, TAG_PDATA_BHS,
-			   P + offset_recv_BHs[target],
-			   count_recv_BHs[target] * sizeof(struct particle_data), MPI_BYTE, target,
-			   TAG_PDATA_BHS, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-	      MPI_Sendrecv(BHBuf + offset_BHs[target] - offset_stars[NTask - 1] - count_stars[NTask - 1],
-			   count_BHs[target] * sizeof(struct bh_particle_data), MPI_BYTE, target,
-			   TAG_BHDATA,
-			   BHP + N_BHs + offset_recv_BHs[target] - offset_recv_stars[NTask - 1] -
-			   count_recv_stars[NTask - 1],
-			   count_recv_BHs[target] * sizeof(struct bh_particle_data), MPI_BYTE, target,
-			   TAG_BHDATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-	      MPI_Sendrecv(keyBuf + offset_BHs[target], count_BHs[target] * sizeof(peanokey),
-			   MPI_BYTE, target, TAG_KEY_BHS,
-			   Key + offset_recv_BHs[target], count_recv_BHs[target] * sizeof(peanokey),
-			   MPI_BYTE, target, TAG_KEY_BHS, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	    }
-#endif
 
 	  if(count[target] > 0 || count_recv[target] > 0)
 	    {
@@ -1576,26 +1289,6 @@ void domain_exchange(void)
   N_stars += count_get_stars;
 #endif
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  for(i = 0; i < count_get_BHs; i++)
-    {
-      if(P[offset_recv_BHs[0] + i].Type != 5)
-	printf("haloa wow!!!\n");
-      P[offset_recv_BHs[0] + i].pt.BHID = N_BHs + i;
-      BHP[N_BHs + i].PID = offset_recv_BHs[0] + i;
-    }
-  N_BHs += count_get_BHs;
-
-  if(N_BHs > All.MaxPartBH)
-    endrun(787877);
-
-  for(i = 0; i < N_BHs; i++)
-    if(BHP[i].PID >= NumPart || (P[BHP[i].PID].Type & 15) != 5)
-      {
-	printf("Task %d: i=%d/%d, pid=%u, type=%d\n", ThisTask, i, N_BHs, BHP[i].PID, P[BHP[i].PID].Type);
-	endrun(987655);
-      }
-#endif
 
   if(NumPart > All.MaxPart)
     {
@@ -1606,9 +1299,6 @@ void domain_exchange(void)
   if(N_gas > All.MaxPartSph)
     endrun(787879);
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  myfree(BHBuf);
-#endif
 
   myfree(keyBuf);
 #ifdef CHIMES 
@@ -1619,12 +1309,6 @@ void domain_exchange(void)
   myfree(sphBuf);
   myfree(partBuf);
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  myfree(offset_recv_BHs);
-  myfree(count_recv_BHs);
-  myfree(offset_BHs);
-  myfree(count_BHs);
-#endif
 
 #ifdef SEPARATE_STELLARDOMAINDECOMP
   myfree(offset_recv_stars);
@@ -2146,15 +1830,9 @@ int domain_countToGo(size_t nlimit)
 #ifdef SEPARATE_STELLARDOMAINDECOMP
       toGoStars[n] = 0;
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-      toGoBHs[n] = 0;
-#endif
     }
 
   package = (sizeof(struct particle_data) + sizeof(struct sph_particle_data) + sizeof(peanokey));
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  package += sizeof(struct bh_particle_data);
-#endif
 
   if(package >= nlimit)
     endrun(212);
@@ -2191,13 +1869,6 @@ int domain_countToGo(size_t nlimit)
 		  toGoStars[DomainTask[no]] += 1;
 		}
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-	      if((P[n].Type & 15) == 5)
-		{
-		  toGoBHs[DomainTask[no]] += 1;
-		  nlimit -= sizeof(struct bh_particle_data);
-		}
-#endif
 	      P[n].Type |= 16;	/* flag this particle for export */
 	    }
 	}
@@ -2207,9 +1878,6 @@ int domain_countToGo(size_t nlimit)
   MPI_Alltoall(toGoSph, 1, MPI_INT, toGetSph, 1, MPI_INT, MPI_COMM_WORLD);
 #ifdef SEPARATE_STELLARDOMAINDECOMP
   MPI_Alltoall(toGoStars, 1, MPI_INT, toGetStars, 1, MPI_INT, MPI_COMM_WORLD);
-#endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  MPI_Alltoall(toGoBHs, 1, MPI_INT, toGetBHs, 1, MPI_INT, MPI_COMM_WORLD);
 #endif
 
   if(package >= nlimit)
@@ -2232,17 +1900,11 @@ int domain_countToGo(size_t nlimit)
 #ifdef SEPARATE_STELLARDOMAINDECOMP
       MPI_Allgather(&N_stars, 1, MPI_INT, list_N_stars, 1, MPI_INT, MPI_COMM_WORLD);
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-      MPI_Allgather(&N_BHs, 1, MPI_INT, list_N_BHs, 1, MPI_INT, MPI_COMM_WORLD);
-#endif
 
       int flag, flagsum, ntoomany, ta, i, target;
       int count_togo, count_toget, count_togo_sph, count_toget_sph;
 #ifdef SEPARATE_STELLARDOMAINDECOMP
       int ntoomanystars, count_togo_stars, count_toget_stars;
-#endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-      int ntoomanyBHs, count_togo_BHs, count_toget_BHs;
 #endif
 
       do
@@ -2262,9 +1924,6 @@ int domain_countToGo(size_t nlimit)
 #ifdef SEPARATE_STELLARDOMAINDECOMP
 		      count_togo_stars = count_toget_stars = 0;
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-		      count_togo_BHs = count_toget_BHs = 0;
-#endif
 		      for(i = 0; i < NTask; i++)
 			{
 			  count_togo += toGo[i];
@@ -2274,10 +1933,6 @@ int domain_countToGo(size_t nlimit)
 #ifdef SEPARATE_STELLARDOMAINDECOMP
 			  count_togo_stars += toGoStars[i];
 			  count_toget_stars += toGetStars[i];
-#endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-			  count_togo_BHs += toGoBHs[i];
-			  count_toget_BHs += toGetBHs[i];
 #endif
 			}
 		    }
@@ -2290,10 +1945,6 @@ int domain_countToGo(size_t nlimit)
 		  MPI_Bcast(&count_toget_stars, 1, MPI_INT, ta, MPI_COMM_WORLD);
 #endif
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-		  MPI_Bcast(&count_togo_BHs, 1, MPI_INT, ta, MPI_COMM_WORLD);
-		  MPI_Bcast(&count_toget_BHs, 1, MPI_INT, ta, MPI_COMM_WORLD);
-#endif
 
 		  int ifntoomany;
 
@@ -2303,10 +1954,6 @@ int domain_countToGo(size_t nlimit)
 		  ntoomanystars =
 		    list_N_stars[ta] + count_toget_stars - count_togo_stars - All.MaxPart;
 		  ifntoomany = ifntoomany || (ntoomanystars > 0);
-#endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-		  ntoomanyBHs = list_N_BHs[ta] + count_toget_BHs - count_togo_BHs - All.MaxPartBH;
-		  ifntoomany = ifntoomany || (ntoomanyBHs > 0);
 #endif
 
 		  if(ifntoomany)
@@ -2332,18 +1979,6 @@ int domain_countToGo(size_t nlimit)
 			      if(flagsum > 25)
 				printf("list_N_stars[ta=%d]=%d  count_toget_stars=%d count_togo_stars=%d MaxPartStars=%d\n",
 				       ta, list_N_stars[ta], count_toget_stars, count_togo_stars, All.MaxPart);
-			      fflush(stdout);
-			    }
-#endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-			  if(ntoomanyBHs > 0)
-			    {
-			      printf
-				("exchange needs to be modified because I can't receive %d BH-particles on task=%d\n",
-				 ntoomanyBHs, ta);
-			      if(flagsum > 25)
-				printf("list_N_BHs[ta=%d]=%d  count_toget_BHs=%d count_togo_BHs=%d MaxPartBH=%d\n",
-				       ta, list_N_BHs[ta], count_toget_BHs, count_togo_BHs, All.MaxPartBH);
 			      fflush(stdout);
 			    }
 #endif
@@ -2373,15 +2008,6 @@ int domain_countToGo(size_t nlimit)
 				  ntoomanystars--;
 				}
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-			      if(toGoBHs[ta] > 0 && ntoomanyBHs > 0)
-				{
-				  toGoBHs[ta]--;
-				  count_toget_BHs--;
-				  count_toget--;
-				  ntoomanyBHs--;
-				}
-#endif
 			    }
 
 			  MPI_Bcast(&ntoomany, 1, MPI_INT, i, MPI_COMM_WORLD);
@@ -2390,9 +2016,6 @@ int domain_countToGo(size_t nlimit)
 #ifdef SEPARATE_STELLARDOMAINDECOMP
 			  MPI_Bcast(&count_toget_stars, 1, MPI_INT, i, MPI_COMM_WORLD);
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-			  MPI_Bcast(&count_toget_BHs, 1, MPI_INT, i, MPI_COMM_WORLD);
-#endif
 			  i++;
 			  if(i >= NTask)
 			    i = 0;
@@ -2400,9 +2023,6 @@ int domain_countToGo(size_t nlimit)
 			  ifntoomany = (ntoomany > 0);
 #ifdef SEPARATE_STELLARDOMAINDECOMP
 			  ifntoomany = ifntoomany || (ntoomanystars > 0);
-#endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-			  ifntoomany = ifntoomany || (ntoomanyBHs > 0);
 #endif
 			}
 		    }
@@ -2464,10 +2084,6 @@ int domain_countToGo(size_t nlimit)
 	      int *local_toGoStars;
 	      local_toGoStars = (int *) mymalloc("	      local_toGoStars", NTask * sizeof(int));
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-	      int *local_toGoBHs;
-	      local_toGoBHs = (int *) mymalloc("	      local_toGoBHs", NTask * sizeof(int));
-#endif
 
 	      for(n = 0; n < NTask; n++)
 		{
@@ -2475,9 +2091,6 @@ int domain_countToGo(size_t nlimit)
 		  local_toGoSph[n] = 0;
 #ifdef SEPARATE_STELLARDOMAINDECOMP
 		  local_toGoStars[n] = 0;
-#endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-		  local_toGoBHs[n] = 0;
 #endif
 		}
 
@@ -2517,17 +2130,6 @@ int domain_countToGo(size_t nlimit)
 			    }
 			}
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-		      else if((P[n].Type & 15) == 5)
-			{
-			  if(local_toGoBHs[target] < toGoBHs[target] && local_toGo[target] < toGo[target])
-			    {
-			      local_toGo[target] += 1;
-			      local_toGoBHs[target] += 1;
-			      P[n].Type |= 16;
-			    }
-			}
-#endif
 		      else
 			{
 			  if(local_toGo[target] < toGo[target])
@@ -2546,18 +2148,11 @@ int domain_countToGo(size_t nlimit)
 #ifdef SEPARATE_STELLARDOMAINDECOMP
 		  toGoStars[n] = local_toGoStars[n];
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-		  toGoBHs[n] = local_toGoBHs[n];
-#endif
 		}
 
 	      MPI_Alltoall(toGo, 1, MPI_INT, toGet, 1, MPI_INT, MPI_COMM_WORLD);
 	      MPI_Alltoall(toGoSph, 1, MPI_INT, toGetSph, 1, MPI_INT, MPI_COMM_WORLD);
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-	      MPI_Alltoall(toGoBHs, 1, MPI_INT, toGetBHs, 1, MPI_INT, MPI_COMM_WORLD);
-	      myfree(local_toGoBHs);
-#endif
 #ifdef SEPARATE_STELLARDOMAINDECOMP
 	      MPI_Alltoall(toGoStars, 1, MPI_INT, toGetStars, 1, MPI_INT, MPI_COMM_WORLD);
 	      myfree(local_toGoStars);
@@ -2660,7 +2255,7 @@ int domain_check_for_local_refine(int i, double countlimit, double costlimit)
 			  break;
 		      }
 
-		  topNodes[sub].Cost += domain_particle_costfactor(mp[p].index);
+		  topNodes[sub].Cost += (1 + domain_particle_cost_multiplier(mp[p].index)) * domain_particle_costfactor(mp[p].index);
 		  topNodes[sub].Count++;
 		}
 
@@ -3053,10 +2648,6 @@ void domain_sumCost(void)
   local_domainCountStars = (int *) mymalloc("local_domainCountStars", NTopnodes * sizeof(int));
   //local_domainWorkStars = (float *) mymalloc("local_domainWorkStars", NTopnodes * sizeof(float));
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  int *local_domainCountBHs;
-  local_domainCountBHs = (int *) mymalloc("local_domainCountBHs", NTopnodes * sizeof(int));
-#endif
 
 
   NTopleaves = 0;
@@ -3071,9 +2662,6 @@ void domain_sumCost(void)
 #ifdef SEPARATE_STELLARDOMAINDECOMP
       //local_domainWorkStars[i] = 0;
       local_domainCountStars[i] = 0;
-#endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-      local_domainCountBHs[i] = 0;
 #endif
     }
 
@@ -3095,38 +2683,14 @@ void domain_sumCost(void)
 	no = topNodes[no].Daughter + (Key[n] - topNodes[no].StartKey) / (topNodes[no].Size >> 3);
 
       no = topNodes[no].Leaf;
-
-      local_domainWork[no] += (float) domain_particle_costfactor(n);
-
+      double wt = domain_particle_cost_multiplier(n);
+      local_domainWork[no] += (1 + wt) * domain_particle_costfactor(n);
       local_domainCount[no] += 1;
-        
-        if(P[n].Type == 0)
-        {
-            local_domainCountSph[no] += 1;
-            if(TimeBinActive[P[n].TimeBin] || UseAllParticles)
-                local_domainWorkSph[no] += 1.0;
-        }
-#if defined(GALSF) && defined(GALSF_FB_SNE_HEATING)
-        if(((P[n].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[n].Type == 2)||(P[n].Type==3))))&&(P[n].Mass>0))
-        {
-            if(TimeBinActive[P[n].TimeBin] || UseAllParticles)
-            {
-                float star_age = evaluate_stellar_age_Gyr(P[n].StellarAge);
-                if(star_age < 0.035) {local_domainWorkSph[no] += 4.0;}
-            }
-        }
-#endif
+      if(TimeBinActive[P[n].TimeBin] || UseAllParticles) {local_domainWorkSph[no] += wt;}
+      if(P[n].Type == 0) {local_domainCountSph[no] += 1;}
+
 #ifdef SEPARATE_STELLARDOMAINDECOMP
-      if(P[n].Type == 4)
-        {
-        local_domainCountStars[no] += 1;
-        //if(TimeBinActive[P[n].TimeBin] || UseAllParticles)
-        //    local_domainWorkStars[no] += 1.0;
-        }
-#endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-      if(P[n].Type == 5)
-	local_domainCountBHs[no] += 1;
+        if(P[n].Type == 4) {local_domainCountStars[no] += 1;}
 #endif
     }
 
@@ -3134,10 +2698,6 @@ void domain_sumCost(void)
   MPI_Allreduce(local_domainWorkSph, domainWorkSph, NTopleaves, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(local_domainCount, domainCount, NTopleaves, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(local_domainCountSph, domainCountSph, NTopleaves, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-  MPI_Allreduce(local_domainCountBHs, domainCountBHs, NTopleaves, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-  myfree(local_domainCountBHs);
-#endif
 #ifdef SEPARATE_STELLARDOMAINDECOMP
   //MPI_Allreduce(local_domainWorkStars, domainWorkStars, NTopleaves, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(local_domainCountStars, domainCountStars, NTopleaves, MPI_INT, MPI_SUM, MPI_COMM_WORLD);

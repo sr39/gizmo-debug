@@ -7,6 +7,7 @@
 
 #include "../allvars.h"
 #include "../proto.h"
+#include "../kernel.h"
 
 /*
  
@@ -54,17 +55,47 @@ void apply_grain_dragforce(void)
                     if(vgas_mag > 0)
                     {
                         vgas_mag = sqrt(vgas_mag) / All.cf_atime;
-                        double x0 = 0.469993 * vgas_mag/cs; // (3/8)*sqrt[pi/2]*|vgas-vgrain|/cs //
-                        double tstop_inv = 1.59577 * rho_gas * cs / (R_grain_code * rho_grain_code); // 2*sqrt[2/pi] * 1/tstop //
-#ifdef GRAIN_EPSTEIN
+                        double x0 = 0.469993*sqrt(GAMMA) * vgas_mag/cs; // (3/8)*sqrt[pi/2]*|vgas-vgrain|/cs //
+                        double tstop_inv = 1.59577/sqrt(GAMMA) * rho_gas * cs / (R_grain_code * rho_grain_code); // 2*sqrt[2/pi] * 1/tstop //
+
+#ifdef GRAIN_LORENTZFORCE
+                        /* calculate the grain charge following Draine & Sutin */
+                        double cs_cgs = cs * All.UnitVelocity_in_cm_per_s;
+                        double tau_draine_sutin = R_grain_cgs * (2.3*PROTONMASS) * (cs_cgs*cs_cgs) / (GAMMA * ELECTRONCHARGE*ELECTRONCHARGE);
+                        double Z_grain = -DMAX( 1./(1. + sqrt(1.0e-3/tau_draine_sutin)) , 2.5*tau_draine_sutin );
+                        if(isnan(Z_grain)||(Z_grain>=0)) {Z_grain=0;}
+#endif
+
+#ifdef GRAIN_EPSTEIN_STOKES
                         double mu = 2.3 * PROTONMASS;
                         double temperature = mu * (P[i].Gas_InternalEnergy*All.UnitEnergy_in_cgs*All.HubbleParam/All.UnitMass_in_g) / BOLTZMANN;
-                        double cross_section = GRAIN_EPSTEIN * 2.0e-15 * (1. + 70./temperature);
+                        double cross_section = GRAIN_EPSTEIN_STOKES * 2.0e-15 * (1. + 70./temperature);
                         cross_section /= (All.UnitLength_in_cm * All.UnitLength_in_cm / (All.HubbleParam*All.HubbleParam));
                         double n_mol = rho_gas / (mu * All.HubbleParam/All.UnitMass_in_g);
                         double mean_free_path = 1 / (n_mol * cross_section); // should be in code units now //
                         double corr_mfp = R_grain_code / ((9./4.) * mean_free_path);
                         if(corr_mfp > 1) {tstop_inv /= corr_mfp;}
+#ifdef GRAIN_LORENTZFORCE
+                        /* also have charged grains, so we will calculate Coulomb forces as well */
+                        double a_Coulomb = sqrt(2.*GAMMA*GAMMA*GAMMA/(9.*M_PI));
+                        double tstop_Coulomb_inv = 0.797885/sqrt(GAMMA) * rho_gas * cs / (R_grain_code * rho_grain_code); // base normalization //
+                        tstop_Coulomb_inv /= (1. + a_Coulomb *(vgas_mag/cs)*(vgas_mag/cs)*(vgas_mag/cs)) * sqrt(1.+x0*x0); // velocity dependence (force becomes weak when super-sonic)
+                        tstop_Coulomb_inv *= (Z_grain/tau_draine_sutin) * (Z_grain/tau_draine_sutin) / 17.; // coulomb attraction terms, assuming ions have charge ~1, and Coulomb logarithm is 17
+                        // don't need super-accuration gas ionization states, just need approximate estimate, which we can make based on temperature //
+                        double T_Kelvin = (2.3*PROTONMASS) * (cs_cgs*cs_cgs) / (1.3807e-16 * GAMMA), f_ion_to_use = 0; // temperature in K
+#ifdef COOLING  // in this case, have the ability to calculate more accurate ionization fraction
+                        {
+                            double u_tmp, ne_tmp = 1, nh0_tmp = 0, mu_tmp = 1, temp_tmp, nHeII_tmp, nhp_tmp, nHe0_tmp, nHepp_tmp;
+                            u_tmp = 1.3807e-16 * T_Kelvin / (2.3*PROTONMASS) * (All.UnitMass_in_g/All.UnitEnergy_in_cgs); // needs to be in code units
+                            temp_tmp = ThermalProperties(u_tmp, rho_gas, -1, &mu_tmp, &ne_tmp, &nh0_tmp, &nhp_tmp, &nHe0_tmp, &nHeII_tmp, &nHepp_tmp);
+                            f_ion_to_use = DMIN(ne_tmp , 1.);
+                        }
+#else           // without cooling active, use a simple approximate guess for ionization
+                        if(T_Kelvin > 1000.) {f_ion_to_use = exp(-15000./T_Kelvin);}
+#endif
+                        tstop_Coulomb_inv *= f_ion_to_use; // correct for ionization fraction
+                        tstop_inv += tstop_Coulomb_inv; // add both forces
+#endif // LORENTZ force (Coulomb computation)
 #endif
                         double C1 = (-1-sqrt(1+x0*x0)) / x0;
                         double xf = 0.0;
@@ -77,7 +108,7 @@ void apply_grain_dragforce(void)
                         double slow_fac = 1 - xf / x0;
                         // note that, with an external (gravitational) acceleration, we can still solve this equation for the relevant update //
 
-                        double external_forcing[3];
+                        double dv[3]={0}, external_forcing[3]={0};
                         for(k=0;k<3;k++) {external_forcing[k] = 0;}
                         /* this external_forcing parameter includes additional grain-specific forces. note that -anything- which imparts an 
                             identical acceleration onto gas and dust will cancel in the terms in t_stop, and just act like a 'normal' acceleration
@@ -94,14 +125,23 @@ void apply_grain_dragforce(void)
                         lorentz_units *= (ELECTRONCHARGE/C) * All.UnitVelocity_in_cm_per_s / (All.UnitMass_in_g / All.HubbleParam); // converts acceleration to cgs
                         lorentz_units /= All.UnitVelocity_in_cm_per_s / (All.UnitTime_in_s / All.HubbleParam); // converts it to code-units acceleration
 
-                        /* calculate the grain charge following Draine & Sutin */
-                        double cs_cgs = cs * All.UnitVelocity_in_cm_per_s;
-                        double tau_draine_sutin = R_grain_cgs * (2.3*PROTONMASS) * (cs_cgs*cs_cgs) / (ELECTRONCHARGE*ELECTRONCHARGE);
-                        double Z_grain = -DMAX( 1./(1. + sqrt(1.0e-3/tau_draine_sutin)) , 2.5*tau_draine_sutin );
-                        if(isnan(Z_grain)||(Z_grain>=0)) {Z_grain=0;}
+                        /* define unit vectors and B for evolving the lorentz force */
+                        double bhat[3]={0}, bmag=0, efield[3]={0}, efield_coeff=0;
+                        for(k=0;k<3;k++) {bhat[k]=P[i].Gas_B[k]; bmag+=bhat[k]*bhat[k]; dv[k]=P[i].Vel[k]-P[i].Gas_Velocity[k];}
+                        if(bmag>0) {bmag=sqrt(bmag); for(k=0;k<3;k++) {bhat[k]/=bmag;}} else {bmag=0;}
+                        double lorentz_coeff = (0.5*dt) * bmag * Z_grain / grain_mass * lorentz_units; // multiply in full timestep //
                         
-                        double grain_charge_cinv = Z_grain / grain_mass * lorentz_units;
-                        for(k=0;k<3;k++) {external_forcing[k] += grain_charge_cinv * v_cross_B[k];}
+                        /* now apply the boris integrator */
+                        double v_m[3]={0}, v_t[3]={0}, v_p[3]={0}, vcrosst[3]={0};
+                        for(k=0;k<3;k++) {v_m[k] = dv[k] + 0.5*efield_coeff*efield[k];} // half-step from E-field
+                        /* cross-product for rotation */
+                        vcrosst[0] = v_m[1]*bhat[2] - v_m[2]*bhat[1]; vcrosst[1] = v_m[2]*bhat[0] - v_m[0]*bhat[2]; vcrosst[2] = v_m[0]*bhat[1] - v_m[1]*bhat[0];
+                        for(k=0;k<3;k++) {v_t[k] = v_m[k] + lorentz_coeff * vcrosst[k];} // first half-rotation
+                        vcrosst[0] = v_t[1]*bhat[2] - v_t[2]*bhat[1]; vcrosst[1] = v_t[2]*bhat[0] - v_t[0]*bhat[2]; vcrosst[2] = v_t[0]*bhat[1] - v_t[1]*bhat[0];
+                        for(k=0;k<3;k++) {v_p[k] = v_m[k] + (2.*lorentz_coeff/(1.+lorentz_coeff*lorentz_coeff)) * vcrosst[k];} // second half-rotation
+                        for(k=0;k<3;k++) {v_p[k] += 0.5*efield_coeff*efield[k];} // half-step from E-field
+                        /* calculate effective acceleration from discrete step in velocity */
+                        for(k=0;k<3;k++) {external_forcing[k] += (v_p[k] - dv[k]) / dt;}
                         /* note: if grains moving super-sonically with respect to gas, and charge equilibration time is much shorter than the 
                             streaming/dynamical timescales, then the charge is slightly reduced, because the ion collision rate is increased while the 
                             electron collision rate is increased less (since electrons are moving much faster, we assume the grain is still sub-sonic 
@@ -112,7 +152,6 @@ void apply_grain_dragforce(void)
                         
                         double delta_egy = 0;
                         double delta_mom[3];
-                        double dv[3];
                         for(k=0; k<3; k++)
                         {
                             /* measure the imparted energy and momentum as if there were no external acceleration */
@@ -138,8 +177,8 @@ void apply_grain_dragforce(void)
 
                     
 #ifdef GRAIN_BACKREACTION
-                        double dvel, degy, r2nearest, *pos,h,h2,hinv,hinv3,r2,rho,u,wk;;
-                        int N_MAX_KERNEL,N_MIN_KERNEL,MAXITER_FB,NITER,startnode,dummy,numngb_inbox,jnearest,i,j,k,n;
+                        double dvel, degy, r2nearest, *pos,h,h2,hinv,hinv3,hinv4,r2,rho,u,wk,dwk;
+                        int N_MAX_KERNEL,N_MIN_KERNEL,MAXITER_FB,NITER,startnode,dummy,numngb_inbox,jnearest,j,k,n;
                         Ngblist = (int *) mymalloc("Ngblist",NumPart * sizeof(int));
                         
                         /* now add in a loop to find particles in same domain, share back the
@@ -149,7 +188,7 @@ void apply_grain_dragforce(void)
                         h=PPP[i].Hsml; if(h<=0) h=All.SofteningTable[0];
                         do {
                             numngb_inbox = ngb_treefind_variable_targeted(pos,h,-1,&startnode,0,&dummy,&dummy,1); // search for gas: 2^0=1
-                            h2=h*h; hinv=1/h; hinv3=hinv*hinv*hinv; rho=0;
+                            h2=h*h; hinv=1/h; hinv3=hinv*hinv*hinv; hinv4=hinv3*hinv; rho=0;
                             if((numngb_inbox>=N_MIN_KERNEL)&&(numngb_inbox<=N_MAX_KERNEL))
                             {
                                 jnearest=0;r2nearest=1.0e10;
@@ -162,7 +201,7 @@ void apply_grain_dragforce(void)
                                     }
                                     if ((r2<=h2)&&(P[j].Mass>0)&&(SphP[j].Density>0)) {
                                         u=sqrt(r2)*hinv;
-                                        wk=hinv3*kernel_wk(u);
+                                        kernel_main(u,hinv3,hinv4,&wk,&dwk,0);
                                         rho += (P[j].Mass*wk);
                                     }
                                 } /* for(n=0; n<numngb_inbox; n++) */
@@ -205,13 +244,14 @@ void apply_grain_dragforce(void)
                                     if ((r2<=h2)&&(P[j].Mass>0)&&(SphP[j].Density>0))
                                     {
                                         u=sqrt(r2)*hinv;
-                                        wk=P[j].Mass * hinv3*kernel_wk(u) / rho;
+                                        kernel_main(u,hinv3,hinv4,&wk,&dwk,0);
+                                        wk *= P[j].Mass / rho;
                                         degy=0;
                                         MyDouble VelPred_j[3];
                                         for(k=0;k<3;k++) {VelPred_j[k]=P[j].Vel[k];}
-#ifdef SHEARING_BOX
-                                        if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                                        if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#ifdef BOX_SHEARING
+                                        if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                                        if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
                                         for(k=0; k<3; k++)
                                         {
@@ -231,9 +271,9 @@ void apply_grain_dragforce(void)
                                 degy=0;
                                 MyDouble VelPred_j[3];
                                 for(k=0;k<3;k++) {VelPred_j[k]=P[j].Vel[k];}
-#ifdef SHEARING_BOX
-                                if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                                if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#ifdef BOX_SHEARING
+                                if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                                if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
                                 for(k=0; k<3; k++)
                                 {
@@ -365,11 +405,10 @@ void grain_density(void)
     
     /* allocate buffers to arrange communication */
     Ngblist = (int *) mymalloc(NumPart * sizeof(int));
-    All.BunchSize =
-    (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
+    size_t MyBufferSize = All.BufferSize;
+    All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
                                              sizeof(struct grain_densdata_in) + sizeof(struct grain_densdata_out) +
-                                             sizemax(sizeof(struct grain_densdata_in),
-                                                     sizeof(struct grain_densdata_out))));
+                                             sizemax(sizeof(struct grain_densdata_in),sizeof(struct grain_densdata_out))));
     DataIndexTable = (struct data_index *) mymalloc(All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc(All.BunchSize * sizeof(struct data_nodelist));
     
@@ -640,7 +679,7 @@ int grain_density_evaluate(int target, int mode, int *nexport, int *nsend_local)
                 dx = pos[0] - P[j].Pos[0];
                 dy = pos[1] - P[j].Pos[1];
                 dz = pos[2] - P[j].Pos[2];
-#ifdef PERIODIC			/*  now find the closest image in the given box size  */
+#ifdef BOX_PERIODIC			/*  now find the closest image in the given box size  */
                 NEAREST_XYZ(dx,dy,dz,1);
 #endif
                 r2 = dx*dx + dy*dy + dz*dz;
@@ -649,16 +688,15 @@ int grain_density_evaluate(int target, int mode, int *nexport, int *nsend_local)
                     numngb++;
                     r = sqrt(r2);
                     u = r * hinv;
-                    wk = hinv3*kernel_wk(u);
-                    dwk = hinv4*kernel_dwk(u);
+                    kernel_main(u,hinv3,hinv4,&wk,&dwk,0);
                     mass_j = P[j].Mass;
                     rho += FLT(mass_j * wk);
                     weighted_numngb += FLT(NORM_COEFF * wk / hinv3);
                     MyDouble VelPred_j[3];
                     for(k=0;k<3;k++) {VelPred_j[k]=SphP[j].VelPred[k];}
-#ifdef SHEARING_BOX
-                    if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                    if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#ifdef BOX_SHEARING
+                    if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                    if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
                     gasvel[0] += FLT(mass_j * wk * VelPred_j[0]);
                     gasvel[1] += FLT(mass_j * wk * VelPred_j[1]);

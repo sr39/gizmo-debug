@@ -38,9 +38,6 @@ static unsigned long FileNr;
 static long long *NumPartPerFile;
 #endif
 
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-int N_BH_idx;
-#endif
 
 void read_ic(char *fname)
 {
@@ -62,10 +59,6 @@ void read_ic(char *fname)
     NumPart = 0;
     N_gas = 0;
     All.TotNumPart = 0;
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-    N_BHs = 0;
-    N_BH_idx = 0;
-#endif
     
     num_files = find_files(fname);
     
@@ -164,7 +157,7 @@ void read_ic(char *fname)
     
     
 #if defined(BLACK_HOLES)
-#if defined(BH_SWALLOWGAS) || defined(BH_BONDI) || defined(BH_BAL_WINDS) || defined(BH_BAL_KICK) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_POPIII_SEEDS)
+#if defined(BH_SWALLOWGAS) || defined(BH_BONDI) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_SEED_FROM_LOCALGAS)
     if(RestartFlag == 0)
     {
         All.MassTable[5] = 0;
@@ -183,7 +176,7 @@ void read_ic(char *fname)
     }
 #endif
     
-#if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_SNE_HEATING)
+#if defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_THERMAL)
     if(RestartFlag == 0)
     {
         All.MassTable[2] = 0;
@@ -192,17 +185,6 @@ void read_ic(char *fname)
     }
 #endif
     
-    
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-    for(i = N_BH_idx = 0; i < NumPart; i++)
-        if(P[i].Type == 5)
-        {
-            BHP[N_BH_idx].PID = i;
-            P[i].pt.BHID = N_BH_idx;
-            
-            N_BH_idx++;
-        }
-#endif
     
     u_init = (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.InitGasTemp;
     u_init *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;	/* unit conversion */
@@ -255,13 +237,15 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
     MyInputFloat *fp;
     MyInputPosFloat *fp_pos;
     MyIDType *ip;
+    int *ip_int;
     float *fp_single;
     
     fp = (MyInputFloat *) CommBuffer;
     fp_pos = (MyInputPosFloat *) CommBuffer;
     fp_single = (float *) CommBuffer;
     ip = (MyIDType *) CommBuffer;
-    
+    ip_int = (int *) CommBuffer;
+
     switch (blocknr)
     {
         case IO_POS:		/* positions */
@@ -331,7 +315,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             
             
         case IO_SHEET_ORIENTATION:	/* initial particle sheet orientation */
-#if defined(DISTORTIONTENSORPS) && defined(GDE_READIC)
+#if defined(GDE_DISTORTIONTENSOR) && defined(GDE_READIC)
             for(n = 0; n < pc; n++)
             {
 #ifndef GDE_LEAN
@@ -352,14 +336,14 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             break;
             
         case IO_INIT_DENSITY:	/* initial stream density */
-#if defined(DISTORTIONTENSORPS) && defined(GDE_READIC)
+#if defined(GDE_DISTORTIONTENSOR) && defined(GDE_READIC)
             for(n = 0; n < pc; n++)
                 GDE_INITDENSITY(offset + n) = *fp++;
             break;
 #endif
             
         case IO_CAUSTIC_COUNTER:	/* initial caustic counter */
-#if defined(DISTORTIONTENSORPS) && defined(GDE_READIC)
+#if defined(GDE_DISTORTIONTENSOR) && defined(GDE_READIC)
             for(n = 0; n < pc; n++)
                 P[offset + n].caustic_counter = *fp++;
             break;
@@ -442,7 +426,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_VROT:
             break;
         case IO_VORT:
-#ifdef ADJ_BOX_POWERSPEC
+#ifdef TURB_DRIVING_DUMPSPECTRUM
             if(RestartFlag == 6)
             {
                 for(n = 0; n < pc; n++)
@@ -470,12 +454,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_BHMASS:
 #ifdef BLACK_HOLES
             for(n = 0; n < pc; n++)
-#if !defined(DETACH_BLACK_HOLES)
                 P[offset + n].BH_Mass = *fp++;
-#else
-            BHP[N_BH_idx + n].BH_Mass = *fp++;
-            N_BH_idx += pc;
-#endif
 #endif
             break;
             
@@ -485,57 +464,22 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_BHMASSALPHA:
 #ifdef BH_ALPHADISK_ACCRETION
             for(n = 0; n < pc; n++)
-#if !defined(DETACH_BLACK_HOLES)
                 P[offset + n].BH_Mass_AlphaDisk = *fp++;
-#else
-            BHP[N_BH_idx + n].BH_Mass_AlphaDisk = *fp++;
-            N_BH_idx += pc;
-#endif
 #endif
             break;
             
         case IO_BHMDOT:
 #ifdef BLACK_HOLES
             for(n = 0; n < pc; n++)
-#if !defined(DETACH_BLACK_HOLES)
                 P[offset + n].BH_Mdot = *fp++;
-#else
-            BHP[N_BH_idx + n].BH_Mdot = *fp++;
-            N_BH_idx += pc;
-#endif
+
 #endif
             break;
             
         case IO_BHPROGS:
 #ifdef BH_COUNTPROGS
             for(n = 0; n < pc; n++)
-#if !defined(DETACH_BLACK_HOLES)
                 P[offset + n].BH_CountProgs = *fp++;
-#else
-            BHP[N_BH_idx + n].BH_CountProgs = *fp++;
-            N_BH_idx += pc;
-#endif
-#endif
-            break;
-            
-        case IO_BHMBUB:
-#ifdef BH_BUBBLES
-            for(n = 0; n < pc; n++)
-                P[offset + n].BH_Mass_bubbles = *fp++;
-#endif
-            break;
-            
-        case IO_BHMINI:
-#ifdef BH_BUBBLES
-            for(n = 0; n < pc; n++)
-                P[offset + n].BH_Mass_ini = *fp++;
-#endif
-            break;
-            
-        case IO_BHMRAD:
-#ifdef UNIFIED_FEEDBACK
-            for(n = 0; n < pc; n++)
-                P[offset + n].BH_Mass_radio = *fp++;
 #endif
             break;
             
@@ -552,11 +496,26 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                 SphP[offset + n].Abar = *fp++;
 #endif
             break;
+
+        case IO_EOSCOMP:
+#ifdef EOS_TILLOTSON
+            for(n = 0; n < pc; n++)
+                SphP[offset + n].CompositionType = *ip_int++;
+#endif
+            break;
             
         case IO_EOSYE:
 #ifdef EOS_CARRIES_YE
             for(n = 0; n < pc; n++)
                 SphP[offset + n].Ye = *fp++;
+#endif
+            break;
+
+        case IO_PARTVEL:
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==1)||(HYDRO_FIX_MESH_MOTION==2)||(HYDRO_FIX_MESH_MOTION==3))
+            for(n = 0; n < pc; n++)
+                for(k = 0; k < 3; k++)
+                    SphP[offset + n].ParticleVel[k] = *fp++;
 #endif
             break;
             
@@ -648,12 +607,17 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_AGS_OMEGA:
         case IO_AGS_CORR:
         case IO_AGS_NGBS:
+        case IO_AGS_RHO:
+        case IO_AGS_QPT:
             break;
 
             
             /* the other input fields (if present) are not needed to define the
              initial conditions of the code */
             
+        case IO_EOSCS:
+        case IO_EOS_STRESS_TENSOR:
+        case IO_CBE_MOMENTS:
         case IO_SFR:
         case IO_POT:
         case IO_ACCEL:
@@ -661,7 +625,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_STRESSDIAG:
         case IO_STRESSOFFDIAG:
         case IO_RAD_ACCEL:
-        case IO_DISTORTIONTENSORPS:
+        case IO_GDE_DISTORTIONTENSOR:
         case IO_HeHII:
         case IO_DI:
         case IO_DII:
@@ -853,20 +817,16 @@ void read_file(char *fname, int readTask, int lastTask)
         
         All.MaxPart = (int) (All.PartAllocFactor * (All.TotNumPart / NTask));
         All.MaxPartSph = (int) (All.PartAllocFactor * (All.TotN_gas / NTask));	/* sets the maximum number of particles that may reside on a processor */
+#ifdef ALLOW_IMBALANCED_GASPARTICLELOAD
         All.MaxPartSph = All.MaxPart; // PFH: increasing All.MaxPartSph according to this line can allow better load-balancing in some cases. however it leads to more memory problems
         // (PFH: needed to revert the change -- i.e. INCLUDE the line above: commenting it out, while it improved memory useage, causes some instability in the domain decomposition for
         //   sufficiently irregular trees. overall more stable behavior with the 'buffer', albeit at the expense of memory )
-        
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-        if(All.TotBHs == 0)
-            All.MaxPartBH = All.PartAllocFactor * (All.TotN_gas / NTask) * All.BHfactor;
-        else
-            All.MaxPartBH = All.PartAllocFactor * (All.TotBHs / NTask + (All.TotN_gas / NTask) * All.BHfactor);
 #endif
         
         allocate_memory();
         
-        if(!(CommBuffer = mymalloc("CommBuffer", bytes = All.BufferSize * 1024 * 1024)))
+        size_t MyBufferSize = All.BufferSize;
+        if(!(CommBuffer = mymalloc("CommBuffer", bytes = MyBufferSize * 1024 * 1024)))
         {
             printf("failed to allocate memory for `CommBuffer' (%g MB).\n", bytes / (1024.0 * 1024.0));
             endrun(2);
@@ -964,7 +924,7 @@ void read_file(char *fname, int readTask, int lastTask)
         if(blockpresent(blocknr))
         {
                 if(RestartFlag == 0 && blocknr > IO_U && blocknr != IO_BFLD
-#ifdef READ_HSML
+#ifdef INPUT_READ_HSML
                    && blocknr != IO_HSML
 #endif
 #ifdef EOS_CARRIES_TEMPERATURE
@@ -976,11 +936,17 @@ void read_file(char *fname, int readTask, int lastTask)
 #ifdef EOS_CARRIES_YE
                    && blocknr != IO_EOSYE
 #endif
+#ifdef EOS_TILLOTSON
+                   && blocknr != IO_EOSCOMP
+#endif
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==1)||(HYDRO_FIX_MESH_MOTION==2)||(HYDRO_FIX_MESH_MOTION==3))
+                   && blocknr != IO_PARTVEL
+#endif
 #ifdef CHIMES 
 		   && blocknr != IO_CHIMES_ABUNDANCES 
 #endif 
                    )
-#if defined(DISTORTIONTENSORPS) && defined(GDE_READIC)
+#if defined(GDE_DISTORTIONTENSOR) && defined(GDE_READIC)
                     if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_SHEET_ORIENTATION))
                         if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_INIT_DENSITY))
                             if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_CAUSTIC_COUNTER))
@@ -1000,7 +966,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #endif
             
             
-#ifdef B_SET_IN_PARAMS
+#ifdef MHD_B_SET_IN_PARAMS
             if(RestartFlag == 0 && blocknr == IO_BFLD)
                 continue;
 #endif
@@ -1042,7 +1008,8 @@ void read_file(char *fname, int readTask, int lastTask)
             
             bytes_per_blockelement = get_bytes_per_blockelement(blocknr, 1);
             
-            blockmaxlen = (size_t) ((All.BufferSize * 1024 * 1024) / bytes_per_blockelement);
+            size_t MyBufferSize = All.BufferSize;
+            blockmaxlen = (size_t) ((MyBufferSize * 1024 * 1024) / bytes_per_blockelement);
             
             npart = get_particles_in_block(blocknr, &typelist[0]);
             
@@ -1091,17 +1058,6 @@ void read_file(char *fname, int readTask, int lastTask)
                                     endrun(1313);
                                 }
                             
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-                            switch (blocknr)
-                            {
-                                case IO_BHMASS:
-                                case IO_BHMASSALPHA:
-                                case IO_BHMDOT:
-                                case IO_BHPROGS:
-                                    N_BH_idx = N_BHs;
-                                    break;
-                            }
-#endif
                             
                             do
                             {
@@ -1286,10 +1242,6 @@ void read_file(char *fname, int readTask, int lastTask)
         
         if(type == 0)
             N_gas += n_for_this_task;
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-        if(type == 5)
-            N_BHs += n_for_this_task;
-#endif
     }
     
     if(ThisTask == readTask)
