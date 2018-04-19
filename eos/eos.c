@@ -11,7 +11,7 @@
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
-
+#ifdef BOX_PERIODIC 
 /* this pair of functions: 'return_user_desired_target_density' and 'return_user_desired_target_pressure' should be used
  together with 'HYDRO_GENERATE_TARGET_MESH'. This will attempt to move the mesh and mass
  towards the 'target' pressure profile. Use this to build your ICs.
@@ -36,6 +36,7 @@ void return_user_desired_target_pressure(int i)
      double b = 2.; return 2.*M_PI/fabs((3.-b)*(1.-b)) * pow(return_user_desired_target_density(i),2) * r*r;
      */
 }
+#endif 
 
 
 

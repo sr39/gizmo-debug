@@ -124,7 +124,7 @@ void init(void)
 #endif
     
     
-#ifdef COOLING
+#if defined(COOLING) && !defined(CHIMES) 
     IonizeParams();
 #endif
     

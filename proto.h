@@ -527,11 +527,13 @@ void *addthermalFB_evaluate_secondary(void *p);
 #ifdef COOL_METAL_LINES_BY_SPECIES
 /*double GetMetalLambda(double, double);*/
 double getSpCoolTableVal(long i,long j,long k,long tblK);
+#ifndef CHIMES 
 double GetCoolingRateWSpecies(double nHcgs, double logT, double *Z);
 double GetLambdaSpecies(long k_index, long index_x0y0, long index_x0y1, long index_x1y0, long index_x1y1, double dx, double dy, double dz, double mdz);
 void LoadMultiSpeciesTables(void);
 void ReadMultiSpeciesTables(int iT);
 char *GetMultiSpeciesFilename(int i, int hk);
+#endif 
 #endif
 
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
@@ -565,7 +567,12 @@ int disp_density_isactive(int i);
 #endif
 
 
+#ifdef CHIMES 
+void chimes_cooling_parent_routine(void); 
+double chimes_convert_u_to_temp(double u, double rho, int target); 
+#else 
 void cooling_parent_routine(void);
+#endif 
 void count_hot_phase(void);
 void delete_node(int i);
 void density(void);
