@@ -112,20 +112,6 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
         double L = P[i].Mass * evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(i);
         if((L<=0)||(star_age<=0)||(isnan(star_age))||(isnan(L))) {L=0; star_age=0;}
 
-#ifdef AJR_RAPID_SN_LUM 
-	double sn_rapid_fac_t; 
-	if (P[i].Type == 4) 
-	  { 
-	    if (All.Time < All.sn_rapid_time1) 
-	      sn_rapid_fac_t = All.sn_rapid_fac; 
-	    else if (All.Time < All.sn_rapid_time2) 
-	      sn_rapid_fac_t = ((All.sn_rapid_fac - 1.0) * pow(All.sn_rapid_time1 * All.sn_rapid_time2, 3.0) / (pow(All.Time, 3.0) * (pow(All.sn_rapid_time2, 3.0) - pow(All.sn_rapid_time1, 3.0)))) + ((pow(All.sn_rapid_time2, 3.0) - (100.0 * pow(All.sn_rapid_time1, 3.0))) / (pow(All.sn_rapid_time2, 3.0) - pow(All.sn_rapid_time1, 3.0))); 
-	    else 
-	      sn_rapid_fac_t = 1.0; 
-	    L *= sn_rapid_fac_t; 
-	  }
-#endif 
-
         double f_uv, f_op;
 #ifndef RT_FIRE_FIX_SPECTRAL_SHAPE
         double sigma_eff = sigma_0 * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,P[i].DensAroundStar,PPP[i].NumNgb,0);

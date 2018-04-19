@@ -1867,20 +1867,6 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif 
 
-#ifdef AJR_SUPPRESS_SN 
-      strcpy(tag[nt], "sn_suppress_time1");
-      addr[nt] = &All.sn_suppress_time1;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "sn_suppress_time2");
-      addr[nt] = &All.sn_suppress_time2;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "sn_suppress_fac");
-      addr[nt] = &All.sn_suppress_fac;
-      id[nt++] = REAL;
-#endif 
-
 #ifdef AJR_RAPID_SN  
       strcpy(tag[nt], "sn_rapid_time1");
       addr[nt] = &All.sn_rapid_time1;

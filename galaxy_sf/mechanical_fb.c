@@ -1502,14 +1502,6 @@ void determine_where_SNe_occur()
                     RSNe = 5.3e-8 + 1.6e-5*exp(-0.5*((star_age-0.05)/0.01)*((star_age-0.05)/0.01));
                 // delayed population (constant rate)  +  prompt population (gaussian) //
 
-#ifdef AJR_SUPPRESS_SN 
-		// At the beginning of the simulation, suppress RSNe by some factor. 
-		if (All.Time < All.sn_suppress_time1) 
-		  RSNe *= All.sn_suppress_fac; 
-		else if (All.Time < All.sn_suppress_time2) 
-		  RSNe *= pow(10.0, log10(All.sn_suppress_fac) * (1.0 - ((All.Time - All.sn_suppress_time1) / (All.sn_suppress_time2 - All.sn_suppress_time1)))); 
-#endif 
-
 #ifdef AJR_RAPID_SN
 		if (star_age < agemax) 
 		  RSNe *= sn_rapid_fac_t; 
