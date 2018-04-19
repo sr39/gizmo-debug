@@ -12,6 +12,34 @@
  */
 
 
+/* this pair of functions: 'return_user_desired_target_density' and 'return_user_desired_target_pressure' should be used
+ together with 'HYDRO_GENERATE_TARGET_MESH'. This will attempt to move the mesh and mass
+ towards the 'target' pressure profile. Use this to build your ICs.
+ The 'desired' pressure and density as a function of particle properties (most commonly, position) should be provided in the function below */
+void return_user_desired_target_density(int i)
+{
+    double dx=P[i].Pos[0]-boxHalf_X, dy=P[i].Pos[1]-boxHalf_Y, dz=P[i].Pos[2]-boxHalf_Z, r=sqrt(dx*dx+dy*dy+dz*dz);
+    return 1 + 0.*r; // uniform density everywhere -- will try to generate a glass //
+    /*
+     // this example would initialize a constant-density (density=rho_0) spherical cloud (radius=r_cloud) with a smooth density 'edge' (width=interp_width) surrounded by an ambient medium of density =rho_0/rho_contrast //
+     double rho_0=1, r_cloud=0.5*boxHalf_X, interp_width=0.1*r_cloud, rho_contrast=10.;
+     return rho_0 * ((1.-1./rho_contrast)*0.5*erfc(2.*(r-r_cloud)/interp_width) + 1./rho_contrast);
+     */
+}
+void return_user_desired_target_pressure(int i)
+{
+    double dx=P[i].Pos[0]-boxHalf_X, dy=P[i].Pos[1]-boxHalf_Y, dz=P[i].Pos[2]-boxHalf_Z, r=sqrt(dx*dx+dy*dy+dz*dz);
+    return 1; // uniform pressure everywhere -- will try to generate a constant-pressure medium //
+    /*
+     // this example would initialize a radial pressure gradient corresponding to a self-gravitating, spherically-symmetric, infinite power-law
+     //   density profile rho ~ r^(-b) -- note to do this right, you need to actually set that power-law for density, too, in 'return_user_desired_target_density' above
+     double b = 2.; return 2.*M_PI/fabs((3.-b)*(1.-b)) * pow(return_user_desired_target_density(i),2) * r*r;
+     */
+}
+
+
+
+
 /* return the pressure of particle i */
 double get_pressure(int i)
 {
@@ -25,7 +53,7 @@ double get_pressure(int i)
     
     
 #ifdef EOS_HELMHOLTZ
-    /* pass the necessary quantities to D. Radice's wrappers for the Timms EOS */
+    /* pass the necessary quantities to wrappers for the Timms EOS */
     struct eos_input eos_in;
     struct eos_output eos_out;
     eos_in.rho  = SphP[i].Density;
@@ -40,6 +68,10 @@ double get_pressure(int i)
     SphP[i].Temperature= eos_out.temp;
 #endif
 
+    
+#ifdef EOS_TILLOTSON
+    press = calculate_eos_tillotson(i);
+#endif
     
 #ifdef EOS_ENFORCE_ADIABAT
     press = EOS_ENFORCE_ADIABAT * pow(SphP[i].Density, GAMMA);
@@ -69,6 +101,12 @@ double get_pressure(int i)
     SphP[i].SoundSpeed = sqrt(GAMMA * press / Particle_density_for_energy_i(i));
 #endif
     
+    
+#if defined(HYDRO_GENERATE_TARGET_MESH)
+    press = return_user_desired_target_pressure(i) * (SphP[i].Density / return_user_desired_target_density(i)); // define pressure by reference to 'desired' fluid quantities //
+    SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = press / (GAMMA_MINUS1 * SphP[i].Density);
+#endif
+    
     return press;
 }
 
@@ -92,7 +130,7 @@ void check_particle_for_temperature_minimum(int i)
 
 double INLINE_FUNC Particle_density_for_energy_i(int i)
 {
-#ifdef SPHEQ_DENSITY_INDEPENDENT_SPH
+#ifdef HYDRO_PRESSURE_SPH
     return SphP[i].EgyWtDensity;
 #endif
     return SphP[i].Density;
@@ -160,8 +198,91 @@ double Get_CosmicRayStreamingVelocity(int i)
     v_streaming *= All.cf_afac3; // converts to physical units and rescales according to chosen coefficient //
     return v_streaming;
 }
+
+
+double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
+{
+    /* routine to do the drift/kick operations for CRs: mode=0 is kick, mode=1 is drift */
+    if(dt_entr <= 0) {return 0;} // no update
+    int k;
+    double eCR, u0;
+    if(mode==0) {eCR=SphP[i].CosmicRayEnergy; u0=SphP[i].InternalEnergy;} else {eCR=SphP[i].CosmicRayEnergyPred; u0=SphP[i].InternalEnergyPred;} // initial energy
+    if(eCR < 0) {eCR=0;} // limit to physical values
+    
+#ifdef COSMIC_RAYS_M1
+    // this is the exact solution for the CR flux-update equation over a finite timestep dt:
+    //   it needs to be solved this way [implicitly] as opposed to explicitly for dt because
+    //   in the limit of dt_cr_dimless being large, the problem exactly approaches the diffusive solution
+    double DtCosmicRayFlux[3]={0}, flux[3]={0}, CR_veff[3]={0}, CR_vmag=0, q_cr = 0, cr_speed = COSMIC_RAYS_M1;// * (C/All.UnitVelocity_in_cm_per_s);
+    cr_speed = DMAX( All.cf_afac3*SphP[i].MaxSignalVel , DMIN(COSMIC_RAYS_M1 , fabs(SphP[i].CosmicRayDiffusionCoeff)/(Get_Particle_Size(i)*All.cf_atime)));// * (C/All.UnitVelocity_in_cm_per_s);
+    for(k=0;k<3;k++) {DtCosmicRayFlux[k] = -fabs(SphP[i].CosmicRayDiffusionCoeff) * (P[i].Mass/SphP[i].Density) * (SphP[i].Gradients.CosmicRayPressure[k]/GAMMA_COSMICRAY_MINUS1);}
+#ifdef MAGNETIC // do projection onto field lines
+    double B0[3]={0}, Bmag2=0, DtCRDotBhat=0;
+    for(k=0;k<3;k++)
+    {
+        if(mode==0) {B0[k]=SphP[i].B[k];} else {B0[k]=SphP[i].BPred[k];}
+        DtCRDotBhat += DtCosmicRayFlux[k] * B0[k]; Bmag2 += B0[k]*B0[k];
+    }
+    if(Bmag2 > 0) {for(k=0;k<3;k++) {DtCosmicRayFlux[k] = DtCRDotBhat * B0[k] / Bmag2;}}
 #endif
-
-
+    double dt_cr_dimless = dt_entr * cr_speed*cr_speed * GAMMA_COSMICRAY_MINUS1 / (MIN_REAL_NUMBER + fabs(SphP[i].CosmicRayDiffusionCoeff));
+    if((dt_cr_dimless > 0)&&(dt_cr_dimless < 20.)) {q_cr = exp(-dt_cr_dimless);} // factor for CR interpolation
+    if(mode==0) {for(k=0;k<3;k++) {flux[k]=SphP[i].CosmicRayFlux[k];}} else {for(k=0;k<3;k++) {flux[k]=SphP[i].CosmicRayFluxPred[k];}}
+    for(k=0;k<3;k++) {flux[k] = q_cr*flux[k] + (1.-q_cr)*DtCosmicRayFlux[k];} // updated flux
+    for(k=0;k<3;k++) {CR_veff[k]=flux[k]/(eCR+MIN_REAL_NUMBER); CR_vmag+=CR_veff[k]*CR_veff[k];} // effective streaming speed
+    if((CR_vmag <= 0) || (isnan(CR_vmag))) // check for valid numbers
+    {
+        for(k=0;k<3;k++) {flux[k]=0; for(k=0;k<3;k++) {CR_veff[k]=0;}} // zero if invalid
+    } else {
+        CR_vmag = sqrt(CR_vmag);
+        if(CR_vmag > cr_speed) {for(k=0;k<3;k++) {flux[k]*=cr_speed/CR_vmag; CR_veff[k]*=cr_speed/CR_vmag;}} // limit flux to free-streaming speed [as with RT]
+    }
+    if(mode==0) {for(k=0;k<3;k++) {SphP[i].CosmicRayFlux[k]=flux[k];}} else {for(k=0;k<3;k++) {SphP[i].CosmicRayFluxPred[k]=flux[k];}}
+#endif
+    
+    // now we update the CR energies. since this is positive-definite, some additional care is needed //
+    double dCR = SphP[i].DtCosmicRayEnergy*dt_entr, dCRmax = 1.e10*(eCR+MIN_REAL_NUMBER);
+#ifdef GALSF
+    dCRmax = DMAX(2.0*eCR , 0.1*u0*P[i].Mass);
+#endif
+    if(dCR > dCRmax) {dCR=dCRmax;} // don't allow excessively large values
+    if(dCR < -eCR) {dCR=-eCR;} // don't allow it to go negative
+    eCR += dCR; if((eCR<0)||(isnan(eCR))) {eCR=0;}
+    if(mode==0) {SphP[i].CosmicRayEnergy=eCR;} else {SphP[i].CosmicRayEnergyPred=eCR;} // updated energy
+    double eCR_0 = eCR; // save this value for below
+    
+    /* now need to account for the adiabatic heating/cooling of the cosmic ray fluid, here: its an ultra-relativistic fluid with gamma=4/3 */
+    double d_div = (-GAMMA_COSMICRAY_MINUS1 * P[i].Particle_DivVel*All.cf_a2inv) * dt_entr;
+    /* adiabatic term from Hubble expansion (needed for cosmological integrations */
+    if(All.ComovingIntegrationOn) {d_div += (-3.*GAMMA_COSMICRAY_MINUS1 * All.cf_hubble_a) * dt_entr;}
+    
+#if 0 //def COSMIC_RAYS_M1 // per recent discussions, this is not matched to standard diffusive approaches, although question of whether this transport does trigger streaming-like instabilities remains (physically) open
+    // need to get pressure gradient scale-lengths to slope-limit pressure gradient to resovable values //
+    double Pmag=0; for(k=0;k<3;k++) {Pmag += SphP[i].Gradients.CosmicRayPressure[k]*SphP[i].Gradients.CosmicRayPressure[k];} // magnitude of pressure gradient
+    if((Pmag<=0)||(isnan(Pmag))) {Pmag=0;} else {Pmag=sqrt(Pmag);} // check for unphysical values
+    double CR_P = Get_Particle_CosmicRayPressure(i); // CR pressure to normalize gradient (since only 1/scale actually matters)
+    double Pscale=CR_P/Pmag, Pscale_min=Get_Particle_Size(i), Pgrad_hat[3]={0}, fluxterm=0; // values for slope-limiter
+    for(k=0;k<3;k++) {Pgrad_hat[k] = GAMMA_COSMICRAY_MINUS1 * SphP[i].Gradients.CosmicRayPressure[k] / CR_P;} // pressure gradient / pressure
+    if(Pscale_min > Pscale) {for(k=0;k<3;k++) {Pgrad_hat[k] *= Pscale/Pscale_min;}} // slope-limited gradient
+    for(k=0;k<3;k++) {fluxterm += dt_entr * CR_veff[k] * (Pgrad_hat[k]/All.cf_atime);} // calculate the adiabatic term [physical units]
+    double fluxterm_isotropic = -DMIN(cr_speed,CR_vmag) / (DMAX(Pscale,Pscale_min)*All.cf_atime) * dt_entr; // dissipative flux if the streaming were exactly along the CR pressure gradient [isotropic diffusion limit]
+    if(fluxterm > 0) {fluxterm = -DMIN(fabs(fluxterm), fabs(fluxterm_isotropic));} // limit anisotropic compression term since this should come only from integration error
+    if(isnan(fluxterm)||(eCR<=0)||(isnan(eCR))) {fluxterm=0;} // check against nans
+    d_div += fluxterm;
+#endif
+    
+    double dCR_div = DMIN(eCR*d_div , 0.5*u0*P[i].Mass); // limit so don't take away all the gas internal energy [to negative values]
+    if(dCR_div + eCR < 0) {dCR_div = -eCR;}
+    eCR += dCR_div; if((eCR<0)||(isnan(eCR))) {eCR=0;}
+    dCR_div = eCR - eCR_0; // actual change that is going to be applied
+    if(mode==0)
+    {
+        SphP[i].CosmicRayEnergy += dCR_div; SphP[i].InternalEnergy -= dCR_div/P[i].Mass;
+    } else {
+        SphP[i].CosmicRayEnergyPred += dCR_div; SphP[i].InternalEnergyPred -= dCR_div/P[i].Mass;
+    }
+    return 1;
+}
+#endif
 
 

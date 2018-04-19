@@ -18,7 +18,7 @@
  * slightly by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
-#if !defined(EVALPOTENTIAL) && (defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUTPOTENTIAL))
+#if !defined(EVALPOTENTIAL) && (defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUT_POTENTIAL))
 
 /*! This function computes the gravitational potential for ALL the particles.
  *  First, the (short-range) tree potential is computed, and then, if needed,
@@ -28,7 +28,7 @@ void compute_potential(void)
 {
   int i;
 
-#ifndef NOGRAVITY
+#ifndef SELFGRAVITY_OFF
   int j, k, ret, recvTask;
   int ndone, ndone_flag, dummy;
   int ngrp, place, nexport, nimport;
@@ -71,15 +71,12 @@ void compute_potential(void)
 
 
   /* allocate buffers to arrange communication */
-  All.BunchSize =
-    (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
+    size_t MyBufferSize = All.BufferSize;
+    All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
 					     sizeof(struct gravdata_in) + sizeof(struct potdata_out) +
-					     sizemax(sizeof(struct gravdata_in),
-						     sizeof(struct potdata_out))));
-  DataIndexTable =
-    (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
-  DataNodeList =
-    (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
+					     sizemax(sizeof(struct gravdata_in),sizeof(struct potdata_out))));
+    DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
+    DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
 
 #ifndef SUBFIND_RESHUFFLE_AND_POTENTIAL
   for(i = 0; i < NumPart; i++)
@@ -248,7 +245,7 @@ void compute_potential(void)
         /* remove self-potential */
         P[i].Potential += P[i].Mass / All.SofteningTable[P[i].Type];
         
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
         if(All.ComovingIntegrationOn)
             P[i].Potential -= 2.8372975 * pow(P[i].Mass, 2.0 / 3) *
             pow(All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G), 1.0 / 3);
@@ -264,7 +261,7 @@ void compute_potential(void)
 
 #ifdef PMGRID
 
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
   pmpotential_periodic();
 #ifdef PM_PLACEHIGHRESREGION
   i = pmpotential_nonperiodic(1);
@@ -306,7 +303,7 @@ void compute_potential(void)
 
   if(All.ComovingIntegrationOn)
     {
-#ifndef PERIODIC
+#ifndef BOX_PERIODIC
       fac = -0.5 * All.Omega0 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits;
 
       for(i = 0; i < NumPart; i++)

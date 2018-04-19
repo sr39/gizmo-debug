@@ -19,9 +19,9 @@
  */
 
 
-#ifdef OUTPUTLINEOFSIGHT
+#ifdef OUTPUT_LINEOFSIGHT
 
-#ifdef OUTPUTLINEOFSIGHT_SPECTRUM
+#ifdef OUTPUT_LINEOFSIGHT_SPECTRUM
 #define  PIXELS 512		/* number of bins along line of sight */
 #else
 #define  PIXELS 1
@@ -132,14 +132,14 @@ void lineofsight_output(void)
       Los->Xpos = All.BoxSize * get_random_number(s++);
       Los->Ypos = All.BoxSize * get_random_number(s++);
 
-#ifdef OUTPUTLINEOFSIGHT_SPECTRUM
+#ifdef OUTPUT_LINEOFSIGHT_SPECTRUM
       add_along_lines_of_sight();
       sum_over_processors_and_normalize();
       absorb_along_lines_of_sight();
       output_lines_of_sight(n);
 #endif
 
-#ifdef OUTPUTLINEOFSIGHT_PARTICLES
+#ifdef OUTPUT_LINEOFSIGHT_PARTICLES
       find_particles_and_save_them(n);
 #endif
     }
@@ -329,8 +329,8 @@ void add_along_lines_of_sight(void)
 		      ne = SphP[n].Ne;
                 utherm = DMAX(All.MinEgySpec, SphP[i].InternalEnergyPred);
 
-		      double mu_in = 1;
-		      temp = ThermalProperties(utherm, SphP[n].Density * All.cf_a3inv, &ne, &nh0, &nHeII, &mu_in, n);
+              double mu_in = 1, nHe0, nHepp, nhp;
+              temp = ThermalProperties(utherm, SphP[n].Density * All.cf_a3inv, n, &mu_in, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
 
 		      /* do total gas */
 		      weight = P[n].Mass * wk;

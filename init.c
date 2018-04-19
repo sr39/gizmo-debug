@@ -39,7 +39,7 @@ void init(void)
     int count_holes = 0;
 #endif
     
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
     int i1, i2;
 #endif
 
@@ -172,7 +172,7 @@ void init(void)
             All.SnapshotFileCount = RestartSnapNum + 1;
     }
     
-#ifdef OUTPUTLINEOFSIGHT
+#ifdef OUTPUT_LINEOFSIGHT
     All.Ti_nextlineofsight = (int) (log(All.TimeFirstLineOfSight / All.TimeBegin) / All.Timebase_interval);
     if(RestartFlag == 2)
         endrun(78787);
@@ -194,12 +194,12 @@ void init(void)
     
     
     
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
     if(All.ComovingIntegrationOn) check_omega();
 #endif
     
     All.TimeLastStatistics = All.TimeBegin - All.TimeBetStatistics;
-#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_VARIABLEVELOCITY)
+#if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)
     All.TimeNextOnTheFlyFoF = All.TimeBegin;
 #endif
     
@@ -210,35 +210,6 @@ void init(void)
         for(j = 0; j < GRAVCOSTLEVELS; j++)
             P[i].GravCost[j] = 0;
     
-#ifdef BUBBLES
-    if(All.ComovingIntegrationOn)
-        All.TimeOfNextBubble = 1. / (1. + All.FirstBubbleRedshift);
-    else
-        All.TimeOfNextBubble = All.TimeBegin + All.BubbleTimeInterval / All.UnitTime_in_Megayears;
-    if(ThisTask == 0)
-        printf("Initial time: %g and first bubble time %g \n", All.TimeBegin, All.TimeOfNextBubble);
-    
-    if(RestartFlag == 2 && All.TimeBegin > All.TimeOfNextBubble)
-    {
-        printf("Restarting from the snapshot file with the wrong FirstBubbleRedshift! \n");
-        endrun(0);
-    }
-#endif
-    
-#ifdef MULTI_BUBBLES
-    if(All.ComovingIntegrationOn)
-        All.TimeOfNextBubble = 1. / (1. + All.FirstBubbleRedshift);
-    else
-        All.TimeOfNextBubble = All.TimeBegin + All.BubbleTimeInterval / All.UnitTime_in_Megayears;
-    if(ThisTask == 0)
-        printf("Initial time: %g and time of the first bubbles %g \n", All.TimeBegin, All.TimeOfNextBubble);
-    if(RestartFlag == 2 && All.TimeBegin > All.TimeOfNextBubble)
-    {
-        printf("Restarting from the snapshot file with the wrong FirstBubbleRedshift! \n");
-        endrun(0);
-    }
-#endif
-    
     if(All.ComovingIntegrationOn)	/*  change to new velocity variable */
     {
         for(i = 0; i < NumPart; i++)
@@ -248,7 +219,7 @@ void init(void)
 	    }
     }
     
-#ifdef SIDM
+#ifdef DM_SIDM
     init_self_interactions();
 #endif
     
@@ -258,7 +229,7 @@ void init(void)
             P[i].GravAccel[j] = 0;
         
         /* DISTORTION PARTICLE SETUP */
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
         /*init tidal tensor for first output (not used for calculation) */
         for(i1 = 0; i1 < 3; i1++)
             for(i2 = 0; i2 < 3; i2++)
@@ -310,7 +281,7 @@ void init(void)
         for(i1 = 0; i1 < 6; i1++)
             for(i2 = 0; i2 < 6; i2++)
             {
-                if((i1 == i2))
+                if(i1 == i2)
                     P[i].distortion_tensorps[i1][i2] = 1.0;
                 else
                     P[i].distortion_tensorps[i1][i2] = 0.0;
@@ -361,7 +332,7 @@ void init(void)
         else
             P[i].stream_density = GDE_INITDENSITY(i);
         
-#endif /* DISTORTIONTENSORPS */
+#endif /* GDE_DISTORTIONTENSOR */
         
 #ifdef KEEP_DM_HSML_AS_GUESS
         if(RestartFlag != 1)
@@ -406,8 +377,10 @@ void init(void)
 	    P[i].MetalDensAroundStar = 0; 
 #endif 
 #endif
-#ifdef GALSF_FB_SNE_HEATING
+#if defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_THERMAL)
             P[i].SNe_ThisTimeStep = 0;
+#endif
+#ifdef GALSF_FB_SNE_HEATING
             int k; for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {P[i].Area_weighted_sum[k] = 0;}
 #endif
 #ifdef GALSF_FB_GASRETURN
@@ -418,7 +391,7 @@ void init(void)
 #endif
         }
         
-#if defined(GALSF_FB_GASRETURN) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
+#if defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(GALSF_FB_THERMAL)
         if(RestartFlag == 0)
         {
 #ifdef GALSF_ALT_INIT_STAR
@@ -501,12 +474,15 @@ void init(void)
 #endif
         
         if(RestartFlag == 0) {
-	  P[i].Metallicity[0] = All.InitMetallicityinSolar*All.SolarAbundances[0]; 
-
-	  /* initialize abundance ratios. for now, assume solar */
-	  for(j=0;j<NUM_METAL_SPECIES;j++) P[i].Metallicity[j]=All.SolarAbundances[j]*P[i].Metallicity[0]/All.SolarAbundances[0];
-	  /* need to allow for a primordial He abundance */
-	  if(NUM_METAL_SPECIES>=10) P[i].Metallicity[1]=0.25+(All.SolarAbundances[1]-0.25)*P[i].Metallicity[0]/All.SolarAbundances[0];
+#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(GALSF_FB_THERMAL)
+            P[i].Metallicity[0] = All.InitMetallicityinSolar*All.SolarAbundances[0];
+#else
+            P[i].Metallicity[0] = 0;
+#endif
+            /* initialize abundance ratios. for now, assume solar */
+            for(j=0;j<NUM_METAL_SPECIES;j++) P[i].Metallicity[j]=All.SolarAbundances[j]*P[i].Metallicity[0]/All.SolarAbundances[0];
+            /* need to allow for a primordial He abundance */
+            if(NUM_METAL_SPECIES>=10) P[i].Metallicity[1]=0.25+(All.SolarAbundances[1]-0.25)*P[i].Metallicity[0]/All.SolarAbundances[0];
         } // if(RestartFlag == 0)
 
 #ifdef CHIMES 
@@ -561,13 +537,6 @@ void init(void)
 #endif
 #ifdef BH_COUNTPROGS
                 BPP(i).BH_CountProgs = 1;
-#endif
-#ifdef BH_BUBBLES
-                BPP(i).BH_Mass_bubbles = All.SeedBlackHoleMass;
-                BPP(i).BH_Mass_ini = All.SeedBlackHoleMass;
-#ifdef UNIFIED_FEEDBACK
-                BPP(i).BH_Mass_radio = All.SeedBlackHoleMass;
-#endif
 #endif
             }
         }
@@ -639,7 +608,7 @@ void init(void)
         
         if(RestartFlag == 0)
         {
-#ifndef READ_HSML
+#ifndef INPUT_READ_HSML
             PPP[i].Hsml = 0;
 #endif
             SphP[i].Density = -1;
@@ -667,31 +636,34 @@ void init(void)
 #ifdef GALSF_SUBGRID_WINDS
         if(RestartFlag == 0)
             SphP[i].DelayTime = 0;
-#ifdef GALSF_SUBGRID_VARIABLEVELOCITY
+#if (GALSF_SUBGRID_WIND_SCALING==1)
         SphP[i].HostHaloMass = 0;
 #endif
 #endif // GALSF_SUBGRID_WINDS //
 #ifdef GALSF_FB_HII_HEATING
         SphP[i].DelayTimeHII = 0;
 #endif
-#ifdef GALSF_TURNOFF_COOLING_WINDS
+#ifdef GALSF_FB_TURNOFF_COOLING
         SphP[i].DelayTimeCoolingSNe = 0;
 #endif
 #ifdef GALSF
         SphP[i].Sfr = 0;
+#if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
+	SphP[i].AlphaVirial_SF_TimeSmoothed = 0;
+#endif
 #endif
 #ifdef COSMIC_RAYS
         if(RestartFlag == 0) {SphP[i].CosmicRayEnergy = 0;}
 #endif
 #ifdef MAGNETIC
-#if defined B_SET_IN_PARAMS
+#if defined MHD_B_SET_IN_PARAMS
         if(RestartFlag == 0)
         {			/* Set only when starting from ICs */
             SphP[i].B[0]=SphP[i].BPred[0] = All.BiniX;
             SphP[i].B[1]=SphP[i].BPred[1] = All.BiniY;
             SphP[i].B[2]=SphP[i].BPred[2] = All.BiniZ;
         }
-#endif /*B_SET_IN_PARAMS*/
+#endif /*MHD_B_SET_IN_PARAMS*/
         for(j = 0; j < 3; j++)
         {
             SphP[i].BPred[j] *= a2_fac * gauss2gizmo;
@@ -712,7 +684,7 @@ void init(void)
 #endif
     }
     
-#ifndef SHEARING_BOX
+#ifndef BOX_SHEARING
 #if (NUMDIMS==2)
     for(i = 0; i < NumPart; i++)
     {
@@ -751,33 +723,17 @@ void init(void)
 #endif
     /* assign other ID parameters needed */
 
-    if(RestartFlag==0)
-      {
-        for(i = 0; i < NumPart; i++)
-          {
-            P[i].ID_child_number = 0;
-            P[i].ID_generation = 0;
-          }
-#ifdef CHIMES
-	if (P[i].Type == 0)
-	  ChimesGasVars[i].ID_child_number = P[i].ID_child_number;
-#endif
-      }
-
+    if(RestartFlag==0) {for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}}
 #ifdef NO_CHILD_IDS_IN_ICS
-    if(RestartFlag != 1)
-      {
-        for(i = 0; i < NumPart; i++)
-          {
-            P[i].ID_child_number = 0;
-            P[i].ID_generation = 0;
+    if(RestartFlag != 1) {for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}}
+#endif 
+
 #ifdef CHIMES
-            if (P[i].Type == 0)
-              ChimesGasVars[i].ID_child_number = P[i].ID_child_number;
-#endif
-          }
-      }
-#endif
+    if(RestartFlag==0) {for(i = 0; i < NumPart; i++) {ChimesGasVars[i].ID_child_number = P[i].ID_child_number;}}
+#ifdef NO_CHILD_IDS_IN_ICS
+    if(RestartFlag != 1) {for(i = 0; i < NumPart; i++) {ChimesGasVars[i].ID_child_number = P[i].ID_child_number;}}
+#endif 
+#endif 
     
 #ifdef TEST_FOR_IDUNIQUENESS
     test_id_uniqueness();
@@ -821,10 +777,15 @@ void init(void)
     if(RestartFlag != 3 && RestartFlag != 5)
         ags_setup_smoothinglengths();
 #endif
+#ifdef CBE_INTEGRATOR
+    do_cbe_initialization();
+#endif
     
-#ifdef GALSF_SUBGRID_DMDISPERSION
+#ifdef GALSF_SUBGRID_WINDS
+#if (GALSF_SUBGRID_WIND_SCALING==2)
     if(RestartFlag != 3 && RestartFlag != 5)
         disp_setup_smoothinglengths();
+#endif
 #endif
     
 #if defined GALSF_SFR_IMF_VARIATION
@@ -857,6 +818,7 @@ void init(void)
     density();
     for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
     {
+        int k; k=0;
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
         
 #if defined(TURB_DRIVING) && defined(EOS_ENFORCE_ADIABAT)
@@ -865,6 +827,11 @@ void init(void)
 #endif
         // re-match the predicted and initial velocities and B-field values, just to be sure //
         for(j=0;j<3;j++) SphP[i].VelPred[j]=P[i].Vel[j];
+        
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && (HYDRO_FIX_MESH_MOTION==0)
+        for(j=0;j<3;j++) {SphP[i].ParticleVel[k] = 0;} // set these to zero and forget them, for the rest of the run //
+#endif
+        
 #ifdef MAGNETIC
         for(j=0;j<3;j++) {SphP[i].B[j] = SphP[i].BPred[j] * P[i].Mass / SphP[i].Density;} // convert to the conserved unit V*B //
         for(j=0;j<3;j++) {SphP[i].BPred[j]=SphP[i].B[j]; SphP[i].DtB[j]=0;}
@@ -873,6 +840,21 @@ void init(void)
         SphP[i].CosmicRayEnergyPred = SphP[i].CosmicRayEnergy;
         SphP[i].CosmicRayDiffusionCoeff = 0;
         SphP[i].DtCosmicRayEnergy = 0;
+#ifdef COSMIC_RAYS_M1
+        for(j=0;j<3;j++) 
+        {
+            SphP[i].CosmicRayFlux[j]=0;
+            SphP[i].CosmicRayFluxPred[j]=0;
+        }
+#endif
+#endif
+#if defined(EOS_ELASTIC)
+        if(RestartFlag != 1)
+        {
+            for(k=0;k<3;k++) {for(j=0;j<3;j++) {SphP[i].Dt_Elastic_Stress_Tensor[j][k] = SphP[i].Elastic_Stress_Tensor_Pred[j][k] = SphP[i].Elastic_Stress_Tensor[j][k] = 0;}}
+        } else {
+            for(k=0;k<3;k++) {for(j=0;j<3;j++) {SphP[i].Elastic_Stress_Tensor_Pred[j][k] = SphP[i].Elastic_Stress_Tensor[j][k]; SphP[i].Dt_Elastic_Stress_Tensor[j][k] = 0;}}
+        }
 #endif
         //SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
         SphP[i].DtInternalEnergy = 0;
@@ -900,10 +882,10 @@ void init(void)
         SphP[i].RadFluxAGN = 0;
 #endif        
         
-#ifdef GRACKLE
+#ifdef COOL_GRACKLE
         if(RestartFlag == 0)
         {
-#if (GRACKLE_CHEMISTRY >= 1)
+#if (COOL_GRACKLE_CHEMISTRY >= 1)
             SphP[i].grHI    = HYDROGEN_MASSFRAC;
             SphP[i].grHII   = 1.0e-20;
             SphP[i].grHM    = 1.0e-20;
@@ -911,11 +893,11 @@ void init(void)
             SphP[i].grHeII  = 1.0e-20;
             SphP[i].grHeIII = 1.0e-20;
 #endif
-#if (GRACKLE_CHEMISTRY >= 2)
+#if (COOL_GRACKLE_CHEMISTRY >= 2)
             SphP[i].grH2I   = 1.0e-20;
             SphP[i].grH2II  = 1.0e-20;
 #endif
-#if (GRACKLE_CHEMISTRY >= 3)
+#if (COOL_GRACKLE_CHEMISTRY >= 3)
             SphP[i].grDI    = 2.0 * 3.4e-5;
             SphP[i].grDII   = 1.0e-20;
             SphP[i].grHDI   = 1.0e-20;
@@ -959,7 +941,13 @@ void init(void)
 #endif
         /* All.MaxMassForParticleSplit  = 5.01 * mpi_mass_max; */
         All.MaxMassForParticleSplit  = 3.01 * mpi_mass_max;
-#endif // AJR_TARGET_RESOLUTION  
+#endif // AJR_TARGET_RESOLUTION 
+#ifdef MERGESPLIT_HARDCODE_MAX_MASS
+        All.MaxMassForParticleSplit = MERGESPLIT_HARDCODE_MAX_MASS;
+#endif
+#ifdef MERGESPLIT_HARDCODE_MIN_MASS
+        All.MinMassForParticleMerger = MERGESPLIT_HARDCODE_MIN_MASS;
+#endif 
     }
     
     
@@ -1002,13 +990,13 @@ void init(void)
         endrun(0);
     }
     
-#ifdef TWOPOINT_FUNCTION_COMPUTATION_ENABLED
+#ifdef OUTPUT_TWOPOINT_ENABLED
     if(RestartFlag == 5)
     {
         /* calculating powerspec and twopoint function */
 #ifdef PMGRID
         long_range_init_regionsize();
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
         int n, n_type[6];
         long long ntot_type_all[6];
         /* determine global and local particle numbers */
@@ -1030,8 +1018,8 @@ void init(void)
     
     if(RestartFlag == 6)
     {
-#if defined(PERIODIC) && defined(ADJ_BOX_POWERSPEC)
-        adj_box_powerspec();
+#if defined(BOX_PERIODIC) && defined(TURB_DRIVING_DUMPSPECTRUM)
+        TURB_DRIVING_DUMPSPECTRUM();
 #endif
         endrun(0);
     }
@@ -1056,7 +1044,7 @@ void init(void)
 /*! This routine computes the mass content of the box and compares it to the
  * specified value of Omega-matter.  If discrepant, the run is terminated.
  */
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
 void check_omega(void)
 {
     double mass = 0, masstot, omega;
@@ -1068,7 +1056,7 @@ void check_omega(void)
     MPI_Allreduce(&mass, &masstot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     
     omega = masstot / (boxSize_X*boxSize_Y*boxSize_Z) / (3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G));
-#ifdef TIMEDEPGRAV
+#ifdef GR_TABULATED_COSMOLOGY_G
     omega *= All.Gini / All.G;
 #endif
     
@@ -1125,7 +1113,7 @@ void setup_smoothinglengths(void)
                 if((RestartFlag == 0)||(P[i].Type != 0)) // if Restartflag==2, use the saved Hsml of the gas as initial guess //
                 {
                     
-#ifndef READ_HSML
+#ifndef INPUT_READ_HSML
 #if NUMDIMS == 3
                     PPP[i].Hsml = pow(3.0 / (4 * M_PI) * All.DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 0.333333) * Nodes[no].len;
 #endif
@@ -1135,7 +1123,7 @@ void setup_smoothinglengths(void)
 #if NUMDIMS == 1
                     PPP[i].Hsml = All.DesNumNgb * (P[i].Mass / Nodes[no].u.d.mass) * Nodes[no].len;
 #endif
-#ifndef NOGRAVITY
+#ifndef SELFGRAVITY_OFF
                     if(All.SofteningTable[0] != 0)
                     {
                         if((PPP[i].Hsml>100.*All.SofteningTable[0])||(PPP[i].Hsml<=0.01*All.SofteningTable[0])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
@@ -1144,7 +1132,7 @@ void setup_smoothinglengths(void)
 #else
                     if((Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) PPP[i].Hsml = 1.0;
 #endif
-#endif // READ_HSML
+#endif // INPUT_READ_HSML
                 } // closes if((RestartFlag == 0)||(P[i].Type != 0))
             }
     }
@@ -1216,11 +1204,11 @@ void ags_setup_smoothinglengths(void)
                         break;
                     no = p;
                 }
-                PPP[i].AGS_Hsml = pow(1.0/NORM_COEFF * All.AGS_DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
+                PPP[i].AGS_Hsml = 2. * pow(1.0/NORM_COEFF * All.AGS_DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
                 if(All.SofteningTable[P[i].Type] != 0)
                 {
-                    if((PPP[i].AGS_Hsml>1000.*All.SofteningTable[P[i].Type])||(PPP[i].AGS_Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
-                        PPP[i].AGS_Hsml = All.SofteningTable[P[i].Type];
+                    if((PPP[i].AGS_Hsml>ADAPTIVE_GRAVSOFT_FORALL*All.SofteningTable[P[i].Type])||(PPP[i].AGS_Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
+                        PPP[i].AGS_Hsml = sqrt(ADAPTIVE_GRAVSOFT_FORALL) * All.SofteningTable[P[i].Type];
                 }
             } else {
                 PPP[i].AGS_Hsml = PPP[i].Hsml;
@@ -1232,7 +1220,8 @@ void ags_setup_smoothinglengths(void)
 #endif // ADAPTIVE_GRAVSOFT_FORALL
 
 
-#ifdef GALSF_SUBGRID_DMDISPERSION
+#if defined(GALSF_SUBGRID_WINDS)
+#if (GALSF_SUBGRID_WIND_SCALING==2)
 void disp_setup_smoothinglengths(void)
 {
     int i, no, p;
@@ -1267,12 +1256,13 @@ void disp_setup_smoothinglengths(void)
     disp_density();
 }
 #endif
+#endif
 
 
 void test_id_uniqueness(void)
 {
     double t0, t1;
-#ifndef BND_PARTICLES
+#ifndef BOX_BND_PARTICLES
     int i;
     MyIDType *ids, *ids_first;
 #endif
@@ -1290,7 +1280,7 @@ void test_id_uniqueness(void)
     
     t0 = my_second();
     
-#ifndef BND_PARTICLES
+#ifndef BOX_BND_PARTICLES
     ids = (MyIDType *) mymalloc("ids", NumPart * sizeof(MyIDType));
     ids_first = (MyIDType *) mymalloc("ids_first", NTask * sizeof(MyIDType));
     

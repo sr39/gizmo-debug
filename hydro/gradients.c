@@ -7,7 +7,7 @@
 #include "../allvars.h"
 #include "../proto.h"
 #include "../kernel.h"
-#ifdef OMP_NUM_THREADS
+#ifdef PTHREADS_NUM_THREADS
 #include <pthread.h>
 #endif
 
@@ -31,8 +31,8 @@
 
 
 
-#if defined(CONSTRAINED_GRADIENT_MHD)
-#if (CONSTRAINED_GRADIENT_MHD > 1)
+#if defined(MHD_CONSTRAINED_GRADIENT)
+#if (MHD_CONSTRAINED_GRADIENT > 1)
 #define NUMBER_OF_GRADIENT_ITERATIONS 3
 #else
 #define NUMBER_OF_GRADIENT_ITERATIONS 2
@@ -46,7 +46,7 @@
 #endif
 
 
-#ifdef OMP_NUM_THREADS
+#ifdef PTHREADS_NUM_THREADS
 extern pthread_mutex_t mutex_nexport;
 extern pthread_mutex_t mutex_partnodedrift;
 #define LOCK_NEXPORT     pthread_mutex_lock(&mutex_nexport);
@@ -71,7 +71,7 @@ struct Quantities_for_Gradients
     MyDouble Phi;
 #endif
 #endif
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
     MyDouble Metallicity[NUM_METAL_SPECIES];
 #endif
 #ifdef RT_EVOLVE_EDDINGTON_TENSOR
@@ -100,10 +100,10 @@ struct GasGraddata_in
     MyFloat Mass;
     MyFloat Hsml;
     int Timestep;
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
     MyFloat NV_T[3][3];
     MyFloat BGrad[3][3];
-#ifdef CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV
+#ifdef MHD_CONSTRAINED_GRADIENT_FAC_MEDDEV
     MyFloat PhiGrad[3];
 #endif
 #endif
@@ -119,6 +119,17 @@ struct GasGraddata_in
 
 struct GasGraddata_out
 {
+#if defined(KERNEL_CRK_FACES)
+    MyDouble m0;
+    MyDouble m1[3];
+    MyDouble m2[6];
+    MyDouble dm0[3];
+    MyDouble dm1[3][3];
+    MyDouble dm2[6][3];
+#endif
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && (HYDRO_FIX_MESH_MOTION==6)
+    MyFloat GlassAcc[3];
+#endif
 #ifdef HYDRO_SPH
     MyFloat alpha_limiter;
 #ifdef MAGNETIC
@@ -128,7 +139,7 @@ struct GasGraddata_out
     MyFloat DtB[3];
 #endif
 #endif
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
     MyFloat Face_Area[3];
     MyFloat FaceDotB;
     MyFloat FaceCrossX[3][3];
@@ -144,11 +155,13 @@ struct GasGraddata_out
 
 struct GasGraddata_out_iter
 {
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
     MyFloat FaceDotB;
-#ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#ifdef MHD_CONSTRAINED_GRADIENT_MIDPOINT
     MyDouble PhiGrad[3];
 #endif
+#else 
+    MyFloat dummy;
 #endif
 }
 *GasGradDataResult_iter, *GasGradDataOut_iter;
@@ -162,11 +175,22 @@ static struct temporary_data_topass
     struct Quantities_for_Gradients Maxima;
     struct Quantities_for_Gradients Minima;
     MyFloat MaxDistance;
-#ifdef CONSTRAINED_GRADIENT_MHD
+#if defined(KERNEL_CRK_FACES)
+    MyDouble m0;
+    MyDouble m1[3];
+    MyDouble m2[6];
+    MyDouble dm0[3];
+    MyDouble dm1[3][3];
+    MyDouble dm2[6][3];
+#endif
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && (HYDRO_FIX_MESH_MOTION==6)
+    MyFloat GlassAcc[3];
+#endif
+#ifdef MHD_CONSTRAINED_GRADIENT
     MyDouble FaceDotB;
     MyDouble FaceCrossX[3][3];
     MyDouble BGrad[3][3];
-#ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#ifdef MHD_CONSTRAINED_GRADIENT_MIDPOINT
     MyDouble PhiGrad[3];
 #endif
 #endif
@@ -194,7 +218,7 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
     if(in->Mass < 0) {in->Mass = 0;}
     if(SHOULD_I_USE_SPH_GRADIENTS(SphP[i].ConditionNumber)) {in->Mass *= -1;}
     in->Timestep = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0);
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
     if(gradient_iteration > 0)
         if(SphP[i].FlagForConstrainedGradients <= 0)
             in->Mass = 0;
@@ -206,7 +230,7 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
             in->BGrad[j][k] = SphP[i].Gradients.B[j][k];
             in->NV_T[j][k] = SphP[i].NV_T[j][k];
         }
-#ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#ifdef MHD_CONSTRAINED_GRADIENT_MIDPOINT
         in->PhiGrad[j] = SphP[i].Gradients.Phi[j];
 #endif
     }
@@ -214,7 +238,7 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
     {
         for(k = 0; k < 3; k++) {in->GQuant.B[k] = Get_Particle_BField(i,k);}
         in->GQuant.Density = SphP[i].Density;
-#ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#ifdef MHD_CONSTRAINED_GRADIENT_MIDPOINT
         in->GQuant.Phi = Get_Particle_PhiField(i);
 #endif
     }
@@ -233,7 +257,7 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
         in->GQuant.Phi = Get_Particle_PhiField(i);
 #endif
 #endif
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
         for(k = 0; k < NUM_METAL_SPECIES; k++)
             in->GQuant.Metallicity[k] = P[i].Metallicity[k];
 #endif
@@ -269,10 +293,10 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
 
 static inline void out2particle_GasGrad_iter(struct GasGraddata_out_iter *out, int i, int mode, int gradient_iteration)
 {
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
     {
         ASSIGN_ADD_PRESET(GasGradDataPasser[i].FaceDotB,out->FaceDotB,mode);
-#ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#ifdef MHD_CONSTRAINED_GRADIENT_MIDPOINT
         int k;
         for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].PhiGrad[k],out->PhiGrad[k],mode);}
 #endif
@@ -284,10 +308,10 @@ static inline void out2particle_GasGrad_iter(struct GasGraddata_out_iter *out, i
 
 static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int mode, int gradient_iteration)
 {
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
     {
         ASSIGN_ADD_PRESET(GasGradDataPasser[i].FaceDotB,out->FaceDotB,mode);
-#ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#ifdef MHD_CONSTRAINED_GRADIENT_MIDPOINT
         int k;
         for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].PhiGrad[k],out->Gradients[k].Phi,mode);}
 #endif
@@ -298,6 +322,25 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
     {
         int j,k;
         MAX_ADD(GasGradDataPasser[i].MaxDistance,out->MaxDistance,mode);
+        
+#if defined(KERNEL_CRK_FACES)
+        ASSIGN_ADD_PRESET(GasGradDataPasser[i].m0,out->m0,mode);
+        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].dm0[k],out->dm0[k],mode);}
+        for(j=0;j<3;j++)
+        {
+            ASSIGN_ADD_PRESET(GasGradDataPasser[i].m1[j],out->m1[j],mode);
+            for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].dm1[j][k],out->dm1[j][k],mode);}
+        }
+        for(j=0;j<6;j++)
+        {
+            ASSIGN_ADD_PRESET(GasGradDataPasser[i].m2[j],out->m2[j],mode);
+            for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].dm2[j][k],out->dm2[j][k],mode);}
+        }
+#endif
+
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && (HYDRO_FIX_MESH_MOTION==6)
+        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].GlassAcc[k],out->GlassAcc[k],mode);}
+#endif
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
         ASSIGN_ADD_PRESET(SphP[i].alpha_limiter, out->alpha_limiter, mode);
 #endif
@@ -350,7 +393,7 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
 #endif
         
         
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
         for(j=0;j<3;j++)
         {
             ASSIGN_ADD_PRESET(SphP[i].Face_Area[j],out->Face_Area[j],mode);
@@ -368,7 +411,7 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
             MIN_ADD(GasGradDataPasser[i].Minima.B[j],out->Minima.B[j],mode);
             for(k=0;k<3;k++)
             {
-#ifndef CONSTRAINED_GRADIENT_MHD
+#ifndef MHD_CONSTRAINED_GRADIENT
                 ASSIGN_ADD_PRESET(SphP[i].Gradients.B[j][k],out->Gradients[k].B[j],mode);
 #endif
             }
@@ -377,14 +420,14 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
 #ifdef DIVBCLEANING_DEDNER
         MAX_ADD(GasGradDataPasser[i].Maxima.Phi,out->Maxima.Phi,mode);
         MIN_ADD(GasGradDataPasser[i].Minima.Phi,out->Minima.Phi,mode);
-#ifndef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#ifndef MHD_CONSTRAINED_GRADIENT_MIDPOINT
         for(k=0;k<3;k++)
             ASSIGN_ADD_PRESET(SphP[i].Gradients.Phi[k],out->Gradients[k].Phi,mode);
 #endif
 #endif
 #endif // closes MAGNETIC
         
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
         for(j=0;j<NUM_METAL_SPECIES;j++)
         {
             MAX_ADD(GasGradDataPasser[i].Maxima.Metallicity[j],out->Maxima.Metallicity[j],mode);
@@ -429,7 +472,6 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
 
 
 
-void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol);
 
 void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol)
 {
@@ -446,7 +488,6 @@ void local_slopelimiter(double *grad, double valmax, double valmin, double alim,
         {
             double abs_max = DMAX(fabs_max,fabs_min);
             cfac *= DMIN(abs_min + shoot_tol*abs_max, abs_max);
-            //cfac *= DMAX(DMIN(shoot_tol*abs_max,2.0*abs_min) , abs_min);
         } else {
             cfac *= abs_min;
         }
@@ -490,14 +531,13 @@ void hydro_gradient_calc(void)
     long long NTaskTimesNumPart;
     GasGradDataPasser = (struct temporary_data_topass *) mymalloc("GasGradDataPasser",N_gas * sizeof(struct temporary_data_topass));
     NTaskTimesNumPart = maxThreads * NumPart;
-    All.BunchSize = (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
+    size_t MyBufferSize = All.BufferSize;
+    All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
                                                              sizeof(struct GasGraddata_in) +
                                                              sizeof(struct GasGraddata_out) +
-                                                             sizemax(sizeof(struct GasGraddata_in),
-                                                                     sizeof(struct GasGraddata_out))));
+                                                             sizemax(sizeof(struct GasGraddata_in),sizeof(struct GasGraddata_out))));
     CPU_Step[CPU_DENSMISC] += measure_time();
     t0 = my_second();
-    
     Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
@@ -535,16 +575,16 @@ void hydro_gradient_calc(void)
                 SphP[i].Gradients.SoundSpeed[k] = 0;
 #endif
 #ifdef MAGNETIC
-#ifndef CONSTRAINED_GRADIENT_MHD
+#ifndef MHD_CONSTRAINED_GRADIENT
                 for(k2=0;k2<3;k2++) {SphP[i].Gradients.B[k2][k] = 0;}
 #else
                 SphP[i].Face_Area[k] = 0;
 #endif
-#if defined(DIVBCLEANING_DEDNER) && !defined(CONSTRAINED_GRADIENT_MHD_MIDPOINT)
+#if defined(DIVBCLEANING_DEDNER) && !defined(MHD_CONSTRAINED_GRADIENT_MIDPOINT)
                 SphP[i].Gradients.Phi[k] = 0;
 #endif
 #endif
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
                 for(k2=0;k2<NUM_METAL_SPECIES;k2++) {SphP[i].Gradients.Metallicity[k2][k] = 0;}
 #endif
 #ifdef RT_EVOLVE_EDDINGTON_TENSOR
@@ -563,9 +603,9 @@ void hydro_gradient_calc(void)
         for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
             if(P[i].Type==0)
             {
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
                 GasGradDataPasser[i].FaceDotB = 0;
-#ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#ifdef MHD_CONSTRAINED_GRADIENT_MIDPOINT
                 for(k=0;k<3;k++) {GasGradDataPasser[i].PhiGrad[k] = 0;}
 #endif
 #endif
@@ -589,9 +629,9 @@ void hydro_gradient_calc(void)
             /* do local particles and prepare export list */
             tstart = my_second();
             
-#ifdef OMP_NUM_THREADS
-            pthread_t mythreads[OMP_NUM_THREADS - 1];
-            int threadid[OMP_NUM_THREADS - 1];
+#ifdef PTHREADS_NUM_THREADS
+            pthread_t mythreads[PTHREADS_NUM_THREADS - 1];
+            int threadid[PTHREADS_NUM_THREADS - 1];
             pthread_attr_t attr;
             
             pthread_attr_init(&attr);
@@ -601,7 +641,7 @@ void hydro_gradient_calc(void)
             
             TimerFlag = 0;
             
-            for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+            for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
             {
                 threadid[j] = j + 1;
                 pthread_create(&mythreads[j], &attr, GasGrad_evaluate_primary, &threadid[j]);
@@ -619,8 +659,8 @@ void hydro_gradient_calc(void)
                 GasGrad_evaluate_primary(&mainthreadid, gradient_iteration);	/* do local particles and prepare export list */
             }
             
-#ifdef OMP_NUM_THREADS
-            for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+#ifdef PTHREADS_NUM_THREADS
+            for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
                 pthread_join(mythreads[j], NULL);
 #endif
             
@@ -751,7 +791,7 @@ void hydro_gradient_calc(void)
             {
                 GasGradDataResult = (struct GasGraddata_out *) mymalloc("GasGradDataResult", Nimport * sizeof(struct GasGraddata_out));
                 GasGradDataOut = (struct GasGraddata_out *) mymalloc("GasGradDataOut", Nexport * sizeof(struct GasGraddata_out));
-                //                report_memory_usage(&HighMark_GasGrad, "GRADIENTS_LOOP");
+                report_memory_usage(&HighMark_GasGrad, "GRADIENTS_LOOP");
             } else {
                 GasGradDataResult_iter = (struct GasGraddata_out_iter *) mymalloc("GasGradDataResult_iter", Nimport * sizeof(struct GasGraddata_out_iter));
                 GasGradDataOut_iter = (struct GasGraddata_out_iter *) mymalloc("GasGradDataOut_iter", Nexport * sizeof(struct GasGraddata_out_iter));
@@ -761,8 +801,8 @@ void hydro_gradient_calc(void)
             tstart = my_second();
             NextJ = 0;
             
-#ifdef OMP_NUM_THREADS
-            for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+#ifdef PTHREADS_NUM_THREADS
+            for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
                 pthread_create(&mythreads[j], &attr, GasGrad_evaluate_secondary, &threadid[j]);
 #endif
 #ifdef _OPENMP
@@ -777,8 +817,8 @@ void hydro_gradient_calc(void)
                 GasGrad_evaluate_secondary(&mainthreadid, gradient_iteration);
             }
             
-#ifdef OMP_NUM_THREADS
-            for(j = 0; j < OMP_NUM_THREADS - 1; j++)
+#ifdef PTHREADS_NUM_THREADS
+            for(j = 0; j < PTHREADS_NUM_THREADS - 1; j++)
                 pthread_join(mythreads[j], NULL);
             
             pthread_mutex_destroy(&mutex_partnodedrift);
@@ -859,7 +899,7 @@ void hydro_gradient_calc(void)
         
         
         /* here, we insert intermediate operations on the results, from the iterations we have completed */
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
         for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
             if(P[i].Type == 0)
             {
@@ -880,7 +920,7 @@ void hydro_gradient_calc(void)
                                     SphP[i].BPred[0]*SphP[i].BPred[0]+SphP[i].BPred[1]*SphP[i].BPred[1]+SphP[i].BPred[2]*SphP[i].BPred[2]);
                 double tmp = 3.0e3 * fabs(SphP[i].divB) * PPP[i].Hsml / tmp_d;
                 double alim = 1. + DMIN(1.,tmp*tmp);
-#if (CONSTRAINED_GRADIENT_MHD <= 1)
+#if (MHD_CONSTRAINED_GRADIENT <= 1)
                 double dbmax=0, dbgrad=0;
                 double dh=0.25*PPP[i].Hsml; // need to be more aggressive with new wt_i,wt_j formalism
                 for(k=0;k<3;k++)
@@ -972,7 +1012,7 @@ void hydro_gradient_calc(void)
                                     SphP[i].Gradients.B[k][k1] = GB0[k][k1] + nnorm*(SphP[i].Gradients.B[k][k1]+ecorr[k][k1] - GB0[k][k1]);
                                 }
                                 /* slope-limit the corrected gradients again, but with a more tolerant slope-limiter */
-#if (CONSTRAINED_GRADIENT_MHD <= 1)
+#if (MHD_CONSTRAINED_GRADIENT <= 1)
                                 local_slopelimiter(SphP[i].Gradients.B[k],
                                                    GasGradDataPasser[i].Maxima.B[k],GasGradDataPasser[i].Minima.B[k],
                                                    0.25, PPP[i].Hsml, 0.25);
@@ -981,7 +1021,7 @@ void hydro_gradient_calc(void)
                         } // closes j_gloop loop
                     } // closes fsum/dmag check
                 } // closes FlagForConstrainedGradients check
-#ifdef CONSTRAINED_GRADIENT_MHD_MIDPOINT
+#ifdef MHD_CONSTRAINED_GRADIENT_MIDPOINT
                 double a_limiter = 0.25; if(SphP[i].ConditionNumber>100) a_limiter=DMIN(0.5, 0.25 + 0.25 * (SphP[i].ConditionNumber-100)/100);
                 /* copy everything from the structure holding phi-gradients (needed so they dont change mid-loop) */
                 for(k=0;k<3;k++) {SphP[i].Gradients.Phi[k] = GasGradDataPasser[i].PhiGrad[k];}
@@ -1017,14 +1057,14 @@ void hydro_gradient_calc(void)
             construct_gradient(SphP[i].Gradients.SoundSpeed,i);
 #endif
 #ifdef MAGNETIC
-#ifndef CONSTRAINED_GRADIENT_MHD
+#ifndef MHD_CONSTRAINED_GRADIENT
             for(k=0;k<3;k++) {construct_gradient(SphP[i].Gradients.B[k],i);}
 #endif
-#if defined(DIVBCLEANING_DEDNER) && !defined(CONSTRAINED_GRADIENT_MHD_MIDPOINT)
+#if defined(DIVBCLEANING_DEDNER) && !defined(MHD_CONSTRAINED_GRADIENT_MIDPOINT)
             construct_gradient(SphP[i].Gradients.Phi,i);
 #endif
 #endif
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
             for(k=0;k<NUM_METAL_SPECIES;k++) {construct_gradient(SphP[i].Gradients.Metallicity[k],i);}
 #endif
 #ifdef RT_EVOLVE_EDDINGTON_TENSOR
@@ -1150,12 +1190,12 @@ void hydro_gradient_calc(void)
 
 #if defined(CONDUCTION_SPITZER) || defined(VISCOSITY_BRAGINSKII) || (defined(MHD_NON_IDEAL) && defined(COOLING))
             /* get the neutral fraction */
-            double ion_frac, nHeII, temperature, u, ne, nh0 = 0, mu_meanwt=1;
+            double ion_frac, nHe0, nHepp, nhp, nHeII, temperature, u, ne, nh0 = 0, mu_meanwt=1;
             ne = SphP[i].Ne;
             u = DMAX(All.MinEgySpec, SphP[i].InternalEnergy); // needs to be in code units
-	        temperature = ThermalProperties(u, SphP[i].Density*All.cf_a3inv, &ne, &nh0, &nHeII, &mu_meanwt, i);
+            temperature = ThermalProperties(u, SphP[i].Density*All.cf_a3inv, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
 #ifdef GALSF_FB_HII_HEATING
-            if(SphP[i].DelayTimeHII>0 || SphP[i].Ne>=1.15789) nh0=0;
+            if(SphP[i].DelayTimeHII>0) nh0=0;
 #endif 
 	        ion_frac = DMIN(DMAX(0,1.-nh0),1);
 #endif
@@ -1173,8 +1213,15 @@ void hydro_gradient_calc(void)
                 double du_conduction=0;
                 for(k=0;k<3;k++) {du_conduction += SphP[i].Gradients.InternalEnergy[k] * SphP[i].Gradients.InternalEnergy[k];}
                 double temp_scale_length = SphP[i].InternalEnergyPred / sqrt(du_conduction) * All.cf_atime;
+#ifdef MAGNETIC
+                // following Jono Squire's notes, the 'Whistler instability' limits the heat flux at high-beta; Komarov et al., arXiv:1711.11462 (2017) //
+                double beta_i=0; for(k=0;k<3;k++) {beta_i += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+                beta_i *= All.cf_afac1 / (All.cf_atime * SphP[i].Density * Particle_effective_soundspeed_i(i)*Particle_effective_soundspeed_i(i));
+                SphP[i].Kappa_Conduction /= (1 + (4.2 + 1./(3.*beta_i)) * electron_free_path / temp_scale_length); // should be in physical units //
+#else
                 SphP[i].Kappa_Conduction /= (1 + 4.2 * electron_free_path / temp_scale_length); // should be in physical units //
-
+#endif
+                
 #ifdef DIFFUSION_OPTIMIZERS
                 double cs = Particle_effective_soundspeed_i(i);
 #ifdef MAGNETIC
@@ -1204,9 +1251,20 @@ void hydro_gradient_calc(void)
                 double ion_free_path = All.ElectronFreePathFactor * SphP[i].InternalEnergyPred * SphP[i].InternalEnergyPred / (SphP[i].Density * All.cf_a3inv);
                 /* need an estimate of the internal energy gradient scale length, which we get by d(P/rho) = P/rho * (dP/P - drho/rho) */
                 double dv_magnitude=0, v_magnitude=0;
+#ifdef MAGNETIC
+                double bhat[3]={0},beta_i=0,bmag=0; for(k=0;k<3;k++) {bhat[k]=Get_Particle_BField(i,k); bmag+=bhat[k]*bhat[k];}
+                double double_dot_dv=0; if(bmag>0) {bmag = sqrt(bmag); for(k=0;k<3;k++) {bhat[k]/=bmag;}}
+                beta_i = bmag*bmag * All.cf_afac1 / (All.cf_atime * SphP[i].Density * Particle_effective_soundspeed_i(i)*Particle_effective_soundspeed_i(i));
+#endif
                 for(k=0;k<3;k++)
                 {
-                    for(k1=0;k1<3;k1++) {dv_magnitude += SphP[i].Gradients.Velocity[k][k1]*SphP[i].Gradients.Velocity[k][k1];}
+                    for(k1=0;k1<3;k1++)
+                    {
+                        dv_magnitude += SphP[i].Gradients.Velocity[k][k1]*SphP[i].Gradients.Velocity[k][k1];
+#ifdef MAGNETIC
+                        double_dot_dv += SphP[i].Gradients.Velocity[k][k1] * bhat[k]*bhat[k1] * All.cf_a2inv; // physical units
+#endif
+                    }
                     v_magnitude += SphP[i].VelPred[k]*SphP[i].VelPred[k];
                 }
                 double vel_scale_length = sqrt( v_magnitude / dv_magnitude ) * All.cf_atime;
@@ -1214,6 +1272,11 @@ void hydro_gradient_calc(void)
                 /* also limit to saturation magnitude ~ signal_speed / lambda_MFP^2 */
                 double cs = Particle_effective_soundspeed_i(i);
 #ifdef MAGNETIC
+                // following Jono Squire's notes, the mirror and firehose instabilities limit pressure anisotropies [which scale as the viscous term inside the gradient: nu_braginskii*(bhat.bhat:grad.v)] to >-2*P_magnetic and <1*P_magnetic
+                double P_effective_visc = SphP[i].Eta_ShearViscosity * double_dot_dv;
+                double P_magnetic = 0.5 * (bmag*All.cf_a2inv) * (bmag*All.cf_a2inv);
+                if(P_effective_visc < -2.*P_magnetic) {SphP[i].Eta_ShearViscosity = 2.*P_magnetic / fabs(double_dot_dv);}
+                if(P_effective_visc > P_magnetic) {SphP[i].Eta_ShearViscosity = P_magnetic / fabs(double_dot_dv);}
                 double vA_2 = 0.0; for(k=0;k<3;k++) {vA_2 += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
                 vA_2 *= All.cf_afac1 / (All.cf_atime * SphP[i].Density);
                 cs = DMIN(1.e4*cs , sqrt(cs*cs+vA_2));
@@ -1243,7 +1306,7 @@ void hydro_gradient_calc(void)
 		        // define some variables we need below //
 		        double zeta_cr = 1.0e-17; // cosmic ray ionization rate (fixed as constant for non-CR runs)
 #ifdef COSMIC_RAYS
-		        double u_cr = ((SphP[target].CosmicRayEnergyPred / P[target].Mass * SphP[target].Density * All.cf_a3inv) * (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam)); // cgs
+                double u_cr = ((SphP[i].CosmicRayEnergyPred / P[i].Mass * SphP[i].Density * All.cf_a3inv) * (All.UnitPressure_in_cgs * All.HubbleParam * All.HubbleParam)); // cgs
 		        zeta_cr = u_cr * 2.2e-6; // convert to ionization rate
 #endif
                 double a_grain_micron = 0.1; // effective size of grains that matter at these densities
@@ -1390,6 +1453,10 @@ void hydro_gradient_calc(void)
             }
 #endif // ifdef radtransfer
             
+#if defined(EOS_ELASTIC)
+            // update time-derivative of stress tensor (needs to be done before slope-limiting to use full velocity gradient information) //
+            elastic_body_update_driftkick(i,1.,2);
+#endif
             
             /* finally, we need to apply a sensible slope limiter to the gradients, to prevent overshooting */
             double stol = 0.0;
@@ -1407,21 +1474,27 @@ void hydro_gradient_calc(void)
 #if !defined(MAGNETIC) && !defined(GALSF)
             h_lim=PPP[i].Hsml; stol=0.1;
 #endif
-#ifdef AGGRESSIVE_SLOPE_LIMITERS
+#if (SLOPE_LIMITER_TOLERANCE == 2)
             h_lim = PPP[i].Hsml; a_limiter *= 0.5; stol = 0.125;
 #endif
-            
+#if (SLOPE_LIMITER_TOLERANCE == 0)
+            a_limiter *= 2.0; stol = 0.0;
+#endif
+#if defined(KERNEL_CRK_FACES)
+            //a_limiter = 0.5; h_lim = DMAX(PPP[i].Hsml,GasGradDataPasser[i].MaxDistance); stol = 0.0;
+            //a_limiter = 0.25; h_lim = GasGradDataPasser[i].MaxDistance; stol = 0.125;
+#endif
+
 #ifdef SINGLE_STAR_FORMATION
             SphP[i].Density_Relative_Maximum_in_Kernel = GasGradDataPasser[i].Maxima.Density;
 #endif
-            local_slopelimiter(SphP[i].Gradients.Density,GasGradDataPasser[i].Maxima.Density,GasGradDataPasser[i].Minima.Density,a_limiter,h_lim,stol);
+            local_slopelimiter(SphP[i].Gradients.Density,GasGradDataPasser[i].Maxima.Density,GasGradDataPasser[i].Minima.Density,a_limiter,h_lim,0);
             local_slopelimiter(SphP[i].Gradients.Pressure,GasGradDataPasser[i].Maxima.Pressure,GasGradDataPasser[i].Minima.Pressure,a_limiter,h_lim,stol);
             stol_tmp = stol;
 #if defined(VISCOSITY)
             stol_tmp = DMAX(stol,stol_diffusion);
 #endif
-            for(k1=0;k1<3;k1++)
-                local_slopelimiter(SphP[i].Gradients.Velocity[k1],GasGradDataPasser[i].Maxima.Velocity[k1],GasGradDataPasser[i].Minima.Velocity[k1],a_limiter,h_lim,stol_tmp);
+            for(k1=0;k1<3;k1++) {local_slopelimiter(SphP[i].Gradients.Velocity[k1],GasGradDataPasser[i].Maxima.Velocity[k1],GasGradDataPasser[i].Minima.Velocity[k1],a_limiter,h_lim,stol_tmp);}
 #ifdef DOGRAD_INTERNAL_ENERGY
             stol_tmp = stol;
 #if defined(CONDUCTION)
@@ -1431,13 +1504,15 @@ void hydro_gradient_calc(void)
 #endif
 #ifdef COSMIC_RAYS
             stol_tmp = stol;
-            local_slopelimiter(SphP[i].Gradients.CosmicRayPressure,GasGradDataPasser[i].Maxima.CosmicRayPressure,GasGradDataPasser[i].Minima.CosmicRayPressure,a_limiter,h_lim,DMAX(stol,stol_diffusion));
+#ifndef COSMIC_RAYS_M1
+            local_slopelimiter(SphP[i].Gradients.CosmicRayPressure,GasGradDataPasser[i].Maxima.CosmicRayPressure,GasGradDataPasser[i].Minima.CosmicRayPressure,DMAX(1.,a_limiter),h_lim,0.);
             if((GasGradDataPasser[i].Maxima.CosmicRayPressure==0)||(GasGradDataPasser[i].Minima.CosmicRayPressure==0)) {is_particle_local_extremum = 1;}
+#endif
 #endif
 #ifdef DOGRAD_SOUNDSPEED
             local_slopelimiter(SphP[i].Gradients.SoundSpeed,GasGradDataPasser[i].Maxima.SoundSpeed,GasGradDataPasser[i].Minima.SoundSpeed,a_limiter,h_lim,stol);
 #endif
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
             for(k1=0;k1<NUM_METAL_SPECIES;k1++)
                 local_slopelimiter(SphP[i].Gradients.Metallicity[k1],GasGradDataPasser[i].Maxima.Metallicity[k1],GasGradDataPasser[i].Minima.Metallicity[k1],a_limiter,h_lim,DMAX(stol,stol_diffusion));
 #endif
@@ -1449,7 +1524,7 @@ void hydro_gradient_calc(void)
             }
 #endif
 #ifdef MAGNETIC
-#ifndef CONSTRAINED_GRADIENT_MHD
+#ifndef MHD_CONSTRAINED_GRADIENT
             double v_tmp = P[i].Mass / SphP[i].Density;
             double tmp_d = sqrt(1.0e-37 + (2. * All.cf_atime/All.cf_afac1 * SphP[i].Pressure*v_tmp*v_tmp) +
                                 SphP[i].BPred[0]*SphP[i].BPred[0]+SphP[i].BPred[1]*SphP[i].BPred[1]+SphP[i].BPred[2]*SphP[i].BPred[2]);
@@ -1464,7 +1539,7 @@ void hydro_gradient_calc(void)
             for(k1=0;k1<3;k1++)
                 local_slopelimiter(SphP[i].Gradients.B[k1],GasGradDataPasser[i].Maxima.B[k1],GasGradDataPasser[i].Minima.B[k1],alim2,h_lim,stol_tmp);
 #endif
-#if defined(DIVBCLEANING_DEDNER) && !defined(CONSTRAINED_GRADIENT_MHD_MIDPOINT)
+#if defined(DIVBCLEANING_DEDNER) && !defined(MHD_CONSTRAINED_GRADIENT_MIDPOINT)
             local_slopelimiter(SphP[i].Gradients.Phi,GasGradDataPasser[i].Maxima.Phi,GasGradDataPasser[i].Minima.Phi,a_limiter,h_lim,stol);
 #endif
 #endif
@@ -1481,7 +1556,7 @@ void hydro_gradient_calc(void)
                 {
                     // overall normalization //
                     double C_Smagorinsky_Lilly = 0.15; // this is the standard Smagorinsky-Lilly constant, calculated from Kolmogorov theory: should be 0.1-0.2 //
-                    double turb_prefactor = All.TurbDiffusion_Coefficient * C_Smagorinsky_Lilly*C_Smagorinsky_Lilly * sqrt(2.0);
+                    double turb_prefactor = 0.25 * All.TurbDiffusion_Coefficient * C_Smagorinsky_Lilly*C_Smagorinsky_Lilly * sqrt(2.0);
                     // then scale with inter-particle spacing //
                     turb_prefactor *= h_turb*h_turb;
                     // calculate frobenius norm of symmetric shear velocity gradient tensor //
@@ -1580,12 +1655,18 @@ void hydro_gradient_calc(void)
                 SphP[i].CosmicRayDiffusionCoeff += kappa_diff; /* should be in physical units */
 #endif                
 #ifdef COSMIC_RAYS_DIFFUSION_CONSTANT
+#ifdef COSMIC_RAYS_M1
+                SphP[i].CosmicRayDiffusionCoeff = All.CosmicRayDiffusionCoeff;
+#else
                 SphP[i].CosmicRayDiffusionCoeff = All.CosmicRayDiffusionCoeff / GAMMA_COSMICRAY_MINUS1;
+#endif
 #else
                 SphP[i].CosmicRayDiffusionCoeff *= All.CosmicRayDiffusionCoeff;
 #endif
                 SphP[i].CosmicRayDiffusionCoeff += CR_kappa_streaming;
+#if !defined(COSMIC_RAYS_M1)
                 /* now we apply a limiter to prevent the coefficient from becoming too large: cosmic rays cannot stream/diffuse with v_diff > c */
+                // [all of this only applies if we are using the pure-diffusion description: the M1-type description should -not- use a limiter here, or negative kappa]
                 double diffusion_velocity_limit = 1.0 * C; /* maximum diffusion velocity (set <C if desired) */
 #ifdef GALSF
                 diffusion_velocity_limit = 0.01 * C;
@@ -1603,13 +1684,137 @@ void hydro_gradient_calc(void)
                 }
 #endif
                 if(is_particle_local_extremum==1) {SphP[i].CosmicRayDiffusionCoeff *= -1;} // negative here codes for local extrema
+#endif // COSMIC_RAYS_M1
             } else {
-                SphP[i].CosmicRayDiffusionCoeff = 0;
+                SphP[i].CosmicRayDiffusionCoeff = MIN_REAL_NUMBER;
             }
 #endif
+            
+            
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && (HYDRO_FIX_MESH_MOTION==6)
+            /* if the mesh motion is specified to be glass-generating, this is where we apply the appropriate mesh velocity */
+            if(All.Time > 0)
+            {
+                double cs_invelunits = Particle_effective_soundspeed_i(i) * All.cf_afac3 * All.cf_atime; // soundspeed, converted to units of code velocity
+                double L_i_code = Get_Particle_Size(i); // particle effective size (in code units)
+                double dvel[3]={0}, velnorm=0; for(k=0;k<3;k++) {dvel[k] = L_i_code*L_i_code*GasGradDataPasser[i].GlassAcc[k]; velnorm += dvel[k]*dvel[k];} // calculate quantities to use for glass
+                double dtx = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a; // need timestep for limiter below
+                if(velnorm > 0 && dtx > 0)
+                {
+                    velnorm = sqrt(velnorm); // normalization for glass 'force'
+                    double v00 = 0.5 * DMIN(cs_invelunits*(0.5*velnorm) , All.CourantFac*(L_i_code/dtx)/All.cf_a2inv); // limit added velocity of mesh-generating point to Courant factor
+                    for(k=0;k<3;k++) {SphP[i].ParticleVel[k] += v00 * (dvel[k]/velnorm);} // actually add the correction velocity to the mesh velocity
+                }
+            }
+#endif
+            
+#if defined(KERNEL_CRK_FACES)
+            {
+                // ok first, load the data from the passer structure into more convenient form //
+                double m0, dm0[3], m1[3], dm1[3][3], m2[3][3], m2i[3][3], dm2[3][3][3], detT;
+                m0 = GasGradDataPasser[i].m0;
+                int k_x, k_y;
+                for(k=0;k<3;k++)
+                {
+                    dm0[k] = GasGradDataPasser[i].dm0[k];
+                    m1[k] = GasGradDataPasser[i].m1[k];
+                    for(k_x=0;k_x<3;k_x++)
+                    {
+                        dm1[k][k_x] = GasGradDataPasser[i].dm1[k][k_x];
+                        int k_tmp;
+                        if((k==0)&&(k_x==0)) {k_tmp=0;}
+                        if((k==1)&&(k_x==1)) {k_tmp=1;}
+                        if((k==2)&&(k_x==2)) {k_tmp=2;}
+                        if((k==0)&&(k_x==1)) {k_tmp=3;}
+                        if((k==1)&&(k_x==0)) {k_tmp=3;}
+                        if((k==0)&&(k_x==2)) {k_tmp=4;}
+                        if((k==2)&&(k_x==0)) {k_tmp=4;}
+                        if((k==1)&&(k_x==2)) {k_tmp=5;}
+                        if((k==2)&&(k_x==1)) {k_tmp=5;}
+                        m2[k][k_x] = GasGradDataPasser[i].m2[k_tmp]; m2i[k][k_x] = 0;
+                        for(k_y=0;k_y<3;k_y++) {dm2[k][k_x][k_y] = GasGradDataPasser[i].dm2[k_tmp][k_y];}
+                    }
+                }
+                // transform from 'mu' variables to 'm' variables for derivatives:
+                for(k=0;k<3;k++) {dm1[k][k] += m0;}
+                for(k=0;k<3;k++) {for(k_x=0;k_x<3;k_x++) {dm2[k][k_x][k_x] += m1[k]; dm2[k_x][k][k_x] += m1[k];}}
+                // now, invert the m2 matrix into the form we will actually use
+#if (NUMDIMS==1) // 1-D case //
+                detT = m2[0][0];
+                if(detT!=0 && !isnan(detT)) {m2i[0][0] = 1/detT}; /* only one non-trivial element in 1D! */
+#endif
+#if (NUMDIMS==2) // 2-D case //
+                detT = m2[0][0]*m2[1][1] - m2[0][1]*m2[1][0];
+                if((detT != 0)&&(!isnan(detT)))
+                {
+                    m2i[0][0] = +m2[1][1] / detT; m2i[0][1] = -m2[0][1] / detT;
+                    m2i[1][0] = -m2[1][0] / detT; m2i[1][1] = +m2[0][0] / detT;
+                }
+#endif
+#if (NUMDIMS==3) // 3-D case //
+                detT = m2[0][0] * m2[1][1] * m2[2][2] + m2[0][1] * m2[1][2] * m2[2][0] +
+                       m2[0][2] * m2[1][0] * m2[2][1] - m2[0][2] * m2[1][1] * m2[2][0] -
+                       m2[0][1] * m2[1][0] * m2[2][2] - m2[0][0] * m2[1][2] * m2[2][1];
+                if((detT != 0) && !isnan(detT))
+                {
+                    m2i[0][0] = (m2[1][1] * m2[2][2] - m2[1][2] * m2[2][1]) / detT;
+                    m2i[0][1] = (m2[0][2] * m2[2][1] - m2[0][1] * m2[2][2]) / detT;
+                    m2i[0][2] = (m2[0][1] * m2[1][2] - m2[0][2] * m2[1][1]) / detT;
+                    m2i[1][0] = (m2[1][2] * m2[2][0] - m2[1][0] * m2[2][2]) / detT;
+                    m2i[1][1] = (m2[0][0] * m2[2][2] - m2[0][2] * m2[2][0]) / detT;
+                    m2i[1][2] = (m2[0][2] * m2[1][0] - m2[0][0] * m2[1][2]) / detT;
+                    m2i[2][0] = (m2[1][0] * m2[2][1] - m2[1][1] * m2[2][0]) / detT;
+                    m2i[2][1] = (m2[0][1] * m2[2][0] - m2[0][0] * m2[2][1]) / detT;
+                    m2i[2][2] = (m2[0][0] * m2[1][1] - m2[0][1] * m2[1][0]) / detT;
+                }
+#endif
+                // now start constructing the actual derivatives we need //
+                double A = 0, B[3] = {0}, Bdotm1 = 0, dB[3][3]={{0}}, dA[3]={0};
+                for(k=0;k<3;k++)
+                {
+                    for(k_x=0;k_x<3;k_x++) {B[k] += -m2i[k][k_x] * m1[k_x];}
+                    Bdotm1 += B[k] * m1[k];
+                }
+                A = 1. / (m0 + Bdotm1);
+                
+                // now the painful part (likely to be errors) -- construct the complicated tensor derivatives contracting all components //
+                double minus_m2i_dm1_dotm1[3]={0}, contracted_twotensor[3][3]={{0}}, contracted_twotensor_x[3][3]={{0}}, contracted_twotensor_dotm1[3]={0};
+                int k_alpha, k_gamma, k_beta, k_delta;
+                for(k_gamma=0; k_gamma<3; k_gamma++)
+                {
+                    for(k_alpha=0;k_alpha<3;k_alpha++)
+                    {
+                        for(k_beta=0;k_beta<3;k_beta++)
+                        {
+                            contracted_twotensor[k_beta][k_gamma] = 0;
+                            for(k_delta=0;k_delta<3;k_delta++) {contracted_twotensor[k_beta][k_gamma] += dm2[k_beta][k_delta][k_gamma] * B[k_delta];}
+                            contracted_twotensor_x[k_alpha][k_gamma] += dm2[k_alpha][k_beta][k_gamma] * B[k_beta];
+                            dB[k_alpha][k_gamma] += -m2i[k_alpha][k_beta] * (dm1[k_beta][k_gamma] + contracted_twotensor[k_beta][k_gamma]);
+                        }
+                        minus_m2i_dm1_dotm1[k_gamma] += 2.*B[k_alpha]*dm1[k_alpha][k_gamma];
+                        contracted_twotensor_dotm1[k_gamma] += B[k_alpha]*contracted_twotensor_x[k_alpha][k_gamma];
+                    }
+                    dA[k_gamma] = -A*A * (dm0[k_gamma] + minus_m2i_dm1_dotm1[k_gamma] + contracted_twotensor_dotm1[k_gamma]);
+                }
+                
+                // collect the final vector and tensor terms actually needed for the face construction
+                double vector_corr[3] = {0}, tensor_corr[3][3] = {{0}};
+                for(k=0;k<3;k++)
+                {
+                    vector_corr[k] = dA[k] + A*B[k];
+                    for(k_x=0;k_x<3;k_x++) {tensor_corr[k][k_x] = B[k]*dA[k_x] + A*dB[k][k_x];}
+                }
+                // assign these to an ordered list (for ease of reference) and to particle. order: A, B[3], (dA+A*B)[3], (dA.B+A.dB)[3][3]
+                SphP[i].Tensor_CRK_Face_Corrections[0] = A;
+                for(k=0;k<3;k++) {SphP[i].Tensor_CRK_Face_Corrections[1+k] = B[k];}
+                for(k=0;k<3;k++) {SphP[i].Tensor_CRK_Face_Corrections[1+3+k] = vector_corr[k];}
+                for(k=0;k<3;k++) {for(k_x=0;k_x<3;k_x++) {SphP[i].Tensor_CRK_Face_Corrections[1+3+3+3*k+k_x] = tensor_corr[k][k_x];}}
+            }
+#endif
+            
         }
     
-    
+
     /* free the temporary structure we created for the MinMax and additional data passing */
     myfree(GasGradDataPasser);
     
@@ -1668,7 +1873,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
     
     int kernel_mode_i = -1; // only need to calculate wk, by default
     if(sph_gradients_flag_i) kernel_mode_i = 0; // for sph, only need dwk
-#if defined(HYDRO_SPH)
+#if defined(HYDRO_SPH) || defined(KERNEL_CRK_FACES)
     kernel_mode_i = 0; // for some circumstances, we require both wk and dwk //
 #endif
     
@@ -1702,7 +1907,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 if(j >= N_gas) continue;
 
                 int TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
-#ifndef SHEARING_BOX // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //
+#ifndef BOX_SHEARING // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //
                 if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
                 /* use relative positions to break degeneracy */
                 if(local.Timestep == TimeStep_J)
@@ -1720,12 +1925,16 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
-#ifdef PERIODIC			/*  now find the closest image in the given box size  */
+#ifdef BOX_PERIODIC			/*  now find the closest image in the given box size  */
                 NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1);
 #endif
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 double h_j = PPP[j].Hsml;
+#if !defined(HYDRO_SPH) && !defined(KERNEL_CRK_FACES)
                 if(r2 <= 0) continue;
+#else
+                if(r2 <= 0) {swap_to_j = 0;}
+#endif
                 if((r2 >= h2_i) && (r2 >= h_j * h_j)) continue;
                 
                 kernel.r = sqrt(r2);
@@ -1738,7 +1947,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 {
                     kernel.dwk_i = kernel.wk_i = 0;
                 }
-#if defined(CONSTRAINED_GRADIENT_MHD)
+#if defined(MHD_CONSTRAINED_GRADIENT) || defined(KERNEL_CRK_FACES)
                 if(kernel.r < h_j)
 #else
                 if((kernel.r < h_j) && (swap_to_j))
@@ -1747,7 +1956,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     /* ok, we need the j-particle weights, but first check what kind of gradient we are calculating */
                     sph_gradients_flag_j = SHOULD_I_USE_SPH_GRADIENTS(SphP[j].ConditionNumber);
                     int kernel_mode_j;
-#if defined(HYDRO_SPH)
+#if defined(HYDRO_SPH) || defined(KERNEL_CRK_FACES)
                     kernel_mode_j = 0; // for some circumstances, we require both wk and dwk //
 #else
                     if(sph_gradients_flag_j) {kernel_mode_j=0;} else {kernel_mode_j=-1;}
@@ -1762,7 +1971,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 }
                 
                 
-#if defined(CONSTRAINED_GRADIENT_MHD)
+#if defined(MHD_CONSTRAINED_GRADIENT)
                 double V_j = P[j].Mass / SphP[j].Density;
                 double Face_Area_Vec[3];
                 double wt_i,wt_j;
@@ -1812,12 +2021,12 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                         Q_R = local.GQuant.B[k] + db_cR;
                         double Qmax, Qmin, Qmed = 0.5*(local.GQuant.B[k] + Bjk);
                         if(local.GQuant.B[k] < Bjk) {Qmax=Bjk; Qmin=local.GQuant.B[k];} else {Qmax=local.GQuant.B[k]; Qmin=Bjk;}
-                        double fac = CONSTRAINED_GRADIENT_MHD_FAC_MINMAX * (Qmax-Qmin);
-                        fac += CONSTRAINED_GRADIENT_MHD_FAC_MAX_PM * fabs(Qmed);
+                        double fac = MHD_CONSTRAINED_GRADIENT_FAC_MINMAX * (Qmax-Qmin);
+                        fac += MHD_CONSTRAINED_GRADIENT_FAC_MAX_PM * fabs(Qmed);
                         double Qmax_eff = Qmax + fac;
                         double Qmin_eff = Qmin - fac;
-                        fac = CONSTRAINED_GRADIENT_MHD_FAC_MEDDEV * (Qmax-Qmin);
-                        fac += CONSTRAINED_GRADIENT_MHD_FAC_MED_PM * fabs(Qmed);
+                        fac = MHD_CONSTRAINED_GRADIENT_FAC_MEDDEV * (Qmax-Qmin);
+                        fac += MHD_CONSTRAINED_GRADIENT_FAC_MED_PM * fabs(Qmed);
                         double Qmed_max = Qmed + fac;
                         double Qmed_min = Qmed - fac;
                         if(Qmed_max>Qmax_eff) Qmed_max=Qmax_eff;
@@ -1845,7 +2054,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     if(swap_to_j) GasGradDataPasser[j].FaceDotB -= Face_Area_Vec[k] * (Bjk + Q_R);
                 }
                 
-#if defined(CONSTRAINED_GRADIENT_MHD_MIDPOINT)
+#if defined(MHD_CONSTRAINED_GRADIENT_MIDPOINT)
                 /* this will fit the gradient at the -midpoint- as opposed to at the j locations, i.e.
                  attempting to minimize the quantity phi_L - phi_R, at face locations */
                 double dphi = Get_Particle_PhiField(j) - local.GQuant.Phi;
@@ -1896,12 +2105,51 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     MINMAX_CHECK(dp,out.Minima.Pressure,out.Maxima.Pressure);
                     if(swap_to_j) {MINMAX_CHECK(-dp,GasGradDataPasser[j].Minima.Pressure,GasGradDataPasser[j].Maxima.Pressure);}
 
+#if defined(KERNEL_CRK_FACES)
+                    {
+                        double V_i = local.Mass/local.GQuant.Density, V_j = P[j].Mass/SphP[j].Density;
+                        double wk_ij = 0.5*(kernel.wk_i + kernel.wk_j), dwk_ij = 0.5*(kernel.dwk_i + kernel.dwk_j), rinv = 1./(MIN_REAL_NUMBER + kernel.r);
+                        double Vj_wki = V_j*wk_ij, Vj_dwki = V_j*dwk_ij*rinv, Vi_wkj = V_i*wk_ij, Vi_dwkj = V_i*dwk_ij*rinv;
+                        out.m0 += Vj_wki;
+                        for(k=0;k<3;k++) {out.dm0[k] += Vj_dwki*kernel.dp[k];}
+                        for(k2=0;k2<3;k2++)
+                        {
+                            out.m1[k2] += Vj_wki*kernel.dp[k2];
+                            for(k=0;k<3;k++) {out.dm1[k2][k] += Vj_dwki*kernel.dp[k2]*kernel.dp[k];}
+                        }
+                        for(k2=0;k2<6;k2++)
+                        {
+                            int kk0[6]={0,1,2,0,0,1};
+                            int kk1[6]={0,1,2,1,2,2};
+                            out.m2[k2] += Vj_wki*kernel.dp[kk0[k2]]*kernel.dp[kk1[k2]];
+                            for(k=0;k<3;k++) {out.dm2[k2][k] += Vj_dwki*kernel.dp[kk0[k2]]*kernel.dp[kk1[k2]]*kernel.dp[k];}
+                        }
+                        if(swap_to_j)
+                        {
+                            GasGradDataPasser[j].m0 += Vi_wkj;
+                            for(k=0;k<3;k++) {GasGradDataPasser[j].dm0[k] -= Vi_dwkj*kernel.dp[k];}
+                            for(k2=0;k2<3;k2++)
+                            {
+                                GasGradDataPasser[j].m1[k2] -= Vi_wkj*kernel.dp[k2];
+                                for(k=0;k<3;k++) {GasGradDataPasser[j].dm1[k2][k] += Vi_dwkj*kernel.dp[k2]*kernel.dp[k];}
+                            }
+                            for(k2=0;k2<6;k2++)
+                            {
+                                int kk0[6]={0,1,2,0,0,1};
+                                int kk1[6]={0,1,2,1,2,2};
+                                GasGradDataPasser[j].m2[k2] += Vi_wkj*kernel.dp[kk0[k2]]*kernel.dp[kk1[k2]];
+                                for(k=0;k<3;k++) {GasGradDataPasser[j].dm2[k2][k] -= Vi_dwkj*kernel.dp[kk0[k2]]*kernel.dp[kk1[k2]]*kernel.dp[k];}
+                            }
+                        }
+                    }
+#endif
+                    
                     double dv[3];
                     for(k=0;k<3;k++)
                     {
                         dv[k] = SphP[j].VelPred[k] - local.GQuant.Velocity[k];
-#ifdef SHEARING_BOX
-                        if(k==SHEARING_BOX_PHI_COORDINATE)
+#ifdef BOX_SHEARING
+                        if(k==BOX_SHEARING_PHI_COORDINATE)
                         {
                             if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[k] -= Shearing_Box_Vel_Offset;}
                             if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[k] += Shearing_Box_Vel_Offset;}
@@ -1911,6 +2159,15 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                         if(swap_to_j) {MINMAX_CHECK(-dv[k],GasGradDataPasser[j].Minima.Velocity[k],GasGradDataPasser[j].Maxima.Velocity[k]);}
                     }
 
+#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && (HYDRO_FIX_MESH_MOTION==6)
+                    for(k=0;k<3;k++)
+                    {
+                        double GlassAcc = kernel.dp[k] / (kernel.r*kernel.r*kernel.r); // acceleration to apply to force cells into a glass
+                        out.GlassAcc[k] += GlassAcc;
+                        if(swap_to_j) {GasGradDataPasser[j].GlassAcc[k] -= GlassAcc;}
+                    }
+#endif
+                    
 #ifdef DOGRAD_INTERNAL_ENERGY
                     double du = SphP[j].InternalEnergyPred - local.GQuant.InternalEnergy;
                     MINMAX_CHECK(du,out.Minima.InternalEnergy,out.Maxima.InternalEnergy);
@@ -1936,12 +2193,12 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                         if(swap_to_j) {MINMAX_CHECK(-dB[k],GasGradDataPasser[j].Minima.B[k],GasGradDataPasser[j].Maxima.B[k]);}
                     }
 #endif
-#if defined(DIVBCLEANING_DEDNER) && !defined(CONSTRAINED_GRADIENT_MHD_MIDPOINT)
+#if defined(DIVBCLEANING_DEDNER) && !defined(MHD_CONSTRAINED_GRADIENT_MIDPOINT)
                     double dphi = Get_Particle_PhiField(j) - local.GQuant.Phi;
                     MINMAX_CHECK(dphi,out.Minima.Phi,out.Maxima.Phi);
                     if(swap_to_j) {MINMAX_CHECK(-dphi,GasGradDataPasser[j].Minima.Phi,GasGradDataPasser[j].Maxima.Phi);}
 #endif
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
                     double dmetal[NUM_METAL_SPECIES];
                     for(k = 0; k < NUM_METAL_SPECIES; k++)
                     {
@@ -1967,8 +2224,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 
 
                     /* ------------------------------------------------------------------------------------------------ */
-                    /*  Here we insert additional operations we want to fit into the gradients loop. at the moment, all of these 
-                            are SPH-specific */
+                    /*  Here we insert additional operations we want to fit into the gradients loop. at the moment, all of these are SPH-specific */
 #ifdef HYDRO_SPH
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
                     out.alpha_limiter += NV_MYSIGN(SphP[j].NV_DivVel) * P[j].Mass * kernel.wk_i;
@@ -2019,11 +2275,11 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #endif
 #ifdef MAGNETIC
                             for(k2=0;k2<3;k2++) {out.Gradients[k].B[k2] += wk_xyz_i * dB[k2];}
-#if defined(DIVBCLEANING_DEDNER) && !defined(CONSTRAINED_GRADIENT_MHD_MIDPOINT)
+#if defined(DIVBCLEANING_DEDNER) && !defined(MHD_CONSTRAINED_GRADIENT_MIDPOINT)
                             out.Gradients[k].Phi += wk_xyz_i * dphi;
 #endif
 #endif
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
                             for(k2=0;k2<NUM_METAL_SPECIES;k2++) {out.Gradients[k].Metallicity[k2] += wk_xyz_i * dmetal[k2];}
 #endif
 #ifdef RT_EVOLVE_EDDINGTON_TENSOR
@@ -2056,16 +2312,16 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                             SphP[j].Gradients.SoundSpeed[k] += wk_xyz_j * dc;
 #endif
 #ifdef MAGNETIC
-#ifdef CONSTRAINED_GRADIENT_MHD
+#ifdef MHD_CONSTRAINED_GRADIENT
                             for(k2=0;k2<3;k2++) {GasGradDataPasser[j].BGrad[k2][k] += wk_xyz_j * dB[k2];}
 #else
                             for(k2=0;k2<3;k2++) {SphP[j].Gradients.B[k2][k] += wk_xyz_j * dB[k2];}
 #endif
-#if defined(DIVBCLEANING_DEDNER) && !defined(CONSTRAINED_GRADIENT_MHD_MIDPOINT)
+#if defined(DIVBCLEANING_DEDNER) && !defined(MHD_CONSTRAINED_GRADIENT_MIDPOINT)
                             SphP[j].Gradients.Phi[k] += wk_xyz_j * dphi;
 #endif
 #endif
-#ifdef TURB_DIFF_METALS
+#if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
                             for(k2=0;k2<NUM_METAL_SPECIES;k2++) {SphP[j].Gradients.Metallicity[k2][k] += wk_xyz_j * dmetal[k2];}
 #endif
 #ifdef RT_EVOLVE_EDDINGTON_TENSOR

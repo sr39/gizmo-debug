@@ -8,8 +8,7 @@
 #include "./nuclear_network.h"
 
 /*
- *  This code is place-holder, inherited from GADGET3,
- *   to be replaced by David Radice's version (written completely independently)
+ *  This code is place-holder, inherited from GADGET3
  */
 
 #ifdef NUCLEAR_NETWORK
@@ -248,7 +247,7 @@ static void network_solver_integrate_internal(double temp, double rho, double *y
   jacob_t *jacob;
   struct network_solver_data *nsd = nw->nsd;
   double start;
-#ifdef NETWORK_OUTPUT_TIMEEVOLUTION
+#ifdef NUCLEARNET_OUTPUT_TIMEEVOLUTION
   FILE *fp;
 
   fp = fopen("network_output.dat", "w");
@@ -316,7 +315,7 @@ static void network_solver_integrate_internal(double temp, double rho, double *y
       sanitize(y, nd);
       normalize(y, nsd);
 
-#ifdef NETWORK_OUTPUT_TIMEEVOLUTION
+#ifdef NUCLEARNET_OUTPUT_TIMEEVOLUTION
       printf("t(%03d): %11.5e, dt (%02d): %11.5e, x:", step, time, m, dttry);
       for(i = 0; i < nsd->nelements; i++)
 	{
@@ -491,7 +490,7 @@ static void network_solver_integrate_internal(double temp, double rho, double *y
 	}
     }
 
-#ifdef NETWORK_OUTPUT_TIMEEVOLUTION
+#ifdef NUCLEARNET_OUTPUT_TIMEEVOLUTION
   printf("t(%03d): %11.5e, dt (%02d): %11.5e, x:", step, t, m, dttry);
   for(i = 0; i < nsd->nelements; i++)
     {

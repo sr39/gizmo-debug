@@ -52,13 +52,12 @@ void blackhole_environment_loop(void)
     int ndone_flag, ndone;
     MPI_Status status;
     
+    size_t MyBufferSize = All.BufferSize;
     Ngblist = (int *) mymalloc("Ngblist", NumPart * sizeof(int));
-    All.BunchSize = (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
+    All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
                                                              sizeof(struct blackholedata_in) +
                                                              sizeof(struct blackhole_temp_particle_data) +
-                                                             sizemax(sizeof(struct blackholedata_in),
-                                                                     sizeof(struct blackhole_temp_particle_data))));
-    
+                                                             sizemax(sizeof(struct blackholedata_in),sizeof(struct blackhole_temp_particle_data))));
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
     
@@ -196,7 +195,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     MyFloat *pos, h_i, *vel, hinv;
     MyIDType id;
     
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyFloat hinv3, wk, dwk, u;
     u=wk=dwk=0;
 #endif
@@ -235,7 +234,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     
     if(h_i < 0) return -1;
     hinv = 1./h_i;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     hinv3 = hinv*hinv*hinv;
 #endif
     
@@ -267,15 +266,15 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                     dP[0] = P[j].Pos[0]-pos[0];
                     dP[1] = P[j].Pos[1]-pos[1];
                     dP[2] = P[j].Pos[2]-pos[2];
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
                     NEAREST_XYZ(dP[0],dP[1],dP[2],-1); /*  find the closest image in the given box size  */
 #endif
                     dv[0] = P[j].Vel[0]-vel[0];
                     dv[1] = P[j].Vel[1]-vel[1];
                     dv[2] = P[j].Vel[2]-vel[2];
-#ifdef SHEARING_BOX
-                    if(pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                    if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#ifdef BOX_SHEARING
+                    if(pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                    if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
 
 #ifdef BH_DYNFRICTION
@@ -305,7 +304,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         out.Jgas_in_Kernel[0] += wt*(dP[1]*dv[2] - dP[2]*dv[1]);
                         out.Jgas_in_Kernel[1] += wt*(dP[2]*dv[0] - dP[0]*dv[2]);
                         out.Jgas_in_Kernel[2] += wt*(dP[0]*dv[1] - dP[1]*dv[0]);
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_BAL_WINDS)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
                         u=0;
                         for(k=0;k<3;k++) u+=dP[k]*dP[k];
                         u=sqrt(u)/h_i;
@@ -342,8 +341,8 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 
 #if defined(BH_GRAVCAPTURE_GAS)
                     /* XM: I formally distinguish BH_GRAVCAPTURE_GAS and BH_GRAVCAPTURE_NONGAS. The former applies to
-                     gas ONLY, as an accretion model. The later can be combined with any accreton model.
-                     Currently, I only allow gas acretion to contribute to BH_Mdot (consistent with the energy radiating away).
+                     gas ONLY, as an accretion model. The later can be combined with any accretion model.
+                     Currently, I only allow gas accretion to contribute to BH_Mdot (consistent with the energy radiating away).
                      For star particles, if there is an alpha-disk, they are captured to the disk. If not, they directly go
                      to the hole, without any contribution to BH_Mdot and feedback. This can be modified in the swallow loop
                      for other purposes. */
@@ -420,13 +419,12 @@ void blackhole_environment_second_loop(void)
     int mod_index;
     MPI_Status status;
 
+    size_t MyBufferSize = All.BufferSize;
     Ngblist = (int *) mymalloc("Ngblist", NumPart * sizeof(int));
-    All.BunchSize = (int) ((All.BufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
+    All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
                                                              sizeof(struct blackholedata_in) +
                                                              sizeof(struct blackhole_temp_particle_data) +
-                                                             sizemax(sizeof(struct blackholedata_in),
-                                                                     sizeof(struct blackhole_temp_particle_data))));
-
+                                                             sizemax(sizeof(struct blackholedata_in),sizeof(struct blackhole_temp_particle_data))));
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
 
@@ -622,15 +620,15 @@ int blackhole_environment_second_evaluate(int target, int mode, int *nexport, in
                     dP[0] = P[j].Pos[0]-pos[0];
                     dP[1] = P[j].Pos[1]-pos[1];
                     dP[2] = P[j].Pos[2]-pos[2];
-#ifdef PERIODIC           
+#ifdef BOX_PERIODIC           
                     NEAREST_XYZ(dP[0],dP[1],dP[2],-1); /*  find the closest image in the given box size  */
 #endif
                     dv[0] = P[j].Vel[0]-vel[0];
                     dv[1] = P[j].Vel[1]-vel[1];
                     dv[2] = P[j].Vel[2]-vel[2];
-#ifdef SHEARING_BOX
-                    if(pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[SHEARING_BOX_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                    if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[SHEARING_BOX_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#ifdef BOX_SHEARING
+                    if(pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                    if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
 
                     // DAA: jx,jy,jz, are independent of 'a' because ~ m*r*v, vphys=v/a, rphys=r*a //

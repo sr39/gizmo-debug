@@ -24,24 +24,24 @@
 
 
 
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
 MyDouble boxSize, boxHalf, inverse_boxSize;
 
-#ifdef LONG_X
+#ifdef BOX_LONG_X
 MyDouble boxSize_X, boxHalf_X, inverse_boxSize_X;
 #else
 #endif
-#ifdef LONG_Y
+#ifdef BOX_LONG_Y
 MyDouble boxSize_Y, boxHalf_Y, inverse_boxSize_Y;
 #else
 #endif
-#ifdef LONG_Z
+#ifdef BOX_LONG_Z
 MyDouble boxSize_Z, boxHalf_Z, inverse_boxSize_Z;
 #else
 #endif
 #endif
 
-#ifdef SHEARING_BOX
+#ifdef BOX_SHEARING
 MyDouble Shearing_Box_Vel_Offset;
 MyDouble Shearing_Box_Pos_Offset;
 #endif
@@ -160,10 +160,6 @@ int N_gas;			/*!< number of gas particles on the LOCAL processor  */
 #ifdef SEPARATE_STELLARDOMAINDECOMP
 int N_stars;
 #endif
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-int N_BHs;
-#endif
-
 
 long long Ntype[6];		/*!< total number of particles of each type */
 int NtypeLocal[6];		/*!< local number of particles of each type */
@@ -222,13 +218,13 @@ FILE
 *FdTimings,    /*!< file handle for timings.txt log-file. */
 *FdBalance,    /*!< file handle for balance.txt log-file. */
 #ifdef RT_CHEM_PHOTOION
-FILE *FdRad;			/*!< file handle for radtransfer.txt log-file. */
+*FdRad,         /*!< file handle for radtransfer.txt log-file. */
 #endif
 #ifdef TURB_DRIVING
-FILE *FdTurb;    /*!< file handle for turb.txt log-file */
+*FdTurb,        /*!< file handle for turb.txt log-file */
 #endif
-#ifdef DARKENERGY
-FILE *FdDE;			/*!< file handle for darkenergy.txt log-file. */
+#ifdef GR_TABULATED_COSMOLOGY
+*FdDE,			/*!< file handle for darkenergy.txt log-file. */
 #endif
 #endif
 *FdCPU;        /*!< file handle for cpu.txt log-file. */
@@ -262,11 +258,12 @@ FILE *FdTidaltensor;		/*!< file handle for Tidaltensor.txt log-file. */
 
 #ifdef BLACK_HOLES
 FILE *FdBlackHoles;		/*!< file handle for blackholes.txt log-file. */
-#ifndef IO_REDUCED_MODE
+//#ifndef IO_REDUCED_MODE   DAA-IO: BH_OUTPUT_MOREINFO overrides IO_REDUCED_MODE
+#if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
 FILE *FdBlackHolesDetails;
 #ifdef BH_OUTPUT_MOREINFO
 FILE *FdBhMergerDetails;
-#ifdef BH_BAL_KICK
+#ifdef BH_WIND_KICK
 FILE *FdBhWindDetails;
 #endif
 #endif
@@ -314,10 +311,6 @@ struct particle_data *P,	/*!< holds particle data on local processor */
  */
 struct sph_particle_data *SphP,	/*!< holds SPH particle data on local processor */
  *DomainSphBuf;			/*!< buffer for SPH particle data in domain decomposition */
-
-#if defined(BLACK_HOLES) && defined(DETACH_BLACK_HOLES)
-struct bh_particle_data *BHP;
-#endif
 
 peanokey *DomainKeyBuf;
 
@@ -373,10 +366,7 @@ int NextJ;
 int TimerFlag;
 
 struct NODE *Nodes_base,	/*!< points to the actual memory allocted for the nodes */
- *Nodes;			/*!< this is a pointer used to access the nodes which is shifted such that Nodes[All.MaxPart]
-				   gives the first allocated node */
-
-
+*Nodes;			/*!< this is a pointer used to access the nodes which is shifted such that Nodes[All.MaxPart] gives the first allocated node */
 struct extNODE *Extnodes, *Extnodes_base;
 
 
@@ -388,10 +378,15 @@ int *Nextnode;			/*!< gives next node in tree walk  (nodes array) */
 int *Father;			/*!< gives parent node in tree (Prenodes array) */
 
 
-#if defined(OMP_NUM_THREADS)
-int maxThreads = OMP_NUM_THREADS;
+#if defined(PTHREADS_NUM_THREADS)
+int maxThreads = PTHREADS_NUM_THREADS;
 #else
 int maxThreads = 1;
+#endif
+
+
+#ifdef DM_SIDM
+MyDouble GeoFactorTable[GEOFACTOR_TABLE_LENGTH];
 #endif
 
 
