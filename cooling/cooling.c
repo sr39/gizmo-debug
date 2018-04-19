@@ -61,7 +61,7 @@ struct Reactions_Structure **nonmolecular_reactions_root_omp;
 #endif 
 
 
-
+#ifndef CHIMES 
 /* this is just a simple loop to do the particle cooling. this is now openmp-parallelized, since the cooling iteration can be a non-negligible cost */
 void cooling_parent_routine(void)
 {
@@ -98,11 +98,65 @@ void cooling_parent_routine(void)
         } /* while bracket */
     } /* omp bracket */
 }
+#else // !(CHIMES) 
 
+/* As cooling_parent_routine, but used when CHIMES is switched on. This version has 
+ * been set up to use OPENMP, which greatly reduces work-load imbalances associated 
+ * with the chemistry and cooling routines with CHIMES. */ 
+void chimes_cooling_parent_routine(void)
+{
+  int i;
 
+  if (ThisTask == 0) 
+    printf("Doing chemistry and cooling with CHIMES. \n"); 
 
+#ifdef OPENMP 
+  /* Determine indices of active particles. */
+  int N_active = 0; 
+  int j; 
+  int *active_indices; 
+  active_indices = (int *) malloc(N_gas * sizeof(int)); 
+  for (i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+      if(P[i].Type == 0 && P[i].Mass > 0) 
+	{
+	  active_indices[N_active] = i; 
+	  N_active++; 
+	}
+    }
 
+#pragma omp parallel private(i, j) 
+  {
 
+#pragma omp for schedule(dynamic) 
+  for(j = 0; j < N_active; j++)
+    {
+      i = active_indices[j]; 
+      do_the_cooling_for_particle(i);
+    }
+  } // End of parallel block 
+  free(active_indices); 
+#else // OPENMP  
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        if(P[i].Type == 0 && P[i].Mass > 0)
+        {
+            do_the_cooling_for_particle(i);
+        } // if(P[i].Type == 0 && P[i].Mass > 0)
+    } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+#endif // CHIMES && OPENMP
+
+  /* There may be large work-load imbalances when the chemistry is 
+   * being integrated, so we want to record the time spent by tasks 
+   * waiting for the remaining tasks to finish. */ 
+  CPU_Step[CPU_COOLINGSFR] += measure_time(); 
+  MPI_Barrier(MPI_COMM_WORLD); 
+  CPU_Step[CPU_COOLSFRIMBAL] += measure_time();
+
+  if (ThisTask == 0) 
+    printf("Chemistry and cooling finished. \n"); 
+}
+#endif // CHIMES 
 
 /* subroutine which actually sends the particle data to the cooling routine and updates the entropies */
 void do_the_cooling_for_particle(int i)
@@ -415,7 +469,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
 
 
 
-
+#ifndef CHIMES 
 /* returns cooling time. 
  * NOTE: If we actually have heating, a cooling time of 0 is returned.
  */
@@ -511,7 +565,7 @@ double get_mu(double T_guess, double rho, double *ne_guess, int target)
     
     return 1. / ( X*(1-0.5*fmol) + Y/4. + *ne_guess*HYDROGEN_MASSFRAC + Z/(16.+12.*fmol) ); // since our ne is defined in some routines with He, should multiply by universal
 }
-
+#endif // !(CHIMES) 
 
 double yhelium(int target)
 {
@@ -525,12 +579,12 @@ double yhelium(int target)
 #ifdef CHIMES 
 /* This function converts thermal energy to temperature, using the mean molecular weight computed 
  * from the non-equilibrium CHIMES abundances. */ 
-
-double convert_u_to_temp(double u, double rho, int target)
+double chimes_convert_u_to_temp(double u, double rho, int target)
 {
     return u * GAMMA_MINUS1 * PROTONMASS * calculate_mean_molecular_weight(&(ChimesGasVars[target]), &ChimesGlobalVars) / BOLTZMANN; 
 }
-#else 
+
+#else  // CHIMES 
 /* this function determines the electron fraction, and hence the mean molecular weight. With it arrives at a self-consistent temperature.
  * Ionization abundances and the rates for the emission are also computed */
 double convert_u_to_temp(double u, double rho, int target, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess)
@@ -572,7 +626,7 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
 }
 #endif // CHIMES 
 
-
+#ifndef CHIMES 
 /* this function computes the actual ionization states, relative abundances, and returns the ionization/recombination rates if needed */
 double find_abundances_and_rates(double logT, double rho, int target, double shieldfac, int return_cooling_mode,
                                  double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess)
@@ -860,7 +914,7 @@ double ThermalProperties(double u, double rho, int target, double *mu_guess, dou
     *mu_guess = get_mu(temp, rho, ne_guess, target);
     return temp;
 }
-
+#endif // !(CHIMES) 
 
 
 
@@ -868,7 +922,7 @@ extern FILE *fd;
 
 
 
-
+#ifndef CHIMES 
 /*  Calculates (heating rate-cooling rate)/n_h^2 in cgs units 
  */
 double CoolingRate(double logT, double rho, double n_elec_guess, int target)
@@ -1218,10 +1272,6 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     
   return Q;
 } // ends CoolingRate
-
-
-
-
 
 
 
@@ -1596,7 +1646,7 @@ void IonizeParamsFunction(void)
         epsHe0 *= 4. * pi * J_UV;
     }
 }
-
+#endif // !(CHIMES) 
 
 
 
@@ -1654,7 +1704,7 @@ void InitCool(void)
       init_chimes_omp(&ChimesGlobalVars, &AllRates_omp[i], &all_reactions_root_omp[i], &nonmolecular_reactions_root_omp[i]); 
 #endif 
 
-#else 
+#else // CHIMES 
     InitCoolMemory();
     MakeCoolingTable();
     ReadIonizeParams("TREECOOL");
@@ -1662,12 +1712,12 @@ void InitCool(void)
 #ifdef COOL_METAL_LINES_BY_SPECIES
     LoadMultiSpeciesTables();
 #endif
-#endif 
+#endif // CHIMES 
 }
 
 
 
-
+#ifndef CHIMES 
 #ifdef COOL_METAL_LINES_BY_SPECIES
 double GetCoolingRateWSpecies(double nHcgs, double logT, double *Z)
 {
@@ -1734,7 +1784,7 @@ double GetLambdaSpecies(long k_index, long index_x0y0, long index_x0y1, long ind
 }
 
 #endif // COOL_METAL_LINES_BY_SPECIES
-
+#endif // !(CHIMES) 
 
 
 #ifdef GALSF_FB_LOCAL_UV_HEATING

@@ -198,12 +198,12 @@ void run(void)
 
 void set_non_standard_physics_for_current_time(void)
 {
-#ifdef COOLING
+#if defined(COOLING) && !defined(CHIMES) 
     /* set UV background for the current time */
     IonizeParams();
 #endif
     
-#ifdef COOL_METAL_LINES_BY_SPECIES
+#if defined(COOL_METAL_LINES_BY_SPECIES) && !defined(CHIMES) 
     /* load the metal-line cooling tables appropriate for the UV background */
     if(All.ComovingIntegrationOn) LoadMultiSpeciesTables();
 #endif
@@ -309,8 +309,12 @@ void calculate_non_standard_physics(void)
     
     
 #ifdef COOLING	/**** radiative cooling and star formation *****/
+#ifdef CHIMES 
+    chimes_cooling_parent_routine(); // master cooling and chemistry subroutine //
+#else 
     cooling_parent_routine(); // master cooling subroutine //
     CPU_Step[CPU_COOLINGSFR] += measure_time(); // finish time calc for SFR+cooling
+#endif 
 #endif
 #ifdef GALSF
     star_formation_parent_routine(); // master star formation routine //
