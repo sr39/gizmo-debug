@@ -2012,12 +2012,6 @@ extern struct global_data_all_processes
   double star_age_slowdown; 
 #endif 
 
-#ifdef AJR_SUPPRESS_SN 
-  double sn_suppress_time1; 
-  double sn_suppress_time2; 
-  double sn_suppress_fac; 
-#endif 
-
 #ifdef AJR_RAPID_SN 
   double sn_rapid_time1; 
   double sn_rapid_time2; 

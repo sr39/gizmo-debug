@@ -257,7 +257,6 @@
 #SOLAR_ABUNDANCES_WIERSMA09      # Use solar abundances from Table 1 of Wiersma et al. 2009, MNRAS, 393, 99 (req. METALS) 
 #GALSF_ALT_INIT_STAR          # Some fraction of initial disk stars is given a uniform age distribution, remainder are fixed 
 #AJR_STAR_AGE                 # At the beginning of the simulation, new stars are initialised w/ a non-zero age 
-#AJR_SUPPRESS_SN              # At the beginning of the simulation, suppress the SNe rate (both Type Ia and Type II) 
 #AJR_RAPID_SN                  # At the beginning of the simulation, SNe occur more rapidly.
 #GALSF_FB_NOENRICHMENT           # Disables injection of metals from SNe & winds. Mass, momentum and energy are still injected. 
 ############################################################################################################################
