@@ -2,12 +2,13 @@
 if((local.Type==1) && (P[j].Type==1)) // only acts between DM particles of type 1 (can easily change if desired)
 {
     /* since this isn't a super-expensive calculation, and we need to walk the gravity tree for both 'sides' anyways, we will effectively do this twice each timestep */
-    double V_i=local.V_i, V_j=get_particle_volume_ags(j), rho_i=local.Mass/V_i*All.cf_a3inv, rho_j=P[j].Mass/V_j*All.cf_a3inv, Face_Area_Vec[3], Face_Area_Norm=0, vface_i_minus_j=0, dv[3], flux[3]={0}; // calculate densities (in physical units)
+    double V_i=local.V_i, V_j=get_particle_volume_ags(j), wt_i=V_i, wt_j=V_j, rho_i=local.Mass/V_i*All.cf_a3inv, rho_j=P[j].Mass/V_j*All.cf_a3inv, Face_Area_Vec[3], Face_Area_Norm=0, vface_i_minus_j=0, dv[3], flux[3]={0}; // calculate densities (in physical units)
     // calculate effective faces and face velocity between elements //
+    if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.25) {wt_i=wt_j=2.*V_i*V_j/(V_i+V_j);} else {wt_i=V_i; wt_j=V_j;} // limiter to prevent faces from going geometrically crazy in disparate limits
     for(k=0;k<3;k++)
     {
-        Face_Area_Vec[k] = (kernel.wk_i*V_i * (local.NV_T[k][0]*kernel.dp[0] + local.NV_T[k][1]*kernel.dp[1] + local.NV_T[k][2]*kernel.dp[2]) +
-                            kernel.wk_j*V_j * (P[j].NV_T[k][0]*kernel.dp[0] + P[j].NV_T[k][1]*kernel.dp[1] + P[j].NV_T[k][2]*kernel.dp[2])) * All.cf_atime*All.cf_atime; // physical units
+        Face_Area_Vec[k] = (kernel.wk_i*wt_i * (local.NV_T[k][0]*kernel.dp[0] + local.NV_T[k][1]*kernel.dp[1] + local.NV_T[k][2]*kernel.dp[2]) +
+                            kernel.wk_j*wt_j * (P[j].NV_T[k][0]*kernel.dp[0] + P[j].NV_T[k][1]*kernel.dp[1] + P[j].NV_T[k][2]*kernel.dp[2])) * All.cf_atime*All.cf_atime; // physical units
         Face_Area_Norm += Face_Area_Vec[k]*Face_Area_Vec[k]; // physical units
         dv[k] = kernel.dv[k] / All.cf_atime; // physical units
         vface_i_minus_j += dv[k] * Face_Area_Vec[k]; // physical units
