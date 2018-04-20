@@ -845,6 +845,7 @@ double do_cbe_nvt_inversion_for_faces(int i);
 #endif
 
 #ifdef DM_FUZZY
+void do_dm_fuzzy_drift_kick(int pindex, double dt_entr);
 void DMGrad_gradient_calc(void);
 int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
 void *DMGrad_evaluate_primary(void *p, int gradient_iteration);
