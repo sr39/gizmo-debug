@@ -931,7 +931,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 SphP[j].MassTrue += dM_ejecta_in;
 #endif
-#ifdef METALS
+#if defined(METALS) && !defined(GALSF_FB_NOENRICHMENT) 
                 /* inject metals */
                 for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=(1-massratio_ejecta)*P[j].Metallicity[k] + massratio_ejecta*local.yields[k];}
                 if(feedback_type == 2) continue; // for r-process, nothing left here to bother coupling //
