@@ -162,8 +162,7 @@ void begrun(void)
 #endif
     
 #ifdef NUCLEAR_NETWORK
-  network_init(All.EosSpecies, All.NetworkRates, All.NetworkPartFunc, All.NetworkMasses,
-	       All.NetworkWeakrates, &All.nd);
+  network_init(All.EosSpecies, All.NetworkRates, All.NetworkPartFunc, All.NetworkMasses, All.NetworkWeakrates, &All.nd);
   network_workspace_init(&All.nd, &All.nw);
 #endif
 
