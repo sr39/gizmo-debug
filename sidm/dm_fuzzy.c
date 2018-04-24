@@ -115,7 +115,7 @@ void do_dm_fuzzy_drift_kick(int pindex, double dt_entr)
     double d2rho = P[pindex].AGS_Gradients2_Density[0][0] + P[pindex].AGS_Gradients2_Density[1][1] + P[pindex].AGS_Gradients2_Density[2][2]; // laplacian
     double drho2 = P[pindex].AGS_Gradients_Density[0]*P[pindex].AGS_Gradients_Density[0] + P[pindex].AGS_Gradients_Density[1]*P[pindex].AGS_Gradients_Density[1] + P[pindex].AGS_Gradients_Density[2]*P[pindex].AGS_Gradients_Density[2];
     double QP0 = (f00*f00 / P[pindex].AGS_Density) * (d2rho - 0.5*drho2/P[pindex].AGS_Density); // quantum 'potential'
-    NQ1 = DMAX(0,DMAX(NQ1,0.1*NQ0)); dNQ = DMIN(NQ1,1.1*DMAX(DMAX(KE0+NQ0,fabs(QP0)),KE0+NQ0+QP0)); // limit kick to not produce unphysical energy over-or-under-shoot
+    NQ1 = DMAX(0,DMAX(NQ1,0.1*NQ0)); NQ1 = DMIN(NQ1,1.1*DMAX(DMAX(KE0+NQ0,fabs(QP0)),KE0+NQ0+QP0)); // limit kick to not produce unphysical energy over-or-under-shoot
     P[pindex].AGS_Numerical_QuantumPotential = NQ1;
 }
 
