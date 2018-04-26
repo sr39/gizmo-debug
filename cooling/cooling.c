@@ -947,7 +947,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         if(logT <= 5.2)
         {
             // multiplied by background of ~5eV/cm^3 (Goldsmith & Langer (1978),  van Dishoeck & Black (1986) //
-            double prefac_CR=1; if(All.ComovingIntegrationOn) {if(rho > 1000.*All.OmegaBaryon*(All.HubbleParam*HUBBLE)*(All.HubbleParam*HUBBLE)*(3./(8.*M_PI*GRAVITY))*All.cf_a3inv) {prefac_CR=0;}} // in cosmological runs, turn off CR heating for any gas with density unless it's >1000 times the cosmic mean density
+            double prefac_CR=1; if(All.ComovingIntegrationOn) {if(rho < 1000.*All.OmegaBaryon*(All.HubbleParam*HUBBLE)*(All.HubbleParam*HUBBLE)*(3./(8.*M_PI*GRAVITY))*All.cf_a3inv) {prefac_CR=0;}} // in cosmological runs, turn off CR heating for any gas with density unless it's >1000 times the cosmic mean density
             Heat += prefac_CR * 1.0e-16 * (0.98 + 1.65*n_elec*HYDROGEN_MASSFRAC) / (1.e-2 + nHcgs) * 9.0e-12;
         }
 #endif
