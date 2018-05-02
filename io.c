@@ -3840,10 +3840,20 @@ void write_file(char *fname, int writeTask, int lastTask)
                             get_dataset_name(blocknr, buf);
                             
                             hdf5_dataspace_in_file = H5Screate_simple(rank, dims, NULL);
-                            hdf5_dataset =
-                            H5Dcreate(hdf5_grp[type], buf, hdf5_datatype, hdf5_dataspace_in_file,
-                                      H5P_DEFAULT);
-                            
+#ifndef IO_COMPRESS_HDF5
+                            hdf5_dataset = H5Dcreate(hdf5_grp[type], buf, hdf5_datatype, hdf5_dataspace_in_file, H5P_DEFAULT);
+#else
+                            if(dims[0] > 10)
+			    {
+                            	hid_t plist_id = H5Pcreate(H5P_DATASET_CREATE);
+                            	hsize_t cdims[2]; cdims[0] = (hsize_t) (dims[0] / 10); cdims[1] = dims[1];
+                            	hdf5_status = H5Pset_chunk (plist_id, rank, cdims);
+                            	hdf5_status = H5Pset_deflate (plist_id, 4);
+                            	hdf5_dataset = H5Dcreate2(hdf5_grp[type], buf, hdf5_datatype, hdf5_dataspace_in_file, H5P_DEFAULT, plist_id, H5P_DEFAULT);
+			    } else {
+                            	hdf5_dataset = H5Dcreate(hdf5_grp[type], buf, hdf5_datatype, hdf5_dataspace_in_file, H5P_DEFAULT);
+			    }                      
+#endif
                             pcsum = 0;
                         }
 #endif
