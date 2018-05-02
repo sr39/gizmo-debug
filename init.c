@@ -475,7 +475,14 @@ void init(void)
         
         if(RestartFlag == 0) {
 #if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(GALSF_FB_THERMAL)
+#ifdef AJR_INIT_HALO_METALLICITY 
+	  if (P[i].ID < All.HaloID) 
+	    P[i].Metallicity[0] = All.InitMetallicityinSolar*All.SolarAbundances[0];
+	  else 
+	    P[i].Metallicity[0] = All.InitHaloMetallicityinSolar*All.SolarAbundances[0];
+#else
             P[i].Metallicity[0] = All.InitMetallicityinSolar*All.SolarAbundances[0];
+#endif 
 #else
             P[i].Metallicity[0] = 0;
 #endif

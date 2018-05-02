@@ -1837,6 +1837,10 @@ extern struct global_data_all_processes
     
 #if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(GALSF_FB_THERMAL)
   double InitMetallicityinSolar;
+#ifdef AJR_INIT_HALO_METALLICITY 
+  double InitHaloMetallicityinSolar;
+  int HaloID; 
+#endif 
   double InitStellarAgeinGyr;
 #ifdef GALSF_ALT_INIT_STAR
   double UniformAgeFraction; 

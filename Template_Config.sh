@@ -259,6 +259,7 @@
 #AJR_STAR_AGE                 # At the beginning of the simulation, new stars are initialised w/ a non-zero age 
 #AJR_RAPID_SN                  # At the beginning of the simulation, SNe occur more rapidly.
 #GALSF_FB_NOENRICHMENT           # Disables injection of metals from SNe & winds. Mass, momentum and energy are still injected. 
+#AJR_INIT_HALO_METALLICITY    # Set metallicity of halo gas separately from disc gas 
 ############################################################################################################################
 
 
