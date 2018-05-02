@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <hdf5.h>
+#include <string.h> 
 #include "../../allvars.h" 
 
 #ifndef max

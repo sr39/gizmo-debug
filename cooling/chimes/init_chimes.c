@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <hdf5.h>
+#include <string.h> 
 #include "proto.h"
 
 struct Equilibrium_abundance_structure EquilibriumAbundances;
