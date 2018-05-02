@@ -595,6 +595,17 @@ struct Bens_rate_structure
   double *CTHeion;
 };
 
+extern struct Equilibrium_abundance_structure
+{
+  int N_Temperatures;
+  int N_Densities;
+  int N_Metallicities;
+  double *Temperatures;
+  double *Densities;
+  double *Metallicities;
+  double ****EqAbundances;
+} EquilibriumAbundances;
+
 enum 
   {
     elec,		/* 0 */

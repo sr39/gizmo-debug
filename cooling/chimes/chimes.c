@@ -266,9 +266,29 @@ void set_equilibrium_abundances_from_tables(struct gasVariables *myGasVars, stru
   int i, j, k, l;
   double dT, dnH, dZ;
 
-  get_index_1d_mydbl(EquilibriumAbundances.Temperatures, EquilibriumAbundances.N_Temperatures, log10(myGasVars->temperature), &i, &dT);
-  get_index_1d_mydbl(EquilibriumAbundances.Densities, EquilibriumAbundances.N_Densities, log10(myGasVars->nH_tot), &j, &dnH);
-  get_index_1d_mydbl(EquilibriumAbundances.Metallicities, EquilibriumAbundances.N_Metallicities, log10(myGasVars->metallicity), &k, &dZ);
+  if (myGasVars->temperature <= pow(10.0, EquilibriumAbundances.Temperatures[0]))
+    {
+      i = 0;
+      dT = 0.0;
+    }
+  else
+    get_index_1d_mydbl(EquilibriumAbundances.Temperatures, EquilibriumAbundances.N_Temperatures, log10(myGasVars->temperature), &i, &dT);
+
+  if (myGasVars->nH_tot <= pow(10.0, EquilibriumAbundances.Densities[0]))
+    {
+      j = 0;
+      dnH = 0.0;
+    }
+  else
+    get_index_1d_mydbl(EquilibriumAbundances.Densities, EquilibriumAbundances.N_Densities, log10(myGasVars->nH_tot), &j, &dnH);
+
+  if (myGasVars->metallicity <= pow(10.0, EquilibriumAbundances.Metallicities[0]))
+    {
+      k = 0;
+      dZ = 0.0;
+    }
+  else
+    get_index_1d_mydbl(EquilibriumAbundances.Metallicities, EquilibriumAbundances.N_Metallicities, log10(myGasVars->metallicity), &k, &dZ);
 	  
   /* Note that the equilibrium tables tabulate
    * ionisation (or molecular) fraction, and 

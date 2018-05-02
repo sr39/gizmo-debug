@@ -331,14 +331,3 @@ typedef struct
   void *cvode_mem;
   int network_size;
 } *UserData;
-
-extern struct Equilibrium_abundance_structure
-{
-  int N_Temperatures;
-  int N_Densities;
-  int N_Metallicities;
-  double *Temperatures;
-  double *Densities;
-  double *Metallicities;
-  double ****EqAbundances;
-} EquilibriumAbundances;
