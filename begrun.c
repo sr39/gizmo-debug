@@ -1039,6 +1039,16 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt],"InitMetallicity");
         addr[nt] = &All.InitMetallicityinSolar;
         id[nt++] = REAL;
+
+#ifdef AJR_INIT_HALO_METALLICITY 
+        strcpy(tag[nt],"InitHaloMetallicity");
+        addr[nt] = &All.InitHaloMetallicityinSolar;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt],"HaloID");
+        addr[nt] = &All.HaloID;
+        id[nt++] = INT;
+#endif 
         
         strcpy(tag[nt],"InitStellarAge");
         addr[nt] = &All.InitStellarAgeinGyr;
