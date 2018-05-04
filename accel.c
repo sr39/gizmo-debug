@@ -180,6 +180,10 @@ void compute_stellar_feedback(void)
     HII_heating_singledomain();
     CPU_Step[CPU_HIIHEATING] += measure_time();
 #endif
+
+#ifdef CHIMES_HII_REGIONS 
+    chimes_HII_regions_singledomain(); 
+#endif 
     
     /* finally (if we're not doing it in the star formation routine), do the local radiation pressure */
 #if defined(GALSF_FB_RPWIND_FROMSTARS) && !defined(GALSF_FB_RPWIND_DO_IN_SFCALC)

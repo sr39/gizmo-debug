@@ -142,7 +142,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
 #if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
 	int age_bin, j; 
 	double log_age_Myr = log10(star_age * 1000.0); 
-	double stellar_mass = P[i].Mass * All.UnitMass_in_g / SOLAR_MASS; 
+	double stellar_mass = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS); 
 	if (log_age_Myr < CHIMES_LOCAL_UV_AGE_LOW) 
 	  age_bin = 0; 
 	else if (log_age_Myr < CHIMES_LOCAL_UV_AGE_MID) 

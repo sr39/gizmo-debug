@@ -2440,7 +2440,7 @@ extern struct sph_particle_data
 #endif
 #endif
     
-#ifdef GALSF_FB_HII_HEATING
+#if defined(GALSF_FB_HII_HEATING) || defined(CHIMES_HII_REGIONS) 
   MyFloat DelayTimeHII;             /*!< flag indicating particle is ionized by nearby star */
 #endif
 #ifdef GALSF_FB_TURNOFF_COOLING

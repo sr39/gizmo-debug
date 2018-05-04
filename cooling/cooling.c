@@ -262,7 +262,7 @@ void do_the_cooling_for_particle(int i)
 #endif
         
         
-#ifdef GALSF_FB_HII_HEATING
+#if defined(GALSF_FB_HII_HEATING) || defined(CHIMES_HII_REGIONS) 
         /* count off time which has passed since ionization 'clock' */
         if(SphP[i].DelayTimeHII > 0) SphP[i].DelayTimeHII -= dtime;
         if(SphP[i].DelayTimeHII < 0) SphP[i].DelayTimeHII = 0;
@@ -383,6 +383,13 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     ChimesGasVars[target].cell_size = 1.0; 
     ChimesGasVars[target].doppler_broad = 7.1; 
 #endif
+
+#ifdef CHIMES_HII_REGIONS 
+    // Effectively switches off shielding 
+    // in HII regions. 
+    if (SphP[target].DelayTimeHII > 0.0) 
+      ChimesGasVars[target].cell_size = 1.0; 
+#endif 
 
 #ifdef METALS     
     /* NOTE: Currently the element abundances are not updated after 
