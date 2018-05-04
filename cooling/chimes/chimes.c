@@ -456,10 +456,6 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
   data->extinction = &extinction;
   data->network_size = network_size;
 
-  double *old_abundances; 
-  double old_temperature; 
-  int total_steps, step_count; 
-
   if (myGasVars->ForceEqOn > 0)
     {
       if (myGasVars->ThermEvolOn == 0)
@@ -469,31 +465,9 @@ void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGl
 	  else
 	    set_equilibrium_abundances(data);
 	}
-      else
-	{
-	  step_count = 0; 
-	  total_steps = 1; 
-	  old_abundances = (double *) malloc(myGlobalVars->totalNumberOfSpecies * sizeof(double));
-
-	  while (step_count < total_steps)
-	    {
-	      // Save initial abundances 
-	      for (i = 0; i < myGlobalVars->totalNumberOfSpecies; i++)
-		old_abundances[i] = myGasVars->abundances[i];
-	      old_temperature = myGasVars->temperature; 
-				  
-	      do_equilibrium_cooling(data); 
-				  
-	      if (fabs((myGasVars->temperature - old_temperature) / old_temperature) > 0.5) 
-		shorten_equilibrium_timestep(data, old_abundances, old_temperature, &step_count, &total_steps); 
-	      else
-		step_count += 1;
-	    }
-	  // Finally, reset hydro_timestep to its original value.
-	  myGasVars->hydro_timestep *= total_steps;
-			  
-	  free(old_abundances);
-	}
+      else		  
+	do_equilibrium_cooling(data); 
+	
       free(data);
       return;
     }

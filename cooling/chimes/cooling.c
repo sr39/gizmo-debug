@@ -628,6 +628,9 @@ void do_equilibrium_cooling(void *user_data)
   else
     set_equilibrium_abundances(data); /* Note: the column densities in 'data' are also updated in this routine. */
 
+  update_rates(myGasVars, myGlobalVars, *(data->HI_column), *(data->H2_column), *(data->HeI_column), *(data->HeII_column), *(data->CO_column), *(data->extinction), data->this_all_rates); 
+  update_T_dependent_rates(myGasVars, myGlobalVars, data->this_all_rates); 
+
   LambdaNet = -calculate_total_cooling_rate(myGasVars, myGlobalVars, *(data->HI_column), *(data->HeI_column), *(data->HeII_column), *(data->H2_column), *(data->CO_column), *(data->H2O_column), *(data->OH_column), *(data->extinction), data->this_all_rates);	
 
   if (myGasVars->temperature <= myGasVars->TempFloor && LambdaNet <= 0.0)
@@ -649,6 +652,8 @@ void do_equilibrium_cooling(void *user_data)
 	set_equilibrium_abundances(data);
 
       // Check that explicit solution is valid
+      update_rates(myGasVars, myGlobalVars, *(data->HI_column), *(data->H2_column), *(data->HeI_column), *(data->HeII_column), *(data->CO_column), *(data->extinction), data->this_all_rates); 
+      update_T_dependent_rates(myGasVars, myGlobalVars, data->this_all_rates); 
       LambdaNet = -calculate_total_cooling_rate(myGasVars, myGlobalVars, *(data->HI_column), *(data->HeI_column), *(data->HeII_column), *(data->H2_column), *(data->CO_column), *(data->H2O_column), *(data->OH_column), *(data->extinction), data->this_all_rates);
       if (fabs(LambdaNet * dt) < 0.10 * u_old && fabs(LambdaNet * dt) < 0.10 * u)
 	return;
@@ -680,6 +685,9 @@ void do_equilibrium_cooling(void *user_data)
 	set_equilibrium_abundances_from_tables(myGasVars, myGlobalVars);
       else
 	set_equilibrium_abundances(data); 
+
+      update_rates(myGasVars, myGlobalVars, *(data->HI_column), *(data->H2_column), *(data->HeI_column), *(data->HeII_column), *(data->CO_column), *(data->extinction), data->this_all_rates); 
+      update_T_dependent_rates(myGasVars, myGlobalVars, data->this_all_rates); 
       LambdaNet = -calculate_total_cooling_rate(myGasVars, myGlobalVars, *(data->HI_column), *(data->HeI_column), *(data->HeII_column), *(data->H2_column), *(data->CO_column), *(data->H2O_column), *(data->OH_column), *(data->extinction), data->this_all_rates); 
 
       while (u_upper - u_old - LambdaNet * dt < 0.0 && i < maxIter)
@@ -692,6 +700,9 @@ void do_equilibrium_cooling(void *user_data)
 	    set_equilibrium_abundances_from_tables(myGasVars, myGlobalVars);
 	  else
 	    set_equilibrium_abundances(data);
+
+	  update_rates(myGasVars, myGlobalVars, *(data->HI_column), *(data->H2_column), *(data->HeI_column), *(data->HeII_column), *(data->CO_column), *(data->extinction), data->this_all_rates); 
+	  update_T_dependent_rates(myGasVars, myGlobalVars, data->this_all_rates); 
 	  LambdaNet = -calculate_total_cooling_rate(myGasVars, myGlobalVars, *(data->HI_column), *(data->HeI_column), *(data->HeII_column), *(data->H2_column), *(data->CO_column), *(data->H2O_column), *(data->OH_column), *(data->extinction), data->this_all_rates);	
 
 	  i++;
@@ -714,6 +725,9 @@ void do_equilibrium_cooling(void *user_data)
 	    set_equilibrium_abundances_from_tables(myGasVars, myGlobalVars);
 	  else
 	    set_equilibrium_abundances(data);
+
+	  update_rates(myGasVars, myGlobalVars, *(data->HI_column), *(data->H2_column), *(data->HeI_column), *(data->HeII_column), *(data->CO_column), *(data->extinction), data->this_all_rates); 
+	  update_T_dependent_rates(myGasVars, myGlobalVars, data->this_all_rates); 
 	  LambdaNet = -calculate_total_cooling_rate(myGasVars, myGlobalVars, *(data->HI_column), *(data->HeI_column), *(data->HeII_column), *(data->H2_column), *(data->CO_column), *(data->H2O_column), *(data->OH_column), *(data->extinction), data->this_all_rates);	
 	}
       else
@@ -721,7 +735,10 @@ void do_equilibrium_cooling(void *user_data)
 	  if (myGasVars->ForceEqOn == 1)
 	    set_equilibrium_abundances_from_tables(myGasVars, myGlobalVars);
 	  else
-	    set_equilibrium_abundances(data); 		
+	    set_equilibrium_abundances(data); 
+
+	  update_rates(myGasVars, myGlobalVars, *(data->HI_column), *(data->H2_column), *(data->HeI_column), *(data->HeII_column), *(data->CO_column), *(data->extinction), data->this_all_rates); 
+	  update_T_dependent_rates(myGasVars, myGlobalVars, data->this_all_rates); 
 	  LambdaNet = -calculate_total_cooling_rate(myGasVars, myGlobalVars, *(data->HI_column), *(data->HeI_column), *(data->HeII_column), *(data->H2_column), *(data->CO_column), *(data->H2O_column), *(data->OH_column), *(data->extinction), data->this_all_rates); 
 	  
 	  while (u_lower - u_old - LambdaNet * dt > 0.0 && i < maxIter)
@@ -738,6 +755,9 @@ void do_equilibrium_cooling(void *user_data)
 		    set_equilibrium_abundances_from_tables(myGasVars, myGlobalVars);
 		  else
 		    set_equilibrium_abundances(data);
+
+		  update_rates(myGasVars, myGlobalVars, *(data->HI_column), *(data->H2_column), *(data->HeI_column), *(data->HeII_column), *(data->CO_column), *(data->extinction), data->this_all_rates); 
+		  update_T_dependent_rates(myGasVars, myGlobalVars, data->this_all_rates); 
 		  LambdaNet = -calculate_total_cooling_rate(myGasVars, myGlobalVars, *(data->HI_column), *(data->HeI_column), *(data->HeII_column), *(data->H2_column), *(data->CO_column), *(data->H2O_column), *(data->OH_column), *(data->extinction), data->this_all_rates);	
 		  break;
 		}
@@ -746,6 +766,9 @@ void do_equilibrium_cooling(void *user_data)
 		set_equilibrium_abundances_from_tables(myGasVars, myGlobalVars);
 	      else
 		set_equilibrium_abundances(data);
+
+	      update_rates(myGasVars, myGlobalVars, *(data->HI_column), *(data->H2_column), *(data->HeI_column), *(data->HeII_column), *(data->CO_column), *(data->extinction), data->this_all_rates); 
+	      update_T_dependent_rates(myGasVars, myGlobalVars, data->this_all_rates); 
 	      LambdaNet = -calculate_total_cooling_rate(myGasVars, myGlobalVars, *(data->HI_column), *(data->HeI_column), *(data->HeII_column), *(data->H2_column), *(data->CO_column), *(data->H2O_column), *(data->OH_column), *(data->extinction), data->this_all_rates);	
 
 	      i++;
@@ -769,6 +792,9 @@ void do_equilibrium_cooling(void *user_data)
 	set_equilibrium_abundances_from_tables(myGasVars, myGlobalVars);
       else
 	set_equilibrium_abundances(data);
+
+      update_rates(myGasVars, myGlobalVars, *(data->HI_column), *(data->H2_column), *(data->HeI_column), *(data->HeII_column), *(data->CO_column), *(data->extinction), data->this_all_rates); 
+      update_T_dependent_rates(myGasVars, myGlobalVars, data->this_all_rates); 
       LambdaNet = -calculate_total_cooling_rate(myGasVars, myGlobalVars, *(data->HI_column), *(data->HeI_column), *(data->HeII_column), *(data->H2_column), *(data->CO_column), *(data->H2O_column), *(data->OH_column), *(data->extinction), data->this_all_rates); 
 
       if (u - u_old - LambdaNet * dt > 0.0)
@@ -784,29 +810,5 @@ void do_equilibrium_cooling(void *user_data)
   if (i >= maxIter)
     printf("WARNING: eqm cooling failed to converge.\n");
 
-  return;
-}
-
-void shorten_equilibrium_timestep(void *user_data, double *old_abundances, double old_temperature, int *step_count, int *total_steps)
-{
-  /* This routine is used along with do_equilibrium_cooling, and 
-   * ensures that the relative temperature change over one hydro 
-   * timestep does not exceed 10%. */
-  int i; 
-  UserData data; 
-  data = (UserData) user_data; 
-  
-  do
-    {
-      for (i = 0; i < data->myGlobalVars->totalNumberOfSpecies; i++)
-	data->myGasVars->abundances[i] = old_abundances[i];
-      data->myGasVars->temperature = old_temperature; 
-      data->myGasVars->hydro_timestep /= 10.0; 
-	  
-      do_equilibrium_cooling(data); 
-      (*step_count) *= 10; 
-      (*total_steps) *= 10; 
-    }while (fabs((data->myGasVars->temperature - old_temperature) / old_temperature) > 0.5);
-  
   return;
 }

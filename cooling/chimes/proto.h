@@ -295,7 +295,6 @@ void initialise_bens_tables(struct globalVariables *myGlobalVars, struct All_rat
 void set_equilibrium_abundances(void *user_data);
 void set_equilibrium_abundances_from_tables(struct gasVariables *myGasVars, struct globalVariables *myGlobalVars);
 void do_equilibrium_cooling(void *user_data);
-void shorten_equilibrium_timestep(void *user_data, double *old_abundances, double old_temperature, int *step_count, int *total_steps);
 
 void get_index_1d_mydbl(double *table, int ntable, double x, int *i, double *dx);
 void get_index_1d_irregular(double *table, int ntable, double x, int *i, double *dx);
