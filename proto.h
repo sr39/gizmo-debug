@@ -501,6 +501,10 @@ int HIIheating_evaluate(int target, int mode, int *nexport, int *nsend_local);
 #endif
 #endif
 
+#ifdef CHIMES_HII_REGIONS 
+void chimes_HII_regions_singledomain(void); 
+#endif 
+
 #ifdef GALSF_FB_LOCAL_UV_HEATING
 void selfshield_local_incident_uv_flux(void);
 #endif

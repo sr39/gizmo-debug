@@ -1034,6 +1034,10 @@ ifeq (GALSF_FB_HII_HEATING,$(findstring GALSF_FB_HII_HEATING,$(CONFIGVARS)))
 OBJS    += galaxy_sf/hII_heating.o
 endif
 
+ifeq (CHIMES_HII_REGIONS,$(findstring CHIMES_HII_REGIONS,$(CONFIGVARS)))
+OBJS    += galaxy_sf/hII_heating.o 
+endif 
+
 ifeq (RT_CHEM_PHOTOION,$(findstring RT_CHEM_PHOTOION,$(CONFIGVARS)))
 OBJS    += galaxy_sf/hII_heating.o
 endif

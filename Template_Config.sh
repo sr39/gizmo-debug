@@ -102,6 +102,7 @@
 #CHIMES                         # enable CHIMES: cooling & chemistry package. Requires COOLING above. Also, requires COOL_METAL_LINES_BY_SPECIES to include metals. 
 #CHIMES_HYDROGEN_ONLY           # Hydrogen-only. This is ignored if METALS are also set. 
 #CHIMES_SOBOLEV_SHIELDING       # Enables local self-shielding over a Sobolev-like length scale. 
+#CHIMES_HII_REGIONS           # Disables shielding withing HII regions. 
 #CHIMES_SFR_MOLECULAR_CRITERION # As GALSF_SFR_MOLECULAR_CRITERION, but using the H2 fraction from CHIMES. 
 #CHIMES_REDUCED_OUTPUT          # Full CHIMES abundance array only output in some snapshots. 
 #CHIMES_NH_OUTPUT               # Write out column densities of gas particles to snapshots. 
@@ -256,6 +257,7 @@
 ##----------------Extra options added by AJR 
 #SOLAR_ABUNDANCES_WIERSMA09      # Use solar abundances from Table 1 of Wiersma et al. 2009, MNRAS, 393, 99 (req. METALS) 
 #GALSF_ALT_INIT_STAR          # Some fraction of initial disk stars is given a uniform age distribution, remainder are fixed 
+#AJR_READ_STELLAR_AGE_FROM_ICS  # Read in star ages from ICs 
 #AJR_STAR_AGE                 # At the beginning of the simulation, new stars are initialised w/ a non-zero age 
 #AJR_RAPID_SN                  # At the beginning of the simulation, SNe occur more rapidly.
 #GALSF_FB_NOENRICHMENT           # Disables injection of metals from SNe & winds. Mass, momentum and energy are still injected. 

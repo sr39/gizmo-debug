@@ -391,6 +391,7 @@ void init(void)
 #endif
         }
         
+#ifndef AJR_READ_STELLAR_AGE_FROM_ICS 
 #if defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(GALSF_FB_THERMAL)
         if(RestartFlag == 0)
         {
@@ -412,6 +413,7 @@ void init(void)
 #endif 
         }
 #endif
+#endif // AJR_READ_STELLAR_AGE_FROM_ICS 
         
 #ifdef GRAIN_FLUID
         if(RestartFlag == 0)
@@ -647,7 +649,7 @@ void init(void)
         SphP[i].HostHaloMass = 0;
 #endif
 #endif // GALSF_SUBGRID_WINDS //
-#ifdef GALSF_FB_HII_HEATING
+#if defined(GALSF_FB_HII_HEATING) || defined(CHIMES_HII_REGIONS) 
         SphP[i].DelayTimeHII = 0;
 #endif
 #ifdef GALSF_FB_TURNOFF_COOLING
