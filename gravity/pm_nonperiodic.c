@@ -22,6 +22,7 @@
 #ifdef PMGRID
 #if !defined (BOX_PERIODIC) || defined (PM_PLACEHIGHRESREGION)
 
+#ifndef USE_FFTW3
 #ifdef NOTYPEPREFIX_FFTW
 #include        <rfftw_mpi.h>
 #else
@@ -30,6 +31,9 @@
 #else
 #include     <srfftw_mpi.h>
 #endif
+#endif
+#else 
+#include <fftw3-mpi.h>
 #endif
 
 #ifndef GRIDBOOST
@@ -45,17 +49,44 @@ typedef long long large_array_offset;
 typedef unsigned int large_array_offset;
 #endif
 
+#ifdef USE_FFTW3
+    #ifdef DOUBLEPRECISION_FFTW 
+	#define fftw_real		    double 
+	#define MPI_TYPE_FFTW		    MPI_DOUBLE 
+    #else 
+	#define fftw_real		    float 
+	#define MPI_TYPE_FFTW		    MPI_FLOAT 
+	#define fftw_complex		    fftwf_complex 
+	#define fftw_mpi_init		    fftwf_mpi_init
+	#define fftw_plan		    fftwf_plan 
+	#define fftw_mpi_local_size_3d      fftwf_mpi_local_size_3d 
+	#define fftw_mpi_plan_dft_r2c_3d    fftwf_mpi_plan_dft_r2c_3d 
+	#define fftw_mpi_plan_dft_c2r_3d    fftwf_mpi_plan_dft_c2r_3d 
+	#define fftw_execute		    fftwf_execute 
+	#define fftw_destroy_plan	    fftwf_destroy_plan
+    #endif
+#endif
+
 #define d_fftw_real fftw_real
 
+#ifndef USE_FFTW3
 static rfftwnd_mpi_plan fft_forward_plan, fft_inverse_plan;
+#else 
+static fftw_plan fft_forward_plan, fft_inverse_plan;
+#endif
 
 static int slab_to_task[GRID];
 static int *slabs_per_task;
 static int *first_slab_of_task;
 
+#ifndef USE_FFTW3
 static int slabstart_x, nslab_x, slabstart_y, nslab_y;
 
 static int fftsize, maxfftsize;
+#else 
+static ptrdiff_t slabstart_x, nslab_x, slabstart_y, nslab_y; 
+static ptrdiff_t fftsize, maxftsize; 
+#endif
 
 static fftw_real *kernel[2], *rhogrid, *forcegrid, *workspace;
 static fftw_complex *fft_of_kernel[2], *fft_of_rhogrid;
@@ -238,7 +269,7 @@ void pm_init_nonperiodic(void)
   size_t bytes;
 
   /* Set up the FFTW plan files. */
-
+#ifndef USE_FFTW3
   fft_forward_plan = rfftw3d_mpi_create_plan(MPI_COMM_WORLD, GRID, GRID, GRID,
 					     FFTW_REAL_TO_COMPLEX, FFTW_ESTIMATE | FFTW_IN_PLACE);
   fft_inverse_plan = rfftw3d_mpi_create_plan(MPI_COMM_WORLD, GRID, GRID, GRID,
@@ -246,7 +277,19 @@ void pm_init_nonperiodic(void)
 
   /* Workspace out the ranges on each processor. */
 
-  rfftwnd_mpi_local_sizes(fft_forward_plan, &nslab_x, &slabstart_x, &nslab_y, &slabstart_y, &fftsize);
+  rfftwnd_mpi_local_sizes(fft_forward_plan, &nslab_x, &slabstart_x, &nslab_y, &slabstart_y, &fftsize); 
+#else 
+  fftw_mpi_init(); 
+
+  /* get local data size and allocate */
+  ///KOKODAY
+  fftsize = fftw_mpi_local_size_3d(GRID, GRID, GRID2, MPI_COMM_WORLD, &nslab_x, &slabstar_x); 
+  nslab_y = nslba_x; 
+  slabstart_y = slabstar_x; 
+
+
+
+#endif
 
 
   for(i = 0; i < GRID; i++)
