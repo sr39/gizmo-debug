@@ -624,7 +624,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 #endif
         nHp = 1.0 - nH0;		/* eqn (34) */
         
-        if((gJHe0ne + geHe0) <= 1.0e-60)	/* no ionization at all */
+        if( ((gJHe0ne + geHe0) <= MIN_REAL_NUMBER) || (aHepp <= MIN_REAL_NUMBER) ) 	/* no ionization at all */
         {
             nHep = 0.0;
             nHepp = 0.0;
