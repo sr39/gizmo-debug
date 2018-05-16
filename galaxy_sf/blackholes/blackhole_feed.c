@@ -315,8 +315,8 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         startnode = Nodes[startnode].u.d.nextnode;	/* open it */
     }
     
-    int particles_swallowed_this_bh_this_process = 0;
-    int particles_swallowed_this_bh_this_process_max = 1;
+    //int particles_swallowed_this_bh_this_process = 0;
+    //int particles_swallowed_this_bh_this_process_max = 1;
     
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     BH_angle_weighted_kernel_sum = 0;
@@ -401,7 +401,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
                         if(P[j].Type != 5)
                         {
-                            if((vrel < vesc) && (particles_swallowed_this_bh_this_process < particles_swallowed_this_bh_this_process_max))
+                            if((vrel < vesc)) // && (particles_swallowed_this_bh_this_process < particles_swallowed_this_bh_this_process_max))
                             { /* bound */
                                 if( bh_check_boundedness(j,vrel,vesc,r)==1 )
                                 { /* apocenter within target distance */        
@@ -432,7 +432,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                         if(P[j].SwallowID < id) 
                                         {
                                             P[j].SwallowID = id;
-                                            particles_swallowed_this_bh_this_process++;
+                                            //particles_swallowed_this_bh_this_process++;
                                         }
 #endif //else defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
                                     } //if (P[j].Type == 0)
