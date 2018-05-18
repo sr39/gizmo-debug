@@ -945,6 +945,9 @@ void read_file(char *fname, int readTask, int lastTask)
 #ifdef CHIMES 
 		   && blocknr != IO_CHIMES_ABUNDANCES 
 #endif 
+#ifdef AJR_READ_STELLAR_AGE_FROM_ICS 
+		   && blocknr != IO_AGE 
+#endif 
                    )
 #if defined(GDE_DISTORTIONTENSOR) && defined(GDE_READIC)
                     if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_SHEET_ORIENTATION))

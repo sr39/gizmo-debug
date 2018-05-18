@@ -356,7 +356,9 @@ void init(void)
 #ifdef GALSF
         if(RestartFlag == 0)
         {
+#ifndef AJR_READ_STELLAR_AGE_FROM_ICS 
             P[i].StellarAge = 0;
+#endif 
 #ifdef GALSF_SFR_IMF_VARIATION
             P[i].IMF_Mturnover = 2.0; /* gives a solar-type IMF for our calculations in current code */
 #endif
