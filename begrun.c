@@ -89,11 +89,6 @@ void begrun(void)
   InitCool();
 #endif
 
-#ifdef GALSF_EFFECTIVE_EQS
-  init_clouds();
-#endif
-
-
 #ifdef BOX_PERIODIC
   ewald_init();
 #endif
@@ -343,6 +338,10 @@ void begrun(void)
       if(All.TimeMax != all.TimeMax)
 	readjust_timebase(All.TimeMax, all.TimeMax);
     }
+
+#ifdef GALSF_EFFECTIVE_EQS
+  init_clouds();
+#endif
 
   char contfname[1000];
   sprintf(contfname, "%scont", All.OutputDir);
