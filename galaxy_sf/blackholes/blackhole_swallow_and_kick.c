@@ -905,30 +905,11 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
         
         /* shift the particle locations according to the random number we drew above */
         double dx, dy, dz;
-#if (NUMDIMS == 1)
-        dy=dz=0; dx=d_r; // here the split direction is trivial //
-#else
-        /* in 2D and 3D its not so trivial how to split the directions */
         double sin_theta = sqrt(1 - cos_theta*cos_theta);
         dx = d_r * sin_theta * cos(phi);
         dy = d_r * sin_theta * sin(phi);
         dz = d_r * cos_theta;
-#if (NUMDIMS == 2)
-        dz=0; dx=d_r*cos(phi); dy=d_r*sin(phi);
-#endif
-        double norm=0, dp[3]; int m; dp[0]=dp[1]=dp[2]=0;
-        for(k = 0; k < NUMDIMS; k++)
-        {
-            for(m = 0; m < NUMDIMS; m++) dp[k] += SphP[i].NV_T[k][m];
-            norm += dp[k] * dp[k];
-        }
-        if(norm > 0)
-        {
-            norm = 1/sqrt(norm);
-            for(k=0;k<NUMDIMS;k++) dp[k] *= norm;
-            dx=d_r*dp[0]; dy=d_r*dp[1]; dz=d_r*dp[2];
-        }
-#endif
+
         P[j].Pos[0] =  P[i].Pos[0] + dx;
         P[j].Pos[1] =  P[i].Pos[1] + dy;
         P[j].Pos[2] =  P[i].Pos[2] + dz;
