@@ -382,6 +382,9 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
 #ifdef COSMIC_RAYS_M1
         for(k=0;k<3;k++) {SphP[i].CosmicRayFluxPred[k] = SphP[i].CosmicRayFlux[k];}
 #endif
+#ifdef COSMIC_RAYS_ALFVEN
+        for(k=0;k<2;k++) {SphP[i].CosmicRayAlfvenEnergyPred[k] = SphP[i].CosmicRayAlfvenEnergy[k];}
+#endif
 #endif
         
 #if defined(RT_EVOLVE_NGAMMA)

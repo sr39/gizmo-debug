@@ -417,6 +417,14 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
         SphP[j].CosmicRayFluxPred[k] = mass_of_new_particle * SphP[i].CosmicRayFluxPred[k]; SphP[i].CosmicRayFluxPred[k] -= SphP[j].CosmicRayFluxPred[k];
     }
 #endif
+#ifdef COSMIC_RAYS_ALFVEN
+    for(k=0;k<2;k++)
+    {
+        SphP[j].CosmicRayAlfvenEnergy[k] = mass_of_new_particle * SphP[i].CosmicRayAlfvenEnergy[k]; SphP[i].CosmicRayAlfvenEnergy[k] -= SphP[j].CosmicRayAlfvenEnergy[k];
+        SphP[j].CosmicRayAlfvenEnergyPred[k] = mass_of_new_particle * SphP[i].CosmicRayAlfvenEnergyPred[k]; SphP[i].CosmicRayAlfvenEnergyPred[k] -= SphP[j].CosmicRayAlfvenEnergyPred[k];
+        SphP[j].DtCosmicRayAlfvenEnergy[k] = mass_of_new_particle * SphP[i].DtCosmicRayAlfvenEnergy[k]; SphP[i].DtCosmicRayAlfvenEnergy[k] -= SphP[j].DtCosmicRayAlfvenEnergy[k];
+    }
+#endif
 #endif
     
     /* shift the particle locations according to the random number we drew above */
@@ -714,6 +722,14 @@ void merge_particles_ij(int i, int j)
     {
         SphP[j].CosmicRayFlux[k] += SphP[i].CosmicRayFlux[k];
         SphP[j].CosmicRayFluxPred[k] += SphP[i].CosmicRayFluxPred[k];
+    }
+#endif
+#ifdef COSMIC_RAYS_ALFVEN
+    for(k=0;k<3;k++)
+    {
+        SphP[j].CosmicRayAlfvenEnergy[k] += SphP[i].CosmicRayAlfvenEnergy[k];
+        SphP[j].CosmicRayAlfvenEnergyPred[k] += SphP[i].CosmicRayAlfvenEnergyPred[k];
+        SphP[j].DtCosmicRayAlfvenEnergy[k] += SphP[i].DtCosmicRayAlfvenEnergy[k];
     }
 #endif
 #endif

@@ -1051,7 +1051,7 @@ void hydro_gradient_calc(void)
 #endif
 #ifdef COSMIC_RAYS
             construct_gradient(SphP[i].Gradients.CosmicRayPressure,i);
-            int is_particle_local_extremum = 0; // test for local extremum to revert to lower-order reconstruction if necessary
+            int is_particle_local_extremum; is_particle_local_extremum = 0; // test for local extremum to revert to lower-order reconstruction if necessary
 #endif
 #ifdef DOGRAD_SOUNDSPEED
             construct_gradient(SphP[i].Gradients.SoundSpeed,i);
@@ -1629,8 +1629,7 @@ void hydro_gradient_calc(void)
                 int k2; for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {BGrad_mag += SphP[i].Gradients.B[k][k2] * SphP[i].Gradients.B[k][k2];}}
                 kappa_diff *= b2_mag / (1.e-37 + p_scale * p_scale * BGrad_mag); // should be dimensionless //
 #else
-                /* alternatively, we don't explicitly use the local B-gradient, but assume a cascade with a driving length equal to 
-                    the pressure gradient scale length */
+                /* alternatively, we don't explicitly use the local B-gradient, but assume a cascade with a driving length equal to the pressure gradient scale length */
                 p_scale = 0.0; for(k=0;k<3;k++) {p_scale += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
                 p_scale = SphP[i].Pressure / (1.e-33 + sqrt(p_scale));
                 double p_scale_min = 0.5 * Get_Particle_Size(i); // sets a 'floor' at some multiple of the particle size (unresolved below this) //

@@ -145,6 +145,9 @@ struct Conserved_var_Riemann
 #ifdef COSMIC_RAYS_M1
     MyDouble CosmicRayFlux[3];
 #endif
+#ifdef COSMIC_RAYS_ALFVEN
+    MyDouble CosmicRayAlfvenEnergy[2];
+#endif
 #endif
 };
 
@@ -289,6 +292,9 @@ struct hydrodata_in
 #ifdef COSMIC_RAYS_M1
     MyDouble CosmicRayFlux[3];
 #endif
+#ifdef COSMIC_RAYS_ALFVEN
+    MyDouble CosmicRayAlfvenEnergy[2];
+#endif
 #endif
     
 #ifdef GALSF_SUBGRID_WINDS
@@ -355,6 +361,9 @@ struct hydrodata_out
     
 #ifdef COSMIC_RAYS
     MyDouble DtCosmicRayEnergy;
+#ifdef COSMIC_RAYS_ALFVEN
+    MyDouble DtCosmicRayAlfvenEnergy[2];
+#endif
 #endif
 
 }
@@ -504,6 +513,9 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
 #ifdef COSMIC_RAYS_M1
     for(k=0;k<3;k++) {in->CosmicRayFlux[k] = SphP[i].CosmicRayFluxPred[k];}
 #endif
+#ifdef COSMIC_RAYS_ALFVEN
+    for(k=0;k<2;k++) {in->CosmicRayAlfvenEnergy[k] = SphP[i].CosmicRayAlfvenEnergyPred[k];}
+#endif
 #endif
 
 #ifdef EOS_ELASTIC
@@ -583,6 +595,9 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
 
 #ifdef COSMIC_RAYS
     SphP[i].DtCosmicRayEnergy += out->DtCosmicRayEnergy;
+#ifdef COSMIC_RAYS_ALFVEN
+    for(k=0;k<2;k++) {SphP[i].DtCosmicRayAlfvenEnergy[k] += out->DtCosmicRayAlfvenEnergy[k];}
+#endif
 #endif
 }
 
@@ -697,7 +712,7 @@ void hydro_final_operations_and_cleanup(void)
                 SphP[i].HydroAccel[k] /= P[i].Mass; /* we solved for momentum flux */
             }
             
-#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_STREAMING)
+#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_STREAMING) && !defined(COSMIC_RAYS_ALFVEN)
             /* energy transfer from CRs to gas due to the streaming instability (mediated by high-frequency Alfven waves, but they thermalize quickly
                 (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
             double cr_stream_cool = -GAMMA_COSMICRAY_MINUS1 * Get_CosmicRayStreamingVelocity(i) / Get_CosmicRayGradientLength(i);
@@ -933,6 +948,9 @@ void hydro_force(void)
 
 #ifdef COSMIC_RAYS
             SphP[i].DtCosmicRayEnergy = 0;
+#ifdef COSMIC_RAYS_ALFVEN
+            for(k=0;k<2;k++) {SphP[i].DtCosmicRayAlfvenEnergy[k] = 0;}
+#endif
 #endif
 #ifdef WAKEUP
             PPPZ[i].wakeup = 0;

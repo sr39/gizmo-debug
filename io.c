@@ -700,6 +700,19 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
+
+        case IO_COSMICRAY_ALFVEN:    /* energy in the resonant (~gyro-radii) Alfven modes field, in the +/- (with respect to B) fields  */
+#ifdef COSMIC_RAYS_ALFVEN
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    for(k = 0; k < 2; k++)
+                        *fp++ = SphP[pindex].CosmicRayAlfvenEnergyPred[k];
+                    n++;
+                }
+#endif
+            break;
+
             
         case IO_DIVB:		/* divergence of magnetic field  */
 #ifdef MAGNETIC
@@ -1457,7 +1470,14 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             else
                 bytes_per_blockelement = 3 * sizeof(MyOutputFloat);
             break;
-            
+
+        case IO_COSMICRAY_ALFVEN:
+            if(mode)
+                bytes_per_blockelement = 2 * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = 2 * sizeof(MyOutputFloat);
+            break;
+
         case IO_ID:
             bytes_per_blockelement = sizeof(MyIDType);
             break;
@@ -1830,6 +1850,10 @@ int get_values_per_blockelement(enum iofields blocknr)
             values = 1;
             break;
 
+        case IO_COSMICRAY_ALFVEN:
+            values = 2;
+            break;
+
         case IO_EOS_STRESS_TENSOR:
             values = 9;
             break;
@@ -2008,6 +2032,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_VROT:
         case IO_VORT:
         case IO_COSMICRAY_ENERGY:
+        case IO_COSMICRAY_ALFVEN:
         case IO_DIVB:
         case IO_ABVC:
         case IO_AMDC:
@@ -2401,7 +2426,15 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
-            
+
+        case IO_COSMICRAY_ALFVEN:
+#ifdef COSMIC_RAYS_ALFVEN
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+
             
         case IO_DIVB:
 #ifdef MAGNETIC
@@ -2911,6 +2944,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_COSMICRAY_ENERGY:
             strncpy(label, "CREG ", 4);
             break;
+        case IO_COSMICRAY_ALFVEN:
+            strncpy(label, "CRAV ", 4);
+            break;
         case IO_DIVB:
             strncpy(label, "DIVB", 4);
             break;
@@ -3276,6 +3312,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;    
         case IO_COSMICRAY_ENERGY:
             strcpy(buf, "CosmicRayEnergy");
+            break;
+        case IO_COSMICRAY_ALFVEN:
+            strcpy(buf, "CosmicRayAlfvenEnergyPM");
             break;
         case IO_DIVB:
             strcpy(buf, "DivergenceOfMagneticField");

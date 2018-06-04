@@ -756,7 +756,7 @@ void ags_density(void)
                 PPP[i].NumNgb = 0;
             }
 #ifdef PM_HIRES_REGION_CLIPPING
-            if((P[i].AGS_Density <= 0) || (PPP[i].NumNgb <= 0)) {P[i].Mass = 0;}
+            if(PPP[i].NumNgb <= 0) {P[i].Mass = 0;}
             if((PPP[i].AGS_Hsml <= 0) || (PPP[i].AGS_Hsml >= PM_HIRES_REGION_CLIPPING)) {P[i].Mass = 0;}
             double vmag=0; for(k=0;k<3;k++) {vmag+=P[i].Vel[k]*P[i].Vel[k];} vmag = sqrt(vmag);
             if(vmag>5.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) {P[i].Mass=0;}

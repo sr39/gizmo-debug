@@ -617,6 +617,9 @@ integertime get_timestep(int p,		/*!< particle index */
                             {
                                 crv = sqrt(crv) / SphP[p].CosmicRayEnergy;
                                 cr_speed = DMAX( DMIN(COSMIC_RAYS_M1 , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(COSMIC_RAYS_M1 , fabs(SphP[p].CosmicRayDiffusionCoeff)/(Get_Particle_Size(p)*All.cf_atime)));// * (C/All.UnitVelocity_in_cm_per_s);
+#ifdef COSMIC_RAYS_ALFVEN
+                                cr_speed = COSMIC_RAYS_ALFVEN;
+#endif
                             }
                             double dt_courant_CR = 0.4 * (L_particle*All.cf_atime) / cr_speed;
                             dt_conduction = dt_courant_CR; // per TK, strictly enforce this timestep //
