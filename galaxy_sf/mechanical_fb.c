@@ -825,11 +825,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double q;
                     q = 0;
                     
-#if !(EXPAND_PREPROCESSOR_(GALSF_FB_SNE_HEATING) == 1) // check whether a numerical value is assigned
 #if (GALSF_FB_SNE_HEATING == 0) // code for symmetrized but non-isotropic
 //#define DO_SYMMETRIZED_SNE_HEATING_ONLY_BUT_NOT_FULLY_ISOTROPIC
 #define DO_FULLY_ISOTROPIZED_SNE_HEATING
-#endif
 #endif
                     
 //#ifdef DO_SYMMETRIZED_SNE_HEATING_ONLY_BUT_NOT_FULLY_ISOTROPIC

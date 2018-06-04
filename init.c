@@ -754,6 +754,14 @@ void init(void)
             SphP[i].CosmicRayFluxPred[j]=0;
         }
 #endif
+#ifdef COSMIC_RAYS_ALFVEN
+        for(j=0;j<2;j++)
+        {
+            SphP[i].CosmicRayAlfvenEnergy[j]=0;
+            SphP[i].CosmicRayAlfvenEnergyPred[j]=0;
+            SphP[i].DtCosmicRayAlfvenEnergy[j]=0;
+        }
+#endif
 #endif
 #if defined(EOS_ELASTIC)
         if(RestartFlag != 1)

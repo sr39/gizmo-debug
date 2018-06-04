@@ -55,7 +55,7 @@
 
 
 #define DO_PREPROCESSOR_EXPAND_(VAL)  VAL ## 1
-#define EXPAND_PREPROCESSOR_(VAL)     DO_PREPROCESSOR_EXPAND_(VAL)
+#define EXPAND_PREPROCESSOR_(VAL)     DO_PREPROCESSOR_EXPAND_(VAL) /* checks for a NON-ZERO value of this parameter */
 
 
 #if !defined(SLOPE_LIMITER_TOLERANCE)
@@ -212,7 +212,7 @@
 #define GALSF_SFR_VIRIAL_SF_CRITERION 0
 #define GALSF_FB_GASRETURN
 #define GALSF_FB_HII_HEATING
-#define GALSF_FB_SNE_HEATING 1
+#define GALSF_FB_SNE_HEATING 0
 #define GALSF_FB_RT_PHOTONMOMENTUM
 #define GALSF_FB_LOCAL_UV_HEATING
 #define GALSF_FB_RPWIND_LOCAL
@@ -234,6 +234,10 @@
 #ifdef COSMIC_RAYS
 #define GAMMA_COSMICRAY (4.0/3.0)
 #define GAMMA_COSMICRAY_MINUS1 (GAMMA_COSMICRAY-1)
+#ifdef COSMIC_RAYS_ALFVEN
+#define GAMMA_ALFVEN_CRS (3.0/2.0)
+#define COSMIC_RAYS_M1 (COSMIC_RAYS_ALFVEN)
+#endif
 #endif
 
 #if defined(COOL_GRACKLE) 
@@ -477,11 +481,9 @@
 #endif
 
 
-#if !defined(HYDRO_SPH) && !defined(MAGNETIC) && !defined(COSMIC_RAYS)
 //#define ENERGY_ENTROPY_SWITCH_IS_ACTIVE
 /* this is a ryu+jones type energy/entropy switch. it can help with some problems, but can also generate significant 
  errors in other types of problems. in general, even for pure hydro, this isn't recommended; use it for special problems if you know what you are doing. */
-#endif
 
 
 
@@ -2260,6 +2262,11 @@ extern struct sph_particle_data
     MyFloat CosmicRayFlux[3];       /*!< CR flux vector [explicitly evolved] - conserved-variable */
     MyFloat CosmicRayFluxPred[3];   /*!< CR flux vector [explicitly evolved] - conserved-variable */
 #endif
+#ifdef COSMIC_RAYS_ALFVEN
+    MyFloat CosmicRayAlfvenEnergy[2];       /*!< forward and backward-traveling Alfven wave-packet energies */
+    MyFloat CosmicRayAlfvenEnergyPred[2];   /*!< drifted forward and backward-traveling Alfven wave-packet energies */
+    MyFloat DtCosmicRayAlfvenEnergy[2];     /*!< time derivative fof forward and backward-traveling Alfven wave-packet energies */
+#endif
 #endif
     
 #ifdef SUPER_TIMESTEP_DIFFUSION
@@ -2764,6 +2771,7 @@ enum iofields
   IO_DBDT,
   IO_IMF,
   IO_COSMICRAY_ENERGY,
+  IO_COSMICRAY_ALFVEN,
   IO_DIVB,
   IO_ABVC,
   IO_AMDC,
