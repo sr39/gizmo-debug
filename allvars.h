@@ -498,7 +498,7 @@ extern struct Reactions_Structure **nonmolecular_reactions_root_omp;
 
 
 
-#if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER)
+#if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER) 
 #define DO_DENSITY_AROUND_STAR_PARTICLES
 #if !defined(ALLOW_IMBALANCED_GASPARTICLELOAD)
 #define ALLOW_IMBALANCED_GASPARTICLELOAD
@@ -2117,8 +2117,11 @@ extern ALIGN(32) struct particle_data
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
     MyFloat DensAroundStar;         /*!< gas density in the neighborhood of the collisionless particle (evaluated from neighbors) */
     MyFloat GradRho[3];             /*!< gas density gradient evaluated simply from the neighboring particles, for collisionless centers */
-#if defined METALS && defined(EXTRA_SNE_OUTPUT) 
+#if defined METALS && (defined(EXTRA_SNE_OUTPUT) || defined(CHIMES_Z_DEPENDENT_TAU)) 
     MyFloat MetalDensAroundStar;    /*!< Density of metals around star particle (evaluated from neighbours). */ 
+#endif 
+#ifdef CHIMES_HI_DEPENDENT_TAU_EUV 
+    MyFloat HIDensAroundStar; 
 #endif 
 #endif
 #if defined(RT_SOURCE_INJECTION)
@@ -2924,6 +2927,10 @@ enum iofields
   IO_CHIMES_STAR_SIGMA, 
   IO_CHIMES_FLUX_G0, 
   IO_CHIMES_FLUX_ION, 
+  IO_CHIMES_STAR_DENS,
+  IO_CHIMES_STAR_Z_DENS, 
+  IO_CHIMES_STAR_HI_DENS,  
+  IO_CHIMES_DELAY_HII, 
 #endif 
   IO_LASTENTRY			/* This should be kept - it signals the end of the list */
 };
