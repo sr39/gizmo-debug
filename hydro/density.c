@@ -112,9 +112,13 @@ static struct densdata_out
 #endif
 #endif
 
-#if defined(METALS) && defined(DO_DENSITY_AROUND_STAR_PARTICLES) && defined(EXTRA_SNE_OUTPUT) 
+#if defined(METALS) && defined(DO_DENSITY_AROUND_STAR_PARTICLES) && (defined(EXTRA_SNE_OUTPUT) || defined(CHIMES_Z_DEPENDENT_TAU))
   MyLongDouble Z_Rho; 
 #endif
+
+#if defined(DO_DENSITY_AROUND_STAR_PARTICLES) && defined(CHIMES_HI_DEPENDENT_TAU_EUV) 
+  MyLongDouble HI_Rho; 
+#endif 
 
 }
  *DensDataResult, *DensDataOut;
@@ -209,8 +213,11 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
     {
         ASSIGN_ADD(P[i].DensAroundStar, out->Rho, mode);
         for(k = 0; k<3; k++) {ASSIGN_ADD(P[i].GradRho[k], out->GradRho[k], mode);}
-#if defined(METALS) && defined(EXTRA_SNE_OUTPUT) 
+#if defined(METALS) && (defined(EXTRA_SNE_OUTPUT) || defined(CHIMES_Z_DEPENDENT_TAU))
 	ASSIGN_ADD(P[i].MetalDensAroundStar, out->Z_Rho, mode);
+#endif 
+#ifdef CHIMES_HI_DEPENDENT_TAU_EUV 
+	ASSIGN_ADD(P[i].HIDensAroundStar, out->HI_Rho, mode);
 #endif 
     }
 #endif
@@ -1240,9 +1247,15 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     
                     out.Ngb += kernel.wk;
                     out.Rho += kernel.mj_wk;
-#if defined(METALS) && defined(DO_DENSITY_AROUND_STAR_PARTICLES) && defined(EXTRA_SNE_OUTPUT) 
+#if defined(METALS) && defined(DO_DENSITY_AROUND_STAR_PARTICLES) && (defined(EXTRA_SNE_OUTPUT) || defined(CHIMES_Z_DEPENDENT_TAU)) 
 		    out.Z_Rho += kernel.mj_wk * P[j].Metallicity[0]; 
 #endif
+
+#ifdef CHIMES_HI_DEPENDENT_TAU_EUV 
+		    // Multiply by the HI fraction, nHI / nHtot, and the hydrogen mass fraction, M_Htot / M_tot 
+		    out.HI_Rho += kernel.mj_wk * ChimesGasVars[j].abundances[1] * (1.0 - (P[j].Metallicity[0] + P[j].Metallicity[1])); 
+#endif 
+
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
                     if(local.Type == 0 && kernel.r==0) {int kv; for(kv=0;kv<3;kv++) {out.ParticleVel[kv] += kernel.mj_wk * SphP[j].VelPred[kv];}} // just the self-contribution //
 #endif

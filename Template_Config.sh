@@ -106,6 +106,10 @@
 #CHIMES_SFR_MOLECULAR_CRITERION # As GALSF_SFR_MOLECULAR_CRITERION, but using the H2 fraction from CHIMES. 
 #CHIMES_REDUCED_OUTPUT          # Full CHIMES abundance array only output in some snapshots. 
 #CHIMES_NH_OUTPUT               # Write out column densities of gas particles to snapshots. 
+#CHIMES_Z_DEPENDENT_TAU          # Scale tau_uv and tau_op with gas metallicity. 
+#CHIMES_HI_DEPENDENT_TAU_EUV     # Scale tau_euv with HI fraction. 
+#CHIMES_OUTPUT_DENS_AROUND_STAR  # Write out DensAroundStar, MetalDensAroundStar and HIDensAroundStar. Requires CHIMES_Z_DEPENDENT_TAU And CHIMES_HI_DEPENDENT_TAU_EUV 
+#CHIMES_OUTPUT_DELAY_TIME_HII   # Output DelayTimeHII. Requires CHIMES_HII_REGIONS or GALSF_FB_HII_HEATING 
 #METALS                         # enable metallicities (with multiple species optional) for gas and stars [must be included in ICs or injected via dynamical feedback; needed for some routines]
 ## ----------------------------------------------------------------------------------------------------
 # -------------------------------------- Smagorinsky Turbulent Eddy Diffusion Model

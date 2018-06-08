@@ -53,18 +53,18 @@ extern pthread_mutex_t mutex_partnodedrift;
  * and the >13.6 eV band (i.e. H-ionising), which will be used 
  * by CHIMES. These functions were fit to Starburst99 models 
  * that used the Geneva 2012/13 tracks with v=0.4 rotation 
- * and Z=0.002 metallicity. */ 
+ * and Z=0.014 metallicity. */ 
 
 double chimes_G0_luminosity(double stellar_age, double stellar_mass)
 {
   // stellar_age in Myr. 
   // stellar_mass (current, not initial) in Msol. 
   // return value in Habing units * cm^2. 
-  double zeta = 1.0627616e36; 
-  if (stellar_age < 3.71) 
-    return stellar_mass * exp(89.55 + (0.121 * pow(stellar_age, 1.457))); 
+  double zeta = 6.5006802e29; 
+  if (stellar_age < 4.07) 
+    return stellar_mass * exp(89.67 + (0.172 * pow(stellar_age, 0.916))); 
   else 
-    return stellar_mass * zeta * pow(691.63 / stellar_age, 1.418) * pow(1.0 + pow(stellar_age / 691.63, 3.786), -0.489); 
+    return stellar_mass * zeta * pow(1773082.52 / stellar_age, 1.667) * pow(1.0 + pow(stellar_age / 1773082.52, 28.164), 1.64824); 
 }
 
 double chimes_ion_luminosity(double stellar_age, double stellar_mass) 
@@ -72,11 +72,11 @@ double chimes_ion_luminosity(double stellar_age, double stellar_mass)
   // stellar_age in Myr. 
   // stellar_mass (current, not initial) in Msol. 
   // return value in s^-1. 
-  double zeta = 1.6482021e36; 
+  double zeta = 3.2758118e21; 
   if (stellar_age < 3.71) 
-    return stellar_mass * exp(107.31 + (0.16 * pow(stellar_age, 0.756))); 
+    return stellar_mass * exp(107.21 + (0.111 * pow(stellar_age, 0.974))); 
   else 
-    return stellar_mass * zeta * pow(1118.68 / stellar_age, 4.265) * pow(1.0 + pow(stellar_age / 1118.68, 2.537), -4.44); 
+    return stellar_mass * zeta * pow(688952.27 / stellar_age, 4.788) * pow(1.0 + pow(stellar_age / 688952.27, 1.124), -17017.50356); 
 }
 #endif 
 
@@ -121,6 +121,16 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
             } else {f_op=1-0.8410937/(1+sqrt((star_age-0.006)/0.3));}}
       
 	double tau_uv = sigma_eff*KAPPA_UV; double tau_op = sigma_eff*KAPPA_OP;
+
+#ifdef CHIMES_Z_DEPENDENT_TAU 
+	double Z_around_star = P[i].MetalDensAroundStar / (P[i].DensAroundStar + 1.0e-100); // The 1e-100 prevents division by zero 
+
+	// Scale tau_uv and tau_op by the gas metallicity around the 
+	// star, with a floor of 1e-3 Zsol 
+	tau_uv *= (1.0e-3 + (Z_around_star / All.SolarAbundances[0])); 
+	tau_op *= (1.0e-3 + (Z_around_star / All.SolarAbundances[0])); 
+#endif 	
+
         f_uv = (1-f_op)*(All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV)/(1+0.8*tau_uv+0.85*tau_uv*tau_uv));
         f_op *= All.PhotonMomentum_fOPT + (1-All.PhotonMomentum_fOPT)/(1+0.8*tau_op+0.85*tau_op*tau_op);
         /*
@@ -146,10 +156,10 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
 	if (log_age_Myr < CHIMES_LOCAL_UV_AGE_LOW) 
 	  age_bin = 0; 
 	else if (log_age_Myr < CHIMES_LOCAL_UV_AGE_MID) 
-	  age_bin = (int) ((log_age_Myr - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW) + 1; 
+	  age_bin = (int) floor(((log_age_Myr - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW) + 1); 
 	else 
 	  { 
-	    age_bin = (int) (((log_age_Myr - CHIMES_LOCAL_UV_AGE_MID) / CHIMES_LOCAL_UV_DELTA_AGE_HI) + ((CHIMES_LOCAL_UV_AGE_MID - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW)) + 1; 
+	    age_bin = (int) floor((((log_age_Myr - CHIMES_LOCAL_UV_AGE_MID) / CHIMES_LOCAL_UV_DELTA_AGE_HI) + ((CHIMES_LOCAL_UV_AGE_MID - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW)) + 1); 
 	    if (age_bin > CHIMES_LOCAL_UV_NBINS - 1) 
 	      age_bin = CHIMES_LOCAL_UV_NBINS - 1; 
 	  } 
@@ -160,7 +170,16 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
 	    chimes_lum_ion[j] = 0.0; 
 	  }
 	
-	double tau_euv = sigma_eff * KAPPA_EUV; // Attenuated by HI, so no metallicity dependence. 
+	double tau_euv = sigma_eff * KAPPA_EUV; 
+
+#ifdef CHIMES_HI_DEPENDENT_TAU_EUV 
+	// fHI here is M_HI / M_total, where total is the mass of hydrogen + helium + metals 
+	double fHI_around_star = P[i].HIDensAroundStar / (P[i].DensAroundStar + 1.0e-100); // The 1e-100 prevents division by zero 
+
+	// Scale tau_euv by the HI fraction around the star. 
+	tau_euv *= fHI_around_star; 
+#endif 	
+
 	chimes_lum_G0[age_bin] = chimes_G0_luminosity(star_age * 1000.0, stellar_mass) * exp(-tau_uv); 
 	chimes_lum_ion[age_bin] = chimes_ion_luminosity(star_age * 1000.0, stellar_mass) * exp(-tau_euv); 
 #endif 

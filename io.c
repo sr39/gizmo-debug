@@ -636,6 +636,51 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	      }
 #endif 
 	  break; 
+
+        case IO_CHIMES_STAR_DENS: 
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+                *fp++ = (MyOutputFloat) P[pindex].DensAroundStar; 
+		n++; 
+	      }
+#endif 
+	  break; 
+
+        case IO_CHIMES_STAR_Z_DENS: 
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+                *fp++ = (MyOutputFloat) P[pindex].MetalDensAroundStar; 
+		n++; 
+	      }
+#endif 
+	  break; 
+
+        case IO_CHIMES_STAR_HI_DENS: 
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+                *fp++ = (MyOutputFloat) P[pindex].HIDensAroundStar; 
+		n++; 
+	      }
+#endif 
+	  break; 
+
+        case IO_CHIMES_DELAY_HII: 
+#ifdef CHIMES_OUTPUT_DELAY_TIME_HII 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+                *fp++ = (MyOutputFloat) SphP[pindex].DelayTimeHII; 
+		n++; 
+	      }
+#endif 
+	  break; 
+
 #endif // CHIMES
             
         case IO_POT:		/* gravitational potential */
@@ -1766,8 +1811,43 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
 #endif 
             break;
 
+        case IO_CHIMES_STAR_DENS: 
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+            if(mode)
+                bytes_per_blockelement = sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = sizeof(MyOutputFloat);
+            break;
+#endif 
+
+        case IO_CHIMES_STAR_Z_DENS: 
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+            if(mode)
+                bytes_per_blockelement = sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = sizeof(MyOutputFloat);
+            break;
+#endif 
+
+        case IO_CHIMES_STAR_HI_DENS: 
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+            if(mode)
+                bytes_per_blockelement = sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = sizeof(MyOutputFloat);
+            break;
+#endif 
+
+        case IO_CHIMES_DELAY_HII: 
+#ifdef CHIMES_OUTPUT_DELAY_TIME_HII 
+            if(mode)
+                bytes_per_blockelement = sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = sizeof(MyOutputFloat);
+            break;
+#endif 
  
-#endif
+#endif // CHIMES 
             
             
         case IO_EOS_STRESS_TENSOR:
@@ -2079,7 +2159,40 @@ int get_values_per_blockelement(enum iofields blocknr)
 	  values = 0; 
 #endif 
 	  break; 
-#endif      
+
+        case IO_CHIMES_STAR_DENS: 
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+	  values = 1; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_STAR_Z_DENS: 
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+	  values = 1; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_STAR_HI_DENS: 
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+	  values = 1; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_DELAY_HII: 
+#ifdef CHIMES_OUTPUT_DELAY_TIME_HII 
+	  values = 1; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+#endif // CHIMES 
             
         case IO_IMF:
 #ifdef GALSF_SFR_IMF_VARIATION
@@ -2389,7 +2502,59 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
 	    typelist[i] = 0; 
 	  return ngas; 
 	  break; 
-#endif
+
+        case IO_CHIMES_STAR_DENS: 
+	  nngb = nstars; 
+	  typelist[0] = 0; 
+	  typelist[1] = 0; 
+	  typelist[5] = 0; 
+	  if (All.ComovingIntegrationOn) 
+	    {
+	      typelist[2] = 0; 
+	      typelist[3] = 0; 
+	    } 
+	  else 
+	    nngb += header.npart[2] + header.npart[3]; 
+	  return nngb; 
+	  break; 
+
+        case IO_CHIMES_STAR_Z_DENS: 
+	  nngb = nstars; 
+	  typelist[0] = 0; 
+	  typelist[1] = 0; 
+	  typelist[5] = 0; 
+	  if (All.ComovingIntegrationOn) 
+	    {
+	      typelist[2] = 0; 
+	      typelist[3] = 0; 
+	    } 
+	  else 
+	    nngb += header.npart[2] + header.npart[3]; 
+	  return nngb; 
+	  break; 
+
+        case IO_CHIMES_STAR_HI_DENS: 
+	  nngb = nstars; 
+	  typelist[0] = 0; 
+	  typelist[1] = 0; 
+	  typelist[5] = 0; 
+	  if (All.ComovingIntegrationOn) 
+	    {
+	      typelist[2] = 0; 
+	      typelist[3] = 0; 
+	    } 
+	  else 
+	    nngb += header.npart[2] + header.npart[3]; 
+	  return nngb; 
+	  break; 
+
+        case IO_CHIMES_DELAY_HII: 
+	  for (i = 1; i < 6; i++) 
+	    typelist[i] = 0; 
+	  return ngas; 
+	  break; 
+
+#endif // CHIMES 
             
         case IO_BHMASS:
         case IO_BHMASSALPHA:
@@ -2586,7 +2751,40 @@ int blockpresent(enum iofields blocknr)
 	  return 0; 
 #endif 
 	  break; 
-#endif
+
+        case IO_CHIMES_STAR_DENS:
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+	  return 1;
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_STAR_Z_DENS:
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+	  return 1;
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_STAR_HI_DENS:
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+	  return 1;
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_DELAY_HII:
+#ifdef CHIMES_OUTPUT_DELAY_TIME_HII 
+	  return 1;
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+#endif // CHIMES 
             
         case IO_DELAYTIME:
 #ifdef GALSF_SUBGRID_WINDS
@@ -3213,6 +3411,18 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_CHIMES_FLUX_ION: 
 	  strncpy(label, "CHIO", 4); 
 	  break; 
+        case IO_CHIMES_STAR_DENS: 
+	  strncpy(label, "CHDE", 4); 
+	  break; 
+        case IO_CHIMES_STAR_Z_DENS: 
+	  strncpy(label, "CHZD", 4); 
+	  break; 
+        case IO_CHIMES_STAR_HI_DENS: 
+	  strncpy(label, "CHHD", 4); 
+	  break; 
+        case IO_CHIMES_DELAY_HII: 
+	  strncpy(label, "CHII", 4); 
+	  break; 
 #endif      
         case IO_POT:
             strncpy(label, "POT ", 4);
@@ -3602,6 +3812,18 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_CHIMES_FLUX_ION: 
 	  strcpy(buf, "ChimesFluxIon"); 
 	  break; 
+        case IO_CHIMES_STAR_DENS: 
+	    strcpy(buf, "DensAroundStar"); 
+	    break; 
+        case IO_CHIMES_STAR_Z_DENS: 
+	    strcpy(buf, "MetalDensAroundStar"); 
+	    break; 
+        case IO_CHIMES_STAR_HI_DENS: 
+	    strcpy(buf, "HIDensAroundStar"); 
+	    break; 
+        case IO_CHIMES_DELAY_HII: 
+	    strcpy(buf, "DelayTimeHII"); 
+	    break; 
 #endif 
         case IO_POT:
             strcpy(buf, "Potential");

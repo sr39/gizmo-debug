@@ -375,8 +375,11 @@ void init(void)
             P[i].GradRho[0]=0;
             P[i].GradRho[1]=0;
             P[i].GradRho[2]=1;
-#if defined(METALS) && defined(EXTRA_SNE_OUTPUT) 
+#if defined(METALS) && (defined(EXTRA_SNE_OUTPUT) || defined(CHIMES_Z_DEPENDENT_TAU))
 	    P[i].MetalDensAroundStar = 0; 
+#endif 
+#ifdef CHIMES_HI_DEPENDENT_TAU_EUV  
+	    P[i].HIDensAroundStar = 0; 
 #endif 
 #endif
 #if defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_THERMAL)
