@@ -3,7 +3,11 @@
  *
  *  This file contains supplemental code if you want to add an 
  *   -analytic- potential or gravitational force in the code, 
- *   rather than solely relying on the calculated self-gravity
+ *   rather than solely relying on the calculated self-gravity. 
+ *   Note that the terms here are added at the end of the self-gravity
+ *   loop, so if you want to keep self-gravity, but add these, you need
+ *   to make sure that your routine -adds to- the GravAccel values, rather 
+ *   than re-setting them entirely.
  */
 /*
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
@@ -234,9 +238,9 @@ void GravAccel_KeplerianOrbit()
         dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y;
 #endif
         r2 = dp[0]*dp[0] + dp[1]*dp[1]; r = sqrt(r2);
-        P[i].GravAccel[0] = -dp[0] / (r2 * r);
-        P[i].GravAccel[1] = -dp[1] / (r2 * r);
-        P[i].GravAccel[2] = 0;
+        P[i].GravAccel[0] += -dp[0] / (r2 * r);
+        P[i].GravAccel[1] += -dp[1] / (r2 * r);
+        P[i].GravAccel[2] += 0;
     }
 }
 
@@ -414,7 +418,7 @@ void GravAccel_PaczynskyWiita()
         if(r > r_g)
         {
             double q = PACZYNSKY_WIITA_MASS/((r - r_g)*(r - r_g));
-            for(k = 0; k < 3; k++) {P[i].GravAccel[k] = - q * P[i].Pos[k]/r;}
+            for(k = 0; k < 3; k++) {P[i].GravAccel[k] += - q * P[i].Pos[k]/r;}
         }
     }
 }
