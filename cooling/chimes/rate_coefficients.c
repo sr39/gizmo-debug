@@ -652,7 +652,7 @@ double R53(double NH2, double temperature, double *photon_density, double extinc
       else if (temperature < 4000.0)
 	{
 	  Ncrit = pow(temperature / 2.3e7, -3.8);
-	  alpha = pow(temperature / 4.5e3, 0.8);
+	  alpha = pow(temperature / 4.5e3, -0.8);
 	}
       else
 	{
