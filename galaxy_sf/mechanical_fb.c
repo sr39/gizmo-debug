@@ -18,7 +18,7 @@
  */
 
 
-#ifdef GALSF_FB_SNE_HEATING
+#ifdef GALSF_FB_MECHANICAL
 
 /* in case you're wondering, here are some conventions that may be useful for solar abundances
  All.SolarAbundances[0]=0.02;        // all metals (by mass); present photospheric abundances from Asplund et al. 2009 (Z=0.0134, proto-solar=0.0142) in notes;
@@ -297,7 +297,7 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
 
 void particle2in_addFB_winds(struct addFBdata_in *in, int i)
 {
-#ifdef GALSF_FB_GASRETURN
+#ifdef GALSF_FB_FIRE_MECHANICAL
     int k;
     double star_age,T_corr,GasSpecEnergy,M_wind,E_wind,wind_velocity,wind_momentum;
 #ifdef METALS
@@ -374,7 +374,7 @@ void particle2in_addFB_winds(struct addFBdata_in *in, int i)
     in->SNe_v_ejecta = wind_velocity;
     in->unit_mom_SNe = wind_momentum;
     for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {in->Area_weighted_sum[k] = P[i].Area_weighted_sum[k];}
-#endif // GALSF_FB_GASRETURN //
+#endif // GALSF_FB_FIRE_MECHANICAL //
 }
 
 
@@ -719,7 +719,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double pressure_to_p4 = (1/All.cf_afac1)*density_to_n*(All.UnitEnergy_in_cgs/All.UnitMass_in_g) / 1.0e4;
 #endif
     
-#if defined(COSMIC_RAYS) && defined(GALSF_FB_SNE_HEATING)
+#if defined(COSMIC_RAYS) && defined(GALSF_FB_MECHANICAL)
     // account for energy going into CRs, so we don't 'double count' //
     double CR_energy_to_inject = 0;
     if((local.SNe_v_ejecta > 2.0e8 / All.UnitVelocity_in_cm_per_s) && (feedback_type == 0))
@@ -825,7 +825,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double q;
                     q = 0;
                     
-#if (GALSF_FB_SNE_HEATING == 0) // code for symmetrized but non-isotropic
+#if (GALSF_FB_MECHANICAL == 0) // code for symmetrized but non-isotropic
 //#define DO_SYMMETRIZED_SNE_HEATING_ONLY_BUT_NOT_FULLY_ISOTROPIC
 #define DO_FULLY_ISOTROPIZED_SNE_HEATING
 #endif
@@ -934,7 +934,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=(1-massratio_ejecta)*P[j].Metallicity[k] + massratio_ejecta*local.yields[k];}
                 if(feedback_type == 2) continue; // for r-process, nothing left here to bother coupling //
 #endif
-#if defined(COSMIC_RAYS) && defined(GALSF_FB_SNE_HEATING)
+#if defined(COSMIC_RAYS) && defined(GALSF_FB_MECHANICAL)
                 /* inject cosmic rays */
                 SphP[j].CosmicRayEnergy += pnorm * CR_energy_to_inject;
                 SphP[j].CosmicRayEnergyPred += pnorm * CR_energy_to_inject;
@@ -1069,7 +1069,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
         }
     }
     
-#if defined(COSMIC_RAYS) && defined(GALSF_FB_SNE_HEATING)
+#if defined(COSMIC_RAYS) && defined(GALSF_FB_MECHANICAL)
     // account for energy going into CRs, so we don't 'double count' //
     double CR_energy_to_inject = 0;
     if((v_ejecta_eff > 2.0e8 / All.UnitVelocity_in_cm_per_s) && (feedback_type == 0))
@@ -1266,7 +1266,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=(1-massratio_ejecta)*P[j].Metallicity[k] + massratio_ejecta*local.yields[k];}
                 if(feedback_type == 2) continue; // for r-process, nothing left here to bother coupling //
 #endif
-#if defined(COSMIC_RAYS) && defined(GALSF_FB_SNE_HEATING)
+#if defined(COSMIC_RAYS) && defined(GALSF_FB_MECHANICAL)
                 /* inject cosmic rays */
                 SphP[j].CosmicRayEnergy += pnorm * CR_energy_to_inject;
                 SphP[j].CosmicRayEnergyPred += pnorm * CR_energy_to_inject;
@@ -1370,10 +1370,10 @@ int addFB_evaluate_active_check(int i, int feedback_type)
     if(P[i].Mass <= 0) return 0;
     if(PPP[i].Hsml <= 0) return 0;
     if(PPP[i].NumNgb <= 0) return 0;
-#ifdef GALSF_FB_SNE_HEATING
+#ifdef GALSF_FB_MECHANICAL
     if(P[i].SNe_ThisTimeStep>0) {if(feedback_type<0 || feedback_type==0) return 1;}
 #endif
-#ifdef GALSF_FB_GASRETURN
+#ifdef GALSF_FB_FIRE_MECHANICAL
     if(P[i].MassReturn_ThisTimeStep>0) {if(feedback_type<0 || feedback_type==1) return 1;}
 #endif
 #ifdef GALSF_FB_RPROCESS_ENRICHMENT
@@ -1412,7 +1412,7 @@ void determine_where_SNe_occur()
     npossible=nhosttotal=ntotal=ptotal=dtmean=rmean=0;
     double mpi_npossible,mpi_nhosttotal,mpi_ntotal,mpi_ptotal,mpi_dtmean,mpi_rmean;
     mpi_npossible=mpi_nhosttotal=mpi_ntotal=mpi_ptotal=mpi_dtmean=mpi_rmean=0;
-#ifdef GALSF_FB_GASRETURN
+#ifdef GALSF_FB_FIRE_MECHANICAL
     double D_RETURN_FRAC = 0.01; // fraction of particle mass to return on a recycling step //
 #ifdef SINGLE_STAR_FORMATION
     D_RETURN_FRAC = 1.0e-7; // needs to be much smaller to have quasi-continuous winds on these scales //
@@ -1431,7 +1431,7 @@ void determine_where_SNe_occur()
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         P[i].SNe_ThisTimeStep=0;
-#ifdef GALSF_FB_GASRETURN
+#ifdef GALSF_FB_FIRE_MECHANICAL
         P[i].MassReturn_ThisTimeStep=0;
 #endif
 #ifdef GALSF_FB_RPROCESS_ENRICHMENT
@@ -1512,7 +1512,7 @@ void determine_where_SNe_occur()
         }
         dtmean += dt;
         
-#ifdef GALSF_FB_GASRETURN
+#ifdef GALSF_FB_FIRE_MECHANICAL
         // Stellar Winds component //
         if(All.GasReturnFraction>0)
         {
@@ -1611,71 +1611,7 @@ void determine_where_SNe_occur()
 
 
 
-#ifdef GALSF_GASOLINE_RADHEATING
-/* this routine copies the 'heating' term from young stars included in the Stinson+ 2013 GASOLINE model:
- the integrated luminosity from all stars with age<4 Myr is coupled directly as a heating term to the
- gas, with some efficiency parameter */
-void luminosity_heating_gasoline(void)
-{
-    double Gasoline_LumHeating_Efficiency = 0.1;
-    // coupling 'efficiency' (currently hard-coded to 10% to match their model, can change) //
-    double dt,star_age,dE,dE_j,wtsum,h;
-    int startnode, numngb, i, j, n, dummy=0;
-    
-    if(All.Time<=0) return;
-    Ngblist = (int *) mymalloc("Ngblist",NumPart * sizeof(int));
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-    {
-        if((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))
-        {
-#ifndef WAKEUP
-            dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
-#else
-            dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
-#endif
-            star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
-            if((star_age < 0.004)&&(dt>0)&&(P[i].Mass>0))
-            {
-                dE = evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(i);
-                dE *= Gasoline_LumHeating_Efficiency;
-                dE *= (4.0/2.0) * (P[i].Mass*All.UnitMass_in_g/All.HubbleParam); // L in CGS
-                dE *= (dt*All.UnitTime_in_s/All.HubbleParam) / (All.UnitEnergy_in_cgs/All.HubbleParam); // dE in code units
-                
-                h = 1.0*P[i].Hsml;
-                numngb=ngb_treefind_variable_threads(P[i].Pos,h,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist);
-                wtsum = 0.0;
-                if(numngb>0)
-                {
-                    for(n = 0; n < numngb; n++)
-                    {
-                        j = Ngblist[n];
-                        if(P[j].Type == 0 && P[j].Mass > 0)
-                        {
-                            wtsum += 1.0;
-                        }
-                    }
-                    if(wtsum>0)
-                    {
-                        dE /= wtsum;
-                        for(n = 0; n < numngb; n++)
-                        {
-                            j = Ngblist[n];
-                            if(P[j].Type == 0 && P[j].Mass > 0)
-                            {
-                                dE_j = dE / P[j].Mass;
-                                SphP[j].InternalEnergy += dE_j;
-                                SphP[j].InternalEnergyPred += dE_j;
-                            }
-                        }
-                    } // if(wtsum>0)
-                } // if(numngb>0)
-            } // if((star_age < 0.004)&&(dt>0)&&(P[i].Mass>0))
-        } // if((P[i].Type == 4)||(P[i].Type == 2)||(P[i].Type == 3))
-    } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-    myfree(Ngblist);
-} // void luminosity_heating_gasoline(void)
-#endif
 
 
-#endif /* GALSF_FB_SNE_HEATING */
+#endif /* GALSF_FB_MECHANICAL */
 

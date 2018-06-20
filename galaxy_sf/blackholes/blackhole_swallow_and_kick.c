@@ -853,7 +853,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
         SphP[j].HostHaloMass = 0;
 #endif
 #endif
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
         SphP[j].DelayTimeHII = 0;
 #endif
 #ifdef GALSF_FB_TURNOFF_COOLING

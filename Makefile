@@ -72,8 +72,8 @@ BUILDINFO = "Build on $(HOSTNAME) by $(USER) from $(HG_BRANCH):$(HG_COMMIT) at $
 ifeq (FIRE_PHYSICS_DEFAULTS,$(findstring FIRE_PHYSICS_DEFAULTS,$(CONFIGVARS)))  # using 'fire default' instead of all the above
     CONFIGVARS += COOLING COOL_LOW_TEMPERATURES COOL_METAL_LINES_BY_SPECIES
     CONFIGVARS += GALSF METALS TURB_DIFF_METALS TURB_DIFF_METALS_LOWORDER GALSF_SFR_MOLECULAR_CRITERION GALSF_SFR_VIRIAL_SF_CRITERION=0
-    CONFIGVARS += GALSF_FB_GASRETURN GALSF_FB_HII_HEATING GALSF_FB_SNE_HEATING=1 GALSF_FB_RT_PHOTONMOMENTUM
-    CONFIGVARS += GALSF_FB_LOCAL_UV_HEATING GALSF_FB_RPWIND_LOCAL GALSF_FB_RPROCESS_ENRICHMENT=4
+    CONFIGVARS += GALSF_FB_FIRE_RT_HIIHEATING GALSF_FB_MECHANICAL=1 GALSF_FB_FIRE_RT_LONGRANGE
+    CONFIGVARS += GALSF_FB_FIRE_RT_UVHEATING GALSF_FB_FIRE_RT_LOCALRP GALSF_FB_RPROCESS_ENRICHMENT=4
 #    CONFIGVARS += GALSF_SFR_IMF_VARIATION
 endif
 
@@ -287,7 +287,7 @@ CXX      = mpicpc ## gcc compilers, for intel replace this with mpiicpc
 FC       = $(CC)
 #OPTIMIZE = -Wall -g -O3 -xHOST -ipo -no-prec-div -fp-model fast=2 -fast-transcendentals -funroll-loops ## optimizations for intel compilers
 ##OPTIMIZE += -pg ## profiling for intel compilers
-OPTIMIZE = -g -O2 -ffast-math -funroll-loops -finline-functions -funswitch-loops -fpredictive-commoning -fgcse-after-reload -fipa-cp-clone  ## optimizations for gcc compilers (1/2)
+OPTIMIZE = -g -O1 -ffast-math -funroll-loops -finline-functions -funswitch-loops -fpredictive-commoning -fgcse-after-reload -fipa-cp-clone  ## optimizations for gcc compilers (1/2)
 OPTIMIZE += -ftree-loop-distribute-patterns -fvect-cost-model -ftree-partial-pre   ## optimizations for gcc compilers (2/2)
 #OPTIMIZE += -ftree-loop-distribute-patterns -ftree-slp-vectorize -fvect-cost-model -ftree-partial-pre   ## optimizations for gcc compilers (2/2)
 #OPTIMIZE += -pg -fprofile -fprofile-arcs -ftest-coverage -fprofile-generate ## full profiling, for gcc compilers
@@ -999,7 +999,7 @@ ifeq (GALSF,$(findstring GALSF,$(CONFIGVARS)))
 OBJS    += galaxy_sf/sfr_eff.o
 endif
 
-ifeq (GALSF_FB_HII_HEATING,$(findstring GALSF_FB_HII_HEATING,$(CONFIGVARS)))
+ifeq (GALSF_FB_FIRE_RT_HIIHEATING,$(findstring GALSF_FB_FIRE_RT_HIIHEATING,$(CONFIGVARS)))
 OBJS    += galaxy_sf/hII_heating.o
 endif
 
@@ -1019,7 +1019,7 @@ ifeq (OUTPUT_TWOPOINT_ENABLED,$(findstring OUTPUT_TWOPOINT_ENABLED,$(CONFIGVARS)
 OBJS    += structure/twopoint.o
 endif
 
-ifeq (GALSF_FB_SNE_HEATING,$(findstring GALSF_FB_SNE_HEATING,$(CONFIGVARS)))
+ifeq (GALSF_FB_MECHANICAL,$(findstring GALSF_FB_MECHANICAL,$(CONFIGVARS)))
 OBJS    += galaxy_sf/mechanical_fb.o
 endif
 
@@ -1027,7 +1027,7 @@ ifeq (GALSF_FB_THERMAL,$(findstring GALSF_FB_THERMAL,$(CONFIGVARS)))
 OBJS    += galaxy_sf/thermal_fb.o
 endif
 
-ifeq (GALSF_FB_RPWIND_LOCAL,$(findstring GALSF_FB_RPWIND_LOCAL,$(CONFIGVARS)))
+ifeq (GALSF_FB_FIRE_RT_LOCALRP,$(findstring GALSF_FB_FIRE_RT_LOCALRP,$(CONFIGVARS)))
 OBJS    += galaxy_sf/rp_localwinds.o
 endif
 

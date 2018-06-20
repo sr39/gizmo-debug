@@ -97,11 +97,11 @@ void do_the_cooling_for_particle(int i)
     {
         
         double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
         double u_to_temp_fac = 0.59 * PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
         double uion = HIIRegion_Temp / u_to_temp_fac;
         if(SphP[i].DelayTimeHII > 0) if(uold<uion) uold=uion; /* u_old should be >= ionized temp if used here */
-#endif // GALSF_FB_HII_HEATING
+#endif // GALSF_FB_FIRE_RT_HIIHEATING
         
 #ifndef COOLING_OPERATOR_SPLIT
         /* do some prep operations on the hydro-step determined heating/cooling rates before passing to the cooling subroutine */
@@ -135,14 +135,14 @@ void do_the_cooling_for_particle(int i)
 #endif
         
         
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
         /* set internal energy to minimum level if marked as ionized by stars */
         if(SphP[i].DelayTimeHII > 0)
         {
             if(unew<uion) {unew=uion; if(SphP[i].DtInternalEnergy<0) SphP[i].DtInternalEnergy=0;}
             SphP[i].Ne = 1.0 + 2.0*yhelium(i); /* fully ionized */
         }
-#endif // GALSF_FB_HII_HEATING
+#endif // GALSF_FB_FIRE_RT_HIIHEATING
         
         
 #if defined(BH_THERMALFEEDBACK)
@@ -184,11 +184,11 @@ void do_the_cooling_for_particle(int i)
 #endif
         
         
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
         /* count off time which has passed since ionization 'clock' */
         if(SphP[i].DelayTimeHII > 0) SphP[i].DelayTimeHII -= dtime;
         if(SphP[i].DelayTimeHII < 0) SphP[i].DelayTimeHII = 0;
-#endif // GALSF_FB_HII_HEATING
+#endif // GALSF_FB_FIRE_RT_HIIHEATING
         
     } // closes if((P[i].TimeBin)&&(dt>0)&&(P[i].Mass>0)&&(P[i].Type==0)) check
 }
@@ -489,7 +489,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 
     /* account for non-local UV background */
     double local_gammamultiplier=1;
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
     if((target >= 0) && (gJH0 > 0))
     {
         local_gammamultiplier = SphP[target].RadFluxEUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
@@ -723,7 +723,7 @@ double ThermalProperties(double u, double rho, int target, double *mu_guess, dou
     rho *= All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;	/* convert to physical cgs units */
     u *= All.UnitPressure_in_cgs / All.UnitDensity_in_cgs;
     temp = convert_u_to_temp(u, rho, target, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess);
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
     if(target >= 0) {if(SphP[target].DelayTimeHII > 0) {SphP[target].Ne = 1.0 + 2.0*yhelium(target);}} /* fully ionized */
 #endif
     *mu_guess = get_mu(temp, rho, ne_guess, target);
@@ -764,7 +764,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     }
 #endif
     double local_gammamultiplier=1;
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
     if((target >= 0) && (gJH0 > 0))
     {
         local_gammamultiplier = SphP[target].RadFluxEUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
@@ -974,11 +974,11 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         if(T < AGN_T_Compton) Heat += AGN_LambdaPre * (AGN_T_Compton - T) / nHcgs; /* note this is independent of the free electron fraction */
 #endif
         
-#if defined(GALSF_FB_LOCAL_UV_HEATING) || defined(RT_PHOTOELECTRIC)
+#if defined(GALSF_FB_FIRE_RT_UVHEATING) || defined(RT_PHOTOELECTRIC)
         /* Photoelectric heating following Bakes & Thielens 1994 (also Wolfire 1995); now with 'update' from Wolfire 2005 for PAH [fudge factor 0.5 below] */
         if((target >= 0) && (T < 1.0e6))
         {
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
             double photoelec = SphP[target].RadFluxUV;
 #endif
 #ifdef RT_PHOTOELECTRIC
@@ -1565,7 +1565,7 @@ double GetLambdaSpecies(long k_index, long index_x0y0, long index_x0y1, long ind
 
 
 
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
 void selfshield_local_incident_uv_flux(void)
 {
     /* include local self-shielding with the following */
@@ -1596,7 +1596,7 @@ void selfshield_local_incident_uv_flux(void)
                 SphP[i].RadFluxEUV = 0;
             }}}
 }
-#endif // GALSF_FB_LOCAL_UV_HEATING
+#endif // GALSF_FB_FIRE_RT_UVHEATING
 
 
 #endif
