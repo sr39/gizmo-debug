@@ -10,7 +10,7 @@
 #include "../proto.h"
 
 /*!
- *  routines for star formation in cosmological simulations
+ *  routines for star formation in cosmological/galaxy/single-star/black hole simulations
  */
 /*
  * This file is largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
@@ -22,7 +22,6 @@
 
 #ifdef GALSF // master switch for compiling the routines below //
 
-#define WindInitialVelocityBoost 1.0 // (optional) boost velocity coupled (fixed momentum)
 
 #if defined(GALSF_SFR_IMF_VARIATION) || defined(GALSF_SFR_IMF_SAMPLING)
 /* function to determine what the IMF of a new star particle will be, based 
@@ -236,7 +235,6 @@ void set_units_sfr(void)
 {
     All.OverDensThresh = All.CritOverDensity * All.OmegaBaryon * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
     All.PhysDensThresh = All.CritPhysDensity * PROTONMASS / (HYDROGEN_MASSFRAC * All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam);
-    
 #ifdef GALSF_EFFECTIVE_EQS
     double meanweight = 4 / (1 + 3 * HYDROGEN_MASSFRAC);	/* note: assuming NEUTRAL GAS */
     All.EgySpecCold = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.TempClouds;
@@ -803,7 +801,6 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
     }
     prob = 1 - exp(-p);
 #endif
-    
     
     if(get_random_number(P[i].ID + 2) < prob)	/* ok, make the particle go into the wind */
     {
