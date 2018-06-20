@@ -194,6 +194,7 @@ void begrun(void)
       All.BufferSize = all.BufferSize;
       All.TimeLimitCPU = all.TimeLimitCPU;
       All.ResubmitOn = all.ResubmitOn;
+      All.SnapFormat = all.SnapFormat;
       All.TimeBetSnapshot = all.TimeBetSnapshot;
       All.TimeBetStatistics = all.TimeBetStatistics;
       All.CpuTimeBetRestartFile = all.CpuTimeBetRestartFile;
@@ -264,32 +265,28 @@ void begrun(void)
 #ifdef BLACK_HOLES
       All.BlackHoleMaxAccretionRadius = all.BlackHoleMaxAccretionRadius;
 #endif
-#ifdef GALSF_FB_RPWIND_LOCAL
+#ifdef GALSF_FB_FIRE_RT_LOCALRP
         All.WindMomentumLoading = all.WindMomentumLoading;
 #endif
-#ifdef GALSF_FB_SNE_HEATING
-        All.SNeIIEnergyFrac = all.SNeIIEnergyFrac;
-#endif
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
         All.HIIRegion_fLum_Coupled = all.HIIRegion_fLum_Coupled;
 #endif
 #ifdef RT_LEBRON
         All.PhotonMomentum_Coupled_Fraction = all.PhotonMomentum_Coupled_Fraction;
 #endif
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
         All.PhotonMomentum_fUV = all.PhotonMomentum_fUV;
         All.PhotonMomentum_fOPT = all.PhotonMomentum_fOPT;
 #endif
-#ifdef GALSF_FB_SNE_HEATING
+#ifdef GALSF_FB_FIRE_MECHANICAL
+        All.SNeIIEnergyFrac = all.SNeIIEnergyFrac;
         All.GasReturnFraction = all.GasReturnFraction;
-#endif
-#ifdef GALSF_FB_GASRETURN
         All.AGBGasEnergy = all.AGBGasEnergy;
-#endif
 #ifdef COSMIC_RAYS
-#ifdef GALSF_FB_SNE_HEATING
         All.CosmicRay_SNeFraction = all.CosmicRay_SNeFraction;
 #endif
+#endif
+#ifdef COSMIC_RAYS
         All.CosmicRayDiffusionCoeff = all.CosmicRayDiffusionCoeff;
 #endif
 
@@ -698,7 +695,7 @@ void open_outputfiles(void)
 #endif
 
     
-#ifdef GALSF_FB_RPWIND_LOCAL
+#ifdef GALSF_FB_FIRE_RT_LOCALRP
     sprintf(buf, "%s%s", All.OutputDir, "MomWinds.txt");
     if(!(FdMomWinds = fopen(buf, mode)))
     {
@@ -706,7 +703,7 @@ void open_outputfiles(void)
         endrun(1);
     }
 #endif
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
     sprintf(buf, "%s%s", All.OutputDir, "HIIheating.txt");
     if(!(FdHIIHeating = fopen(buf, mode)))
     {
@@ -714,7 +711,7 @@ void open_outputfiles(void)
         endrun(1);
     }
 #endif
-#ifdef GALSF_FB_SNE_HEATING
+#ifdef GALSF_FB_MECHANICAL
     sprintf(buf, "%s%s", All.OutputDir, "SNeIIheating.txt");
     if(!(FdSneIIHeating = fopen(buf, mode)))
     {
@@ -1009,20 +1006,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
         
-#ifdef GALSF_FB_SNE_HEATING
-        strcpy(tag[nt],"GasReturnFraction");
-        addr[nt] = &All.GasReturnFraction;
-        id[nt++] = REAL;
-#endif
-        
-#ifdef GALSF_FB_GASRETURN
-        strcpy(tag[nt],"GasReturnEnergy");
-        addr[nt] = &All.AGBGasEnergy;
-        id[nt++] = REAL;
-#endif
-        
-
-#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(GALSF_FB_THERMAL)
+#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
         strcpy(tag[nt],"InitMetallicity");
         addr[nt] = &All.InitMetallicityinSolar;
         id[nt++] = REAL;
@@ -1032,13 +1016,29 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
         
-#ifdef GALSF_FB_SNE_HEATING
+
+#ifdef GALSF_FB_FIRE_MECHANICAL
         strcpy(tag[nt], "SNeIIEnergyFrac");
         addr[nt] = &All.SNeIIEnergyFrac;
         id[nt++] = REAL;
+
+        strcpy(tag[nt],"GasReturnFraction");
+        addr[nt] = &All.GasReturnFraction;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt],"GasReturnEnergy");
+        addr[nt] = &All.AGBGasEnergy;
+        id[nt++] = REAL;
+
+#ifdef COSMIC_RAYS
+        strcpy(tag[nt], "CosmicRay_SNeFraction");
+        addr[nt] = &All.CosmicRay_SNeFraction;
+        id[nt++] = REAL;
+#endif
 #endif
         
-#ifdef GALSF_FB_HII_HEATING
+
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
         strcpy(tag[nt], "HIIRegion_fLum_Coupled");
         addr[nt] = &All.HIIRegion_fLum_Coupled;
         id[nt++] = REAL;
@@ -1050,7 +1050,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
         
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
         strcpy(tag[nt], "PhotonMomentum_fUV");
         addr[nt] = &All.PhotonMomentum_fUV;
         id[nt++] = REAL;
@@ -1238,12 +1238,6 @@ void read_parameter_file(char *fname)
 
         
 #ifdef COSMIC_RAYS
-#ifdef GALSF_FB_SNE_HEATING
-        strcpy(tag[nt], "CosmicRay_SNeFraction");
-        addr[nt] = &All.CosmicRay_SNeFraction;
-        id[nt++] = REAL;
-#endif
-
         strcpy(tag[nt], "CosmicRayDiffusionCoeff");
         addr[nt] = &All.CosmicRayDiffusionCoeff;
         id[nt++] = REAL;
@@ -1374,7 +1368,7 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
         
-#ifdef GALSF_FB_RPWIND_LOCAL
+#ifdef GALSF_FB_FIRE_RT_LOCALRP
         strcpy(tag[nt], "WindMomentumLoading");
         addr[nt] = &All.WindMomentumLoading;
         id[nt++] = REAL;
@@ -1558,7 +1552,7 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 
-#if defined(RT_CHEM_PHOTOION) && !(defined(GALSF_FB_HII_HEATING) || defined(GALSF))
+#if defined(RT_CHEM_PHOTOION) && !(defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF))
         strcpy(tag[nt], "IonizingLuminosityPerSolarMass_cgs");
         addr[nt] = &All.IonizingLuminosityPerSolarMass_cgs;
         id[nt++] = REAL;

@@ -94,7 +94,7 @@ void compute_hydro_densities_and_forces(void)
         if(ThisTask == 0) {printf("density & tree-update computation done...\n");}
 #endif
         hydro_gradient_calc(); /* calculates the gradients of hydrodynamical quantities  */
-#if defined(COOLING) && defined(GALSF_FB_LOCAL_UV_HEATING)
+#if defined(COOLING) && defined(GALSF_FB_FIRE_RT_UVHEATING)
         selfshield_local_incident_uv_flux();
         /* needs to be called after gravity tree (where raw flux is calculated) 
          and the local gradient calculation (GradRho) to
@@ -143,47 +143,36 @@ void compute_stellar_feedback(void)
     CPU_Step[CPU_MISC] += measure_time();
 
     /* first, check the mechanical sources of feedback */
-#ifdef GALSF_FB_SNE_HEATING
+#ifdef GALSF_FB_MECHANICAL
 #ifndef USE_ORIGINAL_FIRE2_SNE_COUPLING_SCHEME
     mechanical_fb_calc(-2); /* compute weights for coupling [first weight-calculation pass] */
 #endif
     mechanical_fb_calc(-1); /* compute weights for coupling [second weight-calculation pass] */
     CPU_Step[CPU_SNIIHEATING] += measure_time();
-#ifdef GALSF_FB_SNE_HEATING
-    mechanical_fb_calc(0); /* actually do the SNe coupling */
+#ifdef GALSF_FB_MECHANICAL
+    mechanical_fb_calc(0); /* actually do the mechanical feedback coupling */
     CPU_Step[CPU_SNIIHEATING] += measure_time();
 #endif
-#if defined(GALSF_FB_GASRETURN)
+#ifdef GALSF_FB_FIRE_MECHANICAL
     mechanical_fb_calc(1); /* do the gas return coupling */
-    CPU_Step[CPU_GASRETURN] += measure_time();
-#endif
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
+    CPU_Step[CPU_SNIIHEATING] += measure_time();
     mechanical_fb_calc(2); /* do the R-process element injection */
-    CPU_Step[CPU_GASRETURN] += measure_time();
+    CPU_Step[CPU_SNIIHEATING] += measure_time();
 #endif
-#endif // GALSF_FB_SNE_HEATING
+#endif // GALSF_FB_MECHANICAL
     
-    
-    /* alternatively use the pure-thermal/scalar sub-grid feedback model */
 #ifdef GALSF_FB_THERMAL
-    thermal_fb_calc();
-#endif
-    
-    /* alternatively use the 'turn off cooling' sub-grid feedback model */
-#ifdef GALSF_GASOLINE_RADHEATING
-    luminosity_heating_gasoline();
+    thermal_fb_calc(); /* thermal feedback */
     CPU_Step[CPU_SNIIHEATING] += measure_time();
 #endif
     
-    /* now do the local photo-ionization heating */
-#ifdef GALSF_FB_HII_HEATING
-    HII_heating_singledomain();
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
+    HII_heating_singledomain(); /* local photo-ionization heating */
     CPU_Step[CPU_HIIHEATING] += measure_time();
 #endif
     
-    /* finally (if we're not doing it in the star formation routine), do the local radiation pressure */
-#if defined(GALSF_FB_RPWIND_FROMSTARS) && !defined(GALSF_FB_RPWIND_DO_IN_SFCALC)
-    radiation_pressure_winds_consolidated();
+#ifdef GALSF_FB_FIRE_RT_LOCALRP
+    radiation_pressure_winds_consolidated(); /* local radiation pressure */
     CPU_Step[CPU_LOCALWIND] += measure_time();
 #endif
     

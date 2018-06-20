@@ -484,36 +484,29 @@ int grain_density_isactive(int n);
 #endif
 #endif
 
-#ifdef GALSF_FB_GASRETURN
-void stochastic_gas_return_singledomain(void);
-#endif
-
-#if defined(GALSF_FB_HII_HEATING) || (defined(RT_CHEM_PHOTOION) && defined(GALSF))
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) || (defined(RT_CHEM_PHOTOION) && defined(GALSF))
 double particle_ionizing_luminosity_in_cgs(long i);
 #endif
 
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
 void HII_heating_singledomain(void);
-#ifdef GALSF_FB_HII_HEATING_USEMULTIDOMAINSHARE
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING_USEMULTIDOMAINSHARE
 void HII_heating_withMPIcomm(void);
 int HIIheating_RHIIest(int target);
 int HIIheating_evaluate(int target, int mode, int *nexport, int *nsend_local);
 #endif
 #endif
 
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
 void selfshield_local_incident_uv_flux(void);
 #endif
 
-#ifdef GALSF_FB_SNE_HEATING
+#ifdef GALSF_FB_MECHANICAL
 void determine_where_SNe_occur(void);
 void mechanical_fb_calc(int feedback_type);
 int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int feedback_type);
 void *addFB_evaluate_primary(void *p, int feedback_type);
 void *addFB_evaluate_secondary(void *p, int feedback_type);
-#ifdef GALSF_GASOLINE_RADHEATING
-void luminosity_heating_gasoline(void);
-#endif
 #endif
 
 #ifdef GALSF_FB_THERMAL
@@ -541,11 +534,11 @@ double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, doubl
 double bh_angleweight_localcoupling(int j, double hR, double theta);
 #endif
 
-#if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) || defined(GALSF_SUBGRID_WINDS)
+#if defined(GALSF_SUBGRID_WINDS)
 void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double* pvtau_return);
 #endif
 
-#if defined(GALSF_FB_RPWIND_FROMSTARS) && !defined(GALSF_FB_RPWIND_DO_IN_SFCALC)
+#if defined(GALSF_FB_FIRE_RT_LOCALRP)
 void radiation_pressure_winds_consolidated(void);
 #endif
 

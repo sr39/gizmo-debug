@@ -225,8 +225,7 @@
 ## ----------------------------------------------------------------------------------------------------------------------------
 # ---- pure thermal/scalar stellar feedback models (simplified energy injection; tend to severely over-cool owing to lack of mechanical/kinetic treatment at finite resolution -----------------------------
 #GALSF_FB_THERMAL               # simple 'pure thermal energy dump' feedback: mass, metals, and thermal energy are injected locally in simple kernel-weighted fashion around young stars. currently follows AGORA feedback scheme. cite Kim et al., 2016, ApJ, 833, 202 if used.
-#GALSF_FB_TURNOFF_COOLING       # turn off cooling for SNe-heated particles (as Stinson+ 2006 GASOLINE model, cite it); requires GALSF_FB_SNE_HEATING or GALSF_FB_THERMAL; use by permission of developer P. Hopkins)
-#GALSF_GASOLINE_RADHEATING      # heat gas with luminosity from young stars (as Stinson+ 2013 GASOLINE model, cite it); requires GALSF_FB_SNE_HEATING; use by permission of developer P. Hopkins)
+#GALSF_FB_TURNOFF_COOLING       # turn off cooling for SNe-heated particles (as Stinson+ 2006 GASOLINE model, cite it); requires GALSF_FB_MECHANICAL or GALSF_FB_THERMAL; use by permission of developer P. Hopkins)
 ## ----------------------------------------------------------------------------------------------------
 #------ PFH physical models for star formation and feedback: these are the FIRE simulation modules (Hopkins et al. 2014, Hopkins et al., 2017a, arXiv:1702.06148) ------ ##
 #--------- Their use follows the FIRE authorship policy. Modules are NOT to be used without authors permission (including P. Hopkins, E. Quataert, D. Keres, and C.A. Faucher-Giguere),
@@ -236,19 +235,16 @@
 ##-----------------------------------------------------------------------------------------------------
 #FIRE_PHYSICS_DEFAULTS           # enable default set of FIRE physics packages (see details below); note use policy above
 #----------- physical stellar feedback mechanisms (sub-modules of the FIRE_PHYSICS_DEFAULTS; these cannot be turned off and on individually without extreme care, they have complicated inter-dependencies) ---- #
-##----------------------GALSF_FB_GASRETURN              # Paul Torrey's addition for stochastic gas return (modified for continuous return)
-##----------------------GALSF_FB_HII_HEATING            # gas within HII regions around young stars is photo-heated to 10^4 K
-##----------------------GALSF_FB_SNE_HEATING=1          # time-dependent explosions from SNe (I & II) in shockwave radii around stars (values: 0=force-gridded in xyz (WRONG-for testing only!); 1=tensor-symmetrized (momentum-conserving; USE ME); 2=no tensor re-normalization [non-conservative!]
+##----------------------GALSF_FB_MECHANICAL=1           # time-dependent explosions from SNe (I & II) in shockwave radii around stars (values: 0=force-gridded in xyz (WRONG-for testing only!); 1=tensor-symmetrized (momentum-conserving; USE ME); 2=no tensor re-normalization [non-conservative!]
+##----------------------GALSF_FB_FIRE_MECHANICAL        # turns on default FIRE processes including gas return, SNe, R-process, etc.
 ##----------------------GALSF_FB_RPROCESS_ENRICHMENT=4  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model)
-##----------------------GALSF_FB_RT_PHOTONMOMENTUM      # continuous acceleration from starlight (uses luminosity tree)
-##----------------------GALSF_FB_LOCAL_UV_HEATING       # use local estimate of spectral information for photoionization and photoelectric heating
-##----------------------GALSF_FB_RPWIND_LOCAL           # turn on local radiation pressure coupling to gas
+##----------------------GALSF_FB_FIRE_RT_LONGRANGE      # continuous acceleration from starlight (uses luminosity tree)
+##----------------------GALSF_FB_FIRE_RT_UVHEATING      # use local estimate of spectral information for photoionization and photoelectric heating
+##----------------------GALSF_FB_FIRE_RT_LOCALRP        # turn on local radiation pressure coupling to gas
+##----------------------GALSF_FB_FIRE_RT_HIIHEATING     # gas within HII regions around young stars is photo-heated to 10^4 K
 ##-----------------------------------------------------------------------------------------------------
 #----------- deprecated options (most have been combined or optimized into the functions above, here for legacy purposes only)
-##----------------------GALSF_FB_RPWIND_FROMCLUMPS	    # clump-find to for wind angles (deprecated; now use density routine to find)
-##----------------------GALSF_FB_RPWIND_CONTINUOUS	    # wind accel term is continuous (more expensive and introduces more artificial dissipation)
-##----------------------GALSF_FB_RPWIND_DO_IN_SFCALC	# do IR wind loop in SFR routine (allows fof clump-finding, useful for very IR-thick, but slow)
-##----------------------GALSF_FB_RPWIND_FROMSFR         # drive radiation pressure with gas SFR (instead of default, which is nearby young stars)
+##----------------------GALSF_FB_FIRE_RT_CONTINUOUSRP   # local radiation pressure term is continuous (more expensive and introduces more artificial dissipation)
 ##----------------------FIRE_UNPROTECT_FROZEN           # by default, FIRE-2 code version is 'frozen' so it cannot be changed by any code updates. this removes the protection, so you will use whatever the newest algorithms in GIZMO are, but use it with CAUTION since the algorithm may NOT agree with the other FIRE runs
 ## ----------------------------------------------------------------------------------------------------
 ############################################################################################################################
@@ -306,8 +302,8 @@
 #BH_WIND_SPAWN                  # spawn virtual 'wind' particles to carry BH winds out [in development by Paul Torrey]. use requires permissions from P. Torrey and PFH (requires permission, this module is not fully de-bugged and methods not published)
 #--- radiative: [FIRE] these currently are built on the architecture of the FIRE stellar FB modules, and require some of those be active. their use therefore follows FIRE policies (see details above).
 #BH_COMPTON_HEATING             # enable Compton heating/cooling from BHs in cooling function (needs BH_PHOTONMOMENTUM). cite Hopkins et al., 2016, MNRAS, 458, 816
-#BH_HII_HEATING                 # photo-ionization feedback from BH (needs GALSF_FB_HII_HEATING). cite Hopkins et al., arXiv:1702.06148
-#BH_PHOTONMOMENTUM              # continuous long-range IR radiation pressure acceleration from BH (needs GALSF_FB_RT_PHOTONMOMENTUM). cite Hopkins et al., arXiv:1702.06148
+#BH_HII_HEATING                 # photo-ionization feedback from BH (needs GALSF_FB_FIRE_RT_HIIHEATING). cite Hopkins et al., arXiv:1702.06148
+#BH_PHOTONMOMENTUM              # continuous long-range IR radiation pressure acceleration from BH (needs GALSF_FB_FIRE_RT_LONGRANGE). cite Hopkins et al., arXiv:1702.06148
 ## ----------------------------------------------------------------------------------------------------
 # ----- output options
 ## ----------------------------------------------------------------------------------------------------
@@ -358,7 +354,7 @@
 #RT_DISABLE_FLUXLIMITER                 # removes the flux-limiter from the diffusion operations (default is to include it when using the relevant approximations)
 #RT_HYDROGEN_GAS_ONLY                   # sets hydrogen fraction to 1.0 (used for certain idealized chemistry calculations)
 #RT_COOLING_PHOTOHEATING_OLDFORMAT      # includes photoheating and cooling (using RT information), doing just the photo-heating [for more general cooling physics, enable COOLING]
-#RT_FIRE_FIX_SPECTRAL_SHAPE             # enable with GALSF_FB_RT_PHOTONMOMENTUM to use a fixed SED shape set in parameterfile for all incident fluxes
+#RT_FIRE_FIX_SPECTRAL_SHAPE             # enable with GALSF_FB_FIRE_RT_LONGRANGE to use a fixed SED shape set in parameterfile for all incident fluxes
 #RT_DISABLE_UV_BACKGROUND               # disable extenal UV background in cooling functions (to isolate pure effects of local RT, or if simulating the background directly)
 #RT_INJECT_PHOTONS_DISCRETELY           # do photon injection in discrete packets, instead of sharing a continuous source function. works better with adaptive timestepping (default with GALSF)
 ####################################################################################################-

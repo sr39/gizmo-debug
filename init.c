@@ -371,21 +371,19 @@ void init(void)
             P[i].GradRho[1]=0;
             P[i].GradRho[2]=1;
 #endif
-#if defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_THERMAL)
+#if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
             P[i].SNe_ThisTimeStep = 0;
 #endif
-#ifdef GALSF_FB_SNE_HEATING
+#ifdef GALSF_FB_MECHANICAL
             int k; for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {P[i].Area_weighted_sum[k] = 0;}
 #endif
-#ifdef GALSF_FB_GASRETURN
+#ifdef GALSF_FB_FIRE_MECHANICAL
             P[i].MassReturn_ThisTimeStep = 0;
-#endif
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
             P[i].RProcessEvent_ThisTimeStep = 0;
 #endif
         }
         
-#if defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(GALSF_FB_THERMAL)
+#if defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
         if(RestartFlag == 0)
         {
             P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (All.UnitTime_in_Megayears*0.001) * get_random_number(P[i].ID + 3);
@@ -434,7 +432,7 @@ void init(void)
 #endif
         
         if(RestartFlag == 0) {
-#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(GALSF_FB_THERMAL)
+#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
             P[i].Metallicity[0] = All.InitMetallicityinSolar*All.SolarAbundances[0];
 #else
             P[i].Metallicity[0] = 0;
@@ -539,7 +537,7 @@ void init(void)
 #ifdef COOLING
             SphP[i].Ne = 1.0;
 #endif
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
             SphP[i].RadFluxUV = 0;
             SphP[i].RadFluxEUV = 0;
 #endif
@@ -554,7 +552,7 @@ void init(void)
         SphP[i].HostHaloMass = 0;
 #endif
 #endif // GALSF_SUBGRID_WINDS //
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
         SphP[i].DelayTimeHII = 0;
 #endif
 #ifdef GALSF_FB_TURNOFF_COOLING
@@ -789,7 +787,7 @@ void init(void)
         SphP[i].Super_Timestep_Dt_Explicit = 0;
         SphP[i].Super_Timestep_j = 0;
 #endif
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
         SphP[i].RadFluxUV = 0;
         SphP[i].RadFluxEUV = 0;
 #endif

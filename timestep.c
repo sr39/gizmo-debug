@@ -412,7 +412,7 @@ integertime get_timestep(int p,		/*!< particle index */
     }
 #endif
 
-#if (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)) && defined(GALSF) && defined(GALSF_FB_SNE_HEATING)
+#if (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)) && defined(GALSF) && defined(GALSF_FB_MECHANICAL)
     if(((P[p].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[p].Type == 2)||(P[p].Type==3))))&&(P[p].Mass>0))
     {
         if((All.ComovingIntegrationOn))
@@ -861,7 +861,7 @@ integertime get_timestep(int p,		/*!< particle index */
     
     
     // add a 'stellar evolution timescale' criterion to the timestep, to prevent too-large jumps in feedback //
-#if defined(YOUNGSTARWINDDRIVING) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
+#if defined(YOUNGSTARWINDDRIVING) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE)
     if(((P[p].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[p].Type == 2)||(P[p].Type==3))))&&(P[p].Mass>0))
     {
         double star_age = evaluate_stellar_age_Gyr(P[p].StellarAge);

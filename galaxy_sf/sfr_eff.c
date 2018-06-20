@@ -81,7 +81,7 @@ void assign_imf_properties_from_starforming_gas(int i)
     for(k=0;k<3;k++) {b_mag += Get_Particle_BField(i,k)*Get_Particle_BField(i,k) * gizmo2gauss;}
 #endif
     double rad_flux_uv = 1;
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
     rad_flux_uv = SphP[i].RadFluxUV;
 #endif
     double cr_energy_density = 0;
@@ -439,12 +439,6 @@ void star_formation_parent_routine(void)
 #if defined(BH_SEED_FROM_LOCALGAS) || defined(SINGLE_STAR_FORMATION)
   int num_bhformed=0, tot_bhformed=0;
 #endif
-#if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) && defined(GALSF_FB_RPWIND_LOCAL)
-  double total_n_wind,total_m_wind,total_mom_wind,total_prob_kick,avg_v_kick,momwt_avg_v_kick,avg_taufac;
-  double totMPI_n_wind,totMPI_m_wind,totMPI_mom_wind,totMPI_prob_kick,totMPI_avg_v,totMPI_pwt_avg_v,totMPI_taufac;
-  total_n_wind=total_m_wind=total_mom_wind=total_prob_kick=avg_v_kick=momwt_avg_v_kick=avg_taufac=0;
-  totMPI_n_wind=totMPI_m_wind=totMPI_mom_wind=totMPI_prob_kick=totMPI_avg_v=totMPI_pwt_avg_v=totMPI_taufac=0;
-#endif
     
     for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinActive[bin]) {TimeBinSfr[bin] = 0;}}
   stars_spawned = stars_converted = 0; sum_sm = sum_mass_stars = 0;
@@ -665,24 +659,12 @@ void star_formation_parent_routine(void)
 #endif
         } // closes check of flag==0 for star-formation operation
 
-#if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) || defined(GALSF_SUBGRID_WINDS)
+#if defined(GALSF_SUBGRID_WINDS)
         if( (flag==0 || All.ComovingIntegrationOn==0) &&
            (P[i].Mass>0) && (P[i].Type==0) && (dtime>0) && (All.Time>0) )
         {
             double pvtau_return[4];
             assign_wind_kick_from_sf_routine(i,sm,dtime,pvtau_return);
-#if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) && defined(GALSF_FB_RPWIND_LOCAL) // values tabulated below purely for bookkeeping //
-            if(pvtau_return[0]>0)
-            {
-                total_n_wind+=pvtau_return[0];
-                total_m_wind+=P[i].Mass;
-                total_mom_wind+=P[i].Mass*pvtau_return[2];
-                total_prob_kick+=pvtau_return[1]/dtime;
-                avg_v_kick+=pvtau_return[2];
-                momwt_avg_v_kick+=pvtau_return[1]*pvtau_return[2]/dtime;
-                avg_taufac+=log(pvtau_return[3]);
-            }
-#endif
         }
 #endif
 
@@ -690,42 +672,6 @@ void star_formation_parent_routine(void)
     } /* end of main loop over active particles, huzzah! */
 
 
-
-#if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) && defined(GALSF_FB_RPWIND_LOCAL)
-if(All.WindMomentumLoading)
-{
-    MPI_Reduce(&total_n_wind, &totMPI_n_wind, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&total_m_wind, &totMPI_m_wind, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&total_mom_wind, &totMPI_mom_wind, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&total_prob_kick, &totMPI_prob_kick, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&avg_v_kick, &totMPI_avg_v, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&momwt_avg_v_kick, &totMPI_pwt_avg_v, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&avg_taufac, &totMPI_taufac, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-#ifdef IO_REDUCED_MODE
-    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
-#endif
-    if(ThisTask == 0)
-    {
-        if(totMPI_n_wind>0)
-        {
-            totMPI_avg_v /= totMPI_n_wind;
-            totMPI_pwt_avg_v /= totMPI_prob_kick;
-            totMPI_taufac /= totMPI_n_wind;
-            totMPI_taufac = exp(totMPI_taufac);
-            printf("Momentum Wind Feedback: Time=%g Nkicked=%g Mkicked=%g Momkicks=%g dPdtkick=%g V_avg=%g V_momwt_avg=%g Tau_avg=%g \n",
-                   All.Time,totMPI_n_wind,totMPI_m_wind,totMPI_mom_wind,totMPI_prob_kick,totMPI_avg_v,
-                   totMPI_pwt_avg_v,totMPI_taufac);
-            fprintf(FdMomWinds, "%lg %g %g %g %g %g %g %g \n",
-                    All.Time,totMPI_n_wind,totMPI_m_wind,totMPI_mom_wind,totMPI_prob_kick,totMPI_avg_v,
-                    totMPI_pwt_avg_v,totMPI_taufac);
-#ifndef IO_REDUCED_MODE
-            fflush(stdout);
-#endif
-            fflush(FdMomWinds); // can flush because in reduced mode, only written on highest timesteps
-        }
-    }
-}
-#endif /* GALSF_FB_RPWIND_DO_IN_SFCALC */
 
     
 #if defined(BH_SEED_FROM_LOCALGAS) || defined(SINGLE_STAR_FORMATION)
@@ -793,32 +739,11 @@ if(All.WindMomentumLoading)
 
 
 
-#if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) || defined(GALSF_SUBGRID_WINDS)
+#if defined(GALSF_SUBGRID_WINDS)
 void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvtau_return[4])
 {
-    int j;
-    double v,p,prob;
-    double norm, dir[3];
-#ifdef GALSF_FB_RPWIND_LOCAL
-    double tau_IR=0;
-    double m_gas_kernel,h,m_gas_kernel_i,vq;
-    double h_kernel_i;
-    double m_st_kernel,m_st_kernel_i,l_st_kernel,rho_to_launch;
-#ifdef GALSF_FB_RPWIND_FROMSTARS
-    MyDouble *pos;
-    double star_age,log_age,lm_ssp;
-    double unittime_in_gyr = 0.001*All.UnitTime_in_Megayears/All.HubbleParam;
-    int startnode,numngb_inbox,n,dummy;
-#endif
-#endif
-#ifdef GALSF_FB_RPWIND_FROMCLUMPS
-    int ngb_run_cntr,kmin,k;
-    double dmin1w,dmax1w,dmax2w;
-#endif
-
+    int j; double v,p,prob, norm, dir[3];
     
-#ifdef GALSF_SUBGRID_WINDS
-
 #if (GALSF_SUBGRID_WIND_SCALING == 0)
     /* this is the simple, old standard wind model, with constant velocity & loading with SFR */
     p = All.WindEfficiency * sm / P[i].Mass;
@@ -879,245 +804,11 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
     prob = 1 - exp(-p);
 #endif
     
-#endif // GALSF_SUBGRID_WINDS
     
-    
-    
-#ifdef GALSF_FB_RPWIND_LOCAL
-    /* revised winds model (blowing winds out from local dense clumps) */
-    double unitmass_in_e10solar = All.UnitMass_in_g/SOLAR_MASS/1.0e10/All.HubbleParam;
-    double unitlength_in_kpc = All.UnitLength_in_cm/3.086e21/All.HubbleParam;
-    double unitrho_in_e10solar_kpc3 = unitmass_in_e10solar/(unitlength_in_kpc*unitlength_in_kpc*unitlength_in_kpc);
-    double unitvel_in_km_s = All.UnitVelocity_in_cm_per_s/1.0e5;
-    if(All.WindMomentumLoading<=0)
-    {
-        p=v=0;
-    } else {
-        m_st_kernel=l_st_kernel=m_st_kernel_i=h_kernel_i=m_gas_kernel_i=m_gas_kernel=0;
-        
-#if !defined(GALSF_FB_RPWIND_FROMSTARS)
-        /* we only weakly revise the model here, to scale velocities with density estimate */
-        m_gas_kernel=0; h=PPP[i].Hsml;
-        rho_to_launch = SphP[i].Density*All.cf_a3inv;
-        v = WindInitialVelocityBoost * (45.0/unitvel_in_km_s) * pow(rho_to_launch*unitrho_in_e10solar_kpc3, 0.25);
-        if(v<0.01/unitvel_in_km_s) v=0.01/unitvel_in_km_s;
-        p = 116 * sm / (P[i].Mass*(v/unitvel_in_km_s));
-#endif
-        
-#ifdef GALSF_FB_RPWIND_FROMSTARS
-        /* here we have to do a loop to search for nearby stars */
-        Ngblist = (int *) mymalloc("Ngblist",NumPart * sizeof(int));
-        startnode = All.MaxPart;
-        dummy=0;h=0;numngb_inbox=0;
-        h=3.0*PPP[i].Hsml;
-        pos=P[i].Pos;
-        m_st_kernel=0; l_st_kernel=0; //l_st_kernel_nonrad=0;
-        do {
-            numngb_inbox = ngb_treefind_variable_threads_targeted(pos, h, -1, &startnode, 0, &dummy, &dummy, &dummy, Ngblist, 16); // search for particles of type 4: 2^4=16
-            
-            /* searches for all new stars inside h */
-            if(numngb_inbox>0)
-            {
-                for(n=0; n<numngb_inbox; n++)
-                {
-                    j = Ngblist[n];
-                    star_age = evaluate_stellar_age_Gyr(P[j].StellarAge);
-                    m_st_kernel += P[j].Mass;
-                    lm_ssp = evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(j);
-                    l_st_kernel += lm_ssp*P[j].Mass;
-                } /* for(n=0; n<numngb_inbox; n++) */
-            } /* if(numngb_inbox>0) */
-        } while(startnode >= 0);
-        
-        if(l_st_kernel>0) {
-            m_gas_kernel_i = NORM_COEFF*SphP[i].Density*PPP[i].Hsml*PPP[i].Hsml*PPP[i].Hsml;
-            rho_to_launch = SphP[i].Density*a3inv;
-            m_st_kernel_i=m_st_kernel*(PPP[i].Hsml*PPP[i].Hsml*PPP[i].Hsml/(h*h*h));
-            h_kernel_i=PPP[i].Hsml;
-            
-            /* calculate gas mass in same kernel properly to appropriately share the luminosity */
-            m_gas_kernel=0; pos=P[i].Pos;
-            startnode = All.MaxPart; dummy=0;
-            do {
-                numngb_inbox = ngb_treefind_variable_targeted(pos,h,-1,&startnode,0,&dummy,&dummy,1); // search for gas: 2^0=1
-                if(numngb_inbox>0) for(n=0; n<numngb_inbox; n++) m_gas_kernel+=P[Ngblist[n]].Mass;
-            } while(startnode >= 0);
-            //printf("wind h %g numngb %d m_gas_kernel %g \n",h,numngb_inbox,m_gas_kernel);
-            if(m_gas_kernel>0) {
-                m_gas_kernel_i=m_gas_kernel;
-                m_st_kernel_i=m_st_kernel;
-                h_kernel_i=h;
-            }
-            rho_to_launch *= (1 + m_st_kernel_i/m_gas_kernel_i);
-        }
-        
-#ifdef GALSF_FB_RPWIND_FROMCLUMPS
-        /* ok, here we do a chained search of neighbors to find the local density peak,
-         and use that to define the clump center (and escape velocity wrt that center) */
-        
-        vq=1; /* use as flag for whether to continue search iteration for a new density peak */
-        k=i;  /* start at current particle */
-        kmin=i; dmin1w=SphP[k].Density*1000.0;
-        ngb_run_cntr=0; h=0;
-        do {
-            startnode = All.MaxPart; dummy=0;
-            h=3.0*PPP[k].Hsml; pos=P[k].Pos;
-            dmax1w=SphP[k].Density; vq=0;
-            do {
-                numngb_inbox=ngb_treefind_variable_targeted(pos,h,-1,&startnode,0,&dummy,&dummy,1); // search for gas: 2^0=1
-                if(numngb_inbox>0) {
-                    for(n=0; n<numngb_inbox; n++) {
-                        j = Ngblist[n];
-                        dmax2w=SphP[j].Density;
-                        if((ngb_run_cntr==0)||(kmin==i)) {
-                            if((dmax2w<dmin1w)&&(j != i)) {
-                                dmin1w=dmax2w;
-                                kmin=j;
-                            }
-                        } /* looks for nearby low-density particles to ID density gradient */
-                        if(dmax2w>dmax1w)
-                        {
-                            dmax1w=dmax2w;
-                            k=j;
-                            vq=1; /* more dense particle found, continue chain */
-                        }
-                    } /* for(n=0; n<numngb_inbox; n++) */
-                } /* if(numngb_inbox>0) */
-            }while(startnode>=0);
-            ngb_run_cntr++;
-            h=0; for(j=0;j<3;j++) h+=(P[i].Pos[j]-P[k].Pos[j])*(P[i].Pos[j]-P[k].Pos[j]);
-            h=sqrt(h);
-        }while((vq==1)&&(ngb_run_cntr<20)&&(h<=20.0*PPP[i].Hsml));
-        
-        if(k==i)
-        {
-            m_gas_kernel = 8.*NORM_COEFF*SphP[i].Density*PPP[i].Hsml*PPP[i].Hsml*PPP[i].Hsml;
-            h = 2.0*PPP[i].Hsml;
-        }
-        else
-        {
-            h=0;
-            for(j=0;j<3;j++) h+=(P[i].Pos[j]-P[k].Pos[j])*(P[i].Pos[j]-P[k].Pos[j]);
-            h=sqrt(h);
-            if(h<2.0*PPP[i].Hsml) h=2.0*PPP[i].Hsml;
-            if(h<2.0*PPP[k].Hsml) h=2.0*PPP[k].Hsml;
-            
-            m_gas_kernel=0;
-            startnode = All.MaxPart; dummy=0;
-            do {
-                pos=P[k].Pos;
-                numngb_inbox = ngb_treefind_variable_targeted(pos,h,-1,&startnode,0,&dummy,&dummy,1); // search for gas: 2^0=1
-                if(numngb_inbox>0) for(n=0; n<numngb_inbox; n++) m_gas_kernel+=P[Ngblist[n]].Mass;
-            } while(startnode >= 0);
-        }
-        
-        float stcom_pos[3],cl_st_lum=0;
-        m_st_kernel=0; //cl_st_lum_nonrad=0;
-        startnode = All.MaxPart; dummy=0;
-        do {
-            pos=P[k].Pos;
-            numngb_inbox = ngb_treefind_variable_threads_targeted(pos, h, -1, &startnode, 0, &dummy, &dummy, &dummy, Ngblist, 16); // search for particles of type 4: 2^4=16
-            stcom_pos[0]=0.0;stcom_pos[1]=0.0;stcom_pos[2]=0.0;
-            if(numngb_inbox>0) { for(n=0; n<numngb_inbox; n++) {
-                star_age = evaluate_stellar_age_Gyr(P[Ngblist[n]].StellarAge);
-                vq = 10.1+500*pow(m_st_kernel_i*unitmass_in_e10solar,0.62)*
-                pow(rho_to_launch*unitrho_in_e10solar_kpc3,-0.5);
-                if(star_age <= vq) {
-                    m_st_kernel+=P[Ngblist[n]].Mass;
-                    lm_ssp = evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(Ngblist[n]);
-                    cl_st_lum+=lm_ssp*P[Ngblist[n]].Mass;
-                    
-                    stcom_pos[0]+=P[Ngblist[n]].Pos[0]*lm_ssp*P[Ngblist[n]].Mass;
-                    stcom_pos[1]+=P[Ngblist[n]].Pos[1]*lm_ssp*P[Ngblist[n]].Mass;
-                    stcom_pos[2]+=P[Ngblist[n]].Pos[2]*lm_ssp*P[Ngblist[n]].Mass;
-                }
-            }
-                stcom_pos[0]/=cl_st_lum;
-                stcom_pos[1]/=cl_st_lum;
-                stcom_pos[2]/=cl_st_lum;
-                if(cl_st_lum>0&&m_gas_kernel>0) {
-                    if(cl_st_lum/m_gas_kernel > l_st_kernel/m_gas_kernel_i) {
-                        l_st_kernel=cl_st_lum;
-                        m_gas_kernel_i=m_gas_kernel;
-                        //l_st_kernel_nonrad=cl_st_lum_nonrad;
-                    }
-                }
-            }
-        } while(startnode >= 0);
-#endif // GALSF_FB_RPWIND_FROMCLUMPS
-        
-        /* alright, now do calculations on the results to determine speed & loading of kicks */
-        vq= WindInitialVelocityBoost*sqrt(All.G*(m_gas_kernel_i+m_st_kernel_i)/(h_kernel_i*All.cf_atime));
-        v = WindInitialVelocityBoost*sqrt(All.G*(m_gas_kernel+m_st_kernel)/(h*All.cf_atime));
-        if(vq>v) v=vq;
-        /* compare the velocity from the central star cluster, using the observed cluster size-mass relation */
-        if((m_st_kernel==0)&&(m_st_kernel_i>0)) m_st_kernel=m_st_kernel_i;
-        vq=WindInitialVelocityBoost*(65.748/unitvel_in_km_s)*pow(m_st_kernel*unitmass_in_e10solar/0.0001,0.25);
-        vq=vq*1.82;
-        /* this corresponds to =G M_star/R_e for a 10^6 Msun cluster, scaling upwards from there;
-         note that All.WindEnergyFraction will boost appropriately; should be at least sqrt(2), if want
-         full velocities; in fact for Hernquist profile, the mass-weighted V_esc=1.82 times this */
-        if (vq>v) v=vq;
-        if(v<0.01/unitvel_in_km_s) v=0.01/unitvel_in_km_s;
-        if(v>1000./unitvel_in_km_s) v=1000./unitvel_in_km_s;
-        
-        /* and now their mass-loading */
-        /* winds driven by young stars, rather than proportional to SFR */
-        p = 20.52*(dtime/unittime_in_gyr)*(l_st_kernel/m_gas_kernel_i)/(v/unitvel_in_km_s);
-        
-        myfree(Ngblist); // free neighbor lists used for wind kick searches
-#endif // GALSF_FB_RPWIND_FROMSTARS
-        
-        
-        // now calculate the 'boost factor' for the local properties //
-        tau_IR = 1.91*SphP[i].Density*All.cf_a3inv*PPP[i].Hsml*All.cf_atime;
-        if((m_gas_kernel>0)&&(h>0)) {
-            vq=0.48*m_gas_kernel/(h*h*All.cf_atime*All.cf_atime);
-            if(vq>tau_IR) tau_IR=vq;
-        }
-        tau_IR *= KAPPA_IR * All.UnitDensity_in_cgs*All.HubbleParam*All.UnitLength_in_cm;
-        tau_IR *= (0.1+P[i].Metallicity[0]/All.SolarAbundances[0]);
-        p *= (1.0 + All.WindMomentumLoading*tau_IR); //p += p_nonrad; // now nonrad is explicitly tracked in SNe/gasreturn
-    } // closes(All.WindMomentumLoading>0)
-    prob=p; if(prob>1) v*=p;
-#endif // GALSF_FB_RPWIND_LOCAL
-    
-    
-    
-#if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) && defined(GALSF_FB_RPWIND_LOCAL) // set values to return to previous step (for tabulation) //
-    pvtau_return[0]=0.0;
-#endif
-#ifdef GALSF_FB_RPWIND_CONTINUOUS
-    prob = 2;
-#endif
     if(get_random_number(P[i].ID + 2) < prob)	/* ok, make the particle go into the wind */
     {
-#ifdef GALSF_FB_RPWIND_CONTINUOUS
-        v *= p;
-#endif
-        
-#if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) && defined(GALSF_FB_RPWIND_LOCAL) // set values to return to previous step (for tabulation) //
-        pvtau_return[0]=1.0;
-        pvtau_return[1]=p;
-        pvtau_return[2]=v;
-        pvtau_return[3]=tau_IR;
-#endif
-        
-        // determine the wind acceleration orientation //
-#ifdef GALSF_FB_RPWIND_FROMSTARS
-        for(j=0;j<3;j++) dir[j]=-P[i].GradRho[j]; // default is along opacity gradient //
-#endif
-#ifdef GALSF_FB_RPWIND_FROMCLUMPS // in this case wind is directed from the local clump center //
-        if(i != k)
-        {
-            for(j=0;j<3;j++) dir[j]=P[i].Pos[j]-P[k].Pos[j];
-        } else {
-            for(j=0;j<3;j++) dir[j]=P[kmin].Pos[j]-P[i].Pos[j];
-        }
-#endif
-    
-#if !defined(GALSF_WINDS_ORIENTATION) && !defined(GALSF_FB_RPWIND_FROMSTARS) && !defined(GALSF_FB_RPWIND_FROMCLUMPS)
-#define GALSF_WINDS_ORIENTATION 0
+#if !defined(GALSF_WINDS_ORIENTATION)
+#define GALSF_WINDS_ORIENTATION 0   // determine the wind acceleration orientation //
 #endif
         
 #if (GALSF_WINDS_ORIENTATION==0) // random wind direction
@@ -1126,14 +817,14 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
         dir[0] = sin(theta) * cos(phi); dir[1] = sin(theta) * sin(phi); dir[2] = cos(theta);
         if(get_random_number(P[i].ID + 5) < 0.5) {for(j=0;j<3;j++) dir[j]=-dir[j];}
 #endif
-#if (GALSF_WINDS_ORIENTATION==1) || !defined(GALSF_FB_RPWIND_FROMSTARS) // polar wind (defined by accel.cross.vel)
+#if (GALSF_WINDS_ORIENTATION==1) // polar wind (defined by accel.cross.vel)
         dir[0] = P[i].GravAccel[1] * P[i].Vel[2] - P[i].GravAccel[2] * P[i].Vel[1];
         dir[1] = P[i].GravAccel[2] * P[i].Vel[0] - P[i].GravAccel[0] * P[i].Vel[2];
         dir[2] = P[i].GravAccel[0] * P[i].Vel[1] - P[i].GravAccel[1] * P[i].Vel[0];
         if(get_random_number(P[i].ID + 5) < 0.5) {for(j=0;j<3;j++) dir[j]=-dir[j];}
 #endif
-#if (GALSF_WINDS_ORIENTATION==2)
-        for(j=0;j<3;j++) dir[j]=-P[i].GradRho[j]; // along density gradient //
+#if (GALSF_WINDS_ORIENTATION==2) // along density gradient //
+        for(j=0;j<3;j++) dir[j]=-P[i].GradRho[j];
 #endif
         
         // now actually do the kick for the wind //
@@ -1144,12 +835,10 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
             P[i].Vel[j] += v * All.cf_atime * dir[j]/norm;
             SphP[i].VelPred[j] += v * All.cf_atime * dir[j]/norm;
         }
-#ifdef GALSF_SUBGRID_WINDS
             SphP[i].DelayTime = All.WindFreeTravelMaxTimeFactor / All.cf_hubble_a;
-#endif
     } /* if(get_random_number(P[i].ID + 2) < prob) */
 }
-#endif // defined(GALSF_FB_RPWIND_DO_IN_SFCALC) || defined(GALSF_SUBGRID_WINDS)
+#endif // defined(GALSF_SUBGRID_WINDS)
 
 
 
@@ -1252,13 +941,8 @@ void init_clouds(void)
 	  IonizeParams();
 	}
 
-#ifdef WINDS
-#ifndef GALSF_FB_RPWIND_LOCAL
-      if(All.WindEfficiency > 0)
-	if(ThisTask == 0)
-	  printf("Windspeed: %g\n",
-		 sqrt(2 * All.WindEnergyFraction * All.FactorSN * All.EgySpecSN / (1 - All.FactorSN) / All.WindEfficiency));
-#endif
+#if defined(GALSF_SUBGRID_WINDS)
+        if(All.WindEfficiency > 0) {if(ThisTask == 0) {printf("Windspeed: %g\n", sqrt(2 * All.WindEnergyFraction * All.FactorSN * All.EgySpecSN / (1 - All.FactorSN) / All.WindEfficiency));}}
 #endif
     }
 }

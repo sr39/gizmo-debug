@@ -14,7 +14,7 @@
  */
 
 
-#if defined(GALSF_FB_HII_HEATING) || (defined(RT_CHEM_PHOTOION) && defined(GALSF))
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) || (defined(RT_CHEM_PHOTOION) && defined(GALSF))
 
 double particle_ionizing_luminosity_in_cgs(long i)
 {
@@ -57,7 +57,7 @@ double particle_ionizing_luminosity_in_cgs(long i)
 #endif
 
 
-#if defined(GALSF_FB_HII_HEATING)
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING)
 
 /* this version of the HII routine only communicates with
      particles on the same processor */
@@ -307,5 +307,5 @@ void HII_heating_singledomain(void)
 } // void HII_heating_singledomain(void)
 
 
-#endif // GALSF_FB_HII_HEATING
+#endif // GALSF_FB_FIRE_RT_HIIHEATING
 

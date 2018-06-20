@@ -197,7 +197,7 @@ double Get_CosmicRayStreamingVelocity(int i)
     double vA_2 = 0.0; double cs_stream = v_streaming;
     int k; for(k=0;k<3;k++) {vA_2 += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
     vA_2 *= All.cf_afac1 / (All.cf_atime * SphP[i].Density);
-    v_streaming = DMIN(1.0e6*cs_stream, sqrt(cs_stream*cs_stream + vA_2));
+    v_streaming = DMIN(1.0e6*cs_stream, sqrt(MIN_REAL_NUMBER*cs_stream*cs_stream + vA_2)); // limit to Alfven speed //
 #endif
     v_streaming *= All.cf_afac3; // converts to physical units and rescales according to chosen coefficient //
     return v_streaming;
@@ -308,7 +308,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     /* ion-neutral damping: need thermodynamic information (neutral fractions, etc) to compute self-consistently */
     double ne=SphP[i].Ne, nh0=0, nHe0, nHepp, nhp, nHeII, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, rho_cgs=rho*All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;
     temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
     if(SphP[i].DelayTimeHII>0) {nh0=0;} // account for our effective ionization model here
 #endif
     G_ion_neutral = 0.785e-12 * (rho_cgs/PROTONMASS) * nh0 * sqrt(temperature) * (All.UnitTime_in_s/All.HubbleParam); // need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]

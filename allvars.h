@@ -210,17 +210,17 @@
 #define TURB_DIFF_METALS_LOWORDER
 #define GALSF_SFR_MOLECULAR_CRITERION
 #define GALSF_SFR_VIRIAL_SF_CRITERION 0
-#define GALSF_FB_GASRETURN
-#define GALSF_FB_HII_HEATING
-#define GALSF_FB_SNE_HEATING 0
-#define GALSF_FB_RT_PHOTONMOMENTUM
-#define GALSF_FB_LOCAL_UV_HEATING
-#define GALSF_FB_RPWIND_LOCAL
+#define GALSF_FB_FIRE_RT_HIIHEATING
+#define GALSF_FB_MECHANICAL 0
+#define GALSF_FB_FIRE_MECHANICAL
+#define GALSF_FB_FIRE_RT_LONGRANGE
+#define GALSF_FB_FIRE_RT_UVHEATING
+#define GALSF_FB_FIRE_RT_LOCALRP
 #define GALSF_FB_RPROCESS_ENRICHMENT 4
 //#define GALSF_SFR_IMF_VARIATION
 #define PROTECT_FROZEN_FIRE
 #else
-#if (defined(COOLING) && defined(GALSF) && defined(GALSF_FB_SNE_HEATING)) && !defined(FIRE_UNPROTECT_FROZEN)
+#if (defined(COOLING) && defined(GALSF) && defined(GALSF_FB_MECHANICAL)) && !defined(FIRE_UNPROTECT_FROZEN)
 #define PROTECT_FROZEN_FIRE
 #endif
 #endif
@@ -271,7 +271,7 @@
 #define BH_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
 //#GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory
 #ifdef SINGLE_STAR_FB_HEATING
-#define GALSF_FB_RT_PHOTONMOMENTUM  // turn on FIRE RT approximation: no Type-4 particles so don't worry about its approximations
+#define GALSF_FB_FIRE_RT_LONGRANGE  // turn on FIRE RT approximation: no Type-4 particles so don't worry about its approximations
 #define BH_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework. make sure BH_FluxMomentumFactor=0 to avoid launching winds this way!!!
 #define BH_COMPTON_HEATING // turn on the heating term: this just calculates incident BH-particle flux, to be used in the cooling routine
 #endif
@@ -280,11 +280,11 @@
 #define BH_WIND_KICK 1 // use kinetic feedback module for protostellar jets (for this, use the simple kicking module, it's not worth the expense of the other)
 #endif
 #ifdef SINGLE_STAR_PROMOTION
-#define GALSF_FB_GASRETURN // stellar winds [scaled appropriately for particle masses]
-#define GALSF_FB_HII_HEATING // FIRE approximate photo-ionization [for particle masses; could also use real-RT]
-#define GALSF_FB_SNE_HEATING 1 // allow SNe in promoted stars [at end of main sequence lifetimes]
-#define GALSF_FB_RPWIND_LOCAL // local radiation pressure [scaled with mass, single-scattering term here]
-#define GALSF_FB_RPWIND_CONTINUOUS // force the local rad-pressure term to be continuous instead of small impulses
+#define GALSF_FB_FIRE_MECHANICAL // stellar winds [scaled appropriately for particle masses]
+#define GALSF_FB_FIRE_RT_HIIHEATING // FIRE approximate photo-ionization [for particle masses; could also use real-RT]
+#define GALSF_FB_MECHANICAL 1 // allow SNe in promoted stars [at end of main sequence lifetimes]
+#define GALSF_FB_FIRE_RT_LOCALRP // local radiation pressure [scaled with mass, single-scattering term here]
+#define GALSF_FB_FIRE_RT_CONTINUOUSRP // force the local rad-pressure term to be continuous instead of small impulses
 #endif
 // if not using grackle modules, need to make sure appropriate cooling is enabled
 #if defined(COOLING) && !defined(COOL_GRACKLE)
@@ -330,14 +330,10 @@
 #endif
 
 
-#if defined(GALSF_FB_RPWIND_LOCAL) && !defined(GALSF_FB_RPWIND_FROMSFR)
-#define GALSF_FB_RPWIND_FROMSTARS
-#endif
-
 /* force 'master' flags to be enabled for the appropriate methods, if we have enabled something using those methods */
 
 /* options for FIRE RT method */
-#if defined(GALSF_FB_RT_PHOTONMOMENTUM)
+#if defined(GALSF_FB_FIRE_RT_LONGRANGE)
 #ifndef RT_LEBRON
 #define RT_LEBRON
 #endif
@@ -678,7 +674,7 @@ typedef  int integertime;
 #define RT_FREQ_BIN_He2 (RT_FREQ_BIN_He1+1)
 #endif
 
-#ifndef GALSF_FB_RT_PHOTONMOMENTUM
+#ifndef GALSF_FB_FIRE_RT_LONGRANGE
 #define RT_FREQ_BIN_FIRE_UV (RT_FREQ_BIN_He2+0)
 #define RT_FREQ_BIN_FIRE_OPT (RT_FREQ_BIN_FIRE_UV+0)
 #define RT_FREQ_BIN_FIRE_IR (RT_FREQ_BIN_FIRE_OPT+0)
@@ -862,7 +858,7 @@ typedef unsigned long long peanokey;
 #define KAPPA_OP 180.0
 #define KAPPA_UV 1800.0
 
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
 #define HIIRegion_Temp 1.0e4 /* temperature (in K) of heated gas */
 #endif
 
@@ -1041,17 +1037,16 @@ typedef MyDouble MyBigFloat;
 #define CPU_BLACKHOLES     28
 #define CPU_MISC           29
 #define CPU_DRAGFORCE      30
-#define CPU_GASRETURN      31
-#define CPU_SNIIHEATING    32
-#define CPU_HIIHEATING     33
-#define CPU_LOCALWIND      34
-#define CPU_HYDNETWORK     35
-#define CPU_AGSDENSCOMPUTE 36
-#define CPU_AGSDENSWAIT    37
-#define CPU_AGSDENSCOMM    38
-#define CPU_AGSDENSMISC    39
-#define CPU_SIDMSCATTER    40
-#define CPU_PARTS          41  /* this gives the number of parts above (must be last) */
+#define CPU_SNIIHEATING    31
+#define CPU_HIIHEATING     32
+#define CPU_LOCALWIND      33
+#define CPU_HYDNETWORK     34
+#define CPU_AGSDENSCOMPUTE 35
+#define CPU_AGSDENSWAIT    36
+#define CPU_AGSDENSCOMM    37
+#define CPU_AGSDENSMISC    38
+#define CPU_SIDMSCATTER    39
+#define CPU_PARTS          40  /* this gives the number of parts above (must be last) */
 
 #define CPU_STRING_LEN 120
 
@@ -1366,13 +1361,13 @@ extern FILE *FdSCF;
 #ifdef GALSF
 extern FILE *FdSfr;		/*!< file handle for sfr.txt log-file. */
 #endif
-#ifdef GALSF_FB_RPWIND_LOCAL
+#ifdef GALSF_FB_FIRE_RT_LOCALRP
 extern FILE *FdMomWinds;	/*!< file handle for MomWinds.txt log-file */
 #endif
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
 extern FILE *FdHIIHeating;	/*!< file handle for HIIheating.txt log-file */
 #endif
-#ifdef GALSF_FB_SNE_HEATING
+#ifdef GALSF_FB_MECHANICAL
 extern FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 #endif
 
@@ -1697,7 +1692,7 @@ extern struct global_data_all_processes
     double RT_Intensity_Direction[N_RT_INTENSITY_BINS][3];
 #endif
 
-#if defined(RT_CHEM_PHOTOION) && !(defined(GALSF_FB_HII_HEATING) || defined(GALSF))
+#if defined(RT_CHEM_PHOTOION) && !(defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF))
     double IonizingLuminosityPerSolarMass_cgs;
     double star_Teff;
 #endif
@@ -1705,7 +1700,7 @@ extern struct global_data_all_processes
     
 #ifdef RT_LEBRON
     double PhotonMomentum_Coupled_Fraction;
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
     double PhotonMomentum_fUV;
     double PhotonMomentum_fOPT;
 #endif
@@ -1721,7 +1716,7 @@ extern struct global_data_all_processes
 #endif
     
 #ifdef COSMIC_RAYS
-#ifdef GALSF_FB_SNE_HEATING
+#ifdef GALSF_FB_MECHANICAL
     double CosmicRay_SNeFraction;
 #endif
     double CosmicRayDiffusionCoeff;
@@ -1756,7 +1751,7 @@ extern struct global_data_all_processes
   double FactorForSofterEQS;
 #endif
     
-#ifdef GALSF_FB_RPWIND_LOCAL
+#ifdef GALSF_FB_FIRE_RT_LOCALRP
   double WindMomentumLoading;
 #endif
     
@@ -1774,29 +1769,23 @@ extern struct global_data_all_processes
 #endif
 #endif // GALSF_SUBGRID_WINDS //
 
-#ifdef GALSF_FB_SNE_HEATING
-  double SNeIIEnergyFrac;
+#ifdef GALSF_FB_FIRE_MECHANICAL
+    double SNeIIEnergyFrac;
+    double GasReturnFraction;
+    double AGBGasEnergy;
 #endif
 
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
   double HIIRegion_fLum_Coupled;
 #endif
 
 #endif // GALSF
 
-#ifdef GALSF_FB_SNE_HEATING
-  double GasReturnFraction;
-#endif
-    
-#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(GALSF_FB_THERMAL)
+#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
   double InitMetallicityinSolar;
   double InitStellarAgeinGyr;
 #endif
 
-#ifdef GALSF_FB_GASRETURN
-  double AGBGasEnergy;
-#endif
-    
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
     double BAL_f_accretion;
     double BAL_v_outflow;
@@ -2050,18 +2039,16 @@ extern ALIGN(32) struct particle_data
     MyFloat KernelSum_Around_RT_Source; /*!< kernel summation around sources for radiation injection (save so can be different from 'density') */
 #endif
 
-#if defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_THERMAL)
+#if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
     MyFloat SNe_ThisTimeStep; /* flag that indicated number of SNe for the particle in the timestep */
+#ifdef GALSF_FB_FIRE_MECHANICAL
+    MyFloat MassReturn_ThisTimeStep; /* gas return from stellar winds */
+    MyFloat RProcessEvent_ThisTimeStep; /* R-process event tracker */
 #endif
-#ifdef GALSF_FB_SNE_HEATING
+#endif
+#ifdef GALSF_FB_MECHANICAL
 #define AREA_WEIGHTED_SUM_ELEMENTS 11 /* number of weights needed for full momentum-and-energy conserving system */
     MyFloat Area_weighted_sum[AREA_WEIGHTED_SUM_ELEMENTS]; /* normalized weights for particles in kernel weighted by area, not mass */
-#endif
-#ifdef GALSF_FB_GASRETURN
-    MyFloat MassReturn_ThisTimeStep; /* gas return from stellar winds */
-#endif
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
-    MyFloat RProcessEvent_ThisTimeStep; /* R-process event tracker */
 #endif
     
 #if defined(GRAIN_FLUID)
@@ -2327,7 +2314,7 @@ extern struct sph_particle_data
     
     MyFloat MaxSignalVel;           /*!< maximum signal velocity (needed for time-stepping) */
     
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
     MyFloat RadFluxUV;              /*!< local UV field strength */
     MyFloat RadFluxEUV;             /*!< local (ionizing/hard) UV field strength */
 #endif
@@ -2367,7 +2354,7 @@ extern struct sph_particle_data
 #endif
 #endif
     
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
   MyFloat DelayTimeHII;             /*!< flag indicating particle is ionized by nearby star */
 #endif
 #ifdef GALSF_FB_TURNOFF_COOLING
@@ -2584,7 +2571,7 @@ extern struct gravdata_out
 #ifdef RT_OTVET
     MyLongDouble ET[N_RT_FREQ_BINS][6];
 #endif
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
     MyLongDouble RadFluxUV;
     MyLongDouble RadFluxEUV;
 #endif

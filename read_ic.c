@@ -176,7 +176,7 @@ void read_ic(char *fname)
     }
 #endif
     
-#if defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_THERMAL)
+#if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
     if(RestartFlag == 0)
     {
         All.MassTable[2] = 0;

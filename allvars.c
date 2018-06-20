@@ -229,13 +229,13 @@ FILE *FdSCF;
 #ifdef GALSF
 FILE *FdSfr;			/*!< file handle for sfr.txt log-file. */
 #endif
-#ifdef GALSF_FB_RPWIND_LOCAL
+#ifdef GALSF_FB_FIRE_RT_LOCALRP
 FILE *FdMomWinds;	/*!< file handle for MomWinds.txt log-file */
 #endif
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
 FILE *FdHIIHeating;	/*!< file handle for HIIheating.txt log-file */
 #endif
-#ifdef GALSF_FB_SNE_HEATING
+#ifdef GALSF_FB_MECHANICAL
 FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 #endif
 
