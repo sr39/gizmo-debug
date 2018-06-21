@@ -676,7 +676,7 @@ void open_outputfiles(void)
 #endif
 
 
-#ifdef SCFPOTENTIAL
+#ifdef SCF_POTENTIAL
   sprintf(buf, "%s%s", All.OutputDir, "scf_coeff.txt");
   if(!(FdSCF = fopen(buf, mode)))
     {

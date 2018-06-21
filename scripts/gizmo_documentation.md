@@ -1105,9 +1105,9 @@ These options all pertain to the gravity solver in the code. They determine how 
 #GDE_TYPES=2+4+8+16+32          #- track GDE for these types
 #GDE_READIC                     #- read initial sheet orientation/initial density/initial caustic count from ICs
 #GDE_LEAN                       #- lean version of GDE
-#OUTPUT_DISTORTIONTENSOR        #- write phase-space distortion tensor to snapshot
-#OUTPUT_TIDALTENSORPS           #- write configuration-space tidal tensor to snapshot
-#OUTPUT_LAST_CAUSTIC            #- write info on last passed caustic to snapshot
+#OUTPUT_GDE_DISTORTIONTENSOR        #- write phase-space distortion tensor to snapshot
+#OUTPUT_GDE_TIDALTENSORPS           #- write configuration-space tidal tensor to snapshot
+#OUTPUT_GDE_LASTCAUSTIC            #- write info on last passed caustic to snapshot
 ##-----------------------------------------------------------------------------------------------------
 ```
 
@@ -1266,7 +1266,7 @@ These flags relate to popular 'sub-grid' models for star formation and feedback.
     #----------- physical stellar feedback mechanisms (sub-modules of the FIRE_PHYSICS_DEFAULTS; these cannot be turned off and on individually without extreme care, they have complicated inter-dependencies) ---- #
     ##----------------------GALSF_FB_FIRE_RT_HIIHEATING            # gas within HII regions around young stars is photo-heated to 10^4 K
     ##----------------------GALSF_FB_MECHANICAL          # time-dependent explosions from SNe (I & II) in shockwave radii around stars (values: 0=force-gridded in xyz (WRONG-for testing only!); 1=tensor-symmetrized (momentum-conserving; USE ME); 2=no tensor re-normalization [non-conservative!]
-    ##----------------------GALSF_FB_RPROCESS_ENRICHMENT=4  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model)
+    ##----------------------GALSF_FB_FIRE_RPROCESS=4  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model)
     ##----------------------GALSF_FB_FIRE_RT_LONGRANGE      # continuous acceleration from starlight (uses luminosity tree)
     ##----------------------GALSF_FB_FIRE_RT_UVHEATING       # use local estimate of spectral information for photoionization and photoelectric heating
     ##----------------------GALSF_FB_FIRE_RT_LOCALRP           # turn on local radiation pressure coupling to gas

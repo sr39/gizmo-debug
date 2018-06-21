@@ -111,7 +111,7 @@ void init(void)
     All.Time = All.TimeBegin;
     set_cosmo_factors_for_current_time();
     
-#ifdef SCFPOTENTIAL
+#ifdef SCF_POTENTIAL
     SCF_init();
     if(ThisTask == 0)
     {
@@ -235,7 +235,7 @@ void init(void)
         /* find caustics by sign analysis of configuration space distortion */
         P[i].last_determinant = 1.0;
         
-#ifdef OUTPUT_LAST_CAUSTIC
+#ifdef OUTPUT_GDE_LASTCAUSTIC
         /* all entries zero -> no caustic yet */
         P[i].lc_Time = 0.0;
         P[i].lc_Pos[0] = 0.0;
@@ -426,7 +426,7 @@ void init(void)
             All.SolarAbundances[10]=1.73e-3; // Fe (7.50 -> 1.31e-3, AG=1.92e-3)
         }
 #endif // COOL_METAL_LINES_BY_SPECIES
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
+#ifdef GALSF_FB_FIRE_RPROCESS
         //All.SolarAbundances[NUM_METAL_SPECIES-1]=0.0; // R-process tracer
         for(j=1;j<=NUM_RPROCESS_SPECIES;j++) All.SolarAbundances[NUM_METAL_SPECIES-j]=0.0; // R-process tracer
 #endif

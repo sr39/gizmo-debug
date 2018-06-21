@@ -336,7 +336,7 @@ void compute_statistics(void)
 #ifndef IO_REDUCED_MODE
         energy_statistics();	/* compute and output energy statistics */
 #endif
-#ifdef SCFPOTENTIAL
+#ifdef SCF_POTENTIAL
         SCF_write(0);
 #endif
         

@@ -235,7 +235,7 @@ double mechanical_fb_calculate_eventrates_SNe(int i, double dt)
 
 void mechanical_fb_calculate_eventrates_Rprocess(int i, double dt)
 {
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
+#ifdef GALSF_FB_FIRE_RPROCESS
     /* we'll use the maximum rate here, then in the -yields- setting, 'cut' each down to its sub-population */
     double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
     if(star_age>=0.003) // rate is zero at <3e6 yr
@@ -307,7 +307,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
 
 void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i)
 {
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
+#ifdef GALSF_FB_FIRE_RPROCESS
     if(P[i].RProcessEvent_ThisTimeStep<=0) {in->Msne=0; return;} // no event
     int k; double star_age=evaluate_stellar_age_Gyr(P[i].StellarAge), p=get_random_number(P[i].ID + 8), pcrit, tcrit;
     for(k=0;k<NUM_RPROCESS_SPECIES;k++)

@@ -194,7 +194,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     double tcool, u;
 #endif
     
-#if (defined(OUTPUT_DISTORTIONTENSOR) || defined(OUTPUT_TIDALTENSORPS))
+#if (defined(OUTPUT_GDE_DISTORTIONTENSOR) || defined(OUTPUT_GDE_TIDALTENSORPS))
     MyBigFloat half_kick_add[6][6];
     int l;
 #endif
@@ -859,7 +859,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_TIDALTENSORPS:
             /* 3x3 configuration-space tidal tensor that is driving the GDE */
-#ifdef OUTPUT_TIDALTENSORPS
+#ifdef OUTPUT_GDE_TIDALTENSORPS
             for(n = 0; n < pc; pindex++)
                 
                 if(P[pindex].Type == type)
@@ -885,7 +885,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_GDE_DISTORTIONTENSOR:
             /* full 6D phase-space distortion tensor from GDE integration */
-#ifdef OUTPUT_DISTORTIONTENSOR
+#ifdef OUTPUT_GDE_DISTORTIONTENSOR
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -970,7 +970,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_LAST_CAUSTIC:
             /* extensive information on the last caustic the particle has passed */
-#ifdef OUTPUT_LAST_CAUSTIC
+#ifdef OUTPUT_GDE_LASTCAUSTIC
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -2534,13 +2534,13 @@ int blockpresent(enum iofields blocknr)
                         
             
         case IO_TIDALTENSORPS:
-#ifdef OUTPUT_TIDALTENSORPS
+#ifdef OUTPUT_GDE_TIDALTENSORPS
             return 1;
 #else
             return 0;
 #endif
         case IO_GDE_DISTORTIONTENSOR:
-#ifdef OUTPUT_DISTORTIONTENSOR
+#ifdef OUTPUT_GDE_DISTORTIONTENSOR
             return 1;
 #else
             return 0;
@@ -2582,7 +2582,7 @@ int blockpresent(enum iofields blocknr)
 #endif
             
         case IO_LAST_CAUSTIC:
-#ifdef OUTPUT_LAST_CAUSTIC
+#ifdef OUTPUT_GDE_LASTCAUSTIC
             return 1;
 #else
             return 0;
