@@ -850,7 +850,7 @@ void gravity_tree(void)
     
     
     
-#ifdef SCFPOTENTIAL
+#ifdef SCF_POTENTIAL
     MyDouble xs, ys, zs;
     MyDouble pots, axs, ays, azs;
     

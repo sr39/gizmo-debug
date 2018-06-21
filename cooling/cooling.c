@@ -1114,7 +1114,7 @@ void InitCoolMemory(void)
     
 #ifdef COOL_METAL_LINES_BY_SPECIES
     long i_nH=41; long i_T=176; long kspecies=(long)NUM_METAL_SPECIES-1;
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
+#ifdef GALSF_FB_FIRE_RPROCESS
     //kspecies -= 1;
     kspecies -= NUM_RPROCESS_SPECIES;
 #endif
@@ -1190,7 +1190,7 @@ void ReadMultiSpeciesTables(int iT)
 {
     /* read table w n,T for each species */
     long i_nH=41; long i_Temp=176; long kspecies=(long)NUM_METAL_SPECIES-1; long i,j,k,r;
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
+#ifdef GALSF_FB_FIRE_RPROCESS
     //kspecies -= 1;
     kspecies -= NUM_RPROCESS_SPECIES;
 #endif
@@ -1501,7 +1501,7 @@ double GetCoolingRateWSpecies(double nHcgs, double logT, double *Z)
 {
     double ne_over_nh_tbl=1, Lambda=0;
     int k, N_species_active = NUM_METAL_SPECIES-1;
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
+#ifdef GALSF_FB_FIRE_RPROCESS
     N_species_active -= NUM_RPROCESS_SPECIES;
 #endif
     

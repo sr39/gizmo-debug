@@ -222,7 +222,7 @@ FILE
 #endif
 *FdCPU;         /*!< file handle for cpu.txt log-file. */
 
-#ifdef SCFPOTENTIAL
+#ifdef SCF_POTENTIAL
 FILE *FdSCF;
 #endif
 

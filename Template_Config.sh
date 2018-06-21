@@ -237,7 +237,7 @@
 #FIRE_PHYSICS_DEFAULTS           # enable default set of FIRE physics packages (see details below); note use policy above
 #----------- physical stellar feedback mechanisms (sub-modules of the FIRE_PHYSICS_DEFAULTS; these cannot be turned off and on individually without extreme care, they have complicated inter-dependencies) ---- #
 ##----------------------GALSF_FB_FIRE_STELLAREVOLUTION  # turns on default FIRE processes including gas return, SNe, R-process, etc.
-##----------------------GALSF_FB_RPROCESS_ENRICHMENT=4  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model)
+##----------------------GALSF_FB_FIRE_RPROCESS=4        # tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model)
 ##----------------------GALSF_FB_FIRE_RT_LONGRANGE      # continuous acceleration from starlight (uses luminosity tree)
 ##----------------------GALSF_FB_FIRE_RT_UVHEATING      # use local estimate of spectral information for photoionization and photoelectric heating
 ##----------------------GALSF_FB_FIRE_RT_LOCALRP        # turn on local radiation pressure coupling to gas
@@ -348,7 +348,7 @@
 ##-----------------------------------------------------------------------------------------------------
 #------------ test-problem, deprecated, or de-bugging functions
 ##-----------------------------------------------------------------------------------------------------
-#RT_SELFGRAVITY_OFF                           # turn off gravity: if using an RT method that needs the gravity tree (FIRE, OTVET), use this -instead- of SELFGRAVITY_OFF to safely turn off gravitational forces
+#RT_SELFGRAVITY_OFF                     # turn off gravity: if using an RT method that needs the gravity tree (FIRE, OTVET), use this -instead- of SELFGRAVITY_OFF to safely turn off gravitational forces
 #RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR # when RT_DIFFUSION_CG is enabled, modifies the Eddington tensor to the fully anisotropic version (less stable CG iteration)
 #RT_SEPARATELY_TRACK_LUMPOS             # keep luminosity vs. mass positions separate in tree (useful if running in tree-only mode)
 #RT_DISABLE_FLUXLIMITER                 # removes the flux-limiter from the diffusion operations (default is to include it when using the relevant approximations)
@@ -393,7 +393,7 @@
 #INPUT_READ_HSML                # force reading hsml from IC file (instead of re-computing them; in general this is redundant but useful if special guesses needed)
 #OUTPUT_TWOPOINT_ENABLED        # allows user to calculate mass 2-point function by enabling and setting restartflag=5
 #IO_DISABLE_HDF5                # disable HDF5 I/O support (for both reading/writing; use only if HDF5 not install-able)
-#IO_COMPRESS_HDF5     		# write HDF5 in compressed form (will slow down snapshot I/O and may cause issues on old machines, but reduce snapshots 2x) 
+#IO_COMPRESS_HDF5     		    # write HDF5 in compressed form (will slow down snapshot I/O and may cause issues on old machines, but reduce snapshots 2x)
 ####################################################################################################
 
 
@@ -521,13 +521,13 @@
 #GDE_TYPES=2+4+8+16+32          #- track GDE for these types
 #GDE_READIC                     #- read initial sheet orientation/initial density/initial caustic count from ICs
 #GDE_LEAN                       #- lean version of GDE
-#OUTPUT_DISTORTIONTENSOR        #- write phase-space distortion tensor to snapshot
-#OUTPUT_TIDALTENSORPS           #- write configuration-space tidal tensor to snapshot
-#OUTPUT_LAST_CAUSTIC            #- write info on last passed caustic to snapshot
+#OUTPUT_GDE_DISTORTIONTENSOR    #- write phase-space distortion tensor to snapshot
+#OUTPUT_GDE_TIDALTENSORPS       #- write configuration-space tidal tensor to snapshot
+#OUTPUT_GDE_LASTCAUSTIC         #- write info on last passed caustic to snapshot
 ##-----------------------------------------------------------------------------------------------------
 #--------------------------------------- SCF (potential expansion in basis functions)
 #-------------------------------- use of these routines requires explicit pre-approval by developers M. Vogelsberger & L. Hernquist
-#SCFPOTENTIAL                   #- turn SCF on/off
+#SCF_POTENTIAL                  #- turn SCF on/off
 #SCF_HYBRID=1                   #- =1:tree:stars<->stars,DM<->DM,stars->DM/SCF:stars<-DM =2:tree:stars<->stars,stars->DM/SCF:stars<-DM,DM<->DM
 #SCF_HQ_MASS=95.2401            #- mass of halo of expansion basis
 #SCF_HQ_A=29.7754               #- scale length of halo of expansion basis

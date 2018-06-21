@@ -779,7 +779,7 @@ void check_tidaltensor_nonperiodic(int particle_ID);
 #endif
 #endif
 
-#ifdef SCFPOTENTIAL
+#ifdef SCF_POTENTIAL
 void SCF_do_center_of_mass_correction(double fac_rad, double start_rad, double fac_part, int max_iter);
 void SCF_write(int task);
 void SCF_calc_from_random(long *seed);

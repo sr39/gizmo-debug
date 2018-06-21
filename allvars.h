@@ -217,7 +217,7 @@
 #define GALSF_FB_FIRE_RT_LOCALRP            /*! turn on local radiation pressure coupling to gas - account for local multiple-scattering and isotropic local absorption */
 #define GALSF_FB_FIRE_RT_LONGRANGE          /*! continuous acceleration from starlight (uses luminosity tree) to propagate FIRE RT */
 #define GALSF_FB_FIRE_RT_UVHEATING          /*! use estimate of local spectral information from FIRE RT for photoionization and photoelectric heating */
-#define GALSF_FB_RPROCESS_ENRICHMENT 4      /*! tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model) */
+#define GALSF_FB_FIRE_RPROCESS 4      /*! tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model) */
 //#define GALSF_SFR_IMF_VARIATION           /*! track [do not change] properties of gas from which stars form, for IMF models in post-processing */
 #define PROTECT_FROZEN_FIRE                 /*! protect code so FIRE runs are not modified by various code updates, etc -- default FIRE-2 code locked */
 #else
@@ -866,8 +866,8 @@ typedef unsigned long long peanokey;
 
 #ifdef METALS
 
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
-#define NUM_RPROCESS_SPECIES (GALSF_FB_RPROCESS_ENRICHMENT)
+#ifdef GALSF_FB_FIRE_RPROCESS
+#define NUM_RPROCESS_SPECIES (GALSF_FB_FIRE_RPROCESS)
 #else
 #define NUM_RPROCESS_SPECIES 0
 #endif
@@ -1355,7 +1355,7 @@ extern FILE
 #endif
  *FdCPU;        /*!< file handle for cpu.txt log-file. */
 
-#ifdef SCFPOTENTIAL
+#ifdef SCF_POTENTIAL
 extern FILE *FdSCF;
 #endif
 
@@ -1997,7 +1997,7 @@ extern ALIGN(32) struct particle_data
     float analytic_caustics;                            /*!< number of caustics that were integrated analytically */
     float a0;
 #endif
-#ifdef OUTPUT_LAST_CAUSTIC
+#ifdef OUTPUT_GDE_LASTCAUSTIC
     MyFloat lc_Time;                                  /*!< time of caustic passage */
     MyFloat lc_Pos[3];                                /*!< position of caustic */
     MyFloat lc_Vel[3];                                /*!< particle velocity when passing through caustic */
