@@ -200,25 +200,26 @@
 #endif
 
 
+
 #ifdef FIRE_PHYSICS_DEFAULTS
-#define COOLING
-#define COOL_LOW_TEMPERATURES
-#define COOL_METAL_LINES_BY_SPECIES
-#define GALSF
-#define METALS
-#define TURB_DIFF_METALS
-#define TURB_DIFF_METALS_LOWORDER
-#define GALSF_SFR_MOLECULAR_CRITERION
-#define GALSF_SFR_VIRIAL_SF_CRITERION 0
-#define GALSF_FB_FIRE_RT_HIIHEATING
-#define GALSF_FB_MECHANICAL 0
-#define GALSF_FB_FIRE_MECHANICAL
-#define GALSF_FB_FIRE_RT_LONGRANGE
-#define GALSF_FB_FIRE_RT_UVHEATING
-#define GALSF_FB_FIRE_RT_LOCALRP
-#define GALSF_FB_RPROCESS_ENRICHMENT 4
-//#define GALSF_SFR_IMF_VARIATION
-#define PROTECT_FROZEN_FIRE
+#define COOLING                             /*! master switch for cooling */
+#define COOL_LOW_TEMPERATURES               /*! include low-temperature (<1e4 K) cooling */
+#define COOL_METAL_LINES_BY_SPECIES         /*! include high-temperature metal-line cooling, species-by-species */
+#define GALSF                               /*! master switch for star formation */
+#define METALS                              /*! follow metals as passive scalars, use in cooling, etc */
+#define TURB_DIFF_METALS                    /*! explicit sub-grid diffusivity for metals/passive scalars */
+#define TURB_DIFF_METALS_LOWORDER           /*! memory-saving custom mod */
+#define GALSF_SFR_MOLECULAR_CRITERION       /*! molecular criterion for star formation */
+#define GALSF_SFR_VIRIAL_SF_CRITERION 0     /*! sink-particle like self-gravity requirement for star formation: original implementation */
+#define GALSF_FB_MECHANICAL                 /*! master switch for mechanical feedback modules */
+#define GALSF_FB_FIRE_STELLAREVOLUTION      /*! turns on default FIRE processes+lookup tables including gas return, SNe, R-process, etc. */
+#define GALSF_FB_FIRE_RT_HIIHEATING         /*! gas within HII regions around young stars is photo-heated to 10^4 K - local stromgren approximation */
+#define GALSF_FB_FIRE_RT_LOCALRP            /*! turn on local radiation pressure coupling to gas - account for local multiple-scattering and isotropic local absorption */
+#define GALSF_FB_FIRE_RT_LONGRANGE          /*! continuous acceleration from starlight (uses luminosity tree) to propagate FIRE RT */
+#define GALSF_FB_FIRE_RT_UVHEATING          /*! use estimate of local spectral information from FIRE RT for photoionization and photoelectric heating */
+#define GALSF_FB_RPROCESS_ENRICHMENT 4      /*! tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model) */
+//#define GALSF_SFR_IMF_VARIATION           /*! track [do not change] properties of gas from which stars form, for IMF models in post-processing */
+#define PROTECT_FROZEN_FIRE                 /*! protect code so FIRE runs are not modified by various code updates, etc -- default FIRE-2 code locked */
 #else
 #if (defined(COOLING) && defined(GALSF) && defined(GALSF_FB_MECHANICAL)) && !defined(FIRE_UNPROTECT_FROZEN)
 #define PROTECT_FROZEN_FIRE
@@ -226,7 +227,7 @@
 #endif
 
 #ifdef PROTECT_FROZEN_FIRE
-#define USE_ORIGINAL_FIRE2_SNE_COUPLING_SCHEME // set to use the 'base' FIRE-2 SNe coupling. if commented out, will user newer version that more accurately manages the injected energy with neighbors moving to inject a specific target
+#define GALSF_USE_SNE_ONELOOP_SCHEME // set to use the 'base' FIRE-2 SNe coupling. if commented out, will user newer version that more accurately manages the injected energy with neighbors moving to inject a specific target
 #endif
 
 
@@ -280,9 +281,9 @@
 #define BH_WIND_KICK 1 // use kinetic feedback module for protostellar jets (for this, use the simple kicking module, it's not worth the expense of the other)
 #endif
 #ifdef SINGLE_STAR_PROMOTION
-#define GALSF_FB_FIRE_MECHANICAL // stellar winds [scaled appropriately for particle masses]
+#define GALSF_FB_MECHANICAL // allow SNe + winds in promoted stars [at end of main sequence lifetimes]
+#define GALSF_FB_FIRE_STELLAREVOLUTION // mass return and other properties for stellar winds [scaled appropriately for particle masses]
 #define GALSF_FB_FIRE_RT_HIIHEATING // FIRE approximate photo-ionization [for particle masses; could also use real-RT]
-#define GALSF_FB_MECHANICAL 1 // allow SNe in promoted stars [at end of main sequence lifetimes]
 #define GALSF_FB_FIRE_RT_LOCALRP // local radiation pressure [scaled with mass, single-scattering term here]
 #define GALSF_FB_FIRE_RT_CONTINUOUSRP // force the local rad-pressure term to be continuous instead of small impulses
 #endif
@@ -1716,9 +1717,6 @@ extern struct global_data_all_processes
 #endif
     
 #ifdef COSMIC_RAYS
-#ifdef GALSF_FB_MECHANICAL
-    double CosmicRay_SNeFraction;
-#endif
     double CosmicRayDiffusionCoeff;
 #endif
     
@@ -1769,10 +1767,13 @@ extern struct global_data_all_processes
 #endif
 #endif // GALSF_SUBGRID_WINDS //
 
-#ifdef GALSF_FB_FIRE_MECHANICAL
+#ifdef GALSF_FB_FIRE_STELLAREVOLUTION
     double SNeIIEnergyFrac;
     double GasReturnFraction;
     double AGBGasEnergy;
+#ifdef COSMIC_RAYS
+    double CosmicRay_SNeFraction;
+#endif
 #endif
 
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
@@ -2041,7 +2042,7 @@ extern ALIGN(32) struct particle_data
 
 #if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
     MyFloat SNe_ThisTimeStep; /* flag that indicated number of SNe for the particle in the timestep */
-#ifdef GALSF_FB_FIRE_MECHANICAL
+#ifdef GALSF_FB_FIRE_STELLAREVOLUTION
     MyFloat MassReturn_ThisTimeStep; /* gas return from stellar winds */
     MyFloat RProcessEvent_ThisTimeStep; /* R-process event tracker */
 #endif

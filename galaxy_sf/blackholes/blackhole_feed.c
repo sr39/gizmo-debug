@@ -374,9 +374,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #ifndef IO_REDUCED_MODE
                                     printf("MARKING_BH_MERGER: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) id);
 #endif
-//#ifndef SINGLE_STAR_FORMATION
                                     if((P[j].SwallowID == 0) && (BPP(j).BH_Mass < bh_mass)) {P[j].SwallowID = id;} // most massive BH swallows the other - simplifies analysis
-//#endif
                                 }
                                 else
                                 {

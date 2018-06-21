@@ -445,9 +445,6 @@ void process_wake_ups(void);
 #endif
 
 void set_units_sfr(void);
-#ifdef BH_SEED_FROM_LOCALGAS
-double return_probability_of_this_forming_bh_from_seed_model(int i);
-#endif
 
 void gravity_forcetest(void);
 
@@ -468,11 +465,41 @@ void do_turb_driving_step_second_half(void);
 
 double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h);
 
+
 #ifdef GALSF
 double evaluate_stellar_age_Gyr(double stellar_tform);
-double evaluate_l_over_m_ssp(double stellar_age_in_gyr);
-double calculate_relative_light_to_mass_ratio_from_imf(int i);
+double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i);
+double calculate_relative_light_to_mass_ratio_from_imf(double stellar_age_in_gyr, int i);
+double calculate_individual_stellar_luminosity(double mdot, double mass, long i);
+double return_probability_of_this_forming_bh_from_seed_model(int i);
+
+// this structure needs to be defined here, because routines for feedback event rates, etc, are shared among files //
+struct addFBdata_in
+{
+    MyDouble Pos[3], Vel[3], Msne, unit_mom_SNe;
+    MyFloat Hsml, V_i, SNe_v_ejecta;
+#ifdef GALSF_FB_MECHANICAL
+    MyFloat Area_weighted_sum[AREA_WEIGHTED_SUM_ELEMENTS];
 #endif
+#ifdef METALS
+    MyDouble yields[NUM_METAL_SPECIES];
+#endif
+    int NodeList[NODELISTLENGTH];
+}
+*AddFBDataIn, *AddFBDataGet;
+
+void particle2in_addFB_fromstars(struct addFBdata_in *in, int i, int fb_loop_iteration);
+double mechanical_fb_calculate_eventrates(int i, double dt);
+#if defined(GALSF_FB_MECHANICAL) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
+double mechanical_fb_calculate_eventrates_SNe(int i, double dt);
+void mechanical_fb_calculate_eventrates_Winds(int i, double dt);
+void mechanical_fb_calculate_eventrates_Rprocess(int i, double dt);
+void particle2in_addFB_SNe(struct addFBdata_in *in, int i);
+void particle2in_addFB_winds(struct addFBdata_in *in, int i);
+void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i);
+#endif
+#endif
+
 
 #ifdef GRAIN_FLUID
 void apply_grain_dragforce(void);

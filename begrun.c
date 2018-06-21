@@ -278,7 +278,7 @@ void begrun(void)
         All.PhotonMomentum_fUV = all.PhotonMomentum_fUV;
         All.PhotonMomentum_fOPT = all.PhotonMomentum_fOPT;
 #endif
-#ifdef GALSF_FB_FIRE_MECHANICAL
+#ifdef GALSF_FB_FIRE_STELLAREVOLUTION
         All.SNeIIEnergyFrac = all.SNeIIEnergyFrac;
         All.GasReturnFraction = all.GasReturnFraction;
         All.AGBGasEnergy = all.AGBGasEnergy;
@@ -1017,7 +1017,7 @@ void read_parameter_file(char *fname)
 #endif
         
 
-#ifdef GALSF_FB_FIRE_MECHANICAL
+#ifdef GALSF_FB_FIRE_STELLAREVOLUTION
         strcpy(tag[nt], "SNeIIEnergyFrac");
         addr[nt] = &All.SNeIIEnergyFrac;
         id[nt++] = REAL;

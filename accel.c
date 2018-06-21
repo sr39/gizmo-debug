@@ -142,25 +142,19 @@ void compute_stellar_feedback(void)
 {
     CPU_Step[CPU_MISC] += measure_time();
 
-    /* first, check the mechanical sources of feedback */
-#ifdef GALSF_FB_MECHANICAL
-#ifndef USE_ORIGINAL_FIRE2_SNE_COUPLING_SCHEME
+#ifdef GALSF_FB_MECHANICAL /* check the mechanical sources of feedback */
+#ifndef GALSF_USE_SNE_ONELOOP_SCHEME
     mechanical_fb_calc(-2); /* compute weights for coupling [first weight-calculation pass] */
 #endif
     mechanical_fb_calc(-1); /* compute weights for coupling [second weight-calculation pass] */
     CPU_Step[CPU_SNIIHEATING] += measure_time();
-#ifdef GALSF_FB_MECHANICAL
     mechanical_fb_calc(0); /* actually do the mechanical feedback coupling */
+#ifdef GALSF_FB_FIRE_STELLAREVOLUTION
+    mechanical_fb_calc(1); /* additional loop for stellar mass-loss */
+    mechanical_fb_calc(2); /* additional loop for R-process */
+#endif
     CPU_Step[CPU_SNIIHEATING] += measure_time();
 #endif
-#ifdef GALSF_FB_FIRE_MECHANICAL
-    mechanical_fb_calc(1); /* do the gas return coupling */
-    CPU_Step[CPU_SNIIHEATING] += measure_time();
-    mechanical_fb_calc(2); /* do the R-process element injection */
-    CPU_Step[CPU_SNIIHEATING] += measure_time();
-#endif
-#endif // GALSF_FB_MECHANICAL
-    
 #ifdef GALSF_FB_THERMAL
     thermal_fb_calc(); /* thermal feedback */
     CPU_Step[CPU_SNIIHEATING] += measure_time();
@@ -170,7 +164,6 @@ void compute_stellar_feedback(void)
     HII_heating_singledomain(); /* local photo-ionization heating */
     CPU_Step[CPU_HIIHEATING] += measure_time();
 #endif
-    
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
     radiation_pressure_winds_consolidated(); /* local radiation pressure */
     CPU_Step[CPU_LOCALWIND] += measure_time();
