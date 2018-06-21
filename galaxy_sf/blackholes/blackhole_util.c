@@ -7,8 +7,8 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include "../../proto.h"
 #include "../../allvars.h"
+#include "../../proto.h"
 
 /*! \file blackhole_util.c
  *  \brief util routines for memory (de)allocation and array setting for black holes

@@ -28,7 +28,6 @@
     on the gas properties of the particle out of which it forms */
 void assign_imf_properties_from_starforming_gas(int i)
 {
-    
 #ifdef GALSF_SFR_IMF_VARIATION
     double h = Get_Particle_Size(i) * All.cf_atime;
     double cs = Particle_effective_soundspeed_i(i) * All.cf_afac3; // actual sound speed in the simulation: might be unphysically high for SF conditions!
@@ -104,7 +103,6 @@ void assign_imf_properties_from_starforming_gas(int i)
     
 #endif 
     
-    
 #ifdef GALSF_SFR_IMF_SAMPLING
     gsl_rng *random_generator_for_massivestars;
     random_generator_for_massivestars = gsl_rng_alloc(gsl_rng_ranlxd1);
@@ -113,34 +111,9 @@ void assign_imf_properties_from_starforming_gas(int i)
     unsigned int kk = gsl_ran_poisson(random_generator_for_massivestars, mu);
     P[i].IMF_NumMassiveStars = (double)kk;
 #endif
-    
 }
 #endif
 
-
-/* return the light-to-mass ratio, for the IMF of a given particle, relative to the Chabrier/Kroupa IMF which 
-    is otherwise (for all purposes) our 'default' choice */
-double calculate_relative_light_to_mass_ratio_from_imf(int i)
-{
-#ifdef SINGLE_STAR_FORMATION
-    double unit_lsun_msun = (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)) / (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS));
-    return bh_lum_bol(0, P[i].Mass, i) / P[i].Mass * unit_lsun_msun;
-#endif
-#ifdef GALSF_SFR_IMF_VARIATION
-    /* more accurate version from David Guszejnov's IMF calculations (ok for Mturnover in range 0.01-100) */
-    double log_mimf = log10(P[i].IMF_Mturnover);
-    return (0.051+0.042*(log_mimf+2)+0.031*(log_mimf+2)*(log_mimf+2)) / 0.31;
-    // return pow(P[i].IMF_Mturnover/1.0,0.35);
-#endif
-#ifdef GALSF_SFR_IMF_SAMPLING
-    double mu = 0.01 * P[i].Mass * All.UnitMass_in_g / All.HubbleParam / (1.989e33); // 1 O-star per 100 Msun
-    double age = evaluate_stellar_age_Gyr(P[i].StellarAge);
-    if(age > 0.003) {mu *= 0.326 * (0.003 / age);} // expectation value is declining with time, so 'effective multiplier' is larger
-    return P[i].IMF_NumMassiveStars / mu;
-#endif
-    return 1; // Chabrier or Kroupa IMF //
-    // return 0.5; // Salpeter IMF down to 0.1 solar //
-}
 
 
 /* return the stellar age in Gyr for a given labeled age, needed throughout for stellar feedback */
@@ -176,59 +149,6 @@ double evaluate_stellar_age_Gyr(double stellar_tform)
 }
 
 
-/* return the (solar-scaled) light-to-mass ratio of an SSP with a given age; used throughout */
-double evaluate_l_over_m_ssp(double stellar_age_in_gyr)
-{
-#ifdef SINGLE_STAR_FORMATION
-    return 1;
-#endif
-    // original SB99 tracks
-    /*
-    if(stellar_age_in_gyr < 0.0029)
-    {
-        return 1136.59;
-    } else {
-        double log_age = log10(stellar_age_in_gyr)-(-2.2681);
-        return 478.63*pow(10.,-1.3625*log_age+0.115765*log_age*log_age);
-        // could replace with piecewise linear functions; if this call in forcetree gets expensive //
-    }
-    */
-    // updated SB99 tracks: including rotation, new mass-loss tracks, etc.
-    if(stellar_age_in_gyr < 0.0035)
-    {
-        return 1136.59;
-    } else {
-        double log_age = log10(stellar_age_in_gyr/0.0035);
-        return 1500.*pow(10.,-1.8*log_age+0.3*log_age*log_age-0.025*log_age*log_age*log_age);
-    }
-    return 0;
-}
-
-
-#ifdef BH_SEED_FROM_LOCALGAS
-/* function which takes properties of a gas particle 'i' and returns probability of its turning into a BH seed particle */
-double return_probability_of_this_forming_bh_from_seed_model(int i)
-{
-    double p=0;
-    if(All.Time < 1.0/(1.0+All.SeedBlackHoleMinRedshift)) /* within the allowed redshift range for forming seeds */
-        if(SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) /* require it be above the SF density threshold */
-            if(P[i].Metallicity[0]/All.SolarAbundances[0] < 0.1) /* and below some metallicity */
-    {
-        double GradRho = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1) * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; /* this gives the Sobolev-estimated column density */
-        /* surface dens in g/cm^2; threshold for bound cluster formation in our experiments is ~2 g/cm^2 (10^4 M_sun/pc^2) */
-        if (GradRho > 0.1)
-        {
-            /* now calculate probability of forming a BH seed particle */
-            p = 0.0004; /* ratio of BH mass formed to stellar mass for Z~0.01 Zsun population */
-            p *= (P[i].Mass / All.SeedBlackHoleMass); /* resolves resolution-dependence by making p=massfrac */
-            p *= (1-exp(-GradRho/1.0)) * exp(-(P[i].Metallicity[0]/All.SolarAbundances[0])/0.01);
-            /* want to add factors to control this probability in zoom-in runs */
-        }
-    }
-    return p;
-}
-#endif
-
 
 /* simple routine to determine density thresholds and other common units for SF routines */
 void set_units_sfr(void)
@@ -244,6 +164,33 @@ void set_units_sfr(void)
     All.EgySpecSN *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
 #endif // GALSF_EFFECTIVE_EQS
 }
+
+
+
+/* function which takes properties of a gas particle 'i' and returns probability of its turning into a BH seed particle */
+double return_probability_of_this_forming_bh_from_seed_model(int i)
+{
+    double p=0;
+#ifdef BH_SEED_FROM_LOCALGAS
+    if(All.Time < 1.0/(1.0+All.SeedBlackHoleMinRedshift)) /* within the allowed redshift range for forming seeds */
+    if(SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) /* require it be above the SF density threshold */
+    if(P[i].Metallicity[0]/All.SolarAbundances[0] < 0.1) /* and below some metallicity */
+    {
+        double GradRho = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1) * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; /* this gives the Sobolev-estimated column density */
+        /* surface dens in g/cm^2; threshold for bound cluster formation in our experiments is ~2 g/cm^2 (10^4 M_sun/pc^2) */
+        if (GradRho > 0.1)
+        {
+            /* now calculate probability of forming a BH seed particle */
+            p = 0.0004; /* ratio of BH mass formed to stellar mass for Z~0.01 Zsun population */
+            p *= (P[i].Mass / All.SeedBlackHoleMass); /* resolves resolution-dependence by making p=massfrac */
+            p *= (1-exp(-GradRho/1.0)) * exp(-(P[i].Metallicity[0]/All.SolarAbundances[0])/0.01);
+            /* want to add factors to control this probability in zoom-in runs */
+        }
+    }
+#endif
+    return p;
+}
+
 
 
 /* Routine to actually determine the SFR assigned to an individual gas particle at each time */

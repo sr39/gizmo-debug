@@ -1356,10 +1356,10 @@ int density_isactive(int n)
 #if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
         /* check if there is going to be a SNe this timestep, in which case, we want the density info! */
         if(P[n].SNe_ThisTimeStep>0) return 1;
-#endif
-#if defined(GALSF_FB_FIRE_MECHANICAL)
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION)
         if(P[n].MassReturn_ThisTimeStep>0) return 1;
         if(P[n].RProcessEvent_ThisTimeStep>0) return 1;
+#endif
 #endif
 #if defined(GALSF)
         if(P[n].DensAroundStar<=0) return 1;

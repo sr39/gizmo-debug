@@ -71,7 +71,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
     {
         if(sigma_0<0) {return 1;} active_check = 1;
         double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
-        double L = P[i].Mass * evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(i);
+        double L = P[i].Mass * evaluate_light_to_mass_ratio(star_age, i);
         if((L<=0)||(star_age<=0)||(isnan(star_age))||(isnan(L))) {L=0; star_age=0;}
         double f_uv, f_op;
 #ifndef RT_FIRE_FIX_SPECTRAL_SHAPE
@@ -122,7 +122,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
                 if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));
                 } else {f_op=1-0.8410937/(1+sqrt((star_age-0.006)/0.3));}}
             double fac = 3.95e33 * (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs); // converts to code units
-            lum[RT_FREQ_BIN_NUV] = (1-f_op) * fac * evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(i);
+            lum[RT_FREQ_BIN_NUV] = (1-f_op) * fac * evaluate_light_to_mass_ratio(star_age, i);
         }
     }
 #endif
@@ -140,7 +140,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
                 if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));
                 } else {f_op=1-0.8410937/(1+sqrt((star_age-0.006)/0.3));}}
             double fac = 3.95e33 * (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs); // converts to code units
-            lum[RT_FREQ_BIN_OPTICAL_NIR] = f_op * fac * evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(i);
+            lum[RT_FREQ_BIN_OPTICAL_NIR] = f_op * fac * evaluate_light_to_mass_ratio(star_age, i);
         }
     }
 #endif

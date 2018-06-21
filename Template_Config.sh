@@ -224,6 +224,7 @@
 #GALSF_WINDS_ORIENTATION=0      # directs wind orientation [0=isotropic/random, 1=polar, 2=along density gradient]
 ## ----------------------------------------------------------------------------------------------------------------------------
 # ---- pure thermal/scalar stellar feedback models (simplified energy injection; tend to severely over-cool owing to lack of mechanical/kinetic treatment at finite resolution -----------------------------
+#GALSF_FB_MECHANICAL            # time-dependent explosions from SNe (I & II) in shockwave radii around stars (values: 0=force-gridded in xyz (WRONG-for testing only!); 1=tensor-symmetrized (momentum-conserving; USE ME); 2=no tensor re-normalization [non-conservative!]
 #GALSF_FB_THERMAL               # simple 'pure thermal energy dump' feedback: mass, metals, and thermal energy are injected locally in simple kernel-weighted fashion around young stars. currently follows AGORA feedback scheme. cite Kim et al., 2016, ApJ, 833, 202 if used.
 #GALSF_FB_TURNOFF_COOLING       # turn off cooling for SNe-heated particles (as Stinson+ 2006 GASOLINE model, cite it); requires GALSF_FB_MECHANICAL or GALSF_FB_THERMAL; use by permission of developer P. Hopkins)
 ## ----------------------------------------------------------------------------------------------------
@@ -235,8 +236,7 @@
 ##-----------------------------------------------------------------------------------------------------
 #FIRE_PHYSICS_DEFAULTS           # enable default set of FIRE physics packages (see details below); note use policy above
 #----------- physical stellar feedback mechanisms (sub-modules of the FIRE_PHYSICS_DEFAULTS; these cannot be turned off and on individually without extreme care, they have complicated inter-dependencies) ---- #
-##----------------------GALSF_FB_MECHANICAL=1           # time-dependent explosions from SNe (I & II) in shockwave radii around stars (values: 0=force-gridded in xyz (WRONG-for testing only!); 1=tensor-symmetrized (momentum-conserving; USE ME); 2=no tensor re-normalization [non-conservative!]
-##----------------------GALSF_FB_FIRE_MECHANICAL        # turns on default FIRE processes including gas return, SNe, R-process, etc.
+##----------------------GALSF_FB_FIRE_STELLAREVOLUTION  # turns on default FIRE processes including gas return, SNe, R-process, etc.
 ##----------------------GALSF_FB_RPROCESS_ENRICHMENT=4  # tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model)
 ##----------------------GALSF_FB_FIRE_RT_LONGRANGE      # continuous acceleration from starlight (uses luminosity tree)
 ##----------------------GALSF_FB_FIRE_RT_UVHEATING      # use local estimate of spectral information for photoionization and photoelectric heating

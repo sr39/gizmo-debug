@@ -376,10 +376,10 @@ void init(void)
 #endif
 #ifdef GALSF_FB_MECHANICAL
             int k; for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {P[i].Area_weighted_sum[k] = 0;}
-#endif
-#ifdef GALSF_FB_FIRE_MECHANICAL
+#ifdef GALSF_FB_FIRE_STELLAREVOLUTION
             P[i].MassReturn_ThisTimeStep = 0;
             P[i].RProcessEvent_ThisTimeStep = 0;
+#endif
 #endif
         }
         
