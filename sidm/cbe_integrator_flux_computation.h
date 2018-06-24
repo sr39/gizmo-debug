@@ -2,6 +2,7 @@
  this is the kernel where the core of the CBE flux computation is performed,
  to calculate the relevant fluxes between faces of partciels, within the gravity routine
  --------------------------------------------------------------------------------- */
+#ifdef CBE_INTEGRATOR
 {
     int m; double V_i=local.V_i, V_j=get_particle_volume_ags(j), rho_i=local.Mass/V_i*All.cf_a3inv, rho_j=P[j].Mass/V_j*All.cf_a3inv, Face_Area_Vec[3], Face_Area_Norm=0, psi_i, psi_j, vf0_dot_dp=0, vface_guess[3]; // calculate densities (in physical units)
     psi_i=1./(1. + kernel.h_i/kernel.h_j); psi_i=0.5; psi_j=1-psi_i; rho_i*=psi_i; rho_j*=psi_j;
@@ -137,4 +138,4 @@
 #endif
     } // v_wt_sum > 0
 } // master bracket (for variable protection
-
+#endif
