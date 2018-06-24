@@ -1,4 +1,5 @@
 /* quantum pressure-tensor computation to calculate the relevant fluxes between faces of particles, within the gravity routine */
+#ifdef DM_FUZZY
 if((local.Type==1) && (P[j].Type==1)) // only acts between DM particles of type 1 (can easily change if desired)
 {
     /* since this isn't a super-expensive calculation, and we need to walk the gravity tree for both 'sides' anyways, we will effectively do this twice each timestep */
@@ -34,3 +35,4 @@ if((local.Type==1) && (P[j].Type==1)) // only acts between DM particles of type 
     do_dm_fuzzy_flux_computation(HLLwt, dt, m_mean, prev_acc, dp, dv, jgrad,  igrad, j2grad, i2grad, rho_j, rho_i, vface_i_minus_j, Face_Area_Vec, flux, AGS_Numerical_QuantumPotential, &dt_egy_Numerical_QuantumPotential);
     out.AGS_Dt_Numerical_QuantumPotential += dt_egy_Numerical_QuantumPotential; for(k=0;k<3;k++) {out.acc[k] += flux[k] / (local.Mass * All.cf_a2inv);} // assign back to particles
 } // master bracket (for variable protection)
+#endif
