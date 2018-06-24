@@ -47,8 +47,7 @@ double get_pressure(int i)
     
 #ifdef GALSF_EFFECTIVE_EQS
     /* modify pressure to 'interpolate' between effective EOS and isothermal, with the Springel & Hernquist 2003 'effective' EOS */
-    if(SphP[i].Density*All.cf_a3inv >= All.PhysDensThresh)
-        press = All.FactorForSofterEQS * press + (1 - All.FactorForSofterEQS) * All.cf_afac1 * GAMMA_MINUS1 * SphP[i].Density * All.InitGasU;
+    if(SphP[i].Density*All.cf_a3inv >= All.PhysDensThresh) {press = All.FactorForSofterEQS * press + (1 - All.FactorForSofterEQS) * All.cf_afac1 * GAMMA_MINUS1 * SphP[i].Density * All.InitGasU;}
 #endif
     
     
@@ -108,7 +107,8 @@ double get_pressure(int i)
     
 #if defined(HYDRO_GENERATE_TARGET_MESH)
     press = return_user_desired_target_pressure(i) * (SphP[i].Density / return_user_desired_target_density(i)); // define pressure by reference to 'desired' fluid quantities //
-    SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = press / (GAMMA_MINUS1 * SphP[i].Density);
+    //SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = press / (GAMMA_MINUS1 * SphP[i].Density);
+    SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = return_user_desired_target_pressure(i) / (GAMMA_MINUS1 * SphP[i].Density);
 #endif
     
     return press;

@@ -338,6 +338,10 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
              * to the current values. They will then predicted further along in drift operations */
             if(mode==1)
             {
+#ifdef HYDRO_GENERATE_TARGET_MESH // it is often desirable to damp transient velocities when setting up a stable mesh: do so here by un-commenting the line below //
+                //for(j=0;j<3;j++) {P[i].Vel[j] *= exp(-0.15);} // coefficient is constant per-timestep: adjust to make as aggressive or weak as desired //
+#endif
+
                 for(j = 0; j < 3; j++)
                     SphP[i].VelPred[j] = P[i].Vel[j];//(mass_old*v_old[j] + dp[j]) / mass_new;
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
