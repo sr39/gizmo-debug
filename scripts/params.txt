@@ -140,6 +140,7 @@ CosmicRayDiffusionCoeff     1.0     % multiplies anisotropic diffusion/streaming
 Grain_Internal_Density      1.0     % internal/material density of grains in g/cm^3
 Grain_Size_Min              1.e-6   % minimum grain size in cm
 Grain_Size_Max              1.e-4   % maximum grain size in cm
+Grain_Size_Spectrum_Powerlaw  0.5   % power-law distribution of grain sizes (dm/dlnr~r^x)
 
 
 %-------------------------------------------------------------------------
