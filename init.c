@@ -393,16 +393,34 @@ void init(void)
 #ifdef GRAIN_FLUID
         if(RestartFlag == 0)
         {
+            /* Change grain mass to change the distribution of sizes.  Grain_Size_Spectrum_Powerlaw parameter sets d\mu/dln(R_d) ~ R_d^Grain_Size_Spectrum_Powerlaw */
             P[i].Grain_Size = All.Grain_Size_Min * exp( gsl_rng_uniform(random_generator) * log(All.Grain_Size_Max/All.Grain_Size_Min) );
-            P[i].Gas_Density = 0;
-            P[i].Gas_InternalEnergy = 0;
-            P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0;
+            if(P[i].Type==3) {if(All.Grain_Size_Max > All.Grain_Size_Min*1.0001 && fabs(All.Grain_Size_Spectrum_Powerlaw) != 0) {P[i].Mass *= (All.Grain_Size_Spectrum_Powerlaw/(pow(All.Grain_Size_Max/All.Grain_Size_Min,All.Grain_Size_Spectrum_Powerlaw)-1.)) * pow(P[i].Grain_Size/All.Grain_Size_Min,All.Grain_Size_Spectrum_Powerlaw);}}
+
+#ifdef GRAIN_RDI_TESTPROBLEM
+	    if(P[i].Type == 3) /* initialize various quantities for test problems from parameters set in the ICs */
+	    {
+		P[i].Mass *= All.Dust_to_Gas_Mass_Ratio;
+		if(All.Initial_Grain_Vel_Mag == 0 || All.Grain_Charge_Parameter == 0) /* assign initial velocities assuming epstein */
+		{ 
+                        double a0=0.626657 * P[i].Grain_Size * sqrt(GAMMA) * All.Vertical_Grain_Accel;
+                        double ct = cos(All.Vertical_Grain_Accel_Angle * M_PI/180.), st = sin(All.Vertical_Grain_Accel_Angle * M_PI/180.);			
+			double w0 = a0 / sqrt(0.5*(1. + sqrt(1. + 0.883573*a0*a0))), tau2 = 0;
+			P[i].Vel[0] = w0 * st / (1+tau2); P[i].Vel[1] = w0 * st * sqrt(tau2) / (1+tau2); P[i].Vel[2] = w0 * ct;
+		} else { /* assign initial velocities from specified parameters */
+			double ct = cos(All.Vertical_Grain_Accel_Angle * M_PI/180.), st = sin(All.Vertical_Grain_Accel_Angle * M_PI/180.), tau = All.Initial_Grain_Tau, tau2 = tau*tau;
+			double w0 = All.Initial_Grain_Vel_Mag / sqrt((1+tau2*ct*ct)/(1+tau2));
+			P[i].Vel[0] = w0 * st / (1+tau2); P[i].Vel[1] = w0 * st * tau / (1+tau2); P[i].Vel[2] = w0 * ct; 
+		}
+	    }	    
+#endif
+
+            P[i].Gas_Density = P[i].Gas_InternalEnergy = P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0;
 #ifdef GRAIN_COLLISIONS
-            P[i].Grain_Density = 0;
-            P[i].Grain_Velocity[0]=P[i].Grain_Velocity[1]=P[i].Grain_Velocity[2]=0;
+            P[i].Grain_Density=P[i].Grain_Velocity[0]=P[i].Grain_Velocity[1]=P[i].Grain_Velocity[2]=0;
 #endif
 #ifdef GRAIN_LORENTZFORCE
-            P[i].Gas_B[0]=P[i].Gas_B[1]=P[i].Gas_B[2];
+            P[i].Gas_B[0]=P[i].Gas_B[1]=P[i].Gas_B[2]=0;
 #endif
         }
 #endif
@@ -717,6 +735,7 @@ void init(void)
 #endif
     
     /* HELLO! This here is where you should insert custom code for hard-wiring the ICs of various test problems */
+
 
     
     

@@ -24,12 +24,13 @@ void GravAccel_StaticNFW(void);
 void GravAccel_RayleighTaylorTest(void);
 void GravAccel_ShearingSheet(void);
 void GravAccel_PaczynskyWiita(void);
-
+void GravAccel_RDITestProblem(void);
 
 /* master routine which decides which (if any) analytic gravitational forces are applied */
 void add_analytic_gravitational_forces()
 {
 #ifdef GRAVITY_ANALYTIC
+    //GravAccel_RDITestProblem();         // vertical gravity+external acceleration for grain-RDI-wind tests
     //GravAccel_RayleighTaylorTest();     // vertical potential for RT tests
     //GravAccel_StaticPlummerSphere();    // plummer sphere
     //GravAccel_StaticHernquist();        // hernquist sphere
@@ -44,6 +45,36 @@ void add_analytic_gravitational_forces()
 #endif
 #endif
 }
+
+
+/* external forces for dusty-box problem */
+void GravAccel_RDITestProblem()
+{
+#ifdef GRAIN_RDI_TESTPROBLEM
+    int i;
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        /* zero out the gravity first (since this test doesn't use self-gravity) */
+        P[i].GravAccel[0]=P[i].GravAccel[1]=P[i].GravAccel[2]=0;
+        /* now add the constant vertical field for non-anchored particles */
+        if(P[i].ID > 0)
+        {
+            P[i].GravAccel[2] = -All.Vertical_Gravity_Strength;
+            /* dust feels radiation acceleration in the direction opposite gravity */
+	    double acc = All.Vertical_Grain_Accel;
+#ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
+	    acc /= P[i].Grain_Size; 
+#endif
+            if(P[i].Type==3) 
+	    {
+		P[i].GravAccel[2] += acc * cos(All.Vertical_Grain_Accel_Angle * M_PI/180.);
+		P[i].GravAccel[0] += acc * sin(All.Vertical_Grain_Accel_Angle * M_PI/180.);
+	    }
+        }
+    }
+#endif
+}
+
 
 
 /* adds coriolis and centrifugal terms for shearing-sheet approximation */

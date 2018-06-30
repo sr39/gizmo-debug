@@ -58,6 +58,8 @@ void apply_grain_dragforce(void)
                         double x0 = 0.469993*sqrt(GAMMA) * vgas_mag/cs; // (3/8)*sqrt[pi/2]*|vgas-vgrain|/cs //
                         double tstop_inv = 1.59577/sqrt(GAMMA) * rho_gas * cs / (R_grain_code * rho_grain_code); // 2*sqrt[2/pi] * 1/tstop //
 
+
+
 #ifdef GRAIN_LORENTZFORCE
                         /* calculate the grain charge following Draine & Sutin */
                         double cs_cgs = cs * All.UnitVelocity_in_cm_per_s;
@@ -129,9 +131,12 @@ void apply_grain_dragforce(void)
                         double bhat[3]={0}, bmag=0, efield[3]={0}, efield_coeff=0;
                         for(k=0;k<3;k++) {bhat[k]=P[i].Gas_B[k]; bmag+=bhat[k]*bhat[k]; dv[k]=P[i].Vel[k]-P[i].Gas_Velocity[k];}
                         if(bmag>0) {bmag=sqrt(bmag); for(k=0;k<3;k++) {bhat[k]/=bmag;}} else {bmag=0;}
-                        double lorentz_coeff = (0.5*dt) * bmag * Z_grain / grain_mass * lorentz_units; // multiply in full timestep //
-                        
+			double grain_charge_cinv = Z_grain / grain_mass * lorentz_units;
+#ifdef GRAIN_RDI_TESTPROBLEM
+			if(All.Grain_Charge_Parameter != 0) {grain_charge_cinv = -All.Grain_Charge_Parameter / P[i].Grain_Size;} // set charge manually //
+#endif
                         /* now apply the boris integrator */
+                        double lorentz_coeff = (0.5*dt) * bmag * grain_charge_cinv; // dimensionless half-timestep term for boris integrator //
                         double v_m[3]={0}, v_t[3]={0}, v_p[3]={0}, vcrosst[3]={0};
                         for(k=0;k<3;k++) {v_m[k] = dv[k] + 0.5*efield_coeff*efield[k];} // half-step from E-field
                         /* cross-product for rotation */
@@ -141,7 +146,11 @@ void apply_grain_dragforce(void)
                         for(k=0;k<3;k++) {v_p[k] = v_m[k] + (2.*lorentz_coeff/(1.+lorentz_coeff*lorentz_coeff)) * vcrosst[k];} // second half-rotation
                         for(k=0;k<3;k++) {v_p[k] += 0.5*efield_coeff*efield[k];} // half-step from E-field
                         /* calculate effective acceleration from discrete step in velocity */
-                        for(k=0;k<3;k++) {external_forcing[k] += (v_p[k] - dv[k]) / dt;}
+                        for(k=0;k<3;k++) {external_forcing[k] += (v_p[k] - dv[k]) / dt;} // boris integrator
+                        //for(k=0;k<3;k++) {external_forcing[k] += grain_charge_cinv * v_cross_B[k];} // standard explicit integrator
+
+
+
                         /* note: if grains moving super-sonically with respect to gas, and charge equilibration time is much shorter than the 
                             streaming/dynamical timescales, then the charge is slightly reduced, because the ion collision rate is increased while the 
                             electron collision rate is increased less (since electrons are moving much faster, we assume the grain is still sub-sonic 
@@ -157,13 +166,16 @@ void apply_grain_dragforce(void)
                             /* measure the imparted energy and momentum as if there were no external acceleration */
                             double v_init = P[i].Vel[k];
                             double vel_new = v_init + slow_fac * (P[i].Gas_Velocity[k]-v_init);
-                            delta_mom[k] = P[i].Mass * (vel_new - v_init);
-                            delta_egy += 0.5*P[i].Mass * (vel_new*vel_new - v_init*v_init);
                             /* now calculate the updated velocity accounting for any external, non-standard accelerations */
                             double vdrift = 0;
                             if(tstop_inv > 0) {vdrift = external_forcing[k] / (tstop_inv * sqrt(1+x0*x0));}
                             dv[k] = slow_fac * (P[i].Gas_Velocity[k] - v_init + vdrift);
                             if(isnan(vdrift)||isnan(slow_fac)) {dv[k] = 0;}
+
+			    vel_new = v_init + dv[k];
+                            delta_mom[k] = P[i].Mass * (vel_new - v_init);
+                            delta_egy += 0.5*P[i].Mass * (vel_new*vel_new - v_init*v_init);
+
                             /* note, we can directly apply this by taking P[i].Vel[k] += dv[k]; but this is not as accurate as our
                                 normal leapfrog integration scheme.
                                 we can also account for the -gas- acceleration, by including it like vdrift;
