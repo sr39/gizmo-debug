@@ -1710,10 +1710,21 @@ extern struct global_data_all_processes
 #endif
 #endif
     
+
 #ifdef GRAIN_FLUID
+#ifdef GRAIN_RDI_TESTPROBLEM
+    double Initial_Grain_Tau;
+    double Initial_Grain_Vel_Mag;
+    double Grain_Charge_Parameter;
+    double Dust_to_Gas_Mass_Ratio;
+    double Vertical_Gravity_Strength;
+    double Vertical_Grain_Accel;
+    double Vertical_Grain_Accel_Angle;
+#endif
     double Grain_Internal_Density;
     double Grain_Size_Min;
     double Grain_Size_Max;
+    double Grain_Size_Spectrum_Powerlaw;
 #endif
     
 #ifdef COSMIC_RAYS
