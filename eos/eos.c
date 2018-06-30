@@ -325,6 +325,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     double facloss_p = 1. / (fac + (G_nonlinear_landau_prefix * eA[0] / (MIN_REAL_NUMBER + A_coeff)) * (fac-1.));
     double facloss_m = 1. / (fac + (G_nonlinear_landau_prefix * eA[1] / (MIN_REAL_NUMBER + A_coeff)) * (fac-1.));
     eCR += (1.-facloss_p)*eA[0] + (1.-facloss_m)*eA[1]; eA[0] *= facloss_p; eA[1] *= facloss_m;
+    // here is where you need to add a source term for the Alfven energy term to prevent it damping away, unless you inject it with CRs or modify the closure relation for the diffusion coefficients
     
     // exchange term between eCR and eA, strictly lossy for eA [Alfven] terms [the loss terms proportional to (e_cr+P_cr), in the Thomas+Pfrommer notation]
     fac = -fac_Omega * vA2_c2 * GAMMA_COSMICRAY * (eCR/E_B) * dt_entr; if((fac<-log(100.))||(!isfinite(fac))) {fac=-log(100.);} // prop to eA_pm = loss term, so solve that exactly, then add to ECR (gain term)

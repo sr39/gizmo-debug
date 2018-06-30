@@ -144,7 +144,7 @@ int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnode
                 kernel.r = sqrt(r2);
                 if(kernel.r <= 0) continue;
                 u = kernel.r * kernel.hinv;
-                kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 1);
+                kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 0);
                 if((kernel.wk <= 0)||(isnan(kernel.wk))) continue;
                 wk = P[j].Mass * kernel.wk / local.wt_sum; // normalized weight function
                 
