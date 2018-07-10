@@ -32,7 +32,6 @@ struct gasVariables
   double divVel;                  /* s^-1 */
   double doppler_broad;           /* km s^-1. NOTE: this is ONLY from turbulence; thermal broadening is added later. */
   double *isotropic_photon_density;  /* cm^-3 */
-  double *directed_flux_magnitude;   /* Units ?? cm^-2 s^-1?? */
   double *dust_G_parameter;
   double *H2_dissocJ;             /* This is n / (isotropic_photon_density * c),
 				   * where n is photon number density in the 
