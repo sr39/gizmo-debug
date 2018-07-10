@@ -826,12 +826,10 @@ void rearrange_particle_sequence(void)
 		 * a gas particle, so delete its abundance array. */
 		free(ChimesGasVars[j].abundances); 
 		free(ChimesGasVars[j].isotropic_photon_density);
-		free(ChimesGasVars[j].directed_flux_magnitude); 
 		free(ChimesGasVars[j].dust_G_parameter); 
 		free(ChimesGasVars[j].H2_dissocJ); 
 		ChimesGasVars[j].abundances = NULL; 
 		ChimesGasVars[j].isotropic_photon_density = NULL; 
-		ChimesGasVars[j].directed_flux_magnitude = NULL; 
 		ChimesGasVars[j].dust_G_parameter = NULL; 
 		ChimesGasVars[j].H2_dissocJ = NULL; 
 #endif /* CHIMES */
@@ -863,13 +861,11 @@ void rearrange_particle_sequence(void)
 #ifdef CHIMES 
 		free(ChimesGasVars[i].abundances); 
 		free(ChimesGasVars[i].isotropic_photon_density);
-		free(ChimesGasVars[i].directed_flux_magnitude); 
 		free(ChimesGasVars[i].dust_G_parameter); 
 		free(ChimesGasVars[i].H2_dissocJ); 
 		ChimesGasVars[i] = ChimesGasVars[N_gas - 1]; 
 		ChimesGasVars[N_gas - 1].abundances = NULL; 
 		ChimesGasVars[N_gas - 1].isotropic_photon_density = NULL; 
-		ChimesGasVars[N_gas - 1].directed_flux_magnitude = NULL; 
 		ChimesGasVars[N_gas - 1].dust_G_parameter = NULL; 
 		ChimesGasVars[N_gas - 1].H2_dissocJ = NULL; 
 #endif  /* CHIMES */

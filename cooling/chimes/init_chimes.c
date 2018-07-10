@@ -3182,7 +3182,6 @@ void allocate_gas_abundances_memory(struct gasVariables *myGasVars, struct globa
 
   /* We also allocate memory for radiation fields here. */
   myGasVars->isotropic_photon_density = (double *) malloc(myGlobalVars->N_spectra * sizeof(double)); 
-  myGasVars->directed_flux_magnitude = (double *) malloc(myGlobalVars->N_spectra * sizeof(double)); 
   myGasVars->dust_G_parameter = (double *) malloc(myGlobalVars->N_spectra * sizeof(double)); 
   myGasVars->H2_dissocJ = (double *) malloc(myGlobalVars->N_spectra * sizeof(double)); 
 }
@@ -3283,13 +3282,6 @@ void initialise_gas_abundances(struct gasVariables *myGasVars, struct globalVari
     if (myGlobalVars->element_included[i] != 1)
       myGasVars->element_abundances[i + 1] = 0.0;
 
-  /* Initially, the radiation field is
-   * isotropic (specified in the parameter
-   * file) - so set initial directed
-   * flux to zero. */
-  for (i = 0; i < myGlobalVars->N_spectra; i++) 
-    myGasVars->directed_flux_magnitude[i] = 0.0;
-
   // Set constant heating rate to zero. 
   myGasVars->constant_heating_rate = 0.0; 
 
@@ -3305,10 +3297,7 @@ void initialise_gas_abundances(struct gasVariables *myGasVars, struct globalVari
       printf("myGasVars->divVel = %e \n ",myGasVars->divVel);
       printf("myGasVars->doppler_broad = %e \n ",myGasVars->doppler_broad);
       for (i = 0; i < myGlobalVars->N_spectra; i++) 
-	{
-	  printf("myGasVars->isotropic_photon_density_%i = %e \n ", i, myGasVars->isotropic_photon_density[i]);
-	  printf("myGasVars->directed_flux_magnitude_%i = %e \n ", i, myGasVars->directed_flux_magnitude[i]);
-	}
+	printf("myGasVars->isotropic_photon_density_%i = %e \n ", i, myGasVars->isotropic_photon_density[i]);
       printf("myGasVars->metallicity = %e \n ",myGasVars->metallicity);
       printf("myGasVars->cell_size = %e \n ",myGasVars->cell_size);
       printf("myGasVars->hydro_timestep = %e \n ",myGasVars->hydro_timestep);
