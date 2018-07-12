@@ -935,15 +935,6 @@ void init(void)
 #endif
     
     
-    if(RestartFlag == 6)
-    {
-#if defined(BOX_PERIODIC) && defined(TURB_DRIVING_DUMPSPECTRUM)
-        TURB_DRIVING_DUMPSPECTRUM();
-#endif
-        endrun(0);
-    }
-    
-    
     if(RestartFlag == 4)
     {
         All.Time = All.TimeBegin = header.time;

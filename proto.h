@@ -6,9 +6,6 @@
 #ifdef COOLING
 #include "cooling/cooling.h"
 #endif
-#ifdef TURB_DRIVING_DUMPSPECTRUM
-#include "power_spec/TURB_DRIVING_DUMPSPECTRUM_proto.h"
-#endif
 #ifdef BLACK_HOLES
 #include "./galaxy_sf/blackholes/blackhole.h"
 #endif

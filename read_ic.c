@@ -413,14 +413,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_VROT:
             break;
         case IO_VORT:
-#ifdef TURB_DRIVING_DUMPSPECTRUM
-            if(RestartFlag == 6)
-            {
-                for(n = 0; n < pc; n++)
-                    for(k = 0; k < 3; k++)
-                        SphP[offset + n].Vorticity[k] = *fp++;
-            }
-#endif
             break;
         case IO_TRUENGB:
             break;
