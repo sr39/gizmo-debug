@@ -32,8 +32,12 @@
 #include     <srfftw_mpi.h>
 #endif
 #endif
-#else 
-#include <fftw3-mpi.h>
+#define cmplx_re(c) ((c).re)
+#define cmplx_im(c) ((c).im)
+#else  /* FFTW3 */
+#include "myfftw3.h" 
+#define cmplx_re(c) ((c).[0])
+#define cmplx_im(c) ((c).[1])
 #endif
 
 #ifndef GRIDBOOST
@@ -49,43 +53,34 @@ typedef long long large_array_offset;
 typedef unsigned int large_array_offset;
 #endif
 
-#ifdef USE_FFTW3
-    #ifdef DOUBLEPRECISION_FFTW 
-	#define fftw_real		    double 
-	#define MPI_TYPE_FFTW		    MPI_DOUBLE 
-    #else 
-	#define fftw_real		    float 
-	#define MPI_TYPE_FFTW		    MPI_FLOAT 
-	#define fftw_complex		    fftwf_complex 
-	#define fftw_mpi_init		    fftwf_mpi_init
-	#define fftw_plan		    fftwf_plan 
-	#define fftw_mpi_local_size_3d      fftwf_mpi_local_size_3d 
-	#define fftw_mpi_plan_dft_r2c_3d    fftwf_mpi_plan_dft_r2c_3d 
-	#define fftw_mpi_plan_dft_c2r_3d    fftwf_mpi_plan_dft_c2r_3d 
-	#define fftw_execute		    fftwf_execute 
-	#define fftw_destroy_plan	    fftwf_destroy_plan
-    #endif
-#endif
-
 #define d_fftw_real fftw_real
 
 #ifndef USE_FFTW3
 static rfftwnd_mpi_plan fft_forward_plan, fft_inverse_plan;
 #else 
 static fftw_plan fft_forward_plan, fft_inverse_plan;
+static fftw_plan fft_forward_kernel0_plan, fft_forward_kernel1_plan; 
+#ifdef DM_SCALARFIELD_SCREENING
+static fftw_plan fft_forward_kernel_scalarfield0_plan, fft_forward_kernel_scalarfield1_plan; 
+#endif
 #endif
 
 static int slab_to_task[GRID];
+#ifndef USE_FFTW3
 static int *slabs_per_task;
 static int *first_slab_of_task;
+#endif
 
 #ifndef USE_FFTW3
 static int slabstart_x, nslab_x, slabstart_y, nslab_y;
-
 static int fftsize, maxfftsize;
 #else 
+static ptrdiff_t *slabs_per_task;
+static ptrdiff_t *first_slab_of_task;
+
 static ptrdiff_t slabstart_x, nslab_x, slabstart_y, nslab_y; 
-static ptrdiff_t fftsize, maxftsize; 
+static ptrdiff_t fftsize, maxfftsize;
+static MPI_Datatype MPI_TYPE_PTRDIFF; 
 #endif
 
 static fftw_real *kernel[2], *rhogrid, *forcegrid, *workspace;
@@ -268,8 +263,9 @@ void pm_init_nonperiodic(void)
   double bytes_tot = 0;
   size_t bytes;
 
-  /* Set up the FFTW plan files. */
 #ifndef USE_FFTW3
+  /* Set up the FFTW plan files. */
+
   fft_forward_plan = rfftw3d_mpi_create_plan(MPI_COMM_WORLD, GRID, GRID, GRID,
 					     FFTW_REAL_TO_COMPLEX, FFTW_ESTIMATE | FFTW_IN_PLACE);
   fft_inverse_plan = rfftw3d_mpi_create_plan(MPI_COMM_WORLD, GRID, GRID, GRID,
@@ -279,16 +275,20 @@ void pm_init_nonperiodic(void)
 
   rfftwnd_mpi_local_sizes(fft_forward_plan, &nslab_x, &slabstart_x, &nslab_y, &slabstart_y, &fftsize); 
 #else 
-  fftw_mpi_init(); 
+  // define MPI_TYPE_PTRDIFF */
+
+  if (sizeof(ptrdiff_t) == sizeof(long long)) {
+    MPI_TYPE_PTRDIFF = MPI_LONG_LONG; 
+  } else if (sizeof(ptrdiff_t) == sizeof(long)) {
+    MPI_TYPE_PTRDIFF = MPI_LONG; 
+  } else if (sizeof(ptrdiff_t) == sizeof(int)) {
+    MPI_TYPE_PTRDIFF = MPI_INT; 
+  }
 
   /* get local data size and allocate */
-  ///KOKODAY
-  fftsize = fftw_mpi_local_size_3d(GRID, GRID, GRID2, MPI_COMM_WORLD, &nslab_x, &slabstar_x); 
-  nslab_y = nslba_x; 
-  slabstart_y = slabstar_x; 
-
-
-
+  //fftsize = fftw_mpi_local_size_3d(GRID, GRID, GRID2, MPI_COMM_WORLD, &nslab_x, &slabstar_x); 
+  fftsize = fftw_mpi_local_size_3d_transposed(GRID, GRID, GRID2, MPI_COMM_WORLD, 
+	  &nslab_x, &slabstar_x, &nslab_y, &slabstart_y); 
 #endif
 
 
@@ -300,6 +300,7 @@ void pm_init_nonperiodic(void)
 
   MPI_Allreduce(slab_to_task_local, slab_to_task, GRID, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
+#ifndef USE_FFTW3
   slabs_per_task = (int *) mymalloc("slabs_per_task", NTask * sizeof(int));
   MPI_Allgather(&nslab_x, 1, MPI_INT, slabs_per_task, 1, MPI_INT, MPI_COMM_WORLD);
 
@@ -307,6 +308,16 @@ void pm_init_nonperiodic(void)
   MPI_Allgather(&slabstart_x, 1, MPI_INT, first_slab_of_task, 1, MPI_INT, MPI_COMM_WORLD);
 
   MPI_Allreduce(&fftsize, &maxfftsize, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+#else 
+  slabs_per_task = (ptrdiff_t *) mymalloc("slabs_per_task", NTask * sizeof(ptrdiff_t));
+  MPI_Allgather(&nslab_x, 1, MPI_TYPE_PTRDIFF, slabs_per_task, 1, MPI_TYPE_PTRDIFF, MPI_COMM_WORLD);
+
+  first_slab_of_task = (ptrdiff_t *) mymalloc("first_slab_of_task", NTask * sizeof(ptrdiff_t));
+  MPI_Allgather(&slabstart_x, 1, MPI_TYPE_PTRDIFF, first_slab_of_task, 1, MPI_TYPE_PTRDIFF, MPI_COMM_WORLD);
+
+  MPI_Allreduce(&fftsize, &maxfftsize, 1, MPI_TYPE_PTRDIFF, MPI_MAX, MPI_COMM_WORLD);
+#endif
+
 
   /* now allocate memory to hold the FFT fields */
 
@@ -318,6 +329,11 @@ void pm_init_nonperiodic(void)
     }
   bytes_tot += bytes;
   fft_of_kernel[0] = (fftw_complex *) kernel[0];
+
+#ifdef USE_FFTW3 
+  fft_forward_kernel0_plan = fftw_mpi_plan_dft_r2c_3d(GRID, GRID, GRID, kernel[0], fft_of_kernel[0], 
+	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT); 
+#endif
 #ifdef DM_SCALARFIELD_SCREENING
   if(!
      (kernel_scalarfield[0] =
@@ -329,6 +345,12 @@ void pm_init_nonperiodic(void)
     }
   bytes_tot += bytes;
   fft_of_kernel_scalarfield[0] = (fftw_complex *) kernel_scalarfield[0];
+
+#ifdef USE_FFTW3 
+  fft_forward_kernel_scalarfield0_plan = fftw_mpi_plan_dft_r2c_3d(GRID, GRID, GRID, 
+	  kernel_scalarfield[0], fft_of_kernel_scalarfield[0], 
+	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT); 
+#endif
 #endif
 #endif
 
@@ -340,6 +362,12 @@ void pm_init_nonperiodic(void)
     }
   bytes_tot += bytes;
   fft_of_kernel[1] = (fftw_complex *) kernel[1];
+
+#ifdef USE_FFTW3 
+  fft_forward_kernel1_plan = fftw_mpi_plan_dft_r2c_3d(GRID, GRID, GRID, kernel[1], fft_of_kernel[1], 
+	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT); 
+#endif
+ 
 #ifdef DM_SCALARFIELD_SCREENING
   if(!
      (kernel_scalarfield[1] =
@@ -351,11 +379,39 @@ void pm_init_nonperiodic(void)
     }
   bytes_tot += bytes;
   fft_of_kernel_scalarfield[1] = (fftw_complex *) kernel_scalarfield[1];
+
+#ifdef USE_FFTW3 
+  fft_forward_kernel_scalarfield1_plan = fftw_mpi_plan_dft_r2c_3d(GRID, GRID, GRID, 
+	  kernel_scalarfield[1], fft_of_kernel_scalarfield[1], 
+	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT); 
+#endif
 #endif
 #endif
 
+#ifndef USE_FFTW3
   if(ThisTask == 0)
     printf("\nAllocated %g MByte for FFT kernel(s).\n\n", bytes_tot / (1024.0 * 1024.0));
+
+#else 
+  
+  if(!(rhogrid = (fftw_real *) mymalloc("rhogrid", bytes = maxfftsize * sizeof(d_fftw_real))))
+    {
+      printf("failed to allocate memory for `FFT-rhogrid' (%g MB).\n", bytes / (1024.0 * 1024.0));
+      endrun(1);
+    }
+  bytes_tot += bytes;
+
+  if(ThisTask == 0)
+    printf("\nAllocated %g MByte for FFT kernel(s) and rhogrid.\n\n", bytes_tot / (1024.0 * 1024.0));
+
+  fft_of_rhogrid = (fftw_complex *) rhogrid;
+
+  fft_forward_plan = fftw_mpi_plan_dft_r2c_3d(GRID, GRID, GRID, rhogrid, fft_of_rhogrid, 
+	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT); 
+
+  fft_inverse_plan = fftw_mpi_plan_dft_c2r_3d(GRID, GRID, GRID, fft_of_rhogrid, rhogrid, 
+	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_IN); 
+#endif
 
 }
 
@@ -371,6 +427,7 @@ void pm_init_nonperiodic_allocate(void)
   double bytes_tot = 0;
   size_t bytes;
 
+#ifndef USE_FFTW3
   if(!(rhogrid = (fftw_real *) mymalloc("rhogrid", bytes = maxfftsize * sizeof(d_fftw_real))))
     {
       printf("failed to allocate memory for `FFT-rhogrid' (%g MB).\n", bytes / (1024.0 * 1024.0));
@@ -379,6 +436,7 @@ void pm_init_nonperiodic_allocate(void)
   bytes_tot += bytes;
 
   fft_of_rhogrid = (fftw_complex *) rhogrid;
+#endif
 
   if(!(forcegrid = (fftw_real *) mymalloc("forcegrid", bytes = maxfftsize * sizeof(d_fftw_real))))
     {
@@ -438,7 +496,9 @@ void pm_init_nonperiodic_free(void)
   myfree(part_sortindex);
   myfree(part);
   myfree(forcegrid);
+#ifndef USE_FFTW3
   myfree(rhogrid);
+#endif
 }
 
 
@@ -505,9 +565,16 @@ void pm_setup_nonperiodic_kernel(void)
 
   /* do the forward transform of the kernel */
 
+#ifndef USE_FFTW3
   rfftwnd_mpi(fft_forward_plan, 1, kernel[0], workspace, FFTW_TRANSPOSED_ORDER);
 #ifdef DM_SCALARFIELD_SCREENING
   rfftwnd_mpi(fft_forward_plan, 1, kernel_scalarfield[0], workspace, FFTW_TRANSPOSED_ORDER);
+#endif
+#else  /* FFTW3 */
+  fftw_execute(fft_forward_kernel0_plan); 
+#ifdef DM_SCALARFIELD_SCREENING
+  fftw_execute(fft_forward_kernel_scalarfield0_plan); 
+#endif
 #endif
 #endif
 
@@ -564,9 +631,16 @@ void pm_setup_nonperiodic_kernel(void)
   report_memory_usage(&HighMark_pmnonperiodic, "PM_NONPERIODIC_SETUP");
 
   /* do the forward transform of the kernel */
+#ifndef USE_FFTW3
   rfftwnd_mpi(fft_forward_plan, 1, kernel[1], workspace, FFTW_TRANSPOSED_ORDER);
 #ifdef DM_SCALARFIELD_SCREENING
   rfftwnd_mpi(fft_forward_plan, 1, kernel_scalarfield[1], workspace, FFTW_TRANSPOSED_ORDER);
+#endif
+#else /* FFTW3 */
+  fftw_execute(fft_forward_kernel1_plan); 
+#ifdef DM_SCALARFIELD_SCREENING
+  fftw_execute(fft_forward_kernel_scalarfield1_plan); 
+#endif
 #endif
 #endif
 
@@ -614,19 +688,21 @@ void pm_setup_nonperiodic_kernel(void)
 
 	      ip = GRID * (GRID / 2 + 1) * (y - slabstart_y) + (GRID / 2 + 1) * x + z;
 #if !defined(BOX_PERIODIC)
-	      fft_of_kernel[0][ip].re *= ff;
-	      fft_of_kernel[0][ip].im *= ff;
+	      cmplx_re(fft_of_kernel[0][ip]) *= ff;
+	      cmplx_im(fft_of_kernel[0][ip]) *= ff;
 #ifdef DM_SCALARFIELD_SCREENING
-	      fft_of_kernel_scalarfield[0][ip].re *= ff;
-	      fft_of_kernel_scalarfield[0][ip].im *= ff;
+	      cmplx_re(fft_of_kernel_scalarfield[0][ip]) *= ff;
+	      cmplx_im(fft_of_kernel_scalarfield[0][ip]) *= ff;
+#endif
 #endif
 #endif
 #if defined(PM_PLACEHIGHRESREGION)
-	      fft_of_kernel[1][ip].re *= ff;
-	      fft_of_kernel[1][ip].im *= ff;
+	      cmplx_re(fft_of_kernel[1][ip]) *= ff;
+	      cmplx_im(fft_of_kernel[1][ip]) *= ff;
+#endif
 #ifdef DM_SCALARFIELD_SCREENING
-	      fft_of_kernel_scalarfield[1][ip].re *= ff;
-	      fft_of_kernel_scalarfield[1][ip].im *= ff;
+	      cmplx_re(fft_of_kernel_scalarfield[1][ip]) *= ff;
+	      cmplx_im(fft_of_kernel_scalarfield[1][ip]) *= ff;
 #endif
 #endif
 	    }
@@ -950,7 +1026,11 @@ int pmforce_nonperiodic(int grnr)
 
       /* Do the FFT of the density field */
 
+#ifndef USE_FFTW3
       rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
+#else 
+      fftw_execute(fft_forward_plan); 
+#endif
 
       /* multiply with the Fourier transform of the Green's function (kernel) */
 
@@ -964,27 +1044,27 @@ int pmforce_nonperiodic(int grnr)
 	      if(phase == 1)
 		{
 		  re =
-		    fft_of_rhogrid[ip].re * fft_of_kernel_scalarfield[grnr][ip].re -
-		    fft_of_rhogrid[ip].im * fft_of_kernel_scalarfield[grnr][ip].im;
+		    cmplx_re(fft_of_rhogrid[ip]) * cmplx_re(fft_of_kernel_scalarfield[grnr][ip]) -
+		    cmplx_im(fft_of_rhogrid[ip]) * cmplx_im(fft_of_kernel_scalarfield[grnr][ip]);
 
 		  im =
-		    fft_of_rhogrid[ip].re * fft_of_kernel_scalarfield[grnr][ip].im +
-		    fft_of_rhogrid[ip].im * fft_of_kernel_scalarfield[grnr][ip].re;
+		    cmplx_re(fft_of_rhogrid[ip]) * cmplx_im(fft_of_kernel_scalarfield[grnr][ip]) +
+		    cmplx_im(fft_of_rhogrid[ip]) * cmplx_re(fft_of_kernel_scalarfield[grnr][ip]);
 		}
 	      else
 #endif
 		{
 		  re =
-		    fft_of_rhogrid[ip].re * fft_of_kernel[grnr][ip].re -
-		    fft_of_rhogrid[ip].im * fft_of_kernel[grnr][ip].im;
+		    cmplx_re(fft_of_rhogrid[ip]) * cmplx_re(fft_of_kernel[grnr][ip]) -
+		    cmplx_im(fft_of_rhogrid[ip]) * cmplx_im(fft_of_kernel[grnr][ip]);
 
 		  im =
-		    fft_of_rhogrid[ip].re * fft_of_kernel[grnr][ip].im +
-		    fft_of_rhogrid[ip].im * fft_of_kernel[grnr][ip].re;
+		    cmplx_re(fft_of_rhogrid[ip]) * cmplx_im(fft_of_kernel[grnr][ip]) +
+		    cmplx_im(fft_of_rhogrid[ip]) * cmplx_re(fft_of_kernel[grnr][ip]);
 		}
 
-	      fft_of_rhogrid[ip].re = re;
-	      fft_of_rhogrid[ip].im = im;
+	      cmplx_re(fft_of_rhogrid[ip]) = re;
+	      cmplx_im(fft_of_rhogrid[ip]) = im;
 	    }
 
       /* get the potential by inverse FFT */

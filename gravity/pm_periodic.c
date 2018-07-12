@@ -20,6 +20,7 @@
 #ifdef PMGRID
 #ifdef BOX_PERIODIC
 
+#ifndef USE_FFTW3
 #ifdef NOTYPEPREFIX_FFTW
 #include        <rfftw_mpi.h>
 #else
@@ -28,6 +29,9 @@
 #else
 #include     <srfftw_mpi.h>
 #endif
+#endif
+#else 
+#include "myfftw3.h"
 #endif
 
 #define  PMGRID2 (2*(PMGRID/2 + 1))
@@ -40,15 +44,29 @@ typedef unsigned int large_array_offset;
 
 #define d_fftw_real fftw_real
 
+#ifndef USE_FFTW3
 static rfftwnd_mpi_plan fft_forward_plan, fft_inverse_plan;
+#else 
+static fftw_plan fft_forward_plan, fft_inverse_plan;
+#endif
+
 
 static int slab_to_task[PMGRID];
+#ifndef USE_FFTW3
 static int *slabs_per_task;
 static int *first_slab_of_task;
+#endif
 
+#ifndef USE_FFTW3
 static int slabstart_x, nslab_x, slabstart_y, nslab_y, smallest_slab;
-
 static int fftsize, maxfftsize;
+#else 
+static ptrdiff_t *slabs_per_task;
+static ptrdiff_t *first_slab_of_task;
+static ptrdiff_t slabstart_x, nslab_x, slabstart_y, nslab_y; 
+static ptrdiff_t fftsize, maxfftsize;
+static MPI_Datatype MPI_TYPE_PTRDIFF; 
+#endif
 
 static fftw_real *rhogrid, *forcegrid, *workspace;
 static d_fftw_real *d_rhogrid, *d_forcegrid, *d_workspace;
@@ -97,6 +115,7 @@ void pm_init_periodic(void)
   All.Asmth[0] = ASMTH * All.BoxSize / PMGRID; /* note that these routines REQUIRE a uniform (BOX_LONG_X=BOX_LONG_Y=BOX_LONG_Z=1) box, so we can just use 'BoxSize' */
   All.Rcut[0] = RCUT * All.Asmth[0];
 
+#ifndef USE_FFTW3
   /* Set up the FFTW plan files. */
 
   fft_forward_plan = rfftw3d_mpi_create_plan(MPI_COMM_WORLD, PMGRID, PMGRID, PMGRID,
@@ -107,6 +126,23 @@ void pm_init_periodic(void)
   /* Workspace out the ranges on each processor. */
 
   rfftwnd_mpi_local_sizes(fft_forward_plan, &nslab_x, &slabstart_x, &nslab_y, &slabstart_y, &fftsize);
+#else 
+  /* define MPI_TYPE_PTRDIFF */
+
+  if (sizeof(ptrdiff_t) == sizeof(long long)) {
+    MPI_TYPE_PTRDIFF = MPI_LONG_LONG; 
+  } else if (sizeof(ptrdiff_t) == sizeof(long)) {
+    MPI_TYPE_PTRDIFF = MPI_LONG; 
+  } else if (sizeof(ptrdiff_t) == sizeof(int)) {
+    MPI_TYPE_PTRDIFF = MPI_INT; 
+  }
+
+  /* get local data size and allocate */
+
+  fftsize = fftw_mpi_local_size_3d(PMGRID, PMGRID, PMGRID2, MPI_COMM_WORLD, &nslab_x, &slabstar_x); 
+  nslab_y = nslab_x; 
+  slabstar_y = slabstar_x; 
+#endif
 
   for(i = 0; i < PMGRID; i++)
     slab_to_task_local[i] = 0;
@@ -116,7 +152,11 @@ void pm_init_periodic(void)
 
   MPI_Allreduce(slab_to_task_local, slab_to_task, PMGRID, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
+#ifndef USE_FTW3 
+  /* not used */
+  /*
   MPI_Allreduce(&nslab_x, &smallest_slab, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+  */
 
   slabs_per_task = (int *) mymalloc("slabs_per_task", NTask * sizeof(int));
   MPI_Allgather(&nslab_x, 1, MPI_INT, slabs_per_task, 1, MPI_INT, MPI_COMM_WORLD);
@@ -127,6 +167,16 @@ void pm_init_periodic(void)
   to_slab_fac = PMGRID / All.BoxSize;
 
   MPI_Allreduce(&fftsize, &maxfftsize, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+#else 
+  slabs_per_task = (ptrdiff_t *) mymalloc("slabs_per_task", NTask * sizeof(ptrdiff_t));
+  MPI_Allgather(&nslab_x, 1, MPI_TYPE_PTRDIFF, slabs_per_task, 1, MPI_TYPE_PTRDIFF, MPI_COMM_WORLD);
+
+  first_slab_of_task = (ptrdiff_t *) mymalloc("first_slab_of_task", NTask * sizeof(ptrdiff_t));
+  MPI_Allgather(&slabstart_x, 1, MPI_TYPE_PTRDIFF, first_slab_of_task, 1, MPI_TYPE_PTRDIFF, MPI_COMM_WORLD);
+
+  MPI_Allreduce(&fftsize, &maxfftsize, 1, MPI_TYPE_PTRDIFF, MPI_MAX, MPI_COMM_WORLD);
+#endif
+
 
 #ifdef KSPACE_NEUTRINOS
   kspace_neutrinos_init();
