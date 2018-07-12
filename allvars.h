@@ -1938,15 +1938,6 @@ extern struct global_data_all_processes
   int StSeed;
 #endif
 
-#ifdef TURB_DRIVING_DUMPSPECTRUM 
-  double BoxWidth;     /*lenght of the transformation box side*/
-  double BoxCenter_x;  /*x coordinate of the box center*/
-  double BoxCenter_y;  /*y coordinate of the box center*/
-  double BoxCenter_z;  /*z coordinate of the box center*/
-  int FourierGrid;     /*dimension of the Fourier transform (actual size is FourierGrid^3)*/
-#endif
-
-    
 #if defined(COOLING) && defined(COOL_GRACKLE)
     code_units GrackleUnits;
 #endif

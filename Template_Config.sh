@@ -141,7 +141,6 @@
 ####################################################################################################
 #TURB_DRIVING                   # turns on turbulent driving/stirring. see begrun for parameters that must be set
 #TURB_DRIVING_SPECTRUMGRID=128  # activates on-the-fly calculation of the turbulent velocity, vorticity, and smoothed-velocity power spectra, evaluated on a grid of linear-size TURB_DRIVING_SPECTRUMGRID elements
-#TURB_DRIVING_DUMPSPECTRUM      # compiles in a code module that allows via restart-flag 6 the calculation (+immediate output) of a gas velocity power spectrum of a snapshot with an adjustable box (user defined center and size)
 ####################################################################################################
 
 

@@ -1698,28 +1698,6 @@ void read_parameter_file(char *fname)
          */
 #endif
 
-#ifdef TURB_DRIVING_DUMPSPECTRUM
-      strcpy(tag[nt], "BoxWidth");
-      addr[nt] = &All.BoxWidth;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "BoxCenter_x");
-      addr[nt] = &All.BoxCenter_x;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "BoxCenter_y");
-      addr[nt] = &All.BoxCenter_y;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "BoxCenter_z");
-      addr[nt] = &All.BoxCenter_z;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "TransformSize");
-      addr[nt] = &All.FourierGrid;
-      id[nt++] = INT;
-#endif
-
 
         if((fd = fopen(fname, "r")))
         {
