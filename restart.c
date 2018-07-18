@@ -74,7 +74,7 @@ void restart(int modus)
             sprintf(buf, "%s/restartfiles/%s.%d", All.OutputDir, All.RestartFile, i_Task_iter);
             sprintf(buf_bak, "%s/restartfiles/%s.%d.bak", All.OutputDir, All.RestartFile, i_Task_iter);
             if(!(fd = fopen(buf, "r"))) {regular_restarts_are_valid=0;} else {fclose(fd);} // check if regular restart exists
-            if(!(fd = fopen(buf_bak, "r"))) {regular_restarts_are_valid=0;} else {fclose(fd);} // check if backup restart exists
+            if(!(fd = fopen(buf_bak, "r"))) {backup_restarts_are_valid=0;} else {fclose(fd);} // check if backup restart exists
         }
 #endif
         if(ThisTask == 0)
