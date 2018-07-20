@@ -329,6 +329,17 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     
     // exchange term between eCR and eA, strictly lossy for eA [Alfven] terms [the loss terms proportional to (e_cr+P_cr), in the Thomas+Pfrommer notation]
     fac = -fac_Omega * vA2_c2 * GAMMA_COSMICRAY * (eCR/E_B) * dt_entr; if((fac<-log(100.))||(!isfinite(fac))) {fac=-log(100.);} // prop to eA_pm = loss term, so solve that exactly, then add to ECR (gain term)
+    { // calculate minimum eA to enforce; needed because if eA is identically zero, nothing can get amplified, and it will always be zero. but for large enough seed to amplify, results should not depend on seed //
+        double dB2=0,h=Get_Particle_Size(i)*All.cf_atime; int k2;
+        for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {dB2+=SphP[i].Gradients.B[k][k2]*SphP[i].Gradients.B[k][k2];}}
+        dB2=h*sqrt(dB2/9.)*All.cf_a2inv; dB2=DMIN(dB2,Bmag); r_turb_driving=DMAX(h,r_turb_driving); dB2=DMIN(dB2,Bmag*pow(h/r_turb_driving,1./3.)); dB2=dB2*pow(DMIN(clight_code/Omega_gyro,DMIN(h,r_turb_driving))/h,1./3.);
+        // dB2 is now magnetic field extrap to r_gyro
+        dB2 = 0.5 * (dB2*dB2) * P[i].Mass/(SphP[i].Density*All.cf_a3inv); // magnetic energy at this scale, from the above //
+        double epsilon = 1.e-5;
+        dB2 *= epsilon;
+        if(eA[0]<dB2) {eA[0]=dB2;}
+        if(eA[1]<dB2) {eA[1]=dB2;}
+    }
     eCR += (1.-exp(fac)) * (eA[0]+eA[1]); eA[0] *= exp(fac); eA[1] *= exp(fac);
     // exchange term between eCR and eA, need to check which 'side' is lossy [the loss terms proportional to f_cr, in the Thomas+Pfrommer notation]
     fac = fac_Omega * vA2_c2 * (fabs(f_CR)/(MIN_REAL_NUMBER + E_B*vA_code)) * dt_entr; if((fac>log(100.))||(!isfinite(fac))) {fac=log(100.);}  // limit factor
