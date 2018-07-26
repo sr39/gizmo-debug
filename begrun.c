@@ -1847,6 +1847,16 @@ void read_parameter_file(char *fname)
       strcpy(tag[nt], "N_chimes_full_output_freq");
       addr[nt] = &N_chimes_full_output_freq;
       id[nt++] = INT;
+
+#ifdef GALSF_FB_LOCAL_UV_HEATING
+      strcpy(tag[nt], "Chimes_f_esc_ion");
+      addr[nt] = &All.Chimes_f_esc_ion;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "Chimes_f_esc_G0");
+      addr[nt] = &All.Chimes_f_esc_G0;
+      id[nt++] = REAL;
+#endif 
 #endif 
 
 #ifdef STATIC_HERNQUIST_POTENTIAL 

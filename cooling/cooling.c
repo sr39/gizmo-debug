@@ -350,8 +350,21 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) 
       { 
 	ChimesGasVars[target].isotropic_photon_density[kc + 1] = SphP[target].Chimes_fluxPhotIon[kc] / 3.0e10; 
+
+#ifdef CHIMES_HII_REGIONS 
+	if (SphP[target].DelayTimeHII > 0) 
+	  {
+	    ChimesGasVars[target].isotropic_photon_density[kc + 1] += SphP[target].Chimes_fluxPhotIon_HII[kc] / 3.0e10; 
+	    ChimesGasVars[target].dust_G_parameter[kc + 1] = (SphP[target].Chimes_G0[kc] + SphP[target].Chimes_G0_HII[kc]) / DMAX((SphP[target].Chimes_fluxPhotIon[kc] + SphP[target].Chimes_fluxPhotIon_HII[kc]), 1.0e-300); 
+	  }
+	else 
+	  ChimesGasVars[target].dust_G_parameter[kc + 1] = SphP[target].Chimes_G0[kc] / DMAX(SphP[target].Chimes_fluxPhotIon[kc], 1.0e-300); 
+
+	ChimesGasVars[target].H2_dissocJ[kc + 1] = ChimesGasVars[target].dust_G_parameter[kc + 1] * (H2_dissocJ_arr[kc + 1] / dustG_arr[kc + 1]); 
+#else 
 	ChimesGasVars[target].dust_G_parameter[kc + 1] = SphP[target].Chimes_G0[kc] / DMAX(SphP[target].Chimes_fluxPhotIon[kc], 1.0e-300); 
 	ChimesGasVars[target].H2_dissocJ[kc + 1] = ChimesGasVars[target].dust_G_parameter[kc + 1] * (H2_dissocJ_arr[kc + 1] / dustG_arr[kc + 1]); 
+#endif 
       }
 #endif 
 
@@ -376,7 +389,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
 #ifdef CHIMES_SOBOLEV_SHIELDING 
     double surface_density; 
     surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1); 
-    surface_density *= All.cf_a2inv * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm; // converts to cgs
+    surface_density *= All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm; // converts to cgs
     ChimesGasVars[target].cell_size = shielding_length_factor * surface_density / rho_cgs; 
     ChimesGasVars[target].doppler_broad = 7.1;  // km/s. For now, just set this constant. Thermal broadening is also added within CHIMES. 
 #else 

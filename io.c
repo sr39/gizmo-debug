@@ -590,7 +590,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	      {
 #ifdef CHIMES_SOBOLEV_SHIELDING 
 #ifdef COOL_METAL_LINES_BY_SPECIES 
-		*fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(SphP[pindex].Gradients.Density,PPP[pindex].Hsml,SphP[pindex].Density,PPP[pindex].NumNgb,1) * All.cf_a2inv * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm * shielding_length_factor * (1.0 - (P[pindex].Metallicity[0] + P[pindex].Metallicity[1])) / PROTONMASS); 
+		*fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(SphP[pindex].Gradients.Density,PPP[pindex].Hsml,SphP[pindex].Density,PPP[pindex].NumNgb,1) * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm * shielding_length_factor * (1.0 - (P[pindex].Metallicity[0] + P[pindex].Metallicity[1])) / PROTONMASS); 
 #else 
 		*fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(SphP[pindex].Gradients.Density,PPP[pindex].Hsml,SphP[pindex].Density,PPP[pindex].NumNgb,1) * All.cf_a2inv * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm * shielding_length_factor * HYDROGEN_MASSFRAC / PROTONMASS); 
 #endif // COOL_MET_LINES_BY_SPECIES 
@@ -616,8 +616,21 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	  for (n = 0; n < pc; pindex++) 
 	    if (P[pindex].Type == type) 
 	      {
+#ifdef CHIMES_HII_REGIONS 
+		if (SphP[pindex].DelayTimeHII > 0) 
+		  {
+		    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		      fp[k] = (MyOutputFloat) (SphP[pindex].Chimes_G0[k] + SphP[pindex].Chimes_G0_HII[k]); 
+		  }
+		else 
+		  {
+		    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		      fp[k] = (MyOutputFloat) SphP[pindex].Chimes_G0[k]; 
+		  }
+#else 
 		for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
 		  fp[k] = (MyOutputFloat) SphP[pindex].Chimes_G0[k]; 
+#endif 
 		fp += CHIMES_LOCAL_UV_NBINS; 
 		n++; 
 	      }
@@ -629,8 +642,22 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	  for (n = 0; n < pc; pindex++) 
 	    if (P[pindex].Type == type) 
 	      {
+#ifdef CHIMES_HII_REGIONS 
+		if (SphP[pindex].DelayTimeHII > 0) 
+		  {
+		    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		      fp[k] = (MyOutputFloat) (SphP[pindex].Chimes_fluxPhotIon[k] + SphP[pindex].Chimes_fluxPhotIon_HII[k]); 
+		  }
+		else 
+		  {
+		    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		      fp[k] = (MyOutputFloat) SphP[pindex].Chimes_fluxPhotIon[k]; 
+		  } 
+#else 
 		for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
 		  fp[k] = (MyOutputFloat) SphP[pindex].Chimes_fluxPhotIon[k]; 
+#endif 
+
 		fp += CHIMES_LOCAL_UV_NBINS; 
 		n++; 
 	      }
@@ -643,28 +670,6 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	    if (P[pindex].Type == type) 
 	      {
                 *fp++ = (MyOutputFloat) P[pindex].DensAroundStar; 
-		n++; 
-	      }
-#endif 
-	  break; 
-
-        case IO_CHIMES_STAR_Z_DENS: 
-#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
-	  for (n = 0; n < pc; pindex++) 
-	    if (P[pindex].Type == type) 
-	      {
-                *fp++ = (MyOutputFloat) P[pindex].MetalDensAroundStar; 
-		n++; 
-	      }
-#endif 
-	  break; 
-
-        case IO_CHIMES_STAR_HI_DENS: 
-#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
-	  for (n = 0; n < pc; pindex++) 
-	    if (P[pindex].Type == type) 
-	      {
-                *fp++ = (MyOutputFloat) P[pindex].HIDensAroundStar; 
 		n++; 
 	      }
 #endif 
@@ -1820,24 +1825,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             break;
 #endif 
 
-        case IO_CHIMES_STAR_Z_DENS: 
-#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
-            if(mode)
-                bytes_per_blockelement = sizeof(MyInputFloat);
-            else
-                bytes_per_blockelement = sizeof(MyOutputFloat);
-            break;
-#endif 
-
-        case IO_CHIMES_STAR_HI_DENS: 
-#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
-            if(mode)
-                bytes_per_blockelement = sizeof(MyInputFloat);
-            else
-                bytes_per_blockelement = sizeof(MyOutputFloat);
-            break;
-#endif 
-
         case IO_CHIMES_DELAY_HII: 
 #ifdef CHIMES_OUTPUT_DELAY_TIME_HII 
             if(mode)
@@ -2161,22 +2148,6 @@ int get_values_per_blockelement(enum iofields blocknr)
 	  break; 
 
         case IO_CHIMES_STAR_DENS: 
-#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
-	  values = 1; 
-#else 
-	  values = 0; 
-#endif 
-	  break; 
-
-        case IO_CHIMES_STAR_Z_DENS: 
-#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
-	  values = 1; 
-#else 
-	  values = 0; 
-#endif 
-	  break; 
-
-        case IO_CHIMES_STAR_HI_DENS: 
 #ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
 	  values = 1; 
 #else 
@@ -2518,36 +2489,6 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
 	  return nngb; 
 	  break; 
 
-        case IO_CHIMES_STAR_Z_DENS: 
-	  nngb = nstars; 
-	  typelist[0] = 0; 
-	  typelist[1] = 0; 
-	  typelist[5] = 0; 
-	  if (All.ComovingIntegrationOn) 
-	    {
-	      typelist[2] = 0; 
-	      typelist[3] = 0; 
-	    } 
-	  else 
-	    nngb += header.npart[2] + header.npart[3]; 
-	  return nngb; 
-	  break; 
-
-        case IO_CHIMES_STAR_HI_DENS: 
-	  nngb = nstars; 
-	  typelist[0] = 0; 
-	  typelist[1] = 0; 
-	  typelist[5] = 0; 
-	  if (All.ComovingIntegrationOn) 
-	    {
-	      typelist[2] = 0; 
-	      typelist[3] = 0; 
-	    } 
-	  else 
-	    nngb += header.npart[2] + header.npart[3]; 
-	  return nngb; 
-	  break; 
-
         case IO_CHIMES_DELAY_HII: 
 	  for (i = 1; i < 6; i++) 
 	    typelist[i] = 0; 
@@ -2753,22 +2694,6 @@ int blockpresent(enum iofields blocknr)
 	  break; 
 
         case IO_CHIMES_STAR_DENS:
-#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
-	  return 1;
-#else 
-	  return 0; 
-#endif 
-	  break; 
-
-        case IO_CHIMES_STAR_Z_DENS:
-#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
-	  return 1;
-#else 
-	  return 0; 
-#endif 
-	  break; 
-
-        case IO_CHIMES_STAR_HI_DENS:
 #ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
 	  return 1;
 #else 
@@ -3414,12 +3339,6 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_CHIMES_STAR_DENS: 
 	  strncpy(label, "CHDE", 4); 
 	  break; 
-        case IO_CHIMES_STAR_Z_DENS: 
-	  strncpy(label, "CHZD", 4); 
-	  break; 
-        case IO_CHIMES_STAR_HI_DENS: 
-	  strncpy(label, "CHHD", 4); 
-	  break; 
         case IO_CHIMES_DELAY_HII: 
 	  strncpy(label, "CHII", 4); 
 	  break; 
@@ -3814,12 +3733,6 @@ void get_dataset_name(enum iofields blocknr, char *buf)
 	  break; 
         case IO_CHIMES_STAR_DENS: 
 	    strcpy(buf, "DensAroundStar"); 
-	    break; 
-        case IO_CHIMES_STAR_Z_DENS: 
-	    strcpy(buf, "MetalDensAroundStar"); 
-	    break; 
-        case IO_CHIMES_STAR_HI_DENS: 
-	    strcpy(buf, "HIDensAroundStar"); 
 	    break; 
         case IO_CHIMES_DELAY_HII: 
 	    strcpy(buf, "DelayTimeHII"); 
