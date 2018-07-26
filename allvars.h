@@ -888,9 +888,6 @@ typedef unsigned long long peanokey;
 #define KAPPA_IR 10.0   /* in cm^2/g for solar abundances */
 #define KAPPA_OP 180.0
 #define KAPPA_UV 1800.0
-#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
-#define KAPPA_EUV 3.7e6  /* Gas opacity, for ionising radiation */ 
-#endif 
 
 #ifdef GALSF_FB_HII_HEATING
 #define HIIRegion_Temp 1.0e4 /* temperature (in K) of heated gas */
@@ -1518,6 +1515,10 @@ extern struct global_data_all_processes
   double MinGasTemp;		/*!< may be used to set a floor for the gas temperature */
 #ifdef CHIMES 
   int ChimesThermEvolOn;        /*!< Flag to determine whether to evolve the temperature in CHIMES. */ 
+#ifdef GALSF_FB_LOCAL_UV_HEATING
+  double Chimes_f_esc_ion; 
+  double Chimes_f_esc_G0; 
+#endif
 #endif 
 
   double MinEgySpec;		/*!< the minimum allowed temperature expressed as energy per unit mass */
@@ -2117,11 +2118,8 @@ extern ALIGN(32) struct particle_data
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
     MyFloat DensAroundStar;         /*!< gas density in the neighborhood of the collisionless particle (evaluated from neighbors) */
     MyFloat GradRho[3];             /*!< gas density gradient evaluated simply from the neighboring particles, for collisionless centers */
-#if defined METALS && (defined(EXTRA_SNE_OUTPUT) || defined(CHIMES_Z_DEPENDENT_TAU)) 
+#if defined METALS && defined(EXTRA_SNE_OUTPUT)
     MyFloat MetalDensAroundStar;    /*!< Density of metals around star particle (evaluated from neighbours). */ 
-#endif 
-#ifdef CHIMES_HI_DEPENDENT_TAU_EUV 
-    MyFloat HIDensAroundStar; 
 #endif 
 #endif
 #if defined(RT_SOURCE_INJECTION)
@@ -2406,6 +2404,10 @@ extern struct sph_particle_data
 #ifdef CHIMES 
     double Chimes_G0[CHIMES_LOCAL_UV_NBINS];    /*!< 6-13.6 eV flux, in Habing units */ 
     double Chimes_fluxPhotIon[CHIMES_LOCAL_UV_NBINS];  /*!< ionising flux (>13.6 eV), in cm^-2 s^-1 */ 
+#ifdef CHIMES_HII_REGIONS 
+  double Chimes_G0_HII[CHIMES_LOCAL_UV_NBINS]; 
+  double Chimes_fluxPhotIon_HII[CHIMES_LOCAL_UV_NBINS]; 
+#endif 
 #endif 
 #endif
 #ifdef BH_COMPTON_HEATING
@@ -2928,8 +2930,6 @@ enum iofields
   IO_CHIMES_FLUX_G0, 
   IO_CHIMES_FLUX_ION, 
   IO_CHIMES_STAR_DENS,
-  IO_CHIMES_STAR_Z_DENS, 
-  IO_CHIMES_STAR_HI_DENS,  
   IO_CHIMES_DELAY_HII, 
 #endif 
   IO_LASTENTRY			/* This should be kept - it signals the end of the list */

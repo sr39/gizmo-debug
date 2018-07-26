@@ -427,6 +427,7 @@ double INLINE_FUNC Get_Particle_Expected_Area(double h)
 double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h)
 {
     double gradrho_mag;
+
     if(rho<=0)
     {
         gradrho_mag = 0;

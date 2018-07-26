@@ -122,15 +122,6 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
       
 	double tau_uv = sigma_eff*KAPPA_UV; double tau_op = sigma_eff*KAPPA_OP;
 
-#ifdef CHIMES_Z_DEPENDENT_TAU 
-	double Z_around_star = P[i].MetalDensAroundStar / (P[i].DensAroundStar + 1.0e-100); // The 1e-100 prevents division by zero 
-
-	// Scale tau_uv and tau_op by the gas metallicity around the 
-	// star, with a floor of 1e-3 Zsol 
-	tau_uv *= (1.0e-3 + (Z_around_star / All.SolarAbundances[0])); 
-	tau_op *= (1.0e-3 + (Z_around_star / All.SolarAbundances[0])); 
-#endif 	
-
         f_uv = (1-f_op)*(All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV)/(1+0.8*tau_uv+0.85*tau_uv*tau_uv));
         f_op *= All.PhotonMomentum_fOPT + (1-All.PhotonMomentum_fOPT)/(1+0.8*tau_op+0.85*tau_op*tau_op);
         /*
@@ -169,19 +160,9 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
 	    chimes_lum_G0[j] = 0.0; 
 	    chimes_lum_ion[j] = 0.0; 
 	  }
-	
-	double tau_euv = sigma_eff * KAPPA_EUV; 
 
-#ifdef CHIMES_HI_DEPENDENT_TAU_EUV 
-	// fHI here is M_HI / M_total, where total is the mass of hydrogen + helium + metals 
-	double fHI_around_star = P[i].HIDensAroundStar / (P[i].DensAroundStar + 1.0e-100); // The 1e-100 prevents division by zero 
-
-	// Scale tau_euv by the HI fraction around the star. 
-	tau_euv *= fHI_around_star; 
-#endif 	
-
-	chimes_lum_G0[age_bin] = chimes_G0_luminosity(star_age * 1000.0, stellar_mass) * exp(-tau_uv); 
-	chimes_lum_ion[age_bin] = chimes_ion_luminosity(star_age * 1000.0, stellar_mass) * exp(-tau_euv); 
+	chimes_lum_G0[age_bin] = chimes_G0_luminosity(star_age * 1000.0, stellar_mass) * All.Chimes_f_esc_G0; 
+	chimes_lum_ion[age_bin] = chimes_ion_luminosity(star_age * 1000.0, stellar_mass) * All.Chimes_f_esc_ion; 
 #endif 
     }
 #endif
