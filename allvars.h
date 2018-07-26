@@ -1519,7 +1519,10 @@ extern struct global_data_all_processes
   double Chimes_f_esc_ion; 
   double Chimes_f_esc_G0; 
 #endif
-#endif 
+#ifdef CHIMES_HII_REGION_REFINEMENT 
+  double Chimes_HII_refine_factor; 
+#endif
+#endif // CHIMES  
 
   double MinEgySpec;		/*!< the minimum allowed temperature expressed as energy per unit mass */
 #ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY

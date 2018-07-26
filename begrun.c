@@ -1857,7 +1857,13 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.Chimes_f_esc_G0;
       id[nt++] = REAL;
 #endif 
+
+#ifdef CHIMES_HII_REGION_REFINEMENT 
+      strcpy(tag[nt], "Chimes_HII_refine_factor");
+      addr[nt] = &All.Chimes_HII_refine_factor;
+      id[nt++] = REAL;
 #endif 
+#endif  // CHIMES 
 
 #ifdef STATIC_HERNQUIST_POTENTIAL 
       strcpy(tag[nt], "HQ_M200");

@@ -72,6 +72,13 @@ double ref_mass_factor(int i)
     if(ref_factor>1.0) { ref_factor = 1.0; }
 #endif 
 #endif
+
+#ifdef CHIMES_HII_REGION_REFINEMENT 
+    if (P[i].Type == 0) 
+      if (SphP[i].DelayTimeHII > 0.0) 
+	ref_factor /= All.Chimes_HII_refine_factor; 
+#endif 
+
     return ref_factor;
 }
 
