@@ -326,10 +326,10 @@ void chimes_HII_regions_singledomain(void)
   int startnode, numngb, j, n, i, k;
   int do_ionize,dummy, n_iter_HII, age_bin;
   MyFloat h_i, dt, rho;
-  double dx, dy, dz, r2, r, eps_cgs;
+  double dx, dy, dz, r2, r, eps_cgs, prandom;
   double mionizable, mionized, RHII, RHIImax, RHIImin, R_search;
   double stellum, stellum_G0, prob, M_ionizing_emitted;
-  double m_available, m_effective, RHII_initial, RHIImultiplier;
+  double m_available, m_effective, RHIImultiplier;
   double stellar_age, stellar_mass, log_age_Myr;
   
   int max_n_iterations_HII = 5; 
@@ -418,20 +418,12 @@ void chimes_HII_regions_singledomain(void)
 	  if(RHII < RHIImin) 
 	    RHII = RHIImin;
 
-	  RHII_initial = RHII;
-
-	  /* Unlike the standard FIRE routines, we do not use a random number to 
-	   * stochastically ionise gas particles that would only be part-ionised. 
-	   * This could introduce stochastic effects where a given gas particles 
-	   * switches randomly between ionised and neutral from one time-step 
-	   * to the next, which may artificially drive non-equilibrium effects in 
-	   * the chemistry. Instead, if a particle is at least half-ionised, it 
-	   * is flagged as ionised, otherwise it is left un-ionised. We therefore  
-	   * skip star particles that can ionise <10% of its own mass (this is  
+	  /* Skip star particles that can ionise <10% of its own mass (this is  
 	   * lower than 50% here, because there can be some variation between 
 	   * particle masses, and in gas densities). */ 
 	  if(mionizable / P[i].Mass > 0.1) 
-	    {
+	    {	      
+	      prandom = get_random_number(P[i].ID + 7); 
 	      mionized = 0.0;
 	      startnode = All.MaxPart;     /* root node */
 	      dummy = 0; 
@@ -452,7 +444,7 @@ void chimes_HII_regions_singledomain(void)
 			    dx = pos[0] - P[j].Pos[0];
 			    dy = pos[1] - P[j].Pos[1];
 			    dz = pos[2] - P[j].Pos[2];
-#ifdef BOX_PERIODIC               /*  now find the closest image in the given box size  */
+#ifdef BOX_PERIODIC         /*  now find the closest image in the given box size  */
 			    NEAREST_XYZ(dx, dy, dz, 1);
 #endif
 			    r2 = dx * dx + dy * dy + dz * dz;
@@ -474,12 +466,12 @@ void chimes_HII_regions_singledomain(void)
 				  }
 				else 
 				  {
-				    // Not enough to ionise a whole particle. But if 
-				    // we can ionise at least half a particle, flag 
-				    // the whole particle as ionised. 
+				    // Not enough to ionise a whole particle. 
+				    // Use random number to determine whether 
+				    // to ionise. 
 				    prob = m_available/m_effective; 
 				   
-				    if(prob > 0.5) 
+				    if(prandom < prob) 
 				      do_ionize = 1;
 
 				    mionized += prob * m_effective; 
