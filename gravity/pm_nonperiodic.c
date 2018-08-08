@@ -1069,7 +1069,11 @@ int pmforce_nonperiodic(int grnr)
 
       /* get the potential by inverse FFT */
 
+#ifndef USE_FFTW3
       rfftwnd_mpi(fft_inverse_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
+#else 
+      fftw_execute(fft_inverse_plan); 
+#endif
 
       /* Now rhogrid holds the potential */
 
@@ -2400,7 +2404,12 @@ int pmtidaltensor_nonperiodic_diff(int grnr)
 
       /* Do the FFT of the density field */
 
+#ifndef USE_FFTW3
       rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
+#else 
+      fftw_execute(fft_forward_plan); 
+#endif
+
 
       /* multiply with the Fourier transform of the Green's function (kernel) */
 
@@ -2414,32 +2423,36 @@ int pmtidaltensor_nonperiodic_diff(int grnr)
 	      if(phase == 1)
 		{
 		  re =
-		    fft_of_rhogrid[ip].re * fft_of_kernel_scalarfield[grnr][ip].re -
-		    fft_of_rhogrid[ip].im * fft_of_kernel_scalarfield[grnr][ip].im;
+		    cmpx_re(fft_of_rhogrid[ip]) * cmpx_re(fft_of_kernel_scalarfield[grnr][ip]) -
+		    cmpx_im(fft_of_rhogrid[ip]) * cmpx_im(fft_of_kernel_scalarfield[grnr][ip]);
 
 		  im =
-		    fft_of_rhogrid[ip].re * fft_of_kernel_scalarfield[grnr][ip].im +
-		    fft_of_rhogrid[ip].im * fft_of_kernel_scalarfield[grnr][ip].re;
+		    cmpx_re(fft_of_rhogrid[ip]) * cmpx_im(fft_of_kernel_scalarfield[grnr][ip]) +
+		    cmpx_im(fft_of_rhogrid[ip]) * cmpx_re(fft_of_kernel_scalarfield[grnr][ip]);
 		}
 	      else
 #endif
 		{
 		  re =
-		    fft_of_rhogrid[ip].re * fft_of_kernel[grnr][ip].re -
-		    fft_of_rhogrid[ip].im * fft_of_kernel[grnr][ip].im;
+		    cmpx_re(fft_of_rhogrid[ip]) * cmpx_re(fft_of_kernel[grnr][ip]) -
+		    cmpx_im(fft_of_rhogrid[ip]) * cmpx_im(fft_of_kernel[grnr][ip]);
 
 		  im =
-		    fft_of_rhogrid[ip].re * fft_of_kernel[grnr][ip].im +
-		    fft_of_rhogrid[ip].im * fft_of_kernel[grnr][ip].re;
+		    cmpx_re(fft_of_rhogrid[ip]) * cmpx_im(fft_of_kernel[grnr][ip]) +
+		    cmpx_im(fft_of_rhogrid[ip]) * cmpx_re(fft_of_kernel[grnr][ip]);
 		}
 
-	      fft_of_rhogrid[ip].re = re;
-	      fft_of_rhogrid[ip].im = im;
+	      cmpx_re(fft_of_rhogrid[ip]) = re;
+	      cmpx_im(fft_of_rhogrid[ip]) = im;
 	    }
 
       /* get the potential by inverse FFT */
 
+#ifndef USE_FFTW3
       rfftwnd_mpi(fft_inverse_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
+#else 
+      fftw_execute(fft_inverse_plan); 
+#endif
 
       /* Now rhogrid holds the potential */
 
