@@ -601,7 +601,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	  break;
 
         case IO_CHIMES_STAR_SIGMA:
-#if defined(CHIMES_NH_OUTPUT) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+#if defined(CHIMES_NH_OUTPUT) && defined(CHIMES_OUTPUT_DENS_AROUND_STAR) 
 	  for (n = 0; n < pc; pindex++) 
 	    if (P[pindex].Type == type) 
 	      {
@@ -1790,7 +1790,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
 	    break; 
 
         case IO_CHIMES_STAR_SIGMA: 
-#if defined(CHIMES_NH_OUTPUT) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+#if defined(CHIMES_NH_OUTPUT) && defined(CHIMES_OUTPUT_DENS_AROUND_STAR) 
             if(mode)
                 bytes_per_blockelement = sizeof(MyInputFloat);
             else
@@ -2124,7 +2124,7 @@ int get_values_per_blockelement(enum iofields blocknr)
 	  break; 
 
         case IO_CHIMES_STAR_SIGMA: 
-#if defined(CHIMES_NH_OUTPUT) && defined(GALSF_FB_LOCAL_UV_HEATING)  
+#if defined(CHIMES_NH_OUTPUT) && defined(CHIMES_OUTPUT_DENS_AROUND_STAR) 
 	  values = 1; 
 #else 
 	  values = 0; 
@@ -2670,7 +2670,7 @@ int blockpresent(enum iofields blocknr)
 	  break; 
 
         case IO_CHIMES_STAR_SIGMA: 
-#if defined(CHIMES_NH_OUTPUT) && defined(GALSF_FB_LOCAL_UV_HEATING)  
+#if defined(CHIMES_NH_OUTPUT) && defined(CHIMES_OUTPUT_DENS_AROUND_STAR) 
 	  return 1; 
 #else 
 	  return 0; 
