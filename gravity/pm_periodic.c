@@ -139,9 +139,9 @@ void pm_init_periodic(void)
 
   /* get local data size and allocate */
 
-  fftsize = fftw_mpi_local_size_3d(PMGRID, PMGRID, PMGRID2, MPI_COMM_WORLD, &nslab_x, &slabstar_x); 
-  nslab_y = nslab_x; 
-  slabstar_y = slabstar_x; 
+  //fftsize = fftw_mpi_local_size_3d(PMGRID, PMGRID, PMGRID2, MPI_COMM_WORLD, &nslab_x, &slabstar_x); 
+  fftsize = fftw_mpi_local_size_3d_transposed(PMGRID, PMGRID, PMGRID2, MPI_COMM_WORLD, 
+	  &nslab_x, &slabstar_x, &nslab_y, &slabstart_y); 
 #endif
 
   for(i = 0; i < PMGRID; i++)
