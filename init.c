@@ -516,6 +516,8 @@ void init(void)
 	    ChimesGasVars[i].element_abundances[7] = P[i].Metallicity[8] / (32.0 * H_mass_fraction);  // S 
 	    ChimesGasVars[i].element_abundances[8] = P[i].Metallicity[9] / (40.0 * H_mass_fraction);  // Ca 
 	    ChimesGasVars[i].element_abundances[9] = P[i].Metallicity[10] / (56.0 * H_mass_fraction); // Fe 
+
+	    ChimesGasVars[i].metallicity = P[i].Metallicity[0] / 0.0129;  // In Zsol. CHIMES uses Zsol = 0.0129. 
 	  }
 #else 
 	if (ThisTask == 0)
@@ -534,6 +536,7 @@ void init(void)
 	    ChimesGasVars[i].element_abundances[0] = (1.0 - H_mass_fraction) / (4.0 * H_mass_fraction);  // He 
 	    for (j = 1; j < 10; j++) 
 	      ChimesGasVars[i].element_abundances[j] = 0.0; 
+	    ChimesGasVars[i].metallicity = 0.0; 
 	  }
 #endif // CHIMES 
 #endif // METALS
