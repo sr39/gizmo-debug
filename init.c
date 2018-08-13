@@ -111,6 +111,11 @@ void init(void)
                 printf("ICFormat=%d not supported.\n", All.ICFormat);
             endrun(0);
     }
+
+#ifdef CHIMES_INITIALISE_IN_EQM 
+    for (i = 0; i < N_gas; i++) 
+      allocate_gas_abundances_memory(&(ChimesGasVars[i]), &ChimesGlobalVars); 
+#endif 
     
     All.Time = All.TimeBegin;
     set_cosmo_factors_for_current_time();
@@ -1049,6 +1054,46 @@ void init(void)
         savepositions(RestartSnapNum);
         endrun(0);
     }
+
+#ifdef CHIMES_INITIALISE_IN_EQM 
+    if (RestartFlag != 1) 
+      {
+	/* Note that stellar fluxes computed through the 
+	 * gravity tree are all zero at this stage, 
+	 * because the gravitational forces have not yet 
+	 * been computed. So the equilibrium abundances 
+	 * computed here include only the extragalactic UVB. */ 
+	if (ThisTask == 0) 
+	  printf("Computing equilibrium CHIMES abundances. \n"); 
+
+	int iter_number; 
+	
+#ifdef OPENMP 
+	int ThisThread; 
+	
+#pragma omp parallel private(i, iter_number, ThisThread) 
+	{
+	  ThisThread = omp_get_thread_num(); 
+
+#pragma omp for schedule(dynamic) 
+#endif 
+	  for(i = 0; i < N_gas; i++)
+	    {
+	      initialise_gas_abundances(&(ChimesGasVars[i]), &ChimesGlobalVars); 
+	      chimes_update_gas_vars(i); 
+
+	      // Evolve the chemistry for (1 / nH) Myr (limited to 1 Gyr) ten times at fixed temperature.
+	      ChimesGasVars[i].hydro_timestep = DMIN(3.16e13 / ChimesGasVars[i].nH_tot, 3.16e16); 
+	      ChimesGasVars[i].ThermEvolOn = 0; 
+
+	      for (iter_number = 0; iter_number < 10; iter_number++)
+		chimes_network(&(ChimesGasVars[i]), &ChimesGlobalVars, AllRates_omp[ThisThread], all_reactions_root_omp[ThisThread], nonmolecular_reactions_root_omp[ThisThread]); 
+	    }
+#ifdef OPENMP 
+	} // End of parallel block 
+#endif 
+      } // RestartFlag != 1 
+#endif // CHIMES_INITIALISE_IN_EQM 
 }
 
 

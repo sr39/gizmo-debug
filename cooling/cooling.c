@@ -156,6 +156,118 @@ void chimes_cooling_parent_routine(void)
   if (ThisTask == 0) 
     printf("Chemistry and cooling finished. \n"); 
 }
+
+/* This routine updates the ChimesGasVars structure 
+ * for particle target. */ 
+void chimes_update_gas_vars(int target) 
+{
+  double dt = (P[target].TimeBin ? (1 << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; 
+  
+  /* Check that the gasVars structure matches the corresponding 
+   * particle structure. */ 
+  if ((ChimesGasVars[target].ID != P[target].ID) || (ChimesGasVars[target].ID_child_number != P[target].ID_child_number)) 
+    {
+      printf("ERROR: ChimesGasVars[%d].ID = %u, ChimesGasVars[%d].ID_child_number = %u, P[%d].ID = %u, P[%d].ID_child_number = %u. \n", target, ChimesGasVars[target].ID, target, ChimesGasVars[target].ID_child_number, target, P[target].ID, target, P[target].ID_child_number); 
+      endrun(201); 
+    } 
+  
+  double u_old_cgs = DMAX(All.MinEgySpec, SphP[target].InternalEnergy) * All.UnitPressure_in_cgs / All.UnitDensity_in_cgs; 
+  double rho_cgs = SphP[target].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam; 
+  
+#ifdef COOL_METAL_LINES_BY_SPECIES 
+  double H_mass_fraction = 1.0 - (P[target].Metallicity[0] + P[target].Metallicity[1]); 
+#else 
+  double H_mass_fraction = XH; 
+#endif 
+  
+  ChimesGasVars[target].temperature = chimes_convert_u_to_temp(u_old_cgs, rho_cgs, target); 
+  ChimesGasVars[target].nH_tot = H_mass_fraction * rho_cgs / PROTONMASS; 
+  ChimesGasVars[target].ThermEvolOn = All.ChimesThermEvolOn; 
+  
+  // If there is an EoS, need to set TempFloor to that instead. 
+#ifndef GALSF_FB_HII_HEATING
+  ChimesGasVars[target].TempFloor = All.MinGasTemp; 
+#else 
+  if (SphP[target].DelayTimeHII > 0) 
+    ChimesGasVars[target].TempFloor = HIIRegion_Temp; 
+  else 
+    ChimesGasVars[target].TempFloor = All.MinGasTemp; 
+#endif 
+  
+  // Extragalactic UV background 
+  ChimesGasVars[target].isotropic_photon_density[0] = isotropic_photon_density; 
+  ChimesGasVars[target].dust_G_parameter[0] = dustG_arr[0]; 
+  ChimesGasVars[target].H2_dissocJ[0] = H2_dissocJ_arr[0]; 
+  
+#ifdef GALSF_FB_LOCAL_UV_HEATING
+  int kc; 
+  for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) 
+    { 
+      ChimesGasVars[target].isotropic_photon_density[kc + 1] = SphP[target].Chimes_fluxPhotIon[kc] / 3.0e10; 
+      
+#ifdef CHIMES_HII_REGIONS 
+      if (SphP[target].DelayTimeHII > 0) 
+	{
+	  ChimesGasVars[target].isotropic_photon_density[kc + 1] += SphP[target].Chimes_fluxPhotIon_HII[kc] / 3.0e10; 
+	  ChimesGasVars[target].dust_G_parameter[kc + 1] = (SphP[target].Chimes_G0[kc] + SphP[target].Chimes_G0_HII[kc]) / DMAX((SphP[target].Chimes_fluxPhotIon[kc] + SphP[target].Chimes_fluxPhotIon_HII[kc]), 1.0e-300); 
+	}
+      else 
+	ChimesGasVars[target].dust_G_parameter[kc + 1] = SphP[target].Chimes_G0[kc] / DMAX(SphP[target].Chimes_fluxPhotIon[kc], 1.0e-300); 
+      
+      ChimesGasVars[target].H2_dissocJ[kc + 1] = ChimesGasVars[target].dust_G_parameter[kc + 1] * (H2_dissocJ_arr[kc + 1] / dustG_arr[kc + 1]); 
+#else 
+      ChimesGasVars[target].dust_G_parameter[kc + 1] = SphP[target].Chimes_G0[kc] / DMAX(SphP[target].Chimes_fluxPhotIon[kc], 1.0e-300); 
+      ChimesGasVars[target].H2_dissocJ[kc + 1] = ChimesGasVars[target].dust_G_parameter[kc + 1] * (H2_dissocJ_arr[kc + 1] / dustG_arr[kc + 1]); 
+#endif 
+    }
+#endif 
+  
+  ChimesGasVars[target].cr_rate = cr_rate;  // For now, assume a constant cr_rate. 
+  ChimesGasVars[target].hydro_timestep = dt * All.UnitTime_in_s / All.HubbleParam; 
+  
+  ChimesGasVars[target].ForceEqOn = ForceEqOn; 
+  ChimesGasVars[target].divVel = (All.HubbleParam / All.UnitTime_in_s) * P[target].Particle_DivVel; 
+  if (All.ComovingIntegrationOn)
+    {
+      ChimesGasVars[target].divVel *= All.cf_a2inv;
+      ChimesGasVars[target].divVel += 3 * All.HubbleParam * All.cf_hubble_a / All.UnitTime_in_s;  /* Term due to Hubble expansion */
+    }
+  ChimesGasVars[target].divVel = fabs(ChimesGasVars[target].divVel); 
+  
+#ifndef COOLING_OPERATOR_SPLIT 
+  ChimesGasVars[target].constant_heating_rate = ChimesGasVars[target].nH_tot * SphP[target].DtInternalEnergy; 
+#else 
+  ChimesGasVars[target].constant_heating_rate = 0.0; 
+#endif 
+  
+#ifdef CHIMES_SOBOLEV_SHIELDING 
+  double surface_density; 
+  surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1); 
+  surface_density *= All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm; // converts to cgs
+  ChimesGasVars[target].cell_size = shielding_length_factor * surface_density / rho_cgs; 
+#else 
+  ChimesGasVars[target].cell_size = 1.0; 
+#endif
+
+  ChimesGasVars[target].doppler_broad = 7.1;  // km/s. For now, just set this constant. Thermal broadening is also added within CHIMES. 
+  
+#ifdef CHIMES_HII_REGIONS 
+  // Effectively switches off shielding 
+  // in HII regions. 
+  if (SphP[target].DelayTimeHII > 0.0) 
+    ChimesGasVars[target].cell_size = 1.0; 
+#endif 
+  
+#ifdef METALS     
+  /* NOTE: Currently the element abundances are not updated after 
+   * metal enrichment. We need to add this!. */ 
+  ChimesGasVars[target].metallicity = P[target].Metallicity[0] / 0.0129;  // In Zsol. CHIMES uses Zsol = 0.0129. 
+#else 
+  ChimesGasVars[target].metallicity = 0.0; 
+#endif 
+  
+  return; 
+}
 #endif // CHIMES 
 
 /* subroutine which actually sends the particle data to the cooling routine and updates the entropies */
@@ -308,109 +420,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
 #endif
 
 #ifdef CHIMES 
-    /* Check that the gasVars structure matches the corresponding 
-     * particle structure. */ 
-    if ((ChimesGasVars[target].ID != P[target].ID) || (ChimesGasVars[target].ID_child_number != P[target].ID_child_number)) 
-      {
-	printf("ERROR: ChimesGasVars[%d].ID = %u, ChimesGasVars[%d].ID_child_number = %u, P[%d].ID = %u, P[%d].ID_child_number = %u. \n", target, ChimesGasVars[target].ID, target, ChimesGasVars[target].ID_child_number, target, P[target].ID, target, P[target].ID_child_number); 
-	endrun(201); 
-      } 
-
-    /* Update the gasVars for this particle. */
-    double u_old_cgs = u_old * All.UnitPressure_in_cgs / All.UnitDensity_in_cgs; 
-    double rho_cgs = rho * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam; // NOTE: The rho that is passed to DoCooling() has ALREADY been multiplied by All.cf_a3inv. 
-
-#ifdef COOL_METAL_LINES_BY_SPECIES 
-    double H_mass_fraction = 1.0 - (P[target].Metallicity[0] + P[target].Metallicity[1]); 
-#else 
-    double H_mass_fraction = XH; 
-#endif 
-      
-    ChimesGasVars[target].temperature = chimes_convert_u_to_temp(u_old_cgs, rho_cgs, target); 
-    ChimesGasVars[target].nH_tot = H_mass_fraction * rho_cgs / PROTONMASS; 
-    ChimesGasVars[target].ThermEvolOn = All.ChimesThermEvolOn; 
-
-    // If there is an EoS, need to set TempFloor to that instead. 
-#ifndef GALSF_FB_HII_HEATING
-    ChimesGasVars[target].TempFloor = All.MinGasTemp; 
-#else 
-    if (SphP[target].DelayTimeHII > 0) 
-      ChimesGasVars[target].TempFloor = HIIRegion_Temp; 
-    else 
-      ChimesGasVars[target].TempFloor = All.MinGasTemp; 
-#endif 
- 
-    // Extragalactic UV background 
-    ChimesGasVars[target].isotropic_photon_density[0] = isotropic_photon_density; 
-    ChimesGasVars[target].dust_G_parameter[0] = dustG_arr[0]; 
-    ChimesGasVars[target].H2_dissocJ[0] = H2_dissocJ_arr[0]; 
-
-#ifdef GALSF_FB_LOCAL_UV_HEATING
-    int kc; 
-    for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) 
-      { 
-	ChimesGasVars[target].isotropic_photon_density[kc + 1] = SphP[target].Chimes_fluxPhotIon[kc] / 3.0e10; 
-
-#ifdef CHIMES_HII_REGIONS 
-	if (SphP[target].DelayTimeHII > 0) 
-	  {
-	    ChimesGasVars[target].isotropic_photon_density[kc + 1] += SphP[target].Chimes_fluxPhotIon_HII[kc] / 3.0e10; 
-	    ChimesGasVars[target].dust_G_parameter[kc + 1] = (SphP[target].Chimes_G0[kc] + SphP[target].Chimes_G0_HII[kc]) / DMAX((SphP[target].Chimes_fluxPhotIon[kc] + SphP[target].Chimes_fluxPhotIon_HII[kc]), 1.0e-300); 
-	  }
-	else 
-	  ChimesGasVars[target].dust_G_parameter[kc + 1] = SphP[target].Chimes_G0[kc] / DMAX(SphP[target].Chimes_fluxPhotIon[kc], 1.0e-300); 
-
-	ChimesGasVars[target].H2_dissocJ[kc + 1] = ChimesGasVars[target].dust_G_parameter[kc + 1] * (H2_dissocJ_arr[kc + 1] / dustG_arr[kc + 1]); 
-#else 
-	ChimesGasVars[target].dust_G_parameter[kc + 1] = SphP[target].Chimes_G0[kc] / DMAX(SphP[target].Chimes_fluxPhotIon[kc], 1.0e-300); 
-	ChimesGasVars[target].H2_dissocJ[kc + 1] = ChimesGasVars[target].dust_G_parameter[kc + 1] * (H2_dissocJ_arr[kc + 1] / dustG_arr[kc + 1]); 
-#endif 
-      }
-#endif 
-
-    ChimesGasVars[target].cr_rate = cr_rate;  // For now, assume a constant cr_rate. 
-    ChimesGasVars[target].hydro_timestep = dt * All.UnitTime_in_s / All.HubbleParam; 
-
-    ChimesGasVars[target].ForceEqOn = ForceEqOn; 
-    ChimesGasVars[target].divVel = (All.HubbleParam / All.UnitTime_in_s) * P[target].Particle_DivVel; 
-    if (All.ComovingIntegrationOn)
-      {
-	ChimesGasVars[target].divVel *= All.cf_a2inv;
-	ChimesGasVars[target].divVel += 3 * All.HubbleParam * All.cf_hubble_a / All.UnitTime_in_s;  /* Term due to Hubble expansion */
-      }
-    ChimesGasVars[target].divVel = fabs(ChimesGasVars[target].divVel); 
-
-#ifndef COOLING_OPERATOR_SPLIT 
-    ChimesGasVars[target].constant_heating_rate = ChimesGasVars[target].nH_tot * SphP[target].DtInternalEnergy; 
-#else 
-    ChimesGasVars[target].constant_heating_rate = 0.0; 
-#endif 
-    
-#ifdef CHIMES_SOBOLEV_SHIELDING 
-    double surface_density; 
-    surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1); 
-    surface_density *= All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm; // converts to cgs
-    ChimesGasVars[target].cell_size = shielding_length_factor * surface_density / rho_cgs; 
-    ChimesGasVars[target].doppler_broad = 7.1;  // km/s. For now, just set this constant. Thermal broadening is also added within CHIMES. 
-#else 
-    ChimesGasVars[target].cell_size = 1.0; 
-    ChimesGasVars[target].doppler_broad = 7.1; 
-#endif
-
-#ifdef CHIMES_HII_REGIONS 
-    // Effectively switches off shielding 
-    // in HII regions. 
-    if (SphP[target].DelayTimeHII > 0.0) 
-      ChimesGasVars[target].cell_size = 1.0; 
-#endif 
-
-#ifdef METALS     
-    /* NOTE: Currently the element abundances are not updated after 
-     * metal enrichment. We need to add this!. */ 
-    ChimesGasVars[target].metallicity = P[target].Metallicity[0] / 0.0129;  // In Zsol. CHIMES uses Zsol = 0.0129. 
-#else 
-    ChimesGasVars[target].metallicity = 0.0; 
-#endif 
+    chimes_update_gas_vars(target); 
     
     /* Call CHIMES to evolve the chemistry and temperature over 
      * the hydro timestep. */ 
