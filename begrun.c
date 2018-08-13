@@ -1036,6 +1036,7 @@ void read_parameter_file(char *fname)
         
 
 #if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(GALSF_FB_THERMAL)
+#ifndef AJR_READ_METALLICITY_FROM_ICS 
         strcpy(tag[nt],"InitMetallicity");
         addr[nt] = &All.InitMetallicityinSolar;
         id[nt++] = REAL;
@@ -1049,6 +1050,7 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.HaloID;
         id[nt++] = INT;
 #endif 
+#endif // AJR_READ_METALLICITY_FROM_ICS 
         
         strcpy(tag[nt],"InitStellarAge");
         addr[nt] = &All.InitStellarAgeinGyr;

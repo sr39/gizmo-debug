@@ -482,6 +482,7 @@ void init(void)
         for(j=1;j<=NUM_RPROCESS_SPECIES;j++) All.SolarAbundances[NUM_METAL_SPECIES-j]=0.0; // R-process tracer
 #endif
         
+#ifndef AJR_READ_METALLICITY_FROM_ICS 
         if(RestartFlag == 0) {
 #if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(GALSF_FB_THERMAL)
 #ifdef AJR_INIT_HALO_METALLICITY 
@@ -500,6 +501,7 @@ void init(void)
             /* need to allow for a primordial He abundance */
             if(NUM_METAL_SPECIES>=10) P[i].Metallicity[1]=0.25+(All.SolarAbundances[1]-0.25)*P[i].Metallicity[0]/All.SolarAbundances[0];
         } // if(RestartFlag == 0)
+#endif // AJR_READ_METALLICITY_FROM_ICS 
 
 #ifdef CHIMES 
 #ifdef COOL_METAL_LINES_BY_SPECIES 
