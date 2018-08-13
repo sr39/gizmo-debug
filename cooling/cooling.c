@@ -99,7 +99,6 @@ void cooling_parent_routine(void)
     } /* omp bracket */
 }
 #else // !(CHIMES) 
-
 /* As cooling_parent_routine, but used when CHIMES is switched on. This version has 
  * been set up to use OPENMP, which greatly reduces work-load imbalances associated 
  * with the chemistry and cooling routines with CHIMES. */ 
@@ -156,119 +155,7 @@ void chimes_cooling_parent_routine(void)
   if (ThisTask == 0) 
     printf("Chemistry and cooling finished. \n"); 
 }
-
-/* This routine updates the ChimesGasVars structure 
- * for particle target. */ 
-void chimes_update_gas_vars(int target) 
-{
-  double dt = (P[target].TimeBin ? (1 << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; 
-  
-  /* Check that the gasVars structure matches the corresponding 
-   * particle structure. */ 
-  if ((ChimesGasVars[target].ID != P[target].ID) || (ChimesGasVars[target].ID_child_number != P[target].ID_child_number)) 
-    {
-      printf("ERROR: ChimesGasVars[%d].ID = %u, ChimesGasVars[%d].ID_child_number = %u, P[%d].ID = %u, P[%d].ID_child_number = %u. \n", target, ChimesGasVars[target].ID, target, ChimesGasVars[target].ID_child_number, target, P[target].ID, target, P[target].ID_child_number); 
-      endrun(201); 
-    } 
-  
-  double u_old_cgs = DMAX(All.MinEgySpec, SphP[target].InternalEnergy) * All.UnitPressure_in_cgs / All.UnitDensity_in_cgs; 
-  double rho_cgs = SphP[target].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam; 
-  
-#ifdef COOL_METAL_LINES_BY_SPECIES 
-  double H_mass_fraction = 1.0 - (P[target].Metallicity[0] + P[target].Metallicity[1]); 
-#else 
-  double H_mass_fraction = XH; 
-#endif 
-  
-  ChimesGasVars[target].temperature = chimes_convert_u_to_temp(u_old_cgs, rho_cgs, target); 
-  ChimesGasVars[target].nH_tot = H_mass_fraction * rho_cgs / PROTONMASS; 
-  ChimesGasVars[target].ThermEvolOn = All.ChimesThermEvolOn; 
-  
-  // If there is an EoS, need to set TempFloor to that instead. 
-#ifndef GALSF_FB_HII_HEATING
-  ChimesGasVars[target].TempFloor = All.MinGasTemp; 
-#else 
-  if (SphP[target].DelayTimeHII > 0) 
-    ChimesGasVars[target].TempFloor = HIIRegion_Temp; 
-  else 
-    ChimesGasVars[target].TempFloor = All.MinGasTemp; 
-#endif 
-  
-  // Extragalactic UV background 
-  ChimesGasVars[target].isotropic_photon_density[0] = isotropic_photon_density; 
-  ChimesGasVars[target].dust_G_parameter[0] = dustG_arr[0]; 
-  ChimesGasVars[target].H2_dissocJ[0] = H2_dissocJ_arr[0]; 
-  
-#ifdef GALSF_FB_LOCAL_UV_HEATING
-  int kc; 
-  for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) 
-    { 
-      ChimesGasVars[target].isotropic_photon_density[kc + 1] = SphP[target].Chimes_fluxPhotIon[kc] / 3.0e10; 
-      
-#ifdef CHIMES_HII_REGIONS 
-      if (SphP[target].DelayTimeHII > 0) 
-	{
-	  ChimesGasVars[target].isotropic_photon_density[kc + 1] += SphP[target].Chimes_fluxPhotIon_HII[kc] / 3.0e10; 
-	  ChimesGasVars[target].dust_G_parameter[kc + 1] = (SphP[target].Chimes_G0[kc] + SphP[target].Chimes_G0_HII[kc]) / DMAX((SphP[target].Chimes_fluxPhotIon[kc] + SphP[target].Chimes_fluxPhotIon_HII[kc]), 1.0e-300); 
-	}
-      else 
-	ChimesGasVars[target].dust_G_parameter[kc + 1] = SphP[target].Chimes_G0[kc] / DMAX(SphP[target].Chimes_fluxPhotIon[kc], 1.0e-300); 
-      
-      ChimesGasVars[target].H2_dissocJ[kc + 1] = ChimesGasVars[target].dust_G_parameter[kc + 1] * (H2_dissocJ_arr[kc + 1] / dustG_arr[kc + 1]); 
-#else 
-      ChimesGasVars[target].dust_G_parameter[kc + 1] = SphP[target].Chimes_G0[kc] / DMAX(SphP[target].Chimes_fluxPhotIon[kc], 1.0e-300); 
-      ChimesGasVars[target].H2_dissocJ[kc + 1] = ChimesGasVars[target].dust_G_parameter[kc + 1] * (H2_dissocJ_arr[kc + 1] / dustG_arr[kc + 1]); 
-#endif 
-    }
-#endif 
-  
-  ChimesGasVars[target].cr_rate = cr_rate;  // For now, assume a constant cr_rate. 
-  ChimesGasVars[target].hydro_timestep = dt * All.UnitTime_in_s / All.HubbleParam; 
-  
-  ChimesGasVars[target].ForceEqOn = ForceEqOn; 
-  ChimesGasVars[target].divVel = (All.HubbleParam / All.UnitTime_in_s) * P[target].Particle_DivVel; 
-  if (All.ComovingIntegrationOn)
-    {
-      ChimesGasVars[target].divVel *= All.cf_a2inv;
-      ChimesGasVars[target].divVel += 3 * All.HubbleParam * All.cf_hubble_a / All.UnitTime_in_s;  /* Term due to Hubble expansion */
-    }
-  ChimesGasVars[target].divVel = fabs(ChimesGasVars[target].divVel); 
-  
-#ifndef COOLING_OPERATOR_SPLIT 
-  ChimesGasVars[target].constant_heating_rate = ChimesGasVars[target].nH_tot * SphP[target].DtInternalEnergy; 
-#else 
-  ChimesGasVars[target].constant_heating_rate = 0.0; 
-#endif 
-  
-#ifdef CHIMES_SOBOLEV_SHIELDING 
-  double surface_density; 
-  surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1); 
-  surface_density *= All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm; // converts to cgs
-  ChimesGasVars[target].cell_size = shielding_length_factor * surface_density / rho_cgs; 
-#else 
-  ChimesGasVars[target].cell_size = 1.0; 
-#endif
-
-  ChimesGasVars[target].doppler_broad = 7.1;  // km/s. For now, just set this constant. Thermal broadening is also added within CHIMES. 
-  
-#ifdef CHIMES_HII_REGIONS 
-  // Effectively switches off shielding 
-  // in HII regions. 
-  if (SphP[target].DelayTimeHII > 0.0) 
-    ChimesGasVars[target].cell_size = 1.0; 
-#endif 
-  
-#ifdef METALS     
-  /* NOTE: Currently the element abundances are not updated after 
-   * metal enrichment. We need to add this!. */ 
-  ChimesGasVars[target].metallicity = P[target].Metallicity[0] / 0.0129;  // In Zsol. CHIMES uses Zsol = 0.0129. 
-#else 
-  ChimesGasVars[target].metallicity = 0.0; 
-#endif 
-  
-  return; 
-}
-#endif // CHIMES 
+#endif // !(CHIMES) 
 
 /* subroutine which actually sends the particle data to the cooling routine and updates the entropies */
 void do_the_cooling_for_particle(int i)
@@ -1849,5 +1736,309 @@ void selfshield_local_incident_uv_flux(void)
             }}}
 }
 #endif // GALSF_FB_LOCAL_UV_HEATING
+
+#ifdef CHIMES 
+/* This routine updates the ChimesGasVars structure 
+ * for particle target. */ 
+void chimes_update_gas_vars(int target) 
+{
+  double dt = (P[target].TimeBin ? (1 << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; 
+  
+  /* Check that the gasVars structure matches the corresponding 
+   * particle structure. */ 
+  if ((ChimesGasVars[target].ID != P[target].ID) || (ChimesGasVars[target].ID_child_number != P[target].ID_child_number)) 
+    {
+      printf("ERROR: ChimesGasVars[%d].ID = %u, ChimesGasVars[%d].ID_child_number = %u, P[%d].ID = %u, P[%d].ID_child_number = %u. \n", target, ChimesGasVars[target].ID, target, ChimesGasVars[target].ID_child_number, target, P[target].ID, target, P[target].ID_child_number); 
+      endrun(201); 
+    } 
+  
+  double u_old_cgs = DMAX(All.MinEgySpec, SphP[target].InternalEnergy) * All.UnitPressure_in_cgs / All.UnitDensity_in_cgs; 
+  double rho_cgs = SphP[target].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam; 
+  
+#ifdef COOL_METAL_LINES_BY_SPECIES 
+  double H_mass_fraction = 1.0 - (P[target].Metallicity[0] + P[target].Metallicity[1]); 
+#else 
+  double H_mass_fraction = XH; 
+#endif 
+  
+  ChimesGasVars[target].temperature = chimes_convert_u_to_temp(u_old_cgs, rho_cgs, target); 
+  ChimesGasVars[target].nH_tot = H_mass_fraction * rho_cgs / PROTONMASS; 
+  ChimesGasVars[target].ThermEvolOn = All.ChimesThermEvolOn; 
+  
+  // If there is an EoS, need to set TempFloor to that instead. 
+#ifndef GALSF_FB_HII_HEATING
+  ChimesGasVars[target].TempFloor = All.MinGasTemp; 
+#else 
+  if (SphP[target].DelayTimeHII > 0) 
+    ChimesGasVars[target].TempFloor = HIIRegion_Temp; 
+  else 
+    ChimesGasVars[target].TempFloor = All.MinGasTemp; 
+#endif 
+  
+  // Extragalactic UV background 
+  ChimesGasVars[target].isotropic_photon_density[0] = isotropic_photon_density; 
+  ChimesGasVars[target].dust_G_parameter[0] = dustG_arr[0]; 
+  ChimesGasVars[target].H2_dissocJ[0] = H2_dissocJ_arr[0]; 
+  
+#ifdef GALSF_FB_LOCAL_UV_HEATING
+  int kc; 
+  for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) 
+    { 
+      ChimesGasVars[target].isotropic_photon_density[kc + 1] = SphP[target].Chimes_fluxPhotIon[kc] / 3.0e10; 
+      
+#ifdef CHIMES_HII_REGIONS 
+      if (SphP[target].DelayTimeHII > 0) 
+	{
+	  ChimesGasVars[target].isotropic_photon_density[kc + 1] += SphP[target].Chimes_fluxPhotIon_HII[kc] / 3.0e10; 
+	  ChimesGasVars[target].dust_G_parameter[kc + 1] = (SphP[target].Chimes_G0[kc] + SphP[target].Chimes_G0_HII[kc]) / DMAX((SphP[target].Chimes_fluxPhotIon[kc] + SphP[target].Chimes_fluxPhotIon_HII[kc]), 1.0e-300); 
+	}
+      else 
+	ChimesGasVars[target].dust_G_parameter[kc + 1] = SphP[target].Chimes_G0[kc] / DMAX(SphP[target].Chimes_fluxPhotIon[kc], 1.0e-300); 
+      
+      ChimesGasVars[target].H2_dissocJ[kc + 1] = ChimesGasVars[target].dust_G_parameter[kc + 1] * (H2_dissocJ_arr[kc + 1] / dustG_arr[kc + 1]); 
+#else 
+      ChimesGasVars[target].dust_G_parameter[kc + 1] = SphP[target].Chimes_G0[kc] / DMAX(SphP[target].Chimes_fluxPhotIon[kc], 1.0e-300); 
+      ChimesGasVars[target].H2_dissocJ[kc + 1] = ChimesGasVars[target].dust_G_parameter[kc + 1] * (H2_dissocJ_arr[kc + 1] / dustG_arr[kc + 1]); 
+#endif 
+    }
+#endif 
+  
+  ChimesGasVars[target].cr_rate = cr_rate;  // For now, assume a constant cr_rate. 
+  ChimesGasVars[target].hydro_timestep = dt * All.UnitTime_in_s / All.HubbleParam; 
+  
+  ChimesGasVars[target].ForceEqOn = ForceEqOn; 
+  ChimesGasVars[target].divVel = (All.HubbleParam / All.UnitTime_in_s) * P[target].Particle_DivVel; 
+  if (All.ComovingIntegrationOn)
+    {
+      ChimesGasVars[target].divVel *= All.cf_a2inv;
+      ChimesGasVars[target].divVel += 3 * All.HubbleParam * All.cf_hubble_a / All.UnitTime_in_s;  /* Term due to Hubble expansion */
+    }
+  ChimesGasVars[target].divVel = fabs(ChimesGasVars[target].divVel); 
+  
+#ifndef COOLING_OPERATOR_SPLIT 
+  ChimesGasVars[target].constant_heating_rate = ChimesGasVars[target].nH_tot * SphP[target].DtInternalEnergy; 
+#else 
+  ChimesGasVars[target].constant_heating_rate = 0.0; 
+#endif 
+  
+#ifdef CHIMES_SOBOLEV_SHIELDING 
+  double surface_density; 
+  surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1); 
+  surface_density *= All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm; // converts to cgs
+  ChimesGasVars[target].cell_size = shielding_length_factor * surface_density / rho_cgs; 
+#else 
+  ChimesGasVars[target].cell_size = 1.0; 
+#endif
+
+  ChimesGasVars[target].doppler_broad = 7.1;  // km/s. For now, just set this constant. Thermal broadening is also added within CHIMES. 
+  
+#ifdef CHIMES_HII_REGIONS 
+  // Effectively switches off shielding 
+  // in HII regions. 
+  if (SphP[target].DelayTimeHII > 0.0) 
+    ChimesGasVars[target].cell_size = 1.0; 
+#endif 
+  
+#if defined(COOL_METAL_LINES_BY_SPECIES) && !defined(GALSF_FB_NOENRICHMENT) 
+  chimes_update_element_abundances(target); 
+#endif 
+  
+  return; 
+}
+
+#ifdef COOL_METAL_LINES_BY_SPECIES 
+/* This routine looks at the change in element abundances 
+ * compared to the previous timestep and updates the 
+ * individual ion abundances accordingly. */
+void chimes_update_element_abundances(int i)
+{
+  double old_abundances[10]; 
+  double delta_zi; 
+  int j, ion_index; 
+
+  double H_mass_fraction = 1.0 - (P[i].Metallicity[0] + P[i].Metallicity[1]); 
+
+  /* Record the element abundances from 
+   * the previous time-step. */
+  for (j = 0; j < 10; j++)
+    old_abundances[j] = ChimesGasVars[i].element_abundances[j];
+
+  /* Update the element abundances in ChimesGasVars. */ 
+  ChimesGasVars[i].element_abundances[0] = P[i].Metallicity[1] / (4.0 * H_mass_fraction);   // He 
+  ChimesGasVars[i].element_abundances[1] = P[i].Metallicity[2] / (12.0 * H_mass_fraction);  // C 
+  ChimesGasVars[i].element_abundances[2] = P[i].Metallicity[3] / (14.0 * H_mass_fraction);  // N 
+  ChimesGasVars[i].element_abundances[3] = P[i].Metallicity[4] / (16.0 * H_mass_fraction);  // O 
+  ChimesGasVars[i].element_abundances[4] = P[i].Metallicity[5] / (20.0 * H_mass_fraction);  // Ne 
+  ChimesGasVars[i].element_abundances[5] = P[i].Metallicity[6] / (24.0 * H_mass_fraction);  // Mg 
+  ChimesGasVars[i].element_abundances[6] = P[i].Metallicity[7] / (28.0 * H_mass_fraction);  // Si 
+  ChimesGasVars[i].element_abundances[7] = P[i].Metallicity[8] / (32.0 * H_mass_fraction);  // S 
+  ChimesGasVars[i].element_abundances[8] = P[i].Metallicity[9] / (40.0 * H_mass_fraction);  // Ca 
+  ChimesGasVars[i].element_abundances[9] = P[i].Metallicity[10] / (56.0 * H_mass_fraction); // Fe 
+
+  ChimesGasVars[i].metallicity = P[i].Metallicity[0] / 0.0129;  // In Zsol. CHIMES uses Zsol = 0.0129. 
+
+    /* Finally, calculate the change in each element
+   * abundance and assume that it is injected into
+   * all atomic/ionic/molecular states, preserving the 
+   * ion and molecule fractions. If this particle 
+   * previously had no metals, we put the new metals 
+   * into the lowest ionisation state (i.e. neutral). 
+   * NOTE: Since the CHIMES abundances are in terms of 
+   * n_i / n_Htot, we don't have a hydrogen 
+   * abundance (which would be 1 by definition). */
+
+  /* Helium */
+  delta_zi = ChimesGasVars[i].element_abundances[0] - old_abundances[0];
+  for (ion_index = ChimesGlobalVars.speciesIndices[HeI]; ion_index <= ChimesGlobalVars.speciesIndices[HeIII]; ion_index++)
+    ChimesGasVars[i].abundances[ion_index] += (ChimesGasVars[i].abundances[ion_index] / old_abundances[0]) * delta_zi;
+
+  /* Carbon */
+  if (ChimesGlobalVars.element_included[0] == 1)
+    {
+      delta_zi = ChimesGasVars[i].element_abundances[1] - old_abundances[1];
+      if (old_abundances[1] > 0.0)
+	{
+	  for (ion_index = ChimesGlobalVars.speciesIndices[CI]; ion_index <= ChimesGlobalVars.speciesIndices[CVII]; ion_index++)
+	    ChimesGasVars[i].abundances[ion_index] += (ChimesGasVars[i].abundances[ion_index] / old_abundances[1]) * delta_zi;
+
+	  if (ChimesGasVars[i].temperature < ChimesGlobalVars.T_mol)
+	    {
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[C2]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[C2]] / old_abundances[1]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HCOp]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HCOp]] / old_abundances[1]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[CH]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[CH]] / old_abundances[1]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[CH2]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[CH2]] / old_abundances[1]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[CH3p]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[CH3p]] / old_abundances[1]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[CO]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[CO]] / old_abundances[1]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[CHp]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[CHp]] / old_abundances[1]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[CH2p]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[CH2p]] / old_abundances[1]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[COp]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[COp]] / old_abundances[1]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HOCp]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HOCp]] / old_abundances[1]) * delta_zi;
+	    }
+	}
+      else
+	ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[CI]] += delta_zi;
+    }
+
+  /* Nitrogen */
+  if (ChimesGlobalVars.element_included[1] == 1)
+    {
+      delta_zi = ChimesGasVars[i].element_abundances[2] - old_abundances[2];
+      if (old_abundances[2] > 0.0)
+	{
+	  for (ion_index = ChimesGlobalVars.speciesIndices[NI]; ion_index <= ChimesGlobalVars.speciesIndices[NVIII]; ion_index++)
+	    ChimesGasVars[i].abundances[ion_index] += (ChimesGasVars[i].abundances[ion_index] / old_abundances[2]) * delta_zi;
+	}
+      else
+	ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[NI]] += delta_zi;
+    }
+  
+  /* Oxygen */
+  if (ChimesGlobalVars.element_included[2] == 1)
+    {
+      delta_zi = ChimesGasVars[i].element_abundances[3] - old_abundances[3];
+      if (old_abundances[3] > 0.0)
+	{
+	  for (ion_index = ChimesGlobalVars.speciesIndices[OI]; ion_index <= ChimesGlobalVars.speciesIndices[OIX]; ion_index++)
+	    ChimesGasVars[i].abundances[ion_index] += (ChimesGasVars[i].abundances[ion_index] / old_abundances[3]) * delta_zi;
+
+	  if (ChimesGasVars[i].temperature < ChimesGlobalVars.T_mol) 
+	    {
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[OH]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[OH]] / old_abundances[3]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[H2O]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[H2O]] / old_abundances[3]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[O2]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[O2]] / old_abundances[3]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HCOp]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HCOp]] / old_abundances[3]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[CO]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[CO]] / old_abundances[3]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[OHp]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[OHp]] / old_abundances[3]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[H2Op]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[H2Op]] / old_abundances[3]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[H3Op]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[H3Op]] / old_abundances[3]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[COp]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[COp]] / old_abundances[3]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HOCp]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[HOCp]] / old_abundances[3]) * delta_zi;
+	      ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[O2p]] += (ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[O2p]] / old_abundances[3]) * delta_zi;
+	    }
+	}
+      else
+	ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[OI]] += delta_zi;
+    }
+  
+  /* Neon */
+  if (ChimesGlobalVars.element_included[3] == 1)
+    {
+      delta_zi = ChimesGasVars[i].element_abundances[4] - old_abundances[4];
+      if (old_abundances[4] > 0.0)
+	{
+	  for (ion_index = ChimesGlobalVars.speciesIndices[NeI]; ion_index <= ChimesGlobalVars.speciesIndices[NeXI]; ion_index++)
+	    ChimesGasVars[i].abundances[ion_index] += (ChimesGasVars[i].abundances[ion_index] / old_abundances[4]) * delta_zi;
+	}
+      else
+	ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[NeI]] += delta_zi;
+    }
+  
+  /* Magnesium */
+  if (ChimesGlobalVars.element_included[4] == 1)
+    {
+      delta_zi = ChimesGasVars[i].element_abundances[5] - old_abundances[5];
+      if (old_abundances[5] > 0.0)
+	{
+	  for (ion_index = ChimesGlobalVars.speciesIndices[MgI]; ion_index <= ChimesGlobalVars.speciesIndices[MgXIII]; ion_index++)
+	    ChimesGasVars[i].abundances[ion_index] += (ChimesGasVars[i].abundances[ion_index] / old_abundances[5]) * delta_zi;
+	}
+      else
+	ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[MgI]] += delta_zi;
+    }
+  
+  /* Silicon */
+  if (ChimesGlobalVars.element_included[5] == 1)
+    {
+      delta_zi = ChimesGasVars[i].element_abundances[6] - old_abundances[6];
+      if (old_abundances[6] > 0.0)
+	{
+	  for (ion_index = ChimesGlobalVars.speciesIndices[SiI]; ion_index <= ChimesGlobalVars.speciesIndices[SiXV]; ion_index++)
+	    ChimesGasVars[i].abundances[ion_index] += (ChimesGasVars[i].abundances[ion_index] / old_abundances[6]) * delta_zi;
+	}
+      else
+	ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[SiI]] += delta_zi;
+    }
+  
+  /* Sulphur */
+  if (ChimesGlobalVars.element_included[6] == 1)
+    {
+      delta_zi = ChimesGasVars[i].element_abundances[7] - old_abundances[7];
+      if (old_abundances[7] > 0.0)
+	{
+	  for (ion_index = ChimesGlobalVars.speciesIndices[SI]; ion_index <= ChimesGlobalVars.speciesIndices[SXVII]; ion_index++)
+	    ChimesGasVars[i].abundances[ion_index] += (ChimesGasVars[i].abundances[ion_index] / old_abundances[7]) * delta_zi;
+	}
+      else
+	ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[SI]] += delta_zi;
+    }
+  
+  /* Calcium */
+  if (ChimesGlobalVars.element_included[7] == 1)
+    {
+      delta_zi = ChimesGasVars[i].element_abundances[8] - old_abundances[8];
+      if (old_abundances[8] > 0.0)
+	{
+	  for (ion_index = ChimesGlobalVars.speciesIndices[CaI]; ion_index <= ChimesGlobalVars.speciesIndices[CaXXI]; ion_index++)
+	    ChimesGasVars[i].abundances[ion_index] += (ChimesGasVars[i].abundances[ion_index] / old_abundances[8]) * delta_zi;
+	}
+      else
+	ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[CaI]] += delta_zi;
+    }
+  
+  /* Iron */
+  if (ChimesGlobalVars.element_included[8] == 1)
+    {
+      delta_zi = ChimesGasVars[i].element_abundances[9] - old_abundances[9];
+      if (old_abundances[9] > 0.0)
+	{
+	  for (ion_index = ChimesGlobalVars.speciesIndices[FeI]; ion_index <= ChimesGlobalVars.speciesIndices[FeXXVII]; ion_index++)
+	    ChimesGasVars[i].abundances[ion_index] += (ChimesGasVars[i].abundances[ion_index] / old_abundances[9]) * delta_zi;
+	}
+      else
+	ChimesGasVars[i].abundances[ChimesGlobalVars.speciesIndices[FeI]] += delta_zi;
+    }
+} 
+#endif // COOL_METAL_LINES_BY_SPECIES 
+#endif // CHIMES 
 
 #endif
