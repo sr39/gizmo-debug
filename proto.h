@@ -574,6 +574,7 @@ int disp_density_isactive(int i);
 #ifdef CHIMES 
 void chimes_cooling_parent_routine(void); 
 double chimes_convert_u_to_temp(double u, double rho, int target); 
+void chimes_update_gas_vars(int target); 
 #else 
 void cooling_parent_routine(void);
 #endif 

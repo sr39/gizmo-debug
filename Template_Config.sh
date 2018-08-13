@@ -107,7 +107,8 @@
 #CHIMES_REDUCED_OUTPUT          # Full CHIMES abundance array only output in some snapshots. 
 #CHIMES_NH_OUTPUT               # Write out column densities of gas particles to snapshots. 
 #CHIMES_OUTPUT_DENS_AROUND_STAR  # Write out DensAroundStar 
-#CHIMES_OUTPUT_DELAY_TIME_HII   # Output DelayTimeHII. Requires CHIMES_HII_REGIONS or GALSF_FB_HII_HEATING 
+#CHIMES_OUTPUT_DELAY_TIME_HII   # Output DelayTimeHII. Requires CHIMES_HII_REGIONS or GALSF_FB_HII_HEATING
+#CHIMES_INITIALISE_IN_EQM      # Initialise CHIMES abundances in equilibrium at the start of the simulation.  
 #METALS                         # enable metallicities (with multiple species optional) for gas and stars [must be included in ICs or injected via dynamical feedback; needed for some routines]
 ## ----------------------------------------------------------------------------------------------------
 # -------------------------------------- Smagorinsky Turbulent Eddy Diffusion Model

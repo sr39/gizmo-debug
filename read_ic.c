@@ -578,12 +578,14 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 
 #ifdef CHIMES 
         case IO_CHIMES_ABUNDANCES: 
+#ifndef CHIMES_INITIALISE_IN_EQM 
 	  for (n = 0; n < pc; n++) 
 	    {
 	      allocate_gas_abundances_memory(&(ChimesGasVars[offset + n]), &ChimesGlobalVars); 
 	      for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++)
 		ChimesGasVars[offset + n].abundances[k] = (double) (*fp++);
 	    }
+#endif // CHIMES_INITIALISE_IN_EQM 
 	  break; 
 	  
         case IO_CHIMES_REDUCED: 
@@ -942,7 +944,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==1)||(HYDRO_FIX_MESH_MOTION==2)||(HYDRO_FIX_MESH_MOTION==3))
                    && blocknr != IO_PARTVEL
 #endif
-#ifdef CHIMES 
+#if defined(CHIMES) && !defined(CHIMES_INITIALISE_IN_EQM) 
 		   && blocknr != IO_CHIMES_ABUNDANCES 
 #endif 
 #ifdef AJR_READ_STELLAR_AGE_FROM_ICS 
