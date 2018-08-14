@@ -109,6 +109,7 @@
 #CHIMES_OUTPUT_DENS_AROUND_STAR  # Write out DensAroundStar 
 #CHIMES_OUTPUT_DELAY_TIME_HII   # Output DelayTimeHII. Requires CHIMES_HII_REGIONS or GALSF_FB_HII_HEATING
 #CHIMES_INITIALISE_IN_EQM      # Initialise CHIMES abundances in equilibrium at the start of the simulation.  
+#CHIMES_TURB_DIFF_IONS         # Turbulent diffusions of CHIMES abundances. Requires TURB_DIFF_METALS and TURB_DIFF_METALS_LOWORDER 
 #METALS                         # enable metallicities (with multiple species optional) for gas and stars [must be included in ICs or injected via dynamical feedback; needed for some routines]
 ## ----------------------------------------------------------------------------------------------------
 # -------------------------------------- Smagorinsky Turbulent Eddy Diffusion Model

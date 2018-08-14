@@ -226,6 +226,10 @@ void restart(int modus)
 		      /* Read abundances from buffer */
 		      for (abunIndex = 0; abunIndex < ChimesGlobalVars.totalNumberOfSpecies; abunIndex++)
 			ChimesGasVars[partIndex].abundances[abunIndex] = sphAbundancesBuf[(partIndex * ChimesGlobalVars.totalNumberOfSpecies) + abunIndex];
+
+#ifdef CHIMES_TURB_DIFF_IONS 
+		      chimes_update_turbulent_abundances(partIndex, 1); 
+#endif 
 		    }
 		}
 	      free(sphAbundancesBuf); 

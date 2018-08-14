@@ -575,6 +575,7 @@ void set_constant_rates(struct gasVariables *myGasVars, struct globalVariables *
 void update_rates(struct gasVariables *myGasVars, struct globalVariables *myGlobalVars, double HI_column_density, double H2_column_density, double HeI_column_density, double HeII_column_density,  double CO_column_density, double extinction, struct All_rate_variables_structure *this_all_rates);
 void update_T_dependent_rates(struct gasVariables *myGasVars, struct globalVariables *myGlobalVars, struct All_rate_variables_structure *this_all_rates);
 void chimes_network(struct gasVariables *myGasVars, struct globalVariables *myGlobalVars, struct All_rate_variables_structure *this_all_rates, struct Reactions_Structure *this_all_reactions_root, struct Reactions_Structure *this_nonmolecular_reactions_root);
+void check_constraint_equations(struct gasVariables *myGasVars, struct globalVariables *myGlobalVars); 
 
 /* This next structure will hold the current 
  * values of the rate coefficients at the 

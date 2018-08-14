@@ -575,6 +575,12 @@ int disp_density_isactive(int i);
 void chimes_cooling_parent_routine(void); 
 double chimes_convert_u_to_temp(double u, double rho, int target); 
 void chimes_update_gas_vars(int target); 
+#ifdef COOL_METAL_LINES_BY_SPECIES 
+void chimes_update_element_abundances(int i); 
+#endif 
+#ifdef CHIMES_TURB_DIFF_IONS 
+void chimes_update_turbulent_abundances(int i, int mode); 
+#endif 
 #else 
 void cooling_parent_routine(void);
 #endif 

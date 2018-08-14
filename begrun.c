@@ -66,6 +66,25 @@ void begrun(void)
 
     }
 
+#ifdef CHIMES_TURB_DIFF_IONS 
+  // Check that TURB_DIFF_METALS and TURB_DIFF_METALS_LOWORDER 
+  // have also been switched on. 
+#ifndef TURB_DIFF_METALS 
+  if (ThisTask == 0) 
+    {
+      printf("ERROR: CHIMES_TURB_DIFF_IONS requires TURB_DIFF_METALS, but this is missing. Aborting.\n"); 
+      endrun(6572); 
+    }
+#endif // !(TURB_DIFF_METALS) 
+#ifndef TURB_DIFF_METALS_LOWORDER 
+  if (ThisTask == 0) 
+    {
+      printf("ERROR: CHIMES_TURB_DIFF_IONS requires TURB_DIFF_METALS_LOWORDER, but this is missing. Aborting.\n"); 
+      endrun(6573); 
+    }
+#endif // !(TURB_DIFF_METALS_LOWORDER) 
+#endif // CHIMES_TURB_DIFF_IONS 
+
   read_parameter_file(ParameterFile);	/* ... read in parameters for this run */
 
   mymalloc_init();
