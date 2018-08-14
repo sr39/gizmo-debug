@@ -238,6 +238,10 @@ struct hydrodata_in
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
     MyFloat Metallicity[NUM_METAL_SPECIES];
 #endif
+
+#ifdef CHIMES_TURB_DIFF_IONS 
+    MyDouble ChimesNIons[TOTSIZE]; 
+#endif 
     
 #ifdef RT_DIFFUSION_EXPLICIT
     MyDouble E_gamma[N_RT_FREQ_BINS];
@@ -330,6 +334,10 @@ struct hydrodata_out
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
     MyFloat Dyield[NUM_METAL_SPECIES];
 #endif
+
+#ifdef CHIMES_TURB_DIFF_IONS 
+    MyDouble ChimesIonsYield[TOTSIZE]; 
+#endif 
     
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
     MyFloat Dt_E_gamma[N_RT_FREQ_BINS];
@@ -467,6 +475,11 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
     for(k=0;k<NUM_METAL_SPECIES;k++) {in->Metallicity[k] = P[i].Metallicity[k];}
 #endif
+
+#ifdef CHIMES_TURB_DIFF_IONS  
+    for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) 
+      in->ChimesNIons[k] = SphP[i].ChimesNIons[k]; 
+#endif 
     
 #ifdef TURB_DIFFUSION
     in->TD_DiffCoeff = SphP[i].TD_DiffCoeff;
@@ -553,6 +566,11 @@ static inline void out2particle_hydra(struct hydrodata_out *out, int i, int mode
         P[i].Metallicity[k] = z_tmp;
     }
 #endif
+
+#ifdef CHIMES_TURB_DIFF_IONS  
+    for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) 
+      SphP[i].ChimesNIons[k] = DMAX(SphP[i].ChimesNIons[k] + out->ChimesIonsYield[k], 0.5 * SphP[i].ChimesNIons[k]); 
+#endif 
     
 #if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
     for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Dt_E_gamma[k] += out->Dt_E_gamma[k];}

@@ -264,7 +264,6 @@ double cr_secondary_ionisation(double xHII, int ion_index);
 
 void set_species_arrays(struct Species_Structure *mySpecies, struct gasVariables *myGasVars, int *total_network, int *nonmolecular_network, struct globalVariables *myGlobalVars);
 struct Reactions_Structure * add_new_reaction(struct Reactions_Structure *conductor, int reactant1, int reactant2, int reactant3, int N_reactants, int product1, int product2, int product3, int N_products, double *rate, int incl_mol, int *speciesIndices);
-void check_constraint_equations(struct gasVariables *myGasVars, struct globalVariables *myGlobalVars);
 void set_constraint_equations(void *user_data, double *output_array);
 
 void set_kin_scale_vector(N_Vector scale_vector, int *enum_indices, struct gasVariables *myGasVars, struct globalVariables *myGlobalVars);

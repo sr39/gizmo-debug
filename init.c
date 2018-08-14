@@ -1085,6 +1085,11 @@ void init(void)
 	  for(i = 0; i < N_gas; i++)
 	    {
 	      initialise_gas_abundances(&(ChimesGasVars[i]), &ChimesGlobalVars); 
+
+#ifdef CHIMES_TURB_DIFF_IONS 
+	      chimes_update_turbulent_abundances(i, 1); 
+#endif 
+
 	      chimes_update_gas_vars(i); 
 
 	      // Evolve the chemistry for (1 / nH) Myr (limited to 1 Gyr) ten times at fixed temperature.
@@ -1093,6 +1098,10 @@ void init(void)
 
 	      for (iter_number = 0; iter_number < 10; iter_number++)
 		chimes_network(&(ChimesGasVars[i]), &ChimesGlobalVars, AllRates_omp[ThisThread], all_reactions_root_omp[ThisThread], nonmolecular_reactions_root_omp[ThisThread]); 
+
+#ifdef CHIMES_TURB_DIFF_IONS 
+	      chimes_update_turbulent_abundances(i, 1); 
+#endif 
 	    }
 #ifdef OPENMP 
 	} // End of parallel block 

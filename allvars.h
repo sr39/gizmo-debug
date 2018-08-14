@@ -2408,8 +2408,11 @@ extern struct sph_particle_data
   double Chimes_G0_HII[CHIMES_LOCAL_UV_NBINS]; 
   double Chimes_fluxPhotIon_HII[CHIMES_LOCAL_UV_NBINS]; 
 #endif 
-#endif 
-#endif
+#endif // CHIMES 
+#endif // GALSF_FB_LOCAL_UV_HEATING 
+#ifdef CHIMES_TURB_DIFF_IONS 
+  double ChimesNIons[TOTSIZE]; 
+#endif // CHIMES_TURB_DIFF_IONS 
 #ifdef BH_COMPTON_HEATING
     MyFloat RadFluxAGN;             /*!< local AGN flux */
 #endif
