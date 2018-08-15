@@ -272,7 +272,23 @@ extern struct All_rate_variables_structure **AllRates_omp;
 extern struct Reactions_Structure **all_reactions_root_omp;
 extern struct Reactions_Structure **nonmolecular_reactions_root_omp;
 #endif
-#endif 
+#ifdef CHIMES_METAL_DEPLETION 
+#define JENKINS_N_ELEM 16 
+struct Chimes_depletion_data_structure 
+{ 
+  double SolarAbund[JENKINS_N_ELEM]; 
+  double JenkinsPars[JENKINS_N_ELEM][3]; 
+  double DustToGasSaturated; 
+  double ChimesDepletionFactors[6]; 
+  double ChimesDustRatio; 
+}; 
+#ifdef OPENMP 
+extern struct Chimes_depletion_data_structure ChimesDepletionData[OPENMP]; 
+#else 
+extern struct Chimes_depletion_data_structure ChimesDepletionData[1]; 
+#endif // OPENMP 
+#endif // CHIMES_METAL_DEPLETION 
+#endif // CHIMES 
 
 #ifdef SINGLE_STAR_FORMATION
 #define GALSF // master switch needed to enable various frameworks

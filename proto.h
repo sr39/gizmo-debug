@@ -581,6 +581,11 @@ void chimes_update_element_abundances(int i);
 #ifdef CHIMES_TURB_DIFF_IONS 
 void chimes_update_turbulent_abundances(int i, int mode); 
 #endif 
+#ifdef CHIMES_METAL_DEPLETION 
+void chimes_init_depletion_data(void); 
+double chimes_jenkins_linear_fit(double nH, double T, double Ax, double Bx, double zx); 
+void chimes_compute_depletions(double nH, double T, int thread_id); 
+#endif 
 #else 
 void cooling_parent_routine(void);
 #endif 

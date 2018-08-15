@@ -58,6 +58,13 @@ struct All_rate_variables_structure **AllRates_omp;
 struct Reactions_Structure **all_reactions_root_omp; 
 struct Reactions_Structure **nonmolecular_reactions_root_omp; 
 #endif 
+#ifdef CHIMES_METAL_DEPLETION 
+#ifdef OPENMP 
+struct Chimes_depletion_data_structure ChimesDepletionData[OPENMP]; 
+#else 
+struct Chimes_depletion_data_structure ChimesDepletionData[1]; 
+#endif 
+#endif 
 #endif 
 
 
@@ -1625,6 +1632,10 @@ void InitCool(void)
       init_chimes_omp(&ChimesGlobalVars, &AllRates_omp[i], &all_reactions_root_omp[i], &nonmolecular_reactions_root_omp[i]); 
 #endif 
 
+#ifdef CHIMES_METAL_DEPLETION 
+    chimes_init_depletion_data(); 
+#endif 
+
 #else // CHIMES 
     InitCoolMemory();
     MakeCoolingTable();
@@ -1876,6 +1887,23 @@ void chimes_update_element_abundances(int i)
 
   ChimesGasVars[i].metallicity = P[i].Metallicity[0] / 0.0129;  // In Zsol. CHIMES uses Zsol = 0.0129. 
 
+#ifdef CHIMES_METAL_DEPLETION 
+#ifdef OPENMP 
+  int ThisThread = omp_get_thread_num();
+#else 
+  int ThisThread = 0; 
+#endif 
+  chimes_compute_depletions(ChimesGasVars[i].nH_tot, ChimesGasVars[i].temperature, ThisThread); 
+  ChimesGasVars[i].element_abundances[1] *= ChimesDepletionData[ThisThread].ChimesDepletionFactors[0]; // C 
+  ChimesGasVars[i].element_abundances[2] *= ChimesDepletionData[ThisThread].ChimesDepletionFactors[1]; // N 
+  ChimesGasVars[i].element_abundances[3] *= ChimesDepletionData[ThisThread].ChimesDepletionFactors[2]; // O 
+  ChimesGasVars[i].element_abundances[5] *= ChimesDepletionData[ThisThread].ChimesDepletionFactors[3]; // Mg 
+  ChimesGasVars[i].element_abundances[6] *= ChimesDepletionData[ThisThread].ChimesDepletionFactors[4]; // Si 
+  ChimesGasVars[i].element_abundances[9] *= ChimesDepletionData[ThisThread].ChimesDepletionFactors[5]; // Fe 
+
+  ChimesGasVars[i].metallicity *= ChimesDepletionData[ThisThread].ChimesDustRatio; 
+#endif // CHIMES_METAL_DEPLETION 
+
   /* The element abundances may have changed, so use the check_constraint_equations() 
    * routine to update the abundance arrays accordingly. If metals have been injected 
    * into a particle, it is distributed across all of the metal's atomic/ionic/molecular 
@@ -1907,5 +1935,105 @@ void chimes_update_turbulent_abundances(int i, int mode)
     }
 }
 #endif // CHIMES_TURB_DIFF_IONS 
+
+#ifdef CHIMES_METAL_DEPLETION 
+void chimes_init_depletion_data(void) 
+{
+  int i; 
+  
+  // Elements in Jenkins (2009) in the order 
+  // C, N, O, Mg, Si, P, Cl, Ti, Cr, Mn, Fe, 
+  // Ni, Cu, Zn, Ge, Kr 
+  // Solar abundances are as mass fractions, 
+  // taken from the Cloudy default values, as 
+  // used in CHIMES. 
+  double SolarAbund[JENKINS_N_ELEM] = {2.07e-3, 8.36e-4, 5.49e-3, 5.91e-4, 6.83e-4, 7.01e-6, 4.72e-6, 3.56e-6, 1.72e-5, 1.12e-5, 1.1e-3, 7.42e-5, 7.32e-7, 1.83e-6, 2.58e-7, 1.36e-7}; 
+
+  // Fit parameters for the depletion factors from 
+  // Table 4 of Jenkins (2009). For each element, 
+  // we list the parameters Ax, Bx, zx   
+  double JenkinsPars[JENKINS_N_ELEM][3] = {{-0.101, -0.193, 0.803}, 
+					   {0.0, -0.109, 0.55}, 
+					   {-0.225, -0.145, 0.598}, 
+					   {-0.997, -0.800, 0.531}, 
+					   {-1.136, -0.570, 0.305}, 
+					   {-0.945, -0.166, 0.488}, 
+					   {-1.242, -0.314, 0.609}, 
+					   {-2.048, -1.957, 0.43}, 
+					   {-1.447, -1.508, 0.47}, 
+					   {-0.857, -1.354, 0.52}, 
+					   {-1.285, -1.513, 0.437}, 
+					   {-1.490, -1.829, 0.599}, 
+					   {-0.710, -1.102, 0.711}, 
+					   {-0.610, -0.279, 0.555}, 
+					   {-0.615, -0.725, 0.69}, 
+					   {-0.166, -0.332, 0.684}}; 
+  
+#ifdef OPENMP 
+  for (i = 0; i < OPENMP; i++) 
+    {
+#else 
+      i = 0; 
+#endif 
+      memcpy(ChimesDepletionData[i].SolarAbund, SolarAbund, JENKINS_N_ELEM * sizeof(double)); 
+      memcpy(ChimesDepletionData[i].JenkinsPars, JenkinsPars, JENKINS_N_ELEM * 3 * sizeof(double)); 
+      
+      // DustToGasSaturated is the dust to gas ratio when 
+      // F_star = 1.0, i.e. at maximum depltion onto grains. 
+      ChimesDepletionData[i].DustToGasSaturated = 5.7494e-3; 
+
+#ifdef OPENMP 
+    }
+#endif 
+}
+
+/* Computes the linear fits of Jenkins (2009), 
+ * as in his equation 10. Note that this returns 
+ * log10(fraction in the gas phase) */ 
+double chimes_jenkins_linear_fit(double nH, double T, double Ax, double Bx, double zx) 
+{
+  // First, compute the parameter F_star, using the 
+  // best-fit relation from Fig. 16 of Jenkins (2009). 
+  double F_star = 0.772 + (0.461 * log10(nH)); 
+
+  // Limit F_star to be no greater than unity 
+  if (F_star > 1.0) 
+    F_star = 1.0; 
+
+  // All metals are in the gas phase if 
+  // F_star < 0.0 or T > 10^6 K 
+  if ((F_star < 0.0) || (T > 1.0e6)) 
+    return 0.0; 
+  else 
+    return Bx + (Ax * (F_star - zx)); 
+}
+
+void chimes_compute_depletions(double nH, double T, int thread_id)
+{
+  int i; 
+  double pars[JENKINS_N_ELEM][3]; 
+  memcpy(pars, ChimesDepletionData[thread_id].JenkinsPars, JENKINS_N_ELEM * 3 * sizeof(double)); 
+
+  // ChimesDepletionFactors array is for the metals 
+  // in the order C, N, O, Mg, Si, Fe. The other 
+  // metals in CHIMES are not depleted. 
+  ChimesDepletionData[thread_id].ChimesDepletionFactors[0] = pow(10.0, chimes_jenkins_linear_fit(nH, T, pars[0][0], pars[0][1], pars[0][2])); // C 
+  ChimesDepletionData[thread_id].ChimesDepletionFactors[1] = pow(10.0, chimes_jenkins_linear_fit(nH, T, pars[1][0], pars[1][1], pars[1][2])); // N 
+  ChimesDepletionData[thread_id].ChimesDepletionFactors[2] = pow(10.0, chimes_jenkins_linear_fit(nH, T, pars[2][0], pars[2][1], pars[2][2])); // O 
+  ChimesDepletionData[thread_id].ChimesDepletionFactors[3] = pow(10.0, chimes_jenkins_linear_fit(nH, T, pars[3][0], pars[3][1], pars[3][2])); // Mg 
+  ChimesDepletionData[thread_id].ChimesDepletionFactors[4] = pow(10.0, chimes_jenkins_linear_fit(nH, T, pars[4][0], pars[4][1], pars[4][2])); // Si 
+  ChimesDepletionData[thread_id].ChimesDepletionFactors[5] = pow(10.0, chimes_jenkins_linear_fit(nH, T, pars[10][0], pars[10][1], pars[10][2])); // Fe 
+
+  // The dust abundance as used in CHIMES will be the 
+  // metallicity in solar units multiplied by ChimesDustRatio
+  ChimesDepletionData[thread_id].ChimesDustRatio = 0.0; 
+  for (i = 0; i < JENKINS_N_ELEM; i++) 
+    ChimesDepletionData[thread_id].ChimesDustRatio += ChimesDepletionData[thread_id].SolarAbund[i] * (1.0 - pow(10.0, chimes_jenkins_linear_fit(nH, T, pars[i][0], pars[i][1], pars[i][2]))); 
+
+  // The above sum gives the dust to gas mass ratio. 
+  // Now normalise it by the saturated value. 
+  ChimesDepletionData[thread_id].ChimesDustRatio /= ChimesDepletionData[thread_id].DustToGasSaturated; 
+} 
+#endif // CHIMES_METAL_DEPLETION 
 #endif // CHIMES 
 #endif
