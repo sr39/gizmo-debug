@@ -103,6 +103,7 @@
 #CHIMES_HYDROGEN_ONLY           # Hydrogen-only. This is ignored if METALS are also set. 
 #CHIMES_SOBOLEV_SHIELDING       # Enables local self-shielding over a Sobolev-like length scale. 
 #CHIMES_HII_REGIONS           # Disables shielding withing HII regions. 
+#CHIMES_STELLAR_FLUXES         # Couple UV fluxes from the luminosity tree to CHIMES 
 #CHIMES_SFR_MOLECULAR_CRITERION # As GALSF_SFR_MOLECULAR_CRITERION, but using the H2 fraction from CHIMES. 
 #CHIMES_REDUCED_OUTPUT          # Full CHIMES abundance array only output in some snapshots. 
 #CHIMES_NH_OUTPUT               # Write out column densities of gas particles to snapshots. 

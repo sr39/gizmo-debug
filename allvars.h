@@ -262,7 +262,7 @@ extern struct Reactions_Structure *all_reactions_root;
 extern struct Reactions_Structure *nonmolecular_reactions_root;
 extern double *dustG_arr; 
 extern double *H2_dissocJ_arr; 
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef CHIMES_STELLAR_FLUXES 
 // The following defines the stellar age bins 
 // that we will use to define the UV spectra 
 // from stars used in CHIMES. 
@@ -1529,7 +1529,7 @@ extern struct global_data_all_processes
   double MinGasTemp;		/*!< may be used to set a floor for the gas temperature */
 #ifdef CHIMES 
   int ChimesThermEvolOn;        /*!< Flag to determine whether to evolve the temperature in CHIMES. */ 
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef CHIMES_STELLAR_FLUXES 
   double Chimes_f_esc_ion; 
   double Chimes_f_esc_G0; 
 #endif
@@ -2413,18 +2413,18 @@ extern struct sph_particle_data
     
     MyFloat MaxSignalVel;           /*!< maximum signal velocity (needed for time-stepping) */
     
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING 
     MyFloat RadFluxUV;              /*!< local UV field strength */
     MyFloat RadFluxEUV;             /*!< local (ionizing/hard) UV field strength */
-#ifdef CHIMES 
+#endif // GALSF_FB_FIRE_RT_UVHEATING 
+#ifdef CHIMES_STELLAR_FLUXES 
     double Chimes_G0[CHIMES_LOCAL_UV_NBINS];    /*!< 6-13.6 eV flux, in Habing units */ 
     double Chimes_fluxPhotIon[CHIMES_LOCAL_UV_NBINS];  /*!< ionising flux (>13.6 eV), in cm^-2 s^-1 */ 
 #ifdef CHIMES_HII_REGIONS 
   double Chimes_G0_HII[CHIMES_LOCAL_UV_NBINS]; 
   double Chimes_fluxPhotIon_HII[CHIMES_LOCAL_UV_NBINS]; 
-#endif 
-#endif // CHIMES 
-#endif // GALSF_FB_LOCAL_UV_HEATING 
+#endif // CHIMES_HII_REGIONS 
+#endif // CHIMES_STELLAR_FLUXES 
 #ifdef CHIMES_TURB_DIFF_IONS 
   double ChimesNIons[TOTSIZE]; 
 #endif // CHIMES_TURB_DIFF_IONS 
@@ -2683,11 +2683,11 @@ extern struct gravdata_out
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
     MyLongDouble RadFluxUV;
     MyLongDouble RadFluxEUV;
-#ifdef CHIMES 
+#endif
+#ifdef CHIMES_STELLAR_FLUXES 
     double Chimes_G0[CHIMES_LOCAL_UV_NBINS]; 
     double Chimes_fluxPhotIon[CHIMES_LOCAL_UV_NBINS]; 
 #endif 
-#endif
 #ifdef BH_COMPTON_HEATING
     MyLongDouble RadFluxAGN;
 #endif
@@ -3050,7 +3050,7 @@ extern ALIGN(32) struct NODE
 
 #ifdef RT_USE_GRAVTREE
   MyFloat stellar_lum[N_RT_FREQ_BINS]; /*!< luminosity in the node*/
-#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+#if defined(CHIMES) && defined(CHIMES_STELLAR_FLUXES) 
   double chimes_stellar_lum_G0[CHIMES_LOCAL_UV_NBINS]; 
   double chimes_stellar_lum_ion[CHIMES_LOCAL_UV_NBINS]; 
 #endif 

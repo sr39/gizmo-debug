@@ -612,7 +612,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	  break;
 
         case IO_CHIMES_FLUX_G0: 
-#ifdef GALSF_FB_FIRE_RT_UVHEATING 
+#ifdef CHIMES_STELLAR_FLUXES  
 	  for (n = 0; n < pc; pindex++) 
 	    if (P[pindex].Type == type) 
 	      {
@@ -638,7 +638,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	  break; 
 
         case IO_CHIMES_FLUX_ION: 
-#ifdef GALSF_FB_FIRE_RT_UVHEATING 
+#ifdef CHIMES_STELLAR_FLUXES  
 	  for (n = 0; n < pc; pindex++) 
 	    if (P[pindex].Type == type) 
 	      {
@@ -1819,7 +1819,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
 	    break;
 
         case IO_CHIMES_FLUX_G0: 
-#ifdef GALSF_FB_FIRE_RT_UVHEATING 
+#ifdef CHIMES_STELLAR_FLUXES  
             if(mode)
                 bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyInputFloat);
             else
@@ -1828,7 +1828,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             break;
 
         case IO_CHIMES_FLUX_ION: 
-#ifdef GALSF_FB_FIRE_RT_UVHEATING 
+#ifdef CHIMES_STELLAR_FLUXES  
             if(mode)
                 bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyInputFloat);
             else
@@ -2156,7 +2156,7 @@ int get_values_per_blockelement(enum iofields blocknr)
 	  break; 
 
         case IO_CHIMES_FLUX_G0: 
-#ifdef GALSF_FB_FIRE_RT_UVHEATING 
+#ifdef CHIMES_STELLAR_FLUXES  
 	  values = CHIMES_LOCAL_UV_NBINS; 
 #else 
 	  values = 0; 
@@ -2164,7 +2164,7 @@ int get_values_per_blockelement(enum iofields blocknr)
 	  break; 
 
         case IO_CHIMES_FLUX_ION: 
-#ifdef GALSF_FB_FIRE_RT_UVHEATING 
+#ifdef CHIMES_STELLAR_FLUXES  
 	  values = CHIMES_LOCAL_UV_NBINS; 
 #else 
 	  values = 0; 
@@ -2703,7 +2703,7 @@ int blockpresent(enum iofields blocknr)
 	  break; 
 
         case IO_CHIMES_FLUX_G0: 
-#ifdef GALSF_FB_FIRE_RT_UVHEATING 
+#ifdef CHIMES_STELLAR_FLUXES  
 	  return 1; 
 #else 
 	  return 0; 
@@ -2711,7 +2711,7 @@ int blockpresent(enum iofields blocknr)
 	  break; 
 
         case IO_CHIMES_FLUX_ION: 
-#ifdef GALSF_FB_FIRE_RT_UVHEATING 
+#ifdef CHIMES_STELLAR_FLUXES  
 	  return 1; 
 #else 
 	  return 0; 

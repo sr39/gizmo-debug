@@ -47,7 +47,7 @@ extern pthread_mutex_t mutex_partnodedrift;
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
 
-#if defined(CHIMES) && defined(GALSF_FB_FIRE_RT_UVHEATING) 
+#ifdef CHIMES_STELLAR_FLUXES  
 /* The following routines are fitting functions that are used to 
  * obtain the luminosities in the 6-13.6 eV energy band (i.e. G0) 
  * and the >13.6 eV band (i.e. H-ionising), which will be used 
@@ -84,7 +84,7 @@ double chimes_ion_luminosity(double stellar_age, double stellar_mass)
 /***********************************************************************************************************/
 /* routine which returns the luminosity for the desired source particles, as a function of whatever the user desires, in the relevant bands */
 /***********************************************************************************************************/
-#if defined(CHIMES) && defined(GALSF_FB_FIRE_RT_UVHEATING) 
+#ifdef CHIMES_STELLAR_FLUXES  
 int rt_get_source_luminosity(int i, double sigma_0, double *lum, double *chimes_lum_G0, double *chimes_lum_ion)
 #else 
 int rt_get_source_luminosity(int i, double sigma_0, double *lum)
@@ -140,7 +140,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
         lum[RT_FREQ_BIN_FIRE_OPT] = L * f_op;
         lum[RT_FREQ_BIN_FIRE_IR]  = L * (1-f_uv-f_op);
 
-#if defined(CHIMES) && defined(GALSF_FB_FIRE_RT_UVHEATING) 
+#ifdef CHIMES_STELLAR_FLUXES  
 	int age_bin, j; 
 	double log_age_Myr = log10(star_age * 1000.0); 
 	double stellar_mass = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS); 
