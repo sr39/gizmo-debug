@@ -3050,7 +3050,7 @@ extern ALIGN(32) struct NODE
 
 #ifdef RT_USE_GRAVTREE
   MyFloat stellar_lum[N_RT_FREQ_BINS]; /*!< luminosity in the node*/
-#if defined(CHIMES) && defined(CHIMES_STELLAR_FLUXES) 
+#ifdef CHIMES_STELLAR_FLUXES 
   double chimes_stellar_lum_G0[CHIMES_LOCAL_UV_NBINS]; 
   double chimes_stellar_lum_ion[CHIMES_LOCAL_UV_NBINS]; 
 #endif 
