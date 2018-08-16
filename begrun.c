@@ -1873,7 +1873,7 @@ void read_parameter_file(char *fname)
       addr[nt] = &N_chimes_full_output_freq;
       id[nt++] = INT;
 
-#ifdef GALSF_FB_FIRE_RT_UVHEATING 
+#ifdef CHIMES_STELLAR_FLUXES 
       strcpy(tag[nt], "Chimes_f_esc_ion");
       addr[nt] = &All.Chimes_f_esc_ion;
       id[nt++] = REAL;

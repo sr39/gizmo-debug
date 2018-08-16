@@ -522,7 +522,7 @@ void force_update_node_recursive(int no, int sib, int father)
 #endif
 #ifdef RT_USE_GRAVTREE
     MyFloat stellar_lum[N_RT_FREQ_BINS], sigma_eff=0; 
-#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+#ifdef CHIMES_STELLAR_FLUXES 
     double chimes_stellar_lum_G0[CHIMES_LOCAL_UV_NBINS]; 
     double chimes_stellar_lum_ion[CHIMES_LOCAL_UV_NBINS]; 
     for (j = 0; j < CHIMES_LOCAL_UV_NBINS; j++) 
@@ -634,7 +634,7 @@ void force_update_node_recursive(int no, int sib, int father)
                         vs[2] += (Nodes[p].u.d.mass * Extnodes[p].vs[2]);
 #ifdef RT_USE_GRAVTREE
                         for(k=0;k<N_RT_FREQ_BINS;k++) {stellar_lum[k] += (Nodes[p].stellar_lum[k]);}
-#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+#ifdef CHIMES_STELLAR_FLUXES 
 			for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
 			  {
 			    chimes_stellar_lum_G0[k] += Nodes[p].chimes_stellar_lum_G0[k]; 
@@ -711,7 +711,7 @@ void force_update_node_recursive(int no, int sib, int father)
                     
 #ifdef RT_USE_GRAVTREE
                     double lum[N_RT_FREQ_BINS];
-#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+#ifdef CHIMES_STELLAR_FLUXES 
 		    double chimes_lum_G0[CHIMES_LOCAL_UV_NBINS]; 
 		    double chimes_lum_ion[CHIMES_LOCAL_UV_NBINS]; 
 		    int active_check = rt_get_source_luminosity(p,sigma_eff,lum,chimes_lum_G0, chimes_lum_ion);
@@ -721,7 +721,7 @@ void force_update_node_recursive(int no, int sib, int father)
                     if(active_check)
                     {
                         double l_sum = 0; for(k=0;k<N_RT_FREQ_BINS;k++) {stellar_lum[k] += lum[k]; l_sum += lum[k];}
-#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+#ifdef CHIMES_STELLAR_FLUXES 
 			for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
 			  {
 			    chimes_stellar_lum_G0[k] += chimes_lum_G0[k]; 
@@ -894,7 +894,7 @@ void force_update_node_recursive(int no, int sib, int father)
         Nodes[no].GravCost = 0;
 #ifdef RT_USE_GRAVTREE
         for(k=0;k<N_RT_FREQ_BINS;k++) {Nodes[no].stellar_lum[k] = stellar_lum[k];}
-#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+#ifdef CHIMES_STELLAR_FLUXES 
 	for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
 	  {
 	    Nodes[no].chimes_stellar_lum_G0[k] = chimes_stellar_lum_G0[k]; 
@@ -1010,7 +1010,7 @@ void force_exchange_pseudodata(void)
 #endif
 #ifdef RT_USE_GRAVTREE
         MyFloat stellar_lum[N_RT_FREQ_BINS];
-#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+#ifdef CHIMES_STELLAR_FLUXES 
         double chimes_stellar_lum_G0[CHIMES_LOCAL_UV_NBINS]; 
         double chimes_stellar_lum_ion[CHIMES_LOCAL_UV_NBINS]; 
 #endif 
@@ -1073,7 +1073,7 @@ void force_exchange_pseudodata(void)
 #endif
 #ifdef RT_USE_GRAVTREE
             int k; for(k=0;k<N_RT_FREQ_BINS;k++) {DomainMoment[i].stellar_lum[k] = Nodes[no].stellar_lum[k];}
-#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+#ifdef CHIMES_STELLAR_FLUXES 
 	    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
 	      {
 		DomainMoment[i].chimes_stellar_lum_G0[k] = Nodes[no].chimes_stellar_lum_G0[k]; 
@@ -1163,7 +1163,7 @@ void force_exchange_pseudodata(void)
 #endif
 #ifdef RT_USE_GRAVTREE
                     int k; for(k=0;k<N_RT_FREQ_BINS;k++) {Nodes[no].stellar_lum[k] = DomainMoment[i].stellar_lum[k];}
-#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+#ifdef CHIMES_STELLAR_FLUXES 
 		    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
 		      {
 			Nodes[no].chimes_stellar_lum_G0[k] = DomainMoment[i].chimes_stellar_lum_G0[k]; 
@@ -1220,7 +1220,7 @@ void force_treeupdate_pseudos(int no)
     
 #ifdef RT_USE_GRAVTREE
     MyFloat stellar_lum[N_RT_FREQ_BINS];
-#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+#ifdef CHIMES_STELLAR_FLUXES 
     double chimes_stellar_lum_G0[CHIMES_LOCAL_UV_NBINS]; 
     double chimes_stellar_lum_ion[CHIMES_LOCAL_UV_NBINS]; 
     for (j = 0; j < CHIMES_LOCAL_UV_NBINS; j++) 
@@ -1293,7 +1293,7 @@ void force_treeupdate_pseudos(int no)
             s[2] += (Nodes[p].u.d.mass * Nodes[p].u.d.s[2]);
 #ifdef RT_USE_GRAVTREE
             int k; for(k=0;k<N_RT_FREQ_BINS;k++) {stellar_lum[k] += (Nodes[p].stellar_lum[k]);}
-#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+#ifdef CHIMES_STELLAR_FLUXES 
 	    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
 	      {
 		chimes_stellar_lum_G0[k] += Nodes[p].chimes_stellar_lum_G0[k]; 
@@ -1441,7 +1441,7 @@ void force_treeupdate_pseudos(int no)
     Nodes[no].u.d.mass = mass;
 #ifdef RT_USE_GRAVTREE
     int k; for(k=0;k<N_RT_FREQ_BINS;k++) {Nodes[no].stellar_lum[k] = stellar_lum[k];}
-#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+#ifdef CHIMES_STELLAR_FLUXES 
     for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
       { 
 	Nodes[no].chimes_stellar_lum_G0[k] = chimes_stellar_lum_G0[k]; 
@@ -1629,7 +1629,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef RT_USE_GRAVTREE
     double mass_stellarlum[N_RT_FREQ_BINS];
     int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) {mass_stellarlum[k_freq]=0;}
-#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+#ifdef CHIMES_STELLAR_FLUXES 
     double chimes_mass_stellarlum_G0[CHIMES_LOCAL_UV_NBINS]; 
     double chimes_mass_stellarlum_ion[CHIMES_LOCAL_UV_NBINS]; 
     for (k_freq = 0; k_freq < CHIMES_LOCAL_UV_NBINS; k_freq++) 
@@ -1896,7 +1896,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 {
                     dx_stellarlum=dx; dy_stellarlum=dy; dz_stellarlum=dz;
                     double lum[N_RT_FREQ_BINS];
-#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+#ifdef CHIMES_STELLAR_FLUXES 
 		    double chimes_lum_G0[CHIMES_LOCAL_UV_NBINS]; 
 		    double chimes_lum_ion[CHIMES_LOCAL_UV_NBINS]; 
 		    int active_check = rt_get_source_luminosity(no,sigma_eff,lum, chimes_lum_G0, chimes_lum_ion);
@@ -1904,7 +1904,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     int active_check = rt_get_source_luminosity(no,sigma_eff,lum);
 #endif 
                     int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {if(active_check) {mass_stellarlum[kf]=lum[kf];} else {mass_stellarlum[kf]=0;}}
-#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+#ifdef CHIMES_STELLAR_FLUXES 
 		    for (kf = 0; kf < CHIMES_LOCAL_UV_NBINS; kf++) 
 		      { 
 			if (active_check) 
@@ -2111,7 +2111,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if(valid_gas_particle_for_rt)	/* we have a (valid) gas particle as target */
                 {
                     int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {mass_stellarlum[kf] = nop->stellar_lum[kf];}
-#if defined(CHIMES) && defined(GALSF_FB_LOCAL_UV_HEATING) 
+#ifdef CHIMES_STELLAR_FLUXES 
 		    for (kf = 0; kf < CHIMES_LOCAL_UV_NBINS; kf++) 
 		      { 
 			chimes_mass_stellarlum_G0[kf] = nop->chimes_stellar_lum_G0[kf]; 

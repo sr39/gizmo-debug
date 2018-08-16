@@ -657,14 +657,14 @@ void init(void)
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
             SphP[i].RadFluxUV = 0;
             SphP[i].RadFluxEUV = 0;
-#ifdef CHIMES 
+#endif 
+#ifdef CHIMES_STELLAR_FLUXES 
 	    int kc; 
 	    for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) 
 	      { 
 		SphP[i].Chimes_fluxPhotIon[kc] = 0; 
 		SphP[i].Chimes_G0[kc] = 0; 
 	      }
-#endif 
 #endif
 #ifdef BH_COMPTON_HEATING
             SphP[i].RadFluxAGN = 0;

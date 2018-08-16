@@ -1612,7 +1612,7 @@ void InitCool(void)
     // We will add further options later. 
     ChimesGlobalVars.N_spectra = 1; 
 
-#ifdef GALSF_FB_FIRE_RT_UVHEATING 
+#ifdef CHIMES_STELLAR_FLUXES  
     ChimesGlobalVars.N_spectra += CHIMES_LOCAL_UV_NBINS; 
 #endif 
 
@@ -1803,7 +1803,7 @@ void chimes_update_gas_vars(int target)
   ChimesGasVars[target].dust_G_parameter[0] = dustG_arr[0]; 
   ChimesGasVars[target].H2_dissocJ[0] = H2_dissocJ_arr[0]; 
   
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
+#ifdef CHIMES_STELLAR_FLUXES 
   int kc; 
   for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) 
     { 
