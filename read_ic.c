@@ -176,7 +176,7 @@ void read_ic(char *fname)
     }
 #endif
     
-#if defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_THERMAL)
+#if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
     if(RestartFlag == 0)
     {
         All.MassTable[2] = 0;
@@ -426,14 +426,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_VROT:
             break;
         case IO_VORT:
-#ifdef TURB_DRIVING_DUMPSPECTRUM
-            if(RestartFlag == 6)
-            {
-                for(n = 0; n < pc; n++)
-                    for(k = 0; k < 3; k++)
-                        SphP[offset + n].Vorticity[k] = *fp++;
-            }
-#endif
             break;
         case IO_TRUENGB:
             break;
@@ -600,6 +592,13 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #ifdef COSMIC_RAYS            
              for(n = 0; n < pc; n++)
                 SphP[offset + n].CosmicRayEnergy = *fp++;
+#endif
+            break;
+
+        case IO_COSMICRAY_ALFVEN:
+#ifdef COSMIC_RAYS_ALFVEN
+            for(n = 0; n < pc; n++)
+                for(k = 0; k < 2; k++) {SphP[offset + n].CosmicRayAlfvenEnergy[k] = *fp++;}
 #endif
             break;
 

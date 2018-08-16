@@ -1051,7 +1051,7 @@ void hydro_gradient_calc(void)
 #endif
 #ifdef COSMIC_RAYS
             construct_gradient(SphP[i].Gradients.CosmicRayPressure,i);
-            int is_particle_local_extremum = 0; // test for local extremum to revert to lower-order reconstruction if necessary
+            int is_particle_local_extremum; is_particle_local_extremum = 0; // test for local extremum to revert to lower-order reconstruction if necessary
 #endif
 #ifdef DOGRAD_SOUNDSPEED
             construct_gradient(SphP[i].Gradients.SoundSpeed,i);
@@ -1194,7 +1194,7 @@ void hydro_gradient_calc(void)
             ne = SphP[i].Ne;
             u = DMAX(All.MinEgySpec, SphP[i].InternalEnergy); // needs to be in code units
             temperature = ThermalProperties(u, SphP[i].Density*All.cf_a3inv, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
             if(SphP[i].DelayTimeHII>0) nh0=0;
 #endif 
 	        ion_frac = DMIN(DMAX(0,1.-nh0),1);
@@ -1471,7 +1471,7 @@ void hydro_gradient_calc(void)
             /* fraction of H at which maximum reconstruction is allowed (=0.5 for 'standard'); for pure hydro we can
              be a little more aggresive and the equations are still stable (but this is as far as you want to push it) */
             double a_limiter = 0.25; if(SphP[i].ConditionNumber>100) a_limiter=DMIN(0.5, 0.25 + 0.25 * (SphP[i].ConditionNumber-100)/100);
-#if !defined(MAGNETIC) && !defined(GALSF)
+#if defined(SELFGRAVITY_OFF) && (!defined(MAGNETIC) && !defined(GALSF))
             h_lim=PPP[i].Hsml; stol=0.1;
 #endif
 #if (SLOPE_LIMITER_TOLERANCE == 2)
@@ -1629,8 +1629,7 @@ void hydro_gradient_calc(void)
                 int k2; for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {BGrad_mag += SphP[i].Gradients.B[k][k2] * SphP[i].Gradients.B[k][k2];}}
                 kappa_diff *= b2_mag / (1.e-37 + p_scale * p_scale * BGrad_mag); // should be dimensionless //
 #else
-                /* alternatively, we don't explicitly use the local B-gradient, but assume a cascade with a driving length equal to 
-                    the pressure gradient scale length */
+                /* alternatively, we don't explicitly use the local B-gradient, but assume a cascade with a driving length equal to the pressure gradient scale length */
                 p_scale = 0.0; for(k=0;k<3;k++) {p_scale += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
                 p_scale = SphP[i].Pressure / (1.e-33 + sqrt(p_scale));
                 double p_scale_min = 0.5 * Get_Particle_Size(i); // sets a 'floor' at some multiple of the particle size (unresolved below this) //

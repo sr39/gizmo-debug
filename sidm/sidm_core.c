@@ -25,6 +25,9 @@
  *  It checks if comoving integration is on and does the necesary change of
  *  variables and units.
  */
+
+#ifdef DM_SIDM
+
 double prob_of_interaction(double mass, double r, double h_si, double dV[3], int dt_step)
 {
     double dVmag = sqrt(dV[0]*dV[0]+dV[1]*dV[1]+dV[2]*dV[2]) / All.cf_atime; // velocity in physical
@@ -105,4 +108,4 @@ void init_self_interactions()
     int i; for(i = 0; i < NumPart; i++) {P[i].dt_step_sidm = 0; P[i].NInteractions = 0;}
 }
 
-
+#endif

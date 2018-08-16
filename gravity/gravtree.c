@@ -565,7 +565,7 @@ void gravity_tree(void)
 #ifdef RT_OTVET
                         if(P[place].Type==0) {int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) for(k=0;k<6;k++) SphP[place].ET[k_freq][k] += GravDataOut[j].ET[k_freq][k];}
 #endif
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
                         if(P[place].Type==0) SphP[place].RadFluxUV += GravDataOut[j].RadFluxUV;
                         if(P[place].Type==0) SphP[place].RadFluxEUV += GravDataOut[j].RadFluxEUV;
 #ifdef CHIMES 			
@@ -855,7 +855,7 @@ void gravity_tree(void)
     
     
     
-#ifdef SCFPOTENTIAL
+#ifdef SCF_POTENTIAL
     MyDouble xs, ys, zs;
     MyDouble pots, axs, ays, azs;
     

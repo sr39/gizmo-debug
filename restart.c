@@ -51,14 +51,14 @@ void restart(int modus)
     double save_PartAllocFactor;
     int nprocgroup, masterTask, groupTask;
     struct global_data_all_processes all_task0;
-    int nmulti = MULTIPLEDOMAINS;
+    int nmulti = MULTIPLEDOMAINS, regular_restarts_are_valid = 1, backup_restarts_are_valid = 1;
     
 
 #ifdef CHIMES 
     int partIndex, abunIndex; 
 #endif 
     
-    if(ThisTask == 0 && modus == 0)
+    if(ThisTask == 0 && modus == 0) // writing re-start files: move old files to .bak
     {
         sprintf(buf, "%s/restartfiles", All.OutputDir);
         mkdir(buf, 02755);
@@ -72,16 +72,41 @@ void restart(int modus)
         }
 #endif
     }
+    if(modus == 1) // reading re-start files. make sure to check all the files to read exist!
+    {
+#ifndef NOCALLSOFSYSTEM
+        int i_Task_iter;
+        for(i_Task_iter=0; i_Task_iter<NTask; i_Task_iter++)
+        {
+            sprintf(buf, "%s/restartfiles/%s.%d", All.OutputDir, All.RestartFile, i_Task_iter);
+            sprintf(buf_bak, "%s/restartfiles/%s.%d.bak", All.OutputDir, All.RestartFile, i_Task_iter);
+            if(!(fd = fopen(buf, "r"))) {regular_restarts_are_valid=0;} else {fclose(fd);} // check if regular restart exists
+            if(!(fd = fopen(buf_bak, "r"))) {backup_restarts_are_valid=0;} else {fclose(fd);} // check if backup restart exists
+        }
+#endif
+        if(ThisTask == 0)
+        {
+            if((regular_restarts_are_valid == 0) && (backup_restarts_are_valid == 0))
+            {
+                printf("Fatal error. Full set of restart files ('%s' or '%s') not found - check the restarts are uncorrupted and your MPI process number has not changed.\n", buf, buf_bak);
+                endrun(7871);
+            }
+            if((regular_restarts_are_valid == 0) && (backup_restarts_are_valid == 1))
+            {
+                printf("Default restartfiles ('%s') not found - they are incomplete or corrupted [number of files matching MPI process number not found. But apparently valid set of backup restartfiles ('%s') found. Attempting to use those.\n", buf, buf_bak);
+            }
+        }
+    }
     MPI_Barrier(MPI_COMM_WORLD);
     
     sprintf(buf, "%s/restartfiles/%s.%d", All.OutputDir, All.RestartFile, ThisTask);
+    if((modus == 1) && (regular_restarts_are_valid == 0) && (backup_restarts_are_valid == 1)) {sprintf(buf, "%s/restartfiles/%s.%d.bak", All.OutputDir, All.RestartFile, ThisTask);}
     sprintf(buf_bak, "%s/restartfiles/%s.%d.bak", All.OutputDir, All.RestartFile, ThisTask);
     sprintf(buf_mv, "mv %s %s", buf, buf_bak);
     
     if((NTask < All.NumFilesWrittenInParallel))
     {
-        printf
-        ("Fatal error.\nNumber of processors must be greater than or equal to `NumFilesWrittenInParallel'.\n");
+        printf("Fatal error.\nNumber of processors must be greater than or equal to `NumFilesWrittenInParallel'.\n");
         endrun(2131);
     }
     

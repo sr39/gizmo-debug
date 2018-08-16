@@ -87,39 +87,9 @@ double bh_lum_bol(double mdot, double mass, long id)
 {
     double c_code = C / All.UnitVelocity_in_cm_per_s;
     double lum = All.BlackHoleRadiativeEfficiency * mdot * c_code*c_code;
-    //double lum_edd = All.BlackHoleRadiativeEfficiency * bh_eddington_mdot(mass) * c_code*c_code; if(lum > lum_edd) {lum = lum_edd;} // cap -luminosity- at eddington -luminosity-
-
 #ifdef SINGLE_STAR_FORMATION
-    double m_solar = mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS);
-    /* if below the deuterium burning limit, just use the potential energy efficiency at the surface of a jupiter-density object */
-    double rad_eff_protostar = 5.0e-7;
-    if(m_solar < 0.012) {rad_eff_protostar = 5.e-8 * pow(m_solar/0.00095,2./3.);}
-    lum = rad_eff_protostar * mdot * c_code*c_code;
-    /* now for pre-main sequence, need to also check the mass-luminosity relation */
-    double lum_sol = 0;
-    if(m_solar >= 0.012)
-    {
-        if(m_solar < 0.43) {lum_sol = 0.185 * m_solar*m_solar;}
-        else if(m_solar < 2.) {lum_sol = m_solar*m_solar*m_solar*m_solar;}
-        else if(m_solar < 53.9) {lum_sol = 1.5 * m_solar*m_solar*m_solar * sqrt(m_solar);}
-        else {lum_sol = 32000. * m_solar;}
-    }
-    if(id > 0)
-    {
-        // account for pre-main sequence evolution //
-        if(P[id].Type == 5)
-        {
-            double T4000_4 = pow(m_solar , 0.55); // protostellar temperature along Hayashi track
-#ifdef SINGLE_STAR_PROMOTION
-            double l_kh = 0.2263 * P[id].ProtoStellar_Radius*P[id].ProtoStellar_Radius * T4000_4; // luminosity from KH contraction
-            if(l_kh > lum_sol) {lum_sol = l_kh;} // if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
+    lum = calculate_individual_stellar_luminosity(mdot,mass,id);
 #endif
-        }
-    }
-    lum_sol *= SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s);
-    lum += lum_sol;
-#endif
-
     return All.BlackHoleFeedbackFactor * lum;
 }
 

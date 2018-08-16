@@ -418,7 +418,7 @@ integertime get_timestep(int p,		/*!< particle index */
     }
 #endif
 
-#if (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)) && defined(GALSF) && defined(GALSF_FB_SNE_HEATING)
+#if (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)) && defined(GALSF) && defined(GALSF_FB_MECHANICAL)
     if(((P[p].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[p].Type == 2)||(P[p].Type==3))))&&(P[p].Mass>0))
     {
         if((All.ComovingIntegrationOn))
@@ -623,13 +623,16 @@ integertime get_timestep(int p,		/*!< particle index */
                             {
                                 crv = sqrt(crv) / SphP[p].CosmicRayEnergy;
                                 cr_speed = DMAX( DMIN(COSMIC_RAYS_M1 , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(COSMIC_RAYS_M1 , fabs(SphP[p].CosmicRayDiffusionCoeff)/(Get_Particle_Size(p)*All.cf_atime)));// * (C/All.UnitVelocity_in_cm_per_s);
+#ifdef COSMIC_RAYS_ALFVEN
+                                cr_speed = COSMIC_RAYS_ALFVEN;
+#endif
                             }
                             double dt_courant_CR = 0.4 * (L_particle*All.cf_atime) / cr_speed;
-                            dt_conduction = dt_conduction_CR; // per TK, strictly enforce this timestep //
+                            dt_conduction = dt_courant_CR; // per TK, strictly enforce this timestep //
                         } else {dt_conduction=10.*dt;}
                     } else {
                         double dt_courant_CR = 0.4 * (L_particle*All.cf_atime) / COSMIC_RAYS_M1;
-                        dt_conduction = dt_conduction_CR; // per TK, strictly enforce this timestep //
+                        dt_conduction = dt_courant_CR; // per TK, strictly enforce this timestep //
                     }
 #endif
                     if(dt_conduction < dt) dt = dt_conduction; // normal explicit time-step
@@ -864,7 +867,7 @@ integertime get_timestep(int p,		/*!< particle index */
     
     
     // add a 'stellar evolution timescale' criterion to the timestep, to prevent too-large jumps in feedback //
-#if defined(YOUNGSTARWINDDRIVING) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM)
+#if defined(YOUNGSTARWINDDRIVING) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE)
     if(((P[p].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[p].Type == 2)||(P[p].Type==3))))&&(P[p].Mass>0))
     {
         double star_age = evaluate_stellar_age_Gyr(P[p].StellarAge);
