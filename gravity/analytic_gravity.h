@@ -3,7 +3,11 @@
  *
  *  This file contains supplemental code if you want to add an 
  *   -analytic- potential or gravitational force in the code, 
- *   rather than solely relying on the calculated self-gravity
+ *   rather than solely relying on the calculated self-gravity. 
+ *   Note that the terms here are added at the end of the self-gravity
+ *   loop, so if you want to keep self-gravity, but add these, you need
+ *   to make sure that your routine -adds to- the GravAccel values, rather 
+ *   than re-setting them entirely.
  */
 /*
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
@@ -20,12 +24,13 @@ void GravAccel_StaticNFW(void);
 void GravAccel_RayleighTaylorTest(void);
 void GravAccel_ShearingSheet(void);
 void GravAccel_PaczynskyWiita(void);
-
+void GravAccel_RDITestProblem(void);
 
 /* master routine which decides which (if any) analytic gravitational forces are applied */
 void add_analytic_gravitational_forces()
 {
 #ifdef GRAVITY_ANALYTIC
+    //GravAccel_RDITestProblem();         // vertical gravity+external acceleration for grain-RDI-wind tests
     //GravAccel_RayleighTaylorTest();     // vertical potential for RT tests
     //GravAccel_StaticPlummerSphere();    // plummer sphere
 #ifdef STATIC_HERNQUIST_POTENTIAL 
@@ -42,6 +47,36 @@ void add_analytic_gravitational_forces()
 #endif
 #endif
 }
+
+
+/* external forces for dusty-box problem */
+void GravAccel_RDITestProblem()
+{
+#ifdef GRAIN_RDI_TESTPROBLEM
+    int i;
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        /* zero out the gravity first (since this test doesn't use self-gravity) */
+        P[i].GravAccel[0]=P[i].GravAccel[1]=P[i].GravAccel[2]=0;
+        /* now add the constant vertical field for non-anchored particles */
+        if(P[i].ID > 0)
+        {
+            P[i].GravAccel[2] = -All.Vertical_Gravity_Strength;
+            /* dust feels radiation acceleration in the direction opposite gravity */
+	    double acc = All.Vertical_Grain_Accel;
+#ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
+	    acc /= P[i].Grain_Size; 
+#endif
+            if(P[i].Type==3) 
+	    {
+		P[i].GravAccel[2] += acc * cos(All.Vertical_Grain_Accel_Angle * M_PI/180.);
+		P[i].GravAccel[0] += acc * sin(All.Vertical_Grain_Accel_Angle * M_PI/180.);
+	    }
+        }
+    }
+#endif
+}
+
 
 
 /* adds coriolis and centrifugal terms for shearing-sheet approximation */
@@ -239,9 +274,9 @@ void GravAccel_KeplerianOrbit()
         dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y;
 #endif
         r2 = dp[0]*dp[0] + dp[1]*dp[1]; r = sqrt(r2);
-        P[i].GravAccel[0] = -dp[0] / (r2 * r);
-        P[i].GravAccel[1] = -dp[1] / (r2 * r);
-        P[i].GravAccel[2] = 0;
+        P[i].GravAccel[0] += -dp[0] / (r2 * r);
+        P[i].GravAccel[1] += -dp[1] / (r2 * r);
+        P[i].GravAccel[2] += 0;
     }
 }
 
@@ -419,7 +454,7 @@ void GravAccel_PaczynskyWiita()
         if(r > r_g)
         {
             double q = PACZYNSKY_WIITA_MASS/((r - r_g)*(r - r_g));
-            for(k = 0; k < 3; k++) {P[i].GravAccel[k] = - q * P[i].Pos[k]/r;}
+            for(k = 0; k < 3; k++) {P[i].GravAccel[k] += - q * P[i].Pos[k]/r;}
         }
     }
 }

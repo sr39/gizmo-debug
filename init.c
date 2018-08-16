@@ -120,7 +120,7 @@ void init(void)
     All.Time = All.TimeBegin;
     set_cosmo_factors_for_current_time();
     
-#ifdef SCFPOTENTIAL
+#ifdef SCF_POTENTIAL
     SCF_init();
     if(ThisTask == 0)
     {
@@ -243,7 +243,7 @@ void init(void)
         /* find caustics by sign analysis of configuration space distortion */
         P[i].last_determinant = 1.0;
         
-#ifdef OUTPUT_LAST_CAUSTIC
+#ifdef OUTPUT_GDE_LASTCAUSTIC
         /* all entries zero -> no caustic yet */
         P[i].lc_Time = 0.0;
         P[i].lc_Pos[0] = 0.0;
@@ -384,22 +384,20 @@ void init(void)
 	    P[i].MetalDensAroundStar = 0; 
 #endif 
 #endif
-#if defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_THERMAL)
+#if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
             P[i].SNe_ThisTimeStep = 0;
 #endif
-#ifdef GALSF_FB_SNE_HEATING
+#ifdef GALSF_FB_MECHANICAL
             int k; for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {P[i].Area_weighted_sum[k] = 0;}
-#endif
-#ifdef GALSF_FB_GASRETURN
+#ifdef GALSF_FB_FIRE_STELLAREVOLUTION
             P[i].MassReturn_ThisTimeStep = 0;
-#endif
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
             P[i].RProcessEvent_ThisTimeStep = 0;
 #endif
+#endif
         }
-        
+       
 #ifndef AJR_READ_STELLAR_AGE_FROM_ICS 
-#if defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(GALSF_FB_THERMAL)
+#if defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
         if(RestartFlag == 0)
         {
 #ifdef GALSF_ALT_INIT_STAR
@@ -420,21 +418,39 @@ void init(void)
 #endif 
         }
 #endif
-#endif // AJR_READ_STELLAR_AGE_FROM_ICS 
+#endif // !(AJR_READ_STELLAR_AGE_FROM_ICS) 
         
 #ifdef GRAIN_FLUID
         if(RestartFlag == 0)
         {
+            /* Change grain mass to change the distribution of sizes.  Grain_Size_Spectrum_Powerlaw parameter sets d\mu/dln(R_d) ~ R_d^Grain_Size_Spectrum_Powerlaw */
             P[i].Grain_Size = All.Grain_Size_Min * exp( gsl_rng_uniform(random_generator) * log(All.Grain_Size_Max/All.Grain_Size_Min) );
-            P[i].Gas_Density = 0;
-            P[i].Gas_InternalEnergy = 0;
-            P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0;
+            if(P[i].Type==3) {if(All.Grain_Size_Max > All.Grain_Size_Min*1.0001 && fabs(All.Grain_Size_Spectrum_Powerlaw) != 0) {P[i].Mass *= (All.Grain_Size_Spectrum_Powerlaw/(pow(All.Grain_Size_Max/All.Grain_Size_Min,All.Grain_Size_Spectrum_Powerlaw)-1.)) * pow(P[i].Grain_Size/All.Grain_Size_Min,All.Grain_Size_Spectrum_Powerlaw);}}
+
+#ifdef GRAIN_RDI_TESTPROBLEM
+	    if(P[i].Type == 3) /* initialize various quantities for test problems from parameters set in the ICs */
+	    {
+		P[i].Mass *= All.Dust_to_Gas_Mass_Ratio;
+		if(All.Initial_Grain_Vel_Mag == 0 || All.Grain_Charge_Parameter == 0) /* assign initial velocities assuming epstein */
+		{ 
+                        double a0=0.626657 * P[i].Grain_Size * sqrt(GAMMA) * All.Vertical_Grain_Accel;
+                        double ct = cos(All.Vertical_Grain_Accel_Angle * M_PI/180.), st = sin(All.Vertical_Grain_Accel_Angle * M_PI/180.);			
+			double w0 = a0 / sqrt(0.5*(1. + sqrt(1. + 0.883573*a0*a0))), tau2 = 0;
+			P[i].Vel[0] = w0 * st / (1+tau2); P[i].Vel[1] = w0 * st * sqrt(tau2) / (1+tau2); P[i].Vel[2] = w0 * ct;
+		} else { /* assign initial velocities from specified parameters */
+			double ct = cos(All.Vertical_Grain_Accel_Angle * M_PI/180.), st = sin(All.Vertical_Grain_Accel_Angle * M_PI/180.), tau = All.Initial_Grain_Tau, tau2 = tau*tau;
+			double w0 = All.Initial_Grain_Vel_Mag / sqrt((1+tau2*ct*ct)/(1+tau2));
+			P[i].Vel[0] = w0 * st / (1+tau2); P[i].Vel[1] = w0 * st * tau / (1+tau2); P[i].Vel[2] = w0 * ct; 
+		}
+	    }	    
+#endif
+
+            P[i].Gas_Density = P[i].Gas_InternalEnergy = P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0;
 #ifdef GRAIN_COLLISIONS
-            P[i].Grain_Density = 0;
-            P[i].Grain_Velocity[0]=P[i].Grain_Velocity[1]=P[i].Grain_Velocity[2]=0;
+            P[i].Grain_Density=P[i].Grain_Velocity[0]=P[i].Grain_Velocity[1]=P[i].Grain_Velocity[2]=0;
 #endif
 #ifdef GRAIN_LORENTZFORCE
-            P[i].Gas_B[0]=P[i].Gas_B[1]=P[i].Gas_B[2];
+            P[i].Gas_B[0]=P[i].Gas_B[1]=P[i].Gas_B[2]=0;
 #endif
         }
 #endif
@@ -477,14 +493,14 @@ void init(void)
 #endif // SOLAR_ABUNDANCES_WIERSMA09 
         }
 #endif // COOL_METAL_LINES_BY_SPECIES
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
+#ifdef GALSF_FB_FIRE_RPROCESS
         //All.SolarAbundances[NUM_METAL_SPECIES-1]=0.0; // R-process tracer
         for(j=1;j<=NUM_RPROCESS_SPECIES;j++) All.SolarAbundances[NUM_METAL_SPECIES-j]=0.0; // R-process tracer
 #endif
         
 #ifndef AJR_READ_METALLICITY_FROM_ICS 
         if(RestartFlag == 0) {
-#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(GALSF_FB_THERMAL)
+#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)	    
 #ifdef AJR_INIT_HALO_METALLICITY 
 	  if (P[i].ID < All.HaloID) 
 	    P[i].Metallicity[0] = All.InitMetallicityinSolar*All.SolarAbundances[0];
@@ -638,7 +654,7 @@ void init(void)
             SphP[i].Ne = 1.0;
 #endif 
 #endif
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
             SphP[i].RadFluxUV = 0;
             SphP[i].RadFluxEUV = 0;
 #ifdef CHIMES 
@@ -661,7 +677,7 @@ void init(void)
         SphP[i].HostHaloMass = 0;
 #endif
 #endif // GALSF_SUBGRID_WINDS //
-#if defined(GALSF_FB_HII_HEATING) || defined(CHIMES_HII_REGIONS) 
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS) 
         SphP[i].DelayTimeHII = 0;
 #endif
 #ifdef GALSF_FB_TURNOFF_COOLING
@@ -834,6 +850,7 @@ void init(void)
     
     /* HELLO! This here is where you should insert custom code for hard-wiring the ICs of various test problems */
 
+
     
     
     density();
@@ -868,6 +885,14 @@ void init(void)
             SphP[i].CosmicRayFluxPred[j]=0;
         }
 #endif
+#ifdef COSMIC_RAYS_ALFVEN
+        for(j=0;j<2;j++)
+        {
+            SphP[i].CosmicRayAlfvenEnergy[j]=0;
+            SphP[i].CosmicRayAlfvenEnergyPred[j]=0;
+            SphP[i].DtCosmicRayAlfvenEnergy[j]=0;
+        }
+#endif
 #endif
 #if defined(EOS_ELASTIC)
         if(RestartFlag != 1)
@@ -895,7 +920,7 @@ void init(void)
         SphP[i].Super_Timestep_Dt_Explicit = 0;
         SphP[i].Super_Timestep_j = 0;
 #endif
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
         SphP[i].RadFluxUV = 0;
         SphP[i].RadFluxEUV = 0;
 #endif
@@ -1035,15 +1060,6 @@ void init(void)
         endrun(0);
     }
 #endif
-    
-    
-    if(RestartFlag == 6)
-    {
-#if defined(BOX_PERIODIC) && defined(TURB_DRIVING_DUMPSPECTRUM)
-        TURB_DRIVING_DUMPSPECTRUM();
-#endif
-        endrun(0);
-    }
     
     
     if(RestartFlag == 4)

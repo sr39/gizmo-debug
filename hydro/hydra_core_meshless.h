@@ -13,11 +13,10 @@
 #define HYDRO_FACE_AREA_LIMITER // use more restrictive face-area limiter in the simulations [some applications this is useful, but unclear if we can generally apply it] //
 #endif
     
-    double s_star_ij,s_i,s_j,v_frame[3],n_unit[3];
+    double s_star_ij,s_i,s_j,v_frame[3],n_unit[3],dummy_pressure;
     double distance_from_i[3],distance_from_j[3];
-    face_area_dot_vel=face_vel_i=face_vel_j=Face_Area_Norm=0;
+    dummy_pressure=face_area_dot_vel=face_vel_i=face_vel_j=Face_Area_Norm=0;
     double Pressure_i = local.Pressure, Pressure_j = SphP[j].Pressure;
-    double dummy_pressure = 0;
 #if defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)
     /* negative pressures are allowed, but dealt with below by a constant shift and re-shift, which should be invariant for HLLC with the MFM method */
     if((Pressure_i<0)||(Pressure_j<0))
@@ -38,6 +37,9 @@
 #endif
 #ifdef COSMIC_RAYS
     Fluxes.CosmicRayPressure = 0;
+#ifdef COSMIC_RAYS_ALFVEN
+    Fluxes.CosmicRayAlfvenEnergy[0] = Fluxes.CosmicRayAlfvenEnergy[1] = 0;
+#endif
 #endif
     
     /* --------------------------------------------------------------------------------- */
@@ -442,6 +444,9 @@
             } else {
                 Fluxes.CosmicRayPressure = Fluxes.rho * (CosmicRayPressure_j*V_j/(GAMMA_COSMICRAY_MINUS1*P[j].Mass));
             }
+#ifdef COSMIC_RAYS_ALFVEN
+            for(k=0;k<2;k++) {if(Fluxes.rho<0) {Fluxes.CosmicRayAlfvenEnergy[k]+=local.CosmicRayAlfvenEnergy[k]*Fluxes.rho/local.Mass;} else {Fluxes.CosmicRayAlfvenEnergy[k]+=SphP[j].CosmicRayAlfvenEnergy[k]*Fluxes.rho/local.Mass;}}
+#endif
 #endif
 #ifdef MAGNETIC
             for(k=0;k<3;k++) {Fluxes.B[k] = Face_Area_Norm * Riemann_out.Fluxes.B[k];} // magnetic flux (B*V) //

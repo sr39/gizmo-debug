@@ -1,4 +1,5 @@
 /* here is where we call the core of the SIDM calculation for DM particle-particle interactions */
+#ifdef DM_SIDM
 {
     /* check if target+neighbor are an SIDM candidate, and against self-interaction */
     if( ((1 << local.Type) & (DM_SIDM)) && ((1 << P[j].Type) & (DM_SIDM)) && (local.ID != P[j].ID) && (local.dt_step <= P[j].dt_step))
@@ -20,3 +21,4 @@
         }
     } // if((1 << ptype) & (DM_SIDM))
 }
+#endif

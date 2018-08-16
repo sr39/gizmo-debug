@@ -1649,7 +1649,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double mass_bhlum=0;
     MyFloat bh_lum_unitfactor = All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s/All.UnitTime_in_s * All.HubbleParam * (SOLAR_MASS/SOLAR_LUM); // convert bh luminosity to our tree units
 #endif
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
     double incident_flux_uv=0;
     double incident_flux_euv=0;
 #ifdef CHIMES 
@@ -2493,7 +2493,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 r2 = dx_stellarlum*dx_stellarlum + dy_stellarlum*dy_stellarlum + dz_stellarlum*dz_stellarlum; r = sqrt(r2);
                 if(r >= soft) {fac=1./(r2*r);} else {h_inv=1./soft; h3_inv=h_inv*h_inv*h_inv; u=r*h_inv; fac=kernel_gravity(u,h_inv,h3_inv,1);}
                 if((soft>r)&&(soft>0)) fac *= (r2/(soft*soft)); // don't allow cross-section > r2
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
                 incident_flux_uv += (0.079577*fac*r) * mass_stellarlum[RT_FREQ_BIN_FIRE_UV];// * shortrange_table[tabindex];
 #ifdef CHIMES 
 		int chimes_k; 
@@ -2551,7 +2551,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 fac *= fac_stellum_0;
                 /* now that we've done the long-range heating component, we only allow the momentum to couple over
                  some distance to prevent bad approximations when the distance between points here is enormous */
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
                 if(r>50. * 3.086e21*All.HubbleParam/(All.UnitLength_in_cm*All.cf_atime)) fac=0;
 #endif
                 double fac2 = 0; int kf_rt; for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++) {fac2 += mass_stellarlum[kf_rt] * fac_stellum[kf_rt];}
@@ -2626,7 +2626,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef RT_OTVET
         if(valid_gas_particle_for_rt) {int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {SphP[target].ET[k][k_et] = RT_ET[k][k_et];}} else {if(P[target].Type==0) {int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {SphP[target].ET[k][k_et]=0;}}}
 #endif
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
         if(valid_gas_particle_for_rt) SphP[target].RadFluxUV = incident_flux_uv;
         if(valid_gas_particle_for_rt) SphP[target].RadFluxEUV = incident_flux_euv;
 #ifdef CHIMES 
@@ -2665,7 +2665,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef RT_OTVET
         int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {GravDataResult[target].ET[k][k_et] = RT_ET[k][k_et];}
 #endif
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
         GravDataResult[target].RadFluxUV = incident_flux_uv;
         GravDataResult[target].RadFluxEUV = incident_flux_euv;
 #ifdef CHIMES 

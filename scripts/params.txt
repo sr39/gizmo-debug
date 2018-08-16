@@ -140,6 +140,7 @@ CosmicRayDiffusionCoeff     1.0     % multiplies anisotropic diffusion/streaming
 Grain_Internal_Density      1.0     % internal/material density of grains in g/cm^3
 Grain_Size_Min              1.e-6   % minimum grain size in cm
 Grain_Size_Max              1.e-4   % maximum grain size in cm
+Grain_Size_Spectrum_Powerlaw  0.5   % power-law distribution of grain sizes (dm/dlnr~r^x)
 
 
 %-------------------------------------------------------------------------
@@ -176,17 +177,17 @@ VariableWindSpecMomentum 5000.  % wind momentum per unit stellar mass (code velo
 %--- initial metallicity of gas & stars in simulation 
 InitMetallicity             0.0001  % initial gas+stellar metallicity (in solar)
 InitStellarAge              0.001   % initial mean age (in Gyr; for stars in sim ICs)
-%--- local radiation-pressure driven winds (GALSF_FB_RPWIND_LOCAL) 
+%--- local radiation-pressure driven winds (GALSF_FB_FIRE_RT_LOCALRP) 
 WindMomentumLoading         1.0     % fraction of photon momentum to couple
-%--- SneII Heating Model (GALSF_FB_SNE_HEATING) 
+%--- SneII Heating Model (GALSF_FB_MECHANICAL) 
 SNeIIEnergyFrac             1.0     % fraction of mechanical energy to couple
-%--- HII region photo-heating model (GALSF_FB_HII_HEATING)  
+%--- HII region photo-heating model (GALSF_FB_FIRE_RT_HIIHEATING)  
 HIIRegion_fLum_Coupled      1.0     % fraction of ionizing photons allowed to see gas
-%--- long-range radiation pressure acceleration (GALSF_FB_RT_PHOTONMOMENTUM) 
+%--- long-range radiation pressure acceleration (GALSF_FB_FIRE_RT_LONGRANGE) 
 PhotonMomentum_Coupled_Fraction  1.0  % fraction of L to allow incident
 PhotonMomentum_fUV          0.0    % incident SED f(L) in UV (minimum scattering)
 PhotonMomentum_fOPT         0.0    % incident SED f(L) in optical/near-IR 
-%--- gas return/recycling (GALSF_FB_GASRETURN) 
+%--- gas return/recycling
 GasReturnFraction           1.0     % fraction of gas mass returned (relative to ssp)
 GasReturnEnergy             1.0     % fraction of returned gas energy+momentum (relative to ssp)
 %--- cosmic rays (COSMIC_RAYS)
