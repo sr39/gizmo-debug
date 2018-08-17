@@ -574,10 +574,11 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 	  for (n = 0; n < pc; pindex++) 
 	    if (P[pindex].Type == type) 
 	      {
-		fp[0] = (MyOutputFloat) ChimesGasVars[pindex].abundances[elec]; 
-		fp[1] = (MyOutputFloat) ChimesGasVars[pindex].abundances[HI]; 
-		fp[2] = (MyOutputFloat) ChimesGasVars[pindex].abundances[H2]; 
-		fp += 3; 
+		fp[0] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[elec]]; 
+		fp[1] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[HI]]; 
+		fp[2] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[H2]]; 
+		fp[3] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[CO]]; 
+		fp += 4; 
 		n++; 
 	      }
 #endif 
@@ -1794,9 +1795,9 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_CHIMES_REDUCED: 
 #ifdef CHIMES_REDUCED_OUTPUT 
             if(mode)
-                bytes_per_blockelement = 3 * sizeof(MyInputFloat);
+                bytes_per_blockelement = 4 * sizeof(MyInputFloat);
             else
-                bytes_per_blockelement = 3 * sizeof(MyOutputFloat);
+                bytes_per_blockelement = 4 * sizeof(MyOutputFloat);
 #endif 
             break;
 
@@ -2133,7 +2134,7 @@ int get_values_per_blockelement(enum iofields blocknr)
 	  
         case IO_CHIMES_REDUCED: 
 #ifdef CHIMES_REDUCED_OUTPUT 
-	  values = 3; 
+	  values = 4; 
 #else 
 	  values = 0; 
 #endif 
