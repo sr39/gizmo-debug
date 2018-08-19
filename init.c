@@ -421,7 +421,7 @@ void init(void)
 			   w0 = sqrt((sqrt(1.+4.*agamma*a0*a0*f_tau_guess2)-1.)/(2.*agamma)); // re-calculate w0 with this // 
 			}
 #endif
-		w0 *= sqrt((1.+tau2)/(1.+tau2*ct2)); // ensures normalization to unity with convention below //
+		w0 /= sqrt((1.+tau2)*(1.+tau2*ct2)); // ensures normalization to unity with convention below //
 		P[i].Vel[0] = w0*st; P[i].Vel[1] = w0*sqrt(tau2)*st; P[i].Vel[2] = w0*(1.+tau2)*ct;
 		}
 	    }	    
