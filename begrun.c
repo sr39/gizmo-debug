@@ -994,14 +994,6 @@ void read_parameter_file(char *fname)
         
 #ifdef GRAIN_FLUID
 #ifdef GRAIN_RDI_TESTPROBLEM
-        strcpy(tag[nt],"Initial_Grain_Tau");
-        addr[nt] = &All.Initial_Grain_Tau;
-        id[nt++] = REAL;
-
-        strcpy(tag[nt],"Initial_Grain_Vel_Mag");
-        addr[nt] = &All.Initial_Grain_Vel_Mag;
-        id[nt++] = REAL;
-
         strcpy(tag[nt],"Grain_Charge_Parameter");
         addr[nt] = &All.Grain_Charge_Parameter;
         id[nt++] = REAL;
@@ -1012,11 +1004,11 @@ void read_parameter_file(char *fname)
 
         strcpy(tag[nt],"Vertical_Gravity_Strength");
         addr[nt] = &All.Vertical_Gravity_Strength;
-        id[nt++] = real;
+        id[nt++] = REAL;
 
         strcpy(tag[nt],"Vertical_Grain_Accel");
         addr[nt] = &All.Vertical_Grain_Accel;
-        id[nt++] = real;
+        id[nt++] = REAL;
 
         strcpy(tag[nt],"Vertical_Grain_Accel_Angle");
         addr[nt] = &All.Vertical_Grain_Accel_Angle;
