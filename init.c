@@ -401,16 +401,27 @@ void init(void)
 	    if(P[i].Type == 3) /* initialize various quantities for test problems from parameters set in the ICs */
 	    {
 		P[i].Mass *= All.Dust_to_Gas_Mass_Ratio;
-		if(All.Initial_Grain_Vel_Mag == 0 || All.Grain_Charge_Parameter == 0) /* assign initial velocities assuming epstein */
-		{ 
-                        double a0=0.626657 * P[i].Grain_Size * sqrt(GAMMA) * All.Vertical_Grain_Accel;
-                        double ct = cos(All.Vertical_Grain_Accel_Angle * M_PI/180.), st = sin(All.Vertical_Grain_Accel_Angle * M_PI/180.);			
-			double w0 = a0 / sqrt(0.5*(1. + sqrt(1. + 0.883573*a0*a0))), tau2 = 0;
-			P[i].Vel[0] = w0 * st / (1+tau2); P[i].Vel[1] = w0 * st * sqrt(tau2) / (1+tau2); P[i].Vel[2] = w0 * ct;
-		} else { /* assign initial velocities from specified parameters */
-			double ct = cos(All.Vertical_Grain_Accel_Angle * M_PI/180.), st = sin(All.Vertical_Grain_Accel_Angle * M_PI/180.), tau = All.Initial_Grain_Tau, tau2 = tau*tau;
-			double w0 = All.Initial_Grain_Vel_Mag / sqrt((1+tau2*ct*ct)/(1+tau2));
-			P[i].Vel[0] = w0 * st / (1+tau2); P[i].Vel[1] = w0 * st * tau / (1+tau2); P[i].Vel[2] = w0 * ct; 
+		{ 	
+			double tS0 = 0.626657 * P[i].Grain_Size * sqrt(GAMMA); /* stopping time [Epstein] for driftvel->0 */
+                        double a0 = tS0 * All.Vertical_Grain_Accel / (1.+All.Dust_to_Gas_Mass_Ratio); /* acc * tS0 / (1+mu) */
+#if GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
+			a0 *= All.Grain_Size_Max / P[i].Grain_Size;
+#endif
+                        double ct = cos(All.Vertical_Grain_Accel_Angle * M_PI/180.), st = sin(All.Vertical_Grain_Accel_Angle * M_PI/180.); /* relevant angles */
+			int k; double agamma=0.220893; // 9pi/128 //
+			double tau2 = 0, w0 = a0 / sqrt(0.5*(1. + sqrt(1. + 4.*agamma*a0*a0))); // exact solution if no Lorentz forces and Epstein drag //
+#ifdef GRAIN_LORENTZFORCE
+			double tL_i = All.Grain_Charge_Parameter/All.Grain_Size_Max * pow(All.Grain_Size_Max/P[i].Grain_Size,2) * All.BiniZ; // 1/Lorentz in code units
+			double ct2=ct*ct, tau2_0=pow(tS0*tL_i,2), f_tau_guess=0; // variables for below //
+			for(k=0;k<10;k++)
+			{
+			   tau2=tau2_0/(1. + agamma*w0*w0); // guess tau [including velocity dependence] //
+			   f_tau_guess=np.sqrt((1.+tau2*ct2)/(1.+tau2)); // what the projection factor (reduction in w from projection) would be //
+			   w0 = f_tau_guess*a0 / sqrt(0.5*(1. + sqrt(1. + 4.*agamma*a0*a0*f_tau_guess*f_tau_guess))); // re-calculate w0 with this // 
+			}
+#endif
+		w0 *= np.sqrt((1.+tau2)/(1.+tau2*ct2)); // ensures normalization to unity with convention below //
+		P[i].Vel[0] = w0*st; P[i].Vel[1] = w0*sqrt(tau2)*st; P[i].Vel[2] = w0*(1.+tau2)*ct;
 		}
 	    }	    
 #endif

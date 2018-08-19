@@ -133,7 +133,7 @@ void apply_grain_dragforce(void)
                         if(bmag>0) {bmag=sqrt(bmag); for(k=0;k<3;k++) {bhat[k]/=bmag;}} else {bmag=0;}
 			double grain_charge_cinv = Z_grain / grain_mass * lorentz_units;
 #ifdef GRAIN_RDI_TESTPROBLEM
-			if(All.Grain_Charge_Parameter != 0) {grain_charge_cinv = -All.Grain_Charge_Parameter / P[i].Grain_Size;} // set charge manually //
+			if(All.Grain_Charge_Parameter != 0) {grain_charge_cinv = -All.Grain_Charge_Parameter/All.Grain_Size_Max * pow(All.Grain_Size_Max/P[i].Grain_Size,2);} // set charge manually //
 #endif
                         /* now apply the boris integrator */
                         double lorentz_coeff = (0.5*dt) * bmag * grain_charge_cinv; // dimensionless half-timestep term for boris integrator //

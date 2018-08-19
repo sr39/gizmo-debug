@@ -1713,8 +1713,6 @@ extern struct global_data_all_processes
 
 #ifdef GRAIN_FLUID
 #ifdef GRAIN_RDI_TESTPROBLEM
-    double Initial_Grain_Tau;
-    double Initial_Grain_Vel_Mag;
     double Grain_Charge_Parameter;
     double Dust_to_Gas_Mass_Ratio;
     double Vertical_Gravity_Strength;
