@@ -497,6 +497,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double m_cooling = 4.18879*pnorm*SphP[j].Density*RsneKPC*RsneKPC*RsneKPC;
                 /* apply limiter for energy conservation */
                 double mom_boost_fac = 1 + sqrt(DMIN(mj_preshock , m_cooling) / m_ej_input);
+                if(fb_loop_iteration > 0) {mom_boost_fac=1;}
                 
                 /* save summation values for outputs */
                 dP = local.unit_mom_SNe / P[j].Mass * pnorm;
