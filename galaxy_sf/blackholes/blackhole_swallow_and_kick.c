@@ -746,7 +746,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
 #endif
     if(NumPart + n_particles_split >= All.MaxPart)
     {
-        printf ("On Task=%d with NumPart=%d we try to split a particle. Sorry, no space left...(All.MaxPart=%d)\n", ThisTask, NumPart, All.MaxPart);
+        printf ("On Task=%d with NumPart=%d we tried to split a particle, but there is no space left...(All.MaxPart=%d). Try using more nodes, or raising PartAllocFac, or changing the split conditions to avoid this.\n", ThisTask, NumPart, All.MaxPart);
         fflush(stdout); endrun(8888);
     }
     
