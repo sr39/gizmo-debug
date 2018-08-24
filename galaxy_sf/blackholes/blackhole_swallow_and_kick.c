@@ -464,12 +464,15 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 
                         accreted_mass += FLT(f_accreted*P[j].Mass);
-
+                        
 #ifdef BH_GRAVCAPTURE_GAS
 #ifdef BH_ALPHADISK_ACCRETION       /* mass goes into the alpha disk, before going into the BH */
                         accreted_BH_mass_alphadisk += FLT(f_accreted*P[j].Mass);
 #else                               /* mass goes directly to the BH, not just the parent particle */
                         accreted_BH_mass += FLT(f_accreted*P[j].Mass);
+#ifdef SINGLE_STAR_FORMATION
+                        for(k = 0; k < 3; k++) accreted_momentum[k] += FLT(f_accreted * P[j].Mass * P[j].Vel[k]);
+#endif
 #endif
 #endif
                         P[j].Mass *= (1-f_accreted);
