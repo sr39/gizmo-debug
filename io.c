@@ -2374,7 +2374,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
                     typelist[i] = 0;
             return nstars + header.npart[5];
 #else
-#ifdef EXTRA_SNE_OUTPUT; 
+#ifdef EXTRA_SNE_OUTPUT 
 	    nngb = nstars; 
 	    typelist[0] = 0; 
 	    typelist[1] = 0; 
