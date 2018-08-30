@@ -260,7 +260,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
             lum[RT_FREQ_BIN_HARD_XRAY] = (6.3e27 + 0.6*L_HMXBs) * fac; // LMXBs+HMXBs
 #endif
 #if defined(RT_SOFT_XRAY) 
-            lum[RT_FREQ_BIN_HARD_XRAY] = (8.2e27 + 0.4*L_HMXBs) * fac; // LMXBs+HMXBs
+            lum[RT_FREQ_BIN_SOFT_XRAY] = (8.2e27 + 0.4*L_HMXBs) * fac; // LMXBs+HMXBs
 #endif
         }
     }
