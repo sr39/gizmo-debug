@@ -1282,10 +1282,10 @@ void hydro_gradient_calc(void)
                 cs = DMIN(1.e4*cs , sqrt(cs*cs+vA_2));
 #endif
                 cs *= All.cf_afac3;
+#ifdef DIFFUSION_OPTIMIZERS
                 double eta_sat = (SphP[i].Density*All.cf_a3inv) * cs / (ion_free_path * (1 + 4.2 * ion_free_path / vel_scale_length));
                 if(eta_sat <= 0) SphP[i].Eta_ShearViscosity=0;
                 if(SphP[i].Eta_ShearViscosity>0) {SphP[i].Eta_ShearViscosity = 1. / (1./SphP[i].Eta_ShearViscosity + 1./eta_sat);} // again, all physical units //
-#ifdef DIFFUSION_OPTIMIZERS
                 //SphP[i].Eta_ShearViscosity = DMIN(SphP[i].Eta_ShearViscosity , SphP[i].Density*All.cf_a3inv * cs * DMAX(Get_Particle_Size(i)*All.cf_atime , vel_scale_length));
 #endif
 #endif
