@@ -259,7 +259,7 @@ double get_starformation_rate(int i)
     } // if(tau_fmol>0)
 #endif // GALSF_SFR_MOLECULAR_CRITERION
     
-#ifdef GALSF_SFR_STRICT_CONVERGING_CHECK
+#ifdef SINGLE_STAR_STRICT_CONVERGING_CHECK
     double gradv[9];
 #endif    
     
@@ -273,10 +273,11 @@ double get_starformation_rate(int i)
     {
         for(k=0;k<3;k++)
         {
-#ifdef GALSF_SFR_STRICT_CONVERGING_CHECK
+
+           double vt = SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
+#ifdef SINGLE_STAR_STRICT_CONVERGING_CHECK
 	  gradv[3*j + k] = vt;
 #endif
-            double vt = SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
             if(All.ComovingIntegrationOn) {if(j==k) {vt += All.cf_hubble_a;}} /* add hubble-flow correction */
 #if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
             if(j==k) {divv += vt;}
@@ -326,7 +327,7 @@ double get_starformation_rate(int i)
 #endif
 #endif // GALSF_SFR_VIRIAL_SF_CRITERION
 
-#ifdef GALSF_SFR_STRICT_CONVERGING_CHECK
+#ifdef SINGLE_STAR_STRICT_CONVERGING_CHECK
      // we check that the velocity gradient is negative-definite, ie. converging along all principal axes, which is much stricter than div v < 0
     gsl_matrix_view m = gsl_matrix_view_array (gradv, 3, 3);
     gsl_vector *eval = gsl_vector_alloc (3);
