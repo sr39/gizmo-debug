@@ -363,7 +363,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                             }
                         }
 #endif
-
+#ifndef SINGLE_STAR_FORMATION
                         /* check_for_bh_merger.  Easy.  No Edd limit, just a pos and vel criteria. */
                         if((id != P[j].ID) && (P[j].Mass > 0) && (P[j].Type == 5))	/* we may have a black hole merger */
                         {
@@ -391,7 +391,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                 }
                             }
                         } // if(P[j].Type == 5) //
-                        
+#endif
                         
                         
                         /* This is a similar loop to what we already did in blackhole_environment, but here we stochastically
