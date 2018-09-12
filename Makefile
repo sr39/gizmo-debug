@@ -1034,7 +1034,7 @@ endif
 
 
 ifeq (SINGLE_STAR,$(findstring SINGLE_STAR,$(CONFIGVARS)))
-#OBJS	+= radiation/rt_utilities.o radiation/rt_CGmethod.o radiation/rt_source_injection.o radiation/rt_chem.o radiation/rt_cooling.o
+OBJS	+= radiation/rt_utilities.o radiation/rt_CGmethod.o radiation/rt_source_injection.o radiation/rt_chem.o radiation/rt_cooling.o
 OBJS    += galaxy_sf/sfr_eff.o galaxy_sf/stellar_evolution.o galaxy_sf/mechanical_fb.o galaxy_sf/radfb_local.o
 OBJS    += galaxy_sf/blackholes/blackhole.o galaxy_sf/blackholes/blackhole_util.o galaxy_sf/blackholes/blackhole_environment.o galaxy_sf/blackholes/blackhole_feed.o galaxy_sf/blackholes/blackhole_swallow_and_kick.o
 INCL    += galaxy_sf/blackholes/blackhole.h
