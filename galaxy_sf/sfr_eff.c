@@ -290,8 +290,13 @@ double get_starformation_rate(int i)
     double k_cs = cs_eff / (Get_Particle_Size(i)*All.cf_atime);
 #ifdef SINGLE_STAR_FORMATION
     double press_grad_length = 0;
+#ifdef SINGLE_STAR_USE_GRADRHO     //    pressure grad length can end up huge when grad P is slope-limited, often the case in a local density maximum particle; try using grad rho instead
+    for(k=0;k<3;k++) {press_grad_length += P[i].GradRho[k]*P[i].GradRho[k];}
+    press_grad_length = All.cf_atime * DMAX(Get_Particle_Size(i) , SphP[i].Density / (1.e-37 + sqrt(press_grad_length)));
+#endif 
     for(k=0;k<3;k++) {press_grad_length += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
-    press_grad_length = All.cf_atime * DMAX(Get_Particle_Size(i) , SphP[i].Pressure / (1.e-37 + sqrt(press_grad_length))); 
+    press_grad_length = All.cf_atime * DMAX(Get_Particle_Size(i) , SphP[i].Pressure / (1.e-37 + sqrt(press_grad_length)));
+
     k_cs = cs_eff / press_grad_length;
 #ifdef MAGNETIC
     double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
@@ -348,7 +353,7 @@ double get_starformation_rate(int i)
     }
     if(SphP[i].Density_Relative_Maximum_in_Kernel > 0) {rateOfSF=0;} // restrict to local density/potential maxima //
 #ifdef BH_CALC_DISTANCES
-    if(P[i].min_dist_to_bh < PPP[i].Hsml) {rateOfSF=0;} // restrict to particles without a sink in their kernel //
+    if(P[i].min_dist_to_bh < PPP[i].Hsml) {rateOfSF=0;} // restrict to particles without a sink in their kernel
 #endif
 #endif // SINGLE_STAR_FORMATION 
     
