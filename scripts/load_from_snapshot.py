@@ -1,24 +1,32 @@
 import h5py
 import numpy
 import os
-
-## This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO ##
+from gizmopy.check_if_filename_exists import *
 
 ## subroutine to load quantities directly from snapshots, using hdf5 assumption
+## This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO ##
 def load_from_snapshot(value,ptype,sdir,snum,particle_mask=numpy.zeros(0),axis_mask=numpy.zeros(0),
         units_to_physical=True,four_char=False,snapshot_name='snapshot',snapdir_name='snapdir',extension='.hdf5'):
     '''
-    
+
     The routine 'load_from_snapshot' is designed to load quantities directly from GIZMO 
     snapshots in a robust manner, independent of the detailed information actually saved 
     in the snapshot. It is able to do this because of how HDF5 works, so it  --only-- 
-    works for HDF5-format snapshots [for binary-format, you need to know -exactly- the 
-    datasets saved and their order in the file, which makes this routine much less useful.
+    works for HDF5-format snapshots [For binary-format, you need to know -exactly- the 
+    datasets saved and their order in the file, which means you cannot do this, and should
+    use the 'readsnap.py' routine instead.]
     
-    The routine automatically handles multi-part snapshot files for you (concatenating)
+    The routine automatically handles multi-part snapshot files for you (concatenating). 
+    This should work with both python2.x and python3.x
 
     Syntax:
       loaded_value = load_from_snapshot(value,ptype,sdir,snum,....)
+
+      For example, to load the coordinates of gas (type=0) elements in the file
+      snapshot_001.hdf5 (snum=1) located in the active directory ('.'), just call
+      xyz_coordinates = load_from_snapshot('Coordinates',0,'.',1)
+
+      More details and examples are given in the GIZMO user guide.
 
     Arguments:
       value: the value to extract from the HDF5 file. this is a string with the same name 
@@ -33,10 +41,12 @@ def load_from_snapshot(value,ptype,sdir,snum,particle_mask=numpy.zeros(0),axis_m
              user guide for details]. if your chosen 'value' is in the file header, 
              this will be ignored
              
-      sdir: parent directory of the snapshot file or immediate snapshot sub-directory 
-            if it is a multi-part file. string.
+      sdir: parent directory (string) of the snapshot file or immediate snapshot 
+            sub-directory if it is a multi-part file
             
       snum: number (int) of the snapshot. e.g. snapshot_001.hdf5 is '1'
+            Note for multi-part files, this is just the number of the 'set', i.e. 
+            if you have snapshot_001.N.hdf5, set this to '1', not 'N' or '1.N'
       
     Optional:
       particle_mask: if set to a mask (boolean array), of length N where N is the number
@@ -78,30 +88,30 @@ def load_from_snapshot(value,ptype,sdir,snum,particle_mask=numpy.zeros(0),axis_m
         snapshot_name=snapshot_name,snapdir_name=snapdir_name,extension=extension,four_char=four_char)
     # if no valid file found, give up
     if(fname=='NULL'): 
-        print 'Could not find a valid file with this path/name/extension - please check these settings'
+        print('Could not find a valid file with this path/name/extension - please check these settings')
         return 0
     # check if file has the correct extension
     if(fname_ext!=extension): 
-        print 'File has the wrong extension, you specified ',extension,' but found ',fname_ext,' - please specify this if it is what you actually want'
+        print('File has the wrong extension, you specified ',extension,' but found ',fname_ext,' - please specify this if it is what you actually want')
         return 0
     # try to open the file
     try: 
         file = h5py.File(fname,'r') # Open hdf5 snapshot file
     except:
-        print 'Unexpected error: could not read hdf5 file ',fname,' . Please check the format, name, and path information is correct'
+        print('Unexpected error: could not read hdf5 file ',fname,' . Please check the format, name, and path information is correct')
         return 0
         
     # try to parse the header
     try:
         header_toparse = file["Header"].attrs # Load header dictionary (to parse below)
     except:
-        print 'Was able to open the file but not the header, please check this is a valid GIZMO hdf5 file'
+        print('Was able to open the file but not the header, please check this is a valid GIZMO hdf5 file')
         file.close()
         return 0
     # check if desired value is contained in header -- if so just return it and exit
     if(value=='header_keys')|(value=='Header_Keys')|(value=='HEADER_KEYS')|(value=='headerkeys')|(value=='HeaderKeys')|(value=='HEADERKEYS')|((value=='keys' and not (ptype==0 or ptype==1 or ptype==2 or ptype==3 or ptype==4 or ptype==5))):
         q = header_toparse.keys()
-        print 'Returning list of keys from header, includes: ',q
+        print('Returning list of keys from header, includes: ',q)
         file.close()
         return q
     if(value in header_toparse):
@@ -113,21 +123,21 @@ def load_from_snapshot(value,ptype,sdir,snum,particle_mask=numpy.zeros(0),axis_m
 
     # check that a valid particle type is specified
     if not (ptype==0 or ptype==1 or ptype==2 or ptype==3 or ptype==4 or ptype==5):
-        print 'Particle type needs to be an integer = 0,1,2,3,4,5. Returning 0'
+        print('Particle type needs to be an integer = 0,1,2,3,4,5. Returning 0')
         file.close()
         return 0
     # check that the header contains the expected data needed to parse the file
     if not ('NumFilesPerSnapshot' in header_toparse and 'NumPart_Total' in header_toparse
         and 'Time' in header_toparse and 'Redshift' in header_toparse 
         and 'HubbleParam' in header_toparse and 'NumPart_ThisFile' in header_toparse):
-        print 'Header appears to be missing critical information. Please check that this is a valid GIZMO hdf5 file'
+        print('Header appears to be missing critical information. Please check that this is a valid GIZMO hdf5 file')
         file.close()
         return 0
     # parse data needed for checking sub-files 
     numfiles = header_toparse["NumFilesPerSnapshot"]
     npartTotal = header_toparse["NumPart_Total"]
     if(npartTotal[ptype]<1): 
-        print 'No particles of designated type exist in this snapshot, returning 0'
+        print('No particles of designated type exist in this snapshot, returning 0')
         file.close()
         return 0
     # parse data needed for converting units [if necessary]
@@ -154,7 +164,7 @@ def load_from_snapshot(value,ptype,sdir,snum,particle_mask=numpy.zeros(0),axis_m
             try: 
                 file = h5py.File(fname,'r') # Open hdf5 snapshot file
             except:
-                print 'Unexpected error: could not read hdf5 file ',fname,' . Please check the format, name, and path information is correct, and that this file is not corrupted'
+                print('Unexpected error: could not read hdf5 file ',fname,' . Please check the format, name, and path information is correct, and that this file is not corrupted')
                 return 0
             # read in, now attempt to parse. first check for needed information on particle number
             npart = file["Header"].attrs["NumPart_ThisFile"]
@@ -162,12 +172,12 @@ def load_from_snapshot(value,ptype,sdir,snum,particle_mask=numpy.zeros(0),axis_m
                 # return particle key data, if requested
                 if((value=='keys')|(value=='Keys')|(value=='KEYS')): 
                     q = file['PartType'+str(ptype)].keys()
-                    print 'Returning list of valid keys for this particle type: ',q
+                    print('Returning list of valid keys for this particle type: ',q)
                     file.close()
                     return q
                 # check if requested data actually exists as a valid keyword in the file
                 if not (value in file['PartType'+str(ptype)].keys()):
-                    print 'The value ',value,' given does not appear to exist in the file ',fname," . Please check that you have specified a valid keyword. You can run this routine with the value 'keys' to return a list of valid value keys. Returning 0"
+                    print('The value ',value,' given does not appear to exist in the file ',fname," . Please check that you have specified a valid keyword. You can run this routine with the value 'keys' to return a list of valid value keys. Returning 0")
                     file.close()
                     return 0
                 # now actually read the data
@@ -185,12 +195,12 @@ def load_from_snapshot(value,ptype,sdir,snum,particle_mask=numpy.zeros(0),axis_m
                     try:
                         q = numpy.concatenate([q,q_t],axis=0)
                     except:
-                        print 'Could not concatenate data for ',value,' in file ',fname,' . The format appears to be inconsistent across your snapshots or with the usual GIZMO conventions. Please check this is a valid GIZMO snapshot file.'
+                        print('Could not concatenate data for ',value,' in file ',fname,' . The format appears to be inconsistent across your snapshots or with the usual GIZMO conventions. Please check this is a valid GIZMO snapshot file.')
                         file.close()
                         return 0
             file.close()
         else:
-            print 'Expected file ',fname,' appears to be missing. Check if your snapshot has the complete data set here'
+            print('Expected file ',fname,' appears to be missing. Check if your snapshot has the complete data set here')
             
     # convert units if requested by the user. note this only does a few obvious units: there are many possible values here which cannot be anticipated!
     if(units_to_physical):
@@ -205,90 +215,3 @@ def load_from_snapshot(value,ptype,sdir,snum,particle_mask=numpy.zeros(0),axis_m
     particle_mask=numpy.array(particle_mask)
     if(particle_mask.size > 0): q=q.take(particle_mask,axis=0)
     return q
-
-
-
-
-# subroutine to check if a snapshot file exists. will attempt to figure out the correct snapshot name, extension, snapshot sub-directory, etc, from the specified parameters, 
-#   based on a list of guesses using typical GIZMO code conventions
-def check_if_filename_exists(sdir,snum,snapshot_name='snapshot',snapdir_name='snapdir',extension='.hdf5',four_char=False):
-    # loop over possible extension names to try and check for valid files
-    for extension_touse in [extension,'.h5','.bin','']:
-        fname=sdir+'/'+snapshot_name+'_'
-        
-        # begin by identifying the snapshot extension with the file number
-        ext='00'+str(snum);
-        if (snum>=10): ext='0'+str(snum)
-        if (snum>=100): ext=str(snum)
-        if (four_char==True): ext='0'+ext
-        if (snum>=1000): ext=str(snum)
-        fname+=ext
-        fname_base=fname
-
-        # isolate the specific path up to the snapshot name, because we will try to append several different choices below
-        s0=sdir.split("/"); snapdir_specific=s0[len(s0)-1];
-        if(len(snapdir_specific)<=1): snapdir_specific=s0[len(s0)-2];
-
-        ## try several common notations for the directory/filename structure
-        fname=fname_base+extension_touse;
-        if not os.path.exists(fname): 
-            ## is it a multi-part file?
-            fname=fname_base+'.0'+extension_touse;
-        if not os.path.exists(fname): 
-            ## is the filename 'snap' instead of 'snapshot'?
-            fname_base=sdir+'/snap_'+ext; 
-            fname=fname_base+extension_touse;
-        if not os.path.exists(fname): 
-            ## is the filename 'snap' instead of 'snapshot', AND its a multi-part file?
-            fname=fname_base+'.0'+extension_touse;
-        if not os.path.exists(fname): 
-            ## is the filename 'snap(snapdir)' instead of 'snapshot'?
-            fname_base=sdir+'/snap_'+snapdir_specific+'_'+ext; 
-            fname=fname_base+extension_touse;
-        if not os.path.exists(fname): 
-            ## is the filename 'snap' instead of 'snapshot', AND its a multi-part file?
-            fname=fname_base+'.0'+extension_touse;
-        if not os.path.exists(fname): 
-            ## is it in a snapshot sub-directory? (we assume this means multi-part files)
-            fname_base=sdir+'/'+snapdir_name+'_'+ext+'/'+snapshot_name+'_'+ext; 
-            fname=fname_base+'.0'+extension_touse;
-        if not os.path.exists(fname): 
-            ## is it in a snapshot sub-directory AND named 'snap' instead of 'snapshot'?
-            fname_base=sdir+'/'+snapdir_name+'_'+ext+'/'+'snap_'+ext; 
-            fname=fname_base+'.0'+extension_touse;
-        if not os.path.exists(fname): 
-            ## wow, still couldn't find it... ok, i'm going to give up!
-            fname_found = 'NULL'
-            fname_base_found = 'NULL'
-            fname_ext = 'NULL'
-            continue;
-        if(os.stat(fname).st_size <= 0):
-            ## file exists but is null size, do not use
-            fname_found = 'NULL'
-            fname_base_found = 'NULL'
-            fname_ext = 'NULL'
-            continue;
-        fname_found = fname;
-        fname_base_found = fname_base;
-        fname_ext = extension_touse
-        break; # filename does exist! 
-    return fname_found, fname_base_found, fname_ext;
-
-
-
-
-## subroutine which verifies type-casting as float, used to ensure proper transmission to external C
-def fcor(x):
-    return numpy.array(x,dtype='f',ndmin=1)
-
-## subroutine which verifies type-casting as float for vector, used to ensure proper transmission to external C
-def vfloat(x):
-    return x.ctypes.data_as(ctypes.POINTER(ctypes.c_float));
-
-## subroutine which removes nans and extremal values, used to prevent passing wrongly-sized transmission to external C
-def ok_scan(input,xmax=1.0e10,pos=0):
-    if (pos==1):
-        return (numpy.isnan(input)==False) & (numpy.abs(input)<=xmax) & (input > 0.);
-    else:
-        return (numpy.isnan(input)==False) & (numpy.abs(input)<=xmax);
-
