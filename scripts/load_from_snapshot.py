@@ -1,10 +1,9 @@
 import h5py
 import numpy
 import os
-from gizmopy.check_if_filename_exists import *
-
-## subroutine to load quantities directly from snapshots, using hdf5 assumption
 ## This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO ##
+
+
 def load_from_snapshot(value,ptype,sdir,snum,particle_mask=numpy.zeros(0),axis_mask=numpy.zeros(0),
         units_to_physical=True,four_char=False,snapshot_name='snapshot',snapdir_name='snapdir',extension='.hdf5'):
     '''
@@ -215,3 +214,101 @@ def load_from_snapshot(value,ptype,sdir,snum,particle_mask=numpy.zeros(0),axis_m
     particle_mask=numpy.array(particle_mask)
     if(particle_mask.size > 0): q=q.take(particle_mask,axis=0)
     return q
+
+
+
+
+
+def check_if_filename_exists(sdir,snum,snapshot_name='snapshot',snapdir_name='snapdir',extension='.hdf5',four_char=False):
+    '''
+    This subroutine attempts to check if a snapshot or snapshot directory with 
+    valid GIZMO outputs exists. It will check several common conventions for 
+    file and directory names, and extensions. 
+    
+    Input:
+      sdir: parent directory of the snapshot file or immediate snapshot sub-directory 
+            if it is a multi-part file. string.
+            
+      snum: number (int) of the snapshot. e.g. snapshot_001.hdf5 is '1'
+    
+    Optional:
+      snapshot_name: default 'snapshot': the code will automatically try a number of 
+        common snapshot and snapshot-directory prefixes. but it can't guess all of them, 
+        especially if you use an unusual naming convention, e.g. naming your snapshots 
+        'xyzBearsBeetsBattleStarGalactica_001.hdf5'. In that case set this to the 
+        snapshot name prefix (e.g. 'xyzBearsBeetsBattleStarGalactica')
+      
+      snapdir_name: default 'snapdir': like 'snapshot_name', set this if you use a 
+        non-standard prefix for snapshot subdirectories (directories holding multi-part
+        snapshots pieces)
+        
+      extension: default 'hdf5': again like 'snapshot' set if you use a non-standard 
+        extension (it checks multiply options like 'h5' and 'hdf5' and 'bin'). but 
+        remember the file must actually be hdf5 format!
+
+      four_char: default numbering is that snapshots with numbers below 1000 have 
+        three-digit numbers. if they were numbered with four digits (e.g. snapshot_0001), 
+        set this to 'True' (default False)        
+    '''    
+    
+    # loop over possible extension names to try and check for valid files
+    for extension_touse in [extension,'.h5','.bin','']:
+        fname=sdir+'/'+snapshot_name+'_'
+        
+        # begin by identifying the snapshot extension with the file number
+        ext='00'+str(snum);
+        if (snum>=10): ext='0'+str(snum)
+        if (snum>=100): ext=str(snum)
+        if (four_char==True): ext='0'+ext
+        if (snum>=1000): ext=str(snum)
+        fname+=ext
+        fname_base=fname
+
+        # isolate the specific path up to the snapshot name, because we will try to append several different choices below
+        s0=sdir.split("/"); snapdir_specific=s0[len(s0)-1];
+        if(len(snapdir_specific)<=1): snapdir_specific=s0[len(s0)-2];
+
+        ## try several common notations for the directory/filename structure
+        fname=fname_base+extension_touse;
+        if not os.path.exists(fname): 
+            ## is it a multi-part file?
+            fname=fname_base+'.0'+extension_touse;
+        if not os.path.exists(fname): 
+            ## is the filename 'snap' instead of 'snapshot'?
+            fname_base=sdir+'/snap_'+ext; 
+            fname=fname_base+extension_touse;
+        if not os.path.exists(fname): 
+            ## is the filename 'snap' instead of 'snapshot', AND its a multi-part file?
+            fname=fname_base+'.0'+extension_touse;
+        if not os.path.exists(fname): 
+            ## is the filename 'snap(snapdir)' instead of 'snapshot'?
+            fname_base=sdir+'/snap_'+snapdir_specific+'_'+ext; 
+            fname=fname_base+extension_touse;
+        if not os.path.exists(fname): 
+            ## is the filename 'snap' instead of 'snapshot', AND its a multi-part file?
+            fname=fname_base+'.0'+extension_touse;
+        if not os.path.exists(fname): 
+            ## is it in a snapshot sub-directory? (we assume this means multi-part files)
+            fname_base=sdir+'/'+snapdir_name+'_'+ext+'/'+snapshot_name+'_'+ext; 
+            fname=fname_base+'.0'+extension_touse;
+        if not os.path.exists(fname): 
+            ## is it in a snapshot sub-directory AND named 'snap' instead of 'snapshot'?
+            fname_base=sdir+'/'+snapdir_name+'_'+ext+'/'+'snap_'+ext; 
+            fname=fname_base+'.0'+extension_touse;
+        if not os.path.exists(fname): 
+            ## wow, still couldn't find it... ok, i'm going to give up!
+            fname_found = 'NULL'
+            fname_base_found = 'NULL'
+            fname_ext = 'NULL'
+            continue;
+        if(os.stat(fname).st_size <= 0):
+            ## file exists but is null size, do not use
+            fname_found = 'NULL'
+            fname_base_found = 'NULL'
+            fname_ext = 'NULL'
+            continue;
+        fname_found = fname;
+        fname_base_found = fname_base;
+        fname_ext = extension_touse
+        break; # filename does exist! 
+    return fname_found, fname_base_found, fname_ext;
