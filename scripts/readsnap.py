@@ -1,11 +1,9 @@
 import numpy as np
 import h5py as h5py
 import os.path
-import scipy.interpolate as interpolate
-import scipy.optimize as optimize
-import math
-
 ## This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO ##
+
+
 
 def readsnap(sdir,snum,ptype,
     snapshot_name='snapshot',
