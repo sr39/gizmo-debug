@@ -100,6 +100,9 @@ static struct densdata_out
     
 #if defined(BLACK_HOLES)
     int BH_TimeBinGasNeighbor;
+#if defined(SINGLE_STAR_FORMATION)
+    MyDouble BH_NearestGasNeighbor;
+#endif 
 #endif
 
 #if defined(TURB_DRIVING) || defined(GRAIN_FLUID)
@@ -216,12 +219,20 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
 #ifdef BLACK_HOLES
     if(P[i].Type == 5)
     {
-        if(mode == 0)
+      if(mode == 0){
             BPP(i).BH_TimeBinGasNeighbor = out->BH_TimeBinGasNeighbor;
+#ifdef SINGLE_STAR_FORMATION
+	    BPP(i).BH_NearestGasNeighbor = out->BH_NearestGasNeighbor;
+#endif
+      }
         else
         {
             if(BPP(i).BH_TimeBinGasNeighbor > out->BH_TimeBinGasNeighbor)
                 BPP(i).BH_TimeBinGasNeighbor = out->BH_TimeBinGasNeighbor;
+	    #ifdef SINGLE_STAR_FORMATION
+	    if(BPP(i).BH_NearestGasNeighbor > out->BH_NearestGasNeighbor)
+                BPP(i).BH_NearestGasNeighbor = out->BH_NearestGasNeighbor;
+	    #endif 
         }
     } /* if(P[i].Type == 5) */
 #endif
@@ -1177,6 +1188,9 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
     memset(&out, 0, sizeof(struct densdata_out));
 #if defined(BLACK_HOLES)
     out.BH_TimeBinGasNeighbor = TIMEBINS;
+#ifdef SINGLE_STAR_FORMATION
+    out.BH_NearestGasNeighbor = 1e100;
+#endif 
 #endif
     
     if(mode == 0)
@@ -1411,6 +1425,10 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
 #if defined(BLACK_HOLES)
         if(out->BH_TimeBinGasNeighbor > P[j].TimeBin)
             out->BH_TimeBinGasNeighbor = P[j].TimeBin;
+#ifdef SINGLE_STAR_FORMATION
+        if(out->BH_NearestGasNeighbor > kernel->r)
+            out->BH_NearestGasNeighbor = kernel->r;
+#endif
 #endif
         
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
