@@ -290,10 +290,6 @@ double get_starformation_rate(int i)
     double k_cs = cs_eff / (Get_Particle_Size(i)*All.cf_atime);
 #ifdef SINGLE_STAR_FORMATION
     double press_grad_length = 0;
-#ifdef SINGLE_STAR_USE_GRADRHO     //    pressure grad length can end up huge when grad P is slope-limited, often the case in a local density maximum particle; try using grad rho instead
-    for(k=0;k<3;k++) {press_grad_length += P[i].GradRho[k]*P[i].GradRho[k];}
-    press_grad_length = All.cf_atime * DMAX(Get_Particle_Size(i) , SphP[i].Density / (1.e-37 + sqrt(press_grad_length)));
-#endif 
     for(k=0;k<3;k++) {press_grad_length += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
     press_grad_length = All.cf_atime * DMAX(Get_Particle_Size(i) , SphP[i].Pressure / (1.e-37 + sqrt(press_grad_length)));
    
@@ -304,11 +300,8 @@ double get_starformation_rate(int i)
     k_cs = cs_b / (Get_Particle_Size(i)*All.cf_atime);
 #endif
 #endif
-#ifdef SINGLE_STAR_THERMAL_ONLY
-    dv2abs = 2.*k_cs*k_cs; // account for thermal pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
-#else
     dv2abs += 2.*k_cs*k_cs; // account for thermal pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
-#endif
+
     double alpha_vir = dv2abs / (8. * M_PI * All.G * SphP[i].Density * All.cf_a3inv); // 1/4 or 1/8 ? //
 
 
