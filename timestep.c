@@ -912,10 +912,17 @@ integertime get_timestep(int p,		/*!< particle index */
             if(dt_accr > dt_evol) {dt_accr=dt_evol;}
 #endif
             if(dt_accr > 0 && dt_accr < dt) {dt = dt_accr;}
-        
+
         double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? (1 << BPP(p).BH_TimeBinGasNeighbor) : 0) * All.Timebase_interval / All.cf_hubble_a;
+
         if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs;}
-        
+
+	
+	//double dt_ff = sqrt(h3/(All.G * (P[p].Mass + P[p].DensAroundStar*h3*4*M_PI/3/32)))/100; //1./sqrt(All.G * P[p].DensAroundStar);
+
+	double h3 = BPP(p).BH_NearestGasNeighbor*BPP(p).BH_NearestGasNeighbor*BPP(p).BH_NearestGasNeighbor;
+	double dt_ff = sqrt(h3/All.G/P[p].Mass)/100;
+	if(dt > dt_ff && dt_ff > 0) {dt = 1.01 * dt_ff;}
     } // if(P[p].Type == 5)
 #endif // BLACK_HOLES
     

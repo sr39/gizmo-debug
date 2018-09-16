@@ -392,7 +392,7 @@
 ####################################################################################################
 # --------------------
 # ----- General De-Bugging and Special Behaviors
-#DEVELOPER_MODE                 # allows you to modify various numerical parameters (courant factor, etc) at run-time
+DEVELOPER_MODE                 # allows you to modify various numerical parameters (courant factor, etc) at run-time
 #STOP_WHEN_BELOW_MINTIMESTEP    # forces code to quit when stepsize wants to go below MinSizeTimestep specified in the parameterfile
 #DEBUG                          # enables core-dumps and FPU exceptions
 # --------------------

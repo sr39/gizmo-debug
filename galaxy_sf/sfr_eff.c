@@ -296,7 +296,7 @@ double get_starformation_rate(int i)
 #endif 
     for(k=0;k<3;k++) {press_grad_length += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
     press_grad_length = All.cf_atime * DMAX(Get_Particle_Size(i) , SphP[i].Pressure / (1.e-37 + sqrt(press_grad_length)));
-
+   
     k_cs = cs_eff / press_grad_length;
 #ifdef MAGNETIC
     double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
@@ -304,8 +304,13 @@ double get_starformation_rate(int i)
     k_cs = cs_b / (Get_Particle_Size(i)*All.cf_atime);
 #endif
 #endif
+#ifdef SINGLE_STAR_THERMAL_ONLY
+    dv2abs = 2.*k_cs*k_cs; // account for thermal pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
+#else
     dv2abs += 2.*k_cs*k_cs; // account for thermal pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
+#endif
     double alpha_vir = dv2abs / (8. * M_PI * All.G * SphP[i].Density * All.cf_a3inv); // 1/4 or 1/8 ? //
+
 
 #if (GALSF_SFR_VIRIAL_SF_CRITERION > 0) || (GALSF_SFR_VIRIAL_SF_CRITERION == 2)
     if(alpha_vir < 1.0)
@@ -321,6 +326,7 @@ double get_starformation_rate(int i)
         if(MJ_solar > MJ_crit) {alpha_vir = 100.;}
     }
 #endif
+
 #if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
     SphP[i].AlphaVirial_SF_TimeSmoothed += 8.*(1./(1+alpha_vir) - SphP[i].AlphaVirial_SF_TimeSmoothed) * dt/tsfr;
     if (SphP[i].AlphaVirial_SF_TimeSmoothed < 0.5 || divv >= 0) rateOfSF *= 0.0;
