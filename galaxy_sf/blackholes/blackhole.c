@@ -132,10 +132,7 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code)
         double r_j = All.ForceSoftening[P[j].Type];
         if(P[j].Type==0) {r_j = DMAX(r_j , PPP[j].Hsml);}
         apocenter_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
-        if(P[j].Type==5) {apocenter_max = DMIN(apocenter_max , 3.*All.ForceSoftening[5]);}
-#ifdef BH_SEED_GROWTH_TESTS
-        apocenter_max += MAX_REAL_NUMBER;
-#endif
+        if(P[j].Type==5) {apocenter_max = DMIN(apocenter_max , 1.*All.ForceSoftening[5]);}
 #endif
         if(apocenter < apocenter_max) {bound = 1;}
     }
