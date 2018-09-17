@@ -252,7 +252,7 @@
 
 #ifdef SINGLE_STAR_FORMATION
 #define GALSF // master switch needed to enable various frameworks
-#define GALSF_SFR_VIRIAL_SF_CRITERION 2 // only allow star formation in virialized sub-regions meeting Jeans threshold
+#define GALSF_SFR_VIRIAL_SF_CRITERION 3 // only allow star formation in virialized sub-regions meeting Jeans threshold
 #define METALS  // metals should be active for stellar return
 #define BLACK_HOLES // need to have black holes active since these are our sink particles
 #define GALSF_SFR_IMF_VARIATION // save extra information about sinks when they form
