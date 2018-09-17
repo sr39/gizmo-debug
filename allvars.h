@@ -2082,7 +2082,7 @@ extern ALIGN(32) struct particle_data
     MyFloat BH_Mdot;
     int BH_TimeBinGasNeighbor;
 #ifdef SINGLE_STAR_FORMATION
-  MyFloat BH_NearestGasNeighbor;
+    MyFloat BH_NearestGasNeighbor;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyFloat BH_disk_hr;
