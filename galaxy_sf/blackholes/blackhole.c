@@ -125,23 +125,23 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code)
     int bound = 0;
     if(v2 < 1) 
     {
-        double apocenter = dr_code / (1.0-v2);
-        double apocenter_max = All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
-        if(P[j].Type==5) {apocenter_max += MAX_REAL_NUMBER;} // default is to be unrestrictive for BH-BH mergers //
+      double major_axis = dr_code / (1.0-v2); // used to be called apoapsis, but is actually the major axis
+        double major_axis_max = All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
+        if(P[j].Type==5) {major_axis_max += MAX_REAL_NUMBER;} // default is to be unrestrictive for BH-BH mergers //
 #if defined(SINGLE_STAR_FORMATION) || defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
         double r_j = All.ForceSoftening[P[j].Type];
         if(P[j].Type==0) {r_j = DMAX(r_j , PPP[j].Hsml);}
 #ifdef SINGLE_STAR_FORMATION
-	apocenter_max = DMAX(r_j, All.ForceSoftening[5]);
+	major_axis_max = DMAX(r_j, 2*All.ForceSoftening[5]);
 #else
-	apocenter_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
+	major_axis_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
 #endif
-        if(P[j].Type==5) {apocenter_max = DMIN(apocenter_max , 3.*All.ForceSoftening[5]);}
+        if(P[j].Type==5) {major_axis_max = DMIN(major_axis_max , 3.*All.ForceSoftening[5]);}
 #ifdef BH_SEED_GROWTH_TESTS
-        apocenter_max += MAX_REAL_NUMBER;
+        major_axis_max += MAX_REAL_NUMBER;
 #endif
 #endif
-        if(apocenter < apocenter_max) {bound = 1;}
+        if(major_axis < major_axis_max) {bound = 1;}
     }
     return bound;
 }
