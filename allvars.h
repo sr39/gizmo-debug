@@ -1977,7 +1977,9 @@ extern ALIGN(32) struct particle_data
     MyFloat PM_Potential;
 #endif
 #endif
-    
+#ifdef SINGLE_STAR_HILL_CRITERION
+  double tidal_tensorps[3][3];
+#endif 
 #ifdef GDE_DISTORTIONTENSOR
     MyBigFloat distortion_tensorps[6][6];               /*!< phase space distortion tensor */
     MyBigFloat last_determinant;                        /*!< last real space distortion tensor determinant */
@@ -2586,7 +2588,7 @@ extern struct gravdata_out
 #ifdef EVALPOTENTIAL
     MyLongDouble Potential;
 #endif
-#ifdef GDE_DISTORTIONTENSOR
+#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION))
     MyLongDouble tidal_tensorps[3][3];
 #endif
 #ifdef BH_CALC_DISTANCES
