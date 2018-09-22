@@ -342,9 +342,9 @@ double get_starformation_rate(int i)
     gsl_vector_free (eval);
 #endif
 #ifdef SINGLE_STAR_HILL_CRITERION
-     // we check that the tidal tensor is negative-definite, ie. converging along all principal axes, which is much stricter than div v < 0
+     // we check that the tidal tensor is negative-definite, ie. converging along all principal axes, indicating that we're dominating our environment gravitationally
     double tt[9];
-    for(j=0; j<3; j++) for (k=0; k<3; k++) tt[3*j+k] = P[i].tidal_tensorps[j][k];
+    for(j=0; j<3; j++) {for (k=0; k<3; k++) tt[3*j+k] = P[i].tidal_tensorps[j][k];}
     gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3);
     gsl_vector *eval = gsl_vector_alloc (3);
     gsl_eigen_symm_workspace * w = gsl_eigen_symm_alloc (3);
@@ -364,7 +364,7 @@ double get_starformation_rate(int i)
     }
     if(SphP[i].Density_Relative_Maximum_in_Kernel > 0) {rateOfSF=0;} // restrict to local density/potential maxima //
 #ifdef BH_CALC_DISTANCES
-    if(P[i].min_dist_to_bh < PPP[i].Hsml) {rateOfSF=0;} // restrict to particles without a sink in their kernel
+    if(P[i].min_dist_to_bh < 2*PPP[i].Hsml) {rateOfSF=0;} // restrict to particles without a sink in their kernel; we can actually go pretty aggressive with this, as hsml will inevitably get small enough if this gas is really collapsing
 #endif
 #endif // SINGLE_STAR_FORMATION 
     
