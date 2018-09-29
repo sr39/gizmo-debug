@@ -915,13 +915,13 @@ integertime get_timestep(int p,		/*!< particle index */
 
         double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? (1 << BPP(p).BH_TimeBinGasNeighbor) : 0) * All.Timebase_interval / All.cf_hubble_a;
 
-        if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs;}
+        if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 #ifdef SINGLE_STAR_FORMATION
 	double eps = DMAX(BPP(p).BH_NearestGasNeighbor, All.ForceSoftening[5]);
 	double dt_gas = sqrt(All.ErrTolIntAccuracy * eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
-	if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas;}
+	if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas; }
 	
-	double dt_stars = sqrt(All.ErrTolIntAccuracy * DMIN(P[p].min_dist_to_bh,P[p].Hsml) / ac); // Equation 23 from Federrath 2010, except not enforcing that a sink can't advance faster than its nearest neighbor - should we?
+	double dt_stars = sqrt(All.ErrTolIntAccuracy * DMAX(P[p].min_dist_to_bh,P[p].Hsml) / ac); // Equation 23 from Federrath 2010, except not enforcing that a sink can't advance faster than its nearest neighbor - should we?
 	if(dt > dt_stars && dt_stars > 0) {dt = 1.01 * dt_stars;}
 #endif
     } // if(P[p].Type == 5)
