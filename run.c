@@ -78,11 +78,13 @@ void run(void)
         
         set_non_standard_physics_for_current_time();	/* update auxiliary physics for current time */
         
-        
         if(GlobNumForceUpdate > All.TreeDomainUpdateFrequency * All.TotNumPart)	/* check whether we have a big step */
         {
             domain_Decomposition(0, 0, 1);	/* do domain decomposition if step is big enough, and set new list of active particles  */
         }
+#ifdef SINGLE_STAR_FORMATION
+	else if(GlobNumForceUpdate > 16) domain_Decomposition(0, 0, 1); // constant number just to be on the safe side; need to update the tree for collapsing Shu-like cores that can consist of only a few particles, otherwise we get conservation errors!
+#endif	
         else
         {
             force_update_tree();	/* update tree dynamically with kicks of last step so that it can be reused */
