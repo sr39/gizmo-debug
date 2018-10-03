@@ -41,7 +41,7 @@ static int last;
 
 /* some modules compute neighbor fluxes explicitly within the force-tree: in these cases, we need to
     take extra care about opening leaves to ensure possible neighbors are not missed, so defined a flag below for it */
-#if defined(ADAPTIVE_GRAVSOFT_FORALL)
+#if (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(SINGLE_STAR_FORMATION))
 #define NEIGHBORS_MUST_BE_COMPUTED_EXPLICITLY_IN_FORCETREE
 #endif
 
@@ -770,6 +770,9 @@ void force_update_node_recursive(int no, int sib, int father)
                     if(All.ForceSoftening[pa->Type] > maxsoft)
                         maxsoft = All.ForceSoftening[pa->Type];
 #else
+#ifdef SINGLE_STAR_FORMATION
+		    if(pa->Type == 5) if (PPP[p].Hsml > maxsoft) maxsoft = PPP[p].Hsml;
+#endif
                     if(pa->Type == 0)
                     {
                         if(PPP[p].Hsml > maxsoft)
@@ -2077,7 +2080,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
                     double dist_to_center2 = dx_nc*dx_nc +  dy_nc*dy_nc + dz_nc*dz_nc;
                     /* check if any portion the cell lies within the interaction range */
-                    double dist_to_open = 2.0*targeth_si + nop->len*1.73205/2.0;
+                    
+#ifdef SINGLE_STAR_FORMATION		    
+		    if(ptype == 5) targeth_si = DMAX(targeth_si,PPP[target].Hsml); 
+#endif
+		    double dist_to_open = 2.0*targeth_si + nop->len*1.73205/2.0;
+		  
+		    
                     if(dist_to_center2  < dist_to_open*dist_to_open)
                     {
                         /* open cell */
