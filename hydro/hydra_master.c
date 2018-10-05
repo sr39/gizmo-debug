@@ -719,8 +719,8 @@ void hydro_final_operations_and_cleanup(void)
 #ifdef MAGNETIC
             /* first account for the fact that the loss term is always [or below] the Alfven speed, regardless of the bulk streaming speed */
             double vA=0; int k; for(k=0;k<3;k++) {vA += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
-            double vA = All.cf_afac3 * sqrt(All.cf_afac1 * vA/ (All.cf_atime * SphP[i].Density));
-            cr_vstream_loss_velocity = vA;
+            vA = All.cf_afac3 * sqrt(All.cf_afac1 * vA/ (All.cf_atime * SphP[i].Density));
+            cr_vstream_loss_velocity = DMIN(vA, cr_vstream_loss_velocity);
             /* now account here for the fact that the streaming can be suppressed by the requirement of motion along field lines */
             double B_dot_gradP=0.0, B2_tot=0.0, Pgrad2_tot=0.0;
             for(k=0;k<3;k++)
