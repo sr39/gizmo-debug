@@ -701,6 +701,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
+        case IO_COSMICRAY_KAPPA:    /* local CR diffusion constant */
+#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DIFFUSION_CONSTANT) && !defined(COSMIC_RAYS_DISABLE_DIFFUSION)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = SphP[pindex].CosmicRayDiffusionCoeff;
+                    n++;
+                }
+#endif
+            break;
+
         case IO_COSMICRAY_ALFVEN:    /* energy in the resonant (~gyro-radii) Alfven modes field, in the +/- (with respect to B) fields  */
 #ifdef COSMIC_RAYS_ALFVEN
             for(n = 0; n < pc; pindex++)
@@ -1525,6 +1536,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_SHEARCOEFF:
         case IO_TSTP:
         case IO_COSMICRAY_ENERGY:
+        case IO_COSMICRAY_KAPPA:
         case IO_DIVB:
         case IO_VRMS:
         case IO_VRAD:
@@ -1798,6 +1810,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_VDIV:
         case IO_VROT:
         case IO_COSMICRAY_ENERGY:
+        case IO_COSMICRAY_KAPPA:
         case IO_DIVB:
         case IO_ABVC:
         case IO_AMDC:
@@ -2032,6 +2045,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_VROT:
         case IO_VORT:
         case IO_COSMICRAY_ENERGY:
+        case IO_COSMICRAY_KAPPA:
         case IO_COSMICRAY_ALFVEN:
         case IO_DIVB:
         case IO_ABVC:
@@ -2421,6 +2435,14 @@ int blockpresent(enum iofields blocknr)
 
         case IO_COSMICRAY_ENERGY:
 #ifdef COSMIC_RAYS
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+
+        case IO_COSMICRAY_KAPPA:
+#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DIFFUSION_CONSTANT) && !defined(COSMIC_RAYS_DISABLE_DIFFUSION)
             return 1;
 #else
             return 0;
@@ -2944,6 +2966,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_COSMICRAY_ENERGY:
             strncpy(label, "CREG ", 4);
             break;
+        case IO_COSMICRAY_KAPPA:
+            strncpy(label, "CRK ", 4);
+            break;
         case IO_COSMICRAY_ALFVEN:
             strncpy(label, "CRAV ", 4);
             break;
@@ -3312,6 +3337,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;    
         case IO_COSMICRAY_ENERGY:
             strcpy(buf, "CosmicRayEnergy");
+            break;
+        case IO_COSMICRAY_KAPPA:
+            strcpy(buf, "CosmicRayDiffusivity");
             break;
         case IO_COSMICRAY_ALFVEN:
             strcpy(buf, "CosmicRayAlfvenEnergyPM");
