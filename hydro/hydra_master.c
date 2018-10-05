@@ -715,9 +715,13 @@ void hydro_final_operations_and_cleanup(void)
 #if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_STREAMING) && !defined(COSMIC_RAYS_ALFVEN)
             /* energy transfer from CRs to gas due to the streaming instability (mediated by high-frequency Alfven waves, but they thermalize quickly
                 (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
-            double cr_stream_cool = -GAMMA_COSMICRAY_MINUS1 * Get_CosmicRayStreamingVelocity(i) / Get_CosmicRayGradientLength(i);
+            double cr_vstream_loss_velocity = Get_CosmicRayStreamingVelocity(i);
 #ifdef MAGNETIC
-            /* account here for the fact that the streaming velocity can be suppressed by the requirement of motion along field lines */
+            /* first account for the fact that the loss term is always [or below] the Alfven speed, regardless of the bulk streaming speed */
+            double vA=0; int k; for(k=0;k<3;k++) {vA += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
+            double vA = All.cf_afac3 * sqrt(All.cf_afac1 * vA/ (All.cf_atime * SphP[i].Density));
+            cr_vstream_loss_velocity = vA;
+            /* now account here for the fact that the streaming can be suppressed by the requirement of motion along field lines */
             double B_dot_gradP=0.0, B2_tot=0.0, Pgrad2_tot=0.0;
             for(k=0;k<3;k++)
             {
@@ -726,8 +730,10 @@ void hydro_final_operations_and_cleanup(void)
                 Pgrad2_tot += SphP[i].Gradients.CosmicRayPressure[k] * SphP[i].Gradients.CosmicRayPressure[k];
                 B_dot_gradP += b_to_use * SphP[i].Gradients.CosmicRayPressure[k];
             }
-            cr_stream_cool *= (B_dot_gradP * B_dot_gradP) / (1.e-37 + B2_tot * Pgrad2_tot);
+            cr_vstream_loss_velocity *= (B_dot_gradP * B_dot_gradP) / (1.e-37 + B2_tot * Pgrad2_tot);
+            if(vA < cr_vstream_loss_velocity) {cr_vstream_loss_velocity=vA;} /* this applies the actual limiter */
 #endif
+            double cr_stream_cool = -GAMMA_COSMICRAY_MINUS1 * cr_vstream_loss_velocity / Get_CosmicRayGradientLength(i);
             SphP[i].DtCosmicRayEnergy += SphP[i].CosmicRayEnergyPred * cr_stream_cool;
             SphP[i].DtInternalEnergy -= SphP[i].CosmicRayEnergyPred * cr_stream_cool;
 #endif // CRs
