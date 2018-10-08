@@ -280,7 +280,7 @@
 #endif
 #ifdef SINGLE_STAR_FB_JETS
 //#define BH_WIND_CONTINUOUS 0
-#define BH_WIND_KICK 1 // use kinetic feedback module for protostellar jets (for this, use the simple kicking module, it's not worth the expense of the other)
+#define BH_WIND_KICK -1 // use kinetic feedback module for protostellar jets (for this, use the simple kicking module, it's not worth the expense of the other)
 #endif
 #ifdef SINGLE_STAR_PROMOTION
 #define GALSF_FB_MECHANICAL // allow SNe + winds in promoted stars [at end of main sequence lifetimes]
