@@ -489,6 +489,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                          DAA: This should also work when there is alpha-disk. */
 #ifdef BH_WIND_KICK 
                         v_kick = All.BAL_v_outflow;
+#ifdef SINGLE_STAR_FB_JETS
+			v_kick *= sqrt(bh_mass * All.UnitMass_in_g / SOLAR_MASS); // Federrath 2015 simple prescription
+#endif
                         if( !(All.ComovingIntegrationOn) && (All.Time < 0.001)) v_kick *= All.Time/0.001;
 
                         dir[0]=dir[1]=dir[2]=0;
@@ -602,14 +605,14 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                                 SphP[j].MassTrue += m_wind;
 #endif
-                                /* now add wind momentum to particle */
-                                if(dvr_gas_to_bh < All.BAL_v_outflow)   // gas moving away from BH at v < BAL speed
+                                /* now add wind momentum to particle */ 
+                                if(dvr_gas_to_bh < v_kick)   // gas moving away from BH at v < BAL speed
                                 {
                                     double e_wind = 0;
                                     for(k=0;k<3;k++)
                                     {
                                         // relative wind-particle velocity (in code units) including BH-particle motion;
-                                        norm = All.cf_atime*All.BAL_v_outflow*dir[k] + velocity[k]-P[j].Vel[k];
+                                        norm = All.cf_atime*v_kick*dir[k] + velocity[k]-P[j].Vel[k];
                                         // momentum conservation gives the following change in velocities
                                         P[j].Vel[k] += All.BlackHoleFeedbackFactor * norm * m_wind/P[j].Mass;
                                         SphP[j].VelPred[k] += All.BlackHoleFeedbackFactor * norm * m_wind/P[j].Mass;
