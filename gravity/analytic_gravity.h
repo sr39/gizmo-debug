@@ -33,7 +33,7 @@ void add_analytic_gravitational_forces()
     //GravAccel_RDITestProblem();         // vertical gravity+external acceleration for grain-RDI-wind tests
     //GravAccel_RayleighTaylorTest();     // vertical potential for RT tests
     //GravAccel_StaticPlummerSphere();    // plummer sphere
-#ifdef STATIC_HERNQUIST_POTENTIAL 
+#ifdef AJR_STATIC_HERNQUIST_POTENTIAL 
     GravAccel_StaticHernquist();        // hernquist sphere
 #endif 
     //GravAccel_StaticIsothermalSphere(); // singular or cored isothermal sphere
@@ -157,7 +157,7 @@ void GravAccel_StaticPlummerSphere()
 void GravAccel_StaticHernquist()
 {
 
-#ifdef STATIC_HERNQUIST_POTENTIAL 
+#ifdef AJR_STATIC_HERNQUIST_POTENTIAL 
     double HQ_M200 = All.HQ_M200;
     double HQ_C = All.HQ_C;
     double HQ_DARKFRACTION = All.HQ_DARKFRACTION;

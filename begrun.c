@@ -742,7 +742,7 @@ void open_outputfiles(void)
     }  
 #endif
 
-#ifdef EXTRA_SNE_OUTPUT 
+#ifdef AJR_EXTRA_SNE_OUTPUT 
     sprintf(buf, "%s%s", All.OutputDir, "ExtraSNeOutput.txt");
     if(!(FdSNeExtra = fopen(buf, mode)))
     {
@@ -1083,7 +1083,7 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.InitStellarAgeinGyr;
         id[nt++] = REAL;
 
-#ifdef GALSF_ALT_INIT_STAR
+#ifdef AJR_GALSF_ALT_INIT_STAR
         strcpy(tag[nt],"UniformAgeFraction");
         addr[nt] = &All.UniformAgeFraction;
         id[nt++] = REAL;
@@ -1876,7 +1876,7 @@ void read_parameter_file(char *fname)
 #endif 
 #endif  // CHIMES 
 
-#ifdef STATIC_HERNQUIST_POTENTIAL 
+#ifdef AJR_STATIC_HERNQUIST_POTENTIAL 
       strcpy(tag[nt], "HQ_M200");
       addr[nt] = &All.HQ_M200;
       id[nt++] = REAL;

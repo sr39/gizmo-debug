@@ -380,7 +380,7 @@ void init(void)
             P[i].GradRho[0]=0;
             P[i].GradRho[1]=0;
             P[i].GradRho[2]=1;
-#if defined(METALS) && defined(EXTRA_SNE_OUTPUT)
+#if defined(METALS) && defined(AJR_EXTRA_SNE_OUTPUT)
 	    P[i].MetalDensAroundStar = 0; 
 #endif 
 #endif
@@ -400,7 +400,7 @@ void init(void)
 #if defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
         if(RestartFlag == 0)
         {
-#ifdef GALSF_ALT_INIT_STAR
+#ifdef AJR_GALSF_ALT_INIT_STAR
 	  if (P[i].Type == 2) 
 	    {
 	      // Disk stars 
@@ -470,7 +470,7 @@ void init(void)
         
         
 #ifdef METALS
-#ifdef SOLAR_ABUNDANCES_WIERSMA09 
+#ifdef AJR_SOLAR_ABUNDANCES_WIERSMA09 
 	All.SolarAbundances[0]=0.0129; 
 #else
         All.SolarAbundances[0]=0.02;        // all metals (by mass); present photospheric abundances from Asplund et al. 2009 (Z=0.0134, proto-solar=0.0142) in notes;
@@ -479,7 +479,7 @@ void init(void)
 
 #ifdef COOL_METAL_LINES_BY_SPECIES
         if (NUM_METAL_SPECIES>=10) {
-#ifdef SOLAR_ABUNDANCES_WIERSMA09 
+#ifdef AJR_SOLAR_ABUNDANCES_WIERSMA09 
 	// Use solar abundances from Table 1 of Wiersma et al. 2009, MNRAS, 393, 99 
             All.SolarAbundances[1]=0.2806;    // He  (11.0 in units where log[H]=12 -> Y = 0.2806 [Hydrogen X=0.7065])
             All.SolarAbundances[2]=2.07e-3; // C   (8.39 -> 2.07e-3)
@@ -502,7 +502,7 @@ void init(void)
             All.SolarAbundances[8]=6.44e-4; // S   (7.12 -> 3.12e-4, AG=3.80e-4)
             All.SolarAbundances[9]=1.01e-4; // Ca  (6.34 -> 0.65e-4, AG=0.67e-4)
             All.SolarAbundances[10]=1.73e-3; // Fe (7.50 -> 1.31e-3, AG=1.92e-3)
-#endif // SOLAR_ABUNDANCES_WIERSMA09 
+#endif // AJR_SOLAR_ABUNDANCES_WIERSMA09 
         }
 #endif // COOL_METAL_LINES_BY_SPECIES
 #ifdef GALSF_FB_FIRE_RPROCESS

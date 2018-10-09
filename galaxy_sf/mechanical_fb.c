@@ -470,7 +470,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 SphP[j].MassTrue += dM_ejecta_in;
 #endif
-#if defined(METALS) && !defined(GALSF_FB_NOENRICHMENT) 
+#if defined(METALS) && !defined(AJR_GALSF_FB_NOENRICHMENT) 
                 /* inject metals */
                 for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=(1-massratio_ejecta)*P[j].Metallicity[k] + massratio_ejecta*local.yields[k];}
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
@@ -946,7 +946,7 @@ void determine_where_SNe_occur(void)
     MPI_Reduce(&ntotal, &mpi_ntotal, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&npossible, &mpi_npossible, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
-#ifdef EXTRA_SNE_OUTPUT 
+#ifdef AJR_EXTRA_SNE_OUTPUT 
     struct SNe_output_buffer *SNe_buf_send, *SNe_buf_recv; 
     SNe_buf_send = (struct SNe_output_buffer *) malloc(((int) nhosttotal) * sizeof(struct SNe_output_buffer)); 
     int buf_index = 0; 
@@ -1016,7 +1016,7 @@ void determine_where_SNe_occur(void)
       }
 
     free(SNe_buf_send); 
-#endif // EXTRA_SNE_OUTPUT 
+#endif // AJR_EXTRA_SNE_OUTPUT 
     
     if(ThisTask == 0)
     {
