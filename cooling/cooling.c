@@ -2014,17 +2014,26 @@ double chimes_jenkins_linear_fit(double nH, double T, double Ax, double Bx, doub
   // First, compute the parameter F_star, using the 
   // best-fit relation from Fig. 16 of Jenkins (2009). 
   double F_star = 0.772 + (0.461 * log10(nH)); 
+  double depletion; 
 
   // Limit F_star to be no greater than unity 
   if (F_star > 1.0) 
     F_star = 1.0; 
 
-  // All metals are in the gas phase if 
-  // F_star < 0.0 or T > 10^6 K 
-  if ((F_star < 0.0) || (T > 1.0e6)) 
+  // All metals are in the gas phase if T > 10^6 K 
+  if (T > 1.0e6) 
     return 0.0; 
   else 
-    return Bx + (Ax * (F_star - zx)); 
+    {
+      // We continue the depletion factors below 
+      // Fstar == 0 until they reach unity. 
+      // Remember that this is the log10. 
+      depletion = Bx + (Ax * (F_star - zx)); 
+      if (depletion > 0.0) 
+	return 0.0; 
+      else 
+	return depletion; 
+    }
 }
 
 void chimes_compute_depletions(double nH, double T, int thread_id)
