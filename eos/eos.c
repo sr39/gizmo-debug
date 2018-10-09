@@ -334,7 +334,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         dB2=h*sqrt(dB2/9.)*All.cf_a2inv; dB2=DMIN(dB2,Bmag); r_turb_driving=DMAX(h,r_turb_driving); dB2=DMIN(dB2,Bmag*pow(h/r_turb_driving,1./3.)); dB2=dB2*pow(DMIN(clight_code/Omega_gyro,DMIN(h,r_turb_driving))/h,1./3.);
         // dB2 is now magnetic field extrap to r_gyro
         dB2 = 0.5 * (dB2*dB2) * P[i].Mass/(SphP[i].Density*All.cf_a3inv); // magnetic energy at this scale, from the above //
-        double epsilon = 1.e-5;
+        double epsilon = 1.e-15;
         dB2 *= epsilon;
         if(eA[0]<dB2) {eA[0]=dB2;}
         if(eA[1]<dB2) {eA[1]=dB2;}
@@ -361,7 +361,16 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     if((fac > 20.)||(!isfinite(fac))) {fac = 20.;} // limit to prevent nan's or infinities
     flux_G=0; for(k=0;k<3;k++) {flux_G += bhat[k] * SphP[i].Gradients.CosmicRayPressure[k] * (P[i].Mass/SphP[i].Density) * (1./(MIN_REAL_NUMBER + K0));} // b.gradient[P] -- flux source term
     flux_G += GAMMA_COSMICRAY * ((eA[1]-eA[0])/(MIN_REAL_NUMBER + eA[0]+eA[1])) * vA_code * eCR; // add secondary source term from streaming
-    f_CR = flux_G + (f_CR-flux_G) * exp(-fac); // now compute the actual solution
+    double f_CR_init = f_CR; // save previous value for summation below: need to be careful in the operation to prevent subtraction of large numbers giving an artificial zero!!!
+    // f_CR = flux_G + (f_CR-flux_G) * exp(-fac); // now compute the actual solution -- this is the previous expression that leads to numerical large-number-subtraction errors //
+    f_CR = flux_G * (1. - exp(-fac)); // part coming from flux_G alone -- will add second component
+    if(fabs(fac) < 1.e-6) {f_CR = flux_G*fac;} // re-compute more accurately for small-number-limit
+    f_CR += f_CR_init * exp(-fac); // add back the 'default' solution, which should correctly dominate even if flux_G is large if fac is small
+    double eps_fCR = 1.e-5, fCRmin = eps_fCR * flux_G, flux_d1=0, flux_d2=0; // some dummy variables to check minimum valid physical value of f_CR
+    for(k=0;k<3;k++) {flux_d1+=bhat[k]*SphP[i].Gradients.CosmicRayPressure[k]; flux_d2+=SphP[i].Gradients.CosmicRayPressure[k]*SphP[i].Gradients.CosmicRayPressure[k];}
+    flux_d1 = eps_fCR * flux_d1 / sqrt(MIN_REAL_NUMBER+flux_d2) * (P[i].Mass/SphP[i].Density) * COSMIC_RAYS_ALFVEN; // minimum fraction of free-streaming flux to allow -- needed to ensure f_CR doesn't artificially zero out
+    if(fabs(fCRmin) > fabs(flux_d1)) {fCRmin=flux_d1;} // set minimum of the choices above
+    if(fabs(f_CR) < fabs(fCRmin)) {f_CR = fCRmin;} // set f_CR to a minimum 'safety factor' as fraction of possible limiting-case fluxes: needed to ensure it doesn't numerically vanish with CR energy density, and points in correct direction, so it can be multiplied appropriately in operations next timestep
     CR_vmag=fabs(f_CR)/(MIN_REAL_NUMBER+eCR); if((CR_vmag<=0)||(!isfinite(CR_vmag))) {f_CR=0;} else {if(CR_vmag>COSMIC_RAYS_ALFVEN) {f_CR*=COSMIC_RAYS_ALFVEN/CR_vmag;}} // limit flux to maximal-streaming speed
     for(k=0;k<3;k++) {flux[k]=f_CR*bhat[k];} // assign directionality from b-field
     if(mode==0) {for(k=0;k<3;k++) {SphP[i].CosmicRayFlux[k]=flux[k];}} else {for(k=0;k<3;k++) {SphP[i].CosmicRayFluxPred[k]=flux[k];}} // assign to flux vector

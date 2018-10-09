@@ -1,25 +1,115 @@
 import numpy as np
 import h5py as h5py
 import os.path
-import scipy.interpolate as interpolate
-import scipy.optimize as optimize
-import math
-
 ## This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO ##
+
+
 
 def readsnap(sdir,snum,ptype,
     snapshot_name='snapshot',
     extension='.hdf5',
     h0=0,cosmological=0,skip_bh=0,four_char=0,
     header_only=0,loud=0):
+    '''
+    This is a sub-routine designed to copy a GIZMO snapshot portion - specifically
+    all the data corresponding to particles of a given type - into active memory in 
+    a parent structure for use in python. The routine automatically handles multi-part 
+    snapshot files for you (concatenating), and works with python2.x and python3.x, 
+    and both GIZMO hdf5 and un-formatted binary outputs.
+
+    Syntax:
+      P = readsnap(sdir,snum,ptype,....)
+      
+      Here "P" is a structure which contains the data. The snapshot file[s] are opened,
+      the data fully copied out, and the file closed. This attempts to copy 
+      all the common data types, all together, into "P". Three things to note: 
+      (1) the fields in P (visible by typing P.keys()) are not given the same names 
+      as those in the raw snapshot, but 'shorthand' names, for convenience. you should
+      look at the keys and be sure you know which associate with which files.
+      (2) because of the full-copy approach into new-named fields, this will not 
+      handle arbitrary new data types (it is impossible to handle these in full 
+      generality with un-formatted binary, you need to code the file-order and byte 
+      numbers for each new data structure). if you add new fields (with e.g. 
+      additional physics modules) beyond what this code looks for, you need to 
+      add code here, or use the more general 'load_from_snapshot.py' routine.
+      (3) also because of the full copy strategy, this routine is much more expensive 
+      in time and memory compared to 'load_from_snapshot.py'. use that if you want 
+      a light-weight, more flexible reading option, and have HDF5 outputs.
+
+      For example, after calling, the 'Coordinates' field from the snapshot is 
+      accessible from the new structure P by calling P['p']. 'Velocities' as P['v'],
+      'Masses' as P['m']. Fields specific to gas include 'Density' as P['rho'], 
+      'InternalEnergy' as P['u'], and more.
+
+      More details and examples are given in the GIZMO user guide.
+
+    Arguments:               
+      sdir: parent directory (string) of the snapshot file or immediate snapshot sub-directory 
+            if it is a multi-part file.
+            
+      snum: number (int) of the snapshot. e.g. snapshot_001.hdf5 is '1'
+            Note for multi-part files, this is just the number of the 'set', i.e. 
+            if you have snapshot_001.N.hdf5, set this to '1', not 'N' or '1.N'
+
+      ptype: element type (int) = 0[gas],1,2,3,4,5[meaning depends on simulation, see
+             user guide for details]. if your chosen 'value' is in the file header, 
+             this will be ignored
+      
+    Optional:
+      header_only: the structure "P" will return the file header, instead of the 
+        particle data. you can see the data in the header then by simply typing 
+        P.keys() -- this contains data like the time of the snapshot, as 
+        P['Time']. With this specific routine the header information is only 
+        saved if you choose this option. Default 0/False, turn on by setting to 
+        1 or True.
+      
+      cosmological: default 0/False: turn on (set to 1/True) to convert cosmological 
+        co-moving units to physical units. will specifically convert Coordinates, 
+        Masses, Velocities, Densities, Smoothing Lengths, and Times/Ages. If this 
+        is on, you do not need to set 'h0' (this will force it to be set -also-), 
+        but it does no harm to set it as well.
+
+      h0: default 0/False: turn on (set to 1/True) for the code to use the value 
+        of the hubble constant (h = H0/100 km/s/Mpc) saved in the snapshot to convert 
+        from code units. Recall, units of time, length, and mass in the code are in 
+        h^-1. So this on means your units are physical, with no "h" in them. 
+        Will specifically convert Coordinates, Masses, Densities, Smoothing Lengths, 
+        and Times/Ages. 
+
+      skip_bh: default 0/False: turn on (set to 1/True) to skip black hole-specific 
+        fields for particles of type 5 (use if your snapshot contains elements of type 5, 
+        but the black hole physics modules were not actually used; otherwise you will 
+        get an error).
+      
+      four_char: default numbering is that snapshots with numbers below 1000 have 
+        three-digit numbers. if they were numbered with four digits (e.g. snapshot_0001), 
+        set this to 1 or True (default 0/False)
+        
+      snapshot_name: default 'snapshot': the code will automatically try a number of 
+        common snapshot and snapshot-directory prefixes. but it can't guess all of them, 
+        especially if you use an unusual naming convention, e.g. naming your snapshots 
+        'xyzBearsBeetsBattleStarGalactica_001.hdf5'. In that case set this to the 
+        snapshot name prefix (e.g. 'xyzBearsBeetsBattleStarGalactica')
+        
+      extension: default 'hdf5': again like 'snapshot' set if you use a non-standard 
+        extension (it checks multiply options like 'h5' and 'hdf5' and 'bin'). but 
+        remember the file must actually be hdf5 format!
+
+      loud: print additional checks as it reads, useful for debugging, 
+        set to 1 or True if desired (default 0/False)
     
+
+
+    '''
+
+
     if (ptype<0): return {'k':-1};
     if (ptype>5): return {'k':-1};
 
     fname,fname_base,fname_ext = check_if_filename_exists(sdir,snum,\
         snapshot_name=snapshot_name,extension=extension,four_char=four_char)
     if(fname=='NULL'): return {'k':-1}
-    if(loud==1): print 'loading file : '+fname
+    if(loud==1): print('loading file : '+fname)
 
     ## open file and parse its header information
     nL = 0 # initial particle point to start at 
@@ -29,7 +119,7 @@ def readsnap(sdir,snum,ptype,
         header_toparse = header_master.attrs
     else:
         file = open(fname) # Open binary snapshot file
-        header_toparse = load_gadget_binary_header(file)
+        header_toparse = load_gadget_format_binary_header(file)
 
     npart = header_toparse["NumPart_ThisFile"]
     massarr = header_toparse["MassTable"]
@@ -46,8 +136,8 @@ def readsnap(sdir,snum,ptype,
     hubble = header_toparse["HubbleParam"]
     flag_stellarage = header_toparse["Flag_StellarAge"]
     flag_metals = header_toparse["Flag_Metals"]
-    print "npart_file: ",npart
-    print "npart_total:",npartTotal
+    print("npart_file: ",npart)
+    print("npart_total:",npartTotal)
 
     hinv=1.
     if (h0==1):
@@ -96,7 +186,7 @@ def readsnap(sdir,snum,ptype,
                 file = h5py.File(fname,'r') # Open hdf5 snapshot file
             else:
                 file = open(fname) # Open binary snapshot file
-                header_toparse = load_gadget_binary_header(file)
+                header_toparse = load_gadget_format_binary_header(file)
                 
         if (fname_ext=='.hdf5'):
             input_struct = file
@@ -104,7 +194,7 @@ def readsnap(sdir,snum,ptype,
             bname = "PartType"+str(ptype)+"/"
         else:
             npart = header_toparse['NumPart_ThisFile']
-            input_struct = load_gadget_binary_particledat(file, header_toparse, ptype, skip_bh=skip_bh)
+            input_struct = load_gadget_format_binary_particledat(file, header_toparse, ptype, skip_bh=skip_bh)
             bname = ''
             
         
@@ -144,12 +234,12 @@ def readsnap(sdir,snum,ptype,
 	## correct to same ID as original gas particle for new stars, if bit-flip applied
     if ((np.min(ids)<0) | (np.max(ids)>1.e9)):
         bad = (ids < 0) | (ids > 1.e9)
-        ids[bad] += (1L << 31)
+        ids[bad] += (long(1) << 31)
 
     # do the cosmological conversions on final vectors as needed
     pos *= hinv*ascale # snapshot units are comoving
     mass *= hinv
-    vel *= np.sqrt(ascale) # remember gadget's weird velocity units!
+    vel *= np.sqrt(ascale) # remember gizmo's (and gadget's) weird velocity units!
     if (ptype==0):
         rho *= (hinv/((ascale*hinv)**3))
         hsml *= hinv*ascale
@@ -224,7 +314,7 @@ def check_if_filename_exists(sdir,snum,snapshot_name='snapshot',extension='.hdf5
 
 
 
-def load_gadget_binary_header(f):
+def load_gadget_format_binary_header(f):
     ### Read header.
     import array
     # Skip 4-byte integer at beginning of header block.
@@ -301,8 +391,8 @@ def load_gadget_binary_header(f):
     'Flag_EntrICs':flag_entr_ics[0]}
 
 
-def load_gadget_binary_particledat(f, header, ptype, skip_bh=0):
-    ## load old format=1 style gadget binary snapshot files (unformatted fortran binary)
+def load_gadget_format_binary_particledat(f, header, ptype, skip_bh=0):
+    ## load old format=1 style gadget-format binary snapshot files (unformatted fortran binary)
     import array
     gas_u=0.; gas_rho=0.; gas_ne=0.; gas_nhi=0.; gas_hsml=0.; gas_SFR=0.; star_age=0.; 
     zmet=0.; bh_mass=0.; bh_mdot=0.; mm=0.;
@@ -334,7 +424,7 @@ def load_gadget_binary_particledat(f, header, ptype, skip_bh=0):
     ### Variable particle masses. 
     Npart_MassCode = np.copy(np.array(Npart))
     Npart=np.array(Npart)
-    Npart_MassCode[(Npart <= 0) | (np.array(Massarr,dtype='d') > 0.0)] = 0L
+    Npart_MassCode[(Npart <= 0) | (np.array(Massarr,dtype='d') > 0.0)] = long(0)
     NwithMass = np.sum(Npart_MassCode)
     mass = array.array('f')
     mass.fromfile(f, NwithMass)
