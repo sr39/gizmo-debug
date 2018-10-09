@@ -1422,7 +1422,7 @@ extern FILE *FdHIIHeating;	/*!< file handle for HIIheating.txt log-file */
 extern FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 #endif
 
-#ifdef EXTRA_SNE_OUTPUT 
+#ifdef AJR_EXTRA_SNE_OUTPUT 
 extern FILE *FdSNeExtra;        /*!< file handle for ExtraSNeOutput.txt log-file */ 
 #endif 
 
@@ -1864,7 +1864,7 @@ extern struct global_data_all_processes
   int HaloID; 
 #endif 
   double InitStellarAgeinGyr;
-#ifdef GALSF_ALT_INIT_STAR
+#ifdef AJR_GALSF_ALT_INIT_STAR
   double UniformAgeFraction; 
 #endif 
 #endif
@@ -2010,7 +2010,7 @@ extern struct global_data_all_processes
   int StSeed;
 #endif
 
-#ifdef STATIC_HERNQUIST_POTENTIAL 
+#ifdef AJR_STATIC_HERNQUIST_POTENTIAL 
   double HQ_M200;          /* M200 mass of the halo, in code units. */ 
   double HQ_C;             /* Halo concentration. */ 
   double HQ_DARKFRACTION;  /* Fraction of halo mass in dark matter. */ 
@@ -2127,7 +2127,7 @@ extern ALIGN(32) struct particle_data
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
     MyFloat DensAroundStar;         /*!< gas density in the neighborhood of the collisionless particle (evaluated from neighbors) */
     MyFloat GradRho[3];             /*!< gas density gradient evaluated simply from the neighboring particles, for collisionless centers */
-#if defined METALS && defined(EXTRA_SNE_OUTPUT)
+#if defined METALS && defined(AJR_EXTRA_SNE_OUTPUT)
     MyFloat MetalDensAroundStar;    /*!< Density of metals around star particle (evaluated from neighbours). */ 
 #endif 
 #endif
@@ -3151,7 +3151,7 @@ extern int FB_Seed;
 extern MyDouble GeoFactorTable[GEOFACTOR_TABLE_LENGTH];
 #endif
 
-#ifdef EXTRA_SNE_OUTPUT 
+#ifdef AJR_EXTRA_SNE_OUTPUT 
 struct SNe_output_buffer 
 { 
   MyIDType ID; 
