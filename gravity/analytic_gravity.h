@@ -65,7 +65,7 @@ void GravAccel_RDITestProblem()
             /* dust feels radiation acceleration in the direction opposite gravity */
 	    double acc = All.Vertical_Grain_Accel;
 #ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
-	    acc /= P[i].Grain_Size; 
+	    acc *= All.Grain_Size_Max / P[i].Grain_Size; 
 #endif
             if(P[i].Type==3) 
 	    {

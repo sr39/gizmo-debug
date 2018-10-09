@@ -275,7 +275,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
     double mass_of_new_particle;
     if(NumPart + n_particles_split >= All.MaxPartSph)
     {
-        printf ("On Task=%d with NumPart=%d we try to split a particle. Sorry, no space left...(All.MaxPart=%d)\n", ThisTask, NumPart, All.MaxPart);
+        printf ("On Task=%d with NumPart=%d we tried to split a particle, but there is no space left...(All.MaxPart=%d). Try using more nodes, or raising PartAllocFac, or changing the split conditions to avoid this.\n", ThisTask, NumPart, All.MaxPart);
         fflush(stdout);
         endrun(8888);
     }
