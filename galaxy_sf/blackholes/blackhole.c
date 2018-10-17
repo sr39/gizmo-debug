@@ -477,11 +477,17 @@ void set_blackhole_mdot(int i, int n, double dt)
             pow( DMIN(0.2,DMIN(PPP[n].Hsml,All.ForceSoftening[5])*All.cf_atime*All.UnitLength_in_cm/(All.HubbleParam * 3.086e18)) , -25./14. ); // r_disk dependence
         
         double t_yr = SEC_PER_YEAR / (All.UnitTime_in_s / All.HubbleParam);
-        mdot = BPP(n).BH_Mass_AlphaDisk / (4.2e7 * t_yr) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass), 0.4);
+        mdot = All.BlackHoleAccretionFactor * BPP(n).BH_Mass_AlphaDisk / (4.2e7 * t_yr) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass), 0.4);
         
 #ifdef SINGLE_STAR_FORMATION
         //mdot = All.BlackHoleAccretionFactor * 1.0e-5 * BPP(n).BH_Mass_AlphaDisk / (SEC_PER_YEAR/All.UnitTime_in_s) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass),2);
-        mdot = BPP(n).BH_Mass_AlphaDisk / (1.0e5 * t_yr) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass), 0.4);
+        //double t_acc_bh=(1.0e5 * t_yr); //accretion timescale set to 100kyr
+        //double t_acc_bh= 1.11072 * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass)*All.GravityConstantInternal, -0.5)*pow(All.ForceSoftening[5],1.5)/All.UnitTime_in_s; /* Accretion timescale is the freefall time */
+        double t_acc_bh= 18.006* pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass)*All.GravityConstantInternal*All.ForceSoftening[5], 0.5)*pow(3.0e4/All.UnitVelocity_in_cm_per_s,-2.0)/All.UnitTime_in_s; /* Accretion timescale is 1/alpha*(t_cross/t_orb)^2*t_orb where t_orb is roughly the 2 freefall time. For t_cross=2R/cs we will use cs=300m/s (T=20 K gas) and for alpha we will use 0.1 (the uncertainty in alpha means it does not really matter if cs is incorrect)*/
+        double sink_dt = (BPP(n).TimeBin ? (1 << BPP(n).TimeBin) : 0) * All.Timebase_interval; // sink timestep
+        t_acc_bh=DMAX(10*sink_dt,t_acc_bh); /* Make sure that the accretion timescale is at least 10 times the particle's timestep */
+        mdot = All.BlackHoleAccretionFactor * BPP(n).BH_Mass_AlphaDisk / (t_acc_bh) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass), 0.4);
+        //mdot = All.BlackHoleAccretionFactor * BPP(n).BH_Mass_AlphaDisk / (1.0e5 * t_yr) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass), 0.4);
 #endif
 
     }

@@ -564,7 +564,11 @@ void force_update_node_recursive(int no, int sib, int father)
 #ifdef BH_PHOTONMOMENTUM
         MyFloat bh_lum,bh_lum_hR,bh_lum_grad[3];
         bh_lum=bh_lum_hR=bh_lum_grad[0]=bh_lum_grad[1]=bh_lum_grad[2]=0;
-	    MyFloat bh_lum_unitfactor = All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s/All.UnitTime_in_s * All.HubbleParam * (SOLAR_MASS/SOLAR_LUM); // convert bh luminosity to our tree units
+		#ifdef SINGLE_STAR_FORMATION
+			MyFloat bh_lum_unitfactor = 1.0; //code units are good units
+		#else
+			MyFloat bh_lum_unitfactor = All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s/All.UnitTime_in_s * All.HubbleParam * (SOLAR_MASS/SOLAR_LUM); // convert bh luminosity to our tree units
+		#endif
 #endif
 #ifdef BH_CALC_DISTANCES
         MyFloat bh_mass=0;
@@ -1564,7 +1568,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     
 #ifdef BH_PHOTONMOMENTUM
     double mass_bhlum=0;
-    MyFloat bh_lum_unitfactor = All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s/All.UnitTime_in_s * All.HubbleParam * (SOLAR_MASS/SOLAR_LUM); // convert bh luminosity to our tree units
+	#ifdef SINGLE_STAR_FORMATION
+		MyFloat bh_lum_unitfactor = 1.0; //code units are good units
+	#else
+		MyFloat bh_lum_unitfactor = All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s/All.UnitTime_in_s * All.HubbleParam * (SOLAR_MASS/SOLAR_LUM); // convert bh luminosity to our tree units
+	#endif
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
     double incident_flux_uv=0;
