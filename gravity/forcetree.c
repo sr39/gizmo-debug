@@ -774,9 +774,6 @@ void force_update_node_recursive(int no, int sib, int father)
                     if(All.ForceSoftening[pa->Type] > maxsoft)
                         maxsoft = All.ForceSoftening[pa->Type];
 #else
-#ifdef SINGLE_STAR_FORMATION
-		    if(pa->Type == 5) if (PPP[p].Hsml > maxsoft) maxsoft = PPP[p].Hsml;
-#endif
                     if(pa->Type == 0)
                     {
                         if(PPP[p].Hsml > maxsoft)
@@ -788,6 +785,9 @@ void force_update_node_recursive(int no, int sib, int father)
                             maxsoft = All.ForceSoftening[pa->Type];
                     }
 #endif
+#endif
+#ifdef SINGLE_STAR_FORMATION
+		    if(pa->Type == 5) if (PPP[p].Hsml > maxsoft) maxsoft = PPP[p].Hsml;
 #endif
                 }
             }

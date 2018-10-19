@@ -89,6 +89,7 @@ void reconstruct_timebins(void)
     sumup_large_ints(1, &NumForceUpdate, &glob_sum);
     
     GlobNumForceUpdate = glob_sum;
+    All.NumForcesSinceLastDomainDecomp += GlobNumForceUpdate;
 }
 
 
