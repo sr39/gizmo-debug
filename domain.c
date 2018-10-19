@@ -164,7 +164,7 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
         }
     }
     
-    
+    All.NumForcesSinceLastDomainDecomp = 0;
     TreeReconstructFlag = 1;	/* ensures that new tree will be constructed */
     
     /* we take the closest cost factor */
