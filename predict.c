@@ -89,7 +89,9 @@ void reconstruct_timebins(void)
     sumup_large_ints(1, &NumForceUpdate, &glob_sum);
     
     GlobNumForceUpdate = glob_sum;
+#ifdef SINGLE_STAR_FORMATION
     All.NumForcesSinceLastDomainDecomp += GlobNumForceUpdate;
+#endif
 }
 
 

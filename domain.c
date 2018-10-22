@@ -163,8 +163,9 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
             endrun(112411);
         }
     }
-    
+#ifdef SINGLE_STAR_FORMATION    
     All.NumForcesSinceLastDomainDecomp = 0;
+#endif
     TreeReconstructFlag = 1;	/* ensures that new tree will be constructed */
     
     /* we take the closest cost factor */
