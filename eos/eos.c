@@ -358,9 +358,10 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     f_CR *= exp(fac); // update flux term accordingly, before next step //
     // now the advection-diffusion update --- this is the important step //
     K0 = (fac_Omega/(clight_code*clight_code)) * ((eA[0]+eA[1])/E_B); // 1/effective diffusion coefficient
+    // may want [for numerical 'safety' reasons] to insert a minimum K0 [maximum diffusivity] here, where shouldn't strongly alter the dynamics
     fac = (COSMIC_RAYS_ALFVEN*COSMIC_RAYS_ALFVEN) * K0 * dt_entr; // d_tau [dimensionless time unit]
     if((fac > 20.)||(!isfinite(fac))) {fac = 20.;} // limit to prevent nan's or infinities
-    flux_G=0; for(k=0;k<3;k++) {flux_G += bhat[k] * SphP[i].Gradients.CosmicRayPressure[k] * (P[i].Mass/SphP[i].Density) * (1./(MIN_REAL_NUMBER + K0));} // b.gradient[P] -- flux source term
+    flux_G=0; for(k=0;k<3;k++) {flux_G += -bhat[k] * SphP[i].Gradients.CosmicRayPressure[k] * (P[i].Mass/SphP[i].Density) * (1./(MIN_REAL_NUMBER + K0));} // b.gradient[P] -- flux source term
     flux_G += GAMMA_COSMICRAY * ((eA[1]-eA[0])/(MIN_REAL_NUMBER + eA[0]+eA[1])) * vA_code * eCR; // add secondary source term from streaming
     double f_CR_init = f_CR; // save previous value for summation below: need to be careful in the operation to prevent subtraction of large numbers giving an artificial zero!!!
     // f_CR = flux_G + (f_CR-flux_G) * exp(-fac); // now compute the actual solution -- this is the previous expression that leads to numerical large-number-subtraction errors //
