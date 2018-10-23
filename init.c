@@ -410,10 +410,10 @@ void init(void)
 #endif
                         double ct = cos(All.Vertical_Grain_Accel_Angle * M_PI/180.), st = sin(All.Vertical_Grain_Accel_Angle * M_PI/180.); /* relevant angles */
 			int k; double agamma=0.220893; // 9pi/128 //
-			double tau2=0, w0=sqrt((sqrt(1.+4.*agamma*a0*a0)-1.)/(2.*agamma)); // exact solution if no Lorentz forces and Epstein drag //
+			double tau2=0, ct2=0, w0=sqrt((sqrt(1.+4.*agamma*a0*a0)-1.)/(2.*agamma)); // exact solution if no Lorentz forces and Epstein drag //
 #ifdef GRAIN_LORENTZFORCE
 			double tL_i = All.Grain_Charge_Parameter/All.Grain_Size_Max * pow(All.Grain_Size_Max/P[i].Grain_Size,2) * All.BiniZ; // 1/Lorentz in code units
-			double ct2=ct*ct, tau2_0=pow(tS0*tL_i,2), f_tau_guess2=0; // variables for below //
+            ct2=ct*ct; double tau2_0=pow(tS0*tL_i,2), f_tau_guess2=0; // variables for below //
 			for(k=0;k<20;k++)
 			{
 			   tau2 = tau2_0 / (1. + agamma*w0*w0); // guess tau [including velocity dependence] //
