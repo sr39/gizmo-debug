@@ -917,7 +917,7 @@ integertime get_timestep(int p,		/*!< particle index */
 
         if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 #ifdef SINGLE_STAR_FORMATION
-	double eps = DMAX(BPP(p).BH_NearestGasNeighbor, All.ForceSoftening[5]);
+	double eps = BPP(p).BH_NearestGasNeighbor; //DMAX(BPP(p).BH_NearestGasNeighbor, All.ForceSoftening[5]);
 	double dt_gas = sqrt(All.ErrTolIntAccuracy * eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
 	if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas; }
 	
