@@ -132,7 +132,11 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code)
         double r_j = All.ForceSoftening[P[j].Type];
         if(P[j].Type==0) {r_j = DMAX(r_j , PPP[j].Hsml);}
 #ifdef SINGLE_STAR_FORMATION
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+	major_axis_max = 2*All.ForceSoftening[5];
+#else
 	major_axis_max = DMAX(2*r_j, 2*All.ForceSoftening[5]);
+#endif
 #else
 	major_axis_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
 #endif
