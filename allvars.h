@@ -278,13 +278,13 @@ extern struct Reactions_Structure **all_reactions_root_omp;
 extern struct Reactions_Structure **nonmolecular_reactions_root_omp;
 #endif
 #ifdef CHIMES_METAL_DEPLETION 
-#define JENKINS_N_ELEM 16 
+#define DEPL_N_ELEM 17 
 struct Chimes_depletion_data_structure 
 { 
-  double SolarAbund[JENKINS_N_ELEM]; 
-  double JenkinsPars[JENKINS_N_ELEM][3]; 
+  double SolarAbund[DEPL_N_ELEM]; 
+  double DeplPars[DEPL_N_ELEM][3]; 
   double DustToGasSaturated; 
-  double ChimesDepletionFactors[6]; 
+  double ChimesDepletionFactors[7]; 
   double ChimesDustRatio; 
 }; 
 #ifdef OPENMP 

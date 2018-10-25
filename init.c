@@ -470,8 +470,14 @@ void init(void)
         
         
 #ifdef METALS
-#ifdef AJR_SOLAR_ABUNDANCES_WIERSMA09 
+#if defined(AJR_SOLAR_ABUNDANCES_WIERSMA09) 
 	All.SolarAbundances[0]=0.0129; 
+#elif defined(AJR_SOLAR_ABUNDANCES_ASPLUND09) 
+	All.SolarAbundances[0] = 0.0142; 
+#elif defined(AJR_SOLAR_ABUNDANCES_BRESSAN12) 
+	All.SolarAbundances[0] = 0.01524; 
+#elif defined(AJR_SOLAR_ABUNDANCES_GUTKIN16) 
+	All.SolarAbundances[0] = 0.01524; 
 #else
         All.SolarAbundances[0]=0.02;        // all metals (by mass); present photospheric abundances from Asplund et al. 2009 (Z=0.0134, proto-solar=0.0142) in notes;
                                             //   also Anders+Grevesse 1989 (older, but hugely-cited compilation; their Z=0.0201, proto-solar=0.0213)
@@ -479,7 +485,7 @@ void init(void)
 
 #ifdef COOL_METAL_LINES_BY_SPECIES
         if (NUM_METAL_SPECIES>=10) {
-#ifdef AJR_SOLAR_ABUNDANCES_WIERSMA09 
+#if defined(AJR_SOLAR_ABUNDANCES_WIERSMA09) 
 	// Use solar abundances from Table 1 of Wiersma et al. 2009, MNRAS, 393, 99 
             All.SolarAbundances[1]=0.2806;    // He  (11.0 in units where log[H]=12 -> Y = 0.2806 [Hydrogen X=0.7065])
             All.SolarAbundances[2]=2.07e-3; // C   (8.39 -> 2.07e-3)
@@ -491,6 +497,39 @@ void init(void)
             All.SolarAbundances[8]=4.09e-4; // S   (7.27 -> 4.09e-4)
             All.SolarAbundances[9]=6.44e-5; // Ca  (6.36 -> 6.44e-5)
             All.SolarAbundances[10]=1.1e-3; // Fe (7.45 -> 1.10e-3)
+#elif defined(AJR_SOLAR_ABUNDANCES_ASPLUND09) 
+            All.SolarAbundances[1]=0.2713;  // He  
+            All.SolarAbundances[2]=2.31e-3; // C   
+            All.SolarAbundances[3]=6.77e-4; // N   
+            All.SolarAbundances[4]=5.61e-3; // O   
+            All.SolarAbundances[5]=1.22e-3; // Ne  
+            All.SolarAbundances[6]=6.84e-4; // Mg  
+            All.SolarAbundances[7]=6.48e-4; // Si  
+            All.SolarAbundances[8]=3.02e-4; // S   
+            All.SolarAbundances[9]=6.26e-5; // Ca  
+            All.SolarAbundances[10]=1.27e-3; // Fe 
+#elif defined(AJR_SOLAR_ABUNDANCES_BRESSAN12) 
+            All.SolarAbundances[1]=0.25011;  // He 10.93 
+            All.SolarAbundances[2]=2.79e-3; // C   8.50 
+            All.SolarAbundances[3]=7.45e-4; // N   7.86 
+            All.SolarAbundances[4]=6.76e-3; // O   8.76 
+            All.SolarAbundances[5]=1.77e-3; // Ne  8.08 
+            All.SolarAbundances[6]=6.70e-4; // Mg  7.58 
+            All.SolarAbundances[7]=7.30e-4; // Si  7.55 
+            All.SolarAbundances[8]=3.40e-4; // S   7.16 
+            All.SolarAbundances[9]=6.73e-5; // Ca  6.36 
+            All.SolarAbundances[10]=1.36e-3; // Fe 7.52 
+#elif defined(AJR_SOLAR_ABUNDANCES_GUTKIN16) 
+            All.SolarAbundances[1]=0.27676;  // He  
+            All.SolarAbundances[2]=2.51e-3; // C  
+            All.SolarAbundances[3]=4.74e-4; // N  
+            All.SolarAbundances[4]=7.66e-3; // O  
+            All.SolarAbundances[5]=1.38e-3; // Ne 
+            All.SolarAbundances[6]=6.03e-4; // Mg 
+            All.SolarAbundances[7]=6.56e-4; // Si 
+            All.SolarAbundances[8]=3.06e-4; // S  
+            All.SolarAbundances[9]=6.05e-5; // Ca 
+            All.SolarAbundances[10]=1.23e-3; // Fe 
 #else 
             All.SolarAbundances[1]=0.28;    // He  (10.93 in units where log[H]=12, so photospheric mass fraction -> Y=0.2485 [Hydrogen X=0.7381]; Anders+Grevesse Y=0.2485, X=0.7314)
             All.SolarAbundances[2]=3.26e-3; // C   (8.43 -> 2.38e-3, AG=3.18e-3)
