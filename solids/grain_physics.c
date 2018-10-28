@@ -252,6 +252,9 @@ void apply_grain_dragforce(void)
                                 for(n=0; n<numngb_inbox; n++)
                                 {
                                     j = Ngblist[n];
+#ifdef BOX_BND_PARTICLES
+                                    if(P[j].ID <= 0) continue;
+#endif
                                     r2=0; for(k=0;k<3;k++) r2+=(P[i].Pos[k]-P[j].Pos[k])*(P[i].Pos[k]-P[j].Pos[k]);
                                     if ((r2<=h2)&&(P[j].Mass>0)&&(SphP[j].Density>0))
                                     {
@@ -279,8 +282,11 @@ void apply_grain_dragforce(void)
                                     }
                                 } // for(n=0; n<numngb_inbox; n++)
                             } else {
-                                j=jnearest; wk=1;
-                                degy=0;
+                                j=jnearest;
+#ifdef BOX_BND_PARTICLES
+                                if(P[j].ID <= 0) continue;
+#endif
+                                wk=1; degy=0;
                                 MyDouble VelPred_j[3];
                                 for(k=0;k<3;k++) {VelPred_j[k]=P[j].Vel[k];}
 #ifdef BOX_SHEARING
