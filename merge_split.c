@@ -33,6 +33,9 @@ int does_particle_need_to_be_merged(int i)
 #ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
 #else
+#ifdef GRAIN_RDI_TESTPROBLEM
+    return 0;
+#endif
 #ifdef BH_WIND_SPAWN
     if(P[i].ID == All.AGNWindID)
     {
