@@ -665,8 +665,23 @@ void set_blackhole_drag(int i, int n, double dt)
         fac_friction *= 4*M_PI * All.G * All.G * fac * bh_mass / (bhvel_df*sqrt(bhvel_df));
         /* now apply this to the actual acceleration */
         if(fac_friction<0) fac_friction=0; if(isnan(fac_friction)) fac_friction=0;
+#if (BH_REPOSITION_ON_POTMIN == 2)
+        /* ok, here we have a special catch - the friction isn't standard dynamical friction, but rather we are already moving
+            towards a potential mininum and want to be sure that we don't overshoot or retain large velocities that will
+            launch us out, so we want the BH to 'relax' towards moving with the local flow */
+        if(bhvel_df > 0 && dt > 0)
+        {
+            double dv_magnitude=sqrt(bhvel_df)*All.cf_atime, fac_vel=0, afac_vel=0; // physical velocity difference between 'target' and BH
+            afac_vel = All.G * Mass_in_Kernel / pow(PPP[n].Hsml*All.cf_atime,2); // GMenc/r^2 estimate of local acceleration //
+            afac_vel = DMIN(dv_magnitude/(3.155e13/(All.UnitTime_in_s/All.HubbleParam)) , DMAX( DMIN(DMAX(-2.*BPP(n).BH_MinPot/(PPP[n].Hsml*All.cf_atime*All.cf_atime), 0), 10.*dv_magnitude/dt), afac_vel)); // free-fall-acceleration [checked-to-zero], limited to multiple of actual vel difference in timestep
+            fac_vel = afac_vel * dt / dv_magnitude; // rate at which de-celeration/damping occurs
+            if(fac_vel > 1.e-4) {fac_vel = 1.-exp(-fac_vel);}
+            for(k = 0; k < 3; k++) {P[n].Vel[k] += BlackholeTempInfo[i].DF_mean_vel[k]*All.cf_atime * fac_vel;}
+        }
+#else
         for(k = 0; k < 3; k++)
             P[n].GravAccel[k] += All.cf_atime*All.cf_atime * fac_friction * BlackholeTempInfo[i].DF_mean_vel[k];
+#endif
     }
 #endif
     
@@ -730,21 +745,30 @@ void blackhole_final_operations(void)
     for(n = FirstActiveParticle; n >= 0; n = NextActiveParticle[n])
         if(P[n].Type == 5)
             if(BPP(n).BH_MinPot < 0.5 * BHPOTVALUEINIT)
-                for(k = 0; k < 3; k++)
-                    P[n].Pos[k] = BPP(n).BH_MinPotPos[k];
+            {
+                double fac_bh_shift=0;
+#if (BH_REPOSITION_ON_POTMIN == 2)
+                dt = (P[n].TimeBin ? (1 << P[n].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+                double dr_min=0; for(k=0;k<3;k++) {dr_min+=(BPP(n).BH_MinPotPos[k]-P[n].Pos[k])*(BPP(n).BH_MinPotPos[k]-P[n].Pos[k]);}
+                if(dr_min > 0 && dt > 0)
+                {
+                    dr_min=sqrt(dr_min)*All.cf_atime; // offset to be covered
+                    // in general don't let the shift be more than 0.5 of the distance in a single timestep, but let it move at reasonable ~few km/s speeds minimum, and cap at the free-fall velocity //
+                    double dv_shift = sqrt(DMAX(-2.*BPP(n).BH_MinPot/All.cf_atime , 0)); // free-fall velocity, in [physical] code units, capped zero
+                    dv_shift = DMAX(DMIN(dv_shift, dr_min/dt), 10. * 1.e5/All.UnitVelocity_in_cm_per_s); // set minimum at ~10 km/s, max at speed which 'jumps' full distance
+                    fac_bh_shift = dv_shift * dt / dr_min; // dimensionless shift factor
+                    if(fac_bh_shift > 1.e-4) {fac_bh_shift = 1.-exp(-fac_bh_shift);} // make sure we can't overshoot by using this smooth interpolation function
+                }
+#elif (BH_REPOSITION_ON_POTMIN == 1)
+                fac_bh_shift = 0.5; // jump a bit more smoothly, still instantly but not the whole way
+#else
+                fac_bh_shift = 1.0; // jump all the way
+#endif
+                for(k = 0; k < 3; k++) {P[n].Pos[k] += (BPP(n).BH_MinPotPos[k]-P[n].Pos[k]) * fac_bh_shift;}
+            }
 #endif
     
-    for(n = 0; n < TIMEBINS; n++)
-    {
-        if(TimeBinActive[n])
-        {
-            TimeBin_BH_mass[n] = 0;
-            TimeBin_BH_dynamicalmass[n] = 0;
-            TimeBin_BH_Mdot[n] = 0;
-            TimeBin_BH_Medd[n] = 0;
-        }
-    }
-    
+    for(n = 0; n < TIMEBINS; n++) {if(TimeBinActive[n]) {TimeBin_BH_mass[n] = 0; TimeBin_BH_dynamicalmass[n] = 0; TimeBin_BH_Mdot[n] = 0; TimeBin_BH_Medd[n] = 0;}}
     
     for(i=0; i<N_active_loc_BHs; i++)
     {
