@@ -1716,6 +1716,11 @@ extern struct global_data_all_processes
 
 #ifdef GRAIN_FLUID
 #ifdef GRAIN_RDI_TESTPROBLEM
+#if(NUMDIMS==3)
+#define GRAV_DIRECTION_RDI 2
+#else
+#define GRAV_DIRECTION_RDI 1
+#endif
     double Grain_Charge_Parameter;
     double Dust_to_Gas_Mass_Ratio;
     double Vertical_Gravity_Strength;

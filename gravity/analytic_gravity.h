@@ -51,11 +51,6 @@ void add_analytic_gravitational_forces()
 void GravAccel_RDITestProblem()
 {
 #ifdef GRAIN_RDI_TESTPROBLEM
-#if(NUMDIMS==3)
-#define GRAV_DIRECTION_RDI 2
-#else
-#define GRAV_DIRECTION_RDI 1
-#endif
     int i;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
