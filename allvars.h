@@ -511,7 +511,7 @@
 #define EVALPOTENTIAL
 #endif
 #if !defined(BH_DYNFRICTION) && (BH_REPOSITION_ON_POTMIN == 2)
-#define BH_DYNFRICTION // use for local damping of anomalous velocities wrt background medium //
+#define BH_DYNFRICTION 1 // use for local damping of anomalous velocities wrt background medium //
 #endif
 #endif
 
@@ -1884,6 +1884,7 @@ extern struct global_data_all_processes
   double SeedBlackHoleMinRedshift;  /*!< Minimum redshift where BH seeds are allowed */
 #ifdef BH_SEED_FROM_LOCALGAS
   double SeedBlackHolePerUnitMass;  /*!< Defines probability per unit mass of seed BH forming */
+#endif
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
   double SeedAlphaDiskMass;         /*!< Seed alpha disk mass */
