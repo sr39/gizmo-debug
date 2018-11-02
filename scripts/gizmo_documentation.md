@@ -2284,6 +2284,7 @@ These parameters control the stellar feedback models developed in the series of 
     BAL_v_outflow                30000	    % velocity (km/s) of BAL outflow (BH_WIND options)
     BAL_internal_temperature     1.0e4      % internal temperature (K) of BAL outflow (BH_WIND_SPAWN)
     BAL_wind_particle_mass       1.e-10     % mass of 'virtual wind particles' in code units (BH_WIND_SPAWN)
+    BH_CosmicRay_Injection_Efficiency 0.1   % fraction of accretion energy into cosmic rays (BH_COSMIC_RAYS)
 
 These parameters control the sub-grid models for super-massive black holes, enabled by the master compile-time switch BLACK\_HOLES. There are many different compile-time options for the seeding of BH particles, for their accretion physics, and for different feedback physics. These are described above (Config.sh section) However, they are mostly controlled by a common set of parameters (e.g. all accretion models use the same "BlackHoleAccretionFactor" term).
 
@@ -2319,7 +2320,7 @@ These parameters control the sub-grid models for super-massive black holes, enab
 
 **BAL\_internal\_temperature**/**BAL\_wind\_particle\_mass**: These options are specific to the module BH\_WIND\_SPAWN, and set the internal temperature (in K) and virtual particle mass (in code units) of the virtual "wind particles" spawned by the BH wind. 
 
-
+**BH_CosmicRay_Injection_Efficiency**: This determines the fraction of the accretion energy (not radiated energy) which is deposited into cosmic rays when `BH_COSMIC_RAYS` is active
 
 
 <a name="params-optional-grackle"></a>
