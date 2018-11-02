@@ -483,15 +483,21 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 
 
                         /* BAL kicking operations 
-                         NOTE: we have two separate BAL wind models, particle kicking and smooth wind model.
-                         This is where we do the particle kicking BAL model
+                         NOTE: we have two separate BAL wind models, particle kicking and smooth wind model. This is where we do the particle kicking BAL model
                          DAA: This should also work when there is alpha-disk. */
 #ifdef BH_WIND_KICK 
                         v_kick = All.BAL_v_outflow;
                         if( !(All.ComovingIntegrationOn) && (All.Time < 0.001)) v_kick *= All.Time/0.001;
-
                         dir[0]=dir[1]=dir[2]=0;
                         for(k = 0; k < 3; k++) dir[k]=P[j].Pos[k]-pos[k];          // DAA: default direction is radially outwards
+#if defined(BH_COSMIC_RAYS)
+                        /* inject cosmic rays alongside wind injection */
+                        double dEcr = All.BH_CosmicRay_Injection_Efficiency * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * (C / All.UnitVelocity_in_cm_per_s)*(C / All.UnitVelocity_in_cm_per_s);
+                        SphP[j].CosmicRayEnergy+=dEcr; SphP[j].CosmicRayEnergyPred+=dEcr;
+#ifdef COSMIC_RAYS_M1
+                        dEcr*=COSMIC_RAYS_M1; for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dEcr*dir[k]; SphP[j].CosmicRayFluxPred[k]+=dEcr*dir[k];}
+#endif
+#endif
 #if (BH_WIND_KICK < 0)
                         /* DAA: along polar axis defined by angular momentum within Kernel (we could add finite opening angle) work out the geometry w/r to the plane of the disk */
                         if((dir[0]*Jgas_in_Kernel[0] + dir[1]*Jgas_in_Kernel[1] + dir[2]*Jgas_in_Kernel[2]) > 0){ 
@@ -569,6 +575,17 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                     SphP[j].VelPred[k] += v_kick*All.cf_atime*dir[k];
                                 }
 #endif // BH_PHOTONMOMENTUM
+                                
+#if defined(BH_COSMIC_RAYS)
+                                /* inject cosmic rays alongside continuous wind injection */
+                                mom_wt = bh_angleweight_localcoupling(j,BH_disk_hr,theta) / BH_angle_weighted_kernel_sum;
+                                double dEcr = mom_wt * All.BH_CosmicRay_Injection_Efficiency * (C / All.UnitVelocity_in_cm_per_s)*(C / All.UnitVelocity_in_cm_per_s) * mdot*dt;
+                                SphP[j].CosmicRayEnergy+=dEcr; SphP[j].CosmicRayEnergyPred+=dEcr;
+#ifdef COSMIC_RAYS_M1
+                                dEcr*=COSMIC_RAYS_M1; for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dEcr*dir[k]; SphP[j].CosmicRayFluxPred[k]+=dEcr*dir[k];}
+#endif
+#endif
+                                
                                 /* inject BAL winds, this is the more standard smooth feedback model */
 #if defined(BH_WIND_CONTINUOUS) && !defined(BH_WIND_KICK)
                                 mom_wt = bh_angleweight_localcoupling(j,BH_disk_hr,theta) / BH_angle_weighted_kernel_sum;
@@ -922,6 +939,15 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
         P[j].Vel[2] =  P[i].Vel[2] + dz / d_r * All.BAL_v_outflow * All.cf_atime;
         SphP[j].VelPred[0] = P[j].Vel[0]; SphP[j].VelPred[1] = P[j].Vel[1]; SphP[j].VelPred[2] = P[j].Vel[2]; 
         
+#if defined(BH_COSMIC_RAYS)
+        /* inject cosmic rays alongside wind injection */
+        double dEcr = All.BH_CosmicRay_Injection_Efficiency * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * (C / All.UnitVelocity_in_cm_per_s)*(C / All.UnitVelocity_in_cm_per_s);
+        SphP[j].CosmicRayEnergy+=dEcr; SphP[j].CosmicRayEnergyPred+=dEcr;
+#ifdef COSMIC_RAYS_M1
+        dEcr*=COSMIC_RAYS_M1; for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dEcr*dir[k]; SphP[j].CosmicRayFluxPred[k]+=dEcr*dir[k];}
+#endif
+#endif
+
         /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
         force_add_star_to_tree(i, j);// (buggy)
         /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */

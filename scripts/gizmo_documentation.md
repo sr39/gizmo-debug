@@ -1479,6 +1479,8 @@ These models also involve their own parameterfile settings, in addition to those
 #BH_COMPTON_HEATING             # enable Compton heating/cooling from BHs in cooling function (needs BH_PHOTONMOMENTUM). cite Hopkins et al., 2016, MNRAS, 458, 816
 #BH_HII_HEATING                 # photo-ionization feedback from BH (needs GALSF_FB_FIRE_RT_HIIHEATING). cite Hopkins et al., arXiv:1702.06148
 #BH_PHOTONMOMENTUM              # continuous long-range IR radiation pressure acceleration from BH (needs GALSF_FB_FIRE_RT_LONGRANGE). cite Hopkins et al., arXiv:1702.06148
+#--- cosmic ray: these currently build on the architecture of the BH_WIND modules, one of those must be enabled, along with the usual cosmic-ray physics set of modules for CR transport. the same restrictions (e.g. FIRE) apply to this as CR modules. developed by P. Hopkins
+#BH_COSMIC_RAYS                 # explicitly inject and transport CRs from BH. set injection energy efficiency. injected alongside mechanical energy (params file sets ratios of energy in different mechanisms)
 ####################################################################################################
 ```
 
@@ -1499,6 +1501,7 @@ These models also involve their own parameterfile settings, in addition to those
 
 **BH\_PHOTONMOMENTUM**: Turn on to enable BH radiation pressure feedback. This follows the mechanisms used to couple stellar radiation pressure to the gas, but with additional corrections for the non-isotropic geometry of the BH accretion disk and obscuration from the torus region, including single-scattering at the dust sublimation radius and IR scattering outside this; this follows the fitting functions taken directly from full radiative transfer calculations by N. Roth (private communication, but see Roth et al. 2012, arXiv:1204.0063, for details). You can set the strength of this mechanism in the parameterfile separately from the other BH feedback mechanisms with the multiplier `BH_FluxMomentumFactor` (default =1). This uses the FIRE radiation pressure algorithms and implementation (Hopkins et al., arXiv:1702.06148), so its use follows FIRE policies -- it is proprietary and not free-to-use even for users of the development code, without explicit permissions from the FIRE collaboration [see notes above for the FIRE modules in the stellar feedback section].
 
+**BH\_COSMIC\_RAYS**: Turn on to enable BH feedback via cosmic rays, with explicit CR transport. Requires `COSMIC_RAYS` and appropriate choices there for CR transport. Also requires one of the BH mechanical feedback modules. CRs will be coupled alongside mechanical energy, with specified efficiency (so you can make it 'pure' CR by making mechanical energy weak, CRs large). From then on, trated as 'normal' CRs.
 
 
 <a name="config-bh-additionalbhoptions"></a>
@@ -2264,6 +2267,7 @@ These parameters control the stellar feedback models developed in the series of 
     SeedAlphaDiskMass            0.0        % initial mass in the alpha disk (BH_ALPHADISK_ACCRETION)
     SeedBlackHoleMinRedshift     2.0        % minimum redshift where new BH particles are seeded (lower-z ceases seeding)
     SeedBlackHoleMassSigma       0.5        % lognormal standard deviation (in dex) in initial BH seed masses
+    SeedBlackHolePerUnitMass     1.e-4      % stellar mass (code unit) per BH seed (BH_SEED_FROM_LOCALGAS)
     %----- (specific options for on-the-fly friends-of-friends based BH seeding: FOF on)
     MinFoFMassForNewSeed         10.	    % minimum mass of FOF group (stars or DM) to get seed, in code units
     TimeBetOnTheFlyFoF           1.01       % time (in code units, e.g. scale-factor) between on-the-fly FOF searches
@@ -2290,6 +2294,8 @@ These parameters control the sub-grid models for super-massive black holes, enab
 **SeedBlackHoleMinRedshift**: Minimum redshift, below which seed BHs will not be spawned on-the-fly (regardless of the seed model in the simulations). 
 
 **SeedBlackHoleMassSigma**: In the seed models which spawn BHs on the fly, this parameter allows them to have random masses drawn from a log-normal distribution. Then **SeedBlackHoleMass** becomes the median/peak of the log-normal, and this specifies with width (in dex) of the distribution function. To fix the BH mass, simply set this to zero.
+
+**SeedBlackHolePerUnitMass**: If `BH_SEED_FROM_LOCALGAS` is enabled, this determines the seed probability (probability is dp=dmformed/this mass), set in code units
 
 **MinFoFMassForNewSeed**: This sets the minimum mass of an on-the-fly FOF group which will get a BH seed (if a BH isn't already present), when using the BH\_SEED\_FROM\_FOF flag[s]. The mass is in code units, and refers to either the total mass (if BH\_SEED\_FROM\_FOF=0, where total halo mass is used to identify groups) or stellar mass (if BH\_SEED\_FROM\_FOF=1, where BHs are seeded in stellar groups specifically). 
 

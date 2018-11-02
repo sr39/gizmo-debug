@@ -1314,6 +1314,12 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "SeedBlackHoleMinRedshift");
         addr[nt] = &All.SeedBlackHoleMinRedshift;
         id[nt++] = REAL;
+        
+#ifdef BH_SEED_FROM_LOCALGAS
+        strcpy(tag[nt], "SeedBlackHolePerUnitMass");
+        addr[nt] = &All.SeedBlackHolePerUnitMass;
+        id[nt++] = REAL;
+#endif
 #endif
         
 #ifdef BH_ALPHADISK_ACCRETION
@@ -1337,6 +1343,13 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.BAL_v_outflow;
         id[nt++] = REAL;
 #endif
+        
+#if defined(BH_COSMIC_RAYS)
+        strcpy(tag[nt],"BH_CosmicRay_Injection_Efficiency");
+        addr[nt] = &All.BH_CosmicRay_Injection_Efficiency;
+        id[nt++] = REAL;
+#endif
+        
 
 #ifdef BH_WIND_SPAWN
         strcpy(tag[nt], "BAL_internal_temperature");

@@ -350,17 +350,20 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 
 #ifdef BH_REPOSITION_ON_POTMIN
                         /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
-#if (BH_REPOSITION_ON_POTMIN == 1) 
-                        if( (P[j].Potential < minpot) && (P[j].Type == 4) )   // DAA: only if it is a star particle
-#else
-                        if(P[j].Potential < minpot)
+                        double boundedness_function, potential_function; boundedness_function = P[j].Potential + 0.5 * vrel*vrel * All.cf_atime; potential_function = P[j].Potential;
+#if (BH_REPOSITION_ON_POTMIN == 2)
+                        potential_function = boundedness_function; // jumps based on -most bound- particle, not just deepest potential (down-weights fast-movers)
+#endif
+                        if(potential_function < minpot)
+#if (BH_REPOSITION_ON_POTMIN == 1)
+                        if( P[j].Type == 4 && vrel <= vesc )   // DAA: only if it is a star particle & bound
+#endif
+#if (BH_REPOSITION_ON_POTMIN == 2)
+                        if( P[j].Type != 0 )   // allow stars or dark matter but exclude gas, it's too messy!
 #endif
                         {
-                            if(vrel <= vesc)
-                            {
-                                minpot = P[j].Potential;
-                                for(k = 0; k < 3; k++) minpotpos[k] = P[j].Pos[k];
-                            }
+                            minpot = potential_function;
+                            for(k = 0; k < 3; k++) minpotpos[k] = P[j].Pos[k];
                         }
 #endif
 
