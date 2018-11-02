@@ -253,7 +253,7 @@ void merge_and_split_particles(void)
     {
         if(MPI_n_particles_merged > 0 || MPI_n_particles_split > 0)
         {
-            printf("Particle split/merge check: %d particles merged, %d particles split (%d gas) \n", MPI_n_particles_merged,MPI_n_particles_split);
+            printf("Particle split/merge check: %d particles merged, %d particles split (%d gas) \n", MPI_n_particles_merged,MPI_n_particles_split,n_particles_gas_split);
 #ifndef IO_REDUCED_MODE
             fflush(stdout);
 #endif
