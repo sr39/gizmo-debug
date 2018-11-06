@@ -275,7 +275,7 @@ void normalize_temp_info_struct(int i)
     if(BlackholeTempInfo[i].Mgas_in_Kernel > 0)
     {
         BlackholeTempInfo[i].BH_InternalEnergy /= BlackholeTempInfo[i].Mgas_in_Kernel;
-#if defined(BH_BONDI) || defined(BH_DRAG)
+#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION == 4)
         for(k=0;k<3;k++)
             BlackholeTempInfo[i].BH_SurroundingGasVel[k] /= BlackholeTempInfo[i].Mgas_in_Kernel * All.cf_atime;
 #endif
@@ -396,7 +396,7 @@ void set_blackhole_mdot(int i, int n, double dt)
                    pow(f_disk_for_bhar,5./2.) * pow(bh_mass_units,1./6.) *
                    pow(r0_for_bhar,-3./2.) / (1 + f0_for_bhar/fgas_for_bhar);
             
-#if (BH_GRAVACCRETION == 2) || (BH_GRAVACCRETION == 3)
+#if (BH_GRAVACCRETION == 2) || (BH_GRAVACCRETION == 3) || (BH_GRAVACCRETION == 4)
             double r0_acc = PPP[n].Hsml * All.cf_atime; // radius in physical units
             double menc_all = m_tmp_for_bhar + P[n].Mass; // total enclosed mass in kernel (note P[n].Mass can be large if BH_INCREASE_DYNAMIC_MASS is set large)
             double omega_dyn = sqrt(All.G * menc_all / (r0_acc*r0_acc*r0_acc)); // 1/t_dyn for all mass inside kernel
@@ -405,6 +405,21 @@ void set_blackhole_mdot(int i, int n, double dt)
             ff_fac = (mdisk_for_bhar / menc_all) * (mdisk_for_bhar / menc_all); // disk fraction, used for gravito-turbulent estimator
 #endif
             mdot = All.BlackHoleAccretionFactor * ff_fac * BlackholeTempInfo[i].Mgas_in_Kernel * omega_dyn; // gas accreted on free-fall time with pre-factor ff_fac
+#endif
+            
+#if (BH_GRAVACCRETION == 4)
+            double j_tmp_for_bhar=0,jcirc_crit=0; for(k=0;k<3;k++) {j_tmp_for_bhar+=BlackholeTempInfo[i].Jgas_in_Kernel[k]*BlackholeTempInfo[i].Jgas_in_Kernel[k];}
+            j_tmp_for_bhar=sqrt(j_tmp_for_bhar); jcirc_crit = BlackholeTempInfo[i].Mgas_in_Kernel * r0_acc*r0_acc*omega_dyn;
+            jcirc_crit *= pow(bh_mass/m_tmp_for_bhar,2./3.);
+            if(j_tmp_for_bhar < jcirc_crit) /* circularization within BH-dominated region, Bondi accretion valid */
+            {
+                double bhvel=0; for(k=0;k<3;k++) bhvel += BlackholeTempInfo[i].BH_SurroundingGasVel[k]*BlackholeTempInfo[i].BH_SurroundingGasVel[k];
+                rho = BPP(n).DensAroundStar * All.cf_a3inv; /* we want all quantities in physical units */
+                soundspeed = GAMMA*GAMMA_MINUS1 * BlackholeTempInfo[i].BH_InternalEnergy; // this is in physical units now
+                double fac = pow(soundspeed+bhvel, 1.5);
+                mdot = 4.*M_PI * All.G*All.G * BPP(n).BH_Mass*BPP(n).BH_Mass * rho / fac;
+            }
+            /* otherwise, circularization outside BH-dominated region, efficiency according to usual [above] */
 #endif
             
 #ifndef IO_REDUCED_MODE

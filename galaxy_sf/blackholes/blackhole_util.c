@@ -164,7 +164,7 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
         ASSIGN_ADD(BlackholeTempInfo[target].GradRho_in_Kernel[k],out->GradRho_in_Kernel[k],mode);
     }
 #endif
-#if defined(BH_BONDI) || defined(BH_DRAG)
+#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION == 4)
     for(k=0;k<3;k++)
         ASSIGN_ADD(BlackholeTempInfo[target].BH_SurroundingGasVel[k],out->BH_SurroundingGasVel[k],mode);
 #endif

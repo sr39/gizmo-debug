@@ -312,11 +312,8 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         dwk /= u*h_i;
                         for(k=0;k<3;k++) out.GradRho_in_Kernel[k] += wt * dwk * fabs(dP[k]);
 #endif
-#if defined(BH_BONDI) || defined(BH_DRAG)
-                        for(k=0;k<3;k++)
-                        {
-                            out.BH_SurroundingGasVel[k] += wt*dv[k];
-                        }
+#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION == 4)
+                        for(k=0;k<3;k++) {out.BH_SurroundingGasVel[k] += wt*dv[k];}
 #endif
                     }
                     else if( P[j].Type==4 || ((P[j].Type==2||P[j].Type==3) && !(All.ComovingIntegrationOn)) ) 
