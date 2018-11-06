@@ -414,10 +414,10 @@ void set_blackhole_mdot(int i, int n, double dt)
             if(j_tmp_for_bhar < jcirc_crit) /* circularization within BH-dominated region, Bondi accretion valid */
             {
                 double bhvel=0; for(k=0;k<3;k++) bhvel += BlackholeTempInfo[i].BH_SurroundingGasVel[k]*BlackholeTempInfo[i].BH_SurroundingGasVel[k];
-                rho = BPP(n).DensAroundStar * All.cf_a3inv; /* we want all quantities in physical units */
-                soundspeed = GAMMA*GAMMA_MINUS1 * BlackholeTempInfo[i].BH_InternalEnergy; // this is in physical units now
-                double fac = pow(soundspeed+bhvel, 1.5);
-                mdot = 4.*M_PI * All.G*All.G * BPP(n).BH_Mass*BPP(n).BH_Mass * rho / fac;
+                double rho = BPP(n).DensAroundStar * All.cf_a3inv; /* we want all quantities in physical units */
+                double soundspeed = GAMMA*GAMMA_MINUS1 * BlackholeTempInfo[i].BH_InternalEnergy; // this is in physical units now
+                double vcs_fac = pow(soundspeed+bhvel, 1.5);
+                mdot = 4.*M_PI * All.G*All.G * BPP(n).BH_Mass*BPP(n).BH_Mass * rho / vcs_fac;
             }
             /* otherwise, circularization outside BH-dominated region, efficiency according to usual [above] */
 #endif
