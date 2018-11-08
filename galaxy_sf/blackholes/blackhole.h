@@ -54,7 +54,7 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
 //void check_for_bh_merger(int j, MyIDType id);
 double bh_eddington_mdot(double bh_mass);
 double bh_lum_bol(double mdot, double mass, long id);
-int bh_check_boundedness(int j, double vrel, double vesc, double dr_code);
+int bh_check_boundedness(int i, int j, double vrel, double vesc, double dr_code);
 double bh_vesc(int j, double mass, double r_code);
 void normalize_temp_info_struct(int i);
 void set_blackhole_mdot(int i, int n, double dt);

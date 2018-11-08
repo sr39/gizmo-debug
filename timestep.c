@@ -400,7 +400,7 @@ integertime get_timestep(int p,		/*!< particle index */
         *aphys = ac;
         return flag;
     }
-    
+
     dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / ac);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * DMAX(PPP[p].AGS_Hsml,All.ForceSoftening[P[p].Type]) / ac);
@@ -427,6 +427,9 @@ integertime get_timestep(int p,		/*!< particle index */
             dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * ags_h / ac);
         }
     }
+#endif
+#ifdef SINGLE_STAR_FORMATION // here sink particles essentially represent point masses, so the above timestep criterion is not useful - epsilon << typical orbital separation.
+    if (P[p].Type == 5) dt = All.MaxSizeTimestep;
 #endif
 
     
@@ -888,7 +891,11 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef BLACK_HOLES
     if(P[p].Type == 5)
     {
-        double dt_accr = 1.e-2 * 4.2e7 * SEC_PER_YEAR / All.UnitTime_in_s;
+#ifndef SINGLE_STAR_FORMATION
+      double dt_accr = 1.e-2 * 4.2e7 * SEC_PER_YEAR / All.UnitTime_in_s; // this is the Eddington timescale; not relevant for low radiative efficiency
+#else
+      double dt_accr = All.MaxSizeTimestep;
+#endif      
         if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
         {
 #if defined(BH_GRAVCAPTURE_GAS) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
@@ -920,9 +927,11 @@ integertime get_timestep(int p,		/*!< particle index */
 	double eps = BPP(p).BH_NearestGasNeighbor; //DMAX(BPP(p).BH_NearestGasNeighbor, All.ForceSoftening[5]);
 	double dt_gas = sqrt(All.ErrTolIntAccuracy * eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
 	if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas; }
-	
-	double dt_stars = sqrt(All.ErrTolIntAccuracy * DMAX(All.ForceSoftening[5], DMIN(P[p].min_dist_to_bh,P[p].Hsml) )/ ac); // Equation 23 from Federrath 2010, except not enforcing that a sink can't advance faster than its nearest neighbor - should we?
-	if(dt > dt_stars && dt_stars > 0) {dt = 1.01 * dt_stars;}
+
+	if (All.TotBHs > 1) { eps = DMAX(All.ForceSoftening[5], P[p].min_dist_to_bh); // length-scale for acceleration timestep criterion ~(L/a)^0.5
+	double dt_accel = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * eps / ac);
+	printf("eps = %g, dt=%g, m=%g, dist_to_bh=%g\n, dt_accr=%g dt_ngbs=%g\n",eps,dt_accel,P[p].Mass, P[p].min_dist_to_bh, dt_accr, dt_ngbs);
+	if(dt > dt_accel && dt_accel > 0) {dt = 1.01 * dt_accel;}}
 #endif
     } // if(P[p].Type == 5)
 #endif // BLACK_HOLES

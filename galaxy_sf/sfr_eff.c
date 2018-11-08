@@ -555,7 +555,9 @@ void star_formation_parent_routine(void)
                 P[i].Type = 5;
                 num_bhformed++;
                 P[i].BH_Mass = All.SeedBlackHoleMass;
-		P[i].wakeup = 1;
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+		P[i].SinkRadius = Get_Particle_Size(i)/2;
+#endif		
 #ifdef BH_ALPHADISK_ACCRETION
                 P[i].BH_Mass_AlphaDisk = DMAX(DMAX(0, P[i].Mass-P[i].BH_Mass), All.SeedAlphaDiskMass);
 #endif

@@ -114,7 +114,7 @@ double bh_vesc(int j, double mass, double r_code)
 
 
 /* check whether a particle is sufficiently bound to the BH to qualify for 'gravitational capture' */
-int bh_check_boundedness(int j, double vrel, double vesc, double dr_code)
+int bh_check_boundedness(int i, int j, double vrel, double vesc, double dr_code)
 {
     /* if pair is a gas particle make sure to account for its thermal pressure */
     double cs = 0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}
@@ -133,18 +133,20 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code)
         if(P[j].Type==0) {r_j = DMAX(r_j , PPP[j].Hsml);}
 #ifdef SINGLE_STAR_FORMATION
 #ifdef SINGLE_STAR_STRICT_ACCRETION
-	major_axis_max = 2*All.ForceSoftening[5];
+	major_axis_max = 2*PPP[i].SinkRadius; //All.ForceSoftening[5];
 #else
 	major_axis_max = DMAX(2*r_j, 2*All.ForceSoftening[5]);
 #endif
 #else
 	major_axis_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
+	if(P[j].Type==5) {major_axis_max = DMIN(major_axis_max , 3.*All.ForceSoftening[5]);}
 #endif
-        if(P[j].Type==5) {major_axis_max = DMIN(major_axis_max , 3.*All.ForceSoftening[5]);}
+
 #ifdef BH_SEED_GROWTH_TESTS
         major_axis_max += MAX_REAL_NUMBER;
 #endif
 #endif
+	printf("major axis = %g, major_axis_max = %g\n", major_axis, major_axis_max);
         if(major_axis < major_axis_max) {bound = 1;}
     }
     return bound;

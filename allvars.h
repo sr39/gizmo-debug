@@ -2080,6 +2080,9 @@ extern ALIGN(32) struct particle_data
     int BH_CountProgs;
 #endif
     MyFloat BH_Mass;
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+    MyFloat SinkRadius;
+#endif 
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
 #endif
