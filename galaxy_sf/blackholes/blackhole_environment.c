@@ -358,7 +358,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         double dr_code = sqrt(r2);
                         vbound = bh_vesc(j, mass, dr_code);
                         if(vrel < vbound) { /* bound */
-                            if( bh_check_boundedness(j,vrel,vbound,dr_code)==1 ) { /* apocenter within 2.8*epsilon (softening length) */
+			  if(bh_check_boundedness(target, j,vrel,vbound,dr_code)==1 ) { /* apocenter within 2.8*epsilon (softening length) */
                                 
                                 /* CAVEAT: when two BHs share some neighbours, this double counts the accretion */
                                 /* DAA: looks like this is true always since SwallowID=0 has just been initialized...

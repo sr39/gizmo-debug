@@ -369,7 +369,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         {
                             if(id != P[j].ID) /* check its not the same bh  (DAA: this is duplicated here...) */
                             {
-                                if((vrel < BH_CSND_FRAC_BH_MERGE * vesc) && (bh_check_boundedness(j,vrel,vesc,r)==1))
+			      if((vrel < BH_CSND_FRAC_BH_MERGE * vesc) && (bh_check_boundedness(target,j,vrel,vesc,r)==1))
                                 {
 #ifndef IO_REDUCED_MODE
                                     printf("MARKING_BH_MERGER: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) id);
@@ -401,7 +401,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         {
                             if((vrel < vesc)) // && (particles_swallowed_this_bh_this_process < particles_swallowed_this_bh_this_process_max))
                             { /* bound */
-                                if( bh_check_boundedness(j,vrel,vesc,r)==1 )
+			      if( bh_check_boundedness(target, j,vrel,vesc,r)==1 )
                                 { /* apocenter within target distance */        
 #ifdef BH_GRAVCAPTURE_NONGAS
                                     /* simply swallow non-gas particle if BH_GRAVCAPTURE_NONGAS enabled */
