@@ -471,12 +471,27 @@ double domain_particle_cost_multiplier(int i)
     } // end gas check
 
 #if defined(GALSF) /* with star formation active, we will up-weight star particles which are active feedback sources */
+#ifndef CHIMES /* With CHIMES, the chemistry dominates the cost, so we boost (dense) gas but not stars. */
     if(((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))&&(P[i].Mass>0))
     {
         double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
         if(star_age>0.1) {multiplier = 3.125;} else {if(star_age>0.035) {multiplier = 5.;} else {multiplier = 10.;}}
     }
+#endif 
 #endif
+
+#ifdef CHIMES 
+    /* With CHIMES, cost is dominated by the chemistry, particularly 
+     * in dense gas. We therefore boost the cost factor of gas 
+     * particles with nH >~ 1 cm^-3. */ 
+    double rho_cgs; 
+    if (P[i].Type == 0) 
+      {
+	rho_cgs = SphP[i].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam; 
+	if (rho_cgs > 1.67e-24) 
+	  multiplier = 10.0; 
+      }
+#endif 
     
     return multiplier;
 }

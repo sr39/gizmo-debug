@@ -1874,6 +1874,12 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.Chimes_f_esc_G0;
       id[nt++] = REAL;
 #endif 
+
+#ifdef CHIMES_HII_SUPPRESS_DEPLETION 
+      strcpy(tag[nt], "Chimes_HII_depletion");
+      addr[nt] = &All.Chimes_HII_depletion;
+      id[nt++] = REAL;
+#endif 
 #endif  // CHIMES 
 
 #ifdef AJR_STATIC_HERNQUIST_POTENTIAL 
