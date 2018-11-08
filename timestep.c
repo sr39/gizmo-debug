@@ -428,7 +428,7 @@ integertime get_timestep(int p,		/*!< particle index */
         }
     }
 #endif
-#ifdef SINGLE_STAR_FORMATION // here sink particles essentially represent point masses, so the above timestep criterion is not useful - epsilon << typical orbital separation.
+#ifdef SINGLE_STAR_FORMATION // here sink particles essentially represent point masses, so the above timestep criterion is not relevant
     if (P[p].Type == 5) dt = All.MaxSizeTimestep;
 #endif
 
@@ -766,7 +766,8 @@ integertime get_timestep(int p,		/*!< particle index */
                 dt_divv = 1.5 / fabs(All.cf_a2inv * divVel);
                 if(dt_divv < dt) {dt = dt_divv;}
             }
-            
+	    
+	    
 #ifdef NUCLEAR_NETWORK
             if(SphP[p].Temperature > 1e7)
             {
@@ -925,13 +926,13 @@ integertime get_timestep(int p,		/*!< particle index */
         if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 #ifdef SINGLE_STAR_FORMATION
 	double eps = BPP(p).BH_NearestGasNeighbor; //DMAX(BPP(p).BH_NearestGasNeighbor, All.ForceSoftening[5]);
-	double dt_gas = sqrt(All.ErrTolIntAccuracy * eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
+	double dt_gas = sqrt(eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
 	if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas; }
 
-	if (All.TotBHs > 1) { eps = DMAX(All.ForceSoftening[5], P[p].min_dist_to_bh); // length-scale for acceleration timestep criterion ~(L/a)^0.5
+	if (All.TotBHs > 1) { eps = DMIN(P[p].Hsml, DMAX(All.ForceSoftening[5], P[p].min_dist_to_bh));} // length-scale for acceleration timestep criterion ~(R/a)^0.5
+	else {eps = DMAX(All.ForceSoftening[5], P[p].Hsml);} 
 	double dt_accel = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * eps / ac);
-	printf("eps = %g, dt=%g, m=%g, dist_to_bh=%g\n, dt_accr=%g dt_ngbs=%g\n",eps,dt_accel,P[p].Mass, P[p].min_dist_to_bh, dt_accr, dt_ngbs);
-	if(dt > dt_accel && dt_accel > 0) {dt = 1.01 * dt_accel;}}
+	if(dt > dt_accel && dt_accel > 0) {dt = 1.01 * dt_accel;}
 #endif
     } // if(P[p].Type == 5)
 #endif // BLACK_HOLES

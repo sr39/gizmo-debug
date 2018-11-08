@@ -146,7 +146,6 @@ int bh_check_boundedness(int i, int j, double vrel, double vesc, double dr_code)
         major_axis_max += MAX_REAL_NUMBER;
 #endif
 #endif
-	printf("major axis = %g, major_axis_max = %g\n", major_axis, major_axis_max);
         if(major_axis < major_axis_max) {bound = 1;}
     }
     return bound;
