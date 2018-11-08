@@ -1533,6 +1533,9 @@ extern struct global_data_all_processes
   double Chimes_f_esc_ion; 
   double Chimes_f_esc_G0; 
 #endif
+#ifdef CHIMES_HII_SUPPRESS_DEPLETION 
+  double Chimes_HII_depletion; 
+#endif 
 #endif // CHIMES  
 
   double MinEgySpec;		/*!< the minimum allowed temperature expressed as energy per unit mass */
