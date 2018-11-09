@@ -133,7 +133,7 @@ int bh_check_boundedness(int i, int j, double vrel, double vesc, double dr_code)
         if(P[j].Type==0) {r_j = DMAX(r_j , PPP[j].Hsml);}
 #ifdef SINGLE_STAR_FORMATION
 #ifdef SINGLE_STAR_STRICT_ACCRETION
-	major_axis_max = 2*PPP[i].SinkRadius; //All.ForceSoftening[5];
+	major_axis_max = DMAX(2*PPP[i].SinkRadius, Get_Particle_Size(j)); //All.ForceSoftening[5];
 #else
 	major_axis_max = DMAX(2*r_j, 2*All.ForceSoftening[5]);
 #endif
@@ -776,7 +776,11 @@ void blackhole_final_operations(void)
             P[n].Mass += BlackholeTempInfo[i].accreted_Mass;
             BPP(n).BH_Mass += BlackholeTempInfo[i].accreted_BH_Mass;
         } // if(((BlackholeTempInfo[n].accreted_Mass>0)||(BlackholeTempInfo[n].accreted_BH_Mass>0)) && P[n].Mass > 0)
-        
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+	P[n].SinkRadius = DMAX(P[n].SinkRadius, All.G * P[n].Mass / (1e12 / All.UnitVelocity_in_cm_per_s / All.UnitVelocity_in_cm_per_s));	    // accretion radius is at least the Bondi radius for c_s = 10km/s
+	if (All.TotBHs > 1) P[n].SinkRadius = DMIN(P[n].min_dist_to_bh/2, P[n].SinkRadius);
+	//	printf("Sink radius: %g \n", P[n].SinkRadius);
+#endif 	    
         
         /* Correct for the mass loss due to radiation and BAL winds */
 #ifndef WAKEUP

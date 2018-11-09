@@ -1901,7 +1901,6 @@ void read_parameter_file(char *fname)
 #ifdef GALSF_EFFECTIVE_EQS
     All.CritPhysDensity = 0.0; /* this will be calculated by the code below */
 #endif
-
     All.TypeOfOpeningCriterion = 1;
     /*!< determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion: this
      should only be changed if you -really- know what you're doing! */    

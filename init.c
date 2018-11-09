@@ -487,6 +487,9 @@ void init(void)
 #ifdef BH_ALPHADISK_ACCRETION
                 BPP(i).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
 #endif
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+		BPP(i).SinkRadius = 0;
+#endif		
 #ifdef BH_COUNTPROGS
                 BPP(i).BH_CountProgs = 1;
 #endif
