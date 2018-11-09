@@ -30,7 +30,6 @@ void GravAccel_RDITestProblem(void);
 void add_analytic_gravitational_forces()
 {
 #ifdef GRAVITY_ANALYTIC
-    //GravAccel_RDITestProblem();         // vertical gravity+external acceleration for grain-RDI-wind tests
     //GravAccel_RayleighTaylorTest();     // vertical potential for RT tests
     //GravAccel_StaticPlummerSphere();    // plummer sphere
     //GravAccel_StaticHernquist();        // hernquist sphere
@@ -42,6 +41,9 @@ void add_analytic_gravitational_forces()
     //GravAccel_PaczynskyWiita();         // Paczynsky-Wiita pseudo-Newtonian potential
 #ifdef BOX_SHEARING
     GravAccel_ShearingSheet();            // adds coriolis and centrifugal terms for shearing-sheet approximation
+#endif
+#ifdef GRAIN_RDI_TESTPROBLEM
+    GravAccel_RDITestProblem();           // vertical gravity+external acceleration for grain-RDI-wind tests
 #endif
 #endif
 }

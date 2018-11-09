@@ -282,11 +282,10 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
         fflush(stdout);
         endrun(8888);
     }
-    if(P[i].Type != 0)
-    {
-        printf("SPLITTING NON-GAS-PARTICLE: i=%d ID=%d Type=%d \n",i,P[i].ID,P[i].Type); //fflush(stdout); endrun(8889);
-    }
-    
+#ifndef SPAWN_PARTICLES_VIA_SPLITTING
+    if(P[i].Type != 0) {printf("SPLITTING NON-GAS-PARTICLE: i=%d ID=%d Type=%d \n",i,P[i].ID,P[i].Type);} //fflush(stdout); endrun(8889);
+#endif
+
     /* here is where the details of the split are coded, the rest is bookkeeping */
     mass_of_new_particle = 0.5;
     
@@ -308,7 +307,10 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
 #ifndef SELFGRAVITY_OFF
     d_r = DMAX(d_r , 2.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[P[i].Type]);
 #endif
-    
+#ifdef BOX_BND_PARTICLES
+    if(P[i].Type != 0 && P[i].ID == 0) {d_r *= 1.e-3;}
+#endif
+
     /* find the first non-gas particle and move it to the end of the particle list */
     long j = NumPart + n_particles_split;
     /* set the pointers equal to one another -- all quantities get copied, we only have to modify what needs changing */
@@ -344,7 +346,10 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
     /* assign masses to both particles (so they sum correctly) */
     P[j].Mass = mass_of_new_particle * P[i].Mass;
     P[i].Mass -= P[j].Mass;
-    
+#ifdef BOX_BND_PARTICLES
+    if(P[i].ID==0)  {P[j].ID=1; double m0=P[i].Mass+P[j].Mass; P[i].Mass=P[j].Mass=m0;}
+#endif
+
     /* prepare to shift the particle locations according to the random number we drew above */
     double dx, dy, dz;
 #if (NUMDIMS == 1)
