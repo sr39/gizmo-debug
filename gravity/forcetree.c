@@ -1546,7 +1546,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     int maxNodes = MaxNodes;
     integertime ti_Current = All.Ti_Current;
     double errTol2 = All.ErrTolTheta * All.ErrTolTheta;
-    
 #if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION))
     int i1, i2;
     double fac2, h_tidal, h_inv_tidal, h3_inv_tidal, h5_inv, h5_inv_tidal, fac_tidal;
@@ -1761,7 +1760,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         no = GravDataGet[target].NodeList[0];
         no = Nodes[no].u.d.nextnode;	/* open it */
     }
-    
+
     while(no >= 0)
     {
         while(no >= 0)
@@ -2113,7 +2112,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         continue;
                     }
                 }
+#ifndef HYBRID_OPENING_CRITERION		
                 else		/* check relative opening criterion */
+#else
+		else if(!(All.Ti_Current == 0 && RestartFlag == 0))
+#endif		  
                 {
                     /* force node to open if we are within the gravitational softening length */
 #if !(defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE))
@@ -2756,7 +2759,11 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                         openflag = 1;
                     }
                 }
+#ifndef HYBRID_OPENING_CRITERION		
                 else		/* check relative opening criterion */
+#else
+		else if(!(All.Ti_Current == 0 && RestartFlag == 0))		  
+#endif		  
                 {
                     if(mass * nop->len * nop->len > r2 * r2 * aold)
                     {
@@ -3197,6 +3204,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                 dzz = nop->center[2] - pos_z;
                 NEAREST_XYZ(dxx,dyy,dzz,-1);
 #endif // PMGRID
+
                 if(All.ErrTolTheta)	/* check Barnes-Hut opening criterion */
                 {
                     if(nop->len * nop->len > r2 * All.ErrTolTheta * All.ErrTolTheta)
@@ -3206,7 +3214,11 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                         continue;
                     }
                 }
+#ifndef HYBRID_OPENING_CRITERION
                 else		/* check relative opening criterion */
+#else
+		else if(!(All.Ti_Current == 0 && RestartFlag == 0))		  
+#endif				  
                 {
                     
                     /* force node to open if we are within the gravitational softening length */

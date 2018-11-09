@@ -251,7 +251,9 @@
 
 
 #ifdef SINGLE_STAR_FORMATION
+#define HYBRID_OPENING_CRITERION
 #define SINGLE_STAR_HILL_CRITERION
+#define SINGLE_STAR_STRICT_ACCRETION
 #define GALSF // master switch needed to enable various frameworks
 #define GALSF_SFR_VIRIAL_SF_CRITERION 2 // only allow star formation in virialized sub-regions meeting Jeans threshold
 #define METALS  // metals should be active for stellar return

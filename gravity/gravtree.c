@@ -686,7 +686,8 @@ void gravity_tree(void)
         
         P[i].OldAcc = sqrt(ax * ax + ay * ay + az * az);
     }
-    
+
+#ifndef HYBRID_OPENING_CRITERION      // in collisional systems we don't want to rely on the relative opening criterion alone, because aold can be dominated by a binary companion but we still want accurate contributions from distant nodes. Thus we combine BH and relative criteria. - MYG
     if(header.flag_ic_info == FLAG_SECOND_ORDER_ICS)
     {
         if(!(All.Ti_Current == 0 && RestartFlag == 0))
@@ -698,6 +699,7 @@ void gravity_tree(void)
         if(All.TypeOfOpeningCriterion == 1)
             All.ErrTolTheta = 0;	/* This will switch to the relative opening criterion for the following force computations */
     }
+#endif
     
     /*  muliply by G */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
