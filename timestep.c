@@ -428,8 +428,18 @@ integertime get_timestep(int p,		/*!< particle index */
         }
     }
 #endif
-#ifdef SINGLE_STAR_FORMATION // here sink particles essentially represent point masses, so the above timestep criterion is not relevant
-    if (P[p].Type == 5) dt = All.MaxSizeTimestep;
+/* #ifdef SINGLE_STAR_FORMATION // here sink particles essentially represent point masses, so the above timestep criterion is not relevant */
+/*     if (P[p].Type == 5) dt = All.MaxSizeTimestep; */
+/* #endif */
+
+#ifdef SINGLE_STAR_HILL_CRITERION // we're calculating the tidal tensor here, so let's use it to get a characteristic timescale from the acceleration
+    double tidal_norm = 0.;
+    for(int k = 0; k < 3; k++){
+        for(int l = 0; l < 3; l++){
+	  tidal_norm += P[p].tidal_tensorps[k][l] * P[p].tidal_tensorps[k][l];
+        }
+    }
+    dt = DMIN(All.MaxSizeTimestep, DMAX(dt, sqrt(2 * All.ErrTolIntAccuracy / sqrt(tidal_norm))));
 #endif
 
     
@@ -925,14 +935,16 @@ integertime get_timestep(int p,		/*!< particle index */
 
         if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 #ifdef SINGLE_STAR_FORMATION
-	double eps = BPP(p).BH_NearestGasNeighbor; //DMAX(BPP(p).BH_NearestGasNeighbor, All.ForceSoftening[5]);
-	double dt_gas = sqrt(2* All.ErrTolIntAccuracy * All.cf_atime * eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
+	double eps = Get_Particle_Size(p); //P[p].Hsml; //BPP(p).BH_NearestGasNeighbor; //DMAX(BPP(p).BH_NearestGasNeighbor, All.ForceSoftening[5]);
+	double dt_gas = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
 	if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas; }
 
-	if (All.TotBHs > 1) { eps = DMIN(P[p].Hsml, DMAX(All.ForceSoftening[5], P[p].min_dist_to_bh));} // length-scale for acceleration timestep criterion ~(R/a)^0.5
-	else {eps = DMAX(All.ForceSoftening[5], P[p].Hsml);} 
-	double dt_accel = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * eps / ac);
-	if(dt > dt_accel && dt_accel > 0) {dt = 1.01 * dt_accel;}
+	if (All.TotBHs > 1) {
+	    eps = DMAX(All.ForceSoftening[5], P[p].min_dist_to_bh); //{ eps = DMIN(P[p].Hsml, );} // length-scale for acceleration timestep criterion ~(R/a)^0.5
+	//else {eps = DMAX(All.ForceSoftening[5], P[p].Hsml);}
+            double dt_stars = sqrt(2e-5 * eps / ac); // the constant factor was found to be necessary to avoid large energy errors when a binary pairs up...
+            if(dt > dt_stars && dt_stars > 0) {dt = 1.01 * dt_stars;}
+	}
 #endif
     } // if(P[p].Type == 5)
 #endif // BLACK_HOLES
