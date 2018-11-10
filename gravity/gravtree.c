@@ -739,7 +739,7 @@ void gravity_tree(void)
         
 #ifdef EVALPOTENTIAL
         /* remove self-potential */
-        P[i].Potential += P[i].Mass / All.SofteningTable[P[i].Type];
+	P[i].Potential += P[i].Mass / All.SofteningTable[P[i].Type];
         
 #ifdef BOX_PERIODIC
         if(All.ComovingIntegrationOn)

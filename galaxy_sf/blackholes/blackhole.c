@@ -482,7 +482,7 @@ void set_blackhole_mdot(int i, int n, double dt)
             pow( DMIN(0.2,DMIN(PPP[n].Hsml,All.ForceSoftening[5])*All.cf_atime*All.UnitLength_in_cm/(All.HubbleParam * 3.086e18)) , -25./14. ); // r_disk dependence
         
         double t_yr = SEC_PER_YEAR / (All.UnitTime_in_s / All.HubbleParam);
-        mdot = All.BlackHoleAccretionFactor * BPP(n).BH_Mass_AlphaDisk / (4.2e7 * t_yr) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass), 0.4);
+        mdot = BPP(n).BH_Mass_AlphaDisk / (4.2e7 * t_yr) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass), 0.4);
         
 #ifdef SINGLE_STAR_FORMATION
         //mdot = All.BlackHoleAccretionFactor * 1.0e-5 * BPP(n).BH_Mass_AlphaDisk / (SEC_PER_YEAR/All.UnitTime_in_s) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass),2);
@@ -778,7 +778,7 @@ void blackhole_final_operations(void)
         } // if(((BlackholeTempInfo[n].accreted_Mass>0)||(BlackholeTempInfo[n].accreted_BH_Mass>0)) && P[n].Mass > 0)
 #ifdef SINGLE_STAR_STRICT_ACCRETION
 	P[n].SinkRadius = DMAX(P[n].SinkRadius, All.G * P[n].Mass / (1e12 / All.UnitVelocity_in_cm_per_s / All.UnitVelocity_in_cm_per_s));	    // accretion radius is at least the Bondi radius for c_s = 10km/s
-	if (All.TotBHs > 1) P[n].SinkRadius = DMIN(P[n].min_dist_to_bh/2, P[n].SinkRadius);
+	//	if (All.TotBHs > 1) P[n].SinkRadius = DMIN(P[n].min_dist_to_bh/2, P[n].SinkRadius);
 	//	printf("Sink radius: %g \n", P[n].SinkRadius);
 #endif 	    
         

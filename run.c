@@ -83,7 +83,8 @@ void run(void)
             domain_Decomposition(0, 0, 1);	/* do domain decomposition if step is big enough, and set new list of active particles  */
         }
 #ifdef SINGLE_STAR_FORMATION
-	else if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart)  domain_Decomposition(0, 0, 1); 
+	//	else if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart)  domain_Decomposition(0, 0, 1);
+	else if(All.NumForcesSinceLastDomainDecomp > DMIN(250,All.TreeDomainUpdateFrequency * All.TotNumPart))  domain_Decomposition(0, 0, 1); 
 #endif	
         else
         {
