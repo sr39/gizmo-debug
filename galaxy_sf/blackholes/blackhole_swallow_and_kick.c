@@ -564,7 +564,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 /* inject radiation pressure */
 #ifdef BH_PHOTONMOMENTUM
                                 /* now we get the weight function based on what we calculated earlier */
-                                mom_wt = All.BH_FluxMomentumFactor * bh_angleweight_localcoupling(j,BH_disk_hr,theta) / BH_angle_weighted_kernel_sum;
+                                mom_wt = All.BH_FluxMomentumFactor * bh_angleweight_localcoupling(j,BH_disk_hr,theta,norm,h_i) / BH_angle_weighted_kernel_sum;
                                 if(BH_angle_weighted_kernel_sum<=0) mom_wt=0;
                                 /* add initial L/c optical/UV coupling to the gas at the dust sublimation radius */
                                 double v_kick = mom_wt * mom / P[j].Mass;
@@ -578,7 +578,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 
 #if defined(BH_COSMIC_RAYS)
                                 /* inject cosmic rays alongside continuous wind injection */
-                                mom_wt = bh_angleweight_localcoupling(j,BH_disk_hr,theta) / BH_angle_weighted_kernel_sum;
+                                mom_wt = bh_angleweight_localcoupling(j,BH_disk_hr,theta,norm,h_i) / BH_angle_weighted_kernel_sum;
                                 double dEcr = mom_wt * All.BH_CosmicRay_Injection_Efficiency * (C / All.UnitVelocity_in_cm_per_s)*(C / All.UnitVelocity_in_cm_per_s) * mdot*dt;
                                 SphP[j].CosmicRayEnergy+=dEcr; SphP[j].CosmicRayEnergyPred+=dEcr;
 #ifdef COSMIC_RAYS_M1
@@ -588,7 +588,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 
                                 /* inject BAL winds, this is the more standard smooth feedback model */
 #if defined(BH_WIND_CONTINUOUS) && !defined(BH_WIND_KICK)
-                                mom_wt = bh_angleweight_localcoupling(j,BH_disk_hr,theta) / BH_angle_weighted_kernel_sum;
+                                mom_wt = bh_angleweight_localcoupling(j,BH_disk_hr,theta,norm,h_i) / BH_angle_weighted_kernel_sum;
                                 double m_wind = mom_wt * (1-All.BAL_f_accretion)/(All.BAL_f_accretion) * mdot*dt; /* mass to couple */
                                 if(BH_angle_weighted_kernel_sum<=0) m_wind=0;
                                 

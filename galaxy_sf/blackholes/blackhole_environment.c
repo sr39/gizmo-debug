@@ -263,15 +263,11 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                 if( (P[j].Mass > 0) && (P[j].Type != 5) && (P[j].ID != id) )
                 {
                     wt = P[j].Mass;
-                    dP[0] = P[j].Pos[0]-pos[0];
-                    dP[1] = P[j].Pos[1]-pos[1];
-                    dP[2] = P[j].Pos[2]-pos[2];
+                    dP[0] = P[j].Pos[0]-pos[0]; dP[1] = P[j].Pos[1]-pos[1]; dP[2] = P[j].Pos[2]-pos[2];
 #ifdef BOX_PERIODIC
                     NEAREST_XYZ(dP[0],dP[1],dP[2],-1); /*  find the closest image in the given box size  */
 #endif
-                    dv[0] = P[j].Vel[0]-vel[0];
-                    dv[1] = P[j].Vel[1]-vel[1];
-                    dv[2] = P[j].Vel[2]-vel[2];
+                    dv[0] = P[j].Vel[0]-vel[0]; dv[1] = P[j].Vel[1]-vel[1]; dv[2] = P[j].Vel[2]-vel[2];
 #ifdef BOX_SHEARING
                     if(pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
                     if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
@@ -280,15 +276,27 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 #ifdef BH_DYNFRICTION
 #if (BH_DYNFRICTION == 1)    // DAA: dark matter + stars
                     if( !(P[j].Type==0) )
+#if (BH_REPOSITION_ON_POTMIN == 2)
+                    if( (P[j].Type != 5) )
+#endif
 #elif (BH_DYNFRICTION == 2)  // DAA: stars only
                     if( P[j].Type==4 || ((P[j].Type==2||P[j].Type==3) && !(All.ComovingIntegrationOn)) )
 #endif
                     {
+                        double wtfac = wt;
+#if (BH_REPOSITION_ON_POTMIN == 2)
+                        double rfac = (dP[0]*dP[0] + dP[1]*dP[1] + dP[2]*dP[2]) * (10./(h_i*h_i) + 0.1/(All.ForceSoftening[5]*All.ForceSoftening[5]));
+                        wtfac = wt / (1. + rfac); // simple function scaling ~ 1/r^2 for large r, to weight elements closer to the BH, so doesnt get 'pulled' by far-away elements //
+#endif
                         if(P[j].Mass>out.DF_mmax_particles) out.DF_mmax_particles=P[j].Mass;
                         for (k=0;k<3;k++)
                         {
                             out.DF_mean_vel[k] += wt*dv[k];
+#if (BH_REPOSITION_ON_POTMIN == 2)
+                            out.DF_rms_vel += wt;
+#else
                             out.DF_rms_vel += wt*dv[k]*dv[k];
+#endif
                         }
                     }
 #endif
@@ -312,7 +320,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         dwk /= u*h_i;
                         for(k=0;k<3;k++) out.GradRho_in_Kernel[k] += wt * dwk * fabs(dP[k]);
 #endif
-#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION == 4)
+#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION == 5)
                         for(k=0;k<3;k++) {out.BH_SurroundingGasVel[k] += wt*dv[k];}
 #endif
                     }
