@@ -935,14 +935,14 @@ integertime get_timestep(int p,		/*!< particle index */
 
         if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 #ifdef SINGLE_STAR_FORMATION
-	double eps = Get_Particle_Size(p); //P[p].Hsml; //BPP(p).BH_NearestGasNeighbor; //DMAX(BPP(p).BH_NearestGasNeighbor, All.ForceSoftening[5]);
+	double eps = P[p].Hsml; //BPP(p).BH_NearestGasNeighbor; //DMAX(BPP(p).BH_NearestGasNeighbor, All.ForceSoftening[5]);
 	double dt_gas = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
 	if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas; }
 
 	if (All.TotBHs > 1) {
 	    eps = DMAX(All.ForceSoftening[5], P[p].min_dist_to_bh); //{ eps = DMIN(P[p].Hsml, );} // length-scale for acceleration timestep criterion ~(R/a)^0.5
 	//else {eps = DMAX(All.ForceSoftening[5], P[p].Hsml);}
-            double dt_stars = sqrt(2e-5 * eps / ac); // the constant factor was found to be necessary to avoid large energy errors when a binary pairs up...
+            double dt_stars = sqrt(All.ErrTolIntAccuracy * eps / ac * 2e-5); // the constant factor was found to be necessary to avoid large energy errors when a binary pairs up...
             if(dt > dt_stars && dt_stars > 0) {dt = 1.01 * dt_stars;}
 	}
 #endif

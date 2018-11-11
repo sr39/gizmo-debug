@@ -101,18 +101,20 @@ static double fac_intp;
  */
 int force_treebuild(int npart, struct unbind_data *mp)
 {
+
     int flag;
     
 #ifdef BH_CALC_DISTANCES
     int i;
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) { P[i].min_dist_to_bh=P[i].min_xyz_to_bh[0]=P[i].min_xyz_to_bh[1]=P[i].min_xyz_to_bh[2]=1e37; }
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) { P[i].min_dist_to_bh=P[i].min_xyz_to_bh[0]=P[i].min_xyz_to_bh[1]=P[i].min_xyz_to_bh[2]=1e37;  }
 #endif
     
     do
     {
         Numnodestree = force_treebuild_single(npart, mp);
-        
+
         MPI_Allreduce(&Numnodestree, &flag, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+
         if(flag == -1)
         {
             force_treefree();
@@ -129,7 +131,7 @@ int force_treebuild(int npart, struct unbind_data *mp)
         }
     }
     while(flag == -1);
-    
+
     force_flag_localnodes();
     
     force_exchange_pseudodata();
@@ -137,7 +139,7 @@ int force_treebuild(int npart, struct unbind_data *mp)
     force_treeupdate_pseudos(All.MaxPart);
     
     TimeOfLastTreeConstruction = All.Time;
-    
+
     return Numnodestree;
 }
 
@@ -1622,7 +1624,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         endrun(444);
     }
 #endif
-    
+
     if(mode == 0)
     {
         pos_x = P[target].Pos[0];

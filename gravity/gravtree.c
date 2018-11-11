@@ -112,11 +112,11 @@ void gravity_tree(void)
         force_treebuild(NumPart, NULL);
         
         CPU_Step[CPU_TREEBUILD] += measure_time();
-        
+
         TreeReconstructFlag = 0;
         
 #ifndef IO_REDUCED_MODE
-        if(ThisTask == 0) printf("Tree construction done.\n");
+	if(ThisTask == 0) printf("Tree construction done.\n");
 #endif
     }
     
@@ -127,6 +127,7 @@ void gravity_tree(void)
     if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
 #endif
     if(ThisTask == 0) printf("Begin tree force.  (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
+
     
     size_t MyBufferSize = All.BufferSize;
     All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
@@ -196,7 +197,7 @@ void gravity_tree(void)
         if(ThisTask == 0)
             printf("done.\n");
 #endif
-        
+
         if(GlobNumForceUpdate > All.TreeDomainUpdateFrequency * All.TotNumPart)
         {
             /* we have a fresh tree and would like to measure gravity cost */
@@ -252,7 +253,6 @@ void gravity_tree(void)
             
             TakeLevel = -1;
         }
-        
         
         if(TakeLevel >= 0)
             for(i = 0; i < NumPart; i++)
