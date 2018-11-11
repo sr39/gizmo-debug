@@ -352,6 +352,11 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
                         double boundedness_function, potential_function; boundedness_function = P[j].Potential + 0.5 * vrel*vrel * All.cf_atime; potential_function = P[j].Potential;
 #if (BH_REPOSITION_ON_POTMIN == 2)
+                        if( boundedness_function < 0 )
+                        {
+                            double wt_rsoft = r / (3.*All.ForceSoftening[5]); // normalization arbitrary here, just using for convenience for function below
+                            boundedness_function *= 1./(1. + wt_rsoft*wt_rsoft); // this down-weights particles which are very far away, relative to the user-defined force softening scale, which should define some 'confidence radius' of resolution around the BH particle
+                        }
                         potential_function = boundedness_function; // jumps based on -most bound- particle, not just deepest potential (down-weights fast-movers)
 #endif
                         if(potential_function < minpot)
@@ -359,7 +364,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         if( P[j].Type == 4 && vrel <= vesc )   // DAA: only if it is a star particle & bound
 #endif
 #if (BH_REPOSITION_ON_POTMIN == 2)
-                        if( P[j].Type != 0 )   // allow stars or dark matter but exclude gas, it's too messy!
+                        if( (P[j].Type != 0) && (P[j].Type != 5) )   // allow stars or dark matter but exclude gas, it's too messy! also exclude BHs, since we don't want to over-merge them
 #endif
                         {
                             minpot = potential_function;
@@ -507,7 +512,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                 /* cos_theta with respect to disk of BH is given by dot product of r and Jgas */
                                 norm=0; for(k=0;k<3;k++) norm+=(dpos[k]/r)*Jgas_in_Kernel[k];
                                 norm=fabs(norm); theta=acos(norm);
-                                BH_angle_weighted_kernel_sum += bh_angleweight_localcoupling(j,BH_disk_hr,theta);
+                                BH_angle_weighted_kernel_sum += bh_angleweight_localcoupling(j,BH_disk_hr,theta,r,h_i);
                             }
 #endif
                             
