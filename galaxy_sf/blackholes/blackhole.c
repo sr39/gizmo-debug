@@ -157,7 +157,7 @@ double bh_angleweight_localcoupling(int j, double hR, double theta, double r, do
     kernel_main(u,hinv3,hinv4,&wk,&dwk,1);
     kernel_main(u_j,hinv3_j,hinv4_j,&wk_j,&dwk_j,1);
     double V_i = 4.*M_PI/3. * H_bh*H_bh*H_bh / (All.DesNumNgb * All.BlackHoleNgbFactor); // this is approximate, will be wrong (but ok b/c just increases weight to neighbors) when not enough neighbors found //
-    if(local.V_i<0 || isnan(local.V_i)) {local.V_i=0;}
+    if(V_i<0 || isnan(V_i)) {V_i=0;}
     if(V_j<0 || isnan(V_j)) {V_j=0;}
     double sph_area = fabs(V_i*V_i*dwk + V_j*V_j*dwk_j); // effective face area //
     wk = 0.5 * (1. - 1./sqrt(1. + sph_area / (M_PI*r*r))); // corresponding geometric weight //
@@ -435,7 +435,7 @@ void set_blackhole_mdot(int i, int n, double dt)
                 double rho = BPP(n).DensAroundStar*All.cf_a3inv; /* we want all quantities in physical units */
                 double soundspeed = GAMMA*GAMMA_MINUS1 * BlackholeTempInfo[i].BH_InternalEnergy; // this is in physical units now
                 double vcs_fac = pow(soundspeed+bhvel, 1.5);
-                mdot = 4.*M_PI * All.G*All.G * BPP(n).BH_Mass*BPP(n).BH_Mass * rho / vcs_fac;
+                mdot = All.BlackHoleAccretionFactor * 4.*M_PI * All.G*All.G * BPP(n).BH_Mass*BPP(n).BH_Mass * rho / vcs_fac;
             } /* otherwise, circularization outside BH-dominated region, efficiency according to usual [above] */
 #endif
             
