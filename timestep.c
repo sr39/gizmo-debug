@@ -432,15 +432,15 @@ integertime get_timestep(int p,		/*!< particle index */
 /*     if (P[p].Type == 5) dt = All.MaxSizeTimestep; */
 /* #endif */
 
-#ifdef SINGLE_STAR_HILL_CRITERION // we're calculating the tidal tensor here, so let's use it to get a characteristic timescale from the acceleration
-    double tidal_norm = 0.;
-    for(int k = 0; k < 3; k++){
-        for(int l = 0; l < 3; l++){
-	  tidal_norm += P[p].tidal_tensorps[k][l] * P[p].tidal_tensorps[k][l];
-        }
-    }
-    dt = DMIN(All.MaxSizeTimestep, DMAX(dt, sqrt(2 * All.ErrTolIntAccuracy / sqrt(tidal_norm))));
-#endif
+/* #ifdef SINGLE_STAR_HILL_CRITERION // we're calculating the tidal tensor here, so let's use it to get a characteristic timescale from the acceleration */
+/*     double tidal_norm = 0.; */
+/*     for(int k = 0; k < 3; k++){ */
+/*         for(int l = 0; l < 3; l++){ */
+/* 	  tidal_norm += P[p].tidal_tensorps[k][l] * P[p].tidal_tensorps[k][l]; */
+/*         } */
+/*     } */
+/*     dt = DMIN(All.MaxSizeTimestep, DMAX(dt, sqrt(2 * All.ErrTolIntAccuracy / sqrt(tidal_norm)))); */
+/* #endif */
 
     
     
@@ -942,8 +942,10 @@ integertime get_timestep(int p,		/*!< particle index */
 	if (All.TotBHs > 1) {
 	    eps = DMAX(All.ForceSoftening[5], P[p].min_dist_to_bh); //{ eps = DMIN(P[p].Hsml, );} // length-scale for acceleration timestep criterion ~(R/a)^0.5
 	//else {eps = DMAX(All.ForceSoftening[5], P[p].Hsml);}
-            double dt_stars = sqrt(All.ErrTolIntAccuracy * eps / ac * 2e-5); // the constant factor was found to be necessary to avoid large energy errors when a binary pairs up...
+            double dt_stars = sqrt(All.ErrTolIntAccuracy * eps / ac); // the constant factor was found to be necessary to avoid large energy errors when a binary pairs up...
+	    printf("dt=%g dt_stars = %g\n",dt,dt_stars);
             if(dt > dt_stars && dt_stars > 0) {dt = 1.01 * dt_stars;}
+
 	}
 #endif
     } // if(P[p].Type == 5)
