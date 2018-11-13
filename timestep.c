@@ -941,9 +941,8 @@ integertime get_timestep(int p,		/*!< particle index */
 
 	if (All.TotBHs > 1) {
 	    eps = DMAX(All.ForceSoftening[5], P[p].min_dist_to_bh); //{ eps = DMIN(P[p].Hsml, );} // length-scale for acceleration timestep criterion ~(R/a)^0.5
-	//else {eps = DMAX(All.ForceSoftening[5], P[p].Hsml);}
+
             double dt_stars = sqrt(All.ErrTolIntAccuracy * eps / ac); // the constant factor was found to be necessary to avoid large energy errors when a binary pairs up...
-	    printf("dt=%g dt_stars = %g\n",dt,dt_stars);
             if(dt > dt_stars && dt_stars > 0) {dt = 1.01 * dt_stars;}
 
 	}
