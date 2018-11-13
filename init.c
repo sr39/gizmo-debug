@@ -224,7 +224,10 @@ void init(void)
     {
         for(j = 0; j < 3; j++)
             P[i].GravAccel[j] = 0;
-        
+#ifdef SINGLE_STAR_FORMATION
+	for(j = 0; j < 3; j++)
+            P[i].GravJerk[j] = 0;
+#endif        
         /* DISTORTION PARTICLE SETUP */
 #ifdef GDE_DISTORTIONTENSOR
         /*init tidal tensor for first output (not used for calculation) */
