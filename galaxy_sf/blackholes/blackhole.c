@@ -186,7 +186,6 @@ double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, doubl
 #ifdef SINGLE_STAR_FORMATION
     return bh_lum_input;
 #else
-
     double bh_lum = bh_lum_input;
     if(bh_lum <= 0) return 0;
     if(isnan(hR)) return 0;
@@ -195,6 +194,8 @@ double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, doubl
     if(r2 <= 0) return 0;
     if(r2*All.UnitLength_in_cm*All.UnitLength_in_cm*All.cf_atime*All.cf_atime < 9.523e36) return 0; /* no force at < 1pc */
     
+    return bh_lum_input;
+#if 0
     double cos_theta = (dx*bh_angle[0] + dy*bh_angle[1] + dz*bh_angle[2])/sqrt(r2);
     if(cos_theta<0) cos_theta *= -1;
     if(isnan(cos_theta)) return 0;
@@ -213,6 +214,7 @@ double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, doubl
     if(y>1.441) y=1.441; if(y<-5.0) y=-5.0;
     y*=2.3026; // so we can take exp, instead of pow //
     return exp(y) * bh_lum;
+#endif
 #endif
 }
 #endif
@@ -362,36 +364,28 @@ void set_blackhole_mdot(int i, int n, double dt)
         rmax_for_bhar = PPP[n].Hsml * All.cf_atime; /* convert to physical units */
 
 #if (BH_GRAVACCRETION == 1)
-        m_tmp_for_bhar = BlackholeTempInfo[i].Malt_in_Kernel;
-        double j_tmp_for_bhar=0;
-        // DAA: Jalt_in_Kernel is now the TOTAL angular momentum (need to subtract Jgas here)
+        /* DAA: Jalt_in_Kernel is now the TOTAL angular momentum (need to subtract Jgas here) */
+        m_tmp_for_bhar = BlackholeTempInfo[i].Malt_in_Kernel; double j_tmp_for_bhar=0;
         for(k=0;k<3;k++)
         {
             j_tmp_for_bhar += (BlackholeTempInfo[i].Jalt_in_Kernel[k] - BlackholeTempInfo[i].Jgas_in_Kernel[k]) * 
                               (BlackholeTempInfo[i].Jalt_in_Kernel[k] - BlackholeTempInfo[i].Jgas_in_Kernel[k]);
         }
-        j_tmp_for_bhar=sqrt(j_tmp_for_bhar);
-        /* jx,y,z, is independent of 'a_scale' b/c ~ m*r*v, vphys=v/a, rphys=r*a */
+        j_tmp_for_bhar=sqrt(j_tmp_for_bhar); /* jx,y,z, is independent of 'a_scale' b/c ~ m*r*v, vphys=v/a, rphys=r*a */
         fgas_for_bhar = BlackholeTempInfo[i].Mgas_in_Kernel / m_tmp_for_bhar;
-        fac = m_tmp_for_bhar * rmax_for_bhar * sqrt(All.G*(m_tmp_for_bhar+bh_mass)/rmax_for_bhar);
-        /* All.G is G in code (physical) units */
+        fac = m_tmp_for_bhar * rmax_for_bhar * sqrt(All.G*(m_tmp_for_bhar+bh_mass)/rmax_for_bhar); /* All.G is G in code (physical) units */
         f_disk_for_bhar = fgas_for_bhar + (1.75*j_tmp_for_bhar/fac);
-        if(f_disk_for_bhar>1) f_disk_for_bhar=1;
+        if(f_disk_for_bhar>1) {f_disk_for_bhar=1;}
         mdisk_for_bhar = m_tmp_for_bhar * f_disk_for_bhar;
 #else
         /* DAA: default torque rate based on kinematic B/D decomposition as in Angles-Alcazar et al. */
         m_tmp_for_bhar = BlackholeTempInfo[i].Mgas_in_Kernel + BlackholeTempInfo[i].Mstar_in_Kernel;
         mbulge_for_bhar = BlackholeTempInfo[i].MstarBulge_in_Kernel; 
-        if(mbulge_for_bhar>BlackholeTempInfo[i].Mstar_in_Kernel) mbulge_for_bhar=BlackholeTempInfo[i].Mstar_in_Kernel;
+        if(mbulge_for_bhar>BlackholeTempInfo[i].Mstar_in_Kernel) {mbulge_for_bhar=BlackholeTempInfo[i].Mstar_in_Kernel;}
         mdisk_for_bhar = m_tmp_for_bhar - mbulge_for_bhar;
         f_disk_for_bhar = mdisk_for_bhar / m_tmp_for_bhar;
-        if(mdisk_for_bhar>0){
-           fgas_for_bhar = BlackholeTempInfo[i].Mgas_in_Kernel / mdisk_for_bhar;
-        }else{
-           fgas_for_bhar = 0;
-        }
 #endif  // if(BH_GRAVACCRETION == 1)
-
+        if(mdisk_for_bhar>0) {fgas_for_bhar=BlackholeTempInfo[i].Mgas_in_Kernel/mdisk_for_bhar;} else {fgas_for_bhar=0;}
         
         if((bh_mass <=0)||(fgas_for_bhar<=0)||(m_tmp_for_bhar<=0))
         {
@@ -726,31 +720,19 @@ void set_blackhole_drag(int i, int n, double dt)
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
 void set_blackhole_long_range_rp(int i, int n)
 {
-    int k;
-    double fac;
-    
     /* pre-set quantities needed for long-range radiation pressure terms */
-    P[n].BH_disk_hr=1/3; P[n].GradRho[0]=P[n].GradRho[1]=0; P[n].GradRho[2]=1;
+    int k; double fac; P[n].BH_disk_hr=1/3; P[n].GradRho[0]=P[n].GradRho[1]=0; P[n].GradRho[2]=1;
     if(BlackholeTempInfo[i].Mgas_in_Kernel > 0)
     {
         /* estimate h/R surrounding the BH from the gas density gradients */
-        fac = 0; /* dummy variable */
-        for(k=0;k<3;k++)
-            fac += BlackholeTempInfo[i].GradRho_in_Kernel[k]*BlackholeTempInfo[i].GradRho_in_Kernel[k];
+        fac=0; for(k=0;k<3;k++) {fac += BlackholeTempInfo[i].GradRho_in_Kernel[k]*BlackholeTempInfo[i].GradRho_in_Kernel[k];}
         P[n].BH_disk_hr = P[n].DensAroundStar / (PPP[n].Hsml * sqrt(fac)) * 1.3;
-        /* 1.3 factor from integrating exponential disk
-         * with h/R=const over gaussian kernel, for width=1/3 (quintic kernel);
-         everything here is in code units, comes out dimensionless */
+        /* 1.3 factor from integrating exponential disk with h/R=const over gaussian kernel, for width=1/3 (quintic kernel); everything here is in code units, comes out dimensionless */
         
         /* use the gradrho vector as a surrogate to hold the orientation of the angular momentum 
           (this is done because the long-range radiation routines for the BH require the angular momentum vector for non-isotropic emission) */
-        fac=0;
-        for(k=0;k<3;k++)
-            fac += BlackholeTempInfo[i].Jgas_in_Kernel[k]*BlackholeTempInfo[i].Jgas_in_Kernel[k];
-        fac=sqrt(fac);
-        if(fac>0)
-            for(k=0;k<3;k++)
-                P[n].GradRho[k] = BlackholeTempInfo[i].Jgas_in_Kernel[k]/fac;
+        fac=0; for(k=0;k<3;k++) {fac += BlackholeTempInfo[i].Jgas_in_Kernel[k]*BlackholeTempInfo[i].Jgas_in_Kernel[k];}
+        fac=sqrt(fac); if(fac>0) {for(k=0;k<3;k++) {P[n].GradRho[k] = BlackholeTempInfo[i].Jgas_in_Kernel[k]/fac;}}
         /* now, the P[n].GradRho[k] field for the BH holds the orientation of the UNIT angular momentum vector
          NOTE it is important that HARD-WIRED into the code, this blackhole calculation comes after the density calculation
          but before the forcetree update and walk; otherwise, this won't be used correctly there */
