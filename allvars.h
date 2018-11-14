@@ -1971,9 +1971,6 @@ extern ALIGN(32) struct particle_data
     MyFloat Particle_DivVel;        /*!< velocity divergence of neighbors (for predict step) */
     
     MyDouble GravAccel[3];          /*!< particle acceleration due to gravity */
-#ifdef SINGLE_STAR_FORMATION
-    MyDouble GravJerk[3];           /*!< Time derivative of particle acceleration due to gravity */
-#endif  
 #ifdef PMGRID
     MyFloat GravPM[3];		/*!< particle acceleration due to long-range PM gravity force */
 #endif
@@ -2108,7 +2105,7 @@ extern ALIGN(32) struct particle_data
     
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
-    MyFloat min_xyz_to_bh[3];
+    MyFloat min_xyz_to_bh[3];  
 #endif
     
 #ifdef SINGLE_STAR_PROMOTION
