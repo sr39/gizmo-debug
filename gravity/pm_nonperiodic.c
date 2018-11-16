@@ -36,8 +36,6 @@
 #define cmplx_im(c) ((c).im)
 #else  /* FFTW3 */
 #include "myfftw3.h" 
-#define cmplx_re(c) ((c).[0])
-#define cmplx_im(c) ((c).[1])
 #endif
 
 #ifndef GRIDBOOST
