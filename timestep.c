@@ -435,14 +435,16 @@ integertime get_timestep(int p,		/*!< particle index */
 
 #ifdef SINGLE_STAR_TIMESTEPPING  // we're calculating the tidal tensor here, so let's use it to get a characteristic timescale
     double tidal_norm = 0.;
-    for(int k = 0; k < 3; k++){
-        for(int l = 0; l < 3; l++){
-	  tidal_norm += P[p].tidal_tensorps[k][l] * P[p].tidal_tensorps[k][l]; // can also do traceless bit by subtracting out trace * delta_ij
-        }
-    }
+    for(int k=0; k<3; k++) tidal_norm += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];
+    /* for(int k = 0; k < 3; k++){ */
+    /*     for(int l = 0; l < 3; l++){ */
+
+    /* 	  	  tidal_norm += P[p].tidal_tensorps[k][l] * P[p].tidal_tensorps[k][l]; // can also do traceless bit by subtracting out trace * delta_ij */
+    /*     } */
+    /* } */
     //    printf("%g\n", sqrt(All.ErrTolIntAccuracy / sqrt(tidal_norm)));
     //coefficient chosen so that we get the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion    
-    dt = DMIN(All.MaxSizeTimestep, 7e-3*sqrt(All.ErrTolIntAccuracy / sqrt(tidal_norm)));
+    dt = DMIN(All.MaxSizeTimestep, sqrt(All.ErrTolIntAccuracy / sqrt(tidal_norm)));
     
     /* dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)*P[p].min_bh_approach_time); */
     /* dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)*P[p].min_bh_tff); */

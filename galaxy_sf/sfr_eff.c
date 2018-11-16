@@ -6,7 +6,6 @@
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
-#include <gsl/gsl_eigen.h>
 #include "../allvars.h"
 #include "../proto.h"
 
@@ -341,17 +340,19 @@ double get_starformation_rate(int i)
     gsl_eigen_symm_free (v);
     gsl_vector_free (eval1);
 #endif
+
 #ifdef SINGLE_STAR_HILL_CRITERION
      // we check that the tidal tensor is negative-definite, ie. converging along all principal axes, indicating that we're dominating our environment gravitationally
-    double tt[9];
-    for(j=0; j<3; j++) {for (k=0; k<3; k++) tt[3*j+k] = P[i].tidal_tensorps[j][k];}
-    gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3);
-    gsl_vector *eval = gsl_vector_alloc (3);
-    gsl_eigen_symm_workspace * w = gsl_eigen_symm_alloc (3);
-    gsl_eigen_symm(&m.matrix, eval,  w);
-    for(k=0; k<3; k++) if (gsl_vector_get(eval,k) >= 0) rateOfSF = 0; // check each eigenvalue
-    gsl_eigen_symm_free(w);
-    gsl_vector_free (eval);
+    for(k=0; k<3; k++) if (P[i].tidal_tensorps[k][k] >= 0) rateOfSF = 0;
+    /* double tt[9]; */
+    /* for(j=0; j<3; j++) {for (k=0; k<3; k++) tt[3*j+k] = P[i].tidal_tensorps[j][k];} */
+    /* gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3); */
+    /* gsl_vector *eval = gsl_vector_alloc (3); */
+    /* gsl_eigen_symm_workspace * w = gsl_eigen_symm_alloc (3); */
+    /* gsl_eigen_symm(&m.matrix, eval,  w); */
+    /* for(k=0; k<3; k++) if (gsl_vector_get(eval,k) >= 0) rateOfSF = 0; // check each eigenvalue */
+    /* gsl_eigen_symm_free(w); */
+    /* gsl_vector_free (eval); */
 #endif
     
 #ifdef SINGLE_STAR_FORMATION
