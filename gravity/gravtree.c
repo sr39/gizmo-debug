@@ -413,6 +413,9 @@ void gravity_tree(void)
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
                     GravDataIn[j].Mass = P[place].Mass;
 #endif
+#ifdef SINGLE_STAR_TIMESTEPPING
+                    for(k = 0; k < 3; k++) {GravDataIn[j].Vel[k] = P[place].Vel[k];}		    
+#endif		    
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
                     if( (P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type]) )
                         GravDataIn[j].Soft = PPP[place].Hsml;
@@ -472,7 +475,7 @@ void gravity_tree(void)
                 (struct gravdata_out *) mymalloc("GravDataOut", Nexport * sizeof(struct gravdata_out));
                 
                 report_memory_usage(&HighMark_gravtree, "GRAVTREE");
-                
+
                 /* now do the particles that were sent to us */
                 tstart = my_second();
                 
@@ -559,6 +562,11 @@ void gravity_tree(void)
                         P[place].min_xyz_to_bh[1] = GravDataOut[j].min_xyz_to_bh[1];
                         P[place].min_xyz_to_bh[2] = GravDataOut[j].min_xyz_to_bh[2];
                     }
+#ifdef SINGLE_STAR_TIMESTEPPING
+		      if(GravDataOut[j].min_bh_approach_time < P[place].min_bh_approach_time)  P[place].min_bh_approach_time = GravDataOut[j].min_bh_approach_time;
+		      if(GravDataOut[j].min_bh_tff < P[place].min_bh_tff)  P[place].min_bh_tff = GravDataOut[j].min_bh_tff;
+		      if(GravDataOut[j].min_bh_periastron < P[place].min_bh_periastron)  P[place].min_bh_periastron = GravDataOut[j].min_bh_periastron;
+#endif		      		    
 #endif
                     if(Ewald_iter==0) /* don't allow for an infinite hierarchy of these moments, or you will get nonsense */
                     {
@@ -713,6 +721,9 @@ void gravity_tree(void)
          all particles -> also over target particle -> extra term -> correct it
          */
         /* 3D -> full forces */
+#ifdef SINGLE_STAR_HILL_CRITERION
+	if(P[i].Type != 0) { // we want to keep the contribution of the particle's self-tides
+#endif	  
         P[i].tidal_tensorps[0][0] +=
         P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] *
                      All.ForceSoftening[P[i].Type]) * 10.666666666667;
@@ -724,7 +735,10 @@ void gravity_tree(void)
         P[i].tidal_tensorps[2][2] +=
         P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] *
                      All.ForceSoftening[P[i].Type]) * 10.666666666667;
-        
+#ifdef SINGLE_STAR_HILL_CRITERION
+	}
+#endif	
+	
         if(All.ComovingIntegrationOn)
         {
             P[i].tidal_tensorps[0][0] -= All.TidalCorrection/All.G;
@@ -739,7 +753,7 @@ void gravity_tree(void)
         
 #ifdef EVALPOTENTIAL
         /* remove self-potential */
-	P[i].Potential += P[i].Mass / All.SofteningTable[P[i].Type];
+	//	P[i].Potential += P[i].Mass / All.SofteningTable[P[i].Type];
         
 #ifdef BOX_PERIODIC
         if(All.ComovingIntegrationOn)

@@ -253,6 +253,7 @@
 #ifdef SINGLE_STAR_FORMATION
 #define DEVELOPER_MODE
 #define HYBRID_OPENING_CRITERION
+#define SINGLE_STAR_TIMESTEPPING
 #define SINGLE_STAR_HILL_CRITERION
 #define SINGLE_STAR_STRICT_ACCRETION
 #define GALSF // master switch needed to enable various frameworks
@@ -2105,7 +2106,12 @@ extern ALIGN(32) struct particle_data
     
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
-    MyFloat min_xyz_to_bh[3];  
+    MyFloat min_xyz_to_bh[3];
+#ifdef SINGLE_STAR_TIMESTEPPING
+    MyFloat min_bh_tff;
+    MyFloat min_bh_periastron;
+    MyFloat min_bh_approach_time;
+#endif  
 #endif
     
 #ifdef SINGLE_STAR_PROMOTION
@@ -2565,6 +2571,9 @@ extern struct gravdata_in
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
     MyFloat Mass;
 #endif
+#ifdef SINGLE_STAR_TIMESTEPPING
+    MyFloat Vel[3];
+#endif  
     int Type;
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
     MyFloat Soft;
@@ -2601,6 +2610,11 @@ extern struct gravdata_out
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
     MyFloat min_xyz_to_bh[3];
+#ifdef SINGLE_STAR_TIMESTEPPING
+    MyFloat min_bh_tff;    // minimum value of sqrt(R^3 / G(M_BH + M_particle)) as calculated from the tree-walk
+    MyFloat min_bh_approach_time; // smallest approach time t_a = |v_radial|/r
+  MyFloat min_bh_periastron;
+#endif  
 #endif
 }
  *GravDataResult,		/*!< holds the partial results computed for imported particles. Note: We use GravDataResult = GravDataGet, such that the result replaces the imported data */
@@ -2950,8 +2964,12 @@ extern ALIGN(32) struct NODE
 #endif    
 
 #ifdef BH_CALC_DISTANCES
-    MyFloat bh_mass;      /*!< holds the BH mass in the node.  Used for calculating tree based dist to closest bh */
-    MyFloat bh_pos[3];    /*!< holds the mass-weighted position of the the actual black holes within the node */
+  MyFloat bh_mass;      /*!< holds the BH mass in the node.  Used for calculating tree based dist to closest bh */
+  MyFloat bh_pos[3];    /*!< holds the mass-weighted position of the the actual black holes within the node */
+#ifdef SINGLE_STAR_TIMESTEPPING
+  MyFloat bh_vel[3];    /*!< holds the mass-weighted avg. velocity of black holes in the node */
+  int N_BH;
+#endif  
 #endif
     
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
