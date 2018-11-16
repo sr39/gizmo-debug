@@ -402,6 +402,7 @@ integertime get_timestep(int p,		/*!< particle index */
     }
 
     dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / ac);
+
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * DMAX(PPP[p].AGS_Hsml,All.ForceSoftening[P[p].Type]) / ac);
 #endif
@@ -432,15 +433,24 @@ integertime get_timestep(int p,		/*!< particle index */
 /*     if (P[p].Type == 5) dt = All.MaxSizeTimestep; */
 /* #endif */
 
-/* #ifdef SINGLE_STAR_HILL_CRITERION // we're calculating the tidal tensor here, so let's use it to get a characteristic timescale from the acceleration */
-/*     double tidal_norm = 0.; */
-/*     for(int k = 0; k < 3; k++){ */
-/*         for(int l = 0; l < 3; l++){ */
-/* 	  tidal_norm += P[p].tidal_tensorps[k][l] * P[p].tidal_tensorps[k][l]; */
-/*         } */
-/*     } */
-/*     dt = DMIN(All.MaxSizeTimestep, DMAX(dt, sqrt(2 * All.ErrTolIntAccuracy / sqrt(tidal_norm)))); */
-/* #endif */
+#ifdef SINGLE_STAR_TIMESTEPPING  // we're calculating the tidal tensor here, so let's use it to get a characteristic timescale
+    double tidal_norm = 0.;
+    for(int k = 0; k < 3; k++){
+        for(int l = 0; l < 3; l++){
+	  tidal_norm += P[p].tidal_tensorps[k][l] * P[p].tidal_tensorps[k][l]; // can also do traceless bit by subtracting out trace * delta_ij
+        }
+    }
+    //    printf("%g\n", sqrt(All.ErrTolIntAccuracy / sqrt(tidal_norm)));
+    //coefficient chosen so that we get the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion    
+    dt = DMIN(All.MaxSizeTimestep, 7e-3*sqrt(All.ErrTolIntAccuracy / sqrt(tidal_norm)));
+    
+    /* dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)*P[p].min_bh_approach_time); */
+    /* dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)*P[p].min_bh_tff); */
+    /* //    if(P[p].Type == 5) printf("%g %g %g %g\n", 7e-3*sqrt(All.ErrTolIntAccuracy / sqrt(tidal_norm)), sqrt(All.ErrTolIntAccuracy)*P[p].min_bh_approach_time, sqrt(All.ErrTolIntAccuracy)*P[p].min_bh_tff, sqrt(All.ErrTolIntAccuracy * DMAX(P[p].min_bh_periastron,All.SofteningTable[5])/ac));  */
+    /* printf("%g %g %g %g\n", 7e-3*sqrt(All.ErrTolIntAccuracy / sqrt(tidal_norm)), sqrt(All.ErrTolIntAccuracy)*P[p].min_bh_tff, sqrt(All.ErrTolIntAccuracy)*P[p].min_bh_approach_time, sqrt(All.ErrTolIntAccuracy * DMAX(P[p].min_bh_periastron,All.SofteningTable[5])/ac)/40); */
+    /* if(P[p].Type == 5) dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy * DMAX(P[p].min_bh_periastron,All.SofteningTable[5])/ac)/40); */
+    //    }
+#endif
 
     
     
@@ -939,13 +949,15 @@ integertime get_timestep(int p,		/*!< particle index */
 	double dt_gas = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
 	if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas; }
 
-	if (All.TotBHs > 1) {
-	    eps = DMAX(All.ForceSoftening[5], P[p].min_dist_to_bh); //{ eps = DMIN(P[p].Hsml, );} // length-scale for acceleration timestep criterion ~(R/a)^0.5
+	/* if (All.TotBHs > 1) { */
+	/*     eps = DMAX(All.ForceSoftening[5], P[p].min_dist_to_bh); //{ eps = DMIN(P[p].Hsml, );} // length-scale for acceleration timestep criterion ~(R/a)^0.5 */
 
-            double dt_stars = sqrt(All.ErrTolIntAccuracy * eps / ac); // the constant factor was found to be necessary to avoid large energy errors when a binary pairs up...
-            if(dt > dt_stars && dt_stars > 0) {dt = 1.01 * dt_stars;}
+        /*     double dt_stars = sqrt(All.ErrTolIntAccuracy * eps / ac); // the constant factor was found to be necessary to avoid large energy errors when a binary pairs up... */
+        /*     if(dt > dt_stars && dt_stars > 0) {dt = 1.01 * dt_stars;} */
 
-	}
+	/* } */
+	//	double dt_stars =  sqrt(2*All.ErrTolIntAccuracy) * P[p].min_bh_tff;
+	//	if(dt > dt_stars && dt_stars > 0) {dt = 1.01 * dt_stars;}
 #endif
     } // if(P[p].Type == 5)
 #endif // BLACK_HOLES

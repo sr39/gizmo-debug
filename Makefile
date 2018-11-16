@@ -289,6 +289,7 @@ FC       = $(CC)
 ##OPTIMIZE += -pg ## profiling for intel compilers
 OPTIMIZE = -g -O1 -ffast-math -funroll-loops -finline-functions -funswitch-loops -fpredictive-commoning -fgcse-after-reload -fipa-cp-clone  ## optimizations for gcc compilers (1/2)
 OPTIMIZE += -ftree-loop-distribute-patterns -fvect-cost-model -ftree-partial-pre   ## optimizations for gcc compilers (2/2)
+OPTIMIZE += -g
 #OPTIMIZE += -ftree-loop-distribute-patterns -ftree-slp-vectorize -fvect-cost-model -ftree-partial-pre   ## optimizations for gcc compilers (2/2)
 #OPTIMIZE += -pg -fprofile -fprofile-arcs -ftest-coverage -fprofile-generate ## full profiling, for gcc compilers
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
