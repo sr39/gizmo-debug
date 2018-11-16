@@ -30,6 +30,8 @@
 #include     <srfftw_mpi.h>
 #endif
 #endif
+#define cmplx_re(c) ((c).re)
+#define cmplx_im(c) ((c).im)
 #else 
 #include "myfftw3.h"
 #endif
@@ -111,6 +113,8 @@ void pm_init_periodic(void)
 {
   int i;
   int slab_to_task_local[PMGRID];
+  double bytes_tot = 0;
+  size_t bytes;
 
   All.Asmth[0] = ASMTH * All.BoxSize / PMGRID; /* note that these routines REQUIRE a uniform (BOX_LONG_X=BOX_LONG_Y=BOX_LONG_Z=1) box, so we can just use 'BoxSize' */
   All.Rcut[0] = RCUT * All.Asmth[0];
@@ -152,7 +156,7 @@ void pm_init_periodic(void)
 
   MPI_Allreduce(slab_to_task_local, slab_to_task, PMGRID, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
-#ifndef USE_FTW3 
+#ifndef USE_FFTW3 
   /* not used */
   /*
   MPI_Allreduce(&nslab_x, &smallest_slab, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
@@ -174,7 +178,29 @@ void pm_init_periodic(void)
   first_slab_of_task = (ptrdiff_t *) mymalloc("first_slab_of_task", NTask * sizeof(ptrdiff_t));
   MPI_Allgather(&slabstart_x, 1, MPI_TYPE_PTRDIFF, first_slab_of_task, 1, MPI_TYPE_PTRDIFF, MPI_COMM_WORLD);
 
+  to_slab_fac = PMGRID / All.BoxSize;
+
   MPI_Allreduce(&fftsize, &maxfftsize, 1, MPI_TYPE_PTRDIFF, MPI_MAX, MPI_COMM_WORLD);
+
+  if(!(rhogrid = (fftw_real *) mymalloc("rhogrid", bytes = maxfftsize * sizeof(d_fftw_real))))
+    {
+      printf("failed to allocate memory for `FFT-rhogrid' (%g MB).\n", bytes / (1024.0 * 1024.0));
+      endrun(1);
+    }
+  bytes_tot += bytes;
+
+
+  if(ThisTask == 0)
+    printf("\nAllocated %g MByte for rhogrid.\n\n", bytes_tot / (1024.0 * 1024.0));
+
+  fft_of_rhogrid = (fftw_complex *) rhogrid;
+
+  fft_forward_plan = fftw_mpi_plan_dft_r2c_3d(GRID, GRID, GRID, rhogrid, fft_of_rhogrid, 
+	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT); 
+
+  fft_inverse_plan = fftw_mpi_plan_dft_c2r_3d(GRID, GRID, GRID, fft_of_rhogrid, rhogrid, 
+	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_IN); 
+
 #endif
 
 
@@ -198,12 +224,14 @@ void pm_init_periodic_allocate(void)
 
   /* allocate the memory to hold the FFT fields */
 
+#ifndef USE_FFTW3
   if(!(rhogrid = (fftw_real *) mymalloc("rhogrid", bytes = maxfftsize * sizeof(d_fftw_real))))
     {
       printf("failed to allocate memory for `FFT-rhogrid' (%g MB).\n", bytes / (1024.0 * 1024.0));
       endrun(1);
     }
   bytes_tot += bytes;
+#endif
 
   if(!(forcegrid = (fftw_real *) mymalloc("forcegrid", bytes = maxfftsize * sizeof(d_fftw_real))))
     {
@@ -243,7 +271,9 @@ void pm_init_periodic_allocate(void)
 
   workspace = forcegrid;
 
+#ifndef USE_FFTW3
   fft_of_rhogrid = (fftw_complex *) & rhogrid[0];
+#endif
 
   d_rhogrid = (d_fftw_real *) rhogrid;
   d_forcegrid = (d_fftw_real *) forcegrid;
@@ -266,7 +296,9 @@ void pm_init_periodic_free(void)
   myfree(part_sortindex);
   myfree(part);
   myfree(forcegrid);
+#ifndef USE_FFTW3
   myfree(rhogrid);
+#endif
 }
 
 #ifdef ALT_QSORT
@@ -366,8 +398,8 @@ void pmforce_periodic(int mode, int *typelist)
 	      /* make sure that particles are properly box-wrapped */
 	      for(j = 0; j < 3; j++)
 		{
-		  pp[j] = P[i].Pos[j];
-            pp[j] = WRAP_POSITION_UNIFORM_BOX(pp[j]);
+		  pp[j] = P[i].Pos[j]; 
+		  pp[j] = WRAP_POSITION_UNIFORM_BOX(pp[j]);
 		}
 	      pos = pp;
 	    }
@@ -591,7 +623,11 @@ void pmforce_periodic(int mode, int *typelist)
 
       report_memory_usage(&HighMark_pmperiodic, "PM_PERIODIC");
 
+#ifndef USE_FFTW3
       rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
+#else 
+      fftw_execute(fft_forward_plan); 
+#endif
 
       if(mode != 0)
 	{
@@ -654,7 +690,7 @@ void pmforce_periodic(int mode, int *typelist)
 		      /* end deconvolution */
 
 		      ip = PMGRID * (PMGRID / 2 + 1) * (y - slabstart_y) + (PMGRID / 2 + 1) * x + z;
-		      fft_of_rhogrid[ip].re *= smth;
+		      cmplx_re(fft_of_rhogrid[ip]) *= smth;
 		      fft_of_rhogrid[ip].im *= smth;
 
 #ifdef KSPACE_NEUTRINOS
@@ -3804,8 +3840,8 @@ void kspace_neutrinos_init(void)
       for(z = 0; z < PMGRID / 2 + 1; z++)
 	{
 	  ip = PMGRID * (PMGRID / 2 + 1) * (y - slabstart_y) + (PMGRID / 2 + 1) * x + z;
-	  Cdata[ip].re = 0;
-	  Cdata[ip].im = 0;
+	  cmplx_re(Cdata[ip]) = 0;
+	  cmplx_im(Cdata[ip]) = 0;
 	}
 
 
@@ -3870,8 +3906,8 @@ void kspace_neutrinos_init(void)
 		if(y >= slabstart_y && y < (slabstart_y + nslab_y))
 		  {
 		    ip = PMGRID * (PMGRID / 2 + 1) * (y - slabstart_y) + (PMGRID / 2 + 1) * x + z;
-		    Cdata[ip].re = delta * cos(phase);
-		    Cdata[ip].im = delta * sin(phase);
+		    cmplx_re(Cdata[ip]) = delta * cos(phase);
+		    cmplx_im(Cdata[ip]) = delta * sin(phase);
 		  }
 		else		/* z=0 plane needs special treatment */
 		  {
@@ -3887,8 +3923,8 @@ void kspace_neutrinos_init(void)
 			      {
 				ip = PMGRID * (PMGRID / 2 + 1) * (y - slabstart_y) + (PMGRID / 2 + 1) * x + z;
 
-				Cdata[ip].re = delta * cos(phase);
-				Cdata[ip].im = delta * sin(phase);
+				cmplx_re(Cdata[ip]) = delta * cos(phase);
+				cmplx_im(Cdata[ip]) = delta * sin(phase);
 			      }
 
 			    if(yy >= slabstart_y && yy < (slabstart_y + nslab_y))
@@ -3896,8 +3932,8 @@ void kspace_neutrinos_init(void)
 				ip =
 				  PMGRID * (PMGRID / 2 + 1) * (yy - slabstart_y) + (PMGRID / 2 + 1) * x + z;
 
-				Cdata[ip].re = delta * cos(phase);
-				Cdata[ip].im = -delta * sin(phase);
+				cmplx_re(Cdata[ip]) = delta * cos(phase);
+				cmplx_im(Cdata[ip]) = -delta * sin(phase);
 			      }
 			  }
 		      }
@@ -3918,8 +3954,8 @@ void kspace_neutrinos_init(void)
 			      {
 				ip = PMGRID * (PMGRID / 2 + 1) * (y - slabstart_y) + (PMGRID / 2 + 1) * x + z;
 
-				Cdata[ip].re = delta * cos(phase);
-				Cdata[ip].im = delta * sin(phase);
+				cmplx_re(Cdata[ip]) = delta * cos(phase);
+				cmplx_im(Cdata[ip]) = delta * sin(phase);
 			      }
 
 			    if(yy >= slabstart_y && yy < (slabstart_y + nslab_y))
@@ -3927,8 +3963,8 @@ void kspace_neutrinos_init(void)
 				ip =
 				  PMGRID * (PMGRID / 2 + 1) * (yy - slabstart_y) + (PMGRID / 2 + 1) * xx + z;
 
-				Cdata[ip].re = delta * cos(phase);
-				Cdata[ip].im = -delta * sin(phase);
+				cmplx_re(Cdata[ip]) = delta * cos(phase);
+				cmplx_im(Cdata[ip]) = -delta * sin(phase);
 			      }
 			  }
 		      }
