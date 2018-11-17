@@ -253,7 +253,7 @@
 #ifdef SINGLE_STAR_FORMATION
 #define DEVELOPER_MODE
 #define HYBRID_OPENING_CRITERION
-//#define SINGLE_STAR_TIMESTEPPING
+#define SINGLE_STAR_TIMESTEPPING
 #define SINGLE_STAR_HILL_CRITERION
 #define SINGLE_STAR_STRICT_ACCRETION
 #define GALSF // master switch needed to enable various frameworks
