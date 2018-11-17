@@ -106,7 +106,12 @@ int force_treebuild(int npart, struct unbind_data *mp)
     
 #ifdef BH_CALC_DISTANCES
     int i;
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) { P[i].min_dist_to_bh=P[i].min_xyz_to_bh[0]=P[i].min_xyz_to_bh[1]=P[i].min_xyz_to_bh[2]=1e37;  }
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) { P[i].min_dist_to_bh=P[i].min_xyz_to_bh[0]=P[i].min_xyz_to_bh[1]=P[i].min_xyz_to_bh[2]=1e37; 
+#ifdef SINGLE_STAR_TIMESTEPPING
+    P[i].min_bh_approach_time = MAX_REAL_NUMBER;
+    P[i].min_bh_freefall_time = MAX_REAL_NUMBER;
+#endif
+    }
 #endif
     
     do
@@ -575,7 +580,10 @@ void force_update_node_recursive(int no, int sib, int father)
 #ifdef BH_CALC_DISTANCES
         MyFloat bh_mass=0;
         MyFloat bh_pos_times_mass[3]={0,0,0};   /* position of each black hole in the node times its mass; divide by total mass at the end to get COM */
-#endif
+#ifdef SINGLE_STAR_TIMESTEPPING
+	MyFloat bh_mom[3] = {0,0,0};
+#endif	
+#endif	
 #ifdef DM_SCALARFIELD_SCREENING
         mass_dm = 0;
         s_dm[0] = vs_dm[0] = 0;
@@ -653,6 +661,11 @@ void force_update_node_recursive(int no, int sib, int father)
                         bh_pos_times_mass[0] += Nodes[p].bh_pos[0] * Nodes[p].bh_mass;
                         bh_pos_times_mass[1] += Nodes[p].bh_pos[1] * Nodes[p].bh_mass;
                         bh_pos_times_mass[2] += Nodes[p].bh_pos[2] * Nodes[p].bh_mass;
+#ifdef SINGLE_STAR_TIMESTEPPING
+			bh_mom[0] += Nodes[p].bh_vel[0] * Nodes[p].bh_mass;
+			bh_mom[1] += Nodes[p].bh_vel[1] * Nodes[p].bh_mass;
+			bh_mom[2] += Nodes[p].bh_vel[2] * Nodes[p].bh_mass;			
+#endif			
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
                         mass_dm += (Nodes[p].mass_dm);
@@ -737,6 +750,11 @@ void force_update_node_recursive(int no, int sib, int father)
                         bh_pos_times_mass[0] += pa->Pos[0] * pa->Mass;  /* positition times mass; divide by total mass later */
                         bh_pos_times_mass[1] += pa->Pos[1] * pa->Mass;
                         bh_pos_times_mass[2] += pa->Pos[2] * pa->Mass;
+#ifdef SINGLE_STAR_TIMESTEPPING
+			bh_mom[0] += pa->Vel[0] * pa->Mass;
+			bh_mom[1] += pa->Vel[1] * pa->Mass;
+			bh_mom[2] += pa->Vel[2] * pa->Mass;						
+#endif			
                     }
 #endif
                     
@@ -900,6 +918,11 @@ void force_update_node_recursive(int no, int sib, int father)
                 Nodes[no].bh_pos[0] = bh_pos_times_mass[0] / bh_mass;  /* weighted position is sum(pos*mass)/sum(mass) */
                 Nodes[no].bh_pos[1] = bh_pos_times_mass[1] / bh_mass;
                 Nodes[no].bh_pos[2] = bh_pos_times_mass[2] / bh_mass;
+#ifdef SINGLE_STAR_TIMESTEPPING
+		Nodes[no].bh_vel[0] = bh_mom[0] / bh_mass;
+		Nodes[no].bh_vel[1] = bh_mom[1] / bh_mass;
+		Nodes[no].bh_vel[2] = bh_mom[2] / bh_mass;		
+#endif		
             }
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -994,6 +1017,9 @@ void force_exchange_pseudodata(void)
 #ifdef BH_CALC_DISTANCES
         MyFloat bh_mass;
         MyFloat bh_pos[3];
+#ifdef SINGLE_STAR_TIMESTEPPING
+        MyFloat bh_vel[3];
+#endif      
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
         MyFloat s_dm[3];
@@ -1063,6 +1089,11 @@ void force_exchange_pseudodata(void)
             DomainMoment[i].bh_pos[0] = Nodes[no].bh_pos[0];
             DomainMoment[i].bh_pos[1] = Nodes[no].bh_pos[1];
             DomainMoment[i].bh_pos[2] = Nodes[no].bh_pos[2];
+#ifdef SINGLE_STAR_TIMESTEPPING
+	    DomainMoment[i].bh_vel[0] = Nodes[no].bh_vel[0];
+            DomainMoment[i].bh_vel[1] = Nodes[no].bh_vel[1];
+            DomainMoment[i].bh_vel[2] = Nodes[no].bh_vel[2];	    
+#endif	    
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
             DomainMoment[i].s_dm[0] = Nodes[no].s_dm[0];
@@ -1146,6 +1177,11 @@ void force_exchange_pseudodata(void)
                     Nodes[no].bh_pos[0] = DomainMoment[i].bh_pos[0];
                     Nodes[no].bh_pos[1] = DomainMoment[i].bh_pos[1];
                     Nodes[no].bh_pos[2] = DomainMoment[i].bh_pos[2];
+#ifdef SINGLE_STAR_TIMESTEPPING
+		    Nodes[no].bh_vel[0] = DomainMoment[i].bh_vel[0];
+                    Nodes[no].bh_vel[1] = DomainMoment[i].bh_vel[1];
+                    Nodes[no].bh_vel[2] = DomainMoment[i].bh_vel[2];
+#endif		    
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
                     Nodes[no].s_dm[0] = DomainMoment[i].s_dm[0];
@@ -1204,6 +1240,9 @@ void force_treeupdate_pseudos(int no)
 #ifdef BH_CALC_DISTANCES
     MyFloat bh_mass=0;
     MyFloat bh_pos_times_mass[3]={0,0,0};
+#ifdef SINGLE_STAR_TIMESTEPPING
+    MyFloat bh_mom[3] = {0,0,0};
+#endif   
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
     mass_dm = 0;
@@ -1261,6 +1300,11 @@ void force_treeupdate_pseudos(int no)
             bh_pos_times_mass[0] += Nodes[p].bh_pos[0] * Nodes[p].bh_mass;
             bh_pos_times_mass[1] += Nodes[p].bh_pos[1] * Nodes[p].bh_mass;
             bh_pos_times_mass[2] += Nodes[p].bh_pos[2] * Nodes[p].bh_mass;
+#ifdef SINGLE_STAR_TIMESTEPPING
+	    bh_mom[0] += Nodes[p].bh_vel[0] * Nodes[p].bh_mass;
+	    bh_mom[1] += Nodes[p].bh_vel[1] * Nodes[p].bh_mass;
+	    bh_mom[2] += Nodes[p].bh_vel[2] * Nodes[p].bh_mass;	    
+#endif	    
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
             mass_dm += (Nodes[p].mass_dm);
@@ -1403,6 +1447,11 @@ void force_treeupdate_pseudos(int no)
             Nodes[no].bh_pos[0] = bh_pos_times_mass[0] / bh_mass;
             Nodes[no].bh_pos[1] = bh_pos_times_mass[1] / bh_mass;
             Nodes[no].bh_pos[2] = bh_pos_times_mass[2] / bh_mass;
+#ifdef SINGLE_STAR_TIMESTEPPING
+	    Nodes[no].bh_vel[0] = bh_mom[0] / bh_mass;
+	    Nodes[no].bh_vel[1] = bh_mom[1] / bh_mass;
+	    Nodes[no].bh_vel[2] = bh_mom[2] / bh_mass;	    
+#endif	    
         }
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1536,6 +1585,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     int no, nodesinlist, ptype, ninteractions, nexp, task, listindex = 0;
     double r2, dx, dy, dz, mass, r, fac, u, h, h_inv, h3_inv;
     double pos_x, pos_y, pos_z, aold;
+#ifdef SINGLE_STAR_TIMESTEPPING
+    double vel_x, vel_y, vel_z, dvx, dvy, dvz;
+#endif    
 #ifdef PMGRID
     int tabindex;
     double eff_dist, rcut, asmth, asmthfac, rcut2, dist, xtmp;
@@ -1585,6 +1637,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef BH_CALC_DISTANCES
     double min_dist_to_bh2=1.e37;
     double min_xyz_to_bh[3]={1.e37,1.e37,1.e37};
+#ifdef SINGLE_STAR_TIMESTEPPING
+    double min_bh_approach_time = MAX_REAL_NUMBER;
+    double min_bh_freefall_time = MAX_REAL_NUMBER;
+#endif    
 #endif
     
     
@@ -1634,6 +1690,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
         pmass = P[target].Mass;
 #endif
+#ifdef SINGLE_STAR_TIMESTEPPING
+	vel_x = P[target].Vel[0];
+	vel_y = P[target].Vel[1];
+	vel_z = P[target].Vel[2];	
+#endif	
         aold = All.ErrTolForceAcc * P[target].OldAcc;
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         soft = All.ForceSoftening[ptype];
@@ -1674,6 +1735,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
         pmass = GravDataGet[target].Mass;
 #endif
+#ifdef SINGLE_STAR_TIMESTEPPING
+	vel_x = GravDataGet[target].Vel[0];
+	vel_y = GravDataGet[target].Vel[1];
+	vel_z = GravDataGet[target].Vel[2];
+#endif	
         ptype = GravDataGet[target].Type;
         aold = All.ErrTolForceAcc * GravDataGet[target].OldAcc;
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE)
@@ -1787,14 +1853,18 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 NEAREST_XYZ(dx,dy,dz,-1);
 #endif
                 r2 = dx * dx + dy * dy + dz * dz;
-                
+#ifdef SINGLE_STAR_TIMESTEPPING
+		dvx = P[no].Vel[0] - vel_x;
+		dvy = P[no].Vel[1] - vel_y;
+		dvz = P[no].Vel[2] - vel_z;
+#endif		
                 mass = P[no].Mass;
 
                 /* only proceed if the mass is positive and there is separation! */
                 if((r2 > 0) && (mass > 0))
                 {
 
-#ifdef BH_CALC_DISTANCES
+#ifdef BH_CALC_DISTANCES 
                 if(P[no].Type == 5)             /* found a BH particle in grav calc */
                 {
                     if(r2 < min_dist_to_bh2)    /* is this the closest BH part I've found yet? */
@@ -1804,6 +1874,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         min_xyz_to_bh[1] = dy;
                         min_xyz_to_bh[2] = dz;
                     }
+#ifdef SINGLE_STAR_TIMESTEPPING
+		    //		    double tSqr = r2/(dvx*dvx + dvy*dvy + dvz*dvz + MIN_REAL_NUMBER);
+		    double tSqr = r2/(dvx*dvx + dvy*dvy + dvz*dvz + MIN_REAL_NUMBER);
+		    double tff4 = r2*r2*r2/((P[no].Mass + pmass)*(P[no].Mass + pmass));
+		    if(tSqr < min_bh_approach_time) min_bh_approach_time = tSqr;
+		    if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
+#endif			 
+		    
                 }
 #endif
 
@@ -1980,27 +2058,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 NEAREST_XYZ(dx,dy,dz,-1);
 #endif
                 r2 = dx * dx + dy * dy + dz * dz;
-                
-
-#ifdef BH_CALC_DISTANCES
-                if(nop->bh_mass > 0)        /* found a node with non-zero BH mass */
-                {
-                    double bh_dx = nop->bh_pos[0] - pos_x;      /* SHEA:  now using bh_pos instead of center */
-                    double bh_dy = nop->bh_pos[1] - pos_y;
-                    double bh_dz = nop->bh_pos[2] - pos_z;
-#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-                    NEAREST_XYZ(bh_dx,bh_dy,bh_dz,-1);
-#endif
-                    double bh_r2 = bh_dx * bh_dx + bh_dy * bh_dy + bh_dz * bh_dz; // + (nop->len)*(nop->len);
-                    if(bh_r2 < min_dist_to_bh2)
-                        {
-                            min_dist_to_bh2 = bh_r2;
-                            min_xyz_to_bh[0] = bh_dx;    /* remember, dx = x_BH - myx */
-                            min_xyz_to_bh[1] = bh_dy;
-                            min_xyz_to_bh[2] = bh_dz;
-                        }
-                }
-#endif
                 
 #ifdef RT_USE_GRAVTREE
                 if(valid_gas_particle_for_rt)	/* we have a (valid) gas particle as target */
@@ -2195,7 +2252,38 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 
                 if(TakeLevel >= 0) {nop->GravCost += 1.0;}
                 no = nop->u.d.sibling;	/* ok, node can be used */
-                
+		
+#ifdef BH_CALC_DISTANCES // NOTE: moved this to AFTER the checks for node opening, because we only want to record BH positions from the nodes that actually get used for the force calculation - MYG
+                if(nop->bh_mass > 0)        /* found a node with non-zero BH mass */
+                {
+                    double bh_dx = nop->bh_pos[0] - pos_x;      /* SHEA:  now using bh_pos instead of center */
+                    double bh_dy = nop->bh_pos[1] - pos_y;
+                    double bh_dz = nop->bh_pos[2] - pos_z;
+#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
+                    NEAREST_XYZ(bh_dx,bh_dy,bh_dz,-1);
+#endif
+                    double bh_r2 = bh_dx * bh_dx + bh_dy * bh_dy + bh_dz * bh_dz; // + (nop->len)*(nop->len);
+#ifdef SINGLE_STAR_TIMESTEPPING
+		    double bh_dvx = nop->bh_vel[0] - vel_x;
+		    double bh_dvy = nop->bh_vel[1] - vel_y;
+		    double bh_dvz = nop->bh_vel[2] - vel_z;		    
+#endif		    
+                    if(bh_r2 < min_dist_to_bh2)
+                        {
+                            min_dist_to_bh2 = bh_r2;
+                            min_xyz_to_bh[0] = bh_dx;    /* remember, dx = x_BH - myx */
+                            min_xyz_to_bh[1] = bh_dy;
+                            min_xyz_to_bh[2] = bh_dz;
+                        }
+#ifdef SINGLE_STAR_TIMESTEPPING
+		    double tSqr = bh_r2/(bh_dvx*bh_dvx + bh_dvy*bh_dvy + bh_dvz*bh_dvz + MIN_REAL_NUMBER);
+		    double tff4 = bh_r2*bh_r2*bh_r2/((pmass + nop->bh_mass)*(pmass + nop->bh_mass));
+		    if(tSqr < min_bh_approach_time) min_bh_approach_time = tSqr;
+		    if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
+#endif
+                }
+#endif
+		
             }
             
             if((r2 > 0) && (mass > 0)) // only go forward if mass positive and there is separation
@@ -2531,6 +2619,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         P[target].min_xyz_to_bh[0] = min_xyz_to_bh[0];   /* remember, dx = x_BH - myx */
         P[target].min_xyz_to_bh[1] = min_xyz_to_bh[1];
         P[target].min_xyz_to_bh[2] = min_xyz_to_bh[2];
+#ifdef SINGLE_STAR_TIMESTEPPING
+	P[target].min_bh_approach_time = sqrt(min_bh_approach_time);
+	P[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);	
+#endif	
 #endif
     }
     else
@@ -2559,6 +2651,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         GravDataResult[target].min_xyz_to_bh[0] = min_xyz_to_bh[0];   /* remember, dx = x_BH - myx */
         GravDataResult[target].min_xyz_to_bh[1] = min_xyz_to_bh[1];
         GravDataResult[target].min_xyz_to_bh[2] = min_xyz_to_bh[2];
+#ifdef SINGLE_STAR_TIMESTEPPING
+	GravDataResult[target].min_bh_approach_time = sqrt(min_bh_approach_time);
+	GravDataResult[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);	
+#endif	
 #endif
         *exportflag = nodesinlist;
     }
