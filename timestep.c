@@ -433,14 +433,16 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef SINGLE_STAR_TIMESTEPPING
 //tidal criterion obtains the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion
     double dt_tidal = 0.;
-    for(int k=0; k<3; k++) dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k]; // this is diagonalized already
-
+    for(int k=0; k<3; k++) dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k]; // this is diagonalized already in the gravity loop
     dt_tidal = sqrt(All.ErrTolIntAccuracy / sqrt(dt_tidal));
-    
     dt = DMIN(All.MaxSizeTimestep, dt_tidal);
-    
-    double omega_binary = (1/P[p].min_bh_approach_time + 1/P[p].min_bh_freefall_time);
-    dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary);
+    if(P[p].Type == 5) {
+      double omega_binary = 1/P[p].min_bh_approach_time + 1/P[p].min_bh_freefall_time;
+      dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary);
+    }
+    //    printf("%g %g %g\n", 1/sqrt(All.ErrTolIntAccuracy)*dt_tidal, 1/omega_binary, sqrt(P[p].min_bh_periastron/ac));
+    //    dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy * DMAX(All.ForceSoftening[5],P[p].min_bh_periastron) / ac));
+    //    dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary * P[p].min_bh_periastron / P[p].min_dist_to_bh);
 #endif
 
     
@@ -936,9 +938,9 @@ integertime get_timestep(int p,		/*!< particle index */
 
         if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 #ifdef SINGLE_STAR_FORMATION
-	double eps = BPP(p).Hsml * KERNEL_CORE_SIZE; //BPP(p).BH_NearestGasNeighbor; //DMAX(BPP(p).BH_NearestGasNeighbor, All.ForceSoftening[5]);
+	if(P[p].DensAroundStar) {double eps = BPP(p).Hsml * KERNEL_CORE_SIZE; //BPP(p).BH_NearestGasNeighbor; //DMAX(BPP(p).BH_NearestGasNeighbor, All.ForceSoftening[5]);
 	double dt_gas = sqrt(All.ErrTolIntAccuracy * All.cf_atime * eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
-	if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas; }
+	if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas; }}
 
 	/* if (All.TotBHs > 1) { */
 	/*     eps = DMAX(All.ForceSoftening[5], P[p].min_dist_to_bh); //{ eps = DMIN(P[p].Hsml, );} // length-scale for acceleration timestep criterion ~(R/a)^0.5 */
