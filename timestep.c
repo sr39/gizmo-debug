@@ -440,7 +440,7 @@ integertime get_timestep(int p,		/*!< particle index */
     dt = DMIN(All.MaxSizeTimestep, dt_tidal);
     
     double omega_binary = (1/P[p].min_bh_approach_time + 1/P[p].min_bh_freefall_time);
-    dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary/10);
+    dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary);
 #endif
 
     
