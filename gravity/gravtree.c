@@ -565,8 +565,8 @@ void gravity_tree(void)
                     }
 #ifdef SINGLE_STAR_TIMESTEPPING
 		      if(GravDataOut[j].min_bh_approach_time < P[place].min_bh_approach_time)  P[place].min_bh_approach_time = GravDataOut[j].min_bh_approach_time;
-		      if(GravDataOut[j].min_bh_tff < P[place].min_bh_tff)  P[place].min_bh_tff = GravDataOut[j].min_bh_tff;
-		      if(GravDataOut[j].min_bh_periastron < P[place].min_bh_periastron)  P[place].min_bh_periastron = GravDataOut[j].min_bh_periastron;
+		      if(GravDataOut[j].min_bh_freefall_time < P[place].min_bh_freefall_time)  P[place].min_bh_freefall_time = GravDataOut[j].min_bh_freefall_time;
+		      //		      if(GravDataOut[j].min_bh_periastron < P[place].min_bh_periastron)  P[place].min_bh_periastron = GravDataOut[j].min_bh_periastron;
 #endif		      		    
 #endif
                     if(Ewald_iter==0) /* don't allow for an infinite hierarchy of these moments, or you will get nonsense */
@@ -722,7 +722,8 @@ void gravity_tree(void)
          */
         /* 3D -> full forces */
 #ifndef SINGLE_STAR_HILL_CRITERION
-	//	if(P[i].Type != 0) { // we want to keep the contribution of the particle's self-tides
+	//	if(P[i].Type == 0) { // we want to keep the contribution of the particle's self-tides
+	  //#endif	  
 
         P[i].tidal_tensorps[0][0] +=
         P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] *
@@ -735,7 +736,7 @@ void gravity_tree(void)
         P[i].tidal_tensorps[2][2] +=
         P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] *
                      All.ForceSoftening[P[i].Type]) * 10.666666666667;
-#endif	  	
+#endif	
 #ifdef SINGLE_STAR_HILL_CRITERION
 	//	}
 	//diagonalize the tidal tensor so we can use its invariants, which don't change with rotation

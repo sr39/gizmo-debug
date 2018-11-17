@@ -1983,8 +1983,8 @@ extern ALIGN(32) struct particle_data
 #endif
 #endif
 #ifdef SINGLE_STAR_HILL_CRITERION
-  double tidal_tensorps[3][3];
-#endif 
+    double tidal_tensorps[3][3];
+#endif
 #ifdef GDE_DISTORTIONTENSOR
     MyBigFloat distortion_tensorps[6][6];               /*!< phase space distortion tensor */
     MyBigFloat last_determinant;                        /*!< last real space distortion tensor determinant */
@@ -2108,7 +2108,7 @@ extern ALIGN(32) struct particle_data
     MyFloat min_dist_to_bh;
     MyFloat min_xyz_to_bh[3];
 #ifdef SINGLE_STAR_TIMESTEPPING
-    MyFloat min_bh_tff;
+    MyFloat min_bh_freefall_time;
     MyFloat min_bh_periastron;
     MyFloat min_bh_approach_time;
 #endif  
@@ -2611,7 +2611,7 @@ extern struct gravdata_out
     MyFloat min_dist_to_bh;
     MyFloat min_xyz_to_bh[3];
 #ifdef SINGLE_STAR_TIMESTEPPING
-    MyFloat min_bh_tff;    // minimum value of sqrt(R^3 / G(M_BH + M_particle)) as calculated from the tree-walk
+    MyFloat min_bh_freefall_time;    // minimum value of sqrt(R^3 / G(M_BH + M_particle)) as calculated from the tree-walk
     MyFloat min_bh_approach_time; // smallest approach time t_a = |v_radial|/r
   MyFloat min_bh_periastron;
 #endif  

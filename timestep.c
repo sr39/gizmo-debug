@@ -429,29 +429,18 @@ integertime get_timestep(int p,		/*!< particle index */
         }
     }
 #endif
-/* #ifdef SINGLE_STAR_FORMATION // here sink particles essentially represent point masses, so the above timestep criterion is not relevant */
-/*     if (P[p].Type == 5) dt = All.MaxSizeTimestep; */
-/* #endif */
 
-#ifdef SINGLE_STAR_TIMESTEPPING  // we're calculating the tidal tensor here, so let's use it to get a characteristic timescale
-    double tidal_norm = 0.;
-    for(int k=0; k<3; k++) tidal_norm += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];
-    /* for(int k = 0; k < 3; k++){ */
-    /*     for(int l = 0; l < 3; l++){ */
+#ifdef SINGLE_STAR_TIMESTEPPING
+//tidal criterion obtains the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion
+    double dt_tidal = 0.;
+    for(int k=0; k<3; k++) dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k]; // this is diagonalized already
 
-    /* 	  	  tidal_norm += P[p].tidal_tensorps[k][l] * P[p].tidal_tensorps[k][l]; // can also do traceless bit by subtracting out trace * delta_ij */
-    /*     } */
-    /* } */
-    //    printf("%g\n", sqrt(All.ErrTolIntAccuracy / sqrt(tidal_norm)));
-    //coefficient chosen so that we get the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion    
-    dt = DMIN(All.MaxSizeTimestep, sqrt(All.ErrTolIntAccuracy / sqrt(tidal_norm)));
+    dt_tidal = sqrt(All.ErrTolIntAccuracy / sqrt(dt_tidal));
     
-    /* dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)*P[p].min_bh_approach_time); */
-    /* dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)*P[p].min_bh_tff); */
-    /* //    if(P[p].Type == 5) printf("%g %g %g %g\n", 7e-3*sqrt(All.ErrTolIntAccuracy / sqrt(tidal_norm)), sqrt(All.ErrTolIntAccuracy)*P[p].min_bh_approach_time, sqrt(All.ErrTolIntAccuracy)*P[p].min_bh_tff, sqrt(All.ErrTolIntAccuracy * DMAX(P[p].min_bh_periastron,All.SofteningTable[5])/ac));  */
-    /* printf("%g %g %g %g\n", 7e-3*sqrt(All.ErrTolIntAccuracy / sqrt(tidal_norm)), sqrt(All.ErrTolIntAccuracy)*P[p].min_bh_tff, sqrt(All.ErrTolIntAccuracy)*P[p].min_bh_approach_time, sqrt(All.ErrTolIntAccuracy * DMAX(P[p].min_bh_periastron,All.SofteningTable[5])/ac)/40); */
-    /* if(P[p].Type == 5) dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy * DMAX(P[p].min_bh_periastron,All.SofteningTable[5])/ac)/40); */
-    //    }
+    dt = DMIN(All.MaxSizeTimestep, dt_tidal);
+    
+    double omega_binary = (1/P[p].min_bh_approach_time + 1/P[p].min_bh_freefall_time);
+    dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary/10);
 #endif
 
     
