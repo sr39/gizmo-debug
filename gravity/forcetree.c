@@ -110,6 +110,7 @@ int force_treebuild(int npart, struct unbind_data *mp)
 #ifdef SINGLE_STAR_TIMESTEPPING
     P[i].min_bh_approach_time = MAX_REAL_NUMBER;
     P[i].min_bh_freefall_time = MAX_REAL_NUMBER;
+    P[i].min_bh_periastron = MAX_REAL_NUMBER;
 #endif
     }
 #endif
@@ -1640,6 +1641,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINGLE_STAR_TIMESTEPPING
     double min_bh_approach_time = MAX_REAL_NUMBER;
     double min_bh_freefall_time = MAX_REAL_NUMBER;
+    double min_bh_periastron = MAX_REAL_NUMBER;
 #endif    
 #endif
     
@@ -1875,11 +1877,21 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         min_xyz_to_bh[2] = dz;
                     }
 #ifdef SINGLE_STAR_TIMESTEPPING
-		    //		    double tSqr = r2/(dvx*dvx + dvy*dvy + dvz*dvz + MIN_REAL_NUMBER);
-		    double tSqr = r2/(dvx*dvx + dvy*dvy + dvz*dvz + MIN_REAL_NUMBER);
-		    double tff4 = r2*r2*r2/((P[no].Mass + pmass)*(P[no].Mass + pmass));
-		    if(tSqr < min_bh_approach_time) min_bh_approach_time = tSqr;
+		    double vSqr = dvx*dvx + dvy*dvy + dvz*dvz;
+		    double M_total = P[no].Mass + pmass;
+		    double r2soft = r2 + All.SofteningTable[5]*All.SofteningTable[5];
+		    double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER);
+		    double tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
+		    if(tSqr < min_bh_approach_time) {
+		      min_bh_approach_time = tSqr;
+		      double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
+		      double dv_dot_dx = dvx*dx + dvy*dy + dvz*dz;
+		      double hSqr = vSqr*r2 - dv_dot_dx*dv_dot_dx;
+		      double ecc = sqrt(1 + 2*specific_energy*hSqr / (All.G*All.G*M_total*M_total));
+		      min_bh_periastron = -All.G*M_total / specific_energy * (1-ecc) * (P[no].Mass/M_total); // final factor ensures that this gives binaries the same timestep
+		    }
 		    if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
+
 #endif			 
 		    
                 }
@@ -2276,9 +2288,19 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                             min_xyz_to_bh[2] = bh_dz;
                         }
 #ifdef SINGLE_STAR_TIMESTEPPING
-		    double tSqr = bh_r2/(bh_dvx*bh_dvx + bh_dvy*bh_dvy + bh_dvz*bh_dvz + MIN_REAL_NUMBER);
-		    double tff4 = bh_r2*bh_r2*bh_r2/((pmass + nop->bh_mass)*(pmass + nop->bh_mass));
-		    if(tSqr < min_bh_approach_time) min_bh_approach_time = tSqr;
+		    double vSqr = bh_dvx*bh_dvx + bh_dvy*bh_dvy + bh_dvz*bh_dvz;
+		    double M_total = nop->bh_mass + pmass;
+		    double r2soft = bh_r2 + All.SofteningTable[5]*All.SofteningTable[5];
+		    double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER);
+		    double tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
+		    if(tSqr < min_bh_approach_time) {
+		      min_bh_approach_time = tSqr;
+		      double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(bh_r2);
+		      double dv_dot_dx = bh_dvx*bh_dx + bh_dvy*bh_dy + bh_dvz*bh_dz;
+		      double hSqr = vSqr*r2 - dv_dot_dx*dv_dot_dx;
+		      double ecc = sqrt(1 + 2*specific_energy*hSqr / (All.G*All.G*M_total*M_total));
+		      min_bh_periastron = -All.G*M_total / specific_energy * (1-ecc) * (nop->bh_mass/M_total); // final factor ensures that this gives binaries the same timestep when we use it to turn the accel into a timestep
+		    }
 		    if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
 #endif
                 }
@@ -2621,7 +2643,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         P[target].min_xyz_to_bh[2] = min_xyz_to_bh[2];
 #ifdef SINGLE_STAR_TIMESTEPPING
 	P[target].min_bh_approach_time = sqrt(min_bh_approach_time);
-	P[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);	
+	P[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);
+	P[target].min_bh_periastron = min_bh_periastron;
 #endif	
 #endif
     }
@@ -2653,7 +2676,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         GravDataResult[target].min_xyz_to_bh[2] = min_xyz_to_bh[2];
 #ifdef SINGLE_STAR_TIMESTEPPING
 	GravDataResult[target].min_bh_approach_time = sqrt(min_bh_approach_time);
-	GravDataResult[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);	
+	GravDataResult[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);
+	GravDataResult[target].min_bh_periastron = min_bh_periastron;
 #endif	
 #endif
         *exportflag = nodesinlist;

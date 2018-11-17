@@ -566,7 +566,7 @@ void gravity_tree(void)
 #ifdef SINGLE_STAR_TIMESTEPPING
 		      if(GravDataOut[j].min_bh_approach_time < P[place].min_bh_approach_time)  P[place].min_bh_approach_time = GravDataOut[j].min_bh_approach_time;
 		      if(GravDataOut[j].min_bh_freefall_time < P[place].min_bh_freefall_time)  P[place].min_bh_freefall_time = GravDataOut[j].min_bh_freefall_time;
-		      //		      if(GravDataOut[j].min_bh_periastron < P[place].min_bh_periastron)  P[place].min_bh_periastron = GravDataOut[j].min_bh_periastron;
+		      if(GravDataOut[j].min_bh_periastron < P[place].min_bh_periastron)  P[place].min_bh_periastron = GravDataOut[j].min_bh_periastron;
 #endif		      		    
 #endif
                     if(Ewald_iter==0) /* don't allow for an infinite hierarchy of these moments, or you will get nonsense */
