@@ -90,7 +90,7 @@ void gravity_tree(void)
     double tstart, tend, ax, ay, az;
     MPI_Status status;
     
-#if defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION)
+#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION))
     int i1, i2;
 #endif
 #endif
@@ -583,7 +583,7 @@ void gravity_tree(void)
 #endif
                     }
                     
-#if defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION)
+#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION))
                     for(i1 = 0; i1 < 3; i1++)
                         for(i2 = 0; i2 < 3; i2++)
                             P[place].tidal_tensorps[i1][i2] += GravDataOut[j].tidal_tensorps[i1][i2];
@@ -715,13 +715,13 @@ void gravity_tree(void)
     {
         for(j = 0; j < 3; j++)
             P[i].GravAccel[j] *= All.G;
-#if defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION)
+#if defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION)
         /*
          Diagonal terms of tidal tensor need correction, because tree is running over
          all particles -> also over target particle -> extra term -> correct it
          */
         /* 3D -> full forces */
-#ifndef SINGLE_STAR_HILL_CRITERION
+#if !(defined(SINGLE_STAR_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION)) // this does not appear to be necessary in my tests - MYG
 	//	if(P[i].Type == 0) { // we want to keep the contribution of the particle's self-tides
 	  //#endif	  
 
@@ -737,20 +737,7 @@ void gravity_tree(void)
         P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] *
                      All.ForceSoftening[P[i].Type]) * 10.666666666667;
 #endif	
-#ifdef SINGLE_STAR_HILL_CRITERION
-	//	}
-	//diagonalize the tidal tensor so we can use its invariants, which don't change with rotation
-	double tt[9];
-	for(j=0; j<3; j++) {for (k=0; k<3; k++) tt[3*j+k] = P[i].tidal_tensorps[j][k];}
-	gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3);
-	gsl_vector *eval = gsl_vector_alloc (3);
-	gsl_eigen_symm_workspace * w = gsl_eigen_symm_alloc (3);
-	gsl_eigen_symm(&m.matrix, eval,  w);
-	for(k=0; k<3; k++) P[i].tidal_tensorps[k][k] = gsl_vector_get(eval,k);
-	P[i].tidal_tensorps[0][1] = P[i].tidal_tensorps[1][0] = P[i].tidal_tensorps[1][2] = P[i].tidal_tensorps[2][1] = P[i].tidal_tensorps[0][2] = P[i].tidal_tensorps[2][0] = 0;
-	gsl_eigen_symm_free(w);
-	gsl_vector_free (eval);
-#endif	
+
 #ifdef GDE_DISTORTIONTENSOR	
         if(All.ComovingIntegrationOn)
         {
@@ -758,7 +745,20 @@ void gravity_tree(void)
             P[i].tidal_tensorps[1][1] -= All.TidalCorrection/All.G;
             P[i].tidal_tensorps[2][2] -= All.TidalCorrection/All.G;
         }
-#endif	
+#endif
+#if (defined(TIDAL_TIMESTEP_CRITERION) ||  defined(SINGLE_STAR_HILL_CRITERION))
+	//diagonalize the tidal tensor so we can use its invariants, which don't change with rotation	
+	double tt[9];
+	for(j=0; j<3; j++) {for (k=0; k<3; k++) tt[3*j+k] = P[i].tidal_tensorps[j][k];}
+	gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3);
+	gsl_vector *eval = gsl_vector_alloc (3);
+	gsl_eigen_symm_workspace * w = gsl_eigen_symm_alloc (3);
+	gsl_eigen_symm(&m.matrix, eval,  w);
+	for(k=0; k<3; k++) P[i].tidal_tensorps[k][k] = gsl_vector_get(eval,k); // set diagonal elements to eigenvalues
+	P[i].tidal_tensorps[0][1] = P[i].tidal_tensorps[1][0] = P[i].tidal_tensorps[1][2] = P[i].tidal_tensorps[2][1] = P[i].tidal_tensorps[0][2] = P[i].tidal_tensorps[2][0] = 0; //zero out off-diagonal elements
+	gsl_eigen_symm_free(w);
+	gsl_vector_free (eval);
+#endif		
         /*now muliply by All.G */
         for(i1 = 0; i1 < 3; i1++)
             for(i2 = 0; i2 < 3; i2++)

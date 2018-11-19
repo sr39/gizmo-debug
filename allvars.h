@@ -252,10 +252,11 @@
 
 #ifdef SINGLE_STAR_FORMATION
 #define DEVELOPER_MODE
-//#define STOP_WHEN_BELOW_MINTIMESTEP
+#define STOP_WHEN_BELOW_MINTIMESTEP
 #define HYBRID_OPENING_CRITERION
 #define SINGLE_STAR_TIMESTEPPING
 #define SINGLE_STAR_HILL_CRITERION
+#define TIDAL_TIMESTEP_CRITERION
 #define SINGLE_STAR_STRICT_ACCRETION
 #define GALSF // master switch needed to enable various frameworks
 #define GALSF_SFR_VIRIAL_SF_CRITERION 3 // only allow star formation in virialized sub-regions meeting Jeans threshold
@@ -1999,7 +2000,7 @@ extern ALIGN(32) struct particle_data
     MyFloat PM_Potential;
 #endif
 #endif
-#ifdef SINGLE_STAR_HILL_CRITERION
+#if defined(SINGLE_STAR_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION)
     double tidal_tensorps[3][3];
 #endif
 #ifdef GDE_DISTORTIONTENSOR
@@ -2621,7 +2622,7 @@ extern struct gravdata_out
 #ifdef EVALPOTENTIAL
     MyLongDouble Potential;
 #endif
-#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION))
+#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION))
     MyLongDouble tidal_tensorps[3][3];
 #endif
 #ifdef BH_CALC_DISTANCES
@@ -2630,7 +2631,7 @@ extern struct gravdata_out
 #ifdef SINGLE_STAR_TIMESTEPPING
     MyFloat min_bh_freefall_time;    // minimum value of sqrt(R^3 / G(M_BH + M_particle)) as calculated from the tree-walk
     MyFloat min_bh_approach_time; // smallest approach time t_a = |v_radial|/r
-  MyFloat min_bh_periastron;
+    MyFloat min_bh_periastron; // closest anticipated periastron passage
 #endif  
 #endif
 }

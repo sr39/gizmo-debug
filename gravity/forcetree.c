@@ -49,7 +49,7 @@ static int last;
 #define NTAB 1000
 /*! variables for short-range lookup table */
 static float shortrange_table[NTAB], shortrange_table_potential[NTAB];
-#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION))
+#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
 static float shortrange_table_tidal[NTAB];
 #endif
 /*! toggles after first tree-memory allocation, has only influence on log-files */
@@ -1601,7 +1601,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     int maxNodes = MaxNodes;
     integertime ti_Current = All.Ti_Current;
     double errTol2 = All.ErrTolTheta * All.ErrTolTheta;
-#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION))
+#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
     int i1, i2;
     double fac2, h_tidal, h_inv_tidal, h3_inv_tidal, h5_inv, h5_inv_tidal, fac_tidal;
     MyDouble tidal_tensorps[3][3];
@@ -1661,7 +1661,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     MyLongDouble pot;
     pot = 0;
 #endif
-#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION))
+#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
     for(i1 = 0; i1 < 3; i1++)
         for(i2 = 0; i2 < 3; i2++)
             tidal_tensorps[i1][i2] = 0.0;
@@ -1811,7 +1811,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
     
     
-#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION))
+#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
     /* different tidal field softening */
     h_tidal = All.ForceSoftening[ptype];
     h_inv_tidal = 1.0 / h_tidal;
@@ -2316,7 +2316,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             if(r >= h)
             {
                 fac = mass / (r2 * r);
-#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION))
+#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
                 /* second derivative of potential needs this factor */
                 fac2 = 3.0 * mass / (r2 * r2 * r);
 #endif
@@ -2329,7 +2329,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if !defined(ADAPTIVE_GRAVSOFT_FORALL) && !defined(ADAPTIVE_GRAVSOFT_FORGAS)
                 h_inv = 1.0 / h;
                 h3_inv = h_inv * h_inv * h_inv;
-#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION))
+#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
                 h5_inv = h_inv * h_inv * h_inv * h_inv * h_inv;
 #endif
 #endif
@@ -2417,7 +2417,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef EVALPOTENTIAL
                 facpot = mass * kernel_gravity(u, h_inv, h3_inv, -1);
 #endif
-#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION))
+#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
                 /*second derivatives needed -> calculate them from softend potential,
                  (see Gadget 1 paper and there g2 function). SIGN?! */
                 if(u < 0.5)
@@ -2433,7 +2433,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             if(tabindex < NTAB && tabindex >= 0)
 #endif // PMGRID //
             {
-#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION))
+#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
                 /* save original fac without shortrange_table facor (needed for tidal field calculation) */
                 fac_tidal = fac;
 #endif
@@ -2456,7 +2456,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 acc_y += FLT(dy * fac);
                 acc_z += FLT(dz * fac);
                 
-#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION))
+#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
                 /*
                  tidal_tensorps[][] = Matrix of second derivatives of grav. potential, symmetric:
                  |Txx Txy Txz|   |tidal_tensorps[0][0] tidal_tensorps[0][1] tidal_tensorps[0][2]|
@@ -2633,7 +2633,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef EVALPOTENTIAL
         P[target].Potential = pot;
 #endif
-#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION))
+#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
         for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
 #endif
 #ifdef BH_CALC_DISTANCES
@@ -2666,7 +2666,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef EVALPOTENTIAL
         GravDataResult[target].Potential = pot;
 #endif
-#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION))
+#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
         for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GravDataResult[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
 #endif
 #ifdef BH_CALC_DISTANCES
@@ -3714,7 +3714,7 @@ void force_treeallocate(int maxnodes, int maxpart)
             u = 3.0 / NTAB * (i + 0.5);
             shortrange_table[i] = erfc(u) + 2.0 * u / sqrt(M_PI) * exp(-u * u);
             shortrange_table_potential[i] = erfc(u);
-#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION))
+#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
             shortrange_table_tidal[i] = 4.0 * u * u * u / sqrt(M_PI) * exp(-u * u);
 #endif
         }
