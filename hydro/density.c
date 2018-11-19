@@ -168,7 +168,7 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
         ASSIGN_ADD(SphP[i].DhsmlHydroSumFactor, out->DhsmlHydroSumFactor, mode);
 #endif
 
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         ASSIGN_ADD(PPPZ[i].AGS_zeta, out->AGS_zeta,   mode);
 #endif
 

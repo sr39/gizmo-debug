@@ -322,13 +322,13 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #endif
             if(P[i].Pos[j] <= 0)
             {
-                if(P[i].Vel[j]<0) {P[i].Vel[j]=-P[i].Vel[j]; SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0; dp[j]+=2*P[i].Vel[j]*mass_new;}
-                P[i].Pos[j]=(0+((double)P[i].ID)*1.e-6)*box_upper[j];
+                if(P[i].Vel[j]<0) {P[i].Vel[j]=-P[i].Vel[j]; if(P[i].Type==0) {SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0;} dp[j]+=2*P[i].Vel[j]*mass_new;}
+                P[i].Pos[j]=(0.+((double)P[i].ID)*1.e-9)*box_upper[j];
             }
             if(P[i].Pos[j] >= box_upper[j])
             {
-                if(P[i].Vel[j]>0) {P[i].Vel[j]=-P[i].Vel[j]; SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0; dp[j]+=2*P[i].Vel[j]*mass_new;}
-                P[i].Pos[j]=box_upper[j]*(1-((double)P[i].ID)*1.e-6);
+                if(P[i].Vel[j]>0) {P[i].Vel[j]=-P[i].Vel[j]; if(P[i].Type==0) {SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0;} dp[j]+=2*P[i].Vel[j]*mass_new;}
+                P[i].Pos[j]=box_upper[j]*(1.-((double)P[i].ID)*1.e-9);
             }
         }
 #endif

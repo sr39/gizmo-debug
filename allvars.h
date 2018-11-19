@@ -258,7 +258,7 @@
 #define SINGLE_STAR_HILL_CRITERION
 #define SINGLE_STAR_STRICT_ACCRETION
 #define GALSF // master switch needed to enable various frameworks
-#define GALSF_SFR_VIRIAL_SF_CRITERION 2 // only allow star formation in virialized sub-regions meeting Jeans threshold
+#define GALSF_SFR_VIRIAL_SF_CRITERION 3 // only allow star formation in virialized sub-regions meeting Jeans threshold
 #define METALS  // metals should be active for stellar return
 #define BLACK_HOLES // need to have black holes active since these are our sink particles
 #define GALSF_SFR_IMF_VARIATION // save extra information about sinks when they form
@@ -516,6 +516,9 @@
 #if defined(BLACK_HOLES) && (defined(BH_REPOSITION_ON_POTMIN) || defined(BH_SEED_FROM_FOF))
 #ifndef EVALPOTENTIAL
 #define EVALPOTENTIAL
+#endif
+#if !defined(BH_DYNFRICTION) && (BH_REPOSITION_ON_POTMIN == 2)
+#define BH_DYNFRICTION 1 // use for local damping of anomalous velocities wrt background medium //
 #endif
 #endif
 
@@ -1720,6 +1723,11 @@ extern struct global_data_all_processes
 
 #ifdef GRAIN_FLUID
 #ifdef GRAIN_RDI_TESTPROBLEM
+#if(NUMDIMS==3)
+#define GRAV_DIRECTION_RDI 2
+#else
+#define GRAV_DIRECTION_RDI 1
+#endif
     double Grain_Charge_Parameter;
     double Dust_to_Gas_Mass_Ratio;
     double Vertical_Gravity_Strength;
@@ -1808,6 +1816,9 @@ extern struct global_data_all_processes
     double BAL_v_outflow;
 #endif
     
+#if defined(BH_COSMIC_RAYS)
+    double BH_CosmicRay_Injection_Efficiency;
+#endif
     
 #ifdef METALS
     double SolarAbundances[NUM_METAL_SPECIES];
@@ -1880,8 +1891,13 @@ extern struct global_data_all_processes
   double BlackHoleAccretionFactor;	/*!< Fraction of BH bondi accretion rate */
   double BlackHoleFeedbackFactor;	/*!< Fraction of the black luminosity feed into thermal feedback */
   double SeedBlackHoleMass;         /*!< Seed black hole mass */
+#if defined(BH_SEED_FROM_FOF) || defined(BH_SEED_FROM_LOCALGAS)
   double SeedBlackHoleMassSigma;    /*!< Standard deviation of init black hole masses */
   double SeedBlackHoleMinRedshift;  /*!< Minimum redshift where BH seeds are allowed */
+#ifdef BH_SEED_FROM_LOCALGAS
+  double SeedBlackHolePerUnitMass;  /*!< Defines probability per unit mass of seed BH forming */
+#endif
+#endif
 #ifdef BH_ALPHADISK_ACCRETION
   double SeedAlphaDiskMass;         /*!< Seed alpha disk mass */
 #endif
@@ -2673,7 +2689,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyFloat DF_rms_vel;
     MyFloat DF_mmax_particles;
 #endif
-#if defined(BH_BONDI) || defined(BH_DRAG)
+#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION == 5)
     MyFloat BH_SurroundingGasVel[3];
 #endif
     
@@ -2787,6 +2803,7 @@ enum iofields
   IO_DBDT,
   IO_IMF,
   IO_COSMICRAY_ENERGY,
+  IO_COSMICRAY_KAPPA,
   IO_COSMICRAY_ALFVEN,
   IO_DIVB,
   IO_ABVC,

@@ -181,9 +181,9 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
         if (GradRho > 0.1)
         {
             /* now calculate probability of forming a BH seed particle */
-            p = 0.0004; /* ratio of BH mass formed to stellar mass for Z~0.01 Zsun population */
-            p *= (P[i].Mass / All.SeedBlackHoleMass); /* resolves resolution-dependence by making p=massfrac */
-            p *= (1-exp(-GradRho/1.0)) * exp(-(P[i].Metallicity[0]/All.SolarAbundances[0])/0.01);
+            p = P[i].Mass / All.SeedBlackHolePerUnitMass; /* probability of forming a seed per unit mass [in code units] */
+            if(p > 1.e-4) {p = 1.-exp(-p);}
+            p *= (1-exp(-GradRho/1.0)) * exp(-(P[i].Metallicity[0]/All.SolarAbundances[0])/0.01); /* apply threshold metallicity and density cutoff */
             /* want to add factors to control this probability in zoom-in runs */
         }
     }

@@ -37,6 +37,9 @@ void apply_grain_dragforce(void)
     {
         if((P[i].Type != 0)&&(P[i].Type != 4))
         {
+#ifdef BOX_BND_PARTICLES
+            if(P[i].ID > 0)
+#endif
             if(P[i].Gas_Density > 0)
             {
                 double dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
@@ -131,9 +134,9 @@ void apply_grain_dragforce(void)
                         double bhat[3]={0}, bmag=0, efield[3]={0}, efield_coeff=0;
                         for(k=0;k<3;k++) {bhat[k]=P[i].Gas_B[k]; bmag+=bhat[k]*bhat[k]; dv[k]=P[i].Vel[k]-P[i].Gas_Velocity[k];}
                         if(bmag>0) {bmag=sqrt(bmag); for(k=0;k<3;k++) {bhat[k]/=bmag;}} else {bmag=0;}
-			double grain_charge_cinv = Z_grain / grain_mass * lorentz_units;
+                        double grain_charge_cinv = Z_grain / grain_mass * lorentz_units;
 #ifdef GRAIN_RDI_TESTPROBLEM
-			if(All.Grain_Charge_Parameter != 0) {grain_charge_cinv = -All.Grain_Charge_Parameter/All.Grain_Size_Max * pow(All.Grain_Size_Max/P[i].Grain_Size,2);} // set charge manually //
+                        if(All.Grain_Charge_Parameter != 0) {grain_charge_cinv = -All.Grain_Charge_Parameter/All.Grain_Size_Max * pow(All.Grain_Size_Max/P[i].Grain_Size,2);} // set charge manually //
 #endif
                         /* now apply the boris integrator */
                         double lorentz_coeff = (0.5*dt) * bmag * grain_charge_cinv; // dimensionless half-timestep term for boris integrator //
@@ -252,6 +255,9 @@ void apply_grain_dragforce(void)
                                 for(n=0; n<numngb_inbox; n++)
                                 {
                                     j = Ngblist[n];
+#ifdef BOX_BND_PARTICLES
+                                    if(P[j].ID <= 0) continue;
+#endif
                                     r2=0; for(k=0;k<3;k++) r2+=(P[i].Pos[k]-P[j].Pos[k])*(P[i].Pos[k]-P[j].Pos[k]);
                                     if ((r2<=h2)&&(P[j].Mass>0)&&(SphP[j].Density>0))
                                     {
@@ -262,8 +268,8 @@ void apply_grain_dragforce(void)
                                         MyDouble VelPred_j[3];
                                         for(k=0;k<3;k++) {VelPred_j[k]=P[j].Vel[k];}
 #ifdef BOX_SHEARING
-                                        if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                                        if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+                                        if(P[i].Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                                        if(P[i].Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
                                         for(k=0; k<3; k++)
                                         {
@@ -279,13 +285,16 @@ void apply_grain_dragforce(void)
                                     }
                                 } // for(n=0; n<numngb_inbox; n++)
                             } else {
-                                j=jnearest; wk=1;
-                                degy=0;
+                                j=jnearest;
+#ifdef BOX_BND_PARTICLES
+                                if(P[j].ID <= 0) continue;
+#endif
+                                wk=1; degy=0;
                                 MyDouble VelPred_j[3];
                                 for(k=0;k<3;k++) {VelPred_j[k]=P[j].Vel[k];}
 #ifdef BOX_SHEARING
-                                if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                                if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+                                if(P[i].Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                                if(P[i].Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
                                 for(k=0; k<3; k++)
                                 {
@@ -707,8 +716,8 @@ int grain_density_evaluate(int target, int mode, int *nexport, int *nsend_local)
                     MyDouble VelPred_j[3];
                     for(k=0;k<3;k++) {VelPred_j[k]=SphP[j].VelPred[k];}
 #ifdef BOX_SHEARING
-                    if(local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                    if(local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+                    if(pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                    if(pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
                     gasvel[0] += FLT(mass_j * wk * VelPred_j[0]);
                     gasvel[1] += FLT(mass_j * wk * VelPred_j[1]);
