@@ -81,6 +81,9 @@ void blackhole_feed_loop(void)
             }
 #if defined(BH_GRAVCAPTURE_GAS)
             BlackholeDataIn[j].mass_to_swallow_edd = BlackholeTempInfo[P[place].IndexMapToTempStruc].mass_to_swallow_edd;
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+	    BlackholeDataIn[j].SinkRadius = PPP[place].SinkRadius;
+#endif	    
 #endif
             BlackholeDataIn[j].Hsml = PPP[place].Hsml;
             BlackholeDataIn[j].Mass = P[place].Mass;
@@ -201,6 +204,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #if defined(BH_GRAVCAPTURE_GAS) && defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
     double meddington, medd_max_accretable, mass_to_swallow_edd, eddington_factor;
 #endif
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+    double sink_radius, h2=0;
+#endif    
     
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     double norm, theta, BH_disk_hr, *Jgas_in_Kernel;
@@ -252,6 +258,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #if defined(BH_GRAVCAPTURE_GAS) && defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
         mass_to_swallow_edd = BlackholeTempInfo[P[target].IndexMapToTempStruc].mass_to_swallow_edd;
 #endif
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+	sink_radius = P[target].SinkRadius;
+#endif	
     }
     else
     {
@@ -261,6 +270,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         dt = BlackholeDataGet[target].Dt;
         h_i = BlackholeDataGet[target].Hsml;
         mass = BlackholeDataGet[target].Mass;
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+	sink_radius = BlackholeDataGet[target].SinkRadius;
+#endif		
         bh_mass = BlackholeDataGet[target].BH_Mass;
 #ifdef BH_ALPHADISK_ACCRETION
         bh_mass_alphadisk = BlackholeDataGet[target].BH_Mass_AlphaDisk;
@@ -341,35 +353,52 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                     r2=0; for(k=0;k<3;k++) r2+=dpos[k]*dpos[k];
                     
                     if(r2 < h_i2)
-                    {                    
-                        r = sqrt(r2);
+                    {
                         vrel = 0;
-                        for(k=0;k<3;k++) vrel += (P[j].Vel[k] - velocity[k])*(P[j].Vel[k] - velocity[k]);
+                        for(k=0;k<3;k++) {
+			  vrel += (P[j].Vel[k] - velocity[k])*(P[j].Vel[k] - velocity[k]);
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+			  h2 += (P[j].Vel[k] - velocity[k])*dpos[k]; // first compute delta_x.delta_v
+#endif
+      		        }		                        
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+			h2 = (r2*vrel - h2*h2)*All.cf_a2inv; // specific angular momentum^2 = r^2(delta_v)^2 - (delta_v.delta_x)^2; note that vrel is still squared at this point
+#endif
+                        r = sqrt(r2);
                         vrel = sqrt(vrel) / All.cf_atime;       /* do this once and use below */
                         vesc = bh_vesc(j, mass, r);
 
 #ifdef BH_REPOSITION_ON_POTMIN
                         /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
-#if (BH_REPOSITION_ON_POTMIN == 1) 
-                        if( (P[j].Potential < minpot) && (P[j].Type == 4) )   // DAA: only if it is a star particle
-#else
-                        if(P[j].Potential < minpot)
+                        double boundedness_function, potential_function; boundedness_function = P[j].Potential + 0.5 * vrel*vrel * All.cf_atime; potential_function = P[j].Potential;
+#if (BH_REPOSITION_ON_POTMIN == 2)
+                        if( boundedness_function < 0 )
+                        {
+                            double wt_rsoft = r / (3.*All.ForceSoftening[5]); // normalization arbitrary here, just using for convenience for function below
+                            boundedness_function *= 1./(1. + wt_rsoft*wt_rsoft); // this down-weights particles which are very far away, relative to the user-defined force softening scale, which should define some 'confidence radius' of resolution around the BH particle
+                        }
+                        potential_function = boundedness_function; // jumps based on -most bound- particle, not just deepest potential (down-weights fast-movers)
+#endif
+                        if(potential_function < minpot)
+#if (BH_REPOSITION_ON_POTMIN == 1)
+                        if( P[j].Type == 4 && vrel <= vesc )   // DAA: only if it is a star particle & bound
+#endif
+#if (BH_REPOSITION_ON_POTMIN == 2)
+                        if( (P[j].Type != 0) && (P[j].Type != 5) )   // allow stars or dark matter but exclude gas, it's too messy! also exclude BHs, since we don't want to over-merge them
 #endif
                         {
-                            if(vrel <= vesc)
-                            {
-                                minpot = P[j].Potential;
-                                for(k = 0; k < 3; k++) minpotpos[k] = P[j].Pos[k];
-                            }
+                            minpot = potential_function;
+                            for(k = 0; k < 3; k++) minpotpos[k] = P[j].Pos[k];
                         }
 #endif
-#ifndef SINGLE_STAR_FORMATION
+			
+#ifndef SINGLE_STAR_FORMATION // for now we don't wanna do sink mergers in SF sims; 
                         /* check_for_bh_merger.  Easy.  No Edd limit, just a pos and vel criteria. */
                         if((id != P[j].ID) && (P[j].Mass > 0) && (P[j].Type == 5))	/* we may have a black hole merger */
-                        {
+                        {			  
                             if(id != P[j].ID) /* check its not the same bh  (DAA: this is duplicated here...) */
-                            {
-			      if((vrel < BH_CSND_FRAC_BH_MERGE * vesc) && (bh_check_boundedness(target,j,vrel,vesc,r)==1))
+                            {			      
+                                if((vrel < BH_CSND_FRAC_BH_MERGE * vesc) && (bh_check_boundedness(j,vrel,vesc,r)==1))
                                 {
 #ifndef IO_REDUCED_MODE
                                     printf("MARKING_BH_MERGER: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) id);
@@ -391,7 +420,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                 }
                             }
                         } // if(P[j].Type == 5) //
-#endif
+#endif                        
                         
                         
                         /* This is a similar loop to what we already did in blackhole_environment, but here we stochastically
@@ -401,8 +430,12 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         {
                             if((vrel < vesc)) // && (particles_swallowed_this_bh_this_process < particles_swallowed_this_bh_this_process_max))
                             { /* bound */
-			      if( bh_check_boundedness(target, j,vrel,vesc,r)==1 )
-                                { /* apocenter within target distance */        
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+  			      if(h2 < All.G*(mass + P[j].Mass) * sink_radius && bh_check_boundedness(j,vrel,vesc,r,sink_radius)) 
+#else
+				if( bh_check_boundedness(j,vrel,vesc,r)==1 ) 
+#endif				  
+                                { /* apocenter within target distance */
 #ifdef BH_GRAVCAPTURE_NONGAS
                                     /* simply swallow non-gas particle if BH_GRAVCAPTURE_NONGAS enabled */
                                     if((P[j].Type != 0) && (P[j].SwallowID < id)) P[j].SwallowID = id;
@@ -504,7 +537,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                 /* cos_theta with respect to disk of BH is given by dot product of r and Jgas */
                                 norm=0; for(k=0;k<3;k++) norm+=(dpos[k]/r)*Jgas_in_Kernel[k];
                                 norm=fabs(norm); theta=acos(norm);
-                                BH_angle_weighted_kernel_sum += bh_angleweight_localcoupling(j,BH_disk_hr,theta);
+                                BH_angle_weighted_kernel_sum += bh_angleweight_localcoupling(j,BH_disk_hr,theta,r,h_i);
                             }
 #endif
                             
