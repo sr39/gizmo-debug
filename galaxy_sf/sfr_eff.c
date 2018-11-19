@@ -560,7 +560,6 @@ void star_formation_parent_routine(void)
                 num_bhformed++;
                 P[i].BH_Mass = All.SeedBlackHoleMass;
 		TreeReconstructFlag = 1;
-		//		All.NumForcesSinceLastDomainDecomp += All.TotNumPart;
 #ifdef SINGLE_STAR_STRICT_ACCRETION
 		P[i].SinkRadius = Get_Particle_Size(i)/2;
 #endif		

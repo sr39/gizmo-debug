@@ -201,9 +201,6 @@ void blackhole_swallow_and_kick_loop(void)
     {
         printf("Accretion done: swallowed %d gas, %d star, %d dm, and %d BH particles\n",
                Ntot_gas_swallowed, Ntot_star_swallowed, Ntot_dm_swallowed, Ntot_BH_swallowed);
-	//#ifdef SINGLE_STAR_FORMATION	
-	//	if (Ntot_gas_swallowed) TreeReconstructFlag = 1;
-	//#endif	  
     }
     
 }
@@ -467,18 +464,17 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 
                         accreted_mass += FLT(f_accreted*P[j].Mass);
-#ifdef SINK_PARTICLES_ACCRETE_MOMENTUM
-                        for(k = 0; k < 3; k++) accreted_momentum[k] += FLT(f_accreted * P[j].Mass * P[j].Vel[k]);
-#endif
+                        
 #ifdef BH_GRAVCAPTURE_GAS
 #ifdef BH_ALPHADISK_ACCRETION       /* mass goes into the alpha disk, before going into the BH */
                         accreted_BH_mass_alphadisk += FLT(f_accreted*P[j].Mass);
-			
 #else                               /* mass goes directly to the BH, not just the parent particle */
                         accreted_BH_mass += FLT(f_accreted*P[j].Mass);
+#ifdef SINGLE_STAR_FORMATION
+                        for(k = 0; k < 3; k++) accreted_momentum[k] += FLT(f_accreted * P[j].Mass * P[j].Vel[k]);
 #endif
 #endif
-		       
+#endif
                         P[j].Mass *= (1-f_accreted);
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                         SphP[j].MassTrue *= (1-f_accreted);
@@ -487,18 +483,21 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 
 
                         /* BAL kicking operations 
-                         NOTE: we have two separate BAL wind models, particle kicking and smooth wind model.
-                         This is where we do the particle kicking BAL model
+                         NOTE: we have two separate BAL wind models, particle kicking and smooth wind model. This is where we do the particle kicking BAL model
                          DAA: This should also work when there is alpha-disk. */
 #ifdef BH_WIND_KICK 
                         v_kick = All.BAL_v_outflow;
-#ifdef SINGLE_STAR_FB_JETS
-			v_kick *= sqrt(bh_mass * All.UnitMass_in_g / SOLAR_MASS); // Federrath 2015 simple prescription
-#endif
                         if( !(All.ComovingIntegrationOn) && (All.Time < 0.001)) v_kick *= All.Time/0.001;
-
                         dir[0]=dir[1]=dir[2]=0;
                         for(k = 0; k < 3; k++) dir[k]=P[j].Pos[k]-pos[k];          // DAA: default direction is radially outwards
+#if defined(BH_COSMIC_RAYS)
+                        /* inject cosmic rays alongside wind injection */
+                        double dEcr = All.BH_CosmicRay_Injection_Efficiency * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * (C / All.UnitVelocity_in_cm_per_s)*(C / All.UnitVelocity_in_cm_per_s);
+                        SphP[j].CosmicRayEnergy+=dEcr; SphP[j].CosmicRayEnergyPred+=dEcr;
+#ifdef COSMIC_RAYS_M1
+                        dEcr*=COSMIC_RAYS_M1; for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dEcr*dir[k]; SphP[j].CosmicRayFluxPred[k]+=dEcr*dir[k];}
+#endif
+#endif
 #if (BH_WIND_KICK < 0)
                         /* DAA: along polar axis defined by angular momentum within Kernel (we could add finite opening angle) work out the geometry w/r to the plane of the disk */
                         if((dir[0]*Jgas_in_Kernel[0] + dir[1]*Jgas_in_Kernel[1] + dir[2]*Jgas_in_Kernel[2]) > 0){ 
@@ -565,7 +564,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 /* inject radiation pressure */
 #ifdef BH_PHOTONMOMENTUM
                                 /* now we get the weight function based on what we calculated earlier */
-                                mom_wt = All.BH_FluxMomentumFactor * bh_angleweight_localcoupling(j,BH_disk_hr,theta) / BH_angle_weighted_kernel_sum;
+                                mom_wt = All.BH_FluxMomentumFactor * bh_angleweight_localcoupling(j,BH_disk_hr,theta,norm,h_i) / BH_angle_weighted_kernel_sum;
                                 if(BH_angle_weighted_kernel_sum<=0) mom_wt=0;
                                 /* add initial L/c optical/UV coupling to the gas at the dust sublimation radius */
                                 double v_kick = mom_wt * mom / P[j].Mass;
@@ -576,9 +575,20 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                     SphP[j].VelPred[k] += v_kick*All.cf_atime*dir[k];
                                 }
 #endif // BH_PHOTONMOMENTUM
+                                
+#if defined(BH_COSMIC_RAYS)
+                                /* inject cosmic rays alongside continuous wind injection */
+                                mom_wt = bh_angleweight_localcoupling(j,BH_disk_hr,theta,norm,h_i) / BH_angle_weighted_kernel_sum;
+                                double dEcr = mom_wt * All.BH_CosmicRay_Injection_Efficiency * (C / All.UnitVelocity_in_cm_per_s)*(C / All.UnitVelocity_in_cm_per_s) * mdot*dt;
+                                SphP[j].CosmicRayEnergy+=dEcr; SphP[j].CosmicRayEnergyPred+=dEcr;
+#ifdef COSMIC_RAYS_M1
+                                dEcr*=COSMIC_RAYS_M1; for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dEcr*dir[k]; SphP[j].CosmicRayFluxPred[k]+=dEcr*dir[k];}
+#endif
+#endif
+                                
                                 /* inject BAL winds, this is the more standard smooth feedback model */
 #if defined(BH_WIND_CONTINUOUS) && !defined(BH_WIND_KICK)
-                                mom_wt = bh_angleweight_localcoupling(j,BH_disk_hr,theta) / BH_angle_weighted_kernel_sum;
+                                mom_wt = bh_angleweight_localcoupling(j,BH_disk_hr,theta,norm,h_i) / BH_angle_weighted_kernel_sum;
                                 double m_wind = mom_wt * (1-All.BAL_f_accretion)/(All.BAL_f_accretion) * mdot*dt; /* mass to couple */
                                 if(BH_angle_weighted_kernel_sum<=0) m_wind=0;
                                 
@@ -608,14 +618,14 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                                 SphP[j].MassTrue += m_wind;
 #endif
-                                /* now add wind momentum to particle */ 
-                                if(dvr_gas_to_bh < v_kick)   // gas moving away from BH at v < BAL speed
+                                /* now add wind momentum to particle */
+                                if(dvr_gas_to_bh < All.BAL_v_outflow)   // gas moving away from BH at v < BAL speed
                                 {
                                     double e_wind = 0;
                                     for(k=0;k<3;k++)
                                     {
                                         // relative wind-particle velocity (in code units) including BH-particle motion;
-                                        norm = All.cf_atime*v_kick*dir[k] + velocity[k]-P[j].Vel[k];
+                                        norm = All.cf_atime*All.BAL_v_outflow*dir[k] + velocity[k]-P[j].Vel[k];
                                         // momentum conservation gives the following change in velocities
                                         P[j].Vel[k] += All.BlackHoleFeedbackFactor * norm * m_wind/P[j].Mass;
                                         SphP[j].VelPred[k] += All.BlackHoleFeedbackFactor * norm * m_wind/P[j].Mass;
@@ -929,6 +939,15 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
         P[j].Vel[2] =  P[i].Vel[2] + dz / d_r * All.BAL_v_outflow * All.cf_atime;
         SphP[j].VelPred[0] = P[j].Vel[0]; SphP[j].VelPred[1] = P[j].Vel[1]; SphP[j].VelPred[2] = P[j].Vel[2]; 
         
+#if defined(BH_COSMIC_RAYS)
+        /* inject cosmic rays alongside wind injection */
+        double dEcr = All.BH_CosmicRay_Injection_Efficiency * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * (C / All.UnitVelocity_in_cm_per_s)*(C / All.UnitVelocity_in_cm_per_s);
+        SphP[j].CosmicRayEnergy+=dEcr; SphP[j].CosmicRayEnergyPred+=dEcr;
+#ifdef COSMIC_RAYS_M1
+        dEcr*=COSMIC_RAYS_M1; for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dEcr*dir[k]; SphP[j].CosmicRayFluxPred[k]+=dEcr*dir[k];}
+#endif
+#endif
+
         /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
         force_add_star_to_tree(i, j);// (buggy)
         /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
