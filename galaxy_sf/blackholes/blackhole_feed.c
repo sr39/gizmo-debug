@@ -163,12 +163,7 @@ void blackhole_feed_loop(void)
         {
             place = DataIndexTable[j].Index;
 #ifdef BH_REPOSITION_ON_POTMIN
-            if(BPP(place).BH_MinPot > BlackholeDataOut[j].BH_MinPot)
-            {
-                BPP(place).BH_MinPot = BlackholeDataOut[j].BH_MinPot;
-                for(k = 0; k < 3; k++)
-                    BPP(place).BH_MinPotPos[k] = BlackholeDataOut[j].BH_MinPotPos[k];
-            }
+            if(BPP(place).BH_MinPot > BlackholeDataOut[j].BH_MinPot) {BPP(place).BH_MinPot = BlackholeDataOut[j].BH_MinPot; for(k = 0; k < 3; k++) {BPP(place).BH_MinPotPos[k] = BlackholeDataOut[j].BH_MinPotPos[k];}}
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
             BlackholeTempInfo[P[place].IndexMapToTempStruc].BH_angle_weighted_kernel_sum += BlackholeDataOut[j].BH_angle_weighted_kernel_sum;
@@ -481,36 +476,18 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         if(P[j].Type == 0)
                         {
                             /* here we have a gas particle */
-                            u = r * hinv;
-                            kernel_main(u,hinv3,hinv*hinv3,&wk,&dwk,-1);
-                            
-// DAA: this below is only meaningful if !defined(BH_GRAVCAPTURE_GAS)...
-//#ifdef BH_SWALLOWGAS
-#if defined(BH_SWALLOWGAS) && !defined(BH_GRAVCAPTURE_GAS)
+                            u = r * hinv; kernel_main(u,hinv3,hinv*hinv3,&wk,&dwk,-1);
+#if defined(BH_SWALLOWGAS) && !defined(BH_GRAVCAPTURE_GAS) // this below is only meaningful if !defined(BH_GRAVCAPTURE_GAS)...
                             /* compute accretion probability */
-                            if((bh_mass_withdisk - (mass + mass_markedswallow))>0)
-                                p = (bh_mass_withdisk - (mass + mass_markedswallow)) * wk / rho;
-                            else
-                                p = 0;
-                            
-/* DAA: for stochastic winds (BH_WIND_KICK) we remove a fraction of mass from gas particles prior to kicking
- * --> need to increase the probability here to balance black hole growth   
- */
+                            if((bh_mass_withdisk - (mass + mass_markedswallow))>0) {p = (bh_mass_withdisk - (mass + mass_markedswallow)) * wk / rho;} else {p = 0;}
 #ifdef BH_WIND_KICK
+                            /* DAA: for stochastic winds (BH_WIND_KICK) we remove a fraction of mass from gas particles prior to kicking --> need to increase the probability here to balance black hole growth */
                             if(f_accreted>0) 
                             {
-                                p /= f_accreted;
-
-                                /* DAA: compute outflow probability when "bh_mass_withdisk < mass"
-                                    - we don't need to enforce mass conservation in this case 
-                                    - relevant only in low-res sims where the BH seed mass is much lower than the gas particle mass 
-                                    - TODO: replace mdot below by mdot_alphadisk if BH_ALPHADISK_ACCRETION? */
-                                if((bh_mass_withdisk - mass) < 0)
-                                    p = ( (1-f_accreted)/f_accreted ) * mdot * dt * wk / rho;
+                                /* DAA: compute outflow probability when "bh_mass_withdisk < mass" - we don't need to enforce mass conservation in this case, relevant only in low-res sims where the BH seed mass is much lower than the gas particle mass */
+                                p /= f_accreted; if((bh_mass_withdisk - mass) < 0) {p = ( (1-f_accreted)/f_accreted ) * mdot * dt * wk / rho;}
                             }
 #endif
-
-                            
                             w = get_random_number(P[j].ID);
                             if(w < p)
                             {
@@ -529,10 +506,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                             } // if(w < p)
 #endif // BH_SWALLOWGAS
 
-                            
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
                             /* calculate the angle-weighting for the photon momentum */
-                            if((mdot>0)&&(dt>0)&&(r>0)&&(P[j].SwallowID==0))
+                            if((mdot>0)&&(dt>0)&&(r>0)&&(P[j].SwallowID==0)&&(P[j].Mass>0)&&(P[j].Type==0))
                             {
                                 /* cos_theta with respect to disk of BH is given by dot product of r and Jgas */
                                 norm=0; for(k=0;k<3;k++) norm+=(dpos[k]/r)*Jgas_in_Kernel[k];
@@ -544,11 +520,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #ifdef BH_THERMALFEEDBACK
                             {
                                 energy = bh_lum_bol(mdot, bh_mass, -1) * dt;
-                                if(rho > 0)
-                                    SphP[j].Injected_BH_Energy += (wk/rho) * energy * P[j].Mass;
+                                if(rho > 0) {SphP[j].Injected_BH_Energy += (wk/rho) * energy * P[j].Mass;}
                             }
 #endif
-                            
                         } // if(P[j].Type == 0)
                         
                         
@@ -585,9 +559,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         BlackholeTempInfo[P[target].IndexMapToTempStruc].BH_angle_weighted_kernel_sum += BH_angle_weighted_kernel_sum;  /* need to correct target index */
 #endif
 #ifdef BH_REPOSITION_ON_POTMIN
-        BPP(target).BH_MinPot = minpot;
-        for(k = 0; k < 3; k++)
-            BPP(target).BH_MinPotPos[k] = minpotpos[k];
+        BPP(target).BH_MinPot = minpot; for(k = 0; k < 3; k++) {BPP(target).BH_MinPotPos[k] = minpotpos[k];}
 #endif
     }
     else
@@ -596,9 +568,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         BlackholeDataResult[target].BH_angle_weighted_kernel_sum = BH_angle_weighted_kernel_sum;
 #endif
 #ifdef BH_REPOSITION_ON_POTMIN
-        BlackholeDataResult[target].BH_MinPot = minpot;
-        for(k = 0; k < 3; k++)
-            BlackholeDataResult[target].BH_MinPotPos[k] = minpotpos[k];
+        BlackholeDataResult[target].BH_MinPot = minpot; for(k = 0; k < 3; k++) {BlackholeDataResult[target].BH_MinPotPos[k] = minpotpos[k];}
 #endif
     }
     return 0;
