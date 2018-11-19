@@ -1772,7 +1772,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     
 
 #ifdef NEIGHBORS_MUST_BE_COMPUTED_EXPLICITLY_IN_FORCETREE
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
     double targeth_si = soft;
 #else
     double targeth_si = All.ForceSoftening[ptype];
@@ -1786,7 +1786,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     h=soft;
 #else
-    if(ptype==0) h=soft; else h=All.ForceSoftening[ptype];
+    if(ptype==0) {h=soft;} else {h=All.ForceSoftening[ptype];}
 #endif
     h_inv = 1.0 / h;
     h3_inv = h_inv * h_inv * h_inv;
@@ -2233,7 +2233,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
                 /* set secondary softening and zeta term */
-                if (nop->maxsoft > 0) h_p_inv = 1.0 / nop->maxsoft; else h_p_inv = 0;
+                if(nop->maxsoft > 0) {h_p_inv = 1.0 / nop->maxsoft;} else {h_p_inv = 0;}
                 zeta_sec = 0;
                 ptype_sec = -1;
                 j0_sec_for_ags = -1;

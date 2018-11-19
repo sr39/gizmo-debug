@@ -151,7 +151,7 @@ void MeshMotion_ShearingSheet(int i)
 {
 #ifdef BOX_SHEARING
     SphP[i].ParticleVel[0] = SphP[i].ParticleVel[1] = SphP[i].ParticleVel[2] = 0;
-    SphP[i].ParticleVel[BOX_SHEARING_PHI_COORDINATE] = -BOX_SHEARING_Q * (P[i].Pos[0]-boxHalf_X); // equilibrium motion is purely in phi
+    SphP[i].ParticleVel[BOX_SHEARING_PHI_COORDINATE] = -BOX_SHEARING_Q * (P[i].Pos[0]-boxHalf_X) * BOX_SHEARING_OMEGA_BOX_CENTER; // equilibrium motion is purely in phi
 #endif
 }
 

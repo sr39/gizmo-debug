@@ -358,9 +358,15 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     f_CR *= exp(fac); // update flux term accordingly, before next step //
     // now the advection-diffusion update --- this is the important step //
     K0 = (fac_Omega/(clight_code*clight_code)) * ((eA[0]+eA[1])/E_B); // 1/effective diffusion coefficient
+    // may want [for numerical 'safety' reasons] to insert a minimum K0 [maximum diffusivity] here, where shouldn't strongly alter the dynamics
+    double code_unit_diffusivity_cgs = All.UnitVelocity_in_cm_per_s * All.UnitLength_in_cm / All.HubbleParam; // code unit diffusivity in CGS
+    double K0_kappamin = code_unit_diffusivity_cgs / 1.e17; // corresponds to setting a minimum diffusivity ~1e17 cm^2/s
+    double K0_kappamax = code_unit_diffusivity_cgs / 1.e35; // corresponds to setting a minimum diffusivity ~1e35 cm^2/s
+    if(K0 > K0_kappamin) {K0=K0_kappamin;} // actually enforce these boundary conditions on K0
+    if(K0 < K0_kappamax) {K0=K0_kappamax;} // actually enforce these boundary conditions on K0
     fac = (COSMIC_RAYS_ALFVEN*COSMIC_RAYS_ALFVEN) * K0 * dt_entr; // d_tau [dimensionless time unit]
     if((fac > 20.)||(!isfinite(fac))) {fac = 20.;} // limit to prevent nan's or infinities
-    flux_G=0; for(k=0;k<3;k++) {flux_G += bhat[k] * SphP[i].Gradients.CosmicRayPressure[k] * (P[i].Mass/SphP[i].Density) * (1./(MIN_REAL_NUMBER + K0));} // b.gradient[P] -- flux source term
+    flux_G=0; for(k=0;k<3;k++) {flux_G += -bhat[k] * SphP[i].Gradients.CosmicRayPressure[k] * (P[i].Mass/SphP[i].Density) * (1./(MIN_REAL_NUMBER + K0));} // b.gradient[P] -- flux source term
     flux_G += GAMMA_COSMICRAY * ((eA[1]-eA[0])/(MIN_REAL_NUMBER + eA[0]+eA[1])) * vA_code * eCR; // add secondary source term from streaming
     double f_CR_init = f_CR; // save previous value for summation below: need to be careful in the operation to prevent subtraction of large numbers giving an artificial zero!!!
     // f_CR = flux_G + (f_CR-flux_G) * exp(-fac); // now compute the actual solution -- this is the previous expression that leads to numerical large-number-subtraction errors //

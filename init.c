@@ -403,16 +403,16 @@ void init(void)
 		P[i].Mass *= All.Dust_to_Gas_Mass_Ratio;
 		{ 	
 			double tS0 = 0.626657 * P[i].Grain_Size * sqrt(GAMMA); /* stopping time [Epstein] for driftvel->0 */
-                        double a0 = tS0 * All.Vertical_Grain_Accel / (1.+All.Dust_to_Gas_Mass_Ratio); /* acc * tS0 / (1+mu) */
+            double a0 = tS0 * All.Vertical_Grain_Accel / (1.+All.Dust_to_Gas_Mass_Ratio); /* acc * tS0 / (1+mu) */
 #ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
 			a0 *= All.Grain_Size_Max / P[i].Grain_Size;
 #endif
-                        double ct = cos(All.Vertical_Grain_Accel_Angle * M_PI/180.), st = sin(All.Vertical_Grain_Accel_Angle * M_PI/180.); /* relevant angles */
+            double ct = cos(All.Vertical_Grain_Accel_Angle * M_PI/180.), st = sin(All.Vertical_Grain_Accel_Angle * M_PI/180.); /* relevant angles */
 			int k; double agamma=0.220893; // 9pi/128 //
-			double tau2=0, w0=sqrt((sqrt(1.+4.*agamma*a0*a0)-1.)/(2.*agamma)); // exact solution if no Lorentz forces and Epstein drag //
+			double tau2=0, ct2=0, w0=sqrt((sqrt(1.+4.*agamma*a0*a0)-1.)/(2.*agamma)); // exact solution if no Lorentz forces and Epstein drag //
 #ifdef GRAIN_LORENTZFORCE
 			double tL_i = All.Grain_Charge_Parameter/All.Grain_Size_Max * pow(All.Grain_Size_Max/P[i].Grain_Size,2) * All.BiniZ; // 1/Lorentz in code units
-			double ct2=ct*ct, tau2_0=pow(tS0*tL_i,2), f_tau_guess2=0; // variables for below //
+            ct2=ct*ct; double tau2_0=pow(tS0*tL_i,2), f_tau_guess2=0; // variables for below //
 			for(k=0;k<20;k++)
 			{
 			   tau2 = tau2_0 / (1. + agamma*w0*w0); // guess tau [including velocity dependence] //
@@ -421,7 +421,11 @@ void init(void)
 			}
 #endif
 		w0 /= sqrt((1.+tau2)*(1.+tau2*ct2)); // ensures normalization to unity with convention below //
-		P[i].Vel[0] = w0*st; P[i].Vel[1] = w0*sqrt(tau2)*st; P[i].Vel[2] = w0*(1.+tau2)*ct;
+        int non_gdir=1; 
+        if(GRAV_DIRECTION_RDI==1) {non_gdir=2;}
+		P[i].Vel[0] = w0*st; P[i].Vel[non_gdir] = w0*sqrt(tau2)*st; P[i].Vel[GRAV_DIRECTION_RDI] = w0*(1.+tau2)*ct;
+        a0 = tS0 * All.Vertical_Gravity_Strength / (1.+All.Dust_to_Gas_Mass_Ratio); w0=sqrt((sqrt(1.+4.*agamma*a0*a0)-1.)/(2.*agamma));
+        P[i].Vel[GRAV_DIRECTION_RDI] -= w0;
 		}
 	    }	    
 #endif

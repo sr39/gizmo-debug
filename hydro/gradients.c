@@ -1652,7 +1652,36 @@ void hydro_gradient_calc(void)
                 if(p_scale > 10) {p_scale=10;} // limit at 10 kpc
                 kappa_diff *= pow( p_scale * p_scale * R_GV / b_muG, 1./3.); /* these should all be dimensionless here */
                 SphP[i].CosmicRayDiffusionCoeff += kappa_diff; /* should be in physical units */
-#endif                
+#endif
+#define COSMIC_RAYS_SPECIAL_DIFFUSIVITY 0 /* flag for custom diffusion models, currently experimental, per below */
+#if (COSMIC_RAYS_SPECIAL_DIFFUSIVITY == 1)
+                /* Wiener et al. style pure-streaming but with larger streaming speeds and limited losses */
+                SphP[i].CosmicRayDiffusionCoeff = 0;
+                double rho0 = SphP[i].Density*All.cf_a3inv*All.HubbleParam*All.HubbleParam, m0=P[i].Mass/All.HubbleParam, v0=m0/rho0;
+                double ni_m3 = rho0 * 404.62 / 1.e-3;
+                double eCR_m14 = SphP[i].CosmicRayEnergy / v0 * 676.78 + 1.e-12;
+                double Lz_kpc = CRPressureGradScaleLength/All.HubbleParam;
+                double T6 = SphP[i].InternalEnergy * 47.65 / 1.e6;
+                double Lambda_m22 = 0.001;
+                double H100pc = PPP[i].Hsml*All.cf_atime/All.HubbleParam / 0.1;
+                if(T6 > 8000./1.e6) {Lambda_m22=0.2;}
+                double dv2_abs = 0; for(j=0;j<3;j++) {for(k=0;k<3;k++) {double vt=SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv*PPP[i].Hsml*All.cf_atime/All.HubbleParam; dv2_abs+=vt*vt;}}
+                double dv_10kms = sqrt(dv2_abs) / 10.;
+                v_streaming += 3.8 * sqrt(sqrt(ni_m3*T6)/(eCR_m14*Lz_kpc)) + 0.34*pow(dv_10kms,3)*sqrt(sqrt(ni_m3)/Lambda_m22)/(eCR_m14*H100pc);
+                CR_kappa_streaming = (GAMMA_COSMICRAY/GAMMA_COSMICRAY_MINUS1) * v_streaming * CRPressureGradScaleLength;
+#endif
+#if (COSMIC_RAYS_SPECIAL_DIFFUSIVITY == 2)
+                /* Farber et al. -- higher coeff in neutral gas, lower in ionized gas */
+                SphP[i].CosmicRayDiffusionCoeff = 0;
+                double T4 = SphP[i].InternalEnergy * 47.65 / 1.e4;
+                if(T4 < 1) {SphP[i].CosmicRayDiffusionCoeff = 700.;} else {SphP[i].CosmicRayDiffusionCoeff = 700./30.;}
+#endif
+#if (COSMIC_RAYS_SPECIAL_DIFFUSIVITY == 3)
+                /* Snodin et al. -- different expression for extrinsic MHD-turb diffusivity */
+                double Lz_kpc = CRPressureGradScaleLength/All.HubbleParam;
+                double RL_L = 1.e-9 / (b_muG * Lz_kpc);
+                SphP[i].CosmicRayDiffusionCoeff = 2.1e5 * (3.1e-3 + 0.74*RL_L + 0.33*pow(RL_L,0.333));
+#endif
 #ifdef COSMIC_RAYS_DIFFUSION_CONSTANT
 #ifdef COSMIC_RAYS_M1
                 SphP[i].CosmicRayDiffusionCoeff = All.CosmicRayDiffusionCoeff;
