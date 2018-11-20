@@ -331,10 +331,13 @@ integertime get_timestep(int p,		/*!< particle index */
     
     if(flag == 0)
     {
-        ax = All.cf_a2inv * P[p].GravAccel[0];
-        ay = All.cf_a2inv * P[p].GravAccel[1];
-        az = All.cf_a2inv * P[p].GravAccel[2];
-        
+#if defined(TIDAL_TIMESTEP_CRITERION) && !defined(GALSF_FB_FIRE_RT_LONGRANGE) // must include GravAccel if we're doing radiation in the tree
+        ax = ay = az = 0.0; // we're getting our gravitational timestep criterion from the tidal tensor, but still want to do the accel criterion for other forces
+#else	
+        ax += All.cf_a2inv * P[p].GravAccel[0];
+        ay += All.cf_a2inv * P[p].GravAccel[1];
+        az += All.cf_a2inv * P[p].GravAccel[2];
+#endif        
 #ifdef PMGRID
         ax += All.cf_a2inv * P[p].GravPM[0];
         ay += All.cf_a2inv * P[p].GravPM[1];
@@ -433,9 +436,9 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef TIDAL_TIMESTEP_CRITERION // tidal criterion obtains the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion
     double dt_tidal = 0.; for(int k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];} // this is diagonalized already in the gravity loop
     dt_tidal = sqrt(All.ErrTolIntAccuracy / sqrt(dt_tidal));
-    dt = DMIN(All.MaxSizeTimestep, dt_tidal);
+    dt = DMIN(dt, dt_tidal);
 #endif
-#ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step, which gives superior conservation
+#ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step and the timestep anticipates close encounters, which gives superior conservation
     if(P[p].Type == 5)
     {
         double omega_binary = 1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time; // timestep is harmonic mean of freefall and approach time
@@ -936,7 +939,7 @@ integertime get_timestep(int p,		/*!< particle index */
 
         if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 #ifdef SINGLE_STAR_FORMATION
-	if(P[p].DensAroundStar) {double eps = DMAX(AllForceSoftening[5], BPP(p).Hsml * KERNEL_CORE_SIZE); //BPP(p).BH_NearestGasNeighbor; //DMAX(BPP(p).BH_NearestGasNeighbor, All.ForceSoftening[5]);
+	if(P[p].DensAroundStar) {double eps = DMAX(All.ForceSoftening[5], BPP(p).Hsml * KERNEL_CORE_SIZE); //BPP(p).BH_NearestGasNeighbor; //DMAX(BPP(p).BH_NearestGasNeighbor, All.ForceSoftening[5]);
 	double dt_gas = sqrt(All.ErrTolIntAccuracy * All.cf_atime * eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
 	if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas; }}
 
