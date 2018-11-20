@@ -489,7 +489,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 #ifdef BH_ALPHADISK_ACCRETION
     /* use the mass in the accretion disk from the previous timestep to determine the BH accretion rate */
     /* note that if the alpha-disk is self-gravitating, it limits its mass, so we limit accretion into it beyond a certain point */
-    double x_MdiskSelfGravLimiter = BPP(n).BH_Mass_AlphaDisk / (BH_ALPHADISK_ACCRETION * BPP(n).BH_Mass);
+    double x_MdiskSelfGravLimiter = BPP(n).BH_Mass_AlphaDisk / (BPP(n).BH_Mass_AlphaDisk + BPP(n).BH_Mass);
     if(x_MdiskSelfGravLimiter > 20.) {mdot=0;} else {mdot *= exp(-0.5*x_MdiskSelfGravLimiter*x_MdiskSelfGravLimiter);}
     BlackholeTempInfo[i].mdot_alphadisk = mdot;     /* if BH_GRAVCAPTURE_GAS is off, this gets the accretion rate */
     mdot = 0;
