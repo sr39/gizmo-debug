@@ -114,11 +114,7 @@ double bh_vesc(int j, double mass, double r_code)
 
  
 /* check whether a particle is sufficiently bound to the BH to qualify for 'gravitational capture' */
-#ifdef SINGLE_STAR_STRICT_ACCRETION
 int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double sink_radius) // need to know the sink radius, which can be distinct from both the softening and search radii
-#else
-int bh_check_boundedness(int j, double vrel, double vesc, double dr_code)
-#endif  
 {
     /* if pair is a gas particle make sure to account for its thermal pressure */
     double cs = 0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}
@@ -132,16 +128,16 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code)
         double apocenter = dr_code / (1.0-v2); // NOTE: this is the major axis of the orbit, not the apocenter... - MYG
         double apocenter_max = All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
         if(P[j].Type==5) {apocenter_max += MAX_REAL_NUMBER;} // default is to be unrestrictive for BH-BH mergers //
-#ifndef SINGLE_STAR_STRICT_ACCRETION	
+#ifdef SINGLE_STAR_STRICT_ACCRETION // Bate 1995-style criterion, with a fixed softening radius that is distinct from both the force softening and the search radius
+        apocenter_max = 2*sink_radius;
+#else
 #if defined(SINGLE_STAR_FORMATION) || defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
         double r_j = All.ForceSoftening[P[j].Type];
         if(P[j].Type==0) {r_j = DMAX(r_j , PPP[j].Hsml);}
         apocenter_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
         if(P[j].Type==5) {apocenter_max = DMIN(apocenter_max , 1.*All.ForceSoftening[5]);}
 #endif
-#else // more of a Bate 1995-style set of criteria, with a fixed softening radius that is distinct from both the force softening and the search radius
-	apocenter_max = 2*sink_radius;
-#endif	
+#endif
         if(apocenter < apocenter_max) {bound = 1;}
     }
     return bound;
@@ -810,19 +806,19 @@ void blackhole_final_operations(void)
         {
             for(k = 0; k < 3; k++)
             {
-                P[n].Vel[k] = (P[n].Vel[k]*P[n].Mass + BlackholeTempInfo[i].accreted_momentum[k]) / (BlackholeTempInfo[i].accreted_BH_Mass + P[n].Mass);
+                P[n].Vel[k] = (P[n].Vel[k]*P[n].Mass + BlackholeTempInfo[i].accreted_momentum[k]) / (BlackholeTempInfo[i].accreted_Mass + P[n].Mass);
             } //for(k = 0; k < 3; k++)
             P[n].Mass += BlackholeTempInfo[i].accreted_Mass;
             BPP(n).BH_Mass += BlackholeTempInfo[i].accreted_BH_Mass;
         } // if(((BlackholeTempInfo[n].accreted_Mass>0)||(BlackholeTempInfo[n].accreted_BH_Mass>0)) && P[n].Mass > 0)
 #ifdef SINGLE_STAR_STRICT_ACCRETION
-	P[n].SinkRadius = DMAX(DMAX(P[n].SinkRadius, All.G * P[n].Mass / (1e12 / All.UnitVelocity_in_cm_per_s / All.UnitVelocity_in_cm_per_s)), All.SofteningTable[5]);	    // accretion radius is at least the Bondi radius for c_s = 10km/s  
+        P[n].SinkRadius = DMAX(DMAX(P[n].SinkRadius, All.G * P[n].Mass / (1.0e12 / (All.UnitVelocity_in_cm_per_s * All.UnitVelocity_in_cm_per_s))), All.SofteningTable[5]);        // accretion radius is at least the Bondi radius for c_s = 10km/s
 #ifdef SINGLE_STAR_TIDAL_ACCRETION // This is a novel determination of the sink radius, scaled to the sink particle's Hill sphere - for scale-free simulations, not necessary full-physics star formation sims - MYG
-	double tidal_field = sqrt(P[n].tidal_tensorps[0][0]*P[n].tidal_tensorps[0][0] + P[n].tidal_tensorps[1][1]*P[n].tidal_tensorps[1][1] + P[n].tidal_tensorps[2][2]*P[n].tidal_tensorps[2][2]);
-	P[n].SinkRadius = DMAX(All.SofteningTable[5], pow(All.G*P[n].Mass/tidal_field, 1./3)/10); // /10 here is arbitrary - set to taste
+        double tidal_field = sqrt(P[n].tidal_tensorps[0][0]*P[n].tidal_tensorps[0][0] + P[n].tidal_tensorps[1][1]*P[n].tidal_tensorps[1][1] + P[n].tidal_tensorps[2][2]*P[n].tidal_tensorps[2][2]);
+        P[n].SinkRadius = DMAX(All.SofteningTable[5], pow(All.G*P[n].Mass/tidal_field, 1./3)/10); // /10 here is arbitrary - set to taste
 #endif
-#endif 	            
-        
+#endif
+
         /* Correct for the mass loss due to radiation and BAL winds */
 #ifndef WAKEUP
         dt = (P[n].TimeBin ? (1 << P[n].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;

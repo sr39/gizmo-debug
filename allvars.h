@@ -249,22 +249,27 @@
 #endif
 
 
+#ifdef GRAVITY_IMPROVED_INTEGRATION
+#define GRAVITY_HYBRID_OPENING_CRIT // use both Barnes-Hut + relative tree opening criterion
+#define STOP_WHEN_BELOW_MINTIMESTEP // stop when below min timestep to prevent bad timestepping
+#define TIDAL_TIMESTEP_CRITERION // use tidal tensor timestep criterion
+#endif
+
 
 #ifdef SINGLE_STAR_FORMATION
 #define DEVELOPER_MODE
-#define STOP_WHEN_BELOW_MINTIMESTEP
-#define HYBRID_OPENING_CRITERION
-#define SINGLE_STAR_TIMESTEPPING
-#define SINGLE_STAR_HILL_CRITERION
-#define TIDAL_TIMESTEP_CRITERION
-#define SINGLE_STAR_STRICT_ACCRETION
+#define GRAVITY_HYBRID_OPENING_CRIT // use both Barnes-Hut + relative tree opening criterion
+#define STOP_WHEN_BELOW_MINTIMESTEP // stop when below min timestep to prevent bad timestepping
+#define TIDAL_TIMESTEP_CRITERION // use tidal tensor timestep criterion
+#define SINGLE_STAR_TIMESTEPPING // use additional timestep criteria for sink particles to ensure they don't evolve out-of-binary in close encounters
+#define SINGLE_STAR_HILL_CRITERION // use Hill-type tidal-tensor star formation criterion
+#define SINGLE_STAR_STRICT_ACCRETION // use Bate 1995 angular momentum criterion for star formation, along with dynamically-evolved sink radius for apocentric distance threshold
 #define GALSF // master switch needed to enable various frameworks
-#define GALSF_SFR_VIRIAL_SF_CRITERION 3 // only allow star formation in virialized sub-regions meeting Jeans threshold
+#define GALSF_SFR_VIRIAL_SF_CRITERION 4 // only allow star formation in virialized sub-regions meeting Jeans threshold + converging all 3 axes
 #define METALS  // metals should be active for stellar return
 #define BLACK_HOLES // need to have black holes active since these are our sink particles
 #define GALSF_SFR_IMF_VARIATION // save extra information about sinks when they form
 #ifdef SINGLE_STAR_ACCRETION
-#define SINK_PARTICLES_ACCRETE_MOMENTUM
 #define BH_SWALLOWGAS // need to swallow gas [part of sink model]
 #define BH_GRAVCAPTURE_GAS // use gravitational capture swallow criterion for resolved gravitational capture
 #if (SINGLE_STAR_ACCRETION > 0)
@@ -2000,14 +2005,14 @@ extern ALIGN(32) struct particle_data
     MyFloat PM_Potential;
 #endif
 #endif
-#if defined(SINGLE_STAR_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION)
-    double tidal_tensorps[3][3];
+#if defined(SINGLE_STAR_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION) || defined(GDE_DISTORTIONTENSOR)
+#define COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+    double tidal_tensorps[3][3];                        /*!< tidal tensor (=second derivatives of grav. potential) */
 #endif
 #ifdef GDE_DISTORTIONTENSOR
     MyBigFloat distortion_tensorps[6][6];               /*!< phase space distortion tensor */
     MyBigFloat last_determinant;                        /*!< last real space distortion tensor determinant */
     MyBigFloat stream_density;                          /*!< physical stream density that is going to be integrated */
-    double tidal_tensorps[3][3];                        /*!< tidal tensor (=second derivatives of grav. potential) */
     float caustic_counter;                              /*!< caustic counter */
 #ifndef GDE_LEAN
     MyBigFloat annihilation;                            /*!< integrated annihilation rate */
@@ -2376,7 +2381,7 @@ extern struct sph_particle_data
 #endif
 #ifdef GALSF
   MyFloat Sfr;                      /*!< particle star formation rate */
-#if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
+#if (GALSF_SFR_VIRIAL_SF_CRITERION>=3)
   MyFloat AlphaVirial_SF_TimeSmoothed;  /*!< dimensionless number > 0.5 if self-gravitating for smoothed virial criterion */
 #endif
 #endif
@@ -2622,7 +2627,7 @@ extern struct gravdata_out
 #ifdef EVALPOTENTIAL
     MyLongDouble Potential;
 #endif
-#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION))
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     MyLongDouble tidal_tensorps[3][3];
 #endif
 #ifdef BH_CALC_DISTANCES
