@@ -82,7 +82,7 @@ void blackhole_feed_loop(void)
 #if defined(BH_GRAVCAPTURE_GAS)
             BlackholeDataIn[j].mass_to_swallow_edd = BlackholeTempInfo[P[place].IndexMapToTempStruc].mass_to_swallow_edd;
 #ifdef SINGLE_STAR_STRICT_ACCRETION
-	    BlackholeDataIn[j].SinkRadius = PPP[place].SinkRadius;
+            BlackholeDataIn[j].SinkRadius = PPP[place].SinkRadius;
 #endif	    
 #endif
             BlackholeDataIn[j].Hsml = PPP[place].Hsml;
@@ -194,14 +194,11 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     int startnode, numngb, j, k, n, listindex = 0;
     MyIDType id;
     MyFloat *pos, *velocity, h_i, dt, mdot, rho, mass, bh_mass;
-    double h_i2, r2, r, u, hinv, hinv3, wk, dwk, vrel, vesc, dpos[3];
+    double h_i2, r2, r, u, hinv, hinv3, wk, dwk, vrel, vesc, dpos[3], sink_radius; sink_radius=0;
     
 #if defined(BH_GRAVCAPTURE_GAS) && defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
     double meddington, medd_max_accretable, mass_to_swallow_edd, eddington_factor;
 #endif
-#ifdef SINGLE_STAR_STRICT_ACCRETION
-    double sink_radius, h2=0;
-#endif    
     
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     double norm, theta, BH_disk_hr, *Jgas_in_Kernel;
@@ -254,7 +251,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         mass_to_swallow_edd = BlackholeTempInfo[P[target].IndexMapToTempStruc].mass_to_swallow_edd;
 #endif
 #ifdef SINGLE_STAR_STRICT_ACCRETION
-	sink_radius = P[target].SinkRadius;
+        sink_radius = P[target].SinkRadius;
 #endif	
     }
     else
@@ -266,7 +263,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         h_i = BlackholeDataGet[target].Hsml;
         mass = BlackholeDataGet[target].Mass;
 #ifdef SINGLE_STAR_STRICT_ACCRETION
-	sink_radius = BlackholeDataGet[target].SinkRadius;
+        sink_radius = BlackholeDataGet[target].SinkRadius;
 #endif		
         bh_mass = BlackholeDataGet[target].BH_Mass;
 #ifdef BH_ALPHADISK_ACCRETION
@@ -341,28 +338,16 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                 j = Ngblist[n];
                 if(P[j].Mass > 0)
                 {
-                    for(k=0;k<3;k++) dpos[k] = P[j].Pos[k] - pos[k];
+                    for(k=0;k<3;k++) {dpos[k] = P[j].Pos[k] - pos[k];}
 #ifdef BOX_PERIODIC
                     NEAREST_XYZ(dpos[0],dpos[1],dpos[2],-1);
 #endif
-                    r2=0; for(k=0;k<3;k++) r2+=dpos[k]*dpos[k];
-                    
+                    r2=0; for(k=0;k<3;k++) {r2 += dpos[k]*dpos[k];}
                     if(r2 < h_i2)
                     {
-                        vrel = 0;
-                        for(k=0;k<3;k++) {
-			  vrel += (P[j].Vel[k] - velocity[k])*(P[j].Vel[k] - velocity[k]);
-#ifdef SINGLE_STAR_STRICT_ACCRETION
-			  h2 += (P[j].Vel[k] - velocity[k])*dpos[k]; // first compute delta_x.delta_v
-#endif
-      		        }		                        
-#ifdef SINGLE_STAR_STRICT_ACCRETION
-			h2 = (r2*vrel - h2*h2)*All.cf_a2inv; // specific angular momentum^2 = r^2(delta_v)^2 - (delta_v.delta_x)^2; note that vrel is still squared at this point
-#endif
-                        r = sqrt(r2);
-                        vrel = sqrt(vrel) / All.cf_atime;       /* do this once and use below */
-                        vesc = bh_vesc(j, mass, r);
-
+                        vrel=0; for(k=0;k<3;k++) {vrel += (P[j].Vel[k] - velocity[k])*(P[j].Vel[k] - velocity[k]);}
+                        r=sqrt(r2); vrel=sqrt(vrel)/All.cf_atime; vesc=bh_vesc(j,mass,r); /* do this once and use below */
+                        
 #ifdef BH_REPOSITION_ON_POTMIN
                         /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
                         double boundedness_function, potential_function; boundedness_function = P[j].Potential + 0.5 * vrel*vrel * All.cf_atime; potential_function = P[j].Potential;
@@ -382,8 +367,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         if( (P[j].Type != 0) && (P[j].Type != 5) )   // allow stars or dark matter but exclude gas, it's too messy! also exclude BHs, since we don't want to over-merge them
 #endif
                         {
-                            minpot = potential_function;
-                            for(k = 0; k < 3; k++) minpotpos[k] = P[j].Pos[k];
+                            minpot=potential_function; for(k=0;k<3;k++) {minpotpos[k] = P[j].Pos[k];}
                         }
 #endif
 			
@@ -393,7 +377,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         {			  
                             if(id != P[j].ID) /* check its not the same bh  (DAA: this is duplicated here...) */
                             {			      
-                                if((vrel < BH_CSND_FRAC_BH_MERGE * vesc) && (bh_check_boundedness(j,vrel,vesc,r)==1))
+                                if((vrel < BH_CSND_FRAC_BH_MERGE * vesc) && (bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1))
                                 {
 #ifndef IO_REDUCED_MODE
                                     printf("MARKING_BH_MERGER: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) id);
@@ -404,12 +388,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                 {
 #ifndef IO_REDUCED_MODE
 #ifdef BH_OUTPUT_MOREINFO           // DAA: BH merger info will be saved in a separate output file
-                                    printf("ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n",
-                                           ThisTask, All.Time, id, P[j].ID, vrel, vesc);
+                                    printf("ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n", ThisTask, All.Time, id, P[j].ID, vrel, vesc);
 #else
-                                    fprintf(FdBlackHolesDetails,
-                                            "ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n",
-                                            ThisTask, All.Time, id, P[j].ID, vrel, vesc);
+                                    fprintf(FdBlackHolesDetails, "ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n", ThisTask, All.Time, id, P[j].ID, vrel, vesc);
 #endif
 #endif
                                 }
@@ -426,22 +407,18 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                             if((vrel < vesc)) // && (particles_swallowed_this_bh_this_process < particles_swallowed_this_bh_this_process_max))
                             { /* bound */
 #ifdef SINGLE_STAR_STRICT_ACCRETION
-  			      if(h2 < All.G*(mass + P[j].Mass) * sink_radius && bh_check_boundedness(j,vrel,vesc,r,sink_radius)) 
-#else
-				if( bh_check_boundedness(j,vrel,vesc,r)==1 ) 
-#endif				  
-                                { /* apocenter within target distance */
-#ifdef BH_GRAVCAPTURE_NONGAS
-                                    /* simply swallow non-gas particle if BH_GRAVCAPTURE_NONGAS enabled */
+                                double spec_mom=0; for(k=0;k<3;k++) {spec_mom += (P[j].Vel[k] - velocity[k])*dpos[k];} // delta_x.delta_v
+                                spec_mom = (r2*vrel*vrel - spec_mom*spec_mom*All.cf_a2inv); // specific angular momentum^2 = r^2(delta_v)^2 - (delta_v.delta_x)^2;
+                                if(spec_mom < All.G * (mass + P[j].Mass) * sink_radius) // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
+#endif
+                                if( bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1 ) { /* apocenter within target distance */
+#ifdef BH_GRAVCAPTURE_NONGAS        /* simply swallow non-gas particle if BH_GRAVCAPTURE_NONGAS enabled */
                                     if((P[j].Type != 0) && (P[j].SwallowID < id)) P[j].SwallowID = id;
 #endif
-                                    
-#ifdef BH_GRAVCAPTURE_GAS
-                                    /* now deal with gas */
-                                    if (P[j].Type == 0){
-#if defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
-                                        /* if Eddington-limited and NO alpha-disk, do this stochastically */
-                                        p = 1/eddington_factor;
+#ifdef BH_GRAVCAPTURE_GAS           /* now deal with gas */
+                                    if (P[j].Type == 0) {
+#if defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION) /* if Eddington-limited and NO alpha-disk, do this stochastically */
+                                        p = 1. / eddington_factor;
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
                                         p /= All.BAL_f_accretion; // we need to accrete more, then remove the mass in winds
 #endif
@@ -454,16 +431,10 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                             if(P[j].SwallowID < id) P[j].SwallowID = id;
                                         }
 #else //if defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
-                                        /* in other cases, just swallow the particle */
-                                        if(P[j].SwallowID < id) 
-                                        {
-                                            P[j].SwallowID = id;
-                                            //particles_swallowed_this_bh_this_process++;
-                                        }
+                                        if(P[j].SwallowID < id) {P[j].SwallowID = id;} /* in other cases, just swallow the particle */  //particles_swallowed_this_bh_this_process++;
 #endif //else defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
                                     } //if (P[j].Type == 0)
 #endif //ifdef BH_GRAVCAPTURE_GAS
-                                    
                                 } // if( apocenter in tolerance range )
                             } // if(vrel < vesc)
                         } //if(P[j].Type != 5)

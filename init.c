@@ -491,7 +491,7 @@ void init(void)
                 BPP(i).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
 #endif
 #ifdef SINGLE_STAR_STRICT_ACCRETION
-		BPP(i).SinkRadius = 0;
+                BPP(i).SinkRadius = 0;
 #endif		
 #ifdef BH_COUNTPROGS
                 BPP(i).BH_CountProgs = 1;
@@ -505,8 +505,7 @@ void init(void)
     MPI_Allreduce(&count_holes, &All.TotBHs, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 #endif
     
-    for(i = 0; i < TIMEBINS; i++)
-        TimeBinActive[i] = 1;
+    for(i = 0; i < TIMEBINS; i++) {TimeBinActive[i] = 1;}
     
     reconstruct_timebins();
     
@@ -596,8 +595,8 @@ void init(void)
 #endif
 #ifdef GALSF
         SphP[i].Sfr = 0;
-#if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
-	SphP[i].AlphaVirial_SF_TimeSmoothed = 0;
+#if (GALSF_SFR_VIRIAL_SF_CRITERION>=3)
+        SphP[i].AlphaVirial_SF_TimeSmoothed = 0;
 #endif
 #endif
 #ifdef COSMIC_RAYS

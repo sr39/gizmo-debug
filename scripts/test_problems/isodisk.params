@@ -10,7 +10,7 @@
 %        METALS
 %        GALSF
 %        GALSF_SFR_MOLECULAR_CRITERION
-%        GALSF_SFR_VIRIAL_SF_CRITERION
+%        GALSF_SFR_VIRIAL_SF_CRITERION=0
 %        GALSF_SUBGRID_WINDS
 %
 % you should see the users guide - there are many combinations of 

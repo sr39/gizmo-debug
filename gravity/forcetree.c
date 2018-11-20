@@ -41,7 +41,7 @@ static int last;
 
 /* some modules compute neighbor fluxes explicitly within the force-tree: in these cases, we need to
     take extra care about opening leaves to ensure possible neighbors are not missed, so defined a flag below for it */
-#if (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(SINGLE_STAR_FORMATION))
+#if (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(SINGLE_STAR_FORMATION) || defined(GRAVITY_IMPROVED_INTEGRATION))
 #define NEIGHBORS_MUST_BE_COMPUTED_EXPLICITLY_IN_FORCETREE
 #endif
 
@@ -49,7 +49,7 @@ static int last;
 #define NTAB 1000
 /*! variables for short-range lookup table */
 static float shortrange_table[NTAB], shortrange_table_potential[NTAB];
-#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 static float shortrange_table_tidal[NTAB];
 #endif
 /*! toggles after first tree-memory allocation, has only influence on log-files */
@@ -106,11 +106,11 @@ int force_treebuild(int npart, struct unbind_data *mp)
     
 #ifdef BH_CALC_DISTANCES
     int i;
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) { P[i].min_dist_to_bh=P[i].min_xyz_to_bh[0]=P[i].min_xyz_to_bh[1]=P[i].min_xyz_to_bh[2]=1e37; 
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        P[i].min_dist_to_bh=P[i].min_xyz_to_bh[0]=P[i].min_xyz_to_bh[1]=P[i].min_xyz_to_bh[2]=1e37;
 #ifdef SINGLE_STAR_TIMESTEPPING
-    P[i].min_bh_approach_time = MAX_REAL_NUMBER;
-    P[i].min_bh_freefall_time = MAX_REAL_NUMBER;
-    P[i].min_bh_periastron = MAX_REAL_NUMBER;
+        P[i].min_bh_approach_time=MAX_REAL_NUMBER; P[i].min_bh_freefall_time=MAX_REAL_NUMBER; P[i].min_bh_periastron=MAX_REAL_NUMBER;
 #endif
     }
 #endif
@@ -582,7 +582,7 @@ void force_update_node_recursive(int no, int sib, int father)
         MyFloat bh_mass=0;
         MyFloat bh_pos_times_mass[3]={0,0,0};   /* position of each black hole in the node times its mass; divide by total mass at the end to get COM */
 #ifdef SINGLE_STAR_TIMESTEPPING
-	MyFloat bh_mom[3] = {0,0,0};
+        MyFloat bh_mom[3] = {0,0,0};
 #endif	
 #endif	
 #ifdef DM_SCALARFIELD_SCREENING
@@ -663,10 +663,10 @@ void force_update_node_recursive(int no, int sib, int father)
                         bh_pos_times_mass[1] += Nodes[p].bh_pos[1] * Nodes[p].bh_mass;
                         bh_pos_times_mass[2] += Nodes[p].bh_pos[2] * Nodes[p].bh_mass;
 #ifdef SINGLE_STAR_TIMESTEPPING
-			bh_mom[0] += Nodes[p].bh_vel[0] * Nodes[p].bh_mass;
-			bh_mom[1] += Nodes[p].bh_vel[1] * Nodes[p].bh_mass;
-			bh_mom[2] += Nodes[p].bh_vel[2] * Nodes[p].bh_mass;			
-#endif			
+                        bh_mom[0] += Nodes[p].bh_vel[0] * Nodes[p].bh_mass;
+                        bh_mom[1] += Nodes[p].bh_vel[1] * Nodes[p].bh_mass;
+                        bh_mom[2] += Nodes[p].bh_vel[2] * Nodes[p].bh_mass;
+#endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
                         mass_dm += (Nodes[p].mass_dm);
@@ -752,10 +752,10 @@ void force_update_node_recursive(int no, int sib, int father)
                         bh_pos_times_mass[1] += pa->Pos[1] * pa->Mass;
                         bh_pos_times_mass[2] += pa->Pos[2] * pa->Mass;
 #ifdef SINGLE_STAR_TIMESTEPPING
-			bh_mom[0] += pa->Vel[0] * pa->Mass;
-			bh_mom[1] += pa->Vel[1] * pa->Mass;
-			bh_mom[2] += pa->Vel[2] * pa->Mass;						
-#endif			
+                        bh_mom[0] += pa->Vel[0] * pa->Mass;
+                        bh_mom[1] += pa->Vel[1] * pa->Mass;
+                        bh_mom[2] += pa->Vel[2] * pa->Mass;
+#endif
                     }
 #endif
                     
@@ -920,10 +920,10 @@ void force_update_node_recursive(int no, int sib, int father)
                 Nodes[no].bh_pos[1] = bh_pos_times_mass[1] / bh_mass;
                 Nodes[no].bh_pos[2] = bh_pos_times_mass[2] / bh_mass;
 #ifdef SINGLE_STAR_TIMESTEPPING
-		Nodes[no].bh_vel[0] = bh_mom[0] / bh_mass;
-		Nodes[no].bh_vel[1] = bh_mom[1] / bh_mass;
-		Nodes[no].bh_vel[2] = bh_mom[2] / bh_mass;		
-#endif		
+                Nodes[no].bh_vel[0] = bh_mom[0] / bh_mass;
+                Nodes[no].bh_vel[1] = bh_mom[1] / bh_mass;
+                Nodes[no].bh_vel[2] = bh_mom[2] / bh_mass;
+#endif
             }
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1091,10 +1091,10 @@ void force_exchange_pseudodata(void)
             DomainMoment[i].bh_pos[1] = Nodes[no].bh_pos[1];
             DomainMoment[i].bh_pos[2] = Nodes[no].bh_pos[2];
 #ifdef SINGLE_STAR_TIMESTEPPING
-	    DomainMoment[i].bh_vel[0] = Nodes[no].bh_vel[0];
+            DomainMoment[i].bh_vel[0] = Nodes[no].bh_vel[0];
             DomainMoment[i].bh_vel[1] = Nodes[no].bh_vel[1];
-            DomainMoment[i].bh_vel[2] = Nodes[no].bh_vel[2];	    
-#endif	    
+            DomainMoment[i].bh_vel[2] = Nodes[no].bh_vel[2];
+#endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
             DomainMoment[i].s_dm[0] = Nodes[no].s_dm[0];
@@ -1179,10 +1179,10 @@ void force_exchange_pseudodata(void)
                     Nodes[no].bh_pos[1] = DomainMoment[i].bh_pos[1];
                     Nodes[no].bh_pos[2] = DomainMoment[i].bh_pos[2];
 #ifdef SINGLE_STAR_TIMESTEPPING
-		    Nodes[no].bh_vel[0] = DomainMoment[i].bh_vel[0];
+                    Nodes[no].bh_vel[0] = DomainMoment[i].bh_vel[0];
                     Nodes[no].bh_vel[1] = DomainMoment[i].bh_vel[1];
                     Nodes[no].bh_vel[2] = DomainMoment[i].bh_vel[2];
-#endif		    
+#endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
                     Nodes[no].s_dm[0] = DomainMoment[i].s_dm[0];
@@ -1302,10 +1302,10 @@ void force_treeupdate_pseudos(int no)
             bh_pos_times_mass[1] += Nodes[p].bh_pos[1] * Nodes[p].bh_mass;
             bh_pos_times_mass[2] += Nodes[p].bh_pos[2] * Nodes[p].bh_mass;
 #ifdef SINGLE_STAR_TIMESTEPPING
-	    bh_mom[0] += Nodes[p].bh_vel[0] * Nodes[p].bh_mass;
-	    bh_mom[1] += Nodes[p].bh_vel[1] * Nodes[p].bh_mass;
-	    bh_mom[2] += Nodes[p].bh_vel[2] * Nodes[p].bh_mass;	    
-#endif	    
+            bh_mom[0] += Nodes[p].bh_vel[0] * Nodes[p].bh_mass;
+            bh_mom[1] += Nodes[p].bh_vel[1] * Nodes[p].bh_mass;
+            bh_mom[2] += Nodes[p].bh_vel[2] * Nodes[p].bh_mass;
+#endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
             mass_dm += (Nodes[p].mass_dm);
@@ -1449,10 +1449,10 @@ void force_treeupdate_pseudos(int no)
             Nodes[no].bh_pos[1] = bh_pos_times_mass[1] / bh_mass;
             Nodes[no].bh_pos[2] = bh_pos_times_mass[2] / bh_mass;
 #ifdef SINGLE_STAR_TIMESTEPPING
-	    Nodes[no].bh_vel[0] = bh_mom[0] / bh_mass;
-	    Nodes[no].bh_vel[1] = bh_mom[1] / bh_mass;
-	    Nodes[no].bh_vel[2] = bh_mom[2] / bh_mass;	    
-#endif	    
+            Nodes[no].bh_vel[0] = bh_mom[0] / bh_mass;
+            Nodes[no].bh_vel[1] = bh_mom[1] / bh_mass;
+            Nodes[no].bh_vel[2] = bh_mom[2] / bh_mass;
+#endif
         }
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1587,7 +1587,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double r2, dx, dy, dz, mass, r, fac, u, h, h_inv, h3_inv;
     double pos_x, pos_y, pos_z, aold;
 #ifdef SINGLE_STAR_TIMESTEPPING
-    double vel_x, vel_y, vel_z, dvx, dvy, dvz;
+    double vel_x, vel_y, vel_z;
 #endif    
 #ifdef PMGRID
     int tabindex;
@@ -1601,9 +1601,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     int maxNodes = MaxNodes;
     integertime ti_Current = All.Ti_Current;
     double errTol2 = All.ErrTolTheta * All.ErrTolTheta;
-#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
-    int i1, i2;
-    double fac2, h_tidal, h_inv_tidal, h3_inv_tidal, h5_inv, h5_inv_tidal, fac_tidal;
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+    int i1, i2; double fac2, h_tidal, h_inv_tidal, h3_inv_tidal, h5_inv, h5_inv_tidal, fac_tidal;
     MyDouble tidal_tensorps[3][3];
 #endif
 #if defined(REDUCE_TREEWALK_BRANCHING) && defined(PMGRID)
@@ -1661,10 +1660,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     MyLongDouble pot;
     pot = 0;
 #endif
-#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
-    for(i1 = 0; i1 < 3; i1++)
-        for(i2 = 0; i2 < 3; i2++)
-            tidal_tensorps[i1][i2] = 0.0;
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+    for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {tidal_tensorps[i1][i2] = 0.0;}}
 #endif
     
     acc_x = 0;
@@ -1693,10 +1690,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         pmass = P[target].Mass;
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING
-	vel_x = P[target].Vel[0];
-	vel_y = P[target].Vel[1];
-	vel_z = P[target].Vel[2];	
-#endif	
+        vel_x = P[target].Vel[0];
+        vel_y = P[target].Vel[1];
+        vel_z = P[target].Vel[2];
+#endif
         aold = All.ErrTolForceAcc * P[target].OldAcc;
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         soft = All.ForceSoftening[ptype];
@@ -1738,10 +1735,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         pmass = GravDataGet[target].Mass;
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING
-	vel_x = GravDataGet[target].Vel[0];
-	vel_y = GravDataGet[target].Vel[1];
-	vel_z = GravDataGet[target].Vel[2];
-#endif	
+        vel_x = GravDataGet[target].Vel[0];
+        vel_y = GravDataGet[target].Vel[1];
+        vel_z = GravDataGet[target].Vel[2];
+#endif
         ptype = GravDataGet[target].Type;
         aold = All.ErrTolForceAcc * GravDataGet[target].OldAcc;
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE)
@@ -1811,11 +1808,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
     
     
-#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
-    /* different tidal field softening */
-    h_tidal = All.ForceSoftening[ptype];
-    h_inv_tidal = 1.0 / h_tidal;
-    h3_inv_tidal = h_inv_tidal * h_inv_tidal * h_inv_tidal;
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* different tidal field softening */
+    h_tidal = All.ForceSoftening[ptype]; h_inv_tidal = 1.0 / h_tidal; h3_inv_tidal = h_inv_tidal * h_inv_tidal * h_inv_tidal;
     h5_inv_tidal = h_inv_tidal * h_inv_tidal * h_inv_tidal * h_inv_tidal * h_inv_tidal;
 #endif
     
@@ -1855,17 +1849,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 NEAREST_XYZ(dx,dy,dz,-1);
 #endif
                 r2 = dx * dx + dy * dy + dz * dz;
-#ifdef SINGLE_STAR_TIMESTEPPING
-		dvx = P[no].Vel[0] - vel_x;
-		dvy = P[no].Vel[1] - vel_y;
-		dvz = P[no].Vel[2] - vel_z;
-#endif		
                 mass = P[no].Mass;
 
                 /* only proceed if the mass is positive and there is separation! */
                 if((r2 > 0) && (mass > 0))
                 {
-
+                    
 #ifdef BH_CALC_DISTANCES 
                 if(P[no].Type == 5)             /* found a BH particle in grav calc */
                 {
@@ -1877,23 +1866,24 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         min_xyz_to_bh[2] = dz;
                     }
 #ifdef SINGLE_STAR_TIMESTEPPING
-		    double vSqr = dvx*dvx + dvy*dvy + dvz*dvz;
-		    double M_total = P[no].Mass + pmass;
-		    double r2soft = r2 + All.SofteningTable[5]*All.SofteningTable[5];
-		    double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER);
-		    double tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
-		    if(tSqr < min_bh_approach_time) {
-		      min_bh_approach_time = tSqr;
-		      double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
-		      double dv_dot_dx = dvx*dx + dvy*dy + dvz*dz;
-		      double hSqr = vSqr*r2 - dv_dot_dx*dv_dot_dx;
-		      double ecc = sqrt(1 + 2*specific_energy*hSqr / (All.G*All.G*M_total*M_total));
-		      min_bh_periastron = -All.G*M_total / specific_energy * (1-ecc) * (P[no].Mass/M_total); // final factor ensures that this gives binaries the same timestep
-		    }
-		    if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
-
-#endif			 
-		    
+                    double bh_dvx = P[no].Vel[0] - vel_x;
+                    double bh_dvy = P[no].Vel[1] - vel_y;
+                    double bh_dvz = P[no].Vel[2] - vel_z;
+                    double vSqr = bh_dvx*bh_dvx + bh_dvy*bh_dvy + bh_dvz*bh_dvz;
+                    double M_total = P[no].Mass + pmass;
+                    double r2soft = r2 + All.SofteningTable[5]*All.SofteningTable[5];
+                    double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER);
+                    double tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
+                    if(tSqr < min_bh_approach_time) {
+                        min_bh_approach_time = tSqr;
+                        double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
+                        double dv_dot_dx = bh_dvx*dx + bh_dvy*dy + bh_dvz*dz;
+                        double hSqr = vSqr*r2 - dv_dot_dx*dv_dot_dx;
+                        double ecc = sqrt(1 + 2*specific_energy*hSqr / (All.G*All.G*M_total*M_total));
+                        min_bh_periastron = -All.G*M_total / specific_energy * (1-ecc) * (P[no].Mass/M_total); // final factor ensures that this gives binaries the same timestep
+                    }
+                    if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
+#endif
                 }
 #endif
 
@@ -2183,10 +2173,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         continue;
                     }
                 }
-#ifndef HYBRID_OPENING_CRITERION		
+#ifndef GRAVITY_HYBRID_OPENING_CRIT
                 else		/* check relative opening criterion */
 #else
-		if(!(All.Ti_Current == 0 && RestartFlag == 0))
+                if(!(All.Ti_Current == 0 && RestartFlag == 0))
 #endif		  
                 {
                     /* force node to open if we are within the gravitational softening length */
@@ -2275,33 +2265,31 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     NEAREST_XYZ(bh_dx,bh_dy,bh_dz,-1);
 #endif
                     double bh_r2 = bh_dx * bh_dx + bh_dy * bh_dy + bh_dz * bh_dz; // + (nop->len)*(nop->len);
-#ifdef SINGLE_STAR_TIMESTEPPING
-		    double bh_dvx = nop->bh_vel[0] - vel_x;
-		    double bh_dvy = nop->bh_vel[1] - vel_y;
-		    double bh_dvz = nop->bh_vel[2] - vel_z;		    
-#endif		    
                     if(bh_r2 < min_dist_to_bh2)
-                        {
-                            min_dist_to_bh2 = bh_r2;
-                            min_xyz_to_bh[0] = bh_dx;    /* remember, dx = x_BH - myx */
-                            min_xyz_to_bh[1] = bh_dy;
-                            min_xyz_to_bh[2] = bh_dz;
-                        }
+                    {
+                        min_dist_to_bh2 = bh_r2;
+                        min_xyz_to_bh[0] = bh_dx;    /* remember, dx = x_BH - myx */
+                        min_xyz_to_bh[1] = bh_dy;
+                        min_xyz_to_bh[2] = bh_dz;
+                    }
 #ifdef SINGLE_STAR_TIMESTEPPING
-		    double vSqr = bh_dvx*bh_dvx + bh_dvy*bh_dvy + bh_dvz*bh_dvz;
-		    double M_total = nop->bh_mass + pmass;
-		    double r2soft = bh_r2 + All.SofteningTable[5]*All.SofteningTable[5];
-		    double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER);
-		    double tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
-		    if(tSqr < min_bh_approach_time) {
-		      min_bh_approach_time = tSqr;
-		      double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(bh_r2);
-		      double dv_dot_dx = bh_dvx*bh_dx + bh_dvy*bh_dy + bh_dvz*bh_dz;
-		      double hSqr = vSqr*r2 - dv_dot_dx*dv_dot_dx;
-		      double ecc = sqrt(1 + 2*specific_energy*hSqr / (All.G*All.G*M_total*M_total));
-		      min_bh_periastron = -All.G*M_total / specific_energy * (1-ecc) * (nop->bh_mass/M_total); // final factor ensures that this gives binaries the same timestep when we use it to turn the accel into a timestep
-		    }
-		    if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
+                    double bh_dvx = nop->bh_vel[0] - vel_x;
+                    double bh_dvy = nop->bh_vel[1] - vel_y;
+                    double bh_dvz = nop->bh_vel[2] - vel_z;
+                    double vSqr = bh_dvx*bh_dvx + bh_dvy*bh_dvy + bh_dvz*bh_dvz;
+                    double M_total = nop->bh_mass + pmass;
+                    double r2soft = bh_r2 + All.SofteningTable[5]*All.SofteningTable[5];
+                    double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER);
+                    double tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
+                    if(tSqr < min_bh_approach_time) {
+                        min_bh_approach_time = tSqr;
+                        double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(bh_r2);
+                        double dv_dot_dx = bh_dvx*bh_dx + bh_dvy*bh_dy + bh_dvz*bh_dz;
+                        double hSqr = vSqr*r2 - dv_dot_dx*dv_dot_dx;
+                        double ecc = sqrt(1 + 2*specific_energy*hSqr / (All.G*All.G*M_total*M_total));
+                        min_bh_periastron = -All.G*M_total / specific_energy * (1-ecc) * (nop->bh_mass/M_total); // final factor ensures that this gives binaries the same timestep when we use it to turn the accel into a timestep
+                    }
+                    if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
 #endif
                 }
 #endif
@@ -2316,9 +2304,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             if(r >= h)
             {
                 fac = mass / (r2 * r);
-#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
-                /* second derivative of potential needs this factor */
-                fac2 = 3.0 * mass / (r2 * r2 * r);
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+                fac2 = 3.0 * mass / (r2 * r2 * r); /* second derivative of potential needs this factor */
 #endif
 #ifdef EVALPOTENTIAL
                 facpot = -mass / r;
@@ -2329,7 +2316,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if !defined(ADAPTIVE_GRAVSOFT_FORALL) && !defined(ADAPTIVE_GRAVSOFT_FORGAS)
                 h_inv = 1.0 / h;
                 h3_inv = h_inv * h_inv * h_inv;
-#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                 h5_inv = h_inv * h_inv * h_inv * h_inv * h_inv;
 #endif
 #endif
@@ -2417,13 +2404,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef EVALPOTENTIAL
                 facpot = mass * kernel_gravity(u, h_inv, h3_inv, -1);
 #endif
-#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
-                /*second derivatives needed -> calculate them from softend potential,
-                 (see Gadget 1 paper and there g2 function). SIGN?! */
-                if(u < 0.5)
-                    fac2 = mass * h5_inv * (76.8 - 96.0 * u);
-                else
-                    fac2 = mass * h5_inv * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u);
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+                /* second derivatives needed -> calculate them from softend potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
+                if(u < 0.5) {fac2 = mass * h5_inv * (76.8 - 96.0 * u);} else {fac2 = mass * h5_inv * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u);}
 #endif
             } // closes r < h (else) clause
             
@@ -2433,9 +2416,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             if(tabindex < NTAB && tabindex >= 0)
 #endif // PMGRID //
             {
-#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
-                /* save original fac without shortrange_table facor (needed for tidal field calculation) */
-                fac_tidal = fac;
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+                fac_tidal = fac; /* save original fac without shortrange_table factor (needed for tidal field calculation) */
 #endif
                 
 #ifdef PMGRID
@@ -2456,7 +2438,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 acc_y += FLT(dy * fac);
                 acc_z += FLT(dz * fac);
                 
-#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                 /*
                  tidal_tensorps[][] = Matrix of second derivatives of grav. potential, symmetric:
                  |Txx Txy Txz|   |tidal_tensorps[0][0] tidal_tensorps[0][1] tidal_tensorps[0][2]|
@@ -2633,7 +2615,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef EVALPOTENTIAL
         P[target].Potential = pot;
 #endif
-#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
         for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
 #endif
 #ifdef BH_CALC_DISTANCES
@@ -2642,9 +2624,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         P[target].min_xyz_to_bh[1] = min_xyz_to_bh[1];
         P[target].min_xyz_to_bh[2] = min_xyz_to_bh[2];
 #ifdef SINGLE_STAR_TIMESTEPPING
-	P[target].min_bh_approach_time = sqrt(min_bh_approach_time);
-	P[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);
-	P[target].min_bh_periastron = min_bh_periastron;
+        P[target].min_bh_approach_time = sqrt(min_bh_approach_time);
+        P[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);
+        P[target].min_bh_periastron = min_bh_periastron;
 #endif	
 #endif
     }
@@ -2666,7 +2648,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef EVALPOTENTIAL
         GravDataResult[target].Potential = pot;
 #endif
-#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
         for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GravDataResult[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
 #endif
 #ifdef BH_CALC_DISTANCES
@@ -2675,9 +2657,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         GravDataResult[target].min_xyz_to_bh[1] = min_xyz_to_bh[1];
         GravDataResult[target].min_xyz_to_bh[2] = min_xyz_to_bh[2];
 #ifdef SINGLE_STAR_TIMESTEPPING
-	GravDataResult[target].min_bh_approach_time = sqrt(min_bh_approach_time);
-	GravDataResult[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);
-	GravDataResult[target].min_bh_periastron = min_bh_periastron;
+        GravDataResult[target].min_bh_approach_time = sqrt(min_bh_approach_time);
+        GravDataResult[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);
+        GravDataResult[target].min_bh_periastron = min_bh_periastron;
 #endif	
 #endif
         *exportflag = nodesinlist;
@@ -2881,10 +2863,10 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                         openflag = 1;
                     }
                 }
-#ifndef HYBRID_OPENING_CRITERION		
+#ifndef GRAVITY_HYBRID_OPENING_CRIT
                 else		/* check relative opening criterion */
 #else
-		if(!(All.Ti_Current == 0 && RestartFlag == 0))		  
+                if(!(All.Ti_Current == 0 && RestartFlag == 0))
 #endif		  
                 {
                     if(mass * nop->len * nop->len > r2 * r2 * aold)
@@ -3336,10 +3318,10 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                         continue;
                     }
                 }
-#ifndef HYBRID_OPENING_CRITERION
+#ifndef GRAVITY_HYBRID_OPENING_CRIT
                 else		/* check relative opening criterion */
 #else
-		if(!(All.Ti_Current == 0 && RestartFlag == 0))		  
+                if(!(All.Ti_Current == 0 && RestartFlag == 0))		  
 #endif				  
                 {
                     
@@ -3714,7 +3696,7 @@ void force_treeallocate(int maxnodes, int maxpart)
             u = 3.0 / NTAB * (i + 0.5);
             shortrange_table[i] = erfc(u) + 2.0 * u / sqrt(M_PI) * exp(-u * u);
             shortrange_table_potential[i] = erfc(u);
-#if(defined(GDE_DISTORTIONTENSOR) || defined (SINGLE_STAR_HILL_CRITERION) || defined (TIDAL_TIMESTEP_CRITERION))
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
             shortrange_table_tidal[i] = 4.0 * u * u * u / sqrt(M_PI) * exp(-u * u);
 #endif
         }

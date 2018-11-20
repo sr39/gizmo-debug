@@ -171,8 +171,7 @@ void blackhole_swallow_and_kick_loop(void)
 #ifdef BH_ALPHADISK_ACCRETION
             BPP(place).BH_Mass_AlphaDisk += BlackholeDataOut[j].BH_Mass_AlphaDisk;
 #endif
-            for(k = 0; k < 3; k++)
-                BlackholeTempInfo[P[place].IndexMapToTempStruc].accreted_momentum[k] += BlackholeDataOut[j].accreted_momentum[k];
+            for(k = 0; k < 3; k++) {BlackholeTempInfo[P[place].IndexMapToTempStruc].accreted_momentum[k] += BlackholeDataOut[j].accreted_momentum[k];}
 #ifdef BH_COUNTPROGS
             BPP(place).BH_CountProgs += BlackholeDataOut[j].BH_CountProgs;
 #endif
@@ -443,10 +442,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                         accreted_BH_mass_alphadisk += FLT(f_accreted*P[j].Mass);
 #else                               /* mass goes directly to the BH, not just the parent particle */
                         accreted_BH_mass += FLT(f_accreted*P[j].Mass);
-#ifdef SINGLE_STAR_FORMATION
+#endif
                         for(k = 0; k < 3; k++) accreted_momentum[k] += FLT(f_accreted * P[j].Mass * P[j].Vel[k]);
-#endif
-#endif
 #endif
                         P[j].Mass *= (1-f_accreted);
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME

@@ -67,34 +67,17 @@ void sum_top_level_node_costfactors(void);
  */
 void gravity_tree(void)
 {
-    long long n_exported = 0;
-    int i, j, maxnumnodes, iter;
-    double t0, t1;
-    double timeall = 0, timetree1 = 0, timetree2 = 0;
-    double timetree, timewait, timecomm;
-    double timecommsumm1 = 0, timecommsumm2 = 0, timewait1 = 0, timewait2 = 0;
-    double sum_costtotal, ewaldtot;
-    double maxt, sumt, maxt1, sumt1, maxt2, sumt2, sumcommall, sumwaitall;
-    double plb, plb_max;
-    iter = 0;
+    long long n_exported = 0; int i, j, maxnumnodes, iter; iter = 0;
+    double t0, t1, timeall = 0, timetree1 = 0, timetree2 = 0, timetree, timewait, timecomm;
+    double timecommsumm1 = 0, timecommsumm2 = 0, timewait1 = 0, timewait2 = 0, sum_costtotal, ewaldtot;
+    double maxt, sumt, maxt1, sumt1, maxt2, sumt2, sumcommall, sumwaitall, plb, plb_max;
     
 #ifdef FIXEDTIMEINFIRSTPHASE
-    int counter;
-    double min_time_first_phase, min_time_first_phase_glob;
+    int counter; double min_time_first_phase, min_time_first_phase_glob;
 #endif
 #ifndef SELFGRAVITY_OFF
-    int k, ewald_max, diff, save_NextParticle;
-    int ndone, ndone_flag, ngrp;
-    int place;
-    int recvTask;
-    double tstart, tend, ax, ay, az;
-    MPI_Status status;
-    
-#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION))
-    int i1, i2;
+    int k, ewald_max, diff, save_NextParticle, ndone, ndone_flag, ngrp, place, recvTask; double tstart, tend, ax, ay, az; MPI_Status status;
 #endif
-#endif
-    
     
     CPU_Step[CPU_MISC] += measure_time();
     
@@ -418,16 +401,10 @@ void gravity_tree(void)
                     for(k = 0; k < 3; k++) {GravDataIn[j].Vel[k] = P[place].Vel[k];}		    
 #endif		    
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
-                    if( (P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type]) )
-                        GravDataIn[j].Soft = PPP[place].Hsml;
-                    else
-                        GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];
+                    if( (P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type]) ) {GravDataIn[j].Soft = PPP[place].Hsml;} else {GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];}
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
-                    if((P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type]))
-                        GravDataIn[j].AGS_zeta = PPPZ[place].AGS_zeta;
-                    else
-                        GravDataIn[j].AGS_zeta = 0;
+                    if((P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type])) {GravDataIn[j].AGS_zeta = PPPZ[place].AGS_zeta;} else {GravDataIn[j].AGS_zeta = 0;}
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
                     if(PPP[place].AGS_Hsml > All.ForceSoftening[P[place].Type])
@@ -439,8 +416,7 @@ void gravity_tree(void)
                         GravDataIn[j].AGS_zeta = 0;
                     }
 #endif
-                    memcpy(GravDataIn[j].NodeList,
-                           DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
+                    memcpy(GravDataIn[j].NodeList,DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
                 }
                 
                 
@@ -564,10 +540,10 @@ void gravity_tree(void)
                         P[place].min_xyz_to_bh[2] = GravDataOut[j].min_xyz_to_bh[2];
                     }
 #ifdef SINGLE_STAR_TIMESTEPPING
-		      if(GravDataOut[j].min_bh_approach_time < P[place].min_bh_approach_time)  P[place].min_bh_approach_time = GravDataOut[j].min_bh_approach_time;
-		      if(GravDataOut[j].min_bh_freefall_time < P[place].min_bh_freefall_time)  P[place].min_bh_freefall_time = GravDataOut[j].min_bh_freefall_time;
-		      if(GravDataOut[j].min_bh_periastron < P[place].min_bh_periastron)  P[place].min_bh_periastron = GravDataOut[j].min_bh_periastron;
-#endif		      		    
+                    if(GravDataOut[j].min_bh_approach_time < P[place].min_bh_approach_time) {P[place].min_bh_approach_time = GravDataOut[j].min_bh_approach_time;}
+                    if(GravDataOut[j].min_bh_freefall_time < P[place].min_bh_freefall_time) {P[place].min_bh_freefall_time = GravDataOut[j].min_bh_freefall_time;}
+                    if(GravDataOut[j].min_bh_periastron < P[place].min_bh_periastron) {P[place].min_bh_periastron = GravDataOut[j].min_bh_periastron;}
+#endif
 #endif
                     if(Ewald_iter==0) /* don't allow for an infinite hierarchy of these moments, or you will get nonsense */
                     {
@@ -583,10 +559,8 @@ void gravity_tree(void)
 #endif
                     }
                     
-#if (defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION))
-                    for(i1 = 0; i1 < 3; i1++)
-                        for(i2 = 0; i2 < 3; i2++)
-                            P[place].tidal_tensorps[i1][i2] += GravDataOut[j].tidal_tensorps[i1][i2];
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+                    int i1,i2; for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[place].tidal_tensorps[i1][i2] += GravDataOut[j].tidal_tensorps[i1][i2];}}
 #endif
                     
 #ifdef EVALPOTENTIAL
@@ -605,9 +579,7 @@ void gravity_tree(void)
         
 #ifdef SCF_HYBRID
         /* restore particle masses */
-        for(i = 0; i < NumPart; i++)
-            P[i].Mass = P[i].MassBackup;
-        
+        for(i = 0; i < NumPart; i++) {P[i].Mass = P[i].MassBackup;}
         
         /* add up accelerations from tree to AccelSum */
         for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
@@ -619,8 +591,7 @@ void gravity_tree(void)
             }
             else
             {
-                for(j = 0; j < 3; j++)
-                    P[i].GravAccelSum[j] += P[i].GravAccel[j];
+                for(j = 0; j < 3; j++) {P[i].GravAccelSum[j] += P[i].GravAccel[j];}
             }
         }
     }				/* scf_counter */
@@ -628,8 +599,7 @@ void gravity_tree(void)
     /* set acceleration to summed up accelerations */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        for(j = 0; j < 3; j++)
-            P[i].GravAccel[j] = P[i].GravAccelSum[j];
+        for(j = 0; j < 3; j++) {P[i].GravAccel[j] = P[i].GravAccelSum[j];}
     }
 #endif
     
@@ -646,16 +616,12 @@ void gravity_tree(void)
     if(TakeLevel >= 0)
     {
         sum_top_level_node_costfactors();
-        
         for(i = 0; i < NumPart; i++)
         {
             int no = Father[i];
-            
             while(no >= 0)
             {
-                if(Nodes[no].u.d.mass > 0)
-                    P[i].GravCost[TakeLevel] += Nodes[no].GravCost * P[i].Mass / Nodes[no].u.d.mass;
-                
+                if(Nodes[no].u.d.mass > 0) {P[i].GravCost[TakeLevel] += Nodes[no].GravCost * P[i].Mass / Nodes[no].u.d.mass;}
                 no = Nodes[no].u.d.father;
             }
         }
@@ -696,85 +662,52 @@ void gravity_tree(void)
         P[i].OldAcc = sqrt(ax * ax + ay * ay + az * az);
     }
 
-#ifndef HYBRID_OPENING_CRITERION      // in collisional systems we don't want to rely on the relative opening criterion alone, because aold can be dominated by a binary companion but we still want accurate contributions from distant nodes. Thus we combine BH and relative criteria. - MYG
+#ifndef GRAVITY_HYBRID_OPENING_CRIT  // in collisional systems we don't want to rely on the relative opening criterion alone, because aold can be dominated by a binary companion but we still want accurate contributions from distant nodes. Thus we combine BH and relative criteria. - MYG
     if(header.flag_ic_info == FLAG_SECOND_ORDER_ICS)
     {
-        if(!(All.Ti_Current == 0 && RestartFlag == 0))
-            if(All.TypeOfOpeningCriterion == 1)
-                All.ErrTolTheta = 0;	/* This will switch to the relative opening criterion for the following force computations */
+        if(!(All.Ti_Current == 0 && RestartFlag == 0)) {if(All.TypeOfOpeningCriterion == 1) {All.ErrTolTheta = 0;}}	/* This will switch to the relative opening criterion for the following force computations */
     }
     else
     {
-        if(All.TypeOfOpeningCriterion == 1)
-            All.ErrTolTheta = 0;	/* This will switch to the relative opening criterion for the following force computations */
+        if(All.TypeOfOpeningCriterion == 1) {All.ErrTolTheta = 0;} /* This will switch to the relative opening criterion for the following force computations */
     }
 #endif
     
     /*  muliply by G */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        for(j = 0; j < 3; j++)
-            P[i].GravAccel[j] *= All.G;
-#if defined(GDE_DISTORTIONTENSOR) || defined(SINGLE_STAR_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION)
-        /*
-         Diagonal terms of tidal tensor need correction, because tree is running over
-         all particles -> also over target particle -> extra term -> correct it
-         */
-        /* 3D -> full forces */
-#if !(defined(SINGLE_STAR_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION)) // this does not appear to be necessary in my tests - MYG
-	//	if(P[i].Type == 0) { // we want to keep the contribution of the particle's self-tides
-	  //#endif	  
-
-        P[i].tidal_tensorps[0][0] +=
-        P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] *
-                     All.ForceSoftening[P[i].Type]) * 10.666666666667;
+        for(j = 0; j < 3; j++) {P[i].GravAccel[j] *= All.G;}
         
-        P[i].tidal_tensorps[1][1] +=
-        P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] *
-                     All.ForceSoftening[P[i].Type]) * 10.666666666667;
-        
-        P[i].tidal_tensorps[2][2] +=
-        P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] *
-                     All.ForceSoftening[P[i].Type]) * 10.666666666667;
-#endif	
-
-#ifdef GDE_DISTORTIONTENSOR	
-        if(All.ComovingIntegrationOn)
-        {
-            P[i].tidal_tensorps[0][0] -= All.TidalCorrection/All.G;
-            P[i].tidal_tensorps[1][1] -= All.TidalCorrection/All.G;
-            P[i].tidal_tensorps[2][2] -= All.TidalCorrection/All.G;
-        }
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+        /* Diagonal terms of tidal tensor need correction, because tree is running over all particles -> also over target particle -> extra term -> correct it */
+        if(All.ComovingIntegrationOn) {P[i].tidal_tensorps[0][0] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[1][1] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[2][2] -= All.TidalCorrection/All.G;} // subtract Hubble flow terms //
+#if (defined(TIDAL_TIMESTEP_CRITERION) || defined(SINGLE_STAR_HILL_CRITERION)) // diagonalize the tidal tensor so we can use its invariants, which don't change with rotation
+        double tt[9]; for(j=0; j<3; j++) {for (k=0; k<3; k++) tt[3*j+k] = P[i].tidal_tensorps[j][k];}
+        gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3);
+        gsl_vector *eval = gsl_vector_alloc (3);
+        gsl_eigen_symm_workspace * w = gsl_eigen_symm_alloc (3);
+        gsl_eigen_symm(&m.matrix, eval,  w);
+        for(k=0; k<3; k++) P[i].tidal_tensorps[k][k] = gsl_vector_get(eval,k); // set diagonal elements to eigenvalues
+        P[i].tidal_tensorps[0][1] = P[i].tidal_tensorps[1][0] = P[i].tidal_tensorps[1][2] = P[i].tidal_tensorps[2][1] = P[i].tidal_tensorps[0][2] = P[i].tidal_tensorps[2][0] = 0; //zero out off-diagonal elements
+        gsl_eigen_symm_free(w);
+        gsl_vector_free (eval);
+#else // for GDE implementation, want to include particle self-tide contribution -- for timestep or hill criteria, on the other hand, this is not necessary
+        P[i].tidal_tensorps[0][0] += P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type]) * 10.666666666667;
+        P[i].tidal_tensorps[1][1] += P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type]) * 10.666666666667;
+        P[i].tidal_tensorps[2][2] += P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type]) * 10.666666666667;
 #endif
-#if (defined(TIDAL_TIMESTEP_CRITERION) ||  defined(SINGLE_STAR_HILL_CRITERION))
-	//diagonalize the tidal tensor so we can use its invariants, which don't change with rotation	
-	double tt[9];
-	for(j=0; j<3; j++) {for (k=0; k<3; k++) tt[3*j+k] = P[i].tidal_tensorps[j][k];}
-	gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3);
-	gsl_vector *eval = gsl_vector_alloc (3);
-	gsl_eigen_symm_workspace * w = gsl_eigen_symm_alloc (3);
-	gsl_eigen_symm(&m.matrix, eval,  w);
-	for(k=0; k<3; k++) P[i].tidal_tensorps[k][k] = gsl_vector_get(eval,k); // set diagonal elements to eigenvalues
-	P[i].tidal_tensorps[0][1] = P[i].tidal_tensorps[1][0] = P[i].tidal_tensorps[1][2] = P[i].tidal_tensorps[2][1] = P[i].tidal_tensorps[0][2] = P[i].tidal_tensorps[2][0] = 0; //zero out off-diagonal elements
-	gsl_eigen_symm_free(w);
-	gsl_vector_free (eval);
-#endif		
-        /*now muliply by All.G */
-        for(i1 = 0; i1 < 3; i1++)
-            for(i2 = 0; i2 < 3; i2++)
-                P[i].tidal_tensorps[i1][i2] *= All.G;
+        for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[i].tidal_tensorps[i1][i2] *= All.G;}} // units //
 #endif /* GDE_DISTORTIONTENSOR */
+
         
 #ifdef EVALPOTENTIAL
         /* remove self-potential */
 	//	P[i].Potential += P[i].Mass / All.SofteningTable[P[i].Type];
         
 #ifdef BOX_PERIODIC
-        if(All.ComovingIntegrationOn)
-            P[i].Potential -= 2.8372975 * pow(P[i].Mass, 2.0 / 3) *
-            pow(All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G), 1.0 / 3);
+        if(All.ComovingIntegrationOn) {P[i].Potential -= 2.8372975 * pow(P[i].Mass, 2.0 / 3) * pow(All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G), 1.0 / 3);}
 #endif
-        
+
         P[i].Potential *= All.G;
         
 #ifdef PMGRID

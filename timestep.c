@@ -430,17 +430,16 @@ integertime get_timestep(int p,		/*!< particle index */
     }
 #endif
 
-#ifdef TIDAL_TIMESTEP_CRITERION
-//tidal criterion obtains the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion
-    double dt_tidal = 0.;
-    for(int k=0; k<3; k++) dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k]; // this is diagonalized already in the gravity loop
+#ifdef TIDAL_TIMESTEP_CRITERION // tidal criterion obtains the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion
+    double dt_tidal = 0.; for(int k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];} // this is diagonalized already in the gravity loop
     dt_tidal = sqrt(All.ErrTolIntAccuracy / sqrt(dt_tidal));
     dt = DMIN(All.MaxSizeTimestep, dt_tidal);
-#endif    
+#endif
 #ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step, which gives superior conservation
-    if(P[p].Type == 5) {
-      double omega_binary = 1/P[p].min_bh_approach_time + 1/P[p].min_bh_freefall_time; // timestep is harmonic mean of freefall and approach time
-      dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary);
+    if(P[p].Type == 5)
+    {
+        double omega_binary = 1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time; // timestep is harmonic mean of freefall and approach time
+        dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary);
     }
 #endif
 
