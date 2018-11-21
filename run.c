@@ -78,8 +78,10 @@ void run(void)
         
         set_non_standard_physics_for_current_time();	/* update auxiliary physics for current time */
 
-	#ifdef SINGLE_STAR_FORMATION 
-		MPI_Allreduce(&TreeReconstructFlag, &TreeReconstructFlag, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
+	#ifdef SINGLE_STAR_FORMATION
+		int treeflagtemp;
+		MPI_Allreduce(&TreeReconstructFlag, &treeflagtemp, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
+		TreeReconstructFlag = treeflagtemp;
 	#endif
 	
         if(GlobNumForceUpdate > All.TreeDomainUpdateFrequency * All.TotNumPart)	/* check whether we have a big step */
