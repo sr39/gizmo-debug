@@ -312,7 +312,7 @@ integertime get_timestep(int p,		/*!< particle index */
                          double *aphys,	/*!< acceleration (physical units) */
                          int flag	/*!< either 0 for normal operation, or finite timestep to get corresponding aphys */ )
 {
-    double ax, ay, az, ac;
+  double ax, ay, az, ac;
     double csnd = 0, dt = 0, dt_courant = 0, dt_divv = 0;
     integertime ti_step;
     int k; k=0;
@@ -331,10 +331,13 @@ integertime get_timestep(int p,		/*!< particle index */
     
     if(flag == 0)
     {
+#if defined(TIDAL_TIMESTEP_CRITERION) && !defined(GALSF_FB_FIRE_RT_LONGRANGE)
+        ax = ay = az = 0.0; // we're getting our gravitational timestep criterion from the tidal tensor, but still want to do the accel criterion for other forces
+#else
         ax = All.cf_a2inv * P[p].GravAccel[0];
         ay = All.cf_a2inv * P[p].GravAccel[1];
         az = All.cf_a2inv * P[p].GravAccel[2];
-        
+#endif        
 #ifdef PMGRID
         ax += All.cf_a2inv * P[p].GravPM[0];
         ay += All.cf_a2inv * P[p].GravPM[1];
@@ -433,9 +436,10 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef TIDAL_TIMESTEP_CRITERION // tidal criterion obtains the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion
     double dt_tidal = 0.; for(int k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];} // this is diagonalized already in the gravity loop
     dt_tidal = sqrt(All.ErrTolIntAccuracy / sqrt(dt_tidal));
-    dt = DMIN(All.MaxSizeTimestep, dt_tidal);
+    if (P[p].Type == 0) {dt = DMIN(dt, dt_tidal);} // have to include timestep criterion that has hydro accel 
+    else {dt = DMIN(All.MaxSizeTimestep, dt_tidal);} // for collisionless or stars, fuhgeddabout the Power 2003 timestep. We're in Tidaltown, USA
 #endif
-#ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step, which gives superior conservation
+#ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step and the timestep anticipates close encounters, which gives superior conservation
     if(P[p].Type == 5)
     {
         double omega_binary = 1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time; // timestep is harmonic mean of freefall and approach time
