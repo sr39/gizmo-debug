@@ -344,8 +344,8 @@ double get_starformation_rate(int i)
         if(divv >= 0) {rateOfSF=0;} 
     }
     if(SphP[i].Density_Relative_Maximum_in_Kernel > 0) {rateOfSF=0;} // restrict to local density/potential maxima //
-#ifdef BH_CALC_DISTANCES
-    if(P[i].min_dist_to_bh < DMAX(All.ForceSoftening[5], 10*PPP[i].Hsml)) {rateOfSF=0;} // restrict to particles without a sink in their kernel; we can actually go pretty aggressive with this, as hsml will inevitably get small enough if this gas is really collapsing - MYG
+#ifdef BH_CALC_DISTANCES     // NOTE: we have a "no sink in gas kernel" check but not "no gas in sink kernel", as the latter has been found to suppress bona fide star formation and grind the simulation to a halt
+    if(P[i].min_dist_to_bh < PPP[i].Hsml) {rateOfSF=0;} // restrict to particles without a sink in their kernel; we can actually go pretty aggressive with this, as hsml will inevitably get small enough if this gas is really collapsing - MYG
 #ifdef SINGLE_STAR_TIMESTEPPING
     if(DMIN(P[i].min_bh_approach_time, P[i].min_bh_freefall_time) < tsfr) {rateOfSF = 0;}
 #endif    
