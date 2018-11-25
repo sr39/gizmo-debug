@@ -734,6 +734,9 @@ void density(void)
                 
 #ifdef BLACK_HOLES
                 if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius / All.cf_atime;}  // MaxAccretionRadius is now defined in params.txt in PHYSICAL units
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+		if(P[i].Type == 5) {minsoft = All.ForceSoftening[5] / All.cf_atime;} // we should always find all nieghbours within the softening kernel, which is a lower bound on the accretion radius
+#endif		
 #endif
 
                 redo_particle = 0;
