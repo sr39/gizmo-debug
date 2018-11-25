@@ -404,14 +404,18 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
                         if(P[j].Type != 5)
                         {
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+			  if(r < sink_radius) // don't even bother if not in the accretion radius
+#endif			  
                             if((vrel < vesc)) // && (particles_swallowed_this_bh_this_process < particles_swallowed_this_bh_this_process_max))
                             { /* bound */
 #ifdef SINGLE_STAR_STRICT_ACCRETION
                                 double spec_mom=0; for(k=0;k<3;k++) {spec_mom += (P[j].Vel[k] - velocity[k])*dpos[k];} // delta_x.delta_v
                                 spec_mom = (r2*vrel*vrel - spec_mom*spec_mom*All.cf_a2inv); // specific angular momentum^2 = r^2(delta_v)^2 - (delta_v.delta_x)^2;
-                                if(spec_mom < All.G * (mass + P[j].Mass) * sink_radius) // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
-#endif
+                                if(spec_mom < All.G * (mass + P[j].Mass) * sink_radius){ // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
+#else
                                 if( bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1 ) { /* apocenter within target distance */
+#endif				  
 #ifdef BH_GRAVCAPTURE_NONGAS        /* simply swallow non-gas particle if BH_GRAVCAPTURE_NONGAS enabled */
                                     if((P[j].Type != 0) && (P[j].SwallowID < id)) P[j].SwallowID = id;
 #endif
