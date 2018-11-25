@@ -309,7 +309,7 @@ double get_starformation_rate(int i)
 #if (GALSF_SFR_VIRIAL_SF_CRITERION >= 3)
     SphP[i].AlphaVirial_SF_TimeSmoothed += 8.*(1./(1+alpha_vir) - SphP[i].AlphaVirial_SF_TimeSmoothed) * dt/tsfr;
     if (SphP[i].AlphaVirial_SF_TimeSmoothed < 0.5 || divv >= 0) rateOfSF *= 0.0;
-#ifdef (GALSF_SFR_VIRIAL_SF_CRITERION >= 4) 
+#if (GALSF_SFR_VIRIAL_SF_CRITERION >= 4) 
     // we check that the velocity gradient is negative-definite, ie. converging along all principal axes, which is much stricter than div v < 0
     gsl_matrix_view M = gsl_matrix_view_array (gradv, 3, 3);
     gsl_vector *eval1 = gsl_vector_alloc (3);
@@ -541,7 +541,7 @@ void star_formation_parent_routine(void)
                 P[i].BH_Mass = All.SeedBlackHoleMass;
                 TreeReconstructFlag = 1;
 #ifdef SINGLE_STAR_STRICT_ACCRETION
-                P[i].SinkRadius = 0.5 * Get_Particle_Size(i);
+                P[i].SinkRadius = DMAX(0.5 * Get_Particle_Size(i), All.ForceSoftening[5]);
 #endif		
 #ifdef BH_ALPHADISK_ACCRETION
                 P[i].BH_Mass_AlphaDisk = DMAX(DMAX(0, P[i].Mass-P[i].BH_Mass), All.SeedAlphaDiskMass);
