@@ -307,7 +307,7 @@ double get_starformation_rate(int i)
 #endif
 
 #if (GALSF_SFR_VIRIAL_SF_CRITERION >= 3)
-    SphP[i].AlphaVirial_SF_TimeSmoothed += 8.*(1./(1+alpha_vir) - SphP[i].AlphaVirial_SF_TimeSmoothed) * dt/tsfr;
+    SphP[i].AlphaVirial_SF_TimeSmoothed += 8.*(1./(1+alpha_vir) - SphP[i].AlphaVirial_SF_TimeSmoothed) * dtime/tsfr;
     if (SphP[i].AlphaVirial_SF_TimeSmoothed < 0.5 || divv >= 0) rateOfSF *= 0.0;
 #ifdef (GALSF_SFR_VIRIAL_SF_CRITERION >= 4) 
     // we check that the velocity gradient is negative-definite, ie. converging along all principal axes, which is much stricter than div v < 0
