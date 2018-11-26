@@ -132,7 +132,7 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 	//	printf("sink radius: %g apo: %g r: %g\n", sink_radius, apocenter, dr_code);
 	//	apocenter = dr_code;
 	apocenter_max = 2*sink_radius;
-	if(dr_code < ForceSoftening[5]) bound = 1; // force `bound' if within the kernel
+	if(dr_code < All.ForceSoftening[5]) bound = 1; // force `bound' if within the kernel
 #else
 #if defined(SINGLE_STAR_FORMATION) || defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
         double r_j = All.ForceSoftening[P[j].Type];
