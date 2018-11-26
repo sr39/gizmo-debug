@@ -128,18 +128,20 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
         double apocenter = dr_code / (1.0-v2); // NOTE: this is the major axis of the orbit, not the apocenter... - MYG
         double apocenter_max = All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
         if(P[j].Type==5) {apocenter_max += MAX_REAL_NUMBER;} // default is to be unrestrictive for BH-BH mergers //
-	//#ifdef SINGLE_STAR_STRICT_ACCRETION // Bate 1995-style criterion, with a fixed softening radius that is distinct from both the force softening and the search radius
+#ifdef SINGLE_STAR_STRICT_ACCRETION // Bate 1995-style criterion, with a fixed softening radius that is distinct from both the force softening and the search radius
 	//	printf("sink radius: %g apo: %g r: %g\n", sink_radius, apocenter, dr_code);
 	//	apocenter = dr_code;
-	//        apocenter_max = 2*sink_radius;
-	//#else
+	apocenter_max = 2*sink_radius;
+	//	if(dr_code < PPP[j].Hsml) bound = 1;
+	if(dr_code < All.SofteningTable[5]) bound = 1; // force `bound' if within the softened `core' of the sink
+#else
 #if defined(SINGLE_STAR_FORMATION) || defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
         double r_j = All.ForceSoftening[P[j].Type];
         if(P[j].Type==0) {r_j = DMAX(r_j , PPP[j].Hsml);}
         apocenter_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
         if(P[j].Type==5) {apocenter_max = DMIN(apocenter_max , 1.*All.ForceSoftening[5]);}
 #endif
-	//#endif // SINGLE_STAR_STRICT_ACCRETION
+#endif // SINGLE_STAR_STRICT_ACCRETION
         if(apocenter < apocenter_max) {bound = 1;}
     }
     return bound;
