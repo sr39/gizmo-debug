@@ -210,7 +210,11 @@ void apply_grain_dragforce(void)
                                 for(n=0; n<numngb_inbox; n++)
                                 {
                                     j = Ngblist[n];
-                                    r2=0;for(k=0;k<3;k++) r2+=(P[i].Pos[k]-P[j].Pos[k])*(P[i].Pos[k]-P[j].Pos[k]);
+                                    r2=0; double dp[3]={0}; for(k=0;k<3;k++) {dp[k]=P[i].Pos[k]-P[j].Pos[k];};
+#ifdef BOX_PERIODIC
+                                    NEAREST_XYZ(dp[0],dp[1],dp[2],1);
+#endif
+                                    r2 = dp[0]*dp[0]+dp[1]*dp[1]+dp[2]*dp[2];
                                     if((r2<r2nearest)&&(P[j].Mass>0)) {
                                         r2nearest=r2;jnearest=j;
                                     }
@@ -258,7 +262,11 @@ void apply_grain_dragforce(void)
 #ifdef BOX_BND_PARTICLES
                                     if(P[j].ID <= 0) continue;
 #endif
-                                    r2=0; for(k=0;k<3;k++) r2+=(P[i].Pos[k]-P[j].Pos[k])*(P[i].Pos[k]-P[j].Pos[k]);
+                                    r2=0; double dp[3]={0}; for(k=0;k<3;k++) {dp[k]=P[i].Pos[k]-P[j].Pos[k];};
+#ifdef BOX_PERIODIC
+                                    NEAREST_XYZ(dp[0],dp[1],dp[2],1);
+#endif
+                                    r2 = dp[0]*dp[0]+dp[1]*dp[1]+dp[2]*dp[2];
                                     if ((r2<=h2)&&(P[j].Mass>0)&&(SphP[j].Density>0))
                                     {
                                         u=sqrt(r2)*hinv;
