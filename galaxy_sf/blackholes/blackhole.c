@@ -132,8 +132,7 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 	//	printf("sink radius: %g apo: %g r: %g\n", sink_radius, apocenter, dr_code);
 	//	apocenter = dr_code;
 	apocenter_max = 2*sink_radius;
-	//	if(dr_code < PPP[j].Hsml) bound = 1;
-	if(dr_code < All.SofteningTable[5]) bound = 1; // force `bound' if within the softened `core' of the sink
+	if(dr_code < ForceSoftening[5]) bound = 1; // force `bound' if within the kernel
 #else
 #if defined(SINGLE_STAR_FORMATION) || defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
         double r_j = All.ForceSoftening[P[j].Type];
@@ -816,7 +815,8 @@ void blackhole_final_operations(void)
             BPP(n).BH_Mass += BlackholeTempInfo[i].accreted_BH_Mass;
         } // if(((BlackholeTempInfo[n].accreted_Mass>0)||(BlackholeTempInfo[n].accreted_BH_Mass>0)) && P[n].Mass > 0)
 #ifdef SINGLE_STAR_STRICT_ACCRETION
-        P[n].SinkRadius = DMAX(DMAX(P[n].SinkRadius, All.G * P[n].Mass / (1.0e12 / (All.UnitVelocity_in_cm_per_s * All.UnitVelocity_in_cm_per_s))), All.ForceSoftening[5]);        // accretion radius is at least the Bondi radius for c_s = 10km/s
+	//        P[n].SinkRadius = DMAX(DMAX(P[n].SinkRadius, All.G * P[n].Mass / (1.0e12 / (All.UnitVelocity_in_cm_per_s * All.UnitVelocity_in_cm_per_s))), All.ForceSoftening[5]);        // accretion radius is at least the Bondi radius for c_s = 100km/s
+	P[n].SinkRadius = DMAX(P[n].SinkRadius, All.ForceSoftening[5]);
 #ifdef SINGLE_STAR_TIDAL_ACCRETION // This is a novel determination of the sink radius, scaled to the sink particle's Hill sphere - for scale-free simulations, not necessary full-physics star formation sims - MYG
         double tidal_field = sqrt(P[n].tidal_tensorps[0][0]*P[n].tidal_tensorps[0][0] + P[n].tidal_tensorps[1][1]*P[n].tidal_tensorps[1][1] + P[n].tidal_tensorps[2][2]*P[n].tidal_tensorps[2][2]);
         P[n].SinkRadius = DMAX(All.SofteningTable[5], pow(All.G*P[n].Mass/tidal_field, 1./3)/10); // /10 here is arbitrary - set to taste
