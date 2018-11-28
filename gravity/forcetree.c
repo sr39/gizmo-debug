@@ -1874,14 +1874,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double r2soft = r2 + All.SofteningTable[5]*All.SofteningTable[5];
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER);
                     double tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
-                    if(tSqr < min_bh_approach_time) {
-                        min_bh_approach_time = tSqr;
-                        double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
-                        double dv_dot_dx = bh_dvx*dx + bh_dvy*dy + bh_dvz*dz;
-                        double hSqr = vSqr*r2 - dv_dot_dx*dv_dot_dx;
-                        double ecc = sqrt(1 + 2*specific_energy*hSqr / (All.G*All.G*M_total*M_total));
-                        min_bh_periastron = -All.G*M_total / specific_energy * (1-ecc) * (P[no].Mass/M_total); // final factor ensures that this gives binaries the same timestep
-                    }
+                    /* if(tSqr < min_bh_approach_time) { */
+                    /*     min_bh_approach_time = tSqr; */
+                    /*     double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2); */
+                    /*     double dv_dot_dx = bh_dvx*dx + bh_dvy*dy + bh_dvz*dz; */
+                    /*     double hSqr = vSqr*r2 - dv_dot_dx*dv_dot_dx; */
+                    /*     double ecc = sqrt(1 + 2*specific_energy*hSqr / (All.G*All.G*M_total*M_total)); */
+                    /*     min_bh_periastron = -All.G*M_total / specific_energy * (1-ecc) * (P[no].Mass/M_total); // final factor ensures that this gives binaries the same timestep */
+                    /* } */
                     if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
 #endif
                 }
@@ -2281,14 +2281,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double r2soft = bh_r2 + All.SofteningTable[5]*All.SofteningTable[5];
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER);
                     double tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
-                    if(tSqr < min_bh_approach_time) {
-                        min_bh_approach_time = tSqr;
-                        double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(bh_r2);
-                        double dv_dot_dx = bh_dvx*bh_dx + bh_dvy*bh_dy + bh_dvz*bh_dz;
-                        double hSqr = vSqr*r2 - dv_dot_dx*dv_dot_dx;
-                        double ecc = sqrt(1 + 2*specific_energy*hSqr / (All.G*All.G*M_total*M_total));
-                        min_bh_periastron = -All.G*M_total / specific_energy * (1-ecc) * (nop->bh_mass/M_total); // final factor ensures that this gives binaries the same timestep when we use it to turn the accel into a timestep
-                    }
+                    /* if(tSqr < min_bh_approach_time) { */
+                    /*     min_bh_approach_time = tSqr; */
+                    /*     double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(bh_r2); */
+                    /*     double dv_dot_dx = bh_dvx*bh_dx + bh_dvy*bh_dy + bh_dvz*bh_dz; */
+                    /*     double hSqr = vSqr*r2 - dv_dot_dx*dv_dot_dx; */
+                    /*     double ecc = sqrt(1 + 2*specific_energy*hSqr / (All.G*All.G*M_total*M_total)); */
+                    /*     min_bh_periastron = -All.G*M_total / specific_energy * (1-ecc) * (nop->bh_mass/M_total); // final factor ensures that this gives binaries the same timestep when we use it to turn the accel into a timestep */
+                    /* } */
                     if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
 #endif
                 }
