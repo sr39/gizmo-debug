@@ -155,7 +155,7 @@ double bh_angleweight_localcoupling(int j, double hR, double theta, double r, do
     double H_j = PPP[j].Hsml;
     if((r >= H_j && r >= H_bh) || (H_j <= 0) || (P[j].Mass <= 0) || (SphP[j].Density <= 0)) return 0;
     /* now calculate all the kernel quantities we need */
-    double hinv=1./H_bh,hinv_j=1./H_j,hinv3_j=hinv_j*hinv_j*hinv_j,wk_j=0,u=r/H_bh;
+    double hinv=1./H_bh,hinv_j=1./H_j,hinv3_j=hinv_j*hinv_j*hinv_j,wk_j=0,u=r/H_bh; /* note these lines and many below assume 3D sims! */
     double dwk_j=0,u_j=r*hinv_j,hinv4_j=hinv_j*hinv3_j,V_j=P[j].Mass/SphP[j].Density;
     double hinv3=hinv*hinv*hinv,hinv4=hinv*hinv3,wk=0,dwk=0;
     kernel_main(u,hinv3,hinv4,&wk,&dwk,1);

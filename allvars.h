@@ -1371,10 +1371,6 @@ extern FILE
 #endif
  *FdCPU;        /*!< file handle for cpu.txt log-file. */
 
-#ifdef SCF_POTENTIAL
-extern FILE *FdSCF;
-#endif
-
 #ifdef GALSF
 extern FILE *FdSfr;		/*!< file handle for sfr.txt log-file. */
 #endif
@@ -2088,6 +2084,9 @@ extern ALIGN(32) struct particle_data
     MyFloat Gas_Density;
     MyFloat Gas_InternalEnergy;
     MyFloat Gas_Velocity[3];
+#ifdef GRAIN_BACKREACTION
+    MyFloat Grain_DeltaMomentum[3];
+#endif
 #ifdef GRAIN_LORENTZFORCE
     MyFloat Gas_B[3];
 #endif
@@ -2184,11 +2183,6 @@ extern ALIGN(32) struct particle_data
     
 #ifdef WAKEUP
     int dt_step;
-#endif
-    
-#ifdef SCF_HYBRID
-    MyDouble GravAccelSum[3];
-    MyFloat MassBackup;
 #endif
     
 #ifdef ADAPTIVE_GRAVSOFT_FORALL

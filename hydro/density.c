@@ -706,6 +706,9 @@ void density(void)
                 {
                     desnumngb = All.DesNumNgb;
                     desnumngbdev = All.DesNumNgb / 4;
+#ifdef GRAIN_BACKREACTION
+                    desnumngbdev = desnumngbdev_0;
+#endif
                 }
 #endif
 

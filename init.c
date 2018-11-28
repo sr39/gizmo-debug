@@ -111,14 +111,6 @@ void init(void)
     All.Time = All.TimeBegin;
     set_cosmo_factors_for_current_time();
     
-#ifdef SCF_POTENTIAL
-    SCF_init();
-    if(ThisTask == 0)
-    {
-        printf("Initial random seed = %ld\n", scf_seed);
-    }
-#endif
-    
     
 #ifdef COOLING
     IonizeParams();
@@ -431,6 +423,9 @@ void init(void)
 #endif
 
             P[i].Gas_Density = P[i].Gas_InternalEnergy = P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0;
+#ifdef GRAIN_BACKREACTION
+            P[i].Grain_DeltaMomentum[0]=P[i].Grain_DeltaMomentum[1]=P[i].Grain_DeltaMomentum[2]=0;
+#endif
 #ifdef GRAIN_COLLISIONS
             P[i].Grain_Density=P[i].Grain_Velocity[0]=P[i].Grain_Velocity[1]=P[i].Grain_Velocity[2]=0;
 #endif
