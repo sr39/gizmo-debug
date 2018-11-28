@@ -352,7 +352,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 // calculate kernel quantities //
                 kernel.r = sqrt(r2); if(kernel.r <= 0) continue;
                 u = kernel.r * kernel.hinv;
-                double hinv_j = 1./PPP[j].Hsml, hinv3_j = hinv_j*hinv_j*hinv_j;
+                double hinv_j = 1./PPP[j].Hsml, hinv3_j = hinv_j*hinv_j*hinv_j; /* note these lines and many below assume 3D sims! */
                 double wk_j = 0, dwk_j = 0, u_j = kernel.r * hinv_j, hinv4_j = hinv_j*hinv3_j, V_j = P[j].Mass / SphP[j].Density;
                 kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 1);
                 kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);

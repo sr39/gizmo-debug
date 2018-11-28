@@ -676,15 +676,6 @@ void open_outputfiles(void)
 #endif
 
 
-#ifdef SCF_POTENTIAL
-  sprintf(buf, "%s%s", All.OutputDir, "scf_coeff.txt");
-  if(!(FdSCF = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-#endif
-
 #ifdef GALSF
   sprintf(buf, "%s%s", All.OutputDir, "sfr.txt");
   if(!(FdSfr = fopen(buf, mode)))

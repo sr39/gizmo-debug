@@ -776,31 +776,6 @@ void check_tidaltensor_nonperiodic(int particle_ID);
 #endif
 #endif
 
-#ifdef SCF_POTENTIAL
-void SCF_do_center_of_mass_correction(double fac_rad, double start_rad, double fac_part, int max_iter);
-void SCF_write(int task);
-void SCF_calc_from_random(long *seed);
-void SCF_calc_from_particles(void);
-void SCF_init(void);
-void SCF_reset(void);
-void SCF_free(void);
-void SCF_evaluate(MyDouble x, MyDouble y, MyDouble z, MyDouble *potential, MyDouble *ax, MyDouble *ay, MyDouble *az);
-void SCF_collect_update(void);
-
-void sphere_acc(double x, double y, double z, double *xa, double *ya, double *za);
-void to_unit(double x, double y, double z, double *xs, double *ys, double *zs);
-double ran1(long *idum);
-double gasdev(long *idum);
-double factrl(int n);
-int nlm_all(int num, int n, int l, int m);
-int nlm(int n, int l, int m);
-int nl(int n, int l);
-int lm(int l, int m);
-int kdelta(int a, int b);
-double gnlm_var(int n, int l, int m);
-double hnlm_var(int n, int l, int m);
-#endif
-
 int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
 void ags_setup_smoothinglengths(void);

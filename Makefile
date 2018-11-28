@@ -1039,12 +1039,6 @@ OBJS    += galaxy_sf/blackholes/blackhole.o galaxy_sf/blackholes/blackhole_util.
 INCL    += galaxy_sf/blackholes/blackhole.h
 endif
 
-
-
-ifeq (SCF_POTENTIAL,$(findstring SCF_POTENTIAL,$(CONFIGVARS)))
-OBJS    += modules/potentials/scf.o modules/potentials/scf_util.o
-endif
-
 ifeq (FOF,$(findstring FOF,$(CONFIGVARS)))
 OBJS    += structure/fof.o
 INCL	+= structure/fof.h
