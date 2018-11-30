@@ -1907,7 +1907,11 @@ int pmpotential_nonperiodic(int grnr)
 
   /* Do the FFT of the density field */
 
+#ifndef USE_FFTW3
   rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
+#else 
+  fftw_execute(fft_forward_plan); 
+#endif
 
   /* multiply with the Fourier transform of the Green's function (kernel) */
 
@@ -1918,8 +1922,8 @@ int pmpotential_nonperiodic(int grnr)
 	  ip = GRID * (GRID / 2 + 1) * y + (GRID / 2 + 1) * x + z;
 
 	  re =
-	    fft_of_rhogrid[ip].re * fft_of_kernel[grnr][ip].re -
-	    fft_of_rhogrid[ip].im * fft_of_kernel[grnr][ip].im;
+	    cmplx_re(fft_of_rhogrid[ip]) * cmplx_re(fft_of_kernel[grnr][ip]) -
+	    cmplx_im(fft_of_rhogrid[ip]) * cmplx_im(fft_of_kernel[grnr][ip]);
 
 	  im =
 	    fft_of_rhogrid[ip].re * fft_of_kernel[grnr][ip].im +
@@ -1931,7 +1935,11 @@ int pmpotential_nonperiodic(int grnr)
 
   /* get the potential by inverse FFT */
 
+#ifndef USE_FFTW3
   rfftwnd_mpi(fft_inverse_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
+#else 
+  fftw_execute(fft_inverse_plan); 
+#endif
 
   /* Now rhogrid holds the potential */
 
@@ -3107,7 +3115,11 @@ int pmtidaltensor_nonperiodic_fourier(int grnr, int component)
 
   /* Do the FFT of the density field */
 
+#ifndef USE_FFTW3
   rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
+#else 
+  fftw_execute(fft_forward_plan); 
+#endif
 
   /* multiply with the Fourier transform of the Green's function (kernel) */
 
@@ -3199,7 +3211,11 @@ int pmtidaltensor_nonperiodic_fourier(int grnr, int component)
 
   /* get the tidalfield by inverse FFT */
 
+#ifndef USE_FFTW3
   rfftwnd_mpi(fft_inverse_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
+#else 
+  fftw_execute(fft_inverse_plan); 
+#endif
 
   /* Now rhogrid holds the tidalfield */
 
