@@ -12,6 +12,7 @@
  *   (xchma@caltech.edu) followed on 05/15/15; re-integrated by PFH.
  */
 
+
 /* quantities that pass IN to the 'blackhole_evaluate' routines */
 static struct blackholedata_in
 {
@@ -44,6 +45,27 @@ static struct blackholedata_in
 #if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;
 #endif
+#if defined(NEWSINK)
+#if !defined(SINGLE_STAR_STRICT_ACCRETION)
+    MyFloat SinkRadius;
+#endif
+    /* properties of neighboring particles, used for preferential feeding */
+    int n_neighbor; //number of neighbors currently stored in the arrays below
+    MyFloat rgas[NEWSINK_NEIGHBORMAX]; /* Distance of gas from sink */
+    MyFloat xgas[NEWSINK_NEIGHBORMAX]; /* x coordinate of gas from sink */
+    MyFloat ygas[NEWSINK_NEIGHBORMAX]; /* y coordinate of gas from sink */
+    MyFloat zgas[NEWSINK_NEIGHBORMAX]; /* z coordinate of gas from sink */
+    MyFloat Hsmlgas[NEWSINK_NEIGHBORMAX]; /* gas smoothing length */
+    MyFloat mgas[NEWSINK_NEIGHBORMAX]; /* Mass of gas particle */
+    MyIDType gasID[NEWSINK_NEIGHBORMAX]; /* ID of gas particle */
+    int isbound[NEWSINK_NEIGHBORMAX]; /* is it bound to the sink */
+    MyFloat f_acc[NEWSINK_NEIGHBORMAX]; /* How much of the gas particle should be accreted */
+#if defined(NEWSINK_J_FEEDBACK)
+    MyDouble Jsink[3];
+    MyFloat t_disc;
+    MyDouble dv_ang_kick_norm[NEWSINK_NEIGHBORMAX]; /*Normalization term for angular momentum feedback kicks, see denominator of Eq 22 of Hubber 2013*/
+#endif
+#endif
 }
 *BlackholeDataIn, *BlackholeDataGet;
 
@@ -75,6 +97,12 @@ static struct blackholedata_out
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyFloat BH_angle_weighted_kernel_sum;
+#endif
+#if defined(NEWSINK)
+    MyFloat SinkRadius;
+#if defined(NEWSINK_J_FEEDBACK)
+    MyLongDouble accreted_J[3];
+#endif
 #endif
 }
 *BlackholeDataResult, *BlackholeDataOut;

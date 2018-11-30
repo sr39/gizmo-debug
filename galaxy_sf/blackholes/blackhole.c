@@ -38,10 +38,11 @@ void blackhole_accretion(void)
     if(ThisTask == 0)  {printf("Start black-hole operations...\n");}
     long i; for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* zero out accretion */
     blackhole_start();              /* allocates and cleans BlackholeTempInfo struct */
-    
+// printf("%d BH start loop done\n", ThisTask);
     /* this is the PRE-PASS loop.*/
     blackhole_environment_loop();    /* populates BlackholeTempInfo based on surrounding gas (blackhole_environment.c).
                                       If using gravcap the desired mass accretion rate is calculated and set to BlackholeTempInfo.mass_to_swallow_edd */
+// printf("%d BH environment_loop done\n", ThisTask);
 #ifdef BH_GRAVACCRETION
     blackhole_environment_second_loop();    /* populates BlackholeTempInfo based on surrounding gas (blackhole_environment.c).
                                                Here we compute quantities that require knowledge of previous environment variables
@@ -53,23 +54,29 @@ void blackhole_accretion(void)
      No MPI comm necessary.
      ----------------------------------------------------------------------*/
     blackhole_properties_loop();       /* do 'BH-centric' operations such as dyn-fric, mdot, etc. This loop is at the end of this file.  */
+// printf("%d BH properties_loop done\n", ThisTask);
     /*----------------------------------------------------------------------
      Now we perform a second pass over the black hole environment.
      Re-evaluate the decision to stochastically swallow gas if we exceed eddington.
      Use the above info to determine the weight functions for feedback
      ----------------------------------------------------------------------*/
     blackhole_feed_loop();       /* BH mergers and gas/star/dm accretion events are evaluated - P[j].SwallowID's are set */
+// printf("%d BH feed_loop done\n", ThisTask);
     /*----------------------------------------------------------------------
      Now we do a THIRD pass over the particles, and
      this is where we can do the actual 'swallowing' operations
      (blackhole_evaluate_swallow), and 'kicking' operations
      ----------------------------------------------------------------------*/
     blackhole_swallow_and_kick_loop();
+// printf("%d BH swallow_loop done\n", ThisTask);
     /*----------------------------------------------------------------------
      Now do final operations on the results from the last pass
      ----------------------------------------------------------------------*/
+// printf("%d BH Swallow loop done\n", ThisTask);
     blackhole_final_operations(); /* final operations on the BH with tabulated quantities (not a neighbor loop) */
+// printf("%d BH Final operations done\n", ThisTask);
     blackhole_end();            /* frees BlackholeTempInfo; cleans up */
+// printf("%d BH End done\n", ThisTask);
     for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* re-zero accretion */
 }
 
@@ -237,6 +244,11 @@ void blackhole_properties_loop(void)
 {
     int  i, n;
     double dt;
+#if defined(NEWSINK)
+    double t_exponent;
+    int k,j;
+    MyFloat /*avg_rad=0,*/ dr, dx[3], u1, u2, hinv_g1, hinv_g2, hinv3_g1, hinv3_g2;
+#endif
     //double fac, medd, mbulge, r0;
 
     for(i=0; i<N_active_loc_BHs; i++)
@@ -257,6 +269,66 @@ void blackhole_properties_loop(void)
  *      so that final quantities are available for the second environment loop if needed 
  */
         //normalize_temp_info_struct(i);
+        
+#if defined(NEWSINK)
+        /* Calculate global quantities */
+        if (BlackholeTempInfo[i].intzone_gasmass > 0)/* There is mass to accrete*/
+        {
+
+            BlackholeTempInfo[i].t_rad = DMAX(BlackholeTempInfo[i].intzone_gasmass * BlackholeTempInfo[i].intzone_massweight_all/(-4.0 * M_PI * BlackholeTempInfo[i].t_rad_denom_sum),0.0); /* Eq 8 in Hubber 2013 */
+            BlackholeTempInfo[i].t_disc = sqrt(All.G * P[n].Mass) * BlackholeTempInfo[i].t_disc_num_sum /(BlackholeTempInfo[i].intzone_massweight_all * ALPHASS); /* Eq 10 in Hubber 2013 */
+            if (BlackholeTempInfo[i].t_rad > 0.0){
+                ///*Add self interaction potential for gas around sink
+                for(k=0; k< BlackholeTempInfo[i].n_neighbor; k++){
+                    for(j=k+1; j< BlackholeTempInfo[i].n_neighbor; j++){
+                        dx[0] = BlackholeTempInfo[i].xgas[k] - BlackholeTempInfo[i].xgas[j]; dx[1] = BlackholeTempInfo[i].ygas[k] - BlackholeTempInfo[i].ygas[j]; dx[2] = BlackholeTempInfo[i].zgas[k] - BlackholeTempInfo[i].zgas[j];
+                        dr = sqrt( dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2] );
+                        hinv_g1 = 1.0/BlackholeTempInfo[i].Hsmlgas[k]; hinv_g2 = 1.0/BlackholeTempInfo[i].Hsmlgas[j];
+                        u1 = dr *hinv_g1; u2 = dr * hinv_g2;
+                        hinv3_g1 = hinv_g1*hinv_g1*hinv_g1; hinv3_g2 = hinv_g2*hinv_g2*hinv_g2;
+                        BlackholeTempInfo[i].gas_Egrav_in_intzone -= All.G * BlackholeTempInfo[i].mgas[k] * BlackholeTempInfo[i].mgas[j] * 0.5 * (kernel_gravity(u1, hinv_g1, hinv3_g1, -1) + kernel_gravity(u2, hinv_g2, hinv3_g2, -1)); /*Gas-gas interaction sum from Hubber 2013 Eq 14*/
+                    }
+                }
+                //use spherical approximation with R= average distance of particles*/
+                //for(k=0; k< BlackholeTempInfo[i].n_neighbor; k++){ avg_rad += BlackholeTempInfo[i].rgas[k] * BlackholeTempInfo[i].mgas[k];}
+                //avg_rad = avg_rad / BlackholeTempInfo[i].intzone_gasmass; //mass weighted average radius of gas particles
+                //BlackholeTempInfo[i].gas_Egrav_in_intzone -= 0.6 * All.G * BlackholeTempInfo[i].intzone_gasmass * BlackholeTempInfo[i].intzone_gasmass / avg_rad; 
+                
+                t_exponent = DMIN( fabs(2.0*BlackholeTempInfo[i].gas_Erot_in_intzone/BlackholeTempInfo[i].gas_Egrav_in_intzone) , 1.0); /*exponent to interpolate between two time scales*/
+                BlackholeTempInfo[i].t_acc = pow(BlackholeTempInfo[i].t_rad,  (1.0-t_exponent) ) * pow(BlackholeTempInfo[i].t_disc,  t_exponent ); /* accretion timescale for sink */ 
+            }
+            else{
+                BlackholeTempInfo[i].t_acc = BlackholeTempInfo[i].t_disc; /* No net radial infall, let's jus use the disc timescale then*/
+            }
+        }
+        /*Set BH data*/
+        if (BPP(n).init_mass_in_intzone==0){ /* This means we have not set the initial mass in the interaction zone */
+            BPP(n).init_mass_in_intzone = P[n].Mass + BlackholeTempInfo[i].intzone_gasmass; //initial mass is the gas that went into the BH and the gas that is left
+        }
+#if defined(NEWSINK_J_FEEDBACK)
+        BPP(n).t_disc = BlackholeTempInfo[i].t_disc;
+#endif
+
+#ifdef BH_OUTPUT_MOREINFO
+    if (BlackholeTempInfo[i].intzone_gasmass > 0){
+        /*printf("ln266 n=%llu BH int zone is: %g, n_neighbor is %d while avg radius is %g \n", (unsigned long long) n,BlackholeTempInfo[i].n_neighbor, (MyFloat) (P[n].SinkRadius*INT_ZONE_TO_SINKRADIUS),avg_rad);*/
+        printf("ln267 n=%llu BH sinkradius is: %g \n", (unsigned long long) n, (MyFloat) P[n].SinkRadius);
+        printf("ln268 n=%llu BH gasmass is: %g \n", (unsigned long long) n, (MyFloat) BlackholeTempInfo[i].intzone_gasmass);
+        printf("ln269 n=%llu BH t acc is: %g \n", (unsigned long long) n, (MyFloat) BlackholeTempInfo[i].t_acc);
+        printf("ln270 n=%llu BH t rad is: %g \n", (unsigned long long) n, (MyFloat) BlackholeTempInfo[i].t_rad);
+        printf("ln271 n=%llu BH t disc is: %g \n", (unsigned long long) n, (MyFloat) BlackholeTempInfo[i].t_disc);
+        printf("ln272 n=%llu BH t_disc_num_sum is: %g \n", (unsigned long long) n, (MyFloat) BlackholeTempInfo[i].t_disc_num_sum);
+        printf("ln273 n=%llu BH intzone_massweight_all is: %g \n", (unsigned long long) n, (MyFloat) BlackholeTempInfo[i].intzone_massweight_all);
+        printf("ln274 n=%llu BH t_rad_denom_sum is: %g \n", (unsigned long long) n, (MyFloat) BlackholeTempInfo[i].t_rad_denom_sum);
+        printf("ln275 n=%llu BH gas_Egrav_in_intzone is: %g \n", (unsigned long long) n, (MyFloat) BlackholeTempInfo[i].gas_Egrav_in_intzone);
+        printf("ln276 n=%llu BH gas_Erot_in_intzone is: %g \n", (unsigned long long) n, (MyFloat) BlackholeTempInfo[i].gas_Erot_in_intzone);
+        printf("ln277 n=%llu BH t_exponent is: %g \n", (unsigned long long) n, (MyFloat) t_exponent);
+        printf("ln278 n=%llu BH mass is: %g \n", (unsigned long long) n, (MyFloat) P[n].Mass);
+    }
+    
+#endif
+
+#endif // NEWSINK
         
 
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
@@ -356,6 +428,9 @@ void set_blackhole_mdot(int i, int n, double dt)
 #endif
 #ifdef BH_ENFORCE_EDDINGTON_LIMIT
     double meddington = bh_eddington_mdot(BPP(n).BH_Mass);
+#endif
+#if defined(NEWSINK)
+    MyDouble mass_in_low_dt_gas = 0;
 #endif
     
     
@@ -488,6 +563,30 @@ void set_blackhole_mdot(int i, int n, double dt)
     //mdot = BlackholeTempInfo[i].mass_to_swallow_edd / dt;       /* TODO: this can still greatly exceed eddington... */
 #endif //ifdef BH_GRAVCAPTURE_GAS
 
+#if defined(NEWSINK)
+    if (BlackholeTempInfo[i].intzone_gasmass>0 && BlackholeTempInfo[i].t_acc>0)
+    {
+        mdot = BlackholeTempInfo[i].intzone_gasmass / BlackholeTempInfo[i].t_acc * DMAX(1.0, pow(BlackholeTempInfo[i].intzone_gasmass/BPP(n).init_mass_in_intzone,2.0)); /* Use the accretion timescale calculated for the sink, then scaled by (M/M_init)^2 if larger than M_init*/
+    }
+    /*We have already marked particles that have too small timesteps to be swallowed. Let's check if that put mdot above this value, if yes, change mdot*/
+        for(k=0;k<BlackholeTempInfo[i].n_neighbor;k++){
+            if (BlackholeTempInfo[i].f_acc[k] > 0){ //it was decided to eat this gas before the feeding loop started, it must have too low dt or some other issue
+                mass_in_low_dt_gas += BlackholeTempInfo[i].mgas[k]*BlackholeTempInfo[i].f_acc[k];
+            }
+    }
+    if (mass_in_low_dt_gas > (mdot*dt) ){ /*we are bound to eat more than the formula tells us to*/
+        mdot = mass_in_low_dt_gas/dt; // set it to the value we will eat anyway
+    }
+#ifdef BH_OUTPUT_MOREINFO
+    printf("mdot n=%llu BH initmass is: %f \n", (unsigned long long) n, (MyFloat) BPP(n).init_mass_in_intzone);
+    printf("mdot n=%llu BH mass is: %f \n", (unsigned long long) n, (MyFloat) P[n].Mass);
+    printf("mdot n=%llu BH gasmass is: %f \n", (unsigned long long) n, (MyFloat) BlackholeTempInfo[i].intzone_gasmass);
+    printf("mdot n=%llu BH t acc is: %f \n", (unsigned long long) n, (MyFloat) BlackholeTempInfo[i].t_acc);
+    printf("mdot n=%llu BH mdot is: %g \n", (unsigned long long) n, (MyFloat) mdot);
+    printf("mdot n=%llu BH dt is: %g \n", (unsigned long long) n, (double) dt); // sink timestep
+    printf("mdot n=%llu mdot*dt is: %g \n", (unsigned long long) n, (double) mdot*dt); // sink timestep
+#endif
+#endif //ifdef NEWSINK
 
 #ifdef BH_ALPHADISK_ACCRETION
     /* use the mass in the accretion disk from the previous timestep to determine the BH accretion rate */
@@ -501,13 +600,13 @@ void set_blackhole_mdot(int i, int n, double dt)
         /* this below is a more complicated expression using the outer-disk expression from Shakura & Sunyaev. Simpler expression
             below captures the same physics with considerably less potential to extrapolate to rather odd scalings in extreme regimes */
         
-        mdot = All.BlackHoleAccretionFactor *
+        /*mdot = All.BlackHoleAccretionFactor *
             (2.45 * (SOLAR_MASS/All.UnitMass_in_g)/(SEC_PER_YEAR/All.UnitTime_in_s)) * // normalization
             pow( 0.1 , 8./7.) * // viscous disk 'alpha'
             pow( BPP(n).BH_Mass*All.UnitMass_in_g / (All.HubbleParam * 1.0e8*SOLAR_MASS) , -5./14. ) * // mbh dependence
             pow( BPP(n).BH_Mass_AlphaDisk*All.UnitMass_in_g / (All.HubbleParam * 1.0e8*SOLAR_MASS) , 10./7. ) * // m_disk dependence
             pow( DMIN(0.2,DMIN(PPP[n].Hsml,All.ForceSoftening[5])*All.cf_atime*All.UnitLength_in_cm/(All.HubbleParam * 3.086e18)) , -25./14. ); // r_disk dependence
-        
+        */
         double t_yr = SEC_PER_YEAR / (All.UnitTime_in_s / All.HubbleParam);
         mdot = BPP(n).BH_Mass_AlphaDisk / (4.2e7 * t_yr) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass), 0.4);
         
@@ -772,7 +871,7 @@ void blackhole_final_operations(void)
 #ifdef SINGLE_STAR_PROMOTION
     int count_bhelim=0, tot_bhelim;
 #endif
-
+// printf("%d BH Final started \n", ThisTask);
 #ifdef BH_REPOSITION_ON_POTMIN
     for(n = FirstActiveParticle; n >= 0; n = NextActiveParticle[n])
         if(P[n].Type == 5)
@@ -801,42 +900,53 @@ void blackhole_final_operations(void)
 #endif
     
     for(n = 0; n < TIMEBINS; n++) {if(TimeBinActive[n]) {TimeBin_BH_mass[n] = 0; TimeBin_BH_dynamicalmass[n] = 0; TimeBin_BH_Mdot[n] = 0; TimeBin_BH_Medd[n] = 0;}}
-    
+
     for(i=0; i<N_active_loc_BHs; i++)
     {
         n = BlackholeTempInfo[i].index;
+// printf("%d BH Final doing BH %d with ID %d \n", ThisTask, i, n);
+// printf("%d BH BlackholeTempInfo[i].accreted_Mass %g \n", ThisTask, BlackholeTempInfo[i].accreted_Mass);
+// printf("%d BH BlackholeTempInfo[i].accreted_BH_Mass %g \n", ThisTask, BlackholeTempInfo[i].accreted_BH_Mass);
+// printf("%d BH P[n].Mass %g \n", ThisTask, P[n].Mass);
         if(((BlackholeTempInfo[i].accreted_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass>0)) && P[n].Mass > 0)
         {
+// printf("%d BH Final if statement for BH %d with ID %d \n", ThisTask, i, n);
             for(k = 0; k < 3; k++)
             {
+// printf("%d BH Final accreteing for  BH %d with ID %d \n", ThisTask, i, n);
                 P[n].Vel[k] = (P[n].Vel[k]*P[n].Mass + BlackholeTempInfo[i].accreted_momentum[k]) / (BlackholeTempInfo[i].accreted_Mass + P[n].Mass);
+#if defined(NEWSINK_J_FEEDBACK)
+// printf("%d BH Final momentum accreted \n", ThisTask);
+                BPP(n).Jsink[k] += BlackholeTempInfo[i].accreted_J[k]; /* Sinks accrete angular momentum */
+// printf("%d BH Final ang momentum accreted \n", ThisTask);
+#endif
             } //for(k = 0; k < 3; k++)
             P[n].Mass += BlackholeTempInfo[i].accreted_Mass;
             BPP(n).BH_Mass += BlackholeTempInfo[i].accreted_BH_Mass;
+// printf("%d BH Final mass accreted \n", ThisTask);
         } // if(((BlackholeTempInfo[n].accreted_Mass>0)||(BlackholeTempInfo[n].accreted_BH_Mass>0)) && P[n].Mass > 0)
 #ifdef SINGLE_STAR_STRICT_ACCRETION
-	//        P[n].SinkRadius = DMAX(DMAX(P[n].SinkRadius, All.G * P[n].Mass / (1.0e12 / (All.UnitVelocity_in_cm_per_s * All.UnitVelocity_in_cm_per_s))), All.ForceSoftening[5]);        // accretion radius is at least the Bondi radius for c_s = 100km/s
-	P[n].SinkRadius = DMAX(P[n].SinkRadius, All.ForceSoftening[5]);
+        //P[n].SinkRadius = DMAX(DMAX(P[n].SinkRadius, All.G * P[n].Mass / (1.0e12 / (All.UnitVelocity_in_cm_per_s * All.UnitVelocity_in_cm_per_s))), All.ForceSoftening[5]);        // accretion radius is at least the Bondi radius for c_s = 100km/s
+        P[n].SinkRadius = DMAX(P[n].SinkRadius, All.ForceSoftening[5]);
 #ifdef SINGLE_STAR_TIDAL_ACCRETION // This is a novel determination of the sink radius, scaled to the sink particle's Hill sphere - for scale-free simulations, not necessary full-physics star formation sims - MYG
         double tidal_field = sqrt(P[n].tidal_tensorps[0][0]*P[n].tidal_tensorps[0][0] + P[n].tidal_tensorps[1][1]*P[n].tidal_tensorps[1][1] + P[n].tidal_tensorps[2][2]*P[n].tidal_tensorps[2][2]);
         P[n].SinkRadius = DMAX(All.SofteningTable[5], pow(All.G*P[n].Mass/tidal_field, 1./3)/10); // /10 here is arbitrary - set to taste
 #endif
 #endif
-
         /* Correct for the mass loss due to radiation and BAL winds */
 #ifndef WAKEUP
         dt = (P[n].TimeBin ? (1 << P[n].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
         dt = P[n].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif //ifndef WAKEUP
-        
+// printf("%d BH Final after wakeup for BH %d with ID %d \n", ThisTask, i, n);
         /* always substract the radiation energy from BPP(n).BH_Mass && P[n].Mass */
         double dm = BPP(n).BH_Mdot * dt;
         double radiation_loss = All.BlackHoleRadiativeEfficiency * dm;
         if(radiation_loss > DMIN(P[n].Mass,BPP(n).BH_Mass)) radiation_loss = DMIN(P[n].Mass,BPP(n).BH_Mass);
         P[n].Mass -= radiation_loss;
         BPP(n).BH_Mass -= radiation_loss;
-        
+// printf("%d BH Final rad loss done \n", ThisTask);
         /* subtract the BAL wind mass from P[n].Mass && (BPP(n).BH_Mass || BPP(n).BH_Mass_AlphaDisk) */
         // DAA: note that the mass loss in winds for BH_WIND_KICK has already been taken into account
 #ifdef BH_WIND_CONTINUOUS
