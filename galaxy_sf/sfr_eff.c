@@ -543,7 +543,14 @@ void star_formation_parent_routine(void)
                 TreeReconstructFlag = 1;
 #ifdef SINGLE_STAR_STRICT_ACCRETION
                 P[i].SinkRadius = DMAX(0.5 * Get_Particle_Size(i), All.ForceSoftening[5]);
-#endif		
+#endif
+#ifdef NEWSINK
+                P[i].init_mass_in_intzone=0; //Initialize as 0, we will update it in the first blackole property loop
+#ifdef NEWSINK_J_FEEDBACK
+                P[i].Jsink[0] = P[i].Jsink[1] = P[i].Jsink[2] = 0;
+                P[i].t_disc = pow(All.G * P[i].Mass,-0.5) * pow(P[i].SinkRadius,1.5); /*placeholder to avoid dividing with zero*/
+#endif
+#endif
 #ifdef BH_ALPHADISK_ACCRETION
                 P[i].BH_Mass_AlphaDisk = DMAX(DMAX(0, P[i].Mass-P[i].BH_Mass), All.SeedAlphaDiskMass);
 #endif

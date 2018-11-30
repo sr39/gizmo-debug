@@ -283,6 +283,12 @@
 #endif
 #endif
 #define BH_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
+#ifdef NEWSINK
+#define ALPHASS 0.01 //alpha disk factor for disc timescale, should be between 0.01-1.0
+#define DT_MIN_TOLERANCE_FACTOR 0.01 //tolerance factor for dt_min, defined in part (ii) of 2.3.5 in Hubber 2013
+#define INT_ZONE_TO_SINKRADIUS 1.0 //how many times larger should the sink interaction zone be compared to the sink's at formation size, 1 should be good
+#define NEWSINK_NEIGHBORMAX 200 //maximum number of neighbors anticipated, using BlackHoleNgbFactor=5 and DesNumNgb=32  value of 200 should be safe
+#endif
 //#GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory
 #ifdef SINGLE_STAR_FB_HEATING
 #define GALSF_FB_FIRE_RT_LONGRANGE  // turn on FIRE RT approximation: no Type-4 particles so don't worry about its approximations
@@ -2113,6 +2119,13 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
 #endif
+#ifdef NEWSINK
+    MyFloat init_mass_in_intzone; /*initial mass in interaction zone, used for scaling mdot*/
+#endif
+#ifdef NEWSINK_J_FEEDBACK
+    MyDouble Jsink[3];
+    MyFloat t_disc;
+#endif
     MyFloat BH_Mdot;
     int BH_TimeBinGasNeighbor;
 #ifdef SINGLE_STAR_FORMATION
@@ -2705,6 +2718,35 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 
 #if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;        /*!< gives the mass we want to swallow that contributes to eddington */
+#endif
+
+#if defined(NEWSINK)
+    /* Timescales for the implementation of the NEWSINK algorithm from Hubber 2013 */
+    MyFloat t_disc;        /* Disc timescale */
+    MyFloat t_rad;        /* Timescale of radial infall */
+    MyFloat t_acc;        /* Accretion timescale */
+    /* Further gas properties */
+    MyFloat gas_Erot_in_intzone;        /* Rotational energy in kernel */
+    MyFloat gas_Egrav_in_intzone;        /* gravitational energy in kernel */
+    MyFloat t_rad_denom_sum;        /* sum in denominator of Eq 8 in Hbber 2013 */
+    MyFloat t_disc_num_sum;        /* sum in Eq 10 in Hubber 2013 without kernel weight*/
+    MyFloat intzone_massweight_all;        /* sum in denominator of Eq 8 in Hubber 2013 */
+    MyFloat intzone_gasmass;        /* sum of gas mass in Sink Radius */
+    /* properties of neighboring particles, used for preferential feeding */
+    int n_neighbor; //number of neighbors currently stored in the arrays below
+    MyFloat rgas[NEWSINK_NEIGHBORMAX]; /* Distance of gas from sink */
+    MyFloat xgas[NEWSINK_NEIGHBORMAX]; /* x coordinate of gas from sink */
+    MyFloat ygas[NEWSINK_NEIGHBORMAX]; /* y coordinate of gas from sink */
+    MyFloat zgas[NEWSINK_NEIGHBORMAX]; /* z coordinate of gas from sink */
+    MyFloat Hsmlgas[NEWSINK_NEIGHBORMAX]; /* gas smoothing length */
+    MyFloat mgas[NEWSINK_NEIGHBORMAX]; /* Mass of gas particle */
+    MyIDType gasID[NEWSINK_NEIGHBORMAX]; /* ID of gas particle */
+    int isbound[NEWSINK_NEIGHBORMAX]; /* is it bound to the sink */
+    MyFloat f_acc[NEWSINK_NEIGHBORMAX]; /* How much of the gas particle should be accreted */
+#if defined(NEWSINK_J_FEEDBACK)
+    MyLongDouble accreted_J[3]; /* Accreted angular momentum */
+    MyDouble dv_ang_kick_norm[NEWSINK_NEIGHBORMAX]; /*Normalization term for angular momentum feedback kicks, see denominator of Eq 22 of Hubber 2013*/
+#endif
 #endif
 
 }
