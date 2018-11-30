@@ -8,8 +8,8 @@
 %        GRAIN_FLUID
 %        GRAIN_BACKREACTION
 %
-InitCondFile                       ./ic_dustywave_lores  % (or try ic_dustybox_lores)
-TimeMax                            15
+InitCondFile                       ./dustywave_ics  % (or try dustybox_ics)
+TimeMax                            2.5
 TimeBetSnapshot                    0.1
 Grain_Size_Min                     1.23608
 Grain_Size_Max                     1.23608

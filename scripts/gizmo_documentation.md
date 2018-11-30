@@ -30,7 +30,7 @@
         + [Conduction & Viscosity] (#config-fluids-navierstokes)
         + [Radiative Cooling] (#config-fluids-cooling)
         + [Passive Scalars, Metals, & Sub-Grid Turbulent Mixing] (#config-fluids-metalsturb)
-        + [Dust-Gas Mixtures] (#config-fluids-dust)
+        + [Dust-Gas (Particulate) Mixtures] (#config-fluids-dust)
         + [Cosmic Rays] (#config-fluids-cosmicrays)
     + [Turbulent 'Stirring' (Large Eddy Simulations)] (#config-turb)
     + [Gravity & Cosmological Integrations] (#config-gravity)
@@ -97,6 +97,7 @@
     + [Self-Gravity & Cosmological Tests](#tests-grav) (e.g. [Evrard collapse](#tests-grav-evrard), [Zeldovich pancakes](#tests-grav-zeldovich), ['Santa Barbara Cluster'](#tests-grav-sbcluster), [galactic disks](#tests-grav-galdisk))
     + [Magneto-Hydrodynamics Tests](#tests-mhd) (e.g. waves, shocktubes, field-loops, current sheets, Orszag-Tang vortex, rotors, MRI, jets, MHD-mixing/gravity)
     + [Elasto-Dynamics Tests](#tests-elastic) (e.g. bouncing rubber cylinders)
+    + [Dust/Particulate-Dynamics Tests](#tests-dust) (e.g. [uniform dust-gas acceleration](#tests-dust-dustybox), [damped two-fluid waves](#tests-dust-dustywave))
 12. [Useful Additional Resources](#faqs)
     + [Visualization, Radiative Transfer, and Plotting](#faqs-vis)
     + [Halo/Group-Finding and Structure Identification](#faqs-halofinders)
@@ -3448,6 +3449,68 @@ In Config.sh, enable:
     
 The choice of `KERNEL_FUNCTION=5` is optional here. Experiment with different kernels, but be sure to set the parameter DesNumNgb accordingly; for e.g. `KERNEL_FUNCTION=3` (or 6), use 20, `KERNEL_FUNCTION=5` (or 7), use 40. SPH, for example, performs noticably better using the Wendland kernels on this test (while for MFM it makes a much smaller difference). The choice of hydro solver is also arbitrary -- however, recall that because of the material assumptions, the elasto-dynamics modules in the code are only designed to work with fixed-mass methods (MFM or SPH variants). 
 
+
+
+<a name="tests-dust"></a>
+## Dust-Gas / Particle-Laden Dynamics
+
+A number of different studies have now used the dust-particulate dynamics modules of the code (including e.g. Epstein or Stokes or Coulomb drag on dust or aerodynamic particles, Lorentz forces on charged grains, and more). With the release of some of the methods papers for this, the dust/particulate modules are public. I have therefore added some simple test problems for validation and to acquaint users with the modules. The initial conditions, example parameter files, and list of compile-time (Config.sh) flags which must be set to run each problem are publicly available at the same location as the rest of the files above. Users are encouraged to expand the set of tests and implementations of additional physics (e.g. collisions).
+
+
+<a name="tests-dust-dustybox"></a>
+### Uniform Acceleration-Deceleration of a Dusty Box
+
+This is a variant of the 'dustybox' test, a simple test problem which was popularized by Guillaume and Price, 2011, MNRAS, 418, 1491. We initialize a homogeneous periodic box of unit size, full of gas with an idealized adiabatic equation-of-state with unit density and sound speed and zero velocity, and uniform unit density of dust/particulates with initial velocity $v=1$ in some direction. The two are coupled via some drag law, which decelerates the dust while the 'backreaction' from the dust accelerates the gas, until the mixture reaches equilibrium with both components moving at $v=1/2$. If the drag coefficient ($=1/t_{s}$) is independent of the relative velocity of the mixture, then the exact solution is trivial, with the gas moving at $v_{g}=(1-\exp(-t/2 t_{s}))/2$ at all times $t$. 
+
+This is a simple test used to validate the 'backreaction' term and total momentum conservation. It can also be trivially run in any number of dimensions, or for any varied dust-to-gas ratio or drag coefficient. In the default dust implementation in the code, the default drag law is not a constant drag coefficient, but actually Epstein drag. This makes the exact solutions slightly more complicated, but it is still easy to solve for the difference between the dust and gas velocities $v_{d}-v_{g}=2\,\psi/(1-\alpha\,\psi^{2})$ where $\psi\equiv (1+\sqrt{1+\alpha})^{-1}\,\exp(-2\,t)$ and $\alpha=15\pi/128$, for the default parameters here.
+
+Initial conditions: "dustybox\_ics.hdf5"
+
+Parameterfile: "dustboxwave.params" 
+(Be sure in the parameterfile to choose the correct initial condition file)
+
+In Config.sh, enable: 
+
+    BOX_PERIODIC
+    BOX_SPATIAL_DIMENSION=1
+    SELFGRAVITY_OFF
+    GRAIN_FLUID
+    GRAIN_BACKREACTION
+    EOS_GAMMA=(5./3.)
+    EOS_ENFORCE_ADIABAT=(3./5.)
+    
+The default test is 1D just for simplicity. You can trivially make a 2D or 3D test initializing a box with the included IC-making python script in GIZMO. Feel free to vary the equation of state of the gas, drag coefficient (varying `Grain_Size_Min` and `Grain_Size_Max` in the code - these are equal so all grains have the same size), or dust-to-gas ratio (mass of grains in the ICs). You can even manually edit the code lines in `grain_physics.c` to insert different drag laws. 
+
+
+<a name="tests-dust-dustywave"></a>
+### A Damped, Two-Fluid (Coupled Dust/Particulate-Gas) Wave
+
+This is a variant of the 'dustwave' test from Guillaume and Price, 2011, MNRAS, 418, 1491. This uses the same setup and nearly-identical ICs to the 'dustybox' test. In fact the parameterfile is identical, you just need to swap out the IC file. 
+
+The difference is, instead of initializing the dust with a bulk velocity, we initialize a periodic linear wave in the dust and gas, with amplitude of $\sim 10^{-4}$ in code units. In the strictly-linear regime, it is straightforward (but tedious) to solve for the eigenfunctions of these waves, for a given dust-to-gas ratio, mean drag coefficient, functional form of the drag law, dust-to-gas ratio, etc. However, particularly for the Epstein drag case adopted here, the functions do not have clean closed-form expressions. So instead we provide a table with an exact numerically-tabulated solution for the default setup here.
+
+This is a much more sensitive test of the dust-gas coupling and back-reaction terms. Like the test above, it can be run in any number of dimensions, or any drag law or dust-to-gas-ratio or coupling coefficient. Because the flow is smooth, it can be used to test numerical convergence rates. Because the wave amplitude is weak ($\sim 10^{-4}$), even very small errors will corrupt its evolution. And the propagation of the wave in both dust and gas depends sensitively on accurate back-and-forth coupling between the two media.
+
+Note that in this particular problem, with zero forces on dust or gas and a homogeneous background, the waves are always damped. But as shown in Squire and Hopkins 2018, ApJL, 856, L15 (arXiv:1706.05020), if there is *any* difference in non-drag forces acting on the dust and gas (e.g. if we introduce an external force which acts even slightly differently on the dust and/or the gas, or a pressure gradient in the gas, or Lorentz forces on the dust), the system becomes unstable to a family of 'resonant drag instabilities' which rapidly amplify into strongly non-linear behavior of the dust and gas. This test problem can be used as a starting point to explore these instabilities as well.
+
+Initial conditions: "dustywave\_ics.hdf5"
+
+Parameterfile: "dustboxwave.params"
+(Be sure in the parameterfile to choose the correct initial condition file)
+
+In Config.sh, enable: 
+
+    BOX_PERIODIC
+    BOX_SPATIAL_DIMENSION=1
+    SELFGRAVITY_OFF
+    GRAIN_FLUID
+    GRAIN_BACKREACTION
+    EOS_GAMMA=(5./3.)
+    EOS_ENFORCE_ADIABAT=(3./5.)
+    
+The default test is 1D just for simplicity. You can trivially make a 2D or 3D test initializing a box with the included IC-making python script in GIZMO. Feel free to vary the equation of state of the gas, drag coefficient (varying `Grain_Size_Min` and `Grain_Size_Max` in the code - these are equal so all grains have the same size), or dust-to-gas ratio (mass of grains in the ICs). You can even manually edit the code lines in `grain_physics.c` to insert different drag laws. 
+
+The exact solutions for the default setup are provided in the file "dustwave\_exact.txt". This gives the solution for the default parameterfile values, at time =1.2 (in code units). The three columns are: (1) x-coordinate position, (2) value of x-velocity of dust, (3) value of x-velocity of gas.
 
 ***
 
