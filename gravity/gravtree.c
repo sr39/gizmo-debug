@@ -607,10 +607,7 @@ void gravity_tree(void)
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         for(j = 0; j < 3; j++) {P[i].GravAccel[j] *= All.G;}
-        
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-        /* Diagonal terms of tidal tensor need correction, because tree is running over all particles -> also over target particle -> extra term -> correct it */
-        if(All.ComovingIntegrationOn) {P[i].tidal_tensorps[0][0] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[1][1] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[2][2] -= All.TidalCorrection/All.G;} // subtract Hubble flow terms //
 #if (defined(TIDAL_TIMESTEP_CRITERION) || defined(SINGLE_STAR_HILL_CRITERION)) // diagonalize the tidal tensor so we can use its invariants, which don't change with rotation
         double tt[9]; for(j=0; j<3; j++) {for (k=0; k<3; k++) tt[3*j+k] = P[i].tidal_tensorps[j][k];}
         gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3);
@@ -622,11 +619,13 @@ void gravity_tree(void)
         gsl_eigen_symm_free(w);
         gsl_vector_free (eval);
 #else // for GDE implementation, want to include particle self-tide contribution -- for timestep or hill criteria, on the other hand, this is not necessary
+        /* Diagonal terms of tidal tensor need correction, because tree is running over all particles -> also over target particle -> extra term -> correct it */
+        if(All.ComovingIntegrationOn) {P[i].tidal_tensorps[0][0] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[1][1] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[2][2] -= All.TidalCorrection/All.G;} // subtract Hubble flow terms //
         P[i].tidal_tensorps[0][0] += P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type]) * 10.666666666667;
         P[i].tidal_tensorps[1][1] += P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type]) * 10.666666666667;
         P[i].tidal_tensorps[2][2] += P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type]) * 10.666666666667;
 #endif
-        for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[i].tidal_tensorps[i1][i2] *= All.G;}} // units //
+        for(j=0;j<3;j++) {int i2; for(i2=0;i2<3;i2++) {P[i].tidal_tensorps[j][i2] *= All.G;}} // units //
 #endif /* GDE_DISTORTIONTENSOR */
 
         
