@@ -60,7 +60,7 @@ void MeshMotion_KeplerianOrbit(int i)
 #if defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE)
     int k; for(k = 0; k < 3; k++) {dp[k] = -P[i].min_xyz_to_bh[k];}
 #elif defined(BOX_PERIODIC)
-    dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y;
+    dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y; dp[2] -= boxHalf_Z;
 #endif
     double r2 = dp[0]*dp[0] + dp[1]*dp[1], r = sqrt(r2), Omega=sqrt(1./(r2*r)); // orbital frequency
     SphP[i].ParticleVel[0] = Omega * dp[1];
