@@ -364,7 +364,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     BH_angle_weighted_kernel_sum = 0;
 #endif
-// printf("%d start feed assignment, for n_neighbor %d\n", ThisTask, n_neighbor);
+ //printf("%d start feed assignment, for n_neighbor %d\n", ThisTask, n_neighbor);
 #if defined(NEWSINK)
     int_zone_radius = sink_radius * INT_ZONE_TO_SINKRADIUS;
     int_zone_radius2 = int_zone_radius * int_zone_radius;
@@ -373,6 +373,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     for(k=0;k<n_neighbor;k++){
         if (accr_mass<target_accreted_mass){ //do we still need more gas
             if (str_isbound[k]==1){ //only accrete bound gas
+             //printf("%d bound gas found, ready to be accreted, gasmass= %g accreted mas= %g, target mass =%g\n", ThisTask,str_mgas[k], accr_mass, target_accreted_mass);
                 if ( (accr_mass+str_mgas[k]) <= target_accreted_mass){
                     str_f_acc[k] = 1.0; //safe to take the whole thing
                     accr_mass += str_mgas[k];
@@ -386,7 +387,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         else{break;} //no need to continue if we already got enough mass
     }
 #endif
-// printf("%d finish feed assignment\n", ThisTask);
+ //printf("%d finish feed assignment, accreted mass = %g, target mass = %g\n", ThisTask, accr_mass, target_accreted_mass);
     while(startnode >= 0)
     {
         while(startnode >= 0)
