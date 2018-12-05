@@ -2115,6 +2115,9 @@ extern ALIGN(32) struct particle_data
     MyFloat BH_Mass;
 #ifdef SINGLE_STAR_STRICT_ACCRETION
     MyFloat SinkRadius;
+#endif
+#ifdef SINGLE_STAR_FORMATION  
+    MyFloat SwallowEnergy; /* specific energy of a particle w.r.t. a sink particle  */
 #endif 
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;

@@ -36,7 +36,13 @@ void blackhole_accretion(void)
 {
     if(All.TimeStep == 0.) return; /* no evolution */
     if(ThisTask == 0)  {printf("Start black-hole operations...\n");}
-    long i; for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* zero out accretion */
+    long i; for(i = 0; i < NumPart; i++) {
+      P[i].SwallowID = 0;
+#ifdef SINGLE_STAR_FORMATION
+      P[i].SwallowEnergy = MAX_REAL_NUMBER;
+#endif      
+    } /* zero out accretion */
+    
     blackhole_start();              /* allocates and cleans BlackholeTempInfo struct */
 // printf("%d BH start loop done\n", ThisTask);
     /* this is the PRE-PASS loop.*/
@@ -139,7 +145,7 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 	//	printf("sink radius: %g apo: %g r: %g\n", sink_radius, apocenter, dr_code);
 	//	apocenter = dr_code;
 	apocenter_max = 2*sink_radius;
-	if(dr_code < All.ForceSoftening[5]) bound = 1; // force `bound' if within the kernel
+	if(dr_code < DMAX(Get_Particle_Size(j),All.ForceSoftening[5])) bound = 1; // force `bound' if within the kernel
 #else
 #if defined(SINGLE_STAR_FORMATION) || defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
         double r_j = All.ForceSoftening[P[j].Type];
