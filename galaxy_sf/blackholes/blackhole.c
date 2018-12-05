@@ -44,11 +44,11 @@ void blackhole_accretion(void)
     } /* zero out accretion */
     
     blackhole_start();              /* allocates and cleans BlackholeTempInfo struct */
-// printf("%d BH start loop done\n", ThisTask);
+ //printf("%d BH start loop done\n", ThisTask);
     /* this is the PRE-PASS loop.*/
     blackhole_environment_loop();    /* populates BlackholeTempInfo based on surrounding gas (blackhole_environment.c).
                                       If using gravcap the desired mass accretion rate is calculated and set to BlackholeTempInfo.mass_to_swallow_edd */
-// printf("%d BH environment_loop done\n", ThisTask);
+ //printf("%d BH environment_loop done\n", ThisTask);
 #ifdef BH_GRAVACCRETION
     blackhole_environment_second_loop();    /* populates BlackholeTempInfo based on surrounding gas (blackhole_environment.c).
                                                Here we compute quantities that require knowledge of previous environment variables
@@ -60,29 +60,29 @@ void blackhole_accretion(void)
      No MPI comm necessary.
      ----------------------------------------------------------------------*/
     blackhole_properties_loop();       /* do 'BH-centric' operations such as dyn-fric, mdot, etc. This loop is at the end of this file.  */
-// printf("%d BH properties_loop done\n", ThisTask);
+ //printf("%d BH properties_loop done\n", ThisTask);
     /*----------------------------------------------------------------------
      Now we perform a second pass over the black hole environment.
      Re-evaluate the decision to stochastically swallow gas if we exceed eddington.
      Use the above info to determine the weight functions for feedback
      ----------------------------------------------------------------------*/
     blackhole_feed_loop();       /* BH mergers and gas/star/dm accretion events are evaluated - P[j].SwallowID's are set */
-// printf("%d BH feed_loop done\n", ThisTask);
+ //printf("%d BH feed_loop done\n", ThisTask);
     /*----------------------------------------------------------------------
      Now we do a THIRD pass over the particles, and
      this is where we can do the actual 'swallowing' operations
      (blackhole_evaluate_swallow), and 'kicking' operations
      ----------------------------------------------------------------------*/
     blackhole_swallow_and_kick_loop();
-// printf("%d BH swallow_loop done\n", ThisTask);
+ //printf("%d BH swallow_loop done\n", ThisTask);
     /*----------------------------------------------------------------------
      Now do final operations on the results from the last pass
      ----------------------------------------------------------------------*/
-// printf("%d BH Swallow loop done\n", ThisTask);
+ //printf("%d BH Swallow loop done\n", ThisTask);
     blackhole_final_operations(); /* final operations on the BH with tabulated quantities (not a neighbor loop) */
-// printf("%d BH Final operations done\n", ThisTask);
+// //printf("%d BH Final operations done\n", ThisTask);
     blackhole_end();            /* frees BlackholeTempInfo; cleans up */
-// printf("%d BH End done\n", ThisTask);
+ //printf("%d BH End done\n", ThisTask);
     for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* re-zero accretion */
 }
 
@@ -309,7 +309,7 @@ void blackhole_properties_loop(void)
         }
         /*Set BH data*/
         if (BPP(n).init_mass_in_intzone==0){ /* This means we have not set the initial mass in the interaction zone */
-            BPP(n).init_mass_in_intzone = P[n].Mass + BlackholeTempInfo[i].intzone_gasmass; //initial mass is the gas that went into the BH and the gas that is left
+            BPP(n).init_mass_in_intzone = P[n].Mass;// + BlackholeTempInfo[i].intzone_gasmass; //initial mass is the gas that went into the BH
         }
 #if defined(NEWSINK_J_FEEDBACK)
         BPP(n).t_disc = BlackholeTempInfo[i].t_disc;
@@ -581,6 +581,7 @@ void set_blackhole_mdot(int i, int n, double dt)
             }
     }
     if (mass_in_low_dt_gas > (mdot*dt) ){ /*we are bound to eat more than the formula tells us to*/
+        printf("%d : Too much gas pre-marked to be swallowed, setting mdot for BH with ID %d to %g instead of %g\n", ThisTask, BPP(n).ID,(mass_in_low_dt_gas/dt), mdot );
         mdot = mass_in_low_dt_gas/dt; // set it to the value we will eat anyway
     }
 #ifdef BH_OUTPUT_MOREINFO
@@ -996,7 +997,7 @@ void blackhole_final_operations(void)
         MgasBulge = BlackholeTempInfo[i].MgasBulge_in_Kernel;
         MstarBulge = BlackholeTempInfo[i].MstarBulge_in_Kernel;
 #endif
-
+// printf("%d BH Final start file writing \n", ThisTask);
 //#ifndef IO_REDUCED_MODE   DAA-IO: BH_OUTPUT_MOREINFO overrides IO_REDUCED_MOD
 #if defined(BH_OUTPUT_MOREINFO)
         fprintf(FdBlackHolesDetails, "%2.12f %u  %g %g %g %g %g %g  %g %g %g %g %g %g %g %g  %2.10f %2.10f %2.10f  %2.7f %2.7f %2.7f  %g %g %g  %g %g %g\n",
@@ -1014,13 +1015,13 @@ void blackhole_final_operations(void)
                 P[n].Pos[0], P[n].Pos[1], P[n].Pos[2]);
 #endif
 #endif
-        
+// printf("%d BH Final file writing done \n", ThisTask);
         bin = P[n].TimeBin;
         TimeBin_BH_mass[bin] += BPP(n).BH_Mass;
         TimeBin_BH_dynamicalmass[bin] += P[n].Mass;
         TimeBin_BH_Mdot[bin] += BPP(n).BH_Mdot;
         if(BPP(n).BH_Mass > 0) {TimeBin_BH_Medd[bin] += BPP(n).BH_Mdot / BPP(n).BH_Mass;}
-        
+// printf("%d BH Final timebin update done \n", ThisTask);
 
 #ifdef SINGLE_STAR_PROMOTION
         double m_initial = DMAX(1.e-37 , (BPP(n).BH_Mass - dm)); // mass before the accretion
@@ -1070,7 +1071,7 @@ void blackhole_final_operations(void)
         
     } // for(i=0; i<N_active_loc_BHs; i++)
     
-    
+//printf("%d BH Final ending \n", ThisTask);
 #ifdef SINGLE_STAR_PROMOTION
     MPI_Allreduce(&count_bhelim, &tot_bhelim, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     All.TotBHs -= tot_bhelim; 
