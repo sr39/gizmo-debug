@@ -473,7 +473,6 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         if(P[j].Type != 5)
                         {
 #ifdef SINGLE_STAR_FORMATION
-			  if(P[j].SwallowEnergy < MAX_REAL_NUMBER) printf("COMPARING SWALLOW ENERGY: %g vs. %g\n", 0.5*(vrel*vrel - vesc*vesc), P[j].SwallowEnergy);				    			  
 			  if(0.5*(vrel*vrel - vesc*vesc) <= P[j].SwallowEnergy) 
 #endif			      			  
 #ifdef SINGLE_STAR_STRICT_ACCRETION
