@@ -171,6 +171,73 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
 #if defined(BH_GRAVCAPTURE_GAS)
     ASSIGN_ADD(BlackholeTempInfo[target].mass_to_swallow_edd, out->mass_to_swallow_edd, mode);
 #endif
+#if defined(NEWSINK)
+    ASSIGN_ADD(BlackholeTempInfo[target].gas_Erot_in_intzone, out->gas_Erot_in_intzone, mode);
+    ASSIGN_ADD(BlackholeTempInfo[target].gas_Egrav_in_intzone, out->gas_Egrav_in_intzone, mode);
+    ASSIGN_ADD(BlackholeTempInfo[target].t_rad_denom_sum, out->t_rad_denom_sum, mode);
+    ASSIGN_ADD(BlackholeTempInfo[target].t_disc_num_sum, out->t_disc_num_sum, mode);
+    ASSIGN_ADD(BlackholeTempInfo[target].intzone_massweight_all, out->intzone_massweight_all, mode);
+    ASSIGN_ADD(BlackholeTempInfo[target].intzone_gasmass, out->intzone_gasmass, mode);
+    
+    /*  Do an insertion sort for the gas particle properties  */
+    int j, n=BlackholeTempInfo[target].n_neighbor;
+    if ( (n + out->n_neighbor) > NEWSINK_NEIGHBORMAX){ // We are not supposed to have more neighbors than NEWSINK_NEIGHBORMAX
+            printf("%d Gas neighbor number over limit for BH target %d Current neighbor number is %d and we want to add %d more\n", ThisTask, target ,n ,out->n_neighbor);
+    }
+    else{    
+        for(j=0;j<(out->n_neighbor);j++){ //go over all the incoming particle data
+                if (n==0){
+                    BlackholeTempInfo[target].rgas[0] = out->rgas[j];
+                    BlackholeTempInfo[target].xgas[0] = out->xgas[j];
+                    BlackholeTempInfo[target].ygas[0] = out->ygas[j];
+                    BlackholeTempInfo[target].zgas[0] = out->zgas[j];
+                    BlackholeTempInfo[target].Hsmlgas[0] = out->Hsmlgas[j];
+                    BlackholeTempInfo[target].mgas[0] = out->mgas[j];
+                    BlackholeTempInfo[target].gasID[0] = out->gasID[j];
+                    BlackholeTempInfo[target].f_acc[0] = out->f_acc[j];
+                    BlackholeTempInfo[target].isbound[0] = out->isbound[j];
+#if defined(NEWSINK_J_FEEDBACK)
+                    BlackholeTempInfo[target].dv_ang_kick_norm[0] = out->dv_ang_kick_norm[j];
+#endif
+                    n++;
+                }
+                else{
+                    k = n-1;
+                    while (k >= 0 && BlackholeTempInfo[target].rgas[k] > (out->rgas[j]) ) 
+                    {
+                        BlackholeTempInfo[target].rgas[k+1] = BlackholeTempInfo[target].rgas[k];
+                        BlackholeTempInfo[target].xgas[k+1] = BlackholeTempInfo[target].xgas[k];
+                        BlackholeTempInfo[target].ygas[k+1] = BlackholeTempInfo[target].ygas[k];
+                        BlackholeTempInfo[target].zgas[k+1] = BlackholeTempInfo[target].zgas[k];
+                        BlackholeTempInfo[target].Hsmlgas[k+1] = BlackholeTempInfo[target].Hsmlgas[k];
+                        BlackholeTempInfo[target].mgas[k+1] = BlackholeTempInfo[target].mgas[k];
+                        BlackholeTempInfo[target].gasID[k+1] = BlackholeTempInfo[target].gasID[k];
+                        BlackholeTempInfo[target].f_acc[k+1] = BlackholeTempInfo[target].f_acc[k];
+                        BlackholeTempInfo[target].isbound[k+1] = BlackholeTempInfo[target].isbound[k];
+#if defined(NEWSINK_J_FEEDBACK)
+                        BlackholeTempInfo[target].dv_ang_kick_norm[k+1] = BlackholeTempInfo[target].dv_ang_kick_norm[k];
+#endif
+                        k--; 
+                    }
+                    BlackholeTempInfo[target].rgas[k+1] = out->rgas[j];
+                    BlackholeTempInfo[target].xgas[k+1] = out->xgas[j];
+                    BlackholeTempInfo[target].ygas[k+1] = out->ygas[j];
+                    BlackholeTempInfo[target].zgas[k+1] = out->zgas[j];
+                    BlackholeTempInfo[target].Hsmlgas[k+1] = out->Hsmlgas[j];
+                    BlackholeTempInfo[target].mgas[k+1] = out->mgas[j];
+                    BlackholeTempInfo[target].gasID[k+1] = out->gasID[j];
+                    BlackholeTempInfo[target].f_acc[k+1] = out->f_acc[j];
+                    BlackholeTempInfo[target].isbound[k+1] = out->isbound[j];
+#if defined(NEWSINK_J_FEEDBACK)
+                    BlackholeTempInfo[target].dv_ang_kick_norm[k+1] = out->dv_ang_kick_norm[j];
+#endif
+                    n++;
+                }
+        }
+    BlackholeTempInfo[target].n_neighbor = n; //update the number of neighbors stored
+    }
+#endif
+
 }
 
 
