@@ -241,7 +241,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     {
 #if defined(BH_GRAVCAPTURE_GAS)
         mass = P[target].Mass;
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#if defined(SINGLE_STAR_STRICT_ACCRETION) || defined(NEWSINK)
         sink_radius = P[target].SinkRadius;
 #endif	
 #endif
@@ -261,7 +261,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     {
 #if defined(BH_GRAVCAPTURE_GAS)
         mass = BlackholeDataGet[target].Mass;
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#if defined(SINGLE_STAR_STRICT_ACCRETION) || defined(NEWSINK)
         sink_radius = BlackholeDataGet[target].SinkRadius;
 #endif		
 #endif
@@ -455,7 +455,8 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                                 out.Hsmlgas[out.n_neighbor] = P[j].Hsml; //softening
                                 out.mgas[out.n_neighbor] = P[j].Mass; //mass
                                 out.gasID[out.n_neighbor] = P[j].ID; //unique ID, used for swallowing later
-                                out.isbound[out.n_neighbor] = bh_check_boundedness(target, j,vrel,vbound,dr_code); // check boundedness
+                                //get boundedness, this check is already done above but let's keep it just in case we change the code structure
+                                if(vrel < vbound) { out.isbound[out.n_neighbor] = 1;}
 #if defined(NEWSINK_EAT_SMALL_DT)
                                 if ( out.isbound[out.n_neighbor]==1 ){ /*for bound gas get timestep of gas particle*/
 #ifndef WAKEUP
@@ -465,6 +466,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 #endif
                                     if (dt<dt_min){ /*Check if the timescale is too small, if yes, it gets eaten to avoid issues*/
                                         out.f_acc[out.n_neighbor] = 1.0;
+                                        printf("%d : Found gas with too small step for BH with ID %d, gas id %d, gas dt %g dtmin %g\n", ThisTask, id, P[j].ID,dt, dt_min );
                                     }
                                 }
 #endif
