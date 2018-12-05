@@ -182,29 +182,30 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
     /*  Do an insertion sort for the gas particle properties  */
     int j, n=BlackholeTempInfo[target].n_neighbor;
     if ( (n + out->n_neighbor) > NEWSINK_NEIGHBORMAX){ // We are not supposed to have more neighbors than NEWSINK_NEIGHBORMAX
-            printf("%d Gas neighbor number over limit for BH target %d Current neighbor number is %d and we want to add %d more\n", ThisTask, target ,n ,out->n_neighbor);
+            printf("%d Gas neighbor number over limit of NEWSINK_NEIGHBORMAX for BH target %d Current neighbor number is %d and we want to add %d more\n", ThisTask, target ,n ,out->n_neighbor);
     }
-    else{    
-        for(j=0;j<(out->n_neighbor);j++){ //go over all the incoming particle data
-                if (n==0){
-                    BlackholeTempInfo[target].rgas[0] = out->rgas[j];
-                    BlackholeTempInfo[target].xgas[0] = out->xgas[j];
-                    BlackholeTempInfo[target].ygas[0] = out->ygas[j];
-                    BlackholeTempInfo[target].zgas[0] = out->zgas[j];
-                    BlackholeTempInfo[target].Hsmlgas[0] = out->Hsmlgas[j];
-                    BlackholeTempInfo[target].mgas[0] = out->mgas[j];
-                    BlackholeTempInfo[target].gasID[0] = out->gasID[j];
-                    BlackholeTempInfo[target].f_acc[0] = out->f_acc[j];
-                    BlackholeTempInfo[target].isbound[0] = out->isbound[j];
+    //Regardless, we will collect the closest NEWSINK_NEIGHBORMAX particles
+    for(j=0;j<(out->n_neighbor);j++){ //go over all the incoming particle data
+            if (n==0){ //first one just gets stored
+                BlackholeTempInfo[target].rgas[0] = out->rgas[j];
+                BlackholeTempInfo[target].xgas[0] = out->xgas[j];
+                BlackholeTempInfo[target].ygas[0] = out->ygas[j];
+                BlackholeTempInfo[target].zgas[0] = out->zgas[j];
+                BlackholeTempInfo[target].Hsmlgas[0] = out->Hsmlgas[j];
+                BlackholeTempInfo[target].mgas[0] = out->mgas[j];
+                BlackholeTempInfo[target].gasID[0] = out->gasID[j];
+                BlackholeTempInfo[target].f_acc[0] = out->f_acc[j];
+                BlackholeTempInfo[target].isbound[0] = out->isbound[j];
 #if defined(NEWSINK_J_FEEDBACK)
-                    BlackholeTempInfo[target].dv_ang_kick_norm[0] = out->dv_ang_kick_norm[j];
+                BlackholeTempInfo[target].dv_ang_kick_norm[0] = out->dv_ang_kick_norm[j];
 #endif
-                    n++;
-                }
-                else{
-                    k = n-1;
-                    while (k >= 0 && BlackholeTempInfo[target].rgas[k] > (out->rgas[j]) ) 
-                    {
+                n++;
+            }
+            else{ //we already have some data, do an insertion sort
+                k = n-1;
+                while (k >= 0 && BlackholeTempInfo[target].rgas[k] > (out->rgas[j]) ) 
+                {
+                    if (k+1 < NEWSINK_NEIGHBORMAX){ //we can store this one, if we can't this will be just overwritten
                         BlackholeTempInfo[target].rgas[k+1] = BlackholeTempInfo[target].rgas[k];
                         BlackholeTempInfo[target].xgas[k+1] = BlackholeTempInfo[target].xgas[k];
                         BlackholeTempInfo[target].ygas[k+1] = BlackholeTempInfo[target].ygas[k];
@@ -217,8 +218,10 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
 #if defined(NEWSINK_J_FEEDBACK)
                         BlackholeTempInfo[target].dv_ang_kick_norm[k+1] = BlackholeTempInfo[target].dv_ang_kick_norm[k];
 #endif
-                        k--; 
                     }
+                    k--; 
+                }
+                if (k+1 < NEWSINK_NEIGHBORMAX){ //we can store this one, if we can't we will just throw it away
                     BlackholeTempInfo[target].rgas[k+1] = out->rgas[j];
                     BlackholeTempInfo[target].xgas[k+1] = out->xgas[j];
                     BlackholeTempInfo[target].ygas[k+1] = out->ygas[j];
@@ -231,11 +234,11 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
 #if defined(NEWSINK_J_FEEDBACK)
                     BlackholeTempInfo[target].dv_ang_kick_norm[k+1] = out->dv_ang_kick_norm[j];
 #endif
-                    n++;
                 }
-        }
-    BlackholeTempInfo[target].n_neighbor = n; //update the number of neighbors stored
+                if (n< NEWSINK_NEIGHBORMAX){n++;} //we have added another neighbor
+            }
     }
+    BlackholeTempInfo[target].n_neighbor = n; //update the number of neighbors stored
 #endif
 
 }
