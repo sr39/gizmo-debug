@@ -189,6 +189,17 @@ void blackhole_feed_loop(void)
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
             BlackholeTempInfo[P[place].IndexMapToTempStruc].BH_angle_weighted_kernel_sum += BlackholeDataOut[j].BH_angle_weighted_kernel_sum;
 #endif
+#if defined NEWSINK
+            double dm=0;
+            //update accretion factors in case we decided not to accrete a particle (e.g. if it is bound to two sinks and only one gets it)
+            for(k = 0; k < BlackholeTempInfo[P[place].IndexMapToTempStruc].n_neighbor; k++){
+                if(BlackholeTempInfo[P[place].IndexMapToTempStruc].f_acc[k] != BlackholeDataOut[j].f_acc[k]){
+                    dm = BlackholeTempInfo[P[place].IndexMapToTempStruc].mgas[k] * (BlackholeTempInfo[P[place].IndexMapToTempStruc].f_acc[k]-BlackholeDataOut[j].f_acc[k]);
+                    BlackholeTempInfo[P[place].IndexMapToTempStruc].f_acc[k] = BlackholeDataOut[j].f_acc[k];
+                    BPP(place).BH_Mdot = DMAX( (BPP(place).BH_Mdot - dm/BlackholeDataOut[j].Dt), 0);
+                }
+            }
+#endif
         }
         
         myfree(BlackholeDataOut);
@@ -316,6 +327,10 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         str_f_acc = BlackholeDataGet[target].f_acc;
         str_gasID = BlackholeDataGet[target].gasID;
         str_isbound = BlackholeDataGet[target].isbound;
+        /*copy part of it to output structure*/
+        memcpy(BlackholeDataResult[target].f_acc, BlackholeDataGet[target].f_acc, NEWSINK_NEIGHBORMAX * sizeof(MyFloat));
+        BlackholeDataResult[target].Mdot = BlackholeDataGet[target].Mdot;
+        BlackholeDataResult[target].Dt = BlackholeDataGet[target].Dt;
 #endif
     }
     
@@ -373,7 +388,6 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     for(k=0;k<n_neighbor;k++){
         if (accr_mass<target_accreted_mass){ //do we still need more gas
             if (str_isbound[k]==1){ //only accrete bound gas
-             //printf("%d bound gas found, ready to be accreted, gasmass= %g accreted mas= %g, target mass =%g\n", ThisTask,str_mgas[k], accr_mass, target_accreted_mass);
                 if ( (accr_mass+str_mgas[k]) <= target_accreted_mass){
                     str_f_acc[k] = 1.0; //safe to take the whole thing
                     accr_mass += str_mgas[k];
@@ -528,10 +542,26 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                             for(k=0;k<n_neighbor;k++){
                                if( P[j].ID == str_gasID[k] && str_f_acc[k]>0 && P[j].SwallowID < id )
                                {
+                                   /*Check if this is the sink the gas is most bound to, if not, don't accrete */
+                                   if (0.5*(vrel*vrel - vesc*vesc) <= P[j].SwallowEnergy){
 #ifndef IO_REDUCED_MODE
-                                   printf("MARKING_BH_FOOD: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) id);
+                                    printf("MARKING_BH_FOOD: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) id);
 #endif
-                                   P[j].SwallowID = id; /* marked for eating */
+                                    P[j].SwallowID = id; /* marked for eating */
+                                   }
+                                   else{
+                                       str_f_acc[k] = 0;
+                                       if(mode == 0){
+                                        BPP(target).BH_Mdot = DMAX((mdot-P[j].Mass/dt),0);
+                                       }
+                                       else{
+                                        BlackholeDataResult[target].Mdot = DMAX((mdot-P[j].Mass/dt),0);
+                                        BlackholeDataResult[target].f_acc[k] = 0;
+                                       }
+#ifndef IO_REDUCED_MODE
+                                        printf("Sink assigned to multiple sinks: P[j.]ID=%llu NOT swallowed by id=%llu. This reduces mdot from %g to %g for the sink, which was updated accordingly.\n", (unsigned long long) P[j].ID, (unsigned long long) id, mdot, (mdot-P[j].Mass/dt));
+#endif
+                                   }
                                } /* check list */
                             } /* go over list */
                         } /* is gas */
