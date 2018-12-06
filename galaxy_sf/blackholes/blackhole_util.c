@@ -182,7 +182,7 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
     /*  Do an insertion sort for the gas particle properties  */
     int j, n=BlackholeTempInfo[target].n_neighbor;
     if ( (n + out->n_neighbor) > NEWSINK_NEIGHBORMAX){ // We are not supposed to have more neighbors than NEWSINK_NEIGHBORMAX
-            printf("%d Gas neighbor number over limit of NEWSINK_NEIGHBORMAX for BH target %d Current neighbor number is %d and we want to add %d more\n", ThisTask, target ,n ,out->n_neighbor);
+            printf("%d Gas neighbor number over limit of NEWSINK_NEIGHBORMAX for BH ID %d Current neighbor number is %d and we want to add %d more. We are keeping the closest ones.\n", ThisTask, BlackholeTempInfo[target].index ,n, out->n_neighbor);
     }
     //Regardless, we will collect the closest NEWSINK_NEIGHBORMAX particles
     for(j=0;j<(out->n_neighbor);j++){ //go over all the incoming particle data
