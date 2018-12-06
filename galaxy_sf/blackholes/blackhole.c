@@ -695,13 +695,17 @@ void set_blackhole_mdot(int i, int n, double dt)
     if(isnan(mdot)) {mdot=0;}
     BPP(n).BH_Mdot = DMAX(mdot,0);
 #if defined(NEWSINK)
-    /*Store mdot and dt value for BH particle*/
-    BPP(n).Mdotvals[0] = BPP(n).BH_Mdot;
-    BPP(n).dtvals[0] = dt;
-    for(k=0;k<(MDOT_AVG_WINDOWS_SIZE-1);k++){
-        BPP(n).Mdotvals[k+1] = BPP(n).Mdotvals[k];
-        BPP(n).dtvals[k+1] = BPP(n).dtvals[k];
+    double t_sum=0; 
+    /*Store mdot and dt value for BH particle and time average it*/
+    BPP(n).BH_Mdot_Avg = BPP(n).Mdotvals[0]*BPP(n).dtvals[0] ; t_sum = dt; //start with the current values
+    for(k=(MDOT_AVG_WINDOWS_SIZE-1);k>0;k--){ //shift array by one
+        BPP(n).Mdotvals[k] = BPP(n).Mdotvals[k-1];
+        BPP(n).dtvals[k] = BPP(n).dtvals[k-1];
+        BPP(n).BH_Mdot_Avg += BPP(n).Mdotvals[k]*BPP(n).dtvals[k];
+        tsum += BPP(n).dtvals[k];
     }
+    BPP(n).BH_Mdot_Avg /= tsum; //normalize time average
+    BPP(n).Mdotvals[0] = BPP(n).BH_Mdot; BPP(n).dtvals[0] = dt;//store current values
 #endif
 }
 
