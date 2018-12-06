@@ -288,6 +288,7 @@
 #define DT_MIN_TOLERANCE_FACTOR 0.01 //tolerance factor for dt_min, defined in part (ii) of 2.3.5 in Hubber 2013
 #define INT_ZONE_TO_SINKRADIUS 1.0 //how many times larger should the sink interaction zone be compared to the sink's at formation size, 1 should be good
 #define NEWSINK_NEIGHBORMAX 200 //maximum number of neighbors anticipated, using BlackHoleNgbFactor=5 and DesNumNgb=32  value of 200 should be safe
+#define MDOT_AVG_WINDOWS_SIZE 10 //for radiation mdot is smoothed over this number of timesteps
 #endif
 //#GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory
 #ifdef SINGLE_STAR_FB_HEATING
@@ -2124,6 +2125,8 @@ extern ALIGN(32) struct particle_data
 #endif
 #ifdef NEWSINK
     MyFloat init_mass_in_intzone; /*initial mass in interaction zone, used for scaling mdot*/
+    MyFloat Mdotvals[MDOT_AVG_WINDOWS_SIZE]; /*value of mdot for the last MDOT_AVG_WINDOWS_SIZE timesteps*/
+    MyFloat dtvals[MDOT_AVG_WINDOWS_SIZE]; /*value of particle dt for the last MDOT_AVG_WINDOWS_SIZE timesteps*/
 #endif
 #ifdef NEWSINK_J_FEEDBACK
     MyDouble Jsink[3];

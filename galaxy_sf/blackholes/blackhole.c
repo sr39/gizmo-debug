@@ -575,10 +575,10 @@ void set_blackhole_mdot(int i, int n, double dt)
         mdot = BlackholeTempInfo[i].intzone_gasmass / BlackholeTempInfo[i].t_acc * DMAX(1.0, pow(BlackholeTempInfo[i].intzone_gasmass/BPP(n).init_mass_in_intzone,2.0)); /* Use the accretion timescale calculated for the sink, then scaled by (M/M_init)^2 if larger than M_init*/
     }
     /*We have already marked particles that have too small timesteps to be swallowed. Let's check if that put mdot above this value, if yes, change mdot*/
-        for(k=0;k<BlackholeTempInfo[i].n_neighbor;k++){
-            if (BlackholeTempInfo[i].f_acc[k] > 0){ //it was decided to eat this gas before the feeding loop started, it must have too low dt or some other issue
-                mass_in_low_dt_gas += BlackholeTempInfo[i].mgas[k]*BlackholeTempInfo[i].f_acc[k];
-            }
+    for(k=0;k<BlackholeTempInfo[i].n_neighbor;k++){
+        if (BlackholeTempInfo[i].f_acc[k] > 0){ //it was decided to eat this gas before the feeding loop started, it must have too low dt or some other issue
+            mass_in_low_dt_gas += BlackholeTempInfo[i].mgas[k]*BlackholeTempInfo[i].f_acc[k];
+        }
     }
     if (mass_in_low_dt_gas > (mdot*dt) ){ /*we are bound to eat more than the formula tells us to*/
         printf("%d : Too much gas pre-marked to be swallowed, setting mdot for BH with ID %d to %g instead of %g\n", ThisTask, BPP(n).ID,(mass_in_low_dt_gas/dt), mdot );
@@ -694,6 +694,15 @@ void set_blackhole_mdot(int i, int n, double dt)
     /* alright, now we can FINALLY set the BH accretion rate */
     if(isnan(mdot)) {mdot=0;}
     BPP(n).BH_Mdot = DMAX(mdot,0);
+#if defined(NEWSINK)
+    /*Store mdot and dt value for BH particle*/
+    BPP(n).Mdotvals[0] = BPP(n).BH_Mdot;
+    BPP(n).dtvals[0] = dt;
+    for(k=0;k<(MDOT_AVG_WINDOWS_SIZE-1);k++){
+        BPP(n).Mdotvals[k+1] = BPP(n).Mdotvals[k];
+        BPP(n).dtvals[k+1] = BPP(n).dtvals[k];
+    }
+#endif
 }
 
 
