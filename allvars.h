@@ -2130,7 +2130,7 @@ extern ALIGN(32) struct particle_data
     MyFloat dtvals[MDOT_AVG_WINDOWS_SIZE]; /*value of particle dt for the last MDOT_AVG_WINDOWS_SIZE timesteps*/
 #endif
 #ifdef NEWSINK_J_FEEDBACK
-    MyDouble Jsink[3];
+    MyFloat Jsink[3];
     MyFloat t_disc;
 #endif
     MyFloat BH_Mdot;
@@ -2835,6 +2835,9 @@ enum iofields
   IO_BHPROGS,
   IO_BH_DIST,
   IO_ACRB,
+  IO_SINKRAD,
+  IO_JSINK,
+  IO_BHMASSINIT,
   IO_POT,
   IO_ACCEL,
   IO_HII,

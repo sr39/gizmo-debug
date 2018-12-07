@@ -637,6 +637,25 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_LAST_CAUSTIC:
         case IO_HSMS:
         case IO_ACRB:
+        case IO_SINKRAD:
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+            for(n = 0; n < pc; n++)
+                P[offset + n].SinkRadius = *fp++;
+#endif
+            break;
+        case IO_JSINK:
+#ifdef NEWSINK_J_FEEDBACK
+            for(n = 0; n < pc; n++)
+                for(k = 0; k < 3; k++)
+                    SphP[offset + n].Jsink[k] = *fp++;
+#endif
+            break;
+        case IO_BHMASSINIT:
+#ifdef NEWSINK
+            for(n = 0; n < pc; n++)
+                P[offset + n].init_mass_in_intzone = *fp++;
+#endif
+            break;
         case IO_VSTURB_DISS:
         case IO_VSTURB_DRIVE:
         case IO_MG_PHI:
