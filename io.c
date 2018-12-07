@@ -866,8 +866,37 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
-            
+        case IO_SINKRAD:
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = P[pindex].SinkRadius;
+                    n++;
+                }
+#endif
+            break;
+        case IO_JSINK:
+#ifdef NEWSINK_J_FEEDBACK
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    for(k = 0; k < 3; k++){
+                        fp[k] += P[pindex].Jsink[k];}
+                    n++;
+                }
+#endif
+            break;
+        case IO_BHMASSINIT:
+#ifdef NEWSINK
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = P[pindex].init_mass_in_intzone;
+                    n++;
+                }
+#endif
+            break;
         case IO_TIDALTENSORPS:
             /* 3x3 configuration-space tidal tensor that is driving the GDE */
 #ifdef OUTPUT_GDE_TIDALTENSORPS
@@ -1552,6 +1581,9 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_BHMASS:
         case IO_BHMASSALPHA:
         case IO_ACRB:
+        case IO_SINKRAD:
+        case IO_JSINK:
+        case IO_BHMASSINIT:
         case IO_BHMDOT:
         case IO_CAUSTIC_COUNTER:
         case IO_FLOW_DETERMINANT:
@@ -1821,6 +1853,9 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_BHMASS:
         case IO_BHMASSALPHA:
         case IO_ACRB:
+        case IO_SINKRAD:
+        case IO_JSINK:
+        case IO_BHMASSINIT:
         case IO_BHMDOT:
         case IO_BHPROGS:
         case IO_CAUSTIC_COUNTER:
@@ -2150,6 +2185,9 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_BHMASS:
         case IO_BHMASSALPHA:
         case IO_ACRB:
+        case IO_SINKRAD:
+        case IO_JSINK:
+        case IO_BHMASSINIT:
         case IO_BHMDOT:
         case IO_BHPROGS:
             for(i = 0; i < 6; i++)
@@ -2529,6 +2567,9 @@ int blockpresent(enum iofields blocknr)
             
             
         case IO_ACRB:
+        case IO_SINKRAD:
+        case IO_JSINK:
+        case IO_BHMASSINIT:
         case IO_BHMASS:
         case IO_BHMASSALPHA:
         case IO_BHMDOT:
@@ -3011,6 +3052,15 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_ACRB:
             strncpy(label, "ACRB", 4);
             break;
+        case IO_SINKRAD:
+            strncpy(label, "SRAD", 4);
+            break;
+        case IO_JSINK:
+            strncpy(label, "JSIN", 4);
+            break;
+        case IO_BHMASSINIT:
+            strncpy(label, "BHMI", 4);
+            break;
         case IO_BHMDOT:
             strncpy(label, "BHMD", 4);
             break;
@@ -3382,6 +3432,15 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_ACRB:
             strcpy(buf, "BH_AccretionLength");
+            break;
+        case IO_SINKRAD:
+            strcpy(buf, "SinkRadius");
+            break;
+        case IO_JSINK:
+            strcpy(buf, "Jsink");
+            break;
+        case IO_BHMASSINIT:
+            strcpy(buf, "init_mass_in_intzone");
             break;
         case IO_BHMDOT:
             strcpy(buf, "BH_Mdot");

@@ -49,7 +49,7 @@ static struct blackholedata_in
     MyFloat SinkRadius;
 #endif
 #if defined(NEWSINK_J_FEEDBACK)
-    MyDouble Jsink[3];
+    MyFloat Jsink[3];
 #endif
 #endif
 }
@@ -227,8 +227,8 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     int j2, n2;
     MyDouble Jpar[3], dt;
 #if defined(NEWSINK_J_FEEDBACK)
-    MyDouble Jsinktot, Jcrossdr[3], drcrossJcrossdr[3];
-    MyDouble *Jsink;
+    MyFloat Jsinktot, Jcrossdr[3], drcrossJcrossdr[3];
+    MyFloat *Jsink;
 #endif
 #endif
     

@@ -61,7 +61,7 @@ static struct blackholedata_in
     int isbound[NEWSINK_NEIGHBORMAX]; /* is it bound to the sink */
     MyFloat f_acc[NEWSINK_NEIGHBORMAX]; /* How much of the gas particle should be accreted */
 #if defined(NEWSINK_J_FEEDBACK)
-    MyDouble Jsink[3];
+    MyFloat Jsink[3];
     MyFloat t_disc;
     MyDouble dv_ang_kick_norm[NEWSINK_NEIGHBORMAX]; /*Normalization term for angular momentum feedback kicks, see denominator of Eq 22 of Hubber 2013*/
 #endif

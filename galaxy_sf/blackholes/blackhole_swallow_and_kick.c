@@ -246,8 +246,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #if defined(NEWSINK_J_FEEDBACK)
     MyLongDouble accreted_J[3];
     MyFloat dx[3], dv[3], dr;
-    MyDouble Jsinktot, dJsinkpred, Jcrossdr[3];
-    MyDouble *Jsink, *str_dv_ang_kick_norm;
+    MyFloat Jsinktot, dJsinkpred, Jcrossdr[3];
+    MyFloat *Jsink, *str_dv_ang_kick_norm;
     MyFloat tdisc;
     MyDouble dv_ang_kick_norm=0; /*Normalization factor for angular momentum feedback kicks*/ 
 #endif
