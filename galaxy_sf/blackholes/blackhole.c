@@ -709,6 +709,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 #ifdef BH_OUTPUT_MOREINFO
     printf("ThisTask=%d, time=%g: sink id=%llu has mdot of%g while average over MDOT_AVG_WINDOWS_SIZE is %g\n", ThisTask, All.Time, P[n].ID, BPP(n).BH_Mdot,BPP(n).BH_Mdot_Avg);
 #endif
+#endif
 }
 
 
