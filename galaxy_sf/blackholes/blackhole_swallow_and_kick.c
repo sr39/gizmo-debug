@@ -633,11 +633,14 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                     printf("swallow n=%llu last dJsinkpred is: %g \n", (unsigned long long) target, (MyFloat) dJsinkpred);
                     printf("swallow n=%llu last Jcrossdr[0] is: %g \n", (unsigned long long) target, (MyFloat) Jcrossdr[0]);
                     printf("swallow n=%llu last accreted_J[0] is: %g \n", (unsigned long long) target, (MyFloat) accreted_J[0]);
-                    printf("swallow n=%llu last dv[0] is: %g \n", (unsigned long long) target, (MyFloat) dv[0]);
-                    printf("swallow n=%llu last dv[1] is: %g \n", (unsigned long long) target, (MyFloat) dv[1]);
-                    printf("swallow n=%llu last dv[2] is: %g \n", (unsigned long long) target, (MyFloat) dv[2]);
-                    printf("swallow n=%llu last P[j].Mass is: %g \n", (unsigned long long) target, (MyFloat) P[j].Mass);
-                    printf("swallow n=%llu last P[target].Mass is: %g \n", (unsigned long long) target, (MyFloat) P[target].Mass);
+                    printf("swallow n=%llu P[j].Vel[0] is: %g \n", (unsigned long long) target, (MyFloat) P[j].Vel[0]);
+                    printf("swallow n=%llu P[j].Vel[1] is: %g \n", (unsigned long long) target, (MyFloat) P[j].Vel[1]);
+                    printf("swallow n=%llu P[j].Vel[2] is: %g \n", (unsigned long long) target, (MyFloat) P[j].Vel[2]);
+                    printf("swallow n=%llu dv[0] is: %g \n", (unsigned long long) target, (MyFloat) dv[0]);
+                    printf("swallow n=%llu dv[1] is: %g \n", (unsigned long long) target, (MyFloat) dv[1]);
+                    printf("swallow n=%llu dv[2] is: %g \n", (unsigned long long) target, (MyFloat) dv[2]);
+                    printf("swallow n=%llu P[j].Mass is: %g \n", (unsigned long long) target, (MyFloat) P[j].Mass);
+                    printf("swallow n=%llu last sink mass is: %g \n", (unsigned long long) target, (MyFloat) mass);
 #endif
                 }
 #endif

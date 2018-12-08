@@ -647,7 +647,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #ifdef NEWSINK_J_FEEDBACK
             for(n = 0; n < pc; n++)
                 for(k = 0; k < 3; k++)
-                    SphP[offset + n].Jsink[k] = *fp++;
+                    P[offset + n].Jsink[k] = *fp++;
 #endif
             break;
         case IO_BHMASSINIT:
