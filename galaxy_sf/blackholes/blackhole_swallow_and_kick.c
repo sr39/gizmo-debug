@@ -237,7 +237,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     MyIDType id;
     MyLongDouble accreted_mass, accreted_BH_mass, accreted_momentum[3];
 #ifdef NEWSINK
-    MyFloat f_acc_corr=1.0;
+    MyFloat f_acc_corr=1.0,mdot_avg;
     MyFloat *str_f_acc;
     int n_neighbor;
     MyIDType *str_gasID;

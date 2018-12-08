@@ -264,7 +264,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #endif
 #ifdef NEWSINK
     int n_neighbor;
-    MyFloat int_zone_radius,int_zone_radius2, target_accreted_mass,accr_mass=0;
+    MyFloat int_zone_radius,int_zone_radius2, target_accreted_mass,accr_mass=0,mdot_avg;
     MyFloat /**str_rmass,*/ *str_mgas, *str_f_acc;
     int *str_isbound;
     MyIDType *str_gasID;
