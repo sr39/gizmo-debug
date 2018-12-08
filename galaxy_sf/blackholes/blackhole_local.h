@@ -49,6 +49,7 @@ static struct blackholedata_in
 #if !defined(SINGLE_STAR_STRICT_ACCRETION)
     MyFloat SinkRadius;
 #endif
+    MyFloat BH_Mdot_Avg;
     /* properties of neighboring particles, used for preferential feeding */
     int n_neighbor; //number of neighbors currently stored in the arrays below
     MyFloat rgas[NEWSINK_NEIGHBORMAX]; /* Distance of gas from sink */
