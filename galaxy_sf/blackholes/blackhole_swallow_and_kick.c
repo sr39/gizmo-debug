@@ -571,6 +571,11 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 
 #ifdef BH_WIND_KICK     /* BAL kicking operations. NOTE: we have two separate BAL wind models, particle kicking and smooth wind model. This is where we do the particle kicking BAL model. This should also work when there is alpha-disk. */
                         v_kick=All.BAL_v_outflow; if( !(All.ComovingIntegrationOn) && (All.Time < 0.001)) {v_kick *= All.Time/0.001;}
+#if defined(NEWSINK) /*It is possible to accrete only part of the particle so we need to be more careful about our kicks*/
+                        if (f_acc_corr<1.0)}{
+                            v_kick *= f_acc_corr*(1.0-All.BAL_f_accretion)/(1.0-All.BAL_f_accretion*f_acc_corr); /*we wanted to only accrete an f_acc_corr portion, so the imparted momentum is proportional to only f_acc_corr*(1-All.BAL_f_accretion) times the initial mass*/
+                        }
+#endif
                         dir[0]=dir[1]=dir[2]=0; for(k=0;k<3;k++) {dir[k]=P[j].Pos[k]-pos[k];} // DAA: default direction is radially outwards
 #if defined(BH_COSMIC_RAYS) /* inject cosmic rays alongside wind injection */
                         double dEcr = All.BH_CosmicRay_Injection_Efficiency * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * (C / All.UnitVelocity_in_cm_per_s)*(C / All.UnitVelocity_in_cm_per_s);
@@ -580,7 +585,11 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #endif
 #if (BH_WIND_KICK < 0)  /* DAA: along polar axis defined by angular momentum within Kernel (we could add finite opening angle) work out the geometry w/r to the plane of the disk */
+#if defined(NEWSINK_J_FEEDBACK) /*Use Jsink instead of Jgas_in_Kernel for direction*/
+                        if((dir[0]*Jsink[0] + dir[1]*Jsink[1] + dir[2]*Jsink[2]) > 0){for(k=0;k<3;k++) {dir[k]=Jsink[k];}} else {for(k=0;k<3;k++) {dir[k]=-Jsink[k];}}
+#else
                         if((dir[0]*Jgas_in_Kernel[0] + dir[1]*Jgas_in_Kernel[1] + dir[2]*Jgas_in_Kernel[2]) > 0){for(k=0;k<3;k++) {dir[k]=Jgas_in_Kernel[k];}} else {for(k=0;k<3;k++) {dir[k]=-Jgas_in_Kernel[k];}}
+#endif
 #endif
                         for(k=0,norm=0;k<3;k++) {norm+=dir[k]*dir[k];} if(norm<=0) {dir[0]=0;dir[1]=0;dir[2]=1;norm=1;} else {norm=sqrt(norm);}
                         for(k=0;k<3;k++) {P[j].Vel[k]+=v_kick*All.cf_atime*dir[k]/norm; SphP[j].VelPred[k]+=v_kick*All.cf_atime*dir[k]/norm;}
@@ -606,7 +615,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                     P[j].SwallowID = 0; 
                 } // if(P[j].SwallowID == id)  -- particles being entirely or partially swallowed!!!
 #if defined(NEWSINK_J_FEEDBACK)
-                if( Jsinktot > 0 && P[j].Mass > 0 && P[j].Type == 0 ){ /*There is angular mom in sink and this is gas*/
+                if( Jsinktot > 0 && P[j].Mass > 0 && P[j].Type == 0 ){ /*There is angular mom in the sink and this is gas*/
                 /*Let's find if it is on the neighbor list*/
                     for(k=0;k<n_neighbor;k++){
                         if( P[j].ID == str_gasID[k] && str_f_acc[k] < 1.0 ){ /*It should be a particle we don't swallow fully*/
