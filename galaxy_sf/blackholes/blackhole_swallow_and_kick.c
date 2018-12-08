@@ -313,6 +313,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #endif
 #if defined(NEWSINK)
+        mdot_avg = BPP(target).BH_Mdot_Avg;
         int_zone_radius = BPP(target).SinkRadius * INT_ZONE_TO_SINKRADIUS;
         n_neighbor = BlackholeTempInfo[P[target].IndexMapToTempStruc].n_neighbor;
         str_f_acc = BlackholeTempInfo[P[target].IndexMapToTempStruc].f_acc;
@@ -353,6 +354,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
         dt = BlackholeDataGet[target].Dt;
 #endif
 #if defined(NEWSINK)
+        mdot_avg = BlackholeDataGet[target].BH_Mdot_Avg;
         int_zone_radius = BlackholeDataGet[target].SinkRadius * INT_ZONE_TO_SINKRADIUS;
         n_neighbor = BlackholeDataGet[target].n_neighbor;
         str_f_acc = BlackholeDataGet[target].f_acc;
@@ -404,7 +406,11 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     int accreted_BH_progs = 0;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#ifdef NEWSINK
+    mom = bh_lum_bol(mdot_avg, bh_mass, -1) * dt / (C / All.UnitVelocity_in_cm_per_s);
+#else
     mom = bh_lum_bol(mdot, bh_mass, -1) * dt / (C / All.UnitVelocity_in_cm_per_s);
+#endif
     mom_wt = 0;
 #endif
     

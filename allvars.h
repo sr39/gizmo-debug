@@ -2125,7 +2125,7 @@ extern ALIGN(32) struct particle_data
 #endif
 #ifdef NEWSINK
     MyFloat init_mass_in_intzone; /*initial mass in interaction zone, used for scaling mdot*/
-    MyFloat BH_Mdot_Avg;
+    MyFloat BH_Mdot_Avg; /*Mdot averaged over MDOT_AVG_WINDOWS_SIZE timesteps*/
     MyFloat Mdotvals[MDOT_AVG_WINDOWS_SIZE]; /*value of mdot for the last MDOT_AVG_WINDOWS_SIZE timesteps*/
     MyFloat dtvals[MDOT_AVG_WINDOWS_SIZE]; /*value of particle dt for the last MDOT_AVG_WINDOWS_SIZE timesteps*/
 #endif

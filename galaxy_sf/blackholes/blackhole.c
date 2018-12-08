@@ -706,6 +706,8 @@ void set_blackhole_mdot(int i, int n, double dt)
     }
     BPP(n).BH_Mdot_Avg /= tsum; //normalize time average
     BPP(n).Mdotvals[0] = BPP(n).BH_Mdot; BPP(n).dtvals[0] = dt;//store current values
+#ifdef BH_OUTPUT_MOREINFO
+    printf("ThisTask=%d, time=%g: sink id=%llu has mdot of%g while average over MDOT_AVG_WINDOWS_SIZE is %g\n", ThisTask, All.Time, P[n].ID, BPP(n).BH_Mdot,BPP(n).BH_Mdot_Avg);
 #endif
 }
 

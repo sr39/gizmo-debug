@@ -735,9 +735,15 @@ void force_update_node_recursive(int no, int sib, int father)
 #ifdef BH_PHOTONMOMENTUM
                     if(pa->Type == 5)
                     {
+#ifdef NEWSINK
+                        if((pa->Mass>0)&&(pa->DensAroundStar>0)&&(pa->BH_Mdot_Avg>0))
+                        {
+                            double BHLum = bh_lum_bol(pa->BH_Mdot_Avg, pa->BH_Mass, p) * bh_lum_unitfactor;
+#else
                         if((pa->Mass>0)&&(pa->DensAroundStar>0)&&(pa->BH_Mdot>0))
                         {
-			                double BHLum = bh_lum_bol(pa->BH_Mdot, pa->BH_Mass, p) * bh_lum_unitfactor;
+                            double BHLum = bh_lum_bol(pa->BH_Mdot, pa->BH_Mass, p) * bh_lum_unitfactor;
+#endif
                             bh_lum += BHLum;
                             bh_lum_hR += BHLum * pa->BH_disk_hr;
                             for(k=0;k<3;k++) {bh_lum_grad[k] += BHLum * pa->GradRho[k];}
@@ -1899,7 +1905,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     mass_bhlum=0; 
 		            if(P[no].Type==5) 
 		            {
+#ifdef NEWSINK
+			            double bhlum_t = bh_lum_bol(P[no].BH_Mdot_Avg, P[no].BH_Mass, no) * bh_lum_unitfactor;
+#else
 			            double bhlum_t = bh_lum_bol(P[no].BH_Mdot, P[no].BH_Mass, no) * bh_lum_unitfactor;
+#endif
 			            mass_bhlum = bh_angleweight(bhlum_t, P[no].GradRho, P[no].BH_disk_hr, dx,dy,dz);
 		            }
 #endif

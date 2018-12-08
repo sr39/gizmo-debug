@@ -101,6 +101,7 @@ void blackhole_feed_loop(void)
 #endif
 #ifdef NEWSINK
             BlackholeDataIn[j].SinkRadius = BPP(place).SinkRadius;
+            BlackholeDataIn[j].BH_Mdot_Avg = BPP(place).BH_Mdot_Avg;
             //Copy info on neighbours
             BlackholeDataIn[j].n_neighbor = BlackholeTempInfo[P[place].IndexMapToTempStruc].n_neighbor;
             memcpy(BlackholeDataIn[j].rgas,BlackholeTempInfo[P[place].IndexMapToTempStruc].rgas, NEWSINK_NEIGHBORMAX * sizeof(MyFloat));
@@ -300,6 +301,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         sink_radius = P[target].SinkRadius;
 #endif
 #ifdef NEWSINK
+        mdot_avg = BPP(target).BH_Mdot_Avg;
         n_neighbor = BlackholeTempInfo[P[target].IndexMapToTempStruc].n_neighbor;
         //str_rmass = BlackholeTempInfo[P[target].IndexMapToTempStruc].rgas;
         str_mgas = BlackholeTempInfo[P[target].IndexMapToTempStruc].mgas;
@@ -333,6 +335,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         mass_to_swallow_edd = BlackholeDataGet[target].mass_to_swallow_edd;
 #endif
 #ifdef NEWSINK
+        mdot_avg = BlackholeDataGet[target].BH_Mdot_Avg;
         n_neighbor = BlackholeDataGet[target].n_neighbor;
         //str_rmass = BlackholeDataGet[target].rgas;
         str_mgas = BlackholeDataGet[target].mgas;
@@ -626,7 +629,11 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                             
 #ifdef BH_THERMALFEEDBACK
                             {
+#ifdef NEWSINK
+                                energy = bh_lum_bol(mdot_avg, bh_mass, -1) * dt;
+#else
                                 energy = bh_lum_bol(mdot, bh_mass, -1) * dt;
+#endif
                                 if(rho > 0) {SphP[j].Injected_BH_Energy += (wk/rho) * energy * P[j].Mass;}
                             }
 #endif
