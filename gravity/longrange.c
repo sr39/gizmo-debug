@@ -9,6 +9,7 @@
 
 #ifdef USE_FFTW3
 #include <fftw3-mpi.h>
+#include "myfftw3.h"
 #endif
 
 /*! \file longrange.c
