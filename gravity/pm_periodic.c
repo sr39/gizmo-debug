@@ -143,9 +143,9 @@ void pm_init_periodic(void)
 
   /* get local data size and allocate */
 
-  //fftsize = fftw_mpi_local_size_3d(PMGRID, PMGRID, PMGRID2, MPI_COMM_WORLD, &nslab_x, &slabstar_x); 
+  //fftsize = fftw_mpi_local_size_3d(PMGRID, PMGRID, PMGRID2, MPI_COMM_WORLD, &nslab_x, &slabstart_x); 
   fftsize = fftw_mpi_local_size_3d_transposed(PMGRID, PMGRID, PMGRID2, MPI_COMM_WORLD, 
-	  &nslab_x, &slabstar_x, &nslab_y, &slabstart_y); 
+	  &nslab_x, &slabstart_x, &nslab_y, &slabstart_y); 
 #endif
 
   for(i = 0; i < PMGRID; i++)
@@ -195,10 +195,10 @@ void pm_init_periodic(void)
 
   fft_of_rhogrid = (fftw_complex *) rhogrid;
 
-  fft_forward_plan = fftw_mpi_plan_dft_r2c_3d(GRID, GRID, GRID, rhogrid, fft_of_rhogrid, 
+  fft_forward_plan = fftw_mpi_plan_dft_r2c_3d(PMGRID, PMGRID, PMGRID, rhogrid, fft_of_rhogrid, 
 	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT); 
 
-  fft_inverse_plan = fftw_mpi_plan_dft_c2r_3d(GRID, GRID, GRID, fft_of_rhogrid, rhogrid, 
+  fft_inverse_plan = fftw_mpi_plan_dft_c2r_3d(PMGRID, PMGRID, PMGRID, fft_of_rhogrid, rhogrid, 
 	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_IN); 
 
 #endif

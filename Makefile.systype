@@ -12,11 +12,12 @@
 #############
 
 
+SYSTYPE="tatary2"
 #SYSTYPE="BlueWaters"
 #SYSTYPE="Stampede"
 #SYSTYPE="Stampede2"
 #SYSTYPE="Zwicky"
-SYSTYPE="Wheeler"
+#SYSTYPE="Wheeler"
 #SYSTYPE="MacBookPro"
 #SYSTYPE="Quest"
 #SYSTYPE="Iron"

@@ -284,9 +284,9 @@ void pm_init_nonperiodic(void)
   }
 
   /* get local data size and allocate */
-  //fftsize = fftw_mpi_local_size_3d(GRID, GRID, GRID2, MPI_COMM_WORLD, &nslab_x, &slabstar_x); 
+  //fftsize = fftw_mpi_local_size_3d(GRID, GRID, GRID2, MPI_COMM_WORLD, &nslab_x, &slabstart_x); 
   fftsize = fftw_mpi_local_size_3d_transposed(GRID, GRID, GRID2, MPI_COMM_WORLD, 
-	  &nslab_x, &slabstar_x, &nslab_y, &slabstart_y); 
+	  &nslab_x, &slabstart_x, &nslab_y, &slabstart_y); 
 #endif
 
 
@@ -693,11 +693,9 @@ void pm_setup_nonperiodic_kernel(void)
 	      cmplx_im(fft_of_kernel_scalarfield[0][ip]) *= ff;
 #endif
 #endif
-#endif
 #if defined(PM_PLACEHIGHRESREGION)
 	      cmplx_re(fft_of_kernel[1][ip]) *= ff;
 	      cmplx_im(fft_of_kernel[1][ip]) *= ff;
-#endif
 #ifdef DM_SCALARFIELD_SCREENING
 	      cmplx_re(fft_of_kernel_scalarfield[1][ip]) *= ff;
 	      cmplx_im(fft_of_kernel_scalarfield[1][ip]) *= ff;
@@ -1926,11 +1924,11 @@ int pmpotential_nonperiodic(int grnr)
 	    cmplx_im(fft_of_rhogrid[ip]) * cmplx_im(fft_of_kernel[grnr][ip]);
 
 	  im =
-	    fft_of_rhogrid[ip].re * fft_of_kernel[grnr][ip].im +
-	    fft_of_rhogrid[ip].im * fft_of_kernel[grnr][ip].re;
+	    cmplx_re(fft_of_rhogrid[ip]) * cmplx_im(fft_of_kernel[grnr][ip]) +
+	    cmplx_im(fft_of_rhogrid[ip]) * cmplx_re(fft_of_kernel[grnr][ip]);
 
-	  fft_of_rhogrid[ip].re = re;
-	  fft_of_rhogrid[ip].im = im;
+	  cmplx_re(fft_of_rhogrid[ip]) = re;
+	  cmplx_im(fft_of_rhogrid[ip]) = im;
 	}
 
   /* get the potential by inverse FFT */
@@ -2429,27 +2427,27 @@ int pmtidaltensor_nonperiodic_diff(int grnr)
 	      if(phase == 1)
 		{
 		  re =
-		    cmpx_re(fft_of_rhogrid[ip]) * cmpx_re(fft_of_kernel_scalarfield[grnr][ip]) -
-		    cmpx_im(fft_of_rhogrid[ip]) * cmpx_im(fft_of_kernel_scalarfield[grnr][ip]);
+		    cmplx_re(fft_of_rhogrid[ip]) * cmplx_re(fft_of_kernel_scalarfield[grnr][ip]) -
+		    cmplx_im(fft_of_rhogrid[ip]) * cmplx_im(fft_of_kernel_scalarfield[grnr][ip]);
 
 		  im =
-		    cmpx_re(fft_of_rhogrid[ip]) * cmpx_im(fft_of_kernel_scalarfield[grnr][ip]) +
-		    cmpx_im(fft_of_rhogrid[ip]) * cmpx_re(fft_of_kernel_scalarfield[grnr][ip]);
+		    cmplx_re(fft_of_rhogrid[ip]) * cmplx_im(fft_of_kernel_scalarfield[grnr][ip]) +
+		    cmplx_im(fft_of_rhogrid[ip]) * cmplx_re(fft_of_kernel_scalarfield[grnr][ip]);
 		}
 	      else
 #endif
 		{
 		  re =
-		    cmpx_re(fft_of_rhogrid[ip]) * cmpx_re(fft_of_kernel[grnr][ip]) -
-		    cmpx_im(fft_of_rhogrid[ip]) * cmpx_im(fft_of_kernel[grnr][ip]);
+		    cmplx_re(fft_of_rhogrid[ip]) * cmplx_re(fft_of_kernel[grnr][ip]) -
+		    cmplx_im(fft_of_rhogrid[ip]) * cmplx_im(fft_of_kernel[grnr][ip]);
 
 		  im =
-		    cmpx_re(fft_of_rhogrid[ip]) * cmpx_im(fft_of_kernel[grnr][ip]) +
-		    cmpx_im(fft_of_rhogrid[ip]) * cmpx_re(fft_of_kernel[grnr][ip]);
+		    cmplx_re(fft_of_rhogrid[ip]) * cmplx_im(fft_of_kernel[grnr][ip]) +
+		    cmplx_im(fft_of_rhogrid[ip]) * cmplx_re(fft_of_kernel[grnr][ip]);
 		}
 
-	      cmpx_re(fft_of_rhogrid[ip]) = re;
-	      cmpx_im(fft_of_rhogrid[ip]) = im;
+	      cmplx_re(fft_of_rhogrid[ip]) = re;
+	      cmplx_im(fft_of_rhogrid[ip]) = im;
 	    }
 
       /* get the potential by inverse FFT */
@@ -3130,15 +3128,15 @@ int pmtidaltensor_nonperiodic_fourier(int grnr, int component)
 	  ip = GRID * (GRID / 2 + 1) * y + (GRID / 2 + 1) * x + z;
 
 	  re =
-	    fft_of_rhogrid[ip].re * fft_of_kernel[grnr][ip].re -
-	    fft_of_rhogrid[ip].im * fft_of_kernel[grnr][ip].im;
+	    cmplx_re(fft_of_rhogrid[ip]) * cmplx_re(fft_of_kernel[grnr][ip]) -
+	    cmplx_im(fft_of_rhogrid[ip]) * cmplx_im(fft_of_kernel[grnr][ip]);
 
 	  im =
-	    fft_of_rhogrid[ip].re * fft_of_kernel[grnr][ip].im +
-	    fft_of_rhogrid[ip].im * fft_of_kernel[grnr][ip].re;
+	    cmplx_re(fft_of_rhogrid[ip]) * cmplx_im(fft_of_kernel[grnr][ip]) +
+	    cmplx_im(fft_of_rhogrid[ip]) * cmplx_re(fft_of_kernel[grnr][ip]);
 
-	  fft_of_rhogrid[ip].re = re;
-	  fft_of_rhogrid[ip].im = im;
+	  cmplx_re(fft_of_rhogrid[ip]) = re;
+	  cmplx_im(fft_of_rhogrid[ip]) = im;
 
 	  if(x > PMGRID / 2)
 	    kx = x - PMGRID;
@@ -3157,28 +3155,28 @@ int pmtidaltensor_nonperiodic_fourier(int grnr, int component)
 	  /* modify greens function to get second derivatives of potential ("pulling" down k's) */
 	  if(component == 0)
 	    {
-	      fft_of_rhogrid[ip].re *= kx * kx;
-	      fft_of_rhogrid[ip].im *= kx * kx;
+	      cmplx_re(fft_of_rhogrid[ip]) *= kx * kx;
+	      cmplx_im(fft_of_rhogrid[ip]) *= kx * kx;
 	    }
 	  if(component == 1)
 	    {
-	      fft_of_rhogrid[ip].re *= kx * ky;
-	      fft_of_rhogrid[ip].im *= kx * ky;
+	      cmplx_re(fft_of_rhogrid[ip]) *= kx * ky;
+	      cmplx_im(fft_of_rhogrid[ip]) *= kx * ky;
 	    }
 	  if(component == 2)
 	    {
-	      fft_of_rhogrid[ip].re *= kx * kz;
-	      fft_of_rhogrid[ip].im *= kx * kz;
+	      cmplx_re(fft_of_rhogrid[ip]) *= kx * kz;
+	      cmplx_im(fft_of_rhogrid[ip]) *= kx * kz;
 	    }
 	  if(component == 3)
 	    {
-	      fft_of_rhogrid[ip].re *= ky * ky;
-	      fft_of_rhogrid[ip].im *= ky * ky;
+	      cmplx_re(fft_of_rhogrid[ip]) *= ky * ky;
+	      cmplx_im(fft_of_rhogrid[ip]) *= ky * ky;
 	    }
 	  if(component == 4)
 	    {
-	      fft_of_rhogrid[ip].re *= ky * kz;
-	      fft_of_rhogrid[ip].im *= ky * kz;
+	      cmplx_re(fft_of_rhogrid[ip]) *= ky * kz;
+	      cmplx_im(fft_of_rhogrid[ip]) *= ky * kz;
 	    }
 	  if(component == 5)
 	    {
@@ -3193,16 +3191,16 @@ int pmtidaltensor_nonperiodic_fourier(int grnr, int component)
 	         fft_of_rhogrid[ip].re = smth*imp*kz * All.TotalMeshSize[grnr] / (2*M_PI);
 	         fft_of_rhogrid[ip].im = -smth*rep*kz * All.TotalMeshSize[grnr] / (2*M_PI);
 	       */
-	      fft_of_rhogrid[ip].re *= kz * kz;
-	      fft_of_rhogrid[ip].im *= kz * kz;
+	      cmplx_re(fft_of_rhogrid[ip]) *= kz * kz;
+	      cmplx_im(fft_of_rhogrid[ip]) *= kz * kz;
 
 	    }
 
 	  /* pre factor = (2*M_PI) / All.BoxSize */
 	  /* note: tidal tensor = - d^2 Phi/ dx_i dx_j  IS THE SIGN CORRECT ?!?! */
-	  fft_of_rhogrid[ip].re *=
+	  cmplx_re(fft_of_rhogrid[ip]) *=
 	    (2 * M_PI) * (2 * M_PI) / (All.TotalMeshSize[grnr] * All.TotalMeshSize[grnr]);
-	  fft_of_rhogrid[ip].im *=
+	  cmplx_im(fft_of_rhogrid[ip]) *=
 	    (2 * M_PI) * (2 * M_PI) / (All.TotalMeshSize[grnr] * All.TotalMeshSize[grnr]);
 
 	}

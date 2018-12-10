@@ -16,7 +16,7 @@
  together with 'HYDRO_GENERATE_TARGET_MESH'. This will attempt to move the mesh and mass
  towards the 'target' pressure profile. Use this to build your ICs.
  The 'desired' pressure and density as a function of particle properties (most commonly, position) should be provided in the function below */
-void return_user_desired_target_density(int i)
+double return_user_desired_target_density(int i)
 {
     double dx=P[i].Pos[0]-boxHalf_X, dy=P[i].Pos[1]-boxHalf_Y, dz=P[i].Pos[2]-boxHalf_Z, r=sqrt(dx*dx+dy*dy+dz*dz);
     return 1 + 0.*r; // uniform density everywhere -- will try to generate a glass //
@@ -26,7 +26,7 @@ void return_user_desired_target_density(int i)
      return rho_0 * ((1.-1./rho_contrast)*0.5*erfc(2.*(r-r_cloud)/interp_width) + 1./rho_contrast);
      */
 }
-void return_user_desired_target_pressure(int i)
+double return_user_desired_target_pressure(int i)
 {
     double dx=P[i].Pos[0]-boxHalf_X, dy=P[i].Pos[1]-boxHalf_Y, dz=P[i].Pos[2]-boxHalf_Z, r=sqrt(dx*dx+dy*dy+dz*dz);
     return 1; // uniform pressure everywhere -- will try to generate a constant-pressure medium //

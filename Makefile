@@ -131,12 +131,20 @@ else
 endif
 endif
 else # use FFTW3 instead of FFTW2.?
-    ifeq (PMGRID, $(findstring PMGRID, $(CONFIGVARS)))
+ifeq (PMGRID, $(findstring PMGRID, $(CONFIGVARS)))
+ifeq (DOUBLEPRECISION_FFTW,$(findstring DOUBLEPRECISION_FFTW,$(CONFIGVARS)))  # test for double precision libraries
   FFTW_LIBNAMES = -lfftw3_mpi -lfftw3
+else #single precision 
+  FFTW_LIBNAMES = -lfftw3f_mpi -lfftw3f
+endif
 else 
 # or if TURB_DRIVING_SPECTRUMGRID is activated
 ifeq (TURB_DRIVING_SPECTRUMGRID, $(findstring TURB_DRIVING_SPECTRUMGRID, $(CONFIGVARS)))
+ifeq (DOUBLEPRECISION_FFTW,$(findstring DOUBLEPRECISION_FFTW,$(CONFIGVARS)))  # test for double precision libraries
   FFTW_LIBNAMES = -lfftw3_mpi -lfftw3
+else #single precision  
+  FFTW_LIBNAMES = -lfftw3f_mpi -lfftw3f
+endif
 else 
   FFTW_LIBNAMES = #
 endif
@@ -997,6 +1005,7 @@ OBJS	+= $(GRAVITY_OBJS) $(HYDRO_OBJS) $(SYSTEM_OBJS)
 OBJS	+= $(L3_OBJS)
 
 INCL    += allvars.h proto.h gravity/forcetree.h domain.h system/myqsort.h kernel.h eos/eos.h Makefile \
+	   gravity/myfftw3.h
 
 
 ifeq (GALSF_SUBGRID_WINDS,$(findstring GALSF_SUBGRID_WINDS,$(CONFIGVARS)))
