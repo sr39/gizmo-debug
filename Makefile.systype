@@ -12,7 +12,6 @@
 #############
 
 
-SYSTYPE="tatary2"
 #SYSTYPE="BlueWaters"
 #SYSTYPE="Stampede"
 #SYSTYPE="Stampede2"
