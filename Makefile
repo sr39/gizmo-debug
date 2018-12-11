@@ -72,8 +72,8 @@ BUILDINFO = "Build on $(HOSTNAME) by $(USER) from $(HG_BRANCH):$(HG_COMMIT) at $
 ifeq (FIRE_PHYSICS_DEFAULTS,$(findstring FIRE_PHYSICS_DEFAULTS,$(CONFIGVARS)))  # using 'fire default' instead of all the above
     CONFIGVARS += COOLING COOL_LOW_TEMPERATURES COOL_METAL_LINES_BY_SPECIES
     CONFIGVARS += GALSF METALS TURB_DIFF_METALS TURB_DIFF_METALS_LOWORDER GALSF_SFR_MOLECULAR_CRITERION GALSF_SFR_VIRIAL_SF_CRITERION=0
-    CONFIGVARS += GALSF_FB_GASRETURN GALSF_FB_HII_HEATING GALSF_FB_SNE_HEATING=1 GALSF_FB_RT_PHOTONMOMENTUM
-    CONFIGVARS += GALSF_FB_LOCAL_UV_HEATING GALSF_FB_RPWIND_LOCAL GALSF_FB_RPROCESS_ENRICHMENT=4
+    CONFIGVARS += GALSF_FB_FIRE_RT_HIIHEATING GALSF_FB_MECHANICAL GALSF_FB_FIRE_RT_LONGRANGE
+    CONFIGVARS += GALSF_FB_FIRE_RT_UVHEATING GALSF_FB_FIRE_RT_LOCALRP GALSF_FB_FIRE_RPROCESS=4
 #    CONFIGVARS += GALSF_SFR_IMF_VARIATION
 endif
 
@@ -307,7 +307,7 @@ CXX      = mpicpc ## gcc compilers, for intel replace this with mpiicpc
 FC       = $(CC)
 #OPTIMIZE = -Wall -g -O3 -xHOST -ipo -no-prec-div -fp-model fast=2 -fast-transcendentals -funroll-loops ## optimizations for intel compilers
 ##OPTIMIZE += -pg ## profiling for intel compilers
-OPTIMIZE = -g -O2 -ffast-math -funroll-loops -finline-functions -funswitch-loops -fpredictive-commoning -fgcse-after-reload -fipa-cp-clone  ## optimizations for gcc compilers (1/2)
+OPTIMIZE = -g -O1 -ffast-math -funroll-loops -finline-functions -funswitch-loops -fpredictive-commoning -fgcse-after-reload -fipa-cp-clone  ## optimizations for gcc compilers (1/2)
 OPTIMIZE += -ftree-loop-distribute-patterns -fvect-cost-model -ftree-partial-pre   ## optimizations for gcc compilers (2/2)
 #OPTIMIZE += -ftree-loop-distribute-patterns -ftree-slp-vectorize -fvect-cost-model -ftree-partial-pre   ## optimizations for gcc compilers (2/2)
 #OPTIMIZE += -pg -fprofile -fprofile-arcs -ftest-coverage -fprofile-generate ## full profiling, for gcc compilers
@@ -1017,15 +1017,7 @@ OBJS    += solids/grain_physics.o
 endif
 
 ifeq (GALSF,$(findstring GALSF,$(CONFIGVARS)))
-OBJS    += galaxy_sf/sfr_eff.o
-endif
-
-ifeq (GALSF_FB_HII_HEATING,$(findstring GALSF_FB_HII_HEATING,$(CONFIGVARS)))
-OBJS    += galaxy_sf/hII_heating.o
-endif
-
-ifeq (RT_CHEM_PHOTOION,$(findstring RT_CHEM_PHOTOION,$(CONFIGVARS)))
-OBJS    += galaxy_sf/hII_heating.o
+OBJS    += galaxy_sf/sfr_eff.o galaxy_sf/stellar_evolution.o
 endif
 
 ifeq (CBE_INTEGRATOR,$(findstring CBE_INTEGRATOR,$(CONFIGVARS)))
@@ -1040,7 +1032,7 @@ ifeq (OUTPUT_TWOPOINT_ENABLED,$(findstring OUTPUT_TWOPOINT_ENABLED,$(CONFIGVARS)
 OBJS    += structure/twopoint.o
 endif
 
-ifeq (GALSF_FB_SNE_HEATING,$(findstring GALSF_FB_SNE_HEATING,$(CONFIGVARS)))
+ifeq (GALSF_FB_MECHANICAL,$(findstring GALSF_FB_MECHANICAL,$(CONFIGVARS)))
 OBJS    += galaxy_sf/mechanical_fb.o
 endif
 
@@ -1048,8 +1040,8 @@ ifeq (GALSF_FB_THERMAL,$(findstring GALSF_FB_THERMAL,$(CONFIGVARS)))
 OBJS    += galaxy_sf/thermal_fb.o
 endif
 
-ifeq (GALSF_FB_RPWIND_LOCAL,$(findstring GALSF_FB_RPWIND_LOCAL,$(CONFIGVARS)))
-OBJS    += galaxy_sf/rp_localwinds.o
+ifeq (GALSF_FB_FIRE_RT,$(findstring GALSF_FB_FIRE_RT,$(CONFIGVARS)))
+OBJS    += galaxy_sf/radfb_local.o
 endif
 
 ifeq (BLACK_HOLES,$(findstring BLACK_HOLES,$(CONFIGVARS)))
@@ -1063,16 +1055,9 @@ endif
 
 
 ifeq (SINGLE_STAR,$(findstring SINGLE_STAR,$(CONFIGVARS)))
-OBJS	+= radiation/rt_utilities.o radiation/rt_CGmethod.o radiation/rt_source_injection.o radiation/rt_chem.o radiation/rt_cooling.o
-OBJS    += galaxy_sf/sfr_eff.o galaxy_sf/hII_heating.o galaxy_sf/mechanical_fb.o galaxy_sf/rp_localwinds.o
+OBJS    += galaxy_sf/sfr_eff.o galaxy_sf/stellar_evolution.o galaxy_sf/mechanical_fb.o galaxy_sf/radfb_local.o
 OBJS    += galaxy_sf/blackholes/blackhole.o galaxy_sf/blackholes/blackhole_util.o galaxy_sf/blackholes/blackhole_environment.o galaxy_sf/blackholes/blackhole_feed.o galaxy_sf/blackholes/blackhole_swallow_and_kick.o
 INCL    += galaxy_sf/blackholes/blackhole.h
-endif
-
-
-
-ifeq (SCFPOTENTIAL,$(findstring SCFPOTENTIAL,$(CONFIGVARS)))
-OBJS    += modules/potentials/scf.o modules/potentials/scf_util.o
 endif
 
 ifeq (FOF,$(findstring FOF,$(CONFIGVARS)))

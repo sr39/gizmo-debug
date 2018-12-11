@@ -6,9 +6,6 @@
 #ifdef COOLING
 #include "cooling/cooling.h"
 #endif
-#ifdef TURB_DRIVING_DUMPSPECTRUM
-#include "power_spec/TURB_DRIVING_DUMPSPECTRUM_proto.h"
-#endif
 #ifdef BLACK_HOLES
 #include "./galaxy_sf/blackholes/blackhole.h"
 #endif
@@ -445,9 +442,6 @@ void process_wake_ups(void);
 #endif
 
 void set_units_sfr(void);
-#ifdef BH_SEED_FROM_LOCALGAS
-double return_probability_of_this_forming_bh_from_seed_model(int i);
-#endif
 
 void gravity_forcetest(void);
 
@@ -468,11 +462,41 @@ void do_turb_driving_step_second_half(void);
 
 double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h);
 
+
 #ifdef GALSF
 double evaluate_stellar_age_Gyr(double stellar_tform);
-double evaluate_l_over_m_ssp(double stellar_age_in_gyr);
-double calculate_relative_light_to_mass_ratio_from_imf(int i);
+double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i);
+double calculate_relative_light_to_mass_ratio_from_imf(double stellar_age_in_gyr, int i);
+double calculate_individual_stellar_luminosity(double mdot, double mass, long i);
+double return_probability_of_this_forming_bh_from_seed_model(int i);
+
+// this structure needs to be defined here, because routines for feedback event rates, etc, are shared among files //
+struct addFBdata_in
+{
+    MyDouble Pos[3], Vel[3], Msne, unit_mom_SNe;
+    MyFloat Hsml, V_i, SNe_v_ejecta;
+#ifdef GALSF_FB_MECHANICAL
+    MyFloat Area_weighted_sum[AREA_WEIGHTED_SUM_ELEMENTS];
 #endif
+#ifdef METALS
+    MyDouble yields[NUM_METAL_SPECIES];
+#endif
+    int NodeList[NODELISTLENGTH];
+}
+*AddFBDataIn, *AddFBDataGet;
+
+void particle2in_addFB_fromstars(struct addFBdata_in *in, int i, int fb_loop_iteration);
+double mechanical_fb_calculate_eventrates(int i, double dt);
+#if defined(GALSF_FB_MECHANICAL) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
+double mechanical_fb_calculate_eventrates_SNe(int i, double dt);
+void mechanical_fb_calculate_eventrates_Winds(int i, double dt);
+void mechanical_fb_calculate_eventrates_Rprocess(int i, double dt);
+void particle2in_addFB_SNe(struct addFBdata_in *in, int i);
+void particle2in_addFB_winds(struct addFBdata_in *in, int i);
+void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i);
+#endif
+#endif
+
 
 #ifdef GRAIN_FLUID
 void apply_grain_dragforce(void);
@@ -484,36 +508,29 @@ int grain_density_isactive(int n);
 #endif
 #endif
 
-#ifdef GALSF_FB_GASRETURN
-void stochastic_gas_return_singledomain(void);
-#endif
-
-#if defined(GALSF_FB_HII_HEATING) || (defined(RT_CHEM_PHOTOION) && defined(GALSF))
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) || (defined(RT_CHEM_PHOTOION) && defined(GALSF))
 double particle_ionizing_luminosity_in_cgs(long i);
 #endif
 
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
 void HII_heating_singledomain(void);
-#ifdef GALSF_FB_HII_HEATING_USEMULTIDOMAINSHARE
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING_USEMULTIDOMAINSHARE
 void HII_heating_withMPIcomm(void);
 int HIIheating_RHIIest(int target);
 int HIIheating_evaluate(int target, int mode, int *nexport, int *nsend_local);
 #endif
 #endif
 
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
 void selfshield_local_incident_uv_flux(void);
 #endif
 
-#ifdef GALSF_FB_SNE_HEATING
+#ifdef GALSF_FB_MECHANICAL
 void determine_where_SNe_occur(void);
 void mechanical_fb_calc(int feedback_type);
 int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int feedback_type);
 void *addFB_evaluate_primary(void *p, int feedback_type);
 void *addFB_evaluate_secondary(void *p, int feedback_type);
-#ifdef GALSF_GASOLINE_RADHEATING
-void luminosity_heating_gasoline(void);
-#endif
 #endif
 
 #ifdef GALSF_FB_THERMAL
@@ -538,14 +555,14 @@ char *GetMultiSpeciesFilename(int i, int hk);
 #ifdef BH_PHOTONMOMENTUM
 double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz);
 #endif
-double bh_angleweight_localcoupling(int j, double hR, double theta);
+double bh_angleweight_localcoupling(int j, double hR, double theta, double r, double H_bh);
 #endif
 
-#if defined(GALSF_FB_RPWIND_DO_IN_SFCALC) || defined(GALSF_SUBGRID_WINDS)
+#if defined(GALSF_SUBGRID_WINDS)
 void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double* pvtau_return);
 #endif
 
-#if defined(GALSF_FB_RPWIND_FROMSTARS) && !defined(GALSF_FB_RPWIND_DO_IN_SFCALC)
+#if defined(GALSF_FB_FIRE_RT_LOCALRP)
 void radiation_pressure_winds_consolidated(void);
 #endif
 
@@ -625,7 +642,7 @@ void read_parameter_file(char *fname);
 void rearrange_particle_sequence(void);
 void reorder_gas(void);
 void reorder_particles(void);
-void restart(int mod);
+void restart(int modus);
 void run(void);
 void savepositions(int num);
 void savepositions_ioformat1(int num);
@@ -759,31 +776,6 @@ void check_tidaltensor_nonperiodic(int particle_ID);
 #endif
 #endif
 
-#ifdef SCFPOTENTIAL
-void SCF_do_center_of_mass_correction(double fac_rad, double start_rad, double fac_part, int max_iter);
-void SCF_write(int task);
-void SCF_calc_from_random(long *seed);
-void SCF_calc_from_particles(void);
-void SCF_init(void);
-void SCF_reset(void);
-void SCF_free(void);
-void SCF_evaluate(MyDouble x, MyDouble y, MyDouble z, MyDouble *potential, MyDouble *ax, MyDouble *ay, MyDouble *az);
-void SCF_collect_update(void);
-
-void sphere_acc(double x, double y, double z, double *xa, double *ya, double *za);
-void to_unit(double x, double y, double z, double *xs, double *ys, double *zs);
-double ran1(long *idum);
-double gasdev(long *idum);
-double factrl(int n);
-int nlm_all(int num, int n, int l, int m);
-int nlm(int n, int l, int m);
-int nl(int n, int l);
-int lm(int l, int m);
-int kdelta(int a, int b);
-double gnlm_var(int n, int l, int m);
-double hnlm_var(int n, int l, int m);
-#endif
-
 int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
 void ags_setup_smoothinglengths(void);
@@ -845,6 +837,7 @@ double do_cbe_nvt_inversion_for_faces(int i);
 #endif
 
 #ifdef DM_FUZZY
+void do_dm_fuzzy_drift_kick(int pindex, double dt_entr);
 void DMGrad_gradient_calc(void);
 int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
 void *DMGrad_evaluate_primary(void *p, int gradient_iteration);

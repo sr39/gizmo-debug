@@ -31,6 +31,9 @@ static struct blackholedata_in
 {
 #if defined(BH_GRAVCAPTURE_GAS)
     MyDouble Mass;
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+    MyDouble SinkRadius;
+#endif
 #endif
     MyDouble Pos[3];
     MyFloat Vel[3];
@@ -101,6 +104,9 @@ void blackhole_environment_loop(void)
             }
 #if defined(BH_GRAVCAPTURE_GAS)
             BlackholeDataIn[j].Mass = P[place].Mass;
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+            BlackholeDataIn[j].SinkRadius = P[place].SinkRadius;
+#endif	    
 #endif
             BlackholeDataIn[j].Hsml = PPP[place].Hsml;
             BlackholeDataIn[j].ID = P[place].ID;
@@ -196,12 +202,11 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     MyIDType id;
     
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-    MyFloat hinv3, wk, dwk, u;
-    u=wk=dwk=0;
+    MyFloat hinv3, wk, dwk, u; u=wk=dwk=0;
 #endif
     
 #if defined(BH_GRAVCAPTURE_GAS)
-    MyFloat mass, vrel, vbound, r2;
+    MyFloat mass, vrel, vbound, r2, sink_radius; sink_radius=0;
 #endif
     
     double dP[3],dv[3],wt;
@@ -213,6 +218,9 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     {
 #if defined(BH_GRAVCAPTURE_GAS)
         mass = P[target].Mass;
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+        sink_radius = P[target].SinkRadius;
+#endif	
 #endif
         pos = P[target].Pos;
         vel = P[target].Vel;
@@ -224,6 +232,9 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     {
 #if defined(BH_GRAVCAPTURE_GAS)
         mass = BlackholeDataGet[target].Mass;
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+        sink_radius = BlackholeDataGet[target].SinkRadius;
+#endif		
 #endif
         pos = BlackholeDataGet[target].Pos;
         vel = BlackholeDataGet[target].Vel;
@@ -263,15 +274,11 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                 if( (P[j].Mass > 0) && (P[j].Type != 5) && (P[j].ID != id) )
                 {
                     wt = P[j].Mass;
-                    dP[0] = P[j].Pos[0]-pos[0];
-                    dP[1] = P[j].Pos[1]-pos[1];
-                    dP[2] = P[j].Pos[2]-pos[2];
+                    dP[0] = P[j].Pos[0]-pos[0]; dP[1] = P[j].Pos[1]-pos[1]; dP[2] = P[j].Pos[2]-pos[2];
 #ifdef BOX_PERIODIC
                     NEAREST_XYZ(dP[0],dP[1],dP[2],-1); /*  find the closest image in the given box size  */
 #endif
-                    dv[0] = P[j].Vel[0]-vel[0];
-                    dv[1] = P[j].Vel[1]-vel[1];
-                    dv[2] = P[j].Vel[2]-vel[2];
+                    dv[0] = P[j].Vel[0]-vel[0]; dv[1] = P[j].Vel[1]-vel[1]; dv[2] = P[j].Vel[2]-vel[2];
 #ifdef BOX_SHEARING
                     if(pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
                     if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
@@ -280,15 +287,27 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 #ifdef BH_DYNFRICTION
 #if (BH_DYNFRICTION == 1)    // DAA: dark matter + stars
                     if( !(P[j].Type==0) )
+#if (BH_REPOSITION_ON_POTMIN == 2)
+                    if( (P[j].Type != 5) )
+#endif
 #elif (BH_DYNFRICTION == 2)  // DAA: stars only
                     if( P[j].Type==4 || ((P[j].Type==2||P[j].Type==3) && !(All.ComovingIntegrationOn)) )
 #endif
                     {
+                        double wtfac = wt;
+#if (BH_REPOSITION_ON_POTMIN == 2)
+                        double rfac = (dP[0]*dP[0] + dP[1]*dP[1] + dP[2]*dP[2]) * (10./(h_i*h_i) + 0.1/(All.ForceSoftening[5]*All.ForceSoftening[5]));
+                        wtfac = wt / (1. + rfac); // simple function scaling ~ 1/r^2 for large r, to weight elements closer to the BH, so doesnt get 'pulled' by far-away elements //
+#endif
                         if(P[j].Mass>out.DF_mmax_particles) out.DF_mmax_particles=P[j].Mass;
                         for (k=0;k<3;k++)
                         {
                             out.DF_mean_vel[k] += wt*dv[k];
+#if (BH_REPOSITION_ON_POTMIN == 2)
+                            out.DF_rms_vel += wt;
+#else
                             out.DF_rms_vel += wt*dv[k]*dv[k];
+#endif
                         }
                     }
 #endif
@@ -312,11 +331,8 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         dwk /= u*h_i;
                         for(k=0;k<3;k++) out.GradRho_in_Kernel[k] += wt * dwk * fabs(dP[k]);
 #endif
-#if defined(BH_BONDI) || defined(BH_DRAG)
-                        for(k=0;k<3;k++)
-                        {
-                            out.BH_SurroundingGasVel[k] += wt*dv[k];
-                        }
+#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION == 5)
+                        for(k=0;k<3;k++) {out.BH_SurroundingGasVel[k] += wt*dv[k];}
 #endif
                     }
                     else if( P[j].Type==4 || ((P[j].Type==2||P[j].Type==3) && !(All.ComovingIntegrationOn)) ) 
@@ -345,28 +361,22 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                      Currently, I only allow gas accretion to contribute to BH_Mdot (consistent with the energy radiating away).
                      For star particles, if there is an alpha-disk, they are captured to the disk. If not, they directly go
                      to the hole, without any contribution to BH_Mdot and feedback. This can be modified in the swallow loop
-                     for other purposes. */
-                    /* XM: The goal of the following part is to estimate BH_Mdot, which will be used to evaluate feedback strength.
+                     for other purposes. The goal of the following part is to estimate BH_Mdot, which will be used to evaluate feedback strength.
                      Therefore, we only need it when we enable BH_GRAVCAPTURE_GAS as gas accretion model. */
                     if( (P[j].Mass > 0) && (P[j].Type == 0))
                     {
-                        vrel = 0;
-                        for(k=0;k<3;k++) vrel += (P[j].Vel[k] - vel[k])*(P[j].Vel[k] - vel[k]);
-                        vrel = sqrt(vrel) / All.cf_atime;
-                        
-                        r2=0; for(k=0;k<3;k++) r2+=dP[k]*dP[k];
-                        double dr_code = sqrt(r2);
-                        vbound = bh_vesc(j, mass, dr_code);
+                        vrel=0; for(k=0;k<3;k++) {vrel += (P[j].Vel[k] - vel[k])*(P[j].Vel[k] - vel[k]);}
+                        r2=0; for(k=0;k<3;k++) {r2+=dP[k]*dP[k];}
+                        double dr_code = sqrt(r2); vrel = sqrt(vrel) / All.cf_atime; vbound = bh_vesc(j, mass, dr_code);
                         if(vrel < vbound) { /* bound */
-                            if( bh_check_boundedness(j,vrel,vbound,dr_code)==1 ) { /* apocenter within 2.8*epsilon (softening length) */
-                                
-                                /* CAVEAT: when two BHs share some neighbours, this double counts the accretion */
-                                /* DAA: looks like this is true always since SwallowID=0 has just been initialized...
-                                              only makes sense to check SwallowID if we update it... */
-                                if(P[j].SwallowID < id)
-                                {
-                                    out.mass_to_swallow_edd += P[j].Mass;
-                                } /* P[j].SwallowID < id */
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+                            double spec_mom=0; for(k=0;k<3;k++) {spec_mom += (P[j].Vel[k] - vel[k])*dP[k];} // delta_x.delta_v
+                            spec_mom = (r2*vrel*vrel - spec_mom*spec_mom*All.cf_a2inv);  // specific angular momentum^2 = r^2(delta_v)^2 - (delta_v.delta_x)^2;
+                            if(spec_mom < All.G * (mass + P[j].Mass) * sink_radius) // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
+#endif
+                            if( bh_check_boundedness(j,vrel,vbound,dr_code,sink_radius)==1 ) { /* apocenter within 2.8*epsilon (softening length) */
+                                /* CAVEAT: when two BHs share some neighbours, this double counts the accretion. looks like this is true always since SwallowID=0 has just been initialized... only makes sense to check SwallowID if we update it... */
+                                if(P[j].SwallowID < id) {out.mass_to_swallow_edd += P[j].Mass;} /* P[j].SwallowID < id */
                             } /* if( apocenter in tolerance range ) */
                         } /* if(vrel < vbound) */
                     } /* type check */

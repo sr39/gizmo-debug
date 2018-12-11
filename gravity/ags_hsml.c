@@ -755,6 +755,13 @@ void ags_density(void)
                 PPPZ[i].AGS_zeta = 0;
                 PPP[i].NumNgb = 0;
             }
+#ifdef PM_HIRES_REGION_CLIPPING
+            if(PPP[i].NumNgb <= 0) {P[i].Mass = 0;}
+            if((PPP[i].AGS_Hsml <= 0) || (PPP[i].AGS_Hsml >= PM_HIRES_REGION_CLIPPING)) {P[i].Mass = 0;}
+            double vmag=0; for(k=0;k<3;k++) {vmag+=P[i].Vel[k]*P[i].Vel[k];} vmag = sqrt(vmag);
+            if(vmag>5.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) {P[i].Mass=0;}
+            if(vmag>1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s) {for(k=0;k<3;k++) {P[i].Vel[k]*=(1.e9*All.cf_atime/All.UnitVelocity_in_cm_per_s)/vmag;}}
+#endif
         }
     }
     myfree(AGS_Prev);
@@ -958,7 +965,9 @@ double ags_return_maxsoft(int i)
 #endif
 #endif
 #ifdef BLACK_HOLES
+#ifndef SINGLE_STAR_FORMATION
     if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius  / All.cf_atime;}   // MaxAccretionRadius is now defined in params.txt in PHYSICAL units
+#endif
 #endif
     return maxsoft;
 }
