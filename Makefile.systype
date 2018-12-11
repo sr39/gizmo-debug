@@ -17,7 +17,7 @@
 #SYSTYPE="Stampede2"
 #SYSTYPE="Zwicky"
 #SYSTYPE="Wheeler"
-#SYSTYPE="MacBookPro"
+SYSTYPE="MacBookPro"
 #SYSTYPE="Quest"
 #SYSTYPE="Iron"
 #SYSTYPE="Darter"

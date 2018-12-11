@@ -15,6 +15,9 @@
     V_j = P[j].Mass / SphP[j].Density;
 #ifdef COSMIC_RAYS
     Fluxes.CosmicRayPressure = 0;
+#ifdef COSMIC_RAYS_ALFVEN
+    Fluxes.CosmicRayAlfvenEnergy[0] = Fluxes.CosmicRayAlfvenEnergy[1] = 0;
+#endif
 #endif
     
     /* --------------------------------------------------------------------------------- */

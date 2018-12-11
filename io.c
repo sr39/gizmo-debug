@@ -194,7 +194,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     double tcool, u;
 #endif
     
-#if (defined(OUTPUT_DISTORTIONTENSOR) || defined(OUTPUT_TIDALTENSORPS))
+#if (defined(OUTPUT_GDE_DISTORTIONTENSOR) || defined(OUTPUT_GDE_TIDALTENSORPS))
     MyBigFloat half_kick_add[6][6];
     int l;
 #endif
@@ -372,7 +372,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     ne = SphP[pindex].Ne;
                     u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy); // needs to be in code units
                     temp = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
                     if(SphP[pindex].DelayTimeHII>0) nh0=0;
 #endif
                     *fp++ = (MyOutputFloat) nh0;
@@ -700,6 +700,30 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
+
+        case IO_COSMICRAY_KAPPA:    /* local CR diffusion constant */
+#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DIFFUSION_CONSTANT) && !defined(COSMIC_RAYS_DISABLE_DIFFUSION)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = SphP[pindex].CosmicRayDiffusionCoeff;
+                    n++;
+                }
+#endif
+            break;
+
+        case IO_COSMICRAY_ALFVEN:    /* energy in the resonant (~gyro-radii) Alfven modes field, in the +/- (with respect to B) fields  */
+#ifdef COSMIC_RAYS_ALFVEN
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    for(k = 0; k < 2; k++)
+                        *fp++ = SphP[pindex].CosmicRayAlfvenEnergyPred[k];
+                    n++;
+                }
+#endif
+            break;
+
             
         case IO_DIVB:		/* divergence of magnetic field  */
 #ifdef MAGNETIC
@@ -846,7 +870,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_TIDALTENSORPS:
             /* 3x3 configuration-space tidal tensor that is driving the GDE */
-#ifdef OUTPUT_TIDALTENSORPS
+#ifdef OUTPUT_GDE_TIDALTENSORPS
             for(n = 0; n < pc; pindex++)
                 
                 if(P[pindex].Type == type)
@@ -872,7 +896,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_GDE_DISTORTIONTENSOR:
             /* full 6D phase-space distortion tensor from GDE integration */
-#ifdef OUTPUT_DISTORTIONTENSOR
+#ifdef OUTPUT_GDE_DISTORTIONTENSOR
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -957,7 +981,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_LAST_CAUSTIC:
             /* extensive information on the last caustic the particle has passed */
-#ifdef OUTPUT_LAST_CAUSTIC
+#ifdef OUTPUT_GDE_LASTCAUSTIC
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1457,7 +1481,14 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             else
                 bytes_per_blockelement = 3 * sizeof(MyOutputFloat);
             break;
-            
+
+        case IO_COSMICRAY_ALFVEN:
+            if(mode)
+                bytes_per_blockelement = 2 * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = 2 * sizeof(MyOutputFloat);
+            break;
+
         case IO_ID:
             bytes_per_blockelement = sizeof(MyIDType);
             break;
@@ -1505,6 +1536,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_SHEARCOEFF:
         case IO_TSTP:
         case IO_COSMICRAY_ENERGY:
+        case IO_COSMICRAY_KAPPA:
         case IO_DIVB:
         case IO_VRMS:
         case IO_VRAD:
@@ -1778,6 +1810,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_VDIV:
         case IO_VROT:
         case IO_COSMICRAY_ENERGY:
+        case IO_COSMICRAY_KAPPA:
         case IO_DIVB:
         case IO_ABVC:
         case IO_AMDC:
@@ -1828,6 +1861,10 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_grDII:
         case IO_grHDI:
             values = 1;
+            break;
+
+        case IO_COSMICRAY_ALFVEN:
+            values = 2;
             break;
 
         case IO_EOS_STRESS_TENSOR:
@@ -2008,6 +2045,8 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_VROT:
         case IO_VORT:
         case IO_COSMICRAY_ENERGY:
+        case IO_COSMICRAY_KAPPA:
+        case IO_COSMICRAY_ALFVEN:
         case IO_DIVB:
         case IO_ABVC:
         case IO_AMDC:
@@ -2401,7 +2440,23 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
-            
+
+        case IO_COSMICRAY_KAPPA:
+#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DIFFUSION_CONSTANT) && !defined(COSMIC_RAYS_DISABLE_DIFFUSION)
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+
+        case IO_COSMICRAY_ALFVEN:
+#ifdef COSMIC_RAYS_ALFVEN
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+
             
         case IO_DIVB:
 #ifdef MAGNETIC
@@ -2501,13 +2556,13 @@ int blockpresent(enum iofields blocknr)
                         
             
         case IO_TIDALTENSORPS:
-#ifdef OUTPUT_TIDALTENSORPS
+#ifdef OUTPUT_GDE_TIDALTENSORPS
             return 1;
 #else
             return 0;
 #endif
         case IO_GDE_DISTORTIONTENSOR:
-#ifdef OUTPUT_DISTORTIONTENSOR
+#ifdef OUTPUT_GDE_DISTORTIONTENSOR
             return 1;
 #else
             return 0;
@@ -2549,7 +2604,7 @@ int blockpresent(enum iofields blocknr)
 #endif
             
         case IO_LAST_CAUSTIC:
-#ifdef OUTPUT_LAST_CAUSTIC
+#ifdef OUTPUT_GDE_LASTCAUSTIC
             return 1;
 #else
             return 0;
@@ -2910,6 +2965,12 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
             break;    
         case IO_COSMICRAY_ENERGY:
             strncpy(label, "CREG ", 4);
+            break;
+        case IO_COSMICRAY_KAPPA:
+            strncpy(label, "CRK ", 4);
+            break;
+        case IO_COSMICRAY_ALFVEN:
+            strncpy(label, "CRAV ", 4);
             break;
         case IO_DIVB:
             strncpy(label, "DIVB", 4);
@@ -3276,6 +3337,12 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;    
         case IO_COSMICRAY_ENERGY:
             strcpy(buf, "CosmicRayEnergy");
+            break;
+        case IO_COSMICRAY_KAPPA:
+            strcpy(buf, "CosmicRayDiffusivity");
+            break;
+        case IO_COSMICRAY_ALFVEN:
+            strcpy(buf, "CosmicRayAlfvenEnergyPM");
             break;
         case IO_DIVB:
             strcpy(buf, "DivergenceOfMagneticField");
@@ -3840,10 +3907,20 @@ void write_file(char *fname, int writeTask, int lastTask)
                             get_dataset_name(blocknr, buf);
                             
                             hdf5_dataspace_in_file = H5Screate_simple(rank, dims, NULL);
-                            hdf5_dataset =
-                            H5Dcreate(hdf5_grp[type], buf, hdf5_datatype, hdf5_dataspace_in_file,
-                                      H5P_DEFAULT);
-                            
+#ifndef IO_COMPRESS_HDF5
+                            hdf5_dataset = H5Dcreate(hdf5_grp[type], buf, hdf5_datatype, hdf5_dataspace_in_file, H5P_DEFAULT);
+#else
+                            if(dims[0] > 10)
+			    {
+                            	hid_t plist_id = H5Pcreate(H5P_DATASET_CREATE);
+                            	hsize_t cdims[2]; cdims[0] = (hsize_t) (dims[0] / 10); cdims[1] = dims[1];
+                            	hdf5_status = H5Pset_chunk (plist_id, rank, cdims);
+                            	hdf5_status = H5Pset_deflate (plist_id, 4);
+                            	hdf5_dataset = H5Dcreate2(hdf5_grp[type], buf, hdf5_datatype, hdf5_dataspace_in_file, H5P_DEFAULT, plist_id, H5P_DEFAULT);
+			    } else {
+                            	hdf5_dataset = H5Dcreate(hdf5_grp[type], buf, hdf5_datatype, hdf5_dataspace_in_file, H5P_DEFAULT);
+			    }                      
+#endif
                             pcsum = 0;
                         }
 #endif

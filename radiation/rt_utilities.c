@@ -65,13 +65,13 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
 #endif
 
     
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
     /* three-band (UV, OPTICAL, IR) approximate spectra for stars as used in the FIRE (Hopkins et al.) models */
     if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
     {
         if(sigma_0<0) {return 1;} active_check = 1;
         double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
-        double L = P[i].Mass * evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(i);
+        double L = P[i].Mass * evaluate_light_to_mass_ratio(star_age, i);
         if((L<=0)||(star_age<=0)||(isnan(star_age))||(isnan(L))) {L=0; star_age=0;}
         double f_uv, f_op;
 #ifndef RT_FIRE_FIX_SPECTRAL_SHAPE
@@ -122,7 +122,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
                 if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));
                 } else {f_op=1-0.8410937/(1+sqrt((star_age-0.006)/0.3));}}
             double fac = 3.95e33 * (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs); // converts to code units
-            lum[RT_FREQ_BIN_NUV] = (1-f_op) * fac * evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(i);
+            lum[RT_FREQ_BIN_NUV] = (1-f_op) * fac * evaluate_light_to_mass_ratio(star_age, i);
         }
     }
 #endif
@@ -140,7 +140,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
                 if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));
                 } else {f_op=1-0.8410937/(1+sqrt((star_age-0.006)/0.3));}}
             double fac = 3.95e33 * (P[i].Mass * All.UnitMass_in_g / SOLAR_MASS) * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs); // converts to code units
-            lum[RT_FREQ_BIN_OPTICAL_NIR] = f_op * fac * evaluate_l_over_m_ssp(star_age) * calculate_relative_light_to_mass_ratio_from_imf(i);
+            lum[RT_FREQ_BIN_OPTICAL_NIR] = f_op * fac * evaluate_light_to_mass_ratio(star_age, i);
         }
     }
 #endif
@@ -169,7 +169,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
     
 
 #ifdef RT_LYMAN_WERNER
-    /* lyman-werner bands (8-13.6 eV, specifically): below is from integrating the spectra from STARBURST99 with the Geneva40 solar-metallicity + lower tracks */
+    /* lyman-werner bands (11.2-13.6 eV, specifically): below is from integrating the spectra from STARBURST99 with the Geneva40 solar-metallicity + lower tracks */
     if((1 << P[i].Type) & (RT_SOURCES)) // check if the particle falls into one of the allowed source types
     {
         if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
@@ -195,7 +195,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
     {
         lum[RT_FREQ_BIN_H0] = 0; // begin from zero //
         double fac = 0;
-#if defined(GALSF) || defined(GALSF_FB_HII_HEATING)
+#if defined(GALSF) || defined(GALSF_FB_FIRE_RT_HIIHEATING)
         /* calculate ionizing flux based on actual stellar or BH physics */
         if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
         {
@@ -260,7 +260,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
             lum[RT_FREQ_BIN_HARD_XRAY] = (6.3e27 + 0.6*L_HMXBs) * fac; // LMXBs+HMXBs
 #endif
 #if defined(RT_SOFT_XRAY) 
-            lum[RT_FREQ_BIN_HARD_XRAY] = (8.2e27 + 0.4*L_HMXBs) * fac; // LMXBs+HMXBs
+            lum[RT_FREQ_BIN_SOFT_XRAY] = (8.2e27 + 0.4*L_HMXBs) * fac; // LMXBs+HMXBs
 #endif
         }
     }
@@ -308,7 +308,7 @@ double rt_kappa(int i, int k_freq)
 #endif
 
 
-#if defined(RT_HARD_XRAY) || defined(RT_SOFT_XRAY) || defined(RT_PHOTOELECTRIC) || defined (GALSF_FB_RT_PHOTONMOMENTUM) || defined(RT_NUV) || defined(RT_OPTICAL_NIR) || defined(RT_LYMAN_WERNER) || defined(RT_INFRARED)
+#if defined(RT_HARD_XRAY) || defined(RT_SOFT_XRAY) || defined(RT_PHOTOELECTRIC) || defined (GALSF_FB_FIRE_RT_LONGRANGE) || defined(RT_NUV) || defined(RT_OPTICAL_NIR) || defined(RT_LYMAN_WERNER) || defined(RT_INFRARED)
     double fac = All.UnitMass_in_g * All.HubbleParam / (All.UnitLength_in_cm * All.UnitLength_in_cm); /* units */
     double Zfac = 1.0; // assume solar metallicity 
 #ifdef METALS
@@ -322,7 +322,7 @@ double rt_kappa(int i, int k_freq)
     /* opacity comes from H+He (Thompson) + metal ions */
     if(k_freq==RT_FREQ_BIN_SOFT_XRAY) {return (127. + 50.0*Zfac) * fac;}
 #endif
-#ifdef GALSF_FB_RT_PHOTONMOMENTUM
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
     /* three-band (UV, OPTICAL, IR) approximate spectra for stars as used in the FIRE (Hopkins et al.) models */
     if(k_freq==RT_FREQ_BIN_FIRE_UV)  {return KAPPA_UV * fac;}
     if(k_freq==RT_FREQ_BIN_FIRE_OPT) {return KAPPA_OP * fac;}

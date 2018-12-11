@@ -60,6 +60,15 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double pre
     double fluxmax = 100. * Face_Area_Norm * f2 * 0.5*(rho_L+rho_R) / (r*r); // limiter to prevent crazy values where derivatives are ill-posed (e.g. discontinuities)
     if(fluxmag > fluxmax) {for(m=0;m<3;m++) {fluxes[m] *= fluxmax/fluxmag;}}
     
+    for(m=0;m<3;m++)
+    {
+        double ftmp = (2./3.)*AGS_Numerical_QuantumPotential*Area[m]; // 2/3 b/c the equation-of-state of the 'quantum pressure tensor' is gamma=5/3 under isotropic compression/expansion //
+        double fmax = 0.5 * m0 * fabs(dv[m]) / dt; fmax = DMAX(fmax, 100.*fluxmag); fmax = DMAX(DMIN(fmax , 100.*prev_a), fluxmag); if(fabs(ftmp) > fmax) {ftmp *= fmax/fabs(ftmp);} // limit pressure-induced acceleration to prevent unphysical cases
+        *dt_egy_Numerical_QuantumPotential -= 0.5*ftmp*dv[m]; // PdV work from this pressure term //
+        fluxes[m] += ftmp; // add numerical 'pressure' stored from previous timesteps //
+    }
+    fluxmag=0; for(m=0;m<3;m++) {fluxmag += fluxes[m]*fluxes[m];} if(fluxmag > 0) {fluxmag = sqrt(fluxmag);} else {fluxmag = 0;}
+
     /* now we have to introduce the numerical diffusivity (the up-wind mixing part from the Reimann problem);
      this can have one of a couple forms, but the most accurate and stable appears to be the traditional HLLC form which we use by default below */
     if(dv_Right_minus_Left < 0) // converging flow, upwind dissipation terms appear //
@@ -93,19 +102,22 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double pre
             *dt_egy_Numerical_QuantumPotential -= 0.5 * f_dir * dv[m];
         }
     } // approach velocities lead to up-wind mixing
-
-    for(m=0;m<3;m++)
-    {
-        double ftmp = (2./3.)*AGS_Numerical_QuantumPotential*Area[m]; // 2/3 b/c the equation-of-state of the 'quantum pressure tensor' is gamma=5/3 under isotropic compression/expansion //
-        *dt_egy_Numerical_QuantumPotential -= 0.5*ftmp*dv[m]; // PdV work from this pressure term //
-        fluxes[m] += ftmp; // add numerical 'pressure' stored from previous timesteps //
-    }
     return;
 }
 
 
-
-
+/* kicks for fuzzy-dm integration: just put relevant drift-kick operators here to keep the code clean */
+void do_dm_fuzzy_drift_kick(int pindex, double dt_entr)
+{
+    // calculate various energies: quantum potential QP0, 'stored' numerical pressure NQ0, kinetic energy KE0
+    double dNQ=P[pindex].AGS_Dt_Numerical_QuantumPotential*dt_entr, NQ0=P[pindex].AGS_Numerical_QuantumPotential, NQ1=NQ0+dNQ, KE0=0.5*P[pindex].Mass*(P[pindex].Vel[0]*P[pindex].Vel[0]+P[pindex].Vel[1]*P[pindex].Vel[1]+P[pindex].Vel[2]*P[pindex].Vel[2])*All.cf_a2inv;
+    double f00 = 0.5 * 591569.0 / (All.FuzzyDM_Mass_in_eV * All.UnitVelocity_in_cm_per_s * All.UnitLength_in_cm/All.HubbleParam); // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
+    double d2rho = P[pindex].AGS_Gradients2_Density[0][0] + P[pindex].AGS_Gradients2_Density[1][1] + P[pindex].AGS_Gradients2_Density[2][2]; // laplacian
+    double drho2 = P[pindex].AGS_Gradients_Density[0]*P[pindex].AGS_Gradients_Density[0] + P[pindex].AGS_Gradients_Density[1]*P[pindex].AGS_Gradients_Density[1] + P[pindex].AGS_Gradients_Density[2]*P[pindex].AGS_Gradients_Density[2];
+    double QP0 = (f00*f00 / P[pindex].AGS_Density) * (d2rho - 0.5*drho2/P[pindex].AGS_Density); // quantum 'potential'
+    NQ1 = DMAX(0,DMAX(NQ1,0.1*NQ0)); NQ1 = DMIN(NQ1,1.1*DMAX(DMAX(KE0+NQ0,fabs(QP0)),KE0+NQ0+QP0)); // limit kick to not produce unphysical energy over-or-under-shoot
+    P[pindex].AGS_Numerical_QuantumPotential = NQ1;
+}
 
 
 

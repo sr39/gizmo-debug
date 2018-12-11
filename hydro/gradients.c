@@ -1051,7 +1051,7 @@ void hydro_gradient_calc(void)
 #endif
 #ifdef COSMIC_RAYS
             construct_gradient(SphP[i].Gradients.CosmicRayPressure,i);
-            int is_particle_local_extremum = 0; // test for local extremum to revert to lower-order reconstruction if necessary
+            int is_particle_local_extremum; is_particle_local_extremum = 0; // test for local extremum to revert to lower-order reconstruction if necessary
 #endif
 #ifdef DOGRAD_SOUNDSPEED
             construct_gradient(SphP[i].Gradients.SoundSpeed,i);
@@ -1194,7 +1194,7 @@ void hydro_gradient_calc(void)
             ne = SphP[i].Ne;
             u = DMAX(All.MinEgySpec, SphP[i].InternalEnergy); // needs to be in code units
             temperature = ThermalProperties(u, SphP[i].Density*All.cf_a3inv, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
             if(SphP[i].DelayTimeHII>0) nh0=0;
 #endif 
 	        ion_frac = DMIN(DMAX(0,1.-nh0),1);
@@ -1282,10 +1282,10 @@ void hydro_gradient_calc(void)
                 cs = DMIN(1.e4*cs , sqrt(cs*cs+vA_2));
 #endif
                 cs *= All.cf_afac3;
+#ifdef DIFFUSION_OPTIMIZERS
                 double eta_sat = (SphP[i].Density*All.cf_a3inv) * cs / (ion_free_path * (1 + 4.2 * ion_free_path / vel_scale_length));
                 if(eta_sat <= 0) SphP[i].Eta_ShearViscosity=0;
                 if(SphP[i].Eta_ShearViscosity>0) {SphP[i].Eta_ShearViscosity = 1. / (1./SphP[i].Eta_ShearViscosity + 1./eta_sat);} // again, all physical units //
-#ifdef DIFFUSION_OPTIMIZERS
                 //SphP[i].Eta_ShearViscosity = DMIN(SphP[i].Eta_ShearViscosity , SphP[i].Density*All.cf_a3inv * cs * DMAX(Get_Particle_Size(i)*All.cf_atime , vel_scale_length));
 #endif
 #endif
@@ -1471,7 +1471,7 @@ void hydro_gradient_calc(void)
             /* fraction of H at which maximum reconstruction is allowed (=0.5 for 'standard'); for pure hydro we can
              be a little more aggresive and the equations are still stable (but this is as far as you want to push it) */
             double a_limiter = 0.25; if(SphP[i].ConditionNumber>100) a_limiter=DMIN(0.5, 0.25 + 0.25 * (SphP[i].ConditionNumber-100)/100);
-#if !defined(MAGNETIC) && !defined(GALSF)
+#if defined(SELFGRAVITY_OFF) && (!defined(MAGNETIC) && !defined(GALSF))
             h_lim=PPP[i].Hsml; stol=0.1;
 #endif
 #if (SLOPE_LIMITER_TOLERANCE == 2)
@@ -1629,8 +1629,7 @@ void hydro_gradient_calc(void)
                 int k2; for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {BGrad_mag += SphP[i].Gradients.B[k][k2] * SphP[i].Gradients.B[k][k2];}}
                 kappa_diff *= b2_mag / (1.e-37 + p_scale * p_scale * BGrad_mag); // should be dimensionless //
 #else
-                /* alternatively, we don't explicitly use the local B-gradient, but assume a cascade with a driving length equal to 
-                    the pressure gradient scale length */
+                /* alternatively, we don't explicitly use the local B-gradient, but assume a cascade with a driving length equal to the pressure gradient scale length */
                 p_scale = 0.0; for(k=0;k<3;k++) {p_scale += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
                 p_scale = SphP[i].Pressure / (1.e-33 + sqrt(p_scale));
                 double p_scale_min = 0.5 * Get_Particle_Size(i); // sets a 'floor' at some multiple of the particle size (unresolved below this) //
@@ -1653,7 +1652,36 @@ void hydro_gradient_calc(void)
                 if(p_scale > 10) {p_scale=10;} // limit at 10 kpc
                 kappa_diff *= pow( p_scale * p_scale * R_GV / b_muG, 1./3.); /* these should all be dimensionless here */
                 SphP[i].CosmicRayDiffusionCoeff += kappa_diff; /* should be in physical units */
-#endif                
+#endif
+#define COSMIC_RAYS_SPECIAL_DIFFUSIVITY 0 /* flag for custom diffusion models, currently experimental, per below */
+#if (COSMIC_RAYS_SPECIAL_DIFFUSIVITY == 1)
+                /* Wiener et al. style pure-streaming but with larger streaming speeds and limited losses */
+                SphP[i].CosmicRayDiffusionCoeff = 0;
+                double rho0 = SphP[i].Density*All.cf_a3inv*All.HubbleParam*All.HubbleParam, m0=P[i].Mass/All.HubbleParam, v0=m0/rho0;
+                double ni_m3 = rho0 * 404.62 / 1.e-3;
+                double eCR_m14 = SphP[i].CosmicRayEnergy / v0 * 676.78 + 1.e-12;
+                double Lz_kpc = CRPressureGradScaleLength/All.HubbleParam;
+                double T6 = SphP[i].InternalEnergy * 47.65 / 1.e6;
+                double Lambda_m22 = 0.001;
+                double H100pc = PPP[i].Hsml*All.cf_atime/All.HubbleParam / 0.1;
+                if(T6 > 8000./1.e6) {Lambda_m22=0.2;}
+                double dv2_abs = 0; for(j=0;j<3;j++) {for(k=0;k<3;k++) {double vt=SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv*PPP[i].Hsml*All.cf_atime/All.HubbleParam; dv2_abs+=vt*vt;}}
+                double dv_10kms = sqrt(dv2_abs) / 10.;
+                v_streaming += 3.8 * sqrt(sqrt(ni_m3*T6)/(eCR_m14*Lz_kpc)) + 0.34*pow(dv_10kms,3)*sqrt(sqrt(ni_m3)/Lambda_m22)/(eCR_m14*H100pc);
+                CR_kappa_streaming = (GAMMA_COSMICRAY/GAMMA_COSMICRAY_MINUS1) * v_streaming * CRPressureGradScaleLength;
+#endif
+#if (COSMIC_RAYS_SPECIAL_DIFFUSIVITY == 2)
+                /* Farber et al. -- higher coeff in neutral gas, lower in ionized gas */
+                SphP[i].CosmicRayDiffusionCoeff = 0;
+                double T4 = SphP[i].InternalEnergy * 47.65 / 1.e4;
+                if(T4 < 1) {SphP[i].CosmicRayDiffusionCoeff = 700.;} else {SphP[i].CosmicRayDiffusionCoeff = 700./30.;}
+#endif
+#if (COSMIC_RAYS_SPECIAL_DIFFUSIVITY == 3)
+                /* Snodin et al. -- different expression for extrinsic MHD-turb diffusivity */
+                double Lz_kpc = CRPressureGradScaleLength/All.HubbleParam;
+                double RL_L = 1.e-9 / (b_muG * Lz_kpc);
+                SphP[i].CosmicRayDiffusionCoeff = 2.1e5 * (3.1e-3 + 0.74*RL_L + 0.33*pow(RL_L,0.333));
+#endif
 #ifdef COSMIC_RAYS_DIFFUSION_CONSTANT
 #ifdef COSMIC_RAYS_M1
                 SphP[i].CosmicRayDiffusionCoeff = All.CosmicRayDiffusionCoeff;
