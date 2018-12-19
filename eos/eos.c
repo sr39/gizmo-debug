@@ -368,7 +368,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
     if(SphP[i].DelayTimeHII>0) {nh0=0;} // account for our effective ionization model here
 #endif
-    G_ion_neutral = 0.785e-12 * (rho_cgs/PROTONMASS) * nh0 * sqrt(temperature) * (All.UnitTime_in_s/All.HubbleParam); // need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]
+    G_ion_neutral = 5.77e-11 * (rho_cgs/PROTONMASS) * nh0 * sqrt(temperature) * (All.UnitTime_in_s/All.HubbleParam); // need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]
 #endif
     if(Z_charge_CR > 1) {G_ion_neutral /= sqrt(2.*Z_charge_CR);}
     G_turb_plus_linear_landau = (vA_code + sqrt(M_PI/16.)*cs_thermal) * sqrt(k_turb*k_L); // linear Landau + turbulent (both have same form, assume k_turb from cascade above) 
