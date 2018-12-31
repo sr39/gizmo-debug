@@ -439,6 +439,7 @@
 #DONOTUSENODELIST               # MPI debugging
 #NOTYPEPREFIX_FFTW              # FFTW debugging (fftw-header/libraries accessed without type prefix, adopting whatever was
                                 #   chosen as default at compile of fftw). Otherwise, the type prefix 'd' for double is used.
+USE_FFTW3                       # enables FFTW3 (can be used with DOUBLEPRECISION_FFTW) 
 #DOUBLEPRECISION_FFTW           # FFTW in double precision to match libraries
 # --------------------
 # ----- Load-Balancing

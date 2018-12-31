@@ -103,6 +103,7 @@ endif
 endif
 
 # we only need fftw if PMGRID is turned on
+ifneq (USE_FFTW3, $(findstring USE_FFTW3, $(CONFIGVARS)))
 ifeq (PMGRID, $(findstring PMGRID, $(CONFIGVARS)))
 ifeq (NOTYPEPREFIX_FFTW,$(findstring NOTYPEPREFIX_FFTW,$(CONFIGVARS)))  # fftw installed without type prefix?
   FFTW_LIBNAMES = -lrfftw_mpi -lfftw_mpi -lrfftw -lfftw
@@ -128,7 +129,26 @@ endif
 else
   FFTW_LIBNAMES = #
 endif
-
+endif
+else # use FFTW3 instead of FFTW2.?
+ifeq (PMGRID, $(findstring PMGRID, $(CONFIGVARS)))
+ifeq (DOUBLEPRECISION_FFTW,$(findstring DOUBLEPRECISION_FFTW,$(CONFIGVARS)))  # test for double precision libraries
+  FFTW_LIBNAMES = -lfftw3_mpi -lfftw3
+else #single precision 
+  FFTW_LIBNAMES = -lfftw3f_mpi -lfftw3f
+endif
+else 
+# or if TURB_DRIVING_SPECTRUMGRID is activated
+ifeq (TURB_DRIVING_SPECTRUMGRID, $(findstring TURB_DRIVING_SPECTRUMGRID, $(CONFIGVARS)))
+ifeq (DOUBLEPRECISION_FFTW,$(findstring DOUBLEPRECISION_FFTW,$(CONFIGVARS)))  # test for double precision libraries
+  FFTW_LIBNAMES = -lfftw3_mpi -lfftw3
+else #single precision  
+  FFTW_LIBNAMES = -lfftw3f_mpi -lfftw3f
+endif
+else 
+  FFTW_LIBNAMES = #
+endif
+endif
 endif
 
 
@@ -985,6 +1005,7 @@ OBJS	+= $(GRAVITY_OBJS) $(HYDRO_OBJS) $(SYSTEM_OBJS)
 OBJS	+= $(L3_OBJS)
 
 INCL    += allvars.h proto.h gravity/forcetree.h domain.h system/myqsort.h kernel.h eos/eos.h Makefile \
+	   gravity/myfftw3.h
 
 
 ifeq (GALSF_SUBGRID_WINDS,$(findstring GALSF_SUBGRID_WINDS,$(CONFIGVARS)))
@@ -1115,7 +1136,7 @@ endif
 FFTW = $(FFTW_LIBS)  $(FFTW_LIBNAMES) 
 
 
-LIBS   = -lm $(HDF5LIB) -g $(MPICHLIB) $(GSL_LIBS) -lgsl -lgslcblas $(FFTW) $(GRACKLELIBS)
+LIBS   = $(HDF5LIB) -g $(MPICHLIB) $(GSL_LIBS) -lgsl -lgslcblas $(FFTW) -lm $(GRACKLELIBS)
 
 ifeq (PTHREADS_NUM_THREADS,$(findstring PTHREADS_NUM_THREADS,$(CONFIGVARS))) 
 LIBS   +=  -lpthread

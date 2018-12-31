@@ -20,6 +20,7 @@
 #ifdef PMGRID
 #ifdef BOX_PERIODIC
 
+#ifndef USE_FFTW3
 #ifdef NOTYPEPREFIX_FFTW
 #include        <rfftw_mpi.h>
 #else
@@ -28,6 +29,11 @@
 #else
 #include     <srfftw_mpi.h>
 #endif
+#endif
+#define cmplx_re(c) ((c).re)
+#define cmplx_im(c) ((c).im)
+#else 
+#include "myfftw3.h"
 #endif
 
 #define  PMGRID2 (2*(PMGRID/2 + 1))
@@ -40,15 +46,29 @@ typedef unsigned int large_array_offset;
 
 #define d_fftw_real fftw_real
 
+#ifndef USE_FFTW3
 static rfftwnd_mpi_plan fft_forward_plan, fft_inverse_plan;
+#else 
+static fftw_plan fft_forward_plan, fft_inverse_plan;
+#endif
+
 
 static int slab_to_task[PMGRID];
+#ifndef USE_FFTW3
 static int *slabs_per_task;
 static int *first_slab_of_task;
+#endif
 
+#ifndef USE_FFTW3
 static int slabstart_x, nslab_x, slabstart_y, nslab_y, smallest_slab;
-
 static int fftsize, maxfftsize;
+#else 
+static ptrdiff_t *slabs_per_task;
+static ptrdiff_t *first_slab_of_task;
+static ptrdiff_t slabstart_x, nslab_x, slabstart_y, nslab_y; 
+static ptrdiff_t fftsize, maxfftsize;
+static MPI_Datatype MPI_TYPE_PTRDIFF; 
+#endif
 
 static fftw_real *rhogrid, *forcegrid, *workspace;
 static d_fftw_real *d_rhogrid, *d_forcegrid, *d_workspace;
@@ -93,10 +113,13 @@ void pm_init_periodic(void)
 {
   int i;
   int slab_to_task_local[PMGRID];
+  double bytes_tot = 0;
+  size_t bytes;
 
   All.Asmth[0] = ASMTH * All.BoxSize / PMGRID; /* note that these routines REQUIRE a uniform (BOX_LONG_X=BOX_LONG_Y=BOX_LONG_Z=1) box, so we can just use 'BoxSize' */
   All.Rcut[0] = RCUT * All.Asmth[0];
 
+#ifndef USE_FFTW3
   /* Set up the FFTW plan files. */
 
   fft_forward_plan = rfftw3d_mpi_create_plan(MPI_COMM_WORLD, PMGRID, PMGRID, PMGRID,
@@ -107,6 +130,23 @@ void pm_init_periodic(void)
   /* Workspace out the ranges on each processor. */
 
   rfftwnd_mpi_local_sizes(fft_forward_plan, &nslab_x, &slabstart_x, &nslab_y, &slabstart_y, &fftsize);
+#else 
+  /* define MPI_TYPE_PTRDIFF */
+
+  if (sizeof(ptrdiff_t) == sizeof(long long)) {
+    MPI_TYPE_PTRDIFF = MPI_LONG_LONG; 
+  } else if (sizeof(ptrdiff_t) == sizeof(long)) {
+    MPI_TYPE_PTRDIFF = MPI_LONG; 
+  } else if (sizeof(ptrdiff_t) == sizeof(int)) {
+    MPI_TYPE_PTRDIFF = MPI_INT; 
+  }
+
+  /* get local data size and allocate */
+
+  //fftsize = fftw_mpi_local_size_3d(PMGRID, PMGRID, PMGRID2, MPI_COMM_WORLD, &nslab_x, &slabstart_x); 
+  fftsize = fftw_mpi_local_size_3d_transposed(PMGRID, PMGRID, PMGRID2, MPI_COMM_WORLD, 
+	  &nslab_x, &slabstart_x, &nslab_y, &slabstart_y); 
+#endif
 
   for(i = 0; i < PMGRID; i++)
     slab_to_task_local[i] = 0;
@@ -116,7 +156,11 @@ void pm_init_periodic(void)
 
   MPI_Allreduce(slab_to_task_local, slab_to_task, PMGRID, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
+#ifndef USE_FFTW3 
+  /* not used */
+  /*
   MPI_Allreduce(&nslab_x, &smallest_slab, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+  */
 
   slabs_per_task = (int *) mymalloc("slabs_per_task", NTask * sizeof(int));
   MPI_Allgather(&nslab_x, 1, MPI_INT, slabs_per_task, 1, MPI_INT, MPI_COMM_WORLD);
@@ -127,6 +171,38 @@ void pm_init_periodic(void)
   to_slab_fac = PMGRID / All.BoxSize;
 
   MPI_Allreduce(&fftsize, &maxfftsize, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+#else 
+  slabs_per_task = (ptrdiff_t *) mymalloc("slabs_per_task", NTask * sizeof(ptrdiff_t));
+  MPI_Allgather(&nslab_x, 1, MPI_TYPE_PTRDIFF, slabs_per_task, 1, MPI_TYPE_PTRDIFF, MPI_COMM_WORLD);
+
+  first_slab_of_task = (ptrdiff_t *) mymalloc("first_slab_of_task", NTask * sizeof(ptrdiff_t));
+  MPI_Allgather(&slabstart_x, 1, MPI_TYPE_PTRDIFF, first_slab_of_task, 1, MPI_TYPE_PTRDIFF, MPI_COMM_WORLD);
+
+  to_slab_fac = PMGRID / All.BoxSize;
+
+  MPI_Allreduce(&fftsize, &maxfftsize, 1, MPI_TYPE_PTRDIFF, MPI_MAX, MPI_COMM_WORLD);
+
+  if(!(rhogrid = (fftw_real *) mymalloc("rhogrid", bytes = maxfftsize * sizeof(d_fftw_real))))
+    {
+      printf("failed to allocate memory for `FFT-rhogrid' (%g MB).\n", bytes / (1024.0 * 1024.0));
+      endrun(1);
+    }
+  bytes_tot += bytes;
+
+
+  if(ThisTask == 0)
+    printf("\nAllocated %g MByte for rhogrid.\n\n", bytes_tot / (1024.0 * 1024.0));
+
+  fft_of_rhogrid = (fftw_complex *) rhogrid;
+
+  fft_forward_plan = fftw_mpi_plan_dft_r2c_3d(PMGRID, PMGRID, PMGRID, rhogrid, fft_of_rhogrid, 
+	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT); 
+
+  fft_inverse_plan = fftw_mpi_plan_dft_c2r_3d(PMGRID, PMGRID, PMGRID, fft_of_rhogrid, rhogrid, 
+	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_IN); 
+
+#endif
+
 
 #ifdef KSPACE_NEUTRINOS
   kspace_neutrinos_init();
@@ -148,12 +224,14 @@ void pm_init_periodic_allocate(void)
 
   /* allocate the memory to hold the FFT fields */
 
+#ifndef USE_FFTW3
   if(!(rhogrid = (fftw_real *) mymalloc("rhogrid", bytes = maxfftsize * sizeof(d_fftw_real))))
     {
       printf("failed to allocate memory for `FFT-rhogrid' (%g MB).\n", bytes / (1024.0 * 1024.0));
       endrun(1);
     }
   bytes_tot += bytes;
+#endif
 
   if(!(forcegrid = (fftw_real *) mymalloc("forcegrid", bytes = maxfftsize * sizeof(d_fftw_real))))
     {
@@ -193,7 +271,9 @@ void pm_init_periodic_allocate(void)
 
   workspace = forcegrid;
 
+#ifndef USE_FFTW3
   fft_of_rhogrid = (fftw_complex *) & rhogrid[0];
+#endif
 
   d_rhogrid = (d_fftw_real *) rhogrid;
   d_forcegrid = (d_fftw_real *) forcegrid;
@@ -216,7 +296,9 @@ void pm_init_periodic_free(void)
   myfree(part_sortindex);
   myfree(part);
   myfree(forcegrid);
+#ifndef USE_FFTW3
   myfree(rhogrid);
+#endif
 }
 
 #ifdef ALT_QSORT
@@ -316,8 +398,8 @@ void pmforce_periodic(int mode, int *typelist)
 	      /* make sure that particles are properly box-wrapped */
 	      for(j = 0; j < 3; j++)
 		{
-		  pp[j] = P[i].Pos[j];
-            pp[j] = WRAP_POSITION_UNIFORM_BOX(pp[j]);
+		  pp[j] = P[i].Pos[j]; 
+		  pp[j] = WRAP_POSITION_UNIFORM_BOX(pp[j]);
 		}
 	      pos = pp;
 	    }
@@ -541,7 +623,11 @@ void pmforce_periodic(int mode, int *typelist)
 
       report_memory_usage(&HighMark_pmperiodic, "PM_PERIODIC");
 
+#ifndef USE_FFTW3
       rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
+#else 
+      fftw_execute(fft_forward_plan); 
+#endif
 
       if(mode != 0)
 	{
@@ -604,26 +690,30 @@ void pmforce_periodic(int mode, int *typelist)
 		      /* end deconvolution */
 
 		      ip = PMGRID * (PMGRID / 2 + 1) * (y - slabstart_y) + (PMGRID / 2 + 1) * x + z;
-		      fft_of_rhogrid[ip].re *= smth;
-		      fft_of_rhogrid[ip].im *= smth;
+		      cmplx_re(fft_of_rhogrid[ip]) *= smth;
+		      cmplx_im(fft_of_rhogrid[ip]) *= smth;
 
 #ifdef KSPACE_NEUTRINOS
 		      double ampl =
 			smth * kspace_prefac *
 			sqrt(get_neutrino_powerspec(sqrt(k2) * 2 * M_PI / All.BoxSize, All.Time));
 
-		      fft_of_rhogrid[ip].re += ampl * Cdata[ip].re;
-		      fft_of_rhogrid[ip].im += ampl * Cdata[ip].im;
+		      cmplx_re(fft_of_rhogrid[ip]) += ampl * cmplx_re(Cdata[ip]);
+		      cmplx_im(fft_of_rhogrid[ip]) += ampl * cmplx_im(Cdata[ip]);
 #endif
 		    }
 		}
 
 	  if(slabstart_y == 0)
-	    fft_of_rhogrid[0].re = fft_of_rhogrid[0].im = 0.0;
+	    cmplx_re(fft_of_rhogrid[0]) = cmplx_im(fft_of_rhogrid[0]) = 0.0;
 
 	  /* Do the inverse FFT to get the potential */
 
+#ifndef USE_FFTW3
 	  rfftwnd_mpi(fft_inverse_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
+#else 
+	  fftw_execute(fft_inverse_plan);  
+#endif
 
 	  /* Now rhogrid holds the potential */
 
@@ -1167,7 +1257,11 @@ void pmpotential_periodic(void)
   report_memory_usage(&HighMark_pmperiodic, "PM_PERIODIC_POTENTIAL");
 
   /* Do the FFT of the density field */
+#ifndef USE_FFTW3
   rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
+#else 
+  fftw_execute(fft_forward_plan); 
+#endif
 
   /* multiply with Green's function for the potential */
 
@@ -1218,17 +1312,21 @@ void pmpotential_periodic(void)
 	      /* end deconvolution */
 
 	      ip = PMGRID * (PMGRID / 2 + 1) * (y - slabstart_y) + (PMGRID / 2 + 1) * x + z;
-	      fft_of_rhogrid[ip].re *= smth;
-	      fft_of_rhogrid[ip].im *= smth;
+	      cmplx_re(fft_of_rhogrid[ip]) *= smth;
+	      cmplx_im(fft_of_rhogrid[ip]) *= smth;
 	    }
 	}
 
   if(slabstart_y == 0)
-    fft_of_rhogrid[0].re = fft_of_rhogrid[0].im = 0.0;
+    cmplx_re(fft_of_rhogrid[0]) = cmplx_im(fft_of_rhogrid[0]) = 0.0;
 
   /* Do the inverse FFT to get the potential */
 
+#ifndef USE_FFTW3
   rfftwnd_mpi(fft_inverse_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
+#else 
+  fftw_execute(fft_inverse_plan); 
+#endif
 
   /* Now rhogrid holds the potential */
 
@@ -1823,24 +1921,24 @@ void pmtidaltensor_periodic_diff(void)
       for(i = 0; i < num_field_points; i++)
 	localfield_d_data[i] = 0;
 
-      for(i = 0; i < num_on_grid; i += 8)
+      for(i = 0; i < num_on_grid; i += 8) 
 	{
-	  pindex = (part[i].partindex >> 3);
-        if(P[pindex].Mass<=0) continue;
-
-        /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
-        /* make sure that particles are properly box-wrapped */
-        for(xx = 0; xx < 3; xx++)
-        {
-            pp[xx] = P[pindex].Pos[xx];
-            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
-        }
-        slab_x = (int) (to_slab_fac * pp[0]);
-        slab_y = (int) (to_slab_fac * pp[1]);
-        slab_z = (int) (to_slab_fac * pp[2]);
-        dx = to_slab_fac * pp[0] - slab_x;
-        dy = to_slab_fac * pp[1] - slab_y;
-        dz = to_slab_fac * pp[2] - slab_z;
+	  pindex = (part[i].partindex >> 3); 
+	  if(P[pindex].Mass<=0) continue; 
+	  
+	  /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */ 
+	  /* make sure that particles are properly box-wrapped */ 
+	  for(xx = 0; xx < 3; xx++) 
+	  { 
+	      pp[xx] = P[pindex].Pos[xx]; 
+	      pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]); 
+	  } 
+	  slab_x = (int) (to_slab_fac * pp[0]); 
+	  slab_y = (int) (to_slab_fac * pp[1]); 
+	  slab_z = (int) (to_slab_fac * pp[2]); 
+	  dx = to_slab_fac * pp[0] - slab_x; 
+	  dy = to_slab_fac * pp[1] - slab_y; 
+	  dz = to_slab_fac * pp[2] - slab_z;
 
 	  localfield_d_data[part[i + 0].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
 	  localfield_d_data[part[i + 1].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * dz;
@@ -1850,14 +1948,11 @@ void pmtidaltensor_periodic_diff(void)
 	  localfield_d_data[part[i + 5].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * dz;
 	  localfield_d_data[part[i + 6].localindex] += P[pindex].Mass * (dx) * dy * (1.0 - dz);
 	  localfield_d_data[part[i + 7].localindex] += P[pindex].Mass * (dx) * dy * dz;
-	}
-
+	} 
+      
       /* clear local FFT-mesh density field */
       for(i = 0; i < fftsize; i++)
 	d_rhogrid[i] = 0;
-
-
-
 
 /*    TEST CODE
       *********
@@ -1968,8 +2063,11 @@ void pmtidaltensor_periodic_diff(void)
 
       report_memory_usage(&HighMark_pmperiodic, "PM_PERIODIC");
 
+#ifndef USE_FFTW3
       rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
-
+#else 
+      fftw_execute(fft_forward_plan); 
+#endif
 
       /* multiply with Green's function for the potential */
 
@@ -2025,17 +2123,21 @@ void pmtidaltensor_periodic_diff(void)
 		  /* end deconvolution */
 
 		  ip = PMGRID * (PMGRID / 2 + 1) * (y - slabstart_y) + (PMGRID / 2 + 1) * x + z;
-		  fft_of_rhogrid[ip].re *= smth;
-		  fft_of_rhogrid[ip].im *= smth;
+		  cmplx_re(fft_of_rhogrid[ip]) *= smth;
+		  cmplx_im(fft_of_rhogrid[ip]) *= smth;
 		}
 	    }
 
       if(slabstart_y == 0)
-	fft_of_rhogrid[0].re = fft_of_rhogrid[0].im = 0.0;
+	cmplx_re(fft_of_rhogrid[0]) = cmplx_im(fft_of_rhogrid[0]) = 0.0;
 
       /* Do the inverse FFT to get the potential */
 
+#ifndef USE_FFTW3
       rfftwnd_mpi(fft_inverse_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
+#else 
+      fftw_execute(fft_inverse_plan); 
+#endif
 
       /* Now rhogrid holds the potential */
 
@@ -2107,32 +2209,31 @@ void pmtidaltensor_periodic_diff(void)
 	  while(j < num_on_grid && (part[j].partindex >> 3) != i)
 	    j++;
 
-        /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
-        /* make sure that particles are properly box-wrapped */
-        for(xx = 0; xx < 3; xx++)
-        {
-            pp[xx] = P[i].Pos[xx];
-            pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
-        }
-        slab_x = (int) (to_slab_fac * pp[0]);
-        slab_y = (int) (to_slab_fac * pp[1]);
-        slab_z = (int) (to_slab_fac * pp[2]);
-        dx = to_slab_fac * pp[0] - slab_x;
-        dy = to_slab_fac * pp[1] - slab_y;
-        dz = to_slab_fac * pp[2] - slab_z;
-
-	  pot =
-	    +localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
-	    + localfield_data[part[j + 1].localindex] * (1.0 - dx) * (1.0 - dy) * dz
-	    + localfield_data[part[j + 2].localindex] * (1.0 - dx) * dy * (1.0 - dz)
-	    + localfield_data[part[j + 3].localindex] * (1.0 - dx) * dy * dz
-	    + localfield_data[part[j + 4].localindex] * (dx) * (1.0 - dy) * (1.0 - dz)
-	    + localfield_data[part[j + 5].localindex] * (dx) * (1.0 - dy) * dz
-	    + localfield_data[part[j + 6].localindex] * (dx) * dy * (1.0 - dz)
-	    + localfield_data[part[j + 7].localindex] * (dx) * dy * dz;
-
+	  /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */ 
+	  /* make sure that particles are properly box-wrapped */ 
+	  for(xx = 0; xx < 3; xx++) 
+	  { 
+	      pp[xx] = P[i].Pos[xx]; 
+	      pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]); 
+	  } 
+	  slab_x = (int) (to_slab_fac * pp[0]); 
+	  slab_y = (int) (to_slab_fac * pp[1]); 
+	  slab_z = (int) (to_slab_fac * pp[2]); 
+	  dx = to_slab_fac * pp[0] - slab_x; dy = to_slab_fac * pp[1] - slab_y; 
+	  dz = to_slab_fac * pp[2] - slab_z; 
+	
+	  pot = 
+	      +localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz) 
+	      + localfield_data[part[j + 1].localindex] * (1.0 - dx) * (1.0 - dy) * dz 
+	      + localfield_data[part[j + 2].localindex] * (1.0 - dx) * dy * (1.0 - dz) 
+	      + localfield_data[part[j + 3].localindex] * (1.0 - dx) * dy * dz 
+	      + localfield_data[part[j + 4].localindex] * (dx) * (1.0 - dy) * (1.0 - dz) 
+	      + localfield_data[part[j + 5].localindex] * (dx) * (1.0 - dy) * dz 
+	      + localfield_data[part[j + 6].localindex] * (dx) * dy * (1.0 - dz) 
+	      + localfield_data[part[j + 7].localindex] * (dx) * dy * dz; 
+	  
 	  P[i].PM_Potential += pot * fac * (2 * All.BoxSize / PMGRID);
-	  /* compensate the finite differencing factor */ ;
+	  /* compensate the finite differencing factor */ ; 
 	}
 #endif
 
@@ -2362,24 +2463,22 @@ void pmtidaltensor_periodic_diff(void)
 		  continue;
 #endif
 	      while(j < num_on_grid && (part[j].partindex >> 3) != i)
-		j++;
-
-            /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
-            /* make sure that particles are properly box-wrapped */
-            for(xx = 0; xx < 3; xx++)
-            {
-                pp[xx] = P[i].Pos[xx];
-                pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
-            }
-            slab_x = (int) (to_slab_fac * pp[0]);
-            slab_y = (int) (to_slab_fac * pp[1]);
-            slab_z = (int) (to_slab_fac * pp[2]);
-            dx = to_slab_fac * pp[0] - slab_x;
-            dy = to_slab_fac * pp[1] - slab_y;
-            dz = to_slab_fac * pp[2] - slab_z;
-            
-	      tidal_dim =
-		+localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
+		j++; 
+	      
+	      /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */ 
+	      /* make sure that particles are properly box-wrapped */ 
+	      for(xx = 0; xx < 3; xx++) 
+	      {
+		  pp[xx] = P[i].Pos[xx]; 
+		  pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]); 
+	      } 
+	      slab_x = (int) (to_slab_fac * pp[0]); 
+	      slab_y = (int) (to_slab_fac * pp[1]); 
+	      slab_z = (int) (to_slab_fac * pp[2]); 
+	      dx = to_slab_fac * pp[0] - slab_x; 
+	      dy = to_slab_fac * pp[1] - slab_y; 
+	      dz = to_slab_fac * pp[2] - slab_z; 
+	      tidal_dim = + localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
 		+ localfield_data[part[j + 1].localindex] * (1.0 - dx) * (1.0 - dy) * dz
 		+ localfield_data[part[j + 2].localindex] * (1.0 - dx) * dy * (1.0 - dz)
 		+ localfield_data[part[j + 3].localindex] * (1.0 - dx) * dy * dz
@@ -2502,33 +2601,31 @@ void pmtidaltensor_periodic_fourier(int component)
         slab_z = (int) (to_slab_fac * pp[2]);
         if(slab_x >= PMGRID) slab_x -= PMGRID;
         if(slab_y >= PMGRID) slab_y -= PMGRID;
-        if(slab_z >= PMGRID) slab_z -= PMGRID;
-
-      for(xx = 0; xx < 2; xx++)
-	for(yy = 0; yy < 2; yy++)
-	  for(zz = 0; zz < 2; zz++)
-	    {
-	      slab_xx = slab_x + xx;
-	      slab_yy = slab_y + yy;
-	      slab_zz = slab_z + zz;
-
-	      if(slab_xx >= PMGRID)
-		slab_xx -= PMGRID;
-	      if(slab_yy >= PMGRID)
-		slab_yy -= PMGRID;
-	      if(slab_zz >= PMGRID)
-		slab_zz -= PMGRID;
-
-	      offset = ((large_array_offset) PMGRID2) * (PMGRID * slab_xx + slab_yy) + slab_zz;
-
-	      part[num_on_grid].partindex = (i << 3) + (xx << 2) + (yy << 1) + zz;
-	      part[num_on_grid].globalindex = offset;
-	      part_sortindex[num_on_grid] = num_on_grid;
-	      num_on_grid++;
-	    }
-    }
-
-  /* note: num_on_grid will be  8 times larger than the particle number,
+        if(slab_z >= PMGRID) slab_z -= PMGRID; 
+	
+	for(xx = 0; xx < 2; xx++) 
+	    for(yy = 0; yy < 2; yy++) 
+		for(zz = 0; zz < 2; zz++) { 
+		    slab_xx = slab_x + xx; 
+		    slab_yy = slab_y + yy; 
+		    slab_zz = slab_z + zz; 
+		    
+		    if(slab_xx >= PMGRID) 
+			slab_xx -= PMGRID; 
+		    if(slab_yy >= PMGRID) 
+			slab_yy -= PMGRID; 
+		    if(slab_zz >= PMGRID) 
+			slab_zz -= PMGRID; 
+		    
+		    offset = ((large_array_offset) PMGRID2) * (PMGRID * slab_xx + slab_yy) + slab_zz; 
+		    part[num_on_grid].partindex = (i << 3) + (xx << 2) + (yy << 1) + zz; 
+		    part[num_on_grid].globalindex = offset; 
+		    part_sortindex[num_on_grid] = num_on_grid; 
+		    num_on_grid++; 
+		} 
+    } 
+  
+  /* note: num_on_grid will be  8 times larger than the particle number, 
      but num_field_points will generally be much smaller */
 
   /* bring the part-field into the order of the accessed cells. This allow the removal of duplicates */
@@ -2585,7 +2682,7 @@ void pmtidaltensor_periodic_fourier(int component)
       if(localfield_count[task] == 0)
 	localfield_first[task] = num_field_points;
       localfield_count[task]++;
-    }
+    } 
   num_field_points++;
 
   for(i = 1, localfield_offset[0] = 0; i < NTask; i++)
@@ -2597,8 +2694,8 @@ void pmtidaltensor_periodic_fourier(int component)
     localfield_d_data[i] = 0;
 
   for(i = 0; i < num_on_grid; i += 8)
-    {
-      pindex = (part[i].partindex >> 3);
+    { 
+	pindex = (part[i].partindex >> 3);
         if(P[pindex].Mass<=0) continue;
 
         /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
@@ -2615,14 +2712,14 @@ void pmtidaltensor_periodic_fourier(int component)
         dy = to_slab_fac * pp[1] - slab_y;
         dz = to_slab_fac * pp[2] - slab_z;
 
-      localfield_d_data[part[i + 0].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
-      localfield_d_data[part[i + 1].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * dz;
-      localfield_d_data[part[i + 2].localindex] += P[pindex].Mass * (1.0 - dx) * dy * (1.0 - dz);
-      localfield_d_data[part[i + 3].localindex] += P[pindex].Mass * (1.0 - dx) * dy * dz;
-      localfield_d_data[part[i + 4].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * (1.0 - dz);
-      localfield_d_data[part[i + 5].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * dz;
-      localfield_d_data[part[i + 6].localindex] += P[pindex].Mass * (dx) * dy * (1.0 - dz);
-      localfield_d_data[part[i + 7].localindex] += P[pindex].Mass * (dx) * dy * dz;
+	localfield_d_data[part[i + 0].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
+	localfield_d_data[part[i + 1].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * dz;
+	localfield_d_data[part[i + 2].localindex] += P[pindex].Mass * (1.0 - dx) * dy * (1.0 - dz);
+	localfield_d_data[part[i + 3].localindex] += P[pindex].Mass * (1.0 - dx) * dy * dz;
+	localfield_d_data[part[i + 4].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * (1.0 - dz);
+	localfield_d_data[part[i + 5].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * dz;
+	localfield_d_data[part[i + 6].localindex] += P[pindex].Mass * (dx) * dy * (1.0 - dz);
+	localfield_d_data[part[i + 7].localindex] += P[pindex].Mass * (dx) * dy * dz;
     }
 
   /* clear local FFT-mesh density field */
@@ -2693,7 +2790,11 @@ void pmtidaltensor_periodic_fourier(int component)
 
   /* Do the FFT of the density field */
 
+#ifndef USE_FFTW3
   rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
+#else 
+  fftw_execute(fft_forward_plan); 
+#endif
 
   /* multiply with Green's function for the potential */
 
@@ -2749,28 +2850,28 @@ void pmtidaltensor_periodic_fourier(int component)
 	      /* modify greens function to get second derivatives of potential ("pulling" down k's) */
 	      if(component == 0)
 		{
-		  fft_of_rhogrid[ip].re *= smth * kx * kx;
-		  fft_of_rhogrid[ip].im *= smth * kx * kx;
+		  cmplx_re(fft_of_rhogrid[ip]) *= smth * kx * kx;
+		  cmplx_im(fft_of_rhogrid[ip]) *= smth * kx * kx;
 		}
 	      if(component == 1)
 		{
-		  fft_of_rhogrid[ip].re *= smth * kx * ky;
-		  fft_of_rhogrid[ip].im *= smth * kx * ky;
+		  cmplx_re(fft_of_rhogrid[ip]) *= smth * kx * ky;
+		  cmplx_im(fft_of_rhogrid[ip]) *= smth * kx * ky;
 		}
 	      if(component == 2)
 		{
-		  fft_of_rhogrid[ip].re *= smth * kx * kz;
-		  fft_of_rhogrid[ip].im *= smth * kx * kz;
+		  cmplx_re(fft_of_rhogrid[ip]) *= smth * kx * kz;
+		  cmplx_im(fft_of_rhogrid[ip]) *= smth * kx * kz;
 		}
 	      if(component == 3)
 		{
-		  fft_of_rhogrid[ip].re *= smth * ky * ky;
-		  fft_of_rhogrid[ip].im *= smth * ky * ky;
+		  cmplx_re(fft_of_rhogrid[ip]) *= smth * ky * ky;
+		  cmplx_im(fft_of_rhogrid[ip]) *= smth * ky * ky;
 		}
 	      if(component == 4)
 		{
-		  fft_of_rhogrid[ip].re *= smth * ky * kz;
-		  fft_of_rhogrid[ip].im *= smth * ky * kz;
+		  cmplx_re(fft_of_rhogrid[ip]) *= smth * ky * kz;
+		  cmplx_im(fft_of_rhogrid[ip]) *= smth * ky * kz;
 		}
 	      if(component == 5)
 		{
@@ -2791,25 +2892,29 @@ void pmtidaltensor_periodic_fourier(int component)
 		     fft_of_rhogrid[ip].im = -smth*rep*kz * (2*M_PI) / All.BoxSize;
 		   */
 
-		  fft_of_rhogrid[ip].re *= smth * kz * kz;
-		  fft_of_rhogrid[ip].im *= smth * kz * kz;
+		  cmplx_re(fft_of_rhogrid[ip]) *= smth * kz * kz;
+		  cmplx_im(fft_of_rhogrid[ip]) *= smth * kz * kz;
 
 		}
 
 	      /* prefactor = (2*M_PI) / All.BoxSize */
 	      /* note: tidal tensor = - d^2 Phi/ dx_i dx_j  IS THE SIGN CORRECT ?!?! */
-	      fft_of_rhogrid[ip].re *= (2 * M_PI) * (2 * M_PI) / (All.BoxSize * All.BoxSize);
-	      fft_of_rhogrid[ip].im *= (2 * M_PI) * (2 * M_PI) / (All.BoxSize * All.BoxSize);
+	      cmplx_re(fft_of_rhogrid[ip]) *= (2 * M_PI) * (2 * M_PI) / (All.BoxSize * All.BoxSize);
+	      cmplx_im(fft_of_rhogrid[ip]) *= (2 * M_PI) * (2 * M_PI) / (All.BoxSize * All.BoxSize);
 
 	    }
 	}
 
   if(slabstart_y == 0)
-    fft_of_rhogrid[0].re = fft_of_rhogrid[0].im = 0.0;
+    cmplx_re(fft_of_rhogrid[0]) = cmplx_im(fft_of_rhogrid[0]) = 0.0;
 
   /* Do the inverse FFT to get the tidal tensor component */
 
+#ifndef USE_FFTW3
   rfftwnd_mpi(fft_inverse_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
+#else 
+  fftw_execute(fft_inverse_plan); 
+#endif
 
   /* Now rhogrid holds the tidal tensor componet */
 
@@ -2894,48 +2999,47 @@ void pmtidaltensor_periodic_fourier(int component)
         slab_z = (int) (to_slab_fac * pp[2]);
         dx = to_slab_fac * pp[0] - slab_x;
         dy = to_slab_fac * pp[1] - slab_y;
-        dz = to_slab_fac * pp[2] - slab_z;
+        dz = to_slab_fac * pp[2] - slab_z; 
+	
+	tidal = 
+	    +localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
+	    + localfield_data[part[j + 1].localindex] * (1.0 - dx) * (1.0 - dy) * dz
+	    + localfield_data[part[j + 2].localindex] * (1.0 - dx) * dy * (1.0 - dz)
+	    + localfield_data[part[j + 3].localindex] * (1.0 - dx) * dy * dz
+	    + localfield_data[part[j + 4].localindex] * (dx) * (1.0 - dy) * (1.0 - dz)
+	    + localfield_data[part[j + 5].localindex] * (dx) * (1.0 - dy) * dz
+	    + localfield_data[part[j + 6].localindex] * (dx) * dy * (1.0 - dz)
+	    + localfield_data[part[j + 7].localindex] * (dx) * dy * dz;
 
-      tidal =
-	+localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
-	+ localfield_data[part[j + 1].localindex] * (1.0 - dx) * (1.0 - dy) * dz
-	+ localfield_data[part[j + 2].localindex] * (1.0 - dx) * dy * (1.0 - dz)
-	+ localfield_data[part[j + 3].localindex] * (1.0 - dx) * dy * dz
-	+ localfield_data[part[j + 4].localindex] * (dx) * (1.0 - dy) * (1.0 - dz)
-	+ localfield_data[part[j + 5].localindex] * (dx) * (1.0 - dy) * dz
-	+ localfield_data[part[j + 6].localindex] * (dx) * dy * (1.0 - dz)
-	+ localfield_data[part[j + 7].localindex] * (dx) * dy * dz;
+	tidal *= fac;
 
-      tidal *= fac;
-
-      if(component == 0)
+	if(component == 0) 
+	{ 
+	    P[i].tidal_tensorpsPM[0][0] += tidal;
+	} 
+	if(component == 1)
+	{ 
+	    P[i].tidal_tensorpsPM[0][1] += tidal; 
+	    P[i].tidal_tensorpsPM[1][0] += tidal;
+	} 
+	if(component == 2)
 	{
-	  P[i].tidal_tensorpsPM[0][0] += tidal;
-	}
-      if(component == 1)
-	{
-	  P[i].tidal_tensorpsPM[0][1] += tidal;
-	  P[i].tidal_tensorpsPM[1][0] += tidal;
-	}
-      if(component == 2)
-	{
-	  P[i].tidal_tensorpsPM[0][2] += tidal;
-	  P[i].tidal_tensorpsPM[2][0] += tidal;
-	}
-      if(component == 3)
-	{
-	  P[i].tidal_tensorpsPM[1][1] += tidal;
-	}
-      if(component == 4)
-	{
-	  P[i].tidal_tensorpsPM[1][2] += tidal;
-	  P[i].tidal_tensorpsPM[2][1] += tidal;
-	}
-      if(component == 5)
-	{
-	  P[i].tidal_tensorpsPM[2][2] += tidal;
-	}
-
+	    P[i].tidal_tensorpsPM[0][2] += tidal; 
+	    P[i].tidal_tensorpsPM[2][0] += tidal;
+	} 
+	if(component == 3)
+	{ 
+	    P[i].tidal_tensorpsPM[1][1] += tidal;
+	} 
+	if(component == 4)
+	{ 
+	    P[i].tidal_tensorpsPM[1][2] += tidal; 
+	    P[i].tidal_tensorpsPM[2][1] += tidal;
+	} 
+	if(component == 5) 
+	{ 
+	    P[i].tidal_tensorpsPM[2][2] += tidal;
+	} 
     }
 
   /* free locallist */
@@ -3118,8 +3222,8 @@ void powerspec(int flag, int *typeflag)
 
 		  ip = PMGRID * (PMGRID / 2 + 1) * (y - slabstart_y) + (PMGRID / 2 + 1) * x + zz;
 
-		  po = (fft_of_rhogrid[ip].re * fft_of_rhogrid[ip].re
-			+ fft_of_rhogrid[ip].im * fft_of_rhogrid[ip].im);
+		  po = (cmplx_re(fft_of_rhogrid[ip]) * cmplx_re(fft_of_rhogrid[ip])
+			+ cmplx_im(fft_of_rhogrid[ip]) * cmplx_im(fft_of_rhogrid[ip]));
 
 		  po *= fac * fac * smth;
 
@@ -3388,8 +3492,8 @@ void foldonitself(int *typelist)
 
 
 	  /* make sure that particles are properly box-wrapped */
-	  pp[0] = P[i].Pos[0];
-        pp[0] = WRAP_POSITION_UNIFORM_BOX(pp[0]);
+	  pp[0] = P[i].Pos[0]; 
+	  pp[0] = WRAP_POSITION_UNIFORM_BOX(pp[0]);
 
 	  slab_x = to_slab_fac_folded * pp[0];
 	  slab_xx = slab_x + 1;
@@ -3421,8 +3525,8 @@ void foldonitself(int *typelist)
 	    break;
 
 	  /* make sure that particles are properly box-wrapped */
-	  pp[0] = P[i].Pos[0];
-        pp[0] = WRAP_POSITION_UNIFORM_BOX(pp[0]);
+	  pp[0] = P[i].Pos[0]; 
+	  pp[0] = WRAP_POSITION_UNIFORM_BOX(pp[0]);
 
 	  slab_x = to_slab_fac_folded * pp[0];
 	  slab_xx = slab_x + 1;
@@ -3498,8 +3602,8 @@ void foldonitself(int *typelist)
 		  /* make sure that particles are properly box-wrapped */
 		  for(j = 0; j < 3; j++)
 		    {
-		      pp[j] = pos[j];
-                pp[j] = WRAP_POSITION_UNIFORM_BOX(pp[j]);
+		      pp[j] = pos[j]; 
+		      pp[j] = WRAP_POSITION_UNIFORM_BOX(pp[j]);
 		    }
 
 		  slab_x = to_slab_fac_folded * pp[0];
@@ -3579,7 +3683,11 @@ void foldonitself(int *typelist)
   tstart = my_second();
 
   /* Do the FFT of the self-folded density field */
+#ifndef USE_FFTW3
   rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
+#else 
+  fftw_execute(fft_forward_plan);
+#endif
 
   tend = my_second();
 
@@ -3754,8 +3862,8 @@ void kspace_neutrinos_init(void)
       for(z = 0; z < PMGRID / 2 + 1; z++)
 	{
 	  ip = PMGRID * (PMGRID / 2 + 1) * (y - slabstart_y) + (PMGRID / 2 + 1) * x + z;
-	  Cdata[ip].re = 0;
-	  Cdata[ip].im = 0;
+	  cmplx_re(Cdata[ip]) = 0;
+	  cmplx_im(Cdata[ip]) = 0;
 	}
 
 
@@ -3820,8 +3928,8 @@ void kspace_neutrinos_init(void)
 		if(y >= slabstart_y && y < (slabstart_y + nslab_y))
 		  {
 		    ip = PMGRID * (PMGRID / 2 + 1) * (y - slabstart_y) + (PMGRID / 2 + 1) * x + z;
-		    Cdata[ip].re = delta * cos(phase);
-		    Cdata[ip].im = delta * sin(phase);
+		    cmplx_re(Cdata[ip]) = delta * cos(phase);
+		    cmplx_im(Cdata[ip]) = delta * sin(phase);
 		  }
 		else		/* z=0 plane needs special treatment */
 		  {
@@ -3837,8 +3945,8 @@ void kspace_neutrinos_init(void)
 			      {
 				ip = PMGRID * (PMGRID / 2 + 1) * (y - slabstart_y) + (PMGRID / 2 + 1) * x + z;
 
-				Cdata[ip].re = delta * cos(phase);
-				Cdata[ip].im = delta * sin(phase);
+				cmplx_re(Cdata[ip]) = delta * cos(phase);
+				cmplx_im(Cdata[ip]) = delta * sin(phase);
 			      }
 
 			    if(yy >= slabstart_y && yy < (slabstart_y + nslab_y))
@@ -3846,8 +3954,8 @@ void kspace_neutrinos_init(void)
 				ip =
 				  PMGRID * (PMGRID / 2 + 1) * (yy - slabstart_y) + (PMGRID / 2 + 1) * x + z;
 
-				Cdata[ip].re = delta * cos(phase);
-				Cdata[ip].im = -delta * sin(phase);
+				cmplx_re(Cdata[ip]) = delta * cos(phase);
+				cmplx_im(Cdata[ip]) = -delta * sin(phase);
 			      }
 			  }
 		      }
@@ -3868,8 +3976,8 @@ void kspace_neutrinos_init(void)
 			      {
 				ip = PMGRID * (PMGRID / 2 + 1) * (y - slabstart_y) + (PMGRID / 2 + 1) * x + z;
 
-				Cdata[ip].re = delta * cos(phase);
-				Cdata[ip].im = delta * sin(phase);
+				cmplx_re(Cdata[ip]) = delta * cos(phase);
+				cmplx_im(Cdata[ip]) = delta * sin(phase);
 			      }
 
 			    if(yy >= slabstart_y && yy < (slabstart_y + nslab_y))
@@ -3877,8 +3985,8 @@ void kspace_neutrinos_init(void)
 				ip =
 				  PMGRID * (PMGRID / 2 + 1) * (yy - slabstart_y) + (PMGRID / 2 + 1) * xx + z;
 
-				Cdata[ip].re = delta * cos(phase);
-				Cdata[ip].im = -delta * sin(phase);
+				cmplx_re(Cdata[ip]) = delta * cos(phase);
+				cmplx_im(Cdata[ip]) = -delta * sin(phase);
 			      }
 			  }
 		      }
