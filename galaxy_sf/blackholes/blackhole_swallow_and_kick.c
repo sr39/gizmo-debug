@@ -346,7 +346,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     {
         while(startnode >= 0)
         {
-            numngb = ngb_treefind_variable_targeted(pos, h_i, target, &startnode, mode, nexport, nSend_local, BH_NEIGHBOR_BITFLAG); // BH_NEIGHBOR_BITFLAG defines which types of particles we search for
+            numngb = ngb_treefind_pairs_targeted(pos, h_i, target, &startnode, mode, nexport, nSend_local, BH_NEIGHBOR_BITFLAG); // BH_NEIGHBOR_BITFLAG defines which types of particles we search for
             if(numngb < 0) return -1;
             for(n = 0; n < numngb; n++)
             {
