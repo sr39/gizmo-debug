@@ -999,8 +999,13 @@ void read_file(char *fname, int readTask, int lastTask)
                             find_block(label, fd);
                         }
                         
-                        if(All.ICFormat == 1 || All.ICFormat == 2)
+                        if(All.ICFormat == 1 || All.ICFormat == 2) {
                             SKIP;
+                            if (blksize1 == 0) { /* workaround for MUSCI ICs */
+                              SKIP2; 
+                              SKIP; 
+                            }
+                        }
                     }
                 
                 for(type = 0, offset = 0, nread = 0; type < 6; type++)
