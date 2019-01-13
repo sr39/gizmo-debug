@@ -287,7 +287,9 @@ void begrun(void)
 #endif
 #endif
 #ifdef COSMIC_RAYS
+#if (COSMIC_RAYS_DIFFUSION_MODEL == 0)
         All.CosmicRayDiffusionCoeff = all.CosmicRayDiffusionCoeff;
+#endif
 #endif
 
 #ifdef GR_TABULATED_COSMOLOGY
@@ -1255,9 +1257,11 @@ void read_parameter_file(char *fname)
 
         
 #ifdef COSMIC_RAYS
+#if (COSMIC_RAYS_DIFFUSION_MODEL == 0)
         strcpy(tag[nt], "CosmicRayDiffusionCoeff");
         addr[nt] = &All.CosmicRayDiffusionCoeff;
         id[nt++] = REAL;
+#endif
 #endif
         
 

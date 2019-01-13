@@ -715,18 +715,18 @@ void hydro_final_operations_and_cleanup(void)
 #if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_STREAMING) && !defined(COSMIC_RAYS_ALFVEN)
             /* energy transfer from CRs to gas due to the streaming instability (mediated by high-frequency Alfven waves, but they thermalize quickly
                 (note this is important; otherwise build up CR 'traps' where the gas piles up and cools but is entirely supported by CRs in outer disks) */
-            double cr_vstream_loss_velocity = Get_CosmicRayStreamingVelocity(i);
-#ifdef MAGNETIC
-            /* first account for the fact that the loss term is always [or below] the Alfven speed, regardless of the bulk streaming speed */
+            double cr_vstream_loss_velocity = Get_CosmicRayStreamingVelocity(i), v_st_eff = SphP[i].CosmicRayDiffusionCoeff / (GAMMA_COSMICRAY * Get_CosmicRayGradientLength(i) + MIN_REAL_NUMBER); // maximum possible streaming speed from combined diffusivity
+            cr_vstream_loss_velocity = DMIN(cr_vstream_loss_velocity , v_st_eff); // if upper-limit to streaming is less than nominal 'default' v_stream/loss term, this should be lower too
+#ifdef MAGNETIC /* account for the fact that the loss term is always [or below] the Alfven speed, regardless of the bulk streaming speed */
             double vA=0; int k; for(k=0;k<3;k++) {vA += Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
-            vA = All.cf_afac3 * sqrt(All.cf_afac1 * vA/ (All.cf_atime * SphP[i].Density));
-            cr_vstream_loss_velocity = DMIN(vA, cr_vstream_loss_velocity);
-            /* now account here for the fact that the streaming can be suppressed by the requirement of motion along field lines */
+#ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
+            vA /= Get_Gas_Ionized_Fraction(i); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
+#endif
+            vA = All.cf_afac3 * sqrt(All.cf_afac1 * vA/ (All.cf_atime * SphP[i].Density)); cr_vstream_loss_velocity = DMIN(vA, cr_vstream_loss_velocity);
             double B_dot_gradP=0.0, B2_tot=0.0, Pgrad2_tot=0.0;
-            for(k=0;k<3;k++)
+            for(k=0;k<3;k++) /* account here for the fact that the streaming can be suppressed by the requirement of motion along field lines */
             {
-                double b_to_use = Get_Particle_BField(i,k);
-                B2_tot += b_to_use * b_to_use;
+                double b_to_use = Get_Particle_BField(i,k); B2_tot += b_to_use * b_to_use;
                 Pgrad2_tot += SphP[i].Gradients.CosmicRayPressure[k] * SphP[i].Gradients.CosmicRayPressure[k];
                 B_dot_gradP += b_to_use * SphP[i].Gradients.CosmicRayPressure[k];
             }

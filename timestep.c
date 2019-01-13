@@ -582,7 +582,7 @@ integertime get_timestep(int p,		/*!< particle index */
                     double coeff_inv = 0.67 * L_cr_strong * dt_prefac_diffusion / (1.e-33 + fabs(SphP[p].CosmicRayDiffusionCoeff) * GAMMA_COSMICRAY_MINUS1);
                     double dt_conduction =  L_cr_strong * coeff_inv; /* true diffusion requires the stronger timestep criterion be applied */
                     explicit_timestep_on = 1;
-#ifdef COSMIC_RAYS_DISABLE_DIFFUSION
+#if (COSMIC_RAYS_DIFFUSION_MODEL < 0)
                     dt_conduction = L_cr_weak * coeff_inv; /* streaming allows weaker timestep criterion because it's really an advection equation */
                     explicit_timestep_on = 0;
 #endif
