@@ -509,7 +509,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                         double v_kick = All.BH_FluxMomentumFactor * mom_wt * mom / P[j].Mass;
                         for(k=0;k<3;k++) {P[j].Vel[k]+=v_kick*All.cf_atime*dir[k]; SphP[j].VelPred[k]+=v_kick*All.cf_atime*dir[k];}
 #endif
-#if defined(BH_COSMIC_RAYS) /* inject cosmic rays alongside continuous wind injection */
+#if defined(BH_COSMIC_RAYS) && defined(BH_WIND_CONTINUOUS) /* inject cosmic rays alongside continuous wind injection */
                         double dEcr = All.BH_CosmicRay_Injection_Efficiency * mom_wt * (C / All.UnitVelocity_in_cm_per_s)*(C / All.UnitVelocity_in_cm_per_s) * mdot*dt;
                                 SphP[j].CosmicRayEnergy+=dEcr; SphP[j].CosmicRayEnergyPred+=dEcr;
 #ifdef COSMIC_RAYS_M1
