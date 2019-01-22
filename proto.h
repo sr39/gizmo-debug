@@ -270,6 +270,8 @@ double INLINE_FUNC Get_Particle_Expected_Area(double h);
 #ifdef COSMIC_RAYS
 double INLINE_FUNC Get_Particle_CosmicRayPressure(int i);
 double Get_CosmicRayGradientLength(int i);
+double Get_Gas_Ionized_Fraction(int i);
+void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i);
 double Get_CosmicRayStreamingVelocity(int i);
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode);
 #endif
@@ -561,7 +563,7 @@ char *GetMultiSpeciesFilename(int i, int hk);
 #ifdef BH_PHOTONMOMENTUM
 double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz);
 #endif
-double bh_angleweight_localcoupling(int j, double hR, double theta);
+double bh_angleweight_localcoupling(int j, double hR, double theta, double r, double H_bh);
 #endif
 
 #if defined(GALSF_SUBGRID_WINDS)
@@ -803,31 +805,6 @@ int pmtidaltensor_nonperiodic_fourier(int component, int grnr);
 void check_tidaltensor_periodic(int particle_ID);
 void check_tidaltensor_nonperiodic(int particle_ID);
 #endif
-#endif
-
-#ifdef SCF_POTENTIAL
-void SCF_do_center_of_mass_correction(double fac_rad, double start_rad, double fac_part, int max_iter);
-void SCF_write(int task);
-void SCF_calc_from_random(long *seed);
-void SCF_calc_from_particles(void);
-void SCF_init(void);
-void SCF_reset(void);
-void SCF_free(void);
-void SCF_evaluate(MyDouble x, MyDouble y, MyDouble z, MyDouble *potential, MyDouble *ax, MyDouble *ay, MyDouble *az);
-void SCF_collect_update(void);
-
-void sphere_acc(double x, double y, double z, double *xa, double *ya, double *za);
-void to_unit(double x, double y, double z, double *xs, double *ys, double *zs);
-double ran1(long *idum);
-double gasdev(long *idum);
-double factrl(int n);
-int nlm_all(int num, int n, int l, int m);
-int nlm(int n, int l, int m);
-int nl(int n, int l);
-int lm(int l, int m);
-int kdelta(int a, int b);
-double gnlm_var(int n, int l, int m);
-double hnlm_var(int n, int l, int m);
 #endif
 
 int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary);
