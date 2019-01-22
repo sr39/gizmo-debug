@@ -1970,7 +1970,6 @@ void chimes_init_depletion_data(void)
   // used in CHIMES. 
   double SolarAbund[DEPL_N_ELEM] = {2.07e-3, 8.36e-4, 5.49e-3, 5.91e-4, 6.83e-4, 7.01e-6, 4.09e-4, 4.72e-6, 3.56e-6, 1.72e-5, 1.12e-5, 1.1e-3, 7.42e-5, 7.32e-7, 1.83e-6, 2.58e-7, 1.36e-7}; 
 
-#ifdef CHIMES_METAL_DEPLETION_DC16 
   // Fit parameters, using equation 10 of Jenkins (2009). 
   // Where possible, we take the updated fit parameters 
   // A2 and B2 from De Cia et al. (2016), which we convert 
@@ -1994,30 +1993,6 @@ void chimes_init_depletion_data(void)
 				     {-0.182, -0.274, 0.0},       // Zn 
 				     {-0.615, -0.725, 0.69},  // Ge 
 				     {-0.166, -0.332, 0.684}}; // Kr 
-# else 
-  // Fit parameters for the depletion factors from 
-  // Table 4 of Jenkins (2009). For each element, 
-  // we list the parameters Ax, Bx, zx. We set 
-  // Sulphur to have no depletion, as it was 
-  // uncertain in J09. 
-  double DeplPars[DEPL_N_ELEM][3] = {{-0.101, -0.193, 0.803}, // C 
-				     {0.0, -0.109, 0.55},     // N 
-				     {-0.225, -0.145, 0.598}, // O 
-				     {-0.997, -0.800, 0.531}, // Mg 
-				     {-1.136, -0.570, 0.305}, // Si 
-				     {-0.945, -0.166, 0.488}, // P 
-				     {0.0, 0.0, 0.0},         // S 
-				     {-1.242, -0.314, 0.609}, // Cl 
-				     {-2.048, -1.957, 0.43},  // Ti 
-				     {-1.447, -1.508, 0.47},  // Cr 
-				     {-0.857, -1.354, 0.52},  // Mn 
-				     {-1.285, -1.513, 0.437}, // Fe 
-				     {-1.490, -1.829, 0.599}, // Ni 
-				     {-0.710, -1.102, 0.711}, // Cu 
-				     {-0.610, -0.279, 0.555}, // Zn 
-				     {-0.615, -0.725, 0.69},  // Ge 
-				     {-0.166, -0.332, 0.684}}; // Kr 
-#endif  
   
 #ifdef OPENMP 
   for (i = 0; i < OPENMP; i++) 
@@ -2030,11 +2005,7 @@ void chimes_init_depletion_data(void)
       
       // DustToGasSaturated is the dust to gas ratio when 
       // F_star = 1.0, i.e. at maximum depletion onto grains. 
-#ifdef CHIMES_METAL_DEPLETION_DC16 
       ChimesDepletionData[i].DustToGasSaturated = 5.9688e-03; 
-#else 
-      ChimesDepletionData[i].DustToGasSaturated = 5.7494e-3; 
-#endif 
 
 #ifdef OPENMP 
     }
