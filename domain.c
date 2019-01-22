@@ -492,6 +492,15 @@ double domain_particle_cost_multiplier(int i)
 	  multiplier = 10.0; 
       }
 #endif 
+
+#ifdef AJR_DM_DOMAIN_COST 
+    // Note that cost multiplier actually 
+    // comes in as (1 + multiplier). So to 
+    // suppress DM, we also need to subtract 
+    // off this 1. 
+    if (P[i].Type == 1) 
+      multiplier = All.DM_domain_cost - 1.0; 
+#endif 
     
     return multiplier;
 }
