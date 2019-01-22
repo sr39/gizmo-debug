@@ -1914,22 +1914,6 @@ void chimes_update_element_abundances(int i)
 #endif 
   chimes_compute_depletions(ChimesGasVars[i].nH_tot, ChimesGasVars[i].temperature, ThisThread); 
 
-#ifdef CHIMES_HII_SUPPRESS_DEPLETION 
-  if (SphP[i].DelayTimeHII > 0) 
-    {
-      ChimesGasVars[i].element_abundances[1] *= 1.0 - (All.Chimes_HII_depletion * (1.0 - ChimesDepletionData[ThisThread].ChimesDepletionFactors[0])); // C 
-      ChimesGasVars[i].element_abundances[2] *= 1.0 - (All.Chimes_HII_depletion * (1.0 - ChimesDepletionData[ThisThread].ChimesDepletionFactors[1])); // N 
-      ChimesGasVars[i].element_abundances[3] *= 1.0 - (All.Chimes_HII_depletion * (1.0 - ChimesDepletionData[ThisThread].ChimesDepletionFactors[2])); // O 
-      ChimesGasVars[i].element_abundances[5] *= 1.0 - (All.Chimes_HII_depletion * (1.0 - ChimesDepletionData[ThisThread].ChimesDepletionFactors[3])); // Mg 
-      ChimesGasVars[i].element_abundances[6] *= 1.0 - (All.Chimes_HII_depletion * (1.0 - ChimesDepletionData[ThisThread].ChimesDepletionFactors[4])); // Si 
-      ChimesGasVars[i].element_abundances[7] *= 1.0 - (All.Chimes_HII_depletion * (1.0 - ChimesDepletionData[ThisThread].ChimesDepletionFactors[5])); // S 
-      ChimesGasVars[i].element_abundances[9] *= 1.0 - (All.Chimes_HII_depletion * (1.0 - ChimesDepletionData[ThisThread].ChimesDepletionFactors[6])); // Fe 
-      
-      ChimesGasVars[i].metallicity *= All.Chimes_HII_depletion * ChimesDepletionData[ThisThread].ChimesDustRatio; 
-    }
-  else
-    {
-#endif // CHIMES_HII_SUPPRESS_DEPLETION 
   ChimesGasVars[i].element_abundances[1] *= ChimesDepletionData[ThisThread].ChimesDepletionFactors[0]; // C 
   ChimesGasVars[i].element_abundances[2] *= ChimesDepletionData[ThisThread].ChimesDepletionFactors[1]; // N 
   ChimesGasVars[i].element_abundances[3] *= ChimesDepletionData[ThisThread].ChimesDepletionFactors[2]; // O 
@@ -1939,9 +1923,6 @@ void chimes_update_element_abundances(int i)
   ChimesGasVars[i].element_abundances[9] *= ChimesDepletionData[ThisThread].ChimesDepletionFactors[6]; // Fe 
 
   ChimesGasVars[i].metallicity *= ChimesDepletionData[ThisThread].ChimesDustRatio; 
-#ifdef CHIMES_HII_SUPPRESS_DEPLETION 
-    }
-#endif // CHIMES_HII_SUPPRESS_DEPLETION 
 #endif // CHIMES_METAL_DEPLETION 
 
   /* The element abundances may have changed, so use the check_constraint_equations() 
