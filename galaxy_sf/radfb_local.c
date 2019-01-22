@@ -81,7 +81,7 @@ void radiation_pressure_winds_consolidated(void)
                         numngb_inbox = ngb_treefind_pairs_threads(pos, h, -1, &startnode, 0, &dummy, &dummy, &dummy, Ngblist);
                         if((numngb_inbox>=N_MIN_KERNEL)&&(numngb_inbox<=N_MAX_KERNEL))
                         {
-                            hinv=1/h; hinv3=hinv*hinv*hinv; wt_sum=rho=0;
+                            hinv=1/h; hinv3=hinv*hinv*hinv; wt_sum=rho=0; /* note these lines and many below assume 3D sims! */
                             for(n=0; n<numngb_inbox; n++)
                             {
                                 j = Ngblist[n];

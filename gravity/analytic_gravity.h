@@ -30,7 +30,6 @@ void GravAccel_RDITestProblem(void);
 void add_analytic_gravitational_forces()
 {
 #ifdef GRAVITY_ANALYTIC
-    //GravAccel_RDITestProblem();         // vertical gravity+external acceleration for grain-RDI-wind tests
     //GravAccel_RayleighTaylorTest();     // vertical potential for RT tests
     //GravAccel_StaticPlummerSphere();    // plummer sphere
 #ifdef AJR_STATIC_HERNQUIST_POTENTIAL 
@@ -44,6 +43,9 @@ void add_analytic_gravitational_forces()
     //GravAccel_PaczynskyWiita();         // Paczynsky-Wiita pseudo-Newtonian potential
 #ifdef BOX_SHEARING
     GravAccel_ShearingSheet();            // adds coriolis and centrifugal terms for shearing-sheet approximation
+#endif
+#ifdef GRAIN_RDI_TESTPROBLEM
+    GravAccel_RDITestProblem();           // vertical gravity+external acceleration for grain-RDI-wind tests
 #endif
 #endif
 }
@@ -61,7 +63,7 @@ void GravAccel_RDITestProblem()
         /* now add the constant vertical field for non-anchored particles */
         if(P[i].ID > 0)
         {
-            P[i].GravAccel[2] = -All.Vertical_Gravity_Strength;
+            P[i].GravAccel[GRAV_DIRECTION_RDI] = -All.Vertical_Gravity_Strength;
             /* dust feels radiation acceleration in the direction opposite gravity */
 	    double acc = All.Vertical_Grain_Accel;
 #ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
@@ -69,7 +71,7 @@ void GravAccel_RDITestProblem()
 #endif
             if(P[i].Type==3) 
 	    {
-		P[i].GravAccel[2] += acc * cos(All.Vertical_Grain_Accel_Angle * M_PI/180.);
+		P[i].GravAccel[GRAV_DIRECTION_RDI] += acc * cos(All.Vertical_Grain_Accel_Angle * M_PI/180.);
 		P[i].GravAccel[0] += acc * sin(All.Vertical_Grain_Accel_Angle * M_PI/180.);
 	    }
         }
@@ -271,12 +273,12 @@ void GravAccel_KeplerianOrbit()
 #if defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE)
         int k; for(k = 0; k < 3; k++) {dp[k] = -P[i].min_xyz_to_bh[k];}
 #elif defined(BOX_PERIODIC)
-        dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y;
+        dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y; dp[2] -= boxHalf_Z;
 #endif
-        r2 = dp[0]*dp[0] + dp[1]*dp[1]; r = sqrt(r2);
+        r2 = dp[0]*dp[0] + dp[1]*dp[1] + dp[2]*dp[2]; r = sqrt(r2);
         P[i].GravAccel[0] += -dp[0] / (r2 * r);
         P[i].GravAccel[1] += -dp[1] / (r2 * r);
-        P[i].GravAccel[2] += 0;
+        P[i].GravAccel[2] += -dp[2] / (r2 * r);
     }
 }
 

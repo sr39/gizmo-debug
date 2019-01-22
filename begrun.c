@@ -309,7 +309,9 @@ void begrun(void)
 #endif
 #endif
 #ifdef COSMIC_RAYS
+#if (COSMIC_RAYS_DIFFUSION_MODEL == 0)
         All.CosmicRayDiffusionCoeff = all.CosmicRayDiffusionCoeff;
+#endif
 #endif
 
 #ifdef GR_TABULATED_COSMOLOGY
@@ -697,15 +699,6 @@ void open_outputfiles(void)
     fprintf(FdBalance, "\n");
 #endif
 
-
-#ifdef SCF_POTENTIAL
-  sprintf(buf, "%s%s", All.OutputDir, "scf_coeff.txt");
-  if(!(FdSCF = fopen(buf, mode)))
-    {
-      printf("error in opening file '%s'\n", buf);
-      endrun(1);
-    }
-#endif
 
 #ifdef GALSF
   sprintf(buf, "%s%s", All.OutputDir, "sfr.txt");
@@ -1312,10 +1305,13 @@ void read_parameter_file(char *fname)
 
         
 #ifdef COSMIC_RAYS
+#if (COSMIC_RAYS_DIFFUSION_MODEL == 0)
         strcpy(tag[nt], "CosmicRayDiffusionCoeff");
         addr[nt] = &All.CosmicRayDiffusionCoeff;
         id[nt++] = REAL;
 #endif
+#endif
+        
 
 #if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)
       strcpy(tag[nt], "TimeBetOnTheFlyFoF");
@@ -1360,6 +1356,12 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "SeedBlackHoleMinRedshift");
         addr[nt] = &All.SeedBlackHoleMinRedshift;
         id[nt++] = REAL;
+        
+#ifdef BH_SEED_FROM_LOCALGAS
+        strcpy(tag[nt], "SeedBlackHolePerUnitMass");
+        addr[nt] = &All.SeedBlackHolePerUnitMass;
+        id[nt++] = REAL;
+#endif
 #endif
         
 #ifdef BH_ALPHADISK_ACCRETION
@@ -1383,6 +1385,13 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.BAL_v_outflow;
         id[nt++] = REAL;
 #endif
+        
+#if defined(BH_COSMIC_RAYS)
+        strcpy(tag[nt],"BH_CosmicRay_Injection_Efficiency");
+        addr[nt] = &All.BH_CosmicRay_Injection_Efficiency;
+        id[nt++] = REAL;
+#endif
+        
 
 #ifdef BH_WIND_SPAWN
         strcpy(tag[nt], "BAL_internal_temperature");
@@ -2147,7 +2156,6 @@ void read_parameter_file(char *fname)
 #ifdef GALSF_EFFECTIVE_EQS
     All.CritPhysDensity = 0.0; /* this will be calculated by the code below */
 #endif
-
     All.TypeOfOpeningCriterion = 1;
     /*!< determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion: this
      should only be changed if you -really- know what you're doing! */    

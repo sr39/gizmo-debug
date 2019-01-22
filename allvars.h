@@ -233,6 +233,9 @@
 #ifdef COSMIC_RAYS
 #define GAMMA_COSMICRAY (4.0/3.0)
 #define GAMMA_COSMICRAY_MINUS1 (GAMMA_COSMICRAY-1)
+#ifndef COSMIC_RAYS_DIFFUSION_MODEL
+#define COSMIC_RAYS_DIFFUSION_MODEL 0
+#endif
 #ifdef COSMIC_RAYS_ALFVEN
 #define GAMMA_ALFVEN_CRS (3.0/2.0)
 #define COSMIC_RAYS_M1 (COSMIC_RAYS_ALFVEN)
@@ -295,9 +298,24 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif // CHIMES_METAL_DEPLETION 
 #endif // CHIMES 
 
+
+#ifdef GRAVITY_IMPROVED_INTEGRATION
+#define GRAVITY_HYBRID_OPENING_CRIT // use both Barnes-Hut + relative tree opening criterion
+#define STOP_WHEN_BELOW_MINTIMESTEP // stop when below min timestep to prevent bad timestepping
+#define TIDAL_TIMESTEP_CRITERION // use tidal tensor timestep criterion
+#endif 
+
+
 #ifdef SINGLE_STAR_FORMATION
+#define DEVELOPER_MODE
+#define GRAVITY_HYBRID_OPENING_CRIT // use both Barnes-Hut + relative tree opening criterion
+#define STOP_WHEN_BELOW_MINTIMESTEP // stop when below min timestep to prevent bad timestepping
+#define TIDAL_TIMESTEP_CRITERION // use tidal tensor timestep criterion
+#define SINGLE_STAR_TIMESTEPPING // use additional timestep criteria for sink particles to ensure they don't evolve out-of-binary in close encounters
+#define SINGLE_STAR_HILL_CRITERION // use Hill-type tidal-tensor star formation criterion
+#define SINGLE_STAR_STRICT_ACCRETION // use Bate 1995 angular momentum criterion for star formation, along with dynamically-evolved sink radius for apocentric distance threshold
 #define GALSF // master switch needed to enable various frameworks
-#define GALSF_SFR_VIRIAL_SF_CRITERION 3 // only allow star formation in virialized sub-regions meeting Jeans threshold
+#define GALSF_SFR_VIRIAL_SF_CRITERION 4 // only allow star formation in virialized sub-regions meeting Jeans threshold + converging all 3 axes
 #define METALS  // metals should be active for stellar return
 #define BLACK_HOLES // need to have black holes active since these are our sink particles
 #define GALSF_SFR_IMF_VARIATION // save extra information about sinks when they form
@@ -323,7 +341,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #ifdef SINGLE_STAR_FB_JETS
 //#define BH_WIND_CONTINUOUS 0
-#define BH_WIND_KICK 1 // use kinetic feedback module for protostellar jets (for this, use the simple kicking module, it's not worth the expense of the other)
+#define BH_WIND_KICK -1 // use kinetic feedback module for protostellar jets (for this, use the simple kicking module, it's not worth the expense of the other)
 #endif
 #ifdef SINGLE_STAR_PROMOTION
 #define GALSF_FB_MECHANICAL // allow SNe + winds in promoted stars [at end of main sequence lifetimes]
@@ -555,6 +573,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #ifndef EVALPOTENTIAL
 #define EVALPOTENTIAL
 #endif
+#if !defined(BH_DYNFRICTION) && (BH_REPOSITION_ON_POTMIN == 2)
+#define BH_DYNFRICTION 1 // use for local damping of anomalous velocities wrt background medium //
+#endif
 #endif
 
 
@@ -624,11 +645,6 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define DOGRAD_SOUNDSPEED 1
 #endif
 
-#if defined(CONDUCTION) || defined(VISCOSITY) || defined(TURB_DIFFUSION) || defined(MHD_NON_IDEAL) || (defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_DIFFUSION)) || (defined(RT_DIFFUSION_EXPLICIT) && !defined(RT_EVOLVE_FLUX))
-#ifndef DISABLE_SUPER_TIMESTEPPING
-//#define SUPER_TIMESTEP_DIFFUSION
-#endif
-#endif
 
 
 
@@ -1405,10 +1421,6 @@ extern FILE
 #endif
  *FdCPU;        /*!< file handle for cpu.txt log-file. */
 
-#ifdef SCF_POTENTIAL
-extern FILE *FdSCF;
-#endif
-
 #ifdef GALSF
 extern FILE *FdSfr;		/*!< file handle for sfr.txt log-file. */
 #endif
@@ -1783,6 +1795,11 @@ extern struct global_data_all_processes
 
 #ifdef GRAIN_FLUID
 #ifdef GRAIN_RDI_TESTPROBLEM
+#if(NUMDIMS==3)
+#define GRAV_DIRECTION_RDI 2
+#else
+#define GRAV_DIRECTION_RDI 1
+#endif
     double Grain_Charge_Parameter;
     double Dust_to_Gas_Mass_Ratio;
     double Vertical_Gravity_Strength;
@@ -1878,6 +1895,9 @@ extern struct global_data_all_processes
     double BAL_v_outflow;
 #endif
     
+#if defined(BH_COSMIC_RAYS)
+    double BH_CosmicRay_Injection_Efficiency;
+#endif
     
 #ifdef METALS
     double SolarAbundances[NUM_METAL_SPECIES];
@@ -1950,8 +1970,13 @@ extern struct global_data_all_processes
   double BlackHoleAccretionFactor;	/*!< Fraction of BH bondi accretion rate */
   double BlackHoleFeedbackFactor;	/*!< Fraction of the black luminosity feed into thermal feedback */
   double SeedBlackHoleMass;         /*!< Seed black hole mass */
+#if defined(BH_SEED_FROM_FOF) || defined(BH_SEED_FROM_LOCALGAS)
   double SeedBlackHoleMassSigma;    /*!< Standard deviation of init black hole masses */
-  double SeedBlackHoleMinRedshift; /*!< Minimum redshift where BH seeds are allowed */
+  double SeedBlackHoleMinRedshift;  /*!< Minimum redshift where BH seeds are allowed */
+#ifdef BH_SEED_FROM_LOCALGAS
+  double SeedBlackHolePerUnitMass;  /*!< Defines probability per unit mass of seed BH forming */
+#endif
+#endif
 #ifdef BH_ALPHADISK_ACCRETION
   double SeedAlphaDiskMass;         /*!< Seed alpha disk mass */
 #endif
@@ -2072,12 +2097,14 @@ extern ALIGN(32) struct particle_data
     MyFloat PM_Potential;
 #endif
 #endif
-    
+#if defined(SINGLE_STAR_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION) || defined(GDE_DISTORTIONTENSOR)
+#define COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+    double tidal_tensorps[3][3];                        /*!< tidal tensor (=second derivatives of grav. potential) */
+#endif
 #ifdef GDE_DISTORTIONTENSOR
     MyBigFloat distortion_tensorps[6][6];               /*!< phase space distortion tensor */
     MyBigFloat last_determinant;                        /*!< last real space distortion tensor determinant */
     MyBigFloat stream_density;                          /*!< physical stream density that is going to be integrated */
-    double tidal_tensorps[3][3];                        /*!< tidal tensor (=second derivatives of grav. potential) */
     float caustic_counter;                              /*!< caustic counter */
 #ifndef GDE_LEAN
     MyBigFloat annihilation;                            /*!< integrated annihilation rate */
@@ -2156,6 +2183,9 @@ extern ALIGN(32) struct particle_data
     MyFloat Gas_Density;
     MyFloat Gas_InternalEnergy;
     MyFloat Gas_Velocity[3];
+#ifdef GRAIN_BACKREACTION
+    MyFloat Grain_DeltaMomentum[3];
+#endif
 #ifdef GRAIN_LORENTZFORCE
     MyFloat Gas_B[3];
 #endif
@@ -2175,11 +2205,17 @@ extern ALIGN(32) struct particle_data
     int BH_CountProgs;
 #endif
     MyFloat BH_Mass;
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+    MyFloat SinkRadius;
+#endif 
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
 #endif
     MyFloat BH_Mdot;
     int BH_TimeBinGasNeighbor;
+#ifdef SINGLE_STAR_FORMATION
+    MyFloat BH_NearestGasNeighbor;
+#endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyFloat BH_disk_hr;
 #endif
@@ -2192,6 +2228,11 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
     MyFloat min_xyz_to_bh[3];
+#ifdef SINGLE_STAR_TIMESTEPPING
+    MyFloat min_bh_freefall_time;
+    MyFloat min_bh_periastron;
+    MyFloat min_bh_approach_time;
+#endif  
 #endif
     
 #ifdef SINGLE_STAR_PROMOTION
@@ -2241,11 +2282,6 @@ extern ALIGN(32) struct particle_data
     
 #ifdef WAKEUP
     int dt_step;
-#endif
-    
-#ifdef SCF_HYBRID
-    MyDouble GravAccelSum[3];
-    MyFloat MassBackup;
 #endif
     
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
@@ -2452,6 +2488,9 @@ extern struct sph_particle_data
 #endif
 #ifdef GALSF
   MyFloat Sfr;                      /*!< particle star formation rate */
+#if (GALSF_SFR_VIRIAL_SF_CRITERION>=3)
+  MyFloat AlphaVirial_SF_TimeSmoothed;  /*!< dimensionless number > 0.5 if self-gravitating for smoothed virial criterion */
+#endif
 #endif
 #ifdef GALSF_SUBGRID_WINDS
   MyFloat DelayTime;                /*!< remaining maximum decoupling time of wind particle */
@@ -2662,6 +2701,9 @@ extern struct gravdata_in
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
     MyFloat Mass;
 #endif
+#ifdef SINGLE_STAR_TIMESTEPPING
+    MyFloat Vel[3];
+#endif  
     int Type;
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
     MyFloat Soft;
@@ -2696,12 +2738,17 @@ extern struct gravdata_out
 #ifdef EVALPOTENTIAL
     MyLongDouble Potential;
 #endif
-#ifdef GDE_DISTORTIONTENSOR
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     MyLongDouble tidal_tensorps[3][3];
 #endif
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
     MyFloat min_xyz_to_bh[3];
+#ifdef SINGLE_STAR_TIMESTEPPING
+    MyFloat min_bh_freefall_time;    // minimum value of sqrt(R^3 / G(M_BH + M_particle)) as calculated from the tree-walk
+    MyFloat min_bh_approach_time; // smallest approach time t_a = |v_radial|/r
+    MyFloat min_bh_periastron; // closest anticipated periastron passage
+#endif  
 #endif
 }
  *GravDataResult,		/*!< holds the partial results computed for imported particles. Note: We use GravDataResult = GravDataGet, such that the result replaces the imported data */
@@ -2758,7 +2805,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyFloat DF_rms_vel;
     MyFloat DF_mmax_particles;
 #endif
-#if defined(BH_BONDI) || defined(BH_DRAG)
+#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION == 5)
     MyFloat BH_SurroundingGasVel[3];
 #endif
     
@@ -3066,8 +3113,12 @@ extern ALIGN(32) struct NODE
 #endif    
 
 #ifdef BH_CALC_DISTANCES
-    MyFloat bh_mass;      /*!< holds the BH mass in the node.  Used for calculating tree based dist to closest bh */
-    MyFloat bh_pos[3];    /*!< holds the mass-weighted position of the the actual black holes within the node */
+  MyFloat bh_mass;      /*!< holds the BH mass in the node.  Used for calculating tree based dist to closest bh */
+  MyFloat bh_pos[3];    /*!< holds the mass-weighted position of the the actual black holes within the node */
+#ifdef SINGLE_STAR_TIMESTEPPING
+  MyFloat bh_vel[3];    /*!< holds the mass-weighted avg. velocity of black holes in the node */
+  int N_BH;
+#endif  
 #endif
     
 #ifdef RT_SEPARATELY_TRACK_LUMPOS

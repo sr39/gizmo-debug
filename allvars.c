@@ -229,10 +229,6 @@ FILE
 #endif
 *FdCPU;        /*!< file handle for cpu.txt log-file. */
 
-#ifdef SCF_POTENTIAL
-FILE *FdSCF;
-#endif
-
 #ifdef GALSF
 FILE *FdSfr;			/*!< file handle for sfr.txt log-file. */
 #endif

@@ -181,9 +181,9 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
         if (GradRho > 0.1)
         {
             /* now calculate probability of forming a BH seed particle */
-            p = 0.0004; /* ratio of BH mass formed to stellar mass for Z~0.01 Zsun population */
-            p *= (P[i].Mass / All.SeedBlackHoleMass); /* resolves resolution-dependence by making p=massfrac */
-            p *= (1-exp(-GradRho/1.0)) * exp(-(P[i].Metallicity[0]/All.SolarAbundances[0])/0.01);
+            p = P[i].Mass / All.SeedBlackHolePerUnitMass; /* probability of forming a seed per unit mass [in code units] */
+            if(p > 1.e-4) {p = 1.-exp(-p);}
+            p *= (1-exp(-GradRho/1.0)) * exp(-(P[i].Metallicity[0]/All.SolarAbundances[0])/0.01); /* apply threshold metallicity and density cutoff */
             /* want to add factors to control this probability in zoom-in runs */
         }
     }
@@ -212,7 +212,7 @@ double get_starformation_rate(int i)
 
     flag = 1;			/* default is normal cooling */
     if(SphP[i].Density*All.cf_a3inv >= All.PhysDensThresh) {flag = 0;}
-#if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
+#if (GALSF_SFR_VIRIAL_SF_CRITERION>=3)
     else {SphP[i].AlphaVirial_SF_TimeSmoothed = 0.;}
 #endif
     if(All.ComovingIntegrationOn)
@@ -220,7 +220,7 @@ double get_starformation_rate(int i)
     flag = 1;
     if((flag == 1)||(P[i].Mass<=0))
     return 0;
-#if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
+#if (GALSF_SFR_VIRIAL_SF_CRITERION>=3)
     double dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval;
     double dtime = dt / All.cf_hubble_a; /*  the actual time-step */
 #endif
@@ -271,21 +271,16 @@ double get_starformation_rate(int i)
     
     
 #ifdef GALSF_SFR_VIRIAL_SF_CRITERION
-    double dv2abs = 0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
-#if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
-    double divv = 0;
-#endif
-    int j,k;
+    int j,k; double dv2abs=0, divv=0, gradv[9]={0}; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
     for(j=0;j<3;j++)
     {
         for(k=0;k<3;k++)
         {
             double vt = SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
             if(All.ComovingIntegrationOn) {if(j==k) {vt += All.cf_hubble_a;}} /* add hubble-flow correction */
-#if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
-            if(j==k) {divv += vt;}
-#endif
-            dv2abs += vt*vt;
+            gradv[3*j + k] = vt; // save for possible use below
+            if(j==k) {divv += vt;} // save for possible use below
+            dv2abs += vt*vt; // save for possible use below
         }
     }
     /* add thermal support, although it is almost always irrelevant */
@@ -294,7 +289,8 @@ double get_starformation_rate(int i)
 #ifdef SINGLE_STAR_FORMATION
     double press_grad_length = 0;
     for(k=0;k<3;k++) {press_grad_length += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
-    press_grad_length = All.cf_atime * DMAX(Get_Particle_Size(i) , SphP[i].Pressure / (1.e-37 + sqrt(press_grad_length))); 
+    press_grad_length = All.cf_atime * DMAX(Get_Particle_Size(i) , SphP[i].Pressure / (1.e-37 + sqrt(press_grad_length)));
+   
     k_cs = cs_eff / press_grad_length;
 #ifdef MAGNETIC
     double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
@@ -303,9 +299,10 @@ double get_starformation_rate(int i)
 #endif
 #endif
     dv2abs += 2.*k_cs*k_cs; // account for thermal pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
-    double alpha_vir = dv2abs / (8. * M_PI * All.G * SphP[i].Density * All.cf_a3inv); // 1/4 or 1/8 ? //
 
-#if (GALSF_SFR_VIRIAL_SF_CRITERION > 0) || (GALSF_SFR_VIRIAL_SF_CRITERION == 2)
+    double alpha_vir = dv2abs / (8. * M_PI * All.G * SphP[i].Density * All.cf_a3inv); // 1/4 or 1/8 -- going more careful here //
+
+#if (GALSF_SFR_VIRIAL_SF_CRITERION > 0)
     if(alpha_vir < 1.0)
     {
         /* check if Jeans mass is remotely close to solar; if not, dont allow it to form 'stars' */
@@ -319,17 +316,35 @@ double get_starformation_rate(int i)
         if(MJ_solar > MJ_crit) {alpha_vir = 100.;}
     }
 #endif
-#if (GALSF_SFR_VIRIAL_SF_CRITERION==3)
-    SphP[i].AlphaVirial_SF_TimeSmoothed += 8.*(1./(1+alpha_vir) - SphP[i].AlphaVirial_SF_TimeSmoothed) * dt/tsfr;
+
+#if (GALSF_SFR_VIRIAL_SF_CRITERION >= 3)
+    SphP[i].AlphaVirial_SF_TimeSmoothed += 8.*(1./(1+alpha_vir) - SphP[i].AlphaVirial_SF_TimeSmoothed) * dtime/tsfr;
     if (SphP[i].AlphaVirial_SF_TimeSmoothed < 0.5 || divv >= 0) rateOfSF *= 0.0;
+#ifdef (GALSF_SFR_VIRIAL_SF_CRITERION >= 4) 
+    // we check that the velocity gradient is negative-definite, ie. converging along all principal axes, which is much stricter than div v < 0
+    gsl_matrix_view M = gsl_matrix_view_array (gradv, 3, 3);
+    gsl_vector *eval1 = gsl_vector_alloc (3);
+    gsl_eigen_symm_workspace *v = gsl_eigen_symm_alloc (3);
+    gsl_eigen_symm(&M.matrix, eval1,  v);
+    for(k=0; k<3; k++) if (gsl_vector_get(eval1,k) >= 0) rateOfSF = 0; // check each eigenvalue
+    gsl_eigen_symm_free (v);
+    gsl_vector_free (eval1);
+#endif
 #elif (GALSF_SFR_VIRIAL_SF_CRITERION > 1)
     if(alpha_vir >= 1.0) {rateOfSF *= 0.0;}
 #endif
+    
 #if (GALSF_SFR_VIRIAL_SF_CRITERION<3)
     if((alpha_vir<1.0)||(SphP[i].Density*All.cf_a3inv>100.*All.PhysDensThresh)) {rateOfSF *= 1.0;} else {rateOfSF *= 0.0015;} // PFH: note the latter flag is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! //
 #endif
+
 #endif // GALSF_SFR_VIRIAL_SF_CRITERION
+
     
+
+#ifdef SINGLE_STAR_HILL_CRITERION // we check that the tidal tensor is negative-definite, ie. converging along all principal axes, indicating that we're dominating our environment gravitationally and are living in our own Hill sphere
+    for(k=0; k<3; k++) {if(P[i].tidal_tensorps[k][k] >= 0) {rateOfSF = 0;}} // we've already diagonized this bad boy in gravtree.c - MYG
+#endif
     
 #ifdef SINGLE_STAR_FORMATION
     rateOfSF *= 1.0e5; // make sink formation guaranteed to happen, where it can
@@ -341,7 +356,10 @@ double get_starformation_rate(int i)
     }
     if(SphP[i].Density_Relative_Maximum_in_Kernel > 0) {rateOfSF=0;} // restrict to local density/potential maxima //
 #ifdef BH_CALC_DISTANCES
-    if(P[i].min_dist_to_bh < PPP[i].Hsml) {rateOfSF=0;} // restrict to particles without a sink in their kernel //
+    if(P[i].min_dist_to_bh < DMAX(All.ForceSoftening[5], 10*PPP[i].Hsml)) {rateOfSF=0;} // restrict to particles without a sink in their kernel; we can actually go pretty aggressive with this, as hsml will inevitably get small enough if this gas is really collapsing - MYG
+#ifdef SINGLE_STAR_TIMESTEPPING
+    if(DMIN(P[i].min_bh_approach_time, P[i].min_bh_freefall_time) < tsfr) {rateOfSF = 0;}
+#endif    
 #endif
 #endif // SINGLE_STAR_FORMATION 
     
@@ -541,6 +559,10 @@ void star_formation_parent_routine(void)
                 P[i].Type = 5;
                 num_bhformed++;
                 P[i].BH_Mass = All.SeedBlackHoleMass;
+                TreeReconstructFlag = 1;
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+                P[i].SinkRadius = 0.5 * Get_Particle_Size(i);
+#endif		
 #ifdef BH_ALPHADISK_ACCRETION
                 P[i].BH_Mass_AlphaDisk = DMAX(DMAX(0, P[i].Mass-P[i].BH_Mass), All.SeedAlphaDiskMass);
 #endif

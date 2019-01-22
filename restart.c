@@ -22,7 +22,7 @@ static double *sphAbundancesBuf;
 #endif 
 
 static void in(int *x, int modus);
-static void byten(void *x, int n, int modus);
+static void byten(void *x, size_t n, int modus);
 
 int old_MaxPart = 0, new_MaxPart;
 
@@ -376,7 +376,7 @@ void restart(int modus)
 
 /* reads/writes n bytes 
  */
-void byten(void *x, int n, int modus)
+void byten(void *x, size_t n, int modus)
 {
   if(modus)
     my_fread(x, n, 1, fd);

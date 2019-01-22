@@ -40,7 +40,7 @@ void run(void)
         set_non_standard_physics_for_current_time();
         
         compute_grav_accelerations();	/* compute gravitational accelerations for synchronous particles */
-        
+
         compute_hydro_densities_and_forces();	/* densities, gradients, & hydro-accels for synchronous particles */
         
         calculate_non_standard_physics();	/* source terms are here treated in a strang-split fashion */
@@ -77,12 +77,18 @@ void run(void)
         output_log_messages();	/* write some info to log-files */
         
         set_non_standard_physics_for_current_time();	/* update auxiliary physics for current time */
-        
-        
+
+	#ifdef SINGLE_STAR_FORMATION 
+		MPI_Allreduce(&TreeReconstructFlag, &TreeReconstructFlag, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
+	#endif
+	
         if(GlobNumForceUpdate > All.TreeDomainUpdateFrequency * All.TotNumPart)	/* check whether we have a big step */
         {
             domain_Decomposition(0, 0, 1);	/* do domain decomposition if step is big enough, and set new list of active particles  */
         }
+#ifdef SINGLE_STAR_FORMATION
+	else if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart || TreeReconstructFlag)  {domain_Decomposition(0, 0, 1);}
+#endif	
         else
         {
             force_update_tree();	/* update tree dynamically with kicks of last step so that it can be reused */
@@ -91,7 +97,7 @@ void run(void)
         }
         
         compute_grav_accelerations();	/* compute gravitational accelerations for synchronous particles */
-
+	
 #ifdef GALSF_SUBGRID_WINDS
 #if (GALSF_SUBGRID_WIND_SCALING==2)
         // Need to figure out how frequently we calculate this; below is pretty rough //
@@ -189,7 +195,6 @@ void run(void)
         set_random_numbers();	/* draw a new list of random numbers */
         
         report_memory_usage(&HighMark_run, "RUN");
-        
     }
     
 }
@@ -321,9 +326,6 @@ void calculate_non_standard_physics(void)
     CPU_Step[CPU_COOLINGSFR] += measure_time(); // finish time calc for SFR+cooling
 #endif
         
-#ifdef SCF_HYBRID
-    SCF_do_center_of_mass_correction(0.75, 10.0 * SCF_HQ_A, 0.01, 1000);
-#endif
 }
 
 
@@ -340,10 +342,6 @@ void compute_statistics(void)
 #ifndef IO_REDUCED_MODE
         energy_statistics();	/* compute and output energy statistics */
 #endif
-#ifdef SCF_POTENTIAL
-        SCF_write(0);
-#endif
-        
         All.TimeLastStatistics += All.TimeBetStatistics;
     }
 }
@@ -475,6 +473,7 @@ void find_next_sync_point_and_drift(void)
     }
 
   sumup_large_ints(1, &NumForceUpdate, &GlobNumForceUpdate);
+  All.NumForcesSinceLastDomainDecomp += GlobNumForceUpdate;
   MPI_Allreduce(&highest_active_bin, &All.HighestActiveTimeBin, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
   MPI_Allreduce(&highest_occupied_bin, &All.HighestOccupiedTimeBin, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
@@ -700,7 +699,7 @@ void output_log_messages(void)
   sumup_large_ints(TIMEBINS, TimeBinCountSph, tot_count_sph);
 
     if(ThisTask == 0)
-    {
+    {       
         if(All.ComovingIntegrationOn)
         {
             z = 1.0 / (All.Time) - 1;

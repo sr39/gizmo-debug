@@ -106,6 +106,8 @@ int ngb_treefind_pairs_threads(MyDouble searchcenter[3], MyFloat hsml, int targe
 		       int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);		       
 int ngb_treefind_variable_targeted(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode,
  			  int *nexport, int *nsend_local, int TARGET_BITMASK);
+int ngb_treefind_pairs_targeted(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode,
+                                   int *nexport, int *nsend_local, int TARGET_BITMASK);
 int ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode,
 			  int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
 
