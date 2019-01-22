@@ -1538,6 +1538,10 @@ extern struct global_data_all_processes
 #endif 
 #endif // CHIMES  
 
+#ifdef AJR_DM_DOMAIN_COST 
+  double DM_domain_cost; 
+#endif 
+
   double MinEgySpec;		/*!< the minimum allowed temperature expressed as energy per unit mass */
 #ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
   double ArtCondConstant;

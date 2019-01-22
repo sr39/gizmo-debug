@@ -1930,6 +1930,12 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif 
 
+#ifdef AJR_DM_DOMAIN_COST 
+      strcpy(tag[nt], "DM_domain_cost");
+      addr[nt] = &All.DM_domain_cost;
+      id[nt++] = REAL;
+#endif 
+
         if((fd = fopen(fname, "r")))
         {
             sprintf(buf, "%s%s", fname, "-usedvalues");
