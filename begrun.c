@@ -1899,20 +1899,6 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif 
 
-#ifdef AJR_STAR_AGE 
-      strcpy(tag[nt], "star_age_time");
-      addr[nt] = &All.star_age_time;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "star_age_init");
-      addr[nt] = &All.star_age_init;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "star_age_slowdown");
-      addr[nt] = &All.star_age_slowdown; 
-      id[nt++] = REAL;
-#endif 
-
 #ifdef AJR_RAPID_SN  
       strcpy(tag[nt], "sn_rapid_time1");
       addr[nt] = &All.sn_rapid_time1;

@@ -2049,12 +2049,6 @@ extern struct global_data_all_processes
     code_units GrackleUnits;
 #endif
 
-#ifdef AJR_STAR_AGE 
-  double star_age_time; 
-  double star_age_init; 
-  double star_age_slowdown; 
-#endif 
-
 #ifdef AJR_RAPID_SN 
   double sn_rapid_time1; 
   double sn_rapid_time2; 
@@ -2141,6 +2135,9 @@ extern ALIGN(32) struct particle_data
 #ifdef GALSF
     MyFloat StellarAge;		/*!< formation time of star particle */
 #endif
+#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
+    MyFloat InitialStellarMass; /*!< initial mass of star particle */
+#endif 
 #ifdef METALS
     MyFloat Metallicity[NUM_METAL_SPECIES]; /*!< metallicity (species-by-species) of gas or star particle */
 #endif
@@ -3000,6 +2997,9 @@ enum iofields
   IO_CHIMES_FLUX_ION, 
   IO_CHIMES_STAR_DENS,
   IO_CHIMES_DELAY_HII, 
+#endif 
+#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
+  IO_INIT_MASS, 
 #endif 
   IO_LASTENTRY			/* This should be kept - it signals the end of the list */
 };

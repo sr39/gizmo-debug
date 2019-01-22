@@ -248,9 +248,9 @@
 ##----------------Extra options added by AJR 
 #AJR_SOLAR_ABUNDANCES_WIERSMA09      # Use solar abundances from Table 1 of Wiersma et al. 2009, MNRAS, 393, 99 (req. METALS) 
 #AJR_GALSF_ALT_INIT_STAR          # Some fraction of initial disk stars is given a uniform age distribution, remainder are fixed 
-#AJR_READ_STELLAR_AGE_FROM_ICS  # Read in star ages from ICs 
+#AJR_READ_STELLAR_PROPERTIES_FROM_ICS  # Read in star ages and initial stellar masses (if present) from ICs 
+#AJR_RECORD_INITIAL_STELLAR_MASS # Records the mass of each star particle when it is formed, which is written out in the snapshots. 
 #AJR_READ_METALLICITY_FROM_ICS  # Read in metallicities from ICs 
-#AJR_STAR_AGE                 # At the beginning of the simulation, new stars are initialised w/ a non-zero age 
 #AJR_RAPID_SN                  # At the beginning of the simulation, SNe occur more rapidly.
 #AJR_GALSF_FB_NOENRICHMENT           # Disables injection of metals from SNe & winds. Mass, momentum and energy are still injected. 
 #AJR_INIT_HALO_METALLICITY    # Set metallicity of halo gas separately from disc gas 

@@ -488,16 +488,7 @@ void star_formation_parent_routine(void)
                 num_bhformed++;
                 Stars_converted++;
                 stars_converted++;
-#ifdef AJR_STAR_AGE 
-		if (All.Time < All.star_age_time) 
-		  P[i].StellarAge = All.Time - All.star_age_init; 
-		else if (All.Time < All.star_age_time + (All.star_age_slowdown * All.star_age_init)) 
-		  P[i].StellarAge = All.Time - (All.star_age_init + ((All.star_age_time - All.Time) / All.star_age_slowdown)); 
-		else 
-		  P[i].StellarAge = All.Time;
-#else 
                 P[i].StellarAge = All.Time;
-#endif // AJR_STAR_AGE 
 
                 P[i].BH_Mass = All.SeedBlackHoleMass;
                 if(All.SeedBlackHoleMassSigma > 0)
@@ -547,6 +538,11 @@ void star_formation_parent_routine(void)
 		      TimeBinSfr[P[i].TimeBin] -= SphP[i].Sfr;
 
 		      P[i].StellarAge = All.Time;
+
+#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
+		      P[i].InitialStellarMass = P[i].Mass; 
+#endif 
+
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
                 P[i].DensAroundStar = SphP[i].Density;
 #endif
@@ -624,6 +620,11 @@ void star_formation_parent_routine(void)
 #endif
 		      sum_mass_stars += P[NumPart + stars_spawned].Mass;
 		      P[NumPart + stars_spawned].StellarAge = All.Time;
+
+#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
+		      P[NumPart + stars_spawned].InitialStellarMass = P[NumPart + stars_spawned].Mass; 
+#endif 
+
 		      force_add_star_to_tree(i, NumPart + stars_spawned);
 
 		      stars_spawned++;

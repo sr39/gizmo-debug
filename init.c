@@ -352,8 +352,11 @@ void init(void)
 #ifdef GALSF
         if(RestartFlag == 0)
         {
-#ifndef AJR_READ_STELLAR_AGE_FROM_ICS 
+#ifndef AJR_READ_STELLAR_PROPERTIES_FROM_ICS 
             P[i].StellarAge = 0;
+#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
+	    P[i].InitialStellarMass = P[i].Mass; 
+#endif 
 #endif 
 #ifdef GALSF_SFR_IMF_VARIATION
             P[i].IMF_Mturnover = 2.0; /* gives a solar-type IMF for our calculations in current code */
@@ -387,7 +390,7 @@ void init(void)
 #endif
         }
        
-#ifndef AJR_READ_STELLAR_AGE_FROM_ICS 
+#ifndef AJR_READ_STELLAR_PROPERTIES_FROM_ICS 
 #if defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
         if(RestartFlag == 0)
         {
@@ -409,7 +412,7 @@ void init(void)
 #endif 
         }
 #endif
-#endif // !(AJR_READ_STELLAR_AGE_FROM_ICS) 
+#endif // !(AJR_READ_STELLAR_PROPERTIES_FROM_ICS) 
         
 #ifdef GRAIN_FLUID
         if(RestartFlag == 0)
