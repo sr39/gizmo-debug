@@ -566,11 +566,6 @@ void merge_particles_ij(int i, int j)
             P[i].dp[k] += P[i].Mass*P[i].Vel[k] - p_old_i[k];
             P[j].dp[k] += P[j].Mass*P[j].Vel[k] - p_old_j[k];
         }
-
-#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
-	P[j].InitialStellarMass += P[i].InitialStellarMass; 
-#endif 
-
         return;
     } // closes merger of non-gas particles, only gas particles will see the blocks below //
     

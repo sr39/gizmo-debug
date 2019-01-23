@@ -211,34 +211,12 @@ double mechanical_fb_calculate_eventrates_SNe(int i, double dt)
 #else
     /* here we are determining an expected SNe rate, so SNe occur stochastically but with an age dependence in the population */
     double agemin=0.003401, agebrk=0.01037, agemax=0.03753, RSNe=0; // in Gyr //
-
-#ifdef AJR_RAPID_SN 
-    double sn_rapid_fac_t; 
-    if (All.Time < All.sn_rapid_time1) 
-      sn_rapid_fac_t = All.sn_rapid_fac; 
-    else if (All.Time < All.sn_rapid_time2) 
-      sn_rapid_fac_t = ((All.sn_rapid_fac - 1.0) * pow(All.sn_rapid_time1 * All.sn_rapid_time2, 3.0) / (pow(All.Time, 3.0) * (pow(All.sn_rapid_time2, 3.0) - pow(All.sn_rapid_time1, 3.0)))) + ((pow(All.sn_rapid_time2, 3.0) - (100.0 * pow(All.sn_rapid_time1, 3.0))) / (pow(All.sn_rapid_time2, 3.0) - pow(All.sn_rapid_time1, 3.0))); 
-    else 
-      sn_rapid_fac_t = 1.0; 
-    
-    agemin /= sn_rapid_fac_t; 
-    agebrk /= sn_rapid_fac_t; 
-    agemax /= sn_rapid_fac_t; 
-
-    if (ThisTask == 0) 
-      printf("AJR_RAPID_SN: Time = %.8f, sn_rapid_fac_t = %.2f, agemin = %.6f, agebrk = %.6f, agemax = %.6f\n", All.Time, sn_rapid_fac_t, agemin, agebrk, agemax); 
-#endif // AJR_RAPID_SN 
     
     // calculate: NSNe/Myr *if* each SNe had exactly 10^51 ergs; really from the energy curve; below for 1Msun pop //
     if(star_age > agemin)
     {
         if(star_age<=agebrk) {RSNe=5.408e-4;} else {if(star_age<=agemax) {RSNe=2.516e-4;}} // core-collapse
         if(star_age>agemax) {RSNe=5.3e-8 + 1.6e-5*exp(-0.5*((star_age-0.05)/0.01)*((star_age-0.05)/0.01));} // Ia (prompt Gaussian+delay, Manucci+06)
-
-#ifdef AJR_RAPID_SN
-	if (star_age < agemax) 
-	  RSNe *= sn_rapid_fac_t; 
-#endif
 		
         double renorm = calculate_relative_light_to_mass_ratio_from_imf(star_age,i); // account for higher # of O-stars with a different IMF
         if(star_age<agemax) {RSNe *= renorm;}

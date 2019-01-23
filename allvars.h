@@ -1434,10 +1434,6 @@ extern FILE *FdHIIHeating;	/*!< file handle for HIIheating.txt log-file */
 extern FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 #endif
 
-#ifdef AJR_EXTRA_SNE_OUTPUT 
-extern FILE *FdSNeExtra;        /*!< file handle for ExtraSNeOutput.txt log-file */ 
-#endif 
-
 #ifdef GDE_DISTORTIONTENSOR
 #ifdef PMGRID
 extern FILE *FdTidaltensor;     /*!< file handle for tidaltensor.txt log-file. */
@@ -1547,10 +1543,6 @@ extern struct global_data_all_processes
 #endif
 #endif // CHIMES  
 
-#ifdef AJR_DM_DOMAIN_COST 
-  double DM_domain_cost; 
-#endif 
-
   double MinEgySpec;		/*!< the minimum allowed temperature expressed as energy per unit mass */
 #ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
   double ArtCondConstant;
@@ -1562,10 +1554,6 @@ extern struct global_data_all_processes
     
     double MinMassForParticleMerger; /*!< the minimum mass of a gas particle below which it will be merged into a neighbor */
     double MaxMassForParticleSplit; /*!< the maximum mass of a gas particle above which it will be split into a pair */
-
-#ifdef AJR_TARGET_RESOLUTION 
-  double TargetMassResolution_Msol; /*!< The target mass resolution, used to determine the min and max mass thresholds for particle merging/splitting. */ 
-#endif 
 
   /* some force counters  */
 
@@ -1880,14 +1868,7 @@ extern struct global_data_all_processes
 
 #if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
   double InitMetallicityinSolar;
-#ifdef AJR_INIT_HALO_METALLICITY 
-  double InitHaloMetallicityinSolar;
-  int HaloID; 
-#endif 
   double InitStellarAgeinGyr;
-#ifdef AJR_GALSF_ALT_INIT_STAR
-  double UniformAgeFraction; 
-#endif 
 #endif
 
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
@@ -2038,22 +2019,10 @@ extern struct global_data_all_processes
   int StSpectForm;
   int StSeed;
 #endif
-
-#ifdef AJR_STATIC_HERNQUIST_POTENTIAL 
-  double HQ_M200;          /* M200 mass of the halo, in code units. */ 
-  double HQ_C;             /* Halo concentration. */ 
-  double HQ_DARKFRACTION;  /* Fraction of halo mass in dark matter. */ 
-#endif 
     
 #if defined(COOLING) && defined(COOL_GRACKLE)
     code_units GrackleUnits;
 #endif
-
-#ifdef AJR_RAPID_SN 
-  double sn_rapid_time1; 
-  double sn_rapid_time2; 
-  double sn_rapid_fac; 
-#endif 
 }
 All;
 
@@ -2135,9 +2104,6 @@ extern ALIGN(32) struct particle_data
 #ifdef GALSF
     MyFloat StellarAge;		/*!< formation time of star particle */
 #endif
-#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
-    MyFloat InitialStellarMass; /*!< initial mass of star particle */
-#endif 
 #ifdef METALS
     MyFloat Metallicity[NUM_METAL_SPECIES]; /*!< metallicity (species-by-species) of gas or star particle */
 #endif
@@ -2155,9 +2121,6 @@ extern ALIGN(32) struct particle_data
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
     MyFloat DensAroundStar;         /*!< gas density in the neighborhood of the collisionless particle (evaluated from neighbors) */
     MyFloat GradRho[3];             /*!< gas density gradient evaluated simply from the neighboring particles, for collisionless centers */
-#if defined METALS && defined(AJR_EXTRA_SNE_OUTPUT)
-    MyFloat MetalDensAroundStar;    /*!< Density of metals around star particle (evaluated from neighbours). */ 
-#endif 
 #endif
 #if defined(RT_SOURCE_INJECTION)
     MyFloat KernelSum_Around_RT_Source; /*!< kernel summation around sources for radiation injection (save so can be different from 'density') */
@@ -2998,9 +2961,6 @@ enum iofields
   IO_CHIMES_STAR_DENS,
   IO_CHIMES_DELAY_HII, 
 #endif 
-#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
-  IO_INIT_MASS, 
-#endif 
   IO_LASTENTRY			/* This should be kept - it signals the end of the list */
 };
 
@@ -3205,19 +3165,6 @@ extern int FB_Seed;
 #define GEOFACTOR_TABLE_LENGTH 1000    /*!< length of the table used for the geometric factor spline */
 extern MyDouble GeoFactorTable[GEOFACTOR_TABLE_LENGTH];
 #endif
-
-#ifdef AJR_EXTRA_SNE_OUTPUT 
-struct SNe_output_buffer 
-{ 
-  MyIDType ID; 
-  int N_SNe; 
-  double Pos[3]; 
-  double rho; 
-#ifdef METALS 
-  double Zgas;
-#endif  
-}; 
-#endif 
 
 #endif  /* ALLVARS_H  - please do not put anything below this line */
 

@@ -735,15 +735,6 @@ void open_outputfiles(void)
     }  
 #endif
 
-#ifdef AJR_EXTRA_SNE_OUTPUT 
-    sprintf(buf, "%s%s", All.OutputDir, "ExtraSNeOutput.txt");
-    if(!(FdSNeExtra = fopen(buf, mode)))
-    {
-        printf("error in opening file '%s'\n", buf);
-        endrun(1);
-    }  
-#endif 
-
 #if defined(RT_CHEM_PHOTOION) && !defined(IO_REDUCED_MODE)
   sprintf(buf, "%s%s", All.OutputDir, "rt_photoion_chem.txt");
   if(!(FdRad = fopen(buf, mode)))
@@ -1056,31 +1047,13 @@ void read_parameter_file(char *fname)
 #endif
 	
 #if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
-#ifndef AJR_READ_METALLICITY_FROM_ICS 
         strcpy(tag[nt],"InitMetallicity");
         addr[nt] = &All.InitMetallicityinSolar;
         id[nt++] = REAL;
-
-#ifdef AJR_INIT_HALO_METALLICITY 
-        strcpy(tag[nt],"InitHaloMetallicity");
-        addr[nt] = &All.InitHaloMetallicityinSolar;
-        id[nt++] = REAL;
-
-        strcpy(tag[nt],"HaloID");
-        addr[nt] = &All.HaloID;
-        id[nt++] = INT;
-#endif 
-#endif // AJR_READ_METALLICITY_FROM_ICS 
         
         strcpy(tag[nt],"InitStellarAge");
         addr[nt] = &All.InitStellarAgeinGyr;
         id[nt++] = REAL;
-
-#ifdef AJR_GALSF_ALT_INIT_STAR
-        strcpy(tag[nt],"UniformAgeFraction");
-        addr[nt] = &All.UniformAgeFraction;
-        id[nt++] = REAL;
-#endif 
 #endif
         
 
@@ -1880,46 +1853,6 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif 
 #endif  // CHIMES 
-
-#ifdef AJR_STATIC_HERNQUIST_POTENTIAL 
-      strcpy(tag[nt], "HQ_M200");
-      addr[nt] = &All.HQ_M200;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "HQ_C");
-      addr[nt] = &All.HQ_C;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "HQ_DARKFRACTION");
-      addr[nt] = &All.HQ_DARKFRACTION;
-      id[nt++] = REAL;
-#endif 
-
-#ifdef AJR_RAPID_SN  
-      strcpy(tag[nt], "sn_rapid_time1");
-      addr[nt] = &All.sn_rapid_time1;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "sn_rapid_time2");
-      addr[nt] = &All.sn_rapid_time2;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "sn_rapid_fac");
-      addr[nt] = &All.sn_rapid_fac;
-      id[nt++] = REAL;
-#endif 
-
-#ifdef AJR_TARGET_RESOLUTION 
-      strcpy(tag[nt], "target_mass_resolution_msol");
-      addr[nt] = &All.TargetMassResolution_Msol;
-      id[nt++] = REAL;
-#endif 
-
-#ifdef AJR_DM_DOMAIN_COST 
-      strcpy(tag[nt], "DM_domain_cost");
-      addr[nt] = &All.DM_domain_cost;
-      id[nt++] = REAL;
-#endif 
 
         if((fd = fopen(fname, "r")))
         {

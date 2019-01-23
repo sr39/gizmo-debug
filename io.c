@@ -476,17 +476,6 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-
-#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
-        case IO_INIT_MASS:		/* stellar formation time */
-            for(n = 0; n < pc; pindex++)
-                if(P[pindex].Type == type)
-                {
-                    *fp++ = P[pindex].InitialStellarMass;
-                    n++;
-                }
-            break;
-#endif
             
         case IO_OSTAR:
 #ifdef GALSF_SFR_IMF_SAMPLING
@@ -1691,9 +1680,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_HSML:
         case IO_SFR:
         case IO_AGE:
-#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
-        case IO_INIT_MASS:
-#endif 
         case IO_OSTAR:
         case IO_GRAINSIZE:
         case IO_DELAYTIME:
@@ -2043,9 +2029,6 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_HSML:
         case IO_SFR:
         case IO_AGE:
-#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
-        case IO_INIT_MASS:
-#endif 
         case IO_OSTAR:
         case IO_GRAINSIZE:
         case IO_DELAYTIME:
@@ -2401,21 +2384,6 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             break;
             
         case IO_AGE:
-#ifdef AJR_EXTRA_SNE_OUTPUT 
-	    nngb = nstars; 
-	    typelist[0] = 0; 
-	    typelist[1] = 0; 
-	    typelist[5] = 0; 
-	    if (All.ComovingIntegrationOn) 
-	      {
-		typelist[2] = 0; 
-		typelist[3] = 0; 
-	      } 
-	    else 
-	      nngb += header.npart[2] + header.npart[3]; 
-	    return nngb; 
-	    break; 
-#else 
             for(i = 0; i < 6; i++)
 #ifdef BLACK_HOLES
                 if(i != 4 && i != 5)
@@ -2426,19 +2394,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
                 typelist[i] = 0;
             return nstars;
 #endif // BLACK_HOLES  
-#endif // AJR_EXTRA_SNE_OUTPUT 
             break;
-
-#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
-        case IO_INIT_MASS:
-	  for(i = 0; i < 6; i++)
-	    {
-	      if(i != 4)
-                typelist[i] = 0;
-	    }
-            return nstars;
-	    break; 
-#endif 
             
         case IO_OSTAR:
             for(i = 0; i < 6; i++)
@@ -2689,12 +2645,6 @@ int blockpresent(enum iofields blocknr)
             return 0;
             break;
 
-#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
-        case IO_INIT_MASS: 
-	  return 1; 
-	  break; 
-#endif 
-            
         case IO_GRAINSIZE:
 #ifdef GRAIN_FLUID
             return 1;
@@ -3395,11 +3345,6 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_AGE:
             strncpy(label, "AGE ", 4);
             break;
-#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
-        case IO_INIT_MASS:
-            strncpy(label, "INMA", 4);
-            break;
-#endif 
         case IO_GRAINSIZE:
             strncpy(label, "GRSZ", 4);
             break;
@@ -3804,11 +3749,6 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_AGE:
             strcpy(buf, "StellarFormationTime");
             break;
-#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
-        case IO_INIT_MASS:
-            strcpy(buf, "InitialStellarMass");
-            break;
-#endif 
         case IO_GRAINSIZE:
             strcpy(buf, "GrainSize");
             break;

@@ -352,12 +352,7 @@ void init(void)
 #ifdef GALSF
         if(RestartFlag == 0)
         {
-#ifndef AJR_READ_STELLAR_PROPERTIES_FROM_ICS 
             P[i].StellarAge = 0;
-#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
-	    P[i].InitialStellarMass = P[i].Mass; 
-#endif 
-#endif 
 #ifdef GALSF_SFR_IMF_VARIATION
             P[i].IMF_Mturnover = 2.0; /* gives a solar-type IMF for our calculations in current code */
 #endif
@@ -374,9 +369,6 @@ void init(void)
             P[i].GradRho[0]=0;
             P[i].GradRho[1]=0;
             P[i].GradRho[2]=1;
-#if defined(METALS) && defined(AJR_EXTRA_SNE_OUTPUT)
-	    P[i].MetalDensAroundStar = 0; 
-#endif 
 #endif
 #if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
             P[i].SNe_ThisTimeStep = 0;
@@ -390,29 +382,10 @@ void init(void)
 #endif
         }
        
-#ifndef AJR_READ_STELLAR_PROPERTIES_FROM_ICS 
 #if defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
         if(RestartFlag == 0)
-        {
-#ifdef AJR_GALSF_ALT_INIT_STAR
-	  if (P[i].Type == 2) 
-	    {
-	      // Disk stars 
-	      double p_rand; 
-	      p_rand = get_random_number(P[i].ID + 10); 
-	      if (p_rand < All.UniformAgeFraction) 
-		P[i].StellarAge = -All.InitStellarAgeinGyr / (All.UnitTime_in_Megayears*0.001) * get_random_number(P[i].ID + 3);
-	      else 
-		P[i].StellarAge = -All.InitStellarAgeinGyr / (All.UnitTime_in_Megayears*0.001); 
-	    }
-	  else 
-	    P[i].StellarAge = -All.InitStellarAgeinGyr / (All.UnitTime_in_Megayears*0.001);
-#else 
 	  P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (All.UnitTime_in_Megayears*0.001) * get_random_number(P[i].ID + 3);
-#endif 
-        }
 #endif
-#endif // !(AJR_READ_STELLAR_PROPERTIES_FROM_ICS) 
         
 #ifdef GRAIN_FLUID
         if(RestartFlag == 0)
@@ -471,28 +444,11 @@ void init(void)
         
         
 #ifdef METALS
-#if defined(AJR_SOLAR_ABUNDANCES_WIERSMA09) 
-	All.SolarAbundances[0]=0.0129; 
-#else
         All.SolarAbundances[0]=0.02;        // all metals (by mass); present photospheric abundances from Asplund et al. 2009 (Z=0.0134, proto-solar=0.0142) in notes;
                                             //   also Anders+Grevesse 1989 (older, but hugely-cited compilation; their Z=0.0201, proto-solar=0.0213)
-#endif
 
 #ifdef COOL_METAL_LINES_BY_SPECIES
         if (NUM_METAL_SPECIES>=10) {
-#if defined(AJR_SOLAR_ABUNDANCES_WIERSMA09) 
-	// Use solar abundances from Table 1 of Wiersma et al. 2009, MNRAS, 393, 99 
-            All.SolarAbundances[1]=0.2806;    // He  (11.0 in units where log[H]=12 -> Y = 0.2806 [Hydrogen X=0.7065])
-            All.SolarAbundances[2]=2.07e-3; // C   (8.39 -> 2.07e-3)
-            All.SolarAbundances[3]=8.36e-4; // N   (7.93 -> 8.36e-4)
-            All.SolarAbundances[4]=5.49e-3; // O   (8.69 -> 5.49e-3)
-            All.SolarAbundances[5]=1.41e-3; // Ne  (8.00 -> 1.41e-3)
-            All.SolarAbundances[6]=5.91e-4; // Mg  (7.54 -> 5.91e-4)
-            All.SolarAbundances[7]=6.83e-4; // Si  (7.54 -> 6.83e-4)
-            All.SolarAbundances[8]=4.09e-4; // S   (7.27 -> 4.09e-4)
-            All.SolarAbundances[9]=6.44e-5; // Ca  (6.36 -> 6.44e-5)
-            All.SolarAbundances[10]=1.1e-3; // Fe (7.45 -> 1.10e-3)
-#else 
             All.SolarAbundances[1]=0.28;    // He  (10.93 in units where log[H]=12, so photospheric mass fraction -> Y=0.2485 [Hydrogen X=0.7381]; Anders+Grevesse Y=0.2485, X=0.7314)
             All.SolarAbundances[2]=3.26e-3; // C   (8.43 -> 2.38e-3, AG=3.18e-3)
             All.SolarAbundances[3]=1.32e-3; // N   (7.83 -> 0.70e-3, AG=1.15e-3)
@@ -503,7 +459,6 @@ void init(void)
             All.SolarAbundances[8]=6.44e-4; // S   (7.12 -> 3.12e-4, AG=3.80e-4)
             All.SolarAbundances[9]=1.01e-4; // Ca  (6.34 -> 0.65e-4, AG=0.67e-4)
             All.SolarAbundances[10]=1.73e-3; // Fe (7.50 -> 1.31e-3, AG=1.92e-3)
-#endif // AJR_SOLAR_ABUNDANCES_WIERSMA09 
         }
 #endif // COOL_METAL_LINES_BY_SPECIES
 #ifdef GALSF_FB_FIRE_RPROCESS
@@ -511,17 +466,9 @@ void init(void)
         for(j=1;j<=NUM_RPROCESS_SPECIES;j++) All.SolarAbundances[NUM_METAL_SPECIES-j]=0.0; // R-process tracer
 #endif
         
-#ifndef AJR_READ_METALLICITY_FROM_ICS 
         if(RestartFlag == 0) {
-#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)	    
-#ifdef AJR_INIT_HALO_METALLICITY 
-	  if (P[i].ID < All.HaloID) 
-	    P[i].Metallicity[0] = All.InitMetallicityinSolar*All.SolarAbundances[0];
-	  else 
-	    P[i].Metallicity[0] = All.InitHaloMetallicityinSolar*All.SolarAbundances[0];
-#else
+#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)  
             P[i].Metallicity[0] = All.InitMetallicityinSolar*All.SolarAbundances[0];
-#endif 
 #else
             P[i].Metallicity[0] = 0;
 #endif
@@ -530,7 +477,6 @@ void init(void)
             /* need to allow for a primordial He abundance */
             if(NUM_METAL_SPECIES>=10) P[i].Metallicity[1]=0.25+(All.SolarAbundances[1]-0.25)*P[i].Metallicity[0]/All.SolarAbundances[0];
         } // if(RestartFlag == 0)
-#endif // AJR_READ_METALLICITY_FROM_ICS 
 
 #ifdef CHIMES 
 #ifdef COOL_METAL_LINES_BY_SPECIES 
@@ -973,18 +919,6 @@ void init(void)
         below/above which particles are merged/split */
     if(RestartFlag != 1)
     {
-#ifdef AJR_TARGET_RESOLUTION 
-      All.MinMassForParticleMerger = 0.49 * All.TargetMassResolution_Msol * SOLAR_MASS / (All.UnitMass_in_g / All.HubbleParam);
-      All.MaxMassForParticleSplit  = 3.01 * All.TargetMassResolution_Msol * SOLAR_MASS / (All.UnitMass_in_g / All.HubbleParam);
-#ifdef GALSF_GENERATIONS
-      All.MinMassForParticleMerger /= (float)GALSF_GENERATIONS;
-#endif
-      if (ThisTask == 0) 
-	{
-	  printf("MinMassForParticleMerger = %.4e Msol\n", All.MinMassForParticleMerger * (All.UnitMass_in_g / All.HubbleParam) / SOLAR_MASS); 
-	  printf("MaxMassForParticleSplit = %.4e Msol\n", All.MaxMassForParticleSplit * (All.UnitMass_in_g / All.HubbleParam) / SOLAR_MASS); 
-	}
-#else 
         double mass_min = MAX_REAL_NUMBER;
         double mass_max = -MAX_REAL_NUMBER;
         for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
@@ -1002,7 +936,6 @@ void init(void)
 #endif
         /* All.MaxMassForParticleSplit  = 5.01 * mpi_mass_max; */
         All.MaxMassForParticleSplit  = 3.01 * mpi_mass_max;
-#endif // AJR_TARGET_RESOLUTION 
 #ifdef MERGESPLIT_HARDCODE_MAX_MASS
         All.MaxMassForParticleSplit = MERGESPLIT_HARDCODE_MAX_MASS;
 #endif
