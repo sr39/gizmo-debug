@@ -39,6 +39,7 @@ CHIMES
   Main switch to enable the CHIMES module. 
 
 CHIMES_HYDROGEN_ONLY
+  Option to run with only hydrogen. This option is ignored if METALS is set. 
 
 CHIMES_SOBOLEV_SHIELDING
   The shielding length is set by a Sobolev-like approximation, with L_shield = h_inter + rho / grad(rho), multiplied by the ``Shielding_length_factor`` parameter (see the next section). Column densities are then set to the cell density times this shielding length. 
