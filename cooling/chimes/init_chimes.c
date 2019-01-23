@@ -3150,7 +3150,6 @@ void init_chimes(struct globalVariables *myGlobalVars, struct All_rate_variables
       printf("myGlobalVars->cellSelfShieldingOn = %i \n ",myGlobalVars->cellSelfShieldingOn);
       printf("myGlobalVars->N_spectra = %i \n", myGlobalVars->N_spectra); 
       printf("myGlobalVars->StaticMolCooling = %i \n ",myGlobalVars->StaticMolCooling);
-      printf("myGlobalVars->T_EqThresh = %e \n ",myGlobalVars->T_EqThresh);
       printf("myGlobalVars->time_tolerance = %e \n ",myGlobalVars->time_tolerance);
       printf("myGlobalVars-> min_subcyclestep = %e \n ",myGlobalVars-> min_subcyclestep);
       printf("myGlobalVars->T_mol = %e \n ",myGlobalVars->T_mol);
