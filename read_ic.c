@@ -395,13 +395,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                 P[offset + n].StellarAge = *fp++;
 #endif
             break;
-
-#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
-        case IO_INIT_MASS:		/* Initial stellar mass */
-            for(n = 0; n < pc; n++)
-                P[offset + n].InitialStellarMass = *fp++;
-            break;
-#endif 
             
         case IO_GRAINSIZE:
 #ifdef GRAIN_FLUID
@@ -960,16 +953,6 @@ void read_file(char *fname, int readTask, int lastTask)
 #if defined(CHIMES) && !defined(CHIMES_INITIALISE_IN_EQM) 
 		   && blocknr != IO_CHIMES_ABUNDANCES 
 #endif 
-#ifdef AJR_READ_STELLAR_PROPERTIES_FROM_ICS 
-		   && blocknr != IO_AGE 
-#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
-		   && blocknr != IO_INIT_MASS 
-#endif 
-#endif 
-#ifdef AJR_READ_METALLICITY_FROM_ICS 
-		   && blocknr != IO_Z 
-#endif 
-
                    )
 #if defined(GDE_DISTORTIONTENSOR) && defined(GDE_READIC)
                     if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_SHEET_ORIENTATION))

@@ -539,10 +539,6 @@ void star_formation_parent_routine(void)
 
 		      P[i].StellarAge = All.Time;
 
-#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
-		      P[i].InitialStellarMass = P[i].Mass; 
-#endif 
-
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
                 P[i].DensAroundStar = SphP[i].Density;
 #endif
@@ -620,10 +616,6 @@ void star_formation_parent_routine(void)
 #endif
 		      sum_mass_stars += P[NumPart + stars_spawned].Mass;
 		      P[NumPart + stars_spawned].StellarAge = All.Time;
-
-#ifdef AJR_RECORD_INITIAL_STELLAR_MASS 
-		      P[NumPart + stars_spawned].InitialStellarMass = P[NumPart + stars_spawned].Mass; 
-#endif 
 
 		      force_add_star_to_tree(i, NumPart + stars_spawned);
 

@@ -115,10 +115,6 @@ static struct densdata_out
 #endif
 #endif
 
-#if defined(METALS) && defined(DO_DENSITY_AROUND_STAR_PARTICLES) && defined(EXTRA_SNE_OUTPUT)
-  MyLongDouble Z_Rho; 
-#endif
-
 }
  *DensDataResult, *DensDataOut;
 
@@ -212,9 +208,6 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
     {
         ASSIGN_ADD(P[i].DensAroundStar, out->Rho, mode);
         for(k = 0; k<3; k++) {ASSIGN_ADD(P[i].GradRho[k], out->GradRho[k], mode);}
-#if defined(METALS) && defined(EXTRA_SNE_OUTPUT)
-	ASSIGN_ADD(P[i].MetalDensAroundStar, out->Z_Rho, mode);
-#endif 
     }
 #endif
     
@@ -1257,9 +1250,6 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     
                     out.Ngb += kernel.wk;
                     out.Rho += kernel.mj_wk;
-#if defined(METALS) && defined(DO_DENSITY_AROUND_STAR_PARTICLES) && defined(EXTRA_SNE_OUTPUT)
-		    out.Z_Rho += kernel.mj_wk * P[j].Metallicity[0]; 
-#endif
 
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
                     if(local.Type == 0 && kernel.r==0) {int kv; for(kv=0;kv<3;kv++) {out.ParticleVel[kv] += kernel.mj_wk * SphP[j].VelPred[kv];}} // just the self-contribution //
