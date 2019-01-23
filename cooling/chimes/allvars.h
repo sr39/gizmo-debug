@@ -63,7 +63,6 @@ struct globalVariables
   int cellSelfShieldingOn;
   int N_spectra;          /* The number of UV spectra. */ 
   int StaticMolCooling;
-  double T_EqThresh;     /* This is used when ForceEqOn == 1 */
   double time_tolerance;
   double min_subcyclestep;
   double T_mol;

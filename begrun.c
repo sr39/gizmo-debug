@@ -1814,10 +1814,6 @@ void read_parameter_file(char *fname)
       addr[nt] = &isotropic_photon_density;
       id[nt++] = REAL;
 
-      strcpy(tag[nt], "TemperatureEqm_Thresh");
-      addr[nt] = &ChimesGlobalVars.T_EqThresh;
-      id[nt++] = REAL;
-
       strcpy(tag[nt], "relativeTolerance");
       addr[nt] = &ChimesGlobalVars.relativeTolerance;
       id[nt++] = REAL;
