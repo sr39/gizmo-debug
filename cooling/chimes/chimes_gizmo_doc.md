@@ -32,6 +32,9 @@ https://computation.llnl.gov/projects/sundials
 
 Note that CHIMES hasn't been tested with the latest version of CVode and KINsol. It is safest to use version 2.4.0 of these libraries. The Gizmo Makefile contains examples for how to link to these libraries (see under the Quest-intel SYSTYPE). 
 
+OPENMP
+  The CHIMES module is compatible with multithreading using the OPENMP option. When this option is switched on, then the cooling loop, where the code loops over active gas particles and performs the chemistry and cooling, will be split between OPENMP threads. This option greatly improves the work-load balancing of the chemistry solver, because particles are dynamically distributed between threads as their chemistry is being integrated, which helps to avoid the scenario where one CPU has to integrate several particles that are much slower (e.g. if they are far from chemical equilibrium) while the remaining CPUs have already finished. In many cases you will find that the most efficient approach is to run with just one or two MPI tasks on each node, and use OPENMP to then fill the CPUs on each node with threads. 
+
 CHIMES Config.sh Options
 ------------------------
 
