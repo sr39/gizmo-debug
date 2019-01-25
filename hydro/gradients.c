@@ -353,14 +353,14 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
         MAX_ADD(GasGradDataPasser[i].MaxDistance,out->MaxDistance,mode);
 #ifdef TURB_DIFF_DYNAMIC
         for (j = 0; j < 3; j++) {
-          MAX_ADD(GasGradDataPasser[i].Maxima.Velocity_bar[j], out->Maxima.Velocity_bar[j], mode);
-          MIN_ADD(GasGradDataPasser[i].Minima.Velocity_bar[j], out->Minima.Velocity_bar[j], mode);
+            MAX_ADD(GasGradDataPasser[i].Maxima.Velocity_bar[j], out->Maxima.Velocity_bar[j], mode);
+            MIN_ADD(GasGradDataPasser[i].Minima.Velocity_bar[j], out->Minima.Velocity_bar[j], mode);
 
-          ASSIGN_ADD_PRESET(SphP[i].Velocity_hat[j], out->Velocity_hat[j], mode);
+            ASSIGN_ADD_PRESET(SphP[i].Velocity_hat[j], out->Velocity_hat[j], mode);
 
-          for (k = 0; k < 3; k++) {
-            ASSIGN_ADD_PRESET(GasGradDataPasser[i].GradVelocity_bar[j][k], out->Gradients[k].Velocity_bar[j], mode);
-          }
+            for (k = 0; k < 3; k++) {
+                ASSIGN_ADD_PRESET(GasGradDataPasser[i].GradVelocity_bar[j][k], out->Gradients[k].Velocity_bar[j], mode);
+            }
         }
 #endif
         
@@ -604,11 +604,11 @@ void hydro_gradient_calc(void)
 #endif
 #endif
 #ifdef TURB_DIFF_DYNAMIC
-          /* NEED Velocity_bar CORRECT HERE */
-          for (k = 0; k < 3; k++) {
-            SphP[i].Velocity_bar[k] *= All.TurbDynamicDiffSmoothing;
-            SphP[i].Velocity_hat[k] = SphP[i].Velocity_bar[k] * smoothInv;
-          }
+            /* NEED Velocity_bar CORRECT HERE */
+            for (k = 0; k < 3; k++) {
+                SphP[i].Velocity_bar[k] *= All.TurbDynamicDiffSmoothing;
+                SphP[i].Velocity_hat[k] = SphP[i].Velocity_bar[k] * smoothInv;
+            }
 #endif
 
             /* and zero out the gradients structure itself */
@@ -1100,7 +1100,7 @@ void hydro_gradient_calc(void)
             for(k=0;k<3;k++) {construct_gradient(SphP[i].Gradients.Velocity[k],i);}
 #ifdef TURB_DIFF_DYNAMIC
             for (k = 0; k < 3; k++) {
-              construct_gradient(GasGradDataPasser[i].GradVelocity_bar[k], i);
+                construct_gradient(GasGradDataPasser[i].GradVelocity_bar[k], i);
             }
 #endif
 #ifdef DOGRAD_INTERNAL_ENERGY
@@ -1553,7 +1553,7 @@ void hydro_gradient_calc(void)
 #endif
 #ifdef TURB_DIFF_DYNAMIC
             for (k1 = 0; k1 < 3; k1++) {
-              local_slopelimiter(GasGradDataPasser[i].GradVelocity_bar[k1], GasGradDataPasser[i].Maxima.Velocity_bar[k1], GasGradDataPasser[i].Minima.Velocity_bar[k1], a_limiter, h_lim, stol);
+                local_slopelimiter(GasGradDataPasser[i].GradVelocity_bar[k1], GasGradDataPasser[i].Maxima.Velocity_bar[k1], GasGradDataPasser[i].Minima.Velocity_bar[k1], a_limiter, h_lim, stol);
             }
 #endif
             for(k1=0;k1<3;k1++) {local_slopelimiter(SphP[i].Gradients.Velocity[k1],GasGradDataPasser[i].Maxima.Velocity[k1],GasGradDataPasser[i].Minima.Velocity[k1],a_limiter,h_lim,stol_tmp);}
@@ -1643,35 +1643,35 @@ void hydro_gradient_calc(void)
                     shearfac_max = 0.5 * sqrt(SphP[i].Velocity_bar[0] * SphP[i].Velocity_bar[0] + SphP[i].Velocity_bar[1] * SphP[i].Velocity_bar[1]+SphP[i].Velocity_bar[2] * SphP[i].Velocity_bar[2]) * All.cf_atime / h_turb;
 
                     for (u = 0; u < 3; u++) {
-                      for (v = 0; v < 3; v++) {
-                        SphP[i].VelShear_bar[u][v] = 0.5 * (GasGradDataPasser[i].GradVelocity_bar[u][v] + GasGradDataPasser[i].GradVelocity_bar[v][u]);
+                        for (v = 0; v < 3; v++) {
+                            SphP[i].VelShear_bar[u][v] = 0.5 * (GasGradDataPasser[i].GradVelocity_bar[u][v] + GasGradDataPasser[i].GradVelocity_bar[v][u]);
 
-                        if (SphP[i].VelShear_bar[u][v] < 0) {
-                          SphP[i].VelShear_bar[u][v] = DMAX(SphP[i].VelShear_bar[u][v], -shearfac_max);
-                        }
-                        else {
-                          SphP[i].VelShear_bar[u][v] = DMIN(SphP[i].VelShear_bar[u][v], shearfac_max);
-                        }
+                            if (SphP[i].VelShear_bar[u][v] < 0) {
+                                SphP[i].VelShear_bar[u][v] = DMAX(SphP[i].VelShear_bar[u][v], -shearfac_max);
+                            }
+                            else {
+                                SphP[i].VelShear_bar[u][v] = DMIN(SphP[i].VelShear_bar[u][v], shearfac_max);
+                            }
 
-                        if (u == v) {
-                          trace += SphP[i].VelShear_bar[u][u];
+                            if (u == v) {
+                                trace += SphP[i].VelShear_bar[u][u];
+                            }
                         }
-                      }
                     }
 
                     /* If it was already trace-free, don't zero out the diagonal components */
                     if (trace != 0 && NUMDIMS > 1) {
-                      for (u = 0; u < NUMDIMS; u++) {
-                        SphP[i].VelShear_bar[u][u] -= 1.0 / NUMDIMS * trace;
-                      }
+                        for (u = 0; u < NUMDIMS; u++) {
+                            SphP[i].VelShear_bar[u][u] -= 1.0 / NUMDIMS * trace;
+                        }
                     }
 
                     for (u = 0; u < 3; u++) {
-                      SphP[i].Velocity_hat[u] *= All.TurbDynamicDiffSmoothing;
+                        SphP[i].Velocity_hat[u] *= All.TurbDynamicDiffSmoothing;
 
-                      for (v = 0; v < 3; v++) {
-                        SphP[i].MagShear_bar += SphP[i].VelShear_bar[u][v] * SphP[i].VelShear_bar[u][v];
-                      }
+                        for (v = 0; v < 3; v++) {
+                            SphP[i].MagShear_bar += SphP[i].VelShear_bar[u][v] * SphP[i].VelShear_bar[u][v];
+                        }
                     }
 
                     /* Don't want to recalculate these a bunch later on, so save them */
@@ -1916,14 +1916,14 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
         while(startnode >= 0)
         {
 #ifdef TURB_DIFF_DYNAMIC
-          if (gradient_iteration == 0) {
-            numngb = ngb_treefind_pairs_threads(local.Pos, All.TurbDynamicDiffFac * kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
-          }
-          else {
+            if (gradient_iteration == 0) {
+                numngb = ngb_treefind_pairs_threads(local.Pos, All.TurbDynamicDiffFac * kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+            }
+            else {
 #endif
             numngb = ngb_treefind_pairs_threads(local.Pos, kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
 #ifdef TURB_DIFF_DYNAMIC
-          }
+            }
 #endif
             
             if(numngb < 0)
@@ -1970,36 +1970,36 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #else
                 if (gradient_iteration == 0) {
 #endif
-                  hhat_i = All.TurbDynamicDiffFac * kernel.h_i;
-                  hhat_j = All.TurbDynamicDiffFac * h_j;
+                    hhat_i = All.TurbDynamicDiffFac * kernel.h_i;
+                    hhat_j = All.TurbDynamicDiffFac * h_j;
 
-                  if((r2 >= (hhat_i * hhat_i)) && (r2 >= (hhat_j * hhat_j))) continue;
+                    if((r2 >= (hhat_i * hhat_i)) && (r2 >= (hhat_j * hhat_j))) continue;
 
-                  double h_avg = 0.5 * (hhat_i + hhat_j);
-                  double particle_distance = sqrt(r2);
+                    double h_avg = 0.5 * (hhat_i + hhat_j);
+                    double particle_distance = sqrt(r2);
 
-                  kernel_hinv(h_avg, &hhatinv_i, &hhatinv3_i, &hhatinv4_i);
-                  u = DMIN(particle_distance * hhatinv_i, 1.0);
-                  kernel_main(u, hhatinv3_i, hhatinv4_i, &wkhat_i, &dwkhat_i, 0);
+                    kernel_hinv(h_avg, &hhatinv_i, &hhatinv3_i, &hhatinv4_i);
+                    u = DMIN(particle_distance * hhatinv_i, 1.0);
+                    kernel_main(u, hhatinv3_i, hhatinv4_i, &wkhat_i, &dwkhat_i, 0);
 
-                  /* wkhat is symmetric in this case W_{ij} = W_{ji} */
-                  double mean_weight = wkhat_i * 0.5 * (SphP[j].Norm_hat + local.Norm_hat) / (local.Norm_hat * SphP[j].Norm_hat);
-                  double weight_i = P[j].Mass * mean_weight;
-                  double weight_j = local.Mass * mean_weight;
-                  double Velocity_bar_diff[3];
+                    /* wkhat is symmetric in this case W_{ij} = W_{ji} */
+                    double mean_weight = wkhat_i * 0.5 * (SphP[j].Norm_hat + local.Norm_hat) / (local.Norm_hat * SphP[j].Norm_hat);
+                    double weight_i = P[j].Mass * mean_weight;
+                    double weight_j = local.Mass * mean_weight;
+                    double Velocity_bar_diff[3];
 
-                  if (particle_distance < h_avg) {
-                    for (k = 0; k < 3; k++) {
-                      Velocity_bar_diff[k] = SphP[j].Velocity_bar[k] - local.GQuant.Velocity_bar[k];
-                      out.Velocity_hat[k] += Velocity_bar_diff[k] * weight_i;
+                    if (particle_distance < h_avg) {
+                        for (k = 0; k < 3; k++) {
+                            Velocity_bar_diff[k] = SphP[j].Velocity_bar[k] - local.GQuant.Velocity_bar[k];
+                            out.Velocity_hat[k] += Velocity_bar_diff[k] * weight_i;
+                        }
+
+                        if (swap_to_j) {
+                            for (k = 0; k < 3; k++) {
+                                SphP[j].Velocity_hat[k] -= Velocity_bar_diff[k] * weight_j;
+                            }
+                        }
                     }
-
-                    if (swap_to_j) {
-                      for (k = 0; k < 3; k++) {
-                        SphP[j].Velocity_hat[k] -= Velocity_bar_diff[k] * weight_j;
-                      }
-                    }
-                  }
                 } /* closes gradient_iteration == 0 */
 #endif
                 if((r2 >= h2_i) && (r2 >= h_j * h_j)) continue;
@@ -2176,22 +2176,22 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     /* Need to calculate the filtered velocity gradient for the filtered shear */
                     double dv_bar[3];
                     for (k = 0; k < 3; k++) {
-                      dv_bar[k] = SphP[j].Velocity_bar[k] - local.GQuant.Velocity_bar[k];
+                        dv_bar[k] = SphP[j].Velocity_bar[k] - local.GQuant.Velocity_bar[k];
 #ifdef SHEARING_BOX
-                      if (k == SHEARING_BOX_PHI_COORDINATE) {
-                        if (local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {
-                          dv_bar[k] -= Shearing_Box_Vel_Offset;
-                        }
+                        if (k == SHEARING_BOX_PHI_COORDINATE) {
+                            if (local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {
+                                dv_bar[k] -= Shearing_Box_Vel_Offset;
+                            }
 
-                        if (local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {
-                          dv_bar[k] += Shearing_Box_Vel_Offset;
+                            if (local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {
+                                dv_bar[k] += Shearing_Box_Vel_Offset;
+                            }
                         }
-                      }
 #endif
-                      MINMAX_CHECK(dv_bar[k], out.Minima.Velocity_bar[k], out.Maxima.Velocity_bar[k]);
-                      if (swap_to_j) {
-                        MINMAX_CHECK(-dv_bar[k], GasGradDataPasser[j].Minima.Velocity_bar[k], GasGradDataPasser[j].Maxima.Velocity_bar[k]);
-                      }
+                        MINMAX_CHECK(dv_bar[k], out.Minima.Velocity_bar[k], out.Maxima.Velocity_bar[k]);
+                        if (swap_to_j) {
+                            MINMAX_CHECK(-dv_bar[k], GasGradDataPasser[j].Minima.Velocity_bar[k], GasGradDataPasser[j].Maxima.Velocity_bar[k]);
+                        }
                     }
 #endif
 
@@ -2356,7 +2356,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                             for(k2=0;k2<3;k2++) {out.Gradients[k].Velocity[k2] += wk_xyz_i * dv[k2];}
 #ifdef TURB_DIFF_DYNAMIC
                             for (k2 = 0; k2 < 3; k2++) {
-                              out.Gradients[k].Velocity_bar[k2] += wk_xyz_i * dv_bar[k2];
+                                out.Gradients[k].Velocity_bar[k2] += wk_xyz_i * dv_bar[k2];
                             }
 #endif
 #ifdef DOGRAD_INTERNAL_ENERGY
@@ -2399,7 +2399,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                             for(k2=0;k2<3;k2++) {SphP[j].Gradients.Velocity[k2][k] += wk_xyz_j * dv[k2];}
 #ifdef TURB_DIFF_DYNAMIC
                             for (k2 = 0; k2 < 3; k2++) {
-                              GasGradDataPasser[j].GradVelocity_bar[k2][k] += wk_xyz_j * dv_bar[k2];
+                                GasGradDataPasser[j].GradVelocity_bar[k2][k] += wk_xyz_j * dv_bar[k2];
                             }
 #endif
 #ifdef DOGRAD_INTERNAL_ENERGY

@@ -658,9 +658,9 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 
         case IO_TURB_DYNAMIC_COEFF:
 #ifdef TURB_DIFF_DYNAMIC
-          for (n = 0; n < pc; n++) {
-            SphP[offset + n].TD_DynDiffCoeff = *fp++;
-          }
+            for (n = 0; n < pc; n++) {
+                SphP[offset + n].TD_DynDiffCoeff = *fp++;
+            }
 #endif
             break;
 
@@ -981,7 +981,7 @@ void read_file(char *fname, int readTask, int lastTask)
             
 #ifdef TURB_DIFF_DYNAMIC
             if (RestartFlag == 0 && blocknr == IO_TURB_DYNAMIC_COEFF) {
-              continue;
+                continue;
             }
 #endif
 

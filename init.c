@@ -572,14 +572,14 @@ void init(void)
         SphP[i].TD_DynDiffCoeff_error = 0;
 
         for (u = 0; u < 3; u++) {
-          if (RestartFlag != 7) {
-            SphP[i].Velocity_bar[u] = 0;
-            SphP[i].Velocity_hat[u] = 0;
-          }
+            if (RestartFlag != 7) {
+                SphP[i].Velocity_bar[u] = 0;
+                SphP[i].Velocity_hat[u] = 0;
+            }
 
-          for (v = 0; v < 3; v++) {
-            SphP[i].VelShear_bar[u][v] = 0;
-          }
+            for (v = 0; v < 3; v++) {
+                SphP[i].VelShear_bar[u][v] = 0;
+            }
         }
 #endif
 #endif

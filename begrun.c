@@ -1895,6 +1895,9 @@ void read_parameter_file(char *fname)
     All.DivBcleanHyperbolicSigma = 1.0;
 #endif
 
+#ifdef TURB_DIFF_DYNAMIC
+    All.TurbDynamicDiffIterations = 0; /* D. Rennehan: This has NOT been tested above 0 */
+#endif
     if(All.ComovingIntegrationOn) {All.ErrTolForceAcc = 0.005; All.ErrTolIntAccuracy = 0.05;}
     All.MaxNumNgbDeviation = All.DesNumNgb / 640.;
 #ifdef GALSF
