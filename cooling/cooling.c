@@ -97,11 +97,11 @@ void do_the_cooling_for_particle(int i)
     {
         
         double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
         double u_to_temp_fac = 0.59 * PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
         double uion = HIIRegion_Temp / u_to_temp_fac;
         if(SphP[i].DelayTimeHII > 0) if(uold<uion) uold=uion; /* u_old should be >= ionized temp if used here */
-#endif // GALSF_FB_HII_HEATING
+#endif // GALSF_FB_FIRE_RT_HIIHEATING
         
 #ifndef COOLING_OPERATOR_SPLIT
         /* do some prep operations on the hydro-step determined heating/cooling rates before passing to the cooling subroutine */
@@ -135,14 +135,14 @@ void do_the_cooling_for_particle(int i)
 #endif
         
         
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
         /* set internal energy to minimum level if marked as ionized by stars */
         if(SphP[i].DelayTimeHII > 0)
         {
             if(unew<uion) {unew=uion; if(SphP[i].DtInternalEnergy<0) SphP[i].DtInternalEnergy=0;}
             SphP[i].Ne = 1.0 + 2.0*yhelium(i); /* fully ionized */
         }
-#endif // GALSF_FB_HII_HEATING
+#endif // GALSF_FB_FIRE_RT_HIIHEATING
         
         
 #if defined(BH_THERMALFEEDBACK)
@@ -184,11 +184,11 @@ void do_the_cooling_for_particle(int i)
 #endif
         
         
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
         /* count off time which has passed since ionization 'clock' */
         if(SphP[i].DelayTimeHII > 0) SphP[i].DelayTimeHII -= dtime;
         if(SphP[i].DelayTimeHII < 0) SphP[i].DelayTimeHII = 0;
-#endif // GALSF_FB_HII_HEATING
+#endif // GALSF_FB_FIRE_RT_HIIHEATING
         
     } // closes if((P[i].TimeBin)&&(dt>0)&&(P[i].Mass>0)&&(P[i].Type==0)) check
 }
@@ -271,9 +271,20 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     while(((fabs(du/u) > 3.0e-2)||((fabs(du/u) > 3.0e-4)&&(iter < 10))) && (iter < MAXITER)); /* iteration condition */
     /* crash condition */
     if(iter >= MAXITER) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g target=%d \n",u_old,rho,dt,ne_guess,target); endrun(10);}
+    double specific_energy_codeunits_toreturn = u * All.UnitDensity_in_cgs / All.UnitPressure_in_cgs;    /* in internal units */
+    
+#ifdef RT_CHEM_PHOTOION
+    /* set variables used by RT routines; this must be set only -outside- of iteration, since this is the key chemistry update */
+    double u_in=specific_energy_codeunits_toreturn, rho_in=SphP[target].Density*All.cf_a3inv, mu=1, temp, ne=SphP[target].Ne, nHI=SphP[target].HI, nHII=SphP[target].HII, nHeI=1, nHeII=0, nHeIII=0;
+    temp = ThermalProperties(u_in, rho_in, target, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
+    SphP[target].HI = nHI; SphP[target].HII = nHII;
+#ifdef RT_CHEM_PHOTOION_HE
+    SphP[target].HeI = nHeI; SphP[target].HeII = nHeII; SphP[target].HeIII = nHeIII;
+#endif
+#endif
     
     /* safe return */
-    return u * All.UnitDensity_in_cgs / All.UnitPressure_in_cgs;	/* in internal units */
+    return specific_energy_codeunits_toreturn;
 }
 
 
@@ -351,36 +362,6 @@ double DoInstabilityCooling(double m_old, double u, double rho, double dt, doubl
 
 
 
-void cool_test(void)
-{
-#if !defined(COOL_METAL_LINES_BY_SPECIES)
-    double uin, rhoin, tempin, muin, nein;
-    uin = 6.01329e+09;
-    rhoin = 7.85767e-29;
-    tempin = 2034.0025;
-    muin = 0.691955;
-    nein = (1 + 4 * YHELIUM_0) / muin - (1 + YHELIUM_0);
-    double dtin=1.0e-7;
-    double uout,uint,nH0_guess,nHp_guess,nHe0_guess,nHep_guess,nHepp_guess;
-    int i,target;
-    for(i=0;i<20;i++) {
-        rhoin=SphP[i].Density;
-        nein=SphP[i].Ne;
-        target=i;
-        uin=SphP[i].InternalEnergy;
-        uout=DoCooling(uin,rhoin,dtin,nein,target);
-        printf("%d %d : ne: %g %g \n",ThisTask,target,SphP[i].Ne,nein);
-        nein=SphP[i].Ne;
-        rhoin *= All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;    /* convert to physical cgs units */
-        uint = uin*All.UnitPressure_in_cgs / All.UnitDensity_in_cgs;
-        tempin=convert_u_to_temp(uint, rhoin, target, &nein, &nH0_guess, &nHp_guess, &nHe0_guess, &nHep_guess, &nHepp_guess);
-        printf("%d %d : in: : %g %g %g \n",ThisTask,target,uin,rhoin,nein);
-        printf("%d %d : out: %g %g %g %g %g \n",ThisTask,target,tempin,
-               CoolingRate(log10(tempin),rhoin,nein,target),CoolingRateFromU(uint,rhoin,nein,target),uout,nein);
-        fflush(stdout);
-    }
-#endif
-}
 
 
 
@@ -423,7 +404,7 @@ double yhelium(int target)
 double convert_u_to_temp(double u, double rho, int target, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess)
 {
     int iter = 0;
-    double temp, temp_old, temp_new, max = 0, ne_old, mu;
+    double temp, temp_old, temp_old_old = 0, temp_new, max = 0, ne_old, mu;
     double u_input = u, rho_input = rho, temp_guess = GAMMA_MINUS1 / BOLTZMANN * u * PROTONMASS;
     mu = get_mu(temp_guess, rho, ne_guess, target);
     temp = GAMMA_MINUS1 / BOLTZMANN * u * PROTONMASS * mu;
@@ -439,6 +420,8 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
         
         max = DMAX(max, temp_new * mu * HYDROGEN_MASSFRAC * fabs((*ne_guess - ne_old) / (temp_new - temp_old + 1.0)));
         temp = temp_old + (temp_new - temp_old) / (1 + max);
+        if(fabs(temp-temp_old_old)/(temp+temp_old_old) < 1.e-4) {double wt=get_random_number(12*iter+340*ThisTask+5435*target); temp=(wt*temp_old + (1.-wt)*temp_new);}
+        temp_old_old = temp_old;
         iter++;
         if(iter > (MAXITER - 10)) {printf("-> temp=%g/%g/%g ne=%g/%g mu=%g rho=%g max=%g iter=%d target=%d \n", temp,temp_new,temp_old,*ne_guess,ne_old, mu ,rho,max,iter,target);}
     }
@@ -467,8 +450,9 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     double bH0, bHep, bff, aHp, aHep, aHepp, ad, geH0, geHe0, geHep;
     double n_elec, nH0, nHe0, nHp, nHep, nHepp; /* ionization states */
     logT_input = logT; rho_input = rho; ne_input = *ne_guess; /* save inputs (in case of failed convergence below) */
-    if(isnan(logT)) logT=Tmin;    /* nan trap (just in case) */
-    
+    if(!isfinite(logT)) logT=Tmin;    /* nan trap (just in case) */
+    if(!isfinite(rho)) logT=Tmin;
+
     if(logT <= Tmin)		/* everything neutral */
     {
         nH0 = 1.0; nHe0 = yhelium(target); nHp = 0; nHep = 0; nHepp = 0; n_elec = 0;
@@ -505,7 +489,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 
     /* account for non-local UV background */
     double local_gammamultiplier=1;
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
     if((target >= 0) && (gJH0 > 0))
     {
         local_gammamultiplier = SphP[target].RadFluxEUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
@@ -531,14 +515,15 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 #endif
     }
     n_elec = *ne_guess; neold = n_elec; niter = 0;
-    double necgs = n_elec * nHcgs; /* more initialized quantities */
+    double dt = 0, fac_noneq_cgs = 0, necgs = n_elec * nHcgs; /* more initialized quantities */
+    if(target >= 0) {dt = (P[target].TimeBin ? (1 << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;} // dtime [code units]
+    fac_noneq_cgs = (dt * All.UnitTime_in_s / All.HubbleParam) * necgs; // factor needed below to asses whether timestep is larger/smaller than recombination time
     
 #if defined(RT_CHEM_PHOTOION)
     double c_light_ne=0, Sigma_particle=0, abs_per_kappa_dt=0;
     if(target >= 0)
     {
         double L_particle = Get_Particle_Size(target)*All.cf_atime; // particle effective size/slab thickness
-        double dt = (P[target].TimeBin ? (1 << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; // dtime [code units]
         double cx_to_kappa = HYDROGEN_MASSFRAC / PROTONMASS * All.UnitMass_in_g / All.HubbleParam; // pre-factor for converting cross sections into opacities
         Sigma_particle = cx_to_kappa * P[target].Mass / (M_PI*L_particle*L_particle); // effective surface density through particle
         abs_per_kappa_dt = cx_to_kappa * RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s) * (SphP[target].Density*All.cf_a3inv) * dt; // fractional absorption over timestep
@@ -570,6 +555,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
         }
 #endif
         
+        fac_noneq_cgs = (dt * All.UnitTime_in_s / All.HubbleParam) * necgs; // factor needed below to asses whether timestep is larger/smaller than recombination time
         if(necgs <= 1.e-25 || J_UV == 0)
         {
             gJH0ne = gJHe0ne = gJHepne = 0;
@@ -586,11 +572,11 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 #endif
 #if defined(RT_CHEM_PHOTOION)
         /* add in photons from explicit radiative transfer (on top of assumed background) */
-        if((necgs > 1.e-25)&&(target >= 0))
+        if(target >= 0)
         {
             int k;
             c_light_ne = C / ((MIN_REAL_NUMBER + necgs) * All.UnitLength_in_cm / All.HubbleParam); // want physical cgs units for quantities below
-            double gJH0ne_0=gJH0 * local_gammamultiplier / necgs, gJHe0ne_0=gJHe0 * local_gammamultiplier / necgs, gJHepne_0=gJHep * local_gammamultiplier / necgs; // need a baseline, so we don't over-shoot below
+            double gJH0ne_0=gJH0 * local_gammamultiplier / (MIN_REAL_NUMBER + necgs), gJHe0ne_0=gJHe0 * local_gammamultiplier / (MIN_REAL_NUMBER + necgs), gJHepne_0=gJHep * local_gammamultiplier / (MIN_REAL_NUMBER + necgs); // need a baseline, so we don't over-shoot below
 #if defined(RT_DISABLE_UV_BACKGROUND)
             gJH0ne_0=gJHe0ne_0=gJHepne_0=MAX_REAL_NUMBER;
 #endif
@@ -606,8 +592,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
                     if(G_HI[k] > 0)
                     {
                         cross_section_ion = nH0 * rt_sigma_HI[k];
-                        dummy = rt_sigma_HI[k] * c_ne_time_n_photons_vol * slab_averaging_function(cross_section_ion * Sigma_particle); // egy per photon x cross section x photon flux (w attenuation factors)
-                        // * slab_averaging_function(cross_section_ion * abs_per_kappa_dt);
+                        dummy = rt_sigma_HI[k] * c_ne_time_n_photons_vol;// egy per photon x cross section x photon flux (w attenuation factors already included in flux/energy update:) * slab_averaging_function(cross_section_ion * Sigma_particle); // * slab_averaging_function(cross_section_ion * abs_per_kappa_dt);
                         if(dummy > thold*gJH0ne_0) {dummy = thold*gJH0ne_0;}
                         gJH0ne += dummy;
                     }
@@ -615,16 +600,14 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
                     if(G_HeI[k] > 0)
                     {
                         cross_section_ion = nHe0 * rt_sigma_HeI[k];
-                        dummy = rt_sigma_HeI[k] * c_ne_time_n_photons_vol * slab_averaging_function(cross_section_ion * Sigma_particle); // egy per photon x cross section x photon flux (w attenuation factors)
-                        // * slab_averaging_function(cross_section_ion * abs_per_kappa_dt);
+                        dummy = rt_sigma_HeI[k] * c_ne_time_n_photons_vol;// * slab_averaging_function(cross_section_ion * Sigma_particle); // * slab_averaging_function(cross_section_ion * abs_per_kappa_dt);
                         if(dummy > thold*gJHe0ne_0) {dummy = thold*gJHe0ne_0;}
                         gJHe0ne += dummy;
                     }
                     if(G_HeII[k] > 0)
                     {
                         cross_section_ion = nHep * rt_sigma_HeII[k];
-                        dummy = rt_sigma_HeII[k] * c_ne_time_n_photons_vol * slab_averaging_function(cross_section_ion * Sigma_particle); // egy per photon x cross section x photon flux (w attenuation factors)
-                        // * slab_averaging_function(cross_section_ion * abs_per_kappa_dt);
+                        dummy = rt_sigma_HeII[k] * c_ne_time_n_photons_vol;// * slab_averaging_function(cross_section_ion * Sigma_particle); // * slab_averaging_function(cross_section_ion * abs_per_kappa_dt);
                         if(dummy > thold*gJHepne_0) {dummy = thold*gJHepne_0;}
                         gJHepne += dummy;
                     }
@@ -635,10 +618,13 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 #endif
         
         
-        nH0 = aHp / (aHp + geH0 + gJH0ne);	/* eqn (33) */
+        nH0 = aHp / (MIN_REAL_NUMBER + aHp + geH0 + gJH0ne);	/* eqn (33) */
+#ifdef RT_CHEM_PHOTOION
+        if(target >= 0) {nH0 = (SphP[target].HI + fac_noneq_cgs * aHp) / (1 + fac_noneq_cgs * (aHp + geH0 + gJH0ne));} // slightly more general formulation that gives linear update but interpolates to equilibrium solution when dt >> dt_recombination
+#endif
         nHp = 1.0 - nH0;		/* eqn (34) */
         
-        if((gJHe0ne + geHe0) <= 1.0e-60)	/* no ionization at all */
+        if( ((gJHe0ne + geHe0) <= MIN_REAL_NUMBER) || (aHepp <= MIN_REAL_NUMBER) ) 	/* no ionization at all */
         {
             nHep = 0.0;
             nHepp = 0.0;
@@ -650,6 +636,20 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
             nHe0 = nHep * (aHep + ad) / (geHe0 + gJHe0ne);	/* eqn (36) */
             nHepp = nHep * (geHep + gJHepne) / aHepp;	/* eqn (37) */
         }
+#if defined(RT_CHEM_PHOTOION) && defined(RT_CHEM_PHOTOION_HE)
+        if(target >= 0)
+        {
+            double yHe = yhelium(target); // will use helium fraction below
+            nHep = SphP[target].HeII + yHe * fac_noneq_cgs * (geHe0 + gJHe0ne) - SphP[target].HeIII * (fac_noneq_cgs*(geHe0 + gJHe0ne - aHepp) / (1.0 + fac_noneq_cgs*aHepp));
+            nHep /= 1.0 + fac_noneq_cgs*(geHe0 + gJHe0ne + aHep + ad + geHep + gJHepne) + (fac_noneq_cgs*(geHe0 + gJHe0ne - aHepp) / (1.0 + fac_noneq_cgs*aHepp)) * fac_noneq_cgs*(geHep + gJHepne);
+            if(nHep < 0) {nHep=0;} // check if this exceeded valid limits (can happen in 'overshoot' during iteration)
+            if(nHep > yHe) {nHep=yHe;} // check if this exceeded valid limits (can happen in 'overshoot' during iteration)
+            nHepp = (SphP[target].HeIII + SphP[target].HeII * fac_noneq_cgs*(geHep + gJHepne)) / (1. + fac_noneq_cgs*aHepp);
+            if(nHepp < 0) {nHepp=0;} // check if this exceeded valid limits (can happen in 'overshoot' during iteration)
+            if(nHepp > yHe-nHep) {nHepp=yHe-nHep;} // check if this exceeded valid limits (can happen in 'overshoot' during iteration)
+            nHe0 = yHe - (nHep + nHepp); // remainder is neutral
+        }
+#endif
         
         neold = n_elec;
         n_elec = nHp + nHep + 2 * nHepp;	/* eqn (38) */
@@ -673,19 +673,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     bH0 = flow * BetaH0[j] + fhi * BetaH0[j + 1];
     bHep = flow * BetaHep[j] + fhi * BetaHep[j + 1];
     bff = flow * Betaff[j] + fhi * Betaff[j + 1];
-    if(target >= 0)
-    {
-        SphP[target].Ne = n_elec;
-#ifdef RT_CHEM_PHOTOION
-        SphP[target].HI = nH0;
-        SphP[target].HII = nHp;
-#ifdef RT_CHEM_PHOTOION_HE
-        SphP[target].HeI = nHe0;
-        SphP[target].HeII = nHep;
-        SphP[target].HeIII = nHepp;
-#endif
-#endif
-    }
+    if(target >= 0) {SphP[target].Ne = n_elec;}
     *nH0_guess=nH0; *nHe0_guess=nHe0; *nHp_guess=nHp; *nHep_guess=nHep; *nHepp_guess=nHepp; *ne_guess=n_elec; /* write to send back */
     
     /* now check if we want to return the ionization/recombination heating/cooling rates calculated with all the above quantities */
@@ -735,7 +723,7 @@ double ThermalProperties(double u, double rho, int target, double *mu_guess, dou
     rho *= All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam;	/* convert to physical cgs units */
     u *= All.UnitPressure_in_cgs / All.UnitDensity_in_cgs;
     temp = convert_u_to_temp(u, rho, target, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess);
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
     if(target >= 0) {if(SphP[target].DelayTimeHII > 0) {SphP[target].Ne = 1.0 + 2.0*yhelium(target);}} /* fully ionized */
 #endif
     *mu_guess = get_mu(temp, rho, ne_guess, target);
@@ -760,6 +748,8 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
     LambdaMol=0; LambdaMetal=0; LambdaCmptn=0; NH_SS_z=NH_SS;
     if(logT <= Tmin) {logT = Tmin + 0.5 * deltaT;}	/* floor at Tmin */
+    if(!isfinite(rho)) {return 0;} 
+
 #ifdef COOL_METAL_LINES_BY_SPECIES
     double *Z;
     if(target>=0)
@@ -774,7 +764,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     }
 #endif
     double local_gammamultiplier=1;
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
     if((target >= 0) && (gJH0 > 0))
     {
         local_gammamultiplier = SphP[target].RadFluxEUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
@@ -799,12 +789,16 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     if(target < 0) {
         AGN_LambdaPre = 0;
     } else {
-        AGN_LambdaPre = SphP[target].RadFluxAGN * (3.9/2.0) * All.UnitMass_in_g/(All.UnitLength_in_cm*All.UnitLength_in_cm)*All.HubbleParam*All.cf_a2inv; /* proper units */
+	#ifdef SINGLE_STAR_FORMATION
+		AGN_LambdaPre = SphP[target].RadFluxAGN *  All.UnitEnergy_in_cgs/All.UnitTime_in_s/(All.UnitLength_in_cm*All.UnitLength_in_cm); /* proper units */
+	#else
+		AGN_LambdaPre = SphP[target].RadFluxAGN * (3.9/2.0) * All.UnitMass_in_g/(All.UnitLength_in_cm*All.UnitLength_in_cm)*All.HubbleParam*All.cf_a2inv; /* proper units */
+	#endif
 #ifdef SINGLE_STAR_FORMATION
         /* here we are hijacking this module to approximate dust heating/cooling */
         /* assuming heating/cooling balance defines the target temperature: */
         AGN_T_Compton = pow( 1.0e4 + AGN_LambdaPre / 5.67e-5 , 0.25); // (sigma*T^4 = Flux_incident)
-        if(AGN_T_Compton < Tmin) {AGN_T_Compton=Tmin;}
+        if(AGN_T_Compton < Tmin) {AGN_T_Compton=Tmin;} 
 #else
         /* now have incident flux, need to convert to relevant pre-factor for heating rate */
         AGN_LambdaPre *= 6.652e-25; /* sigma_T for absorption */
@@ -920,24 +914,21 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
                     {
                         cross_section_ion = nH0 * rt_sigma_HI[k];
                         kappa_ion = cx_to_kappa * cross_section_ion;
-                        dummy = G_HI[k] * cross_section_ion * c_nH_time_n_photons_vol * slab_averaging_function(kappa_ion * Sigma_particle); // egy per photon x cross section x photon flux (w attenuation factors)
-                        // * slab_averaging_function(kappa_ion * abs_per_kappa_dt);
+                        dummy = G_HI[k] * cross_section_ion * c_nH_time_n_photons_vol;// (egy per photon x cross section x photon flux) :: attenuation factors [already in flux/energy update]: * slab_averaging_function(kappa_ion * Sigma_particle); // egy per photon x cross section x photon flux (w attenuation factors) // * slab_averaging_function(kappa_ion * abs_per_kappa_dt);
                         Heat += dummy;
                     }
                     if(G_HeI[k] > 0)
                     {
                         cross_section_ion = nHe0 * rt_sigma_HeI[k];
                         kappa_ion = cx_to_kappa * cross_section_ion;
-                        dummy = G_HeI[k] * cross_section_ion * c_nH_time_n_photons_vol * slab_averaging_function(kappa_ion * Sigma_particle);
-                        // * slab_averaging_function(kappa_ion * abs_per_kappa_dt);
+                        dummy = G_HeI[k] * cross_section_ion * c_nH_time_n_photons_vol;// * slab_averaging_function(kappa_ion * Sigma_particle); // * slab_averaging_function(kappa_ion * abs_per_kappa_dt);
                         Heat += dummy;
                     }
                     if(G_HeII[k] > 0)
                     {
                         cross_section_ion = nHep * rt_sigma_HeII[k];
                         kappa_ion = cx_to_kappa * cross_section_ion;
-                        dummy = G_HeII[k] * cross_section_ion * c_nH_time_n_photons_vol * slab_averaging_function(kappa_ion*Sigma_particle);
-                        // * slab_averaging_function(kappa_ion * abs_per_kappa_dt);
+                        dummy = G_HeII[k] * cross_section_ion * c_nH_time_n_photons_vol;// * slab_averaging_function(kappa_ion*Sigma_particle); // * slab_averaging_function(kappa_ion * abs_per_kappa_dt);
                         Heat += dummy;
                     }
                 }
@@ -960,10 +951,26 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #ifdef COOL_LOW_TEMPERATURES
         /* if COSMIC_RAYS is not enabled, but low-temperature cooling is on, we account for the CRs as a heating source using
          a more approximate expression (assuming the mean background of the Milky Way clouds) */
-        if(logT <= 5.2) {Heat += 1.0e-16 * (0.98 + 1.65*n_elec*HYDROGEN_MASSFRAC) / (1.e-2 + nHcgs) * 9.0e-12;} // multiplied by background of ~5eV/cm^3 (Goldsmith & Langer (1978),  van Dishoeck & Black (1986) //
+        if(logT <= 5.2)
+        {
+            // multiplied by background of ~5eV/cm^3 (Goldsmith & Langer (1978),  van Dishoeck & Black (1986) //
+            double prefac_CR=1; if(All.ComovingIntegrationOn) {if(rho < 1000.*All.OmegaBaryon*(All.HubbleParam*HUBBLE)*(All.HubbleParam*HUBBLE)*(3./(8.*M_PI*GRAVITY))*All.cf_a3inv) {prefac_CR=0;}} // in cosmological runs, turn off CR heating for any gas with density unless it's >1000 times the cosmic mean density
+            Heat += prefac_CR * 1.0e-16 * (0.98 + 1.65*n_elec*HYDROGEN_MASSFRAC) / (1.e-2 + nHcgs) * 9.0e-12;
+        }
 #endif
 #endif
       
+        
+#if defined(RT_HARD_XRAY) || defined(RT_SOFT_XRAY) // account for Compton heating by X-rays:
+        double u_gamma_xr=0, Tc_xr=0, prefac_for_compton = 1.35e-23 * (SphP[target].Density*All.cf_a3inv/P[target].Mass) * All.UnitPressure_in_cgs * All.HubbleParam*All.HubbleParam  / nHcgs; // convert E_gamma to (u_gamma*c)*sigma_Thompson*(4*kB)/(me*c^2) in CGS (last 1/n is to make it in appropriate "Lambda" units)
+#if defined(RT_HARD_XRAY)
+        u_gamma_xr=SphP[target].E_gamma[RT_FREQ_BIN_HARD_XRAY]; Tc_xr=1.7e7; if(T<Tc_xr) {Heat += prefac_for_compton*u_gamma_xr*(Tc_xr-T);}
+#endif
+#if defined(RT_SOFT_XRAY)
+        u_gamma_xr=SphP[target].E_gamma[RT_FREQ_BIN_SOFT_XRAY]; Tc_xr=3.6e6; if(T<Tc_xr) {Heat += prefac_for_compton*u_gamma_xr*(Tc_xr-T);}
+#endif
+#endif
+
         
 #if defined(COOL_METAL_LINES_BY_SPECIES) && defined(COOL_LOW_TEMPERATURES)
         /* Dust collisional heating */
@@ -982,19 +989,18 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         if(T < AGN_T_Compton) Heat += AGN_LambdaPre * (AGN_T_Compton - T) / nHcgs; /* note this is independent of the free electron fraction */
 #endif
         
-#if defined(GALSF_FB_LOCAL_UV_HEATING) || defined(RT_PHOTOELECTRIC)
+#if defined(GALSF_FB_FIRE_RT_UVHEATING) || defined(RT_PHOTOELECTRIC)
         /* Photoelectric heating following Bakes & Thielens 1994 (also Wolfire 1995); now with 'update' from Wolfire 2005 for PAH [fudge factor 0.5 below] */
         if((target >= 0) && (T < 1.0e6))
         {
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
             double photoelec = SphP[target].RadFluxUV;
 #endif
 #ifdef RT_PHOTOELECTRIC
             double photoelec = SphP[target].E_gamma[RT_FREQ_BIN_PHOTOELECTRIC] * (SphP[target].Density*All.cf_a3inv/P[target].Mass) * All.UnitPressure_in_cgs * All.HubbleParam*All.HubbleParam / 3.9e-14; // convert to Habing field //
             if(photoelec > 0)
             {
-                photoelec *= slab_averaging_function(SphP[target].Kappa_RT[RT_FREQ_BIN_PHOTOELECTRIC] * Sigma_particle);
-                // * slab_averaging_function(SphP[target].Kappa_RT[RT_FREQ_BIN_PHOTOELECTRIC] * abs_per_kappa_dt);
+                //photoelec *= slab_averaging_function(SphP[target].Kappa_RT[RT_FREQ_BIN_PHOTOELECTRIC] * Sigma_particle); // * slab_averaging_function(SphP[target].Kappa_RT[RT_FREQ_BIN_PHOTOELECTRIC] * abs_per_kappa_dt);
                 if(photoelec > 1.0e4) {photoelec = 1.e4;}
             }
 #endif
@@ -1123,7 +1129,7 @@ void InitCoolMemory(void)
     
 #ifdef COOL_METAL_LINES_BY_SPECIES
     long i_nH=41; long i_T=176; long kspecies=(long)NUM_METAL_SPECIES-1;
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
+#ifdef GALSF_FB_FIRE_RPROCESS
     //kspecies -= 1;
     kspecies -= NUM_RPROCESS_SPECIES;
 #endif
@@ -1199,7 +1205,7 @@ void ReadMultiSpeciesTables(int iT)
 {
     /* read table w n,T for each species */
     long i_nH=41; long i_Temp=176; long kspecies=(long)NUM_METAL_SPECIES-1; long i,j,k,r;
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
+#ifdef GALSF_FB_FIRE_RPROCESS
     //kspecies -= 1;
     kspecies -= NUM_RPROCESS_SPECIES;
 #endif
@@ -1510,7 +1516,7 @@ double GetCoolingRateWSpecies(double nHcgs, double logT, double *Z)
 {
     double ne_over_nh_tbl=1, Lambda=0;
     int k, N_species_active = NUM_METAL_SPECIES-1;
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
+#ifdef GALSF_FB_FIRE_RPROCESS
     N_species_active -= NUM_RPROCESS_SPECIES;
 #endif
     
@@ -1574,7 +1580,7 @@ double GetLambdaSpecies(long k_index, long index_x0y0, long index_x0y1, long ind
 
 
 
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
 void selfshield_local_incident_uv_flux(void)
 {
     /* include local self-shielding with the following */
@@ -1605,7 +1611,7 @@ void selfshield_local_incident_uv_flux(void)
                 SphP[i].RadFluxEUV = 0;
             }}}
 }
-#endif // GALSF_FB_LOCAL_UV_HEATING
+#endif // GALSF_FB_FIRE_RT_UVHEATING
 
 
 #endif

@@ -100,6 +100,9 @@ static struct densdata_out
     
 #if defined(BLACK_HOLES)
     int BH_TimeBinGasNeighbor;
+#if defined(SINGLE_STAR_FORMATION)
+    MyDouble BH_NearestGasNeighbor;
+#endif 
 #endif
 
 #if defined(TURB_DRIVING) || defined(GRAIN_FLUID)
@@ -165,7 +168,7 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
         ASSIGN_ADD(SphP[i].DhsmlHydroSumFactor, out->DhsmlHydroSumFactor, mode);
 #endif
 
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         ASSIGN_ADD(PPPZ[i].AGS_zeta, out->AGS_zeta,   mode);
 #endif
 
@@ -216,12 +219,20 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
 #ifdef BLACK_HOLES
     if(P[i].Type == 5)
     {
-        if(mode == 0)
+      if(mode == 0){
             BPP(i).BH_TimeBinGasNeighbor = out->BH_TimeBinGasNeighbor;
+#ifdef SINGLE_STAR_FORMATION
+	    BPP(i).BH_NearestGasNeighbor = out->BH_NearestGasNeighbor;
+#endif
+      }
         else
         {
             if(BPP(i).BH_TimeBinGasNeighbor > out->BH_TimeBinGasNeighbor)
                 BPP(i).BH_TimeBinGasNeighbor = out->BH_TimeBinGasNeighbor;
+	    #ifdef SINGLE_STAR_FORMATION
+	    if(BPP(i).BH_NearestGasNeighbor > out->BH_NearestGasNeighbor)
+                BPP(i).BH_NearestGasNeighbor = out->BH_NearestGasNeighbor;
+	    #endif 
         }
     } /* if(P[i].Type == 5) */
 #endif
@@ -695,6 +706,9 @@ void density(void)
                 {
                     desnumngb = All.DesNumNgb;
                     desnumngbdev = All.DesNumNgb / 4;
+#ifdef GRAIN_BACKREACTION
+                    desnumngbdev = desnumngbdev_0;
+#endif
                 }
 #endif
 
@@ -1177,6 +1191,9 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
     memset(&out, 0, sizeof(struct densdata_out));
 #if defined(BLACK_HOLES)
     out.BH_TimeBinGasNeighbor = TIMEBINS;
+#ifdef SINGLE_STAR_FORMATION
+    out.BH_NearestGasNeighbor = 1e100;
+#endif 
 #endif
     
     if(mode == 0)
@@ -1353,15 +1370,13 @@ int density_isactive(int n)
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
     if(((P[n].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[n].Type == 2)||(P[n].Type==3))))&&(P[n].Mass>0))
     {
-#if defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_THERMAL)
+#if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
         /* check if there is going to be a SNe this timestep, in which case, we want the density info! */
         if(P[n].SNe_ThisTimeStep>0) return 1;
-#endif
-#if defined(GALSF_FB_GASRETURN)
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION)
         if(P[n].MassReturn_ThisTimeStep>0) return 1;
-#endif
-#if defined(GALSF_FB_RPROCESS_ENRICHMENT)
         if(P[n].RProcessEvent_ThisTimeStep>0) return 1;
+#endif
 #endif
 #if defined(GALSF)
         if(P[n].DensAroundStar<=0) return 1;
@@ -1413,6 +1428,10 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
 #if defined(BLACK_HOLES)
         if(out->BH_TimeBinGasNeighbor > P[j].TimeBin)
             out->BH_TimeBinGasNeighbor = P[j].TimeBin;
+#ifdef SINGLE_STAR_FORMATION
+        if(out->BH_NearestGasNeighbor > kernel->r)
+            out->BH_NearestGasNeighbor = kernel->r;
+#endif
 #endif
         
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES

@@ -15,7 +15,13 @@ import h5py as h5py
 #   particles laid down randomly according to a uniform probability distribution 
 #   with a specified random velocity dispersion
 #
-def makeIC_box():
+def make_IC():
+    '''
+    This is an example subroutine provided to demonstrate how to make HDF5-format
+    ICs for GIZMO. The specific example here is arbitrary, but can be generalized
+    to whatever IC you need
+    '''
+
     DIMS=2; # number of dimensions 
     N_1D=32; # 1D particle number (so total particle number is N_1D^DIMS)
     fname='box_3d_r32.hdf5'; # output filename 
