@@ -1066,10 +1066,10 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
         case IO_TURB_DYNAMIC_COEFF:
 #ifdef TURB_DIFF_DYNAMIC
             for (n = 0; n < pc; pindex++) {
-              if (P[pindex].Type == type) {
-                *fp++ = SphP[pindex].TD_DynDiffCoeff;
-                n++;
-              }
+                if (P[pindex].Type == type) {
+                    *fp++ = SphP[pindex].TD_DynDiffCoeff;
+                    n++;
+                }
             }
 #endif
             break;
@@ -1450,37 +1450,37 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 
     case IO_TURB_DIFF_COEFF:
 #ifdef TURB_DIFF_DYNAMIC
-      for (n = 0; n < pc; pindex++) {
-        if (P[pindex].Type == type) {
-          *fp++ = SphP[pindex].TD_DiffCoeff;
-          n++;
+        for (n = 0; n < pc; pindex++) {
+            if (P[pindex].Type == type) {
+                *fp++ = SphP[pindex].TD_DiffCoeff;
+                n++;
+            }
         }
-      }
 #endif
 
-      break;
+        break;
             
     case IO_DYNERROR:
 #ifdef TURB_DIFF_DYNAMIC_ERROR
-      for (n = 0; n < pc; pindex++) {
-        if (P[pindex].Type == type) {
-          *fp++ = SphP[pindex].TD_DynDiffCoeff_error;
-          n++;
+        for (n = 0; n < pc; pindex++) {
+            if (P[pindex].Type == type) {
+                *fp++ = SphP[pindex].TD_DynDiffCoeff_error;
+                n++;
+            }
         }
-      }
 #endif
-      break;
+        break;
 
     case IO_DYNERRORDEFAULT:
 #ifdef TURB_DIFF_DYNAMIC_ERROR
-      for (n = 0; n < pc; pindex++) {
-        if (P[pindex].Type == type) {
-          *fp++ = SphP[pindex].TD_DynDiffCoeff_error_default;
-          n++;
+        for (n = 0; n < pc; pindex++) {
+            if (P[pindex].Type == type) {
+                *fp++ = SphP[pindex].TD_DynDiffCoeff_error_default;
+                n++;
+            }
         }
-      }
 #endif
-      break;
+        break;
  
         case IO_LASTENTRY:
             endrun(213);
@@ -2862,20 +2862,20 @@ int blockpresent(enum iofields blocknr)
     case IO_TURB_DYNAMIC_COEFF:
     case IO_TURB_DIFF_COEFF:
 #ifdef TURB_DIFF_DYNAMIC
-      return 1;
+        return 1;
 #else
-      return 0;
+        return 0;
 #endif
-      break;
+        break;
 
     case IO_DYNERRORDEFAULT:
     case IO_DYNERROR:
 #ifdef TURB_DIFF_DYNAMIC_ERROR
-      return 1;
+        return 1;
 #else
-      return 0;
+        return 0;
 #endif
-      break; 
+        break; 
         case IO_LASTENTRY:
             return 0;			/* will not occur */
     }
