@@ -63,9 +63,9 @@ double calculate_eos_tillotson(int i)
     double eta=rho/rho0, mu=eta-1, u_u0eta2=1+u/(u0*eta*eta), p0=u*rho, z=1/eta-1, press=0, cs=0, press_min=1.e-10*u0*rho0; /* useful variables below */
     double Pc = (a + b/u_u0eta2)*p0 + A0*mu + B0*mu*mu; /* pressure in region I,II (fully-condensed states) */
     double c2c_rho = (1+a+b/u_u0eta2)*Pc + A0+B0*(eta*eta-1) + b*(u_u0eta2-1)*(2*p0-Pc)/(u_u0eta2*u_u0eta2); /* sound speed squared (times density) in this region */
-    double Pe = a*p0 + (b/u_u0eta2*p0 + A0*mu * exp(-alpha*z)) * exp(-beta*z*z); /* pressure in region IV (fully-vapor states) */
-    double c2e_rho = (1+a+b/u_u0eta2*exp(-beta*z*z))*Pe + A0*eta*(1+mu*(alpha+2*beta*z-eta)/(eta*eta))*exp(-alpha*z-beta*z*z)
-    + b*p0/(u_u0eta2*u_u0eta2*eta*eta)*(2*beta*z*u_u0eta2*eta + (Pe/(u0*rho)-2*u/u0))*exp(-beta*z*z); /* sound speed squared (times density) in this region */
+    double Pe = a*p0 + (b/u_u0eta2*p0 + A0*mu * exp(-beta*z)) * exp(-alpha*z*z); /* pressure in region IV (fully-vapor states) */
+    double c2e_rho = (1+a+b/u_u0eta2*exp(-alpha*z*z))*Pe + A0*eta*(1+mu*(beta+2*alpha*z-eta)/(eta*eta))*exp(-beta*z-alpha*z*z)
+    + b*p0/(u_u0eta2*u_u0eta2*eta*eta)*(2*alpha*z*u_u0eta2*eta + (Pe/(u0*rho)-2*u/u0))*exp(-alpha*z*z); /* sound speed squared (times density) in this region */
     double Px = (Pe*(u-u_s) + Pc*(u_s_prime - u)) / (u_s_prime - u_s); /* pressure in region III (interpolation) */
     double c2x_rho = (c2c_rho*(u-u_s) + c2e_rho*(u_s_prime - u)) / (u_s_prime - u_s); /* sound speed squared (times density) in region III (interpolation) */
     if(u <= u_s) {press=Pc; cs=c2c_rho;} else {if(u >= u_s_prime) {press=Pe; cs=c2e_rho;} else {press=Px; cs=c2x_rho;}} /* check which regime we are in */

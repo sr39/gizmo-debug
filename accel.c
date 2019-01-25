@@ -73,15 +73,9 @@ void compute_hydro_densities_and_forces(void)
 {
   if(All.TotN_gas > 0)
     {
-        if(ThisTask == 0)
-        {
-            printf("Start hydrodynamics computation...\n");
-        }
+        if(ThisTask == 0) {printf("Start hydrodynamics computation...\n");}
 #ifndef IO_REDUCED_MODE
-        if(ThisTask == 0)
-        {
-            printf("Start density & tree-update computation...\n");
-        }
+        if(ThisTask == 0) {printf("Start density & tree-update computation...\n");}
 #endif
         density();		/* computes density, and pressure */
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
@@ -97,10 +91,7 @@ void compute_hydro_densities_and_forces(void)
          */
         
 #ifndef IO_REDUCED_MODE
-        if(ThisTask == 0)
-        {
-            printf("density & tree-update computation done...\n");
-        }
+        if(ThisTask == 0) {printf("density & tree-update computation done...\n");}
 #endif
 #ifdef TURB_DIFF_DYNAMIC
 #ifndef IO_REDUCED_MODE
@@ -115,17 +106,14 @@ void compute_hydro_densities_and_forces(void)
 #endif
 
         hydro_gradient_calc(); /* calculates the gradients of hydrodynamical quantities  */
-#if defined(COOLING) && defined(GALSF_FB_LOCAL_UV_HEATING)
+#if defined(COOLING) && defined(GALSF_FB_FIRE_RT_UVHEATING)
         selfshield_local_incident_uv_flux();
         /* needs to be called after gravity tree (where raw flux is calculated) 
          and the local gradient calculation (GradRho) to
          properly self-shield the particles that had this calculated */
 #endif
 #ifndef IO_REDUCED_MODE
-        if(ThisTask == 0)
-        {
-            printf("gradient computation done.\n");
-        }
+        if(ThisTask == 0) {printf("gradient computation done.\n");}
 #endif
 #ifdef TURB_DIFF_DYNAMIC
 #ifndef IO_REDUCED_MODE
@@ -140,20 +128,9 @@ void compute_hydro_densities_and_forces(void)
 #endif
 
         hydro_force();		/* adds hydrodynamical accelerations and computes du/dt  */
+        compute_additional_forces_for_all_particles(); /* other accelerations that need to be computed are done here */
 #ifndef IO_REDUCED_MODE
-        if(ThisTask == 0)
-        {
-            printf("hydro force computation done.\n");
-        }
-#endif
-#ifdef GRAIN_FLUID
-        apply_grain_dragforce(); /* if we are solving a coupled set of grains via aerodynamic drag, this is where their acceleration should be calculated */
-#ifndef IO_REDUCED_MODE
-        if(ThisTask == 0)
-        {
-            printf("grain aerodynamic force evaluation done.\n");
-        }
-#endif
+        if(ThisTask == 0) {printf("hydro force computation done.\n");}
 #endif
 
     } else {
@@ -161,8 +138,27 @@ void compute_hydro_densities_and_forces(void)
         ags_density(); // if there are no gas particles but ags-all is active, still need to enter this loop //
         force_update_hmax();    /* update kernel lengths in tree */
 #endif
+        compute_additional_forces_for_all_particles();
     }
 }
+
+
+
+void compute_additional_forces_for_all_particles(void)
+{
+#ifdef DM_FUZZY
+    DMGrad_gradient_calc();
+#endif
+#if defined(DM_FUZZY) || defined(DM_SIDM) || defined(CBE_INTEGRATOR)
+    AGSForce_calc();
+#endif
+#ifdef GRAIN_FLUID
+    apply_grain_dragforce(); /* if we are solving a coupled set of grains via aerodynamic drag, this is where their acceleration should be calculated */
+    if(ThisTask == 0) {printf("grain aerodynamic force evaluation done.\n");}
+#endif
+}
+
+
 
 
 #ifdef GALSF
@@ -170,48 +166,30 @@ void compute_stellar_feedback(void)
 {
     CPU_Step[CPU_MISC] += measure_time();
 
-    /* first, check the mechanical sources of feedback */
-#ifdef GALSF_FB_SNE_HEATING
-#ifndef USE_ORIGINAL_FIRE2_SNE_COUPLING_SCHEME
+#ifdef GALSF_FB_MECHANICAL /* check the mechanical sources of feedback */
+#ifndef GALSF_USE_SNE_ONELOOP_SCHEME
     mechanical_fb_calc(-2); /* compute weights for coupling [first weight-calculation pass] */
 #endif
     mechanical_fb_calc(-1); /* compute weights for coupling [second weight-calculation pass] */
     CPU_Step[CPU_SNIIHEATING] += measure_time();
-#ifdef GALSF_FB_SNE_HEATING
-    mechanical_fb_calc(0); /* actually do the SNe coupling */
+    mechanical_fb_calc(0); /* actually do the mechanical feedback coupling */
+#ifdef GALSF_FB_FIRE_STELLAREVOLUTION
+    mechanical_fb_calc(1); /* additional loop for stellar mass-loss */
+    mechanical_fb_calc(2); /* additional loop for R-process */
+#endif
     CPU_Step[CPU_SNIIHEATING] += measure_time();
 #endif
-#if defined(GALSF_FB_GASRETURN)
-    mechanical_fb_calc(1); /* do the gas return coupling */
-    CPU_Step[CPU_GASRETURN] += measure_time();
-#endif
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
-    mechanical_fb_calc(2); /* do the R-process element injection */
-    CPU_Step[CPU_GASRETURN] += measure_time();
-#endif
-#endif // GALSF_FB_SNE_HEATING
-    
-    
-    /* alternatively use the pure-thermal/scalar sub-grid feedback model */
 #ifdef GALSF_FB_THERMAL
-    thermal_fb_calc();
-#endif
-    
-    /* alternatively use the 'turn off cooling' sub-grid feedback model */
-#ifdef GALSF_GASOLINE_RADHEATING
-    luminosity_heating_gasoline();
+    thermal_fb_calc(); /* thermal feedback */
     CPU_Step[CPU_SNIIHEATING] += measure_time();
 #endif
     
-    /* now do the local photo-ionization heating */
-#ifdef GALSF_FB_HII_HEATING
-    HII_heating_singledomain();
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
+    HII_heating_singledomain(); /* local photo-ionization heating */
     CPU_Step[CPU_HIIHEATING] += measure_time();
 #endif
-    
-    /* finally (if we're not doing it in the star formation routine), do the local radiation pressure */
-#if defined(GALSF_FB_RPWIND_FROMSTARS) && !defined(GALSF_FB_RPWIND_DO_IN_SFCALC)
-    radiation_pressure_winds_consolidated();
+#ifdef GALSF_FB_FIRE_RT_LOCALRP
+    radiation_pressure_winds_consolidated(); /* local radiation pressure */
     CPU_Step[CPU_LOCALWIND] += measure_time();
 #endif
     

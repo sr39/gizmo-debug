@@ -209,38 +209,6 @@ void drift_particle(int i, integertime time1)
             SphP[i].EgyWtDensity *= exp(-divv_fac);
 #endif
             
-            /* check for reflecting boundaries: if so, do the reflection! */
-#if defined(BOX_REFLECT_X) || defined(BOX_REFLECT_Y) || defined(BOX_REFLECT_Z)
-            double box_upper[3]; box_upper[0]=box_upper[1]=box_upper[2]=1;
-#ifdef BOX_PERIODIC
-            box_upper[0]=boxSize_X; box_upper[1]=boxSize_Y; box_upper[2]=boxSize_Z;
-#endif
-            for(j = 0; j < 3; j++)
-            {
-                /* skip the non-reflecting boundaries */
-#ifndef BOX_REFLECT_X
-                if(j==0) continue;
-#endif
-#ifndef BOX_REFLECT_Y
-                if(j==1) continue;
-#endif
-#ifndef BOX_REFLECT_Z
-                if(j==2) continue;
-#endif
-                if(P[i].Pos[j] <= 0)
-                {
-                    if(P[i].Vel[j]<0) {P[i].Vel[j]=-P[i].Vel[j]; SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0;}
-                    P[i].Pos[j]=(0+((double)P[i].ID)*1.e-6)*box_upper[j];
-                }
-                if(P[i].Pos[j] >= box_upper[j])
-                {
-                    if(P[i].Vel[j]>0) {P[i].Vel[j]=-P[i].Vel[j]; SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0;}
-                    P[i].Pos[j]=box_upper[j]*(1-((double)P[i].ID)*1.e-6);
-                }
-            }
-#endif
-            
-            
 #if (HYDRO_FIX_MESH_MOTION > 0)
             PPP[i].Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
             if(PPP[i].Hsml < All.MinHsml) {PPP[i].Hsml = All.MinHsml;}
@@ -257,6 +225,38 @@ void drift_particle(int i, integertime time1)
             SphP[i].InternalEnergyPred = SphP[i].Pressure / (SphP[i].Density * GAMMA_MINUS1);
 #endif
         }
+    
+    /* check for reflecting boundaries: if so, do the reflection! */
+#if defined(BOX_REFLECT_X) || defined(BOX_REFLECT_Y) || defined(BOX_REFLECT_Z)
+    double box_upper[3]; box_upper[0]=box_upper[1]=box_upper[2]=1;
+#ifdef BOX_PERIODIC
+    box_upper[0]=boxSize_X; box_upper[1]=boxSize_Y; box_upper[2]=boxSize_Z;
+#endif
+    for(j = 0; j < 3; j++)
+    {
+        /* skip the non-reflecting boundaries */
+#ifndef BOX_REFLECT_X
+        if(j==0) continue;
+#endif
+#ifndef BOX_REFLECT_Y
+        if(j==1) continue;
+#endif
+#ifndef BOX_REFLECT_Z
+        if(j==2) continue;
+#endif
+        if(P[i].Pos[j] <= 0)
+        {
+            if(P[i].Vel[j]<0) {P[i].Vel[j]=-P[i].Vel[j]; if(P[i].Type==0) {SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0;}}
+            P[i].Pos[j]=(0+((double)P[i].ID)*1.e-9)*box_upper[j];
+        }
+        if(P[i].Pos[j] >= box_upper[j])
+        {
+            if(P[i].Vel[j]>0) {P[i].Vel[j]=-P[i].Vel[j]; if(P[i].Type==0) {SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0;}}
+            P[i].Pos[j]=box_upper[j]*(1-((double)P[i].ID)*1.e-9);
+        }
+    }
+#endif
+
     
     P[i].Ti_current = time1;
 }

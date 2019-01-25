@@ -294,6 +294,9 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                 dp[j] += mass_pred * SphP[i].RadAccel[j] * All.cf_atime * dt_hydrokick;
 #endif
             }
+#ifdef SINKS_FEEL_NO_GRAVITY
+	    if(P[i].Type < 5)
+#endif
             dp[j] += mass_pred * P[i].GravAccel[j] * dt_gravkick;
             P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
         }
@@ -319,13 +322,13 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #endif
             if(P[i].Pos[j] <= 0)
             {
-                if(P[i].Vel[j]<0) {P[i].Vel[j]=-P[i].Vel[j]; SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0; dp[j]+=2*P[i].Vel[j]*mass_new;}
-                P[i].Pos[j]=(0+((double)P[i].ID)*1.e-6)*box_upper[j];
+                if(P[i].Vel[j]<0) {P[i].Vel[j]=-P[i].Vel[j]; if(P[i].Type==0) {SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0;} dp[j]+=2*P[i].Vel[j]*mass_new;}
+                P[i].Pos[j]=(0.+((double)P[i].ID)*1.e-9)*box_upper[j];
             }
             if(P[i].Pos[j] >= box_upper[j])
             {
-                if(P[i].Vel[j]>0) {P[i].Vel[j]=-P[i].Vel[j]; SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0; dp[j]+=2*P[i].Vel[j]*mass_new;}
-                P[i].Pos[j]=box_upper[j]*(1-((double)P[i].ID)*1.e-6);
+                if(P[i].Vel[j]>0) {P[i].Vel[j]=-P[i].Vel[j]; if(P[i].Type==0) {SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0;} dp[j]+=2*P[i].Vel[j]*mass_new;}
+                P[i].Pos[j]=box_upper[j]*(1.-((double)P[i].ID)*1.e-9);
             }
         }
 #endif
@@ -338,6 +341,10 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
              * to the current values. They will then predicted further along in drift operations */
             if(mode==1)
             {
+#ifdef HYDRO_GENERATE_TARGET_MESH // it is often desirable to damp transient velocities when setting up a stable mesh: do so here by un-commenting the line below //
+                //for(j=0;j<3;j++) {P[i].Vel[j] *= exp(-0.15);} // coefficient is constant per-timestep: adjust to make as aggressive or weak as desired //
+#endif
+
                 for(j = 0; j < 3; j++)
                     SphP[i].VelPred[j] = P[i].Vel[j];//(mass_old*v_old[j] + dp[j]) / mass_new;
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -352,6 +359,9 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #ifdef GDE_DISTORTIONTENSOR
         /* momentum-space correction for following phase-space distribution (call after momentum-space kicks) */
         do_the_phase_space_kick(i, dt_gravkick);
+#endif
+#ifdef DM_FUZZY
+        do_dm_fuzzy_drift_kick(i, dt_entr); /* kicks for fuzzy-dm integration */
 #endif
 #ifdef CBE_INTEGRATOR
         do_cbe_drift_kick(i, dt_entr); /* kicks for cbe integration of phase-space distribution function */
@@ -379,7 +389,11 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
 #ifdef COSMIC_RAYS_M1
         for(k=0;k<3;k++) {SphP[i].CosmicRayFluxPred[k] = SphP[i].CosmicRayFlux[k];}
 #endif
+#ifdef COSMIC_RAYS_ALFVEN
+        for(k=0;k<2;k++) {SphP[i].CosmicRayAlfvenEnergyPred[k] = SphP[i].CosmicRayAlfvenEnergy[k];}
 #endif
+#endif
+        
 #if defined(RT_EVOLVE_NGAMMA)
         for(kf=0;kf<N_RT_FREQ_BINS;kf++)
         {
@@ -390,6 +404,10 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
         }
         rt_eddington_update_calculation(i);
 #endif
+#ifdef RT_EVOLVE_INTENSITIES
+        for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k=0;k<N_RT_INTENSITY_BINS;k++) {SphP[i].Intensity_Pred[kf][k] = SphP[i].Intensity[kf][k];}}
+#endif
+
 #ifdef EOS_ELASTIC
         for(k=0;k<3;k++) {for(kf=0;kf<3;kf++) {SphP[i].Elastic_Stress_Tensor_Pred[k][kf]=SphP[i].Elastic_Stress_Tensor[k][kf];}}
 #endif

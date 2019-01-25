@@ -78,10 +78,6 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     out.MaxSignalVel = kernel.sound_i;
     kernel_mode = 0; /* need dwk and wk */
     double cnumcrit2 = ((double)CONDITION_NUMBER_DANGER)*((double)CONDITION_NUMBER_DANGER) - local.ConditionNumber*local.ConditionNumber;
-    //define units used for upwind instead of time-centered formulation//
-    //double cs_t_to_comoving_x = All.cf_afac3 / All.cf_atime; /* convert to code (comoving) length units */
-    //double delta_halfstep_i=0,delta_halfstep_j=0;
-    
 #if defined(HYDRO_SPH)
 #ifdef HYDRO_PRESSURE_SPH
     kernel.p_over_rho2_i = local.Pressure / (local.EgyWtRho*local.EgyWtRho);
@@ -156,6 +152,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* check if I need to compute this pair-wise interaction from "i" to "j", or skip it and 
                     let it be computed from "j" to "i" */
                 int TimeStep_J = (P[j].TimeBin ? (1 << P[j].TimeBin) : 0);
+                int j_is_active_for_fluxes = 0;
 #ifndef BOX_SHEARING // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //
                 if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
                 /* use relative positions to break degeneracy */
@@ -164,6 +161,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     int n0=0; if(local.Pos[n0] == P[j].Pos[n0]) {n0++; if(local.Pos[n0] == P[j].Pos[n0]) n0++;}
                     if(local.Pos[n0] < P[j].Pos[n0]) continue;
                 }
+                if(TimeBinActive[P[j].TimeBin]) {j_is_active_for_fluxes = 1;}
 #endif
                 if(P[j].Mass <= 0) continue;
                 if(SphP[j].Density <= 0) continue;
@@ -261,10 +259,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
                 double KE = kernel.dv[0]*kernel.dv[0] + kernel.dv[1]*kernel.dv[1] + kernel.dv[2]*kernel.dv[2];
                 if(KE > out.MaxKineticEnergyNgb) out.MaxKineticEnergyNgb = KE;
-                if(TimeBinActive[P[j].TimeBin])
-                {
-                    if(KE > SphP[j].MaxKineticEnergyNgb) SphP[j].MaxKineticEnergyNgb = KE;
-                }
+                if(j_is_active_for_fluxes) {if(KE > SphP[j].MaxKineticEnergyNgb) SphP[j].MaxKineticEnergyNgb = KE;}
 #endif
 #ifdef TURB_DIFF_METALS
                 double mdot_estimated = 0;
@@ -380,7 +375,11 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                 
 #ifdef RT_DIFFUSION_EXPLICIT
+#if defined(RT_EVOLVE_INTENSITIES)
+#include "../radiation/rt_direct_ray_transport.h"
+#else
 #include "../radiation/rt_diffusion_explicit.h"
+#endif
 #endif
                 
                 
@@ -400,22 +399,8 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double gravwork[3]; gravwork[0]=Fluxes.rho*kernel.dp[0]; gravwork[1]=Fluxes.rho*kernel.dp[1]; gravwork[2]=Fluxes.rho*kernel.dp[2];
                 for(k=0;k<3;k++) {out.GravWorkTerm[k] += gravwork[k];}
 #endif
-                for(k=0;k<3;k++)
-                {
-                    out.Acc[k] += Fluxes.v[k];
-                    //out.dMomentum[k] += Fluxes.v[k] * dt_hydrostep; //manifest-indiv-timestep-debug//
-                    //SphP[j].dMomentum[k] -= Fluxes.v[k] * dt_hydrostep; //manifest-indiv-timestep-debug//
-                }
-                out.DtInternalEnergy += Fluxes.p;
-#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
-                for(k=0;k<N_RT_FREQ_BINS;k++) {out.Dt_E_gamma[k] += Fluxes_E_gamma[k];}
-#if defined(RT_INFRARED)
-                out.Dt_E_gamma_T_weighted_IR += Fluxes_E_gamma_T_weighted_IR;
-#endif
-#endif
-#ifdef RT_EVOLVE_FLUX
-                for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {out.Dt_Flux[k][k_dir] += Fluxes_Flux[k][k_dir];}}
-#endif
+                for(k=0;k<3;k++) {out.Acc[k] += Fluxes.v[k];}
+                out.DtInternalEnergy += Fluxes.p;                
 #ifdef MAGNETIC
 #ifndef HYDRO_SPH
                 for(k=0;k<3;k++) {out.Face_Area[k] += Face_Area_Vec[k];}
@@ -433,11 +418,6 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double wt_face_sum = Face_Area_Norm * (-face_area_dot_vel+face_vel_i);
                 out.DtInternalEnergy += 0.5 * kernel.b2_i*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
 #ifdef DIVBCLEANING_DEDNER
-                //out.DtPhi += (Riemann_out.phi_normal_mean - local.PhiPred*All.cf_a3inv) * wt_face_sum; // now use mass-based phi-flux
-                /*
-                double phi_normal_full = Riemann_out.phi_normal_mean + Riemann_out.phi_normal_db;
-                for(k=0;k<3;k++) {out.DtB_PhiCorr[k] += phi_normal_full * Face_Area_Vec[k];}
-                */ 
                 for(k=0; k<3; k++)
                 {
                     out.DtB_PhiCorr[k] += Riemann_out.phi_normal_db * Face_Area_Vec[k];
@@ -452,20 +432,8 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #endif // magnetic //
                 
-#ifdef COSMIC_RAYS
-                out.DtCosmicRayEnergy += Fluxes.CosmicRayPressure;
-#ifdef COSMIC_RAYS_M1
-                for(k=0;k<3;k++) {out.DtCosmicRayFlux[k] += Fluxes.CosmicRayFlux[k];}
-#endif
-#endif
-                
-                //out.dInternalEnergy += Fluxes.p * dt_hydrostep; //manifest-indiv-timestep-debug//
-                //SphP[j].dInternalEnergy -= Fluxes.p * dt_hydrostep; //manifest-indiv-timestep-debug//
-                
-                /* if this is particle j's active timestep, you should sent them the time-derivative
-                 information as well, for their subsequent drift operations */
-#ifndef BOX_SHEARING
-                if(TimeBinActive[P[j].TimeBin])
+                /* if this is particle j's active timestep, you should sent them the time-derivative information as well, for their subsequent drift operations */
+                if(j_is_active_for_fluxes)
                 {
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                     SphP[j].DtMass -= Fluxes.rho;
@@ -473,15 +441,6 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                     for(k=0;k<3;k++) {SphP[j].HydroAccel[k] -= Fluxes.v[k];}
                     SphP[j].DtInternalEnergy -= Fluxes.p;
-#if defined(RT_EVOLVE_NGAMMA_IN_HYDRO)
-                    for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[j].Dt_E_gamma[k] -= Fluxes_E_gamma[k];}
-#if defined(RT_INFRARED)
-                    SphP[j].Dt_E_gamma_T_weighted_IR -= Fluxes_E_gamma_T_weighted_IR;
-#endif
-#endif
-#ifdef RT_EVOLVE_FLUX
-                    for(k=0;k<N_RT_FREQ_BINS;k++) {int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[j].Dt_Flux[k][k_dir] -= Fluxes_Flux[k][k_dir];}}
-#endif
 #ifdef MAGNETIC
 #ifndef HYDRO_SPH
                     for(k=0;k<3;k++) {SphP[j].Face_Area[k] -= Face_Area_Vec[k];}
@@ -499,10 +458,6 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double wt_face_sum = Face_Area_Norm * (-face_area_dot_vel+face_vel_j);
                     SphP[j].DtInternalEnergy -= 0.5 * kernel.b2_j*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
 #ifdef DIVBCLEANING_DEDNER
-                    //SphP[j].DtPhi -= (Riemann_out.phi_normal_mean - PhiPred_j*All.cf_a3inv) * wt_face_sum; // mass-based phi-flux
-                    /*
-                    for(k=0;k<3;k++) {SphP[j].DtB_PhiCorr[k] -= phi_normal_full * Face_Area_Vec[k];;}
-                    */
                     for(k=0; k<3; k++)
                     {
                         SphP[j].DtB_PhiCorr[k] -= Riemann_out.phi_normal_db * Face_Area_Vec[k];
@@ -517,14 +472,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #endif // magnetic //
 
-#ifdef COSMIC_RAYS
-                    SphP[j].DtCosmicRayEnergy -= Fluxes.CosmicRayPressure;
-#ifdef COSMIC_RAYS_M1
-                    for(k=0;k<3;k++) {SphP[j].DtCosmicRayFlux[k] -= Fluxes.CosmicRayFlux[k];}
-#endif
-#endif
                 }
-#endif
 
                 /* if we have mass fluxes, we need to have metal fluxes if we're using them (or any other passive scalars) */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -545,13 +493,12 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                 }
 #endif
-                
+
                 /* --------------------------------------------------------------------------------- */
                 /* don't forget to save the signal velocity for time-stepping! */
                 /* --------------------------------------------------------------------------------- */
                 if(kernel.vsig > out.MaxSignalVel) out.MaxSignalVel = kernel.vsig;
-                if(TimeBinActive[P[j].TimeBin])
-                    if(kernel.vsig > SphP[j].MaxSignalVel) SphP[j].MaxSignalVel = kernel.vsig;
+                if(j_is_active_for_fluxes) {if(kernel.vsig > SphP[j].MaxSignalVel) SphP[j].MaxSignalVel = kernel.vsig;}
 #ifdef WAKEUP
                 if(!(TimeBinActive[P[j].TimeBin]))
                 {

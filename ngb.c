@@ -139,6 +139,18 @@ int ngb_treefind_variable_targeted(MyDouble searchcenter[3], MyFloat hsml, int t
     if(P[p].Mass <= 0) continue; // skip zero-mass particles
 #include "system/ngb_codeblock_after_condition_unthreaded.h" // call the main loop block as above, but this time the -unthreaded- version
 }
+/* identical to above but includes 'both ways' search for interacting neighbors */
+int ngb_treefind_pairs_targeted(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode, int *nexport, int *nsend_local, int TARGET_BITMASK)
+{
+    int nexport_save = *nexport; /* this line must be here in the un-threaded versions */
+#include "system/ngb_codeblock_before_condition.h" // call the same variable/initialization block
+    if(!((1 << P[p].Type) & (TARGET_BITMASK))) continue; // skip anything not of the desired type
+    if(P[p].Mass <= 0) continue; // skip zero-mass particles
+#define SEARCHBOTHWAYS 1 // only need neighbors inside of search radius, not particles 'looking at' primary
+#include "system/ngb_codeblock_after_condition_unthreaded.h" // call the main loop block as above, but this time the -unthreaded- version
+#undef SEARCHBOTHWAYS
+}
+
 
 /*  slightly modified version of treefind that searches for one or more types of particles: 
         TARGET_BITMASK should be set as a bitmask, i.e. SUM(2^n), where n are all the particle types desired for neighbor finding,
@@ -152,6 +164,18 @@ int ngb_treefind_variable_threads_targeted(MyDouble searchcenter[3], MyFloat hsm
     if(!((1 << P[p].Type) & (TARGET_BITMASK))) continue; // skip anything not of the desired type
     if(P[p].Mass <= 0) continue; // skip zero-mass particles
 #define SEARCHBOTHWAYS 0 // only need neighbors inside of search radius, not particles 'looking at' primary
+#include "system/ngb_codeblock_after_condition_threaded.h"
+#undef SEARCHBOTHWAYS
+}
+/* identical to above but includes 'both ways' search for interacting neighbors */
+int ngb_treefind_pairs_threads_targeted(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
+                                           int mode, int *exportflag, int *exportnodecount, int *exportindex,
+                                           int *ngblist, int TARGET_BITMASK)
+{
+#include "system/ngb_codeblock_before_condition.h"
+    if(!((1 << P[p].Type) & (TARGET_BITMASK))) continue; // skip anything not of the desired type
+    if(P[p].Mass <= 0) continue; // skip zero-mass particles
+#define SEARCHBOTHWAYS 1 // only need neighbors inside of search radius, not particles 'looking at' primary
 #include "system/ngb_codeblock_after_condition_threaded.h"
 #undef SEARCHBOTHWAYS
 }

@@ -222,20 +222,16 @@ FILE
 #endif
 *FdCPU;         /*!< file handle for cpu.txt log-file. */
 
-#ifdef SCFPOTENTIAL
-FILE *FdSCF;
-#endif
-
 #ifdef GALSF
 FILE *FdSfr;			/*!< file handle for sfr.txt log-file. */
 #endif
-#ifdef GALSF_FB_RPWIND_LOCAL
+#ifdef GALSF_FB_FIRE_RT_LOCALRP
 FILE *FdMomWinds;	/*!< file handle for MomWinds.txt log-file */
 #endif
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
 FILE *FdHIIHeating;	/*!< file handle for HIIheating.txt log-file */
 #endif
-#ifdef GALSF_FB_SNE_HEATING
+#ifdef GALSF_FB_MECHANICAL
 FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 #endif
 
@@ -355,17 +351,10 @@ int NextJ;
 int TimerFlag;
 
 struct NODE *Nodes_base,	/*!< points to the actual memory allocted for the nodes */
- *Nodes;			/*!< this is a pointer used to access the nodes which is shifted such that Nodes[All.MaxPart]
-				   gives the first allocated node */
-
-
+*Nodes;			/*!< this is a pointer used to access the nodes which is shifted such that Nodes[All.MaxPart] gives the first allocated node */
 struct extNODE *Extnodes, *Extnodes_base;
-
-
 int MaxNodes;			/*!< maximum allowed number of internal nodes */
 int Numnodestree;		/*!< number of (internal) nodes in each tree */
-
-
 int *Nextnode;			/*!< gives next node in tree walk  (nodes array) */
 int *Father;			/*!< gives parent node in tree (Prenodes array) */
 
@@ -374,6 +363,11 @@ int *Father;			/*!< gives parent node in tree (Prenodes array) */
 int maxThreads = PTHREADS_NUM_THREADS;
 #else
 int maxThreads = 1;
+#endif
+
+
+#ifdef DM_SIDM
+MyDouble GeoFactorTable[GEOFACTOR_TABLE_LENGTH];
 #endif
 
 

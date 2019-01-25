@@ -38,7 +38,7 @@ OmegaLambda                        0
 OmegaBaryon                        0
 HubbleParam                        1
 BoxSize                            1
-OutputListOn                       1
+OutputListOn                       0
 TimeBetSnapshot                    1
 TimeOfFirstSnapshot                0
 TimeBetStatistics                  0.1

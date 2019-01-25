@@ -111,14 +111,6 @@ void init(void)
     All.Time = All.TimeBegin;
     set_cosmo_factors_for_current_time();
     
-#ifdef SCFPOTENTIAL
-    SCF_init();
-    if(ThisTask == 0)
-    {
-        printf("Initial random seed = %ld\n", scf_seed);
-    }
-#endif
-    
     
 #ifdef COOLING
     IonizeParams();
@@ -224,7 +216,6 @@ void init(void)
     {
         for(j = 0; j < 3; j++)
             P[i].GravAccel[j] = 0;
-        
         /* DISTORTION PARTICLE SETUP */
 #ifdef GDE_DISTORTIONTENSOR
         /*init tidal tensor for first output (not used for calculation) */
@@ -235,7 +226,7 @@ void init(void)
         /* find caustics by sign analysis of configuration space distortion */
         P[i].last_determinant = 1.0;
         
-#ifdef OUTPUT_LAST_CAUSTIC
+#ifdef OUTPUT_GDE_LASTCAUSTIC
         /* all entries zero -> no caustic yet */
         P[i].lc_Time = 0.0;
         P[i].lc_Pos[0] = 0.0;
@@ -371,21 +362,19 @@ void init(void)
             P[i].GradRho[1]=0;
             P[i].GradRho[2]=1;
 #endif
-#if defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_THERMAL)
+#if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
             P[i].SNe_ThisTimeStep = 0;
 #endif
-#ifdef GALSF_FB_SNE_HEATING
+#ifdef GALSF_FB_MECHANICAL
             int k; for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {P[i].Area_weighted_sum[k] = 0;}
-#endif
-#ifdef GALSF_FB_GASRETURN
+#ifdef GALSF_FB_FIRE_STELLAREVOLUTION
             P[i].MassReturn_ThisTimeStep = 0;
-#endif
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
             P[i].RProcessEvent_ThisTimeStep = 0;
+#endif
 #endif
         }
         
-#if defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(GALSF_FB_THERMAL)
+#if defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
         if(RestartFlag == 0)
         {
             P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (All.UnitTime_in_Megayears*0.001) * get_random_number(P[i].ID + 3);
@@ -395,16 +384,53 @@ void init(void)
 #ifdef GRAIN_FLUID
         if(RestartFlag == 0)
         {
+            /* Change grain mass to change the distribution of sizes.  Grain_Size_Spectrum_Powerlaw parameter sets d\mu/dln(R_d) ~ R_d^Grain_Size_Spectrum_Powerlaw */
             P[i].Grain_Size = All.Grain_Size_Min * exp( gsl_rng_uniform(random_generator) * log(All.Grain_Size_Max/All.Grain_Size_Min) );
-            P[i].Gas_Density = 0;
-            P[i].Gas_InternalEnergy = 0;
-            P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0;
+            if(P[i].Type==3) {if(All.Grain_Size_Max > All.Grain_Size_Min*1.0001 && fabs(All.Grain_Size_Spectrum_Powerlaw) != 0) {P[i].Mass *= (All.Grain_Size_Spectrum_Powerlaw/(pow(All.Grain_Size_Max/All.Grain_Size_Min,All.Grain_Size_Spectrum_Powerlaw)-1.)) * pow(P[i].Grain_Size/All.Grain_Size_Min,All.Grain_Size_Spectrum_Powerlaw) * log(All.Grain_Size_Max/All.Grain_Size_Min);}}
+
+
+#ifdef GRAIN_RDI_TESTPROBLEM
+	    if(P[i].Type == 3) /* initialize various quantities for test problems from parameters set in the ICs */
+	    {
+		P[i].Mass *= All.Dust_to_Gas_Mass_Ratio;
+		{ 	
+			double tS0 = 0.626657 * P[i].Grain_Size * sqrt(GAMMA); /* stopping time [Epstein] for driftvel->0 */
+            double a0 = tS0 * All.Vertical_Grain_Accel / (1.+All.Dust_to_Gas_Mass_Ratio); /* acc * tS0 / (1+mu) */
+#ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
+			a0 *= All.Grain_Size_Max / P[i].Grain_Size;
+#endif
+            double ct = cos(All.Vertical_Grain_Accel_Angle * M_PI/180.), st = sin(All.Vertical_Grain_Accel_Angle * M_PI/180.); /* relevant angles */
+			int k; double agamma=0.220893; // 9pi/128 //
+			double tau2=0, ct2=0, w0=sqrt((sqrt(1.+4.*agamma*a0*a0)-1.)/(2.*agamma)); // exact solution if no Lorentz forces and Epstein drag //
+#ifdef GRAIN_LORENTZFORCE
+			double tL_i = All.Grain_Charge_Parameter/All.Grain_Size_Max * pow(All.Grain_Size_Max/P[i].Grain_Size,2) * All.BiniZ; // 1/Lorentz in code units
+            ct2=ct*ct; double tau2_0=pow(tS0*tL_i,2), f_tau_guess2=0; // variables for below //
+			for(k=0;k<20;k++)
+			{
+			   tau2 = tau2_0 / (1. + agamma*w0*w0); // guess tau [including velocity dependence] //
+			   f_tau_guess2 = (1.+tau2*ct2) / (1.+tau2); // what the projection factor (reduction in w from projection) would be //
+			   w0 = sqrt((sqrt(1.+4.*agamma*a0*a0*f_tau_guess2)-1.)/(2.*agamma)); // re-calculate w0 with this // 
+			}
+#endif
+		w0 /= sqrt((1.+tau2)*(1.+tau2*ct2)); // ensures normalization to unity with convention below //
+        int non_gdir=1; 
+        if(GRAV_DIRECTION_RDI==1) {non_gdir=2;}
+		P[i].Vel[0] = w0*st; P[i].Vel[non_gdir] = w0*sqrt(tau2)*st; P[i].Vel[GRAV_DIRECTION_RDI] = w0*(1.+tau2)*ct;
+        a0 = tS0 * All.Vertical_Gravity_Strength / (1.+All.Dust_to_Gas_Mass_Ratio); w0=sqrt((sqrt(1.+4.*agamma*a0*a0)-1.)/(2.*agamma));
+        P[i].Vel[GRAV_DIRECTION_RDI] -= w0;
+		}
+	    }	    
+#endif
+
+            P[i].Gas_Density = P[i].Gas_InternalEnergy = P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0;
+#ifdef GRAIN_BACKREACTION
+            P[i].Grain_DeltaMomentum[0]=P[i].Grain_DeltaMomentum[1]=P[i].Grain_DeltaMomentum[2]=0;
+#endif
 #ifdef GRAIN_COLLISIONS
-            P[i].Grain_Density = 0;
-            P[i].Grain_Velocity[0]=P[i].Grain_Velocity[1]=P[i].Grain_Velocity[2]=0;
+            P[i].Grain_Density=P[i].Grain_Velocity[0]=P[i].Grain_Velocity[1]=P[i].Grain_Velocity[2]=0;
 #endif
 #ifdef GRAIN_LORENTZFORCE
-            P[i].Gas_B[0]=P[i].Gas_B[1]=P[i].Gas_B[2];
+            P[i].Gas_B[0]=P[i].Gas_B[1]=P[i].Gas_B[2]=0;
 #endif
         }
 #endif
@@ -428,13 +454,13 @@ void init(void)
             All.SolarAbundances[10]=1.73e-3; // Fe (7.50 -> 1.31e-3, AG=1.92e-3)
         }
 #endif // COOL_METAL_LINES_BY_SPECIES
-#ifdef GALSF_FB_RPROCESS_ENRICHMENT
+#ifdef GALSF_FB_FIRE_RPROCESS
         //All.SolarAbundances[NUM_METAL_SPECIES-1]=0.0; // R-process tracer
         for(j=1;j<=NUM_RPROCESS_SPECIES;j++) All.SolarAbundances[NUM_METAL_SPECIES-j]=0.0; // R-process tracer
 #endif
         
         if(RestartFlag == 0) {
-#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_RPWIND_LOCAL) || defined(GALSF_FB_HII_HEATING) || defined(GALSF_FB_SNE_HEATING) || defined(GALSF_FB_RT_PHOTONMOMENTUM) || defined(GALSF_FB_THERMAL)
+#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
             P[i].Metallicity[0] = All.InitMetallicityinSolar*All.SolarAbundances[0];
 #else
             P[i].Metallicity[0] = 0;
@@ -459,6 +485,9 @@ void init(void)
 #ifdef BH_ALPHADISK_ACCRETION
                 BPP(i).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
 #endif
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+                BPP(i).SinkRadius = 0;
+#endif		
 #ifdef BH_COUNTPROGS
                 BPP(i).BH_CountProgs = 1;
 #endif
@@ -471,8 +500,7 @@ void init(void)
     MPI_Allreduce(&count_holes, &All.TotBHs, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 #endif
     
-    for(i = 0; i < TIMEBINS; i++)
-        TimeBinActive[i] = 1;
+    for(i = 0; i < TIMEBINS; i++) {TimeBinActive[i] = 1;}
     
     reconstruct_timebins();
     
@@ -565,7 +593,7 @@ void init(void)
 #ifdef COOLING
             SphP[i].Ne = 1.0;
 #endif
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
             SphP[i].RadFluxUV = 0;
             SphP[i].RadFluxEUV = 0;
 #endif
@@ -580,7 +608,7 @@ void init(void)
         SphP[i].HostHaloMass = 0;
 #endif
 #endif // GALSF_SUBGRID_WINDS //
-#ifdef GALSF_FB_HII_HEATING
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING
         SphP[i].DelayTimeHII = 0;
 #endif
 #ifdef GALSF_FB_TURNOFF_COOLING
@@ -588,6 +616,9 @@ void init(void)
 #endif
 #ifdef GALSF
         SphP[i].Sfr = 0;
+#if (GALSF_SFR_VIRIAL_SF_CRITERION>=3)
+        SphP[i].AlphaVirial_SF_TimeSmoothed = 0;
+#endif
 #endif
 #ifdef COSMIC_RAYS
         if(RestartFlag == 0) {SphP[i].CosmicRayEnergy = 0;}
@@ -743,6 +774,7 @@ void init(void)
     
     /* HELLO! This here is where you should insert custom code for hard-wiring the ICs of various test problems */
 
+
     
     
     density();
@@ -775,7 +807,14 @@ void init(void)
         {
             SphP[i].CosmicRayFlux[j]=0;
             SphP[i].CosmicRayFluxPred[j]=0;
-            SphP[i].DtCosmicRayFlux[j]=0;    
+        }
+#endif
+#ifdef COSMIC_RAYS_ALFVEN
+        for(j=0;j<2;j++)
+        {
+            SphP[i].CosmicRayAlfvenEnergy[j]=0;
+            SphP[i].CosmicRayAlfvenEnergyPred[j]=0;
+            SphP[i].DtCosmicRayAlfvenEnergy[j]=0;
         }
 #endif
 #endif
@@ -805,7 +844,7 @@ void init(void)
         SphP[i].Super_Timestep_Dt_Explicit = 0;
         SphP[i].Super_Timestep_j = 0;
 #endif
-#ifdef GALSF_FB_LOCAL_UV_HEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING
         SphP[i].RadFluxUV = 0;
         SphP[i].RadFluxEUV = 0;
 #endif
@@ -932,15 +971,6 @@ void init(void)
         endrun(0);
     }
 #endif
-    
-    
-    if(RestartFlag == 6)
-    {
-#if defined(BOX_PERIODIC) && defined(TURB_DRIVING_DUMPSPECTRUM)
-        TURB_DRIVING_DUMPSPECTRUM();
-#endif
-        endrun(0);
-    }
     
     
     if(RestartFlag == 4)
@@ -1122,11 +1152,11 @@ void ags_setup_smoothinglengths(void)
                         break;
                     no = p;
                 }
-                PPP[i].AGS_Hsml = pow(1.0/NORM_COEFF * All.AGS_DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
+                PPP[i].AGS_Hsml = 2. * pow(1.0/NORM_COEFF * All.AGS_DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
                 if(All.SofteningTable[P[i].Type] != 0)
                 {
-                    if((PPP[i].AGS_Hsml>1000.*All.SofteningTable[P[i].Type])||(PPP[i].AGS_Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
-                        PPP[i].AGS_Hsml = All.SofteningTable[P[i].Type];
+                    if((PPP[i].AGS_Hsml>ADAPTIVE_GRAVSOFT_FORALL*All.SofteningTable[P[i].Type])||(PPP[i].AGS_Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
+                        PPP[i].AGS_Hsml = sqrt(ADAPTIVE_GRAVSOFT_FORALL) * All.SofteningTable[P[i].Type];
                 }
             } else {
                 PPP[i].AGS_Hsml = PPP[i].Hsml;

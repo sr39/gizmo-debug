@@ -13,11 +13,10 @@
 #define HYDRO_FACE_AREA_LIMITER // use more restrictive face-area limiter in the simulations [some applications this is useful, but unclear if we can generally apply it] //
 #endif
     
-    double s_star_ij,s_i,s_j,v_frame[3],n_unit[3];
+    double s_star_ij,s_i,s_j,v_frame[3],n_unit[3],dummy_pressure;
     double distance_from_i[3],distance_from_j[3];
-    face_area_dot_vel=face_vel_i=face_vel_j=Face_Area_Norm=0;
+    dummy_pressure=face_area_dot_vel=face_vel_i=face_vel_j=Face_Area_Norm=0;
     double Pressure_i = local.Pressure, Pressure_j = SphP[j].Pressure;
-    double dummy_pressure = 0;
 #if defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)
     /* negative pressures are allowed, but dealt with below by a constant shift and re-shift, which should be invariant for HLLC with the MFM method */
     if((Pressure_i<0)||(Pressure_j<0))
@@ -38,6 +37,9 @@
 #endif
 #ifdef COSMIC_RAYS
     Fluxes.CosmicRayPressure = 0;
+#ifdef COSMIC_RAYS_ALFVEN
+    Fluxes.CosmicRayAlfvenEnergy[0] = Fluxes.CosmicRayAlfvenEnergy[1] = 0;
+#endif
 #endif
     
     /* --------------------------------------------------------------------------------- */
@@ -77,6 +79,38 @@
         Face_Area_Norm += Face_Area_Vec[k]*Face_Area_Vec[k];
         facenormal_dot_dp += Face_Area_Vec[k] * kernel.dp[k]; /* check that face points same direction as vector normal: should be true for positive-definite (well-conditioned) NV_T */
     }
+    
+#if defined(KERNEL_CRK_FACES)
+    {
+        // order of Tensor_CRK_Face_Corrections: A, B[3], (dA+A*B)[3], (dA.B+A.dB)[3][3] //
+        double wk_ij = 0.5*(kernel.wk_i+kernel.wk_j), dwk_ij = 0.5*(kernel.dwk_i+kernel.dwk_j) / (MIN_REAL_NUMBER + kernel.r);
+        double Bi_dot_dx = 0, Bj_dot_dx = 0, dAi_etc_dot_dx[3]={0}, dAj_etc_dot_dx[3]={0};
+        for(k=0;k<3;k++)
+        {
+            Bi_dot_dx +=   local.Tensor_CRK_Face_Corrections[k+1] * kernel.dp[k];
+            Bj_dot_dx -= SphP[j].Tensor_CRK_Face_Corrections[k+1] * kernel.dp[k];
+            int k_x;
+            for(k_x=0;k_x<3;k_x++)
+            {
+                dAi_etc_dot_dx[k_x] +=   local.Tensor_CRK_Face_Corrections[7+3*k+k_x] * kernel.dp[k];
+                dAj_etc_dot_dx[k_x] -= SphP[j].Tensor_CRK_Face_Corrections[7+3*k+k_x] * kernel.dp[k];
+            }
+        }
+        Face_Area_Norm = 0; facenormal_dot_dp = 0;
+        for(k=0;k<3;k++)
+        {
+            double Ai = -V_i*V_j*(    local.Tensor_CRK_Face_Corrections[0] * (1. + Bi_dot_dx) * dwk_ij * (+kernel.dp[k])
+                                 + (  local.Tensor_CRK_Face_Corrections[4+k] + dAi_etc_dot_dx[k]) * wk_ij);
+            double Aj = -V_i*V_j*(  SphP[j].Tensor_CRK_Face_Corrections[0] * (1. + Bj_dot_dx) * dwk_ij * (-kernel.dp[k])
+                                 + (SphP[j].Tensor_CRK_Face_Corrections[4+k] + dAj_etc_dot_dx[k]) * wk_ij);
+            Face_Area_Vec[k] = (Ai - Aj) * All.cf_atime*All.cf_atime;
+            Face_Area_Norm += Face_Area_Vec[k]*Face_Area_Vec[k];
+            facenormal_dot_dp += Face_Area_Vec[k] * kernel.dp[k]; /* check that face points same direction as vector normal: should be true for positive-definite (well-conditioned) NV_T */
+        }
+    }
+#endif
+
+    
     if((SphP[j].ConditionNumber*SphP[j].ConditionNumber > 1.0e12 + cnumcrit2) || (facenormal_dot_dp < 0))
     {
         /* the effective gradient matrix is ill-conditioned (or not positive-definite!): for stability, we revert to the "RSPH" EOM */
@@ -137,9 +171,6 @@
         /* --------------------------------------------------------------------------------- */
         s_i =  0.5 * kernel.r;
         s_j = -0.5 * kernel.r;
-        //(simple up-winding formulation: use if desired instead of time-centered fluxes)//
-        //delta_halfstep_i = kernel.sound_i*0.5*dt_hydrostep*cs_t_to_comoving_x; if(delta_halfstep_i>s_i) {delta_halfstep_i=s_i;}
-        //delta_halfstep_j = kernel.sound_j*0.5*dt_hydrostep*cs_t_to_comoving_x; if(delta_halfstep_j>-s_j) {delta_halfstep_j=-s_j;}
 #ifdef DO_HALFSTEP_FOR_MESHLESS_METHODS
         /* advance the faces a half-step forward in time (given our leapfrog scheme, this actually has
             very, very weak effects on the errors. nonetheless it does help a small amount in reducing
@@ -147,8 +178,16 @@
         s_i += 0.5 * dt_hydrostep * (local.Vel[0]*kernel.dp[0] + local.Vel[1]*kernel.dp[1] + local.Vel[2]*kernel.dp[2]) * rinv;
         s_j += 0.5 * dt_hydrostep * (VelPred_j[0]*kernel.dp[0] + VelPred_j[1]*kernel.dp[1] + VelPred_j[2]*kernel.dp[2]) * rinv;
 #endif
-        s_i = s_star_ij - s_i; //+ delta_halfstep_i; /* projection element for gradients */
-        s_j = s_star_ij - s_j; //- delta_halfstep_j;
+#ifdef DO_UPWIND_TIME_CENTERING
+        //(simple up-winding formulation: use if desired instead of time-centered fluxes)//
+        double delta_halfstep_i = kernel.sound_i*0.5*dt_hydrostep*(All.cf_afac3/All.cf_atime); if(delta_halfstep_i>s_i) {delta_halfstep_i=s_i;}
+        double delta_halfstep_j = kernel.sound_j*0.5*dt_hydrostep*(All.cf_afac3/All.cf_atime); if(delta_halfstep_j>-s_j) {delta_halfstep_j=-s_j;}
+        s_i = s_star_ij - s_i + delta_halfstep_i; /* projection element for gradients */
+        s_j = s_star_ij - s_j - delta_halfstep_j;
+#else
+        s_i = s_star_ij - s_i; /* projection element for gradients */
+        s_j = s_star_ij - s_j;
+#endif
         distance_from_i[0]=kernel.dp[0]*rinv; distance_from_i[1]=kernel.dp[1]*rinv; distance_from_i[2]=kernel.dp[2]*rinv;
         for(k=0;k<3;k++) {distance_from_j[k] = distance_from_i[k] * s_j; distance_from_i[k] *= s_i;}
         //for(k=0;k<3;k++) {v_frame[k] = 0.5 * (VelPred_j[k] + local.Vel[k]);}
@@ -405,6 +444,9 @@
             } else {
                 Fluxes.CosmicRayPressure = Fluxes.rho * (CosmicRayPressure_j*V_j/(GAMMA_COSMICRAY_MINUS1*P[j].Mass));
             }
+#ifdef COSMIC_RAYS_ALFVEN
+            for(k=0;k<2;k++) {if(Fluxes.rho<0) {Fluxes.CosmicRayAlfvenEnergy[k]+=local.CosmicRayAlfvenEnergy[k]*Fluxes.rho/local.Mass;} else {Fluxes.CosmicRayAlfvenEnergy[k]+=SphP[j].CosmicRayAlfvenEnergy[k]*Fluxes.rho/local.Mass;}}
+#endif
 #endif
 #ifdef MAGNETIC
             for(k=0;k<3;k++) {Fluxes.B[k] = Face_Area_Norm * Riemann_out.Fluxes.B[k];} // magnetic flux (B*V) //
