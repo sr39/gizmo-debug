@@ -794,28 +794,25 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
 
         /* positions */
         double phi = 2.0*M_PI*get_random_number(j+1+ThisTask); // random from 0 to 2pi //
-        double cos_theta = 2.0*(get_random_number(j+3+2*ThisTask)-0.5); // random between 1 to -1 //
-        double dx, dy, dz, sin_theta = sqrt(1 - cos_theta*cos_theta); /* shift the particle locations according to the random number we drew above */
-        dx = d_r * sin_theta * cos(phi); dy = d_r * sin_theta * sin(phi); dz = d_r * cos_theta;
-        P[j].Pos[0] =  P[i].Pos[0] + dx; P[j].Pos[1] =  P[i].Pos[1] + dy; P[j].Pos[2] =  P[i].Pos[2] + dz;
+        double cos_theta = 2.0*(get_random_number(j+3+2*ThisTask)-0.5), sin_theta=sqrt(1-cos_theta*cos_theta); // random between 1 to -1 //
+        double dx[3]; dx[0]=sin_theta*cos(phi); dx[1]=sin_theta*sin(phi); dx[2]=cos_theta;
+        for(k=0;k<3;k++) {P[j].Pos[k]=P[i].Pos[k] + dx[k]*d_r;}
 
         /* velocities (determined by wind velocity) */
-        P[j].Vel[0] =  P[i].Vel[0] + dx / d_r * All.BAL_v_outflow * All.cf_atime; P[j].Vel[1] =  P[i].Vel[1] + dy / d_r * All.BAL_v_outflow * All.cf_atime; P[j].Vel[2] =  P[i].Vel[2] + dz / d_r * All.BAL_v_outflow * All.cf_atime;
-        SphP[j].VelPred[0] = P[j].Vel[0]; SphP[j].VelPred[1] = P[j].Vel[1]; SphP[j].VelPred[2] = P[j].Vel[2]; 
+        for(k=0;k<3;k++) {P[j].Vel[0]=P[i].Vel[0] + dx[k]*All.BAL_v_outflow*All.cf_atime; SphP[j].VelPred[k]=P[j].Vel[k];}
 
         /* condition number, smoothing length, and density */
         SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
-        ///SphP[j].Density *= 1e-10; SphP[j].Pressure *= 1e-10; PPP[j].Hsml = All.SofteningTable[0];  /* set dummy values: will be re-generated anyways [actually better to use nearest-neighbor values to start] */
+        //SphP[j].Density *= 1e-10; SphP[j].Pressure *= 1e-10; PPP[j].Hsml = All.SofteningTable[0];  /* set dummy values: will be re-generated anyways [actually better to use nearest-neighbor values to start] */
 
         /* internal energy, determined by desired wind temperature */
         SphP[j].InternalEnergy = All.BAL_internal_temperature / (  PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g  ); SphP[j].InternalEnergyPred = SphP[j].InternalEnergy;
 
 #if defined(BH_COSMIC_RAYS) /* inject cosmic rays alongside wind injection */
         double dEcr = All.BH_CosmicRay_Injection_Efficiency * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * (C / All.UnitVelocity_in_cm_per_s)*(C / All.UnitVelocity_in_cm_per_s);
-        SphP[j].CosmicRayEnergy+=dEcr; SphP[j].CosmicRayEnergyPred+=dEcr;
+        SphP[j].CosmicRayEnergy=dEcr; SphP[j].CosmicRayEnergyPred=dEcr;
 #ifdef COSMIC_RAYS_M1
-        double dir[3]; dir[0]=dx/d_r; dir[1]=dy/d_r; dir[2]=dz/d_r;
-        dEcr*=COSMIC_RAYS_M1; for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dEcr*dir[k]; SphP[j].CosmicRayFluxPred[k]+=dEcr*dir[k];}
+        dEcr*=COSMIC_RAYS_M1; for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]=dEcr*dx[k]; SphP[j].CosmicRayFluxPred[k]=SphP[j].CosmicRayFlux[k];}
 #endif
 #endif
         
