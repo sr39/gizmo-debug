@@ -13,9 +13,7 @@
 
 
 #SYSTYPE="BlueWaters"
-#SYSTYPE="Stampede"
 #SYSTYPE="Stampede2"
-#SYSTYPE="Zwicky"
 #SYSTYPE="Wheeler"
 SYSTYPE="MacBookPro"
 #SYSTYPE="Quest"
@@ -49,3 +47,5 @@ SYSTYPE="MacBookPro"
 #SYSTYPE="Kolob"
 #SYSTYPE="Centos5-Gnu"
 #SYSTYPE="OPA-Cluster64-Intel"
+#SYSTYPE="Stampede"
+#SYSTYPE="Zwicky"
