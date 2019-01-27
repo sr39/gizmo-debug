@@ -722,7 +722,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
         SphP[j].MaxKineticEnergyNgb = 0;
 #endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-        SphP[j].dMass = 0; SphP[j].DtMass = 0; SphP[j].MassTrue = P[j].Mass; for(k=0;k<3;k++) SphP[j].GravWorkTerm[k] = 0;
+        SphP[j].dMass = 0; SphP[j].DtMass = 0; SphP[j].MassTrue = P[j].Mass; for(k=0;k<3;k++) {SphP[j].GravWorkTerm[k] = 0;}
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         PPPZ[j].AGS_zeta = 0;
@@ -773,7 +773,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
 #endif
         /* note, if you want to use this routine to inject magnetic flux or cosmic rays, do this below */
 #ifdef MAGNETIC
-        SphP[j].divB = 0; for(k=0;k<3;k++) {SphP[j].BPred[k] = SphP[j].B[k] = 0; SphP[j].DtB[k] = 0;} /* add magnetic flux here if desired */
+        SphP[j].divB = 0; for(k=0;k<3;k++) {SphP[j].B[k]*=1.e-10; SphP[j].BPred[k]=0; SphP[j].DtB[k]=0;} /* add magnetic flux here if desired */
 #ifdef DIVBCLEANING_DEDNER
         SphP[j].DtPhi = SphP[j].PhiPred = SphP[j].Phi = 0;
 #endif
