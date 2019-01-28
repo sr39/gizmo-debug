@@ -631,19 +631,31 @@ void spawn_bh_wind_feedback(void)
         }
     
     /* don't loop or go forward if there are no gas particles in the domain, or the code will crash */
-    if(dummy_gas_tag >= 0)
-        for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-            if(P[i].Type ==5)
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    {
+        if(P[i].Type==5)
+        {
+            if(BPP(i).unspawned_wind_mass >= All.BAL_wind_particle_mass)
             {
-#ifndef IO_REDUCED_MODE
-                printf("attempting to spawn feedback particles for BH %d on Task %d \n", i, ThisTask);
-#endif
-                n_particles_split += blackhole_spawn_particle_wind_shell( i , dummy_gas_tag);
+                int j; dummy_gas_tag=-1; double r2=MAX_REAL_NUMBER;
+                for(j=0; j<N_gas; j++) /* find the closest gas particle on the domain to act as the dummy */
+                {
+                    if(P[j].Type==0)
+                    {
+                        double dx2=(P[j].Pos[0]-P[i].Pos[0])*(P[j].Pos[0]-P[i].Pos[0]) + (P[j].Pos[1]-P[i].Pos[1])*(P[j].Pos[1]-P[i].Pos[1]) + (P[j].Pos[2]-P[i].Pos[2])*(P[j].Pos[2]-P[i].Pos[2]);
+                        if(dx2 < r2) {r2=dx2; dummy_gas_tag=j;}
+                    }
+                }
+                if(dummy_gas_tag >= 0)
+                {
+                    n_particles_split += blackhole_spawn_particle_wind_shell( i , dummy_gas_tag);
+                }
             }
+        }
+    }
     MPI_Allreduce(&n_particles_split, &MPI_n_particles_split, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-#ifndef IO_REDUCED_MODE
     if(ThisTask == 0) {printf("Particle BH spawn check: %d particles spawned \n", MPI_n_particles_split);}
-#endif
+
     /* rearrange_particle_sequence -must- be called immediately after this routine! */
     All.TotNumPart += (long long)MPI_n_particles_split;
     All.TotN_gas   += (long long)MPI_n_particles_split;
@@ -658,25 +670,15 @@ void spawn_bh_wind_feedback(void)
 /*! this code copies what was used in merge_split.c for the gas particle split case */
 int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
 {
-#ifndef IO_REDUCED_MODE
-    printf(" splitting BH %d using SphP particle %d\n", i, dummy_sph_i_to_clone);
-#endif
-    double mass_of_new_particle, total_mass_in_winds, dt;
-    int n_particles_split, bin; long j;
-    
-#ifndef WAKEUP
-    dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
-#else
-    dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
-#endif
+    double total_mass_in_winds = BPP(i).unspawned_wind_mass;
+    int n_particles_split   = floor( total_mass_in_winds / All.BAL_wind_particle_mass );
+    if( (n_particles_split == 0) || (n_particles_split < 1) ) {return 0;}
     
     /* here is where the details of the split are coded, the rest is bookkeeping */
-    total_mass_in_winds = BPP(i).unspawned_wind_mass;
-    n_particles_split   = floor( total_mass_in_winds / All.BAL_wind_particle_mass );
-    if( (n_particles_split == 0) || (n_particles_split < 1) ) {return 0;}
-    mass_of_new_particle = total_mass_in_winds / n_particles_split;
+    double mass_of_new_particle = total_mass_in_winds / n_particles_split; int k=0; long j;
 #ifndef IO_REDUCED_MODE
-    printf("want to create %g mass in wind with %d new particles each of mass %g \n", total_mass_in_winds, n_particles_split, mass_of_new_particle);
+    printf("Task %d wants to create %g mass in wind with %d new particles each of mass %g \n", ThisTask,total_mass_in_winds, n_particles_split, mass_of_new_particle);
+    printf(" splitting BH %d using SphP particle %d\n", i, dummy_sph_i_to_clone);
 #endif
     if(NumPart + n_particles_split >= All.MaxPart)
     {
@@ -684,86 +686,44 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
         fflush(stdout); endrun(8888);
     }
     
-    int k=0;
-    double phi = 2.0*M_PI*get_random_number(i+1+ThisTask); // random from 0 to 2pi //
-    double cos_theta = 2.0*(get_random_number(i+3+2*ThisTask)-0.5); // random between 1 to -1 //
+#ifndef WAKEUP
+    double dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+#else
+    double dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
+#endif
     double d_r = 0.25 * KERNEL_CORE_SIZE*PPP[i].Hsml; // needs to be epsilon*Hsml where epsilon<<1, to maintain stability //
-    
+    double r2=0; for(k=0;k<3;k++) {r2+=(P[dummy_sph_i_to_clone].Pos[k]-P[i].Pos[k])*(P[dummy_sph_i_to_clone].Pos[k]-P[i].Pos[k]);}
+    d_r = DMIN(d_r, 0.5*sqrt(r2));
 #ifndef SELFGRAVITY_OFF
     d_r = DMAX(d_r , 2.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0]);
-#endif
+#else
     d_r = DMIN(0.0001, d_r);
-    
-    for (bin = 0; bin < TIMEBINS; bin++) {if (TimeBinCount[bin] > 0) break;}
-    
-    /* find the first non-gas particle and move it to the end of the particle list */
+#endif
+    int bin; for(bin = 0; bin < TIMEBINS; bin++) {if (TimeBinCount[bin] > 0) break;}
+    /* create the  new particles to be added to the end of the particle list :
+        i is the BH particle tag, j is the new "spawed" particle's location, dummy_sph_i_to_clone is a dummy SPH particle's tag to be used to init the wind particle */
     for(j = NumPart; j < NumPart + n_particles_split; j++)
-    {
-        // i is the BH particle tag
-        // j is the new "spawed" particle's location
-        // dummy_sph_i_to_clone is a dummy SPH particle's tag to be used to init the wind particle
-        k=0;
-        phi = 2.0*M_PI*get_random_number(j+1+ThisTask); // random from 0 to 2pi //
-        cos_theta = 2.0*(get_random_number(j+3+2*ThisTask)-0.5); // random between 1 to -1 //
-        double d_r = 0.25 * KERNEL_CORE_SIZE*PPP[i].Hsml; // epsilon*Hsml; epsilon<<1, to maintain stability //
-        d_r = DMIN(0.0001, d_r);
+    {   /* first, clone the 'dummy' particle so various fields are set appropriately */
+        P[j] = P[dummy_sph_i_to_clone]; SphP[j] = SphP[dummy_sph_i_to_clone]; /* set the pointers equal to one another -- all quantities get copied, we only have to modify what needs changing */
 
-        /* set the pointers equal to one another -- all quantities get copied, we only have to modify what needs changing */
-        P[j]    = P[dummy_sph_i_to_clone];
-        SphP[j] = SphP[dummy_sph_i_to_clone];
-        P[j].TimeBin = bin;            // put this particle on the lowest active time bin
-        P[j].dt_step = bin ? (((integertime) 1) << bin) : 0;
-        
-        /* the particle needs to be 'born active' and added to the active set */
-        NextActiveParticle[j] = FirstActiveParticle;
-        FirstActiveParticle = j;
-        NumForceUpdate++;
-        
-        /* likewise add it to the counters that register how many particles are in each timebin */
-        TimeBinCount[bin]++;
-        TimeBinCountSph[bin]++;
-        PrevInTimeBin[j] = i;
-        
+        /* now we need to make sure everything is correctly placed in timebins for the tree */
+        P[j].TimeBin = bin; P[j].dt_step = bin ? (((integertime) 1) << bin) : 0; // put this particle on the lowest active time bin
+        NextActiveParticle[j] = FirstActiveParticle; FirstActiveParticle = j; NumForceUpdate++; /* the particle needs to be 'born active' and added to the active set */
+        TimeBinCount[bin]++; TimeBinCountSph[bin]++; PrevInTimeBin[j] = i; /* likewise add it to the counters that register how many particles are in each timebin */
         if(FirstInTimeBin[bin] < 0){  // only particle in this time bin on this task
-            FirstInTimeBin[bin] = j;
-            LastInTimeBin[bin] = j;
-            NextInTimeBin[j] = -1;
-            PrevInTimeBin[j] = -1;
+            FirstInTimeBin[bin] = j; LastInTimeBin[bin] = j; NextInTimeBin[j] = -1; PrevInTimeBin[j] = -1;
         } else {                      // there is already at least one particle; add this one "to the front" of the list
-            NextInTimeBin[j] = FirstInTimeBin[bin];
-            PrevInTimeBin[j] = -1;
-            PrevInTimeBin[FirstInTimeBin[bin]] = j;
-            FirstInTimeBin[bin] = j;
+            NextInTimeBin[j] = FirstInTimeBin[bin]; PrevInTimeBin[j] = -1; PrevInTimeBin[FirstInTimeBin[bin]] = j; FirstInTimeBin[bin] = j;
         }
-        
-        /* the particle needs an ID: we give it a bit-flip from the original particle to signify the split */
-        unsigned int bits;
-        int SPLIT_GENERATIONS = 4;
-        for(bits = 0; SPLIT_GENERATIONS > (1 << bits); bits++);
-        /* correction:  We are using a fixed wind ID, to allow for trivial wind particle identification */
-        P[j].ID = All.AGNWindID;
-        
-        /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
-        SphP[j].ConditionNumber *= 10.0;
 
-        SphP[j].Density *= 1e-10; /* will be re-generated anyways */
-        SphP[j].Pressure *= 1e-10; /* will be re-generated anyways */
-        P[j].Hsml = All.SofteningTable[0]; /* will be re-generated anyways */
-        PPP[j].Hsml = All.SofteningTable[0]; /* will be re-generated anyways */
-        
-        SphP[j].InternalEnergy = All.BAL_internal_temperature / (  PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g  );
-        SphP[j].InternalEnergyPred = SphP[j].InternalEnergy;
-        
         /* this is a giant pile of variables to zero out. dont need everything here because we cloned a valid particle, but handy anyways */
-        for(k=0;k<3;k++) SphP[j].HydroAccel[k] = 0;
-        P[i].Particle_DivVel = 0; SphP[j].DtInternalEnergy = 0;
+        P[i].Particle_DivVel = 0; SphP[j].DtInternalEnergy = 0; for(k=0;k<3;k++) {SphP[j].HydroAccel[k] = 0;}
 #ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
         SphP[j].MaxKineticEnergyNgb = 0;
 #endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-        SphP[j].dMass = 0; SphP[j].DtMass = 0; SphP[j].MassTrue = P[j].Mass; for(k=0;k<3;k++) SphP[j].GravWorkTerm[k] = 0;
+        SphP[j].dMass = 0; SphP[j].DtMass = 0; SphP[j].MassTrue = P[j].Mass; for(k=0;k<3;k++) {SphP[j].GravWorkTerm[k] = 0;}
 #endif
-        
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         PPPZ[j].AGS_zeta = 0;
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
@@ -811,65 +771,56 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
 #endif
         }
 #endif
-
         /* note, if you want to use this routine to inject magnetic flux or cosmic rays, do this below */
 #ifdef MAGNETIC
-        for(k=0;k<3;k++)
-        {
-            SphP[j].BPred[k] = SphP[j].B[k] = 0; /* add magnetic flux here if desired */
-            SphP[j].DtB[k] = 0;
-        }
-        SphP[j].divB = 0;
+        SphP[j].divB = 0; for(k=0;k<3;k++) {SphP[j].B[k]*=1.e-10; SphP[j].BPred[k]=0; SphP[j].DtB[k]=0;} /* add magnetic flux here if desired */
 #ifdef DIVBCLEANING_DEDNER
         SphP[j].DtPhi = SphP[j].PhiPred = SphP[j].Phi = 0;
 #endif
 #endif
 #ifdef COSMIC_RAYS
-        SphP[j].CosmicRayEnergyPred = SphP[j].CosmicRayEnergy = 0; /* add CR energy here if desired */
-        SphP[j].DtCosmicRayEnergy = 0;
+        SphP[j].CosmicRayEnergyPred = SphP[j].CosmicRayEnergy = 0; SphP[j].DtCosmicRayEnergy = 0; /* add CR energy here if desired */
 #endif
         
-        
-        /* assign masses to both particles (so they sum correctly) */
-        P[j].Mass = mass_of_new_particle;
+        /* now set the real hydro variables. */
+        /* set the particle ID */ // unsigned int bits; int SPLIT_GENERATIONS = 4; for(bits = 0; SPLIT_GENERATIONS > (1 << bits); bits++); /* the particle needs an ID: we give it a bit-flip from the original particle to signify the split */
+        P[j].ID = All.AGNWindID; /* update:  We are using a fixed wind ID, to allow for trivial wind particle identification */
+
+        P[j].Mass = mass_of_new_particle; /* assign masses to both particles (so they sum correctly) */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
         SphP[j].MassTrue = P[j].Mass;
 #endif
-        P[i].Mass -= P[j].Mass;
-        
-        /* shift the particle locations according to the random number we drew above */
-        double dx, dy, dz;
-        double sin_theta = sqrt(1 - cos_theta*cos_theta);
-        dx = d_r * sin_theta * cos(phi);
-        dy = d_r * sin_theta * sin(phi);
-        dz = d_r * cos_theta;
+        P[i].Mass -= P[j].Mass; /* make sure the operation is mass conserving! */
 
-        P[j].Pos[0] =  P[i].Pos[0] + dx;
-        P[j].Pos[1] =  P[i].Pos[1] + dy;
-        P[j].Pos[2] =  P[i].Pos[2] + dz;
-        
-        P[j].Vel[0] =  P[i].Vel[0] + dx / d_r * All.BAL_v_outflow * All.cf_atime;
-        P[j].Vel[1] =  P[i].Vel[1] + dy / d_r * All.BAL_v_outflow * All.cf_atime;
-        P[j].Vel[2] =  P[i].Vel[2] + dz / d_r * All.BAL_v_outflow * All.cf_atime;
-        SphP[j].VelPred[0] = P[j].Vel[0]; SphP[j].VelPred[1] = P[j].Vel[1]; SphP[j].VelPred[2] = P[j].Vel[2]; 
-        
-#if defined(BH_COSMIC_RAYS)
-        /* inject cosmic rays alongside wind injection */
+        /* positions */
+        double phi = 2.0*M_PI*get_random_number(j+1+ThisTask); // random from 0 to 2pi //
+        double cos_theta = 2.0*(get_random_number(j+3+2*ThisTask)-0.5), sin_theta=sqrt(1-cos_theta*cos_theta); // random between 1 to -1 //
+        double dx[3]; dx[0]=sin_theta*cos(phi); dx[1]=sin_theta*sin(phi); dx[2]=cos_theta;
+        for(k=0;k<3;k++) {P[j].Pos[k]=P[i].Pos[k] + dx[k]*d_r;}
+
+        /* velocities (determined by wind velocity) */
+        for(k=0;k<3;k++) {P[j].Vel[0]=P[i].Vel[0] + dx[k]*All.BAL_v_outflow*All.cf_atime; SphP[j].VelPred[k]=P[j].Vel[k];}
+
+        /* condition number, smoothing length, and density */
+        SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
+        //SphP[j].Density *= 1e-10; SphP[j].Pressure *= 1e-10; PPP[j].Hsml = All.SofteningTable[0];  /* set dummy values: will be re-generated anyways [actually better to use nearest-neighbor values to start] */
+
+        /* internal energy, determined by desired wind temperature */
+        SphP[j].InternalEnergy = All.BAL_internal_temperature / (  PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g  ); SphP[j].InternalEnergyPred = SphP[j].InternalEnergy;
+
+#if defined(BH_COSMIC_RAYS) /* inject cosmic rays alongside wind injection */
         double dEcr = All.BH_CosmicRay_Injection_Efficiency * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * (C / All.UnitVelocity_in_cm_per_s)*(C / All.UnitVelocity_in_cm_per_s);
-        SphP[j].CosmicRayEnergy+=dEcr; SphP[j].CosmicRayEnergyPred+=dEcr;
+        SphP[j].CosmicRayEnergy=dEcr; SphP[j].CosmicRayEnergyPred=dEcr;
 #ifdef COSMIC_RAYS_M1
-        double dir[3]; dir[0]=dx/d_r; dir[1]=dy/d_r; dir[2]=dz/d_r;
-        dEcr*=COSMIC_RAYS_M1; for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dEcr*dir[k]; SphP[j].CosmicRayFluxPred[k]+=dEcr*dir[k];}
+        dEcr*=COSMIC_RAYS_M1; for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]=dEcr*dx[k]; SphP[j].CosmicRayFluxPred[k]=SphP[j].CosmicRayFlux[k];}
 #endif
 #endif
-
+        
         /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
-        force_add_star_to_tree(i, j);// (buggy)
-        /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
+        force_add_star_to_tree(i, j);// (buggy) /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
     }
     
     BPP(i).unspawned_wind_mass = 0.0;
-    
     return n_particles_split;
 }
 #endif

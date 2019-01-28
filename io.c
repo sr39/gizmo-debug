@@ -1215,6 +1215,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
+        case IO_TURB_DYNAMIC_COEFF:
+#ifdef TURB_DIFF_DYNAMIC
+            for (n = 0; n < pc; pindex++) {
+                if (P[pindex].Type == type) {
+                    *fp++ = SphP[pindex].TD_DynDiffCoeff;
+                    n++;
+                }
+            }
+#endif
+            break;
+
         case IO_EOSYE:
 #ifdef EOS_CARRIES_YE
             for(n = 0; n < pc; pindex++)
@@ -1588,8 +1599,41 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             }
 #endif
             break;
+
+    case IO_TURB_DIFF_COEFF:
+#ifdef TURB_DIFF_DYNAMIC
+        for (n = 0; n < pc; pindex++) {
+            if (P[pindex].Type == type) {
+                *fp++ = SphP[pindex].TD_DiffCoeff;
+                n++;
+            }
+        }
+#endif
+
+        break;
             
-            
+    case IO_DYNERROR:
+#ifdef TURB_DIFF_DYNAMIC_ERROR
+        for (n = 0; n < pc; pindex++) {
+            if (P[pindex].Type == type) {
+                *fp++ = SphP[pindex].TD_DynDiffCoeff_error;
+                n++;
+            }
+        }
+#endif
+        break;
+
+    case IO_DYNERRORDEFAULT:
+#ifdef TURB_DIFF_DYNAMIC_ERROR
+        for (n = 0; n < pc; pindex++) {
+            if (P[pindex].Type == type) {
+                *fp++ = SphP[pindex].TD_DynDiffCoeff_error_default;
+                n++;
+            }
+        }
+#endif
+        break;
+ 
         case IO_LASTENTRY:
             endrun(213);
             break;
@@ -1737,6 +1781,10 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_grDI:
         case IO_grDII:
         case IO_grHDI:
+        case IO_TURB_DYNAMIC_COEFF:
+        case IO_TURB_DIFF_COEFF:
+        case IO_DYNERROR:
+        case IO_DYNERRORDEFAULT:
             if(mode)
                 bytes_per_blockelement = sizeof(MyInputFloat);
             else
@@ -2095,6 +2143,10 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_grDI:
         case IO_grDII:
         case IO_grHDI:
+        case IO_TURB_DYNAMIC_COEFF:
+        case IO_TURB_DIFF_COEFF:
+        case IO_DYNERROR:
+        case IO_DYNERRORDEFAULT:
             values = 1;
             break;
 
@@ -2378,6 +2430,10 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_grDI:
         case IO_grDII:
         case IO_grHDI:
+        case IO_TURB_DYNAMIC_COEFF:
+        case IO_TURB_DIFF_COEFF:
+        case IO_DYNERROR:
+        case IO_DYNERRORDEFAULT:
             for(i = 1; i < 6; i++)
                 typelist[i] = 0;
             return ngas;
@@ -3253,8 +3309,24 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
-            
-            
+
+    case IO_TURB_DYNAMIC_COEFF:
+    case IO_TURB_DIFF_COEFF:
+#ifdef TURB_DIFF_DYNAMIC
+        return 1;
+#else
+        return 0;
+#endif
+        break;
+
+    case IO_DYNERRORDEFAULT:
+    case IO_DYNERROR:
+#ifdef TURB_DIFF_DYNAMIC_ERROR
+        return 1;
+#else
+        return 0;
+#endif
+        break; 
         case IO_LASTENTRY:
             return 0;			/* will not occur */
     }
@@ -3653,7 +3725,18 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_grHDI:
             strncpy(label, "gHDI", 4);
             break;
-            
+        case IO_TURB_DYNAMIC_COEFF:
+            strncpy(label, "tdyn", 4);
+            break;
+        case IO_TURB_DIFF_COEFF:
+            strncpy(label, "turb", 4);
+            break;
+        case IO_DYNERROR:
+            strncpy(label, "derr", 4);
+            break;
+        case IO_DYNERRORDEFAULT:
+            strncpy(label, "derd", 4);
+            break; 
             
         case IO_LASTENTRY:
             endrun(217);
@@ -4048,7 +4131,18 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_grHDI:
             strcpy(buf, "GrackleHDI");
             break;
-            
+        case IO_TURB_DYNAMIC_COEFF:
+            strcpy(buf, "DynSmagCoeff");
+            break;
+        case IO_TURB_DIFF_COEFF:
+            strcpy(buf, "TurbDiffCoeff");
+            break;
+        case IO_DYNERROR:
+            strcpy(buf, "DynamicError");
+            break;
+        case IO_DYNERRORDEFAULT:
+            strcpy(buf, "DynamicErrorDefault");
+            break;
         case IO_LASTENTRY:
             endrun(218);
             break;
