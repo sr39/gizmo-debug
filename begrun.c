@@ -1090,8 +1090,8 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.DM_DissipationFactor;
         id[nt++] = REAL;
 
-        strcpy(tag[nt], "DM_EnergyGainPerCollision");
-        addr[nt] = &All.DM_EnergyGainPerCollision;
+        strcpy(tag[nt], "DM_KickPerCollision");
+        addr[nt] = &All.DM_KickPerCollision;
         id[nt++] = REAL;
 
         strcpy(tag[nt], "DM_InteractionVelocityDependence");

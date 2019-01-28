@@ -35,7 +35,7 @@ double prob_of_interaction(double mass, double r, double h_si, double dV[3], int
     double rho_eff = mass / (h_si*h_si*h_si) * All.cf_a3inv; // density in physical
     double cx_eff = All.DM_InteractionCrossSection * g_geo(r/h_si); // effective cross section (physical) scaled to cgs
     double units = All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; // needed to convert everything to cgs
-    cx_eff *= pow(dVmag * All.UnitVelocity_in_cm_per_s / 1.0e5, All.DM_InteractionVelocityDependence); // take appropriate velocity dependence
+    if(All.DM_InteractionVelocityDependence>0) {cx_eff *= pow(dVmag * All.UnitVelocity_in_cm_per_s / 1.0e5, All.DM_InteractionVelocityDependence);} // take appropriate velocity dependence
     return rho_eff * cx_eff * dVmag * dt * units; // dimensionless probability
 }
 
@@ -53,7 +53,8 @@ double g_geo(double r)
 void calculate_interact_kick(double dV[3], double kick[3], double m)
 {
     double dVmag = (1-All.DM_DissipationFactor)*sqrt(dV[0]*dV[0]+dV[1]*dV[1]+dV[2]*dV[2]);
-    dVmag += sqrt(2.*All.DM_EnergyGainPerCollision / (m * All.UnitEnergy_in_cgs/All.HubbleParam));
+    if(dVmag<0) {dVmag=0;}
+    if(All.DM_KickPerCollision>0) {double v0=All.DM_KickPerCollision*1.e5/All.UnitVelocity_in_cm_per_s; dVmag=sqrt(dVmag*dVmag+v0*v0);}
     double cos_theta = 2.0*gsl_rng_uniform(random_generator)-1.0, sin_theta = sqrt(1.-cos_theta*cos_theta), phi = gsl_rng_uniform(random_generator)*2.0*M_PI;
     kick[0] = 0.5*(dV[0] + dVmag*sin_theta*cos(phi));
     kick[1] = 0.5*(dV[1] + dVmag*sin_theta*sin(phi));
