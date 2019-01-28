@@ -1108,11 +1108,20 @@ typedef MyDouble MyBigFloat;
 #define CPU_AGSDENSCOMM    37
 #define CPU_AGSDENSMISC    38
 #define CPU_SIDMSCATTER    39
+#define CPU_DYNDIFFMISC       40
+#define CPU_DYNDIFFCOMPUTE    41
+#define CPU_DYNDIFFWAIT       42
+#define CPU_DYNDIFFCOMM       43
+#define CPU_IMPROVDIFFMISC    44
+#define CPU_IMPROVDIFFCOMPUTE 45
+#define CPU_IMPROVDIFFWAIT    46
+#define CPU_IMPROVDIFFCOMM    47
+
 #ifdef CHIMES 
-#define CPU_COOLSFRIMBAL   40
-#define CPU_PARTS          41  /* this gives the number of parts above (must be last) */
+#define CPU_COOLSFRIMBAL   48
+#define CPU_PARTS          49  /* this gives the number of parts above (must be last) */
 #else 
-#define CPU_PARTS          40  /* this gives the number of parts above (must be last) */
+#define CPU_PARTS          48  /* this gives the number of parts above (must be last) */
 #endif 
 
 #define CPU_STRING_LEN 120
@@ -1911,6 +1920,13 @@ extern struct global_data_all_processes
 #endif
 #ifdef TURB_DIFFUSION
   double TurbDiffusion_Coefficient;
+
+#ifdef TURB_DIFF_DYNAMIC
+  double TurbDynamicDiffFac;
+  int TurbDynamicDiffIterations;
+  double TurbDynamicDiffSmoothing;
+  double TurbDynamicDiffMax;
+#endif
 #endif
   
 #if defined(CONDUCTION)
@@ -2481,6 +2497,11 @@ extern struct sph_particle_data
 
 #ifdef TURB_DIFFUSION
   MyFloat TD_DiffCoeff;             /*!< effective diffusion coefficient for sub-grid turbulent diffusion */
+#ifdef TURB_DIFF_DYNAMIC
+  MyDouble h_turb;
+  MyDouble MagShear;
+  MyFloat TD_DynDiffCoeff;          /*!< improved Smag. coefficient (squared) for sub-grid turb. diff. - D. Rennehan */
+#endif
 #endif
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
   MyFloat NV_DivVel;                /*!< quantities specific to the Cullen & Dehnen viscosity switch */
@@ -2603,7 +2624,20 @@ extern struct sph_particle_data
     gr_float grHDI;
 #endif
 #endif
-    
+   
+#ifdef TURB_DIFF_DYNAMIC
+  MyDouble VelShear_bar[3][3];
+  MyDouble MagShear_bar;
+  MyDouble Velocity_bar[3];
+  MyDouble Velocity_hat[3];
+  MyFloat FilterWidth_bar;
+  MyFloat MaxDistance_for_grad;
+  MyDouble Norm_hat;
+  MyDouble Dynamic_numerator;
+  MyDouble Dynamic_denominator;
+  MyDouble TD_DynDiffCoeff_error;
+  MyDouble TD_DynDiffCoeff_error_default;
+#endif 
 }
   *SphP,				/*!< holds SPH particle data on local processor */
   *DomainSphBuf;			/*!< buffer for SPH particle data in domain decomposition */
@@ -2949,7 +2983,11 @@ enum iofields
   IO_grDI,
   IO_grDII,
   IO_grHDI,
-  IO_OSTAR,  
+  IO_OSTAR, 
+  IO_TURB_DYNAMIC_COEFF,
+  IO_TURB_DIFF_COEFF,
+  IO_DYNERROR,
+  IO_DYNERRORDEFAULT, 
 #ifdef CHIMES 
   IO_CHIMES_ABUNDANCES, 
   IO_CHIMES_MU, 
