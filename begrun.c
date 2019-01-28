@@ -1082,8 +1082,20 @@ void read_parameter_file(char *fname)
         
         
 #ifdef DM_SIDM
-        strcpy(tag[nt], "InteractionCrossSection");
-        addr[nt] = &All.InteractionCrossSection;
+        strcpy(tag[nt], "DM_InteractionCrossSection");
+        addr[nt] = &All.DM_InteractionCrossSection;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt], "DM_DissipationFactor");
+        addr[nt] = &All.DM_DissipationFactor;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt], "DM_EnergyGainPerCollision");
+        addr[nt] = &All.DM_EnergyGainPerCollision;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt], "DM_InteractionVelocityDependence");
+        addr[nt] = &All.DM_InteractionVelocityDependence;
         id[nt++] = REAL;
 #endif
 
