@@ -1445,7 +1445,10 @@ extern struct global_data_all_processes
 
     
 #ifdef DM_SIDM
-    MyDouble InteractionCrossSection;  /*!< self-interaction cross-section in [cm^2/g]*/
+    MyDouble DM_InteractionCrossSection;  /*!< self-interaction cross-section in [cm^2/g]*/
+    MyDouble DM_DissipationFactor;  /*!< dimensionless parameter governing efficiency of dissipation (1=dissipative, 0=elastic) */
+    MyDouble DM_EnergyGainPerCollision;  /*!< for exo-thermic DM reactions, this determines the energy gain 'per event' */
+    MyDouble DM_InteractionVelocityDependence; /*!< power-law slope of velocity dependence of DM interaction cross-section */
 #endif
     
   int MaxPart;			/*!< This gives the maxmimum number of particles that can be stored on one processor. */
