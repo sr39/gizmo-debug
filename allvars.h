@@ -1447,7 +1447,7 @@ extern struct global_data_all_processes
 #ifdef DM_SIDM
     MyDouble DM_InteractionCrossSection;  /*!< self-interaction cross-section in [cm^2/g]*/
     MyDouble DM_DissipationFactor;  /*!< dimensionless parameter governing efficiency of dissipation (1=dissipative, 0=elastic) */
-    MyDouble DM_EnergyGainPerCollision;  /*!< for exo-thermic DM reactions, this determines the energy gain 'per event' */
+    MyDouble DM_KickPerCollision;  /*!< for exo-thermic DM reactions, this determines the energy gain 'per event': kick in km/s (equivalent to specific energy in erg/g) associated 'per event' */
     MyDouble DM_InteractionVelocityDependence; /*!< power-law slope of velocity dependence of DM interaction cross-section */
 #endif
     
