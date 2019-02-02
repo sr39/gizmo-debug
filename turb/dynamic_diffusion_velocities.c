@@ -117,6 +117,7 @@ static inline void out2particle_DiffFilter(struct DiffFilterdata_out *out, int i
  *
  */
 void dynamic_diff_vel_calc(void) {
+    mpi_printf("start velocity smoothing computation...\n");
     int i, j, k, v, k1, ngrp, ndone, ndone_flag;
     double shear_factor, prev_coeff_inv;
     double smoothInv = 1.0 / All.TurbDynamicDiffSmoothing;
@@ -416,6 +417,7 @@ void dynamic_diff_vel_calc(void) {
     CPU_Step[CPU_IMPROVDIFFWAIT] += timewait;
     CPU_Step[CPU_IMPROVDIFFCOMM] += timecomm;
     CPU_Step[CPU_IMPROVDIFFMISC] += timeall - (timecomp + timewait + timecomm);
+    mpi_printf("velocity smoothing done.\n");
 }
 
 

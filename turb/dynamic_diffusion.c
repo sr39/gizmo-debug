@@ -255,6 +255,7 @@ void construct_gradient_dyndiff(double *grad, int i) {
  *      - D. Rennehan
  */
 void dynamic_diff_calc(void) {
+    mpi_printf("start dynamic diffusion calculations...\n");
     int i, j, k, v, k1, u, ngrp, ndone, ndone_flag, dynamic_iteration;
     double shear_factor, dynamic_denominator, trace = 0, trace_dynamic_fac = 0, hhat2 = 0, leonardTensor[3][3], prefactor = 0;
 #ifdef TURB_DIFF_DYNAMIC_ERROR
@@ -818,6 +819,7 @@ void dynamic_diff_calc(void) {
     CPU_Step[CPU_DYNDIFFWAIT] += timewait;
     CPU_Step[CPU_DYNDIFFCOMM] += timecomm;
     CPU_Step[CPU_DYNDIFFMISC] += timeall - (timecomp + timewait + timecomm);
+    mpi_printf("dynamic diffusion calculations done.\n");
 }
 
 
