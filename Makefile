@@ -1111,7 +1111,7 @@ INCL	+= subfind/subfind.h
 endif
 
 ifeq (TURB_DIFF_DYNAMIC,$(findstring TURB_DIFF_DYNAMIC,$(CONFIGVARS)))
-OBJS += hydro/dynamic_diffusion.o hydro/dynamic_diffusion_velocities.o
+OBJS += turb/dynamic_diffusion.o turb/dynamic_diffusion_velocities.o
 endif
 
 ifeq (DM_SIDM,$(findstring DM_SIDM,$(CONFIGVARS)))

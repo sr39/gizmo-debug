@@ -1859,9 +1859,9 @@ extern struct global_data_all_processes
   double ViscosityAMin;
   double ViscosityAMax;
 #endif
+    
 #ifdef TURB_DIFFUSION
   double TurbDiffusion_Coefficient;
-
 #ifdef TURB_DIFF_DYNAMIC
   double TurbDynamicDiffFac;
   int TurbDynamicDiffIterations;
@@ -2215,6 +2215,11 @@ extern ALIGN(32) struct particle_data
     MyFloat AGS_Gradients2_Density[3][3];   /*!< density gradient calculated corresponding to AGS routine (over interacting DM neighbors) */
     MyFloat AGS_Numerical_QuantumPotential; /*!< additional potential terms 'generated' by un-resolved compression [numerical diffusivity] */
     MyFloat AGS_Dt_Numerical_QuantumPotential; /*!< time derivative of the above */
+    MyFloat AGS_Psi_Re;
+    MyFloat AGS_Gradients_Psi_Re[3];
+    MyFloat AGS_Psi_Im;
+    MyFloat AGS_Gradients_Psi_Im[3];
+    MyFloat AGS_Grad2_Psi_Im[3];
 #endif
 #if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
     MyFloat NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */
@@ -2429,6 +2434,7 @@ extern struct sph_particle_data
   MyFloat TD_DynDiffCoeff;          /*!< improved Smag. coefficient (squared) for sub-grid turb. diff. - D. Rennehan */
 #endif
 #endif
+    
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
   MyFloat NV_DivVel;                /*!< quantities specific to the Cullen & Dehnen viscosity switch */
   MyFloat NV_dt_DivVel;
@@ -2563,7 +2569,8 @@ extern struct sph_particle_data
   MyDouble Dynamic_denominator;
   MyDouble TD_DynDiffCoeff_error;
   MyDouble TD_DynDiffCoeff_error_default;
-#endif 
+#endif
+    
 }
   *SphP,				/*!< holds SPH particle data on local processor */
   *DomainSphBuf;			/*!< buffer for SPH particle data in domain decomposition */
