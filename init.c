@@ -567,7 +567,9 @@ void init(void)
         SphP[i].Norm_hat = 0;
         SphP[i].Dynamic_numerator = 0;
         SphP[i].Dynamic_denominator = 0;
+#ifdef TURB_DIFF_DYNAMIC_ERROR
         SphP[i].TD_DynDiffCoeff_error = 0;
+#endif
         for (u = 0; u < 3; u++) {
             if (RestartFlag != 7) {
                 SphP[i].Velocity_bar[u] = 0;
