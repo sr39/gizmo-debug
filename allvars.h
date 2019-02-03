@@ -2567,8 +2567,10 @@ extern struct sph_particle_data
   MyDouble Norm_hat;
   MyDouble Dynamic_numerator;
   MyDouble Dynamic_denominator;
+#ifdef TURB_DIFF_DYNAMIC_ERROR
   MyDouble TD_DynDiffCoeff_error;
   MyDouble TD_DynDiffCoeff_error_default;
+#endif
 #endif
     
 }
