@@ -104,19 +104,6 @@
 #COOL_METAL_LINES_BY_SPECIES    # use full multi-species-dependent cooling tables ( http://www.tapir.caltech.edu/~phopkins/public/spcool_tables.tgz, or the Bitbucket site); requires METALS on; cite Wiersma et al. 2009 (MNRAS, 393, 99) in addition to Hopkins et al. 2017 (arXiv:1702.06148)
 #COOL_GRACKLE                   # enable Grackle: cooling+chemistry package (requires COOLING above; https://grackle.readthedocs.org/en/latest ); see Grackle code for their required citations
 #COOL_GRACKLE_CHEMISTRY=1       # choose Grackle cooling chemistry: (0)=tabular, (1)=Atomic, (2)=(1)+H2+H2I+H2II, (3)=(2)+DI+DII+HD
-#CHIMES                         # enable CHIMES: cooling & chemistry package. Requires COOLING above. Also, requires COOL_METAL_LINES_BY_SPECIES to include metals. 
-#CHIMES_HYDROGEN_ONLY           # Hydrogen-only. This is ignored if METALS are also set. 
-#CHIMES_SOBOLEV_SHIELDING       # Enables local self-shielding over a Sobolev-like length scale. 
-#CHIMES_HII_REGIONS             # Disables shielding withing HII regions. 
-#CHIMES_STELLAR_FLUXES          # Couple UV fluxes from the luminosity tree to CHIMES 
-#CHIMES_SFR_MOLECULAR_CRITERION # As GALSF_SFR_MOLECULAR_CRITERION, but using the H2 fraction from CHIMES. 
-#CHIMES_REDUCED_OUTPUT          # Full CHIMES abundance array only output in some snapshots. 
-#CHIMES_NH_OUTPUT               # Write out column densities of gas particles to snapshots. 
-#CHIMES_OUTPUT_DENS_AROUND_STAR # Write out DensAroundStar 
-#CHIMES_OUTPUT_DELAY_TIME_HII   # Output DelayTimeHII. Requires CHIMES_HII_REGIONS or GALSF_FB_HII_HEATING
-#CHIMES_INITIALISE_IN_EQM       # Initialise CHIMES abundances in equilibrium at the start of the simulation.  
-#CHIMES_TURB_DIFF_IONS          # Turbulent diffusions of CHIMES abundances. Requires TURB_DIFF_METALS and TURB_DIFF_METALS_LOWORDER 
-#CHIMES_METAL_DEPLETION         # Uses density-dependent metal depletion factors (Jenkins 2009, De Cia et al. 2016)
 #METALS                         # enable metallicities (with multiple species optional) for gas and stars [must be included in ICs or injected via dynamical feedback; needed for some routines]
 ## ----------------------------------------------------------------------------------------------------
 # -------------------------------------- Smagorinsky Turbulent Eddy Diffusion Model
@@ -452,7 +439,7 @@
 #DONOTUSENODELIST               # MPI debugging
 #NOTYPEPREFIX_FFTW              # FFTW debugging (fftw-header/libraries accessed without type prefix, adopting whatever was
                                 #   chosen as default at compile of fftw). Otherwise, the type prefix 'd' for double is used.
-USE_FFTW3                       # enables FFTW3 (can be used with DOUBLEPRECISION_FFTW) 
+#USE_FFTW3                      # enables FFTW3 (can be used with DOUBLEPRECISION_FFTW) 
 #DOUBLEPRECISION_FFTW           # FFTW in double precision to match libraries
 # --------------------
 # ----- Load-Balancing
@@ -471,6 +458,31 @@ USE_FFTW3                       # enables FFTW3 (can be used with DOUBLEPRECISIO
 ##-
 ####################################################################################################-
 ####################################################################################################-
+
+
+
+####################################################################################################-
+##----------------------------------------------------------------------------------------------------
+#-------------------------------------- Non-Equilibrium Chemical Networks (includes novel cooling modules but also chemical networks and solvers)
+#-------------------------- This is the CHIMES network developed by A. Richings. The module is proprietary at the moment and users should request permission from A. Richings
+####################################################################################################-
+#CHIMES                         #- enable CHIMES: cooling & chemistry package. Requires COOLING above. Also, requires COOL_METAL_LINES_BY_SPECIES to include metals.
+#CHIMES_HYDROGEN_ONLY           #- Hydrogen-only. This is ignored if METALS are also set.
+#CHIMES_SOBOLEV_SHIELDING       #- Enables local self-shielding over a Sobolev-like length scale
+#CHIMES_HII_REGIONS             #- Disables shielding withing HII region (requires FIRE modules for radiation transport/coupling: uses GALSF_FB_HII_HEATING, and permissions follow those modules)
+#CHIMES_STELLAR_FLUXES          #- Couple UV fluxes from the luminosity tree to CHIMES (requires FIRE modules for radiation transport/coupling: use permissions follow those modules)
+#CHIMES_SFR_MOLECULAR_CRITERION #- As GALSF_SFR_MOLECULAR_CRITERION, but using the H2 fraction from CHIMES (requires appropriate star formation parent flags be set)
+#CHIMES_REDUCED_OUTPUT          #- Full CHIMES abundance array only output in some snapshots
+#CHIMES_NH_OUTPUT               #- Write out column densities of gas particles to snapshots
+#CHIMES_OUTPUT_DENS_AROUND_STAR #- Write out DensAroundStar
+#CHIMES_OUTPUT_DELAY_TIME_HII   #- Output DelayTimeHII. Requires CHIMES_HII_REGIONS or GALSF_FB_HII_HEATING (and corresponding flags/permissions set)
+#CHIMES_INITIALISE_IN_EQM       #- Initialise CHIMES abundances in equilibrium at the start of the simulation
+#CHIMES_TURB_DIFF_IONS          #- Turbulent diffusions of CHIMES abundances. Requires TURB_DIFF_METALS and TURB_DIFF_METALS_LOWORDER (see modules for metal diffusion above: use/citation policy follows those)
+#CHIMES_METAL_DEPLETION         #- Uses density-dependent metal depletion factors (Jenkins 2009, De Cia et al. 2016)
+####################################################################################################-
+
+
+
 
 
 ####################################################################################################-
