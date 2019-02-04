@@ -43,11 +43,7 @@
 # (B) set SYSTYPE in Makefile.systype 
 #     This file has priority over your shell variable.:
 #
-#    (1) Copy the file "Template-Makefile.systype"  to  "Makefile.systype"
-#
-#        cp Template-Makefile.systype Makefile.systype 
-#
-#    (2) Uncomment your system in  "Makefile.systype".
+#     Uncomment your system in  "Makefile.systype".
 #
 # If you add an ifeq for a new system below, also add that systype to
 # Template-Makefile.systype
@@ -66,6 +62,12 @@ PERL     =  /usr/bin/perl
 
 RESULT     := $(shell CONFIG=$(CONFIG) PERL=$(PERL) make -f config-makefile)
 CONFIGVARS := $(shell cat GIZMO_config.h)
+
+HG_COMMIT := $(shell hg id 2>/dev/null)
+HG_REPO := $(shell hg path default)
+HG_BRANCH := $(shell hg branch)
+BUILDINFO = "Build on $(HOSTNAME) by $(USER) from $(HG_BRANCH):$(HG_COMMIT) at $(HG_REPO)"
+#OPT += -DBUILDINFO='$(BUILDINFO)'
 
 ifeq (FIRE_PHYSICS_DEFAULTS,$(findstring FIRE_PHYSICS_DEFAULTS,$(CONFIGVARS)))  # using 'fire default' instead of all the above
     CONFIGVARS += COOLING COOL_LOW_TEMPERATURES COOL_METAL_LINES_BY_SPECIES
@@ -311,6 +313,7 @@ FC       = $(CC)
 ##OPTIMIZE += -pg ## profiling for intel compilers
 OPTIMIZE = -g -O1 -ffast-math -funroll-loops -finline-functions -funswitch-loops -fpredictive-commoning -fgcse-after-reload -fipa-cp-clone  ## optimizations for gcc compilers (1/2)
 OPTIMIZE += -ftree-loop-distribute-patterns -fvect-cost-model -ftree-partial-pre   ## optimizations for gcc compilers (2/2)
+#OPTIMIZE += -ftree-loop-distribute-patterns -ftree-slp-vectorize -fvect-cost-model -ftree-partial-pre   ## optimizations for gcc compilers (2/2)
 #OPTIMIZE += -pg -fprofile -fprofile-arcs -ftest-coverage -fprofile-generate ## full profiling, for gcc compilers
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -fopenmp # openmp required compiler flags
@@ -341,6 +344,9 @@ OPT     += -DUSE_MPI_IN_PLACE
 ##   export I_MPI_DAPL_TRANSLATION_CACHE=0
 ##   before your "mpirun", (or include it in your .bashrc and source that before running): this is necessary or else the communication over DAPL will generate MPI memory errors
 ##
+## note that with the newer builds of HDF5 on the machine, you may need to add the line
+## export HDF5_DISABLE_VERSION_CHECK=1
+##  to your .bashrc file, or it will think the wrong HDF5 file is linked and crash (even though it is fine)
 endif
 
 
@@ -667,6 +673,7 @@ endif
 
 
 
+#----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"BlueWaters")
 CC       =  cc
 CXX      =  CC
@@ -1190,7 +1197,7 @@ ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
 LIBS += $(CHIMESLIBS) 
 endif 
 
-ifeq (OMP_NUM_THREADS,$(findstring OMP_NUM_THREADS,$(CONFIGVARS))) 
+ifeq (PTHREADS_NUM_THREADS,$(findstring PTHREADS_NUM_THREADS,$(CONFIGVARS))) 
 LIBS   +=  -lpthread
 endif
 

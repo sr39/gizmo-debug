@@ -1145,7 +1145,7 @@ typedef MyDouble MyBigFloat;
 #define PPPZ SphP
 #endif
 
-#ifdef PERIODIC
+#ifdef BOX_PERIODIC
 extern MyDouble boxSize, boxHalf, inverse_boxSize;
 #ifdef BOX_LONG_X
 extern MyDouble boxSize_X, boxHalf_X, inverse_boxSize_X;

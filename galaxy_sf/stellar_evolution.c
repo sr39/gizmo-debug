@@ -211,7 +211,6 @@ double mechanical_fb_calculate_eventrates_SNe(int i, double dt)
 #else
     /* here we are determining an expected SNe rate, so SNe occur stochastically but with an age dependence in the population */
     double agemin=0.003401, agebrk=0.01037, agemax=0.03753, RSNe=0; // in Gyr //
-    
     // calculate: NSNe/Myr *if* each SNe had exactly 10^51 ergs; really from the energy curve; below for 1Msun pop //
     if(star_age > agemin)
     {

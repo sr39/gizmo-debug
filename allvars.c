@@ -242,7 +242,7 @@ FILE *FdHIIHeating;	/*!< file handle for HIIheating.txt log-file */
 FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 #endif
 
-#ifdef DISTORTIONTENSORPS
+#ifdef GDE_DISTORTIONTENSOR
 #ifdef PMGRID
 FILE *FdTidaltensor;		/*!< file handle for Tidaltensor.txt log-file. */
 #endif
