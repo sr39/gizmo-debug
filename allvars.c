@@ -132,10 +132,17 @@ double CPU_Step[CPU_PARTS];
 char CPU_Symbol[CPU_PARTS] =
   { '-', '*', '=', ';', '<', '[', '^', ':', '.', '~', '|', '+', '"', '/', '`', ',', '>', '@', '#', '&', '$',
   ']', '(', '?', ')', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '\\', '%', '{', '}'
+#ifdef CHIMES 
+    , 'Z', 'Y', 'X', 'U' 
+#endif 
 };
 char CPU_SymbolImbalance[CPU_PARTS] =
   { 'a', 't', 'u', 'v', 'b', 'w', 'd', 'r', 'h', 'm', 'n', 'l', 'o', 'p', 's', 'f', 'i', 'g', 'c', 'e', 'x',
   'y', 'z', 'A', 'I', 'W', 'T', 'V', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'
+#ifdef CHIMES 
+    , 'Q', 'R', 'S', 'T' 
+#endif 
+
 };
 char CPU_String[CPU_STRING_LEN + 1];
 
@@ -205,11 +212,11 @@ char ParameterFile[100];	/*!< file name of parameterfile used for starting the s
 
 FILE
 #ifndef IO_REDUCED_MODE
-*FdTimebin,     /*!< file handle for timebin.txt log-file. */
-*FdInfo,        /*!< file handle for info.txt log-file. */
-*FdEnergy,      /*!< file handle for energy.txt log-file. */
-*FdTimings,     /*!< file handle for timings.txt log-file. */
-*FdBalance,     /*!< file handle for balance.txt log-file. */
+*FdTimebin,    /*!< file handle for timebin.txt log-file. */
+*FdInfo,       /*!< file handle for info.txt log-file. */
+*FdEnergy,     /*!< file handle for energy.txt log-file. */
+*FdTimings,    /*!< file handle for timings.txt log-file. */
+*FdBalance,    /*!< file handle for balance.txt log-file. */
 #ifdef RT_CHEM_PHOTOION
 *FdRad,         /*!< file handle for radtransfer.txt log-file. */
 #endif
@@ -220,7 +227,7 @@ FILE
 *FdDE,			/*!< file handle for darkenergy.txt log-file. */
 #endif
 #endif
-*FdCPU;         /*!< file handle for cpu.txt log-file. */
+*FdCPU;        /*!< file handle for cpu.txt log-file. */
 
 #ifdef GALSF
 FILE *FdSfr;			/*!< file handle for sfr.txt log-file. */
@@ -235,7 +242,7 @@ FILE *FdHIIHeating;	/*!< file handle for HIIheating.txt log-file */
 FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 #endif
 
-#ifdef GDE_DISTORTIONTENSOR
+#ifdef DISTORTIONTENSORPS
 #ifdef PMGRID
 FILE *FdTidaltensor;		/*!< file handle for Tidaltensor.txt log-file. */
 #endif
@@ -353,8 +360,12 @@ int TimerFlag;
 struct NODE *Nodes_base,	/*!< points to the actual memory allocted for the nodes */
 *Nodes;			/*!< this is a pointer used to access the nodes which is shifted such that Nodes[All.MaxPart] gives the first allocated node */
 struct extNODE *Extnodes, *Extnodes_base;
+
+
 int MaxNodes;			/*!< maximum allowed number of internal nodes */
 int Numnodestree;		/*!< number of (internal) nodes in each tree */
+
+
 int *Nextnode;			/*!< gives next node in tree walk  (nodes array) */
 int *Father;			/*!< gives parent node in tree (Prenodes array) */
 

@@ -317,6 +317,14 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
     P[j] = P[i];
     //memcpy(P[j],P[i],sizeof(struct particle_data)); // safer copy to make sure we don't just end up with a pointer re-direct
 
+#ifdef CHIMES 
+    int abunIndex; 
+    ChimesGasVars[j] = ChimesGasVars[i]; 
+    allocate_gas_abundances_memory(&(ChimesGasVars[j]), &ChimesGlobalVars); 
+    for (abunIndex = 0; abunIndex < ChimesGlobalVars.totalNumberOfSpecies; abunIndex++) 
+      ChimesGasVars[j].abundances[abunIndex] = ChimesGasVars[i].abundances[abunIndex]; 
+#endif 
+
     /* the particle needs to be 'born active' and added to the active set */
     NextActiveParticle[j] = FirstActiveParticle;
     FirstActiveParticle = j;
@@ -342,7 +350,11 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
     P[i].ID_generation = P[i].ID_generation + 1;
     if(P[i].ID_generation > 30) {P[i].ID_generation=0;} // roll over at 32 generations (unlikely to ever reach this)
     P[j].ID_generation = P[i].ID_generation; // ok, all set!
-    
+
+#ifdef CHIMES 
+    ChimesGasVars[j].ID_child_number = P[j].ID_child_number;
+#endif
+
     /* assign masses to both particles (so they sum correctly) */
     P[j].Mass = mass_of_new_particle * P[i].Mass;
     P[i].Mass -= P[j].Mass;
@@ -709,6 +721,18 @@ void merge_particles_ij(int i, int j)
 #endif
     }
 #endif
+#ifdef CHIMES 
+    double wt_h_i, wt_h_j; // Ratio of hydrogen mass fractions. 
+#ifdef COOL_METAL_LINES_BY_SPECIES 
+    wt_h_i = 1.0 - (P[i].Metallicity[0] + P[i].Metallicity[1]); 
+    wt_h_j = 1.0 - (P[j].Metallicity[0] + P[j].Metallicity[1]); 
+#else 
+    wt_h_i = 1.0; 
+    wt_h_j = 1.0; 
+#endif 
+    for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) 
+      ChimesGasVars[j].abundances[k] = (ChimesGasVars[j].abundances[k] * wt_j * wt_h_j) + (ChimesGasVars[i].abundances[k] * wt_i * wt_h_i);
+#endif // CHIMES 
 #ifdef METALS
     for(k=0;k<NUM_METAL_SPECIES;k++)
         P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k]; /* metal-mass conserving */
@@ -766,6 +790,9 @@ void rearrange_particle_sequence(void)
     int count_elim, count_gaselim, count_bhelim, tot_elim, tot_gaselim, tot_bhelim;
     struct particle_data psave;
     struct sph_particle_data sphsave;
+#ifdef CHIMES 
+    struct gasVariables gasVarsSave; 
+#endif 
     
     int do_loop_check = 0;
     if(Gas_split>0)
@@ -804,6 +831,24 @@ void rearrange_particle_sequence(void)
                 sphsave = SphP[i];
                 SphP[i] = SphP[j];
                 SphP[j] = sphsave;  /* have the gas particle take its sph pointer with it */
+
+#ifdef CHIMES 
+		// Also swap gasVars. 
+		gasVarsSave = ChimesGasVars[i]; 
+		ChimesGasVars[i] = ChimesGasVars[j]; 
+		ChimesGasVars[j] = gasVarsSave; 
+
+		/* Old particle (now at position j) is no longer 
+		 * a gas particle, so delete its abundance array. */
+		free(ChimesGasVars[j].abundances); 
+		free(ChimesGasVars[j].isotropic_photon_density);
+		free(ChimesGasVars[j].dust_G_parameter); 
+		free(ChimesGasVars[j].H2_dissocJ); 
+		ChimesGasVars[j].abundances = NULL; 
+		ChimesGasVars[j].isotropic_photon_density = NULL; 
+		ChimesGasVars[j].dust_G_parameter = NULL; 
+		ChimesGasVars[j].H2_dissocJ = NULL; 
+#endif /* CHIMES */
                 /* ok we've now swapped the ordering so the gas particle is still inside the block */
                 flag = 1;
             }
@@ -829,6 +874,17 @@ void rearrange_particle_sequence(void)
                 P[i] = P[N_gas - 1];
                 SphP[i] = SphP[N_gas - 1];
                 /* swap with properties of last gas particle (i-- below will force a check of this so its ok) */
+#ifdef CHIMES 
+		free(ChimesGasVars[i].abundances); 
+		free(ChimesGasVars[i].isotropic_photon_density);
+		free(ChimesGasVars[i].dust_G_parameter); 
+		free(ChimesGasVars[i].H2_dissocJ); 
+		ChimesGasVars[i] = ChimesGasVars[N_gas - 1]; 
+		ChimesGasVars[N_gas - 1].abundances = NULL; 
+		ChimesGasVars[N_gas - 1].isotropic_photon_density = NULL; 
+		ChimesGasVars[N_gas - 1].dust_G_parameter = NULL; 
+		ChimesGasVars[N_gas - 1].H2_dissocJ = NULL; 
+#endif  /* CHIMES */
                 
                 P[N_gas - 1] = P[NumPart - 1]; /* redirect the final gas pointer to go to the final particle (BH) */
                 N_gas--; /* shorten the total N_gas count */

@@ -526,6 +526,10 @@ int HIIheating_evaluate(int target, int mode, int *nexport, int *nsend_local);
 #endif
 #endif
 
+#ifdef CHIMES_HII_REGIONS 
+void chimes_HII_regions_singledomain(void); 
+#endif
+
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
 void selfshield_local_incident_uv_flux(void);
 #endif
@@ -549,11 +553,13 @@ void *addthermalFB_evaluate_secondary(void *p);
 #ifdef COOL_METAL_LINES_BY_SPECIES
 /*double GetMetalLambda(double, double);*/
 double getSpCoolTableVal(long i,long j,long k,long tblK);
+#ifndef CHIMES 
 double GetCoolingRateWSpecies(double nHcgs, double logT, double *Z);
 double GetLambdaSpecies(long k_index, long index_x0y0, long index_x0y1, long index_x1y0, long index_x1y1, double dx, double dy, double dz, double mdz);
 void LoadMultiSpeciesTables(void);
 void ReadMultiSpeciesTables(int iT);
 char *GetMultiSpeciesFilename(int i, int hk);
+#endif 
 #endif
 
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
@@ -587,7 +593,24 @@ int disp_density_isactive(int i);
 #endif
 
 
+#ifdef CHIMES 
+void chimes_cooling_parent_routine(void); 
+double chimes_convert_u_to_temp(double u, double rho, int target); 
+void chimes_update_gas_vars(int target); 
+#ifdef COOL_METAL_LINES_BY_SPECIES 
+void chimes_update_element_abundances(int i); 
+#endif 
+#ifdef CHIMES_TURB_DIFF_IONS 
+void chimes_update_turbulent_abundances(int i, int mode); 
+#endif 
+#ifdef CHIMES_METAL_DEPLETION 
+void chimes_init_depletion_data(void); 
+double chimes_jenkins_linear_fit(double nH, double T, double Ax, double Bx, double zx); 
+void chimes_compute_depletions(double nH, double T, int thread_id); 
+#endif 
+#else 
 void cooling_parent_routine(void);
+#endif 
 void count_hot_phase(void);
 void delete_node(int i);
 void density(void);
@@ -701,7 +724,13 @@ void pm_setup_nonperiodic_kernel(void);
 
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
+#ifdef CHIMES_STELLAR_FLUXES 
+double chimes_G0_luminosity(double stellar_age, double stellar_mass); 
+double chimes_ion_luminosity(double stellar_age, double stellar_mass); 
+int rt_get_source_luminosity(int i, double sigma_0, double *lum, double *chimes_lum_G0, double *chimes_lum_ion); 
+#else 
 int rt_get_source_luminosity(int i, double sigma_0, double *lum);
+#endif 
 double rt_kappa(int j, int k_freq);
 double rt_absorption_rate(int i, int k_freq);
 double rt_diffusion_coefficient(int i, int k_freq);
@@ -812,7 +841,6 @@ void hydro_gradient_calc(void);
 int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
 void *GasGrad_evaluate_primary(void *p, int gradient_iteration);
 void *GasGrad_evaluate_secondary(void *p, int gradient_iteration);
-void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol);
 
 #ifdef TURB_DIFF_DYNAMIC
 void dynamic_diff_calc(void);

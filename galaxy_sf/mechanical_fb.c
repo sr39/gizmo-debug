@@ -470,7 +470,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 SphP[j].MassTrue += dM_ejecta_in;
 #endif
-#ifdef METALS
+#if defined(METALS) 
                 /* inject metals */
                 for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=(1-massratio_ejecta)*P[j].Metallicity[k] + massratio_ejecta*local.yields[k];}
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
@@ -486,7 +486,6 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dflux*kernel.dp[k]; SphP[j].CosmicRayFluxPred[k]+=dflux*kernel.dp[k];}
 #endif
 #endif
-                
                 /* inject the post-shock energy and momentum (convert to specific units as needed first) */
                 e_shock *= 1 / P[j].Mass;
                 SphP[j].InternalEnergy += e_shock;
@@ -904,6 +903,12 @@ void determine_where_SNe_occur(void)
     npossible=nhosttotal=ntotal=ptotal=dtmean=rmean=0;
     double mpi_npossible,mpi_nhosttotal,mpi_ntotal,mpi_ptotal,mpi_dtmean,mpi_rmean;
     mpi_npossible=mpi_nhosttotal=mpi_ntotal=mpi_ptotal=mpi_dtmean=mpi_rmean=0;
+
+
+
+
+
+	  
     // loop over particles //
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
@@ -940,6 +945,7 @@ void determine_where_SNe_occur(void)
     MPI_Reduce(&nhosttotal, &mpi_nhosttotal, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&ntotal, &mpi_ntotal, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&npossible, &mpi_npossible, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    
     if(ThisTask == 0)
     {
 #ifdef IO_REDUCED_MODE
