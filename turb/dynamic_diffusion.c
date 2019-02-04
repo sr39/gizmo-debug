@@ -925,7 +925,7 @@ int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
                 kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
-#ifdef PERIODIC			/*  now find the closest image in the given box size  */
+#ifdef BOX_PERIODIC			/*  now find the closest image in the given box size  */
                 NEAREST_XYZ(kernel.dp[0], kernel.dp[1], kernel.dp[2], 1);
 #endif
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
