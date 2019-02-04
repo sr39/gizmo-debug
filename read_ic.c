@@ -575,9 +575,25 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                 P[offset + n].IMF_NumMassiveStars = *fp++;
 #endif
             break;
-
-
-
+        case IO_SINKRAD:
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+            for(n = 0; n < pc; n++)
+                P[offset + n].SinkRadius = *fp++;
+#endif
+            break;
+        case IO_JSINK:
+#ifdef NEWSINK_J_FEEDBACK
+            for(n = 0; n < pc; n++)
+                for(k = 0; k < 3; k++)
+                    P[offset + n].Jsink[k] = *fp++;
+#endif
+            break;
+        case IO_BHMASSINIT:
+#ifdef NEWSINK
+            for(n = 0; n < pc; n++)
+                P[offset + n].init_mass_in_intzone = *fp++;
+#endif
+            break;
         case IO_COSMICRAY_KAPPA:
         case IO_AGS_OMEGA:
         case IO_AGS_CORR:
@@ -585,7 +601,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_AGS_RHO:
         case IO_AGS_QPT:
             break;
-
             
             /* the other input fields (if present) are not needed to define the
              initial conditions of the code */
@@ -637,25 +652,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_LAST_CAUSTIC:
         case IO_HSMS:
         case IO_ACRB:
-        case IO_SINKRAD:
-#ifdef SINGLE_STAR_STRICT_ACCRETION
-            for(n = 0; n < pc; n++)
-                P[offset + n].SinkRadius = *fp++;
-#endif
-            break;
-        case IO_JSINK:
-#ifdef NEWSINK_J_FEEDBACK
-            for(n = 0; n < pc; n++)
-                for(k = 0; k < 3; k++)
-                    P[offset + n].Jsink[k] = *fp++;
-#endif
-            break;
-        case IO_BHMASSINIT:
-#ifdef NEWSINK
-            for(n = 0; n < pc; n++)
-                P[offset + n].init_mass_in_intzone = *fp++;
-#endif
-            break;
         case IO_VSTURB_DISS:
         case IO_VSTURB_DRIVE:
         case IO_MG_PHI:
@@ -938,6 +934,12 @@ void read_file(char *fname, int readTask, int lastTask)
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==1)||(HYDRO_FIX_MESH_MOTION==2)||(HYDRO_FIX_MESH_MOTION==3))
                    && blocknr != IO_PARTVEL
 #endif
+#if defined(SINGLE_STAR_STRICT_ACCRETION) && defined(READ_SINKRADIUS)
+                   && blocknr != IO_SINKRAD
+#endif
+//#if defined(NEWSINK)
+//                   && blocknr != IO_BHMASSINIT
+//#endif
                    )
 #if defined(GDE_DISTORTIONTENSOR) && defined(GDE_READIC)
                     if(RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_SHEET_ORIENTATION))

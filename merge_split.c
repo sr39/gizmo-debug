@@ -40,7 +40,7 @@ int does_particle_need_to_be_merged(int i)
     if(P[i].ID == All.AGNWindID)
     {
         MyFloat vr2 = (P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]) * All.cf_a2inv; // physical
-        if(vr2 <= 0.01 * All.BAL_v_outflow*All.BAL_v_outflow) {return 1;} else {return 0;} // merge only if velocity condition satisfied, even if surrounded by more massive particles //
+        if(vr2 <= 0.01 * All.BAL_v_outflow * All.BAL_v_outflow * 1e10 / (All.UnitVelocity_in_cm_per_s * All.UnitVelocity_in_cm_per_s)) {return 1;} else {return 0;} // merge only if velocity condition satisfied, even if surrounded by more massive particles //
     }
 #endif
     if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*ref_mass_factor(i))) return 0;
