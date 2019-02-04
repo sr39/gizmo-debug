@@ -471,7 +471,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_BHPROGS:
 #ifdef BH_COUNTPROGS
             for(n = 0; n < pc; n++)
-                P[offset + n].BH_CountProgs = *fp++;
+                P[offset + n].BH_CountProgs = *ip_int++;
 #endif
             break;
             
@@ -510,6 +510,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                     SphP[offset + n].ParticleVel[k] = *fp++;
 #endif
             break;
+            
             
         case IO_RADGAMMA:
 #ifdef RADTRANSFER
@@ -839,6 +840,7 @@ void read_file(char *fname, int readTask, int lastTask)
         //   sufficiently irregular trees. overall more stable behavior with the 'buffer', albeit at the expense of memory )
 #endif
         
+        
         allocate_memory();
         
         size_t MyBufferSize = All.BufferSize;
@@ -939,6 +941,7 @@ void read_file(char *fname, int readTask, int lastTask)
         
         if(blockpresent(blocknr))
         {
+                /* blocks only for restartflag == 0 */
                 if(RestartFlag == 0 && blocknr > IO_U && blocknr != IO_BFLD
 #ifdef INPUT_READ_HSML
                    && blocknr != IO_HSML

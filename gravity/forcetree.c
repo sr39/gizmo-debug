@@ -3597,7 +3597,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
     }
     
     /* store result at the proper place */
-#if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUTPOTENTIAL)
+#if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUT_POTENTIAL)
     if(mode == 0)
         P[target].Potential = pot;
     else

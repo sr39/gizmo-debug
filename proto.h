@@ -841,6 +841,7 @@ void hydro_gradient_calc(void);
 int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
 void *GasGrad_evaluate_primary(void *p, int gradient_iteration);
 void *GasGrad_evaluate_secondary(void *p, int gradient_iteration);
+void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol);
 
 #ifdef TURB_DIFF_DYNAMIC
 void dynamic_diff_calc(void);

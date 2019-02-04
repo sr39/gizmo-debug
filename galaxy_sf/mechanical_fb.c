@@ -903,12 +903,6 @@ void determine_where_SNe_occur(void)
     npossible=nhosttotal=ntotal=ptotal=dtmean=rmean=0;
     double mpi_npossible,mpi_nhosttotal,mpi_ntotal,mpi_ptotal,mpi_dtmean,mpi_rmean;
     mpi_npossible=mpi_nhosttotal=mpi_ntotal=mpi_ptotal=mpi_dtmean=mpi_rmean=0;
-
-
-
-
-
-	  
     // loop over particles //
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
