@@ -374,7 +374,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
        --> appropriate for cosmological simulations where particles are effectively kicked from ~kpc scales
            (i.e. we need lower velocity and higher mass outflow rates compared to accretion disk scales) - */
     f_accreted = All.BAL_f_accretion;
-    if((All.BlackHoleFeedbackFactor > 0) && (All.BlackHoleFeedbackFactor != 1.)) {f_accreted /= All.BlackHoleFeedbackFactor;} else {if(All.BAL_v_outflow > 0) f_accreted = 1./(1. + fabs(1.*BH_WIND_KICK)*All.BlackHoleRadiativeEfficiency*(C/All.UnitVelocity_in_cm_per_s)/All.BAL_v_outflow);}
+    if((All.BlackHoleFeedbackFactor > 0) && (All.BlackHoleFeedbackFactor != 1.)) {f_accreted /= All.BlackHoleFeedbackFactor;} else {if(All.BAL_v_outflow > 0) f_accreted = 1./(1. + fabs(1.*BH_WIND_KICK)*All.BlackHoleRadiativeEfficiency*(C/All.UnitVelocity_in_cm_per_s)/(All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s));}
 #endif
     
     /* Now start the actual SPH computation for this BH particle */

@@ -309,7 +309,7 @@ void blackhole_properties_loop(void)
         }
         /*Set BH data*/
         if (BPP(n).init_mass_in_intzone==0){ /* This means we have not set the initial mass in the interaction zone */
-            BPP(n).init_mass_in_intzone = P[n].Mass;// + BlackholeTempInfo[i].intzone_gasmass; //initial mass is the gas that went into the BH
+            BPP(n).init_mass_in_intzone = P[n].Mass + BlackholeTempInfo[i].intzone_gasmass; //initial mass is the gas that went into the BH
         }
 #if defined(NEWSINK_J_FEEDBACK)
         BPP(n).t_disc = BlackholeTempInfo[i].t_disc;
@@ -697,7 +697,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 #if defined(NEWSINK)
     double tsum=0; 
     /*Store mdot and dt value for BH particle and time average it*/
-    BPP(n).BH_Mdot_Avg = BPP(n).Mdotvals[0]*BPP(n).dtvals[0] ; tsum = dt; //start with the current values
+    BPP(n).BH_Mdot_Avg = BPP(n).BH_Mdot*dt ; tsum = dt; //start with the current values
     for(k=(MDOT_AVG_WINDOWS_SIZE-1);k>0;k--){ //shift array by one
         BPP(n).Mdotvals[k] = BPP(n).Mdotvals[k-1];
         BPP(n).dtvals[k] = BPP(n).dtvals[k-1];

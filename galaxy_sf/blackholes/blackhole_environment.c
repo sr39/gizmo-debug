@@ -522,6 +522,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     printf("env n=%llu last wk is: %g \n", (unsigned long long) target, (MyFloat) wk);
     printf("env n=%llu last cs sq is: %g \n", (unsigned long long) target, (MyFloat) csound_sq);
     printf("env n=%llu BH h_i is: %g \n", (unsigned long long) target, (MyFloat) h_i);
+    printf("env n=%llu BH sink_radius is: %g \n", (unsigned long long) target, (MyFloat) sink_radius);
     printf("env n=%llu BH int_zone_radius is: %g \n", (unsigned long long) target, (MyFloat) int_zone_radius);
     printf("env n=%llu BH gasmass is: %g \n", (unsigned long long) target, (MyFloat) out.intzone_gasmass);
     printf("env n=%llu BH t_disc_num_sum is: %g \n", (unsigned long long) target, (MyFloat) out.t_disc_num_sum);

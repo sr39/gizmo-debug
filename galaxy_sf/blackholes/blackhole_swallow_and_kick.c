@@ -527,7 +527,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #ifdef BH_WIND_KICK
                         f_accreted = All.BAL_f_accretion;
 #ifndef BH_GRAVCAPTURE_GAS
-                        if((All.BlackHoleFeedbackFactor > 0) && (All.BlackHoleFeedbackFactor != 1.)) {f_accreted /= All.BlackHoleFeedbackFactor;} else {if(All.BAL_v_outflow > 0) f_accreted = 1./(1. + fabs(1.*BH_WIND_KICK)*All.BlackHoleRadiativeEfficiency*(C/All.UnitVelocity_in_cm_per_s)/All.BAL_v_outflow);}
+                        if((All.BlackHoleFeedbackFactor > 0) && (All.BlackHoleFeedbackFactor != 1.)) {f_accreted /= All.BlackHoleFeedbackFactor;} else {if(All.BAL_v_outflow > 0) f_accreted = 1./(1. + fabs(1.*BH_WIND_KICK)*All.BlackHoleRadiativeEfficiency*(C/All.UnitVelocity_in_cm_per_s)/(All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s));}
                         if((bh_mass_withdisk - mass) <= 0) {f_accreted=0;} // DAA: no need to accrete gas particle to enforce mass conservation (we will simply kick),  note that here the particle mass P.Mass is larger than the physical BH mass P.BH_Mass
 #endif // #ifdef BH_GRAVCAPTURE_GAS
 #else // #ifdef BH_WIND_KICK
@@ -570,9 +570,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 
 
 #ifdef BH_WIND_KICK     /* BAL kicking operations. NOTE: we have two separate BAL wind models, particle kicking and smooth wind model. This is where we do the particle kicking BAL model. This should also work when there is alpha-disk. */
-                        v_kick=All.BAL_v_outflow; if( !(All.ComovingIntegrationOn) && (All.Time < 0.001)) {v_kick *= All.Time/0.001;}
+                        v_kick=All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s; if( !(All.ComovingIntegrationOn) && (All.Time < 0.001) && (All.cf_atime!=1.0)) {v_kick *= All.Time/0.001;}
 #if defined(NEWSINK) /*It is possible to accrete only part of the particle so we need to be more careful about our kicks*/
-                        if (f_acc_corr<1.0)}{
+                        if (f_acc_corr<1.0){
                             v_kick *= f_acc_corr*(1.0-All.BAL_f_accretion)/(1.0-All.BAL_f_accretion*f_acc_corr); /*we wanted to only accrete an f_acc_corr portion, so the imparted momentum is proportional to only f_acc_corr*(1-All.BAL_f_accretion) times the initial mass*/
                         }
 #endif
@@ -598,6 +598,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif  
 
 #ifndef IO_REDUCED_MODE
+                        printf("BAL kick: All.BAL_v_outflow %g \t f_acc_corr %g \t v_kick %g\n",(All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s),f_acc_corr,v_kick);
                         printf("BAL kick: P[j].ID %llu ID %llu Type(j) %d f_acc %g M(j) %g V(j).xyz %g/%g/%g P(j).xyz %g/%g/%g p(i).xyz %g/%g/%g v_out %g \n",
                                (unsigned long long) P[j].ID, (unsigned long long) P[j].SwallowID,P[j].Type, All.BAL_f_accretion,P[j].Mass,P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],pos[0],pos[1],pos[2],v_kick);
 #endif
@@ -699,12 +700,12 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 SphP[j].MassTrue += m_wind;
 #endif
                                 /* now add wind momentum to particle */
-                                if(dvr_gas_to_bh < All.BAL_v_outflow)   // gas moving away from BH at v < BAL speed
+                                if(dvr_gas_to_bh < (All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s))   // gas moving away from BH at v < BAL speed
                                 {
                                     double e_wind = 0;
                                     for(k=0;k<3;k++)
                                     {
-                                norm = All.cf_atime*All.BAL_v_outflow*dir[k] + velocity[k]-P[j].Vel[k]; // relative wind-particle velocity (in code units) including BH-particle motion;
+                                norm = All.cf_atime*(All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s)*dir[k] + velocity[k]-P[j].Vel[k]; // relative wind-particle velocity (in code units) including BH-particle motion;
                                 P[j].Vel[k] += All.BlackHoleFeedbackFactor * norm * m_wind/P[j].Mass; // momentum conservation gives updated velocity
                                         SphP[j].VelPred[k] += All.BlackHoleFeedbackFactor * norm * m_wind/P[j].Mass;
                                 e_wind += (norm/All.cf_atime)*(norm/All.cf_atime); // -specific- shocked wind energy
@@ -1012,9 +1013,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
         P[j].Pos[1] =  P[i].Pos[1] + dy;
         P[j].Pos[2] =  P[i].Pos[2] + dz;
         
-        P[j].Vel[0] =  P[i].Vel[0] + dx / d_r * All.BAL_v_outflow * All.cf_atime;
-        P[j].Vel[1] =  P[i].Vel[1] + dy / d_r * All.BAL_v_outflow * All.cf_atime;
-        P[j].Vel[2] =  P[i].Vel[2] + dz / d_r * All.BAL_v_outflow * All.cf_atime;
+        P[j].Vel[0] =  P[i].Vel[0] + dx / d_r * (All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s) * All.cf_atime;
+        P[j].Vel[1] =  P[i].Vel[1] + dy / d_r * (All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s) * All.cf_atime;
+        P[j].Vel[2] =  P[i].Vel[2] + dz / d_r * (All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s) * All.cf_atime;
         SphP[j].VelPred[0] = P[j].Vel[0]; SphP[j].VelPred[1] = P[j].Vel[1]; SphP[j].VelPred[2] = P[j].Vel[2]; 
         
 #if defined(BH_COSMIC_RAYS)

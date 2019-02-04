@@ -283,6 +283,9 @@
 #endif
 #endif
 #define BH_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+#define READ_SINKRADIUS // read the sinkradius for sink partciles in IC files
+#endif
 #ifdef NEWSINK
 #define ALPHASS 0.01 //alpha disk factor for disc timescale, should be between 0.01-1.0
 #define DT_MIN_TOLERANCE_FACTOR 0.01 //tolerance factor for dt_min, defined in part (ii) of 2.3.5 in Hubber 2013
