@@ -172,6 +172,11 @@ void compute_stellar_feedback(void)
     HII_heating_singledomain(); /* local photo-ionization heating */
     CPU_Step[CPU_HIIHEATING] += measure_time();
 #endif
+
+#ifdef CHIMES_HII_REGIONS 
+    chimes_HII_regions_singledomain(); 
+#endif 
+    
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
     radiation_pressure_winds_consolidated(); /* local radiation pressure */
     CPU_Step[CPU_LOCALWIND] += measure_time();

@@ -38,6 +38,13 @@ void savepositions(int num)
     int n, filenr, gr, ngroups, masterTask, lastTask;
     
     CPU_Step[CPU_MISC] += measure_time();
+
+#ifdef CHIMES_REDUCED_OUTPUT 
+    if (num % N_chimes_full_output_freq == 0)
+      Chimes_incl_full_output = 1; 
+    else 
+      Chimes_incl_full_output = 0; 
+#endif 
     
     rearrange_particle_sequence();
     /* ensures that new tree will be constructed */
@@ -349,17 +356,20 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_NE:		/* electron abundance */
 #if defined(COOLING) || defined(RT_CHEM_PHOTOION)
+#ifndef CHIMES 
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
                     *fp++ = SphP[pindex].Ne;
                     n++;
                 }
+#endif 
 #endif
             break;
             
         case IO_NH:		/* neutral hydrogen fraction */
 #if defined(COOLING) || defined(RT_CHEM_PHOTOION)
+#ifndef CHIMES 
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -379,6 +389,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
                     n++;
                 }
+#endif // CHIMES 
 #endif // #if defined(COOLING) || defined(RT_CHEM_PHOTOION)
             break;
             
@@ -536,6 +547,147 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
+
+#ifdef CHIMES 
+        case IO_CHIMES_ABUNDANCES:
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+		for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) 
+		  fp[k] = (MyOutputFloat) ChimesGasVars[pindex].abundances[k]; 
+		fp += ChimesGlobalVars.totalNumberOfSpecies; 
+		n++; 
+	      }
+	  break; 
+
+        case IO_CHIMES_MU: 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+		*fp++ = (MyOutputFloat) calculate_mean_molecular_weight(&(ChimesGasVars[pindex]), &ChimesGlobalVars); 
+		n++; 
+	      }
+	  break; 
+
+        case IO_CHIMES_REDUCED: 
+#ifdef CHIMES_REDUCED_OUTPUT 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+		fp[0] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[elec]]; 
+		fp[1] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[HI]]; 
+		fp[2] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[H2]]; 
+		fp[3] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[CO]]; 
+		fp += 4; 
+		n++; 
+	      }
+#endif 
+	  break; 
+
+        case IO_CHIMES_NH:
+#ifdef CHIMES_NH_OUTPUT 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+#ifdef CHIMES_SOBOLEV_SHIELDING 
+#ifdef COOL_METAL_LINES_BY_SPECIES 
+		*fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(SphP[pindex].Gradients.Density,PPP[pindex].Hsml,SphP[pindex].Density,PPP[pindex].NumNgb,1) * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm * shielding_length_factor * (1.0 - (P[pindex].Metallicity[0] + P[pindex].Metallicity[1])) / PROTONMASS); 
+#else 
+		*fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(SphP[pindex].Gradients.Density,PPP[pindex].Hsml,SphP[pindex].Density,PPP[pindex].NumNgb,1) * All.cf_a2inv * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm * shielding_length_factor * HYDROGEN_MASSFRAC / PROTONMASS); 
+#endif // COOL_MET_LINES_BY_SPECIES 
+#endif // CHIMES_SOBOLEV_SHIELDING 
+		  n++;
+	      }
+#endif // CHIMES_NH_OUTPUT 
+	  break;
+
+        case IO_CHIMES_STAR_SIGMA:
+#if defined(CHIMES_NH_OUTPUT) && defined(CHIMES_OUTPUT_DENS_AROUND_STAR) 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+		*fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,PPP[pindex].Hsml,P[pindex].DensAroundStar,PPP[pindex].NumNgb,0) * 0.955 * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm));  // g cm^-2 
+		  n++;
+	      }
+#endif 
+	  break;
+
+        case IO_CHIMES_FLUX_G0: 
+#ifdef CHIMES_STELLAR_FLUXES  
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+#ifdef CHIMES_HII_REGIONS 
+		if (SphP[pindex].DelayTimeHII > 0) 
+		  {
+		    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		      fp[k] = (MyOutputFloat) (SphP[pindex].Chimes_G0[k] + SphP[pindex].Chimes_G0_HII[k]); 
+		  }
+		else 
+		  {
+		    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		      fp[k] = (MyOutputFloat) SphP[pindex].Chimes_G0[k]; 
+		  }
+#else 
+		for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		  fp[k] = (MyOutputFloat) SphP[pindex].Chimes_G0[k]; 
+#endif 
+		fp += CHIMES_LOCAL_UV_NBINS; 
+		n++; 
+	      }
+#endif 
+	  break; 
+
+        case IO_CHIMES_FLUX_ION: 
+#ifdef CHIMES_STELLAR_FLUXES  
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+#ifdef CHIMES_HII_REGIONS 
+		if (SphP[pindex].DelayTimeHII > 0) 
+		  {
+		    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		      fp[k] = (MyOutputFloat) (SphP[pindex].Chimes_fluxPhotIon[k] + SphP[pindex].Chimes_fluxPhotIon_HII[k]); 
+		  }
+		else 
+		  {
+		    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		      fp[k] = (MyOutputFloat) SphP[pindex].Chimes_fluxPhotIon[k]; 
+		  } 
+#else 
+		for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		  fp[k] = (MyOutputFloat) SphP[pindex].Chimes_fluxPhotIon[k]; 
+#endif 
+
+		fp += CHIMES_LOCAL_UV_NBINS; 
+		n++; 
+	      }
+#endif 
+	  break; 
+
+        case IO_CHIMES_STAR_DENS: 
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+                *fp++ = (MyOutputFloat) P[pindex].DensAroundStar; 
+		n++; 
+	      }
+#endif 
+	  break; 
+
+        case IO_CHIMES_DELAY_HII: 
+#ifdef CHIMES_OUTPUT_DELAY_TIME_HII 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+                *fp++ = (MyOutputFloat) SphP[pindex].DelayTimeHII; 
+		n++; 
+	      }
+#endif 
+	  break; 
+
+#endif // CHIMES
             
         case IO_POT:		/* gravitational potential */
 #if defined(OUTPUT_POTENTIAL)  || defined(SUBFIND_RESHUFFLE_AND_POTENTIAL)
@@ -1685,6 +1837,87 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
                 bytes_per_blockelement = (NUM_METAL_SPECIES) * sizeof(MyOutputFloat);
 #endif
             break;
+
+            
+#ifdef CHIMES
+        case IO_CHIMES_ABUNDANCES:
+            if(mode)
+                bytes_per_blockelement = ChimesGlobalVars.totalNumberOfSpecies * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = ChimesGlobalVars.totalNumberOfSpecies * sizeof(MyOutputFloat);
+            break;
+
+        case IO_CHIMES_MU: 
+            if(mode)
+                bytes_per_blockelement = sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = sizeof(MyOutputFloat);
+            break;
+
+        case IO_CHIMES_REDUCED: 
+#ifdef CHIMES_REDUCED_OUTPUT 
+            if(mode)
+                bytes_per_blockelement = 4 * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = 4 * sizeof(MyOutputFloat);
+#endif 
+            break;
+
+        case IO_CHIMES_NH:
+#ifdef CHIMES_NH_OUTPUT 
+            if(mode)
+                bytes_per_blockelement = sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = sizeof(MyOutputFloat);
+#endif 
+	    break; 
+
+        case IO_CHIMES_STAR_SIGMA: 
+#if defined(CHIMES_NH_OUTPUT) && defined(CHIMES_OUTPUT_DENS_AROUND_STAR) 
+            if(mode)
+                bytes_per_blockelement = sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = sizeof(MyOutputFloat);
+#endif 
+	    break;
+
+        case IO_CHIMES_FLUX_G0: 
+#ifdef CHIMES_STELLAR_FLUXES  
+            if(mode)
+                bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyOutputFloat);
+#endif 
+            break;
+
+        case IO_CHIMES_FLUX_ION: 
+#ifdef CHIMES_STELLAR_FLUXES  
+            if(mode)
+                bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyOutputFloat);
+#endif 
+            break;
+
+        case IO_CHIMES_STAR_DENS: 
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+            if(mode)
+                bytes_per_blockelement = sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = sizeof(MyOutputFloat);
+            break;
+#endif 
+
+        case IO_CHIMES_DELAY_HII: 
+#ifdef CHIMES_OUTPUT_DELAY_TIME_HII 
+            if(mode)
+                bytes_per_blockelement = sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = sizeof(MyOutputFloat);
+            break;
+#endif 
+ 
+#endif // CHIMES 
             
             
         case IO_EOS_STRESS_TENSOR:
@@ -1956,7 +2189,73 @@ int get_values_per_blockelement(enum iofields blocknr)
             values = 0;
 #endif
             break;
-            
+
+#ifdef CHIMES 
+        case IO_CHIMES_ABUNDANCES: 
+	  values = ChimesGlobalVars.totalNumberOfSpecies; 
+	  break; 
+
+        case IO_CHIMES_MU: 
+	  values = 1; 
+	  break; 
+	  
+        case IO_CHIMES_REDUCED: 
+#ifdef CHIMES_REDUCED_OUTPUT 
+	  values = 4; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_NH:
+#ifdef CHIMES_NH_OUTPUT 
+	  values = 1; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_STAR_SIGMA: 
+#if defined(CHIMES_NH_OUTPUT) && defined(CHIMES_OUTPUT_DENS_AROUND_STAR) 
+	  values = 1; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_FLUX_G0: 
+#ifdef CHIMES_STELLAR_FLUXES  
+	  values = CHIMES_LOCAL_UV_NBINS; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_FLUX_ION: 
+#ifdef CHIMES_STELLAR_FLUXES  
+	  values = CHIMES_LOCAL_UV_NBINS; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_STAR_DENS: 
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+	  values = 1; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_DELAY_HII: 
+#ifdef CHIMES_OUTPUT_DELAY_TIME_HII 
+	  values = 1; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+#endif // CHIMES 
             
         case IO_IMF:
 #ifdef GALSF_SFR_IMF_VARIATION
@@ -2150,7 +2449,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             if(i != 4)
                 typelist[i] = 0;
             return nstars;
-#endif
+#endif // BLACK_HOLES  
             break;
             
         case IO_OSTAR:
@@ -2204,6 +2503,81 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
                     typelist[i] = 0;
             return ngas + nstars;
             break;
+
+#ifdef CHIMES 
+        case IO_CHIMES_ABUNDANCES:
+	  for (i = 1; i < 6; i++) 
+	    typelist[i] = 0; 
+	  return ngas; 
+	  break; 
+
+        case IO_CHIMES_MU: 
+	  for (i = 1; i < 6; i++) 
+	    typelist[i] = 0; 
+	  return ngas; 
+	  break; 
+
+        case IO_CHIMES_REDUCED: 
+	  for (i = 1; i < 6; i++) 
+	    typelist[i] = 0; 
+	  return ngas; 
+	  break; 
+
+        case IO_CHIMES_NH: 
+	  for (i = 1; i < 6; i++) 
+	    typelist[i] = 0; 
+	  return ngas; 
+	  break; 
+
+        case IO_CHIMES_STAR_SIGMA: 
+	  nngb = nstars; 
+	  typelist[0] = 0; 
+	  typelist[1] = 0; 
+	  typelist[5] = 0; 
+	  if (All.ComovingIntegrationOn) 
+	    {
+	      typelist[2] = 0; 
+	      typelist[3] = 0; 
+	    } 
+	  else 
+	    nngb += header.npart[2] + header.npart[3]; 
+	  return nngb; 
+	  break; 
+
+        case IO_CHIMES_FLUX_G0: 
+	  for (i = 1; i < 6; i++) 
+	    typelist[i] = 0; 
+	  return ngas; 
+	  break; 
+
+        case IO_CHIMES_FLUX_ION: 
+	  for (i = 1; i < 6; i++) 
+	    typelist[i] = 0; 
+	  return ngas; 
+	  break; 
+
+        case IO_CHIMES_STAR_DENS: 
+	  nngb = nstars; 
+	  typelist[0] = 0; 
+	  typelist[1] = 0; 
+	  typelist[5] = 0; 
+	  if (All.ComovingIntegrationOn) 
+	    {
+	      typelist[2] = 0; 
+	      typelist[3] = 0; 
+	    } 
+	  else 
+	    nngb += header.npart[2] + header.npart[3]; 
+	  return nngb; 
+	  break; 
+
+        case IO_CHIMES_DELAY_HII: 
+	  for (i = 1; i < 6; i++) 
+	    typelist[i] = 0; 
+	  return ngas; 
+	  break; 
+
+#endif // CHIMES 
             
         case IO_BHMASS:
         case IO_BHMASSALPHA:
@@ -2286,7 +2660,9 @@ int blockpresent(enum iofields blocknr)
         case IO_NE:
         case IO_NH:
 #if defined(COOLING) || defined(RADTRANSFER)
+#ifndef CHIMES 
             return 1;
+#endif
 #endif
             return 0;
             break;
@@ -2324,7 +2700,7 @@ int blockpresent(enum iofields blocknr)
 #endif
             return 0;
             break;
-            
+
         case IO_GRAINSIZE:
 #ifdef GRAIN_FLUID
             return 1;
@@ -2340,7 +2716,82 @@ int blockpresent(enum iofields blocknr)
 #endif
             return 0;
             break;
-            
+
+#ifdef CHIMES 
+        case IO_CHIMES_ABUNDANCES:
+#ifdef CHIMES_REDUCED_OUTPUT 
+	  if (Chimes_incl_full_output == 1) 
+	    return 1; 
+	  else 
+	    return 0; 
+#else 
+	  return 1; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_MU: 
+	  return 1; 
+
+        case IO_CHIMES_REDUCED: 
+#ifdef CHIMES_REDUCED_OUTPUT 
+	  if (Chimes_incl_full_output == 0) 
+	    return 1; 
+	  else 
+	    return 0; 
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_NH:
+#ifdef CHIMES_NH_OUTPUT 
+	  return 1;
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_STAR_SIGMA: 
+#if defined(CHIMES_NH_OUTPUT) && defined(CHIMES_OUTPUT_DENS_AROUND_STAR) 
+	  return 1; 
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_FLUX_G0: 
+#ifdef CHIMES_STELLAR_FLUXES  
+	  return 1; 
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_FLUX_ION: 
+#ifdef CHIMES_STELLAR_FLUXES  
+	  return 1; 
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_STAR_DENS:
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+	  return 1;
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_DELAY_HII:
+#ifdef CHIMES_OUTPUT_DELAY_TIME_HII 
+	  return 1;
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+#endif // CHIMES 
             
         case IO_DELAYTIME:
 #ifdef GALSF_SUBGRID_WINDS
@@ -2978,6 +3429,35 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_Z:
             strncpy(label, "Z   ", 4);
             break;
+#ifdef CHIMES 
+        case IO_CHIMES_ABUNDANCES: 
+	    strncpy(label, "CHIM", 4); 
+	    break; 
+        case IO_CHIMES_MU:  
+	    strncpy(label, "CHMU", 4); 
+	    break; 
+        case IO_CHIMES_REDUCED: 
+	    strncpy(label, "REDU", 4); 
+	    break; 
+        case IO_CHIMES_NH: 
+	    strncpy(label, "CHNH", 4); 
+	    break; 
+        case IO_CHIMES_STAR_SIGMA: 
+	  strncpy(label, "CHST", 4); 
+	  break; 
+        case IO_CHIMES_FLUX_G0: 
+	  strncpy(label, "CHGO", 4); 
+	  break; 
+        case IO_CHIMES_FLUX_ION: 
+	  strncpy(label, "CHIO", 4); 
+	  break; 
+        case IO_CHIMES_STAR_DENS: 
+	  strncpy(label, "CHDE", 4); 
+	  break; 
+        case IO_CHIMES_DELAY_HII: 
+	  strncpy(label, "CHII", 4); 
+	  break; 
+#endif      
         case IO_POT:
             strncpy(label, "POT ", 4);
             break;
@@ -3361,6 +3841,35 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_Z:
             strcpy(buf, "Metallicity");
             break;
+#ifdef CHIMES 
+        case IO_CHIMES_ABUNDANCES:
+	    strcpy(buf, "ChimesAbundances"); 
+	    break; 
+        case IO_CHIMES_MU: 
+	    strcpy(buf, "ChimesMu"); 
+	    break; 
+        case IO_CHIMES_REDUCED: 
+	    strcpy(buf, "ChimesReducedAbundances"); 
+	    break; 
+        case IO_CHIMES_NH: 
+	    strcpy(buf, "ChimesColumnDensity"); 
+	    break; 
+        case IO_CHIMES_STAR_SIGMA: 
+	  strcpy(buf, "SigmaEff"); 
+	  break; 
+        case IO_CHIMES_FLUX_G0: 
+	  strcpy(buf, "ChimesFluxG0"); 
+	  break; 
+        case IO_CHIMES_FLUX_ION: 
+	  strcpy(buf, "ChimesFluxIon"); 
+	  break; 
+        case IO_CHIMES_STAR_DENS: 
+	    strcpy(buf, "DensAroundStar"); 
+	    break; 
+        case IO_CHIMES_DELAY_HII: 
+	    strcpy(buf, "DelayTimeHII"); 
+	    break; 
+#endif 
         case IO_POT:
             strcpy(buf, "Potential");
             break;

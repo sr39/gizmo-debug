@@ -47,7 +47,7 @@ void begrun(void)
 #endif
   if(ThisTask == 0)
     {
-      printf("\nRunning on %d MPI tasks.\n", NTask);
+     printf("\nRunning on %d MPI tasks.\n", NTask);
 #ifdef _OPENMP
 #pragma omp parallel private(tid)
       {
@@ -65,6 +65,25 @@ void begrun(void)
       printf("\nSize of sph particle structure   %d  [bytes]\n", (int) sizeof(struct sph_particle_data));
 
     }
+
+#ifdef CHIMES_TURB_DIFF_IONS 
+  // Check that TURB_DIFF_METALS and TURB_DIFF_METALS_LOWORDER 
+  // have also been switched on. 
+#ifndef TURB_DIFF_METALS 
+  if (ThisTask == 0) 
+    {
+      printf("ERROR: CHIMES_TURB_DIFF_IONS requires TURB_DIFF_METALS, but this is missing. Aborting.\n"); 
+      endrun(6572); 
+    }
+#endif // !(TURB_DIFF_METALS) 
+#ifndef TURB_DIFF_METALS_LOWORDER 
+  if (ThisTask == 0) 
+    {
+      printf("ERROR: CHIMES_TURB_DIFF_IONS requires TURB_DIFF_METALS_LOWORDER, but this is missing. Aborting.\n"); 
+      endrun(6573); 
+    }
+#endif // !(TURB_DIFF_METALS_LOWORDER) 
+#endif // CHIMES_TURB_DIFF_IONS 
 
   read_parameter_file(ParameterFile);	/* ... read in parameters for this run */
 
@@ -201,7 +220,10 @@ void begrun(void)
       All.ErrTolIntAccuracy = all.ErrTolIntAccuracy;
       All.MinGasHsmlFractional = all.MinGasHsmlFractional;
       All.MinGasTemp = all.MinGasTemp;
-        
+#ifdef CHIMES 
+      All.ChimesThermEvolOn = all.ChimesThermEvolOn; 
+#endif 
+       
         /* allow softenings to be modified during the run */
         if(All.ComovingIntegrationOn)
         {
@@ -712,8 +734,7 @@ void open_outputfiles(void)
         endrun(1);
     }  
 #endif
-    
-    
+
 #if defined(RT_CHEM_PHOTOION) && !defined(IO_REDUCED_MODE)
   sprintf(buf, "%s%s", All.OutputDir, "rt_photoion_chem.txt");
   if(!(FdRad = fopen(buf, mode)))
@@ -1024,7 +1045,7 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.Grain_Size_Spectrum_Powerlaw;
         id[nt++] = REAL;
 #endif
-        
+	
 #if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
         strcpy(tag[nt],"InitMetallicity");
         addr[nt] = &All.InitMetallicityinSolar;
@@ -1282,13 +1303,12 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.TimeBetOnTheFlyFoF;
       id[nt++] = REAL;
 #endif
-        
 
 #ifdef BLACK_HOLES
         strcpy(tag[nt], "BlackHoleAccretionFactor");
         addr[nt] = &All.BlackHoleAccretionFactor;
         id[nt++] = REAL;
-        
+
         strcpy(tag[nt], "BlackHoleEddingtonFactor");
         addr[nt] = &All.BlackHoleEddingtonFactor;
         id[nt++] = REAL;
@@ -1300,7 +1320,7 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "BlackHoleNgbFactor");
         addr[nt] = &All.BlackHoleNgbFactor;
         id[nt++] = REAL;
-        
+
         strcpy(tag[nt], "BlackHoleMaxAccretionRadius");
         addr[nt] = &All.BlackHoleMaxAccretionRadius;
         id[nt++] = REAL;
@@ -1728,6 +1748,141 @@ void read_parameter_file(char *fname)
          */
 #endif
 
+#ifdef CHIMES   
+      strcpy(tag[nt], "Chimes_data_path");
+      addr[nt] = ChimesDataPath;
+      id[nt++] = STRING;
+  
+      strcpy(tag[nt], "PhotoIon_table_path");
+      addr[nt] = ChimesGlobalVars.PhotoIonTablePath;
+      id[nt++] = STRING;
+  
+      strcpy(tag[nt], "Thermal_Evolution_On");
+      addr[nt] = &All.ChimesThermEvolOn;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "Chemistry_eqm");
+      addr[nt] = &ForceEqOn;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "Reduction_On");
+      addr[nt] = &ChimesGlobalVars.reductionOn;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "StaticMolCooling");
+      addr[nt] = &ChimesGlobalVars.StaticMolCooling;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "CellSelfShielding_On");
+      addr[nt] = &ChimesGlobalVars.cellSelfShieldingOn;
+      id[nt++] = INT;
+  
+      strcpy(tag[nt], "Shielding_length_factor");
+      addr[nt] = &shielding_length_factor;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "Reduction_N_Ions_Low");
+      addr[nt] = &ChimesGlobalVars.n_ions_low;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "Reduction_N_Ions_Med");
+      addr[nt] = &ChimesGlobalVars.n_ions_med;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "Reduction_N_Ions_High");
+      addr[nt] = &ChimesGlobalVars.n_ions_high;
+      id[nt++] = INT;
+  
+      strcpy(tag[nt], "Grain_Temperature");
+      addr[nt] = &ChimesGlobalVars.grain_temperature;
+      id[nt++] = REAL;
+  
+      strcpy(tag[nt], "CR_rate");
+      addr[nt] = &cr_rate;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "macrostep_tolerance");
+      addr[nt] = &ChimesGlobalVars.time_tolerance;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "min_macrostep");
+      addr[nt] = &ChimesGlobalVars.min_subcyclestep;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "max_mol_temperature");
+      addr[nt] = &ChimesGlobalVars.T_mol;
+      id[nt++] = REAL;
+  
+      strcpy(tag[nt], "Isotropic_photon_density");
+      addr[nt] = &isotropic_photon_density;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "relativeTolerance");
+      addr[nt] = &ChimesGlobalVars.relativeTolerance;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "absoluteTolerance");
+      addr[nt] = &ChimesGlobalVars.absoluteTolerance;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "thermalAbsoluteTolerance");
+      addr[nt] = &ChimesGlobalVars.thermalAbsoluteTolerance;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "scale_metal_tolerances");
+      addr[nt] = &ChimesGlobalVars.scale_metal_tolerances;
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "IncludeCarbon");
+      addr[nt] = &ChimesGlobalVars.element_included[0];
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "IncludeNitrogen");
+      addr[nt] = &ChimesGlobalVars.element_included[1];
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "IncludeOxygen");
+      addr[nt] = &ChimesGlobalVars.element_included[2];
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "IncludeNeon");
+      addr[nt] = &ChimesGlobalVars.element_included[3];
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "IncludeMagnesium");
+      addr[nt] = &ChimesGlobalVars.element_included[4];
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "IncludeSilicon");
+      addr[nt] = &ChimesGlobalVars.element_included[5];
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "IncludeSulphur");
+      addr[nt] = &ChimesGlobalVars.element_included[6];
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "IncludeCalcium");
+      addr[nt] = &ChimesGlobalVars.element_included[7];
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "IncludeIron");
+      addr[nt] = &ChimesGlobalVars.element_included[8];
+      id[nt++] = INT;
+
+      strcpy(tag[nt], "N_chimes_full_output_freq");
+      addr[nt] = &N_chimes_full_output_freq;
+      id[nt++] = INT;
+
+#ifdef CHIMES_STELLAR_FLUXES 
+      strcpy(tag[nt], "Chimes_f_esc_ion");
+      addr[nt] = &All.Chimes_f_esc_ion;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "Chimes_f_esc_G0");
+      addr[nt] = &All.Chimes_f_esc_G0;
+      id[nt++] = REAL;
+#endif 
+#endif  // CHIMES 
 
         if((fd = fopen(fname, "r")))
         {
@@ -1843,7 +1998,15 @@ void read_parameter_file(char *fname)
     
     /* now communicate the relevant parameters to the other processes */
     MPI_Bcast(&All, sizeof(struct global_data_all_processes), MPI_BYTE, 0, MPI_COMM_WORLD);
-    
+#ifdef CHIMES 
+    MPI_Bcast(&ChimesGlobalVars, sizeof(struct globalVariables), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&ChimesDataPath, 500 * sizeof(char), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&isotropic_photon_density, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&shielding_length_factor, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&cr_rate, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&N_chimes_full_output_freq, sizeof(int), MPI_BYTE, 0, MPI_COMM_WORLD); 
+    MPI_Bcast(&ForceEqOn, sizeof(int), MPI_BYTE, 0, MPI_COMM_WORLD); 
+#endif 
     
     
     /* ok, -NOW- we can properly read the "All" variables; we should do any if/then checks on
@@ -1931,7 +2094,6 @@ void read_parameter_file(char *fname)
 #endif
 #endif // closes DEVELOPER_MODE check //
     
-
     
 #ifdef GALSF
     All.CritOverDensity = 1000.0;
@@ -2108,7 +2270,7 @@ void read_parameter_file(char *fname)
 #endif
     
     
- 
+    
     
     
 #ifdef PTHREADS_NUM_THREADS
@@ -2250,4 +2412,3 @@ void readjust_timebase(double TimeMax_old, double TimeMax_new)
 
   All.TimeMax = TimeMax_new;
 }
-

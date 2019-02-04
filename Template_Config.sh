@@ -6,11 +6,6 @@
 #       options that apply to your run. If you modify any of these options,
 #       make sure that you recompile the whole code by typing "make clean; make".
 #
-#  Consult the User Guide before enabling any option. Some modules are proprietary -- access to them
-#    must be granted separately by the code authors (just having the code does NOT grant permission).
-#    Even public modules have citations which must be included if the module is used for published work,
-#    these are all given in the User Guide.
-#
 # This file was originally part of the GADGET3 code developed by
 #   Volker Springel (volker.springel@h-its.org). The code has been modified
 #   substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO (to add new modules and clean
@@ -38,6 +33,7 @@
 
 
 
+
 ####################################################################################################
 # --------------------------------------- Hydro solver method
 ####################################################################################################
@@ -50,7 +46,7 @@
 #HYDRO_FIX_MESH_MOTION=0        # mesh with arbitrarily-defined mesh-generating velocities: (0=non-moving, 1=fixed-v [set in ICs] cartesian, 2=fixed-v [ICs] cylindrical, 3=fixed-v [ICs] spherical, 4=analytic function, 5=smoothed-Lagrangian, 6=glass-generating, 7=fully-Lagrangian)
 #HYDRO_GENERATE_TARGET_MESH     # use for IC generation (can be used with -any- hydro method: MFM/MFV/SPH/grid): this allows you to specify in the functions 'return_user_desired_target_density' and 'return_user_desired_target_pressure' (in eos.c) the desired initial density/pressure profile, and the code will try to evolve towards this.
 ## -----------------------------------------------------------------------------------------------------
-# --------------------------------------- SPH methods (enable one of these flags to use SPH):
+# --------------------------------------- SPH methods:
 #HYDRO_PRESSURE_SPH             # solve hydro using SPH with the 'pressure-sph' formulation ('P-SPH')
 #HYDRO_DENSITY_SPH              # solve hydro using SPH with the 'density-sph' formulation (GADGET-2 & GASOLINE SPH)
 # --------------------------------------- SPH artificial diffusion options (use with SPH; not relevant for Godunov/Mesh modes)
@@ -70,7 +66,7 @@
 ## ----------------------------------------------------------------------------------------------------
 # --------------------------------------- Gas (or Material) Equations-of-State
 #EOS_GAMMA=(5.0/3.0)            # Polytropic Index of Gas (for an ideal gas law): if not set and no other (more complex) EOS set, defaults to GAMMA=5/3
-#EOS_HELMHOLTZ                  # Use Timmes & Swesty 2000 EOS (for e.g. stellar or degenerate equations of state); if additional tables needed, download at http://www.tapir.caltech.edu/~phopkins/public/helm_table.dat (or the BitBucket site)
+#EOS_HELMHOLTZ                  # Use Timmes & Swesty 2000 EOS (for e.g. stellar or degenerate equations of statee); if additional tables needed, download at http://www.tapir.caltech.edu/~phopkins/public/helm_table.dat (or the BitBucket site)
 #EOS_TILLOTSON                  # Use Tillotson (1962) EOS (for solid/liquid+vapor bodies, impacts); custom EOS params can be specified or pre-computed materials used. see User Guide and Deng et al., arXiv:1711.04589
 #EOS_ELASTIC                    # treat fluid as elastic or plastic (or visco-elastic) material, obeying Hooke's law with full stress terms and von Mises yield model. custom EOS params can be specified or pre-computed materials used.
 ## -----------------------------------------------------------------------------------------------------
@@ -103,6 +99,19 @@
 #COOL_METAL_LINES_BY_SPECIES    # use full multi-species-dependent cooling tables ( http://www.tapir.caltech.edu/~phopkins/public/spcool_tables.tgz, or the Bitbucket site); requires METALS on; cite Wiersma et al. 2009 (MNRAS, 393, 99) in addition to Hopkins et al. 2017 (arXiv:1702.06148)
 #COOL_GRACKLE                   # enable Grackle: cooling+chemistry package (requires COOLING above; https://grackle.readthedocs.org/en/latest ); see Grackle code for their required citations
 #COOL_GRACKLE_CHEMISTRY=1       # choose Grackle cooling chemistry: (0)=tabular, (1)=Atomic, (2)=(1)+H2+H2I+H2II, (3)=(2)+DI+DII+HD
+#CHIMES                         # enable CHIMES: cooling & chemistry package. Requires COOLING above. Also, requires COOL_METAL_LINES_BY_SPECIES to include metals. 
+#CHIMES_HYDROGEN_ONLY           # Hydrogen-only. This is ignored if METALS are also set. 
+#CHIMES_SOBOLEV_SHIELDING       # Enables local self-shielding over a Sobolev-like length scale. 
+#CHIMES_HII_REGIONS           # Disables shielding withing HII regions. 
+#CHIMES_STELLAR_FLUXES         # Couple UV fluxes from the luminosity tree to CHIMES 
+#CHIMES_SFR_MOLECULAR_CRITERION # As GALSF_SFR_MOLECULAR_CRITERION, but using the H2 fraction from CHIMES. 
+#CHIMES_REDUCED_OUTPUT          # Full CHIMES abundance array only output in some snapshots. 
+#CHIMES_NH_OUTPUT               # Write out column densities of gas particles to snapshots. 
+#CHIMES_OUTPUT_DENS_AROUND_STAR  # Write out DensAroundStar 
+#CHIMES_OUTPUT_DELAY_TIME_HII   # Output DelayTimeHII. Requires CHIMES_HII_REGIONS or GALSF_FB_HII_HEATING
+#CHIMES_INITIALISE_IN_EQM      # Initialise CHIMES abundances in equilibrium at the start of the simulation.  
+#CHIMES_TURB_DIFF_IONS         # Turbulent diffusions of CHIMES abundances. Requires TURB_DIFF_METALS and TURB_DIFF_METALS_LOWORDER 
+#CHIMES_METAL_DEPLETION        # Uses density-dependent metal depletion factors (Jenkins 2009, De Cia et al. 2016)
 #METALS                         # enable metallicities (with multiple species optional) for gas and stars [must be included in ICs or injected via dynamical feedback; needed for some routines]
 ## ----------------------------------------------------------------------------------------------------
 # -------------------------------------- Smagorinsky Turbulent Eddy Diffusion Model
@@ -121,6 +130,7 @@
 #GRAIN_LORENTZFORCE             # charged grains feel Lorentz forces (requires MAGNETIC); if used with GRAIN_EPSTEIN_STOKES flag, will also compute Coulomb drag (grain charges self-consistently computed from gas properties)
 #GRAIN_COLLISIONS               # model collisions between grains (super-particles; so this is stochastic) - framework is in place, but users need to implement specific physical models for collisions
 ## ----------------------------------------------------------------------------------------------------
+##-----------------------------------------------------------------------------------------------------
 #---------------------------------------- Cosmic Rays
 #---------------------------------------- (this is developed by P. Hopkins as part of the FIRE package: the same FIRE authorship & approval policies apply, see below)
 #COSMIC_RAYS                    # two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anisotropic diffusion, streaming, injection by SNe
@@ -142,6 +152,7 @@
 #TURB_DRIVING                   # turns on turbulent driving/stirring. see begrun for parameters that must be set
 #TURB_DRIVING_SPECTRUMGRID=128  # activates on-the-fly calculation of the turbulent velocity, vorticity, and smoothed-velocity power spectra, evaluated on a grid of linear-size TURB_DRIVING_SPECTRUMGRID elements
 ####################################################################################################
+
 
 
 
@@ -180,8 +191,6 @@
 ## ----------------------------------------------------------------------------------------------------
 #EOS_TRUELOVE_PRESSURE          # adds artificial pressure floor force Jeans length above resolution scale (means you can get the wrong answer, but things will look smooth).  cite Robertson & Kravtsov 2008, ApJ, 680, 1083
 ####################################################################################################
-
-
 
 ####################################################################################################
 # --------------------------------------- On the fly FOF groupfinder

@@ -43,7 +43,11 @@
 # (B) set SYSTYPE in Makefile.systype 
 #     This file has priority over your shell variable.:
 #
-#     Uncomment your system in  "Makefile.systype".
+#    (1) Copy the file "Template-Makefile.systype"  to  "Makefile.systype"
+#
+#        cp Template-Makefile.systype Makefile.systype 
+#
+#    (2) Uncomment your system in  "Makefile.systype".
 #
 # If you add an ifeq for a new system below, also add that systype to
 # Template-Makefile.systype
@@ -63,12 +67,6 @@ PERL     =  /usr/bin/perl
 RESULT     := $(shell CONFIG=$(CONFIG) PERL=$(PERL) make -f config-makefile)
 CONFIGVARS := $(shell cat GIZMO_config.h)
 
-HG_COMMIT := $(shell hg id 2>/dev/null)
-HG_REPO := $(shell hg path default)
-HG_BRANCH := $(shell hg branch)
-BUILDINFO = "Build on $(HOSTNAME) by $(USER) from $(HG_BRANCH):$(HG_COMMIT) at $(HG_REPO)"
-#OPT += -DBUILDINFO='$(BUILDINFO)'
-
 ifeq (FIRE_PHYSICS_DEFAULTS,$(findstring FIRE_PHYSICS_DEFAULTS,$(CONFIGVARS)))  # using 'fire default' instead of all the above
     CONFIGVARS += COOLING COOL_LOW_TEMPERATURES COOL_METAL_LINES_BY_SPECIES
     CONFIGVARS += GALSF METALS TURB_DIFF_METALS TURB_DIFF_METALS_LOWORDER GALSF_SFR_MOLECULAR_CRITERION GALSF_SFR_VIRIAL_SF_CRITERION=0
@@ -76,7 +74,6 @@ ifeq (FIRE_PHYSICS_DEFAULTS,$(findstring FIRE_PHYSICS_DEFAULTS,$(CONFIGVARS)))  
     CONFIGVARS += GALSF_FB_FIRE_RT_UVHEATING GALSF_FB_FIRE_RT_LOCALRP GALSF_FB_FIRE_RPROCESS=4
 #    CONFIGVARS += GALSF_SFR_IMF_VARIATION
 endif
-
 
 
 CC       = mpicc        # sets the C-compiler (default)
@@ -314,7 +311,6 @@ FC       = $(CC)
 ##OPTIMIZE += -pg ## profiling for intel compilers
 OPTIMIZE = -g -O1 -ffast-math -funroll-loops -finline-functions -funswitch-loops -fpredictive-commoning -fgcse-after-reload -fipa-cp-clone  ## optimizations for gcc compilers (1/2)
 OPTIMIZE += -ftree-loop-distribute-patterns -fvect-cost-model -ftree-partial-pre   ## optimizations for gcc compilers (2/2)
-#OPTIMIZE += -ftree-loop-distribute-patterns -ftree-slp-vectorize -fvect-cost-model -ftree-partial-pre   ## optimizations for gcc compilers (2/2)
 #OPTIMIZE += -pg -fprofile -fprofile-arcs -ftest-coverage -fprofile-generate ## full profiling, for gcc compilers
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -fopenmp # openmp required compiler flags
@@ -345,9 +341,6 @@ OPT     += -DUSE_MPI_IN_PLACE
 ##   export I_MPI_DAPL_TRANSLATION_CACHE=0
 ##   before your "mpirun", (or include it in your .bashrc and source that before running): this is necessary or else the communication over DAPL will generate MPI memory errors
 ##
-## note that with the newer builds of HDF5 on the machine, you may need to add the line
-## export HDF5_DISABLE_VERSION_CHECK=1
-##  to your .bashrc file, or it will think the wrong HDF5 file is linked and crash (even though it is fine)
 endif
 
 
@@ -410,6 +403,7 @@ OPT     += -DUSE_MPI_IN_PLACE
 ## note: there is a module called "hdf5" which will not work. Use cray-hdf5.
 endif
 #-----------------------------------------------------------------------------
+
 
 
 #----------------------------------------------------------------------------------------------
@@ -547,6 +541,7 @@ endif
 
 
 
+
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Darter")
 CC       =  cc
@@ -583,8 +578,12 @@ CXX      =  mpic++
 FC       =  $(CC)
 OPTIMIZE = -O2 -xhost -ipo -funroll-loops -no-prec-div -fp-model fast=2
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
-OPTIMIZE += -parallel -openmp  # openmp required compiler flags
+OPTIMIZE += -parallel -openmp # openmp required compiler flags 
 endif
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
+CHIMESINCL = -I/home/ajr882/sundials/include  
+CHIMESLIBS = -L/home/ajr882/sundials/lib -lsundials_cvode -lsundials_kinsol -lsundials_nvecserial 
+endif 
 GMP_INCL = #
 GMP_LIBS = #
 MKL_INCL = -I$(MKLROOT)/include
@@ -595,12 +594,46 @@ FFTW_INCL= -I/projects/b1026/pascal/software/fftw/2.1.5-mvp/include
 FFTW_LIBS= -L/projects/b1026/pascal/software/fftw/2.1.5-mvp/lib
 HDF5INCL = -I/projects/b1026/pascal/software/hdf5/1.8.12/include -DH5_USE_16_API
 HDF5LIB  = -L/projects/b1026/pascal/software/hdf5/1.8.12/lib -lhdf5 -lz
-MPICHLIB = -lmpich
+MPICHLIB = -lmpich 
 OPT     += -DUSE_MPI_IN_PLACE
 #### modules to load:
 #module load mpi/mvapich2-intel2013.2
 #module use /projects/b1026/pascal/software/modules
 #module load hdf5/1.8.12.1 gsl/1.16 fftw/2.1.5-mvp
+endif
+
+
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Quest-intel")
+CC       =  mpicc
+CXX      =  mpic++
+FC       =  $(CC)
+OPTIMIZE = -O2 -xhost -ipo -funroll-loops -no-prec-div -fp-model fast=2
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -parallel -openmp -mt_mpi 
+endif
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
+CHIMESINCL = -I/home/ajr882/sundials/include  
+CHIMESLIBS = -L/home/ajr882/sundials/lib -lsundials_cvode -lsundials_kinsol -lsundials_nvecserial 
+endif 
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = -I$(MKLROOT)/include
+MKL_LIBS = -L$(MKLROOT)/lib/intel64 -lm -lmkl_core -lmkl_sequential -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_blacs_intelmpi_lp64
+GSL_INCL = 
+GSL_LIBS = 
+FFTW_INCL= -I/home/ajr882/libraries/fftw-2.1.5_install/include 
+FFTW_LIBS= -L/home/ajr882/libraries/fftw-2.1.5_install/lib 
+HDF5INCL = -DH5_USE_16_API 
+HDF5LIB  = -lhdf5 -lz
+MPICHLIB = 
+OPT     += -DUSE_MPI_IN_PLACE
+#### modules to load:
+#module load intel/2013.2
+#module load mpi/intel-mpi-4.1.0
+#module load hdf5/1.8.12-serial
+#module load gsl/1.16-intel
+#module load fftw/2.1.5-intel
 endif
 
 
@@ -634,7 +667,6 @@ endif
 
 
 
-#----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"BlueWaters")
 CC       =  cc
 CXX      =  CC
@@ -706,6 +738,7 @@ endif
 ##
 
 
+#------------------------------------------------------------------------------
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Mira")
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
@@ -762,7 +795,6 @@ OPT     += -DUSE_MPI_IN_PLACE -DREDUCE_TREEWALK_BRANCHING
 ## to load the mpi compilers and mpi wrappers, and MPICH libraries (python there is optional)
 ## xl appears to provide some improvement over gcc; xl-ndebug provides no noticeable further improvement, despite being more unsafe
 endif
-
 
 
 
@@ -1083,13 +1115,16 @@ ifeq (COOL_GRACKLE,$(findstring COOL_GRACKLE,$(CONFIGVARS)))
 OBJS    += cooling/grackle.o
 endif
 
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
+OBJS    += cooling/chimes/chimes.o cooling/chimes/cooling.o cooling/chimes/init_chimes.o cooling/chimes/init_chimes_parallel.o cooling/chimes/interpol.o cooling/chimes/optimise.o cooling/chimes/rate_coefficients.o cooling/chimes/rate_equations.o cooling/chimes/set_rates.o 
+endif
+
 ifeq (EOS_HELMHOLTZ,$(findstring EOS_HELMHOLTZ,$(CONFIGVARS)))
 OBJS    += eos/eos_interface.o
 INCL    += eos/helmholtz/helm_wrap.h
 FOBJS   += eos/helmholtz/helm_impl.o eos/helmholtz/helm_wrap.o
 FINCL   += eos/helmholtz/helm_const.dek eos/helmholtz/helm_implno.dek eos/helmholtz/helm_table_storage.dek eos/helmholtz/helm_vector_eos.dek
 endif
-
 
 ifeq (IMPOSE_PINNING,$(findstring IMPOSE_PINNING,$(CONFIGVARS)))
 OBJS	+= system/pinning.o
@@ -1129,6 +1164,10 @@ endif
 
 CFLAGS = $(OPTIONS) $(GSL_INCL) $(FFTW_INCL) $(HDF5INCL) $(GMP_INCL) $(GRACKLEINCL)
 
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS))) 
+CFLAGS += $(CHIMESINCL) 
+endif 
+
 ifeq (VIP,$(findstring VIP,$(CONFIGVARS)))
 FFLAGS = $(FOPTIONS)
 else
@@ -1147,7 +1186,11 @@ FFTW = $(FFTW_LIBS)  $(FFTW_LIBNAMES)
 
 LIBS   = $(HDF5LIB) -g $(MPICHLIB) $(GSL_LIBS) -lgsl -lgslcblas $(FFTW) -lm $(GRACKLELIBS)
 
-ifeq (PTHREADS_NUM_THREADS,$(findstring PTHREADS_NUM_THREADS,$(CONFIGVARS))) 
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS))) 
+LIBS += $(CHIMESLIBS) 
+endif 
+
+ifeq (OMP_NUM_THREADS,$(findstring OMP_NUM_THREADS,$(CONFIGVARS))) 
 LIBS   +=  -lpthread
 endif
 
