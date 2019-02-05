@@ -38,7 +38,6 @@
 
 
 
-
 ####################################################################################################
 # --------------------------------------- Hydro solver method
 ####################################################################################################
@@ -146,7 +145,6 @@
 
 
 
-
 ####################################################################################################
 ## ------------------------ Gravity & Cosmological Integration Options ---------------------------------
 ####################################################################################################
@@ -182,6 +180,8 @@
 ## ----------------------------------------------------------------------------------------------------
 #EOS_TRUELOVE_PRESSURE          # adds artificial pressure floor force Jeans length above resolution scale (means you can get the wrong answer, but things will look smooth).  cite Robertson & Kravtsov 2008, ApJ, 680, 1083
 ####################################################################################################
+
+
 
 ####################################################################################################
 # --------------------------------------- On the fly FOF groupfinder
@@ -304,8 +304,6 @@
 #------------ deprecated or de-bugging options (most have been combined or optimized into the functions above, here for legacy)
 ##---------------------BH_SEED_GROWTH_TESTS             #- Currently testing options for BH seeding
 ####################################################################################################
-
-
 
 
 
@@ -483,8 +481,6 @@
 
 
 
-
-
 ####################################################################################################-
 #---------------------------------------- Subhalo on-the-fly finder options (needs "subfind" source code)
 #------------------ This is originally developed as part of GADGET-3 (SUBFIND) by V. Springel
@@ -544,6 +540,5 @@
 #OUTPUT_GDE_TIDALTENSORPS       #- write configuration-space tidal tensor to snapshot
 #OUTPUT_GDE_LASTCAUSTIC         #- write info on last passed caustic to snapshot
 ####################################################################################################-
-
 
 
