@@ -941,6 +941,7 @@ integertime get_timestep(int p,		/*!< particle index */
         if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 #ifdef SINGLE_STAR_FORMATION
 	if(P[p].DensAroundStar) {double eps = DMAX(All.SofteningTable[5], BPP(p).BH_NearestGasNeighbor);
+	if(P[p].DensAroundStar) {double eps = DMAX(All.ForceSoftening[5], BPP(p).BH_NearestGasNeighbor);
 	double dt_gas = sqrt(All.ErrTolIntAccuracy * All.cf_atime * eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
 	if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas; }}
 
@@ -979,7 +980,7 @@ integertime get_timestep(int p,		/*!< particle index */
     if((dt < All.MinSizeTimestep)||(((integertime) (dt / All.Timebase_interval)) <= 1))
     {
 #ifdef STOP_WHEN_BELOW_MINTIMESTEP
-        printf("warning: Timestep wants to be below the limit `MinSizeTimestep'\n");
+        printf("warning: Timestep wants to be below the limit `MinSizeTimestep' of %g or below 'Timebase_interval' %g\n",All.MinSizeTimestep,All.Timebase_interval);
         
         if(P[p].Type == 0)
         {

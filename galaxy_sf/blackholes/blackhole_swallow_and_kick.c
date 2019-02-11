@@ -570,7 +570,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 
 
 #ifdef BH_WIND_KICK     /* BAL kicking operations. NOTE: we have two separate BAL wind models, particle kicking and smooth wind model. This is where we do the particle kicking BAL model. This should also work when there is alpha-disk. */
-                        v_kick=All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s; if( !(All.ComovingIntegrationOn) && (All.Time < 0.001) && (All.cf_atime!=1.0)) {v_kick *= All.Time/0.001;}
+                        v_kick=All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s; //if( !(All.ComovingIntegrationOn) && (All.Time < 0.001)) {v_kick *= All.Time/0.001;}
 #if defined(NEWSINK) /*It is possible to accrete only part of the particle so we need to be more careful about our kicks*/
                         if (f_acc_corr<1.0){
                             v_kick *= f_acc_corr*(1.0-All.BAL_f_accretion)/(1.0-All.BAL_f_accretion*f_acc_corr); /*we wanted to only accrete an f_acc_corr portion, so the imparted momentum is proportional to only f_acc_corr*(1-All.BAL_f_accretion) times the initial mass*/
