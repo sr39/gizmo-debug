@@ -75,6 +75,17 @@ double get_pressure(int i)
 #ifdef EOS_ENFORCE_ADIABAT
     press = EOS_ENFORCE_ADIABAT * pow(SphP[i].Density, GAMMA);
 #endif
+
+#ifdef EOS_GMC_BAROTROPIC // barytropic EOS calibrated to Masunaga & Inutsuka 2000, eq. 4 in Federrath 2014 Apj 790. Reasonable over the range of densitites relevant to small-scale star formation problems
+    double nH_cgs = SphP[i].Density * All.cf_a3inv * ( All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam ) / PROTONMASS;
+    //    double logn = log10(nH_cgs); // log10 of H number density in cgs
+    if (nH_cgs < 1.49468e8) press = 6.60677e-16 * nH_cgs; // isothermal below ~10^8 cm^-3
+    else if (nH_cgs < 2.30181e11) press = 1.00585e-16 * pow(nH_cgs, 1.1);
+    else if (nH_cgs < 2.30181e16) press = 3.92567e-20 * pow(nH_cgs, 1.4);
+    else if (nH_cgs < 2.30181e21) press = 3.1783e-15 * pow(nH_cgs, 1.1);
+    else press = 2.49841e-27 * pow(nH_cgs, 5./3);
+    press /= All.UnitPressure_in_cgs;
+#endif    
     
     
 #ifdef COSMIC_RAYS
