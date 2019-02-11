@@ -1052,7 +1052,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     
     
     double Q = Heat - Lambda;
-#ifdef COOL_LOW_TEMPERATURES
+#if defined(COOL_LOW_TEMPERATURES) && !defined(OPTICALLY_THIN_COOLING)
     /* if we are in the optically thick limit, we need to modify the cooling/heating rates according to the appropriate limits; 
         this flag does so by using a simple approximation. we consider the element as if it were a slab, with a column density 
         calculated from the simulation properties and the Sobolev approximation. we then assume it develops an equilibrium internal 
@@ -1074,7 +1074,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
                 temperature-dependent, though, fairly easily - for this particular problem it won't make much difference
         This rate then acts as an upper limit to the net heating/cooling calculated above (restricts absolute value)
      */
-    if( (nHcgs > 0.1) && (target >= 0) )  /* don't bother at very low densities, since youre not optically thick, and protect from target=-1 with GALSF_EFFECTIVE_EQS */
+    if( (nHcgs > 0.1) && (target >= 0))  /* don't bother at very low densities, since youre not optically thick, and protect from target=-1 with GALSF_EFFECTIVE_EQS */
     {
         double surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1);
         surface_density *= All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; // converts to cgs
@@ -1098,7 +1098,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         double tau_eff = kappa_eff * surface_density;
         double Lambda_Thick_BlackBody = 5.67e-5 * (T*T*T*T) * effective_area / ((1.+tau_eff) * nHcgs);
         if(Q > 0) {if(Q > Lambda_Thick_BlackBody) {Q=Lambda_Thick_BlackBody;}} else {if(Q < -Lambda_Thick_BlackBody) {Q=-Lambda_Thick_BlackBody;}}
-    }
+    }    
 #endif
     
 #ifndef COOLING_OPERATOR_SPLIT
