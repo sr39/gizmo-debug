@@ -284,7 +284,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     hinv3 = hinv*hinv*hinv;
 #endif
 #if defined(NEWSINK)
-        MyDouble dt_min = DT_MIN_TOLERANCE_FACTOR * sqrt(pow(int_zone_radius,3.0)/(All.G * mass));
+        MyDouble dt_min = DMAX(DT_MIN_TOLERANCE_FACTOR * sqrt(pow(int_zone_radius,3.0)/(All.G * mass)), 10.0*DMAX(All.MinSizeTimestep,All.Timebase_interval) );
 #if defined(NEWSINK_J_FEEDBACK)
         Jsinktot = sqrt(Jsink[0]*Jsink[0] + Jsink[1]*Jsink[1] +Jsink[2]*Jsink[2]);
 #endif
@@ -468,9 +468,9 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 #else
                                     dt = P[j].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
-                                    if (dt<dt_min){ /*Check if the timescale is too small, if yes, it gets eaten to avoid issues*/
+                                    if ( (dt<dt_min) || (sqrt(All.ErrTolIntAccuracy*r2*dr_code/(All.G * mass))<dt_min) ){ /*Check if the timescale is too small, if yes, it gets eaten to avoid issues*/
                                         out.f_acc[out.n_neighbor] = 1.0;
-                                        printf("%d : Found gas with too small step for BH with ID %d, gas id %d, gas dt %g dtmin %g\n", ThisTask, id, P[j].ID,dt, dt_min );
+                                        printf("%d : Found gas with too small time step around BH with ID %d, gas id %d, gas dt %g BH_dt %g dtmin %g at distance %g while the interaction zone is %g \n", ThisTask, id, P[j].ID,dt,sqrt(All.ErrTolIntAccuracy*r2*dr_code/(All.G * mass)), dt_min, dr_code,int_zone_radius );
                                     }
                                 }
 #endif
