@@ -257,6 +257,17 @@ double get_starformation_rate(int i)
         rateOfSF *= y;
     } // if(tau_fmol>0)
 #endif // GALSF_SFR_MOLECULAR_CRITERION
+
+#ifdef CHIMES_SFR_MOLECULAR_CRITERION 
+    /* This is similar to GALSF_SFR_MOLECULAR_CRITERION, except that 
+     * the H2 fraction is taken from the CHIMES network. */
+    y = ChimesGasVars[i].abundances[H2] * 2.0; 
+    if (y < 0) 
+      y = 0.0; 
+    if (y > 1) 
+      y = 1.0; 
+    rateOfSF *= y; 
+#endif 
     
     
 #ifdef GALSF_SFR_VIRIAL_SF_CRITERION
@@ -527,6 +538,7 @@ void star_formation_parent_routine(void)
 		      TimeBinSfr[P[i].TimeBin] -= SphP[i].Sfr;
 
 		      P[i].StellarAge = All.Time;
+
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
                 P[i].DensAroundStar = SphP[i].Density;
 #endif
@@ -604,6 +616,7 @@ void star_formation_parent_routine(void)
 #endif
 		      sum_mass_stars += P[NumPart + stars_spawned].Mass;
 		      P[NumPart + stars_spawned].StellarAge = All.Time;
+
 		      force_add_star_to_tree(i, NumPart + stars_spawned);
 
 		      stars_spawned++;
@@ -718,8 +731,8 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
     prob = 1 - exp(-p);
 #endif
     
-#if (GALSF_SUBGRID_WIND_SCALING == 1)
-    /* wind model where launching scales with halo/galaxy bulk properties (as in Romeel's simulations) */
+#if (GALSF_SUBGRID_WIND_SCALING == 1    
+       /* wind model where launching scales with halo/galaxy bulk properties (as in Romeel's simulations) */
     if(SphP[i].HostHaloMass > 0 && sm > 0)
     {
         double HaloConcentrationNorm = 9.;  /* concentration c0 of a halo of unit mass */

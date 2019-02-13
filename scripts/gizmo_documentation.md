@@ -954,10 +954,10 @@ These options set different fluid physics. This includes changing the equation o
 #COSMIC_RAYS                    # two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anisotropic diffusion, streaming, injection by SNe
 #COSMIC_RAYS_ALFVEN=(500.)      # solve CR transport based on Alfven-limited scattering from Thomas+Pfrommer 18, evolves CRs+resonant Alfven population; value here is maximum free-streaming speed in code units
 #COSMIC_RAYS_M1=(500.)          # solve the CR transport in the M1 limit [second-order expansion of the collisionless boltzmann eqn]; value here is the streaming speed in code units
+#COSMIC_RAYS_DIFFUSION_MODEL=0  # determine how coefficients for CR transport scale. 0=constant diffusivity, -1=no diffusion(still stream), values >=1 correspond to different literature scalings for the coefficients (see user guide)
+#COSMIC_RAYS_ION_ALFVEN_SPEED   # assume the relevant Alfven speed governing CR transport is not the ideal-MHD Alfven speed, but the Alfven speed for -just- the ions (applicable in the weak-coupling limit for the resonant Alfven waves at CR gyro-resonance)
 #COSMIC_RAYS_DISABLE_STREAMING  # turn off CR streaming (propagation is purely advective+diffusion; warning: this can severely under-estimate CR losses to Alfven waves)
-#COSMIC_RAYS_DISABLE_DIFFUSION  # turn off CR diffusion (leaves streaming intact, simply disables 'microscopic+turbulent' CR diffusion terms)
 #COSMIC_RAYS_DISABLE_COOLING    # turn off CR heating/cooling interactions with gas (catastrophic losses, hadronic interactions, etc; only adiabatic PdV work terms remain)
-#COSMIC_RAYS_DIFFUSION_CONSTANT # replaces physical CR diffusion with constant coefficient (equal to value of CosmicRayDiffusionCoeff in code units); turn off streaming to make this the ONLY transport
 ##-----------------------------------------------------------------------------------------------------
 ####################################################################################################
 ```
@@ -968,7 +968,12 @@ These options set different fluid physics. This includes changing the equation o
 
 **COSMIC\_RAYS_M1**: Integrate the diffusive part of the cosmic-ray transport using the M1 moments expansion, rather than a pure diffusion equation. This is nominally more accurate (just like with radiation) since it allows for a smooth and self-consistent transition between free-streaming and diffusive limits for the CRs, at the expense of extra variables tracked and a smaller timestep if the full transport speed is used (approximately the speed of light). If a "reduced speed of light"-type approximation is desired, this parameter should be set to the value equal to the desired cosmic-ray free-streaming speed, in code units.
 
-**COSMIC\_RAYS\_DISABLE\_STREAMING**/**COSMIC\_RAYS\_DISABLE\_DIFFUSION**/**COSMIC\_RAYS\_DISABLE\_COOLING**/**COSMIC\_RAYS\_DIFFUSION\_CONSTANT**: These disable various cosmic-ray options (all require COSMIC\_RAYS be active). Disabling streaming means propagation is purely advective plus diffusion; in physical situations this can severely under-estimate CR losses to Alfven waves (i.e. severely over-estimate how much energy density can be maintained in CRs). Disabling diffusion disables the diffusion terms from microphysical and turbulent diffusion (not streaming terms). Disabling cooling turns off the CR cooling/loss terms including catastrophic losses, hadronic interactions, and streaming losses; only the adiabatic PdV work terms remain. Finally setting the diffusion constant flag replaces the physical CR diffusion coefficietn with a constant coefficient (equal to value of the parameterfile CosmicRayDiffusionCoeff in code units). 
+**COSMIC\_RAYS\_DIFFUSION\_MODEL**: This determines the model for the streaming and diffusion coefficients used in cosmic-ray transport. It must be set to a valid integer. The default value (=0) will set the diffusion coefficient to a constant, equal to value of the parameterfile CosmicRayDiffusionCoeff in code units. If <0 (e.g. -1), then diffusion will be disabled (streaming can still be non-zero, along with advection). Coefficients =1 and larger use different literature models for how the diffusion and/or streaming coefficients should scale with local plasma properties. =1 is the Jokipii 1966 classical extrinsic turbulence scaling. =2 is the Snodin et al. 2016 extrinsic random-field scaling. =3 is Farber et al. 2018-like scaling with diffusivity fast in neutral gas, slow in ionized gas. =4 is Wiener et al. 2017's estimated equilibrium self-confinement motivated streaming speed for hot plasma. =5 is the Chan et al. 2018 streaming at the fast magnetosonic speed. =6 is the Hopkins et al. 2019 (in prep) equilibrium self-confinement scaling. =7 combines the self-confinement scaling (6) and extrinsic turbulence model (2). Other than constant diffusivity, these are still in testing and should only be used with the permissions of PFH and TK Chan. Note that activating the `COSMIC_RAYS_ALFVEN` flag will override any choice here.
+
+**COSMIC\_RAYS\_ION\_ALFVEN\_SPEED**: This assumes that the relevant Alfven speed governing cosmic-ray transport is not the ideal-MHD Alfven speed, but the Alfven speed for *just* the ions (applicable in the weak-coupling limit for the resonant Alfven waves at gyro-resonance). The latter can be much larger in neutral gas. This replaces specific Alfvenic terms which appear in the transport equations, but we caution that the correct behavior in this limit is not clear.
+
+**COSMIC\_RAYS\_DISABLE\_STREAMING**/**COSMIC\_RAYS\_DISABLE\_COOLING**: These disable various cosmic-ray options (all require COSMIC\_RAYS be active). Disabling streaming means propagation is purely advective plus diffusion; in physical situations this can severely under-estimate CR losses to Alfven waves (i.e. severely over-estimate how much energy density can be maintained in CRs). Disabling cooling turns off the CR cooling/loss terms including catastrophic losses, hadronic interactions, and streaming losses; only the adiabatic PdV work terms remain. 
+
 
 
 <a name="config-turb"></a>
@@ -1091,7 +1096,7 @@ Note that when `ADAPTIVE_GRAVSOFT` is set (for gas or stars), then it is importa
     
                     
                     
-**DM\_SIDM**: Enables self-interacting dark matter as implemented by M. Rocha, James Bullock, and Mike Boylan-Kolchin. Like PM\_PLACEHIGHRESREGION, the parameter needs to be set to an integer that encodes the particle types that make up the SIDM particles in the form of a bit mask. For example, if types 1 and 2 are the SIDM particles, then the parameter should be set to DM\_SIDM = 6 = 2 + 4 (i.e. 2^1 + 2^2). This allows for arbitrary combinations of SIDM particle types. Note that the legacy flag "DMDISK\_INTERACTIONS" is now implicit in this (its identical to setting DM\_SIDM=2+4). This full module as-written in the development code is proprietary and users must obtain permissions from the developers (JB and MBK) for use in scientific products. But a slightly simpler version is part of the public code; moreover if users wish to use the implemented architecture and replace the actual self-interaction kernel with their own, they are free to do so provided they include the appropriate citations. Users should cite Rocha et al., MNRAS 2013, 430, 81 and Robles et al, 2017 (arXiv:1706.07514).
+**DM\_SIDM**: Enables self-interacting dark matter as implemented by M. Rocha, James Bullock, and Mike Boylan-Kolchin. Like PM\_PLACEHIGHRESREGION, the parameter needs to be set to an integer that encodes the particle types that make up the SIDM particles in the form of a bit mask. For example, if types 1 and 2 are the SIDM particles, then the parameter should be set to DM\_SIDM = 6 = 2 + 4 (i.e. 2^1 + 2^2). This allows for arbitrary combinations of SIDM particle types. Note that the legacy flag "DMDISK\_INTERACTIONS" is now implicit in this (its identical to setting DM\_SIDM=2+4). This full module as-written in the development code is proprietary and users must obtain permissions from the developers (JB and MBK) for use in scientific products. But a slightly simpler version is part of the public code; moreover if users wish to use the implemented architecture and replace the actual self-interaction kernel with their own, they are free to do so provided they include the appropriate citations. If this is active, the user must set several parameterfile options that specify the dark matter self-interaction cross-section, its dependence on relative velocity, and the degree of exo-or-endo-thermality (i.e. dissipation or gain of kinetic energy per interaction). See the parameterfile description below for description of these. Users should cite Rocha et al., MNRAS 2013, 430, 81 and Robles et al, 2017 (arXiv:1706.07514).
 
 **DM\_SCALARFIELD\_SCREENING**: Replaces the normal newtonian gravity by a screened scalar-field force. Look at the code if you want to get a better handle on or modify the scalar field parameters (these can trivially be made time-dependent, for example). Used for studying alternative gravity and dark matter theories -- primarily alternatives to dark energy involving dynamical screening. Users should cite the GIZMO source code for implementation details (`http://adsabs.harvard.edu/abs/2014ascl.soft10003H`).
 
@@ -2388,9 +2393,31 @@ These parameters control the optional module for stirred/driven turbulence (set 
     DarkEnergyConstantW       -1	    % time-independent DE parameter w, used only if no table
     TabulatedCosmologyFile    CosmoTbl  % table with cosmological parameters
 
+    %-------------- Parameters for self-interacting dark matter (DM_SIDM on)
+    DM_InteractionCrossSection 1        % cross-section per unit mass in cm^2/g (normalized at 1 km/s, if vel-dependent)
+    DM_InteractionVelocityDependence 0  % scaling: sigma=InteractionCrossSection*(dv/kms)^DM_InteractionVelocityDependence
+    DM_DissipationFactor 0              % 0=elastic, 1=pure dissipative (fractional dissipation of kinetic energy in event)
+    DM_KickPerCollision  0              % kick in km/s per collision (this^2 = specific energy/mass to kinetic per 'event')
+
+    %-------------- Parameters for scalar-field dark matter (DM_FUZZY on)
+    FuzzyDM_Mass_in_eV 1e-22            % boson mass in eV for SFDM/Fuzzy DM module
+
 **DarkEnergyConstantW**: If `GR_TABULATED_COSMOLOGY` is on, but none of the flags to actually read tabulated data are set (`GR_TABULATED_COSMOLOGY_W`, `GR_TABULATED_COSMOLOGY_H`, `GR_TABULATED_COSMOLOGY_G`), simple setting this parameter allows you to use an arbitrary constant (time-independent) value of the Dark Energy equation-of-state parameter "w". If the table is read, this will be ignored.
 
 **TabulatedCosmologyFile**: If the tabulated data is read, this specifies the name (file-path) of the file which contains the tabulated time-dependent cosmological parameters. The code will assume the file is standard ASCII text, with the relevant data in 5 columns separated by spaces. The format should be:
+
+**DM\_InteractionCrossSection**: If `DM_SIDM` is on, this sets the dark matter (DM) self-interaction cross section, in cgs units. If the cross-sections are velocity-dependent, then this is the normalization defined at 1 km/s. 
+
+**DM\_InteractionVelocityDependence**: If `DM_SIDM` is on, this sets the dark matter (DM) self-interaction cross section dependence on velocity, as a power law with this exponent (normalized at 1 km/s). So `0` is velocity-independent, whereas `-2` or `-4` are the usual most common velocity-dependent scalings (e.g. `-4` for Rutherford-type scattering).
+
+**DM\_DissipationFactor**: If `DM_SIDM` is on, this sets the fractional degree of dissipation per interaction event. This interpolates between purely elastic scattering when equal to `0`, to purely momentum-conserving scattering (both particles move at the center-of-momentum, i.e. all kinetic energy in the center-of-mass frame is entirely dissipated, so this is the most dissipative possible) when equal to `1`. For intermediate values, this multiplies the post-collision recoil velocity in the center-of-mass frame, so the center-of-mass frame kinetic energy is decreased by a factor of this squared.
+
+**DM\_KickPerCollision**: If `DM_SIDM` is on, this sets the velocity of 'kicks' given to the DM in scattering events. More specifically, this value (in km/s) squared defines the specific energy (energy per unit mass) added to the kinetic energy of the scattering DM particles in the rest frame of the scattering event. 
+
+**FuzzyDM\_Mass\_in\_eV**: If `DM_FUZZY` is on, this sets the mass of the DM boson (in eV). This effectively entirely determines the DM dynamics, in models where the DM is a scalar field, Bose-Einstein condensate, quantum wave, etc. Note that it is critical in these modules to actually resolve the DM de Broglie wavelength, so make sure you dont use too large a value of this parameter for your mass resolution.
+
+
+
 
 ```bash
 1.00 -1.00 1.00 1.00 1.00

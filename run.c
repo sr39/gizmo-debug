@@ -64,7 +64,7 @@ void run(void)
             
             break;
         }
-        
+	
         find_timesteps();		/* find-timesteps */
         
         do_first_halfstep_kick();	/* half-step kick at beginning of timestep for synchronous particles */
@@ -203,12 +203,12 @@ void run(void)
 
 void set_non_standard_physics_for_current_time(void)
 {
-#ifdef COOLING
+#if defined(COOLING) && !defined(CHIMES) 
     /* set UV background for the current time */
     IonizeParams();
 #endif
     
-#ifdef COOL_METAL_LINES_BY_SPECIES
+#if defined(COOL_METAL_LINES_BY_SPECIES) && !defined(CHIMES) 
     /* load the metal-line cooling tables appropriate for the UV background */
     if(All.ComovingIntegrationOn) LoadMultiSpeciesTables();
 #endif
@@ -314,8 +314,12 @@ void calculate_non_standard_physics(void)
     
     
 #ifdef COOLING	/**** radiative cooling and star formation *****/
+#ifdef CHIMES 
+    chimes_cooling_parent_routine(); // master cooling and chemistry subroutine //
+#else 
     cooling_parent_routine(); // master cooling subroutine //
     CPU_Step[CPU_COOLINGSFR] += measure_time(); // finish time calc for SFR+cooling
+#endif 
 #endif
 #ifdef GALSF
     star_formation_parent_routine(); // master star formation routine //
@@ -904,6 +908,18 @@ void write_cpu_log(void)
 	      "   agsimbal   %10.2f  %5.1f%%\n"
           "   agsmisc    %10.2f  %5.1f%%\n"
 #endif
+#ifdef TURB_DIFF_DYNAMIC
+        "dyndiff       %10.2f  %5.1f%%\n"
+        "   compute    %10.2f  %5.1f%%\n"
+        "   comm       %10.2f  %5.1f%%\n"
+        "   wait       %10.2f  %5.1f%%\n"
+        "   misc       %10.2f  %5.1f%%\n"
+        "velsmooth     %10.2f  %5.1f%%\n"
+        "   compute    %10.2f  %5.1f%%\n"
+        "   comm       %10.2f  %5.1f%%\n"
+        "   wait       %10.2f  %5.1f%%\n"
+        "   misc       %10.2f  %5.1f%%\n"
+#endif
 #ifdef DM_SIDM
           "sidm_total    %10.2f  %5.1f%%\n"
 #endif
@@ -925,6 +941,9 @@ void write_cpu_log(void)
 	      "i/o           %10.2f  %5.1f%%\n"
 	      "peano         %10.2f  %5.1f%%\n"
 	      "sfrcool       %10.2f  %5.1f%%\n"
+#ifdef CHIMES 
+	      "sfrcoolimbal  %10.2f  %5.1f%%\n" 
+#endif 
 	      "blackholes    %10.2f  %5.1f%%\n"
 	      "fof/subfind   %10.2f  %5.1f%%\n"
 #ifdef GRAIN_FLUID
@@ -953,6 +972,18 @@ void write_cpu_log(void)
     All.CPU_Sum[CPU_AGSDENSCOMM], (All.CPU_Sum[CPU_AGSDENSCOMM]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_AGSDENSWAIT], (All.CPU_Sum[CPU_AGSDENSWAIT]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_AGSDENSMISC], (All.CPU_Sum[CPU_AGSDENSMISC]) / All.CPU_Sum[CPU_ALL] * 100,
+#endif
+#ifdef TURB_DIFF_DYNAMIC
+    (All.CPU_Sum[CPU_DYNDIFFCOMPUTE] + All.CPU_Sum[CPU_DYNDIFFWAIT] + All.CPU_Sum[CPU_DYNDIFFCOMM] + All.CPU_Sum[CPU_DYNDIFFMISC]), (All.CPU_Sum[CPU_DYNDIFFCOMPUTE] + All.CPU_Sum[CPU_DYNDIFFWAIT] + All.CPU_Sum[CPU_DYNDIFFCOMM] + All.CPU_Sum[CPU_DYNDIFFMISC]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DYNDIFFCOMPUTE], (All.CPU_Sum[CPU_DYNDIFFCOMPUTE]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DYNDIFFWAIT], (All.CPU_Sum[CPU_DYNDIFFWAIT]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DYNDIFFCOMM], (All.CPU_Sum[CPU_DYNDIFFCOMM]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DYNDIFFMISC], (All.CPU_Sum[CPU_DYNDIFFMISC]) / All.CPU_Sum[CPU_ALL] * 100,
+    (All.CPU_Sum[CPU_IMPROVDIFFCOMPUTE] + All.CPU_Sum[CPU_IMPROVDIFFWAIT] + All.CPU_Sum[CPU_IMPROVDIFFCOMM] + All.CPU_Sum[CPU_IMPROVDIFFMISC]), (All.CPU_Sum[CPU_IMPROVDIFFCOMPUTE] + All.CPU_Sum[CPU_IMPROVDIFFWAIT] + All.CPU_Sum[CPU_IMPROVDIFFCOMM] + All.CPU_Sum[CPU_IMPROVDIFFMISC]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_IMPROVDIFFCOMPUTE], (All.CPU_Sum[CPU_IMPROVDIFFCOMPUTE]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_IMPROVDIFFWAIT], (All.CPU_Sum[CPU_IMPROVDIFFWAIT]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_IMPROVDIFFCOMM], (All.CPU_Sum[CPU_IMPROVDIFFCOMM]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_IMPROVDIFFMISC], (All.CPU_Sum[CPU_IMPROVDIFFMISC]) / All.CPU_Sum[CPU_ALL] * 100,
 #endif
 #ifdef DM_SIDM
     All.CPU_Sum[CPU_SIDMSCATTER], (All.CPU_Sum[CPU_SIDMSCATTER])/ All.CPU_Sum[CPU_ALL] * 100,
@@ -984,6 +1015,9 @@ void write_cpu_log(void)
 #else
     0.,0.,
 #endif
+#ifdef CHIMES 
+    All.CPU_Sum[CPU_COOLSFRIMBAL], (All.CPU_Sum[CPU_COOLSFRIMBAL]) / All.CPU_Sum[CPU_ALL] * 100, 
+#endif 
 #ifdef BLACK_HOLES
     All.CPU_Sum[CPU_BLACKHOLES], (All.CPU_Sum[CPU_BLACKHOLES]) / All.CPU_Sum[CPU_ALL] * 100,
 #else

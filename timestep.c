@@ -52,6 +52,9 @@ void set_cosmo_factors_for_current_time(void)
         All.cf_hubble_a = hubble_function(All.Time); /* hubble_function(a) = H(a) = H(z) */
         /* dt_code * v_code/r_code = All.cf_hubble_a2 * dt_phys * v_phys/r_phys */
         All.cf_hubble_a2 = All.Time * All.Time * hubble_function(All.Time);
+#ifdef CHIMES 
+	ChimesGlobalVars.cmb_temperature = 2.725 / All.cf_atime; 
+#endif 
     }
     else
     {
@@ -63,6 +66,9 @@ void set_cosmo_factors_for_current_time(void)
         All.cf_afac3 = 1;
         All.cf_hubble_a = 1;
         All.cf_hubble_a2 = 1;
+#ifdef CHIMES 
+	ChimesGlobalVars.cmb_temperature = 2.725; 
+#endif 
     }
 }
 
@@ -431,7 +437,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 
 #ifdef TIDAL_TIMESTEP_CRITERION // tidal criterion obtains the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion
-    double dt_tidal = 0.; for(int k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];} // this is diagonalized already in the gravity loop
+    double dt_tidal = 0.; {int k; for(k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];}} // this is diagonalized already in the gravity loop
     dt_tidal = sqrt(All.ErrTolIntAccuracy / sqrt(dt_tidal));
     dt = DMIN(All.MaxSizeTimestep, dt_tidal);
 #endif
@@ -582,7 +588,7 @@ integertime get_timestep(int p,		/*!< particle index */
                     double coeff_inv = 0.67 * L_cr_strong * dt_prefac_diffusion / (1.e-33 + fabs(SphP[p].CosmicRayDiffusionCoeff) * GAMMA_COSMICRAY_MINUS1);
                     double dt_conduction =  L_cr_strong * coeff_inv; /* true diffusion requires the stronger timestep criterion be applied */
                     explicit_timestep_on = 1;
-#ifdef COSMIC_RAYS_DISABLE_DIFFUSION
+#if (COSMIC_RAYS_DIFFUSION_MODEL < 0)
                     dt_conduction = L_cr_weak * coeff_inv; /* streaming allows weaker timestep criterion because it's really an advection equation */
                     explicit_timestep_on = 0;
 #endif

@@ -202,6 +202,9 @@ void fof_get_group_velocity(double *cmvel, int gr);
 int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend_local);
 void fof_compute_group_properties(int gr, int start, int len);
 
+#ifdef TURB_DIFF_DYNAMIC
+double INLINE_FUNC Get_Particle_Size_for_turb(int i);
+#endif
 void parallel_sort(void *base, size_t nmemb, size_t size, int (*compar) (const void *, const void *));
 void parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (const void *, const void *), MPI_Comm comm);
 int compare_IDs(const void *a, const void *b);
@@ -270,6 +273,8 @@ double INLINE_FUNC Get_Particle_Expected_Area(double h);
 #ifdef COSMIC_RAYS
 double INLINE_FUNC Get_Particle_CosmicRayPressure(int i);
 double Get_CosmicRayGradientLength(int i);
+double Get_Gas_Ionized_Fraction(int i);
+void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i);
 double Get_CosmicRayStreamingVelocity(int i);
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode);
 #endif
@@ -521,6 +526,10 @@ int HIIheating_evaluate(int target, int mode, int *nexport, int *nsend_local);
 #endif
 #endif
 
+#ifdef CHIMES_HII_REGIONS 
+void chimes_HII_regions_singledomain(void); 
+#endif
+
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
 void selfshield_local_incident_uv_flux(void);
 #endif
@@ -544,11 +553,13 @@ void *addthermalFB_evaluate_secondary(void *p);
 #ifdef COOL_METAL_LINES_BY_SPECIES
 /*double GetMetalLambda(double, double);*/
 double getSpCoolTableVal(long i,long j,long k,long tblK);
+#ifndef CHIMES 
 double GetCoolingRateWSpecies(double nHcgs, double logT, double *Z);
 double GetLambdaSpecies(long k_index, long index_x0y0, long index_x0y1, long index_x1y0, long index_x1y1, double dx, double dy, double dz, double mdz);
 void LoadMultiSpeciesTables(void);
 void ReadMultiSpeciesTables(int iT);
 char *GetMultiSpeciesFilename(int i, int hk);
+#endif 
 #endif
 
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
@@ -582,7 +593,24 @@ int disp_density_isactive(int i);
 #endif
 
 
+#ifdef CHIMES 
+void chimes_cooling_parent_routine(void); 
+double chimes_convert_u_to_temp(double u, double rho, int target); 
+void chimes_update_gas_vars(int target); 
+#ifdef COOL_METAL_LINES_BY_SPECIES 
+void chimes_update_element_abundances(int i); 
+#endif 
+#ifdef CHIMES_TURB_DIFF_IONS 
+void chimes_update_turbulent_abundances(int i, int mode); 
+#endif 
+#ifdef CHIMES_METAL_DEPLETION 
+void chimes_init_depletion_data(void); 
+double chimes_jenkins_linear_fit(double nH, double T, double Ax, double Bx, double zx); 
+void chimes_compute_depletions(double nH, double T, int thread_id); 
+#endif 
+#else 
 void cooling_parent_routine(void);
+#endif 
 void count_hot_phase(void);
 void delete_node(int i);
 void density(void);
@@ -696,7 +724,13 @@ void pm_setup_nonperiodic_kernel(void);
 
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
+#ifdef CHIMES_STELLAR_FLUXES 
+double chimes_G0_luminosity(double stellar_age, double stellar_mass); 
+double chimes_ion_luminosity(double stellar_age, double stellar_mass); 
+int rt_get_source_luminosity(int i, double sigma_0, double *lum, double *chimes_lum_G0, double *chimes_lum_ion); 
+#else 
 int rt_get_source_luminosity(int i, double sigma_0, double *lum);
+#endif 
 double rt_kappa(int j, int k_freq);
 double rt_absorption_rate(int i, int k_freq);
 double rt_diffusion_coefficient(int i, int k_freq);
@@ -809,6 +843,17 @@ void *GasGrad_evaluate_primary(void *p, int gradient_iteration);
 void *GasGrad_evaluate_secondary(void *p, int gradient_iteration);
 void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol);
 
+#ifdef TURB_DIFF_DYNAMIC
+void dynamic_diff_calc(void);
+int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int dynamic_iteration);
+void *DynamicDiff_evaluate_primary(void *p, int dynamic_iteration);
+void *DynamicDiff_evaluate_secondary(void *p, int dynamic_iteration);
+void diffusion_velocity_calc(void);
+int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
+void *DiffFilter_evaluate_primary(void *p);
+void *DiffFilter_evaluate_secondary(void *p);
+#endif
+
 #ifdef PARTICLE_EXCISION
 void apply_excision();
 #endif
@@ -816,7 +861,7 @@ void apply_excision();
 #ifdef DM_SIDM
 double prob_of_interaction(double mass, double r, double h_si, double dV[3], int dt_step);
 double g_geo(double r);
-void calculate_interact_kick(double dV[3], double kick[3]);
+void calculate_interact_kick(double dV[3], double kick[3], double m);
 void init_geofactor_table(void);
 double geofactor_integ(double x, void * params);
 double geofactor_angle_integ(double u, void * params);
@@ -842,7 +887,12 @@ void DMGrad_gradient_calc(void);
 int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
 void *DMGrad_evaluate_primary(void *p, int gradient_iteration);
 void *DMGrad_evaluate_secondary(void *p, int gradient_iteration);
-void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double prev_a, double dp[3], double dv[3],
+void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double prev_a, double dv[3],
+                                  double GradRho_L[3], double GradRho_R[3],
+                                  double GradRho2_L[3][3], double GradRho2_R[3][3],
+                                  double rho_L, double rho_R, double dv_Right_minus_Left,
+                                  double Area[3], double fluxes[3], double AGS_Numerical_QuantumPotential_L, double AGS_Numerical_QuantumPotential_R, double *dt_egy_Numerical_QuantumPotential);
+void do_dm_fuzzy_flux_computation_old(double HLLwt, double dt, double m0, double prev_a, double dp[3], double dv[3],
                                   double GradRho_L[3], double GradRho_R[3],
                                   double GradRho2_L[3][3], double GradRho2_R[3][3],
                                   double rho_L, double rho_R, double dv_Right_minus_Left,

@@ -690,7 +690,7 @@ void density(void)
                 desnumngbdev = desnumngbdev_0 * ncorr_ngb;
                 /* allow the neighbor tolerance to gradually grow as we iterate, so that we don't spend forever trapped in a narrow iteration */
                 if(iter > 1) {desnumngbdev = DMIN( 0.25*desnumngb , desnumngbdev * exp(0.1*log(desnumngb/(16.*desnumngbdev))*(double)iter) );}
-                
+
 #ifdef BLACK_HOLES
                 if(P[i].Type == 5)
                 {
@@ -1249,6 +1249,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     
                     out.Ngb += kernel.wk;
                     out.Rho += kernel.mj_wk;
+
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
                     if(local.Type == 0 && kernel.r==0) {int kv; for(kv=0;kv<3;kv++) {out.ParticleVel[kv] += kernel.mj_wk * SphP[j].VelPred[kv];}} // just the self-contribution //
 #endif

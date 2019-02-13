@@ -216,7 +216,7 @@ double mechanical_fb_calculate_eventrates_SNe(int i, double dt)
     {
         if(star_age<=agebrk) {RSNe=5.408e-4;} else {if(star_age<=agemax) {RSNe=2.516e-4;}} // core-collapse
         if(star_age>agemax) {RSNe=5.3e-8 + 1.6e-5*exp(-0.5*((star_age-0.05)/0.01)*((star_age-0.05)/0.01));} // Ia (prompt Gaussian+delay, Manucci+06)
-        
+		
         double renorm = calculate_relative_light_to_mass_ratio_from_imf(star_age,i); // account for higher # of O-stars with a different IMF
         if(star_age<agemax) {RSNe *= renorm;}
 #ifdef GALSF_SFR_IMF_SAMPLING

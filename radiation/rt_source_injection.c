@@ -102,7 +102,7 @@ void rt_source_injection(void)
         {
             double lum[N_RT_FREQ_BINS];
             for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[j].Je[k]=0;} // need to zero -before- calling injection //
-            int active_check = rt_get_source_luminosity(j,0,lum);
+	    int active_check = rt_get_source_luminosity(j,0,lum);
             for(k=0;k<N_RT_FREQ_BINS;k++) if(active_check) {SphP[j].Je[k]=lum[k];}
         }
     }
@@ -328,7 +328,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 #endif
 #endif
                 // now actually apply the kernel distribution
-                for(k=0;k<N_RT_FREQ_BINS;k++)
+                for(k=0;k<N_RT_FREQ_BINS;k++) 
                 {
                     double dE = wk * local.Luminosity[k];
 #if defined(RT_INJECT_PHOTONS_DISCRETELY)

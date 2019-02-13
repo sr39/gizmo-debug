@@ -126,10 +126,10 @@
 #COSMIC_RAYS                    # two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anisotropic diffusion, streaming, injection by SNe
 #COSMIC_RAYS_ALFVEN=(500.)      # solve CR transport based on Alfven-limited scattering from Thomas+Pfrommer 18, evolves CRs+resonant Alfven population; value here is maximum free-streaming speed in code units
 #COSMIC_RAYS_M1=(500.)          # solve the CR transport in the M1 limit [second-order expansion of the collisionless boltzmann eqn]; value here is the streaming speed in code units
+#COSMIC_RAYS_DIFFUSION_MODEL=0  # determine how coefficients for CR transport scale. 0=constant diffusivity, -1=no diffusion(still stream), values >=1 correspond to different literature scalings for the coefficients (see user guide)
+#COSMIC_RAYS_ION_ALFVEN_SPEED   # assume the relevant Alfven speed governing CR transport is not the ideal-MHD Alfven speed, but the Alfven speed for -just- the ions (applicable in the weak-coupling limit for the resonant Alfven waves at CR gyro-resonance)
 #COSMIC_RAYS_DISABLE_STREAMING  # turn off CR streaming (propagation is purely advective+diffusion; warning: this can severely under-estimate CR losses to Alfven waves)
-#COSMIC_RAYS_DISABLE_DIFFUSION  # turn off CR diffusion (leaves streaming intact, simply disables 'microscopic+turbulent' CR diffusion terms)
 #COSMIC_RAYS_DISABLE_COOLING    # turn off CR heating/cooling interactions with gas (catastrophic losses, hadronic interactions, etc; only adiabatic PdV work terms remain)
-#COSMIC_RAYS_DIFFUSION_CONSTANT # replaces physical CR diffusion with constant coefficient (equal to value of CosmicRayDiffusionCoeff in code units); turn off streaming to make this the ONLY transport
 ## ----------------------------------------------------------------------------------------------------
 ####################################################################################################
 
@@ -307,8 +307,6 @@
 
 
 
-
-
 ############################################################################################################################
 # -------------------------------------- Radiative Transfer & Radiation Hydrodynamics:
 # -------------------------------------------- modules developed by PFH with David Khatami, Mike Grudic, and Nathan Butcher (special  thanks to Alessandro Lupi)
@@ -439,7 +437,7 @@
 #DONOTUSENODELIST               # MPI debugging
 #NOTYPEPREFIX_FFTW              # FFTW debugging (fftw-header/libraries accessed without type prefix, adopting whatever was
                                 #   chosen as default at compile of fftw). Otherwise, the type prefix 'd' for double is used.
-USE_FFTW3                       # enables FFTW3 (can be used with DOUBLEPRECISION_FFTW) 
+#USE_FFTW3                      # enables FFTW3 (can be used with DOUBLEPRECISION_FFTW) 
 #DOUBLEPRECISION_FFTW           # FFTW in double precision to match libraries
 # --------------------
 # ----- Load-Balancing
@@ -458,6 +456,29 @@ USE_FFTW3                       # enables FFTW3 (can be used with DOUBLEPRECISIO
 ##-
 ####################################################################################################-
 ####################################################################################################-
+
+
+
+####################################################################################################-
+##----------------------------------------------------------------------------------------------------
+#-------------------------------------- Non-Equilibrium Chemical Networks (includes novel cooling modules but also chemical networks and solvers)
+#-------------------------- This is the CHIMES network developed by A. Richings. The module is proprietary at the moment and users should request permission from A. Richings
+####################################################################################################-
+#CHIMES                         #- enable CHIMES: cooling & chemistry package. Requires COOLING above. Also, requires COOL_METAL_LINES_BY_SPECIES to include metals.
+#CHIMES_HYDROGEN_ONLY           #- Hydrogen-only. This is ignored if METALS are also set.
+#CHIMES_SOBOLEV_SHIELDING       #- Enables local self-shielding over a Sobolev-like length scale
+#CHIMES_HII_REGIONS             #- Disables shielding withing HII region (requires FIRE modules for radiation transport/coupling: uses GALSF_FB_HII_HEATING, and permissions follow those modules)
+#CHIMES_STELLAR_FLUXES          #- Couple UV fluxes from the luminosity tree to CHIMES (requires FIRE modules for radiation transport/coupling: use permissions follow those modules)
+#CHIMES_SFR_MOLECULAR_CRITERION #- As GALSF_SFR_MOLECULAR_CRITERION, but using the H2 fraction from CHIMES (requires appropriate star formation parent flags be set)
+#CHIMES_REDUCED_OUTPUT          #- Full CHIMES abundance array only output in some snapshots
+#CHIMES_NH_OUTPUT               #- Write out column densities of gas particles to snapshots
+#CHIMES_OUTPUT_DENS_AROUND_STAR #- Write out DensAroundStar
+#CHIMES_OUTPUT_DELAY_TIME_HII   #- Output DelayTimeHII. Requires CHIMES_HII_REGIONS or GALSF_FB_HII_HEATING (and corresponding flags/permissions set)
+#CHIMES_INITIALISE_IN_EQM       #- Initialise CHIMES abundances in equilibrium at the start of the simulation
+#CHIMES_TURB_DIFF_IONS          #- Turbulent diffusions of CHIMES abundances. Requires TURB_DIFF_METALS and TURB_DIFF_METALS_LOWORDER (see modules for metal diffusion above: use/citation policy follows those)
+#CHIMES_METAL_DEPLETION         #- Uses density-dependent metal depletion factors (Jenkins 2009, De Cia et al. 2016)
+####################################################################################################-
+
 
 
 ####################################################################################################-
@@ -519,6 +540,5 @@ USE_FFTW3                       # enables FFTW3 (can be used with DOUBLEPRECISIO
 #OUTPUT_GDE_TIDALTENSORPS       #- write configuration-space tidal tensor to snapshot
 #OUTPUT_GDE_LASTCAUSTIC         #- write info on last passed caustic to snapshot
 ####################################################################################################-
-
 
 
