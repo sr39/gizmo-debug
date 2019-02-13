@@ -951,7 +951,7 @@ int ags_density_isactive(int i)
 double ags_return_maxsoft(int i)
 {
     double maxsoft = All.MaxHsml; // overall maximum - nothing is allowed to exceed this
-#if !(EXPAND_PREPROCESSOR_(ADAPTIVE_GRAVSOFT_FORALL) == 1)
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
     maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * All.ForceSoftening[P[i].Type]); // user-specified maximum
 #ifdef PMGRID
     /*!< this gives the maximum allowed gravitational softening when using the TreePM method.

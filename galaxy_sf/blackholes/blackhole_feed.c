@@ -343,7 +343,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                     NEAREST_XYZ(dpos[0],dpos[1],dpos[2],-1);
 #endif
                     r2=0; for(k=0;k<3;k++) {r2 += dpos[k]*dpos[k];}
-                    if(r2 < h_i2)
+                    if(r2 < h_i2 || r2 < PPP[j].Hsml*PPP[j].Hsml)
                     {
                         vrel=0; for(k=0;k<3;k++) {vrel += (P[j].Vel[k] - velocity[k])*(P[j].Vel[k] - velocity[k]);}
                         r=sqrt(r2); vrel=sqrt(vrel)/All.cf_atime; vesc=bh_vesc(j,mass,r); /* do this once and use below */

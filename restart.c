@@ -17,6 +17,10 @@
 
 static FILE *fd;
 
+#ifdef CHIMES 
+static double *sphAbundancesBuf;
+#endif 
+
 static void in(int *x, int modus);
 static void byten(void *x, size_t n, int modus);
 
@@ -49,7 +53,10 @@ void restart(int modus)
     struct global_data_all_processes all_task0;
     int nmulti = MULTIPLEDOMAINS, regular_restarts_are_valid = 1, backup_restarts_are_valid = 1;
     
-    
+
+#ifdef CHIMES 
+    int partIndex, abunIndex; 
+#endif 
     
     if(ThisTask == 0 && modus == 0) // writing re-start files: move old files to .bak
     {
@@ -169,7 +176,6 @@ void restart(int modus)
 #endif
           new_MaxPart = All.MaxPart;
 
-
 		  save_PartAllocFactor = -1;
 		}
 
@@ -216,6 +222,43 @@ void restart(int modus)
 		}
 	      /* Sph-Particle data  */
 	      byten(&SphP[0], N_gas * sizeof(struct sph_particle_data), modus);
+
+#ifdef CHIMES 
+	      sphAbundancesBuf = (double *) malloc(N_gas * ChimesGlobalVars.totalNumberOfSpecies * sizeof(double));
+
+	      if (!modus) /* write */
+		{
+		  /* Read abundance arrays into buffer */
+		  for (partIndex = 0; partIndex < N_gas; partIndex++)
+		    {
+		      for (abunIndex = 0; abunIndex < ChimesGlobalVars.totalNumberOfSpecies; abunIndex++)
+			sphAbundancesBuf[(partIndex * ChimesGlobalVars.totalNumberOfSpecies) + abunIndex] = ChimesGasVars[partIndex].abundances[abunIndex];
+		    }
+		}
+
+	      /* Abundance buffer */
+	      byten(&sphAbundancesBuf[0], N_gas * ChimesGlobalVars.totalNumberOfSpecies * sizeof(double), modus);
+	      /* GasVars */
+	      byten(&ChimesGasVars[0], N_gas * sizeof(struct gasVariables), modus);
+			  
+	      if (modus) /* read */
+		{
+		  for (partIndex = 0; partIndex < N_gas; partIndex++)
+		    {
+		      /* Allocate memory for abundance arrays */
+		      allocate_gas_abundances_memory(&(ChimesGasVars[partIndex]), &ChimesGlobalVars);
+		      
+		      /* Read abundances from buffer */
+		      for (abunIndex = 0; abunIndex < ChimesGlobalVars.totalNumberOfSpecies; abunIndex++)
+			ChimesGasVars[partIndex].abundances[abunIndex] = sphAbundancesBuf[(partIndex * ChimesGlobalVars.totalNumberOfSpecies) + abunIndex];
+
+#ifdef CHIMES_TURB_DIFF_IONS 
+		      chimes_update_turbulent_abundances(partIndex, 1); 
+#endif 
+		    }
+		}
+	      free(sphAbundancesBuf); 
+#endif
 	    }
 
 	  /* write state of random number generator */
@@ -327,7 +370,6 @@ void restart(int modus)
 
       domain_Decomposition(0, 0, 0);
     }
-
 }
 
 

@@ -367,8 +367,12 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                 
 #ifdef TURB_DIFFUSION
-#include "turbulent_diffusion.h"
+#include "../turb/turbulent_diffusion.h"
 #endif
+
+#ifdef CHIMES_TURB_DIFF_IONS
+#include "chimes_turbulent_ion_diffusion.h" 
+#endif 
                 
 #ifdef COSMIC_RAYS
 #include "../galaxy_sf/cosmic_ray_diffusion.h"

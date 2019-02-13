@@ -22,7 +22,38 @@
 /* --------------------------------------------------------------------------
  Actual evaluation of fluxes from the quantum pressure tensor
  -------------------------------------------------------------------------- */
-void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double prev_a, double dp[3], double dv[3],
+void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double prev_a, double dv[3],
+                                  double GradRho_L[3], double GradRho_R[3],
+                                  double GradRho2_L[3][3], double GradRho2_R[3][3],
+                                  double rho_L, double rho_R, double dv_Right_minus_Left,
+                                  double Area[3], double fluxes[3], double AGS_Numerical_QuantumPotential_L, double AGS_Numerical_QuantumPotential_R, double *dt_egy_Numerical_QuantumPotential)
+{
+    double f00 = 0.5 * 591569.0 / (All.FuzzyDM_Mass_in_eV * All.UnitVelocity_in_cm_per_s * All.UnitLength_in_cm/All.HubbleParam); f00*=f00; // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
+    double gamma_eff=5./3., PL_dot_A[3]={0}, PR_dot_A[3]={0}, PL_dot_AA=0, PR_dot_AA=0, Face_Area_Norm=0, rSi=1./(rho_L+rho_R), QL=0, QR=0; int m,k;
+    for(m=0;m<3;m++) {QL+=GradRho2_L[m][m] - 0.5*GradRho_L[m]*GradRho_L[m]/rho_L; QR+=GradRho2_R[m][m] - 0.5*GradRho_R[m]*GradRho_R[m]/rho_R;} // compute the quantum potential (multiplied by rho to be an energy density to match units of PN)
+    double PN_L=(gamma_eff-1.)*(AGS_Numerical_QuantumPotential_L-f00*QL), PN_R=(gamma_eff-1.)*(AGS_Numerical_QuantumPotential_R-f00*QR); PN_L=DMAX(PN_L,0); PN_R=DMAX(PN_R,0); // compute actual scalar-pressure terms and limit to be positive definite
+    for(m=0;m<3;m++)
+    {
+        for(k=0;k<3;k++)
+        {
+            PL_dot_A[m] += Area[k] * f00*(GradRho_L[m]*GradRho_L[k]/rho_L - GradRho2_L[m][k]); // convert grad^2_rho ~ rho/L^2 from code units to physical [should already all be physical here]
+            PR_dot_A[m] += Area[k] * f00*(GradRho_R[m]*GradRho_R[k]/rho_R - GradRho2_R[m][k]); // convert grad^2_rho ~ rho/L^2 from code units to physical [should already all be physical here]
+        }
+        Face_Area_Norm += Area[m]*Area[m]; PL_dot_AA += PL_dot_A[m]*Area[m]; PR_dot_AA += PR_dot_A[m]*Area[m]; // compute area and normal scalar component of pressure tensor
+        fluxes[m] = (rho_L*(PR_dot_A[m]+PN_R*Area[m]) + rho_R*(PL_dot_A[m]+PN_L*Area[m])) * rSi; // term needed for Pstar-dot-A
+    }
+    PL_dot_AA /= Face_Area_Norm; PR_dot_AA /= Face_Area_Norm; Face_Area_Norm=sqrt(Face_Area_Norm); // define projected normal pressure components
+    double PL_norm = PL_dot_AA + PN_L, PR_norm = PR_dot_AA + PN_L, cs_L = gamma_eff*PL_norm/rho_L, cs_R = gamma_eff*PR_norm/rho_R, cs=DMAX(cs_L,cs_R), ceff=cs; // get projected components, plus pure pressure, to sound speed as defined for adiabatic perturb here
+    if(dv_Right_minus_Left < 0) {ceff+=fabs(dv_Right_minus_Left);} // this is the necessary upwind step for approaching cells
+    for(m=0;m<3;m++) {fluxes[m]-=rho_L*rho_R*rSi*ceff*dv_Right_minus_Left*Area[m];} // numerical HLLC flux in star frame from upwinding appropriately
+    double S_M = ((PL_norm-PR_norm)/ceff + 0.5*(rho_R-rho_L)*dv_Right_minus_Left)*rSi; // contact wave speed (oriented in Area[m] direction)
+    *dt_egy_Numerical_QuantumPotential=0; for(m=0;m<3;m++) {*dt_egy_Numerical_QuantumPotential += fluxes[m]*(S_M*Area[m]/Face_Area_Norm - 0.5*dv[m]);} // numerical flux for energy
+    return;
+}
+
+
+
+void do_dm_fuzzy_flux_computation_old(double HLLwt, double dt, double m0, double prev_a, double dp[3], double dv[3],
                                   double GradRho_L[3], double GradRho_R[3],
                                   double GradRho2_L[3][3], double GradRho2_R[3][3],
                                   double rho_L, double rho_R, double dv_Right_minus_Left,
@@ -68,7 +99,7 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double pre
         fluxes[m] += ftmp; // add numerical 'pressure' stored from previous timesteps //
     }
     fluxmag=0; for(m=0;m<3;m++) {fluxmag += fluxes[m]*fluxes[m];} if(fluxmag > 0) {fluxmag = sqrt(fluxmag);} else {fluxmag = 0;}
-
+    
     /* now we have to introduce the numerical diffusivity (the up-wind mixing part from the Reimann problem);
      this can have one of a couple forms, but the most accurate and stable appears to be the traditional HLLC form which we use by default below */
     if(dv_Right_minus_Left < 0) // converging flow, upwind dissipation terms appear //
@@ -104,6 +135,8 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double pre
     } // approach velocities lead to up-wind mixing
     return;
 }
+
+
 
 
 /* kicks for fuzzy-dm integration: just put relevant drift-kick operators here to keep the code clean */

@@ -121,8 +121,6 @@
 
 
 
-
-
 #if (defined(HYDRO_DENSITY_SPH) || defined(HYDRO_PRESSURE_SPH)) && !defined(HYDRO_SPH)
 #define HYDRO_SPH               /* master flag for SPH: must be enabled if any SPH method is used */
 #endif
@@ -235,6 +233,9 @@
 #ifdef COSMIC_RAYS
 #define GAMMA_COSMICRAY (4.0/3.0)
 #define GAMMA_COSMICRAY_MINUS1 (GAMMA_COSMICRAY-1)
+#ifndef COSMIC_RAYS_DIFFUSION_MODEL
+#define COSMIC_RAYS_DIFFUSION_MODEL 0
+#endif
 #ifdef COSMIC_RAYS_ALFVEN
 #define GAMMA_ALFVEN_CRS (3.0/2.0)
 #define COSMIC_RAYS_M1 (COSMIC_RAYS_ALFVEN)
@@ -248,12 +249,61 @@
 #include <grackle.h>
 #endif
 
+#ifdef CHIMES 
+#include "./cooling/chimes/allvars.h" 
+extern struct gasVariables *ChimesGasVars; 
+extern struct globalVariables ChimesGlobalVars; 
+extern char ChimesDataPath[500]; 
+extern double isotropic_photon_density;  
+extern double shielding_length_factor; 
+extern double cr_rate; 
+extern int ForceEqOn; 
+extern int Chimes_incl_full_output; 
+extern int N_chimes_full_output_freq; 
+extern struct All_rate_variables_structure *AllRates;
+extern struct Reactions_Structure *all_reactions_root;
+extern struct Reactions_Structure *nonmolecular_reactions_root;
+extern double *dustG_arr; 
+extern double *H2_dissocJ_arr; 
+#ifdef CHIMES_STELLAR_FLUXES 
+// The following defines the stellar age bins 
+// that we will use to define the UV spectra 
+// from stars used in CHIMES. 
+#define CHIMES_LOCAL_UV_NBINS 8 
+#define CHIMES_LOCAL_UV_AGE_LOW 0.0 
+#define CHIMES_LOCAL_UV_DELTA_AGE_LOW 0.2 
+#define CHIMES_LOCAL_UV_AGE_MID 1.0 
+#define CHIMES_LOCAL_UV_DELTA_AGE_HI 1.0 
+#endif 
+#ifdef OPENMP   
+extern struct All_rate_variables_structure **AllRates_omp;
+extern struct Reactions_Structure **all_reactions_root_omp;
+extern struct Reactions_Structure **nonmolecular_reactions_root_omp;
+#endif
+#ifdef CHIMES_METAL_DEPLETION 
+#define DEPL_N_ELEM 17 
+struct Chimes_depletion_data_structure 
+{ 
+  double SolarAbund[DEPL_N_ELEM]; 
+  double DeplPars[DEPL_N_ELEM][3]; 
+  double DustToGasSaturated; 
+  double ChimesDepletionFactors[7]; 
+  double ChimesDustRatio; 
+}; 
+#ifdef OPENMP 
+extern struct Chimes_depletion_data_structure ChimesDepletionData[OPENMP]; 
+#else 
+extern struct Chimes_depletion_data_structure ChimesDepletionData[1]; 
+#endif // OPENMP 
+#endif // CHIMES_METAL_DEPLETION 
+#endif // CHIMES 
+
 
 #ifdef GRAVITY_IMPROVED_INTEGRATION
 #define GRAVITY_HYBRID_OPENING_CRIT // use both Barnes-Hut + relative tree opening criterion
 #define STOP_WHEN_BELOW_MINTIMESTEP // stop when below min timestep to prevent bad timestepping
 #define TIDAL_TIMESTEP_CRITERION // use tidal tensor timestep criterion
-#endif
+#endif 
 
 
 #ifdef SINGLE_STAR_FORMATION
@@ -483,7 +533,7 @@
 
 
 
-#if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER)
+#if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER) 
 #define DO_DENSITY_AROUND_STAR_PARTICLES
 #if !defined(ALLOW_IMBALANCED_GASPARTICLELOAD)
 #define ALLOW_IMBALANCED_GASPARTICLELOAD
@@ -595,11 +645,6 @@
 #define DOGRAD_SOUNDSPEED 1
 #endif
 
-#if defined(CONDUCTION) || defined(VISCOSITY) || defined(TURB_DIFFUSION) || defined(MHD_NON_IDEAL) || (defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_DIFFUSION)) || (defined(RT_DIFFUSION_EXPLICIT) && !defined(RT_EVOLVE_FLUX))
-#ifndef DISABLE_SUPER_TIMESTEPPING
-//#define SUPER_TIMESTEP_DIFFUSION
-#endif
-#endif
 
 
 
@@ -1063,7 +1108,21 @@ typedef MyDouble MyBigFloat;
 #define CPU_AGSDENSCOMM    37
 #define CPU_AGSDENSMISC    38
 #define CPU_SIDMSCATTER    39
-#define CPU_PARTS          40  /* this gives the number of parts above (must be last) */
+#define CPU_DYNDIFFMISC       40
+#define CPU_DYNDIFFCOMPUTE    41
+#define CPU_DYNDIFFWAIT       42
+#define CPU_DYNDIFFCOMM       43
+#define CPU_IMPROVDIFFMISC    44
+#define CPU_IMPROVDIFFCOMPUTE 45
+#define CPU_IMPROVDIFFWAIT    46
+#define CPU_IMPROVDIFFCOMM    47
+
+#ifdef CHIMES 
+#define CPU_COOLSFRIMBAL   48
+#define CPU_PARTS          49  /* this gives the number of parts above (must be last) */
+#else 
+#define CPU_PARTS          48  /* this gives the number of parts above (must be last) */
+#endif 
 
 #define CPU_STRING_LEN 120
 
@@ -1440,7 +1499,10 @@ extern struct global_data_all_processes
 
     
 #ifdef DM_SIDM
-    MyDouble InteractionCrossSection;  /*!< self-interaction cross-section in [cm^2/g]*/
+    MyDouble DM_InteractionCrossSection;  /*!< self-interaction cross-section in [cm^2/g]*/
+    MyDouble DM_DissipationFactor;  /*!< dimensionless parameter governing efficiency of dissipation (1=dissipative, 0=elastic) */
+    MyDouble DM_KickPerCollision;  /*!< for exo-thermic DM reactions, this determines the energy gain 'per event': kick in km/s (equivalent to specific energy in erg/g) associated 'per event' */
+    MyDouble DM_InteractionVelocityDependence; /*!< power-law slope of velocity dependence of DM interaction cross-section */
 #endif
     
   int MaxPart;			/*!< This gives the maxmimum number of particles that can be stored on one processor. */
@@ -1485,6 +1547,14 @@ extern struct global_data_all_processes
   double InitGasTemp;		/*!< may be used to set the temperature in the IC's */
   double InitGasU;		/*!< the same, but converted to thermal energy per unit mass */
   double MinGasTemp;		/*!< may be used to set a floor for the gas temperature */
+#ifdef CHIMES 
+  int ChimesThermEvolOn;        /*!< Flag to determine whether to evolve the temperature in CHIMES. */ 
+#ifdef CHIMES_STELLAR_FLUXES 
+  double Chimes_f_esc_ion; 
+  double Chimes_f_esc_G0; 
+#endif
+#endif // CHIMES  
+
   double MinEgySpec;		/*!< the minimum allowed temperature expressed as energy per unit mass */
 #ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
   double ArtCondConstant;
@@ -1851,8 +1921,15 @@ extern struct global_data_all_processes
   double ViscosityAMin;
   double ViscosityAMax;
 #endif
+    
 #ifdef TURB_DIFFUSION
   double TurbDiffusion_Coefficient;
+#ifdef TURB_DIFF_DYNAMIC
+  double TurbDynamicDiffFac;
+  int TurbDynamicDiffIterations;
+  double TurbDynamicDiffSmoothing;
+  double TurbDynamicDiffMax;
+#endif
 #endif
   
 #if defined(CONDUCTION)
@@ -1925,6 +2002,7 @@ extern struct global_data_all_processes
   double Tillotson_EOS_params[7][12]; /*! < holds parameters for Tillotson EOS for solids */
 #endif
 
+
 #ifdef EOS_TABULATED
     char EosTable[100];
 #endif
@@ -1960,7 +2038,7 @@ extern struct global_data_all_processes
   int StSpectForm;
   int StSeed;
 #endif
-
+    
 #if defined(COOLING) && defined(COOL_GRACKLE)
     code_units GrackleUnits;
 #endif
@@ -2200,6 +2278,11 @@ extern ALIGN(32) struct particle_data
     MyFloat AGS_Gradients2_Density[3][3];   /*!< density gradient calculated corresponding to AGS routine (over interacting DM neighbors) */
     MyFloat AGS_Numerical_QuantumPotential; /*!< additional potential terms 'generated' by un-resolved compression [numerical diffusivity] */
     MyFloat AGS_Dt_Numerical_QuantumPotential; /*!< time derivative of the above */
+    MyFloat AGS_Psi_Re;
+    MyFloat AGS_Gradients_Psi_Re[3];
+    MyFloat AGS_Psi_Im;
+    MyFloat AGS_Gradients_Psi_Im[3];
+    MyFloat AGS_Grad2_Psi_Im[3];
 #endif
 #if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
     MyFloat NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */
@@ -2226,6 +2309,7 @@ extern ALIGN(32) struct particle_data
 #if defined(BLACK_HOLES)
 #define BPP(i) P[(i)]
 #endif
+
 
 
 /* the following struture holds data that is stored for each SPH particle in addition to the collisionless
@@ -2351,10 +2435,21 @@ extern struct sph_particle_data
     
     MyFloat MaxSignalVel;           /*!< maximum signal velocity (needed for time-stepping) */
     
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
+#ifdef GALSF_FB_FIRE_RT_UVHEATING 
     MyFloat RadFluxUV;              /*!< local UV field strength */
     MyFloat RadFluxEUV;             /*!< local (ionizing/hard) UV field strength */
-#endif
+#endif // GALSF_FB_FIRE_RT_UVHEATING 
+#ifdef CHIMES_STELLAR_FLUXES 
+    double Chimes_G0[CHIMES_LOCAL_UV_NBINS];    /*!< 6-13.6 eV flux, in Habing units */ 
+    double Chimes_fluxPhotIon[CHIMES_LOCAL_UV_NBINS];  /*!< ionising flux (>13.6 eV), in cm^-2 s^-1 */ 
+#ifdef CHIMES_HII_REGIONS 
+  double Chimes_G0_HII[CHIMES_LOCAL_UV_NBINS]; 
+  double Chimes_fluxPhotIon_HII[CHIMES_LOCAL_UV_NBINS]; 
+#endif // CHIMES_HII_REGIONS 
+#endif // CHIMES_STELLAR_FLUXES 
+#ifdef CHIMES_TURB_DIFF_IONS 
+  double ChimesNIons[TOTSIZE]; 
+#endif // CHIMES_TURB_DIFF_IONS 
 #ifdef BH_COMPTON_HEATING
     MyFloat RadFluxAGN;             /*!< local AGN flux */
 #endif
@@ -2369,9 +2464,11 @@ extern struct sph_particle_data
 #endif
 
 #ifdef COOLING
+#ifndef CHIMES 
   MyFloat Ne;  /*!< electron fraction, expressed as local electron number
 		    density normalized to the hydrogen number density. Gives
 		    indirectly ionization state and mean molecular weight. */
+#endif 
 #endif
 #ifdef GALSF
   MyFloat Sfr;                      /*!< particle star formation rate */
@@ -2391,7 +2488,7 @@ extern struct sph_particle_data
 #endif
 #endif
     
-#ifdef GALSF_FB_FIRE_RT_HIIHEATING
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS) 
   MyFloat DelayTimeHII;             /*!< flag indicating particle is ionized by nearby star */
 #endif
 #ifdef GALSF_FB_TURNOFF_COOLING
@@ -2408,7 +2505,13 @@ extern struct sph_particle_data
 
 #ifdef TURB_DIFFUSION
   MyFloat TD_DiffCoeff;             /*!< effective diffusion coefficient for sub-grid turbulent diffusion */
+#ifdef TURB_DIFF_DYNAMIC
+  MyDouble h_turb;
+  MyDouble MagShear;
+  MyFloat TD_DynDiffCoeff;          /*!< improved Smag. coefficient (squared) for sub-grid turb. diff. - D. Rennehan */
 #endif
+#endif
+    
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
   MyFloat NV_DivVel;                /*!< quantities specific to the Cullen & Dehnen viscosity switch */
   MyFloat NV_dt_DivVel;
@@ -2530,6 +2633,22 @@ extern struct sph_particle_data
     gr_float grHDI;
 #endif
 #endif
+   
+#ifdef TURB_DIFF_DYNAMIC
+  MyDouble VelShear_bar[3][3];
+  MyDouble MagShear_bar;
+  MyDouble Velocity_bar[3];
+  MyDouble Velocity_hat[3];
+  MyFloat FilterWidth_bar;
+  MyFloat MaxDistance_for_grad;
+  MyDouble Norm_hat;
+  MyDouble Dynamic_numerator;
+  MyDouble Dynamic_denominator;
+#ifdef TURB_DIFF_DYNAMIC_ERROR
+  MyDouble TD_DynDiffCoeff_error;
+  MyDouble TD_DynDiffCoeff_error_default;
+#endif
+#endif
     
 }
   *SphP,				/*!< holds SPH particle data on local processor */
@@ -2615,6 +2734,10 @@ extern struct gravdata_out
     MyLongDouble RadFluxUV;
     MyLongDouble RadFluxEUV;
 #endif
+#ifdef CHIMES_STELLAR_FLUXES 
+    double Chimes_G0[CHIMES_LOCAL_UV_NBINS]; 
+    double Chimes_fluxPhotIon[CHIMES_LOCAL_UV_NBINS]; 
+#endif 
 #ifdef BH_COMPTON_HEATING
     MyLongDouble RadFluxAGN;
 #endif
@@ -2660,7 +2783,6 @@ extern struct info_block
 #define BHPOTVALUEINIT 1.0e30
 
 extern int N_active_loc_BHs;    /*!< number of active black holes on the LOCAL processor */
-
 
 extern struct blackhole_temp_particle_data       // blackholedata_topass
 {
@@ -2873,7 +2995,22 @@ enum iofields
   IO_grDI,
   IO_grDII,
   IO_grHDI,
-  IO_OSTAR,  
+  IO_OSTAR, 
+  IO_TURB_DYNAMIC_COEFF,
+  IO_TURB_DIFF_COEFF,
+  IO_DYNERROR,
+  IO_DYNERRORDEFAULT, 
+#ifdef CHIMES 
+  IO_CHIMES_ABUNDANCES, 
+  IO_CHIMES_MU, 
+  IO_CHIMES_REDUCED, 
+  IO_CHIMES_NH,
+  IO_CHIMES_STAR_SIGMA, 
+  IO_CHIMES_FLUX_G0, 
+  IO_CHIMES_FLUX_ION, 
+  IO_CHIMES_STAR_DENS,
+  IO_CHIMES_DELAY_HII, 
+#endif 
   IO_LASTENTRY			/* This should be kept - it signals the end of the list */
 };
 
@@ -2973,6 +3110,10 @@ extern ALIGN(32) struct NODE
 
 #ifdef RT_USE_GRAVTREE
   MyFloat stellar_lum[N_RT_FREQ_BINS]; /*!< luminosity in the node*/
+#ifdef CHIMES_STELLAR_FLUXES 
+  double chimes_stellar_lum_G0[CHIMES_LOCAL_UV_NBINS]; 
+  double chimes_stellar_lum_ion[CHIMES_LOCAL_UV_NBINS]; 
+#endif 
 #endif
 
 #ifdef BH_PHOTONMOMENTUM

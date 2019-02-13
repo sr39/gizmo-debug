@@ -42,6 +42,10 @@ void init(void)
 #ifdef GDE_DISTORTIONTENSOR
     int i1, i2;
 #endif
+
+#ifdef CHIMES 
+    double H_mass_fraction, He_mass_fraction; 
+#endif 
     
     All.Time = All.TimeBegin;
     set_cosmo_factors_for_current_time();    
@@ -107,12 +111,17 @@ void init(void)
                 printf("ICFormat=%d not supported.\n", All.ICFormat);
             endrun(0);
     }
+
+#ifdef CHIMES_INITIALISE_IN_EQM 
+    for (i = 0; i < N_gas; i++) 
+      allocate_gas_abundances_memory(&(ChimesGasVars[i]), &ChimesGlobalVars); 
+#endif 
     
     All.Time = All.TimeBegin;
     set_cosmo_factors_for_current_time();
     
     
-#ifdef COOLING
+#if defined(COOLING) && !defined(CHIMES) 
     IonizeParams();
 #endif
     
@@ -198,7 +207,6 @@ void init(void)
         for(j = 0; j < GRAVCOSTLEVELS; j++)
             P[i].GravCost[j] = 0;
     
-   
     if(All.ComovingIntegrationOn)	/*  change to new velocity variable */
     {
         for(i = 0; i < NumPart; i++)
@@ -373,11 +381,11 @@ void init(void)
 #endif
 #endif
         }
-        
+       
 #if defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
         if(RestartFlag == 0)
         {
-            P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (All.UnitTime_in_Megayears*0.001) * get_random_number(P[i].ID + 3);
+	        P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (All.UnitTime_in_Megayears*0.001) * get_random_number(P[i].ID + 3);
         }
 #endif
         
@@ -440,6 +448,7 @@ void init(void)
 #ifdef METALS
         All.SolarAbundances[0]=0.02;        // all metals (by mass); present photospheric abundances from Asplund et al. 2009 (Z=0.0134, proto-solar=0.0142) in notes;
                                             //   also Anders+Grevesse 1989 (older, but hugely-cited compilation; their Z=0.0201, proto-solar=0.0213)
+
 #ifdef COOL_METAL_LINES_BY_SPECIES
         if (NUM_METAL_SPECIES>=10) {
             All.SolarAbundances[1]=0.28;    // He  (10.93 in units where log[H]=12, so photospheric mass fraction -> Y=0.2485 [Hydrogen X=0.7381]; Anders+Grevesse Y=0.2485, X=0.7314)
@@ -460,7 +469,7 @@ void init(void)
 #endif
         
         if(RestartFlag == 0) {
-#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
+#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)  
             P[i].Metallicity[0] = All.InitMetallicityinSolar*All.SolarAbundances[0];
 #else
             P[i].Metallicity[0] = 0;
@@ -470,6 +479,45 @@ void init(void)
             /* need to allow for a primordial He abundance */
             if(NUM_METAL_SPECIES>=10) P[i].Metallicity[1]=0.25+(All.SolarAbundances[1]-0.25)*P[i].Metallicity[0]/All.SolarAbundances[0];
         } // if(RestartFlag == 0)
+
+#ifdef CHIMES 
+#ifdef COOL_METAL_LINES_BY_SPECIES 
+	if (P[i].Type == 0) 
+	  {
+	    H_mass_fraction = 1.0 - (P[i].Metallicity[0] + P[i].Metallicity[1]); 
+	    ChimesGasVars[i].element_abundances[0] = P[i].Metallicity[1] / (4.0 * H_mass_fraction);   // He 
+	    ChimesGasVars[i].element_abundances[1] = P[i].Metallicity[2] / (12.0 * H_mass_fraction);  // C 
+	    ChimesGasVars[i].element_abundances[2] = P[i].Metallicity[3] / (14.0 * H_mass_fraction);  // N 
+	    ChimesGasVars[i].element_abundances[3] = P[i].Metallicity[4] / (16.0 * H_mass_fraction);  // O 
+	    ChimesGasVars[i].element_abundances[4] = P[i].Metallicity[5] / (20.0 * H_mass_fraction);  // Ne 
+	    ChimesGasVars[i].element_abundances[5] = P[i].Metallicity[6] / (24.0 * H_mass_fraction);  // Mg 
+	    ChimesGasVars[i].element_abundances[6] = P[i].Metallicity[7] / (28.0 * H_mass_fraction);  // Si 
+	    ChimesGasVars[i].element_abundances[7] = P[i].Metallicity[8] / (32.0 * H_mass_fraction);  // S 
+	    ChimesGasVars[i].element_abundances[8] = P[i].Metallicity[9] / (40.0 * H_mass_fraction);  // Ca 
+	    ChimesGasVars[i].element_abundances[9] = P[i].Metallicity[10] / (56.0 * H_mass_fraction); // Fe 
+
+	    ChimesGasVars[i].metallicity = P[i].Metallicity[0] / 0.0129;  // In Zsol. CHIMES uses Zsol = 0.0129. 
+	  }
+#else 
+	if (ThisTask == 0)
+	  {
+	    printf("ERROR: Config flags CHIMES and METALS are switched on, but COOL_METAL_LINES_BY_SPECIES is switched off. \n"); 
+	    printf("If you want to include metals with CHIMES, you will also need to switch on COOL_METAL_LINES_BY_SPECIES. Aborting. \n"); 
+	    endrun(202); 
+	  }
+#endif // COOL_METAL_LINES_BY_SPECIES 
+#endif // CHIMES 
+#else 
+#ifdef CHIMES 
+	if (P[i].Type == 0) 
+	  {
+	    H_mass_fraction = HYDROGEN_MASSFRAC; 
+	    ChimesGasVars[i].element_abundances[0] = (1.0 - H_mass_fraction) / (4.0 * H_mass_fraction);  // He 
+	    for (j = 1; j < 10; j++) 
+	      ChimesGasVars[i].element_abundances[j] = 0.0; 
+	    ChimesGasVars[i].metallicity = 0.0; 
+	  }
+#endif // CHIMES 
 #endif // METALS
         
         
@@ -556,6 +604,30 @@ void init(void)
         
 #ifdef TURB_DIFFUSION
         SphP[i].TD_DiffCoeff = 0;
+
+#ifdef TURB_DIFF_DYNAMIC
+        int u, v; /* start with the standard Smagorinsky-Lilly constant from Kolmogorov theory */
+        SphP[i].TD_DynDiffCoeff = 0.01;
+        SphP[i].h_turb = 0;
+        SphP[i].FilterWidth_bar = 0;
+        SphP[i].MagShear_bar = 0;
+        SphP[i].MagShear = 0;
+        SphP[i].Norm_hat = 0;
+        SphP[i].Dynamic_numerator = 0;
+        SphP[i].Dynamic_denominator = 0;
+#ifdef TURB_DIFF_DYNAMIC_ERROR
+        SphP[i].TD_DynDiffCoeff_error = 0;
+#endif
+        for (u = 0; u < 3; u++) {
+            if (RestartFlag != 7) {
+                SphP[i].Velocity_bar[u] = 0;
+                SphP[i].Velocity_hat[u] = 0;
+            }
+            for (v = 0; v < 3; v++) {
+                SphP[i].VelShear_bar[u][v] = 0;
+            }
+        }
+#endif
 #endif
         
         if(RestartFlag == 0)
@@ -565,11 +637,21 @@ void init(void)
 #endif
             SphP[i].Density = -1;
 #ifdef COOLING
+#ifndef CHIMES 
             SphP[i].Ne = 1.0;
+#endif 
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
             SphP[i].RadFluxUV = 0;
             SphP[i].RadFluxEUV = 0;
+#endif 
+#ifdef CHIMES_STELLAR_FLUXES 
+	    int kc; 
+	    for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) 
+	      { 
+		SphP[i].Chimes_fluxPhotIon[kc] = 0; 
+		SphP[i].Chimes_G0[kc] = 0; 
+	      }
 #endif
 #ifdef BH_COMPTON_HEATING
             SphP[i].RadFluxAGN = 0;
@@ -582,7 +664,7 @@ void init(void)
         SphP[i].HostHaloMass = 0;
 #endif
 #endif // GALSF_SUBGRID_WINDS //
-#ifdef GALSF_FB_FIRE_RT_HIIHEATING
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS) 
         SphP[i].DelayTimeHII = 0;
 #endif
 #ifdef GALSF_FB_TURNOFF_COOLING
@@ -664,11 +746,18 @@ void init(void)
     assign_unique_ids();
 #endif
     /* assign other ID parameters needed */
+
     if(RestartFlag==0) {for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}}
 #ifdef NO_CHILD_IDS_IN_ICS
     if(RestartFlag != 1) {for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}}
-#endif
-    
+#endif 
+
+#ifdef CHIMES
+    if(RestartFlag==0) {for(i = 0; i < NumPart; i++) {ChimesGasVars[i].ID_child_number = P[i].ID_child_number;}}
+#ifdef NO_CHILD_IDS_IN_ICS
+    if(RestartFlag != 1) {for(i = 0; i < NumPart; i++) {ChimesGasVars[i].ID_child_number = P[i].ID_child_number;}}
+#endif 
+#endif 
     
 #ifdef TEST_FOR_IDUNIQUENESS
     test_id_uniqueness();
@@ -756,7 +845,7 @@ void init(void)
     {
         int k; k=0;
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
-
+        
 #if defined(TURB_DRIVING) && defined(EOS_ENFORCE_ADIABAT)
         SphP[i].InternalEnergy = All.RefInternalEnergy;
         SphP[i].InternalEnergyPred = All.RefInternalEnergy;
@@ -878,7 +967,7 @@ void init(void)
 #endif
 #ifdef MERGESPLIT_HARDCODE_MIN_MASS
         All.MinMassForParticleMerger = MERGESPLIT_HARDCODE_MIN_MASS;
-#endif
+#endif 
     }
     
     
@@ -960,6 +1049,55 @@ void init(void)
         savepositions(RestartSnapNum);
         endrun(0);
     }
+
+#ifdef CHIMES_INITIALISE_IN_EQM 
+    if (RestartFlag != 1) 
+      {
+	/* Note that stellar fluxes computed through the 
+	 * gravity tree are all zero at this stage, 
+	 * because the gravitational forces have not yet 
+	 * been computed. So the equilibrium abundances 
+	 * computed here include only the extragalactic UVB. */ 
+	if (ThisTask == 0) 
+	  printf("Computing equilibrium CHIMES abundances. \n"); 
+
+	int iter_number; 
+	
+#ifdef OPENMP 
+	int ThisThread; 
+	
+#pragma omp parallel private(i, iter_number, ThisThread) 
+	{
+	  ThisThread = omp_get_thread_num(); 
+
+#pragma omp for schedule(dynamic) 
+#endif 
+	  for(i = 0; i < N_gas; i++)
+	    {
+	      initialise_gas_abundances(&(ChimesGasVars[i]), &ChimesGlobalVars); 
+
+#ifdef CHIMES_TURB_DIFF_IONS 
+	      chimes_update_turbulent_abundances(i, 1); 
+#endif 
+
+	      chimes_update_gas_vars(i); 
+
+	      // Evolve the chemistry for (1 / nH) Myr (limited to 1 Gyr) ten times at fixed temperature.
+	      ChimesGasVars[i].hydro_timestep = DMIN(3.16e13 / ChimesGasVars[i].nH_tot, 3.16e16); 
+	      ChimesGasVars[i].ThermEvolOn = 0; 
+
+	      for (iter_number = 0; iter_number < 10; iter_number++)
+		chimes_network(&(ChimesGasVars[i]), &ChimesGlobalVars, AllRates_omp[ThisThread], all_reactions_root_omp[ThisThread], nonmolecular_reactions_root_omp[ThisThread]); 
+
+#ifdef CHIMES_TURB_DIFF_IONS 
+	      chimes_update_turbulent_abundances(i, 1); 
+#endif 
+	    }
+#ifdef OPENMP 
+	} // End of parallel block 
+#endif 
+      } // RestartFlag != 1 
+#endif // CHIMES_INITIALISE_IN_EQM 
 }
 
 
