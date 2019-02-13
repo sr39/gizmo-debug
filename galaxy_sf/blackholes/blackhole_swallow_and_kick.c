@@ -541,11 +541,12 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                             if( P[j].ID == str_gasID[k]){
                                 f_acc_corr = DMIN( str_f_acc[k], 1.0);
                                 if (f_acc_corr < 0) {f_acc_corr=0;}
-                                f_accreted *= f_acc_corr;
+                                if ((1.0-f_acc_corr) < 1e-10) {f_acc_corr=1.0;} //failsafe for weird numerical issues
+                                else {f_accreted *= f_acc_corr;} //change accretion fraction if needed
                             }
                         }
 #ifdef BH_OUTPUT_MOREINFO
-                        if (f_acc_corr != 1.0) {printf("n=%llu f_acc_corr is: %g for particle with mass %g \n", (unsigned long long) target, (MyFloat) f_acc_corr, P[j].Mass);}
+                        if (f_acc_corr != 1.0) {printf("n=%llu f_acc_corr is: %g for particle with id %llu and mass %g around BH with id %llu\n", (unsigned long long) target, (MyFloat) f_acc_corr,(unsigned long long) P[j].ID, P[j].Mass,(unsigned long long) id);}
 #endif
 #endif
                         accreted_mass += FLT(f_accreted*P[j].Mass);
@@ -563,11 +564,13 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                         accreted_J[2] += FLT(f_accreted * P[j].Mass *(dx[0]*dv[1] - dx[1]*dv[0]) + P[j].Jsink[2]);
 #endif
 #endif
-                        P[j].Mass *= (1-f_accreted);
+                        P[j].Mass *= (1.0-f_accreted);
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-                        SphP[j].MassTrue *= (1-f_accreted);
+                        SphP[j].MassTrue *= (1.0-f_accreted);
 #endif
-
+#ifdef BH_OUTPUT_MOREINFO
+                        if ((1-f_accreted)>0) {printf("n=%llu f_accreted is: %g for particle with id %llu and mass %g around BH with id %llu\n", (unsigned long long) target, (MyFloat) f_accreted,(unsigned long long) P[j].ID, P[j].Mass,(unsigned long long) id);}
+#endif
 
 #ifdef BH_WIND_KICK     /* BAL kicking operations. NOTE: we have two separate BAL wind models, particle kicking and smooth wind model. This is where we do the particle kicking BAL model. This should also work when there is alpha-disk. */
                         v_kick=All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s; //if( !(All.ComovingIntegrationOn) && (All.Time < 0.001)) {v_kick *= All.Time/0.001;}
@@ -627,22 +630,22 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                             accreted_J[0] -= (dv[2]*dx[1] - dv[1]*dx[2])*P[j].Mass; accreted_J[1] -= (-dv[2]*dx[0] + dv[0]*dx[2])*P[j].Mass; accreted_J[2] -= (dv[1]*dx[0] - dv[0]*dx[1])*P[j].Mass;
                         }
                     }
-#ifdef BH_OUTPUT_MOREINFO
-                    printf("swallow n=%llu last Jsink[2] is: %g \n", (unsigned long long) target, (MyFloat) Jsink[2]);
-                    printf("swallow n=%llu last dv_ang_kick_norm is: %g \n", (unsigned long long) target, (MyFloat) dv_ang_kick_norm);
-                    printf("swallow n=%llu last Jsinktot is: %g \n", (unsigned long long) target, (MyFloat) Jsinktot);
-                    printf("swallow n=%llu last dJsinkpred is: %g \n", (unsigned long long) target, (MyFloat) dJsinkpred);
-                    printf("swallow n=%llu last Jcrossdr[0] is: %g \n", (unsigned long long) target, (MyFloat) Jcrossdr[0]);
-                    printf("swallow n=%llu last accreted_J[0] is: %g \n", (unsigned long long) target, (MyFloat) accreted_J[0]);
-                    printf("swallow n=%llu P[j].Vel[0] is: %g \n", (unsigned long long) target, (MyFloat) P[j].Vel[0]);
-                    printf("swallow n=%llu P[j].Vel[1] is: %g \n", (unsigned long long) target, (MyFloat) P[j].Vel[1]);
-                    printf("swallow n=%llu P[j].Vel[2] is: %g \n", (unsigned long long) target, (MyFloat) P[j].Vel[2]);
-                    printf("swallow n=%llu dv[0] is: %g \n", (unsigned long long) target, (MyFloat) dv[0]);
-                    printf("swallow n=%llu dv[1] is: %g \n", (unsigned long long) target, (MyFloat) dv[1]);
-                    printf("swallow n=%llu dv[2] is: %g \n", (unsigned long long) target, (MyFloat) dv[2]);
-                    printf("swallow n=%llu P[j].Mass is: %g \n", (unsigned long long) target, (MyFloat) P[j].Mass);
-                    printf("swallow n=%llu last sink mass is: %g \n", (unsigned long long) target, (MyFloat) mass);
-#endif
+// #ifdef BH_OUTPUT_MOREINFO
+                    // printf("swallow n=%llu last Jsink[2] is: %g \n", (unsigned long long) target, (MyFloat) Jsink[2]);
+                    // printf("swallow n=%llu last dv_ang_kick_norm is: %g \n", (unsigned long long) target, (MyFloat) dv_ang_kick_norm);
+                    // printf("swallow n=%llu last Jsinktot is: %g \n", (unsigned long long) target, (MyFloat) Jsinktot);
+                    // printf("swallow n=%llu last dJsinkpred is: %g \n", (unsigned long long) target, (MyFloat) dJsinkpred);
+                    // printf("swallow n=%llu last Jcrossdr[0] is: %g \n", (unsigned long long) target, (MyFloat) Jcrossdr[0]);
+                    // printf("swallow n=%llu last accreted_J[0] is: %g \n", (unsigned long long) target, (MyFloat) accreted_J[0]);
+                    // printf("swallow n=%llu P[j].Vel[0] is: %g \n", (unsigned long long) target, (MyFloat) P[j].Vel[0]);
+                    // printf("swallow n=%llu P[j].Vel[1] is: %g \n", (unsigned long long) target, (MyFloat) P[j].Vel[1]);
+                    // printf("swallow n=%llu P[j].Vel[2] is: %g \n", (unsigned long long) target, (MyFloat) P[j].Vel[2]);
+                    // printf("swallow n=%llu dv[0] is: %g \n", (unsigned long long) target, (MyFloat) dv[0]);
+                    // printf("swallow n=%llu dv[1] is: %g \n", (unsigned long long) target, (MyFloat) dv[1]);
+                    // printf("swallow n=%llu dv[2] is: %g \n", (unsigned long long) target, (MyFloat) dv[2]);
+                    // printf("swallow n=%llu P[j].Mass is: %g \n", (unsigned long long) target, (MyFloat) P[j].Mass);
+                    // printf("swallow n=%llu last sink mass is: %g \n", (unsigned long long) target, (MyFloat) mass);
+// #endif
                 }
 #endif
                 
