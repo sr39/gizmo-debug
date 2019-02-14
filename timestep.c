@@ -985,18 +985,18 @@ integertime get_timestep(int p,		/*!< particle index */
         {
 #ifndef LONGIDS
             printf
-            ("Part-ID=%d  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g\n",
+            ("Part-ID=%d  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g mass=%g\n",
              (int) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],
              PPP[p].Hsml, csnd,
              sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) *
-             All.cf_hubble_a, All.SofteningTable[P[p].Type]);
+             All.cf_hubble_a, All.SofteningTable[P[p].Type],P[p].Mass);
 #else
             printf
-            ("Part-ID=%llu  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g\n",
+            ("Part-ID=%llu  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g mass=%g\n",
              (MyIDType) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],
              PPP[p].Hsml, csnd,
              sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) *
-             All.cf_hubble_a, All.SofteningTable[P[p].Type]);
+             All.cf_hubble_a, All.SofteningTable[P[p].Type],P[p].Mass);
 #endif // ndef LONGIDS
             
             

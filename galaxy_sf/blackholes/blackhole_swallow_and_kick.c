@@ -541,8 +541,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                             if( P[j].ID == str_gasID[k]){
                                 f_acc_corr = DMIN( str_f_acc[k], 1.0);
                                 if (f_acc_corr < 0) {f_acc_corr=0;}
-                                if ((1.0-f_acc_corr) < 1e-10) {f_acc_corr=1.0;} //failsafe for weird numerical issues
-                                else {f_accreted *= f_acc_corr;} //change accretion fraction if needed
+                                else {if ((1.0-f_acc_corr) < 1e-4) {f_acc_corr=1.0;} //failsafe for weird numerical issues
+                                     else {f_accreted *= f_acc_corr;} //change accretion fraction if needed
+                                }
                             }
                         }
 #ifdef BH_OUTPUT_MOREINFO
