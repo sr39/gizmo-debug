@@ -414,13 +414,15 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         r2=0; for(k=0;k<3;k++) {r2+=dP[k]*dP[k];}
                         double dr_code = sqrt(r2); vrel = sqrt(vrel) / All.cf_atime; vbound = bh_vesc(j, mass, dr_code);
 #ifdef SINGLE_STAR_STRICT_ACCRETION
-			if(dr_code < DMAX(sink_radius, Get_Particle_Size(j)))
+			//			if(dr_code < DMAX(sink_radius, Get_Particle_Size(j)))
+			if(dr_code < sink_radius)			
 #endif			
                         if(vrel < vbound) { /* bound */
 #ifdef SINGLE_STAR_STRICT_ACCRETION
                             double spec_mom=0; for(k=0;k<3;k++) {spec_mom += (P[j].Vel[k] - vel[k])*dP[k];} // delta_x.delta_v
                             spec_mom = (r2*vrel*vrel - spec_mom*spec_mom*All.cf_a2inv);  // specific angular momentum^2 = r^2(delta_v)^2 - (delta_v.delta_x)^2;
-                            if(spec_mom < All.G * (mass + P[j].Mass) * DMAX(Get_Particle_Size(j),sink_radius)) // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
+			    //                            if(spec_mom < All.G * (mass + P[j].Mass) * DMAX(Get_Particle_Size(j),sink_radius)) // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
+			    if(spec_mom < All.G * (mass + P[j].Mass) * sink_radius)
 #endif
                             if( bh_check_boundedness(j,vrel,vbound,dr_code,sink_radius)==1 ) { /* apocenter within 2.8*epsilon (softening length) */
 #ifdef SINGLE_STAR_FORMATION

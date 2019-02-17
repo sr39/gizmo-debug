@@ -542,7 +542,7 @@ void star_formation_parent_routine(void)
                 P[i].BH_Mass = All.SeedBlackHoleMass;
                 TreeReconstructFlag = 1;
 #ifdef SINGLE_STAR_STRICT_ACCRETION
-                P[i].SinkRadius = DMAX(pow(3 * P[i].Mass/ (P[i].Density * 4 * M_PI), 1./3) , All.ForceSoftening[5]); // want a sphere of equal volume to particle size, R = (3V/(4 PI))^(1/3)
+                P[i].SinkRadius = DMAX(pow(3 * P[i].Mass/ (SphP[i].Density * 4 * M_PI), 1./3) , All.ForceSoftening[5]); // want a sphere of equal volume to particle size, R = (3V/(4 PI))^(1/3)
 #endif
 #ifdef NEWSINK
                 P[i].init_mass_in_intzone=0; //Initialize as 0, we will update it in the first blackole property loop
