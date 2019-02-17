@@ -505,7 +505,8 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 			  if(0.5*(vrel*vrel - vesc*vesc) <= P[j].SwallowEnergy) 
 #endif			      			  
 #ifdef SINGLE_STAR_STRICT_ACCRETION
-			    if(r < DMAX(Get_Particle_Size(j), sink_radius)) // don't even bother if not in the accretion radius
+			    //			    if(r < DMAX(Get_Particle_Size(j), sink_radius)) // don't even bother if not in the accretion radius
+			   if(r < sink_radius) // don't even bother if not in the accretion radius			      
 #endif			    
                             if((vrel < vesc)) // && (particles_swallowed_this_bh_this_process < particles_swallowed_this_bh_this_process_max))
 
@@ -513,7 +514,8 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #ifdef SINGLE_STAR_STRICT_ACCRETION
                                 double spec_mom=0; for(k=0;k<3;k++) {spec_mom += (P[j].Vel[k] - velocity[k])*dpos[k];} // delta_x.delta_v
                                 spec_mom = (r2*vrel*vrel - spec_mom*spec_mom*All.cf_a2inv); // specific angular momentum^2 = r^2(delta_v)^2 - (delta_v.delta_x)^2;
-                                if(spec_mom < All.G * (mass + P[j].Mass) * DMAX(sink_radius, Get_Particle_Size(j))) // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
+				//                                if(spec_mom < All.G * (mass + P[j].Mass) * DMAX(sink_radius, Get_Particle_Size(j))) // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
+				if(spec_mom < All.G * (mass + P[j].Mass) * sink_radius)
 #endif
 				  if( bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1 ) { /* apocenter within target distance */	
 #ifdef BH_GRAVCAPTURE_NONGAS        /* simply swallow non-gas particle if BH_GRAVCAPTURE_NONGAS enabled */

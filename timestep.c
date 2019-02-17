@@ -444,7 +444,9 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         double omega_binary = 1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time; // timestep is harmonic mean of freefall and approach time
         dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary);
+	//	printf("dt_binary = %g, dt_tidal=%g, approach time=%g, freefall time = %g, dist=%g\n", sqrt(All.ErrTolIntAccuracy)/omega_binary, dt_tidal, P[p].min_bh_approach_time, P[p].min_bh_freefall_time, P[p].min_dist_to_bh);
     }
+
 #endif
 
     
@@ -940,7 +942,7 @@ integertime get_timestep(int p,		/*!< particle index */
 
         if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 #ifdef SINGLE_STAR_FORMATION
-	if(P[p].DensAroundStar) {double eps = DMAX(All.SofteningTable[5], BPP(p).BH_NearestGasNeighbor);
+	if(P[p].DensAroundStar) {double eps = DMAX(DMAX(All.SofteningTable[5], BPP(p).BH_NearestGasNeighbor), Get_Particle_Size(p));
 	double dt_gas = sqrt(All.ErrTolIntAccuracy * All.cf_atime * eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
 	if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas; }}
 
