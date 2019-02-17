@@ -269,6 +269,9 @@
 #define METALS  // metals should be active for stellar return
 #define BLACK_HOLES // need to have black holes active since these are our sink particles
 #define GALSF_SFR_IMF_VARIATION // save extra information about sinks when they form
+#ifdef RADTRANSFER
+#define RT_DISABLE_R15_GRADIENTFIX
+#endif
 #ifdef SINGLE_STAR_ACCRETION
 #define BH_SWALLOWGAS // need to swallow gas [part of sink model]
 #define BH_GRAVCAPTURE_GAS // use gravitational capture swallow criterion for resolved gravitational capture
