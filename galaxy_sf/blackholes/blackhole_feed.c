@@ -533,7 +533,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                         if(w < p)
                                         {
 #ifndef IO_REDUCED_MODE
-                                            printf("MARKING_BH_FOOD: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) id);
+                                            printf("MARKING_BH_FOOD: P[j.]ID=%llu with mass of %g at distance %g to be swallowed by id=%llu \n", (unsigned long long) P[j].ID,P[j].Mass,r, (unsigned long long) id);
 #endif
                                             if(P[j].SwallowID < id) P[j].SwallowID = id;
                                         }
@@ -560,7 +560,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                if( P[j].ID == str_gasID[k] && str_f_acc[k]>0 && P[j].SwallowID < id )
                                {
                                    /*Check if this is the sink the gas is most bound to, if not, don't accrete */
-                                   if (0.5*(vrel*vrel - vesc*vesc) <= P[j].SwallowEnergy){
+                                   if (0.5*(vrel*vrel - vesc*vesc) <= P[j].SwallowEnergy*0.999){ //constant factor added to avoid weird numerical issues
 #ifndef IO_REDUCED_MODE
                                     printf("MARKING_BH_FOOD: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) id);
 #endif

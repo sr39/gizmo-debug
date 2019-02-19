@@ -448,8 +448,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                 if(P[j].SwallowID == id && P[j].Mass > 0)
                 {
 #ifndef IO_REDUCED_MODE
-                    printf("found particle P[j].ID = %llu with P[j].SwallowID = %llu of type P[j].Type = %d nearby id = %llu \n",
-                           (unsigned long long) P[j].ID, (unsigned long long) P[j].SwallowID, P[j].Type, (unsigned long long) id);
+                    printf("found particle P[j].ID = %llu with P[j].SwallowID = %llu of type P[j].Type = %d nearby id = %llu with P[j].Mass=%g\n",
+                           (unsigned long long) P[j].ID, (unsigned long long) P[j].SwallowID, P[j].Type, (unsigned long long) id, P[j].Mass);
 #endif
                     if(P[j].Type == 5)  /* this is a BH-BH merger */
                     {
@@ -541,7 +541,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                             if( P[j].ID == str_gasID[k]){
                                 f_acc_corr = DMIN( str_f_acc[k], 1.0);
                                 if (f_acc_corr < 0) {f_acc_corr=0;}
-                                else {if ((1.0-f_acc_corr) < 1e-4) {f_acc_corr=1.0;} //failsafe for weird numerical issues
+                                else {if ((1.0-f_acc_corr) < 1e-3) {f_acc_corr=1.0;} //failsafe for weird numerical issues
                                      else {f_accreted *= f_acc_corr;} //change accretion fraction if needed
                                 }
                             }
