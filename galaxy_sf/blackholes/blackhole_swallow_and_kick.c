@@ -400,7 +400,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
             }
         }
     }
-//printf("%d BH swallow ang_kick normalization calculated: %g \n", ThisTask, dv_ang_kick_norm );
+//printf("%d BH swallow ang_kick normalization calculated: %g  with %d neighbors \n", ThisTask, dv_ang_kick_norm, n_neighbor );
 #endif
 #ifdef BH_COUNTPROGS
     int accreted_BH_progs = 0;
@@ -541,7 +541,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                             if( P[j].ID == str_gasID[k]){
                                 f_acc_corr = DMIN( str_f_acc[k], 1.0);
                                 if (f_acc_corr < 0) {f_acc_corr=0;}
-                                else {if ((1.0-f_acc_corr) < 1e-3) {f_acc_corr=1.0;} //failsafe for weird numerical issues
+                                else {if ((1.0-f_acc_corr) < 1e-2) {f_acc_corr=1.0;} //failsafe for weird numerical issues
                                      else {f_accreted *= f_acc_corr;} //change accretion fraction if needed
                                 }
                             }
@@ -570,7 +570,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                         SphP[j].MassTrue *= (1.0-f_accreted);
 #endif
 #ifdef BH_OUTPUT_MOREINFO
-                        if ((1-f_accreted)>0) {printf("n=%llu f_accreted is: %g for particle with id %llu and mass %g around BH with id %llu\n", (unsigned long long) target, (MyFloat) f_accreted,(unsigned long long) P[j].ID, P[j].Mass,(unsigned long long) id);}
+                        if ((1.0-f_accreted)>0) {printf("f_accreted is: %g for particle with id %llu and mass %g around BH with id %llu\n", (MyFloat) f_accreted,(unsigned long long) P[j].ID, P[j].Mass,(unsigned long long) id);}
+                        else{printf("Particle with id %llu and mass %g swallowed by BH with id %llu\n", (unsigned long long) target, (MyFloat) f_accreted,(unsigned long long) P[j].ID, P[j].Mass,(unsigned long long) id);}
 #endif
 
 #ifdef BH_WIND_KICK     /* BAL kicking operations. NOTE: we have two separate BAL wind models, particle kicking and smooth wind model. This is where we do the particle kicking BAL model. This should also work when there is alpha-disk. */

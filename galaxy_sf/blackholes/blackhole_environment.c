@@ -472,7 +472,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 #endif
                                     if ( (dt<dt_min) || (sqrt(All.ErrTolIntAccuracy*r2*dr_code/(All.G * mass))<dt_min) ){ /*Check if the timescale is too small, if yes, it gets eaten to avoid issues*/
                                         out.f_acc[out.n_neighbor] = 1.0;
-                                        printf("%d : Found gas with too small time step around BH with ID %d, gas id %d, gas dt %g BH_dt %g dtmin %g at distance %g while the interaction zone is %g \n", ThisTask, id, P[j].ID,dt,sqrt(All.ErrTolIntAccuracy*r2*dr_code/(All.G * mass)), dt_min, dr_code,int_zone_radius );
+                                        printf("%d : Found gas with too small time step around BH with ID %d, gas id %d, gas mass %g, gas dt %g, BH_dt %g, dtmin %g, at distance %g while the interaction zone is %g \n", ThisTask, id, P[j].ID,P[j].Mass,dt,sqrt(All.ErrTolIntAccuracy*r2*dr_code/(All.G * mass)), dt_min, dr_code,int_zone_radius );
                                     }
                                 }
 #endif
