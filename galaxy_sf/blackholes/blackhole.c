@@ -67,7 +67,7 @@ void blackhole_accretion(void)
      Use the above info to determine the weight functions for feedback
      ----------------------------------------------------------------------*/
     blackhole_feed_loop();       /* BH mergers and gas/star/dm accretion events are evaluated - P[j].SwallowID's are set */
- //printf("%d BH feed_loop done\n", ThisTask);
+ //printf("%d BH feed_loop done\n", ThisTask); 
     /*----------------------------------------------------------------------
      Now we do a THIRD pass over the particles, and
      this is where we can do the actual 'swallowing' operations
@@ -78,12 +78,11 @@ void blackhole_accretion(void)
     /*----------------------------------------------------------------------
      Now do final operations on the results from the last pass
      ----------------------------------------------------------------------*/
- //printf("%d BH Swallow loop done\n", ThisTask);
     blackhole_final_operations(); /* final operations on the BH with tabulated quantities (not a neighbor loop) */
 // //printf("%d BH Final operations done\n", ThisTask);
     blackhole_end();            /* frees BlackholeTempInfo; cleans up */
  //printf("%d BH End done\n", ThisTask);
-    for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* re-zero accretion */
+    for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;P[i].SwallowEnergy = MAX_REAL_NUMBER;} /* re-zero accretion */
 }
 
 
@@ -580,7 +579,7 @@ void set_blackhole_mdot(int i, int n, double dt)
             mass_in_low_dt_gas += BlackholeTempInfo[i].mgas[k]*BlackholeTempInfo[i].f_acc[k];
         }
     }
-    if (mass_in_low_dt_gas > (mdot*dt) ){ /*we are bound to eat more than the formula tells us to*/
+    if (mass_in_low_dt_gas > (mdot*dt) ){ //are we eating more than the formula tells us to*/
         printf("%d : Too much gas pre-marked to be swallowed, setting mdot for BH with ID %d to %g instead of %g\n", ThisTask, BPP(n).ID,(mass_in_low_dt_gas/dt), mdot );
         mdot = mass_in_low_dt_gas/dt; // set it to the value we will eat anyway
     }

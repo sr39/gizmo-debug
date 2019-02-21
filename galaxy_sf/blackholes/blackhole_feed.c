@@ -208,7 +208,7 @@ void blackhole_feed_loop(void)
             }
             if (mdotchanged){
 #ifndef IO_REDUCED_MODE
-            printf("ThisTask=%d, modifying mdot for BH id %d from %g to %g due to change in accration factors\n",ThisTask, P[place].ID, BPP(place).BH_Mdot, dm/dt );
+            printf("ThisTask=%d, modifying mdot for BH id %d from %g to %g due to change in accretion factors\n",ThisTask, P[place].ID, BPP(place).BH_Mdot, dm/dt );
 #endif
             BPP(place).BH_Mdot = dm/dt; //update mdot
             }
@@ -421,17 +421,18 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     {
         while(startnode >= 0)
         {
-//#ifdef NEWSINK 
-//            numngb = ngb_treefind_variable_targeted(pos, int_zone_radius, target, &startnode, mode, nexport, nSend_local, BH_NEIGHBOR_BITFLAG); 
-//#else       
+#ifdef NEWSINK 
+            numngb = ngb_treefind_variable_targeted(pos, int_zone_radius, target, &startnode, mode, nexport, nSend_local, BH_NEIGHBOR_BITFLAG); 
+#else       
             numngb = ngb_treefind_variable_targeted(pos, h_i, target, &startnode, mode, nexport, nSend_local, BH_NEIGHBOR_BITFLAG); // BH_NEIGHBOR_BITFLAG defines which types of particles we search for
-//#endif
+#endif
             if(numngb < 0) return -1;
             for(n = 0; n < numngb; n++)
             {
                 j = Ngblist[n];
                 if(P[j].Mass > 0)
                 {
+                    //printf("%d Feed routine dealing with gas ID %llu around BH ID %llu \n",ThisTask,P[j].ID,id);
                     for(k=0;k<3;k++) {dpos[k] = P[j].Pos[k] - pos[k];}
 #ifdef BOX_PERIODIC
                     NEAREST_XYZ(dpos[0],dpos[1],dpos[2],-1);
@@ -575,7 +576,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                         BlackholeDataResult[target].f_acc[k] = 0;
                                        }
 #ifndef IO_REDUCED_MODE
-                                        printf("ThisTask=%d, Sink assigned to multiple sinks: P[j.]ID=%llu has SwallowEnergy of %g while the binding to BH with id=%llu is %g. This reduces mdot from %g by %g for the sink, which will be updated accordingly.\n",ThisTask, (unsigned long long) P[j].ID,P[j].SwallowEnergy, (unsigned long long) id, (0.5*(vrel*vrel - vesc*vesc)), mdot, str_f_acc[k]*P[j].Mass/dt);
+                                        printf("ThisTask=%d, Sink assigned to multiple sinks: P[j.]ID=%llu has SwallowEnergy of %g and had SwallowID of %llu while the binding to BH with id=%llu is %g. This reduces mdot from %g by %g for the sink, which will be updated accordingly.\n",ThisTask, (unsigned long long) P[j].ID,P[j].SwallowEnergy,(unsigned long long) P[j].SwallowID, (unsigned long long) id, (0.5*(vrel*vrel - vesc*vesc)), mdot, str_f_acc[k]*P[j].Mass/dt);
 #endif
                                        str_f_acc[k] = 0; //we don't accrete this
                                    }
