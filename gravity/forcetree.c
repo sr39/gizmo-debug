@@ -2186,7 +2186,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifndef GRAVITY_HYBRID_OPENING_CRIT
                 else		/* check relative opening criterion */
 #else
-                if(!(All.Ti_Current == 0 && RestartFlag == 0))
+                if(!(All.Ti_Current == 0 && RestartFlag != 1))
 #endif		  
                 {
                     /* force node to open if we are within the gravitational softening length */
@@ -2876,7 +2876,7 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
 #ifndef GRAVITY_HYBRID_OPENING_CRIT
                 else		/* check relative opening criterion */
 #else
-                if(!(All.Ti_Current == 0 && RestartFlag == 0))
+                if(!(All.Ti_Current == 0 && RestartFlag != 1))
 #endif		  
                 {
                     if(mass * nop->len * nop->len > r2 * r2 * aold)
