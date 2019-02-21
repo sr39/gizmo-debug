@@ -251,6 +251,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     MyFloat tdisc;
     MyDouble dv_ang_kick_norm=0; /*Normalization factor for angular momentum feedback kicks*/ 
 #endif
+#if defined(NEWSINK_STOCHASTIC_ACCRETION)
+    double w; int kicked=0;
+#endif
     MyFloat *pos, h_i, bh_mass;
 #if (defined(BH_WIND_CONTINUOUS) && !defined(BH_WIND_KICK)) || defined(NEWSINK_J_FEEDBACK)
     MyFloat *velocity, hinv, hinv3;
@@ -541,80 +544,106 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                             if( P[j].ID == str_gasID[k]){
                                 f_acc_corr = DMIN( str_f_acc[k], 1.0);
                                 if (f_acc_corr < 0) {f_acc_corr=0;}
+#if !defined(NEWSINK_STOCHASTIC_ACCRETION)
                                 else {if ((1.0-f_acc_corr) < 1e-2) {f_acc_corr=1.0;} //failsafe for weird numerical issues
                                      else {f_accreted *= f_acc_corr;} //change accretion fraction if needed
                                 }
+#endif
                             }
                         }
-#ifdef BH_OUTPUT_MOREINFO
-                        if (f_acc_corr != 1.0) {printf("n=%llu f_acc_corr is: %g for particle with id %llu and mass %g around BH with id %llu\n", (unsigned long long) target, (MyFloat) f_acc_corr,(unsigned long long) P[j].ID, P[j].Mass,(unsigned long long) id);}
-#endif
-#endif
-                        accreted_mass += FLT(f_accreted*P[j].Mass);
-#ifdef BH_GRAVCAPTURE_GAS
-#ifdef BH_ALPHADISK_ACCRETION       /* mass goes into the alpha disk, before going into the BH */
-                        accreted_BH_mass_alphadisk += FLT(f_accreted*P[j].Mass);
-#else                               /* mass goes directly to the BH, not just the parent particle */
-                        accreted_BH_mass += FLT(f_accreted*P[j].Mass);
-#endif
-                        for(k = 0; k < 3; k++) accreted_momentum[k] += FLT(f_accreted * P[j].Mass * P[j].Vel[k]);
-#if defined(NEWSINK_J_FEEDBACK)
-                        dv[0]=P[j].Vel[0]-velocity[0];dv[1]=P[j].Vel[1]-velocity[1];dv[2]=P[j].Vel[2]-velocity[2];
-                        accreted_J[0] += FLT(f_accreted * P[j].Mass *(dx[1]*dv[2] - dx[2]*dv[1]) + P[j].Jsink[0]);
-                        accreted_J[1] += FLT(f_accreted * P[j].Mass *(dx[2]*dv[0] - dx[0]*dv[2]) + P[j].Jsink[1]);
-                        accreted_J[2] += FLT(f_accreted * P[j].Mass *(dx[0]*dv[1] - dx[1]*dv[0]) + P[j].Jsink[2]);
-#endif
-#endif
-                        P[j].Mass *= (1.0-f_accreted);
-#ifdef HYDRO_MESHLESS_FINITE_VOLUME
-                        SphP[j].MassTrue *= (1.0-f_accreted);
-#endif
-#ifdef BH_OUTPUT_MOREINFO
-                        if ((1.0-f_accreted)>0) {printf("f_accreted is: %g for particle with id %llu and mass %g around BH with id %llu\n", (MyFloat) f_accreted,(unsigned long long) P[j].ID, P[j].Mass,(unsigned long long) id);}
-                        else{printf("Particle with id %llu and mass %g swallowed by BH with id %llu\n", (unsigned long long) target, (MyFloat) f_accreted,(unsigned long long) P[j].ID, P[j].Mass,(unsigned long long) id);}
+#if defined(NEWSINK_STOCHASTIC_ACCRETION) //In this case we stochastically decide whether to accrete the entire particle
+                        w = get_random_number(P[j].ID);
+                        if(w < f_acc_corr){ f_accreted=1.0;} //this means we fully accrete the particle
+                        else{ f_accreted=0.0; } //we don't take this particle
 #endif
 
-#ifdef BH_WIND_KICK     /* BAL kicking operations. NOTE: we have two separate BAL wind models, particle kicking and smooth wind model. This is where we do the particle kicking BAL model. This should also work when there is alpha-disk. */
-                        v_kick=All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s; //if( !(All.ComovingIntegrationOn) && (All.Time < 0.001)) {v_kick *= All.Time/0.001;}
-#if defined(NEWSINK) /*It is possible to accrete only part of the particle so we need to be more careful about our kicks*/
-                        if (f_acc_corr<1.0){
-                            v_kick *= f_acc_corr*(1.0-All.BAL_f_accretion)/(1.0-All.BAL_f_accretion*f_acc_corr); /*we wanted to only accrete an f_acc_corr portion, so the imparted momentum is proportional to only f_acc_corr*(1-All.BAL_f_accretion) times the initial mass*/
-                        }
+#ifdef BH_OUTPUT_MOREINFO
+                        if ((f_acc_corr != 1.0) && (f_acc_corr != 0.0)) {printf("n=%llu f_acc_corr is: %g for particle with id %llu and mass %g around BH with id %llu\n", (unsigned long long) target, (MyFloat) f_acc_corr,(unsigned long long) P[j].ID, P[j].Mass,(unsigned long long) id);}
 #endif
-                        dir[0]=dir[1]=dir[2]=0; for(k=0;k<3;k++) {dir[k]=P[j].Pos[k]-pos[k];} // DAA: default direction is radially outwards
+#endif
+                        if (f_accreted>0.0){
+#if defined(NEWSINK_STOCHASTIC_ACCRETION) && defined(BH_WIND_KICK) //We stochastically determine if this "accreted" particle is really accreted and we take its mass or it gets kicked out
+                            w = get_random_number(P[j].ID);kicked=0;
+                            if(w < All.BAL_f_accretion){
+                                kicked=1;f_accreted=0.0;
+                            }
+                            else{
+#endif
+                                accreted_mass += FLT(f_accreted*P[j].Mass);
+#ifdef BH_GRAVCAPTURE_GAS
+#ifdef BH_ALPHADISK_ACCRETION       /* mass goes into the alpha disk, before going into the BH */
+                                accreted_BH_mass_alphadisk += FLT(f_accreted*P[j].Mass);
+#else                               /* mass goes directly to the BH, not just the parent particle */
+                                accreted_BH_mass += FLT(f_accreted*P[j].Mass);
+#endif
+                                for(k = 0; k < 3; k++) accreted_momentum[k] += FLT(f_accreted * P[j].Mass * P[j].Vel[k]);
+#if defined(NEWSINK_J_FEEDBACK)
+                                dv[0]=P[j].Vel[0]-velocity[0];dv[1]=P[j].Vel[1]-velocity[1];dv[2]=P[j].Vel[2]-velocity[2];
+                                accreted_J[0] += FLT(f_accreted * P[j].Mass *(dx[1]*dv[2] - dx[2]*dv[1]) + P[j].Jsink[0]);
+                                accreted_J[1] += FLT(f_accreted * P[j].Mass *(dx[2]*dv[0] - dx[0]*dv[2]) + P[j].Jsink[1]);
+                                accreted_J[2] += FLT(f_accreted * P[j].Mass *(dx[0]*dv[1] - dx[1]*dv[0]) + P[j].Jsink[2]);
+#endif
+#endif
+                                P[j].Mass *= (1.0-f_accreted);
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+                                SphP[j].MassTrue *= (1.0-f_accreted);
+#endif
+#ifdef BH_OUTPUT_MOREINFO
+                                if ((1.0-f_accreted)>0) {printf("f_accreted is: %g for particle with id %llu and mass %g around BH with id %llu\n", (MyFloat) f_accreted,(unsigned long long) P[j].ID, P[j].Mass,(unsigned long long) id);}
+                                else{printf("Particle with id %llu and mass %g swallowed by BH with id %llu\n", (unsigned long long) target, (MyFloat) f_accreted,(unsigned long long) P[j].ID, P[j].Mass,(unsigned long long) id);}
+#endif
+#if defined(NEWSINK_STOCHASTIC_ACCRETION) && defined(BH_WIND_KICK)
+                            }//end of else for determining if the particle is kicked
+#endif
+                            
+#if defined(NEWSINK_STOCHASTIC_ACCRETION) //check if we actually kick this particle in the stochastic case
+                            if (kicked){
+#endif
+#ifdef BH_WIND_KICK     /* BAL kicking operations. NOTE: we have two separate BAL wind models, particle kicking and smooth wind model. This is where we do the particle kicking BAL model. This should also work when there is alpha-disk. */
+                                v_kick=All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s; //if( !(All.ComovingIntegrationOn) && (All.Time < 0.001)) {v_kick *= All.Time/0.001;}
+#if defined(NEWSINK) && !defined(NEWSINK_STOCHASTIC_ACCRETION) /*It is possible to accrete only part of the particle so we need to be more careful about our kicks*/
+                                if (f_acc_corr<1.0){
+                                    v_kick *= f_acc_corr*(1.0-All.BAL_f_accretion)/(1.0-All.BAL_f_accretion*f_acc_corr); /*we wanted to only accrete an f_acc_corr portion, so the imparted momentum is proportional to only f_acc_corr*(1-All.BAL_f_accretion) times the initial mass*/
+                                }
+#endif
+                                dir[0]=dir[1]=dir[2]=0; for(k=0;k<3;k++) {dir[k]=P[j].Pos[k]-pos[k];} // DAA: default direction is radially outwards
 #if defined(BH_COSMIC_RAYS) /* inject cosmic rays alongside wind injection */
-                        double dEcr = All.BH_CosmicRay_Injection_Efficiency * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * (C / All.UnitVelocity_in_cm_per_s)*(C / All.UnitVelocity_in_cm_per_s);
-                        SphP[j].CosmicRayEnergy+=dEcr; SphP[j].CosmicRayEnergyPred+=dEcr;
+                                double dEcr = All.BH_CosmicRay_Injection_Efficiency * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * (C / All.UnitVelocity_in_cm_per_s)*(C / All.UnitVelocity_in_cm_per_s);
+                                SphP[j].CosmicRayEnergy+=dEcr; SphP[j].CosmicRayEnergyPred+=dEcr;
 #ifdef COSMIC_RAYS_M1
-                        dEcr*=COSMIC_RAYS_M1; for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dEcr*dir[k]; SphP[j].CosmicRayFluxPred[k]+=dEcr*dir[k];}
+                                dEcr*=COSMIC_RAYS_M1; for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dEcr*dir[k]; SphP[j].CosmicRayFluxPred[k]+=dEcr*dir[k];}
 #endif
 #endif
 #if (BH_WIND_KICK < 0)  /* DAA: along polar axis defined by angular momentum within Kernel (we could add finite opening angle) work out the geometry w/r to the plane of the disk */
 #if defined(NEWSINK_J_FEEDBACK) /*Use Jsink instead of Jgas_in_Kernel for direction*/
-                        if((dir[0]*Jsink[0] + dir[1]*Jsink[1] + dir[2]*Jsink[2]) > 0){for(k=0;k<3;k++) {dir[k]=Jsink[k];}} else {for(k=0;k<3;k++) {dir[k]=-Jsink[k];}}
+                                if((dir[0]*Jsink[0] + dir[1]*Jsink[1] + dir[2]*Jsink[2]) > 0){for(k=0;k<3;k++) {dir[k]=Jsink[k];}} else {for(k=0;k<3;k++) {dir[k]=-Jsink[k];}}
 #else
-                        if((dir[0]*Jgas_in_Kernel[0] + dir[1]*Jgas_in_Kernel[1] + dir[2]*Jgas_in_Kernel[2]) > 0){for(k=0;k<3;k++) {dir[k]=Jgas_in_Kernel[k];}} else {for(k=0;k<3;k++) {dir[k]=-Jgas_in_Kernel[k];}}
+                                if((dir[0]*Jgas_in_Kernel[0] + dir[1]*Jgas_in_Kernel[1] + dir[2]*Jgas_in_Kernel[2]) > 0){for(k=0;k<3;k++) {dir[k]=Jgas_in_Kernel[k];}} else {for(k=0;k<3;k++) {dir[k]=-Jgas_in_Kernel[k];}}
 #endif
 #endif
-                        for(k=0,norm=0;k<3;k++) {norm+=dir[k]*dir[k];} if(norm<=0) {dir[0]=0;dir[1]=0;dir[2]=1;norm=1;} else {norm=sqrt(norm);}
-                        for(k=0;k<3;k++) {P[j].Vel[k]+=v_kick*All.cf_atime*dir[k]/norm; SphP[j].VelPred[k]+=v_kick*All.cf_atime*dir[k]/norm;}
+                                for(k=0,norm=0;k<3;k++) {norm+=dir[k]*dir[k];} if(norm<=0) {dir[0]=0;dir[1]=0;dir[2]=1;norm=1;} else {norm=sqrt(norm);}
+                                for(k=0;k<3;k++) {P[j].Vel[k]+=v_kick*All.cf_atime*dir[k]/norm; SphP[j].VelPred[k]+=v_kick*All.cf_atime*dir[k]/norm;}
 #ifdef GALSF_SUBGRID_WINDS // if sub-grid galactic winds are decoupled from the hydro, we decouple the BH kick winds as well
-                        SphP[j].DelayTime = All.WindFreeTravelMaxTimeFactor / All.cf_hubble_a;
+                                SphP[j].DelayTime = All.WindFreeTravelMaxTimeFactor / All.cf_hubble_a;
 #endif  
 
 #ifndef IO_REDUCED_MODE
-                        printf("BAL kick: All.BAL_v_outflow %g \t f_acc_corr %g \t v_kick %g\n",(All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s),f_acc_corr,v_kick);
-                        printf("BAL kick: P[j].ID %llu ID %llu Type(j) %d f_acc %g M(j) %g V(j).xyz %g/%g/%g P(j).xyz %g/%g/%g p(i).xyz %g/%g/%g v_out %g \n",
-                               (unsigned long long) P[j].ID, (unsigned long long) P[j].SwallowID,P[j].Type, All.BAL_f_accretion,P[j].Mass,P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],pos[0],pos[1],pos[2],v_kick);
+                                printf("BAL kick: All.BAL_v_outflow %g \t f_acc_corr %g \t v_kick %g\n",(All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s),f_acc_corr,v_kick);
+                                printf("BAL kick: P[j].ID %llu ID %llu Type(j) %d f_acc %g M(j) %g V(j).xyz %g/%g/%g P(j).xyz %g/%g/%g p(i).xyz %g/%g/%g v_out %g \n",
+                                       (unsigned long long) P[j].ID, (unsigned long long) P[j].SwallowID,P[j].Type, All.BAL_f_accretion,P[j].Mass,P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],pos[0],pos[1],pos[2],v_kick);
 #endif
 #ifdef BH_OUTPUT_MOREINFO
-                        fprintf(FdBhWindDetails,"%g  %u %g  %2.7f %2.7f %2.7f  %2.7f %2.7f %2.7f  %g %g %g  %u  %2.7f %2.7f %2.7f\n",
-                                All.Time, P[j].ID, P[j].Mass,  P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],  P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],dir[0]/norm,dir[1]/norm,dir[2]/norm, id, pos[0],pos[1],pos[2]);
+                                fprintf(FdBhWindDetails,"%g  %u %g  %2.7f %2.7f %2.7f  %2.7f %2.7f %2.7f  %g %g %g  %u  %2.7f %2.7f %2.7f\n",
+                                        All.Time, P[j].ID, P[j].Mass,  P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],  P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],dir[0]/norm,dir[1]/norm,dir[2]/norm, id, pos[0],pos[1],pos[2]);
 #endif
 #endif   // #ifdef BH_WIND_KICK
-
-                        N_gas_swallowed++;
-
+#if defined(NEWSINK_STOCHASTIC_ACCRETION) //continuation of the if (kicked) statement
+                            }
+                            else{N_gas_swallowed++;} //only count it s swallowed if it actually is
+#else
+                            N_gas_swallowed++;
+#endif //defined(NEWSINK_STOCHASTIC_ACCRETION)
+                        } // f_accreted>0.0
                     }  // if(P[j].Type == 0)
 
                     /* DAA: make sure it is not accreted (or ejected) by the same BH again if inactive in the next timestep */
