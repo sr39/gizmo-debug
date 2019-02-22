@@ -399,7 +399,7 @@ void find_next_sync_point_and_drift(void)
 	}
     }
 
-  MPI_Allreduce(&ti_next_kick, &ti_next_kick_global, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+  MPI_Allreduce(&ti_next_kick, &ti_next_kick_global, 1, MPI_TYPE_TIME, MPI_MIN, MPI_COMM_WORLD);
 
   while(ti_next_kick_global >= All.Ti_nextoutput && All.Ti_nextoutput >= 0)
     {
@@ -892,7 +892,7 @@ void write_cpu_log(void)
 #endif
   if(ThisTask == 0)
     {
-      fprintf(FdCPU, "Step %d, Time: %g, CPUs: %d\n", All.NumCurrentTiStep, All.Time, NTask);
+      fprintf(FdCPU, "Step %lld, Time: %g, CPUs: %d\n",(long long) All.NumCurrentTiStep, All.Time, NTask);
       fprintf(FdCPU,
 	      "total         %10.2f  %5.1f%%\n"
 	      "treegrav      %10.2f  %5.1f%%\n"
@@ -1112,7 +1112,7 @@ void output_extra_log_messages(void)
         double hubble_a;
         
         hubble_a = hubble_function(All.Time);
-        fprintf(FdDE, "%d %g %e ", All.NumCurrentTiStep, All.Time, hubble_a);
+        fprintf(FdDE, "%lld %g %e ", (long long) All.NumCurrentTiStep, All.Time, hubble_a);
 #ifndef GR_TABULATED_COSMOLOGY_W
         fprintf(FdDE, "%e ", All.DarkEnergyConstantW);
 #else

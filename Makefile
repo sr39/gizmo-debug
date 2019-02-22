@@ -828,7 +828,7 @@ GSL_LIBS = -L$(MATHLIBS)/lib
 FFTW_INCL= -I$(FFTW2_HOME)/include
 FFTW_LIBS= -L$(FFTW2_HOME)/lib
 HDF5INCL = -DH5_USE_16_API
-HDF5LIB  = -lhdf5 -lz -L/nasa/szip/2.1.1/lib -lsz
+HDF5LIB  = -lhdf5 -lz -L/nasa/szip/2.1/lib -lsz
 MPICHLIB =
 OPT     += -DUSE_MPI_IN_PLACE
 endif

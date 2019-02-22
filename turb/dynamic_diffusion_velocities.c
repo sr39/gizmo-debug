@@ -50,7 +50,7 @@ struct DiffFilterdata_in {
     MyFloat Mass;
     MyFloat Hsml;
     MyDouble Density;
-    int Timestep;
+    integertime Timestep;
 #ifndef DONOTUSENODELIST
     int NodeList[NODELISTLENGTH];
 #endif
@@ -478,7 +478,7 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
             
             for (n = 0; n < numngb; n++) {
                 j = ngblist[n];
-                int TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
+                integertime TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
 #ifndef SHEARING_BOX // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //
                 if (local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
                 /* use relative positions to break degeneracy */

@@ -41,7 +41,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex);
 int force_treeevaluate_potential(int target, int type, int *nexport, int *nsend_local);
 
-void force_drift_node(int no, int time1);
+void force_drift_node(int no, integertime time1);
      
 void force_tree_discardpartials(void);
 void force_treeupdate_pseudos(int);

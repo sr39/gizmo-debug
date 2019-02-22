@@ -50,7 +50,7 @@ void apply_grain_dragforce(void)
 #endif
                 if(P[i].Gas_Density > 0)
                 {
-                    double dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+                    double dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
                     if(dt > 0)
                     {
                         double cs = sqrt( GAMMA * GAMMA_MINUS1 * P[i].Gas_InternalEnergy);
@@ -343,7 +343,7 @@ void grain_collisions(void)
             if(P[i].Grain_Density > 0)
             {
 #ifndef WAKEUP
-                dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+                dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
                 dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
@@ -390,7 +390,8 @@ static struct grain_densdata_out
 void grain_density(void)
 {
     MyFloat *Left, *Right;
-    int i, j, ndone, ndone_flag, npleft, dt_step, dummy, iter = 0;
+    int i, j, ndone, ndone_flag, npleft, dummy, iter = 0;
+    integertime  dt_step;
     int ngrp, sendTask, recvTask, place, nexport, nimport;
     long long ntot;
     double fac;
