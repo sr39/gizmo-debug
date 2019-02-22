@@ -340,7 +340,7 @@ void init(void)
             P[i].GravPM[j] = 0;
 #endif
         P[i].Ti_begstep = 0;
-        P[i].Ti_current = 0;
+        P[i].Ti_current = (integertime)0;
         P[i].TimeBin = 0;
         
         if(header.flag_ic_info != FLAG_SECOND_ORDER_ICS)
