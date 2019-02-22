@@ -254,6 +254,11 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #if defined(NEWSINK_STOCHASTIC_ACCRETION)
     double w; int kicked=0;
 #endif
+#ifdef NEWSINK_RELOCATE_KICKED_PARTICLE
+    double phi_angle, theta_angle;
+    double max_theta_angle=NEWSINK_JET_OPENING_ANGLE*M_PI/180.0;
+    MyFloat reldir[3],b_vect1[3],b_vect2[3],b_vect3[3];
+#endif
     MyFloat *pos, h_i, bh_mass;
 #if (defined(BH_WIND_CONTINUOUS) && !defined(BH_WIND_KICK)) || defined(NEWSINK_J_FEEDBACK)
     MyFloat *velocity, hinv, hinv3;
@@ -590,7 +595,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #ifdef BH_OUTPUT_MOREINFO
                                 if ((1.0-f_accreted)>0) {printf("f_accreted is: %g for particle with id %llu and mass %g around BH with id %llu\n", (MyFloat) f_accreted,(unsigned long long) P[j].ID, P[j].Mass,(unsigned long long) id);}
-                                else{printf("Particle with id %llu and mass %g swallowed by BH with id %llu\n", (unsigned long long) target, (MyFloat) f_accreted,(unsigned long long) P[j].ID, P[j].Mass,(unsigned long long) id);}
+                                else{printf("Particle with id %llu and mass %g swallowed by BH with id %llu\n", (unsigned long long) P[j].ID, P[j].Mass,(unsigned long long) id);}
 #endif
 #if defined(NEWSINK_STOCHASTIC_ACCRETION) && defined(BH_WIND_KICK)
                             }//end of else for determining if the particle is kicked
@@ -621,20 +626,38 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 if((dir[0]*Jgas_in_Kernel[0] + dir[1]*Jgas_in_Kernel[1] + dir[2]*Jgas_in_Kernel[2]) > 0){for(k=0;k<3;k++) {dir[k]=Jgas_in_Kernel[k];}} else {for(k=0;k<3;k++) {dir[k]=-Jgas_in_Kernel[k];}}
 #endif
 #endif
-                                for(k=0,norm=0;k<3;k++) {norm+=dir[k]*dir[k];} if(norm<=0) {dir[0]=0;dir[1]=0;dir[2]=1;norm=1;} else {norm=sqrt(norm);}
-                                for(k=0;k<3;k++) {P[j].Vel[k]+=v_kick*All.cf_atime*dir[k]/norm; SphP[j].VelPred[k]+=v_kick*All.cf_atime*dir[k]/norm;}
+                                for(k=0,norm=0;k<3;k++) {norm+=dir[k]*dir[k];} if(norm<=0) {dir[0]=0;dir[1]=0;dir[2]=1;norm=1;} else {norm=sqrt(norm);dir[0]/=norm;dir[1]/=norm;dir[2]/=norm;}
+#if defined(NEWSINK_RELOCATE_KICKED_PARTICLE) //get the new relative position vector for the particle (from sink)
+                                theta_angle = max_theta_angle * get_random_number(P[j].ID); //uniformly chosen
+                                phi_angle=acos(1.0 - 2.0 * get_random_number(P[j].ID)); //chosen in a way to get a uniform distribution on the spherical surface
+                                reldir[0]=cos(phi_angle) * sin(theta_angle); reldir[1]=sin(phi_angle) * sin(theta_angle); reldir[2]=cos(theta_angle); //get relative direction from polar axis      
+                                //Let's get the other base vectors and get the new position and velocity direction for the particle. 
+                                b_vect3[0]=dir[0];b_vect3[1]=dir[1];b_vect3[2]=dir[2];
+                                b_vect1[0] = 0.0; b_vect1[1] = - dir[2]; b_vect1[2] = - dir[1]; //We get the first base by taking cross product of dir with +x unit vector
+                                for(k=0,norm=0;k<3;k++) {norm+=b_vect1[k]*b_vect1[k];} if(norm<=0) {b_vect1[0]=1.0;dir[1]=0;dir[2]=1;norm=1;} else {norm=sqrt(norm);b_vect1[0]/=norm;b_vect1[1]/=norm;b_vect1[2]/=norm;}
+                                //second vector is dir cross b_vect1, and it should be normalized by default as it is the cross product of two orthogonal vectors
+                                b_vect2[0] = b_vect3[1] * b_vect1[2] - b_vect3[2] * b_vect1[1]; 
+                                b_vect2[1] = b_vect3[0] * b_vect1[2] - b_vect3[2] * b_vect1[0]; 
+                                b_vect2[2] = b_vect3[0] * b_vect1[1] - b_vect3[1] * b_vect1[0];
+                                //Now we get the new direction
+                                for(k=0;k<3;k++) {dir[k]=reldir[0]*b_vect1[k]+reldir[1]*b_vect2[k]+reldir[2]*b_vect2[k];}
+                                //Let's reposition the particle
+                                for(k=0;k<3;k++) {P[j].Pos[k]=dir[k]*int_zone_radius;}//Put the particle at the edge of the interaction zone
+#endif
+
+                                for(k=0;k<3;k++) {P[j].Vel[k]+=v_kick*All.cf_atime*dir[k]; SphP[j].VelPred[k]+=v_kick*All.cf_atime*dir[k];}
 #ifdef GALSF_SUBGRID_WINDS // if sub-grid galactic winds are decoupled from the hydro, we decouple the BH kick winds as well
                                 SphP[j].DelayTime = All.WindFreeTravelMaxTimeFactor / All.cf_hubble_a;
 #endif  
 
 #ifndef IO_REDUCED_MODE
                                 printf("BAL kick: All.BAL_v_outflow %g \t f_acc_corr %g \t v_kick %g\n",(All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s),f_acc_corr,v_kick);
-                                printf("BAL kick: P[j].ID %llu ID %llu Type(j) %d f_acc %g M(j) %g V(j).xyz %g/%g/%g P(j).xyz %g/%g/%g p(i).xyz %g/%g/%g v_out %g \n",
+                                printf("BAL kick: P[j].ID %llu ID %llu Type(j) %d All.BAL_f_accretion %g M(j) %g V(j).xyz %g/%g/%g P(j).xyz %g/%g/%g p(i).xyz %g/%g/%g v_out %g \n",
                                        (unsigned long long) P[j].ID, (unsigned long long) P[j].SwallowID,P[j].Type, All.BAL_f_accretion,P[j].Mass,P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],pos[0],pos[1],pos[2],v_kick);
 #endif
 #ifdef BH_OUTPUT_MOREINFO
                                 fprintf(FdBhWindDetails,"%g  %u %g  %2.7f %2.7f %2.7f  %2.7f %2.7f %2.7f  %g %g %g  %u  %2.7f %2.7f %2.7f\n",
-                                        All.Time, P[j].ID, P[j].Mass,  P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],  P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],dir[0]/norm,dir[1]/norm,dir[2]/norm, id, pos[0],pos[1],pos[2]);
+                                        All.Time, P[j].ID, P[j].Mass,  P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],  P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],dir[0],dir[1],dir[2], id, pos[0],pos[1],pos[2]);
 #endif
 #endif   // #ifdef BH_WIND_KICK
 #if defined(NEWSINK_STOCHASTIC_ACCRETION) //continuation of the if (kicked) statement
