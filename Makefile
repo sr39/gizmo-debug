@@ -186,7 +186,9 @@ ifeq ($(SYSTYPE),"Stampede2")
 CC       =  mpicc
 CXX      =  mpic++
 FC       =  mpif90 -nofor_main
-OPTIMIZE = -O3 -xMIC-AVX512 -ipo -funroll-loops -no-prec-div -fp-model fast=2  # speed
+OPTIMIZE = -O3 $(TACC_VEC_FLAGS) -ipo -funroll-loops -no-prec-div -fp-model fast=2
+## above is preferred, $(TACC_VEC_FLAGS) automatically incorporates the TACC preferred flags for both KNL or SKX nodes
+#OPTIMIZE = -O3 -xMIC-AVX512 -ipo -funroll-loops -no-prec-div -fp-model fast=2  # (depracated, -xMIC-AVX512 is specific to the KNL nodes)
 OPTIMIZE += -g -Wall # compiler warnings
 #OPTIMIZE += -parallel -openmp  # openmp (comment out this line if OPENMP not used)
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
@@ -207,7 +209,8 @@ MPICHLIB =
 OPT     += -DUSE_MPI_IN_PLACE
 ##
 ## module load TACC intel impi hdf5 gsl fftw2
-## note the KNL system has a large number of slow cores, so some changes to 'usual' compilation parameters are advised:
+##  - note you cann choose to use FFTW3 now instead of FFTW2, but you will need to load that module and change the compiler link appropriately
+## note is you are using the KNL system it has a large number of slow cores, so some changes to 'usual' compilation parameters are advised:
 ##  - recommend running with ~16 mpi tasks/node. higher [32 or 64] usually involves a performance hit unless the problem is more scale-able;
 ##     use the remaining nodes in OPENMP. Do not use >64 MPI tasks/node [need ~4 cores free for management] and do not use >2 threads/core
 ##     [should never have >128 threads/node] -- the claimed 4 hardware threads/core includes non-FP threads which will severely slow performance.
