@@ -159,6 +159,10 @@ void drift_particle(int i, integertime time1)
     }
 #endif
     
+#ifdef DM_FUZZY
+    do_dm_fuzzy_drift_kick(i, dt_drift, 1);
+#endif
+    
 #ifdef GDE_DISTORTIONTENSOR
     do_phase_space_drift(i, dt_drift);
 #endif

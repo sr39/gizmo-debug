@@ -2030,7 +2030,7 @@ extern struct global_data_all_processes
 #endif
     
 #ifdef DM_FUZZY
-  double FuzzyDM_Mass_in_eV;
+  double ScalarField_hbar_over_mass;
 #endif
 
 #ifdef TURB_DRIVING
@@ -2286,10 +2286,16 @@ extern ALIGN(32) struct particle_data
     MyFloat AGS_Numerical_QuantumPotential; /*!< additional potential terms 'generated' by un-resolved compression [numerical diffusivity] */
     MyFloat AGS_Dt_Numerical_QuantumPotential; /*!< time derivative of the above */
     MyFloat AGS_Psi_Re;
+    MyFloat AGS_Psi_Re_Pred;
+    MyFloat AGS_Dt_Psi_Re;
     MyFloat AGS_Gradients_Psi_Re[3];
+    MyFloat AGS_Gradients2_Psi_Re[3][3];
     MyFloat AGS_Psi_Im;
+    MyFloat AGS_Psi_Im_Pred;
+    MyFloat AGS_Dt_Psi_Im;
     MyFloat AGS_Gradients_Psi_Im[3];
-    MyFloat AGS_Grad2_Psi_Im[3];
+    MyFloat AGS_Gradients2_Psi_Im[3][3];
+    MyFloat AGS_Dt_Psi_Mass;
 #endif
 #if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
     MyFloat NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */
@@ -2983,6 +2989,8 @@ enum iofields
   IO_AGS_SOFT,
   IO_AGS_RHO,
   IO_AGS_QPT,
+  IO_AGS_PSI_RE,
+  IO_AGS_PSI_IM,
   IO_AGS_ZETA,
   IO_AGS_OMEGA,
   IO_AGS_CORR,

@@ -884,7 +884,8 @@ double do_cbe_nvt_inversion_for_faces(int i);
 #endif
 
 #ifdef DM_FUZZY
-void do_dm_fuzzy_drift_kick(int pindex, double dt_entr);
+void do_dm_fuzzy_initialization(void);
+void do_dm_fuzzy_drift_kick(int pindex, double dt_entr, int mode);
 void DMGrad_gradient_calc(void);
 int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
 void *DMGrad_evaluate_primary(void *p, int gradient_iteration);
@@ -899,6 +900,11 @@ void do_dm_fuzzy_flux_computation_old(double HLLwt, double dt, double m0, double
                                   double GradRho2_L[3][3], double GradRho2_R[3][3],
                                   double rho_L, double rho_R, double dv_Right_minus_Left,
                                   double Area[3], double fluxes[3], double AGS_Numerical_QuantumPotential, double *dt_egy_Numerical_QuantumPotential);
+void dm_fuzzy_reconstruct_and_slopelimit_sub(double *u_R_f, double *u_L_f, double q_R, double dq_R_0[3], double q_L, double dq_L_0[3], double dx[3]);
+void dm_fuzzy_reconstruct_and_slopelimit(double *u_R, double du_R[3], double *u_L, double du_L[3],
+                                         double q_R, double dq_R[3], double d2q_R[3][3],
+                                         double q_L, double dq_L[3], double d2q_L[3][3],
+                                         double dx[3]);
 #endif
 
 
