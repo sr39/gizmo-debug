@@ -268,7 +268,10 @@
 #define GALSF_SFR_VIRIAL_SF_CRITERION 2 // only allow star formation in virialized sub-regions meeting Jeans threshold + converging all 3 axes
 #define METALS  // metals should be active for stellar return
 #define BLACK_HOLES // need to have black holes active since these are our sink particles
-#define GALSF_SFR_IMF_VARIATION // save extra information about sinks when they form
+//#define GALSF_SFR_IMF_VARIATION // save extra information about sinks when they form - MYG: switching this off for the sake of memory, but if it's useful for a project we can always bring it back
+#ifdef MAGNETIC
+#define MHD_CONSTRAINED_GRADIENT=1  // particularly worried about div-B errors around sink particles, so we'll switch this on to help scrub away the shame - MYG
+#end
 #ifdef RADTRANSFER
 #define RT_DISABLE_R15_GRADIENTFIX
 #endif
