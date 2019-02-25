@@ -214,7 +214,7 @@ struct network_solver_data {
 };
 
 struct network_solver_trajectory {
-    int ntimesteps, timestep;
+    integertime ntimesteps, timestep;
     double *timesteps;
     double *rho;
     double *energy;

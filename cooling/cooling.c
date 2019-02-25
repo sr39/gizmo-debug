@@ -168,7 +168,7 @@ void chimes_cooling_parent_routine(void)
 void do_the_cooling_for_particle(int i)
 {
     double unew;
-    double dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval;
+    double dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval;
     double dtime = dt / All.cf_hubble_a; /*  the actual time-step */
 
     if((P[i].TimeBin)&&(dt>0)&&(P[i].Mass>0)&&(P[i].Type==0))  // upon start-up, need to protect against dt==0 //
@@ -630,7 +630,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     }
     n_elec = *ne_guess; neold = n_elec; niter = 0;
     double dt = 0, fac_noneq_cgs = 0, necgs = n_elec * nHcgs; /* more initialized quantities */
-    if(target >= 0) {dt = (P[target].TimeBin ? (1 << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;} // dtime [code units]
+    if(target >= 0) {dt = (P[target].TimeBin ? (((integertime) 1) << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;} // dtime [code units]
     fac_noneq_cgs = (dt * All.UnitTime_in_s / All.HubbleParam) * necgs; // factor needed below to asses whether timestep is larger/smaller than recombination time
     
 #if defined(RT_CHEM_PHOTOION)
@@ -926,7 +926,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     if(target >= 0)
     {
         double L_particle = Get_Particle_Size(target)*All.cf_atime; // particle effective size/slab thickness
-        double dt = (P[target].TimeBin ? (1 << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; // dtime [code units]
+        double dt = (P[target].TimeBin ? (((integertime) 1) << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; // dtime [code units]
         Sigma_particle = P[target].Mass / (M_PI*L_particle*L_particle); // effective surface density through particle
         abs_per_kappa_dt = RT_SPEEDOFLIGHT_REDUCTION * (C/All.UnitVelocity_in_cm_per_s) * (SphP[target].Density*All.cf_a3inv) * dt; // fractional absorption over timestep
         cx_to_kappa = HYDROGEN_MASSFRAC / PROTONMASS * All.UnitMass_in_g / All.HubbleParam; // pre-factor for converting cross sections into opacities
@@ -1780,7 +1780,7 @@ void selfshield_local_incident_uv_flux(void)
  * for particle target. */ 
 void chimes_update_gas_vars(int target) 
 {
-  double dt = (P[target].TimeBin ? (1 << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; 
+  double dt = (P[target].TimeBin ? (((integertime) 1) << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; 
   
   /* Check that the gasVars structure matches the corresponding 
    * particle structure. */ 

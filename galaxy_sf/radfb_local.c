@@ -36,7 +36,7 @@ void radiation_pressure_winds_consolidated(void)
         {
             
 #ifndef WAKEUP
-            dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+            dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
             dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
@@ -239,7 +239,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
 #endif
         {
 #ifndef WAKEUP
-            dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+            dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
             dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
@@ -413,7 +413,7 @@ void chimes_HII_regions_singledomain(void)
       if((P[i].Type == 4) || ((All.ComovingIntegrationOn==0) && ((P[i].Type == 2) || (P[i].Type==3))))
 	{
 #ifndef WAKEUP
-	  dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+	  dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
 	  dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif

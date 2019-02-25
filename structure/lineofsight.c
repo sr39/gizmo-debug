@@ -527,11 +527,12 @@ void output_lines_of_sight(int num)
 }
 
 
-int find_next_lineofsighttime(int time0)
+integertime find_next_lineofsighttime(integertime time0)
 {
   double a1, a2, df1, df2, u1, u2;
   double logTimeBegin, logTimeMax;
-  int i1, i2, im, time1;
+  int i1, i2, im;
+  integertime time1;
 
   logTimeBegin = log(All.TimeBegin);
   logTimeMax = log(All.TimeMax);
@@ -566,7 +567,7 @@ int find_next_lineofsighttime(int time0)
 
   a2 = u2 * (logTimeMax - logTimeBegin) / DRIFT_TABLE_LENGTH + logTimeBegin;
 
-  time1 = (int) ((a2 - logTimeBegin) / All.Timebase_interval + 0.5);
+  time1 = (integertime) ((a2 - logTimeBegin) / All.Timebase_interval + 0.5);
 
   return time1;
 }

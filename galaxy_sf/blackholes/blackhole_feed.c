@@ -97,7 +97,7 @@ void blackhole_feed_loop(void)
             BlackholeDataIn[j].Density = BPP(place).DensAroundStar;
             BlackholeDataIn[j].Mdot = BPP(place).BH_Mdot;
 #ifndef WAKEUP
-            BlackholeDataIn[j].Dt = (P[place].TimeBin ? (1 << P[place].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+            BlackholeDataIn[j].Dt = (P[place].TimeBin ? (((integertime) 1) << P[place].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
             BlackholeDataIn[j].Dt = P[place].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
@@ -231,7 +231,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         rho = P[target].DensAroundStar;       // DAA: DensAroundStar is not defined in BHP->BPP...
         mdot = BPP(target).BH_Mdot;
 #ifndef WAKEUP
-        dt = (P[target].TimeBin ? (1 << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+        dt = (P[target].TimeBin ? (((integertime) 1) << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
         dt = P[target].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
