@@ -1446,11 +1446,30 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    double f00 = 0.5 * 591569.0 / (All.FuzzyDM_Mass_in_eV * All.UnitVelocity_in_cm_per_s * All.UnitLength_in_cm/All.HubbleParam); // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
                     double d2rho = P[pindex].AGS_Gradients2_Density[0][0] + P[pindex].AGS_Gradients2_Density[1][1] + P[pindex].AGS_Gradients2_Density[2][2]; // laplacian
                     double drho2 = P[pindex].AGS_Gradients_Density[0]*P[pindex].AGS_Gradients_Density[0] + P[pindex].AGS_Gradients_Density[1]*P[pindex].AGS_Gradients_Density[1] + P[pindex].AGS_Gradients_Density[2]*P[pindex].AGS_Gradients_Density[2];
-                    double AGS_QuantumPotential = (f00*f00 / P[pindex].AGS_Density) * (d2rho - 0.5*drho2/P[pindex].AGS_Density);
+                    double AGS_QuantumPotential = (0.25*All.ScalarField_hbar_over_mass*All.ScalarField_hbar_over_mass / P[pindex].AGS_Density) * (d2rho - 0.5*drho2/P[pindex].AGS_Density);
                     *fp++ = AGS_QuantumPotential;
+                    n++;
+                }
+#endif
+            break;
+        case IO_AGS_PSI_RE:        /* real part of wavefunction */
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = P[pindex].AGS_Psi_Re * P[pindex].AGS_Density / P[pindex].Mass;
+                    n++;
+                }
+#endif
+            break;
+        case IO_AGS_PSI_IM:        /* imaginary part of wavefunction */
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = P[pindex].AGS_Psi_Im * P[pindex].AGS_Density / P[pindex].Mass;
                     n++;
                 }
 #endif
@@ -1764,6 +1783,8 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_AGS_SOFT:
         case IO_AGS_RHO:
         case IO_AGS_QPT:
+        case IO_AGS_PSI_RE:
+        case IO_AGS_PSI_IM:
         case IO_AGS_ZETA:
         case IO_AGS_OMEGA:
         case IO_AGS_CORR:
@@ -2125,6 +2146,8 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_AGS_SOFT:
         case IO_AGS_RHO:
         case IO_AGS_QPT:
+        case IO_AGS_PSI_RE:
+        case IO_AGS_PSI_IM:
         case IO_AGS_ZETA:
         case IO_AGS_OMEGA:
         case IO_AGS_CORR:
@@ -2341,6 +2364,8 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_AGS_SOFT:
         case IO_AGS_RHO:
         case IO_AGS_QPT:
+        case IO_AGS_PSI_RE:
+        case IO_AGS_PSI_IM:
         case IO_AGS_ZETA:
         case IO_AGS_OMEGA:
         case IO_AGS_CORR:
@@ -3071,13 +3096,8 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-        case IO_GDE_DISTORTIONTENSOR:
-#ifdef OUTPUT_GDE_DISTORTIONTENSOR
-            return 1;
-#else
-            return 0;
-#endif
             
+        case IO_GDE_DISTORTIONTENSOR:
         case IO_CAUSTIC_COUNTER:
 #ifdef GDE_DISTORTIONTENSOR
             return 1;
@@ -3093,12 +3113,6 @@ int blockpresent(enum iofields blocknr)
 #endif
             
         case IO_STREAM_DENSITY:
-#ifdef GDE_DISTORTIONTENSOR
-            return 1;
-#else
-            return 0;
-#endif
-            
         case IO_PHASE_SPACE_DETERMINANT:
 #ifdef GDE_DISTORTIONTENSOR
             return 1;
@@ -3121,12 +3135,6 @@ int blockpresent(enum iofields blocknr)
 #endif
             
         case IO_SHEET_ORIENTATION:
-#if defined(GDE_DISTORTIONTENSOR) && (!defined(GDE_LEAN) || defined(GDE_READIC))
-            return 1;
-#else
-            return 0;
-#endif
-            
         case IO_INIT_DENSITY:
 #if defined(GDE_DISTORTIONTENSOR) && (!defined(GDE_LEAN) || defined(GDE_READIC))
             return 1;
@@ -3147,36 +3155,36 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
+
         case IO_PRESSURE:
-#ifdef EOS_GENERAL
-            return 1;
-#else
-            return 0;
-#endif
         case IO_EOSCS:
 #ifdef EOS_GENERAL
             return 1;
 #else
             return 0;
 #endif
+
         case IO_EOS_STRESS_TENSOR:
 #ifdef EOS_ELASTIC
             return 1;
 #else
             return 0;
 #endif
+
         case IO_EOSCOMP:
 #ifdef EOS_TILLOTSON
             return 1;
 #else
             return 0;
 #endif
+
         case IO_EOSABAR:
 #ifdef EOS_CARRIES_ABAR
             return 1;
 #else
             return 0;
 #endif
+
         case IO_EOSYE:
 #ifdef EOS_CARRIES_YE
             return 1;
@@ -3197,7 +3205,6 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-
             
         case IO_EDDINGTON_TENSOR:
 #if defined(RADTRANSFER)
@@ -3234,14 +3241,9 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_AGS_RHO:
-#if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
-            return 1;
-#else
-            return 0;
-#endif
-            break;
-
         case IO_AGS_QPT:
+        case IO_AGS_PSI_RE:
+        case IO_AGS_PSI_IM:
 #if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
             return 1;
 #else
@@ -3258,25 +3260,12 @@ int blockpresent(enum iofields blocknr)
             break;
             
         case IO_AGS_OMEGA:
-            return 0;
-            break;
-            
         case IO_AGS_CORR:
-            return 0;
-            break;
-            
         case IO_AGS_NGBS:
-            return 0;
-            break;
-            
         case IO_MG_PHI:
-            return 0;
-            break;
-            
         case IO_MG_ACCEL:
             return 0;
             break;
-            
             
         case IO_grHI:
         case IO_grHII:
@@ -3667,6 +3656,12 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
             break;
         case IO_AGS_QPT:
             strncpy(label, "AQPT", 4);
+            break;
+        case IO_AGS_PSI_RE:
+            strncpy(label, "PSIR", 4);
+            break;
+        case IO_AGS_PSI_IM:
+            strncpy(label, "PSII", 4);
             break;
         case IO_AGS_ZETA:
             strncpy(label, "AGSZ", 4);
@@ -4073,6 +4068,12 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_AGS_QPT:
             strcpy(buf, "AGS-QuantumPotentialQ");
+            break;
+        case IO_AGS_PSI_RE:
+            strcpy(buf, "WavefunctionPsi-Real");
+            break;
+        case IO_AGS_PSI_IM:
+            strcpy(buf, "WavefunctionPsi-Imag");
             break;
         case IO_AGS_ZETA:
             strcpy(buf, "AGS-Zeta");

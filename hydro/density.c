@@ -757,7 +757,7 @@ void density(void)
                         particle_set_to_maxhsml_flag = 0;
                     } else {
                         /* ok, the particle needs to be set to the maximum, and (if gas) iterated one more time */
-                        if(P[i].Type==0) redo_particle = 1;
+                        redo_particle = 1;
                         PPP[i].Hsml = maxsoft;
                         particle_set_to_maxhsml_flag = 1;
                     }
@@ -775,7 +775,7 @@ void density(void)
                         particle_set_to_minhsml_flag = 0;
                     } else {
                         /* ok, the particle needs to be set to the minimum, and (if gas) iterated one more time */
-                        if(P[i].Type==0) redo_particle = 1;
+                        redo_particle = 1;
                         PPP[i].Hsml = minsoft;
                         particle_set_to_minhsml_flag = 1;
                     }

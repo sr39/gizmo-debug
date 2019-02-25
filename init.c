@@ -1276,6 +1276,9 @@ void ags_setup_smoothinglengths(void)
         }
     }
     ags_density();
+#ifdef DM_FUZZY
+    do_dm_fuzzy_initialization();
+#endif
 }
 #endif // ADAPTIVE_GRAVSOFT_FORALL
 

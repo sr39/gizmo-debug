@@ -28,7 +28,7 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double prev_a, double
                                   double rho_L, double rho_R, double dv_Right_minus_Left,
                                   double Area[3], double fluxes[3], double AGS_Numerical_QuantumPotential_L, double AGS_Numerical_QuantumPotential_R, double *dt_egy_Numerical_QuantumPotential)
 {
-    double f00 = 0.5 * 591569.0 / (All.FuzzyDM_Mass_in_eV * All.UnitVelocity_in_cm_per_s * All.UnitLength_in_cm/All.HubbleParam); f00*=f00; // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
+    double f00 = 0.5 * All.ScalarField_hbar_over_mass; f00*=f00; // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
     double gamma_eff=5./3., PL_dot_A[3]={0}, PR_dot_A[3]={0}, PL_dot_AA=0, PR_dot_AA=0, Face_Area_Norm=0, rSi=1./(rho_L+rho_R), QL=0, QR=0; int m,k;
     for(m=0;m<3;m++) {QL+=GradRho2_L[m][m] - 0.5*GradRho_L[m]*GradRho_L[m]/rho_L; QR+=GradRho2_R[m][m] - 0.5*GradRho_R[m]*GradRho_R[m]/rho_R;} // compute the quantum potential (multiplied by rho to be an energy density to match units of PN)
     double PN_L=(gamma_eff-1.)*(AGS_Numerical_QuantumPotential_L-f00*QL), PN_R=(gamma_eff-1.)*(AGS_Numerical_QuantumPotential_R-f00*QR); PN_L=DMAX(PN_L,0); PN_R=DMAX(PN_R,0); // compute actual scalar-pressure terms and limit to be positive definite
@@ -61,7 +61,7 @@ void do_dm_fuzzy_flux_computation_old(double HLLwt, double dt, double m0, double
 {
     if(dt <= 0) return; // no timestep, no flux
     int m,n;
-    double f00 = 0.5 * 591569.0 / (All.FuzzyDM_Mass_in_eV * All.UnitVelocity_in_cm_per_s * All.UnitLength_in_cm/All.HubbleParam); // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
+    double f00 = 0.5 * All.ScalarField_hbar_over_mass; // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
     // (0.5=1/2, pre-factor from dimensionless equations; 591569 = hbar/eV in cm^2/s; add mass in eV, and put in code units
     double f2 = f00*f00, rhoL_i=1./rho_L, rhoR_i=1./rho_R, r2=0, rSi=1./(rho_L+rho_R); *dt_egy_Numerical_QuantumPotential=0;
     for(m=0;m<3;m++) {r2+=dp[m]*dp[m]; fluxes[m]=0;} /* zero fluxes and calculate separation */
@@ -139,18 +139,113 @@ void do_dm_fuzzy_flux_computation_old(double HLLwt, double dt, double m0, double
 
 
 
-/* kicks for fuzzy-dm integration: just put relevant drift-kick operators here to keep the code clean */
-void do_dm_fuzzy_drift_kick(int pindex, double dt_entr)
+/* kicks for fuzzy-dm integration: just put relevant drift-kick operators here to keep the code clean
+ mode=0 -> 'kick', mode=1 -> 'drift' */
+void do_dm_fuzzy_drift_kick(int i, double dt, int mode)
 {
-    // calculate various energies: quantum potential QP0, 'stored' numerical pressure NQ0, kinetic energy KE0
-    double dNQ=P[pindex].AGS_Dt_Numerical_QuantumPotential*dt_entr, NQ0=P[pindex].AGS_Numerical_QuantumPotential, NQ1=NQ0+dNQ, KE0=0.5*P[pindex].Mass*(P[pindex].Vel[0]*P[pindex].Vel[0]+P[pindex].Vel[1]*P[pindex].Vel[1]+P[pindex].Vel[2]*P[pindex].Vel[2])*All.cf_a2inv;
-    double f00 = 0.5 * 591569.0 / (All.FuzzyDM_Mass_in_eV * All.UnitVelocity_in_cm_per_s * All.UnitLength_in_cm/All.HubbleParam); // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
-    double d2rho = P[pindex].AGS_Gradients2_Density[0][0] + P[pindex].AGS_Gradients2_Density[1][1] + P[pindex].AGS_Gradients2_Density[2][2]; // laplacian
-    double drho2 = P[pindex].AGS_Gradients_Density[0]*P[pindex].AGS_Gradients_Density[0] + P[pindex].AGS_Gradients_Density[1]*P[pindex].AGS_Gradients_Density[1] + P[pindex].AGS_Gradients_Density[2]*P[pindex].AGS_Gradients_Density[2];
-    double QP0 = (f00*f00 / P[pindex].AGS_Density) * (d2rho - 0.5*drho2/P[pindex].AGS_Density); // quantum 'potential'
-    NQ1 = DMAX(0,DMAX(NQ1,0.1*NQ0)); NQ1 = DMIN(NQ1,1.1*DMAX(DMAX(KE0+NQ0,fabs(QP0)),KE0+NQ0+QP0)); // limit kick to not produce unphysical energy over-or-under-shoot
-    P[pindex].AGS_Numerical_QuantumPotential = NQ1;
+    double vol_inv = P[i].AGS_Density / P[i].Mass;
+    if(mode==0)
+    {
+        // calculate various energies: quantum potential QP0, 'stored' numerical pressure NQ0, kinetic energy KE0
+        double dNQ=P[i].AGS_Dt_Numerical_QuantumPotential*dt, NQ0=P[i].AGS_Numerical_QuantumPotential, NQ1=NQ0+dNQ, KE0=0.5*P[i].Mass*(P[i].Vel[0]*P[i].Vel[0]+P[i].Vel[1]*P[i].Vel[1]+P[i].Vel[2]*P[i].Vel[2])*All.cf_a2inv;
+        double f00 = 0.5 * All.ScalarField_hbar_over_mass; // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
+        double d2rho = P[i].AGS_Gradients2_Density[0][0] + P[i].AGS_Gradients2_Density[1][1] + P[i].AGS_Gradients2_Density[2][2]; // laplacian
+        double drho2 = P[i].AGS_Gradients_Density[0]*P[i].AGS_Gradients_Density[0] + P[i].AGS_Gradients_Density[1]*P[i].AGS_Gradients_Density[1] + P[i].AGS_Gradients_Density[2]*P[i].AGS_Gradients_Density[2];
+        double QP0 = (f00*f00 / P[i].AGS_Density) * (d2rho - 0.5*drho2/P[i].AGS_Density); // quantum 'potential'
+        NQ1 = DMAX(0,DMAX(NQ1,0.1*NQ0)); NQ1 = DMIN(NQ1,1.1*DMAX(DMAX(KE0+NQ0,fabs(QP0)),KE0+NQ0+QP0)); // limit kick to not produce unphysical energy over-or-under-shoot
+        P[i].AGS_Numerical_QuantumPotential = NQ1;
+        
+        double psimag_mass_old = (P[i].AGS_Psi_Re*P[i].AGS_Psi_Re + P[i].AGS_Psi_Im*P[i].AGS_Psi_Im) * vol_inv;
+        P[i].AGS_Psi_Re += P[i].AGS_Dt_Psi_Re * dt;
+        P[i].AGS_Psi_Im += P[i].AGS_Dt_Psi_Im * dt;
+        double mass_old = P[i].Mass, dmass = P[i].AGS_Dt_Psi_Mass * dt, mass_new = mass_old + dmass;
+        dmass = DMIN(DMAX(dmass,-0.5*mass_old),0.5*mass_old);
+        mass_new = mass_old + dmass;
+        double psimag_mass_new = (P[i].AGS_Psi_Re*P[i].AGS_Psi_Re + P[i].AGS_Psi_Im*P[i].AGS_Psi_Im) * vol_inv;
+        
+        double psi_corr_fac = sqrt(mass_new / (MIN_REAL_NUMBER + psimag_mass_new));
+        P[i].Mass = mass_new; P[i].AGS_Psi_Re *= psi_corr_fac; P[i].AGS_Psi_Im *= psi_corr_fac;
+
+        P[i].AGS_Density = P[i].Mass * vol_inv;
+        P[i].AGS_Psi_Re_Pred = P[i].AGS_Psi_Re;
+        P[i].AGS_Psi_Im_Pred = P[i].AGS_Psi_Im;
+    } else {
+        /* in drift mode, AGS_Density should automatically be drifted already by the predictor step, but not the other quantities here */
+        P[i].AGS_Psi_Re_Pred += P[i].AGS_Dt_Psi_Re * dt;
+        P[i].AGS_Psi_Im_Pred += P[i].AGS_Dt_Psi_Im * dt;
+        P[i].AGS_Density *= 1. + DMIN(DMAX(P[i].AGS_Dt_Psi_Mass*dt/P[i].Mass,-0.5),0.5);
+    }
 }
+
+
+/* initialize wavefunction values in the code ICs */
+void do_dm_fuzzy_initialization(void)
+{
+    int i;
+    for(i = 0; i < NumPart; i++)
+    {
+        double volume = P[i].AGS_Density / P[i].Mass, psimag = sqrt(P[i].AGS_Density), phase = 0; int k=0;
+        /* approximation for initial phase below is fine for slowly-varying k, otherwise not ideal */
+        for(k=0;k<3;k++) {phase += P[i].Pos[k] * P[i].Vel[k] / All.ScalarField_hbar_over_mass;}
+        
+        P[i].AGS_Psi_Re = psimag * volume * cos(phase); /* remember, we evolve the volume-integrated value of psi */
+        P[i].AGS_Psi_Im = psimag * volume * sin(phase);
+        
+        P[i].AGS_Dt_Psi_Mass = 0; P[i].AGS_Dt_Psi_Re = 0; P[i].AGS_Dt_Psi_Im = 0;
+        P[i].AGS_Psi_Re_Pred = P[i].AGS_Psi_Re; P[i].AGS_Psi_Im_Pred = P[i].AGS_Psi_Im;
+    }
+}
+ 
+
+
+void dm_fuzzy_reconstruct_and_slopelimit(double *u_R, double du_R[3], double *u_L, double du_L[3],
+                                         double q_R, double dq_R[3], double d2q_R[3][3],
+                                         double q_L, double dq_L[3], double d2q_L[3][3],
+                                         double dx[3])
+{
+    double t_L,t_R; int k;
+    dm_fuzzy_reconstruct_and_slopelimit_sub(&t_R,&t_L,q_R,dq_R,q_L,dq_L,dx);
+    *u_R=t_R; *u_L=t_L;
+    for(k=0;k<3;k++)
+    {
+        dm_fuzzy_reconstruct_and_slopelimit_sub(&t_R,&t_L,dq_R[k],d2q_R[k],dq_L[k],d2q_L[k],dx);
+        dq_R[k]=t_R; dq_L[k]=t_L;
+    }
+    return;
+}
+
+
+void dm_fuzzy_reconstruct_and_slopelimit_sub(double *u_R_f, double *u_L_f, double q_R, double dq_R_0[3], double q_L, double dq_L_0[3], double dx[3])
+{
+    int k;
+    double dq_L=0; for(k=0;k<3;k++) {dq_L += 0.5*dx[k]*dq_L_0[k];}
+    double dq_R=0; for(k=0;k<3;k++) {dq_R -= 0.5*dx[k]*dq_R_0[k];}
+    double q0=q_L, u_L=0, u_R=0; q_L-=q0; q_R-=q0;
+    double qmid = 0.5*q_R;
+    
+    if(dq_L*q_R<0) {dq_L=0;}
+    if(dq_R*q_R<0) {dq_R=0;}
+    u_L = dq_L; u_R = q_R + dq_R;
+    if(q_R > 0)
+    {
+        if(u_L > u_R) {double tmp=0.5*(u_L+u_R); u_L=tmp; u_R=tmp;}
+        if(u_L > q_R) {u_L=q_R;}
+        if(u_R > q_R) {u_R=q_R;}
+        if(u_L < 0) {u_L=0;}
+        if(u_R < 0) {u_R=0;}
+    } else {
+        if(u_L < u_R) {double tmp=0.5*(u_L+u_R); u_L=tmp; u_R=tmp;}
+        if(u_L > 0) {u_L=0;}
+        if(u_R > 0) {u_R=0;}
+        if(u_L < q_R) {u_L=q_R;}
+        if(u_R < q_R) {u_R=q_R;}
+    }
+    if(q_R==0) {u_L=u_R=0;}
+    u_L += q0; u_R += q0;
+    *u_L_f = u_L; *u_R_f = u_R;
+    return;
+}
+
 
 
 
@@ -166,17 +261,15 @@ void do_dm_fuzzy_drift_kick(int pindex, double dt_entr)
 /* define a common 'gradients' structure to hold everything we're going to take derivatives of */
 struct Quantities_for_Gradients_DM
 {
-    MyDouble AGS_Density;
-    MyDouble AGS_Gradients_Density[3];
+    MyDouble AGS_Density, AGS_Gradients_Density[3];
+    MyDouble AGS_Psi_Re, AGS_Gradients_Psi_Re[3], AGS_Psi_Im, AGS_Gradients_Psi_Im[3];
 };
 
 struct DMGraddata_in
 {
-    MyDouble Pos[3];
-    MyDouble AGS_Hsml;
+    MyDouble Pos[3], AGS_Hsml;
     struct Quantities_for_Gradients_DM GQuant;
-    int NodeList[NODELISTLENGTH];
-    int Type;
+    int NodeList[NODELISTLENGTH], Type;
 }
 *DMGradDataIn, *DMGradDataGet;
 
@@ -207,9 +300,13 @@ static inline void particle2in_DMGrad(struct DMGraddata_in *in, int i)
 {
     int k; for(k=0;k<3;k++) {in->Pos[k] = P[i].Pos[k];}
     in->AGS_Hsml = PPP[i].AGS_Hsml;
-    in->GQuant.AGS_Density = P[i].AGS_Density;
     in->Type = P[i].Type;
+    in->GQuant.AGS_Density = P[i].AGS_Density;
     for(k=0;k<3;k++) {in->GQuant.AGS_Gradients_Density[k] = P[i].AGS_Gradients_Density[k];}
+    in->GQuant.AGS_Psi_Re = P[i].AGS_Psi_Re_Pred * P[i].AGS_Density / P[i].Mass;
+    for(k=0;k<3;k++) {in->GQuant.AGS_Gradients_Psi_Re[k] = P[i].AGS_Gradients_Psi_Re[k];}
+    in->GQuant.AGS_Psi_Im = P[i].AGS_Psi_Im_Pred * P[i].AGS_Density / P[i].Mass;
+    for(k=0;k<3;k++) {in->GQuant.AGS_Gradients_Psi_Im[k] = P[i].AGS_Gradients_Psi_Im[k];}
 }
 
 #define ASSIGN_ADD_PRESET(x,y,mode) (mode == 0 ? (x=y) : (x+=y))
@@ -223,9 +320,12 @@ static inline void out2particle_DMGrad(struct DMGraddata_out *out, int i, int mo
 {
     if(gradient_iteration <= 0)
     {
+        int k;
         MAX_ADD(DMGradDataPasser[i].Maxima.AGS_Density,out->Maxima.AGS_Density,mode);
         MIN_ADD(DMGradDataPasser[i].Minima.AGS_Density,out->Minima.AGS_Density,mode);
-        int k; for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients_Density[k],out->Gradients[k].AGS_Density,mode);}
+        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients_Density[k],out->Gradients[k].AGS_Density,mode);}
+        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients_Psi_Re[k],out->Gradients[k].AGS_Psi_Re,mode);}
+        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients_Psi_Im[k],out->Gradients[k].AGS_Psi_Im,mode);}
     } else {
         int k,k2;
         for(k=0;k<3;k++) 
@@ -233,7 +333,10 @@ static inline void out2particle_DMGrad(struct DMGraddata_out *out, int i, int mo
             MAX_ADD(DMGradDataPasser[i].Maxima.AGS_Gradients_Density[k],out->Maxima.AGS_Gradients_Density[k],mode);
             MIN_ADD(DMGradDataPasser[i].Minima.AGS_Gradients_Density[k],out->Minima.AGS_Gradients_Density[k],mode);
             for(k2=0;k2<3;k2++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients2_Density[k2][k],out->Gradients[k].AGS_Gradients_Density[k2],mode);}
+            for(k2=0;k2<3;k2++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients2_Psi_Re[k2][k],out->Gradients[k].AGS_Gradients_Psi_Re[k2],mode);}
+            for(k2=0;k2<3;k2++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients2_Psi_Im[k2][k],out->Gradients[k].AGS_Gradients_Psi_Im[k2],mode);}
         }
+        // ??? do we need limiters here for the density gradients? Not clear if this all needs computing
     }
 }
 
@@ -472,6 +575,10 @@ void DMGrad_gradient_calc(void)
             {
                 /* now we can properly calculate (second-order accurate) gradients of hydrodynamic quantities from this loop */
                 construct_gradient_DMGrad(P[i].AGS_Gradients_Density,i);
+
+                construct_gradient_DMGrad(P[i].AGS_Gradients_Psi_Re,i);
+                construct_gradient_DMGrad(P[i].AGS_Gradients_Psi_Im,i);
+
                 /* finally, we need to apply a sensible slope limiter to the gradients, to prevent overshooting */
                 /* (actually not clear that we need to slope-limit these, because we are not using the gradients for reconstruction.
                     testing this now. if not, we can remove the limiter information entirely and save some time in these computations) */
@@ -482,16 +589,25 @@ void DMGrad_gradient_calc(void)
                 {
                     /* construct the gradient-of-gradient */
                     construct_gradient_DMGrad(P[i].AGS_Gradients2_Density[k],i);
+
+                    construct_gradient_DMGrad(P[i].AGS_Gradients2_Psi_Re[k],i);
+                    construct_gradient_DMGrad(P[i].AGS_Gradients2_Psi_Im[k],i);
+
                     //local_slopelimiter(P[i].AGS_Gradients2_Density[k],DMGradDataPasser[i].Maxima.AGS_Gradients_Density[k],DMGradDataPasser[i].Minima.AGS_Gradients_Density[k],0.5,PPP[i].AGS_Hsml,0);
                 }
                 /* symmetrize the gradients */
-                double tmp;
-                tmp = 0.5*(P[i].AGS_Gradients2_Density[0][1] + P[i].AGS_Gradients2_Density[1][0]);
-                P[i].AGS_Gradients2_Density[0][1] = P[i].AGS_Gradients2_Density[1][0] = tmp;
-                tmp = 0.5*(P[i].AGS_Gradients2_Density[0][2] + P[i].AGS_Gradients2_Density[2][0]);
-                P[i].AGS_Gradients2_Density[0][2] = P[i].AGS_Gradients2_Density[2][0] = tmp;
-                tmp = 0.5*(P[i].AGS_Gradients2_Density[1][2] + P[i].AGS_Gradients2_Density[2][1]);
-                P[i].AGS_Gradients2_Density[1][2] = P[i].AGS_Gradients2_Density[2][1] = tmp;
+                int k0[3]={0,0,1},k1[3]={1,2,2}; double tmp;
+                for(k=0;k<3;k++)
+                {
+                    tmp = 0.5 * (P[i].AGS_Gradients2_Density[k0[k]][k1[k]] + P[i].AGS_Gradients2_Density[k1[k]][k0[k]]);
+                    P[i].AGS_Gradients2_Density[k0[k]][k1[k]] = P[i].AGS_Gradients2_Density[k1[k]][k0[k]] = tmp;
+
+                    tmp = 0.5 * (P[i].AGS_Gradients2_Psi_Re[k0[k]][k1[k]] + P[i].AGS_Gradients2_Psi_Re[k1[k]][k0[k]]);
+                    P[i].AGS_Gradients2_Psi_Re[k0[k]][k1[k]] = P[i].AGS_Gradients2_Psi_Re[k1[k]][k0[k]] = tmp;
+
+                    tmp = 0.5 * (P[i].AGS_Gradients2_Psi_Im[k0[k]][k1[k]] + P[i].AGS_Gradients2_Psi_Im[k1[k]][k0[k]]);
+                    P[i].AGS_Gradients2_Psi_Im[k0[k]][k1[k]] = P[i].AGS_Gradients2_Psi_Im[k1[k]][k0[k]] = tmp;
+                }
             }
         }
         myfree(DMGradDataPasser); /* free the temporary structure we created for the MinMax and additional data passing */
@@ -561,12 +677,27 @@ int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
                     double d_rho = P[j].AGS_Density - local.GQuant.AGS_Density;
                     MINMAX_CHECK(d_rho,out.Minima.AGS_Density,out.Maxima.AGS_Density);
                     for(k=0;k<3;k++) {out.Gradients[k].AGS_Density += -kernel.wk_i * kernel.dp[k] * d_rho;} /* sign is important here! */
+                    
+                    d_rho = P[j].AGS_Psi_Re_Pred * P[j].AGS_Density / P[j].Mass - local.GQuant.AGS_Psi_Re;
+                    for(k=0;k<3;k++) {out.Gradients[k].AGS_Psi_Re += -kernel.wk_i * kernel.dp[k] * d_rho;}
+
+                    d_rho = P[j].AGS_Psi_Im_Pred * P[j].AGS_Density / P[j].Mass - local.GQuant.AGS_Psi_Im;
+                    for(k=0;k<3;k++) {out.Gradients[k].AGS_Psi_Im += -kernel.wk_i * kernel.dp[k] * d_rho;}
+
                 } else {
+                    int k2; double d_grad_rho;
                     for(k=0;k<3;k++)
                     {
-                        double d_grad_rho = P[j].AGS_Gradients_Density[k] - local.GQuant.AGS_Gradients_Density[k];
+                        d_grad_rho = P[j].AGS_Gradients_Density[k] - local.GQuant.AGS_Gradients_Density[k];
                         MINMAX_CHECK(d_grad_rho,out.Minima.AGS_Gradients_Density[k],out.Maxima.AGS_Gradients_Density[k]);
-                        int k2; for(k2=0;k2<3;k2++) {out.Gradients[k2].AGS_Gradients_Density[k] += -kernel.wk_i * kernel.dp[k2] * d_grad_rho;}
+                        for(k2=0;k2<3;k2++) {out.Gradients[k2].AGS_Gradients_Density[k] += -kernel.wk_i * kernel.dp[k2] * d_grad_rho;}
+
+                        d_grad_rho = P[j].AGS_Gradients_Psi_Re[k] - local.GQuant.AGS_Gradients_Psi_Re[k];
+                        for(k2=0;k2<3;k2++) {out.Gradients[k2].AGS_Gradients_Psi_Re[k] += -kernel.wk_i * kernel.dp[k2] * d_grad_rho;}
+
+                        d_grad_rho = P[j].AGS_Gradients_Psi_Im[k] - local.GQuant.AGS_Gradients_Psi_Im[k];
+                        for(k2=0;k2<3;k2++) {out.Gradients[k2].AGS_Gradients_Psi_Im[k] += -kernel.wk_i * kernel.dp[k2] * d_grad_rho;}
+
                     }
                 } // gradient_iteration
             } // numngb_inbox loop
