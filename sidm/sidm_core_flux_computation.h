@@ -9,7 +9,7 @@
         double prob = prob_of_interaction(m_si, kernel.r, h_si, kernel.dv, local.dt_step);
         if(prob > 0.2)
         {
-            int dt_step_guess = DMIN(local.dt_step, out.dt_step_sidm);
+            integertime dt_step_guess = DMIN(local.dt_step, out.dt_step_sidm);
             while(prob_of_interaction(m_si,kernel.r,h_si,kernel.dv,dt_step_guess) > 0.2) {dt_step_guess/=2;}
             out.dt_step_sidm = dt_step_guess;
         }

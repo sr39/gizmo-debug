@@ -1091,7 +1091,7 @@ struct AGSForce_data_in
     double Vel[3];
     int NodeList[NODELISTLENGTH];
     int Type;
-    int dt_step;
+    integertime dt_step;
 #if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
     double NV_T[3][3];
     double V_i;
@@ -1105,7 +1105,7 @@ struct AGSForce_data_in
     double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];
 #endif
 #ifdef DM_SIDM
-    int dt_step_sidm;
+    integertime dt_step_sidm;
     MyIDType ID;
 #endif
 }
@@ -1116,7 +1116,7 @@ struct AGSForce_data_out
 {
 #ifdef DM_SIDM
     double sidm_kick[3];
-    int dt_step_sidm;
+    integertime dt_step_sidm;
     int si_count;
 #endif
 #ifdef DM_FUZZY

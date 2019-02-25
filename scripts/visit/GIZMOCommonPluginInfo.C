@@ -78,9 +78,9 @@ avtDatabase *
 GIZMOCommonPluginInfo::SetupDatabase(const char *const *list,
                                    int nList, int nBlock)
 {
-    int nTimestep = nList / nBlock;
+    integertime nTimestep = nList / nBlock;
     avtSTSDFileFormat ***ffl = new avtSTSDFileFormat**[nTimestep];
-    for (int i = 0 ; i < nTimestep ; i++)
+    for (integertime i = 0 ; i < nTimestep ; i++)
     {
         ffl[i] = new avtSTSDFileFormat*[nBlock];
         for (int j = 0 ; j < nBlock ; j++)

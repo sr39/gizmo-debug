@@ -75,7 +75,7 @@ void rt_particle2in_source(struct rt_sourcedata_in *in, int i)
     double dt = 1; // make this do nothing unless flags below are set:
 #if defined(RT_INJECT_PHOTONS_DISCRETELY)
 #ifndef WAKEUP
-    dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+    dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
     dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
