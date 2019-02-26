@@ -254,9 +254,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #if defined(NEWSINK_STOCHASTIC_ACCRETION)
     double w; int kicked=0;
 #endif
-#ifdef NEWSINK_RELOCATE_KICKED_PARTICLE
+#ifdef NEWSINK_JET_OPENING_ANGLE
     double phi_angle, theta_angle;
-    double max_theta_angle=NEWSINK_JET_OPENING_ANGLE*M_PI/180.0;
+    double max_theta_angle=NEWSINK_JET_OPENING_ANGLE/2.0*M_PI/180.0; //max of theta is half the opening angles
     MyFloat reldir[3],b_vect1[3],b_vect2[3],b_vect3[3];
 #endif
     MyFloat *pos, h_i, bh_mass;
@@ -627,11 +627,11 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #endif
                                 for(k=0,norm=0;k<3;k++) {norm+=dir[k]*dir[k];} if(norm<=0) {dir[0]=0;dir[1]=0;dir[2]=1;norm=1;} else {norm=sqrt(norm);dir[0]/=norm;dir[1]/=norm;dir[2]/=norm;}
-#if defined(NEWSINK_RELOCATE_KICKED_PARTICLE) //get the new relative position vector for the particle (from sink)
+#if defined(NEWSINK_JET_OPENING_ANGLE) //get the new relative position vector for the particle velocity (from sink)
                                 theta_angle = max_theta_angle * get_random_number(P[j].ID); //uniformly chosen
                                 phi_angle=acos(1.0 - 2.0 * get_random_number(P[j].ID)); //chosen in a way to get a uniform distribution on the spherical surface
                                 reldir[0]=cos(phi_angle) * sin(theta_angle); reldir[1]=sin(phi_angle) * sin(theta_angle); reldir[2]=cos(theta_angle); //get relative direction from polar axis      
-                                //Let's get the other base vectors and get the new position and velocity direction for the particle. 
+                                //Let's get the other base vectors and get the new velocity direction for the particle. 
                                 b_vect3[0]=dir[0];b_vect3[1]=dir[1];b_vect3[2]=dir[2];
                                 b_vect1[0] = 0.0; b_vect1[1] = - dir[2]; b_vect1[2] = - dir[1]; //We get the first base by taking cross product of dir with +x unit vector
                                 for(k=0,norm=0;k<3;k++) {norm+=b_vect1[k]*b_vect1[k];} if(norm<=0) {b_vect1[0]=1.0;dir[1]=0;dir[2]=1;norm=1;} else {norm=sqrt(norm);b_vect1[0]/=norm;b_vect1[1]/=norm;b_vect1[2]/=norm;}
@@ -641,8 +641,10 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 b_vect2[2] = b_vect3[0] * b_vect1[1] - b_vect3[1] * b_vect1[0];
                                 //Now we get the new direction
                                 for(k=0;k<3;k++) {dir[k]=reldir[0]*b_vect1[k]+reldir[1]*b_vect2[k]+reldir[2]*b_vect2[k];}
+#if defined(NEWSINK_RELOCATE_KICKED_PARTICLE)
                                 //Let's reposition the particle
                                 for(k=0;k<3;k++) {P[j].Pos[k]=dir[k]*int_zone_radius;}//Put the particle at the edge of the interaction zone
+#endif
 #endif
 
                                 for(k=0;k<3;k++) {P[j].Vel[k]+=v_kick*All.cf_atime*dir[k]; SphP[j].VelPred[k]+=v_kick*All.cf_atime*dir[k];}
