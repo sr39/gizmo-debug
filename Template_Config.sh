@@ -363,6 +363,7 @@
 ####################################################################################################
 # --------------------------------------- Input/Output options
 ####################################################################################################
+#LONG_INTEGER_TIME              # total number of interger time step = 1<<39
 #OUTPUT_ADDITIONAL_RUNINFO      # enables extended simulation output data (can slow down machines significantly in massively-parallel runs)
 #OUTPUT_IN_DOUBLEPRECISION      # snapshot files will be written in double precision
 #INPUT_IN_DOUBLEPRECISION       # input files assumed to be in double precision (otherwise float is assumed)

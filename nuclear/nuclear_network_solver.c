@@ -170,7 +170,7 @@ void network_solver_deinit(struct network_solver_data *nsd)
 void network_solver_interpolate_trajectory(struct network_solver_trajectory *traj, double time, double *rho,
 					   double *energy)
 {
-  int timestep;
+  integertime timestep;
   double dt, tstep;
 
   timestep = traj->timestep;

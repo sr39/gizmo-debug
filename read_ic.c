@@ -618,6 +618,8 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_AGS_NGBS:
         case IO_AGS_RHO:
         case IO_AGS_QPT:
+        case IO_AGS_PSI_RE:
+        case IO_AGS_PSI_IM:
             break;
 
             

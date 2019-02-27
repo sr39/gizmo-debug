@@ -150,7 +150,7 @@ void find_timesteps(void)
     
     integertime ti_min_glob;
     
-    MPI_Allreduce(&ti_step, &ti_min_glob, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+    MPI_Allreduce(&ti_step, &ti_min_glob, 1, MPI_TYPE_TIME, MPI_MIN, MPI_COMM_WORLD);
 #endif
     
     
@@ -474,9 +474,8 @@ integertime get_timestep(int p,		/*!< particle index */
     if((P[p].Type > 0) && (P[p].AGS_Density > 0))
     {
         /* fuzzy DM admits longitudinal waves with group velocity =(hbar/m_dm)*k, so need a courant criterion, but because of scaling with k (like diffusion), timestep is quadratic in resolution */
-        double vgroup_over_k_fuzzy = 591569.000 / ((double)All.FuzzyDM_Mass_in_eV * (double)All.UnitVelocity_in_cm_per_s * (double)All.UnitLength_in_cm/(double)All.HubbleParam); // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
         double L_particle_ags_x = Get_Particle_Size_AGS(p) * All.cf_atime;
-        double dt_cour_ags_fuzzy = 0.25 * (L_particle_ags_x*L_particle_ags_x) / vgroup_over_k_fuzzy; // wavespeed of resolve-able waves
+        double dt_cour_ags_fuzzy = 0.25 * (L_particle_ags_x*L_particle_ags_x) / All.ScalarField_hbar_over_mass; // wavespeed of resolve-able waves
         if(dt_cour_ags_fuzzy < dt) {dt = dt_cour_ags_fuzzy;}
         dt_cour_ags_fuzzy = 0.25 * L_particle_ags_x / sqrt(MIN_REAL_NUMBER + (10./9.)*P[p].AGS_Numerical_QuantumPotential/P[p].Mass); // wavespeed based on 'stored' sub-grid energy [can get comparable]
         if(dt_cour_ags_fuzzy < dt) {dt = dt_cour_ags_fuzzy;}
@@ -938,7 +937,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
             if(dt_accr > 0 && dt_accr < dt) {dt = dt_accr;}
 
-        double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? (1 << BPP(p).BH_TimeBinGasNeighbor) : 0) * All.Timebase_interval / All.cf_hubble_a;
+        double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? (((integertime) 1) << BPP(p).BH_TimeBinGasNeighbor) : 0) * All.Timebase_interval / All.cf_hubble_a;
 
         if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 #ifdef SINGLE_STAR_FORMATION
@@ -1030,9 +1029,9 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         printf("\nError: A timestep of size zero was assigned on the integer timeline, no here!!!\n"
                "We better stop.\n"
-               "Task=%d Part-ID=%llu dt=%g dtc=%g dtv=%g dtdis=%g tibase=%g ti_step=%d ac=%g xyz=(%g|%g|%g) tree=(%g|%g|%g)\n\n",
+               "Task=%d Part-ID=%llu dt=%g dtc=%g dtv=%g dtdis=%g tibase=%g ti_step=%lld ac=%g xyz=(%g|%g|%g) tree=(%g|%g|%g)\n\n",
                ThisTask, (unsigned long long) P[p].ID, dt, dt_courant, dt_divv, dt_displacement,
-               All.Timebase_interval, ti_step, ac,
+               All.Timebase_interval, (long long) ti_step, ac,
                P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], P[p].GravAccel[0], P[p].GravAccel[1],
                P[p].GravAccel[2]);
 #ifdef PMGRID
@@ -1175,8 +1174,9 @@ int get_timestep_bin(integertime ti_step)
 #ifdef WAKEUP
 void process_wake_ups(void)
 {
-    int i, n, dt_bin;
-    int ti_next_for_bin, ti_next_kick, ti_next_kick_global, max_time_bin_active;
+    int i, n;
+    integertime dt_bin, ti_next_for_bin, ti_next_kick, ti_next_kick_global;
+    int max_time_bin_active;
     int bin, binold, prev, next;
     long long ntot;
     
@@ -1201,7 +1201,7 @@ void process_wake_ups(void)
         }
     }
     
-    MPI_Allreduce(&ti_next_kick, &ti_next_kick_global, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+    MPI_Allreduce(&ti_next_kick, &ti_next_kick_global, 1, MPI_TYPE_TIME, MPI_MIN, MPI_COMM_WORLD);
     
 #ifndef IO_REDUCED_MODE
     if(ThisTask == 0) printf("predicting next timestep: %g\n", (ti_next_kick_global - All.Ti_Current) * All.Timebase_interval);

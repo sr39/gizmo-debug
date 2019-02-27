@@ -703,10 +703,17 @@ int network_integrate( double temp, double rho, const double *x, double *dx, dou
 #define  GALSF_GENERATIONS     1	/*!< Number of star particles that may be created per gas particle */
 #endif
 
-
+#ifdef LONG_INTEGER_TIME
+typedef  long long integertime;
+static MPI_Datatype MPI_TYPE_TIME = MPI_LONG_LONG;
+#define  TIMEBINS        39
+#else
 typedef  int integertime;
+static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 #define  TIMEBINS        29
-#define  TIMEBASE        (1<<TIMEBINS)  /*!< The simulated timespan is mapped onto the integer interval [0,TIMESPAN],
+#endif
+
+#define  TIMEBASE        (((integertime) 1)<<TIMEBINS)  /*!< The simulated timespan is mapped onto the integer interval [0,TIMESPAN],
                                          *   where TIMESPAN needs to be a power of 2. Note that (1<<28) corresponds
                                          *   to 2^29
                                          */
@@ -1631,7 +1638,7 @@ extern struct global_data_all_processes
     TimeLastRestartFile,	/*!< cpu-time when last restart-file was written */
     TimeBetStatistics,		/*!< simulation time interval between computations of energy statistics */
     TimeLastStatistics;		/*!< simulation time when the energy statistics was computed the last time */
-  int NumCurrentTiStep;		/*!< counts the number of system steps taken up to this point */
+  integertime NumCurrentTiStep;		/*!< counts the number of system steps taken up to this point */
 
   /* Current time of the simulation, global step, and end of simulation */
 
@@ -2023,7 +2030,7 @@ extern struct global_data_all_processes
 #endif
     
 #ifdef DM_FUZZY
-  double FuzzyDM_Mass_in_eV;
+  double ScalarField_hbar_over_mass;
 #endif
 
 #ifdef TURB_DRIVING
@@ -2221,7 +2228,7 @@ extern ALIGN(32) struct particle_data
 #endif
     
 #ifdef DM_SIDM
-    int dt_step_sidm; /*!< timestep used if self-interaction probabilities greater than 0.2 are found */
+    integertime dt_step_sidm; /*!< timestep used if self-interaction probabilities greater than 0.2 are found */
     long unsigned int NInteractions; /*!< Total number of interactions */
 #endif
 
@@ -2260,7 +2267,7 @@ extern ALIGN(32) struct particle_data
     float GravCost[GRAVCOSTLEVELS];   /*!< weight factor used for balancing the work-load */
     
 #ifdef WAKEUP
-    int dt_step;
+    integertime dt_step;
 #endif
     
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
@@ -2279,10 +2286,16 @@ extern ALIGN(32) struct particle_data
     MyFloat AGS_Numerical_QuantumPotential; /*!< additional potential terms 'generated' by un-resolved compression [numerical diffusivity] */
     MyFloat AGS_Dt_Numerical_QuantumPotential; /*!< time derivative of the above */
     MyFloat AGS_Psi_Re;
+    MyFloat AGS_Psi_Re_Pred;
+    MyFloat AGS_Dt_Psi_Re;
     MyFloat AGS_Gradients_Psi_Re[3];
+    MyFloat AGS_Gradients2_Psi_Re[3][3];
     MyFloat AGS_Psi_Im;
+    MyFloat AGS_Psi_Im_Pred;
+    MyFloat AGS_Dt_Psi_Im;
     MyFloat AGS_Gradients_Psi_Im[3];
-    MyFloat AGS_Grad2_Psi_Im[3];
+    MyFloat AGS_Gradients2_Psi_Im[3][3];
+    MyFloat AGS_Dt_Psi_Mass;
 #endif
 #if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
     MyFloat NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */
@@ -2976,6 +2989,8 @@ enum iofields
   IO_AGS_SOFT,
   IO_AGS_RHO,
   IO_AGS_QPT,
+  IO_AGS_PSI_RE,
+  IO_AGS_PSI_IM,
   IO_AGS_ZETA,
   IO_AGS_OMEGA,
   IO_AGS_CORR,

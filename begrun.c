@@ -498,6 +498,12 @@ void set_units(void)
 #define m_p (PROTONMASS * g)
 #define k_B (BOLTZMANN * erg / deg)
 
+    
+#ifdef DM_FUZZY
+    /* For Schroedinger equation: this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass. This is the key variable used throughout */
+    All.ScalarField_hbar_over_mass = 591569.0 / ((double)All.ScalarField_hbar_over_mass * (double)All.UnitVelocity_in_cm_per_s * (double)All.UnitLength_in_cm/(double)All.HubbleParam);
+#endif
+    
 
 #if defined(CONDUCTION_SPITZER) || defined(VISCOSITY_BRAGINSKII)
     /* Note: Because we replace \nabla(T) in the conduction equation with
@@ -1660,7 +1666,7 @@ void read_parameter_file(char *fname)
 
 #ifdef DM_FUZZY
         strcpy(tag[nt], "FuzzyDM_Mass_in_eV");
-        addr[nt] = &All.FuzzyDM_Mass_in_eV;
+        addr[nt] = &All.ScalarField_hbar_over_mass;
         id[nt++] = REAL;
 #endif
         
