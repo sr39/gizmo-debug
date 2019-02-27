@@ -774,7 +774,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
 #endif
         /* note, if you want to use this routine to inject magnetic flux or cosmic rays, do this below */
 #ifdef MAGNETIC
-        SphP[j].divB = 0; for(k=0;k<3;k++) {SphP[j].B[k]*=1.e-10; SphP[j].BPred[k]=0; SphP[j].DtB[k]=0;} /* add magnetic flux here if desired */
+        SphP[j].divB = 0; for(k=0;k<3;k++) {SphP[j].B[k]*=1.e-10; SphP[j].BPred[k]*=1.e-10; SphP[j].DtB[k]=0;} /* add magnetic flux here if desired */
 #ifdef DIVBCLEANING_DEDNER
         SphP[j].DtPhi = SphP[j].PhiPred = SphP[j].Phi = 0;
 #endif
@@ -800,7 +800,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
         for(k=0;k<3;k++) {P[j].Pos[k]=P[i].Pos[k] + dx[k]*d_r;}
 
         /* velocities (determined by wind velocity) */
-        for(k=0;k<3;k++) {P[j].Vel[0]=P[i].Vel[0] + dx[k]*All.BAL_v_outflow*All.cf_atime; SphP[j].VelPred[k]=P[j].Vel[k];}
+        for(k=0;k<3;k++) {P[j].Vel[k]=P[i].Vel[k] + dx[k]*All.BAL_v_outflow*All.cf_atime; SphP[j].VelPred[k]=P[j].Vel[k];}
 
         /* condition number, smoothing length, and density */
         SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
