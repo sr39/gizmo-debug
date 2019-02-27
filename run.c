@@ -342,7 +342,6 @@ void compute_statistics(void)
 #ifndef IO_REDUCED_MODE
         energy_statistics();	/* compute and output energy statistics */
 #endif
-#endif
         All.TimeLastStatistics += All.TimeBetStatistics;
     }
 }
@@ -950,9 +949,6 @@ void write_cpu_log(void)
 #ifdef GRAIN_FLUID
           "grains        %10.2f  %5.1f%%\n"
 #endif
-#ifdef GRAIN_FLUID
-          "grains        %10.2f  %5.1f%%\n"
-#endif
           "mech_fb_loop  %10.2f  %5.1f%%\n"
           "hII_fb_loop   %10.2f  %5.1f%%\n"
           "localwindkik  %10.2f  %5.1f%%\n"
@@ -1035,7 +1031,6 @@ void write_cpu_log(void)
 #ifdef GRAIN_FLUID
     All.CPU_Sum[CPU_DRAGFORCE], (All.CPU_Sum[CPU_DRAGFORCE]) / All.CPU_Sum[CPU_ALL] * 100,
 #endif
-    All.CPU_Sum[CPU_GASRETURN], (All.CPU_Sum[CPU_GASRETURN]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_SNIIHEATING], (All.CPU_Sum[CPU_SNIIHEATING]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_HIIHEATING], (All.CPU_Sum[CPU_HIIHEATING]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_LOCALWIND], (All.CPU_Sum[CPU_LOCALWIND]) / All.CPU_Sum[CPU_ALL] * 100,
@@ -1107,7 +1102,6 @@ void energy_statistics(void)
 
 void output_extra_log_messages(void)
 {
-#if defined(DM_SIDM)
 #if defined(TURB_DRIVING) && !defined(IO_REDUCED_MODE)
     log_turb_temp();
 #endif

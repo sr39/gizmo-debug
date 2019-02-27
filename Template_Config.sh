@@ -155,9 +155,9 @@
 #PM_HIRES_REGION_CLIPDM         # split low-res DM particles that enter high-res region (completely surrounded by high-res)
 ## -----------------------------------------------------------------------------------------------------
 # ---------------------------------------- Adaptive Grav. Softening (including Lagrangian conservation terms!)
-#ADAPTIVE_GRAVSOFT_FORGAS       # allows variable softening length (=Hsml) for gas particles
-#ADAPTIVE_GRAVSOFT_FORALL=100   # enable adaptive gravitational softening lengths for all particle types
-                                # dm for dm, sidm for sidm, etc. If set to numerical value, the maximum softening is this times All.ForceSoftening[for appropriate particle type]. cite Hopkins et al., arXiv:1702.06148
+#ADAPTIVE_GRAVSOFT_FORGAS       # allows variable softening length for gas particles (scaled with local inter-element separation), so gravity traces same density field seen by hydro
+#ADAPTIVE_GRAVSOFT_FORALL=100   # enable adaptive gravitational softening lengths for all particle types (ADAPTIVE_GRAVSOFT_FORGAS should be disabled). the softening is set to the distance
+                                # enclosing a neighbor number set in the parameter file. baryons search for other baryons, dm for dm, sidm for sidm, etc. If set to numerical value, the maximum softening is this times All.ForceSoftening[for appropriate particle type]. cite Hopkins et al., arXiv:1702.06148
 ## -----------------------------------------------------------------------------------------------------
 #SELFGRAVITY_OFF                # turn off self-gravity (compatible with GRAVITY_ANALYTIC); setting NOGRAVITY gives identical functionality
 #GRAVITY_NOT_PERIODIC           # self-gravity is not periodic, even though the rest of the box is periodic
@@ -349,45 +349,6 @@
 ####################################################################################################
 
 
-############################################################################################################################-
-#--------------------------------------- Radiative Transfer & Radiation Hydrodynamics:
-#--------------------------------------------- modules developed by PFH with David Khatami, Mike Grudic, and Nathan Butcher
-#---------------------------------------------  (special thanks to Alessandro Lupi): not for use without authors permission [these are proprietary because still in development before public release]
-############################################################################################################################-
-#--------------------- methods for calculating photon propagation (one, and only one, of these MUST be on for RT)
-#RT_LEBRON                              # RT solved using the LEBRON approximation (locally-extincted background radiation in optically-thin networks; default in the FIRE simulations)
-#RT_OTVET                               # RT solved using the OTVET approximation (optically thin Eddington tensor, but interpolated to thick when appropriate)
-#RT_M1                                  # RT solved using the M1 approximation (solve fluxes and tensors with M1 closure; gives better shadowing; currently only compatible with explicit diffusion solver)
-#RT_FLUXLIMITEDDIFFUSION                # RT solved using the flux-limited diffusion approximation (constant, always-isotropic Eddington tensor)
-#--------------------- solvers (numerical) --------------------------------------------------------
-#RT_SPEEDOFLIGHT_REDUCTION=1            # set to a number <1 to use the 'reduced speed of light' approximation for photon propagation (C_eff=C_true*RT_SPEEDOFLIGHT_REDUCTION)
-#RT_DIFFUSION_IMPLICIT                  # solve the diffusion part of the RT equations (if needed) implicitly with Conjugate Gradient iteration (Petkova+Springel): less accurate and only works with some methods, but allows larger timesteps [otherwise more accurate explicit used]
-#--------------------- physics: wavelengths+coupled RT-chemistry networks -----------------------------------
-#RT_SOURCES=1+16+32                     # source list for ionizing photons given by bitflag (1=2^0=gas,16=2^4=new stars,32=2^5=BH)
-#RT_XRAY=3                              # x-rays: 1=soft (0.5-2 keV), 2=hard (>2 keV), 3=soft+hard; used for Compton-heating
-#RT_CHEM_PHOTOION=2                     # ionizing photons: 1=H-only [single-band], 2=H+He [four-band]
-#RT_LYMAN_WERNER                        # specific lyman-werner [narrow H2 dissociating] band
-#RT_PHOTOELECTRIC                       # far-uv (8-13.6eV): track photo-electric heating photons + their dust interactions
-#RT_OPTICAL_NIR                         # optical+near-ir: 3600 Angstrom-3 micron (where direct stellar emission dominates)
-#RT_INFRARED                            # infrared: photons absorbed in other bands are down-graded to IR: IR radiation + dust + gas temperatures evolved independently
-#--------------------- radiation pressure options -------------------------------------------------
-#RT_DISABLE_RAD_PRESSURE                # turn off radiation pressure forces (included by default)
-#RT_RAD_PRESSURE_OUTPUT                 # print radiation pressure to file (requires some extra variables to save it)
-##-----------------------------------------------------------------------------------------------------
-#------------ test-problem, deprecated, or de-bugging functions
-##-----------------------------------------------------------------------------------------------------
-#RT_SELFGRAVITY_OFF                           # turn off gravity: if using an RT method that needs the gravity tree (FIRE, OTVET), use this -instead- of SELFGRAVITY_OFF to safely turn off gravitational forces
-#RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR # when RT_DIFFUSION_CG is enabled, modifies the Eddington tensor to the fully anisotropic version (less stable CG iteration)
-#RT_SEPARATELY_TRACK_LUMPOS             # keep luminosity vs. mass positions separate in tree (useful if running in tree-only mode)
-#RT_DISABLE_FLUXLIMITER                 # removes the flux-limiter from the diffusion operations (default is to include it when using the relevant approximations)
-#RT_HYDROGEN_GAS_ONLY                   # sets hydrogen fraction to 1.0 (used for certain idealized chemistry calculations)
-#RT_COOLING_PHOTOHEATING_OLDFORMAT      # includes photoheating and cooling (using RT information), doing just the photo-heating [for more general cooling physics, enable COOLING]
-#RT_FIRE_FIX_SPECTRAL_SHAPE             # enable with GALSF_FB_RT_PHOTONMOMENTUM to use a fixed SED shape set in parameterfile for all incident fluxes
-#RT_DISABLE_UV_BACKGROUND               # disable extenal UV background in cooling functions (to isolate pure effects of local RT, or if simulating the background directly)
-#RT_INJECT_PHOTONS_DISCRETELY           # do photon injection in discrete packets, instead of sharing a continuous source function. works better with adaptive timestepping (default with GALSF)
-####################################################################################################-
-
-
 
 ####################################################################################################
 # --------------------------------------- Multi-Threading and Parallelization options
@@ -498,35 +459,6 @@
 ####################################################################################################-
 
 
-####################################################################################################-
-#---------------------------------------- Subhalo on-the-fly finder options (needs "subfind" source code)
-#------------------ This is originally developed as part of GADGET-3 (SUBFIND) by V. Springel
-#------------------ Use of these modules follows the GADGET-3 permissions; if you are not sure, contact Volker
-####################################################################################################-
-#SUBFIND                            #- enables substructure finder
-#MAX_NGB_CHECK=3                    #- Max numbers of neighbours for sattlepoint detection (default = 2)
-#SAVE_MASS_TAB                      #- Saves the an additional array with the masses of the different components
-#SUBFIND_SAVE_PARTICLELISTS         #- Saves also phase-space and type variables parallel to IDs
-#SO_VEL_DISPERSIONS                 #- computes velocity dispersions for as part of FOF SO-properties
-#ONLY_PRODUCE_HSML_FILES            #- only carries out density estimate
-#SAVE_HSML_IN_IC_ORDER              #- will store the hsml-values in the order of the particles in the IC file
-#KEEP_HSML_AS_GUESS                 #- keep using hsml for gas particles in subfind_density
-#NO_GAS_CLOUDS                      #- Do not accept pure gaseous substructures
-#WRITE_SUB_IN_SNAP_FORMAT           #- Save subfind results in snap format
-#DUSTATT=11                         #- Includes dust attenuation into the luminosity calculation (using 11 radial bins)
-#OBSERVER_FRAME                     #- If defined, use CB07 Observer Frame Luminosities, otherwise CB07 Rest Frame Luminosities
-#SO_BAR_INFO                        #- Adds temperature, Lx, bfrac, etc to Groups
-#SUBFIND_COUNT_BIG_HALOS=1e4        #- Adds extra blocks for Halos with M_TopHat > SUBFIND_COUNT_BIG_HALOS
-#KD_CHOOSE_PSUBFIND_LIMIT           #- Increases the limit for the parallel subfind to the maximum possible
-#KD_ALTERNATIVE_GROUP_SORT          #- Alternative way to sort the Groups/SubGroupe before writing
-#SUBFIND_READ_FOF                   #-
-#SUBFIND_COLLECTIVE_STAGE1          #-
-#SUBFIND_COLLECTIVE_STAGE2          #-
-#SUBFIND_ALTERNATIVE_COLLECTIVE     #-
-#SUBFIND_RESHUFFLE_CATALOGUE        #-
-#SUBFIND_RESHUFFLE_AND_POTENTIAL    #- needs -DSUBFIND_RESHUFFLE_CATALOGUE and COMPUTE_POTENTIAL_ENERGY
-#SUBFIND_DENSITY_AND_POTENTIAL      #- only calculated density and potential and write them into snapshot
-####################################################################################################-
 
 ####################################################################################################-
 ##----------------------------------------------------------------------------------------------------
@@ -549,6 +481,7 @@
 ####################################################################################################-
 
 
+
 ####################################################################################################-
 #---------------------------------------- Subhalo on-the-fly finder options (needs "subfind" source code)
 #------------------ This is originally developed as part of GADGET-3 (SUBFIND) by V. Springel
@@ -578,6 +511,9 @@
 #SUBFIND_RESHUFFLE_AND_POTENTIAL    #- needs -DSUBFIND_RESHUFFLE_CATALOGUE and COMPUTE_POTENTIAL_ENERGY
 #SUBFIND_DENSITY_AND_POTENTIAL      #- only calculated density and potential and write them into snapshot
 ####################################################################################################-
+
+
+
 ####################################################################################################-
 #--------------------------------------- nuclear network
 #-------------------------------- (these are currently non-functional and should not be used)

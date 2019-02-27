@@ -78,9 +78,6 @@ void compute_hydro_densities_and_forces(void)
         if(ThisTask == 0) {printf("Start density & tree-update computation...\n");}
 #endif
         density();		/* computes density, and pressure */
-#ifdef DM_BARYON_INTERACTION
-        dm_density();
-#endif
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
         ags_density();
 #endif

@@ -121,8 +121,6 @@
 
 
 
-
-
 #if (defined(HYDRO_DENSITY_SPH) || defined(HYDRO_PRESSURE_SPH)) && !defined(HYDRO_SPH)
 #define HYDRO_SPH               /* master flag for SPH: must be enabled if any SPH method is used */
 #endif
@@ -134,7 +132,6 @@
 #define SPHAV_ARTIFICIAL_CONDUCTIVITY      /* Enables mixing entropy (J.Read's improved Price-Monaghan conductivity with Cullen-Dehnen switches) */
 #endif
 #endif
-#ifdef PERIODIC
 
 #ifdef PERIODIC
 #define BOX_PERIODIC
@@ -179,251 +176,6 @@
 
 
 #include "eos/eos.h"
-
-
-#ifdef CBE_INTEGRATOR
-#ifndef ADAPTIVE_GRAVSOFT_FORALL
-#define ADAPTIVE_GRAVSOFT_FORALL 100000
-#endif
-#define CBE_INTEGRATOR_NBASIS 5
-#endif
-
-
-#ifdef FIRE_PHYSICS_DEFAULTS
-#define COOLING
-#define COOL_LOW_TEMPERATURES
-#define COOL_METAL_LINES_BY_SPECIES
-#define GALSF
-#define METALS
-#define TURB_DIFF_METALS
-#define TURB_DIFF_METALS_LOWORDER
-#define GALSF_SFR_MOLECULAR_CRITERION
-#define GALSF_SFR_VIRIAL_SF_CRITERION 0
-#define GALSF_FB_GASRETURN
-#define GALSF_FB_HII_HEATING
-#define GALSF_FB_SNE_HEATING 1
-#define GALSF_FB_RT_PHOTONMOMENTUM
-#define GALSF_FB_LOCAL_UV_HEATING
-#define GALSF_FB_RPWIND_LOCAL
-#define GALSF_FB_RPROCESS_ENRICHMENT 4
-//#define GALSF_SFR_IMF_VARIATION
-#define PROTECT_FROZEN_FIRE
-#else
-#if (defined(COOLING) && defined(GALSF) && defined(GALSF_FB_SNE_HEATING)) && !defined(FIRE_UNPROTECT_FROZEN)
-#define PROTECT_FROZEN_FIRE
-#endif
-#endif
-
-#ifdef PROTECT_FROZEN_FIRE
-#define USE_ORIGINAL_FIRE2_SNE_COUPLING_SCHEME // set to use the 'base' FIRE-2 SNe coupling. if commented out, will user newer version that more accurately manages the injected energy with neighbors moving to inject a specific target
-#endif
-
-
-
-#ifdef COSMIC_RAYS
-#define GAMMA_COSMICRAY (4.0/3.0)
-#define GAMMA_COSMICRAY_MINUS1 (GAMMA_COSMICRAY-1)
-#endif
-
-#if defined(COOL_GRACKLE) 
-#if !defined(COOLING)
-#define COOLING
-#endif
-#include <grackle.h>
-#endif
-
-
-
-#ifdef SINGLE_STAR_FORMATION
-#define GALSF // master switch needed to enable various frameworks
-#define GALSF_SFR_VIRIAL_SF_CRITERION 2 // only allow star formation in virialized sub-regions meeting Jeans threshold
-#define METALS  // metals should be active for stellar return
-#define BLACK_HOLES // need to have black holes active since these are our sink particles
-#define GALSF_SFR_IMF_VARIATION // save extra information about sinks when they form
-#ifdef SINGLE_STAR_ACCRETION
-#define BH_SWALLOWGAS // need to swallow gas [part of sink model]
-#define BH_GRAVCAPTURE_GAS // use gravitational capture swallow criterion for resolved gravitational capture
-#if (SINGLE_STAR_ACCRETION > 0)
-#define BH_ALPHADISK_ACCRETION // swallowed gas goes to disk
-#endif
-#if (SINGLE_STAR_ACCRETION > 1)
-#define BH_BONDI 0 // use Bondi accretion for diffuse gas
-#endif
-#if (SINGLE_STAR_ACCRETION > 2)
-#define BH_SUBGRIDBHVARIABILITY // model sub-grid [unresolved] variability in accretion rates for Bondi
-#endif
-#endif
-#define BH_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
-//#GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory
-#ifdef SINGLE_STAR_FB_HEATING
-#define GALSF_FB_RT_PHOTONMOMENTUM  // turn on FIRE RT approximation: no Type-4 particles so don't worry about its approximations
-#define BH_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework. make sure BH_FluxMomentumFactor=0 to avoid launching winds this way!!!
-#define BH_COMPTON_HEATING // turn on the heating term: this just calculates incident BH-particle flux, to be used in the cooling routine
-#endif
-#ifdef SINGLE_STAR_FB_JETS
-//#define BH_WIND_CONTINUOUS 0
-#define BH_WIND_KICK 1 // use kinetic feedback module for protostellar jets (for this, use the simple kicking module, it's not worth the expense of the other)
-#endif
-#ifdef SINGLE_STAR_PROMOTION
-#define GALSF_FB_GASRETURN // stellar winds [scaled appropriately for particle masses]
-#define GALSF_FB_HII_HEATING // FIRE approximate photo-ionization [for particle masses; could also use real-RT]
-#define GALSF_FB_SNE_HEATING 1 // allow SNe in promoted stars [at end of main sequence lifetimes]
-#define GALSF_FB_RPWIND_LOCAL // local radiation pressure [scaled with mass, single-scattering term here]
-#define GALSF_FB_RPWIND_CONTINUOUS // force the local rad-pressure term to be continuous instead of small impulses
-#endif
-// if not using grackle modules, need to make sure appropriate cooling is enabled
-#if defined(COOLING) && !defined(COOL_GRACKLE)
-#ifndef COOL_LOW_TEMPERATURES
-#define COOL_LOW_TEMPERATURES // make sure low-temperature cooling is enabled!
-#endif
-#ifndef COOL_METAL_LINES_BY_SPECIES
-#define COOL_METAL_LINES_BY_SPECIES // metal-based cooling enabled
-#endif
-#endif
-#endif // SINGLE_STAR_FORMATION
-
-
-
-
-
-
-#ifdef MHD_CONSTRAINED_GRADIENT
-/* make sure mid-point gradient calculation for cleaning terms is enabled */
-#ifndef MHD_CONSTRAINED_GRADIENT_MIDPOINT
-#define MHD_CONSTRAINED_GRADIENT_MIDPOINT
-#endif
-#endif
-/* these are tolerances for the slope-limiters. we define them here, because the gradient constraint routine needs to
-    be sure to use the -same- values in both the gradients and reimann solver routines */
-#if MHD_CONSTRAINED_GRADIENT
-#if (MHD_CONSTRAINED_GRADIENT > 1)
-#define MHD_CONSTRAINED_GRADIENT_FAC_MINMAX 7.5
-#define MHD_CONSTRAINED_GRADIENT_FAC_MEDDEV 5.0
-#define MHD_CONSTRAINED_GRADIENT_FAC_MED_PM 0.25
-#define MHD_CONSTRAINED_GRADIENT_FAC_MAX_PM 0.25
-#else
-#define MHD_CONSTRAINED_GRADIENT_FAC_MINMAX 7.5
-#define MHD_CONSTRAINED_GRADIENT_FAC_MEDDEV 1.5
-#define MHD_CONSTRAINED_GRADIENT_FAC_MED_PM 0.2
-#define MHD_CONSTRAINED_GRADIENT_FAC_MAX_PM 0.2
-#endif
-#else
-#define MHD_CONSTRAINED_GRADIENT_FAC_MINMAX 2.0
-#define MHD_CONSTRAINED_GRADIENT_FAC_MEDDEV 1.0
-#define MHD_CONSTRAINED_GRADIENT_FAC_MED_PM 0.20
-#define MHD_CONSTRAINED_GRADIENT_FAC_MAX_PM 0.125
-#endif
-
-
-#if defined(GALSF_FB_RPWIND_LOCAL) && !defined(GALSF_FB_RPWIND_FROMSFR)
-#define GALSF_FB_RPWIND_FROMSTARS
-#endif
-
-/* force 'master' flags to be enabled for the appropriate methods, if we have enabled something using those methods */
-
-/* options for FIRE RT method */
-#if defined(GALSF_FB_RT_PHOTONMOMENTUM)
-#ifndef RT_LEBRON
-#define RT_LEBRON
-#endif
-#endif
-#if defined(RT_LEBRON)
-// use gravity tree for flux propagation
-#define RT_USE_GRAVTREE
-#endif
-
-#ifdef RT_FLUXLIMITEDDIFFUSION
-#define RT_OTVET /* for FLD, we use the OTVET architecture, but then just set the tensor to isotropic */
-#endif
-
-/* options for OTVET module */
-#if defined(RT_OTVET)
-// RADTRANSFER is ON, obviously
-#ifndef RADTRANSFER
-#define RADTRANSFER
-#endif
-// need to solve a diffusion equation
-#ifndef RT_DIFFUSION
-#define RT_DIFFUSION
-#endif
-// use gravity tree for Eddington tensor
-#define RT_USE_GRAVTREE
-// and be sure to track luminosity locations 
-#ifndef RT_SEPARATELY_TRACK_LUMPOS
-#define RT_SEPARATELY_TRACK_LUMPOS
-#endif
-// need source injection enabled to define emissivity
-#define RT_SOURCE_INJECTION
-#if !defined(RT_DIFFUSION_IMPLICIT) && !defined(RT_DIFFUSION_EXPLICIT)
-#define RT_DIFFUSION_EXPLICIT // default to explicit (more accurate) solver //
-#endif
-#endif
-
-/* options for M1 module */
-#if defined(RT_M1)
-// RADTRANSFER is ON, obviously
-#ifndef RADTRANSFER
-#define RADTRANSFER
-#endif
-// need to solve a diffusion equation
-#ifndef RT_DIFFUSION
-#define RT_DIFFUSION
-#endif
-// need source injection enabled to define emissivity
-#define RT_SOURCE_INJECTION
-// and need to evolve fluxes
-#define RT_EVOLVE_FLUX
-// at the moment, this only works for explicit solutions, so set this on
-#ifndef RT_DIFFUSION_EXPLICIT
-#define RT_DIFFUSION_EXPLICIT
-#endif
-#endif
-
-
-/* decide which diffusion method to use (for any diffusion-based method) */
-#if defined(RT_DIFFUSION) && !defined(RT_DIFFUSION_EXPLICIT)
-#define RT_DIFFUSION_CG
-#endif
-/* check if flux-limiting is disabled: it should be on by default with diffusion-based methods */
-#if (defined(RT_DIFFUSION)) && !defined(RT_DISABLE_FLUXLIMITER)
-#define RT_FLUXLIMITER
-#endif
-/* check if we are -explicitly- evolving the radiation field, in which case we need to carry time-derivatives of the field */
-#if defined(RT_DIFFUSION_EXPLICIT)
-#define RT_EVOLVE_NGAMMA
-#endif
-
-/* enable radiation pressure forces unless they have been explicitly disabled */
-#if defined(RADTRANSFER) && !defined(RT_DISABLE_RAD_PRESSURE)
-#define RT_RAD_PRESSURE_FORCES
-#endif
-
-#if ((defined(RT_FLUXLIMITER) || defined(RT_RAD_PRESSURE_FORCES) || defined(RT_DIFFUSION_EXPLICIT)) && !defined(RT_EVOLVE_FLUX)) && !defined(RT_EVOLVE_EDDINGTON_TENSOR)
-#define RT_EVOLVE_EDDINGTON_TENSOR
-#endif
-
-/* enable appropriate chemistry flags if we are using the photoionization modules */
-#if defined(RT_CHEM_PHOTOION)
-#if (RT_CHEM_PHOTOION > 1)
-/* enables multi-frequency radiation transport for ionizing photons. Integration variable is the ionising intensity J_nu */
-#define RT_CHEM_PHOTOION_HE
-#define RT_PHOTOION_MULTIFREQUENCY // if using He-ionization, default to multi-frequency RT [otherwise doesn't make sense] //
-#endif
-#endif
-
-
-#if defined(RT_XRAY)
-#if (RT_XRAY == 1)
-#define RT_SOFT_XRAY
-#endif
-#if (RT_XRAY == 2)
-#define RT_HARD_XRAY
-#endif
-#if (RT_XRAY == 3)
-#define RT_SOFT_XRAY
-#define RT_HARD_XRAY
-#endif
-#endif
 
 
 #if defined(CBE_INTEGRATOR) || defined(DM_FUZZY) || defined(DM_SIDM)
@@ -893,11 +645,6 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define DOGRAD_SOUNDSPEED 1
 #endif
 
-#if defined(CONDUCTION) || defined(VISCOSITY) || defined(TURB_DIFFUSION) || defined(MHD_NON_IDEAL) || (defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DISABLE_DIFFUSION)) || (defined(RT_DIFFUSION_EXPLICIT) && !defined(RT_EVOLVE_FLUX))
-#ifndef DISABLE_SUPER_TIMESTEPPING
-//#define SUPER_TIMESTEP_DIFFUSION
-#endif
-#endif
 
 
 
@@ -1166,7 +913,6 @@ typedef unsigned long long peanokey;
 #define  PLANCK      6.6262e-27
 #define  CM_PER_MPC  3.085678e24
 #define  PROTONMASS  1.6726e-24
-#define  DARKMATTERMASS 1.6726e-22
 #define  ELECTRONMASS 9.10953e-28
 #define  THOMPSON     6.65245e-25
 #define  ELECTRONCHARGE  4.8032e-10
@@ -1688,8 +1434,6 @@ extern FILE
 #ifdef GR_TABULATED_COSMOLOGY
  *FdDE,         /*!< file handle for darkenergy.txt log-file. */
 #endif
-#endif
- *FdCPU;        /*!< file handle for cpu.txt log-file. */
 #endif
  *FdCPU;        /*!< file handle for cpu.txt log-file. */
 
@@ -2265,6 +2009,7 @@ extern struct global_data_all_processes
   double Tillotson_EOS_params[7][12]; /*! < holds parameters for Tillotson EOS for solids */
 #endif
 
+
 #ifdef EOS_TABULATED
     char EosTable[100];
 #endif
@@ -2300,9 +2045,6 @@ extern struct global_data_all_processes
   int StSpectForm;
   int StSeed;
 #endif
-#ifdef TURB_DRIVING_DUMPSPECTRUM 
-#endif
-
     
 #if defined(COOLING) && defined(COOL_GRACKLE)
     code_units GrackleUnits;
@@ -2331,19 +2073,7 @@ extern ALIGN(32) struct particle_data
     
     MyDouble Vel[3];                /*!< particle velocity at its current time */
     MyDouble dp[3];
-
-#ifdef DM_BARYON_INTERACTION
-     MyDouble dm_dtVel[3];
-     int count1;                        /*散乱レート確認*/
-     MyFloat dm_Hsml;        /*!< correction factor needed for varying kernel lengths */
-     MyFloat dm_NumNgb;
-     MyFloat dm_DhsmlNgbFactor;
-     MyFloat dm_Particle_DivVel;
-     MyFloat dm_AGS_zeta;
-#endif
-
     MyFloat Particle_DivVel;        /*!< velocity divergence of neighbors (for predict step) */
-
     
     MyDouble GravAccel[3];          /*!< particle acceleration due to gravity */
 #ifdef PMGRID
@@ -2424,7 +2154,6 @@ extern ALIGN(32) struct particle_data
 
 #if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
     MyFloat SNe_ThisTimeStep; /* flag that indicated number of SNe for the particle in the timestep */
-#endif
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
     MyFloat MassReturn_ThisTimeStep; /* gas return from stellar winds */
     MyFloat RProcessEvent_ThisTimeStep; /* R-process event tracker */
@@ -2541,8 +2270,6 @@ extern ALIGN(32) struct particle_data
     integertime dt_step;
 #endif
     
-#endif
-    
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     MyDouble AGS_Hsml;          /*!< smoothing length (for gravitational forces) */
     MyFloat AGS_zeta;           /*!< factor in the correction term */
@@ -2572,11 +2299,11 @@ extern ALIGN(32) struct particle_data
 #endif
 #if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
     MyFloat NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */
+#endif
 #ifdef CBE_INTEGRATOR
     double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];         /* moments per basis function */
     double CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];      /* time-derivative of moments per basis function */
 #endif
-
 }
  *P,				/*!< holds particle data on local processor */
  *DomainPartBuf;		/*!< buffer for particle data used in domain decomposition */
@@ -2612,27 +2339,7 @@ extern struct sph_particle_data
     MyDouble GravWorkTerm[3];       /*!< correction term needed for hydro mass flux in gravity */
     MyDouble ParticleVel[3];        /*!< actual velocity of the mesh-generating points */
 #endif
-#ifdef DM_BARYON_INTERACTION
-     MyDouble dm_density;
-     MyDouble dm_coll;
-     MyDouble dm_vrel;
-     MyDouble vx_baryon;
-     MyDouble vy_baryon;
-     MyDouble vz_baryon;
-     MyDouble vx_dm;
-     MyDouble vy_dm;
-     MyDouble vz_dm;
-     int      dm_count;
-     int      count0;
-     int      baryon_count;
-     MyDouble dm_DtInternalEnergy;
-     MyDouble baryon_dtVel[3];
-     MyFloat  dm_NV_T[3][3];
-     MyDouble dm_ConditionNumber;
-     MyDouble dm_DhsmlHydroSumFactor;
-     MyFloat  dm_AGS_zeta;
-     MyFloat  dm_NV[3]; 
-#endif
+
     MyDouble Pressure;              /*!< current pressure */
     MyDouble InternalEnergy;        /*!< internal energy of particle */
     MyDouble InternalEnergyPred;    /*!< predicted value of the internal energy at the current time */
@@ -2667,7 +2374,6 @@ extern struct sph_particle_data
     MyFloat Tensor_CRK_Face_Corrections[16]; /*!< tensor set for face-area correction terms for the CRK formulation of SPH or MFM/V areas */
 #endif
 
-    
 #ifdef COSMIC_RAYS
     MyFloat CosmicRayEnergy;        /*!< total energy of cosmic ray fluid (the conserved variable) */
     MyFloat CosmicRayEnergyPred;    /*!< total energy of cosmic ray fluid (the conserved variable) */
@@ -2676,7 +2382,22 @@ extern struct sph_particle_data
 #ifdef COSMIC_RAYS_M1
     MyFloat CosmicRayFlux[3];       /*!< CR flux vector [explicitly evolved] - conserved-variable */
     MyFloat CosmicRayFluxPred[3];   /*!< CR flux vector [explicitly evolved] - conserved-variable */
-    MyFloat DtCosmicRayFlux[3];     /*!< time-derivative of CR flux vector */
+#endif
+#ifdef COSMIC_RAYS_ALFVEN
+    MyFloat CosmicRayAlfvenEnergy[2];       /*!< forward and backward-traveling Alfven wave-packet energies */
+    MyFloat CosmicRayAlfvenEnergyPred[2];   /*!< drifted forward and backward-traveling Alfven wave-packet energies */
+    MyFloat DtCosmicRayAlfvenEnergy[2];     /*!< time derivative fof forward and backward-traveling Alfven wave-packet energies */
+#endif
+#endif
+    
+#ifdef SUPER_TIMESTEP_DIFFUSION
+    MyDouble Super_Timestep_Dt_Explicit; /*!< records the explicit step being used to scale the sub-steps for the super-stepping */
+    int Super_Timestep_j; /*!< records which sub-step if the super-stepping cycle the particle is in [needed for adaptive steps] */
+#endif
+    
+#ifdef SINGLE_STAR_FORMATION
+    MyFloat Density_Relative_Maximum_in_Kernel; /*!< hold density_max-density_i, for particle i, so we know if its a local maximum */
+#endif
     
     /* matrix of the primitive variable gradients: rho, P, vx, vy, vz, B, phi */
     struct
@@ -3039,11 +2760,6 @@ extern struct gravdata_out
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     MyLongDouble tidal_tensorps[3][3];
 #endif
-#ifdef DM_SIDM
-#endif
-#if defined(CBE_INTEGRATOR)
-    double CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10];
-#endif
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
     MyFloat min_xyz_to_bh[3];
@@ -3185,9 +2901,6 @@ enum iofields
   IO_SECONDORDERMASS,
   IO_U,
   IO_RHO,
-  IO_DMRHO,
-  IO_VREL,
-  IO_DMCOLL,
   IO_NE,
   IO_NH,
   IO_HSML,
@@ -3423,6 +3136,8 @@ extern ALIGN(32) struct NODE
     MyFloat bh_lum_hR;		/*!< local h/R for gas around BH (gives angular dependence) */
     MyFloat bh_lum_grad[3];	/*!< gradient vector for gas around BH (for angular dependence) */
 #endif    
+
+#ifdef BH_CALC_DISTANCES
   MyFloat bh_mass;      /*!< holds the BH mass in the node.  Used for calculating tree based dist to closest bh */
   MyFloat bh_pos[3];    /*!< holds the mass-weighted position of the the actual black holes within the node */
 #ifdef SINGLE_STAR_TIMESTEPPING

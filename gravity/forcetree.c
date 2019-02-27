@@ -101,6 +101,7 @@ static double fac_intp;
  */
 int force_treebuild(int npart, struct unbind_data *mp)
 {
+
     int flag;
     
 #ifdef BH_CALC_DISTANCES
@@ -119,6 +120,7 @@ int force_treebuild(int npart, struct unbind_data *mp)
         Numnodestree = force_treebuild_single(npart, mp);
 
         MPI_Allreduce(&Numnodestree, &flag, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+
         if(flag == -1)
         {
             force_treefree();
@@ -598,12 +600,6 @@ void force_update_node_recursive(int no, int sib, int father)
         s_dm[1] = vs_dm[1] = 0;
         s_dm[2] = vs_dm[2] = 0;
 #endif
-#ifdef DM_SCALARFIELD_SCREENING
-        mass_dm = 0;
-        s_dm[0] = vs_dm[0] = 0;
-        s_dm[1] = vs_dm[1] = 0;
-        s_dm[2] = vs_dm[2] = 0;
-#endif
         mass = 0;
         s[0] = 0;
         s[1] = 0;
@@ -932,6 +928,7 @@ void force_update_node_recursive(int no, int sib, int father)
 	    Nodes[no].chimes_stellar_lum_G0[k] = chimes_stellar_lum_G0[k]; 
 	    Nodes[no].chimes_stellar_lum_ion[k] = chimes_stellar_lum_ion[k]; 
 	  }
+#endif
 #endif
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
         Nodes[no].rt_source_lum_s[0] = rt_source_lum_s[0];
@@ -1873,37 +1870,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double targeth_si = All.ForceSoftening[ptype];
 #endif
 #endif
+
     
-#ifdef CBE_INTEGRATOR
-    double local_NV_T[3][3], local_V_i, local_CBE_basis_moments[CBE_INTEGRATOR_NBASIS][10], out_CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][10]={{0}};
-    if(mode==0)
-    {
-        int k1, k2;
-        local_V_i = pow(Get_Particle_Size(target), NUMDIMS);
-        for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {local_NV_T[k1][k2] = P[target].NV_T[k1][k2];}}
-        for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {local_CBE_basis_moments[k1][k2] = P[target].CBE_basis_moments[k1][k2];}}
-    } else {
-        int k1, k2;
-        local_V_i = GravDataGet[target].V_i;
-        for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {local_NV_T[k1][k2] = GravDataGet[target].NV_T[k1][k2];}}
-        for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {local_CBE_basis_moments[k1][k2] = GravDataGet[target].CBE_basis_moments[k1][k2];}}
-    }
-#endif
-
-#if defined(DM_SIDM) || defined(CBE_INTEGRATOR)
-    int targetdt_step; MyFloat targetVel[3];
-    if(mode==0)
-    {
-        int k2;
-        for(k2=0;k2<3;k2++) {targetVel[k2] = P[target].Vel[k2];}
-        targetdt_step = P[target].dt_step;
-    } else {
-        int k2;
-        for(k2=0;k2<3;k2++) {targetVel[k2] = GravDataGet[target].Vel[k2];}
-        targetdt_step = GravDataGet[target].dt_step;
-    }
-#endif
-
     
     
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
@@ -2010,6 +1978,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         min_bh_periastron = -All.G*M_total / specific_energy * (1-ecc) * (P[no].Mass/M_total); // final factor ensures that this gives binaries the same timestep
                     }
                     if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
+#endif
                 }
 #endif
 
@@ -2109,70 +2078,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     h = All.ForceSoftening[P[no].Type];
 #endif
 
-                
-                
-                
-#ifdef DM_SIDM
-                /* here is where we call the core of the SIDM calculation for DM particle-particle interactions */
-                /* check if target particle is an SIDM candidate */
-                if((1 << ptype) & (DM_SIDM))
-                {
-                    /* ok, now check if neighbor particle is also SIDM-active */
-                    if((1 << P[no].Type) & (DM_SIDM))
-                    {
-                        /* ok, now check against self-interactions */
-                        if(targetID != P[no].ID)
-                        {
-                            sidm_tstart = my_second();
-                            r = sqrt(r2);
-#if defined(ADAPTIVE_GRAVSOFT_FORALL)
-                            h_si = DMAX(targeth_si, All.SIDMSmoothingFactor * DMAX(PPP[no].AGS_Hsml,All.ForceSoftening[P[no].Type]));
-#else
-                            h_si = DMAX(targeth_si, All.SIDMSmoothingFactor * All.ForceSoftening[P[no].Type]);
-#endif
-                            if(r < 2.0*h_si)
-                            {
-                                prob = prob_of_interaction(P[no].Mass, r, h_si, targetVel, P[no].Vel, targetdt_step);
-                                if(prob > max_prob) max_prob = prob;
-                                    
-                                if(prob > 0.2)
-                                {
-                                    if(targetdt_step_sidm == 0 ||
-                                       prob_of_interaction(P[no].Mass, r, h_si, targetVel, P[no].Vel, targetdt_step_sidm) > 0.2)
-                                    {
-                                        targetdt_step_sidm = targetdt_step;
-                                        prob_tmp = prob;
-                                        while(prob_tmp > 0.2)
-                                        {
-                                            targetdt_step_sidm /= 2;
-                                            prob_tmp = prob_of_interaction(P[no].Mass, r, h_si, targetVel, P[no].Vel, targetdt_step_sidm);
-                                        }
-                                    }
-                                } // if(prob > 0.2)
-                                    
-                                if (gsl_rng_uniform(random_generator) < prob)
-                                {
-                                    if(check_interaction_table(targetID, P[no].ID) == 0)
-                                    {
-                                        calculate_interact_kick(targetVel, P[no].Vel, kick_target, kick_no);
-                                        kick_x += kick_target[0];
-                                        kick_y += kick_target[1];
-                                        kick_z += kick_target[2];
-                                        for (i = 0; i < 3 ; i++)
-                                            P[no].Vel[i] += kick_no[i];
-                                        si_count++;
-                                        P[no].NInteractions++;
-                                        update_interaction_table(targetID, P[no].ID);
-                                    }  // if(check_interaction_table(targetID, P[no].ID) == 0)
-                                } // if(prob for kick satisfied) 
-                            } // if(r < 2.0*h_si)
-                            sidm_tend = my_second();
-                            sidm_tscatter += timediff(sidm_tstart, sidm_tend);
-                        } // if(targetID != P[no].ID)
-                    } // if((1 << P[no].Type) & (DM_SIDM))
-                } // if((1 << ptype) & (DM_SIDM))
-                
-#endif // DM_SIDM
                 } // closes (if((r2 > 0) && (mass > 0))) check
                 
                 if(TakeLevel >= 0) {P[no].GravCost[TakeLevel] += 1.0;}
@@ -2275,11 +2180,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef RT_USE_GRAVTREE
                 if(valid_gas_particle_for_rt)	/* we have a (valid) gas particle as target */
                 {
-                    double bh_dx = nop->bh_pos[0] - pos_x;      /* SHEA:  now using bh_pos instead of center */
-                    double bh_dy = nop->bh_pos[1] - pos_y;
-                    double bh_dz = nop->bh_pos[2] - pos_z;
-#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-                    NEAREST_XYZ(bh_dx,bh_dy,bh_dz,-1);
                     int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {mass_stellarlum[kf] = nop->stellar_lum[kf];}
 #ifdef CHIMES_STELLAR_FLUXES 
 		    for (kf = 0; kf < CHIMES_LOCAL_UV_NBINS; kf++) 
@@ -2288,26 +2188,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 			chimes_mass_stellarlum_ion[kf] = nop->chimes_stellar_lum_ion[kf]; 
 		      }
 #endif 
-#ifdef RT_SEPARATELY_TRACK_LUMPOS
-                    dx_stellarlum = nop->rt_source_lum_s[0] - pos_x; dy_stellarlum = nop->rt_source_lum_s[1] - pos_y; dz_stellarlum = nop->rt_source_lum_s[2] - pos_z;
-#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-                    NEAREST_XYZ(dx_stellarlum,dy_stellarlum,dz_stellarlum,-1);
-#endif
-                    double bh_r2 = bh_dx * bh_dx + bh_dy * bh_dy + bh_dz * bh_dz; // + (nop->len)*(nop->len);
-                    if(bh_r2 < min_dist_to_bh2)
-                        {
-                            min_dist_to_bh2 = bh_r2;
-                            min_xyz_to_bh[0] = bh_dx;    /* remember, dx = x_BH - myx */
-                            min_xyz_to_bh[1] = bh_dy;
-                            min_xyz_to_bh[2] = bh_dz;
-                        }
-                }
-#endif
-                
-#ifdef RT_USE_GRAVTREE
-                if(valid_gas_particle_for_rt)	/* we have a (valid) gas particle as target */
-                {
-                    int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {mass_stellarlum[kf] = nop->stellar_lum[kf];}
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
                     dx_stellarlum = nop->rt_source_lum_s[0] - pos_x; dy_stellarlum = nop->rt_source_lum_s[1] - pos_y; dz_stellarlum = nop->rt_source_lum_s[2] - pos_z;
 #if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
@@ -2501,6 +2381,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 		
 #ifdef BH_CALC_DISTANCES // NOTE: moved this to AFTER the checks for node opening, because we only want to record BH positions from the nodes that actually get used for the force calculation - MYG
                 if(nop->bh_mass > 0)        /* found a node with non-zero BH mass */
+                {
                     double bh_dx = nop->bh_pos[0] - pos_x;      /* SHEA:  now using bh_pos instead of center */
                     double bh_dy = nop->bh_pos[1] - pos_y;
                     double bh_dz = nop->bh_pos[2] - pos_z;
@@ -2534,6 +2415,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     }
                     if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
 #endif
+                }
 #endif
 		
             }
@@ -2620,9 +2502,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     {
                         if((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG))
                         {
-#ifdef CBE_INTEGRATOR
-#include "cbe_integrator_flux_computation.h"
-#endif
                             double dWdr, wp, fac_corr=0;
                             if(h_p_inv >= h_inv)
                             {
@@ -2748,6 +2627,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 		  double m_lum_total = 0; int ks_q; for(ks_q=0;ks_q<N_RT_FREQ_BINS;ks_q++) {m_lum_total += mass_stellarlum[ks_q];}
 		  incident_flux_euv += All.PhotonMomentum_fUV * (0.079577*fac*r) * m_lum_total;
                 }
+#endif
                 // don't multiply by shortrange_table since that is to prevent 2x-counting by PMgrid (which never happens here) //
 #endif
 #ifdef BH_PHOTONMOMENTUM
@@ -2850,8 +2730,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     } // closes outer (while(no>=0)) check
     
     
-#ifdef DM_SIDM
-    
     /* store result at the proper place */
     if(mode == 0)
     {
@@ -2884,13 +2762,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
         for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
-#endif
-#ifdef DM_SIDM
-        P[target].Vel[0] += kick_x; P[target].Vel[1] += kick_y; P[target].Vel[2] += kick_z;
-        P[target].dt_step_sidm = targetdt_step_sidm; P[target].NInteractions += si_count;
-#endif
-#ifdef CBE_INTEGRATOR
-        {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {P[target].CBE_basis_moments_dt[k1][k2] += out_CBE_basis_moments_dt[k1][k2];}}}
 #endif
 #ifdef BH_CALC_DISTANCES
         P[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );
@@ -2932,13 +2803,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
         for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GravDataResult[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
-#endif
-#ifdef DM_SIDM
-        GravDataResult[target].Vel[0] = kick_x; GravDataResult[target].Vel[1] = kick_y; GravDataResult[target].Vel[2] = kick_z;
-        GravDataResult[target].dt_step_sidm = targetdt_step_sidm; GravDataResult[target].NInteractions = si_count;
-#endif
-#ifdef CBE_INTEGRATOR
-        {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<10;k2++) {GravDataResult[target].CBE_basis_moments_dt[k1][k2] += out_CBE_basis_moments_dt[k1][k2];}}}
 #endif
 #ifdef BH_CALC_DISTANCES
         GravDataResult[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );

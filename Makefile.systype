@@ -12,7 +12,7 @@
 #############
 
 
-SYSTYPE="BlueWaters"
+#SYSTYPE="BlueWaters"
 #SYSTYPE="Stampede2"
 #SYSTYPE="Wheeler"
 SYSTYPE="MacBookPro"
@@ -23,6 +23,12 @@ SYSTYPE="MacBookPro"
 #SYSTYPE="Comet"
 #SYSTYPE="Gordon"
 #SYSTYPE="odyssey"
+#SYSTYPE="antares"
+#SYSTYPE="Pleiades-Haswell"
+#SYSTYPE="Pleiades-SIBridge"
+#SYSTYPE="Mira"
+#SYSTYPE="Titan"
+#SYSTYPE="Edison"
 #SYSTYPE="SciNet"
 #SYSTYPE="Ranger_intel"
 #SYSTYPE="Ranger_pgi"
