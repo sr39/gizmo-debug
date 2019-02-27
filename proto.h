@@ -6,9 +6,6 @@
 #ifdef COOLING
 #include "cooling/cooling.h"
 #endif
-#ifdef TURB_DRIVING_DUMPSPECTRUM
-#include "power_spec/TURB_DRIVING_DUMPSPECTRUM_proto.h"
-#endif
 #ifdef BLACK_HOLES
 #include "./galaxy_sf/blackholes/blackhole.h"
 #endif
@@ -418,16 +415,6 @@ void *density_evaluate_primary(void *p);
 void *density_evaluate_secondary(void *p);
 int density_isactive(int n);
 
-#ifdef DM_BARYON_INTERACTION
-int dm_hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *dm_hydro_evaluate_primary(void *p);
-void *dm_hydro_evaluate_secondary(void *p);
-int dm_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *    ngblist);
-void *dm_density_evaluate_primary(void *p);
-void *dm_density_evaluate_secondary(void *p);
-int dm_density_isactive(int n);
-#endif
-
 size_t sizemax(size_t a, size_t b);
 
 
@@ -462,9 +449,6 @@ void process_wake_ups(void);
 #endif
 
 void set_units_sfr(void);
-#ifdef BH_SEED_FROM_LOCALGAS
-double return_probability_of_this_forming_bh_from_seed_model(int i);
-#endif
 
 void gravity_forcetest(void);
 
@@ -518,6 +502,7 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i);
 void particle2in_addFB_winds(struct addFBdata_in *in, int i);
 void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i);
 #endif
+#endif
 
 
 #ifdef GRAIN_FLUID
@@ -531,9 +516,6 @@ int grain_density_isactive(int n);
 #endif
 
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) || (defined(RT_CHEM_PHOTOION) && defined(GALSF))
-#endif
-
-#if defined(GALSF_FB_HII_HEATING) || (defined(RT_CHEM_PHOTOION) && defined(GALSF))
 double particle_ionizing_luminosity_in_cgs(long i);
 #endif
 
@@ -560,7 +542,6 @@ void mechanical_fb_calc(int feedback_type);
 int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int feedback_type);
 void *addFB_evaluate_primary(void *p, int feedback_type);
 void *addFB_evaluate_secondary(void *p, int feedback_type);
-#endif
 #endif
 
 #ifdef GALSF_FB_THERMAL
@@ -635,9 +616,6 @@ void cooling_parent_routine(void);
 void count_hot_phase(void);
 void delete_node(int i);
 void density(void);
-#ifdef DM_BARYON_INTERACTION
-void dm_density(void);
-#endif
 void density_decouple(void);
 void determine_interior(void);
 int dissolvegas(void);
@@ -669,9 +647,6 @@ integertime get_timestep(int p, double *a, int flag);
 void determine_PMinterior(void);
 void gravity_tree(void);
 void hydro_force(void);
-#ifdef DM_BARYON_INTERACTION
-void dm_hydro_force(void);
-#endif
 void init(void);
 void do_the_cooling_for_particle(int i);
 double get_starformation_rate(int i);
@@ -706,7 +681,6 @@ void set_softenings(void);
 void set_sph_kernel(void);
 void set_units(void);
 void setup_smoothinglengths(void);
-void setup_smoothinglengths2(void);
 
 void minimum_large_ints(int n, long long *src, long long *res);
 void sumup_large_ints(int n, int *src, long long *res);
@@ -853,6 +827,8 @@ int AGSForce_evaluate(int target, int mode, int *exportflag, int *exportnodecoun
 void *AGSForce_evaluate_primary(void *p);
 void *AGSForce_evaluate_secondary(void *p);
 int AGSForce_isactive(int i);
+#endif
+
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
 void advect_mesh_point(int i, double dt);
 double calculate_face_area_for_cartesian_mesh(double *dp, double rinv, double l_side, double *Face_Area_Vec);
@@ -880,27 +856,6 @@ void *DiffFilter_evaluate_primary(void *p);
 void *DiffFilter_evaluate_secondary(void *p);
 #endif
 
-int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary);
-int ags_density_isactive(int i);
-double ags_return_maxsoft(int i);
-double ags_return_minsoft(int i);
-#endif
-
-#ifdef HYDRO_MESHLESS_FINITE_VOLUME
-void advect_mesh_point(int i, double dt);
-double calculate_face_area_for_cartesian_mesh(double *dp, double rinv, double l_side, double *Face_Area_Vec);
-#endif
-
-
-#ifdef ALTERNATIVE_PSORT
-void init_sort_ID(MyIDType *data, int ndata);
-#endif
-
-void hydro_gradient_calc(void);
-int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
-void *GasGrad_evaluate_primary(void *p, int gradient_iteration);
-void *GasGrad_evaluate_secondary(void *p, int gradient_iteration);
-
 #ifdef PARTICLE_EXCISION
 void apply_excision();
 #endif
@@ -913,6 +868,8 @@ void init_geofactor_table(void);
 double geofactor_integ(double x, void * params);
 double geofactor_angle_integ(double u, void * params);
 void init_self_interactions();
+#endif
+
 
 #ifdef CBE_INTEGRATOR
 void do_cbe_initialization(void);
@@ -949,20 +906,6 @@ void dm_fuzzy_reconstruct_and_slopelimit(double *u_R, double du_R[3], double *u_
                                          double q_L, double dq_L[3], double d2q_L[3][3],
                                          double dx[3]);
 #endif
-#ifdef DM_BARYON_INTERACTION
- int init_fyp_xp(int output_fyp);
- int fin_fyp_xp(void);
- double get_fyp_xp(double y);
- double energy_transfer_rate_in_m5_over_s3(double v_rel,double sigma_u);
- int find_interaction_time(integertime ti_step, int i);
- void do_sph_interaction_kick(int i, integertime tstart, integertime tend, double dt_entr);
- /*int dm_ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
-                                            int mode, int *exportflag, int *exportnodecount, int *exportindex,
-                                            int *ngblist);*/
 
- void init_dm_vel(void);
- void count_reset(void);
- void count_interaction(void);
- #endif
 
 

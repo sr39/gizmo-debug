@@ -22,14 +22,12 @@
 
 #ifdef GALSF // master switch for compiling the routines below //
 
-#define WindInitialVelocityBoost 1.0 // (optional) boost velocity coupled (fixed momentum)
 
 #if defined(GALSF_SFR_IMF_VARIATION) || defined(GALSF_SFR_IMF_SAMPLING)
 /* function to determine what the IMF of a new star particle will be, based 
     on the gas properties of the particle out of which it forms */
 void assign_imf_properties_from_starforming_gas(int i)
 {
-    
 #ifdef GALSF_SFR_IMF_VARIATION
     double h = Get_Particle_Size(i) * All.cf_atime;
     double cs = Particle_effective_soundspeed_i(i) * All.cf_afac3; // actual sound speed in the simulation: might be unphysically high for SF conditions!
@@ -105,34 +103,6 @@ void assign_imf_properties_from_starforming_gas(int i)
     
 #endif 
     
-    
-#ifdef GALSF_SFR_IMF_SAMPLING
-    gsl_rng *random_generator_for_massivestars;
-    random_generator_for_massivestars = gsl_rng_alloc(gsl_rng_ranlxd1);
-    gsl_rng_set(random_generator_for_massivestars, P[i].ID+121);
-    double mu = 0.01 * P[i].Mass * All.UnitMass_in_g / All.HubbleParam / (1.989e33); // 1 O-star per 100 Msun
-    unsigned int kk = gsl_ran_poisson(random_generator_for_massivestars, mu);
-    P[i].IMF_NumMassiveStars = (double)kk;
-#endif
-    
-#endif
-
-    P[i].IMF_FormProps[0] = P[i].IMF_Mturnover; // IMF turnover mass as defined above
-    P[i].IMF_FormProps[1] = SphP[i].Density * All.cf_a3inv; // density
-    P[i].IMF_FormProps[2] = SphP[i].InternalEnergyPred; // thermal internal energy (use to calculate temperature)
-    P[i].IMF_FormProps[3] = Particle_effective_soundspeed_i(i) * All.cf_afac3; // sound speed (not trivially related to temperature if CRs, etc included)
-    P[i].IMF_FormProps[4] = sqrt(dv2_abs); // shear velocity gradient (norm of shear gradient tensor)
-    P[i].IMF_FormProps[5] = h; // particle length/size (inter-particle spacing)
-    P[i].IMF_FormProps[6] = NH; // local gas surface density (our usual estimator) in the cloud where the particle formed
-    P[i].IMF_FormProps[7] = sqrt(dv2abs_tot) * h; // total rms/turbulent velocity dispersion
-    P[i].IMF_FormProps[8] = sqrt(acc); // gravitational acceleration
-    P[i].IMF_FormProps[9] = sqrt(vel); // total velocity (use with acceleration to estimate shear omega, etc)
-    P[i].IMF_FormProps[10] = sqrt(b_mag) * All.cf_a2inv; // magnetic field strength |B|
-    P[i].IMF_FormProps[11] = rad_flux_uv; // incident UV flux normalized to MW 'canonical' (Habing) field value
-    P[i].IMF_FormProps[12] = cr_energy_density; // cosmic ray energy density (if CRs are enabled)
-    
-#endif 
-    
 #ifdef GALSF_SFR_IMF_SAMPLING
     gsl_rng *random_generator_for_massivestars;
     random_generator_for_massivestars = gsl_rng_alloc(gsl_rng_ranlxd1);
@@ -180,26 +150,6 @@ double evaluate_stellar_age_Gyr(double stellar_tform)
 
 
 
-/* function which takes properties of a gas particle 'i' and returns probability of its turning into a BH seed particle */
-double return_probability_of_this_forming_bh_from_seed_model(int i)
-{
-    double p=0;
-    if(All.Time < 1.0/(1.0+All.SeedBlackHoleMinRedshift)) /* within the allowed redshift range for forming seeds */
-        if(SphP[i].Density*All.cf_a3inv > All.PhysDensThresh) /* require it be above the SF density threshold */
-            if(P[i].Metallicity[0]/All.SolarAbundances[0] < 0.1) /* and below some metallicity */
-        double GradRho = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1) * All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; /* this gives the Sobolev-estimated column density */
-        /* surface dens in g/cm^2; threshold for bound cluster formation in our experiments is ~2 g/cm^2 (10^4 M_sun/pc^2) */
-        if (GradRho > 0.1)
-        {
-            /* now calculate probability of forming a BH seed particle */
-            p = 0.0004; /* ratio of BH mass formed to stellar mass for Z~0.01 Zsun population */
-            p *= (P[i].Mass / All.SeedBlackHoleMass); /* resolves resolution-dependence by making p=massfrac */
-            p *= (1-exp(-GradRho/1.0)) * exp(-(P[i].Metallicity[0]/All.SolarAbundances[0])/0.01);
-            /* want to add factors to control this probability in zoom-in runs */
-        }
-    return p;
-}
-#endif
 /* simple routine to determine density thresholds and other common units for SF routines */
 void set_units_sfr(void)
 {
@@ -237,6 +187,7 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
             /* want to add factors to control this probability in zoom-in runs */
         }
     }
+#endif
     return p;
 }
 
@@ -379,10 +330,6 @@ double get_starformation_rate(int i)
     gsl_eigen_symm_free (v);
     gsl_vector_free (eval1);
 #endif
-#endif
-    if((alpha_vir<1.0)||(SphP[i].Density*All.cf_a3inv>100.*All.PhysDensThresh)) {rateOfSF *= 1.0;} else {rateOfSF *= 0.0015;}
-    // PFH: note the latter flag is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! //
-    
 #elif (GALSF_SFR_VIRIAL_SF_CRITERION > 1)
     if(alpha_vir >= 1.0) {rateOfSF *= 0.0;}
 #endif
@@ -777,7 +724,6 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
 {
     int j; double v,p,prob, norm, dir[3];
     
-
 #if (GALSF_SUBGRID_WIND_SCALING == 0)
     /* this is the simple, old standard wind model, with constant velocity & loading with SFR */
     p = All.WindEfficiency * sm / P[i].Mass;
@@ -858,10 +804,6 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
 #endif
 #if (GALSF_WINDS_ORIENTATION==2) // along density gradient //
         for(j=0;j<3;j++) dir[j]=-P[i].GradRho[j];
-#endif
-    
-#if !defined(GALSF_WINDS_ORIENTATION) && !defined(GALSF_FB_RPWIND_FROMSTARS) && !defined(GALSF_FB_RPWIND_FROMCLUMPS)
-#define GALSF_WINDS_ORIENTATION 0
 #endif
         
         // now actually do the kick for the wind //

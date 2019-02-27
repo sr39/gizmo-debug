@@ -319,7 +319,7 @@ integertime get_timestep(int p,		/*!< particle index */
                          int flag	/*!< either 0 for normal operation, or finite timestep to get corresponding aphys */ )
 {
     double ax, ay, az, ac;
-    double csnd = 0, dt = 0, dt_courant = 0, dt_divv = 0, dt_dm = 0;
+    double csnd = 0, dt = 0, dt_courant = 0, dt_divv = 0;
     integertime ti_step;
     int k; k=0;
 #ifdef CHEMCOOL
@@ -878,26 +878,7 @@ integertime get_timestep(int p,		/*!< particle index */
         if(dt < All.MinSizeTimestep) {printf("Warning: A Timestep below the limit `MinSizeTimestep' is being used to keep self interaction probabilities smaller than 0.2. dt = %g\n",dt);}
     }
 #endif
-
-#ifdef DM_BARYON_INTERACTION
-            double v_rel   = 0;
-       if(SphP[p].dm_count != 0 && SphP[p].baryon_count != 0){
-             double vx = 0, vy = 0, vz = 0, VX = 0, VY = 0, VZ = 0;
-                    vx = SphP[p].vx_dm / SphP[p].dm_count;
-                    vy = SphP[p].vy_dm / SphP[p].dm_count;
-                    vz = SphP[p].vz_dm / SphP[p].dm_count;
-                    VX = SphP[p].vx_baryon / SphP[p].baryon_count;
-                    VY = SphP[p].vy_baryon / SphP[p].baryon_count;
-                    VZ = SphP[p].vz_baryon / SphP[p].baryon_count;
-                    v_rel = sqrt((vx - VX) * (vx - VX) + (vy - VY) * (vy - VY) + (vz - VZ) * (vz - VZ));
-               if(v_rel != 0)
-             {
-                  dt_dm = (PPP[p].dm_Hsml / v_rel) * 0.1;
-                  dt_dm /= All.cf_a2inv; //convert to physical unit
-                  if(dt_dm < dt) {dt = dt_dm;}
-             }
-          }
-#endif    
+    
     
     // add a 'stellar evolution timescale' criterion to the timestep, to prevent too-large jumps in feedback //
 #if defined(YOUNGSTARWINDDRIVING) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE)

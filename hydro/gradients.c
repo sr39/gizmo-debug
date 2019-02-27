@@ -529,7 +529,6 @@ void local_slopelimiter(double *grad, double valmax, double valmin, double alim,
         {
             double abs_max = DMAX(fabs_max,fabs_min);
             cfac *= DMIN(abs_min + shoot_tol*abs_max, abs_max);
-            //cfac *= DMAX(DMIN(shoot_tol*abs_max,2.0*abs_min) , abs_min);
         } else {
             cfac *= abs_min;
         }
@@ -611,6 +610,7 @@ void hydro_gradient_calc(void)
                 SphP[i].Velocity_hat[k] = SphP[i].Velocity_bar[k] * smoothInv;
             }
 #endif
+
             /* and zero out the gradients structure itself */
             for(k=0;k<3;k++)
             {
@@ -1653,41 +1653,7 @@ void hydro_gradient_calc(void)
                         for (v = 0; v < 3; v++) {SphP[i].MagShear_bar += SphP[i].VelShear_bar[u][v] * SphP[i].VelShear_bar[u][v];}}
                     SphP[i].MagShear = sqrt(2.0) * shear_factor / All.cf_a2inv; // Don't want this physical
                     SphP[i].MagShear_bar = DMIN(sqrt(2.0 * SphP[i].MagShear_bar), shearfac_max); turb_prefactor /= 0.25;
-                    // ok, combine to get the diffusion coefficient //
-                    SphP[i].TD_DiffCoeff = turb_prefactor * shear_factor; // physical
-                } else {
-                    SphP[i].TD_DiffCoeff = 0;
-                }
-#ifdef TURB_DIFF_ENERGY
-                SphP[i].Kappa_Conduction = All.ConductionCoeff * SphP[i].TD_DiffCoeff * SphP[i].Density * All.cf_a3inv; // physical
 #endif
-#ifdef TURB_DIFF_VELOCITY
-                SphP[i].Eta_ShearViscosity = All.ShearViscosityCoeff * SphP[i].TD_DiffCoeff * SphP[i].Density * All.cf_a3inv; // physical
-                SphP[i].Zeta_BulkViscosity = All.BulkViscosityCoeff * SphP[i].TD_DiffCoeff * SphP[i].Density * All.cf_a3inv; // physical
-#endif
-            }
-#endif
-            
-            
-            
-#ifdef COSMIC_RAYS
-            /* note that because of the way this depends on the gradient scale-length, we should calculate it -after- the slope-limiters are applied */
-            if(SphP[i].Density > 0)
-            {
-                SphP[i].CosmicRayDiffusionCoeff = 0;
-                double CRPressureGradScaleLength = Get_CosmicRayGradientLength(i);
-                double CR_kappa_streaming = 0;
-#ifndef COSMIC_RAYS_DISABLE_STREAMING
-                /* self-consistently calculate the diffusion coefficients for cosmic ray fluids; first the streaming part of this (kappa~v_stream*L_CR_grad)
-                 following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
-                double v_streaming = Get_CosmicRayStreamingVelocity(i);
-                /* the diffusivity is now just the product of these two coefficients */
-                CR_kappa_streaming = (GAMMA_COSMICRAY/GAMMA_COSMICRAY_MINUS1) * v_streaming * CRPressureGradScaleLength; /* all physical units */
-#endif
-            
-            
-        }
-    
 
                     // ok, combine to get the diffusion coefficient //
                     SphP[i].TD_DiffCoeff = turb_prefactor * shear_factor; // physical

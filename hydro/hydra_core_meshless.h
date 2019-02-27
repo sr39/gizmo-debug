@@ -86,6 +86,7 @@
         double wk_ij = 0.5*(kernel.wk_i+kernel.wk_j), dwk_ij = 0.5*(kernel.dwk_i+kernel.dwk_j) / (MIN_REAL_NUMBER + kernel.r);
         double Bi_dot_dx = 0, Bj_dot_dx = 0, dAi_etc_dot_dx[3]={0}, dAj_etc_dot_dx[3]={0};
         for(k=0;k<3;k++)
+        {
             Bi_dot_dx +=   local.Tensor_CRK_Face_Corrections[k+1] * kernel.dp[k];
             Bj_dot_dx -= SphP[j].Tensor_CRK_Face_Corrections[k+1] * kernel.dp[k];
             int k_x;
@@ -94,8 +95,10 @@
                 dAi_etc_dot_dx[k_x] +=   local.Tensor_CRK_Face_Corrections[7+3*k+k_x] * kernel.dp[k];
                 dAj_etc_dot_dx[k_x] -= SphP[j].Tensor_CRK_Face_Corrections[7+3*k+k_x] * kernel.dp[k];
             }
+        }
         Face_Area_Norm = 0; facenormal_dot_dp = 0;
         for(k=0;k<3;k++)
+        {
             double Ai = -V_i*V_j*(    local.Tensor_CRK_Face_Corrections[0] * (1. + Bi_dot_dx) * dwk_ij * (+kernel.dp[k])
                                  + (  local.Tensor_CRK_Face_Corrections[4+k] + dAi_etc_dot_dx[k]) * wk_ij);
             double Aj = -V_i*V_j*(  SphP[j].Tensor_CRK_Face_Corrections[0] * (1. + Bj_dot_dx) * dwk_ij * (-kernel.dp[k])
@@ -103,7 +106,9 @@
             Face_Area_Vec[k] = (Ai - Aj) * All.cf_atime*All.cf_atime;
             Face_Area_Norm += Face_Area_Vec[k]*Face_Area_Vec[k];
             facenormal_dot_dp += Face_Area_Vec[k] * kernel.dp[k]; /* check that face points same direction as vector normal: should be true for positive-definite (well-conditioned) NV_T */
+        }
     }
+#endif
 
     
     if((SphP[j].ConditionNumber*SphP[j].ConditionNumber > 1.0e12 + cnumcrit2) || (facenormal_dot_dp < 0))
