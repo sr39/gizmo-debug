@@ -246,6 +246,9 @@ void drift_particle(int i, integertime time1)
             PPP[i].Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
             if(PPP[i].Hsml < All.MinHsml) {PPP[i].Hsml = All.MinHsml;}
             if(PPP[i].Hsml > All.MaxHsml) {PPP[i].Hsml = All.MaxHsml;}
+#ifdef DM_BARYON_INTERACTION
+            PPP[i].dm_Hsml = PPP[i].Hsml;
+#endif
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
             PPP[i].AGS_Hsml = PPP[i].Hsml;
 #endif

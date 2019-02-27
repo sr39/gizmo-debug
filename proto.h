@@ -418,6 +418,16 @@ void *density_evaluate_primary(void *p);
 void *density_evaluate_secondary(void *p);
 int density_isactive(int n);
 
+#ifdef DM_BARYON_INTERACTION
+int dm_hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
+void *dm_hydro_evaluate_primary(void *p);
+void *dm_hydro_evaluate_secondary(void *p);
+int dm_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *    ngblist);
+void *dm_density_evaluate_primary(void *p);
+void *dm_density_evaluate_secondary(void *p);
+int dm_density_isactive(int n);
+#endif
+
 size_t sizemax(size_t a, size_t b);
 
 
@@ -625,6 +635,9 @@ void cooling_parent_routine(void);
 void count_hot_phase(void);
 void delete_node(int i);
 void density(void);
+#ifdef DM_BARYON_INTERACTION
+void dm_density(void);
+#endif
 void density_decouple(void);
 void determine_interior(void);
 int dissolvegas(void);
@@ -656,6 +669,9 @@ integertime get_timestep(int p, double *a, int flag);
 void determine_PMinterior(void);
 void gravity_tree(void);
 void hydro_force(void);
+#ifdef DM_BARYON_INTERACTION
+void dm_hydro_force(void);
+#endif
 void init(void);
 void do_the_cooling_for_particle(int i);
 double get_starformation_rate(int i);
@@ -690,6 +706,7 @@ void set_softenings(void);
 void set_sph_kernel(void);
 void set_units(void);
 void setup_smoothinglengths(void);
+void setup_smoothinglengths2(void);
 
 void minimum_large_ints(int n, long long *src, long long *res);
 void sumup_large_ints(int n, int *src, long long *res);
@@ -932,6 +949,20 @@ void dm_fuzzy_reconstruct_and_slopelimit(double *u_R, double du_R[3], double *u_
                                          double q_L, double dq_L[3], double d2q_L[3][3],
                                          double dx[3]);
 #endif
+#ifdef DM_BARYON_INTERACTION
+ int init_fyp_xp(int output_fyp);
+ int fin_fyp_xp(void);
+ double get_fyp_xp(double y);
+ double energy_transfer_rate_in_m5_over_s3(double v_rel,double sigma_u);
+ int find_interaction_time(integertime ti_step, int i);
+ void do_sph_interaction_kick(int i, integertime tstart, integertime tend, double dt_entr);
+ /*int dm_ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
+                                            int mode, int *exportflag, int *exportnodecount, int *exportindex,
+                                            int *ngblist);*/
 
+ void init_dm_vel(void);
+ void count_reset(void);
+ void count_interaction(void);
+ #endif
 
 

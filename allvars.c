@@ -329,6 +329,15 @@ struct gravdata_out *GravDataResult,	/*!< holds the partial results computed for
  *GravDataOut;			/*!< holds partial results received from other processors. This will overwrite the GravDataIn array */
 
 
+#ifdef DM_BARYON_INTERACTION
+struct dm_densdata_in *dm_DensDataIn,
+ *dm_DensDataGet;
+
+struct dm_densdata_out *dm_DensDataResult,
+  *dm_DensDataOut;
+#endif
+
+
 struct potdata_out *PotDataResult,	/*!< holds the partial results computed for imported particles. Note: We use GravDataResult = GravDataGet, such that the result replaces the imported data */
  *PotDataOut;			/*!< holds partial results received from other processors. This will overwrite the GravDataIn array */
 
