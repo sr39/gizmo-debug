@@ -105,6 +105,8 @@ static inline double DMAX(double a, double b) { return (a > b) ? a : b; }
 static inline double DMIN(double a, double b) { return (a < b) ? a : b; }
 static inline int IMAX(int a, int b) { return (a > b) ? a : b; } 
 static inline int IMIN(int a, int b) { return (a < b) ? a : b; }
+static inline integertime TIMAX(integertime a, integertime b) { return (a > b) ? a : b; }
+static inline integertime TIMIN(integertime a, integertime b) { return (a < b) ? a : b; }
 static inline double MINMOD(double a, double b) {return (a>0) ? ((b<0) ? 0 : DMIN(a,b)) : ((b>=0) ? 0 : DMAX(a,b));}
 /* special version of MINMOD below: a is always the "preferred" choice, b the stability-required one. here we allow overshoot, just not opposite signage */
 static inline double MINMOD_G(double a, double b) {return a;}
@@ -859,7 +861,7 @@ void apply_excision();
 #endif
 
 #ifdef DM_SIDM
-double prob_of_interaction(double mass, double r, double h_si, double dV[3], int dt_step);
+double prob_of_interaction(double mass, double r, double h_si, double dV[3], integertime dt_step);
 double g_geo(double r);
 void calculate_interact_kick(double dV[3], double kick[3], double m);
 void init_geofactor_table(void);
@@ -882,7 +884,8 @@ double do_cbe_nvt_inversion_for_faces(int i);
 #endif
 
 #ifdef DM_FUZZY
-void do_dm_fuzzy_drift_kick(int pindex, double dt_entr);
+void do_dm_fuzzy_initialization(void);
+void do_dm_fuzzy_drift_kick(int pindex, double dt_entr, int mode);
 void DMGrad_gradient_calc(void);
 int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
 void *DMGrad_evaluate_primary(void *p, int gradient_iteration);
@@ -897,6 +900,11 @@ void do_dm_fuzzy_flux_computation_old(double HLLwt, double dt, double m0, double
                                   double GradRho2_L[3][3], double GradRho2_R[3][3],
                                   double rho_L, double rho_R, double dv_Right_minus_Left,
                                   double Area[3], double fluxes[3], double AGS_Numerical_QuantumPotential, double *dt_egy_Numerical_QuantumPotential);
+void dm_fuzzy_reconstruct_and_slopelimit_sub(double *u_R_f, double *u_L_f, double q_R, double dq_R_0[3], double q_L, double dq_L_0[3], double dx[3]);
+void dm_fuzzy_reconstruct_and_slopelimit(double *u_R, double du_R[3], double *u_L, double du_L[3],
+                                         double q_R, double dq_R[3], double d2q_R[3][3],
+                                         double q_L, double dq_L[3], double d2q_L[3][3],
+                                         double dx[3]);
 #endif
 
 

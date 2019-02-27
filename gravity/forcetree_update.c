@@ -299,9 +299,10 @@ void force_finish_kick_nodes(void)
 
 
 
-void force_drift_node(int no, int time1)
+void force_drift_node(int no, integertime time1)
 {
-  int j, time0;
+  int j;
+  integertime time0;
   double dt_drift, dt_drift_hmax, fac;
 
   if(time1 == Nodes[no].Ti_current)
@@ -313,8 +314,8 @@ void force_drift_node(int no, int time1)
     {
       if(Extnodes[no].Ti_lastkicked != Nodes[no].Ti_current)
 	{
-	  printf("Task=%d Extnodes[no].Ti_lastkicked=%d  Nodes[no].Ti_current=%d\n",
-		 ThisTask, (int)Extnodes[no].Ti_lastkicked, (int)Nodes[no].Ti_current);
+	  printf("Task=%d Extnodes[no].Ti_lastkicked=%lld  Nodes[no].Ti_current=%lld\n",
+		 ThisTask, (long long)Extnodes[no].Ti_lastkicked, (long long)Nodes[no].Ti_current);
 	  terminate("inconsistency in drift node");
 	}
 

@@ -28,7 +28,7 @@
 
 #ifdef DM_SIDM
 
-double prob_of_interaction(double mass, double r, double h_si, double dV[3], int dt_step)
+double prob_of_interaction(double mass, double r, double h_si, double dV[3], integertime dt_step)
 {
     double dVmag = sqrt(dV[0]*dV[0]+dV[1]*dV[1]+dV[2]*dV[2]) / All.cf_atime; // velocity in physical
     double dt = dt_step * All.Timebase_interval / All.cf_hubble_a; // time in physical

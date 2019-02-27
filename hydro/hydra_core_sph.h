@@ -204,7 +204,7 @@
         double visc = -BulkVisc_ij * mu_ij * (c_ij - 2*mu_ij) * kernel.rho_ij_inv; /* this method should use beta/alpha=2 */
 #endif
 #ifndef NOVISCOSITYLIMITER
-        double dt = 2 * IMAX(local.Timestep, (P[j].TimeBin ? (1 << P[j].TimeBin) : 0)) * All.Timebase_interval;
+        double dt = 2 * TIMAX(local.Timestep, (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0)) * All.Timebase_interval;
         if(dt > 0 && kernel.dwk_ij < 0)
             visc = DMIN(visc, 0.5 * fac_vsic_fix * kernel.vdotr2 / ((local.Mass + P[j].Mass) * kernel.dwk_ij * kernel.r * dt));
 #endif

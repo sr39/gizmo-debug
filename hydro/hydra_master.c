@@ -194,7 +194,7 @@ struct hydrodata_in
     MyFloat ConditionNumber;
     MyFloat InternalEnergyPred;
     MyFloat SoundSpeed;
-    int Timestep;
+    integertime Timestep;
     MyFloat DhsmlNgbFactor;
 #ifdef HYDRO_SPH
     MyFloat DhsmlHydroSumFactor;
@@ -402,7 +402,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     in->Pressure = SphP[i].Pressure;
     in->InternalEnergyPred = SphP[i].InternalEnergyPred;
     in->SoundSpeed = Particle_effective_soundspeed_i(i);
-    in->Timestep = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0);
+    in->Timestep = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0);
     in->ConditionNumber = SphP[i].ConditionNumber;
 #ifdef MHD_CONSTRAINED_GRADIENT
     /* since it is not used elsewhere, we can use the sign of the condition number as a bit 
@@ -639,7 +639,7 @@ void hydro_final_operations_and_cleanup(void)
         if(P[i].Type == 0 && P[i].Mass > 0)
         {
             double dt;
-            dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+            dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
             
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             /* signal velocity needs to include rate of gas flow -over- the resolution element, which can be non-zero here */
