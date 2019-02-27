@@ -373,6 +373,8 @@ void init(void)
 #if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
             P[i].SNe_ThisTimeStep = 0;
 #endif
+            int k; for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {P[i].Area_weighted_sum[k] = 0;}
+#endif
 #ifdef GALSF_FB_MECHANICAL
             int k; for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {P[i].Area_weighted_sum[k] = 0;}
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
@@ -845,7 +847,6 @@ void init(void)
     {
         int k; k=0;
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
-        
 #if defined(TURB_DRIVING) && defined(EOS_ENFORCE_ADIABAT)
         SphP[i].InternalEnergy = All.RefInternalEnergy;
         SphP[i].InternalEnergyPred = All.RefInternalEnergy;
@@ -1033,6 +1034,7 @@ void init(void)
         twopoint();
         endrun(0);
     }
+#endif
 #endif
     
     

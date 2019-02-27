@@ -795,7 +795,6 @@ void hydro_final_operations_and_cleanup(void)
 #ifdef RT_DISABLE_R15_GRADIENTFIX
                 // use actual flux -- appropriate for highly optically-thick, multiple scattering bands //
                 for(k=0;k<3;k++) {radacc[k] += slabfac * SphP[i].Kappa_RT[k2] * (SphP[i].Flux_Pred[k2][k] * SphP[i].Density/P[i].Mass) / (RT_SPEEDOFLIGHT_REDUCTION * C / All.UnitVelocity_in_cm_per_s);}
-#else
                 // use optically-thin flux: for optically thin cases this is better, but actually for thick cases, if optical depth is highly un-resolved, this is also better (see Appendices and discussion of Rosdahl et al. 2015)
                 double Fmag=0; for(k=0;k<3;k++) {Fmag+=SphP[i].Flux_Pred[k2][k]*SphP[i].Flux_Pred[k2][k];}
 #ifdef RT_INFRARED

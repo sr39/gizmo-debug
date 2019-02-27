@@ -6,6 +6,9 @@
 #ifdef COOLING
 #include "cooling/cooling.h"
 #endif
+#ifdef TURB_DRIVING_DUMPSPECTRUM
+#include "power_spec/TURB_DRIVING_DUMPSPECTRUM_proto.h"
+#endif
 #ifdef BLACK_HOLES
 #include "./galaxy_sf/blackholes/blackhole.h"
 #endif
@@ -449,6 +452,9 @@ void process_wake_ups(void);
 #endif
 
 void set_units_sfr(void);
+#ifdef BH_SEED_FROM_LOCALGAS
+double return_probability_of_this_forming_bh_from_seed_model(int i);
+#endif
 
 void gravity_forcetest(void);
 
@@ -502,7 +508,6 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i);
 void particle2in_addFB_winds(struct addFBdata_in *in, int i);
 void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i);
 #endif
-#endif
 
 
 #ifdef GRAIN_FLUID
@@ -516,6 +521,9 @@ int grain_density_isactive(int n);
 #endif
 
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) || (defined(RT_CHEM_PHOTOION) && defined(GALSF))
+#endif
+
+#if defined(GALSF_FB_HII_HEATING) || (defined(RT_CHEM_PHOTOION) && defined(GALSF))
 double particle_ionizing_luminosity_in_cgs(long i);
 #endif
 
@@ -542,6 +550,7 @@ void mechanical_fb_calc(int feedback_type);
 int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int feedback_type);
 void *addFB_evaluate_primary(void *p, int feedback_type);
 void *addFB_evaluate_secondary(void *p, int feedback_type);
+#endif
 #endif
 
 #ifdef GALSF_FB_THERMAL
@@ -827,8 +836,6 @@ int AGSForce_evaluate(int target, int mode, int *exportflag, int *exportnodecoun
 void *AGSForce_evaluate_primary(void *p);
 void *AGSForce_evaluate_secondary(void *p);
 int AGSForce_isactive(int i);
-#endif
-
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
 void advect_mesh_point(int i, double dt);
 double calculate_face_area_for_cartesian_mesh(double *dp, double rinv, double l_side, double *Face_Area_Vec);
@@ -856,6 +863,27 @@ void *DiffFilter_evaluate_primary(void *p);
 void *DiffFilter_evaluate_secondary(void *p);
 #endif
 
+int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary);
+int ags_density_isactive(int i);
+double ags_return_maxsoft(int i);
+double ags_return_minsoft(int i);
+#endif
+
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+void advect_mesh_point(int i, double dt);
+double calculate_face_area_for_cartesian_mesh(double *dp, double rinv, double l_side, double *Face_Area_Vec);
+#endif
+
+
+#ifdef ALTERNATIVE_PSORT
+void init_sort_ID(MyIDType *data, int ndata);
+#endif
+
+void hydro_gradient_calc(void);
+int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
+void *GasGrad_evaluate_primary(void *p, int gradient_iteration);
+void *GasGrad_evaluate_secondary(void *p, int gradient_iteration);
+
 #ifdef PARTICLE_EXCISION
 void apply_excision();
 #endif
@@ -868,8 +896,6 @@ void init_geofactor_table(void);
 double geofactor_integ(double x, void * params);
 double geofactor_angle_integ(double u, void * params);
 void init_self_interactions();
-#endif
-
 
 #ifdef CBE_INTEGRATOR
 void do_cbe_initialization(void);

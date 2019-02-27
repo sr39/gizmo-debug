@@ -706,6 +706,7 @@ void open_outputfiles(void)
 #endif
 
 
+
 #ifdef GALSF
   sprintf(buf, "%s%s", All.OutputDir, "sfr.txt");
   if(!(FdSfr = fopen(buf, mode)))
@@ -1046,6 +1047,14 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt],"Grain_Size_Max");
         addr[nt] = &All.Grain_Size_Max;
         id[nt++] = REAL;
+        
+        strcpy(tag[nt],"Grain_Size_Min");
+        addr[nt] = &All.Grain_Size_Min;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt],"Grain_Size_Max");
+        addr[nt] = &All.Grain_Size_Max;
+        id[nt++] = REAL;
 
         strcpy(tag[nt],"Grain_Size_Spectrum_Powerlaw");
         addr[nt] = &All.Grain_Size_Spectrum_Powerlaw;
@@ -1125,7 +1134,6 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.DM_InteractionVelocityDependence;
         id[nt++] = REAL;
 #endif
-
 
 #ifdef SUBFIND
       strcpy(tag[nt], "ErrTolThetaSubfind");
@@ -1294,13 +1302,16 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 
-        
-#ifdef COSMIC_RAYS
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 0)
         strcpy(tag[nt], "CosmicRayDiffusionCoeff");
         addr[nt] = &All.CosmicRayDiffusionCoeff;
         id[nt++] = REAL;
 #endif
+#endif
+
+        strcpy(tag[nt], "CosmicRayDiffusionCoeff");
+        addr[nt] = &All.CosmicRayDiffusionCoeff;
+        id[nt++] = REAL;
 #endif
         
 
@@ -1309,12 +1320,11 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.TimeBetOnTheFlyFoF;
       id[nt++] = REAL;
 #endif
-
+        
 #ifdef BLACK_HOLES
         strcpy(tag[nt], "BlackHoleAccretionFactor");
         addr[nt] = &All.BlackHoleAccretionFactor;
         id[nt++] = REAL;
-
         strcpy(tag[nt], "BlackHoleEddingtonFactor");
         addr[nt] = &All.BlackHoleEddingtonFactor;
         id[nt++] = REAL;
@@ -1326,7 +1336,6 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "BlackHoleNgbFactor");
         addr[nt] = &All.BlackHoleNgbFactor;
         id[nt++] = REAL;
-
         strcpy(tag[nt], "BlackHoleMaxAccretionRadius");
         addr[nt] = &All.BlackHoleMaxAccretionRadius;
         id[nt++] = REAL;
@@ -1352,7 +1361,42 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "SeedBlackHolePerUnitMass");
         addr[nt] = &All.SeedBlackHolePerUnitMass;
         id[nt++] = REAL;
-#endif
+#ifdef BLACK_HOLES
+        strcpy(tag[nt], "BlackHoleAccretionFactor");
+        addr[nt] = &All.BlackHoleAccretionFactor;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "BlackHoleEddingtonFactor");
+        addr[nt] = &All.BlackHoleEddingtonFactor;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "SeedBlackHoleMass");
+        addr[nt] = &All.SeedBlackHoleMass;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "BlackHoleNgbFactor");
+        addr[nt] = &All.BlackHoleNgbFactor;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "BlackHoleMaxAccretionRadius");
+        addr[nt] = &All.BlackHoleMaxAccretionRadius;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "BlackHoleRadiativeEfficiency");
+        addr[nt] = &All.BlackHoleRadiativeEfficiency;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "BlackHoleFeedbackFactor");
+        addr[nt] = &All.BlackHoleFeedbackFactor;
+        id[nt++] = REAL;
+#if defined(BH_SEED_FROM_FOF) || defined(BH_SEED_FROM_LOCALGAS)
+        strcpy(tag[nt], "SeedBlackHoleMassSigma");
+        addr[nt] = &All.SeedBlackHoleMassSigma;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "SeedBlackHoleMinRedshift");
+        addr[nt] = &All.SeedBlackHoleMinRedshift;
+        id[nt++] = REAL;
 #endif
         
 #ifdef BH_ALPHADISK_ACCRETION
@@ -2100,6 +2144,7 @@ void read_parameter_file(char *fname)
 #endif
 #endif // closes DEVELOPER_MODE check //
     
+
     
 #ifdef GALSF
     All.CritOverDensity = 1000.0;
@@ -2110,6 +2155,7 @@ void read_parameter_file(char *fname)
 #ifdef GALSF_EFFECTIVE_EQS
     All.CritPhysDensity = 0.0; /* this will be calculated by the code below */
 #endif
+
     All.TypeOfOpeningCriterion = 1;
     /*!< determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion: this
      should only be changed if you -really- know what you're doing! */    
@@ -2277,8 +2323,6 @@ void read_parameter_file(char *fname)
     
     
     
-    
-    
 #ifdef PTHREADS_NUM_THREADS
 #ifdef _OPENMP
     if(ThisTask == 0)
@@ -2418,3 +2462,4 @@ void readjust_timebase(double TimeMax_old, double TimeMax_new)
 
   All.TimeMax = TimeMax_new;
 }
+
