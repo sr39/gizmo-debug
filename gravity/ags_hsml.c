@@ -1239,7 +1239,6 @@ void AGSForce_calc(void)
     /* begin the main gradient loop */
     NextParticle = FirstActiveParticle;    /* begin with this index */
     do
-    {
         BufferFullFlag = 0;
         Nexport = 0;
         save_NextParticle = NextParticle;
@@ -1554,6 +1553,28 @@ void *AGSForce_evaluate_secondary(void *p)
 #undef EVALUATION_CALL
 }
 
+/* routine to return the maximum allowed softening */
+double ags_return_maxsoft(int i)
+{
+    double maxsoft = All.MaxHsml; // overall maximum - nothing is allowed to exceed this
+#if !(EXPAND_PREPROCESSOR_(ADAPTIVE_GRAVSOFT_FORALL) == 1)
+    maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * All.ForceSoftening[P[i].Type]); // user-specified maximum
+#ifdef PMGRID
+    /*!< this gives the maximum allowed gravitational softening when using the TreePM method.
+     *  The quantity is given in units of the scale used for the force split (ASMTH) */
+    maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
+#endif
+#else
+    maxsoft = DMIN(maxsoft, 50.0 * All.ForceSoftening[P[i].Type]);
+#ifdef PMGRID
+    maxsoft = DMIN(maxsoft, 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
+#endif
+#endif
+#ifdef BLACK_HOLES
+    if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius  / All.cf_atime;}   // MaxAccretionRadius is now defined in params.txt in PHYSICAL units
+#endif
+    return maxsoft;
+}
 
 /* routine to determine if we need to apply the additional AGS-Force calculation[s] */
 int AGSForce_isactive(int i)

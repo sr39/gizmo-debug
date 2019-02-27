@@ -363,6 +363,25 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
 #endif
 
     /* prepare to shift the particle locations according to the random number we drew above */
+#ifdef COSMIC_RAYS
+    SphP[j].CosmicRayEnergy = mass_of_new_particle * SphP[i].CosmicRayEnergy;
+    SphP[i].CosmicRayEnergy -= SphP[j].CosmicRayEnergy;
+    SphP[j].CosmicRayEnergyPred = mass_of_new_particle * SphP[i].CosmicRayEnergyPred;
+    SphP[i].CosmicRayEnergyPred -= SphP[j].CosmicRayEnergyPred;
+    SphP[j].DtCosmicRayEnergy = mass_of_new_particle * SphP[i].DtCosmicRayEnergy;
+    SphP[i].DtCosmicRayEnergy -= SphP[j].DtCosmicRayEnergy;
+#ifdef COSMIC_RAYS_M1
+    for(k=0;k<3;k++)
+    {
+        SphP[j].CosmicRayFlux[k] = mass_of_new_particle * SphP[i].CosmicRayFlux[k];
+        SphP[i].CosmicRayFlux[k] -= SphP[j].CosmicRayFlux[k];
+        SphP[j].CosmicRayFluxPred[k] = mass_of_new_particle * SphP[i].CosmicRayFluxPred[k];
+        SphP[i].CosmicRayFluxPred[k] -= SphP[j].CosmicRayFluxPred[k];
+        SphP[j].DtCosmicRayFlux[k] = mass_of_new_particle * SphP[i].DtCosmicRayFlux[k];
+        SphP[i].DtCosmicRayFlux[k] -= SphP[j].DtCosmicRayFlux[k];
+    }
+#endif
+#endif
     double dx, dy, dz;
 #if (NUMDIMS == 1)
     dy=dz=0; dx=d_r; // here the split direction is trivial //
@@ -719,7 +738,6 @@ void merge_particles_ij(int i, int j)
             SphP[j].Dt_Intensity[k][k_dir] = SphP[j].Dt_Intensity[k][k_dir] + SphP[i].Dt_Intensity[k][k_dir];
         }
 #endif
-    }
 #endif
 #ifdef CHIMES 
     double wt_h_i, wt_h_j; // Ratio of hydrogen mass fractions. 
@@ -733,6 +751,12 @@ void merge_particles_ij(int i, int j)
     for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) 
       ChimesGasVars[j].abundances[k] = (ChimesGasVars[j].abundances[k] * wt_j * wt_h_j) + (ChimesGasVars[i].abundances[k] * wt_i * wt_h_i);
 #endif // CHIMES 
+#ifdef METALS
+    for(k=0;k<NUM_METAL_SPECIES;k++)
+        P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k]; /* metal-mass conserving */
+#endif
+    }
+#endif
 #ifdef METALS
     for(k=0;k<NUM_METAL_SPECIES;k++)
         P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k]; /* metal-mass conserving */

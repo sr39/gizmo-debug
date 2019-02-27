@@ -774,7 +774,6 @@ void density(void)
                          neighbor weights, etc, are not going to be wrong; thus we simply stop iterating */
                         particle_set_to_minhsml_flag = 0;
                     } else {
-                        /* ok, the particle needs to be set to the minimum, and (if gas) iterated one more time */
                         redo_particle = 1;
                         PPP[i].Hsml = minsoft;
                         particle_set_to_minhsml_flag = 1;
