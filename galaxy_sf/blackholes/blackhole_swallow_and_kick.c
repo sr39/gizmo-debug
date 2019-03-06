@@ -569,7 +569,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                         if (f_accreted>0.0){
 #if defined(NEWSINK_STOCHASTIC_ACCRETION) && defined(BH_WIND_KICK) //We stochastically determine if this "accreted" particle is really accreted and we take its mass or it gets kicked out
                             w = get_random_number(P[j].ID);kicked=0;
-                            if(w < All.BAL_f_accretion){
+                            if(w > All.BAL_f_accretion){
                                 kicked=1;f_accreted=0.0;
                             }
                             else{
@@ -633,14 +633,14 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 reldir[0]=cos(phi_angle) * sin(theta_angle); reldir[1]=sin(phi_angle) * sin(theta_angle); reldir[2]=cos(theta_angle); //get relative direction from polar axis      
                                 //Let's get the other base vectors and get the new velocity direction for the particle. 
                                 b_vect3[0]=dir[0];b_vect3[1]=dir[1];b_vect3[2]=dir[2];
-                                b_vect1[0] = 0.0; b_vect1[1] = - dir[2]; b_vect1[2] = - dir[1]; //We get the first base by taking cross product of dir with +x unit vector
-                                for(k=0,norm=0;k<3;k++) {norm+=b_vect1[k]*b_vect1[k];} if(norm<=0) {b_vect1[0]=1.0;dir[1]=0;dir[2]=1;norm=1;} else {norm=sqrt(norm);b_vect1[0]/=norm;b_vect1[1]/=norm;b_vect1[2]/=norm;}
+                                b_vect1[0] = 0.0; b_vect1[1] = dir[2]; b_vect1[2] = - dir[1]; //We get the first base by taking cross product of dir with +x unit vector
+                                for(k=0,norm=0;k<3;k++) {norm+=b_vect1[k]*b_vect1[k];} if(norm<=0) {b_vect1[0]=0;b_vect1[1]=1.0;b_vect1[2]=0;norm=1;} else {norm=sqrt(norm);b_vect1[0]/=norm;b_vect1[1]/=norm;b_vect1[2]/=norm;}
                                 //second vector is dir cross b_vect1, and it should be normalized by default as it is the cross product of two orthogonal vectors
                                 b_vect2[0] = b_vect3[1] * b_vect1[2] - b_vect3[2] * b_vect1[1]; 
                                 b_vect2[1] = b_vect3[0] * b_vect1[2] - b_vect3[2] * b_vect1[0]; 
                                 b_vect2[2] = b_vect3[0] * b_vect1[1] - b_vect3[1] * b_vect1[0];
                                 //Now we get the new direction
-                                for(k=0;k<3;k++) {dir[k]=reldir[0]*b_vect1[k]+reldir[1]*b_vect2[k]+reldir[2]*b_vect2[k];}
+                                for(k=0;k<3;k++) {dir[k]=reldir[0]*b_vect1[k]+reldir[1]*b_vect2[k]+reldir[2]*b_vect3[k];}
 #if defined(NEWSINK_RELOCATE_KICKED_PARTICLE)
                                 //Let's reposition the particle
                                 for(k=0;k<3;k++) {P[j].Pos[k]=dir[k]*int_zone_radius;}//Put the particle at the edge of the interaction zone
@@ -653,8 +653,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif  
 
 #ifndef IO_REDUCED_MODE
+                                //printf("BAL kick: P[j].ID %llu BH ID dir: %g %g %g, Jsink: %g %g %g reldir: %g %g %g bvect3 %g %g %g \n", (unsigned long long) P[j].ID, (unsigned long long) P[j].SwallowID, dir[0],dir[1],dir[2],Jsink[0],Jsink[1],Jsink[2], reldir[0],reldir[1],reldir[2], b_vect3[0],b_vect3[1],b_vect3[2]);
                                 printf("BAL kick: All.BAL_v_outflow %g \t f_acc_corr %g \t v_kick %g\n",(All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s),f_acc_corr,v_kick);
-                                printf("BAL kick: P[j].ID %llu ID %llu Type(j) %d All.BAL_f_accretion %g M(j) %g V(j).xyz %g/%g/%g P(j).xyz %g/%g/%g p(i).xyz %g/%g/%g v_out %g \n",
+                                printf("BAL kick: P[j].ID %llu BH ID %llu Type(j) %d All.BAL_f_accretion %g M(j) %g V(j).xyz %g/%g/%g P(j).xyz %g/%g/%g p(i).xyz %g/%g/%g v_out %g \n",
                                        (unsigned long long) P[j].ID, (unsigned long long) P[j].SwallowID,P[j].Type, All.BAL_f_accretion,P[j].Mass,P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],pos[0],pos[1],pos[2],v_kick);
 #endif
 #ifdef BH_OUTPUT_MOREINFO
