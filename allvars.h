@@ -300,7 +300,7 @@
 #define NEWSINK_JET_OPENING_ANGLE 30.0 //Opening angle (in degrees) for jets for NEWSINK when using BH_WIND_KICK -1
 #define ALPHASS 0.01 //alpha disk factor for disc timescale, should be between 0.01-1.0
 #define DT_MIN_TOLERANCE_FACTOR 0.001 //tolerance factor for dt_min, defined in part (ii) of 2.3.5 in Hubber 2013, since dt is set using sqrt(ErrTolIntAccuracy), it should be lower than that, otherwise we recover the original sink algorithm that just eats everything in the sink radius. Essentially sinks are swallowed below (DT_MIN_TOLERANCE_FACTOR/sqrt(ErrTolIntAccuracy))^(2/3) of the sink radius
-#define INT_ZONE_TO_SINKRADIUS 1.0 //how many times larger should the sink interaction zone be compared to the sink's at formation size, 1 should be good
+#define INT_ZONE_TO_SINKRADIUS 2.0 //how many times larger should the sink interaction zone be compared to the sink's at formation size, 1 should be good
 #define NEWSINK_NEIGHBORMAX 200 //maximum number of neighbors anticipated, using BlackHoleNgbFactor=5 and DesNumNgb=32  value of 200 should be safe
 #define MDOT_AVG_WINDOWS_SIZE 10 //for radiation mdot is smoothed over this number of timesteps
 #endif

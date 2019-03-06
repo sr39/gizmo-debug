@@ -1012,6 +1012,9 @@ integertime get_timestep(int p,		/*!< particle index */
             printf("Part-ID=%llu  dt=%g ac=%g xyz=(%g|%g|%g)\n", (MyIDType) P[p].ID, dt, ac, P[p].Pos[0],
                    P[p].Pos[1], P[p].Pos[2]);
 #endif // ndef LONGIDS
+        if(P[p].Type == 5){
+            printf("BH particle size %g, nearest gas distance is %g \n", Get_Particle_Size(p), BPP(p).BH_NearestGasNeighbor);
+        }
         }
         fflush(stdout);
         fprintf(stderr, "\n @ fflush \n");
