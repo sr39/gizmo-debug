@@ -396,7 +396,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #endif
  //printf("%d start feed assignment, for n_neighbor %d\n", ThisTask, n_neighbor);
 #if defined(NEWSINK)
-    int_zone_radius = sink_radius * INT_ZONE_TO_SINKRADIUS;
+    int_zone_radius = h_i * INT_ZONE_TO_HSML;
     int_zone_radius2 = int_zone_radius * int_zone_radius;
     target_accreted_mass = mdot *dt;
     /*Decide for NEWSINK which particles to eat*/
