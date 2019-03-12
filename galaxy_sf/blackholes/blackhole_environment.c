@@ -31,10 +31,10 @@ static struct blackholedata_in
 {
 #if defined(BH_GRAVCAPTURE_GAS)
     MyDouble Mass;
+#endif
 #ifdef SINGLE_STAR_STRICT_ACCRETION
     MyFloat SinkRadius;
-#endif
-#endif
+#endif  
     MyDouble Pos[3];
     MyFloat Vel[3];
 #ifdef BH_GRAVACCRETION
@@ -284,7 +284,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     hinv3 = hinv*hinv*hinv;
 #endif
 #if defined(NEWSINK)
-        MyDouble dt_min = DMAX(DT_MIN_TOLERANCE_FACTOR * sqrt(pow(int_zone_radius,3.0)/(All.G * mass)), 20.0*DMAX(All.MinSizeTimestep,All.Timebase_interval) );
+        MyDouble dt_min = DMAX(DT_MIN_TOLERANCE_FACTOR * sqrt(All.SofteningTable[5]*All.SofteningTable[5]*All.SofteningTable[5]/(All.G * mass)), 20.0*DMAX(All.MinSizeTimestep,All.Timebase_interval) );
 #if defined(NEWSINK_J_FEEDBACK)
         Jsinktot = sqrt(Jsink[0]*Jsink[0] + Jsink[1]*Jsink[1] +Jsink[2]*Jsink[2]);
 #endif
