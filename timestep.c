@@ -874,8 +874,8 @@ integertime get_timestep(int p,		/*!< particle index */
     /* Reduce time-step if this particle got interaction probabilities > 0.2 during the last time-step */
     if(P[p].dt_step_sidm > 0)
     {
-        if(P[p].dt_step_sidm < dt) {dt = P[p].dt_step_sidm * All.Timebase_interval;} else {P[p].dt_step_sidm = 0;}
-        if(dt < All.MinSizeTimestep) {printf("Warning: A Timestep below the limit `MinSizeTimestep' is being used to keep self interaction probabilities smaller than 0.2. dt = %g\n",dt);}
+        double dt_sidm_physical = P[p].dt_step_sidm * All.Timebase_interval / All.cf_hubble_a;
+        if(dt_sidm_physical < dt) {dt = dt_sidm_physical;}
     }
 #endif
     
@@ -898,9 +898,7 @@ integertime get_timestep(int p,		/*!< particle index */
         if(mcorr < 1 && mcorr > 0) {dt_stellar_evol /= mcorr;}
         if(dt_stellar_evol < 1.e-6) {dt_stellar_evol = 1.e-6;}
         dt_stellar_evol /= (0.001*All.UnitTime_in_Megayears/All.HubbleParam); // convert to code units //
-        if(dt_stellar_evol>0)
-            if(dt_stellar_evol<dt)
-                dt = dt_stellar_evol;
+        if(dt_stellar_evol>0) {if(dt_stellar_evol<dt) {dt = dt_stellar_evol;}}
     }
 #endif
     
@@ -959,7 +957,6 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif // BLACK_HOLES
     
 
-    
     /* convert the physical timestep to dloga if needed. Note: If comoving integration has not been selected, All.cf_hubble_a=1. */
     dt *= All.cf_hubble_a;
     
@@ -967,15 +964,9 @@ integertime get_timestep(int p,		/*!< particle index */
     dt = All.MaxSizeTimestep;
 #endif
     
+    if(dt >= All.MaxSizeTimestep) {dt = All.MaxSizeTimestep;}
     
-    
-    if(dt >= All.MaxSizeTimestep)
-        dt = All.MaxSizeTimestep;
-    
-    
-    if(dt >= dt_displacement)
-        dt = dt_displacement;
-    
+    if(dt >= dt_displacement) {dt = dt_displacement;}
     
     if((dt < All.MinSizeTimestep)||(((integertime) (dt / All.Timebase_interval)) <= 1))
     {
@@ -985,36 +976,24 @@ integertime get_timestep(int p,		/*!< particle index */
         if(P[p].Type == 0)
         {
 #ifndef LONGIDS
-            printf
-            ("Part-ID=%d  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g\n",
+            printf("Part-ID=%d  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g\n",
              (int) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],
-             PPP[p].Hsml, csnd,
-             sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) *
-             All.cf_hubble_a, All.SofteningTable[P[p].Type]);
+             PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type]);
 #else
-            printf
-            ("Part-ID=%llu  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g\n",
+            printf("Part-ID=%llu  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g\n",
              (MyIDType) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],
-             PPP[p].Hsml, csnd,
-             sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) *
-             All.cf_hubble_a, All.SofteningTable[P[p].Type]);
+             PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type]);
 #endif // ndef LONGIDS
-            
-            
         }
         else // if(P[p].Type == 0)
         {
 #ifndef LONGIDS
-            printf("Part-ID=%d  dt=%g ac=%g xyz=(%g|%g|%g)\n", (int) P[p].ID, dt, ac, P[p].Pos[0], P[p].Pos[1],
-                   P[p].Pos[2]);
+            printf("Part-ID=%d  dt=%g ac=%g xyz=(%g|%g|%g)\n", (int) P[p].ID, dt, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2]);
 #else
-            printf("Part-ID=%llu  dt=%g ac=%g xyz=(%g|%g|%g)\n", (MyIDType) P[p].ID, dt, ac, P[p].Pos[0],
-                   P[p].Pos[1], P[p].Pos[2]);
+            printf("Part-ID=%llu  dt=%g ac=%g xyz=(%g|%g|%g)\n", (MyIDType) P[p].ID, dt, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2]);
 #endif // ndef LONGIDS
         }
-        fflush(stdout);
-        fprintf(stderr, "\n @ fflush \n");
-        endrun(888);
+        fflush(stdout); fprintf(stderr, "\n @ fflush \n"); endrun(888);
 #endif // STOP_WHEN_BELOW_MINTIMESTEP
         dt = All.MinSizeTimestep;
     }
@@ -1024,22 +1003,17 @@ integertime get_timestep(int p,		/*!< particle index */
     if(ti_step<=1) ti_step=2;
 #endif
     
-    
     if(!(ti_step > 0 && ti_step < TIMEBASE))
     {
         printf("\nError: A timestep of size zero was assigned on the integer timeline, no here!!!\n"
                "We better stop.\n"
                "Task=%d Part-ID=%llu dt=%g dtc=%g dtv=%g dtdis=%g tibase=%g ti_step=%lld ac=%g xyz=(%g|%g|%g) tree=(%g|%g|%g)\n\n",
                ThisTask, (unsigned long long) P[p].ID, dt, dt_courant, dt_divv, dt_displacement,
-               All.Timebase_interval, (long long) ti_step, ac,
-               P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], P[p].GravAccel[0], P[p].GravAccel[1],
-               P[p].GravAccel[2]);
+               All.Timebase_interval, (long long) ti_step, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], P[p].GravAccel[0], P[p].GravAccel[1], P[p].GravAccel[2]);
 #ifdef PMGRID
         printf("pm_force=(%g|%g|%g)\n", P[p].GravPM[0], P[p].GravPM[1], P[p].GravPM[2]);
 #endif
-        
-        fflush(stdout);
-        endrun(818);
+        fflush(stdout); endrun(818);
     }
     
     return ti_step;
