@@ -1229,7 +1229,7 @@ void AGSForce_calc(void)
     /* before doing any operations, need to zero the appropriate memory so we can correctly do pair-wise operations */
     //for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {if(P[i].Type==0) {memset(&AGSForce_DataPasser[i], 0, sizeof(struct temporary_data_topass));}}
 #ifdef DM_SIDM
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {P[i].dt_step_sidm = 1.e10*P[i].dt_step;}
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {P[i].dt_step_sidm = 10*P[i].dt_step;}
 #endif
 #ifdef CBE_INTEGRATOR
     /* need to zero values for active particles (which will be re-calculated) before they are added below */
