@@ -571,7 +571,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 #if defined(NEWSINK)
     if (BlackholeTempInfo[i].intzone_gasmass>0 && BlackholeTempInfo[i].t_acc>0)
     {
-        mdot = BlackholeTempInfo[i].intzone_gasmass / BlackholeTempInfo[i].t_acc * DMAX(1.0, pow(BlackholeTempInfo[i].intzone_gasmass/BPP(n).init_mass_in_intzone,2.0)); /* Use the accretion timescale calculated for the sink, then scaled by (M/M_init)^2 if larger than M_init*/
+      mdot = BlackholeTempInfo[i].intzone_gasmass / BlackholeTempInfo[i].t_acc; //* DMAX(1.0, pow(BlackholeTempInfo[i].intzone_gasmass/BPP(n).init_mass_in_intzone,2.0)); /* Use the accretion timescale calculated for the sink, then scaled by (M/M_init)^2 if larger than M_init*/
     }
     /*We have already marked particles that have too small timesteps to be swallowed. Let's check if that put mdot above this value, if yes, change mdot*/
     for(k=0;k<BlackholeTempInfo[i].n_neighbor;k++){
