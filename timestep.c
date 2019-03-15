@@ -444,9 +444,7 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         double omega_binary = 1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time; // timestep is harmonic mean of freefall and approach time
         dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary);
-	//	printf("dt_binary = %g, dt_tidal=%g, approach time=%g, freefall time = %g, dist=%g\n", sqrt(All.ErrTolIntAccuracy)/omega_binary, dt_tidal, P[p].min_bh_approach_time, P[p].min_bh_freefall_time, P[p].min_dist_to_bh);
     }
-
 #endif
 
     

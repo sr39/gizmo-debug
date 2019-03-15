@@ -284,7 +284,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     hinv3 = hinv*hinv*hinv;
 #endif
 #if defined(NEWSINK)
-        MyDouble dt_min = DMAX(DT_MIN_TOLERANCE_FACTOR * sqrt(pow(int_zone_radius,3.0)/(All.G * mass)), 20.0*DMAX(All.MinSizeTimestep,All.Timebase_interval) );
+        MyDouble dt_min = DMAX(DT_MIN_TOLERANCE_FACTOR * sqrt(pow(All.SofteningTable[5],3.0)/(All.G * mass)), 20.0*DMAX(All.MinSizeTimestep,All.Timebase_interval) );
 #if defined(NEWSINK_J_FEEDBACK)
         Jsinktot = sqrt(Jsink[0]*Jsink[0] + Jsink[1]*Jsink[1] +Jsink[2]*Jsink[2]);
 #endif
@@ -305,7 +305,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
         while(startnode >= 0)
         {
 #if defined(NEWSINK)
-            numngb = ngb_treefind_variable_targeted(pos, int_zone_radius, target, &startnode, mode, nexport, nSend_local, BH_NEIGHBOR_BITFLAG);
+            numngb = ngb_treefind_variable_targeted(pos, int_zone_radius, target, &startnode, mode, nexport, nSend_local, BH_NEIGHBOR_BITFLAG);	   
 #else
             numngb = ngb_treefind_variable_targeted(pos, h_i, target, &startnode, mode, nexport, nSend_local, BH_NEIGHBOR_BITFLAG); // BH_NEIGHBOR_BITFLAG defines which types of particles we search for
 #endif
@@ -314,7 +314,6 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
             for(n = 0; n < numngb; n++)
             {
                 j = Ngblist[n];
-                
                 
                 if( (P[j].Mass > 0) && (P[j].Type != 5) && (P[j].ID != id) )
                 {

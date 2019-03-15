@@ -1877,7 +1877,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double bh_dvz = P[no].Vel[2] - vel_z;
                     double vSqr = bh_dvx*bh_dvx + bh_dvy*bh_dvy + bh_dvz*bh_dvz;
                     double M_total = P[no].Mass + pmass;
-                    double r2soft = r2 + All.SofteningTable[5]*All.SofteningTable[5];
+		    double r2soft;
+		    r2soft = DMAX(All.SofteningTable[5], soft);
+		    r2soft = r2soft*r2soft + r2;
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER);
                     double tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
                     if(tSqr < min_bh_approach_time) {
@@ -2288,7 +2290,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double bh_dvz = nop->bh_vel[2] - vel_z;
                     double vSqr = bh_dvx*bh_dvx + bh_dvy*bh_dvy + bh_dvz*bh_dvz;
                     double M_total = nop->bh_mass + pmass;
-                    double r2soft = bh_r2 + All.SofteningTable[5]*All.SofteningTable[5];
+		    double r2soft;
+		    r2soft = DMAX(All.SofteningTable[5], soft);
+		    r2soft = r2soft*r2soft + r2;
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER);
                     double tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
                     if(tSqr < min_bh_approach_time) {
