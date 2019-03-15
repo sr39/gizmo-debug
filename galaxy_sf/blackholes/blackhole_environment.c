@@ -31,10 +31,10 @@ static struct blackholedata_in
 {
 #if defined(BH_GRAVCAPTURE_GAS)
     MyDouble Mass;
+#endif
 #ifdef SINGLE_STAR_STRICT_ACCRETION
     MyFloat SinkRadius;
-#endif
-#endif
+#endif  
     MyDouble Pos[3];
     MyFloat Vel[3];
 #ifdef BH_GRAVACCRETION
@@ -251,7 +251,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
         id = P[target].ID;
         mod_index = P[target].IndexMapToTempStruc;  /* the index of the BlackholeTempInfo should we modify*/
 #if defined(NEWSINK)
-        int_zone_radius = P[target].SinkRadius * INT_ZONE_TO_SINKRADIUS;
+        int_zone_radius = P[target].Hsml * INT_ZONE_TO_HSML;
 #if defined(NEWSINK_J_FEEDBACK)
         Jsink = P[target].Jsink;
 #endif
@@ -271,7 +271,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
         id = BlackholeDataGet[target].ID;
         mod_index = 0;                              /* this is not used for mode==1, but this avoids compiler error */
 #if defined(NEWSINK)
-        int_zone_radius = BlackholeDataGet[target].SinkRadius * INT_ZONE_TO_SINKRADIUS;
+        int_zone_radius = BlackholeDataGet[target].Hsml * INT_ZONE_TO_HSML;
 #if defined(NEWSINK_J_FEEDBACK)
         Jsink = BlackholeDataGet[target].Jsink;
 #endif

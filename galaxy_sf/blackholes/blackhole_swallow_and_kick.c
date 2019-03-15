@@ -322,7 +322,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #if defined(NEWSINK)
         mdot_avg = BPP(target).BH_Mdot_Avg;
-        int_zone_radius = BPP(target).SinkRadius * INT_ZONE_TO_SINKRADIUS;
+        int_zone_radius = P[target].Hsml * INT_ZONE_TO_HSML;
         n_neighbor = BlackholeTempInfo[P[target].IndexMapToTempStruc].n_neighbor;
         str_f_acc = BlackholeTempInfo[P[target].IndexMapToTempStruc].f_acc;
         str_gasID = BlackholeTempInfo[P[target].IndexMapToTempStruc].gasID;
@@ -363,7 +363,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #if defined(NEWSINK)
         mdot_avg = BlackholeDataGet[target].BH_Mdot_Avg;
-        int_zone_radius = BlackholeDataGet[target].SinkRadius * INT_ZONE_TO_SINKRADIUS;
+        int_zone_radius = BlackholeDataGet[target].Hsml * INT_ZONE_TO_HSML;
         n_neighbor = BlackholeDataGet[target].n_neighbor;
         str_f_acc = BlackholeDataGet[target].f_acc;
         str_gasID = BlackholeDataGet[target].gasID;
