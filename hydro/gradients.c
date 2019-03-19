@@ -1045,6 +1045,11 @@ void hydro_gradient_calc(void)
             /* now we can properly calculate (second-order accurate) gradients of hydrodynamic quantities from this loop */
             construct_gradient(SphP[i].Gradients.Density,i);
             construct_gradient(SphP[i].Gradients.Pressure,i);
+#ifdef SINGLE_STAR_FORMATION
+	    SphP[i].Gradients.PressureMagnitude = 0;
+	    for(k=0; k<3; k++) SphP[i].Gradients.PressureMagnitude += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];
+	    SphP[i].Gradients.PressureMagnitude = sqrt(SphP[i].Gradients.PressureMagnitude);
+#endif	    
             for(k=0;k<3;k++) {construct_gradient(SphP[i].Gradients.Velocity[k],i);}
 #ifdef DOGRAD_INTERNAL_ENERGY
             construct_gradient(SphP[i].Gradients.InternalEnergy,i);
