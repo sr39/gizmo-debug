@@ -268,7 +268,7 @@
 #define GALSF_SFR_VIRIAL_SF_CRITERION 2 // only allow star formation in virialized sub-regions meeting Jeans threshold + converging all 3 axes
 #define METALS  // metals should be active for stellar return
 #define BLACK_HOLES // need to have black holes active since these are our sink particles
-//#define GALSF_SFR_IMF_VARIATION // save extra information about sinks when they form - MYG: switching this off for the sake of memory, but if it's useful for a project we can always bring it back
+#define GALSF_SFR_IMF_VARIATION // save extra information about sinks when they form - MYG: switching this off for the sake of memory, but if it's useful for a project we can always bring it back
 #ifdef MAGNETIC
 #define MHD_CONSTRAINED_GRADIENT 1  // particularly worried about div-B errors around sink particles, so we'll switch this on to help scrub away the shame - MYG
 #endif
@@ -294,6 +294,9 @@
 #endif
 #ifdef NEWSINK
 #define NEWSINK_J_FEEDBACK //turns on angular momentum feedback in NEWSINK
+#ifdef MAGNETIC
+#define NEWSINK_B_FEEDBACK // turns on magnetic flux feedback, redistributing the magnetic flux of accreted particles similarly to how angular momentum is done
+#endif
 #define NEWSINK_EAT_SMALL_DT // particles with very small timesteps will be accreted to prevent extreme slowdowns, controlled by DT_MIN_TOLERANCE_FACTOR
 #define NEWSINK_STOCHASTIC_ACCRETION //with this turned on NEWSINK will not leech of parts of a gas particle when accreting (default behavior), instead it will accrete the entire particle with p=dm/m_particle probability, where dm is the mass it would need to accrete
 //#define NEWSINK_RELOCATE_KICKED_PARTICLE //will relocate the particle to the poles uniformly distributed along a spherical surface with opening angle NEWSINK_JET_OPENING_ANGLE at a distance of the interaction radius
@@ -301,7 +304,7 @@
 #define ALPHASS 0.01 //alpha disk factor for disc timescale, should be between 0.01-1.0
 #define DT_MIN_TOLERANCE_FACTOR 0.001 //tolerance factor for dt_min, defined in part (ii) of 2.3.5 in Hubber 2013.
 #define INT_ZONE_TO_HSML 1.0 //how many times larger should the sink interaction zone be compared to the the particle's adaptive smoothing length, 1 should be good
-#define NEWSINK_NEIGHBORMAX 200 //maximum number of neighbors anticipated, using BlackHoleNgbFactor=5 and DesNumNgb=32  value of 200 should be safe
+#define NEWSINK_NEIGHBORMAX 360 //maximum number of neighbors anticipated, using BlackHoleNgbFactor=5 and DesNumNgb=32  value of 200 should be safe
 #define MDOT_AVG_WINDOWS_SIZE 10 //for radiation mdot is smoothed over this number of timesteps
 #endif
 //#GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory
@@ -2347,6 +2350,9 @@ extern struct sph_particle_data
     {
         MyDouble Density[3];
         MyDouble Pressure[3];
+#ifdef SINGLE_STAR_FORMATION
+        MyDouble PressureMagnitude;
+#endif      
         MyDouble Velocity[3][3];
 #ifdef MAGNETIC
         MyDouble B[3][3];

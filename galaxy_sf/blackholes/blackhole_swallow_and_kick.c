@@ -676,15 +676,19 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                     P[j].SwallowID = 0; 
                 } // if(P[j].SwallowID == id)  -- particles being entirely or partially swallowed!!!
 #if defined(NEWSINK_J_FEEDBACK)
+		int n;
                 if( Jsinktot > 0 && P[j].Mass > 0 && P[j].Type == 0 ){ /*There is angular mom in the sink and this is gas*/
                 /*Let's find if it is on the neighbor list*/
-                    for(k=0;k<n_neighbor;k++){
-                        if( P[j].ID == str_gasID[k] && str_f_acc[k] < 1.0 ){ /*It should be a particle we don't swallow fully*/
-                            Jcrossdr[0] = -Jsink[2]*dx[1] + Jsink[1]*dx[2]; Jcrossdr[1] = Jsink[2]*dx[0] - Jsink[0]*dx[2];Jcrossdr[2] = -Jsink[1]*dx[0] + Jsink[0]*dx[1]; // L x dx cross product
-                            dv[0] = dJsinkpred * Jcrossdr[0] / dv_ang_kick_norm; dv[1] = dJsinkpred * Jcrossdr[1] / dv_ang_kick_norm; dv[2] = dJsinkpred * Jcrossdr[2] / dv_ang_kick_norm;
-                            P[j].Vel[0] += dv[0]; P[j].Vel[1] += dv[1]; P[j].Vel[2] += dv[2]; //Eq 22 in Hubber 2013
-                            accreted_momentum[0] -= dv[0]*P[j].Mass; accreted_momentum[1] -= dv[1]*P[j].Mass; accreted_momentum[2] -= dv[2]*P[j].Mass;
-                            accreted_J[0] -= (dv[2]*dx[1] - dv[1]*dx[2])*P[j].Mass; accreted_J[1] -= (-dv[2]*dx[0] + dv[0]*dx[2])*P[j].Mass; accreted_J[2] -= (dv[1]*dx[0] - dv[0]*dx[1])*P[j].Mass;
+                    for(n=0;n<n_neighbor;n++){
+                        if( P[j].ID == str_gasID[n] && str_f_acc[n] < 1.0 ){ /*It should be a particle we don't swallow fully*/
+                            Jcrossdr[0] = -Jsink[2]*dx[1] + Jsink[1]*dx[2]; Jcrossdr[1] = Jsink[2]*dx[0] - Jsink[0]*dx[2]; Jcrossdr[2] = -Jsink[1]*dx[0] + Jsink[0]*dx[1]; // L x dx cross product
+			    for(k=0; k<3; k++) {
+			        dv[k] = dJsinkpred * Jcrossdr[k] / dv_ang_kick_norm; 
+                                P[j].Vel[k] += dv[k];  //Eq 22 in Hubber 2013
+				SphP[j].VelPred[k] += dv[k]; 
+				accreted_momentum[k] -= dv[k]*P[j].Mass; // to conserve momentum
+			    }
+			    accreted_J[0] -= (dv[2]*dx[1] - dv[1]*dx[2])*P[j].Mass; accreted_J[1] -= (-dv[2]*dx[0] + dv[0]*dx[2])*P[j].Mass; accreted_J[2] -= (dv[1]*dx[0] - dv[0]*dx[1])*P[j].Mass;
                         }
                     }
 // #ifdef BH_OUTPUT_MOREINFO
