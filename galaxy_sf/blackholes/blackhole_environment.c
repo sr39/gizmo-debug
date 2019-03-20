@@ -492,30 +492,6 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                                 printf("%d Gas neighbor number over limit for BH with ID %d Current neighbor number is %d\n", ThisTask, id, out.n_neighbor);
                             }
                             // /* Start another cycle to get gravitational energy, this is very crude, should be replaced */
-
-                            for(n2 = (n+1); n2 < numngb; n2++) /*Repeat cycle over gas particles for NEWSINK*/
-                            {
-                                j2 = Ngblist[n2];
-                                if( (P[j2].Mass > 0) && (P[j2].Type == 0) && (P[j2].ID != id) )
-                                {
-                                    /*Distance from sink*/
-                                    dP[0] = P[j2].Pos[0]-pos[0];
-                                    dP[1] = P[j2].Pos[1]-pos[1];
-                                    dP[2] = P[j2].Pos[2]-pos[2];
-                                    r2=0; for(k=0;k<3;k++) r2+=dP[k]*dP[k]; 
-                                    if (sqrt(r2) <= int_zone_radius )/*Check if gas in interaction zone radius*/
-                                    {
-                                        dP[0] = P[j2].Pos[0]-P[j].Pos[0];
-                                        dP[1] = P[j2].Pos[1]-P[j].Pos[1];
-                                        dP[2] = P[j2].Pos[2]-P[j].Pos[2];
-                                        r2=0; for(k=0;k<3;k++) r2+=dP[k]*dP[k];
-//                                        hinv_gas2 = 1.0/P[j2].Hsml; hinv3_gas2 = hinv_gas2*hinv_gas2*hinv_gas2;
-//                                        u_gas1=sqrt(r2)*hinv_gas1;u_gas2=sqrt(r2)*hinv_gas2;
-					out.gas_Egrav_in_intzone += grav_interaction_energy(sqrt(r2), P[j].Mass, P[j2].Mass, P[j].Hsml, P[j2].Hsml); // Fixed the interactions here, but doesn't this summation get done in blackhole_properties_loop()? - MYG
-//                                        out.gas_Egrav_in_intzone -= All.G * P[j2].Mass * P[j].Mass * 0.5 * (kernel_gravity(u_gas1, hinv_gas1, hinv3_gas1, -1) + kernel_gravity(u_gas2, hinv_gas2, hinv3_gas2, -1)); /*Gas-gas interaction sum from Hubber 2013 Eq 14*/
-                                    } /* Sink radius check */
-                                } /* Type check */ 
-                            } /* Cycle over particles */ 
                             
                         } /* Sink radius check */
 #endif // NEWSINK
