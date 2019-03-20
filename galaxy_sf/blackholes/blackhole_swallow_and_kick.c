@@ -372,7 +372,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
         Jsinktot = sqrt(Jsink[0]*Jsink[0] + Jsink[1]*Jsink[1] +Jsink[2]*Jsink[2]);
         tdisc = BlackholeDataGet[target].t_disc;
         str_dv_ang_kick_norm = BlackholeDataGet[target].dv_ang_kick_norm;
-#endif
+#endif	
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
         Jgas_in_Kernel = BlackholeDataGet[target].Jgas_in_Kernel;
@@ -588,6 +588,14 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 accreted_J[1] += FLT(f_accreted * P[j].Mass *(dx[2]*dv[0] - dx[0]*dv[2]) + P[j].Jsink[1]);
                                 accreted_J[2] += FLT(f_accreted * P[j].Mass *(dx[0]*dv[1] - dx[1]*dv[0]) + P[j].Jsink[2]);
 #endif
+/* #ifdef NEWSINK_B_FEEDBACK */
+/* 				if(f_accreted == 1.0){ // if the particle is still around after then we leave the flux alone */
+/* 				  for(k=0;k<3;k++)   accreted_B[k] += SphP[i].B[k]; */
+/* #ifdef DIVBCLEANING_DEDNER */
+/* 				  accreted_Phi += SphP[i].Phi; */
+/* #endif */
+				}
+#endif				
 #endif
                                 P[j].Mass *= (1.0-f_accreted);
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME

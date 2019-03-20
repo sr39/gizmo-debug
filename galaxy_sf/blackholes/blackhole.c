@@ -124,7 +124,26 @@ double bh_vesc(int j, double mass, double r_code)
     return sqrt(2.0*All.G*(m_eff)/(r_code*All.cf_atime) + cs_to_add_km_s*cs_to_add_km_s);
 }
 
- 
+#ifdef NEWSINK
+/* convenience function for the symmetrized gravitational interaction energy of two softened particles */
+double grav_interaction_energy(double dr_code, double m1, double m2, double hsml1, double hsml2){
+    double energy = 0;
+    if (dr_code > hsml1){
+	energy -= 1/dr_code;
+    } else {
+        double hinv = 1/hsml1;    
+        energy += kernel_gravity(dr_code * hinv, hinv, hinv*hinv*hinv, -1);
+    }
+    if (dr_code > hsml2){
+	energy -= 1/dr_code;
+    } else {
+        double hinv = 1/hsml2;    
+        energy += kernel_gravity(dr_code * hinv, hinv, hinv*hinv*hinv, -1);
+    }
+    return 0.5 * All.G * m1 * m2 * energy;
+}
+#endif
+			       
 /* check whether a particle is sufficiently bound to the BH to qualify for 'gravitational capture' */
 int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double sink_radius) // need to know the sink radius, which can be distinct from both the softening and search radii
 {
@@ -288,10 +307,11 @@ void blackhole_properties_loop(void)
                     for(j=k+1; j< BlackholeTempInfo[i].n_neighbor; j++){
                         dx[0] = BlackholeTempInfo[i].xgas[k] - BlackholeTempInfo[i].xgas[j]; dx[1] = BlackholeTempInfo[i].ygas[k] - BlackholeTempInfo[i].ygas[j]; dx[2] = BlackholeTempInfo[i].zgas[k] - BlackholeTempInfo[i].zgas[j];
                         dr = sqrt( dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2] );
-                        hinv_g1 = 1.0/BlackholeTempInfo[i].Hsmlgas[k]; hinv_g2 = 1.0/BlackholeTempInfo[i].Hsmlgas[j];
-                        u1 = dr *hinv_g1; u2 = dr * hinv_g2;
-                        hinv3_g1 = hinv_g1*hinv_g1*hinv_g1; hinv3_g2 = hinv_g2*hinv_g2*hinv_g2;
-                        BlackholeTempInfo[i].gas_Egrav_in_intzone -= All.G * BlackholeTempInfo[i].mgas[k] * BlackholeTempInfo[i].mgas[j] * 0.5 * (kernel_gravity(u1, hinv_g1, hinv3_g1, -1) + kernel_gravity(u2, hinv_g2, hinv3_g2, -1)); /*Gas-gas interaction sum from Hubber 2013 Eq 14*/
+//                        hinv_g1 = 1.0/BlackholeTempInfo[i].Hsmlgas[k]; hinv_g2 = 1.0/BlackholeTempInfo[i].Hsmlgas[j];
+//                        u1 = dr *hinv_g1; u2 = dr * hinv_g2;
+//                        hinv3_g1 = hinv_g1*hinv_g1*hinv_g1; hinv3_g2 = hinv_g2*hinv_g2*hinv_g2;
+			BlackholeTempInfo[i].gas_Egrav_in_intzone += grav_interaction_energy(dr, BlackholeTempInfo[i].mgas[j], BlackholeTempInfo[i].mgas[k], BlackholeTempInfo[i].Hsmlgas[j], BlackholeTempInfo[i].Hsmlgas[k]);
+//                        BlackholeTempInfo[i].gas_Egrav_in_intzone -= All.G * BlackholeTempInfo[i].mgas[k] * BlackholeTempInfo[i].mgas[j] * 0.5 * (kernel_gravity(u1, hinv_g1, hinv3_g1, -1) + kernel_gravity(u2, hinv_g2, hinv3_g2, -1)); /*Gas-gas interaction sum from Hubber 2013 Eq 14*/
                     }
                 }
                 //use spherical approximation with R= average distance of particles*/
