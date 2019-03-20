@@ -594,8 +594,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 /* #ifdef DIVBCLEANING_DEDNER */
 /* 				  accreted_Phi += SphP[i].Phi; */
 /* #endif */
-				}
-#endif				
+//				}
+//#endif				
 #endif
                                 P[j].Mass *= (1.0-f_accreted);
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
