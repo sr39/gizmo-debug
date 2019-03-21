@@ -1042,6 +1042,9 @@ OBJS    += galaxy_sf/blackholes/blackhole.o galaxy_sf/blackholes/blackhole_util.
 INCL    += galaxy_sf/blackholes/blackhole.h
 endif
 
+ifeq (SINGLE_STAR_FB_HEATING,$(findstring SINGLE_STAR_FB_HEATING,$(CONFIGVARS)))
+OBJS += radiation/rt_utilities.o
+endif
 
 
 ifeq (SCF_POTENTIAL,$(findstring SCF_POTENTIAL,$(CONFIGVARS)))
