@@ -443,7 +443,7 @@ integertime get_timestep(int p,		/*!< particle index */
     if(P[p].Type == 5)
     {
         double omega_binary = 1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time; // timestep is harmonic mean of freefall and approach time
-        dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary);
+        dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary * 0.3);
     }
 #endif
 

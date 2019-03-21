@@ -716,6 +716,10 @@ void set_blackhole_mdot(int i, int n, double dt)
 #if defined(NEWSINK)
     double tsum=0; 
     /*Store mdot and dt value for BH particle and time average it*/
+#ifdef NEWSINK_MDOT_EXPONENTIAL_SMOOTHING    
+    double tdyn = DMAX(sqrt(All.ForceSoftening[5]*All.ForceSoftening[5]*All.ForceSoftening[5] / (BPP(n).Mass / All.G)), dt);
+    BPP(n).BH_Mdot_Avg = (1 - dt / tdyn) * BPP(n).BH_Mdot_Avg + BPP(n).BH_Mdot * dt/ tdyn;
+#else	
     BPP(n).BH_Mdot_Avg = BPP(n).BH_Mdot*dt ; tsum = dt; //start with the current values
     for(k=(MDOT_AVG_WINDOWS_SIZE-1);k>0;k--){ //shift array by one
         BPP(n).Mdotvals[k] = BPP(n).Mdotvals[k-1];
@@ -725,6 +729,7 @@ void set_blackhole_mdot(int i, int n, double dt)
     }
     BPP(n).BH_Mdot_Avg /= tsum; //normalize time average
     BPP(n).Mdotvals[0] = BPP(n).BH_Mdot; BPP(n).dtvals[0] = dt;//store current values
+#endif    
 #ifdef BH_OUTPUT_MOREINFO
     printf("ThisTask=%d, time=%g: sink id=%llu has mdot of %g while average over MDOT_AVG_WINDOWS_SIZE is %g\n", ThisTask, All.Time, P[n].ID, BPP(n).BH_Mdot,BPP(n).BH_Mdot_Avg);
 #endif
