@@ -1063,7 +1063,7 @@ void blackhole_final_operations(void)
         if(BPP(n).BH_Mass > 0) {TimeBin_BH_Medd[bin] += BPP(n).BH_Mdot / BPP(n).BH_Mass;}
 // printf("%d BH Final timebin update done \n", ThisTask);
 
-#ifdef SINGLE_STAR_PROMOTION
+#if defined(SINGLE_STAR_PROMOTION) || defined(SINGLE_STAR_FB_HEATING) // initially we want to do this protostellar evolution, but not the promotion
         double m_initial = DMAX(1.e-37 , (BPP(n).BH_Mass - dm)); // mass before the accretion
         double mu = DMAX(0, dm/m_initial); // relative mass accreted
         //double m_initial_msun = m_initial * (All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS));
@@ -1100,13 +1100,18 @@ void blackhole_final_operations(void)
         if(m_solar <= 1) {R_main_sequence_ignition = pow(m_solar,0.8);} else {R_main_sequence_ignition = pow(m_solar,0.57);}
         
         //if(BPP(n).PreMainSeq_Tracker < 0.36787944117144233) // if drops below 1/e [one t_premainseq timescale, in the absence of accretion], promote //
+
         if(BPP(n).ProtoStellar_Radius <= R_main_sequence_ignition)
         {
+	    BPP(n).ProtoStellar_Radius = R_main_sequence_ignition;
+#ifdef SINGLE_STAR_PROMOTION		    
             P[n].Type = 4; // convert type
             count_bhelim++; // note one fewer BH-type particle
             P[n].StellarAge = All.Time; // mark the new ZAMS age according to the current time
             P[n].Mass = DMAX(P[n].Mass , BPP(n).BH_Mass + BPP(n).BH_Mass_AlphaDisk);
+#endif		    
         }
+
 #endif
         
     } // for(i=0; i<N_active_loc_BHs; i++)

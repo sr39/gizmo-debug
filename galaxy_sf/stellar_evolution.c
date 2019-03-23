@@ -46,7 +46,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
     lum = rad_eff_protostar * mdot * c_code*c_code;
     /* now for pre-main sequence, need to also check the mass-luminosity relation */
     double lum_sol = 0;
-    
+#ifdef SINGLE_STAR_PROMOTION  
     if(m_solar >= 0.012)
     {
         if(m_solar < 0.43) {lum_sol = 0.185 * m_solar*m_solar;}
@@ -54,7 +54,8 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
         else if(m_solar < 53.9) {lum_sol = 1.5 * m_solar*m_solar*m_solar * sqrt(m_solar);}
         else {lum_sol = 32000. * m_solar;}
     }
-#ifdef SINGLE_STAR_PROMOTION    
+#endif
+#if defined(SINGLE_STAR_FB_HEATING) || defined(SINGLE_STAR_PROMOTION)
     if(i > 0)
     {
         /*account for pre-main sequence evolution */
