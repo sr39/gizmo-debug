@@ -43,9 +43,10 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
     /* if below the deuterium burning limit, just use the potential energy efficiency at the surface of a jupiter-density object */
     double rad_eff_protostar = 5.0e-7;
     if(m_solar < 0.012) {rad_eff_protostar = 5.e-8 * pow(m_solar/0.00095,2./3.);}
-    lum = rad_eff_protostar * mdot * c_code*c_code;
+    else {lum = rad_eff_protostar * mdot * c_code*c_code;}
     /* now for pre-main sequence, need to also check the mass-luminosity relation */
     double lum_sol = 0;
+    
     if(m_solar >= 0.012)
     {
         if(m_solar < 0.43) {lum_sol = 0.185 * m_solar*m_solar;}
