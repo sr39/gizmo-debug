@@ -63,11 +63,11 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
 #ifdef SINGLE_STAR_PROMOTION
             double l_kh = 0.2263 * P[i].ProtoStellar_Radius*P[i].ProtoStellar_Radius * T4000_4; // luminosity from KH contraction
             if(l_kh > lum_sol) {lum_sol = l_kh;} // if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
-#endif
         }
     }
     lum_sol *= SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s);
     lum += lum_sol;
+#endif    
 #endif
     //lum = 1000*SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s); //Test, set for 1000 l_sun, for debugging
     return lum;
