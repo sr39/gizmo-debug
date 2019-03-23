@@ -54,17 +54,18 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
         else if(m_solar < 53.9) {lum_sol = 1.5 * m_solar*m_solar*m_solar * sqrt(m_solar);}
         else {lum_sol = 32000. * m_solar;}
     }
+#ifdef SINGLE_STAR_PROMOTION    
     if(i > 0)
     {
         /*account for pre-main sequence evolution */
         if(P[i].Type == 5)
         {
             double T4000_4 = pow(m_solar , 0.55); // protostellar temperature along Hayashi track
-#ifdef SINGLE_STAR_PROMOTION
+
             double l_kh = 0.2263 * P[i].ProtoStellar_Radius*P[i].ProtoStellar_Radius * T4000_4; // luminosity from KH contraction
             if(l_kh > lum_sol) {lum_sol = l_kh;} // if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
         }
-    }
+    }    
     lum_sol *= SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s);
     lum += lum_sol;
 #endif    
