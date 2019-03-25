@@ -94,7 +94,6 @@ void powerspec_turb_calc_and_bin_spectrum(fftw_plan plan, fftw_real *field, int 
 #else 
 #define cmplx_re(c) ((c).[0])
 #define cmplx_im(c) ((c).[1])
-#else 
 #endif
 
 static struct data_in
