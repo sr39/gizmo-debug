@@ -884,6 +884,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     for(k = 0; k < 3; k++){
                         fp[k] += P[pindex].Jsink[k];}
                     n++;
+                    fp+=3;
                 }
 #endif
             break;
