@@ -695,7 +695,11 @@ void density(void)
                 if(P[i].Type == 5)
                 {
                     desnumngb = All.DesNumNgb * All.BlackHoleNgbFactor;
-                    desnumngbdev = 4 * (All.BlackHoleNgbFactor+1);     
+#ifdef SINGLE_STAR_FORMATION		    
+                    desnumngbdev = (All.BlackHoleNgbFactor+1);
+#else
+                    desnumngbdev = 4 * (All.BlackHoleNgbFactor+1);
+#endif		    
                 }
 #endif
 
