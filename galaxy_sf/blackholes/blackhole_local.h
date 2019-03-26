@@ -104,8 +104,11 @@ static struct blackholedata_out
     MyFloat Mdot;
     MyFloat Dt;
     MyFloat f_acc[NEWSINK_NEIGHBORMAX]; /* How much of the gas particle should be accreted */
+#ifdef NEWSINK
+    MyLongDouble accreted_moment[3];
 #if defined(NEWSINK_J_FEEDBACK)
     MyLongDouble accreted_J[3];
+#endif
 #endif
 #endif
 }
