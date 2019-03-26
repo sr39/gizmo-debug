@@ -319,7 +319,7 @@ void blackhole_properties_loop(void)
                 //avg_rad = avg_rad / BlackholeTempInfo[i].intzone_gasmass; //mass weighted average radius of gas particles
                 //BlackholeTempInfo[i].gas_Egrav_in_intzone -= 0.6 * All.G * BlackholeTempInfo[i].intzone_gasmass * BlackholeTempInfo[i].intzone_gasmass / avg_rad; 
                 
-                t_exponent = DMIN( fabs(2.0*BlackholeTempInfo[i].gas_Erot_in_intzone/BlackholeTempInfo[i].gas_Egrav_in_intzone) , 1.0); /*exponent to interpolate between two time scales*/
+                t_exponent = DMIN(fabs(2.0*BlackholeTempInfo[i].gas_Erot_in_intzone/BlackholeTempInfo[i].gas_Egrav_in_intzone) , 1.0); /*exponent to interpolate between two time scales*/
                 BlackholeTempInfo[i].t_acc = pow(BlackholeTempInfo[i].t_rad,  (1.0-t_exponent) ) * pow(BlackholeTempInfo[i].t_disc,  t_exponent ); /* accretion timescale for sink */ 
             }
             else{
@@ -337,7 +337,7 @@ void blackhole_properties_loop(void)
 #ifdef BH_OUTPUT_MOREINFO
     if (BlackholeTempInfo[i].intzone_gasmass > 0){
         /*printf("ln266 n=%llu BH int zone is: %g, n_neighbor is %d while avg radius is %g \n", (unsigned long long) n,BlackholeTempInfo[i].n_neighbor, (MyFloat) (P[n].SinkRadius*INT_ZONE_TO_SINKRADIUS),avg_rad);*/
-        printf("ln267 n=%llu BH sinkradius is: %g \n", (unsigned long long) n, (MyFloat) P[n].SinkRadius);
+        printf("ln267 n=%llu BH sinkradius is: %g \n", (unsigned long long) n, (MyFloat) P[n].Hsml);
         printf("ln268 n=%llu BH gasmass is: %g \n", (unsigned long long) n, (MyFloat) BlackholeTempInfo[i].intzone_gasmass);
         printf("ln269 n=%llu BH t acc is: %g \n", (unsigned long long) n, (MyFloat) BlackholeTempInfo[i].t_acc);
         printf("ln270 n=%llu BH t rad is: %g \n", (unsigned long long) n, (MyFloat) BlackholeTempInfo[i].t_rad);
@@ -592,6 +592,14 @@ void set_blackhole_mdot(int i, int n, double dt)
     if (BlackholeTempInfo[i].intzone_gasmass>0 && BlackholeTempInfo[i].t_acc>0)
     {
       mdot = BlackholeTempInfo[i].intzone_gasmass / BlackholeTempInfo[i].t_acc; //* DMAX(1.0, pow(BlackholeTempInfo[i].intzone_gasmass/BPP(n).init_mass_in_intzone,2.0)); /* Use the accretion timescale calculated for the sink, then scaled by (M/M_init)^2 if larger than M_init*/
+#ifdef NEWSINK_BONDI
+      if (mdot < BlackholeTempInfo[i].min_bondi_mdot){
+#ifdef BH_OUTPUT_MOREINFO      
+	  printf("Mdot of %g corrected to minimum Bondi rate of %g\n", mdot, BlackholeTempInfo[i].min_bondi_mdot);
+#endif
+	  mdot = BlackholeTempInfo[i].min_bondi_mdot;
+      }
+#endif       
     }
     /*We have already marked particles that have too small timesteps to be swallowed. Let's check if that put mdot above this value, if yes, change mdot*/
     for(k=0;k<BlackholeTempInfo[i].n_neighbor;k++){
@@ -962,11 +970,14 @@ void blackhole_final_operations(void)
             {
 // printf("%d BH Final accreteing for  BH %d with ID %d \n", ThisTask, i, n);
                 P[n].Vel[k] = (P[n].Vel[k]*P[n].Mass + BlackholeTempInfo[i].accreted_momentum[k]) / (BlackholeTempInfo[i].accreted_Mass + P[n].Mass);
+#ifdef NEWSINK
+		P[n].Pos[k] = (P[n].Pos[k]*P[n].Mass + BlackholeTempInfo[i].accreted_moment[k]) / (BlackholeTempInfo[i].accreted_Mass + P[n].Mass);
 #if defined(NEWSINK_J_FEEDBACK)
 // printf("%d BH Final momentum accreted \n", ThisTask);
                 BPP(n).Jsink[k] += (MyFloat) BlackholeTempInfo[i].accreted_J[k]; /* Sinks accrete angular momentum */
 // printf("%d BH Final ang momentum accreted \n", ThisTask);
 #endif
+#endif		
             } //for(k = 0; k < 3; k++)
             P[n].Mass += BlackholeTempInfo[i].accreted_Mass;
             BPP(n).BH_Mass += BlackholeTempInfo[i].accreted_BH_Mass;

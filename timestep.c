@@ -905,6 +905,15 @@ integertime get_timestep(int p,		/*!< particle index */
     
     
 #ifdef BLACK_HOLES
+#ifdef NEWSINK    
+    if(P[p].Type == 0){
+	double dt_bh = (P[p].LowestBHTimeBin ? (1 << (P[p].LowestBHTimeBin)) : 0) * All.Timebase_interval / All.cf_hubble_a;
+	if (dt > dt_bh) {
+	    dt = 1.01 * dt_bh;
+	    P[p].LowestBHTimeBin = TIMEBINS;
+	}
+    }
+#endif	
     if(P[p].Type == 5)
     {
 #ifndef SINGLE_STAR_FORMATION

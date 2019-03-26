@@ -192,9 +192,12 @@ void blackhole_swallow_and_kick_loop(void)
 #endif
             for(k = 0; k < 3; k++){
                 BlackholeTempInfo[P[place].IndexMapToTempStruc].accreted_momentum[k] += BlackholeDataOut[j].accreted_momentum[k];
+#ifdef NEWSINK
+		BlackholeTempInfo[P[place].IndexMapToTempStruc].accreted_moment[k] += BlackholeDataOut[j].accreted_moment[k];
 #if defined(NEWSINK_J_FEEDBACK)
                 BlackholeTempInfo[P[place].IndexMapToTempStruc].accreted_J[k] += BlackholeDataOut[j].accreted_J[k];
 #endif
+#endif		
             }
 #ifdef BH_COUNTPROGS
             BPP(place).BH_CountProgs += BlackholeDataOut[j].BH_CountProgs;
@@ -237,6 +240,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     MyIDType id;
     MyLongDouble accreted_mass, accreted_BH_mass, accreted_momentum[3];
 #ifdef NEWSINK
+    MyLongDouble accreted_moment[3];
     MyFloat f_acc_corr=1.0,mdot_avg;
     MyFloat *str_f_acc;
     int n_neighbor;
@@ -396,6 +400,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     accreted_BH_mass_alphadisk = 0;
 #endif
     accreted_momentum[0] = accreted_momentum[1] = accreted_momentum[2] = 0;
+#ifdef NEWSINK
+    accreted_moment[0] = accreted_moment[1] = accreted_moment[2] = 0;
 #if defined(NEWSINK_J_FEEDBACK)
     accreted_J[0] = accreted_J[1] = accreted_J[2] = 0;
     if (Jsinktot>0){
@@ -410,6 +416,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     }
 //printf("%d BH swallow ang_kick normalization calculated: %g  with %d neighbors \n", ThisTask, dv_ang_kick_norm, n_neighbor );
 #endif
+#endif    
 #ifdef BH_COUNTPROGS
     int accreted_BH_progs = 0;
 #endif
@@ -582,12 +589,15 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 accreted_BH_mass += FLT(f_accreted*P[j].Mass);
 #endif
                                 for(k = 0; k < 3; k++) accreted_momentum[k] += FLT(f_accreted * P[j].Mass * P[j].Vel[k]);
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+				for(k = 0; k < 3; k++) accreted_moment[k] += FLT(f_accreted * P[j].Mass * P[j].Pos[k]);
 #if defined(NEWSINK_J_FEEDBACK)
                                 dv[0]=P[j].Vel[0]-velocity[0];dv[1]=P[j].Vel[1]-velocity[1];dv[2]=P[j].Vel[2]-velocity[2];
                                 accreted_J[0] += FLT(f_accreted * P[j].Mass *(dx[1]*dv[2] - dx[2]*dv[1]) + P[j].Jsink[0]);
                                 accreted_J[1] += FLT(f_accreted * P[j].Mass *(dx[2]*dv[0] - dx[0]*dv[2]) + P[j].Jsink[1]);
                                 accreted_J[2] += FLT(f_accreted * P[j].Mass *(dx[0]*dv[1] - dx[1]*dv[0]) + P[j].Jsink[2]);
 #endif
+#endif				
 /* #ifdef NEWSINK_B_FEEDBACK */
 /* 				if(f_accreted == 1.0){ // if the particle is still around after then we leave the flux alone */
 /* 				  for(k=0;k<3;k++)   accreted_B[k] += SphP[i].B[k]; */
@@ -819,9 +829,12 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
         for(k = 0; k < 3; k++) {
             BlackholeTempInfo[mod_index].accreted_momentum[k] = accreted_momentum[k];
+#ifdef NEWSINK
+	    BlackholeTempInfo[mod_index].accreted_moment[k] = accreted_moment[k];	   
 #if defined(NEWSINK_J_FEEDBACK)
             BlackholeTempInfo[mod_index].accreted_J[k] = accreted_J[k];
 #endif
+#endif	    
         }
 #ifdef BH_COUNTPROGS
         BPP(target).BH_CountProgs += accreted_BH_progs;
@@ -839,9 +852,12 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
         for(k = 0; k < 3; k++) {
             BlackholeDataResult[target].accreted_momentum[k] = accreted_momentum[k];
+#ifdef NEWSINK
+            BlackholeDataResult[target].accreted_moment[k] = accreted_moment[k];	    
 #if defined(NEWSINK_J_FEEDBACK)
             BlackholeDataResult[target].accreted_J[k] = accreted_J[k];
 #endif
+#endif	    
         }
 #ifdef BH_COUNTPROGS
         BlackholeDataResult[target].BH_CountProgs = accreted_BH_progs;

@@ -477,7 +477,9 @@ void init(void)
         } // if(RestartFlag == 0)
 #endif // METALS
         
-        
+#ifdef NEWSINK
+	if(P[i].Type == 0)  P[i].LowestBHTimeBin = TIMEBINS;
+#endif	
         
         
 #ifdef BLACK_HOLES
