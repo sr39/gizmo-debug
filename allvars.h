@@ -2775,6 +2775,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyLongDouble accreted_moment[3]; /* first mass moment of accreted gas, for preserving centre of mass */
 #ifdef NEWSINK_BONDI
     MyFloat min_bondi_mdot;
+    MyFloat gasmass_within_softening;
 #endif     
 #if defined(NEWSINK_J_FEEDBACK)
     MyLongDouble accreted_J[3]; /* Accreted angular momentum */

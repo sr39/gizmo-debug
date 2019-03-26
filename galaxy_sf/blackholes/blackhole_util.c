@@ -177,6 +177,7 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
     ASSIGN_ADD(BlackholeTempInfo[target].t_rad_denom_sum, out->t_rad_denom_sum, mode);
 #ifdef NEWSINK_BONDI    
     ASSIGN_ADD(BlackholeTempInfo[target].min_bondi_mdot, out->min_bondi_mdot, mode);
+    ASSIGN_ADD(BlackholeTempInfo[target].gasmass_within_softening, out->min_bondi_mdot, mode);
 #endif    
     ASSIGN_ADD(BlackholeTempInfo[target].t_disc_num_sum, out->t_disc_num_sum, mode);
     ASSIGN_ADD(BlackholeTempInfo[target].intzone_massweight_all, out->intzone_massweight_all, mode);

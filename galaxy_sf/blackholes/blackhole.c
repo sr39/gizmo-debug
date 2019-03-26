@@ -320,6 +320,7 @@ void blackhole_properties_loop(void)
                 //BlackholeTempInfo[i].gas_Egrav_in_intzone -= 0.6 * All.G * BlackholeTempInfo[i].intzone_gasmass * BlackholeTempInfo[i].intzone_gasmass / avg_rad; 
                 
                 t_exponent = DMIN(fabs(2.0*BlackholeTempInfo[i].gas_Erot_in_intzone/BlackholeTempInfo[i].gas_Egrav_in_intzone) , 1.0); /*exponent to interpolate between two time scales*/
+		t_exponent = t_exponent * t_exponent; /* squaring this seems to make the interpolation more faithful to the actual accretion rate in test problems - MYG */
                 BlackholeTempInfo[i].t_acc = pow(BlackholeTempInfo[i].t_rad,  (1.0-t_exponent) ) * pow(BlackholeTempInfo[i].t_disc,  t_exponent ); /* accretion timescale for sink */ 
             }
             else{
@@ -593,6 +594,7 @@ void set_blackhole_mdot(int i, int n, double dt)
     {
       mdot = BlackholeTempInfo[i].intzone_gasmass / BlackholeTempInfo[i].t_acc; //* DMAX(1.0, pow(BlackholeTempInfo[i].intzone_gasmass/BPP(n).init_mass_in_intzone,2.0)); /* Use the accretion timescale calculated for the sink, then scaled by (M/M_init)^2 if larger than M_init*/
 #ifdef NEWSINK_BONDI
+      BlackholeTempInfo[i].min_bondi_mdot = DMIN(BlackholeTempInfo[i].min_bondi_mdot,  BlackholeTempInfo[i].gasmass_within_softening/dt); // Don't want to overcorrect and suck up stuff outside the sink
       if (mdot < BlackholeTempInfo[i].min_bondi_mdot){
 #ifdef BH_OUTPUT_MOREINFO      
 	  printf("Mdot of %g corrected to minimum Bondi rate of %g\n", mdot, BlackholeTempInfo[i].min_bondi_mdot);
