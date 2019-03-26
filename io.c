@@ -1583,7 +1583,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_BHMASSALPHA:
         case IO_ACRB:
         case IO_SINKRAD:
-        case IO_JSINK:
         case IO_BHMASSINIT:
         case IO_BHMDOT:
         case IO_CAUSTIC_COUNTER:
