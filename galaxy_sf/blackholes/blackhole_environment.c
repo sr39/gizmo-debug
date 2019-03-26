@@ -457,9 +457,10 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 				 double bondi_mdot = All.G * All.G * mass * mass / pow(csound_sq + (dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2]), 1.5) * P[j].Mass * wk;
 				 out.t_rad_denom_sum += -DMAX(bondi_mdot,  -(dP[0]*dv[0] + dP[1]*dv[1] + dP[2]*dv[2]) * dr_code * P[j].Mass * wk);
 				 out.min_bondi_mdot += 4. * M_PI * bondi_mdot;
-#ifdef BH_OUTPUT_MOREINFO				 
-				 printf("Adding Bondi accretion rate %g for particle with r = %g, rho=%g and cs_eff=%g\n", 4*M_PI*bondi_mdot, dr_code, SphP[j].Density, sqrt(csound_sq + dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2]));
-#endif				 
+				 out.gasmass_within_softening += P[j].Mass;
+//#ifdef BH_OUTPUT_MOREINFO				 
+//				 printf("Adding Bondi accretion rate %g for particle with r = %g, rho=%g and cs_eff=%g\n", 4*M_PI*bondi_mdot, dr_code, SphP[j].Density, sqrt(csound_sq + dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2]));
+//#endif				 
 			     } else
 #endif				
 			    out.t_rad_denom_sum += (dP[0]*dv[0] + dP[1]*dv[1] + dP[2]*dv[2]) * dr_code * P[j].Mass * wk;// * DMAX(1, All.ForceSoftening[5]*All.ForceSoftening[5]/(DMAX(dr_code, P[j].Hsml)*DMAX(dr_code, P[j].Hsml))); /* sum in denominator of Eq 8 in Hbber 2013 */
