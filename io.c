@@ -882,7 +882,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 if(P[pindex].Type == type)
                 {
                     for(k = 0; k < 3; k++){
-                        fp[k] += P[pindex].Jsink[k];}
+                        fp[k] = P[pindex].Jsink[k];}
                     n++;
                     fp+=3;
                 }
@@ -1638,6 +1638,15 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
                 bytes_per_blockelement = (N_IMF_FORMPROPS) * sizeof(MyInputFloat);
             else
                 bytes_per_blockelement = (N_IMF_FORMPROPS) * sizeof(MyOutputFloat);
+#endif
+            break;
+
+        case IO_JSINK:
+#ifdef NEWSINK_J_FEEDBACK
+            if(mode)
+                bytes_per_blockelement = 3 * sizeof(MyInputPosFloat);
+            else
+                bytes_per_blockelement = 3 * sizeof(MyOutputPosFloat);
 #endif
             break;
             
