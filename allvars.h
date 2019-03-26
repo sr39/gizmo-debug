@@ -2141,6 +2141,7 @@ extern ALIGN(32) struct particle_data
     MyFloat BH_Mass_AlphaDisk;
 #endif
 #ifdef NEWSINK
+    integertime LowestBHTimeBin;
     MyFloat init_mass_in_intzone; /*initial mass in interaction zone, used for scaling mdot*/
     MyFloat BH_Mdot_Avg; /*Mdot averaged over MDOT_AVG_WINDOWS_SIZE timesteps*/
     MyFloat Mdotvals[MDOT_AVG_WINDOWS_SIZE]; /*value of mdot for the last MDOT_AVG_WINDOWS_SIZE timesteps*/
@@ -2770,6 +2771,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyIDType gasID[NEWSINK_NEIGHBORMAX]; /* ID of gas particle */
     int isbound[NEWSINK_NEIGHBORMAX]; /* is it bound to the sink */
     MyFloat f_acc[NEWSINK_NEIGHBORMAX]; /* How much of the gas particle should be accreted */
+    MyLongDouble accreted_moment[3]; /* first mass moment of accreted gas, for preserving centre of mass */
 #if defined(NEWSINK_J_FEEDBACK)
     MyLongDouble accreted_J[3]; /* Accreted angular momentum */
     MyDouble dv_ang_kick_norm[NEWSINK_NEIGHBORMAX]; /*Normalization term for angular momentum feedback kicks, see denominator of Eq 22 of Hubber 2013*/
