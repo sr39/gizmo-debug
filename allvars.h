@@ -293,6 +293,7 @@
 #define READ_SINKRADIUS // read the sinkradius for sink partciles in IC files
 #endif
 #ifdef NEWSINK
+#define NEWSINK_BONDI
 #define NEWSINK_J_FEEDBACK //turns on angular momentum feedback in NEWSINK
 #ifdef MAGNETIC
 #define NEWSINK_B_FEEDBACK // turns on magnetic flux feedback, redistributing the magnetic flux of accreted particles similarly to how angular momentum is done
