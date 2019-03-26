@@ -88,14 +88,6 @@ void powerspec_turb_calc_and_bin_spectrum(fftw_real *field, int flag);
 void powerspec_turb_calc_and_bin_spectrum(fftw_plan plan, fftw_real *field, int flag);
 #endif
 
-#ifndef USE_FFTW3
-#define cmplx_re(c) ((c).re)
-#define cmplx_im(c) ((c).im)
-#else 
-#define cmplx_re(c) ((c).[0])
-#define cmplx_im(c) ((c).[1])
-#else 
-#endif
 
 static struct data_in
 {
@@ -672,7 +664,7 @@ void powerspec_turb_calc_and_bin_spectrum(fftw_real *field, int flag)
 	}
 }
 #else /* FFTW3 */
-void powerspec_turb_calc_and_bin_spectrum(fftw_plan fplan, fftw_real *field int flag)
+void powerspec_turb_calc_and_bin_spectrum(fftw_plan fplan, fftw_real *field, int flag)
 {
   double k2, kx, ky, kz;
   int x, y, z, zz, ip;
@@ -683,7 +675,7 @@ void powerspec_turb_calc_and_bin_spectrum(fftw_plan fplan, fftw_real *field int 
 
   /* Do the FFT of the velocity_field */  /* rhogrid -> velfield */
   
-  fftw_execute(fft_forward_plan); 
+  fftw_execute(fplan); 
   
   fft_of_field = (fftw_complex *) field;
 
