@@ -949,13 +949,14 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
             if(dt_accr > 0 && dt_accr < dt) {dt = dt_accr;}
 
-        double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? (1 << BPP(p).BH_TimeBinGasNeighbor) : 0) * All.Timebase_interval / All.cf_hubble_a;
+//        double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? (1 << BPP(p).BH_TimeBinGasNeighbor) : 0) * All.Timebase_interval / All.cf_hubble_a;
 
-        if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
+//        if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 #ifdef SINGLE_STAR_FORMATION
-	if(P[p].DensAroundStar) {double eps = DMAX(DMAX(All.SofteningTable[5], BPP(p).BH_NearestGasNeighbor), Get_Particle_Size(p));
-	double dt_gas = sqrt(All.ErrTolIntAccuracy * All.cf_atime * eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
-	if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas; }}
+	    if(P[p].DensAroundStar) {
+		double eps = DMAX(All.SofteningTable[5], BPP(p).BH_NearestGasNeighbor);
+		double dt_gas = sqrt(All.ErrTolIntAccuracy * All.cf_atime * eps * eps * eps/ All.G / P[p].Mass)/2; // fraction of the freefall time of the nearest gas particle from rest
+		if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas; }}
 
 	/* if (All.TotBHs > 1) { */
 	/*     eps = DMAX(All.ForceSoftening[5], P[p].min_dist_to_bh); //{ eps = DMIN(P[p].Hsml, );} // length-scale for acceleration timestep criterion ~(R/a)^0.5 */
