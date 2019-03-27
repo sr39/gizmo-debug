@@ -2176,7 +2176,10 @@ extern ALIGN(32) struct particle_data
 #endif  
 #endif
     
-#if defined(SINGLE_STAR_PROMOTION) || defined(SINGLE_STAR_FB_HEATING)
+#if defined(SINGLE_STAR_PROMOTION) || defined(SINGLE_STAR_FB_HEATING) || defined(SINGLE_STAR_FB_JETS)
+#define SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#endif    
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION    
     MyFloat ProtoStellarAge; /*!< record the proto-stellar age instead of age */
     //MyFloat PreMainSeq_Tracker; /*!< track evolution from protostar to ZAMS star */
     MyFloat ProtoStellar_Radius; /*!< protostellar radius (also tracks evolution from protostar to ZAMS star) */

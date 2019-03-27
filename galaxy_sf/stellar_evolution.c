@@ -55,7 +55,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
         else {lum_sol = 32000. * m_solar;}
     }
 #endif
-#if defined(SINGLE_STAR_FB_HEATING) || defined(SINGLE_STAR_PROMOTION)
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION //defined(SINGLE_STAR_FB_HEATING) || defined(SINGLE_STAR_PROMOTION) || defined(SINGLE_STAR_FB_JETS)
     if(i > 0)
     {
         /*account for pre-main sequence evolution */
@@ -69,8 +69,8 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
     }    
     lum_sol *= SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s);
     lum += lum_sol;
-#endif    
 #endif
+#endif    
     //lum = 1000*SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s); //Test, set for 1000 l_sun, for debugging
     return lum;
 }
