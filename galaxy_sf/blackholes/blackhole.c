@@ -1107,11 +1107,14 @@ void blackhole_final_operations(void)
             t_R_evol = 8.021e7 * m_solar*m_solar / (BPP(n).ProtoStellar_Radius*BPP(n).ProtoStellar_Radius*BPP(n).ProtoStellar_Radius * T4000_4) / (All.UnitTime_in_s/(All.HubbleParam * SEC_PER_YEAR)); // contraction timescale
             contraction_factor = 1. / pow(1 + 3.*dt/t_R_evol, 1./3.);
         }
-        double r_new = 100. * m_solar; // size if newly-formed protostar
+//        double r_new = 100. * m_solar; // size if newly-formed protostar
+	double r_new;
+	if (m_solar < 0.012) {r_new =  5.24 * pow(m_solar, 1./3);} // constant density
+	else {r_new = 100 * m_solar;} // M propto R above this mass   
         BPP(n).ProtoStellar_Radius = (BPP(n).ProtoStellar_Radius * contraction_factor + r_new * mu) / (1. + mu); // new size (contraction + accretion both accounted for)
         double R_main_sequence_ignition; // main sequence radius - where contraction should halt
         if(m_solar <= 1) {R_main_sequence_ignition = pow(m_solar,0.8);} else {R_main_sequence_ignition = pow(m_solar,0.57);}
-        printf("Protostellar radius: %g\n", BPP(n).ProtoStellar_Radius);
+//        printf("Protostellar radius: %g contraction factor: %g mu: %g\n", BPP(n).ProtoStellar_Radius, contraction_factor);
         //if(BPP(n).PreMainSeq_Tracker < 0.36787944117144233) // if drops below 1/e [one t_premainseq timescale, in the absence of accretion], promote //
 
         if(BPP(n).ProtoStellar_Radius <= R_main_sequence_ignition)

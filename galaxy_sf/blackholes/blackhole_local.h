@@ -28,7 +28,10 @@ static struct blackholedata_in
     MyFloat BH_Mass;
 #ifdef SINGLE_STAR_STRICT_ACCRETION
     MyFloat SinkRadius;
-#endif  
+#endif
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+    MyFloat ProtoStellar_Radius;
+#endif    
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
 #endif

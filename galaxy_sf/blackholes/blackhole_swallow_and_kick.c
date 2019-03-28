@@ -97,6 +97,9 @@ void blackhole_swallow_and_kick_loop(void)
 #ifdef BH_ALPHADISK_ACCRETION
             BlackholeDataIn[j].BH_Mass_AlphaDisk = BPP(place).BH_Mass_AlphaDisk;
 #endif
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+	    BlackholeDataIn[j].ProtoStellar_Radius = BPP(place).ProtoStellar_Radius;
+#endif	    
 #ifdef NEWSINK
             BlackholeDataIn[j].SinkRadius = BPP(place).SinkRadius;
             //Copy info on neighbours
@@ -268,6 +271,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     MyFloat *velocity, hinv, hinv3;
 #endif
     MyFloat f_accreted=0;
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+    MyFloat protostellar_radius;
+#endif    
 #if defined(NEWSINK_J_FEEDBACK) || defined(BH_WIND_KICK)
     MyFloat mass;
 #ifdef BH_WIND_KICK
@@ -309,6 +315,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
         h_i = PPP[target].Hsml;
         id = P[target].ID;
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+	protostellar_radius = BPP(target).ProtoStellar_Radius;
+#endif	    
 #if defined(BH_WIND_KICK) || defined(NEWSINK_J_FEEDBACK)
         mass = P[target].Mass;    
 #ifdef BH_ALPHADISK_ACCRETION
@@ -354,6 +363,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
         h_i = BlackholeDataGet[target].Hsml;
         id = BlackholeDataGet[target].ID;
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+	protostellar_radius = BlackholeDataGet[target].ProtoStellar_Radius;
+#endif	
 #if defined(BH_WIND_KICK) || defined(NEWSINK_J_FEEDBACK)
         mass = BlackholeDataGet[target].Mass;
 #ifdef BH_ALPHADISK_ACCRETION
@@ -457,7 +469,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
             {
                 j = Ngblist[n]; MyIDType OriginallyMarkedSwallowID = P[j].SwallowID; // record this to help prevent double-counting below
 #if defined(NEWSINK_J_FEEDBACK)
-                dx[0]=P[j].Pos[0]-pos[0];dx[1]=P[j].Pos[1]-pos[1];dx[2]=P[j].Pos[2]-pos[2];dr = (dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2]);
+                dx[0]=P[j].Pos[0]-pos[0]; dx[1]=P[j].Pos[1]-pos[1]; dx[2]=P[j].Pos[2]-pos[2]; dr = sqrt(dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2]);
 #endif
                 /* we've found a particle to be swallowed.  This could be a BH merger, DM particle, or baryon w/ feedback */
                 if(P[j].SwallowID == id && P[j].Mass > 0)
@@ -575,7 +587,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
                         if (f_accreted>0.0){
 #if defined(NEWSINK_STOCHASTIC_ACCRETION) && defined(BH_WIND_KICK) //We stochastically determine if this "accreted" particle is really accreted and we take its mass or it gets kicked out
-                            w = get_random_number(P[j].ID);kicked=0;
+                            w = get_random_number(P[j].ID); kicked=0;
                             if(w > All.BAL_f_accretion){
                                 kicked=1;f_accreted=0.0;
                             }
@@ -624,6 +636,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #ifdef BH_WIND_KICK     /* BAL kicking operations. NOTE: we have two separate BAL wind models, particle kicking and smooth wind model. This is where we do the particle kicking BAL model. This should also work when there is alpha-disk. */
                                 v_kick=All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s; //if( !(All.ComovingIntegrationOn) && (All.Time < 0.001)) {v_kick *= All.Time/0.001;}
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+				v_kick = sqrt(All.G * mass / (protostellar_radius * 6.957e10 / All.UnitLength_in_cm)); // Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
+#endif 
 #if defined(NEWSINK) && !defined(NEWSINK_STOCHASTIC_ACCRETION) /*It is possible to accrete only part of the particle so we need to be more careful about our kicks*/
                                 if (f_acc_corr<1.0){
                                     v_kick *= f_acc_corr*(1.0-All.BAL_f_accretion)/(1.0-All.BAL_f_accretion*f_acc_corr); /*we wanted to only accrete an f_acc_corr portion, so the imparted momentum is proportional to only f_acc_corr*(1-All.BAL_f_accretion) times the initial mass*/
@@ -644,8 +659,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 if((dir[0]*Jgas_in_Kernel[0] + dir[1]*Jgas_in_Kernel[1] + dir[2]*Jgas_in_Kernel[2]) > 0){for(k=0;k<3;k++) {dir[k]=Jgas_in_Kernel[k];}} else {for(k=0;k<3;k++) {dir[k]=-Jgas_in_Kernel[k];}}
 #endif
 #endif
-                                for(k=0,norm=0;k<3;k++) {norm+=dir[k]*dir[k];} if(norm<=0) {dir[0]=0;dir[1]=0;dir[2]=1;norm=1;} else {norm=sqrt(norm);dir[0]/=norm;dir[1]/=norm;dir[2]/=norm;}
-#if defined(NEWSINK_JET_OPENING_ANGLE) //get the new relative position vector for the particle velocity (from sink)
+                                for(k=0,norm=0;k<3;k++) {norm+=dir[k]*dir[k];} if(norm<=0) {dir[0]=0;dir[1]=0;dir[2]=1;norm=1;} else {norm=sqrt(norm); dir[0]/=norm;dir[1]/=norm;dir[2]/=norm;}
+#if defined(NEWSINK_JET_OPENING_ANGLE) //get the new relative position vector for the particle velocity (from sink)					
                                 theta_angle = max_theta_angle * get_random_number(P[j].ID); //uniformly chosen
                                 phi_angle=acos(1.0 - 2.0 * get_random_number(P[j].ID)); //chosen in a way to get a uniform distribution on the spherical surface
                                 reldir[0]=cos(phi_angle) * sin(theta_angle); reldir[1]=sin(phi_angle) * sin(theta_angle); reldir[2]=cos(theta_angle); //get relative direction from polar axis      
@@ -661,11 +676,14 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 for(k=0;k<3;k++) {dir[k]=reldir[0]*b_vect1[k]+reldir[1]*b_vect2[k]+reldir[2]*b_vect3[k];}
 #if defined(NEWSINK_RELOCATE_KICKED_PARTICLE)
                                 //Let's reposition the particle
-                                for(k=0;k<3;k++) {P[j].Pos[k]=dir[k]*int_zone_radius;}//Put the particle at the edge of the interaction zone
+                                for(k=0;k<3;k++) {P[j].Pos[k] = pos[k] + dir[k]*int_zone_radius;}//Put the particle at the edge of the interaction zone
 #endif
 #endif
 
-                                for(k=0;k<3;k++) {P[j].Vel[k]+=v_kick*All.cf_atime*dir[k]; SphP[j].VelPred[k]+=v_kick*All.cf_atime*dir[k];}
+                                for(k=0;k<3;k++) {P[j].Vel[k]+=v_kick*All.cf_atime*dir[k]; SphP[j].VelPred[k]+=v_kick*All.cf_atime*dir[k];}				
+#ifdef NEWSINK
+                                for(k=0;k<3;k++) {accreted_momentum[k] -= P[j].Mass * v_kick * All.cf_atime * dir[k]; } // To conserve momentum
+#endif				
 #ifdef GALSF_SUBGRID_WINDS // if sub-grid galactic winds are decoupled from the hydro, we decouple the BH kick winds as well
                                 SphP[j].DelayTime = All.WindFreeTravelMaxTimeFactor / All.cf_hubble_a;
 #endif  
