@@ -2751,9 +2751,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 #if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;        /*!< gives the mass we want to swallow that contributes to eddington */
 #endif
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-    
-#endif    
+
 #if defined(NEWSINK)
     /* Timescales for the implementation of the NEWSINK algorithm from Hubber 2013 */
     MyFloat t_disc;        /* Disc timescale */
