@@ -3335,7 +3335,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
 #ifndef GRAVITY_HYBRID_OPENING_CRIT
                 else		/* check relative opening criterion */
 #else
-                if(!(All.Ti_Current == 0 && RestartFlag == 0))		  
+                if(!(All.Ti_Current == 0 && RestartFlag != 1))		  
 #endif				  
                 {
                     
