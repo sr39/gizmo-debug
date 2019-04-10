@@ -878,7 +878,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
         case IO_JSINK:
 #ifdef NEWSINK_J_FEEDBACK
-            for(n = 0; n < pc; pindex++)
+            for(n = 0; n < pc; pindex++){
                 if(P[pindex].Type == type)
                 {
                     for(k = 0; k < 3; k++){
@@ -886,6 +886,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     n++;
                     fp+=3;
                 }
+            }
 #endif
             break;
         case IO_BHMASSINIT:
@@ -2577,6 +2578,12 @@ int blockpresent(enum iofields blocknr)
             
         case IO_ACRB:
         case IO_SINKRAD:
+#ifdef NEWSINK_J_FEEDBACK
+            return 1;
+#else
+            return 0;
+#endif
+            break;
         case IO_JSINK:
         case IO_BHMASSINIT:
         case IO_BHMASS:
