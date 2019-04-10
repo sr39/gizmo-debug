@@ -601,7 +601,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 accreted_BH_mass += FLT(f_accreted*P[j].Mass);
 #endif
                                 for(k = 0; k < 3; k++) accreted_momentum[k] += FLT(f_accreted * P[j].Mass * P[j].Vel[k]);
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef NEWSINK
 				for(k = 0; k < 3; k++) accreted_moment[k] += FLT(f_accreted * P[j].Mass * P[j].Pos[k]);
 #if defined(NEWSINK_J_FEEDBACK)
                                 dv[0]=P[j].Vel[0]-velocity[0];dv[1]=P[j].Vel[1]-velocity[1];dv[2]=P[j].Vel[2]-velocity[2];
