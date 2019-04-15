@@ -972,7 +972,7 @@ void blackhole_final_operations(void)
             {
 // printf("%d BH Final accreteing for  BH %d with ID %d \n", ThisTask, i, n);
                 P[n].Vel[k] = (P[n].Vel[k]*P[n].Mass + BlackholeTempInfo[i].accreted_momentum[k]) / (BlackholeTempInfo[i].accreted_Mass + P[n].Mass);
-#ifdef NEWSINK
+#ifdef SINGLE_STAR_STRICT_ACCRETION
 		P[n].Pos[k] = (P[n].Pos[k]*P[n].Mass + BlackholeTempInfo[i].accreted_moment[k]) / (BlackholeTempInfo[i].accreted_Mass + P[n].Mass);
 #if defined(NEWSINK_J_FEEDBACK)
 // printf("%d BH Final momentum accreted \n", ThisTask);
