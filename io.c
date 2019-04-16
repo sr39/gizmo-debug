@@ -1584,6 +1584,14 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_BHMASSALPHA:
         case IO_ACRB:
         case IO_SINKRAD:
+        case IO_JSINK:
+#ifdef NEWSINK_J_FEEDBACK
+            if(mode)
+                bytes_per_blockelement = 3 * sizeof(MyInputPosFloat);
+            else
+                bytes_per_blockelement = 3 * sizeof(MyOutputPosFloat);
+            break;
+#endif
         case IO_BHMASSINIT:
         case IO_BHMDOT:
         case IO_CAUSTIC_COUNTER:
@@ -1638,15 +1646,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
                 bytes_per_blockelement = (N_IMF_FORMPROPS) * sizeof(MyInputFloat);
             else
                 bytes_per_blockelement = (N_IMF_FORMPROPS) * sizeof(MyOutputFloat);
-#endif
-            break;
-
-        case IO_JSINK:
-#ifdef NEWSINK_J_FEEDBACK
-            if(mode)
-                bytes_per_blockelement = 3 * sizeof(MyInputPosFloat);
-            else
-                bytes_per_blockelement = 3 * sizeof(MyOutputPosFloat);
 #endif
             break;
             
