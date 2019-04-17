@@ -102,16 +102,17 @@ static struct blackholedata_out
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyFloat BH_angle_weighted_kernel_sum;
 #endif
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+    MyLongDouble accreted_moment[3];
+#endif
 #if defined(NEWSINK)
     MyFloat SinkRadius;
     MyFloat Mdot;
     MyFloat Dt;
     MyFloat f_acc[NEWSINK_NEIGHBORMAX]; /* How much of the gas particle should be accreted */
-#ifdef NEWSINK
-    MyLongDouble accreted_moment[3];
 #if defined(NEWSINK_J_FEEDBACK)
     MyLongDouble accreted_J[3];
-#endif
+
 #endif
 #endif
 }

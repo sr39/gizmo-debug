@@ -2751,7 +2751,9 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 #if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;        /*!< gives the mass we want to swallow that contributes to eddington */
 #endif
-
+#ifdef SINGLE_STAR_STRICT_ACCRETION
+    MyLongDouble accreted_moment[3]; /* first mass moment of accreted gas, for preserving centre of mass */
+#endif
 #if defined(NEWSINK)
     /* Timescales for the implementation of the NEWSINK algorithm from Hubber 2013 */
     MyFloat t_disc;        /* Disc timescale */
@@ -2775,7 +2777,6 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyIDType gasID[NEWSINK_NEIGHBORMAX]; /* ID of gas particle */
     int isbound[NEWSINK_NEIGHBORMAX]; /* is it bound to the sink */
     MyFloat f_acc[NEWSINK_NEIGHBORMAX]; /* How much of the gas particle should be accreted */
-    MyLongDouble accreted_moment[3]; /* first mass moment of accreted gas, for preserving centre of mass */
 #ifdef NEWSINK_BONDI
     MyFloat min_bondi_mdot;
     MyFloat gasmass_within_softening;
