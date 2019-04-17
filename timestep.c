@@ -929,6 +929,9 @@ integertime get_timestep(int p,		/*!< particle index */
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
             dt_accr *= DMAX(0.1, All.BAL_f_accretion);
 #endif // BH_WIND_CONTINUOUS
+#else
+            dt_accr = 0.05 * DMAX(BPP(p).BH_Mass , All.MaxMassForParticleSplit) / BPP(p).BH_Mdot;
+#endif // defined(BH_GRAVCAPTURE_GAS) || defined(BH_WIND_CONTINUOUS)	    
 #ifdef SINGLE_STAR_FORMATION
 #ifdef NEWSINK	    
             dt_accr = 0.1 * DMAX(BPP(p).BH_Mass, 0.1*All.MinMassForParticleMerger) / BPP(p).BH_Mdot_Avg;
@@ -936,9 +939,6 @@ integertime get_timestep(int p,		/*!< particle index */
 	    dt_accr = 0.1 * DMAX(BPP(p).BH_Mass, 0.1*All.MinMassForParticleMerger) / BPP(p).BH_Mdot;
 #endif	    
 #endif
-#else
-            dt_accr = 0.05 * DMAX(BPP(p).BH_Mass , All.MaxMassForParticleSplit) / BPP(p).BH_Mdot;
-#endif // defined(BH_GRAVCAPTURE_GAS) || defined(BH_WIND_CONTINUOUS)
         } // if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
 #ifdef BH_SEED_GROWTH_TESTS
             double dt_evol = 1.e4 * SEC_PER_YEAR / All.UnitTime_in_s;
