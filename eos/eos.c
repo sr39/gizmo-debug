@@ -166,21 +166,26 @@ double INLINE_FUNC Get_Particle_CosmicRayPressure(int i)
 
 double Get_CosmicRayGradientLength(int i)
 {
-    /* now we need the cosmic ray pressure or energy density scale length, defined as :
-        L = (e_cr + p_cr) / |gradient_p_cr| = cr_enthalpy / |gradient(p_cr)| */
+    /* now we need the -parallel- cosmic ray pressure or energy density scale length */
     double CRPressureGradMag = 0.0;
     int k; for(k=0;k<3;k++) {CRPressureGradMag += SphP[i].Gradients.CosmicRayPressure[k]*SphP[i].Gradients.CosmicRayPressure[k];}
+    CRPressureGradMag = sqrt(1.e-46 + CRPressureGradMag); // sqrt to make absolute value
+#ifdef MAGNETIC /* with anisotropic transport, we really want the -parallel- gradient scale-length, so need another factor here */
+    double B2_tot=0.0, b=0; CRPressureGradMag=0; for(k=0;k<3;k++) {b=Get_Particle_BField(i,k); B2_tot+=b*b; CRPressureGradMag+=b*SphP[i].Gradients.CosmicRayPressure[k];} // note, this is signed!
+    CRPressureGradMag = sqrt((1.e-40 + CRPressureGradMag*CRPressureGradMag) / (1.e-46 + B2_tot)); // divide B-magnitude to get scalar magnitude, and take sqrt[(G.P)^2] to get absolute value
+#endif
+    
     /* limit the scale length: if too sharp, need a slope limiter at around the particle size */
     double L_gradient_min = Get_Particle_Size(i) * All.cf_atime;
     /* limit this scale length; if the gradient is too shallow, there is no information beyond a few smoothing lengths, so we can't let streaming go that far */
-    double L_gradient_max = DMAX(200.*L_gradient_min, 100.0*PPP[i].Hsml*All.cf_atime);
+    double L_gradient_max = DMAX(1000.*L_gradient_min, 500.0*PPP[i].Hsml*All.cf_atime);
 
     /* also, physically, cosmic rays cannot stream/diffuse with a faster coefficient than ~v_max*L_mean_free_path, where L_mean_free_path ~ 2.e20 * (cm^-3/n) */
     double nH_cgs = SphP[i].Density * All.cf_a3inv * ( All.UnitDensity_in_cgs * All.HubbleParam*All.HubbleParam ) / PROTONMASS ;
     double L_mean_free_path = (3.e25 / nH_cgs) / (All.UnitLength_in_cm / All.HubbleParam);
     L_gradient_max = DMIN(L_gradient_max, L_mean_free_path);
     
-    double CRPressureGradScaleLength = Get_Particle_CosmicRayPressure(i) / sqrt(1.0e-33 + CRPressureGradMag) * All.cf_atime;
+    double CRPressureGradScaleLength = Get_Particle_CosmicRayPressure(i) / CRPressureGradMag * All.cf_atime;
     if(CRPressureGradScaleLength > 0) {CRPressureGradScaleLength = 1.0/(1.0/CRPressureGradScaleLength + 1.0/L_gradient_max);} else {CRPressureGradScaleLength=0;}
     CRPressureGradScaleLength = sqrt(L_gradient_min*L_gradient_min + CRPressureGradScaleLength*CRPressureGradScaleLength);
     return CRPressureGradScaleLength; /* this is returned in -physical- units */
@@ -242,9 +247,10 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
     /* pressure gradient scale length [with various limiters] for e.g. estimate of cascade driving length */
     p_scale = 0.0; for(k=0;k<3;k++) {p_scale += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
     p_scale = SphP[i].Pressure / (1.e-33 + sqrt(p_scale)); double p_scale_min = 0.5 * Get_Particle_Size(i); // sets a 'floor' at some multiple of the particle size (unresolved below this) //
-    p_scale = sqrt(p_scale_min*p_scale_min + p_scale*p_scale); double p_scale_max = 100.*PPP[i].Hsml; // sets a maximum beyond which we have no meaningful information //
-    p_scale = 1./(1./p_scale + 1./p_scale_max); p_scale *= (All.UnitLength_in_cm / All.HubbleParam * All.cf_atime) / (3.086e21); /* physical pressure scale length in units of kpc */
-    if(p_scale > 100) {p_scale=100;} // limit at 100 kpc
+    p_scale = sqrt(p_scale_min*p_scale_min + p_scale*p_scale); double p_scale_max = 1000.*PPP[i].Hsml; // sets a maximum beyond which we have no meaningful information //
+    double codelength_to_kpc = (All.UnitLength_in_cm / All.HubbleParam) / (3.086e21); /* unit conversion to kpc [for physical units] */
+    p_scale = 1./(1./p_scale + 1./p_scale_max); p_scale *= codelength_to_kpc / All.cf_atime; /* physical pressure scale length in units of kpc */
+    if(p_scale > 1000.) {p_scale=1000.;} // limit at 1000 kpc
 #ifdef COOLING
     double ne=SphP[i].Ne, nh0=0, nHe0, nHepp, nhp, nHeII, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, rho_cgs, u0=SphP[i].InternalEnergyPred;
     temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties
@@ -263,14 +269,6 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
     SphP[i].CosmicRayDiffusionCoeff = All.CosmicRayDiffusionCoeff; //  this is the input value of the diffusivity, for constant-kappa models
 #endif
     
-#if (COSMIC_RAYS_DIFFUSION_MODEL == 1) /* textbook extrinsic turbulence model: kappa~v_CR*r_gyro * B_bulk^2/(B_random[scale~r_gyro]^2) v_CR~c, r_gyro~p*c/(Z*e*B)~1e12 cm * RGV *(3 muG/B)  (RGV~1 is the magnetic rigidity). assuming a Kolmogorov spectrum */
-    SphP[i].CosmicRayDiffusionCoeff = (9.e28/unit_kappa_code) * pow(p_scale*p_scale/b_muG,1./3.); /* kappa~9e28 * (R_driving/kpc)^(2/3) * RGV^(1/3) * (B/muG)^(-1/3),  follows Jokipii 1966 */
-#endif
-    
-#if (COSMIC_RAYS_DIFFUSION_MODEL == 2) /* Snodin et al. 2016 -- different expression for extrinsic MHD-turb diffusivity */
-    SphP[i].CosmicRayDiffusionCoeff = (1.e29/unit_kappa_code) * (2.9*p_scale + 0.32*pow(p_scale*p_scale/b_muG,1./3.) + 7.4e-7/b_muG);
-#endif
-    
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 3) /* Farber et al. 2018 -- higher coeff in neutral gas, lower in ionized gas */
     SphP[i].CosmicRayDiffusionCoeff = (3.e29/unit_kappa_code) * (1.-f_ion + f_ion/30.); // 30x lower in neutral (note use f_ion directly here, not temperature as they do)
 #endif
@@ -284,10 +282,11 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 #endif
     
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 5) /* streaming at fast MHD wavespeed */
-    v_streaming = sqrt(v_streaming*v_streaming + GAMMA*GAMMA_MINUS1*SphP[i].InternalEnergyPred); CR_kappa_streaming = GAMMA_COSMICRAY * v_streaming * CRPressureGradScaleLength;
+    v_streaming = sqrt(v_streaming*v_streaming + GAMMA*GAMMA_MINUS1*SphP[i].InternalEnergyPred);
+    CR_kappa_streaming = GAMMA_COSMICRAY * v_streaming * CRPressureGradScaleLength;
 #endif
     
-#if (COSMIC_RAYS_DIFFUSION_MODEL == 6) || (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* streaming/diffusion at self-confinement equilibrium */
+#if (COSMIC_RAYS_DIFFUSION_MODEL == 1) || (COSMIC_RAYS_DIFFUSION_MODEL == 2) || (COSMIC_RAYS_DIFFUSION_MODEL == 6) || (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* extrinsic turbulence OR streaming/diffusion at self-confinement equilibrium */
     double Z_charge_CR=1, E_CRs_Gev=1, EPSILON_SMALL=1.e-50, cs_thermal=sqrt(GAMMA*GAMMA_MINUS1*u0), B[3]={0}, Bmag=0, cos_Bgrad=0, dPmag=0, Bmag_Gauss=0, r_turb_driving=0; // internal energy,  thermal sound speed, B-field properties
     for(k=0;k<3;k++)
     {
@@ -305,7 +304,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
     double clight_code=C/All.UnitVelocity_in_cm_per_s, Omega_gyro=8987.34*Bmag_Gauss*(Z_charge_CR/E_CRs_Gev)*(All.UnitTime_in_s/All.HubbleParam), r_L=clight_code/Omega_gyro, kappa_0=r_L*clight_code, k_L=2.*M_PI/r_L; // gyro frequency of the CR population we're evolving, CR gyro radius, reference diffusivity
     double E_B=0.5*Bmag*Bmag*(P[i].Mass/(SphP[i].Density*All.cf_a3inv)), E_CR=SphP[i].CosmicRayEnergyPred, x_EB_ECR=(E_B+EPSILON_SMALL)/(E_CR+EPSILON_SMALL); // B-field energy (energy density times volume, for ratios with energies above), CR-energy, ratio
     
-    int i1,i2; double v2_t=0,dv2_t=0,b2_t=0,db2_t=0,lcrit,lcrit_v,lcrit_b,x_LL,M_A,h0,fturb_multiplier=1; // factor which will represent which cascade model we are going to use
+    int i1,i2; double v2_t=0,dv2_t=0,b2_t=0,db2_t=0,x_LL,M_A,h0,fturb_multiplier=1; // factor which will represent which cascade model we are going to use
     for(i1=0;i1<3;i1++)
     {
         v2_t += SphP[i].VelPred[i1]*SphP[i].VelPred[i1]; b2_t += Get_Particle_BField(i,i1) * Get_Particle_BField(i,i1);
@@ -314,30 +313,42 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
     v2_t=sqrt(v2_t); b2_t=sqrt(b2_t); dv2_t=sqrt(dv2_t); db2_t=sqrt(db2_t); dv2_t/=All.cf_atime; db2_t/=All.cf_atime; b2_t*=All.cf_a2inv; db2_t*=All.cf_a2inv; v2_t/=All.cf_atime; dv2_t/=All.cf_atime; h0=Get_Particle_Size(i)*All.cf_atime; // physical units
     double  turb_index_resolved = 1./3.; // spectral index and scale of the locally-resolved turbulent flow. assume kolmogorov, could also use 0.5 for supersonic
     M_A = h0*(EPSILON_SMALL + dv2_t) / (EPSILON_SMALL + vA_noion); M_A = DMAX(M_A , h0*(EPSILON_SMALL + h0*db2_t) / (EPSILON_SMALL + b2_t)); M_A = DMAX( EPSILON_SMALL , M_A ); // proper calculation of the local Alfven Mach number
-    lcrit_v = h0 * pow((EPSILON_SMALL + vA_noion) / (EPSILON_SMALL + h0*dv2_t) , 1./turb_index_resolved); // scale where delta_v ~ vA
-    lcrit_b = h0 * pow((EPSILON_SMALL + b2_t) / (EPSILON_SMALL + h0*db2_t) , 1./turb_index_resolved); // scale where delta_B ~ B
-    x_LL = clight_code / (Omega_gyro * h0); x_LL=DMAX(x_LL,EPSILON_SMALL); lcrit = DMAX( DMIN( DMIN(r_turb_driving , lcrit_v) , lcrit_b ) , EPSILON_SMALL );  k_turb=2.*M_PI/lcrit; // critical scale for Farber-Goldreich 04 scaling
-    if(M_A < 1.) /* Lazarian+ 2016 multi-part model for where the resolved scales lie on the cascade */
-    {
-        if(x_LL < M_A*M_A*M_A*M_A) {fturb_multiplier=M_A*M_A;} else {fturb_multiplier=pow(M_A,8./3.)/pow(x_LL,1./6.);} // (sub-Alf,strong vs sub-Alf,weak)
-    } else {
-        if(x_LL < 1./(M_A*M_A*M_A)) {fturb_multiplier=pow(M_A,3./2.);} else {fturb_multiplier=pow(M_A,3./2.)/pow(x_LL,1./6.);} // (super-Alf,strong vs super-Alf,weak)
-    }
-    fturb_multiplier*=sqrt(lcrit/h0); fturb_multiplier=DMAX(1,fturb_multiplier); // need to use relevant scale (h0) for Lazarian scaling
+    //lcrit_v = h0 * pow((EPSILON_SMALL + vA_noion) / (EPSILON_SMALL + h0*dv2_t) , 1./turb_index_resolved); // scale where delta_v ~ vA
+    //lcrit_b = h0 * pow((EPSILON_SMALL + b2_t) / (EPSILON_SMALL + h0*db2_t) , 1./turb_index_resolved); // scale where delta_B ~ B
+    x_LL = clight_code / (Omega_gyro * h0); x_LL=DMAX(x_LL,EPSILON_SMALL);
+    
+#if (COSMIC_RAYS_DIFFUSION_MODEL == 6) || (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* terms below only needed if we try to calculate the self-confinement-based diffusivity */
+    k_turb = 2.*M_PI / h0; // scale at which turbulence is being measured here //
+    fturb_multiplier = pow(M_A,3./2.); // corrects to Alfven scale, for correct estimate according to Farmer and Goldreich, Lazarian, etc.
+    if(M_A<1.) {fturb_multiplier*=DMIN(sqrt(M_A),pow(M_A,7./6.)/pow(x_LL,1./6.));} else {fturb_multiplier*=DMIN(1.,1./(pow(M_A,1./2.)*pow(x_LL,1./6.)));} /* Lazarian+ 2016 multi-part model for where the resolved scales lie on the cascade */
     
     /* ok now we finally have all the terms needed to calculate the various damping rates that determine the equilibrium diffusivity */
     double G_ion_neutral = 5.77e-11 * (rho_cgs/PROTONMASS) * nh0 * sqrt(temperature) * (All.UnitTime_in_s/All.HubbleParam); if(Z_charge_CR > 1) {G_ion_neutral /= sqrt(2.*Z_charge_CR);} // ion-neutral damping: need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]
     double G_turb_plus_linear_landau = (vA_noion + sqrt(M_PI)*cs_thermal/4.) * sqrt(k_turb*k_L) * fturb_multiplier,  G0 = G_ion_neutral + G_turb_plus_linear_landau, Gamma_effective = G0; // linear Landau + turbulent (both have same form, assume k_turb from cascade above)
-    double phi_0 = (sqrt(M_PI)/6.)*(fabs(cos_Bgrad))*(1./(x_EB_ECR+EPSILON_SMALL))*(cs_thermal*vA_code/(r_L*CRPressureGradScaleLength*G0*G0 + EPSILON_SMALL)); // parameter which determines whether NLL dominates
+    double phi_0 = (sqrt(M_PI)/6.)*(fabs(cos_Bgrad))*(1./(x_EB_ECR+EPSILON_SMALL))*(cs_thermal*vA_code*k_L/(CRPressureGradScaleLength*G0*G0 + EPSILON_SMALL)); // parameter which determines whether NLL dominates
     if(isfinite(phi_0) && (phi_0>0.01)) {Gamma_effective *= phi_0/(2.*(sqrt(1.+phi_0)-1.));} // this accounts exactly for the steady-state solution for the Thomas+Pfrommer formulation, including both the linear [Landau,turbulent,ion-neutral] + non-linear terms. can estimate (G_nonlinear_landau_effective = Gamma_effective - G0)
     
     /* with damping rates above, equilibrium transport is equivalent to pure streaming, with v_stream = vA + (diffusive equilibrium part) give by the solution below, proportional to Gamma_effective and valid to O(v^2/c^2) */
-    double v_st_eff = vA_code + 1.3 * Gamma_effective * kappa_0 * x_EB_ECR / ( ((fabs(cos_Bgrad)+EPSILON_SMALL) * vA_code + EPSILON_SMALL) * (1. + 2.*vA_code*vA_code/(clight_code*clight_code)) ); // effective equilibrium streaming speed for all terms accounted
-    CR_kappa_streaming = GAMMA_COSMICRAY*v_st_eff*CRPressureGradScaleLength; DMAX(1.e20/unit_kappa_code,DMIN(1.e35/unit_kappa_code,CR_kappa_streaming)); // convert to an effective diffusivity from 'streaming', and limit (can get extreme)
+    double v_st_eff = vA_code * (1. + 4. * kappa_0 * Gamma_effective * x_EB_ECR * (1. + 2.*vA_code*vA_code/(clight_code*clight_code)) / (M_PI*vA_code*vA_code + EPSILON_SMALL)); // effective equilibrium streaming speed for all terms accounted
+    CR_kappa_streaming = GAMMA_COSMICRAY*v_st_eff*CRPressureGradScaleLength; // convert to effective diffusivity from 'streaming'
+    CR_kappa_streaming = DMAX(kappa_0,DMAX(1.e20/unit_kappa_code,DMIN(1.e35/unit_kappa_code,CR_kappa_streaming))); // and limit (can get extreme) to prevent numerical overflow errors
 #endif
+#endif
+
     
+#if (COSMIC_RAYS_DIFFUSION_MODEL == 1) || (COSMIC_RAYS_DIFFUSION_MODEL == 2) || (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* textbook extrinsic turbulence model: kappa~v_CR*r_gyro * B_bulk^2/(B_random[scale~r_gyro]^2) v_CR~c, r_gyro~p*c/(Z*e*B)~1e12 cm * RGV *(3 muG/B)  (RGV~1 is the magnetic rigidity). assuming a Kolmogorov spectrum */
+    double l_alfven = h0/(EPSILON_SMALL + M_A*M_A*M_A), l_alfven_kpc = l_alfven*codelength_to_kpc; /* L_alfven defined as scale for Kolmogorov cascade to extrapolate to dv ~ v_Alfven; second term just a conversion to convenient units below */
+    double f_cas_ET = 1; /* pure Kolmogorov or Goldreich-Shridhar or IK cascade */
+    if(M_A < 1.) {f_cas_ET = pow(1./DMAX(M_A*M_A , xLL), 1./3.);} /* Lazarian '16 modification for weak cascade in sub-Alfvenic turbulence */
+    SphP[i].CosmicRayDiffusionCoeff = (9.e28/unit_kappa_code) * pow(l_alfven_kpc*l_alfven_kpc/b_muG,1./3.) * f_cas_ET; /* kappa~9e28 * (l_alfven/kpc)^(2/3) * RGV^(1/3) * (B/muG)^(-1/3) * f_cas_ET,  follows Jokipii 1966, with our corrections for spectral shape */
+#if (COSMIC_RAYS_DIFFUSION_MODEL == 2) || (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* Snodin et al. 2016 -- different expression for extrinsic MHD-turb diffusivity, using the proper definition of L_Alfven for scaling to the correct limit */
+    SphP[i].CosmicRayDiffusionCoeff = (3.e29/unit_kappa_code) * (l_alfven_kpc + 0.1*pow(l_alfven_kpc*l_alfven_kpc/b_muG,1./3.) + 2.4e-7/b_muG);
+#endif
+#endif
+
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* 'combined' extrinsic turbulence + self-confinement model */
-    double kappa_diff_extrinsicturb = (1.e29/unit_kappa_code) * (2.9*p_scale + 0.32*pow(p_scale*p_scale/b_muG,1./3.) + 7.4e-7/b_muG); // Snodin expression
+    double kappa_diff_extrinsicturb = SphP[i].CosmicRayDiffusionCoeff; // expression which should be calculated above for turbulent part //
+    SphP[i].CosmicRayDiffusionCoeff = 0; // re-zero because we will calculate the more appropriate rate below
     CR_kappa_streaming = 1. / ( 1./(CR_kappa_streaming+EPSILON_SMALL) + 1./(kappa_diff_extrinsicturb+EPSILON_SMALL) ); // if scattering rates add linearly, this is a rough approximation to the total transport (essentially, smaller of the two dominates)
 #endif
     
@@ -542,7 +553,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     G_ion_neutral = 5.77e-11 * (rho_cgs/PROTONMASS) * nh0 * sqrt(temperature) * (All.UnitTime_in_s/All.HubbleParam); // need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]
     if(Z_charge_CR > 1) {G_ion_neutral /= sqrt(2.*Z_charge_CR);}
 
-    int i1,i2; double v2_t=0,dv2_t=0,b2_t=0,db2_t=0,lcrit,lcrit_v,lcrit_b,x_LL,M_A,h0,fturb_multiplier=1; // factor which will represent which cascade model we are going to use
+    int i1,i2; double v2_t=0,dv2_t=0,b2_t=0,db2_t=0,x_LL,M_A,h0,fturb_multiplier=1; // factor which will represent which cascade model we are going to use
     for(i1=0;i1<3;i1++)
     {
         v2_t += SphP[i].VelPred[i1]*SphP[i].VelPred[i1]; b2_t += Get_Particle_BField(i,i1) * Get_Particle_BField(i,i1);
@@ -551,16 +562,9 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     v2_t=sqrt(v2_t); b2_t=sqrt(b2_t); dv2_t=sqrt(dv2_t); db2_t=sqrt(db2_t); dv2_t/=All.cf_atime; db2_t/=All.cf_atime; b2_t*=All.cf_a2inv; db2_t*=All.cf_a2inv; v2_t/=All.cf_atime; dv2_t/=All.cf_atime; h0=Get_Particle_Size(i)*All.cf_atime; // physical units
     double turb_index_resolved = 1./3.; // spectral index and scale of the locally-resolved turbulent flow. assume kolmogorov, could also use 0.5 for supersonic
     M_A = h0*(EPSILON_SMALL + dv2_t) / (EPSILON_SMALL + vA_noion); M_A = DMAX(M_A , h0*(EPSILON_SMALL + h0*db2_t) / (EPSILON_SMALL + b2_t)); M_A = DMAX( EPSILON_SMALL , M_A ); // proper calculation of the local Alfven Mach number
-    lcrit_v = h0 * pow((EPSILON_SMALL + vA_noion) / (EPSILON_SMALL + h0*dv2_t) , 1./turb_index_resolved); // scale where delta_v ~ vA
-    lcrit_b = h0 * pow((EPSILON_SMALL + b2_t) / (EPSILON_SMALL + h0*db2_t) , 1./turb_index_resolved); // scale where delta_B ~ B
-    x_LL = clight_code / (Omega_gyro * h0); x_LL=DMAX(x_LL,EPSILON_SMALL); lcrit = DMAX( DMIN( DMIN(r_turb_driving , lcrit_v) , lcrit_b ) , EPSILON_SMALL );  k_turb=2.*M_PI/lcrit; // critical scale for Farber-Goldreich 04 scaling
-    if(M_A < 1.) /* Lazarian+ 2016 multi-part model for where the resolved scales lie on the cascade */
-    {
-        if(x_LL < M_A*M_A*M_A*M_A) {fturb_multiplier=M_A*M_A;} else {fturb_multiplier=pow(M_A,8./3.)/pow(x_LL,1./6.);} // (sub-Alf,strong vs sub-Alf,weak)
-    } else {
-        if(x_LL < 1./(M_A*M_A*M_A)) {fturb_multiplier=pow(M_A,3./2.);} else {fturb_multiplier=pow(M_A,3./2.)/pow(x_LL,1./6.);} // (super-Alf,strong vs super-Alf,weak)
-    }
-    fturb_multiplier*=sqrt(lcrit/h0); fturb_multiplier=DMAX(1,fturb_multiplier); // need to use relevant scale (h0) for Lazarian scaling
+    x_LL = clight_code / (Omega_gyro * h0); x_LL=DMAX(x_LL,EPSILON_SMALL); k_turb = 2.*M_PI / h0; // scale at which turbulence is being measured here //
+    fturb_multiplier = pow(M_A,3./2.); // corrects to Alfven scale, for correct estimate according to Farmer and Goldreich, Lazarian, etc.
+    if(M_A<1.) {fturb_multiplier*=DMIN(sqrt(M_A),pow(M_A,7./6.)/pow(x_LL,1./6.));} else {fturb_multiplier*=DMIN(1.,1./(pow(M_A,1./2.)*pow(x_LL,1./6.)));} /* Lazarian+ 2016 multi-part model for where the resolved scales lie on the cascade */
     G_turb_plus_linear_landau = (vA_noion + sqrt(M_PI/16.)*cs_thermal) * sqrt(k_turb*k_L) * fturb_multiplier; // linear Landau + turbulent (both have same form, assume k_turb from cascade above)
 
     G_nonlinear_landau_prefix = (sqrt(M_PI)/8.) * (1./E_B) * (cs_thermal*k_L); // non-linear Landau damping (will be multiplied by eA)

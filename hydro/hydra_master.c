@@ -741,15 +741,6 @@ void hydro_final_operations_and_cleanup(void)
             vA /= Get_Gas_Ionized_Fraction(i); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
 #endif
             vA = All.cf_afac3 * sqrt(All.cf_afac1 * vA/ (All.cf_atime * SphP[i].Density)); cr_vstream_loss_velocity = DMIN(vA, cr_vstream_loss_velocity);
-            double B_dot_gradP=0.0, B2_tot=0.0, Pgrad2_tot=0.0;
-            for(k=0;k<3;k++) /* account here for the fact that the streaming can be suppressed by the requirement of motion along field lines */
-            {
-                double b_to_use = Get_Particle_BField(i,k); B2_tot += b_to_use * b_to_use;
-                Pgrad2_tot += SphP[i].Gradients.CosmicRayPressure[k] * SphP[i].Gradients.CosmicRayPressure[k];
-                B_dot_gradP += b_to_use * SphP[i].Gradients.CosmicRayPressure[k];
-            }
-            cr_vstream_loss_velocity *= (B_dot_gradP * B_dot_gradP) / (1.e-37 + B2_tot * Pgrad2_tot);
-            if(vA < cr_vstream_loss_velocity) {cr_vstream_loss_velocity=vA;} /* this applies the actual limiter */
 #endif
             double cr_stream_cool = -GAMMA_COSMICRAY_MINUS1 * cr_vstream_loss_velocity / Get_CosmicRayGradientLength(i);
             SphP[i].DtCosmicRayEnergy += SphP[i].CosmicRayEnergyPred * cr_stream_cool;
