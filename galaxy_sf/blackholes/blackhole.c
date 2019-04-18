@@ -320,7 +320,7 @@ void blackhole_properties_loop(void)
                 //BlackholeTempInfo[i].gas_Egrav_in_intzone -= 0.6 * All.G * BlackholeTempInfo[i].intzone_gasmass * BlackholeTempInfo[i].intzone_gasmass / avg_rad; 
                 
                 t_exponent = DMIN(fabs(2.0*BlackholeTempInfo[i].gas_Erot_in_intzone/BlackholeTempInfo[i].gas_Egrav_in_intzone) , 1.0); /*exponent to interpolate between two time scales*/
-		t_exponent = t_exponent * t_exponent; /* squaring this seems to make the interpolation more faithful to the actual accretion rate in test problems - MYG */
+                t_exponent = t_exponent * t_exponent; /* squaring this seems to make the interpolation more faithful to the actual accretion rate in test problems - MYG */
                 BlackholeTempInfo[i].t_acc = pow(BlackholeTempInfo[i].t_rad,  (1.0-t_exponent) ) * pow(BlackholeTempInfo[i].t_disc,  t_exponent ); /* accretion timescale for sink */ 
             }
             else{
@@ -628,11 +628,27 @@ void set_blackhole_mdot(int i, int n, double dt)
     /* use the mass in the accretion disk from the previous timestep to determine the BH accretion rate */
     /* note that if the alpha-disk is self-gravitating, it limits its mass, so we limit accretion into it beyond a certain point */
     double x_MdiskSelfGravLimiter = BPP(n).BH_Mass_AlphaDisk / (BPP(n).BH_Mass_AlphaDisk + BPP(n).BH_Mass);
+    double t_yr = SEC_PER_YEAR / (All.UnitTime_in_s / All.HubbleParam);
     if(x_MdiskSelfGravLimiter > 20.) {mdot=0;} else {mdot *= exp(-0.5*x_MdiskSelfGravLimiter*x_MdiskSelfGravLimiter);}
     BlackholeTempInfo[i].mdot_alphadisk = mdot;     /* if BH_GRAVCAPTURE_GAS is off, this gets the accretion rate */
     mdot = 0;
     if(BPP(n).BH_Mass_AlphaDisk > 0)
     {
+#ifdef SINGLE_STAR_FORMATION
+#ifdef NEWSINK
+        double tdyn = DMAX(sqrt(All.ForceSoftening[5]*All.ForceSoftening[5]*All.ForceSoftening[5] / (BPP(n).Mass / All.G)), dt);//sink dynamical time
+        double t_acc_bh = DMAX(BlackholeTempInfo[i].t_acc, tdyn); //accretion from alphadisk on either the sink dynamical time or the accretion timescale
+        mdot = All.BlackHoleAccretionFactor * BPP(n).BH_Mass_AlphaDisk / (t_acc_bh);
+#else
+        //mdot = All.BlackHoleAccretionFactor * 1.0e-5 * BPP(n).BH_Mass_AlphaDisk / (SEC_PER_YEAR/All.UnitTime_in_s) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass),2);
+        //double t_acc_bh=(1.0e5 * t_yr); //accretion timescale set to 100kyr
+        //double t_acc_bh= 1.11072 * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass)*All.GravityConstantInternal, -0.5)*pow(All.ForceSoftening[5],1.5)/All.UnitTime_in_s; /* Accretion timescale is the freefall time */
+        double t_acc_bh= 18.006* pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass)*All.GravityConstantInternal*All.ForceSoftening[5], 0.5)*pow(3.0e4/All.UnitVelocity_in_cm_per_s,-2.0)/All.UnitTime_in_s; /* Accretion timescale is 1/alpha*(t_cross/t_orb)^2*t_orb where t_orb is roughly the 2 freefall time. For t_cross=2R/cs we will use cs=300m/s (T=20 K gas) and for alpha we will use 0.1 (the uncertainty in alpha means it does not really matter if cs is incorrect)*/
+        double sink_dt = (BPP(n).TimeBin ? (1 << BPP(n).TimeBin) : 0) * All.Timebase_interval; // sink timestep
+        t_acc_bh=DMAX(10*sink_dt,t_acc_bh); /* Make sure that the accretion timescale is at least 10 times the particle's timestep */
+        mdot = All.BlackHoleAccretionFactor * BPP(n).BH_Mass_AlphaDisk / (t_acc_bh) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass), 0.4);
+#endif //ifdef NEWSINK
+#else
         /* this below is a more complicated expression using the outer-disk expression from Shakura & Sunyaev. Simpler expression
             below captures the same physics with considerably less potential to extrapolate to rather odd scalings in extreme regimes */
         
@@ -643,21 +659,11 @@ void set_blackhole_mdot(int i, int n, double dt)
             pow( BPP(n).BH_Mass_AlphaDisk*All.UnitMass_in_g / (All.HubbleParam * 1.0e8*SOLAR_MASS) , 10./7. ) * // m_disk dependence
             pow( DMIN(0.2,DMIN(PPP[n].Hsml,All.ForceSoftening[5])*All.cf_atime*All.UnitLength_in_cm/(All.HubbleParam * 3.086e18)) , -25./14. ); // r_disk dependence
         */
-        double t_yr = SEC_PER_YEAR / (All.UnitTime_in_s / All.HubbleParam);
         mdot = BPP(n).BH_Mass_AlphaDisk / (4.2e7 * t_yr) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass), 0.4);
-        
-#ifdef SINGLE_STAR_FORMATION
-	//mdot = All.BlackHoleAccretionFactor * 1.0e-5 * BPP(n).BH_Mass_AlphaDisk / (SEC_PER_YEAR/All.UnitTime_in_s) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass),2);
-	//double t_acc_bh=(1.0e5 * t_yr); //accretion timescale set to 100kyr
-	//double t_acc_bh= 1.11072 * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass)*All.GravityConstantInternal, -0.5)*pow(All.ForceSoftening[5],1.5)/All.UnitTime_in_s; /* Accretion timescale is the freefall time */
-	double t_acc_bh= 18.006* pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass)*All.GravityConstantInternal*All.ForceSoftening[5], 0.5)*pow(3.0e4/All.UnitVelocity_in_cm_per_s,-2.0)/All.UnitTime_in_s; /* Accretion timescale is 1/alpha*(t_cross/t_orb)^2*t_orb where t_orb is roughly the 2 freefall time. For t_cross=2R/cs we will use cs=300m/s (T=20 K gas) and for alpha we will use 0.1 (the uncertainty in alpha means it does not really matter if cs is incorrect)*/
-	double sink_dt = (BPP(n).TimeBin ? (1 << BPP(n).TimeBin) : 0) * All.Timebase_interval; // sink timestep
-	t_acc_bh=DMAX(10*sink_dt,t_acc_bh); /* Make sure that the accretion timescale is at least 10 times the particle's timestep */
-	mdot = All.BlackHoleAccretionFactor * BPP(n).BH_Mass_AlphaDisk / (t_acc_bh) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass), 0.4);
-#endif
+#endif//ifdef SINGLE_STAR_FORMATION
 
     }
-#endif
+#endif //ifdef BH_ALPHADISK_ACCRETION
     
     
     
@@ -723,7 +729,9 @@ void set_blackhole_mdot(int i, int n, double dt)
     /* alright, now we can FINALLY set the BH accretion rate */
     if(isnan(mdot)) {mdot=0;}
     BPP(n).BH_Mdot = DMAX(mdot,0);
+
 #if defined(NEWSINK)
+#if !defined(BH_ALPHADISK_ACCRETION) //if we are not using a mass reservoir for the accreted gas
     double tsum=0,mdot_avg_nstep=0; 
     double tdyn = DMAX(sqrt(All.ForceSoftening[5]*All.ForceSoftening[5]*All.ForceSoftening[5] / (BPP(n).Mass / All.G)), dt);//sink dynamical time
     /*Average mdot over the dynamical time of the sink, end of time averaging is MDOT_AVG_WINDOWS_SIZE timesteps before current time*/
@@ -744,12 +752,13 @@ void set_blackhole_mdot(int i, int n, double dt)
     else{
         BPP(n).BH_Mdot_Avg = mdot_avg_nstep*(tsum/tdyn) + BPP(n).BH_Mdot_Avg_tdyn*(1.0-tsum/tdyn); //We want to smooth over at least t_dyn, so we will use the exponentially smoothed version for the leftover. This way the integral of mdot is not conserved, but it only matters if we have extremely small timesteps
     }
-    
-
+#else //we are using a mass reservoir so it is already smoothed
+    BPP(n).BH_Mdot_Avg = BPP(n).BH_Mdot;
+#endif // #if !defined(BH_ALPHADISK_ACCRETION)
 #ifdef BH_OUTPUT_MOREINFO
     printf("ThisTask=%d, time=%g: sink id=%llu has mdot of %g while average over MDOT_AVG_WINDOWS_SIZE is %g\n", ThisTask, All.Time, P[n].ID, BPP(n).BH_Mdot,BPP(n).BH_Mdot_Avg);
 #endif
-#endif
+#endif //if defined(NEWSINK)
 }
 
 
