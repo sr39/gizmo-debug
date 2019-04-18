@@ -642,7 +642,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #ifdef BH_WIND_KICK     /* BAL kicking operations. NOTE: we have two separate BAL wind models, particle kicking and smooth wind model. This is where we do the particle kicking BAL model. This should also work when there is alpha-disk. */
                                 v_kick=All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s; //if( !(All.ComovingIntegrationOn) && (All.Time < 0.001)) {v_kick *= All.Time/0.001;}
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-				v_kick = sqrt(All.G * mass / (protostellar_radius * 6.957e10 / All.UnitLength_in_cm)); // Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
+				v_kick = sqrt(All.G * bh_mass / (protostellar_radius * 6.957e10 / All.UnitLength_in_cm)); // Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
 #endif 
 #if defined(NEWSINK) && !defined(NEWSINK_STOCHASTIC_ACCRETION) /*It is possible to accrete only part of the particle so we need to be more careful about our kicks*/
                                 if (f_acc_corr<1.0){
