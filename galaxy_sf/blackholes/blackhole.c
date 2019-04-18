@@ -724,22 +724,28 @@ void set_blackhole_mdot(int i, int n, double dt)
     if(isnan(mdot)) {mdot=0;}
     BPP(n).BH_Mdot = DMAX(mdot,0);
 #if defined(NEWSINK)
-    double tsum=0; 
+    double tsum=0,mdot_avg_nstep=0; 
+    double tdyn = DMAX(sqrt(All.ForceSoftening[5]*All.ForceSoftening[5]*All.ForceSoftening[5] / (BPP(n).Mass / All.G)), dt);//sink dynamical time
+    /*Average mdot over the dynamical time of the sink, end of time averaging is MDOT_AVG_WINDOWS_SIZE timesteps before current time*/
+    BPP(n).BH_Mdot_Avg_tdyn = (1 - dt / tdyn) * BPP(n).BH_Mdot_Avg_tdyn + BPP(n).Mdotvals[MDOT_AVG_WINDOWS_SIZE-1] * BPP(n).dtvals[MDOT_AVG_WINDOWS_SIZE-1]/ tdyn;
     /*Store mdot and dt value for BH particle and time average it*/
-#ifdef NEWSINK_MDOT_EXPONENTIAL_SMOOTHING    
-    double tdyn = DMAX(sqrt(All.ForceSoftening[5]*All.ForceSoftening[5]*All.ForceSoftening[5] / (BPP(n).Mass / All.G)), dt);
-    BPP(n).BH_Mdot_Avg = (1 - dt / tdyn) * BPP(n).BH_Mdot_Avg + BPP(n).BH_Mdot * dt/ tdyn;
-#else	
-    BPP(n).BH_Mdot_Avg = BPP(n).BH_Mdot*dt ; tsum = dt; //start with the current values
+    mdot_avg_nstep = BPP(n).BH_Mdot*dt ; tsum = dt; //start with the current values
     for(k=(MDOT_AVG_WINDOWS_SIZE-1);k>0;k--){ //shift array by one
         BPP(n).Mdotvals[k] = BPP(n).Mdotvals[k-1];
         BPP(n).dtvals[k] = BPP(n).dtvals[k-1];
-        BPP(n).BH_Mdot_Avg += BPP(n).Mdotvals[k]*BPP(n).dtvals[k];
+        mdot_avg_nstep += BPP(n).Mdotvals[k]*BPP(n).dtvals[k];
         tsum += BPP(n).dtvals[k];
     }
-    BPP(n).BH_Mdot_Avg /= tsum; //normalize time average
     BPP(n).Mdotvals[0] = BPP(n).BH_Mdot; BPP(n).dtvals[0] = dt;//store current values
-#endif    
+    mdot_avg_nstep/=tsum; //normalized time average
+    if (tsum>tdyn){
+        BPP(n).BH_Mdot_Avg = mdot_avg_nstep; //averaged over MDOT_AVG_WINDOWS_SIZE timesteps
+    }
+    else{
+        BPP(n).BH_Mdot_Avg = mdot_avg_nstep*(tsum/tdyn) + BPP(n).BH_Mdot_Avg_tdyn*(1.0-tsum/tdyn); //We want to smooth over at least t_dyn, so we will use the exponentially smoothed version for the leftover. This way the integral of mdot is not conserved, but it only matters if we have extremely small timesteps
+    }
+    
+
 #ifdef BH_OUTPUT_MOREINFO
     printf("ThisTask=%d, time=%g: sink id=%llu has mdot of %g while average over MDOT_AVG_WINDOWS_SIZE is %g\n", ThisTask, All.Time, P[n].ID, BPP(n).BH_Mdot,BPP(n).BH_Mdot_Avg);
 #endif
