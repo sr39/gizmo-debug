@@ -339,7 +339,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 1) || (COSMIC_RAYS_DIFFUSION_MODEL == 2) || (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* textbook extrinsic turbulence model: kappa~v_CR*r_gyro * B_bulk^2/(B_random[scale~r_gyro]^2) v_CR~c, r_gyro~p*c/(Z*e*B)~1e12 cm * RGV *(3 muG/B)  (RGV~1 is the magnetic rigidity). assuming a Kolmogorov spectrum */
     double l_alfven = h0/(EPSILON_SMALL + M_A*M_A*M_A), l_alfven_kpc = l_alfven*codelength_to_kpc; /* L_alfven defined as scale for Kolmogorov cascade to extrapolate to dv ~ v_Alfven; second term just a conversion to convenient units below */
     double f_cas_ET = 1; /* pure Kolmogorov or Goldreich-Shridhar or IK cascade */
-    if(M_A < 1.) {f_cas_ET = pow(1./DMAX(M_A*M_A , xLL), 1./3.);} /* Lazarian '16 modification for weak cascade in sub-Alfvenic turbulence */
+    if(M_A < 1.) {f_cas_ET = pow(1./DMAX(M_A*M_A , x_LL), 1./3.);} /* Lazarian '16 modification for weak cascade in sub-Alfvenic turbulence */
     SphP[i].CosmicRayDiffusionCoeff = (9.e28/unit_kappa_code) * pow(l_alfven_kpc*l_alfven_kpc/b_muG,1./3.) * f_cas_ET; /* kappa~9e28 * (l_alfven/kpc)^(2/3) * RGV^(1/3) * (B/muG)^(-1/3) * f_cas_ET,  follows Jokipii 1966, with our corrections for spectral shape */
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 2) || (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* Snodin et al. 2016 -- different expression for extrinsic MHD-turb diffusivity, using the proper definition of L_Alfven for scaling to the correct limit */
     SphP[i].CosmicRayDiffusionCoeff = (3.e29/unit_kappa_code) * (l_alfven_kpc + 0.1*pow(l_alfven_kpc*l_alfven_kpc/b_muG,1./3.) + 2.4e-7/b_muG);
