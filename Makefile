@@ -208,7 +208,7 @@ CXX      =  mpic++
 FC       =  mpif90 -nofor_main
 OPTIMIZE = -O3 $(TACC_VEC_FLAGS) -ipo -funroll-loops -no-prec-div -fp-model fast=2
 ## above is preferred, $(TACC_VEC_FLAGS) automatically incorporates the TACC preferred flags for both KNL or SKX nodes
-#OPTIMIZE = -O3 -xMIC-AVX512 -ipo -funroll-loops -no-prec-div -fp-model fast=2  # (depracated, -xMIC-AVX512 is specific to the KNL nodes)
+#OPTIMIZE = -O3 -xMIC-AVX512 -ipo -funroll-loops -no-prec-div -fp-model fast=2  # (deprecated, -xMIC-AVX512 is specific to the KNL nodes)
 OPTIMIZE += -g -Wall # compiler warnings
 #OPTIMIZE += -parallel -openmp  # openmp (comment out this line if OPENMP not used)
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
