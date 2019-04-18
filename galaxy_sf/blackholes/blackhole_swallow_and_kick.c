@@ -322,7 +322,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif	    
 #if defined(BH_WIND_KICK) || defined(NEWSINK_J_FEEDBACK)
         mass = P[target].Mass;    
-#ifdef BH_ALPHADISK_ACCRETION
+#endif
+#if defined(BH_ALPHADISK_ACCRETION) && defined(BH_WIND_KICK)
         bh_mass_alphadisk = BPP(target).BH_Mass_AlphaDisk;
 #endif
 #endif
