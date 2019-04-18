@@ -326,7 +326,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #if defined(BH_ALPHADISK_ACCRETION) && defined(BH_WIND_KICK)
         bh_mass_alphadisk = BPP(target).BH_Mass_AlphaDisk;
 #endif
-#endif
         bh_mass = BPP(target).BH_Mass;
 #if (defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)) || defined(NEWSINK)
         mdot = BPP(target).BH_Mdot;
