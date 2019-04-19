@@ -639,9 +639,9 @@ void set_blackhole_mdot(int i, int n, double dt)
     {
 #ifdef SINGLE_STAR_FORMATION
 #ifdef NEWSINK
-        double tdyn = DMAX(sqrt(All.ForceSoftening[5]*All.ForceSoftening[5]*All.ForceSoftening[5] / (BPP(n).Mass * All.G)), dt);//sink dynamical time
-        double t_acc_bh = DMAX(BlackholeTempInfo[i].t_acc, tdyn); //accretion from alphadisk on either the sink dynamical time or the accretion timescale
-        mdot = All.BlackHoleAccretionFactor * BPP(n).BH_Mass_AlphaDisk / (t_acc_bh);
+        double tdyn = DMAX(sqrt(All.ForceSoftening[5]*All.ForceSoftening[5]*All.ForceSoftening[5] / (BPP(n).Mass * All.G)), dt); //sink dynamical time
+//        double t_acc_bh = DMAX(BlackholeTempInfo[i].t_acc, tdyn); //accretion from alphadisk on either the sink dynamical time or the accretion timescale
+        mdot = All.BlackHoleAccretionFactor * BPP(n).BH_Mass_AlphaDisk / (t_dyn); // just using t_dyn for now. Would like to do something fancier that interpolates between Bondi-like and SS-like accretion appropriately...
 #else
         //mdot = All.BlackHoleAccretionFactor * 1.0e-5 * BPP(n).BH_Mass_AlphaDisk / (SEC_PER_YEAR/All.UnitTime_in_s) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass),2);
         //double t_acc_bh=(1.0e5 * t_yr); //accretion timescale set to 100kyr
