@@ -546,9 +546,13 @@ void star_formation_parent_routine(void)
 #endif
 #ifdef NEWSINK
                 P[i].init_mass_in_intzone=0; //Initialize as 0, we will update it in the first blackole property loop
+                P[i].BH_Mdot_Avg = 0; ; /*Mdot averaged over MDOT_AVG_WINDOWS_SIZE timesteps*/
 #if !defined(BH_ALPHADISK_ACCRETION)
                 memset( P[i].Mdotvals, 0, MDOT_AVG_WINDOWS_SIZE * sizeof(MyFloat)  ); /*set them to zero, just in case */
                 memset( P[i].dtvals, 0, MDOT_AVG_WINDOWS_SIZE * sizeof(MyFloat)  ); /*set them to zero, just in case */
+                P[i].BH_Mdot_Avg_tdyn =0; /*Mdot averaged over the dynamical time of the sink*/
+#else
+                P[i].BH_Mdot_AlphaDisk = 0;
 #endif
 #ifdef NEWSINK_J_FEEDBACK
                 P[i].Jsink[0] = P[i].Jsink[1] = P[i].Jsink[2] = 0;
