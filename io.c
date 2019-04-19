@@ -2587,6 +2587,11 @@ int blockpresent(enum iofields blocknr)
         case IO_BHMASSINIT:
         case IO_BHMASS:
         case IO_BHMASSALPHA:
+#ifdef BH_ALPHADISK_ACCRETION
+	    return 1;
+#else
+	    return 0;
+#endif	    
         case IO_BHMDOT:
 #ifdef BLACK_HOLES
             return 1;
