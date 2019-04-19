@@ -761,7 +761,11 @@ void set_blackhole_mdot(int i, int n, double dt)
     BPP(n).BH_Mdot_Avg = BPP(n).BH_Mdot;
 #endif // #if !defined(BH_ALPHADISK_ACCRETION)
 #ifdef BH_OUTPUT_MOREINFO
-    printf("ThisTask=%d, time=%g: sink id=%llu has mdot of %g while average over MDOT_AVG_WINDOWS_SIZE is %g\n", ThisTask, All.Time, P[n].ID, BPP(n).BH_Mdot,BPP(n).BH_Mdot_Avg);
+#if !defined(BH_ALPHADISK_ACCRETION)
+    printf("ThisTask=%d, time=%g: sink id=%llu has BH_Mdot of %g while the average mdot is %g\n", ThisTask, All.Time, P[n].ID, BPP(n).BH_Mdot,BPP(n).BH_Mdot_Avg);
+#else
+    printf("ThisTask=%d, time=%g: sink id=%llu has BH_Mdot of %g while BH_Mdot_AlphaDisk is %g\n", ThisTask, All.Time, P[n].ID, BPP(n).BH_Mdot,BPP(n).BH_Mdot_AlphaDisk);
+#endif
 #endif
 #endif //if defined(NEWSINK)
 }
