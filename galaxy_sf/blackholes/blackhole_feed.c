@@ -117,6 +117,9 @@ void blackhole_feed_loop(void)
             memcpy(BlackholeDataIn[j].dv_ang_kick_norm,BlackholeTempInfo[P[place].IndexMapToTempStruc].dv_ang_kick_norm, NEWSINK_NEIGHBORMAX * sizeof(MyFloat));
             BlackholeDataIn[j].t_disc = BlackholeTempInfo[P[place].IndexMapToTempStruc].t_disc;
 #endif
+#ifdef BH_ALPHADISK_ACCRETION
+            BlackholeDataIn[j].Mdot_AlphaDisk = BPP(place).BH_Mdot_AlphaDisk;
+#endif
 #endif
 #if defined(BH_PHOTONMOMENTUM) 	|| defined(BH_WIND_CONTINUOUS)
             BlackholeDataIn[j].BH_disk_hr = P[place].BH_disk_hr;
@@ -207,10 +210,17 @@ void blackhole_feed_loop(void)
                 dm += BlackholeTempInfo[P[place].IndexMapToTempStruc].mgas[k] * BlackholeTempInfo[P[place].IndexMapToTempStruc].f_acc[k]; //get the total mass to be accreted
             }
             if (mdotchanged){
+#ifdef BH_ALPHADISK_ACCRETION
+#ifndef IO_REDUCED_MODE
+            printf("ThisTask=%d, modifying mdot of the alphadisk for BH id %d from %g to %g due to change in accretion factors\n",ThisTask, P[place].ID, BPP(place).BH_Mdot, dm/dt );
+#endif
+            BPP(place).BH_Mdot_AlphaDisk = dm/dt; //update mdot for disk
+#else
 #ifndef IO_REDUCED_MODE
             printf("ThisTask=%d, modifying mdot for BH id %d from %g to %g due to change in accretion factors\n",ThisTask, P[place].ID, BPP(place).BH_Mdot, dm/dt );
 #endif
             BPP(place).BH_Mdot = dm/dt; //update mdot
+#endif
             }
 #endif
         }
@@ -308,6 +318,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         str_f_acc = BlackholeTempInfo[P[target].IndexMapToTempStruc].f_acc;
         str_gasID = BlackholeTempInfo[P[target].IndexMapToTempStruc].gasID;
         str_isbound = BlackholeTempInfo[P[target].IndexMapToTempStruc].isbound;
+#ifdef BH_ALPHADISK_ACCRETION
+        mdot = BPP(target).BH_Mdot_AlphaDisk; //overwrite value with alpha disk mdot
+#endif
 #endif
     }
     else
@@ -346,6 +359,10 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         memcpy(BlackholeDataResult[target].f_acc, BlackholeDataGet[target].f_acc, NEWSINK_NEIGHBORMAX * sizeof(MyFloat));
         BlackholeDataResult[target].Mdot = BlackholeDataGet[target].Mdot;
         BlackholeDataResult[target].Dt = BlackholeDataGet[target].Dt;
+#ifdef BH_ALPHADISK_ACCRETION
+        mdot = BlackholeDataGet[target].Mdot_AlphaDisk; //overwrite value with alpha disk mdot
+        BlackholeDataResult[target].Mdot = BlackholeDataGet[target].Mdot_AlphaDisk;
+#endif
 #endif
     }
     
@@ -568,15 +585,24 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                     P[j].SwallowID = id; /* marked for eating */
                                    }
                                    else{
+                                       mdot = DMAX((mdot-str_f_acc[k]*P[j].Mass/dt),0); //update mdot
                                        if(mode == 0){
-                                        BPP(target).BH_Mdot = DMAX((mdot-str_f_acc[k]*P[j].Mass/dt),0);
+#ifdef BH_ALPHADISK_ACCRETION
+                                        BPP(target).BH_Mdot_AlphaDisk = mdot;
+#else
+                                        BPP(target).BH_Mdot = mdot;
+#endif
                                        }
                                        else{
-                                        BlackholeDataResult[target].Mdot = DMAX((mdot-str_f_acc[k]*P[j].Mass/dt),0);
+#ifdef BH_ALPHADISK_ACCRETION
+                                        BlackholeDataResult[target].Mdot_AlphaDisk = mdot;
+#else
+                                        BlackholeDataResult[target].Mdot = mdot;
+#endif
                                         BlackholeDataResult[target].f_acc[k] = 0;
                                        }
 #ifndef IO_REDUCED_MODE
-                                        printf("ThisTask=%d, Sink assigned to multiple sinks: P[j.]ID=%llu has SwallowEnergy of %g and had SwallowID of %llu while the binding to BH with id=%llu is %g. This reduces mdot from %g by %g for the sink, which will be updated accordingly.\n",ThisTask, (unsigned long long) P[j].ID,P[j].SwallowEnergy,(unsigned long long) P[j].SwallowID, (unsigned long long) id, (0.5*(vrel*vrel - vesc*vesc)), mdot, str_f_acc[k]*P[j].Mass/dt);
+                                        printf("ThisTask=%d, Sink assigned to multiple sinks: P[j.]ID=%llu has SwallowEnergy of %g and had SwallowID of %llu while the binding to BH with id=%llu is %g. This reduces mdot by %g to %g for the sink, which has been updated accordingly.\n",ThisTask, (unsigned long long) P[j].ID,P[j].SwallowEnergy,(unsigned long long) P[j].SwallowID, (unsigned long long) id, (0.5*(vrel*vrel - vesc*vesc)), str_f_acc[k]*P[j].Mass/dt, mdot);
 #endif
                                        str_f_acc[k] = 0; //we don't accrete this
                                    }

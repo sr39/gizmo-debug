@@ -69,6 +69,9 @@ static struct blackholedata_in
     MyFloat t_disc;
     MyDouble dv_ang_kick_norm[NEWSINK_NEIGHBORMAX]; /*Normalization term for angular momentum feedback kicks, see denominator of Eq 22 of Hubber 2013*/
 #endif
+#ifdef BH_ALPHADISK_ACCRETION
+    MyFloat Mdot_AlphaDisk;
+#endif
 #endif
 }
 *BlackholeDataIn, *BlackholeDataGet;
@@ -113,6 +116,9 @@ static struct blackholedata_out
 #if defined(NEWSINK_J_FEEDBACK)
     MyLongDouble accreted_J[3];
 
+#endif
+#ifdef BH_ALPHADISK_ACCRETION
+    MyFloat Mdot_AlphaDisk;
 #endif
 #endif
 }

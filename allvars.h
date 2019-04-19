@@ -2149,6 +2149,8 @@ extern ALIGN(32) struct particle_data
     MyFloat Mdotvals[MDOT_AVG_WINDOWS_SIZE]; /*value of mdot for the last MDOT_AVG_WINDOWS_SIZE timesteps*/
     MyFloat dtvals[MDOT_AVG_WINDOWS_SIZE]; /*value of particle dt for the last MDOT_AVG_WINDOWS_SIZE timesteps*/
     MyFloat BH_Mdot_Avg_tdyn; /*Mdot averaged over the dynamical time of the sink, last timestep taken into account is MDOT_AVG_WINDOWS_SIZE timesteps before the current time */
+#else
+    MyFloat BH_Mdot_AlphaDisk; /*Mdot for the alpha disk*/
 #endif
 #endif
 #ifdef NEWSINK_J_FEEDBACK

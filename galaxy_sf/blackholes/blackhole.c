@@ -631,6 +631,7 @@ void set_blackhole_mdot(int i, int n, double dt)
     double t_yr = SEC_PER_YEAR / (All.UnitTime_in_s / All.HubbleParam);
     if(x_MdiskSelfGravLimiter > 20.) {mdot=0;} else {mdot *= exp(-0.5*x_MdiskSelfGravLimiter*x_MdiskSelfGravLimiter);}
     BlackholeTempInfo[i].mdot_alphadisk = mdot;     /* if BH_GRAVCAPTURE_GAS is off, this gets the accretion rate */
+    BPP(n).BH_Mdot_AlphaDisk = mdot; /* Save the acretion rate for the alpha disk*/
     mdot = 0;
     if(BPP(n).BH_Mass_AlphaDisk > 0)
     {
@@ -709,6 +710,7 @@ void set_blackhole_mdot(int i, int n, double dt)
     /* DAA: correct the mdot into the accretion disk for the mass loss in "kick" winds 
        Note that for BH_WIND_CONTINUOUS the wind mass is removed in the final loop */
     BlackholeTempInfo[i].mdot_alphadisk *= All.BAL_f_accretion;
+    BPP(n).BH_Mdot_AlphaDisk *= All.BAL_f_accretion;
 #endif
 
 #else // BH_ALPHADISK_ACCRETION
