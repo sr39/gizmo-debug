@@ -639,7 +639,7 @@ void set_blackhole_mdot(int i, int n, double dt)
     {
 #ifdef SINGLE_STAR_FORMATION
 #ifdef NEWSINK
-        double tdyn = DMAX(sqrt(All.ForceSoftening[5]*All.ForceSoftening[5]*All.ForceSoftening[5] / (BPP(n).Mass / All.G)), dt);//sink dynamical time
+        double tdyn = DMAX(sqrt(All.ForceSoftening[5]*All.ForceSoftening[5]*All.ForceSoftening[5] / (BPP(n).Mass * All.G)), dt);//sink dynamical time
         double t_acc_bh = DMAX(BlackholeTempInfo[i].t_acc, tdyn); //accretion from alphadisk on either the sink dynamical time or the accretion timescale
         mdot = All.BlackHoleAccretionFactor * BPP(n).BH_Mass_AlphaDisk / (t_acc_bh);
 #else
@@ -737,7 +737,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 #if defined(NEWSINK)
 #if !defined(BH_ALPHADISK_ACCRETION) //if we are not using a mass reservoir for the accreted gas
     double tsum=0,mdot_avg_nstep=0; 
-    double tdyn = DMAX(sqrt(All.ForceSoftening[5]*All.ForceSoftening[5]*All.ForceSoftening[5] / (BPP(n).Mass / All.G)), dt);//sink dynamical time
+    double tdyn = DMAX(sqrt(All.ForceSoftening[5]*All.ForceSoftening[5]*All.ForceSoftening[5] / (BPP(n).Mass * All.G)), dt);//sink dynamical time
     double rel_dt=DMIN(BPP(n).dtvals[MDOT_AVG_WINDOWS_SIZE-1]/tdyn,1.0); //relative timestep in t_dyn units, but capped at 1 for averaging
     /*Average mdot over the dynamical time of the sink, end of time averaging is MDOT_AVG_WINDOWS_SIZE timesteps before current time*/
     BPP(n).BH_Mdot_Avg_tdyn = (1 - rel_dt) * BPP(n).BH_Mdot_Avg_tdyn + BPP(n).Mdotvals[MDOT_AVG_WINDOWS_SIZE-1] * rel_dt;
@@ -796,8 +796,11 @@ void set_blackhole_new_mass(int i, int n, double dt)
 #ifdef BH_ALPHADISK_ACCRETION
 
     BPP(n).BH_Mass += BPP(n).BH_Mdot * dt;   // mdot comes from the disk - no mass loss here regarless of BAL model -
-
+#ifndef NEWSINK   
     dm_alphadisk = ( BlackholeTempInfo[i].mdot_alphadisk - BPP(n).BH_Mdot ) * dt;
+#else // in NEWSINK, we have to account for the growth of the alpha-disk AFTER the accretion routine, as only then do we know how much mass we actually get
+    dm_alphadisk = - BPP(n).BH_Mdot * dt;
+#endif
 
     if(dm_alphadisk < -BPP(n).BH_Mass_AlphaDisk) {BPP(n).BH_Mass_AlphaDisk=0;} else {BPP(n).BH_Mass_AlphaDisk += dm_alphadisk;}
     if(BPP(n).BH_Mass_AlphaDisk<0) {BPP(n).BH_Mass_AlphaDisk=0;}
@@ -1006,7 +1009,9 @@ void blackhole_final_operations(void)
 #endif		
             } //for(k = 0; k < 3; k++)
             P[n].Mass += BlackholeTempInfo[i].accreted_Mass;
+#ifndef BH_ALPHADISK_ACCRETION	    
             BPP(n).BH_Mass += BlackholeTempInfo[i].accreted_BH_Mass;
+#endif	    
 // printf("%d BH Final mass accreted \n", ThisTask);
         } // if(((BlackholeTempInfo[n].accreted_Mass>0)||(BlackholeTempInfo[n].accreted_BH_Mass>0)) && P[n].Mass > 0)
 #ifdef SINGLE_STAR_STRICT_ACCRETION
