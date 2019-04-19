@@ -516,7 +516,9 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                                 out.n_neighbor +=1; //keep track of how many neighbors we have
                             }
                             else{
+#ifdef BH_OUTPUT_MOREINFO				
                                 printf("%d Gas neighbor number over limit for BH with ID %d Current neighbor number is %d\n", ThisTask, id, out.n_neighbor);
+#endif				
                             }
                             // /* Start another cycle to get gravitational energy, this is very crude, should be replaced */
                             
