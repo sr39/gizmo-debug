@@ -734,8 +734,9 @@ void set_blackhole_mdot(int i, int n, double dt)
 #if !defined(BH_ALPHADISK_ACCRETION) //if we are not using a mass reservoir for the accreted gas
     double tsum=0,mdot_avg_nstep=0; 
     double tdyn = DMAX(sqrt(All.ForceSoftening[5]*All.ForceSoftening[5]*All.ForceSoftening[5] / (BPP(n).Mass / All.G)), dt);//sink dynamical time
+    double rel_dt=DMIN(BPP(n).dtvals[MDOT_AVG_WINDOWS_SIZE-1]/tdyn,1.0); //relative timestep in t_dyn units, but capped at 1 for averaging
     /*Average mdot over the dynamical time of the sink, end of time averaging is MDOT_AVG_WINDOWS_SIZE timesteps before current time*/
-    BPP(n).BH_Mdot_Avg_tdyn = (1 - dt / tdyn) * BPP(n).BH_Mdot_Avg_tdyn + BPP(n).Mdotvals[MDOT_AVG_WINDOWS_SIZE-1] * BPP(n).dtvals[MDOT_AVG_WINDOWS_SIZE-1]/ tdyn;
+    BPP(n).BH_Mdot_Avg_tdyn = (1 - rel_dt) * BPP(n).BH_Mdot_Avg_tdyn + BPP(n).Mdotvals[MDOT_AVG_WINDOWS_SIZE-1] * rel_dt;
     /*Store mdot and dt value for BH particle and time average it*/
     mdot_avg_nstep = BPP(n).BH_Mdot*dt ; tsum = dt; //start with the current values
     for(k=(MDOT_AVG_WINDOWS_SIZE-1);k>0;k--){ //shift array by one
