@@ -477,7 +477,7 @@ void init(void)
         } // if(RestartFlag == 0)
 #endif // METALS
         
-#ifdef NEWSINK
+#ifdef BH_WAKEUP_GAS
 	if(P[i].Type == 0)  P[i].LowestBHTimeBin = TIMEBINS;
 #endif	
         

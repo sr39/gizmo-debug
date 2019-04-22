@@ -44,8 +44,9 @@ static struct blackholedata_in
     MyFloat Hsml;
     MyIDType ID;
     int NodeList[NODELISTLENGTH];
-#if defined(NEWSINK)
+#ifdef BH_WAKEUP_GAS
     MyFloat TimeBin;
+#endif
 #if !defined(SINGLE_STAR_STRICT_ACCRETION)
     MyFloat SinkRadius;
 #endif
@@ -121,6 +122,8 @@ void blackhole_environment_loop(void)
             BlackholeDataIn[j].ID = P[place].ID;
 #if defined(NEWSINK)
 	    BlackholeDataIn[j].SinkRadius = P[place].SinkRadius;
+#endif
+#ifdef BH_WAKEUP_GAS
 	    BlackholeDataIn[j].TimeBin = P[place].TimeBin;
 #endif
 #if defined(NEWSINK_J_FEEDBACK)
@@ -253,9 +256,11 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
         h_i = PPP[target].Hsml;
         id = P[target].ID;
         mod_index = P[target].IndexMapToTempStruc;  /* the index of the BlackholeTempInfo should we modify*/
+#ifdef BH_WAKEUP_GAS
+	bh_timebin = P[target].TimeBin;
+#endif
 #if defined(NEWSINK)
         int_zone_radius = P[target].Hsml * INT_ZONE_TO_HSML;
-	bh_timebin = P[target].TimeBin;
 #if defined(NEWSINK_J_FEEDBACK)
         Jsink = P[target].Jsink;
 #endif
@@ -274,8 +279,10 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
         h_i = BlackholeDataGet[target].Hsml;
         id = BlackholeDataGet[target].ID;
         mod_index = 0;                              /* this is not used for mode==1, but this avoids compiler error */
-#if defined(NEWSINK)
+#ifdef BH_WAKEUP_GAS
 	bh_timebin = BlackholeDataGet[target].TimeBin;
+#endif 
+#if defined(NEWSINK)
         int_zone_radius = BlackholeDataGet[target].Hsml * INT_ZONE_TO_HSML;
 #if defined(NEWSINK_J_FEEDBACK)
         Jsink = BlackholeDataGet[target].Jsink;
@@ -320,7 +327,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
             {
                 j = Ngblist[n];
 
-#ifdef NEWSINK
+#ifdef BH_WAKEUP_GAS
 		if (bh_timebin < P[j].LowestBHTimeBin) P[j].LowestBHTimeBin = bh_timebin;
 //		SphP[j].wakeup = 1;
 #endif		

@@ -905,7 +905,7 @@ integertime get_timestep(int p,		/*!< particle index */
     
     
 #ifdef BLACK_HOLES
-#ifdef NEWSINK    
+#ifdef BH_WAKEUP_GAS
     if(P[p].Type == 0){
 	double dt_bh = (P[p].LowestBHTimeBin ? (1 << (P[p].LowestBHTimeBin)) : 0) * All.Timebase_interval / All.cf_hubble_a;
 	if (dt > dt_bh) {
