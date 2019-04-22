@@ -32,7 +32,7 @@ static struct blackholedata_in
 #if defined(BH_GRAVCAPTURE_GAS)
     MyDouble Mass;
 #endif
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#if defined(SINGLE_STAR_STRICT_ACCRETION) || defined(NEWSINK)
     MyFloat SinkRadius;
 #endif  
     MyDouble Pos[3];
@@ -47,12 +47,11 @@ static struct blackholedata_in
 #ifdef BH_WAKEUP_GAS
     MyFloat TimeBin;
 #endif
-#if !defined(SINGLE_STAR_STRICT_ACCRETION)
-    MyFloat SinkRadius;
-#endif
+//#if !defined(SINGLE_STAR_STRICT_ACCRETION)
+//    MyFloat SinkRadius;
+//#endif
 #if defined(NEWSINK_J_FEEDBACK)
     MyFloat Jsink[3];
-#endif
 #endif
 }
 *BlackholeDataIn, *BlackholeDataGet;

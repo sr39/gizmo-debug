@@ -1587,9 +1587,9 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_JSINK:
 #ifdef NEWSINK_J_FEEDBACK
             if(mode)
-                bytes_per_blockelement = 3 * sizeof(MyInputPosFloat);
+                bytes_per_blockelement = 3 * sizeof(MyInputFloat);
             else
-                bytes_per_blockelement = 3 * sizeof(MyOutputPosFloat);
+                bytes_per_blockelement = 3 * sizeof(MyOutputFloat);
             break;
 #endif
         case IO_BHMASSINIT:
@@ -1864,6 +1864,11 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_ACRB:
         case IO_SINKRAD:
         case IO_JSINK:
+#ifdef NEWSINK_J_FEEDBACK
+            values = 3;
+#else
+            values = 0;
+#endif	    
         case IO_BHMASSINIT:
         case IO_BHMDOT:
         case IO_BHPROGS:
@@ -2577,13 +2582,19 @@ int blockpresent(enum iofields blocknr)
             
         case IO_ACRB:
         case IO_SINKRAD:
-#ifdef NEWSINK_J_FEEDBACK
+#ifdef SINGLE_STAR_STRICT_ACCRETION
             return 1;
 #else
             return 0;
 #endif
             break;
         case IO_JSINK:
+#if defined(NEWSINK_J_FEEDBACK)
+            return 1;
+#else
+            return 0;
+#endif
+	    break;
         case IO_BHMASSINIT:
         case IO_BHMASS:
         case IO_BHMASSALPHA:
