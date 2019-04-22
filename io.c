@@ -3997,7 +3997,7 @@ void write_file(char *fname, int writeTask, int lastTask)
                                 rank = 1;
                             else
                                 rank = 2;
-			    printf("rank = %d\n", rank);
+
                             get_dataset_name(blocknr, buf);
                             
                             hdf5_dataspace_in_file = H5Screate_simple(rank, dims, NULL);
