@@ -1586,13 +1586,12 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_ACRB:
         case IO_SINKRAD:
         case IO_JSINK:
-#ifdef NEWSINK_J_FEEDBACK
             if(mode)
                 bytes_per_blockelement = 3 * sizeof(MyInputFloat);
             else
                 bytes_per_blockelement = 3 * sizeof(MyOutputFloat);
             break;
-#endif
+
         case IO_BHMASSINIT:
         case IO_BHMDOT:
         case IO_CAUSTIC_COUNTER:
@@ -1864,13 +1863,6 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_BHMASSALPHA:
         case IO_ACRB:
         case IO_SINKRAD:
-        case IO_JSINK:
-#ifdef NEWSINK_J_FEEDBACK
-            values = 3;
-#else
-            values = 0;
-#endif
-	    break;
         case IO_BHMASSINIT:
         case IO_BHMDOT:
         case IO_BHPROGS:
@@ -1945,7 +1937,17 @@ int get_values_per_blockelement(enum iofields blocknr)
             values = 0;
 #endif
             break;
-            
+
+	    
+        case IO_JSINK:
+#ifdef NEWSINK_J_FEEDBACK
+            values = 3;
+#else
+            values = 0;
+#endif
+            break;
+
+	    
         case IO_Z:
 #ifdef METALS
             values = NUM_METAL_SPECIES;
@@ -3995,7 +3997,7 @@ void write_file(char *fname, int writeTask, int lastTask)
                                 rank = 1;
                             else
                                 rank = 2;
-			    
+			    printf("rank = %d\n", rank);
                             get_dataset_name(blocknr, buf);
                             
                             hdf5_dataspace_in_file = H5Screate_simple(rank, dims, NULL);
