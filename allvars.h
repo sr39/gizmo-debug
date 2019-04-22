@@ -2141,8 +2141,10 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
 #endif
+#ifdef BH_WAKEUP_GAS /* force all gas within the interaction radius of a sink to timestep at the same rate */
+    int LowestBHTimeBin;
+#endif
 #ifdef NEWSINK    
-    integertime LowestBHTimeBin;
     MyFloat init_mass_in_intzone; /*initial mass in interaction zone, used for scaling mdot*/
     MyFloat BH_Mdot_Avg; /*Mdot averaged over MDOT_AVG_WINDOWS_SIZE timesteps*/
 #if !defined(BH_ALPHADISK_ACCRETION)
