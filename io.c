@@ -882,7 +882,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 if(P[pindex].Type == type)
                 {
                     for(k = 0; k < 3; k++){
-                        fp[k] = P[pindex].Jsink[k];}
+                        fp[k] = P[pindex].Jsink[k];
+		    }
                     n++;
                     fp+=3;
                 }
@@ -1868,7 +1869,8 @@ int get_values_per_blockelement(enum iofields blocknr)
             values = 3;
 #else
             values = 0;
-#endif	    
+#endif
+	    break;
         case IO_BHMASSINIT:
         case IO_BHMDOT:
         case IO_BHPROGS:
@@ -3993,7 +3995,7 @@ void write_file(char *fname, int writeTask, int lastTask)
                                 rank = 1;
                             else
                                 rank = 2;
-                            
+			    
                             get_dataset_name(blocknr, buf);
                             
                             hdf5_dataspace_in_file = H5Screate_simple(rank, dims, NULL);
