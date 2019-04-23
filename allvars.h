@@ -2182,6 +2182,7 @@ extern ALIGN(32) struct particle_data
     MyFloat min_bh_periastron;
     MyFloat min_bh_approach_time;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
+    MyFloat min_bh_t_orbital; //orbital time for binary
     MyDouble comp_Pos[3]; //position of binary companion
     MyDouble comp_Vel[3]; //velocity of binary companion
     MyDouble comp_Mass; //mass of binary companion
