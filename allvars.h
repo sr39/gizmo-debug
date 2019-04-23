@@ -2187,7 +2187,7 @@ extern ALIGN(32) struct particle_data
     MyDouble comp_Pos[3]; //position of binary companion
     MyDouble comp_Vel[3]; //velocity of binary companion
     MyDouble comp_Mass; //mass of binary companion
-    MyIDType comp_ID; //ID of binary companion
+    //MyIDType comp_ID; //ID of binary companion
 #endif
 #endif  
 #endif
@@ -2698,6 +2698,12 @@ extern struct gravdata_out
     MyFloat min_bh_freefall_time;    // minimum value of sqrt(R^3 / G(M_BH + M_particle)) as calculated from the tree-walk
     MyFloat min_bh_approach_time; // smallest approach time t_a = |v_radial|/r
     MyFloat min_bh_periastron; // closest anticipated periastron passage
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+    MyFloat min_bh_t_orbital; //orbital time for binary
+    MyDouble comp_Pos[3]; //position of binary companion
+    MyDouble comp_Vel[3]; //velocity of binary companion
+    MyDouble comp_Mass; //mass of binary companion
+#endif
 #endif  
 #endif
 }

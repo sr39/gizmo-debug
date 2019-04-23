@@ -111,6 +111,9 @@ int force_treebuild(int npart, struct unbind_data *mp)
         P[i].min_dist_to_bh=P[i].min_xyz_to_bh[0]=P[i].min_xyz_to_bh[1]=P[i].min_xyz_to_bh[2]=1e37;
 #ifdef SINGLE_STAR_TIMESTEPPING
         P[i].min_bh_approach_time=MAX_REAL_NUMBER; P[i].min_bh_freefall_time=MAX_REAL_NUMBER; P[i].min_bh_periastron=MAX_REAL_NUMBER;
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+        P[i].min_bh_t_orbital=MAX_REAL_NUMBER;
+#endif
 #endif
     }
 #endif
@@ -1647,8 +1650,16 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double min_bh_approach_time = MAX_REAL_NUMBER;
     double min_bh_freefall_time = MAX_REAL_NUMBER;
     double min_bh_periastron = MAX_REAL_NUMBER;
-#endif    
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+    int ksuper;
+    double min_bh_t_orbital = MAX_REAL_NUMBER;
+    double comp_Pos[3]; //position of binary companion
+    double comp_Vel[3]; //velocity of binary companion
+    double comp_Mass; //mass of binary companion
+    //double comp_ID; //ID of binary companion
 #endif
+#endif //#ifdef SINGLE_STAR_TIMESTEPPING
+#endif //#ifdef BH_CALC_DISTANCES
     
     
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1877,9 +1888,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double bh_dvz = P[no].Vel[2] - vel_z;
                     double vSqr = bh_dvx*bh_dvx + bh_dvy*bh_dvy + bh_dvz*bh_dvz;
                     double M_total = P[no].Mass + pmass;
-		    double r2soft;
-		    r2soft = DMAX(All.SofteningTable[5], soft);
-		    r2soft = r2soft*r2soft + r2;
+                    double r2soft;
+                    r2soft = DMAX(All.SofteningTable[5], soft);
+                    r2soft = r2soft*r2soft + r2;
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER);
                     double tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
                     if(tSqr < min_bh_approach_time) {
@@ -1891,7 +1902,24 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     /*     min_bh_periastron = -All.G*M_total / specific_energy * (1-ecc) * (P[no].Mass/M_total); // final factor ensures that this gives binaries the same timestep */
                     }
                     if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
-#endif
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+                    double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
+                    if (specific_energy<0){
+                        double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
+                        double t_orbital = 2.0*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis/(All.G*M_total) );
+                        if(t_orbital < min_bh_t_orbital) {
+                            min_bh_t_orbital = t_orbital;
+                            //Save parameters of companion
+                            //comp_ID=P[no].ID; //ID of binary companion
+                            comp_Mass=P[no].Mass; //mass of binary companion
+                            for(ksuper=0;ksuper<3;ksuper++) {
+                                comp_Pos[ksuper]=P[no].Pos[ksuper]; //position of binary companion
+                                comp_Vel[ksuper]=P[no].Vel[ksuper]; //velocity of binary companion
+                            }
+                        }
+                    }
+#endif //#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+#endif //#ifdef SINGLE_STAR_TIMESTEPPING
                 }
 #endif
 
@@ -2290,9 +2318,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double bh_dvz = nop->bh_vel[2] - vel_z;
                     double vSqr = bh_dvx*bh_dvx + bh_dvy*bh_dvy + bh_dvz*bh_dvz;
                     double M_total = nop->bh_mass + pmass;
-		    double r2soft;
-		    r2soft = DMAX(All.SofteningTable[5], soft);
-		    r2soft = r2soft*r2soft + r2;
+                    double r2soft;
+                    r2soft = DMAX(All.SofteningTable[5], soft);
+                    r2soft = r2soft*r2soft + r2;
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER);
                     double tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
                     if(tSqr < min_bh_approach_time) {
@@ -2302,9 +2330,26 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     /*     double hSqr = vSqr*r2 - dv_dot_dx*dv_dot_dx; */
                     /*     double ecc = sqrt(1 + 2*specific_energy*hSqr / (All.G*All.G*M_total*M_total)); */
                     /*     min_bh_periastron = -All.G*M_total / specific_energy * (1-ecc) * (nop->bh_mass/M_total); // final factor ensures that this gives binaries the same timestep when we use it to turn the accel into a timestep */
-		    }
+                    }
                     if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
-#endif
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+                    double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
+                    if (specific_energy<0){
+                        double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
+                        double t_orbital = 2.0*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis/(All.G*M_total) );
+                        if(t_orbital < min_bh_t_orbital) {
+                            min_bh_t_orbital = t_orbital;
+                            //Save parameters of companion
+                            //comp_ID=P[no].ID //ID of binary companion
+                            comp_Mass=nop->bh_mass; //mass of binary companion
+                            for(ksuper=0;ksuper<3;ksuper++) {
+                                comp_Pos[ksuper]=nop->bh_pos[ksuper]; //position of binary companion
+                                comp_Vel[ksuper]=nop->bh_vel[ksuper]; //velocity of binary companion
+                            }
+                        }
+                    }
+#endif //#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+#endif //#ifdef SINGLE_STAR_TIMESTEPPING
                 }
 #endif
 		
@@ -2641,7 +2686,17 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         P[target].min_bh_approach_time = sqrt(min_bh_approach_time);
         P[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);
         P[target].min_bh_periastron = min_bh_periastron;
-#endif	
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+        P[target].min_bh_t_orbital=min_bh_t_orbital; //orbital time for binary
+        if (min_bh_t_orbital<MAX_REAL_NUMBER){ //only if there is a companion
+            P[target].comp_Mass=comp_Mass; //mass of binary companion
+            for(ksuper=0;ksuper<3;ksuper++) {
+                P[target].comp_Pos[ksuper]=comp_Pos[ksuper]; //position of binary companion
+                P[target].comp_Vel[ksuper]=comp_Vel[ksuper]; //velocity of binary companion
+            }
+        }
+#endif
+#endif
 #endif
     }
     else
@@ -2674,6 +2729,16 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         GravDataResult[target].min_bh_approach_time = sqrt(min_bh_approach_time);
         GravDataResult[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);
         GravDataResult[target].min_bh_periastron = min_bh_periastron;
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+        GravDataResult[target].min_bh_t_orbital=min_bh_t_orbital; //orbital time for binary
+        if (min_bh_t_orbital<MAX_REAL_NUMBER){
+            GravDataResult[target].comp_Mass=comp_Mass; //mass of binary companion
+            for(ksuper=0;ksuper<3;ksuper++) {
+               GravDataResult[target].comp_Pos[ksuper]=comp_Pos[ksuper]; //position of binary companion
+                GravDataResult[target].comp_Vel[ksuper]=comp_Vel[ksuper]; //velocity of binary companion
+            }
+        }
+#endif
 #endif	
 #endif
         *exportflag = nodesinlist;
