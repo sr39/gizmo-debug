@@ -123,6 +123,12 @@ void drift_particle(int i, integertime time1)
 #else
     for(j=0;j<3;j++) {P[i].Pos[j] += P[i].Vel[j] * dt_drift;}
 #endif
+#ifdef SINGLE_STAR_SUPERTIMSTEPPING
+    // if super-timestepping, the above accounts for the COM motion of the binary; now we account for the internal motion
+    double fewbody_drift_dx[3];
+    do_fewbody_drift(i, fewbody_drift_dx, dt_drift);
+    for(j=0;j<3;j++) {P[i].Pos[j] += fewbody_drift_dx[j];}
+#endif    
 #endif
 #if (NUMDIMS==1)
     P[i].Pos[1]=P[i].Pos[2]=0; // force zero-ing
@@ -657,3 +663,7 @@ double calculate_face_area_for_cartesian_mesh(double *dp, double rinv, double l_
 }
 
 #endif
+
+void do_fewbody_drift(int i, double fewbody_drift_dx[3], double dt){
+
+}

@@ -280,10 +280,10 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             check_particle_for_temperature_minimum(i); /* if we've fallen below the minimum temperature, force the 'floor' */
         }
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-//	double nbody_kick_dv[3];
-//	if(P[i].Type == 5){
-//	    
-//	 }
+	double fewbody_kick_dv[3];
+	if(P[i].Type == 5){
+	    if(P[i].SuperTimestepFlag) do_fewbody_kick(i, fewbody_kick_dv, dt_gravkick);
+	 }
 #endif	
         /* now, kick for non-SPH quantities (accounting for momentum conservation if masses are changing) */
         for(j = 0; j < 3; j++)
@@ -304,6 +304,10 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 /* #endif */
             dp[j] += mass_pred * P[i].GravAccel[j] * dt_gravkick;
             P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+// if we're super-timestepping, the above accounts for the change in COM velocity. Now we do the internal binary velocity change	    
+	    if(P[i].Type==5) { if(P[i].SuperTimestepFlag) P[i].Vel[j] += fewbody_kick_dv[j]; };
+#endif	    
         }
 
  
@@ -513,3 +517,7 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
 #endif
 }
 
+
+void do_fewbody_kick(int i, double fewbody_kick_dv[3], double dt){
+
+}
