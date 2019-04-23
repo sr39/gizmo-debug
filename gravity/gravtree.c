@@ -547,6 +547,16 @@ void gravity_tree(void)
                     if(GravDataOut[j].min_bh_approach_time < P[place].min_bh_approach_time) {P[place].min_bh_approach_time = GravDataOut[j].min_bh_approach_time;}
                     if(GravDataOut[j].min_bh_freefall_time < P[place].min_bh_freefall_time) {P[place].min_bh_freefall_time = GravDataOut[j].min_bh_freefall_time;}
                     if(GravDataOut[j].min_bh_periastron < P[place].min_bh_periastron) {P[place].min_bh_periastron = GravDataOut[j].min_bh_periastron;}
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+                    if(GravDataOut[j].min_bh_t_orbital < P[place].min_bh_t_orbital) {
+                        P[place].min_bh_t_orbital = GravDataOut[j].min_bh_t_orbital;
+                        P[place].comp_Mass = GravDataOut[j].comp_Mass;
+                        for(k = 0; k < 3; k++) {
+                            P[place].comp_Pos[k] = GravDataOut[j].comp_Pos[k];
+                            P[place].comp_Vel[k] = GravDataOut[j].comp_Vel[k];
+                        }
+                    }
+#endif
 #endif
 #endif
                     if(Ewald_iter==0) /* don't allow for an infinite hierarchy of these moments, or you will get nonsense */
