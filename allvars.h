@@ -262,6 +262,7 @@
 #define STOP_WHEN_BELOW_MINTIMESTEP // stop when below min timestep to prevent bad timestepping
 #define TIDAL_TIMESTEP_CRITERION // use tidal tensor timestep criterion
 #define SINGLE_STAR_TIMESTEPPING // use additional timestep criteria for sink particles to ensure they don't evolve out-of-binary in close encounters
+#define SINGLE_STAR_SUPERTIMESTEPPING // Turns on sub-grid evolution of sink binaries to avoid slowdown of very short timesteps
 #define SINGLE_STAR_HILL_CRITERION // use Hill-type tidal-tensor star formation criterion
 #define SINGLE_STAR_STRICT_ACCRETION // use Bate 1995 angular momentum criterion for star formation, along with dynamically-evolved sink radius for apocentric distance threshold
 #define GALSF // master switch needed to enable various frameworks
@@ -2180,9 +2181,15 @@ extern ALIGN(32) struct particle_data
     MyFloat min_bh_freefall_time;
     MyFloat min_bh_periastron;
     MyFloat min_bh_approach_time;
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+    MyDouble comp_Pos[3]; //position of binary companion
+    MyDouble comp_Vel[3]; //velocity of binary companion
+    MyDouble comp_Mass; //mass of binary companion
+    MyIDType comp_ID; //ID of binary companion
+#endif
 #endif  
 #endif
-    
+
 #if defined(SINGLE_STAR_PROMOTION) || defined(SINGLE_STAR_FB_HEATING) || defined(SINGLE_STAR_FB_JETS)
 #define SINGLE_STAR_PROTOSTELLAR_EVOLUTION
 #endif    
