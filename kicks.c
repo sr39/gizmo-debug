@@ -279,7 +279,12 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             if(dEnt < 0.5*SphP[i].InternalEnergy) {SphP[i].InternalEnergy *= 0.5;} else {SphP[i].InternalEnergy = dEnt;}
             check_particle_for_temperature_minimum(i); /* if we've fallen below the minimum temperature, force the 'floor' */
         }
-        
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+//	double nbody_kick_dv[3];
+//	if(P[i].Type == 5){
+//	    
+//	 }
+#endif	
         /* now, kick for non-SPH quantities (accounting for momentum conservation if masses are changing) */
         for(j = 0; j < 3; j++)
         {
@@ -294,9 +299,9 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                 dp[j] += mass_pred * SphP[i].RadAccel[j] * All.cf_atime * dt_hydrokick;
 #endif
             }
-#ifdef SINKS_FEEL_NO_GRAVITY
-	    if(P[i].Type < 5)
-#endif
+/* #ifdef SINKS_FEEL_NO_GRAVITY */
+/* 	    if(P[i].Type < 5) */
+/* #endif */
             dp[j] += mass_pred * P[i].GravAccel[j] * dt_gravkick;
             P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
         }
