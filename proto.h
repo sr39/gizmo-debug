@@ -128,6 +128,9 @@ int ngb_treefind_pairs_threads_targeted(MyDouble searchcenter[3], MyFloat hsml, 
 void do_distortion_tensor_kick(int i, double dt_gravkick);
 void set_predicted_sph_quantities_for_extra_physics(int i);
 void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, double dt_entr);
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+void do_fewbody_kick(int i, double fewbody_kick_dv[3], double dt);
+#endif
 
 void check_particle_for_temperature_minimum(int i);
 
@@ -821,6 +824,10 @@ int AGSForce_isactive(int i);
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
 void advect_mesh_point(int i, double dt);
 double calculate_face_area_for_cartesian_mesh(double *dp, double rinv, double l_side, double *Face_Area_Vec);
+#endif
+
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+void do_fewbody_drift(int i, double fewbody_drift_dx[3], double dt);
 #endif
 
 

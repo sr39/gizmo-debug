@@ -477,12 +477,15 @@ void init(void)
         } // if(RestartFlag == 0)
 #endif // METALS
         
-#ifdef BH_WAKEUP_GAS
-	if(P[i].Type == 0)  P[i].LowestBHTimeBin = TIMEBINS;
-#endif	
         
         
 #ifdef BLACK_HOLES
+#ifdef BH_WAKEUP_GAS
+	if(P[i].Type == 0)  P[i].LowestBHTimeBin = TIMEBINS;
+#endif
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+	P[i].SuperTimestepFlag = 0;
+#endif	
         if(P[i].Type == 5)
         {
             count_holes++;
