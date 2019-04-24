@@ -1899,7 +1899,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     drift_particle(no, ti_Current);
                     UNLOCK_PARTNODEDRIFT;
                 }
-                
                 dx = P[no].Pos[0] - pos_x;
                 dy = P[no].Pos[1] - pos_y;
                 dz = P[no].Pos[2] - pos_z;
@@ -1945,7 +1944,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
                     double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
-                    if (specific_energy<0){
+                    if (specific_energy<0 && COM_calc_flag==0){
                         double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
                         double t_orbital = 2.0*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis/(All.G*M_total) );
                         if(t_orbital < min_bh_t_orbital) {
@@ -2044,7 +2043,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 } // closes (if((r2 > 0) && (mass > 0))) check
                 
                 if(TakeLevel >= 0) {P[no].GravCost[TakeLevel] += 1.0;}
-                no = Nextnode[no];
+                no = Nextnode[no]; 
+            }
+#endif
             }
             else			/* we have an  internal node */
             {
@@ -2372,20 +2373,20 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     }
                     if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-		    if(nop->N_BH == 1){ // only do it if we're looking at a single star in the node
-			double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
-			if (specific_energy<0){
-			    double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
-			    double t_orbital = 2.0*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis/(All.G*M_total) );
-			    if(t_orbital < min_bh_t_orbital) {
-				min_bh_t_orbital = t_orbital;
-				//Save parameters of companion
-				//comp_ID=nop->BH_ID //ID of binary companion
-				comp_Mass=nop->bh_mass; //mass of binary companion
-				comp_dx[0] = dx; comp_dx[1] = dy; comp_dx[2] = dz;
-				comp_dv[0] = bh_dvx; comp_dv[1] = bh_dvy; comp_dv[2] = bh_dvz;
-			    }
-			}
+		    if(nop->N_BH == 1 && COM_calc_flag==0){ // only do it if we're looking at a single star in the node
+                double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
+                if (specific_energy<0){
+                    double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
+                    double t_orbital = 2.0*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis/(All.G*M_total) );
+                    if(t_orbital < min_bh_t_orbital) {
+                    min_bh_t_orbital = t_orbital;
+                    //Save parameters of companion
+                    //comp_ID=nop->BH_ID //ID of binary companion
+                    comp_Mass=nop->bh_mass; //mass of binary companion
+                    comp_dx[0] = dx; comp_dx[1] = dy; comp_dx[2] = dz;
+                    comp_dv[0] = bh_dvx; comp_dv[1] = bh_dvy; comp_dv[2] = bh_dvz;
+                    }
+                }
 		    }
 #endif //#ifdef SINGLE_STAR_SUPERTIMESTEPPING
 #endif //#ifdef SINGLE_STAR_TIMESTEPPING
@@ -2697,6 +2698,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     /* store result at the proper place */
     if(mode == 0)
     {
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+    if (COM_calc_flag==0){ //this ensures that we only export this data if we are not doing a calculation for the center of mass of a binary
+#endif
         P[target].GravAccel[0] = acc_x;
         P[target].GravAccel[1] = acc_y;
         P[target].GravAccel[2] = acc_z;
@@ -2737,6 +2741,16 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #endif
 #endif
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+    } //if (COM_calc_flag==0)
+    else{
+        //Save acceleration and tidal tensor at center of mass of binary
+        P[target].COM_GravAccel[0] = acc_x;
+        P[target].COM_GravAccel[1] = acc_y;
+        P[target].COM_GravAccel[2] = acc_z;
+        for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[target].COM_tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
+    }
+#endif
     }
     else
     {
@@ -2769,12 +2783,15 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         GravDataResult[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);
         GravDataResult[target].min_bh_periastron = min_bh_periastron;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-        GravDataResult[target].min_bh_t_orbital=min_bh_t_orbital; //orbital time for binary
-        if (min_bh_t_orbital<MAX_REAL_NUMBER){
-            GravDataResult[target].comp_Mass=comp_Mass; //mass of binary companion
-            for(ksuper=0;ksuper<3;ksuper++) {
-               GravDataResult[target].comp_dx[ksuper]=comp_dx[ksuper]; //position of binary companion
-                GravDataResult[target].comp_dv[ksuper]=comp_dv[ksuper]; //velocity of binary companion
+        GravDataResult[target].COM_calc_flag=COM_calc_flag;//flag that tells whether this was only a rerun to get the acceleration ad the tidal tenor at the center of mass of a binary
+        if (COM_calc_flag==0){
+            GravDataResult[target].min_bh_t_orbital=min_bh_t_orbital; //orbital time for binary
+            if (min_bh_t_orbital<MAX_REAL_NUMBER){
+                GravDataResult[target].comp_Mass=comp_Mass; //mass of binary companion
+                for(ksuper=0;ksuper<3;ksuper++) {
+                   GravDataResult[target].comp_dx[ksuper]=comp_dx[ksuper]; //position of binary companion
+                    GravDataResult[target].comp_dv[ksuper]=comp_dv[ksuper]; //velocity of binary companion
+                }
             }
         }
 #endif
