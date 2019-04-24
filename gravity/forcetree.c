@@ -2045,8 +2045,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if(TakeLevel >= 0) {P[no].GravCost[TakeLevel] += 1.0;}
                 no = Nextnode[no]; 
             }
-#endif
-            }
             else			/* we have an  internal node */
             {
                 if(no >= maxPart + maxNodes)	/* pseudo particle */
