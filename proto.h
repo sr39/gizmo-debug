@@ -9,6 +9,9 @@
 #ifdef BLACK_HOLES
 #include "./galaxy_sf/blackholes/blackhole.h"
 #endif
+#ifdef SINGLE_STAR_SUPER_TIMESTEPPING
+#include "./nbody/nbody.h"
+#endif
 
 
 /* declarations of functions throughout the code */
