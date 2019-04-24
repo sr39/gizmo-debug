@@ -1724,16 +1724,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 //if this is a second pass on a binary, use center of mass data
         if ( (P[target].min_bh_t_orbital>0) && (P[target].min_bh_t_orbital< MAX_REAL_NUMBER) ){
             COM_calc_flag = 1; //center of mass calculation
-            //position of center of mass
-            pos_x += P[target].comp_Mass*P[target].comp_dx[0]/(pmass+P[target].comp_Mass);
-            pos_y += P[target].comp_Mass*P[target].comp_dx[1]/(pmass+P[target].comp_Mass);
-            pos_z += P[target].comp_Mass*P[target].comp_dx[2]/(pmass+P[target].comp_Mass);
-            //velocity of center of mass
-            vel_x += P[target].comp_Mass*P[target].comp_dv[0]/(pmass+P[target].comp_Mass);
-            vel_y += P[target].comp_Mass*P[target].comp_dv[1]/(pmass+P[target].comp_Mass);
-            vel_z += P[target].comp_Mass*P[target].comp_dv[2]/(pmass+P[target].comp_Mass);
-            //mass
-            pmass=pmass+P[target].comp_Mass;
+            //companion properties
+            comp_Mass=P[target].comp_Mass;
+            for(ksuper=0;ksuper<3;ksuper++) {
+                comp_dx[ksuper]=P[target].comp_dx[ksuper]; //position of binary companion
+                comp_dv[ksuper]=P[target].comp_dv[ksuper]; //velocity of binary companion
+            }
         }
 #endif
         aold = All.ErrTolForceAcc * P[target].OldAcc;
@@ -1785,16 +1781,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 //if this is a second pass on a binary, use center of mass data
         if ( (GravDataGet[target].min_bh_t_orbital>0) && (GravDataGet[target].min_bh_t_orbital< MAX_REAL_NUMBER) ){
             COM_calc_flag = 1; //center of mass calculation
-            //position of center of mass
-            pos_x += GravDataGet[target].comp_Mass*GravDataGet[target].comp_dx[0]/(pmass+GravDataGet[target].comp_Mass);
-            pos_y += GravDataGet[target].comp_Mass*GravDataGet[target].comp_dx[1]/(pmass+GravDataGet[target].comp_Mass);
-            pos_z += GravDataGet[target].comp_Mass*GravDataGet[target].comp_dx[2]/(pmass+GravDataGet[target].comp_Mass);
-            //velocity of center of mass
-            vel_x += GravDataGet[target].comp_Mass*GravDataGet[target].comp_dv[0]/(pmass+GravDataGet[target].comp_Mass);
-            vel_y += GravDataGet[target].comp_Mass*GravDataGet[target].comp_dv[1]/(pmass+GravDataGet[target].comp_Mass);
-            vel_z += GravDataGet[target].comp_Mass*GravDataGet[target].comp_dv[2]/(pmass+GravDataGet[target].comp_Mass);
-            //mass
-            pmass=pmass+P[target].comp_Mass;
+            //companion properties
+            comp_Mass=P[target].comp_Mass;
+            for(ksuper=0;ksuper<3;ksuper++) {
+                comp_dx[ksuper]=GravDataGet[target].comp_dx[ksuper]; //position of binary companion
+                comp_dv[ksuper]=GravDataGet[target].comp_dv[ksuper]; //velocity of binary companion
+            }
         }
 #endif
         ptype = GravDataGet[target].Type;
@@ -1813,6 +1805,21 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         }
 #endif
     }
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+    //Change position, velocities and mass if it is a center of mass calculation
+    if (COM_calc_flag==1){
+        //position of center of mass
+        pos_x += comp_Mass*comp_dx[0]/(pmass+comp_Mass);
+        pos_y += comp_Mass*comp_dx[1]/(pmass+comp_Mass);
+        pos_z += comp_Mass*comp_dx[2]/(pmass+comp_Mass);
+        //velocity of center of mass
+        vel_x += comp_Mass*comp_dv[0]/(pmass+comp_Mass);
+        vel_y += comp_Mass*comp_dv[1]/(pmass+comp_Mass);
+        vel_z += comp_Mass*comp_dv[2]/(pmass+comp_Mass);
+        //mass
+        pmass=pmass+comp_Mass;
+    }
+#endif
     
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
     /* quick check if particle has mass: if not, we won't deal with it */
@@ -2692,6 +2699,28 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         } // closes (mode == 1) check
     } // closes outer (while(no>=0)) check
     
+    
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+    if (COM_calc_flag==1){
+        double part_relmass=1.0-comp_Mass/pmass; //relative mass of the current particle in the binary
+        double comp_dr=part_relmass*sqrt( comp_dx[0]*comp_dx[0] + [1]*comp_dx[1] +comp_dx[2]*comp_dx[2] ); //distance of the companion to the center of mass
+        double comp_grav_fac=All.G*comp_Mass/(comp_dr*comp_dr*comp_dr); //prefactor for gravitational acceleration
+        //Correct gravitational acceleration for center of mass by subtracting the companion
+        acc_x -= comp_grav_fac*part_relmass*comp_dx[0];
+        acc_y -= comp_grav_fac*part_relmass*comp_dx[1];
+        acc_z -= comp_grav_fac*part_relmass*comp_dx[2];
+        //Correct tidal tensor by subtracting T_ij=GM/r^3 * (delta_ij - 3*x_i*x_j/r^2)
+        for(i1 = 0; i1 < 3; i1++) {
+            for(i2 = 0; i2 < 3; i2++) {
+                tidal_tensorps[i1][i2] += 3.0 * comp_grav_fac*(part_relmass*comp_dx[i1]/comp_dr)*(part_relmass*comp_dx[i2]/comp_dr);
+                if (i1==i2){
+                    tidal_tensorps[i1][i2] -= comp_grav_fac;
+                }
+            }
+        }
+        
+    }
+#endif
     
     /* store result at the proper place */
     if(mode == 0)
