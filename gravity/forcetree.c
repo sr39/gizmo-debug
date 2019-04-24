@@ -2703,7 +2703,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     if (COM_calc_flag==1){
         double part_relmass=1.0-comp_Mass/pmass; //relative mass of the current particle in the binary
-        double comp_dr=part_relmass*sqrt( comp_dx[0]*comp_dx[0] + [1]*comp_dx[1] +comp_dx[2]*comp_dx[2] ); //distance of the companion to the center of mass
+        double comp_dr=part_relmass*sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ); //distance of the companion to the center of mass
         double comp_grav_fac=All.G*comp_Mass/(comp_dr*comp_dr*comp_dr); //prefactor for gravitational acceleration
         //Correct gravitational acceleration for center of mass by subtracting the companion
         acc_x -= comp_grav_fac*part_relmass*comp_dx[0];
