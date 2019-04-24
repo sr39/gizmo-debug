@@ -563,8 +563,8 @@ void gravity_tree(void)
                         P[place].min_bh_t_orbital = GravDataOut[j].min_bh_t_orbital;
                         P[place].comp_Mass = GravDataOut[j].comp_Mass;
                         for(k = 0; k < 3; k++) {
-                            P[place].comp_Pos[k] = GravDataOut[j].comp_Pos[k];
-                            P[place].comp_Vel[k] = GravDataOut[j].comp_Vel[k];
+                            P[place].comp_dx[k] = GravDataOut[j].comp_dx[k];
+                            P[place].comp_dv[k] = GravDataOut[j].comp_dv[k];
                         }
                     }
 #endif
