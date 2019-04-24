@@ -1188,7 +1188,7 @@ void *gravity_secondary_loop(void *p)
 #endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
         //Re-evaluate for binary candidates
-        if( (P[i].Type == 5) && (P[i].min_bh_t_orbital < MAX_REAL_NUMBER) && (P[i].min_bh_t_orbital > 0)){ //binary candidate
+        if( (P[j].Type == 5) && (P[j].min_bh_t_orbital < MAX_REAL_NUMBER) && (P[j].min_bh_t_orbital > 0)){ //binary candidate
             ret = force_treeevaluate(j, 1, &nodesinlist, &dummy, &dummy);
             N_nodesinlist += nodesinlist; Costtotal += ret;
         }
