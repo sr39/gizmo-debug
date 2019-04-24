@@ -1665,7 +1665,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double comp_dx[3]; //position offset of binary companion
     double comp_dv[3]; //velocity offset of binary companion
     double comp_Mass; //mass of binary companion
-    //double comp_ID; //ID of binary companion
+    double comp_ID; //ID of binary companion
 #endif
 #endif //#ifdef SINGLE_STAR_TIMESTEPPING
 #endif //#ifdef BH_CALC_DISTANCES
