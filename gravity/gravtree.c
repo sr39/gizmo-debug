@@ -403,7 +403,15 @@ void gravity_tree(void)
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING
                     for(k = 0; k < 3; k++) {GravDataIn[j].Vel[k] = P[place].Vel[k];}		    
-#endif		    
+#endif
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+                    GravDataIn[j].min_bh_t_orbital = P[place].min_bh_t_orbital; //orbital time for binary
+                    GravDataIn[j].comp_Mass = P[place].comp_Mass; //mass of binary companion
+                    for(k = 0; k < 3; k++) {
+                        GravDataIn[j].comp_dx[k] = P[place].comp_dx[k];
+                        GravDataIn[j].comp_dv[k] = P[place].comp_dv[k];
+                    }
+#endif
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
                     if( (P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type]) ) {GravDataIn[j].Soft = PPP[place].Hsml;} else {GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];}
 #endif
