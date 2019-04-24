@@ -2184,8 +2184,8 @@ extern ALIGN(32) struct particle_data
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     int SuperTimestepFlag; // 1 if allowed to super-timestep, 0 otherwise
     MyFloat min_bh_t_orbital; //orbital time for binary
-    MyDouble comp_Pos[3]; //position of binary companion
-    MyDouble comp_Vel[3]; //velocity of binary companion
+    MyDouble comp_dx[3]; //position offset of binary companion - this will be evolved in the Kepler solution while we use the Pos attribute to track the binary COM
+    MyDouble comp_dv[3]; //velocity offset of binary companion - this will be evolved in the Kepler solution while we use the Vel attribute to track the binary COM velocity
     MyDouble comp_Mass; //mass of binary companion
     //MyIDType comp_ID; //ID of binary companion
 #endif
