@@ -665,5 +665,6 @@ double calculate_face_area_for_cartesian_mesh(double *dp, double rinv, double l_
 #endif
 
 void do_fewbody_drift(int i, double fewbody_drift_dx[3], double dt){
-
+    int k;
+    for(k=0; k<3; k++) fewbody_drift_dx[k] = 0;
 }
