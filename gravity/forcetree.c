@@ -1725,13 +1725,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         if ( (P[target].min_bh_t_orbital>0) && (P[target].min_bh_t_orbital< MAX_REAL_NUMBER) ){
             COM_calc_flag = 1; //center of mass calculation
             //position of center of mass
-            pos_x = (pos_x*pmass + P[target].comp_Mass*P[target].comp_dx[0])/(pmass+P[target].comp_Mass);
-            pos_y = (pos_y*pmass + P[target].comp_Mass*P[target].comp_dx[1])/(pmass+P[target].comp_Mass);
-            pos_z = (pos_z*pmass + P[target].comp_Mass*P[target].comp_dx[2])/(pmass+P[target].comp_Mass);
+            pos_x += P[target].comp_Mass*P[target].comp_dx[0]/(pmass+P[target].comp_Mass);
+            pos_y += P[target].comp_Mass*P[target].comp_dx[1]/(pmass+P[target].comp_Mass);
+            pos_z += P[target].comp_Mass*P[target].comp_dx[2]/(pmass+P[target].comp_Mass);
             //velocity of center of mass
-            vel_x = (vel_x*pmass + P[target].comp_Mass*P[target].comp_dv[0])/(pmass+P[target].comp_Mass);
-            vel_y = (vel_y*pmass + P[target].comp_Mass*P[target].comp_dv[1])/(pmass+P[target].comp_Mass);
-            vel_z = (vel_z*pmass + P[target].comp_Mass*P[target].comp_dv[2])/(pmass+P[target].comp_Mass);
+            vel_x += P[target].comp_Mass*P[target].comp_dv[0]/(pmass+P[target].comp_Mass);
+            vel_y += P[target].comp_Mass*P[target].comp_dv[1]/(pmass+P[target].comp_Mass);
+            vel_z += P[target].comp_Mass*P[target].comp_dv[2]/(pmass+P[target].comp_Mass);
             //mass
             pmass=pmass+P[target].comp_Mass;
         }
@@ -1783,16 +1783,16 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
 //if this is a second pass on a binary, use center of mass data
-        if ( (P[target].min_bh_t_orbital>0) && (P[target].min_bh_t_orbital< MAX_REAL_NUMBER) ){
+        if ( (GravDataGet[target].min_bh_t_orbital>0) && (GravDataGet[target].min_bh_t_orbital< MAX_REAL_NUMBER) ){
             COM_calc_flag = 1; //center of mass calculation
             //position of center of mass
-            pos_x = (pos_x*pmass + GravDataGet[target].comp_Mass*GravDataGet[target].comp_dx[0])/(pmass+GravDataGet[target].comp_Mass);
-            pos_y = (pos_y*pmass + GravDataGet[target].comp_Mass*GravDataGet[target].comp_dx[1])/(pmass+GravDataGet[target].comp_Mass);
-            pos_z = (pos_z*pmass + GravDataGet[target].comp_Mass*GravDataGet[target].comp_dx[2])/(pmass+GravDataGet[target].comp_Mass);
+            pos_x += GravDataGet[target].comp_Mass*GravDataGet[target].comp_dx[0]/(pmass+GravDataGet[target].comp_Mass);
+            pos_y += GravDataGet[target].comp_Mass*GravDataGet[target].comp_dx[1]/(pmass+GravDataGet[target].comp_Mass);
+            pos_z += GravDataGet[target].comp_Mass*GravDataGet[target].comp_dx[2]/(pmass+GravDataGet[target].comp_Mass);
             //velocity of center of mass
-            vel_x = (vel_x*pmass + GravDataGet[target].comp_Mass*GravDataGet[target].comp_dv[0])/(pmass+GravDataGet[target].comp_Mass);
-            vel_y = (vel_y*pmass + GravDataGet[target].comp_Mass*GravDataGet[target].comp_dv[1])/(pmass+GravDataGet[target].comp_Mass);
-            vel_z = (vel_z*pmass + GravDataGet[target].comp_Mass*GravDataGet[target].comp_dv[2])/(pmass+GravDataGet[target].comp_Mass);
+            vel_x += GravDataGet[target].comp_Mass*GravDataGet[target].comp_dv[0]/(pmass+GravDataGet[target].comp_Mass);
+            vel_y += GravDataGet[target].comp_Mass*GravDataGet[target].comp_dv[1]/(pmass+GravDataGet[target].comp_Mass);
+            vel_z += GravDataGet[target].comp_Mass*GravDataGet[target].comp_dv[2]/(pmass+GravDataGet[target].comp_Mass);
             //mass
             pmass=pmass+P[target].comp_Mass;
         }
