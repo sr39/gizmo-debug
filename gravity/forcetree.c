@@ -1662,8 +1662,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     int ksuper;
     double min_bh_t_orbital = MAX_REAL_NUMBER;
-    double comp_dx[3]; //position of binary companion
-    double comp_dv[3]; //velocity of binary companion
+    double comp_dx[3]; //position offset of binary companion
+    double comp_dv[3]; //velocity offset of binary companion
     double comp_Mass; //mass of binary companion
     //double comp_ID; //ID of binary companion
 #endif
