@@ -584,8 +584,9 @@ void force_update_node_recursive(int no, int sib, int father)
 #ifdef BH_CALC_DISTANCES
         MyFloat bh_mass=0;
         MyFloat bh_pos_times_mass[3]={0,0,0};   /* position of each black hole in the node times its mass; divide by total mass at the end to get COM */
-#ifdef SINGLE_STAR_TIMESTEPPING
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_SUPERTIMESTEPPING)
         MyFloat bh_mom[3] = {0,0,0};
+	int N_BH = 0;
 #endif	
 #endif	
 #ifdef DM_SCALARFIELD_SCREENING
@@ -665,10 +666,11 @@ void force_update_node_recursive(int no, int sib, int father)
                         bh_pos_times_mass[0] += Nodes[p].bh_pos[0] * Nodes[p].bh_mass;
                         bh_pos_times_mass[1] += Nodes[p].bh_pos[1] * Nodes[p].bh_mass;
                         bh_pos_times_mass[2] += Nodes[p].bh_pos[2] * Nodes[p].bh_mass;
-#ifdef SINGLE_STAR_TIMESTEPPING
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_SUPERTIMESTEPPING)
                         bh_mom[0] += Nodes[p].bh_vel[0] * Nodes[p].bh_mass;
                         bh_mom[1] += Nodes[p].bh_vel[1] * Nodes[p].bh_mass;
                         bh_mom[2] += Nodes[p].bh_vel[2] * Nodes[p].bh_mass;
+			N_BH += Nodes[p].N_BH;
 #endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -928,10 +930,11 @@ void force_update_node_recursive(int no, int sib, int father)
                 Nodes[no].bh_pos[0] = bh_pos_times_mass[0] / bh_mass;  /* weighted position is sum(pos*mass)/sum(mass) */
                 Nodes[no].bh_pos[1] = bh_pos_times_mass[1] / bh_mass;
                 Nodes[no].bh_pos[2] = bh_pos_times_mass[2] / bh_mass;
-#ifdef SINGLE_STAR_TIMESTEPPING
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_SUPERTIMESTEPPING)
                 Nodes[no].bh_vel[0] = bh_mom[0] / bh_mass;
                 Nodes[no].bh_vel[1] = bh_mom[1] / bh_mass;
                 Nodes[no].bh_vel[2] = bh_mom[2] / bh_mass;
+		Nodes[no].N_BH = N_BH;
 #endif
             }
 #endif
@@ -1027,8 +1030,9 @@ void force_exchange_pseudodata(void)
 #ifdef BH_CALC_DISTANCES
         MyFloat bh_mass;
         MyFloat bh_pos[3];
-#ifdef SINGLE_STAR_TIMESTEPPING
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_SUPERTIMESTEPPING)
         MyFloat bh_vel[3];
+	int N_BH;
 #endif      
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1099,10 +1103,11 @@ void force_exchange_pseudodata(void)
             DomainMoment[i].bh_pos[0] = Nodes[no].bh_pos[0];
             DomainMoment[i].bh_pos[1] = Nodes[no].bh_pos[1];
             DomainMoment[i].bh_pos[2] = Nodes[no].bh_pos[2];
-#ifdef SINGLE_STAR_TIMESTEPPING
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_SUPERTIMESTEPPING)
             DomainMoment[i].bh_vel[0] = Nodes[no].bh_vel[0];
             DomainMoment[i].bh_vel[1] = Nodes[no].bh_vel[1];
             DomainMoment[i].bh_vel[2] = Nodes[no].bh_vel[2];
+	    DomainMoment[i].N_BH = Nodes[no].N_BH;	    
 #endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1187,10 +1192,11 @@ void force_exchange_pseudodata(void)
                     Nodes[no].bh_pos[0] = DomainMoment[i].bh_pos[0];
                     Nodes[no].bh_pos[1] = DomainMoment[i].bh_pos[1];
                     Nodes[no].bh_pos[2] = DomainMoment[i].bh_pos[2];
-#ifdef SINGLE_STAR_TIMESTEPPING
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_SUPERTIMESTEPPING)
                     Nodes[no].bh_vel[0] = DomainMoment[i].bh_vel[0];
                     Nodes[no].bh_vel[1] = DomainMoment[i].bh_vel[1];
                     Nodes[no].bh_vel[2] = DomainMoment[i].bh_vel[2];
+		    Nodes[no].N_BH = DomainMoment[i].N_BH;
 #endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1250,8 +1256,9 @@ void force_treeupdate_pseudos(int no)
 #ifdef BH_CALC_DISTANCES
     MyFloat bh_mass=0;
     MyFloat bh_pos_times_mass[3]={0,0,0};
-#ifdef SINGLE_STAR_TIMESTEPPING
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_SUPERTIMESTEPPING)
     MyFloat bh_mom[3] = {0,0,0};
+    int N_BH = 0;
 #endif   
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1310,10 +1317,11 @@ void force_treeupdate_pseudos(int no)
             bh_pos_times_mass[0] += Nodes[p].bh_pos[0] * Nodes[p].bh_mass;
             bh_pos_times_mass[1] += Nodes[p].bh_pos[1] * Nodes[p].bh_mass;
             bh_pos_times_mass[2] += Nodes[p].bh_pos[2] * Nodes[p].bh_mass;
-#ifdef SINGLE_STAR_TIMESTEPPING
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_SUPERTIMESTEPPING)
             bh_mom[0] += Nodes[p].bh_vel[0] * Nodes[p].bh_mass;
             bh_mom[1] += Nodes[p].bh_vel[1] * Nodes[p].bh_mass;
             bh_mom[2] += Nodes[p].bh_vel[2] * Nodes[p].bh_mass;
+	    N_BH += Nodes[p].N_BH;
 #endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1457,10 +1465,11 @@ void force_treeupdate_pseudos(int no)
             Nodes[no].bh_pos[0] = bh_pos_times_mass[0] / bh_mass;
             Nodes[no].bh_pos[1] = bh_pos_times_mass[1] / bh_mass;
             Nodes[no].bh_pos[2] = bh_pos_times_mass[2] / bh_mass;
-#ifdef SINGLE_STAR_TIMESTEPPING
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_SUPERTIMESTEPPING)
             Nodes[no].bh_vel[0] = bh_mom[0] / bh_mass;
             Nodes[no].bh_vel[1] = bh_mom[1] / bh_mass;
             Nodes[no].bh_vel[2] = bh_mom[2] / bh_mass;
+	    Nodes[no].N_BH = N_BH;
 #endif
         }
 #endif
@@ -2333,21 +2342,23 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     }
                     if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-                    double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
-                    if (specific_energy<0){
-                        double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
-                        double t_orbital = 2.0*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis/(All.G*M_total) );
-                        if(t_orbital < min_bh_t_orbital) {
-                            min_bh_t_orbital = t_orbital;
-                            //Save parameters of companion
-                            //comp_ID=P[no].ID //ID of binary companion
-                            comp_Mass=nop->bh_mass; //mass of binary companion
-                            for(ksuper=0;ksuper<3;ksuper++) {
-                                comp_Pos[ksuper]=nop->bh_pos[ksuper]; //position of binary companion
-                                comp_Vel[ksuper]=nop->bh_vel[ksuper]; //velocity of binary companion
-                            }
-                        }
-                    }
+		    if(nop->N_BH == 1){ // only do it if we're looking at a single star in the node
+			double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
+			if (specific_energy<0){
+			    double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
+			    double t_orbital = 2.0*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis/(All.G*M_total) );
+			    if(t_orbital < min_bh_t_orbital) {
+				min_bh_t_orbital = t_orbital;
+				//Save parameters of companion
+				//comp_ID=P[no].ID //ID of binary companion
+				comp_Mass=nop->bh_mass; //mass of binary companion
+				for(ksuper=0;ksuper<3;ksuper++) {
+				    comp_Pos[ksuper]=nop->bh_pos[ksuper]; //position of binary companion
+				    comp_Vel[ksuper]=nop->bh_vel[ksuper]; //velocity of binary companion
+				}
+			    }
+			}
+		    }
 #endif //#ifdef SINGLE_STAR_SUPERTIMESTEPPING
 #endif //#ifdef SINGLE_STAR_TIMESTEPPING
                 }
