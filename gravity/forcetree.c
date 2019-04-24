@@ -1662,8 +1662,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     int ksuper;
     double min_bh_t_orbital = MAX_REAL_NUMBER;
-    double comp_Pos[3]; //position of binary companion
-    double comp_Vel[3]; //velocity of binary companion
+    double comp_dx[3]; //position of binary companion
+    double comp_dv[3]; //velocity of binary companion
     double comp_Mass; //mass of binary companion
     //double comp_ID; //ID of binary companion
 #endif
@@ -1921,10 +1921,16 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                             //Save parameters of companion
                             //comp_ID=P[no].ID; //ID of binary companion
                             comp_Mass=P[no].Mass; //mass of binary companion
-                            for(ksuper=0;ksuper<3;ksuper++) {
-                                comp_Pos[ksuper]=P[no].Pos[ksuper]; //position of binary companion
-                                comp_Vel[ksuper]=P[no].Vel[ksuper]; //velocity of binary companion
-                            }
+			    comp_dx[0] = dx;
+			    comp_dx[1] = dy;
+			    comp_dx[2] = dz;
+			    comp_dv[0] = bh_dvx;
+			    comp_dv[1] = bh_dvy;
+			    comp_dv[2] = bh_dvz;
+//                            for(ksuper=0;ksuper<3;ksuper++) {
+//                                comp_dx[ksuper]=P[no].Pos[ksuper]; //position of binary companion
+//                                comp_dv[ksuper]=P[no].Vel[ksuper]; //velocity of binary companion
+//                            }
                         }
                     }
 #endif //#ifdef SINGLE_STAR_SUPERTIMESTEPPING
@@ -2352,10 +2358,16 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 				//Save parameters of companion
 				//comp_ID=P[no].ID //ID of binary companion
 				comp_Mass=nop->bh_mass; //mass of binary companion
-				for(ksuper=0;ksuper<3;ksuper++) {
-				    comp_Pos[ksuper]=nop->bh_pos[ksuper]; //position of binary companion
-				    comp_Vel[ksuper]=nop->bh_vel[ksuper]; //velocity of binary companion
-				}
+				comp_dx[0] = dx;
+				comp_dx[1] = dy;
+				comp_dx[2] = dz;
+				comp_dv[0] = bh_dvx;
+				comp_dv[1] = bh_dvy;
+				comp_dv[2] = bh_dvz;
+//				for(ksuper=0;ksuper<3;ksuper++) {
+//				    comp_dx[ksuper]=nop->bh_pos[ksuper]; //position of binary companion
+//				    comp_dv[ksuper]=nop->bh_vel[ksuper]; //velocity of binary companion
+//				}
 			    }
 			}
 		    }
@@ -2702,8 +2714,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         if (min_bh_t_orbital<MAX_REAL_NUMBER){ //only if there is a companion
             P[target].comp_Mass=comp_Mass; //mass of binary companion
             for(ksuper=0;ksuper<3;ksuper++) {
-                P[target].comp_Pos[ksuper]=comp_Pos[ksuper]; //position of binary companion
-                P[target].comp_Vel[ksuper]=comp_Vel[ksuper]; //velocity of binary companion
+                P[target].comp_dx[ksuper]=comp_dx[ksuper]; //position of binary companion
+                P[target].comp_dv[ksuper]=comp_dv[ksuper]; //velocity of binary companion
             }
         }
 #endif
@@ -2745,8 +2757,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         if (min_bh_t_orbital<MAX_REAL_NUMBER){
             GravDataResult[target].comp_Mass=comp_Mass; //mass of binary companion
             for(ksuper=0;ksuper<3;ksuper++) {
-               GravDataResult[target].comp_Pos[ksuper]=comp_Pos[ksuper]; //position of binary companion
-                GravDataResult[target].comp_Vel[ksuper]=comp_Vel[ksuper]; //velocity of binary companion
+               GravDataResult[target].comp_dx[ksuper]=comp_dx[ksuper]; //position of binary companion
+                GravDataResult[target].comp_dv[ksuper]=comp_dv[ksuper]; //velocity of binary companion
             }
         }
 #endif
