@@ -520,5 +520,6 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
 
 void do_fewbody_kick(int i, double fewbody_kick_dv[3], double dt){
     int k;
+    kepler_timestep(i, dt);
     for(k=0; k<3; k++) fewbody_kick_dv[k] = 0;
 }
