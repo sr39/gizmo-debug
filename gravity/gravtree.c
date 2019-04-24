@@ -538,6 +538,9 @@ void gravity_tree(void)
                 for(j = 0; j < Nexport; j++)
                 {
                     place = DataIndexTable[j].Index;
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+                if (GravDataOut[j].COM_calc_flag==0){ //this ensures that we only export this data if we are not doing a calculation for the center of mass of a binary
+#endif
                     for(k = 0; k < 3; k++) {P[place].GravAccel[k] += GravDataOut[j].Acc[k];}
 
 #ifdef BH_CALC_DISTANCES
@@ -587,6 +590,14 @@ void gravity_tree(void)
                     
 #ifdef EVALPOTENTIAL
                     P[place].Potential += GravDataOut[j].Potential;
+#endif
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+                }//if (COM_calc_flag==0)
+                else{
+                    //Save acceleration and tidal tensor at center of mass of binary
+                    for(k = 0; k < 3; k++) {P[place].COM_GravAccel[k] += GravDataOut[j].COM_GravAccel[k];}
+                    for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[place].COM_tidal_tensorps[i1][i2] += GravDataOut[j].COM_tidal_tensorps[i1][i2];}}
+                }
 #endif
                 }
                 tend = my_second();
