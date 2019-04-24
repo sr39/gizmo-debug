@@ -1096,7 +1096,14 @@ void *gravity_primary_loop(void *p)
         }
         
 #endif
-        
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+        //Re-evaluate for binary candidates
+        if( (P[i].Type == 5) && (P[i].min_bh_t_orbital < MAX_REAL_NUMBER) && (P[i].min_bh_t_orbital > 0)){ //binary candidate
+            ret = force_treeevaluate(i, 0, exportflag, exportnodecount, exportindex);
+            if(ret < 0) {break;} /* export buffer has filled up */
+            Costtotal += ret;
+        }
+#endif
         ProcessedFlag[i] = 1;	/* particle successfully finished */
         
 #ifdef FIXEDTIMEINFIRSTPHASE
@@ -1159,6 +1166,13 @@ void *gravity_secondary_loop(void *p)
 #else
         ret = force_treeevaluate(j, 1, &nodesinlist, &dummy, &dummy);
         N_nodesinlist += nodesinlist; Costtotal += ret;
+#endif
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+        //Re-evaluate for binary candidates
+        if( (P[i].Type == 5) && (P[i].min_bh_t_orbital < MAX_REAL_NUMBER) && (P[i].min_bh_t_orbital > 0)){ //binary candidate
+            ret = force_treeevaluate(j, 1, &nodesinlist, &dummy, &dummy);
+            N_nodesinlist += nodesinlist; Costtotal += ret;
+        }
 #endif
     }
     

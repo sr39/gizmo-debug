@@ -2187,7 +2187,7 @@ extern ALIGN(32) struct particle_data
     MyDouble comp_dx[3]; //position offset of binary companion - this will be evolved in the Kepler solution while we use the Pos attribute to track the binary COM
     MyDouble comp_dv[3]; //velocity offset of binary companion - this will be evolved in the Kepler solution while we use the Vel attribute to track the binary COM velocity
     MyDouble comp_Mass; //mass of binary companion
-    //MyIDType comp_ID; //ID of binary companion
+    MyIDType comp_ID; //ID of binary companion
 #endif
 #endif  
 #endif
