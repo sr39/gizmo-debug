@@ -2665,6 +2665,12 @@ extern struct gravdata_in
     MyFloat AGS_zeta;
 #endif
 #endif
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+    MyFloat min_bh_t_orbital; //orbital time for binary
+    MyDouble comp_dx[3]; //position of binary companion
+    MyDouble comp_dv[3]; //velocity of binary companion
+    MyDouble comp_Mass; //mass of binary companion
+#endif
     MyFloat OldAcc;
     int NodeList[NODELISTLENGTH];
 }
@@ -2700,8 +2706,8 @@ extern struct gravdata_out
     MyFloat min_bh_periastron; // closest anticipated periastron passage
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     MyFloat min_bh_t_orbital; //orbital time for binary
-    MyDouble comp_Pos[3]; //position of binary companion
-    MyDouble comp_Vel[3]; //velocity of binary companion
+    MyDouble comp_dx[3]; //position of binary companion
+    MyDouble comp_dv[3]; //velocity of binary companion
     MyDouble comp_Mass; //mass of binary companion
 #endif
 #endif  
