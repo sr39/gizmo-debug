@@ -1120,6 +1120,9 @@ void *gravity_primary_loop(void *p)
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
         //Re-evaluate for binary candidates
         if( (P[i].Type == 5) && (P[i].SuperTimestepFlag==1)){ //binary candidate
+#ifdef BH_OUTPUT_MOREINFO
+	    printf("Particle %d is in a binary with period %g, separation %g %g %g, velocity %g %g %g\n. Let's do another tree pass...\n", i, P[i].min_bh_t_orbital, P[i].comp_dx[0], P[i].comp_dx[1], P[i].comp_dx[2], P[i].comp_dv[0], P[i].comp_dv[1], P[i].comp_dv[2]);
+#endif	    	    
             ret = force_treeevaluate(i, 0, exportflag, exportnodecount, exportindex);
             if(ret < 0) {break;} /* export buffer has filled up */
             Costtotal += ret;
