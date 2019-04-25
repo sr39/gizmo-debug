@@ -6,6 +6,9 @@
 #include <gsl/gsl_math.h>
 #include "allvars.h"
 #include "proto.h"
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+#include "nbody/nbody.h"
+#endif
 
 /* Routines for the drift/predict step */
 
