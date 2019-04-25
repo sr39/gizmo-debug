@@ -1039,17 +1039,13 @@ ifeq (SINGLE_STAR,$(findstring SINGLE_STAR,$(CONFIGVARS)))
 OBJS    += galaxy_sf/sfr_eff.o galaxy_sf/stellar_evolution.o galaxy_sf/mechanical_fb.o galaxy_sf/radfb_local.o
 OBJS    += galaxy_sf/blackholes/blackhole.o galaxy_sf/blackholes/blackhole_util.o galaxy_sf/blackholes/blackhole_environment.o galaxy_sf/blackholes/blackhole_feed.o galaxy_sf/blackholes/blackhole_swallow_and_kick.o
 INCL    += galaxy_sf/blackholes/blackhole.h
+OBJS    += nbody/kepler.o
+INCL    += nbody/nbody.h
 endif
-
-ifeq (SINGLE_STAR_SUPERTIMESTEPPING,$(findstring SINGLE_STAR_SUPERTIMESTEPPING,$(CONFIGVARS)))
-OBJS	+= nbody/kepler.o
-INCL	+= nbody/nbody.h
-endif 
 
 ifeq (SINGLE_STAR_FB_HEATING,$(findstring SINGLE_STAR_FB_HEATING,$(CONFIGVARS)))
 OBJS += radiation/rt_utilities.o
 endif
-
 
 ifeq (SCF_POTENTIAL,$(findstring SCF_POTENTIAL,$(CONFIGVARS)))
 OBJS    += modules/potentials/scf.o modules/potentials/scf_util.o
