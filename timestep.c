@@ -328,6 +328,24 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef NUCLEAR_NETWORK
     double dt_network, dt_species;
 #endif
+
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+//We need to decide whether to use super timestepping for binaries
+double dt_bin,semimajor_axis_cube,dt_ext
+//internal gravitational timescale
+semimajor_axis_cube = P[p].min_bh_t_orbital/(2.0*M_PI)*sqrt(All.G*(P[p].Mass+P[p].comp_Mass)); semimajor_axis_cube *= semimajor_axis_cube;
+dt_bin=sqrt(semimajor_axis_cube/(All.G*(P[p].Mass+P[p].comp_Mass))); //sqrt(a^3/GM) for binary
+//external gravitational timescale
+for(k=0; k<3; k++) {dt_ext += P[p].COM_tidal_tensorps[k][k]*P[p].COM_tidal_tensorps[k][k];}
+dt_ext=1.0/sqrt(dt_ext);
+if (SUPERTIMESTEPPING_ERRCONST*dt_ext>dt_bin){
+    P[p].SuperTimestepFlag=1;
+}
+else{
+    P[p].SuperTimestepFlag=0;
+}
+
+#endif
     
     if(flag == 0)
     {
@@ -338,6 +356,14 @@ integertime get_timestep(int p,		/*!< particle index */
         ay = All.cf_a2inv * P[p].GravAccel[1];
         az = All.cf_a2inv * P[p].GravAccel[2];
 #endif        
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING 
+        if (P[p].SuperTimestepFlag==1){
+            //use center of mass acceleration for the binary
+            ax = All.cf_a2inv * P[p].COM_GravAccel[0];
+            ay = All.cf_a2inv * P[p].COM_GravAccel[1];
+            az = All.cf_a2inv * P[p].COM_GravAccel[2];
+        }
+#endif
 #ifdef PMGRID
         ax += All.cf_a2inv * P[p].GravPM[0];
         ay += All.cf_a2inv * P[p].GravPM[1];
@@ -434,13 +460,23 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 
 #ifdef TIDAL_TIMESTEP_CRITERION // tidal criterion obtains the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion
-    double dt_tidal = 0.; {int k; for(k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];}}  // this is diagonalized already in the gravity loop
+    double dt_tidal = 0.; 
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+    if (P[p].SuperTimestepFlag==1){
+        for(k=0; k<3; k++) {dt_tidal += P[p].COM_tidal_tensorps[k][k]*P[p].COM_tidal_tensorps[k][k];}
+    }else
+#endif
+    {for(k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];}}  // this is diagonalized already in the gravity loop
     dt_tidal = sqrt(All.ErrTolIntAccuracy / sqrt(dt_tidal));
     if (P[p].Type == 0) {dt = DMIN(dt, dt_tidal);} // have to include timestep criterion that has hydro accel 
     else {dt = DMIN(All.MaxSizeTimestep, dt_tidal);} // for collisionless or stars, fuhgeddabout the Power 2003 timestep. We're in Tidaltown, USA
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step and the timestep anticipates close encounters, which gives superior conservation
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+    if(P[p].Type == 5 && P[p].SuperTimestepFlag==0)
+#else
     if(P[p].Type == 5)
+#endif
     {
         double omega_binary = 1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time; // timestep is harmonic mean of freefall and approach time
         dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary * 0.3);
@@ -486,7 +522,6 @@ integertime get_timestep(int p,		/*!< particle index */
     if(P[p].Type > 0)
     {
         csnd = GAMMA * GAMMA_MINUS1 * P[p].Gas_InternalEnergy;
-        int k;
         for(k=0;k<3;k++) {csnd += (P[p].Gas_Velocity[k]-P[p].Vel[k])*(P[p].Gas_Velocity[k]-P[p].Vel[k]);}
 #ifdef GRAIN_LORENTZFORCE
         for(k=0;k<3;k++) {csnd += P[p].Gas_B[k]*P[p].Gas_B[k] / (2.0 * P[p].Gas_Density);}

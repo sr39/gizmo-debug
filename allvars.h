@@ -293,6 +293,9 @@
 #ifdef SINGLE_STAR_STRICT_ACCRETION
 #define READ_SINKRADIUS // read the sinkradius for sink partciles in IC files
 #endif
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+#define SUPERTIMESTEPPING_ERRCONST 0.01 // If sqrt(|nabla g| / (GM/a^3)) < SUPERTIMESTEPPING_ERRCONST, then we use super timestepping for the binary
+#endif
 #ifdef NEWSINK
 #define NEWSINK_BONDI
 #define NEWSINK_J_FEEDBACK //turns on angular momentum feedback in NEWSINK
