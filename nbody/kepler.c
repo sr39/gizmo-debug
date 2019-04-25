@@ -1,7 +1,39 @@
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-/* Advances the binary by timestep dt */
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
+#include "../allvars.h"
+#include "../proto.h"
+#include "../kernel.h"
 
-void kepler_timestep(int i, dt){
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+// Solve Kepler's equation to turn eccentric anomaly into mean anomaly
+double eccentric_anomaly(double mean_anomaly, double ecc){
+    double x0 = mean_anomaly;
+    double err = 1e100;
+    int iterations = 0;
+    double twopi = 2*M_PI;
+    while(fabs(err/twopi) > 1e-14 && iterations < 20){ // do Newton iterations
+	err = (x0 - ecc*sin(x0) - mean_anomaly)/(1 - ecc*cos(x0));
+        x0 -= err;
+	x0 = fmod(x0, twopi);
+        iterations += 1;
+    }
+    return x0;
+}
+
+
+/* 
+Advances the binary by timestep dt 
+mode 0 - Just fill out the particle's kick and drift for the timestep, without doing the update
+mode 1 - Actually update the binary separation and relative velocity
+*/
+
+void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], int mode){
   //  MyDouble comp_Pos[3]; //position of binary companion                        
   //  MyDouble comp_Vel[3]; //velocity of binary companion                        
   //  MyDouble comp_Mass; //mass of binary companion
@@ -12,22 +44,22 @@ void kepler_timestep(int i, dt){
     double dx_normalized[3] = {P[i].comp_dx[0]/dr, P[i].comp_dx[1]/dr, P[i].comp_dx[2]/dr};
     double n_x[3]; // normalized Laplace-Runge-Lenz vector, just to get the unit vector along the major axis of the binary
     double n_y[3]; // normalized unit vector along the minor axis of the binary
-    double norm, h2, true_anomaly, mean_anomaly;
+    double norm, h2, true_anomaly, mean_anomaly, ecc_anomaly;
     double x = 0, y =0, vx =0, vy = 0; // Coordinates in the frame aligned with the binary
     int k,l,m;
-    double Mtot = P[i].Mass + P[i].comp_mass;
+    double Mtot = P[i].Mass + P[i].comp_Mass;
 //    double mu = P[i].Mass * P[i].comp_mass / Mtot;    
     double specific_energy = .5*dv*dv - All.G * Mtot / dr;
     double semimajor_axis = -All.G * Mtot / (2*specific_energy);
 
-    for(k=0; k<3; l=(k+1)%3; m=(k+2)%3; k++){ // dx cross dv to get specific angular momentum vector
-	h[k] = P[i].comp_dx[l]*P[i].comp_dv[m] - P[i].comp_dx[m]*P[i].comp_dv[l]
+    for(k=0; k<3; k++, l=(k+1)%3, m=(k+2)%3){ // dx cross dv to get specific angular momentum vector
+	h[k] = P[i].comp_dx[l]*P[i].comp_dv[m] - P[i].comp_dx[m]*P[i].comp_dv[l];
     }
 
-    hSqr = h[0]*h[0] + h[1]*h[1] + h[2]*h[2];
+    double hSqr = h[0]*h[0] + h[1]*h[1] + h[2]*h[2];
     double ecc = sqrt(1 + 2 * specific_energy * hSqr / (All.G*All.G*Mtot*Mtot)); 
 
-    for(k=0; k<3; l=(k+1)%3; m=(k+2)%3; k++){ // dx cross dv to get specific angular momentum vector
+    for(k=0; k<3; k++, l=(k+1)%3, m=(k+2)%3){ // dx cross dv to get specific angular momentum vector
 	l = (k+1)%3; m = (k+2)%3;
 	n_x[k] = P[i].comp_dv[l]*h[m] - P[i].comp_dv[m]*h[l] - All.G * Mtot * dx_normalized[k]; // Worry about cancellation error for low eccentricity?
     }
@@ -35,38 +67,23 @@ void kepler_timestep(int i, dt){
     norm = sqrt(n_x[0]*n_x[0] + n_x[1]*n_x[1] + n_x[2]*n_x[2]);    
     for(k=0; k<3; k++) n_x[k] /= -norm; // take the opposite direction of the LRL vector, so x points from periapsis to apoapsis
 
-    for(k=0; k<3; l=(k+1)%3; m=(k+2)%3; k++){ // cross product of n_x with angular momentum to get a vector along the minor axis
+    for(k=0; k<3; k++, l=(k+1)%3, m=(k+2)%3){ // cross product of n_x with angular momentum to get a vector along the minor axis
 	l = (k+1)%3; m = (k+2)%3;
 	n_y[k] = n_x[l] * h[m] - n_x[m] * h[l];
 	n_y[k] /= sqrt(h2);
     }
 
     for(k=0; k<3; k++){
-	x += dx[k]*n_x[k];
-	y += dx[k]*n_y[k];
-	vx += dv[k]*n_x[k];
-	vy += dv[k]*n_y[k];
+	x += P[i].comp_dx[k]*n_x[k];
+	y += P[i].comp_dx[k]*n_y[k];
+	vx += P[i].comp_dv[k]*n_x[k];
+	vy += P[i].comp_dv[k]*n_y[k];
     }
     
     true_anomaly = atan2(y,x);
     mean_anomaly = atan2(sqrt(1 - ecc*ecc) * sin(true_anomaly), ecc + cos(true_anomaly));
-    eccentric_anomaly = eccentric_anomaly(mean_anomaly);
+    ecc_anomaly = eccentric_anomaly(mean_anomaly, ecc);
 
-
-}
-
-// Solve Kepler's equation to turn eccentric anomaly into mean anomaly
-double eccentric_anomaly(double mean_anomaly, double ecc){
-    double x0 = mean_anomaly;
-    double err = 1e100;
-    int iterations = 0;
-    double twopi = 2*M_PI;
-    while(fabs(err/twopi) > 1e-14 && iterations < 20): // do Newton iterations
-	err = (x0 - ecc*sin(x0) - mean_anomaly)/(1 - ecc*cos(x0));
-        x0 -= err;
-	x0 = x0%(twopi);
-        iterations += 1;
-    return x0
 }
 
 #endif
