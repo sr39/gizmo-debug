@@ -1722,9 +1722,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
 //if this is a second pass on a binary, use center of mass data
-        if ( P[target].SuperTimestepFlag==1 ){
+        if ( P[target].SuperTimestepFlag==1){
             COM_calc_flag = 1; //center of mass calculation
-            //companion properties
             comp_Mass=P[target].comp_Mass;
             for(ksuper=0;ksuper<3;ksuper++) {
                 comp_dx[ksuper]=P[target].comp_dx[ksuper]; //position of binary companion
@@ -1809,13 +1808,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     //Change position, velocities and mass if it is a center of mass calculation
     if (COM_calc_flag==1){
         //position of center of mass
-        pos_x += comp_Mass*comp_dx[0]/(pmass+comp_Mass);
-        pos_y += comp_Mass*comp_dx[1]/(pmass+comp_Mass);
-        pos_z += comp_Mass*comp_dx[2]/(pmass+comp_Mass);
+	pos_x += comp_Mass*comp_dx[0]/(pmass+comp_Mass);
+	pos_y += comp_Mass*comp_dx[1]/(pmass+comp_Mass);
+	pos_z += comp_Mass*comp_dx[2]/(pmass+comp_Mass);
         //velocity of center of mass
-        vel_x += comp_Mass*comp_dv[0]/(pmass+comp_Mass);
-        vel_y += comp_Mass*comp_dv[1]/(pmass+comp_Mass);
-        vel_z += comp_Mass*comp_dv[2]/(pmass+comp_Mass);
+	vel_x += comp_Mass*comp_dv[0]/(pmass+comp_Mass);
+	vel_y += comp_Mass*comp_dv[1]/(pmass+comp_Mass);
+	vel_z += comp_Mass*comp_dv[2]/(pmass+comp_Mass);
         //mass
         pmass=pmass+comp_Mass;
     }
@@ -1954,6 +1953,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     if (specific_energy<0 && COM_calc_flag==0){
                         double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
                         double t_orbital = 2.0*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis/(All.G*M_total) );
+//			printf("for particle %d at position %g %g %g t_orbital=%g M_total=%g r=%g dv=%g id=%d pos=%g %g %g, v=%g %g %g\n", target, pos_x, pos_y, pos_z, t_orbital, M_total, sqrt(r2), sqrt(vSqr), P[no].ID, P[no].Pos[0], P[no].Pos[1], P[no].Pos[2],  P[no].Vel[0], P[no].Vel[1], P[no].Vel[2]);
                         if(t_orbital < min_bh_t_orbital) {
                             min_bh_t_orbital = t_orbital;
                             //Save parameters of companion
@@ -2700,7 +2700,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     } // closes outer (while(no>=0)) check
     
     
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING // This part has to account for softening as well...
     if (COM_calc_flag==1){
         double part_relmass=1.0-comp_Mass/pmass; //relative mass of the current particle in the binary
         double comp_dr=part_relmass*sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ); //distance of the companion to the center of mass
@@ -2758,8 +2758,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         P[target].min_bh_periastron = min_bh_periastron;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
         P[target].min_bh_t_orbital=min_bh_t_orbital; //orbital time for binary
-        if (min_bh_t_orbital<MAX_REAL_NUMBER){ //only if there is a companion
-            P[target].SuperTimestepFlag=1; //binary candidate
+        if (min_bh_t_orbital<MAX_REAL_NUMBER && !(All.Ti_Current == 0 && RestartFlag != 1)){ //only if there is a companion
+	    P[target].SuperTimestepFlag=1; //binary candidate
             P[target].comp_Mass=comp_Mass; //mass of binary companion
             for(ksuper=0;ksuper<3;ksuper++) {
                 P[target].comp_dx[ksuper]=comp_dx[ksuper]; //position of binary companion
@@ -2772,14 +2772,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-    } //if (COM_calc_flag==0)
-    else{
-        //Save acceleration and tidal tensor at center of mass of binary
-        P[target].COM_GravAccel[0] = acc_x;
-        P[target].COM_GravAccel[1] = acc_y;
-        P[target].COM_GravAccel[2] = acc_z;
-        for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[target].COM_tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
-    }
+   } //if (COM_calc_flag==0)
+   else{
+       //    Save acceleration and tidal tensor at center of mass of binary
+       P[target].COM_GravAccel[0] = acc_x;
+       P[target].COM_GravAccel[1] = acc_y;
+       P[target].COM_GravAccel[2] = acc_z;
+       for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[target].COM_tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
+   }
 #endif
     }
     else

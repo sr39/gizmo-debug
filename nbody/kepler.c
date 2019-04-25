@@ -11,7 +11,7 @@
 #include "../kernel.h"
 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-// Solve Kepler's equation to turn eccentric anomaly into mean anomaly
+// Solve Kepler's equation to convert mean anomaly into eccentric anomaly
 double eccentric_anomaly(double mean_anomaly, double ecc){
     double x0 = mean_anomaly;
     double err = 1e100;
@@ -34,9 +34,6 @@ mode 1 - Actually update the binary separation and relative velocity
 */
 
 void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], int mode){
-  //  MyDouble comp_Pos[3]; //position of binary companion                        
-  //  MyDouble comp_Vel[3]; //velocity of binary companion                        
-  //  MyDouble comp_Mass; //mass of binary companion
     double h[3]; //Specific angular momentum vector
     double dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
     double dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]);
@@ -76,14 +73,27 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
     for(k=0; k<3; k++){
 	x += P[i].comp_dx[k]*n_x[k];
 	y += P[i].comp_dx[k]*n_y[k];
-	vx += P[i].comp_dv[k]*n_x[k];
-	vy += P[i].comp_dv[k]*n_y[k];
+//	vx += P[i].comp_dv[k]*n_x[k];
+//	vy += P[i].comp_dv[k]*n_y[k];
     }
     
     true_anomaly = atan2(y,x);
     mean_anomaly = atan2(sqrt(1 - ecc*ecc) * sin(true_anomaly), ecc + cos(true_anomaly));
+    mean_anomaly += dt/P[i].min_bh_t_orbital * 2 * M_PI;
+    mean_anomaly = fmod(mean_anomaly, 2*M_PI);
     ecc_anomaly = eccentric_anomaly(mean_anomaly, ecc);
 
+    x = semimajor_axis * (cos(ecc_anomaly) - ecc);
+    y = semimajor_axis * sqrt(1 - ecc*ecc) * sin(ecc_anomaly);
+   
+    dr = sqrt(x*x + y*y);
+    dv = sqrt(All.G * Mtot * (2/dr - 1/semimajor_axis)); // We conserve energy exactly
+
+    double v_phi = sqrt(h2) / dr; // conserving angular momentum
+    double v_r = sqrt(DMAX(0, dv*dv - v_phi*v_phi));
+    if(ecc_anomaly < M_PI) v_r = -v_r; // if radius is decreasing, make sure v_r is negative
+
+//    vx = v_phi * 
 }
 
 #endif

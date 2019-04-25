@@ -282,7 +282,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             check_particle_for_temperature_minimum(i); /* if we've fallen below the minimum temperature, force the 'floor' */
         }
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-	double fewbody_kick_dv[3];
+	double fewbody_kick_dv[3] = {0,0,0};
 	if(P[i].Type == 5){
 	    if(P[i].SuperTimestepFlag) do_fewbody_kick(i, fewbody_kick_dv, dt_gravkick);
 	 }
