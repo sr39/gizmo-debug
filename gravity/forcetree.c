@@ -1722,7 +1722,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
 //if this is a second pass on a binary, use center of mass data
-        if ( (P[target].min_bh_t_orbital>0) && (P[target].min_bh_t_orbital< MAX_REAL_NUMBER) ){
+        if ( P[target].SuperTimestepFlag==1 ){
             COM_calc_flag = 1; //center of mass calculation
             //companion properties
             comp_Mass=P[target].comp_Mass;
@@ -1779,7 +1779,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
 //if this is a second pass on a binary, use center of mass data
-        if ( (GravDataGet[target].min_bh_t_orbital>0) && (GravDataGet[target].min_bh_t_orbital< MAX_REAL_NUMBER) ){
+        if ( GravDataGet[target].SuperTimestepFlag == 1 ){
             COM_calc_flag = 1; //center of mass calculation
             //companion properties
             comp_Mass=P[target].comp_Mass;
@@ -2759,11 +2759,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
         P[target].min_bh_t_orbital=min_bh_t_orbital; //orbital time for binary
         if (min_bh_t_orbital<MAX_REAL_NUMBER){ //only if there is a companion
+            P[target].SuperTimestepFlag=1; //binary candidate
             P[target].comp_Mass=comp_Mass; //mass of binary companion
             for(ksuper=0;ksuper<3;ksuper++) {
                 P[target].comp_dx[ksuper]=comp_dx[ksuper]; //position of binary companion
                 P[target].comp_dv[ksuper]=comp_dv[ksuper]; //velocity of binary companion
             }
+        }else{
+            P[target].SuperTimestepFlag=0; //not a binary candidate
         }
 #endif
 #endif
@@ -2814,11 +2817,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         if (COM_calc_flag==0){
             GravDataResult[target].min_bh_t_orbital=min_bh_t_orbital; //orbital time for binary
             if (min_bh_t_orbital<MAX_REAL_NUMBER){
+                GravDataResult[target].SuperTimestepFlag=1; //binary candidate
                 GravDataResult[target].comp_Mass=comp_Mass; //mass of binary companion
                 for(ksuper=0;ksuper<3;ksuper++) {
                    GravDataResult[target].comp_dx[ksuper]=comp_dx[ksuper]; //position of binary companion
                     GravDataResult[target].comp_dv[ksuper]=comp_dv[ksuper]; //velocity of binary companion
                 }
+            }else{
+                GravDataResult[target].SuperTimestepFlag=0; //not a binary candidate
             }
         }
 #endif

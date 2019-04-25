@@ -330,21 +330,22 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-//We need to decide whether to use super timestepping for binaries
-double dt_bin,semimajor_axis_cube,dt_ext;
-//internal gravitational timescale
-semimajor_axis_cube = P[p].min_bh_t_orbital/(2.0*M_PI)*sqrt(All.G*(P[p].Mass+P[p].comp_Mass));semimajor_axis_cube *= semimajor_axis_cube;
-dt_bin=sqrt(semimajor_axis_cube/(All.G*(P[p].Mass+P[p].comp_Mass))); //sqrt(a^3/GM) for binary
-//external gravitational timescale
-for(k=0; k<3; k++) {dt_ext += P[p].COM_tidal_tensorps[k][k]*P[p].COM_tidal_tensorps[k][k];}
-dt_ext=1.0/sqrt(dt_ext);
-if (SUPERTIMESTEPPING_ERRCONST*dt_ext>dt_bin){
-    P[p].SuperTimestepFlag=1;
+    if (P[p].SuperTimestepFlag==1){ //already a candidate
+    //We need to decide whether to use super timestepping for binaries
+    double dt_bin,semimajor_axis_cube,dt_ext;
+    //internal gravitational timescale
+    semimajor_axis_cube = P[p].min_bh_t_orbital/(2.0*M_PI)*sqrt(All.G*(P[p].Mass+P[p].comp_Mass));semimajor_axis_cube *= semimajor_axis_cube;
+    dt_bin=sqrt(semimajor_axis_cube/(All.G*(P[p].Mass+P[p].comp_Mass))); //sqrt(a^3/GM) for binary
+    //external gravitational timescale
+    for(k=0; k<3; k++) {dt_ext += P[p].COM_tidal_tensorps[k][k]*P[p].COM_tidal_tensorps[k][k];}
+    dt_ext=1.0/sqrt(dt_ext);
+    if (SUPERTIMESTEPPING_ERRCONST*dt_ext>dt_bin){
+        P[p].SuperTimestepFlag=2;
+    }
+    else{
+        P[p].SuperTimestepFlag=0;
+    }
 }
-else{
-    P[p].SuperTimestepFlag=0;
-}
-
 #endif
     
     if(flag == 0)
@@ -357,7 +358,7 @@ else{
         az = All.cf_a2inv * P[p].GravAccel[2];
 #endif        
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING 
-        if (P[p].SuperTimestepFlag==1){
+        if (P[p].SuperTimestepFlag==2){
             //use center of mass acceleration for the binary
             ax = All.cf_a2inv * P[p].COM_GravAccel[0];
             ay = All.cf_a2inv * P[p].COM_GravAccel[1];
@@ -462,7 +463,7 @@ else{
 #ifdef TIDAL_TIMESTEP_CRITERION // tidal criterion obtains the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion
     double dt_tidal = 0.; 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-    if (P[p].SuperTimestepFlag==1){
+    if (P[p].SuperTimestepFlag==2){
         for(k=0; k<3; k++) {dt_tidal += P[p].COM_tidal_tensorps[k][k]*P[p].COM_tidal_tensorps[k][k];}
     }else
 #endif
@@ -473,7 +474,7 @@ else{
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step and the timestep anticipates close encounters, which gives superior conservation
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-    if(P[p].Type == 5 && P[p].SuperTimestepFlag==0)
+    if(P[p].Type == 5 && P[p].SuperTimestepFlag!=2)
 #else
     if(P[p].Type == 5)
 #endif
