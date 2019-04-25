@@ -331,9 +331,9 @@ integertime get_timestep(int p,		/*!< particle index */
 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
 //We need to decide whether to use super timestepping for binaries
-double dt_bin,semimajor_axis_cube,dt_ext
+double dt_bin,semimajor_axis_cube,dt_ext;
 //internal gravitational timescale
-semimajor_axis_cube = P[p].min_bh_t_orbital/(2.0*M_PI)*sqrt(All.G*(P[p].Mass+P[p].comp_Mass)); semimajor_axis_cube *= semimajor_axis_cube;
+semimajor_axis_cube = P[p].min_bh_t_orbital/(2.0*M_PI)*sqrt(All.G*(P[p].Mass+P[p].comp_Mass));semimajor_axis_cube *= semimajor_axis_cube;
 dt_bin=sqrt(semimajor_axis_cube/(All.G*(P[p].Mass+P[p].comp_Mass))); //sqrt(a^3/GM) for binary
 //external gravitational timescale
 for(k=0; k<3; k++) {dt_ext += P[p].COM_tidal_tensorps[k][k]*P[p].COM_tidal_tensorps[k][k];}
