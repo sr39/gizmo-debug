@@ -407,6 +407,7 @@ void gravity_tree(void)
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
                     GravDataIn[j].min_bh_t_orbital = P[place].min_bh_t_orbital; //orbital time for binary
                     GravDataIn[j].comp_Mass = P[place].comp_Mass; //mass of binary companion
+                    GravDataIn[j].SuperTimestepFlag = P[place].SuperTimestepFlag; // 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
                     for(k = 0; k < 3; k++) {
                         GravDataIn[j].comp_dx[k] = P[place].comp_dx[k];
                         GravDataIn[j].comp_dv[k] = P[place].comp_dv[k];
@@ -562,6 +563,7 @@ void gravity_tree(void)
                     if(GravDataOut[j].min_bh_t_orbital < P[place].min_bh_t_orbital) {
                         P[place].min_bh_t_orbital = GravDataOut[j].min_bh_t_orbital;
                         P[place].comp_Mass = GravDataOut[j].comp_Mass;
+                        P[place].SuperTimestepFlag = GravDataOut[j].SuperTimestepFlag;
                         for(k = 0; k < 3; k++) {
                             P[place].comp_dx[k] = GravDataOut[j].comp_dx[k];
                             P[place].comp_dv[k] = GravDataOut[j].comp_dv[k];
@@ -1117,7 +1119,7 @@ void *gravity_primary_loop(void *p)
 #endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
         //Re-evaluate for binary candidates
-        if( (P[i].Type == 5) && (P[i].min_bh_t_orbital < MAX_REAL_NUMBER) && (P[i].min_bh_t_orbital > 0)){ //binary candidate
+        if( (P[i].Type == 5) && (P[i].SuperTimestepFlag==1)){ //binary candidate
             ret = force_treeevaluate(i, 0, exportflag, exportnodecount, exportindex);
             if(ret < 0) {break;} /* export buffer has filled up */
             Costtotal += ret;
@@ -1188,7 +1190,7 @@ void *gravity_secondary_loop(void *p)
 #endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
         //Re-evaluate for binary candidates
-        if( (P[j].Type == 5) && (P[j].min_bh_t_orbital < MAX_REAL_NUMBER) && (P[j].min_bh_t_orbital > 0)){ //binary candidate
+        if( (P[j].Type == 5) && (P[j].SuperTimestepFlag==1)){ //binary candidate
             ret = force_treeevaluate(j, 1, &nodesinlist, &dummy, &dummy);
             N_nodesinlist += nodesinlist; Costtotal += ret;
         }

@@ -2185,7 +2185,7 @@ extern ALIGN(32) struct particle_data
     MyFloat min_bh_periastron;
     MyFloat min_bh_approach_time;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-    int SuperTimestepFlag; // 1 if allowed to super-timestep, 0 otherwise
+    int SuperTimestepFlag; // 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
     MyFloat min_bh_t_orbital; //orbital time for binary
     MyDouble comp_dx[3]; //position offset of binary companion - this will be evolved in the Kepler solution while we use the Pos attribute to track the binary COM
     MyDouble comp_dv[3]; //velocity offset of binary companion - this will be evolved in the Kepler solution while we use the Vel attribute to track the binary COM velocity
@@ -2675,6 +2675,7 @@ extern struct gravdata_in
     MyDouble comp_dx[3]; //position of binary companion
     MyDouble comp_dv[3]; //velocity of binary companion
     MyDouble comp_Mass; //mass of binary companion
+    int SuperTimestepFlag; // 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
 #endif
     MyFloat OldAcc;
     int NodeList[NODELISTLENGTH];
@@ -2717,6 +2718,7 @@ extern struct gravdata_out
     MyLongDouble COM_tidal_tensorps[3][3]; //tidal tensor evaluated at the center of mass without contribution from the companion
     MyLongDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
     int COM_calc_flag; //flag that tells whether this was only a rerun to get the acceleration ad the tidal tenor at the center of mass of a binary
+    int SuperTimestepFlag; // 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
 #endif
 #endif  
 #endif
