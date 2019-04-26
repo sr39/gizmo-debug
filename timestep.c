@@ -340,7 +340,7 @@ integertime get_timestep(int p,		/*!< particle index */
     for(k=0; k<3; k++) {dt_ext += P[p].COM_tidal_tensorps[k][k]*P[p].COM_tidal_tensorps[k][k];}
     dt_ext=1.0/sqrt(dt_ext);
     if (SUPERTIMESTEPPING_ERRCONST*dt_ext>dt_bin){
-        P[p].SuperTimestepFlag=2;
+//        P[p].SuperTimestepFlag=2;
     }
     else{
         P[p].SuperTimestepFlag=0;
