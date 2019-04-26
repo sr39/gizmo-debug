@@ -231,7 +231,8 @@ double Get_CosmicRayStreamingVelocity(int i)
 
 void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 {
-    double CRPressureGradScaleLength = Get_CosmicRayGradientLength(i), CR_kappa_streaming = 0; SphP[i].CosmicRayDiffusionCoeff=0; int k;
+    double CRPressureGradScaleLength = Get_CosmicRayGradientLength(i), CR_kappa_streaming = 0; SphP[i].CosmicRayDiffusionCoeff=0, Z_charge_CR, E_CRs_GeV, E_CRs_GeV_over_Z; int k;
+    double Z_charge_CR = 1, E_CRs_GeV = 1, E_CRs_GeV_over_Z = E_CRs_GeV/Z_charge_CR; // charge and energy and resonant Alfven wavenumber (in gyro units) of the CR population we're evolving
 #ifndef COSMIC_RAYS_DISABLE_STREAMING /* self-consistently calculate the diffusion coefficients for cosmic ray fluids; first the streaming part of this (kappa~v_stream*L_CR_grad) following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
     double v_streaming = Get_CosmicRayStreamingVelocity(i);
     CR_kappa_streaming = GAMMA_COSMICRAY * v_streaming * CRPressureGradScaleLength; /* the diffusivity is now just the product of these two coefficients (all physical units) */
@@ -287,7 +288,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 #endif
     
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 1) || (COSMIC_RAYS_DIFFUSION_MODEL == 2) || (COSMIC_RAYS_DIFFUSION_MODEL == 6) || (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* extrinsic turbulence OR streaming/diffusion at self-confinement equilibrium */
-    double Z_charge_CR=1, E_CRs_Gev=1, EPSILON_SMALL=1.e-50, cs_thermal=sqrt(GAMMA*GAMMA_MINUS1*u0), B[3]={0}, Bmag=0, cos_Bgrad=0, dPmag=0, Bmag_Gauss=0, r_turb_driving=0; // internal energy,  thermal sound speed, B-field properties
+    double EPSILON_SMALL=1.e-50, cs_thermal=sqrt(GAMMA*GAMMA_MINUS1*u0), B[3]={0}, Bmag=0, cos_Bgrad=0, dPmag=0, Bmag_Gauss=0, r_turb_driving=0; // internal energy,  thermal sound speed, B-field properties
     for(k=0;k<3;k++)
     {
         B[k]=SphP[i].BPred[k]*SphP[i].Density/P[i].Mass*All.cf_a2inv; Bmag+=B[k]*B[k]; // B magnitude in code units (physical)
@@ -301,7 +302,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 #ifdef COSMIC_RAYS_ION_ALFVEN_SPEED
     vA_code /= sqrt(f_ion); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
 #endif
-    double clight_code=C/All.UnitVelocity_in_cm_per_s, Omega_gyro=8987.34*Bmag_Gauss*(Z_charge_CR/E_CRs_Gev)*(All.UnitTime_in_s/All.HubbleParam), r_L=clight_code/Omega_gyro, kappa_0=r_L*clight_code, k_L=2.*M_PI/r_L; // gyro frequency of the CR population we're evolving, CR gyro radius, reference diffusivity
+    double clight_code=C/All.UnitVelocity_in_cm_per_s, Omega_gyro=8987.34*(Bmag_Gauss/E_CRs_GeV_over_Z)*(All.UnitTime_in_s/All.HubbleParam), r_L=clight_code/Omega_gyro, kappa_0=r_L*clight_code, k_L=2.*M_PI/r_L; // gyro frequency of the CR population we're evolving, CR gyro radius, reference diffusivity
     double E_B=0.5*Bmag*Bmag*(P[i].Mass/(SphP[i].Density*All.cf_a3inv)), E_CR=SphP[i].CosmicRayEnergyPred, x_EB_ECR=(E_B+EPSILON_SMALL)/(E_CR+EPSILON_SMALL); // B-field energy (energy density times volume, for ratios with energies above), CR-energy, ratio
     
     int i1,i2; double v2_t=0,dv2_t=0,b2_t=0,db2_t=0,x_LL,M_A,h0,fturb_multiplier=1; // factor which will represent which cascade model we are going to use
@@ -340,11 +341,12 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
     double l_alfven = h0/(EPSILON_SMALL + M_A*M_A*M_A), l_alfven_kpc = l_alfven*codelength_to_kpc; /* L_alfven defined as scale for Kolmogorov cascade to extrapolate to dv ~ v_Alfven; second term just a conversion to convenient units below */
     double f_cas_ET = 1; /* pure Kolmogorov or Goldreich-Shridhar or IK cascade */
     if(M_A < 1.) {f_cas_ET = pow(1./DMAX(M_A*M_A , x_LL), 1./3.);} /* Lazarian '16 modification for weak cascade in sub-Alfvenic turbulence */
-    SphP[i].CosmicRayDiffusionCoeff = (9.e28/unit_kappa_code) * pow(l_alfven_kpc*l_alfven_kpc/b_muG,1./3.) * f_cas_ET; /* kappa~9e28 * (l_alfven/kpc)^(2/3) * RGV^(1/3) * (B/muG)^(-1/3) * f_cas_ET,  follows Jokipii 1966, with our corrections for spectral shape */
+    SphP[i].CosmicRayDiffusionCoeff = (9.e28/unit_kappa_code) * pow(E_CRs_GeV_over_Z*l_alfven_kpc*l_alfven_kpc/b_muG,1./3.) * f_cas_ET; /* kappa~9e28 * (l_alfven/kpc)^(2/3) * RGV^(1/3) * (B/muG)^(-1/3) * f_cas_ET,  follows Jokipii 1966, with our corrections for spectral shape */
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 2) || (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* Snodin et al. 2016 -- different expression for extrinsic MHD-turb diffusivity, using the proper definition of L_Alfven for scaling to the correct limit */
-    SphP[i].CosmicRayDiffusionCoeff = (3.e29/unit_kappa_code) * (l_alfven_kpc + 0.1*pow(l_alfven_kpc*l_alfven_kpc/b_muG,1./3.) + 2.4e-7/b_muG);
+    SphP[i].CosmicRayDiffusionCoeff = (3.e29/unit_kappa_code) * (l_alfven_kpc + 0.1*pow(E_CRs_GeV_over_Z*l_alfven_kpc*l_alfven_kpc/b_muG,1./3.) + 2.4e-7*E_CRs_GeV_over_Z/b_muG);
 #endif
 #endif
+    
 
 #if (COSMIC_RAYS_DIFFUSION_MODEL == 7) /* 'combined' extrinsic turbulence + self-confinement model */
     double kappa_diff_extrinsicturb = SphP[i].CosmicRayDiffusionCoeff; // expression which should be calculated above for turbulent part //
@@ -386,7 +388,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 #if defined(COSMIC_RAYS_M1) && !defined(COSMIC_RAYS_ALFVEN)
     // this is the exact solution for the CR flux-update equation over a finite timestep dt: it needs to be solved this way [implicitly] as opposed to explicitly for dt because in the limit of dt_cr_dimless being large, the problem exactly approaches the diffusive solution
     double DtCosmicRayFlux[3]={0}, flux[3]={0}, CR_veff[3]={0}, CR_vmag=0, q_cr = 0, cr_speed = COSMIC_RAYS_M1;// * (C/All.UnitVelocity_in_cm_per_s);
-    cr_speed = DMAX( All.cf_afac3*SphP[i].MaxSignalVel , DMIN(COSMIC_RAYS_M1 , fabs(SphP[i].CosmicRayDiffusionCoeff)/(Get_Particle_Size(i)*All.cf_atime)));// * (C/All.UnitVelocity_in_cm_per_s);
+    cr_speed = DMAX( All.cf_afac3*SphP[i].MaxSignalVel , DMIN(COSMIC_RAYS_M1 , 10.*fabs(SphP[i].CosmicRayDiffusionCoeff)/(Get_Particle_Size(i)*All.cf_atime)));// * (C/All.UnitVelocity_in_cm_per_s);
     for(k=0;k<3;k++) {DtCosmicRayFlux[k] = -fabs(SphP[i].CosmicRayDiffusionCoeff) * (P[i].Mass/SphP[i].Density) * (SphP[i].Gradients.CosmicRayPressure[k]/GAMMA_COSMICRAY_MINUS1);}
 #ifdef MAGNETIC // do projection onto field lines
     double B0[3]={0}, Bmag2=0, DtCRDotBhat=0;
