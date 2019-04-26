@@ -232,7 +232,7 @@ double Get_CosmicRayStreamingVelocity(int i)
 void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 {
     double CRPressureGradScaleLength = Get_CosmicRayGradientLength(i), CR_kappa_streaming = 0, Z_charge_CR, E_CRs_GeV, E_CRs_GeV_over_Z; SphP[i].CosmicRayDiffusionCoeff=0; int k;
-    double Z_charge_CR = 1, E_CRs_GeV = 1, E_CRs_GeV_over_Z = E_CRs_GeV/Z_charge_CR; // charge and energy and resonant Alfven wavenumber (in gyro units) of the CR population we're evolving
+    Z_charge_CR = 1, E_CRs_GeV = 1, E_CRs_GeV_over_Z = E_CRs_GeV/Z_charge_CR; // charge and energy and resonant Alfven wavenumber (in gyro units) of the CR population we're evolving
 #ifndef COSMIC_RAYS_DISABLE_STREAMING /* self-consistently calculate the diffusion coefficients for cosmic ray fluids; first the streaming part of this (kappa~v_stream*L_CR_grad) following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
     double v_streaming = Get_CosmicRayStreamingVelocity(i);
     CR_kappa_streaming = GAMMA_COSMICRAY * v_streaming * CRPressureGradScaleLength; /* the diffusivity is now just the product of these two coefficients (all physical units) */
