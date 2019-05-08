@@ -1334,6 +1334,7 @@ extern size_t HighMark_turbpower;
 #endif
 
 extern int TreeReconstructFlag;
+extern double MaxUnSpanMassBH;
 extern int GlobFlag;
 
 extern char DumpFlag;
@@ -2598,7 +2599,15 @@ extern struct sph_particle_data
 #endif
 #endif
     
-    
+//From Xiangcheng
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+    MyFloat CoolingRate;
+    MyFloat HeatingRate;
+    MyFloat NetHeatingRateQ;
+    MyFloat HydroHeatingRate;
+    MyFloat MetalCoolingRate;
+//    MyFloat MyHeatT;
+#endif // if defined(OUTPUT_COOLRATE) & defined(COOLING)    
     
     
 #ifdef EOS_GENERAL
@@ -2923,6 +2932,11 @@ enum iofields
   IO_HeIII,
   IO_H2I,
   IO_H2II,
+  IO_CRATE,
+  IO_HRATE,
+  IO_NHRATE,
+  IO_HHRATE,
+  IO_MCRATE, 
   IO_HM,
   IO_HD,
   IO_DI,

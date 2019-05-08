@@ -152,6 +152,7 @@ int Flag_FullStep;		/*!< Flag used to signal that the current step involves all 
 
 
 int TreeReconstructFlag;
+double  MaxUnSpanMassBH;
 int GlobFlag;
 
 

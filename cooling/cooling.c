@@ -951,6 +951,12 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             LambdaMetal *= n_elec;
             /* (modified now to correct out tabulated ne so that calculated ne can be inserted; ni not used b/c it should vary species-to-species */
             Lambda += LambdaMetal;
+             // From Xiangcheng
+#ifdef OUTPUT_COOLRATE_DETAIL
+            if(target>=0){
+                SphP[target].MetalCoolingRate = LambdaMetal;
+            }
+#endif //OUTPUTCOOLRATE
         }
 #endif
         
@@ -1166,6 +1172,16 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     
     
     double Q = Heat - Lambda;
+
+   //From Xiangcheng
+#ifdef OUTPUT_COOLRATE_DETAIL
+    if (target>=0){
+        SphP[target].CoolingRate = Lambda;
+        SphP[target].HeatingRate = Heat;
+    }
+#endif // OUTPUTCOOLRATE    
+    
+
 #ifdef COOL_LOW_TEMPERATURES
     /* if we are in the optically thick limit, we need to modify the cooling/heating rates according to the appropriate limits; 
         this flag does so by using a simple approximation. we consider the element as if it were a slab, with a column density 
@@ -1214,11 +1230,24 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         if(Q > 0) {if(Q > Lambda_Thick_BlackBody) {Q=Lambda_Thick_BlackBody;}} else {if(Q < -Lambda_Thick_BlackBody) {Q=-Lambda_Thick_BlackBody;}}
     }
 #endif
+    //From Xiangcheng
+#ifdef OUTPUT_COOLRATE_DETAIL
+    if (target>=0){
+        SphP[target].NetHeatingRateQ = Q;
+    }
+#endif // OUTPUTCOOLRATE
     
 #ifndef COOLING_OPERATOR_SPLIT
     /* add the hydro energy change directly: this represents an additional heating/cooling term, to be accounted for 
         in the semi-implicit solution determined here. this is more accurate when tcool << tdynamical */
     if(target >= 0) Q += SphP[target].DtInternalEnergy / nHcgs;
+ //From Xiangcheng
+#ifdef OUTPUT_COOLRATE_DETAIL
+    if (target>=0){
+        SphP[target].HydroHeatingRate = SphP[target].DtInternalEnergy / nHcgs;
+   }
+#endif // OUTPUTCOOLRATE
+
 #endif
     
   return Q;

@@ -766,6 +766,7 @@ void init(void)
     Flag_FullStep = 1;		/* to ensure that Peano-Hilber order is done */
     
     TreeReconstructFlag = 1;
+    MaxUnSpanMassBH     = 0;
     
     
 #ifdef SHIFT_BY_HALF_BOX
@@ -838,6 +839,14 @@ void init(void)
     /* HELLO! This here is where you should insert custom code for hard-wiring the ICs of various test problems */
 
 
+//From  Xiangcheng
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+    SphP[i].CoolingRate = 0.0;
+    SphP[i].HeatingRate = 0.0;
+    SphP[i].NetHeatingRateQ = 0.0;
+    SphP[i].HydroHeatingRate = 0.0;
+    SphP[i].MetalCoolingRate = 0.0;
+#endif // if defined(OUTPUT_COOLRATE) && defined(COOLING) 
     
     
     density();
