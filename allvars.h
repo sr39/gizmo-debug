@@ -2606,7 +2606,6 @@ extern struct sph_particle_data
     MyFloat NetHeatingRateQ;
     MyFloat HydroHeatingRate;
     MyFloat MetalCoolingRate;
-//    MyFloat MyHeatT;
 #endif // if defined(OUTPUT_COOLRATE) & defined(COOLING)    
     
     
@@ -2932,6 +2931,7 @@ enum iofields
   IO_HeIII,
   IO_H2I,
   IO_H2II,
+//From Xiangcheng
   IO_CRATE,
   IO_HRATE,
   IO_NHRATE,

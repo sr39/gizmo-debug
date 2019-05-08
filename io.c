@@ -1786,6 +1786,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_HeIII:
         case IO_H2I:
         case IO_H2II:
+//From Xiangcheng
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
@@ -2146,6 +2147,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_HeIII:
         case IO_H2I:
         case IO_H2II:
+//From Xiangcheng
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
@@ -2461,6 +2463,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_HeIII:
         case IO_H2I:
         case IO_H2II:
+//From Xiangcheng
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
@@ -3460,6 +3463,7 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_H2II:
             strncpy(label, "H2II", 4);
             break;
+//From Xiangcheng
         case IO_CRATE:
             strncpy(label, "CRATE", 4);
             break;
