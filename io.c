@@ -433,6 +433,57 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
         case IO_H2II:
             break;
+//From Xiangcheng 
+        case IO_CRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = SphP[pindex].CoolingRate;
+                    n++;
+                }
+#endif
+            break;
+        case IO_HRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = SphP[pindex].HeatingRate;
+                    n++;
+                }
+#endif
+            break;
+        case IO_NHRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = SphP[pindex].NetHeatingRateQ;
+                    n++;
+                }
+#endif
+            break;
+        case IO_HHRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = SphP[pindex].HydroHeatingRate;
+                    n++;
+                }
+#endif
+            break;
+        case IO_MCRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = SphP[pindex].MetalCoolingRate;
+                    n++;
+                }
+#endif
+            break;       
         case IO_HM:
             break;
         case IO_HD:
@@ -1735,6 +1786,11 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_HeIII:
         case IO_H2I:
         case IO_H2II:
+        case IO_CRATE:
+        case IO_HRATE:
+        case IO_NHRATE:
+        case IO_HHRATE:
+        case IO_MCRATE:
         case IO_HM:
         case IO_HD:
         case IO_DI:
@@ -2090,6 +2146,11 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_HeIII:
         case IO_H2I:
         case IO_H2II:
+        case IO_CRATE:
+        case IO_HRATE:
+        case IO_NHRATE:
+        case IO_HHRATE:
+        case IO_MCRATE:
         case IO_HM:
         case IO_HD:
         case IO_DI:
@@ -2400,6 +2461,11 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_HeIII:
         case IO_H2I:
         case IO_H2II:
+        case IO_CRATE:
+        case IO_HRATE:
+        case IO_NHRATE:
+        case IO_HHRATE:
+        case IO_MCRATE:
         case IO_HM:
         case IO_HD:
         case IO_DI:
@@ -2847,7 +2913,19 @@ int blockpresent(enum iofields blocknr)
         case IO_HM:
             return 0;
             break;
-            
+//From Xiangcheng
+        case IO_CRATE:
+        case IO_HRATE:
+        case IO_NHRATE:
+        case IO_HHRATE:
+        case IO_MCRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            return 1;
+#else
+            return 0;
+#endif //defined(OUTPUT_COOLRATE) && defined(COOLING)
+            break;        
+        
         case IO_HD:
         case IO_DI:
         case IO_DII:
@@ -3382,6 +3460,21 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_H2II:
             strncpy(label, "H2II", 4);
             break;
+        case IO_CRATE:
+            strncpy(label, "CRATE", 4);
+            break;
+        case IO_HRATE:
+            strncpy(label, "HRATE", 4);
+            break;   
+        case IO_NHRATE:
+            strncpy(label, "NHRATE", 4);
+            break;
+        case IO_HHRATE:
+            strncpy(label, "HHRATE", 4);
+            break;
+        case IO_MCRATE:
+            strncpy(label, "MCRATE", 4);
+            break;  
         case IO_HM:
             strncpy(label, "HM  ", 4);
             break;
@@ -3800,6 +3893,42 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_H2II:
             strcpy(buf, "H2II");
             break;
+//From Xiangcheng
+        case IO_CRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            strcpy(buf, "CoolingRate");
+#else
+            strcpy(buf, "CRATE");
+#endif
+            break;
+        case IO_HRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            strcpy(buf, "HeatingRate");
+#else
+            strcpy(buf, "HRATE");
+#endif
+            break;
+        case IO_NHRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            strcpy(buf, "NetHeatingRateQ");
+#else
+            strcpy(buf, "NHRATE");
+#endif
+            break;
+        case IO_HHRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            strcpy(buf, "HydroHeatingRate");
+#else
+            strcpy(buf, "HHRATE");
+#endif
+            break;
+        case IO_MCRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            strcpy(buf, "MetalCoolingRate");
+#else
+            strcpy(buf, "MCRATE");
+#endif
+            break;        
         case IO_HM:
             strcpy(buf, "HM");
             break;

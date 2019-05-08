@@ -641,6 +641,11 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_DI:
         case IO_DII:
         case IO_HD:
+        case IO_CRATE:
+        case IO_HRATE:
+        case IO_NHRATE:
+        case IO_HHRATE:
+        case IO_MCRATE:
         case IO_HM:
         case IO_H2II:
         case IO_H2I:

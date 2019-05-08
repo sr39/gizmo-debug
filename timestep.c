@@ -955,7 +955,14 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
     } // if(P[p].Type == 5)
 #endif // BLACK_HOLES
-    
+#ifdef BH_SPAWN_JET 
+    if(P[p].Type == 5 && dt>1.e-6) dt=1.e-6;  
+    if(P[p].Type == 0 && P[p].ID == All.AGNWindID && dt>5.e-7)
+      {double dist_rad2=pow((P[p].Pos[0]-0.5*All.BoxSize),2.0)+pow((P[p].Pos[1]-0.5*All.BoxSize),2.0)+pow((P[p].Pos[2]-0.5*All.BoxSize),2.0);
+       double dist_rad =pow(dist_rad2,0.5);
+       if (dist_rad<10.){dt=5.e-7;}
+      }  
+#endif    
 
     /* convert the physical timestep to dloga if needed. Note: If comoving integration has not been selected, All.cf_hubble_a=1. */
     dt *= All.cf_hubble_a;

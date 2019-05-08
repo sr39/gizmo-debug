@@ -818,7 +818,7 @@ void gravity_tree(void)
 #ifndef IO_REDUCED_MODE
     if(ThisTask == 0)
     {
-        fprintf(FdTimings, "Step= %d  t= %g  dt= %g \n", All.NumCurrentTiStep, All.Time, All.TimeStep);
+        fprintf(FdTimings, "Step= %lld  t= %g  dt= %g \n",(long long) All.NumCurrentTiStep, All.Time, All.TimeStep);
         fprintf(FdTimings, "Nf= %d%09d  total-Nf= %d%09d  ex-frac= %g (%g) iter= %d\n",
                 (int) (GlobNumForceUpdate / 1000000000), (int) (GlobNumForceUpdate % 1000000000),
                 (int) (All.TotNumOfForces / 1000000000), (int) (All.TotNumOfForces % 1000000000),

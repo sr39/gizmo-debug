@@ -655,6 +655,7 @@ void spawn_bh_wind_feedback(void)
         }
     }
     MPI_Allreduce(&n_particles_split, &MPI_n_particles_split, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    if(MPI_n_particles_split>0){TreeReconstructFlag = 1;}
     if(ThisTask == 0) {printf("Particle BH spawn check: %d particles spawned \n", MPI_n_particles_split);}
 
     /* rearrange_particle_sequence -must- be called immediately after this routine! */
@@ -700,6 +701,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
 #else
     d_r = DMIN(0.0001, d_r);
 #endif
+#ifdef BH_SPAWN_JET
+    d_r = DMIN(d_r , 0.01);
+#endif
     int bin; for(bin = 0; bin < TIMEBINS; bin++) {if (TimeBinCount[bin] > 0) break;}
     /* create the  new particles to be added to the end of the particle list :
         i is the BH particle tag, j is the new "spawed" particle's location, dummy_sph_i_to_clone is a dummy SPH particle's tag to be used to init the wind particle */
@@ -718,7 +722,16 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
         }
 
         /* this is a giant pile of variables to zero out. dont need everything here because we cloned a valid particle, but handy anyways */
-        P[i].Particle_DivVel = 0; SphP[j].DtInternalEnergy = 0; for(k=0;k<3;k++) {SphP[j].HydroAccel[k] = 0;}
+        P[j].Particle_DivVel = 0; SphP[j].DtInternalEnergy = 0; 
+        P[j].Ti_begstep =All.Ti_Current;
+        P[j].Ti_current =All.Ti_Current; 
+        for(k=0;k<3;k++) 
+         {SphP[j].HydroAccel[k] = 0;
+          P[j].GravAccel[k]  = 0;
+#ifdef PMGRID
+          P[j].GravPM[k] = 0;          
+#endif
+         }
 #ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
         SphP[j].MaxKineticEnergyNgb = 0;
 #endif
@@ -786,22 +799,53 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
         /* now set the real hydro variables. */
         /* set the particle ID */ // unsigned int bits; int SPLIT_GENERATIONS = 4; for(bits = 0; SPLIT_GENERATIONS > (1 << bits); bits++); /* the particle needs an ID: we give it a bit-flip from the original particle to signify the split */
         P[j].ID = All.AGNWindID; /* update:  We are using a fixed wind ID, to allow for trivial wind particle identification */
-
+        P[j].ID_child_number   = P[i].ID_child_number;
+        P[i].ID_child_number+=1; 
+        P[j].ID_generation   =P[i].ID;
         P[j].Mass = mass_of_new_particle; /* assign masses to both particles (so they sum correctly) */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
         SphP[j].MassTrue = P[j].Mass;
 #endif
+#ifndef BH_FIX_MASS
         P[i].Mass -= P[j].Mass; /* make sure the operation is mass conserving! */
-
+#endif
         /* positions */
         double phi = 2.0*M_PI*get_random_number(j+1+ThisTask); // random from 0 to 2pi //
+#ifndef BH_SPAWN_JET 
         double cos_theta = 2.0*(get_random_number(j+3+2*ThisTask)-0.5), sin_theta=sqrt(1-cos_theta*cos_theta); // random between 1 to -1 //
         double dx[3]; dx[0]=sin_theta*cos(phi); dx[1]=sin_theta*sin(phi); dx[2]=cos_theta;
         for(k=0;k<3;k++) {P[j].Pos[k]=P[i].Pos[k] + dx[k]*d_r;}
 
         /* velocities (determined by wind velocity) */
         for(k=0;k<3;k++) {P[j].Vel[k]=P[i].Vel[k] + dx[k]*All.BAL_v_outflow*All.cf_atime; SphP[j].VelPred[k]=P[j].Vel[k];}
-
+#else
+       double cos_theta_v;
+       double cos_theta_p;
+       double sin_theta_v;
+       double sin_theta_p;
+       double direction =1;
+       double dtheta;
+       dtheta=(get_random_number(j+3+2*ThisTask));
+       cos_theta_v =1-0.00015*dtheta;
+       cos_theta_p =1-dtheta;
+       direction=get_random_number(j+7+2*ThisTask)-0.5;
+       direction= direction/fabs(direction);
+       cos_theta_v*= direction;
+       cos_theta_p*= direction;
+       sin_theta_v=sqrt(1-cos_theta_v*cos_theta_v);
+       sin_theta_p=sqrt(1-cos_theta_p*cos_theta_p);
+       
+       double vel_rad=get_random_number(j+99+3*ThisTask);       
+       double jet_vel=All.BAL_v_outflow*(1.0+0.2*(vel_rad-0.5));
+ 
+       double dx[3];  dx[0] =sin_theta_p*cos(phi); dx[1] =sin_theta_p*sin(phi); dx[2] =cos_theta_p;
+       double dvx[3]; dvx[0]=sin_theta_v*cos(phi); dvx[1]=sin_theta_v*sin(phi); dvx[2]=cos_theta_v;
+       for(k=0;k<3;k++) {P[j].Pos[k]=P[i].Pos[k] + dx[k]*d_r;}
+       for(k=0;k<3;k++) {P[j].Vel[k]=P[i].Vel[k] + dvx[k]*jet_vel*All.cf_atime; SphP[j].VelPred[k]=P[j].Vel[k];}
+       P[j].Hsml = 0.05;
+       SphP[j].Density=3.0e-2;
+       P[j].NumNgb=32;
+#endif
         /* condition number, smoothing length, and density */
         SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
         //SphP[j].Density *= 1e-10; SphP[j].Pressure *= 1e-10; PPP[j].Hsml = All.SofteningTable[0];  /* set dummy values: will be re-generated anyways [actually better to use nearest-neighbor values to start] */
