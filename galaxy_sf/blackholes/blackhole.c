@@ -830,9 +830,8 @@ void blackhole_final_operations(void)
         double dm = BPP(n).BH_Mdot * dt;
         double radiation_loss = All.BlackHoleRadiativeEfficiency * dm;
         if(radiation_loss > DMIN(P[n].Mass,BPP(n).BH_Mass)) radiation_loss = DMIN(P[n].Mass,BPP(n).BH_Mass);
-#ifndef BH_FIX_MASS
-        P[n].Mass -= radiation_loss;
-        BPP(n).BH_Mass -= radiation_loss;
+#ifndef BH_DEBUG_FIX_MASS
+        P[n].Mass -= radiation_loss; BPP(n).BH_Mass -= radiation_loss;
 #endif         
         /* subtract the BAL wind mass from P[n].Mass && (BPP(n).BH_Mass || BPP(n).BH_Mass_AlphaDisk) */
         // DAA: note that the mass loss in winds for BH_WIND_KICK has already been taken into account
@@ -846,9 +845,8 @@ void blackhole_final_operations(void)
         BPP(n).BH_Mass_AlphaDisk -= dm_wind;
 #else
         if(dm_wind > BPP(n).BH_Mass) {dm_wind = BPP(n).BH_Mass;}
-#ifndef BH_FIX_MASS
-        P[n].Mass -= dm_wind;
-        BPP(n).BH_Mass -= dm_wind;
+#ifndef BH_DEBUG_FIX_MASS
+        P[n].Mass -= dm_wind; BPP(n).BH_Mass -= dm_wind;
 #endif 
 #endif
 #endif // ifdef BH_WIND_CONTINUOUS
@@ -863,13 +861,12 @@ void blackhole_final_operations(void)
         BPP(n).BH_Mass_AlphaDisk -= dm_wind;
 #else
         if(dm_wind > BPP(n).BH_Mass) {dm_wind = BPP(n).BH_Mass;}
-#ifndef BH_FIX_MASS
+#ifndef BH_DEBUG_FIX_MASS
         BPP(n).BH_Mass -= dm_wind;
 #endif 
 #endif
         BPP(n).unspawned_wind_mass += dm_wind;
-        if (BPP(n).unspawned_wind_mass>MaxUnSpanMassBH)
-         {MaxUnSpanMassBH=BPP(n).unspawned_wind_mass;}
+        if(BPP(n).unspawned_wind_mass>MaxUnSpanMassBH) {MaxUnSpanMassBH=BPP(n).unspawned_wind_mass;}
 #endif
         
         /* dump the results to the 'blackhole_details' files */

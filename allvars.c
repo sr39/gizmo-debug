@@ -152,7 +152,6 @@ int Flag_FullStep;		/*!< Flag used to signal that the current step involves all 
 
 
 int TreeReconstructFlag;
-double  MaxUnSpanMassBH;
 int GlobFlag;
 
 
@@ -160,6 +159,9 @@ int NumPart;			/*!< number of particles on the LOCAL processor */
 int N_gas;			/*!< number of gas particles on the LOCAL processor  */
 #ifdef SEPARATE_STELLARDOMAINDECOMP
 int N_stars;
+#endif
+#ifdef BH_WIND_SPAWN
+double  MaxUnSpanMassBH;
 #endif
 
 long long Ntype[6];		/*!< total number of particles of each type */

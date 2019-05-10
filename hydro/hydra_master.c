@@ -410,8 +410,7 @@ static inline void particle2in_hydra(struct hydrodata_in *in, int i)
     if(SphP[i].FlagForConstrainedGradients == 0) {in->ConditionNumber *= -1;}
 #endif
 #ifdef BH_WIND_SPAWN
-    /* as above, use sign of condition number as a bitflag to indicate if this is, or is not, a wind particle */
-    if(P[i].ID == All.AGNWindID) {in->ConditionNumber *= -1;}
+    if(P[i].ID == All.AGNWindID) {in->ConditionNumber *= -1;} /* as above, use sign of condition number as a bitflag to indicate if this is, or is not, a wind particle */
 #endif
     in->DhsmlNgbFactor = PPP[i].DhsmlNgbFactor;
 #ifdef HYDRO_SPH

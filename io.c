@@ -433,7 +433,6 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
         case IO_H2II:
             break;
-//From Xiangcheng 
         case IO_CRATE:
 #if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
             for(n = 0; n < pc; pindex++)
@@ -1786,7 +1785,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_HeIII:
         case IO_H2I:
         case IO_H2II:
-//From Xiangcheng
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
@@ -2147,7 +2145,6 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_HeIII:
         case IO_H2I:
         case IO_H2II:
-//From Xiangcheng
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
@@ -2463,7 +2460,6 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_HeIII:
         case IO_H2I:
         case IO_H2II:
-//From Xiangcheng
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
@@ -2916,7 +2912,6 @@ int blockpresent(enum iofields blocknr)
         case IO_HM:
             return 0;
             break;
-//From Xiangcheng
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
@@ -2926,7 +2921,7 @@ int blockpresent(enum iofields blocknr)
             return 1;
 #else
             return 0;
-#endif //defined(OUTPUT_COOLRATE) && defined(COOLING)
+#endif
             break;        
         
         case IO_HD:
@@ -3463,7 +3458,6 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_H2II:
             strncpy(label, "H2II", 4);
             break;
-//From Xiangcheng
         case IO_CRATE:
             strncpy(label, "CRATE", 4);
             break;
@@ -3897,7 +3891,6 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_H2II:
             strcpy(buf, "H2II");
             break;
-//From Xiangcheng
         case IO_CRATE:
 #if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
             strcpy(buf, "CoolingRate");

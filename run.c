@@ -78,30 +78,22 @@ void run(void)
         
         set_non_standard_physics_for_current_time();	/* update auxiliary physics for current time */
 
-	#ifdef SINGLE_STAR_FORMATION 
-		MPI_Allreduce(&TreeReconstructFlag, &TreeReconstructFlag, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
-	#endif
-        #ifdef BH_WIND_SPAWN
-                MPI_Allreduce(&TreeReconstructFlag, &TreeReconstructFlag, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-        #endif 
-	
+#if defined(SINGLE_STAR_FORMATION) || defined(BH_WIND_SPAWN)
+        MPI_Allreduce(&TreeReconstructFlag, &TreeReconstructFlag, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
+#endif
         if(GlobNumForceUpdate > All.TreeDomainUpdateFrequency * All.TotNumPart)	/* check whether we have a big step */
         {
             domain_Decomposition(0, 0, 1);	/* do domain decomposition if step is big enough, and set new list of active particles  */
         }
 #ifdef SINGLE_STAR_FORMATION
-	else if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart || TreeReconstructFlag)  {domain_Decomposition(0, 0, 1);}
+	    else if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart || TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
 #endif	
 #ifdef BH_WIND_SPAWN
-        else if(TreeReconstructFlag)  
-               {
-                domain_Decomposition(0, 0, 1);
-                     }
+        else if(TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
 #endif
         else
         {
             force_update_tree();	/* update tree dynamically with kicks of last step so that it can be reused */
-            
             make_list_of_active_particles();	/* now we can set the new chain list of active particles */
         }
         
@@ -312,8 +304,8 @@ void calculate_non_standard_physics(void)
     }
 #endif // ifdef FOF
 #ifdef BH_WIND_SPAWN
-    MPI_Allreduce(&MaxUnSpanMassBH,     &MaxUnSpanMassBH, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD); 
-    if(MaxUnSpanMassBH>BH_WIND_SPAWN*All.BAL_wind_particle_mass)
+    MPI_Allreduce(&MaxUnSpanMassBH, &MaxUnSpanMassBH, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    if(MaxUnSpanMassBH > BH_WIND_SPAWN*All.BAL_wind_particle_mass)
     {
         spawn_bh_wind_feedback();
         rearrange_particle_sequence();

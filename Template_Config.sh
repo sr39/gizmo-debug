@@ -288,15 +288,13 @@
 # -- mechanical (wind from accretion disk/BH with specified mass/momentum/energy-loading relative to accretion rate)
 #BH_WIND_CONTINUOUS=0           # gas in kernel given continuous wind flux (energy/momentum/etc). =0 for isotropic, =1 for collimated. cite Hopkins et al., 2016, MNRAS, 458, 816
 #BH_WIND_KICK=1                 # gas in kernel given stochastic 'kicks' at fixed velocity. (>0=isotropic, <0=collimated, absolute value sets momentum-loading in L/c units). cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840
-#BH_WIND_SPAWN=3                  # spawn virtual 'wind' particles to carry BH winds out [in development by Paul Torrey]. use requires permissions from P. Torrey and PFH (cite Torrey et al. 2019 if used: -strongly- recommend contacting P. Torrey and PFH before use, as this is not fully-debugged)
-#BH_SPAWN_JET                   # spawn in jet
+#BH_WIND_SPAWN=3                # spawn virtual 'wind' particles to carry BH winds out [in development by Paul Torrey]. use requires permissions from P. Torrey and PFH (cite Torrey et al. 2019 if used: -strongly- recommend contacting P. Torrey and PFH before use, as this is not fully-debugged). value=min number spawned per spawn-step
 #--- radiative: [FIRE] these currently are built on the architecture of the FIRE stellar FB modules, and require some of those be active. their use therefore follows FIRE policies (see details above).
 #BH_COMPTON_HEATING             # enable Compton heating/cooling from BHs in cooling function (needs BH_PHOTONMOMENTUM). cite Hopkins et al., 2016, MNRAS, 458, 816
 #BH_HII_HEATING                 # photo-ionization feedback from BH (needs GALSF_FB_FIRE_RT_HIIHEATING). cite Hopkins et al., arXiv:1702.06148
 #BH_PHOTONMOMENTUM              # continuous long-range IR radiation pressure acceleration from BH (needs GALSF_FB_FIRE_RT_LONGRANGE). cite Hopkins et al., arXiv:1702.06148
 #--- cosmic ray: these currently build on the architecture of the BH_WIND modules, one of those must be enabled, along with the usual cosmic-ray physics set of modules for CR transport. the same restrictions (e.g. FIRE) apply to this as CR modules. developed by P. Hopkins
 #BH_COSMIC_RAYS                 # explicitly inject and transport CRs from BH. set injection energy efficiency. injected alongside mechanical energy (params file sets ratios of energy in different mechanisms)
-#BH_FIX_MASS                    # no blackhole mass loss
 ## ----------------------------------------------------------------------------------------------------
 # ----- output options
 ## ----------------------------------------------------------------------------------------------------
@@ -377,7 +375,7 @@
 #OUTPUT_VORTICITY               # outputs the vorticity vector
 #OUTPUT_TIMESTEP                # outputs timesteps for each particle
 #OUTPUT_COOLRATE                # outputs cooling rate, and conduction rate if enabled
-#OUTPUT_COOLRATE_DETAIL         # outputs cooling rate term by term
+#OUTPUT_COOLRATE_DETAIL         # outputs cooling rate term by term [saves all individually to snapshot]
 #OUTPUT_LINEOFSIGHT				# enables on-the-fly output of Ly-alpha absorption spectra
 #OUTPUT_LINEOFSIGHT_SPECTRUM    # computes power spectrum of these (requires additional code integration)
 #OUTPUT_LINEOFSIGHT_PARTICLES   # computes power spectrum of these (requires additional code integration)
@@ -431,6 +429,7 @@
 #PARTICLE_EXCISION              # enable dynamical excision (remove particles within some radius)
 #MERGESPLIT_HARDCODE_MAX_MASS=(1.0e-6)   # manually set maximum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
 #MERGESPLIT_HARDCODE_MIN_MASS=(1.0e-7)   # manually set minimum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
+#BH_DEBUG_FIX_MASS              # does not allow BH/sink [type=5] particles to change their mass during run, from accretion/merging/swallowing
 # --------------------
 # ----- MPI & Parallel-FFTW De-Bugging
 #USE_MPI_IN_PLACE               # MPI debugging: makes AllGatherV compatible with MPI_IN_PLACE definitions in some MPI libraries
@@ -526,6 +525,9 @@
 #NUCLEARNET_OUTPUT_TIMEEVOLUTION
 ####################################################################################################-
 
+####################################################################################################-
+#BH_DEBUG_SPAWN_JET_TEST        #- BH outflow/particle spawn in jet (currently testing/early-dev, doesn't work for general problems! units hardcoded!)
+####################################################################################################-
 
 
 ####################################################################################################-
