@@ -641,7 +641,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_DI:
         case IO_DII:
         case IO_HD:
-//From Xiangcheng
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
