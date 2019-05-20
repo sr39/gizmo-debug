@@ -78,21 +78,22 @@ void run(void)
         
         set_non_standard_physics_for_current_time();	/* update auxiliary physics for current time */
 
-	#ifdef SINGLE_STAR_FORMATION 
-		MPI_Allreduce(&TreeReconstructFlag, &TreeReconstructFlag, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
-	#endif
-	
+#if defined(SINGLE_STAR_FORMATION) || defined(BH_WIND_SPAWN)
+        MPI_Allreduce(&TreeReconstructFlag, &TreeReconstructFlag, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
+#endif
         if(GlobNumForceUpdate > All.TreeDomainUpdateFrequency * All.TotNumPart)	/* check whether we have a big step */
         {
             domain_Decomposition(0, 0, 1);	/* do domain decomposition if step is big enough, and set new list of active particles  */
         }
 #ifdef SINGLE_STAR_FORMATION
-	else if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart || TreeReconstructFlag)  {domain_Decomposition(0, 0, 1);}
+	    else if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart || TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
 #endif	
+#ifdef BH_WIND_SPAWN
+        else if(TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
+#endif
         else
         {
             force_update_tree();	/* update tree dynamically with kicks of last step so that it can be reused */
-            
             make_list_of_active_particles();	/* now we can set the new chain list of active particles */
         }
         
@@ -303,11 +304,13 @@ void calculate_non_standard_physics(void)
     }
 #endif // ifdef FOF
 #ifdef BH_WIND_SPAWN
-    if(GlobNumForceUpdate > All.TreeDomainUpdateFrequency * All.TotNumPart)
+    MPI_Allreduce(&MaxUnSpanMassBH, &MaxUnSpanMassBH, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    if(MaxUnSpanMassBH > BH_WIND_SPAWN*All.BAL_wind_particle_mass)
     {
         spawn_bh_wind_feedback();
         rearrange_particle_sequence();
         force_treebuild(NumPart, NULL);
+        MaxUnSpanMassBH=0.; 
     }
 #endif
 #endif // ifdef BLACK_HOLES or GALSF_SUBGRID_WINDS
@@ -704,29 +707,29 @@ void output_log_messages(void)
         {
             z = 1.0 / (All.Time) - 1;
 #ifndef IO_REDUCED_MODE
-            fprintf(FdInfo, "\nSync-Point %d, Time: %g, Redshift: %g, Nf = %d%09d, Systemstep: %g, Dloga: %g\n",
-                    All.NumCurrentTiStep, All.Time, z,
+            fprintf(FdInfo, "\nSync-Point %lld, Time: %g, Redshift: %g, Nf = %d%09d, Systemstep: %g, Dloga: %g\n",
+                    (long long) All.NumCurrentTiStep, All.Time, z,
                     (int) (GlobNumForceUpdate / 1000000000), (int) (GlobNumForceUpdate % 1000000000),
                     All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
             fflush(FdInfo);
-            fprintf(FdTimebin, "\nSync-Point %d, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n",
-                    All.NumCurrentTiStep, All.Time, z, All.TimeStep,
+            fprintf(FdTimebin, "\nSync-Point %lld, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n",
+                    (long long) All.NumCurrentTiStep, All.Time, z, All.TimeStep,
                     log(All.Time) - log(All.Time - All.TimeStep));
 #endif
-            printf("\nSync-Point %d, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n", All.NumCurrentTiStep,
+            printf("\nSync-Point %lld, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n", (long long) All.NumCurrentTiStep,
                    All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
         }
         else
         {
 #ifndef IO_REDUCED_MODE
-            fprintf(FdInfo, "\nSync-Point %d, Time: %g, Nf = %d%09d, Systemstep: %g\n", All.NumCurrentTiStep,
+            fprintf(FdInfo, "\nSync-Point %lld, Time: %g, Nf = %d%09d, Systemstep: %g\n", (long long) All.NumCurrentTiStep,
                     All.Time, (int) (GlobNumForceUpdate / 1000000000), (int) (GlobNumForceUpdate % 1000000000),
                     All.TimeStep);
             fflush(FdInfo);
-            fprintf(FdTimebin, "\nSync-Point %d, Time: %g, Systemstep: %g\n", All.NumCurrentTiStep, All.Time,
+            fprintf(FdTimebin, "\nSync-Point %lld, Time: %g, Systemstep: %g\n", (long long) All.NumCurrentTiStep, All.Time,
                     All.TimeStep);
 #endif
-            printf("\nSync-Point %d, Time: %g, Systemstep: %g\n", All.NumCurrentTiStep, All.Time, All.TimeStep);
+            printf("\nSync-Point %lld, Time: %g, Systemstep: %g\n", (long long) All.NumCurrentTiStep, All.Time, All.TimeStep);
         }
 
         for(i = 1, tot_cumulative[0] = tot_count[0]; i < TIMEBINS; i++)
@@ -862,7 +865,7 @@ void write_cpu_log(void)
       put_symbol(tsum / max_CPU_Step[0], 1.0, '-');
 
 #ifndef IO_REDUCED_MODE
-      fprintf(FdBalance, "Step=%7d  sec=%10.3f  Nf=%2d%09d  %s\n", All.NumCurrentTiStep, max_CPU_Step[0],
+      fprintf(FdBalance, "Step=%7lld  sec=%10.3f  Nf=%2d%09d  %s\n", (long long) All.NumCurrentTiStep, max_CPU_Step[0],
 	      (int) (GlobNumForceUpdate / 1000000000), (int) (GlobNumForceUpdate % 1000000000), CPU_String);
       fflush(FdBalance);
 #endif
