@@ -208,7 +208,7 @@ CXX      =  mpic++
 FC       =  mpif90 -nofor_main
 OPTIMIZE = -O3 $(TACC_VEC_FLAGS) -ipo -funroll-loops -no-prec-div -fp-model fast=2
 ## above is preferred, $(TACC_VEC_FLAGS) automatically incorporates the TACC preferred flags for both KNL or SKX nodes
-#OPTIMIZE = -O3 -xMIC-AVX512 -ipo -funroll-loops -no-prec-div -fp-model fast=2  # (depracated, -xMIC-AVX512 is specific to the KNL nodes)
+#OPTIMIZE = -O3 -xMIC-AVX512 -ipo -funroll-loops -no-prec-div -fp-model fast=2  # (deprecated, -xMIC-AVX512 is specific to the KNL nodes)
 OPTIMIZE += -g -Wall # compiler warnings
 #OPTIMIZE += -parallel -openmp  # openmp (comment out this line if OPENMP not used)
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
@@ -223,6 +223,10 @@ GSL_INCL = -I$(TACC_GSL_INC)
 GSL_LIBS = -L$(TACC_GSL_LIB)
 FFTW_INCL= -I$(TACC_FFTW2_INC)
 FFTW_LIBS= -L$(TACC_FFTW2_LIB)
+ifeq (USE_FFTW3, $(findstring USE_FFTW3, $(CONFIGVARS)))
+FFTW_INCL= -I$(TACC_FFTW3_INC)
+FFTW_LIBS= -L$(TACC_FFTW3_LIB)
+endif
 HDF5INCL = -I$(TACC_HDF5_INC) -DH5_USE_16_API
 HDF5LIB  = -L$(TACC_HDF5_LIB) -lhdf5 -lz
 MPICHLIB =

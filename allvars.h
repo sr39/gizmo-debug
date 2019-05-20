@@ -1343,6 +1343,10 @@ extern int N_gas;		/*!< number of gas particles on the LOCAL processor  */
 #ifdef SEPARATE_STELLARDOMAINDECOMP
 extern int N_stars;
 #endif
+#ifdef BH_WIND_SPAWN
+extern double MaxUnSpanMassBH;
+#endif
+
 
 extern long long Ntype[6];	/*!< total number of particles of each type */
 extern int NtypeLocal[6];	/*!< local number of particles of each type */
@@ -2598,9 +2602,6 @@ extern struct sph_particle_data
 #endif
 #endif
     
-    
-    
-    
 #ifdef EOS_GENERAL
     MyFloat SoundSpeed;                   /* Sound speed */
 #ifdef EOS_CARRIES_TEMPERATURE
@@ -2625,6 +2626,14 @@ extern struct sph_particle_data
     
 #if defined(WAKEUP) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
     short int wakeup;                     /*!< flag to wake up particle */
+#endif
+    
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+    MyFloat CoolingRate;
+    MyFloat HeatingRate;
+    MyFloat NetHeatingRateQ;
+    MyFloat HydroHeatingRate;
+    MyFloat MetalCoolingRate;
 #endif
     
 #if defined(COOLING) && defined(COOL_GRACKLE)
@@ -2923,6 +2932,11 @@ enum iofields
   IO_HeIII,
   IO_H2I,
   IO_H2II,
+  IO_CRATE,
+  IO_HRATE,
+  IO_NHRATE,
+  IO_HHRATE,
+  IO_MCRATE, 
   IO_HM,
   IO_HD,
   IO_DI,

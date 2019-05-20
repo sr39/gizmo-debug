@@ -764,9 +764,11 @@ void init(void)
 #endif
     
     Flag_FullStep = 1;		/* to ensure that Peano-Hilber order is done */
-    
     TreeReconstructFlag = 1;
-    
+
+#ifdef BH_WIND_SPAWN
+    MaxUnSpanMassBH     = 0;
+#endif
     
 #ifdef SHIFT_BY_HALF_BOX
     for(i = 0; i < NumPart; i++)
@@ -836,9 +838,6 @@ void init(void)
 #endif
     
     /* HELLO! This here is where you should insert custom code for hard-wiring the ICs of various test problems */
-
-
-    
     
     density();
     for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
