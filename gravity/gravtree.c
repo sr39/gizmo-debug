@@ -407,6 +407,7 @@ void gravity_tree(void)
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
                     GravDataIn[j].min_bh_t_orbital = P[place].min_bh_t_orbital; //orbital time for binary
                     GravDataIn[j].comp_Mass = P[place].comp_Mass; //mass of binary companion
+                    GravDataIn[j].comp_ID = P[place].comp_ID; //ID of binary companion
                     GravDataIn[j].SuperTimestepFlag = P[place].SuperTimestepFlag; // 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
                     for(k = 0; k < 3; k++) {
                         GravDataIn[j].comp_dx[k] = P[place].comp_dx[k];
@@ -563,6 +564,7 @@ void gravity_tree(void)
                     if(GravDataOut[j].min_bh_t_orbital < P[place].min_bh_t_orbital) {
                         P[place].min_bh_t_orbital = GravDataOut[j].min_bh_t_orbital;
                         P[place].comp_Mass = GravDataOut[j].comp_Mass;
+                        P[place].comp_ID = GravDataOut[j].comp_ID;
                         P[place].SuperTimestepFlag = GravDataOut[j].SuperTimestepFlag;
                         for(k = 0; k < 3; k++) {
                             P[place].comp_dx[k] = GravDataOut[j].comp_dx[k];
