@@ -1726,7 +1726,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         if ( P[target].SuperTimestepFlag==1){
             COM_calc_flag = 1; //center of mass calculation
             comp_Mass=P[target].comp_Mass;
-            comp_ID=P[target].comp_ID
+            comp_ID=P[target].comp_ID;
             for(ksuper=0;ksuper<3;ksuper++) {
                 comp_dx[ksuper]=P[target].comp_dx[ksuper]; //position of binary companion
                 comp_dv[ksuper]=P[target].comp_dv[ksuper]; //velocity of binary companion
@@ -2389,7 +2389,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     if(t_orbital < min_bh_t_orbital) {
                     min_bh_t_orbital = t_orbital;
                     //Save parameters of companion
-                    comp_ID=nop->BH_ID //ID of binary companion
+                    comp_ID=nop->BH_ID; //ID of binary companion
                     comp_Mass=nop->bh_mass; //mass of binary companion
                     comp_dx[0] = dx; comp_dx[1] = dy; comp_dx[2] = dz;
                     comp_dv[0] = bh_dvx; comp_dv[1] = bh_dvy; comp_dv[2] = bh_dvz;
@@ -2543,7 +2543,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING // only take forces into account for the binary in the center-of-mass pass if they are from NOT the companion
     //Get ID of particle we are dealing with
                 if(mode == 0){par_ID=P[no].ID;}
-                else{par_ID=nop->BH_ID;}
+                else{
+                    if(nop->bh_mass > 0){par_ID=nop->BH_ID;}
+                    else{par_ID=-1;}
+                }
                 if ( (COM_calc_flag==1) && (comp_ID!=par_ID) )
 #endif
                 {
