@@ -1665,7 +1665,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double comp_dx[3]; //position offset of binary companion
     double comp_dv[3]; //velocity offset of binary companion
     double comp_Mass; //mass of binary companion
-    //double comp_ID; //ID of binary companion
+    MyIDType comp_ID; //ID of binary companion
+    MyIDType par_ID; //ID of a particle
 #endif
 #endif //#ifdef SINGLE_STAR_TIMESTEPPING
 #endif //#ifdef BH_CALC_DISTANCES
@@ -1725,6 +1726,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         if ( P[target].SuperTimestepFlag==1){
             COM_calc_flag = 1; //center of mass calculation
             comp_Mass=P[target].comp_Mass;
+            comp_ID=P[target].comp_ID
             for(ksuper=0;ksuper<3;ksuper++) {
                 comp_dx[ksuper]=P[target].comp_dx[ksuper]; //position of binary companion
                 comp_dv[ksuper]=P[target].comp_dv[ksuper]; //velocity of binary companion
@@ -1781,7 +1783,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         if ( GravDataGet[target].SuperTimestepFlag == 1 ){
             COM_calc_flag = 1; //center of mass calculation
             //companion properties
-            comp_Mass=P[target].comp_Mass;
+            comp_Mass=GravDataGet[target].comp_Mass;
+            comp_ID=GravDataGet[target].comp_ID;
             for(ksuper=0;ksuper<3;ksuper++) {
                 comp_dx[ksuper]=GravDataGet[target].comp_dx[ksuper]; //position of binary companion
                 comp_dv[ksuper]=GravDataGet[target].comp_dv[ksuper]; //velocity of binary companion
@@ -1808,13 +1811,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     //Change position, velocities and mass if it is a center of mass calculation
     if (COM_calc_flag==1){
         //position of center of mass
-	pos_x += comp_Mass*comp_dx[0]/(pmass+comp_Mass);
-	pos_y += comp_Mass*comp_dx[1]/(pmass+comp_Mass);
-	pos_z += comp_Mass*comp_dx[2]/(pmass+comp_Mass);
+        pos_x = (pmass*pos_x + comp_Mass*comp_dx[0])/(pmass+comp_Mass);
+        pos_y = (pmass*pos_y + comp_Mass*comp_dx[1])/(pmass+comp_Mass);
+        pos_z = (pmass*pos_z + comp_Mass*comp_dx[2])/(pmass+comp_Mass);
         //velocity of center of mass
-	vel_x += comp_Mass*comp_dv[0]/(pmass+comp_Mass);
-	vel_y += comp_Mass*comp_dv[1]/(pmass+comp_Mass);
-	vel_z += comp_Mass*comp_dv[2]/(pmass+comp_Mass);
+        vel_x = (pmass*vel_x + comp_Mass*comp_dv[0])/(pmass+comp_Mass);
+        vel_y = (pmass*vel_y + comp_Mass*comp_dv[1])/(pmass+comp_Mass);
+        vel_z = (pmass*vel_z + comp_Mass*comp_dv[2])/(pmass+comp_Mass);
         //mass
         pmass=pmass+comp_Mass;
     }
@@ -1957,7 +1960,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         if(t_orbital < min_bh_t_orbital) {
                             min_bh_t_orbital = t_orbital;
                             //Save parameters of companion
-                            //comp_ID=P[no].ID; //ID of binary companion
+                            comp_ID=P[no].ID; //ID of binary companion
                             comp_Mass=P[no].Mass; //mass of binary companion
                             comp_dx[0] = dx; comp_dx[1] = dy; comp_dx[2] = dz;
                             comp_dv[0] = bh_dvx; comp_dv[1] = bh_dvy; comp_dv[2] = bh_dvz;
@@ -2386,7 +2389,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     if(t_orbital < min_bh_t_orbital) {
                     min_bh_t_orbital = t_orbital;
                     //Save parameters of companion
-                    //comp_ID=nop->BH_ID //ID of binary companion
+                    comp_ID=nop->BH_ID //ID of binary companion
                     comp_Mass=nop->bh_mass; //mass of binary companion
                     comp_dx[0] = dx; comp_dx[1] = dy; comp_dx[2] = dz;
                     comp_dv[0] = bh_dvx; comp_dv[1] = bh_dvy; comp_dv[2] = bh_dvz;
@@ -2537,44 +2540,49 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 pot += FLT(facpot);
 #endif
 #endif
-                
-                acc_x += FLT(dx * fac);
-                acc_y += FLT(dy * fac);
-                acc_z += FLT(dz * fac);
-                
-#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-                /*
-                 tidal_tensorps[][] = Matrix of second derivatives of grav. potential, symmetric:
-                 |Txx Txy Txz|   |tidal_tensorps[0][0] tidal_tensorps[0][1] tidal_tensorps[0][2]|
-                 |Tyx Tyy Tyz| = |tidal_tensorps[1][0] tidal_tensorps[1][1] tidal_tensorps[1][2]|
-                 |Tzx Tzy Tzz|   |tidal_tensorps[2][0] tidal_tensorps[2][1] tidal_tensorps[2][2]|
-                 */
-#ifdef PMGRID
-                tidal_tensorps[0][0] += ((-fac_tidal + dx * dx * fac2) * shortrange_table[tabindex]) +
-                    dx * dx * fac2 / 3.0 * shortrange_table_tidal[tabindex];
-                tidal_tensorps[0][1] += ((dx * dy * fac2) * shortrange_table[tabindex]) +
-                    dx * dy * fac2 / 3.0 * shortrange_table_tidal[tabindex];
-                tidal_tensorps[0][2] += ((dx * dz * fac2) * shortrange_table[tabindex]) +
-                    dx * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
-                tidal_tensorps[1][1] += ((-fac_tidal + dy * dy * fac2) * shortrange_table[tabindex]) +
-                    dy * dy * fac2 / 3.0 * shortrange_table_tidal[tabindex];
-                tidal_tensorps[1][2] += ((dy * dz * fac2) * shortrange_table[tabindex]) +
-                    dy * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
-                tidal_tensorps[2][2] += ((-fac_tidal + dz * dz * fac2) * shortrange_table[tabindex]) +
-                    dz * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
-#else
-                tidal_tensorps[0][0] += (-fac_tidal + dx * dx * fac2);
-                tidal_tensorps[0][1] += (dx * dy * fac2);
-                tidal_tensorps[0][2] += (dx * dz * fac2);
-                tidal_tensorps[1][1] += (-fac_tidal + dy * dy * fac2);
-                tidal_tensorps[1][2] += (dy * dz * fac2);
-                tidal_tensorps[2][2] += (-fac_tidal + dz * dz * fac2);
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING // only take forces into account for the binary in the center-of-mass pass if they are from NOT the companion
+    //Get ID of particle we are dealing with
+                if(mode == 0){par_ID=P[no].ID;}
+                else{par_ID=nop->BH_ID;}
+                if ( (COM_calc_flag==1) && (comp_ID!=par_ID) )
 #endif
-                tidal_tensorps[1][0] = tidal_tensorps[0][1];
-                tidal_tensorps[2][0] = tidal_tensorps[0][2];
-                tidal_tensorps[2][1] = tidal_tensorps[1][2];
+                {
+                    acc_x += FLT(dx * fac);
+                    acc_y += FLT(dy * fac);
+                    acc_z += FLT(dz * fac);
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+                    /*
+                     tidal_tensorps[][] = Matrix of second derivatives of grav. potential, symmetric:
+                     |Txx Txy Txz|   |tidal_tensorps[0][0] tidal_tensorps[0][1] tidal_tensorps[0][2]|
+                     |Tyx Tyy Tyz| = |tidal_tensorps[1][0] tidal_tensorps[1][1] tidal_tensorps[1][2]|
+                     |Tzx Tzy Tzz|   |tidal_tensorps[2][0] tidal_tensorps[2][1] tidal_tensorps[2][2]|
+                     */
+#ifdef PMGRID
+                    tidal_tensorps[0][0] += ((-fac_tidal + dx * dx * fac2) * shortrange_table[tabindex]) +
+                        dx * dx * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+                    tidal_tensorps[0][1] += ((dx * dy * fac2) * shortrange_table[tabindex]) +
+                        dx * dy * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+                    tidal_tensorps[0][2] += ((dx * dz * fac2) * shortrange_table[tabindex]) +
+                        dx * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+                    tidal_tensorps[1][1] += ((-fac_tidal + dy * dy * fac2) * shortrange_table[tabindex]) +
+                        dy * dy * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+                    tidal_tensorps[1][2] += ((dy * dz * fac2) * shortrange_table[tabindex]) +
+                        dy * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+                    tidal_tensorps[2][2] += ((-fac_tidal + dz * dz * fac2) * shortrange_table[tabindex]) +
+                        dz * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+#else
+                    tidal_tensorps[0][0] += (-fac_tidal + dx * dx * fac2);
+                    tidal_tensorps[0][1] += (dx * dy * fac2);
+                    tidal_tensorps[0][2] += (dx * dz * fac2);
+                    tidal_tensorps[1][1] += (-fac_tidal + dy * dy * fac2);
+                    tidal_tensorps[1][2] += (dy * dz * fac2);
+                    tidal_tensorps[2][2] += (-fac_tidal + dz * dz * fac2);
+#endif
+                    tidal_tensorps[1][0] = tidal_tensorps[0][1];
+                    tidal_tensorps[2][0] = tidal_tensorps[0][2];
+                    tidal_tensorps[2][1] = tidal_tensorps[1][2];
 #endif // GDE_DISTORTIONTENSOR //
-
+                } // closes if ( (COM_calc_flag==1) && (comp_ID!=par_ID) ) if defined SINGLE_STAR_SUPERTIMESTEPPING
             } // closes TABINDEX<NTAB
             
             ninteractions++;
@@ -2700,7 +2708,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     } // closes outer (while(no>=0)) check
     
     
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING // This part has to account for softening as well...
+/* #ifdef SINGLE_STAR_SUPERTIMESTEPPING // This part has to account for softening as well...
+    //Remove contribution to the tidal tensor from companion
     if (COM_calc_flag==1){
         double part_relmass=1.0-comp_Mass/pmass; //relative mass of the current particle in the binary
         double comp_dr=part_relmass*sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ); //distance of the companion to the center of mass
@@ -2720,7 +2729,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         }
         
     }
-#endif
+#endif */
     
     /* store result at the proper place */
     if(mode == 0)
@@ -2759,8 +2768,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
         P[target].min_bh_t_orbital=min_bh_t_orbital; //orbital time for binary
         if (min_bh_t_orbital<MAX_REAL_NUMBER && !(All.Ti_Current == 0 && RestartFlag != 1)){ //only if there is a companion
-	    P[target].SuperTimestepFlag=1; //binary candidate
+        P[target].SuperTimestepFlag=1; //binary candidate
             P[target].comp_Mass=comp_Mass; //mass of binary companion
+            P[target].comp_ID=comp_ID; //ID of binary companion
             for(ksuper=0;ksuper<3;ksuper++) {
                 P[target].comp_dx[ksuper]=comp_dx[ksuper]; //position of binary companion
                 P[target].comp_dv[ksuper]=comp_dv[ksuper]; //velocity of binary companion
@@ -2819,6 +2829,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             if (min_bh_t_orbital<MAX_REAL_NUMBER){
                 GravDataResult[target].SuperTimestepFlag=1; //binary candidate
                 GravDataResult[target].comp_Mass=comp_Mass; //mass of binary companion
+                GravDataResult[target].comp_ID=comp_ID; //ID of binary companion
                 for(ksuper=0;ksuper<3;ksuper++) {
                    GravDataResult[target].comp_dx[ksuper]=comp_dx[ksuper]; //position of binary companion
                     GravDataResult[target].comp_dv[ksuper]=comp_dv[ksuper]; //velocity of binary companion
