@@ -586,7 +586,7 @@ void force_update_node_recursive(int no, int sib, int father)
         MyFloat bh_pos_times_mass[3]={0,0,0};   /* position of each black hole in the node times its mass; divide by total mass at the end to get COM */
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_SUPERTIMESTEPPING)
         MyFloat bh_mom[3] = {0,0,0};
-	int N_BH = 0;
+        int N_BH = 0;
 #endif	
 #endif	
 #ifdef DM_SCALARFIELD_SCREENING
@@ -670,7 +670,7 @@ void force_update_node_recursive(int no, int sib, int father)
                         bh_mom[0] += Nodes[p].bh_vel[0] * Nodes[p].bh_mass;
                         bh_mom[1] += Nodes[p].bh_vel[1] * Nodes[p].bh_mass;
                         bh_mom[2] += Nodes[p].bh_vel[2] * Nodes[p].bh_mass;
-			N_BH += Nodes[p].N_BH;
+                        N_BH += Nodes[p].N_BH;
 #endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -934,7 +934,7 @@ void force_update_node_recursive(int no, int sib, int father)
                 Nodes[no].bh_vel[0] = bh_mom[0] / bh_mass;
                 Nodes[no].bh_vel[1] = bh_mom[1] / bh_mass;
                 Nodes[no].bh_vel[2] = bh_mom[2] / bh_mass;
-		Nodes[no].N_BH = N_BH;
+                Nodes[no].N_BH = N_BH;
 #endif
             }
 #endif
@@ -1032,7 +1032,7 @@ void force_exchange_pseudodata(void)
         MyFloat bh_pos[3];
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_SUPERTIMESTEPPING)
         MyFloat bh_vel[3];
-	int N_BH;
+        int N_BH;
 #endif      
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1107,7 +1107,7 @@ void force_exchange_pseudodata(void)
             DomainMoment[i].bh_vel[0] = Nodes[no].bh_vel[0];
             DomainMoment[i].bh_vel[1] = Nodes[no].bh_vel[1];
             DomainMoment[i].bh_vel[2] = Nodes[no].bh_vel[2];
-	    DomainMoment[i].N_BH = Nodes[no].N_BH;	    
+            DomainMoment[i].N_BH = Nodes[no].N_BH;	    
 #endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1196,7 +1196,7 @@ void force_exchange_pseudodata(void)
                     Nodes[no].bh_vel[0] = DomainMoment[i].bh_vel[0];
                     Nodes[no].bh_vel[1] = DomainMoment[i].bh_vel[1];
                     Nodes[no].bh_vel[2] = DomainMoment[i].bh_vel[2];
-		    Nodes[no].N_BH = DomainMoment[i].N_BH;
+                    Nodes[no].N_BH = DomainMoment[i].N_BH;
 #endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1321,7 +1321,7 @@ void force_treeupdate_pseudos(int no)
             bh_mom[0] += Nodes[p].bh_vel[0] * Nodes[p].bh_mass;
             bh_mom[1] += Nodes[p].bh_vel[1] * Nodes[p].bh_mass;
             bh_mom[2] += Nodes[p].bh_vel[2] * Nodes[p].bh_mass;
-	    N_BH += Nodes[p].N_BH;
+            N_BH += Nodes[p].N_BH;
 #endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1469,7 +1469,7 @@ void force_treeupdate_pseudos(int no)
             Nodes[no].bh_vel[0] = bh_mom[0] / bh_mass;
             Nodes[no].bh_vel[1] = bh_mom[1] / bh_mass;
             Nodes[no].bh_vel[2] = bh_mom[2] / bh_mass;
-	    Nodes[no].N_BH = N_BH;
+            Nodes[no].N_BH = N_BH;
 #endif
         }
 #endif
@@ -2389,7 +2389,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     if(t_orbital < min_bh_t_orbital) {
                     min_bh_t_orbital = t_orbital;
                     //Save parameters of companion
-                    comp_ID=nop->BH_ID; //ID of binary companion
+comp_ID=-2; //nop->BH_ID; //ID of binary companion THIS SHOLD BE THE ID OF THE LONE BH IN THE NODE
                     comp_Mass=nop->bh_mass; //mass of binary companion
                     comp_dx[0] = dx; comp_dx[1] = dy; comp_dx[2] = dz;
                     comp_dv[0] = bh_dvx; comp_dv[1] = bh_dvy; comp_dv[2] = bh_dvz;
@@ -2544,7 +2544,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     //Get ID of particle we are dealing with
                 if(mode == 0){par_ID=P[no].ID;}
                 else{
-                    if(nop->bh_mass > 0){par_ID=nop->BH_ID;}
+                    if(nop->N_BH == 1){par_ID=-1;} //THIS SHOLD BE THE ID OF THE LONE BH IN THE NODE, eg nop->BH_ID;}
                     else{par_ID=-1;}
                 }
                 if ( (COM_calc_flag==1) && (comp_ID!=par_ID) )
