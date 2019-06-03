@@ -2389,7 +2389,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     if(t_orbital < min_bh_t_orbital) {
                     min_bh_t_orbital = t_orbital;
                     //Save parameters of companion
-comp_ID=-2; //nop->BH_ID; //ID of binary companion THIS SHOLD BE THE ID OF THE LONE BH IN THE NODE
+                    comp_ID=-2; //for a node we can't get an ID
                     comp_Mass=nop->bh_mass; //mass of binary companion
                     comp_dx[0] = dx; comp_dx[1] = dy; comp_dx[2] = dz;
                     comp_dv[0] = bh_dvx; comp_dv[1] = bh_dvy; comp_dv[2] = bh_dvz;
@@ -2542,12 +2542,8 @@ comp_ID=-2; //nop->BH_ID; //ID of binary companion THIS SHOLD BE THE ID OF THE L
 #endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING // only take forces into account for the binary in the center-of-mass pass if they are from NOT the companion
     //Get ID of particle we are dealing with
-                if(mode == 0){par_ID=P[no].ID;}
-                else{
-                    if(nop->N_BH == 1){par_ID=-1;} //THIS SHOLD BE THE ID OF THE LONE BH IN THE NODE, eg nop->BH_ID;}
-                    else{par_ID=-1;}
-                }
-                if ( (COM_calc_flag==1) && (comp_ID!=par_ID) )
+                if(mode == 0){par_ID=P[no].ID;} //for mode!=0 we can't get an ID for a node
+                if ( (COM_calc_flag==1) && ( (mode != 0) || (comp_ID!=par_ID) ) )
 #endif
                 {
                     acc_x += FLT(dx * fac);
@@ -2585,7 +2581,7 @@ comp_ID=-2; //nop->BH_ID; //ID of binary companion THIS SHOLD BE THE ID OF THE L
                     tidal_tensorps[2][0] = tidal_tensorps[0][2];
                     tidal_tensorps[2][1] = tidal_tensorps[1][2];
 #endif // GDE_DISTORTIONTENSOR //
-                } // closes if ( (COM_calc_flag==1) && (comp_ID!=par_ID) ) if defined SINGLE_STAR_SUPERTIMESTEPPING
+                } // closes if ( (COM_calc_flag==1) && ( (mode != 0) || (comp_ID!=par_ID) ) )
             } // closes TABINDEX<NTAB
             
             ninteractions++;
@@ -2711,9 +2707,9 @@ comp_ID=-2; //nop->BH_ID; //ID of binary companion THIS SHOLD BE THE ID OF THE L
     } // closes outer (while(no>=0)) check
     
     
-/* #ifdef SINGLE_STAR_SUPERTIMESTEPPING // This part has to account for softening as well...
-    //Remove contribution to the tidal tensor from companion
-    if (COM_calc_flag==1){
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING 
+    //Remove contribution to the tidal tensor from companion that is in a node (this meas softening shoul not be an issue)
+    if ((COM_calc_flag==1) && (mode != 0) ){ //only if the companion is on a different node
         double part_relmass=1.0-comp_Mass/pmass; //relative mass of the current particle in the binary
         double comp_dr=part_relmass*sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ); //distance of the companion to the center of mass
         double comp_grav_fac=All.G*comp_Mass/(comp_dr*comp_dr*comp_dr); //prefactor for gravitational acceleration
@@ -2732,7 +2728,7 @@ comp_ID=-2; //nop->BH_ID; //ID of binary companion THIS SHOLD BE THE ID OF THE L
         }
         
     }
-#endif */
+#endif
     
     /* store result at the proper place */
     if(mode == 0)
