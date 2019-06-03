@@ -2700,6 +2700,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING 
     //Remove contribution to the tidal tensor from companion that is in a node (this meas softening should not be an issue)
+printf("Center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
     if (COM_calc_flag==1){
         printf("Correcting for companion contribution\n");
         double part_relmass=1.0-comp_Mass/pmass; //relative mass of the current particle in the binary
@@ -2707,8 +2708,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         double part_relmass2=part_relmass*part_relmass; double comp_dr2=comp_dr*comp_dr;
         //Prefactors
         h = All.ForceSoftening[ptype];  h_inv = 1.0 / h; h3_inv = h_inv*h_inv*h_inv; h5_inv = h3_inv*h_inv*h_inv; u = comp_dr*h_inv; double u2=u*u;
+        printf("part_relmass %g comp_dr %g comp_Mass %g pmass %g \n",part_relmass, comp_dr, comp_Mass, pmass);
         if(comp_dr >= h){
-            fac = mass / (comp_dr2 * comp_dr); fac2 = 3.0 * mass / (comp_dr2 * comp_dr2 * comp_dr); /* no softening nonsense */
+            fac = comp_Mass / (comp_dr2 * comp_dr); fac2 = 3.0 * comp_Mass / (comp_dr2 * comp_dr2 * comp_dr); /* no softening nonsense */
         }
         else{
             fac = comp_Mass * kernel_gravity(u, h_inv, h3_inv, 1);
@@ -2731,8 +2733,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         tidal_tensorps[1][0] = tidal_tensorps[0][1];
         tidal_tensorps[2][0] = tidal_tensorps[0][2];
         tidal_tensorps[2][1] = tidal_tensorps[1][2];
+    printf("Corrected center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
     }
-    printf("Center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
 #endif
     
     /* store result at the proper place */
