@@ -1665,8 +1665,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double comp_dx[3]; //position offset of binary companion
     double comp_dv[3]; //velocity offset of binary companion
     double comp_Mass; //mass of binary companion
-    MyIDType comp_ID; //ID of binary companion
-    MyIDType par_ID; //ID used to iterate among particles
+    //MyIDType comp_ID; //ID of binary companion
 #endif
 #endif //#ifdef SINGLE_STAR_TIMESTEPPING
 #endif //#ifdef BH_CALC_DISTANCES
@@ -1726,7 +1725,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         if ( P[target].SuperTimestepFlag==1){
             COM_calc_flag = 1; //center of mass calculation
             comp_Mass=P[target].comp_Mass;
-            comp_ID=P[target].comp_ID;
+            //comp_ID=P[target].comp_ID;
             for(ksuper=0;ksuper<3;ksuper++) {
                 comp_dx[ksuper]=P[target].comp_dx[ksuper]; //position of binary companion
                 comp_dv[ksuper]=P[target].comp_dv[ksuper]; //velocity of binary companion
@@ -1784,7 +1783,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             COM_calc_flag = 1; //center of mass calculation
             //companion properties
             comp_Mass=GravDataGet[target].comp_Mass;
-            comp_ID=GravDataGet[target].comp_ID;
+            //comp_ID=GravDataGet[target].comp_ID;
             for(ksuper=0;ksuper<3;ksuper++) {
                 comp_dx[ksuper]=GravDataGet[target].comp_dx[ksuper]; //position of binary companion
                 comp_dv[ksuper]=GravDataGet[target].comp_dv[ksuper]; //velocity of binary companion
@@ -1896,9 +1895,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     {
         while(no >= 0)
         {
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-            par_ID = -3; //not very elegant but good for now
-#endif
             if(no < maxPart)
             {
                 /* the index of the node is the index of the particle */
@@ -1914,9 +1910,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 dx = P[no].Pos[0] - pos_x;
                 dy = P[no].Pos[1] - pos_y;
                 dz = P[no].Pos[2] - pos_z;
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-                par_ID=P[no].ID; //ID of particle
-#endif
 #ifdef BOX_PERIODIC
                 NEAREST_XYZ(dx,dy,dz,-1);
 #endif
@@ -1966,7 +1959,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         if(t_orbital < min_bh_t_orbital) {
                             min_bh_t_orbital = t_orbital;
                             //Save parameters of companion
-                            comp_ID=P[no].ID; //ID of binary companion
+                            //comp_ID=P[no].ID; //ID of binary companion
                             comp_Mass=P[no].Mass; //mass of binary companion
                             comp_dx[0] = dx; comp_dx[1] = dy; comp_dx[2] = dz;
                             comp_dv[0] = bh_dvx; comp_dv[1] = bh_dvy; comp_dv[2] = bh_dvz;
@@ -2387,26 +2380,25 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     }
                     if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-            if(nop->N_BH == 1 && COM_calc_flag==0){ // only do it if we're looking at a single star in the node
-                double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
-                if (specific_energy<0){
-                    double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
-                    double t_orbital = 2.0*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis/(All.G*M_total) );
-                    if(t_orbital < min_bh_t_orbital) {
-                    min_bh_t_orbital = t_orbital;
-                    //Save parameters of companion
-                    comp_ID=-2; //for a node we can't get an ID
-                    comp_Mass=nop->bh_mass; //mass of binary companion
-                    comp_dx[0] = dx; comp_dx[1] = dy; comp_dx[2] = dz;
-                    comp_dv[0] = bh_dvx; comp_dv[1] = bh_dvy; comp_dv[2] = bh_dvz;
+                    if(nop->N_BH == 1 && COM_calc_flag==0){ // only do it if we're looking at a single star in the node
+                        double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
+                        if (specific_energy<0){
+                            double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
+                            double t_orbital = 2.0*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis/(All.G*M_total) );
+                            if(t_orbital < min_bh_t_orbital) {
+                            min_bh_t_orbital = t_orbital;
+                            //Save parameters of companion
+                            //comp_ID=-2; //for a node we can't get an ID
+                            comp_Mass=nop->bh_mass; //mass of binary companion
+                            comp_dx[0] = dx; comp_dx[1] = dy; comp_dx[2] = dz;
+                            comp_dv[0] = bh_dvx; comp_dv[1] = bh_dvy; comp_dv[2] = bh_dvz;
+                            }
+                        }
                     }
-                }
-		    }
 #endif //#ifdef SINGLE_STAR_SUPERTIMESTEPPING
 #endif //#ifdef SINGLE_STAR_TIMESTEPPING
                 }
 #endif
-		
             }
             
             if((r2 > 0) && (mass > 0)) // only go forward if mass positive and there is separation
@@ -2546,50 +2538,41 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 pot += FLT(facpot);
 #endif
 #endif
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING // only take forces into account for the binary in the center-of-mass pass if they are from NOT the companion
-    printf("Particle no %d comp_ID %d COM_calc_flag %d All.MaxPart %d ",no,comp_ID,COM_calc_flag, All.MaxPart);
-    printf("particle ID %d",par_ID);
-    printf("\n");
-                if ( (COM_calc_flag==0) || ( (COM_calc_flag==1) && ((comp_ID==-2) || (comp_ID!=par_ID)) ) ) // goes through in 3 cases: 1) not center of mass calc, 2) center of mass calc, companion not on the same node, 3) center of mass calc, companion on same node, but this is not that particle
-#endif
-                {
-    printf("Start\n");
-                    acc_x += FLT(dx * fac);
-                    acc_y += FLT(dy * fac);
-                    acc_z += FLT(dz * fac);
+                acc_x += FLT(dx * fac);
+                acc_y += FLT(dy * fac);
+                acc_z += FLT(dz * fac);
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-                    /*
-                     tidal_tensorps[][] = Matrix of second derivatives of grav. potential, symmetric:
-                     |Txx Txy Txz|   |tidal_tensorps[0][0] tidal_tensorps[0][1] tidal_tensorps[0][2]|
-                     |Tyx Tyy Tyz| = |tidal_tensorps[1][0] tidal_tensorps[1][1] tidal_tensorps[1][2]|
-                     |Tzx Tzy Tzz|   |tidal_tensorps[2][0] tidal_tensorps[2][1] tidal_tensorps[2][2]|
-                     */
+                /*
+                 tidal_tensorps[][] = Matrix of second derivatives of grav. potential, symmetric:
+                 |Txx Txy Txz|   |tidal_tensorps[0][0] tidal_tensorps[0][1] tidal_tensorps[0][2]|
+                 |Tyx Tyy Tyz| = |tidal_tensorps[1][0] tidal_tensorps[1][1] tidal_tensorps[1][2]|
+                 |Tzx Tzy Tzz|   |tidal_tensorps[2][0] tidal_tensorps[2][1] tidal_tensorps[2][2]|
+                 */
 #ifdef PMGRID
-                    tidal_tensorps[0][0] += ((-fac_tidal + dx * dx * fac2) * shortrange_table[tabindex]) +
-                        dx * dx * fac2 / 3.0 * shortrange_table_tidal[tabindex];
-                    tidal_tensorps[0][1] += ((dx * dy * fac2) * shortrange_table[tabindex]) +
-                        dx * dy * fac2 / 3.0 * shortrange_table_tidal[tabindex];
-                    tidal_tensorps[0][2] += ((dx * dz * fac2) * shortrange_table[tabindex]) +
-                        dx * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
-                    tidal_tensorps[1][1] += ((-fac_tidal + dy * dy * fac2) * shortrange_table[tabindex]) +
-                        dy * dy * fac2 / 3.0 * shortrange_table_tidal[tabindex];
-                    tidal_tensorps[1][2] += ((dy * dz * fac2) * shortrange_table[tabindex]) +
-                        dy * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
-                    tidal_tensorps[2][2] += ((-fac_tidal + dz * dz * fac2) * shortrange_table[tabindex]) +
-                        dz * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+                tidal_tensorps[0][0] += ((-fac_tidal + dx * dx * fac2) * shortrange_table[tabindex]) +
+                    dx * dx * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+                tidal_tensorps[0][1] += ((dx * dy * fac2) * shortrange_table[tabindex]) +
+                    dx * dy * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+                tidal_tensorps[0][2] += ((dx * dz * fac2) * shortrange_table[tabindex]) +
+                    dx * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+                tidal_tensorps[1][1] += ((-fac_tidal + dy * dy * fac2) * shortrange_table[tabindex]) +
+                    dy * dy * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+                tidal_tensorps[1][2] += ((dy * dz * fac2) * shortrange_table[tabindex]) +
+                    dy * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+                tidal_tensorps[2][2] += ((-fac_tidal + dz * dz * fac2) * shortrange_table[tabindex]) +
+                    dz * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
 #else
-                    tidal_tensorps[0][0] += (-fac_tidal + dx * dx * fac2);
-                    tidal_tensorps[0][1] += (dx * dy * fac2);
-                    tidal_tensorps[0][2] += (dx * dz * fac2);
-                    tidal_tensorps[1][1] += (-fac_tidal + dy * dy * fac2);
-                    tidal_tensorps[1][2] += (dy * dz * fac2);
-                    tidal_tensorps[2][2] += (-fac_tidal + dz * dz * fac2);
+                tidal_tensorps[0][0] += (-fac_tidal + dx * dx * fac2);
+                tidal_tensorps[0][1] += (dx * dy * fac2);
+                tidal_tensorps[0][2] += (dx * dz * fac2);
+                tidal_tensorps[1][1] += (-fac_tidal + dy * dy * fac2);
+                tidal_tensorps[1][2] += (dy * dz * fac2);
+                tidal_tensorps[2][2] += (-fac_tidal + dz * dz * fac2);
 #endif
-                    tidal_tensorps[1][0] = tidal_tensorps[0][1];
-                    tidal_tensorps[2][0] = tidal_tensorps[0][2];
-                    tidal_tensorps[2][1] = tidal_tensorps[1][2];
+                tidal_tensorps[1][0] = tidal_tensorps[0][1];
+                tidal_tensorps[2][0] = tidal_tensorps[0][2];
+                tidal_tensorps[2][1] = tidal_tensorps[1][2];
 #endif // GDE_DISTORTIONTENSOR //
-                } // closes if ( (COM_calc_flag==0) || ( (COM_calc_flag==1) && ((comp_ID==-2) || (comp_ID!=par_ID)) ) )
             } // closes TABINDEX<NTAB
             
             ninteractions++;
@@ -2716,27 +2699,40 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     
     
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING 
-    //Remove contribution to the tidal tensor from companion that is in a node (this meas softening shoul not be an issue)
-    if ((COM_calc_flag==1) && (comp_ID==-2) ){ //only if the companion is on a different node
+    //Remove contribution to the tidal tensor from companion that is in a node (this meas softening should not be an issue)
+    if (COM_calc_flag==1){
         printf("Correcting for companion contribution\n");
         double part_relmass=1.0-comp_Mass/pmass; //relative mass of the current particle in the binary
         double comp_dr=part_relmass*sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ); //distance of the companion to the center of mass
-        double comp_grav_fac=All.G*comp_Mass/(comp_dr*comp_dr*comp_dr); //prefactor for gravitational acceleration
-        //Correct gravitational acceleration for center of mass by subtracting the companion
-        acc_x -= comp_grav_fac*part_relmass*comp_dx[0];
-        acc_y -= comp_grav_fac*part_relmass*comp_dx[1];
-        acc_z -= comp_grav_fac*part_relmass*comp_dx[2];
-        //Correct tidal tensor by subtracting T_ij=GM/r^3 * (delta_ij - 3*x_i*x_j/r^2)
-        for(i1 = 0; i1 < 3; i1++) {
-            for(i2 = 0; i2 < 3; i2++) {
-                tidal_tensorps[i1][i2] += 3.0 * comp_grav_fac*(part_relmass*comp_dx[i1]/comp_dr)*(part_relmass*comp_dx[i2]/comp_dr);
-                if (i1==i2){
-                    tidal_tensorps[i1][i2] -= comp_grav_fac;
-                }
+        double part_relmass2=part_relmass*part_relmass; double comp_dr2=comp_dr*comp_dr;
+        //Prefactors
+        h = All.ForceSoftening[ptype];  h_inv = 1.0 / h; h3_inv = h_inv*h_inv*h_inv; h5_inv = h3_inv*h_inv*h_inv; u = comp_dr*h_inv; double u2=u*u;
+        if(comp_dr >= h){
+            fac = mass / (comp_dr2 * comp_dr); fac2 = 3.0 * mass / (comp_dr2 * comp_dr2 * comp_dr); /* no softening nonsense */
+        }
+        else{
+            fac = comp_Mass * kernel_gravity(u, h_inv, h3_inv, 1);
+            /* second derivatives needed -> calculate them from softend potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
+            if(u < 0.5) {fac2 = comp_Mass * h5_inv * (76.8 - 96.0 * u);} else {fac2 = comp_Mass * h5_inv * (-0.2 / (u2 * u2 * u) + 48.0 / u - 76.8 + 32.0 * u);
             }
         }
+        //Correct gravitational acceleration for center of mass by subtracting the companion
+        acc_x -= fac*part_relmass*comp_dx[0];
+        acc_y -= fac*part_relmass*comp_dx[1];
+        acc_z -= fac*part_relmass*comp_dx[2];
+        //Adjusting tidal tensor
+        tidal_tensorps[0][0] -= part_relmass2 * (-fac + comp_dx[0] * comp_dx[0] * fac2);
+        tidal_tensorps[0][1] -= part_relmass2 * (comp_dx[0] * comp_dx[1] * fac2);
+        tidal_tensorps[0][2] -= part_relmass2 * (comp_dx[0] * comp_dx[2] * fac2);
+        tidal_tensorps[1][1] -= part_relmass2 * (-fac + comp_dx[1] * comp_dx[1] * fac2);
+        tidal_tensorps[1][2] -= part_relmass2 * (comp_dx[1] * comp_dx[2] * fac2);
+        tidal_tensorps[2][2] -= (part_relmass2 * -fac + comp_dx[2] * comp_dx[2] * fac2);
+        //Symmetrizing
+        tidal_tensorps[1][0] = tidal_tensorps[0][1];
+        tidal_tensorps[2][0] = tidal_tensorps[0][2];
+        tidal_tensorps[2][1] = tidal_tensorps[1][2];
     }
-printf("Center of mass acceleration %g %g %g", acc_x, acc_y, acc_z);
+    printf("Center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
 #endif
     
     /* store result at the proper place */
@@ -2778,7 +2774,7 @@ printf("Center of mass acceleration %g %g %g", acc_x, acc_y, acc_z);
         if (min_bh_t_orbital<MAX_REAL_NUMBER && !(All.Ti_Current == 0 && RestartFlag != 1)){ //only if there is a companion
         P[target].SuperTimestepFlag=1; //binary candidate
             P[target].comp_Mass=comp_Mass; //mass of binary companion
-            P[target].comp_ID=comp_ID; //ID of binary companion
+            // P[target].comp_ID=comp_ID; //ID of binary companion
             for(ksuper=0;ksuper<3;ksuper++) {
                 P[target].comp_dx[ksuper]=comp_dx[ksuper]; //position of binary companion
                 P[target].comp_dv[ksuper]=comp_dv[ksuper]; //velocity of binary companion
@@ -2839,7 +2835,7 @@ printf("Center of mass acceleration %g %g %g", acc_x, acc_y, acc_z);
             if (min_bh_t_orbital<MAX_REAL_NUMBER){
                 GravDataResult[target].SuperTimestepFlag=1; //binary candidate
                 GravDataResult[target].comp_Mass=comp_Mass; //mass of binary companion
-                GravDataResult[target].comp_ID=comp_ID; //ID of binary companion
+                //GravDataResult[target].comp_ID=comp_ID; //ID of binary companion
                 for(ksuper=0;ksuper<3;ksuper++) {
                    GravDataResult[target].comp_dx[ksuper]=comp_dx[ksuper]; //position of binary companion
                     GravDataResult[target].comp_dv[ksuper]=comp_dv[ksuper]; //velocity of binary companion
