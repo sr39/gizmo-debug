@@ -2793,37 +2793,39 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     }
     else
     {
-        GravDataResult[target].Acc[0] = acc_x;
-        GravDataResult[target].Acc[1] = acc_y;
-        GravDataResult[target].Acc[2] = acc_z;
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+        if (COM_calc_flag==0){ //this ensures that we only export this data if we are not doing a calculation for the center of mass of a binary
+#endif
+            GravDataResult[target].Acc[0] = acc_x;
+            GravDataResult[target].Acc[1] = acc_y;
+            GravDataResult[target].Acc[2] = acc_z;
 #ifdef RT_OTVET
-        int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {GravDataResult[target].ET[k][k_et] = RT_ET[k][k_et];}
+            int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {GravDataResult[target].ET[k][k_et] = RT_ET[k][k_et];}
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
-        GravDataResult[target].RadFluxUV = incident_flux_uv;
-        GravDataResult[target].RadFluxEUV = incident_flux_euv;
+            GravDataResult[target].RadFluxUV = incident_flux_uv;
+            GravDataResult[target].RadFluxEUV = incident_flux_euv;
 #endif
 #ifdef BH_COMPTON_HEATING
-        GravDataResult[target].RadFluxAGN = incident_flux_agn;
+            GravDataResult[target].RadFluxAGN = incident_flux_agn;
 #endif
 #ifdef EVALPOTENTIAL
-        GravDataResult[target].Potential = pot;
+            GravDataResult[target].Potential = pot;
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-        for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GravDataResult[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
+            for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GravDataResult[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
 #endif
 #ifdef BH_CALC_DISTANCES
-        GravDataResult[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );
-        GravDataResult[target].min_xyz_to_bh[0] = min_xyz_to_bh[0];   /* remember, dx = x_BH - myx */
-        GravDataResult[target].min_xyz_to_bh[1] = min_xyz_to_bh[1];
-        GravDataResult[target].min_xyz_to_bh[2] = min_xyz_to_bh[2];
+            GravDataResult[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );
+            GravDataResult[target].min_xyz_to_bh[0] = min_xyz_to_bh[0];   /* remember, dx = x_BH - myx */
+            GravDataResult[target].min_xyz_to_bh[1] = min_xyz_to_bh[1];
+            GravDataResult[target].min_xyz_to_bh[2] = min_xyz_to_bh[2];
 #ifdef SINGLE_STAR_TIMESTEPPING
-        GravDataResult[target].min_bh_approach_time = sqrt(min_bh_approach_time);
-        GravDataResult[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);
-        GravDataResult[target].min_bh_periastron = min_bh_periastron;
+            GravDataResult[target].min_bh_approach_time = sqrt(min_bh_approach_time);
+            GravDataResult[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);
+            GravDataResult[target].min_bh_periastron = min_bh_periastron;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-        GravDataResult[target].COM_calc_flag=COM_calc_flag;//flag that tells whether this was only a rerun to get the acceleration ad the tidal tenor at the center of mass of a binary
-        if (COM_calc_flag==0){
+            GravDataResult[target].COM_calc_flag=COM_calc_flag;//flag that tells whether this was only a rerun to get the acceleration ad the tidal tenor at the center of mass of a binary
             GravDataResult[target].min_bh_t_orbital=min_bh_t_orbital; //orbital time for binary
             if (min_bh_t_orbital<MAX_REAL_NUMBER){
                 GravDataResult[target].SuperTimestepFlag=1; //binary candidate
@@ -2837,8 +2839,15 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 GravDataResult[target].SuperTimestepFlag=0; //not a binary candidate
             }
         }
+        else{
+           //    Save acceleration and tidal tensor at center of mass of binary
+           GravDataResult[target].COM_GravAccel[0] = acc_x;
+           GravDataResult[target].COM_GravAccel[1] = acc_y;
+           GravDataResult[target].COM_GravAccel[2] = acc_z;
+           for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GravDataResult[target].COM_tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
+        }
 #endif
-#endif	
+#endif
 #endif
         *exportflag = nodesinlist;
     }
