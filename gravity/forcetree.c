@@ -2381,7 +2381,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     }
                     if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-		    if(nop->N_BH == 1 && COM_calc_flag==0){ // only do it if we're looking at a single star in the node
+            if(nop->N_BH == 1 && COM_calc_flag==0){ // only do it if we're looking at a single star in the node
                 double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
                 if (specific_energy<0){
                     double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
@@ -2543,7 +2543,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING // only take forces into account for the binary in the center-of-mass pass if they are from NOT the companion
     //Get ID of particle we are dealing with
                 if(mode == 0){par_ID=P[no].ID;} //for mode!=0 we can't get an ID for a node
-                if ( (COM_calc_flag==1) && ( (mode != 0) || (comp_ID!=par_ID) ) )
+                if ( (COM_calc_flag==0) || ( (COM_calc_flag==1) && ((mode != 0) || (comp_ID!=par_ID)) ) ) // goes through in 3 cases: 1) not center of mass calc, 2) center of mass calc, companion not on teh same node, 3) center of mass calc, companion on same node, but this is not that particle
 #endif
                 {
                     acc_x += FLT(dx * fac);
@@ -2581,7 +2581,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     tidal_tensorps[2][0] = tidal_tensorps[0][2];
                     tidal_tensorps[2][1] = tidal_tensorps[1][2];
 #endif // GDE_DISTORTIONTENSOR //
-                } // closes if ( (COM_calc_flag==1) && ( (mode != 0) || (comp_ID!=par_ID) ) )
+                } // closes ( (COM_calc_flag==0) || ( (COM_calc_flag==1) && ((mode != 0) || (comp_ID!=par_ID)) ) )
             } // closes TABINDEX<NTAB
             
             ninteractions++;
