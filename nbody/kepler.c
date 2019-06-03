@@ -51,30 +51,30 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
     double semimajor_axis = -All.G * Mtot / (2*specific_energy);
 
     for(k=0; k<3; k++, l=(k+1)%3, m=(k+2)%3){ // dx cross dv to get specific angular momentum vector
-	h[k] = P[i].comp_dx[l]*P[i].comp_dv[m] - P[i].comp_dx[m]*P[i].comp_dv[l];
+        h[k] = P[i].comp_dx[l]*P[i].comp_dv[m] - P[i].comp_dx[m]*P[i].comp_dv[l];
     }
 
     double hSqr = h[0]*h[0] + h[1]*h[1] + h[2]*h[2];
     double ecc = sqrt(1 + 2 * specific_energy * hSqr / (All.G*All.G*Mtot*Mtot)); 
 
     for(k=0; k<3; k++, l=(k+1)%3, m=(k+2)%3){ // Get the LRL vector dv x h - GM dx/r
-	l = (k+1)%3; m = (k+2)%3;
-	n_x[k] = P[i].comp_dv[l]*h[m] - P[i].comp_dv[m]*h[l] - All.G * Mtot * dx_normalized[k]; // Worry about cancellation error for low eccentricity?
+        l = (k+1)%3; m = (k+2)%3;
+        n_x[k] = P[i].comp_dv[l]*h[m] - P[i].comp_dv[m]*h[l] - All.G * Mtot * dx_normalized[k]; // Worry about cancellation error for low eccentricity?
     }
 
     norm = sqrt(n_x[0]*n_x[0] + n_x[1]*n_x[1] + n_x[2]*n_x[2]);    
     for(k=0; k<3; k++) n_x[k] /= -norm; // take the opposite direction of the LRL vector, so x points from periapsis to apoapsis
 
     for(k=0; k<3; k++, l=(k+1)%3, m=(k+2)%3){ // cross product of n_x with angular momentum to get a vector along the minor axis
-	l = (k+1)%3; m = (k+2)%3;
-	n_y[k] = n_x[l] * h[m] - n_x[m] * h[l];
-	n_y[k] /= sqrt(h2);
+        l = (k+1)%3; m = (k+2)%3;
+        n_y[k] = n_x[l] * h[m] - n_x[m] * h[l];
+        n_y[k] /= sqrt(h2);
     }
 
     // Transform to coordinates in the plane of the ellipse
     for(k=0; k<3; k++){
-	x += P[i].comp_dx[k]*n_x[k];
-	y += P[i].comp_dx[k]*n_y[k];
+        x += P[i].comp_dx[k]*n_x[k];
+        y += P[i].comp_dx[k]*n_y[k];
     }
     
     true_anomaly = atan2(y,x);
@@ -99,15 +99,15 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
 
     // transform back to global coordinates
     for(k=0; k<3; k++){
-	dx_new[k] = x * n_x[k] + y * n_y[k];
-	dv_new[k] = vx * n_x[k] + vy * n_y[k];
-	drift_dx[k] = dx_new[k] - P[i].comp_dx[k];
-	kick_dv[k] = dv_new[k] - P[i].comp_dv[k];
+    dx_new[k] = x * n_x[k] + y * n_y[k];
+    dv_new[k] = vx * n_x[k] + vy * n_y[k];
+    drift_dx[k] = dx_new[k] - P[i].comp_dx[k];
+    kick_dv[k] = dv_new[k] - P[i].comp_dv[k];
 
-	if(mode==1){ // if we want to do the actual self-consistent binary update
-	    P[i].comp_dx[k] = dx_new[k];
-	    P[i].comp_dv[k] = dv_new[k];
-	}
+    if(mode==1){ // if we want to do the actual self-consistent binary update
+        P[i].comp_dx[k] = dx_new[k];
+        P[i].comp_dv[k] = dv_new[k];
+    }
     }
 }
 
