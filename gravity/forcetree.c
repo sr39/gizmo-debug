@@ -2699,40 +2699,50 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     
     
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING 
-    //Remove contribution to the tidal tensor from companion that is in a node (this meas softening should not be an issue)
+    //Remove contribution to the tidal tensor from the stars in the binary to the center of mass
 printf("Center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
     if (COM_calc_flag==1){
         printf("Correcting for companion contribution\n");
-        double part_relmass=1.0-comp_Mass/pmass; //relative mass of the current particle in the binary
-        double comp_dr=part_relmass*sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ); //distance of the companion to the center of mass
-        double part_relmass2=part_relmass*part_relmass; double comp_dr2=comp_dr*comp_dr;
-        //Prefactors
-        h = All.ForceSoftening[ptype];  h_inv = 1.0 / h; h3_inv = h_inv*h_inv*h_inv; h5_inv = h3_inv*h_inv*h_inv; u = comp_dr*h_inv; double u2=u*u;
-        printf("part_relmass %g comp_dr %g comp_Mass %g pmass %g \n",part_relmass, comp_dr, comp_Mass, pmass);
-        if(comp_dr >= h){
-            fac = comp_Mass / (comp_dr2 * comp_dr); fac2 = 3.0 * comp_Mass / (comp_dr2 * comp_dr2 * comp_dr); /* no softening nonsense */
-        }
-        else{
-            fac = comp_Mass * kernel_gravity(u, h_inv, h3_inv, 1);
-            /* second derivatives needed -> calculate them from softend potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
-            if(u < 0.5) {fac2 = comp_Mass * h5_inv * (76.8 - 96.0 * u);} else {fac2 = comp_Mass * h5_inv * (-0.2 / (u2 * u2 * u) + 48.0 / u - 76.8 + 32.0 * u);
+        
+        for(i1 = 0; i1 < 2; i1++) {
+            if (i1==0){ 
+                double b_mass=comp_Mass;
+                double direction_fac=1.0;
+            }else{
+                b_mass=comp_Mass;
+                direction_fac=-1.0;
             }
+            double part_relmass=1.0-b_mass/pmass; //relative mass of the other particle in the binary
+            double comp_dr=part_relmass*sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ); //distance to center of mass from current binary star
+            double part_relmass2=part_relmass*part_relmass; double comp_dr2=comp_dr*comp_dr;
+            //Prefactors
+            h = All.ForceSoftening[ptype];  h_inv = 1.0 / h; h3_inv = h_inv*h_inv*h_inv; h5_inv = h3_inv*h_inv*h_inv; u = comp_dr*h_inv; double u2=u*u;
+            printf("part_relmass %g comp_dr %g b_mass %g pmass %g h %g \n",part_relmass, comp_dr, b_mass, pmass, h);
+            if(comp_dr >= h){
+                fac = b_mass / (comp_dr2 * comp_dr); fac2 = 3.0 * b_mass / (comp_dr2 * comp_dr2 * comp_dr); /* no softening nonsense */
+            }
+            else{
+                fac = b_mass * kernel_gravity(u, h_inv, h3_inv, 1);
+                /* second derivatives needed -> calculate them from softened potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
+                if(u < 0.5) {fac2 = b_mass * h5_inv * (76.8 - 96.0 * u);} else {fac2 = b_mass * h5_inv * (-0.2 / (u2 * u2 * u) + 48.0 / u - 76.8 + 32.0 * u);
+                }
+            }
+            //Correct gravitational acceleration for center of mass by subtracting the companion
+            acc_x -= direction_fac*fac*part_relmass*comp_dx[0];
+            acc_y -= direction_fac*fac*part_relmass*comp_dx[1];
+            acc_z -= direction_fac*fac*part_relmass*comp_dx[2];
+            //Adjusting tidal tensor
+            tidal_tensorps[0][0] -= part_relmass2 * (-fac + comp_dx[0] * comp_dx[0] * fac2);
+            tidal_tensorps[0][1] -= part_relmass2 * (comp_dx[0] * comp_dx[1] * fac2);
+            tidal_tensorps[0][2] -= part_relmass2 * (comp_dx[0] * comp_dx[2] * fac2);
+            tidal_tensorps[1][1] -= part_relmass2 * (-fac + comp_dx[1] * comp_dx[1] * fac2);
+            tidal_tensorps[1][2] -= part_relmass2 * (comp_dx[1] * comp_dx[2] * fac2);
+            tidal_tensorps[2][2] -= (part_relmass2 * -fac + comp_dx[2] * comp_dx[2] * fac2);
+            //Symmetrizing
+            tidal_tensorps[1][0] = tidal_tensorps[0][1];
+            tidal_tensorps[2][0] = tidal_tensorps[0][2];
+            tidal_tensorps[2][1] = tidal_tensorps[1][2];
         }
-        //Correct gravitational acceleration for center of mass by subtracting the companion
-        acc_x -= fac*part_relmass*comp_dx[0];
-        acc_y -= fac*part_relmass*comp_dx[1];
-        acc_z -= fac*part_relmass*comp_dx[2];
-        //Adjusting tidal tensor
-        tidal_tensorps[0][0] -= part_relmass2 * (-fac + comp_dx[0] * comp_dx[0] * fac2);
-        tidal_tensorps[0][1] -= part_relmass2 * (comp_dx[0] * comp_dx[1] * fac2);
-        tidal_tensorps[0][2] -= part_relmass2 * (comp_dx[0] * comp_dx[2] * fac2);
-        tidal_tensorps[1][1] -= part_relmass2 * (-fac + comp_dx[1] * comp_dx[1] * fac2);
-        tidal_tensorps[1][2] -= part_relmass2 * (comp_dx[1] * comp_dx[2] * fac2);
-        tidal_tensorps[2][2] -= (part_relmass2 * -fac + comp_dx[2] * comp_dx[2] * fac2);
-        //Symmetrizing
-        tidal_tensorps[1][0] = tidal_tensorps[0][1];
-        tidal_tensorps[2][0] = tidal_tensorps[0][2];
-        tidal_tensorps[2][1] = tidal_tensorps[1][2];
     printf("Corrected center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
     }
 #endif
