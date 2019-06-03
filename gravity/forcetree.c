@@ -2703,11 +2703,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 printf("Center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
     if (COM_calc_flag==1){
         printf("Correcting for companion contribution\n");
-        
+        double b_mass, direction_fac;
         for(i1 = 0; i1 < 2; i1++) {
             if (i1==0){ 
-                double b_mass=comp_Mass;
-                double direction_fac=1.0;
+                b_mass=comp_Mass;
+                direction_fac=1.0;
             }else{
                 b_mass=comp_Mass;
                 direction_fac=-1.0;
