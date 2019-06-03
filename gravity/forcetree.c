@@ -1666,7 +1666,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double comp_dv[3]; //velocity offset of binary companion
     double comp_Mass; //mass of binary companion
     MyIDType comp_ID; //ID of binary companion
-    MyIDType par_ID; //ID of a particle
+    MyIDType par_ID; //ID used to iterate among particles
 #endif
 #endif //#ifdef SINGLE_STAR_TIMESTEPPING
 #endif //#ifdef BH_CALC_DISTANCES
@@ -1896,6 +1896,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     {
         while(no >= 0)
         {
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+            par_ID = -3; //not very elegant but good for now
+#endif
             if(no < maxPart)
             {
                 /* the index of the node is the index of the particle */
@@ -1911,6 +1914,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 dx = P[no].Pos[0] - pos_x;
                 dy = P[no].Pos[1] - pos_y;
                 dz = P[no].Pos[2] - pos_z;
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+                par_ID=P[no].ID; //ID of particle
+#endif
 #ifdef BOX_PERIODIC
                 NEAREST_XYZ(dx,dy,dz,-1);
 #endif
@@ -2541,11 +2547,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING // only take forces into account for the binary in the center-of-mass pass if they are from NOT the companion
-    //Get ID of particle we are dealing with
-                if(mode == 0){par_ID=P[no].ID;} //for mode!=0 we can't get an ID for a node
-                if ( (COM_calc_flag==0) || ( (COM_calc_flag==1) && ((mode != 0) || (comp_ID!=par_ID)) ) ) // goes through in 3 cases: 1) not center of mass calc, 2) center of mass calc, companion not on teh same node, 3) center of mass calc, companion on same node, but this is not that particle
+    printf("Particle no %d comp_ID %d COM_calc_flag %d All.MaxPart %d ",no,comp_ID,COM_calc_flag, All.MaxPart);
+    printf("particle ID %d",par_ID);
+    printf("\n");
+                if ( (COM_calc_flag==0) || ( (COM_calc_flag==1) && ((comp_ID==-2) || (comp_ID!=par_ID)) ) ) // goes through in 3 cases: 1) not center of mass calc, 2) center of mass calc, companion not on the same node, 3) center of mass calc, companion on same node, but this is not that particle
 #endif
                 {
+    printf("Start\n");
                     acc_x += FLT(dx * fac);
                     acc_y += FLT(dy * fac);
                     acc_z += FLT(dz * fac);
@@ -2581,7 +2589,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     tidal_tensorps[2][0] = tidal_tensorps[0][2];
                     tidal_tensorps[2][1] = tidal_tensorps[1][2];
 #endif // GDE_DISTORTIONTENSOR //
-                } // closes ( (COM_calc_flag==0) || ( (COM_calc_flag==1) && ((mode != 0) || (comp_ID!=par_ID)) ) )
+                } // closes if ( (COM_calc_flag==0) || ( (COM_calc_flag==1) && ((comp_ID==-2) || (comp_ID!=par_ID)) ) )
             } // closes TABINDEX<NTAB
             
             ninteractions++;
@@ -2709,7 +2717,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING 
     //Remove contribution to the tidal tensor from companion that is in a node (this meas softening shoul not be an issue)
-    if ((COM_calc_flag==1) && (mode != 0) ){ //only if the companion is on a different node
+    if ((COM_calc_flag==1) && (comp_ID==-2) ){ //only if the companion is on a different node
+        printf("Correcting for companion contribution\n");
         double part_relmass=1.0-comp_Mass/pmass; //relative mass of the current particle in the binary
         double comp_dr=part_relmass*sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ); //distance of the companion to the center of mass
         double comp_grav_fac=All.G*comp_Mass/(comp_dr*comp_dr*comp_dr); //prefactor for gravitational acceleration
@@ -2726,8 +2735,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 }
             }
         }
-        
     }
+printf("Center of mass acceleration %g %g %g", acc_x, acc_y, acc_z);
 #endif
     
     /* store result at the proper place */
@@ -2788,14 +2797,15 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
        P[target].COM_GravAccel[1] = acc_y;
        P[target].COM_GravAccel[2] = acc_z;
        for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[target].COM_tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
-   }
+    }
 #endif
     }
     else
     {
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
         if (COM_calc_flag==0){ //this ensures that we only export this data if we are not doing a calculation for the center of mass of a binary
-#endif
+            GravDataResult[target].COM_calc_flag=COM_calc_flag;//flag that tells whether this was only a rerun to get the acceleration ad the tidal tenor at the center of mass of a binary
+        #endif
             GravDataResult[target].Acc[0] = acc_x;
             GravDataResult[target].Acc[1] = acc_y;
             GravDataResult[target].Acc[2] = acc_z;
@@ -2825,7 +2835,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             GravDataResult[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);
             GravDataResult[target].min_bh_periastron = min_bh_periastron;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-            GravDataResult[target].COM_calc_flag=COM_calc_flag;//flag that tells whether this was only a rerun to get the acceleration ad the tidal tenor at the center of mass of a binary
             GravDataResult[target].min_bh_t_orbital=min_bh_t_orbital; //orbital time for binary
             if (min_bh_t_orbital<MAX_REAL_NUMBER){
                 GravDataResult[target].SuperTimestepFlag=1; //binary candidate
