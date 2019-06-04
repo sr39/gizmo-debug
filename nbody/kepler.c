@@ -18,9 +18,9 @@ double eccentric_anomaly(double mean_anomaly, double ecc){
     int iterations = 0;
     double twopi = 2*M_PI;
     while(fabs(err/twopi) > 1e-14 && iterations < 20){ // do Newton iterations
-	err = (x0 - ecc*sin(x0) - mean_anomaly)/(1 - ecc*cos(x0));
+        err = (x0 - ecc*sin(x0) - mean_anomaly)/(1 - ecc*cos(x0));
         x0 -= err;
-	x0 = fmod(x0, twopi);
+        x0 = fmod(x0, twopi);
         iterations += 1;
     }
     return x0;
@@ -42,7 +42,7 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
     double dx_new[3], dv_new[3];
     double n_x[3]; // normalized Laplace-Runge-Lenz vector, just to get the unit vector along the major axis of the binary
     double n_y[3]; // normalized unit vector along the minor axis of the binary
-    double norm, h2, true_anomaly, mean_anomaly, ecc_anomaly;
+    double norm, true_anomaly, mean_anomaly, ecc_anomaly;
     double x = 0, y =0, vx =0, vy = 0; // Coordinates in the frame aligned with the binary
     int k,l,m;
     double Mtot = P[i].Mass + P[i].comp_Mass;
@@ -53,10 +53,8 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
     for(k=0; k<3; k++, l=(k+1)%3, m=(k+2)%3){ // dx cross dv to get specific angular momentum vector
         h[k] = P[i].comp_dx[l]*P[i].comp_dv[m] - P[i].comp_dx[m]*P[i].comp_dv[l];
     }
-
-    double hSqr = h[0]*h[0] + h[1]*h[1] + h[2]*h[2];
-    double ecc = sqrt(1 + 2 * specific_energy * hSqr / (All.G*All.G*Mtot*Mtot)); 
-
+    double h2 = h[0]*h[0] + h[1]*h[1] + h[2]*h[2];
+    double ecc = sqrt(1 + 2 * specific_energy * h2 / (All.G*All.G*Mtot*Mtot)); 
     for(k=0; k<3; k++, l=(k+1)%3, m=(k+2)%3){ // Get the LRL vector dv x h - GM dx/r
         l = (k+1)%3; m = (k+2)%3;
         n_x[k] = P[i].comp_dv[l]*h[m] - P[i].comp_dv[m]*h[l] - All.G * Mtot * dx_normalized[k]; // Worry about cancellation error for low eccentricity?
@@ -76,7 +74,7 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
         x += P[i].comp_dx[k]*n_x[k];
         y += P[i].comp_dx[k]*n_y[k];
     }
-    
+    printf("Kepler transform stuff x %g y %g nx %g %g %g ny %g %g %g h %g %g %g\n", x,y,n_x[0],n_x[1],n_x[2],n_y[0],n_y[1],n_y[2],h[0],h[1],h[2]);
     true_anomaly = atan2(y,x);
     mean_anomaly = atan2(sqrt(1 - ecc*ecc) * sin(true_anomaly), ecc + cos(true_anomaly));
     mean_anomaly += dt/P[i].min_bh_t_orbital * 2 * M_PI;
@@ -96,7 +94,7 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
     //relative velocities in the frame aligned with the ellipse:
     vx = v_phi * (-y/dr) + v_r * x/dr;
     vy = v_phi * (x/dr) + v_r * y/dr;
-
+    printf("Kepler x %g y %g semimajor_axis %g ecc_anomaly %g mean_anomaly %g ecc %g specific_energy %g v_phi %g v_r %g dr %g dv %g ID %d \n", x, y,semimajor_axis, ecc_anomaly, mean_anomaly, ecc, specific_energy,v_phi, v_r, dr, dv,  P[i].ID);
     // transform back to global coordinates
     for(k=0; k<3; k++){
     dx_new[k] = x * n_x[k] + y * n_y[k];
@@ -109,6 +107,7 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
         P[i].comp_dv[k] = dv_new[k];
     }
     }
+    printf("Kepler comp_dx %g %g %g dx_new %g %g %g comp_dv %g %g %g dv_new %g %g %g ID %d \n", P[i].comp_dx[0],P[i].comp_dx[1],P[i].comp_dx[2],dx_new[0] ,dx_new[1], dx_new[2], P[i].comp_dv[0], P[i].comp_dv[1], P[i].comp_dv[2], dv_new[0], dv_new[1], dv_new[2], P[i].ID);
 }
 
 #endif
