@@ -331,6 +331,7 @@ integertime get_timestep(int p,		/*!< particle index */
 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     if (P[p].SuperTimestepFlag==1){ //already a candidate
+    printf("Super timestepping candidate for particle ID %d \n",P[p].ID);
     //We need to decide whether to use super timestepping for binaries
     double dt_bin,semimajor_axis_cube,dt_ext;
     //internal gravitational timescale
@@ -341,9 +342,11 @@ integertime get_timestep(int p,		/*!< particle index */
     dt_ext=1.0/sqrt(dt_ext);
     if (SUPERTIMESTEPPING_ERRCONST*dt_ext>dt_bin){
         P[p].SuperTimestepFlag=2;
+        printf("Super timestepping active for particle ID %d \n",P[p].ID);
     }
     else{
         P[p].SuperTimestepFlag=0;
+        printf("Super timestepping deactivated for particle ID %d \n",P[p].ID);
     }
 }
 #endif
@@ -358,7 +361,7 @@ integertime get_timestep(int p,		/*!< particle index */
         az = All.cf_a2inv * P[p].GravAccel[2];
 #endif        
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING 
-        if (P[p].SuperTimestepFlag==2){
+        if (P[p].SuperTimestepFlag>=2){
             //use center of mass acceleration for the binary
             ax = All.cf_a2inv * P[p].COM_GravAccel[0];
             ay = All.cf_a2inv * P[p].COM_GravAccel[1];
@@ -463,7 +466,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef TIDAL_TIMESTEP_CRITERION // tidal criterion obtains the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion
     double dt_tidal = 0.; 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-    if (P[p].SuperTimestepFlag==2){
+    if (P[p].SuperTimestepFlag>=2){
         for(k=0; k<3; k++) {dt_tidal += P[p].COM_tidal_tensorps[k][k]*P[p].COM_tidal_tensorps[k][k];}
     }else
 #endif
@@ -474,7 +477,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step and the timestep anticipates close encounters, which gives superior conservation
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-    if(P[p].Type == 5 && P[p].SuperTimestepFlag!=2)
+    if(P[p].Type == 5 && P[p].SuperTimestepFlag<2)
 #else
     if(P[p].Type == 5)
     {
@@ -483,6 +486,7 @@ integertime get_timestep(int p,		/*!< particle index */
     }
 #endif
 #endif
+
     
     
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
@@ -1074,7 +1078,14 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifndef STOP_WHEN_BELOW_MINTIMESTEP
     if(ti_step<=1) ti_step=2;
 #endif
-    
+
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+//Checking whether this particle has already done the kick-drift-kick operations with super times stepping
+if (P[place].SuperTimestepFlag>=5){ //it has already done the kick-drift-kick
+    P[place].SuperTimestepFlag=0; //resetting the super timestepping flag
+    printf("Resetting super timestepping for particle ID %d in timestep.c \n",P[place].ID);
+}
+#endif
     
     if(!(ti_step > 0 && ti_step < TIMEBASE))
     {
@@ -1092,7 +1103,6 @@ integertime get_timestep(int p,		/*!< particle index */
         fflush(stdout);
         endrun(818);
     }
-    
     return ti_step;
 }
 
