@@ -2786,7 +2786,7 @@ printf("Tidal tensor at center of mass diagonal elements %g %g %g \n",tidal_tens
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
         P[target].min_bh_t_orbital=min_bh_t_orbital; //orbital time for binary
         if (min_bh_t_orbital<MAX_REAL_NUMBER && !(All.Ti_Current == 0 && RestartFlag != 1)){ //only if there is a companion
-        P[target].SuperTimestepFlag=1; //binary candidate
+            P[target].SuperTimestepFlag=IMAX(1, P[target].SuperTimestepFlag); //either keeps the current flag or becomes a binary candidate
             P[target].comp_Mass=comp_Mass; //mass of binary companion
             // P[target].comp_ID=comp_ID; //ID of binary companion
             for(ksuper=0;ksuper<3;ksuper++) {
@@ -2847,7 +2847,7 @@ printf("Tidal tensor at center of mass diagonal elements %g %g %g \n",tidal_tens
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
             GravDataResult[target].min_bh_t_orbital=min_bh_t_orbital; //orbital time for binary
             if (min_bh_t_orbital<MAX_REAL_NUMBER){
-                GravDataResult[target].SuperTimestepFlag=1; //binary candidate
+                GravDataResult[target].SuperTimestepFlag=IMAX(GravDataGet[target].SuperTimestepFlag, 1); //either keeps the current flag or becomes a binary candidate
                 GravDataResult[target].comp_Mass=comp_Mass; //mass of binary companion
                 //GravDataResult[target].comp_ID=comp_ID; //ID of binary companion
                 for(ksuper=0;ksuper<3;ksuper++) {
