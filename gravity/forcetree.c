@@ -1810,13 +1810,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     //Change position, velocities and mass if it is a center of mass calculation
     if (COM_calc_flag==1){
         //position of center of mass
-        pos_x = (pmass*pos_x + comp_Mass*comp_dx[0])/(pmass+comp_Mass);
-        pos_y = (pmass*pos_y + comp_Mass*comp_dx[1])/(pmass+comp_Mass);
-        pos_z = (pmass*pos_z + comp_Mass*comp_dx[2])/(pmass+comp_Mass);
+        pos_x = pos_x + comp_Mass*comp_dx[0]/(pmass+comp_Mass);
+        pos_y = pos_y + comp_Mass*comp_dx[1]/(pmass+comp_Mass);
+        pos_z = pos_z + comp_Mass*comp_dx[2]/(pmass+comp_Mass);
         //velocity of center of mass
-        vel_x = (pmass*vel_x + comp_Mass*comp_dv[0])/(pmass+comp_Mass);
-        vel_y = (pmass*vel_y + comp_Mass*comp_dv[1])/(pmass+comp_Mass);
-        vel_z = (pmass*vel_z + comp_Mass*comp_dv[2])/(pmass+comp_Mass);
+        vel_x = vel_x + comp_Mass*comp_dv[0]/(pmass+comp_Mass);
+        vel_y = vel_y + comp_Mass*comp_dv[1]/(pmass+comp_Mass);
+        vel_z = vel_z + comp_Mass*comp_dv[2]/(pmass+comp_Mass);
         //mass
         pmass=pmass+comp_Mass;
     }
@@ -2704,7 +2704,7 @@ printf("Center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
     if (COM_calc_flag==1){
         printf("Correcting for companion contribution\n");
         double b_mass, direction_fac;
-        for(i1 = 0; i1 < 2; i1++) {
+        for(i1 = 0; i1 < 2; i1++) {  //WHICH ONES ARE TAKEN INTO ACCOUNT?
             if (i1==0){ 
                 b_mass=comp_Mass;
                 direction_fac=1.0;
@@ -2717,7 +2717,6 @@ printf("Center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
             double part_relmass2=part_relmass*part_relmass; double comp_dr2=comp_dr*comp_dr;
             //Prefactors
             h = All.ForceSoftening[ptype];  h_inv = 1.0 / h; h3_inv = h_inv*h_inv*h_inv; h5_inv = h3_inv*h_inv*h_inv; u = comp_dr*h_inv; double u2=u*u;
-            printf("part_relmass %g comp_dr %g b_mass %g pmass %g h %g \n",part_relmass, comp_dr, b_mass, pmass, h);
             if(comp_dr >= h){
                 fac = b_mass / (comp_dr2 * comp_dr); fac2 = 3.0 * b_mass / (comp_dr2 * comp_dr2 * comp_dr); /* no softening nonsense */
             }
@@ -2727,6 +2726,7 @@ printf("Center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
                 if(u < 0.5) {fac2 = b_mass * h5_inv * (76.8 - 96.0 * u);} else {fac2 = b_mass * h5_inv * (-0.2 / (u2 * u2 * u) + 48.0 / u - 76.8 + 32.0 * u);
                 }
             }
+            printf("part_relmass %g comp_dr %g b_mass %g pmass %g h %g fac %g\n",part_relmass, comp_dr, b_mass, pmass, h, fac);
             //Correct gravitational acceleration for center of mass by subtracting the companion
             acc_x -= direction_fac*fac*part_relmass*comp_dx[0];
             acc_y -= direction_fac*fac*part_relmass*comp_dx[1];
