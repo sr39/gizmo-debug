@@ -2709,7 +2709,7 @@ printf("Center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
                 b_mass=comp_Mass;
                 direction_fac=1.0;
             }else{
-                b_mass=comp_Mass;
+                b_mass=pmass-comp_Mass;
                 direction_fac=-1.0;
             }
             double part_relmass=1.0-b_mass/pmass; //relative mass of the other particle in the binary
