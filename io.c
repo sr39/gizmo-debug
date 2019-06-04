@@ -286,7 +286,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                         if( (P[pindex].Type == 5) && (P[pindex].SuperTimestepFlag>=2) )
                         {
                             double fewbody_kick_dv[3], drift_dx[3];
-                            kepler_timestep(i, dt, fewbody_kick_dv, drift_dx, 0);
+                            kepler_timestep(pindex, dt_gravkick, fewbody_kick_dv, drift_dx, 0);
                             for(k = 0; k < 3; k++){fp[k] += fewbody_kick_dv[k];}
                         }
 #endif
