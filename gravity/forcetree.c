@@ -2700,8 +2700,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING 
     //Remove contribution to the tidal tensor from the stars in the binary to the center of mass
-printf("Center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
     if (COM_calc_flag==1){
+printf("Center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
+printf("Tidal tensor at center of mass diagonal elements %g %g %g \n",tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]);
         printf("Correcting for companion contribution\n");
         double b_mass, direction_fac;
         for(i1 = 0; i1 < 2; i1++) {  //WHICH ONES ARE TAKEN INTO ACCOUNT?
@@ -2744,6 +2745,7 @@ printf("Center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
             tidal_tensorps[2][1] = tidal_tensorps[1][2];
         }
     printf("Corrected center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
+    printf("Corrected tidal tensor diagonal elements %g %g %g \n",tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]);
     }
 #endif
     
