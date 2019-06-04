@@ -1080,6 +1080,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
+printf("Particle ID %d has SuperTimestepFlag \n",P[p].ID,P[p].SuperTimestepFlag);
 //Checking whether this particle has already done the kick-drift-kick operations with super times stepping
 if (P[p].SuperTimestepFlag>=5){ //it has already done the kick-drift-kick
     P[p].SuperTimestepFlag=0; //resetting the super timestepping flag
