@@ -2811,8 +2811,8 @@ printf("Center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
     else
     {
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
+        GravDataResult[target].COM_calc_flag=COM_calc_flag;//flag that tells whether this was only a rerun to get the acceleration ad the tidal tenor at the center of mass of a binary
         if (COM_calc_flag==0){ //this ensures that we only export this data if we are not doing a calculation for the center of mass of a binary
-            GravDataResult[target].COM_calc_flag=COM_calc_flag;//flag that tells whether this was only a rerun to get the acceleration ad the tidal tenor at the center of mass of a binary
         #endif
             GravDataResult[target].Acc[0] = acc_x;
             GravDataResult[target].Acc[1] = acc_y;

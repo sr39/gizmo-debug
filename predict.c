@@ -128,9 +128,12 @@ void drift_particle(int i, integertime time1)
 #endif
 #ifdef SINGLE_STAR_SUPERTIMSTEPPING
     // if super-timestepping, the above accounts for the COM motion of the binary; now we account for the internal motion
-   double fewbody_drift_dx[3];
-   do_fewbody_drift(i, fewbody_drift_dx, dt_drift);
-   for(j=0;j<3;j++) {P[i].Pos[j] += fewbody_drift_dx[j];}
+   if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=2) ){
+       double fewbody_drift_dx[3];
+       do_fewbody_drift(i, fewbody_drift_dx, dt_drift);
+       for(j=0;j<3;j++) {P[i].Pos[j] += fewbody_drift_dx[j];}
+       P[i].SuperTimestepFlag +=1; //we did a super timestep
+   }
 #endif    
 #endif
 #if (NUMDIMS==1)
