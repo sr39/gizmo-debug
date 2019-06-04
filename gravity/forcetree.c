@@ -2794,6 +2794,7 @@ printf("Tidal tensor at center of mass diagonal elements %g %g %g \n",tidal_tens
                 P[target].comp_dv[ksuper]=comp_dv[ksuper]; //velocity of binary companion
             }
         }else{
+            printf("Forcetree setting SuperTimestepFlag to zero for particle ID %d with SuperTimestepFlag %d \n",P[target].ID, P[target].SuperTimestepFlag);
             P[target].SuperTimestepFlag=0; //not a binary candidate
         }
 #endif
@@ -2855,6 +2856,7 @@ printf("Tidal tensor at center of mass diagonal elements %g %g %g \n",tidal_tens
                     GravDataResult[target].comp_dv[ksuper]=comp_dv[ksuper]; //velocity of binary companion
                 }
             }else{
+                printf("Forcetree setting SuperTimestepFlag to zero for GravData with SuperTimestepFlag %d \n", GravDataGet[target].SuperTimestepFlag);
                 GravDataResult[target].SuperTimestepFlag=0; //not a binary candidate
             }
         }
