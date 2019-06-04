@@ -285,6 +285,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
     double fewbody_kick_dv[3] = {0,0,0};
     if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=2) ){
         do_fewbody_kick(i, fewbody_kick_dv, dt_gravkick);
+        P[i].SuperTimestepFlag +=1; //we did a super timestep
     }
 #endif
         /* now, kick for non-SPH quantities (accounting for momentum conservation if masses are changing) */
@@ -310,7 +311,6 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 // if we're super-timestepping, the above accounts for the change in COM velocity. Now we do the internal binary velocity change	    
             if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=2) ){
                 P[i].Vel[j] += fewbody_kick_dv[j];
-                P[i].SuperTimestepFlag +=1; //we did a super timestep
                 }
 #endif    
         }
