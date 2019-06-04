@@ -2733,12 +2733,12 @@ printf("Tidal tensor at center of mass diagonal elements %g %g %g \n",tidal_tens
             acc_y -= direction_fac*fac*part_relmass*comp_dx[1];
             acc_z -= direction_fac*fac*part_relmass*comp_dx[2];
             //Adjusting tidal tensor
-            tidal_tensorps[0][0] -= part_relmass2 * (-fac + comp_dx[0] * comp_dx[0] * fac2);
+            tidal_tensorps[0][0] -= (-fac + part_relmass2 * comp_dx[0] * comp_dx[0] * fac2);
             tidal_tensorps[0][1] -= part_relmass2 * (comp_dx[0] * comp_dx[1] * fac2);
             tidal_tensorps[0][2] -= part_relmass2 * (comp_dx[0] * comp_dx[2] * fac2);
-            tidal_tensorps[1][1] -= part_relmass2 * (-fac + comp_dx[1] * comp_dx[1] * fac2);
+            tidal_tensorps[1][1] -= (-fac + part_relmass2 * comp_dx[1] * comp_dx[1] * fac2);
             tidal_tensorps[1][2] -= part_relmass2 * (comp_dx[1] * comp_dx[2] * fac2);
-            tidal_tensorps[2][2] -= (part_relmass2 * -fac + comp_dx[2] * comp_dx[2] * fac2);
+            tidal_tensorps[2][2] -= (-fac + part_relmass2 * comp_dx[2] * comp_dx[2] * fac2);
             //Symmetrizing
             tidal_tensorps[1][0] = tidal_tensorps[0][1];
             tidal_tensorps[2][0] = tidal_tensorps[0][2];
