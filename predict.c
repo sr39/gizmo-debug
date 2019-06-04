@@ -133,6 +133,7 @@ void drift_particle(int i, integertime time1)
        do_fewbody_drift(i, fewbody_drift_dx, dt_drift);
        for(j=0;j<3;j++) {P[i].Pos[j] += fewbody_drift_dx[j];}
        P[i].SuperTimestepFlag +=1; //we did a super timestep
+       printf("Super time stepped drift operation for particle ID %d SuperTimestepFlag %d \n",P[i].ID, P[i].SuperTimestepFlag);
    }
 #endif    
 #endif
