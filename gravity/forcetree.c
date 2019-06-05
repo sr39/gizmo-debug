@@ -2785,9 +2785,9 @@ printf("Tidal tensor at center of mass diagonal elements %g %g %g \n",tidal_tens
         P[target].min_bh_periastron = min_bh_periastron;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
         P[target].min_bh_t_orbital=min_bh_t_orbital; //orbital time for binary
+        P[target].COM_calc_flag = 0; //just to be sure
         if (min_bh_t_orbital<MAX_REAL_NUMBER && !(All.Ti_Current == 0 && RestartFlag != 1)){ //only if there is a companion
             P[target].SuperTimestepFlag=IMAX(1, P[target].SuperTimestepFlag); //either keeps the current flag or becomes a binary candidate
-            P[target].COM_calc_flag = 0; //just to be sure
             P[target].comp_Mass=comp_Mass; //mass of binary companion
             // P[target].comp_ID=comp_ID; //ID of binary companion
             for(ksuper=0;ksuper<3;ksuper++) {
@@ -2797,7 +2797,6 @@ printf("Tidal tensor at center of mass diagonal elements %g %g %g \n",tidal_tens
         }else{
             printf("Forcetree setting SuperTimestepFlag to zero for particle ID %d with SuperTimestepFlag %d \n",P[target].ID, P[target].SuperTimestepFlag);
             P[target].SuperTimestepFlag=0; //not a binary candidate
-            P[target].COM_calc_flag = 0; //just to be sure
         }
 #endif
 #endif
@@ -2809,6 +2808,7 @@ printf("Tidal tensor at center of mass diagonal elements %g %g %g \n",tidal_tens
        P[target].COM_GravAccel[0] = acc_x;
        P[target].COM_GravAccel[1] = acc_y;
        P[target].COM_GravAccel[2] = acc_z;
+       P[target].COM_calc_flag = 0; //just to be sure
        for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[target].COM_tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
     }
 #endif

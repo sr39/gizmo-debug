@@ -42,7 +42,7 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
     double dx_new[3], dv_new[3];
     double n_x[3]; // normalized Laplace-Runge-Lenz vector, just to get the unit vector along the major axis of the binary
     double n_y[3]; // normalized unit vector along the minor axis of the binary
-    double norm, true_anomaly, mean_anomaly, ecc_anomaly;
+    double norm, true_anomaly, mean_anomaly, ecc_anomaly, cos_true_anomaly,sin_true_anomaly;
     double x = 0, y =0, vx =0, vy = 0; // Coordinates in the frame aligned with the binary
     int k,l,m;
     double Mtot = P[i].Mass + P[i].comp_Mass;
@@ -76,15 +76,31 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
     }
     printf("Kepler transform stuff x %g y %g nx %g %g %g ny %g %g %g h %g %g %g\n", x,y,n_x[0],n_x[1],n_x[2],n_y[0],n_y[1],n_y[2],h[0],h[1],h[2]);
     true_anomaly = atan2(y,x);
+    
+    ecc_anomaly = atan2(sqrt(1 - ecc*ecc) * sin(true_anomaly), ecc + cos(true_anomaly));
+    mean_anomaly = ecc_anomaly - ecc * sin(ecc_anomaly);
+    printf("Kepler x %g y %g ecc_anomaly %g mean_anomaly %g true anomaly %g change in mean anomaly %g ID %d \n", x, y, ecc_anomaly, mean_anomaly, true_anomaly, (dt/P[i].min_bh_t_orbital * 2 * M_PI),P[i].ID);
+    //Increase mean anomaly as time passes
+    mean_anomaly += dt/P[i].min_bh_t_orbital * 2 * M_PI;
+    mean_anomaly = fmod(mean_anomaly, 2*M_PI);
+    //Get eccentric anomaly for new position
+    ecc_anomaly = eccentric_anomaly(mean_anomaly, ecc);
+    //Get sine and cosine of new true anomaly (we don't actually need the new value)
+    sin_true_anomaly = sqrt(1.0-ecc*ecc)*sin(ecc_anomaly)/( 1 - ecc*cos(ecc_anomaly) );
+    cos_true_anomaly = ( cos(ecc_anomaly) - ecc )/( 1 - ecc*cos(ecc_anomaly) );
+    dr = semimajor_axis * (1-ecc*ecc)/(1+ecc*cos_true_anomaly);
+    x = dr * cos_true_anomaly;
+    y = dr * sin_true_anomaly;
+    
+/*     //Mike's
     mean_anomaly = atan2(sqrt(1 - ecc*ecc) * sin(true_anomaly), ecc + cos(true_anomaly));
     mean_anomaly += dt/P[i].min_bh_t_orbital * 2 * M_PI;
     mean_anomaly = fmod(mean_anomaly, 2*M_PI);
-    ecc_anomaly = eccentric_anomaly(mean_anomaly, ecc);
-
+    ecc_anomaly = eccentric_anomaly(mean_anomaly, ecc); 
     x = semimajor_axis * (cos(ecc_anomaly) - ecc);
     y = semimajor_axis * sqrt(1 - ecc*ecc) * sin(ecc_anomaly);
+    dr = sqrt(x*x + y*y);*/
     
-    dr = sqrt(x*x + y*y);
     dv = sqrt(All.G * Mtot * (2/dr - 1/semimajor_axis)); // We conserve energy exactly
 
     double v_phi = sqrt(h2) / dr; // conserving angular momentum
@@ -94,20 +110,22 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
     //relative velocities in the frame aligned with the ellipse:
     vx = v_phi * (-y/dr) + v_r * x/dr;
     vy = v_phi * (x/dr) + v_r * y/dr;
-    printf("Kepler x %g y %g semimajor_axis %g ecc_anomaly %g mean_anomaly %g ecc %g specific_energy %g v_phi %g v_r %g dr %g dv %g ID %d \n", x, y,semimajor_axis, ecc_anomaly, mean_anomaly, ecc, specific_energy,v_phi, v_r, dr, dv,  P[i].ID);
+    printf("Kepler new x %g new y %g semimajor_axis %g new ecc_anomaly %g new mean_anomaly %g ecc %g specific_energy %g v_phi %g v_r %g dr %g dv %g P[i].min_bh_t_orbital %g dt %g ID %d \n", x, y,semimajor_axis, ecc_anomaly, mean_anomaly, ecc, specific_energy,v_phi, v_r, dr, dv, P[i].min_bh_t_orbital, dt, P[i].ID);
     // transform back to global coordinates
+    double two_body_factor=-P[i].comp_Mass/Mtot;
     for(k=0; k<3; k++){
     dx_new[k] = x * n_x[k] + y * n_y[k];
     dv_new[k] = vx * n_x[k] + vy * n_y[k];
-    drift_dx[k] = dx_new[k] - P[i].comp_dx[k];
-    kick_dv[k] = dv_new[k] - P[i].comp_dv[k];
+    
+    drift_dx[k] = (dx_new[k] - P[i].comp_dx[k]) * two_body_factor;
+    kick_dv[k] = (dv_new[k] - P[i].comp_dv[k]) * two_body_factor;
 
     if(mode==1){ // if we want to do the actual self-consistent binary update
         P[i].comp_dx[k] = dx_new[k];
         P[i].comp_dv[k] = dv_new[k];
     }
     }
-    printf("Kepler comp_dx %g %g %g dx_new %g %g %g comp_dv %g %g %g dv_new %g %g %g ID %d \n", P[i].comp_dx[0],P[i].comp_dx[1],P[i].comp_dx[2],dx_new[0] ,dx_new[1], dx_new[2], P[i].comp_dv[0], P[i].comp_dv[1], P[i].comp_dv[2], dv_new[0], dv_new[1], dv_new[2], P[i].ID);
+    printf("Kepler comp_dx %g %g %g dx_new %g %g %g comp_dv %g %g %g dv_new %g %g %g two_body_factor %g mass %g comp_mass %g ID %d \n", P[i].comp_dx[0],P[i].comp_dx[1],P[i].comp_dx[2],dx_new[0] ,dx_new[1], dx_new[2], P[i].comp_dv[0], P[i].comp_dv[1], P[i].comp_dv[2], dv_new[0], dv_new[1], dv_new[2],two_body_factor,P[i].Mass,P[i].comp_Mass, P[i].ID);
 }
 
 #endif
