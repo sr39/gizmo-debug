@@ -1722,7 +1722,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
 //if this is a second pass on a binary, use center of mass data
-        if ( P[target].SuperTimestepFlag==1){
+        if ( P[target].COM_calc_flag ==1){
             COM_calc_flag = 1; //center of mass calculation
             comp_Mass=P[target].comp_Mass;
             //comp_ID=P[target].comp_ID;
@@ -1779,7 +1779,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
 //if this is a second pass on a binary, use center of mass data
-        if ( GravDataGet[target].SuperTimestepFlag == 1 ){
+        if ( GravDataGet[target].COM_calc_flag == 1 ){
             COM_calc_flag = 1; //center of mass calculation
             //companion properties
             comp_Mass=GravDataGet[target].comp_Mass;
@@ -2787,6 +2787,7 @@ printf("Tidal tensor at center of mass diagonal elements %g %g %g \n",tidal_tens
         P[target].min_bh_t_orbital=min_bh_t_orbital; //orbital time for binary
         if (min_bh_t_orbital<MAX_REAL_NUMBER && !(All.Ti_Current == 0 && RestartFlag != 1)){ //only if there is a companion
             P[target].SuperTimestepFlag=IMAX(1, P[target].SuperTimestepFlag); //either keeps the current flag or becomes a binary candidate
+            P[target].COM_calc_flag = 0; //just to be sure
             P[target].comp_Mass=comp_Mass; //mass of binary companion
             // P[target].comp_ID=comp_ID; //ID of binary companion
             for(ksuper=0;ksuper<3;ksuper++) {
@@ -2796,6 +2797,7 @@ printf("Tidal tensor at center of mass diagonal elements %g %g %g \n",tidal_tens
         }else{
             printf("Forcetree setting SuperTimestepFlag to zero for particle ID %d with SuperTimestepFlag %d \n",P[target].ID, P[target].SuperTimestepFlag);
             P[target].SuperTimestepFlag=0; //not a binary candidate
+            P[target].COM_calc_flag = 0; //just to be sure
         }
 #endif
 #endif
