@@ -1126,7 +1126,7 @@ void *gravity_primary_loop(void *p)
         //Re-evaluate for binary candidates
         if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=1)){ //binary candidate or a confirmed binary
 #ifdef BH_OUTPUT_MOREINFO
-            printf("Particle %d is in a binary with period %g, separation %g %g %g, velocity %g %g %g\n. Let's do another tree pass...\n", i, P[i].min_bh_t_orbital, P[i].comp_dx[0], P[i].comp_dx[1], P[i].comp_dx[2], P[i].comp_dv[0], P[i].comp_dv[1], P[i].comp_dv[2]);
+            printf("Particle %d is in a binary with period %g, separation %g %g %g, velocity %g %g %g SuperTimestepFlag %d COM_calc_flag %d \n. Let's do another tree pass...\n", i, P[i].min_bh_t_orbital, P[i].comp_dx[0], P[i].comp_dx[1], P[i].comp_dx[2], P[i].comp_dv[0], P[i].comp_dv[1], P[i].comp_dv[2], P[i].SuperTimestepFlag, P[i].COM_calc_flag);
 #endif
             P[i].COM_calc_flag = 1; //set it so that we do a center of mass calculation
             ret = force_treeevaluate(i, 0, exportflag, exportnodecount, exportindex);
