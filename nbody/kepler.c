@@ -18,7 +18,7 @@ double eccentric_anomaly(double mean_anomaly, double ecc){
     int iterations = 0;
     double twopi = 2*M_PI;
     while(fabs(err/twopi) > 1e-14 && iterations < 20){ // do Newton iterations
-        err = (x0 - ecc*sin(x0) - mean_anomaly)/(1 - ecc*cos(x0));
+        err = (x0 - ecc*sin(x0) - mean_anomaly)/(1 - ecc*cos(x0)); 
         x0 -= err;
         x0 = fmod(x0, twopi);
         iterations += 1;
@@ -61,7 +61,7 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
     }
 
     norm = sqrt(n_x[0]*n_x[0] + n_x[1]*n_x[1] + n_x[2]*n_x[2]);    
-    for(k=0; k<3; k++) n_x[k] /= -norm; // take the opposite direction of the LRL vector, so x points from periapsis to apoapsis
+    for(k=0; k<3; k++) n_x[k] /= norm; // direction should be so that x points from periapsis to apoapsis
 
     for(k=0; k<3; k++, l=(k+1)%3, m=(k+2)%3){ // cross product of n_x with angular momentum to get a vector along the minor axis
         l = (k+1)%3; m = (k+2)%3;
@@ -75,13 +75,14 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
         y += P[i].comp_dx[k]*n_y[k];
     }
     printf("Kepler transform stuff x %g y %g nx %g %g %g ny %g %g %g h %g %g %g\n", x,y,n_x[0],n_x[1],n_x[2],n_y[0],n_y[1],n_y[2],h[0],h[1],h[2]);
-    true_anomaly = atan2(y,x);
+    // true_anomaly = atan2(y,x);
     
+    true_anomaly = atan2(y,x); 
     ecc_anomaly = atan2(sqrt(1 - ecc*ecc) * sin(true_anomaly), ecc + cos(true_anomaly));
     mean_anomaly = ecc_anomaly - ecc * sin(ecc_anomaly);
     printf("Kepler x %g y %g ecc_anomaly %g mean_anomaly %g true anomaly %g change in mean anomaly %g ID %d \n", x, y, ecc_anomaly, mean_anomaly, true_anomaly, (dt/P[i].min_bh_t_orbital * 2 * M_PI),P[i].ID);
-    //Increase mean anomaly as time passes
-    mean_anomaly += dt/P[i].min_bh_t_orbital * 2 * M_PI;
+    //Changes mean anomaly as time passes
+    mean_anomaly -= dt/P[i].min_bh_t_orbital * 2 * M_PI;
     mean_anomaly = fmod(mean_anomaly, 2*M_PI);
     //Get eccentric anomaly for new position
     ecc_anomaly = eccentric_anomaly(mean_anomaly, ecc);
@@ -103,7 +104,7 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
     
     dv = sqrt(All.G * Mtot * (2/dr - 1/semimajor_axis)); // We conserve energy exactly
 
-    double v_phi = sqrt(h2) / dr; // conserving angular momentum
+    double v_phi = -sqrt(h2) / dr; // conserving angular momentum
     double v_r = sqrt(DMAX(0, dv*dv - v_phi*v_phi));
     if(ecc_anomaly < M_PI) v_r = -v_r; // if radius is decreasing, make sure v_r is negative
     
