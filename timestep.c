@@ -1082,10 +1082,10 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
 printf("Particle ID %d has SuperTimestepFlag %d \n",P[p].ID,P[p].SuperTimestepFlag);
 //Checking whether this particle has already done the kick-drift-kick operations with super times stepping
-if (P[p].SuperTimestepFlag>=SUPERTIMESTEPPING_STEPS_PER_CHECK){ //it has already done the kick-drift-kick
+/* if (P[p].SuperTimestepFlag>=SUPERTIMESTEPPING_STEPS_PER_CHECK){ //it has already done the kick-drift-kick
     P[p].SuperTimestepFlag=0; //resetting the super timestepping flag
     printf("Resetting super timestepping for particle ID %d in timestep.c \n",P[p].ID);
-}
+} */
 #endif
     
     if(!(ti_step > 0 && ti_step < TIMEBASE))

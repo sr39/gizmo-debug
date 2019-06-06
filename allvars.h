@@ -295,7 +295,7 @@
 #endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
 #define SUPERTIMESTEPPING_ERRCONST 0.01 // If sqrt(|nabla g| / (GM/a^3)) < SUPERTIMESTEPPING_ERRCONST, then we use super timestepping for the binary
-#define SUPERTIMESTEPPING_STEPS_PER_CHECK 10 // number of supertimestepped steps taken before a binary is demoted
+//#define SUPERTIMESTEPPING_STEPS_PER_CHECK 10 // number of supertimestepped steps taken before a binary is demoted
 #endif
 #ifdef NEWSINK
 #define NEWSINK_BONDI
