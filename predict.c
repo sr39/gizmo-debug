@@ -126,12 +126,23 @@ void drift_particle(int i, integertime time1)
 #else
     for(j=0;j<3;j++) {P[i].Pos[j] += P[i].Vel[j] * dt_drift;}
 #endif
-#ifdef SINGLE_STAR_SUPERTIMSTEPPING
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
     // if super-timestepping, the above accounts for the COM motion of the binary; now we account for the internal motion
-   if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=2) ){
-       double fewbody_drift_dx[3];
-       do_fewbody_drift(i, fewbody_drift_dx, dt_drift);
-       for(j=0;j<3;j++) {P[i].Pos[j] += fewbody_drift_dx[j];}
+    double fewbody_drift_dx[3];
+    double fewbody_kick_dv[3];
+    if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=2) ){
+
+//First reverse the previous half-step kick
+//       do_fewbody_drift(i, fewbody_drift_dx, fewbody_kick_dv, dt_drift/2);
+//       for(j=0;j<3;j++) {
+//	   P[i].Vel[j] -= fewbody_kick_dv[j];
+//       }
+// Now do a whole-step kick and drift for the binary
+       do_fewbody_drift(i, fewbody_drift_dx, fewbody_kick_dv, dt_drift);
+       for(j=0;j<3;j++) {
+	   P[i].Pos[j] += fewbody_drift_dx[j];
+	   P[i].Vel[j] += fewbody_kick_dv[j];
+       }
        P[i].SuperTimestepFlag +=1; //we did a super timestep
        printf("Super time stepped drift operation for particle ID %d SuperTimestepFlag %d x_orig %g %g %g dx %g %g %g dt %g\n",P[i].ID, P[i].SuperTimestepFlag,P[i].Pos[0],P[i].Pos[1],P[i].Pos[2],fewbody_drift_dx[0],fewbody_drift_dx[1],fewbody_drift_dx[2],dt_drift);
    }
@@ -197,8 +208,13 @@ void drift_particle(int i, integertime time1)
 #else
             for(j = 0; j < 3; j++)
                 SphP[i].VelPred[j] += P[i].GravAccel[j] * dt_gravkick +
-                    SphP[i].HydroAccel[j]*All.cf_atime * dt_hydrokick; /* make sure v is in code units */
+                    SphP[i].HydroAccel[j]*All.cf_atime * dt_hydrokick; /* make sure v is in code units */	    
 #endif
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+	    if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=2) ){
+		for(j = 0; j < 3; j++)	SphP[i].VelPred[j] += fewbody_kick_dv[j];
+	    }
+#endif	    
             
 #if defined(TURB_DRIVING)
             for(j = 0; j < 3; j++)
@@ -672,10 +688,10 @@ double calculate_face_area_for_cartesian_mesh(double *dp, double rinv, double l_
 #endif
 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-void do_fewbody_drift(int i, double fewbody_drift_dx[3], double dt){
+void do_fewbody_drift(int i, double fewbody_drift_dx[3], double fewbody_kick_dv[3], double dt){
     //int k;
     double  kick_dv[3];
-    kepler_timestep(i, dt, kick_dv, fewbody_drift_dx, 1);
+    kepler_timestep(i, dt, fewbody_kick_dv, fewbody_drift_dx, 1);
     //for(k=0; k<3; k++) fewbody_drift_dx[k] = 0;
 }
 #endif
