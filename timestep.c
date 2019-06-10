@@ -476,17 +476,17 @@ integertime get_timestep(int p,		/*!< particle index */
     else {dt = DMIN(All.MaxSizeTimestep, dt_tidal);} // for collisionless or stars, fuhgeddabout the Power 2003 timestep. We're in Tidaltown, USA
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step and the timestep anticipates close encounters, which gives superior conservation
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-    if(P[p].Type == 5 && P[p].SuperTimestepFlag<2)
-#else
+//#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+//    if(P[p].Type == 5 && P[p].SuperTimestepFlag<2)
+//#else
     if(P[p].Type == 5)
+//#endif	
     {
         double omega_binary = 1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time; // timestep is harmonic mean of freefall and approach time
-        dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary * 0.3);
+        dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary);
+//	printf("dt = %g\n", sqrt(All.ErrTolIntAccuracy)/omega_binary * 0.3);
     }
 #endif
-#endif
-
     
     
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
@@ -1063,9 +1063,11 @@ integertime get_timestep(int p,		/*!< particle index */
             printf("Part-ID=%llu  dt=%g ac=%g xyz=(%g|%g|%g)\n", (MyIDType) P[p].ID, dt, ac, P[p].Pos[0],
                    P[p].Pos[1], P[p].Pos[2]);
 #endif // ndef LONGIDS
+#ifdef SINGLE_STAR_TIMESTEPPING	    
         if(P[p].Type == 5){
             printf("BH particle size %g, nearest gas distance is %g \n", Get_Particle_Size(p), BPP(p).BH_NearestGasNeighbor);
         }
+#endif	
         }
         fflush(stdout);
         fprintf(stderr, "\n @ fflush \n");

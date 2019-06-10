@@ -298,6 +298,7 @@
 //#define SUPERTIMESTEPPING_STEPS_PER_CHECK 10 // number of supertimestepped steps taken before a binary is demoted
 #endif
 #ifdef NEWSINK
+#define BH_GRAVCAPTURE_GAS
 #define NEWSINK_BONDI
 #define NEWSINK_J_FEEDBACK //turns on angular momentum feedback in NEWSINK
 #ifdef MAGNETIC

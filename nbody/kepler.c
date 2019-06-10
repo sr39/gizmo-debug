@@ -11,6 +11,13 @@
 #include "../kernel.h"
 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
+// wraps around angle to the interval [0, 2pi)
+double wrap_angle(double angle){
+    if (angle > 2*M_PI)	return fmod(angle, 2*M_PI);
+    else if (angle < 0) return 2*M_PI + fmod(angle, 2*M_PI);
+    else return angle;
+}
+
 // Solve Kepler's equation to convert mean anomaly into eccentric anomaly
 double eccentric_anomaly(double mean_anomaly, double ecc){
     double x0 = mean_anomaly;
@@ -20,7 +27,7 @@ double eccentric_anomaly(double mean_anomaly, double ecc){
     while(fabs(err/twopi) > 1e-14 && iterations < 20){ // do Newton iterations
         err = (x0 - ecc*sin(x0) - mean_anomaly)/(1 - ecc*cos(x0)); 
         x0 -= err;
-        x0 = fmod(x0, twopi);
+        x0 = wrap_angle(x0);
         iterations += 1;
     }
     return x0;
@@ -75,15 +82,14 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
         y += P[i].comp_dx[k]*n_y[k];
     }
     printf("Kepler transform stuff x %g y %g nx %g %g %g ny %g %g %g h %g %g %g\n", x,y,n_x[0],n_x[1],n_x[2],n_y[0],n_y[1],n_y[2],h[0],h[1],h[2]);
-    // true_anomaly = atan2(y,x);
     
-    true_anomaly = atan2(y,x); 
-    ecc_anomaly = atan2(sqrt(1 - ecc*ecc) * sin(true_anomaly), ecc + cos(true_anomaly));
-    mean_anomaly = ecc_anomaly - ecc * sin(ecc_anomaly);
+    true_anomaly = wrap_angle(atan2(y,x));
+    ecc_anomaly = wrap_angle(atan2(sqrt(1 - ecc*ecc) * sin(true_anomaly), ecc + cos(true_anomaly)));
+    mean_anomaly = wrap_angle(ecc_anomaly - ecc * sin(ecc_anomaly));
     printf("Kepler x %g y %g ecc_anomaly %g mean_anomaly %g true anomaly %g change in mean anomaly %g ID %d \n", x, y, ecc_anomaly, mean_anomaly, true_anomaly, (dt/P[i].min_bh_t_orbital * 2 * M_PI),P[i].ID);
     //Changes mean anomaly as time passes
     mean_anomaly -= dt/P[i].min_bh_t_orbital * 2 * M_PI;
-    mean_anomaly = fmod(mean_anomaly, 2*M_PI);
+    mean_anomaly = wrap_angle(mean_anomaly);
     //Get eccentric anomaly for new position
     ecc_anomaly = eccentric_anomaly(mean_anomaly, ecc);
     //Get sine and cosine of new true anomaly (we don't actually need the new value)
@@ -93,14 +99,15 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
     x = dr * cos_true_anomaly;
     y = dr * sin_true_anomaly;
     
-/*     //Mike's
-    mean_anomaly = atan2(sqrt(1 - ecc*ecc) * sin(true_anomaly), ecc + cos(true_anomaly));
-    mean_anomaly += dt/P[i].min_bh_t_orbital * 2 * M_PI;
-    mean_anomaly = fmod(mean_anomaly, 2*M_PI);
-    ecc_anomaly = eccentric_anomaly(mean_anomaly, ecc); 
-    x = semimajor_axis * (cos(ecc_anomaly) - ecc);
-    y = semimajor_axis * sqrt(1 - ecc*ecc) * sin(ecc_anomaly);
-    dr = sqrt(x*x + y*y);*/
+//Mike's
+
+    /* mean_anomaly = wrap_angle(atan2(sqrt(1 - ecc*ecc) * sin(true_anomaly), ecc + cos(true_anomaly))); */
+    /* mean_anomaly += dt/P[i].min_bh_t_orbital * 2 * M_PI; */
+    /* mean_anomaly = wrap_angle(mean_anomaly); */
+    /* ecc_anomaly = eccentric_anomaly(mean_anomaly, ecc); */
+    /* x = semimajor_axis * (cos(ecc_anomaly) - ecc); */
+    /* y = semimajor_axis * sqrt(1 - ecc*ecc) * sin(ecc_anomaly); */
+    /* dr = sqrt(x*x + y*y); */
     
     dv = sqrt(All.G * Mtot * (2/dr - 1/semimajor_axis)); // We conserve energy exactly
 
