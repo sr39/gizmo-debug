@@ -39,8 +39,12 @@ int does_particle_need_to_be_merged(int i)
 #ifdef BH_WIND_SPAWN
     if(P[i].ID == All.AGNWindID)
     {
+#ifdef BH_DEBUG_SPAWN_JET_TEST
         MyFloat vr2 = (P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]) * All.cf_a2inv; // physical
         if(vr2 <= 0.01 * All.BAL_v_outflow*All.BAL_v_outflow) {return 1;} else {return 0;} // merge only if velocity condition satisfied, even if surrounded by more massive particles //
+#else
+        return 1;
+#endif
     }
 #endif
     if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*ref_mass_factor(i))) return 0;
@@ -183,9 +187,15 @@ void merge_and_split_particles(void)
                         {
 #ifdef BH_WIND_SPAWN
                             if(P[j].ID != All.AGNWindID)
+                            {
+                                double v2_tmp=0; int ktmp=0; for(ktmp=0;ktmp<3;ktmp++) {v2_tmp+=(P[i].Vel[ktmp]-P[j].Vel[ktmp])*(P[i].Vel[ktmp]-P[j].Vel[ktmp]);}
+                                if(v2_tmp > 0) {v2_tmp=sqrt(v2_tmp*All.cf_a2inv);} else {v2_tmp=0;}
+                                if((v2_tmp < 0.2*All.BAL_v_outflow) || (v2_tmp < 0.9*Particle_effective_soundspeed_i(j))) /* check if particle has strongly decelerated to be either sub-sonic or well-below launch velocity */
+#else
+                                {
 #endif
-                            if(P[j].Mass<threshold_val) {threshold_val=P[j].Mass; target_for_merger=j;} // mass-based //
-                        }
+                                    if(P[j].Mass<threshold_val) {threshold_val=P[j].Mass; target_for_merger=j;} // mass-based //
+                                }}
                     } // for(n=0; n<numngb_inbox; n++)
                     if(target_for_merger >= 0)
                     {
@@ -331,6 +341,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nea
     NumForceUpdate++;
     /* likewise add it to the counters that register how many particles are in each timebin */
     TimeBinCount[P[j].TimeBin]++;
+    if(P[i].Type==0) {TimeBinCountSph[P[j].TimeBin]++;}
     PrevInTimeBin[j] = i;
     NextInTimeBin[j] = NextInTimeBin[i];
     if(NextInTimeBin[i] >= 0) {PrevInTimeBin[NextInTimeBin[i]] = j;}

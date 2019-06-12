@@ -741,9 +741,9 @@ void hydro_final_operations_and_cleanup(void)
 #endif
             vA = All.cf_afac3 * sqrt(All.cf_afac1 * vA/ (All.cf_atime * SphP[i].Density)); cr_vstream_loss_velocity = DMIN(vA, cr_vstream_loss_velocity);
 #endif
-            double cr_stream_cool = -GAMMA_COSMICRAY_MINUS1 * cr_vstream_loss_velocity / Get_CosmicRayGradientLength(i);
-            SphP[i].DtCosmicRayEnergy += SphP[i].CosmicRayEnergyPred * cr_stream_cool;
-            SphP[i].DtInternalEnergy -= SphP[i].CosmicRayEnergyPred * cr_stream_cool;
+            double cr_stream_cool = fabs(GAMMA_COSMICRAY_MINUS1 * cr_vstream_loss_velocity / Get_CosmicRayGradientLength(i));
+            SphP[i].DtCosmicRayEnergy -= SphP[i].CosmicRayEnergyPred * cr_stream_cool;
+            SphP[i].DtInternalEnergy += SphP[i].CosmicRayEnergyPred * cr_stream_cool;
 #endif // CRs
             
             
