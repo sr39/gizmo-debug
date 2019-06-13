@@ -707,7 +707,13 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
 #ifdef BH_DEBUG_SPAWN_JET_TEST
     d_r = DMIN(d_r , 0.01); /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
 #endif
-    int bin; for(bin = 0; bin < TIMEBINS; bin++) {if (TimeBinCount[bin] > 0) break;} /* gives minimum active timebin of any particle */
+    long bin, bin_0; for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin] > 0) break;} /* gives minimum active timebin of any particle */
+    bin_0 = bin; int i0 = i; /* save minimum timebin, also save ID of BH particle for use below */
+#ifndef BH_DEBUG_SPAWN_JET_TEST
+    bin = P[i0].TimeBin; i0 = i; /* make this particle active on the BH timestep */
+#else
+    bin = bin_0; i0 = dummy_sph_i_to_clone; /* make this particle active on the minimum timestep, and order with respect to the cloned particle */
+#endif
     /* create the  new particles to be added to the end of the particle list :
         i is the BH particle tag, j is the new "spawed" particle's location, dummy_sph_i_to_clone is a dummy SPH particle's tag to be used to init the wind particle */
     for(j = NumPart; j < NumPart + n_particles_split; j++)
@@ -715,18 +721,16 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
         P[j] = P[dummy_sph_i_to_clone]; SphP[j] = SphP[dummy_sph_i_to_clone]; /* set the pointers equal to one another -- all quantities get copied, we only have to modify what needs changing */
 
         /* now we need to make sure everything is correctly placed in timebins for the tree */
-#ifndef BH_DEBUG_SPAWN_JET_TEST
-        bin = P[dummy_sph_i_to_clone].TimeBin; /* make this particle active on either the step of the cloned particle or BH, whichever is smaller */
-        if(P[i].TimeBin < bin) {bin=P[i].TimeBin;}
-#endif
         P[j].TimeBin = bin; P[j].dt_step = bin ? (((integertime) 1) << bin) : 0; // put this particle into the appropriate timebin
         NextActiveParticle[j] = FirstActiveParticle; FirstActiveParticle = j; NumForceUpdate++;
-        TimeBinCount[bin]++; TimeBinCountSph[bin]++; PrevInTimeBin[j] = dummy_sph_i_to_clone; /* likewise add it to the counters that register how many particles are in each timebin */
-        if(FirstInTimeBin[bin] < 0){  // only particle in this time bin on this task
-            FirstInTimeBin[bin] = j; LastInTimeBin[bin] = j; NextInTimeBin[j] = -1; PrevInTimeBin[j] = -1;
-        } else {                      // there is already at least one particle; add this one "to the front" of the list
-            NextInTimeBin[j] = FirstInTimeBin[bin]; PrevInTimeBin[j] = -1; PrevInTimeBin[FirstInTimeBin[bin]] = j; FirstInTimeBin[bin] = j;
-        }
+        TimeBinCount[bin]++; TimeBinCountSph[bin]++; PrevInTimeBin[j] = i0; /* likewise add it to the counters that register how many particles are in each timebin */
+#ifndef BH_DEBUG_SPAWN_JET_TEST
+        NextInTimeBin[j] = NextInTimeBin[i0]; if(NextInTimeBin[i0] >= 0) {PrevInTimeBin[NextInTimeBin[i0]] = j;}
+        NextInTimeBin[i0] = j; if(LastInTimeBin[bin] == i0) {LastInTimeBin[bin] = j;}
+#else
+        if(FirstInTimeBin[bin] < 0) {FirstInTimeBin[bin]=j; LastInTimeBin[bin]=j; NextInTimeBin[j]=-1; PrevInTimeBin[j]=-1;} /* only particle in this time bin on this task */
+            else {NextInTimeBin[j]=FirstInTimeBin[bin]; PrevInTimeBin[j]=-1; PrevInTimeBin[FirstInTimeBin[bin]]=j; FirstInTimeBin[bin]=j;} /* there is already at least one particle; add this one "to the front" of the list */
+#endif
         P[j].Ti_begstep = All.Ti_Current; P[j].Ti_current = All.Ti_Current;
 #ifdef WAKEUP
         PPPZ[j].wakeup = 1;
@@ -844,7 +848,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
 #endif
         
         /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
-        force_add_star_to_tree(dummy_sph_i_to_clone, j);// (buggy) /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
+        force_add_star_to_tree(i0, j);// (buggy) /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
     }
     
     BPP(i).unspawned_wind_mass = 0.0;
