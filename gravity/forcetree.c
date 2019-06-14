@@ -1955,7 +1955,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     if (specific_energy<0 && COM_calc_flag==0){
                         double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
                         double t_orbital = 2.0*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis/(All.G*M_total) );
-//			printf("for particle %d at position %g %g %g t_orbital=%g M_total=%g r=%g dv=%g id=%d pos=%g %g %g, v=%g %g %g\n", target, pos_x, pos_y, pos_z, t_orbital, M_total, sqrt(r2), sqrt(vSqr), P[no].ID, P[no].Pos[0], P[no].Pos[1], P[no].Pos[2],  P[no].Vel[0], P[no].Vel[1], P[no].Vel[2]);
+printf("forcetree for particle %d at position %g %g %g t_orbital=%g M_total=%g r=%g dv=%g id=%d pos=%g %g %g, v=%g %g %g\n", target, pos_x, pos_y, pos_z, t_orbital, M_total, sqrt(r2), sqrt(vSqr), P[no].ID, P[no].Pos[0], P[no].Pos[1], P[no].Pos[2],  P[no].Vel[0], P[no].Vel[1], P[no].Vel[2]);
                         if(t_orbital < min_bh_t_orbital) {
                             min_bh_t_orbital = t_orbital;
                             //Save parameters of companion
@@ -2390,7 +2390,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                             //Save parameters of companion
                             //comp_ID=-2; //for a node we can't get an ID
                             comp_Mass=nop->bh_mass; //mass of binary companion
-                            comp_dx[0] = dx; comp_dx[1] = dy; comp_dx[2] = dz;
+                            comp_dx[0] = bh_dx; comp_dx[1] = bh_dy; comp_dx[2] = bh_dz;
                             comp_dv[0] = bh_dvx; comp_dv[1] = bh_dvy; comp_dv[2] = bh_dvz;
                             }
                         }
@@ -2746,6 +2746,7 @@ printf("Tidal tensor at center of mass diagonal elements %g %g %g \n",tidal_tens
         }
     printf("Corrected center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
     printf("Corrected tidal tensor diagonal elements %g %g %g \n",tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]);
+    printf("particle position %g %g %g companion relative position %g %g %g dr %g \n",pos_x, pos_y, pos_z, comp_dx[0], comp_dx[1], comp_dx[2],sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ));
     }
 #endif
     

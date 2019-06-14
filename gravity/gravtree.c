@@ -602,8 +602,12 @@ void gravity_tree(void)
                 else{
                     //Save acceleration and tidal tensor at center of mass of binary
                     P[place].COM_calc_flag = 0;
-                    for(k = 0; k < 3; k++) {P[place].COM_GravAccel[k] += GravDataOut[j].COM_GravAccel[k];}
-                    for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[place].COM_tidal_tensorps[i1][i2] += GravDataOut[j].COM_tidal_tensorps[i1][i2];}}
+                    for(k = 0; k < 3; k++) {
+                        P[place].COM_GravAccel[k] += GravDataOut[j].COM_GravAccel[k];
+                        }
+                    for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {
+                        P[place].COM_tidal_tensorps[i1][i2] += GravDataOut[j].COM_tidal_tensorps[i1][i2];
+                        }}
                 }
 #endif
                 }
@@ -1126,10 +1130,22 @@ void *gravity_primary_loop(void *p)
         //Re-evaluate for binary candidates
         if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=1)){ //binary candidate or a confirmed binary
 #ifdef BH_OUTPUT_MOREINFO
-            printf("Particle %d is in a binary with period %g, separation %g %g %g, velocity %g %g %g SuperTimestepFlag %d COM_calc_flag %d \n. Let's do another tree pass...\n", i, P[i].min_bh_t_orbital, P[i].comp_dx[0], P[i].comp_dx[1], P[i].comp_dx[2], P[i].comp_dv[0], P[i].comp_dv[1], P[i].comp_dv[2], P[i].SuperTimestepFlag, P[i].COM_calc_flag);
+double Mtot =P[i].comp_Mass+P[i].Mass;
+double dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
+double dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]);
+double specific_energy = 0.5*dv*dv - All.G * Mtot / dr;
+double semimajor_axis = -All.G * Mtot / (2*specific_energy);
+            printf("Particle %d is in a binary with period %g, separation %g %g %g, velocity %g %g %g SuperTimestepFlag %d COM_calc_flag %d dr %g dv %g specific_energy %g semimajor_axis %g\n. Let's do another tree pass...\n", i, P[i].min_bh_t_orbital, P[i].comp_dx[0], P[i].comp_dx[1], P[i].comp_dx[2], P[i].comp_dv[0], P[i].comp_dv[1], P[i].comp_dv[2], P[i].SuperTimestepFlag, P[i].COM_calc_flag, dr, dv, specific_energy, semimajor_axis);
 #endif
             P[i].COM_calc_flag = 1; //set it so that we do a center of mass calculation
             ret = force_treeevaluate(i, 0, exportflag, exportnodecount, exportindex);
+
+ Mtot =P[i].comp_Mass+P[i].Mass;
+ dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
+ dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]);
+specific_energy = 0.5*dv*dv - All.G * Mtot / dr;
+semimajor_axis = -All.G * Mtot / (2*specific_energy);
+            printf("Particle %d after COM calculation is in a binary with period %g, separation %g %g %g, velocity %g %g %g SuperTimestepFlag %d COM_calc_flag %d dr %g dv %g specific_energy %g semimajor_axis %g\n. Let's do another tree pass...\n", i, P[i].min_bh_t_orbital, P[i].comp_dx[0], P[i].comp_dx[1], P[i].comp_dx[2], P[i].comp_dv[0], P[i].comp_dv[1], P[i].comp_dv[2], P[i].SuperTimestepFlag, P[i].COM_calc_flag, dr, dv, specific_energy, semimajor_axis);
             if(ret < 0) {break;} /* export buffer has filled up */
             Costtotal += ret;
         }

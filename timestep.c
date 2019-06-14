@@ -330,13 +330,19 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-    if (P[p].SuperTimestepFlag==1){ //already a candidate
+    if (P[p].SuperTimestepFlag>=1){ //already a candidate
     printf("Super timestepping candidate for particle ID %d \n",P[p].ID);
     //We need to decide whether to use super timestepping for binaries
     double dt_bin,semimajor_axis_cube,dt_ext;
     //internal gravitational timescale
     semimajor_axis_cube = P[p].min_bh_t_orbital/(2.0*M_PI)*sqrt(All.G*(P[p].Mass+P[p].comp_Mass));semimajor_axis_cube *= semimajor_axis_cube;
     dt_bin=sqrt(semimajor_axis_cube/(All.G*(P[p].Mass+P[p].comp_Mass))); //sqrt(a^3/GM) for binary
+double Mtot =P[p].comp_Mass+P[p].Mass;
+double dr = sqrt(P[p].comp_dx[0]*P[p].comp_dx[0] + P[p].comp_dx[1]*P[p].comp_dx[1] + P[p].comp_dx[2]*P[p].comp_dx[2]);
+double dv = sqrt(P[p].comp_dv[0]*P[p].comp_dv[0] + P[p].comp_dv[1]*P[p].comp_dv[1] + P[p].comp_dv[2]*P[p].comp_dv[2]);
+double specific_energy = 0.5*dv*dv - All.G * Mtot / dr;
+double semimajor_axis = -All.G * Mtot / (2*specific_energy);
+printf("timestep.c ID %d semimajor_axis %g semimajor_axis actual %g specific_energy %g dr %g dv %g \n", P[p].ID, pow(semimajor_axis_cube,1.0/3.0), semimajor_axis,specific_energy, dr, dv);
     //external gravitational timescale
     for(k=0; k<3; k++) {dt_ext += P[p].COM_tidal_tensorps[k][k]*P[p].COM_tidal_tensorps[k][k];}
     dt_ext=1.0/sqrt(dt_ext);
@@ -366,6 +372,8 @@ integertime get_timestep(int p,		/*!< particle index */
             ax = All.cf_a2inv * P[p].COM_GravAccel[0];
             ay = All.cf_a2inv * P[p].COM_GravAccel[1];
             az = All.cf_a2inv * P[p].COM_GravAccel[2];
+            //Overwrite acceleration
+            P[p].GravAccel[0]=P[p].COM_GravAccel[0];P[p].GravAccel[1]=P[p].COM_GravAccel[1];P[p].GravAccel[2]=P[p].COM_GravAccel[2];
         }
 #endif
 #ifdef PMGRID
