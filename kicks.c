@@ -281,14 +281,14 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             if(dEnt < 0.5*SphP[i].InternalEnergy) {SphP[i].InternalEnergy *= 0.5;} else {SphP[i].InternalEnergy = dEnt;}
             check_particle_for_temperature_minimum(i); /* if we've fallen below the minimum temperature, force the 'floor' */
         }
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-   /* double fewbody_kick_dv[3] = {0,0,0}; */
-   /* if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=2) ){ */
-   /*     do_fewbody_kick(i, fewbody_kick_dv, dt_gravkick); */
-   /*     P[i].SuperTimestepFlag +=1; //we did a super timestep */
-   /*     printf("Super time stepped kick operation for particle ID %d SuperTimestepFlag %d v_orig %g %g %g dv %g %g %g dt %g\n",P[i].ID, P[i].SuperTimestepFlag,P[i].Vel[0],P[i].Vel[1],P[i].Vel[2],fewbody_kick_dv[0],fewbody_kick_dv[1],fewbody_kick_dv[2],dt_gravkick); */
-   /* } */
-#endif
+// #ifdef SINGLE_STAR_SUPERTIMESTEPPING
+   // /* double fewbody_kick_dv[3] = {0,0,0}; */
+   // /* if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=2) ){ */
+   // /*     do_fewbody_kick(i, fewbody_kick_dv, dt_gravkick); */
+   // /*     P[i].SuperTimestepFlag +=1; //we did a super timestep */
+   // /*     printf("Super time stepped kick operation for particle ID %d SuperTimestepFlag %d v_orig %g %g %g dv %g %g %g dt %g\n",P[i].ID, P[i].SuperTimestepFlag,P[i].Vel[0],P[i].Vel[1],P[i].Vel[2],fewbody_kick_dv[0],fewbody_kick_dv[1],fewbody_kick_dv[2],dt_gravkick); */
+   // /* } */
+// #endif
         /* now, kick for non-SPH quantities (accounting for momentum conservation if masses are changing) */
         for(j = 0; j < 3; j++)
         {
@@ -303,17 +303,15 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                 dp[j] += mass_pred * SphP[i].RadAccel[j] * All.cf_atime * dt_hydrokick;
 #endif
             }
-/* #ifdef SINKS_FEEL_NO_GRAVITY */
-/* 	    if(P[i].Type < 5) */
-/* #endif */
-            dp[j] += mass_pred * P[i].GravAccel[j] * dt_gravkick;
-            P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
 //if we're super-timestepping, the above accounts for the change in COM velocity. Now we do the internal binary velocity change	    
-	   /*  if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=2) && 0) { */
-           /*     P[i].Vel[j] += fewbody_kick_dv[j]; */
-	   /* } */
+            if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=2)) {
+                   dp[j] += mass_pred * P[i].COM_GravAccel[j] * dt_gravkick;
+            }
+            else
 #endif    
+            {dp[j] += mass_pred * P[i].GravAccel[j] * dt_gravkick;}
+            P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
         }
 
  
