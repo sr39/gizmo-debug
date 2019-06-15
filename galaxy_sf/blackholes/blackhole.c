@@ -441,7 +441,7 @@ void set_blackhole_mdot(int i, int n, double dt)
             
             
 #ifndef IO_REDUCED_MODE
-            printf("BH GravAcc Eval :: mdot %g BHaccFac %g Norm %g fdisk %g bh_8 %g fgas %g f0 %g mdisk_9 %g rmax_100 %g \n\n",
+            printf("BH GravAcc Eval :: mdot %g BHaccFac %g Norm %g fdisk %g bh_8 %g fgas %g f0 %g mdisk_9 %g rmax_100 %g \n",
                    mdot,All.BlackHoleAccretionFactor,fac,
                    f_disk_for_bhar,bh_mass_units,fgas_for_bhar,f0_for_bhar,mdisk_for_bhar_units,rmax_for_bhar_units);
 #endif
