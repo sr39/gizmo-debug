@@ -634,10 +634,11 @@ void spawn_bh_wind_feedback(void)
     /* don't loop or go forward if there are no gas particles in the domain, or the code will crash */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        long nmax = (int)(0.9*All.MaxPart);
-        if(All.MaxPart-1000 < nmax) nmax=All.MaxPart-1000;
-        
-        if((NumPart < nmax) && (n_particles_split<1) && (P[i].Type==5))
+        //long nmax = (int)(0.9*All.MaxPart); if(All.MaxPart-1000 < nmax) nmax=All.MaxPart-1000; /* stricter criterion for allowing spawns, more relaxed below */
+        //if((NumPart < nmax) && (n_particles_split<1) && (P[i].Type==5))
+            
+        long nmax = (int)(0.98*All.MaxPart); if(All.MaxPart-20 < nmax) nmax=All.MaxPart-20;
+        if((NumPart < nmax) && (P[i].Type==5))
         {
             if(BPP(i).unspawned_wind_mass >= (BH_WIND_SPAWN)*All.BAL_wind_particle_mass)
             {
@@ -678,15 +679,17 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
     double total_mass_in_winds = BPP(i).unspawned_wind_mass;
     int n_particles_split   = floor( total_mass_in_winds / All.BAL_wind_particle_mass );
     if( (n_particles_split == 0) || (n_particles_split < 1) ) {return 0;}
-    int n0max = DMAX(9 , (int)((BH_WIND_SPAWN)+0.1));
+    int n0max = DMAX(20 , (int)(3.*(BH_WIND_SPAWN)+0.1));
     if(n_particles_split > n0max) {n_particles_split = n0max;}
 
     /* here is where the details of the split are coded, the rest is bookkeeping */
-    double mass_of_new_particle = total_mass_in_winds / n_particles_split; int k=0; long j;
+    //double mass_of_new_particle = total_mass_in_winds / n_particles_split; /* don't do this, as can produce particles with extremely large masses; instead wait to spawn */
+    double mass_of_new_particle = All.BAL_wind_particle_mass;
 #ifndef IO_REDUCED_MODE
     printf("Task %d wants to create %g mass in wind with %d new particles each of mass %g \n", ThisTask,total_mass_in_winds, n_particles_split, mass_of_new_particle);
     printf(" splitting BH %d using SphP particle %d\n", i, dummy_sph_i_to_clone);
 #endif
+    int k=0; long j;
     if(NumPart + n_particles_split >= All.MaxPart)
     {
         printf ("On Task=%d with NumPart=%d we tried to split a particle, but there is no space left...(All.MaxPart=%d). Try using more nodes, or raising PartAllocFac, or changing the split conditions to avoid this.\n", ThisTask, NumPart, All.MaxPart);
@@ -816,6 +819,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
 #ifndef BH_DEBUG_FIX_MASS
         P[i].Mass -= P[j].Mass; /* make sure the operation is mass conserving! */
 #endif
+        BPP(i).unspawned_wind_mass -= P[j].Mass; /* remove the mass successfully spawned, to update the remaining unspawned mass */
         /* positions */
         double phi = 2.0*M_PI*get_random_number(j+1+ThisTask); // random from 0 to 2pi //
         double cos_theta = 2.0*(get_random_number(j+3+2*ThisTask)-0.5); // random between 1 to -1 //
@@ -846,12 +850,10 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
         dEcr*=COSMIC_RAYS_M1; for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]=dEcr*dx[k]; SphP[j].CosmicRayFluxPred[k]=SphP[j].CosmicRayFlux[k];}
 #endif
 #endif
-        
         /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
         force_add_star_to_tree(i0, j);// (buggy) /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
-    }
-    
-    BPP(i).unspawned_wind_mass = 0.0;
+    }    
+    if(BPP(i).unspawned_wind_mass < 0) {BPP(i).unspawned_wind_mass=0;}
     return n_particles_split;
 }
 #endif
