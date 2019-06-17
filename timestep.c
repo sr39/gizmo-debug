@@ -348,11 +348,11 @@ printf("timestep.c ID %d semimajor_axis %g semimajor_axis actual %g specific_ene
     dt_ext=1.0/sqrt(dt_ext);
     if (SUPERTIMESTEPPING_ERRCONST*dt_ext>dt_bin){
         P[p].SuperTimestepFlag=2;
-        printf("Super timestepping active for particle ID %d \n",P[p].ID);
+        printf("Super timestepping active for particle ID %d with dt_bin %g dt_ext %g\n",P[p].ID, dt_bin, dt_ext);
     }
     else{
         P[p].SuperTimestepFlag=0;
-        printf("Super timestepping deactivated for particle ID %d \n",P[p].ID);
+        printf("Super timestepping deactivated for particle ID %d dt_bin %g dt_ext %g\n",P[p].ID, dt_bin, dt_ext);
     }
 }
 #endif
@@ -484,13 +484,13 @@ printf("timestep.c ID %d semimajor_axis %g semimajor_axis actual %g specific_ene
     else {dt = DMIN(All.MaxSizeTimestep, dt_tidal);} // for collisionless or stars, fuhgeddabout the Power 2003 timestep. We're in Tidaltown, USA
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step and the timestep anticipates close encounters, which gives superior conservation
-//#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-//    if(P[p].Type == 5 && P[p].SuperTimestepFlag<2)
-//#else
     if(P[p].Type == 5)
-//#endif	
+//#endif
     {
         double omega_binary = 1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time; // timestep is harmonic mean of freefall and approach time
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+        if(P[p].SuperTimestepFlag>=2){omega_binary /= SUPERTIMESTEPPING_TIMESTEP_FACTOR;}
+#endif
         dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary);
 //	printf("dt = %g\n", sqrt(All.ErrTolIntAccuracy)/omega_binary * 0.3);
     }
