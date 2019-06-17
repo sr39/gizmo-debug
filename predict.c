@@ -124,13 +124,16 @@ void drift_particle(int i, integertime time1)
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME)
     if(P[i].Type==0) {advect_mesh_point(i,dt_drift);} else {for(j=0;j<3;j++) {P[i].Pos[j] += P[i].Vel[j] * dt_drift;}}
 #else
-    for(j=0;j<3;j++) {P[i].Pos[j] += P[i].Vel[j] * dt_drift;}
-#endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     // if super-timestepping, the above accounts for the COM motion of the binary; now we account for the internal motion
     double fewbody_drift_dx[3];
     double fewbody_kick_dv[3];
     if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=2) ){
+        double COM_Vel[3]; //center of mass velocity
+        for(j=0;j<3;j++) {
+            COM_Vel[j]=P[i].Vel[j] + P[i].comp_dv[j] * P[i].comp_Mass/(P[i].Mass+P[i].comp_Mass); //center of mass velocity
+            P[i].Pos[j] += COM_Vel[j] * dt_drift; //center of mass drift
+        }
 //First reverse the previous half-step kick
 //       do_fewbody_drift(i, fewbody_drift_dx, fewbody_kick_dv, dt_drift/2);
 //       for(j=0;j<3;j++) {
@@ -148,9 +151,10 @@ double semimajor_axis = -All.G * Mtot / (2*specific_energy);
             //Overwrite the acceleration with center of mass value
             P[i].GravAccel[j] = P[i].COM_GravAccel[j];
             //Keplerian evolution
-            P[i].Pos[j] += fewbody_drift_dx[j];
+            P[i].Pos[j] += fewbody_drift_dx[j]; //move on kepler orbit
             P[i].Vel[j] += fewbody_kick_dv[j];
        }
+        printf("ID %d COM_Vel %g %g %g \n",P[i].ID,COM_Vel[0],COM_Vel[1],COM_Vel[2] );
        P[i].SuperTimestepFlag +=1; //we did a super timestep
 dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
 dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]);
@@ -158,8 +162,11 @@ specific_energy = 0.5*dv*dv - All.G * Mtot / dr;
 semimajor_axis = -All.G * Mtot / (2*specific_energy);
        printf("Super time stepped drift operation done for particle ID %d SuperTimestepFlag %d x new %g %g %g dx %g %g %g dt %g new dr %g new dv %g specific_energy %g semimajor_axis %g assumed companion pos %g %g %g \n",P[i].ID, P[i].SuperTimestepFlag,P[i].Pos[0],P[i].Pos[1],P[i].Pos[2],fewbody_drift_dx[0],fewbody_drift_dx[1],fewbody_drift_dx[2],dt_drift, dr , dv,specific_energy, semimajor_axis, (P[i].Pos[0]+P[i].comp_dx[0]),(P[i].Pos[1]+P[i].comp_dx[1]),(P[i].Pos[2]+P[i].comp_dx[2]));
    }
-#endif    
-#endif
+   else
+#endif //else ifdef SINGLE_STAR_SUPERTIMESTEPPING
+       {for(j=0;j<3;j++) {P[i].Pos[j] += P[i].Vel[j] * dt_drift;}}
+#endif //else of if defined(HYDRO_MESHLESS_FINITE_VOLUME) 
+#endif //#if !defined(FREEZE_HYDRO)
 #if (NUMDIMS==1)
     P[i].Pos[1]=P[i].Pos[2]=0; // force zero-ing
 #endif

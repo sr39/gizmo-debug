@@ -2189,13 +2189,14 @@ extern ALIGN(32) struct particle_data
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     int SuperTimestepFlag; // >=2 if allowed to super-timestep (increases with each drift/kick), 1 if a candidate for super-timestepping, 0 otherwise
     int COM_calc_flag; //tells forcetree whether to calculate the forces for the particle (0) or the center of mass (1)
-    MyLongDouble min_bh_t_orbital; //orbital time for binary
-    MyLongDouble comp_dx[3]; //position offset of binary companion - this will be evolved in the Kepler solution while we use the Pos attribute to track the binary COM
-    MyLongDouble comp_dv[3]; //velocity offset of binary companion - this will be evolved in the Kepler solution while we use the Vel attribute to track the binary COM velocity
-    MyLongDouble comp_Mass; //mass of binary companion
+    MyDouble min_bh_t_orbital; //orbital time for binary
+    MyDouble comp_dx[3]; //position offset of binary companion - this will be evolved in the Kepler solution while we use the Pos attribute to track the binary COM
+    MyDouble comp_dv[3]; //velocity offset of binary companion - this will be evolved in the Kepler solution while we use the Vel attribute to track the binary COM velocity
+    MyDouble comp_Mass; //mass of binary companion
     //MyIDType comp_ID; //ID of binary companion
     MyLongDouble COM_tidal_tensorps[3][3]; //tidal tensor evaluated at the center of mass without contribution from the companion
-    MyLongDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
+    MyDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
+    //MyDouble COM_Vel[3]; //center of mass velocity
 #endif
 #endif  
 #endif
@@ -2722,7 +2723,8 @@ extern struct gravdata_out
     MyDouble comp_Mass; //mass of binary companion
     //MyIDType comp_ID; //ID of binary companion
     MyLongDouble COM_tidal_tensorps[3][3]; //tidal tensor evaluated at the center of mass without contribution from the companion
-    MyLongDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
+    MyDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
+    //MyDouble COM_Vel[3]; //velocity of center of mass
     int COM_calc_flag; //flag that tells whether this was only a rerun to get the acceleration ad the tidal tenor at the center of mass of a binary
     int SuperTimestepFlag; // 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
 #endif
