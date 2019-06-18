@@ -253,11 +253,11 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
     p_scale = 1./(1./p_scale + 1./p_scale_max); p_scale *= codelength_to_kpc / All.cf_atime; /* physical pressure scale length in units of kpc */
     if(p_scale > 1000.) {p_scale=1000.;} // limit at 1000 kpc
 #ifdef COOLING
-    double ne=SphP[i].Ne, nh0=0, nHe0, nHepp, nhp, nHeII, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, rho_cgs, u0=SphP[i].InternalEnergyPred;
+    double ne=SphP[i].Ne, nh0=0, nHe0=0, nHepp, nhp, nHeII, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, rho_cgs, u0=SphP[i].InternalEnergyPred;
     temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties
     rho_cgs  = rho * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam; // used by several of the models below
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
-    if(SphP[i].DelayTimeHII>0) {nh0=0;} // account for our effective ionization model here
+    if(SphP[i].DelayTimeHII>0) {nh0=DMIN(1.e-4,nh0); nHe0=DMIN(1.e-5,nHe0);} // account for our effective ionization model here
 #endif
     f_ion = DMIN(DMAX(DMAX(DMAX(1-nh0, nhp), ne/1.2), 1.e-8), 1.); // account for different measures above (assuming primordial composition)
 #endif
@@ -350,7 +350,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
     //fturb_multiplier = pow(M_A,3./2.) * 10.; // arbitrary multiplier
 
     /* ok now we finally have all the terms needed to calculate the various damping rates that determine the equilibrium diffusivity */
-    double G_ion_neutral = 5.77e-11 * (rho_cgs/PROTONMASS) * nh0 * sqrt(temperature) * (All.UnitTime_in_s/All.HubbleParam); if(Z_charge_CR > 1) {G_ion_neutral /= sqrt(2.*Z_charge_CR);} // ion-neutral damping: need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]
+    double G_ion_neutral = 5.77e-11 * (rho_cgs/PROTONMASS) * (0.97*nh0 + 0.03*nHe0) * sqrt(temperature) * (All.UnitTime_in_s/All.HubbleParam); if(Z_charge_CR > 1) {G_ion_neutral /= sqrt(2.*Z_charge_CR);} // ion-neutral damping: need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]
     double G_turb_plus_linear_landau = (vA_noion + sqrt(M_PI)*cs_thermal/4.) * sqrt(k_turb*k_L) * fturb_multiplier,  G0 = G_ion_neutral + G_turb_plus_linear_landau, Gamma_effective = G0; // linear Landau + turbulent (both have same form, assume k_turb from cascade above)
     double phi_0 = (sqrt(M_PI)/6.)*(fabs(cos_Bgrad))*(1./(x_EB_ECR+EPSILON_SMALL))*(cs_thermal*vA_code*k_L/(CRPressureGradScaleLength*G0*G0 + EPSILON_SMALL)); // parameter which determines whether NLL dominates
     if(isfinite(phi_0) && (phi_0>0.01)) {Gamma_effective *= phi_0/(2.*(sqrt(1.+phi_0)-1.));} // this accounts exactly for the steady-state solution for the Thomas+Pfrommer formulation, including both the linear [Landau,turbulent,ion-neutral] + non-linear terms. can estimate (G_nonlinear_landau_effective = Gamma_effective - G0)
