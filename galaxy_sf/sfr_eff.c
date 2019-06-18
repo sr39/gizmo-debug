@@ -508,6 +508,9 @@ void star_formation_parent_routine(void)
 #ifdef BH_ALPHADISK_ACCRETION
                 P[i].BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
 #endif
+#ifdef BH_WIND_SPAWN
+                P[i].unspawned_wind_mass = 0;
+#endif
 #ifdef BH_COUNTPROGS
                 P[i].BH_CountProgs = 1;
 #endif

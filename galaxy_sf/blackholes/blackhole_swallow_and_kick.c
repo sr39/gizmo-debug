@@ -380,6 +380,13 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #ifdef BH_ALPHADISK_ACCRETION
                         accreted_BH_mass_alphadisk += FLT(BPP(j).BH_Mass_AlphaDisk);
 #endif
+#ifdef BH_WIND_SPAWN
+#ifdef BH_ALPHADISK_ACCRETION
+                        accreted_BH_mass_alphadisk += FLT(BPP(j).unspawned_wind_mass);
+#else
+                        accreted_BH_mass += FLT(BPP(j).unspawned_wind_mass);
+#endif
+#endif
                         for(k = 0; k < 3; k++) {accreted_momentum[k] += FLT(BPP(j).BH_Mass * P[j].Vel[k]);}
 #ifdef BH_COUNTPROGS
                         accreted_BH_progs += BPP(j).BH_CountProgs;
@@ -637,7 +644,7 @@ void spawn_bh_wind_feedback(void)
         //long nmax = (int)(0.9*All.MaxPart); if(All.MaxPart-1000 < nmax) nmax=All.MaxPart-1000; /* stricter criterion for allowing spawns, more relaxed below */
         //if((NumPart < nmax) && (n_particles_split<1) && (P[i].Type==5))
             
-        long nmax = (int)(0.98*All.MaxPart); if(All.MaxPart-20 < nmax) nmax=All.MaxPart-20;
+        long nmax = (int)(0.99*All.MaxPart); if(All.MaxPart-20 < nmax) nmax=All.MaxPart-20;
         if((NumPart < nmax) && (P[i].Type==5))
         {
             if(BPP(i).unspawned_wind_mass >= (BH_WIND_SPAWN)*All.BAL_wind_particle_mass)
