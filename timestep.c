@@ -331,8 +331,8 @@ integertime get_timestep(int p,		/*!< particle index */
 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     double supertimestep_factor=1.0;
-    if (P[p].SuperTimestepFlag>=1){ //already a candidate
-    printf("Super timestepping candidate for particle ID %d \n",P[p].ID);
+    if ( (P[p].Type==5) && (P[p].SuperTimestepFlag>=1) ){ //already a candidate
+    //printf("Super timestepping candidate for particle ID %d \n",P[p].ID);
     //We need to decide whether to use super timestepping for binaries
     double dt_bin,semimajor_axis_cube,dt_ext;
     //internal gravitational timescale
