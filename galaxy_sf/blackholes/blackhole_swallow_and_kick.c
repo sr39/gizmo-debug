@@ -380,6 +380,13 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #ifdef BH_ALPHADISK_ACCRETION
                         accreted_BH_mass_alphadisk += FLT(BPP(j).BH_Mass_AlphaDisk);
 #endif
+#ifdef BH_WIND_SPAWN
+#ifdef BH_ALPHADISK_ACCRETION
+                        accreted_BH_mass_alphadisk += FLT(BPP(j).unspawned_wind_mass);
+#else
+                        accreted_BH_mass += FLT(BPP(j).unspawned_wind_mass);
+#endif
+#endif
                         for(k = 0; k < 3; k++) {accreted_momentum[k] += FLT(BPP(j).BH_Mass * P[j].Vel[k]);}
 #ifdef BH_COUNTPROGS
                         accreted_BH_progs += BPP(j).BH_CountProgs;
@@ -634,10 +641,11 @@ void spawn_bh_wind_feedback(void)
     /* don't loop or go forward if there are no gas particles in the domain, or the code will crash */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        long nmax = (int)(0.9*All.MaxPart);
-        if(All.MaxPart-1000 < nmax) nmax=All.MaxPart-1000;
-        
-        if((NumPart < nmax) && (n_particles_split<1) && (P[i].Type==5))
+        //long nmax = (int)(0.9*All.MaxPart); if(All.MaxPart-1000 < nmax) nmax=All.MaxPart-1000; /* stricter criterion for allowing spawns, more relaxed below */
+        //if((NumPart < nmax) && (n_particles_split<1) && (P[i].Type==5))
+            
+        long nmax = (int)(0.99*All.MaxPart); if(All.MaxPart-20 < nmax) nmax=All.MaxPart-20;
+        if((NumPart < nmax) && (P[i].Type==5))
         {
             if(BPP(i).unspawned_wind_mass >= (BH_WIND_SPAWN)*All.BAL_wind_particle_mass)
             {
@@ -678,15 +686,17 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
     double total_mass_in_winds = BPP(i).unspawned_wind_mass;
     int n_particles_split   = floor( total_mass_in_winds / All.BAL_wind_particle_mass );
     if( (n_particles_split == 0) || (n_particles_split < 1) ) {return 0;}
-    int n0max = DMAX(9 , (int)((BH_WIND_SPAWN)+0.1));
+    int n0max = DMAX(20 , (int)(3.*(BH_WIND_SPAWN)+0.1));
     if(n_particles_split > n0max) {n_particles_split = n0max;}
 
     /* here is where the details of the split are coded, the rest is bookkeeping */
-    double mass_of_new_particle = total_mass_in_winds / n_particles_split; int k=0; long j;
+    //double mass_of_new_particle = total_mass_in_winds / n_particles_split; /* don't do this, as can produce particles with extremely large masses; instead wait to spawn */
+    double mass_of_new_particle = All.BAL_wind_particle_mass;
 #ifndef IO_REDUCED_MODE
     printf("Task %d wants to create %g mass in wind with %d new particles each of mass %g \n", ThisTask,total_mass_in_winds, n_particles_split, mass_of_new_particle);
     printf(" splitting BH %d using SphP particle %d\n", i, dummy_sph_i_to_clone);
 #endif
+    int k=0; long j;
     if(NumPart + n_particles_split >= All.MaxPart)
     {
         printf ("On Task=%d with NumPart=%d we tried to split a particle, but there is no space left...(All.MaxPart=%d). Try using more nodes, or raising PartAllocFac, or changing the split conditions to avoid this.\n", ThisTask, NumPart, All.MaxPart);
@@ -707,7 +717,13 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
 #ifdef BH_DEBUG_SPAWN_JET_TEST
     d_r = DMIN(d_r , 0.01); /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
 #endif
-    int bin; for(bin = 0; bin < TIMEBINS; bin++) {if (TimeBinCount[bin] > 0) break;} /* gives minimum active timebin of any particle */
+    long bin, bin_0; for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin] > 0) break;} /* gives minimum active timebin of any particle */
+    bin_0 = bin; int i0 = i; /* save minimum timebin, also save ID of BH particle for use below */
+#ifndef BH_DEBUG_SPAWN_JET_TEST
+    bin = P[i0].TimeBin; i0 = i; /* make this particle active on the BH timestep */
+#else
+    bin = bin_0; i0 = dummy_sph_i_to_clone; /* make this particle active on the minimum timestep, and order with respect to the cloned particle */
+#endif
     /* create the  new particles to be added to the end of the particle list :
         i is the BH particle tag, j is the new "spawed" particle's location, dummy_sph_i_to_clone is a dummy SPH particle's tag to be used to init the wind particle */
     for(j = NumPart; j < NumPart + n_particles_split; j++)
@@ -715,18 +731,16 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
         P[j] = P[dummy_sph_i_to_clone]; SphP[j] = SphP[dummy_sph_i_to_clone]; /* set the pointers equal to one another -- all quantities get copied, we only have to modify what needs changing */
 
         /* now we need to make sure everything is correctly placed in timebins for the tree */
-#ifndef BH_DEBUG_SPAWN_JET_TEST
-        bin = P[dummy_sph_i_to_clone].TimeBin; /* make this particle active on either the step of the cloned particle or BH, whichever is smaller */
-        if(P[i].TimeBin < bin) {bin=P[i].TimeBin;}
-#endif
         P[j].TimeBin = bin; P[j].dt_step = bin ? (((integertime) 1) << bin) : 0; // put this particle into the appropriate timebin
         NextActiveParticle[j] = FirstActiveParticle; FirstActiveParticle = j; NumForceUpdate++;
-        TimeBinCount[bin]++; TimeBinCountSph[bin]++; PrevInTimeBin[j] = dummy_sph_i_to_clone; /* likewise add it to the counters that register how many particles are in each timebin */
-        if(FirstInTimeBin[bin] < 0){  // only particle in this time bin on this task
-            FirstInTimeBin[bin] = j; LastInTimeBin[bin] = j; NextInTimeBin[j] = -1; PrevInTimeBin[j] = -1;
-        } else {                      // there is already at least one particle; add this one "to the front" of the list
-            NextInTimeBin[j] = FirstInTimeBin[bin]; PrevInTimeBin[j] = -1; PrevInTimeBin[FirstInTimeBin[bin]] = j; FirstInTimeBin[bin] = j;
-        }
+        TimeBinCount[bin]++; TimeBinCountSph[bin]++; PrevInTimeBin[j] = i0; /* likewise add it to the counters that register how many particles are in each timebin */
+#ifndef BH_DEBUG_SPAWN_JET_TEST
+        NextInTimeBin[j] = NextInTimeBin[i0]; if(NextInTimeBin[i0] >= 0) {PrevInTimeBin[NextInTimeBin[i0]] = j;}
+        NextInTimeBin[i0] = j; if(LastInTimeBin[bin] == i0) {LastInTimeBin[bin] = j;}
+#else
+        if(FirstInTimeBin[bin] < 0) {FirstInTimeBin[bin]=j; LastInTimeBin[bin]=j; NextInTimeBin[j]=-1; PrevInTimeBin[j]=-1;} /* only particle in this time bin on this task */
+            else {NextInTimeBin[j]=FirstInTimeBin[bin]; PrevInTimeBin[j]=-1; PrevInTimeBin[FirstInTimeBin[bin]]=j; FirstInTimeBin[bin]=j;} /* there is already at least one particle; add this one "to the front" of the list */
+#endif
         P[j].Ti_begstep = All.Ti_Current; P[j].Ti_current = All.Ti_Current;
 #ifdef WAKEUP
         PPPZ[j].wakeup = 1;
@@ -812,6 +826,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
 #ifndef BH_DEBUG_FIX_MASS
         P[i].Mass -= P[j].Mass; /* make sure the operation is mass conserving! */
 #endif
+        BPP(i).unspawned_wind_mass -= P[j].Mass; /* remove the mass successfully spawned, to update the remaining unspawned mass */
         /* positions */
         double phi = 2.0*M_PI*get_random_number(j+1+ThisTask); // random from 0 to 2pi //
         double cos_theta = 2.0*(get_random_number(j+3+2*ThisTask)-0.5); // random between 1 to -1 //
@@ -842,12 +857,10 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
         dEcr*=COSMIC_RAYS_M1; for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]=dEcr*dx[k]; SphP[j].CosmicRayFluxPred[k]=SphP[j].CosmicRayFlux[k];}
 #endif
 #endif
-        
         /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
-        force_add_star_to_tree(dummy_sph_i_to_clone, j);// (buggy) /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
-    }
-    
-    BPP(i).unspawned_wind_mass = 0.0;
+        force_add_star_to_tree(i0, j);// (buggy) /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
+    }    
+    if(BPP(i).unspawned_wind_mass < 0) {BPP(i).unspawned_wind_mass=0;}
     return n_particles_split;
 }
 #endif
