@@ -2701,9 +2701,9 @@ printf("forcetree for particle %d at position %g %g %g t_orbital=%g M_total=%g r
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING 
     //Remove contribution to the tidal tensor from the stars in the binary to the center of mass
     if (COM_calc_flag==1){
-printf("Center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
-printf("Tidal tensor at center of mass diagonal elements %g %g %g \n",tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]);
-        printf("Correcting for companion contribution\n");
+//printf("Center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
+//printf("Tidal tensor at center of mass diagonal elements %g %g %g \n",tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]);
+//printf("Correcting for companion contribution\n");
         double b_mass, direction_fac;
         for(i1 = 0; i1 < 2; i1++) {  //WHICH ONES ARE TAKEN INTO ACCOUNT?
             if (i1==0){ 
@@ -2727,7 +2727,7 @@ printf("Tidal tensor at center of mass diagonal elements %g %g %g \n",tidal_tens
                 if(u < 0.5) {fac2 = b_mass * h5_inv * (76.8 - 96.0 * u);} else {fac2 = b_mass * h5_inv * (-0.2 / (u2 * u2 * u) + 48.0 / u - 76.8 + 32.0 * u);
                 }
             }
-            printf("part_relmass %g comp_dr %g b_mass %g pmass %g h %g fac %g\n",part_relmass, comp_dr, b_mass, pmass, h, fac);
+//printf("part_relmass %g comp_dr %g b_mass %g pmass %g h %g fac %g\n",part_relmass, comp_dr, b_mass, pmass, h, fac);
             //Correct gravitational acceleration for center of mass by subtracting the companion
             acc_x -= direction_fac*fac*part_relmass*comp_dx[0];
             acc_y -= direction_fac*fac*part_relmass*comp_dx[1];
@@ -2744,9 +2744,9 @@ printf("Tidal tensor at center of mass diagonal elements %g %g %g \n",tidal_tens
             tidal_tensorps[2][0] = tidal_tensorps[0][2];
             tidal_tensorps[2][1] = tidal_tensorps[1][2];
         }
-    printf("Corrected center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
-    printf("Corrected tidal tensor diagonal elements %g %g %g \n",tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]);
-    printf("particle position %g %g %g companion relative position %g %g %g dr %g \n",pos_x, pos_y, pos_z, comp_dx[0], comp_dx[1], comp_dx[2],sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ));
+    //printf("Corrected center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
+    //printf("Corrected tidal tensor diagonal elements %g %g %g \n",tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]);
+    //printf("particle position %g %g %g companion relative position %g %g %g dr %g \n",pos_x, pos_y, pos_z, comp_dx[0], comp_dx[1], comp_dx[2],sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ));
     }
 #endif
     
