@@ -330,10 +330,11 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
+    double supertimestep_factor=1.0;
     if (P[p].SuperTimestepFlag>=1){ //already a candidate
     printf("Super timestepping candidate for particle ID %d \n",P[p].ID);
     //We need to decide whether to use super timestepping for binaries
-    double dt_bin,semimajor_axis_cube,dt_ext,supertimestep_factor=1.0;
+    double dt_bin,semimajor_axis_cube,dt_ext;
     //internal gravitational timescale
     semimajor_axis_cube = P[p].min_bh_t_orbital/(2.0*M_PI)*sqrt(All.G*(P[p].Mass+P[p].comp_Mass));semimajor_axis_cube *= semimajor_axis_cube;
     dt_bin=sqrt(semimajor_axis_cube/(All.G*(P[p].Mass+P[p].comp_Mass))); //sqrt(a^3/GM) for binary
