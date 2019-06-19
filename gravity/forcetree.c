@@ -1951,18 +1951,20 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     }
                     if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-                    double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
-                    if (specific_energy<0 && COM_calc_flag==0){
-                        double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
-                        double t_orbital = 2.0*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis/(All.G*M_total) );
-printf("forcetree for particle %d at position %g %g %g t_orbital=%g M_total=%g r=%g dv=%g id=%d pos=%g %g %g, v=%g %g %g\n", target, pos_x, pos_y, pos_z, t_orbital, M_total, sqrt(r2), sqrt(vSqr), P[no].ID, P[no].Pos[0], P[no].Pos[1], P[no].Pos[2],  P[no].Vel[0], P[no].Vel[1], P[no].Vel[2]);
-                        if(t_orbital < min_bh_t_orbital) {
-                            min_bh_t_orbital = t_orbital;
-                            //Save parameters of companion
-                            //comp_ID=P[no].ID; //ID of binary companion
-                            comp_Mass=P[no].Mass; //mass of binary companion
-                            comp_dx[0] = dx; comp_dx[1] = dy; comp_dx[2] = dz;
-                            comp_dv[0] = bh_dvx; comp_dv[1] = bh_dvy; comp_dv[2] = bh_dvz;
+                    if (ptype==5 && COM_calc_flag==0){//only for BH particles and for non center of mass calculation
+                        double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
+                        if (specific_energy<0 && COM_calc_flag==0){
+                            double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
+                            double t_orbital = 2.0*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis/(All.G*M_total) );
+    //printf("forcetree for particle %d at position %g %g %g t_orbital=%g M_total=%g r=%g dv=%g id=%d pos=%g %g %g, v=%g %g %g\n", target, pos_x, pos_y, pos_z, t_orbital, M_total, sqrt(r2), sqrt(vSqr), P[no].ID, P[no].Pos[0], P[no].Pos[1], P[no].Pos[2],  P[no].Vel[0], P[no].Vel[1], P[no].Vel[2]);
+                            if(t_orbital < min_bh_t_orbital) {
+                                min_bh_t_orbital = t_orbital;
+                                //Save parameters of companion
+                                //comp_ID=P[no].ID; //ID of binary companion
+                                comp_Mass=P[no].Mass; //mass of binary companion
+                                comp_dx[0] = dx; comp_dx[1] = dy; comp_dx[2] = dz;
+                                comp_dv[0] = bh_dvx; comp_dv[1] = bh_dvy; comp_dv[2] = bh_dvz;
+                            }
                         }
                     }
 #endif //#ifdef SINGLE_STAR_SUPERTIMESTEPPING
@@ -2380,7 +2382,7 @@ printf("forcetree for particle %d at position %g %g %g t_orbital=%g M_total=%g r
                     }
                     if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-                    if(nop->N_BH == 1 && COM_calc_flag==0){ // only do it if we're looking at a single star in the node
+                    if(ptype==5 && nop->N_BH == 1 && COM_calc_flag==0){ // only do it if we're looking at a single star in the node
                         double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
                         if (specific_energy<0){
                             double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
@@ -2859,7 +2861,7 @@ printf("forcetree for particle %d at position %g %g %g t_orbital=%g M_total=%g r
                     GravDataResult[target].comp_dv[ksuper]=comp_dv[ksuper]; //velocity of binary companion
                 }
             }else{
-                printf("Forcetree setting SuperTimestepFlag to zero for GravData with SuperTimestepFlag %d \n", GravDataGet[target].SuperTimestepFlag);
+                //printf("Forcetree setting SuperTimestepFlag to zero for GravData with SuperTimestepFlag %d \n", GravDataGet[target].SuperTimestepFlag);
                 GravDataResult[target].SuperTimestepFlag=0; //not a binary candidate
             }
         }

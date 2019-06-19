@@ -405,14 +405,16 @@ void gravity_tree(void)
                     for(k = 0; k < 3; k++) {GravDataIn[j].Vel[k] = P[place].Vel[k];}		    
 #endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-                    GravDataIn[j].min_bh_t_orbital = P[place].min_bh_t_orbital; //orbital time for binary
-                    GravDataIn[j].comp_Mass = P[place].comp_Mass; //mass of binary companion
-                    //GravDataIn[j].comp_ID = P[place].comp_ID; //ID of binary companion
-                    GravDataIn[j].SuperTimestepFlag = P[place].SuperTimestepFlag; // >=2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
-                    GravDataIn[j].COM_calc_flag = P[place].COM_calc_flag; // 0 by default, 1 if we need a center of mass calculation
-                    for(k = 0; k < 3; k++) {
-                        GravDataIn[j].comp_dx[k] = P[place].comp_dx[k];
-                        GravDataIn[j].comp_dv[k] = P[place].comp_dv[k];
+                    if (P[place].Type==5){
+                        GravDataIn[j].min_bh_t_orbital = P[place].min_bh_t_orbital; //orbital time for binary
+                        GravDataIn[j].comp_Mass = P[place].comp_Mass; //mass of binary companion
+                        //GravDataIn[j].comp_ID = P[place].comp_ID; //ID of binary companion
+                        GravDataIn[j].SuperTimestepFlag = P[place].SuperTimestepFlag; // >=2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
+                        GravDataIn[j].COM_calc_flag = P[place].COM_calc_flag; // 0 by default, 1 if we need a center of mass calculation
+                        for(k = 0; k < 3; k++) {
+                            GravDataIn[j].comp_dx[k] = P[place].comp_dx[k];
+                            GravDataIn[j].comp_dv[k] = P[place].comp_dv[k];
+                        }
                     }
 #endif
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
@@ -562,12 +564,12 @@ void gravity_tree(void)
                     if(GravDataOut[j].min_bh_freefall_time < P[place].min_bh_freefall_time) {P[place].min_bh_freefall_time = GravDataOut[j].min_bh_freefall_time;}
                     if(GravDataOut[j].min_bh_periastron < P[place].min_bh_periastron) {P[place].min_bh_periastron = GravDataOut[j].min_bh_periastron;}
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-                    if(GravDataOut[j].min_bh_t_orbital < P[place].min_bh_t_orbital) {
+                    P[place].COM_calc_flag = 0; //just to be safe
+                    if ( (P[place].Type==5) && (GravDataOut[j].min_bh_t_orbital < P[place].min_bh_t_orbital) ){
                         P[place].min_bh_t_orbital = GravDataOut[j].min_bh_t_orbital;
                         P[place].comp_Mass = GravDataOut[j].comp_Mass;
                         //P[place].comp_ID = GravDataOut[j].comp_ID;
                         P[place].SuperTimestepFlag = GravDataOut[j].SuperTimestepFlag;
-                        P[place].COM_calc_flag = 0; //just to be safe
                         for(k = 0; k < 3; k++) {
                             P[place].comp_dx[k] = GravDataOut[j].comp_dx[k];
                             P[place].comp_dv[k] = GravDataOut[j].comp_dv[k];
