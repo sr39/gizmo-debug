@@ -2796,7 +2796,7 @@ printf("forcetree for particle %d at position %g %g %g t_orbital=%g M_total=%g r
                 P[target].comp_dv[ksuper]=comp_dv[ksuper]; //velocity of binary companion
             }
         }else{
-            printf("Forcetree setting SuperTimestepFlag to zero for particle ID %d with SuperTimestepFlag %d \n",P[target].ID, P[target].SuperTimestepFlag);
+            //printf("Forcetree setting SuperTimestepFlag to zero for particle ID %d with SuperTimestepFlag %d \n",P[target].ID, P[target].SuperTimestepFlag);
             P[target].SuperTimestepFlag=0; //not a binary candidate
         }
 #endif
