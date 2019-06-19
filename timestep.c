@@ -349,8 +349,8 @@ integertime get_timestep(int p,		/*!< particle index */
     dt_ext=1.0/sqrt(dt_ext);
     if (SUPERTIMESTEPPING_ERRCONST*dt_ext>dt_bin){
         P[p].SuperTimestepFlag=2;
-        supertimestep_factor = SUPERTIMESTEPPING_TIMESTEP_FACTOR * dt_ext/dt_bin;
-        //printf("Super timestepping active for particle ID %d with dt_bin %g dt_ext %g\n",P[p].ID, dt_bin, dt_ext);
+        supertimestep_factor = DMIN(DMAX(SUPERTIMESTEPPING_TIMESTEP_FACTOR * dt_ext/dt_bin, 2.0),1e5);//make the minimum speedup a factor of 2 and put a maximum on it just in case
+        //printf("Super timestepping active for particle ID %d with dt_bin %g dt_ext %g supertimestep_factor %g \n",P[p].ID, dt_bin, dt_ext, supertimestep_factor);
     }
     else{
         P[p].SuperTimestepFlag=0;
@@ -1075,7 +1075,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif // ndef LONGIDS
 #ifdef SINGLE_STAR_TIMESTEPPING	    
         if(P[p].Type == 5){
-            printf("BH particle size %g, nearest gas distance is %g \n", Get_Particle_Size(p), BPP(p).BH_NearestGasNeighbor);
+            printf("BH particle size %g, nearest gas distance is %g nearest BH distance is %g min_bh_freefall_time %g min_bh_approach_time %g dt_tidal %g\n", Get_Particle_Size(p), BPP(p).BH_NearestGasNeighbor, P[p].min_dist_to_bh, P[p].min_bh_freefall_time, P[p].min_dist_to_bh, dt_tidal);
         }
 #endif	
         }

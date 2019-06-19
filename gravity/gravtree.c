@@ -1139,13 +1139,13 @@ double semimajor_axis = -All.G * Mtot / (2*specific_energy);
 #endif
             P[i].COM_calc_flag = 1; //set it so that we do a center of mass calculation
             ret = force_treeevaluate(i, 0, exportflag, exportnodecount, exportindex);
-
- Mtot =P[i].comp_Mass+P[i].Mass;
- dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
- dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]);
-specific_energy = 0.5*dv*dv - All.G * Mtot / dr;
-semimajor_axis = -All.G * Mtot / (2*specific_energy);
-            printf("Particle %d after COM calculation is at position %g %g %g in a binary with period %g, separation %g %g %g, assumed companion position %g %g %g , velocity %g %g %g SuperTimestepFlag %d COM_calc_flag %d dr %g dv %g specific_energy %g semimajor_axis %g\n. Let's do another tree pass...\n", i, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].min_bh_t_orbital, P[i].comp_dx[0], P[i].comp_dx[1], P[i].comp_dx[2], (P[i].Pos[0]+P[i].comp_dx[0]), (P[i].Pos[1]+P[i].comp_dx[1]), (P[i].Pos[2]+P[i].comp_dx[2]), P[i].comp_dv[0], P[i].comp_dv[1], P[i].comp_dv[2], P[i].SuperTimestepFlag, P[i].COM_calc_flag, dr, dv, specific_energy, semimajor_axis);
+ // Mtot =P[i].comp_Mass+P[i].Mass;
+ // dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
+ // dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]);
+// specific_energy = 0.5*dv*dv - All.G * Mtot / dr;
+// semimajor_axis = -All.G * Mtot / (2*specific_energy);
+// printf("Particle %d after COM calculation is at position %g %g %g in a binary with period %g, separation %g %g %g, assumed companion position %g %g %g , velocity %g %g %g SuperTimestepFlag %d COM_calc_flag %d dr %g dv %g specific_energy %g semimajor_axis %g\n. Let's do another tree pass...\n", i, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].min_bh_t_orbital, P[i].comp_dx[0], P[i].comp_dx[1], P[i].comp_dx[2], (P[i].Pos[0]+P[i].comp_dx[0]), (P[i].Pos[1]+P[i].comp_dx[1]), (P[i].Pos[2]+P[i].comp_dx[2]), P[i].comp_dv[0], P[i].comp_dv[1], P[i].comp_dv[2], P[i].SuperTimestepFlag, P[i].COM_calc_flag, dr, dv, specific_energy, semimajor_axis);
+            
             if(ret < 0) {break;} /* export buffer has filled up */
             Costtotal += ret;
         }
