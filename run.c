@@ -79,18 +79,18 @@ void run(void)
         set_non_standard_physics_for_current_time();	/* update auxiliary physics for current time */
 
 #if defined(SINGLE_STAR_FORMATION) || defined(BH_WIND_SPAWN)
-        int TreeReconstructFlag_global=0;
-        MPI_Allreduce(&TreeReconstructFlag, &TreeReconstructFlag_global, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
+        int TreeReconstructFlag_local = TreeReconstructFlag;
+        MPI_Allreduce(&TreeReconstructFlag_local, &TreeReconstructFlag, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
 #endif
-        if(GlobNumForceUpdate > All.TreeDomainUpdateFrequency * All.TotNumPart)	/* check whether we have a big step */
+        if(GlobNumForceUpdate > All.TreeDomainUpdateFrequency * All.TotNumPart) /* check whether we have a big step */
         {
-            domain_Decomposition(0, 0, 1);	/* do domain decomposition if step is big enough, and set new list of active particles  */
+            domain_Decomposition(0, 0, 1);      /* do domain decomposition if step is big enough, and set new list of active particles  */
         }
 #ifdef SINGLE_STAR_FORMATION
-        else if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart || TreeReconstructFlag_global) {domain_Decomposition(0, 0, 1); TreeReconstructFlag=TreeReconstructFlag_global=0;}
-#endif	
+        else if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart || TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
+#endif
 #ifdef BH_WIND_SPAWN
-        else if(TreeReconstructFlag_global) {domain_Decomposition(0, 0, 1); TreeReconstructFlag=TreeReconstructFlag_global=0;}
+        else if(TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
 #endif
         else
         {
