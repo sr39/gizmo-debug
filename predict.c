@@ -135,12 +135,12 @@ void drift_particle(int i, integertime time1)
             P[i].Pos[j] += COM_Vel[j] * dt_drift; //center of mass drift
         }
 // Do a whole-step kick and drift for the binary
-double Mtot =P[i].comp_Mass+P[i].Mass;
-double dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
-double dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]);
-double specific_energy = 0.5*dv*dv - All.G * Mtot / dr;
-double semimajor_axis = -All.G * Mtot / (2*specific_energy);
-       printf("Center of mass drift operation for particle ID %d x %g %g %g v %g %g %g GravAccel %g %g %g COM_GravAccel %g %g %g dr %g dv %g specific_energy %g semimajor_axis %g assumed companion pos %g %g %g \n",P[i].ID, P[i].Pos[0],P[i].Pos[1],P[i].Pos[2],P[i].Vel[0],P[i].Vel[1],P[i].Vel[2], P[i].GravAccel[0],P[i].GravAccel[1],P[i].GravAccel[2],P[i].COM_GravAccel[0],P[i].COM_GravAccel[1],P[i].COM_GravAccel[2], dr ,dv, specific_energy, semimajor_axis, (P[i].Pos[0]+P[i].comp_dx[0]),(P[i].Pos[1]+P[i].comp_dx[1]),(P[i].Pos[2]+P[i].comp_dx[2]));
+// double Mtot =P[i].comp_Mass+P[i].Mass;
+// double dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
+// double dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]);
+// double specific_energy = 0.5*dv*dv - All.G * Mtot / dr;
+// double semimajor_axis = -All.G * Mtot / (2*specific_energy);
+       // printf("Center of mass drift operation for particle ID %d x %g %g %g v %g %g %g GravAccel %g %g %g COM_GravAccel %g %g %g dr %g dv %g specific_energy %g semimajor_axis %g assumed companion pos %g %g %g \n",P[i].ID, P[i].Pos[0],P[i].Pos[1],P[i].Pos[2],P[i].Vel[0],P[i].Vel[1],P[i].Vel[2], P[i].GravAccel[0],P[i].GravAccel[1],P[i].GravAccel[2],P[i].COM_GravAccel[0],P[i].COM_GravAccel[1],P[i].COM_GravAccel[2], dr ,dv, specific_energy, semimajor_axis, (P[i].Pos[0]+P[i].comp_dx[0]),(P[i].Pos[1]+P[i].comp_dx[1]),(P[i].Pos[2]+P[i].comp_dx[2]));
        do_fewbody_drift(i, fewbody_drift_dx, fewbody_kick_dv, dt_drift);
        for(j=0;j<3;j++) {
             //Overwrite the acceleration with center of mass value
@@ -149,13 +149,13 @@ double semimajor_axis = -All.G * Mtot / (2*specific_energy);
             P[i].Pos[j] += fewbody_drift_dx[j]; //move on kepler orbit
             P[i].Vel[j] += fewbody_kick_dv[j];
        }
-        printf("ID %d COM_Vel %g %g %g \n",P[i].ID,COM_Vel[0],COM_Vel[1],COM_Vel[2] );
-       P[i].SuperTimestepFlag +=1; //we did a super timestep
-/* dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
-dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]);
-specific_energy = 0.5*dv*dv - All.G * Mtot / dr;
-semimajor_axis = -All.G * Mtot / (2*specific_energy);
-       printf("Super time stepped drift operation done for particle ID %d SuperTimestepFlag %d x new %g %g %g dx %g %g %g dt %g new dr %g new dv %g specific_energy %g semimajor_axis %g assumed companion pos %g %g %g \n",P[i].ID, P[i].SuperTimestepFlag,P[i].Pos[0],P[i].Pos[1],P[i].Pos[2],fewbody_drift_dx[0],fewbody_drift_dx[1],fewbody_drift_dx[2],dt_drift, dr , dv,specific_energy, semimajor_axis, (P[i].Pos[0]+P[i].comp_dx[0]),(P[i].Pos[1]+P[i].comp_dx[1]),(P[i].Pos[2]+P[i].comp_dx[2])); */
+        // printf("ID %d drifts and kicks: COM_Vel %g %g %g kick_dv %g %g %g drift dx %g %g %g  COM drift dx %g %g %g \n",P[i].ID,COM_Vel[0],COM_Vel[1],COM_Vel[2], fewbody_kick_dv[0],fewbody_kick_dv[1],fewbody_kick_dv[2],fewbody_drift_dx[0],fewbody_drift_dx[1],fewbody_drift_dx[2],(COM_Vel[0]*dt_drift),(COM_Vel[1]*dt_drift),(COM_Vel[2]*dt_drift) );
+       // P[i].SuperTimestepFlag +=1; //we did a super timestep
+ // dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
+// dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]);
+// specific_energy = 0.5*dv*dv - All.G * Mtot / dr;
+// semimajor_axis = -All.G * Mtot / (2*specific_energy);
+       // printf("Super time stepped drift operation done for particle ID %d SuperTimestepFlag %d x new %g %g %g dx %g %g %g dt %g new dr %g new dv %g specific_energy %g semimajor_axis %g assumed companion pos %g %g %g \n",P[i].ID, P[i].SuperTimestepFlag,P[i].Pos[0],P[i].Pos[1],P[i].Pos[2],fewbody_drift_dx[0],fewbody_drift_dx[1],fewbody_drift_dx[2],dt_drift, dr , dv,specific_energy, semimajor_axis, (P[i].Pos[0]+P[i].comp_dx[0]),(P[i].Pos[1]+P[i].comp_dx[1]),(P[i].Pos[2]+P[i].comp_dx[2])); 
    }
    else
 #endif //else ifdef SINGLE_STAR_SUPERTIMESTEPPING

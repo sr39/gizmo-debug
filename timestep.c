@@ -333,26 +333,27 @@ integertime get_timestep(int p,		/*!< particle index */
     if (P[p].SuperTimestepFlag>=1){ //already a candidate
     printf("Super timestepping candidate for particle ID %d \n",P[p].ID);
     //We need to decide whether to use super timestepping for binaries
-    double dt_bin,semimajor_axis_cube,dt_ext;
+    double dt_bin,semimajor_axis_cube,dt_ext,supertimestep_factor=1.0;
     //internal gravitational timescale
     semimajor_axis_cube = P[p].min_bh_t_orbital/(2.0*M_PI)*sqrt(All.G*(P[p].Mass+P[p].comp_Mass));semimajor_axis_cube *= semimajor_axis_cube;
     dt_bin=sqrt(semimajor_axis_cube/(All.G*(P[p].Mass+P[p].comp_Mass))); //sqrt(a^3/GM) for binary
-double Mtot =P[p].comp_Mass+P[p].Mass;
-double dr = sqrt(P[p].comp_dx[0]*P[p].comp_dx[0] + P[p].comp_dx[1]*P[p].comp_dx[1] + P[p].comp_dx[2]*P[p].comp_dx[2]);
-double dv = sqrt(P[p].comp_dv[0]*P[p].comp_dv[0] + P[p].comp_dv[1]*P[p].comp_dv[1] + P[p].comp_dv[2]*P[p].comp_dv[2]);
-double specific_energy = 0.5*dv*dv - All.G * Mtot / dr;
-double semimajor_axis = -All.G * Mtot / (2*specific_energy);
-printf("timestep.c ID %d semimajor_axis %g semimajor_axis actual %g specific_energy %g dr %g dv %g \n", P[p].ID, pow(semimajor_axis_cube,1.0/3.0), semimajor_axis,specific_energy, dr, dv);
+// double Mtot =P[p].comp_Mass+P[p].Mass;
+// double dr = sqrt(P[p].comp_dx[0]*P[p].comp_dx[0] + P[p].comp_dx[1]*P[p].comp_dx[1] + P[p].comp_dx[2]*P[p].comp_dx[2]);
+// double dv = sqrt(P[p].comp_dv[0]*P[p].comp_dv[0] + P[p].comp_dv[1]*P[p].comp_dv[1] + P[p].comp_dv[2]*P[p].comp_dv[2]);
+// double specific_energy = 0.5*dv*dv - All.G * Mtot / dr;
+// double semimajor_axis = -All.G * Mtot / (2*specific_energy);
+// printf("timestep.c ID %d semimajor_axis %g semimajor_axis actual %g specific_energy %g dr %g dv %g \n", P[p].ID, pow(semimajor_axis_cube,1.0/3.0), semimajor_axis,specific_energy, dr, dv);
     //external gravitational timescale
     for(k=0; k<3; k++) {dt_ext += P[p].COM_tidal_tensorps[k][k]*P[p].COM_tidal_tensorps[k][k];}
     dt_ext=1.0/sqrt(dt_ext);
     if (SUPERTIMESTEPPING_ERRCONST*dt_ext>dt_bin){
         P[p].SuperTimestepFlag=2;
-        printf("Super timestepping active for particle ID %d with dt_bin %g dt_ext %g\n",P[p].ID, dt_bin, dt_ext);
+        supertimestep_factor = SUPERTIMESTEPPING_TIMESTEP_FACTOR * dt_ext/dt_bin;
+        //printf("Super timestepping active for particle ID %d with dt_bin %g dt_ext %g\n",P[p].ID, dt_bin, dt_ext);
     }
     else{
         P[p].SuperTimestepFlag=0;
-        printf("Super timestepping deactivated for particle ID %d dt_bin %g dt_ext %g\n",P[p].ID, dt_bin, dt_ext);
+        //printf("Super timestepping deactivated for particle ID %d dt_bin %g dt_ext %g\n",P[p].ID, dt_bin, dt_ext);
     }
 }
 #endif
@@ -489,7 +490,7 @@ printf("timestep.c ID %d semimajor_axis %g semimajor_axis actual %g specific_ene
     {
         double omega_binary = 1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time; // timestep is harmonic mean of freefall and approach time
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-        if(P[p].SuperTimestepFlag>=2){omega_binary /= SUPERTIMESTEPPING_TIMESTEP_FACTOR;}
+        if(P[p].SuperTimestepFlag>=2){omega_binary /= supertimestep_factor;}
 #endif
         dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary);
 //	printf("dt = %g\n", sqrt(All.ErrTolIntAccuracy)/omega_binary * 0.3);
@@ -1088,16 +1089,7 @@ printf("timestep.c ID %d semimajor_axis %g semimajor_axis actual %g specific_ene
 #ifndef STOP_WHEN_BELOW_MINTIMESTEP
     if(ti_step<=1) ti_step=2;
 #endif
-
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-printf("Particle ID %d has SuperTimestepFlag %d \n",P[p].ID,P[p].SuperTimestepFlag);
-//Checking whether this particle has already done the kick-drift-kick operations with super times stepping
-/* if (P[p].SuperTimestepFlag>=SUPERTIMESTEPPING_STEPS_PER_CHECK){ //it has already done the kick-drift-kick
-    P[p].SuperTimestepFlag=0; //resetting the super timestepping flag
-    printf("Resetting super timestepping for particle ID %d in timestep.c \n",P[p].ID);
-} */
-#endif
-    
+   
     if(!(ti_step > 0 && ti_step < TIMEBASE))
     {
         printf("\nError: A timestep of size zero was assigned on the integer timeline, no here!!!\n"
