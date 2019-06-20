@@ -544,6 +544,12 @@ void star_formation_parent_routine(void)
 #ifdef SINGLE_STAR_STRICT_ACCRETION
                 P[i].SinkRadius = DMAX(pow(3 * P[i].Mass/ (SphP[i].Density * 4 * M_PI), 1./3) , All.ForceSoftening[5]); // want a sphere of equal volume to particle size, R = (3V/(4 PI))^(1/3)
 #endif
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+                //Zero everything out
+                P[i].COM_calc_flag=0; P[i].SuperTimestepFlag=0; P[i].min_bh_t_orbital=MAX_REAL_NUMBER;
+                P[i].comp_dx[0] = P[i].comp_dx[1] = P[i].comp_dx[2] = P[i].comp_dv[0] = P[i].comp_dv[1] = P[i].comp_dv[2] = P[i].COM_GravAccel[0] = P[i].COM_GravAccel[1] = P[i].COM_GravAccel[2] = 0;
+                P[i].comp_Mass=P[i].COM_dt_tidal=0;
+#endif
 #ifdef NEWSINK
                 P[i].init_mass_in_intzone=0; //Initialize as 0, we will update it in the first blackole property loop
                 P[i].BH_Mdot_Avg = 0; ; /*Mdot averaged over MDOT_AVG_WINDOWS_SIZE timesteps*/
