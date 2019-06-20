@@ -345,16 +345,19 @@ integertime get_timestep(int p,		/*!< particle index */
 // double semimajor_axis = -All.G * Mtot / (2*specific_energy);
 // printf("timestep.c ID %d semimajor_axis %g semimajor_axis actual %g specific_energy %g dr %g dv %g \n", P[p].ID, pow(semimajor_axis_cube,1.0/3.0), semimajor_axis,specific_energy, dr, dv);
     //external gravitational timescale
-    for(k=0; k<3; k++) {dt_ext += P[p].COM_tidal_tensorps[k][k]*P[p].COM_tidal_tensorps[k][k];}
-    dt_ext=1.0/sqrt(dt_ext);
+    dt_ext=P[p].COM_dt_tidal;
     if (SUPERTIMESTEPPING_ERRCONST*dt_ext>dt_bin){
         P[p].SuperTimestepFlag=2;
         supertimestep_factor = DMIN(DMAX(SUPERTIMESTEPPING_TIMESTEP_FACTOR * dt_ext/dt_bin, 2.0),1e5);//make the minimum speedup a factor of 2 and put a maximum on it just in case
-        //printf("Super timestepping active for particle ID %d with dt_bin %g dt_ext %g supertimestep_factor %g \n",P[p].ID, dt_bin, dt_ext, supertimestep_factor);
+#ifdef BH_OUTPUT_MOREINFO
+        printf("Super timestepping active for particle ID %d with dt_bin %g dt_ext %g supertimestep_factor %g \n",P[p].ID, dt_bin, dt_ext, supertimestep_factor);
+#endif
     }
     else{
         P[p].SuperTimestepFlag=0;
-        //printf("Super timestepping deactivated for particle ID %d dt_bin %g dt_ext %g\n",P[p].ID, dt_bin, dt_ext);
+#ifdef BH_OUTPUT_MOREINFO
+        printf("Super timestepping deactivated for particle ID %d dt_bin %g dt_ext %g\n",P[p].ID, dt_bin, dt_ext);
+#endif
     }
 }
 #endif
@@ -477,11 +480,12 @@ integertime get_timestep(int p,		/*!< particle index */
     double dt_tidal = 0.; 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     if (P[p].SuperTimestepFlag>=2){
-        for(k=0; k<3; k++) {dt_tidal += P[p].COM_tidal_tensorps[k][k]*P[p].COM_tidal_tensorps[k][k];}
+        dt_tidal = sqrt(All.ErrTolIntAccuracy) * P[p].COM_dt_tidal;
     }else
 #endif
-    {for(k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];}}  // this is diagonalized already in the gravity loop
-    dt_tidal = sqrt(All.ErrTolIntAccuracy / sqrt(dt_tidal));
+    {   for(k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];}// this is diagonalized already in the gravity loop
+        dt_tidal = sqrt(All.ErrTolIntAccuracy / sqrt(dt_tidal));
+    }  
     if (P[p].Type == 0) {dt = DMIN(dt, dt_tidal);} // have to include timestep criterion that has hydro accel 
     else {dt = DMIN(All.MaxSizeTimestep, dt_tidal);} // for collisionless or stars, fuhgeddabout the Power 2003 timestep. We're in Tidaltown, USA
 #endif

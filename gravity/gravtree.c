@@ -416,6 +416,10 @@ void gravity_tree(void)
                             GravDataIn[j].comp_dv[k] = P[place].comp_dv[k];
                         }
                     }
+                    else{
+                        //Setting values to zero just to be sure
+                        P[place].SuperTimestepFlag = 0;P[place].COM_calc_flag = 0;GravDataIn[j].COM_calc_flag = 0;
+                    }
 #endif
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
                     if( (P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type]) ) {GravDataIn[j].Soft = PPP[place].Hsml;} else {GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];}
@@ -607,9 +611,10 @@ void gravity_tree(void)
                     for(k = 0; k < 3; k++) {
                         P[place].COM_GravAccel[k] += GravDataOut[j].COM_GravAccel[k];
                         }
-                    for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {
-                        P[place].COM_tidal_tensorps[i1][i2] += GravDataOut[j].COM_tidal_tensorps[i1][i2];
-                        }}
+                    P[place].COM_dt_tidal = 0;
+                    for(i1 = 0; i1 < 3; i1++)  {
+                        P[place].COM_dt_tidal += GravDataOut[j].COM_tidal_tensorps[i1][i1]*GravDataOut[j].COM_tidal_tensorps[i1][i1];}
+                    P[place].COM_dt_tidal = sqrt(1.0 / sqrt(P[place].COM_dt_tidal));
                 }
 #endif
                 }
