@@ -13,7 +13,9 @@
 #ifdef PTHREADS_NUM_THREADS
 #include <pthread.h>
 #endif
-
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+#include <gsl/gsl_eigen.h>
+#endif
 
 /*! \file forcetree.c
  *  \brief gravitational tree and code for Ewald correction
@@ -1781,6 +1783,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 //if this is a second pass on a binary, use center of mass data
         if ( GravDataGet[target].COM_calc_flag == 1 ){
             COM_calc_flag = 1; //center of mass calculation
+            printf("particle type %d incoming COM_calc_flag %d \n",GravDataGet[target].Type,GravDataGet[target].COM_calc_flag);
             //companion properties
             comp_Mass=GravDataGet[target].comp_Mass;
             //comp_ID=GravDataGet[target].comp_ID;
@@ -1953,7 +1956,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
                     if (ptype==5 && COM_calc_flag==0){//only for BH particles and for non center of mass calculation
                         double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
-                        if (specific_energy<0 && COM_calc_flag==0){
+                        if (specific_energy<0){
                             double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
                             double t_orbital = 2.0*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis/(All.G*M_total) );
     //printf("forcetree for particle %d at position %g %g %g t_orbital=%g M_total=%g r=%g dv=%g id=%d pos=%g %g %g, v=%g %g %g\n", target, pos_x, pos_y, pos_z, t_orbital, M_total, sqrt(r2), sqrt(vSqr), P[no].ID, P[no].Pos[0], P[no].Pos[1], P[no].Pos[2],  P[no].Vel[0], P[no].Vel[1], P[no].Vel[2]);
@@ -2703,9 +2706,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING 
     //Remove contribution to the tidal tensor from the stars in the binary to the center of mass
     if (COM_calc_flag==1){
-//printf("Center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
-//printf("Tidal tensor at center of mass diagonal elements %g %g %g \n",tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]);
-//printf("Correcting for companion contribution\n");
+#ifdef BH_OUTPUT_MOREINFO
+printf("COM_calc_flag %d mode %d \n",COM_calc_flag,mode);
+printf("Original center of mass acceleration %g %g %g and tidal tensor diagonal %g %g %g \n", acc_x, acc_y, acc_z,tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]);
+#endif
         double b_mass, direction_fac;
         for(i1 = 0; i1 < 2; i1++) {  //WHICH ONES ARE TAKEN INTO ACCOUNT?
             if (i1==0){ 
@@ -2746,9 +2750,20 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             tidal_tensorps[2][0] = tidal_tensorps[0][2];
             tidal_tensorps[2][1] = tidal_tensorps[1][2];
         }
-    //printf("Corrected center of mass acceleration %g %g %g \n", acc_x, acc_y, acc_z);
-    //printf("Corrected tidal tensor diagonal elements %g %g %g \n",tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]);
-    //printf("particle position %g %g %g companion relative position %g %g %g dr %g \n",pos_x, pos_y, pos_z, comp_dx[0], comp_dx[1], comp_dx[2],sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ));
+        //Now let's diagonalize it (copied from gravtree)
+        double tt[9]; for(i1=0; i1<3; i1++) {for (i2=0; i2<3; i2++) tt[3*i1+i2] = tidal_tensorps[i1][i2];}
+        gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3);
+        gsl_vector *eval = gsl_vector_alloc (3);
+        gsl_eigen_symm_workspace * w = gsl_eigen_symm_alloc (3);
+        gsl_eigen_symm(&m.matrix, eval,  w);
+        for(i2=0; i2<3; i2++) tidal_tensorps[i2][i2] = gsl_vector_get(eval,i2); // set diagonal elements to eigenvalues
+        tidal_tensorps[0][1] = tidal_tensorps[1][0] = tidal_tensorps[1][2] = tidal_tensorps[2][1] = tidal_tensorps[0][2] = tidal_tensorps[2][0] = 0; //zero out off-diagonal elements
+        gsl_eigen_symm_free(w);
+        gsl_vector_free (eval);
+#ifdef BH_OUTPUT_MOREINFO
+    printf("Corrected center of mass acceleration %g %g %g tidal tensor diagonal elements %g %g %g \n", acc_x, acc_y, acc_z,tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]);
+    printf("particle position %g %g %g companion relative position %g %g %g dr %g \n",pos_x, pos_y, pos_z, comp_dx[0], comp_dx[1], comp_dx[2],sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ));
+#endif
     }
 #endif
     
@@ -2812,7 +2827,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
        P[target].COM_GravAccel[1] = acc_y;
        P[target].COM_GravAccel[2] = acc_z;
        P[target].COM_calc_flag = 0; //just to be sure
-       for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[target].COM_tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
+       P[target].COM_dt_tidal = 0;
+       for(i1 = 0; i1 < 3; i1++) {P[target].COM_dt_tidal += tidal_tensorps[i1][i1]*tidal_tensorps[i1][i1];}
+       P[target].COM_dt_tidal = sqrt(1.0 / sqrt(P[target].COM_dt_tidal));
     }
 #endif
     }

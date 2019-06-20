@@ -2195,7 +2195,7 @@ extern ALIGN(32) struct particle_data
     MyDouble comp_dv[3]; //velocity offset of binary companion - this will be evolved in the Kepler solution while we use the Vel attribute to track the binary COM velocity
     MyDouble comp_Mass; //mass of binary companion
     //MyIDType comp_ID; //ID of binary companion
-    MyLongDouble COM_tidal_tensorps[3][3]; //tidal tensor evaluated at the center of mass without contribution from the companion
+    MyDouble COM_dt_tidal; //timescale from tidal tensor evaluated at the center of mass without contribution from the companion
     MyDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
     //MyDouble COM_Vel[3]; //center of mass velocity
 #endif
