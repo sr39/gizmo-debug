@@ -713,7 +713,9 @@ void star_formation_parent_routine(void)
         } // thistask==0
     }
 
-    if(tot_converted+tot_spawned > 0) {rearrange_particle_sequence();}
+    // TO: Don't call rearrange_particle_sequence(). This makes the partcile array to be 
+    // inconsistent with the tree
+    //if(tot_converted+tot_spawned > 0) {rearrange_particle_sequence();}
 
     CPU_Step[CPU_COOLINGSFR] += measure_time();
 } /* end of main sfr_cooling routine!!! */

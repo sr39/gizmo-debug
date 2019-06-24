@@ -125,7 +125,9 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
     double t0, t1;
     
     /* call first -before- a merge-split, to be sure particles are in the correct order in the tree */
-    rearrange_particle_sequence();
+    // TO: we don't have to call this before merge_and_split particles() 
+    // Actually we shouldn't because there are tree-walks in merge_and_split_particles(). 
+    //rearrange_particle_sequence(); 
     if((All.Ti_Current > All.TimeBegin)&&(do_particle_mergesplit_key==1))
     {
         merge_and_split_particles();
