@@ -49,7 +49,8 @@ int does_particle_need_to_be_merged(int i);
 int does_particle_need_to_be_split(int i);
 double ref_mass_factor(int i);
 void merge_particles_ij(int i, int j);
-void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nearest);
+//void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nearest);
+void split_particle_i(int i, int n_particles_split, int i_nearest); 
 
 void do_first_halfstep_kick(void);
 void do_second_halfstep_kick(void);
