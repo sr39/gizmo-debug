@@ -53,7 +53,7 @@ int does_particle_need_to_be_merged(int i)
 #endif
 }
 
-int MinTimeBin, MPI_MinTimeBin; 
+int MaxTimeBin, MPI_MaxTimeBin; 
 
 /*! Here we can insert any desired criteria for particle splitting: by default, this will occur
     when particles become too massive, but it could also be done when Hsml gets very large, densities are high, etc */
@@ -101,15 +101,15 @@ void merge_and_split_particles(void)
 
     Ptmp = (struct flags_merg_split *) mymalloc("Ptmp", NumPart * sizeof(struct flags_merg_split));  
 
-    MinTimeBin = TIMEBINS; 
+    MaxTimeBin = 0; 
     for (i = 0; i < NumPart; i++) {
         Ptmp[i].flag = 0; 
         Ptmp[i].target_index = -1; 
-        if (P[i].TimeBin < MinTimeBin) 
-            MinTimeBin = P[i].TimeBin; 
+        if (P[i].TimeBin > MaxTimeBin) 
+            MaxTimeBin = P[i].TimeBin; 
     }
 
-    MPI_Allreduce(&MinTimeBin, &MPI_MinTimeBin, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD); 
+    MPI_Allreduce(&MaxTimeBin, &MPI_MaxTimeBin, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD); 
 
     for (i = 0; i < NumPart; i++) {
 
@@ -402,8 +402,8 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
     NextInTimeBin[i] = j;
     if(LastInTimeBin[P[i].TimeBin] == i) {LastInTimeBin[P[i].TimeBin] = j;}
 #endif
-    /* the particle needs to be 'born active' and given the minimu TimeBin */
-    P[j].TimeBin = MPI_MinTimeBin; 
+    /* the particle needs to be 'born active' and given the maximum TimeBin */
+    P[j].TimeBin = MPI_MaxTimeBin; 
 
     // need to assign new particle a unique ID:
     /*
