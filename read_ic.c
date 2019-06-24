@@ -1059,7 +1059,7 @@ void read_file(char *fname, int readTask, int lastTask)
                         
                         if(All.ICFormat == 1 || All.ICFormat == 2) {
                             SKIP;
-                            if (blksize1 == 0) { /* workaround for MUSCI ICs */
+                            if (blksize1 == 0) { /* workaround for MUSIC ICs */
                               SKIP2; 
                               SKIP; 
                             }
