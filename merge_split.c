@@ -405,9 +405,11 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
     if(LastInTimeBin[P[i].TimeBin] == i) {LastInTimeBin[P[i].TimeBin] = j;}
 #endif
     /* the particle needs to be 'born active' and given the maximum TimeBin */
+    /*
 #ifdef WAKEUP
-    P[j].wakeup = 1; 
+    PPZ[j].wakeup = 1; 
 #endif
+*/
 
     // need to assign new particle a unique ID:
     /*
