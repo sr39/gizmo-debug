@@ -53,7 +53,6 @@ int does_particle_need_to_be_merged(int i)
 #endif
 }
 
-//int MaxTimeBin, MPI_MaxTimeBin; 
 
 /*! Here we can insert any desired criteria for particle splitting: by default, this will occur
     when particles become too massive, but it could also be done when Hsml gets very large, densities are high, etc */
@@ -100,18 +99,6 @@ void merge_and_split_particles(void)
     Gas_split=0; n_particles_merged=0; n_particles_split=0; n_particles_gas_split=0; MPI_n_particles_merged=0; MPI_n_particles_split=0; MPI_n_particles_gas_split=0;
 
     Ptmp = (struct flags_merg_split *) mymalloc("Ptmp", NumPart * sizeof(struct flags_merg_split));  
-
-    /*
-    MaxTimeBin = 0; 
-    for (i = 0; i < NumPart; i++) {
-        Ptmp[i].flag = 0; 
-        Ptmp[i].target_index = -1; 
-        if (P[i].TimeBin > MaxTimeBin) 
-            MaxTimeBin = P[i].TimeBin; 
-    }
-
-    MPI_Allreduce(&MaxTimeBin, &MPI_MaxTimeBin, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); 
-    */
 
     for (i = 0; i < NumPart; i++) {
 
@@ -529,6 +516,11 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
             /* rotate to 90-degree offset from above orientation, if using the density gradient */
             // if(dp[2]==1) {dx=d_r; dy=0; dz=0;} else {dz = sqrt(dp[1]*dp[1] + dp[0]*dp[0]); dx = -d_r * dp[1]/dz; dy = d_r * dp[0]/dz; dz = 0.0;}
         }
+#endif
+#ifdef WAKEUP 
+        /* TO: rather conservative. But we want to update Density and Hsml after the particle masses have been changed */
+        PPPZ[i].wakeup = 1;
+        PPPZ[j].wakeup = 1;
 #endif
         
     } // closes special operations required only of gas particles
