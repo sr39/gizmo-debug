@@ -642,10 +642,10 @@ void spawn_bh_wind_feedback(void)
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         //long nmax = (int)(0.9*All.MaxPart); if(All.MaxPart-1000 < nmax) nmax=All.MaxPart-1000; /* stricter criterion for allowing spawns, more relaxed below */
-        //if((NumPart < nmax) && (n_particles_split<1) && (P[i].Type==5))
-            
+        //if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (n_particles_split<1) && (P[i].Type==5))
+
         long nmax = (int)(0.99*All.MaxPart); if(All.MaxPart-20 < nmax) nmax=All.MaxPart-20;
-        if((NumPart < nmax) && (P[i].Type==5))
+        if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (P[i].Type==5))
         {
             if(BPP(i).unspawned_wind_mass >= (BH_WIND_SPAWN)*All.BAL_wind_particle_mass)
             {
