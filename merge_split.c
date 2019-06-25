@@ -110,7 +110,7 @@ void merge_and_split_particles(void)
             MaxTimeBin = P[i].TimeBin; 
     }
 
-    MPI_Allreduce(&MaxTimeBin, &MPI_MaxTimeBin, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD); 
+    MPI_Allreduce(&MaxTimeBin, &MPI_MaxTimeBin, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); 
     */
 
     for (i = 0; i < NumPart; i++) {
@@ -383,15 +383,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
     TimeBinCount[P[j].TimeBin]++; if(P[i].Type==0) {TimeBinCountSph[P[j].TimeBin]++;}
     PrevInTimeBin[j] = i; NextInTimeBin[j] = NextInTimeBin[i]; if(NextInTimeBin[i] >= 0) {PrevInTimeBin[NextInTimeBin[i]] = j;}
     NextInTimeBin[i] = j; if(LastInTimeBin[P[i].TimeBin] == i) {LastInTimeBin[P[i].TimeBin] = j;}
-#else
-    /* the particle needs to be 'born active' and given the maximum TimeBin */
-    /*
-#ifdef WAKEUP
-    PPZ[j].wakeup = 1; 
 #endif
-
-*/
-
     // need to assign new particle a unique ID:
     /*
         -- old method -- we gave it a bit-flip from the original particle to signify the split 
