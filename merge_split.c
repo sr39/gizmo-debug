@@ -190,14 +190,18 @@ void merge_and_split_particles(void)
 #endif
         {
             /* we have a gas particle, ask if it needs to be merged */
-            if(does_particle_need_to_be_merged(i)) {
+            if(does_particle_need_to_be_merged(i))
+            {
+                /* if merging: do a neighbor loop ON THE SAME DOMAIN to determine the target */
                 startnode=All.MaxPart;
                 numngb_inbox = ngb_treefind_variable_threads_targeted(P[i].Pos,PPP[i].Hsml,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist,Pi_BITFLAG); // search for particles of matching type
-                if(numngb_inbox>0) {
+                if(numngb_inbox>0)
+                {
                     target_for_merger = -1;
                     threshold_val = MAX_REAL_NUMBER;
                     /* loop over neighbors */
-                    for(n=0; n<numngb_inbox; n++) {
+                    for(n=0; n<numngb_inbox; n++)
+                    {
                         j = Ngblist[n];
                         /* make sure we're not taking the same particle (and that its available to be merged into)! */
                         if((j>=0)&&(j!=i)&&(P[j].Type==P[i].Type)&&(P[j].Mass > P[i].Mass)&&(P[i].Mass+P[j].Mass < All.MaxMassForParticleSplit) && (Ptmp[j].flag == 0)) {
@@ -211,19 +215,13 @@ void merge_and_split_particles(void)
                                 if(((v2_tmp < 0.2*All.BAL_v_outflow) || (v2_tmp < 0.9*Particle_effective_soundspeed_i(j)*All.cf_afac3)) && (vr_tmp < 0)) /* check if particle has strongly decelerated to be either sub-sonic or well-below launch velocity, and two particles are approaching */
 #endif
                                 {
-                                    if(P[j].Mass<threshold_val) {
-                                        threshold_val=P[j].Mass; 
-                                        target_for_merger=j;
-                                    } // mass-based //
+                                    if(P[j].Mass<threshold_val) {threshold_val=P[j].Mass; target_for_merger=j;} // mass-based //
                                 }
                             }
                         }
                     }
-                    if (target_for_merger >= 0) {
-                        // mark as merging pairs 
-                        Ptmp[i].flag = 1; 
-                        Ptmp[target_for_merger].flag = 3; 
-                        Ptmp[i].target_index = target_for_merger; 
+                    if (target_for_merger >= 0) { /* mark as merging pairs */
+                        Ptmp[i].flag = 1; Ptmp[target_for_merger].flag = 3; Ptmp[i].target_index = target_for_merger; 
                     }
                 }
 
@@ -233,11 +231,13 @@ void merge_and_split_particles(void)
                 /* if splitting: do a neighbor loop ON THE SAME DOMAIN to determine the nearest particle (so dont overshoot it) */
                 startnode=All.MaxPart;
                 numngb_inbox = ngb_treefind_variable_threads_targeted(P[i].Pos,PPP[i].Hsml,-1,&startnode,0,&dummy,&dummy,&dummy,Ngblist,Pi_BITFLAG); // search for particles of matching type
-                if(numngb_inbox>0) {
+                if(numngb_inbox>0)
+                {
                     target_for_merger = -1;
                     threshold_val = MAX_REAL_NUMBER;
                     /* loop over neighbors */
-                    for(n=0; n<numngb_inbox; n++) { 
+                    for(n=0; n<numngb_inbox; n++)
+                    {
                         j = Ngblist[n];
                         /* make sure we're not taking the same particle */
                         if((j>=0)&&(j!=i)&&(P[j].Type==P[i].Type) && (P[j].Mass > 0) && (Ptmp[j].flag == 0)) {
@@ -246,12 +246,8 @@ void merge_and_split_particles(void)
 #ifdef BOX_PERIODIC
                             NEAREST_XYZ(dp[0],dp[1],dp[2],1);
 #endif
-                            for(k=0;k<3;k++) 
-                                r2+=dp[k]*dp[k];
-                            if(r2<threshold_val) {
-                                threshold_val=r2; 
-                                target_for_merger=j;
-                            } // position-based //
+                            for(k=0;k<3;k++) {r2+=dp[k]*dp[k];}
+                            if(r2<threshold_val) {threshold_val=r2; target_for_merger=j;} // position-based //
                         }
                     }
                     if (target_for_merger >= 0) {
@@ -343,22 +339,12 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
     phi = 2.0*M_PI*get_random_number(i+1+ThisTask); // random from 0 to 2pi //
     cos_theta = 2.0*(get_random_number(i+3+2*ThisTask)-0.5); // random between 1 to -1 //
     double d_r = 0.25 * KERNEL_CORE_SIZE*PPP[i].Hsml; // needs to be epsilon*Hsml where epsilon<<1, to maintain stability //
-    //double r_near = 0.35 * sqrt(r2_nearest);   
-    
-    double dp[3]; 
-    double r_near=0;
-    for(k = 0; k < 3; k++) 
-        dp[k] =P[i].Pos[k] - P[i_nearest].Pos[k];
-
+    double dp[3], r_near=0; for(k = 0; k < 3; k++) {dp[k] =P[i].Pos[k] - P[i_nearest].Pos[k];}
 #ifdef BOX_PERIODIC 
     NEAREST_XYZ(dp[0],dp[1],dp[2],1);
 #endif
-
-    for(k = 0; k < 3; k++) 
-        r_near += dp[k]*dp[k]; 
-
+    for(k = 0; k < 3; k++) {r_near += dp[k]*dp[k];}
     r_near = 0.35 * sqrt(r_near); 
-  
     d_r = DMIN(d_r , r_near); // use a 'buffer' to limit to some multiple of the distance to the nearest particle //
     /*
     double r_near = sqrt(r2_nearest);
@@ -392,23 +378,18 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
     // TO: we will reconstruct time bins anyway. We don't have to update the active particle list here 
 #if 0
     /* the particle needs to be 'born active' and added to the active set */
-    NextActiveParticle[j] = FirstActiveParticle;
-    FirstActiveParticle = j;
-    NumForceUpdate++;
+    NextActiveParticle[j] = FirstActiveParticle; FirstActiveParticle = j; NumForceUpdate++;
     /* likewise add it to the counters that register how many particles are in each timebin */
-    TimeBinCount[P[j].TimeBin]++;
-    if(P[i].Type==0) {TimeBinCountSph[P[j].TimeBin]++;}
-    PrevInTimeBin[j] = i;
-    NextInTimeBin[j] = NextInTimeBin[i];
-    if(NextInTimeBin[i] >= 0) {PrevInTimeBin[NextInTimeBin[i]] = j;}
-    NextInTimeBin[i] = j;
-    if(LastInTimeBin[P[i].TimeBin] == i) {LastInTimeBin[P[i].TimeBin] = j;}
-#endif
+    TimeBinCount[P[j].TimeBin]++; if(P[i].Type==0) {TimeBinCountSph[P[j].TimeBin]++;}
+    PrevInTimeBin[j] = i; NextInTimeBin[j] = NextInTimeBin[i]; if(NextInTimeBin[i] >= 0) {PrevInTimeBin[NextInTimeBin[i]] = j;}
+    NextInTimeBin[i] = j; if(LastInTimeBin[P[i].TimeBin] == i) {LastInTimeBin[P[i].TimeBin] = j;}
+#else
     /* the particle needs to be 'born active' and given the maximum TimeBin */
     /*
 #ifdef WAKEUP
     PPZ[j].wakeup = 1; 
 #endif
+
 */
 
     // need to assign new particle a unique ID:
