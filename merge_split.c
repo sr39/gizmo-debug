@@ -518,7 +518,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
         }
 #endif
 #ifdef WAKEUP 
-        /* TO: rather conservative. But we want to update Density and Hsml after the particle masses have been changed */
+        /* TO: rather conservative. But we want to update Density and Hsml after the particle masses were changed */
         PPPZ[i].wakeup = 1;
         PPPZ[j].wakeup = 1;
 #endif
