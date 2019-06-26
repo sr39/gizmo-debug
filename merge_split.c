@@ -100,6 +100,12 @@ void merge_and_split_particles(void)
 
     Ptmp = (struct flags_merg_split *) mymalloc("Ptmp", NumPart * sizeof(struct flags_merg_split));  
 
+    // TO: need initialization 
+    for (i = 0; i < NumPart; i++) {
+      Ptmp[i].flag = 0; 
+      Ptmp[i].target_index = -1;  
+    }
+
     for (i = 0; i < NumPart; i++) {
 
         int Pi_BITFLAG = (1 << (int)P[i].Type); // bitflag for particles of type matching "i", used for restricting neighbor search
