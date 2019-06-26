@@ -275,7 +275,11 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     
                     for(k = 0; k < 3; k++)
                     {
+#ifndef SINGLE_STAR_SUPERTIMESTEPPING			
                         fp[k] = P[pindex].Vel[k] + P[pindex].GravAccel[k] * dt_gravkick;
+#else
+                        fp[k] = P[pindex].Vel[k] + P[pindex].COM_GravAccel[k] * dt_gravkick;
+#endif			
                         if(P[pindex].Type == 0)
                         {
                             fp[k] += SphP[pindex].HydroAccel[k] * dt_hydrokick * All.cf_atime;
@@ -283,13 +287,13 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     }
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
                         //Taking motion around binary companion into account
-                        if( (P[pindex].Type == 5) && (P[pindex].SuperTimestepFlag>=2) )
-                        {
-                            double fewbody_kick_dv[3], drift_dx[3];
-                            kepler_timestep(pindex, dt_gravkick, fewbody_kick_dv, drift_dx, 0);
+//                        if( (P[pindex].Type == 5) && (P[pindex].SuperTimestepFlag>=2) )
+//                        {
+//                            double fewbody_kick_dv[3], drift_dx[3];
+//                            kepler_timestep(pindex, dt_gravkick, fewbody_kick_dv, drift_dx, 0);
                             //printf("Super time stepped IO kick operation for particle ID %d SuperTimestepFlag %d v_orig %g %g %g dv %g %g %g dt %g\n",P[pindex].ID, P[pindex].SuperTimestepFlag,P[pindex].Vel[0],P[pindex].Vel[1],P[pindex].Vel[2],fewbody_kick_dv[0],fewbody_kick_dv[1],fewbody_kick_dv[2],dt_gravkick);
-                            for(k = 0; k < 3; k++){fp[k] += fewbody_kick_dv[k];}
-                        }
+//                            for(k = 0; k < 3; k++){fp[k] += fewbody_kick_dv[k];}
+//                        }
 #endif
 #ifdef PMGRID
                     for(k = 0; k < 3; k++)
