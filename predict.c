@@ -131,7 +131,7 @@ void drift_particle(int i, integertime time1)
     if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=2) ){
         double COM_Vel[3]; //center of mass velocity
         for(j=0;j<3;j++) {
-            COM_Vel[j]=P[i].Vel[j] + P[i].comp_dv[j] * P[i].comp_Mass/(P[i].Mass+P[i].comp_Mass); //center of mass velocity
+            COM_Vel[j] = P[i].Vel[j] + P[i].comp_dv[j] * P[i].comp_Mass/(P[i].Mass+P[i].comp_Mass); //center of mass velocity
             P[i].Pos[j] += COM_Vel[j] * dt_drift; //center of mass drift
         }
 // Do a whole-step kick and drift for the binary
