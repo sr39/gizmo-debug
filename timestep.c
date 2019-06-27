@@ -495,9 +495,9 @@ integertime get_timestep(int p,		/*!< particle index */
 //#endif
     {
         double omega_binary = 1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time; // timestep is harmonic mean of freefall and approach time
-//#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-//        if(P[p].SuperTimestepFlag>=2){dt = DMIN(dt, P[p].min_bh_t_orbital / 30);} else
-//#endif
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+        if(P[p].SuperTimestepFlag>=2){dt = DMIN(dt, P[p].min_bh_t_orbital / 30);} else
+#endif
         dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary * 0.3);
 //	printf("dt = %g\n", sqrt(All.ErrTolIntAccuracy)/omega_binary * 0.3);
     }
