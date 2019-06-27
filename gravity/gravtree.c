@@ -728,6 +728,9 @@ void gravity_tree(void)
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         for(j = 0; j < 3; j++) {P[i].GravAccel[j] *= All.G;}
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+	for(j = 0; j < 3; j++) {P[i].COM_GravAccel[j] *= All.G;}
+#endif	
         
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 #ifdef GDE_DISTORTIONTENSOR

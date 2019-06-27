@@ -370,17 +370,18 @@ integertime get_timestep(int p,		/*!< particle index */
         ax = All.cf_a2inv * P[p].GravAccel[0];
         ay = All.cf_a2inv * P[p].GravAccel[1];
         az = All.cf_a2inv * P[p].GravAccel[2];
-#endif        
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING 
-        if (P[p].SuperTimestepFlag>=2){
-            //use center of mass acceleration for the binary
-            ax = All.cf_a2inv * P[p].COM_GravAccel[0];
-            ay = All.cf_a2inv * P[p].COM_GravAccel[1];
-            az = All.cf_a2inv * P[p].COM_GravAccel[2];
-            //Overwrite acceleration
-            P[p].GravAccel[0]=P[p].COM_GravAccel[0];P[p].GravAccel[1]=P[p].COM_GravAccel[1];P[p].GravAccel[2]=P[p].COM_GravAccel[2];
-        }
 #endif
+// acceleration criterion is not used for stars - MYG	
+/* #ifdef SINGLE_STAR_SUPERTIMESTEPPING  */
+/*         if (P[p].SuperTimestepFlag>=2){ */
+/*             use center of mass acceleration for the binary */
+/*             ax = All.cf_a2inv * P[p].COM_GravAccel[0]; */
+/*             ay = All.cf_a2inv * P[p].COM_GravAccel[1]; */
+/*             az = All.cf_a2inv * P[p].COM_GravAccel[2]; */
+/*             Overwrite acceleration */
+/*             P[p].GravAccel[0]=P[p].COM_GravAccel[0];P[p].GravAccel[1]=P[p].COM_GravAccel[1];P[p].GravAccel[2]=P[p].COM_GravAccel[2]; */
+/*         } */
+/* #endif */ 
 #ifdef PMGRID
         ax += All.cf_a2inv * P[p].GravPM[0];
         ay += All.cf_a2inv * P[p].GravPM[1];
@@ -494,10 +495,10 @@ integertime get_timestep(int p,		/*!< particle index */
 //#endif
     {
         double omega_binary = 1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time; // timestep is harmonic mean of freefall and approach time
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-        if(P[p].SuperTimestepFlag>=2){omega_binary /= supertimestep_factor;}
-#endif
-        dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary);
+//#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+//        if(P[p].SuperTimestepFlag>=2){dt = DMIN(dt, P[p].min_bh_t_orbital / 30);} else
+//#endif
+        dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary * 0.3);
 //	printf("dt = %g\n", sqrt(All.ErrTolIntAccuracy)/omega_binary * 0.3);
     }
 #endif
