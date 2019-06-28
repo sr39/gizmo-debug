@@ -1506,6 +1506,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
         case IO_AGS_PSI_RE:        /* real part of wavefunction */
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+#if (DM_FUZZY > 0)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1513,15 +1514,18 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     n++;
                 }
 #endif
+#endif
             break;
         case IO_AGS_PSI_IM:        /* imaginary part of wavefunction */
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+#if (DM_FUZZY > 0)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
                     *fp++ = P[pindex].AGS_Psi_Im * P[pindex].AGS_Density / P[pindex].Mass;
                     n++;
                 }
+#endif
 #endif
             break;
         case IO_AGS_ZETA:		/* Adaptive Gravitational Softening: zeta */
@@ -3318,10 +3322,21 @@ int blockpresent(enum iofields blocknr)
 
         case IO_AGS_RHO:
         case IO_AGS_QPT:
+#if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+
         case IO_AGS_PSI_RE:
         case IO_AGS_PSI_IM:
 #if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+#if (DM_FUZZY > 0)
             return 1;
+#else
+            return 0;
+#endif
 #else
             return 0;
 #endif
