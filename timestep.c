@@ -481,7 +481,7 @@ integertime get_timestep(int p,		/*!< particle index */
     double dt_tidal = 0.; 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     if (P[p].SuperTimestepFlag>=2){
-        dt_tidal = sqrt(All.ErrTolIntAccuracy) * P[p].COM_dt_tidal;
+        dt_tidal = sqrt(All.ErrTolIntAccuracy) * P[p].COM_dt_tidal * 0.5;
     }else
 #endif
     {   for(k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];}// this is diagonalized already in the gravity loop
