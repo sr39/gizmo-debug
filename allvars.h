@@ -2289,6 +2289,7 @@ extern ALIGN(32) struct particle_data
     MyFloat AGS_Gradients2_Density[3][3];   /*!< density gradient calculated corresponding to AGS routine (over interacting DM neighbors) */
     MyFloat AGS_Numerical_QuantumPotential; /*!< additional potential terms 'generated' by un-resolved compression [numerical diffusivity] */
     MyFloat AGS_Dt_Numerical_QuantumPotential; /*!< time derivative of the above */
+#if (DM_FUZZY > 0)
     MyFloat AGS_Psi_Re;
     MyFloat AGS_Psi_Re_Pred;
     MyFloat AGS_Dt_Psi_Re;
@@ -2300,6 +2301,7 @@ extern ALIGN(32) struct particle_data
     MyFloat AGS_Gradients_Psi_Im[3];
     MyFloat AGS_Gradients2_Psi_Im[3][3];
     MyFloat AGS_Dt_Psi_Mass;
+#endif
 #endif
 #if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
     MyFloat NV_T[3][3];                                           /*!< holds the tensor used for gradient estimation */

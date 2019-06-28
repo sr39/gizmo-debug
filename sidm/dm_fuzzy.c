@@ -16,12 +16,18 @@
  *         This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
+#define DM_FUZZY_USE_SIMPLER_HLL_SOLVER 0    /* determines which solver will be used for DM_FUZZY=0; =1 is the newer, simpler, but more diffusive solver */
+
 #ifdef DM_FUZZY
+
 
 
 /* --------------------------------------------------------------------------
  Actual evaluation of fluxes from the quantum pressure tensor
  -------------------------------------------------------------------------- */
+
+#if (DM_FUZZY_USE_SIMPLER_HLL_SOLVER == 1)
+
 void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double prev_a, double dv[3],
                                   double GradRho_L[3], double GradRho_R[3],
                                   double GradRho2_L[3][3], double GradRho2_R[3][3],
@@ -51,9 +57,9 @@ void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double prev_a, double
     return;
 }
 
+#else
 
-
-void do_dm_fuzzy_flux_computation_old(double HLLwt, double dt, double m0, double prev_a, double dp[3], double dv[3],
+void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double prev_a, double dp[3], double dv[3],
                                   double GradRho_L[3], double GradRho_R[3],
                                   double GradRho2_L[3][3], double GradRho2_R[3][3],
                                   double rho_L, double rho_R, double dv_Right_minus_Left,
@@ -136,7 +142,7 @@ void do_dm_fuzzy_flux_computation_old(double HLLwt, double dt, double m0, double
     return;
 }
 
-
+#endif
 
 
 /* kicks for fuzzy-dm integration: just put relevant drift-kick operators here to keep the code clean
@@ -154,7 +160,11 @@ void do_dm_fuzzy_drift_kick(int i, double dt, int mode)
         double QP0 = (f00*f00 / P[i].AGS_Density) * (d2rho - 0.5*drho2/P[i].AGS_Density); // quantum 'potential'
         NQ1 = DMAX(0,DMAX(NQ1,0.1*NQ0)); NQ1 = DMIN(NQ1,1.1*DMAX(DMAX(KE0+NQ0,fabs(QP0)),KE0+NQ0+QP0)); // limit kick to not produce unphysical energy over-or-under-shoot
         P[i].AGS_Numerical_QuantumPotential = NQ1;
-        
+    }
+    
+#if (DM_FUZZY > 0) /* if using direct-wavefunction integration methods */
+    if(mode == 0)
+    {
         double psimag_mass_old = (P[i].AGS_Psi_Re*P[i].AGS_Psi_Re + P[i].AGS_Psi_Im*P[i].AGS_Psi_Im) * vol_inv;
         P[i].AGS_Psi_Re += P[i].AGS_Dt_Psi_Re * dt;
         P[i].AGS_Psi_Im += P[i].AGS_Dt_Psi_Im * dt;
@@ -162,7 +172,9 @@ void do_dm_fuzzy_drift_kick(int i, double dt, int mode)
         dmass = DMIN(DMAX(dmass,-0.5*mass_old),0.5*mass_old);
         mass_new = mass_old + dmass;
         double psimag_mass_new = (P[i].AGS_Psi_Re*P[i].AGS_Psi_Re + P[i].AGS_Psi_Im*P[i].AGS_Psi_Im) * vol_inv;
-        
+#if (DM_FUZZY == 2)
+        mass_new = psimag_mass_new; /* uses direct [NON-MASS-CONSERVING] integration of psi field */
+#endif
         double psi_corr_fac = sqrt(mass_new / (MIN_REAL_NUMBER + psimag_mass_new));
         P[i].Mass = mass_new; P[i].AGS_Psi_Re *= psi_corr_fac; P[i].AGS_Psi_Im *= psi_corr_fac;
 
@@ -175,12 +187,14 @@ void do_dm_fuzzy_drift_kick(int i, double dt, int mode)
         P[i].AGS_Psi_Im_Pred += P[i].AGS_Dt_Psi_Im * dt;
         P[i].AGS_Density *= 1. + DMIN(DMAX(P[i].AGS_Dt_Psi_Mass*dt/P[i].Mass,-0.5),0.5);
     }
+#endif
 }
 
 
 /* initialize wavefunction values in the code ICs */
 void do_dm_fuzzy_initialization(void)
 {
+#if (DM_FUZZY > 0)
     int i;
     for(i = 0; i < NumPart; i++)
     {
@@ -194,6 +208,7 @@ void do_dm_fuzzy_initialization(void)
         P[i].AGS_Dt_Psi_Mass = 0; P[i].AGS_Dt_Psi_Re = 0; P[i].AGS_Dt_Psi_Im = 0;
         P[i].AGS_Psi_Re_Pred = P[i].AGS_Psi_Re; P[i].AGS_Psi_Im_Pred = P[i].AGS_Psi_Im;
     }
+#endif
 }
  
 
@@ -262,7 +277,9 @@ void dm_fuzzy_reconstruct_and_slopelimit_sub(double *u_R_f, double *u_L_f, doubl
 struct Quantities_for_Gradients_DM
 {
     MyDouble AGS_Density, AGS_Gradients_Density[3];
+#if (DM_FUZZY > 0)
     MyDouble AGS_Psi_Re, AGS_Gradients_Psi_Re[3], AGS_Psi_Im, AGS_Gradients_Psi_Im[3];
+#endif
 };
 
 struct DMGraddata_in
@@ -303,10 +320,12 @@ static inline void particle2in_DMGrad(struct DMGraddata_in *in, int i)
     in->Type = P[i].Type;
     in->GQuant.AGS_Density = P[i].AGS_Density;
     for(k=0;k<3;k++) {in->GQuant.AGS_Gradients_Density[k] = P[i].AGS_Gradients_Density[k];}
+#if (DM_FUZZY > 0)
     in->GQuant.AGS_Psi_Re = P[i].AGS_Psi_Re_Pred * P[i].AGS_Density / P[i].Mass;
     for(k=0;k<3;k++) {in->GQuant.AGS_Gradients_Psi_Re[k] = P[i].AGS_Gradients_Psi_Re[k];}
     in->GQuant.AGS_Psi_Im = P[i].AGS_Psi_Im_Pred * P[i].AGS_Density / P[i].Mass;
     for(k=0;k<3;k++) {in->GQuant.AGS_Gradients_Psi_Im[k] = P[i].AGS_Gradients_Psi_Im[k];}
+#endif
 }
 
 #define ASSIGN_ADD_PRESET(x,y,mode) (mode == 0 ? (x=y) : (x+=y))
@@ -324,8 +343,10 @@ static inline void out2particle_DMGrad(struct DMGraddata_out *out, int i, int mo
         MAX_ADD(DMGradDataPasser[i].Maxima.AGS_Density,out->Maxima.AGS_Density,mode);
         MIN_ADD(DMGradDataPasser[i].Minima.AGS_Density,out->Minima.AGS_Density,mode);
         for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients_Density[k],out->Gradients[k].AGS_Density,mode);}
+#if (DM_FUZZY > 0)
         for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients_Psi_Re[k],out->Gradients[k].AGS_Psi_Re,mode);}
         for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients_Psi_Im[k],out->Gradients[k].AGS_Psi_Im,mode);}
+#endif
     } else {
         int k,k2;
         for(k=0;k<3;k++) 
@@ -333,8 +354,10 @@ static inline void out2particle_DMGrad(struct DMGraddata_out *out, int i, int mo
             MAX_ADD(DMGradDataPasser[i].Maxima.AGS_Gradients_Density[k],out->Maxima.AGS_Gradients_Density[k],mode);
             MIN_ADD(DMGradDataPasser[i].Minima.AGS_Gradients_Density[k],out->Minima.AGS_Gradients_Density[k],mode);
             for(k2=0;k2<3;k2++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients2_Density[k2][k],out->Gradients[k].AGS_Gradients_Density[k2],mode);}
+#if (DM_FUZZY > 0)
             for(k2=0;k2<3;k2++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients2_Psi_Re[k2][k],out->Gradients[k].AGS_Gradients_Psi_Re[k2],mode);}
             for(k2=0;k2<3;k2++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients2_Psi_Im[k2][k],out->Gradients[k].AGS_Gradients_Psi_Im[k2],mode);}
+#endif
         }
         // ??? do we need limiters here for the density gradients? Not clear if this all needs computing
     }
@@ -575,10 +598,10 @@ void DMGrad_gradient_calc(void)
             {
                 /* now we can properly calculate (second-order accurate) gradients of hydrodynamic quantities from this loop */
                 construct_gradient_DMGrad(P[i].AGS_Gradients_Density,i);
-
+#if (DM_FUZZY > 0)
                 construct_gradient_DMGrad(P[i].AGS_Gradients_Psi_Re,i);
                 construct_gradient_DMGrad(P[i].AGS_Gradients_Psi_Im,i);
-
+#endif
                 /* finally, we need to apply a sensible slope limiter to the gradients, to prevent overshooting */
                 /* (actually not clear that we need to slope-limit these, because we are not using the gradients for reconstruction.
                     testing this now. if not, we can remove the limiter information entirely and save some time in these computations) */
@@ -589,10 +612,10 @@ void DMGrad_gradient_calc(void)
                 {
                     /* construct the gradient-of-gradient */
                     construct_gradient_DMGrad(P[i].AGS_Gradients2_Density[k],i);
-
+#if (DM_FUZZY > 0)
                     construct_gradient_DMGrad(P[i].AGS_Gradients2_Psi_Re[k],i);
                     construct_gradient_DMGrad(P[i].AGS_Gradients2_Psi_Im[k],i);
-
+#endif
                     //local_slopelimiter(P[i].AGS_Gradients2_Density[k],DMGradDataPasser[i].Maxima.AGS_Gradients_Density[k],DMGradDataPasser[i].Minima.AGS_Gradients_Density[k],0.5,PPP[i].AGS_Hsml,0);
                 }
                 /* symmetrize the gradients */
@@ -601,12 +624,12 @@ void DMGrad_gradient_calc(void)
                 {
                     tmp = 0.5 * (P[i].AGS_Gradients2_Density[k0[k]][k1[k]] + P[i].AGS_Gradients2_Density[k1[k]][k0[k]]);
                     P[i].AGS_Gradients2_Density[k0[k]][k1[k]] = P[i].AGS_Gradients2_Density[k1[k]][k0[k]] = tmp;
-
+#if (DM_FUZZY > 0)
                     tmp = 0.5 * (P[i].AGS_Gradients2_Psi_Re[k0[k]][k1[k]] + P[i].AGS_Gradients2_Psi_Re[k1[k]][k0[k]]);
                     P[i].AGS_Gradients2_Psi_Re[k0[k]][k1[k]] = P[i].AGS_Gradients2_Psi_Re[k1[k]][k0[k]] = tmp;
-
                     tmp = 0.5 * (P[i].AGS_Gradients2_Psi_Im[k0[k]][k1[k]] + P[i].AGS_Gradients2_Psi_Im[k1[k]][k0[k]]);
                     P[i].AGS_Gradients2_Psi_Im[k0[k]][k1[k]] = P[i].AGS_Gradients2_Psi_Im[k1[k]][k0[k]] = tmp;
+#endif
                 }
             }
         }
@@ -677,13 +700,12 @@ int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
                     double d_rho = P[j].AGS_Density - local.GQuant.AGS_Density;
                     MINMAX_CHECK(d_rho,out.Minima.AGS_Density,out.Maxima.AGS_Density);
                     for(k=0;k<3;k++) {out.Gradients[k].AGS_Density += -kernel.wk_i * kernel.dp[k] * d_rho;} /* sign is important here! */
-                    
+#if (DM_FUZZY > 0)
                     d_rho = P[j].AGS_Psi_Re_Pred * P[j].AGS_Density / P[j].Mass - local.GQuant.AGS_Psi_Re;
                     for(k=0;k<3;k++) {out.Gradients[k].AGS_Psi_Re += -kernel.wk_i * kernel.dp[k] * d_rho;}
-
                     d_rho = P[j].AGS_Psi_Im_Pred * P[j].AGS_Density / P[j].Mass - local.GQuant.AGS_Psi_Im;
                     for(k=0;k<3;k++) {out.Gradients[k].AGS_Psi_Im += -kernel.wk_i * kernel.dp[k] * d_rho;}
-
+#endif
                 } else {
                     int k2; double d_grad_rho;
                     for(k=0;k<3;k++)
@@ -691,13 +713,12 @@ int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
                         d_grad_rho = P[j].AGS_Gradients_Density[k] - local.GQuant.AGS_Gradients_Density[k];
                         MINMAX_CHECK(d_grad_rho,out.Minima.AGS_Gradients_Density[k],out.Maxima.AGS_Gradients_Density[k]);
                         for(k2=0;k2<3;k2++) {out.Gradients[k2].AGS_Gradients_Density[k] += -kernel.wk_i * kernel.dp[k2] * d_grad_rho;}
-
+#if (DM_FUZZY > 0)
                         d_grad_rho = P[j].AGS_Gradients_Psi_Re[k] - local.GQuant.AGS_Gradients_Psi_Re[k];
                         for(k2=0;k2<3;k2++) {out.Gradients[k2].AGS_Gradients_Psi_Re[k] += -kernel.wk_i * kernel.dp[k2] * d_grad_rho;}
-
                         d_grad_rho = P[j].AGS_Gradients_Psi_Im[k] - local.GQuant.AGS_Gradients_Psi_Im[k];
                         for(k2=0;k2<3;k2++) {out.Gradients[k2].AGS_Gradients_Psi_Im[k] += -kernel.wk_i * kernel.dp[k2] * d_grad_rho;}
-
+#endif
                     }
                 } // gradient_iteration
             } // numngb_inbox loop

@@ -31,15 +31,13 @@ if((local.Type==1) && (P[j].Type==1)) // only acts between DM particles of type 
     
     double dt = local.dt_step * All.Timebase_interval/All.cf_hubble_a, m_mean = 0.5*(local.Mass+P[j].Mass), prev_acc = All.G*All.cf_a2inv * P[j].Mass * P[j].OldAcc, AGS_Numerical_QuantumPotential = 0.5*(local.AGS_Numerical_QuantumPotential/V_i + P[j].AGS_Numerical_QuantumPotential/V_j)*All.cf_a3inv, dt_egy_Numerical_QuantumPotential=0;
 
-#if 0
+#if (DM_FUZZY == 0)
     double HLLwt = (0.5*(kernel.wk_i/kernel.hinv3_i + kernel.wk_j/kernel.hinv3_j)) * (0.5*(kernel.h_i+kernel.h_j)/kernel.r); HLLwt = 10.*HLLwt*HLLwt; // strong dissipation terms allowed for very-close particles, where second-derivative diverges, otherwise weak (no diffusion) //
     // actually compute the fluxes now, this is the key routine, below //
     //do_dm_fuzzy_flux_computation_old(HLLwt, dt, m_mean, prev_acc, dp, dv, jgrad, igrad, j2grad, i2grad, rho_j, rho_i, vface_i_minus_j, Face_Area_Vec, flux, AGS_Numerical_QuantumPotential, &dt_egy_Numerical_QuantumPotential);
     do_dm_fuzzy_flux_computation(HLLwt, dt, prev_acc, dv, jgrad, igrad, j2grad, i2grad, rho_j, rho_i, vface_i_minus_j, Face_Area_Vec, flux, P[j].AGS_Numerical_QuantumPotential/V_j*All.cf_a3inv, local.AGS_Numerical_QuantumPotential/V_i*All.cf_a3inv, &dt_egy_Numerical_QuantumPotential);
     out.AGS_Dt_Numerical_QuantumPotential += dt_egy_Numerical_QuantumPotential; for(k=0;k<3;k++) {out.acc[k] += flux[k] / (local.Mass * All.cf_a2inv);} // assign back to particles
 #else
-
-    
     double h_2m = 0.5*All.ScalarField_hbar_over_mass;
     double Psi_Re_R, Psi_Re_L, d_Psi_Re_R[3], d_Psi_Re_L[3], v_face[3],
            Psi_Im_R, Psi_Im_L, d_Psi_Im_R[3], d_Psi_Im_L[3], Flux_Re=0, Flux_Im=0, Flux_M=0;
