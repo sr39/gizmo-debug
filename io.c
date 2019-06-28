@@ -275,11 +275,12 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     
                     for(k = 0; k < 3; k++)
                     {
-#ifndef SINGLE_STAR_SUPERTIMESTEPPING			
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+			if((P[pindex].Type == 5) && (P[pindex].SuperTimestepFlag >= 2)) {fp[k] = P[pindex].Vel[k] + P[pindex].COM_GravAccel[k] * dt_gravkick;}
+			else
+#endif			    
                         fp[k] = P[pindex].Vel[k] + P[pindex].GravAccel[k] * dt_gravkick;
-#else
-                        fp[k] = P[pindex].Vel[k] + P[pindex].COM_GravAccel[k] * dt_gravkick;
-#endif			
+
                         if(P[pindex].Type == 0)
                         {
                             fp[k] += SphP[pindex].HydroAccel[k] * dt_hydrokick * All.cf_atime;
