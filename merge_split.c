@@ -295,8 +295,7 @@ void merge_and_split_particles(void)
 #endif
         }
     }
-    /* the reduction or increase of n_part by MPI_n_particles_merged will occur in rearrange_particle_sequence, which -must-
-        be called immediately after this routine! */
+    /* the reduction or increase of n_part by MPI_n_particles_merged will occur in rearrange_particle_sequence, which -must- be called immediately after this routine! */
     All.TotNumPart += (long long)MPI_n_particles_split;
     All.TotN_gas += (long long)MPI_n_particles_gas_split;
     Gas_split = n_particles_gas_split; // specific to the local processor //

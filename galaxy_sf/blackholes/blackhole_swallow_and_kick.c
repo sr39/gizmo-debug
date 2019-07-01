@@ -660,7 +660,7 @@ void spawn_bh_wind_feedback(void)
                 }
                 if(dummy_gas_tag >= 0)
                 {
-                    n_particles_split += blackhole_spawn_particle_wind_shell( i , dummy_gas_tag);
+                    n_particles_split += blackhole_spawn_particle_wind_shell( i , dummy_gas_tag, n_particles_split);
                 }
             }
         }
@@ -674,14 +674,14 @@ void spawn_bh_wind_feedback(void)
     All.TotN_gas   += (long long)MPI_n_particles_split;
     Gas_split       = n_particles_split;                    // specific to the local processor //
     
-    rearrange_particle_sequence();
+    //rearrange_particle_sequence();
 }
 
 
 
 
 /*! this code copies what was used in merge_split.c for the gas particle split case */
-int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
+int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int num_already_spawned )
 {
     double total_mass_in_winds = BPP(i).unspawned_wind_mass;
     int n_particles_split   = floor( total_mass_in_winds / All.BAL_wind_particle_mass );
@@ -697,9 +697,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
     printf(" splitting BH %d using SphP particle %d\n", i, dummy_sph_i_to_clone);
 #endif
     int k=0; long j;
-    if(NumPart + n_particles_split >= All.MaxPart)
+    if(NumPart + num_already_spawned + n_particles_split >= All.MaxPart)
     {
-        printf ("On Task=%d with NumPart=%d we tried to split a particle, but there is no space left...(All.MaxPart=%d). Try using more nodes, or raising PartAllocFac, or changing the split conditions to avoid this.\n", ThisTask, NumPart, All.MaxPart);
+        printf ("On Task=%d with NumPart=%d (+N_spawned=%d) we tried to split a particle, but there is no space left...(All.MaxPart=%d). Try using more nodes, or raising PartAllocFac, or changing the split conditions to avoid this.\n", ThisTask, NumPart, num_already_spawned, All.MaxPart);
         fflush(stdout); endrun(8888);
     }
     
@@ -726,7 +726,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone )
 #endif
     /* create the  new particles to be added to the end of the particle list :
         i is the BH particle tag, j is the new "spawed" particle's location, dummy_sph_i_to_clone is a dummy SPH particle's tag to be used to init the wind particle */
-    for(j = NumPart; j < NumPart + n_particles_split; j++)
+    for(j = NumPart + num_already_spawned; j < NumPart + num_already_spawned + n_particles_split; j++)
     {   /* first, clone the 'dummy' particle so various fields are set appropriately */
         P[j] = P[dummy_sph_i_to_clone]; SphP[j] = SphP[dummy_sph_i_to_clone]; /* set the pointers equal to one another -- all quantities get copied, we only have to modify what needs changing */
 

@@ -55,15 +55,10 @@ void compute_potential(void)
       if(ThisTask == 0) printf("Tree construction.\n");
 #endif
       CPU_Step[CPU_MISC] += measure_time();
-
       rearrange_particle_sequence();
-
       force_treebuild(NumPart, NULL);
-
       CPU_Step[CPU_TREEBUILD] += measure_time();
-
       TreeReconstructFlag = 0;
-
 #ifndef IO_REDUCED_MODE
       if(ThisTask == 0) printf("Tree construction done.\n");
 #endif
