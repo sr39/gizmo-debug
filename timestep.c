@@ -498,7 +498,34 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
         if(P[p].SuperTimestepFlag>=2){dt = DMIN(dt, P[p].min_bh_t_orbital / 30);} else
 #endif
-        dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary * 0.3);
+        dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary);
+#ifdef SINGLE_STAR_FIND_BINARIES
+/*         //Re-evaluate for binary candidates */
+         if( (P[p].Type == 5) && P[p].is_in_a_binary){ //binary candidate or a confirmed binary 
+#ifdef BH_OUTPUT_MOREINFO
+	     double Mtot =P[p].comp_Mass+P[p].Mass;
+	     double dr = sqrt(P[p].comp_dx[0]*P[p].comp_dx[0] + P[p].comp_dx[1]*P[p].comp_dx[1] + P[p].comp_dx[2]*P[p].comp_dx[2]);
+	     double comp_tff = sqrt(dr*dr*dr / All.G / Mtot);
+	     double dv = sqrt(P[p].comp_dv[0]*P[p].comp_dv[0] + P[p].comp_dv[1]*P[p].comp_dv[1] + P[p].comp_dv[2]*P[p].comp_dv[2]);
+	     double comp_tapproach = dr / dv;
+	     double comp_omega_binary = 1 / comp_tff + 1/comp_tapproach;
+	     double specific_energy = 0.5*dv*dv - All.G * Mtot / dr;
+	     double semimajor_axis = -All.G * Mtot / (2*specific_energy);
+	     double dv_dot_dx = P[p].comp_dx[0] * P[p].comp_dv[0] + P[p].comp_dx[1] * P[p].comp_dv[1] + P[p].comp_dx[2] * P[p].comp_dv[2];
+	     double hSqr = dv*dv*dr*dr - dv_dot_dx*dv_dot_dx;
+	     double ecc = sqrt(1 + 2*specific_energy*hSqr / (All.G*All.G*Mtot*Mtot));
+	     double periastron = semimajor_axis * (1-ecc); // final factor ensures that this gives binaries the same timestep
+	     printf("Particle %d is in a binary with period %g, separation %g %g %g, velocity %g %g %g SuperTimestepFlag %d COM_calc_flag %d dr %g dv %g specific_energy %g semimajor_axis %g eccentricity %g pericenter %g dt_peri %g dt_bin %g\n.", p, P[p].min_bh_t_orbital, P[p].comp_dx[0], P[p].comp_dx[1], P[p].comp_dx[2], P[p].comp_dv[0], P[p].comp_dv[1], P[p].comp_dv[2], 0, 0, dr, dv, specific_energy, semimajor_axis, ecc, periastron, periastron*periastron / sqrt(hSqr)*sqrt(All.ErrTolIntAccuracy), dt);
+	     /* // First check: if stellar dynamics does not require a shorter timestep (due to other stars around the binary) */
+	     /* if(comp_omega_binary * (1+1e-15) > omega_binary){ */
+	     /* 	 dt = periastron*periastron / sqrt(hSqr) * sqrt(All.ErrTolIntAccuracy); */
+	     /* 	 printf("Doing periastron timestep!\n"); */
+	     /* } else { */
+	     /* 	 printf("Can't do binary timestep because omega_binary is %g while comp_omega_binary is %g\n", omega_binary, comp_omega_binary); */
+	     /* } */
+#endif
+	 }
+#endif	     
 //	printf("dt = %g\n", sqrt(All.ErrTolIntAccuracy)/omega_binary * 0.3);
     }
 #endif

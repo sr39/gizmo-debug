@@ -290,6 +290,9 @@
 #endif
 #endif
 #define BH_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+#define SINGLE_STAR_FIND_BINARIES
+#endif
 #ifdef SINGLE_STAR_STRICT_ACCRETION
 #define READ_SINKRADIUS // read the sinkradius for sink partciles in IC files
 #endif
@@ -2183,6 +2186,13 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
     MyFloat min_xyz_to_bh[3];
+#ifdef SINGLE_STAR_FIND_BINARIES
+    MyDouble min_bh_t_orbital; //orbital time for binary
+    MyDouble comp_dx[3]; //position offset of binary companion - this will be evolved in the Kepler solution while we use the Pos attribute to track the binary COM
+    MyDouble comp_dv[3]; //velocity offset of binary companion - this will be evolved in the Kepler solution while we use the Vel attribute to track the binary COM velocity
+    MyDouble comp_Mass; //mass of binary companion
+    int is_in_a_binary; // flag whether star is in a binary or not
+#endif
 #ifdef SINGLE_STAR_TIMESTEPPING
     MyFloat min_bh_freefall_time;
     MyFloat min_bh_periastron;
@@ -2190,10 +2200,6 @@ extern ALIGN(32) struct particle_data
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     int SuperTimestepFlag; // >=2 if allowed to super-timestep (increases with each drift/kick), 1 if a candidate for super-timestepping, 0 otherwise
     int COM_calc_flag; //tells forcetree whether to calculate the forces for the particle (0) or the center of mass (1)
-    MyDouble min_bh_t_orbital; //orbital time for binary
-    MyDouble comp_dx[3]; //position offset of binary companion - this will be evolved in the Kepler solution while we use the Pos attribute to track the binary COM
-    MyDouble comp_dv[3]; //velocity offset of binary companion - this will be evolved in the Kepler solution while we use the Vel attribute to track the binary COM velocity
-    MyDouble comp_Mass; //mass of binary companion
     //MyIDType comp_ID; //ID of binary companion
     MyDouble COM_dt_tidal; //timescale from tidal tensor evaluated at the center of mass without contribution from the companion
     MyDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
@@ -2675,11 +2681,14 @@ extern struct gravdata_in
     MyFloat AGS_zeta;
 #endif
 #endif
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+#ifdef SINGLE_STAR_FIND_BINARIES
     MyFloat min_bh_t_orbital; //orbital time for binary
     MyDouble comp_dx[3]; //position of binary companion
     MyDouble comp_dv[3]; //velocity of binary companion
     MyDouble comp_Mass; //mass of binary companion
+    int is_in_a_binary;
+#endif    
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
     //MyIDType comp_ID; //ID of binary companion
     int SuperTimestepFlag; // 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
     int COM_calc_flag; //tells forcetree whether to calculate the forces for the particle (0) or the center of mass (1)
@@ -2713,15 +2722,18 @@ extern struct gravdata_out
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
     MyFloat min_xyz_to_bh[3];
+#ifdef SINGLE_STAR_FIND_BINARIES
+    MyFloat min_bh_t_orbital; //orbital time for binary
+    MyDouble comp_dx[3]; //position of binary companion
+    MyDouble comp_dv[3]; //velocity of binary companion
+    MyDouble comp_Mass; //mass of binary companion
+    int is_in_a_binary; // 1 if star is in a binary, 0 otherwise
+#endif    
 #ifdef SINGLE_STAR_TIMESTEPPING
     MyFloat min_bh_freefall_time;    // minimum value of sqrt(R^3 / G(M_BH + M_particle)) as calculated from the tree-walk
     MyFloat min_bh_approach_time; // smallest approach time t_a = |v_radial|/r
     MyFloat min_bh_periastron; // closest anticipated periastron passage
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-    MyFloat min_bh_t_orbital; //orbital time for binary
-    MyDouble comp_dx[3]; //position of binary companion
-    MyDouble comp_dv[3]; //velocity of binary companion
-    MyDouble comp_Mass; //mass of binary companion
     //MyIDType comp_ID; //ID of binary companion
     MyLongDouble COM_tidal_tensorps[3][3]; //tidal tensor evaluated at the center of mass without contribution from the companion
     MyDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
