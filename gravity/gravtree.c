@@ -1,4 +1,3 @@
-
 #include <mpi.h>
 #include <stdlib.h>
 #include <string.h>
@@ -404,13 +403,11 @@ void gravity_tree(void)
 #ifdef SINGLE_STAR_TIMESTEPPING
                     for(k = 0; k < 3; k++) {GravDataIn[j].Vel[k] = P[place].Vel[k];}		    
 #endif
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+#ifdef SINGLE_STAR_FIND_BINARIES
                     if (P[place].Type==5){
                         GravDataIn[j].min_bh_t_orbital = P[place].min_bh_t_orbital; //orbital time for binary
                         GravDataIn[j].comp_Mass = P[place].comp_Mass; //mass of binary companion
-                        //GravDataIn[j].comp_ID = P[place].comp_ID; //ID of binary companion
-                        GravDataIn[j].SuperTimestepFlag = P[place].SuperTimestepFlag; // >=2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
-                        GravDataIn[j].COM_calc_flag = P[place].COM_calc_flag; // 0 by default, 1 if we need a center of mass calculation
+                        GravDataIn[j].is_in_a_binary = P[place].is_in_a_binary; // 1 if we're in a binary, 0 if not
                         for(k = 0; k < 3; k++) {
                             GravDataIn[j].comp_dx[k] = P[place].comp_dx[k];
                             GravDataIn[j].comp_dv[k] = P[place].comp_dv[k];
@@ -418,7 +415,7 @@ void gravity_tree(void)
                     }
                     else{
                         //Setting values to zero just to be sure
-                        P[place].SuperTimestepFlag = 0;P[place].COM_calc_flag = 0;GravDataIn[j].COM_calc_flag = 0;
+                        P[place].is_in_a_binary = 0;
                     }
 #endif
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
@@ -547,9 +544,9 @@ void gravity_tree(void)
                 for(j = 0; j < Nexport; j++)
                 {
                     place = DataIndexTable[j].Index;
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-                if (GravDataOut[j].COM_calc_flag==0){ //this ensures that we only export this data if we are not doing a calculation for the center of mass of a binary
-#endif
+/* #ifdef SINGLE_STAR_SUPERTIMESTEPPING */
+/*                 if (GravDataOut[j].COM_calc_flag==0){ //this ensures that we only export this data if we are not doing a calculation for the center of mass of a binary */
+/* #endif */
                     for(k = 0; k < 3; k++) {P[place].GravAccel[k] += GravDataOut[j].Acc[k];}
 
 #ifdef BH_CALC_DISTANCES
@@ -567,13 +564,13 @@ void gravity_tree(void)
                     if(GravDataOut[j].min_bh_approach_time < P[place].min_bh_approach_time) {P[place].min_bh_approach_time = GravDataOut[j].min_bh_approach_time;}
                     if(GravDataOut[j].min_bh_freefall_time < P[place].min_bh_freefall_time) {P[place].min_bh_freefall_time = GravDataOut[j].min_bh_freefall_time;}
                     if(GravDataOut[j].min_bh_periastron < P[place].min_bh_periastron) {P[place].min_bh_periastron = GravDataOut[j].min_bh_periastron;}
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-                    P[place].COM_calc_flag = 0; //just to be safe
+#ifdef SINGLE_STAR_FIND_BINARIES
+//                    P[place].COM_calc_flag = 0; //just to be safe
                     if ( (P[place].Type==5) && (GravDataOut[j].min_bh_t_orbital < P[place].min_bh_t_orbital) ){
                         P[place].min_bh_t_orbital = GravDataOut[j].min_bh_t_orbital;
                         P[place].comp_Mass = GravDataOut[j].comp_Mass;
                         //P[place].comp_ID = GravDataOut[j].comp_ID;
-                        P[place].SuperTimestepFlag = GravDataOut[j].SuperTimestepFlag;
+                        P[place].is_in_a_binary = GravDataOut[j].is_in_a_binary;
                         for(k = 0; k < 3; k++) {
                             P[place].comp_dx[k] = GravDataOut[j].comp_dx[k];
                             P[place].comp_dv[k] = GravDataOut[j].comp_dv[k];
@@ -603,20 +600,20 @@ void gravity_tree(void)
 #ifdef EVALPOTENTIAL
                     P[place].Potential += GravDataOut[j].Potential;
 #endif
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-                }//if (COM_calc_flag==0)
-                else{
-                    //Save acceleration and tidal tensor at center of mass of binary
-                    P[place].COM_calc_flag = 0;
-                    for(k = 0; k < 3; k++) {
-                        P[place].COM_GravAccel[k] += GravDataOut[j].COM_GravAccel[k];
-                        }
-                    P[place].COM_dt_tidal = 0;
-                    for(i1 = 0; i1 < 3; i1++)  {
-                        P[place].COM_dt_tidal += GravDataOut[j].COM_tidal_tensorps[i1][i1]*GravDataOut[j].COM_tidal_tensorps[i1][i1];}
-                    P[place].COM_dt_tidal = sqrt(1.0 / sqrt(P[place].COM_dt_tidal));
-                }
-#endif
+/* #ifdef SINGLE_STAR_SUPERTIMESTEPPING */
+/*                 }//if (COM_calc_flag==0) */
+/*                 else{ */
+/*                     //Save acceleration and tidal tensor at center of mass of binary */
+/*                     P[place].COM_calc_flag = 0; */
+/*                     for(k = 0; k < 3; k++) { */
+/*                         P[place].COM_GravAccel[k] += GravDataOut[j].COM_GravAccel[k]; */
+/*                         } */
+/*                     P[place].COM_dt_tidal = 0; */
+/*                     for(i1 = 0; i1 < 3; i1++)  { */
+/*                         P[place].COM_dt_tidal += GravDataOut[j].COM_tidal_tensorps[i1][i1]*GravDataOut[j].COM_tidal_tensorps[i1][i1];} */
+/*                     P[place].COM_dt_tidal = sqrt(1.0 / sqrt(P[place].COM_dt_tidal)); */
+/*                 } */
+/* #endif */
                 }
                 tend = my_second();
                 timetree1 += timediff(tstart, tend);
@@ -727,10 +724,13 @@ void gravity_tree(void)
     /*  muliply by G */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING // Gotta subtract for component from companion
+	if(P[i].Type == 5) subtract_companion_gravity(i);
+#endif	
         for(j = 0; j < 3; j++) {P[i].GravAccel[j] *= All.G;}
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-	for(j = 0; j < 3; j++) {P[i].COM_GravAccel[j] *= All.G;}
-#endif	
+ 	for(j = 0; j < 3; j++) {P[i].COM_GravAccel[j] *= All.G;}
+#endif 
         
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 #ifdef GDE_DISTORTIONTENSOR
@@ -1136,30 +1136,32 @@ void *gravity_primary_loop(void *p)
         }
         
 #endif
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-        //Re-evaluate for binary candidates
-        if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=1)){ //binary candidate or a confirmed binary
-#ifdef BH_OUTPUT_MOREINFO
-double Mtot =P[i].comp_Mass+P[i].Mass;
-double dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
-double dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]);
-double specific_energy = 0.5*dv*dv - All.G * Mtot / dr;
-double semimajor_axis = -All.G * Mtot / (2*specific_energy);
-            printf("Particle %d is in a binary with period %g, separation %g %g %g, velocity %g %g %g SuperTimestepFlag %d COM_calc_flag %d dr %g dv %g specific_energy %g semimajor_axis %g\n. Let's do another tree pass...\n", i, P[i].min_bh_t_orbital, P[i].comp_dx[0], P[i].comp_dx[1], P[i].comp_dx[2], P[i].comp_dv[0], P[i].comp_dv[1], P[i].comp_dv[2], P[i].SuperTimestepFlag, P[i].COM_calc_flag, dr, dv, specific_energy, semimajor_axis);
-#endif
-            P[i].COM_calc_flag = 1; //set it so that we do a center of mass calculation
-            ret = force_treeevaluate(i, 0, exportflag, exportnodecount, exportindex);
- // Mtot =P[i].comp_Mass+P[i].Mass;
- // dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
- // dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]);
-// specific_energy = 0.5*dv*dv - All.G * Mtot / dr;
-// semimajor_axis = -All.G * Mtot / (2*specific_energy);
-// printf("Particle %d after COM calculation is at position %g %g %g in a binary with period %g, separation %g %g %g, assumed companion position %g %g %g , velocity %g %g %g SuperTimestepFlag %d COM_calc_flag %d dr %g dv %g specific_energy %g semimajor_axis %g\n. Let's do another tree pass...\n", i, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].min_bh_t_orbital, P[i].comp_dx[0], P[i].comp_dx[1], P[i].comp_dx[2], (P[i].Pos[0]+P[i].comp_dx[0]), (P[i].Pos[1]+P[i].comp_dx[1]), (P[i].Pos[2]+P[i].comp_dx[2]), P[i].comp_dv[0], P[i].comp_dv[1], P[i].comp_dv[2], P[i].SuperTimestepFlag, P[i].COM_calc_flag, dr, dv, specific_energy, semimajor_axis);
+/* #ifdef SINGLE_STAR_FIND_BINARIES */
+/* /\*         //Re-evaluate for binary candidates *\/ */
+/*          if( (P[i].Type == 5) && P[i].is_in_a_binary){ //binary candidate or a confirmed binary  */
+/* #ifdef BH_OUTPUT_MOREINFO */
+/* 	     double Mtot =P[i].comp_Mass+P[i].Mass; */
+/* 	     double dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]); */
+/* 	     double dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]); */
+/* 	     double specific_energy = 0.5*dv*dv - All.G * Mtot / dr; */
+/* 	     double semimajor_axis = -All.G * Mtot / (2*specific_energy); */
+/* 	     printf("Particle %d is in a binary with period %g, separation %g %g %g, velocity %g %g %g SuperTimestepFlag %d COM_calc_flag %d dr %g dv %g specific_energy %g semimajor_axis %g\n. Let's do another tree pass...\n", i, P[i].min_bh_t_orbital, P[i].comp_dx[0], P[i].comp_dx[1], P[i].comp_dx[2], P[i].comp_dv[0], P[i].comp_dv[1], P[i].comp_dv[2], 0, 0, dr, dv, specific_energy, semimajor_axis); */
+/* #endif */
+/* 	 } */
+/* #endif	     */
+/*             P[i].COM_calc_flag = 1; //set it so that we do a center of mass calculation */
+/*             ret = force_treeevaluate(i, 0, exportflag, exportnodecount, exportindex); */
+/*  // Mtot =P[i].comp_Mass+P[i].Mass; */
+/*  // dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]); */
+/*  // dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]); */
+/* // specific_energy = 0.5*dv*dv - All.G * Mtot / dr; */
+/* // semimajor_axis = -All.G * Mtot / (2*specific_energy); */
+/* // printf("Particle %d after COM calculation is at position %g %g %g in a binary with period %g, separation %g %g %g, assumed companion position %g %g %g , velocity %g %g %g SuperTimestepFlag %d COM_calc_flag %d dr %g dv %g specific_energy %g semimajor_axis %g\n. Let's do another tree pass...\n", i, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].min_bh_t_orbital, P[i].comp_dx[0], P[i].comp_dx[1], P[i].comp_dx[2], (P[i].Pos[0]+P[i].comp_dx[0]), (P[i].Pos[1]+P[i].comp_dx[1]), (P[i].Pos[2]+P[i].comp_dx[2]), P[i].comp_dv[0], P[i].comp_dv[1], P[i].comp_dv[2], P[i].SuperTimestepFlag, P[i].COM_calc_flag, dr, dv, specific_energy, semimajor_axis); */
             
-            if(ret < 0) {break;} /* export buffer has filled up */
-            Costtotal += ret;
-        }
-#endif
+/*             if(ret < 0) {break;} /\* export buffer has filled up *\/ */
+/*             Costtotal += ret; */
+/*         } */
+/* #endif */
         ProcessedFlag[i] = 1;	/* particle successfully finished */
         
 #ifdef FIXEDTIMEINFIRSTPHASE
@@ -1223,14 +1225,14 @@ void *gravity_secondary_loop(void *p)
         ret = force_treeevaluate(j, 1, &nodesinlist, &dummy, &dummy);
         N_nodesinlist += nodesinlist; Costtotal += ret;
 #endif
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-        //Re-evaluate for binary candidates
-        if( (P[j].Type == 5) && (P[j].SuperTimestepFlag>=1)){ //binary candidate
-            P[j].COM_calc_flag = 1; //set it so that we do a center of mass calculation
-            ret = force_treeevaluate(j, 1, &nodesinlist, &dummy, &dummy);
-            N_nodesinlist += nodesinlist; Costtotal += ret;
-        }
-#endif
+/* #ifdef SINGLE_STAR_SUPERTIMESTEPPING */
+/*         //Re-evaluate for binary candidates */
+/*         if( (P[j].Type == 5) && (P[j].SuperTimestepFlag>=1)){ //binary candidate */
+/*             P[j].COM_calc_flag = 1; //set it so that we do a center of mass calculation */
+/*             ret = force_treeevaluate(j, 1, &nodesinlist, &dummy, &dummy); */
+/*             N_nodesinlist += nodesinlist; Costtotal += ret; */
+/*         } */
+/* #endif */
     }
     
     return NULL;
@@ -1399,3 +1401,66 @@ void mysort_dataindex(void *b, size_t n, size_t s, int (*cmp) (const void *, con
     
     myfree(tmp);
 }
+
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING 
+void subtract_companion_gravity(int i)
+{
+    //Remove contribution to gravitational field and tidal tensor from the stars in the binary to the center of mass
+//#ifdef BH_OUTPUT_MOREINFO 
+//    printf("COM_calc_flag %d mode %d \n",COM_calc_flag,mode);
+//    printf("Original center of mass acceleration %g %g %g and tidal tensor diagonal %g %g %g \n", acc_x, acc_y, acc_z,P[i].tidal_tensorps[0][0],P[i].tidal_tensorps[1][1],P[i].tidal_tensorps[2][2]);
+//#endif
+    double u, dr, fac, fac2, h, h_inv, h3_inv, h5_inv, u2;
+    double tidal_tensorps[3][3];
+    int i1, i2;
+    dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
+    h = All.ForceSoftening[5];  h_inv = 1.0 / h; h3_inv = h_inv*h_inv*h_inv; h5_inv = h3_inv*h_inv*h_inv; u = dr*h_inv; u2=u*u;
+
+    //Prefactors
+
+    if(dr >= h){
+	fac = P[i].comp_Mass / (dr*dr*dr);
+	fac2 = 3.0 * P[i].comp_Mass / (dr*dr*dr*dr*dr); /* no softening nonsense */
+    }else{
+	fac = P[i].comp_Mass * kernel_gravity(u, h_inv, h3_inv, 1);
+	/* second derivatives needed -> calculate them from softened potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
+	if(u < 0.5) {fac2 = P[i].comp_Mass * h5_inv * (76.8 - 96.0 * u);} else {fac2 = P[i].comp_Mass * h5_inv * (-0.2 / (u2 * u2 * u) + 48.0 / u - 76.8 + 32.0 * u);}
+    }
+	
+    
+    for(i1=0; i1<3; i1++){
+	P[i].COM_GravAccel[i1] = P[i].GravAccel[i1] - P[i].comp_dx[i1] * fac;
+    }
+    
+//Adjusting tidal tensor
+    tidal_tensorps[0][0] = P[i].tidal_tensorps[0][0] - (-fac + P[i].comp_dx[0] * P[i].comp_dx[0] * fac2);
+    tidal_tensorps[0][1] = P[i].tidal_tensorps[0][1] - (P[i].comp_dx[0] * P[i].comp_dx[1] * fac2);
+    tidal_tensorps[0][2] = P[i].tidal_tensorps[0][2] - (P[i].comp_dx[0] * P[i].comp_dx[2] * fac2);
+    tidal_tensorps[1][1] = P[i].tidal_tensorps[1][1] - (-fac + P[i].comp_dx[1] * P[i].comp_dx[1] * fac2);
+    tidal_tensorps[1][2] = P[i].tidal_tensorps[1][2] - (P[i].comp_dx[1] * P[i].comp_dx[2] * fac2);
+    tidal_tensorps[2][2] = P[i].tidal_tensorps[2][2] - (-fac + P[i].comp_dx[2] * P[i].comp_dx[2] * fac2);
+    
+//Symmetrizing
+    tidal_tensorps[1][0] = tidal_tensorps[0][1];
+    tidal_tensorps[2][0] = tidal_tensorps[0][2];
+    tidal_tensorps[2][1] = tidal_tensorps[1][2];
+
+        //Now let's diagonalize it (copied from gravtree)
+        /* double tt[9]; for(i1=0; i1<3; i1++) {for (i2=0; i2<3; i2++) tt[3*i1+i2] = P[i].tidal_tensorps[i1][i2];} */
+        /* gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3); */
+        /* gsl_vector *eval = gsl_vector_alloc (3); */
+        /* gsl_eigen_symm_workspace * w = gsl_eigen_symm_alloc (3); */
+        /* gsl_eigen_symm(&m.matrix, eval,  w); */
+        /* for(i2=0; i2<3; i2++) P[i].tidal_tensorps[i2][i2] = gsl_vector_get(eval,i2); // set diagonal elements to eigenvalues */
+        /* P[i].tidal_tensorps[0][1] = P[i].tidal_tensorps[1][0] = P[i].tidal_tensorps[1][2] = P[i].tidal_tensorps[2][1] = P[i].tidal_tensorps[0][2] = P[i].tidal_tensorps[2][0] = 0; //zero out off-diagonal elements */
+        /* gsl_eigen_symm_free(w); */
+        /* gsl_vector_free (eval); */
+#ifdef BH_OUTPUT_MOREINFO
+    printf("Corrected center of mass acceleration %g %g %g tidal tensor diagonal elements %g %g %g \n", P[i].COM_GravAccel[0], P[i].COM_GravAccel[1], P[i].COM_GravAccel[2], tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]);
+//    printf("particle position %g %g %g companion relative position %g %g %g dr %g \n",pos_x, pos_y, pos_z, comp_dx[0], comp_dx[1], comp_dx[2],sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ));
+#endif
+    P[i].COM_dt_tidal = 0;
+    for(i1 = 0; i1 < 3; i1++) for(i2=0; i2<3; i2++) {P[i].COM_dt_tidal += tidal_tensorps[i1][i2]*tidal_tensorps[i1][i2];}
+    P[i].COM_dt_tidal = sqrt(1.0 / (All.G * sqrt(P[i].COM_dt_tidal)));
+}
+#endif

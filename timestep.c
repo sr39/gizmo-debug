@@ -330,30 +330,23 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-    double supertimestep_factor=1.0;
-    if ( (P[p].Type==5) && (P[p].SuperTimestepFlag>=1) ){ //already a candidate
-    //printf("Super timestepping candidate for particle ID %d \n",P[p].ID);
+//    double supertimestep_factor=1.0;
+    if ( (P[p].Type==5) && P[p].is_in_a_binary){ //already a candidate
     //We need to decide whether to use super timestepping for binaries
-    double dt_bin,semimajor_axis_cube,dt_ext;
-    //internal gravitational timescale
-    semimajor_axis_cube = P[p].min_bh_t_orbital/(2.0*M_PI)*sqrt(All.G*(P[p].Mass+P[p].comp_Mass));semimajor_axis_cube *= semimajor_axis_cube;
-    dt_bin=sqrt(semimajor_axis_cube/(All.G*(P[p].Mass+P[p].comp_Mass))); //sqrt(a^3/GM) for binary
-// double Mtot =P[p].comp_Mass+P[p].Mass;
-// double dr = sqrt(P[p].comp_dx[0]*P[p].comp_dx[0] + P[p].comp_dx[1]*P[p].comp_dx[1] + P[p].comp_dx[2]*P[p].comp_dx[2]);
-// double dv = sqrt(P[p].comp_dv[0]*P[p].comp_dv[0] + P[p].comp_dv[1]*P[p].comp_dv[1] + P[p].comp_dv[2]*P[p].comp_dv[2]);
-// double specific_energy = 0.5*dv*dv - All.G * Mtot / dr;
-// double semimajor_axis = -All.G * Mtot / (2*specific_energy);
-// printf("timestep.c ID %d semimajor_axis %g semimajor_axis actual %g specific_energy %g dr %g dv %g \n", P[p].ID, pow(semimajor_axis_cube,1.0/3.0), semimajor_axis,specific_energy, dr, dv);
-    //external gravitational timescale
-    dt_ext=P[p].COM_dt_tidal;
-    if (SUPERTIMESTEPPING_ERRCONST*dt_ext>dt_bin){
-        P[p].SuperTimestepFlag=2;
-        supertimestep_factor = DMIN(DMAX(SUPERTIMESTEPPING_TIMESTEP_FACTOR * dt_ext/dt_bin, 2.0),1e5);//make the minimum speedup a factor of 2 and put a maximum on it just in case
+	double dt_bin,semimajor_axis_cube,dt_ext;
+
+	//internal gravitational timescale
+	semimajor_axis_cube = P[p].min_bh_t_orbital/(2.0*M_PI)*sqrt(All.G*(P[p].Mass+P[p].comp_Mass));semimajor_axis_cube *= semimajor_axis_cube;
+	dt_bin=sqrt(semimajor_axis_cube/(All.G*(P[p].Mass+P[p].comp_Mass))); //sqrt(a^3/GM) for binary
+	
+	dt_ext=P[p].COM_dt_tidal;
+ 	if (SUPERTIMESTEPPING_ERRCONST*dt_ext>dt_bin){
+ 	    P[p].SuperTimestepFlag=2;
 #ifdef BH_OUTPUT_MOREINFO
-        printf("Super timestepping active for particle ID %d with dt_bin %g dt_ext %g supertimestep_factor %g \n",P[p].ID, dt_bin, dt_ext, supertimestep_factor);
+	    printf("Super timestepping active for particle ID %d with dt_bin %g dt_ext %g \n",P[p].ID, dt_bin, dt_ext);
 #endif
-    }
-    else{
+/* 	    supertimestep_factor = DMIN(DMAX(SUPERTIMESTEPPING_TIMESTEP_FACTOR * dt_ext/dt_bin, 2.0),1e5);//make the minimum speedup a factor of 2 and put a maximum on it just in case */ 
+	} else{
         P[p].SuperTimestepFlag=0;
 #ifdef BH_OUTPUT_MOREINFO
         printf("Super timestepping deactivated for particle ID %d dt_bin %g dt_ext %g\n",P[p].ID, dt_bin, dt_ext);
@@ -371,17 +364,7 @@ integertime get_timestep(int p,		/*!< particle index */
         ay = All.cf_a2inv * P[p].GravAccel[1];
         az = All.cf_a2inv * P[p].GravAccel[2];
 #endif
-// acceleration criterion is not used for stars - MYG	
-/* #ifdef SINGLE_STAR_SUPERTIMESTEPPING  */
-/*         if (P[p].SuperTimestepFlag>=2){ */
-/*             use center of mass acceleration for the binary */
-/*             ax = All.cf_a2inv * P[p].COM_GravAccel[0]; */
-/*             ay = All.cf_a2inv * P[p].COM_GravAccel[1]; */
-/*             az = All.cf_a2inv * P[p].COM_GravAccel[2]; */
-/*             Overwrite acceleration */
-/*             P[p].GravAccel[0]=P[p].COM_GravAccel[0];P[p].GravAccel[1]=P[p].COM_GravAccel[1];P[p].GravAccel[2]=P[p].COM_GravAccel[2]; */
-/*         } */
-/* #endif */ 
+
 #ifdef PMGRID
         ax += All.cf_a2inv * P[p].GravPM[0];
         ay += All.cf_a2inv * P[p].GravPM[1];
@@ -481,27 +464,55 @@ integertime get_timestep(int p,		/*!< particle index */
     double dt_tidal = 0.; 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     if (P[p].SuperTimestepFlag>=2){
-        dt_tidal = sqrt(All.ErrTolIntAccuracy) * P[p].COM_dt_tidal * 0.5;
-    }else
+        dt_tidal = sqrt(All.ErrTolIntAccuracy) * P[p].COM_dt_tidal;
+    } else
 #endif
-    {   for(k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];}// this is diagonalized already in the gravity loop
+    {
+	for(k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];}// this is diagonalized already in the gravity loop
         dt_tidal = sqrt(All.ErrTolIntAccuracy / sqrt(dt_tidal));
     }  
     if (P[p].Type == 0) {dt = DMIN(dt, dt_tidal);} // have to include timestep criterion that has hydro accel 
     else {dt = DMIN(All.MaxSizeTimestep, dt_tidal);} // for collisionless or stars, fuhgeddabout the Power 2003 timestep. We're in Tidaltown, USA
-#endif
+
 #ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step and the timestep anticipates close encounters, which gives superior conservation
     if(P[p].Type == 5)
-//#endif
     {
-        double omega_binary = 1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time; // timestep is harmonic mean of freefall and approach time
+        double dt_2body = 1/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-        if(P[p].SuperTimestepFlag>=2){dt = DMIN(dt, P[p].min_bh_t_orbital / 30);} else
-#endif
-        dt = DMIN(dt, sqrt(All.ErrTolIntAccuracy)/omega_binary * 0.3);
-//	printf("dt = %g\n", sqrt(All.ErrTolIntAccuracy)/omega_binary * 0.3);
+	if(P[p].is_in_a_binary && (P[p].SuperTimestepFlag >= 2)){ //binary candidate or a confirmed binary
+	    // First we need to construct the same 2-body timescale as above, but from the binary parameters. If this is longer than the above, there is another star that is requiring us to
+	    // take a short timestep, so we better not super-timestep otherwise we risk messing up that star's integration. But if it is consistent with the above, then we can safely super-timestep
+	     double Mtot = P[p].comp_Mass+P[p].Mass;
+
+	     double dr, dv, dv_dot_dx;
+	     dr = dv = dv_dot_dx = 0;
+	
+	     for(k=0; k<3; k++){
+		 dr += P[p].comp_dx[k] * P[p].comp_dx[k];
+		 dv += P[p].comp_dv[k] * P[p].comp_dv[k];
+		 dv_dot_dx += P[p].comp_dx[k] * P[p].comp_dv[k];
+	     }
+
+	     dr += All.SofteningTable[5]*All.SofteningTable[5];
+	     dr = sqrt(dr);
+	     dv = sqrt(dv);
+	     double binary_dt_2body = 1/ (dv / dr + sqrt(All.G * Mtot / (dr*dr*dr)));
+
+	     if(fabs(binary_dt_2body - dt_2body)/dt_2body < 1e-2){
+		 // If consistent with the binary parameters, we choose a super-timestep that gives ~constant number of timesteps per orbit
+		 dt_2body = 2*M_PI / SUPERTIMESTEPPING_NUM_STEPS_PER_ORBIT * dr*dr / sqrt(fabs(dr*dr*dv*dv - dv_dot_dx*dv_dot_dx)); // orbital frequency is |dr x dv| / r^2, so timestep will be inverse to this
+	     } else {
+		 dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 * dt_2body;
+	     }
+#ifdef BH_OUTPUT_MOREINFO	     
+	     printf("Supertimestep is %g instead of %g for a speedup of %g\n",  dt_2body, 0.3*sqrt(All.ErrTolIntAccuracy)/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time),dt_2body/(0.3*sqrt(All.ErrTolIntAccuracy)/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time)));
+#endif	     
+	}
+#endif  // SINGLE_STAR_SUPERTIMESTEPPING
+        dt = DMIN(dt, dt_2body);
     }
-#endif
+#endif // SINGLE_STAR_TIMESTEPPING
+#endif // TIDAL_TIMESTEP_CRITERION
     
     
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
