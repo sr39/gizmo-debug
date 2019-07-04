@@ -1622,7 +1622,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     integertime ti_Current = All.Ti_Current;
     double errTol2 = All.ErrTolTheta * All.ErrTolTheta;
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-    int i1, i2; double fac2, h_tidal, h_inv_tidal, h3_inv_tidal, h5_inv, h5_inv_tidal, fac_tidal;
+    int i1, i2; double fac2_tidal, h_tidal, h_inv_tidal, h3_inv_tidal, h5_inv, h5_inv_tidal, fac_tidal;
     MyDouble tidal_tensorps[3][3];
 #endif
 #if defined(REDUCE_TREEWALK_BRANCHING) && defined(PMGRID)
@@ -1855,6 +1855,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
     h_inv = 1.0 / h;
     h3_inv = h_inv * h_inv * h_inv;
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+    h5_inv = h3_inv * h_inv * h_inv;
+#endif    
 #endif
     
     
@@ -1939,7 +1942,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double vSqr = bh_dvx*bh_dvx + bh_dvy*bh_dvy + bh_dvz*bh_dvz;
                     double M_total = P[no].Mass + pmass;
                     double r2soft;
-                    r2soft = DMAX(All.SofteningTable[5], soft);
+                    r2soft = DMAX(All.SofteningTable[5], soft/2.8);
                     r2soft = r2soft*r2soft + r2;
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER);
                     double tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
@@ -2414,7 +2417,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             {
                 fac = mass / (r2 * r);
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-                fac2 = 3.0 * mass / (r2 * r2 * r); /* second derivative of potential needs this factor */
+                fac2_tidal = 3.0 * mass / (r2 * r2 * r); /* second derivative of potential needs this factor */
 #endif
 #ifdef EVALPOTENTIAL
                 facpot = -mass / r;
@@ -2515,7 +2518,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                 /* second derivatives needed -> calculate them from softend potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
-                if(u < 0.5) {fac2 = mass * h5_inv * (76.8 - 96.0 * u);} else {fac2 = mass * h5_inv * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u);}
+                if(u < 0.5) {fac2_tidal = mass * h5_inv * (76.8 - 96.0 * u);} else {fac2_tidal = mass * h5_inv * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u);}
 #endif
             } // closes r < h (else) clause
             
@@ -2553,25 +2556,25 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                  |Tzx Tzy Tzz|   |tidal_tensorps[2][0] tidal_tensorps[2][1] tidal_tensorps[2][2]|
                  */
 #ifdef PMGRID
-                tidal_tensorps[0][0] += ((-fac_tidal + dx * dx * fac2) * shortrange_table[tabindex]) +
-                    dx * dx * fac2 / 3.0 * shortrange_table_tidal[tabindex];
-                tidal_tensorps[0][1] += ((dx * dy * fac2) * shortrange_table[tabindex]) +
-                    dx * dy * fac2 / 3.0 * shortrange_table_tidal[tabindex];
-                tidal_tensorps[0][2] += ((dx * dz * fac2) * shortrange_table[tabindex]) +
-                    dx * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
-                tidal_tensorps[1][1] += ((-fac_tidal + dy * dy * fac2) * shortrange_table[tabindex]) +
-                    dy * dy * fac2 / 3.0 * shortrange_table_tidal[tabindex];
-                tidal_tensorps[1][2] += ((dy * dz * fac2) * shortrange_table[tabindex]) +
-                    dy * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
-                tidal_tensorps[2][2] += ((-fac_tidal + dz * dz * fac2) * shortrange_table[tabindex]) +
-                    dz * dz * fac2 / 3.0 * shortrange_table_tidal[tabindex];
+                tidal_tensorps[0][0] += ((-fac_tidal + dx * dx * fac2_tidal) * shortrange_table[tabindex]) +
+                    dx * dx * fac2_tidal / 3.0 * shortrange_table_tidal[tabindex];
+                tidal_tensorps[0][1] += ((dx * dy * fac2_tidal) * shortrange_table[tabindex]) +
+                    dx * dy * fac2_tidal / 3.0 * shortrange_table_tidal[tabindex];
+                tidal_tensorps[0][2] += ((dx * dz * fac2_tidal) * shortrange_table[tabindex]) +
+                    dx * dz * fac2_tidal / 3.0 * shortrange_table_tidal[tabindex];
+                tidal_tensorps[1][1] += ((-fac_tidal + dy * dy * fac2_tidal) * shortrange_table[tabindex]) +
+                    dy * dy * fac2_tidal / 3.0 * shortrange_table_tidal[tabindex];
+                tidal_tensorps[1][2] += ((dy * dz * fac2_tidal) * shortrange_table[tabindex]) +
+                    dy * dz * fac2_tidal / 3.0 * shortrange_table_tidal[tabindex];
+                tidal_tensorps[2][2] += ((-fac_tidal + dz * dz * fac2_tidal) * shortrange_table[tabindex]) +
+                    dz * dz * fac2_tidal / 3.0 * shortrange_table_tidal[tabindex];
 #else
-                tidal_tensorps[0][0] += (-fac_tidal + dx * dx * fac2);
-                tidal_tensorps[0][1] += (dx * dy * fac2);
-                tidal_tensorps[0][2] += (dx * dz * fac2);
-                tidal_tensorps[1][1] += (-fac_tidal + dy * dy * fac2);
-                tidal_tensorps[1][2] += (dy * dz * fac2);
-                tidal_tensorps[2][2] += (-fac_tidal + dz * dz * fac2);
+                tidal_tensorps[0][0] += (-fac_tidal + dx * dx * fac2_tidal);
+                tidal_tensorps[0][1] += (dx * dy * fac2_tidal);
+                tidal_tensorps[0][2] += (dx * dz * fac2_tidal);
+                tidal_tensorps[1][1] += (-fac_tidal + dy * dy * fac2_tidal);
+                tidal_tensorps[1][2] += (dy * dz * fac2_tidal);
+                tidal_tensorps[2][2] += (-fac_tidal + dz * dz * fac2_tidal);
 #endif
                 tidal_tensorps[1][0] = tidal_tensorps[0][1];
                 tidal_tensorps[2][0] = tidal_tensorps[0][2];
@@ -2702,69 +2705,69 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     } // closes outer (while(no>=0)) check
     
     
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING 
+//#ifdef SINGLE_STAR_SUPERTIMESTEPPING 
     //Remove contribution to the tidal tensor from the stars in the binary to the center of mass
     //if (COM_calc_flag==1){
-#ifdef BH_OUTPUT_MOREINFO
-printf("COM_calc_flag %d mode %d \n",COM_calc_flag,mode);
-printf("Original center of mass acceleration %g %g %g and tidal tensor diagonal %g %g %g \n", acc_x, acc_y, acc_z,tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]);
-#endif
-        double b_mass, direction_fac;
-        for(i1 = 0; i1 < 2; i1++) {  //WHICH ONES ARE TAKEN INTO ACCOUNT?
-            if (i1==0){ 
-                b_mass=comp_Mass;
-                direction_fac=1.0;
-            }else{
-                b_mass=pmass-comp_Mass;
-                direction_fac=-1.0;
-            }
-            double part_relmass=1.0-b_mass/pmass; //relative mass of the other particle in the binary
-            double comp_dr=part_relmass*sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ); //distance to center of mass from current binary star
-            double part_relmass2=part_relmass*part_relmass; double comp_dr2=comp_dr*comp_dr;
-            //Prefactors
-            h = All.ForceSoftening[ptype];  h_inv = 1.0 / h; h3_inv = h_inv*h_inv*h_inv; h5_inv = h3_inv*h_inv*h_inv; u = comp_dr*h_inv; double u2=u*u;
-            if(comp_dr >= h){
-                fac = b_mass / (comp_dr2 * comp_dr); fac2 = 3.0 * b_mass / (comp_dr2 * comp_dr2 * comp_dr); /* no softening nonsense */
-            }
-            else{
-                fac = b_mass * kernel_gravity(u, h_inv, h3_inv, 1);
-                /* second derivatives needed -> calculate them from softened potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
-                if(u < 0.5) {fac2 = b_mass * h5_inv * (76.8 - 96.0 * u);} else {fac2 = b_mass * h5_inv * (-0.2 / (u2 * u2 * u) + 48.0 / u - 76.8 + 32.0 * u);
-                }
-            }
-//printf("part_relmass %g comp_dr %g b_mass %g pmass %g h %g fac %g\n",part_relmass, comp_dr, b_mass, pmass, h, fac);
-            //Correct gravitational acceleration for center of mass by subtracting the companion
-            acc_x -= direction_fac*fac*part_relmass*comp_dx[0];
-            acc_y -= direction_fac*fac*part_relmass*comp_dx[1];
-            acc_z -= direction_fac*fac*part_relmass*comp_dx[2];
-            //Adjusting tidal tensor
-            tidal_tensorps[0][0] -= (-fac + part_relmass2 * comp_dx[0] * comp_dx[0] * fac2);
-            tidal_tensorps[0][1] -= part_relmass2 * (comp_dx[0] * comp_dx[1] * fac2);
-            tidal_tensorps[0][2] -= part_relmass2 * (comp_dx[0] * comp_dx[2] * fac2);
-            tidal_tensorps[1][1] -= (-fac + part_relmass2 * comp_dx[1] * comp_dx[1] * fac2);
-            tidal_tensorps[1][2] -= part_relmass2 * (comp_dx[1] * comp_dx[2] * fac2);
-            tidal_tensorps[2][2] -= (-fac + part_relmass2 * comp_dx[2] * comp_dx[2] * fac2);
-            //Symmetrizing
-            tidal_tensorps[1][0] = tidal_tensorps[0][1];
-            tidal_tensorps[2][0] = tidal_tensorps[0][2];
-            tidal_tensorps[2][1] = tidal_tensorps[1][2];
-	}
-        //Now let's diagonalize it (copied from gravtree)
-        double tt[9]; for(i1=0; i1<3; i1++) {for (i2=0; i2<3; i2++) tt[3*i1+i2] = tidal_tensorps[i1][i2];}
-        gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3);
-        gsl_vector *eval = gsl_vector_alloc (3);
-        gsl_eigen_symm_workspace * w = gsl_eigen_symm_alloc (3);
-        gsl_eigen_symm(&m.matrix, eval,  w);
-        for(i2=0; i2<3; i2++) tidal_tensorps[i2][i2] = gsl_vector_get(eval,i2); // set diagonal elements to eigenvalues
-        tidal_tensorps[0][1] = tidal_tensorps[1][0] = tidal_tensorps[1][2] = tidal_tensorps[2][1] = tidal_tensorps[0][2] = tidal_tensorps[2][0] = 0; //zero out off-diagonal elements
-        gsl_eigen_symm_free(w);
-        gsl_vector_free (eval);
-#ifdef BH_OUTPUT_MOREINFO
-    printf("Corrected center of mass acceleration %g %g %g tidal tensor diagonal elements %g %g %g \n", acc_x, acc_y, acc_z,tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]);
-    printf("particle position %g %g %g companion relative position %g %g %g dr %g \n",pos_x, pos_y, pos_z, comp_dx[0], comp_dx[1], comp_dx[2],sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ));
-#endif
+/* #ifdef BH_OUTPUT_MOREINFO */
+/* printf("COM_calc_flag %d mode %d \n",COM_calc_flag,mode); */
+/* printf("Original center of mass acceleration %g %g %g and tidal tensor diagonal %g %g %g \n", acc_x, acc_y, acc_z,tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]); */
+/* #endif */
+/*         double b_mass, direction_fac; */
+/*         for(i1 = 0; i1 < 2; i1++) {  //WHICH ONES ARE TAKEN INTO ACCOUNT? */
+/*             if (i1==0){  */
+/*                 b_mass=comp_Mass; */
+/*                 direction_fac=1.0; */
+/*             }else{ */
+/*                 b_mass=pmass-comp_Mass; */
+/*                 direction_fac=-1.0; */
+/*             } */
+/*             double part_relmass=1.0-b_mass/pmass; //relative mass of the other particle in the binary */
+/*             double comp_dr=part_relmass*sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ); //distance to center of mass from current binary star */
+/*             double part_relmass2=part_relmass*part_relmass; double comp_dr2=comp_dr*comp_dr; */
+/*             //Prefactors */
+/*             h = All.ForceSoftening[ptype];  h_inv = 1.0 / h; h3_inv = h_inv*h_inv*h_inv; h5_inv = h3_inv*h_inv*h_inv; u = comp_dr*h_inv; double u2=u*u; */
+/*             if(comp_dr >= h){ */
+/*                 fac = b_mass / (comp_dr2 * comp_dr); fac2 = 3.0 * b_mass / (comp_dr2 * comp_dr2 * comp_dr); /\* no softening nonsense *\/ */
+/*             } */
+/*             else{ */
+/*                 fac = b_mass * kernel_gravity(u, h_inv, h3_inv, 1); */
+/*                 /\* second derivatives needed -> calculate them from softened potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! *\/ */
+/*                 if(u < 0.5) {fac2 = b_mass * h5_inv * (76.8 - 96.0 * u);} else {fac2 = b_mass * h5_inv * (-0.2 / (u2 * u2 * u) + 48.0 / u - 76.8 + 32.0 * u); */
+/*                 } */
+/*             } */
+/* //printf("part_relmass %g comp_dr %g b_mass %g pmass %g h %g fac %g\n",part_relmass, comp_dr, b_mass, pmass, h, fac); */
+/*             //Correct gravitational acceleration for center of mass by subtracting the companion */
+/*             acc_x -= direction_fac*fac*part_relmass*comp_dx[0]; */
+/*             acc_y -= direction_fac*fac*part_relmass*comp_dx[1]; */
+/*             acc_z -= direction_fac*fac*part_relmass*comp_dx[2]; */
+/*             //Adjusting tidal tensor */
+/*             tidal_tensorps[0][0] -= (-fac + part_relmass2 * comp_dx[0] * comp_dx[0] * fac2); */
+/*             tidal_tensorps[0][1] -= part_relmass2 * (comp_dx[0] * comp_dx[1] * fac2); */
+/*             tidal_tensorps[0][2] -= part_relmass2 * (comp_dx[0] * comp_dx[2] * fac2); */
+/*             tidal_tensorps[1][1] -= (-fac + part_relmass2 * comp_dx[1] * comp_dx[1] * fac2); */
+/*             tidal_tensorps[1][2] -= part_relmass2 * (comp_dx[1] * comp_dx[2] * fac2); */
+/*             tidal_tensorps[2][2] -= (-fac + part_relmass2 * comp_dx[2] * comp_dx[2] * fac2); */
+/*             //Symmetrizing */
+/*             tidal_tensorps[1][0] = tidal_tensorps[0][1]; */
+/*             tidal_tensorps[2][0] = tidal_tensorps[0][2]; */
+/*             tidal_tensorps[2][1] = tidal_tensorps[1][2]; */
+/* 	} */
+/*         //Now let's diagonalize it (copied from gravtree) */
+/*         double tt[9]; for(i1=0; i1<3; i1++) {for (i2=0; i2<3; i2++) tt[3*i1+i2] = tidal_tensorps[i1][i2];} */
+/*         gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3); */
+/*         gsl_vector *eval = gsl_vector_alloc (3); */
+/*         gsl_eigen_symm_workspace * w = gsl_eigen_symm_alloc (3); */
+/*         gsl_eigen_symm(&m.matrix, eval,  w); */
+/*         for(i2=0; i2<3; i2++) tidal_tensorps[i2][i2] = gsl_vector_get(eval,i2); // set diagonal elements to eigenvalues */
+/*         tidal_tensorps[0][1] = tidal_tensorps[1][0] = tidal_tensorps[1][2] = tidal_tensorps[2][1] = tidal_tensorps[0][2] = tidal_tensorps[2][0] = 0; //zero out off-diagonal elements */
+/*         gsl_eigen_symm_free(w); */
+/*         gsl_vector_free (eval); */
+/* #ifdef BH_OUTPUT_MOREINFO */
+/*     printf("Corrected center of mass acceleration %g %g %g tidal tensor diagonal elements %g %g %g \n", acc_x, acc_y, acc_z,tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]); */
+/*     printf("particle position %g %g %g companion relative position %g %g %g dr %g \n",pos_x, pos_y, pos_z, comp_dx[0], comp_dx[1], comp_dx[2],sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] )); */
+/* #endif */
     
-#endif
+/* #endif */
     
     /* store result at the proper place */
     if(mode == 0)

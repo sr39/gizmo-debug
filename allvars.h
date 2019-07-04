@@ -297,8 +297,8 @@
 #define READ_SINKRADIUS // read the sinkradius for sink partciles in IC files
 #endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-#define SUPERTIMESTEPPING_ERRCONST 0.003 // If sqrt(|nabla g| / (GM/a^3)) < SUPERTIMESTEPPING_ERRCONST, then we use super timestepping for the binary
-#define SUPERTIMESTEPPING_TIMESTEP_FACTOR 0.01 //determines the factor by which timesteps are increased for supertimestepped binaries compared to the binary period timestep, it is set as SUPERTIMESTEPPING_TIMESTEP_FACTOR * dt_ext/dt_bin. NOTE: high values could cause snychronization errors in binaries
+#define SUPERTIMESTEPPING_ERRCONST 0.01 // If sqrt(|nabla g| / (GM/a^3)) < SUPERTIMESTEPPING_ERRCONST, then we use super timestepping for the binary
+#define SUPERTIMESTEPPING_NUM_STEPS_PER_ORBIT 30 //determines the factor by which timesteps are increased for supertimestepped binaries compared to the binary period timestep, it is set as SUPERTIMESTEPPING_TIMESTEP_FACTOR * dt_ext/dt_bin. NOTE: high values could cause snychronization errors in binaries
 //#define SUPERTIMESTEPPING_STEPS_PER_CHECK 10 // number of supertimestepped steps taken before a binary is demoted
 #endif
 #ifdef NEWSINK
@@ -2199,7 +2199,7 @@ extern ALIGN(32) struct particle_data
     MyFloat min_bh_approach_time;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     int SuperTimestepFlag; // >=2 if allowed to super-timestep (increases with each drift/kick), 1 if a candidate for super-timestepping, 0 otherwise
-    int COM_calc_flag; //tells forcetree whether to calculate the forces for the particle (0) or the center of mass (1)
+//    int COM_calc_flag; //tells forcetree whether to calculate the forces for the particle (0) or the center of mass (1)
     //MyIDType comp_ID; //ID of binary companion
     MyDouble COM_dt_tidal; //timescale from tidal tensor evaluated at the center of mass without contribution from the companion
     MyDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
