@@ -298,8 +298,7 @@
 #endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
 #define SUPERTIMESTEPPING_ERRCONST 0.01 // If sqrt(|nabla g| / (GM/a^3)) < SUPERTIMESTEPPING_ERRCONST, then we use super timestepping for the binary
-#define SUPERTIMESTEPPING_NUM_STEPS_PER_ORBIT 30 //determines the factor by which timesteps are increased for supertimestepped binaries compared to the binary period timestep, it is set as SUPERTIMESTEPPING_TIMESTEP_FACTOR * dt_ext/dt_bin. NOTE: high values could cause snychronization errors in binaries
-//#define SUPERTIMESTEPPING_STEPS_PER_CHECK 10 // number of supertimestepped steps taken before a binary is demoted
+#define SUPERTIMESTEPPING_NUM_STEPS_PER_ORBIT 30 // Super timestepping will attempt to get ~constant number of timesteps per orbit, spaced at even angular intervals.
 #endif
 #ifdef NEWSINK
 #define BH_GRAVCAPTURE_GAS
@@ -2691,7 +2690,7 @@ extern struct gravdata_in
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     //MyIDType comp_ID; //ID of binary companion
     int SuperTimestepFlag; // 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
-    int COM_calc_flag; //tells forcetree whether to calculate the forces for the particle (0) or the center of mass (1)
+//    int COM_calc_flag; //tells forcetree whether to calculate the forces for the particle (0) or the center of mass (1)
 #endif
     MyFloat OldAcc;
     int NodeList[NODELISTLENGTH];

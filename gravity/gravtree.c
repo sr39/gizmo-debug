@@ -544,9 +544,6 @@ void gravity_tree(void)
                 for(j = 0; j < Nexport; j++)
                 {
                     place = DataIndexTable[j].Index;
-/* #ifdef SINGLE_STAR_SUPERTIMESTEPPING */
-/*                 if (GravDataOut[j].COM_calc_flag==0){ //this ensures that we only export this data if we are not doing a calculation for the center of mass of a binary */
-/* #endif */
                     for(k = 0; k < 3; k++) {P[place].GravAccel[k] += GravDataOut[j].Acc[k];}
 
 #ifdef BH_CALC_DISTANCES
@@ -600,20 +597,6 @@ void gravity_tree(void)
 #ifdef EVALPOTENTIAL
                     P[place].Potential += GravDataOut[j].Potential;
 #endif
-/* #ifdef SINGLE_STAR_SUPERTIMESTEPPING */
-/*                 }//if (COM_calc_flag==0) */
-/*                 else{ */
-/*                     //Save acceleration and tidal tensor at center of mass of binary */
-/*                     P[place].COM_calc_flag = 0; */
-/*                     for(k = 0; k < 3; k++) { */
-/*                         P[place].COM_GravAccel[k] += GravDataOut[j].COM_GravAccel[k]; */
-/*                         } */
-/*                     P[place].COM_dt_tidal = 0; */
-/*                     for(i1 = 0; i1 < 3; i1++)  { */
-/*                         P[place].COM_dt_tidal += GravDataOut[j].COM_tidal_tensorps[i1][i1]*GravDataOut[j].COM_tidal_tensorps[i1][i1];} */
-/*                     P[place].COM_dt_tidal = sqrt(1.0 / sqrt(P[place].COM_dt_tidal)); */
-/*                 } */
-/* #endif */
                 }
                 tend = my_second();
                 timetree1 += timediff(tstart, tend);
@@ -1225,14 +1208,6 @@ void *gravity_secondary_loop(void *p)
         ret = force_treeevaluate(j, 1, &nodesinlist, &dummy, &dummy);
         N_nodesinlist += nodesinlist; Costtotal += ret;
 #endif
-/* #ifdef SINGLE_STAR_SUPERTIMESTEPPING */
-/*         //Re-evaluate for binary candidates */
-/*         if( (P[j].Type == 5) && (P[j].SuperTimestepFlag>=1)){ //binary candidate */
-/*             P[j].COM_calc_flag = 1; //set it so that we do a center of mass calculation */
-/*             ret = force_treeevaluate(j, 1, &nodesinlist, &dummy, &dummy); */
-/*             N_nodesinlist += nodesinlist; Costtotal += ret; */
-/*         } */
-/* #endif */
     }
     
     return NULL;
@@ -1406,10 +1381,6 @@ void mysort_dataindex(void *b, size_t n, size_t s, int (*cmp) (const void *, con
 void subtract_companion_gravity(int i)
 {
     //Remove contribution to gravitational field and tidal tensor from the stars in the binary to the center of mass
-//#ifdef BH_OUTPUT_MOREINFO 
-//    printf("COM_calc_flag %d mode %d \n",COM_calc_flag,mode);
-//    printf("Original center of mass acceleration %g %g %g and tidal tensor diagonal %g %g %g \n", acc_x, acc_y, acc_z,P[i].tidal_tensorps[0][0],P[i].tidal_tensorps[1][1],P[i].tidal_tensorps[2][2]);
-//#endif
     double u, dr, fac, fac2, h, h_inv, h3_inv, h5_inv, u2;
     double tidal_tensorps[3][3];
     int i1, i2;

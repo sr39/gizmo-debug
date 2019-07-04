@@ -13,9 +13,6 @@
 #ifdef PTHREADS_NUM_THREADS
 #include <pthread.h>
 #endif
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-#include <gsl/gsl_eigen.h>
-#endif
 
 /*! \file forcetree.c
  *  \brief gravitational tree and code for Ewald correction
@@ -1721,18 +1718,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         vel_y = P[target].Vel[1];
         vel_z = P[target].Vel[2];
 #endif
-/* #ifdef SINGLE_STAR_SUPERTIMESTEPPING */
-/* //if this is a second pass on a binary, use center of mass data */
-/*         if ( P[target].COM_calc_flag ==1){ */
-/*             COM_calc_flag = 1; //center of mass calculation */
-/*             comp_Mass=P[target].comp_Mass; */
-/*             //comp_ID=P[target].comp_ID; */
-/*             for(ksuper=0;ksuper<3;ksuper++) { */
-/*                 comp_dx[ksuper]=P[target].comp_dx[ksuper]; //position of binary companion */
-/*                 comp_dv[ksuper]=P[target].comp_dv[ksuper]; //velocity of binary companion */
-/*             } */
-/*         } */
-/* #endif */
+
         aold = All.ErrTolForceAcc * P[target].OldAcc;
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         soft = All.ForceSoftening[ptype];
@@ -1778,20 +1764,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         vel_y = GravDataGet[target].Vel[1];
         vel_z = GravDataGet[target].Vel[2];
 #endif
-/* #ifdef SINGLE_STAR_SUPERTIMESTEPPING */
-/* //if this is a second pass on a binary, use center of mass data */
-/*         if ( GravDataGet[target].COM_calc_flag == 1 ){ */
-/*             COM_calc_flag = 1; //center of mass calculation */
-/*             printf("particle type %d incoming COM_calc_flag %d \n",GravDataGet[target].Type,GravDataGet[target].COM_calc_flag); */
-/*             //companion properties */
-/*             comp_Mass=GravDataGet[target].comp_Mass; */
-/*             //comp_ID=GravDataGet[target].comp_ID; */
-/*             for(ksuper=0;ksuper<3;ksuper++) { */
-/*                 comp_dx[ksuper]=GravDataGet[target].comp_dx[ksuper]; //position of binary companion */
-/*                 comp_dv[ksuper]=GravDataGet[target].comp_dv[ksuper]; //velocity of binary companion */
-/*             } */
-/*         } */
-/* #endif */
         ptype = GravDataGet[target].Type;
         aold = All.ErrTolForceAcc * GravDataGet[target].OldAcc;
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE)
@@ -1808,21 +1780,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         }
 #endif
     }
-/* #ifdef SINGLE_STAR_SUPERTIMESTEPPING */
-/*     //Change position, velocities and mass if it is a center of mass calculation */
-/*     if (COM_calc_flag==1){ */
-/*         //position of center of mass */
-/*         pos_x = pos_x + comp_Mass*comp_dx[0]/(pmass+comp_Mass); */
-/*         pos_y = pos_y + comp_Mass*comp_dx[1]/(pmass+comp_Mass); */
-/*         pos_z = pos_z + comp_Mass*comp_dx[2]/(pmass+comp_Mass); */
-/*         //velocity of center of mass */
-/*         vel_x = vel_x + comp_Mass*comp_dv[0]/(pmass+comp_Mass); */
-/*         vel_y = vel_y + comp_Mass*comp_dv[1]/(pmass+comp_Mass); */
-/*         vel_z = vel_z + comp_Mass*comp_dv[2]/(pmass+comp_Mass); */
-/*         //mass */
-/*         pmass=pmass+comp_Mass; */
-/*     } */
-/* #endif */
     
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
     /* quick check if particle has mass: if not, we won't deal with it */
@@ -2705,76 +2662,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     } // closes outer (while(no>=0)) check
     
     
-//#ifdef SINGLE_STAR_SUPERTIMESTEPPING 
-    //Remove contribution to the tidal tensor from the stars in the binary to the center of mass
-    //if (COM_calc_flag==1){
-/* #ifdef BH_OUTPUT_MOREINFO */
-/* printf("COM_calc_flag %d mode %d \n",COM_calc_flag,mode); */
-/* printf("Original center of mass acceleration %g %g %g and tidal tensor diagonal %g %g %g \n", acc_x, acc_y, acc_z,tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]); */
-/* #endif */
-/*         double b_mass, direction_fac; */
-/*         for(i1 = 0; i1 < 2; i1++) {  //WHICH ONES ARE TAKEN INTO ACCOUNT? */
-/*             if (i1==0){  */
-/*                 b_mass=comp_Mass; */
-/*                 direction_fac=1.0; */
-/*             }else{ */
-/*                 b_mass=pmass-comp_Mass; */
-/*                 direction_fac=-1.0; */
-/*             } */
-/*             double part_relmass=1.0-b_mass/pmass; //relative mass of the other particle in the binary */
-/*             double comp_dr=part_relmass*sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ); //distance to center of mass from current binary star */
-/*             double part_relmass2=part_relmass*part_relmass; double comp_dr2=comp_dr*comp_dr; */
-/*             //Prefactors */
-/*             h = All.ForceSoftening[ptype];  h_inv = 1.0 / h; h3_inv = h_inv*h_inv*h_inv; h5_inv = h3_inv*h_inv*h_inv; u = comp_dr*h_inv; double u2=u*u; */
-/*             if(comp_dr >= h){ */
-/*                 fac = b_mass / (comp_dr2 * comp_dr); fac2 = 3.0 * b_mass / (comp_dr2 * comp_dr2 * comp_dr); /\* no softening nonsense *\/ */
-/*             } */
-/*             else{ */
-/*                 fac = b_mass * kernel_gravity(u, h_inv, h3_inv, 1); */
-/*                 /\* second derivatives needed -> calculate them from softened potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! *\/ */
-/*                 if(u < 0.5) {fac2 = b_mass * h5_inv * (76.8 - 96.0 * u);} else {fac2 = b_mass * h5_inv * (-0.2 / (u2 * u2 * u) + 48.0 / u - 76.8 + 32.0 * u); */
-/*                 } */
-/*             } */
-/* //printf("part_relmass %g comp_dr %g b_mass %g pmass %g h %g fac %g\n",part_relmass, comp_dr, b_mass, pmass, h, fac); */
-/*             //Correct gravitational acceleration for center of mass by subtracting the companion */
-/*             acc_x -= direction_fac*fac*part_relmass*comp_dx[0]; */
-/*             acc_y -= direction_fac*fac*part_relmass*comp_dx[1]; */
-/*             acc_z -= direction_fac*fac*part_relmass*comp_dx[2]; */
-/*             //Adjusting tidal tensor */
-/*             tidal_tensorps[0][0] -= (-fac + part_relmass2 * comp_dx[0] * comp_dx[0] * fac2); */
-/*             tidal_tensorps[0][1] -= part_relmass2 * (comp_dx[0] * comp_dx[1] * fac2); */
-/*             tidal_tensorps[0][2] -= part_relmass2 * (comp_dx[0] * comp_dx[2] * fac2); */
-/*             tidal_tensorps[1][1] -= (-fac + part_relmass2 * comp_dx[1] * comp_dx[1] * fac2); */
-/*             tidal_tensorps[1][2] -= part_relmass2 * (comp_dx[1] * comp_dx[2] * fac2); */
-/*             tidal_tensorps[2][2] -= (-fac + part_relmass2 * comp_dx[2] * comp_dx[2] * fac2); */
-/*             //Symmetrizing */
-/*             tidal_tensorps[1][0] = tidal_tensorps[0][1]; */
-/*             tidal_tensorps[2][0] = tidal_tensorps[0][2]; */
-/*             tidal_tensorps[2][1] = tidal_tensorps[1][2]; */
-/* 	} */
-/*         //Now let's diagonalize it (copied from gravtree) */
-/*         double tt[9]; for(i1=0; i1<3; i1++) {for (i2=0; i2<3; i2++) tt[3*i1+i2] = tidal_tensorps[i1][i2];} */
-/*         gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3); */
-/*         gsl_vector *eval = gsl_vector_alloc (3); */
-/*         gsl_eigen_symm_workspace * w = gsl_eigen_symm_alloc (3); */
-/*         gsl_eigen_symm(&m.matrix, eval,  w); */
-/*         for(i2=0; i2<3; i2++) tidal_tensorps[i2][i2] = gsl_vector_get(eval,i2); // set diagonal elements to eigenvalues */
-/*         tidal_tensorps[0][1] = tidal_tensorps[1][0] = tidal_tensorps[1][2] = tidal_tensorps[2][1] = tidal_tensorps[0][2] = tidal_tensorps[2][0] = 0; //zero out off-diagonal elements */
-/*         gsl_eigen_symm_free(w); */
-/*         gsl_vector_free (eval); */
-/* #ifdef BH_OUTPUT_MOREINFO */
-/*     printf("Corrected center of mass acceleration %g %g %g tidal tensor diagonal elements %g %g %g \n", acc_x, acc_y, acc_z,tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]); */
-/*     printf("particle position %g %g %g companion relative position %g %g %g dr %g \n",pos_x, pos_y, pos_z, comp_dx[0], comp_dx[1], comp_dx[2],sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] )); */
-/* #endif */
-    
-/* #endif */
+
     
     /* store result at the proper place */
     if(mode == 0)
     {
-//#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-//    if (COM_calc_flag==0){ //this ensures that we only export this data if we are not doing a calculation for the center of mass of a binary
-//#endif
         P[target].GravAccel[0] = acc_x;
         P[target].GravAccel[1] = acc_y;
         P[target].GravAccel[2] = acc_z;
@@ -2825,26 +2717,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         P[target].min_bh_periastron = min_bh_periastron;
 #endif
 #endif
-/* #ifdef SINGLE_STAR_SUPERTIMESTEPPING */
-/*   } //if (COM_calc_flag==0) */
-/*    else{ */
-/*        //    Save acceleration and tidal tensor at center of mass of binary */
-/*        P[target].COM_GravAccel[0] = acc_x; */
-/*        P[target].COM_GravAccel[1] = acc_y; */
-/*        P[target].COM_GravAccel[2] = acc_z; */
-/*        P[target].COM_calc_flag = 0; //just to be sure */
-/*        P[target].COM_dt_tidal = 0; */
-/*        for(i1 = 0; i1 < 3; i1++) {P[target].COM_dt_tidal += tidal_tensorps[i1][i1]*tidal_tensorps[i1][i1];} */
-/*        P[target].COM_dt_tidal = sqrt(1.0 / sqrt(P[target].COM_dt_tidal)); */
-/*     } */
-/* #endif */
     }
     else
     {
-/* #ifdef SINGLE_STAR_SUPERTIMESTEPPING */
-/*         GravDataResult[target].COM_calc_flag=COM_calc_flag;//flag that tells whether this was only a rerun to get the acceleration ad the tidal tenor at the center of mass of a binary */
-/*         if (COM_calc_flag==0){ //this ensures that we only export this data if we are not doing a calculation for the center of mass of a binary */
-/*         #endif */
             GravDataResult[target].Acc[0] = acc_x;
             GravDataResult[target].Acc[1] = acc_y;
             GravDataResult[target].Acc[2] = acc_z;
