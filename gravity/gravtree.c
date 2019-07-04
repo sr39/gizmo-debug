@@ -407,9 +407,7 @@ void gravity_tree(void)
                     if (P[place].Type==5){
                         GravDataIn[j].min_bh_t_orbital = P[place].min_bh_t_orbital; //orbital time for binary
                         GravDataIn[j].comp_Mass = P[place].comp_Mass; //mass of binary companion
-                        //GravDataIn[j].comp_ID = P[place].comp_ID; //ID of binary companion
-                        GravDataIn[j].is_in_a_binary = P[place].is_in_a_binary; // >=2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
-//                        GravDataIn[j].COM_calc_flag = P[place].COM_calc_flag; // 0 by default, 1 if we need a center of mass calculation
+                        GravDataIn[j].is_in_a_binary = P[place].is_in_a_binary; // 1 if we're in a binary, 0 if not
                         for(k = 0; k < 3; k++) {
                             GravDataIn[j].comp_dx[k] = P[place].comp_dx[k];
                             GravDataIn[j].comp_dv[k] = P[place].comp_dv[k];
@@ -417,7 +415,7 @@ void gravity_tree(void)
                     }
                     else{
                         //Setting values to zero just to be sure
-                        P[place].is_in_a_binary = 0; //P[place].COM_calc_flag = 0;GravDataIn[j].COM_calc_flag = 0;
+                        P[place].is_in_a_binary = 0;
                     }
 #endif
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
@@ -726,10 +724,13 @@ void gravity_tree(void)
     /*  muliply by G */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING // Gotta subtract for component from companion
+	if(P[i].Type == 5) subtract_companion_gravity(i);
+#endif	
         for(j = 0; j < 3; j++) {P[i].GravAccel[j] *= All.G;}
-/* #ifdef SINGLE_STAR_SUPERTIMESTEPPING */
-/* 	for(j = 0; j < 3; j++) {P[i].COM_GravAccel[j] *= All.G;} */
-/* #endif	 */
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+ 	for(j = 0; j < 3; j++) {P[i].COM_GravAccel[j] *= All.G;}
+#endif 
         
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 #ifdef GDE_DISTORTIONTENSOR
@@ -1400,3 +1401,66 @@ void mysort_dataindex(void *b, size_t n, size_t s, int (*cmp) (const void *, con
     
     myfree(tmp);
 }
+
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING 
+void subtract_companion_gravity(int i)
+{
+    //Remove contribution to gravitational field and tidal tensor from the stars in the binary to the center of mass
+//#ifdef BH_OUTPUT_MOREINFO 
+//    printf("COM_calc_flag %d mode %d \n",COM_calc_flag,mode);
+//    printf("Original center of mass acceleration %g %g %g and tidal tensor diagonal %g %g %g \n", acc_x, acc_y, acc_z,P[i].tidal_tensorps[0][0],P[i].tidal_tensorps[1][1],P[i].tidal_tensorps[2][2]);
+//#endif
+    double u, dr, fac, fac2, h, h_inv, h3_inv, h5_inv, u2;
+    double tidal_tensorps[3][3];
+    int i1, i2;
+    dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
+    h = All.ForceSoftening[5];  h_inv = 1.0 / h; h3_inv = h_inv*h_inv*h_inv; h5_inv = h3_inv*h_inv*h_inv; u = dr*h_inv; u2=u*u;
+
+    //Prefactors
+
+    if(dr >= h){
+	fac = P[i].comp_Mass / (dr*dr*dr);
+	fac2 = 3.0 * P[i].comp_Mass / (dr*dr*dr*dr*dr); /* no softening nonsense */
+    }else{
+	fac = P[i].comp_Mass * kernel_gravity(u, h_inv, h3_inv, 1);
+	/* second derivatives needed -> calculate them from softened potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
+	if(u < 0.5) {fac2 = P[i].comp_Mass * h5_inv * (76.8 - 96.0 * u);} else {fac2 = P[i].comp_Mass * h5_inv * (-0.2 / (u2 * u2 * u) + 48.0 / u - 76.8 + 32.0 * u);}
+    }
+	
+    
+    for(i1=0; i1<3; i1++){
+	P[i].COM_GravAccel[i1] = P[i].GravAccel[i1] - P[i].comp_dx[i1] * fac;
+    }
+    
+//Adjusting tidal tensor
+    tidal_tensorps[0][0] = P[i].tidal_tensorps[0][0] - (-fac + P[i].comp_dx[0] * P[i].comp_dx[0] * fac2);
+    tidal_tensorps[0][1] = P[i].tidal_tensorps[0][1] - (P[i].comp_dx[0] * P[i].comp_dx[1] * fac2);
+    tidal_tensorps[0][2] = P[i].tidal_tensorps[0][2] - (P[i].comp_dx[0] * P[i].comp_dx[2] * fac2);
+    tidal_tensorps[1][1] = P[i].tidal_tensorps[1][1] - (-fac + P[i].comp_dx[1] * P[i].comp_dx[1] * fac2);
+    tidal_tensorps[1][2] = P[i].tidal_tensorps[1][2] - (P[i].comp_dx[1] * P[i].comp_dx[2] * fac2);
+    tidal_tensorps[2][2] = P[i].tidal_tensorps[2][2] - (-fac + P[i].comp_dx[2] * P[i].comp_dx[2] * fac2);
+    
+//Symmetrizing
+    tidal_tensorps[1][0] = tidal_tensorps[0][1];
+    tidal_tensorps[2][0] = tidal_tensorps[0][2];
+    tidal_tensorps[2][1] = tidal_tensorps[1][2];
+
+        //Now let's diagonalize it (copied from gravtree)
+        /* double tt[9]; for(i1=0; i1<3; i1++) {for (i2=0; i2<3; i2++) tt[3*i1+i2] = P[i].tidal_tensorps[i1][i2];} */
+        /* gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3); */
+        /* gsl_vector *eval = gsl_vector_alloc (3); */
+        /* gsl_eigen_symm_workspace * w = gsl_eigen_symm_alloc (3); */
+        /* gsl_eigen_symm(&m.matrix, eval,  w); */
+        /* for(i2=0; i2<3; i2++) P[i].tidal_tensorps[i2][i2] = gsl_vector_get(eval,i2); // set diagonal elements to eigenvalues */
+        /* P[i].tidal_tensorps[0][1] = P[i].tidal_tensorps[1][0] = P[i].tidal_tensorps[1][2] = P[i].tidal_tensorps[2][1] = P[i].tidal_tensorps[0][2] = P[i].tidal_tensorps[2][0] = 0; //zero out off-diagonal elements */
+        /* gsl_eigen_symm_free(w); */
+        /* gsl_vector_free (eval); */
+#ifdef BH_OUTPUT_MOREINFO
+    printf("Corrected center of mass acceleration %g %g %g tidal tensor diagonal elements %g %g %g \n", P[i].COM_GravAccel[0], P[i].COM_GravAccel[1], P[i].COM_GravAccel[2], tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]);
+//    printf("particle position %g %g %g companion relative position %g %g %g dr %g \n",pos_x, pos_y, pos_z, comp_dx[0], comp_dx[1], comp_dx[2],sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ));
+#endif
+    P[i].COM_dt_tidal = 0;
+    for(i1 = 0; i1 < 3; i1++) for(i2=0; i2<3; i2++) {P[i].COM_dt_tidal += tidal_tensorps[i1][i2]*tidal_tensorps[i1][i2];}
+    P[i].COM_dt_tidal = sqrt(1.0 / (All.G * sqrt(P[i].COM_dt_tidal)));
+}
+#endif

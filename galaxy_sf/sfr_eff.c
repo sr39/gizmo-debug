@@ -547,10 +547,11 @@ void star_formation_parent_routine(void)
 #ifdef SINGLE_STAR_FIND_BINARIES
 		P[i].min_bh_t_orbital=MAX_REAL_NUMBER;
 		P[i].comp_dx[0] = P[i].comp_dx[1] = P[i].comp_dx[2] = P[i].comp_dv[0] = P[i].comp_dv[1] = P[i].comp_dv[2] = 0;
+		P[i].is_in_a_binary = 0;
 #endif		
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
                 //Zero everything out
-                P[i].COM_calc_flag=0; P[i].SuperTimestepFlag=0; 
+		P[i].SuperTimestepFlag=0;
                 P[i].COM_GravAccel[0] = P[i].COM_GravAccel[1] = P[i].COM_GravAccel[2] = 0;
                 P[i].comp_Mass=P[i].COM_dt_tidal=0;
 #endif

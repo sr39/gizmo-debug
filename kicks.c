@@ -304,12 +304,12 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #endif
             }
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-//if we're super-timestepping, the above accounts for the change in COM velocity. Now we do the internal binary velocity change	    
+//if we're super-timestepping, the above accounts for the change in COM velocity. Now we do the internal binary velocity change
             if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=2)) {
                    dp[j] += mass_pred * P[i].COM_GravAccel[j] * dt_gravkick;
             }
             else
-#endif    
+#endif
             {dp[j] += mass_pred * P[i].GravAccel[j] * dt_gravkick;}
             P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
         }
