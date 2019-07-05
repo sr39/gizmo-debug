@@ -12,7 +12,7 @@
 #############
 
 
-#SYSTYPE="BlueWaters"
+#SYSTYPE="Frontera"
 #SYSTYPE="Stampede2"
 #SYSTYPE="Wheeler"
 SYSTYPE="MacBookPro"
@@ -50,3 +50,4 @@ SYSTYPE="MacBookPro"
 #SYSTYPE="OPA-Cluster64-Intel"
 #SYSTYPE="Stampede"
 #SYSTYPE="Zwicky"
+#SYSTYPE="BlueWaters"
