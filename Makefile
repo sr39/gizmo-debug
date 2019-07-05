@@ -249,6 +249,68 @@ endif
 
 
 
+ifeq ($(SYSTYPE),"Frontera")
+CC       =  mpicc
+CXX      =  mpic++
+FC       =  mpif90 -nofor_main
+OPTIMIZE = -O2 -xCORE-AVX2
+#OPTIMIZE = -O3 $(TACC_VEC_FLAGS) -ipo -funroll-loops -no-prec-div -fp-model fast=2
+#OPTIMIZE = -O3 -xCORE-AVX512 -ipo -funroll-loops -no-prec-div -fp-model fast=2
+## above is preferred, $(TACC_VEC_FLAGS) automatically incorporates the TACC preferred flags for both KNL or SKX nodes, but gives tiny performance hit
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -qopenmp
+endif
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = -I$(TACC_MKL_INC)
+MKL_LIBS = -L$(TACC_MKL_LIB) -mkl=sequential
+GSL_INCL = -I$(HOME_GSL_DIR)
+GSL_LIBS = -L$(HOME_GSL_DIR)/.libs -L$(HOME_GSL_DIR)/cblas/.libs
+FFTW_INCL= -I$(TACC_FFTW2_INC)
+FFTW_LIBS= -L$(TACC_FFTW2_LIB)
+ifeq (USE_FFTW3, $(findstring USE_FFTW3, $(CONFIGVARS)))
+FFTW_INCL= -I$(TACC_FFTW3_INC)
+FFTW_LIBS= -L$(TACC_FFTW3_LIB)
+endif
+HDF5INCL = -I$(TACC_HDF5_INC) -DH5_USE_16_API
+HDF5LIB  = -L$(TACC_HDF5_LIB) -lhdf5 -lz
+MPICHLIB =
+OPT     += -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN
+##
+# IMPORTANT: presently must use intel/18.x versions. 19.x versions compile and work, but lots of problems (+slower), esp. for high Ntasks or OpenMP
+#  e.g.: module load intel/18.0.5 impi hdf5 fftw3
+#  also at present, GSL module does -not- support intel/18.x, so need to build it yourself (support will come, hopefully?). example instructions below:
+#    -- 1. get newest GSL: ftp://ftp.gnu.org/gnu/gsl/gsl-latest.tar.gz
+#       2. unpack, 3. then in folder run: "./configure --prefix=$HOME/gsl-2.5 CC=icc" followed by 4. "make" and 5. "make all"
+#           (here I'm setting "$HOME/gsl-2.5" as the local install directory, you set yours appropriately)
+#       6. in your .bashrc file, add "export HOME_GSL_DIR=$HOME/gsl-2.5" and
+#           "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME_GSL_DIR:$HOME_GSL_DIR/.libs:$HOME_GSL_DIR/cblas/.libs"
+#           (obviously if you use a different parent install directory, change the directory name here accordingly).
+#       7. when you submit jobs, make sure you include a "source $HOME/.bashrc" in your run script or the export flags above, to link the libraries
+# As usual include "umask 022" and "ulimit -s unlimited" in your .bashrc file to save headaches later
+# fftw2/3 work equally well. usual intuition re: multipledomains, pmgrid, treedomainfreq, etc, apply.
+# The different code optimizations above make very tiny differences. for stability I am for now using -O2 -xCORE-AVX2, nothing 'fancy' but this doesn't cost us
+# Run scripts are simple SBATCH, like on Stampede and many other machines. Examples of several appear in this file. Example run script:
+#                    #!/bin/bash
+#                    #SBATCH -J (NAME) -p normal -N (NUMBER_OF_NODES) --ntasks-per-node (56/OPENMP_NUMBER) -t (RUNTIME_REQUEST) -A (ACCOUNT_NAME_TO_CHARGE)
+#                    export OMP_NUM_THREADS=(OPENMP_NUMBER)
+#                    source $HOME/.bashrc
+#                    ibrun ./GIZMO ./params.txt (GIZMO_STARTUP_FLAG) 1>gizmo.out 2>gizmo.err
+#     where quantities in (X) are the things you want to set.
+# With these options, hybrid MPI+OpenMP works well. Because of the node configuration, optimal hybrid performance will typically use either
+#   OPENMP=4 (ntasks-per-node=14) or OPENMP=7 (ntasks-per-node=8). Small jobs (<200 cores) might be better with smaller/no OPENMP, very large jobs higher,
+#   (OPENMP can be any integer, ntasks-per-node must be even or severe performance hits apply)
+# Note that the Frontera setup is NOT built for hyperthreading, even though the CLX nodes are supposed to support it. If you ask for 112 threads/node (insteady of 56),
+#   the code will actually work, but very slowly. Stick to 56 for now.
+# There are still odd memory issues. The machine should have 3.3gb/core available after OS, etc, but in practice we need to allocate less than this. MPI errors
+#   have also been appearing in large runs (for almost all users) related to memory. Be careful for now, and communicate to TACC support staff re: memory issues.
+#   I am using ~3gb/core for low task numbers, lower still for higher task numbers. 
+##
+endif
+
+
+
+
 #----------------------------
 ifeq ($(SYSTYPE),"MacBookPro")
 CC       =  mpicc
