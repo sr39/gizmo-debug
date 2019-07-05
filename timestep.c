@@ -336,9 +336,13 @@ integertime get_timestep(int p,		/*!< particle index */
 	double dt_bin,semimajor_axis_cube,dt_ext;
 
 	//internal gravitational timescale
+#if(SINGLE_STAR_SUPERTIMESTEPPING==1) // to be conservative, use the semimajor axis, ie. the internal timescale is the orbital period
 	semimajor_axis_cube = P[p].min_bh_t_orbital/(2.0*M_PI)*sqrt(All.G*(P[p].Mass+P[p].comp_Mass));semimajor_axis_cube *= semimajor_axis_cube;
 	dt_bin=sqrt(semimajor_axis_cube/(All.G*(P[p].Mass+P[p].comp_Mass))); //sqrt(a^3/GM) for binary
-	
+#elif(SINGLE_STAR_SUPERTIMESTEPPING>1) // to be more aggressive, use the instantaneous orbital timescale, ie. freefall time from the CURRENT orbital separation. This lets us super step an orbit on the close passages, even when it is affected by tides at apopase
+	double dr = sqrt(P[p].comp_dx[0]*P[p].comp_dx[0] + P[p].comp_dx[1]*P[p].comp_dx[1] + P[p].comp_dx[2]*P[p].comp_dx[2]);
+	dt_bin = sqrt(dr*dr*dr / (8 * All.G * (P[p].Mass + P[p].comp_Mass)));
+#endif	
 	dt_ext=P[p].COM_dt_tidal;
  	if (SUPERTIMESTEPPING_ERRCONST*dt_ext>dt_bin){
  	    P[p].SuperTimestepFlag=2;
@@ -501,12 +505,13 @@ integertime get_timestep(int p,		/*!< particle index */
 	     if(fabs(binary_dt_2body - dt_2body)/dt_2body < 1e-2){
 		 // If consistent with the binary parameters, we choose a super-timestep that gives ~constant number of timesteps per orbit
 		 dt_2body = 2*M_PI / SUPERTIMESTEPPING_NUM_STEPS_PER_ORBIT * dr*dr / sqrt(fabs(dr*dr*dv*dv - dv_dot_dx*dv_dot_dx)); // orbital frequency is |dr x dv| / r^2, so timestep will be inverse to this
-	     } else {
-		 dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 * dt_2body;
-	     }
 #ifdef BH_OUTPUT_MOREINFO	     
-	     printf("Supertimestep is %g instead of %g for a speedup of %g\n",  dt_2body, 0.3*sqrt(All.ErrTolIntAccuracy)/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time),dt_2body/(0.3*sqrt(All.ErrTolIntAccuracy)/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time)));
+		 printf("Supertimestep is %g instead of %g for a speedup of %g\n",  dt_2body, 0.3*sqrt(All.ErrTolIntAccuracy)/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time),dt_2body/(0.3*sqrt(All.ErrTolIntAccuracy)/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time)));
 #endif	     
+	     } else {  // we still have to take a proper short N-body integration timestep due to a third body whose approach requires careful integration, so no super timestepping is possible
+		 dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 * dt_2body;
+		 P[p].SuperTimestepFlag = 0;
+	     }
 	}
 #endif  // SINGLE_STAR_SUPERTIMESTEPPING
         dt = DMIN(dt, dt_2body);
