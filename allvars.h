@@ -298,7 +298,7 @@
 #endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
 #if(SINGLE_STAR_SUPERTIMESTEPPING == 1)
-#define SUPERTIMESTEPPING_ERRCONST 0.003 // If sqrt(|nabla g| / (GM/a^3)) < SUPERTIMESTEPPING_ERRCONST, then we use super timestepping for the binary
+#define SUPERTIMESTEPPING_ERRCONST 0.01 // If sqrt(|nabla g| / (GM/a^3)) < SUPERTIMESTEPPING_ERRCONST, then we use super timestepping for the binary
 #elif(SINGLE_STAR_SUPERTIMESTEPPING == 2)
 #define SUPERTIMESTEPPING_ERRCONST 0.003 // need to be a bit stricter deciding when to super timestep if we're doing the more aggressive version 
 #endif
