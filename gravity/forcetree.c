@@ -1914,7 +1914,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
 #ifdef SINGLE_STAR_FIND_BINARIES
                     if (ptype==5){//only for BH particles and for non center of mass calculation
-                        double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
+			double specific_energy;
+			if(r2 > All.ForceSoftening[5]){
+			    specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
+			} else {
+			    specific_energy = 0.5*vSqr - All.G*M_total*kernel_gravity(sqrt(r)*h_inv, h_inv, h3_inv, -1);
+			}
                         if (specific_energy<0){
                             double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
                             double t_orbital = 2.0*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis/(All.G*M_total) );

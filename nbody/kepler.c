@@ -100,16 +100,7 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
     dr = semimajor_axis * (1-ecc*ecc)/(1+ecc*cos_true_anomaly);
     x = dr * cos_true_anomaly;
     y = dr * sin_true_anomaly;
-    
-//Mike's
-
-    /* mean_anomaly = wrap_angle(atan2(sqrt(1 - ecc*ecc) * sin(true_anomaly), ecc + cos(true_anomaly))); */
-    /* mean_anomaly += dt/P[i].min_bh_t_orbital * 2 * M_PI; */
-    /* mean_anomaly = wrap_angle(mean_anomaly); */
-    /* ecc_anomaly = eccentric_anomaly(mean_anomaly, ecc); */
-    /* x = semimajor_axis * (cos(ecc_anomaly) - ecc); */
-    /* y = semimajor_axis * sqrt(1 - ecc*ecc) * sin(ecc_anomaly); */
-    /* dr = sqrt(x*x + y*y); */
+   
     
     dv = sqrt(All.G * Mtot * (2/dr - 1/semimajor_axis)); // We conserve energy exactly
 
