@@ -124,7 +124,7 @@ double bh_vesc(int j, double mass, double r_code)
     return sqrt(2.0*All.G*(m_eff)/(r_code*All.cf_atime) + cs_to_add_km_s*cs_to_add_km_s);
 }
 
-#ifdef NEWSINK
+#ifdef SINGLE_STAR_FORMATION
 /* convenience function for the symmetrized gravitational interaction energy of two softened particles */
 double grav_interaction_energy(double dr_code, double m1, double m2, double hsml1, double hsml2){
     double energy = 0;
