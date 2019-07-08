@@ -146,7 +146,7 @@ void drift_particle(int i, integertime time1)
             //Overwrite the acceleration with center of mass value
             P[i].GravAccel[j] = P[i].COM_GravAccel[j];
             //Keplerian evolution
-            P[i].Pos[j] += fewbody_drift_dx[j]; //move on kepler orbit
+            P[i].Pos[j] += fewbody_drift_dx[j]; //move on binary.orbit
             P[i].Vel[j] += fewbody_kick_dv[j];
        }
         // printf("ID %d drifts and kicks: COM_Vel %g %g %g kick_dv %g %g %g drift dx %g %g %g  COM drift dx %g %g %g \n",P[i].ID,COM_Vel[0],COM_Vel[1],COM_Vel[2], fewbody_kick_dv[0],fewbody_kick_dv[1],fewbody_kick_dv[2],fewbody_drift_dx[0],fewbody_drift_dx[1],fewbody_drift_dx[2],(COM_Vel[0]*dt_drift),(COM_Vel[1]*dt_drift),(COM_Vel[2]*dt_drift) );
