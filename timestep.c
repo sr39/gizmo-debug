@@ -513,7 +513,10 @@ integertime get_timestep(int p,		/*!< particle index */
 		 P[p].SuperTimestepFlag = 0;
 	     }
 	}
+#else
+	dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 * dt_2body;
 #endif  // SINGLE_STAR_SUPERTIMESTEPPING
+	
         dt = DMIN(dt, dt_2body);
     }
 #endif // SINGLE_STAR_TIMESTEPPING
