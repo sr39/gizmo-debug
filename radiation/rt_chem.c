@@ -75,7 +75,7 @@ void rt_get_sigma(void)
             if(nu[i] >= 13.6)
             {
                 f = sqrt((e / 13.6) - 1.0);
-                if(j <= 13.6) {sig = 6.3e-18;} else {sig = 6.3e-18 * pow(13.6 / e, 4) * exp(4 - (4 * atan(f) / f)) / (1.0 - exp(-2 * M_PI / f));}
+                if(e <= 13.6) {sig = 6.3e-18;} else {sig = 6.3e-18 * pow(13.6 / e, 4) * exp(4 - (4 * atan(f) / f)) / (1.0 - exp(-2 * M_PI / f));}
                 rt_sigma_HI[i] += d_nu * sig * I_nu / e;
                 sum_HI_sigma += d_nu * I_nu / e;
                 G_HI[i] += d_nu * sig * (e - 13.6) * I_nu / e;
@@ -85,7 +85,7 @@ void rt_get_sigma(void)
             if(nu[i] >= 24.6)
             {
                 f = sqrt((e / 24.6) - 1.0);
-                if(j <= 24.6) {sig = 7.83e-18;} else {sig = 7.83e-18 * pow(24.6 / e, 4) * exp(4 - (4 * atan(f) / f)) / (1.0 - exp(-2 * M_PI / f));}
+                if(e <= 24.6) {sig = 7.83e-18;} else {sig = 7.83e-18 * pow(24.6 / e, 4) * exp(4 - (4 * atan(f) / f)) / (1.0 - exp(-2 * M_PI / f));}
                 rt_sigma_HeI[i] += d_nu * sig * I_nu / e;
                 sum_HeI_sigma += d_nu * I_nu / e;
                 G_HeI[i] += d_nu * sig * (e - 24.6) * I_nu / e;
@@ -94,7 +94,7 @@ void rt_get_sigma(void)
             if(nu[i] >= 54.4)
             {
                 f = sqrt((e / 54.4) - 1.0);
-                if(j <= 54.4) {sig = 1.58e-18;} else {sig = 1.58e-18 * pow(54.4 / e, 4) * exp(4 - (4 * atan(f) / f)) / (1.0 - exp(-2 * M_PI / f));}
+                if(e <= 54.4) {sig = 1.58e-18;} else {sig = 1.58e-18 * pow(54.4 / e, 4) * exp(4 - (4 * atan(f) / f)) / (1.0 - exp(-2 * M_PI / f));}
                 rt_sigma_HeII[i] += d_nu * sig * I_nu / e;
                 sum_HeII_sigma += d_nu * I_nu / e;
                 G_HeII[i] += d_nu * sig * (e - 54.4) * I_nu / e;
@@ -149,7 +149,7 @@ void rt_update_chemistry(void)
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
         if(P[i].Type == 0)
         {
-            dtime = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+            dtime = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
             rho = SphP[i].Density * All.cf_a3inv;
             nH = HYDROGEN_MASSFRAC * rho / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
             molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[i].Ne);
@@ -266,7 +266,7 @@ void rt_update_chemistry(void)
 #endif
             }
             
-            dtime = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+            dtime = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
             rho = SphP[i].Density * All.cf_a3inv;
             nH = HYDROGEN_MASSFRAC * rho / PROTONMASS * All.UnitMass_in_g / All.HubbleParam;
             molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * SphP[i].Ne);

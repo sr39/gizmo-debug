@@ -52,7 +52,8 @@ int does_particle_need_to_be_merged(int i);
 int does_particle_need_to_be_split(int i);
 double ref_mass_factor(int i);
 void merge_particles_ij(int i, int j);
-void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nearest);
+//void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nearest);
+void split_particle_i(int i, int n_particles_split, int i_nearest); 
 
 void do_first_halfstep_kick(void);
 void do_second_halfstep_kick(void);
@@ -108,6 +109,8 @@ static inline double DMAX(double a, double b) { return (a > b) ? a : b; }
 static inline double DMIN(double a, double b) { return (a < b) ? a : b; }
 static inline int IMAX(int a, int b) { return (a > b) ? a : b; } 
 static inline int IMIN(int a, int b) { return (a < b) ? a : b; }
+static inline integertime TIMAX(integertime a, integertime b) { return (a > b) ? a : b; }
+static inline integertime TIMIN(integertime a, integertime b) { return (a < b) ? a : b; }
 static inline double MINMOD(double a, double b) {return (a>0) ? ((b<0) ? 0 : DMIN(a,b)) : ((b>=0) ? 0 : DMAX(a,b));}
 /* special version of MINMOD below: a is always the "preferred" choice, b the stability-required one. here we allow overshoot, just not opposite signage */
 static inline double MINMOD_G(double a, double b) {return a;}
@@ -208,6 +211,9 @@ void fof_get_group_velocity(double *cmvel, int gr);
 int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend_local);
 void fof_compute_group_properties(int gr, int start, int len);
 
+#ifdef TURB_DIFF_DYNAMIC
+double INLINE_FUNC Get_Particle_Size_for_turb(int i);
+#endif
 void parallel_sort(void *base, size_t nmemb, size_t size, int (*compar) (const void *, const void *));
 void parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (const void *, const void *), MPI_Comm comm);
 int compare_IDs(const void *a, const void *b);
@@ -276,6 +282,8 @@ double INLINE_FUNC Get_Particle_Expected_Area(double h);
 #ifdef COSMIC_RAYS
 double INLINE_FUNC Get_Particle_CosmicRayPressure(int i);
 double Get_CosmicRayGradientLength(int i);
+double Get_Gas_Ionized_Fraction(int i);
+void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i);
 double Get_CosmicRayStreamingVelocity(int i);
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode);
 #endif
@@ -317,7 +325,7 @@ double INLINE_FUNC hubble_function_external(double a);
 
 void blackhole_accretion(void);
 #ifdef BH_WIND_SPAWN
-int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone );
+int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int num_already_spawned );
 void spawn_bh_wind_feedback(void);
 #endif
 int blackhole_evaluate(int target, int mode, int *nexport, int *nsend_local);
@@ -527,6 +535,10 @@ int HIIheating_evaluate(int target, int mode, int *nexport, int *nsend_local);
 #endif
 #endif
 
+#ifdef CHIMES_HII_REGIONS 
+void chimes_HII_regions_singledomain(void); 
+#endif
+
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
 void selfshield_local_incident_uv_flux(void);
 #endif
@@ -550,11 +562,13 @@ void *addthermalFB_evaluate_secondary(void *p);
 #ifdef COOL_METAL_LINES_BY_SPECIES
 /*double GetMetalLambda(double, double);*/
 double getSpCoolTableVal(long i,long j,long k,long tblK);
+#ifndef CHIMES 
 double GetCoolingRateWSpecies(double nHcgs, double logT, double *Z);
 double GetLambdaSpecies(long k_index, long index_x0y0, long index_x0y1, long index_x1y0, long index_x1y1, double dx, double dy, double dz, double mdz);
 void LoadMultiSpeciesTables(void);
 void ReadMultiSpeciesTables(int iT);
 char *GetMultiSpeciesFilename(int i, int hk);
+#endif 
 #endif
 
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
@@ -588,7 +602,24 @@ int disp_density_isactive(int i);
 #endif
 
 
+#ifdef CHIMES 
+void chimes_cooling_parent_routine(void); 
+double chimes_convert_u_to_temp(double u, double rho, int target); 
+void chimes_update_gas_vars(int target); 
+#ifdef COOL_METAL_LINES_BY_SPECIES 
+void chimes_update_element_abundances(int i); 
+#endif 
+#ifdef CHIMES_TURB_DIFF_IONS 
+void chimes_update_turbulent_abundances(int i, int mode); 
+#endif 
+#ifdef CHIMES_METAL_DEPLETION 
+void chimes_init_depletion_data(void); 
+double chimes_jenkins_linear_fit(double nH, double T, double Ax, double Bx, double zx); 
+void chimes_compute_depletions(double nH, double T, int thread_id); 
+#endif 
+#else 
 void cooling_parent_routine(void);
+#endif 
 void count_hot_phase(void);
 void delete_node(int i);
 void density(void);
@@ -702,7 +733,13 @@ void pm_setup_nonperiodic_kernel(void);
 
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
+#ifdef CHIMES_STELLAR_FLUXES 
+double chimes_G0_luminosity(double stellar_age, double stellar_mass); 
+double chimes_ion_luminosity(double stellar_age, double stellar_mass); 
+int rt_get_source_luminosity(int i, double sigma_0, double *lum, double *chimes_lum_G0, double *chimes_lum_ion); 
+#else 
 int rt_get_source_luminosity(int i, double sigma_0, double *lum);
+#endif 
 double rt_kappa(int j, int k_freq);
 double rt_absorption_rate(int i, int k_freq);
 double rt_diffusion_coefficient(int i, int k_freq);
@@ -782,31 +819,6 @@ void check_tidaltensor_nonperiodic(int particle_ID);
 #endif
 #endif
 
-#ifdef SCF_POTENTIAL
-void SCF_do_center_of_mass_correction(double fac_rad, double start_rad, double fac_part, int max_iter);
-void SCF_write(int task);
-void SCF_calc_from_random(long *seed);
-void SCF_calc_from_particles(void);
-void SCF_init(void);
-void SCF_reset(void);
-void SCF_free(void);
-void SCF_evaluate(MyDouble x, MyDouble y, MyDouble z, MyDouble *potential, MyDouble *ax, MyDouble *ay, MyDouble *az);
-void SCF_collect_update(void);
-
-void sphere_acc(double x, double y, double z, double *xa, double *ya, double *za);
-void to_unit(double x, double y, double z, double *xs, double *ys, double *zs);
-double ran1(long *idum);
-double gasdev(long *idum);
-double factrl(int n);
-int nlm_all(int num, int n, int l, int m);
-int nlm(int n, int l, int m);
-int nl(int n, int l);
-int lm(int l, int m);
-int kdelta(int a, int b);
-double gnlm_var(int n, int l, int m);
-double hnlm_var(int n, int l, int m);
-#endif
-
 int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
 void ags_setup_smoothinglengths(void);
@@ -845,14 +857,25 @@ void *GasGrad_evaluate_primary(void *p, int gradient_iteration);
 void *GasGrad_evaluate_secondary(void *p, int gradient_iteration);
 void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol);
 
+#ifdef TURB_DIFF_DYNAMIC
+void dynamic_diff_calc(void);
+int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int dynamic_iteration);
+void *DynamicDiff_evaluate_primary(void *p, int dynamic_iteration);
+void *DynamicDiff_evaluate_secondary(void *p, int dynamic_iteration);
+void diffusion_velocity_calc(void);
+int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
+void *DiffFilter_evaluate_primary(void *p);
+void *DiffFilter_evaluate_secondary(void *p);
+#endif
+
 #ifdef PARTICLE_EXCISION
 void apply_excision();
 #endif
 
 #ifdef DM_SIDM
-double prob_of_interaction(double mass, double r, double h_si, double dV[3], int dt_step);
+double prob_of_interaction(double mass, double r, double h_si, double dV[3], integertime dt_step);
 double g_geo(double r);
-void calculate_interact_kick(double dV[3], double kick[3]);
+void calculate_interact_kick(double dV[3], double kick[3], double m);
 void init_geofactor_table(void);
 double geofactor_integ(double x, void * params);
 double geofactor_angle_integ(double u, void * params);
@@ -873,16 +896,27 @@ double do_cbe_nvt_inversion_for_faces(int i);
 #endif
 
 #ifdef DM_FUZZY
-void do_dm_fuzzy_drift_kick(int pindex, double dt_entr);
+void do_dm_fuzzy_initialization(void);
+void do_dm_fuzzy_drift_kick(int pindex, double dt_entr, int mode);
 void DMGrad_gradient_calc(void);
 int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
 void *DMGrad_evaluate_primary(void *p, int gradient_iteration);
 void *DMGrad_evaluate_secondary(void *p, int gradient_iteration);
-void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double m0, double prev_a, double dp[3], double dv[3],
+void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double prev_a, double dv[3],
+                                  double GradRho_L[3], double GradRho_R[3],
+                                  double GradRho2_L[3][3], double GradRho2_R[3][3],
+                                  double rho_L, double rho_R, double dv_Right_minus_Left,
+                                  double Area[3], double fluxes[3], double AGS_Numerical_QuantumPotential_L, double AGS_Numerical_QuantumPotential_R, double *dt_egy_Numerical_QuantumPotential);
+void do_dm_fuzzy_flux_computation_old(double HLLwt, double dt, double m0, double prev_a, double dp[3], double dv[3],
                                   double GradRho_L[3], double GradRho_R[3],
                                   double GradRho2_L[3][3], double GradRho2_R[3][3],
                                   double rho_L, double rho_R, double dv_Right_minus_Left,
                                   double Area[3], double fluxes[3], double AGS_Numerical_QuantumPotential, double *dt_egy_Numerical_QuantumPotential);
+void dm_fuzzy_reconstruct_and_slopelimit_sub(double *u_R_f, double *u_L_f, double q_R, double dq_R_0[3], double q_L, double dq_L_0[3], double dx[3]);
+void dm_fuzzy_reconstruct_and_slopelimit(double *u_R, double du_R[3], double *u_L, double du_L[3],
+                                         double q_R, double dq_R[3], double d2q_R[3][3],
+                                         double q_L, double dq_L[3], double d2q_L[3][3],
+                                         double dx[3]);
 #endif
 
 

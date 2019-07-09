@@ -2,7 +2,11 @@ if(P[p].Ti_current != ti_Current)
 drift_particle(p, ti_Current);
 
 #ifndef REDUCE_TREEWALK_BRANCHING
+#if (SEARCHBOTHWAYS==1)
+dist = DMAX(PPP[p].Hsml, hsml);
+#else
 dist = hsml;
+#endif
 dx = NGB_PERIODIC_BOX_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 if(dx > dist) continue;
 dy = NGB_PERIODIC_BOX_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
@@ -66,7 +70,7 @@ else
 #ifndef REDUCE_TREEWALK_BRANCHING
             return numngb;
 #else
-            return ngb_filter_variables(numngb, Ngblist, &vcenter, &box, &hbox, hsml, 0);
+            return ngb_filter_variables(numngb, Ngblist, &vcenter, &box, &hbox, hsml, SEARCHBOTHWAYS);
 #endif
         }
     }
@@ -82,7 +86,11 @@ else
         }
     }
     
+#if (SEARCHBOTHWAYS==1)
+    dist = DMAX(Extnodes[no].hmax, hsml) + 0.5 * current->len;
+#else
     dist = hsml + 0.5 * current->len;
+#endif
     no = current->u.d.sibling;	// in case the node can be discarded //
 #include "ngb_codeblock_checknode.h"
     no = current->u.d.nextnode;	// ok, we need to open the node //
@@ -93,6 +101,6 @@ else
 #ifndef REDUCE_TREEWALK_BRANCHING
 return numngb;
 #else
-return ngb_filter_variables(numngb, Ngblist, &vcenter, &box, &hbox, hsml, 0);
+return ngb_filter_variables(numngb, Ngblist, &vcenter, &box, &hbox, hsml, SEARCHBOTHWAYS);
 #endif
 

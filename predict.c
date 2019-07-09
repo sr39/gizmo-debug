@@ -107,7 +107,7 @@ void drift_particle(int i, integertime time1)
     
     if(time1 < time0)
     {
-        printf("i=%d time0=%d time1=%d\n", i, (int)time0, (int)time1);
+        printf("i=%d time0=%lld time1=%lld\n", i, (long long)time0, (long long)time1);
         terminate("no prediction into past allowed");
     }
     
@@ -195,6 +195,10 @@ void drift_particle(int i, integertime time1)
             if(PPP[i].AGS_Hsml > maxsoft) {PPP[i].AGS_Hsml = maxsoft;}
         }
     }
+#endif
+    
+#ifdef DM_FUZZY
+    do_dm_fuzzy_drift_kick(i, dt_drift, 1);
 #endif
     
 #ifdef GDE_DISTORTIONTENSOR
@@ -470,6 +474,7 @@ double INLINE_FUNC Get_Particle_Expected_Area(double h)
 double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h)
 {
     double gradrho_mag;
+
     if(rho<=0)
     {
         gradrho_mag = 0;
@@ -504,7 +509,7 @@ double Get_DtB_FaceArea_Limiter(int i)
     return 1;
 #else
     /* define some variables */
-    double dt_entr = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+    double dt_entr = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
     int j; double dB[3],dBmag=0,Bmag=0;
     /* check the magnitude of the predicted change in B-fields, vs. B-magnitude */
     for(j=0;j<3;j++)

@@ -690,7 +690,7 @@ void density(void)
                 desnumngbdev = desnumngbdev_0 * ncorr_ngb;
                 /* allow the neighbor tolerance to gradually grow as we iterate, so that we don't spend forever trapped in a narrow iteration */
                 if(iter > 1) {desnumngbdev = DMIN( 0.25*desnumngb , desnumngbdev * exp(0.1*log(desnumngb/(16.*desnumngbdev))*(double)iter) );}
-                
+
 #ifdef BLACK_HOLES
                 if(P[i].Type == 5)
                 {
@@ -710,6 +710,9 @@ void density(void)
                 {
                     desnumngb = All.DesNumNgb;
                     desnumngbdev = All.DesNumNgb / 4;
+#ifdef GRAIN_BACKREACTION
+                    desnumngbdev = desnumngbdev_0;
+#endif
                 }
 #endif
 
@@ -761,7 +764,7 @@ void density(void)
                         particle_set_to_maxhsml_flag = 0;
                     } else {
                         /* ok, the particle needs to be set to the maximum, and (if gas) iterated one more time */
-                        if(P[i].Type==0) redo_particle = 1;
+                        redo_particle = 1;
                         PPP[i].Hsml = maxsoft;
                         particle_set_to_maxhsml_flag = 1;
                     }
@@ -779,7 +782,7 @@ void density(void)
                         particle_set_to_minhsml_flag = 0;
                     } else {
                         /* ok, the particle needs to be set to the minimum, and (if gas) iterated one more time */
-                        if(P[i].Type==0) redo_particle = 1;
+                        redo_particle = 1;
                         PPP[i].Hsml = minsoft;
                         particle_set_to_minhsml_flag = 1;
                     }
@@ -1253,6 +1256,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     
                     out.Ngb += kernel.wk;
                     out.Rho += kernel.mj_wk;
+
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
                     if(local.Type == 0 && kernel.r==0) {int kv; for(kv=0;kv<3;kv++) {out.ParticleVel[kv] += kernel.mj_wk * SphP[j].VelPred[kv];}} // just the self-contribution //
 #endif
