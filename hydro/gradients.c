@@ -87,6 +87,9 @@ struct Quantities_for_Gradients
 #ifdef DOGRAD_SOUNDSPEED
     MyDouble SoundSpeed;
 #endif
+#ifdef TURB_DIFF_DYNAMIC
+    MyDouble Velocity_bar[3];
+#endif
 };
 
 struct kernel_GasGrad
@@ -99,7 +102,7 @@ struct GasGraddata_in
     MyDouble Pos[3];
     MyFloat Mass;
     MyFloat Hsml;
-    int Timestep;
+    integertime Timestep;
 #ifdef MHD_CONSTRAINED_GRADIENT
     MyFloat NV_T[3][3];
     MyFloat BGrad[3][3];
@@ -112,6 +115,13 @@ struct GasGraddata_in
     MyFloat NV_DivVel;
 #endif
     struct Quantities_for_Gradients GQuant;
+
+#ifdef TURB_DIFF_DYNAMIC
+    MyDouble Norm_hat;
+#ifdef GALSF_SUBGRID_WINDS
+    MyFloat DelayTime;
+#endif
+#endif
 }
 *GasGradDataIn, *GasGradDataGet;
 
@@ -148,6 +158,9 @@ struct GasGraddata_out
     struct Quantities_for_Gradients Maxima;
     struct Quantities_for_Gradients Minima;
     MyFloat MaxDistance;
+#ifdef TURB_DIFF_DYNAMIC
+    MyDouble Velocity_hat[3];
+#endif
 }
 *GasGradDataResult, *GasGradDataOut;
 
@@ -197,6 +210,9 @@ static struct temporary_data_topass
 #ifdef RT_EVOLVE_EDDINGTON_TENSOR
     MyFloat Gradients_E_gamma[N_RT_FREQ_BINS][3];
 #endif
+#ifdef TURB_DIFF_DYNAMIC
+    MyDouble GradVelocity_bar[3][3];
+#endif
 }
 *GasGradDataPasser;
 
@@ -216,6 +232,14 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
     in->Hsml = PPP[i].Hsml;
     in->Mass = P[i].Mass;
     if(in->Mass < 0) {in->Mass = 0;}
+
+#ifdef TURB_DIFF_DYNAMIC
+    in->Norm_hat = SphP[i].Norm_hat;
+#ifdef GALSF_SUBGRID_WINDS
+    in->DelayTime = SphP[i].DelayTime;
+#endif
+#endif
+
     if(SHOULD_I_USE_SPH_GRADIENTS(SphP[i].ConditionNumber)) {in->Mass *= -1;}
     in->Timestep = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0);
 #ifdef MHD_CONSTRAINED_GRADIENT
@@ -250,6 +274,11 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
         in->GQuant.Pressure = SphP[i].Pressure;
         for(k = 0; k < 3; k++)
             in->GQuant.Velocity[k] = SphP[i].VelPred[k];
+#ifdef TURB_DIFF_DYNAMIC
+        for (k = 0; k < 3; k++) {
+            in->GQuant.Velocity_bar[k] = SphP[i].Velocity_bar[k];
+        }
+#endif
 #ifdef MAGNETIC
         for(k = 0; k < 3; k++)
             in->GQuant.B[k] = Get_Particle_BField(i,k);
@@ -322,6 +351,18 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
     {
         int j,k;
         MAX_ADD(GasGradDataPasser[i].MaxDistance,out->MaxDistance,mode);
+#ifdef TURB_DIFF_DYNAMIC
+        for (j = 0; j < 3; j++) {
+            MAX_ADD(GasGradDataPasser[i].Maxima.Velocity_bar[j], out->Maxima.Velocity_bar[j], mode);
+            MIN_ADD(GasGradDataPasser[i].Minima.Velocity_bar[j], out->Minima.Velocity_bar[j], mode);
+
+            ASSIGN_ADD_PRESET(SphP[i].Velocity_hat[j], out->Velocity_hat[j], mode);
+
+            for (k = 0; k < 3; k++) {
+                ASSIGN_ADD_PRESET(GasGradDataPasser[i].GradVelocity_bar[j][k], out->Gradients[k].Velocity_bar[j], mode);
+            }
+        }
+#endif
         
 #if defined(KERNEL_CRK_FACES)
         ASSIGN_ADD_PRESET(GasGradDataPasser[i].m0,out->m0,mode);
@@ -526,7 +567,10 @@ void hydro_gradient_calc(void)
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
     double NV_dt,NV_dummy,NV_limiter,NV_A,divVel_physical,h_eff,alphaloc,cs_nv;
 #endif
-    
+#ifdef TURB_DIFF_DYNAMIC
+    double smoothInv = 1.0 / All.TurbDynamicDiffSmoothing;
+#endif
+ 
     /* allocate buffers to arrange communication */
     long long NTaskTimesNumPart;
     GasGradDataPasser = (struct temporary_data_topass *) mymalloc("GasGradDataPasser",N_gas * sizeof(struct temporary_data_topass));
@@ -559,6 +603,14 @@ void hydro_gradient_calc(void)
             SphP[i].alpha_limiter = 0;
 #endif
 #endif
+#ifdef TURB_DIFF_DYNAMIC
+            /* NEED Velocity_bar CORRECT HERE */
+            for (k = 0; k < 3; k++) {
+                SphP[i].Velocity_bar[k] *= All.TurbDynamicDiffSmoothing;
+                SphP[i].Velocity_hat[k] = SphP[i].Velocity_bar[k] * smoothInv;
+            }
+#endif
+
             /* and zero out the gradients structure itself */
             for(k=0;k<3;k++)
             {
@@ -1051,6 +1103,11 @@ void hydro_gradient_calc(void)
 	    SphP[i].Gradients.PressureMagnitude = sqrt(SphP[i].Gradients.PressureMagnitude);
 #endif	    
             for(k=0;k<3;k++) {construct_gradient(SphP[i].Gradients.Velocity[k],i);}
+#ifdef TURB_DIFF_DYNAMIC
+            for (k = 0; k < 3; k++) {
+                construct_gradient(GasGradDataPasser[i].GradVelocity_bar[k], i);
+            }
+#endif
 #ifdef DOGRAD_INTERNAL_ENERGY
             construct_gradient(SphP[i].Gradients.InternalEnergy,i);
 #endif
@@ -1499,6 +1556,11 @@ void hydro_gradient_calc(void)
 #if defined(VISCOSITY)
             stol_tmp = DMAX(stol,stol_diffusion);
 #endif
+#ifdef TURB_DIFF_DYNAMIC
+            for (k1 = 0; k1 < 3; k1++) {
+                local_slopelimiter(GasGradDataPasser[i].GradVelocity_bar[k1], GasGradDataPasser[i].Maxima.Velocity_bar[k1], GasGradDataPasser[i].Minima.Velocity_bar[k1], a_limiter, h_lim, stol);
+            }
+#endif
             for(k1=0;k1<3;k1++) {local_slopelimiter(SphP[i].Gradients.Velocity[k1],GasGradDataPasser[i].Maxima.Velocity[k1],GasGradDataPasser[i].Minima.Velocity[k1],a_limiter,h_lim,stol_tmp);}
 #ifdef DOGRAD_INTERNAL_ENERGY
             stol_tmp = stol;
@@ -1580,6 +1642,24 @@ void hydro_gradient_calc(void)
                     // slope-limit and convert to physical units //
                     double shearfac_max = 0.5 * sqrt(SphP[i].VelPred[0]*SphP[i].VelPred[0]+SphP[i].VelPred[1]*SphP[i].VelPred[1]+SphP[i].VelPred[2]*SphP[i].VelPred[2]) / h_turb;
                     shear_factor = DMIN(shear_factor , shearfac_max * All.cf_atime) * All.cf_a2inv; // physical
+#ifdef TURB_DIFF_DYNAMIC 
+                    int u, v; double trace = 0;
+                    shearfac_max = 0.5 * sqrt(SphP[i].Velocity_bar[0] * SphP[i].Velocity_bar[0] + SphP[i].Velocity_bar[1] * SphP[i].Velocity_bar[1]+SphP[i].Velocity_bar[2] * SphP[i].Velocity_bar[2]) * All.cf_atime / h_turb;
+                    for (u = 0; u < 3; u++) {
+                        for (v = 0; v < 3; v++) {
+                            SphP[i].VelShear_bar[u][v] = 0.5 * (GasGradDataPasser[i].GradVelocity_bar[u][v] + GasGradDataPasser[i].GradVelocity_bar[v][u]);
+                            if (SphP[i].VelShear_bar[u][v] < 0) {SphP[i].VelShear_bar[u][v] = DMAX(SphP[i].VelShear_bar[u][v], -shearfac_max);}
+                            else {SphP[i].VelShear_bar[u][v] = DMIN(SphP[i].VelShear_bar[u][v], shearfac_max);}
+                            if (u == v) {trace += SphP[i].VelShear_bar[u][u];}}}
+                    /* If it was already trace-free, don't zero out the diagonal components */
+                    if (trace != 0 && NUMDIMS > 1) {for (u = 0; u < NUMDIMS; u++) {SphP[i].VelShear_bar[u][u] -= 1.0 / NUMDIMS * trace;}}
+                    for (u = 0; u < 3; u++) { /* Don't want to recalculate these a bunch later on, so save them */
+                        SphP[i].Velocity_hat[u] *= All.TurbDynamicDiffSmoothing;
+                        for (v = 0; v < 3; v++) {SphP[i].MagShear_bar += SphP[i].VelShear_bar[u][v] * SphP[i].VelShear_bar[u][v];}}
+                    SphP[i].MagShear = sqrt(2.0) * shear_factor / All.cf_a2inv; // Don't want this physical
+                    SphP[i].MagShear_bar = DMIN(sqrt(2.0 * SphP[i].MagShear_bar), shearfac_max); turb_prefactor /= 0.25;
+#endif
+
                     // ok, combine to get the diffusion coefficient //
                     SphP[i].TD_DiffCoeff = turb_prefactor * shear_factor; // physical
                 } else {
@@ -1597,130 +1677,11 @@ void hydro_gradient_calc(void)
             
             
             
-#ifdef COSMIC_RAYS
-            /* note that because of the way this depends on the gradient scale-length, we should calculate it -after- the slope-limiters are applied */
-            if(SphP[i].Density > 0)
-            {
-                SphP[i].CosmicRayDiffusionCoeff = 0;
-                double CRPressureGradScaleLength = Get_CosmicRayGradientLength(i);
-                double CR_kappa_streaming = 0;
-#ifndef COSMIC_RAYS_DISABLE_STREAMING
-                /* self-consistently calculate the diffusion coefficients for cosmic ray fluids; first the streaming part of this (kappa~v_stream*L_CR_grad)
-                 following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
-                double v_streaming = Get_CosmicRayStreamingVelocity(i);
-                /* the diffusivity is now just the product of these two coefficients */
-                CR_kappa_streaming = (GAMMA_COSMICRAY/GAMMA_COSMICRAY_MINUS1) * v_streaming * CRPressureGradScaleLength; /* all physical units */
+#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_ALFVEN) /* note that because of the way this depends on the gradient scale-length, we should calculate it -after- the slope-limiters are applied */
+            SphP[i].CosmicRayDiffusionCoeff=0; if(SphP[i].Density > 0 && P[i].Mass > 0) {CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(i);}/* only assign diffusivities to 'valid' gas particles */
+#ifndef COSMIC_RAYS_M1
+            if(is_particle_local_extremum==1) {SphP[i].CosmicRayDiffusionCoeff *= -1;} // negative here codes for local extrema
 #endif
-#ifndef COSMIC_RAYS_DISABLE_DIFFUSION
-                /* now we calculate the 'traditional' diffusion part of this: kappa~v_CR*r_gyro * B_bulk^2/(B_random[scale~r_gyro]^2)
-                 v_CR~c, r_gyro~p*c/(Z*e*B)~1e12 cm * RGV *(3 muG/B)  (RGV~1 is the magnetic rigidity). assuming a Kolmogorov spectrum, this
-                 gives kappa~3e28 * (R_driving/100pc)^(2/3) * RGV^(1/3) * (B/3 muG)^(-1/3)
-                 this follows Jokipii 1966 */
-                double kappa_diff = 3.e28 / (GAMMA_COSMICRAY_MINUS1 * All.UnitVelocity_in_cm_per_s * All.UnitLength_in_cm / All.HubbleParam); /* converts from CGS to code units */
-                double R_GV=1.0, p_scale=0, b_muG=1;
-#ifdef MAGNETIC
-                double gizmo2gauss = sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam);
-                double b2_mag = 0.0;
-                for(k=0;k<3;k++) {b2_mag += Get_Particle_BField(i,k) * Get_Particle_BField(i,k);}
-                b_muG=sqrt(DMAX(b2_mag,0)) * All.cf_a2inv * gizmo2gauss / 1.0e-6; /* B-field in units of physical microGauss */
-                b_muG = sqrt(b_muG*b_muG + 1.e-6);
-
-#if 0
-                /* need to determine the random part of B^2 at the resolution scale: for this we use a Smagorinski-type approximation:
-                 note: this version of the algorithm is deprecated; it is too noisy, even in resolved flows, since many regions have
-                 locally 'flat' or 'steep' B-field gradients, giving a misleading estimate of the local variance */
-                p_scale = Get_Particle_Size(i); // this is simply the resolution scale (code units), at which the gradient is evaluated //
-                double BGrad_mag = 0.0;
-                int k2; for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {BGrad_mag += SphP[i].Gradients.B[k][k2] * SphP[i].Gradients.B[k][k2];}}
-                kappa_diff *= b2_mag / (1.e-37 + p_scale * p_scale * BGrad_mag); // should be dimensionless //
-#else
-                /* alternatively, we don't explicitly use the local B-gradient, but assume a cascade with a driving length equal to the pressure gradient scale length */
-                p_scale = 0.0; for(k=0;k<3;k++) {p_scale += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
-                p_scale = SphP[i].Pressure / (1.e-33 + sqrt(p_scale));
-                double p_scale_min = 0.5 * Get_Particle_Size(i); // sets a 'floor' at some multiple of the particle size (unresolved below this) //
-                p_scale = sqrt(p_scale_min*p_scale_min + p_scale*p_scale);
-                double p_scale_max = 100.*PPP[i].Hsml; // sets a maximum beyond which we have no meaningful information //
-                p_scale = 1./(1./p_scale + 1./p_scale_max); // code units here //
-#endif
-#else
-                /* define the driving scale by the pressure scale length */
-                for(k=0;k<3;k++) {p_scale += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
-                p_scale = SphP[i].Pressure / (1.e-33 + sqrt(p_scale));
-                double p_scale_min = 0.5 * Get_Particle_Size(i); /* sets a 'floor' at some multiple of the particle size (unresolved below this) */
-                p_scale = sqrt(p_scale_min*p_scale_min + p_scale*p_scale);
-                double p_scale_max = 100.*PPP[i].Hsml; /* sets a maximum beyond which we have no meaningful information */
-                p_scale = 1./(1./p_scale + 1./p_scale_max); /* code units here */
-                /* here we need sqrt(P/4e-14 erg/cm^3); convert pressure to physical units and multiply this out */
-                b_muG = sqrt( SphP[i].Pressure * All.cf_a3inv * All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam / 4.0e-14 );
-#endif
-                p_scale *= (All.UnitLength_in_cm / All.HubbleParam * All.cf_atime) / (3.086e21); /* physical pressure scale length in units of kpc */
-                if(p_scale > 10) {p_scale=10;} // limit at 10 kpc
-                kappa_diff *= pow( p_scale * p_scale * R_GV / b_muG, 1./3.); /* these should all be dimensionless here */
-                SphP[i].CosmicRayDiffusionCoeff += kappa_diff; /* should be in physical units */
-#endif
-#define COSMIC_RAYS_SPECIAL_DIFFUSIVITY 0 /* flag for custom diffusion models, currently experimental, per below */
-#if (COSMIC_RAYS_SPECIAL_DIFFUSIVITY == 1)
-                /* Wiener et al. style pure-streaming but with larger streaming speeds and limited losses */
-                SphP[i].CosmicRayDiffusionCoeff = 0;
-                double rho0 = SphP[i].Density*All.cf_a3inv*All.HubbleParam*All.HubbleParam, m0=P[i].Mass/All.HubbleParam, v0=m0/rho0;
-                double ni_m3 = rho0 * 404.62 / 1.e-3;
-                double eCR_m14 = SphP[i].CosmicRayEnergy / v0 * 676.78 + 1.e-12;
-                double Lz_kpc = CRPressureGradScaleLength/All.HubbleParam;
-                double T6 = SphP[i].InternalEnergy * 47.65 / 1.e6;
-                double Lambda_m22 = 0.001;
-                double H100pc = PPP[i].Hsml*All.cf_atime/All.HubbleParam / 0.1;
-                if(T6 > 8000./1.e6) {Lambda_m22=0.2;}
-                double dv2_abs = 0; for(j=0;j<3;j++) {for(k=0;k<3;k++) {double vt=SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv*PPP[i].Hsml*All.cf_atime/All.HubbleParam; dv2_abs+=vt*vt;}}
-                double dv_10kms = sqrt(dv2_abs) / 10.;
-                v_streaming += 3.8 * sqrt(sqrt(ni_m3*T6)/(eCR_m14*Lz_kpc)) + 0.34*pow(dv_10kms,3)*sqrt(sqrt(ni_m3)/Lambda_m22)/(eCR_m14*H100pc);
-                CR_kappa_streaming = (GAMMA_COSMICRAY/GAMMA_COSMICRAY_MINUS1) * v_streaming * CRPressureGradScaleLength;
-#endif
-#if (COSMIC_RAYS_SPECIAL_DIFFUSIVITY == 2)
-                /* Farber et al. -- higher coeff in neutral gas, lower in ionized gas */
-                SphP[i].CosmicRayDiffusionCoeff = 0;
-                double T4 = SphP[i].InternalEnergy * 47.65 / 1.e4;
-                if(T4 < 1) {SphP[i].CosmicRayDiffusionCoeff = 700.;} else {SphP[i].CosmicRayDiffusionCoeff = 700./30.;}
-#endif
-#if (COSMIC_RAYS_SPECIAL_DIFFUSIVITY == 3)
-                /* Snodin et al. -- different expression for extrinsic MHD-turb diffusivity */
-                double Lz_kpc = CRPressureGradScaleLength/All.HubbleParam;
-                double RL_L = 1.e-9 / (b_muG * Lz_kpc);
-                SphP[i].CosmicRayDiffusionCoeff = 2.1e5 * (3.1e-3 + 0.74*RL_L + 0.33*pow(RL_L,0.333));
-#endif
-#ifdef COSMIC_RAYS_DIFFUSION_CONSTANT
-#ifdef COSMIC_RAYS_M1
-                SphP[i].CosmicRayDiffusionCoeff = All.CosmicRayDiffusionCoeff;
-#else
-                SphP[i].CosmicRayDiffusionCoeff = All.CosmicRayDiffusionCoeff / GAMMA_COSMICRAY_MINUS1;
-#endif
-#else
-                SphP[i].CosmicRayDiffusionCoeff *= All.CosmicRayDiffusionCoeff;
-#endif
-                SphP[i].CosmicRayDiffusionCoeff += CR_kappa_streaming;
-#if !defined(COSMIC_RAYS_M1)
-                /* now we apply a limiter to prevent the coefficient from becoming too large: cosmic rays cannot stream/diffuse with v_diff > c */
-                // [all of this only applies if we are using the pure-diffusion description: the M1-type description should -not- use a limiter here, or negative kappa]
-                double diffusion_velocity_limit = 1.0 * C; /* maximum diffusion velocity (set <C if desired) */
-#ifdef GALSF
-                diffusion_velocity_limit = 0.01 * C;
-#endif
-                double Lscale = DMIN(20.*Get_Particle_Size(i)*All.cf_atime , CRPressureGradScaleLength);
-                double kappa_diff_vel = SphP[i].CosmicRayDiffusionCoeff * GAMMA_COSMICRAY_MINUS1 / Lscale * All.UnitVelocity_in_cm_per_s;
-                SphP[i].CosmicRayDiffusionCoeff *= 1 / (1 + kappa_diff_vel/diffusion_velocity_limit); /* caps maximum here */
-                if((SphP[i].CosmicRayDiffusionCoeff<=0)||(isnan(SphP[i].CosmicRayDiffusionCoeff))) {SphP[i].CosmicRayDiffusionCoeff=0;}
-#ifdef GALSF
-                /* for multi-physics problems, we suppress diffusion where it is irrelevant */
-                {
-                    double P_cr_Ratio = Get_Particle_CosmicRayPressure(i) / (MIN_REAL_NUMBER + SphP[i].Pressure);
-                    double P_min = 1.0e-4; if(P_cr_Ratio < P_min) {SphP[i].CosmicRayDiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
-                    P_min = 1.0e-6; if(P_cr_Ratio < P_min) {SphP[i].CosmicRayDiffusionCoeff *= pow(P_cr_Ratio/P_min,2);}
-                }
-#endif
-                if(is_particle_local_extremum==1) {SphP[i].CosmicRayDiffusionCoeff *= -1;} // negative here codes for local extrema
-#endif // COSMIC_RAYS_M1
-            } else {
-                SphP[i].CosmicRayDiffusionCoeff = MIN_REAL_NUMBER;
-            }
 #endif
             
             
@@ -1871,6 +1832,10 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
     int startnode, numngb, listindex = 0;
     int j, k, k2, n, swap_to_j;
     double hinv, hinv3, hinv4, r2, u, hinv_j, hinv3_j, hinv4_j;
+#ifdef TURB_DIFF_DYNAMIC
+    double hhat_i, hhat_j, hhatinv_i, hhatinv3_i, hhatinv4_i, hhatinv_j, hhatinv3_j, hhatinv4_j, wkhat_i, wkhat_j, dwkhat_i, dwkhat_j;
+    double tstart, tend;
+#endif
     struct kernel_GasGrad kernel;
     struct GasGraddata_in local;
     struct GasGraddata_out out;
@@ -1927,8 +1892,16 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
     {
         while(startnode >= 0)
         {
-            
+#ifdef TURB_DIFF_DYNAMIC
+            if (gradient_iteration == 0) {
+                numngb = ngb_treefind_pairs_threads(local.Pos, All.TurbDynamicDiffFac * kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+            }
+            else {
+#endif
             numngb = ngb_treefind_pairs_threads(local.Pos, kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+#ifdef TURB_DIFF_DYNAMIC
+            }
+#endif
             
             if(numngb < 0)
                 return -1;
@@ -1939,7 +1912,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 if(P[j].Type != 0) continue;
                 if(j >= N_gas) continue;
 
-                int TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
+                integertime TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
 #ifndef BOX_SHEARING // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //
                 if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
                 /* use relative positions to break degeneracy */
@@ -1967,6 +1940,25 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 if(r2 <= 0) continue;
 #else
                 if(r2 <= 0) {swap_to_j = 0;}
+#endif
+#ifdef TURB_DIFF_DYNAMIC
+#ifdef GALSF_SUBGRID_WINDS
+                if (gradient_iteration == 0 && ((SphP[j].DelayTime == 0 && local.DelayTime == 0) || (SphP[j].DelayTime > 0 && local.DelayTime > 0))) {
+#else
+                if (gradient_iteration == 0) {
+#endif
+                    hhat_i = All.TurbDynamicDiffFac * kernel.h_i; hhat_j = All.TurbDynamicDiffFac * h_j;
+                    if((r2 >= (hhat_i * hhat_i)) && (r2 >= (hhat_j * hhat_j))) continue;
+                    double h_avg = 0.5 * (hhat_i + hhat_j), particle_distance = sqrt(r2);
+                    kernel_hinv(h_avg, &hhatinv_i, &hhatinv3_i, &hhatinv4_i); u = DMIN(particle_distance * hhatinv_i, 1.0);
+                    kernel_main(u, hhatinv3_i, hhatinv4_i, &wkhat_i, &dwkhat_i, 0); /* wkhat is symmetric in this case W_{ij} = W_{ji} */
+                    double mean_weight = wkhat_i * 0.5 * (SphP[j].Norm_hat + local.Norm_hat) / (local.Norm_hat * SphP[j].Norm_hat);
+                    double weight_i = P[j].Mass * mean_weight, weight_j = local.Mass * mean_weight, Velocity_bar_diff[3];
+                    if(particle_distance < h_avg) {
+                        for(k=0;k<3;k++) {Velocity_bar_diff[k] = SphP[j].Velocity_bar[k] - local.GQuant.Velocity_bar[k]; out.Velocity_hat[k] += Velocity_bar_diff[k] * weight_i;}
+                        if(swap_to_j) {for(k=0;k<3;k++) {SphP[j].Velocity_hat[k] -= Velocity_bar_diff[k] * weight_j;}}
+                    }
+                } /* closes gradient_iteration == 0 */
 #endif
                 if((r2 >= h2_i) && (r2 >= h_j * h_j)) continue;
                 
@@ -2138,6 +2130,20 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     MINMAX_CHECK(dp,out.Minima.Pressure,out.Maxima.Pressure);
                     if(swap_to_j) {MINMAX_CHECK(-dp,GasGradDataPasser[j].Minima.Pressure,GasGradDataPasser[j].Maxima.Pressure);}
 
+#ifdef TURB_DIFF_DYNAMIC
+                    double dv_bar[3]; /* Need to calculate the filtered velocity gradient for the filtered shear */
+                    for (k = 0; k < 3; k++) {
+                        dv_bar[k] = SphP[j].Velocity_bar[k] - local.GQuant.Velocity_bar[k];
+#ifdef SHEARING_BOX
+                        if (k == SHEARING_BOX_PHI_COORDINATE) {
+                            if (local.Pos[0] - P[j].Pos[0] > +boxHalf_X) {dv_bar[k] -= Shearing_Box_Vel_Offset;}
+                            if (local.Pos[0] - P[j].Pos[0] < -boxHalf_X) {dv_bar[k] += Shearing_Box_Vel_Offset;}}
+#endif
+                        MINMAX_CHECK(dv_bar[k], out.Minima.Velocity_bar[k], out.Maxima.Velocity_bar[k]);
+                        if (swap_to_j) {MINMAX_CHECK(-dv_bar[k], GasGradDataPasser[j].Minima.Velocity_bar[k], GasGradDataPasser[j].Maxima.Velocity_bar[k]);}
+                    }
+#endif
+
 #if defined(KERNEL_CRK_FACES)
                     {
                         double V_i = local.Mass/local.GQuant.Density, V_j = P[j].Mass/SphP[j].Density;
@@ -2297,6 +2303,9 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                             out.Gradients[k].Density += wk_xyz_i * d_rho;
                             out.Gradients[k].Pressure += wk_xyz_i * dp;
                             for(k2=0;k2<3;k2++) {out.Gradients[k].Velocity[k2] += wk_xyz_i * dv[k2];}
+#ifdef TURB_DIFF_DYNAMIC
+                            for (k2 = 0; k2 < 3; k2++) {out.Gradients[k].Velocity_bar[k2] += wk_xyz_i * dv_bar[k2];}
+#endif
 #ifdef DOGRAD_INTERNAL_ENERGY
                             out.Gradients[k].InternalEnergy += wk_xyz_i * du;
 #endif
@@ -2335,6 +2344,9 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                             SphP[j].Gradients.Density[k] += wk_xyz_j * d_rho;
                             SphP[j].Gradients.Pressure[k] += wk_xyz_j * dp;
                             for(k2=0;k2<3;k2++) {SphP[j].Gradients.Velocity[k2][k] += wk_xyz_j * dv[k2];}
+#ifdef TURB_DIFF_DYNAMIC
+                            for (k2 = 0; k2 < 3; k2++) {GasGradDataPasser[j].GradVelocity_bar[k2][k] += wk_xyz_j * dv_bar[k2];}
+#endif
 #ifdef DOGRAD_INTERNAL_ENERGY
                             SphP[j].Gradients.InternalEnergy[k] += wk_xyz_j * du;
 #endif

@@ -255,6 +255,15 @@ TimeBetTurbSpectrum 0.5 % time (code units) between evaluations of turb pwrspec
 DarkEnergyConstantW       -1        % time-independent DE parameter w, used only if no table
 TabulatedCosmologyFile    CosmoTbl  % table with cosmological parameters
 
+%-------------- Parameters for self-interacting dark matter (DM_SIDM on)
+DM_InteractionCrossSection 1        % cross-section per unit mass in cm^2/g (normalized at 1 km/s, if vel-dependent)
+DM_InteractionVelocityDependence 0  % scaling: sigma=InteractionCrossSection*(dv/kms)^DM_InteractionVelocityDependence
+DM_DissipationFactor 0              % 0=elastic, 1=pure dissipative (fractional dissipation of kinetic energy in event)
+DM_KickPerCollision  0              % kick in km/s per collision (this^2 = specific energy/mass to kinetic per 'event')
+
+%-------------- Parameters for scalar-field dark matter (DM_FUZZY on)
+FuzzyDM_Mass_in_eV 1e-22            % boson mass in eV for SFDM/Fuzzy DM module
+
 
 %-------------------------------------------------------------
 %------------------ Solid bodies and Impacts -----------------

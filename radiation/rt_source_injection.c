@@ -75,7 +75,7 @@ void rt_particle2in_source(struct rt_sourcedata_in *in, int i)
     double dt = 1; // make this do nothing unless flags below are set:
 #if defined(RT_INJECT_PHOTONS_DISCRETELY)
 #ifndef WAKEUP
-    dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+    dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
     dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
@@ -102,7 +102,7 @@ void rt_source_injection(void)
         {
             double lum[N_RT_FREQ_BINS];
             for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[j].Je[k]=0;} // need to zero -before- calling injection //
-            int active_check = rt_get_source_luminosity(j,0,lum);
+	    int active_check = rt_get_source_luminosity(j,0,lum);
             for(k=0;k<N_RT_FREQ_BINS;k++) if(active_check) {SphP[j].Je[k]=lum[k];}
         }
     }
@@ -328,7 +328,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 #endif
 #endif
                 // now actually apply the kernel distribution
-                for(k=0;k<N_RT_FREQ_BINS;k++)
+                for(k=0;k<N_RT_FREQ_BINS;k++) 
                 {
                     double dE = wk * local.Luminosity[k];
 #if defined(RT_INJECT_PHOTONS_DISCRETELY)

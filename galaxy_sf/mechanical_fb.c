@@ -352,7 +352,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 // calculate kernel quantities //
                 kernel.r = sqrt(r2); if(kernel.r <= 0) continue;
                 u = kernel.r * kernel.hinv;
-                double hinv_j = 1./PPP[j].Hsml, hinv3_j = hinv_j*hinv_j*hinv_j;
+                double hinv_j = 1./PPP[j].Hsml, hinv3_j = hinv_j*hinv_j*hinv_j; /* note these lines and many below assume 3D sims! */
                 double wk_j = 0, dwk_j = 0, u_j = kernel.r * hinv_j, hinv4_j = hinv_j*hinv3_j, V_j = P[j].Mass / SphP[j].Density;
                 kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 1);
                 kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);
@@ -470,7 +470,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 SphP[j].MassTrue += dM_ejecta_in;
 #endif
-#ifdef METALS
+#if defined(METALS) 
                 /* inject metals */
                 for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=(1-massratio_ejecta)*P[j].Metallicity[k] + massratio_ejecta*local.yields[k];}
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
@@ -486,7 +486,6 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k]+=dflux*kernel.dp[k]; SphP[j].CosmicRayFluxPred[k]+=dflux*kernel.dp[k];}
 #endif
 #endif
-                
                 /* inject the post-shock energy and momentum (convert to specific units as needed first) */
                 e_shock *= 1 / P[j].Mass;
                 SphP[j].InternalEnergy += e_shock;
@@ -916,7 +915,7 @@ void determine_where_SNe_occur(void)
         if(All.ComovingIntegrationOn==0) {if((P[i].Type<2)||(P[i].Type>4)) {continue;}} // in non-cosmological sims, types 2,3,4 are valid 'stars'
         if(P[i].Mass<=0) {continue;}
 #ifndef WAKEUP
-        dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; // dloga to dt_physical
+        dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; // dloga to dt_physical
 #else
         dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a; // get particle timestep //
 #endif
@@ -940,6 +939,7 @@ void determine_where_SNe_occur(void)
     MPI_Reduce(&nhosttotal, &mpi_nhosttotal, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&ntotal, &mpi_ntotal, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&npossible, &mpi_npossible, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    
     if(ThisTask == 0)
     {
 #ifdef IO_REDUCED_MODE

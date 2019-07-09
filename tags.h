@@ -100,3 +100,11 @@
 #define TAG_KEY_BHS       96
 #define TAG_BHDATA        97
 
+#define TAG_DYNSMAGLOOP_A 98
+#define TAG_DYNSMAGLOOP_B 99
+#define TAG_DYNSMAGLOOP_C 100
+
+#ifdef CHIMES 
+#define TAG_CHIMESDATA 101 
+#define TAG_ABUNDATA 102 
+#endif 

@@ -7,6 +7,10 @@
 #include "../allvars.h"
 #include "../proto.h"
 
+#ifdef USE_FFTW3
+#include <fftw3-mpi.h>
+#include "myfftw3.h"
+#endif
 
 /*! \file longrange.c
  *  \brief driver routines for computation of long-range gravitational PM force
@@ -26,6 +30,9 @@
  */
 void long_range_init(void)
 {
+#ifdef USE_FFTW3
+  fftw_mpi_init(); 
+#endif
 #ifdef BOX_PERIODIC
   pm_init_periodic();
 #ifdef PM_PLACEHIGHRESREGION

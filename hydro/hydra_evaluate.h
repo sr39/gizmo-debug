@@ -151,7 +151,7 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 
                 /* check if I need to compute this pair-wise interaction from "i" to "j", or skip it and 
                     let it be computed from "j" to "i" */
-                int TimeStep_J = (P[j].TimeBin ? (1 << P[j].TimeBin) : 0);
+                integertime TimeStep_J = (P[j].TimeBin ? (((integertime) 1) << P[j].TimeBin) : 0);
                 int j_is_active_for_fluxes = 0;
 #ifndef BOX_SHEARING // (shearing box means the fluxes at the boundaries are not actually symmetric, so can't do this) //
                 if(local.Timestep > TimeStep_J) continue; /* compute from particle with smaller timestep */
@@ -367,8 +367,12 @@ int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                 
 #ifdef TURB_DIFFUSION
-#include "turbulent_diffusion.h"
+#include "../turb/turbulent_diffusion.h"
 #endif
+
+#ifdef CHIMES_TURB_DIFF_IONS
+#include "chimes_turbulent_ion_diffusion.h" 
+#endif 
                 
 #ifdef COSMIC_RAYS
 #include "../galaxy_sf/cosmic_ray_diffusion.h"
