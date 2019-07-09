@@ -528,6 +528,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 #if (BH_GRAVACCRETION == 4) || (BH_GRAVACCRETION == 6) || (BH_GRAVACCRETION == 7) // accrete constant fraction per free-fall time from accretion radius set to minimum of BH radius of gravitational dominance over Vc or cs (basically where gas more tightly bound to BH) - has Bondi-like form
             double soundspeed = GAMMA*GAMMA_MINUS1 * BlackholeTempInfo[i].BH_InternalEnergy; // this is in physical units now
             mdot = All.BlackHoleAccretionFactor * 4.*M_PI * All.G*All.G * BPP(n).BH_Mass*menc_all * (BPP(n).DensAroundStar*All.cf_a3inv) / pow(soundspeed + All.G*menc_all/rmax_for_bhar, 1.5);
+#endif
 #if (BH_GRAVACCRETION == 6)
             mdot *= pow( 1 + menc_all/(1.e-10*menc_all + BPP(n).BH_Mass) , 0.25 );
 #elif (BH_GRAVACCRETION == 7)
