@@ -2978,7 +2978,7 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
     {
         pos_x = P[target].Pos[0];
         pos_y = P[target].Pos[1];
-        pos_z = P[target].Pos[2];`
+        pos_z = P[target].Pos[2];
         aold = All.ErrTolForceAcc * P[target].OldAcc;
     }
     else
