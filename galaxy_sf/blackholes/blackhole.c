@@ -189,7 +189,7 @@ double bh_angleweight_localcoupling(int j, double hR, double theta, double r, do
     double H_j = PPP[j].Hsml;
     if((r >= H_j && r >= H_bh) || (H_j <= 0) || (P[j].Mass <= 0) || (SphP[j].Density <= 0)) return 0;
     /* now calculate all the kernel quantities we need */
-    double hinv=1./H_bh,hinv_j=1./H_j,hinv3_j=hinv_j*hinv_j*hinv_j,wk_j=0,u=r/H_bh;
+    double hinv=1./H_bh,hinv_j=1./H_j,hinv3_j=hinv_j*hinv_j*hinv_j,wk_j=0,u=r/H_bh; /* note these lines and many below assume 3D sims! */
     double dwk_j=0,u_j=r*hinv_j,hinv4_j=hinv_j*hinv3_j,V_j=P[j].Mass/SphP[j].Density;
     double hinv3=hinv*hinv*hinv,hinv4=hinv*hinv3,wk=0,dwk=0;
     kernel_main(u,hinv3,hinv4,&wk,&dwk,1);
@@ -281,7 +281,7 @@ void blackhole_properties_loop(void)
         
         /* define the timestep */
 #ifndef WAKEUP
-        dt = (P[n].TimeBin ? (1 << P[n].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+        dt = (P[n].TimeBin ? (((integertime) 1) << P[n].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
         dt = P[n].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
@@ -525,9 +525,14 @@ void set_blackhole_mdot(int i, int n, double dt)
 #if (BH_GRAVACCRETION == 3) // gravito-turbulent estimator: accrete at constant fraction per free-fall from 'accretion radius' with that fraction being f_disk^2
             mdot = All.BlackHoleAccretionFactor * (mdisk_for_bhar / menc_all) * (mdisk_for_bhar / menc_all) * mgas_in_racc * omega_dyn;
 #endif
-#if (BH_GRAVACCRETION == 4) // accrete constant fraction per free-fall time from accretion radius set to minimum of BH radius of gravitational dominance over Vc or cs (basically where gas more tightly bound to BH) - has Bondi-like form
+#if (BH_GRAVACCRETION == 4) || (BH_GRAVACCRETION == 6) || (BH_GRAVACCRETION == 7) // accrete constant fraction per free-fall time from accretion radius set to minimum of BH radius of gravitational dominance over Vc or cs (basically where gas more tightly bound to BH) - has Bondi-like form
             double soundspeed = GAMMA*GAMMA_MINUS1 * BlackholeTempInfo[i].BH_InternalEnergy; // this is in physical units now
             mdot = All.BlackHoleAccretionFactor * 4.*M_PI * All.G*All.G * BPP(n).BH_Mass*menc_all * (BPP(n).DensAroundStar*All.cf_a3inv) / pow(soundspeed + All.G*menc_all/rmax_for_bhar, 1.5);
+#endif
+#if (BH_GRAVACCRETION == 6)
+            mdot *= pow( 1 + menc_all/(1.e-10*menc_all + BPP(n).BH_Mass) , 0.25 );
+#elif (BH_GRAVACCRETION == 7)
+            mdot *= 1 + menc_all/(1.e-10*menc_all + BPP(n).BH_Mass);
 #endif
 #if (BH_GRAVACCRETION == 5) // use default torques estimator, but then allow gas to accrete as Bondi-Hoyle when its circularization radius is inside the BH radius of influence
             double j_tmp_for_bhar=0,jcirc_crit=0; for(k=0;k<3;k++) {j_tmp_for_bhar+=BlackholeTempInfo[i].Jgas_in_Kernel[k]*BlackholeTempInfo[i].Jgas_in_Kernel[k];}
@@ -545,9 +550,9 @@ void set_blackhole_mdot(int i, int n, double dt)
             
             
 #ifndef IO_REDUCED_MODE
-            printf("BH GravAcc Eval :: mdot %g BHaccFac %g Norm %g fdisk %g bh_8 %g fgas %g f0 %g mdisk_9 %g rmax_100 %g \n\n",
+            printf("BH GravAcc Eval :: mdot %g BHaccFac %g Norm %g fdisk %g bh_8 %g fgas %g f0 %g mdisk_9 %g rmax_100 %g \n",
                    mdot,All.BlackHoleAccretionFactor,fac,
-                   f_disk_for_bhar,bh_mass,fgas_for_bhar,f0_for_bhar,mdisk_for_bhar,rmax_for_bhar_units);
+                   f_disk_for_bhar,bh_mass_units,fgas_for_bhar,f0_for_bhar,mdisk_for_bhar_units,rmax_for_bhar_units);
 #endif
         } // if(f_disk_for_bhar<=0)
 
@@ -963,7 +968,7 @@ void blackhole_final_operations(void)
             {
                 double fac_bh_shift=0;
 #if (BH_REPOSITION_ON_POTMIN == 2)
-                dt = (P[n].TimeBin ? (1 << P[n].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+                dt = (P[n].TimeBin ? (((integertime) 1) << P[n].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
                 double dr_min=0; for(k=0;k<3;k++) {dr_min+=(BPP(n).BH_MinPotPos[k]-P[n].Pos[k])*(BPP(n).BH_MinPotPos[k]-P[n].Pos[k]);}
                 if(dr_min > 0 && dt > 0)
                 {
@@ -1024,7 +1029,7 @@ void blackhole_final_operations(void)
 #endif
         /* Correct for the mass loss due to radiation and BAL winds */
 #ifndef WAKEUP
-        dt = (P[n].TimeBin ? (1 << P[n].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+        dt = (P[n].TimeBin ? (((integertime) 1) << P[n].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
         dt = P[n].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif //ifndef WAKEUP
@@ -1033,9 +1038,10 @@ void blackhole_final_operations(void)
         double dm = BPP(n).BH_Mdot * dt;
         double radiation_loss = All.BlackHoleRadiativeEfficiency * dm;
         if(radiation_loss > DMIN(P[n].Mass,BPP(n).BH_Mass)) radiation_loss = DMIN(P[n].Mass,BPP(n).BH_Mass);
-        P[n].Mass -= radiation_loss;
-        BPP(n).BH_Mass -= radiation_loss;
-// printf("%d BH Final rad loss done \n", ThisTask);
+#ifndef BH_DEBUG_FIX_MASS
+        P[n].Mass -= radiation_loss; BPP(n).BH_Mass -= radiation_loss;
+        // printf("%d BH Final rad loss done \n", ThisTask);
+#endif         
         /* subtract the BAL wind mass from P[n].Mass && (BPP(n).BH_Mass || BPP(n).BH_Mass_AlphaDisk) */
         // DAA: note that the mass loss in winds for BH_WIND_KICK has already been taken into account
 #ifdef BH_WIND_CONTINUOUS
@@ -1048,8 +1054,9 @@ void blackhole_final_operations(void)
         BPP(n).BH_Mass_AlphaDisk -= dm_wind;
 #else
         if(dm_wind > BPP(n).BH_Mass) {dm_wind = BPP(n).BH_Mass;}
-        P[n].Mass -= dm_wind;
-        BPP(n).BH_Mass -= dm_wind;
+#ifndef BH_DEBUG_FIX_MASS
+        P[n].Mass -= dm_wind; BPP(n).BH_Mass -= dm_wind;
+#endif 
 #endif
 #endif // ifdef BH_WIND_CONTINUOUS
         
@@ -1063,9 +1070,12 @@ void blackhole_final_operations(void)
         BPP(n).BH_Mass_AlphaDisk -= dm_wind;
 #else
         if(dm_wind > BPP(n).BH_Mass) {dm_wind = BPP(n).BH_Mass;}
+#ifndef BH_DEBUG_FIX_MASS
         BPP(n).BH_Mass -= dm_wind;
+#endif 
 #endif
         BPP(n).unspawned_wind_mass += dm_wind;
+        if(BPP(n).unspawned_wind_mass>MaxUnSpanMassBH) {MaxUnSpanMassBH=BPP(n).unspawned_wind_mass;}
 #endif
         
         /* dump the results to the 'blackhole_details' files */

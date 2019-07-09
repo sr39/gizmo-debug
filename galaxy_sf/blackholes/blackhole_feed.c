@@ -288,7 +288,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         rho = P[target].DensAroundStar;       // DAA: DensAroundStar is not defined in BHP->BPP...
         mdot = BPP(target).BH_Mdot;
 #ifndef WAKEUP
-        dt = (P[target].TimeBin ? (1 << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+        dt = (P[target].TimeBin ? (((integertime) 1) << P[target].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
         dt = P[target].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
@@ -439,9 +439,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         while(startnode >= 0)
         {
 #ifdef NEWSINK 
-            numngb = ngb_treefind_variable_targeted(pos, int_zone_radius, target, &startnode, mode, nexport, nSend_local, BH_NEIGHBOR_BITFLAG); 
+            numngb = ngb_treefind_pairs_targeted(pos, int_zone_radius, target, &startnode, mode, nexport, nSend_local, BH_NEIGHBOR_BITFLAG); 
 #else       
-            numngb = ngb_treefind_variable_targeted(pos, h_i, target, &startnode, mode, nexport, nSend_local, BH_NEIGHBOR_BITFLAG); // BH_NEIGHBOR_BITFLAG defines which types of particles we search for
+            numngb = ngb_treefind_pairs_targeted(pos, h_i, target, &startnode, mode, nexport, nSend_local, BH_NEIGHBOR_BITFLAG); // BH_NEIGHBOR_BITFLAG defines which types of particles we search for
 #endif
             if(numngb < 0) return -1;
             for(n = 0; n < numngb; n++)
@@ -458,7 +458,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #ifdef NEWSINK
                     if(r2 < int_zone_radius2)
 #else
-                    if(r2 < h_i2)
+                    if(r2 < h_i2 || r2 < PPP[j].Hsml*PPP[j].Hsml)
 #endif
                     {
                         vrel=0; for(k=0;k<3;k++) {vrel += (P[j].Vel[k] - velocity[k])*(P[j].Vel[k] - velocity[k]);}

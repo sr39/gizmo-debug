@@ -52,6 +52,9 @@ void set_cosmo_factors_for_current_time(void)
         All.cf_hubble_a = hubble_function(All.Time); /* hubble_function(a) = H(a) = H(z) */
         /* dt_code * v_code/r_code = All.cf_hubble_a2 * dt_phys * v_phys/r_phys */
         All.cf_hubble_a2 = All.Time * All.Time * hubble_function(All.Time);
+#ifdef CHIMES 
+	ChimesGlobalVars.cmb_temperature = 2.725 / All.cf_atime; 
+#endif 
     }
     else
     {
@@ -63,6 +66,9 @@ void set_cosmo_factors_for_current_time(void)
         All.cf_afac3 = 1;
         All.cf_hubble_a = 1;
         All.cf_hubble_a2 = 1;
+#ifdef CHIMES 
+	ChimesGlobalVars.cmb_temperature = 2.725; 
+#endif 
     }
 }
 
@@ -144,7 +150,7 @@ void find_timesteps(void)
     
     integertime ti_min_glob;
     
-    MPI_Allreduce(&ti_step, &ti_min_glob, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+    MPI_Allreduce(&ti_step, &ti_min_glob, 1, MPI_TYPE_TIME, MPI_MIN, MPI_COMM_WORLD);
 #endif
     
     
@@ -464,7 +470,7 @@ integertime get_timestep(int p,		/*!< particle index */
     }
 #endif
 
-#ifdef TIDAL_TIMESTEP_CRITERION // tidal criterion obtains the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion
+#ifdef TIDAL_TIMESTEP_CRITERION // tidal criterion obtains the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterio
     double dt_tidal = 0.; 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     if (P[p].SuperTimestepFlag>=2){
@@ -546,9 +552,8 @@ integertime get_timestep(int p,		/*!< particle index */
     if((P[p].Type > 0) && (P[p].AGS_Density > 0))
     {
         /* fuzzy DM admits longitudinal waves with group velocity =(hbar/m_dm)*k, so need a courant criterion, but because of scaling with k (like diffusion), timestep is quadratic in resolution */
-        double vgroup_over_k_fuzzy = 591569.000 / ((double)All.FuzzyDM_Mass_in_eV * (double)All.UnitVelocity_in_cm_per_s * (double)All.UnitLength_in_cm/(double)All.HubbleParam); // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
         double L_particle_ags_x = Get_Particle_Size_AGS(p) * All.cf_atime;
-        double dt_cour_ags_fuzzy = 0.25 * (L_particle_ags_x*L_particle_ags_x) / vgroup_over_k_fuzzy; // wavespeed of resolve-able waves
+        double dt_cour_ags_fuzzy = 0.25 * (L_particle_ags_x*L_particle_ags_x) / All.ScalarField_hbar_over_mass; // wavespeed of resolve-able waves
         if(dt_cour_ags_fuzzy < dt) {dt = dt_cour_ags_fuzzy;}
         dt_cour_ags_fuzzy = 0.25 * L_particle_ags_x / sqrt(MIN_REAL_NUMBER + (10./9.)*P[p].AGS_Numerical_QuantumPotential/P[p].Mass); // wavespeed based on 'stored' sub-grid energy [can get comparable]
         if(dt_cour_ags_fuzzy < dt) {dt = dt_cour_ags_fuzzy;}
@@ -659,7 +664,7 @@ integertime get_timestep(int p,		/*!< particle index */
                     double coeff_inv = 0.67 * L_cr_strong * dt_prefac_diffusion / (1.e-33 + fabs(SphP[p].CosmicRayDiffusionCoeff) * GAMMA_COSMICRAY_MINUS1);
                     double dt_conduction =  L_cr_strong * coeff_inv; /* true diffusion requires the stronger timestep criterion be applied */
                     explicit_timestep_on = 1;
-#ifdef COSMIC_RAYS_DISABLE_DIFFUSION
+#if (COSMIC_RAYS_DIFFUSION_MODEL < 0)
                     dt_conduction = L_cr_weak * coeff_inv; /* streaming allows weaker timestep criterion because it's really an advection equation */
                     explicit_timestep_on = 0;
 #endif
@@ -946,8 +951,8 @@ integertime get_timestep(int p,		/*!< particle index */
     /* Reduce time-step if this particle got interaction probabilities > 0.2 during the last time-step */
     if(P[p].dt_step_sidm > 0)
     {
-        if(P[p].dt_step_sidm < dt) {dt = P[p].dt_step_sidm * All.Timebase_interval;} else {P[p].dt_step_sidm = 0;}
-        if(dt < All.MinSizeTimestep) {printf("Warning: A Timestep below the limit `MinSizeTimestep' is being used to keep self interaction probabilities smaller than 0.2. dt = %g\n",dt);}
+        double dt_sidm_physical = P[p].dt_step_sidm * All.Timebase_interval / All.cf_hubble_a;
+        if(dt_sidm_physical < dt) {dt = dt_sidm_physical;}
     }
 #endif
     
@@ -970,9 +975,7 @@ integertime get_timestep(int p,		/*!< particle index */
         if(mcorr < 1 && mcorr > 0) {dt_stellar_evol /= mcorr;}
         if(dt_stellar_evol < 1.e-6) {dt_stellar_evol = 1.e-6;}
         dt_stellar_evol /= (0.001*All.UnitTime_in_Megayears/All.HubbleParam); // convert to code units //
-        if(dt_stellar_evol>0)
-            if(dt_stellar_evol<dt)
-                dt = dt_stellar_evol;
+        if(dt_stellar_evol>0) {if(dt_stellar_evol<dt) {dt = dt_stellar_evol;}}
     }
 #endif
     
@@ -1022,7 +1025,9 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
             if(dt_accr > 0 && dt_accr < dt) {dt = dt_accr;}
 
+
 //        double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? (1 << BPP(p).BH_TimeBinGasNeighbor) : 0) * All.Timebase_interval / All.cf_hubble_a;
+
 
 //        if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 #ifdef SINGLE_STAR_FORMATION
@@ -1042,10 +1047,15 @@ integertime get_timestep(int p,		/*!< particle index */
 	//	if(dt > dt_stars && dt_stars > 0) {dt = 1.01 * dt_stars;}
 #endif
     } // if(P[p].Type == 5)
+
+#ifdef BH_DEBUG_SPAWN_JET_TEST /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
+    if(P[p].Type == 5 && dt>1.e-6) {dt=1.e-6;}
+    if(P[p].Type == 0 && P[p].ID == All.AGNWindID && dt>5.e-7)
+    {double dist_rad2 = pow((P[p].Pos[0]-0.5*All.BoxSize),2.0)+pow((P[p].Pos[1]-0.5*All.BoxSize),2.0)+pow((P[p].Pos[2]-0.5*All.BoxSize),2.0); if(sqrt(dist_rad2)<10.) {dt=5.e-7;}}
+#endif
 #endif // BLACK_HOLES
     
 
-    
     /* convert the physical timestep to dloga if needed. Note: If comoving integration has not been selected, All.cf_hubble_a=1. */
     dt *= All.cf_hubble_a;
     
@@ -1053,15 +1063,9 @@ integertime get_timestep(int p,		/*!< particle index */
     dt = All.MaxSizeTimestep;
 #endif
     
+    if(dt >= All.MaxSizeTimestep) {dt = All.MaxSizeTimestep;}
     
-    
-    if(dt >= All.MaxSizeTimestep)
-        dt = All.MaxSizeTimestep;
-    
-    
-    if(dt >= dt_displacement)
-        dt = dt_displacement;
-    
+    if(dt >= dt_displacement) {dt = dt_displacement;}
     
     if((dt < All.MinSizeTimestep)||(((integertime) (dt / All.Timebase_interval)) <= 1))
     {
@@ -1071,31 +1075,31 @@ integertime get_timestep(int p,		/*!< particle index */
         if(P[p].Type == 0)
         {
 #ifndef LONGIDS
+
             printf
             ("Part-ID=%d  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g mass=%g\n",
              (int) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],
+
              PPP[p].Hsml, csnd,
              sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) *
              All.cf_hubble_a, All.SofteningTable[P[p].Type],P[p].Mass);
 #else
+
             printf
             ("Part-ID=%llu  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g mass=%g\n",
              (MyIDType) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],
+
              PPP[p].Hsml, csnd,
              sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) *
              All.cf_hubble_a, All.SofteningTable[P[p].Type],P[p].Mass);
 #endif // ndef LONGIDS
-            
-            
         }
         else // if(P[p].Type == 0)
         {
 #ifndef LONGIDS
-            printf("Part-ID=%d  dt=%g ac=%g xyz=(%g|%g|%g)\n", (int) P[p].ID, dt, ac, P[p].Pos[0], P[p].Pos[1],
-                   P[p].Pos[2]);
+            printf("Part-ID=%d  dt=%g ac=%g xyz=(%g|%g|%g)\n", (int) P[p].ID, dt, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2]);
 #else
-            printf("Part-ID=%llu  dt=%g ac=%g xyz=(%g|%g|%g)\n", (MyIDType) P[p].ID, dt, ac, P[p].Pos[0],
-                   P[p].Pos[1], P[p].Pos[2]);
+            printf("Part-ID=%llu  dt=%g ac=%g xyz=(%g|%g|%g)\n", (MyIDType) P[p].ID, dt, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2]);
 #endif // ndef LONGIDS
 #ifdef SINGLE_STAR_TIMESTEPPING	    
         if(P[p].Type == 5){
@@ -1103,9 +1107,7 @@ integertime get_timestep(int p,		/*!< particle index */
         }
 #endif	
         }
-        fflush(stdout);
-        fprintf(stderr, "\n @ fflush \n");
-        endrun(888);
+        fflush(stdout); fprintf(stderr, "\n @ fflush \n"); endrun(888);
 #endif // STOP_WHEN_BELOW_MINTIMESTEP
         dt = All.MinSizeTimestep;
     }
@@ -1114,22 +1116,18 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifndef STOP_WHEN_BELOW_MINTIMESTEP
     if(ti_step<=1) ti_step=2;
 #endif
-   
+
     if(!(ti_step > 0 && ti_step < TIMEBASE))
     {
         printf("\nError: A timestep of size zero was assigned on the integer timeline, no here!!!\n"
                "We better stop.\n"
-               "Task=%d Part-ID=%llu dt=%g dtc=%g dtv=%g dtdis=%g tibase=%g ti_step=%d ac=%g xyz=(%g|%g|%g) tree=(%g|%g|%g)\n\n",
+               "Task=%d Part-ID=%llu dt=%g dtc=%g dtv=%g dtdis=%g tibase=%g ti_step=%lld ac=%g xyz=(%g|%g|%g) tree=(%g|%g|%g)\n\n",
                ThisTask, (unsigned long long) P[p].ID, dt, dt_courant, dt_divv, dt_displacement,
-               All.Timebase_interval, ti_step, ac,
-               P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], P[p].GravAccel[0], P[p].GravAccel[1],
-               P[p].GravAccel[2]);
+               All.Timebase_interval, (long long) ti_step, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], P[p].GravAccel[0], P[p].GravAccel[1], P[p].GravAccel[2]);
 #ifdef PMGRID
         printf("pm_force=(%g|%g|%g)\n", P[p].GravPM[0], P[p].GravPM[1], P[p].GravPM[2]);
 #endif
-        
-        fflush(stdout);
-        endrun(818);
+        fflush(stdout); endrun(818);
     }
     return ti_step;
 }
@@ -1263,8 +1261,9 @@ int get_timestep_bin(integertime ti_step)
 #ifdef WAKEUP
 void process_wake_ups(void)
 {
-    int i, n, dt_bin;
-    int ti_next_for_bin, ti_next_kick, ti_next_kick_global, max_time_bin_active;
+    int i, n;
+    integertime dt_bin, ti_next_for_bin, ti_next_kick, ti_next_kick_global;
+    int max_time_bin_active;
     int bin, binold, prev, next;
     long long ntot;
     
@@ -1289,7 +1288,7 @@ void process_wake_ups(void)
         }
     }
     
-    MPI_Allreduce(&ti_next_kick, &ti_next_kick_global, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+    MPI_Allreduce(&ti_next_kick, &ti_next_kick_global, 1, MPI_TYPE_TIME, MPI_MIN, MPI_COMM_WORLD);
     
 #ifndef IO_REDUCED_MODE
     if(ThisTask == 0) printf("predicting next timestep: %g\n", (ti_next_kick_global - All.Ti_Current) * All.Timebase_interval);

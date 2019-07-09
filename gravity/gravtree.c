@@ -142,48 +142,6 @@ void gravity_tree(void)
     ewald_max = 0;
 #endif
     
-#ifdef SCF_HYBRID
-    int scf_counter, max_scf_counter = 1;
-    
-    if(SCF_HYBRID == 2)
-        max_scf_counter = 0;
-    /*
-     calculates the following forces (depending on SCF_HYBRID value)
-     STAR<->STAR, STAR->DM (scf_counter=0)
-     DM<->DM (scf_counter=1)
-     */
-    
-    for(scf_counter = 0; scf_counter <= max_scf_counter; scf_counter++)
-    {
-        /* set DM mass to zero and set gravsum to zero */
-        if(scf_counter == 0)
-        {
-            for(i = 0; i < NumPart; i++)
-            {
-                if(P[i].Type == 1)	/* DM particle */
-                    P[i].Mass = 0.0;
-                
-                for(j = 0; j < 3; j++)
-                    P[i].GravAccelSum[j] = 0.0;
-            }
-        }
-        /* set stellar mass to zero */
-        if(scf_counter == 1)
-        {
-            for(i = 0; i < NumPart; i++)
-            {
-                if(P[i].Type == 2)	/* stellar particle */
-                    P[i].Mass = 0.0;
-            }
-        }
-        
-        /* particle masses changed, so reconstruct tree */
-        if(ThisTask == 0)
-            printf("SCF Tree construction %d\n", scf_counter);
-        force_treebuild(NumPart, NULL);
-        if(ThisTask == 0)
-            printf("done.\n");
-#endif
 
         if(GlobNumForceUpdate > All.TreeDomainUpdateFrequency * All.TotNumPart)
         {
@@ -584,6 +542,17 @@ void gravity_tree(void)
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
                         if(P[place].Type==0) SphP[place].RadFluxUV += GravDataOut[j].RadFluxUV;
                         if(P[place].Type==0) SphP[place].RadFluxEUV += GravDataOut[j].RadFluxEUV;
+#ifdef CHIMES 			
+			if (P[place].Type == 0) 
+			  { 
+			    int kc; 
+			    for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) 
+			      {
+				SphP[place].Chimes_G0[kc] += GravDataOut[j].Chimes_G0[kc]; 
+				SphP[place].Chimes_fluxPhotIon[kc] += GravDataOut[j].Chimes_fluxPhotIon[kc]; 
+			      }
+			  }
+#endif 
 #endif
 #ifdef BH_COMPTON_HEATING
                         if(P[place].Type==0) SphP[place].RadFluxAGN += GravDataOut[j].RadFluxAGN;
@@ -608,41 +577,13 @@ void gravity_tree(void)
             while(ndone < NTask);
         }			/* Ewald_iter */
         
-#ifdef SCF_HYBRID
-        /* restore particle masses */
-        for(i = 0; i < NumPart; i++) {P[i].Mass = P[i].MassBackup;}
-        
-        /* add up accelerations from tree to AccelSum */
-        for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-        {
-            /* ignore STAR<-DM contribution */
-            if(scf_counter == 1 && P[i].Type == 2)
-            {
-                continue;
-            }
-            else
-            {
-                for(j = 0; j < 3; j++) {P[i].GravAccelSum[j] += P[i].GravAccel[j];}
-            }
-        }
-    }				/* scf_counter */
-    
-    /* set acceleration to summed up accelerations */
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-    {
-        for(j = 0; j < 3; j++) {P[i].GravAccel[j] = P[i].GravAccelSum[j];}
-    }
-#endif
-    
-    
-    
-    
-    
+
+
     myfree(DataNodeList);
     myfree(DataIndexTable);
-    
-    
-    
+
+
+        
     /* assign node cost to particles */
     if(TakeLevel >= 0)
     {
@@ -714,7 +655,6 @@ void gravity_tree(void)
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
  	for(j = 0; j < 3; j++) {P[i].COM_GravAccel[j] *= All.G;}
 #endif 
-        
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 #ifdef GDE_DISTORTIONTENSOR
         /* Diagonal terms of tidal tensor need correction, because tree is running over all particles -> also over target particle -> extra term -> correct it */
@@ -731,13 +671,14 @@ void gravity_tree(void)
         gsl_eigen_symm_free(w);
         gsl_vector_free (eval);
 #else // for GDE implementation, want to include particle self-tide contribution -- for timestep or hill criteria, on the other hand, this is not necessary
+        /* Diagonal terms of tidal tensor need correction, because tree is running over all particles -> also over target particle -> extra term -> correct it */
+        if(All.ComovingIntegrationOn) {P[i].tidal_tensorps[0][0] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[1][1] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[2][2] -= All.TidalCorrection/All.G;} // subtract Hubble flow terms //
         P[i].tidal_tensorps[0][0] += P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type]) * 10.666666666667;
         P[i].tidal_tensorps[1][1] += P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type]) * 10.666666666667;
         P[i].tidal_tensorps[2][2] += P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type]) * 10.666666666667;
 #endif
         for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[i].tidal_tensorps[i1][i2] *= All.G;}} // units //
 #endif 
-
         
 #ifdef EVALPOTENTIAL
         /* remove self-potential */
@@ -852,93 +793,7 @@ void gravity_tree(void)
     
     
     
-#ifdef SCF_POTENTIAL
-    MyDouble xs, ys, zs;
-    MyDouble pots, axs, ays, azs;
-    
-    if(ThisTask == 0)
-    {
-        printf("Starting SCF calculation...\n");
-    }
-    
-    /* reset the expansion coefficients to zero */
-    SCF_reset();
-#ifdef SCF_HYBRID
-    /*
-     calculate SCF coefficients for local DM particles.
-     sum them up from all processors, so every processor
-     sees the same expansion coefficients
-     */
-    SCF_calc_from_particles();
-    
-    /* sum up local coefficients */
-    MPI_Allreduce(sinsum, sinsum_all, (SCF_NMAX + 1) * (SCF_LMAX + 1) * (SCF_LMAX + 1), MPI_DOUBLE, MPI_SUM,
-                  MPI_COMM_WORLD);
-    MPI_Allreduce(cossum, cossum_all, (SCF_NMAX + 1) * (SCF_LMAX + 1) * (SCF_LMAX + 1), MPI_DOUBLE, MPI_SUM,
-                  MPI_COMM_WORLD);
-    
-    /* update local coefficients to global coefficients -> every processor has now complete SCF expansion */
-    SCF_collect_update();
-    if(ThisTask == 0)
-    {
-        printf("calculated and collected coefficients.\n");
-    }
-    
-#else
-    long old_seed, global_seed_min, global_seed_max;
-    
-    /*
-     resample coefficients for expansion
-     make sure that every processors sees the SAME potential,
-     i.e. has the same seed to generate coefficients
-     */
-    old_seed = scf_seed;
-    SCF_calc_from_random(&scf_seed);
-    /* check that all cpus have the same random seed (min max must be the same) */
-    MPI_Allreduce(&scf_seed, &global_seed_max, 1, MPI_LONG, MPI_MAX, MPI_COMM_WORLD);
-    MPI_Allreduce(&scf_seed, &global_seed_min, 1, MPI_LONG, MPI_MIN, MPI_COMM_WORLD);
-    if(ThisTask == 0)
-    {
-        printf("sampled coefficients with old/new seed = %ld/%ld         min/max=%ld/%ld\n", old_seed, scf_seed,
-               global_seed_min, global_seed_max);
-    }
-#endif
-    
-    
-    /* get accelerations for all active particles based on current expansion */
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-    {
-        /* convert to unit sphere */
-        to_unit(P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], &xs, &ys, &zs);
-        /* OR: not */
-        //xs = P[i].Pos[0]; ys = P[i].Pos[1]; zs = P[i].Pos[2];
-        
-        /* evaluate potential and acceleration */
-        SCF_evaluate(xs, ys, zs, &pots, &axs, &ays, &azs);
-        
-        /* scale to system size and add to acceleration */
-#ifdef SCF_HYBRID
-        /*
-         add missing STAR<-DM force from SCF (was excluded in tree above)
-         */
-        if(P[i].Type == 2 || SCF_HYBRID == 2)
-        {
-#endif
-            /* scale */
-            P[i].GravAccel[0] += All.G * SCF_HQ_MASS / (SCF_HQ_A * SCF_HQ_A) * axs;
-            P[i].GravAccel[1] += All.G * SCF_HQ_MASS / (SCF_HQ_A * SCF_HQ_A) * ays;
-            P[i].GravAccel[2] += All.G * SCF_HQ_MASS / (SCF_HQ_A * SCF_HQ_A) * azs;
-            /* OR: not */
-            //P[i].GravAccel[0] += All.G * axs;
-            //P[i].GravAccel[1] += All.G * ays;
-            //P[i].GravAccel[2] += All.G * azs;
-            
-#ifdef SCF_HYBRID
-        }
-#endif
-    }
-#endif
-    
+   
     
 #ifdef RT_SELFGRAVITY_OFF
     /* if this is set, we zero out gravity here, just after computing it! */
@@ -1003,7 +858,7 @@ void gravity_tree(void)
 #ifndef IO_REDUCED_MODE
     if(ThisTask == 0)
     {
-        fprintf(FdTimings, "Step= %d  t= %g  dt= %g \n", All.NumCurrentTiStep, All.Time, All.TimeStep);
+        fprintf(FdTimings, "Step= %lld  t= %g  dt= %g \n",(long long) All.NumCurrentTiStep, All.Time, All.TimeStep);
         fprintf(FdTimings, "Nf= %d%09d  total-Nf= %d%09d  ex-frac= %g (%g) iter= %d\n",
                 (int) (GlobNumForceUpdate / 1000000000), (int) (GlobNumForceUpdate % 1000000000),
                 (int) (All.TotNumOfForces / 1000000000), (int) (All.TotNumOfForces % 1000000000),

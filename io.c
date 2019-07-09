@@ -38,6 +38,13 @@ void savepositions(int num)
     int n, filenr, gr, ngroups, masterTask, lastTask;
     
     CPU_Step[CPU_MISC] += measure_time();
+
+#ifdef CHIMES_REDUCED_OUTPUT 
+    if (num % N_chimes_full_output_freq == 0)
+      Chimes_incl_full_output = 1; 
+    else 
+      Chimes_incl_full_output = 0; 
+#endif 
     
     rearrange_particle_sequence();
     /* ensures that new tree will be constructed */
@@ -364,17 +371,20 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_NE:		/* electron abundance */
 #if defined(COOLING) || defined(RT_CHEM_PHOTOION)
+#ifndef CHIMES 
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
                     *fp++ = SphP[pindex].Ne;
                     n++;
                 }
+#endif 
 #endif
             break;
             
         case IO_NH:		/* neutral hydrogen fraction */
 #if defined(COOLING) || defined(RT_CHEM_PHOTOION)
+#ifndef CHIMES 
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -394,6 +404,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
                     n++;
                 }
+#endif // CHIMES 
 #endif // #if defined(COOLING) || defined(RT_CHEM_PHOTOION)
             break;
             
@@ -437,6 +448,56 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
         case IO_H2II:
             break;
+        case IO_CRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = SphP[pindex].CoolingRate;
+                    n++;
+                }
+#endif
+            break;
+        case IO_HRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = SphP[pindex].HeatingRate;
+                    n++;
+                }
+#endif
+            break;
+        case IO_NHRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = SphP[pindex].NetHeatingRateQ;
+                    n++;
+                }
+#endif
+            break;
+        case IO_HHRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = SphP[pindex].HydroHeatingRate;
+                    n++;
+                }
+#endif
+            break;
+        case IO_MCRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = SphP[pindex].MetalCoolingRate;
+                    n++;
+                }
+#endif
+            break;       
         case IO_HM:
             break;
         case IO_HD:
@@ -551,6 +612,147 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
+
+#ifdef CHIMES 
+        case IO_CHIMES_ABUNDANCES:
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+		for (k = 0; k < ChimesGlobalVars.totalNumberOfSpecies; k++) 
+		  fp[k] = (MyOutputFloat) ChimesGasVars[pindex].abundances[k]; 
+		fp += ChimesGlobalVars.totalNumberOfSpecies; 
+		n++; 
+	      }
+	  break; 
+
+        case IO_CHIMES_MU: 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+		*fp++ = (MyOutputFloat) calculate_mean_molecular_weight(&(ChimesGasVars[pindex]), &ChimesGlobalVars); 
+		n++; 
+	      }
+	  break; 
+
+        case IO_CHIMES_REDUCED: 
+#ifdef CHIMES_REDUCED_OUTPUT 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+		fp[0] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[elec]]; 
+		fp[1] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[HI]]; 
+		fp[2] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[H2]]; 
+		fp[3] = (MyOutputFloat) ChimesGasVars[pindex].abundances[ChimesGlobalVars.speciesIndices[CO]]; 
+		fp += 4; 
+		n++; 
+	      }
+#endif 
+	  break; 
+
+        case IO_CHIMES_NH:
+#ifdef CHIMES_NH_OUTPUT 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+#ifdef CHIMES_SOBOLEV_SHIELDING 
+#ifdef COOL_METAL_LINES_BY_SPECIES 
+		*fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(SphP[pindex].Gradients.Density,PPP[pindex].Hsml,SphP[pindex].Density,PPP[pindex].NumNgb,1) * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm * shielding_length_factor * (1.0 - (P[pindex].Metallicity[0] + P[pindex].Metallicity[1])) / PROTONMASS); 
+#else 
+		*fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(SphP[pindex].Gradients.Density,PPP[pindex].Hsml,SphP[pindex].Density,PPP[pindex].NumNgb,1) * All.cf_a2inv * All.UnitDensity_in_cgs * All.HubbleParam * All.UnitLength_in_cm * shielding_length_factor * HYDROGEN_MASSFRAC / PROTONMASS); 
+#endif // COOL_MET_LINES_BY_SPECIES 
+#endif // CHIMES_SOBOLEV_SHIELDING 
+		  n++;
+	      }
+#endif // CHIMES_NH_OUTPUT 
+	  break;
+
+        case IO_CHIMES_STAR_SIGMA:
+#if defined(CHIMES_NH_OUTPUT) && defined(CHIMES_OUTPUT_DENS_AROUND_STAR) 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+		*fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,PPP[pindex].Hsml,P[pindex].DensAroundStar,PPP[pindex].NumNgb,0) * 0.955 * All.UnitMass_in_g*All.HubbleParam / (All.UnitLength_in_cm*All.UnitLength_in_cm));  // g cm^-2 
+		  n++;
+	      }
+#endif 
+	  break;
+
+        case IO_CHIMES_FLUX_G0: 
+#ifdef CHIMES_STELLAR_FLUXES  
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+#ifdef CHIMES_HII_REGIONS 
+		if (SphP[pindex].DelayTimeHII > 0) 
+		  {
+		    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		      fp[k] = (MyOutputFloat) (SphP[pindex].Chimes_G0[k] + SphP[pindex].Chimes_G0_HII[k]); 
+		  }
+		else 
+		  {
+		    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		      fp[k] = (MyOutputFloat) SphP[pindex].Chimes_G0[k]; 
+		  }
+#else 
+		for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		  fp[k] = (MyOutputFloat) SphP[pindex].Chimes_G0[k]; 
+#endif 
+		fp += CHIMES_LOCAL_UV_NBINS; 
+		n++; 
+	      }
+#endif 
+	  break; 
+
+        case IO_CHIMES_FLUX_ION: 
+#ifdef CHIMES_STELLAR_FLUXES  
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+#ifdef CHIMES_HII_REGIONS 
+		if (SphP[pindex].DelayTimeHII > 0) 
+		  {
+		    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		      fp[k] = (MyOutputFloat) (SphP[pindex].Chimes_fluxPhotIon[k] + SphP[pindex].Chimes_fluxPhotIon_HII[k]); 
+		  }
+		else 
+		  {
+		    for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		      fp[k] = (MyOutputFloat) SphP[pindex].Chimes_fluxPhotIon[k]; 
+		  } 
+#else 
+		for (k = 0; k < CHIMES_LOCAL_UV_NBINS; k++) 
+		  fp[k] = (MyOutputFloat) SphP[pindex].Chimes_fluxPhotIon[k]; 
+#endif 
+
+		fp += CHIMES_LOCAL_UV_NBINS; 
+		n++; 
+	      }
+#endif 
+	  break; 
+
+        case IO_CHIMES_STAR_DENS: 
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+                *fp++ = (MyOutputFloat) P[pindex].DensAroundStar; 
+		n++; 
+	      }
+#endif 
+	  break; 
+
+        case IO_CHIMES_DELAY_HII: 
+#ifdef CHIMES_OUTPUT_DELAY_TIME_HII 
+	  for (n = 0; n < pc; pindex++) 
+	    if (P[pindex].Type == type) 
+	      {
+                *fp++ = (MyOutputFloat) SphP[pindex].DelayTimeHII; 
+		n++; 
+	      }
+#endif 
+	  break; 
+
+#endif // CHIMES
             
         case IO_POT:		/* gravitational potential */
 #if defined(OUTPUT_POTENTIAL)  || defined(SUBFIND_RESHUFFLE_AND_POTENTIAL)
@@ -717,13 +919,15 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_COSMICRAY_KAPPA:    /* local CR diffusion constant */
-#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DIFFUSION_CONSTANT) && !defined(COSMIC_RAYS_DISABLE_DIFFUSION)
+#ifdef COSMIC_RAYS
+#if (COSMIC_RAYS_DIFFUSION_MODEL > 0)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
                     *fp++ = SphP[pindex].CosmicRayDiffusionCoeff;
                     n++;
                 }
+#endif
 #endif
             break;
 
@@ -1108,6 +1312,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
+        case IO_TURB_DYNAMIC_COEFF:
+#ifdef TURB_DIFF_DYNAMIC
+            for (n = 0; n < pc; pindex++) {
+                if (P[pindex].Type == type) {
+                    *fp++ = SphP[pindex].TD_DynDiffCoeff;
+                    n++;
+                }
+            }
+#endif
+            break;
+
         case IO_EOSYE:
 #ifdef EOS_CARRIES_YE
             for(n = 0; n < pc; pindex++)
@@ -1328,13 +1543,36 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    double f00 = 0.5 * 591569.0 / (All.FuzzyDM_Mass_in_eV * All.UnitVelocity_in_cm_per_s * All.UnitLength_in_cm/All.HubbleParam); // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
                     double d2rho = P[pindex].AGS_Gradients2_Density[0][0] + P[pindex].AGS_Gradients2_Density[1][1] + P[pindex].AGS_Gradients2_Density[2][2]; // laplacian
                     double drho2 = P[pindex].AGS_Gradients_Density[0]*P[pindex].AGS_Gradients_Density[0] + P[pindex].AGS_Gradients_Density[1]*P[pindex].AGS_Gradients_Density[1] + P[pindex].AGS_Gradients_Density[2]*P[pindex].AGS_Gradients_Density[2];
-                    double AGS_QuantumPotential = (f00*f00 / P[pindex].AGS_Density) * (d2rho - 0.5*drho2/P[pindex].AGS_Density);
+                    double AGS_QuantumPotential = (0.25*All.ScalarField_hbar_over_mass*All.ScalarField_hbar_over_mass / P[pindex].AGS_Density) * (d2rho - 0.5*drho2/P[pindex].AGS_Density);
                     *fp++ = AGS_QuantumPotential;
                     n++;
                 }
+#endif
+            break;
+        case IO_AGS_PSI_RE:        /* real part of wavefunction */
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+#if (DM_FUZZY > 0)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = P[pindex].AGS_Psi_Re * P[pindex].AGS_Density / P[pindex].Mass;
+                    n++;
+                }
+#endif
+#endif
+            break;
+        case IO_AGS_PSI_IM:        /* imaginary part of wavefunction */
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+#if (DM_FUZZY > 0)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = P[pindex].AGS_Psi_Im * P[pindex].AGS_Density / P[pindex].Mass;
+                    n++;
+                }
+#endif
 #endif
             break;
         case IO_AGS_ZETA:		/* Adaptive Gravitational Softening: zeta */
@@ -1481,8 +1719,41 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             }
 #endif
             break;
+
+    case IO_TURB_DIFF_COEFF:
+#ifdef TURB_DIFF_DYNAMIC
+        for (n = 0; n < pc; pindex++) {
+            if (P[pindex].Type == type) {
+                *fp++ = SphP[pindex].TD_DiffCoeff;
+                n++;
+            }
+        }
+#endif
+
+        break;
             
-            
+    case IO_DYNERROR:
+#ifdef TURB_DIFF_DYNAMIC_ERROR
+        for (n = 0; n < pc; pindex++) {
+            if (P[pindex].Type == type) {
+                *fp++ = SphP[pindex].TD_DynDiffCoeff_error;
+                n++;
+            }
+        }
+#endif
+        break;
+
+    case IO_DYNERRORDEFAULT:
+#ifdef TURB_DIFF_DYNAMIC_ERROR
+        for (n = 0; n < pc; pindex++) {
+            if (P[pindex].Type == type) {
+                *fp++ = SphP[pindex].TD_DynDiffCoeff_error_default;
+                n++;
+            }
+        }
+#endif
+        break;
+ 
         case IO_LASTENTRY:
             endrun(213);
             break;
@@ -1565,6 +1836,11 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_HeIII:
         case IO_H2I:
         case IO_H2II:
+        case IO_CRATE:
+        case IO_HRATE:
+        case IO_NHRATE:
+        case IO_HHRATE:
+        case IO_MCRATE:
         case IO_HM:
         case IO_HD:
         case IO_DI:
@@ -1622,6 +1898,8 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_AGS_SOFT:
         case IO_AGS_RHO:
         case IO_AGS_QPT:
+        case IO_AGS_PSI_RE:
+        case IO_AGS_PSI_IM:
         case IO_AGS_ZETA:
         case IO_AGS_OMEGA:
         case IO_AGS_CORR:
@@ -1639,6 +1917,10 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_grDI:
         case IO_grDII:
         case IO_grHDI:
+        case IO_TURB_DYNAMIC_COEFF:
+        case IO_TURB_DIFF_COEFF:
+        case IO_DYNERROR:
+        case IO_DYNERRORDEFAULT:
             if(mode)
                 bytes_per_blockelement = sizeof(MyInputFloat);
             else
@@ -1691,6 +1973,87 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
                 bytes_per_blockelement = (NUM_METAL_SPECIES) * sizeof(MyOutputFloat);
 #endif
             break;
+
+            
+#ifdef CHIMES
+        case IO_CHIMES_ABUNDANCES:
+            if(mode)
+                bytes_per_blockelement = ChimesGlobalVars.totalNumberOfSpecies * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = ChimesGlobalVars.totalNumberOfSpecies * sizeof(MyOutputFloat);
+            break;
+
+        case IO_CHIMES_MU: 
+            if(mode)
+                bytes_per_blockelement = sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = sizeof(MyOutputFloat);
+            break;
+
+        case IO_CHIMES_REDUCED: 
+#ifdef CHIMES_REDUCED_OUTPUT 
+            if(mode)
+                bytes_per_blockelement = 4 * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = 4 * sizeof(MyOutputFloat);
+#endif 
+            break;
+
+        case IO_CHIMES_NH:
+#ifdef CHIMES_NH_OUTPUT 
+            if(mode)
+                bytes_per_blockelement = sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = sizeof(MyOutputFloat);
+#endif 
+	    break; 
+
+        case IO_CHIMES_STAR_SIGMA: 
+#if defined(CHIMES_NH_OUTPUT) && defined(CHIMES_OUTPUT_DENS_AROUND_STAR) 
+            if(mode)
+                bytes_per_blockelement = sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = sizeof(MyOutputFloat);
+#endif 
+	    break;
+
+        case IO_CHIMES_FLUX_G0: 
+#ifdef CHIMES_STELLAR_FLUXES  
+            if(mode)
+                bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyOutputFloat);
+#endif 
+            break;
+
+        case IO_CHIMES_FLUX_ION: 
+#ifdef CHIMES_STELLAR_FLUXES  
+            if(mode)
+                bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = CHIMES_LOCAL_UV_NBINS * sizeof(MyOutputFloat);
+#endif 
+            break;
+
+        case IO_CHIMES_STAR_DENS: 
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+            if(mode)
+                bytes_per_blockelement = sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = sizeof(MyOutputFloat);
+            break;
+#endif 
+
+        case IO_CHIMES_DELAY_HII: 
+#ifdef CHIMES_OUTPUT_DELAY_TIME_HII 
+            if(mode)
+                bytes_per_blockelement = sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = sizeof(MyOutputFloat);
+            break;
+#endif 
+ 
+#endif // CHIMES 
             
             
         case IO_EOS_STRESS_TENSOR:
@@ -1842,6 +2205,11 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_HeIII:
         case IO_H2I:
         case IO_H2II:
+        case IO_CRATE:
+        case IO_HRATE:
+        case IO_NHRATE:
+        case IO_HHRATE:
+        case IO_MCRATE:
         case IO_HM:
         case IO_HD:
         case IO_DI:
@@ -1900,6 +2268,8 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_AGS_SOFT:
         case IO_AGS_RHO:
         case IO_AGS_QPT:
+        case IO_AGS_PSI_RE:
+        case IO_AGS_PSI_IM:
         case IO_AGS_ZETA:
         case IO_AGS_OMEGA:
         case IO_AGS_CORR:
@@ -1918,6 +2288,10 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_grDI:
         case IO_grDII:
         case IO_grHDI:
+        case IO_TURB_DYNAMIC_COEFF:
+        case IO_TURB_DIFF_COEFF:
+        case IO_DYNERROR:
+        case IO_DYNERRORDEFAULT:
             values = 1;
             break;
 
@@ -1970,7 +2344,73 @@ int get_values_per_blockelement(enum iofields blocknr)
             values = 0;
 #endif
             break;
-            
+
+#ifdef CHIMES 
+        case IO_CHIMES_ABUNDANCES: 
+	  values = ChimesGlobalVars.totalNumberOfSpecies; 
+	  break; 
+
+        case IO_CHIMES_MU: 
+	  values = 1; 
+	  break; 
+	  
+        case IO_CHIMES_REDUCED: 
+#ifdef CHIMES_REDUCED_OUTPUT 
+	  values = 4; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_NH:
+#ifdef CHIMES_NH_OUTPUT 
+	  values = 1; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_STAR_SIGMA: 
+#if defined(CHIMES_NH_OUTPUT) && defined(CHIMES_OUTPUT_DENS_AROUND_STAR) 
+	  values = 1; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_FLUX_G0: 
+#ifdef CHIMES_STELLAR_FLUXES  
+	  values = CHIMES_LOCAL_UV_NBINS; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_FLUX_ION: 
+#ifdef CHIMES_STELLAR_FLUXES  
+	  values = CHIMES_LOCAL_UV_NBINS; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_STAR_DENS: 
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+	  values = 1; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_DELAY_HII: 
+#ifdef CHIMES_OUTPUT_DELAY_TIME_HII 
+	  values = 1; 
+#else 
+	  values = 0; 
+#endif 
+	  break; 
+
+#endif // CHIMES 
             
         case IO_IMF:
 #ifdef GALSF_SFR_IMF_VARIATION
@@ -2056,6 +2496,8 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_AGS_SOFT:
         case IO_AGS_RHO:
         case IO_AGS_QPT:
+        case IO_AGS_PSI_RE:
+        case IO_AGS_PSI_IM:
         case IO_AGS_ZETA:
         case IO_AGS_OMEGA:
         case IO_AGS_CORR:
@@ -2090,6 +2532,11 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_HeIII:
         case IO_H2I:
         case IO_H2II:
+        case IO_CRATE:
+        case IO_HRATE:
+        case IO_NHRATE:
+        case IO_HHRATE:
+        case IO_MCRATE:
         case IO_HM:
         case IO_HD:
         case IO_DI:
@@ -2145,6 +2592,10 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_grDI:
         case IO_grDII:
         case IO_grHDI:
+        case IO_TURB_DYNAMIC_COEFF:
+        case IO_TURB_DIFF_COEFF:
+        case IO_DYNERROR:
+        case IO_DYNERRORDEFAULT:
             for(i = 1; i < 6; i++)
                 typelist[i] = 0;
             return ngas;
@@ -2160,7 +2611,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             if(i != 4)
                 typelist[i] = 0;
             return nstars;
-#endif
+#endif // BLACK_HOLES  
             break;
             
         case IO_OSTAR:
@@ -2214,6 +2665,81 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
                     typelist[i] = 0;
             return ngas + nstars;
             break;
+
+#ifdef CHIMES 
+        case IO_CHIMES_ABUNDANCES:
+	  for (i = 1; i < 6; i++) 
+	    typelist[i] = 0; 
+	  return ngas; 
+	  break; 
+
+        case IO_CHIMES_MU: 
+	  for (i = 1; i < 6; i++) 
+	    typelist[i] = 0; 
+	  return ngas; 
+	  break; 
+
+        case IO_CHIMES_REDUCED: 
+	  for (i = 1; i < 6; i++) 
+	    typelist[i] = 0; 
+	  return ngas; 
+	  break; 
+
+        case IO_CHIMES_NH: 
+	  for (i = 1; i < 6; i++) 
+	    typelist[i] = 0; 
+	  return ngas; 
+	  break; 
+
+        case IO_CHIMES_STAR_SIGMA: 
+	  nngb = nstars; 
+	  typelist[0] = 0; 
+	  typelist[1] = 0; 
+	  typelist[5] = 0; 
+	  if (All.ComovingIntegrationOn) 
+	    {
+	      typelist[2] = 0; 
+	      typelist[3] = 0; 
+	    } 
+	  else 
+	    nngb += header.npart[2] + header.npart[3]; 
+	  return nngb; 
+	  break; 
+
+        case IO_CHIMES_FLUX_G0: 
+	  for (i = 1; i < 6; i++) 
+	    typelist[i] = 0; 
+	  return ngas; 
+	  break; 
+
+        case IO_CHIMES_FLUX_ION: 
+	  for (i = 1; i < 6; i++) 
+	    typelist[i] = 0; 
+	  return ngas; 
+	  break; 
+
+        case IO_CHIMES_STAR_DENS: 
+	  nngb = nstars; 
+	  typelist[0] = 0; 
+	  typelist[1] = 0; 
+	  typelist[5] = 0; 
+	  if (All.ComovingIntegrationOn) 
+	    {
+	      typelist[2] = 0; 
+	      typelist[3] = 0; 
+	    } 
+	  else 
+	    nngb += header.npart[2] + header.npart[3]; 
+	  return nngb; 
+	  break; 
+
+        case IO_CHIMES_DELAY_HII: 
+	  for (i = 1; i < 6; i++) 
+	    typelist[i] = 0; 
+	  return ngas; 
+	  break; 
+
+#endif // CHIMES 
             
         case IO_BHMASS:
         case IO_BHMASSALPHA:
@@ -2299,7 +2825,9 @@ int blockpresent(enum iofields blocknr)
         case IO_NE:
         case IO_NH:
 #if defined(COOLING) || defined(RADTRANSFER)
+#ifndef CHIMES 
             return 1;
+#endif
 #endif
             return 0;
             break;
@@ -2337,7 +2865,7 @@ int blockpresent(enum iofields blocknr)
 #endif
             return 0;
             break;
-            
+
         case IO_GRAINSIZE:
 #ifdef GRAIN_FLUID
             return 1;
@@ -2353,7 +2881,82 @@ int blockpresent(enum iofields blocknr)
 #endif
             return 0;
             break;
-            
+
+#ifdef CHIMES 
+        case IO_CHIMES_ABUNDANCES:
+#ifdef CHIMES_REDUCED_OUTPUT 
+	  if (Chimes_incl_full_output == 1) 
+	    return 1; 
+	  else 
+	    return 0; 
+#else 
+	  return 1; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_MU: 
+	  return 1; 
+
+        case IO_CHIMES_REDUCED: 
+#ifdef CHIMES_REDUCED_OUTPUT 
+	  if (Chimes_incl_full_output == 0) 
+	    return 1; 
+	  else 
+	    return 0; 
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_NH:
+#ifdef CHIMES_NH_OUTPUT 
+	  return 1;
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_STAR_SIGMA: 
+#if defined(CHIMES_NH_OUTPUT) && defined(CHIMES_OUTPUT_DENS_AROUND_STAR) 
+	  return 1; 
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_FLUX_G0: 
+#ifdef CHIMES_STELLAR_FLUXES  
+	  return 1; 
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_FLUX_ION: 
+#ifdef CHIMES_STELLAR_FLUXES  
+	  return 1; 
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_STAR_DENS:
+#ifdef CHIMES_OUTPUT_DENS_AROUND_STAR 
+	  return 1;
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+        case IO_CHIMES_DELAY_HII:
+#ifdef CHIMES_OUTPUT_DELAY_TIME_HII 
+	  return 1;
+#else 
+	  return 0; 
+#endif 
+	  break; 
+
+#endif // CHIMES 
             
         case IO_DELAYTIME:
 #ifdef GALSF_SUBGRID_WINDS
@@ -2384,7 +2987,18 @@ int blockpresent(enum iofields blocknr)
         case IO_HM:
             return 0;
             break;
-            
+        case IO_CRATE:
+        case IO_HRATE:
+        case IO_NHRATE:
+        case IO_HHRATE:
+        case IO_MCRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            return 1;
+#else
+            return 0;
+#endif
+            break;        
+        
         case IO_HD:
         case IO_DI:
         case IO_DII:
@@ -2513,11 +3127,12 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_COSMICRAY_KAPPA:
-#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_DIFFUSION_CONSTANT) && !defined(COSMIC_RAYS_DISABLE_DIFFUSION)
+#ifdef COSMIC_RAYS
+#if (COSMIC_RAYS_DIFFUSION_MODEL > 0)
             return 1;
-#else
-            return 0;
 #endif
+#endif
+            return 0;
             break;
 
         case IO_COSMICRAY_ALFVEN:
@@ -2652,13 +3267,8 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-        case IO_GDE_DISTORTIONTENSOR:
-#ifdef OUTPUT_GDE_DISTORTIONTENSOR
-            return 1;
-#else
-            return 0;
-#endif
             
+        case IO_GDE_DISTORTIONTENSOR:
         case IO_CAUSTIC_COUNTER:
 #ifdef GDE_DISTORTIONTENSOR
             return 1;
@@ -2674,12 +3284,6 @@ int blockpresent(enum iofields blocknr)
 #endif
             
         case IO_STREAM_DENSITY:
-#ifdef GDE_DISTORTIONTENSOR
-            return 1;
-#else
-            return 0;
-#endif
-            
         case IO_PHASE_SPACE_DETERMINANT:
 #ifdef GDE_DISTORTIONTENSOR
             return 1;
@@ -2702,12 +3306,6 @@ int blockpresent(enum iofields blocknr)
 #endif
             
         case IO_SHEET_ORIENTATION:
-#if defined(GDE_DISTORTIONTENSOR) && (!defined(GDE_LEAN) || defined(GDE_READIC))
-            return 1;
-#else
-            return 0;
-#endif
-            
         case IO_INIT_DENSITY:
 #if defined(GDE_DISTORTIONTENSOR) && (!defined(GDE_LEAN) || defined(GDE_READIC))
             return 1;
@@ -2728,36 +3326,36 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
+
         case IO_PRESSURE:
-#ifdef EOS_GENERAL
-            return 1;
-#else
-            return 0;
-#endif
         case IO_EOSCS:
 #ifdef EOS_GENERAL
             return 1;
 #else
             return 0;
 #endif
+
         case IO_EOS_STRESS_TENSOR:
 #ifdef EOS_ELASTIC
             return 1;
 #else
             return 0;
 #endif
+
         case IO_EOSCOMP:
 #ifdef EOS_TILLOTSON
             return 1;
 #else
             return 0;
 #endif
+
         case IO_EOSABAR:
 #ifdef EOS_CARRIES_ABAR
             return 1;
 #else
             return 0;
 #endif
+
         case IO_EOSYE:
 #ifdef EOS_CARRIES_YE
             return 1;
@@ -2778,7 +3376,6 @@ int blockpresent(enum iofields blocknr)
 #else
             return 0;
 #endif
-
             
         case IO_EDDINGTON_TENSOR:
 #if defined(RADTRANSFER)
@@ -2815,6 +3412,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_AGS_RHO:
+        case IO_AGS_QPT:
 #if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
             return 1;
 #else
@@ -2822,9 +3420,14 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
 
-        case IO_AGS_QPT:
+        case IO_AGS_PSI_RE:
+        case IO_AGS_PSI_IM:
 #if defined (ADAPTIVE_GRAVSOFT_FORALL) && defined(DM_FUZZY)
+#if (DM_FUZZY > 0)
             return 1;
+#else
+            return 0;
+#endif
 #else
             return 0;
 #endif
@@ -2839,25 +3442,12 @@ int blockpresent(enum iofields blocknr)
             break;
             
         case IO_AGS_OMEGA:
-            return 0;
-            break;
-            
         case IO_AGS_CORR:
-            return 0;
-            break;
-            
         case IO_AGS_NGBS:
-            return 0;
-            break;
-            
         case IO_MG_PHI:
-            return 0;
-            break;
-            
         case IO_MG_ACCEL:
             return 0;
             break;
-            
             
         case IO_grHI:
         case IO_grHII:
@@ -2890,8 +3480,24 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
-            
-            
+
+    case IO_TURB_DYNAMIC_COEFF:
+    case IO_TURB_DIFF_COEFF:
+#ifdef TURB_DIFF_DYNAMIC
+        return 1;
+#else
+        return 0;
+#endif
+        break;
+
+    case IO_DYNERRORDEFAULT:
+    case IO_DYNERROR:
+#ifdef TURB_DIFF_DYNAMIC_ERROR
+        return 1;
+#else
+        return 0;
+#endif
+        break; 
         case IO_LASTENTRY:
             return 0;			/* will not occur */
     }
@@ -2958,6 +3564,21 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_H2II:
             strncpy(label, "H2II", 4);
             break;
+        case IO_CRATE:
+            strncpy(label, "CRATE", 4);
+            break;
+        case IO_HRATE:
+            strncpy(label, "HRATE", 4);
+            break;   
+        case IO_NHRATE:
+            strncpy(label, "NHRATE", 4);
+            break;
+        case IO_HHRATE:
+            strncpy(label, "HHRATE", 4);
+            break;
+        case IO_MCRATE:
+            strncpy(label, "MCRATE", 4);
+            break;  
         case IO_HM:
             strncpy(label, "HM  ", 4);
             break;
@@ -2994,6 +3615,35 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_Z:
             strncpy(label, "Z   ", 4);
             break;
+#ifdef CHIMES 
+        case IO_CHIMES_ABUNDANCES: 
+	    strncpy(label, "CHIM", 4); 
+	    break; 
+        case IO_CHIMES_MU:  
+	    strncpy(label, "CHMU", 4); 
+	    break; 
+        case IO_CHIMES_REDUCED: 
+	    strncpy(label, "REDU", 4); 
+	    break; 
+        case IO_CHIMES_NH: 
+	    strncpy(label, "CHNH", 4); 
+	    break; 
+        case IO_CHIMES_STAR_SIGMA: 
+	  strncpy(label, "CHST", 4); 
+	  break; 
+        case IO_CHIMES_FLUX_G0: 
+	  strncpy(label, "CHGO", 4); 
+	  break; 
+        case IO_CHIMES_FLUX_ION: 
+	  strncpy(label, "CHIO", 4); 
+	  break; 
+        case IO_CHIMES_STAR_DENS: 
+	  strncpy(label, "CHDE", 4); 
+	  break; 
+        case IO_CHIMES_DELAY_HII: 
+	  strncpy(label, "CHII", 4); 
+	  break; 
+#endif      
         case IO_POT:
             strncpy(label, "POT ", 4);
             break;
@@ -3213,6 +3863,12 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_AGS_QPT:
             strncpy(label, "AQPT", 4);
             break;
+        case IO_AGS_PSI_RE:
+            strncpy(label, "PSIR", 4);
+            break;
+        case IO_AGS_PSI_IM:
+            strncpy(label, "PSII", 4);
+            break;
         case IO_AGS_ZETA:
             strncpy(label, "AGSZ", 4);
             break;
@@ -3270,7 +3926,18 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_grHDI:
             strncpy(label, "gHDI", 4);
             break;
-            
+        case IO_TURB_DYNAMIC_COEFF:
+            strncpy(label, "tdyn", 4);
+            break;
+        case IO_TURB_DIFF_COEFF:
+            strncpy(label, "turb", 4);
+            break;
+        case IO_DYNERROR:
+            strncpy(label, "derr", 4);
+            break;
+        case IO_DYNERRORDEFAULT:
+            strncpy(label, "derd", 4);
+            break; 
             
         case IO_LASTENTRY:
             endrun(217);
@@ -3339,6 +4006,41 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_H2II:
             strcpy(buf, "H2II");
             break;
+        case IO_CRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            strcpy(buf, "CoolingRate");
+#else
+            strcpy(buf, "CRATE");
+#endif
+            break;
+        case IO_HRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            strcpy(buf, "HeatingRate");
+#else
+            strcpy(buf, "HRATE");
+#endif
+            break;
+        case IO_NHRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            strcpy(buf, "NetHeatingRateQ");
+#else
+            strcpy(buf, "NHRATE");
+#endif
+            break;
+        case IO_HHRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            strcpy(buf, "HydroHeatingRate");
+#else
+            strcpy(buf, "HHRATE");
+#endif
+            break;
+        case IO_MCRATE:
+#if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
+            strcpy(buf, "MetalCoolingRate");
+#else
+            strcpy(buf, "MCRATE");
+#endif
+            break;        
         case IO_HM:
             strcpy(buf, "HM");
             break;
@@ -3375,6 +4077,35 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_Z:
             strcpy(buf, "Metallicity");
             break;
+#ifdef CHIMES 
+        case IO_CHIMES_ABUNDANCES:
+	    strcpy(buf, "ChimesAbundances"); 
+	    break; 
+        case IO_CHIMES_MU: 
+	    strcpy(buf, "ChimesMu"); 
+	    break; 
+        case IO_CHIMES_REDUCED: 
+	    strcpy(buf, "ChimesReducedAbundances"); 
+	    break; 
+        case IO_CHIMES_NH: 
+	    strcpy(buf, "ChimesColumnDensity"); 
+	    break; 
+        case IO_CHIMES_STAR_SIGMA: 
+	  strcpy(buf, "SigmaEff"); 
+	  break; 
+        case IO_CHIMES_FLUX_G0: 
+	  strcpy(buf, "ChimesFluxG0"); 
+	  break; 
+        case IO_CHIMES_FLUX_ION: 
+	  strcpy(buf, "ChimesFluxIon"); 
+	  break; 
+        case IO_CHIMES_STAR_DENS: 
+	    strcpy(buf, "DensAroundStar"); 
+	    break; 
+        case IO_CHIMES_DELAY_HII: 
+	    strcpy(buf, "DelayTimeHII"); 
+	    break; 
+#endif 
         case IO_POT:
             strcpy(buf, "Potential");
             break;
@@ -3588,6 +4319,12 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_AGS_QPT:
             strcpy(buf, "AGS-QuantumPotentialQ");
             break;
+        case IO_AGS_PSI_RE:
+            strcpy(buf, "WavefunctionPsi-Real");
+            break;
+        case IO_AGS_PSI_IM:
+            strcpy(buf, "WavefunctionPsi-Imag");
+            break;
         case IO_AGS_ZETA:
             strcpy(buf, "AGS-Zeta");
             break;
@@ -3645,7 +4382,18 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_grHDI:
             strcpy(buf, "GrackleHDI");
             break;
-            
+        case IO_TURB_DYNAMIC_COEFF:
+            strcpy(buf, "DynSmagCoeff");
+            break;
+        case IO_TURB_DIFF_COEFF:
+            strcpy(buf, "TurbDiffCoeff");
+            break;
+        case IO_DYNERROR:
+            strcpy(buf, "DynamicError");
+            break;
+        case IO_DYNERRORDEFAULT:
+            strcpy(buf, "DynamicErrorDefault");
+            break;
         case IO_LASTENTRY:
             endrun(218);
             break;

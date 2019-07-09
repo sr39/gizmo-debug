@@ -12,13 +12,12 @@
 #############
 
 
-#SYSTYPE="BlueWaters"
-#SYSTYPE="Stampede"
+#SYSTYPE="Frontera"
 SYSTYPE="Stampede2"
-#SYSTYPE="Zwicky"
 #SYSTYPE="Wheeler"
 #SYSTYPE="MacBookPro"
 #SYSTYPE="Quest"
+#SYSTYPE="Quest-intel"
 #SYSTYPE="Iron"
 #SYSTYPE="Darter"
 #SYSTYPE="Comet"
@@ -49,3 +48,6 @@ SYSTYPE="Stampede2"
 #SYSTYPE="Kolob"
 #SYSTYPE="Centos5-Gnu"
 #SYSTYPE="OPA-Cluster64-Intel"
+#SYSTYPE="Stampede"
+#SYSTYPE="Zwicky"
+#SYSTYPE="BlueWaters"

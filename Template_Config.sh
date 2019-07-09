@@ -116,10 +116,10 @@
 # --------------------------------------- Aerodynamic Particles
 # ----------------------------- This is developed by P. Hopkins, who requests that you inform him of planned projects with these modules
 # ------------------------------  because he is supervising several students using them as well, and there are some components still in active development.
-# ------------------------------  Users should cite: Hopkins & Lee 2016, MNRAS, 456, 4174, and Lee, Hopkins, & Squire 2017, MNRAS, 469, 3532, for the numerical methods
+# ------------------------------  Users should cite: Hopkins & Lee 2016, MNRAS, 456, 4174, and Lee, Hopkins, & Squire 2017, MNRAS, 469, 3532, for the numerical methods (plus other papers cited below)
 #GRAIN_FLUID                    # aerodynamically-coupled grains (particle type 3 are grains); default is Epstein drag
 #GRAIN_EPSTEIN_STOKES=1         # uses the cross section for molecular hydrogen (times this number) to calculate Epstein-Stokes drag (will use calculate which applies and use appropriate value); if used with GRAIN_LORENTZFORCE, will also compute Coulomb drag
-#GRAIN_BACKREACTION             # account for momentum of grains pushing back on gas (from drag terms)
+#GRAIN_BACKREACTION             # account for momentum of grains pushing back on gas (from drag terms); users should cite Moseley et al., 2018, arXiv:1810.08214.
 #GRAIN_LORENTZFORCE             # charged grains feel Lorentz forces (requires MAGNETIC); if used with GRAIN_EPSTEIN_STOKES flag, will also compute Coulomb drag (grain charges self-consistently computed from gas properties)
 #GRAIN_COLLISIONS               # model collisions between grains (super-particles; so this is stochastic) - framework is in place, but users need to implement specific physical models for collisions
 ## ----------------------------------------------------------------------------------------------------
@@ -128,10 +128,10 @@
 #COSMIC_RAYS                    # two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anisotropic diffusion, streaming, injection by SNe
 #COSMIC_RAYS_ALFVEN=(500.)      # solve CR transport based on Alfven-limited scattering from Thomas+Pfrommer 18, evolves CRs+resonant Alfven population; value here is maximum free-streaming speed in code units
 #COSMIC_RAYS_M1=(500.)          # solve the CR transport in the M1 limit [second-order expansion of the collisionless boltzmann eqn]; value here is the streaming speed in code units
+#COSMIC_RAYS_DIFFUSION_MODEL=0  # determine how coefficients for CR transport scale. 0=constant diffusivity, -1=no diffusion(still stream), values >=1 correspond to different literature scalings for the coefficients (see user guide)
+#COSMIC_RAYS_ION_ALFVEN_SPEED   # assume the relevant Alfven speed governing CR transport is not the ideal-MHD Alfven speed, but the Alfven speed for -just- the ions (applicable in the weak-coupling limit for the resonant Alfven waves at CR gyro-resonance)
 #COSMIC_RAYS_DISABLE_STREAMING  # turn off CR streaming (propagation is purely advective+diffusion; warning: this can severely under-estimate CR losses to Alfven waves)
-#COSMIC_RAYS_DISABLE_DIFFUSION  # turn off CR diffusion (leaves streaming intact, simply disables 'microscopic+turbulent' CR diffusion terms)
 #COSMIC_RAYS_DISABLE_COOLING    # turn off CR heating/cooling interactions with gas (catastrophic losses, hadronic interactions, etc; only adiabatic PdV work terms remain)
-#COSMIC_RAYS_DIFFUSION_CONSTANT # replaces physical CR diffusion with constant coefficient (equal to value of CosmicRayDiffusionCoeff in code units); turn off streaming to make this the ONLY transport
 ## ----------------------------------------------------------------------------------------------------
 ####################################################################################################
 
@@ -172,7 +172,7 @@
 # -------------------------------    use of these routines (if not in the public GIZMO code) requires explicit pre-approval by developers J. Bullock or M. Boylan-Kolchin (acting for M. Rocha); approved users please cite Rocha et al., MNRAS 2013, 430, 81 and Robles et al, 2017 (arXiv:1706.07514)
 #DM_SIDM=2                      # self-interacting particle types (specify the particle types which are self-interacting DM with a bit mask, as for PM_PLACEHIGHRESREGION above (see description); previous "DMDISK_INTERACTIONS" is identical to setting DM_SIDM=2+4  [cite Rocha et al., MNRAS 2013, 430, 81 and Robles et al, 2017 (arXiv:1706.07514)]
 #DM_SCALARFIELD_SCREENING       # gravity is mediated by a long-range scalar field, with dynamical screening (primarily alternative DE models) [cite Rocha et al., MNRAS 2013, 430, 81 and Robles et al, 2017 (arXiv:1706.07514)]
-#DM_FUZZY                       #- DM particles (Type=1) are described by Bose-Einstein Condensate: within gravity kernel (adaptive), solves quantum pressure tensor for non-linear terms arising from Schroedinger equation for a given particle mass. IN TESTING PLEASE DO NOT USE!!!
+#DM_FUZZY=0                     #- DM particles (Type=1) are described by Bose-Einstein Condensate: within gravity kernel (adaptive), solves quantum pressure tensor for non-linear terms arising from Schroedinger equation for a given particle mass. IN TESTING PLEASE DO NOT USE!!! 0=fully-conservative Madelung method. 1=mass-conserving direct SPE integration. 2=direct SPE (non mass-conserving)
 ## ----------------------------------------------------------------------------------------------------
 # -------------------------------------- arbitrary time-dependent dark energy equations-of-state, expansion histories, or gravitational constants
 #GR_TABULATED_COSMOLOGY         # enable reading tabulated cosmological/gravitational parameters (master switch)
@@ -243,12 +243,12 @@
 
 ############################################################################################################################
 ## ----------------------------------------------------------------------------------------------------
-# ------------------------------------- Star formation with -individual- stars [sink particles]: from PFH [proprietary development with Mike Grudic and David Guszejnov; modules not to be used without authors permission]
+# ------------------------------------- Star formation with -individual- stars [sink particles]: from PFH [proprietary development with Mike Grudic and David Guszejnov; modules not to be used without authors permission, though basic modules may be ok there is a lot of development happening here]
 ## ----------------------------------------------------------------------------------------------------
 #SINGLE_STAR_FORMATION          # master switch for single star formation model: sink particles representing -individual- stars
 #SINGLE_STAR_ACCRETION=0        # proto-stellar accretion: 0=grav capture only; 1+=alpha-disk accretion onto protostar; 2+=bondi accretion of diffuse gas; 3+=sub-grid variability
 #SINGLE_STAR_FB_HEATING         # proto-stellar heating: luminosity determined by BlackHoleRadiativeEfficiency (typical ~5e-7)
-#SINGLE_STAR_FB_JETS            # protostellar jets: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow
+#SINGLE_STAR_FB_JETS            # protostellar jets: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow. cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840 (for algorithm, developed for black hole jets)
 #SINGLE_STAR_PROMOTION          # proto-stars become ZAMS stars at end of pre-main sequence lifetime. FIRE feedback modules kick in, but using appropriate luminosities and temperatures for each
 ############################################################################################################################
 
@@ -291,7 +291,7 @@
 # -- mechanical (wind from accretion disk/BH with specified mass/momentum/energy-loading relative to accretion rate)
 #BH_WIND_CONTINUOUS=0           # gas in kernel given continuous wind flux (energy/momentum/etc). =0 for isotropic, =1 for collimated. cite Hopkins et al., 2016, MNRAS, 458, 816
 #BH_WIND_KICK=1                 # gas in kernel given stochastic 'kicks' at fixed velocity. (>0=isotropic, <0=collimated, absolute value sets momentum-loading in L/c units). cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840
-#BH_WIND_SPAWN                  # spawn virtual 'wind' particles to carry BH winds out [in development by Paul Torrey]. use requires permissions from P. Torrey and PFH (cite Torrey et al. 2019 if used: -strongly- recommend contacting P. Torrey and PFH before use, as this is not fully-debugged)
+#BH_WIND_SPAWN=3                # spawn virtual 'wind' particles to carry BH winds out [in development by Paul Torrey]. use requires permissions from P. Torrey and PFH (cite Torrey et al. 2019 if used: -strongly- recommend contacting P. Torrey and PFH before use, as this is not fully-debugged). value=min number spawned per spawn-step
 #--- radiative: [FIRE] these currently are built on the architecture of the FIRE stellar FB modules, and require some of those be active. their use therefore follows FIRE policies (see details above).
 #BH_COMPTON_HEATING             # enable Compton heating/cooling from BHs in cooling function (needs BH_PHOTONMOMENTUM). cite Hopkins et al., 2016, MNRAS, 458, 816
 #BH_HII_HEATING                 # photo-ionization feedback from BH (needs GALSF_FB_FIRE_RT_HIIHEATING). cite Hopkins et al., arXiv:1702.06148
@@ -307,8 +307,6 @@
 #------------ deprecated or de-bugging options (most have been combined or optimized into the functions above, here for legacy)
 ##---------------------BH_SEED_GROWTH_TESTS             #- Currently testing options for BH seeding
 ####################################################################################################
-
-
 
 
 
@@ -368,6 +366,7 @@
 ####################################################################################################
 # --------------------------------------- Input/Output options
 ####################################################################################################
+#LONG_INTEGER_TIME              # total number of interger time step = 1<<39
 #OUTPUT_ADDITIONAL_RUNINFO      # enables extended simulation output data (can slow down machines significantly in massively-parallel runs)
 #OUTPUT_IN_DOUBLEPRECISION      # snapshot files will be written in double precision
 #INPUT_IN_DOUBLEPRECISION       # input files assumed to be in double precision (otherwise float is assumed)
@@ -379,6 +378,7 @@
 #OUTPUT_VORTICITY               # outputs the vorticity vector
 #OUTPUT_TIMESTEP                # outputs timesteps for each particle
 #OUTPUT_COOLRATE                # outputs cooling rate, and conduction rate if enabled
+#OUTPUT_COOLRATE_DETAIL         # outputs cooling rate term by term [saves all individually to snapshot]
 #OUTPUT_LINEOFSIGHT				# enables on-the-fly output of Ly-alpha absorption spectra
 #OUTPUT_LINEOFSIGHT_SPECTRUM    # computes power spectrum of these (requires additional code integration)
 #OUTPUT_LINEOFSIGHT_PARTICLES   # computes power spectrum of these (requires additional code integration)
@@ -432,6 +432,7 @@
 #PARTICLE_EXCISION              # enable dynamical excision (remove particles within some radius)
 #MERGESPLIT_HARDCODE_MAX_MASS=(1.0e-6)   # manually set maximum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
 #MERGESPLIT_HARDCODE_MIN_MASS=(1.0e-7)   # manually set minimum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
+#BH_DEBUG_FIX_MASS              # does not allow BH/sink [type=5] particles to change their mass during run, from accretion/merging/swallowing
 # --------------------
 # ----- MPI & Parallel-FFTW De-Bugging
 #USE_MPI_IN_PLACE               # MPI debugging: makes AllGatherV compatible with MPI_IN_PLACE definitions in some MPI libraries
@@ -442,6 +443,7 @@
 #DONOTUSENODELIST               # MPI debugging
 #NOTYPEPREFIX_FFTW              # FFTW debugging (fftw-header/libraries accessed without type prefix, adopting whatever was
                                 #   chosen as default at compile of fftw). Otherwise, the type prefix 'd' for double is used.
+#USE_FFTW3                      # enables FFTW3 (can be used with DOUBLEPRECISION_FFTW) 
 #DOUBLEPRECISION_FFTW           # FFTW in double precision to match libraries
 # --------------------
 # ----- Load-Balancing
@@ -460,6 +462,29 @@
 ##-
 ####################################################################################################-
 ####################################################################################################-
+
+
+
+####################################################################################################-
+##----------------------------------------------------------------------------------------------------
+#-------------------------------------- Non-Equilibrium Chemical Networks (includes novel cooling modules but also chemical networks and solvers)
+#-------------------------- This is the CHIMES network developed by A. Richings. The module is proprietary at the moment and users should request permission from A. Richings
+####################################################################################################-
+#CHIMES                         #- enable CHIMES: cooling & chemistry package. Requires COOLING above. Also, requires COOL_METAL_LINES_BY_SPECIES to include metals.
+#CHIMES_HYDROGEN_ONLY           #- Hydrogen-only. This is ignored if METALS are also set.
+#CHIMES_SOBOLEV_SHIELDING       #- Enables local self-shielding over a Sobolev-like length scale
+#CHIMES_HII_REGIONS             #- Disables shielding withing HII region (requires FIRE modules for radiation transport/coupling: uses GALSF_FB_HII_HEATING, and permissions follow those modules)
+#CHIMES_STELLAR_FLUXES          #- Couple UV fluxes from the luminosity tree to CHIMES (requires FIRE modules for radiation transport/coupling: use permissions follow those modules)
+#CHIMES_SFR_MOLECULAR_CRITERION #- As GALSF_SFR_MOLECULAR_CRITERION, but using the H2 fraction from CHIMES (requires appropriate star formation parent flags be set)
+#CHIMES_REDUCED_OUTPUT          #- Full CHIMES abundance array only output in some snapshots
+#CHIMES_NH_OUTPUT               #- Write out column densities of gas particles to snapshots
+#CHIMES_OUTPUT_DENS_AROUND_STAR #- Write out DensAroundStar
+#CHIMES_OUTPUT_DELAY_TIME_HII   #- Output DelayTimeHII. Requires CHIMES_HII_REGIONS or GALSF_FB_HII_HEATING (and corresponding flags/permissions set)
+#CHIMES_INITIALISE_IN_EQM       #- Initialise CHIMES abundances in equilibrium at the start of the simulation
+#CHIMES_TURB_DIFF_IONS          #- Turbulent diffusions of CHIMES abundances. Requires TURB_DIFF_METALS and TURB_DIFF_METALS_LOWORDER (see modules for metal diffusion above: use/citation policy follows those)
+#CHIMES_METAL_DEPLETION         #- Uses density-dependent metal depletion factors (Jenkins 2009, De Cia et al. 2016)
+####################################################################################################-
+
 
 
 ####################################################################################################-
@@ -503,6 +528,9 @@
 #NUCLEARNET_OUTPUT_TIMEEVOLUTION
 ####################################################################################################-
 
+####################################################################################################-
+#BH_DEBUG_SPAWN_JET_TEST        #- BH outflow/particle spawn in jet (currently testing/early-dev, doesn't work for general problems! units hardcoded!)
+####################################################################################################-
 
 
 ####################################################################################################-
@@ -520,18 +548,6 @@
 #OUTPUT_GDE_DISTORTIONTENSOR    #- write phase-space distortion tensor to snapshot
 #OUTPUT_GDE_TIDALTENSORPS       #- write configuration-space tidal tensor to snapshot
 #OUTPUT_GDE_LASTCAUSTIC         #- write info on last passed caustic to snapshot
-##-----------------------------------------------------------------------------------------------------
-#--------------------------------------- SCF (potential expansion in basis functions)
-#-------------------------------- use of these routines requires explicit pre-approval by developers M. Vogelsberger & L. Hernquist
-#SCF_POTENTIAL                  #- turn SCF on/off
-#SCF_HYBRID=1                   #- =1:tree:stars<->stars,DM<->DM,stars->DM/SCF:stars<-DM =2:tree:stars<->stars,stars->DM/SCF:stars<-DM,DM<->DM
-#SCF_HQ_MASS=95.2401            #- mass of halo of expansion basis
-#SCF_HQ_A=29.7754               #- scale length of halo of expansion basis
-#SCF_NEFF=5000000               #- effective particle number in halo
-#SCF_NMAX=1                     #- maximum n for expansion cut-off
-#SCF_LMAX=1                     #- maximum l for expansion cut-off
-#SCF_SCALEFAC                   #- read-in scale factors for coefficients from file scf_scalefac.dat (must be created by user)
 ####################################################################################################-
-
 
 

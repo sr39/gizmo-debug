@@ -137,7 +137,14 @@
 #else
         double kappa_ij = 0.5 * (kappa_i+kappa_j); // physical
         double L_eff_j = Get_Particle_Size(j)*All.cf_atime; // physical
-        double c_light = DMAX( 2.*All.cf_afac3*kernel.vsig , DMIN(COSMIC_RAYS_M1 , kappa_ij/DMIN(Particle_Size_i,L_eff_j)));// * (C/All.UnitVelocity_in_cm_per_s);
+        double CRopticaldepth = DMIN(Particle_Size_i,L_eff_j)*COSMIC_RAYS_M1/kappa_ij;
+        double reductionfactor = sqrt((1.0-exp(0.0-CRopticaldepth*CRopticaldepth)))/CRopticaldepth;
+        double reducedcM1 = reductionfactor*COSMIC_RAYS_M1;
+        //TK test: correct HLL according Jiang & Oh 2018
+        //c_light = 2.*All.cf_afac3*kernel.vsig;
+        reducedcM1 = DMIN(COSMIC_RAYS_M1, reducedcM1/sqrt(3.0));
+        double c_light = DMAX(2.*All.cf_afac3*kernel.vsig, reducedcM1);    
+        //double c_light = DMAX( 2.*All.cf_afac3*kernel.vsig , DMIN(COSMIC_RAYS_M1 , kappa_ij/DMIN(Particle_Size_i,L_eff_j)));// * (C/All.UnitVelocity_in_cm_per_s);
         double v_eff_light = DMIN(c_light , kappa_ij / L_eff_j); // physical
         double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + v_eff_light; // physical
         double hll_corr = 1. / (1. + 1.5 * c_light * DMAX(L_eff_j/kappa_j , Particle_Size_i/kappa_i)); // all physical units

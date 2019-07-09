@@ -78,7 +78,6 @@ ifeq (FIRE_PHYSICS_DEFAULTS,$(findstring FIRE_PHYSICS_DEFAULTS,$(CONFIGVARS)))  
 endif
 
 
-
 CC       = mpicc        # sets the C-compiler (default)
 CXX       = mpiCC       # sets the C++-compiler (default)
 
@@ -103,6 +102,7 @@ endif
 endif
 
 # we only need fftw if PMGRID is turned on
+ifneq (USE_FFTW3, $(findstring USE_FFTW3, $(CONFIGVARS)))
 ifeq (PMGRID, $(findstring PMGRID, $(CONFIGVARS)))
 ifeq (NOTYPEPREFIX_FFTW,$(findstring NOTYPEPREFIX_FFTW,$(CONFIGVARS)))  # fftw installed without type prefix?
   FFTW_LIBNAMES = -lrfftw_mpi -lfftw_mpi -lrfftw -lfftw
@@ -128,7 +128,26 @@ endif
 else
   FFTW_LIBNAMES = #
 endif
-
+endif
+else # use FFTW3 instead of FFTW2.?
+ifeq (PMGRID, $(findstring PMGRID, $(CONFIGVARS)))
+ifeq (DOUBLEPRECISION_FFTW,$(findstring DOUBLEPRECISION_FFTW,$(CONFIGVARS)))  # test for double precision libraries
+  FFTW_LIBNAMES = -lfftw3_mpi -lfftw3
+else #single precision 
+  FFTW_LIBNAMES = -lfftw3f_mpi -lfftw3f
+endif
+else 
+# or if TURB_DRIVING_SPECTRUMGRID is activated
+ifeq (TURB_DRIVING_SPECTRUMGRID, $(findstring TURB_DRIVING_SPECTRUMGRID, $(CONFIGVARS)))
+ifeq (DOUBLEPRECISION_FFTW,$(findstring DOUBLEPRECISION_FFTW,$(CONFIGVARS)))  # test for double precision libraries
+  FFTW_LIBNAMES = -lfftw3_mpi -lfftw3
+else #single precision  
+  FFTW_LIBNAMES = -lfftw3f_mpi -lfftw3f
+endif
+else 
+  FFTW_LIBNAMES = #
+endif
+endif
 endif
 
 
@@ -182,13 +201,14 @@ OPT     += -DUSE_MPI_IN_PLACE
 endif
 
 
+
 ifeq ($(SYSTYPE),"Stampede2")
 CC       =  mpicc
 CXX      =  mpic++
 FC       =  mpif90 -nofor_main
 OPTIMIZE = -O3 $(TACC_VEC_FLAGS) -ipo -funroll-loops -no-prec-div -fp-model fast=2
 ## above is preferred, $(TACC_VEC_FLAGS) automatically incorporates the TACC preferred flags for both KNL or SKX nodes
-#OPTIMIZE = -O3 -xMIC-AVX512 -ipo -funroll-loops -no-prec-div -fp-model fast=2  # (depracated, -xMIC-AVX512 is specific to the KNL nodes)
+#OPTIMIZE = -O3 -xMIC-AVX512 -ipo -funroll-loops -no-prec-div -fp-model fast=2  # (deprecated, -xMIC-AVX512 is specific to the KNL nodes)
 OPTIMIZE += -g -Wall # compiler warnings
 #OPTIMIZE += -parallel -openmp  # openmp (comment out this line if OPENMP not used)
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
@@ -203,6 +223,10 @@ GSL_INCL = -I$(TACC_GSL_INC)
 GSL_LIBS = -L$(TACC_GSL_LIB)
 FFTW_INCL= -I$(TACC_FFTW2_INC)
 FFTW_LIBS= -L$(TACC_FFTW2_LIB)
+ifeq (USE_FFTW3, $(findstring USE_FFTW3, $(CONFIGVARS)))
+FFTW_INCL= -I$(TACC_FFTW3_INC)
+FFTW_LIBS= -L$(TACC_FFTW3_LIB)
+endif
 HDF5INCL = -I$(TACC_HDF5_INC) -DH5_USE_16_API
 HDF5LIB  = -L$(TACC_HDF5_LIB) -lhdf5 -lz
 MPICHLIB =
@@ -221,6 +245,69 @@ OPT     += -DUSE_MPI_IN_PLACE
 ##  - run job with "tacc_affinity" on.
 ##
 endif
+
+
+
+
+ifeq ($(SYSTYPE),"Frontera")
+CC       =  mpicc
+CXX      =  mpic++
+FC       =  mpif90 -nofor_main
+OPTIMIZE = -O2 -xCORE-AVX2
+#OPTIMIZE = -O3 $(TACC_VEC_FLAGS) -ipo -funroll-loops -no-prec-div -fp-model fast=2
+#OPTIMIZE = -O3 -xCORE-AVX512 -ipo -funroll-loops -no-prec-div -fp-model fast=2
+## above is preferred, $(TACC_VEC_FLAGS) automatically incorporates the TACC preferred flags for both KNL or SKX nodes, but gives tiny performance hit
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -qopenmp
+endif
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = -I$(TACC_MKL_INC)
+MKL_LIBS = -L$(TACC_MKL_LIB) -mkl=sequential
+GSL_INCL = -I$(HOME_GSL_DIR)
+GSL_LIBS = -L$(HOME_GSL_DIR)/.libs -L$(HOME_GSL_DIR)/cblas/.libs
+FFTW_INCL= -I$(TACC_FFTW2_INC)
+FFTW_LIBS= -L$(TACC_FFTW2_LIB)
+ifeq (USE_FFTW3, $(findstring USE_FFTW3, $(CONFIGVARS)))
+FFTW_INCL= -I$(TACC_FFTW3_INC)
+FFTW_LIBS= -L$(TACC_FFTW3_LIB)
+endif
+HDF5INCL = -I$(TACC_HDF5_INC) -DH5_USE_16_API
+HDF5LIB  = -L$(TACC_HDF5_LIB) -lhdf5 -lz
+MPICHLIB =
+OPT     += -DUSE_MPI_IN_PLACE #-DNO_ISEND_IRECV_IN_DOMAIN
+##
+# IMPORTANT: presently must use intel/18.x versions. 19.x versions compile and work, but lots of problems (+slower), esp. for high Ntasks or OpenMP
+#  e.g.: module load intel/18.0.5 impi hdf5 fftw3
+#  also at present, GSL module does -not- support intel/18.x, so need to build it yourself (support will come, hopefully?). example instructions below:
+#    -- 1. get newest GSL: ftp://ftp.gnu.org/gnu/gsl/gsl-latest.tar.gz
+#       2. unpack, 3. then in folder run: "./configure --prefix=$HOME/gsl-2.5 CC=icc" followed by 4. "make" and 5. "make all"
+#           (here I'm setting "$HOME/gsl-2.5" as the local install directory, you set yours appropriately)
+#       6. in your .bashrc file, add "export HOME_GSL_DIR=$HOME/gsl-2.5" and
+#           "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME_GSL_DIR:$HOME_GSL_DIR/.libs:$HOME_GSL_DIR/cblas/.libs"
+#           (obviously if you use a different parent install directory, change the directory name here accordingly).
+#       7. when you submit jobs, make sure you include a "source $HOME/.bashrc" in your run script or the export flags above, to link the libraries
+# As usual include "umask 022" and "ulimit -s unlimited" in your .bashrc file to save headaches later
+# fftw2/3 work equally well. usual intuition re: multipledomains, pmgrid, treedomainfreq, etc, apply.
+# The different code optimizations above make very tiny differences. for stability I am for now using -O2 -xCORE-AVX2, nothing 'fancy' but this doesn't cost us
+# Run scripts are simple SBATCH, like on Stampede and many other machines. Examples of several appear in this file. Example run script:
+#                    #!/bin/bash
+#                    #SBATCH -J (NAME) -p normal -N (NUMBER_OF_NODES) --ntasks-per-node (56/OPENMP_NUMBER) -t (RUNTIME_REQUEST) -A (ACCOUNT_NAME_TO_CHARGE)
+#                    export OMP_NUM_THREADS=(OPENMP_NUMBER)
+#                    source $HOME/.bashrc
+#                    ibrun ./GIZMO ./params.txt (GIZMO_STARTUP_FLAG) 1>gizmo.out 2>gizmo.err
+#     where quantities in (X) are the things you want to set.
+# With these options, hybrid MPI+OpenMP works well. Because of the node configuration, optimal hybrid performance will typically use either
+#   OPENMP=4 (ntasks-per-node=14) or OPENMP=7 (ntasks-per-node=8). Small jobs (<200 cores) might be better with smaller/no OPENMP, very large jobs higher,
+#   (OPENMP can be any integer, ntasks-per-node must be even or severe performance hits apply)
+# Note that the Frontera setup is NOT built for hyperthreading, even though the CLX nodes are supposed to support it. If you ask for 112 threads/node (insteady of 56),
+#   the code will actually work, but very slowly. Stick to 56 for now.
+# There are still odd memory issues. The machine should have 3.3gb/core available after OS, etc, but in practice we need to allocate less than this. MPI errors
+#   have also been appearing in large runs (for almost all users) related to memory. Be careful for now, and communicate to TACC support staff re: memory issues.
+#   I am using ~3gb/core for low task numbers, lower still for higher task numbers. 
+##
+endif
+
 
 
 
@@ -390,6 +477,7 @@ endif
 #-----------------------------------------------------------------------------
 
 
+
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"SciNet")
 CC       =  mpicc     # sets the C-compiler
@@ -525,6 +613,7 @@ endif
 
 
 
+
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Darter")
 CC       =  cc
@@ -561,8 +650,12 @@ CXX      =  mpic++
 FC       =  $(CC)
 OPTIMIZE = -O2 -xhost -ipo -funroll-loops -no-prec-div -fp-model fast=2
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
-OPTIMIZE += -parallel -openmp  # openmp required compiler flags
+OPTIMIZE += -parallel -openmp # openmp required compiler flags 
 endif
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
+CHIMESINCL = -I/home/ajr882/sundials/include  
+CHIMESLIBS = -L/home/ajr882/sundials/lib -lsundials_cvode -lsundials_kinsol -lsundials_nvecserial 
+endif 
 GMP_INCL = #
 GMP_LIBS = #
 MKL_INCL = -I$(MKLROOT)/include
@@ -573,12 +666,46 @@ FFTW_INCL= -I/projects/b1026/pascal/software/fftw/2.1.5-mvp/include
 FFTW_LIBS= -L/projects/b1026/pascal/software/fftw/2.1.5-mvp/lib
 HDF5INCL = -I/projects/b1026/pascal/software/hdf5/1.8.12/include -DH5_USE_16_API
 HDF5LIB  = -L/projects/b1026/pascal/software/hdf5/1.8.12/lib -lhdf5 -lz
-MPICHLIB = -lmpich
+MPICHLIB = -lmpich 
 OPT     += -DUSE_MPI_IN_PLACE
 #### modules to load:
 #module load mpi/mvapich2-intel2013.2
 #module use /projects/b1026/pascal/software/modules
 #module load hdf5/1.8.12.1 gsl/1.16 fftw/2.1.5-mvp
+endif
+
+
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Quest-intel")
+CC       =  mpicc
+CXX      =  mpic++
+FC       =  $(CC)
+OPTIMIZE = -O2 -xhost -ipo -funroll-loops -no-prec-div -fp-model fast=2
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -parallel -openmp -mt_mpi 
+endif
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
+CHIMESINCL = -I/home/ajr882/sundials/include  
+CHIMESLIBS = -L/home/ajr882/sundials/lib -lsundials_cvode -lsundials_kinsol -lsundials_nvecserial 
+endif 
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = -I$(MKLROOT)/include
+MKL_LIBS = -L$(MKLROOT)/lib/intel64 -lm -lmkl_core -lmkl_sequential -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_blacs_intelmpi_lp64
+GSL_INCL = 
+GSL_LIBS = 
+FFTW_INCL= -I/home/ajr882/libraries/fftw-2.1.5_install/include 
+FFTW_LIBS= -L/home/ajr882/libraries/fftw-2.1.5_install/lib 
+HDF5INCL = -DH5_USE_16_API 
+HDF5LIB  = -lhdf5 -lz
+MPICHLIB = 
+OPT     += -DUSE_MPI_IN_PLACE
+#### modules to load:
+#module load intel/2013.2
+#module load mpi/intel-mpi-4.1.0
+#module load hdf5/1.8.12-serial
+#module load gsl/1.16-intel
+#module load fftw/2.1.5-intel
 endif
 
 
@@ -684,6 +811,7 @@ endif
 ##
 
 
+#------------------------------------------------------------------------------
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Mira")
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
@@ -743,7 +871,6 @@ endif
 
 
 
-
 #----------------------------------------------------------------------------------------------
 ifeq (Pleiades,$(findstring Pleiades,$(SYSTYPE)))
 CC       =  icc -lmpi
@@ -767,7 +894,7 @@ GSL_LIBS = -L$(MATHLIBS)/lib
 FFTW_INCL= -I$(FFTW2_HOME)/include
 FFTW_LIBS= -L$(FFTW2_HOME)/lib
 HDF5INCL = -DH5_USE_16_API
-HDF5LIB  = -lhdf5 -lz -L/nasa/szip/2.1/lib -lsz
+HDF5LIB  = -lhdf5 -lz -L/nasa/szip/2.1.1/lib -lsz
 MPICHLIB =
 OPT     += -DUSE_MPI_IN_PLACE
 endif
@@ -988,6 +1115,7 @@ OBJS	+= $(GRAVITY_OBJS) $(HYDRO_OBJS) $(SYSTEM_OBJS)
 OBJS	+= $(L3_OBJS)
 
 INCL    += allvars.h proto.h gravity/forcetree.h domain.h system/myqsort.h kernel.h eos/eos.h Makefile \
+	   gravity/myfftw3.h
 
 
 ifeq (GALSF_SUBGRID_WINDS,$(findstring GALSF_SUBGRID_WINDS,$(CONFIGVARS)))
@@ -1035,6 +1163,7 @@ OBJS    += galaxy_sf/blackholes/blackhole_swallow_and_kick.o
 INCL    += galaxy_sf/blackholes/blackhole.h
 endif
 
+
 ifeq (SINGLE_STAR,$(findstring SINGLE_STAR,$(CONFIGVARS)))
 OBJS    += galaxy_sf/sfr_eff.o galaxy_sf/stellar_evolution.o galaxy_sf/mechanical_fb.o galaxy_sf/radfb_local.o
 OBJS    += galaxy_sf/blackholes/blackhole.o galaxy_sf/blackholes/blackhole_util.o galaxy_sf/blackholes/blackhole_environment.o galaxy_sf/blackholes/blackhole_feed.o galaxy_sf/blackholes/blackhole_swallow_and_kick.o
@@ -1042,11 +1171,9 @@ INCL    += galaxy_sf/blackholes/blackhole.h
 OBJS    += nbody/binary.o
 INCL    += nbody/nbody.h
 endif
-
 ifeq (SINGLE_STAR_FB_HEATING,$(findstring SINGLE_STAR_FB_HEATING,$(CONFIGVARS)))
 OBJS += radiation/rt_utilities.o
 endif
-
 ifeq (SCF_POTENTIAL,$(findstring SCF_POTENTIAL,$(CONFIGVARS)))
 OBJS    += modules/potentials/scf.o modules/potentials/scf_util.o
 endif
@@ -1069,13 +1196,16 @@ ifeq (COOL_GRACKLE,$(findstring COOL_GRACKLE,$(CONFIGVARS)))
 OBJS    += cooling/grackle.o
 endif
 
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
+OBJS    += cooling/chimes/chimes.o cooling/chimes/cooling.o cooling/chimes/init_chimes.o cooling/chimes/init_chimes_parallel.o cooling/chimes/interpol.o cooling/chimes/optimise.o cooling/chimes/rate_coefficients.o cooling/chimes/rate_equations.o cooling/chimes/set_rates.o 
+endif
+
 ifeq (EOS_HELMHOLTZ,$(findstring EOS_HELMHOLTZ,$(CONFIGVARS)))
 OBJS    += eos/eos_interface.o
 INCL    += eos/helmholtz/helm_wrap.h
 FOBJS   += eos/helmholtz/helm_impl.o eos/helmholtz/helm_wrap.o
 FINCL   += eos/helmholtz/helm_const.dek eos/helmholtz/helm_implno.dek eos/helmholtz/helm_table_storage.dek eos/helmholtz/helm_vector_eos.dek
 endif
-
 
 ifeq (IMPOSE_PINNING,$(findstring IMPOSE_PINNING,$(CONFIGVARS)))
 OBJS	+= system/pinning.o
@@ -1096,6 +1226,10 @@ OBJS	+= subfind/subfind.o subfind/subfind_vars.o subfind/subfind_collective.o su
 INCL	+= subfind/subfind.h
 endif
 
+ifeq (TURB_DIFF_DYNAMIC,$(findstring TURB_DIFF_DYNAMIC,$(CONFIGVARS)))
+OBJS += turb/dynamic_diffusion.o turb/dynamic_diffusion_velocities.o
+endif
+
 ifeq (DM_SIDM,$(findstring DM_SIDM,$(CONFIGVARS)))
 OBJS    +=  sidm/sidm_core.o 
 endif
@@ -1110,6 +1244,10 @@ OBJS	+= turb/turb_driving.o turb/turb_powerspectra.o
 endif
 
 CFLAGS = $(OPTIONS) $(GSL_INCL) $(FFTW_INCL) $(HDF5INCL) $(GMP_INCL) $(GRACKLEINCL)
+
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS))) 
+CFLAGS += $(CHIMESINCL) 
+endif 
 
 ifeq (VIP,$(findstring VIP,$(CONFIGVARS)))
 FFLAGS = $(FOPTIONS)
@@ -1127,7 +1265,11 @@ endif
 FFTW = $(FFTW_LIBS)  $(FFTW_LIBNAMES) 
 
 
-LIBS   = -lm $(HDF5LIB) -g $(MPICHLIB) $(GSL_LIBS) -lgsl -lgslcblas $(FFTW) $(GRACKLELIBS)
+LIBS   = $(HDF5LIB) -g $(MPICHLIB) $(GSL_LIBS) -lgsl -lgslcblas $(FFTW) -lm $(GRACKLELIBS)
+
+ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS))) 
+LIBS += $(CHIMESLIBS) 
+endif 
 
 ifeq (PTHREADS_NUM_THREADS,$(findstring PTHREADS_NUM_THREADS,$(CONFIGVARS))) 
 LIBS   +=  -lpthread
