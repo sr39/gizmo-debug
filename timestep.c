@@ -511,12 +511,12 @@ integertime get_timestep(int p,		/*!< particle index */
 //#endif	     
 	     } else {  // we still have to take a proper short N-body integration timestep due to a third body whose approach requires careful integration, so no super timestepping is possible
 		 dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 * dt_2body;
-		 // P[p].SuperTimestepFlag = 0;
+		 P[p].SuperTimestepFlag = 0;
 	     }
-	}
-#else
-	dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 * dt_2body;
+	} else 
 #endif  // SINGLE_STAR_SUPERTIMESTEPPING
+	dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 * dt_2body;
+
 	
         dt = DMIN(dt, dt_2body);
     }
