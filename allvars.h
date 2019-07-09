@@ -307,6 +307,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 
 #ifdef SINGLE_STAR_FORMATION
+#define LONG_INTEGER_TIME // timestep hierarchy can be very deep in these problems; want to be able to follow brief close encounters
 #define DEVELOPER_MODE
 #define GRAVITY_HYBRID_OPENING_CRIT // use both Barnes-Hut + relative tree opening criterion
 #define STOP_WHEN_BELOW_MINTIMESTEP // stop when below min timestep to prevent bad timestepping
@@ -350,7 +351,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #if(SINGLE_STAR_SUPERTIMESTEPPING == 1)
 #define SUPERTIMESTEPPING_ERRCONST 0.03 // If sqrt(|nabla g| / (GM/a^3)) < SUPERTIMESTEPPING_ERRCONST, then we use super timestepping for the binary
 #elif(SINGLE_STAR_SUPERTIMESTEPPING == 2)
-#define SUPERTIMESTEPPING_ERRCONST 0.015 // need to be a bit stricter deciding when to super timestep if we're doing the more aggressive version 
+#define SUPERTIMESTEPPING_ERRCONST 0.005 // need to be a bit stricter deciding when to super timestep if we're doing the more aggressive version 
 #endif
 #define SUPERTIMESTEPPING_NUM_STEPS_PER_ORBIT 50 // Super timestepping will attempt to get ~constant number of timesteps per orbit, spaced at even angular intervals.
 #endif
