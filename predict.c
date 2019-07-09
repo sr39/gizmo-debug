@@ -705,7 +705,8 @@ double calculate_face_area_for_cartesian_mesh(double *dp, double rinv, double l_
 void do_fewbody_drift(int i, double fewbody_drift_dx[3], double fewbody_kick_dv[3], double dt){
     //int k;
     double  kick_dv[3];
-    kepler_timestep(i, dt, fewbody_kick_dv, fewbody_drift_dx, 1);
+//    kepler_timestep(i, dt, fewbody_kick_dv, fewbody_drift_dx, 1);
+    odeint_super_timestep(i, dt, fewbody_kick_dv, fewbody_drift_dx, 1);
     //for(k=0; k<3; k++) fewbody_drift_dx[k] = 0;
 }
 #endif

@@ -42,7 +42,7 @@ mode 1 - Actually update the binary separation and relative velocity. This shoul
 
 void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], int mode){
     double h[3]; //Specific angular momentum vector
-    double dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
+    double dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]); 
     double dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]);
 
     double dx_normalized[3] = {P[i].comp_dx[0]/dr, P[i].comp_dx[1]/dr, P[i].comp_dx[2]/dr};
@@ -132,6 +132,123 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
     //dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
     //dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]);
     //printf("Updated companions dr %g dv %g \n",dr,dv);
+}
+
+// Quantity needed for gravitational acceleration and jerk; mass / r^3 in Newtonian gravity
+double gravfac(double r, double mass){
+    if(r < All.ForceSoftening[5]) {
+	double u = r / All.ForceSoftening[5];
+	double h_inv = 1/All.ForceSoftening[5];
+	return mass * kernel_gravity(u, h_inv, h_inv*h_inv*h_inv, 1);
+    } else return mass / (r*r*r);
+}
+
+// quantity needed for the jerk, 3* mass/r^5 in Newtonian gravity
+double gravfac2(double r, double mass){
+   if(r < All.ForceSoftening[5]) {
+	double u = r / All.ForceSoftening[5];
+	double h_inv = 1/All.ForceSoftening[5];
+	if(u<0.5){
+	    return mass * (76.8 - 96.0 * u) * h_inv * h_inv * h_inv * h_inv * h_inv;
+	} else {
+	    return mass * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u) * h_inv * h_inv * h_inv * h_inv * h_inv;
+	}
+    } else return 3*mass / (r*r*r*r*r);
+}
+
+// Computes the gravitational acceleration of a body at separation dx from a mass, accounting for softening
+void grav_accel(double mass, double dx[3], double accel[3]){
+    double fac, r = 0;
+    int k;
+    for(k=0; k<3; k++) r += dx[k]*dx[k];
+    r = sqrt(r);
+    fac = gravfac(r, mass); // mass / r^3 for Newtonian gravity
+    for(k=0; k<3; k++) accel[k] = -dx[k] * fac;
+}
+
+// Computes the gravitational acceleration and time derivative of acceleration (the jerk) of a body at separation dx and relative velocity dv from a mass, accounting for softening
+void grav_accel_jerk(double mass, double dx[3], double dv[3], double accel[3], double jerk[3]){
+    double fac, fac2, r = 0, dv_dot_dx = 0;
+    int k;
+    for(k=0; k<3; k++) {
+	r += dx[k]*dx[k];
+	dv_dot_dx += dv[k] * dx[k];
+    }
+    
+    r = sqrt(r);
+    
+    fac = gravfac(r, mass); // mass / r^3 for Newtonian gravity
+    fac2 = gravfac2(r, mass);
+    for(k=0; k<3; k++) {
+	accel[k] = All.G * (-dx[k] * fac);
+	jerk[k] = All.G * (-dv[k] * fac + dv_dot_dx * fac2 * dx[k]);
+    }
+}
+
+// Perform a 4th order Hermite timestep for the softened Kepler problem, evolving the orbital separation dx and relative velocity dv
+void hermite_step(double mass, double dx[3], double dv[3], double dt){
+    double old_accel[3], old_jerk[3], old_dx[3], old_dv[3], accel[3], jerk[3];
+    double dt2 = dt*dt, dt3 = dt2 * dt;
+    int k;
+    grav_accel_jerk(mass, dx, dv, old_accel, old_jerk);
+
+    // Predictor step
+    for(k=0; k<3; k++){
+	old_dx[k] = dx[k];
+	old_dv[k] = dv[k];
+	dx[k] += dv[k] * dt + 0.5*old_accel[k]*dt2 + old_jerk[k]*dt3/6;
+	dv[k] += old_accel[k] * dt + 0.5*old_jerk[k]*dt2;
+    }
+
+    grav_accel_jerk(mass, dx, dv, accel, jerk);
+
+    for(k=0; k<3; k++){
+	dv[k] = old_dv[k] + 0.5*(accel[k] + old_accel[k]) * dt + (old_jerk[k] - jerk[k]) * dt2/12;
+	dx[k] = old_dx[k] + 0.5*(dv[k] + old_dv[k]) * dt + (old_accel[k] - accel[k])*dt2/12;
+    }
+}
+
+/* 
+Advances the binary by timestep dt
+mode 0 - Just fill out the particle's kick and drift for the timestep, without doing the update
+mode 1 - Actually update the binary separation and relative velocity. This should be done on the full-step drift.
+*/
+void odeint_super_timestep(int i, double dt_super, double kick_dv[3], double drift_dx[3], int mode){
+    double t = 0, total_mass = P[i].comp_Mass + P[i].Mass, dt;
+    double dx_old[3], dv_old[3], dx[3], dv[3], vSqr, rSqr;
+    int k;
+    for(k=0; k<3; k++){
+	dx_old[k] = P[i].comp_dx[k];  // saving the old separation
+	dx[k] = -P[i].comp_dx[k];  // this one gets evolved; note sign change from comp_dx to the effective 1-body problem
+	dv_old[k] = P[i].comp_dv[k];  // saving the old separation 
+	dv[k] = -P[i].comp_dv[k];  // this one gets evolved; note sign change from comp_dx to the effective 1-body problem
+    }
+
+    while(t < dt_super){
+	vSqr = rSqr = 0;
+	// Determine timestep adaptively; tuned here to give 1% energy error over 10^5 orbits for a 0.9 eccentricty binary
+	for(k=0; k<3; k++){
+	    vSqr += dv[k]*dv[k];
+	    rSqr += dx[k]*dx[k];
+	}
+	rSqr += All.SofteningTable[5]*All.SofteningTable[5];
+	dt = DMIN(0.1/(sqrt(vSqr/rSqr) + sqrt((All.G * total_mass)/sqrt(rSqr*rSqr*rSqr))), dt_super-t); // harmonic mean of approach time and freefall time
+// could swap in any integration scheme you want here; default to Hermite
+	hermite_step(total_mass, dx, dv, dt);
+	t += dt;
+    }
+
+    double two_body_factor=-P[i].comp_Mass/total_mass;
+
+    for(k=0; k<3; k++){
+        drift_dx[k] = (-dx[k] - P[i].comp_dx[k]) * two_body_factor;
+        kick_dv[k] = (-dv[k] - P[i].comp_dv[k]) * two_body_factor;
+        if(mode==1){ // if we want to do the actual self-consistent binary update
+            P[i].comp_dx[k] = -dx[k];
+            P[i].comp_dv[k] = -dv[k];
+        }
+    }
+    
 }
 
 #endif
