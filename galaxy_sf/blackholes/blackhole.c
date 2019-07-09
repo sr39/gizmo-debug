@@ -121,6 +121,13 @@ double bh_vesc(int j, double mass, double r_code)
         m_eff += 3. * 4.*M_PI/3. * r_code*r_code*r_code * SphP[j].Density;
 #endif
     }
+#ifdef SINGLE_STAR_FORMATION
+    if(r_code < All.ForceSoftening[5]){
+        double hinv = 1/All.ForceSoftening[5];    
+        double phi = kernel_gravity(r_code * hinv, hinv, hinv*hinv*hinv, -1);
+	return sqrt(-2*All.G*m_eff*phi);
+    } else
+#endif    
     return sqrt(2.0*All.G*(m_eff)/(r_code*All.cf_atime) + cs_to_add_km_s*cs_to_add_km_s);
 }
 
