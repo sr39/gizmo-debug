@@ -344,18 +344,18 @@ integertime get_timestep(int p,		/*!< particle index */
 	dt_bin = sqrt(dr*dr*dr / (8 * All.G * (P[p].Mass + P[p].comp_Mass)));
 #endif	
 	dt_ext=P[p].COM_dt_tidal;
-	printf("dt_ext %g dt_bin%g\n", dt_bin, dt_ext);
+
  	if (SUPERTIMESTEPPING_ERRCONST*dt_ext>dt_bin){
  	    P[p].SuperTimestepFlag=2;
-//#ifdef BH_OUTPUT_MOREINFO
+#ifdef BH_OUTPUT_MOREINFO
 	    printf("Super timestepping active for particle ID %d with dt_bin %g dt_ext %g \n",P[p].ID, dt_bin, dt_ext);
-//#endif
+#endif
 /* 	    supertimestep_factor = DMIN(DMAX(SUPERTIMESTEPPING_TIMESTEP_FACTOR * dt_ext/dt_bin, 2.0),1e5);//make the minimum speedup a factor of 2 and put a maximum on it just in case */ 
 	} else{
         P[p].SuperTimestepFlag=0;
-//#ifdef BH_OUTPUT_MOREINFO
+#ifdef BH_OUTPUT_MOREINFO
         printf("Super timestepping deactivated for particle ID %d dt_bin %g dt_ext %g\n",P[p].ID, dt_bin, dt_ext);
-//#endif
+#endif
 	}
     }
 #endif
