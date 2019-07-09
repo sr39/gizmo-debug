@@ -30,7 +30,7 @@
         + [Conduction & Viscosity] (#config-fluids-navierstokes)
         + [Radiative Cooling] (#config-fluids-cooling)
         + [Passive Scalars, Metals, & Sub-Grid Turbulent Mixing] (#config-fluids-metalsturb)
-        + [Dust-Gas Mixtures] (#config-fluids-dust)
+        + [Dust-Gas (Particulate) Mixtures] (#config-fluids-dust)
         + [Cosmic Rays] (#config-fluids-cosmicrays)
     + [Turbulent 'Stirring' (Large Eddy Simulations)] (#config-turb)
     + [Gravity & Cosmological Integrations] (#config-gravity)
@@ -97,6 +97,7 @@
     + [Self-Gravity & Cosmological Tests](#tests-grav) (e.g. [Evrard collapse](#tests-grav-evrard), [Zeldovich pancakes](#tests-grav-zeldovich), ['Santa Barbara Cluster'](#tests-grav-sbcluster), [galactic disks](#tests-grav-galdisk))
     + [Magneto-Hydrodynamics Tests](#tests-mhd) (e.g. waves, shocktubes, field-loops, current sheets, Orszag-Tang vortex, rotors, MRI, jets, MHD-mixing/gravity)
     + [Elasto-Dynamics Tests](#tests-elastic) (e.g. bouncing rubber cylinders)
+    + [Dust/Particulate-Dynamics Tests](#tests-dust) (e.g. [uniform dust-gas acceleration](#tests-dust-dustybox), [damped two-fluid waves](#tests-dust-dustywave))
 12. [Useful Additional Resources](#faqs)
     + [Visualization, Radiative Transfer, and Plotting](#faqs-vis)
     + [Halo/Group-Finding and Structure Identification](#faqs-halofinders)
@@ -925,7 +926,7 @@ These options set different fluid physics. This includes changing the equation o
 # ------------------------------  Users should cite: Hopkins & Lee 2016, MNRAS, 456, 4174, and Lee, Hopkins, & Squire 2017, MNRAS, 469, 3532, for the numerical methods
 #GRAIN_FLUID                    # aerodynamically-coupled grains (particle type 3 are grains); default is Epstein drag
 #GRAIN_EPSTEIN_STOKES=1         # uses the cross section for molecular hydrogen (times this number) to calculate Epstein-Stokes drag (will use calculate which applies and use appropriate value); if used with GRAIN_LORENTZFORCE, will also compute Coulomb drag
-#GRAIN_BACKREACTION             # account for momentum of grains pushing back on gas (from drag terms)
+#GRAIN_BACKREACTION             # account for momentum of grains pushing back on gas (from drag terms); users should cite Moseley et al., 2018, arXiv:1810.08214.
 #GRAIN_LORENTZFORCE             # charged grains feel Lorentz forces (requires MAGNETIC); if used with GRAIN_EPSTEIN_STOKES flag, will also compute Coulomb drag
 #GRAIN_COLLISIONS               # model collisions between grains (super-particles; so this is stochastic)
 ##-----------------------------------------------------------------------------------------------------
@@ -935,7 +936,7 @@ These options set different fluid physics. This includes changing the equation o
 
 **GRAIN\_EPSTEIN\_STOKES**: Uses the physical units of the code (and specified grain parameters) to calculate whether or not grains are actually in the Epstein (size smaller than gas mean free path) or Stokes regime, and modifies the aerodynamic equations appropriately. This is important for very large grains or dense, hot systems, and for terrestrial systems. To determine the gas mean-free path, the cross-section for molecular hydrogen is assumed; however by setting GRAIN\_EPSTEIN to a value not equal to unity, this cross section is multiplied by that value. This is useful to represent different atmospheric compositions, for example. If this is set and GRAIN\_LORENTZFORCE is also active, it will also compute the Coulomb forces on the grains (because it can calculate grain charges); these will use a simple approximation for the ionization state of the gas (needed for the Coulomb drag term) based on its temperature, unless COOLING is also active in which case this is done self-consistently. 
 
-**GRAIN\_BACKREACTION**: Explicitly account for the momentum deposited into the grain population (modify the gas momentum appropriately). This requires specifying the absolute dust-to-gas ratio and other physical parameters -- that is done in the initial conditions (when the actual masses of dust 'super-particles' is assigned), although it can easily be done in the `init.c` file as well (hard-coding some dust-to-gas ratio). In either case, the dust super-particle masses define the total mass of dust, which in turn determines the strength of its force on the gas (if this is dis-abled, the total mass in dust in the system has no dynamical effect). This module is currently being tested, but should appear shortly in a methods and initial results paper (Moseley et al., 2018).
+**GRAIN\_BACKREACTION**: Explicitly account for the momentum deposited into the grain population (modify the gas momentum appropriately). This requires specifying the absolute dust-to-gas ratio and other physical parameters -- that is done in the initial conditions (when the actual masses of dust 'super-particles' is assigned), although it can easily be done in the `init.c` file as well (hard-coding some dust-to-gas ratio). In either case, the dust super-particle masses define the total mass of dust, which in turn determines the strength of its force on the gas (if this is dis-abled, the total mass in dust in the system has no dynamical effect). This module is now public: users should cite Moseley et al., 2018, arXiv:1810.08214.
 
 **GRAIN\_LORENTZFORCE**: Explicitly account for the Lorentz forces on grains (integrated efficiently with a semi-implicit Boris integrator scheme that can accurately preserve gyro orbits, even with numerical discretization errors). The grain charge is calculated self-consistently from grain sizes and densities and ambient gas conditions, assuming the grains obey local charge equilibrium (following Draine and Sutin 1987). Requires MAGNETIC be active. With GRAIN\_EPSTEIN\_STOKES turned on, this will also compute the electro-static (Coulomb) drag on the grains. See Lee, Hopkins, & Squire 2017, MNRAS, 469, 3532, for details and examples.
 
@@ -953,10 +954,10 @@ These options set different fluid physics. This includes changing the equation o
 #COSMIC_RAYS                    # two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anisotropic diffusion, streaming, injection by SNe
 #COSMIC_RAYS_ALFVEN=(500.)      # solve CR transport based on Alfven-limited scattering from Thomas+Pfrommer 18, evolves CRs+resonant Alfven population; value here is maximum free-streaming speed in code units
 #COSMIC_RAYS_M1=(500.)          # solve the CR transport in the M1 limit [second-order expansion of the collisionless boltzmann eqn]; value here is the streaming speed in code units
+#COSMIC_RAYS_DIFFUSION_MODEL=0  # determine how coefficients for CR transport scale. 0=constant diffusivity, -1=no diffusion(still stream), values >=1 correspond to different literature scalings for the coefficients (see user guide)
+#COSMIC_RAYS_ION_ALFVEN_SPEED   # assume the relevant Alfven speed governing CR transport is not the ideal-MHD Alfven speed, but the Alfven speed for -just- the ions (applicable in the weak-coupling limit for the resonant Alfven waves at CR gyro-resonance)
 #COSMIC_RAYS_DISABLE_STREAMING  # turn off CR streaming (propagation is purely advective+diffusion; warning: this can severely under-estimate CR losses to Alfven waves)
-#COSMIC_RAYS_DISABLE_DIFFUSION  # turn off CR diffusion (leaves streaming intact, simply disables 'microscopic+turbulent' CR diffusion terms)
 #COSMIC_RAYS_DISABLE_COOLING    # turn off CR heating/cooling interactions with gas (catastrophic losses, hadronic interactions, etc; only adiabatic PdV work terms remain)
-#COSMIC_RAYS_DIFFUSION_CONSTANT # replaces physical CR diffusion with constant coefficient (equal to value of CosmicRayDiffusionCoeff in code units); turn off streaming to make this the ONLY transport
 ##-----------------------------------------------------------------------------------------------------
 ####################################################################################################
 ```
@@ -967,7 +968,12 @@ These options set different fluid physics. This includes changing the equation o
 
 **COSMIC\_RAYS_M1**: Integrate the diffusive part of the cosmic-ray transport using the M1 moments expansion, rather than a pure diffusion equation. This is nominally more accurate (just like with radiation) since it allows for a smooth and self-consistent transition between free-streaming and diffusive limits for the CRs, at the expense of extra variables tracked and a smaller timestep if the full transport speed is used (approximately the speed of light). If a "reduced speed of light"-type approximation is desired, this parameter should be set to the value equal to the desired cosmic-ray free-streaming speed, in code units.
 
-**COSMIC\_RAYS\_DISABLE\_STREAMING**/**COSMIC\_RAYS\_DISABLE\_DIFFUSION**/**COSMIC\_RAYS\_DISABLE\_COOLING**/**COSMIC\_RAYS\_DIFFUSION\_CONSTANT**: These disable various cosmic-ray options (all require COSMIC\_RAYS be active). Disabling streaming means propagation is purely advective plus diffusion; in physical situations this can severely under-estimate CR losses to Alfven waves (i.e. severely over-estimate how much energy density can be maintained in CRs). Disabling diffusion disables the diffusion terms from microphysical and turbulent diffusion (not streaming terms). Disabling cooling turns off the CR cooling/loss terms including catastrophic losses, hadronic interactions, and streaming losses; only the adiabatic PdV work terms remain. Finally setting the diffusion constant flag replaces the physical CR diffusion coefficietn with a constant coefficient (equal to value of the parameterfile CosmicRayDiffusionCoeff in code units). 
+**COSMIC\_RAYS\_DIFFUSION\_MODEL**: This determines the model for the streaming and diffusion coefficients used in cosmic-ray transport. It must be set to a valid integer. The default value (=0) will set the diffusion coefficient to a constant, equal to value of the parameterfile CosmicRayDiffusionCoeff in code units. If <0 (e.g. -1), then diffusion will be disabled (streaming can still be non-zero, along with advection). Coefficients =1 and larger use different literature models for how the diffusion and/or streaming coefficients should scale with local plasma properties. =1 is the Jokipii 1966 classical extrinsic turbulence scaling. =2 is the Snodin et al. 2016 extrinsic random-field scaling. =3 is Farber et al. 2018-like scaling with diffusivity fast in neutral gas, slow in ionized gas. =4 is Wiener et al. 2017's estimated equilibrium self-confinement motivated streaming speed for hot plasma. =5 is the Chan et al. 2018 streaming at the fast magnetosonic speed. =6 is the Hopkins et al. 2019 (in prep) equilibrium self-confinement scaling. =7 combines the self-confinement scaling (6) and extrinsic turbulence model (2). Other than constant diffusivity, these are still in testing and should only be used with the permissions of PFH and TK Chan. Note that activating the `COSMIC_RAYS_ALFVEN` flag will override any choice here.
+
+**COSMIC\_RAYS\_ION\_ALFVEN\_SPEED**: This assumes that the relevant Alfven speed governing cosmic-ray transport is not the ideal-MHD Alfven speed, but the Alfven speed for *just* the ions (applicable in the weak-coupling limit for the resonant Alfven waves at gyro-resonance). The latter can be much larger in neutral gas. This replaces specific Alfvenic terms which appear in the transport equations, but we caution that the correct behavior in this limit is not clear.
+
+**COSMIC\_RAYS\_DISABLE\_STREAMING**/**COSMIC\_RAYS\_DISABLE\_COOLING**: These disable various cosmic-ray options (all require COSMIC\_RAYS be active). Disabling streaming means propagation is purely advective plus diffusion; in physical situations this can severely under-estimate CR losses to Alfven waves (i.e. severely over-estimate how much energy density can be maintained in CRs). Disabling cooling turns off the CR cooling/loss terms including catastrophic losses, hadronic interactions, and streaming losses; only the adiabatic PdV work terms remain. 
+
 
 
 <a name="config-turb"></a>
@@ -1090,7 +1096,7 @@ Note that when `ADAPTIVE_GRAVSOFT` is set (for gas or stars), then it is importa
     
                     
                     
-**DM\_SIDM**: Enables self-interacting dark matter as implemented by M. Rocha, James Bullock, and Mike Boylan-Kolchin. Like PM\_PLACEHIGHRESREGION, the parameter needs to be set to an integer that encodes the particle types that make up the SIDM particles in the form of a bit mask. For example, if types 1 and 2 are the SIDM particles, then the parameter should be set to DM\_SIDM = 6 = 2 + 4 (i.e. 2^1 + 2^2). This allows for arbitrary combinations of SIDM particle types. Note that the legacy flag "DMDISK\_INTERACTIONS" is now implicit in this (its identical to setting DM\_SIDM=2+4). This full module as-written in the development code is proprietary and users must obtain permissions from the developers (JB and MBK) for use in scientific products. But a slightly simpler version is part of the public code; moreover if users wish to use the implemented architecture and replace the actual self-interaction kernel with their own, they are free to do so provided they include the appropriate citations. Users should cite Rocha et al., MNRAS 2013, 430, 81 and Robles et al, 2017 (arXiv:1706.07514).
+**DM\_SIDM**: Enables self-interacting dark matter as implemented by M. Rocha, James Bullock, and Mike Boylan-Kolchin. Like PM\_PLACEHIGHRESREGION, the parameter needs to be set to an integer that encodes the particle types that make up the SIDM particles in the form of a bit mask. For example, if types 1 and 2 are the SIDM particles, then the parameter should be set to DM\_SIDM = 6 = 2 + 4 (i.e. 2^1 + 2^2). This allows for arbitrary combinations of SIDM particle types. Note that the legacy flag "DMDISK\_INTERACTIONS" is now implicit in this (its identical to setting DM\_SIDM=2+4). This full module as-written in the development code is proprietary and users must obtain permissions from the developers (JB and MBK) for use in scientific products. But a slightly simpler version is part of the public code; moreover if users wish to use the implemented architecture and replace the actual self-interaction kernel with their own, they are free to do so provided they include the appropriate citations. If this is active, the user must set several parameterfile options that specify the dark matter self-interaction cross-section, its dependence on relative velocity, and the degree of exo-or-endo-thermality (i.e. dissipation or gain of kinetic energy per interaction). See the parameterfile description below for description of these. Users should cite Rocha et al., MNRAS 2013, 430, 81 and Robles et al, 2017 (arXiv:1706.07514).
 
 **DM\_SCALARFIELD\_SCREENING**: Replaces the normal newtonian gravity by a screened scalar-field force. Look at the code if you want to get a better handle on or modify the scalar field parameters (these can trivially be made time-dependent, for example). Used for studying alternative gravity and dark matter theories -- primarily alternatives to dark energy involving dynamical screening. Users should cite the GIZMO source code for implementation details (`http://adsabs.harvard.edu/abs/2014ascl.soft10003H`).
 
@@ -1327,18 +1333,18 @@ The numerical details and physics are described in great detail in Hopkins et al
 
     ############################################################################################################################
     ##-----------------------------------------------------------------------------------------------------
-    #-------------------------------------- Star formation with -individual- stars [sink particles]: from PFH [proprietary development with Mike Grudic and David Guszejnov; modules not to be used without authors permission]
+    #-------------------------------------- Star formation with -individual- stars [sink particles]: from PFH [proprietary development with Mike Grudic and David Guszejnov; modules not to be used without authors permission, though basic modules may be ok there is a lot of development happening here]
     ##-----------------------------------------------------------------------------------------------------
     #SINGLE_STAR_FORMATION          # master switch for single star formation model: sink particles representing -individual- stars
     #SINGLE_STAR_ACCRETION=3        # proto-stellar accretion: 0=grav capture only; 1+=alpha-disk accretion onto protostar; 2+=bondi accretion of diffuse gas; 3+=sub-grid variability 
     #SINGLE_STAR_FB_HEATING         # proto-stellar heating: luminosity determined by BlackHoleRadiativeEfficiency (typical ~5e-7)
-    #SINGLE_STAR_FB_JETS            # protostellar jets: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow
+    #SINGLE_STAR_FB_JETS            # protostellar jets: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow. cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840 (for algorithm, developed for black hole jets)
     #SINGLE_STAR_PROMOTION          # proto-stars become ZAMS stars at end of pre-main sequence lifetime. FIRE feedback modules kick in, but using appropriate luminosities and temperatures for each
     ############################################################################################################################
 
 This set of flags controls *single* star formation physics. This means individual stars are mass-resolved sink particles, with individual masses and evolutionary tracks (as opposed to the 'GALSF' suite of options described above, where the star formation is galaxy or cluster-scale or larger, and star particles represent an ensemble of stars). This is relevant for simulations of star clusters with resolved individual stars, simulations of the origins of the stellar initial mass function, or individual protostar/planet formation simulations. 
 
-This is all under active development by PFH, and remains proprietary (primarily because parts of these modules are still in very active development and not debugged, while other parts are production-ready). Please consult and request permission before using any piece of this code (and expect to be recruited info refining the modules in need of de-bugging).
+This is all under active development by PFH, and remains proprietary (primarily because parts of these modules are still in very active development and not debugged, while other parts are production-ready). Please consult and request permission before using any piece of this code (and expect to be recruited info refining the modules in need of de-bugging). Many of the pieces (e.g. the basic modules to enable sink particles) are fine to use and generally permission is not an issue, but some of the more subtle aspects of this and other modules are very much in-flux.
 
 **SINGLE\_STAR\_FORMATION**: Master switch. Must be on for any of the other modules within this block to work. With this enabled, star (sink) particles are spawned according to the same basic requirements that appear in the 'GALSF' block, using the same Parameterfile options: there is a minimum density (set in the parameterfile), but also the proto-sink region must be self-gravitating, Jeans unstable, self-shielding, the local gas density maximum within its neighbor kernel, have a converging velocity field, and not have another sink within the neighbor kernel. If these are all met, the gas particle is immediately converted into a star particle. Details of the modules are described in the `notes_singlestar` file ([here](http://www.tapir.caltech.edu/~phopkins/public/notes_singlestar.pdf) or in the downloads section of the Bitbucket site), until the methods paper is published.
 
@@ -1477,7 +1483,7 @@ These models also involve their own parameterfile settings, in addition to those
 #--- mechanical (wind from accretion disk/BH with specified mass/momentum/energy-loading relative to accretion rate)
 #BH_WIND_CONTINUOUS=0           # gas in kernel given continuous wind flux (energy/momentum/etc). =0 for isotropic, =1 for collimated. cite Hopkins et al., 2016, MNRAS, 458, 816
 #BH_WIND_KICK=1                 # gas in kernel given stochastic 'kicks' at fixed velocity. (>0=isotropic, <0=collimated, absolute value sets momentum-loading in L/c units). cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840
-#BH_WIND_SPAWN                  # spawn virtual 'wind' particles to carry BH winds out [in development by Paul Torrey]. use requires permissions from P. Torrey and PFH (requires permission, this module is not fully de-bugged and methods not published)
+#BH_WIND_SPAWN=3                # spawn virtual 'wind' particles to carry BH winds out [in development by Paul Torrey]. use requires permissions from P. Torrey and PFH (requires permission, this module is not fully de-bugged and methods not published). value=min number spawned per spawn
 #--- radiative: [FIRE] these currently are built on the architecture of the FIRE stellar FB modules, and require some of those be active. their use therefore follows FIRE policies (see details above).
 #BH_COMPTON_HEATING             # enable Compton heating/cooling from BHs in cooling function (needs BH_PHOTONMOMENTUM). cite Hopkins et al., 2016, MNRAS, 458, 816
 #BH_HII_HEATING                 # photo-ionization feedback from BH (needs GALSF_FB_FIRE_RT_HIIHEATING). cite Hopkins et al., arXiv:1702.06148
@@ -1496,7 +1502,7 @@ These models also involve their own parameterfile settings, in addition to those
 
 **BH\_WIND\_KICK**: Gas in kernel given stochastic "kicks" at fixed velocity. Set <0 for isotropic (radial) kicks, >0 for collimated kicks (all kicks along axis of angular momentum vector of material inside the BH kernel). For historical compatibility, the absolute value of this parameter can be set to an arbitrary value, which sets the momentum-loading of the wind at coupling in units of L/c from the BH -- however this is redundant with the `BlackHoleFeedbackFactor` parameter (do not set both). If you use this module, cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840. 
 
-**BH\_WIND\_SPAWN**: This will spawn 'wind' particles to carry BH winds out [in development by Paul Torrey]. This is the most flexible and accurate algorithm, allowing arbitrary collimation (e.g. jets), and allowing particles to carry arbitrary combinations of thermal/kinetic/magnetic/cosmic ray energies, and allowing one to accurately capture reverse shocks (which are otherwise implicitly lost in the continuous and kicking strategies, unless the mass inside the free-streaming radius of the outflow is extremely well-resolved). However it is also numerically the most expensive and requires care in use. Use requires permissions from P. Torrey and PFH (this module is not fully de-bugged and methods are not published yet, hence it is not yet free-to-use). In addition to parameters above, user must set `BAL_internal_temperature` (which determines the internal temperature of the BAL wind, in K) and `BAL_wind_particle_mass` (mass of the virtual particles, in code units). 
+**BH\_WIND\_SPAWN**: This will spawn 'wind' particles to carry BH winds out [in development by Paul Torrey]. This is the most flexible and accurate algorithm, allowing arbitrary collimation (e.g. jets), and allowing particles to carry arbitrary combinations of thermal/kinetic/magnetic/cosmic ray energies, and allowing one to accurately capture reverse shocks (which are otherwise implicitly lost in the continuous and kicking strategies, unless the mass inside the free-streaming radius of the outflow is extremely well-resolved). However it is also numerically the most expensive and requires care in use. Use requires permissions from P. Torrey, K.Y. Su, and PFH (this module is not fully de-bugged and methods are not published yet, hence it is not yet free-to-use). In addition to parameters above, user must set `BAL_internal_temperature` (which determines the internal temperature of the BAL wind, in K) and `BAL_wind_particle_mass` (mass of the virtual particles, in code units). 
 
 **BH\_COMPTON\_HEATING**: Turn on to enable Compton heating/cooling of gas by the BH radiation field, following Sazonov et al. 2004. Since heating/cooling is dominated by hard X-ray/IR photons, respectively, the heating spectrum is simply scaled by an inverse square law, with a fixed Compton temperature ~3e7 K (see that paper for details). We also follow Faucher-Giguere & Quataert 2012 and do not allow the Compton+free-free cooling rate to exceed the Coulomb energy transfer rate between ions and electrons calculated for an ion temperature T in the limit where the electrons are efficiently cooling. Requires COOLING on. This requires BH\_PHOTONMOMENTUM is turned on (so the code can propogate the BH flux), but is independent of the strength you set for BH\_PHOTONMOMENTUM in the parameterfile. Note that this uses some algorithms which are proprietary -- use of this module in and of itself is allowed, but does not imply permissions to use all or develop the other connected/dependent modules on their own. If you use this module, cite the methods and physics test paper where it was presented, Hopkins et al., 2016, MNRAS, 458, 816.
 
@@ -2220,9 +2226,9 @@ These factors all relate to the popular sub-grid model for star formation and fe
      
 **WindFreeTravelDensFac**: Winds will free-stream until they reach a density equal to this times the critical density at which SF is allowed. Set equal to zero to ignore (or some high value to always trigger it).
 
-**VariableWindVelFactor**: If the config.sh parameter GALSF\_SUBGRID\_WIND\_SCALING is included and set to 1 or 2, a different wind model is included which scales the wind properties with either halo mass or the local DM velocity dispersion. In that case, this parameter multiplies the wind outflow velocity relative to the "default" value estimated in that module. 
+**VariableWindVelFactor**: If the config.sh parameter GALSF\_SUBGRID\_WIND\_SCALING is included and set to 1 or 2, a different wind model is included which scales the wind properties with either halo mass or the local DM velocity dispersion. In that case, this parameter multiplies the wind outflow velocity relative to the "default" value estimated in that module, i.e. $v_{\rm wind}  = f\,v_{\rm default}$, where $v_{\rm default}$ has appropriate units (e.g. the local DM velocity dispersion or virial velocity), so this parameter should be dimensionless.
 
-**VariableWindSpecMomentum**: If the config.sh parameter GALSF\_SUBGRID\_WIND\_SCALING is included and set to 1 or 2, a different wind model is included which scales the wind properties with either halo mass or the local DM velocity dispersion. In that case, this parameter determines the specific momentum of the wind for purposes of determining the mass-loading. The units are wind momentum per unit stellar mass, so it has the units of the code velocity.
+**VariableWindSpecMomentum**: If the config.sh parameter GALSF\_SUBGRID\_WIND\_SCALING is included and set to 1 or 2, a different wind model is included which scales the wind properties with either halo mass or the local DM velocity dispersion. In that case, this parameter determines the specific momentum of the wind for purposes of determining the mass-loading. In other words, this is the usual parameter $p_{\ast}/m_{\ast}$ from the wind literature, so if you are forming stars at a rate $\dot{M}_{\ast}$, the momentum injection rate going into winds is $\dot{P}=(p_{\ast}/m_{\ast})\,\dot{M}_{\ast}$. The wind mass-loading follows from this and the wind velocity: $\eta=\dot{M}_{\rm wind}/\dot{M}_{\ast}=(p_{\ast}/m_{\ast})  / v_{\rm wind}$. The parameter represents outflow momentum per unit stellar mass formed [momentum/mass], so it has the units of the code velocity.
 
 
      
@@ -2387,9 +2393,31 @@ These parameters control the optional module for stirred/driven turbulence (set 
     DarkEnergyConstantW       -1	    % time-independent DE parameter w, used only if no table
     TabulatedCosmologyFile    CosmoTbl  % table with cosmological parameters
 
+    %-------------- Parameters for self-interacting dark matter (DM_SIDM on)
+    DM_InteractionCrossSection 1        % cross-section per unit mass in cm^2/g (normalized at 1 km/s, if vel-dependent)
+    DM_InteractionVelocityDependence 0  % scaling: sigma=InteractionCrossSection*(dv/kms)^DM_InteractionVelocityDependence
+    DM_DissipationFactor 0              % 0=elastic, 1=pure dissipative (fractional dissipation of kinetic energy in event)
+    DM_KickPerCollision  0              % kick in km/s per collision (this^2 = specific energy/mass to kinetic per 'event')
+
+    %-------------- Parameters for scalar-field dark matter (DM_FUZZY on)
+    FuzzyDM_Mass_in_eV 1e-22            % boson mass in eV for SFDM/Fuzzy DM module
+
 **DarkEnergyConstantW**: If `GR_TABULATED_COSMOLOGY` is on, but none of the flags to actually read tabulated data are set (`GR_TABULATED_COSMOLOGY_W`, `GR_TABULATED_COSMOLOGY_H`, `GR_TABULATED_COSMOLOGY_G`), simple setting this parameter allows you to use an arbitrary constant (time-independent) value of the Dark Energy equation-of-state parameter "w". If the table is read, this will be ignored.
 
 **TabulatedCosmologyFile**: If the tabulated data is read, this specifies the name (file-path) of the file which contains the tabulated time-dependent cosmological parameters. The code will assume the file is standard ASCII text, with the relevant data in 5 columns separated by spaces. The format should be:
+
+**DM\_InteractionCrossSection**: If `DM_SIDM` is on, this sets the dark matter (DM) self-interaction cross section, in cgs units. If the cross-sections are velocity-dependent, then this is the normalization defined at 1 km/s. 
+
+**DM\_InteractionVelocityDependence**: If `DM_SIDM` is on, this sets the dark matter (DM) self-interaction cross section dependence on velocity, as a power law with this exponent (normalized at 1 km/s). So `0` is velocity-independent, whereas `-2` or `-4` are the usual most common velocity-dependent scalings (e.g. `-4` for Rutherford-type scattering).
+
+**DM\_DissipationFactor**: If `DM_SIDM` is on, this sets the fractional degree of dissipation per interaction event. This interpolates between purely elastic scattering when equal to `0`, to purely momentum-conserving scattering (both particles move at the center-of-momentum, i.e. all kinetic energy in the center-of-mass frame is entirely dissipated, so this is the most dissipative possible) when equal to `1`. For intermediate values, this multiplies the post-collision recoil velocity in the center-of-mass frame, so the center-of-mass frame kinetic energy is decreased by a factor of this squared.
+
+**DM\_KickPerCollision**: If `DM_SIDM` is on, this sets the velocity of 'kicks' given to the DM in scattering events. More specifically, this value (in km/s) squared defines the specific energy (energy per unit mass) added to the kinetic energy of the scattering DM particles in the rest frame of the scattering event. 
+
+**FuzzyDM\_Mass\_in\_eV**: If `DM_FUZZY` is on, this sets the mass of the DM boson (in eV). This effectively entirely determines the DM dynamics, in models where the DM is a scalar field, Bose-Einstein condensate, quantum wave, etc. Note that it is critical in these modules to actually resolve the DM de Broglie wavelength, so make sure you dont use too large a value of this parameter for your mass resolution.
+
+
+
 
 ```bash
 1.00 -1.00 1.00 1.00 1.00
@@ -3448,6 +3476,68 @@ In Config.sh, enable:
     
 The choice of `KERNEL_FUNCTION=5` is optional here. Experiment with different kernels, but be sure to set the parameter DesNumNgb accordingly; for e.g. `KERNEL_FUNCTION=3` (or 6), use 20, `KERNEL_FUNCTION=5` (or 7), use 40. SPH, for example, performs noticably better using the Wendland kernels on this test (while for MFM it makes a much smaller difference). The choice of hydro solver is also arbitrary -- however, recall that because of the material assumptions, the elasto-dynamics modules in the code are only designed to work with fixed-mass methods (MFM or SPH variants). 
 
+
+
+<a name="tests-dust"></a>
+## Dust-Gas / Particle-Laden Dynamics
+
+A number of different studies have now used the dust-particulate dynamics modules of the code (including e.g. Epstein or Stokes or Coulomb drag on dust or aerodynamic particles, Lorentz forces on charged grains, and more). With the release of some of the methods papers for this, the dust/particulate modules are public. I have therefore added some simple test problems for validation and to acquaint users with the modules. The initial conditions, example parameter files, and list of compile-time (Config.sh) flags which must be set to run each problem are publicly available at the same location as the rest of the files above. Users are encouraged to expand the set of tests and implementations of additional physics (e.g. collisions).
+
+
+<a name="tests-dust-dustybox"></a>
+### Uniform Acceleration-Deceleration of a Dusty Box
+
+This is a variant of the 'dustybox' test, a simple test problem which was popularized by Guillaume and Price, 2011, MNRAS, 418, 1491. We initialize a homogeneous periodic box of unit size, full of gas with an idealized adiabatic equation-of-state with unit density and sound speed and zero velocity, and uniform unit density of dust/particulates with initial velocity $v=1$ in some direction. The two are coupled via some drag law, which decelerates the dust while the 'backreaction' from the dust accelerates the gas, until the mixture reaches equilibrium with both components moving at $v=1/2$. If the drag coefficient ($=1/t_{s}$) is independent of the relative velocity of the mixture, then the exact solution is trivial, with the gas moving at $v_{g}=(1-\exp(-t/2 t_{s}))/2$ at all times $t$. 
+
+This is a simple test used to validate the 'backreaction' term and total momentum conservation. It can also be trivially run in any number of dimensions, or for any varied dust-to-gas ratio or drag coefficient. In the default dust implementation in the code, the default drag law is not a constant drag coefficient, but actually Epstein drag. This makes the exact solutions slightly more complicated, but it is still easy to solve for the difference between the dust and gas velocities $v_{d}-v_{g}=2\,\psi/(1-\alpha\,\psi^{2})$ where $\psi\equiv (1+\sqrt{1+\alpha})^{-1}\,\exp(-2\,t)$ and $\alpha=15\pi/128$, for the default parameters here.
+
+Initial conditions: "dustybox\_ics.hdf5"
+
+Parameterfile: "dustboxwave.params" 
+(Be sure in the parameterfile to choose the correct initial condition file)
+
+In Config.sh, enable: 
+
+    BOX_PERIODIC
+    BOX_SPATIAL_DIMENSION=1
+    SELFGRAVITY_OFF
+    GRAIN_FLUID
+    GRAIN_BACKREACTION
+    EOS_GAMMA=(5./3.)
+    EOS_ENFORCE_ADIABAT=(3./5.)
+    
+The default test is 1D just for simplicity. You can trivially make a 2D or 3D test initializing a box with the included IC-making python script in GIZMO. Feel free to vary the equation of state of the gas, drag coefficient (varying `Grain_Size_Min` and `Grain_Size_Max` in the code - these are equal so all grains have the same size), or dust-to-gas ratio (mass of grains in the ICs). You can even manually edit the code lines in `grain_physics.c` to insert different drag laws. 
+
+
+<a name="tests-dust-dustywave"></a>
+### A Damped, Two-Fluid (Coupled Dust/Particulate-Gas) Wave
+
+This is a variant of the 'dustwave' test from Guillaume and Price, 2011, MNRAS, 418, 1491. This uses the same setup and nearly-identical ICs to the 'dustybox' test. In fact the parameterfile is identical, you just need to swap out the IC file. 
+
+The difference is, instead of initializing the dust with a bulk velocity, we initialize a periodic linear wave in the dust and gas, with amplitude of $\sim 10^{-4}$ in code units. In the strictly-linear regime, it is straightforward (but tedious) to solve for the eigenfunctions of these waves, for a given dust-to-gas ratio, mean drag coefficient, functional form of the drag law, dust-to-gas ratio, etc. However, particularly for the Epstein drag case adopted here, the functions do not have clean closed-form expressions. So instead we provide a table with an exact numerically-tabulated solution for the default setup here.
+
+This is a much more sensitive test of the dust-gas coupling and back-reaction terms. Like the test above, it can be run in any number of dimensions, or any drag law or dust-to-gas-ratio or coupling coefficient. Because the flow is smooth, it can be used to test numerical convergence rates. Because the wave amplitude is weak ($\sim 10^{-4}$), even very small errors will corrupt its evolution. And the propagation of the wave in both dust and gas depends sensitively on accurate back-and-forth coupling between the two media.
+
+Note that in this particular problem, with zero forces on dust or gas and a homogeneous background, the waves are always damped. But as shown in Squire and Hopkins 2018, ApJL, 856, L15 (arXiv:1706.05020), if there is *any* difference in non-drag forces acting on the dust and gas (e.g. if we introduce an external force which acts even slightly differently on the dust and/or the gas, or a pressure gradient in the gas, or Lorentz forces on the dust), the system becomes unstable to a family of 'resonant drag instabilities' which rapidly amplify into strongly non-linear behavior of the dust and gas. This test problem can be used as a starting point to explore these instabilities as well.
+
+Initial conditions: "dustywave\_ics.hdf5"
+
+Parameterfile: "dustboxwave.params"
+(Be sure in the parameterfile to choose the correct initial condition file)
+
+In Config.sh, enable: 
+
+    BOX_PERIODIC
+    BOX_SPATIAL_DIMENSION=1
+    SELFGRAVITY_OFF
+    GRAIN_FLUID
+    GRAIN_BACKREACTION
+    EOS_GAMMA=(5./3.)
+    EOS_ENFORCE_ADIABAT=(3./5.)
+    
+The default test is 1D just for simplicity. You can trivially make a 2D or 3D test initializing a box with the included IC-making python script in GIZMO. Feel free to vary the equation of state of the gas, drag coefficient (varying `Grain_Size_Min` and `Grain_Size_Max` in the code - these are equal so all grains have the same size), or dust-to-gas ratio (mass of grains in the ICs). You can even manually edit the code lines in `grain_physics.c` to insert different drag laws. 
+
+The exact solutions for the default setup are provided in the file "dustwave\_exact.txt". This gives the solution for the default parameterfile values, at time =1.2 (in code units). The three columns are: (1) x-coordinate position, (2) value of x-velocity of dust, (3) value of x-velocity of gas.
 
 ***
 

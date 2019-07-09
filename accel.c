@@ -93,6 +93,10 @@ void compute_hydro_densities_and_forces(void)
 #ifndef IO_REDUCED_MODE
         if(ThisTask == 0) {printf("density & tree-update computation done...\n");}
 #endif
+#ifdef TURB_DIFF_DYNAMIC
+        dynamic_diff_vel_calc(); /* This must be called between density and gradient calculations */
+#endif
+
         hydro_gradient_calc(); /* calculates the gradients of hydrodynamical quantities  */
 #if defined(COOLING) && defined(GALSF_FB_FIRE_RT_UVHEATING)
         selfshield_local_incident_uv_flux();
@@ -103,6 +107,10 @@ void compute_hydro_densities_and_forces(void)
 #ifndef IO_REDUCED_MODE
         if(ThisTask == 0) {printf("gradient computation done.\n");}
 #endif
+#ifdef TURB_DIFF_DYNAMIC
+        dynamic_diff_calc(); /* This MUST be called immediately following gradient calculations */
+#endif
+
         hydro_force();		/* adds hydrodynamical accelerations and computes du/dt  */
         compute_additional_forces_for_all_particles(); /* other accelerations that need to be computed are done here */
 #ifndef IO_REDUCED_MODE
@@ -164,6 +172,11 @@ void compute_stellar_feedback(void)
     HII_heating_singledomain(); /* local photo-ionization heating */
     CPU_Step[CPU_HIIHEATING] += measure_time();
 #endif
+
+#ifdef CHIMES_HII_REGIONS 
+    chimes_HII_regions_singledomain(); 
+#endif 
+    
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
     radiation_pressure_winds_consolidated(); /* local radiation pressure */
     CPU_Step[CPU_LOCALWIND] += measure_time();

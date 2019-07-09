@@ -222,7 +222,7 @@ double get_starformation_rate(int i)
     if((flag == 1)||(P[i].Mass<=0))
     return 0;
 #if (GALSF_SFR_VIRIAL_SF_CRITERION>=3)
-    double dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval;
+    double dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval;
     double dtime = dt / All.cf_hubble_a; /*  the actual time-step */
 #endif
     tsfr = sqrt(All.PhysDensThresh / (SphP[i].Density * All.cf_a3inv)) * All.MaxSfrTimescale;
@@ -258,6 +258,17 @@ double get_starformation_rate(int i)
         rateOfSF *= y;
     } // if(tau_fmol>0)
 #endif // GALSF_SFR_MOLECULAR_CRITERION
+
+#ifdef CHIMES_SFR_MOLECULAR_CRITERION 
+    /* This is similar to GALSF_SFR_MOLECULAR_CRITERION, except that 
+     * the H2 fraction is taken from the CHIMES network. */
+    y = ChimesGasVars[i].abundances[H2] * 2.0; 
+    if (y < 0) 
+      y = 0.0; 
+    if (y > 1) 
+      y = 1.0; 
+    rateOfSF *= y; 
+#endif 
     
     
 #ifdef GALSF_SFR_VIRIAL_SF_CRITERION
@@ -308,7 +319,7 @@ double get_starformation_rate(int i)
 #endif
 
 #if (GALSF_SFR_VIRIAL_SF_CRITERION >= 3)
-    SphP[i].AlphaVirial_SF_TimeSmoothed += 8.*(1./(1+alpha_vir) - SphP[i].AlphaVirial_SF_TimeSmoothed) * dt/tsfr;
+    SphP[i].AlphaVirial_SF_TimeSmoothed += 8.*(1./(1+alpha_vir) - SphP[i].AlphaVirial_SF_TimeSmoothed) * dtime/tsfr;
     if (SphP[i].AlphaVirial_SF_TimeSmoothed < 0.5 || divv >= 0) rateOfSF *= 0.0;
 #if (GALSF_SFR_VIRIAL_SF_CRITERION >= 4) 
     // we check that the velocity gradient is negative-definite, ie. converging along all principal axes, which is much stricter than div v < 0
@@ -362,7 +373,7 @@ double get_starformation_rate(int i)
 /* compute the 'effective eos' cooling/heating, including thermal feedback sources, here */
 void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double tsfr, double x, double rateOfSF)
 {
-    double dt = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval, dtime = dt / All.cf_hubble_a; /*  the actual time-step */
+    double dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval, dtime = dt / All.cf_hubble_a; /*  the actual time-step */
     double factorEVP = pow(SphP[i].Density * All.cf_a3inv / All.PhysDensThresh, -0.8) * All.FactorEVP, trelax = tsfr * (1 - x) / x / (All.FactorSN * (1 + factorEVP));
     double egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold, egyeff = egyhot * (1 - x) + All.EgySpecCold * x, egycurrent = SphP[i].InternalEnergy, ne;
     ne=1.0;
@@ -414,7 +425,7 @@ void star_formation_parent_routine(void)
       if((P[i].Type == 0)&&(P[i].Mass>0))
 	{
         SphP[i].Sfr = 0; flag = 1; /* will be reset below if flag==0, but default to flag = 1 (non-eligible) */
-        dtime = (P[i].TimeBin ? (1 << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; /*  the actual time-step */
+        dtime = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a; /*  the actual time-step */
         
         /* check whether an initial (not fully-complete!) conditions for star formation are fulfilled for a given particle */
         if(SphP[i].Density * All.cf_a3inv >= All.PhysDensThresh) {flag = 0;} // if sufficiently dense, go forward into SF routine //
@@ -498,6 +509,9 @@ void star_formation_parent_routine(void)
 #ifdef BH_ALPHADISK_ACCRETION
                 P[i].BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
 #endif
+#ifdef BH_WIND_SPAWN
+                P[i].unspawned_wind_mass = 0;
+#endif
 #ifdef BH_COUNTPROGS
                 P[i].BH_CountProgs = 1;
 #endif
@@ -528,6 +542,7 @@ void star_formation_parent_routine(void)
 		      TimeBinSfr[P[i].TimeBin] -= SphP[i].Sfr;
 
 		      P[i].StellarAge = All.Time;
+
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
                 P[i].DensAroundStar = SphP[i].Density;
 #endif
@@ -632,6 +647,7 @@ void star_formation_parent_routine(void)
 #endif
 		      sum_mass_stars += P[NumPart + stars_spawned].Mass;
 		      P[NumPart + stars_spawned].StellarAge = All.Time;
+
 		      force_add_star_to_tree(i, NumPart + stars_spawned);
 
 		      stars_spawned++;
@@ -725,7 +741,8 @@ void star_formation_parent_routine(void)
         } // thistask==0
     }
 
-    if(tot_converted+tot_spawned > 0) {rearrange_particle_sequence();}
+    // TO: Don't call rearrange_particle_sequence(). This makes the cell array inconsistent with the tree
+    //if(tot_converted+tot_spawned > 0) {rearrange_particle_sequence();}
 
     CPU_Step[CPU_COOLINGSFR] += measure_time();
 } /* end of main sfr_cooling routine!!! */
@@ -746,8 +763,8 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
     prob = 1 - exp(-p);
 #endif
     
-#if (GALSF_SUBGRID_WIND_SCALING == 1)
-    /* wind model where launching scales with halo/galaxy bulk properties (as in Romeel's simulations) */
+#if (GALSF_SUBGRID_WIND_SCALING == 1    
+       /* wind model where launching scales with halo/galaxy bulk properties (as in Romeel's simulations) */
     if(SphP[i].HostHaloMass > 0 && sm > 0)
     {
         double HaloConcentrationNorm = 9.;  /* concentration c0 of a halo of unit mass */

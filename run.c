@@ -64,7 +64,7 @@ void run(void)
             
             break;
         }
-        
+	
         find_timesteps();		/* find-timesteps */
         
         do_first_halfstep_kick();	/* half-step kick at beginning of timestep for synchronous particles */
@@ -78,7 +78,7 @@ void run(void)
         
         set_non_standard_physics_for_current_time();	/* update auxiliary physics for current time */
 
-	#ifdef SINGLE_STAR_FORMATION
+	#ifdef SINGLE_STAR_FORMATION || defined(BH_WIND_SPAWN)
 		int treeflagtemp;
 		MPI_Allreduce(&TreeReconstructFlag, &treeflagtemp, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
 		TreeReconstructFlag = treeflagtemp;
@@ -86,15 +86,17 @@ void run(void)
 	
         if(GlobNumForceUpdate > All.TreeDomainUpdateFrequency * All.TotNumPart)	/* check whether we have a big step */
         {
-            domain_Decomposition(0, 0, 1);	/* do domain decomposition if step is big enough, and set new list of active particles  */
+            domain_Decomposition(0, 0, 1);      /* do domain decomposition if step is big enough, and set new list of active particles  */
         }
 #ifdef SINGLE_STAR_FORMATION
-	else if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart || TreeReconstructFlag)  {domain_Decomposition(0, 0, 1);}
-#endif	
+        else if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart || TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
+#endif
+#ifdef BH_WIND_SPAWN
+        else if(TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
+#endif
         else
         {
             force_update_tree();	/* update tree dynamically with kicks of last step so that it can be reused */
-            
             make_list_of_active_particles();	/* now we can set the new chain list of active particles */
         }
         
@@ -205,12 +207,12 @@ void run(void)
 
 void set_non_standard_physics_for_current_time(void)
 {
-#ifdef COOLING
+#if defined(COOLING) && !defined(CHIMES) 
     /* set UV background for the current time */
     IonizeParams();
 #endif
     
-#ifdef COOL_METAL_LINES_BY_SPECIES
+#if defined(COOL_METAL_LINES_BY_SPECIES) && !defined(CHIMES) 
     /* load the metal-line cooling tables appropriate for the UV background */
     if(All.ComovingIntegrationOn) LoadMultiSpeciesTables();
 #endif
@@ -305,28 +307,32 @@ void calculate_non_standard_physics(void)
     }
 #endif // ifdef FOF
 #ifdef BH_WIND_SPAWN
-    if(GlobNumForceUpdate > All.TreeDomainUpdateFrequency * All.TotNumPart)
+    double MaxUnSpanMassBH_global;
+    MPI_Allreduce(&MaxUnSpanMassBH, &MaxUnSpanMassBH_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    if(MaxUnSpanMassBH_global > (BH_WIND_SPAWN)*All.BAL_wind_particle_mass)
     {
         spawn_bh_wind_feedback();
         rearrange_particle_sequence();
         force_treebuild(NumPart, NULL);
+        MaxUnSpanMassBH=MaxUnSpanMassBH_global=0.; 
     }
 #endif
 #endif // ifdef BLACK_HOLES or GALSF_SUBGRID_WINDS
     
     
 #ifdef COOLING	/**** radiative cooling and star formation *****/
+#ifdef CHIMES 
+    chimes_cooling_parent_routine(); // master cooling and chemistry subroutine //
+#else 
     cooling_parent_routine(); // master cooling subroutine //
     CPU_Step[CPU_COOLINGSFR] += measure_time(); // finish time calc for SFR+cooling
+#endif 
 #endif
 #ifdef GALSF
     star_formation_parent_routine(); // master star formation routine //
     CPU_Step[CPU_COOLINGSFR] += measure_time(); // finish time calc for SFR+cooling
 #endif
         
-#ifdef SCF_HYBRID
-    SCF_do_center_of_mass_correction(0.75, 10.0 * SCF_HQ_A, 0.01, 1000);
-#endif
 }
 
 
@@ -343,10 +349,6 @@ void compute_statistics(void)
 #ifndef IO_REDUCED_MODE
         energy_statistics();	/* compute and output energy statistics */
 #endif
-#ifdef SCF_POTENTIAL
-        SCF_write(0);
-#endif
-        
         All.TimeLastStatistics += All.TimeBetStatistics;
     }
 }
@@ -404,7 +406,7 @@ void find_next_sync_point_and_drift(void)
 	}
     }
 
-  MPI_Allreduce(&ti_next_kick, &ti_next_kick_global, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+  MPI_Allreduce(&ti_next_kick, &ti_next_kick_global, 1, MPI_TYPE_TIME, MPI_MIN, MPI_COMM_WORLD);
 
   while(ti_next_kick_global >= All.Ti_nextoutput && All.Ti_nextoutput >= 0)
     {
@@ -709,29 +711,29 @@ void output_log_messages(void)
         {
             z = 1.0 / (All.Time) - 1;
 #ifndef IO_REDUCED_MODE
-            fprintf(FdInfo, "\nSync-Point %d, Time: %g, Redshift: %g, Nf = %d%09d, Systemstep: %g, Dloga: %g\n",
-                    All.NumCurrentTiStep, All.Time, z,
+            fprintf(FdInfo, "\nSync-Point %lld, Time: %g, Redshift: %g, Nf = %d%09d, Systemstep: %g, Dloga: %g\n",
+                    (long long) All.NumCurrentTiStep, All.Time, z,
                     (int) (GlobNumForceUpdate / 1000000000), (int) (GlobNumForceUpdate % 1000000000),
                     All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
             fflush(FdInfo);
-            fprintf(FdTimebin, "\nSync-Point %d, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n",
-                    All.NumCurrentTiStep, All.Time, z, All.TimeStep,
+            fprintf(FdTimebin, "\nSync-Point %lld, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n",
+                    (long long) All.NumCurrentTiStep, All.Time, z, All.TimeStep,
                     log(All.Time) - log(All.Time - All.TimeStep));
 #endif
-            printf("\nSync-Point %d, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n", All.NumCurrentTiStep,
+            printf("\nSync-Point %lld, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n", (long long) All.NumCurrentTiStep,
                    All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
         }
         else
         {
 #ifndef IO_REDUCED_MODE
-            fprintf(FdInfo, "\nSync-Point %d, Time: %g, Nf = %d%09d, Systemstep: %g\n", All.NumCurrentTiStep,
+            fprintf(FdInfo, "\nSync-Point %lld, Time: %g, Nf = %d%09d, Systemstep: %g\n", (long long) All.NumCurrentTiStep,
                     All.Time, (int) (GlobNumForceUpdate / 1000000000), (int) (GlobNumForceUpdate % 1000000000),
                     All.TimeStep);
             fflush(FdInfo);
-            fprintf(FdTimebin, "\nSync-Point %d, Time: %g, Systemstep: %g\n", All.NumCurrentTiStep, All.Time,
+            fprintf(FdTimebin, "\nSync-Point %lld, Time: %g, Systemstep: %g\n", (long long) All.NumCurrentTiStep, All.Time,
                     All.TimeStep);
 #endif
-            printf("\nSync-Point %d, Time: %g, Systemstep: %g\n", All.NumCurrentTiStep, All.Time, All.TimeStep);
+            printf("\nSync-Point %lld, Time: %g, Systemstep: %g\n", (long long) All.NumCurrentTiStep, All.Time, All.TimeStep);
         }
 
         for(i = 1, tot_cumulative[0] = tot_count[0]; i < TIMEBINS; i++)
@@ -867,7 +869,7 @@ void write_cpu_log(void)
       put_symbol(tsum / max_CPU_Step[0], 1.0, '-');
 
 #ifndef IO_REDUCED_MODE
-      fprintf(FdBalance, "Step=%7d  sec=%10.3f  Nf=%2d%09d  %s\n", All.NumCurrentTiStep, max_CPU_Step[0],
+      fprintf(FdBalance, "Step=%7lld  sec=%10.3f  Nf=%2d%09d  %s\n", (long long) All.NumCurrentTiStep, max_CPU_Step[0],
 	      (int) (GlobNumForceUpdate / 1000000000), (int) (GlobNumForceUpdate % 1000000000), CPU_String);
       fflush(FdBalance);
 #endif
@@ -897,7 +899,7 @@ void write_cpu_log(void)
 #endif
   if(ThisTask == 0)
     {
-      fprintf(FdCPU, "Step %d, Time: %g, CPUs: %d\n", All.NumCurrentTiStep, All.Time, NTask);
+      fprintf(FdCPU, "Step %lld, Time: %g, CPUs: %d\n",(long long) All.NumCurrentTiStep, All.Time, NTask);
       fprintf(FdCPU,
 	      "total         %10.2f  %5.1f%%\n"
 	      "treegrav      %10.2f  %5.1f%%\n"
@@ -912,6 +914,18 @@ void write_cpu_log(void)
 	      "   agscomm    %10.2f  %5.1f%%\n"
 	      "   agsimbal   %10.2f  %5.1f%%\n"
           "   agsmisc    %10.2f  %5.1f%%\n"
+#endif
+#ifdef TURB_DIFF_DYNAMIC
+        "dyndiff       %10.2f  %5.1f%%\n"
+        "   compute    %10.2f  %5.1f%%\n"
+        "   comm       %10.2f  %5.1f%%\n"
+        "   wait       %10.2f  %5.1f%%\n"
+        "   misc       %10.2f  %5.1f%%\n"
+        "velsmooth     %10.2f  %5.1f%%\n"
+        "   compute    %10.2f  %5.1f%%\n"
+        "   comm       %10.2f  %5.1f%%\n"
+        "   wait       %10.2f  %5.1f%%\n"
+        "   misc       %10.2f  %5.1f%%\n"
 #endif
 #ifdef DM_SIDM
           "sidm_total    %10.2f  %5.1f%%\n"
@@ -934,6 +948,9 @@ void write_cpu_log(void)
 	      "i/o           %10.2f  %5.1f%%\n"
 	      "peano         %10.2f  %5.1f%%\n"
 	      "sfrcool       %10.2f  %5.1f%%\n"
+#ifdef CHIMES 
+	      "sfrcoolimbal  %10.2f  %5.1f%%\n" 
+#endif 
 	      "blackholes    %10.2f  %5.1f%%\n"
 	      "fof/subfind   %10.2f  %5.1f%%\n"
 #ifdef GRAIN_FLUID
@@ -962,6 +979,18 @@ void write_cpu_log(void)
     All.CPU_Sum[CPU_AGSDENSCOMM], (All.CPU_Sum[CPU_AGSDENSCOMM]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_AGSDENSWAIT], (All.CPU_Sum[CPU_AGSDENSWAIT]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_AGSDENSMISC], (All.CPU_Sum[CPU_AGSDENSMISC]) / All.CPU_Sum[CPU_ALL] * 100,
+#endif
+#ifdef TURB_DIFF_DYNAMIC
+    (All.CPU_Sum[CPU_DYNDIFFCOMPUTE] + All.CPU_Sum[CPU_DYNDIFFWAIT] + All.CPU_Sum[CPU_DYNDIFFCOMM] + All.CPU_Sum[CPU_DYNDIFFMISC]), (All.CPU_Sum[CPU_DYNDIFFCOMPUTE] + All.CPU_Sum[CPU_DYNDIFFWAIT] + All.CPU_Sum[CPU_DYNDIFFCOMM] + All.CPU_Sum[CPU_DYNDIFFMISC]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DYNDIFFCOMPUTE], (All.CPU_Sum[CPU_DYNDIFFCOMPUTE]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DYNDIFFWAIT], (All.CPU_Sum[CPU_DYNDIFFWAIT]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DYNDIFFCOMM], (All.CPU_Sum[CPU_DYNDIFFCOMM]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_DYNDIFFMISC], (All.CPU_Sum[CPU_DYNDIFFMISC]) / All.CPU_Sum[CPU_ALL] * 100,
+    (All.CPU_Sum[CPU_IMPROVDIFFCOMPUTE] + All.CPU_Sum[CPU_IMPROVDIFFWAIT] + All.CPU_Sum[CPU_IMPROVDIFFCOMM] + All.CPU_Sum[CPU_IMPROVDIFFMISC]), (All.CPU_Sum[CPU_IMPROVDIFFCOMPUTE] + All.CPU_Sum[CPU_IMPROVDIFFWAIT] + All.CPU_Sum[CPU_IMPROVDIFFCOMM] + All.CPU_Sum[CPU_IMPROVDIFFMISC]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_IMPROVDIFFCOMPUTE], (All.CPU_Sum[CPU_IMPROVDIFFCOMPUTE]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_IMPROVDIFFWAIT], (All.CPU_Sum[CPU_IMPROVDIFFWAIT]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_IMPROVDIFFCOMM], (All.CPU_Sum[CPU_IMPROVDIFFCOMM]) / All.CPU_Sum[CPU_ALL] * 100,
+    All.CPU_Sum[CPU_IMPROVDIFFMISC], (All.CPU_Sum[CPU_IMPROVDIFFMISC]) / All.CPU_Sum[CPU_ALL] * 100,
 #endif
 #ifdef DM_SIDM
     All.CPU_Sum[CPU_SIDMSCATTER], (All.CPU_Sum[CPU_SIDMSCATTER])/ All.CPU_Sum[CPU_ALL] * 100,
@@ -993,6 +1022,9 @@ void write_cpu_log(void)
 #else
     0.,0.,
 #endif
+#ifdef CHIMES 
+    All.CPU_Sum[CPU_COOLSFRIMBAL], (All.CPU_Sum[CPU_COOLSFRIMBAL]) / All.CPU_Sum[CPU_ALL] * 100, 
+#endif 
 #ifdef BLACK_HOLES
     All.CPU_Sum[CPU_BLACKHOLES], (All.CPU_Sum[CPU_BLACKHOLES]) / All.CPU_Sum[CPU_ALL] * 100,
 #else
@@ -1087,7 +1119,7 @@ void output_extra_log_messages(void)
         double hubble_a;
         
         hubble_a = hubble_function(All.Time);
-        fprintf(FdDE, "%d %g %e ", All.NumCurrentTiStep, All.Time, hubble_a);
+        fprintf(FdDE, "%lld %g %e ", (long long) All.NumCurrentTiStep, All.Time, hubble_a);
 #ifndef GR_TABULATED_COSMOLOGY_W
         fprintf(FdDE, "%e ", All.DarkEnergyConstantW);
 #else

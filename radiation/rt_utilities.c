@@ -47,10 +47,48 @@ extern pthread_mutex_t mutex_partnodedrift;
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
 
+#ifdef CHIMES_STELLAR_FLUXES  
+/* The following routines are fitting functions that are used to 
+ * obtain the luminosities in the 6-13.6 eV energy band (i.e. G0) 
+ * and the >13.6 eV band (i.e. H-ionising), which will be used 
+ * by CHIMES. These functions were fit to Starburst99 models 
+ * that used the Geneva 2012/13 tracks with v=0.4 rotation 
+ * and Z=0.014 metallicity. */ 
+
+double chimes_G0_luminosity(double stellar_age, double stellar_mass)
+{
+  // stellar_age in Myr. 
+  // stellar_mass (current, not initial) in Msol. 
+  // return value in Habing units * cm^2. 
+  double zeta = 6.5006802e29; 
+  if (stellar_age < 4.07) 
+    return stellar_mass * exp(89.67 + (0.172 * pow(stellar_age, 0.916))); 
+  else 
+    return stellar_mass * zeta * pow(1773082.52 / stellar_age, 1.667) * pow(1.0 + pow(stellar_age / 1773082.52, 28.164), 1.64824); 
+}
+
+double chimes_ion_luminosity(double stellar_age, double stellar_mass) 
+{
+  // stellar_age in Myr. 
+  // stellar_mass (current, not initial) in Msol. 
+  // return value in s^-1. 
+  double zeta = 3.2758118e21; 
+  if (stellar_age < 3.71) 
+    return stellar_mass * exp(107.21 + (0.111 * pow(stellar_age, 0.974))); 
+  else 
+    return stellar_mass * zeta * pow(688952.27 / stellar_age, 4.788) * pow(1.0 + pow(stellar_age / 688952.27, 1.124), -17017.50356); 
+}
+#endif 
+
+
 /***********************************************************************************************************/
 /* routine which returns the luminosity for the desired source particles, as a function of whatever the user desires, in the relevant bands */
 /***********************************************************************************************************/
+#ifdef CHIMES_STELLAR_FLUXES  
+int rt_get_source_luminosity(int i, double sigma_0, double *lum, double *chimes_lum_G0, double *chimes_lum_ion)
+#else 
 int rt_get_source_luminosity(int i, double sigma_0, double *lum)
+#endif 
 {
     int active_check = 0;
     
@@ -73,6 +111,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
         double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
         double L = P[i].Mass * evaluate_light_to_mass_ratio(star_age, i);
         if((L<=0)||(star_age<=0)||(isnan(star_age))||(isnan(L))) {L=0; star_age=0;}
+
         double f_uv, f_op;
 #ifndef RT_FIRE_FIX_SPECTRAL_SHAPE
         double sigma_eff = sigma_0 * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,P[i].DensAroundStar,PPP[i].NumNgb,0);
@@ -80,8 +119,9 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
         if(star_age <= 0.0025) {f_op=0.09;} else {
             if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));
             } else {f_op=1-0.8410937/(1+sqrt((star_age-0.006)/0.3));}}
-        
-        double tau_uv = sigma_eff*KAPPA_UV; double tau_op = sigma_eff*KAPPA_OP;
+      
+	double tau_uv = sigma_eff*KAPPA_UV; double tau_op = sigma_eff*KAPPA_OP;
+
         f_uv = (1-f_op)*(All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV)/(1+0.8*tau_uv+0.85*tau_uv*tau_uv));
         f_op *= All.PhotonMomentum_fOPT + (1-All.PhotonMomentum_fOPT)/(1+0.8*tau_op+0.85*tau_op*tau_op);
         /*
@@ -99,6 +139,31 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
         lum[RT_FREQ_BIN_FIRE_UV]  = L * f_uv;
         lum[RT_FREQ_BIN_FIRE_OPT] = L * f_op;
         lum[RT_FREQ_BIN_FIRE_IR]  = L * (1-f_uv-f_op);
+
+#ifdef CHIMES_STELLAR_FLUXES  
+	int age_bin, j; 
+	double log_age_Myr = log10(star_age * 1000.0); 
+	double stellar_mass = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS); 
+	if (log_age_Myr < CHIMES_LOCAL_UV_AGE_LOW) 
+	  age_bin = 0; 
+	else if (log_age_Myr < CHIMES_LOCAL_UV_AGE_MID) 
+	  age_bin = (int) floor(((log_age_Myr - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW) + 1); 
+	else 
+	  { 
+	    age_bin = (int) floor((((log_age_Myr - CHIMES_LOCAL_UV_AGE_MID) / CHIMES_LOCAL_UV_DELTA_AGE_HI) + ((CHIMES_LOCAL_UV_AGE_MID - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW)) + 1); 
+	    if (age_bin > CHIMES_LOCAL_UV_NBINS - 1) 
+	      age_bin = CHIMES_LOCAL_UV_NBINS - 1; 
+	  } 
+	
+	for (j = 0; j < CHIMES_LOCAL_UV_NBINS; j++) 
+	  {
+	    chimes_lum_G0[j] = 0.0; 
+	    chimes_lum_ion[j] = 0.0; 
+	  }
+
+	chimes_lum_G0[age_bin] = chimes_G0_luminosity(star_age * 1000.0, stellar_mass) * All.Chimes_f_esc_G0; 
+	chimes_lum_ion[age_bin] = chimes_ion_luminosity(star_age * 1000.0, stellar_mass) * All.Chimes_f_esc_ion; 
+#endif 
     }
 #endif
 
@@ -664,7 +729,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             if((ef < 0)||(isnan(ef))) {ef=0;}
             if(mode==0) {SphP[i].E_gamma[kf] = ef;} else {SphP[i].E_gamma_Pred[kf] = ef;}
 #endif
-            
+
 #if defined(RT_EVOLVE_FLUX)
             int k_dir; double f_mag=0;
             for(k_dir=0;k_dir<3;k_dir++)
