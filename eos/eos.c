@@ -313,8 +313,8 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
     }
     v2_t=sqrt(v2_t); b2_t=sqrt(b2_t); dv2_t=sqrt(dv2_t); db2_t=sqrt(db2_t); dv2_t/=All.cf_atime; db2_t/=All.cf_atime; b2_t*=All.cf_a2inv; db2_t*=All.cf_a2inv; v2_t/=All.cf_atime; dv2_t/=All.cf_atime; h0=Get_Particle_Size(i)*All.cf_atime; // physical units
 
-    int use_shear_corrected_vturb = 1;
-    if(use_shear_corrected_vturb==1) 
+    int use_shear_corrected_vturb = 0;
+    if(use_shear_corrected_vturb == 1)
     {
         double dv2_t = sqrt((1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) *
             (SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) + (SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2]) *
@@ -346,19 +346,25 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
     
     //fturb_multiplier = pow(M_A,3./2.) / pow(x_LL,1./10.); // GS anisotropic but perp cascade is IK
     //fturb_multiplier = pow(M_A,3./2.) * 1./(pow(M_A,1./2.)*pow(x_LL,1./6.)); // pure-Kolmogorov 
-    //fturb_multiplier = pow(M_A,3./2.) * 100.; // arbitrary multiplier
     //fturb_multiplier = pow(M_A,3./2.) * 10.; // arbitrary multiplier
+    fturb_multiplier = pow(M_A,3./2.) * 100.; // arbitrary multiplier
 
     /* ok now we finally have all the terms needed to calculate the various damping rates that determine the equilibrium diffusivity */
+    double f_grainsize = 0.1; // b=2, uniform logarithmic grain spectrum over a factor of ~100 in grain size; f_grainsize = 0.07*pow(sqrt(fion*n1)*EcrGeV*T4/BmuG,0.25); // MRN size spectrum
+    double G_dust = vA_code*k_L * (M_PI/4.) * (0.5*P[i].Metallicity[0]) * f_grainsize; // also can increase by up to a factor of 2 for regimes where charge collisionally saturated, though this is unlikely to be realized
     double G_ion_neutral = 5.77e-11 * (rho_cgs/PROTONMASS) * (0.97*nh0 + 0.03*nHe0) * sqrt(temperature) * (All.UnitTime_in_s/All.HubbleParam); if(Z_charge_CR > 1) {G_ion_neutral /= sqrt(2.*Z_charge_CR);} // ion-neutral damping: need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]
-    double G_turb_plus_linear_landau = (vA_noion + sqrt(M_PI)*cs_thermal/4.) * sqrt(k_turb*k_L) * fturb_multiplier,  G0 = G_ion_neutral + G_turb_plus_linear_landau, Gamma_effective = G0; // linear Landau + turbulent (both have same form, assume k_turb from cascade above)
-    double phi_0 = (sqrt(M_PI)/6.)*(fabs(cos_Bgrad))*(1./(x_EB_ECR+EPSILON_SMALL))*(cs_thermal*vA_code*k_L/(CRPressureGradScaleLength*G0*G0 + EPSILON_SMALL)); // parameter which determines whether NLL dominates
+    double G_turb_plus_linear_landau = (vA_noion + sqrt(M_PI)*cs_thermal/4.) * sqrt(k_turb*k_L) * fturb_multiplier; // linear Landau + turbulent (both have same form, assume k_turb from cascade above)
+    double G0 = G_ion_neutral + G_turb_plus_linear_landau + G_dust; // linear terms all add into single G0 term
+    double Gamma_effective = G0, phi_0 = (sqrt(M_PI)/6.)*(fabs(cos_Bgrad))*(1./(x_EB_ECR+EPSILON_SMALL))*(cs_thermal*vA_code*k_L/(CRPressureGradScaleLength*G0*G0 + EPSILON_SMALL)); // parameter which determines whether NLL dominates
     if(isfinite(phi_0) && (phi_0>0.01)) {Gamma_effective *= phi_0/(2.*(sqrt(1.+phi_0)-1.));} // this accounts exactly for the steady-state solution for the Thomas+Pfrommer formulation, including both the linear [Landau,turbulent,ion-neutral] + non-linear terms. can estimate (G_nonlinear_landau_effective = Gamma_effective - G0)
     
     /* with damping rates above, equilibrium transport is equivalent to pure streaming, with v_stream = vA + (diffusive equilibrium part) give by the solution below, proportional to Gamma_effective and valid to O(v^2/c^2) */
     double v_st_eff = vA_code * (1. + 4. * kappa_0 * Gamma_effective * x_EB_ECR * (1. + 2.*vA_code*vA_code/(clight_code*clight_code)) / (M_PI*vA_code*vA_code + EPSILON_SMALL)); // effective equilibrium streaming speed for all terms accounted
     CR_kappa_streaming = GAMMA_COSMICRAY*v_st_eff*CRPressureGradScaleLength; // convert to effective diffusivity from 'streaming'
-    CR_kappa_streaming = DMAX(kappa_0,DMAX(1.e20/unit_kappa_code,DMIN(1.e35/unit_kappa_code,CR_kappa_streaming))); // and limit (can get extreme) to prevent numerical overflow errors
+    //CR_kappa_streaming = DMAX(kappa_0,DMAX(1.e20/unit_kappa_code,DMIN(1.e35/unit_kappa_code,CR_kappa_streaming))); // and limit (can get extreme) to prevent numerical overflow errors
+    if(!isfinite(CR_kappa_streaming)) {CR_kappa_streaming = 3.e29/unit_kappa_code;}
+    CR_kappa_streaming = DMIN( DMAX( CR_kappa_streaming , kappa_0 ) , 1000.*GAMMA_COSMICRAY*CRPressureGradScaleLength*COSMIC_RAYS_M1 );
+    CR_kappa_streaming = DMIN( DMAX( CR_kappa_streaming , 1.e25/unit_kappa_code ) , 1.e32/unit_kappa_code );
 #endif
 #endif
 
@@ -377,7 +383,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
     double fcasET_viscBrg = 0.03*pow(EPSILON_SMALL + M_A,4./3.)*T4/pow(EPSILON_SMALL + b_muG*h0_kpc*n1*gL*T4,1./6.); /* Spitzer/Braginski viscous damping of fast modes */
     double fcasET_viscMol = 0.41*pow(EPSILON_SMALL + M_A,4./3.)*nh0/pow(EPSILON_SMALL + b_muG*h0_kpc*n1*gL/(EPSILON_SMALL + T4),1./6.); /* atomic/molecular collisional damping of fast modes */
     double f_cas_ET_fast = fcasET_colless + fcasET_viscBrg + fcasET_viscMol; /* fast modes, accounting for damping, following Yan+Lazarian 2005 */
-    f_cas_ET = 1./(EPSILON_SMALL + 1./(EPSILON_SMALL+f_cas_ET) + 1./(EPSILON_SMALL+f_cas_ET_fast)); /* combine fast-mode and Alfvenic scattering */
+    //f_cas_ET = 1./(EPSILON_SMALL + 1./(EPSILON_SMALL+f_cas_ET) + 1./(EPSILON_SMALL+f_cas_ET_fast)); /* combine fast-mode and Alfvenic scattering */
 #endif
 
     SphP[i].CosmicRayDiffusionCoeff = (1.e32/unit_kappa_code) * h0_kpc / (EPSILON_SMALL + M_A*M_A) * f_cas_ET;
@@ -388,8 +394,10 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
     double kappa_diff_extrinsicturb = SphP[i].CosmicRayDiffusionCoeff; // expression which should be calculated above for turbulent part //
     SphP[i].CosmicRayDiffusionCoeff = 0; // re-zero because we will calculate the more appropriate rate below
     CR_kappa_streaming = 1. / (EPSILON_SMALL +  1./(CR_kappa_streaming+EPSILON_SMALL) + 1./(kappa_diff_extrinsicturb+EPSILON_SMALL) ); // if scattering rates add linearly, this is a rough approximation to the total transport (essentially, smaller of the two dominates)
-
-    double kappa_max=1.e34/unit_kappa_code, kappa_min=1.e26/unit_kappa_code; CR_kappa_streaming=DMIN(DMAX(CR_kappa_streaming,kappa_min),kappa_max);    
+    //double kappa_max=1.e34/unit_kappa_code, kappa_min=1.e26/unit_kappa_code; CR_kappa_streaming=DMIN(DMAX(CR_kappa_streaming,kappa_min),kappa_max);
+    if(!isfinite(CR_kappa_streaming)) {CR_kappa_streaming = 3.e29/unit_kappa_code;}
+    CR_kappa_streaming = DMIN( DMAX( CR_kappa_streaming , kappa_0 ) , 1000.*GAMMA_COSMICRAY*CRPressureGradScaleLength*COSMIC_RAYS_M1 );
+    CR_kappa_streaming = DMIN( DMAX( CR_kappa_streaming , 1.e25/unit_kappa_code ) , 1.e32/unit_kappa_code );
 #endif
     
     SphP[i].CosmicRayDiffusionCoeff += CR_kappa_streaming; //  add effective streaming coefficient
