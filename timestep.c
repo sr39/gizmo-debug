@@ -506,12 +506,12 @@ integertime get_timestep(int p,		/*!< particle index */
 	     if(fabs(binary_dt_2body - dt_2body)/dt_2body < 1e-2){
 		 // If consistent with the binary parameters, we choose a super-timestep that gives ~constant number of timesteps per orbit
 		 dt_2body = 2*M_PI / SUPERTIMESTEPPING_NUM_STEPS_PER_ORBIT * dr*dr / sqrt(fabs(dr*dr*dv*dv - dv_dot_dx*dv_dot_dx)); // orbital frequency is |dr x dv| / r^2, so timestep will be inverse to this
-#ifdef BH_OUTPUT_MOREINFO	     
+//#ifdef BH_OUTPUT_MOREINFO	     
 		 printf("Supertimestep is %g instead of %g for a speedup of %g\n",  dt_2body, 0.3*sqrt(All.ErrTolIntAccuracy)/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time),dt_2body/(0.3*sqrt(All.ErrTolIntAccuracy)/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time)));
-#endif	     
+//#endif	     
 	     } else {  // we still have to take a proper short N-body integration timestep due to a third body whose approach requires careful integration, so no super timestepping is possible
 		 dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 * dt_2body;
-		 P[p].SuperTimestepFlag = 0;
+		 // P[p].SuperTimestepFlag = 0;
 	     }
 	}
 #else
@@ -1029,7 +1029,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef SINGLE_STAR_FORMATION
 	    if(P[p].DensAroundStar) {
 		double eps = DMAX(All.SofteningTable[5], BPP(p).BH_NearestGasNeighbor);
-		double dt_gas = sqrt(All.ErrTolIntAccuracy * All.cf_atime * eps * eps * eps/ All.G / P[p].Mass)/2; // fraction of the freefall time of the nearest gas particle from rest
+		double dt_gas = sqrt(All.ErrTolIntAccuracy * All.cf_atime * eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
 		if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas; }}
 
 	/* if (All.TotBHs > 1) { */

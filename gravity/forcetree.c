@@ -1918,7 +1918,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 			if(r2 > All.ForceSoftening[5]*All.ForceSoftening[5]){
 			    specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
 			} else {
-			    specific_energy = 0.5*vSqr - All.G*M_total*kernel_gravity(sqrt(r2)*h_inv, h_inv, h3_inv, -1);
+//			    printf("dr=%g, fac=%g\n", sqrt(r2), kernel_gravity(sqrt(r2)*h_inv, h_inv, h3_inv, -1)/h_inv);
+			    specific_energy = 0.5*vSqr + All.G*M_total*kernel_gravity(sqrt(r2)*h_inv, h_inv, h3_inv, -1);
 			}
                         if (specific_energy<0){
                             double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
