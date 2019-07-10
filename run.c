@@ -78,11 +78,11 @@ void run(void)
         
         set_non_standard_physics_for_current_time();	/* update auxiliary physics for current time */
 
-	#ifdef SINGLE_STAR_FORMATION || defined(BH_WIND_SPAWN)
-		int treeflagtemp;
-		MPI_Allreduce(&TreeReconstructFlag, &treeflagtemp, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
-		TreeReconstructFlag = treeflagtemp;
-	#endif
+#if defined(SINGLE_STAR_FORMATION) || defined(BH_WIND_SPAWN)
+	int treeflagtemp;
+	MPI_Allreduce(&TreeReconstructFlag, &treeflagtemp, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
+	TreeReconstructFlag = treeflagtemp;
+#endif
 	
         if(GlobNumForceUpdate > All.TreeDomainUpdateFrequency * All.TotNumPart)	/* check whether we have a big step */
         {
@@ -90,8 +90,7 @@ void run(void)
         }
 #ifdef SINGLE_STAR_FORMATION
         else if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart || TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
-#endif
-#ifdef BH_WIND_SPAWN
+#elif BH_WIND_SPAWN
         else if(TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
 #endif
         else
@@ -314,7 +313,7 @@ void calculate_non_standard_physics(void)
         spawn_bh_wind_feedback();
         rearrange_particle_sequence();
         force_treebuild(NumPart, NULL);
-        MaxUnSpanMassBH=MaxUnSpanMassBH_global=0.; 
+        MaxUnSpanMassBH=MaxUnSpanMassBH_global=0.;
     }
 #endif
 #endif // ifdef BLACK_HOLES or GALSF_SUBGRID_WINDS

@@ -103,19 +103,19 @@ int force_treebuild(int npart, struct unbind_data *mp)
 
     int flag;
     
-#ifdef BH_CALC_DISTANCES
-    int i;
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-    {
-        P[i].min_dist_to_bh=P[i].min_xyz_to_bh[0]=P[i].min_xyz_to_bh[1]=P[i].min_xyz_to_bh[2]=1e37;
-#ifdef SINGLE_STAR_FIND_BINARIES
-        P[i].min_bh_t_orbital=MAX_REAL_NUMBER;
-#endif	
-#ifdef SINGLE_STAR_TIMESTEPPING
-        P[i].min_bh_approach_time=MAX_REAL_NUMBER; P[i].min_bh_freefall_time=MAX_REAL_NUMBER; P[i].min_bh_periastron=MAX_REAL_NUMBER;
-#endif
-    }
-#endif
+/* #ifdef BH_CALC_DISTANCES */
+/*     int i; */
+/*     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) */
+/*     { */
+/*         P[i].min_dist_to_bh=P[i].min_xyz_to_bh[0]=P[i].min_xyz_to_bh[1]=P[i].min_xyz_to_bh[2]=1e37; */
+/* #ifdef SINGLE_STAR_FIND_BINARIES */
+/*         P[i].min_bh_t_orbital=MAX_REAL_NUMBER; */
+/* #endif	 */
+/* #ifdef SINGLE_STAR_TIMESTEPPING */
+/*         P[i].min_bh_approach_time=MAX_REAL_NUMBER; P[i].min_bh_freefall_time=MAX_REAL_NUMBER; P[i].min_bh_periastron=MAX_REAL_NUMBER; */
+/* #endif */
+/*     } */
+/* #endif */
     
     do
     {
