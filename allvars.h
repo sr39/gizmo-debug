@@ -314,7 +314,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define TIDAL_TIMESTEP_CRITERION // use tidal tensor timestep criterion
 #define SINGLE_STAR_TIMESTEPPING // use additional timestep criteria for sink particles to ensure they don't evolve out-of-binary in close encounters
 
-#define SINGLE_STAR_SUPERTIMESTEPPING 2 // Turns on sub-grid evolution of sink binaries to avoid slowdown of very short timesteps
+#define SINGLE_STAR_SUPERTIMESTEPPING 1 // Turns on sub-grid evolution of sink binaries to avoid slowdown of very short timesteps
 #define SINGLE_STAR_FIND_BINARIES
 #define SINGLE_STAR_HILL_CRITERION // use Hill-type tidal-tensor star formation criterion
 //#define SINGLE_STAR_STRICT_ACCRETION // use Bate 1995 angular momentum criterion for star formation, along with dynamically-evolved sink radius for apocentric distance threshold
