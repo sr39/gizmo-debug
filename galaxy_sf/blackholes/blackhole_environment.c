@@ -32,7 +32,7 @@ static struct blackholedata_in
 #if defined(BH_GRAVCAPTURE_GAS)
     MyDouble Mass;
 #endif
-#if defined(SINGLE_STAR_STRICT_ACCRETION) || defined(NEWSINK)
+#if defined(SINGLE_STAR_STRICT_ACCRETION)
     MyFloat SinkRadius;
 #endif  
     MyDouble Pos[3];
@@ -119,9 +119,9 @@ void blackhole_environment_loop(void)
 #endif
             BlackholeDataIn[j].Hsml = PPP[place].Hsml;
             BlackholeDataIn[j].ID = P[place].ID;
-#if defined(NEWSINK)
-	    BlackholeDataIn[j].SinkRadius = P[place].SinkRadius;
-#endif
+//#if defined(NEWSINK)
+//	    BlackholeDataIn[j].SinkRadius = P[place].SinkRadius;
+//#endif
 #ifdef BH_WAKEUP_GAS
 	    BlackholeDataIn[j].TimeBin = P[place].TimeBin;
 #endif
@@ -246,7 +246,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     {
 #if defined(BH_GRAVCAPTURE_GAS)
         mass = P[target].Mass;
-#if defined(SINGLE_STAR_STRICT_ACCRETION) || defined(NEWSINK)
+#if defined(SINGLE_STAR_STRICT_ACCRETION)
         sink_radius = P[target].SinkRadius;
 #endif	
 #endif
@@ -269,7 +269,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     {
 #if defined(BH_GRAVCAPTURE_GAS)
         mass = BlackholeDataGet[target].Mass;
-#if defined(SINGLE_STAR_STRICT_ACCRETION) || defined(NEWSINK)
+#if defined(SINGLE_STAR_STRICT_ACCRETION)
         sink_radius = BlackholeDataGet[target].SinkRadius;
 #endif		
 #endif
