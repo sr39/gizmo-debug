@@ -2329,9 +2329,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double dist_to_center2 = dx_nc*dx_nc +  dy_nc*dy_nc + dz_nc*dz_nc;
                     /* check if any portion the cell lies within the interaction range */
                     
-#ifdef SINGLE_STAR_FORMATION		    
-		    if(ptype == 5) targeth_si = DMAX(targeth_si,PPP[target].Hsml); 
-#endif
+/* #ifdef SINGLE_STAR_FORMATION
+		    // This line effectively forces stars to do direct summation with all gas particles within their accretion search radius - probably overkill, and since summing the forces is the slowest part of a timestep, and stars need the shortest timesteps, let's not do this anymore and get a bit of a speedup
+//		    if(ptype == 5) targeth_si = DMAX(targeth_si,PPP[target].Hsml);
+#endif */
 		    double dist_to_open = 2.0*targeth_si + nop->len*1.73205/2.0;
 		  
 		    
@@ -2521,7 +2522,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
                 u = r * h_inv;
                 fac = mass * kernel_gravity(u, h_inv, h3_inv, 1);
-                
+
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+                /* second derivatives needed -> calculate them from softend potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */		
+                if(u < 0.5) {fac2_tidal = mass * h5_inv * (76.8 - 96.0 * u);} else {fac2_tidal = mass * h5_inv * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u);}
+#endif 
+		
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
                 // first, appropriately symmetrize the forces between particles //
                 if((h_p_inv > 0) && (ptype_sec > -1))
@@ -2558,12 +2564,18 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         if(!isnan(fac_corr)) {fac += fac_corr;}
                     } // if(ptype==ptype_sec)
 #else
-                    if(h_p_inv < h_inv)
+                    if(h_p_inv < h_inv) // if the softening of the particle whose force is being summed is greater than the target
                     {
                         h_p3_inv = h_p_inv * h_p_inv * h_p_inv;
                         u_p = r * h_p_inv;
                         double fac2 = mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1);
                         if(!isnan(fac2)) {fac=fac2;}
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+			h5_inv = h_p3_inv * h_p_inv * h_p_inv;
+			if(!isnan(fac2)) {
+			    if(u_p < 0.5) {fac2_tidal = mass * h5_inv * (76.8 - 96.0 * u_p);} else {fac2_tidal = mass * h5_inv * (-0.2 / (u_p * u_p * u_p * u_p * u_p) + 48.0 / u_p - 76.8 + 32.0 * u_p);}
+			}
+#endif						
                     }
                     // correction only applies to 'shared-kernel' particles: so this needs to check if
                     // these are the same particles for which the kernel lengths are computed
@@ -2602,11 +2614,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 
 #ifdef EVALPOTENTIAL
                 facpot = mass * kernel_gravity(u, h_inv, h3_inv, -1);
-#endif
-#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-                /* second derivatives needed -> calculate them from softend potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
-                if(u < 0.5) {fac2_tidal = mass * h5_inv * (76.8 - 96.0 * u);} else {fac2_tidal = mass * h5_inv * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u);}
-#endif
+#endif 
+
             } // closes r < h (else) clause
             
                 
