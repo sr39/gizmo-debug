@@ -163,11 +163,11 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
     int bound = 0;
     if(v2 < 1) 
     {
-#ifdef NEWSINK
-	return 1; // simple boundedness is sufficient
-#endif	
         double apocenter = dr_code / (1.0-v2); // NOTE: this is the major axis of the orbit, not the apocenter... - MYG
         double apocenter_max = All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
+#ifdef NEWSINK
+	if(P[j].Type == 0) return 1; // simple boundedness is sufficient for gas accretion
+#endif		
         if(P[j].Type==5) {apocenter_max += MAX_REAL_NUMBER;} // default is to be unrestrictive for BH-BH mergers //
 #ifdef SINGLE_STAR_STRICT_ACCRETION // Bate 1995-style criterion, with a fixed softening radius that is distinct from both the force softening and the search radius
 	apocenter_max = 2*sink_radius;
