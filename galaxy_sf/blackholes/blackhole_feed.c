@@ -486,12 +486,15 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         }
 #endif
 			
-#ifndef SINGLE_STAR_FORMATION // for now we don't wanna do sink mergers in SF sims; 
+#if (!defined(SINGLE_STAR_FORMATION) || defined(SINGLE_STAR_MERGERS)) 
                         /* check_for_bh_merger.  Easy.  No Edd limit, just a pos and vel criteria. */
+#ifdef SINGLE_STAR_MERGERS
+			if((P[j].Mass < 3*All.MinMassForParticleMerger) && (r < All.ForceSoftening[5])) // only merge away stuff that is within the softening radius, and is no more massive that a few gas particles
+#endif			
                         if((id != P[j].ID) && (P[j].Mass > 0) && (P[j].Type == 5))	/* we may have a black hole merger */
-                        {			  
+                        {
                             if(id != P[j].ID) /* check its not the same bh  (DAA: this is duplicated here...) */
-                            {			      
+                            {
                                 if((vrel < BH_CSND_FRAC_BH_MERGE * vesc) && (bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1))
                                 {
 #ifndef IO_REDUCED_MODE

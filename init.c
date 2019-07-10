@@ -535,6 +535,9 @@ void init(void)
             if(RestartFlag == 0)
             {
                 BPP(i).BH_Mass = All.SeedBlackHoleMass;
+#ifdef SINGLE_STAR_FORMATION
+		BPP(i).BH_Mass = P[i].Mass;
+#endif		
 #ifdef BH_ALPHADISK_ACCRETION
                 BPP(i).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
 #endif
