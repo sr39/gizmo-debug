@@ -512,10 +512,10 @@ integertime get_timestep(int p,		/*!< particle index */
 		 // If consistent with the binary parameters, we choose a super-timestep that gives ~constant number of timesteps per orbit
 //		 dt_2body = 2*M_PI / SUPERTIMESTEPPING_NUM_STEPS_PER_ORBIT * dr*dr / sqrt(fabs(dr*dr*dv*dv - dv_dot_dx*dv_dot_dx)); // orbital frequency is |dr x dv| / r^2, so timestep will be inverse to this
 		 dt_2body = 2*M_PI / SUPERTIMESTEPPING_NUM_STEPS_PER_ORBIT * (binary_dt_2body*2); // orbital frequency is |dr x dv| / r^2, so timestep will be inverse to this		 
-//#ifdef BH_OUTPUT_MOREINFO
+#ifdef BH_OUTPUT_MOREINFO
 //		 dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 * dt_2body;
 		 printf("Supertimestep is %g instead of %g for a speedup of %g\n",  dt_2body, 0.3*sqrt(All.ErrTolIntAccuracy)/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time),dt_2body/(0.3*sqrt(All.ErrTolIntAccuracy)/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time)));
-//#endif	     
+#endif	     
 	     } else {  // we still have to take a proper short N-body integration timestep due to a third body whose approach requires careful integration, so no super timestepping is possible
 		 dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 * dt_2body;
 		 P[p].SuperTimestepFlag = 0;
