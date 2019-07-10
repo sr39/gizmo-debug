@@ -100,7 +100,7 @@ void blackhole_feed_loop(void)
             BlackholeDataIn[j].BH_Mass_AlphaDisk = BPP(place).BH_Mass_AlphaDisk;
 #endif
 #ifdef NEWSINK
-            BlackholeDataIn[j].SinkRadius = BPP(place).SinkRadius;
+//            BlackholeDataIn[j].SinkRadius = BPP(place).SinkRadius;
             BlackholeDataIn[j].BH_Mdot_Avg = BPP(place).BH_Mdot_Avg;
             //Copy info on neighbours
             BlackholeDataIn[j].n_neighbor = BlackholeTempInfo[P[place].IndexMapToTempStruc].n_neighbor;

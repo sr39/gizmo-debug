@@ -163,16 +163,17 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
     int bound = 0;
     if(v2 < 1) 
     {
+#ifdef NEWSINK
+	return 1; // simple boundedness is sufficient
+#endif	
         double apocenter = dr_code / (1.0-v2); // NOTE: this is the major axis of the orbit, not the apocenter... - MYG
         double apocenter_max = All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
         if(P[j].Type==5) {apocenter_max += MAX_REAL_NUMBER;} // default is to be unrestrictive for BH-BH mergers //
 #ifdef SINGLE_STAR_STRICT_ACCRETION // Bate 1995-style criterion, with a fixed softening radius that is distinct from both the force softening and the search radius
-	//	printf("sink radius: %g apo: %g r: %g\n", sink_radius, apocenter, dr_code);
-	//	apocenter = dr_code;
 	apocenter_max = 2*sink_radius;
 	if(dr_code < DMAX(Get_Particle_Size(j),All.ForceSoftening[5])) bound = 1; // force `bound' if within the kernel
 #else
-#if defined(SINGLE_STAR_FORMATION) || defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
+#if !defined(SINGLE_STAR_FORMATION) && (defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS))
         double r_j = All.ForceSoftening[P[j].Type];
         if(P[j].Type==0) {r_j = DMAX(r_j , PPP[j].Hsml);}
         apocenter_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
@@ -1011,7 +1012,7 @@ void blackhole_final_operations(void)
             {
 // printf("%d BH Final accreteing for  BH %d with ID %d \n", ThisTask, i, n);
                 P[n].Vel[k] = (P[n].Vel[k]*P[n].Mass + BlackholeTempInfo[i].accreted_momentum[k]) / (BlackholeTempInfo[i].accreted_Mass + P[n].Mass);
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#if defined(SINGLE_STAR_STRICT_ACCRETION) || defined(NEWSINK)
 		P[n].Pos[k] = (P[n].Pos[k]*P[n].Mass + BlackholeTempInfo[i].accreted_moment[k]) / (BlackholeTempInfo[i].accreted_Mass + P[n].Mass);
 #if defined(NEWSINK_J_FEEDBACK)
 // printf("%d BH Final momentum accreted \n", ThisTask);

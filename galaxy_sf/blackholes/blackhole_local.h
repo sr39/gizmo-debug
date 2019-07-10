@@ -105,7 +105,7 @@ static struct blackholedata_out
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyFloat BH_angle_weighted_kernel_sum;
 #endif
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#if defined(SINGLE_STAR_STRICT_ACCRETION) || defined(NEWSINK)
     MyLongDouble accreted_moment[3];
 #endif
 #if defined(NEWSINK)

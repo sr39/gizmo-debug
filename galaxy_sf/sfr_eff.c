@@ -582,7 +582,7 @@ void star_formation_parent_routine(void)
 #endif
 #ifdef NEWSINK_J_FEEDBACK
                 P[i].Jsink[0] = P[i].Jsink[1] = P[i].Jsink[2] = 0;
-                P[i].t_disc = pow(All.G * P[i].Mass,-0.5) * pow(P[i].SinkRadius,1.5); /*placeholder to avoid dividing with zero*/
+                P[i].t_disc = pow(All.G * P[i].Mass,-0.5) * pow(All.ForceSoftening[5],1.5); /*placeholder to avoid dividing with zero*/
 #endif
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
