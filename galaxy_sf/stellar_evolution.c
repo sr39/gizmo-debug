@@ -55,7 +55,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
         else {lum_sol = 32000. * m_solar;}
     }
 #endif
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION //defined(SINGLE_STAR_FB_HEATING) || defined(SINGLE_STAR_PROMOTION) || defined(SINGLE_STAR_FB_JETS)
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION 
     if(i > 0)
     {
         /*account for pre-main sequence evolution */

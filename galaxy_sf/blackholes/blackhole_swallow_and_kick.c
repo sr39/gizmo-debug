@@ -97,11 +97,7 @@ void blackhole_swallow_and_kick_loop(void)
 #ifdef BH_ALPHADISK_ACCRETION
             BlackholeDataIn[j].BH_Mass_AlphaDisk = BPP(place).BH_Mass_AlphaDisk;
 #endif
-//#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-//	    BlackholeDataIn[j].ProtoStellar_Radius = BPP(place).ProtoStellar_Radius;
-//#endif	    
 #ifdef NEWSINK
-//            BlackholeDataIn[j].SinkRadius = BPP(place).SinkRadius;
             //Copy info on neighbours
             BlackholeDataIn[j].n_neighbor = BlackholeTempInfo[P[place].IndexMapToTempStruc].n_neighbor;
             memcpy(BlackholeDataIn[j].rgas,BlackholeTempInfo[P[place].IndexMapToTempStruc].rgas, NEWSINK_NEIGHBORMAX * sizeof(MyFloat));
@@ -273,9 +269,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     MyFloat *velocity, hinv, hinv3;
 #endif
     MyFloat f_accreted=0;
-//#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-//    MyFloat protostellar_radius;
-//#endif    
 #if defined(NEWSINK_J_FEEDBACK) || defined(BH_WIND_KICK)
     MyFloat mass;
 #ifdef BH_WIND_KICK
@@ -317,9 +310,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
         h_i = PPP[target].Hsml;
         id = P[target].ID;
-//#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-//	protostellar_radius = BPP(target).ProtoStellar_Radius;
-//#endif	    
 #if defined(BH_WIND_KICK) || defined(NEWSINK_J_FEEDBACK)
         mass = P[target].Mass;    
 #endif
@@ -365,9 +355,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
         h_i = BlackholeDataGet[target].Hsml;
         id = BlackholeDataGet[target].ID;
-//#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-//	protostellar_radius = BlackholeDataGet[target].ProtoStellar_Radius;
-//#endif	
 #if defined(BH_WIND_KICK) || defined(NEWSINK_J_FEEDBACK)
         mass = BlackholeDataGet[target].Mass;
 #if defined(BH_ALPHADISK_ACCRETION) && defined(BH_WIND_KICK)
@@ -672,30 +659,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 //#endif
 #endif
                                 for(k=0,norm=0;k<3;k++) {norm+=dir[k]*dir[k];} if(norm<=0) {dir[0]=0;dir[1]=0;dir[2]=1;norm=1;} else {norm=sqrt(norm); dir[0]/=norm;dir[1]/=norm;dir[2]/=norm;}
-/* #if defined(NEWSINK_JET_OPENING_ANGLE) //get the new relative position vector for the particle velocity (from sink)					 */
-/*                                 theta_angle = max_theta_angle * get_random_number(P[j].ID); //uniformly chosen */
-/*                                 phi_angle=acos(1.0 - 2.0 * get_random_number(P[j].ID)); //chosen in a way to get a uniform distribution on the spherical surface */
-/*                                 reldir[0]=cos(phi_angle) * sin(theta_angle); reldir[1]=sin(phi_angle) * sin(theta_angle); reldir[2]=cos(theta_angle); //get relative direction from polar axis       */
-/*                                 //Let's get the other base vectors and get the new velocity direction for the particle.  */
-/*                                 b_vect3[0]=dir[0];b_vect3[1]=dir[1];b_vect3[2]=dir[2]; */
-/*                                 b_vect1[0] = 0.0; b_vect1[1] = dir[2]; b_vect1[2] = - dir[1]; //We get the first base by taking cross product of dir with +x unit vector */
-/*                                 for(k=0,norm=0;k<3;k++) {norm+=b_vect1[k]*b_vect1[k];} if(norm<=0) {b_vect1[0]=0;b_vect1[1]=1.0;b_vect1[2]=0;norm=1;} else {norm=sqrt(norm);b_vect1[0]/=norm;b_vect1[1]/=norm;b_vect1[2]/=norm;} */
-/*                                 //second vector is dir cross b_vect1, and it should be normalized by default as it is the cross product of two orthogonal vectors */
-/*                                 b_vect2[0] = b_vect3[1] * b_vect1[2] - b_vect3[2] * b_vect1[1];  */
-/*                                 b_vect2[1] = b_vect3[0] * b_vect1[2] - b_vect3[2] * b_vect1[0];  */
-/*                                 b_vect2[2] = b_vect3[0] * b_vect1[1] - b_vect3[1] * b_vect1[0]; */
-/*                                 //Now we get the new direction */
-/*                                 for(k=0;k<3;k++) {dir[k]=reldir[0]*b_vect1[k]+reldir[1]*b_vect2[k]+reldir[2]*b_vect3[k];} */
-/* #if defined(NEWSINK_RELOCATE_KICKED_PARTICLE) */
-/*                                 //Let's reposition the particle */
-/*                                 for(k=0;k<3;k++) {P[j].Pos[k] = pos[k] + dir[k]*int_zone_radius;}//Put the particle at the edge of the interaction zone */
-/* #endif */
-/* #endif */
-
                                 for(k=0;k<3;k++) {P[j].Vel[k]+=v_kick*All.cf_atime*dir[k]; SphP[j].VelPred[k]+=v_kick*All.cf_atime*dir[k];}				
-//#ifdef NEWSINK
-//                                for(k=0;k<3;k++) {accreted_momentum[k] -= P[j].Mass * v_kick * All.cf_atime * dir[k]; } // To conserve momentum
-//#endif				
 #ifdef GALSF_SUBGRID_WINDS // if sub-grid galactic winds are decoupled from the hydro, we decouple the BH kick winds as well
                                 SphP[j].DelayTime = All.WindFreeTravelMaxTimeFactor / All.cf_hubble_a;
 #endif  
@@ -1109,6 +1073,32 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         double phi = 2.0*M_PI*get_random_number(j+1+ThisTask); // random from 0 to 2pi //
         double cos_theta = 2.0*(get_random_number(j+3+2*ThisTask)-0.5); // random between 1 to -1 //
         double sin_theta=sqrt(1-cos_theta*cos_theta), dx[3]; dx[0]=sin_theta*cos(phi); dx[1]=sin_theta*sin(phi); dx[2]=cos_theta;
+        
+        
+        
+        
+        
+        /* #if defined(NEWSINK_JET_OPENING_ANGLE) //get the new relative position vector for the particle velocity (from sink)					 */
+/*                                 theta_angle = max_theta_angle * get_random_number(P[j].ID); //uniformly chosen */
+/*                                 phi_angle=acos(1.0 - 2.0 * get_random_number(P[j].ID)); //chosen in a way to get a uniform distribution on the spherical surface */
+/*                                 reldir[0]=cos(phi_angle) * sin(theta_angle); reldir[1]=sin(phi_angle) * sin(theta_angle); reldir[2]=cos(theta_angle); //get relative direction from polar axis       */
+/*                                 //Let's get the other base vectors and get the new velocity direction for the particle.  */
+/*                                 b_vect3[0]=dir[0];b_vect3[1]=dir[1];b_vect3[2]=dir[2]; */
+/*                                 b_vect1[0] = 0.0; b_vect1[1] = dir[2]; b_vect1[2] = - dir[1]; //We get the first base by taking cross product of dir with +x unit vector */
+/*                                 for(k=0,norm=0;k<3;k++) {norm+=b_vect1[k]*b_vect1[k];} if(norm<=0) {b_vect1[0]=0;b_vect1[1]=1.0;b_vect1[2]=0;norm=1;} else {norm=sqrt(norm);b_vect1[0]/=norm;b_vect1[1]/=norm;b_vect1[2]/=norm;} */
+/*                                 //second vector is dir cross b_vect1, and it should be normalized by default as it is the cross product of two orthogonal vectors */
+/*                                 b_vect2[0] = b_vect3[1] * b_vect1[2] - b_vect3[2] * b_vect1[1];  */
+/*                                 b_vect2[1] = b_vect3[0] * b_vect1[2] - b_vect3[2] * b_vect1[0];  */
+/*                                 b_vect2[2] = b_vect3[0] * b_vect1[1] - b_vect3[1] * b_vect1[0]; */
+/*                                 //Now we get the new direction */
+/*                                 for(k=0;k<3;k++) {dir[k]=reldir[0]*b_vect1[k]+reldir[1]*b_vect2[k]+reldir[2]*b_vect3[k];} */
+/* #endif */
+        
+        
+        
+        
+        
+        
         for(k=0;k<3;k++) {P[j].Pos[k]=P[i].Pos[k] + dx[k]*d_r;}
 
         /* velocities (determined by wind velocity) */
