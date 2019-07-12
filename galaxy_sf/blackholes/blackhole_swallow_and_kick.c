@@ -97,9 +97,9 @@ void blackhole_swallow_and_kick_loop(void)
 #ifdef BH_ALPHADISK_ACCRETION
             BlackholeDataIn[j].BH_Mass_AlphaDisk = BPP(place).BH_Mass_AlphaDisk;
 #endif
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-	    BlackholeDataIn[j].ProtoStellar_Radius = BPP(place).ProtoStellar_Radius;
-#endif	    
+//#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+//	    BlackholeDataIn[j].ProtoStellar_Radius = BPP(place).ProtoStellar_Radius;
+//#endif	    
 #ifdef NEWSINK
 //            BlackholeDataIn[j].SinkRadius = BPP(place).SinkRadius;
             //Copy info on neighbours
@@ -273,9 +273,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     MyFloat *velocity, hinv, hinv3;
 #endif
     MyFloat f_accreted=0;
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-    MyFloat protostellar_radius;
-#endif    
+//#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+//    MyFloat protostellar_radius;
+//#endif    
 #if defined(NEWSINK_J_FEEDBACK) || defined(BH_WIND_KICK)
     MyFloat mass;
 #ifdef BH_WIND_KICK
@@ -317,9 +317,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
         h_i = PPP[target].Hsml;
         id = P[target].ID;
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-	protostellar_radius = BPP(target).ProtoStellar_Radius;
-#endif	    
+//#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+//	protostellar_radius = BPP(target).ProtoStellar_Radius;
+//#endif	    
 #if defined(BH_WIND_KICK) || defined(NEWSINK_J_FEEDBACK)
         mass = P[target].Mass;    
 #endif
@@ -365,9 +365,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
         h_i = BlackholeDataGet[target].Hsml;
         id = BlackholeDataGet[target].ID;
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-	protostellar_radius = BlackholeDataGet[target].ProtoStellar_Radius;
-#endif	
+//#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+//	protostellar_radius = BlackholeDataGet[target].ProtoStellar_Radius;
+//#endif	
 #if defined(BH_WIND_KICK) || defined(NEWSINK_J_FEEDBACK)
         mass = BlackholeDataGet[target].Mass;
 #if defined(BH_ALPHADISK_ACCRETION) && defined(BH_WIND_KICK)
@@ -596,13 +596,13 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #endif
                         if (f_accreted>0.0){
-#if defined(NEWSINK_STOCHASTIC_ACCRETION) && defined(BH_WIND_KICK) //We stochastically determine if this "accreted" particle is really accreted and we take its mass or it gets kicked out
-                            w = get_random_number(P[j].ID); kicked=0;
-                            if(w > All.BAL_f_accretion){
-                                kicked=1;f_accreted=0.0;
-                            }
-                            else{
-#endif
+/* #if defined(NEWSINK_STOCHASTIC_ACCRETION) && defined(BH_WIND_KICK) //We stochastically determine if this "accreted" particle is really accreted and we take its mass or it gets kicked out */
+/*                             w = get_random_number(P[j].ID); kicked=0; */
+/*                             if(w > All.BAL_f_accretion){ */
+/*                                 kicked=1;f_accreted=0.0; */
+/*                             } */
+/*                             else{ */
+/* #endif */
                                 accreted_mass += FLT(f_accreted*P[j].Mass);
 #ifdef BH_GRAVCAPTURE_GAS
 #ifdef BH_ALPHADISK_ACCRETION       /* mass goes into the alpha disk, before going into the BH */
@@ -639,23 +639,23 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 if ((1.0-f_accreted)>0) {printf("f_accreted is: %g for particle with id %llu and mass %g around BH with id %llu\n", (MyFloat) f_accreted,(unsigned long long) P[j].ID, P[j].Mass,(unsigned long long) id);}
                                 else{printf("Particle with id %llu and mass %g swallowed by BH with id %llu\n", (unsigned long long) P[j].ID, P[j].Mass,(unsigned long long) id);}
 #endif
-#if defined(NEWSINK_STOCHASTIC_ACCRETION) && defined(BH_WIND_KICK)
-                            }//end of else for determining if the particle is kicked
-#endif
+/* #if defined(NEWSINK_STOCHASTIC_ACCRETION) && defined(BH_WIND_KICK) */
+/*                             }//end of else for determining if the particle is kicked */
+/* #endif */
                             
 #if defined(NEWSINK_STOCHASTIC_ACCRETION) //check if we actually kick this particle in the stochastic case
                             if (kicked){
 #endif
 #ifdef BH_WIND_KICK     /* BAL kicking operations. NOTE: we have two separate BAL wind models, particle kicking and smooth wind model. This is where we do the particle kicking BAL model. This should also work when there is alpha-disk. */
                                 v_kick=All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s; //if( !(All.ComovingIntegrationOn) && (All.Time < 0.001)) {v_kick *= All.Time/0.001;}
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-				v_kick = sqrt(All.G * bh_mass / (protostellar_radius * 6.957e10 / All.UnitLength_in_cm)); // Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
-#endif 
-#if defined(NEWSINK) && !defined(NEWSINK_STOCHASTIC_ACCRETION) /*It is possible to accrete only part of the particle so we need to be more careful about our kicks*/
-                                if (f_acc_corr<1.0){
-                                    v_kick *= f_acc_corr*(1.0-All.BAL_f_accretion)/(1.0-All.BAL_f_accretion*f_acc_corr); /*we wanted to only accrete an f_acc_corr portion, so the imparted momentum is proportional to only f_acc_corr*(1-All.BAL_f_accretion) times the initial mass*/
-                                }
-#endif
+/* #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION */
+/* 				v_kick = sqrt(All.G * bh_mass / (protostellar_radius * 6.957e10 / All.UnitLength_in_cm)); // Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum */
+/* #endif  */
+/* #if defined(NEWSINK) && !defined(NEWSINK_STOCHASTIC_ACCRETION) /\*It is possible to accrete only part of the particle so we need to be more careful about our kicks*\/ */
+/*                                 if (f_acc_corr<1.0){ */
+/*                                     v_kick *= f_acc_corr*(1.0-All.BAL_f_accretion)/(1.0-All.BAL_f_accretion*f_acc_corr); /\*we wanted to only accrete an f_acc_corr portion, so the imparted momentum is proportional to only f_acc_corr*(1-All.BAL_f_accretion) times the initial mass*\/ */
+/*                                 } */
+/* #endif */
                                 dir[0]=dir[1]=dir[2]=0; for(k=0;k<3;k++) {dir[k]=P[j].Pos[k]-pos[k];} // DAA: default direction is radially outwards
 #if defined(BH_COSMIC_RAYS) /* inject cosmic rays alongside wind injection */
                                 double dEcr = All.BH_CosmicRay_Injection_Efficiency * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * (C / All.UnitVelocity_in_cm_per_s)*(C / All.UnitVelocity_in_cm_per_s);
@@ -665,37 +665,37 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #endif
 #if (BH_WIND_KICK < 0)  /* DAA: along polar axis defined by angular momentum within Kernel (we could add finite opening angle) work out the geometry w/r to the plane of the disk */
-#if defined(NEWSINK_J_FEEDBACK) /*Use Jsink instead of Jgas_in_Kernel for direction*/
-                                if((dir[0]*Jsink[0] + dir[1]*Jsink[1] + dir[2]*Jsink[2]) > 0){for(k=0;k<3;k++) {dir[k]=Jsink[k];}} else {for(k=0;k<3;k++) {dir[k]=-Jsink[k];}}
-#else
+/* #if defined(NEWSINK_J_FEEDBACK) /\*Use Jsink instead of Jgas_in_Kernel for direction*\/ */
+/*                                 if((dir[0]*Jsink[0] + dir[1]*Jsink[1] + dir[2]*Jsink[2]) > 0){for(k=0;k<3;k++) {dir[k]=Jsink[k];}} else {for(k=0;k<3;k++) {dir[k]=-Jsink[k];}} */
+/* #else */
                                 if((dir[0]*Jgas_in_Kernel[0] + dir[1]*Jgas_in_Kernel[1] + dir[2]*Jgas_in_Kernel[2]) > 0){for(k=0;k<3;k++) {dir[k]=Jgas_in_Kernel[k];}} else {for(k=0;k<3;k++) {dir[k]=-Jgas_in_Kernel[k];}}
-#endif
+//#endif
 #endif
                                 for(k=0,norm=0;k<3;k++) {norm+=dir[k]*dir[k];} if(norm<=0) {dir[0]=0;dir[1]=0;dir[2]=1;norm=1;} else {norm=sqrt(norm); dir[0]/=norm;dir[1]/=norm;dir[2]/=norm;}
-#if defined(NEWSINK_JET_OPENING_ANGLE) //get the new relative position vector for the particle velocity (from sink)					
-                                theta_angle = max_theta_angle * get_random_number(P[j].ID); //uniformly chosen
-                                phi_angle=acos(1.0 - 2.0 * get_random_number(P[j].ID)); //chosen in a way to get a uniform distribution on the spherical surface
-                                reldir[0]=cos(phi_angle) * sin(theta_angle); reldir[1]=sin(phi_angle) * sin(theta_angle); reldir[2]=cos(theta_angle); //get relative direction from polar axis      
-                                //Let's get the other base vectors and get the new velocity direction for the particle. 
-                                b_vect3[0]=dir[0];b_vect3[1]=dir[1];b_vect3[2]=dir[2];
-                                b_vect1[0] = 0.0; b_vect1[1] = dir[2]; b_vect1[2] = - dir[1]; //We get the first base by taking cross product of dir with +x unit vector
-                                for(k=0,norm=0;k<3;k++) {norm+=b_vect1[k]*b_vect1[k];} if(norm<=0) {b_vect1[0]=0;b_vect1[1]=1.0;b_vect1[2]=0;norm=1;} else {norm=sqrt(norm);b_vect1[0]/=norm;b_vect1[1]/=norm;b_vect1[2]/=norm;}
-                                //second vector is dir cross b_vect1, and it should be normalized by default as it is the cross product of two orthogonal vectors
-                                b_vect2[0] = b_vect3[1] * b_vect1[2] - b_vect3[2] * b_vect1[1]; 
-                                b_vect2[1] = b_vect3[0] * b_vect1[2] - b_vect3[2] * b_vect1[0]; 
-                                b_vect2[2] = b_vect3[0] * b_vect1[1] - b_vect3[1] * b_vect1[0];
-                                //Now we get the new direction
-                                for(k=0;k<3;k++) {dir[k]=reldir[0]*b_vect1[k]+reldir[1]*b_vect2[k]+reldir[2]*b_vect3[k];}
-#if defined(NEWSINK_RELOCATE_KICKED_PARTICLE)
-                                //Let's reposition the particle
-                                for(k=0;k<3;k++) {P[j].Pos[k] = pos[k] + dir[k]*int_zone_radius;}//Put the particle at the edge of the interaction zone
-#endif
-#endif
+/* #if defined(NEWSINK_JET_OPENING_ANGLE) //get the new relative position vector for the particle velocity (from sink)					 */
+/*                                 theta_angle = max_theta_angle * get_random_number(P[j].ID); //uniformly chosen */
+/*                                 phi_angle=acos(1.0 - 2.0 * get_random_number(P[j].ID)); //chosen in a way to get a uniform distribution on the spherical surface */
+/*                                 reldir[0]=cos(phi_angle) * sin(theta_angle); reldir[1]=sin(phi_angle) * sin(theta_angle); reldir[2]=cos(theta_angle); //get relative direction from polar axis       */
+/*                                 //Let's get the other base vectors and get the new velocity direction for the particle.  */
+/*                                 b_vect3[0]=dir[0];b_vect3[1]=dir[1];b_vect3[2]=dir[2]; */
+/*                                 b_vect1[0] = 0.0; b_vect1[1] = dir[2]; b_vect1[2] = - dir[1]; //We get the first base by taking cross product of dir with +x unit vector */
+/*                                 for(k=0,norm=0;k<3;k++) {norm+=b_vect1[k]*b_vect1[k];} if(norm<=0) {b_vect1[0]=0;b_vect1[1]=1.0;b_vect1[2]=0;norm=1;} else {norm=sqrt(norm);b_vect1[0]/=norm;b_vect1[1]/=norm;b_vect1[2]/=norm;} */
+/*                                 //second vector is dir cross b_vect1, and it should be normalized by default as it is the cross product of two orthogonal vectors */
+/*                                 b_vect2[0] = b_vect3[1] * b_vect1[2] - b_vect3[2] * b_vect1[1];  */
+/*                                 b_vect2[1] = b_vect3[0] * b_vect1[2] - b_vect3[2] * b_vect1[0];  */
+/*                                 b_vect2[2] = b_vect3[0] * b_vect1[1] - b_vect3[1] * b_vect1[0]; */
+/*                                 //Now we get the new direction */
+/*                                 for(k=0;k<3;k++) {dir[k]=reldir[0]*b_vect1[k]+reldir[1]*b_vect2[k]+reldir[2]*b_vect3[k];} */
+/* #if defined(NEWSINK_RELOCATE_KICKED_PARTICLE) */
+/*                                 //Let's reposition the particle */
+/*                                 for(k=0;k<3;k++) {P[j].Pos[k] = pos[k] + dir[k]*int_zone_radius;}//Put the particle at the edge of the interaction zone */
+/* #endif */
+/* #endif */
 
                                 for(k=0;k<3;k++) {P[j].Vel[k]+=v_kick*All.cf_atime*dir[k]; SphP[j].VelPred[k]+=v_kick*All.cf_atime*dir[k];}				
-#ifdef NEWSINK
-                                for(k=0;k<3;k++) {accreted_momentum[k] -= P[j].Mass * v_kick * All.cf_atime * dir[k]; } // To conserve momentum
-#endif				
+//#ifdef NEWSINK
+//                                for(k=0;k<3;k++) {accreted_momentum[k] -= P[j].Mass * v_kick * All.cf_atime * dir[k]; } // To conserve momentum
+//#endif				
 #ifdef GALSF_SUBGRID_WINDS // if sub-grid galactic winds are decoupled from the hydro, we decouple the BH kick winds as well
                                 SphP[j].DelayTime = All.WindFreeTravelMaxTimeFactor / All.cf_hubble_a;
 #endif  
@@ -993,12 +993,15 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     d_r = DMIN(d_r , 0.01); /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
 #endif
     long bin, bin_0; for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin] > 0) break;} /* gives minimum active timebin of any particle */
-    bin_0 = bin; int i0 = i; /* save minimum timebin, also save ID of BH particle for use below */
-#ifndef BH_DEBUG_SPAWN_JET_TEST
-    bin = P[i0].TimeBin; i0 = i; /* make this particle active on the BH timestep */
-#else
+    bin_0 = bin; int i0 = i; /* save minimum timebin, also save ID of BH particle for use below */    
+
+#ifdef BH_DEBUG_SPAWN_JET_TEST
     bin = bin_0; i0 = dummy_sph_i_to_clone; /* make this particle active on the minimum timestep, and order with respect to the cloned particle */
-#endif
+#elif defined(SINGLE_STAR_FB_JETS)
+    bin = P[i0].TimeBin; i0 = i; /* make this particle active on the star timestep or the lowest timestep of any gas neighbor */
+#else
+    bin = P[i0].TimeBin; i0 = i; /* make this particle active on the BH timestep */
+#endif    
     /* create the  new particles to be added to the end of the particle list :
         i is the BH particle tag, j is the new "spawed" particle's location, dummy_sph_i_to_clone is a dummy SPH particle's tag to be used to init the wind particle */
     for(j = NumPart + num_already_spawned; j < NumPart + num_already_spawned + n_particles_split; j++)
@@ -1110,11 +1113,27 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 
         /* velocities (determined by wind velocity) */
         double dxv[3]; dxv[0]=dx[0]; dxv[1]=dx[1]; dxv[2]=dx[2]; // default to velocity pointed radially away from BH
-#ifdef BH_DEBUG_SPAWN_JET_TEST
+#if defined(BH_DEBUG_SPAWN_JET_TEST) || defined(SINGLE_STAR_FB_JETS)
         double ct_v=1.-0.00015*(1.-fabs(cos_theta)), st_v=sqrt(1-ct_v*ct_v), vfac=1+0.2*(get_random_number(j+99+3*ThisTask)-0.5); if(cos_theta<0) {ct_v*=-1;}
         dxv[0]=st_v*cos(phi)*vfac; dxv[1]=st_v*sin(phi)*vfac; dxv[2]=ct_v*vfac; // velocities into narrow opening angle in +- z direction, fixed
 #endif
-        for(k=0;k<3;k++) {P[j].Vel[k]=P[i].Vel[k] + dxv[k]*(All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s)*All.cf_atime; SphP[j].VelPred[k]=P[j].Vel[k];}
+	double v_magnitude; // velocity of the jet
+#ifdef SINGLE_STAR_FB_JETS
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+	v_magnitude = sqrt(All.G * P[i].BH_Mass / (P[i].ProtoStellar_Radius * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime; // Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
+#ifdef BH_OUTPUT_MOREINFO
+	printf("Launching a jet from protostar of mass %g and radius %g R_solar at velocity %g\n", P[i].BH_Mass, P[i].ProtoStellar_Radius, v_magnitude);
+#endif	// BH_OUTPUT_MOREINFO	
+#else
+	v_magnitude = sqrt(All.G * P[i].BH_Mass / (10 * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime; // assume fiducial protostellar radius of 10, as in Federrath 2014
+#ifdef BH_OUTPUT_MOREINFO
+	printf("Launching a jet from protostar of mass %g at velocity %g\n", P[i].BH_Mass, v_magnitude);
+#endif	// BH_OUTPUT_MOREINFO	
+#endif // SINGLE_STAR_PROTOSTELLAR_EVOLUTION
+#else
+	v_magnitude = (All.BAL_v_outflow*1e5 / All.UnitVelocity_in_cm_per_s)*All.cf_atime;
+#endif // SINGLE_STAR_FB_JETS
+        for(k=0;k<3;k++) {P[j].Vel[k]=P[i].Vel[k] + dxv[k]*v_magnitude; SphP[j].VelPred[k]=P[j].Vel[k];}
         
         /* condition number, smoothing length, and density */
         SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
