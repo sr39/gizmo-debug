@@ -962,7 +962,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     bin = P[i0].TimeBin; i0 = i; /* make this particle active on the BH timestep */
 #endif
 #if defined(SINGLE_STAR_FB_JETS)
-        MyFloat b_vect1[3],b_vect2[3],b_vect3[3];
+        MyFloat b_vect1[3],b_vect2[3],b_vect3[3],reldir[3];//vectors
         double min_cos_theta = acos(SINGLE_STAR_FB_JETS_OPENING_ANGLE/2.0*M_PI/180.0) //used for selecting a random direction for the jet within SINGLE_STAR_FB_JETS_OPENING_ANGLE along the axis of Jsink
         double Jsinktot=sqrt(P[i].Jsink[0]*P[i].Jsink[0] + P[i].Jsink[1]*P[i].Jsink[1] + P[i].Jsink[2]*P[i].Jsink[2]);
         //Set up base vectors of the coordinate system for the jet, the z axis (b_vect3) is set to be along Jsink
