@@ -596,7 +596,7 @@ void star_formation_parent_routine(void)
                 P[i].BH_disk_hr = 0.333333;
 #endif
                 P[i].DensAroundStar = SphP[i].Density;
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION //defined(SINGLE_STAR_PROMOTION) || defined(SINGLE_STAR_FB_HEATING) || defined(SINGLE_STAR_FB_JETS)
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION 
                 P[i].ProtoStellarAge = All.Time; // record the proto-stellar age instead of age
 		if (P[i].Mass < 0.012 * SOLAR_MASS / All.UnitMass_in_g) {P[i].ProtoStellar_Radius =  5.24 * pow(P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS, 1./3);} // constant density
 		else {P[i].ProtoStellar_Radius = 100. * (P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS);} // M propto R above this mass

@@ -1123,7 +1123,7 @@ void blackhole_final_operations(void)
         if(BPP(n).BH_Mass > 0) {TimeBin_BH_Medd[bin] += BPP(n).BH_Mdot / BPP(n).BH_Mass;}
 // printf("%d BH Final timebin update done \n", ThisTask);
 
-#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) //defined(SINGLE_STAR_PROMOTION) || defined(SINGLE_STAR_FB_HEATING) || defined(SINGLE_STAR_FB_JETS)// initially we want to do this protostellar evolution, but not the promotion
+#if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) // initially we want to do this protostellar evolution, but not the promotion
         double m_initial = DMAX(1.e-37 , (BPP(n).BH_Mass - dm)); // mass before the accretion
         double mu = DMAX(0, dm/m_initial); // relative mass accreted
         //double m_initial_msun = m_initial * (All.UnitMass_in_g/(All.HubbleParam * SOLAR_MASS));
