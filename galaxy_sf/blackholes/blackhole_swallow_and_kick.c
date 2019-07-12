@@ -259,11 +259,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #if defined(NEWSINK_STOCHASTIC_ACCRETION)
     double w; int kicked=0;
 #endif
-#ifdef NEWSINK_JET_OPENING_ANGLE
-    double phi_angle, theta_angle;
-    double max_theta_angle=NEWSINK_JET_OPENING_ANGLE/2.0*M_PI/180.0; //max of theta is half the opening angles
-    MyFloat reldir[3],b_vect1[3],b_vect2[3],b_vect3[3];
-#endif
     MyFloat *pos, h_i, bh_mass;
 #if (defined(BH_WIND_CONTINUOUS) && !defined(BH_WIND_KICK)) || defined(NEWSINK_J_FEEDBACK)
     MyFloat *velocity, hinv, hinv3;
@@ -965,7 +960,23 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     bin = P[i0].TimeBin; i0 = i; /* make this particle active on the star timestep or the lowest timestep of any gas neighbor */
 #else
     bin = P[i0].TimeBin; i0 = i; /* make this particle active on the BH timestep */
-#endif    
+#endif
+#if defined(SINGLE_STAR_FB_JETS)
+        MyFloat b_vect1[3],b_vect2[3],b_vect3[3];
+        double min_cos_theta = acos(SINGLE_STAR_FB_JETS_OPENING_ANGLE/2.0*M_PI/180.0) //used for selecting a random direction for the jet within SINGLE_STAR_FB_JETS_OPENING_ANGLE along the axis of Jsink
+        double Jsinktot=sqrt(P[i].Jsink[0]*P[i].Jsink[0] + P[i].Jsink[1]*P[i].Jsink[1] + P[i].Jsink[2]*P[i].Jsink[2]);
+        //Set up base vectors of the coordinate system for the jet, the z axis (b_vect3) is set to be along Jsink
+        b_vect3[0]= P[i].Jsink[0]/Jsinktot;b_vect3[1]= P[i].Jsink[1]/Jsinktot;b_vect3[2]= P[i].Jsink[2]/Jsinktot;
+        if(P[i].Jsink[1]*P[i].Jsink[2]>0){//check that Jsink is not the x unit vector
+            b_vect1[0] = 0.0; b_vect1[1] = b_vect3[2]; b_vect1[2] = - b_vect3[1]; //We get the first base vector by taking cross product of Jsink with +x unit vector */
+        }else{
+            b_vect1[0]=0.0;b_vect1[1]=1.0;b_vect1[2]=0.0; //If Jsink is parallel to x, we just take y as the other bas vector
+        }
+        //second vector is b_vect3 cross b_vect1, and it should be normalized by default as it is the cross product of two orthogonal unit vectors
+        b_vect2[0] = b_vect3[1] * b_vect1[2] - b_vect3[2] * b_vect1[1]; 
+        b_vect2[1] = b_vect3[0] * b_vect1[2] - b_vect3[2] * b_vect1[0]; 
+        b_vect2[2] = b_vect3[0] * b_vect1[1] - b_vect3[1] * b_vect1[0];
+#endif
     /* create the  new particles to be added to the end of the particle list :
         i is the BH particle tag, j is the new "spawed" particle's location, dummy_sph_i_to_clone is a dummy SPH particle's tag to be used to init the wind particle */
     for(j = NumPart + num_already_spawned; j < NumPart + num_already_spawned + n_particles_split; j++)
@@ -1073,55 +1084,38 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         double phi = 2.0*M_PI*get_random_number(j+1+ThisTask); // random from 0 to 2pi //
         double cos_theta = 2.0*(get_random_number(j+3+2*ThisTask)-0.5); // random between 1 to -1 //
         double sin_theta=sqrt(1-cos_theta*cos_theta), dx[3]; dx[0]=sin_theta*cos(phi); dx[1]=sin_theta*sin(phi); dx[2]=cos_theta;
-        
-        
-        
-        
-        
-        /* #if defined(NEWSINK_JET_OPENING_ANGLE) //get the new relative position vector for the particle velocity (from sink)					 */
-/*                                 theta_angle = max_theta_angle * get_random_number(P[j].ID); //uniformly chosen */
-/*                                 phi_angle=acos(1.0 - 2.0 * get_random_number(P[j].ID)); //chosen in a way to get a uniform distribution on the spherical surface */
-/*                                 reldir[0]=cos(phi_angle) * sin(theta_angle); reldir[1]=sin(phi_angle) * sin(theta_angle); reldir[2]=cos(theta_angle); //get relative direction from polar axis       */
-/*                                 //Let's get the other base vectors and get the new velocity direction for the particle.  */
-/*                                 b_vect3[0]=dir[0];b_vect3[1]=dir[1];b_vect3[2]=dir[2]; */
-/*                                 b_vect1[0] = 0.0; b_vect1[1] = dir[2]; b_vect1[2] = - dir[1]; //We get the first base by taking cross product of dir with +x unit vector */
-/*                                 for(k=0,norm=0;k<3;k++) {norm+=b_vect1[k]*b_vect1[k];} if(norm<=0) {b_vect1[0]=0;b_vect1[1]=1.0;b_vect1[2]=0;norm=1;} else {norm=sqrt(norm);b_vect1[0]/=norm;b_vect1[1]/=norm;b_vect1[2]/=norm;} */
-/*                                 //second vector is dir cross b_vect1, and it should be normalized by default as it is the cross product of two orthogonal vectors */
-/*                                 b_vect2[0] = b_vect3[1] * b_vect1[2] - b_vect3[2] * b_vect1[1];  */
-/*                                 b_vect2[1] = b_vect3[0] * b_vect1[2] - b_vect3[2] * b_vect1[0];  */
-/*                                 b_vect2[2] = b_vect3[0] * b_vect1[1] - b_vect3[1] * b_vect1[0]; */
-/*                                 //Now we get the new direction */
-/*                                 for(k=0;k<3;k++) {dir[k]=reldir[0]*b_vect1[k]+reldir[1]*b_vect2[k]+reldir[2]*b_vect3[k];} */
-/* #endif */
-        
-        
-        
-        
-        
-        
         for(k=0;k<3;k++) {P[j].Pos[k]=P[i].Pos[k] + dx[k]*d_r;}
-
         /* velocities (determined by wind velocity) */
         double dxv[3]; dxv[0]=dx[0]; dxv[1]=dx[1]; dxv[2]=dx[2]; // default to velocity pointed radially away from BH
-#if defined(BH_DEBUG_SPAWN_JET_TEST) || defined(SINGLE_STAR_FB_JETS)
+#if defined(BH_DEBUG_SPAWN_JET_TEST)
         double ct_v=1.-0.00015*(1.-fabs(cos_theta)), st_v=sqrt(1-ct_v*ct_v), vfac=1+0.2*(get_random_number(j+99+3*ThisTask)-0.5); if(cos_theta<0) {ct_v*=-1;}
         dxv[0]=st_v*cos(phi)*vfac; dxv[1]=st_v*sin(phi)*vfac; dxv[2]=ct_v*vfac; // velocities into narrow opening angle in +- z direction, fixed
+#elif defined(SINGLE_STAR_FB_JETS)
+        //Determine whether the particle is closer to the north pole or the south pole
+        double orientation=1.0;
+        if( (dx[0]*b_vect3[0]+dx[1]*b_vect3[1]+dx[2]*b_vect3[2])<0){orientation=-1.0;}
+        //Choose the direction of the jet unifromly relative to Jsink (b_vect3) within SINGLE_STAR_FB_JETS_OPENING_ANGLE
+        double jet_phi = 2.0*M_PI*get_random_number(j+5+3*ThisTask); // random from 0 to 2pi //
+        double jet_cos_theta = orientation* (1.0-get_random_number(j+7+5*ThisTask)*(1.0-min_cos_theta)); // chosen uniformly between 1 and min_cos_theta, multiplied by -1 if we launch from south pole //
+        double jet_sin_theta=sqrt(1-cos_theta*cos_theta);
+        reldir[0]=jet_sin_theta*cos(jet_phi); reldir[1]=jet_sin_theta*sin(jet_phi); dx[2]=jet_cos_theta;//relative direction of velocity compared to Jsink
+        for(k=0;k<3;k++) {dxv[k]=reldir[0]*b_vect1[k]+reldir[1]*b_vect2[k]+reldir[2]*b_vect3[k];} //transforming back to original coordinate system
 #endif
-	double v_magnitude; // velocity of the jet
+    double v_magnitude; // velocity of the jet
 #ifdef SINGLE_STAR_FB_JETS
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-	v_magnitude = sqrt(All.G * P[i].BH_Mass / (P[i].ProtoStellar_Radius * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime; // Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
+    v_magnitude = sqrt(All.G * P[i].BH_Mass / (P[i].ProtoStellar_Radius * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime; // Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
 #ifdef BH_OUTPUT_MOREINFO
-	printf("Launching a jet from protostar of mass %g and radius %g R_solar at velocity %g\n", P[i].BH_Mass, P[i].ProtoStellar_Radius, v_magnitude);
+    printf("Launching a jet from protostar of mass %g and radius %g R_solar at velocity %g\n", P[i].BH_Mass, P[i].ProtoStellar_Radius, v_magnitude);
 #endif	// BH_OUTPUT_MOREINFO	
 #else
-	v_magnitude = sqrt(All.G * P[i].BH_Mass / (10 * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime; // assume fiducial protostellar radius of 10, as in Federrath 2014
+    v_magnitude = sqrt(All.G * P[i].BH_Mass / (10 * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime; // assume fiducial protostellar radius of 10, as in Federrath 2014
 #ifdef BH_OUTPUT_MOREINFO
-	printf("Launching a jet from protostar of mass %g at velocity %g\n", P[i].BH_Mass, v_magnitude);
+    printf("Launching a jet from protostar of mass %g at velocity %g\n", P[i].BH_Mass, v_magnitude);
 #endif	// BH_OUTPUT_MOREINFO	
 #endif // SINGLE_STAR_PROTOSTELLAR_EVOLUTION
 #else
-	v_magnitude = (All.BAL_v_outflow*1e5 / All.UnitVelocity_in_cm_per_s)*All.cf_atime;
+    v_magnitude = (All.BAL_v_outflow*1e5 / All.UnitVelocity_in_cm_per_s)*All.cf_atime;
 #endif // SINGLE_STAR_FB_JETS
         for(k=0;k<3;k++) {P[j].Vel[k]=P[i].Vel[k] + dxv[k]*v_magnitude; SphP[j].VelPred[k]=P[j].Vel[k];}
         
