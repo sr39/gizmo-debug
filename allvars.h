@@ -368,7 +368,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define NEWSINK_EAT_SMALL_DT // particles with very small timesteps will be accreted to prevent extreme slowdowns, controlled by DT_MIN_TOLERANCE_FACTOR
 #define NEWSINK_STOCHASTIC_ACCRETION //with this turned on NEWSINK will not leech of parts of a gas particle when accreting (default behavior), instead it will accrete the entire particle with p=dm/m_particle probability, where dm is the mass it would need to accrete
 //#define NEWSINK_RELOCATE_KICKED_PARTICLE //will relocate the particle to the poles uniformly distributed along a spherical surface with opening angle NEWSINK_JET_OPENING_ANGLE at a distance of the interaction radius
-#define NEWSINK_JET_OPENING_ANGLE 30.0 //Opening angle (in degrees) for jets for NEWSINK when using BH_WIND_KICK -1
+//#define NEWSINK_JET_OPENING_ANGLE 30.0 //Opening angle (in degrees) for jets for NEWSINK when using BH_WIND_KICK -1
 #define ALPHASS 0.01 //alpha disk factor for disc timescale, should be between 0.01-1.0
 #define DT_MIN_TOLERANCE_FACTOR 0.001 //tolerance factor for dt_min, defined in part (ii) of 2.3.5 in Hubber 2013.
 #define INT_ZONE_TO_HSML 1.0 //how many times larger should the sink interaction zone be compared to the the particle's adaptive smoothing length, 1 should be good
@@ -383,7 +383,8 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #ifdef SINGLE_STAR_FB_JETS
 //#define BH_WIND_CONTINUOUS 0
-#define BH_WIND_KICK -1 // use kinetic feedback module for protostellar jets (for this, use the simple kicking module, it's not worth the expense of the other)
+//#define BH_WIND_KICK -1 // use kinetic feedback module for protostellar jets (for this, use the simple kicking module, it's not worth the expense of the other)
+#define BH_WIND_SPAWN 3 // "kicking" modules don't really work in jet problems because they tend to find particles in the accretion disk and kick them out in an explosive manner, and they don't really capture the long-distance propagation of jets. Particle spawning works well however.
 #endif
 #ifdef SINGLE_STAR_PROMOTION
 #define GALSF_FB_MECHANICAL // allow SNe + winds in promoted stars [at end of main sequence lifetimes]
@@ -2303,7 +2304,7 @@ extern ALIGN(32) struct particle_data
 #endif  
 #endif
 
-#if defined(SINGLE_STAR_PROMOTION) || defined(SINGLE_STAR_FB_HEATING) || defined(SINGLE_STAR_FB_JETS)
+#if defined(SINGLE_STAR_PROMOTION) || defined(SINGLE_STAR_FB_HEATING)
 #define SINGLE_STAR_PROTOSTELLAR_EVOLUTION
 #endif    
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION    
