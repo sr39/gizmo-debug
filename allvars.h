@@ -2201,6 +2201,9 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
 #endif
+#ifdef BH_FOLLOW_ANGMOM
+    MyFloat BH_Specific_AngMom[3];
+#endif
     MyFloat BH_Mdot;
     int BH_TimeBinGasNeighbor;
 #ifdef SINGLE_STAR_FORMATION
@@ -2922,6 +2925,7 @@ enum iofields
   IO_Z,
   IO_BHMASS,
   IO_BHMASSALPHA,
+  IO_BH_ANGMOM,
   IO_BHMDOT,
   IO_BHPROGS,
   IO_BH_DIST,
