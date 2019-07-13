@@ -99,7 +99,7 @@ There are some Config flags that CHIMES does not currently work with, or its beh
     RadFluxUV of each SPH particle is attenuated by local self-shielding by calling selfshield_local_incident_uv_flux(). 
     We do NOT want to do this when using it with CHIMES, because the chemistry solver will apply local self-shielding 
     itself. Therefore, you need to add an exception for CHIMES in accel.c. ALSO, what is the difference between 
-    SphP[i].RadFluxUV and SphP[i].RadFluxEUV?? 
+    SphP[i].RadFluxUV and SphP[i].RadFluxEUV?
   - BLACK_HOLES - currently, CHIMES is not compatible with the inclusion of black holes, because when a gas particle 
     is accreted, we will need to delete the corresponding gasVariables structure (this is not currently done). 
   - LONGIDS - the gasVars structure in CHIMES stores the particle ID as an unsigned int, which it compares to 

@@ -452,6 +452,14 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             
         case IO_BH_DIST:
             break;
+
+        case IO_BH_ANGMOM:
+#ifdef BH_FOLLOW_ANGMOM
+            for(n = 0; n < pc; n++)
+                for(k = 0; k < 3; k++)
+                    P[offset + n].BH_Specific_AngMom[k] = *fp++;
+#endif
+            break;
             
         case IO_BHMASSALPHA:
 #ifdef BH_ALPHADISK_ACCRETION
