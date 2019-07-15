@@ -648,13 +648,15 @@ void gravity_tree(void)
     /*  muliply by G */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING // Gotta subtract for component from companion
-	if(P[i].Type == 5) subtract_companion_gravity(i);
-#endif	
-        for(j = 0; j < 3; j++) {P[i].GravAccel[j] *= All.G;}
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING // Subtract for component from companion if in binary
+        if((P[i].Type == 5) && (P[i].is_in_a_binary == 1) ){subtract_companion_gravity(i);}
+#endif
+        for(j = 0; j < 3; j++) {
+            P[i].GravAccel[j] *= All.G;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
- 	for(j = 0; j < 3; j++) {P[i].COM_GravAccel[j] *= All.G;}
+            P[i].COM_GravAccel[j] *= All.G;
 #endif 
+        }
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 #ifdef GDE_DISTORTIONTENSOR
         /* Diagonal terms of tidal tensor need correction, because tree is running over all particles -> also over target particle -> extra term -> correct it */
