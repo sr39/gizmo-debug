@@ -286,7 +286,10 @@ void density(void)
         {
             Left[i] = Right[i] = 0;
 #ifdef BLACK_HOLES
-            P[i].SwallowID = 0;   
+            P[i].SwallowID = 0;
+#ifdef SINGLE_STAR_FORMATION
+	    P[i].SwallowEnergy = MAX_REAL_NUMBER;
+#endif	    
 #endif
         }
     } /* done with intial zero-out loop */
@@ -1434,9 +1437,12 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
 #endif
         
 #if defined(BLACK_HOLES)
+	P[j].SwallowID = 0;  // this way we don't have to do a global loop over local particles in blackhole_accretion() to reset these quantities...
+	
         if(out->BH_TimeBinGasNeighbor > P[j].TimeBin)
             out->BH_TimeBinGasNeighbor = P[j].TimeBin;
 #ifdef SINGLE_STAR_FORMATION
+	P[j].SwallowEnergy = MAX_REAL_NUMBER;	
         if(out->BH_NearestGasNeighbor > kernel->r)
             out->BH_NearestGasNeighbor = kernel->r;
 #endif
