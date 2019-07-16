@@ -36,12 +36,13 @@ void blackhole_accretion(void)
 {
     if(All.TimeStep == 0.) return; /* no evolution */
     if(ThisTask == 0)  {printf("Start black-hole operations...\n");}
-    long i; for(i = 0; i < NumPart; i++) {
-      P[i].SwallowID = 0;
-#ifdef SINGLE_STAR_FORMATION
-      P[i].SwallowEnergy = MAX_REAL_NUMBER;
-#endif      
-    } /* zero out accretion */
+    // This zero-out loop is effectively performed in density.c now, only on gas particles that are actually going to be looked at this timestep
+/*     long i; for(i = 0; i < NumPart; i++) { */
+/*       P[i].SwallowID = 0; */
+/* #ifdef SINGLE_STAR_FORMATION */
+/*       P[i].SwallowEnergy = MAX_REAL_NUMBER; */
+/* #endif       */
+/*     } /\* zero out accretion *\/ */
     
     blackhole_start();              /* allocates and cleans BlackholeTempInfo struct */
  //printf("%d BH start loop done\n", ThisTask);
@@ -82,7 +83,7 @@ void blackhole_accretion(void)
 // //printf("%d BH Final operations done\n", ThisTask);
     blackhole_end();            /* frees BlackholeTempInfo; cleans up */
  //printf("%d BH End done\n", ThisTask);
-    for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;P[i].SwallowEnergy = MAX_REAL_NUMBER;} /* re-zero accretion */
+//    for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;P[i].SwallowEnergy = MAX_REAL_NUMBER;} /* re-zero accretion */
 }
 
 
