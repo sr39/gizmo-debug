@@ -2838,18 +2838,18 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyFloat DF_rms_vel;
     MyFloat DF_mmax_particles;
 #endif
-#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION == 5)
+#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5)
     MyFloat BH_SurroundingGasVel[3];
 #endif
-    
 #if defined(BH_ALPHADISK_ACCRETION)
     MyFloat mdot_alphadisk;             /*!< gives mdot of mass going into alpha disk */
 #endif
-
 #if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;        /*!< gives the mass we want to swallow that contributes to eddington */
 #endif
-
+#if defined(BH_FOLLOW_ANGMOM)
+    MyFloat accreted_J[3];              /*!< Accreted angular momentum */
+#endif
 }
 *BlackholeTempInfo, *BlackholeDataPasserResult, *BlackholeDataPasserOut;
 #endif
