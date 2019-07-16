@@ -41,17 +41,34 @@ void do_first_halfstep_kick(void)
         maintain manifest conservation in the hydro, need to check -ALL- sph particles every timestep */
     for(i = 0; i < NumPart; i++)
     {
-        if(P[i].Mass > 0)
+	// if we're doing MFV we still want to go into do_the_kick to do the stuff outside of if(TimeBinActive[P[i].TimeBin]),
+	// but otherwise there is no reason to call the function at all, and we can avoid unnecessary overhead with large timebin hierarchies by restructuring the logic here - MYG      
+        /* if(P[i].Mass > 0) */
+        /* { */
+        /*     /\* 'full' kick for active particles *\/ */
+        /*     if(TimeBinActive[P[i].TimeBin]) */
+        /*     { */
+        /*         ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0; */
+        /*         tstart = P[i].Ti_begstep;	/\* beginning of step *\/ */
+        /*         tend = P[i].Ti_begstep + ti_step / 2;	/\* midpoint of step *\/ */
+        /*     } */
+        /*     do_the_kick(i, tstart, tend, P[i].Ti_current, 0); */
+        /* } */
+	
+	/* 'full' kick for active particles */
+	if(TimeBinActive[P[i].TimeBin])
         {
-            /* 'full' kick for active particles */
-            if(TimeBinActive[P[i].TimeBin])
+	    if(P[i].Mass > 0)
             {
                 ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
                 tstart = P[i].Ti_begstep;	/* beginning of step */
                 tend = P[i].Ti_begstep + ti_step / 2;	/* midpoint of step */
-            }
-            do_the_kick(i, tstart, tend, P[i].Ti_current, 0);
+		do_the_kick(i, tstart, tend, P[i].Ti_current, 0);
+	    }
         }
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+	else if((P[i].Mass > 0) && (P[i].Type == 0)) { do_the_kick(i, tstart, tend, P[i].Ti_current, 0);}
+#endif	
     } // for(i = 0; i < NumPart; i++) // 
 }
 
@@ -73,19 +90,33 @@ void do_second_halfstep_kick(void)
 
     for(i = 0; i < NumPart; i++)
     {
-        if(P[i].Mass > 0)
-        {
-            /* 'full' kick for active particles */
-            if(TimeBinActive[P[i].TimeBin])
-            {
+        /* if(P[i].Mass > 0) */
+        /* { */
+        /*     /\* 'full' kick for active particles *\/ */
+        /*     if(TimeBinActive[P[i].TimeBin]) */
+        /*     { */
+        /*         ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0; */
+        /*         tstart = P[i].Ti_begstep + ti_step / 2;	/\* midpoint of step *\/ */
+        /*         tend = P[i].Ti_begstep + ti_step;	/\* end of step *\/ */
+        /*     } */
+        /*     do_the_kick(i, tstart, tend, P[i].Ti_current, 1); */
+        /*     if(TimeBinActive[P[i].TimeBin]) */
+        /*         set_predicted_sph_quantities_for_extra_physics(i); */
+        /* } */
+	if(TimeBinActive[P[i].TimeBin])
+	{
+	    if(P[i].Mass > 0)
+	    {
                 ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
                 tstart = P[i].Ti_begstep + ti_step / 2;	/* midpoint of step */
                 tend = P[i].Ti_begstep + ti_step;	/* end of step */
-            }
-            do_the_kick(i, tstart, tend, P[i].Ti_current, 1);
-            if(TimeBinActive[P[i].TimeBin])
-                set_predicted_sph_quantities_for_extra_physics(i);
-        }
+		do_the_kick(i, tstart, tend, P[i].Ti_current, 1);
+                set_predicted_sph_quantities_for_extra_physics(i);		
+	    }
+	}
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME	
+	else if((P[i].Mass > 0) && (P[i].Type == 0)) { do_the_kick(i, tstart, tend, P[i].Ti_current, 1);}
+#endif	    
     } // for(i = 0; i < NumPart; i++) //
     
 #ifdef TURB_DRIVING
