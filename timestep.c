@@ -336,7 +336,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-//    double supertimestep_factor=1.0;
+    P[p].SuperTimestepFlag = 0;
     if ( (P[p].Type==5) && P[p].is_in_a_binary){ //already a candidate
     //We need to decide whether to use super timestepping for binaries
 	double dt_bin,semimajor_axis_cube,dt_ext;
@@ -1103,7 +1103,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif // ndef LONGIDS
 #ifdef SINGLE_STAR_TIMESTEPPING	    
         if(P[p].Type == 5){
-            printf("BH particle size %g, nearest gas distance is %g nearest BH distance is %g min_bh_freefall_time %g min_bh_approach_time %g dt_tidal %g\n", Get_Particle_Size(p), BPP(p).BH_NearestGasNeighbor, P[p].min_dist_to_bh, P[p].min_bh_freefall_time, P[p].min_dist_to_bh, dt_tidal);
+            printf("BH particle size %g, nearest gas distance is %g nearest BH distance is %g min_bh_freefall_time %g min_bh_approach_time %g dt_tidal %g\n", Get_Particle_Size(p), BPP(p).BH_NearestGasNeighbor, P[p].min_dist_to_bh, P[p].min_bh_freefall_time, P[p].min_bh_approach_time, dt_tidal);
         }
 #endif	
         }
