@@ -380,10 +380,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define BH_COMPTON_HEATING // turn on the heating term: this just calculates incident BH-particle flux, to be used in the cooling routine
 #endif
 #ifdef SINGLE_STAR_FB_JETS
-//#define BH_WIND_CONTINUOUS 0
-//#define BH_WIND_KICK -1 // use kinetic feedback module for protostellar jets (for this, use the simple kicking module, it's not worth the expense of the other)
 #define BH_WIND_SPAWN 3 // "kicking" modules don't really work in jet problems because they tend to find particles in the accretion disk and kick them out in an explosive manner, and they don't really capture the long-distance propagation of jets. Particle spawning works well however.
-#define SINGLE_STAR_FB_JETS_OPENING_ANGLE 30.0 //Opening angle (in degrees) for jets in SINGLE_STAR mode
+#define SINGLE_STAR_FB_JETS_MAX_OPENING_ANGLE 80.0 //Max opening angle (in degrees) for jets in SINGLE_STAR mode, <=90
+#define SINGLE_STAR_FB_JETS_THETA0 0.01 //"flattening parameter" of jet momentum angular distribution from Matzner & McKee 1999, sets the collimation of the jets
 #endif
 #ifdef SINGLE_STAR_PROMOTION
 #define GALSF_FB_MECHANICAL // allow SNe + winds in promoted stars [at end of main sequence lifetimes]
