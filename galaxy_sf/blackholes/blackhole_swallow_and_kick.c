@@ -1099,9 +1099,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         //Find the angle of the spawned particle's velocity using the angular distribution of Matzner & McKee 1999 (same as in Eq 20 of Cunningham et al 2011)
         double z=get_random_number(j+7+5*ThisTask); //to use in inverse transform sampling
         if (SINGLE_STAR_FB_JETS_MAX_OPENING_ANGLE<90.0){
-            jet_theta=atan(theta0*tan(z*atan(sqrttheta0sqplusone*tan(thetamax)/theta0))/sqrttheta0sqplusone);}
+            jet_theta=orientation*atan(theta0*tan(z*atan(sqrttheta0sqplusone*tan(thetamax)/theta0))/sqrttheta0sqplusone);}
         else{
-            jet_theta=atan(theta0*tan(z*M_PI/2.0)/sqrttheta0sqplusone);}//use 90 degree value
+            jet_theta=orientation*atan(theta0*tan(z*M_PI/2.0)/sqrttheta0sqplusone);}//use 90 degree value
         //Choose the direction of the jet unifromly relative to Jsink (b_vect3) within SINGLE_STAR_FB_JETS_OPENING_ANGLE
         double jet_phi = 2.0*M_PI*get_random_number(j+5+3*ThisTask); // random from 0 to 2pi //
         reldir[0]=sin(jet_theta)*cos(jet_phi); reldir[1]=sin(jet_theta)*sin(jet_phi); dx[2]=cos(jet_theta);//relative direction of velocity compared to Jsink
