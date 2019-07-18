@@ -968,7 +968,8 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         double sqrttheta0sqplusone=sqrt(1.0+theta0*theta0);
         double Jsinktot=sqrt(P[i].Jsink[0]*P[i].Jsink[0] + P[i].Jsink[1]*P[i].Jsink[1] + P[i].Jsink[2]*P[i].Jsink[2]);
         //Set up base vectors of the coordinate system for the jet, the z axis (b_vect3) is set to be along Jsink
-        b_vect3[0]= P[i].Jsink[0]/Jsinktot;b_vect3[1]= P[i].Jsink[1]/Jsinktot;b_vect3[2]= P[i].Jsink[2]/Jsinktot;
+        if (Jsinktot>0){b_vect3[0]= P[i].Jsink[0]/Jsinktot;b_vect3[1]= P[i].Jsink[1]/Jsinktot;b_vect3[2]= P[i].Jsink[2]/Jsinktot;}
+        else{b_vect3[0]= 0;b_vect3[1]= 0;b_vect3[2]= 1.0;}//if the sink has no angular momentum, launch in the z direction (arbitrary but should not matter much)
         if(P[i].Jsink[1]*P[i].Jsink[2]>0){//check that Jsink is not the x unit vector
             b_vect1[0] = 0.0; b_vect1[1] = b_vect3[2]; b_vect1[2] = - b_vect3[1]; //We get the first base vector by taking cross product of Jsink with +x unit vector */
         }else{
@@ -1093,19 +1094,19 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         double ct_v=1.-0.00015*(1.-fabs(cos_theta)), st_v=sqrt(1-ct_v*ct_v), vfac=1+0.2*(get_random_number(j+99+3*ThisTask)-0.5); if(cos_theta<0) {ct_v*=-1;}
         dxv[0]=st_v*cos(phi)*vfac; dxv[1]=st_v*sin(phi)*vfac; dxv[2]=ct_v*vfac; // velocities into narrow opening angle in +- z direction, fixed
 #elif defined(SINGLE_STAR_FB_JETS)
-        //Determine whether the particle is closer to the north pole or the south pole
-        double orientation=1.0;
-        if( (dx[0]*b_vect3[0]+dx[1]*b_vect3[1]+dx[2]*b_vect3[2])<0){orientation=-1.0;}
         //Find the angle of the spawned particle's velocity using the angular distribution of Matzner & McKee 1999 (same as in Eq 20 of Cunningham et al 2011)
         double z=get_random_number(j+7+5*ThisTask); //to use in inverse transform sampling
         if (SINGLE_STAR_FB_JETS_MAX_OPENING_ANGLE<90.0){
-            jet_theta=orientation*atan(theta0*tan(z*atan(sqrttheta0sqplusone*tan(thetamax)/theta0))/sqrttheta0sqplusone);}
+            jet_theta=atan(theta0*tan(z*atan(sqrttheta0sqplusone*tan(thetamax)/theta0))/sqrttheta0sqplusone);}
         else{
-            jet_theta=orientation*atan(theta0*tan(z*M_PI/2.0)/sqrttheta0sqplusone);}//use 90 degree value
+            jet_theta=atan(theta0*tan(z*M_PI/2.0)/sqrttheta0sqplusone);}//use 90 degree value
+        //Determine whether the particle is closer to the north pole or the south pole
+        if( (dx[0]*b_vect3[0]+dx[1]*b_vect3[1]+dx[2]*b_vect3[2])<0){jet_theta=M_PI-jet_theta;}
         //Choose the direction of the jet unifromly relative to Jsink (b_vect3) within SINGLE_STAR_FB_JETS_OPENING_ANGLE
         double jet_phi = 2.0*M_PI*get_random_number(j+5+3*ThisTask); // random from 0 to 2pi //
-        reldir[0]=sin(jet_theta)*cos(jet_phi); reldir[1]=sin(jet_theta)*sin(jet_phi); dx[2]=cos(jet_theta);//relative direction of velocity compared to Jsink
+        reldir[0]=sin(jet_theta)*cos(jet_phi); reldir[1]=sin(jet_theta)*sin(jet_phi); reldir[2]=cos(jet_theta);//relative direction of velocity compared to Jsink
         for(k=0;k<3;k++) {dxv[k]=reldir[0]*b_vect1[k]+reldir[1]*b_vect2[k]+reldir[2]*b_vect3[k];} //transforming back to original coordinate system
+        //printf("Jet theta %g jet phi %g z %g reldir %g %g %g dxv %g %g %g b_vect1 %g %g %g b_vect3 %g %g %g b_vect3 %g %g %g\n",jet_theta,jet_phi,z,reldir[0],reldir[1],reldir[2],dxv[0],dxv[1],dxv[2],b_vect1[0],b_vect1[1],b_vect1[2],b_vect2[0],b_vect2[1],b_vect2[2],b_vect3[0],b_vect3[1],b_vect3[2]);
 #endif
     double v_magnitude; // velocity of the jet
 #ifdef SINGLE_STAR_FB_JETS
