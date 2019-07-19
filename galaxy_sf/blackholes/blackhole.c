@@ -168,8 +168,10 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
         double apocenter_max = All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
 #ifdef NEWSINK
 	if(P[j].Type == 0) return 1; // simple boundedness is sufficient for gas accretion
-#endif		
+#endif
+#ifndef SINGLE_STAR_FORMATION	
         if(P[j].Type==5) {apocenter_max += MAX_REAL_NUMBER;} // default is to be unrestrictive for BH-BH mergers //
+#endif	
 #ifdef SINGLE_STAR_STRICT_ACCRETION // Bate 1995-style criterion, with a fixed softening radius that is distinct from both the force softening and the search radius
 	apocenter_max = 2*sink_radius;
 	if(dr_code < DMAX(Get_Particle_Size(j),All.ForceSoftening[5])) bound = 1; // force `bound' if within the kernel
@@ -661,7 +663,7 @@ void set_blackhole_mdot(int i, int n, double dt)
         //double t_acc_bh=(1.0e5 * t_yr); //accretion timescale set to 100kyr
         //double t_acc_bh= 1.11072 * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass)*All.GravityConstantInternal, -0.5)*pow(All.ForceSoftening[5],1.5)/All.UnitTime_in_s; /* Accretion timescale is the freefall time */
         double t_acc_bh= 18.006* pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass)*All.GravityConstantInternal*All.ForceSoftening[5], 0.5)*pow(3.0e4/All.UnitVelocity_in_cm_per_s,-2.0)/All.UnitTime_in_s; /* Accretion timescale is 1/alpha*(t_cross/t_orb)^2*t_orb where t_orb is roughly the 2 freefall time. For t_cross=2R/cs we will use cs=300m/s (T=20 K gas) and for alpha we will use 0.1 (the uncertainty in alpha means it does not really matter if cs is incorrect)*/
-        double sink_dt = (BPP(n).TimeBin ? (1 << BPP(n).TimeBin) : 0) * All.Timebase_interval; // sink timestep
+        double sink_dt = (BPP(n).TimeBin ? ((integertime) 1 << BPP(n).TimeBin) : 0) * All.Timebase_interval; // sink timestep
         t_acc_bh=DMAX(10*sink_dt,t_acc_bh); /* Make sure that the accretion timescale is at least 10 times the particle's timestep */
         mdot = All.BlackHoleAccretionFactor * BPP(n).BH_Mass_AlphaDisk / (t_acc_bh) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass), 0.4);
 #endif //ifdef NEWSINK

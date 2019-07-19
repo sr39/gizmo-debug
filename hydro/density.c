@@ -1443,8 +1443,8 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
             out->BH_TimeBinGasNeighbor = P[j].TimeBin;
 #ifdef SINGLE_STAR_FORMATION
 	P[j].SwallowEnergy = MAX_REAL_NUMBER;	
-        if(out->BH_NearestGasNeighbor > DMAX(Get_Particle_Size(j), kernel->r))
-            out->BH_NearestGasNeighbor = kernel->r;
+        if((out->BH_NearestGasNeighbor > DMAX(Get_Particle_Size(j), kernel->r)) && (P[j].Mass > 0))
+            out->BH_NearestGasNeighbor = DMAX(Get_Particle_Size(j), kernel->r);
 #endif
 #endif
         
