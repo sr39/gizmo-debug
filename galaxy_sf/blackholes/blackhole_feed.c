@@ -127,7 +127,7 @@ void blackhole_feed_loop(void)
             BlackholeDataIn[j].Density = BPP(place).DensAroundStar;
             BlackholeDataIn[j].Mdot = BPP(place).BH_Mdot;
 #ifndef WAKEUP
-            dt = (P[place].TimeBin ? (1 << P[place].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+            dt = (P[place].TimeBin ? ((integertime) 1 << P[place].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
             dt = P[place].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif

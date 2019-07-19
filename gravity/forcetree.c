@@ -2500,8 +2500,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             {
             
             r = sqrt(r2);
-            
-            if(r >= h)
+            if((r >= h) && !((no < All.MaxPart) && (r < 1/h_p_inv))) // can only do the Newtonian force if the field source is outside our own softening, and we are not within the softening of a field source particle
+		//   if(r >= h)
             {
                 fac = mass / (r2 * r);
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE

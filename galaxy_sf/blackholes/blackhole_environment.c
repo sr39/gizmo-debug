@@ -493,7 +493,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 #if defined(NEWSINK_EAT_SMALL_DT)
                                 if ( out.isbound[out.n_neighbor]==1 ){ /*for bound gas get timestep of gas particle*/
 #ifndef WAKEUP
-                                    dt = (P[j].TimeBin ? (1 << P[j].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+                                    dt = (P[j].TimeBin ? ((integertime) 1 << P[j].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
                                     dt = P[j].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
