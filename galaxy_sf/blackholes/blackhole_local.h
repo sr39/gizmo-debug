@@ -24,6 +24,9 @@ static struct blackholedata_in
     MyFloat Mdot;
     MyFloat Dt;
     MyFloat Hsml;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+    MyFloat AGS_Hsml;
+#endif    
     MyFloat Mass;
     MyFloat BH_Mass;
 #ifdef SINGLE_STAR_STRICT_ACCRETION

@@ -458,7 +458,7 @@ integertime get_timestep(int p,		/*!< particle index */
         if((All.ComovingIntegrationOn))
         {
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-            double ags_h = DMAX(PPP[p].AGS_Hsml , DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]));
+            double ags_h = DMAX(PPP[p].AGS_Hsml/2.8 , DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]));
             ags_h = DMIN(ags_h, DMAX(100.*All.ForceSoftening[P[p].Type] , 10.*PPP[p].AGS_Hsml));
 #else
             double ags_h = DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]);
@@ -1026,13 +1026,17 @@ integertime get_timestep(int p,		/*!< particle index */
             if(dt_accr > 0 && dt_accr < dt) {dt = dt_accr;}
 
 
-//        double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? (1 << BPP(p).BH_TimeBinGasNeighbor) : 0) * All.Timebase_interval / All.cf_hubble_a;
+//       double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? (1 << BPP(p).BH_TimeBinGasNeighbor) : 0) * All.Timebase_interval / All.cf_hubble_a;
 
 
-//        if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
+//       if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 #ifdef SINGLE_STAR_FORMATION
 	    if(P[p].DensAroundStar) {
-		double eps = DMAX(All.ForceSoftening[5], BPP(p).BH_NearestGasNeighbor);
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+		double eps = DMAX(P[p].AGS_Hsml/2.8, BPP(p).BH_NearestGasNeighbor); //, BPP(p).BH_NearestGasNeighbor);
+#else	
+		double eps = DMAX(All.SofteningTable[5], BPP(p).BH_NearestGasNeighbor);
+#endif		
 		double dt_gas = sqrt(All.ErrTolIntAccuracy * All.cf_atime * eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
 		if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas; }}
 

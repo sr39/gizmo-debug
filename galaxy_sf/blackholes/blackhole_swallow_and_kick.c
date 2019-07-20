@@ -226,6 +226,9 @@ void blackhole_swallow_and_kick_loop(void)
     {
         printf("Accretion done: swallowed %d gas, %d star, %d dm, and %d BH particles\n",
                Ntot_gas_swallowed, Ntot_star_swallowed, Ntot_dm_swallowed, Ntot_BH_swallowed);
+//#ifdef SINGLE_STAR_FORMATION
+//	TreeReconstructFlag = 1;
+//#endif	
     }
     
 }
