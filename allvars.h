@@ -67,7 +67,7 @@
 #endif
 
 #ifndef DISABLE_SPH_PARTICLE_WAKEUP
-#if (SLOPE_LIMITER_TOLERANCE > 0)
+#if ((SLOPE_LIMITER_TOLERANCE > 0) && !defined(SINGLE_STAR_FORMATION))
 #define WAKEUP   4.1            /* allows 2 timestep bins within kernel */
 #else 
 #define WAKEUP   2.1            /* allows only 1-separated timestep bins within kernel */
@@ -314,6 +314,8 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define TIDAL_TIMESTEP_CRITERION // use tidal tensor timestep criterion
 #define SINGLE_STAR_TIMESTEPPING // use additional timestep criteria for sink particles to ensure they don't evolve out-of-binary in close encounters
 #define SINGLE_STAR_MERGERS
+#define ADAPTIVE_GRAVSOFT_FORALL 1000000
+#define BH_WAKEUP_GAS
 #define SINGLE_STAR_SUPERTIMESTEPPING 1 // Turns on sub-grid evolution of sink binaries to avoid slowdown of very short timesteps
 #define SINGLE_STAR_FIND_BINARIES
 #define SINGLE_STAR_HILL_CRITERION // use Hill-type tidal-tensor star formation criterion

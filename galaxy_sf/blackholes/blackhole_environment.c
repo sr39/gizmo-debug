@@ -42,6 +42,9 @@ static struct blackholedata_in
     MyFloat Jstar[3];
 #endif
     MyFloat Hsml;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+    MyFloat AGS_Hsml;
+#endif    
     MyIDType ID;
     int NodeList[NODELISTLENGTH];
 #ifdef BH_WAKEUP_GAS
@@ -117,7 +120,11 @@ void blackhole_environment_loop(void)
             BlackholeDataIn[j].SinkRadius = P[place].SinkRadius;
 #endif	    
 #endif
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+            BlackholeDataIn[j].AGS_Hsml = PPP[place].Hsml;
+#endif	    
             BlackholeDataIn[j].Hsml = PPP[place].Hsml;
+	    
             BlackholeDataIn[j].ID = P[place].ID;
 //#if defined(NEWSINK)
 //	    BlackholeDataIn[j].SinkRadius = P[place].SinkRadius;
@@ -217,6 +224,9 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     /* initialize variables before SPH loop is started */
     int startnode, numngb, j, k, n, listindex=0, mod_index;
     MyFloat *pos, h_i, *vel, hinv;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+    MyFloat ags_h_i;
+#endif
     MyIDType id;
     
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(NEWSINK)
@@ -253,6 +263,9 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
         pos = P[target].Pos;
         vel = P[target].Vel;
         h_i = PPP[target].Hsml;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+	ags_h_i = PPP[target].AGS_Hsml;
+#endif	
         id = P[target].ID;
         mod_index = P[target].IndexMapToTempStruc;  /* the index of the BlackholeTempInfo should we modify*/
 #ifdef BH_WAKEUP_GAS
@@ -276,6 +289,9 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
         pos = BlackholeDataGet[target].Pos;
         vel = BlackholeDataGet[target].Vel;
         h_i = BlackholeDataGet[target].Hsml;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+	ags_h_i = BlackholeDataGet[target].AGS_Hsml;
+#endif	
         id = BlackholeDataGet[target].ID;
         mod_index = 0;                              /* this is not used for mode==1, but this avoids compiler error */
 #ifdef BH_WAKEUP_GAS
@@ -327,8 +343,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 
 #ifdef BH_WAKEUP_GAS
 		if (bh_timebin < P[j].LowestBHTimeBin) P[j].LowestBHTimeBin = bh_timebin;
-//		SphP[j].wakeup = 1;
-#endif		
+#endif
                 if( (P[j].Mass > 0) && (P[j].Type != 5) && (P[j].ID != id) )
                 {
                     wt = P[j].Mass;
@@ -425,7 +440,12 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                     {
                         vrel=0; for(k=0;k<3;k++) {vrel += (P[j].Vel[k] - vel[k])*(P[j].Vel[k] - vel[k]);}
                         r2=0; for(k=0;k<3;k++) {r2+=dP[k]*dP[k];}
-                        double dr_code = sqrt(r2); vrel = sqrt(vrel) / All.cf_atime; vbound = bh_vesc(j, mass, dr_code);
+                        double dr_code = sqrt(r2); vrel = sqrt(vrel) / All.cf_atime;
+#if defined(ADAPTIVE_GRAVSOFT_FORALL)
+			vbound = bh_vesc(j, mass, dr_code, ags_h_i);
+#else
+			vbound = bh_vesc(j, mass, dr_code);
+#endif	//SINGLE_STAR_FORMATION
 #ifdef SINGLE_STAR_STRICT_ACCRETION
 			//			if(dr_code < DMAX(sink_radius, Get_Particle_Size(j)))
 			if(dr_code < sink_radius)			
@@ -478,7 +498,11 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                             Jpar[2] = P[j].Mass*(dP[0]*dv[1] - dP[1]*dv[0]);
                             out.gas_Erot_in_intzone += (Jpar[0]*Jpar[0] + Jpar[1]*Jpar[1] + Jpar[2]*Jpar[2])/(2.0*P[j].Mass*dr_code*dr_code); /* total rotational energy, L^2/(2 m r^2), not just bulk as in Eq 13 oh Hubber 2013 */			    
 //                            out.gas_Egrav_in_intzone -= All.G * mass * P[j].Mass * 0.5 * (kernel_gravity(u, hinv, hinv3, -1) + kernel_gravity(u_gas1, hinv_gas1, hinv3_gas1, -1) ); /*Sink-gas interaction sum from Hubber 2013 Eq 14*/
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+			    out.gas_Egrav_in_intzone += grav_interaction_energy(dr_code, mass, P[j].Mass, ags_h_i, P[j].Hsml);
+#else			    
 			    out.gas_Egrav_in_intzone += grav_interaction_energy(dr_code, mass, P[j].Mass, All.ForceSoftening[5], P[j].Hsml);
+#endif			    
                             //store properties of this neighbor particle
                             if (out.n_neighbor < NEWSINK_NEIGHBORMAX){
                                 out.rgas[out.n_neighbor] = dr_code; //distance
@@ -643,6 +667,9 @@ void blackhole_environment_second_loop(void)
                 BlackholeDataIn[j].Jstar[k] = BlackholeTempInfo[mod_index].Jstar_in_Kernel[k];
             }
             BlackholeDataIn[j].Hsml = PPP[place].Hsml;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+            BlackholeDataIn[j].AGS_Hsml = PPP[place].AGS_Hsml;
+#endif	    
             BlackholeDataIn[j].ID = P[place].ID;
             memcpy(BlackholeDataIn[j].NodeList, DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
         }
@@ -746,7 +773,7 @@ int blackhole_environment_second_evaluate(int target, int mode, int *nexport, in
     {
         pos = P[target].Pos;
         vel = P[target].Vel;
-        h_i = PPP[target].Hsml;
+        h_i = PPP[target].Hsml;	
         id = P[target].ID;
         mod_index = P[target].IndexMapToTempStruc;  /* the index of the BlackholeTempInfo should we modify*/
         Jgas = BlackholeTempInfo[mod_index].Jgas_in_Kernel;      // DAA: Jgas/Jstar available after first environment loop

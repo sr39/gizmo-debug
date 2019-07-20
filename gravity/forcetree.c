@@ -1994,17 +1994,17 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double vSqr = bh_dvx*bh_dvx + bh_dvy*bh_dvy + bh_dvz*bh_dvz;
                     double M_total = P[no].Mass + pmass;
                     double r2soft;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+		    if(ptype==5) r2soft = All.SofteningTable[5];
+		    else
+#endif		
                     r2soft = DMAX(All.SofteningTable[5], soft/2.8);
+		    
                     r2soft = r2soft*r2soft + r2;
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER);
                     double tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
                     if(tSqr < min_bh_approach_time) {
                         min_bh_approach_time = tSqr;
-                    /*     double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2); */
-                    /*     double dv_dot_dx = bh_dvx*dx + bh_dvy*dy + bh_dvz*dz; */ 
-                    /*     double hSqr = vSqr*r2 - dv_dot_dx*dv_dot_dx; */
-                    /*     double ecc = sqrt(1 + 2*specific_energy*hSqr / (All.G*All.G*M_total*M_total)); */
-                    /*     min_bh_periastron = -All.G*M_total / specific_energy * (1-ecc) * (P[no].Mass/M_total); // final factor ensures that this gives binaries the same timestep */
                     }
                     if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
 #ifdef SINGLE_STAR_FIND_BINARIES
@@ -2013,8 +2013,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 			if(r2 > All.ForceSoftening[5]*All.ForceSoftening[5]){
 			    specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
 			} else {
-//			    printf("dr=%g, fac=%g\n", sqrt(r2), kernel_gravity(sqrt(r2)*h_inv, h_inv, h3_inv, -1)/h_inv);
-			    specific_energy = 0.5*vSqr + All.G*M_total*kernel_gravity(sqrt(r2)*h_inv, h_inv, h3_inv, -1);
+//			    printf("dr=%g, fac=%g\n", sqrt(r2), kernel_gravity(sqrt(r2)*h_inv, h_inv, h3_inv, -1)/h_inv);			    
+			    specific_energy = 0.5*vSqr + All.G*M_total*kernel_gravity(sqrt(r2)/All.ForceSoftening[5], 1/All.ForceSoftening[5], (1/(All.ForceSoftening[5]*All.ForceSoftening[5]*All.ForceSoftening[5])), -1);
 			}
                         if (specific_energy<0){
                             double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
@@ -2134,6 +2134,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if(h < All.ForceSoftening[P[no].Type])
                     h = All.ForceSoftening[P[no].Type];
 #endif
+
+	    
+#if defined(SINGLE_STAR_FORMATION) && defined(ADAPTIVE_GRAVSOFT_FORALL)  // for star-star interactions, we wanna use fixed softening, so we update them here if that's what we've got 
+		if(ptype==5 && ptype_sec == 5){ 
+		    h = h_p_inv = All.ForceSoftening[5];
+		    zeta_sec = 0;
+		}
+#endif	    		
 
                 } // closes (if((r2 > 0) && (mass > 0))) check
                 
@@ -2461,18 +2469,17 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double vSqr = bh_dvx*bh_dvx + bh_dvy*bh_dvy + bh_dvz*bh_dvz;
                     double M_total = nop->bh_mass + pmass;
                     double r2soft;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+		    if(ptype==5) r2soft = All.SofteningTable[5];
+		    else
+#endif				    
                     r2soft = DMAX(All.SofteningTable[5], soft);
                     r2soft = r2soft*r2soft + r2;
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER);
                     double tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
                     if(tSqr < min_bh_approach_time) {
                         min_bh_approach_time = tSqr;
-                    /*     double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(bh_r2); */
-                    /*     double dv_dot_dx = bh_dvx*bh_dx + bh_dvy*bh_dy + bh_dvz*bh_dz; */
-                    /*     double hSqr = vSqr*r2 - dv_dot_dx*dv_dot_dx; */
-                    /*     double ecc = sqrt(1 + 2*specific_energy*hSqr / (All.G*All.G*M_total*M_total)); */
-                    /*     min_bh_periastron = -All.G*M_total / specific_energy * (1-ecc) * (nop->bh_mass/M_total); // final factor ensures that this gives binaries the same timestep when we use it to turn the accel into a timestep */
-                    }
+                    }		    
                     if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
 #ifdef SINGLE_STAR_FIND_BINARIES
                     if(ptype==5 && nop->N_BH == 1){ // only do it if we're looking at a single star in the node
@@ -2495,7 +2502,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 }
 #endif
             }
-            
+
+	    
             if((r2 > 0) && (mass > 0)) // only go forward if mass positive and there is separation
             {
             
@@ -2608,6 +2616,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         } // if(ptype==ptype_sec)
                     } // check for entering correction terms
 #endif
+#ifdef BH_WAKEUP_PARTICLES
+
+#endif		    
                 } // closes (if((h_p_inv > 0) && (ptype_sec > -1)))
 #endif // #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) //
 

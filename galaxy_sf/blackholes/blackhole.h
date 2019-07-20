@@ -55,7 +55,11 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
 double bh_eddington_mdot(double bh_mass);
 double bh_lum_bol(double mdot, double mass, long id);
 int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double sink_radius);
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+double bh_vesc(int j, double mass, double r_code, double bh_softening);
+#else
 double bh_vesc(int j, double mass, double r_code);
+#endif
 void normalize_temp_info_struct(int i);
 void set_blackhole_mdot(int i, int n, double dt);
 void set_blackhole_new_mass(int i, int n, double dt);

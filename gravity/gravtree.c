@@ -95,7 +95,9 @@ void gravity_tree(void)
         if(ThisTask == 0) printf("Tree construction.  (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
 #endif
         CPU_Step[CPU_MISC] += measure_time();
-        
+#ifdef SINGLE_STAR_FORMATION
+	move_particles(All.Ti_Current); 
+#endif	
         force_treebuild(NumPart, NULL);
         
         CPU_Step[CPU_TREEBUILD] += measure_time();

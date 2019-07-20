@@ -94,6 +94,9 @@ void blackhole_feed_loop(void)
 #endif	    
 #endif
             BlackholeDataIn[j].Hsml = PPP[place].Hsml;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+            BlackholeDataIn[j].AGS_Hsml = PPP[place].AGS_Hsml;	    
+#endif	    
             BlackholeDataIn[j].Mass = P[place].Mass;
             BlackholeDataIn[j].BH_Mass = BPP(place).BH_Mass;
 #ifdef BH_ALPHADISK_ACCRETION
@@ -244,6 +247,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     int startnode, numngb, j, k, n, listindex = 0;
     MyIDType id;
     MyFloat *pos, *velocity, h_i, dt, mdot, rho, mass, bh_mass;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+    MyFloat ags_h_i;
+#endif    
     double h_i2, r2, r, u, hinv, hinv3, wk, dwk, vrel, vesc, dpos[3], sink_radius; sink_radius=0;
     
 #if defined(BH_GRAVCAPTURE_GAS) && defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
@@ -293,6 +299,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         dt = P[target].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
         h_i = PPP[target].Hsml;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+	ags_h_i = PPP[target].AGS_Hsml;
+#endif	
         mass = P[target].Mass;
         bh_mass = BPP(target).BH_Mass;
 #ifdef BH_ALPHADISK_ACCRETION
@@ -330,6 +339,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         mdot = BlackholeDataGet[target].Mdot;
         dt = BlackholeDataGet[target].Dt;
         h_i = BlackholeDataGet[target].Hsml;
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+	ags_h_i = BlackholeDataGet[target].AGS_Hsml;
+#endif	
         mass = BlackholeDataGet[target].Mass;
 #ifdef SINGLE_STAR_STRICT_ACCRETION
         sink_radius = BlackholeDataGet[target].SinkRadius;
@@ -462,7 +474,12 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #endif
                     {
                         vrel=0; for(k=0;k<3;k++) {vrel += (P[j].Vel[k] - velocity[k])*(P[j].Vel[k] - velocity[k]);}
-                        r=sqrt(r2); vrel=sqrt(vrel)/All.cf_atime; vesc=bh_vesc(j,mass,r); /* do this once and use below */
+                        r=sqrt(r2); vrel=sqrt(vrel)/All.cf_atime;  /* do this once and use below */
+#ifdef ADAPTIVE_GRAVSOFT_FORALL			
+			vesc=bh_vesc(j,mass,r, ags_h_i);
+#else
+			vesc=bh_vesc(j,mass,r);
+#endif // ADAPTIVE_GRAVSOFT_FORALL			
 #ifdef BH_REPOSITION_ON_POTMIN
                         /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
                         double boundedness_function, potential_function; boundedness_function = P[j].Potential + 0.5 * vrel*vrel * All.cf_atime; potential_function = P[j].Potential;

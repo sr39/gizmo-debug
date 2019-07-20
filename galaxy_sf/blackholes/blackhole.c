@@ -108,7 +108,11 @@ double bh_lum_bol(double mdot, double mass, long id)
 
 
 /* calculate escape velocity to use for bounded-ness calculations relative to the BH */
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+double bh_vesc(int j, double mass, double r_code, double bh_softening)
+#else
 double bh_vesc(int j, double mass, double r_code)
+#endif    
 {
     double cs_to_add_km_s = 10.0; /* we can optionally add a 'fudge factor' to v_esc to set a minimum value; useful for galaxy applications */
 #if defined(SINGLE_STAR_FORMATION) || defined(BH_SEED_GROWTH_TESTS)
@@ -123,8 +127,13 @@ double bh_vesc(int j, double mass, double r_code)
 #endif
     }
 #ifdef SINGLE_STAR_FORMATION
-    if(r_code < All.ForceSoftening[5]){
-        double hinv = 1/All.ForceSoftening[5];    
+    double hinv;
+#ifndef ADAPTIVE_GRAVSOFT_FORALL
+    double bh_softening = All.ForceSoftening[5];
+#endif    
+    if (P[j].Type == 0) hinv = 1/DMAX(bh_softening, P[j].Hsml);
+    else hinv = 1/All.ForceSoftening[5];
+    if(r_code < 1/hinv){
         double phi = kernel_gravity(r_code * hinv, hinv, hinv*hinv*hinv, -1);
 	return sqrt(-2*All.G*m_eff*phi);
     } else
@@ -656,28 +665,14 @@ void set_blackhole_mdot(int i, int n, double dt)
 #ifdef SINGLE_STAR_FORMATION
 #ifdef NEWSINK
         double tdyn = DMAX(sqrt(All.ForceSoftening[5]*All.ForceSoftening[5]*All.ForceSoftening[5] / (BPP(n).Mass * All.G)), dt); //sink dynamical time
-//        double t_acc_bh = DMAX(BlackholeTempInfo[i].t_acc, tdyn); //accretion from alphadisk on either the sink dynamical time or the accretion timescale
         mdot = All.BlackHoleAccretionFactor * BPP(n).BH_Mass_AlphaDisk / (tdyn); // just using t_dyn for now. Would like to do something fancier that interpolates between Bondi-like and SS-like accretion appropriately...
 #else
-        //mdot = All.BlackHoleAccretionFactor * 1.0e-5 * BPP(n).BH_Mass_AlphaDisk / (SEC_PER_YEAR/All.UnitTime_in_s) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass),2);
-        //double t_acc_bh=(1.0e5 * t_yr); //accretion timescale set to 100kyr
-        //double t_acc_bh= 1.11072 * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass)*All.GravityConstantInternal, -0.5)*pow(All.ForceSoftening[5],1.5)/All.UnitTime_in_s; /* Accretion timescale is the freefall time */
         double t_acc_bh= 18.006* pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass)*All.GravityConstantInternal*All.ForceSoftening[5], 0.5)*pow(3.0e4/All.UnitVelocity_in_cm_per_s,-2.0)/All.UnitTime_in_s; /* Accretion timescale is 1/alpha*(t_cross/t_orb)^2*t_orb where t_orb is roughly the 2 freefall time. For t_cross=2R/cs we will use cs=300m/s (T=20 K gas) and for alpha we will use 0.1 (the uncertainty in alpha means it does not really matter if cs is incorrect)*/
         double sink_dt = (BPP(n).TimeBin ? ((integertime) 1 << BPP(n).TimeBin) : 0) * All.Timebase_interval; // sink timestep
         t_acc_bh=DMAX(10*sink_dt,t_acc_bh); /* Make sure that the accretion timescale is at least 10 times the particle's timestep */
         mdot = All.BlackHoleAccretionFactor * BPP(n).BH_Mass_AlphaDisk / (t_acc_bh) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass), 0.4);
 #endif //ifdef NEWSINK
-#else
-        /* this below is a more complicated expression using the outer-disk expression from Shakura & Sunyaev. Simpler expression
-            below captures the same physics with considerably less potential to extrapolate to rather odd scalings in extreme regimes */
-        
-        /*mdot = All.BlackHoleAccretionFactor *
-            (2.45 * (SOLAR_MASS/All.UnitMass_in_g)/(SEC_PER_YEAR/All.UnitTime_in_s)) * // normalization
-            pow( 0.1 , 8./7.) * // viscous disk 'alpha'
-            pow( BPP(n).BH_Mass*All.UnitMass_in_g / (All.HubbleParam * 1.0e8*SOLAR_MASS) , -5./14. ) * // mbh dependence
-            pow( BPP(n).BH_Mass_AlphaDisk*All.UnitMass_in_g / (All.HubbleParam * 1.0e8*SOLAR_MASS) , 10./7. ) * // m_disk dependence
-            pow( DMIN(0.2,DMIN(PPP[n].Hsml,All.ForceSoftening[5])*All.cf_atime*All.UnitLength_in_cm/(All.HubbleParam * 3.086e18)) , -25./14. ); // r_disk dependence
-        */
+#else        
         mdot = BPP(n).BH_Mass_AlphaDisk / (4.2e7 * t_yr) * pow(BPP(n).BH_Mass_AlphaDisk/(BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass), 0.4);
 #endif//ifdef SINGLE_STAR_FORMATION
 
