@@ -982,7 +982,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef BLACK_HOLES
 #ifdef BH_WAKEUP_GAS
     if(P[p].Type == 0){
-	double dt_bh = (P[p].LowestBHTimeBin ? ((integertime)1 <<  P[p].LowestBHTimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+	double dt_bh = 2*(P[p].LowestBHTimeBin ? ((integertime)1 <<  P[p].LowestBHTimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 
 	if (dt > dt_bh) {
 	    dt = 1.01 * dt_bh;
