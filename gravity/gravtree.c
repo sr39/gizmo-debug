@@ -1256,7 +1256,6 @@ void subtract_companion_gravity(int i)
 	/* second derivatives needed -> calculate them from softened potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
 	if(u < 0.5) {fac2 = P[i].comp_Mass * h5_inv * (76.8 - 96.0 * u);} else {fac2 = P[i].comp_Mass * h5_inv * (-0.2 / (u2 * u2 * u) + 48.0 / u - 76.8 + 32.0 * u);}
     }
-	
     
     for(i1=0; i1<3; i1++){
 	P[i].COM_GravAccel[i1] = P[i].GravAccel[i1] - P[i].comp_dx[i1] * fac;

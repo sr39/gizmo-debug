@@ -484,9 +484,10 @@ integertime get_timestep(int p,		/*!< particle index */
     else {dt = DMIN(All.MaxSizeTimestep, dt_tidal);} // for collisionless or stars, fuhgeddabout the Power 2003 timestep. We're in Tidaltown, USA
 
 #ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step and the timestep anticipates close encounters, which gives superior conservation
+    double dt_2body;
     if(P[p].Type == 5)
     {
-        double dt_2body = 1/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time
+        dt_2body = 1/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
 	if(P[p].is_in_a_binary && (P[p].SuperTimestepFlag >= 2)){ //binary candidate or a confirmed binary
 	    // First we need to construct the same 2-body timescale as above, but from the binary parameters. If this is longer than the above, there is another star that is requiring us to

@@ -121,9 +121,9 @@ void blackhole_environment_loop(void)
 #endif	    
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-            BlackholeDataIn[j].AGS_Hsml = PPP[place].Hsml;
+            BlackholeDataIn[j].AGS_Hsml = PPP[place].AGS_Hsml;
 #endif	    
-            BlackholeDataIn[j].Hsml = PPP[place].Hsml;
+            BlackholeDataIn[j].Hsml = PPP[place].Hsml;	    
 	    
             BlackholeDataIn[j].ID = P[place].ID;
 //#if defined(NEWSINK)
@@ -459,8 +459,11 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 #endif
                             if( bh_check_boundedness(j,vrel,vbound,dr_code,sink_radius)==1 ) { /* apocenter within 2.8*epsilon (softening length) */
 #ifdef SINGLE_STAR_FORMATION
-			      double spec_energy = 0.5*(vrel*vrel - vbound*vbound); // specific energy of the 2-body system
-			      if (spec_energy < P[j].SwallowEnergy) P[j].SwallowEnergy = spec_energy; // record the lowest energy we encounter, so we can accrete onto the sink that we are most tightly bound to if there are overlapping sinks
+                     	      double eps = DMAX(P[j].Hsml/2.8, DMAX(dr_code, ags_h_i/2.8));
+			      double tff = eps*eps*eps / (mass + P[j].Mass);
+			      if (tff < P[j].SwallowTime) P[j].SwallowTime = tff;
+//			      double spec_energy = 0.5*(vrel*vrel - vbound*vbound); // specific energy of the 2-body system
+//			      if (spec_energy < P[j].SwallowEnergy) P[j].SwallowEnergy = spec_energy; // record the lowest energy we encounter, so we can accrete onto the sink that we are most tightly bound to if there are overlapping sinks
 #endif
                                 /* CAVEAT: when two BHs share some neighbours, this double counts the accretion. looks like this is true always since SwallowID=0 has just been initialized... only makes sense to check SwallowID if we update it... */
                                 if(P[j].SwallowID < id) {out.mass_to_swallow_edd += P[j].Mass;} /* P[j].SwallowID < id */
