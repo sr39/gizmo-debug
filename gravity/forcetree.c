@@ -2133,6 +2133,16 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 h = All.ForceSoftening[ptype];
                 if(h < All.ForceSoftening[P[no].Type])
                     h = All.ForceSoftening[P[no].Type];
+#if defined(SINGLE_STAR_FORMATION) && defined(ADAPTIVE_GRAVSOFT_FORALL)  // for star-star interactions, we wanna use fixed softening, so we update them here if that's what we've got 
+		if(ptype==5 && ptype_sec == 5){ 
+		    h = All.ForceSoftening[5];
+		    h_inv = 1/All.ForceSoftening[5];
+		    h3_inv = h_inv*h_inv*h_inv;
+		    h5_inv = h3_inv*h_inv*h_inv;
+		    h_p_inv = 1/h;
+		    zeta_sec = 0;
+		}
+#endif		
 #endif	  
 
                 } // closes (if((r2 > 0) && (mass > 0))) check
@@ -2514,16 +2524,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             }
             else
             {
-#if defined(SINGLE_STAR_FORMATION) && defined(ADAPTIVE_GRAVSOFT_FORALL)  // for star-star interactions, we wanna use fixed softening, so we update them here if that's what we've got 
-		if(ptype==5 && ptype_sec == 5){ 
-		    h = All.ForceSoftening[5];
-		    h_inv = 1/All.ForceSoftening[5];
-		    h3_inv = h_inv*h_inv*h_inv;
-		    h5_inv = h3_inv*h_inv*h_inv;
-		    h_p_inv = 1/h;
-		    zeta_sec = 0;
-		}
-#endif
+
 #if !defined(ADAPTIVE_GRAVSOFT_FORALL) && !defined(ADAPTIVE_GRAVSOFT_FORGAS)
                 h_inv = 1.0 / h;
                 h3_inv = h_inv * h_inv * h_inv;
