@@ -1680,6 +1680,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     int no, nodesinlist, ptype, ninteractions, nexp, task, listindex = 0;
     double r2, dx, dy, dz, mass, r, fac, u, h, h_inv, h3_inv;
     double pos_x, pos_y, pos_z, aold;
+
 #ifdef SINGLE_STAR_TIMESTEPPING
     double vel_x, vel_y, vel_z;
 #endif    
@@ -2510,9 +2511,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             {
             
             r = sqrt(r2);
-	    
-            if((r >= h) && !((no < maxPart) && (r < 1/h_p_inv))) // can only do the Newtonian force if the field source is outside our own softening, and we are not within the softening of a field source particle
-		//   if(r >= h)
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+            if((r >= h) && !((ptype_sec > -1) && (r < 1/h_p_inv))) // can only do the Newtonian force if the field source is outside our own softening, and we are not within the softening of a field source particle
+#else		
+	    if(r >= h)
+#endif		
             {
                 fac = mass / (r2 * r);
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
@@ -2625,14 +2628,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         } // if(ptype==ptype_sec)
                     } // check for entering correction terms
 #endif
-#ifdef BH_WAKEUP_PARTICLES
-
-#endif		    
                 } // closes (if((h_p_inv > 0) && (ptype_sec > -1)))
-#endif // #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) //              
-
+#endif // #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) //
             } // closes r < h (else) clause
-            
                 
 #ifdef PMGRID
             tabindex = (int) (asmthfac * r);
