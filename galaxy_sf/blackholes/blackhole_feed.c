@@ -479,7 +479,8 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 			vesc=bh_vesc(j,mass,r, ags_h_i);
 #else
 			vesc=bh_vesc(j,mass,r);
-#endif // ADAPTIVE_GRAVSOFT_FORALL			
+#endif // ADAPTIVE_GRAVSOFT_FORALL
+
 #ifdef BH_REPOSITION_ON_POTMIN
                         /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
                         double boundedness_function, potential_function; boundedness_function = P[j].Potential + 0.5 * vrel*vrel * All.cf_atime; potential_function = P[j].Potential;
@@ -540,7 +541,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         if(P[j].Type != 5)
                         {
 #ifdef SINGLE_STAR_FORMATION
-			  if(0.5*(vrel*vrel - vesc*vesc) <= P[j].SwallowEnergy) 
+			    double eps = DMAX(P[j].Hsml/2.8, DMAX(ags_h_i, r));			    
+			    if(eps*eps*eps /(All.G * (P[j].mass + mass)) <= P[j].SwallowTime)
+//			  if(0.5*(vrel*vrel - vesc*vesc) <= P[j].SwallowEnergy) 
 #endif			      			  
 #ifdef SINGLE_STAR_STRICT_ACCRETION
 			    //			    if(r < DMAX(Get_Particle_Size(j), sink_radius)) // don't even bother if not in the accretion radius
@@ -598,7 +601,10 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                if( P[j].ID == str_gasID[k] && str_f_acc[k]>0 && P[j].SwallowID < id )
                                {
                                    /*Check if this is the sink the gas is most bound to, if not, don't accrete */
-                                   if (0.5*(vrel*vrel - vesc*vesc) <= P[j].SwallowEnergy*0.999){ //constant factor added to avoid weird numerical issues
+				   double eps = DMAX(P[j].Hsml/2.8, DMAX(ags_h_i, r));
+				   double tff = eps*eps*eps /(All.G * (mass + P[j].Mass));
+				   if(tff <= P[j].SwallowTime*1.01){
+//                                   if (0.5*(vrel*vrel - vesc*vesc) <= P[j].SwallowEnergy*0.999){ //constant factor added to avoid weird numerical issues
 #ifndef IO_REDUCED_MODE
                                     printf("MARKING_BH_FOOD: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) id);
 #endif
@@ -622,7 +628,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                         BlackholeDataResult[target].f_acc[k] = 0;
                                        }
 #ifndef IO_REDUCED_MODE
-                                        printf("ThisTask=%d, Sink assigned to multiple sinks: P[j.]ID=%llu has SwallowEnergy of %g and had SwallowID of %llu while the binding to BH with id=%llu is %g. This reduces mdot by %g to %g for the sink, which has been updated accordingly.\n",ThisTask, (unsigned long long) P[j].ID,P[j].SwallowEnergy,(unsigned long long) P[j].SwallowID, (unsigned long long) id, (0.5*(vrel*vrel - vesc*vesc)), str_f_acc[k]*P[j].Mass/dt, mdot);
+                                        printf("ThisTask=%d, Sink assigned to multiple sinks: P[j.]ID=%llu has SwallowTime of %g and had SwallowID of %llu while the freefall time to BH with id=%llu is %g. This reduces mdot by %g to %g for the sink, which has been updated accordingly.\n",ThisTask, (unsigned long long) P[j].ID,P[j].SwallowTime,(unsigned long long) P[j].SwallowID, (unsigned long long) id, tff, str_f_acc[k]*P[j].Mass/dt, mdot);
 #endif
                                        str_f_acc[k] = 0; //we don't accrete this
                                    }

@@ -313,7 +313,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define STOP_WHEN_BELOW_MINTIMESTEP // stop when below min timestep to prevent bad timestepping
 #define TIDAL_TIMESTEP_CRITERION // use tidal tensor timestep criterion
 #define SINGLE_STAR_TIMESTEPPING // use additional timestep criteria for sink particles to ensure they don't evolve out-of-binary in close encounters
-#define SINGLE_STAR_MERGERS
+//#define SINGLE_STAR_MERGERS
 #define ADAPTIVE_GRAVSOFT_FORALL 1000000
 #define BH_WAKEUP_GAS
 #define SINGLE_STAR_SUPERTIMESTEPPING 1 // Turns on sub-grid evolution of sink binaries to avoid slowdown of very short timesteps
@@ -2242,7 +2242,7 @@ extern ALIGN(32) struct particle_data
     MyFloat SinkRadius;
 #endif
 #ifdef SINGLE_STAR_FORMATION  
-    MyFloat SwallowEnergy; /* specific energy of a particle w.r.t. a sink particle  */
+    MyFloat SwallowTime; /* freefall time of a particle onto a sink particle  */
 #endif 
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;

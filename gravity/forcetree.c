@@ -1998,7 +1998,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 		    if(ptype==5) r2soft = All.SofteningTable[5];
 		    else
 #endif		
-                    r2soft = DMAX(All.SofteningTable[5], soft/2.8);
+		    r2soft = DMAX(All.SofteningTable[5], soft/2.8);
 		    
                     r2soft = r2soft*r2soft + r2;
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER);
@@ -2138,7 +2138,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 	    
 #if defined(SINGLE_STAR_FORMATION) && defined(ADAPTIVE_GRAVSOFT_FORALL)  // for star-star interactions, we wanna use fixed softening, so we update them here if that's what we've got 
 		if(ptype==5 && ptype_sec == 5){ 
-		    h = h_p_inv = All.ForceSoftening[5];
+		    h = All.ForceSoftening[5];
+		    h_inv = 1/All.ForceSoftening[5];
+		    h3_inv = h_inv*h_inv*h_inv;
+		    h5_inv = h3_inv*h_inv*h_inv;
+		    h_p_inv = 1/h;
 		    zeta_sec = 0;
 		}
 #endif	    		
@@ -2508,7 +2512,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             {
             
             r = sqrt(r2);
-            if((r >= h) && !((no < All.MaxPart) && (r < 1/h_p_inv))) // can only do the Newtonian force if the field source is outside our own softening, and we are not within the softening of a field source particle
+	    
+            if((r >= h) && !((no < maxPart) && (r < 1/h_p_inv))) // can only do the Newtonian force if the field source is outside our own softening, and we are not within the softening of a field source particle
 		//   if(r >= h)
             {
                 fac = mass / (r2 * r);
@@ -2526,11 +2531,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 h3_inv = h_inv * h_inv * h_inv;
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                 h5_inv = h_inv * h_inv * h_inv * h_inv * h_inv;
-#endif
+#endif	      
 #endif
                 u = r * h_inv;
                 fac = mass * kernel_gravity(u, h_inv, h3_inv, 1);
-
+#ifdef EVALPOTENTIAL
+                facpot = mass * kernel_gravity(u, h_inv, h3_inv, -1);
+#endif 
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                 /* second derivatives needed -> calculate them from softend potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */		
                 if(u < 0.5) {fac2_tidal = mass * h5_inv * (76.8 - 96.0 * u);} else {fac2_tidal = mass * h5_inv * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u);}
@@ -2578,6 +2585,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         u_p = r * h_p_inv;
                         double fac2 = mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1);
                         if(!isnan(fac2)) {fac=fac2;}
+#ifdef EVALPOTENTIAL
+			facpot = mass * kernel_gravity(u, h_p_inv, h_p3_inv, -1);
+#endif 			
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 			h5_inv = h_p3_inv * h_p_inv * h_p_inv;
 			if(!isnan(fac2)) {
@@ -2620,12 +2630,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 
 #endif		    
                 } // closes (if((h_p_inv > 0) && (ptype_sec > -1)))
-#endif // #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) //
-
-                
-#ifdef EVALPOTENTIAL
-                facpot = mass * kernel_gravity(u, h_inv, h3_inv, -1);
-#endif 
+#endif // #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) //              
 
             } // closes r < h (else) clause
             

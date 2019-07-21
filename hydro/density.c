@@ -288,7 +288,7 @@ void density(void)
 #ifdef BLACK_HOLES
             P[i].SwallowID = 0;
 #ifdef SINGLE_STAR_FORMATION
-	    P[i].SwallowEnergy = MAX_REAL_NUMBER;
+	    P[i].SwallowTime = MAX_REAL_NUMBER;
 #endif	    
 #endif
         }
@@ -1442,7 +1442,7 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
         if(out->BH_TimeBinGasNeighbor > P[j].TimeBin)
             out->BH_TimeBinGasNeighbor = P[j].TimeBin;
 #ifdef SINGLE_STAR_FORMATION
-	P[j].SwallowEnergy = MAX_REAL_NUMBER;	
+	P[j].SwallowTime = MAX_REAL_NUMBER;	
         if((out->BH_NearestGasNeighbor > DMAX(Get_Particle_Size(j), kernel->r)) && (P[j].Mass > 0))
             out->BH_NearestGasNeighbor = DMAX(Get_Particle_Size(j), kernel->r);
 #endif
