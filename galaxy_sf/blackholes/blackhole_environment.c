@@ -459,6 +459,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 #endif
                             if( bh_check_boundedness(j,vrel,vbound,dr_code,sink_radius)==1 ) { /* apocenter within 2.8*epsilon (softening length) */
 #ifdef SINGLE_STAR_FORMATION
+			      
                      	      double eps = DMAX(P[j].Hsml/2.8, DMAX(dr_code, ags_h_i/2.8));
 			      double tff = eps*eps*eps / (mass + P[j].Mass);
 			      if (tff < P[j].SwallowTime) P[j].SwallowTime = tff;

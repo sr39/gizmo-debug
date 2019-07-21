@@ -541,8 +541,8 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         if(P[j].Type != 5)
                         {
 #ifdef SINGLE_STAR_FORMATION
-			    double eps = DMAX(P[j].Hsml/2.8, DMAX(ags_h_i, r));			    
-			    if(eps*eps*eps /(All.G * (P[j].mass + mass)) <= P[j].SwallowTime)
+			    double eps = DMAX(P[j].Hsml/2.8, DMAX(ags_h_i/2.8, r));			    
+			    if(eps*eps*eps /(P[j].mass + mass) <= P[j].SwallowTime)
 //			  if(0.5*(vrel*vrel - vesc*vesc) <= P[j].SwallowEnergy) 
 #endif			      			  
 #ifdef SINGLE_STAR_STRICT_ACCRETION
@@ -601,8 +601,8 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                if( P[j].ID == str_gasID[k] && str_f_acc[k]>0 && P[j].SwallowID < id )
                                {
                                    /*Check if this is the sink the gas is most bound to, if not, don't accrete */
-				   double eps = DMAX(P[j].Hsml/2.8, DMAX(ags_h_i, r));
-				   double tff = eps*eps*eps /(All.G * (mass + P[j].Mass));
+				   double eps = DMAX(P[j].Hsml/2.8, DMAX(ags_h_i/2.8, r));
+				   double tff = eps*eps*eps /(mass + P[j].Mass);
 				   if(tff <= P[j].SwallowTime*1.01){
 //                                   if (0.5*(vrel*vrel - vesc*vesc) <= P[j].SwallowEnergy*0.999){ //constant factor added to avoid weird numerical issues
 #ifndef IO_REDUCED_MODE
