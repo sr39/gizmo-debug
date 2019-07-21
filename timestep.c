@@ -983,12 +983,12 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef BLACK_HOLES
 #ifdef BH_WAKEUP_GAS
     if(P[p].Type == 0){
-	double dt_bh = 2*(P[p].LowestBHTimeBin ? ((integertime)1 <<  P[p].LowestBHTimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+    	double dt_bh = 2*(P[p].LowestBHTimeBin ? ((integertime)1 <<  P[p].LowestBHTimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 
-	if (dt > dt_bh) {
-	    dt = 1.01 * dt_bh;
-	    P[p].LowestBHTimeBin = TIMEBINS;
-	}
+    	if (dt > dt_bh) {
+    	    dt = 1.01 * dt_bh;
+    	    P[p].LowestBHTimeBin = TIMEBINS;
+    	}
     }
 #endif	
     if(P[p].Type == 5)
@@ -1027,10 +1027,9 @@ integertime get_timestep(int p,		/*!< particle index */
             if(dt_accr > 0 && dt_accr < dt) {dt = dt_accr;}
 
 
-//       double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? (1 << BPP(p).BH_TimeBinGasNeighbor) : 0) * All.Timebase_interval / All.cf_hubble_a;
+	    double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? ((integertime)1 << BPP(p).BH_TimeBinGasNeighbor) : 0) * All.Timebase_interval / All.cf_hubble_a;
 
-
-//       if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
+	    if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 #ifdef SINGLE_STAR_FORMATION
 	    if(P[p].DensAroundStar) {
 #ifdef ADAPTIVE_GRAVSOFT_FORALL

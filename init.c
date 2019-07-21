@@ -526,8 +526,12 @@ void init(void)
 #ifdef BH_WAKEUP_GAS
 	if(P[i].Type == 0)  P[i].LowestBHTimeBin = TIMEBINS;
 #endif
+#ifdef SINGLE_STAR_TIMESTEPPING
+	P[i].min_bh_approach_time = MAX_REAL_NUMBER;
+	P[i].min_bh_freefall_time = MAX_REAL_NUMBER;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
 	P[i].SuperTimestepFlag = 0;
+#endif
 #endif	
         if(P[i].Type == 5)
         {
