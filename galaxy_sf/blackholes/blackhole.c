@@ -36,7 +36,7 @@ void blackhole_accretion(void)
 {
     if(All.TimeStep == 0.) return; /* no evolution */
     if(ThisTask == 0)  {printf("Start black-hole operations...\n");}
-    // This zero-out loop is effectively performed in density.c now, only on gas particles that are actually going to be looked at this timestep
+    // This zero-out loop is effectively performed in density.c now, only on gas particles that are actually going to be looked at this timestep, to reduce overhead when only a few particles are active
 /*     long i; for(i = 0; i < NumPart; i++) { */
 /*       P[i].SwallowID = 0; */
 /* #ifdef SINGLE_STAR_FORMATION */

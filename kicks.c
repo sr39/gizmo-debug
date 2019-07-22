@@ -312,14 +312,6 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             if(dEnt < 0.5*SphP[i].InternalEnergy) {SphP[i].InternalEnergy *= 0.5;} else {SphP[i].InternalEnergy = dEnt;}
             check_particle_for_temperature_minimum(i); /* if we've fallen below the minimum temperature, force the 'floor' */
         }
-// #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-   // /* double fewbody_kick_dv[3] = {0,0,0}; */
-   // /* if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=2) ){ */
-   // /*     do_fewbody_kick(i, fewbody_kick_dv, dt_gravkick); */
-   // /*     P[i].SuperTimestepFlag +=1; //we did a super timestep */
-   // /*     printf("Super time stepped kick operation for particle ID %d SuperTimestepFlag %d v_orig %g %g %g dv %g %g %g dt %g\n",P[i].ID, P[i].SuperTimestepFlag,P[i].Vel[0],P[i].Vel[1],P[i].Vel[2],fewbody_kick_dv[0],fewbody_kick_dv[1],fewbody_kick_dv[2],dt_gravkick); */
-   // /* } */
-// #endif
         /* now, kick for non-SPH quantities (accounting for momentum conservation if masses are changing) */
         for(j = 0; j < 3; j++)
         {
@@ -551,12 +543,3 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
     elastic_body_update_driftkick(i,dt_entr,0);
 #endif
 }
-
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-void do_fewbody_kick(int i, double fewbody_kick_dv[3], double dt){
-    //int k;
-    double drift_dx[3];
-    kepler_timestep(i, dt, fewbody_kick_dv, drift_dx, 0);
-    //for(k=0; k<3; k++) fewbody_kick_dv[k] = 0;
-}
-#endif

@@ -102,7 +102,7 @@ int force_treebuild(int npart, struct unbind_data *mp)
 {
 
     int flag;
-    
+// MYG: the below is redundant - commenting out to reduce overhead for timesteps with small particle numbers
 /* #ifdef BH_CALC_DISTANCES */
 /*     int i; */
 /*     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) */
@@ -2013,14 +2013,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 			double specific_energy;
 			if(r2 > All.ForceSoftening[5]*All.ForceSoftening[5]){
 			    specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
-			} else {
-//			    printf("dr=%g, fac=%g\n", sqrt(r2), kernel_gravity(sqrt(r2)*h_inv, h_inv, h3_inv, -1)/h_inv);			    
+			} else {			    
 			    specific_energy = 0.5*vSqr + All.G*M_total*kernel_gravity(sqrt(r2)/All.ForceSoftening[5], 1/All.ForceSoftening[5], (1/(All.ForceSoftening[5]*All.ForceSoftening[5]*All.ForceSoftening[5])), -1);
 			}
                         if (specific_energy<0){
                             double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
                             double t_orbital = 2.0*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis/(All.G*M_total) );
-    //printf("forcetree for particle %d at position %g %g %g t_orbital=%g M_total=%g r=%g dv=%g id=%d pos=%g %g %g, v=%g %g %g\n", target, pos_x, pos_y, pos_z, t_orbital, M_total, sqrt(r2), sqrt(vSqr), P[no].ID, P[no].Pos[0], P[no].Pos[1], P[no].Pos[2],  P[no].Vel[0], P[no].Vel[1], P[no].Vel[2]);
                             if(t_orbital < min_bh_t_orbital) {
                                 min_bh_t_orbital = t_orbital;
                                 //Save parameters of companion
@@ -2340,10 +2338,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double dist_to_center2 = dx_nc*dx_nc +  dy_nc*dy_nc + dz_nc*dz_nc;
                     /* check if any portion the cell lies within the interaction range */
                     
-/* #ifdef SINGLE_STAR_FORMATION
-		    // This line effectively forces stars to do direct summation with all gas particles within their accretion search radius - probably overkill, and since summing the forces is the slowest part of a timestep, and stars need the shortest timesteps, let's not do this anymore and get a bit of a speedup
-//		    if(ptype == 5) targeth_si = DMAX(targeth_si,PPP[target].Hsml);
-#endif */
 		    double dist_to_open = 2.0*targeth_si + nop->len*1.73205/2.0;
 		  
 		    
