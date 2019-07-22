@@ -361,7 +361,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #ifdef NEWSINK
 #define BH_GRAVCAPTURE_GAS
-#define BH_ALPHADISK_ACCRETION
+//#define BH_ALPHADISK_ACCRETION
 #define NEWSINK_BONDI
 #define NEWSINK_J_FEEDBACK //turns on angular momentum feedback in NEWSINK
 /* #ifdef MAGNETIC */
@@ -373,7 +373,6 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define DT_MIN_TOLERANCE_FACTOR 0.001 //tolerance factor for dt_min, defined in part (ii) of 2.3.5 in Hubber 2013.
 #define INT_ZONE_TO_HSML 1.0 //how many times larger should the sink interaction zone be compared to the the particle's adaptive smoothing length, 1 should be good
 #define NEWSINK_NEIGHBORMAX 200 //maximum number of neighbors anticipated, using BlackHoleNgbFactor=5 and DesNumNgb=32  value of 200 should be safe
-#define MDOT_AVG_WINDOWS_SIZE 20 //for radiation mdot is smoothed over this number of timesteps if the total time over these steps is larger than t_dyn of the sink
 #endif
 //#GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory
 #ifdef SINGLE_STAR_FB_HEATING
@@ -2252,14 +2251,8 @@ extern ALIGN(32) struct particle_data
 #endif
 #ifdef NEWSINK    
     MyFloat init_mass_in_intzone; /*initial mass in interaction zone, used for scaling mdot*/
-    MyFloat BH_Mdot_Avg; /*Mdot averaged over MDOT_AVG_WINDOWS_SIZE timesteps*/
-#if !defined(BH_ALPHADISK_ACCRETION)
-    MyFloat Mdotvals[MDOT_AVG_WINDOWS_SIZE]; /*value of mdot for the last MDOT_AVG_WINDOWS_SIZE timesteps*/
-    MyFloat dtvals[MDOT_AVG_WINDOWS_SIZE]; /*value of particle dt for the last MDOT_AVG_WINDOWS_SIZE timesteps*/
-    MyFloat BH_Mdot_Avg_tdyn; /*Mdot averaged over the dynamical time of the sink, last timestep taken into account is MDOT_AVG_WINDOWS_SIZE timesteps before the current time */
-#else
+    MyFloat BH_Mdot_Avg; /*Mdot averaged over dynamical time */
     MyFloat BH_Mdot_AlphaDisk; /*Mdot for the alpha disk*/
-#endif
 #endif
 #ifdef NEWSINK_J_FEEDBACK
     MyFloat Jsink[3];

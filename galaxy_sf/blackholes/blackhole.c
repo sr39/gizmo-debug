@@ -747,27 +747,10 @@ void set_blackhole_mdot(int i, int n, double dt)
 
 #if defined(NEWSINK)
 #if !defined(BH_ALPHADISK_ACCRETION) //if we are not using a mass reservoir for the accreted gas
-    double tsum=0,mdot_avg_nstep=0; 
     double tdyn = DMAX(sqrt(All.ForceSoftening[5]*All.ForceSoftening[5]*All.ForceSoftening[5] / (BPP(n).Mass * All.G)), dt);//sink dynamical time
-    double rel_dt=DMIN(BPP(n).dtvals[MDOT_AVG_WINDOWS_SIZE-1]/tdyn,1.0); //relative timestep in t_dyn units, but capped at 1 for averaging
-    /*Average mdot over the dynamical time of the sink, end of time averaging is MDOT_AVG_WINDOWS_SIZE timesteps before current time*/
-    BPP(n).BH_Mdot_Avg_tdyn = (1 - rel_dt) * BPP(n).BH_Mdot_Avg_tdyn + BPP(n).Mdotvals[MDOT_AVG_WINDOWS_SIZE-1] * rel_dt;
-    /*Store mdot and dt value for BH particle and time average it*/
-    mdot_avg_nstep = BPP(n).BH_Mdot*dt ; tsum = dt; //start with the current values
-    for(k=(MDOT_AVG_WINDOWS_SIZE-1);k>0;k--){ //shift array by one
-        BPP(n).Mdotvals[k] = BPP(n).Mdotvals[k-1];
-        BPP(n).dtvals[k] = BPP(n).dtvals[k-1];
-        mdot_avg_nstep += BPP(n).Mdotvals[k]*BPP(n).dtvals[k];
-        tsum += BPP(n).dtvals[k];
-    }
-    BPP(n).Mdotvals[0] = BPP(n).BH_Mdot; BPP(n).dtvals[0] = dt;//store current values
-    mdot_avg_nstep/=tsum; //normalized time average
-    if (tsum>tdyn){
-        BPP(n).BH_Mdot_Avg = mdot_avg_nstep; //averaged over MDOT_AVG_WINDOWS_SIZE timesteps
-    }
-    else{
-        BPP(n).BH_Mdot_Avg = mdot_avg_nstep*(tsum/tdyn) + BPP(n).BH_Mdot_Avg_tdyn*(1.0-tsum/tdyn); //We want to smooth over at least t_dyn, so we will use the exponentially smoothed version for the leftover. This way the integral of mdot is not conserved, but it only matters if we have extremely small timesteps
-    }
+    double rel_dt=DMIN(dt/tdyn,1.0); //relative timestep in t_dyn units, but capped at 1 for averaging
+    /*Average mdot over the dynamical time of the sink */
+    BPP(n).BH_Mdot_Avg = (1 - rel_dt) * BPP(n).BH_Mdot_Avg + BPP(n).BH_Mdot * rel_dt;
 #else //we are using a mass reservoir so it is already smoothed
     BPP(n).BH_Mdot_Avg = BPP(n).BH_Mdot;
 #endif // #if !defined(BH_ALPHADISK_ACCRETION)
