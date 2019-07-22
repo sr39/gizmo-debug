@@ -364,9 +364,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define BH_ALPHADISK_ACCRETION
 #define NEWSINK_BONDI
 #define NEWSINK_J_FEEDBACK //turns on angular momentum feedback in NEWSINK
-#ifdef MAGNETIC
-#define NEWSINK_B_FEEDBACK // turns on magnetic flux feedback, redistributing the magnetic flux of accreted particles similarly to how angular momentum is done
-#endif
+/* #ifdef MAGNETIC */
+/* #define NEWSINK_B_FEEDBACK // turns on magnetic flux feedback, redistributing the magnetic flux of accreted particles similarly to how angular momentum is done */
+/* #endif */
 #define NEWSINK_EAT_SMALL_DT // particles with very small timesteps will be accreted to prevent extreme slowdowns, controlled by DT_MIN_TOLERANCE_FACTOR
 #define NEWSINK_STOCHASTIC_ACCRETION //with this turned on NEWSINK will not leech of parts of a gas particle when accreting (default behavior), instead it will accrete the entire particle with p=dm/m_particle probability, where dm is the mass it would need to accrete
 #define ALPHASS 0.01 //alpha disk factor for disc timescale, should be between 0.01-1.0

@@ -584,13 +584,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #endif
                         if (f_accreted>0.0){
-/* #if defined(NEWSINK_STOCHASTIC_ACCRETION) && defined(BH_WIND_KICK) //We stochastically determine if this "accreted" particle is really accreted and we take its mass or it gets kicked out */
-/*                             w = get_random_number(P[j].ID); kicked=0; */
-/*                             if(w > All.BAL_f_accretion){ */
-/*                                 kicked=1;f_accreted=0.0; */
-/*                             } */
-/*                             else{ */
-/* #endif */
                                 accreted_mass += FLT(f_accreted*P[j].Mass);
 #ifdef BH_GRAVCAPTURE_GAS
 #ifdef BH_ALPHADISK_ACCRETION       /* mass goes into the alpha disk, before going into the BH */
@@ -610,14 +603,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 accreted_J[1] += FLT(f_accreted * P[j].Mass *(dx[2]*dv[0] - dx[0]*dv[2]) + P[j].Jsink[1]);
                                 accreted_J[2] += FLT(f_accreted * P[j].Mass *(dx[0]*dv[1] - dx[1]*dv[0]) + P[j].Jsink[2]);
 #endif				
-/* #ifdef NEWSINK_B_FEEDBACK */
-/* 				if(f_accreted == 1.0){ // if the particle is still around after then we leave the flux alone */
-/* 				  for(k=0;k<3;k++)   accreted_B[k] += SphP[i].B[k]; */
-/* #ifdef DIVBCLEANING_DEDNER */
-/* 				  accreted_Phi += SphP[i].Phi; */
-/* #endif */
-//				}
-//#endif				
 #endif
                                 P[j].Mass *= (1.0-f_accreted);
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -627,23 +612,13 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 if ((1.0-f_accreted)>0) {printf("f_accreted is: %g for particle with id %llu and mass %g around BH with id %llu\n", (MyFloat) f_accreted,(unsigned long long) P[j].ID, P[j].Mass,(unsigned long long) id);}
                                 else{printf("Particle with id %llu and mass %g swallowed by BH with id %llu\n", (unsigned long long) P[j].ID, P[j].Mass,(unsigned long long) id);}
 #endif
-/* #if defined(NEWSINK_STOCHASTIC_ACCRETION) && defined(BH_WIND_KICK) */
-/*                             }//end of else for determining if the particle is kicked */
-/* #endif */
                             
 #if defined(NEWSINK_STOCHASTIC_ACCRETION) //check if we actually kick this particle in the stochastic case
                             if (kicked){
 #endif
 #ifdef BH_WIND_KICK     /* BAL kicking operations. NOTE: we have two separate BAL wind models, particle kicking and smooth wind model. This is where we do the particle kicking BAL model. This should also work when there is alpha-disk. */
                                 v_kick=All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s; //if( !(All.ComovingIntegrationOn) && (All.Time < 0.001)) {v_kick *= All.Time/0.001;}
-/* #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION */
-/* 				v_kick = sqrt(All.G * bh_mass / (protostellar_radius * 6.957e10 / All.UnitLength_in_cm)); // Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum */
-/* #endif  */
-/* #if defined(NEWSINK) && !defined(NEWSINK_STOCHASTIC_ACCRETION) /\*It is possible to accrete only part of the particle so we need to be more careful about our kicks*\/ */
-/*                                 if (f_acc_corr<1.0){ */
-/*                                     v_kick *= f_acc_corr*(1.0-All.BAL_f_accretion)/(1.0-All.BAL_f_accretion*f_acc_corr); /\*we wanted to only accrete an f_acc_corr portion, so the imparted momentum is proportional to only f_acc_corr*(1-All.BAL_f_accretion) times the initial mass*\/ */
-/*                                 } */
-/* #endif */
+
                                 dir[0]=dir[1]=dir[2]=0; for(k=0;k<3;k++) {dir[k]=P[j].Pos[k]-pos[k];} // DAA: default direction is radially outwards
 #if defined(BH_COSMIC_RAYS) /* inject cosmic rays alongside wind injection */
                                 double dEcr = All.BH_CosmicRay_Injection_Efficiency * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * (C / All.UnitVelocity_in_cm_per_s)*(C / All.UnitVelocity_in_cm_per_s);
@@ -653,9 +628,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #endif
 #if (BH_WIND_KICK < 0)  /* DAA: along polar axis defined by angular momentum within Kernel (we could add finite opening angle) work out the geometry w/r to the plane of the disk */
-/* #if defined(NEWSINK_J_FEEDBACK) /\*Use Jsink instead of Jgas_in_Kernel for direction*\/ */
-/*                                 if((dir[0]*Jsink[0] + dir[1]*Jsink[1] + dir[2]*Jsink[2]) > 0){for(k=0;k<3;k++) {dir[k]=Jsink[k];}} else {for(k=0;k<3;k++) {dir[k]=-Jsink[k];}} */
-/* #else */
                                 if((dir[0]*Jgas_in_Kernel[0] + dir[1]*Jgas_in_Kernel[1] + dir[2]*Jgas_in_Kernel[2]) > 0){for(k=0;k<3;k++) {dir[k]=Jgas_in_Kernel[k];}} else {for(k=0;k<3;k++) {dir[k]=-Jgas_in_Kernel[k];}}
 //#endif
 #endif
