@@ -458,7 +458,7 @@ integertime get_timestep(int p,		/*!< particle index */
         if((All.ComovingIntegrationOn))
         {
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-            double ags_h = DMAX(PPP[p].AGS_Hsml/2.8 , DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]));
+            double ags_h = DMAX(PPP[p].AGS_Hsml , DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]));
             ags_h = DMIN(ags_h, DMAX(100.*All.ForceSoftening[P[p].Type] , 10.*PPP[p].AGS_Hsml));
 #else
             double ags_h = DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]);
