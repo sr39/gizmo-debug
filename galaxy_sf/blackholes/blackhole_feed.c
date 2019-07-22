@@ -542,7 +542,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         {
 #ifdef SINGLE_STAR_FORMATION
 			    double eps = DMAX(P[j].Hsml/2.8, DMAX(ags_h_i/2.8, r));			    
-			    if(eps*eps*eps /(P[j].mass + mass) <= P[j].SwallowTime)
+			    if(eps*eps*eps /(P[j].Mass + mass) <= P[j].SwallowTime)
 //			  if(0.5*(vrel*vrel - vesc*vesc) <= P[j].SwallowEnergy) 
 #endif			      			  
 #ifdef SINGLE_STAR_STRICT_ACCRETION
