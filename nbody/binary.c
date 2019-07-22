@@ -111,10 +111,7 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
     //relative velocities in the frame aligned with the ellipse:
     vx = v_phi * (-y/dr) + v_r * x/dr;
     vy = v_phi * (x/dr) + v_r * y/dr;
-    // printf("Kepler new x %g new y %g semimajor_axis %g new ecc_anomaly %g new mean_anomaly %g ecc %g specific_energy %g v_phi %g v_r %g dr %g dv %g P[i].min_bh_t_orbital %g dt %g ID %d mode %d\n", x, y,semimajor_axis, ecc_anomaly, mean_anomaly, ecc, specific_energy,v_phi, v_r, dr, dv, P[i].min_bh_t_orbital, dt, P[i].ID, mode);
-// specific_energy = .5*dv*dv - All.G * Mtot / dr;
-// semimajor_axis = -All.G * Mtot / (2*specific_energy);
-    // printf("New specific_energy %g semimajor_axis %g \n",specific_energy, semimajor_axis);
+
     // transform back to global coordinates
     double two_body_factor=-P[i].comp_Mass/Mtot;
     //printf("Kepler comp_dx %g %g %g  comp_dv %g %g %g ID %d \n", P[i].comp_dx[0],P[i].comp_dx[1],P[i].comp_dx[2],P[i].comp_dv[0],P[i].comp_dv[1], P[i].comp_dv[2], P[i].ID);
@@ -128,10 +125,6 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
             P[i].comp_dv[k] = dv_new[k];
         }
     }
-    //printf("Kepler dx_new %g %g %g dv_new %g %g %g two_body_factor %g mass %g comp_mass %g drift_dx %g %g %g kick_dv %g %g %g ID %d \n",dx_new[0] ,dx_new[1], dx_new[2], dv_new[0], dv_new[1], dv_new[2],two_body_factor,P[i].Mass,P[i].comp_Mass,drift_dx[0],drift_dx[1],drift_dx[2],kick_dv[0],kick_dv[1],kick_dv[2], P[i].ID);
-    //dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
-    //dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]);
-    //printf("Updated companions dr %g dv %g \n",dr,dv);
 }
 
 // Quantity needed for gravitational acceleration and jerk; mass / r^3 in Newtonian gravity

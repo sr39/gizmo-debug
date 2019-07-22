@@ -676,22 +676,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 			    accreted_J[0] -= (dv[2]*dx[1] - dv[1]*dx[2])*P[j].Mass; accreted_J[1] -= (-dv[2]*dx[0] + dv[0]*dx[2])*P[j].Mass; accreted_J[2] -= (dv[1]*dx[0] - dv[0]*dx[1])*P[j].Mass;
                         }
                     }
-// #ifdef BH_OUTPUT_MOREINFO
-                    // printf("swallow n=%llu last Jsink[2] is: %g \n", (unsigned long long) target, (MyFloat) Jsink[2]);
-                    // printf("swallow n=%llu last dv_ang_kick_norm is: %g \n", (unsigned long long) target, (MyFloat) dv_ang_kick_norm);
-                    // printf("swallow n=%llu last Jsinktot is: %g \n", (unsigned long long) target, (MyFloat) Jsinktot);
-                    // printf("swallow n=%llu last dJsinkpred is: %g \n", (unsigned long long) target, (MyFloat) dJsinkpred);
-                    // printf("swallow n=%llu last Jcrossdr[0] is: %g \n", (unsigned long long) target, (MyFloat) Jcrossdr[0]);
-                    // printf("swallow n=%llu last accreted_J[0] is: %g \n", (unsigned long long) target, (MyFloat) accreted_J[0]);
-                    // printf("swallow n=%llu P[j].Vel[0] is: %g \n", (unsigned long long) target, (MyFloat) P[j].Vel[0]);
-                    // printf("swallow n=%llu P[j].Vel[1] is: %g \n", (unsigned long long) target, (MyFloat) P[j].Vel[1]);
-                    // printf("swallow n=%llu P[j].Vel[2] is: %g \n", (unsigned long long) target, (MyFloat) P[j].Vel[2]);
-                    // printf("swallow n=%llu dv[0] is: %g \n", (unsigned long long) target, (MyFloat) dv[0]);
-                    // printf("swallow n=%llu dv[1] is: %g \n", (unsigned long long) target, (MyFloat) dv[1]);
-                    // printf("swallow n=%llu dv[2] is: %g \n", (unsigned long long) target, (MyFloat) dv[2]);
-                    // printf("swallow n=%llu P[j].Mass is: %g \n", (unsigned long long) target, (MyFloat) P[j].Mass);
-                    // printf("swallow n=%llu last sink mass is: %g \n", (unsigned long long) target, (MyFloat) mass);
-// #endif
                 }
 #endif
                 

@@ -561,23 +561,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 #endif // BH_GRAVCAPTURE_GAS
                 } // ( (P[j].Mass > 0) && (P[j].Type != 5) && (P[j].ID != id) )
             } // for(n = 0; n < numngb; n++)
-// #ifdef BH_OUTPUT_MOREINFO
-// #if defined(NEWSINK)
-    // printf("env n=%llu last wk is: %g \n", (unsigned long long) target, (MyFloat) wk);
-    // printf("env n=%llu last cs sq is: %g \n", (unsigned long long) target, (MyFloat) csound_sq);
-    // printf("env n=%llu BH h_i is: %g \n", (unsigned long long) target, (MyFloat) h_i);
-    // printf("env n=%llu BH sink_radius is: %g \n", (unsigned long long) target, (MyFloat) sink_radius);
-    // printf("env n=%llu BH int_zone_radius is: %g \n", (unsigned long long) target, (MyFloat) int_zone_radius);
-    // printf("env n=%llu BH gasmass is: %g \n", (unsigned long long) target, (MyFloat) out.intzone_gasmass);
-    // printf("env n=%llu BH t_disc_num_sum is: %g \n", (unsigned long long) target, (MyFloat) out.t_disc_num_sum);
-    // printf("env n=%llu BH intzone_massweight_all is: %g \n", (unsigned long long) target, (MyFloat) out.intzone_massweight_all);
-    // printf("env n=%llu BH t_rad_denom_sum is: %g \n", (unsigned long long) target, (MyFloat) out.t_rad_denom_sum);
-    // printf("env n=%llu BH gas_Egrav_in_intzone is: %g \n", (unsigned long long) target, (MyFloat) out.gas_Egrav_in_intzone);
-    // printf("env n=%llu BH gas_Erot_in_intzone is: %g \n", (unsigned long long) target, (MyFloat) out.gas_Erot_in_intzone);
-    // printf("env n=%llu BH mass is: %g \n", (unsigned long long) target, (MyFloat) mass);
-    // printf("env n=%llu last neighbor count is: %d while ngbnum is: %d\n", (unsigned long long) target, out.n_neighbor, numngb);
-// #endif
-// #endif
+
             if(mode == 0) /* local -> send directly to local temp struct */
                 out2particle_blackhole(&out, mod_index, 0);     /* target -> mod_index for reduced size struc */
             else

@@ -978,32 +978,6 @@ void *gravity_primary_loop(void *p)
         }
         
 #endif
-/* #ifdef SINGLE_STAR_FIND_BINARIES */
-/* /\*         //Re-evaluate for binary candidates *\/ */
-/*          if( (P[i].Type == 5) && P[i].is_in_a_binary){ //binary candidate or a confirmed binary  */
-/* #ifdef BH_OUTPUT_MOREINFO */
-/* 	     double Mtot =P[i].comp_Mass+P[i].Mass; */
-/* 	     double dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]); */
-/* 	     double dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]); */
-/* 	     double specific_energy = 0.5*dv*dv - All.G * Mtot / dr; */
-/* 	     double semimajor_axis = -All.G * Mtot / (2*specific_energy); */
-/* 	     printf("Particle %d is in a binary with period %g, separation %g %g %g, velocity %g %g %g SuperTimestepFlag %d COM_calc_flag %d dr %g dv %g specific_energy %g semimajor_axis %g\n. Let's do another tree pass...\n", i, P[i].min_bh_t_orbital, P[i].comp_dx[0], P[i].comp_dx[1], P[i].comp_dx[2], P[i].comp_dv[0], P[i].comp_dv[1], P[i].comp_dv[2], 0, 0, dr, dv, specific_energy, semimajor_axis); */
-/* #endif */
-/* 	 } */
-/* #endif	     */
-/*             P[i].COM_calc_flag = 1; //set it so that we do a center of mass calculation */
-/*             ret = force_treeevaluate(i, 0, exportflag, exportnodecount, exportindex); */
-/*  // Mtot =P[i].comp_Mass+P[i].Mass; */
-/*  // dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]); */
-/*  // dv = sqrt(P[i].comp_dv[0]*P[i].comp_dv[0] + P[i].comp_dv[1]*P[i].comp_dv[1] + P[i].comp_dv[2]*P[i].comp_dv[2]); */
-/* // specific_energy = 0.5*dv*dv - All.G * Mtot / dr; */
-/* // semimajor_axis = -All.G * Mtot / (2*specific_energy); */
-/* // printf("Particle %d after COM calculation is at position %g %g %g in a binary with period %g, separation %g %g %g, assumed companion position %g %g %g , velocity %g %g %g SuperTimestepFlag %d COM_calc_flag %d dr %g dv %g specific_energy %g semimajor_axis %g\n. Let's do another tree pass...\n", i, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].min_bh_t_orbital, P[i].comp_dx[0], P[i].comp_dx[1], P[i].comp_dx[2], (P[i].Pos[0]+P[i].comp_dx[0]), (P[i].Pos[1]+P[i].comp_dx[1]), (P[i].Pos[2]+P[i].comp_dx[2]), P[i].comp_dv[0], P[i].comp_dv[1], P[i].comp_dv[2], P[i].SuperTimestepFlag, P[i].COM_calc_flag, dr, dv, specific_energy, semimajor_axis); */
-            
-/*             if(ret < 0) {break;} /\* export buffer has filled up *\/ */
-/*             Costtotal += ret; */
-/*         } */
-/* #endif */
         ProcessedFlag[i] = 1;	/* particle successfully finished */
         
 #ifdef FIXEDTIMEINFIRSTPHASE
@@ -1274,16 +1248,6 @@ void subtract_companion_gravity(int i)
     tidal_tensorps[2][0] = tidal_tensorps[0][2];
     tidal_tensorps[2][1] = tidal_tensorps[1][2];
 
-        //Now let's diagonalize it (copied from gravtree)
-        /* double tt[9]; for(i1=0; i1<3; i1++) {for (i2=0; i2<3; i2++) tt[3*i1+i2] = P[i].tidal_tensorps[i1][i2];} */
-        /* gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3); */
-        /* gsl_vector *eval = gsl_vector_alloc (3); */
-        /* gsl_eigen_symm_workspace * w = gsl_eigen_symm_alloc (3); */
-        /* gsl_eigen_symm(&m.matrix, eval,  w); */
-        /* for(i2=0; i2<3; i2++) P[i].tidal_tensorps[i2][i2] = gsl_vector_get(eval,i2); // set diagonal elements to eigenvalues */
-        /* P[i].tidal_tensorps[0][1] = P[i].tidal_tensorps[1][0] = P[i].tidal_tensorps[1][2] = P[i].tidal_tensorps[2][1] = P[i].tidal_tensorps[0][2] = P[i].tidal_tensorps[2][0] = 0; //zero out off-diagonal elements */
-        /* gsl_eigen_symm_free(w); */
-        /* gsl_vector_free (eval); */
 #ifdef BH_OUTPUT_MOREINFO
     printf("Corrected center of mass acceleration %g %g %g tidal tensor diagonal elements %g %g %g \n", P[i].COM_GravAccel[0], P[i].COM_GravAccel[1], P[i].COM_GravAccel[2], tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]);
 //    printf("particle position %g %g %g companion relative position %g %g %g dr %g \n",pos_x, pos_y, pos_z, comp_dx[0], comp_dx[1], comp_dx[2],sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ));
