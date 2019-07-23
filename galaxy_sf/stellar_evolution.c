@@ -21,7 +21,7 @@
 double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i)
 {
     double lum=1; if(stellar_age_in_gyr < 0.01) {lum=1000;} // default to a dumb imf-averaged 'young/high-mass' vs 'old/low-mass' distinction 
-#ifdef SINGLE_STAR_FORMATION // calculate single-star luminosity (and convert to solar luminosity-to-mass ratio, which this output assumes)    
+#ifdef SINGLE_STAR_FORMATION // calculate single-star luminosity (and convert to solar luminosity-to-mass ratio, which this output assumes) 
     lum=calculate_individual_stellar_luminosity(0, P[i].BH_Mass, i) / P[i].BH_Mass * (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)) / (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS));
 #endif
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION // fit to updated SB99 tracks: including rotation, new mass-loss tracks, etc.
@@ -65,7 +65,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
             double l_kh = 0.2263 * P[i].ProtoStellar_Radius*P[i].ProtoStellar_Radius * T4000_4; // luminosity from KH contraction
             if(l_kh > lum_sol) {lum_sol = l_kh;} // if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
         }
-    }    
+    }
     lum_sol *= SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s);
     lum += lum_sol;
 #endif

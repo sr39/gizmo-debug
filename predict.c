@@ -120,7 +120,7 @@ void drift_particle(int i, integertime time1)
         dt_drift = (time1 - time0) * All.Timebase_interval;
     
     
-#if !defined(FREEZE_HYDRO) 
+#if !defined(FREEZE_HYDRO)
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME)
     if(P[i].Type==0) {advect_mesh_point(i,dt_drift);} else {for(j=0;j<3;j++) {P[i].Pos[j] += P[i].Vel[j] * dt_drift;}}
 #elif defined(SINGLE_STAR_SUPERTIMESTEPPING)
@@ -133,8 +133,8 @@ void drift_particle(int i, integertime time1)
             COM_Vel[j] = P[i].Vel[j] + P[i].comp_dv[j] * P[i].comp_Mass/(P[i].Mass+P[i].comp_Mass); //center of mass velocity
             P[i].Pos[j] += COM_Vel[j] * dt_drift; //center of mass drift
         }
-        do_fewbody_drift(i, fewbody_drift_dx, fewbody_kick_dv, dt_drift);
-        for(j=0;j<3;j++) 
+        odeint_super_timestep(i, dt, fewbody_kick_dv, fewbody_drift_dx, 1); // do_fewbody_drift
+        for(j=0;j<3;j++)
         {
             P[i].GravAccel[j] = P[i].COM_GravAccel[j]; //Overwrite the acceleration with center of mass value
             P[i].Pos[j] += fewbody_drift_dx[j]; //Keplerian evolution
@@ -211,7 +211,7 @@ void drift_particle(int i, integertime time1)
 #else
             for(j = 0; j < 3; j++)
                 SphP[i].VelPred[j] += P[i].GravAccel[j] * dt_gravkick +
-                    SphP[i].HydroAccel[j]*All.cf_atime * dt_hydrokick; /* make sure v is in code units */	    
+                    SphP[i].HydroAccel[j]*All.cf_atime * dt_hydrokick; /* make sure v is in code units */
 #endif
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
 	        if((P[i].Type==5) && (P[i].SuperTimestepFlag>=2)) {for(j=0;j<3;j++)	{SphP[i].VelPred[j] += fewbody_kick_dv[j];}}
@@ -687,12 +687,4 @@ double calculate_face_area_for_cartesian_mesh(double *dp, double rinv, double l_
     return fabs(Face_Area_Norm);
 }
 
-#endif
-
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-void do_fewbody_drift(int i, double fewbody_drift_dx[3], double fewbody_kick_dv[3], double dt)
-{
-    //kepler_timestep(i, dt, fewbody_kick_dv, fewbody_drift_dx, 1);
-    odeint_super_timestep(i, dt, fewbody_kick_dv, fewbody_drift_dx, 1);
-}
 #endif

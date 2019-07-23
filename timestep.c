@@ -318,60 +318,36 @@ integertime get_timestep(int p,		/*!< particle index */
                          double *aphys,	/*!< acceleration (physical units) */
                          int flag	/*!< either 0 for normal operation, or finite timestep to get corresponding aphys */ )
 {
-  double ax, ay, az, ac;
-    double csnd = 0, dt = 0, dt_courant = 0, dt_divv = 0;
-    integertime ti_step;
-    int k; k=0;
+    double ax, ay, az, ac, csnd = 0, dt = 0, dt_courant = 0, dt_divv = 0;
+    integertime ti_step; int k; k=0;
 #ifdef CHEMCOOL
-    double hubble_param;
-    
-    if(All.ComovingIntegrationOn)
-        hubble_param = All.HubbleParam;
-    else
-        hubble_param = 1.0;
+    double hubble_param; if(All.ComovingIntegrationOn) {hubble_param=All.HubbleParam;} else {hubble_param=1;}
 #endif
-    
 #ifdef NUCLEAR_NETWORK
     double dt_network, dt_species;
 #endif
 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     P[p].SuperTimestepFlag = 0;
-
-    if ( (P[p].Type==5) && P[p].is_in_a_binary){ //already a candidate
-    //We need to decide whether to use super timestepping for binaries
-	double dt_bin,semimajor_axis_cube,dt_ext;
-
-	//internal gravitational timescale
+    if( (P[p].Type==5) && P[p].is_in_a_binary ) // candidate: need to decide whether to use super timestepping for binaries
+    { 
 #if(SINGLE_STAR_SUPERTIMESTEPPING==1) // to be conservative, use the semimajor axis, ie. the internal timescale is the orbital period
-	dt_bin = P[p].min_bh_t_orbital / (2*M_PI); // sqrt(a^3/GM) for binary
+	    double dt_bin = P[p].min_bh_t_orbital / (2.*M_PI); // sqrt(a^3/GM) for binary
 #elif(SINGLE_STAR_SUPERTIMESTEPPING>1) // to be more aggressive, use the instantaneous orbital timescale, ie. freefall time from the CURRENT orbital separation. This lets us super step an orbit on the close passages, even when it is affected by tides at apopase
-	double dr = sqrt(P[p].comp_dx[0]*P[p].comp_dx[0] + P[p].comp_dx[1]*P[p].comp_dx[1] + P[p].comp_dx[2]*P[p].comp_dx[2]);
-	dt_bin = sqrt(dr*dr*dr / (All.G * (P[p].Mass + P[p].comp_Mass)));
+	    double dr = sqrt(P[p].comp_dx[0]*P[p].comp_dx[0] + P[p].comp_dx[1]*P[p].comp_dx[1] + P[p].comp_dx[2]*P[p].comp_dx[2]);
+	    double dt_bin = sqrt(dr*dr*dr / (All.G * (P[p].Mass + P[p].comp_Mass)));
 #endif	
-    dt_ext=P[p].COM_dt_tidal;
-    if (SUPERTIMESTEPPING_ERRCONST*dt_ext>dt_bin){
-        P[p].SuperTimestepFlag=2;
-#ifdef BH_OUTPUT_MOREINFO
-        printf("Super timestepping active for particle ID %d with dt_bin %g dt_ext %g \n",P[p].ID, dt_bin, dt_ext);
-#endif
-    } else{
-        P[p].SuperTimestepFlag=0;
-#ifdef BH_OUTPUT_MOREINFO
-        printf("Super timestepping deactivated for particle ID %d dt_bin %g dt_ext %g\n",P[p].ID, dt_bin, dt_ext);
-#endif
-	}
+        if (SUPERTIMESTEPPING_ERRCONST*P[p].COM_dt_tidal>dt_bin) {P[p].SuperTimestepFlag=2;} // external timestep is appropriately larger than 'internal' timestep, so use super-timestepping routine
     }
 #endif
     
     if(flag == 0)
     {
-#if defined(TIDAL_TIMESTEP_CRITERION) && !defined(GALSF_FB_FIRE_RT_LONGRANGE)
-        ax = ay = az = 0.0; // we're getting our gravitational timestep criterion from the tidal tensor, but still want to do the accel criterion for other forces
-#else
         ax = All.cf_a2inv * P[p].GravAccel[0];
         ay = All.cf_a2inv * P[p].GravAccel[1];
         az = All.cf_a2inv * P[p].GravAccel[2];
+#if defined(TIDAL_TIMESTEP_CRITERION) && !defined(GALSF_FB_FIRE_RT_LONGRANGE)
+        ax = ay = az = 0.0; // we're getting our gravitational timestep criterion from the tidal tensor, but still want to do the accel criterion for other forces
 #endif
 
 #ifdef PMGRID
@@ -469,64 +445,39 @@ integertime get_timestep(int p,		/*!< particle index */
     }
 #endif
 
-#ifdef TIDAL_TIMESTEP_CRITERION // tidal criterion obtains the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterio
-    double dt_tidal = 0.; 
+#ifdef TIDAL_TIMESTEP_CRITERION // tidal criterion obtains the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion
+    double dt_tidal = 0.; {int k; for(k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];}} // this is diagonalized already in the gravity loop
+    dt_tidal = sqrt(All.ErrTolIntAccuracy / sqrt(dt_tidal));
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-    if (P[p].SuperTimestepFlag>=2){
-        dt_tidal = sqrt(All.ErrTolIntAccuracy) * P[p].COM_dt_tidal;
-    } else
+    if(P[p].SuperTimestepFlag>=2) {dt_tidal = sqrt(All.ErrTolIntAccuracy) * P[p].COM_dt_tidal;}
 #endif
-    {
-	for(k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];}// this is diagonalized already in the gravity loop
-        dt_tidal = sqrt(All.ErrTolIntAccuracy / sqrt(dt_tidal));
-    }  
-    if (P[p].Type == 0) {dt = DMIN(dt, dt_tidal);} // have to include timestep criterion that has hydro accel 
-    else {dt = DMIN(All.MaxSizeTimestep, dt_tidal);} // for collisionless or stars, fuhgeddabout the Power 2003 timestep. We're in Tidaltown, USA
+    if(P[p].Type==0) {dt=DMIN(dt,dt_tidal)} else {dt=DMIN(All.MaxSizeTimestep,dt_tidal);}
+#endif
 
-#ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step and the timestep anticipates close encounters, which gives superior conservation
-    double dt_2body;
+#ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step, which gives superior conservation
     if(P[p].Type == 5)
     {
-        dt_2body = 1/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time
+        double dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 / (1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-	if(P[p].is_in_a_binary && (P[p].SuperTimestepFlag >= 2)){ //binary candidate or a confirmed binary
-	    // First we need to construct the same 2-body timescale as above, but from the binary parameters. If this is longer than the above, there is another star that is requiring us to
-	    // take a short timestep, so we better not super-timestep otherwise we risk messing up that star's integration. But if it is consistent with the above, then we can safely super-timestep
-	     double Mtot = P[p].comp_Mass+P[p].Mass;
-
-	     double dr, dv, dv_dot_dx;
-	     dr = dv = dv_dot_dx = 0;
-	
-	     for(k=0; k<3; k++){
-		 dr += P[p].comp_dx[k] * P[p].comp_dx[k];
-		 dv += P[p].comp_dv[k] * P[p].comp_dv[k];
-		 dv_dot_dx += P[p].comp_dx[k] * P[p].comp_dv[k];
-	     }
-
-	     dr += All.SofteningTable[5]*All.SofteningTable[5];
-	     dr = sqrt(dr);
-	     dv = sqrt(dv);
-	     double binary_dt_2body = 1/ (dv / dr + sqrt(All.G * Mtot / (dr*dr*dr)));
-
-	     if(fabs(binary_dt_2body - dt_2body)/dt_2body < 1e-2){
-		 // If consistent with the binary parameters, we choose a super-timestep that gives ~constant number of timesteps per orbit
-//		 dt_2body = 2*M_PI / SUPERTIMESTEPPING_NUM_STEPS_PER_ORBIT * dr*dr / sqrt(fabs(dr*dr*dv*dv - dv_dot_dx*dv_dot_dx)); // orbital frequency is |dr x dv| / r^2, so timestep will be inverse to this
-		 dt_2body = 2*M_PI / SUPERTIMESTEPPING_NUM_STEPS_PER_ORBIT * (binary_dt_2body*2); // orbital frequency is |dr x dv| / r^2, so timestep will be inverse to this		 
+    	if(P[p].is_in_a_binary && (P[p].SuperTimestepFlag >= 2)) //binary candidate or a confirmed binary
+	    {    // First we need to construct the same 2-body timescale as above, but from the binary parameters. If this is longer than the above, there is another star that is requiring us to
+	         // take a short timestep, so we better not super-timestep otherwise we risk messing up that star's integration. But if it is consistent with the above, then we can safely super-timestep
+	        double Mtot=P[p].comp_Mass+P[p].Mass, dr=0,dv=0,dv_dot_dx=0, binary_dt_2body=0;
+	        for(k=0;k<3;k++) {dr+=P[p].comp_dx[k]*P[p].comp_dx[k]; dv+=P[p].comp_dv[k]*P[p].comp_dv[k]; dv_dot_dx+=P[p].comp_dx[k]*P[p].comp_dv[k];}
+	        dr += All.SofteningTable[5]*All.SofteningTable[5]; dr=sqrt(dr); if(dv>0) {dv=sqrt(dv);} else {dv=0;}
+            double dt_2body_base = 1/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time
+	        binary_dt_2body = 1. / (dv / dr + sqrt(All.G * Mtot / (dr*dr*dr)));
+	        if(fabs(binary_dt_2body - dt_2body_base)/dt_2body_base < 1e-2)
+	        { // If consistent with the binary parameters, we choose a super-timestep that gives ~constant number of timesteps per orbit
+		        dt_2body = 2.*M_PI / SUPERTIMESTEPPING_NUM_STEPS_PER_ORBIT * (binary_dt_2body*2); // orbital frequency is |dr x dv| / r^2, so timestep will be inverse to this		 
 #ifdef BH_OUTPUT_MOREINFO
-//		 dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 * dt_2body;
-		 printf("ID %d Supertimestep is %g instead of %g for a speedup of %g\n",P[p].ID,  dt_2body, 0.3*sqrt(All.ErrTolIntAccuracy)/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time),dt_2body/(0.3*sqrt(All.ErrTolIntAccuracy)/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time)));
+		        printf("ID %d Supertimestep is %g instead of %g for a speedup of %g\n",P[p].ID,  dt_2body, 0.3*sqrt(All.ErrTolIntAccuracy)/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time),dt_2body/(0.3*sqrt(All.ErrTolIntAccuracy)/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time)));
 #endif	     
-	     } else {  // we still have to take a proper short N-body integration timestep due to a third body whose approach requires careful integration, so no super timestepping is possible
-		 dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 * dt_2body;
-		 P[p].SuperTimestepFlag = 0;
-	     }
-	} else 
+	        } else {P[p].SuperTimestepFlag = 0;}  // we still have to take a proper short N-body integration timestep due to a third body whose approach requires careful integration, so no super timestepping is possible
+    	}
 #endif  // SINGLE_STAR_SUPERTIMESTEPPING
-	dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 * dt_2body;
         dt = DMIN(dt, dt_2body);
-    }
 #endif // SINGLE_STAR_TIMESTEPPING
-#endif // TIDAL_TIMESTEP_CRITERION
     
     
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
@@ -565,7 +516,7 @@ integertime get_timestep(int p,		/*!< particle index */
     if(P[p].Type > 0)
     {
         csnd = GAMMA * GAMMA_MINUS1 * P[p].Gas_InternalEnergy;
-        for(k=0;k<3;k++) {csnd += (P[p].Gas_Velocity[k]-P[p].Vel[k])*(P[p].Gas_Velocity[k]-P[p].Vel[k]);}
+        int k; for(k=0;k<3;k++) {csnd += (P[p].Gas_Velocity[k]-P[p].Vel[k])*(P[p].Gas_Velocity[k]-P[p].Vel[k]);}
 #ifdef GRAIN_LORENTZFORCE
         for(k=0;k<3;k++) {csnd += P[p].Gas_B[k]*P[p].Gas_B[k] / (2.0 * P[p].Gas_Density);}
 #endif
@@ -981,16 +932,15 @@ integertime get_timestep(int p,		/*!< particle index */
     
     
 #ifdef BLACK_HOLES
-#ifdef BH_WAKEUP_GAS
-    if(P[p].Type == 0){
-    	double dt_bh = 2*(P[p].LowestBHTimeBin ? ((integertime)1 <<  P[p].LowestBHTimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 
-    	if (dt > dt_bh) {
-    	    dt = 1.01 * dt_bh;
-    	    P[p].LowestBHTimeBin = TIMEBINS;
-    	}
+#ifdef BH_WAKEUP_GAS
+    if(P[p].Type == 0)
+    {
+    	double dt_bh = 2.*(P[p].LowestBHTimeBin ? ((integertime)1 <<  P[p].LowestBHTimeBin) : 0) * All.Timebase_interval/All.cf_hubble_a;
+    	if(dt>dt_bh) {dt=1.01*dt_bh; P[p].LowestBHTimeBin=TIMEBINS;}
     }
 #endif	
+
     if(P[p].Type == 5)
     {
 #ifndef SINGLE_STAR_FORMATION
@@ -1026,29 +976,19 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
             if(dt_accr > 0 && dt_accr < dt) {dt = dt_accr;}
 
+        double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? (((integertime) 1) << BPP(p).BH_TimeBinGasNeighbor) : 0) * All.Timebase_interval / All.cf_hubble_a;
+        if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 
-	    double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? ((integertime)1 << BPP(p).BH_TimeBinGasNeighbor) : 0) * All.Timebase_interval / All.cf_hubble_a;
-
-	    if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 #ifdef SINGLE_STAR_FORMATION
-	    if(P[p].DensAroundStar) {
+	    if(P[p].DensAroundStar) 
+	    {
+		    double eps = DMAX(All.SofteningTable[5], BPP(p).BH_NearestGasNeighbor);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-		double eps = DMAX(P[p].AGS_Hsml/2.8, BPP(p).BH_NearestGasNeighbor); //, BPP(p).BH_NearestGasNeighbor);
-#else	
-		double eps = DMAX(All.SofteningTable[5], BPP(p).BH_NearestGasNeighbor);
+		    eps = DMAX(P[p].AGS_Hsml/2.8, BPP(p).BH_NearestGasNeighbor); 
 #endif		
-		double dt_gas = sqrt(All.ErrTolIntAccuracy * All.cf_atime * eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
-		if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas; }}
-
-	/* if (All.TotBHs > 1) { */
-	/*     eps = DMAX(All.ForceSoftening[5], P[p].min_dist_to_bh); //{ eps = DMIN(P[p].Hsml, );} // length-scale for acceleration timestep criterion ~(R/a)^0.5 */
-
-        /*     double dt_stars = sqrt(All.ErrTolIntAccuracy * eps / ac); // the constant factor was found to be necessary to avoid large energy errors when a binary pairs up... */
-        /*     if(dt > dt_stars && dt_stars > 0) {dt = 1.01 * dt_stars;} */
-
-	/* } */
-	//	double dt_stars =  sqrt(2*All.ErrTolIntAccuracy) * P[p].min_bh_tff;
-	//	if(dt > dt_stars && dt_stars > 0) {dt = 1.01 * dt_stars;}
+		    double dt_gas = sqrt(All.ErrTolIntAccuracy * All.cf_atime * eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
+		    if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas;}
+		}
 #endif
     } // if(P[p].Type == 5)
 
@@ -1074,28 +1014,18 @@ integertime get_timestep(int p,		/*!< particle index */
     if((dt < All.MinSizeTimestep)||(((integertime) (dt / All.Timebase_interval)) <= 1))
     {
 #ifdef STOP_WHEN_BELOW_MINTIMESTEP
-        printf("warning: Timestep wants to be below the limit `MinSizeTimestep' of %g or below 'Timebase_interval' %g\n",All.MinSizeTimestep,All.Timebase_interval);
+        printf("warning: Timestep wants to be below the limit `MinSizeTimestep'\n");
         
         if(P[p].Type == 0)
         {
 #ifndef LONGIDS
-
-            printf
-            ("Part-ID=%d  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g mass=%g\n",
+            printf("Part-ID=%d  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g\n",
              (int) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],
-
-             PPP[p].Hsml, csnd,
-             sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) *
-             All.cf_hubble_a, All.SofteningTable[P[p].Type],P[p].Mass);
+             PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type]);
 #else
-
-            printf
-            ("Part-ID=%llu  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g mass=%g\n",
+            printf("Part-ID=%llu  dt=%g dtc=%g ac=%g xyz=(%g|%g|%g)  hsml=%g  maxcsnd=%g dt0=%g eps=%g\n",
              (MyIDType) P[p].ID, dt, dt_courant * All.cf_hubble_a, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2],
-
-             PPP[p].Hsml, csnd,
-             sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) *
-             All.cf_hubble_a, All.SofteningTable[P[p].Type],P[p].Mass);
+             PPP[p].Hsml, csnd, sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.SofteningTable[P[p].Type] / ac) * All.cf_hubble_a, All.SofteningTable[P[p].Type]);
 #endif // ndef LONGIDS
         }
         else // if(P[p].Type == 0)
@@ -1106,21 +1036,19 @@ integertime get_timestep(int p,		/*!< particle index */
             printf("Part-ID=%llu  dt=%g ac=%g xyz=(%g|%g|%g)\n", (MyIDType) P[p].ID, dt, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2]);
 #endif // ndef LONGIDS
 #ifdef SINGLE_STAR_TIMESTEPPING	    
-        if(P[p].Type == 5){
-            printf("BH particle size %g, nearest gas distance is %g nearest BH distance is %g min_bh_freefall_time %g min_bh_approach_time %g dt_tidal %g\n", Get_Particle_Size(p), BPP(p).BH_NearestGasNeighbor, P[p].min_dist_to_bh, P[p].min_bh_freefall_time, P[p].min_bh_approach_time, dt_tidal);
-        }
+        if(P[p].Type == 5) {printf("BH particle size %g, nearest gas distance is %g nearest BH distance is %g min_bh_freefall_time %g min_bh_approach_time %g dt_tidal %g\n", Get_Particle_Size(p), BPP(p).BH_NearestGasNeighbor, P[p].min_dist_to_bh, P[p].min_bh_freefall_time, P[p].min_bh_approach_time, dt_tidal);}
 #endif	
         }
         fflush(stdout); fprintf(stderr, "\n @ fflush \n"); endrun(888);
 #endif // STOP_WHEN_BELOW_MINTIMESTEP
         dt = All.MinSizeTimestep;
     }
-
+    
     ti_step = (integertime) (dt / All.Timebase_interval);
 #ifndef STOP_WHEN_BELOW_MINTIMESTEP
     if(ti_step<=1) ti_step=2;
 #endif
-
+    
     if(!(ti_step > 0 && ti_step < TIMEBASE))
     {
         printf("\nError: A timestep of size zero was assigned on the integer timeline, no here!!!\n"
@@ -1133,6 +1061,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
         fflush(stdout); endrun(818);
     }
+    
     return ti_step;
 }
 
@@ -1321,16 +1250,16 @@ void process_wake_ups(void)
     
     for(i = 0; i < NumPart; i++)
     {
-	if(!PPPZ[i].wakeup)
-            continue;
-	
 #if !defined(ADAPTIVE_GRAVSOFT_FORALL)
         if(P[i].Type != 0) {continue;} // only gas particles can be awakened
 #endif
         
         if(P[i].Mass <= 0)
-            continue;       
-	
+            continue;
+        
+        if(!PPPZ[i].wakeup)
+            continue;
+        
         binold = P[i].TimeBin;
         if(TimeBinActive[binold])
             continue;

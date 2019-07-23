@@ -842,7 +842,6 @@ double calculate_face_area_for_cartesian_mesh(double *dp, double rinv, double l_
 #endif
 
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-void do_fewbody_drift(int i, double fewbody_drift_dx[3], double fewbody_kick_dv[3], double dt);
 void subtract_companion_gravity(int i);
 #endif
 

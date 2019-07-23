@@ -282,12 +282,10 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     
                     for(k = 0; k < 3; k++)
                     {
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-			            if((P[pindex].Type == 5) && (P[pindex].SuperTimestepFlag >= 2)) {fp[k] = P[pindex].Vel[k] + P[pindex].COM_GravAccel[k] * dt_gravkick;}
-			            else
-#endif			    
                         fp[k] = P[pindex].Vel[k] + P[pindex].GravAccel[k] * dt_gravkick;
-
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+			            if((P[pindex].Type == 5) && (P[pindex].SuperTimestepFlag >= 2)) {fp[k] += (P[pindex].COM_GravAccel[k]-P[pindex].GravAccel[k]) * dt_gravkick;}
+#endif			    
                         if(P[pindex].Type == 0)
                         {
                             fp[k] += SphP[pindex].HydroAccel[k] * dt_hydrokick * All.cf_atime;
@@ -2329,7 +2327,7 @@ int get_values_per_blockelement(enum iofields blocknr)
             values = 0;
 #endif
             break;
-	    
+            
         case IO_Z:
 #ifdef METALS
             values = NUM_METAL_SPECIES;
@@ -4768,7 +4766,7 @@ void write_file(char *fname, int writeTask, int lastTask)
                                 rank = 1;
                             else
                                 rank = 2;
-
+                            
                             get_dataset_name(blocknr, buf);
                             
                             hdf5_dataspace_in_file = H5Screate_simple(rank, dims, NULL);

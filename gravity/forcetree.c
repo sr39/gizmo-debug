@@ -1736,18 +1736,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double min_dist_to_bh2=1.e37;
     double min_xyz_to_bh[3]={1.e37,1.e37,1.e37};
 #ifdef SINGLE_STAR_FIND_BINARIES
-    double min_bh_t_orbital = MAX_REAL_NUMBER;
-    double comp_dx[3]; //position offset of binary companion
-    double comp_dv[3]; //velocity offset of binary companion
-    double comp_Mass; //mass of binary companion
-    //MyIDType comp_ID; //ID of binary companion
+    double min_bh_t_orbital=MAX_REAL_NUMBER, comp_dx[3], comp_dv[3], comp_Mass;
 #endif    
 #ifdef SINGLE_STAR_TIMESTEPPING
     double min_bh_approach_time = MAX_REAL_NUMBER;
     double min_bh_freefall_time = MAX_REAL_NUMBER;
     double min_bh_periastron = MAX_REAL_NUMBER;
-#endif //#ifdef SINGLE_STAR_TIMESTEPPING
-#endif //#ifdef BH_CALC_DISTANCES
+#endif    
+#endif
     
     
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1799,7 +1795,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         vel_y = P[target].Vel[1];
         vel_z = P[target].Vel[2];
 #endif
-
         aold = All.ErrTolForceAcc * P[target].OldAcc;
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         soft = All.ForceSoftening[ptype];
@@ -1974,46 +1969,35 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         min_xyz_to_bh[2] = dz;
                     }
 #ifdef SINGLE_STAR_TIMESTEPPING
-                    double bh_dvx = P[no].Vel[0] - vel_x;
-                    double bh_dvy = P[no].Vel[1] - vel_y;
-                    double bh_dvz = P[no].Vel[2] - vel_z;
-                    double vSqr = bh_dvx*bh_dvx + bh_dvy*bh_dvy + bh_dvz*bh_dvz;
-                    double M_total = P[no].Mass + pmass;
-                    double r2soft;
+                    double bh_dvx=P[no].Vel[0]-vel_x, bh_dvy=P[no].Vel[1]-vel_y, bh_dvz=P[no].Vel[2]-vel_z, vSqr=bh_dvx*bh_dvx+bh_dvy*bh_dvy+bh_dvz*bh_dvz, M_total=P[no].Mass+pmass, r2soft;
+		            r2soft = DMAX(All.SofteningTable[5], soft/2.8);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-		    if(ptype==5) r2soft = All.SofteningTable[5];
-		    else
+		            if(ptype==5) r2soft = All.SofteningTable[5];
 #endif		
-		    r2soft = DMAX(All.SofteningTable[5], soft/2.8);
-		    
-                    r2soft = r2soft*r2soft + r2;
-                    double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER);
-                    double tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
-                    if(tSqr < min_bh_approach_time) {
-                        min_bh_approach_time = tSqr;
-                    }
-                    if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
+                    r2soft = r2 + r2soft*r2soft;
+                    double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER), tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
+                    if(tSqr < min_bh_approach_time) {min_bh_approach_time = tSqr;}
+                    if(tff4 < min_bh_freefall_time) {min_bh_freefall_time = tff4;}
 #ifdef SINGLE_STAR_FIND_BINARIES
-                    if (ptype==5){//only for BH particles and for non center of mass calculation
-			double specific_energy;
-			if(r2 > All.ForceSoftening[5]*All.ForceSoftening[5]){
-			    specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
-			} else {			    
-			    specific_energy = 0.5*vSqr + All.G*M_total*kernel_gravity(sqrt(r2)/All.ForceSoftening[5], 1/All.ForceSoftening[5], (1/(All.ForceSoftening[5]*All.ForceSoftening[5]*All.ForceSoftening[5])), -1);
-			}
-                        if (specific_energy<0){
-                            double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
-                            double t_orbital = 2.0*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis/(All.G*M_total) );
-                            if(t_orbital < min_bh_t_orbital) {
-                                min_bh_t_orbital = t_orbital;
-                                //Save parameters of companion
-                                //comp_ID=P[no].ID; //ID of binary companion
-                                comp_Mass=P[no].Mass; //mass of binary companion
-                                comp_dx[0] = dx; comp_dx[1] = dy; comp_dx[2] = dz;
-                                comp_dv[0] = bh_dvx; comp_dv[1] = bh_dvy; comp_dv[2] = bh_dvz;
-                            }
+                    if (ptype==5) // only for BH particles and for non center of mass calculation
+                    {
+                        double r_p5=sqrt(r2), specific_energy = 0.5*vSqr - All.G*M_total/r_p5;
+                        if(r2 < All.ForceSoftening[5]*All.ForceSoftening[5])
+                        {   
+                            double hinv_p5 = 1/All.ForceSoftening[5];
+                            specific_energy = 0.5*vSqr + All.G*M_total*kernel_gravity(r_p5*hinv_p5, hinv_p5, hinv_p5*hinv_p5*hinv_p5, -1);
                         }
-                    }
+                        if (specific_energy < 0)
+                        {
+                            double semimajor_axis= -All.G*M_total/(2.*specific_energy);
+                            double t_orbital = 2.*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis / (All.G*M_total) );
+                            if(t_orbital < min_bh_t_orbital) /* Save parameters of companion */ 
+                            {
+                                min_bh_t_orbital=t_orbital; comp_Mass=P[no].Mass; 
+                                comp_dx[0]=dx; comp_dx[1]=dy; comp_dx[2]=dz; comp_dv[0]=bh_dvx; comp_dv[1]=bh_dvy; comp_dv[2]=bh_dvz;
+                            }
+                        } /* specific_energy < 0 */
+                    } /* ptype==5 */
 #endif //#ifdef SINGLE_STAR_FIND_BINARIES
 #endif //#ifdef SINGLE_STAR_TIMESTEPPING
                 }
@@ -2115,24 +2099,16 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     }
 #else
                 h = All.ForceSoftening[ptype];
-                if(h < All.ForceSoftening[P[no].Type])
-                    h = All.ForceSoftening[P[no].Type];
+                if(h < All.ForceSoftening[P[no].Type]) {h = All.ForceSoftening[P[no].Type];}
 #if defined(SINGLE_STAR_FORMATION) && defined(ADAPTIVE_GRAVSOFT_FORALL)  // for star-star interactions, we wanna use fixed softening, so we update them here if that's what we've got 
-		if(ptype==5 && ptype_sec == 5){ 
-		    h = All.ForceSoftening[5];
-		    h_inv = 1/All.ForceSoftening[5];
-		    h3_inv = h_inv*h_inv*h_inv;
-		    h5_inv = h3_inv*h_inv*h_inv;
-		    h_p_inv = 1/h;
-		    zeta_sec = 0;
-		}
+		        if(ptype==5 && ptype_sec==5) {h=All.ForceSoftening[5]; h_inv=1/h; h3_inv=h_inv*h_inv*h_inv; h5_inv=h3_inv*h_inv*h_inv; h_p_inv=h_inv; zeta_sec=0;}
 #endif		
-#endif	  
+#endif
 
                 } // closes (if((r2 > 0) && (mass > 0))) check
                 
                 if(TakeLevel >= 0) {P[no].GravCost[TakeLevel] += 1.0;}
-                no = Nextnode[no]; 
+                no = Nextnode[no];
             }
             else			/* we have an  internal node */
             {
@@ -2322,10 +2298,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
                     double dist_to_center2 = dx_nc*dx_nc +  dy_nc*dy_nc + dz_nc*dz_nc;
                     /* check if any portion the cell lies within the interaction range */
-                    
-		    double dist_to_open = 2.0*targeth_si + nop->len*1.73205/2.0;
-		  
-		    
+		            double dist_to_open = 2.0*targeth_si + nop->len*1.73205/2.0;
                     if(dist_to_center2  < dist_to_open*dist_to_open)
                     {
                         /* open cell */
@@ -2445,55 +2418,44 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         min_xyz_to_bh[2] = bh_dz;
                     }
 #ifdef SINGLE_STAR_TIMESTEPPING
-                    double bh_dvx = nop->bh_vel[0] - vel_x;
-                    double bh_dvy = nop->bh_vel[1] - vel_y;
-                    double bh_dvz = nop->bh_vel[2] - vel_z;
-                    double vSqr = bh_dvx*bh_dvx + bh_dvy*bh_dvy + bh_dvz*bh_dvz;
-                    double M_total = nop->bh_mass + pmass;
-                    double r2soft;
+                    double bh_dvx=nop->bh_vel[0]-vel_x, bh_dvy=nop->bh_vel[1]-vel_y, bh_dvz=nop->bh_vel[2]-vel_z, vSqr=bh_dvx*bh_dvx+bh_dvy*bh_dvy+bh_dvz*bh_dvz, M_total=nop->bh_mass+pmass, r2soft;
+                    r2soft = DMAX(All.SofteningTable[5], soft/2.8);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-		    if(ptype==5) r2soft = All.SofteningTable[5];
-		    else
+		            if(ptype==5) r2soft = All.SofteningTable[5];
 #endif				    
-                    r2soft = DMAX(All.SofteningTable[5], soft);
-                    r2soft = r2soft*r2soft + r2;
-                    double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER);
-                    double tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
-                    if(tSqr < min_bh_approach_time) {
-                        min_bh_approach_time = tSqr;
-                    }		    
-                    if(tff4 < min_bh_freefall_time) min_bh_freefall_time = tff4;
+                    r2soft = r2 + r2soft*r2soft;
+                    double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER), tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
+                    if(tSqr < min_bh_approach_time) {min_bh_approach_time = tSqr;}		    
+                    if(tff4 < min_bh_freefall_time) {min_bh_freefall_time = tff4;}
 #ifdef SINGLE_STAR_FIND_BINARIES
-                    if(ptype==5 && nop->N_BH == 1){ // only do it if we're looking at a single star in the node
+                    if(ptype==5 && nop->N_BH==1) // only do it if we're looking at a single star in the node
+                    { 
                         double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
-                        if (specific_energy<0){
-                            double semimajor_axis= - All.G*M_total/(2.0*specific_energy);
-                            double t_orbital = 2.0*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis/(All.G*M_total) );
-                            if(t_orbital < min_bh_t_orbital) {
-                            min_bh_t_orbital = t_orbital;
-                            //Save parameters of companion
-                            //comp_ID=-2; //for a node we can't get an ID
-                            comp_Mass=nop->bh_mass; //mass of binary companion
-                            comp_dx[0] = bh_dx; comp_dx[1] = bh_dy; comp_dx[2] = bh_dz;
-                            comp_dv[0] = bh_dvx; comp_dv[1] = bh_dvy; comp_dv[2] = bh_dvz;
+                        if (specific_energy<0)
+                        {
+                            double semimajor_axis= -All.G*M_total/(2.*specific_energy);
+                            double t_orbital = 2.*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis / (All.G*M_total) );
+                            if(t_orbital < min_bh_t_orbital) /* Save parameters of companion */
+                            {
+                                min_bh_t_orbital=t_orbital; comp_Mass=nop->bh_mass;
+                                comp_dx[0]=bh_dx; comp_dx[1]=bh_dy; comp_dx[2]=bh_dz; comp_dv[0]=bh_dvx; comp_dv[1]=bh_dvy; comp_dv[2]=bh_dvz;
                             }
-                        }
-                    }
+                        } /* specific_energy < 0 */
+                    } /* ptype==5 */
 #endif //#ifdef SINGLE_STAR_FIND_BINARIES
 #endif //#ifdef SINGLE_STAR_TIMESTEPPING
                 }
 #endif
             }
-
-	    
+            
             if((r2 > 0) && (mass > 0)) // only go forward if mass positive and there is separation
             {
             r = sqrt(r2);
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
             if((r >= h) && !((ptype_sec > -1) && (r < 1/h_p_inv))) // can only do the Newtonian force if the field source is outside our own softening, and we are not within the softening of a field source particle
-#else		
-	    if(r >= h)
-#endif		
+#else
+            if(r >= h)
+#endif
             {
                 fac = mass / (r2 * r);
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
@@ -2505,21 +2467,19 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             }
             else
             {
-
 #if !defined(ADAPTIVE_GRAVSOFT_FORALL) && !defined(ADAPTIVE_GRAVSOFT_FORGAS)
                 h_inv = 1.0 / h;
                 h3_inv = h_inv * h_inv * h_inv;
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                 h5_inv = h_inv * h_inv * h_inv * h_inv * h_inv;
-#endif	      
+#endif
 #endif
                 u = r * h_inv;
                 fac = mass * kernel_gravity(u, h_inv, h3_inv, 1);
 #ifdef EVALPOTENTIAL
                 facpot = mass * kernel_gravity(u, h_inv, h3_inv, -1);
 #endif 
-#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-                /* second derivatives needed -> calculate them from softend potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */		
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* second derivatives needed -> calculate them from softend potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */		
                 if(u < 0.5) {fac2_tidal = mass * h5_inv * (76.8 - 96.0 * u);} else {fac2_tidal = mass * h5_inv * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u);}
 #endif 
 		
@@ -2566,13 +2526,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         double fac2 = mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1);
                         if(!isnan(fac2)) {fac=fac2;}
 #ifdef EVALPOTENTIAL
-			facpot = mass * kernel_gravity(u, h_p_inv, h_p3_inv, -1);
+			            facpot = mass * kernel_gravity(u, h_p_inv, h_p3_inv, -1);
 #endif 			
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-			h5_inv = h_p3_inv * h_p_inv * h_p_inv;
-			if(!isnan(fac2)) {
-			    if(u_p < 0.5) {fac2_tidal = mass * h5_inv * (76.8 - 96.0 * u_p);} else {fac2_tidal = mass * h5_inv * (-0.2 / (u_p * u_p * u_p * u_p * u_p) + 48.0 / u_p - 76.8 + 32.0 * u_p);}
-			}
+			            h5_inv = h_p3_inv * h_p_inv * h_p_inv;
+			            if(!isnan(fac2)) {if(u_p < 0.5) {fac2_tidal = mass * h5_inv * (76.8 - 96.0 * u_p);} else {fac2_tidal = mass * h5_inv * (-0.2 / (u_p * u_p * u_p * u_p * u_p) + 48.0 / u_p - 76.8 + 32.0 * u_p);}}
 #endif						
                     }
                     // correction only applies to 'shared-kernel' particles: so this needs to check if
@@ -2844,24 +2802,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         P[target].min_xyz_to_bh[1] = min_xyz_to_bh[1];
         P[target].min_xyz_to_bh[2] = min_xyz_to_bh[2];
 #ifdef SINGLE_STAR_FIND_BINARIES
-        P[target].min_bh_t_orbital=min_bh_t_orbital; //orbital time for binary
-//        P[target].COM_calc_flag = 0; //just to be sure
-        if (min_bh_t_orbital<MAX_REAL_NUMBER){// && !(All.Ti_Current == 0 && RestartFlag != 1)){ //only if there is a companion
-//            P[target].SuperTimestepFlag=IMAX(1, P[target].SuperTimestepFlag); //either keeps the current flag or becomes a binary candidate
-	    P[target].is_in_a_binary = 1;
-            P[target].comp_Mass=comp_Mass; //mass of binary companion
-            // P[target].comp_ID=comp_ID; //ID of binary companion
-            for(i1=0;i1<3;i1++) {
-                P[target].comp_dx[i1]=comp_dx[i1]; //position of binary companion
-                P[target].comp_dv[i1]=comp_dv[i1]; //velocity of binary companion
-            }
-        } else {
-	    P[target].is_in_a_binary = 0;
-	}
-/* else{ */
-        /*     //printf("Forcetree setting SuperTimestepFlag to zero for particle ID %d with SuperTimestepFlag %d \n",P[target].ID, P[target].SuperTimestepFlag); */
-        /*     P[target].SuperTimestepFlag=0; //not a binary candidate */
-        /* } */
+        P[target].is_in_a_binary=0; P[target].min_bh_t_orbital=min_bh_t_orbital; //orbital time for binary
+        if (min_bh_t_orbital<MAX_REAL_NUMBER)
+        {
+	        P[target].is_in_a_binary=1; P[target].comp_Mass=comp_Mass; //mass of binary companion
+            for(i1=0;i1<3;i1++) {P[target].comp_dx[i1]=comp_dx[i1]; P[target].comp_dv[i1]=comp_dv[i1];}
+        }
 #endif	
 #ifdef SINGLE_STAR_TIMESTEPPING
         P[target].min_bh_approach_time = sqrt(min_bh_approach_time);
@@ -2872,11 +2818,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     }
     else
     {
-            GravDataResult[target].Acc[0] = acc_x;
-            GravDataResult[target].Acc[1] = acc_y;
-            GravDataResult[target].Acc[2] = acc_z;
+        GravDataResult[target].Acc[0] = acc_x;
+        GravDataResult[target].Acc[1] = acc_y;
+        GravDataResult[target].Acc[2] = acc_z;
 #ifdef RT_OTVET
-            int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {GravDataResult[target].ET[k][k_et] = RT_ET[k][k_et];}
+        int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {GravDataResult[target].ET[k][k_et] = RT_ET[k][k_et];}
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
         GravDataResult[target].RadFluxUV = incident_flux_uv;
@@ -2891,39 +2837,32 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif 
 #endif
 #ifdef BH_COMPTON_HEATING
-            GravDataResult[target].RadFluxAGN = incident_flux_agn;
+        GravDataResult[target].RadFluxAGN = incident_flux_agn;
 #endif
 #ifdef EVALPOTENTIAL
-            GravDataResult[target].Potential = pot;
+        GravDataResult[target].Potential = pot;
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-            for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GravDataResult[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
+        for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GravDataResult[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
 #endif
 #ifdef BH_CALC_DISTANCES
-            GravDataResult[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );
-            GravDataResult[target].min_xyz_to_bh[0] = min_xyz_to_bh[0];   /* remember, dx = x_BH - myx */
-            GravDataResult[target].min_xyz_to_bh[1] = min_xyz_to_bh[1];
-            GravDataResult[target].min_xyz_to_bh[2] = min_xyz_to_bh[2];
+        GravDataResult[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );
+        GravDataResult[target].min_xyz_to_bh[0] = min_xyz_to_bh[0];   /* remember, dx = x_BH - myx */
+        GravDataResult[target].min_xyz_to_bh[1] = min_xyz_to_bh[1];
+        GravDataResult[target].min_xyz_to_bh[2] = min_xyz_to_bh[2];
 #ifdef SINGLE_STAR_FIND_BINARIES 
-            GravDataResult[target].min_bh_t_orbital=min_bh_t_orbital; //orbital time for binary
-            if (min_bh_t_orbital<MAX_REAL_NUMBER){
-//                GravDataResult[target].SuperTimestepFlag=IMAX(GravDataGet[target].SuperTimestepFlag, 1); //either keeps the current flag or becomes a binary candidate
-		GravDataResult[target].is_in_a_binary = 1;
-                GravDataResult[target].comp_Mass=comp_Mass; //mass of binary companion
-                //GravDataResult[target].comp_ID=comp_ID; //ID of binary companion
-                for(i1=0;i1<3;i1++) {
-                   GravDataResult[target].comp_dx[i1]=comp_dx[i1]; //position of binary companion
-                    GravDataResult[target].comp_dv[i1]=comp_dv[i1]; //velocity of binary companion
-		}
-	    } else {
-		GravDataResult[target].is_in_a_binary = 0;
+        GravDataResult[target].is_in_a_binary=0; GravDataResult[target].min_bh_t_orbital=min_bh_t_orbital; // orbital time for binary
+        if (min_bh_t_orbital<MAX_REAL_NUMBER)
+        {
+		    GravDataResult[target].is_in_a_binary = 1; GravDataResult[target].comp_Mass=comp_Mass; //mass of binary companion
+            for(i1=0;i1<3;i1++) {GravDataResult[target].comp_dx[i1]=comp_dx[i1]; GravDataResult[target].comp_dv[i1]=comp_dv[i1];}
 	    }
 #endif	    
 #ifdef SINGLE_STAR_TIMESTEPPING
-            GravDataResult[target].min_bh_approach_time = sqrt(min_bh_approach_time);
-            GravDataResult[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);
-            GravDataResult[target].min_bh_periastron = min_bh_periastron;
-#endif
+        GravDataResult[target].min_bh_approach_time = sqrt(min_bh_approach_time);
+        GravDataResult[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);
+        GravDataResult[target].min_bh_periastron = min_bh_periastron;
+#endif	
 #endif
         *exportflag = nodesinlist;
     }

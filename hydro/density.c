@@ -286,7 +286,7 @@ void density(void)
         {
             Left[i] = Right[i] = 0;
 #ifdef BLACK_HOLES
-            P[i].SwallowID = 0;
+            P[i].SwallowID = 0;   
 #ifdef SINGLE_STAR_FORMATION
 	        P[i].SwallowTime = MAX_REAL_NUMBER;
 #endif	    
@@ -701,7 +701,7 @@ void density(void)
 #ifdef SINGLE_STAR_FORMATION		    
                     desnumngbdev = (All.BlackHoleNgbFactor+1);
 #else
-                    desnumngbdev = 4 * (All.BlackHoleNgbFactor+1);
+                    desnumngbdev = 4 * (All.BlackHoleNgbFactor+1);     
 #endif		    
                 }
 #endif
