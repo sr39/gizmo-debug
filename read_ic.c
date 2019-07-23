@@ -617,6 +617,16 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                 P[offset + n].IMF_NumMassiveStars = *fp++;
 #endif
             break;
+
+        case IO_TURB_DYNAMIC_COEFF:
+#ifdef TURB_DIFF_DYNAMIC
+            for (n = 0; n < pc; n++) {
+                SphP[offset + n].TD_DynDiffCoeff = *fp++;
+            }
+#endif
+            break;
+
+
         case IO_SINKRAD:
 #ifdef SINGLE_STAR_STRICT_ACCRETION
             for(n = 0; n < pc; n++)
@@ -636,6 +646,10 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                 P[offset + n].init_mass_in_intzone = *fp++;
 #endif
             break;
+            
+            /* the other input fields (if present) are not needed to define the
+             initial conditions of the code */
+            
         case IO_COSMICRAY_KAPPA:
         case IO_AGS_OMEGA:
         case IO_AGS_CORR:
@@ -644,11 +658,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_AGS_QPT:
         case IO_AGS_PSI_RE:
         case IO_AGS_PSI_IM:
-            break;
-            
-            /* the other input fields (if present) are not needed to define the
-             initial conditions of the code */
-            
         case IO_EOSCS:
         case IO_EOS_STRESS_TENSOR:
         case IO_CBE_MOMENTS:
@@ -716,16 +725,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_grDI:
         case IO_grDII:
         case IO_grHDI:
-            
-            //ptorrey
-            break;
-
-        case IO_TURB_DYNAMIC_COEFF:
-#ifdef TURB_DIFF_DYNAMIC
-            for (n = 0; n < pc; n++) {
-                SphP[offset + n].TD_DynDiffCoeff = *fp++;
-            }
-#endif
             break;
 
         case IO_LASTENTRY:
@@ -994,9 +993,6 @@ void read_file(char *fname, int readTask, int lastTask)
 #if defined(SINGLE_STAR_STRICT_ACCRETION) && defined(READ_SINKRADIUS)
                    && blocknr != IO_SINKRAD
 #endif
-//#if defined(NEWSINK)
-//                   && blocknr != IO_BHMASSINIT
-//#endif
 #if defined(CHIMES) && !defined(CHIMES_INITIALISE_IN_EQM) 
 		   && blocknr != IO_CHIMES_ABUNDANCES 
 #endif 

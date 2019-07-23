@@ -102,21 +102,6 @@ int force_treebuild(int npart, struct unbind_data *mp)
 {
 
     int flag;
-// MYG: the below is redundant - commenting out to reduce overhead for timesteps with small particle numbers
-/* #ifdef BH_CALC_DISTANCES */
-/*     int i; */
-/*     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) */
-/*     { */
-/*         P[i].min_dist_to_bh=P[i].min_xyz_to_bh[0]=P[i].min_xyz_to_bh[1]=P[i].min_xyz_to_bh[2]=1e37; */
-/* #ifdef SINGLE_STAR_FIND_BINARIES */
-/*         P[i].min_bh_t_orbital=MAX_REAL_NUMBER; */
-/* #endif	 */
-/* #ifdef SINGLE_STAR_TIMESTEPPING */
-/*         P[i].min_bh_approach_time=MAX_REAL_NUMBER; P[i].min_bh_freefall_time=MAX_REAL_NUMBER; P[i].min_bh_periastron=MAX_REAL_NUMBER; */
-/* #endif */
-/*     } */
-/* #endif */
-    
     do
     {
         Numnodestree = force_treebuild_single(npart, mp);
@@ -2625,6 +2610,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif // #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) //
             } // closes r < h (else) clause
                 
+                
 #ifdef PMGRID
             tabindex = (int) (asmthfac * r);
             if(tabindex < NTAB && tabindex >= 0)
@@ -2647,9 +2633,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 pot += FLT(facpot);
 #endif
 #endif
+                
                 acc_x += FLT(dx * fac);
                 acc_y += FLT(dy * fac);
                 acc_z += FLT(dz * fac);
+                
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                 /*
                  tidal_tensorps[][] = Matrix of second derivatives of grav. potential, symmetric:
@@ -2816,8 +2804,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         } // closes (mode == 1) check
     } // closes outer (while(no>=0)) check
     
-    
-
     
     /* store result at the proper place */
     if(mode == 0)

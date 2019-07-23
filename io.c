@@ -283,8 +283,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     for(k = 0; k < 3; k++)
                     {
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-			if((P[pindex].Type == 5) && (P[pindex].SuperTimestepFlag >= 2)) {fp[k] = P[pindex].Vel[k] + P[pindex].COM_GravAccel[k] * dt_gravkick;}
-			else
+			            if((P[pindex].Type == 5) && (P[pindex].SuperTimestepFlag >= 2)) {fp[k] = P[pindex].Vel[k] + P[pindex].COM_GravAccel[k] * dt_gravkick;}
+			            else
 #endif			    
                         fp[k] = P[pindex].Vel[k] + P[pindex].GravAccel[k] * dt_gravkick;
 
@@ -1087,6 +1087,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
+            
         case IO_SINKRAD:
 #ifdef SINGLE_STAR_STRICT_ACCRETION
             for(n = 0; n < pc; pindex++)
@@ -1097,6 +1098,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
+            
         case IO_JSINK:
 #ifdef NEWSINK_J_FEEDBACK
             for(n = 0; n < pc; pindex++){
@@ -1111,6 +1113,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             }
 #endif
             break;
+            
         case IO_BHMASSINIT:
 #ifdef NEWSINK
             for(n = 0; n < pc; pindex++)
@@ -1121,6 +1124,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
+            
         case IO_TIDALTENSORPS:
             /* 3x3 configuration-space tidal tensor that is driving the GDE */
 #ifdef OUTPUT_GDE_TIDALTENSORPS
@@ -1797,6 +1801,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_VORT:
         case IO_MG_ACCEL:
         case IO_BH_ANGMOM:
+        case IO_JSINK:
             if(mode)
                 bytes_per_blockelement = 3 * sizeof(MyInputFloat);
             else
@@ -1879,13 +1884,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_BHMASSALPHA:
         case IO_ACRB:
         case IO_SINKRAD:
-        case IO_JSINK:
-            if(mode)
-                bytes_per_blockelement = 3 * sizeof(MyInputFloat);
-            else
-                bytes_per_blockelement = 3 * sizeof(MyOutputFloat);
-            break;
-
         case IO_BHMASSINIT:
         case IO_BHMDOT:
         case IO_CAUSTIC_COUNTER:
@@ -2190,6 +2188,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_VORT:
         case IO_MG_ACCEL:
         case IO_BH_ANGMOM:
+        case IO_JSINK:
             values = 3;
             break;
             
@@ -2330,16 +2329,6 @@ int get_values_per_blockelement(enum iofields blocknr)
             values = 0;
 #endif
             break;
-
-	    
-        case IO_JSINK:
-#ifdef NEWSINK_J_FEEDBACK
-            values = 3;
-#else
-            values = 0;
-#endif
-            break;
-
 	    
         case IO_Z:
 #ifdef METALS

@@ -1171,12 +1171,6 @@ INCL    += galaxy_sf/blackholes/blackhole.h
 OBJS    += nbody/binary.o
 INCL    += nbody/nbody.h
 endif
-ifeq (SINGLE_STAR_FB_HEATING,$(findstring SINGLE_STAR_FB_HEATING,$(CONFIGVARS)))
-OBJS += radiation/rt_utilities.o
-endif
-ifeq (SCF_POTENTIAL,$(findstring SCF_POTENTIAL,$(CONFIGVARS)))
-OBJS    += modules/potentials/scf.o modules/potentials/scf_util.o
-endif
 
 ifeq (FOF,$(findstring FOF,$(CONFIGVARS)))
 OBJS    += structure/fof.o

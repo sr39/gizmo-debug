@@ -288,8 +288,7 @@ double get_starformation_rate(int i)
     double cs_eff = Particle_effective_soundspeed_i(i);
     double k_cs = cs_eff / (Get_Particle_Size(i)*All.cf_atime);
 #ifdef SINGLE_STAR_FORMATION
-    double press_grad_length = 0;    
-    for(k=0;k<3;k++) {press_grad_length = SphP[i].Gradients.PressureMagnitude;}
+    double press_grad_length = SphP[i].Gradients.PressureMagnitude;
     press_grad_length = All.cf_atime * DMAX(Get_Particle_Size(i) , SphP[i].Pressure / (1.e-37 + press_grad_length));
    
     k_cs = cs_eff / press_grad_length;
@@ -562,26 +561,18 @@ void star_formation_parent_routine(void)
                 P[i].BH_Mass = All.SeedBlackHoleMass;
                 TreeReconstructFlag = 1;
 #ifdef SINGLE_STAR_STRICT_ACCRETION
-                P[i].SinkRadius = DMAX(pow(3 * P[i].Mass/ (SphP[i].Density * 4 * M_PI), 1./3) , All.ForceSoftening[5]); // want a sphere of equal volume to particle size, R = (3V/(4 PI))^(1/3)
+                P[i].SinkRadius = DMAX(pow(3 * P[i].Mass/ (SphP[i].Density * 4 * M_PI), 1./3) , pow(1./All.DesNumNGB , 1./3.) * All.ForceSoftening[5]); // want a sphere of equal volume to particle size, R = (3V/(4 PI))^(1/3)
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
-                P[i].min_bh_t_orbital=MAX_REAL_NUMBER;
-                P[i].comp_dx[0] = P[i].comp_dx[1] = P[i].comp_dx[2] = P[i].comp_dv[0] = P[i].comp_dv[1] = P[i].comp_dv[2] = 0;
-                P[i].is_in_a_binary = 0;
+                P[i].min_bh_t_orbital=MAX_REAL_NUMBER; P[i].comp_dx[0]=P[i].comp_dx[1]=P[i].comp_dx[2]=P[i].comp_dv[0]=P[i].comp_dv[1]=P[i].comp_dv[2]=P[i].is_in_a_binary = 0;
 #endif		
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-                //Zero everything out
-                P[i].SuperTimestepFlag=0;
-                P[i].COM_GravAccel[0] = P[i].COM_GravAccel[1] = P[i].COM_GravAccel[2] = 0;
-                P[i].comp_Mass=P[i].COM_dt_tidal=0;
+#ifdef SINGLE_STAR_SUPERTIMESTEPPING 
+                P[i].SuperTimestepFlag=P[i].COM_GravAccel[0]=P[i].COM_GravAccel[1]=P[i].COM_GravAccel[2]=P[i].comp_Mass=P[i].COM_dt_tidal=0;
 #endif
 #ifdef NEWSINK
-                P[i].init_mass_in_intzone=0; //Initialize as 0, we will update it in the first blackole property loop
-                P[i].BH_Mdot_Avg = 0; ; /*Mdot averaged over dynamical time */
-                P[i].BH_Mdot_AlphaDisk = 0;
+                P[i].init_mass_in_intzone=P[i].BH_Mdot_Avg=P[i].BH_Mdot_AlphaDisk=0; //Initialize as 0, we will update it in the first blackole property loop
 #ifdef NEWSINK_J_FEEDBACK
-                P[i].Jsink[0] = P[i].Jsink[1] = P[i].Jsink[2] = 0;
-                P[i].t_disc = pow(All.G * P[i].Mass,-0.5) * pow(All.ForceSoftening[5],1.5); /*placeholder to avoid dividing with zero*/
+                P[i].Jsink[0]=P[i].Jsink[1]=P[i].Jsink[2]=0; P[i].t_disc = pow(All.G * P[i].Mass,-0.5) * pow(All.ForceSoftening[5],1.5); /*placeholder to avoid dividing with zero*/
 #endif
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
@@ -602,8 +593,8 @@ void star_formation_parent_routine(void)
                 P[i].DensAroundStar = SphP[i].Density;
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION 
                 P[i].ProtoStellarAge = All.Time; // record the proto-stellar age instead of age
-		if (P[i].Mass < 0.012 * SOLAR_MASS / All.UnitMass_in_g) {P[i].ProtoStellar_Radius =  5.24 * pow(P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS, 1./3);} // constant density
-		else {P[i].ProtoStellar_Radius = 100. * (P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS);} // M propto R above this mass
+		        if (P[i].Mass < 0.012 * SOLAR_MASS / All.UnitMass_in_g) {P[i].ProtoStellar_Radius =  5.24 * pow(P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS, 1./3);} // constant density
+		        else {P[i].ProtoStellar_Radius = 100. * (P[i].Mass * All.UnitMass_in_g / All.HubbleParam / SOLAR_MASS);} // M propto R above this mass
                 //P[i].PreMainSeq_Tracker = 1;
 #endif
 #endif // SINGLE_STAR_FORMATION
