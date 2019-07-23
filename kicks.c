@@ -46,9 +46,9 @@ void do_first_halfstep_kick(void)
             /* 'full' kick for active particles */
             if(TimeBinActive[P[i].TimeBin])
             {
-                    ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
-                    tstart = P[i].Ti_begstep;	/* beginning of step */
-                    tend = P[i].Ti_begstep + ti_step / 2;	/* midpoint of step */
+                ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
+                tstart = P[i].Ti_begstep;	/* beginning of step */
+                tend = P[i].Ti_begstep + ti_step / 2;	/* midpoint of step */
             }
             do_the_kick(i, tstart, tend, P[i].Ti_current, 0);
         }
@@ -73,8 +73,8 @@ void do_second_halfstep_kick(void)
 
     for(i = 0; i < NumPart; i++)
     {
-	    if(P[i].Mass > 0)
-	    {
+        if(P[i].Mass > 0)
+        {
             /* 'full' kick for active particles */
             if(TimeBinActive[P[i].TimeBin])
             {
@@ -82,10 +82,10 @@ void do_second_halfstep_kick(void)
                 tstart = P[i].Ti_begstep + ti_step / 2;	/* midpoint of step */
                 tend = P[i].Ti_begstep + ti_step;	/* end of step */
             }
-		    do_the_kick(i, tstart, tend, P[i].Ti_current, 1);
+            do_the_kick(i, tstart, tend, P[i].Ti_current, 1);
             if(TimeBinActive[P[i].TimeBin])
-                set_predicted_sph_quantities_for_extra_physics(i);		
-	    }
+                set_predicted_sph_quantities_for_extra_physics(i);
+        }
     } // for(i = 0; i < NumPart; i++) //
     
 #ifdef TURB_DRIVING
@@ -296,10 +296,10 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                 dp[j] += mass_pred * SphP[i].RadAccel[j] * All.cf_atime * dt_hydrokick;
 #endif
             }
+            dp[j] += mass_pred * P[i].GravAccel[j] * dt_gravkick;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING  //if we're super-timestepping, the above accounts for the change in COM velocity. Now we do the internal binary velocity change
-            if((P[i].Type == 5) && (P[i].SuperTimestepFlag>=2)) {dp[j] += mass_pred * P[i].COM_GravAccel[j] * dt_gravkick;} else
+            if((P[i].Type == 5) && (P[i].SuperTimestepFlag>=2)) {dp[j] += mass_pred * (P[i].COM_GravAccel[j]-P[i].GravAccel[j]) * dt_gravkick;} 
 #endif
-            {dp[j] += mass_pred * P[i].GravAccel[j] * dt_gravkick;}
             P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
         }
 
@@ -509,3 +509,4 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
     elastic_body_update_driftkick(i,dt_entr,0);
 #endif
 }
+

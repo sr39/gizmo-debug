@@ -78,10 +78,6 @@ void gravity_tree(void)
     int k, ewald_max, diff, save_NextParticle, ndone, ndone_flag, ngrp, place, recvTask; double tstart, tend, ax, ay, az; MPI_Status status;
 #endif
 
-#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-    int i1,i2;
-#endif
-    
     CPU_Step[CPU_MISC] += measure_time();
     
     /* set new softening lengths */
@@ -95,9 +91,7 @@ void gravity_tree(void)
         if(ThisTask == 0) printf("Tree construction.  (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
 #endif
         CPU_Step[CPU_MISC] += measure_time();
-#ifdef SINGLE_STAR_FORMATION
-	move_particles(All.Ti_Current); 
-#endif	
+
         force_treebuild(NumPart, NULL);
         
         CPU_Step[CPU_TREEBUILD] += measure_time();
@@ -364,19 +358,14 @@ void gravity_tree(void)
                     for(k = 0; k < 3; k++) {GravDataIn[j].Vel[k] = P[place].Vel[k];}		    
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
-                    if (P[place].Type==5){
+                    if (P[place].Type==5)
+                    {
                         GravDataIn[j].min_bh_t_orbital = P[place].min_bh_t_orbital; //orbital time for binary
                         GravDataIn[j].comp_Mass = P[place].comp_Mass; //mass of binary companion
                         GravDataIn[j].is_in_a_binary = P[place].is_in_a_binary; // 1 if we're in a binary, 0 if not
-                        for(k = 0; k < 3; k++) {
-                            GravDataIn[j].comp_dx[k] = P[place].comp_dx[k];
-                            GravDataIn[j].comp_dv[k] = P[place].comp_dv[k];
-                        }
+                        for(k=0;k<3;k++) {GravDataIn[j].comp_dx[k]=P[place].comp_dx[k]; GravDataIn[j].comp_dv[k]=P[place].comp_dv[k];}
                     }
-                    else{
-                        //Setting values to zero just to be sure
-                        P[place].is_in_a_binary = 0;
-                    }
+                    else {P[place].is_in_a_binary=0; /* setting values to zero just to be sure */}
 #endif
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
                     if( (P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type]) ) {GravDataIn[j].Soft = PPP[place].Hsml;} else {GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];}
@@ -522,16 +511,12 @@ void gravity_tree(void)
                     if(GravDataOut[j].min_bh_freefall_time < P[place].min_bh_freefall_time) {P[place].min_bh_freefall_time = GravDataOut[j].min_bh_freefall_time;}
                     if(GravDataOut[j].min_bh_periastron < P[place].min_bh_periastron) {P[place].min_bh_periastron = GravDataOut[j].min_bh_periastron;}
 #ifdef SINGLE_STAR_FIND_BINARIES
-//                    P[place].COM_calc_flag = 0; //just to be safe
-                    if ( (P[place].Type==5) && (GravDataOut[j].min_bh_t_orbital < P[place].min_bh_t_orbital) ){
+                    if ( (P[place].Type==5) && (GravDataOut[j].min_bh_t_orbital < P[place].min_bh_t_orbital) )
+                    {
                         P[place].min_bh_t_orbital = GravDataOut[j].min_bh_t_orbital;
                         P[place].comp_Mass = GravDataOut[j].comp_Mass;
-                        //P[place].comp_ID = GravDataOut[j].comp_ID;
                         P[place].is_in_a_binary = GravDataOut[j].is_in_a_binary;
-                        for(k = 0; k < 3; k++) {
-                            P[place].comp_dx[k] = GravDataOut[j].comp_dx[k];
-                            P[place].comp_dv[k] = GravDataOut[j].comp_dv[k];
-                        }
+                        for(k=0;k<3;k++) {P[place].comp_dx[k]=GravDataOut[j].comp_dx[k]; P[place].comp_dv[k]=GravDataOut[j].comp_dv[k];}
                     }
 #endif
 #endif
@@ -562,7 +547,7 @@ void gravity_tree(void)
                     }
                     
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-                    for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[place].tidal_tensorps[i1][i2] += GravDataOut[j].tidal_tensorps[i1][i2];}}
+                    {int i1tt,i2tt; for(i1tt=0;i1tt<3;i1tt++) {for(i2tt=0;i2tt<3;i2tt++) {P[place].tidal_tensorps[i1tt][i2tt] += GravDataOut[j].tidal_tensorps[i1tt][i2tt];}}}
 #endif
                     
 #ifdef EVALPOTENTIAL
@@ -651,19 +636,17 @@ void gravity_tree(void)
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING // Subtract for component from companion if in binary
-        if((P[i].Type == 5) && (P[i].is_in_a_binary == 1) ){subtract_companion_gravity(i);}
+        if((P[i].Type == 5) && (P[i].is_in_a_binary == 1)) {subtract_companion_gravity(i);}
 #endif
-        for(j = 0; j < 3; j++) {
-            P[i].GravAccel[j] *= All.G;
+        for(j=0;j<3;j++) {P[i].GravAccel[j] *= All.G;}
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-            P[i].COM_GravAccel[j] *= All.G;
+        for(j=0;j<3;j++) {P[i].COM_GravAccel[j] *= All.G;}
 #endif 
-        }
+
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-#ifdef GDE_DISTORTIONTENSOR
-        /* Diagonal terms of tidal tensor need correction, because tree is running over all particles -> also over target particle -> extra term -> correct it */
+#ifdef GDE_DISTORTIONTENSOR /* Diagonal terms of tidal tensor need correction, because tree is running over all particles -> also over target particle -> extra term -> correct it */
         if(All.ComovingIntegrationOn) {P[i].tidal_tensorps[0][0] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[1][1] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[2][2] -= All.TidalCorrection/All.G;} // subtract Hubble flow terms //
-#endif /* GDE_DISTORTIONTENSOR */
+#endif
 #if (defined(TIDAL_TIMESTEP_CRITERION) || defined(SINGLE_STAR_HILL_CRITERION)) // diagonalize the tidal tensor so we can use its invariants, which don't change with rotation
         double tt[9]; for(j=0; j<3; j++) {for (k=0; k<3; k++) tt[3*j+k] = P[i].tidal_tensorps[j][k];}
         gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3);
@@ -681,19 +664,16 @@ void gravity_tree(void)
         P[i].tidal_tensorps[1][1] += P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type]) * 10.666666666667;
         P[i].tidal_tensorps[2][2] += P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type]) * 10.666666666667;
 #endif
-        for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[i].tidal_tensorps[i1][i2] *= All.G;}} // units //
-#endif 
+        for(j=0;j<3;j++) {int i2tt; for(i2tt=0;i2tt<3;i2tt++) {P[i].tidal_tensorps[j][i2tt] *= All.G;}} // units //
+#endif /* COMPUTE_TIDAL_TENSOR_IN_GRAVTREE */
+
         
-#ifdef EVALPOTENTIAL
-        /* remove self-potential */
-	//	P[i].Potential += P[i].Mass / All.SofteningTable[P[i].Type];
-        
+#ifdef EVALPOTENTIAL /* remove self-potential */
+	    //	P[i].Potential += P[i].Mass / All.SofteningTable[P[i].Type];
 #ifdef BOX_PERIODIC
         if(All.ComovingIntegrationOn) {P[i].Potential -= 2.8372975 * pow(P[i].Mass, 2.0 / 3) * pow(All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G), 1.0 / 3);}
 #endif
-
         P[i].Potential *= All.G;
-        
 #ifdef PMGRID
         P[i].Potential += P[i].PM_Potential;	/* add in long-range potential */
 #endif
@@ -701,27 +681,15 @@ void gravity_tree(void)
         if(All.ComovingIntegrationOn)
         {
 #ifndef BOX_PERIODIC
-            double fac, r2;
-            
-            fac = -0.5 * All.Omega0 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits;
-            
-            for(k = 0, r2 = 0; k < 3; k++)
-                r2 += P[i].Pos[k] * P[i].Pos[k];
-            
+            double fac, r2; fac = -0.5 * All.Omega0 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits;
+            for(k = 0, r2 = 0; k < 3; k++) {r2 += P[i].Pos[k] * P[i].Pos[k];}
             P[i].Potential += fac * r2;
 #endif
-        }
-        else
-        {
-            double fac, r2;
-            
-            fac = -0.5 * All.OmegaLambda * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits;
-            
+        } else {
+            double fac, r2; fac = -0.5 * All.OmegaLambda * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits;
             if(fac != 0)
             {
-                for(k = 0, r2 = 0; k < 3; k++)
-                    r2 += P[i].Pos[k] * P[i].Pos[k];
-                
+                for(k = 0, r2 = 0; k < 3; k++) {r2 += P[i].Pos[k] * P[i].Pos[k];}
                 P[i].Potential += fac * r2;
             }
         }
@@ -1213,47 +1181,31 @@ void mysort_dataindex(void *b, size_t n, size_t s, int (*cmp) (const void *, con
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING 
 void subtract_companion_gravity(int i)
 {
-    //Remove contribution to gravitational field and tidal tensor from the stars in the binary to the center of mass
-    double u, dr, fac, fac2, h, h_inv, h3_inv, h5_inv, u2;
-    double tidal_tensorps[3][3];
-    int i1, i2;
+    /* Remove contribution to gravitational field and tidal tensor from the stars in the binary to the center of mass */
+    double u, dr, fac, fac2, h, h_inv, h3_inv, h5_inv, u2, tidal_tensorps[3][3]; int i1, i2;
     dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
     h = All.ForceSoftening[5];  h_inv = 1.0 / h; h3_inv = h_inv*h_inv*h_inv; h5_inv = h3_inv*h_inv*h_inv; u = dr*h_inv; u2=u*u;
-
-    //Prefactors
-
-    if(dr >= h){
-	fac = P[i].comp_Mass / (dr*dr*dr);
-	fac2 = 3.0 * P[i].comp_Mass / (dr*dr*dr*dr*dr); /* no softening nonsense */
-    }else{
-	fac = P[i].comp_Mass * kernel_gravity(u, h_inv, h3_inv, 1);
-	/* second derivatives needed -> calculate them from softened potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
-	if(u < 0.5) {fac2 = P[i].comp_Mass * h5_inv * (76.8 - 96.0 * u);} else {fac2 = P[i].comp_Mass * h5_inv * (-0.2 / (u2 * u2 * u) + 48.0 / u - 76.8 + 32.0 * u);}
+    fac = P[i].comp_Mass / (dr*dr*dr); fac2 = 3.0 * P[i].comp_Mass / (dr*dr*dr*dr*dr); /* no softening nonsense */
+    if(dr < h) /* second derivatives needed -> calculate them from softened potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
+    {
+	    fac = P[i].comp_Mass * kernel_gravity(u, h_inv, h3_inv, 1);
+	    if(u < 0.5) {fac2 = P[i].comp_Mass * h5_inv * (76.8 - 96.0 * u);} else {fac2 = P[i].comp_Mass * h5_inv * (-0.2 / (u2 * u2 * u) + 48.0 / u - 76.8 + 32.0 * u);}
     }
+    for(i1=0;i1<3;i1++) {P[i].COM_GravAccel[i1] = P[i].GravAccel[i1] - P[i].comp_dx[i1] * fac;}
     
-    for(i1=0; i1<3; i1++){
-	P[i].COM_GravAccel[i1] = P[i].GravAccel[i1] - P[i].comp_dx[i1] * fac;
-    }
-    
-//Adjusting tidal tensor
+    /* Adjusting tidal tensor according to terms above */
     tidal_tensorps[0][0] = P[i].tidal_tensorps[0][0] - (-fac + P[i].comp_dx[0] * P[i].comp_dx[0] * fac2);
     tidal_tensorps[0][1] = P[i].tidal_tensorps[0][1] - (P[i].comp_dx[0] * P[i].comp_dx[1] * fac2);
     tidal_tensorps[0][2] = P[i].tidal_tensorps[0][2] - (P[i].comp_dx[0] * P[i].comp_dx[2] * fac2);
     tidal_tensorps[1][1] = P[i].tidal_tensorps[1][1] - (-fac + P[i].comp_dx[1] * P[i].comp_dx[1] * fac2);
     tidal_tensorps[1][2] = P[i].tidal_tensorps[1][2] - (P[i].comp_dx[1] * P[i].comp_dx[2] * fac2);
     tidal_tensorps[2][2] = P[i].tidal_tensorps[2][2] - (-fac + P[i].comp_dx[2] * P[i].comp_dx[2] * fac2);
-    
-//Symmetrizing
-    tidal_tensorps[1][0] = tidal_tensorps[0][1];
-    tidal_tensorps[2][0] = tidal_tensorps[0][2];
-    tidal_tensorps[2][1] = tidal_tensorps[1][2];
+    tidal_tensorps[1][0]=tidal_tensorps[0][1]; tidal_tensorps[2][0]=tidal_tensorps[0][2]; tidal_tensorps[2][1]=tidal_tensorps[1][2]; /* symmetric so just set these now */
 
 #ifdef BH_OUTPUT_MOREINFO
     printf("Corrected center of mass acceleration %g %g %g tidal tensor diagonal elements %g %g %g \n", P[i].COM_GravAccel[0], P[i].COM_GravAccel[1], P[i].COM_GravAccel[2], tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]);
-//    printf("particle position %g %g %g companion relative position %g %g %g dr %g \n",pos_x, pos_y, pos_z, comp_dx[0], comp_dx[1], comp_dx[2],sqrt( comp_dx[0]*comp_dx[0] + comp_dx[1]*comp_dx[1] + comp_dx[2]*comp_dx[2] ));
 #endif
-    P[i].COM_dt_tidal = 0;
-    for(i1 = 0; i1 < 3; i1++) for(i2=0; i2<3; i2++) {P[i].COM_dt_tidal += tidal_tensorps[i1][i2]*tidal_tensorps[i1][i2];}
+    P[i].COM_dt_tidal = 0; for(i1=0;i1<3;i1++) for(i2=0;i2<3;i2++) {P[i].COM_dt_tidal += tidal_tensorps[i1][i2]*tidal_tensorps[i1][i2];}
     P[i].COM_dt_tidal = sqrt(1.0 / (All.G * sqrt(P[i].COM_dt_tidal)));
 }
 #endif

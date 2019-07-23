@@ -2293,9 +2293,6 @@ extern ALIGN(32) struct particle_data
     int SuperTimestepFlag; // >=2 if allowed to super-timestep (increases with each drift/kick), 1 if a candidate for super-timestepping, 0 otherwise
     MyDouble COM_dt_tidal; //timescale from tidal tensor evaluated at the center of mass without contribution from the companion
     MyDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
-    //int COM_calc_flag; //tells forcetree whether to calculate the forces for the particle (0) or the center of mass (1)
-    //MyIDType comp_ID; //ID of binary companion
-    //MyDouble COM_Vel[3]; //center of mass velocity
 #endif
 #endif  
 #endif
@@ -2879,8 +2876,6 @@ extern struct gravdata_out
     MyFloat min_bh_approach_time; // smallest approach time t_a = |v_radial|/r
     MyFloat min_bh_periastron; // closest anticipated periastron passage
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-    //MyIDType comp_ID; //ID of binary companion
-    //MyDouble COM_Vel[3]; //velocity of center of mass
     MyLongDouble COM_tidal_tensorps[3][3]; //tidal tensor evaluated at the center of mass without contribution from the companion
     MyDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
     int COM_calc_flag; //flag that tells whether this was only a rerun to get the acceleration ad the tidal tenor at the center of mass of a binary
