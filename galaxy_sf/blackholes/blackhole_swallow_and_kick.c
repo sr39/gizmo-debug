@@ -84,7 +84,7 @@ void blackhole_swallow_and_kick_loop(void)
                 BlackholeDataIn[j].Pos[k] = P[place].Pos[k];
                 BlackholeDataIn[j].Vel[k] = P[place].Vel[k];
 #if defined(NEWSINK_J_FEEDBACK)
-                BlackholeDataIn[j].Jsink[k] = BPP(place).Jsink[k];
+                BlackholeDataIn[j].Jsink[k] = BPP(place).BH_Specific_AngMom[k]*BPP(place).Mass;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
                 BlackholeDataIn[j].Jgas_in_Kernel[k] = BlackholeTempInfo[P[place].IndexMapToTempStruc].Jgas_in_Kernel[k];
@@ -255,7 +255,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     MyLongDouble accreted_J[3];
     MyFloat dx[3], dv[3], dr;
     MyFloat Jsinktot, dJsinkpred, Jcrossdr[3];
-    MyFloat *Jsink, *str_dv_ang_kick_norm;
+    MyFloat Jsink[3], *str_dv_ang_kick_norm;
     MyFloat tdisc;
     MyDouble dv_ang_kick_norm=0; /*Normalization factor for angular momentum feedback kicks*/ 
 #endif
@@ -330,7 +330,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
         str_f_acc = BlackholeTempInfo[P[target].IndexMapToTempStruc].f_acc;
         str_gasID = BlackholeTempInfo[P[target].IndexMapToTempStruc].gasID;
 #if defined(NEWSINK_J_FEEDBACK)
-        Jsink = BPP(target).Jsink;
+        Jsink[0] = BPP(target).Mass*BPP(target).BH_Specific_AngMom[0]; Jsink[1] = BPP(target).Mass*BPP(target).BH_Specific_AngMom[1]; Jsink[2] = BPP(target).Mass*BPP(target).BH_Specific_AngMom[2];
         Jsinktot = sqrt(Jsink[0]*Jsink[0] + Jsink[1]*Jsink[1] +Jsink[2]*Jsink[2]);
         tdisc = BPP(target).t_disc;
         str_dv_ang_kick_norm = BlackholeTempInfo[P[target].IndexMapToTempStruc].dv_ang_kick_norm;
@@ -371,7 +371,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
         str_f_acc = BlackholeDataGet[target].f_acc;
         str_gasID = BlackholeDataGet[target].gasID;
 #if defined(NEWSINK_J_FEEDBACK)
-        Jsink = BlackholeDataGet[target].Jsink;
+        Jsink[0] = BlackholeDataGet[target].Jsink[0];Jsink[1] = BlackholeDataGet[target].Jsink[1];Jsink[2] = BlackholeDataGet[target].Jsink[2];
         Jsinktot = sqrt(Jsink[0]*Jsink[0] + Jsink[1]*Jsink[1] +Jsink[2]*Jsink[2]);
         tdisc = BlackholeDataGet[target].t_disc;
         str_dv_ang_kick_norm = BlackholeDataGet[target].dv_ang_kick_norm;
@@ -495,14 +495,14 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #endif
 #if defined(SINGLE_STAR_STRICT_ACCRETION) || defined(NEWSINK)
-			for(k=0; k<3; k++) accreted_moment[k] += FLT(P[j].Mass * P[j].Pos[k]);
-#endif			
+                        for(k = 0; k < 3; k++){accreted_moment[k] += FLT(P[j].Mass * P[j].Pos[k]);}
+#endif
                         for(k = 0; k < 3; k++){accreted_momentum[k] += FLT(P[j].Mass * P[j].Vel[k]);}
 #if defined(NEWSINK_J_FEEDBACK)
                         dv[0]=BPP(j).Vel[0]-velocity[0];dv[1]=BPP(j).Vel[1]-velocity[1];dv[2]=BPP(j).Vel[2]-velocity[2];
-                        accreted_J[0] += FLT(P[j].Mass *(dx[1]*dv[2] - dx[2]*dv[1]) + BPP(j).Jsink[0]);
-                        accreted_J[1] += FLT(P[j].Mass *(dx[2]*dv[0] - dx[0]*dv[2]) + BPP(j).Jsink[1]);
-                        accreted_J[2] += FLT(P[j].Mass *(dx[0]*dv[1] - dx[1]*dv[0]) + BPP(j).Jsink[2]);
+                        accreted_J[0] += FLT(P[j].Mass *(dx[1]*dv[2] - dx[2]*dv[1] + BPP(j).BH_Specific_AngMom[0]));
+                        accreted_J[1] += FLT(P[j].Mass *(dx[2]*dv[0] - dx[0]*dv[2] + BPP(j).BH_Specific_AngMom[1]));
+                        accreted_J[2] += FLT(P[j].Mass *(dx[0]*dv[1] - dx[1]*dv[0] + BPP(j).BH_Specific_AngMom[2]));
 #endif
 #ifdef BH_COUNTPROGS
                         accreted_BH_progs += BPP(j).BH_CountProgs;
@@ -599,10 +599,10 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                                 }
 #if defined(NEWSINK_J_FEEDBACK)
                                 dv[0]=P[j].Vel[0]-velocity[0];dv[1]=P[j].Vel[1]-velocity[1];dv[2]=P[j].Vel[2]-velocity[2];
-                                accreted_J[0] += FLT(f_accreted * P[j].Mass *(dx[1]*dv[2] - dx[2]*dv[1]) + P[j].Jsink[0]);
-                                accreted_J[1] += FLT(f_accreted * P[j].Mass *(dx[2]*dv[0] - dx[0]*dv[2]) + P[j].Jsink[1]);
-                                accreted_J[2] += FLT(f_accreted * P[j].Mass *(dx[0]*dv[1] - dx[1]*dv[0]) + P[j].Jsink[2]);
-#endif				
+                                accreted_J[0] += FLT(f_accreted * P[j].Mass *(dx[1]*dv[2] - dx[2]*dv[1] + P[j].BH_Specific_AngMom[0]));
+                                accreted_J[1] += FLT(f_accreted * P[j].Mass *(dx[2]*dv[0] - dx[0]*dv[2] + P[j].BH_Specific_AngMom[1]));
+                                accreted_J[2] += FLT(f_accreted * P[j].Mass *(dx[0]*dv[1] - dx[1]*dv[0] + P[j].BH_Specific_AngMom[2]));
+#endif
 #endif
                                 P[j].Mass *= (1.0-f_accreted);
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -638,7 +638,6 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif  
 
 #ifndef IO_REDUCED_MODE
-                                //printf("BAL kick: P[j].ID %llu BH ID dir: %g %g %g, Jsink: %g %g %g reldir: %g %g %g bvect3 %g %g %g \n", (unsigned long long) P[j].ID, (unsigned long long) P[j].SwallowID, dir[0],dir[1],dir[2],Jsink[0],Jsink[1],Jsink[2], reldir[0],reldir[1],reldir[2], b_vect3[0],b_vect3[1],b_vect3[2]);
                                 printf("BAL kick: All.BAL_v_outflow %g \t f_acc_corr %g \t v_kick %g\n",(All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s),f_acc_corr,v_kick);
                                 printf("BAL kick: P[j].ID %llu BH ID %llu Type(j) %d All.BAL_f_accretion %g M(j) %g V(j).xyz %g/%g/%g P(j).xyz %g/%g/%g p(i).xyz %g/%g/%g v_out %g \n",
                                        (unsigned long long) P[j].ID, (unsigned long long) P[j].SwallowID,P[j].Type, All.BAL_f_accretion,P[j].Mass,P[j].Vel[0],P[j].Vel[1],P[j].Vel[2],P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],pos[0],pos[1],pos[2],v_kick);
@@ -928,11 +927,11 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         //vectors and shorthands for particle velocity direction relative to sink axis in jet
         double jet_theta, theta0=SINGLE_STAR_FB_JETS_THETA0,thetamax=SINGLE_STAR_FB_JETS_MAX_OPENING_ANGLE/180.0*M_PI;
         double sqrttheta0sqplusone=sqrt(1.0+theta0*theta0);
-        double Jsinktot=sqrt(P[i].Jsink[0]*P[i].Jsink[0] + P[i].Jsink[1]*P[i].Jsink[1] + P[i].Jsink[2]*P[i].Jsink[2]);
+        double Jsinktot_specific=sqrt(P[i].BH_Specific_AngMom[0]*P[i].BH_Specific_AngMom[0] + P[i].BH_Specific_AngMom[1]*P[i].BH_Specific_AngMom[1] + P[i].BH_Specific_AngMom[2]*P[i].BH_Specific_AngMom[2]);
         //Set up base vectors of the coordinate system for the jet, the z axis (b_vect3) is set to be along Jsink
-        if (Jsinktot>0){b_vect3[0]= P[i].Jsink[0]/Jsinktot;b_vect3[1]= P[i].Jsink[1]/Jsinktot;b_vect3[2]= P[i].Jsink[2]/Jsinktot;}
+        if (Jsinktot_specific>0){b_vect3[0]= P[i].BH_Specific_AngMom[0]/Jsinktot_specific;b_vect3[1]= P[i].BH_Specific_AngMom[1]/Jsinktot_specific;b_vect3[2]= P[i].BH_Specific_AngMom[2]/Jsinktot_specific;}
         else{b_vect3[0]= 0;b_vect3[1]= 0;b_vect3[2]= 1.0;}//if the sink has no angular momentum, launch in the z direction (arbitrary but should not matter much)
-        if(P[i].Jsink[1]*P[i].Jsink[2]>0){//check that Jsink is not the x unit vector
+        if(P[i].BH_Specific_AngMom[1]*P[i].BH_Specific_AngMom[2]>0){//check that Jsink is not the x unit vector
             b_vect1[0] = 0.0; b_vect1[1] = b_vect3[2]; b_vect1[2] = - b_vect3[1]; //We get the first base vector by taking cross product of Jsink with +x unit vector */
         }else{
             b_vect1[0]=0.0;b_vect1[1]=1.0;b_vect1[2]=0.0; //If Jsink is parallel to x, we just take y as the other bas vector

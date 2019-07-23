@@ -374,6 +374,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define INT_ZONE_TO_HSML 1.0 //how many times larger should the sink interaction zone be compared to the the particle's adaptive smoothing length, 1 should be good
 #define NEWSINK_NEIGHBORMAX 200 //maximum number of neighbors anticipated, using BlackHoleNgbFactor=5 and DesNumNgb=32  value of 200 should be safe
 #endif
+#ifdef NEWSINK_J_FEEDBACK
+#define BH_FOLLOW_ANGMOM //let's use the BH infrastructure to keep track of sink angular momentum
+#endif
 //#GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory
 #ifdef SINGLE_STAR_FB_HEATING
 #define GALSF_FB_FIRE_RT_LONGRANGE  // turn on FIRE RT approximation: no Type-4 particles so don't worry about its approximations
@@ -2258,7 +2261,6 @@ extern ALIGN(32) struct particle_data
     MyFloat BH_Mdot_AlphaDisk; /*Mdot for the alpha disk*/
 #endif
 #ifdef NEWSINK_J_FEEDBACK
-    MyFloat Jsink[3];
     MyFloat t_disc;
 #endif
     MyFloat BH_Mdot;
@@ -2957,7 +2959,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyLongDouble accreted_moment[3]; /* first mass moment of accreted gas, for preserving centre of mass */
 #endif
 #if defined(BH_FOLLOW_ANGMOM)
-    MyFloat accreted_J[3];              /*!< Accreted angular momentum */
+    MyLongDouble accreted_J[3];              /*!< Accreted angular momentum */
 #endif
 
 #if defined(NEWSINK)
@@ -2988,7 +2990,6 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyFloat gasmass_within_softening;
 #endif     
 #if defined(NEWSINK_J_FEEDBACK)
-    MyLongDouble accreted_J[3]; /* Accreted angular momentum */
     MyDouble dv_ang_kick_norm[NEWSINK_NEIGHBORMAX]; /*Normalization term for angular momentum feedback kicks, see denominator of Eq 22 of Hubber 2013*/
 #endif
 #endif

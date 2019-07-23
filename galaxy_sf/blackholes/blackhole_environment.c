@@ -133,7 +133,7 @@ void blackhole_environment_loop(void)
 	    BlackholeDataIn[j].TimeBin = P[place].TimeBin;
 #endif
 #if defined(NEWSINK_J_FEEDBACK)
-                BlackholeDataIn[j].Jsink[0] = P[place].Jsink[0];BlackholeDataIn[j].Jsink[1] = P[place].Jsink[1];BlackholeDataIn[j].Jsink[2] = P[place].Jsink[2];
+                BlackholeDataIn[j].Jsink[0] = P[place].Mass*P[place].BH_Specific_AngMom[0];BlackholeDataIn[j].Jsink[1] = P[place].Mass*P[place].BH_Specific_AngMom[1];BlackholeDataIn[j].Jsink[2] = P[place].Mass*P[place].BH_Specific_AngMom[2];
 #endif
             memcpy(BlackholeDataIn[j].NodeList, DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
         }
@@ -243,7 +243,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     MyDouble Jpar[3], dt;
 #if defined(NEWSINK_J_FEEDBACK)
     MyFloat Jsinktot, Jcrossdr[3], drcrossJcrossdr[3];
-    MyFloat *Jsink;
+    MyFloat Jsink[3];
 #endif
 #endif
     
@@ -274,7 +274,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 #if defined(NEWSINK)
         int_zone_radius = P[target].Hsml * INT_ZONE_TO_HSML;
 #if defined(NEWSINK_J_FEEDBACK)
-        Jsink = P[target].Jsink;
+        Jsink[0] = P[target].Mass*P[target].BH_Specific_AngMom[0]; Jsink[1] = P[target].Mass*P[target].BH_Specific_AngMom[1]; Jsink[2] = P[target].Mass*P[target].BH_Specific_AngMom[2];
 #endif
 #endif
     }
@@ -300,7 +300,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 #if defined(NEWSINK)
         int_zone_radius = BlackholeDataGet[target].Hsml * INT_ZONE_TO_HSML;
 #if defined(NEWSINK_J_FEEDBACK)
-        Jsink = BlackholeDataGet[target].Jsink;
+        Jsink[0] = BlackholeDataGet[target].Jsink[0]; Jsink[1] = BlackholeDataGet[target].Jsink[1]; Jsink[2] = BlackholeDataGet[target].Jsink[2];
 #endif
 #endif
     }

@@ -546,10 +546,14 @@ void init(void)
                 BPP(i).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
 #endif
 #ifdef BH_FOLLOW_ANGMOM
+#if defined(SINGLE_STAR_FORMATION)
+                P[i].BH_Specific_AngMom[0]=0;P[i].BH_Specific_AngMom[1]=0;P[i].BH_Specific_AngMom[2]=0; //sink particles start with zero angular momentum in star formation sims
+#else
                 double bh_mu=DMAX(0,2*get_random_number(P[i].ID+3)-1), bh_phi=2*M_PI*get_random_number(P[i].ID+4), bh_sin=sqrt(1-bh_mu*bh_mu);
                 double spin_prefac = All.G * P[i].BH_Mass / (C/All.UnitVelocity_in_cm_per_s); // assume initially maximally-spinning BH with random orientation
                 P[i].BH_Specific_AngMom[0]=bh_sin*cos(bh_phi); P[i].BH_Specific_AngMom[1]=bh_sin*sin(bh_phi); P[i].BH_Specific_AngMom[2]=bh_mu;
-#endif		
+#endif
+#endif
 #if defined(SINGLE_STAR_STRICT_ACCRETION) && !defined(READ_SINKRADIUS)
                 BPP(i).SinkRadius = 0;
 #endif

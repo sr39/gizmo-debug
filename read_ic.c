@@ -623,13 +623,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                 P[offset + n].SinkRadius = *fp++;
 #endif
             break;
-        case IO_JSINK:
-#ifdef NEWSINK_J_FEEDBACK
-            for(n = 0; n < pc; n++)
-                for(k = 0; k < 3; k++)
-                    P[offset + n].Jsink[k] = *fp++;
-#endif
-            break;
         case IO_BHMASSINIT:
 #ifdef NEWSINK
             for(n = 0; n < pc; n++)
