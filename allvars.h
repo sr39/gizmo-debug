@@ -375,7 +375,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define NEWSINK_NEIGHBORMAX 200 //maximum number of neighbors anticipated, using BlackHoleNgbFactor=5 and DesNumNgb=32  value of 200 should be safe
 #endif
 //#GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory
-#ifdef SINGLE_STAR_FB_HEATING
+#ifdef SINGLE_STAR_FB_RT_HEATING
 #define GALSF_FB_FIRE_RT_LONGRANGE  // turn on FIRE RT approximation: no Type-4 particles so don't worry about its approximations
 #define BH_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework. make sure BH_FluxMomentumFactor=0 to avoid launching winds this way!!!
 #define BH_COMPTON_HEATING // turn on the heating term: this just calculates incident BH-particle flux, to be used in the cooling routine
@@ -2291,16 +2291,16 @@ extern ALIGN(32) struct particle_data
     MyFloat min_bh_approach_time;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     int SuperTimestepFlag; // >=2 if allowed to super-timestep (increases with each drift/kick), 1 if a candidate for super-timestepping, 0 otherwise
-//    int COM_calc_flag; //tells forcetree whether to calculate the forces for the particle (0) or the center of mass (1)
-    //MyIDType comp_ID; //ID of binary companion
     MyDouble COM_dt_tidal; //timescale from tidal tensor evaluated at the center of mass without contribution from the companion
     MyDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
+    //int COM_calc_flag; //tells forcetree whether to calculate the forces for the particle (0) or the center of mass (1)
+    //MyIDType comp_ID; //ID of binary companion
     //MyDouble COM_Vel[3]; //center of mass velocity
 #endif
 #endif  
 #endif
 
-#if defined(SINGLE_STAR_PROMOTION) || defined(SINGLE_STAR_FB_HEATING)
+#if defined(SINGLE_STAR_PROMOTION) || defined(SINGLE_STAR_FB_RT_HEATING)
 #define SINGLE_STAR_PROTOSTELLAR_EVOLUTION
 #endif    
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION    
@@ -2823,16 +2823,16 @@ extern struct gravdata_in
 #endif
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
-    MyFloat min_bh_t_orbital; //orbital time for binary
-    MyDouble comp_dx[3]; //position of binary companion
-    MyDouble comp_dv[3]; //velocity of binary companion
-    MyDouble comp_Mass; //mass of binary companion
+    MyFloat min_bh_t_orbital;   /*!<orbital time for binary */
+    MyDouble comp_dx[3];        /*!< position of binary companion */
+    MyDouble comp_dv[3];        /*!< velocity of binary companion */
+    MyDouble comp_Mass;         /*!< mass of binary companion */
     int is_in_a_binary;
 #endif    
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-    //MyIDType comp_ID; //ID of binary companion
-    int SuperTimestepFlag; // 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
-//    int COM_calc_flag; //tells forcetree whether to calculate the forces for the particle (0) or the center of mass (1)
+    //MyIDType comp_ID;     /*!< ID of binary companion */
+    //int COM_calc_flag;    /*!< tells forcetree whether to calculate the forces for the particle (0) or the center of mass (1) */
+    int SuperTimestepFlag;  /*!< 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise */
 #endif
     MyFloat OldAcc;
     int NodeList[NODELISTLENGTH];
@@ -2880,9 +2880,9 @@ extern struct gravdata_out
     MyFloat min_bh_periastron; // closest anticipated periastron passage
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
     //MyIDType comp_ID; //ID of binary companion
+    //MyDouble COM_Vel[3]; //velocity of center of mass
     MyLongDouble COM_tidal_tensorps[3][3]; //tidal tensor evaluated at the center of mass without contribution from the companion
     MyDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
-    //MyDouble COM_Vel[3]; //velocity of center of mass
     int COM_calc_flag; //flag that tells whether this was only a rerun to get the acceleration ad the tidal tenor at the center of mass of a binary
     int SuperTimestepFlag; // 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
 #endif
@@ -2952,9 +2952,8 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 #if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;        /*!< gives the mass we want to swallow that contributes to eddington */
 #endif
-
 #if defined(SINGLE_STAR_STRICT_ACCRETION) || defined(NEWSINK)
-    MyLongDouble accreted_moment[3]; /* first mass moment of accreted gas, for preserving centre of mass */
+    MyLongDouble accreted_moment[3];    /*!< first mass moment of accreted gas, for preserving centre of mass */
 #endif
 #if defined(BH_FOLLOW_ANGMOM)
     MyFloat accreted_J[3];              /*!< Accreted angular momentum */
@@ -2962,27 +2961,27 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 
 #if defined(NEWSINK)
     /* Timescales for the implementation of the NEWSINK algorithm from Hubber 2013 */
-    MyFloat t_disc;        /* Disc timescale */
-    MyFloat t_rad;        /* Timescale of radial infall */
-    MyFloat t_acc;        /* Accretion timescale */
+    MyFloat t_disc;                     /*!< Disc timescale */
+    MyFloat t_rad;                      /*!< Timescale of radial infall */
+    MyFloat t_acc;                      /*!< Accretion timescale */
     /* Further gas properties */
-    MyFloat gas_Erot_in_intzone;        /* Rotational energy in kernel */
-    MyFloat gas_Egrav_in_intzone;        /* gravitational energy in kernel */
-    MyFloat t_rad_denom_sum;        /* sum in denominator of Eq 8 in Hbber 2013 */
-    MyFloat t_disc_num_sum;        /* sum in Eq 10 in Hubber 2013 without kernel weight*/
-    MyFloat intzone_massweight_all;        /* sum in denominator of Eq 8 in Hubber 2013 */
-    MyFloat intzone_gasmass;        /* sum of gas mass in Sink Radius */
+    MyFloat gas_Erot_in_intzone;        /*!< Rotational energy in kernel */
+    MyFloat gas_Egrav_in_intzone;       /*!< gravitational energy in kernel */
+    MyFloat t_rad_denom_sum;            /*!< sum in denominator of Eq 8 in Hbber 2013 */
+    MyFloat t_disc_num_sum;             /*!< sum in Eq 10 in Hubber 2013 without kernel weight*/
+    MyFloat intzone_massweight_all;     /*!< sum in denominator of Eq 8 in Hubber 2013 */
+    MyFloat intzone_gasmass;            /*!< sum of gas mass in Sink Radius */
     /* properties of neighboring particles, used for preferential feeding */
-    int n_neighbor; //number of neighbors currently stored in the arrays below
-    MyFloat rgas[NEWSINK_NEIGHBORMAX]; /* Distance of gas from sink */
-    MyFloat xgas[NEWSINK_NEIGHBORMAX]; /* x coordinate of gas from sink */
-    MyFloat ygas[NEWSINK_NEIGHBORMAX]; /* y coordinate of gas from sink */
-    MyFloat zgas[NEWSINK_NEIGHBORMAX]; /* z coordinate of gas from sink */
-    MyFloat Hsmlgas[NEWSINK_NEIGHBORMAX]; /* gas smoothing length */
-    MyFloat mgas[NEWSINK_NEIGHBORMAX]; /* Mass of gas particle */
-    MyIDType gasID[NEWSINK_NEIGHBORMAX]; /* ID of gas particle */
-    int isbound[NEWSINK_NEIGHBORMAX]; /* is it bound to the sink */
-    MyFloat f_acc[NEWSINK_NEIGHBORMAX]; /* How much of the gas particle should be accreted */
+    int n_neighbor;                     /*!< number of neighbors currently stored in the arrays below */
+    MyFloat rgas[NEWSINK_NEIGHBORMAX];  /*!< Distance of gas from sink */
+    MyFloat xgas[NEWSINK_NEIGHBORMAX];  /*!< x coordinate of gas from sink */
+    MyFloat ygas[NEWSINK_NEIGHBORMAX];  /*!< y coordinate of gas from sink */
+    MyFloat zgas[NEWSINK_NEIGHBORMAX];  /*!< z coordinate of gas from sink */
+    MyFloat Hsmlgas[NEWSINK_NEIGHBORMAX]; /*!< gas smoothing length */
+    MyFloat mgas[NEWSINK_NEIGHBORMAX];  /*!< Mass of gas particle */
+    MyIDType gasID[NEWSINK_NEIGHBORMAX];/*!< ID of gas particle */
+    int isbound[NEWSINK_NEIGHBORMAX];   /*!< is it bound to the sink */
+    MyFloat f_acc[NEWSINK_NEIGHBORMAX]; /*!< How much of the gas particle should be accreted */
 #ifdef NEWSINK_BONDI
     MyFloat min_bondi_mdot;
     MyFloat gasmass_within_softening;

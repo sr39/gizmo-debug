@@ -177,7 +177,6 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
 
 #if defined(RT_NUV)
     /* Near-UV approximate spectra (UV/optical spectra, sub-photo-electric, but high-opacity) for stars as used in the FIRE (Hopkins et al.) models */
-    // MYG: we're gonna have to update this with fits for individual stars instead of SSP
     if((1 << P[i].Type) & (RT_SOURCES)) // check if the particle falls into one of the allowed source types
     {
         if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
@@ -196,7 +195,6 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
     
 #if defined(RT_OPTICAL_NIR)
     /* Optical-NIR approximate spectra for stars as used in the FIRE (Hopkins et al.) models */
-    // MYG: we're gonna have to update this with fits for individual stars instead of SSP
     if((1 << P[i].Type) & (RT_SOURCES)) // check if the particle falls into one of the allowed source types
     {
         if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
@@ -214,7 +212,6 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
 
 #ifdef RT_PHOTOELECTRIC
     /* photo-electric bands (8-13.6 eV, specifically): below is from integrating the spectra from STARBURST99 with the Geneva40 solar-metallicity + lower tracks */
-    // MYG: we're gonna have to update this with fits for individual stars instead of SSP
     if((1 << P[i].Type) & (RT_SOURCES)) // check if the particle falls into one of the allowed source types
     {
         if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )
@@ -238,7 +235,6 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
 
 #ifdef RT_LYMAN_WERNER
     /* lyman-werner bands (11.2-13.6 eV, specifically): below is from integrating the spectra from STARBURST99 with the Geneva40 solar-metallicity + lower tracks */
-    // MYG: we're gonna have to update this with fits for individual stars instead of SSP
     if((1 << P[i].Type) & (RT_SOURCES)) // check if the particle falls into one of the allowed source types
     {
         if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && P[i].Mass>0 && PPP[i].Hsml>0 )

@@ -288,7 +288,7 @@ void density(void)
 #ifdef BLACK_HOLES
             P[i].SwallowID = 0;
 #ifdef SINGLE_STAR_FORMATION
-	    P[i].SwallowTime = MAX_REAL_NUMBER;
+	        P[i].SwallowTime = MAX_REAL_NUMBER;
 #endif	    
 #endif
         }
@@ -745,7 +745,7 @@ void density(void)
 #ifdef BLACK_HOLES
                 if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius / All.cf_atime;}  // MaxAccretionRadius is now defined in params.txt in PHYSICAL units
 #ifdef SINGLE_STAR_FORMATION
-		if(P[i].Type == 5) {minsoft = All.ForceSoftening[5] / All.cf_atime;} // we should always find all nieghbours within the softening kernel/accretion radius, which is a lower bound on the accretion radius
+		        if(P[i].Type == 5) {minsoft = All.ForceSoftening[5] / All.cf_atime;} // we should always find all neighbours within the softening kernel/accretion radius, which is a lower bound on the accretion radius
 #endif		
 #endif
 
@@ -1437,14 +1437,11 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
 #endif
         
 #if defined(BLACK_HOLES)
-	P[j].SwallowID = 0;  // this way we don't have to do a global loop over local particles in blackhole_accretion() to reset these quantities...
-	
-        if(out->BH_TimeBinGasNeighbor > P[j].TimeBin)
-            out->BH_TimeBinGasNeighbor = P[j].TimeBin;
+	    P[j].SwallowID = 0;  // this way we don't have to do a global loop over local particles in blackhole_accretion() to reset these quantities...
+        if(out->BH_TimeBinGasNeighbor > P[j].TimeBin) {out->BH_TimeBinGasNeighbor = P[j].TimeBin;}
 #ifdef SINGLE_STAR_FORMATION
-	P[j].SwallowTime = MAX_REAL_NUMBER;	
-        if((out->BH_NearestGasNeighbor > DMAX(Get_Particle_Size(j), kernel->r)) && (P[j].Mass > 0))
-            out->BH_NearestGasNeighbor = DMAX(Get_Particle_Size(j), kernel->r);
+	    P[j].SwallowTime = MAX_REAL_NUMBER;	
+        if((out->BH_NearestGasNeighbor > DMAX(Get_Particle_Size(j), kernel->r)) && (P[j].Mass > 0)) {out->BH_NearestGasNeighbor = DMAX(Get_Particle_Size(j), kernel->r);}
 #endif
 #endif
         

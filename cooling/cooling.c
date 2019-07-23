@@ -1175,7 +1175,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
     
 
-#if defined(COOL_LOW_TEMPERATURES) && !defined(OPTICALLY_THIN_COOLING)
+#if defined(COOL_LOW_TEMPERATURES) && !defined(COOL_LOWTEMP_THIN_ONLY)
     /* if we are in the optically thick limit, we need to modify the cooling/heating rates according to the appropriate limits; 
         this flag does so by using a simple approximation. we consider the element as if it were a slab, with a column density 
         calculated from the simulation properties and the Sobolev approximation. we then assume it develops an equilibrium internal 

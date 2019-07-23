@@ -62,7 +62,6 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
         if(P[i].Type == 5)
         {
             double T4000_4 = pow(m_solar , 0.55); // protostellar temperature along Hayashi track
-
             double l_kh = 0.2263 * P[i].ProtoStellar_Radius*P[i].ProtoStellar_Radius * T4000_4; // luminosity from KH contraction
             if(l_kh > lum_sol) {lum_sol = l_kh;} // if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
         }

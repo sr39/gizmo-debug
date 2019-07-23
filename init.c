@@ -524,13 +524,12 @@ void init(void)
         
 #ifdef BLACK_HOLES
 #ifdef BH_WAKEUP_GAS
-	if(P[i].Type == 0)  P[i].LowestBHTimeBin = TIMEBINS;
+	    if(P[i].Type == 0) {P[i].LowestBHTimeBin = TIMEBINS;}
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING
-	P[i].min_bh_approach_time = MAX_REAL_NUMBER;
-	P[i].min_bh_freefall_time = MAX_REAL_NUMBER;
+	    P[i].min_bh_approach_time = P[i].min_bh_freefall_time = MAX_REAL_NUMBER;
 #ifdef SINGLE_STAR_SUPERTIMESTEPPING
-	P[i].SuperTimestepFlag = 0;
+	    P[i].SuperTimestepFlag = 0;
 #endif
 #endif	
         if(P[i].Type == 5)
@@ -540,7 +539,7 @@ void init(void)
             {
                 BPP(i).BH_Mass = All.SeedBlackHoleMass;
 #ifdef SINGLE_STAR_FORMATION
-		BPP(i).BH_Mass = P[i].Mass;
+		        BPP(i).BH_Mass = P[i].Mass;
 #endif		
 #ifdef BH_ALPHADISK_ACCRETION
                 BPP(i).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
