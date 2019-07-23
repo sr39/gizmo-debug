@@ -1000,7 +1000,7 @@ void blackhole_final_operations(void)
 		P[n].Pos[k] = (P[n].Pos[k]*P[n].Mass + BlackholeTempInfo[i].accreted_moment[k]) / (BlackholeTempInfo[i].accreted_Mass + P[n].Mass);
 #if defined(NEWSINK_J_FEEDBACK)
 // printf("%d BH Final momentum accreted \n", ThisTask);
-                BPP(n).Jsink[k] += (MyFloat) BlackholeTempInfo[i].accreted_J[k]; /* Sinks accrete angular momentum */
+                BPP(n).BH_Specific_AngMom[k] = ((MyFloat) BlackholeTempInfo[i].accreted_J[k] +BPP(n).BH_Specific_AngMom[k]*P[n].Mass)/ (BlackholeTempInfo[i].accreted_Mass + P[n].Mass); /* Sinks accrete angular momentum */
 // printf("%d BH Final ang momentum accreted \n", ThisTask);
 #endif
 #endif		

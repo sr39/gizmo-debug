@@ -81,7 +81,7 @@ void blackhole_feed_loop(void)
                 BlackholeDataIn[j].Pos[k] = P[place].Pos[k];
                 BlackholeDataIn[j].Vel[k] = P[place].Vel[k];
 #if defined(NEWSINK_J_FEEDBACK)
-                BlackholeDataIn[j].Jsink[k] = BPP(place).Jsink[k];
+                BlackholeDataIn[j].Jsink[k] = BPP(place).Mass * BPP(place).BH_Specific_AngMom[k];
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
                 BlackholeDataIn[j].Jgas_in_Kernel[k] = BlackholeTempInfo[P[place].IndexMapToTempStruc].Jgas_in_Kernel[k];

@@ -1097,20 +1097,6 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-        case IO_JSINK:
-#ifdef NEWSINK_J_FEEDBACK
-            for(n = 0; n < pc; pindex++){
-                if(P[pindex].Type == type)
-                {
-                    for(k = 0; k < 3; k++){
-                        fp[k] = P[pindex].Jsink[k];
-		    }
-                    n++;
-                    fp+=3;
-                }
-            }
-#endif
-            break;
         case IO_BHMASSINIT:
 #ifdef NEWSINK
             for(n = 0; n < pc; pindex++)
@@ -1879,13 +1865,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_BHMASSALPHA:
         case IO_ACRB:
         case IO_SINKRAD:
-        case IO_JSINK:
-            if(mode)
-                bytes_per_blockelement = 3 * sizeof(MyInputFloat);
-            else
-                bytes_per_blockelement = 3 * sizeof(MyOutputFloat);
-            break;
-
         case IO_BHMASSINIT:
         case IO_BHMDOT:
         case IO_CAUSTIC_COUNTER:
@@ -2332,15 +2311,6 @@ int get_values_per_blockelement(enum iofields blocknr)
             break;
 
 	    
-        case IO_JSINK:
-#ifdef NEWSINK_J_FEEDBACK
-            values = 3;
-#else
-            values = 0;
-#endif
-            break;
-
-	    
         case IO_Z:
 #ifdef METALS
             values = NUM_METAL_SPECIES;
@@ -2750,7 +2720,6 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_BH_ANGMOM:
         case IO_ACRB:
         case IO_SINKRAD:
-        case IO_JSINK:
         case IO_BHMASSINIT:
         case IO_BHMDOT:
         case IO_BHPROGS:
@@ -3235,13 +3204,6 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
-        case IO_JSINK:
-#if defined(NEWSINK_J_FEEDBACK)
-            return 1;
-#else
-            return 0;
-#endif
-	    break;
         case IO_BHMASSINIT:
         case IO_BHMASS:
         case IO_BHMASSALPHA:
@@ -3771,9 +3733,6 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_SINKRAD:
             strncpy(label, "SRAD", 4);
             break;
-        case IO_JSINK:
-            strncpy(label, "JSIN", 4);
-            break;
         case IO_BHMASSINIT:
             strncpy(label, "BHMI", 4);
             break;
@@ -4235,9 +4194,6 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_SINKRAD:
             strcpy(buf, "SinkRadius");
-            break;
-        case IO_JSINK:
-            strcpy(buf, "Jsink");
             break;
         case IO_BHMASSINIT:
             strcpy(buf, "init_mass_in_intzone");
