@@ -359,7 +359,7 @@ static inline void out2particle_DMGrad(struct DMGraddata_out *out, int i, int mo
             for(k2=0;k2<3;k2++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients2_Psi_Im[k2][k],out->Gradients[k].AGS_Gradients_Psi_Im[k2],mode);}
 #endif
         }
-        // ??? do we need limiters here for the density gradients? Not clear if this all needs computing
+        // do we need limiters here for the density gradients? Not clear if this all needs computing
     }
 }
 

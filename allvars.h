@@ -361,7 +361,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #ifdef NEWSINK
 #define BH_GRAVCAPTURE_GAS
-//#define BH_ALPHADISK_ACCRETION
+#define BH_ALPHADISK_ACCRETION
 #define NEWSINK_BONDI
 #define NEWSINK_J_FEEDBACK //turns on angular momentum feedback in NEWSINK
 /* #ifdef MAGNETIC */
@@ -2249,6 +2249,9 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_WAKEUP_GAS /* force all gas within the interaction radius of a sink to timestep at the same rate */
     int LowestBHTimeBin;
 #endif
+#ifdef BH_FOLLOW_ANGMOM
+    MyFloat BH_Specific_AngMom[3];
+#endif
 #ifdef NEWSINK    
     MyFloat init_mass_in_intzone; /*initial mass in interaction zone, used for scaling mdot*/
     MyFloat BH_Mdot_Avg; /*Mdot averaged over dynamical time */
@@ -2940,20 +2943,23 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyFloat DF_rms_vel;
     MyFloat DF_mmax_particles;
 #endif
-#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION == 5)
+#if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5)
     MyFloat BH_SurroundingGasVel[3];
 #endif
-    
 #if defined(BH_ALPHADISK_ACCRETION)
     MyFloat mdot_alphadisk;             /*!< gives mdot of mass going into alpha disk */
 #endif
-
 #if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;        /*!< gives the mass we want to swallow that contributes to eddington */
 #endif
+
 #if defined(SINGLE_STAR_STRICT_ACCRETION) || defined(NEWSINK)
     MyLongDouble accreted_moment[3]; /* first mass moment of accreted gas, for preserving centre of mass */
 #endif
+#if defined(BH_FOLLOW_ANGMOM)
+    MyFloat accreted_J[3];              /*!< Accreted angular momentum */
+#endif
+
 #if defined(NEWSINK)
     /* Timescales for the implementation of the NEWSINK algorithm from Hubber 2013 */
     MyFloat t_disc;        /* Disc timescale */
@@ -2986,7 +2992,6 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyDouble dv_ang_kick_norm[NEWSINK_NEIGHBORMAX]; /*Normalization term for angular momentum feedback kicks, see denominator of Eq 22 of Hubber 2013*/
 #endif
 #endif
-
 }
 *BlackholeTempInfo, *BlackholeDataPasserResult, *BlackholeDataPasserOut;
 #endif
@@ -3062,6 +3067,7 @@ enum iofields
   IO_Z,
   IO_BHMASS,
   IO_BHMASSALPHA,
+  IO_BH_ANGMOM,
   IO_BHMDOT,
   IO_BHPROGS,
   IO_BH_DIST,
