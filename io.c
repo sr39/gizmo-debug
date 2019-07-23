@@ -1042,7 +1042,19 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
+
+        case IO_BH_ANGMOM:
+#ifdef BH_FOLLOW_ANGMOM
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    for(k = 0; k < 3; k++)
+                        *fp++ = BPP(pindex).BH_Specific_AngMom[k];
+                    n++;
+                }
+#endif
+            break;
+
         case IO_BHMDOT:
 #ifdef BLACK_HOLES
             for(n = 0; n < pc; pindex++)
@@ -1784,6 +1796,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_RAD_ACCEL:
         case IO_VORT:
         case IO_MG_ACCEL:
+        case IO_BH_ANGMOM:
             if(mode)
                 bytes_per_blockelement = 3 * sizeof(MyInputFloat);
             else
@@ -2176,6 +2189,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_RAD_ACCEL:
         case IO_VORT:
         case IO_MG_ACCEL:
+        case IO_BH_ANGMOM:
             values = 3;
             break;
             
@@ -2733,6 +2747,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             
         case IO_BHMASS:
         case IO_BHMASSALPHA:
+        case IO_BH_ANGMOM:
         case IO_ACRB:
         case IO_SINKRAD:
         case IO_JSINK:
@@ -3203,7 +3218,15 @@ int blockpresent(enum iofields blocknr)
             return 0;
             break;
             
-            
+
+        case IO_BH_ANGMOM:
+#ifdef BH_FOLLOW_ANGMOM
+            return 1;
+#else
+            return 0;
+#endif
+            break;
+
         case IO_ACRB:
         case IO_SINKRAD:
 #ifdef SINGLE_STAR_STRICT_ACCRETION
@@ -3739,6 +3762,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_BHMASSALPHA:
             strncpy(label, "BHMa", 4);
             break;
+        case IO_BH_ANGMOM:
+            strncpy(label, "BHmJ", 4);
+            break;
         case IO_ACRB:
             strncpy(label, "ACRB", 4);
             break;
@@ -4200,6 +4226,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_BHMASSALPHA:
             strcpy(buf, "BH_Mass_AlphaDisk");
+            break;
+        case IO_BH_ANGMOM:
+            strcpy(buf, "BH_Specific_AngMom");
             break;
         case IO_ACRB:
             strcpy(buf, "BH_AccretionLength");

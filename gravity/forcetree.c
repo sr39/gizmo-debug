@@ -2503,7 +2503,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 	    
             if((r2 > 0) && (mass > 0)) // only go forward if mass positive and there is separation
             {
-            
             r = sqrt(r2);
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
             if((r >= h) && !((ptype_sec > -1) && (r < 1/h_p_inv))) // can only do the Newtonian force if the field source is outside our own softening, and we are not within the softening of a field source particle
