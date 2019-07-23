@@ -297,9 +297,7 @@ void drift_particle(int i, integertime time1)
 
 void move_particles(integertime time1)
 {
-    int i;
-    for(i = 0; i < NumPart; i++)
-        drift_particle(i, time1);
+    int i; for(i=0; i<NumPart; i++) {drift_particle(i, time1);}
 }
 
 

@@ -2253,7 +2253,6 @@ extern ALIGN(32) struct particle_data
     MyFloat BH_Specific_AngMom[3];
 #endif
 #ifdef NEWSINK    
-    MyFloat init_mass_in_intzone; /*initial mass in interaction zone, used for scaling mdot*/
     MyFloat BH_Mdot_Avg; /*Mdot averaged over dynamical time */
     MyFloat BH_Mdot_AlphaDisk; /*Mdot for the alpha disk*/
 #endif
@@ -3068,7 +3067,6 @@ enum iofields
   IO_ACRB,
   IO_SINKRAD,
   IO_JSINK,
-  IO_BHMASSINIT,
   IO_POT,
   IO_ACCEL,
   IO_HII,

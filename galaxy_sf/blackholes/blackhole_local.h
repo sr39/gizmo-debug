@@ -32,9 +32,6 @@ static struct blackholedata_in
 #ifdef SINGLE_STAR_STRICT_ACCRETION
     MyFloat SinkRadius;
 #endif
-/* #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-    MyFloat ProtoStellar_Radius;
-#endif     */
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
 #endif
@@ -51,6 +48,7 @@ static struct blackholedata_in
 #if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;
 #endif
+
 #if defined(NEWSINK)
 #if !defined(SINGLE_STAR_STRICT_ACCRETION)
     MyFloat SinkRadius;
@@ -108,6 +106,7 @@ static struct blackholedata_out
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyFloat BH_angle_weighted_kernel_sum;
 #endif
+
 #if defined(SINGLE_STAR_STRICT_ACCRETION) || defined(NEWSINK)
     MyLongDouble accreted_moment[3];
 #endif
@@ -118,7 +117,6 @@ static struct blackholedata_out
     MyFloat f_acc[NEWSINK_NEIGHBORMAX]; /* How much of the gas particle should be accreted */
 #if defined(NEWSINK_J_FEEDBACK)
     MyLongDouble accreted_J[3];
-
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat Mdot_AlphaDisk;

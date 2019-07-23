@@ -92,6 +92,8 @@ void gravity_tree(void)
 #endif
         CPU_Step[CPU_MISC] += measure_time();
 
+        move_particles(All.Ti_Current);
+
         force_treebuild(NumPart, NULL);
         
         CPU_Step[CPU_TREEBUILD] += measure_time();

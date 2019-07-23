@@ -108,11 +108,7 @@ double bh_lum_bol(double mdot, double mass, long id)
 
 
 /* calculate escape velocity to use for bounded-ness calculations relative to the BH */
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
 double bh_vesc(int j, double mass, double r_code, double bh_softening)
-#else
-double bh_vesc(int j, double mass, double r_code)
-#endif    
 {
     double cs_to_add_km_s = 10.0; /* we can optionally add a 'fudge factor' to v_esc to set a minimum value; useful for galaxy applications */
 #if defined(SINGLE_STAR_FORMATION) || defined(BH_SEED_GROWTH_TESTS)
@@ -128,9 +124,6 @@ double bh_vesc(int j, double mass, double r_code)
     }
 #ifdef SINGLE_STAR_FORMATION
     double hinv;
-#ifndef ADAPTIVE_GRAVSOFT_FORALL
-    double bh_softening = All.ForceSoftening[5];
-#endif    
     if (P[j].Type == 0) hinv = 1/DMAX(bh_softening, P[j].Hsml);
     else hinv = 1/All.ForceSoftening[5];
     if(r_code < 1/hinv){
@@ -327,18 +320,9 @@ void blackhole_properties_loop(void)
                     for(j=k+1; j< BlackholeTempInfo[i].n_neighbor; j++){
                         dx[0] = BlackholeTempInfo[i].xgas[k] - BlackholeTempInfo[i].xgas[j]; dx[1] = BlackholeTempInfo[i].ygas[k] - BlackholeTempInfo[i].ygas[j]; dx[2] = BlackholeTempInfo[i].zgas[k] - BlackholeTempInfo[i].zgas[j];
                         dr = sqrt( dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2] );
-//                        hinv_g1 = 1.0/BlackholeTempInfo[i].Hsmlgas[k]; hinv_g2 = 1.0/BlackholeTempInfo[i].Hsmlgas[j];
-//                        u1 = dr *hinv_g1; u2 = dr * hinv_g2;
-//                        hinv3_g1 = hinv_g1*hinv_g1*hinv_g1; hinv3_g2 = hinv_g2*hinv_g2*hinv_g2;
 			BlackholeTempInfo[i].gas_Egrav_in_intzone += grav_interaction_energy(dr, BlackholeTempInfo[i].mgas[j], BlackholeTempInfo[i].mgas[k], BlackholeTempInfo[i].Hsmlgas[j], BlackholeTempInfo[i].Hsmlgas[k]);
-//                        BlackholeTempInfo[i].gas_Egrav_in_intzone -= All.G * BlackholeTempInfo[i].mgas[k] * BlackholeTempInfo[i].mgas[j] * 0.5 * (kernel_gravity(u1, hinv_g1, hinv3_g1, -1) + kernel_gravity(u2, hinv_g2, hinv3_g2, -1)); /*Gas-gas interaction sum from Hubber 2013 Eq 14*/
                     }
                 }
-                //use spherical approximation with R= average distance of particles*/
-                //for(k=0; k< BlackholeTempInfo[i].n_neighbor; k++){ avg_rad += BlackholeTempInfo[i].rgas[k] * BlackholeTempInfo[i].mgas[k];}
-                //avg_rad = avg_rad / BlackholeTempInfo[i].intzone_gasmass; //mass weighted average radius of gas particles
-                //BlackholeTempInfo[i].gas_Egrav_in_intzone -= 0.6 * All.G * BlackholeTempInfo[i].intzone_gasmass * BlackholeTempInfo[i].intzone_gasmass / avg_rad; 
-                
                 t_exponent = DMIN(fabs(2.0*BlackholeTempInfo[i].gas_Erot_in_intzone/BlackholeTempInfo[i].gas_Egrav_in_intzone) , 1.0); /*exponent to interpolate between two time scales*/
                 t_exponent = t_exponent * t_exponent; /* squaring this seems to make the interpolation more faithful to the actual accretion rate in test problems - MYG */
                 BlackholeTempInfo[i].t_acc = pow(BlackholeTempInfo[i].t_rad,  (1.0-t_exponent) ) * pow(BlackholeTempInfo[i].t_disc,  t_exponent ); /* accretion timescale for sink */ 
@@ -346,10 +330,6 @@ void blackhole_properties_loop(void)
             else{
                 BlackholeTempInfo[i].t_acc = BlackholeTempInfo[i].t_disc; /* No net radial infall, let's jus use the disc timescale then*/
             }
-        }
-        /*Set BH data*/
-        if (BPP(n).init_mass_in_intzone==0){ /* This means we have not set the initial mass in the interaction zone */
-            BPP(n).init_mass_in_intzone = P[n].Mass + BlackholeTempInfo[i].intzone_gasmass; //initial mass is the gas that went into the BH
         }
 #if defined(NEWSINK_J_FEEDBACK)
         BPP(n).t_disc = BlackholeTempInfo[i].t_disc;
@@ -620,7 +600,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 #if defined(NEWSINK)
     if (BlackholeTempInfo[i].intzone_gasmass>0 && BlackholeTempInfo[i].t_acc>0)
     {
-      mdot = BlackholeTempInfo[i].intzone_gasmass / BlackholeTempInfo[i].t_acc; //* DMAX(1.0, pow(BlackholeTempInfo[i].intzone_gasmass/BPP(n).init_mass_in_intzone,2.0)); /* Use the accretion timescale calculated for the sink, then scaled by (M/M_init)^2 if larger than M_init*/
+      mdot = BlackholeTempInfo[i].intzone_gasmass / BlackholeTempInfo[i].t_acc; /* Use the accretion timescale calculated for the sink, then scaled by (M/M_init)^2 if larger than M_init*/
 #ifdef NEWSINK_BONDI
       BlackholeTempInfo[i].min_bondi_mdot = DMIN(BlackholeTempInfo[i].min_bondi_mdot,  BlackholeTempInfo[i].gasmass_within_softening/dt); // Don't want to overcorrect and suck up stuff outside the sink
       if (mdot < BlackholeTempInfo[i].min_bondi_mdot){
@@ -642,7 +622,6 @@ void set_blackhole_mdot(int i, int n, double dt)
         mdot = mass_in_low_dt_gas/dt; // set it to the value we will eat anyway
     }
 #ifdef BH_OUTPUT_MOREINFO
-    printf("mdot n=%llu BH initmass is: %f \n", (unsigned long long) n, (MyFloat) BPP(n).init_mass_in_intzone);
     printf("mdot n=%llu BH mass is: %f \n", (unsigned long long) n, (MyFloat) P[n].Mass);
     printf("mdot n=%llu BH gasmass is: %f \n", (unsigned long long) n, (MyFloat) BlackholeTempInfo[i].intzone_gasmass);
     printf("mdot n=%llu BH t acc is: %f \n", (unsigned long long) n, (MyFloat) BlackholeTempInfo[i].t_acc);
