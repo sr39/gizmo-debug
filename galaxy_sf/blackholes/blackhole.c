@@ -36,20 +36,12 @@ void blackhole_accretion(void)
 {
     if(All.TimeStep == 0.) return; /* no evolution */
     if(ThisTask == 0)  {printf("Start black-hole operations...\n");}
-    // This zero-out loop is effectively performed in density.c now, only on gas particles that are actually going to be looked at this timestep, to reduce overhead when only a few particles are active
-/*     long i; for(i = 0; i < NumPart; i++) { */
-/*       P[i].SwallowID = 0; */
-/* #ifdef SINGLE_STAR_FORMATION */
-/*       P[i].SwallowEnergy = MAX_REAL_NUMBER; */
-/* #endif       */
-/*     } /\* zero out accretion *\/ */
-    
+    //     long i; for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* zero out accretion */ //  This zero-out loop is effectively performed in density.c now, only on gas particles that are actually going to be looked at this timestep, to reduce overhead when only a few particles are active
     blackhole_start();              /* allocates and cleans BlackholeTempInfo struct */
- //printf("%d BH start loop done\n", ThisTask);
+    
     /* this is the PRE-PASS loop.*/
     blackhole_environment_loop();    /* populates BlackholeTempInfo based on surrounding gas (blackhole_environment.c).
                                       If using gravcap the desired mass accretion rate is calculated and set to BlackholeTempInfo.mass_to_swallow_edd */
- //printf("%d BH environment_loop done\n", ThisTask);
 #ifdef BH_GRAVACCRETION
     blackhole_environment_second_loop();    /* populates BlackholeTempInfo based on surrounding gas (blackhole_environment.c).
                                                Here we compute quantities that require knowledge of previous environment variables
@@ -61,28 +53,23 @@ void blackhole_accretion(void)
      No MPI comm necessary.
      ----------------------------------------------------------------------*/
     blackhole_properties_loop();       /* do 'BH-centric' operations such as dyn-fric, mdot, etc. This loop is at the end of this file.  */
- //printf("%d BH properties_loop done\n", ThisTask);
     /*----------------------------------------------------------------------
      Now we perform a second pass over the black hole environment.
      Re-evaluate the decision to stochastically swallow gas if we exceed eddington.
      Use the above info to determine the weight functions for feedback
      ----------------------------------------------------------------------*/
     blackhole_feed_loop();       /* BH mergers and gas/star/dm accretion events are evaluated - P[j].SwallowID's are set */
- //printf("%d BH feed_loop done\n", ThisTask); 
     /*----------------------------------------------------------------------
      Now we do a THIRD pass over the particles, and
      this is where we can do the actual 'swallowing' operations
      (blackhole_evaluate_swallow), and 'kicking' operations
      ----------------------------------------------------------------------*/
     blackhole_swallow_and_kick_loop();
- //printf("%d BH swallow_loop done\n", ThisTask);
     /*----------------------------------------------------------------------
      Now do final operations on the results from the last pass
      ----------------------------------------------------------------------*/
     blackhole_final_operations(); /* final operations on the BH with tabulated quantities (not a neighbor loop) */
-// //printf("%d BH Final operations done\n", ThisTask);
     blackhole_end();            /* frees BlackholeTempInfo; cleans up */
- //printf("%d BH End done\n", ThisTask);
 //    for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;P[i].SwallowEnergy = MAX_REAL_NUMBER;} /* re-zero accretion */
 }
 
@@ -175,8 +162,8 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
         if(P[j].Type==5) {apocenter_max += MAX_REAL_NUMBER;} // default is to be unrestrictive for BH-BH mergers //
 #endif	
 #ifdef SINGLE_STAR_STRICT_ACCRETION // Bate 1995-style criterion, with a fixed softening radius that is distinct from both the force softening and the search radius
-	apocenter_max = 2*sink_radius;
-	if(dr_code < DMAX(Get_Particle_Size(j),All.ForceSoftening[5])) bound = 1; // force `bound' if within the kernel
+	    apocenter_max = 2*sink_radius;
+	    if(dr_code < DMAX(Get_Particle_Size(j),All.ForceSoftening[5])) bound = 1; // force `bound' if within the kernel
 #else
 #if !defined(SINGLE_STAR_FORMATION) && (defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS))
         double r_j = All.ForceSoftening[P[j].Type];
@@ -184,7 +171,7 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
         apocenter_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
         if(P[j].Type==5) {apocenter_max = DMIN(apocenter_max , 1.*All.ForceSoftening[5]);}
 #endif
-#endif // SINGLE_STAR_STRICT_ACCRETION
+#endif
         if(apocenter < apocenter_max) {bound = 1;}
     }
     return bound;
@@ -279,14 +266,10 @@ double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, doubl
 
 void blackhole_properties_loop(void)
 {
-    int  i, n;
-    double dt;
+    int i, n; double dt;
 #if defined(NEWSINK)
-    double t_exponent;
-    int k,j;
-    MyFloat /*avg_rad=0,*/ dr, dx[3], u1, u2, hinv_g1, hinv_g2, hinv3_g1, hinv3_g2;
+    double t_exponent; int k,j; MyFloat dr, dx[3], u1, u2, hinv_g1, hinv_g2, hinv3_g1, hinv3_g2;
 #endif
-    //double fac, medd, mbulge, r0;
 
     for(i=0; i<N_active_loc_BHs; i++)
     {
@@ -925,13 +908,11 @@ void set_blackhole_long_range_rp(int i, int n)
 
 void blackhole_final_operations(void)
 {
-    int i, k, n, bin;
-    double  dt;
-    double mass_disk, mdot_disk, MgasBulge, MstarBulge, r0;
+    int i, k, n, bin; double dt, mass_disk, mdot_disk, MgasBulge, MstarBulge, r0;
 #ifdef SINGLE_STAR_PROMOTION
     int count_bhelim=0, tot_bhelim;
 #endif
-// printf("%d BH Final started \n", ThisTask);
+
 #ifdef BH_REPOSITION_ON_POTMIN
     for(n = FirstActiveParticle; n >= 0; n = NextActiveParticle[n])
         if(P[n].Type == 5)
@@ -964,23 +945,15 @@ void blackhole_final_operations(void)
     for(i=0; i<N_active_loc_BHs; i++)
     {
         n = BlackholeTempInfo[i].index;
-// printf("%d BH Final doing BH %d with ID %d \n", ThisTask, i, n);
-// printf("%d BH BlackholeTempInfo[i].accreted_Mass %g \n", ThisTask, BlackholeTempInfo[i].accreted_Mass);
-// printf("%d BH BlackholeTempInfo[i].accreted_BH_Mass %g \n", ThisTask, BlackholeTempInfo[i].accreted_BH_Mass);
-// printf("%d BH P[n].Mass %g \n", ThisTask, P[n].Mass);
         if(((BlackholeTempInfo[i].accreted_Mass>0)||(BlackholeTempInfo[i].accreted_BH_Mass>0)) && P[n].Mass > 0)
         {
-// printf("%d BH Final if statement for BH %d with ID %d \n", ThisTask, i, n);
             for(k = 0; k < 3; k++)
             {
-// printf("%d BH Final accreteing for  BH %d with ID %d \n", ThisTask, i, n);
                 P[n].Vel[k] = (P[n].Vel[k]*P[n].Mass + BlackholeTempInfo[i].accreted_momentum[k]) / (BlackholeTempInfo[i].accreted_Mass + P[n].Mass);
 #if defined(SINGLE_STAR_STRICT_ACCRETION) || defined(NEWSINK)
 		P[n].Pos[k] = (P[n].Pos[k]*P[n].Mass + BlackholeTempInfo[i].accreted_moment[k]) / (BlackholeTempInfo[i].accreted_Mass + P[n].Mass);
 #if defined(NEWSINK_J_FEEDBACK)
-// printf("%d BH Final momentum accreted \n", ThisTask);
                 BPP(n).Jsink[k] += (MyFloat) BlackholeTempInfo[i].accreted_J[k]; /* Sinks accrete angular momentum */
-// printf("%d BH Final ang momentum accreted \n", ThisTask);
 #endif
 #endif		
             } //for(k = 0; k < 3; k++)
@@ -988,30 +961,28 @@ void blackhole_final_operations(void)
 #ifndef BH_ALPHADISK_ACCRETION	    
             BPP(n).BH_Mass += BlackholeTempInfo[i].accreted_BH_Mass;
 #endif	    
-// printf("%d BH Final mass accreted \n", ThisTask);
         } // if(((BlackholeTempInfo[n].accreted_Mass>0)||(BlackholeTempInfo[n].accreted_BH_Mass>0)) && P[n].Mass > 0)
 #ifdef SINGLE_STAR_STRICT_ACCRETION
-        //P[n].SinkRadius = DMAX(DMAX(P[n].SinkRadius, All.G * P[n].Mass / (1.0e12 / (All.UnitVelocity_in_cm_per_s * All.UnitVelocity_in_cm_per_s))), All.ForceSoftening[5]);        // accretion radius is at least the Bondi radius for c_s = 100km/s
         P[n].SinkRadius = DMAX(P[n].SinkRadius, All.ForceSoftening[5]);
 #ifdef SINGLE_STAR_TIDAL_ACCRETION // This is a novel determination of the sink radius, scaled to the sink particle's Hill sphere - for scale-free simulations, not necessary full-physics star formation sims - MYG
         double tidal_field = sqrt(P[n].tidal_tensorps[0][0]*P[n].tidal_tensorps[0][0] + P[n].tidal_tensorps[1][1]*P[n].tidal_tensorps[1][1] + P[n].tidal_tensorps[2][2]*P[n].tidal_tensorps[2][2]);
         P[n].SinkRadius = DMAX(All.SofteningTable[5], pow(All.G*P[n].Mass/tidal_field, 1./3)/10); // /10 here is arbitrary - set to taste
 #endif
 #endif
+
         /* Correct for the mass loss due to radiation and BAL winds */
 #ifndef WAKEUP
         dt = (P[n].TimeBin ? (((integertime) 1) << P[n].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
         dt = P[n].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif //ifndef WAKEUP
-// printf("%d BH Final after wakeup for BH %d with ID %d \n", ThisTask, i, n);
+        
         /* always substract the radiation energy from BPP(n).BH_Mass && P[n].Mass */
         double dm = BPP(n).BH_Mdot * dt;
         double radiation_loss = All.BlackHoleRadiativeEfficiency * dm;
         if(radiation_loss > DMIN(P[n].Mass,BPP(n).BH_Mass)) radiation_loss = DMIN(P[n].Mass,BPP(n).BH_Mass);
 #ifndef BH_DEBUG_FIX_MASS
         P[n].Mass -= radiation_loss; BPP(n).BH_Mass -= radiation_loss;
-        // printf("%d BH Final rad loss done \n", ThisTask);
 #endif         
         /* subtract the BAL wind mass from P[n].Mass && (BPP(n).BH_Mass || BPP(n).BH_Mass_AlphaDisk) */
         // DAA: note that the mass loss in winds for BH_WIND_KICK has already been taken into account
@@ -1060,7 +1031,7 @@ void blackhole_final_operations(void)
         MgasBulge = BlackholeTempInfo[i].MgasBulge_in_Kernel;
         MstarBulge = BlackholeTempInfo[i].MstarBulge_in_Kernel;
 #endif
-// printf("%d BH Final start file writing \n", ThisTask);
+
 //#ifndef IO_REDUCED_MODE   DAA-IO: BH_OUTPUT_MOREINFO overrides IO_REDUCED_MOD
 #if defined(BH_OUTPUT_MOREINFO)
         fprintf(FdBlackHolesDetails, "%2.12f %u  %g %g %g %g %g %g  %g %g %g %g %g %g %g %g  %2.10f %2.10f %2.10f  %2.7f %2.7f %2.7f  %g %g %g  %g %g %g\n",
@@ -1078,13 +1049,13 @@ void blackhole_final_operations(void)
                 P[n].Pos[0], P[n].Pos[1], P[n].Pos[2]);
 #endif
 #endif
-// printf("%d BH Final file writing done \n", ThisTask);
+        
         bin = P[n].TimeBin;
         TimeBin_BH_mass[bin] += BPP(n).BH_Mass;
         TimeBin_BH_dynamicalmass[bin] += P[n].Mass;
         TimeBin_BH_Mdot[bin] += BPP(n).BH_Mdot;
         if(BPP(n).BH_Mass > 0) {TimeBin_BH_Medd[bin] += BPP(n).BH_Mdot / BPP(n).BH_Mass;}
-// printf("%d BH Final timebin update done \n", ThisTask);
+        
 
 #if defined(SINGLE_STAR_PROTOSTELLAR_EVOLUTION) // initially we want to do this protostellar evolution, but not the promotion
         double m_initial = DMAX(1.e-37 , (BPP(n).BH_Mass - dm)); // mass before the accretion
@@ -1124,9 +1095,8 @@ void blackhole_final_operations(void)
         BPP(n).ProtoStellar_Radius = (BPP(n).ProtoStellar_Radius * contraction_factor + r_new * mu) / (1. + mu); // new size (contraction + accretion both accounted for)
         double R_main_sequence_ignition; // main sequence radius - where contraction should halt
         if(m_solar <= 1) {R_main_sequence_ignition = pow(m_solar,0.8);} else {R_main_sequence_ignition = pow(m_solar,0.57);}
-//        printf("Protostellar radius: %g contraction factor: %g mu: %g\n", BPP(n).ProtoStellar_Radius, contraction_factor);
+        
         //if(BPP(n).PreMainSeq_Tracker < 0.36787944117144233) // if drops below 1/e [one t_premainseq timescale, in the absence of accretion], promote //
-
         if(BPP(n).ProtoStellar_Radius <= R_main_sequence_ignition)
         {
 	    BPP(n).ProtoStellar_Radius = R_main_sequence_ignition;
@@ -1137,12 +1107,11 @@ void blackhole_final_operations(void)
             P[n].Mass = DMAX(P[n].Mass , BPP(n).BH_Mass + BPP(n).BH_Mass_AlphaDisk);
 #endif		    
         }
-
 #endif
         
     } // for(i=0; i<N_active_loc_BHs; i++)
     
-//printf("%d BH Final ending \n", ThisTask);
+    
 #ifdef SINGLE_STAR_PROMOTION
     MPI_Allreduce(&count_bhelim, &tot_bhelim, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     All.TotBHs -= tot_bhelim; 
