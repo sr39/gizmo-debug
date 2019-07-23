@@ -40,7 +40,11 @@ void do_first_halfstep_kick(void)
     /* as currently written with some revisions to MFV methods, should only update on active timesteps */
     for(i = 0; i < NumPart; i++)
     {
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+        if((TimeBinActive[P[i].TimeBin]) || (P[i].Type==0)) /* active OR gas, need to check each timestep to ensure manifest conservation */
+#else
         if(TimeBinActive[P[i].TimeBin]) /* 'full' kick for active particles */
+#endif
         {
             if(P[i].Mass > 0)
             {
@@ -71,7 +75,11 @@ void do_second_halfstep_kick(void)
 
     for(i = 0; i < NumPart; i++)
     {
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+        if((TimeBinActive[P[i].TimeBin]) || (P[i].Type==0)) /* active OR gas, need to check each timestep to ensure manifest conservation */
+#else
         if(TimeBinActive[P[i].TimeBin]) /* 'full' kick for active particles */
+#endif
         {
             if(P[i].Mass > 0)
             {
@@ -131,13 +139,14 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
     {
         if(SphP[i].dMass != 0) //ent_old = SphP[i].InternalEnergy; for(j=0;j<3;j++) v_old[j] = P[i].Vel[j];
         {
-            double dMass; // fraction of delta_conserved to couple per kick step (each 'kick' is 1/2-timestep) // double dv[3], v_old[3], dMass, ent_old=0, d_inc = 0.5;
+            double dMass=0; // fraction of delta_conserved to couple per kick step (each 'kick' is 1/2-timestep) // double dv[3], v_old[3], dMass, ent_old=0, d_inc = 0.5;
             if(mode != 0) // update the --conserved-- variables of each particle //
             {
-                dMass = (tend - tstart) * All.Timebase_interval / All.cf_hubble_a * SphP[i].DtMass; if(dMass >= SphP[i].dMass) {dMass = SphP[i].dMass;} // try to get close to what the time-integration scheme would give //
+                dMass = (tend - tstart) * All.Timebase_interval / All.cf_hubble_a * SphP[i].DtMass; if(dMass * SphP[i].dMass < 0) {dMass = 0;} // slope-limit: no opposite reconstruction! //
+                if((fabs(dMass) > fabs(SphP[i].dMass))) {dMass = SphP[i].dMass;} // try to get close to what the time-integration scheme would give //
                 SphP[i].dMass -= dMass;
             } else {dMass = SphP[i].dMass;}
-            if(fabs(dMass) > 0.9*SphP[i].MassTrue) {dMass *= 0.9*SphP[i].MassTrue/fabs(dMass);} // limiter to prevent madness //
+            if(dMass < -0.99*SphP[i].MassTrue) {dMass = -0.99*SphP[i].MassTrue;} // limiter to prevent madness //
 
             /* load and update the particle masses : particle mass update here, from hydro fluxes */
             mass_old = SphP[i].MassTrue; mass_pred = P[i].Mass; mass_new = mass_old + dMass; SphP[i].MassTrue = mass_new; // UNITS: remember all time derivatives (DtX, dX) are in -physical- units; as are mass, entropy/internal energy, but -not- velocity //
