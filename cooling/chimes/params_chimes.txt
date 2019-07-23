@@ -203,7 +203,7 @@ BlackHoleRadiativeEfficiency 0.1        % radiative efficiency
 BlackHoleFeedbackFactor      1.0	    % generic feedback strength multiplier 
 BH_FluxMomentumFactor        1.0	    % multiply radiation pressure (BH_PHOTONMOMENTUM) 
 BAL_f_accretion              0.5        % fraction of gas swallowed by BH (BH_BAL_WINDS) 
-BAL_v_outflow                30000	    % velocity (km/s) of BAL outflow (BH_BAL_WINDS) 
+BAL_v_outflow                30000	    % velocity (code units) of BAL outflow (BH_BAL_WINDS) 
 
 
 %-------------- Grackle UVB file (GRACKLE on)
