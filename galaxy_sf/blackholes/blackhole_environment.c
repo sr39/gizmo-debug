@@ -224,9 +224,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     /* initialize variables before SPH loop is started */
     int startnode, numngb, j, k, n, listindex=0, mod_index;
     MyFloat *pos, h_i, *vel, hinv;
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-    MyFloat ags_h_i;
-#endif
+    MyFloat ags_h_i = All.ForceSoftening[5];
     MyIDType id;
     
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(NEWSINK)
@@ -441,11 +439,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         vrel=0; for(k=0;k<3;k++) {vrel += (P[j].Vel[k] - vel[k])*(P[j].Vel[k] - vel[k]);}
                         r2=0; for(k=0;k<3;k++) {r2+=dP[k]*dP[k];}
                         double dr_code = sqrt(r2); vrel = sqrt(vrel) / All.cf_atime;
-#if defined(ADAPTIVE_GRAVSOFT_FORALL)
-			vbound = bh_vesc(j, mass, dr_code, ags_h_i);
-#else
-			vbound = bh_vesc(j, mass, dr_code);
-#endif	//SINGLE_STAR_FORMATION
+                        vbound = bh_vesc(j, mass, dr_code, ags_h_i);
 #ifdef SINGLE_STAR_STRICT_ACCRETION
 			//			if(dr_code < DMAX(sink_radius, Get_Particle_Size(j)))
 			if(dr_code < sink_radius)			
@@ -502,11 +496,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                             Jpar[2] = P[j].Mass*(dP[0]*dv[1] - dP[1]*dv[0]);
                             out.gas_Erot_in_intzone += (Jpar[0]*Jpar[0] + Jpar[1]*Jpar[1] + Jpar[2]*Jpar[2])/(2.0*P[j].Mass*dr_code*dr_code); /* total rotational energy, L^2/(2 m r^2), not just bulk as in Eq 13 oh Hubber 2013 */			    
 //                            out.gas_Egrav_in_intzone -= All.G * mass * P[j].Mass * 0.5 * (kernel_gravity(u, hinv, hinv3, -1) + kernel_gravity(u_gas1, hinv_gas1, hinv3_gas1, -1) ); /*Sink-gas interaction sum from Hubber 2013 Eq 14*/
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
 			    out.gas_Egrav_in_intzone += grav_interaction_energy(dr_code, mass, P[j].Mass, ags_h_i, P[j].Hsml);
-#else			    
-			    out.gas_Egrav_in_intzone += grav_interaction_energy(dr_code, mass, P[j].Mass, All.ForceSoftening[5], P[j].Hsml);
-#endif			    
                             //store properties of this neighbor particle
                             if (out.n_neighbor < NEWSINK_NEIGHBORMAX){
                                 out.rgas[out.n_neighbor] = dr_code; //distance

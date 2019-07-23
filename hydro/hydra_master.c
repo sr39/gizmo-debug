@@ -917,8 +917,7 @@ void hydro_force(void)
     double timecomp, timecomm, timewait, tstart, tend, t0, t1;
     int save_NextParticle;
     long long n_exported = 0;
-    /* need to zero out all numbers that can be set -EITHER- by an active particle in the domain, 
-     or by one of the neighbors we will get sent */
+    /* need to zero out all numbers that can be set -EITHER- by an active particle in the domain, or by one of the neighbors we will get sent */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
         if(P[i].Type==0)
         {

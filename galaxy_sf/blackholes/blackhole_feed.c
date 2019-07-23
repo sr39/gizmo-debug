@@ -247,9 +247,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     int startnode, numngb, j, k, n, listindex = 0;
     MyIDType id;
     MyFloat *pos, *velocity, h_i, dt, mdot, rho, mass, bh_mass;
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-    MyFloat ags_h_i;
-#endif    
+    MyFloat ags_h_i = All.ForceSoftening[5];
     double h_i2, r2, r, u, hinv, hinv3, wk, dwk, vrel, vesc, dpos[3], sink_radius; sink_radius=0;
     
 #if defined(BH_GRAVCAPTURE_GAS) && defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
@@ -475,11 +473,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                     {
                         vrel=0; for(k=0;k<3;k++) {vrel += (P[j].Vel[k] - velocity[k])*(P[j].Vel[k] - velocity[k]);}
                         r=sqrt(r2); vrel=sqrt(vrel)/All.cf_atime;  /* do this once and use below */
-#ifdef ADAPTIVE_GRAVSOFT_FORALL			
-			vesc=bh_vesc(j,mass,r, ags_h_i);
-#else
-			vesc=bh_vesc(j,mass,r);
-#endif // ADAPTIVE_GRAVSOFT_FORALL
+                        vesc=bh_vesc(j,mass,r, ags_h_i);
 
 #ifdef BH_REPOSITION_ON_POTMIN
                         /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */

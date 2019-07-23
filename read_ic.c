@@ -640,12 +640,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                     P[offset + n].Jsink[k] = *fp++;
 #endif
             break;
-        case IO_BHMASSINIT:
-#ifdef NEWSINK
-            for(n = 0; n < pc; n++)
-                P[offset + n].init_mass_in_intzone = *fp++;
-#endif
-            break;
             
             /* the other input fields (if present) are not needed to define the
              initial conditions of the code */

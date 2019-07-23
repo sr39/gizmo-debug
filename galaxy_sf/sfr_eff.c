@@ -570,7 +570,7 @@ void star_formation_parent_routine(void)
                 P[i].SuperTimestepFlag=P[i].COM_GravAccel[0]=P[i].COM_GravAccel[1]=P[i].COM_GravAccel[2]=P[i].comp_Mass=P[i].COM_dt_tidal=0;
 #endif
 #ifdef NEWSINK
-                P[i].init_mass_in_intzone=P[i].BH_Mdot_Avg=P[i].BH_Mdot_AlphaDisk=0; //Initialize as 0, we will update it in the first blackole property loop
+                P[i].BH_Mdot_Avg=P[i].BH_Mdot_AlphaDisk=0; //Initialize as 0, we will update it in the first blackole property loop
 #ifdef NEWSINK_J_FEEDBACK
                 P[i].Jsink[0]=P[i].Jsink[1]=P[i].Jsink[2]=0; P[i].t_disc = pow(All.G * P[i].Mass,-0.5) * pow(All.ForceSoftening[5],1.5); /*placeholder to avoid dividing with zero*/
 #endif
