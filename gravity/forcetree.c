@@ -2132,6 +2132,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 h = All.ForceSoftening[ptype];
                 if(h < All.ForceSoftening[P[no].Type])
                     h = All.ForceSoftening[P[no].Type];
+#endif
 #if defined(SINGLE_STAR_FORMATION) && defined(ADAPTIVE_GRAVSOFT_FORALL)  // for star-star interactions, we wanna use fixed softening, so we update them here if that's what we've got 
 		if(ptype==5 && ptype_sec == 5){ 
 		    h = All.ForceSoftening[5];
@@ -2141,8 +2142,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 		    h_p_inv = 1/h;
 		    zeta_sec = 0;
 		}
-#endif		
-#endif	  
+#endif				
 
                 } // closes (if((r2 > 0) && (mass > 0))) check
                 
