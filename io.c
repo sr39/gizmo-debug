@@ -1087,7 +1087,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_SINKRAD:
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -3184,7 +3184,7 @@ int blockpresent(enum iofields blocknr)
 
         case IO_ACRB:
         case IO_SINKRAD:
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
             return 1;
 #else
             return 0;

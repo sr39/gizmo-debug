@@ -32,7 +32,7 @@ static struct blackholedata_in
 #if defined(BH_GRAVCAPTURE_GAS) || defined(SINKLEFINKLE_J_FEEDBACK)
     MyDouble Mass;
 #endif
-#if defined(SINGLE_STAR_STRICT_ACCRETION)
+#if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
     MyFloat SinkRadius;
 #endif  
     MyDouble Pos[3];
@@ -113,7 +113,7 @@ void blackhole_environment_loop(void)
             }
 #if defined(BH_GRAVCAPTURE_GAS) || defined(SINKLEFINKLE_J_FEEDBACK)
             BlackholeDataIn[j].Mass = P[place].Mass;
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
             BlackholeDataIn[j].SinkRadius = P[place].SinkRadius;
 #endif	    
 #endif
@@ -244,7 +244,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     {
 #if defined(BH_GRAVCAPTURE_GAS) || defined(SINKLEFINKLE_J_FEEDBACK)
         mass = P[target].Mass;
-#if defined(SINGLE_STAR_STRICT_ACCRETION)
+#if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
         sink_radius = P[target].SinkRadius;
 #endif	
 #endif
@@ -267,7 +267,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     {
 #if defined(BH_GRAVCAPTURE_GAS) || defined(SINKLEFINKLE_J_FEEDBACK)
         mass = BlackholeDataGet[target].Mass;
-#if defined(SINGLE_STAR_STRICT_ACCRETION)
+#if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
         sink_radius = BlackholeDataGet[target].SinkRadius;
 #endif		
 #endif
@@ -419,11 +419,8 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         vrel=r2=0; for(k=0;k<3;k++) {vrel+=dv[k]*dv[k]; r2+=dP[k]*dP[k];}
                         double dr_code = sqrt(r2); vrel = sqrt(vrel) / All.cf_atime;
                         vbound = bh_vesc(j, mass, dr_code, ags_h_i);
-#ifdef SINGLE_STAR_STRICT_ACCRETION
-			            if(dr_code < sink_radius)			
-#endif			
                         if(vrel < vbound) { /* bound */
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
                             double spec_mom=0; for(k=0;k<3;k++) {spec_mom += dv[k]*dP[k];} // delta_x.delta_v
                             spec_mom = (r2*vrel*vrel - spec_mom*spec_mom*All.cf_a2inv);  // specific angular momentum^2 = r^2(delta_v)^2 - (delta_v.delta_x)^2;
                             if(spec_mom < All.G * (mass + P[j].Mass) * sink_radius) // check Bate 1995 angular momentum criterion (in addition to bounded-ness)

@@ -558,7 +558,7 @@ void star_formation_parent_routine(void)
                 num_bhformed++;
                 P[i].BH_Mass = All.SeedBlackHoleMass;
                 TreeReconstructFlag = 1;
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
                 P[i].SinkRadius = DMAX(pow(3 * P[i].Mass/ (SphP[i].Density * 4 * M_PI), 1./3) , All.ForceSoftening[5]); // want a sphere of equal volume to particle size, R = (3V/(4 PI))^(1/3)
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES

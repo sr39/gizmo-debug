@@ -82,7 +82,7 @@ void blackhole_feed_loop(void)
             }
 #if defined(BH_GRAVCAPTURE_GAS)
             BlackholeDataIn[j].mass_to_swallow_edd = BlackholeTempInfo[P[place].IndexMapToTempStruc].mass_to_swallow_edd;
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
             BlackholeDataIn[j].SinkRadius = PPP[place].SinkRadius;
 #endif	    
 #endif
@@ -278,7 +278,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #if defined(BH_GRAVCAPTURE_GAS) && defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
         mass_to_swallow_edd = BlackholeTempInfo[P[target].IndexMapToTempStruc].mass_to_swallow_edd;
 #endif
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
         sink_radius = P[target].SinkRadius;
 #endif
 #ifdef NEWSINK
@@ -303,7 +303,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 	    ags_h_i = BlackholeDataGet[target].AGS_Hsml;
 #endif	
         mass = BlackholeDataGet[target].Mass;
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
         sink_radius = BlackholeDataGet[target].SinkRadius;
 #endif
         bh_mass = BlackholeDataGet[target].BH_Mass;
@@ -452,12 +452,12 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         }
 #endif
 			
-#if (!defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_MERGERS)) 
                         /* check_for_bh_merger.  Easy.  No Edd limit, just a pos and vel criteria. */
-#ifdef SINGLE_STAR_MERGERS
-			            if((P[j].Mass < 3*All.MinMassForParticleMerger) && (r < All.ForceSoftening[5])) // only merge away stuff that is within the softening radius, and is no more massive that a few gas particles
-#endif			
+#if !defined(BH_DEBUG_DISABLE_MERGERS)
                         if((id != P[j].ID) && (P[j].Mass > 0) && (P[j].Type == 5))	/* we may have a black hole merger */
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+                        if((P[j].Mass < 3*All.MinMassForParticleMerger) && (r < All.ForceSoftening[5])) /* only merge away stuff that is within the softening radius, and is no more massive that a few gas particles */
+#endif
                         {
                             if(id != P[j].ID) /* check its not the same bh  (DAA: this is duplicated here...) */
                             {
@@ -492,12 +492,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 			                double eps = DMAX(P[j].Hsml/2.8, DMAX(ags_h_i/2.8, r));			    
 			                if(eps*eps*eps /(P[j].Mass + mass) <= P[j].SwallowTime)
 #endif			      			  
-#ifdef SINGLE_STAR_STRICT_ACCRETION
-			                if(r < sink_radius) // don't even bother if not in the accretion radius			      
-#endif			    
                             if((vrel < vesc)) // && (particles_swallowed_this_bh_this_process < particles_swallowed_this_bh_this_process_max))
                             { /* bound */
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
                                 double spec_mom=0; for(k=0;k<3;k++) {spec_mom += dvel[k]*dpos[k];} // delta_x.delta_v
                                 spec_mom = (r2*vrel*vrel - spec_mom*spec_mom*All.cf_a2inv); // specific angular momentum^2 = r^2(delta_v)^2 - (delta_v.delta_x)^2;
 				                if(spec_mom < All.G * (mass + P[j].Mass) * sink_radius)  // check Bate 1995 angular momentum criterion (in addition to bounded-ness)

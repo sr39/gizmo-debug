@@ -29,7 +29,7 @@ static struct blackholedata_in
 #endif    
     MyFloat Mass;
     MyFloat BH_Mass;
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
     MyFloat SinkRadius;
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
@@ -50,7 +50,7 @@ static struct blackholedata_in
 #endif
 
 #if defined(NEWSINK)
-#if !defined(SINGLE_STAR_STRICT_ACCRETION)
+#if !defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
     MyFloat SinkRadius;
 #endif
     /* properties of neighboring particles, used for preferential feeding */
