@@ -627,7 +627,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             break;
 
         case IO_SINKRAD:
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
             for(n = 0; n < pc; n++)
                 P[offset + n].SinkRadius = *fp++;
 #endif
@@ -976,7 +976,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==1)||(HYDRO_FIX_MESH_MOTION==2)||(HYDRO_FIX_MESH_MOTION==3))
                    && blocknr != IO_PARTVEL
 #endif
-#if defined(SINGLE_STAR_STRICT_ACCRETION) 
+#if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS) 
                    && blocknr != IO_SINKRAD
 #endif
 #if defined(CHIMES) && !defined(CHIMES_INITIALISE_IN_EQM) 

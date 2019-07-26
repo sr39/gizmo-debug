@@ -304,13 +304,12 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #ifdef SINGLE_STAR_SINK_DYNAMICS
 
 #ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
-#define ADAPTIVE_GRAVSOFT_FORGAS
-#define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
-#define SINGLE_STAR_MERGERS // this is implemented kinda-wonky, is this something we want at all? if on, why different from BH mgrs???
-#define GRAVITY_ACCURATE_FEWBODY_INTEGRATION
-#define SINGLE_STAR_TIMESTEPPING 1
-#define BH_SWALLOW_SMALLTIMESTEPS
 #define DEVELOPER_MODE
+#define ADAPTIVE_GRAVSOFT_FORGAS
+#define GRAVITY_ACCURATE_FEWBODY_INTEGRATION
+#define BH_SWALLOW_SMALLTIMESTEPS
+#define SINGLE_STAR_TIMESTEPPING 1
+#define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
 #ifdef MAGNETIC
 #define MHD_CONSTRAINED_GRADIENT 1
 #endif
@@ -337,6 +336,12 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #if (SINGLE_STAR_ACCRETION == 9)
 #define BH_GRAVCAPTURE_GAS // use gravitational capture swallow criterion for resolved gravitational capture
 #endif
+#if (SINGLE_STAR_ACCRETION == 10)
+#define BH_GRAVCAPTURE_GAS
+#define BH_GRAVCAPTURE_FIXEDSINKRADIUS // modify grav capture to Bate-style, fixed (in time) sink radius based on SF neighbor distance, plus angular momentum criterion
+#endif
+
+???
 
 
 #endif
@@ -2244,7 +2249,7 @@ extern ALIGN(32) struct particle_data
     int BH_CountProgs;
 #endif
     MyFloat BH_Mass;
-#if defined(SINGLE_STAR_STRICT_ACCRETION)
+#if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
     MyFloat SinkRadius;
 #endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS  

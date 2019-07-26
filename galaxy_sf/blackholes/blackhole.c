@@ -144,8 +144,7 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 #if defined(SINGLE_STAR_SINK_DYNAMICS) 
     cs = 0;
 #endif
-    double v2 = (vrel*vrel+cs*cs)/(vesc*vesc);
-    int bound = 0;
+    double v2 = (vrel*vrel+cs*cs)/(vesc*vesc); int bound = 0;
     if(v2 < 1) 
     {
         double apocenter = dr_code / (1.0-v2); // NOTE: this is the major axis of the orbit, not the apocenter... - MYG
@@ -153,19 +152,16 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 #ifdef NEWSINK
 	    if(P[j].Type == 0) {return 1;} // simple boundedness is sufficient for gas accretion
 #endif
-#ifndef SINGLE_STAR_SINK_DYNAMICS	
-        if(P[j].Type==5) {apocenter_max += MAX_REAL_NUMBER;} // default is to be unrestrictive for BH-BH mergers //
-#endif	
-#ifdef SINGLE_STAR_STRICT_ACCRETION // Bate 1995-style criterion, with a fixed sink/accretion radius that is distinct from both the force softening and the search radius
-	    apocenter_max = 2*sink_radius;
-        if(dr_code < DMAX(Get_Particle_Size(j),All.ForceSoftening[5])) {bound = 1;} // force `bound' if within the kernel
-#else
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS // Bate 1995-style criterion, with a fixed sink/accretion radius that is distinct from both the force softening and the search radius
+	    apocenter_max = 2*sink_radius; if(dr_code>sink_radius) {return 0;}
+        if(dr_code < DMAX(Get_Particle_Size(j),All.ForceSoftening[5])) {return 1;} // force `bound' if within the kernel
+#endif
 #if !defined(SINGLE_STAR_SINK_DYNAMICS) && (defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS))
+        if(P[j].Type==5) {apocenter_max += MAX_REAL_NUMBER;} // default is to be unrestrictive for BH-BH mergers //
         double r_j = All.ForceSoftening[P[j].Type];
         if(P[j].Type==0) {r_j = DMAX(r_j , PPP[j].Hsml);}
         apocenter_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
         if(P[j].Type==5) {apocenter_max = DMIN(apocenter_max , 1.*All.ForceSoftening[5]);}
-#endif
 #endif
         if(apocenter < apocenter_max) {bound = 1;}
     }
@@ -932,7 +928,7 @@ void blackhole_final_operations(void)
             BPP(n).BH_Mass += BlackholeTempInfo[i].accreted_BH_Mass;
 #endif	    
         } // if(((BlackholeTempInfo[n].accreted_Mass>0)||(BlackholeTempInfo[n].accreted_BH_Mass>0)) && P[n].Mass > 0)
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
         P[n].SinkRadius = DMAX(P[n].SinkRadius, All.ForceSoftening[5]);
 #endif
 
