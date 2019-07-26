@@ -40,7 +40,7 @@ static int last;
 
 /* some modules compute neighbor fluxes explicitly within the force-tree: in these cases, we need to
     take extra care about opening leaves to ensure possible neighbors are not missed, so defined a flag below for it */
-#if (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(SINGLE_STAR_FORMATION) || defined(GRAVITY_IMPROVED_INTEGRATION))
+#if (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(GRAVITY_ACCURATE_FEWBODY_INTEGRATION))
 #define NEIGHBORS_MUST_BE_COMPUTED_EXPLICITLY_IN_FORCETREE
 #endif
 
@@ -568,7 +568,7 @@ void force_update_node_recursive(int no, int sib, int father)
 #ifdef BH_PHOTONMOMENTUM
         MyFloat bh_lum,bh_lum_hR,bh_lum_grad[3];
         bh_lum=bh_lum_hR=bh_lum_grad[0]=bh_lum_grad[1]=bh_lum_grad[2]=0;
-		#ifdef SINGLE_STAR_FORMATION
+		#ifdef SINGLE_STAR_SINK_DYNAMICS
 			MyFloat bh_lum_unitfactor = 1.0; //code units are good units
 		#else
 			MyFloat bh_lum_unitfactor = All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s/All.UnitTime_in_s * All.HubbleParam * (SOLAR_MASS/SOLAR_LUM); // convert bh luminosity to our tree units
@@ -753,15 +753,9 @@ void force_update_node_recursive(int no, int sib, int father)
 #ifdef BH_PHOTONMOMENTUM
                     if(pa->Type == 5)
                     {
-#ifdef NEWSINK
-                        if((pa->Mass>0)&&(pa->DensAroundStar>0)&&(pa->BH_Mdot_Avg>0))
-                        {
-                            double BHLum = bh_lum_bol(pa->BH_Mdot_Avg, pa->BH_Mass, p) * bh_lum_unitfactor;
-#else
                         if((pa->Mass>0)&&(pa->DensAroundStar>0)&&(pa->BH_Mdot>0))
                         {
                             double BHLum = bh_lum_bol(pa->BH_Mdot, pa->BH_Mass, p) * bh_lum_unitfactor;
-#endif
                             bh_lum += BHLum;
                             bh_lum_hR += BHLum * pa->BH_disk_hr;
                             for(k=0;k<3;k++) {bh_lum_grad[k] += BHLum * pa->GradRho[k];}
@@ -831,7 +825,7 @@ void force_update_node_recursive(int no, int sib, int father)
                     }
 #endif
 #endif
-#ifdef SINGLE_STAR_FORMATION
+#ifdef SINGLE_STAR_SINK_DYNAMICS
 		    if(pa->Type == 5) if (PPP[p].Hsml > maxsoft) maxsoft = PPP[p].Hsml;
 #endif
                 }
@@ -1710,7 +1704,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     
 #ifdef BH_PHOTONMOMENTUM
     double mass_bhlum=0;
-	#ifdef SINGLE_STAR_FORMATION
+	#ifdef SINGLE_STAR_SINK_DYNAMICS
 		MyFloat bh_lum_unitfactor = 1.0; //code units are good units
 	#else
 		MyFloat bh_lum_unitfactor = All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s/All.UnitTime_in_s * All.HubbleParam * (SOLAR_MASS/SOLAR_LUM); // convert bh luminosity to our tree units
@@ -2036,11 +2030,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     mass_bhlum=0; 
 		            if(P[no].Type==5) 
 		            {
-#ifdef NEWSINK
-			            double bhlum_t = bh_lum_bol(P[no].BH_Mdot_Avg, P[no].BH_Mass, no) * bh_lum_unitfactor;
-#else
 			            double bhlum_t = bh_lum_bol(P[no].BH_Mdot, P[no].BH_Mass, no) * bh_lum_unitfactor;
-#endif
 			            mass_bhlum = bh_angleweight(bhlum_t, P[no].GradRho, P[no].BH_disk_hr, dx,dy,dz);
 		            }
 #endif
@@ -2100,11 +2090,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #else
                 h = All.ForceSoftening[ptype];
                 if(h < All.ForceSoftening[P[no].Type]) {h = All.ForceSoftening[P[no].Type];}
-#if defined(SINGLE_STAR_FORMATION) && defined(ADAPTIVE_GRAVSOFT_FORALL)  // for star-star interactions, we wanna use fixed softening, so we update them here if that's what we've got 
-		        if(ptype==5 && ptype_sec==5) {h=All.ForceSoftening[5]; h_inv=1/h; h3_inv=h_inv*h_inv*h_inv; h5_inv=h3_inv*h_inv*h_inv; h_p_inv=h_inv; zeta_sec=0;}
-#endif		
 #endif
-
                 } // closes (if((r2 > 0) && (mass > 0))) check
                 
                 if(TakeLevel >= 0) {P[no].GravCost[TakeLevel] += 1.0;}
@@ -2474,6 +2460,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 h5_inv = h_inv * h_inv * h_inv * h_inv * h_inv;
 #endif
 #endif
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(ADAPTIVE_GRAVSOFT_FORALL)  // for star-star interactions, we wanna use fixed softening, so we update them here if that's what we've got
+                if(ptype==5 && ptype_sec==5) {h=All.ForceSoftening[5]; h_inv=1/h; h3_inv=h_inv*h_inv*h_inv; h5_inv=h3_inv*h_inv*h_inv; h_p_inv=h_inv; zeta_sec=0;}
+#endif
                 u = r * h_inv;
                 fac = mass * kernel_gravity(u, h_inv, h3_inv, 1);
 #ifdef EVALPOTENTIAL
@@ -2481,7 +2470,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif 
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* second derivatives needed -> calculate them from softend potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */		
                 if(u < 0.5) {fac2_tidal = mass * h5_inv * (76.8 - 96.0 * u);} else {fac2_tidal = mass * h5_inv * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u);}
-#endif 
+                if(u < 0.5) {fac2_tidal = mass * h5_inv * (76.8 - 96.0 * u);} else {if(u < 1) {fac2_tidal = mass * h5_inv * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u);} else {fac2_tidal = 3 * mass / (r2 * r2 * r);}}
+#endif
 		
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
                 // first, appropriately symmetrize the forces between particles //
@@ -2529,9 +2519,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 			            facpot = mass * kernel_gravity(u, h_p_inv, h_p3_inv, -1);
 #endif 			
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-			            h5_inv = h_p3_inv * h_p_inv * h_p_inv;
-			            if(!isnan(fac2)) {if(u_p < 0.5) {fac2_tidal = mass * h5_inv * (76.8 - 96.0 * u_p);} else {fac2_tidal = mass * h5_inv * (-0.2 / (u_p * u_p * u_p * u_p * u_p) + 48.0 / u_p - 76.8 + 32.0 * u_p);}}
-#endif						
+                        double h_p5_inv = h_p3_inv * h_p_inv * h_p_inv;
+                        if(u_p < 0.5) {fac2_tidal = mass * h_p5_inv * (76.8 - 96.0 * u_p);} else {fac2_tidal = mass * h_p5_inv * (-0.2 / (u_p * u_p * u_p * u_p * u_p) + 48.0 / u_p - 76.8 + 32.0 * u_p);}
+#endif
                     }
                     // correction only applies to 'shared-kernel' particles: so this needs to check if
                     // these are the same particles for which the kernel lengths are computed

@@ -21,7 +21,7 @@
 double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i)
 {
     double lum=1; if(stellar_age_in_gyr < 0.01) {lum=1000;} // default to a dumb imf-averaged 'young/high-mass' vs 'old/low-mass' distinction 
-#ifdef SINGLE_STAR_FORMATION // calculate single-star luminosity (and convert to solar luminosity-to-mass ratio, which this output assumes) 
+#ifdef SINGLE_STAR_SINK_DYNAMICS // calculate single-star luminosity (and convert to solar luminosity-to-mass ratio, which this output assumes) 
     lum=calculate_individual_stellar_luminosity(0, P[i].BH_Mass, i) / P[i].BH_Mass * (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)) / (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS));
 #endif
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION // fit to updated SB99 tracks: including rotation, new mass-loss tracks, etc.
@@ -37,7 +37,7 @@ double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i)
 double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
 {
     double lum = 0;
-#ifdef SINGLE_STAR_FORMATION
+#ifdef SINGLE_STAR_SINK_DYNAMICS
     double c_code = C / All.UnitVelocity_in_cm_per_s;
     double m_solar = mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS);
     /* if below the deuterium burning limit, just use the potential energy efficiency at the surface of a jupiter-density object */
@@ -58,8 +58,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION 
     if(i > 0)
     {
-        /*account for pre-main sequence evolution */
-        if(P[i].Type == 5)
+        if(P[i].Type == 5) /*account for pre-main sequence evolution */
         {
             double T4000_4 = pow(m_solar , 0.55); // protostellar temperature along Hayashi track
             double l_kh = 0.2263 * P[i].ProtoStellar_Radius*P[i].ProtoStellar_Radius * T4000_4; // luminosity from KH contraction
@@ -70,7 +69,6 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
     lum += lum_sol;
 #endif
 #endif    
-    //lum = 1000*SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s); //Test, set for 1000 l_sun, for debugging
     return lum;
 }
 
@@ -102,7 +100,7 @@ double particle_ionizing_luminosity_in_cgs(long i)
         if(star_age >= 0.02) return 0; // skip since old stars don't contribute
         if(star_age < 0.0035) {lm_ssp=500.;} else {double log_age=log10(star_age/0.0035); lm_ssp=470.*pow(10.,-2.24*log_age-4.2*log_age*log_age) + 60.*pow(10.,-3.6*log_age);}
         lm_ssp *= calculate_relative_light_to_mass_ratio_from_imf(star_age, i);
-#ifdef SINGLE_STAR_FORMATION /* use effective temperature as a function of stellar mass and size to get ionizing photon production */
+#ifdef SINGLE_STAR_SINK_DYNAMICS /* use effective temperature as a function of stellar mass and size to get ionizing photon production */
         double l_sol = bh_lum_bol(0,P[i].Mass,i) * (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)); // L/Lsun
         double m_sol = P[i].Mass * (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS)); // M/Msun
         double r_sol = pow(m_sol, 0.738); // R/Rsun
@@ -200,7 +198,7 @@ double mechanical_fb_calculate_eventrates_SNe(int i, double dt)
 {
     if(All.SNeIIEnergyFrac <= 0) return 0;
     double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
-#ifdef SINGLE_STAR_FORMATION
+#ifdef SINGLE_STAR_SINK_DYNAMICS
     /* here we are determining SNe for individual stars, so it happens deterministically at the end of their lives */
     double m_sol = P[i].Mass * (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS)); // M/Msun
     if(m_sol > 8.) // minimum mass for SNe
@@ -256,7 +254,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
 {
     if(All.GasReturnFraction <= 0) return;
     double D_RETURN_FRAC = 0.01; // fraction of particle mass to return on a recycling step //
-#ifdef SINGLE_STAR_FORMATION
+#ifdef SINGLE_STAR_SINK_DYNAMICS
     D_RETURN_FRAC = 1.0e-7; // needs to be much smaller to have quasi-continuous winds on these scales //
     /* use a standard scaling from e.g. Castor, Abbot, & Klein */
     double L_sol = bh_lum_bol(0, P[i].Mass, i) * All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM); // L in solar
@@ -370,7 +368,7 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
     for(k=0;k<NUM_METAL_SPECIES;k++) {if(yields[k]<0) {yields[k]=0.0;} if(yields[k]>1) {yields[k]=1;} in->yields[k]=yields[k];}
 #endif
     in->Msne = P[i].SNe_ThisTimeStep * (Msne*SOLAR_MASS)/(All.UnitMass_in_g/All.HubbleParam); // total mass in code units
-#ifdef SINGLE_STAR_FORMATION
+#ifdef SINGLE_STAR_SINK_DYNAMICS
     in->Msne = P[i].Mass; // conserve mass and destroy star completely
 #endif
     in->SNe_v_ejecta = sqrt(2.0*SNeEgy/in->Msne); // v_ej in code units
@@ -399,7 +397,7 @@ void particle2in_addFB_winds(struct addFBdata_in *in, int i)
     for(k=0;k<NUM_METAL_SPECIES;k++) in->yields[k]=yields[k];
 #endif
     in->Msne = P[i].Mass * P[i].MassReturn_ThisTimeStep; // mass (in code units) returned
-#ifdef SINGLE_STAR_FORMATION
+#ifdef SINGLE_STAR_SINK_DYNAMICS
     double m_msun = P[i].Mass * All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS);
     in->SNe_v_ejecta = (616.e5 * sqrt((1.+0.1125*m_msun)/(1.+0.0125*m_msun)) * pow(m_msun,0.131)) / All.UnitVelocity_in_cm_per_s; // scaling from size-mass relation+eddington factor, assuming line-driven winds //
 #else
