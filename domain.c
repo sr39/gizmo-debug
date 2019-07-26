@@ -167,7 +167,7 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
     }
 
     TreeReconstructFlag = 1;	/* ensures that new tree will be constructed */
-#ifdef SINGLE_STAR_FORMATION
+#ifdef SINGLE_STAR_SINK_DYNAMICS
     All.NumForcesSinceLastDomainDecomp = 0;
 #endif
     

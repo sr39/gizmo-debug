@@ -6,8 +6,8 @@
 #include <gsl/gsl_math.h>
 #include "allvars.h"
 #include "proto.h"
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-#include "nbody/nbody.h"
+#if (SINGLE_STAR_TIMESTEPPING > 0)
+#include "gravity/nbody.h"
 #endif
 
 /* Routines for the drift/predict step */
@@ -123,7 +123,7 @@ void drift_particle(int i, integertime time1)
 #if !defined(FREEZE_HYDRO)
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME)
     if(P[i].Type==0) {advect_mesh_point(i,dt_drift);} else {for(j=0;j<3;j++) {P[i].Pos[j] += P[i].Vel[j] * dt_drift;}}
-#elif defined(SINGLE_STAR_SUPERTIMESTEPPING)
+#elif (SINGLE_STAR_TIMESTEPPING > 0)
     double fewbody_drift_dx[3], fewbody_kick_dv[3]; // if super-timestepping, the updates above account for COM motion of the binary; now we account for the internal motion
     if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=2) ) 
     {
@@ -213,7 +213,7 @@ void drift_particle(int i, integertime time1)
                 SphP[i].VelPred[j] += P[i].GravAccel[j] * dt_gravkick +
                     SphP[i].HydroAccel[j]*All.cf_atime * dt_hydrokick; /* make sure v is in code units */
 #endif
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+#if (SINGLE_STAR_TIMESTEPPING > 0)
 	        if((P[i].Type==5) && (P[i].SuperTimestepFlag>=2)) {for(j=0;j<3;j++)	{SphP[i].VelPred[j] += fewbody_kick_dv[j];}}
 #endif	    
             

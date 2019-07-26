@@ -72,7 +72,7 @@ double ref_mass_factor(int i)
 {
     double ref_factor=1.0;
 #if defined(BH_CALC_DISTANCES) && !defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE)
-#ifndef SINGLE_STAR_FORMATION
+#ifndef SINGLE_STAR_SINK_DYNAMICS
     ref_factor = sqrt(P[i].min_dist_to_bh + 0.0001);
     if(ref_factor>1.0) { ref_factor = 1.0; }
 #endif 

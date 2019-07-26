@@ -209,7 +209,7 @@
 # --- star formation law/particle spawning (additional options: otherwise all star particles will reflect IMF-averaged populations and form strictly based on a density criterion) ---- #
 ## ----------------------------------------------------------------------------------------------------
 #GALSF_SFR_MOLECULAR_CRITERION   # estimates molecular/self-shielded fraction in SF-ing gas, only SF from that is allowed. Cite Krumholz & Gnedin (ApJ 2011 729 36) and Hopkins et al., 2017a, arXiv:1702.06148
-#GALSF_SFR_VIRIAL_SF_CRITERION=0 # only allow star formation in virialized sub-regions (alpha<1) (0/no value='default'; 1=0+Jeans criterion; 2=1+'strict' (zero sf if not bound)), 3=2+converging-flow+time-smoothed. 4=3+check if converging along all-3 principle axes. Cite Hopkins, Narayanan, & Murray 2013 (MNRAS, 432, 2647) and Hopkins et al., 2017a, arXiv:1702.06148; (or Grudic et al. arXiv:1708.09065 for option=3,4)
+#GALSF_SFR_VIRIAL_SF_CRITERION=0 # only allow star formation in virialized sub-regions (alpha<1) (0/no value='default'; 1=0+Jeans criterion; 2=1+'strict' (zero sf if not bound)), 3=2+converging-flow+time-smoothed. 4=3+check if converging along all-3 principle axes. 5=4+Tidal Hill criterion (tidal tensor converging in all dimensions). Cite Hopkins, Narayanan, & Murray 2013 (MNRAS, 432, 2647) and Hopkins et al., 2017a, arXiv:1702.06148; (or Grudic et al. arXiv:1708.09065 for option=3,4)
 #GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory. Cite Guszejnov, Hopkins, & Ma 2017, MNRAS, 472, 2107
 #GALSF_SFR_IMF_SAMPLING          # discretely sample the IMF: simplified model with quantized number of massive stars. Cite Kung-Yi Su, Hopkins, et al., Hayward, et al., 2017, "Discrete Effects in Stellar Feedback: Individual Supernovae, Hypernovae, and IMF Sampling in Dwarf Galaxies". 
 #GALSF_GENERATIONS=1             # the number of star particles a gas particle may spawn (defaults to 1, set otherwise)
@@ -241,12 +241,17 @@
 
 ############################################################################################################################
 ## ----------------------------------------------------------------------------------------------------
-# ------------------------------------- Star formation with -individual- stars [sink particles]: from PFH [proprietary development with Mike Grudic and David Guszejnov; modules not to be used without authors permission, though basic modules may be ok there is a lot of development happening here]
+# --------------- Star+Planet+Compact Object Formation (Sink Particle + Explicit/Keplerian N-Body Dynamics)
+# -------------------- (unlike GALSF options, these sinks are individual accretors, not populations). Much in common with Black Hole modules below.
+# -------------------- These are proprietary right now, in development with Mike Grudic, David Guszejnov, and PFH: modules not to be used without authors permission, though basic modules may be ok there is a lot of development happening here]
 ## ----------------------------------------------------------------------------------------------------
-#SINGLE_STAR_FORMATION          # master switch for single star formation model: sink particles representing -individual- stars
-#SINGLE_STAR_ACCRETION=0        # proto-stellar accretion: 0=grav capture only; 1+=alpha-disk accretion onto protostar; 2+=bondi accretion of diffuse gas; 3+=sub-grid variability
+#SINGLE_STAR_SINK_DYNAMICS      # master switch for 'single star' formation/dynamics model: sink particles representing -individual- stars/planets/compact objects
+#SINGLE_STAR_SINK_FORMATION=(1+2+4+8+16+32)   # form new sinks on the fly, criteria from bitflag: 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
+#SINGLE_STAR_TIMESTEPPING=1     # use additional timestep criteria to ensure resolved binaries/multiples dont dissolve in close encounters. 0=most conservative. 1=super-timestep hard binaries by operator-splitting the binary orbit. 2=more aggressive super-timestep.
+#SINGLE_STAR_ACCRETION=0        # sink (e.g. proto-stellar) accretion: 0=grav capture only; 1+=alpha-disk accretion onto protostar; 2+=bondi accretion of diffuse gas; 3+=sub-grid variability
+#SINGLE_STAR_PROTOSTELLAR_EVOLUTION # sinks are assumed to be proto-stars and follow protostellar evolution tracks as they accrete to evolve radii+luminosities, determines proto-stellar feedback properties
 #SINGLE_STAR_FB_RT_HEATING      # proto-stellar heating: luminosity determined by BlackHoleRadiativeEfficiency (typical ~5e-7)
-#SINGLE_STAR_FB_JETS            # protostellar jets: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow. cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840 (for algorithm, developed for black hole jets)
+#SINGLE_STAR_FB_JETS            # kinematic jets from sinks: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow. for now cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840 (for algorithm, developed for black hole jets), though now using SPAWN algorithm developed by KY Su
 #SINGLE_STAR_PROMOTION          # proto-stars become ZAMS stars at end of pre-main sequence lifetime. FIRE feedback modules kick in, but using appropriate luminosities and temperatures for each
 ############################################################################################################################
 
@@ -419,6 +424,7 @@
 #EVALPOTENTIAL                  # computes gravitational potential
 #GRAVITY_HYBRID_OPENING_CRIT    # use -both- Barnes-Hut + relative angle opening criterion for the gravity tree (normally choose one or the other)
 #TIDAL_TIMESTEP_CRITERION       # replace standard acceleration-based timestep criterion with one based on the tidal tensor norm, which is more accurate and adaptive (testing, but may be promoted to default code)
+#BH_WAKEUP_GAS                  # force all gas within the interaction radius of a BH/sink particle to timestep at the same rate (set to lowest timebin of any of the interacting neighbors)
 # --------------------
 # ----- Particle IDs
 #TEST_FOR_IDUNIQUENESS          # explicitly check if particles have unique id numbers (only use for special behaviors)
@@ -432,6 +438,7 @@
 #MERGESPLIT_HARDCODE_MAX_MASS=(1.0e-6)   # manually set maximum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
 #MERGESPLIT_HARDCODE_MIN_MASS=(1.0e-7)   # manually set minimum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
 #BH_DEBUG_FIX_MASS              # does not allow BH/sink [type=5] particles to change their mass during run, from accretion/merging/swallowing
+#BH_SWALLOW_SMALLTIMESTEPS      # particles with very small timesteps will be accreted to prevent extreme slowdowns, controlled by DT_MIN_TOLERANCE_FACTOR~0.001
 # --------------------
 # ----- MPI & Parallel-FFTW De-Bugging
 #USE_MPI_IN_PLACE               # MPI debugging: makes AllGatherV compatible with MPI_IN_PLACE definitions in some MPI libraries
@@ -529,7 +536,7 @@
 
 ####################################################################################################-
 #BH_DEBUG_SPAWN_JET_TEST        #- BH outflow/particle spawn in jet (currently testing/early-dev, doesn't work for general problems! units hardcoded!)
-#NEWSINK                        #- Sink algorithm based on Hubber 2013, only tested for SINGLE_STAR_FORMATION
+#NEWSINK                        #- Sink algorithm based on Hubber 2013, only tested for SINGLE_STAR_SINK_DYNAMICS
 ####################################################################################################-
 
 

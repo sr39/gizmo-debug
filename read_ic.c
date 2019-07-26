@@ -454,7 +454,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             break;
 
         case IO_BH_ANGMOM:
-#ifdef BH_FOLLOW_ANGMOM
+#ifdef BH_FOLLOW_ACCRETED_ANGMOM
             for(n = 0; n < pc; n++)
                 for(k = 0; k < 3; k++)
                     P[offset + n].BH_Specific_AngMom[k] = *fp++;
@@ -626,18 +626,10 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
 
-
         case IO_SINKRAD:
 #ifdef SINGLE_STAR_STRICT_ACCRETION
             for(n = 0; n < pc; n++)
                 P[offset + n].SinkRadius = *fp++;
-#endif
-            break;
-        case IO_JSINK:
-#ifdef NEWSINK_J_FEEDBACK
-            for(n = 0; n < pc; n++)
-                for(k = 0; k < 3; k++)
-                    P[offset + n].Jsink[k] = *fp++;
 #endif
             break;
             
@@ -984,7 +976,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==1)||(HYDRO_FIX_MESH_MOTION==2)||(HYDRO_FIX_MESH_MOTION==3))
                    && blocknr != IO_PARTVEL
 #endif
-#if defined(SINGLE_STAR_STRICT_ACCRETION) && defined(READ_SINKRADIUS)
+#if defined(SINGLE_STAR_STRICT_ACCRETION) 
                    && blocknr != IO_SINKRAD
 #endif
 #if defined(CHIMES) && !defined(CHIMES_INITIALISE_IN_EQM) 

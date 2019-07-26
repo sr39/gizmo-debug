@@ -1335,7 +1335,7 @@ The numerical details and physics are described in great detail in Hopkins et al
     ##-----------------------------------------------------------------------------------------------------
     #-------------------------------------- Star formation with -individual- stars [sink particles]: from PFH [proprietary development with Mike Grudic and David Guszejnov; modules not to be used without authors permission, though basic modules may be ok there is a lot of development happening here]
     ##-----------------------------------------------------------------------------------------------------
-    #SINGLE_STAR_FORMATION          # master switch for single star formation model: sink particles representing -individual- stars
+    #SINGLE_STAR_SINK_DYNAMICS          # master switch for single star formation model: sink particles representing -individual- stars
     #SINGLE_STAR_ACCRETION=3        # proto-stellar accretion: 0=grav capture only; 1+=alpha-disk accretion onto protostar; 2+=bondi accretion of diffuse gas; 3+=sub-grid variability 
     #SINGLE_STAR_FB_HEATING         # proto-stellar heating: luminosity determined by BlackHoleRadiativeEfficiency (typical ~5e-7)
     #SINGLE_STAR_FB_JETS            # protostellar jets: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow. cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840 (for algorithm, developed for black hole jets)

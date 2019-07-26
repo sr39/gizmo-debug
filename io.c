@@ -283,7 +283,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     for(k = 0; k < 3; k++)
                     {
                         fp[k] = P[pindex].Vel[k] + P[pindex].GravAccel[k] * dt_gravkick;
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+#if (SINGLE_STAR_TIMESTEPPING > 0)
 			            if((P[pindex].Type == 5) && (P[pindex].SuperTimestepFlag >= 2)) {fp[k] += (P[pindex].COM_GravAccel[k]-P[pindex].GravAccel[k]) * dt_gravkick;}
 #endif			    
                         if(P[pindex].Type == 0)
@@ -1042,7 +1042,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_BH_ANGMOM:
-#ifdef BH_FOLLOW_ANGMOM
+#ifdef BH_FOLLOW_ACCRETED_ANGMOM
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1094,21 +1094,6 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     *fp++ = P[pindex].SinkRadius;
                     n++;
                 }
-#endif
-            break;
-            
-        case IO_JSINK:
-#ifdef NEWSINK_J_FEEDBACK
-            for(n = 0; n < pc; pindex++){
-                if(P[pindex].Type == type)
-                {
-                    for(k = 0; k < 3; k++){
-                        fp[k] = P[pindex].Jsink[k];
-		    }
-                    n++;
-                    fp+=3;
-                }
-            }
 #endif
             break;
             
@@ -1788,7 +1773,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_VORT:
         case IO_MG_ACCEL:
         case IO_BH_ANGMOM:
-        case IO_JSINK:
             if(mode)
                 bytes_per_blockelement = 3 * sizeof(MyInputFloat);
             else
@@ -2174,7 +2158,6 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_VORT:
         case IO_MG_ACCEL:
         case IO_BH_ANGMOM:
-        case IO_JSINK:
             values = 3;
             break;
             
@@ -2724,7 +2707,6 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_BH_ANGMOM:
         case IO_ACRB:
         case IO_SINKRAD:
-        case IO_JSINK:
         case IO_BHMDOT:
         case IO_BHPROGS:
             for(i = 0; i < 6; i++)
@@ -3193,7 +3175,7 @@ int blockpresent(enum iofields blocknr)
             
 
         case IO_BH_ANGMOM:
-#ifdef BH_FOLLOW_ANGMOM
+#ifdef BH_FOLLOW_ACCRETED_ANGMOM
             return 1;
 #else
             return 0;
@@ -3208,13 +3190,7 @@ int blockpresent(enum iofields blocknr)
             return 0;
 #endif
             break;
-        case IO_JSINK:
-#if defined(NEWSINK_J_FEEDBACK)
-            return 1;
-#else
-            return 0;
-#endif
-	    break;
+
         case IO_BHMASS:
         case IO_BHMASSALPHA:
 #ifdef BH_ALPHADISK_ACCRETION
@@ -3743,9 +3719,6 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_SINKRAD:
             strncpy(label, "SRAD", 4);
             break;
-        case IO_JSINK:
-            strncpy(label, "JSIN", 4);
-            break;
         case IO_BHMDOT:
             strncpy(label, "BHMD", 4);
             break;
@@ -4204,9 +4177,6 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_SINKRAD:
             strcpy(buf, "SinkRadius");
-            break;
-        case IO_JSINK:
-            strcpy(buf, "Jsink");
             break;
         case IO_BHMDOT:
             strcpy(buf, "BH_Mdot");

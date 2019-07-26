@@ -637,11 +637,11 @@ void gravity_tree(void)
     /*  muliply by G */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING // Subtract for component from companion if in binary
+#if (SINGLE_STAR_TIMESTEPPING > 0) // Subtract for component from companion if in binary
         if((P[i].Type == 5) && (P[i].is_in_a_binary == 1)) {subtract_companion_gravity(i);}
 #endif
         for(j=0;j<3;j++) {P[i].GravAccel[j] *= All.G;}
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+#if (SINGLE_STAR_TIMESTEPPING > 0)
         for(j=0;j<3;j++) {P[i].COM_GravAccel[j] *= All.G;}
 #endif 
 
@@ -649,7 +649,7 @@ void gravity_tree(void)
 #ifdef GDE_DISTORTIONTENSOR /* Diagonal terms of tidal tensor need correction, because tree is running over all particles -> also over target particle -> extra term -> correct it */
         if(All.ComovingIntegrationOn) {P[i].tidal_tensorps[0][0] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[1][1] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[2][2] -= All.TidalCorrection/All.G;} // subtract Hubble flow terms //
 #endif
-#if (defined(TIDAL_TIMESTEP_CRITERION) || defined(SINGLE_STAR_HILL_CRITERION)) // diagonalize the tidal tensor so we can use its invariants, which don't change with rotation
+#if (defined(TIDAL_TIMESTEP_CRITERION) || defined(GALSF_SFR_TIDAL_HILL_CRITERION)) // diagonalize the tidal tensor so we can use its invariants, which don't change with rotation
         double tt[9]; for(j=0; j<3; j++) {for (k=0; k<3; k++) tt[3*j+k] = P[i].tidal_tensorps[j][k];}
         gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3);
         gsl_vector *eval = gsl_vector_alloc (3);
@@ -1180,7 +1180,7 @@ void mysort_dataindex(void *b, size_t n, size_t s, int (*cmp) (const void *, con
     myfree(tmp);
 }
 
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING 
+#if (SINGLE_STAR_TIMESTEPPING > 0) 
 void subtract_companion_gravity(int i)
 {
     /* Remove contribution to gravitational field and tidal tensor from the stars in the binary to the center of mass */

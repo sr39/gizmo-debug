@@ -165,8 +165,7 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
     }
 #endif
 #if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5)
-    for(k=0;k<3;k++)
-        ASSIGN_ADD(BlackholeTempInfo[target].BH_SurroundingGasVel[k],out->BH_SurroundingGasVel[k],mode);
+    for(k=0;k<3;k++) {ASSIGN_ADD(BlackholeTempInfo[target].BH_SurroundingGasVel[k],out->BH_SurroundingGasVel[k],mode);}
 #endif
 #if defined(BH_GRAVCAPTURE_GAS)
     ASSIGN_ADD(BlackholeTempInfo[target].mass_to_swallow_edd, out->mass_to_swallow_edd, mode);
@@ -175,7 +174,7 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
     ASSIGN_ADD(BlackholeTempInfo[target].gas_Erot_in_intzone, out->gas_Erot_in_intzone, mode);
     ASSIGN_ADD(BlackholeTempInfo[target].gas_Egrav_in_intzone, out->gas_Egrav_in_intzone, mode);
     ASSIGN_ADD(BlackholeTempInfo[target].t_rad_denom_sum, out->t_rad_denom_sum, mode);
-#ifdef NEWSINK_BONDI    
+#ifdef SINKLEFINKLE_BONDI    
     ASSIGN_ADD(BlackholeTempInfo[target].min_bondi_mdot, out->min_bondi_mdot, mode);
     ASSIGN_ADD(BlackholeTempInfo[target].gasmass_within_softening, out->min_bondi_mdot, mode);
 #endif    
@@ -186,11 +185,11 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
     /*  Do an insertion sort for the gas particle properties  */
     int j, n=BlackholeTempInfo[target].n_neighbor;
 #ifdef BH_OUTPUT_MOREINFO
-    if ( (n + out->n_neighbor) > NEWSINK_NEIGHBORMAX){ // We are not supposed to have more neighbors than NEWSINK_NEIGHBORMAX
-            printf("%d Gas neighbor number over limit of NEWSINK_NEIGHBORMAX for BH ID %d Current neighbor number is %d and we want to add %d more. We are keeping the closest ones.\n", ThisTask, BlackholeTempInfo[target].index ,n, out->n_neighbor);
+    if ( (n + out->n_neighbor) > SINKLEFINKLE_NEIGHBORMAX){ // We are not supposed to have more neighbors than SINKLEFINKLE_NEIGHBORMAX
+            printf("%d Gas neighbor number over limit of SINKLEFINKLE_NEIGHBORMAX for BH ID %d Current neighbor number is %d and we want to add %d more. We are keeping the closest ones.\n", ThisTask, BlackholeTempInfo[target].index ,n, out->n_neighbor);
     }
 #endif
-    //Regardless, we will collect the closest NEWSINK_NEIGHBORMAX particles
+    //Regardless, we will collect the closest SINKLEFINKLE_NEIGHBORMAX particles
     for(j=0;j<(out->n_neighbor);j++){ //go over all the incoming particle data
             if (n==0){ //first one just gets stored
                 BlackholeTempInfo[target].rgas[0] = out->rgas[j];
@@ -202,7 +201,7 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
                 BlackholeTempInfo[target].gasID[0] = out->gasID[j];
                 BlackholeTempInfo[target].f_acc[0] = out->f_acc[j];
                 BlackholeTempInfo[target].isbound[0] = out->isbound[j];
-#if defined(NEWSINK_J_FEEDBACK)
+#if defined(SINKLEFINKLE_J_FEEDBACK)
                 BlackholeTempInfo[target].dv_ang_kick_norm[0] = out->dv_ang_kick_norm[j];
 #endif
                 n++;
@@ -211,7 +210,7 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
                 k = n-1;
                 while (k >= 0 && BlackholeTempInfo[target].rgas[k] > (out->rgas[j]) ) 
                 {
-                    if (k+1 < NEWSINK_NEIGHBORMAX){ //we can store this one, if we can't this will be just overwritten
+                    if (k+1 < SINKLEFINKLE_NEIGHBORMAX){ //we can store this one, if we can't this will be just overwritten
                         BlackholeTempInfo[target].rgas[k+1] = BlackholeTempInfo[target].rgas[k];
                         BlackholeTempInfo[target].xgas[k+1] = BlackholeTempInfo[target].xgas[k];
                         BlackholeTempInfo[target].ygas[k+1] = BlackholeTempInfo[target].ygas[k];
@@ -221,13 +220,13 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
                         BlackholeTempInfo[target].gasID[k+1] = BlackholeTempInfo[target].gasID[k];
                         BlackholeTempInfo[target].f_acc[k+1] = BlackholeTempInfo[target].f_acc[k];
                         BlackholeTempInfo[target].isbound[k+1] = BlackholeTempInfo[target].isbound[k];
-#if defined(NEWSINK_J_FEEDBACK)
+#if defined(SINKLEFINKLE_J_FEEDBACK)
                         BlackholeTempInfo[target].dv_ang_kick_norm[k+1] = BlackholeTempInfo[target].dv_ang_kick_norm[k];
 #endif
                     }
                     k--; 
                 }
-                if (k+1 < NEWSINK_NEIGHBORMAX){ //we can store this one, if we can't we will just throw it away
+                if (k+1 < SINKLEFINKLE_NEIGHBORMAX){ //we can store this one, if we can't we will just throw it away
                     BlackholeTempInfo[target].rgas[k+1] = out->rgas[j];
                     BlackholeTempInfo[target].xgas[k+1] = out->xgas[j];
                     BlackholeTempInfo[target].ygas[k+1] = out->ygas[j];
@@ -237,11 +236,11 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
                     BlackholeTempInfo[target].gasID[k+1] = out->gasID[j];
                     BlackholeTempInfo[target].f_acc[k+1] = out->f_acc[j];
                     BlackholeTempInfo[target].isbound[k+1] = out->isbound[j];
-#if defined(NEWSINK_J_FEEDBACK)
+#if defined(SINKLEFINKLE_J_FEEDBACK)
                     BlackholeTempInfo[target].dv_ang_kick_norm[k+1] = out->dv_ang_kick_norm[j];
 #endif
                 }
-                if (n< NEWSINK_NEIGHBORMAX){n++;} //we have added another neighbor
+                if (n< SINKLEFINKLE_NEIGHBORMAX){n++;} //we have added another neighbor
             }
     }
     BlackholeTempInfo[target].n_neighbor = n; //update the number of neighbors stored

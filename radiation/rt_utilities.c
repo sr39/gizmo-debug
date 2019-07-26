@@ -299,11 +299,7 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
         if(P[i].Type == 5) 
         {
             if(sigma_0<0) {return 1;} active_check=1;
-#ifdef NEWSINK
-            double lbol = bh_lum_bol(P[i].BH_Mdot_Avg,P[i].Mass,i);
-#else
             double lbol = bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i);
-#endif
             double lbol_lsun = lbol / (SOLAR_LUM * All.UnitTime_in_s / (All.HubbleParam * All.UnitEnergy_in_cgs));
             double bol_corr = 0;
 #if defined(RT_HARD_XRAY) 

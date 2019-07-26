@@ -965,7 +965,7 @@ double ags_return_maxsoft(int i)
 #endif
 #endif
 #ifdef BLACK_HOLES
-#ifndef SINGLE_STAR_FORMATION
+#ifndef SINGLE_STAR_SINK_DYNAMICS
     if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius  / All.cf_atime;}   // MaxAccretionRadius is now defined in params.txt in PHYSICAL units
 #endif
 #endif

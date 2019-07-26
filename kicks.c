@@ -5,8 +5,8 @@
 #include <math.h>
 #include "allvars.h"
 #include "proto.h"
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-#include "nbody/nbody.h"
+#if (SINGLE_STAR_TIMESTEPPING > 0)
+#include "gravity/nbody.h"
 #endif
 /*
  * This file was originally part of the GADGET3 code developed by
@@ -270,7 +270,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #endif
             }
             dp[j] += mass_pred * P[i].GravAccel[j] * dt_gravkick;
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING  //if we're super-timestepping, the above accounts for the change in COM velocity. Now we do the internal binary velocity change
+#if (SINGLE_STAR_TIMESTEPPING > 0)  //if we're super-timestepping, the above accounts for the change in COM velocity. Now we do the internal binary velocity change
             if((P[i].Type == 5) && (P[i].SuperTimestepFlag>=2)) {dp[j] += mass_pred * (P[i].COM_GravAccel[j]-P[i].GravAccel[j]) * dt_gravkick;} 
 #endif
             P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */

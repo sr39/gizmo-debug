@@ -19,7 +19,7 @@ void radiation_pressure_winds_consolidated(void)
     double dx,dy,dz,r2,u,h,hinv,hinv3,wk,rho,wt_sum,p_random,p_cumulative,star_age,lm_ssp,dv_units,dE_over_c,unitmass_in_msun,prob,dt,v,vq=0,dv_imparted,dv_imparted_uv,norm,dir[3], total_n_wind,total_m_wind,total_mom_wind,total_prob_kick,avg_v_kick,momwt_avg_v_kick,avg_taufac;
     double totMPI_n_wind,totMPI_m_wind,totMPI_mom_wind,totMPI_prob_kick,totMPI_avg_v,totMPI_pwt_avg_v,totMPI_taufac, sigma_eff_0, RtauMax = 0, age_thold = 0.1;
     total_n_wind=total_m_wind=total_mom_wind=total_prob_kick=avg_v_kick=momwt_avg_v_kick=avg_taufac=0; totMPI_n_wind=totMPI_m_wind=totMPI_mom_wind=totMPI_prob_kick=totMPI_avg_v=totMPI_pwt_avg_v=totMPI_taufac=0; p_random=p_cumulative=0;
-#ifdef SINGLE_STAR_FORMATION
+#ifdef SINGLE_STAR_SINK_DYNAMICS
     age_thold = 1.0e10;
 #endif
     if(All.WindMomentumLoading<=0) return;
@@ -50,7 +50,7 @@ void radiation_pressure_winds_consolidated(void)
 #ifndef GALSF_FB_FIRE_RT_CONTINUOUSRP
                 /* if kicks are stochastic, we don't want to waste time doing a neighbor search every timestep; it can be much faster to pre-estimate the kick probabilities */
                 double v_wind_threshold = 15.e5 / All.UnitVelocity_in_cm_per_s;
-#ifdef SINGLE_STAR_FORMATION
+#ifdef SINGLE_STAR_SINK_DYNAMICS
                 v_wind_threshold = 0.2e5 / All.UnitVelocity_in_cm_per_s;
 #endif
                 rho=P[i].DensAroundStar; h=P[i].Hsml;

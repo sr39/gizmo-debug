@@ -78,7 +78,7 @@ void run(void)
         
         set_non_standard_physics_for_current_time();	/* update auxiliary physics for current time */
 
-#if defined(SINGLE_STAR_FORMATION) || defined(BH_WIND_SPAWN)
+#if defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_WIND_SPAWN)
         int TreeReconstructFlag_local = TreeReconstructFlag;
         MPI_Allreduce(&TreeReconstructFlag_local, &TreeReconstructFlag, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
 #endif
@@ -86,7 +86,7 @@ void run(void)
         {
             domain_Decomposition(0, 0, 1);      /* do domain decomposition if step is big enough, and set new list of active particles  */
         }
-#ifdef SINGLE_STAR_FORMATION
+#ifdef SINGLE_STAR_SINK_DYNAMICS
         else if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart || TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
 #elif BH_WIND_SPAWN
         else if(TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
