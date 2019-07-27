@@ -29,7 +29,7 @@
 /* quantities that pass IN to the 'blackhole_environment_evaluate' routines */
 static struct blackholedata_in
 {
-#if defined(BH_GRAVCAPTURE_GAS) || defined(SINKLEFINKLE_J_FEEDBACK)
+#if defined(BH_GRAVCAPTURE_GAS) || (BH_GRAVACCRETION == 8)
     MyDouble Mass;
 #endif
 #if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
@@ -50,7 +50,7 @@ static struct blackholedata_in
 #ifdef BH_WAKEUP_GAS
     MyFloat TimeBin;
 #endif
-#if defined(SINKLEFINKLE_J_FEEDBACK)
+#if defined(BH_RETURN_ANGMOM_TO_GAS)
     MyFloat BH_Specific_AngMom[3];
 #endif
 }
@@ -111,7 +111,7 @@ void blackhole_environment_loop(void)
                 BlackholeDataIn[j].Pos[k] = P[place].Pos[k];
                 BlackholeDataIn[j].Vel[k] = P[place].Vel[k];
             }
-#if defined(BH_GRAVCAPTURE_GAS) || defined(SINKLEFINKLE_J_FEEDBACK)
+#if defined(BH_GRAVCAPTURE_GAS) || (BH_GRAVACCRETION == 8)
             BlackholeDataIn[j].Mass = P[place].Mass;
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
             BlackholeDataIn[j].SinkRadius = P[place].SinkRadius;
@@ -125,7 +125,7 @@ void blackhole_environment_loop(void)
 #ifdef BH_WAKEUP_GAS
 	        BlackholeDataIn[j].TimeBin = P[place].TimeBin;
 #endif
-#if defined(SINKLEFINKLE_J_FEEDBACK)
+#if defined(BH_RETURN_ANGMOM_TO_GAS)
             BlackholeDataIn[j].BH_Specific_AngMom[0] = P[place].BH_Specific_AngMom[0];BlackholeDataIn[j].BH_Specific_AngMom[1] = P[place].BH_Specific_AngMom[1];BlackholeDataIn[j].BH_Specific_AngMom[2] = P[place].BH_Specific_AngMom[2];
 #endif
             memcpy(BlackholeDataIn[j].NodeList, DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
@@ -203,9 +203,7 @@ void blackhole_environment_loop(void)
     myfree(Ngblist);
 
     /* DAA: normalize/finalized some of the environment variables */
-    for(i=0; i<N_active_loc_BHs; i++)
-        normalize_temp_info_struct(i);
-        
+    for(i=0; i<N_active_loc_BHs; i++) {normalize_temp_info_struct(i);}        
 }
 
 
@@ -216,25 +214,16 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 {
     /* initialize variables before SPH loop is started */
     int startnode, numngb, j, k, n, listindex=0, mod_index;
-    MyFloat *pos, h_i, *vel, hinv, mass; mass=0;
-    MyFloat ags_h_i = All.ForceSoftening[5];
-    MyIDType id;
-    
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(NEWSINK)
-    MyFloat hinv3, wk, dwk, u; u=wk=dwk=0;
+    MyFloat *pos, h_i, *vel, hinv, mass, hinv3; mass=0; MyFloat ags_h_i = All.ForceSoftening[5]; MyIDType id;
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (BH_GRAVACCRETION == 8)
+    MyFloat wk, dwk, u; u=wk=dwk=0;
 #endif
-    
 #if defined(BH_GRAVCAPTURE_GAS)
     MyFloat vrel, vbound, r2, sink_radius; sink_radius=0;
 #endif
-#if defined(NEWSINK)
-    MyFloat csound_sq, hinv_gas1, hinv3_gas1, u_gas1, u_gas2,hinv_gas2, hinv3_gas2;
-    integertime bh_timebin; int j2, n2; MyDouble Jpar[3], dt;
-#if defined(SINKLEFINKLE_J_FEEDBACK)
-    MyFloat Jsinktot, Jcrossdr[3], drcrossJcrossdr[3], *BH_Specific_AngMom;
+#if defined(BH_RETURN_ANGMOM_TO_GAS)
+    MyFloat *BH_Specific_AngMom;
 #endif
-#endif
-    
     MyDouble dP[3],dv[3],wt;
     struct blackhole_temp_particle_data out;
     memset(&out, 0, sizeof(struct blackhole_temp_particle_data));
@@ -242,7 +231,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     /* these are the BH properties */
     if(mode == 0)
     {
-#if defined(BH_GRAVCAPTURE_GAS) || defined(SINKLEFINKLE_J_FEEDBACK)
+#if defined(BH_GRAVCAPTURE_GAS) || (BH_GRAVACCRETION == 8)
         mass = P[target].Mass;
 #if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
         sink_radius = P[target].SinkRadius;
@@ -259,13 +248,13 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 #ifdef BH_WAKEUP_GAS
 	    bh_timebin = P[target].TimeBin;
 #endif
-#if defined(SINKLEFINKLE_J_FEEDBACK)
+#if defined(BH_RETURN_ANGMOM_TO_GAS)
         BH_Specific_AngMom = P[target].BH_Specific_AngMom;
 #endif
     }
     else
     {
-#if defined(BH_GRAVCAPTURE_GAS) || defined(SINKLEFINKLE_J_FEEDBACK)
+#if defined(BH_GRAVCAPTURE_GAS) || (BH_GRAVACCRETION == 8)
         mass = BlackholeDataGet[target].Mass;
 #if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
         sink_radius = BlackholeDataGet[target].SinkRadius;
@@ -282,22 +271,13 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 #ifdef BH_WAKEUP_GAS
 	    bh_timebin = BlackholeDataGet[target].TimeBin;
 #endif 
-#if defined(SINKLEFINKLE_J_FEEDBACK)
+#if defined(BH_RETURN_ANGMOM_TO_GAS)
         BH_Specific_AngMom = BlackholeDataGet[target].BH_Specific_AngMom;
 #endif
     }
     
     if(h_i < 0) return -1;
-    hinv = 1./h_i;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(NEWSINK)
-    hinv3 = hinv*hinv*hinv;
-#endif
-#if defined(NEWSINK)
-#if defined(SINKLEFINKLE_J_FEEDBACK)
-    Jsinktot = mass * sqrt(BH_Specific_AngMom[0]*BH_Specific_AngMom[0] + BH_Specific_AngMom[1]*BH_Specific_AngMom[1] +BH_Specific_AngMom[2]*BH_Specific_AngMom[2]);
-#endif
-#endif
-    
+    hinv = 1./h_i; hinv3 = hinv*hinv*hinv;
     if(mode == 0)
     {
         startnode = All.MaxPart;  /* root node */
@@ -375,15 +355,31 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         out.Jgas_in_Kernel[1] += wt*(dP[2]*dv[0] - dP[0]*dv[2]);
                         out.Jgas_in_Kernel[2] += wt*(dP[0]*dv[1] - dP[1]*dv[0]);
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-                        u=0;
-                        for(k=0;k<3;k++) u+=dP[k]*dP[k];
-                        u=sqrt(u)/h_i;
-                        kernel_main(u,hinv3,hinv3*hinv,&wk,&dwk,1);
-                        dwk /= u*h_i;
-                        for(k=0;k<3;k++) out.GradRho_in_Kernel[k] += wt * dwk * fabs(dP[k]);
+                        u=0; for(k=0;k<3;k++) {u+=dP[k]*dP[k];}
+                        u=sqrt(u)/h_i; kernel_main(u,hinv3,hinv3*hinv,&wk,&dwk,1);
+                        dwk /= u*h_i; for(k=0;k<3;k++) out.GradRho_in_Kernel[k] += wt * dwk * fabs(dP[k]);
 #endif
 #if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5)
                         for(k=0;k<3;k++) {out.BH_SurroundingGasVel[k] += wt*dv[k];}
+#endif
+#if defined(BH_RETURN_ANGMOM_TO_GAS) /* We need a normalization factor for angular momentum feedback so we will go over all the neighbours */
+                        double r2j=dP[0]*dP[0]+dP[1]*dP[1]+dP[2]*dP[2], Lrj=BH_Specific_AngMom[0]*dP[0]+BH_Specific_AngMom[1]*dP[1]+BH_Specific_AngMom[2]*dP[2];
+                        for(k=0;k<3;k++) {out.angmom_prepass_sum_for_passback[k] += wt*(BH_Specific_AngMom[k]*r2j - dP[k]*Lrj);}
+#endif
+#if (BH_GRAVACCRETION == 8)
+                        u=0; for(k=0;k<3;k++) {u+=dP[k]*dP[k];}
+                        u=sqrt(u)/h_i; kernel_main(u,hinv3,hinv3*hinv,&wk,&dwk,-1);
+                        double rj=u*All.cf_atime; double csj=Particle_effective_soundspeed_i(j);
+                        double vdotrj=0; for(k=0;k<3;k++) {vdotrj+=-dP[k]*dv[k];}
+                        double vr_mdot = 4*M_PI * wt*(wk*All.cf_a3inv) * rj*vdotrj;
+                        if(rj < All.ForceSoftening[5]*All.cf_atime)
+                        {
+                            double bondi_mdot = 4*M_PI*All.G*All.G * mass*mass / pow(csj*csj + (dv[0]*dv[0]+dv[1]*dv[1]+dv[2]*dv[2])*All.cf_a2inv, 1.5) * wt * (wk*All.cf_a3inv);
+                            vr_mdot = DMAX(vr_mdot , bondi_mdot);
+                            out.hubber_mdot_bondi_limiter += bondi_mdot;
+                        }
+                        out.hubber_mdot_vr_estimator += vr_mdot; /* physical */
+                        out.hubber_mdot_disk_estimator += wt*wk * sqrt(rj) / (SphP[j].Density * csj*csj); /* physical */
 #endif
                     }
                     else if( P[j].Type==4 || ((P[j].Type==2||P[j].Type==3) && !(All.ComovingIntegrationOn)) ) 
@@ -396,14 +392,12 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                     }
                     else 
                     { 
-                        /* dark matter */
-                        // DAA: Jalt_in_Kernel and Malt_in_Kernel are updated in normalize_temp_info_struct() to be TOTAL angular momentum and mass 
+                        /* dark matter */ // DAA: Jalt_in_Kernel and Malt_in_Kernel are updated in normalize_temp_info_struct() to be TOTAL angular momentum and mass 
                         out.Malt_in_Kernel += wt;
                         out.Jalt_in_Kernel[0] += wt*(dP[1]*dv[2] - dP[2]*dv[1]);
                         out.Jalt_in_Kernel[1] += wt*(dP[2]*dv[0] - dP[0]*dv[2]);
                         out.Jalt_in_Kernel[2] += wt*(dP[0]*dv[1] - dP[1]*dv[0]);
                     }
-                    
                     
 
 #if defined(BH_GRAVCAPTURE_GAS)
@@ -432,69 +426,9 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 			                    double tff = eps*eps*eps / (mass + P[j].Mass);
 			                    if(tff < P[j].SwallowTime) {P[j].SwallowTime = tff;}
 #endif
-                                /* CAVEAT: when two BHs share some neighbours, this double counts the accretion. looks like this is true always since SwallowID=0 has just been initialized... only makes sense to check SwallowID if we update it... */
-                                if(P[j].SwallowID < id) {out.mass_to_swallow_edd += P[j].Mass;} /* P[j].SwallowID < id */
+                                if(P[j].SwallowID < id) {out.mass_to_swallow_edd += P[j].Mass;} /* mark as 'will be swallowed' on next loop, to correct accretion rate */
                             } /* if( apocenter in tolerance range ) */
                         } /* if(vrel < vbound) */
-                        
-#if defined(NEWSINK)
-                        if (dr_code <= h_i ) /*Check if gas in interaction radius*/
-                        {
-                            u=dr_code/h_i;
-                            csound_sq = GAMMA*GAMMA_MINUS1 * SphP[j].InternalEnergyPred;
-                            kernel_main(u,hinv3,hinv3*hinv,&wk,&dwk,-1);
-                            wk = fabs(wk); /* Just to be safe */
-                            out.intzone_gasmass += P[j].Mass; /* sum up all the mass in the sink radius*/ 
-                            out.intzone_massweight_all += P[j].Mass / SphP[j].Density * wk; /* Volume weighted kernel sum of Eq 9 in Hubber 2013 */
-#ifdef SINKLEFINKLE_BONDI			    
-			    if(dr_code < All.ForceSoftening[5]) // Special switch to clean up gas that might want to hang around inside the softening radius
-			     {
-				 double bondi_mdot = All.G * All.G * mass * mass / pow(csound_sq + (dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2]), 1.5) * P[j].Mass * wk;
-				 out.t_rad_denom_sum += -DMAX(bondi_mdot,  -(dP[0]*dv[0] + dP[1]*dv[1] + dP[2]*dv[2]) * dr_code * P[j].Mass * wk);
-				 out.min_bondi_mdot += 4. * M_PI * bondi_mdot;
-				 out.gasmass_within_softening += P[j].Mass;
-			     } else
-#endif				
-			    out.t_rad_denom_sum += (dP[0]*dv[0] + dP[1]*dv[1] + dP[2]*dv[2]) * dr_code * P[j].Mass * wk;// * DMAX(1, All.ForceSoftening[5]*All.ForceSoftening[5]/(DMAX(dr_code, P[j].Hsml)*DMAX(dr_code, P[j].Hsml))); /* sum in denominator of Eq 8 in Hbber 2013 */
-			    
-                            out.t_disc_num_sum += (sqrt(dr_code) * P[j].Mass * wk) / ( SphP[j].Density * csound_sq); /* sum in Eq 10 in Hubber 2013 without kernel weight*/
-                            hinv_gas1 = 1.0/P[j].Hsml; hinv3_gas1 = hinv_gas1*hinv_gas1*hinv_gas1;
-                            u_gas1=dr_code*hinv_gas1;
-                            Jpar[0] = P[j].Mass*(dP[1]*dv[2] - dP[2]*dv[1]); /*angular momentum of particle relative to sink*/
-                            Jpar[1] = P[j].Mass*(dP[2]*dv[0] - dP[0]*dv[2]);
-                            Jpar[2] = P[j].Mass*(dP[0]*dv[1] - dP[1]*dv[0]);
-                            out.gas_Erot_in_intzone += (Jpar[0]*Jpar[0] + Jpar[1]*Jpar[1] + Jpar[2]*Jpar[2])/(2.0*P[j].Mass*dr_code*dr_code); /* total rotational energy, L^2/(2 m r^2), not just bulk as in Eq 13 oh Hubber 2013 */			    
-			    out.gas_Egrav_in_intzone += grav_interaction_energy(dr_code, mass, P[j].Mass, ags_h_i, P[j].Hsml);
-                            //store properties of this neighbor particle
-                            if (out.n_neighbor < SINKLEFINKLE_NEIGHBORMAX){
-                                out.rgas[out.n_neighbor] = dr_code; //distance
-                                out.xgas[out.n_neighbor] = dP[0]; //x coord
-                                out.ygas[out.n_neighbor] = dP[1]; //y coord
-                                out.zgas[out.n_neighbor] = dP[2]; //z coord
-                                out.Hsmlgas[out.n_neighbor] = P[j].Hsml; //softening
-                                out.mgas[out.n_neighbor] = P[j].Mass; //mass
-                                out.gasID[out.n_neighbor] = P[j].ID; //unique ID, used for swallowing later
-                                //get boundedness, this check is already done above but let's keep it just in case we change the code structure
-                                if(vrel < vbound) { out.isbound[out.n_neighbor] = 1;}
-#if defined(SINKLEFINKLE_J_FEEDBACK)
-                                /* We need a normalization factor for angular momentum feedback so we will go over all the neighbours*/
-                                if (Jsinktot > 0 ){ /*Sink has angular momentum*/
-                                    Jcrossdr[0] = -mass*BH_Specific_AngMom[2]*dP[1] + mass*BH_Specific_AngMom[1]*dP[2]; Jcrossdr[1] = mass*BH_Specific_AngMom[2]*dP[0] - mass*BH_Specific_AngMom[0]*dP[2];Jcrossdr[2] = -mass*BH_Specific_AngMom[1]*dP[0] + mass*BH_Specific_AngMom[0]*dP[1]; // L x dP cross product
-                                    drcrossJcrossdr[0] = Jcrossdr[2]*dP[1] - Jcrossdr[1]*dP[2]; drcrossJcrossdr[1] = -Jcrossdr[2]*dP[0] + Jcrossdr[0]*dP[2];drcrossJcrossdr[2] = Jcrossdr[1]*dP[0] - Jcrossdr[0]*dP[1]; // dP x L x dP cross product
-				    out.dv_ang_kick_norm[out.n_neighbor] = P[j].Mass * sqrt(drcrossJcrossdr[0]*drcrossJcrossdr[0] + drcrossJcrossdr[1]*drcrossJcrossdr[1] + drcrossJcrossdr[2] * drcrossJcrossdr[2] ); 
-                                }
-#endif
-                                out.n_neighbor +=1; //keep track of how many neighbors we have
-                            }
-                            else{
-#ifdef BH_OUTPUT_MOREINFO				
-                                printf("%d Gas neighbor number over limit for BH with ID %d Current neighbor number is %d\n", ThisTask, id, out.n_neighbor);
-#endif				
-                            }
-                            // /* Start another cycle to get gravitational energy, this is very crude, should be replaced */
-                            
-                        } /* Sink radius check */
-#endif // NEWSINK
                     } /* type check */
 #endif // BH_GRAVCAPTURE_GAS
                 } // ( (P[j].Mass > 0) && (P[j].Type != 5) && (P[j].ID != id) )
@@ -532,8 +466,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
  */
 
 
-#ifdef BH_GRAVACCRETION
-
+#if defined(BH_GRAVACCRETION) && (BH_GRAVACCRETION == 0)
 
 void blackhole_environment_second_loop(void)
 {
@@ -664,8 +597,7 @@ void blackhole_environment_second_loop(void)
         {
             place = DataIndexTable[j].Index;
             mod_index = P[place].IndexMapToTempStruc;
-            /* DAA: we only need to update Mbulge_in_Kernel 
-            out2particle_blackhole(&BlackholeDataPasserOut[j], P[place].IndexMapToTempStruc, 1); */
+            /* DAA: we only need to update Mbulge_in_Kernel */
             BlackholeTempInfo[mod_index].MgasBulge_in_Kernel += BlackholeDataPasserOut[j].MgasBulge_in_Kernel;
             BlackholeTempInfo[mod_index].MstarBulge_in_Kernel += BlackholeDataPasserOut[j].MstarBulge_in_Kernel;
         } // for(j = 0; j < nexport; j++)
@@ -813,4 +745,4 @@ int blackhole_environment_second_evaluate(int target, int mode, int *nexport, in
 }
 
 
-#endif   //BH_GRAVACCRETION
+#endif   //BH_GRAVACCRETION == 0

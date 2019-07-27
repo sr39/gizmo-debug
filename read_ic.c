@@ -158,10 +158,7 @@ void read_ic(char *fname)
     
 #if defined(BLACK_HOLES)
 #if defined(BH_SWALLOWGAS) || defined(BH_BONDI) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_SEED_FROM_LOCALGAS)
-    if(RestartFlag == 0)
-    {
-        All.MassTable[5] = 0;
-    }
+    if(RestartFlag == 0) {All.MassTable[5] = 0;}
 #endif
 #endif
     

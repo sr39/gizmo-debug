@@ -65,9 +65,6 @@ void set_blackhole_drag(int i, int n, double dt);
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
 void set_blackhole_long_range_rp(int i, int n);
 #endif
-#ifdef NEWSINK
-double grav_interaction_energy(double dr_code, double m1, double m2, double hsml1, double hsml2);
-#endif
 
 #endif
 

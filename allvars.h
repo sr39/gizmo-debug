@@ -304,57 +304,25 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #ifdef SINGLE_STAR_SINK_DYNAMICS
 
 #ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
-#define DEVELOPER_MODE
 #define ADAPTIVE_GRAVSOFT_FORGAS
 #define GRAVITY_ACCURATE_FEWBODY_INTEGRATION
 #define BH_SWALLOW_SMALLTIMESTEPS
+#define BH_ACCRETE_NEARESTFIRST
+#define BH_RETURN_ANGMOM_TO_GAS
 #define SINGLE_STAR_TIMESTEPPING 1
+#define SINGLE_STAR_ACCRETION 8
 #define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
+#define DEVELOPER_MODE
 #ifdef MAGNETIC
 #define MHD_CONSTRAINED_GRADIENT 1
 #endif
-#ifdef RADTRANSFER
 #define RT_DISABLE_R15_GRADIENTFIX
-#endif
 #endif // SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE
 
 #define GALSF // master switch needed to enable various frameworks
 #define METALS  // metals should be active for stellar return
 #define BLACK_HOLES // need to have black holes active since these are our sink particles
 #define BH_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
-
-
-#ifdef SINGLE_STAR_ACCRETION
-#define BH_SWALLOWGAS // need to swallow gas [part of sink model]
-#define BH_ALPHADISK_ACCRETION // all models will use a 'reservoir' of some kind to smooth out accretion rates (and represent unresolved disk)
-#if (SINGLE_STAR_ACCRETION <= 7)
-#define BH_GRAVACCRETION (SINGLE_STAR_ACCRETION) // use one of these pre-built accretion models
-#endif
-#if (SINGLE_STAR_ACCRETION == 8)
-#define BH_BONDI 0 // use 'normal' Bondi-Hoyle accretion rate
-#endif
-#if (SINGLE_STAR_ACCRETION == 9)
-#define BH_GRAVCAPTURE_GAS // use gravitational capture swallow criterion for resolved gravitational capture
-#endif
-#if (SINGLE_STAR_ACCRETION == 10)
-#define BH_GRAVCAPTURE_GAS
-#define BH_GRAVCAPTURE_FIXEDSINKRADIUS // modify grav capture to Bate-style, fixed (in time) sink radius based on SF neighbor distance, plus angular momentum criterion
-#endif
-
-???
-
-
-#endif
-
-
-
-#ifdef NEWSINK // whole mess here to digest ???
-#define BH_GRAVCAPTURE_GAS
-#define SINKLEFINKLE_BONDI
-#define SINKLEFINKLE_J_FEEDBACK //turns on angular momentum feedback in NEWSINK
-#define SINKLEFINKLE_STOCHASTIC_ACCRETION //with this turned on NEWSINK will not leech of parts of a gas particle when accreting (default behavior), instead it will accrete the entire particle with p=dm/m_particle probability, where dm is the mass it would need to accrete
-#define SINKLEFINKLE_NEIGHBORMAX 50 //maximum number of neighbors anticipated, using BlackHoleNgbFactor=5 and DesNumNgb=32  value of 200 should be safe
-#endif
 
 
 #if (SINGLE_STAR_SINK_FORMATION & 1)
@@ -368,14 +336,38 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #if (SINGLE_STAR_SINK_FORMATION & 32)
 #define GALSF_SFR_TIDAL_HILL_CRITERION
 #endif
+
+#ifdef SINGLE_STAR_ACCRETION
+#define BH_SWALLOWGAS // need to swallow gas [part of sink model]
+#define BH_ALPHADISK_ACCRETION (1000000.) // all models will use a 'reservoir' of some kind to smooth out accretion rates (and represent unresolved disk)
+#if (SINGLE_STAR_ACCRETION <= 8)
+#define BH_GRAVACCRETION (SINGLE_STAR_ACCRETION) // use one of these pre-built accretion models
+#endif
+#if (SINGLE_STAR_ACCRETION == 9)
+#define BH_BONDI 0 // use 'normal' Bondi-Hoyle accretion rate
+#endif
+#if (SINGLE_STAR_ACCRETION == 10)
+#define BH_BONDI 1 // use Bondi rate ignoring local relative velocities
+#endif
+#if (SINGLE_STAR_ACCRETION == 11)
+#define BH_GRAVCAPTURE_GAS // use gravitational capture swallow criterion for resolved gravitational capture
+#endif
+#if (SINGLE_STAR_ACCRETION == 12)
+#define BH_GRAVCAPTURE_GAS
+#define BH_GRAVCAPTURE_FIXEDSINKRADIUS // modify grav capture to Bate-style, fixed (in time) sink radius based on SF neighbor distance, plus angular momentum criterion
+#endif
+#endif
+
 #ifdef SINGLE_STAR_FB_RT_HEATING
 #define GALSF_FB_FIRE_RT_LONGRANGE  // turn on FIRE RT approximation: no Type-4 particles so don't worry about its approximations
 #define BH_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework. make sure BH_FluxMomentumFactor=0 to avoid launching winds this way!!!
 #define BH_COMPTON_HEATING // turn on the heating term: this just calculates incident BH-particle flux, to be used in the cooling routine
 #endif
+
 #ifdef SINGLE_STAR_FB_JETS
 #define BH_WIND_SPAWN (3) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
 #endif
+
 #ifdef SINGLE_STAR_PROMOTION
 #define GALSF_FB_MECHANICAL // allow SNe + winds in promoted stars [at end of main sequence lifetimes]
 #define GALSF_FB_FIRE_STELLAREVOLUTION // mass return and other properties for stellar winds [scaled appropriately for particle masses]
@@ -383,6 +375,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define GALSF_FB_FIRE_RT_LOCALRP // local radiation pressure [scaled with mass, single-scattering term here]
 #define GALSF_FB_FIRE_RT_CONTINUOUSRP // force the local rad-pressure term to be continuous instead of small impulses
 #endif
+
 #if defined(COOLING) && !defined(COOL_GRACKLE) // if not using grackle modules, need to make sure appropriate cooling is enabled
 #ifndef COOL_LOW_TEMPERATURES
 #define COOL_LOW_TEMPERATURES // make sure low-temperature cooling is enabled!
@@ -2265,16 +2258,10 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_FOLLOW_ACCRETED_ANGMOM
     MyFloat BH_Specific_AngMom[3];
 #endif
-#ifdef NEWSINK    
-    MyFloat BH_Mdot_AlphaDisk; /*Mdot for the alpha disk*/
-#endif
-#ifdef SINKLEFINKLE_J_FEEDBACK
-    MyFloat t_disc;
-#endif
     MyFloat BH_Mdot;
     int BH_TimeBinGasNeighbor;
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-    MyFloat BH_NearestGasNeighbor;
+#ifdef BH_ACCRETE_NEARESTFIRST
+    MyFloat BH_dr_to_NearestGasNeighbor;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyFloat BH_disk_hr;
@@ -2932,7 +2919,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyLongDouble Jgas_in_Kernel[3];
     MyLongDouble Jstar_in_Kernel[3];
     MyLongDouble Jalt_in_Kernel[3];
-#ifdef BH_GRAVACCRETION
+#if defined(BH_GRAVACCRETION) && (BH_GRAVACCRETION == 0)
     MyLongDouble MgasBulge_in_Kernel;
     MyLongDouble MstarBulge_in_Kernel;
 #endif
@@ -2947,6 +2934,11 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 #endif
 #if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5)
     MyFloat BH_SurroundingGasVel[3];
+#endif
+#if (BH_GRAVACCRETION == 8)
+    MyFloat hubber_mdot_vr_estimator;
+    MyFloat hubber_mdot_disk_estimator;
+    MyFloat hubber_mdot_bondi_limiter;
 #endif
 #if defined(BH_ALPHADISK_ACCRETION)
     MyFloat mdot_alphadisk;             /*!< gives mdot of mass going into alpha disk */
@@ -2963,39 +2955,11 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
     MyLongDouble accreted_J[3];               /*!< accreted angular momentum */
 #endif
+#if defined(BH_RETURN_ANGMOM_TO_GAS)
+    MyFloat angmom_prepass_sum_for_passback[3]; /*!< Normalization term for angular momentum feedback kicks, see denominator of Eq 22 of Hubber 2013 */
+    MyFloat angmom_norm_topass_in_swallowloop;  /*!< corresponding scalar normalization calculated from the vector above */
+#endif
 
-#if defined(NEWSINK)
-    /* Timescales for the implementation of the NEWSINK algorithm from Hubber 2013 */
-    MyFloat t_disc;                     /*!< Disc timescale */
-    MyFloat t_rad;                      /*!< Timescale of radial infall */
-    MyFloat t_acc;                      /*!< Accretion timescale */
-    /* Further gas properties */
-    MyFloat gas_Erot_in_intzone;        /*!< Rotational energy in kernel */
-    MyFloat gas_Egrav_in_intzone;       /*!< gravitational energy in kernel */
-    MyFloat t_rad_denom_sum;            /*!< sum in denominator of Eq 8 in Hbber 2013 */
-    MyFloat t_disc_num_sum;             /*!< sum in Eq 10 in Hubber 2013 without kernel weight*/
-    MyFloat intzone_massweight_all;     /*!< sum in denominator of Eq 8 in Hubber 2013 */
-    MyFloat intzone_gasmass;            /*!< sum of gas mass in Sink Radius */
-    /* properties of neighboring particles, used for preferential feeding */
-    int n_neighbor;                     /*!< number of neighbors currently stored in the arrays below */
-    MyFloat rgas[SINKLEFINKLE_NEIGHBORMAX];  /*!< Distance of gas from sink */
-    MyFloat xgas[SINKLEFINKLE_NEIGHBORMAX];  /*!< x coordinate of gas from sink */
-    MyFloat ygas[SINKLEFINKLE_NEIGHBORMAX];  /*!< y coordinate of gas from sink */
-    MyFloat zgas[SINKLEFINKLE_NEIGHBORMAX];  /*!< z coordinate of gas from sink */
-    MyFloat Hsmlgas[SINKLEFINKLE_NEIGHBORMAX]; /*!< gas smoothing length */
-    MyFloat mgas[SINKLEFINKLE_NEIGHBORMAX];  /*!< Mass of gas particle */
-    MyIDType gasID[SINKLEFINKLE_NEIGHBORMAX];/*!< ID of gas particle */
-    int isbound[SINKLEFINKLE_NEIGHBORMAX];   /*!< is it bound to the sink */
-    MyFloat f_acc[SINKLEFINKLE_NEIGHBORMAX]; /*!< How much of the gas particle should be accreted */
-#ifdef SINKLEFINKLE_BONDI
-    MyFloat min_bondi_mdot;
-    MyFloat gasmass_within_softening;
-#endif     
-#if defined(SINKLEFINKLE_J_FEEDBACK)
-    MyLongDouble accreted_J[3]; /* Accreted angular momentum */
-    MyDouble dv_ang_kick_norm[SINKLEFINKLE_NEIGHBORMAX]; /*Normalization term for angular momentum feedback kicks, see denominator of Eq 22 of Hubber 2013*/
-#endif
-#endif
 }
 *BlackholeTempInfo, *BlackholeDataPasserResult, *BlackholeDataPasserOut;
 #endif

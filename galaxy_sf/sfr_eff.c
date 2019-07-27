@@ -567,12 +567,6 @@ void star_formation_parent_routine(void)
 #if (SINGLE_STAR_TIMESTEPPING > 0) 
                 P[i].SuperTimestepFlag=P[i].COM_GravAccel[0]=P[i].COM_GravAccel[1]=P[i].COM_GravAccel[2]=P[i].comp_Mass=P[i].COM_dt_tidal=0;
 #endif
-#ifdef NEWSINK
-                P[i].BH_Mdot_AlphaDisk=0; //Initialize as 0, we will update it in the first blackole property loop
-#ifdef SINKLEFINKLE_J_FEEDBACK
-                P[i].t_disc = pow(All.G * P[i].Mass,-0.5) * pow(All.ForceSoftening[5],1.5); /*placeholder to avoid dividing with zero*/
-#endif
-#endif
 #ifdef BH_ALPHADISK_ACCRETION
                 P[i].BH_Mass_AlphaDisk = DMAX(DMAX(0, P[i].Mass-P[i].BH_Mass), All.SeedAlphaDiskMass);
 #endif
