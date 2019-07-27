@@ -474,7 +474,6 @@ integertime get_timestep(int p,		/*!< particle index */
                 dt_2body = 2.*M_PI / SUPERTIMESTEPPING_NUM_STEPS_PER_ORBIT * (binary_dt_2body*2); // orbital frequency is |dr x dv| / r^2, so timestep will be inverse to this
 	        } else {P[p].SuperTimestepFlag = 0;}  // we still have to take a proper short N-body integration timestep due to a third body whose approach requires careful integration, so no super timestepping is possible
     	}
-        if(P[p].is_in_a_binary && r2<All.ForceSoftening[5]*All.ForceSoftening[5]) {dt_2body=10.*dt}; // don't bother doing the super-strict 2-body timestep because we don't believe the star's motion inside the softening anyway
 #endif
         dt = DMIN(dt, dt_2body);
 #endif // SINGLE_STAR_TIMESTEPPING
@@ -975,14 +974,14 @@ integertime get_timestep(int p,		/*!< particle index */
         double dt_ngbs = (BPP(p).BH_TimeBinGasNeighbor ? (((integertime) 1) << BPP(p).BH_TimeBinGasNeighbor) : 0) * All.Timebase_interval / All.cf_hubble_a;
         if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-	    if(P[p].DensAroundStar) 
+#if defined(BH_ACCRETE_NEARESTFIRST)
+	    if(P[p].DensAroundStar > 0)
 	    {
-		    double eps = DMAX(All.SofteningTable[5], BPP(p).BH_NearestGasNeighbor);
+		    double eps = DMAX(KERNEL_CORE_SIZE*All.ForceSoftening[5], BPP(p).BH_dr_to_NearestGasNeighbor);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-		    eps = DMAX(P[p].AGS_Hsml/2.8, BPP(p).BH_NearestGasNeighbor); 
+		    eps = DMAX(eps, KERNEL_CORE_SIZE*P[p].AGS_Hsml);
 #endif		
-		    double dt_gas = sqrt(All.ErrTolIntAccuracy * All.cf_atime * eps * eps * eps/ All.G / P[p].Mass); // fraction of the freefall time of the nearest gas particle from rest
+		    double dt_gas = sqrt(All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * BPP(p).BH_Mass)); // fraction of the freefall time of the nearest gas particle from rest
 		    if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas;}
 		}
 #endif
@@ -1031,9 +1030,6 @@ integertime get_timestep(int p,		/*!< particle index */
 #else
             printf("Part-ID=%llu  dt=%g ac=%g xyz=(%g|%g|%g)\n", (MyIDType) P[p].ID, dt, ac, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2]);
 #endif // ndef LONGIDS
-#ifdef SINGLE_STAR_TIMESTEPPING	    
-        if(P[p].Type == 5) {printf("BH particle size %g, nearest gas distance is %g nearest BH distance is %g min_bh_freefall_time %g min_bh_approach_time %g dt_tidal %g\n", Get_Particle_Size(p), BPP(p).BH_NearestGasNeighbor, P[p].min_dist_to_bh, P[p].min_bh_freefall_time, P[p].min_bh_approach_time, dt_tidal);}
-#endif	
         }
         fflush(stdout); fprintf(stderr, "\n @ fflush \n"); endrun(888);
 #endif // STOP_WHEN_BELOW_MINTIMESTEP

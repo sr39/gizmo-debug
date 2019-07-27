@@ -41,6 +41,9 @@ static struct blackholedata_in
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
     MyFloat Jgas_in_Kernel[3];
 #endif
+#ifdef BH_ACCRETE_NEARESTFIRST
+    MyFloat BH_dr_to_NearestGasNeighbor;
+#endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyFloat BH_disk_hr;
     MyFloat BH_angle_weighted_kernel_sum;
@@ -48,31 +51,11 @@ static struct blackholedata_in
 #if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;
 #endif
-
-#if defined(NEWSINK)
-#if !defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
-    MyFloat SinkRadius;
-#endif
-    /* properties of neighboring particles, used for preferential feeding */
-    int n_neighbor; //number of neighbors currently stored in the arrays below
-    MyFloat rgas[SINKLEFINKLE_NEIGHBORMAX]; /* Distance of gas from sink */
-    MyFloat xgas[SINKLEFINKLE_NEIGHBORMAX]; /* x coordinate of gas from sink */
-    MyFloat ygas[SINKLEFINKLE_NEIGHBORMAX]; /* y coordinate of gas from sink */
-    MyFloat zgas[SINKLEFINKLE_NEIGHBORMAX]; /* z coordinate of gas from sink */
-    MyFloat Hsmlgas[SINKLEFINKLE_NEIGHBORMAX]; /* gas smoothing length */
-    MyFloat mgas[SINKLEFINKLE_NEIGHBORMAX]; /* Mass of gas particle */
-    MyIDType gasID[SINKLEFINKLE_NEIGHBORMAX]; /* ID of gas particle */
-    int isbound[SINKLEFINKLE_NEIGHBORMAX]; /* is it bound to the sink */
-    MyFloat f_acc[SINKLEFINKLE_NEIGHBORMAX]; /* How much of the gas particle should be accreted */
-#if defined(SINKLEFINKLE_J_FEEDBACK)
+#if defined(BH_RETURN_ANGMOM_TO_GAS)
     MyFloat BH_Specific_AngMom[3];
-    MyFloat t_disc;
-    MyDouble dv_ang_kick_norm[SINKLEFINKLE_NEIGHBORMAX]; /*Normalization term for angular momentum feedback kicks, see denominator of Eq 22 of Hubber 2013*/
+    MyFloat angmom_norm_topass_in_swallowloop;
 #endif
-#ifdef BH_ALPHADISK_ACCRETION
-    MyFloat Mdot_AlphaDisk;
-#endif
-#endif
+
 }
 *BlackholeDataIn, *BlackholeDataGet;
 
@@ -114,15 +97,6 @@ static struct blackholedata_out
     MyLongDouble accreted_J[3];
 #endif
 
-#if defined(NEWSINK)
-    MyFloat SinkRadius;
-    MyFloat Mdot;
-    MyFloat Dt;
-    MyFloat f_acc[SINKLEFINKLE_NEIGHBORMAX]; /* How much of the gas particle should be accreted */
-#ifdef BH_ALPHADISK_ACCRETION
-    MyFloat Mdot_AlphaDisk;
-#endif
-#endif
 }
 *BlackholeDataResult, *BlackholeDataOut;
 
