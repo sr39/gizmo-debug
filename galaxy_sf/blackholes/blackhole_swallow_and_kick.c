@@ -377,36 +377,29 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
             for(n = 0; n < numngb; n++)
             {
                 j = Ngblist[n]; MyIDType OriginallyMarkedSwallowID = P[j].SwallowID; // record this to help prevent double-counting below
+                double dP[3]={0},dv[3]={0}; for(k=0;k<3;k++) {dP[k]=P[j].Pos[k]-pos[k];}
+#ifdef BOX_PERIODIC
+                NEAREST_XYZ(dP[0],dP[1],dP[2],-1); /*  find the closest image in the given box size  */
+#endif
+                dv[0] = P[j].Vel[0]-vel[0]; dv[1] = P[j].Vel[1]-vel[1]; dv[2] = P[j].Vel[2]-vel[2];
+#ifdef BOX_SHEARING
+                if(pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
+#endif
 
                 
 #if defined(BH_RETURN_ANGMOM_TO_GAS) /* this should go here [right before the loop that accretes it back onto the BH] */
                 if(P[j].Type == 0)
-                {
-                    double dP[3]={0},dv[3]={0}; for(k=0;k<3;k++) {dP[k]=P[j].Pos[k]-pos[k];}
-#ifdef BOX_PERIODIC
-                    NEAREST_XYZ(dP[0],dP[1],dP[2],-1); /*  find the closest image in the given box size  */
-#endif
-                    dv[0]=BH_Specific_AngMom[1]*dP[2]-BH_Specific_AngMom[2]*dP[1]; dv[1]=BH_Specific_AngMom[2]*dP[0]-BH_Specific_AngMom[0]*dP[2]; dv[2]=BH_Specific_AngMom[0]*dP[1]-BH_Specific_AngMom[1]*dP[0];
-                    for(k=0;k<3;k++) {dv[k] *= angmom_norm_topass_in_swallowloop; P[j].Vel[k]+=dv[k]; SphP[j].VelPred[k]+=dv[k]; accreted_momentum[k]-=P[j].Mass*dv[k];}
-                    accreted_J[0]-=P[j].Mass*(dP[1]*dv[2] - dP[2]*dv[1]); accreted_J[1]-=P[j].Mass*(dP[2]*dv[0] - dP[0]*dv[2]); accreted_J[2]-=P[j].Mass*(dP[0]*dv[1] - dP[1]*dv[0]);
+                { 
+                    double dlv[3]; dlv[0]=BH_Specific_AngMom[1]*dP[2]-BH_Specific_AngMom[2]*dP[1]; dlv[1]=BH_Specific_AngMom[2]*dP[0]-BH_Specific_AngMom[0]*dP[2]; dlv[2]=BH_Specific_AngMom[0]*dP[1]-BH_Specific_AngMom[1]*dP[0];
+                    for(k=0;k<3;k++) {dlv[k] *= angmom_norm_topass_in_swallowloop; P[j].Vel[k]+=dlv[k]; SphP[j].VelPred[k]+=dlv[k]; accreted_momentum[k]-=P[j].Mass*dlv[k];}
+                    accreted_J[0]-=P[j].Mass*(dP[1]*dlv[2] - dP[2]*dlv[1]); accreted_J[1]-=P[j].Mass*(dP[2]*dlv[0] - dP[0]*dlv[2]); accreted_J[2]-=P[j].Mass*(dP[0]*dlv[1] - dP[1]*dlv[0]);
                 }
 #endif
                 
                 /* we've found a particle to be swallowed.  This could be a BH merger, DM particle, or baryon w/ feedback */
                 if(P[j].SwallowID == id && P[j].Mass > 0)
-                {   /* pre-compute basic quantities */
-                    double dP[3]={0}, dv[3]={0}; dP[0] = P[j].Pos[0]-pos[0]; dP[1] = P[j].Pos[1]-pos[1]; dP[2] = P[j].Pos[2]-pos[2];
-#ifdef BOX_PERIODIC
-                    NEAREST_XYZ(dP[0],dP[1],dP[2],-1); /*  find the closest image in the given box size  */
-#endif
-                    dv[0] = P[j].Vel[0]-vel[0]; dv[1] = P[j].Vel[1]-vel[1]; dv[2] = P[j].Vel[2]-vel[2];
-#ifdef BOX_SHEARING
-                    if(pos[0] - P[j].Pos[0] > +boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                    if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dv[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
-#endif
-                    
-                    
-                    /* accreted quantities to be added [regardless of particle type] */
+                {   /* accreted quantities to be added [regardless of particle type] */
                     f_accreted = 1; /* default to accreting entire particle */
 #ifdef BH_WIND_KICK
                     if(P[j].Type == 0)
