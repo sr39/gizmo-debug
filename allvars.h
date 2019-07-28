@@ -300,10 +300,8 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 
 
-
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-
 #ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
+#define SINGLE_STAR_SINK_DYNAMICS
 #define ADAPTIVE_GRAVSOFT_FORGAS
 #define GRAVITY_ACCURATE_FEWBODY_INTEGRATION
 #define BH_SWALLOW_SMALLTIMESTEPS
@@ -319,13 +317,14 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define RT_DISABLE_R15_GRADIENTFIX
 #endif // SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE
 
+
+#ifdef SINGLE_STAR_SINK_DYNAMICS
 #define GALSF // master switch needed to enable various frameworks
 #define METALS  // metals should be active for stellar return
 #define BLACK_HOLES // need to have black holes active since these are our sink particles
 #define BH_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
 
-
-#if (SINGLE_STAR_SINK_FORMATION & 1)
+#if (SINGLE_STAR_SINK_FORMATION & 1) // figure out flags needed for the chosen sink formation model
 #define GALSF_SFR_VIRIAL_SF_CRITERION 2
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 16)
@@ -337,7 +336,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define GALSF_SFR_TIDAL_HILL_CRITERION
 #endif
 
-#ifdef SINGLE_STAR_ACCRETION
+#ifdef SINGLE_STAR_ACCRETION // figure out flags needed for the chosen sink accretion model
 #define BH_SWALLOWGAS // need to swallow gas [part of sink model]
 #define BH_ALPHADISK_ACCRETION (1000000.) // all models will use a 'reservoir' of some kind to smooth out accretion rates (and represent unresolved disk)
 #if (SINGLE_STAR_ACCRETION <= 8)
