@@ -1335,7 +1335,7 @@ The numerical details and physics are described in great detail in Hopkins et al
     ##-----------------------------------------------------------------------------------------------------
     #-------------------------------------- Star formation with -individual- stars [sink particles]: from PFH [proprietary development with Mike Grudic and David Guszejnov; modules not to be used without authors permission, though basic modules may be ok there is a lot of development happening here]
     ##-----------------------------------------------------------------------------------------------------
-    #SINGLE_STAR_FORMATION          # master switch for single star formation model: sink particles representing -individual- stars
+    #SINGLE_STAR_SINK_DYNAMICS          # master switch for single star formation model: sink particles representing -individual- stars
     #SINGLE_STAR_ACCRETION=3        # proto-stellar accretion: 0=grav capture only; 1+=alpha-disk accretion onto protostar; 2+=bondi accretion of diffuse gas; 3+=sub-grid variability 
     #SINGLE_STAR_FB_HEATING         # proto-stellar heating: luminosity determined by BlackHoleRadiativeEfficiency (typical ~5e-7)
     #SINGLE_STAR_FB_JETS            # protostellar jets: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow. cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840 (for algorithm, developed for black hole jets)
@@ -2293,7 +2293,7 @@ These parameters control the stellar feedback models developed in the series of 
     BlackHoleFeedbackFactor      1.0	    % generic feedback strength multiplier 
     BH_FluxMomentumFactor        1.0	    % multiply radiation pressure (BH_PHOTONMOMENTUM) 
     BAL_f_accretion              0.5        % fraction of gas swallowed by BH (BH_WIND options)
-    BAL_v_outflow                30000	    % velocity (km/s) of BAL outflow (BH_WIND options)
+    BAL_v_outflow                30000	    % velocity (code units) of BAL outflow (BH_WIND options)
     BAL_internal_temperature     1.0e4      % internal temperature (K) of BAL outflow (BH_WIND_SPAWN)
     BAL_wind_particle_mass       1.e-10     % mass of 'virtual wind particles' in code units (BH_WIND_SPAWN)
     BH_CosmicRay_Injection_Efficiency 0.1   % fraction of accretion energy into cosmic rays (BH_COSMIC_RAYS)

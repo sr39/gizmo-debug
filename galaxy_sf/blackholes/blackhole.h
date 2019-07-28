@@ -55,11 +55,7 @@ void out2particle_blackhole(struct blackhole_temp_particle_data *out, int target
 double bh_eddington_mdot(double bh_mass);
 double bh_lum_bol(double mdot, double mass, long id);
 int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double sink_radius);
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
 double bh_vesc(int j, double mass, double r_code, double bh_softening);
-#else
-double bh_vesc(int j, double mass, double r_code);
-#endif
 void normalize_temp_info_struct(int i);
 void set_blackhole_mdot(int i, int n, double dt);
 void set_blackhole_new_mass(int i, int n, double dt);
@@ -68,9 +64,6 @@ void set_blackhole_drag(int i, int n, double dt);
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
 void set_blackhole_long_range_rp(int i, int n);
-#endif
-#ifdef NEWSINK
-double grav_interaction_energy(double dr_code, double m1, double m2, double hsml1, double hsml2);
 #endif
 
 #endif

@@ -903,12 +903,12 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     if(target < 0) {
         AGN_LambdaPre = 0;
     } else {
-	#ifdef SINGLE_STAR_FORMATION
+	#ifdef SINGLE_STAR_SINK_DYNAMICS
 		AGN_LambdaPre = SphP[target].RadFluxAGN *  All.UnitEnergy_in_cgs/All.UnitTime_in_s/(All.UnitLength_in_cm*All.UnitLength_in_cm); /* proper units */
 	#else
 		AGN_LambdaPre = SphP[target].RadFluxAGN * (3.9/2.0) * All.UnitMass_in_g/(All.UnitLength_in_cm*All.UnitLength_in_cm)*All.HubbleParam*All.cf_a2inv; /* proper units */
 	#endif
-#ifdef SINGLE_STAR_FORMATION
+#ifdef SINGLE_STAR_SINK_DYNAMICS
         /* here we are hijacking this module to approximate dust heating/cooling */
         /* assuming heating/cooling balance defines the target temperature: */
         AGN_T_Compton = pow( 1.0e4 + AGN_LambdaPre / 5.67e-5 , 0.25); // (sigma*T^4 = Flux_incident)
@@ -972,7 +972,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
                             + (Z[0]/All.SolarAbundances[0])*(Z[0]/All.SolarAbundances[0])/(1.0+nHcgs));
             /* add dust cooling as well */
             double Tdust = 30.;
-#if defined(SINGLE_STAR_FORMATION) && defined(BH_COMPTON_HEATING)
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(BH_COMPTON_HEATING)
             Tdust = AGN_T_Compton;
 #endif
 #ifdef RT_INFRARED
@@ -993,7 +993,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         }
         else {LambdaCmptn = 0;}
 
-#if defined(BH_COMPTON_HEATING) && !defined(SINGLE_STAR_FORMATION)
+#if defined(BH_COMPTON_HEATING) && !defined(SINGLE_STAR_SINK_DYNAMICS)
         if(T > AGN_T_Compton)
         {
             LambdaCmptn = AGN_LambdaPre * (T - AGN_T_Compton) * n_elec/nHcgs;
@@ -1092,7 +1092,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #if defined(COOL_METAL_LINES_BY_SPECIES) && defined(COOL_LOW_TEMPERATURES)
         /* Dust collisional heating */
         double Tdust = 30.;
-#if defined(SINGLE_STAR_FORMATION) && defined(BH_COMPTON_HEATING)
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(BH_COMPTON_HEATING)
         Tdust = AGN_T_Compton;
 #endif
 #ifdef RT_INFRARED
@@ -1101,7 +1101,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         if(T < Tdust) {Heat += 1.116e-32 * (Tdust-T)*sqrt(T)*(1.-0.8*exp(-75./T)) * (Z[0]/All.SolarAbundances[0]);} // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
 #endif
         
-#if defined(BH_COMPTON_HEATING) && !defined(SINGLE_STAR_FORMATION)
+#if defined(BH_COMPTON_HEATING) && !defined(SINGLE_STAR_SINK_DYNAMICS)
         /* Compton heating from AGN */
         if(T < AGN_T_Compton) Heat += AGN_LambdaPre * (AGN_T_Compton - T) / nHcgs; /* note this is independent of the free electron fraction */
 #endif
@@ -1153,7 +1153,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
       }
       else {LambdaCmptn = 0;}
 
-#if defined(BH_COMPTON_HEATING) && !defined(SINGLE_STAR_FORMATION)
+#if defined(BH_COMPTON_HEATING) && !defined(SINGLE_STAR_SINK_DYNAMICS)
         /* Relativistic compton cooling from an AGN source */
         LambdaCmptn += AGN_LambdaPre * (T - AGN_T_Compton) * (T/1.5e9)/(1-exp(-T/1.5e9)) * n_elec/nHcgs;
         /* per CAFG's calculations, we should note that at very high temperatures, the rate-limiting step may be
@@ -1169,13 +1169,12 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     
     
     double Q = Heat - Lambda;
-
 #ifdef OUTPUT_COOLRATE_DETAIL
     if (target>=0){SphP[target].CoolingRate = Lambda; SphP[target].HeatingRate = Heat;}
 #endif
     
 
-#if defined(COOL_LOW_TEMPERATURES) && !defined(OPTICALLY_THIN_COOLING)
+#if defined(COOL_LOW_TEMPERATURES) && !defined(COOL_LOWTEMP_THIN_ONLY)
     /* if we are in the optically thick limit, we need to modify the cooling/heating rates according to the appropriate limits; 
         this flag does so by using a simple approximation. we consider the element as if it were a slab, with a column density 
         calculated from the simulation properties and the Sobolev approximation. we then assume it develops an equilibrium internal 
@@ -1197,7 +1196,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
                 temperature-dependent, though, fairly easily - for this particular problem it won't make much difference
         This rate then acts as an upper limit to the net heating/cooling calculated above (restricts absolute value)
      */
-    if( (nHcgs > 0.1) && (target >= 0))  /* don't bother at very low densities, since youre not optically thick, and protect from target=-1 with GALSF_EFFECTIVE_EQS */
+    if( (nHcgs > 0.1) && (target >= 0) )  /* don't bother at very low densities, since youre not optically thick, and protect from target=-1 with GALSF_EFFECTIVE_EQS */
     {
         double surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1);
         surface_density *= All.UnitDensity_in_cgs * All.UnitLength_in_cm * All.HubbleParam; // converts to cgs
@@ -1221,7 +1220,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         double tau_eff = kappa_eff * surface_density;
         double Lambda_Thick_BlackBody = 5.67e-5 * (T*T*T*T) * effective_area / ((1.+tau_eff) * nHcgs);
         if(Q > 0) {if(Q > Lambda_Thick_BlackBody) {Q=Lambda_Thick_BlackBody;}} else {if(Q < -Lambda_Thick_BlackBody) {Q=-Lambda_Thick_BlackBody;}}
-    }    
+    }
 #endif
 
 #ifdef OUTPUT_COOLRATE_DETAIL

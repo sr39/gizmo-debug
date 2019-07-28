@@ -23,21 +23,12 @@
 
 void blackhole_feed_loop(void)
 {
-    int i, j, k, ndone_flag, ndone;
-    int ngrp, recvTask, place, nexport, nimport, dummy;
-    MPI_Status status;
-    MyFloat dt;
-#ifdef NEWSINK
-    double dm=0;
-    int mdotchanged = 0;
-#endif
-    
+    int i, j, k, ndone_flag, ndone, ngrp, recvTask, place, nexport, nimport, dummy; MPI_Status status; MyFloat dt;
     /* allocate buffers to arrange communication */
     size_t MyBufferSize = All.BufferSize;
     Ngblist = (int *) mymalloc("Ngblist", NumPart * sizeof(int));
     All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
-                                                             sizeof(struct blackholedata_in) +
-                                                             sizeof(struct blackholedata_out) +
+                                                             sizeof(struct blackholedata_in) + sizeof(struct blackholedata_out) +
                                                              sizemax(sizeof(struct blackholedata_in),sizeof(struct blackholedata_out))));
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
@@ -75,21 +66,17 @@ void blackhole_feed_loop(void)
         for(j = 0; j < nexport; j++)
         {
             place = DataIndexTable[j].Index;
-            
             for(k = 0; k < 3; k++)
             {
                 BlackholeDataIn[j].Pos[k] = P[place].Pos[k];
                 BlackholeDataIn[j].Vel[k] = P[place].Vel[k];
-#if defined(NEWSINK_J_FEEDBACK)
-                BlackholeDataIn[j].Jsink[k] = BPP(place).Mass * BPP(place).BH_Specific_AngMom[k];
-#endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
                 BlackholeDataIn[j].Jgas_in_Kernel[k] = BlackholeTempInfo[P[place].IndexMapToTempStruc].Jgas_in_Kernel[k];
 #endif
             }
 #if defined(BH_GRAVCAPTURE_GAS)
             BlackholeDataIn[j].mass_to_swallow_edd = BlackholeTempInfo[P[place].IndexMapToTempStruc].mass_to_swallow_edd;
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
             BlackholeDataIn[j].SinkRadius = PPP[place].SinkRadius;
 #endif	    
 #endif
@@ -102,39 +89,19 @@ void blackhole_feed_loop(void)
 #ifdef BH_ALPHADISK_ACCRETION
             BlackholeDataIn[j].BH_Mass_AlphaDisk = BPP(place).BH_Mass_AlphaDisk;
 #endif
-#ifdef NEWSINK
-//            BlackholeDataIn[j].SinkRadius = BPP(place).SinkRadius;
-            BlackholeDataIn[j].BH_Mdot_Avg = BPP(place).BH_Mdot_Avg;
-            //Copy info on neighbours
-            BlackholeDataIn[j].n_neighbor = BlackholeTempInfo[P[place].IndexMapToTempStruc].n_neighbor;
-            memcpy(BlackholeDataIn[j].rgas,BlackholeTempInfo[P[place].IndexMapToTempStruc].rgas, NEWSINK_NEIGHBORMAX * sizeof(MyFloat));
-            memcpy(BlackholeDataIn[j].xgas,BlackholeTempInfo[P[place].IndexMapToTempStruc].xgas, NEWSINK_NEIGHBORMAX * sizeof(MyFloat));
-            memcpy(BlackholeDataIn[j].ygas,BlackholeTempInfo[P[place].IndexMapToTempStruc].ygas, NEWSINK_NEIGHBORMAX * sizeof(MyFloat));
-            memcpy(BlackholeDataIn[j].zgas,BlackholeTempInfo[P[place].IndexMapToTempStruc].zgas, NEWSINK_NEIGHBORMAX * sizeof(MyFloat));
-            memcpy(BlackholeDataIn[j].Hsmlgas,BlackholeTempInfo[P[place].IndexMapToTempStruc].Hsmlgas, NEWSINK_NEIGHBORMAX * sizeof(MyFloat));
-            memcpy(BlackholeDataIn[j].mgas,BlackholeTempInfo[P[place].IndexMapToTempStruc].mgas, NEWSINK_NEIGHBORMAX * sizeof(MyFloat));
-            memcpy(BlackholeDataIn[j].gasID,BlackholeTempInfo[P[place].IndexMapToTempStruc].gasID, NEWSINK_NEIGHBORMAX * sizeof(MyFloat));
-            memcpy(BlackholeDataIn[j].isbound,BlackholeTempInfo[P[place].IndexMapToTempStruc].isbound, NEWSINK_NEIGHBORMAX * sizeof(int));
-            memcpy(BlackholeDataIn[j].f_acc,BlackholeTempInfo[P[place].IndexMapToTempStruc].f_acc, NEWSINK_NEIGHBORMAX * sizeof(MyFloat));
-#if defined(NEWSINK_J_FEEDBACK)
-            memcpy(BlackholeDataIn[j].dv_ang_kick_norm,BlackholeTempInfo[P[place].IndexMapToTempStruc].dv_ang_kick_norm, NEWSINK_NEIGHBORMAX * sizeof(MyFloat));
-            BlackholeDataIn[j].t_disc = BlackholeTempInfo[P[place].IndexMapToTempStruc].t_disc;
-#endif
-#ifdef BH_ALPHADISK_ACCRETION
-            BlackholeDataIn[j].Mdot_AlphaDisk = BPP(place).BH_Mdot_AlphaDisk;
-#endif
-#endif
 #if defined(BH_PHOTONMOMENTUM) 	|| defined(BH_WIND_CONTINUOUS)
             BlackholeDataIn[j].BH_disk_hr = P[place].BH_disk_hr;
+#endif
+#ifdef BH_ACCRETE_NEARESTFIRST
+            BlackholeDataIn[j].BH_dr_to_NearestGasNeighbor = P[place].BH_dr_to_NearestGasNeighbor;
 #endif
             BlackholeDataIn[j].Density = BPP(place).DensAroundStar;
             BlackholeDataIn[j].Mdot = BPP(place).BH_Mdot;
 #ifndef WAKEUP
-            dt = (P[place].TimeBin ? ((integertime) 1 << P[place].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
+            BlackholeDataIn[j].Dt = (P[place].TimeBin ? (((integertime) 1) << P[place].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
 #else
-            dt = P[place].dt_step * All.Timebase_interval / All.cf_hubble_a;
+            BlackholeDataIn[j].Dt = P[place].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
-            BlackholeDataIn[j].Dt = dt;
             BlackholeDataIn[j].ID = P[place].ID;
             memcpy(BlackholeDataIn[j].NodeList,DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
         }
@@ -143,15 +110,13 @@ void blackhole_feed_loop(void)
         for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
         {
             recvTask = ThisTask ^ ngrp;
-            
             if(recvTask < NTask)
             {
                 if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
                 {
                     /* get the particles */
                     MPI_Sendrecv(&BlackholeDataIn[Send_offset[recvTask]],
-                                 Send_count[recvTask] * sizeof(struct blackholedata_in), MPI_BYTE,
-                                 recvTask, TAG_BH_E,
+                                 Send_count[recvTask] * sizeof(struct blackholedata_in), MPI_BYTE, recvTask, TAG_BH_E,
                                  &BlackholeDataGet[Recv_offset[recvTask]],
                                  Recv_count[recvTask] * sizeof(struct blackholedata_in), MPI_BYTE,
                                  recvTask, TAG_BH_E, MPI_COMM_WORLD, &status);
@@ -163,18 +128,11 @@ void blackhole_feed_loop(void)
         BlackholeDataOut = (struct blackholedata_out *) mymalloc("BlackholeDataOut", nexport * sizeof(struct blackholedata_out));
         
         /* now do the particles that were sent to us */
-        for(j = 0; j < nimport; j++)
-            blackhole_feed_evaluate(j, 1, &dummy, &dummy);
+        for(j = 0; j < nimport; j++) {blackhole_feed_evaluate(j, 1, &dummy, &dummy);}
         
-        
-        if(i < 0)
-            ndone_flag = 1;
-        else
-            ndone_flag = 0;
-        
+        if(i < 0) {ndone_flag = 1;} else {ndone_flag = 0;}
         MPI_Allreduce(&ndone_flag, &ndone, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-        /* get the result */
-        for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
+        for(ngrp = 1; ngrp < (1 << PTask); ngrp++) /* get the result */
         {
             recvTask = ThisTask ^ ngrp;
             if(recvTask < NTask)
@@ -202,43 +160,21 @@ void blackhole_feed_loop(void)
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
             BlackholeTempInfo[P[place].IndexMapToTempStruc].BH_angle_weighted_kernel_sum += BlackholeDataOut[j].BH_angle_weighted_kernel_sum;
 #endif
-#if defined NEWSINK
-            dm=0;mdotchanged=0;
-            //update accretion factors in case we decided not to accrete a particle (e.g. if it is bound to two sinks and only one gets it)
-            for(k = 0; k < BlackholeTempInfo[P[place].IndexMapToTempStruc].n_neighbor; k++){
-                if(BlackholeTempInfo[P[place].IndexMapToTempStruc].f_acc[k] != BlackholeDataOut[j].f_acc[k]){
-                    BlackholeTempInfo[P[place].IndexMapToTempStruc].f_acc[k] = BlackholeDataOut[j].f_acc[k];
-                    mdotchanged = 1;
-                }
-                dm += BlackholeTempInfo[P[place].IndexMapToTempStruc].mgas[k] * BlackholeTempInfo[P[place].IndexMapToTempStruc].f_acc[k]; //get the total mass to be accreted
-            }
-            if (mdotchanged){
-#ifdef BH_ALPHADISK_ACCRETION
-#ifndef IO_REDUCED_MODE
-            printf("ThisTask=%d, modifying mdot of the alphadisk for BH id %d from %g to %g due to change in accretion factors\n",ThisTask, P[place].ID, BPP(place).BH_Mdot, dm/dt );
-#endif
-            BPP(place).BH_Mdot_AlphaDisk = dm/dt; //update mdot for disk
-#else
-#ifndef IO_REDUCED_MODE
-            printf("ThisTask=%d, modifying mdot for BH id %d from %g to %g due to change in accretion factors\n",ThisTask, P[place].ID, BPP(place).BH_Mdot, dm/dt );
-#endif
-            BPP(place).BH_Mdot = dm/dt; //update mdot
-#endif
-            }
-#endif
         }
-        
         myfree(BlackholeDataOut);
         myfree(BlackholeDataResult);
         myfree(BlackholeDataGet);
     }
     while(ndone < NTask);
-    
     myfree(DataNodeList);
     myfree(DataIndexTable);
     myfree(Ngblist);
-    
 }
+
+
+
+
+
 
 
 /* do loop over neighbors to get quantities for accretion */
@@ -247,26 +183,14 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     int startnode, numngb, j, k, n, listindex = 0;
     MyIDType id;
     MyFloat *pos, *velocity, h_i, dt, mdot, rho, mass, bh_mass;
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-    MyFloat ags_h_i;
-#endif    
-    double h_i2, r2, r, u, hinv, hinv3, wk, dwk, vrel, vesc, dpos[3], sink_radius; sink_radius=0;
-    
+    MyFloat ags_h_i = All.ForceSoftening[5];
+    double h_i2, r2, r, u, hinv, hinv3, wk, dwk, vrel, vesc, dpos[3], dvel[3], sink_radius, f_accreted; sink_radius=0; f_accreted=1;
 #if defined(BH_GRAVCAPTURE_GAS) && defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
     double meddington, medd_max_accretable, mass_to_swallow_edd, eddington_factor;
 #endif
-    
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     double norm, theta, BH_disk_hr, *Jgas_in_Kernel;
     double BH_angle_weighted_kernel_sum=0;
-#endif
-
-#if defined(BH_WIND_KICK) && !defined(BH_GRAVCAPTURE_GAS)
-    double f_accreted=0; 
-#endif
-    
-#ifdef BH_THERMALFEEDBACK
-    double energy;
 #endif
 #ifdef BH_REPOSITION_ON_POTMIN
     MyFloat minpotpos[3] = { 0, 0, 0 }, minpot = BHPOTVALUEINIT;
@@ -274,18 +198,13 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat bh_mass_alphadisk;
 #endif
+#ifdef BH_ACCRETE_NEARESTFIRST
+    MyFloat BH_dr_to_NearestGasNeighbor;
+#endif
 #if defined(BH_SWALLOWGAS)
     double w,p,mass_markedswallow,bh_mass_withdisk;
     w=0; p=0; mass_markedswallow=0; bh_mass_withdisk=0;
 #endif
-#ifdef NEWSINK
-    int n_neighbor;
-    MyFloat int_zone_radius,int_zone_radius2, target_accreted_mass,accr_mass=0,mdot_avg;
-    MyFloat /**str_rmass,*/ *str_mgas, *str_f_acc;
-    int *str_isbound;
-    MyIDType *str_gasID;
-#endif
-    
     
     /* these are the BH properties */
     if(mode == 0)
@@ -300,7 +219,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #endif
         h_i = PPP[target].Hsml;
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-	ags_h_i = PPP[target].AGS_Hsml;
+	    ags_h_i = PPP[target].AGS_Hsml;
 #endif	
         mass = P[target].Mass;
         bh_mass = BPP(target).BH_Mass;
@@ -313,23 +232,14 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         Jgas_in_Kernel = BlackholeTempInfo[P[target].IndexMapToTempStruc].Jgas_in_Kernel;
         BH_disk_hr = P[target].BH_disk_hr;
 #endif
+#ifdef BH_ACCRETE_NEARESTFIRST
+        BH_dr_to_NearestGasNeighbor = P[target].BH_dr_to_NearestGasNeighbor;
+#endif
 #if defined(BH_GRAVCAPTURE_GAS) && defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
         mass_to_swallow_edd = BlackholeTempInfo[P[target].IndexMapToTempStruc].mass_to_swallow_edd;
 #endif
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
         sink_radius = P[target].SinkRadius;
-#endif
-#ifdef NEWSINK
-        mdot_avg = BPP(target).BH_Mdot_Avg;
-        n_neighbor = BlackholeTempInfo[P[target].IndexMapToTempStruc].n_neighbor;
-        //str_rmass = BlackholeTempInfo[P[target].IndexMapToTempStruc].rgas;
-        str_mgas = BlackholeTempInfo[P[target].IndexMapToTempStruc].mgas;
-        str_f_acc = BlackholeTempInfo[P[target].IndexMapToTempStruc].f_acc;
-        str_gasID = BlackholeTempInfo[P[target].IndexMapToTempStruc].gasID;
-        str_isbound = BlackholeTempInfo[P[target].IndexMapToTempStruc].isbound;
-#ifdef BH_ALPHADISK_ACCRETION
-        mdot = BPP(target).BH_Mdot_AlphaDisk; //overwrite value with alpha disk mdot
-#endif
 #endif
     }
     else
@@ -340,10 +250,10 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         dt = BlackholeDataGet[target].Dt;
         h_i = BlackholeDataGet[target].Hsml;
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-	ags_h_i = BlackholeDataGet[target].AGS_Hsml;
+	    ags_h_i = BlackholeDataGet[target].AGS_Hsml;
 #endif	
         mass = BlackholeDataGet[target].Mass;
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
         sink_radius = BlackholeDataGet[target].SinkRadius;
 #endif
         bh_mass = BlackholeDataGet[target].BH_Mass;
@@ -356,30 +266,14 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         Jgas_in_Kernel = BlackholeDataGet[target].Jgas_in_Kernel;
         BH_disk_hr = BlackholeDataGet[target].BH_disk_hr;
 #endif
+#ifdef BH_ACCRETE_NEARESTFIRST
+        BH_dr_to_NearestGasNeighbor = BlackholeDataGet[target].BH_dr_to_NearestGasNeighbor;
+#endif
 #if defined(BH_GRAVCAPTURE_GAS) && defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
         mass_to_swallow_edd = BlackholeDataGet[target].mass_to_swallow_edd;
 #endif
-#ifdef NEWSINK
-        mdot_avg = BlackholeDataGet[target].BH_Mdot_Avg;
-        n_neighbor = BlackholeDataGet[target].n_neighbor;
-        //str_rmass = BlackholeDataGet[target].rgas;
-        str_mgas = BlackholeDataGet[target].mgas;
-        str_f_acc = BlackholeDataGet[target].f_acc;
-        str_gasID = BlackholeDataGet[target].gasID;
-        str_isbound = BlackholeDataGet[target].isbound;
-        /*copy part of it to output structure*/
-        memcpy(BlackholeDataResult[target].f_acc, BlackholeDataGet[target].f_acc, NEWSINK_NEIGHBORMAX * sizeof(MyFloat));
-        BlackholeDataResult[target].Mdot = BlackholeDataGet[target].Mdot;
-        BlackholeDataResult[target].Dt = BlackholeDataGet[target].Dt;
-#ifdef BH_ALPHADISK_ACCRETION
-        mdot = BlackholeDataGet[target].Mdot_AlphaDisk; //overwrite value with alpha disk mdot
-        BlackholeDataResult[target].Mdot = BlackholeDataGet[target].Mdot_AlphaDisk;
-#endif
-#endif
     }
-    
     if((mass<0)||(h_i<=0)) return -1;
-    
     
     /* initialize variables before SPH loop is started */
     h_i2 = h_i * h_i;
@@ -390,20 +284,21 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     medd_max_accretable = All.BlackHoleEddingtonFactor * meddington * dt;
     eddington_factor = mass_to_swallow_edd / medd_max_accretable;   /* if <1 no problem, if >1, need to not set some swallowIDs */
 #endif
-    
 #if defined(BH_SWALLOWGAS)
     bh_mass_withdisk = bh_mass;
 #ifdef BH_ALPHADISK_ACCRETION
     bh_mass_withdisk += bh_mass_alphadisk;
 #endif
 #endif
-
+#if defined(BH_SWALLOW_SMALLTIMESTEPS)
+    double dt_min_to_accrete = DMAX(0.001 * sqrt(pow(All.SofteningTable[5],3.0)/(All.G * mass)), 20.0*DMAX(All.MinSizeTimestep,All.Timebase_interval) ); //0.001 = tolerance factor for dt_min, defined in part (ii) of 2.3.5 in Hubber 2013.
+#endif
 #if defined(BH_WIND_KICK) && !defined(BH_GRAVCAPTURE_GAS)
     /* DAA: increase the effective mass-loading of BAL winds to reach the desired momentum flux given the outflow velocity "All.BAL_v_outflow" chosen
        --> appropriate for cosmological simulations where particles are effectively kicked from ~kpc scales
            (i.e. we need lower velocity and higher mass outflow rates compared to accretion disk scales) - */
     f_accreted = All.BAL_f_accretion;
-    if((All.BlackHoleFeedbackFactor > 0) && (All.BlackHoleFeedbackFactor != 1.)) {f_accreted /= All.BlackHoleFeedbackFactor;} else {if(All.BAL_v_outflow > 0) f_accreted = 1./(1. + fabs(1.*BH_WIND_KICK)*All.BlackHoleRadiativeEfficiency*(C/All.UnitVelocity_in_cm_per_s)/(All.BAL_v_outflow*1e5/All.UnitVelocity_in_cm_per_s));}
+    if((All.BlackHoleFeedbackFactor > 0) && (All.BlackHoleFeedbackFactor != 1.)) {f_accreted /= All.BlackHoleFeedbackFactor;} else {if(All.BAL_v_outflow > 0) {f_accreted = 1./(1. + fabs(1.*BH_WIND_KICK)*All.BlackHoleRadiativeEfficiency*(C/All.UnitVelocity_in_cm_per_s)/(All.BAL_v_outflow));}}
 #endif
     
     /* Now start the actual SPH computation for this BH particle */
@@ -416,70 +311,42 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         startnode = BlackholeDataGet[target].NodeList[0];
         startnode = Nodes[startnode].u.d.nextnode;	/* open it */
     }
-    
     //int particles_swallowed_this_bh_this_process = 0;
     //int particles_swallowed_this_bh_this_process_max = 1;
-    
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     BH_angle_weighted_kernel_sum = 0;
 #endif
- //printf("%d start feed assignment, for n_neighbor %d\n", ThisTask, n_neighbor);
-#if defined(NEWSINK)
-    int_zone_radius = h_i * INT_ZONE_TO_HSML;
-    int_zone_radius2 = int_zone_radius * int_zone_radius;
-    target_accreted_mass = mdot *dt;
-    /*Decide for NEWSINK which particles to eat*/
-    for(k=0;k<n_neighbor;k++){
-        if (accr_mass<target_accreted_mass){ //do we still need more gas
-            if (str_isbound[k]==1){ //only accrete bound gas
-                if ( (accr_mass+str_mgas[k]) <= target_accreted_mass){
-                    str_f_acc[k] = 1.0; //safe to take the whole thing
-                    accr_mass += str_mgas[k];
-                }
-                else{
-                    str_f_acc[k] = (target_accreted_mass-accr_mass)/str_mgas[k]; //take just what is needed
-                    accr_mass = target_accreted_mass;
-                }
-            }
-        }
-        else{break;} //no need to continue if we already got enough mass
-    }
-#endif
- //printf("%d finish feed assignment, accreted mass = %g, target mass = %g\n", ThisTask, accr_mass, target_accreted_mass);
+    
     while(startnode >= 0)
     {
         while(startnode >= 0)
         {
-#ifdef NEWSINK 
-            numngb = ngb_treefind_pairs_targeted(pos, int_zone_radius, target, &startnode, mode, nexport, nSend_local, BH_NEIGHBOR_BITFLAG); 
-#else       
             numngb = ngb_treefind_pairs_targeted(pos, h_i, target, &startnode, mode, nexport, nSend_local, BH_NEIGHBOR_BITFLAG); // BH_NEIGHBOR_BITFLAG defines which types of particles we search for
-#endif
             if(numngb < 0) return -1;
+            
             for(n = 0; n < numngb; n++)
             {
                 j = Ngblist[n];
                 if(P[j].Mass > 0)
                 {
-                    //printf("%d Feed routine dealing with gas ID %llu around BH ID %llu \n",ThisTask,P[j].ID,id);
                     for(k=0;k<3;k++) {dpos[k] = P[j].Pos[k] - pos[k];}
 #ifdef BOX_PERIODIC
                     NEAREST_XYZ(dpos[0],dpos[1],dpos[2],-1);
 #endif
-                    r2=0; for(k=0;k<3;k++) {r2 += dpos[k]*dpos[k];}
-#ifdef NEWSINK
-                    if(r2 < int_zone_radius2)
-#else
-                    if(r2 < h_i2 || r2 < PPP[j].Hsml*PPP[j].Hsml)
+                    dvel[0] = P[j].Vel[0]-velocity[0]; dvel[1] = P[j].Vel[1]-velocity[1]; dvel[2] = P[j].Vel[2]-velocity[2];
+#ifdef BOX_SHEARING
+                    if(pos[0] - P[j].Pos[0] > +boxHalf_X) {dvel[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
+                    if(pos[0] - P[j].Pos[0] < -boxHalf_X) {dvel[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
 #endif
+                    r2=0; for(k=0;k<3;k++) {r2 += dpos[k]*dpos[k];}
+                    if(r2 < h_i2 || r2 < PPP[j].Hsml*PPP[j].Hsml)
                     {
-                        vrel=0; for(k=0;k<3;k++) {vrel += (P[j].Vel[k] - velocity[k])*(P[j].Vel[k] - velocity[k]);}
+                        vrel=0; for(k=0;k<3;k++) {vrel += dvel[k]*dvel[k];}
                         r=sqrt(r2); vrel=sqrt(vrel)/All.cf_atime;  /* do this once and use below */
-#ifdef ADAPTIVE_GRAVSOFT_FORALL			
-			vesc=bh_vesc(j,mass,r, ags_h_i);
-#else
-			vesc=bh_vesc(j,mass,r);
-#endif // ADAPTIVE_GRAVSOFT_FORALL
+                        vesc=bh_vesc(j,mass,r, ags_h_i);
+#if defined(BH_SWALLOW_SMALLTIMESTEPS)
+                        if(vrel<vesc) {if(P[j].dt_step*All.Timebase_interval/All.cf_hubble_a<dt_min_to_accrete) {if(P[j].SwallowID<id) {P[j].SwallowID = id;}}} /* Bound particles with very small timestep get eaten to avoid issues. */
+#endif
 
 #ifdef BH_REPOSITION_ON_POTMIN
                         /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
@@ -504,12 +371,12 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         }
 #endif
 			
-#if (!defined(SINGLE_STAR_FORMATION) || defined(SINGLE_STAR_MERGERS)) 
                         /* check_for_bh_merger.  Easy.  No Edd limit, just a pos and vel criteria. */
-#ifdef SINGLE_STAR_MERGERS
-			if((P[j].Mass < 3*All.MinMassForParticleMerger) && (r < All.ForceSoftening[5])) // only merge away stuff that is within the softening radius, and is no more massive that a few gas particles
-#endif			
+#if !defined(BH_DEBUG_DISABLE_MERGERS)
                         if((id != P[j].ID) && (P[j].Mass > 0) && (P[j].Type == 5))	/* we may have a black hole merger */
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+                        if((P[j].Mass < 3*All.MinMassForParticleMerger) && (r < All.ForceSoftening[5])) /* only merge away stuff that is within the softening radius, and is no more massive that a few gas particles */
+#endif
                         {
                             if(id != P[j].ID) /* check its not the same bh  (DAA: this is duplicated here...) */
                             {
@@ -537,32 +404,25 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         
                         /* This is a similar loop to what we already did in blackhole_environment, but here we stochastically
                          reduce GRAVCAPT events in order to (statistically) obey the eddington limit */
-#if ( defined(BH_GRAVCAPTURE_GAS) && !defined(NEWSINK) ) || defined(BH_GRAVCAPTURE_NONGAS)
+#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
                         if(P[j].Type != 5)
                         {
-#ifdef SINGLE_STAR_FORMATION
-			    double eps = DMAX(P[j].Hsml/2.8, DMAX(ags_h_i/2.8, r));			    
-			    if(eps*eps*eps /(P[j].Mass + mass) <= P[j].SwallowTime)
-//			  if(0.5*(vrel*vrel - vesc*vesc) <= P[j].SwallowEnergy) 
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+			                double eps = DMAX(P[j].Hsml/2.8, DMAX(ags_h_i/2.8, r));			    
+			                if(eps*eps*eps /(P[j].Mass + mass) <= P[j].SwallowTime)
 #endif			      			  
-#ifdef SINGLE_STAR_STRICT_ACCRETION
-			    //			    if(r < DMAX(Get_Particle_Size(j), sink_radius)) // don't even bother if not in the accretion radius
-			   if(r < sink_radius) // don't even bother if not in the accretion radius			      
-#endif			    
                             if((vrel < vesc)) // && (particles_swallowed_this_bh_this_process < particles_swallowed_this_bh_this_process_max))
-
                             { /* bound */
-#ifdef SINGLE_STAR_STRICT_ACCRETION
-                                double spec_mom=0; for(k=0;k<3;k++) {spec_mom += (P[j].Vel[k] - velocity[k])*dpos[k];} // delta_x.delta_v
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+                                double spec_mom=0; for(k=0;k<3;k++) {spec_mom += dvel[k]*dpos[k];} // delta_x.delta_v
                                 spec_mom = (r2*vrel*vrel - spec_mom*spec_mom*All.cf_a2inv); // specific angular momentum^2 = r^2(delta_v)^2 - (delta_v.delta_x)^2;
-				//                                if(spec_mom < All.G * (mass + P[j].Mass) * DMAX(sink_radius, Get_Particle_Size(j))) // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
-				if(spec_mom < All.G * (mass + P[j].Mass) * sink_radius)
+				                if(spec_mom < All.G * (mass + P[j].Mass) * sink_radius)  // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
 #endif
-				  if( bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1 ) { /* apocenter within target distance */	
+                                if( bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1 ) { /* apocenter within target distance */
 #ifdef BH_GRAVCAPTURE_NONGAS        /* simply swallow non-gas particle if BH_GRAVCAPTURE_NONGAS enabled */
                                     if((P[j].Type != 0) && (P[j].SwallowID < id)) P[j].SwallowID = id;
 #endif
-#if defined(BH_GRAVCAPTURE_GAS) && !defined(NEWSINK)
+#if defined(BH_GRAVCAPTURE_GAS)
                                     /* now deal with gas */
                                     if (P[j].Type == 0){
 #if defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION) /* if Eddington-limited and NO alpha-disk, do this stochastically */
@@ -574,7 +434,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                         if(w < p)
                                         {
 #ifndef IO_REDUCED_MODE
-                                            printf("MARKING_BH_FOOD: P[j.]ID=%llu with mass of %g at distance %g to be swallowed by id=%llu \n", (unsigned long long) P[j].ID,P[j].Mass,r, (unsigned long long) id);
+                                            printf("MARKING_BH_FOOD: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) id);
 #endif
                                             if(P[j].SwallowID < id) P[j].SwallowID = id;
                                         }
@@ -582,76 +442,25 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                         if(P[j].SwallowID < id) {P[j].SwallowID = id;} /* in other cases, just swallow the particle */  //particles_swallowed_this_bh_this_process++;
 #endif //else defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
                                     } //if (P[j].Type == 0)
-#endif //ifdef BH_GRAVCAPTURE_GAS !defined(NEWSINK)
+#endif //ifdef BH_GRAVCAPTURE_GAS
                                 } // if( apocenter in tolerance range )
                             } // if(vrel < vesc)
                         } //if(P[j].Type != 5)
-#endif // ( defined(BH_GRAVCAPTURE_GAS) && !defined(NEWSINK) ) || defined(BH_GRAVCAPTURE_NONGAS)
+#endif // defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
                         
                         
-
-
-/*DG: Loop for NEWSINK accretion algorithm from Hubber 2013. Starting from closest particle we start swallowing until we reach mdot*dt.*/
-/* We should already have the list of particles to swallow so we just use that to mark them*/
-#if defined(NEWSINK)
-                       if(P[j].Type == 0)
-                       {
-                        /*Check whether it is on the list and we are supposed to eat it*/
-                            for(k=0;k<n_neighbor;k++){
-                               if( P[j].ID == str_gasID[k] && str_f_acc[k]>0 && P[j].SwallowID < id )
-                               {
-                                   /*Check if this is the sink the gas is most bound to, if not, don't accrete */
-				   double eps = DMAX(P[j].Hsml/2.8, DMAX(ags_h_i/2.8, r));
-				   double tff = eps*eps*eps /(mass + P[j].Mass);
-				   if(tff <= P[j].SwallowTime*1.01){
-//                                   if (0.5*(vrel*vrel - vesc*vesc) <= P[j].SwallowEnergy*0.999){ //constant factor added to avoid weird numerical issues
-#ifndef IO_REDUCED_MODE
-                                    printf("MARKING_BH_FOOD: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) id);
-#endif
-                                    P[j].SwallowID = id; /* marked for eating */
-                                   }
-                                   else{
-                                       mdot = DMAX((mdot-str_f_acc[k]*P[j].Mass/dt),0); //update mdot
-                                       if(mode == 0){
-#ifdef BH_ALPHADISK_ACCRETION
-                                        BPP(target).BH_Mdot_AlphaDisk = mdot;
-#else
-                                        BPP(target).BH_Mdot = mdot;
-#endif
-                                       }
-                                       else{
-#ifdef BH_ALPHADISK_ACCRETION
-                                        BlackholeDataResult[target].Mdot_AlphaDisk = mdot;
-#else
-                                        BlackholeDataResult[target].Mdot = mdot;
-#endif
-                                        BlackholeDataResult[target].f_acc[k] = 0;
-                                       }
-#ifndef IO_REDUCED_MODE
-                                        printf("ThisTask=%d, Sink assigned to multiple sinks: P[j.]ID=%llu has SwallowTime of %g and had SwallowID of %llu while the freefall time to BH with id=%llu is %g. This reduces mdot by %g to %g for the sink, which has been updated accordingly.\n",ThisTask, (unsigned long long) P[j].ID,P[j].SwallowTime,(unsigned long long) P[j].SwallowID, (unsigned long long) id, tff, str_f_acc[k]*P[j].Mass/dt, mdot);
-#endif
-                                       str_f_acc[k] = 0; //we don't accrete this
-                                   }
-                               } /* check list */
-                            } /* go over list */
-                        } /* is gas */
-#endif
                         
                         /* now is the more standard accretion only of gas, according to the mdot calculated before */
-                        if(P[j].Type == 0)
+                        if(P[j].Type == 0) /* here we have a gas particle */
                         {
-                            /* here we have a gas particle */
-                            u = r * hinv; kernel_main(u,hinv3,hinv*hinv3,&wk,&dwk,-1);
-#if defined(BH_SWALLOWGAS) && !defined(BH_GRAVCAPTURE_GAS) && !defined(NEWSINK) // this below is only meaningful if !defined(BH_GRAVCAPTURE_GAS)...
-                            /* compute accretion probability */
-                            if((bh_mass_withdisk - (mass + mass_markedswallow))>0) {p = (bh_mass_withdisk - (mass + mass_markedswallow)) * wk / rho;} else {p = 0;}
-#ifdef BH_WIND_KICK
-                            /* DAA: for stochastic winds (BH_WIND_KICK) we remove a fraction of mass from gas particles prior to kicking --> need to increase the probability here to balance black hole growth */
-                            if(f_accreted>0) 
-                            {
-                                /* DAA: compute outflow probability when "bh_mass_withdisk < mass" - we don't need to enforce mass conservation in this case, relevant only in low-res sims where the BH seed mass is much lower than the gas particle mass */
-                                p /= f_accreted; if((bh_mass_withdisk - mass) < 0) {p = ( (1-f_accreted)/f_accreted ) * mdot * dt * wk / rho;}
-                            }
+                            u=r*hinv; kernel_main(u,hinv3,hinv*hinv3,&wk,&dwk,-1);
+#if defined(BH_SWALLOWGAS) && !defined(BH_GRAVCAPTURE_GAS) /* compute accretion probability, this below is only meaningful if !defined(BH_GRAVCAPTURE_GAS)... */
+                            double dm_toacc = bh_mass_withdisk - (mass + mass_markedswallow); if(dm_toacc>0) {p=dm_toacc*wk/rho;} else {p=0;}
+#ifdef BH_WIND_KICK /* DAA: for stochastic winds (BH_WIND_KICK) we remove a fraction of mass from gas particles prior to kicking --> need to increase the probability here to balance black hole growth */
+                            if(f_accreted>0) {p /= f_accreted; if((bh_mass_withdisk - mass) < 0) {p = ( (1-f_accreted)/f_accreted ) * mdot * dt * wk / rho;}} /* DAA: compute outflow probability when "bh_mass_withdisk < mass" - we don't need to enforce mass conservation in this case, relevant only in low-res sims where the BH seed mass is much lower than the gas particle mass */
+#endif
+#ifdef BH_ACCRETE_NEARESTFIRST /* put all the weight on the single nearest gas particle, instead of spreading it in a kernel-weighted fashion */
+                            p=0; if(dm_toacc>0 && P[j].Mass>0 && r<1.0001*BH_dr_to_NearestGasNeighbor) {p=dm_toacc/P[j].Mass;}
 #endif
                             w = get_random_number(P[j].ID);
                             if(w < p)
@@ -659,39 +468,22 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #ifndef IO_REDUCED_MODE
                                 printf("MARKING_BH_FOOD: j %d w %g p %g TO_BE_SWALLOWED \n",j,w,p);
 #endif
-                                if(P[j].SwallowID < id)
-                                {
-                                   P[j].SwallowID = id;
-#ifdef BH_WIND_KICK
-                                   mass_markedswallow += P[j].Mass*f_accreted;
-#else
-                                   mass_markedswallow += P[j].Mass;
-#endif
-                                }
+                                if(P[j].SwallowID < id) {P[j].SwallowID = id; mass_markedswallow += P[j].Mass*f_accreted;}
                             } // if(w < p)
 #endif // BH_SWALLOWGAS
 
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-                            /* calculate the angle-weighting for the photon momentum */
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) /* calculate the angle-weighting for the photon momentum */
                             if((mdot>0)&&(dt>0)&&(r>0)&&(P[j].SwallowID==0)&&(P[j].Mass>0)&&(P[j].Type==0))
-                            {
-                                /* cos_theta with respect to disk of BH is given by dot product of r and Jgas */
-                                norm=0; for(k=0;k<3;k++) norm+=(dpos[k]/r)*Jgas_in_Kernel[k];
-                                norm=fabs(norm); theta=acos(norm);
-                                BH_angle_weighted_kernel_sum += bh_angleweight_localcoupling(j,BH_disk_hr,theta,r,h_i);
+                            { /* cos_theta with respect to disk of BH is given by dot product of r and Jgas */
+                                norm=0; for(k=0;k<3;k++) {norm+=(dpos[k]/r)*Jgas_in_Kernel[k];}
+                                norm=fabs(norm); theta=acos(norm); BH_angle_weighted_kernel_sum += bh_angleweight_localcoupling(j,BH_disk_hr,theta,r,h_i);
                             }
 #endif
-                            
+
 #ifdef BH_THERMALFEEDBACK
-                            {
-#ifdef NEWSINK
-                                energy = bh_lum_bol(mdot_avg, bh_mass, -1) * dt;
-#else
-                                energy = bh_lum_bol(mdot, bh_mass, -1) * dt;
-#endif
-                                if(rho > 0) {SphP[j].Injected_BH_Energy += (wk/rho) * energy * P[j].Mass;}
-                            }
-#endif
+                            double energy = bh_lum_bol(mdot, bh_mass, -1) * dt;
+                            if(rho > 0) {SphP[j].Injected_BH_Energy += (wk/rho) * energy * P[j].Mass;}
+#endif                            
                         } // if(P[j].Type == 0)
 
                     } // if(r2 < h_i2)
@@ -705,8 +497,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
             if(listindex < NODELISTLENGTH)
             {
                 startnode = BlackholeDataGet[target].NodeList[listindex];
-                if(startnode >= 0)
-                    startnode = Nodes[startnode].u.d.nextnode;	/* open it */
+                if(startnode >= 0) {startnode = Nodes[startnode].u.d.nextnode;}	/* open it */
             }
         } // mode==1
     } // while(startnode >= 0) (outer of the double-loop)

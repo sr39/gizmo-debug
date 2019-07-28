@@ -29,12 +29,9 @@ static struct blackholedata_in
 #endif    
     MyFloat Mass;
     MyFloat BH_Mass;
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
     MyFloat SinkRadius;
 #endif
-/* #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-    MyFloat ProtoStellar_Radius;
-#endif     */
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
 #endif
@@ -44,6 +41,9 @@ static struct blackholedata_in
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
     MyFloat Jgas_in_Kernel[3];
 #endif
+#ifdef BH_ACCRETE_NEARESTFIRST
+    MyFloat BH_dr_to_NearestGasNeighbor;
+#endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyFloat BH_disk_hr;
     MyFloat BH_angle_weighted_kernel_sum;
@@ -51,31 +51,11 @@ static struct blackholedata_in
 #if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;
 #endif
-#if defined(NEWSINK)
-#if !defined(SINGLE_STAR_STRICT_ACCRETION)
-    MyFloat SinkRadius;
+#if defined(BH_RETURN_ANGMOM_TO_GAS)
+    MyFloat BH_Specific_AngMom[3];
+    MyFloat angmom_norm_topass_in_swallowloop;
 #endif
-    MyFloat BH_Mdot_Avg;
-    /* properties of neighboring particles, used for preferential feeding */
-    int n_neighbor; //number of neighbors currently stored in the arrays below
-    MyFloat rgas[NEWSINK_NEIGHBORMAX]; /* Distance of gas from sink */
-    MyFloat xgas[NEWSINK_NEIGHBORMAX]; /* x coordinate of gas from sink */
-    MyFloat ygas[NEWSINK_NEIGHBORMAX]; /* y coordinate of gas from sink */
-    MyFloat zgas[NEWSINK_NEIGHBORMAX]; /* z coordinate of gas from sink */
-    MyFloat Hsmlgas[NEWSINK_NEIGHBORMAX]; /* gas smoothing length */
-    MyFloat mgas[NEWSINK_NEIGHBORMAX]; /* Mass of gas particle */
-    MyIDType gasID[NEWSINK_NEIGHBORMAX]; /* ID of gas particle */
-    int isbound[NEWSINK_NEIGHBORMAX]; /* is it bound to the sink */
-    MyFloat f_acc[NEWSINK_NEIGHBORMAX]; /* How much of the gas particle should be accreted */
-#if defined(NEWSINK_J_FEEDBACK)
-    MyFloat Jsink[3];
-    MyFloat t_disc;
-    MyDouble dv_ang_kick_norm[NEWSINK_NEIGHBORMAX]; /*Normalization term for angular momentum feedback kicks, see denominator of Eq 22 of Hubber 2013*/
-#endif
-#ifdef BH_ALPHADISK_ACCRETION
-    MyFloat Mdot_AlphaDisk;
-#endif
-#endif
+
 }
 *BlackholeDataIn, *BlackholeDataGet;
 
@@ -87,14 +67,9 @@ static struct blackholedata_out
     int orig_index;
     int trans_index;
     
-    MyLongDouble Mass;
-    MyLongDouble BH_Mass;
-#ifdef BH_ALPHADISK_ACCRETION
-    MyLongDouble BH_Mass_AlphaDisk;
-#endif
     MyLongDouble accreted_Mass;
     MyLongDouble accreted_BH_Mass;
-    MyLongDouble accreted_momentum[3];
+    MyLongDouble accreted_BH_mass_alphadisk;
 #ifdef BH_REPOSITION_ON_POTMIN
     MyFloat BH_MinPotPos[3];
     MyFloat BH_MinPot;
@@ -108,22 +83,16 @@ static struct blackholedata_out
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyFloat BH_angle_weighted_kernel_sum;
 #endif
-#if defined(SINGLE_STAR_STRICT_ACCRETION) || defined(NEWSINK)
-    MyLongDouble accreted_moment[3];
+#if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
+    MyLongDouble accreted_momentum[3];
 #endif
-#if defined(NEWSINK)
-    MyFloat SinkRadius;
-    MyFloat Mdot;
-    MyFloat Dt;
-    MyFloat f_acc[NEWSINK_NEIGHBORMAX]; /* How much of the gas particle should be accreted */
-#if defined(NEWSINK_J_FEEDBACK)
+#if defined(BH_FOLLOW_ACCRETED_COM)
+    MyLongDouble accreted_centerofmass[3];
+#endif
+#if defined(BH_FOLLOW_ACCRETED_ANGMOM)
     MyLongDouble accreted_J[3];
+#endif
 
-#endif
-#ifdef BH_ALPHADISK_ACCRETION
-    MyFloat Mdot_AlphaDisk;
-#endif
-#endif
 }
 *BlackholeDataResult, *BlackholeDataOut;
 

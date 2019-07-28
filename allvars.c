@@ -153,7 +153,9 @@ int Flag_FullStep;		/*!< Flag used to signal that the current step involves all 
 
 int TreeReconstructFlag;
 int GlobFlag;
-
+#ifdef HERMITE_INTEGRATION
+int HermiteOnlyFlag;            /*! Flag used to indicate whether to skip non-Hermite integrated particles in the force evaluation */
+#endif
 
 int NumPart;			/*!< number of particles on the LOCAL processor */
 int N_gas;			/*!< number of gas particles on the LOCAL processor  */
