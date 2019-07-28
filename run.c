@@ -86,9 +86,9 @@ void run(void)
         {
             domain_Decomposition(0, 0, 1);      /* do domain decomposition if step is big enough, and set new list of active particles  */
         }
-#ifdef SINGLE_STAR_SINK_DYNAMICS
+#if defined(SINGLE_STAR_SINK_DYNAMICS)
         else if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart || TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
-#elif BH_WIND_SPAWN
+#elif defined(BH_WIND_SPAWN)
         else if(TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
 #endif
         else

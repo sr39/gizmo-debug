@@ -490,7 +490,6 @@ void set_blackhole_mdot(int i, int n, double dt)
     if(x_MdiskSelfGravLimiter > 20.) {mdot=0;} else {mdot *= exp(-0.5*x_MdiskSelfGravLimiter*x_MdiskSelfGravLimiter);}
 #endif
     BlackholeTempInfo[i].mdot_alphadisk = mdot;     /* if BH_GRAVCAPTURE_GAS is off, this gets the accretion rate */
-    BPP(n).BH_Mdot_AlphaDisk = mdot; /* Save the acretion rate for the alpha disk*/
     mdot = 0;
     if(BPP(n).BH_Mass_AlphaDisk > 0)
     {

@@ -90,6 +90,7 @@ static struct blackholedata_out
 
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
     MyLongDouble accreted_momentum[3];
+#endif
 #if defined(BH_FOLLOW_ACCRETED_COM)
     MyLongDouble accreted_centerofmass[3];
 #endif

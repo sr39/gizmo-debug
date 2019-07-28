@@ -184,7 +184,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     MyIDType id;
     MyFloat *pos, *velocity, h_i, dt, mdot, rho, mass, bh_mass;
     MyFloat ags_h_i = All.ForceSoftening[5];
-    double h_i2, r2, r, u, hinv, hinv3, wk, dwk, vrel, vesc, dpos[3], dvel[3], sink_radius; sink_radius=0, f_accreted=1;
+    double h_i2, r2, r, u, hinv, hinv3, wk, dwk, vrel, vesc, dpos[3], dvel[3], sink_radius, f_accreted; sink_radius=0; f_accreted=1;
 #if defined(BH_GRAVCAPTURE_GAS) && defined(BH_ENFORCE_EDDINGTON_LIMIT) && !defined(BH_ALPHADISK_ACCRETION)
     double meddington, medd_max_accretable, mass_to_swallow_edd, eddington_factor;
 #endif
