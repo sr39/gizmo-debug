@@ -452,7 +452,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     if(P[p].SuperTimestepFlag>=2) {dt_tidal = sqrt(All.ErrTolIntAccuracy) * P[p].COM_dt_tidal;}
 #endif
-    if(P[p].Type==0) {dt=DMIN(dt,dt_tidal)} else {dt=DMIN(All.MaxSizeTimestep,dt_tidal);}
+    if(P[p].Type==0) {dt=DMIN(dt,dt_tidal);} else {dt=DMIN(All.MaxSizeTimestep,dt_tidal);}
 #endif
 
 #ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step, which gives superior conservation
