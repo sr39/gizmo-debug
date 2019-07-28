@@ -29,10 +29,10 @@
 /* quantities that pass IN to the 'blackhole_environment_evaluate' routines */
 static struct blackholedata_in
 {
-#if defined(BH_GRAVCAPTURE_GAS)
+#if defined(BH_GRAVCAPTURE_GAS) || (BH_GRAVACCRETION == 8)
     MyDouble Mass;
 #endif
-#if defined(SINGLE_STAR_STRICT_ACCRETION)
+#if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
     MyFloat SinkRadius;
 #endif  
     MyDouble Pos[3];
@@ -50,11 +50,8 @@ static struct blackholedata_in
 #ifdef BH_WAKEUP_GAS
     MyFloat TimeBin;
 #endif
-//#if !defined(SINGLE_STAR_STRICT_ACCRETION)
-//    MyFloat SinkRadius;
-//#endif
-#if defined(NEWSINK_J_FEEDBACK)
-    MyFloat Jsink[3];
+#if defined(BH_RETURN_ANGMOM_TO_GAS)
+    MyFloat BH_Specific_AngMom[3];
 #endif
 }
 *BlackholeDataIn, *BlackholeDataGet;
@@ -114,9 +111,9 @@ void blackhole_environment_loop(void)
                 BlackholeDataIn[j].Pos[k] = P[place].Pos[k];
                 BlackholeDataIn[j].Vel[k] = P[place].Vel[k];
             }
-#if defined(BH_GRAVCAPTURE_GAS)
+#if defined(BH_GRAVCAPTURE_GAS) || (BH_GRAVACCRETION == 8)
             BlackholeDataIn[j].Mass = P[place].Mass;
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
             BlackholeDataIn[j].SinkRadius = P[place].SinkRadius;
 #endif	    
 #endif
@@ -124,16 +121,12 @@ void blackhole_environment_loop(void)
             BlackholeDataIn[j].AGS_Hsml = PPP[place].AGS_Hsml;
 #endif	    
             BlackholeDataIn[j].Hsml = PPP[place].Hsml;	    
-	    
             BlackholeDataIn[j].ID = P[place].ID;
-//#if defined(NEWSINK)
-//	    BlackholeDataIn[j].SinkRadius = P[place].SinkRadius;
-//#endif
 #ifdef BH_WAKEUP_GAS
-	    BlackholeDataIn[j].TimeBin = P[place].TimeBin;
+	        BlackholeDataIn[j].TimeBin = P[place].TimeBin;
 #endif
-#if defined(NEWSINK_J_FEEDBACK)
-                BlackholeDataIn[j].Jsink[0] = P[place].Mass*P[place].BH_Specific_AngMom[0];BlackholeDataIn[j].Jsink[1] = P[place].Mass*P[place].BH_Specific_AngMom[1];BlackholeDataIn[j].Jsink[2] = P[place].Mass*P[place].BH_Specific_AngMom[2];
+#if defined(BH_RETURN_ANGMOM_TO_GAS)
+            BlackholeDataIn[j].BH_Specific_AngMom[0] = P[place].BH_Specific_AngMom[0];BlackholeDataIn[j].BH_Specific_AngMom[1] = P[place].BH_Specific_AngMom[1];BlackholeDataIn[j].BH_Specific_AngMom[2] = P[place].BH_Specific_AngMom[2];
 #endif
             memcpy(BlackholeDataIn[j].NodeList, DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
         }
@@ -210,9 +203,7 @@ void blackhole_environment_loop(void)
     myfree(Ngblist);
 
     /* DAA: normalize/finalized some of the environment variables */
-    for(i=0; i<N_active_loc_BHs; i++)
-        normalize_temp_info_struct(i);
-        
+    for(i=0; i<N_active_loc_BHs; i++) {normalize_temp_info_struct(i);}        
 }
 
 
@@ -223,30 +214,16 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 {
     /* initialize variables before SPH loop is started */
     int startnode, numngb, j, k, n, listindex=0, mod_index;
-    MyFloat *pos, h_i, *vel, hinv;
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-    MyFloat ags_h_i;
+    MyFloat *pos, h_i, *vel, hinv, mass, hinv3; mass=0; MyFloat ags_h_i = All.ForceSoftening[5]; MyIDType id;
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (BH_GRAVACCRETION == 8)
+    MyFloat wk, dwk, u; u=wk=dwk=0;
 #endif
-    MyIDType id;
-    
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(NEWSINK)
-    MyFloat hinv3, wk, dwk, u; u=wk=dwk=0;
-#endif
-    
 #if defined(BH_GRAVCAPTURE_GAS)
-    MyFloat mass, vrel, vbound, r2, sink_radius; sink_radius=0;
+    MyFloat vrel, vbound, r2, sink_radius; sink_radius=0;
 #endif
-#if defined(NEWSINK)
-    MyFloat csound_sq, hinv_gas1, hinv3_gas1, u_gas1, u_gas2,hinv_gas2, hinv3_gas2, int_zone_radius;
-    integertime bh_timebin;
-    int j2, n2;
-    MyDouble Jpar[3], dt;
-#if defined(NEWSINK_J_FEEDBACK)
-    MyFloat Jsinktot, Jcrossdr[3], drcrossJcrossdr[3];
-    MyFloat Jsink[3];
+#if defined(BH_RETURN_ANGMOM_TO_GAS)
+    MyFloat *BH_Specific_AngMom;
 #endif
-#endif
-    
     MyDouble dP[3],dv[3],wt;
     struct blackhole_temp_particle_data out;
     memset(&out, 0, sizeof(struct blackhole_temp_particle_data));
@@ -254,9 +231,9 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     /* these are the BH properties */
     if(mode == 0)
     {
-#if defined(BH_GRAVCAPTURE_GAS)
+#if defined(BH_GRAVCAPTURE_GAS) || (BH_GRAVACCRETION == 8)
         mass = P[target].Mass;
-#if defined(SINGLE_STAR_STRICT_ACCRETION)
+#if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
         sink_radius = P[target].SinkRadius;
 #endif	
 #endif
@@ -264,25 +241,22 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
         vel = P[target].Vel;
         h_i = PPP[target].Hsml;
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-	ags_h_i = PPP[target].AGS_Hsml;
+	    ags_h_i = PPP[target].AGS_Hsml;
 #endif	
         id = P[target].ID;
         mod_index = P[target].IndexMapToTempStruc;  /* the index of the BlackholeTempInfo should we modify*/
 #ifdef BH_WAKEUP_GAS
-	bh_timebin = P[target].TimeBin;
+	    bh_timebin = P[target].TimeBin;
 #endif
-#if defined(NEWSINK)
-        int_zone_radius = P[target].Hsml * INT_ZONE_TO_HSML;
-#if defined(NEWSINK_J_FEEDBACK)
-        Jsink[0] = P[target].Mass*P[target].BH_Specific_AngMom[0]; Jsink[1] = P[target].Mass*P[target].BH_Specific_AngMom[1]; Jsink[2] = P[target].Mass*P[target].BH_Specific_AngMom[2];
-#endif
+#if defined(BH_RETURN_ANGMOM_TO_GAS)
+        BH_Specific_AngMom = P[target].BH_Specific_AngMom;
 #endif
     }
     else
     {
-#if defined(BH_GRAVCAPTURE_GAS)
+#if defined(BH_GRAVCAPTURE_GAS) || (BH_GRAVACCRETION == 8)
         mass = BlackholeDataGet[target].Mass;
-#if defined(SINGLE_STAR_STRICT_ACCRETION)
+#if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
         sink_radius = BlackholeDataGet[target].SinkRadius;
 #endif		
 #endif
@@ -290,33 +264,20 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
         vel = BlackholeDataGet[target].Vel;
         h_i = BlackholeDataGet[target].Hsml;
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-	ags_h_i = BlackholeDataGet[target].AGS_Hsml;
+	    ags_h_i = BlackholeDataGet[target].AGS_Hsml;
 #endif	
         id = BlackholeDataGet[target].ID;
         mod_index = 0;                              /* this is not used for mode==1, but this avoids compiler error */
 #ifdef BH_WAKEUP_GAS
-	bh_timebin = BlackholeDataGet[target].TimeBin;
+	    bh_timebin = BlackholeDataGet[target].TimeBin;
 #endif 
-#if defined(NEWSINK)
-        int_zone_radius = BlackholeDataGet[target].Hsml * INT_ZONE_TO_HSML;
-#if defined(NEWSINK_J_FEEDBACK)
-        Jsink[0] = BlackholeDataGet[target].Jsink[0]; Jsink[1] = BlackholeDataGet[target].Jsink[1]; Jsink[2] = BlackholeDataGet[target].Jsink[2];
-#endif
+#if defined(BH_RETURN_ANGMOM_TO_GAS)
+        BH_Specific_AngMom = BlackholeDataGet[target].BH_Specific_AngMom;
 #endif
     }
     
     if(h_i < 0) return -1;
-    hinv = 1./h_i;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(NEWSINK)
-    hinv3 = hinv*hinv*hinv;
-#endif
-#if defined(NEWSINK)
-        MyDouble dt_min = DMAX(DT_MIN_TOLERANCE_FACTOR * sqrt(pow(All.SofteningTable[5],3.0)/(All.G * mass)), 20.0*DMAX(All.MinSizeTimestep,All.Timebase_interval) );
-#if defined(NEWSINK_J_FEEDBACK)
-        Jsinktot = sqrt(Jsink[0]*Jsink[0] + Jsink[1]*Jsink[1] +Jsink[2]*Jsink[2]);
-#endif
-#endif
-    
+    hinv = 1./h_i; hinv3 = hinv*hinv*hinv;
     if(mode == 0)
     {
         startnode = All.MaxPart;  /* root node */
@@ -331,18 +292,15 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     {
         while(startnode >= 0)
         {
-#if defined(NEWSINK)
-            numngb = ngb_treefind_pairs_targeted(pos, int_zone_radius, target, &startnode, mode, nexport, nSend_local, BH_NEIGHBOR_BITFLAG);	   
-#else
-            numngb = ngb_treefind_pairs_targeted(pos, h_i, target, &startnode, mode, nexport, nSend_local, BH_NEIGHBOR_BITFLAG); // BH_NEIGHBOR_BITFLAG defines which types of particles we search for
-#endif
-        if(numngb < 0) return -1;
+            numngb = ngb_treefind_pairs_targeted(pos, h_i, target, &startnode, mode, nexport, nSend_local, BH_NEIGHBOR_BITFLAG);	   
+            if(numngb < 0) return -1;
+            
             for(n = 0; n < numngb; n++)
             {
                 j = Ngblist[n];
 
 #ifdef BH_WAKEUP_GAS
-		if (bh_timebin < P[j].LowestBHTimeBin) P[j].LowestBHTimeBin = bh_timebin;
+		        if (bh_timebin < P[j].LowestBHTimeBin) {P[j].LowestBHTimeBin = bh_timebin;}
 #endif
                 if( (P[j].Mass > 0) && (P[j].Type != 5) && (P[j].ID != id) )
                 {
@@ -397,15 +355,31 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                         out.Jgas_in_Kernel[1] += wt*(dP[2]*dv[0] - dP[0]*dv[2]);
                         out.Jgas_in_Kernel[2] += wt*(dP[0]*dv[1] - dP[1]*dv[0]);
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-                        u=0;
-                        for(k=0;k<3;k++) u+=dP[k]*dP[k];
-                        u=sqrt(u)/h_i;
-                        kernel_main(u,hinv3,hinv3*hinv,&wk,&dwk,1);
-                        dwk /= u*h_i;
-                        for(k=0;k<3;k++) out.GradRho_in_Kernel[k] += wt * dwk * fabs(dP[k]);
+                        u=0; for(k=0;k<3;k++) {u+=dP[k]*dP[k];}
+                        u=sqrt(u)/h_i; kernel_main(u,hinv3,hinv3*hinv,&wk,&dwk,1);
+                        dwk /= u*h_i; for(k=0;k<3;k++) out.GradRho_in_Kernel[k] += wt * dwk * fabs(dP[k]);
 #endif
 #if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5)
                         for(k=0;k<3;k++) {out.BH_SurroundingGasVel[k] += wt*dv[k];}
+#endif
+#if defined(BH_RETURN_ANGMOM_TO_GAS) /* We need a normalization factor for angular momentum feedback so we will go over all the neighbours */
+                        double r2j=dP[0]*dP[0]+dP[1]*dP[1]+dP[2]*dP[2], Lrj=BH_Specific_AngMom[0]*dP[0]+BH_Specific_AngMom[1]*dP[1]+BH_Specific_AngMom[2]*dP[2];
+                        for(k=0;k<3;k++) {out.angmom_prepass_sum_for_passback[k] += wt*(BH_Specific_AngMom[k]*r2j - dP[k]*Lrj);}
+#endif
+#if (BH_GRAVACCRETION == 8)
+                        u=0; for(k=0;k<3;k++) {u+=dP[k]*dP[k];}
+                        u=sqrt(u)/h_i; kernel_main(u,hinv3,hinv3*hinv,&wk,&dwk,-1);
+                        double rj=u*All.cf_atime; double csj=Particle_effective_soundspeed_i(j);
+                        double vdotrj=0; for(k=0;k<3;k++) {vdotrj+=-dP[k]*dv[k];}
+                        double vr_mdot = 4*M_PI * wt*(wk*All.cf_a3inv) * rj*vdotrj;
+                        if(rj < All.ForceSoftening[5]*All.cf_atime)
+                        {
+                            double bondi_mdot = 4*M_PI*All.G*All.G * mass*mass / pow(csj*csj + (dv[0]*dv[0]+dv[1]*dv[1]+dv[2]*dv[2])*All.cf_a2inv, 1.5) * wt * (wk*All.cf_a3inv);
+                            vr_mdot = DMAX(vr_mdot , bondi_mdot);
+                            out.hubber_mdot_bondi_limiter += bondi_mdot;
+                        }
+                        out.hubber_mdot_vr_estimator += vr_mdot; /* physical */
+                        out.hubber_mdot_disk_estimator += wt*wk * sqrt(rj) / (SphP[j].Density * csj*csj); /* physical */
 #endif
                     }
                     else if( P[j].Type==4 || ((P[j].Type==2||P[j].Type==3) && !(All.ComovingIntegrationOn)) ) 
@@ -418,14 +392,12 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                     }
                     else 
                     { 
-                        /* dark matter */
-                        // DAA: Jalt_in_Kernel and Malt_in_Kernel are updated in normalize_temp_info_struct() to be TOTAL angular momentum and mass 
+                        /* dark matter */ // DAA: Jalt_in_Kernel and Malt_in_Kernel are updated in normalize_temp_info_struct() to be TOTAL angular momentum and mass 
                         out.Malt_in_Kernel += wt;
                         out.Jalt_in_Kernel[0] += wt*(dP[1]*dv[2] - dP[2]*dv[1]);
                         out.Jalt_in_Kernel[1] += wt*(dP[2]*dv[0] - dP[0]*dv[2]);
                         out.Jalt_in_Kernel[2] += wt*(dP[0]*dv[1] - dP[1]*dv[0]);
                     }
-                    
                     
 
 #if defined(BH_GRAVCAPTURE_GAS)
@@ -438,125 +410,25 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
                      Therefore, we only need it when we enable BH_GRAVCAPTURE_GAS as gas accretion model. */
                     if( (P[j].Mass > 0) && (P[j].Type == 0))
                     {
-                        vrel=0; for(k=0;k<3;k++) {vrel += (P[j].Vel[k] - vel[k])*(P[j].Vel[k] - vel[k]);}
-                        r2=0; for(k=0;k<3;k++) {r2+=dP[k]*dP[k];}
+                        vrel=r2=0; for(k=0;k<3;k++) {vrel+=dv[k]*dv[k]; r2+=dP[k]*dP[k];}
                         double dr_code = sqrt(r2); vrel = sqrt(vrel) / All.cf_atime;
-#if defined(ADAPTIVE_GRAVSOFT_FORALL)
-			vbound = bh_vesc(j, mass, dr_code, ags_h_i);
-#else
-			vbound = bh_vesc(j, mass, dr_code);
-#endif	//SINGLE_STAR_FORMATION
-#ifdef SINGLE_STAR_STRICT_ACCRETION
-			//			if(dr_code < DMAX(sink_radius, Get_Particle_Size(j)))
-			if(dr_code < sink_radius)			
-#endif			
+                        vbound = bh_vesc(j, mass, dr_code, ags_h_i);
                         if(vrel < vbound) { /* bound */
-#ifdef SINGLE_STAR_STRICT_ACCRETION
-                            double spec_mom=0; for(k=0;k<3;k++) {spec_mom += (P[j].Vel[k] - vel[k])*dP[k];} // delta_x.delta_v
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+                            double spec_mom=0; for(k=0;k<3;k++) {spec_mom += dv[k]*dP[k];} // delta_x.delta_v
                             spec_mom = (r2*vrel*vrel - spec_mom*spec_mom*All.cf_a2inv);  // specific angular momentum^2 = r^2(delta_v)^2 - (delta_v.delta_x)^2;
-			    //                            if(spec_mom < All.G * (mass + P[j].Mass) * DMAX(Get_Particle_Size(j),sink_radius)) // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
-			    if(spec_mom < All.G * (mass + P[j].Mass) * sink_radius)
+                            if(spec_mom < All.G * (mass + P[j].Mass) * sink_radius) // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
 #endif
-                            if( bh_check_boundedness(j,vrel,vbound,dr_code,sink_radius)==1 ) { /* apocenter within 2.8*epsilon (softening length) */
-#ifdef SINGLE_STAR_FORMATION
-			      
-                     	      double eps = DMAX(P[j].Hsml/2.8, DMAX(dr_code, ags_h_i/2.8));
-			      double tff = eps*eps*eps / (mass + P[j].Mass);
-			      if (tff < P[j].SwallowTime) P[j].SwallowTime = tff;
-//			      double spec_energy = 0.5*(vrel*vrel - vbound*vbound); // specific energy of the 2-body system
-//			      if (spec_energy < P[j].SwallowEnergy) P[j].SwallowEnergy = spec_energy; // record the lowest energy we encounter, so we can accrete onto the sink that we are most tightly bound to if there are overlapping sinks
+                            if( bh_check_boundedness(j,vrel,vbound,dr_code,sink_radius)==1 ) 
+                            { /* apocenter within 2.8*epsilon (softening length) */
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+                                double eps = DMAX(P[j].Hsml/2.8, DMAX(dr_code, ags_h_i/2.8));
+			                    double tff = eps*eps*eps / (mass + P[j].Mass);
+			                    if(tff < P[j].SwallowTime) {P[j].SwallowTime = tff;}
 #endif
-                                /* CAVEAT: when two BHs share some neighbours, this double counts the accretion. looks like this is true always since SwallowID=0 has just been initialized... only makes sense to check SwallowID if we update it... */
-                                if(P[j].SwallowID < id) {out.mass_to_swallow_edd += P[j].Mass;} /* P[j].SwallowID < id */
+                                if(P[j].SwallowID < id) {out.mass_to_swallow_edd += P[j].Mass;} /* mark as 'will be swallowed' on next loop, to correct accretion rate */
                             } /* if( apocenter in tolerance range ) */
                         } /* if(vrel < vbound) */
-                        
-#if defined(NEWSINK)
-                        if (dr_code <= int_zone_radius ) /*Check if gas in interaction radius*/
-                        {
-                            u=dr_code/h_i;
-                            csound_sq = GAMMA*GAMMA_MINUS1 * SphP[j].InternalEnergyPred;
-                            kernel_main(u,hinv3,hinv3*hinv,&wk,&dwk,-1);
-                            wk = fabs(wk); /* Just to be safe */
-                            out.intzone_gasmass += P[j].Mass; /* sum up all the mass in the sink radius*/ 
-                            out.intzone_massweight_all += P[j].Mass / SphP[j].Density * wk; /* Volume weighted kernel sum of Eq 9 in Hubber 2013 */
-#ifdef NEWSINK_BONDI			    
-			    if(dr_code < All.ForceSoftening[5]) // Special switch to clean up gas that might want to hang around inside the softening radius
-			     {
-				 double bondi_mdot = All.G * All.G * mass * mass / pow(csound_sq + (dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2]), 1.5) * P[j].Mass * wk;
-				 out.t_rad_denom_sum += -DMAX(bondi_mdot,  -(dP[0]*dv[0] + dP[1]*dv[1] + dP[2]*dv[2]) * dr_code * P[j].Mass * wk);
-				 out.min_bondi_mdot += 4. * M_PI * bondi_mdot;
-				 out.gasmass_within_softening += P[j].Mass;
-//#ifdef BH_OUTPUT_MOREINFO				 
-//				 printf("Adding Bondi accretion rate %g for particle with r = %g, rho=%g and cs_eff=%g\n", 4*M_PI*bondi_mdot, dr_code, SphP[j].Density, sqrt(csound_sq + dv[0]*dv[0] + dv[1]*dv[1] + dv[2]*dv[2]));
-//#endif				 
-			     } else
-#endif				
-			    out.t_rad_denom_sum += (dP[0]*dv[0] + dP[1]*dv[1] + dP[2]*dv[2]) * dr_code * P[j].Mass * wk;// * DMAX(1, All.ForceSoftening[5]*All.ForceSoftening[5]/(DMAX(dr_code, P[j].Hsml)*DMAX(dr_code, P[j].Hsml))); /* sum in denominator of Eq 8 in Hbber 2013 */
-			    
-                            out.t_disc_num_sum += (sqrt(dr_code) * P[j].Mass * wk) / ( SphP[j].Density * csound_sq); /* sum in Eq 10 in Hubber 2013 without kernel weight*/
-                            hinv_gas1 = 1.0/P[j].Hsml; hinv3_gas1 = hinv_gas1*hinv_gas1*hinv_gas1;
-                            u_gas1=dr_code*hinv_gas1;
-                            Jpar[0] = P[j].Mass*(dP[1]*dv[2] - dP[2]*dv[1]); /*angular momentum of particle relative to sink*/
-                            Jpar[1] = P[j].Mass*(dP[2]*dv[0] - dP[0]*dv[2]);
-                            Jpar[2] = P[j].Mass*(dP[0]*dv[1] - dP[1]*dv[0]);
-                            out.gas_Erot_in_intzone += (Jpar[0]*Jpar[0] + Jpar[1]*Jpar[1] + Jpar[2]*Jpar[2])/(2.0*P[j].Mass*dr_code*dr_code); /* total rotational energy, L^2/(2 m r^2), not just bulk as in Eq 13 oh Hubber 2013 */			    
-//                            out.gas_Egrav_in_intzone -= All.G * mass * P[j].Mass * 0.5 * (kernel_gravity(u, hinv, hinv3, -1) + kernel_gravity(u_gas1, hinv_gas1, hinv3_gas1, -1) ); /*Sink-gas interaction sum from Hubber 2013 Eq 14*/
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-			    out.gas_Egrav_in_intzone += grav_interaction_energy(dr_code, mass, P[j].Mass, ags_h_i, P[j].Hsml);
-#else			    
-			    out.gas_Egrav_in_intzone += grav_interaction_energy(dr_code, mass, P[j].Mass, All.ForceSoftening[5], P[j].Hsml);
-#endif			    
-                            //store properties of this neighbor particle
-                            if (out.n_neighbor < NEWSINK_NEIGHBORMAX){
-                                out.rgas[out.n_neighbor] = dr_code; //distance
-                                out.xgas[out.n_neighbor] = dP[0]; //x coord
-                                out.ygas[out.n_neighbor] = dP[1]; //y coord
-                                out.zgas[out.n_neighbor] = dP[2]; //z coord
-                                out.Hsmlgas[out.n_neighbor] = P[j].Hsml; //softening
-                                out.mgas[out.n_neighbor] = P[j].Mass; //mass
-                                out.gasID[out.n_neighbor] = P[j].ID; //unique ID, used for swallowing later
-                                //get boundedness, this check is already done above but let's keep it just in case we change the code structure
-                                if(vrel < vbound) { out.isbound[out.n_neighbor] = 1;}
-#if defined(NEWSINK_EAT_SMALL_DT)
-                                if ( out.isbound[out.n_neighbor]==1 ){ /*for bound gas get timestep of gas particle*/
-#ifndef WAKEUP
-                                    dt = (P[j].TimeBin ? ((integertime) 1 << P[j].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
-#else
-                                    dt = P[j].dt_step * All.Timebase_interval / All.cf_hubble_a;
-#endif
-#ifdef NEWSINK_BONDI				    
-                                    if (dt<dt_min){// || dr_code+P[j].Hsml < All.SofteningTable[5]*2.8) { /*Check if the timescale is too small or if the particle is inside the core of the gravitational softening radius. If yes, it gets eaten to avoid issues. */
-#else
-                                    if ( (dt<dt_min) || (sqrt(All.ErrTolIntAccuracy*r2*dr_code/(All.G * mass))<dt_min) || dr_code+P[j].Hsml < All.ForceSoftening[5]) { /*Check if the timescale is too small or if the particle is inside the core of the gravitational softening radius. If yes, it gets eaten to avoid issues. */
-#endif					
-                                        out.f_acc[out.n_neighbor] = 1.0;
-#ifdef BH_OUTPUT_MOREINFO					
-                                        printf("%d : Found gas with too small time step around BH with ID %d, gas id %d, gas mass %g, gas dt %g, BH_dt %g, dtmin %g, at distance %g while the interaction zone is %g \n", ThisTask, id, P[j].ID,P[j].Mass,dt,sqrt(All.ErrTolIntAccuracy*r2*dr_code/(All.G * mass)), dt_min, dr_code,int_zone_radius );
-#endif					
-                                    }
-                                }
-#endif
-#if defined(NEWSINK_J_FEEDBACK)
-                                /* We need a normalization factor for angular momentum feedback so we will go over all the neighbours*/
-                                if (Jsinktot > 0 ){ /*Sink has angular momentum*/
-                                    Jcrossdr[0] = -Jsink[2]*dP[1] + Jsink[1]*dP[2]; Jcrossdr[1] = Jsink[2]*dP[0] - Jsink[0]*dP[2];Jcrossdr[2] = -Jsink[1]*dP[0] + Jsink[0]*dP[1]; // L x dP cross product
-                                    drcrossJcrossdr[0] = Jcrossdr[2]*dP[1] - Jcrossdr[1]*dP[2]; drcrossJcrossdr[1] = -Jcrossdr[2]*dP[0] + Jcrossdr[0]*dP[2];drcrossJcrossdr[2] = Jcrossdr[1]*dP[0] - Jcrossdr[0]*dP[1]; // dP x L x dP cross product
-//                                    out.dv_ang_kick_norm[out.n_neighbor] = P[j].Mass * wk * sqrt(drcrossJcrossdr[0]*drcrossJcrossdr[0] + drcrossJcrossdr[1]*drcrossJcrossdr[1] + drcrossJcrossdr[2] * drcrossJcrossdr[2] );/*Normalization factor for angular momentum feedback kicks, see denominator of Eq 22 of Hubber 2013*/
-				    out.dv_ang_kick_norm[out.n_neighbor] = P[j].Mass * sqrt(drcrossJcrossdr[0]*drcrossJcrossdr[0] + drcrossJcrossdr[1]*drcrossJcrossdr[1] + drcrossJcrossdr[2] * drcrossJcrossdr[2] ); 
-                                }
-#endif
-                                out.n_neighbor +=1; //keep track of how many neighbors we have
-                            }
-                            else{
-#ifdef BH_OUTPUT_MOREINFO				
-                                printf("%d Gas neighbor number over limit for BH with ID %d Current neighbor number is %d\n", ThisTask, id, out.n_neighbor);
-#endif				
-                            }
-                            // /* Start another cycle to get gravitational energy, this is very crude, should be replaced */
-                            
-                        } /* Sink radius check */
-#endif // NEWSINK
                     } /* type check */
 #endif // BH_GRAVCAPTURE_GAS
                 } // ( (P[j].Mass > 0) && (P[j].Type != 5) && (P[j].ID != id) )
@@ -594,8 +466,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
  */
 
 
-#ifdef BH_GRAVACCRETION
-
+#if defined(BH_GRAVACCRETION) && (BH_GRAVACCRETION == 0)
 
 void blackhole_environment_second_loop(void)
 {
@@ -726,8 +597,7 @@ void blackhole_environment_second_loop(void)
         {
             place = DataIndexTable[j].Index;
             mod_index = P[place].IndexMapToTempStruc;
-            /* DAA: we only need to update Mbulge_in_Kernel 
-            out2particle_blackhole(&BlackholeDataPasserOut[j], P[place].IndexMapToTempStruc, 1); */
+            /* DAA: we only need to update Mbulge_in_Kernel */
             BlackholeTempInfo[mod_index].MgasBulge_in_Kernel += BlackholeDataPasserOut[j].MgasBulge_in_Kernel;
             BlackholeTempInfo[mod_index].MstarBulge_in_Kernel += BlackholeDataPasserOut[j].MstarBulge_in_Kernel;
         } // for(j = 0; j < nexport; j++)
@@ -875,4 +745,4 @@ int blackhole_environment_second_evaluate(int target, int mode, int *nexport, in
 }
 
 
-#endif   //BH_GRAVACCRETION
+#endif   //BH_GRAVACCRETION == 0

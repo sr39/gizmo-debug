@@ -66,7 +66,18 @@ void run(void)
         }
 	
         find_timesteps();		/* find-timesteps */
-        
+#if defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_WIND_SPAWN)
+	int TreeReconstructFlag_local = TreeReconstructFlag;
+#endif	
+#ifdef HERMITE_INTEGRATION	
+#if defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_WIND_SPAWN)	
+        TreeReconstructFlag_local = TreeReconstructFlag;
+        MPI_Allreduce(&TreeReconstructFlag_local, &TreeReconstructFlag, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
+#endif	
+	HermiteOnlyFlag = 1;
+	compute_grav_accelerations();	/* compute gravitational accelerations for synchronous particles */
+	HermiteOnlyFlag = 0;
+#endif        
         do_first_halfstep_kick();	/* half-step kick at beginning of timestep for synchronous particles */
         
         find_next_sync_point_and_drift();	/* find next synchronization point and drift particles to this time.
@@ -78,19 +89,16 @@ void run(void)
         
         set_non_standard_physics_for_current_time();	/* update auxiliary physics for current time */
 
-#if defined(SINGLE_STAR_FORMATION) || defined(BH_WIND_SPAWN)
-	int treeflagtemp;
-	MPI_Allreduce(&TreeReconstructFlag, &treeflagtemp, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
-	TreeReconstructFlag = treeflagtemp;
+#if defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_WIND_SPAWN)
+        MPI_Allreduce(&TreeReconstructFlag_local, &TreeReconstructFlag, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
 #endif
-	
         if(GlobNumForceUpdate > All.TreeDomainUpdateFrequency * All.TotNumPart)	/* check whether we have a big step */
         {
             domain_Decomposition(0, 0, 1);      /* do domain decomposition if step is big enough, and set new list of active particles  */
         }
-#ifdef SINGLE_STAR_FORMATION
+#if defined(SINGLE_STAR_SINK_DYNAMICS)
         else if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart || TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
-#elif BH_WIND_SPAWN
+#elif defined(BH_WIND_SPAWN)
         else if(TreeReconstructFlag) {domain_Decomposition(0, 0, 1);}
 #endif
         else
@@ -126,9 +134,17 @@ void run(void)
         compute_hydro_densities_and_forces();	/* densities, gradients, & hydro-accels for synchronous particles */
         
         do_second_halfstep_kick();	/* this does the half-step kick at the end of the timestep */
-        
+	
+#ifdef HERMITE_INTEGRATION
+	// we do a prediction step using the saved "old" pos, accel and jerk from the beginning of the timestep. Then we recompute accel and jerk and do the correction
+	do_hermite_prediction();
+	HermiteOnlyFlag = 1;
+	compute_grav_accelerations();	/* compute gravitational accelerations for synchronous particles */
+	HermiteOnlyFlag = 0;
+	do_hermite_correction();
+#endif                
         calculate_non_standard_physics();	/* source terms are here treated in a strang-split fashion */
-        
+       
         /* Check whether we need to interrupt the run */
         int stopflag = 0;
 #ifdef IO_REDUCED_MODE

@@ -5,9 +5,7 @@
 #include <math.h>
 #include "allvars.h"
 #include "proto.h"
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-#include "nbody/nbody.h"
-#endif
+
 /*
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel (volker.springel@h-its.org). The code has been modified
@@ -37,41 +35,25 @@ void do_first_halfstep_kick(void)
     }
 #endif
     
-    /* collisionless particles only need an update if they are active; however, to 
-        maintain manifest conservation in the hydro, need to check -ALL- sph particles every timestep */
+    /* as currently written with some revisions to MFV methods, should only update on active timesteps */
     for(i = 0; i < NumPart; i++)
     {
-	// if we're doing MFV we still want to go into do_the_kick to do the stuff outside of if(TimeBinActive[P[i].TimeBin]),
-	// but otherwise there is no reason to call the function at all, and we can avoid unnecessary overhead with large timebin hierarchies by restructuring the logic here - MYG      
-        /* if(P[i].Mass > 0) */
-        /* { */
-        /*     /\* 'full' kick for active particles *\/ */
-        /*     if(TimeBinActive[P[i].TimeBin]) */
-        /*     { */
-        /*         ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0; */
-        /*         tstart = P[i].Ti_begstep;	/\* beginning of step *\/ */
-        /*         tend = P[i].Ti_begstep + ti_step / 2;	/\* midpoint of step *\/ */
-        /*     } */
-        /*     do_the_kick(i, tstart, tend, P[i].Ti_current, 0); */
-        /* } */
-	
-	/* 'full' kick for active particles */
-	if(TimeBinActive[P[i].TimeBin])
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+        if((TimeBinActive[P[i].TimeBin]) || (P[i].Type==0)) /* active OR gas, need to check each timestep to ensure manifest conservation */
+#else
+        if(TimeBinActive[P[i].TimeBin]) /* 'full' kick for active particles */
+#endif
         {
-	    if(P[i].Mass > 0)
+            if(P[i].Mass > 0)
             {
                 ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
                 tstart = P[i].Ti_begstep;	/* beginning of step */
                 tend = P[i].Ti_begstep + ti_step / 2;	/* midpoint of step */
-		do_the_kick(i, tstart, tend, P[i].Ti_current, 0);
-	    }
+                do_the_kick(i, tstart, tend, P[i].Ti_current, 0);
+            }
         }
-#ifdef HYDRO_MESHLESS_FINITE_VOLUME
-	else if((P[i].Mass > 0) && (P[i].Type == 0)) { do_the_kick(i, tstart, tend, P[i].Ti_current, 0);}
-#endif	
-    } // for(i = 0; i < NumPart; i++) // 
+    } // for(i = 0; i < NumPart; i++) //
 }
-
 
 void do_second_halfstep_kick(void)
 {
@@ -90,33 +72,21 @@ void do_second_halfstep_kick(void)
 
     for(i = 0; i < NumPart; i++)
     {
-        /* if(P[i].Mass > 0) */
-        /* { */
-        /*     /\* 'full' kick for active particles *\/ */
-        /*     if(TimeBinActive[P[i].TimeBin]) */
-        /*     { */
-        /*         ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0; */
-        /*         tstart = P[i].Ti_begstep + ti_step / 2;	/\* midpoint of step *\/ */
-        /*         tend = P[i].Ti_begstep + ti_step;	/\* end of step *\/ */
-        /*     } */
-        /*     do_the_kick(i, tstart, tend, P[i].Ti_current, 1); */
-        /*     if(TimeBinActive[P[i].TimeBin]) */
-        /*         set_predicted_sph_quantities_for_extra_physics(i); */
-        /* } */
-	if(TimeBinActive[P[i].TimeBin])
-	{
-	    if(P[i].Mass > 0)
-	    {
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+        if((TimeBinActive[P[i].TimeBin]) || (P[i].Type==0)) /* active OR gas, need to check each timestep to ensure manifest conservation */
+#else
+        if(TimeBinActive[P[i].TimeBin]) /* 'full' kick for active particles */
+#endif
+        {
+            if(P[i].Mass > 0)
+            {
                 ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
                 tstart = P[i].Ti_begstep + ti_step / 2;	/* midpoint of step */
                 tend = P[i].Ti_begstep + ti_step;	/* end of step */
-		do_the_kick(i, tstart, tend, P[i].Ti_current, 1);
-                set_predicted_sph_quantities_for_extra_physics(i);		
-	    }
-	}
-#ifdef HYDRO_MESHLESS_FINITE_VOLUME	
-	else if((P[i].Mass > 0) && (P[i].Type == 0)) { do_the_kick(i, tstart, tend, P[i].Ti_current, 1);}
-#endif	    
+                do_the_kick(i, tstart, tend, P[i].Ti_current, 1);
+                set_predicted_sph_quantities_for_extra_physics(i);
+            }
+        }
     } // for(i = 0; i < NumPart; i++) //
     
 #ifdef TURB_DRIVING
@@ -124,7 +94,67 @@ void do_second_halfstep_kick(void)
 #endif
 }
 
+#ifdef HERMITE_INTEGRATION
+// Initial "prediction" step of Hermite integration, performed after the initial force evaluation 
+// Note: the below routines only account for gravitational acceleration - only appropriate for stars or collisionless particles
+void do_hermite_prediction(void)
+{
+    int i,j;
+    integertime ti_step, tstart=0, tend=0;
+    
+    for(i = 0; i < NumPart; i++)
+    {
+	if(HERMITE_INTEGRATION & (1<<P[i].Type))
+        if(TimeBinActive[P[i].TimeBin]) /* 'full' kick for active particles */
+#if (SINGLE_STAR_TIMESTEPPING > 0)
+        if(P[i].SuperTimestepFlag < 2)
+#endif	    
+        {
+            if(P[i].Mass > 0) 
+            {
+                ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
+                tstart = P[i].Ti_begstep;	/* beginning of step */
+                tend = P[i].Ti_begstep + ti_step;	/* end of step */
+		double dt_grav = (tend - tstart) * All.Timebase_interval;
+		for(j=0; j<3; j++) {		    
+		    P[i].Pos[j] = P[i].OldPos[j] + dt_grav * (P[i].OldVel[j] + dt_grav/2 * (P[i].Hermite_OldAcc[j] + dt_grav/3 * P[i].OldJerk[j])) ;
+		    P[i].Vel[j] = P[i].OldVel[j] + dt_grav * (P[i].Hermite_OldAcc[j] + dt_grav/2 * P[i].OldJerk[j]);
+		}
+            }
+        }
+    } // for(i = 0; i < NumPart; i++) //
+}
 
+void do_hermite_correction(void)
+{
+    int i,j;
+    integertime ti_step, tstart=0, tend=0;
+    
+    for(i = 0; i < NumPart; i++)
+    {
+	if(HERMITE_INTEGRATION & (1<<P[i].Type))
+        if(TimeBinActive[P[i].TimeBin]) /* 'full' kick for active particles */
+#if (SINGLE_STAR_TIMESTEPPING > 0)
+        if(P[i].SuperTimestepFlag < 2)
+#endif	    	    
+        {
+            if(P[i].Mass > 0) 
+            {
+                ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
+                tstart = P[i].Ti_begstep;	/* beginning of step */
+                tend = P[i].Ti_begstep + ti_step;	/* end of step */
+		double dt_grav = (tend - tstart) * All.Timebase_interval;
+		for(j=0; j<3; j++) {
+		    P[i].Vel[j] = P[i].OldVel[j] + dt_grav * 0.5*(P[i].Hermite_OldAcc[j] + P[i].GravAccel[j]) + (P[i].OldJerk[j] - P[i].GravJerk[j]) * dt_grav * dt_grav/12;
+		    P[i].Pos[j] = P[i].OldPos[j] + dt_grav * 0.5*(P[i].Vel[j] + P[i].OldVel[j]) + (P[i].Hermite_OldAcc[j] - P[i].GravAccel[j]) * dt_grav * dt_grav/12;
+		}
+            }
+        }
+    } // for(i = 0; i < NumPart; i++) //
+}
+
+#endif // HERMITE_INTEGRATION
+    
 #ifdef PMGRID
 void apply_long_range_kick(integertime tstart, integertime tend)
 {
@@ -160,65 +190,34 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
     double mass_old, mass_pred, mass_new;
     mass_old = mass_pred = mass_new = P[i].Mass;    
     
-    /* First, we do the pure hydro update for gas (because we use a total energy equation, its much easier to 
-        do this than to deal with the gravitational force first and then have to subtract it back out) */
-
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     /* need to do the slightly more complicated update scheme to maintain exact mass conservation */
-    double dMass;  // fraction of delta_conserved to couple per kick step (each 'kick' is 1/2-timestep) //
-    //double dv[3], v_old[3], dMass, ent_old=0, d_inc = 0.5;;
     if(P[i].Type==0)
     {
-        //ent_old = SphP[i].InternalEnergy;
-        //for(j=0;j<3;j++) v_old[j] = P[i].Vel[j];
-        if(SphP[i].dMass != 0)
+        if(SphP[i].dMass != 0) //ent_old = SphP[i].InternalEnergy; for(j=0;j<3;j++) v_old[j] = P[i].Vel[j];
         {
-            // update the --conserved-- variables of each particle //
-            if(mode != 0)
+            double dMass=0; // fraction of delta_conserved to couple per kick step (each 'kick' is 1/2-timestep) // double dv[3], v_old[3], dMass, ent_old=0, d_inc = 0.5;
+            if(mode != 0) // update the --conserved-- variables of each particle //
             {
-                dMass = (tend - tstart) * All.Timebase_interval / All.cf_hubble_a * SphP[i].DtMass;
-                if(dMass >= SphP[i].dMass) dMass = SphP[i].dMass; // try to get close to what the time-integration scheme would give //
+                dMass = (tend - tstart) * All.Timebase_interval / All.cf_hubble_a * SphP[i].DtMass; if(dMass * SphP[i].dMass < 0) {dMass = 0;} // slope-limit: no opposite reconstruction! //
+                if((fabs(dMass) > fabs(SphP[i].dMass))) {dMass = SphP[i].dMass;} // try to get close to what the time-integration scheme would give //
                 SphP[i].dMass -= dMass;
-            } else {
-                dMass = SphP[i].dMass;
-            }
-            if(fabs(dMass) > 0.9*SphP[i].MassTrue) dMass *= 0.9*SphP[i].MassTrue/fabs(dMass); // limiter to prevent madness //
+            } else {dMass = SphP[i].dMass;}
+            if(dMass < -0.99*SphP[i].MassTrue) {dMass = -0.99*SphP[i].MassTrue;} // limiter to prevent madness //
 
-            
-            // load and update the particle masses //
-            // particle mass update here, from hydro fluxes //
-            mass_old = SphP[i].MassTrue;
-            mass_pred = P[i].Mass;
-            mass_new = mass_old + dMass;
-            SphP[i].MassTrue = mass_new;
-            // UNITS: remember all time derivatives (DtX, dX) are in -physical- units; as are mass, entropy/internal energy, but -not- velocity //
-            /*
-            double e_old = mass_old * SphP[i].InternalEnergy;
-            for(j = 0; j< 3; j++) e_old += 0.5*mass_old * (P[i].Vel[j]/All.cf_atime)*(P[i].Vel[j]/All.cf_atime); // physical //
-            
-            // do the momentum-space kick //
-            for(j = 0; j < 3; j++)
+            /* load and update the particle masses : particle mass update here, from hydro fluxes */
+            mass_old = SphP[i].MassTrue; mass_pred = P[i].Mass; mass_new = mass_old + dMass; SphP[i].MassTrue = mass_new; // UNITS: remember all time derivatives (DtX, dX) are in -physical- units; as are mass, entropy/internal energy, but -not- velocity //
+            /* double e_old = mass_old * SphP[i].InternalEnergy; for(j = 0; j< 3; j++) e_old += 0.5*mass_old * (P[i].Vel[j]/All.cf_atime)*(P[i].Vel[j]/All.cf_atime); // physical //
+            for(j = 0; j < 3; j++) // momentum-space-kick
             {
-                dp[j] = d_inc * SphP[i].dMomentum[j]; // dv[j] = SphP[i].HydroAccel[j] * dt_hydrokick; //non-conservative// //
-                // now update the velocity based on the total momentum change //
+                dp[j] = d_inc * SphP[i].dMomentum[j]; // now update the velocity based on the total momentum change
                 P[i].Vel[j] = (mass_old*P[i].Vel[j] + dp[j]*All.cf_atime) / mass_new; // call after tabulating dP[j] //
-            }
-            
-            // kick for gas internal energy/entropy //
-            e_old += d_inc * SphP[i].dInternalEnergy; // increment of total (thermal+kinetic) energy //
-            for(j = 0; j< 3; j++) e_old -= 0.5*mass_new * (P[i].Vel[j]/All.cf_atime)*(P[i].Vel[j]/All.cf_atime); // subtract off the new kinetic energy //
-            SphP[i].InternalEnergy = e_old / mass_new; // obtain the new internal energy per unit mass //
-            check_particle_for_temperature_minimum(i); // if we've fallen below the minimum temperature, force the 'floor' //
-            */
+            } // kick for gas internal energy/entropy
+            e_old += d_inc * SphP[i].dInternalEnergy; // for(j = 0; j< 3; j++) e_old -= 0.5*mass_new * (P[i].Vel[j]/All.cf_atime)*(P[i].Vel[j]/All.cf_atime); // increment of total (thermal+kinetic) energy; subtract off the new kinetic energy //
+            SphP[i].InternalEnergy = e_old / mass_new; check_particle_for_temperature_minimum(i); // obtain the new internal energy per unit mass, check floor // */
              
-            // at the end of this kick, need to re-zero the dInternalEnergy, and other
-            // conserved-variable SPH quantities set in the hydro loop, to avoid double-counting them
-            if(mode==0)
-            {
-                //SphP[i].dInternalEnergy = 0;
-                //SphP[i].dMomentum[0] = SphP[i].dMomentum[1] = SphP[i].dMomentum[2] = 0;
-                SphP[i].dMass = 0;
-            }
+            // at the end of this kick, need to re-zero the dInternalEnergy, and other conserved-variable SPH quantities set in the hydro loop, to avoid double-counting them
+            if(mode==0) {SphP[i].dMass=0;} /* SphP[i].dInternalEnergy=0; SphP[i].dMomentum[0]=SphP[i].dMomentum[1]=SphP[i].dMomentum[2]=0; */
         }
     } // if(P[i].Type==0) //
 #endif
@@ -312,6 +311,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             if(dEnt < 0.5*SphP[i].InternalEnergy) {SphP[i].InternalEnergy *= 0.5;} else {SphP[i].InternalEnergy = dEnt;}
             check_particle_for_temperature_minimum(i); /* if we've fallen below the minimum temperature, force the 'floor' */
         }
+        
         /* now, kick for non-SPH quantities (accounting for momentum conservation if masses are changing) */
         for(j = 0; j < 3; j++)
         {
@@ -326,14 +326,21 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                 dp[j] += mass_pred * SphP[i].RadAccel[j] * All.cf_atime * dt_hydrokick;
 #endif
             }
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-//if we're super-timestepping, the above accounts for the change in COM velocity. Now we do the internal binary velocity change
-            if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=2)) {
-                   dp[j] += mass_pred * P[i].COM_GravAccel[j] * dt_gravkick;
-            }
-            else
+            dp[j] += mass_pred * P[i].GravAccel[j] * dt_gravkick;
+#if (SINGLE_STAR_TIMESTEPPING > 0)  //if we're super-timestepping, the above accounts for the change in COM velocity. Now we do the internal binary velocity change
+            if((P[i].Type == 5) && (P[i].SuperTimestepFlag>=2)) {dp[j] += mass_pred * (P[i].COM_GravAccel[j]-P[i].GravAccel[j]) * dt_gravkick;} 
 #endif
-            {dp[j] += mass_pred * P[i].GravAccel[j] * dt_gravkick;}
+#ifdef HERMITE_INTEGRATION
+	    // we augment this to a whole-step kick for the initial Hermite prediction step, which is done alongside the first half-step kick.
+	    if((1<<P[i].Type) & HERMITE_INTEGRATION) {
+		if(mode == 0){
+		    P[i].OldVel[j] = P[i].Vel[j];
+		    P[i].OldPos[j] = P[i].Pos[j];
+		    P[i].OldJerk[j] = P[i].GravJerk[j];
+		    P[i].Hermite_OldAcc[j] = P[i].GravAccel[j];
+		}
+	    }
+#endif	    
             P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
         }
 
@@ -543,3 +550,4 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
     elastic_body_update_driftkick(i,dt_entr,0);
 #endif
 }
+

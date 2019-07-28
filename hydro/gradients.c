@@ -1097,10 +1097,9 @@ void hydro_gradient_calc(void)
             /* now we can properly calculate (second-order accurate) gradients of hydrodynamic quantities from this loop */
             construct_gradient(SphP[i].Gradients.Density,i);
             construct_gradient(SphP[i].Gradients.Pressure,i);
-#ifdef SINGLE_STAR_FORMATION
-	    SphP[i].Gradients.PressureMagnitude = 0;
-	    for(k=0; k<3; k++) SphP[i].Gradients.PressureMagnitude += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];
-	    SphP[i].Gradients.PressureMagnitude = sqrt(SphP[i].Gradients.PressureMagnitude);
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+	        SphP[i].Gradients.PressureMagnitude=0; for(k=0;k<3;k++) {SphP[i].Gradients.PressureMagnitude+=SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
+	        if(SphP[i].Gradients.PressureMagnitude>0) {SphP[i].Gradients.PressureMagnitude=sqrt(SphP[i].Gradients.PressureMagnitude);} else {SphP[i].Gradients.PressureMagnitude=0;}
 #endif	    
             for(k=0;k<3;k++) {construct_gradient(SphP[i].Gradients.Velocity[k],i);}
 #ifdef TURB_DIFF_DYNAMIC
@@ -1547,7 +1546,7 @@ void hydro_gradient_calc(void)
             //a_limiter = 0.25; h_lim = GasGradDataPasser[i].MaxDistance; stol = 0.125;
 #endif
 
-#ifdef SINGLE_STAR_FORMATION
+#ifdef SINGLE_STAR_SINK_DYNAMICS
             SphP[i].Density_Relative_Maximum_in_Kernel = GasGradDataPasser[i].Maxima.Density;
 #endif
             local_slopelimiter(SphP[i].Gradients.Density,GasGradDataPasser[i].Maxima.Density,GasGradDataPasser[i].Minima.Density,a_limiter,h_lim,0);

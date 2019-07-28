@@ -67,7 +67,7 @@
 #endif
 
 #ifndef DISABLE_SPH_PARTICLE_WAKEUP
-#if ((SLOPE_LIMITER_TOLERANCE > 0) && !defined(SINGLE_STAR_FORMATION))
+#if ((SLOPE_LIMITER_TOLERANCE > 0) && !defined(SINGLE_STAR_SINK_DYNAMICS))
 #define WAKEUP   4.1            /* allows 2 timestep bins within kernel */
 #else 
 #define WAKEUP   2.1            /* allows only 1-separated timestep bins within kernel */
@@ -215,7 +215,7 @@
 #define GALSF_FB_FIRE_RT_LOCALRP            /*! turn on local radiation pressure coupling to gas - account for local multiple-scattering and isotropic local absorption */
 #define GALSF_FB_FIRE_RT_LONGRANGE          /*! continuous acceleration from starlight (uses luminosity tree) to propagate FIRE RT */
 #define GALSF_FB_FIRE_RT_UVHEATING          /*! use estimate of local spectral information from FIRE RT for photoionization and photoelectric heating */
-#define GALSF_FB_FIRE_RPROCESS 4      /*! tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model) */
+#define GALSF_FB_FIRE_RPROCESS 4            /*! tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model) */
 //#define GALSF_SFR_IMF_VARIATION           /*! track [do not change] properties of gas from which stars form, for IMF models in post-processing */
 #define PROTECT_FROZEN_FIRE                 /*! protect code so FIRE runs are not modified by various code updates, etc -- default FIRE-2 code locked */
 #else
@@ -299,95 +299,81 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif // CHIMES 
 
 
-#ifdef GRAVITY_IMPROVED_INTEGRATION
-#define GRAVITY_HYBRID_OPENING_CRIT // use both Barnes-Hut + relative tree opening criterion
-#define STOP_WHEN_BELOW_MINTIMESTEP // stop when below min timestep to prevent bad timestepping
-#define TIDAL_TIMESTEP_CRITERION // use tidal tensor timestep criterion
-#endif 
 
-
-#ifdef SINGLE_STAR_FORMATION
-#define LONG_INTEGER_TIME // timestep hierarchy can be very deep in these problems; want to be able to follow brief close encounters
+#ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
+#define SINGLE_STAR_SINK_DYNAMICS
+#define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
+#define ADAPTIVE_GRAVSOFT_FORGAS
+#define GRAVITY_ACCURATE_FEWBODY_INTEGRATION
+#define BH_SWALLOW_SMALLTIMESTEPS
+#define BH_ACCRETE_NEARESTFIRST
+#define BH_RETURN_ANGMOM_TO_GAS
+#define SINGLE_STAR_TIMESTEPPING 1
+#define SINGLE_STAR_ACCRETION 12
+#define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
 #define DEVELOPER_MODE
-#define GRAVITY_HYBRID_OPENING_CRIT // use both Barnes-Hut + relative tree opening criterion
-#define STOP_WHEN_BELOW_MINTIMESTEP // stop when below min timestep to prevent bad timestepping
-#define TIDAL_TIMESTEP_CRITERION // use tidal tensor timestep criterion
-#define SINGLE_STAR_TIMESTEPPING // use additional timestep criteria for sink particles to ensure they don't evolve out-of-binary in close encounters
-#define SINGLE_STAR_MERGERS
-#define ADAPTIVE_GRAVSOFT_FORALL 1000000
-//#define BH_WAKEUP_GAS
-#define SINGLE_STAR_SUPERTIMESTEPPING 1 // Turns on sub-grid evolution of sink binaries to avoid slowdown of very short timesteps
-#define SINGLE_STAR_FIND_BINARIES
-#define SINGLE_STAR_HILL_CRITERION // use Hill-type tidal-tensor star formation criterion
-//#define SINGLE_STAR_STRICT_ACCRETION // use Bate 1995 angular momentum criterion for star formation, along with dynamically-evolved sink radius for apocentric distance threshold
+#ifdef MAGNETIC
+#define MHD_CONSTRAINED_GRADIENT 1
+#endif
+#define RT_DISABLE_R15_GRADIENTFIX
+#endif // SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE
+
+#ifdef HERMITE_INTEGRATION
+#define COMPUTE_JERK_IN_GRAVTREE
+#endif
+#ifdef COMPUTE_JERK_IN_GRAVTREE
+#define COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+#endif
+
+#ifdef SINGLE_STAR_SINK_DYNAMICS
 #define GALSF // master switch needed to enable various frameworks
-#define GALSF_SFR_VIRIAL_SF_CRITERION 2 // only allow star formation in virialized sub-regions meeting Jeans threshold + converging all 3 axes
 #define METALS  // metals should be active for stellar return
 #define BLACK_HOLES // need to have black holes active since these are our sink particles
-//#define GALSF_SFR_IMF_VARIATION // save extra information about sinks when they form - MYG: switching this off for the sake of memory, but if it's useful for a project we can always bring it back
-#ifdef MAGNETIC
-#define MHD_CONSTRAINED_GRADIENT 1  // particularly worried about div-B errors around sink particles, so we'll switch this on to help scrub away the shame - MYG
-#endif
-#ifdef RADTRANSFER
-#define RT_DISABLE_R15_GRADIENTFIX
-#endif
-#ifdef SINGLE_STAR_ACCRETION
-#define BH_SWALLOWGAS // need to swallow gas [part of sink model]
-#define BH_GRAVCAPTURE_GAS // use gravitational capture swallow criterion for resolved gravitational capture
-#if (SINGLE_STAR_ACCRETION > 0)
-#define BH_ALPHADISK_ACCRETION // swallowed gas goes to disk
-#endif
-#if (SINGLE_STAR_ACCRETION > 1)
-#define BH_BONDI 0 // use Bondi accretion for diffuse gas
-#endif
-#if (SINGLE_STAR_ACCRETION > 2)
-#define BH_SUBGRIDBHVARIABILITY // model sub-grid [unresolved] variability in accretion rates for Bondi
-#endif
-#endif
 #define BH_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+
+#if (SINGLE_STAR_SINK_FORMATION & 1) // figure out flags needed for the chosen sink formation model
+#define GALSF_SFR_VIRIAL_SF_CRITERION 2
+#endif
+#if (SINGLE_STAR_SINK_FORMATION & 16)
+#ifndef SINGLE_STAR_FIND_BINARIES
 #define SINGLE_STAR_FIND_BINARIES
 #endif
-#ifdef SINGLE_STAR_STRICT_ACCRETION
-#define READ_SINKRADIUS // read the sinkradius for sink partciles in IC files
 #endif
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-#if(SINGLE_STAR_SUPERTIMESTEPPING == 1)
-#define SUPERTIMESTEPPING_ERRCONST 0.03 // If sqrt(|nabla g| / (GM/a^3)) < SUPERTIMESTEPPING_ERRCONST, then we use super timestepping for the binary
-#elif(SINGLE_STAR_SUPERTIMESTEPPING == 2)
-#define SUPERTIMESTEPPING_ERRCONST 0.005 // need to be a bit stricter deciding when to super timestep if we're doing the more aggressive version 
+#if (SINGLE_STAR_SINK_FORMATION & 32)
+#define GALSF_SFR_TIDAL_HILL_CRITERION
 #endif
-#define SUPERTIMESTEPPING_NUM_STEPS_PER_ORBIT 50 // Super timestepping will attempt to get ~constant number of timesteps per orbit, spaced at even angular intervals.
+
+#ifdef SINGLE_STAR_ACCRETION // figure out flags needed for the chosen sink accretion model
+#define BH_SWALLOWGAS // need to swallow gas [part of sink model]
+#define BH_ALPHADISK_ACCRETION (1000000.) // all models will use a 'reservoir' of some kind to smooth out accretion rates (and represent unresolved disk)
+#if (SINGLE_STAR_ACCRETION <= 8)
+#define BH_GRAVACCRETION (SINGLE_STAR_ACCRETION) // use one of these pre-built accretion models
 #endif
-#ifdef NEWSINK
+#if (SINGLE_STAR_ACCRETION == 9)
+#define BH_BONDI 0 // use 'normal' Bondi-Hoyle accretion rate
+#endif
+#if (SINGLE_STAR_ACCRETION == 10)
+#define BH_BONDI 1 // use Bondi rate ignoring local relative velocities
+#endif
+#if (SINGLE_STAR_ACCRETION == 11)
+#define BH_GRAVCAPTURE_GAS // use gravitational capture swallow criterion for resolved gravitational capture
+#endif
+#if (SINGLE_STAR_ACCRETION == 12)
 #define BH_GRAVCAPTURE_GAS
-#define BH_ALPHADISK_ACCRETION
-#define NEWSINK_BONDI
-#define NEWSINK_J_FEEDBACK //turns on angular momentum feedback in NEWSINK
-/* #ifdef MAGNETIC */
-/* #define NEWSINK_B_FEEDBACK // turns on magnetic flux feedback, redistributing the magnetic flux of accreted particles similarly to how angular momentum is done */
-/* #endif */
-#define NEWSINK_EAT_SMALL_DT // particles with very small timesteps will be accreted to prevent extreme slowdowns, controlled by DT_MIN_TOLERANCE_FACTOR
-#define NEWSINK_STOCHASTIC_ACCRETION //with this turned on NEWSINK will not leech of parts of a gas particle when accreting (default behavior), instead it will accrete the entire particle with p=dm/m_particle probability, where dm is the mass it would need to accrete
-#define ALPHASS 0.01 //alpha disk factor for disc timescale, should be between 0.01-1.0
-#define DT_MIN_TOLERANCE_FACTOR 0.001 //tolerance factor for dt_min, defined in part (ii) of 2.3.5 in Hubber 2013.
-#define INT_ZONE_TO_HSML 1.0 //how many times larger should the sink interaction zone be compared to the the particle's adaptive smoothing length, 1 should be good
-#define NEWSINK_NEIGHBORMAX 200 //maximum number of neighbors anticipated, using BlackHoleNgbFactor=5 and DesNumNgb=32  value of 200 should be safe
+#define BH_GRAVCAPTURE_FIXEDSINKRADIUS // modify grav capture to Bate-style, fixed (in time) sink radius based on SF neighbor distance, plus angular momentum criterion
 #endif
-#ifdef NEWSINK_J_FEEDBACK
-#define BH_FOLLOW_ANGMOM //let's use the BH infrastructure to keep track of sink angular momentum
 #endif
-//#GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory
-#ifdef SINGLE_STAR_FB_HEATING
+
+#ifdef SINGLE_STAR_FB_RT_HEATING
 #define GALSF_FB_FIRE_RT_LONGRANGE  // turn on FIRE RT approximation: no Type-4 particles so don't worry about its approximations
 #define BH_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework. make sure BH_FluxMomentumFactor=0 to avoid launching winds this way!!!
 #define BH_COMPTON_HEATING // turn on the heating term: this just calculates incident BH-particle flux, to be used in the cooling routine
 #endif
+
 #ifdef SINGLE_STAR_FB_JETS
-#define BH_WIND_SPAWN 3 // "kicking" modules don't really work in jet problems because they tend to find particles in the accretion disk and kick them out in an explosive manner, and they don't really capture the long-distance propagation of jets. Particle spawning works well however.
-#define SINGLE_STAR_FB_JETS_MAX_OPENING_ANGLE 80.0 //Max opening angle (in degrees) for jets in SINGLE_STAR mode, <=90
-#define SINGLE_STAR_FB_JETS_THETA0 0.01 //"flattening parameter" of jet momentum angular distribution from Matzner & McKee 1999, sets the collimation of the jets
+#define BH_WIND_SPAWN (3) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
 #endif
+
 #ifdef SINGLE_STAR_PROMOTION
 #define GALSF_FB_MECHANICAL // allow SNe + winds in promoted stars [at end of main sequence lifetimes]
 #define GALSF_FB_FIRE_STELLAREVOLUTION // mass return and other properties for stellar winds [scaled appropriately for particle masses]
@@ -395,8 +381,8 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define GALSF_FB_FIRE_RT_LOCALRP // local radiation pressure [scaled with mass, single-scattering term here]
 #define GALSF_FB_FIRE_RT_CONTINUOUSRP // force the local rad-pressure term to be continuous instead of small impulses
 #endif
-// if not using grackle modules, need to make sure appropriate cooling is enabled
-#if defined(COOLING) && !defined(COOL_GRACKLE)
+
+#if defined(COOLING) && !defined(COOL_GRACKLE) // if not using grackle modules, need to make sure appropriate cooling is enabled
 #ifndef COOL_LOW_TEMPERATURES
 #define COOL_LOW_TEMPERATURES // make sure low-temperature cooling is enabled!
 #endif
@@ -404,12 +390,22 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define COOL_METAL_LINES_BY_SPECIES // metal-based cooling enabled
 #endif
 #endif
-#endif // SINGLE_STAR_FORMATION
+
+#endif // SINGLE_STAR_SINK_DYNAMICS
 
 
+#ifdef GRAVITY_ACCURATE_FEWBODY_INTEGRATION /* utility flag to enable a few different extra-conservative time-integration flags for gravity */
+#define GRAVITY_HYBRID_OPENING_CRIT // use both Barnes-Hut + relative tree opening criterion
+#define STOP_WHEN_BELOW_MINTIMESTEP // stop when below min timestep to prevent bad timestepping
+#define TIDAL_TIMESTEP_CRITERION // use tidal tensor timestep criterion
+#define LONG_INTEGER_TIME // timestep hierarchy can be very deep in these problems; want to be able to follow brief close encounters
+#endif
 
-
-
+#if (SINGLE_STAR_TIMESTEPPING > 0) /* if single-star timestepping is on, need to make sure the binary-identification flag is active */
+#ifndef SINGLE_STAR_FIND_BINARIES
+#define SINGLE_STAR_FIND_BINARIES
+#endif
+#endif
 
 #ifdef MHD_CONSTRAINED_GRADIENT
 /* make sure mid-point gradient calculation for cleaning terms is enabled */
@@ -582,6 +578,22 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define DO_DENSITY_AROUND_STAR_PARTICLES
 #if !defined(ALLOW_IMBALANCED_GASPARTICLELOAD)
 #define ALLOW_IMBALANCED_GASPARTICLELOAD
+#endif
+#endif
+#if defined(GALSF_SFR_VIRIAL_SF_CRITERION)
+#if (GALSF_SFR_VIRIAL_SF_CRITERION >= 5)
+#define GALSF_SFR_TIDAL_HILL_CRITERION
+#endif
+#endif
+
+
+#if defined(BH_SWALLOWGAS)
+#define BH_FOLLOW_ACCRETED_COM
+#define BH_FOLLOW_ACCRETED_MOMENTUM
+#if defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
+#define BH_FOLLOW_ACCRETED_ANGMOM 0 // follow accreted AM just from explicit 'swallow' operations
+#else
+#define BH_FOLLOW_ACCRETED_ANGMOM 1 // follow accreted AM from 'swallowed' BH particles, and from continuous/smooth properties [mdot] of kernel gas near BH
 #endif
 #endif
 
@@ -1329,6 +1341,10 @@ extern double TimeBin_BH_Medd[TIMEBINS];
 #else
 #define BH_NEIGHBOR_BITFLAG 33 /* only search for particles of types 0 and 5 (gas and black holes) around a primary BH particle */
 #endif
+#endif
+
+#ifdef HERMITE_INTEGRATION
+extern int HermiteOnlyFlag;     /*!< flag to only do Hermite integration for applicable particles (ie. stars) in the gravity routine */
 #endif
 
 extern int ThisTask;		/*!< the number of the local processor  */
@@ -2129,16 +2145,25 @@ extern ALIGN(32) struct particle_data
     MyFloat GravPM[3];		/*!< particle acceleration due to long-range PM gravity force */
 #endif
     MyFloat OldAcc;			/*!< magnitude of old gravitational force. Used in relative opening criterion */
+#ifdef HERMITE_INTEGRATION
+    MyFloat Hermite_OldAcc[3];
+    MyFloat OldPos[3];
+    MyFloat OldVel[3];
+    MyFloat OldJerk[3];
+#endif
 #if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUT_POTENTIAL)
     MyFloat Potential;		/*!< gravitational potential */
 #if defined(EVALPOTENTIAL) && defined(PMGRID)
     MyFloat PM_Potential;
 #endif
 #endif
-#if defined(SINGLE_STAR_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION) || defined(GDE_DISTORTIONTENSOR)
+#if defined(GALSF_SFR_TIDAL_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION) || defined(GDE_DISTORTIONTENSOR)
 #define COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     double tidal_tensorps[3][3];                        /*!< tidal tensor (=second derivatives of grav. potential) */
 #endif
+#ifdef COMPUTE_JERK_IN_GRAVTREE
+    double GravJerk[3];
+#endif    
 #ifdef GDE_DISTORTIONTENSOR
     MyBigFloat distortion_tensorps[6][6];               /*!< phase space distortion tensor */
     MyBigFloat last_determinant;                        /*!< last real space distortion tensor determinant */
@@ -2240,11 +2265,12 @@ extern ALIGN(32) struct particle_data
     int BH_CountProgs;
 #endif
     MyFloat BH_Mass;
-#if defined(SINGLE_STAR_STRICT_ACCRETION)
+#if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
     MyFloat SinkRadius;
 #endif
-#ifdef SINGLE_STAR_FORMATION  
+#ifdef SINGLE_STAR_SINK_DYNAMICS  
     MyFloat SwallowTime; /* freefall time of a particle onto a sink particle  */
+    int BH_Ngb_Flag; /* Whether or not the gas live's in a sink's hydro stencil */
 #endif 
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
@@ -2252,21 +2278,13 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_WAKEUP_GAS /* force all gas within the interaction radius of a sink to timestep at the same rate */
     int LowestBHTimeBin;
 #endif
-#ifdef BH_FOLLOW_ANGMOM
+#ifdef BH_FOLLOW_ACCRETED_ANGMOM
     MyFloat BH_Specific_AngMom[3];
-#endif
-#ifdef NEWSINK    
-    MyFloat init_mass_in_intzone; /*initial mass in interaction zone, used for scaling mdot*/
-    MyFloat BH_Mdot_Avg; /*Mdot averaged over dynamical time */
-    MyFloat BH_Mdot_AlphaDisk; /*Mdot for the alpha disk*/
-#endif
-#ifdef NEWSINK_J_FEEDBACK
-    MyFloat t_disc;
 #endif
     MyFloat BH_Mdot;
     int BH_TimeBinGasNeighbor;
-#ifdef SINGLE_STAR_FORMATION
-    MyFloat BH_NearestGasNeighbor;
+#ifdef BH_ACCRETE_NEARESTFIRST
+    MyFloat BH_dr_to_NearestGasNeighbor;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyFloat BH_disk_hr;
@@ -2291,18 +2309,15 @@ extern ALIGN(32) struct particle_data
     MyFloat min_bh_freefall_time;
     MyFloat min_bh_periastron;
     MyFloat min_bh_approach_time;
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+#if (SINGLE_STAR_TIMESTEPPING > 0)
     int SuperTimestepFlag; // >=2 if allowed to super-timestep (increases with each drift/kick), 1 if a candidate for super-timestepping, 0 otherwise
-//    int COM_calc_flag; //tells forcetree whether to calculate the forces for the particle (0) or the center of mass (1)
-    //MyIDType comp_ID; //ID of binary companion
     MyDouble COM_dt_tidal; //timescale from tidal tensor evaluated at the center of mass without contribution from the companion
     MyDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
-    //MyDouble COM_Vel[3]; //center of mass velocity
 #endif
 #endif  
 #endif
 
-#if defined(SINGLE_STAR_PROMOTION) || defined(SINGLE_STAR_FB_HEATING)
+#if defined(SINGLE_STAR_PROMOTION) || defined(SINGLE_STAR_FB_RT_HEATING)
 #define SINGLE_STAR_PROTOSTELLAR_EVOLUTION
 #endif    
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION    
@@ -2481,7 +2496,7 @@ extern struct sph_particle_data
     int Super_Timestep_j; /*!< records which sub-step if the super-stepping cycle the particle is in [needed for adaptive steps] */
 #endif
     
-#ifdef SINGLE_STAR_FORMATION
+#ifdef SINGLE_STAR_SINK_DYNAMICS
     MyFloat Density_Relative_Maximum_in_Kernel; /*!< hold density_max-density_i, for particle i, so we know if its a local maximum */
 #endif
     
@@ -2490,7 +2505,7 @@ extern struct sph_particle_data
     {
         MyDouble Density[3];
         MyDouble Pressure[3];
-#ifdef SINGLE_STAR_FORMATION
+#ifdef SINGLE_STAR_SINK_DYNAMICS
         MyDouble PressureMagnitude;
 #endif      
         MyDouble Velocity[3][3];
@@ -2825,16 +2840,14 @@ extern struct gravdata_in
 #endif
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
-    MyFloat min_bh_t_orbital; //orbital time for binary
-    MyDouble comp_dx[3]; //position of binary companion
-    MyDouble comp_dv[3]; //velocity of binary companion
-    MyDouble comp_Mass; //mass of binary companion
+    MyFloat min_bh_t_orbital;   /*!<orbital time for binary */
+    MyDouble comp_dx[3];        /*!< position of binary companion */
+    MyDouble comp_dv[3];        /*!< velocity of binary companion */
+    MyDouble comp_Mass;         /*!< mass of binary companion */
     int is_in_a_binary;
 #endif    
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-    //MyIDType comp_ID; //ID of binary companion
-    int SuperTimestepFlag; // 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
-//    int COM_calc_flag; //tells forcetree whether to calculate the forces for the particle (0) or the center of mass (1)
+#if (SINGLE_STAR_TIMESTEPPING > 0)
+    int SuperTimestepFlag;  /*!< 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise */
 #endif
     MyFloat OldAcc;
     int NodeList[NODELISTLENGTH];
@@ -2866,6 +2879,9 @@ extern struct gravdata_out
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     MyLongDouble tidal_tensorps[3][3];
 #endif
+#ifdef COMPUTE_JERK_IN_GRAVTREE
+    MyLongDouble GravJerk[3];
+#endif    
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
     MyFloat min_xyz_to_bh[3];
@@ -2880,11 +2896,9 @@ extern struct gravdata_out
     MyFloat min_bh_freefall_time;    // minimum value of sqrt(R^3 / G(M_BH + M_particle)) as calculated from the tree-walk
     MyFloat min_bh_approach_time; // smallest approach time t_a = |v_radial|/r
     MyFloat min_bh_periastron; // closest anticipated periastron passage
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
-    //MyIDType comp_ID; //ID of binary companion
+#if (SINGLE_STAR_TIMESTEPPING > 0)
     MyLongDouble COM_tidal_tensorps[3][3]; //tidal tensor evaluated at the center of mass without contribution from the companion
     MyDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
-    //MyDouble COM_Vel[3]; //velocity of center of mass
     int COM_calc_flag; //flag that tells whether this was only a rerun to get the acceleration ad the tidal tenor at the center of mass of a binary
     int SuperTimestepFlag; // 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
 #endif
@@ -2924,7 +2938,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyFloat BH_InternalEnergy;
     MyLongDouble accreted_Mass;
     MyLongDouble accreted_BH_Mass;
-    MyLongDouble accreted_momentum[3];
+    MyLongDouble accreted_BH_mass_alphadisk;
     MyLongDouble Mgas_in_Kernel;                 // mass/angular momentum for GAS/STAR/TOTAL components computed always now
     MyLongDouble Mstar_in_Kernel;
     MyLongDouble Malt_in_Kernel;
@@ -2932,7 +2946,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyLongDouble Jgas_in_Kernel[3];
     MyLongDouble Jstar_in_Kernel[3];
     MyLongDouble Jalt_in_Kernel[3];
-#ifdef BH_GRAVACCRETION
+#if defined(BH_GRAVACCRETION) && (BH_GRAVACCRETION == 0)
     MyLongDouble MgasBulge_in_Kernel;
     MyLongDouble MstarBulge_in_Kernel;
 #endif
@@ -2948,51 +2962,31 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 #if defined(BH_BONDI) || defined(BH_DRAG) || (BH_GRAVACCRETION >= 5)
     MyFloat BH_SurroundingGasVel[3];
 #endif
+#if (BH_GRAVACCRETION == 8)
+    MyFloat hubber_mdot_vr_estimator;
+    MyFloat hubber_mdot_disk_estimator;
+    MyFloat hubber_mdot_bondi_limiter;
+#endif
 #if defined(BH_ALPHADISK_ACCRETION)
     MyFloat mdot_alphadisk;             /*!< gives mdot of mass going into alpha disk */
 #endif
 #if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;        /*!< gives the mass we want to swallow that contributes to eddington */
 #endif
+#if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
+    MyLongDouble accreted_momentum[3];        /*!< accreted linear momentum */
+#endif
+#if defined(BH_FOLLOW_ACCRETED_COM)
+    MyLongDouble accreted_centerofmass[3];    /*!< accreted center-of-mass */
+#endif
+#if defined(BH_FOLLOW_ACCRETED_ANGMOM)
+    MyLongDouble accreted_J[3];               /*!< accreted angular momentum */
+#endif
+#if defined(BH_RETURN_ANGMOM_TO_GAS)
+    MyFloat angmom_prepass_sum_for_passback[3]; /*!< Normalization term for angular momentum feedback kicks, see denominator of Eq 22 of Hubber 2013 */
+    MyFloat angmom_norm_topass_in_swallowloop;  /*!< corresponding scalar normalization calculated from the vector above */
+#endif
 
-#if defined(SINGLE_STAR_STRICT_ACCRETION) || defined(NEWSINK)
-    MyLongDouble accreted_moment[3]; /* first mass moment of accreted gas, for preserving centre of mass */
-#endif
-#if defined(BH_FOLLOW_ANGMOM)
-    MyLongDouble accreted_J[3];              /*!< Accreted angular momentum */
-#endif
-
-#if defined(NEWSINK)
-    /* Timescales for the implementation of the NEWSINK algorithm from Hubber 2013 */
-    MyFloat t_disc;        /* Disc timescale */
-    MyFloat t_rad;        /* Timescale of radial infall */
-    MyFloat t_acc;        /* Accretion timescale */
-    /* Further gas properties */
-    MyFloat gas_Erot_in_intzone;        /* Rotational energy in kernel */
-    MyFloat gas_Egrav_in_intzone;        /* gravitational energy in kernel */
-    MyFloat t_rad_denom_sum;        /* sum in denominator of Eq 8 in Hbber 2013 */
-    MyFloat t_disc_num_sum;        /* sum in Eq 10 in Hubber 2013 without kernel weight*/
-    MyFloat intzone_massweight_all;        /* sum in denominator of Eq 8 in Hubber 2013 */
-    MyFloat intzone_gasmass;        /* sum of gas mass in Sink Radius */
-    /* properties of neighboring particles, used for preferential feeding */
-    int n_neighbor; //number of neighbors currently stored in the arrays below
-    MyFloat rgas[NEWSINK_NEIGHBORMAX]; /* Distance of gas from sink */
-    MyFloat xgas[NEWSINK_NEIGHBORMAX]; /* x coordinate of gas from sink */
-    MyFloat ygas[NEWSINK_NEIGHBORMAX]; /* y coordinate of gas from sink */
-    MyFloat zgas[NEWSINK_NEIGHBORMAX]; /* z coordinate of gas from sink */
-    MyFloat Hsmlgas[NEWSINK_NEIGHBORMAX]; /* gas smoothing length */
-    MyFloat mgas[NEWSINK_NEIGHBORMAX]; /* Mass of gas particle */
-    MyIDType gasID[NEWSINK_NEIGHBORMAX]; /* ID of gas particle */
-    int isbound[NEWSINK_NEIGHBORMAX]; /* is it bound to the sink */
-    MyFloat f_acc[NEWSINK_NEIGHBORMAX]; /* How much of the gas particle should be accreted */
-#ifdef NEWSINK_BONDI
-    MyFloat min_bondi_mdot;
-    MyFloat gasmass_within_softening;
-#endif     
-#if defined(NEWSINK_J_FEEDBACK)
-    MyDouble dv_ang_kick_norm[NEWSINK_NEIGHBORMAX]; /*Normalization term for angular momentum feedback kicks, see denominator of Eq 22 of Hubber 2013*/
-#endif
-#endif
 }
 *BlackholeTempInfo, *BlackholeDataPasserResult, *BlackholeDataPasserOut;
 #endif
@@ -3074,8 +3068,6 @@ enum iofields
   IO_BH_DIST,
   IO_ACRB,
   IO_SINKRAD,
-  IO_JSINK,
-  IO_BHMASSINIT,
   IO_POT,
   IO_ACCEL,
   IO_HII,
@@ -3306,7 +3298,7 @@ extern ALIGN(32) struct NODE
 #ifdef BH_CALC_DISTANCES
   MyFloat bh_mass;      /*!< holds the BH mass in the node.  Used for calculating tree based dist to closest bh */
   MyFloat bh_pos[3];    /*!< holds the mass-weighted position of the the actual black holes within the node */
-#if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_SUPERTIMESTPEPING)
+#if defined(SINGLE_STAR_TIMESTEPPING)
   MyFloat bh_vel[3];    /*!< holds the mass-weighted avg. velocity of black holes in the node */
   int N_BH;             /*!< holds the number of BH particles in the node. Used for refinement/search criteria */
 #endif  

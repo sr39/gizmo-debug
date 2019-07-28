@@ -100,8 +100,8 @@ static struct densdata_out
     
 #if defined(BLACK_HOLES)
     int BH_TimeBinGasNeighbor;
-#if defined(SINGLE_STAR_FORMATION)
-    MyDouble BH_NearestGasNeighbor;
+#if defined(BH_ACCRETE_NEARESTFIRST)
+    MyDouble BH_dr_to_NearestGasNeighbor;
 #endif 
 #endif
 
@@ -219,21 +219,10 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
 #ifdef BLACK_HOLES
     if(P[i].Type == 5)
     {
-      if(mode == 0){
-            BPP(i).BH_TimeBinGasNeighbor = out->BH_TimeBinGasNeighbor;
-#ifdef SINGLE_STAR_FORMATION
-	    BPP(i).BH_NearestGasNeighbor = out->BH_NearestGasNeighbor;
+        if(mode == 0) {BPP(i).BH_TimeBinGasNeighbor = out->BH_TimeBinGasNeighbor;} else {if(BPP(i).BH_TimeBinGasNeighbor > out->BH_TimeBinGasNeighbor) {BPP(i).BH_TimeBinGasNeighbor = out->BH_TimeBinGasNeighbor;}}
+#ifdef BH_ACCRETE_NEARESTFIRST
+        if(mode == 0) {BPP(i).BH_dr_to_NearestGasNeighbor = out->BH_dr_to_NearestGasNeighbor;} else {if(BPP(i).BH_dr_to_NearestGasNeighbor > out->BH_dr_to_NearestGasNeighbor) {BPP(i).BH_dr_to_NearestGasNeighbor = out->BH_dr_to_NearestGasNeighbor;}}
 #endif
-      }
-        else
-        {
-            if(BPP(i).BH_TimeBinGasNeighbor > out->BH_TimeBinGasNeighbor)
-                BPP(i).BH_TimeBinGasNeighbor = out->BH_TimeBinGasNeighbor;
-	    #ifdef SINGLE_STAR_FORMATION
-	    if(BPP(i).BH_NearestGasNeighbor > out->BH_NearestGasNeighbor)
-                BPP(i).BH_NearestGasNeighbor = out->BH_NearestGasNeighbor;
-	    #endif 
-        }
     } /* if(P[i].Type == 5) */
 #endif
 }
@@ -286,9 +275,9 @@ void density(void)
         {
             Left[i] = Right[i] = 0;
 #ifdef BLACK_HOLES
-            P[i].SwallowID = 0;
-#ifdef SINGLE_STAR_FORMATION
-	    P[i].SwallowTime = MAX_REAL_NUMBER;
+            P[i].SwallowID = 0;   
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+	        P[i].BH_Ngb_Flag = 0; P[i].SwallowTime = MAX_REAL_NUMBER;
 #endif	    
 #endif
         }
@@ -698,10 +687,10 @@ void density(void)
                 if(P[i].Type == 5)
                 {
                     desnumngb = All.DesNumNgb * All.BlackHoleNgbFactor;
-#ifdef SINGLE_STAR_FORMATION		    
+#ifdef SINGLE_STAR_SINK_DYNAMICS		    
                     desnumngbdev = (All.BlackHoleNgbFactor+1);
 #else
-                    desnumngbdev = 4 * (All.BlackHoleNgbFactor+1);
+                    desnumngbdev = 4 * (All.BlackHoleNgbFactor+1);     
 #endif		    
                 }
 #endif
@@ -744,8 +733,8 @@ void density(void)
                 
 #ifdef BLACK_HOLES
                 if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius / All.cf_atime;}  // MaxAccretionRadius is now defined in params.txt in PHYSICAL units
-#ifdef SINGLE_STAR_FORMATION
-		if(P[i].Type == 5) {minsoft = All.ForceSoftening[5] / All.cf_atime;} // we should always find all nieghbours within the softening kernel/accretion radius, which is a lower bound on the accretion radius
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+		        if(P[i].Type == 5) {minsoft = All.ForceSoftening[5] / All.cf_atime;} // we should always find all neighbours within the softening kernel/accretion radius, which is a lower bound on the accretion radius
 #endif		
 #endif
 
@@ -1201,8 +1190,8 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
     memset(&out, 0, sizeof(struct densdata_out));
 #if defined(BLACK_HOLES)
     out.BH_TimeBinGasNeighbor = TIMEBINS;
-#ifdef SINGLE_STAR_FORMATION
-    out.BH_NearestGasNeighbor = 1e100;
+#ifdef BH_ACCRETE_NEARESTFIRST
+    out.BH_dr_to_NearestGasNeighbor = MAX_REAL_NUMBER;
 #endif 
 #endif
     
@@ -1437,15 +1426,16 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
 #endif
         
 #if defined(BLACK_HOLES)
-	P[j].SwallowID = 0;  // this way we don't have to do a global loop over local particles in blackhole_accretion() to reset these quantities...
-	
-        if(out->BH_TimeBinGasNeighbor > P[j].TimeBin)
-            out->BH_TimeBinGasNeighbor = P[j].TimeBin;
-#ifdef SINGLE_STAR_FORMATION
-	P[j].SwallowTime = MAX_REAL_NUMBER;	
-        if((out->BH_NearestGasNeighbor > DMAX(Get_Particle_Size(j), kernel->r)) && (P[j].Mass > 0))
-            out->BH_NearestGasNeighbor = DMAX(Get_Particle_Size(j), kernel->r);
+        if(local->Type == 5)
+        {
+            P[j].SwallowID = 0;  // this way we don't have to do a global loop over local particles in blackhole_accretion() to reset these quantities...
+            if(out->BH_TimeBinGasNeighbor > P[j].TimeBin) {out->BH_TimeBinGasNeighbor = P[j].TimeBin;}
+#ifdef BH_ACCRETE_NEARESTFIRST
+            P[j].BH_Ngb_Flag = 1; P[j].SwallowTime = MAX_REAL_NUMBER;
+            double dr_eff_wtd = Get_Particle_Size(j); dr_eff_wtd=sqrt(dr_eff_wtd*dr_eff_wtd + (kernel->r)*(kernel->r)); /* effective distance for Gaussian-type kernel, weighted by density */
+            if((dr_eff_wtd < out->BH_dr_to_NearestGasNeighbor) && (P[j].Mass > 0)) {out->BH_dr_to_NearestGasNeighbor = dr_eff_wtd;}
 #endif
+        }
 #endif
         
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES

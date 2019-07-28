@@ -158,10 +158,7 @@ void read_ic(char *fname)
     
 #if defined(BLACK_HOLES)
 #if defined(BH_SWALLOWGAS) || defined(BH_BONDI) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_SEED_FROM_LOCALGAS)
-    if(RestartFlag == 0)
-    {
-        All.MassTable[5] = 0;
-    }
+    if(RestartFlag == 0) {All.MassTable[5] = 0;}
 #endif
 #endif
     
@@ -454,7 +451,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             break;
 
         case IO_BH_ANGMOM:
-#ifdef BH_FOLLOW_ANGMOM
+#ifdef BH_FOLLOW_ACCRETED_ANGMOM
             for(n = 0; n < pc; n++)
                 for(k = 0; k < 3; k++)
                     P[offset + n].BH_Specific_AngMom[k] = *fp++;
@@ -617,18 +614,25 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                 P[offset + n].IMF_NumMassiveStars = *fp++;
 #endif
             break;
+
+        case IO_TURB_DYNAMIC_COEFF:
+#ifdef TURB_DIFF_DYNAMIC
+            for (n = 0; n < pc; n++) {
+                SphP[offset + n].TD_DynDiffCoeff = *fp++;
+            }
+#endif
+            break;
+
         case IO_SINKRAD:
-#ifdef SINGLE_STAR_STRICT_ACCRETION
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
             for(n = 0; n < pc; n++)
                 P[offset + n].SinkRadius = *fp++;
 #endif
             break;
-        case IO_BHMASSINIT:
-#ifdef NEWSINK
-            for(n = 0; n < pc; n++)
-                P[offset + n].init_mass_in_intzone = *fp++;
-#endif
-            break;
+            
+            /* the other input fields (if present) are not needed to define the
+             initial conditions of the code */
+            
         case IO_COSMICRAY_KAPPA:
         case IO_AGS_OMEGA:
         case IO_AGS_CORR:
@@ -637,11 +641,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_AGS_QPT:
         case IO_AGS_PSI_RE:
         case IO_AGS_PSI_IM:
-            break;
-            
-            /* the other input fields (if present) are not needed to define the
-             initial conditions of the code */
-            
         case IO_EOSCS:
         case IO_EOS_STRESS_TENSOR:
         case IO_CBE_MOMENTS:
@@ -709,16 +708,6 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_grDI:
         case IO_grDII:
         case IO_grHDI:
-            
-            //ptorrey
-            break;
-
-        case IO_TURB_DYNAMIC_COEFF:
-#ifdef TURB_DIFF_DYNAMIC
-            for (n = 0; n < pc; n++) {
-                SphP[offset + n].TD_DynDiffCoeff = *fp++;
-            }
-#endif
             break;
 
         case IO_LASTENTRY:
@@ -984,12 +973,9 @@ void read_file(char *fname, int readTask, int lastTask)
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==1)||(HYDRO_FIX_MESH_MOTION==2)||(HYDRO_FIX_MESH_MOTION==3))
                    && blocknr != IO_PARTVEL
 #endif
-#if defined(SINGLE_STAR_STRICT_ACCRETION) && defined(READ_SINKRADIUS)
+#if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS) 
                    && blocknr != IO_SINKRAD
 #endif
-//#if defined(NEWSINK)
-//                   && blocknr != IO_BHMASSINIT
-//#endif
 #if defined(CHIMES) && !defined(CHIMES_INITIALISE_IN_EQM) 
 		   && blocknr != IO_CHIMES_ABUNDANCES 
 #endif 
