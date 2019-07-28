@@ -98,7 +98,7 @@ void blackhole_swallow_and_kick_loop(void)
             BlackholeDataIn[j].Mass = P[place].Mass;
             BlackholeDataIn[j].BH_Mass = BPP(place).BH_Mass;
 #if defined(BH_RETURN_ANGMOM_TO_GAS)
-            BlackholeDataIn[j].BH_Specific_AngMom[k] = BPP(place).BH_Specific_AngMom[k];
+            for(k=0; k<3; k++) BlackholeDataIn[j].BH_Specific_AngMom[k] = BPP(place).BH_Specific_AngMom[k];
             BlackholeDataIn[j].angmom_norm_topass_in_swallowloop = BlackholeTempInfo[P[place].IndexMapToTempStruc].angmom_norm_topass_in_swallowloop;
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
@@ -390,7 +390,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                 
 #if defined(BH_RETURN_ANGMOM_TO_GAS) /* this should go here [right before the loop that accretes it back onto the BH] */
                 if(P[j].Type == 0)
-                { 
+                {
                     double dlv[3]; dlv[0]=BH_Specific_AngMom[1]*dP[2]-BH_Specific_AngMom[2]*dP[1]; dlv[1]=BH_Specific_AngMom[2]*dP[0]-BH_Specific_AngMom[0]*dP[2]; dlv[2]=BH_Specific_AngMom[0]*dP[1]-BH_Specific_AngMom[1]*dP[0];
                     for(k=0;k<3;k++) {dlv[k] *= angmom_norm_topass_in_swallowloop; P[j].Vel[k]+=dlv[k]; SphP[j].VelPred[k]+=dlv[k]; accreted_momentum[k]-=P[j].Mass*dlv[k];}
                     accreted_J[0]-=P[j].Mass*(dP[1]*dlv[2] - dP[2]*dlv[1]); accreted_J[1]-=P[j].Mass*(dP[2]*dlv[0] - dP[0]*dlv[2]); accreted_J[2]-=P[j].Mass*(dP[0]*dlv[1] - dP[1]*dlv[0]);

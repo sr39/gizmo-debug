@@ -55,7 +55,6 @@ void do_first_halfstep_kick(void)
     } // for(i = 0; i < NumPart; i++) //
 }
 
-
 void do_second_halfstep_kick(void)
 {
     int i;
@@ -95,7 +94,67 @@ void do_second_halfstep_kick(void)
 #endif
 }
 
+#ifdef HERMITE_INTEGRATION
+// Initial "prediction" step of Hermite integration, performed after the initial force evaluation 
+// Note: the below routines only account for gravitational acceleration - only appropriate for stars or collisionless particles
+void do_hermite_prediction(void)
+{
+    int i,j;
+    integertime ti_step, tstart=0, tend=0;
+    
+    for(i = 0; i < NumPart; i++)
+    {
+	if(HERMITE_INTEGRATION & (1<<P[i].Type))
+        if(TimeBinActive[P[i].TimeBin]) /* 'full' kick for active particles */
+#if (SINGLE_STAR_TIMESTEPPING > 0)
+        if(P[i].SuperTimestepFlag < 2)
+#endif	    
+        {
+            if(P[i].Mass > 0) 
+            {
+                ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
+                tstart = P[i].Ti_begstep;	/* beginning of step */
+                tend = P[i].Ti_begstep + ti_step;	/* end of step */
+		double dt_grav = (tend - tstart) * All.Timebase_interval;
+		for(j=0; j<3; j++) {		    
+		    P[i].Pos[j] = P[i].OldPos[j] + dt_grav * (P[i].OldVel[j] + dt_grav/2 * (P[i].Hermite_OldAcc[j] + dt_grav/3 * P[i].OldJerk[j])) ;
+		    P[i].Vel[j] = P[i].OldVel[j] + dt_grav * (P[i].Hermite_OldAcc[j] + dt_grav/2 * P[i].OldJerk[j]);
+		}
+            }
+        }
+    } // for(i = 0; i < NumPart; i++) //
+}
 
+void do_hermite_correction(void)
+{
+    int i,j;
+    integertime ti_step, tstart=0, tend=0;
+    
+    for(i = 0; i < NumPart; i++)
+    {
+	if(HERMITE_INTEGRATION & (1<<P[i].Type))
+        if(TimeBinActive[P[i].TimeBin]) /* 'full' kick for active particles */
+#if (SINGLE_STAR_TIMESTEPPING > 0)
+        if(P[i].SuperTimestepFlag < 2)
+#endif	    	    
+        {
+            if(P[i].Mass > 0) 
+            {
+                ti_step = P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0;
+                tstart = P[i].Ti_begstep;	/* beginning of step */
+                tend = P[i].Ti_begstep + ti_step;	/* end of step */
+		double dt_grav = (tend - tstart) * All.Timebase_interval;
+		for(j=0; j<3; j++) {
+		    P[i].Vel[j] = P[i].OldVel[j] + dt_grav * 0.5*(P[i].Hermite_OldAcc[j] + P[i].GravAccel[j]) + (P[i].OldJerk[j] - P[i].GravJerk[j]) * dt_grav * dt_grav/12;
+		    P[i].Pos[j] = P[i].OldPos[j] + dt_grav * 0.5*(P[i].Vel[j] + P[i].OldVel[j]) + (P[i].Hermite_OldAcc[j] - P[i].GravAccel[j]) * dt_grav * dt_grav/12;
+		}
+            }
+        }
+    } // for(i = 0; i < NumPart; i++) //
+}
+
+#endif // HERMITE_INTEGRATION
+    
 #ifdef PMGRID
 void apply_long_range_kick(integertime tstart, integertime tend)
 {
@@ -271,6 +330,17 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #if (SINGLE_STAR_TIMESTEPPING > 0)  //if we're super-timestepping, the above accounts for the change in COM velocity. Now we do the internal binary velocity change
             if((P[i].Type == 5) && (P[i].SuperTimestepFlag>=2)) {dp[j] += mass_pred * (P[i].COM_GravAccel[j]-P[i].GravAccel[j]) * dt_gravkick;} 
 #endif
+#ifdef HERMITE_INTEGRATION
+	    // we augment this to a whole-step kick for the initial Hermite prediction step, which is done alongside the first half-step kick.
+	    if((1<<P[i].Type) & HERMITE_INTEGRATION) {
+		if(mode == 0){
+		    P[i].OldVel[j] = P[i].Vel[j];
+		    P[i].OldPos[j] = P[i].Pos[j];
+		    P[i].OldJerk[j] = P[i].GravJerk[j];
+		    P[i].Hermite_OldAcc[j] = P[i].GravAccel[j];
+		}
+	    }
+#endif	    
             P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
         }
 

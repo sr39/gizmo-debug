@@ -84,7 +84,7 @@ void gravity_tree(void)
     if(All.ComovingIntegrationOn)
         set_softenings();
     
-    /* construct tree if needed */
+    /* construct tree if needed */    
     if(TreeReconstructFlag)
     {
 #ifndef IO_REDUCED_MODE
@@ -356,7 +356,7 @@ void gravity_tree(void)
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
                     GravDataIn[j].Mass = P[place].Mass;
 #endif
-#ifdef SINGLE_STAR_TIMESTEPPING
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE)
                     for(k = 0; k < 3; k++) {GravDataIn[j].Vel[k] = P[place].Vel[k];}		    
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
@@ -495,6 +495,14 @@ void gravity_tree(void)
                 for(j = 0; j < Nexport; j++)
                 {
                     place = DataIndexTable[j].Index;
+#ifdef HERMITE_INTEGRATION
+		    if(HermiteOnlyFlag){
+			if(!((1<<P[place].Type) & HERMITE_INTEGRATION)) continue;
+#if (SINGLE_STAR_TIMESTEPPING>1)
+			if(P[place].SuperTimestepFlag >= 2) continue;
+#endif
+		    }
+#endif
                     for(k = 0; k < 3; k++) {P[place].GravAccel[k] += GravDataOut[j].Acc[k];}
 
 #ifdef BH_CALC_DISTANCES
@@ -550,6 +558,9 @@ void gravity_tree(void)
                     
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                     {int i1tt,i2tt; for(i1tt=0;i1tt<3;i1tt++) {for(i2tt=0;i2tt<3;i2tt++) {P[place].tidal_tensorps[i1tt][i2tt] += GravDataOut[j].tidal_tensorps[i1tt][i2tt];}}}
+#ifdef COMPUTE_JERK_IN_GRAVTREE
+		    int i1tt; for(i1tt=0; i1tt<3; i1tt++) P[place].GravJerk[i1tt] += GravDataOut[j].GravJerk[i1tt];
+#endif		    		    
 #endif
                     
 #ifdef EVALPOTENTIAL
@@ -607,6 +618,14 @@ void gravity_tree(void)
     
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
+#ifdef HERMITE_INTEGRATION
+	if(HermiteOnlyFlag){
+	    if(!((1<<P[i].Type) & HERMITE_INTEGRATION)) continue;
+#if (SINGLE_STAR_TIMESTEPPING>1)
+	    if(P[i].SuperTimestepFlag >= 2) continue;
+#endif
+	}
+#endif
 #ifdef PMGRID
         ax = P[i].GravAccel[0] + P[i].GravPM[0] / All.G;
         ay = P[i].GravAccel[1] + P[i].GravPM[1] / All.G;
@@ -637,13 +656,22 @@ void gravity_tree(void)
     /*  muliply by G */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
+#ifdef HERMITE_INTEGRATION
+	if(HermiteOnlyFlag){
+	    if(!((1<<P[i].Type) & HERMITE_INTEGRATION)) continue;
+#if (SINGLE_STAR_TIMESTEPPING>1)
+	    if(P[i].SuperTimestepFlag >= 2) continue;
+#endif
+	}
+#endif	    	
+	    		
 #if (SINGLE_STAR_TIMESTEPPING > 0) // Subtract for component from companion if in binary
         if((P[i].Type == 5) && (P[i].is_in_a_binary == 1)) {subtract_companion_gravity(i);}
 #endif
         for(j=0;j<3;j++) {P[i].GravAccel[j] *= All.G;}
 #if (SINGLE_STAR_TIMESTEPPING > 0)
         for(j=0;j<3;j++) {P[i].COM_GravAccel[j] *= All.G;}
-#endif 
+#endif	
 
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 #ifdef GDE_DISTORTIONTENSOR /* Diagonal terms of tidal tensor need correction, because tree is running over all particles -> also over target particle -> extra term -> correct it */
@@ -667,6 +695,9 @@ void gravity_tree(void)
         P[i].tidal_tensorps[2][2] += P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type]) * 10.666666666667;
 #endif
         for(j=0;j<3;j++) {int i2tt; for(i2tt=0;i2tt<3;i2tt++) {P[i].tidal_tensorps[j][i2tt] *= All.G;}} // units //
+#ifdef COMPUTE_JERK_IN_GRAVTREE
+	for(j=0;j<3;j++) P[i].GravJerk[j] *= All.G;
+#endif	
 #endif /* COMPUTE_TIDAL_TENSOR_IN_GRAVTREE */
 
         
@@ -702,6 +733,14 @@ void gravity_tree(void)
 #if defined(RT_OTVET)
     /* normalize the Eddington tensors we just calculated by walking the tree */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+#ifdef HERMITE_INTEGRATION
+	if(HermiteOnlyFlag){
+	    if(!((1<<P[i].Type) & HERMITE_INTEGRATION)) continue;
+#if (SINGLE_STAR_TIMESTEPPING>1)
+	    if(P[i].SuperTimestepFlag >= 2) continue;
+#endif
+	}
+#endif	    	
         if(P[i].Type == 0)
         {
             int k_freq;
@@ -732,9 +771,18 @@ void gravity_tree(void)
     {
         double fac = All.OmegaLambda * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits;
         
-        for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+        for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]){
+#ifdef HERMITE_INTEGRATION
+	    if(HermiteOnlyFlag){
+		if(!((1<<P[i].Type) & HERMITE_INTEGRATION)) continue;
+#if (SINGLE_STAR_TIMESTEPPING>1)
+		if(P[i].SuperTimestepFlag >= 2) continue;
+#endif
+	    }
+#endif	    	
             for(j = 0; j < 3; j++)
                 P[i].GravAccel[j] += fac * P[i].Pos[j];
+	}
     }
 #endif
 #endif
@@ -921,7 +969,7 @@ void *gravity_primary_loop(void *p)
         UNLOCK_NEXPORT;
         if(exitFlag)
             break;
-        
+		    
 #if !defined(PMGRID)
 #if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
         if(Ewald_iter)
