@@ -67,13 +67,9 @@ static struct blackholedata_out
     int orig_index;
     int trans_index;
     
-    MyLongDouble Mass;
-    MyLongDouble BH_Mass;
-#ifdef BH_ALPHADISK_ACCRETION
-    MyLongDouble BH_Mass_AlphaDisk;
-#endif
     MyLongDouble accreted_Mass;
     MyLongDouble accreted_BH_Mass;
+    MyLongDouble accreted_BH_mass_alphadisk;
 #ifdef BH_REPOSITION_ON_POTMIN
     MyFloat BH_MinPotPos[3];
     MyFloat BH_MinPot;
@@ -87,7 +83,6 @@ static struct blackholedata_out
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     MyFloat BH_angle_weighted_kernel_sum;
 #endif
-
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
     MyLongDouble accreted_momentum[3];
 #endif

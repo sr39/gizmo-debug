@@ -174,10 +174,10 @@ void blackhole_swallow_and_kick_loop(void)
         {
             place = DataIndexTable[j].Index;
             
-            BlackholeTempInfo[P[place].IndexMapToTempStruc].accreted_Mass += BlackholeDataOut[j].Mass;
-            BlackholeTempInfo[P[place].IndexMapToTempStruc].accreted_BH_Mass += BlackholeDataOut[j].BH_Mass;
+            BlackholeTempInfo[P[place].IndexMapToTempStruc].accreted_Mass += BlackholeDataOut[j].accreted_Mass;
+            BlackholeTempInfo[P[place].IndexMapToTempStruc].accreted_BH_Mass += BlackholeDataOut[j].accreted_BH_Mass;
 #ifdef BH_ALPHADISK_ACCRETION
-            BPP(place).BH_Mass_AlphaDisk += BlackholeDataOut[j].BH_Mass_AlphaDisk;
+            BlackholeTempInfo[P[place].IndexMapToTempStruc].accreted_BH_mass_alphadisk += BlackholeDataOut[j].accreted_BH_mass_alphadisk;
 #endif
             for(k = 0; k < 3; k++)
             {
@@ -411,16 +411,25 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
                     }
 #endif
+
+                    /* handle accretion/conservation of certain conserved quantities, depending on whether we are intending our sub-grid model to follow them */
+                    double mcount_for_conserve = f_accreted * P[j].Mass;
+#if (BH_FOLLOW_ACCRETED_ANGMOM == 1) /* in this case we are only counting this if its coming from BH particles */
+                    if(P[j].Type!=5) {mcount_for_conserve=0;} else {mcount_for_conserve=BPP(j).BH_Mass;}
+#ifdef BH_ALPHADISK_ACCRETION
+                    if(P[j].Type==5) {mcount_for_conserve += BPP(j).BH_Mass_AlphaDisk;}
+#endif
+#endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
-                    for(k=0;k<3;k++) {accreted_momentum[k] += FLT(f_accreted * P[j].Mass * dv[k]);}
+                    for(k=0;k<3;k++) {accreted_momentum[k] += FLT( mcount_for_conserve * dv[k]);}
 #endif
 #if defined(BH_FOLLOW_ACCRETED_COM)
-                    for(k=0;k<3;k++) {accreted_centerofmass[k] += FLT(f_accreted * P[j].Mass * dP[k]);}
+                    for(k=0;k<3;k++) {accreted_centerofmass[k] += FLT(mcount_for_conserve * dP[k]);}
 #endif
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
-                    accreted_J[0] += FLT(f_accreted * P[j].Mass * ( dP[1]*dv[2] - dP[2]*dv[1] + BPP(j).BH_Specific_AngMom[0] ));
-                    accreted_J[1] += FLT(f_accreted * P[j].Mass * ( dP[2]*dv[0] - dP[0]*dv[2] + BPP(j).BH_Specific_AngMom[1] ));
-                    accreted_J[2] += FLT(f_accreted * P[j].Mass * ( dP[0]*dv[1] - dP[1]*dv[0] + BPP(j).BH_Specific_AngMom[2] ));
+                    accreted_J[0] += FLT(mcount_for_conserve * ( dP[1]*dv[2] - dP[2]*dv[1] + BPP(j).BH_Specific_AngMom[0] ));
+                    accreted_J[1] += FLT(mcount_for_conserve * ( dP[2]*dv[0] - dP[0]*dv[2] + BPP(j).BH_Specific_AngMom[1] ));
+                    accreted_J[2] += FLT(mcount_for_conserve * ( dP[0]*dv[1] - dP[1]*dv[0] + BPP(j).BH_Specific_AngMom[2] ));
 #endif
 
                     
@@ -608,8 +617,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
         BlackholeTempInfo[mod_index].accreted_Mass = accreted_mass;
         BlackholeTempInfo[mod_index].accreted_BH_Mass = accreted_BH_mass;
 #ifdef BH_ALPHADISK_ACCRETION
-        // DAA: could be better to include this in BlackholeTempInfo and update BH_Mass_AlphaDisk only at the end (like Mass and BH_Mass)
-        BPP(target).BH_Mass_AlphaDisk += accreted_BH_mass_alphadisk;
+        BlackholeTempInfo[mod_index].accreted_BH_mass_alphadisk = accreted_BH_mass_alphadisk;
 #endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
         for(k=0;k<3;k++) {BlackholeTempInfo[mod_index].accreted_momentum[k] = accreted_momentum[k];}
@@ -629,10 +637,10 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     }
     else
     {
-        BlackholeDataResult[target].Mass = accreted_mass;
-        BlackholeDataResult[target].BH_Mass = accreted_BH_mass;
+        BlackholeDataResult[target].accreted_Mass = accreted_mass;
+        BlackholeDataResult[target].accreted_BH_Mass = accreted_BH_mass;
 #ifdef BH_ALPHADISK_ACCRETION
-        BlackholeDataResult[target].BH_Mass_AlphaDisk = accreted_BH_mass_alphadisk;
+        BlackholeDataResult[target].accreted_BH_mass_alphadisk = accreted_BH_mass_alphadisk;
 #endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
         for(k=0;k<3;k++) {BlackholeDataResult[target].accreted_momentum[k] = accreted_momentum[k];}
