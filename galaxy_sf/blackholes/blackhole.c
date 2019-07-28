@@ -554,7 +554,6 @@ void set_blackhole_mdot(int i, int n, double dt)
     }
 #ifdef BH_WIND_KICK /* DAA: correct the mdot into the accretion disk for the mass loss in "kick" winds Note that for BH_WIND_CONTINUOUS the wind mass is removed in the final loop */
     BlackholeTempInfo[i].mdot_alphadisk *= All.BAL_f_accretion;
-    BPP(n).BH_Mdot_AlphaDisk *= All.BAL_f_accretion;
 #endif
 
 #else // BH_ALPHADISK_ACCRETION
@@ -574,7 +573,7 @@ void set_blackhole_mdot(int i, int n, double dt)
 #if defined(BH_GRAVCAPTURE_GAS)
     mdot_eff = BlackholeTempInfo[i].mass_to_swallow_edd / (MIN_REAL_NUMBER + dt);
 #elif defined(BH_ALPHADISK_ACCRETION)
-    mdot_eff = BPP(n).BH_Mdot_AlphaDisk;
+    mdot_eff = BlackholeTempInfo[i].mdot_alphadisk;
 #endif
     for(k=0;k<3;k++) {jmag+=BlackholeTempInfo[i].angmom_prepass_sum_for_passback[k]*BlackholeTempInfo[i].angmom_prepass_sum_for_passback[k]; lmag+=BPP(n).BH_Specific_AngMom[k]*BPP(n).BH_Specific_AngMom[k];}
     if(jmag>0 && lmag>0) {BlackholeTempInfo[i].angmom_norm_topass_in_swallowloop = P[n].Mass * sqrt(lmag) * mdot_eff * dt / sqrt(jmag);} /* this should be in units such that, times CODE radius+(code=physical) ang-mom, gives CODE velocity: looks ok at present */
