@@ -588,9 +588,13 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 
 #if defined(BH_SWALLOWGAS)
-#define BH_FOLLOW_ACCRETED_MOMENTUM
 #define BH_FOLLOW_ACCRETED_COM
-#define BH_FOLLOW_ACCRETED_ANGMOM
+#define BH_FOLLOW_ACCRETED_MOMENTUM
+#if defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
+#define BH_FOLLOW_ACCRETED_ANGMOM 0 // follow accreted AM just from explicit 'swallow' operations
+#else
+#define BH_FOLLOW_ACCRETED_ANGMOM 1 // follow accreted AM from 'swallowed' BH particles, and from continuous/smooth properties [mdot] of kernel gas near BH
+#endif
 #endif
 
 
@@ -2270,7 +2274,6 @@ extern ALIGN(32) struct particle_data
 #endif 
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
-    MyFloat BH_Mdot_AlphaDisk;
 #endif
 #ifdef BH_WAKEUP_GAS /* force all gas within the interaction radius of a sink to timestep at the same rate */
     int LowestBHTimeBin;
@@ -2935,6 +2938,7 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyFloat BH_InternalEnergy;
     MyLongDouble accreted_Mass;
     MyLongDouble accreted_BH_Mass;
+    MyLongDouble accreted_BH_mass_alphadisk;
     MyLongDouble Mgas_in_Kernel;                 // mass/angular momentum for GAS/STAR/TOTAL components computed always now
     MyLongDouble Mstar_in_Kernel;
     MyLongDouble Malt_in_Kernel;
