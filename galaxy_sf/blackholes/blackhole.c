@@ -434,9 +434,9 @@ void set_blackhole_mdot(int i, int n, double dt)
 #endif
 #if (BH_GRAVACCRETION == 8)
             double hubber_mdot_from_vr_estimator=MIN_REAL_NUMBER, hubber_mdot_disk_estimator=MIN_REAL_NUMBER; /* our computed 'hubber_mdot_vr_estimator' is their estimate of the radial inflow time from a Bondi flow: but care is needed, for any non-Bondi flow this can give unphysical or negative answers, so we need to limit it and be very cautious using it */
-            if(BlackholeTempInfo[i].hubber_mdot_vr_estimator > 0) { hubber_mdot_from_vr_estimator = BlackholeTempInfo[i].Mgas_in_Kernel * BlackholeTempInfo[i].hubber_mdot_vr_estimator; }
+            if(BlackholeTempInfo[i].hubber_mdot_vr_estimator > 0) { hubber_mdot_from_vr_estimator = BlackholeTempInfo[i].hubber_mdot_vr_estimator; }
             if(BlackholeTempInfo[i].hubber_mdot_disk_estimator > 0) { hubber_mdot_disk_estimator = 0.01 * BlackholeTempInfo[i].Mgas_in_Kernel / (sqrt(All.G * P[n].Mass) * BlackholeTempInfo[i].hubber_mdot_disk_estimator);}
-            double j_eff=0,m_eff=BlackholeTempInfo[i].Malt_in_Kernel; for(k=0;k<3;k++) {j_eff+=BlackholeTempInfo[i].Jalt_in_Kernel[k]*BlackholeTempInfo[i].Jalt_in_Kernel[k];}
+            double j_eff=0,m_eff=BlackholeTempInfo[i].Malt_in_Kernel + P[n].Mass; for(k=0;k<3;k++) {j_eff+=BlackholeTempInfo[i].Jalt_in_Kernel[k]*BlackholeTempInfo[i].Jalt_in_Kernel[k];}
             double facc_which_hubber_mdot = DMIN(1, 1.75*sqrt(j_eff)/(m_eff*sqrt(All.G*m_eff*rmax_for_bhar))); /* disk fraction estimator */
             mdot = DMAX( BlackholeTempInfo[i].hubber_mdot_bondi_limiter , pow(hubber_mdot_from_vr_estimator,1-facc_which_hubber_mdot)*pow(hubber_mdot_disk_estimator,facc_which_hubber_mdot));
 #endif
@@ -544,7 +544,7 @@ void set_blackhole_mdot(int i, int n, double dt)
     {
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_SPAWN)
         if(mdot > BPP(n).BH_Mass_AlphaDisk/dt*All.BAL_f_accretion) mdot = BPP(n).BH_Mass_AlphaDisk/dt*All.BAL_f_accretion;
-#else 
+#else
         if(mdot > BPP(n).BH_Mass_AlphaDisk/dt) mdot = BPP(n).BH_Mass_AlphaDisk/dt;
 #endif
     }
@@ -588,7 +588,7 @@ void set_blackhole_new_mass(int i, int n, double dt)
     if(BPP(n).BH_Mdot <= 0) {BPP(n).BH_Mdot=0;} /* check unphysical values */
 
     /* before mass update, track angular momentum in disk for 'smoothed' accretion case [using continuous accretion rate and specific AM of all material in kernel around BH] */
-#if defined(BH_FOLLOW_ACCRETED_ANGMOM) && defined(BH_FOLLOW_ACCRETED_ANGMOM == 1)
+#if defined(BH_FOLLOW_ACCRETED_ANGMOM) && (BH_FOLLOW_ACCRETED_ANGMOM == 1)
     double dm_acc_for_j = BPP(n).BH_Mdot * dt, m_tot_for_j = BPP(n).BH_Mass;
 #ifdef BH_ALPHADISK_ACCRETION
     dm_acc_for_j = BlackholeTempInfo[i].mdot_alphadisk * dt; m_tot_for_j = BPP(n).BH_Mass + BPP(n).BH_Mass_AlphaDisk;
