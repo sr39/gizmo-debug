@@ -6,9 +6,6 @@
 #include <gsl/gsl_math.h>
 #include "allvars.h"
 #include "proto.h"
-#if (SINGLE_STAR_TIMESTEPPING > 0)
-#include "gravity/nbody.h"
-#endif
 
 /* Routines for the drift/predict step */
 
@@ -133,7 +130,7 @@ void drift_particle(int i, integertime time1)
             COM_Vel[j] = P[i].Vel[j] + P[i].comp_dv[j] * P[i].comp_Mass/(P[i].Mass+P[i].comp_Mass); //center of mass velocity
             P[i].Pos[j] += COM_Vel[j] * dt_drift; //center of mass drift
         }
-        odeint_super_timestep(i, dt, fewbody_kick_dv, fewbody_drift_dx, 1); // do_fewbody_drift
+        odeint_super_timestep(i, dt_drift, fewbody_kick_dv, fewbody_drift_dx, 1); // do_fewbody_drift
         for(j=0;j<3;j++)
         {
             P[i].GravAccel[j] = P[i].COM_GravAccel[j]; //Overwrite the acceleration with center of mass value
