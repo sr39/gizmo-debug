@@ -104,7 +104,11 @@ void do_hermite_prediction(void)
     
     for(i = 0; i < NumPart; i++)
     {
+	
 	if(HERMITE_INTEGRATION & (1<<P[i].Type))
+#if defined(BLACK_HOLES) || defined(GALSF)	    
+        if(P[i].StellarAge > All.Time) // if we were literally born yesterday then we won't have the proper Old variables set
+#endif	    
         if(TimeBinActive[P[i].TimeBin]) /* 'full' kick for active particles */
 #if (SINGLE_STAR_TIMESTEPPING > 0)
         if(P[i].SuperTimestepFlag < 2)
@@ -133,6 +137,9 @@ void do_hermite_correction(void)
     for(i = 0; i < NumPart; i++)
     {
 	if(HERMITE_INTEGRATION & (1<<P[i].Type))
+#if defined(BLACK_HOLES) || defined(GALSF)	    
+        if(P[i].StellarAge > All.Time) // if we were literally born yesterday then we won't have the proper Old variables set
+#endif	    	    
         if(TimeBinActive[P[i].TimeBin]) /* 'full' kick for active particles */
 #if (SINGLE_STAR_TIMESTEPPING > 0)
         if(P[i].SuperTimestepFlag < 2)
