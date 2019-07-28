@@ -5,9 +5,7 @@
 #include <math.h>
 #include "allvars.h"
 #include "proto.h"
-#if (SINGLE_STAR_TIMESTEPPING > 0)
-#include "gravity/nbody.h"
-#endif
+
 /*
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel (volker.springel@h-its.org). The code has been modified

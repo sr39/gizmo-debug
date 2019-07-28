@@ -1167,9 +1167,8 @@ endif
 ifeq (SINGLE_STAR,$(findstring SINGLE_STAR,$(CONFIGVARS)))
 OBJS    += galaxy_sf/sfr_eff.o galaxy_sf/stellar_evolution.o galaxy_sf/mechanical_fb.o galaxy_sf/radfb_local.o
 OBJS    += galaxy_sf/blackholes/blackhole.o galaxy_sf/blackholes/blackhole_util.o galaxy_sf/blackholes/blackhole_environment.o galaxy_sf/blackholes/blackhole_feed.o galaxy_sf/blackholes/blackhole_swallow_and_kick.o
-INCL    += galaxy_sf/blackholes/blackhole.h
 OBJS    += gravity/binary.o
-INCL    += gravity/nbody.h
+INCL    += galaxy_sf/blackholes/blackhole.h
 endif
 
 ifeq (FOF,$(findstring FOF,$(CONFIGVARS)))

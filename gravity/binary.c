@@ -10,7 +10,7 @@
 #include "../proto.h"
 #include "../kernel.h"
 
-#ifdef SINGLE_STAR_SUPERTIMESTEPPING
+#ifdef SINGLE_STAR_TIMESTEPPING
 // wraps around angle to the interval [0, 2pi)
 double wrap_angle(double angle){
     if (angle > 2*M_PI)	return fmod(angle, 2*M_PI);
@@ -206,7 +206,8 @@ Advances the binary by timestep dt
 mode 0 - Just fill out the particle's kick and drift for the timestep, without doing the update
 mode 1 - Actually update the binary separation and relative velocity. This should be done on the full-step drift.
 */
-void odeint_super_timestep(int i, double dt_super, double kick_dv[3], double drift_dx[3], int mode){
+void odeint_super_timestep(int i, double dt_super, double kick_dv[3], double drift_dx[3], int mode)
+{
     double t = 0, total_mass = P[i].comp_Mass + P[i].Mass, dt;
     double dx_old[3], dv_old[3], dx[3], dv[3], vSqr, rSqr;
     int k;

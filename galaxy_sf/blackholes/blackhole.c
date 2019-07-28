@@ -433,7 +433,7 @@ void set_blackhole_mdot(int i, int n, double dt)
             } /* otherwise, circularization outside BH-dominated region, efficiency according to usual [above] */
 #endif
 #if (BH_GRAVACCRETION == 8)
-            double hubber_mdot_from_vr_estimator = hubber_mdot_disk_estimator = MIN_REAL_NUMBER; /* our computed 'hubber_mdot_vr_estimator' is their estimate of the radial inflow time from a Bondi flow: but care is needed, for any non-Bondi flow this can give unphysical or negative answers, so we need to limit it and be very cautious using it */
+            double hubber_mdot_from_vr_estimator=MIN_REAL_NUMBER, hubber_mdot_disk_estimator=MIN_REAL_NUMBER; /* our computed 'hubber_mdot_vr_estimator' is their estimate of the radial inflow time from a Bondi flow: but care is needed, for any non-Bondi flow this can give unphysical or negative answers, so we need to limit it and be very cautious using it */
             if(BlackholeTempInfo[i].hubber_mdot_vr_estimator > 0) { hubber_mdot_from_vr_estimator = BlackholeTempInfo[i].Mgas_in_Kernel * BlackholeTempInfo[i].hubber_mdot_vr_estimator; }
             if(BlackholeTempInfo[i].hubber_mdot_disk_estimator > 0) { hubber_mdot_disk_estimator = 0.01 * BlackholeTempInfo[i].Mgas_in_Kernel / (sqrt(All.G * P[n].Mass) * BlackholeTempInfo[i].hubber_mdot_disk_estimator);}
             double j_eff=0,m_eff=BlackholeTempInfo[i].Malt_in_Kernel; for(k=0;k<3;k++) {j_eff+=BlackholeTempInfo[i].Jalt_in_Kernel[k]*BlackholeTempInfo[i].Jalt_in_Kernel[k];}
@@ -794,10 +794,10 @@ void blackhole_final_operations(void)
         {
             
             double m_new = BlackholeTempInfo[i].accreted_Mass + P[n].Mass;
-#if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
+#if defined(BH_FOLLOW_ACCRETED_MOMENTUM) && !defined(BH_REPOSITION_ON_POTMIN)
             for(k=0;k<3;k++) {P[n].Vel[k] = (P[n].Vel[k]*m_new + BlackholeTempInfo[i].accreted_momentum[k]) / m_new;}
 #endif
-#if defined(BH_FOLLOW_ACCRETED_COM)
+#if defined(BH_FOLLOW_ACCRETED_COM) && !defined(BH_REPOSITION_ON_POTMIN)
             for(k=0;k<3;k++) {P[n].Pos[k] = (P[n].Pos[k]*m_new + BlackholeTempInfo[i].accreted_centerofmass[k]) / m_new;}
 #endif
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
