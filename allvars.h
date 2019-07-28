@@ -307,7 +307,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define GRAVITY_ACCURATE_FEWBODY_INTEGRATION
 #define BH_SWALLOW_SMALLTIMESTEPS
 #define BH_ACCRETE_NEARESTFIRST
-//#define BH_RETURN_ANGMOM_TO_GAS
+#define BH_RETURN_ANGMOM_TO_GAS
 #define SINGLE_STAR_TIMESTEPPING 1
 #define SINGLE_STAR_ACCRETION 12
 #define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
