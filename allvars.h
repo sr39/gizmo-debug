@@ -302,13 +302,14 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 #ifdef SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
 #define SINGLE_STAR_SINK_DYNAMICS
+#define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
 #define ADAPTIVE_GRAVSOFT_FORGAS
 #define GRAVITY_ACCURATE_FEWBODY_INTEGRATION
 #define BH_SWALLOW_SMALLTIMESTEPS
 #define BH_ACCRETE_NEARESTFIRST
 #define BH_RETURN_ANGMOM_TO_GAS
-#define SINGLE_STAR_TIMESTEPPING 1
-#define SINGLE_STAR_ACCRETION 8
+#define SINGLE_STAR_TIMESTEPPING 2
+#define SINGLE_STAR_ACCRETION 12
 #define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
 #define DEVELOPER_MODE
 #ifdef MAGNETIC
@@ -317,6 +318,12 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define RT_DISABLE_R15_GRADIENTFIX
 #endif // SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE
 
+#ifdef HERMITE_INTEGRATION
+#define COMPUTE_JERK_IN_GRAVTREE
+#endif
+#ifdef COMPUTE_JERK_IN_GRAVTREE
+#define COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+#endif
 
 #ifdef SINGLE_STAR_SINK_DYNAMICS
 #define GALSF // master switch needed to enable various frameworks
@@ -1332,6 +1339,10 @@ extern double TimeBin_BH_Medd[TIMEBINS];
 #endif
 #endif
 
+#ifdef HERMITE_INTEGRATION
+extern int HermiteOnlyFlag;     /*!< flag to only do Hermite integration for applicable particles (ie. stars) in the gravity routine */
+#endif
+
 extern int ThisTask;		/*!< the number of the local processor  */
 extern int NTask;		/*!< number of processors */
 extern int PTask;		/*!< note: NTask = 2^PTask */
@@ -2130,6 +2141,12 @@ extern ALIGN(32) struct particle_data
     MyFloat GravPM[3];		/*!< particle acceleration due to long-range PM gravity force */
 #endif
     MyFloat OldAcc;			/*!< magnitude of old gravitational force. Used in relative opening criterion */
+#ifdef HERMITE_INTEGRATION
+    MyFloat Hermite_OldAcc[3];
+    MyFloat OldPos[3];
+    MyFloat OldVel[3];
+    MyFloat OldJerk[3];
+#endif
 #if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUT_POTENTIAL)
     MyFloat Potential;		/*!< gravitational potential */
 #if defined(EVALPOTENTIAL) && defined(PMGRID)
@@ -2140,6 +2157,9 @@ extern ALIGN(32) struct particle_data
 #define COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     double tidal_tensorps[3][3];                        /*!< tidal tensor (=second derivatives of grav. potential) */
 #endif
+#ifdef COMPUTE_JERK_IN_GRAVTREE
+    double GravJerk[3];
+#endif    
 #ifdef GDE_DISTORTIONTENSOR
     MyBigFloat distortion_tensorps[6][6];               /*!< phase space distortion tensor */
     MyBigFloat last_determinant;                        /*!< last real space distortion tensor determinant */
@@ -2250,6 +2270,7 @@ extern ALIGN(32) struct particle_data
 #endif 
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
+    MyFloat BH_Mdot_AlphaDisk;
 #endif
 #ifdef BH_WAKEUP_GAS /* force all gas within the interaction radius of a sink to timestep at the same rate */
     int LowestBHTimeBin;
@@ -2855,6 +2876,9 @@ extern struct gravdata_out
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     MyLongDouble tidal_tensorps[3][3];
 #endif
+#ifdef COMPUTE_JERK_IN_GRAVTREE
+    MyLongDouble GravJerk[3];
+#endif    
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
     MyFloat min_xyz_to_bh[3];

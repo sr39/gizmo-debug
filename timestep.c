@@ -333,7 +333,8 @@ integertime get_timestep(int p,		/*!< particle index */
     { 
 #if (SINGLE_STAR_TIMESTEPPING == 1) // to be conservative, use the semimajor axis, ie. the internal timescale is the orbital period
 	    double dt_bin = P[p].min_bh_t_orbital / (2.*M_PI); // sqrt(a^3/GM) for binary
-        if(0.03*P[p].COM_dt_tidal>dt_bin) {P[p].SuperTimestepFlag=2;} // external timestep is appropriately larger than 'internal' timestep, so use super-timestepping routine
+	    if(0.03*P[p].COM_dt_tidal>dt_bin) {P[p].SuperTimestepFlag=2;
+	    } // external timestep is appropriately larger than 'internal' timestep, so use super-timestepping routine
 #else // to be more aggressive, use the instantaneous orbital timescale, ie. freefall time from the CURRENT orbital separation. This lets us super step an orbit on the close passages, even when it is affected by tides at apopase
 	    double dr = sqrt(P[p].comp_dx[0]*P[p].comp_dx[0] + P[p].comp_dx[1]*P[p].comp_dx[1] + P[p].comp_dx[2]*P[p].comp_dx[2]);
 	    double dt_bin = sqrt(dr*dr*dr / (All.G * (P[p].Mass + P[p].comp_Mass)));
@@ -458,7 +459,12 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step, which gives superior conservation
     if(P[p].Type == 5)
     {
-        double dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 / (1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time
+#ifdef HERMITE_INTEGRATION	
+        double dt_2body = sqrt(All.ErrTolIntAccuracy) / (1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time);
+#else
+        double dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 / (1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time	
+#endif	
+
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     	if(P[p].is_in_a_binary && (P[p].SuperTimestepFlag >= 2)) //binary candidate or a confirmed binary
 	    {    // First we need to construct the same 2-body timescale as above, but from the binary parameters. If this is longer than the above, there is another star that is requiring us to
@@ -473,7 +479,7 @@ integertime get_timestep(int p,		/*!< particle index */
                 double SUPERTIMESTEPPING_NUM_STEPS_PER_ORBIT = 50;
                 dt_2body = 2.*M_PI / SUPERTIMESTEPPING_NUM_STEPS_PER_ORBIT * (binary_dt_2body*2); // orbital frequency is |dr x dv| / r^2, so timestep will be inverse to this
 	        } else {P[p].SuperTimestepFlag = 0;}  // we still have to take a proper short N-body integration timestep due to a third body whose approach requires careful integration, so no super timestepping is possible
-    	}
+	    }
 #endif
         dt = DMIN(dt, dt_2body);
     }
@@ -982,7 +988,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
 		    eps = DMAX(eps, KERNEL_CORE_SIZE*P[p].AGS_Hsml);
 #endif		
-		    double dt_gas = sqrt(All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * BPP(p).BH_Mass)); // fraction of the freefall time of the nearest gas particle from rest
+		    double dt_gas = sqrt(All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * P[p].Mass)); // fraction of the freefall time of the nearest gas particle from rest
 		    if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas;}
 		}
 #endif

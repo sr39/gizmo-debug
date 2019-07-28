@@ -53,6 +53,10 @@ void split_particle_i(int i, int n_particles_split, int i_nearest);
 
 void do_first_halfstep_kick(void);
 void do_second_halfstep_kick(void);
+#ifdef HERMITE_INTEGRATION
+void do_hermite_prediction(void);
+void do_hermite_correction(void);
+#endif
 void find_timesteps(void);
 #ifdef GALSF
 void compute_stellar_feedback(void);

@@ -1658,9 +1658,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     struct NODE *nop = 0;
     int no, nodesinlist, ptype, ninteractions, nexp, task, listindex = 0;
     double r2, dx, dy, dz, mass, r, fac, u, h, h_inv, h3_inv;
+#ifdef COMPUTE_JERK_IN_GRAVTREE
+    double dvx, dvy, dvz;
+    double jerk[3] = {0,0,0};
+#endif    
     double pos_x, pos_y, pos_z, aold;
 
-#ifdef SINGLE_STAR_TIMESTEPPING
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE)
     double vel_x, vel_y, vel_z;
 #endif    
 #ifdef PMGRID
@@ -1678,7 +1682,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     int i1, i2; double fac2_tidal, h_tidal, h_inv_tidal, h3_inv_tidal, h5_inv, h5_inv_tidal, fac_tidal;
     MyDouble tidal_tensorps[3][3];
-#endif
+#endif    
 #if defined(REDUCE_TREEWALK_BRANCHING) && defined(PMGRID)
     double dxx, dyy, dzz, pdxx, pdyy, pdzz;
 #endif
@@ -1781,10 +1785,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         pos_y = P[target].Pos[1];
         pos_z = P[target].Pos[2];
         ptype = P[target].Type;
+
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
         pmass = P[target].Mass;
 #endif
-#ifdef SINGLE_STAR_TIMESTEPPING
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE)
         vel_x = P[target].Vel[0];
         vel_y = P[target].Vel[1];
         vel_z = P[target].Vel[2];
@@ -1829,7 +1834,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
         pmass = GravDataGet[target].Mass;
 #endif
-#ifdef SINGLE_STAR_TIMESTEPPING
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE)
         vel_x = GravDataGet[target].Vel[0];
         vel_y = GravDataGet[target].Vel[1];
         vel_z = GravDataGet[target].Vel[2];
@@ -1850,13 +1855,16 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         }
 #endif
     }
-    
+#ifdef HERMITE_INTEGRATION
+//    if we're doing a force evaluation for Hermite-integrated particles only, quit right here
+   if(HermiteOnlyFlag && !((1<<ptype) & HERMITE_INTEGRATION)) return 0;
+#endif
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
     /* quick check if particle has mass: if not, we won't deal with it */
     if(pmass<=0) return 0;
     int AGS_kernel_shared_BITFLAG = ags_gravity_kernel_shared_BITFLAG(ptype); // determine allowed particle types for correction terms for adaptive gravitational softening terms
     int j0_sec_for_ags = -1;
-#endif
+#endif   
 #ifdef PMGRID
     rcut2 = rcut * rcut;
     asmthfac = 0.5 / asmth * (NTAB / 3.0);
@@ -1942,6 +1950,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 dx = P[no].Pos[0] - pos_x;
                 dy = P[no].Pos[1] - pos_y;
                 dz = P[no].Pos[2] - pos_z;
+#ifdef COMPUTE_JERK_IN_GRAVTREE
+		dvx = P[no].Vel[0] - vel_x;
+		dvy = P[no].Vel[1] - vel_y;
+		dvz = P[no].Vel[2] - vel_z;
+#endif		
 #ifdef BOX_PERIODIC
                 NEAREST_XYZ(dx,dy,dz,-1);
 #endif
@@ -2185,6 +2198,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 dx = nop->u.d.s[0] - pos_x;
                 dy = nop->u.d.s[1] - pos_y;
                 dz = nop->u.d.s[2] - pos_z;
+#ifdef COMPUTE_JERK_IN_GRAVTREE
+		dvx = Extnodes[no].vs[0] - vel_x;
+		dvy = Extnodes[no].vs[1] - vel_y;
+		dvz = Extnodes[no].vs[2] - vel_z;
+#endif		
 #if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
                 NEAREST_XYZ(dx,dy,dz,-1);
 #endif
@@ -2469,7 +2487,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 facpot = mass * kernel_gravity(u, h_inv, h3_inv, -1);
 #endif 
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* second derivatives needed -> calculate them from softend potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */		
-                if(u < 0.5) {fac2_tidal = mass * h5_inv * (76.8 - 96.0 * u);} else {fac2_tidal = mass * h5_inv * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u);}
+//                if(u < 0.5) {fac2_tidal = mass * h5_inv * (76.8 - 96.0 * u);} else {fac2_tidal = mass * h5_inv * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u);}
                 if(u < 0.5) {fac2_tidal = mass * h5_inv * (76.8 - 96.0 * u);} else {if(u < 1) {fac2_tidal = mass * h5_inv * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u);} else {fac2_tidal = 3 * mass / (r2 * r2 * r);}}
 #endif
 		
@@ -2520,7 +2538,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif 			
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                         double h_p5_inv = h_p3_inv * h_p_inv * h_p_inv;
-                        if(u_p < 0.5) {fac2_tidal = mass * h_p5_inv * (76.8 - 96.0 * u_p);} else {fac2_tidal = mass * h_p5_inv * (-0.2 / (u_p * u_p * u_p * u_p * u_p) + 48.0 / u_p - 76.8 + 32.0 * u_p);}
+                        if(u_p < 0.5) {fac2_tidal = mass * h_p5_inv * (76.8 - 96.0 * u_p);} else if(u_p <1) {fac2_tidal = mass * h_p5_inv * (-0.2 / (u_p * u_p * u_p * u_p * u_p) + 48.0 / u_p - 76.8 + 32.0 * u_p);} else {fac2_tidal = 3 * mass / (r2 * r2 * r);}
 #endif
                     }
                     // correction only applies to 'shared-kernel' particles: so this needs to check if
@@ -2618,6 +2636,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 tidal_tensorps[2][0] = tidal_tensorps[0][2];
                 tidal_tensorps[2][1] = tidal_tensorps[1][2];
 #endif // GDE_DISTORTIONTENSOR //
+#ifdef COMPUTE_JERK_IN_GRAVTREE
+		double dv_dot_dx = dx*dvx + dy*dvy + dz*dvz;	      
+		jerk[0] += dvx * fac - dv_dot_dx * fac2_tidal * dx;
+		jerk[1] += dvy * fac - dv_dot_dx * fac2_tidal * dy;
+		jerk[2] += dvz * fac - dv_dot_dx * fac2_tidal * dz;		
+#endif		
             } // closes TABINDEX<NTAB
             
             ninteractions++;
@@ -2786,6 +2810,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
         for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
 #endif
+#ifdef COMPUTE_JERK_IN_GRAVTREE
+	for(i1 = 0; i1 < 3; i1++) {P[target].GravJerk[i1] = jerk[i1];}
+#endif	
 #ifdef BH_CALC_DISTANCES
         P[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );
         P[target].min_xyz_to_bh[0] = min_xyz_to_bh[0];   /* remember, dx = x_BH - myx */
@@ -2835,6 +2862,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
         for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GravDataResult[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}
 #endif
+#ifdef COMPUTE_JERK_IN_GRAVTREE
+	for(i1 = 0; i1 < 3; i1++) {GravDataResult[target].GravJerk[i1] = jerk[i1];}
+#endif	
 #ifdef BH_CALC_DISTANCES
         GravDataResult[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );
         GravDataResult[target].min_xyz_to_bh[0] = min_xyz_to_bh[0];   /* remember, dx = x_BH - myx */
