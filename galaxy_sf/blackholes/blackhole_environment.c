@@ -369,9 +369,10 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 #if (BH_GRAVACCRETION == 8)
                         u=0; for(k=0;k<3;k++) {u+=dP[k]*dP[k];}
                         u=sqrt(u)/h_i; kernel_main(u,hinv3,hinv3*hinv,&wk,&dwk,-1);
-                        double rj=u*All.cf_atime; double csj=Particle_effective_soundspeed_i(j);
+                        double rj=u*h_i*All.cf_atime; double csj=Particle_effective_soundspeed_i(j);
                         double vdotrj=0; for(k=0;k<3;k++) {vdotrj+=-dP[k]*dv[k];}
                         double vr_mdot = 4*M_PI * wt*(wk*All.cf_a3inv) * rj*vdotrj;
+			
                         if(rj < All.ForceSoftening[5]*All.cf_atime)
                         {
                             double bondi_mdot = 4*M_PI*All.G*All.G * mass*mass / pow(csj*csj + (dv[0]*dv[0]+dv[1]*dv[1]+dv[2]*dv[2])*All.cf_a2inv, 1.5) * wt * (wk*All.cf_a3inv);
