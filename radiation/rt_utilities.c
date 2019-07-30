@@ -171,12 +171,10 @@ int rt_get_source_luminosity(int i, double sigma_0, double *lum)
     /* can add direct infrared sources, but default to no direct IR (just re-emitted light) */
     if((1 << P[i].Type) & (RT_SOURCES))
     {
+        lum[RT_FREQ_BIN_INFRARED] = 0.0; //default to no direct IR (just re-emitted light)
 #if defined(TEST_RT_M1)
         if(P[i].Type == 5) 
-            {lum[RT_FREQ_BIN_INFRARED] = bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i);} //set the entire bolometric luminosity from the sink as IR
-        else
-#else
-            {lum[RT_FREQ_BIN_INFRARED] = 0.0;} //default to no direct IR (just re-emitted light)
+            {lum[RT_FREQ_BIN_INFRARED] = bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i);} //set the entire bolometric luminosity from the sink a
 #endif
     }
 #endif
