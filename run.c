@@ -718,7 +718,11 @@ void output_log_messages(void)
   sumup_large_ints(TIMEBINS, TimeBinCount, tot_count);
   sumup_large_ints(TIMEBINS, TimeBinCountSph, tot_count_sph);
 
+#if defined(OUTPUT_ONLY_ON_N_HIGHEST_TIMEBIN)
+    if((ThisTask == 0) && (All.HighestActiveTimeBin>=(TIMEBINS-OUTPUT_ONLY_ON_N_HIGHEST_TIMEBIN)))
+#else
     if(ThisTask == 0)
+#endif
     {       
         if(All.ComovingIntegrationOn)
         {
