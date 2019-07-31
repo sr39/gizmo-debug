@@ -341,7 +341,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
         Jgas_in_Kernel = BlackholeDataGet[target].Jgas_in_Kernel;
 #endif
 #if defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
-        Mgas_in_Kernel = BlackholeDataGet.Mgas_in_Kernel;
+        Mgas_in_Kernel = BlackholeDataGet[target].Mgas_in_Kernel;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
         BH_disk_hr = BlackholeDataGet[target].BH_disk_hr;

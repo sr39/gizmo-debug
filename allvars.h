@@ -318,7 +318,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #define RT_DISABLE_R15_GRADIENTFIX
 #ifdef SINGLE_STAR_FB_JETS
-#define JET_DIRECTION_FROM_KERNEL_AND_SINK //the direction of the jet is a mass weighted average of Jsink and Jgaskernel
+//#define JET_DIRECTION_FROM_KERNEL_AND_SINK //the direction of the jet is a mass weighted average of Jsink and Jgaskernel
 #endif
 #endif // SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE
 
