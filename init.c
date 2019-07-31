@@ -528,7 +528,7 @@ void init(void)
 #endif
 #ifdef SINGLE_STAR_FORMATION
         P[i].BH_Ngb_Flag = 0;
-#endif
+#endif	
 #ifdef SINGLE_STAR_TIMESTEPPING
 	    P[i].min_bh_approach_time = P[i].min_bh_freefall_time = MAX_REAL_NUMBER;
 #if (SINGLE_STAR_TIMESTEPPING > 0)
@@ -542,8 +542,11 @@ void init(void)
             {
                 BPP(i).BH_Mass = All.SeedBlackHoleMass;
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-		        BPP(i).BH_Mass = P[i].Mass;
-#endif		
+		BPP(i).BH_Mass = P[i].Mass;
+#endif
+#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+		BPP(i).SinkRadius = All.ForceSoftening[5];
+#endif			
 #ifdef BH_ALPHADISK_ACCRETION
                 BPP(i).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
 #endif
