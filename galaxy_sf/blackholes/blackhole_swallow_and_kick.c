@@ -760,7 +760,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     if(Jtot>0) {Jtot=1/sqrt(Jtot); for(k=0;k<3;k++) {jz[k]=P[i].BH_Specific_AngMom[k]*Jtot;}
 #ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK //direction from the mass weighted average of the sink and the gas kernel angular momentum
     Jtot=0; for(k=0;k<3;k++) {Jtot+=P[i].Jgas_in_Kernel[k]*P[i].Jgas_in_Kernel[k];}
-    if(Jtot>0) {Jtot=1/sqrt(Jtot); for(k=0;k<3;k++) {jz[k]=jz[k]*P[i].Mass + P[i].Jgas_in_Kernel[k]*Jtot*P[i].Mgas_in_Kernel;}
+    if(Jtot>0) {Jtot=1/sqrt(Jtot); for(k=0;k<3;k++) {jz[k]=jz[k]*P[i].Mass + P[i].Jgas_in_Kernel[k]*Jtot*P[i].Mgas_in_Kernel;}}
 #endif
         Jtot=jz[1]*jz[1]+jz[2]*jz[2]; 
         if(Jtot>0) {Jtot=1/sqrt(Jtot); jy[1]=jz[2]*Jtot; jy[2]=-jz[1]*Jtot; for(k=0;k<3;k++) {jz[k]*=Jtot;}}
