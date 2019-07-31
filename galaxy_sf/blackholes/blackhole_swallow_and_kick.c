@@ -98,7 +98,7 @@ void blackhole_swallow_and_kick_loop(void)
             BlackholeDataIn[j].Mass = P[place].Mass;
             BlackholeDataIn[j].BH_Mass = BPP(place).BH_Mass;
 #if defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
-            BlackholeDataIn[j].Mgas_in_Kernel = BlackholeTempInfo[P[place].Mgas_in_Kernel;
+            BlackholeDataIn[j].Mgas_in_Kernel = BlackholeTempInfo[P[place].IndexMapToTempStruc].Mgas_in_Kernel;
 #endif
 #if defined(BH_RETURN_ANGMOM_TO_GAS)
             for(k=0; k<3; k++) BlackholeDataIn[j].BH_Specific_AngMom[k] = BPP(place).BH_Specific_AngMom[k];
