@@ -137,7 +137,9 @@ int ngb_treefind_variable_targeted(MyDouble searchcenter[3], MyFloat hsml, int t
 #include "system/ngb_codeblock_before_condition.h" // call the same variable/initialization block
     if(!((1 << P[p].Type) & (TARGET_BITMASK))) continue; // skip anything not of the desired type
     if(P[p].Mass <= 0) continue; // skip zero-mass particles
+#define SEARCHBOTHWAYS 0 // only need neighbors inside of search radius, not particles 'looking at' primary
 #include "system/ngb_codeblock_after_condition_unthreaded.h" // call the main loop block as above, but this time the -unthreaded- version
+#undef SEARCHBOTHWAYS
 }
 /* identical to above but includes 'both ways' search for interacting neighbors */
 int ngb_treefind_pairs_targeted(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode, int *nexport, int *nsend_local, int TARGET_BITMASK)

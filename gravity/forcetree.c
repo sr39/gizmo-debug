@@ -2635,7 +2635,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 tidal_tensorps[1][0] = tidal_tensorps[0][1];
                 tidal_tensorps[2][0] = tidal_tensorps[0][2];
                 tidal_tensorps[2][1] = tidal_tensorps[1][2];
-#endif // GDE_DISTORTIONTENSOR //
+#endif // COMPUTE_TIDAL_TENSOR_IN_GRAVTREE //
 #ifdef COMPUTE_JERK_IN_GRAVTREE
 		double dv_dot_dx = dx*dvx + dy*dvy + dz*dvz;	      
 		jerk[0] += dvx * fac - dv_dot_dx * fac2_tidal * dx;
