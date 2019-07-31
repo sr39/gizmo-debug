@@ -89,7 +89,7 @@ void blackhole_swallow_and_kick_loop(void)
             {
                 BlackholeDataIn[j].Pos[k] = P[place].Pos[k];
                 BlackholeDataIn[j].Vel[k] = P[place].Vel[k];
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
                 BlackholeDataIn[j].Jgas_in_Kernel[k] = BlackholeTempInfo[P[place].IndexMapToTempStruc].Jgas_in_Kernel[k];
 #endif
             }
@@ -97,9 +97,6 @@ void blackhole_swallow_and_kick_loop(void)
             BlackholeDataIn[j].ID = P[place].ID;
             BlackholeDataIn[j].Mass = P[place].Mass;
             BlackholeDataIn[j].BH_Mass = BPP(place).BH_Mass;
-#if defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
-            BlackholeDataIn[j].Mgas_in_Kernel = BlackholeTempInfo[P[place].IndexMapToTempStruc].Mgas_in_Kernel;
-#endif
 #if defined(BH_RETURN_ANGMOM_TO_GAS)
             for(k=0; k<3; k++) BlackholeDataIn[j].BH_Specific_AngMom[k] = BPP(place).BH_Specific_AngMom[k];
             BlackholeDataIn[j].angmom_norm_topass_in_swallowloop = BlackholeTempInfo[P[place].IndexMapToTempStruc].angmom_norm_topass_in_swallowloop;
@@ -266,11 +263,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     
     MyFloat dir[3], norm, mom;
     mom=0; norm=0; dir[0]=0;
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) 
     MyFloat *Jgas_in_Kernel;
-#endif
-#if defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
-    MyFloat Mgas_in_Kernel;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     double BH_angle_weighted_kernel_sum, mom_wt;
@@ -304,11 +298,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
         dt = P[target].dt_step * All.Timebase_interval / All.cf_hubble_a;
 #endif
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
         Jgas_in_Kernel = BlackholeTempInfo[P[target].IndexMapToTempStruc].Jgas_in_Kernel;
-#endif
-#if defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
-        Mgas_in_Kernel = BlackholeTempInfo[P[target].IndexMapToTempStruc].Mgas_in_Kernel;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
         BH_disk_hr = P[target].BH_disk_hr;
@@ -337,11 +328,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
         mdot = BlackholeDataGet[target].Mdot;
         dt = BlackholeDataGet[target].Dt;
 #endif
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
         Jgas_in_Kernel = BlackholeDataGet[target].Jgas_in_Kernel;
-#endif
-#if defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
-        Mgas_in_Kernel = BlackholeDataGet[target].Mgas_in_Kernel;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
         BH_disk_hr = BlackholeDataGet[target].BH_disk_hr;
@@ -771,8 +759,8 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     double Jtot=0; for(k=0;k<3;k++) {Jtot+=P[i].BH_Specific_AngMom[k]*P[i].BH_Specific_AngMom[k];}
     if(Jtot>0) {Jtot=1/sqrt(Jtot); for(k=0;k<3;k++) {jz[k]=P[i].BH_Specific_AngMom[k]*Jtot;}
 #ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK //direction from the mass weighted average of the sink and the gas kernel angular momentum
-    Jtot=0; for(k=0;k<3;k++) {Jtot+=Jgas_in_Kernel[k]*Jgas_in_Kernel[k];}
-    if(Jtot>0) {Jtot=1/sqrt(Jtot); for(k=0;k<3;k++) {jz[k]=jz[k]*P[i].Mass + Jgas_in_Kernel[k]*Jtot*Mgas_in_Kernel;}
+    Jtot=0; for(k=0;k<3;k++) {Jtot+=P[i].Jgas_in_Kernel[k]*P[i].Jgas_in_Kernel[k];}
+    if(Jtot>0) {Jtot=1/sqrt(Jtot); for(k=0;k<3;k++) {jz[k]=jz[k]*P[i].Mass + P[i].Jgas_in_Kernel[k]*Jtot*P[i].Mgas_in_Kernel;}
 #endif
         Jtot=jz[1]*jz[1]+jz[2]*jz[2]; 
         if(Jtot>0) {Jtot=1/sqrt(Jtot); jy[1]=jz[2]*Jtot; jy[2]=-jz[1]*Jtot; for(k=0;k<3;k++) {jz[k]*=Jtot;}}

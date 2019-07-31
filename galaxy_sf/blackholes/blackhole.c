@@ -620,6 +620,10 @@ void set_blackhole_new_mass(int i, int n, double dt)
     BPP(n).BH_Mass += BPP(n).BH_Mdot * dt;
 #endif
 #endif // #else BH_ALPHADISK_ACCRETION
+#ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK //store Mgas_in_Kernel and Jgas_in_Kernel
+    BPP(n).Mgas_in_Kernel=BlackholeTempInfo[i].Mgas_in_Kernel;
+    int j; for(j=0;j<3;j++){BPP(n).Jgas_in_Kernel[j]=BlackholeTempInfo[i].Jgas_in_Kernel[j];}
+#endif
 
 }
 
