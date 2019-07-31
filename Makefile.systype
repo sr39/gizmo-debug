@@ -13,7 +13,7 @@
 
 
 #SYSTYPE="Frontera"
-SYSTYPE="Stampede2"
+#SYSTYPE="Stampede2"
 #SYSTYPE="Wheeler"
 #SYSTYPE="MacBookPro"
 #SYSTYPE="Quest"
@@ -24,7 +24,7 @@ SYSTYPE="Stampede2"
 #SYSTYPE="Gordon"
 #SYSTYPE="odyssey"
 #SYSTYPE="antares"
-#SYSTYPE="Pleiades-Haswell"
+SYSTYPE="Pleiades-Haswell"
 #SYSTYPE="Pleiades-SIBridge"
 #SYSTYPE="Mira"
 #SYSTYPE="Titan"
