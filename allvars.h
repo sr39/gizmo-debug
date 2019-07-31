@@ -2287,6 +2287,10 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_FOLLOW_ACCRETED_ANGMOM
     MyFloat BH_Specific_AngMom[3];
 #endif
+#ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK
+    MyFloat Mgas_in_Kernel;
+    MyFloat Jgas_in_Kernel[3];
+#endif
     MyFloat BH_Mdot;
     int BH_TimeBinGasNeighbor;
 #ifdef BH_ACCRETE_NEARESTFIRST

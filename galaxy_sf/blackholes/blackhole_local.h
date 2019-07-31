@@ -38,11 +38,8 @@ static struct blackholedata_in
     MyFloat Vel[3];
     MyIDType ID;
     int NodeList[NODELISTLENGTH];
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
     MyFloat Jgas_in_Kernel[3];
-#endif
-#if defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
-    MyFloat Mgas_in_Kernel;
 #endif
 #ifdef BH_ACCRETE_NEARESTFIRST
     MyFloat BH_dr_to_NearestGasNeighbor;
