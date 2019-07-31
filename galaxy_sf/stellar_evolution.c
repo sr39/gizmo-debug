@@ -69,7 +69,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
 #else
             double eps_protostar=0.75; //default value, although 1.0 would be energy conserving
 #endif
-            lum = eps_protostar * All.G*P[i].Mass/P[i].ProtoStellar_Radius * mdot * c_code * c_code;
+            lum = eps_protostar * All.G*P[i].Mass/P[i].ProtoStellar_Radius * mdot;
         }
     }
     lum_sol *= SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s);
