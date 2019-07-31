@@ -459,10 +459,9 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step, which gives superior conservation
     if(P[p].Type == 5)
     {
-#ifdef HERMITE_INTEGRATION	
-        double dt_2body = sqrt(All.ErrTolIntAccuracy) / (1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time);
-#else
         double dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 / (1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time	
+#ifdef HERMITE_INTEGRATION	
+        if(eligible_for_hermite(p)) dt_2body /= 0.3;
 #endif	
 
 #if (SINGLE_STAR_TIMESTEPPING > 0)
@@ -483,12 +482,8 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
         dt = DMIN(dt, dt_2body);
 #ifdef HERMITE_INTEGRATION
-#if SINGLE_STAR_TIMESTEPPING>0	
-	if(P[p].SuperTimestepFlag < 2) dt *= 2;
-#else       
-	dt *= 2; // gives 10^-6 energy error per orbit for a 0.9 eccentricity binary
+	if(eligible_for_hermite(p)) dt *= 2; // gives 10^-6 energy error per orbit for a 0.9 eccentricity binary
 #endif
-#endif	
     }
 
 #endif // SINGLE_STAR_TIMESTEPPING
@@ -974,7 +969,7 @@ integertime get_timestep(int p,		/*!< particle index */
             dt_accr = 0.05 * DMAX(BPP(p).BH_Mass , All.MaxMassForParticleSplit) / BPP(p).BH_Mdot;
 #endif // defined(BH_GRAVCAPTURE_GAS) || defined(BH_WIND_CONTINUOUS)	    
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-            dt_accr = 0.1 * DMAX(BPP(p).BH_Mass, 0.1*All.MinMassForParticleMerger) / BPP(p).BH_Mdot;
+            dt_accr = 0.1 * DMAX(BPP(p).BH_Mass, All.MinMassForParticleMerger) / BPP(p).BH_Mdot;
 #endif
         } // if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
 #ifdef BH_SEED_GROWTH_TESTS
@@ -993,6 +988,7 @@ integertime get_timestep(int p,		/*!< particle index */
 	    if(P[p].DensAroundStar > 0)
 	    {
 		    double eps = DMAX(KERNEL_CORE_SIZE*All.ForceSoftening[5], BPP(p).BH_dr_to_NearestGasNeighbor);
+		    eps = DMAX(Get_Particle_Size(p), eps);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
 		    eps = DMAX(eps, KERNEL_CORE_SIZE*P[p].AGS_Hsml);
 #endif		

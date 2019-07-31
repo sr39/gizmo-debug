@@ -95,6 +95,17 @@ void do_second_halfstep_kick(void)
 }
 
 #ifdef HERMITE_INTEGRATION
+int eligible_for_hermite(int i)
+{
+    if(!(HERMITE_INTEGRATION & (1<<P[i].Type))) return 0;
+#if defined(BLACK_HOLES) || defined(GALSF)    
+    if(P[i].StellarAge >= DMAX(All.Time - 2*(P[i].dt_step * All.Timebase_interval), 0)) return 0; // if we were literally born yesterday then let things settle down a bit with the less-accurate, but more-robust regular integration
+#endif
+#if (SINGLE_STAR_TIMESTEPPING > 0)
+    if(P[i].SuperTimestepFlag >= 2) return 0;
+#endif
+    return 1;
+}
 // Initial "prediction" step of Hermite integration, performed after the initial force evaluation 
 // Note: the below routines only account for gravitational acceleration - only appropriate for stars or collisionless particles
 void do_hermite_prediction(void)
@@ -103,14 +114,13 @@ void do_hermite_prediction(void)
     integertime ti_step, tstart=0, tend=0;
     for(i = 0; i < NumPart; i++)
     {
-	if(HERMITE_INTEGRATION & (1<<P[i].Type))
-#if defined(BLACK_HOLES) || defined(GALSF)	    
-        if(P[i].StellarAge < All.Time) // if we were literally born yesterday then we won't have the proper Old variables set
-#endif	    
+
+/* 	if(HERMITE_INTEGRATION & (1<<P[i].Type)) */
+/* #if defined(BLACK_HOLES) || defined(GALSF)	     */
+/*         if(P[i].StellarAge < All.Time) // if we were literally born yesterday then we won't have the proper Old variables set */
+/* #endif	     */	
+	if(eligible_for_hermite(i)) {
         if(TimeBinActive[P[i].TimeBin]) /* 'full' kick for active particles */
-#if (SINGLE_STAR_TIMESTEPPING > 0)
-        if(P[i].SuperTimestepFlag < 2)
-#endif	    
         {
 
             if(P[i].Mass > 0) 
@@ -124,7 +134,7 @@ void do_hermite_prediction(void)
 		    P[i].Vel[j] = P[i].OldVel[j] + dt_grav * (P[i].Hermite_OldAcc[j] + dt_grav/2 * P[i].OldJerk[j]);
 		}
             }
-        }
+        }}
     } // for(i = 0; i < NumPart; i++) //
 }
 
@@ -134,14 +144,8 @@ void do_hermite_correction(void)
     integertime ti_step, tstart=0, tend=0;
     for(i = 0; i < NumPart; i++)
     {
-	if(HERMITE_INTEGRATION & (1<<P[i].Type))	    
-#if defined(BLACK_HOLES) || defined(GALSF)	    
-        if(P[i].StellarAge < All.Time) // if we were literally born yesterday then we won't have the proper Old variables set
-#endif	    	    
+	if(eligible_for_hermite(i)){
         if(TimeBinActive[P[i].TimeBin]) /* 'full' kick for active particles */
-#if (SINGLE_STAR_TIMESTEPPING > 0)
-        if(P[i].SuperTimestepFlag < 2)
-#endif	    	    
         {
             if(P[i].Mass > 0) 
             {
@@ -154,7 +158,7 @@ void do_hermite_correction(void)
 		    P[i].Pos[j] = P[i].OldPos[j] + dt_grav * 0.5*(P[i].Vel[j] + P[i].OldVel[j]) + (P[i].Hermite_OldAcc[j] - P[i].GravAccel[j]) * dt_grav * dt_grav/12;
 		}
             }
-        }
+        }}
     } // for(i = 0; i < NumPart; i++) //
 }
 

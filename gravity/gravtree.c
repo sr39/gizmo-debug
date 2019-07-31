@@ -84,7 +84,10 @@ void gravity_tree(void)
     if(All.ComovingIntegrationOn)
         set_softenings();
     
-    /* construct tree if needed */    
+    /* construct tree if needed */
+#ifdef HERMITE_INTEGRATION
+    if(!HermiteOnlyFlag)
+#endif    
     if(TreeReconstructFlag)
     {
 #ifndef IO_REDUCED_MODE
@@ -495,12 +498,9 @@ void gravity_tree(void)
                 for(j = 0; j < Nexport; j++)
                 {
                     place = DataIndexTable[j].Index;
-#ifdef HERMITE_INTEGRATION
+#ifdef HERMITE_INTEGRATION		    
 		    if(HermiteOnlyFlag){
-			if(!((1<<P[place].Type) & HERMITE_INTEGRATION)) continue;
-#if (SINGLE_STAR_TIMESTEPPING>1)
-			if(P[place].SuperTimestepFlag >= 2) continue;
-#endif
+			if(!eligible_for_hermite(place)) continue;
 		    }
 #endif
                     for(k = 0; k < 3; k++) {P[place].GravAccel[k] += GravDataOut[j].Acc[k];}
@@ -620,10 +620,7 @@ void gravity_tree(void)
     {
 #ifdef HERMITE_INTEGRATION
 	if(HermiteOnlyFlag){
-	    if(!((1<<P[i].Type) & HERMITE_INTEGRATION)) continue;
-#if (SINGLE_STAR_TIMESTEPPING>1)
-	    if(P[i].SuperTimestepFlag >= 2) continue;
-#endif
+	    if(!eligible_for_hermite(i)) continue;
 	}
 #endif
 #ifdef PMGRID
@@ -658,11 +655,8 @@ void gravity_tree(void)
     {
 #ifdef HERMITE_INTEGRATION
 	if(HermiteOnlyFlag){
-	    if(!((1<<P[i].Type) & HERMITE_INTEGRATION)) continue;
-#if (SINGLE_STAR_TIMESTEPPING>1)
-	    if(P[i].SuperTimestepFlag >= 2) continue;
-#endif
-	}
+	    if(!eligible_for_hermite(i)) continue;
+	}	
 #endif	    	
 	    		
 #if (SINGLE_STAR_TIMESTEPPING > 0) // Subtract for component from companion if in binary
@@ -735,10 +729,7 @@ void gravity_tree(void)
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
 #ifdef HERMITE_INTEGRATION
 	if(HermiteOnlyFlag){
-	    if(!((1<<P[i].Type) & HERMITE_INTEGRATION)) continue;
-#if (SINGLE_STAR_TIMESTEPPING>1)
-	    if(P[i].SuperTimestepFlag >= 2) continue;
-#endif
+	    if(!eligible_for_hermite(i)) continue;
 	}
 #endif	    	
         if(P[i].Type == 0)
@@ -772,12 +763,9 @@ void gravity_tree(void)
         double fac = All.OmegaLambda * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits;
         
         for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]){
-#ifdef HERMITE_INTEGRATION
+#ifdef HERMITE_INTEGRATION	    
 	    if(HermiteOnlyFlag){
-		if(!((1<<P[i].Type) & HERMITE_INTEGRATION)) continue;
-#if (SINGLE_STAR_TIMESTEPPING>1)
-		if(P[i].SuperTimestepFlag >= 2) continue;
-#endif
+		if(!eligible_for_hermite(i)) continue;
 	    }
 #endif	    	
             for(j = 0; j < 3; j++)

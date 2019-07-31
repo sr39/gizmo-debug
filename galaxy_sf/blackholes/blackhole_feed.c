@@ -345,7 +345,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                         r=sqrt(r2); vrel=sqrt(vrel)/All.cf_atime;  /* do this once and use below */
                         vesc=bh_vesc(j,mass,r, ags_h_i);
 #if defined(BH_SWALLOW_SMALLTIMESTEPS)
-                        if(vrel<vesc) {if(P[j].dt_step*All.Timebase_interval/All.cf_hubble_a<dt_min_to_accrete) {if(P[j].SwallowID<id) {P[j].SwallowID = id;}}} /* Bound particles with very small timestep get eaten to avoid issues. */
+                        if(P[j].Type != 5) {if(vrel<vesc) {if(P[j].dt_step*All.Timebase_interval/All.cf_hubble_a<dt_min_to_accrete) {if(P[j].SwallowID<id) {P[j].SwallowID = id;}}}} /* Bound particles with very small timestep get eaten to avoid issues. */
 #endif
 
 #ifdef BH_REPOSITION_ON_POTMIN

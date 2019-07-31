@@ -54,6 +54,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest);
 void do_first_halfstep_kick(void);
 void do_second_halfstep_kick(void);
 #ifdef HERMITE_INTEGRATION
+int eligible_for_hermite(int i);
 void do_hermite_prediction(void);
 void do_hermite_correction(void);
 #endif

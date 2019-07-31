@@ -70,10 +70,6 @@ void run(void)
 	int TreeReconstructFlag_local = TreeReconstructFlag;
 #endif	 
 #ifdef HERMITE_INTEGRATION	
-#if defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_WIND_SPAWN)	
-        TreeReconstructFlag_local = TreeReconstructFlag;
-        MPI_Allreduce(&TreeReconstructFlag_local, &TreeReconstructFlag, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
-#endif	
 	HermiteOnlyFlag = 1;
 	compute_grav_accelerations();	/* compute gravitational accelerations for synchronous particles */
 	HermiteOnlyFlag = 0;
@@ -138,10 +134,6 @@ void run(void)
         calculate_non_standard_physics();	/* source terms are here treated in a strang-split fashion */
 
 #ifdef HERMITE_INTEGRATION
-#if defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_WIND_SPAWN)	
-        TreeReconstructFlag_local = TreeReconstructFlag;
-        MPI_Allreduce(&TreeReconstructFlag_local, &TreeReconstructFlag, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
-#endif		
 	// we do a prediction step using the saved "old" pos, accel and jerk from the beginning of the timestep. Then we recompute accel and jerk and do the correction
 	do_hermite_prediction();
 	HermiteOnlyFlag = 1;
