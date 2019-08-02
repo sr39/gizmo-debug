@@ -718,8 +718,8 @@ void output_log_messages(void)
   sumup_large_ints(TIMEBINS, TimeBinCount, tot_count);
   sumup_large_ints(TIMEBINS, TimeBinCountSph, tot_count_sph);
 
-#if defined(OUTPUT_ONLY_ON_N_HIGHEST_TIMEBIN)
-    if((ThisTask == 0) && (All.HighestActiveTimeBin>=(TIMEBINS-OUTPUT_ONLY_ON_N_HIGHEST_TIMEBIN)))
+#if defined(IO_SUPPRESS_TIMEBIN_STDOUT)
+    if((ThisTask == 0) && (All.HighestActiveTimeBin>=(TIMEBINS-IO_SUPPRESS_TIMEBIN_STDOUT)))
 #else
     if(ThisTask == 0)
 #endif
@@ -729,60 +729,41 @@ void output_log_messages(void)
             z = 1.0 / (All.Time) - 1;
 #ifndef IO_REDUCED_MODE
             fprintf(FdInfo, "\nSync-Point %lld, Time: %g, Redshift: %g, Nf = %d%09d, Systemstep: %g, Dloga: %g\n",
-                    (long long) All.NumCurrentTiStep, All.Time, z,
-                    (int) (GlobNumForceUpdate / 1000000000), (int) (GlobNumForceUpdate % 1000000000),
-                    All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
+                    (long long) All.NumCurrentTiStep, All.Time, z, (int) (GlobNumForceUpdate / 1000000000), (int) (GlobNumForceUpdate % 1000000000), All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
             fflush(FdInfo);
-            fprintf(FdTimebin, "\nSync-Point %lld, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n",
-                    (long long) All.NumCurrentTiStep, All.Time, z, All.TimeStep,
-                    log(All.Time) - log(All.Time - All.TimeStep));
+            fprintf(FdTimebin, "\nSync-Point %lld, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n", (long long) All.NumCurrentTiStep, All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
 #endif
-            printf("\nSync-Point %lld, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n", (long long) All.NumCurrentTiStep,
-                   All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
+            printf("\nSync-Point %lld, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n", (long long) All.NumCurrentTiStep, All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
         }
         else
         {
 #ifndef IO_REDUCED_MODE
             fprintf(FdInfo, "\nSync-Point %lld, Time: %g, Nf = %d%09d, Systemstep: %g\n", (long long) All.NumCurrentTiStep,
-                    All.Time, (int) (GlobNumForceUpdate / 1000000000), (int) (GlobNumForceUpdate % 1000000000),
-                    All.TimeStep);
+                    All.Time, (int) (GlobNumForceUpdate / 1000000000), (int) (GlobNumForceUpdate % 1000000000), All.TimeStep);
             fflush(FdInfo);
-            fprintf(FdTimebin, "\nSync-Point %lld, Time: %g, Systemstep: %g\n", (long long) All.NumCurrentTiStep, All.Time,
-                    All.TimeStep);
+            fprintf(FdTimebin, "\nSync-Point %lld, Time: %g, Systemstep: %g\n", (long long) All.NumCurrentTiStep, All.Time, All.TimeStep);
 #endif
             printf("\nSync-Point %lld, Time: %g, Systemstep: %g\n", (long long) All.NumCurrentTiStep, All.Time, All.TimeStep);
         }
 
-        for(i = 1, tot_cumulative[0] = tot_count[0]; i < TIMEBINS; i++)
-            tot_cumulative[i] = tot_count[i] + tot_cumulative[i - 1];
+        for(i = 1, tot_cumulative[0] = tot_count[0]; i < TIMEBINS; i++) {tot_cumulative[i] = tot_count[i] + tot_cumulative[i - 1];}
 
 
       for(i = 0; i < TIMEBINS; i++)
 	{
 	  for(j = 0, sum = 0; j < All.CPU_TimeBinCountMeasurements[i]; j++)
 	    sum += All.CPU_TimeBinMeasurements[i][j];
-	  if(All.CPU_TimeBinCountMeasurements[i])
-	    avg_CPU_TimeBin[i] = sum / All.CPU_TimeBinCountMeasurements[i];
-	  else
-	    avg_CPU_TimeBin[i] = 0;
+	  if(All.CPU_TimeBinCountMeasurements[i]) {avg_CPU_TimeBin[i] = sum / All.CPU_TimeBinCountMeasurements[i];} else {avg_CPU_TimeBin[i] = 0;}
 	}
 
       for(i = All.HighestOccupiedTimeBin, weight = 1, sum = 0; i >= 0 && tot_count[i] > 0; i--, weight *= 2)
 	{
-	  if(weight > 1)
-	    corr_weight = weight / 2;
-	  else
-	    corr_weight = weight;
-
+	  if(weight > 1) {corr_weight = weight / 2;} else {corr_weight = weight;}
 	  frac_CPU_TimeBin[i] = corr_weight * avg_CPU_TimeBin[i];
 	  sum += frac_CPU_TimeBin[i];
 	}
 
-      for(i = All.HighestOccupiedTimeBin; i >= 0 && tot_count[i] > 0; i--)
-	{
-	  if(sum)
-	    frac_CPU_TimeBin[i] /= sum;
-	}
+      for(i = All.HighestOccupiedTimeBin; i >= 0 && tot_count[i] > 0; i--) {if(sum) {frac_CPU_TimeBin[i] /= sum;}}
 
 
         printf("Occupied timebins: non-cells     cells       dt                 cumulative A D    avg-time  cpu-frac\n");
@@ -853,8 +834,7 @@ void write_cpu_log(void)
 
   CPU_Step[CPU_MISC] += measure_time();
 
-  for(i = 1, CPU_Step[0] = 0; i < CPU_PARTS; i++)
-    CPU_Step[0] += CPU_Step[i];
+  for(i = 1, CPU_Step[0] = 0; i < CPU_PARTS; i++) {CPU_Step[0] += CPU_Step[i];}
 
   MPI_Reduce(CPU_Step, max_CPU_Step, CPU_PARTS, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
   MPI_Reduce(CPU_Step, avg_CPU_Step, CPU_PARTS, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -862,8 +842,7 @@ void write_cpu_log(void)
 
   if(ThisTask == 0)
     {
-      for(i = 0; i < CPU_PARTS; i++)
-	avg_CPU_Step[i] /= NTask;
+      for(i = 0; i < CPU_PARTS; i++) {avg_CPU_Step[i] /= NTask;}
 
       put_symbol(0.0, 1.0, '#');
 
