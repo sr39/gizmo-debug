@@ -179,13 +179,14 @@ double bh_angleweight_localcoupling(int j, double hR, double theta, double r, do
     double hinv=1./H_bh,hinv_j=1./H_j,hinv3_j=hinv_j*hinv_j*hinv_j,wk_j=0,u=r/H_bh; /* note these lines and many below assume 3D sims! */
     double dwk_j=0,u_j=r*hinv_j,hinv4_j=hinv_j*hinv3_j,V_j=P[j].Mass/SphP[j].Density;
     double hinv3=hinv*hinv*hinv,hinv4=hinv*hinv3,wk=0,dwk=0;
-    kernel_main(u,hinv3,hinv4,&wk,&dwk,1);
-    kernel_main(u_j,hinv3_j,hinv4_j,&wk_j,&dwk_j,1);
+    kernel_main(u,hinv3,hinv4,&wk,&dwk,0);
+    kernel_main(u_j,hinv3_j,hinv4_j,&wk_j,&dwk_j,0);
     double V_i = 4.*M_PI/3. * H_bh*H_bh*H_bh / (All.DesNumNgb * All.BlackHoleNgbFactor); // this is approximate, will be wrong (but ok b/c just increases weight to neighbors) when not enough neighbors found //
     if(V_i<0 || isnan(V_i)) {V_i=0;}
     if(V_j<0 || isnan(V_j)) {V_j=0;}
     double sph_area = fabs(V_i*V_i*dwk + V_j*V_j*dwk_j); // effective face area //
     wk = 0.5 * (1. - 1./sqrt(1. + sph_area / (M_PI*r*r))); // corresponding geometric weight //
+    wk = 0.5 * (V_j/V_i) * (V_i*wk + V_j*wk_j); // weight in the limit N_particles >> 1 for equal-mass particles (accounts for self-shielding if some in dense disk)
     if((wk <= 0)||(isnan(wk))) return 0; // no point in going further, there's no physical weight here
     return wk;
 
@@ -622,7 +623,7 @@ void set_blackhole_new_mass(int i, int n, double dt)
 #endif // #else BH_ALPHADISK_ACCRETION
 #ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK //store Mgas_in_Kernel and Jgas_in_Kernel
     BPP(n).Mgas_in_Kernel=BlackholeTempInfo[i].Mgas_in_Kernel;
-    int j; for(j=0;j<3;j++){BPP(n).Jgas_in_Kernel[j]=BlackholeTempInfo[i].Jgas_in_Kernel[j];}
+    {int jk; for(jk=0;jk<3;jk++) {BPP(n).Jgas_in_Kernel[jk]=BlackholeTempInfo[i].Jgas_in_Kernel[jk];}}
 #endif
 
 }
@@ -804,13 +805,13 @@ void blackhole_final_operations(void)
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM) && !defined(BH_REPOSITION_ON_POTMIN)
             for(k=0;k<3;k++) {P[n].Vel[k] = (P[n].Vel[k]*m_new+ BlackholeTempInfo[i].accreted_momentum[k]) / m_new;} 
 #ifdef HERMITE_INTEGRATION
-	    for(k=0;k<3;k++) {P[n].OldVel[k] = (P[n].OldVel[k]*m_new + BlackholeTempInfo[i].accreted_momentum[k]) / m_new;}
+            for(k=0;k<3;k++) {P[n].OldVel[k] = (P[n].OldVel[k]*m_new + BlackholeTempInfo[i].accreted_momentum[k]) / m_new;}
 #endif	    
 #endif
 #if defined(BH_FOLLOW_ACCRETED_COM) && !defined(BH_REPOSITION_ON_POTMIN)
             for(k=0;k<3;k++) {P[n].Pos[k] = (P[n].Pos[k]*m_new + BlackholeTempInfo[i].accreted_centerofmass[k]) / m_new;}
 #ifdef HERMITE_INTEGRATION
-	    for(k=0;k<3;k++) {P[n].OldPos[k] = (P[n].OldPos[k]*m_new + BlackholeTempInfo[i].accreted_centerofmass[k]) / m_new;}
+            for(k=0;k<3;k++) {P[n].OldPos[k] = (P[n].OldPos[k]*m_new + BlackholeTempInfo[i].accreted_centerofmass[k]) / m_new;}
 #endif	    	    
 #endif
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
