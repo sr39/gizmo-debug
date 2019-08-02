@@ -312,7 +312,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define SINGLE_STAR_ACCRETION 12
 #define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
 #define DEVELOPER_MODE
-#define OUTPUT_ONLY_ON_N_HIGHEST_TIMEBIN 10 //only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
+#define IO_SUPPRESS_TIMEBIN_STDOUT 10 //only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #ifdef MAGNETIC
 #define MHD_CONSTRAINED_GRADIENT 1
 #endif
