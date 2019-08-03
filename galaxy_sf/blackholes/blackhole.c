@@ -103,8 +103,8 @@ double bh_vesc(int j, double mass, double r_code, double bh_softening)
     double m_eff = mass+P[j].Mass;
     if(P[j].Type==0)
     {
-#ifdef BH_SEED_GROWTH_TESTS
-        m_eff += 3. * 4.*M_PI/3. * r_code*r_code*r_code * SphP[j].Density;
+#if defined(BH_SEED_GROWTH_TESTS) || (defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS))
+        m_eff += 4.*M_PI * r_code*r_code*r_code * SphP[j].Density; // assume an isothermal sphere interior, for Shu-type solution
 #endif
     }
 #ifdef SINGLE_STAR_SINK_DYNAMICS
@@ -139,7 +139,7 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 {
     /* if pair is a gas particle make sure to account for its thermal pressure */
     double cs = 0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}
-#if defined(SINGLE_STAR_SINK_DYNAMICS) 
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
     cs = 0;
 #endif
     double v2 = (vrel*vrel+cs*cs)/(vesc*vesc); int bound = 0;
@@ -148,9 +148,8 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
         double apocenter = dr_code / (1.0-v2); // NOTE: this is the major axis of the orbit, not the apocenter... - MYG
         double apocenter_max = 2*All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS // Bate 1995-style criterion, with a fixed sink/accretion radius that is distinct from both the force softening and the search radius
-	double eps = DMAX(Get_Particle_Size(j),sink_radius); // in the unresolved limit there's no need to force it to actually get within r_sink
-	if(dr_code>eps) {return 0;}
-        else {return 1;} 
+        double eps = DMAX(Get_Particle_Size(j),sink_radius); // in the unresolved limit there's no need to force it to actually get within r_sink
+        if(dr_code>eps) {return 0;} else {return 1;}
 #endif
 #if !defined(SINGLE_STAR_SINK_DYNAMICS) && (defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS))
         if(P[j].Type==5) {apocenter_max += MAX_REAL_NUMBER;} // default is to be unrestrictive for BH-BH mergers //
