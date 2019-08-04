@@ -71,7 +71,11 @@ void blackhole_feed_loop(void)
                 BlackholeDataIn[j].Pos[k] = P[place].Pos[k];
                 BlackholeDataIn[j].Vel[k] = P[place].Vel[k];
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#if defined(BH_FOLLOW_ACCRETED_ANGMOM)
+                BlackholeDataIn[j].Jgas_in_Kernel[k] = P[place].BH_Specific_AngMom[k];
+#else
                 BlackholeDataIn[j].Jgas_in_Kernel[k] = BlackholeTempInfo[P[place].IndexMapToTempStruc].Jgas_in_Kernel[k];
+#endif
 #endif
             }
 #if defined(BH_GRAVCAPTURE_GAS)
@@ -229,7 +233,11 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         velocity = P[target].Vel;
         id = P[target].ID;
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+#if defined(BH_FOLLOW_ACCRETED_ANGMOM)
+        Jgas_in_Kernel = P[target].BH_Specific_AngMom;
+#else
         Jgas_in_Kernel = BlackholeTempInfo[P[target].IndexMapToTempStruc].Jgas_in_Kernel;
+#endif
         BH_disk_hr = P[target].BH_disk_hr;
 #endif
 #ifdef BH_ACCRETE_NEARESTFIRST

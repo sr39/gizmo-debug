@@ -166,8 +166,7 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 
 
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-/* weight function for local (short-range) coupling terms from the black hole, including the single-scattering 
-    radiation pressure and the bal winds */
+/* weight function for local (short-range) coupling terms from the black hole, including the single-scattering radiation pressure and the bal winds */
 double bh_angleweight_localcoupling(int j, double hR, double theta, double r, double H_bh)
 {
     // this follows what we do with SNe, and applies a normalized weight based on the fraction of the solid angle subtended by the particle //
@@ -186,6 +185,10 @@ double bh_angleweight_localcoupling(int j, double hR, double theta, double r, do
     double sph_area = fabs(V_i*V_i*dwk + V_j*V_j*dwk_j); // effective face area //
     wk = 0.5 * (1. - 1./sqrt(1. + sph_area / (M_PI*r*r))); // corresponding geometric weight //
     wk = 0.5 * (V_j/V_i) * (V_i*wk + V_j*wk_j); // weight in the limit N_particles >> 1 for equal-mass particles (accounts for self-shielding if some in dense disk)
+#if defined(BH_FB_COLLIMATED)
+    double costheta2=cos(theta); costheta2=costheta2*costheta2;
+    wk *= (1e-4 + costheta2) / (1e-4 + (1-costheta2));
+#endif
     if((wk <= 0)||(isnan(wk))) return 0; // no point in going further, there's no physical weight here
     return wk;
 
@@ -203,46 +206,33 @@ double bh_angleweight_localcoupling(int j, double hR, double theta, double r, do
 }
 
 
-#if defined(BH_PHOTONMOMENTUM)
-/* function below is used for long-range black hole radiation fields -- used only in the forcetree routines (where they 
+/* function below is used for long-range black hole radiation fields -- used only in the forcetree routines (where they
     rely this for things like the long-range radiation pressure and compton heating) */
 double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz)
 {
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     return bh_lum_input;
-#else
-    double bh_lum = bh_lum_input;
-    if(bh_lum <= 0) return 0;
-    if(isnan(hR)) return 0;
-    if(hR <= 0) return 0;
-    double r2 = dx*dx+dy*dy+dz*dz;
-    if(r2 <= 0) return 0;
-    if(r2*All.UnitLength_in_cm*All.UnitLength_in_cm*All.cf_atime*All.cf_atime < 9.523e36) return 0; /* no force at < 1pc */
-    
-    return bh_lum_input;
-#if 0
-    double cos_theta = (dx*bh_angle[0] + dy*bh_angle[1] + dz*bh_angle[2])/sqrt(r2);
-    if(cos_theta<0) cos_theta *= -1;
-    if(isnan(cos_theta)) return 0;
-    if(cos_theta <= 0) return 0;
-    if(cos_theta >= 1) return 1.441 * bh_lum;
-    
-    double hRe=hR; if(hRe<0.1) hRe=0.1; if(hRe>0.5) hRe=0.5;
-    double y;
-    y = -1.0 / (0.357-10.839*hRe+142.640*hRe*hRe-713.928*hRe*hRe*hRe+1315.132*hRe*hRe*hRe*hRe);
-    y = 1.441 + (-6.42+9.92*hRe) * (exp(cos_theta*cos_theta*y)-exp(y)) / (1-exp(y));  // approximation to nathans fits
-    //double A=5.57*exp(-hRe/0.52);double B=19.0*exp(-hRe/0.21);double C0=20.5+20.2/(1+exp((hRe-0.25)/0.035));
-    //y = 1.441 + A*((1+C0*exp(-B*1.5708))/(1+C0*exp(-B*(1.5708-acos(cos_theta))))-1);
-    // this is nathan's fitting function (fairly expensive with large number of exp calls and arc_cos
-    //y=0.746559 - 9.10916*(-0.658128+exp(-0.418356*cos_theta*cos_theta));
-    // this is normalized so the total flux is L/(4pi*r*r) and assumed monochromatic IR
-    if(y>1.441) y=1.441; if(y<-5.0) y=-5.0;
-    y*=2.3026; // so we can take exp, instead of pow //
-    return exp(y) * bh_lum;
 #endif
+    if(bh_lum <= 0 || isnan(hR) || hR <= 0) return 0;
+    double r2 = dx*dx+dy*dy+dz*dz; if(r2 <= 0) return 0;
+    if(r2*All.UnitLength_in_cm*All.UnitLength_in_cm*All.cf_atime*All.cf_atime < 9.523e36) return 0; /* no force at < 1pc */
+#if defined(BH_FB_COLLIMATED)
+    double cos_theta = fabs((dx*bh_angle[0] + dy*bh_angle[1] + dz*bh_angle[2])/sqrt(r2)); if(!isfinite(cos_theta)) {cos_theta=1;}
+    return bh_lum_input * 0.0847655*exp(-4.5*cos_theta*cos_theta); // ~exp(-x^2/2*hR^2), normalized appropriately to give the correct total flux, for hR~0.3
+#endif
+    return bh_lum_input;
+
+#if 0
+    double hRe=hR, y; if(hRe<0.1) hRe=0.1; if(hRe>0.5) hRe=0.5;
+    y = -1.0 / (0.357-10.839*hRe+142.640*hRe*hRe-713.928*hRe*hRe*hRe+1315.132*hRe*hRe*hRe*hRe); y = 1.441 + (-6.42+9.92*hRe) * (exp(cos_theta*cos_theta*y)-exp(y)) / (1-exp(y));  // approximation to nathans fits
+    //double A=5.57*exp(-hRe/0.52);double B=19.0*exp(-hRe/0.21);double C0=20.5+20.2/(1+exp((hRe-0.25)/0.035));
+    //y = 1.441 + A*((1+C0*exp(-B*1.5708))/(1+C0*exp(-B*(1.5708-acos(cos_theta))))-1); // this is nathan's fitting function (fairly expensive with large number of exp calls and arc_cos
+    //y=0.746559 - 9.10916*(-0.658128+exp(-0.418356*cos_theta*cos_theta)); // this is normalized so the total flux is L/(4pi*r*r) and assumed monochromatic IR
+    if(y>1.441) y=1.441; if(y<-5.0) y=-5.0; y*=2.3026; // so we can take exp, instead of pow //
+    return exp(y) * bh_lum_input;
 #endif
 }
-#endif
+
 #endif /* end of #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) */
 
 
@@ -716,23 +706,25 @@ void set_blackhole_drag(int i, int n, double dt)
 
 
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-void set_blackhole_long_range_rp(int i, int n)
+void set_blackhole_long_range_rp(int i, int n) /* pre-set quantities needed for long-range radiation pressure terms */
 {
-    /* pre-set quantities needed for long-range radiation pressure terms */
-    int k; double fac; P[n].BH_disk_hr=1/3; P[n].GradRho[0]=P[n].GradRho[1]=0; P[n].GradRho[2]=1;
+    int k; double fac; P[n].BH_disk_hr=1/3;
     if(BlackholeTempInfo[i].Mgas_in_Kernel > 0)
     {   /* estimate h/R surrounding the BH from the gas density gradients */
         fac=0; for(k=0;k<3;k++) {fac += BlackholeTempInfo[i].GradRho_in_Kernel[k]*BlackholeTempInfo[i].GradRho_in_Kernel[k];}
         P[n].BH_disk_hr = P[n].DensAroundStar / (PPP[n].Hsml * sqrt(fac)) * 1.3; /* 1.3 factor from integrating exponential disk with h/R=const over gaussian kernel, for width=1/3 (quintic kernel); everything here is in code units, comes out dimensionless */
-        
-        /* use the gradrho vector as a surrogate to hold the orientation of the angular momentum 
-          (this is done because the long-range radiation routines for the BH require the angular momentum vector for non-isotropic emission) */
+    }
+#if !defined(BH_FOLLOW_ACCRETED_ANGMOM)
+    /* use the gradrho vector as a surrogate to hold the orientation of the angular momentum if we aren't evolving it explicitly
+     (this is done because the long-range radiation routines for the BH require the angular momentum vector for non-isotropic emission) */
+    P[n].GradRho[0]=P[n].GradRho[1]=0; P[n].GradRho[2]=1;
+    if(BlackholeTempInfo[i].Mgas_in_Kernel > 0) {
         fac=0; for(k=0;k<3;k++) {fac += BlackholeTempInfo[i].Jgas_in_Kernel[k]*BlackholeTempInfo[i].Jgas_in_Kernel[k];}
-        fac=sqrt(fac); if(fac>0) {for(k=0;k<3;k++) {P[n].GradRho[k] = BlackholeTempInfo[i].Jgas_in_Kernel[k]/fac;}}
+        fac=sqrt(fac); if(fac>0) {for(k=0;k<3;k++) {P[n].GradRho[k] = BlackholeTempInfo[i].Jgas_in_Kernel[k]/fac;}}}
         /* now, the P[n].GradRho[k] field for the BH holds the orientation of the UNIT angular momentum vector
          NOTE it is important that HARD-WIRED into the code, this blackhole calculation comes after the density calculation
          but before the forcetree update and walk; otherwise, this won't be used correctly there */
-    }
+#endif
 }
 #endif // if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
 

@@ -1559,6 +1559,7 @@ These models also involve their own parameterfile settings, in addition to those
 ## ----------------------------------------------------------------------------------------------------
 # ----- feedback models/options
 ## ----------------------------------------------------------------------------------------------------
+#BH_FB_COLLIMATED               # BH feedback is narrowly collimated along the axis defined by the angular momentum accreted thus far in the simulation
 # -- thermal (pure thermal energy injection around BH particle, proportional to BH accretion rate)
 #BH_THERMALFEEDBACK             # constant fraction of luminosity coupled in kernel around BH. cite Springel, Di Matteo, and Hernquist, 2005, MNRAS, 361, 776
 #--- mechanical (wind from accretion disk/BH with specified mass/momentum/energy-loading relative to accretion rate)
@@ -1574,6 +1575,7 @@ These models also involve their own parameterfile settings, in addition to those
 ####################################################################################################
 ```
 
+**BH\_FB\_COLLIMATED**: BH feedback is narrowly collimated along the axis defined by the angular momentum accreted thus far in the simulation. This requires `BH_FOLLOW_ACCRETED_ANGMOM`, which it uses to define a preferred axis, and feedback is narrowly collimated along those axis. We say 'narrowly' because resolution and physical expansion of the jets/radiation/cosmic rays will quickly dominate the injection along a ray, as it is done in-code. This modifies all AGN feedback mechanisms, including mechanical, jets and radiation. 
 
 **BH\_THERMALFEEDBACK**: Enables the GADGET/AREPO AGN feedback model, where a fixed fraction of the BH luminosity (set in the parameterfile as `BlackHoleFeedbackFactor`) is coupled to the surrounding gas as purely thermal energy, distributed among the gas particles within the kernel of the BH (the same ones that determine the BH accretion rate) in a kernel-weighted fashion. Users should cite Springel, Di Matteo, and Hernquist, 2005, MNRAS, 361, 776.
 
