@@ -892,7 +892,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #ifdef SINGLE_STAR_FB_JETS
         double R_star_solar_launch = 10; // without a better guess, assume fiducial protostellar radius of 10*Rsun, as in Federrath 2014
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
-        R_star_solar_launch = P[i].ProtoStellar_Radius;
+        R_star_solar_launch = P[i].ProtoStellarRadius_inSolar;
 #endif
         v_magnitude = sqrt(All.G * P[i].BH_Mass / (R_star_solar_launch * 6.957e10 / All.UnitLength_in_cm)) * All.cf_atime; // Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
 #endif

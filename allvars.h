@@ -322,13 +322,6 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 #endif // SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE
 
-#ifdef HERMITE_INTEGRATION
-#define COMPUTE_JERK_IN_GRAVTREE
-#endif
-#ifdef COMPUTE_JERK_IN_GRAVTREE
-#define COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-#endif
-
 #ifdef SINGLE_STAR_SINK_DYNAMICS
 #define GALSF // master switch needed to enable various frameworks
 #define METALS  // metals should be active for stellar return
@@ -400,12 +393,20 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif // SINGLE_STAR_SINK_DYNAMICS
 
 
+
 #ifdef GRAVITY_ACCURATE_FEWBODY_INTEGRATION /* utility flag to enable a few different extra-conservative time-integration flags for gravity */
 #define GRAVITY_HYBRID_OPENING_CRIT // use both Barnes-Hut + relative tree opening criterion
 #define STOP_WHEN_BELOW_MINTIMESTEP // stop when below min timestep to prevent bad timestepping
 #define TIDAL_TIMESTEP_CRITERION // use tidal tensor timestep criterion
 #define LONG_INTEGER_TIME // timestep hierarchy can be very deep in these problems; want to be able to follow brief close encounters
 #endif
+#ifdef HERMITE_INTEGRATION
+#define COMPUTE_JERK_IN_GRAVTREE /* needs to be computed in order to do the Hermite integration */
+#ifndef TIDAL_TIMESTEP_CRITERION
+#define TIDAL_TIMESTEP_CRITERION // use tidal tensor timestep criterion -- otherwise won't effectively leverage the Hermite integrator timesteps
+#endif
+#endif
+
 
 #if (SINGLE_STAR_TIMESTEPPING > 0) /* if single-star timestepping is on, need to make sure the binary-identification flag is active */
 #ifndef SINGLE_STAR_FIND_BINARIES
@@ -2163,7 +2164,7 @@ extern ALIGN(32) struct particle_data
     MyFloat PM_Potential;
 #endif
 #endif
-#if defined(GALSF_SFR_TIDAL_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION) || defined(GDE_DISTORTIONTENSOR)
+#if defined(GALSF_SFR_TIDAL_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION) || defined(GDE_DISTORTIONTENSOR) || defined(COMPUTE_JERK_IN_GRAVTREE)
 #define COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     double tidal_tensorps[3][3];                        /*!< tidal tensor (=second derivatives of grav. potential) */
 #endif
@@ -2333,7 +2334,7 @@ extern ALIGN(32) struct particle_data
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION    
     MyFloat ProtoStellarAge; /*!< record the proto-stellar age instead of age */
     //MyFloat PreMainSeq_Tracker; /*!< track evolution from protostar to ZAMS star */
-    MyFloat ProtoStellar_Radius; /*!< protostellar radius (also tracks evolution from protostar to ZAMS star) */
+    MyFloat ProtoStellarRadius_inSolar; /*!< protostellar radius (also tracks evolution from protostar to ZAMS star) */
 #endif
     
 #ifdef DM_SIDM

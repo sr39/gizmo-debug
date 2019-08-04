@@ -22,51 +22,55 @@
     + [Restarting a Run](#tutorial-restart) 
 7. [Config.sh (Setting compile-time options)](#config)
     + [Overview](#config-overview)
-    + [Boundary Conditions & Dimensions] (#config-boundaries)
-    + [Hydro Solver Method] (#config-hydro)
-    + [Additional Fluid Physics] (#config-fluids)
-        + [Equations-of-State] (#config-fluids-eos)
-        + [Magnetic Fields] (#config-fluids-mhd)
-        + [Conduction & Viscosity] (#config-fluids-navierstokes)
-        + [Radiative Cooling] (#config-fluids-cooling)
-        + [Passive Scalars, Metals, & Sub-Grid Turbulent Mixing] (#config-fluids-metalsturb)
-        + [Dust-Gas (Particulate) Mixtures] (#config-fluids-dust)
-        + [Cosmic Rays] (#config-fluids-cosmicrays)
-    + [Turbulent 'Stirring' (Large Eddy Simulations)] (#config-turb)
-    + [Gravity & Cosmological Integrations] (#config-gravity)
-        + [Numerical Solvers & Optimization] (#config-gravity-numerics)
-        + [Adaptive Force Softenings] (#config-gravity-adaptive)
-        + [External Fields and/or Disabling Gravity] (#config-gravity-external)
-        + [Non-Standard Dark Matter, Dark Energy, Gravity, or Expansion] (#config-gravity-nonstandardDM)
-        + [On-the-Fly Analysis] (#config-gravity-analysis)
-        + [Artificial Pressure Floors] (#config-gravity-pressure)
-    + [On-the-Fly Group (Halo, Galaxy, Cluster, etc) Finding] (#config-fof)
-    + [Galaxy & Galactic Star Formation Options] (#config-galsf)
-        + [Star Formation Criteria/Particle Spawning] (#config-galsf-sflaw)
-        + [Sub-Grid Feedback Models] (#config-galsf-fb)
-        + [Explicit (Resolved) Feedback Models] (#config-galsf-explicitfb)
-        + [FIRE Feedback Models] (#config-galsf-fire)
-    + [Single-Star Formation (IMF, Individual Stars, and Sink-Particles)] (#config-sf)
-    + [SuperMassive Black Hole Options] (#config-bh)
-        + [Seeding and BH-Creation] (#config-bh-seed)
-        + [BH Dynamics (Dynamical Friction, Drag)] (#config-bh-dynamics)
-        + [BH Accretion Models] (#config-bh-accretion)
-        + [BH Feedback Models] (#config-bh-feedback)
-    + [Radiation Hydrodynamics] (#config-rhd)
-        + [Radiation Transport Methods] (#config-rhd-methods)
-        + [Numerical Solvers & Optimization] (#config-rhd-numerical)
-        + [Frequencies/Wavebands Evolved] (#config-rhd-freqs)
-        + [Additional Options] (#config-rhd-special)
-    + [Multi-Threading (Parallelization) Options] (#config-openmp)
-    + [Input/Output Options] (#config-io)
-    + [De-Bugging and Special Code Behaviors] (#config-debug)
-        + [General De-Bugging and Special Behaviors] (#config-debug-general)
-        + [Hydrodynamics] (#config-debug-hydro)
-        + [Additional Fluid Physics and Gravity] (#config-debug-fluids)
-        + [Particle IDs] (#config-debug-ids)
-        + [Particle Merging/Splitting/Deletion/Boundaries] (#config-debug-mergedelete)
-        + [MPI & Parallel-FFTW De-Bugging] (#config-debug-mpi)
-        + [Load-Balancing] (#config-debug-loadbalance)
+    + [Boundary Conditions & Dimensions](#config-boundaries)
+    + [Hydro Solver Method](#config-hydro)
+    + [Additional Fluid Physics](#config-fluids)
+        + [Equations-of-State](#config-fluids-eos)
+        + [Magnetic Fields](#config-fluids-mhd)
+        + [Conduction & Viscosity](#config-fluids-navierstokes)
+        + [Radiative Cooling](#config-fluids-cooling)
+        + [Passive Scalars, Metals, & Sub-Grid Turbulent Mixing](#config-fluids-metalsturb)
+        + [Dust-Gas (Particulate) Mixtures](#config-fluids-dust)
+        + [Cosmic Rays](#config-fluids-cosmicrays)
+    + [Turbulent 'Stirring' (Large Eddy Simulations)](#config-turb)
+    + [Gravity & Cosmological Integrations](#config-gravity)
+        + [Numerical Solvers & Optimization](#config-gravity-numerics)
+        + [Adaptive Force Softenings](#config-gravity-adaptive)
+        + [External Fields and/or Disabling Gravity](#config-gravity-external)
+        + [Non-Standard Dark Matter, Dark Energy, Gravity, or Expansion](#config-gravity-nonstandardDM)
+        + [On-the-Fly Analysis](#config-gravity-analysis)
+        + [Artificial Pressure Floors](#config-gravity-pressure)
+    + [On-the-Fly Group (Halo, Galaxy, Cluster, etc) Finding](#config-fof)
+    + [Galaxy & Galactic Star Formation Options](#config-galsf)
+        + [Star Formation Criteria/Particle Spawning](#config-galsf-sflaw)
+        + [Sub-Grid Feedback Models](#config-galsf-fb)
+        + [Explicit (Resolved) Feedback Models](#config-galsf-explicitfb)
+        + [FIRE Feedback Models](#config-galsf-fire)
+    + [Sink-Particle Dynamics (IMF, Star formation, Planets, Compact Objects)](#config-sf)
+        + [N-Body Dynamics, Integration, Regularization](#config-sf-integration)
+        + [Sink Creation and Accretion](#config-sf-seedacc)
+        + [Star and Planet Formation Physics](#config-sf-sfphysics)
+        + [Optional and De-Bugging Modules](#config-sf-debug)
+    + [SuperMassive Black Hole Options](#config-bh)
+        + [Seeding and BH-Creation](#config-bh-seed)
+        + [BH Dynamics (Dynamical Friction, Drag)](#config-bh-dynamics)
+        + [BH Accretion Models](#config-bh-accretion)
+        + [BH Feedback Models](#config-bh-feedback)
+    + [Radiation Hydrodynamics](#config-rhd)
+        + [Radiation Transport Methods](#config-rhd-methods)
+        + [Numerical Solvers & Optimization](#config-rhd-numerical)
+        + [Frequencies/Wavebands Evolved](#config-rhd-freqs)
+        + [Additional Options](#config-rhd-special)
+    + [Multi-Threading (Parallelization) Options](#config-openmp)
+    + [Input/Output Options](#config-io)
+    + [De-Bugging and Special Code Behaviors](#config-debug)
+        + [General De-Bugging and Special Behaviors](#config-debug-general)
+        + [Hydrodynamics](#config-debug-hydro)
+        + [Additional Fluid Physics and Gravity](#config-debug-fluids)
+        + [Particle IDs](#config-debug-ids)
+        + [Particle Merging/Splitting/Deletion/Boundaries](#config-debug-mergedelete)
+        + [MPI & Parallel-FFTW De-Bugging](#config-debug-mpi)
+        + [Load-Balancing](#config-debug-loadbalance)
 8. [The Parameterfile (Setting run-time parameters)](#params)
     + [Generic (Always-Required) Parameters](#params-generic)
         + [Filenames, Directories, & Formats](#params-generic-files)
@@ -563,13 +567,13 @@ If you are using the development code, follow the how-to guides from Bitbucket t
 
 The code requires a few common libraries to run. On most clusters, these are considered standard and can be loaded through some sort of module system. Consult your local sysadmin or the user guide for your machine for details. For many of the computers at national centers (or if you're at any of the schools where many of our other users are located), the Makefile within the source code will already have notes specifically telling you how to load the modules for that machine. For example, on the XSEDE "Stampede" machine, you just need to include the line "module load intel mvapich2 gsl hdf5 fftw2" in your `.bashrc` or `.bash_profile` file (or enter it into the command line before compiling), then link to the libraries in the Makefile as is currently done (open the Makefile and search "Stampede" to see these instructions -- there are similar instructions for all other pre-programmed machines within the Makefile, so take a look).
 
-The necessary libraries are: MPI, GSL, FFTW2, and HDF5: 
+The necessary libraries are: MPI, GSL, FFTW (version 2 or 3), and HDF5: 
 
 + **MPI** - the ‘Message Passing Interface’ (version 1.0 or higher). Many vendor supplied versions exist, in addition to excellent open source implementations, e.g. MPICH ([`http://www-unix.mcs.anl.gov/mpi/mpich`](http://www-unix.mcs.anl.gov/mpi/mpich)), or OpenMPI ([`https://www.open-mpi.org`](https://www.open-mpi.org)).  
 
 + **GSL** - the GNU scientific library. This open-source package can be obtained at [`http://www.gnu.org/software/gsl`](http://www.gnu.org/software/gsl), for example. This is used for numerical integration for pre-computing various tables.  
 
-+ **FFTW2** - the ‘Fastest Fourier Transform in the West’. This open-source package can be obtained at [`http://www.fftw.org`](http://www.fftw.org). Note that the MPI-capable version 2.x of FFTW is required: version 3.x changes many of the calling and naming conventions (if someone wishes to upgrade the code for FFTW3, it would be welcome). FFTW is only needed for simulations that use the TreePM algorithm. FFTW needs to be compiled with parallel support enabled. This can be achieved by passing the option - -enable-mpi to its configure script. You also need to match the appropriate prefix (single or double precision or "noprefix", to the compiled version of FFTW): flags for the appropriate prefix are in the Config.sh file, or can be directly included in the Makefile.  
++ **FFTW** - the ‘Fastest Fourier Transform in the West’. This open-source package can be obtained at [`http://www.fftw.org`](http://www.fftw.org). Note that the MPI-capable version FFTW is required, however **either** of version 2.x or 3.x now work with GIZMO. The default code compilation will assume version 2.x (i.e. FFTW2). Version 3.x changes many of the calling and naming conventions, so if you are using version 3, you must set the compile-time flag `USE_FFTW3` so that the syntax of the code is appropriately modified (otherwise it will crash or fail to compile). Thanks to Takashi Okamoto for coding the FFTW3 compatibility. FFTW is only needed for simulations that use the TreePM algorithm. FFTW needs to be compiled with parallel support enabled. This can be achieved by passing the option - -enable-mpi to its configure script. You also need to match the appropriate prefix (single or double precision or "noprefix", to the compiled version of FFTW): flags for the appropriate prefix are in the Config.sh file, or can be directly included in the Makefile.  
 
 + **HDF5** - the ‘Hierarchical Data Format’ (available at [`http://portal.hdfgroup.org/display/support`](http://portal.hdfgroup.org/display/support)). This optional library is only needed when one wants to read or write snapshot files in HDF format, although this is strongly recommended (and the default code behavior). It is possible to compile and use the code without this library. Note that, like FFTW2, at some point the versions of HDF5 altered the syntax for calling certain functions. If you use HDF5 after version 1.6 or so, you may need to include the flag `-DH5_USE_16_API` in the line following `HDF5INCL` in the GIZMO Makefile, to enable backwards-compatibility (note that it is perfectly compatible with hdf5 1.8 and 1.10, with the appropriate flags). See the Makefile for details.  
 
@@ -833,7 +837,7 @@ These options set different fluid physics. This includes changing the equation o
 
 **MHD\_B\_SET\_IN\_PARAMS**: Set the initial magnetic fields to a constant value in the parameterfile (specifying Bx/By/Bz, in Gauss). If this is enabled the code will search for this in the parameterfile (unless you are restarting from a restart or snapshot file with flags 1 or 2), otherwise, it will assume the fields are given in the initial conditions file (with a Bx/y/z value for every particle). 
 
-**MHD\_NON\_IDEAL**: Enables non-ideal MHD terms, specifically Ohmic resistivity, ambipolar diffusion, and the Hall effect. These are solved operator-split from the ideal MHD Reimann problem, as anisotropic diffusion terms appearing in the induction equation. Currently the numerical implementation of the induction equation terms is well-tested; the developer (PFH) asks that you cite the methods paper Hopkins 2017, MNRAS, 466, 3387, in addition to the GIZMO MHD methods paper, if you use these. However, the coefficients, which the code attempts to calculate based on the physical state of the gas, require careful calibration and testing for physical problems of interest, and authors should explore these for themselves. 
+**MHD\_NON\_IDEAL**: Enables non-ideal MHD terms, specifically Ohmic resistivity, ambipolar diffusion, and the Hall effect. These are solved operator-split from the ideal MHD Reimann problem, as anisotropic diffusion terms appearing in the induction equation. Currently the numerical implementation of the induction equation terms is well-tested; the developer (PFH) asks that you cite the methods paper Hopkins 2017, MNRAS, 466, 3387, in addition to the GIZMO MHD methods paper, if you use these. However, the coefficients, which the code attempts to calculate based on the physical state of the gas, require careful calibration and testing for physical problems of interest, and authors should explore these for themselves. Some quite detailed modules are already in-code for problems of e.g. star and planet formation and proto-stellar/planetary disk dynamics as well as molecular cloud dynamics: details are in the `notes_nonidealmhd_in_ppds` file ([here](http://www.tapir.caltech.edu/~phopkins/public/notes_nonidealmhd_in_ppds.pdf) or in the downloads section of the Bitbucket site).
 
 **MHD\_CONSTRAINED\_GRADIENT**: Activate this to use the hybrid constrained-gradient method of Hopkins 2015 to further reduce div-B errors (beyond the standard Dedner 2002 scheme described above, which is always enabled when you turn on MAGNETIC). This will perform an extra iteration over particles in the gradient step, to iteratively solve for the reconstruction at faces which goes through all particle-averaged central values and minimizes the divergence errors, while also minimizing the least-squares divergence from the default gradient estimator-based reconstruction at the faces. It is slightly more expensive, but nearly as accurate as constrained-transport methods (which preserve div-B to machine accuracy) in most problems. See the methods paper: Hopkins 2015. You can choose how aggressively you wish to control the errors by setting this value: 0=minimal (safest and most stable, but relatively diffusive formulation which does less to control divergences), 1=intermediate (recommended case), 2=aggressive (this will be somewhat more expensive, doing an additional iteration, and uses weaker slope-limiters, which allows more successful divergence control, but can sacrifice numerical stability on certain types of problems). Please cite Hopkins, MNRAS, 2016, 462, 576, if you use these methods, as they were first presented therein.
 
@@ -885,7 +889,7 @@ These options set different fluid physics. This includes changing the equation o
 
 **COOLING**: Enables radiative cooling, following Katz et al. 1996, with many extensions. The standard cooling module is designed for galactic and cosmological simulations, and so assumes optically thin radiative cooling, including heating+cooling from H and He ionization+recombination, collisional, free-free, and Compton effects. With this enabled, the ionization+recombination requires an assumption for the UV background, specified in tabular format in the "TREECOOL" file (which must be placed in the run directory, i.e. the run-time directory where the compiled binary resides). A copy of this file is included in the source and on the Bitbucket download page. The computed cooling rates effectively extend from ~10^4 K to 10^9 K. Other heating and cooling processes including local radiative heating, photo-electric heating, molecular, dust, and fine structure heating/cooling, metal line cooling, nuclear (fission/fusion) heating, and more can be enabled by other compile-time switches (they are not automatically included in this switch). Any cooling associated with metal species requires METALS be enabled and particles have a defined metallicity field. Anyone using this should cite [Hopkins et al. 2017 (arXiv:1702.06148)](https://arxiv.org/abs/1702.06148); a complete list (and description of the physics and fitting functions) of all cooling physics included is given in their Appendix B [the parts enabled by this piece of the code include all components/terms above 10^4 K, except for the **COOL\_METAL\_LINES\_BY\_SPECIES** terms described below]. 
 
-**COOL\_LOW\_TEMPERATURES**: Adds fine-structure and molecular cooling, to extend the cooling curves down to ~10 K. The cooling rates at low-temperatures are explicitly metal-species-dependent if COOL\_METAL\_LINES\_BY\_SPECIES is also enabled. These follow CLOUDY calculations including the molecular physics, generally following the approach outlined in Robertson & Kravtsov 2008 (ApJ, 680, 1083), with a large number of additional improvements to the cooling physics and explicit accounting for photo-electric and other terms. Requires COOLING enabled; any cooling associated with metal species requires METALS be enabled and particles have a defined metallicity field. Note that while this includes an approximate treatment of optically-thick cooling, it is designed for simulations of star and galaxy formation and should not be extrapolated to dense systems (e.g. stars, planetary atmospheres, etc) and does not even attempt to include physics such as neutrino cooling. Anyone using this should cite Hopkins et al. 2017 (arXiv:1702.06148); a complete list (and description of the physics and fitting functions) of all cooling physics included is given in their Appendix B [the parts enabled by this piece of the code include all components/terms below 10^4 K].
+**COOL\_LOW\_TEMPERATURES**: Adds fine-structure and molecular cooling, to extend the cooling curves down to ~10 K. The cooling rates at low-temperatures are explicitly metal-species-dependent if COOL\_METAL\_LINES\_BY\_SPECIES is also enabled. These follow CLOUDY calculations including the molecular physics, generally following the approach outlined in Robertson & Kravtsov 2008 (ApJ, 680, 1083), with a large number of additional improvements to the cooling physics and explicit accounting for photo-electric and other terms. Requires COOLING enabled; any cooling associated with metal species requires METALS be enabled and particles have a defined metallicity field. Note that while this includes an approximate treatment of optically-thick cooling, it is designed for simulations of star and galaxy formation and should be extrapolated to dense systems (e.g. stars, planetary atmospheres, etc) with caution and does not even attempt to include physics such as neutrino cooling. Anyone using this should cite Hopkins et al. 2017 (arXiv:1702.06148); a complete list (and description of the physics and fitting functions) of all cooling physics included is given in their Appendix B [the parts enabled by this piece of the code include all components/terms below 10^4 K].
 
 **COOL\_METAL\_LINES\_BY\_SPECIES**: Uses full multi-species-dependent metal-line cooling tables. The tables correspond to CLOUDY runs following Wiersma et al. 2009 (MNRAS, 393, 99). The relevant pre-computed tables can be downloaded at the link above or on the BitBucket download page. This requires that METALS and COOLING are on. When active, the code will follow 11 species independently (H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe, in addition to the "total" metallicity), with heating/cooling computed for each assuming its optically thin (and self-consistently computing the ionization states). Users should cite Wiersma et al. 2009 (MNRAS, 393, 99) and Hopkins et al. 2017 (arXiv:1702.06148). 
 
@@ -1019,6 +1023,9 @@ These options all pertain to the gravity solver in the code. They determine how 
 #PM_PLACEHIGHRESREGION=1+2+16   # adds a second-level (nested) PM grid before the tree: value denotes particle types (via bit-mask) to place high-res PMGRID around. Requires PMGRID.
 #PM_HIRES_REGION_CLIPPING=1000  # optional additional criterion for boundaries in 'zoom-in' type simulations: clips gas particles that escape the hires region in zoom/isolated sims, specifically those whose nearest-neighbor distance exceeds this value (in code units)
 #PM_HIRES_REGION_CLIPDM         # split low-res DM particles that enter high-res region (completely surrounded by high-res)
+## -----------------------------------------------------------------------------------------------------
+# --------------------------------------- Pure-Tree Options for Direct N-body of small-N groups (recommended for hard binaries, etc)
+#GRAVITY_ACCURATE_FEWBODY_INTEGRATION # enables a suite: GRAVITY_HYBRID_OPENING_CRIT, TIDAL_TIMESTEP_CRITERION, LONG_INTEGER_TIME, to more accurately follow few-body point-like dynamics in the tree. currently compatible only with pure-tree gravity.
 ##-----------------------------------------------------------------------------------------------------
 ```
 
@@ -1029,6 +1036,9 @@ These options all pertain to the gravity solver in the code. They determine how 
 **PM\_HIRES\_REGION\_CLIPPING**: This is a kluge designed for zoom-in simulations. If gas particles develop kernel lengths larger than the given value, in (comoving) units, or get further than that distance from the box center, they are removed from the simulation, to prevent stray gas particles outside the zoom-in region).
 
 **PM\_HIRES\_REGION\_CLIPDM**: Particle split low-resolution (type =2,3) dark matter particles that are completely surrounded by only high-resolution particles (types 0,1,4). This is done to prevent N-body effects if low-res particles contaminate high-res regions of a zoom-in box. However, it can lead to unstable "splitting chains", so should be used with caution.
+
+**GRAVITY\_ACCURATE\_FEWBODY\_INTEGRATION**: Normally, the default error tolerances in GIZMO's tree-gravity solver will allow relatively large degradation of tight binary orbits if they form, because it is optimized for many-body dynamics with softened gravity (where individual resolution elements are not point-masses). If high accuracy in close few-body encounters is desired, a few flags will ensure this: several of these are rolled together into this convenience flag , which includes **GRAVITY\_HYBRID\_OPENING\_CRIT** (uses both a Barnes-Hut and relative acceleration tree opening criterion, to be more conservative), **LONG\_INTEGER\_TIME** and **STOP\_WHEN\_BELOW\_MINTIMESTEP** (to deal with deeper timestep hierarchies), and **TIDAL\_TIMESTEP\_CRITERION** to timestep carefully through close passages. However, this may drop the timesteps to very small values. To deal with this, the code modules in the `SINGLE_STAR` package allow for some major optimizations, developed by Mike Grudic. This module set is designed for simulations with 'real' point-particle or point-mass-like dynamics, as compared to smoothed gravity, so is only compatible with Tree-only gravity (as opposed to TreePM).
+
 
 
 <a name="config-gravity-adaptive"></a>
@@ -1204,7 +1214,7 @@ First, there is the 'master switch' for galaxy formation and star formation.
 # --- star formation law/particle spawning (additional options: otherwise all star particles will reflect IMF-averaged populations and form strictly based on a density criterion) ---- #
 ## ----------------------------------------------------------------------------------------------------
 #GALSF_SFR_MOLECULAR_CRITERION   # estimates molecular/self-shielded fraction in SF-ing gas, only SF from that is allowed. Cite Krumholz & Gnedin (ApJ 2011 729 36) and Hopkins et al., 2017a, arXiv:1702.06148
-#GALSF_SFR_VIRIAL_SF_CRITERION=0 # only allow star formation in virialized sub-regions (alpha<1) (0='default'; 1=0+Jeans criterion; 2=1+'strict' (zero sf if not bound)), 3=2+converging-flow+time-smoothed. Cite Hopkins, Narayanan, & Murray 2013 (MNRAS, 432, 2647) and Hopkins et al., 2017a, arXiv:1702.06148; (or Grudic et al. arXiv:1708.09065 for option=3)
+#GALSF_SFR_VIRIAL_SF_CRITERION=0 # only allow star formation in virialized sub-regions (alpha<1) (0/no value='default'; 1=0+Jeans criterion; 2=1+'strict' (zero sf if not bound)), 3=2+converging-flow+time-smoothed. 4=3+check if converging along all-3 principle axes. 5=4+Tidal Hill criterion (tidal tensor converging in all dimensions). Cite Hopkins, Narayanan, & Murray 2013 (MNRAS, 432, 2647) and Hopkins et al., 2017a, arXiv:1702.06148; (or Grudic et al. arXiv:1708.09065 for option=3,4,5)
 #GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory. Cite Guszejnov, Hopkins, & Ma 2017, MNRAS, 472, 2107
 #GALSF_SFR_IMF_SAMPLING          # discretely sample the IMF: simplified model with quantized number of massive stars. Cite Kung-Yi Su, Hopkins, et al., Hayward, et al., 2017, "Discrete Effects in Stellar Feedback: Individual Supernovae, Hypernovae, and IMF Sampling in Dwarf Galaxies". 
 #GALSF_GENERATIONS=1             # the number of star particles a gas particle may spawn (defaults to 1, set otherwise)
@@ -1216,7 +1226,8 @@ These parameters control the star formation criteria (used to determine when and
 
 **GALSF\_SFR\_MOLECULAR\_CRITERION**: Enables molecular-gas dependent star formation. This estimates the molecular fraction $f_{H2}$ in a gas particle, and corrects the calculated star formation rate by this factor (only allowing star formation from the molecules). It uses the fitting functions from Krumholz & Gnedin (ApJ 2011 729 36), as a function of local column density and metallicity. In evolved galaxies, for a high density threshold for SF (e.g. $n> 100\,{\rm cm^{-3}}$), the molecular fractions are very near unity so this has no effect, but it costs almost nothing to add this criterion to simulations, and it can be useful in lower-resolution simulations to approximate regions where gas can self-shield and cool. Any publications using this module should cite both Krumholz & Gnedin (ApJ 2011 729 36) and Hopkins et al., 2017a, arXiv:1702.06148 (Appendix C describes the algorithm in detail). 
 
-**GALSF\_SFR\_VIRIAL\_SF\_CRITERION**: This requires that only gas which is locally self-gravitating forms stars. Self-gravity is calculated via the local virial parameter following Hopkins, Narayanan, & Murray 2013 (arXiv:1303.0285); see that paper for details. This is useful for e.g. mergers and cosmological runs because it is adaptive -- so even if the mean galaxy density is >> your SF threshold, this will only allow SF in the bound sub-regions. However, it can be expensive, since it forces you to resolve those (often very high-density) regions. Physically, this corresponds to the results of idealized turbulent cloud simulations and observations of actual star forming regions (see e.g. Padoan et al.), which show bound clouds have SF efficiencies of ~100% per free-fall time, while unbound clouds have negligible SF. Setting to =0 is the default model. Setting =1 also requires the thermal Jeans mass be below 1000 solar masses (i.e. that fragmentation to stellar masses is possible). Setting =2 requires this and completely zeros any star formation in non-bound regions (otherwise, for numerical reasons, a region with density greater than 100 times the threshold density for star formation will be given a more tolerant criterion on the assumption it has collapsed via self-gravity). Any publications using this module should cite both Hopkins, Narayanan, & Murray 2013 (arXiv:1303.0285) and Hopkins et al., 2017a, arXiv:1702.06148 (Appendix C describes the algorithm in detail). Setting the option =3 will use all the criteria from "2", plus require a converging flow, plus calculate the virial parameter according to a running time-smoothed average (exponential window smoothed over the free-fall time), to reduce noise (particularly useful for star cluster or small-scale sink-particle simulations). For the option =3, cite Grudic et al. arXiv:1708.09065. 
+**GALSF\_SFR\_VIRIAL\_SF\_CRITERION**: This requires that only gas which is locally self-gravitating forms stars. Self-gravity is calculated via the local virial parameter following Hopkins, Narayanan, & Murray 2013 (arXiv:1303.0285); see that paper for details. This is useful for e.g. mergers and cosmological runs because it is adaptive -- so even if the mean galaxy density is >> your SF threshold, this will only allow SF in the bound sub-regions. However, it can be expensive, since it forces you to resolve those (often very high-density) regions. Physically, this corresponds to the results of idealized turbulent cloud simulations and observations of actual star forming regions (see e.g. Padoan et al.), which show bound clouds have SF efficiencies of ~100% per free-fall time, while unbound clouds have negligible SF. Setting to =0 is the default model. Setting =1 also requires the thermal Jeans mass be below 1000 solar masses (i.e. that fragmentation to stellar masses is possible). Setting =2 requires this and completely zeros any star formation in non-bound regions (otherwise, for numerical reasons, a region with density greater than 100 times the threshold density for star formation will be given a more tolerant criterion on the assumption it has collapsed via self-gravity). Any publications using this module should cite both Hopkins, Narayanan, & Murray 2013 (arXiv:1303.0285) and Hopkins et al., 2017a, arXiv:1702.06148 (Appendix C describes the algorithm in detail). Setting the option =3 will use all the criteria from "2", plus require a converging flow, plus calculate the virial parameter according to a running time-smoothed average (exponential window smoothed over the free-fall time), to reduce noise (particularly useful for star cluster or small-scale sink-particle simulations). Option =4 will use 3 plus require a convergent flow along all three principle axes (diagonalizing the shear tensor). Option =5 will use 4 plus a Hill-type criterion where we calculate tidal tensor and diagonalize it, requiring a convergent acceleration along all three principle axes with the resolution element size within its own Hill sphere. For the options =3,4,5, cite Grudic et al. arXiv:1708.09065. 
+
 
 **GALSF\_SFR\_IMF\_VARIATION**: Self consistently computes the IMF for each star particle from its parent gas properties at the time of formation. This uses the Hopkins/Guszejnov/Hennebelle/Chabrier model, if desired, but the default is a universal IMF. The IMF is then used self-consistently for feedback calculations throughout the simulation. This will also save and dump in snapshots a large number of properties of the star-forming clouds from which every star particle formed, for use in IMF models. This is currently in development by David Guszejnov and PFH, please contact us if you wish to use the module, as it is still in early testing phases and, while modular, requires the IMF scalings desired be input in a specific form. Users should cite Guszejnov, Hopkins, & Ma 2017, MNRAS, 472, 2107. 
 
@@ -1329,32 +1340,102 @@ The numerical details and physics are described in great detail in Hopkins et al
 
 
 <a name="config-sf"></a>
-## Single-Star Formation (IMF, Individual Stars, and Sink-Particles) 
+## Sink-Particle Dynamics (IMF, Star formation, Planets, Compact Objects)
 
-    ############################################################################################################################
-    ##-----------------------------------------------------------------------------------------------------
-    #-------------------------------------- Star formation with -individual- stars [sink particles]: from PFH [proprietary development with Mike Grudic and David Guszejnov; modules not to be used without authors permission, though basic modules may be ok there is a lot of development happening here]
-    ##-----------------------------------------------------------------------------------------------------
-    #SINGLE_STAR_SINK_DYNAMICS          # master switch for single star formation model: sink particles representing -individual- stars
-    #SINGLE_STAR_ACCRETION=3        # proto-stellar accretion: 0=grav capture only; 1+=alpha-disk accretion onto protostar; 2+=bondi accretion of diffuse gas; 3+=sub-grid variability 
-    #SINGLE_STAR_FB_HEATING         # proto-stellar heating: luminosity determined by BlackHoleRadiativeEfficiency (typical ~5e-7)
-    #SINGLE_STAR_FB_JETS            # protostellar jets: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow. cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840 (for algorithm, developed for black hole jets)
-    #SINGLE_STAR_PROMOTION          # proto-stars become ZAMS stars at end of pre-main sequence lifetime. FIRE feedback modules kick in, but using appropriate luminosities and temperatures for each
-    ############################################################################################################################
+```bash
+############################################################################################################################
+## ----------------------------------------------------------------------------------------------------
+# --------------- Star+Planet+Compact Object Formation (Sink Particle + Explicit/Keplerian N-Body Dynamics)
+# -------------------- (unlike GALSF options, these sinks are individual accretors, not populations). Much in common with Black Hole modules below.
+# -------------------- These are proprietary right now, in development with Mike Grudic, David Guszejnov, and PFH: modules not to be used without authors permission, though basic modules may be ok there is a lot of development happening here]
+## ----------------------------------------------------------------------------------------------------
+#SINGLE_STAR_SINK_DYNAMICS      # master switch to enable any other modules in this section
+## ----------------------------------------------------------------------------------------------------
+# ----- time integration, regularization, and explicit small-N-body dynamical treatments (for e.g. hard binaries, etc)
+## ----------------------------------------------------------------------------------------------------
+#SINGLE_STAR_TIMESTEPPING=1     # use additional timestep criteria to ensure resolved binaries/multiples dont dissolve in close encounters. 0=most conservative. 1=super-timestep hard binaries by operator-splitting the binary orbit. 2=more aggressive super-timestep.
+#HERMITE_INTEGRATION=32         # Instead of the usual 2nd order DKD Leapfrog timestep, do 4th order Hermite integration for particles matching the bitflag. Allows longer timesteps and higher accuracy collisional dynamics
+## ----------------------------------------------------------------------------------------------------
+# ----- sink creation and accretion/growth/merger modules
+## ----------------------------------------------------------------------------------------------------
+#SINGLE_STAR_SINK_FORMATION=(1+2+4+8+16+32) # form new sinks on the fly, criteria from bitflag: 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
+#SINGLE_STAR_ACCRETION=7        # sink accretion [details in BH info below]: 0-8: use BH_GRAVACCRETION=X, 9: BH_BONDI=0, 10:BH_BONDI=1, 11: BH_GRAVCAPTURE_GAS, 12: BH_GRAVCAPTURE_GAS modified with Bate-style FIXEDSINKRADIUS
+## ----------------------------------------------------------------------------------------------------
+# ----- star (+planet) formation-specific modules (feedback, jets, radiation, protostellar evolution, etc)
+## ----------------------------------------------------------------------------------------------------
+#SINGLE_STAR_PROTOSTELLAR_EVOLUTION # sinks are assumed to be proto-stars and follow protostellar evolution tracks as they accrete to evolve radii+luminosities, determines proto-stellar feedback properties
+#SINGLE_STAR_FB_RT_HEATING      # proto-stellar heating: luminosity determined by BlackHoleRadiativeEfficiency (typical ~5e-7)
+#SINGLE_STAR_FB_JETS            # kinematic jets from sinks: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow. for now cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840 (for algorithm, developed for black hole jets), though now using SPAWN algorithm developed by KY Su
+#SINGLE_STAR_PROMOTION          # proto-stars become ZAMS stars at end of pre-main sequence lifetime. FIRE feedback modules kick in, but using appropriate luminosities and temperatures for each
+## ----------------------------------------------------------------------------------------------------
+# ----- optional and de-bugging modules (intended for specific behaviors)
+## ----------------------------------------------------------------------------------------------------
+#BH_ACCRETE_NEARESTFIRST        # place all weight for sink/BH 'swallowing' in continuous/stochastic accretion models on single nearest gas element, instead of spreading over same kernel used to calculate mdot
+#BH_RETURN_ANGMOM_TO_GAS        # BH/sink particles return accreted angular momentum to surrounding gas (per Hubber+13) to represent AM transfer (loss in accreting material)
+#BH_SWALLOW_SMALLTIMESTEPS      # particles with very small timesteps will be accreted to prevent extreme slowdowns, controlled by DT_MIN_TOLERANCE_FACTOR~0.001
+#BH_DEBUG_DISABLE_MERGERS       # disable BH-BH (sink-sink) mergers in all the various sink routines
+############################################################################################################################
+```
 
-This set of flags controls *single* star formation physics. This means individual stars are mass-resolved sink particles, with individual masses and evolutionary tracks (as opposed to the 'GALSF' suite of options described above, where the star formation is galaxy or cluster-scale or larger, and star particles represent an ensemble of stars). This is relevant for simulations of star clusters with resolved individual stars, simulations of the origins of the stellar initial mass function, or individual protostar/planet formation simulations. 
+This set of flags controls sink particle dynamics for simulations with mass-resolved sink particles intended to represent point-like, accreting subsystems. This is most commonly used for simulations of individual star formation or formation of populations of stars (e.g. simulations modeling the stellar IMF), but can also be used for representing formation or dynamics of other un-resolved accreting systems (planets, compact objects such as black holes and neutron stars, etc.) as well as N-body dynamics of star clusters with individual stars. This uses the same fundamental algorithms as super-massive black holes for galaxy simulations, which are described in a separate section below, but in those cases, a different set of feedback assumptions applies. The evolution and feedback modules here are generally based on the assumption that the sinks represent proto-stars (or planets) and/or stars, but the general dynamics are indepednent of this assumption.
 
-This is all under active development by PFH, and remains proprietary (primarily because parts of these modules are still in very active development and not debugged, while other parts are production-ready). Please consult and request permission before using any piece of this code (and expect to be recruited info refining the modules in need of de-bugging). Many of the pieces (e.g. the basic modules to enable sink particles) are fine to use and generally permission is not an issue, but some of the more subtle aspects of this and other modules are very much in-flux.
+This is all under active development by Mike Grudic, David Guszejnov, and PFH, and remains proprietary (primarily because parts of these modules are still in very active development and not debugged, while other parts are production-ready). Please consult and request permission before using any piece of this code (and expect to be recruited into refining the modules in need of de-bugging). Many of the pieces (e.g. the basic modules to enable sink particles) are fine to use and generally permission is not an issue, but some of the more subtle aspects of this and other modules are very much in-flux.
 
-**SINGLE\_STAR\_FORMATION**: Master switch. Must be on for any of the other modules within this block to work. With this enabled, star (sink) particles are spawned according to the same basic requirements that appear in the 'GALSF' block, using the same Parameterfile options: there is a minimum density (set in the parameterfile), but also the proto-sink region must be self-gravitating, Jeans unstable, self-shielding, the local gas density maximum within its neighbor kernel, have a converging velocity field, and not have another sink within the neighbor kernel. If these are all met, the gas particle is immediately converted into a star particle. Details of the modules are described in the `notes_singlestar` file ([here](http://www.tapir.caltech.edu/~phopkins/public/notes_singlestar.pdf) or in the downloads section of the Bitbucket site), until the methods paper is published.
+**SINGLE\_STAR\_SINK\_DYNAMICS**: Master switch. Must be on for any of the other modules within this block to work. These are essentially different 'skins' or options for the black hole modules, which are described below, so make sure to read both sections if you are planning on using these. More details of the generic black hole modules (including e.g. accretion and dynamics options) are found in the `notes_blackholes` file ([here](http://www.tapir.caltech.edu/~phopkins/public/notes_blackholes.pdf) or in the downloads section of the Bitbucket site). Additional details that are unique to the sink modules in this section will be described in the (currently in-progress) `notes_singlestar` file ([here](http://www.tapir.caltech.edu/~phopkins/public/notes_singlestar.pdf) or in the downloads section of the Bitbucket site), until the methods paper is published.
 
-**SINGLE_STAR_ACCRETION**: Enables accretion onto sinks after they form. This chooses the model: 0=accrete via direct gravitational capture of bound gas particles only; 1=gravitational capture goes into an alpha-disk, which then accretes onto the protostar smoothly according to a sub-grid alpha-disk model; 2=as '1' but also adds Bondi-Hoyle-Littleton accretion of diffuse gas from the neighbor kernel around the sink; 3=as '2' but adds an explicit sub-grid variability from a random power spectrum with fluctuations on all timescales (mean-conserving) to represent bursty accretion on small scales
 
-**SINGLE\_STAR\_FB\_HEATING**: Adds feedback from accreting proto-stars in the form of heating via their accretion luminosity. This performs a LEBRON-method radiation hydrodynamic simulation, with the stellar luminosity coming out in the IR. If the radiation hydro module is changed, whatever radiation hydro method is chosen will be used. The accretion luminosity scales with the accretion rate given the radiative efficiency, set by the run-time parameter BlackHoleRadiativeEfficiency. 
+<a name="config-sf-integration"></a>
+### _N-Body Dynamics, Integration, Regularization_ 
 
-**SINGLE\_STAR\_FB\_JETS**: Adds feedback from proto-stellar jets. This acts as as kinematic outflows with a specified outflow rate and velocity set in the same manner as black hole-driven accretion-disk outflows, using the run-time parameters BAL\_f\_accretion and BAL\_v\_outflow. 
+Gravity is solved in sink-particle simulations using the same fundamental methods as any other simulations, described above. True point particles can be represented in tree-gravity, simply taking the limit of vanishingly small softening. Depending on the problem, various choices for sink gravity softening and tree versus particle-mesh grids may be optimal. However, a common issue which occurs in simulations with explicit sinks intended to represent unresolved massive point-like particles is the formation of hard binaries or multiples which evolve on much faster timescales as compared to the rest of the simulation. For example, in simulations of star formation with individual sink stars, close binaries will form, which (especially if eccentric) will have close passages requiring very small timesteps to accurately evolve, or else the orbits will tend to degrade over time (if e.g. highly-softened). There are a range of options for dealing with this. 
+
+Normally, the default error tolerances in GIZMO's tree-gravity solver will allow relatively large degradation of tight binary orbits, because it is optimized for many-body dynamics with softened gravity (where individual resolution elements are not point-masses). If high accuracy in close few-body encounters is desired, a few flags will ensure this: several of these are rolled together into the convenience flag **GRAVITY\_ACCURATE\_FEWBODY\_INTEGRATION**, which includes **GRAVITY\_HYBRID\_OPENING\_CRIT** (uses both a Barnes-Hut and relative acceleration tree opening criterion, to be more conservative), **LONG\_INTEGER\_TIME** and **STOP\_WHEN\_BELOW\_MINTIMESTEP** (to deal with deeper timestep hierarchies), and **TIDAL\_TIMESTEP\_CRITERION** to timestep carefully through close passages. However, this may drop the timesteps to very small values. To deal with this, the code modules here allow for some major optimizations, developed by Mike Grudic.
+
+**SINGLE\_STAR\_TIMESTEPPING**: If enabled, the code will use additional timestep criteria to ensure resolved binaries/multiples dont dissolve in close encounters. Basically, this module operator-splits long-range gravitational forces and short-range forces from hard binaries and other multiples. Using regularization techniques from the N-body dynamics community, this identifies hard binaries in the gravity tree, then computes the long-range TreePM forces on the center-of-mass location of the binary. The binary forces are then solved in an operator-split manner: we explicitly solve for the update assuming the external force is frozen (including the tidal tensor) across the timestep for the 'long timestep' of the binary, while the orbit dynamically evolves, which allows one to take a much longer timestep than if one simply used the normal tree-gravity step evolve the binary. If this is on, it must be set to an integer value to determine how aggressive the timestepping actually is. If set =0, the most conservative mode is used (the operator splitting occurs, but a conservative timestep needed to directly integrate the binary is still adopted) -- so this is more accurate, but does not accelerate the timestepping. If set =1, the binaries are 'super-timestepped' as described above. If set =2, the super-timestepping is more aggressive (the most aggressive it can be before becoming numerically unstable).
+
+**HERMITE\_INTEGRATION**: Instead of the usual 2nd order drift-kick-drift leapfrog timestep used in GIZMO, enabling this flag will do 4th order Hermite integration for any particles matching the bitflag. Note that the Hermite integration is designed (and guaranteed to give nice, Hermitian behavior and benefits) only for collisionless particles evolving under gravity only, so only that part of the position, velocity, and accelerations will be integrated according to this (in other words, this applies only to the N-body parts of the code, not to e.g. integrations of hydrodynamics or other physics). Set the value equal to a bitflag defining the particles for which the integration will be used. This will automatically enable tidal tensor calculations and timesteps based on the tidal timestep: but together with the `SINGLE_STAR_TIMESTEPPING` flag above the real benefits are most apparent, as this allows one to take much larger (nearly order-of-magnitude) timesteps for hard binaries and multiples while maintaining ideal conservation and other desirable properties of a Hermitian integrator.
+
+
+<a name="config-sf-seedacc"></a>
+### _Sink Creation and Accretion_
+
+These modules allow for sinks to be created and grow (as well as merge) 'on-the-fly' in the simulations. 
+
+**SINGLE\_STAR\_SINK\_FORMATION**: With this enabled, sink particles can be created 'on the fly' as opposed to simply in the ICs. The value is set to a bitflag which allows users to specify any combination of criteria for sink formation, including: (0) a density threshold (set by the `CritPhysDensity` parameter in the params file), (1) a local virial criterion (self-gravitating at the resolution scale including kinetic, thermal, and magnetic energy, identical to setting `GALSF_SFR_VIRIAL_SF_CRITERION=2`), (2) in a convergent flow ($\nabla\cdot{\bf v}<0$), (4) at a local density and potential extremum (evaluated within kernel), (8) there are no other sinks inside three times the gas kernel/neighbor radius, and the gas is not a valid 'interacting neighbor' of any other sink particle, (16) the timescale for the gas element to free-fall onto (using a 2-body orbit) or intercept ($\sim 1/(\Delta{\bf v}\cdot \Delta {\bf r})$) the nearest sink is longer than the local dynamical collapse time, (32) a Hill-type criterion that the local tidal tensor is negative definite (forces are converging along all three principle axes) and we live inside our own Hill sphere. This module uses the `GALSF` modules and structures, see those notes for more details on the different criteria and their implementations. If all of the chosen criteria are met, a gas element is immediately converted into a sink. Each of these options involves papers that should be cited: please see the code and documentation for blackhole modules to cite the appropriate paper[s].
+
+**SINGLE\_STAR\_ACCRETION**: Enables accretion onto sinks after they form. The value chooses the model, but all are described in the blackholes documentation (please read that for details of how the different modules work in detail). Values 0-10 choose 'continuous accretion rate' models, where the accretion rate onto the sink is continuously evaluated from the gas properties of the neighbors through which the sink moves. Within this, values 0-8 specifically are identical to the corresponding value of `BH_GRAVACCRETION`: 0=estimator from Hopkins and Quataert 2010, for accretion in a gravitationally-unstable disk, 1=revision to 0 from Angles-Alcazar et al 2011, 2=fixed accretion per free-fall time from accretion radius, 3=gravito-turbulent scaling from Gammie et al., 4=fixed accretion per free fall within radius where sink dominates potential, 5=hybrid Bondi plus self-gravitating disk model, 6=fixed inflow per free-fall in collisionless Hernquist sphere, 7=hybrid model interpolating between Shu-type isothermal sphere accretion and Bondi-Hoyle, 8=Hubber-type disk-free-fall interpolation. Values 9 and 10 set `BH_BONDI=0,1` respectively, where 0 is default Bondi-Hoyle and 1 is Bondi (ignoring gas velocity). Setting this flag =10 or =11 uses the `BH_GRAVCAPTURE_GAS` flag, where accretion is not continuous but discrete, swallowing gas elements which are bound within the neighbor radius and meet some other basic criteria. =10 sets the default behavior for this flag, =11 sets it to behave like the Bate-style sinks (with a fixed, instead of adaptive, accretion radius, and an angular momentum criterion for accretion). Each of these options involves papers that should be cited: please see the code and documentation for blackhole modules to cite the appropriate paper[s].
+
+
+<a name="config-sf-sfphysics"></a>
+### _Star and Planet Formation Physics_ 
+
+The flags above make no assumptions about what, physically, the sinks are intended to represent. This block of flags represents flags which are designed specifically for simulations of star and/or planet formation, where the sinks represent accreting objects in the mass range anywhere from super-earths through hyper-massive quasi-stars, but are non-relativistic and obey some basic equations of stellar/planetary structure and evolution. 
+
+These modules are under-development, a methods paper (to cite) will be presented soon, but the modules should be considered proprietary in the meantime. This will also be used to update the `notes_singlestar` file ([here](http://www.tapir.caltech.edu/~phopkins/public/notes_singlestar.pdf) or in the downloads section of the Bitbucket site). But if you are interested in co-development, please contact PFH and Mike Grudic and David Guszejnov.
+
+
+**SINGLE\_STAR\_PROTOSTELLAR\_EVOLUTION**: If this flag is enabled, sinks are assumed to initially be proto-stars (or proto-planets if low enough mass). They follow protostellar evolution tracks as they accrete: this allows you to explicitly follow e.g. the radius of the collapsing object along the Henyey and Hayashi tracks as it both contracts and accretes. Feedback properties (luminosities, jet properties, etc) are calculated appropriately for the stage of evolution and present-state properties of the object. 
+
+**SINGLE\_STAR\_FB\_RT\_HEATING**: Adds feedback from accreting proto-stars in the form of heating via their accretion luminosity. By default this performs a LEBRON-method radiation hydrodynamic simulation, with the stellar luminosity coming out in the IR. If the radiation hydro module is changed, whatever radiation hydro method is chosen will be used. The accretion luminosity scales with the accretion rate given the radiative efficiency, set by the run-time parameter `BlackHoleRadiativeEfficiency`, unless protostellar evolution is enabled, in which case the appropriate proto-stellar evolution tracks are used to determine the accretion and contraction luminosities (both are then used for feedback). See description of the radiative feedback modules in the blackhole notes for more details of the numerical methods.
+
+**SINGLE\_STAR\_FB\_JETS**: Adds feedback from proto-stellar jets. This acts as as kinematic outflows with a specified outflow rate and velocity set in the same manner as black hole-driven accretion-disk outflows. This leverages the `BH_WIND_SPAWN` module, see the description in the black hole notes for the details of the numerical methods. The run-time parameters `BAL_f_accretion`, `BAL_v_outflow`, `BAL_internal_temperature`, `BAL_wind_particle_mass`, are used, as is standard with this module (see the parameterfile notes below for the blackhole modules) to determine the mechanical and thermal energy-loadings (as well as e.g. optional magnetic or cosmic-ray loading) for the jets. The jets, by default, are collimated with a very small opening angle at launch (they almost immediately will expand as they propagate), along the direction of the sink accreted specific angular momentum.
 
 **SINGLE\_STAR\_PROMOTION**: If enabled, the proto-stars are explicitly evolved on the pre-main sequence (allowing for dynamical accretion to modify their pre-main-sequence lifetimes), and when they reach the zero-age main sequence, they are promoted to main-sequence stars. The module then enables feedback from these stars including: radiation pressure, photo-electric and photo-ionization heating, stellar mass-loss (winds), and supernovae. The rates of these are all tabulated appropriately from standard evolution tracks for the stellar mass, age and metallicity. The algorithmic implementation uses the FIRE modules (so the same restrictions for use apply). 
+
+
+<a name="config-sf-debug"></a>
+### _Optional and De-Bugging Modules_ 
+
+There are a variety of flags for additional special behaviors. Here are several most commonly used for the types of simulations above. However users should also carefully read the section on super-massive black holes below, as almost all of those flags are cross-compatible here: in fact the modules here and there are often the same, simply with different operator logic for the sake of user convenience.
+
+**BH\_ACCRETE\_NEARESTFIRST**: When using the 'continuous' accretion models (those not based on resolved gravitational capture explicitly), discrete gas elements are swallowed element-by-element according to the same kernel used for determining the accretion rate. This flag re-weights it so that the nearest gas element receives all of the weight.
+
+**BH\_RETURN\_ANGMOM\_TO\_GAS**: In principle, accreted gas should be losing angular momentum. While in general this will include largely un-resolved processes 'internal' to the sink, and even the angular momentum lost back to the ambient medium outside the sink will be in the form of radiation, magnetic fields, jets, winds, and torques between neighboring elements (including other sinks in the case of binaries, etc), it is nonetheless desired in some cases to mock up the effect as if all of the angular momentum of material captured by the sink were instantly transferred to the immediately surrounding gas. This flag enables 'angular momentum return' in this fashion, following the prescription in Hubber et al. 2013 (where we follow the total accreted angular momentum and inject angular momentum continuously to neighbor gas elements, at a rate proportional to the accretion rate onto the sink). 
+
+**BH\_SWALLOW\_SMALLTIMESTEPS**: Particles with very small timesteps (with a factor of 20 of the minimum allowed simulation timestep, or $>1000$ times smaller than the dynamical time within the sink gravitational softening) inside the neighbor kernel of a sink will be automatically accreted -- this is not physical but simply intended to prevent extreme slow-down of the code if particles 'pile up' around a sink.
+
+**BH\_DEBUG\_DISABLE\_MERGERS**: Disables sink-sink mergers.
+
 
 
 <a name="config-bh"></a>
@@ -1458,7 +1539,7 @@ The accretion models involve several parameterfile settings. `BlackHoleAccretion
 
 **BH\_GRAVCAPTURE\_GAS**/**BH\_GRAVCAPTURE\_NONGAS**: BH\_GRAVCAPTURE\_GAS enables gas accretion via explicit resolution of direct gravitational capture of particles: if gas particles are located within the accretion radius (the minimum resolved softening around the BH), then this uses their position and relative velocity with respect to the BH particle we check whether (a) it is gravitationally bound to the BH, and (b) whether the apo-centric radius of the particle about the BH is also within the accretion radius. If both are true, we consider the particle "captured" and immediately add its mass to the BH accretion disk (if BH\_ALPHADISK\_ACCRETION is enabled, otherwise it is added directly to the BH). Use this only if you want to force the code to resolve accretion into the viscous disk (i.e. this is for very high-res simulations). Otherwise de-activate this and use a "sub-grid" accretion rate estimator. BH\_GRAVCAPTURE\_NONGAS does the same, for non-gas particle types (stars/dark matter; note that BH-BH mergers are always allowed, and handled separately from these flags). If this is on, dark matter is always added directly to the BH, while stars add to the accretion disk if BH\_ALPHADISK\_ACCRETION is on, otherwise to the BH (but does not contribute towards feedback or the Eddington limit, i.e. acting as if it is not tidally disrupted). Note that BH\_GRAVCAPTURE\_NONGAS can be turned on with other models (below) for gas accretion. If you use this module, cite Hopkins et al., 2016, MNRAS, 458, 816 (where this was developed and studied in detail).
 
-**BH\_GRAVACCRETION**: Enables the "unresolved limit" accretion rate estimator based on gravitational torques from Hopkins & Quataert 2011, MNRAS, 415, 1027. This is a general family of accretion rate estimators based on the assumption that the rate-limiting step for accretion is angular momentum transport (as opposed to the Bondi-Hoyle-type estimators, which do not include any accounting for angular momentum). The fundamental assumptions here are tested and designed to reproduce the accretion rates through annuli ranging from accretion disk scales <~0.01 pc through galactic ~1000 kpc scales, with a primary focus on scales ~1-100 pc. The dominant mechanism of angular momentum transfer on larger scales are torques due to inhomogeneities (e.g. due to instabilities, clumps, etc) in a gas+stellar disk. See that paper for details. In general this accretion rate estimator can be more accurate by a factor of $\sim 10^{4} - 10^8$ compared to e.g. the Bondi estimators below (on scales outside the inner accretion disk, which this is not designed to reproduce). Quantities such as the gas angular momentum around the BH are calculated on the fly and used in the accretion rate estimation. Two variants here (setting =0 or =1) use two slightly different estimators to calculate the angular momentum and disk-mass-fraction around the BH (which enter the accretion rate determination). Setting to [=2] or [=3] uses a simpler gravito-turbulent scaling for the properties of the outer disk, probably more appropriate (or at least more stable) if the outer region is on scales below a kpc or so, highly super-sonically turbulent, and either "thick" or extremely gas-rich (so the thin-disk approximation made in settings [=0] and [=1] doesnt apply). For [=2], the scaling is reduced to simply assume a constant efficiency per dynamical time, which is then set in the parameterfile. For [=4], the assumptions are changed to assume the background medium is uniform on large scales outside the BH radius of gravitational dominance, giving rise to a slightly different scaling. For [=5] a hybrid model is employed, where the circularization radius of gas is explicitly calculated based on its angular momentum content, and if this is sufficiently low, where the Bondi-Hoyle limit should actually apply, the Bondi formula is used. Detailed description of each of these choices and the actual scalings employed is given in the `notes_blackholes` file. If you use any variant of this module, cite Hopkins & Quataert 2011, MNRAS, 415, 1027 (and Angles-Alcazar et al. 2017, MNRAS, 464, 2840 for additional numerical details, including how the on-the-fly bulge-disk decomposition is performed).
+**BH\_GRAVACCRETION**: Enables the "unresolved limit" accretion rate estimator based on gravitational torques from Hopkins & Quataert 2011, MNRAS, 415, 1027. This is a general family of accretion rate estimators based on the assumption that the rate-limiting step for accretion is angular momentum transport (as opposed to the Bondi-Hoyle-type estimators, which do not include any accounting for angular momentum). The fundamental assumptions here are tested and designed to reproduce the accretion rates through annuli ranging from accretion disk scales <~0.01 pc through galactic ~1000 kpc scales, with a primary focus on scales ~1-100 pc. The dominant mechanism of angular momentum transfer on larger scales are torques due to inhomogeneities (e.g. due to instabilities, clumps, etc) in a gas+stellar disk. See that paper for details. In general this accretion rate estimator can be more accurate by a factor of $\sim 10^{4} - 10^8$ compared to e.g. the Bondi estimators below (on scales outside the inner accretion disk, which this is not designed to reproduce). Quantities such as the gas angular momentum around the BH are calculated on the fly and used in the accretion rate estimation. Two variants here (setting =0 or =1) use two slightly different estimators to calculate the angular momentum and disk-mass-fraction around the BH (which enter the accretion rate determination). Setting to [=2] or [=3] uses a simpler gravito-turbulent scaling for the properties of the outer disk, probably more appropriate (or at least more stable) if the outer region is on scales below a kpc or so, highly super-sonically turbulent, and either "thick" or extremely gas-rich (so the thin-disk approximation made in settings [=0] and [=1] doesnt apply). For [=2], the scaling is reduced to simply assume a constant efficiency per dynamical time, which is then set in the parameterfile. For [=4], the assumptions are changed to assume the background medium is uniform on large scales outside the BH radius of gravitational dominance, giving rise to a slightly different scaling. For [=5] a hybrid model is employed, where the circularization radius of gas is explicitly calculated based on its angular momentum content, and if this is sufficiently low, where the Bondi-Hoyle limit should actually apply, the Bondi formula is used. [=6] and [=7] employ scalings which interpolate between fixed accretion per dynamical time for bound gas, and Bondi-Hoyle, appropriately for a density profile scaling as $\rho\propto r^{-1}$ or $r^{-2}$, respectively, in the self-gravitating component. Detailed description of each of these choices and the actual scalings employed is given in the `notes_blackholes` file. If you use any variant of this module, cite Hopkins & Quataert 2011, MNRAS, 415, 1027 (and Angles-Alcazar et al. 2017, MNRAS, 464, 2840 for additional numerical details, including how the on-the-fly bulge-disk decomposition is performed).
 
 **BH\_BONDI**: Enable BH\_BONDI to estimate the BH accretion rate from the Bondi-Hoyle formula. Note that a large number of studies have shown this is not a good approximation to periods of high BH accretion, since it assumes the gas has no angular momentum (when, in fact, understanding gas accretion onto BHs from large scales is primarily an angular momentum problem). Contrary to some claims in the literature, there is no Bondi-Hoyle formula that "accounts" for angular momentum -- the actual scalings in the angular-momentum dominated regime resemble the gravito-turbulent and gravitational-torque accretion models discussed above, which have qualitatively different dimensional scalings (nearly independent of BH mass and sound speed, for example, where Bondi-Hoyle depends strongly on both of these). Still, the Bondi-Hoyle limit is potentially relevant for either situations (1) where the BH is accreting smoothly from a hot, hydrostatic, pressure-supported atmosphere, or (2) where a 'seed' BH is moving through the ISM (on scales where it does not strongly influence the potential), closer to the regime the Bondi-Hoyle accretion theory was designed to represent. The `notes_blackholes` file has additional details of the scalings adopted. The default (=0) implementation is standard Bondi-Hoyle theory, accounting for BH-gas relative velocities (the denominator is $(c_{s}^2 + |{\bf v}_{\rm gas}-{\bf v}_{\rm BH}|^2)^{3/2}$). Set (=1) to ignore the relative velocity and use just the sound speed. Set (=2) to slightly modify the pre-factor in front of the Bondi rate (giving it a power-law density dependence), which will exactly Booth & Schaye 2009, and subsequent papers (OWLS, EAGLE, etc.). If you use this module, cite Springel, Di Matteo, and Hernquist, 2005, MNRAS, 361, 776.
 
@@ -1516,7 +1597,7 @@ These models also involve their own parameterfile settings, in addition to those
 <a name="config-bh-additionalbhoptions"></a>
 ### _BH Output/Additional Options_ 
 
-These are miscellaneous additional BH options.
+These are miscellaneous additional BH options. See also the description of the various modules **SINGLE\_STAR\_TIMESTEPPING**, **BH\_ACCRETE\_NEARESTFIRST**, **BH\_RETURN\_ANGMOM\_TO\_GAS**, **BH\_SWALLOW\_SMALLTIMESTEPS**, **BH\_DEBUG\_DISABLE\_MERGERS**, above in the 'Sink Particle and Single-Star' modules: these are all fully-compatible with the BH modules here as well!
 
 ```bash
 ####################################################################################################
@@ -1699,6 +1780,7 @@ These flags govern the implementation of multi-threading in the code. Must be en
 #OUTPUT_VORTICITY               # outputs the vorticity vector
 #OUTPUT_TIMESTEP                # outputs timesteps for each particle
 #OUTPUT_COOLRATE                # outputs cooling rate, and conduction rate if enabled
+#OUTPUT_COOLRATE_DETAIL         # outputs cooling rate term by term [saves all individually to snapshot]
 #OUTPUT_LINEOFSIGHT				# enables on-the-fly output of Ly-alpha absorption spectra
 #OUTPUT_LINEOFSIGHT_SPECTRUM    # computes power spectrum of these (requires additional code integration)
 #OUTPUT_LINEOFSIGHT_PARTICLES   # computes power spectrum of these (requires additional code integration)
@@ -1707,6 +1789,8 @@ These flags govern the implementation of multi-threading in the code. Must be en
 #INPUT_READ_HSML                # force reading hsml from IC file (instead of re-computing them; in general this is redundant but useful if special guesses needed)
 #OUTPUT_TWOPOINT_ENABLED            # allows user to calculate mass 2-point function by enabling and setting restartflag=5
 #IO_DISABLE_HDF5                # disable HDF5 I/O support (for reading/writing; use only if HDF5 not install-able)
+#IO_COMPRESS_HDF5     		    # write HDF5 in compressed form (will slow down snapshot I/O and may cause issues on old machines, but reduce snapshots 2x)
+#IO_SUPPRESS_TIMEBIN_STDOUT=10  # only prints timebin-list to log file if highest active timebin index is within N (value set) of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 ####################################################################################################
 ```
      
@@ -1738,9 +1822,10 @@ The remaining flags in this section all turn on/off additional (optional) output
 
 **OUTPUT\_TIMESTEP**: Add particle timestep dt to snapshots (HDF5 "TimeStep")
 
-**OUTPUT\_COOLRATE**: Add particle cooling rate to snapshots (HDF5 "CoolingRate")
+**OUTPUT\_COOLRATE**: Add particle cooling rate to snapshots (HDF5 "CoolingRate"). Enabling **OUTPUT\_COOLRATE\_DETAIL** in addition produces many additional details.
 
 **INPUT\_READ\_HSML**: Read the initial guess for Hsml from the ICs file. In any case the density routine must be called to determine the "correct" Hsml, but this can be useful if the ICs are irregular so the "guess" the code would normally use to begin the iteration process might be problematic. In general though it is redundant.
+
 
 
 <a name="config-debug"></a>
@@ -1753,6 +1838,7 @@ The remaining flags in this section all turn on/off additional (optional) output
 # --------------------
 # ----- General De-Bugging and Special Behaviors
 #DEVELOPER_MODE                 # allows you to modify various numerical parameters (courant factor, etc) at run-time
+#LONG_INTEGER_TIME              # total number of integer time step = 1<<39
 #STOP_WHEN_BELOW_MINTIMESTEP    # forces code to quit when stepsize wants to go below MinSizeTimestep specified in the parameterfile
 #DEBUG                          # enables core-dumps and FPU exceptions
 # --------------------
@@ -1765,13 +1851,19 @@ The remaining flags in this section all turn on/off additional (optional) output
 #ENERGY_ENTROPY_SWITCH_IS_ACTIVE # enable energy-entropy switch as described in GIZMO methods paper. This can greatly improve performance on some problems where the
                                 # the flow is very cold and highly super-sonic. it can cause problems in multi-phase flows with strong cooling, though, and is not compatible with non-barytropic equations of state
 #FORCE_ENTROPIC_EOS_BELOW=(0.01) # set (manually) the alternative energy-entropy switch which is enabled by default in MFM/MFV: if relative velocities are below this threshold, it uses the entropic EOS
+#EOS_GMC_BAROTROPIC             # Barotropic EOS calibratied to Masunaga & Inutsuka 2000; useful for test problems in small-scale star formation such as cloud collapse, jet launching. See Federrath et al. 2014ApJ...790..128F
 #DISABLE_SPH_PARTICLE_WAKEUP    # don't let gas particles move to lower timesteps based on neighbor activity (use for debugging)
+#DO_UPWIND_TIME_CENTERING       # this (and DO_HALFSTEP_FOR_MESHLESS_METHODS) use alternative methods for up-winding the fluxes in the MFM/MFV schemes. this up-weighting can be more accurate in hydrostatic problems with a large sound-speed discontinuity -if- the pressure gradient is steady-state, but if they are moving or unstable, it is less accurate (and can suppress mixing)
 # --------------------
 # ----- Additional Fluid Physics and Gravity
 #COOLING_OPERATOR_SPLIT         # do the hydro heating/cooling in operator-split fashion from chemical/radiative. slightly more accurate when tcool >> tdyn, but much noisier when tcool << tdyn
+#COOL_LOWTEMP_THIN_ONLY         # in the COOL_LOW_TEMPERATURES module, treat low-temperature cooling as optically-thin instead of interpolating between optically-thin and -thick regimes
 #MHD_ALTERNATIVE_LEAPFROG_SCHEME # use alternative leapfrog where magnetic fields are treated like potential/positions (per Federico Stasyszyn's suggestion): still testing
 #SUPER_TIMESTEP_DIFFUSION       # use super-timestepping to accelerate integration of diffusion operators [for testing or if there are stability concerns]
 #EVALPOTENTIAL                  # computes gravitational potential
+#GRAVITY_HYBRID_OPENING_CRIT    # use -both- Barnes-Hut + relative angle opening criterion for the gravity tree (normally choose one or the other)
+#TIDAL_TIMESTEP_CRITERION       # replace standard acceleration-based timestep criterion with one based on the tidal tensor norm, which is more accurate and adaptive (testing, but may be promoted to default code)
+#BH_WAKEUP_GAS                  # force all gas within the interaction radius of a BH/sink particle to timestep at the same rate (set to lowest timebin of any of the interacting neighbors)
 # --------------------
 # ----- Particle IDs
 #TEST_FOR_IDUNIQUENESS          # explicitly check if particles have unique id numbers (only use for special behaviors)
@@ -1784,6 +1876,7 @@ The remaining flags in this section all turn on/off additional (optional) output
 #PARTICLE_EXCISION              # enable dynamical excision (remove particles within some radius)
 #MERGESPLIT_HARDCODE_MAX_MASS=(1.0e-6)   # manually set maximum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
 #MERGESPLIT_HARDCODE_MIN_MASS=(1.0e-7)   # manually set minimum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
+#BH_DEBUG_FIX_MASS              # does not allow BH/sink [type=5] particles to change their mass during run, from accretion/merging/swallowing
 # --------------------
 # ----- MPI & Parallel-FFTW De-Bugging
 #USE_MPI_IN_PLACE               # MPI debugging: makes AllGatherV compatible with MPI_IN_PLACE definitions in some MPI libraries
@@ -1794,6 +1887,7 @@ The remaining flags in this section all turn on/off additional (optional) output
 #DONOTUSENODELIST               # MPI debugging
 #NOTYPEPREFIX_FFTW              # FFTW debugging (fftw-header/libraries accessed without type prefix, adopting whatever was
                                 #   chosen as default at compile of fftw). Otherwise, the type prefix 'd' for double is used.
+#USE_FFTW3                      # enables FFTW3 (can be used with DOUBLEPRECISION_FFTW) 
 #DOUBLEPRECISION_FFTW           # FFTW in double precision to match libraries
 # --------------------
 # ----- Load-Balancing
@@ -1810,6 +1904,8 @@ These are miscellaneous flags for de-bugging and special purpose behaviors. If y
 
 
 **DEVELOPER\_MODE**: Turn this on to give yourself the option to set many numerical parameters explicitly in the run-time parameterfile. This includes things like the Courant factor and other error tolerance parameters. Otherwise these are hard-coded. Only enable this if you know what you are doing!!!
+
+**LONG\_INTEGER\_TIME**: By default, the depth of the timebin tree is set to the size of an int, which allows for a dynamic range of timesteps of $\sim 2^{30}$ or so. This is almost always sufficient, but if needed, using this flag (at the cost of some memory) will extend the list to long ints, allowing at least $\sim 2^{40}$ dynamic range in timetree. Use this if your timesteps are dropping below the min allowed, but you think your simulation should actually be able to run for the desired maximum time (otherwise shorten that time, since the time-tree needs to extend to that time). 
 
 **STOP\_WHEN\_BELOW\_MINTIMESTEP**: Forces code to quit when stepsize wants to go below MinSizeTimestep specified in the parameterfile.
 
@@ -1830,18 +1926,31 @@ These are miscellaneous flags for de-bugging and special purpose behaviors. If y
 
 **FORCE\_ENTROPIC\_EOS\_BELOW**: This allows you to set (manually) the alternative energy-entropy switch which is enabled by default in MFM/MFV: if relative velocities (approach mach numbers) are below this threshold relative to the sound speed, it uses the entropic EOS. This is designed to reduce numerical diffusivity much more accurately than the alternative 'energy-entropy' switch above, but this value can be important in highly sub-sonic problems
 
+**EOS\_GMC\_BAROTROPIC**: Manually hard-codes a barotropic EOS calibratied to Masunaga and Inutsuka 2000; useful for test problems in small-scale star formation such as cloud collapse, jet launching. See Federrath et al. 2014 ApJ, 790, 128F for the physical details.
+
 **DISABLE\_SPH\_PARTICLE\_WAKEUP**: This turns off the codes ability to "wake up" particles: i.e. to move a particle from a large timestep to a smaller one (by default, if the signal velocity of a particle increases, or it is more than a factor of ~2 larger timestep than its neighbor particles, it is forced into shorter timesteps). Disabling this can lead to severe errors in poorly-resolved flows (because particles might "move through" each other), so this flag should only be activated for debugging.
+
+**DO\_UPWIND\_TIME\_CENTERING**: This (and `DO_HALFSTEP_FOR_MESHLESS_METHODS`) use alternative methods for up-winding the fluxes in the MFM/MFV schemes. this up-weighting can be more accurate in hydrostatic problems with a large sound-speed discontinuity -if- the pressure gradient is steady-state, but if they are moving or unstable, it is less accurate (and can suppress mixing). 
+
 
 <a name="config-debug-fluids"></a>
 ### _Additional Fluid Physics and Gravity_ 
 
-**COOLING\_OPERATOR\_SPLIT**: By default, if COOLING is active, the code will incorporate the hydro work terms into the cooling function which solves for the new temperature fully implicitly. However, enabling this explicitly operator-splits the hydro work update. This is less accurate, but necessary if e.g. you are enabling new cooling physics.
+**COOLING\_OPERATOR\_SPLIT**: By default, if `COOLING` is active, the code will incorporate the hydro work terms into the cooling function which solves for the new temperature fully implicitly. However, enabling this explicitly operator-splits the hydro work update. This is less accurate, but necessary if e.g. you are enabling new cooling physics.
 
-**MHD\_ALTERNATIVE\_LEAPFROG\_SCHEME**: Adopt an alternative leapfrog time-step scheme, where magnetic fields are treated like potential/positions (per Federico Stasyszyn's suggestion): this is still being tested, but may give slightly improved results for certain types of problems (effects do appear to be small, however)
+**COOL\_LOWTEMP\_THIN\_ONLY**: In the `COOL_LOW_TEMPERATURES` module, treat low-temperature cooling as optically-thin instead of interpolating between optically-thin and -thick regimes.
+
+**MHD\_ALTERNATIVE\_LEAPFROG\_SCHEME**: Adopt an alternative leapfrog time-step scheme, where magnetic fields are treated like potential/positions (per Federico Stasyszyn's suggestion): this is still being tested, but may give slightly improved results for certain types of problems (effects do appear to be small, however).
 
 **SUPER\_TIMESTEP\_DIFFUSION**: Employs a super-timestepping scheme to accelerate integration of explicit diffusion operators. This can give a significant speedup on idealized problems. In fully non-linear problems, it is not clear how much this improves performance, and it needs to be carefully vetted for the given problem before it is used.
 
-**EVALPOTENTIAL**: Forces code to evaluate the gravitational potential (not just forces and accelerations) for all particles. Not needed unless de-bugging (even if you set the code to output the potential, you dont need to set this, since it will just evaluate when needed for outputs)
+**EVALPOTENTIAL**: Forces code to evaluate the gravitational potential (not just forces and accelerations) for all particles. Not needed unless de-bugging (even if you set the code to output the potential, you dont need to set this, since it will just evaluate when needed for outputs).
+
+**GRAVITY\_HYBRID\_OPENING\_CRIT**: Use **both** the Barnes-Hut and relative angle opening criterion for the gravity tree (normally choose one or the other). This is more conservative but allows more accurate forces and timestepping when local forces are strong enough to be dominant over intermediate-and-long-range forces, e.g. when there are hard binaries or multiples. 
+
+**TIDAL\_TIMESTEP\_CRITERION**: This replaces the standard acceleration-based timestep criterion with one based on the tidal tensor norm, which is more accurate and adaptive, when there are sharp passages with strong tidal forces (e.g. hard binaries). This only influences the gravity-based timestep, no other components of the timestepping. This of course also involves calculating the tidal tensor in the gravity tree. Currently this is designed only for Tree-based simulations: it neglects the PMGRID components, which are timestepped separately.
+
+**BH\_WAKEUP\_GAS**: Force all gas within the interaction radius of a BH/sink particle to timestep at the same rate (set to lowest timebin of any of the interacting neighbors). This is rarely needed but can help with a variety of de-bugging cases.
 
 <a name="config-debug-ids"></a>
 ### _Particle IDs_ 
@@ -1865,16 +1974,21 @@ These are miscellaneous flags for de-bugging and special purpose behaviors. If y
 
 **MERGESPLIT\_HARDCODE\_MAX\_MASS**/**MERGESPLIT\_HARDCODE\_MIN\_MASS**: Manually set the maximum/minimum allowed mass for particle merge-split operations, to the value set (in code units). This is useful for snapshot restarts and other special circumstances, when the automated routine (which simply reads the input/snapshot, takes the most/least massive particle and multiples by a safety factor of ~3 in either direction) may produce a range of particle masses larger than desired.
 
+**BH\_DEBUG\_FIX\_MASS**: Do not allow BH/sink (type=5) particles to change their mass during run, from accretion/merging/swallowing. For debugging only.
+
+
 <a name="config-debug-mpi"></a>
 ### _MPI & Parallel-FFTW De-Bugging_
 
 
 **USE\_MPI\_IN\_PLACE**/**NO\_ISEND\_IRECV\_IN\_DOMAIN**/**MPISENDRECV\_SIZELIMIT**/**MPISENDRECV\_CHECKSUM**/**DONOTUSENODELIST**: These are very specific flags used to deal with certain non-standard MPI installations and very specific version issues. They may be required on some machines (see the code Makefile). If you are having MPI problems, first check the code on other machines, then (if it works) check various mpi installations on the problem machine, then (if youre still stuck) search these terms in the code to see if one of them might help. Frankly if you arent sure how they interact with your MPI library, you shouldnt be altering them.
 
-
 **NOTYPEPREFIX\_FFTW**: If this is set, the fftw-header/libraries are accessed without type prefix (adopting whatever was chosen as default at compile-time of fftw). Otherwise, the type prefix 'd' for double-precision is used. This is needed on some machines depending on the compilation of FFTW.
 
 **DOUBLEPRECISION\_FFTW**: If this is set, the code will use the double-precision version of FTTW, provided the latter has been explicitly installed with a "d" prefix, and NOTYPEPREFIX FFTW is not set. Otherwise the single precision version ("s" prefix) is used.
+
+**USE\_FFTW3**: Enables FFTW3 (can be used with `DOUBLEPRECISION_FFTW` or most other FFTW flags). Turn on this flag if you are running with FFTW3 instead of FFTW2. This was added by Takashi Okamoto, but is free to use as part of the public code.
+
 
 <a name="config-debug-loadbalance"></a>
 ### _Load-Balancing_ 

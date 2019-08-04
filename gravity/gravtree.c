@@ -499,9 +499,7 @@ void gravity_tree(void)
                 {
                     place = DataIndexTable[j].Index;
 #ifdef HERMITE_INTEGRATION		    
-		    if(HermiteOnlyFlag){
-			if(!eligible_for_hermite(place)) continue;
-		    }
+                    if(HermiteOnlyFlag) {if(!eligible_for_hermite(place)) continue;}
 #endif
                     for(k = 0; k < 3; k++) {P[place].GravAccel[k] += GravDataOut[j].Acc[k];}
 
@@ -619,9 +617,7 @@ void gravity_tree(void)
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
 #ifdef HERMITE_INTEGRATION
-	if(HermiteOnlyFlag){
-	    if(!eligible_for_hermite(i)) continue;
-	}
+        if(HermiteOnlyFlag) {if(!eligible_for_hermite(i)) continue;}
 #endif
 #ifdef PMGRID
         ax = P[i].GravAccel[0] + P[i].GravPM[0] / All.G;
@@ -650,13 +646,11 @@ void gravity_tree(void)
     }
 #endif
     
-    /*  muliply by G */
+    /*  multiply by G */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
 #ifdef HERMITE_INTEGRATION
-	if(HermiteOnlyFlag){
-	    if(!eligible_for_hermite(i)) continue;
-	}	
+        if(HermiteOnlyFlag) {if(!eligible_for_hermite(i)) continue;}
 #endif	    	
 	    		
 #if (SINGLE_STAR_TIMESTEPPING > 0) // Subtract for component from companion if in binary
@@ -728,9 +722,7 @@ void gravity_tree(void)
     /* normalize the Eddington tensors we just calculated by walking the tree */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
 #ifdef HERMITE_INTEGRATION
-	if(HermiteOnlyFlag){
-	    if(!eligible_for_hermite(i)) continue;
-	}
+        if(HermiteOnlyFlag) {if(!eligible_for_hermite(i)) continue;}
 #endif	    	
         if(P[i].Type == 0)
         {
@@ -764,9 +756,7 @@ void gravity_tree(void)
         
         for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]){
 #ifdef HERMITE_INTEGRATION	    
-	    if(HermiteOnlyFlag){
-		if(!eligible_for_hermite(i)) continue;
-	    }
+            if(HermiteOnlyFlag) {if(!eligible_for_hermite(i)) continue;}
 #endif	    	
             for(j = 0; j < 3; j++)
                 P[i].GravAccel[j] += fac * P[i].Pos[j];

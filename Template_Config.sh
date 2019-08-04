@@ -171,6 +171,9 @@
 #DM_SIDM=2                      # self-interacting particle types (specify the particle types which are self-interacting DM with a bit mask, as for PM_PLACEHIGHRESREGION above (see description); previous "DMDISK_INTERACTIONS" is identical to setting DM_SIDM=2+4  [cite Rocha et al., MNRAS 2013, 430, 81 and Robles et al, 2017 (arXiv:1706.07514)]
 #DM_SCALARFIELD_SCREENING       # gravity is mediated by a long-range scalar field, with dynamical screening (primarily alternative DE models) [cite Rocha et al., MNRAS 2013, 430, 81 and Robles et al, 2017 (arXiv:1706.07514)]
 #DM_FUZZY=0                     #- DM particles (Type=1) are described by Bose-Einstein Condensate: within gravity kernel (adaptive), solves quantum pressure tensor for non-linear terms arising from Schroedinger equation for a given particle mass. IN TESTING PLEASE DO NOT USE!!! 0=fully-conservative Madelung method. 1=mass-conserving direct SPE integration. 2=direct SPE (non mass-conserving)
+## -----------------------------------------------------------------------------------------------------
+# --------------------------------------- Pure-Tree Options for Direct N-body of small-N groups (recommended for hard binaries, etc)
+#GRAVITY_ACCURATE_FEWBODY_INTEGRATION # enables a suite: GRAVITY_HYBRID_OPENING_CRIT, TIDAL_TIMESTEP_CRITERION, LONG_INTEGER_TIME, to more accurately follow few-body point-like dynamics in the tree. currently compatible only with pure-tree gravity.
 ## ----------------------------------------------------------------------------------------------------
 # -------------------------------------- arbitrary time-dependent dark energy equations-of-state, expansion histories, or gravitational constants
 #GR_TABULATED_COSMOLOGY         # enable reading tabulated cosmological/gravitational parameters (master switch)
@@ -209,7 +212,7 @@
 # --- star formation law/particle spawning (additional options: otherwise all star particles will reflect IMF-averaged populations and form strictly based on a density criterion) ---- #
 ## ----------------------------------------------------------------------------------------------------
 #GALSF_SFR_MOLECULAR_CRITERION   # estimates molecular/self-shielded fraction in SF-ing gas, only SF from that is allowed. Cite Krumholz & Gnedin (ApJ 2011 729 36) and Hopkins et al., 2017a, arXiv:1702.06148
-#GALSF_SFR_VIRIAL_SF_CRITERION=0 # only allow star formation in virialized sub-regions (alpha<1) (0/no value='default'; 1=0+Jeans criterion; 2=1+'strict' (zero sf if not bound)), 3=2+converging-flow+time-smoothed. 4=3+check if converging along all-3 principle axes. 5=4+Tidal Hill criterion (tidal tensor converging in all dimensions). Cite Hopkins, Narayanan, & Murray 2013 (MNRAS, 432, 2647) and Hopkins et al., 2017a, arXiv:1702.06148; (or Grudic et al. arXiv:1708.09065 for option=3,4)
+#GALSF_SFR_VIRIAL_SF_CRITERION=0 # only allow star formation in virialized sub-regions (alpha<1) (0/no value='default'; 1=0+Jeans criterion; 2=1+'strict' (zero sf if not bound)), 3=2+converging-flow+time-smoothed. 4=3+check if converging along all-3 principle axes. 5=4+Tidal Hill criterion (tidal tensor converging in all dimensions). Cite Hopkins, Narayanan, & Murray 2013 (MNRAS, 432, 2647) and Hopkins et al., 2017a, arXiv:1702.06148; (or Grudic et al. arXiv:1708.09065 for option=3,4,5)
 #GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory. Cite Guszejnov, Hopkins, & Ma 2017, MNRAS, 472, 2107
 #GALSF_SFR_IMF_SAMPLING          # discretely sample the IMF: simplified model with quantized number of massive stars. Cite Kung-Yi Su, Hopkins, et al., Hayward, et al., 2017, "Discrete Effects in Stellar Feedback: Individual Supernovae, Hypernovae, and IMF Sampling in Dwarf Galaxies". 
 #GALSF_GENERATIONS=1             # the number of star particles a gas particle may spawn (defaults to 1, set otherwise)
@@ -245,19 +248,30 @@
 # -------------------- (unlike GALSF options, these sinks are individual accretors, not populations). Much in common with Black Hole modules below.
 # -------------------- These are proprietary right now, in development with Mike Grudic, David Guszejnov, and PFH: modules not to be used without authors permission, though basic modules may be ok there is a lot of development happening here]
 ## ----------------------------------------------------------------------------------------------------
-#SINGLE_STAR_SINK_DYNAMICS      # master switch for 'single star' formation/dynamics model: sink particles representing -individual- stars/planets/compact objects
+#SINGLE_STAR_SINK_DYNAMICS      # master switch to enable any other modules in this section
+## ----------------------------------------------------------------------------------------------------
+# ----- time integration, regularization, and explicit small-N-body dynamical treatments (for e.g. hard binaries, etc)
+## ----------------------------------------------------------------------------------------------------
 #SINGLE_STAR_TIMESTEPPING=1     # use additional timestep criteria to ensure resolved binaries/multiples dont dissolve in close encounters. 0=most conservative. 1=super-timestep hard binaries by operator-splitting the binary orbit. 2=more aggressive super-timestep.
 #HERMITE_INTEGRATION=32         # Instead of the usual 2nd order DKD Leapfrog timestep, do 4th order Hermite integration for particles matching the bitflag. Allows longer timesteps and higher accuracy collisional dynamics
-#SINGLE_STAR_SINK_FORMATION=(1+2+4+8+16+32)   # form new sinks on the fly, criteria from bitflag: 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
+## ----------------------------------------------------------------------------------------------------
+# ----- sink creation and accretion/growth/merger modules
+## ----------------------------------------------------------------------------------------------------
+#SINGLE_STAR_SINK_FORMATION=(1+2+4+8+16+32) # form new sinks on the fly, criteria from bitflag: 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
 #SINGLE_STAR_ACCRETION=7        # sink accretion [details in BH info below]: 0-8: use BH_GRAVACCRETION=X, 9: BH_BONDI=0, 10:BH_BONDI=1, 11: BH_GRAVCAPTURE_GAS, 12: BH_GRAVCAPTURE_GAS modified with Bate-style FIXEDSINKRADIUS
+## ----------------------------------------------------------------------------------------------------
+# ----- star (+planet) formation-specific modules (feedback, jets, radiation, protostellar evolution, etc)
+## ----------------------------------------------------------------------------------------------------
 #SINGLE_STAR_PROTOSTELLAR_EVOLUTION # sinks are assumed to be proto-stars and follow protostellar evolution tracks as they accrete to evolve radii+luminosities, determines proto-stellar feedback properties
 #SINGLE_STAR_FB_RT_HEATING      # proto-stellar heating: luminosity determined by BlackHoleRadiativeEfficiency (typical ~5e-7)
 #SINGLE_STAR_FB_JETS            # kinematic jets from sinks: outflow rate+velocity set by BAL_f_accretion+BAL_v_outflow. for now cite Angles-Alcazar et al., 2017, MNRAS, 464, 2840 (for algorithm, developed for black hole jets), though now using SPAWN algorithm developed by KY Su
 #SINGLE_STAR_PROMOTION          # proto-stars become ZAMS stars at end of pre-main sequence lifetime. FIRE feedback modules kick in, but using appropriate luminosities and temperatures for each
-#------------ additional [optional] behaviors:
-#BH_SWALLOW_SMALLTIMESTEPS      # particles with very small timesteps will be accreted to prevent extreme slowdowns, controlled by DT_MIN_TOLERANCE_FACTOR~0.001
+## ----------------------------------------------------------------------------------------------------
+# ----- optional and de-bugging modules (intended for specific behaviors)
+## ----------------------------------------------------------------------------------------------------
 #BH_ACCRETE_NEARESTFIRST        # place all weight for sink/BH 'swallowing' in continuous/stochastic accretion models on single nearest gas element, instead of spreading over same kernel used to calculate mdot
 #BH_RETURN_ANGMOM_TO_GAS        # BH/sink particles return accreted angular momentum to surrounding gas (per Hubber+13) to represent AM transfer (loss in accreting material)
+#BH_SWALLOW_SMALLTIMESTEPS      # particles with very small timesteps will be accreted to prevent extreme slowdowns, controlled by DT_MIN_TOLERANCE_FACTOR~0.001
 #BH_DEBUG_DISABLE_MERGERS       # disable BH-BH (sink-sink) mergers in all the various sink routines
 ############################################################################################################################
 
@@ -313,7 +327,7 @@
 #BH_OUTPUT_MOREINFO             # output additional info to "blackhole_details" on timestep-level, following Angles-Alcazar et al. 2017, MNRAS 472, 109 (use caution: files can get very large if many BHs exist)
 #BH_CALC_DISTANCES              # calculate distances for all particles to closest BH for, e.g., refinement, external potentials, etc. cite Garrison-Kimmel et al., MNRAS, 2017, 471, 1709
 ## ----------------------------------------------------------------------------------------------------
-#------------ deprecated or de-bugging options (most have been combined or optimized into the functions above, here for legacy)
+# ----------- deprecated or de-bugging options (most have been combined or optimized into the functions above, here for legacy)
 ##---------------------BH_SEED_GROWTH_TESTS             #- Currently testing options for BH seeding
 ####################################################################################################
 
@@ -375,7 +389,6 @@
 ####################################################################################################
 # --------------------------------------- Input/Output options
 ####################################################################################################
-#LONG_INTEGER_TIME              # total number of interger time step = 1<<39
 #OUTPUT_ADDITIONAL_RUNINFO      # enables extended simulation output data (can slow down machines significantly in massively-parallel runs)
 #OUTPUT_IN_DOUBLEPRECISION      # snapshot files will be written in double precision
 #INPUT_IN_DOUBLEPRECISION       # input files assumed to be in double precision (otherwise float is assumed)
@@ -408,6 +421,7 @@
 # --------------------
 # ----- General De-Bugging and Special Behaviors
 #DEVELOPER_MODE                 # allows you to modify various numerical parameters (courant factor, etc) at run-time
+#LONG_INTEGER_TIME              # total number of integer time step = 1<<39
 #STOP_WHEN_BELOW_MINTIMESTEP    # forces code to quit when stepsize wants to go below MinSizeTimestep specified in the parameterfile
 #DEBUG                          # enables core-dumps and FPU exceptions
 # --------------------
@@ -456,7 +470,7 @@
 #DONOTUSENODELIST               # MPI debugging
 #NOTYPEPREFIX_FFTW              # FFTW debugging (fftw-header/libraries accessed without type prefix, adopting whatever was
                                 #   chosen as default at compile of fftw). Otherwise, the type prefix 'd' for double is used.
-#USE_FFTW3                      # enables FFTW3 (can be used with DOUBLEPRECISION_FFTW) 
+#USE_FFTW3                      # enables FFTW3 (can be used with DOUBLEPRECISION_FFTW). Thanks to Takashi Okamoto.
 #DOUBLEPRECISION_FFTW           # FFTW in double precision to match libraries
 # --------------------
 # ----- Load-Balancing

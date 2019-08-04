@@ -597,7 +597,6 @@ void set_blackhole_new_mass(int i, int n, double dt)
     int k; for(k=0;k<3;k++) {BPP(n).BH_Specific_AngMom[k] = (m_tot_for_j*BPP(n).BH_Specific_AngMom[k] + dm_acc_for_j*BlackholeTempInfo[i].Jgas_in_Kernel[k]/(MIN_REAL_NUMBER + BlackholeTempInfo[i].Mgas_in_Kernel)) / (m_tot_for_j + dm_acc_for_j);}
 #endif
 
-
 /*  for BH_WIND_CONTINUOUS or BH_WIND_SPAWN
         - we accrete the winds first, either explicitly to the BH or implicitly into the disk -
         - then we remove the wind mass in the final loop
@@ -632,24 +631,16 @@ void set_blackhole_new_mass(int i, int n, double dt)
 #if defined(BH_DRAG) || defined(BH_DYNFRICTION)
 void set_blackhole_drag(int i, int n, double dt)
 {
-    
-    int k;
-    double meddington;
-    
-    meddington = bh_eddington_mdot(BPP(n).BH_Mass);
-    
-#ifdef BH_DRAG
-    /* add a drag force for the black-holes, accounting for the accretion */
+    int k; double meddington = bh_eddington_mdot(BPP(n).BH_Mass);
+#ifdef BH_DRAG /* add a drag force for the black-holes, accounting for the accretion */
     if((dt>0)&&(BPP(n).BH_Mass>0))
     {
         double fac = BPP(n).BH_Mdot * dt / BPP(n).BH_Mass;
 #if (BH_DRAG == 2)
-        /* make the force stronger to keep the BH from wandering */
-        fac = meddington * dt / BPP(n).BH_Mass;
+        fac = meddington * dt / BPP(n).BH_Mass; /* make the force stronger to keep the BH from wandering */
 #endif
         if(fac>1) fac=1;
-        for(k = 0; k < 3; k++)
-            P[n].GravAccel[k] += All.cf_atime*All.cf_atime * fac * BlackholeTempInfo[i].BH_SurroundingGasVel[k] / dt;
+        for(k = 0; k < 3; k++) {P[n].GravAccel[k] += All.cf_atime*All.cf_atime * fac * BlackholeTempInfo[i].BH_SurroundingGasVel[k] / dt;}
     } // if((dt>0)&&(BPP(n).BH_Mass>0))
 #endif
     
@@ -714,8 +705,7 @@ void set_blackhole_drag(int i, int n, double dt)
             for(k = 0; k < 3; k++) {P[n].Vel[k] += BlackholeTempInfo[i].DF_mean_vel[k]*All.cf_atime * fac_vel;}
         }
 #else
-        for(k = 0; k < 3; k++)
-            P[n].GravAccel[k] += All.cf_atime*All.cf_atime * fac_friction * BlackholeTempInfo[i].DF_mean_vel[k];
+        for(k = 0; k < 3; k++) {P[n].GravAccel[k] += All.cf_atime*All.cf_atime * fac_friction * BlackholeTempInfo[i].DF_mean_vel[k];}
 #endif
     }
 #endif
@@ -731,11 +721,9 @@ void set_blackhole_long_range_rp(int i, int n)
     /* pre-set quantities needed for long-range radiation pressure terms */
     int k; double fac; P[n].BH_disk_hr=1/3; P[n].GradRho[0]=P[n].GradRho[1]=0; P[n].GradRho[2]=1;
     if(BlackholeTempInfo[i].Mgas_in_Kernel > 0)
-    {
-        /* estimate h/R surrounding the BH from the gas density gradients */
+    {   /* estimate h/R surrounding the BH from the gas density gradients */
         fac=0; for(k=0;k<3;k++) {fac += BlackholeTempInfo[i].GradRho_in_Kernel[k]*BlackholeTempInfo[i].GradRho_in_Kernel[k];}
-        P[n].BH_disk_hr = P[n].DensAroundStar / (PPP[n].Hsml * sqrt(fac)) * 1.3;
-        /* 1.3 factor from integrating exponential disk with h/R=const over gaussian kernel, for width=1/3 (quintic kernel); everything here is in code units, comes out dimensionless */
+        P[n].BH_disk_hr = P[n].DensAroundStar / (PPP[n].Hsml * sqrt(fac)) * 1.3; /* 1.3 factor from integrating exponential disk with h/R=const over gaussian kernel, for width=1/3 (quintic kernel); everything here is in code units, comes out dimensionless */
         
         /* use the gradrho vector as a surrogate to hold the orientation of the angular momentum 
           (this is done because the long-range radiation routines for the BH require the angular momentum vector for non-isotropic emission) */
@@ -927,26 +915,26 @@ void blackhole_final_operations(void)
         }
         double R_Hayashi_Henyey = 2.1 * sqrt(lum_sol / T4000_4); // size below which, at the temperature above, contraction must occur along the Henyey track at constant luminosity
         double t_R_evol = 0, contraction_factor = 0; // timescale for contraction
-        if(BPP(n).ProtoStellar_Radius <= R_Hayashi_Henyey)
+        if(BPP(n).ProtoStellarRadius_inSolar <= R_Hayashi_Henyey)
         {
             // currently on Henyey track, contracting at constant Luminosity
-            t_R_evol = 1.815e7 * m_solar*m_solar / (BPP(n).ProtoStellar_Radius * lum_sol) / (All.UnitTime_in_s/(All.HubbleParam * SEC_PER_YEAR)); // contraction timescale
+            t_R_evol = 1.815e7 * m_solar*m_solar / (BPP(n).ProtoStellarRadius_inSolar * lum_sol) / (All.UnitTime_in_s/(All.HubbleParam * SEC_PER_YEAR)); // contraction timescale
             contraction_factor = 1. / (1. + dt/t_R_evol);
         } else {
             // currently on Hayashi track, contracting at constant Temperature
-            t_R_evol = 8.021e7 * m_solar*m_solar / (BPP(n).ProtoStellar_Radius*BPP(n).ProtoStellar_Radius*BPP(n).ProtoStellar_Radius * T4000_4) / (All.UnitTime_in_s/(All.HubbleParam * SEC_PER_YEAR)); // contraction timescale
+            t_R_evol = 8.021e7 * m_solar*m_solar / (BPP(n).ProtoStellarRadius_inSolar*BPP(n).ProtoStellarRadius_inSolar*BPP(n).ProtoStellarRadius_inSolar * T4000_4) / (All.UnitTime_in_s/(All.HubbleParam * SEC_PER_YEAR)); // contraction timescale
             contraction_factor = 1. / pow(1 + 3.*dt/t_R_evol, 1./3.);
         }
         double r_new = 100. * m_solar; // size of newly-formed protostar
 	    if (m_solar < 0.012) {r_new =  5.24 * pow(m_solar, 1./3);} // constant density for Jupiter-type objects
-        BPP(n).ProtoStellar_Radius = (BPP(n).ProtoStellar_Radius * contraction_factor + r_new * mu) / (1. + mu); // new size (contraction + accretion both accounted for)
+        BPP(n).ProtoStellarRadius_inSolar = (BPP(n).ProtoStellarRadius_inSolar * contraction_factor + r_new * mu) / (1. + mu); // new size (contraction + accretion both accounted for)
         double R_main_sequence_ignition; // main sequence radius - where contraction should halt
         if(m_solar <= 1) {R_main_sequence_ignition = pow(m_solar,0.8);} else {R_main_sequence_ignition = pow(m_solar,0.57);}
         
         //if(BPP(n).PreMainSeq_Tracker < 0.36787944117144233) // if drops below 1/e [one t_premainseq timescale, in the absence of accretion], promote //
-        if(BPP(n).ProtoStellar_Radius <= R_main_sequence_ignition)
+        if(BPP(n).ProtoStellarRadius_inSolar <= R_main_sequence_ignition)
         {
-	        BPP(n).ProtoStellar_Radius = R_main_sequence_ignition;
+	        BPP(n).ProtoStellarRadius_inSolar = R_main_sequence_ignition;
 #ifdef SINGLE_STAR_PROMOTION		    
             P[n].Type = 4; // convert type
             count_bhelim++; // note one fewer BH-type particle
