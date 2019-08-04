@@ -462,8 +462,7 @@ integertime get_timestep(int p,		/*!< particle index */
         double dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 / (1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time	
 #ifdef HERMITE_INTEGRATION	
         if(eligible_for_hermite(p)) dt_2body /= 0.3;
-#endif	
-
+#endif
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     	if(P[p].is_in_a_binary && (P[p].SuperTimestepFlag >= 2)) //binary candidate or a confirmed binary
 	    {    // First we need to construct the same 2-body timescale as above, but from the binary parameters. If this is longer than the above, there is another star that is requiring us to
@@ -482,10 +481,9 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
         dt = DMIN(dt, dt_2body);
 #ifdef HERMITE_INTEGRATION
-	if(eligible_for_hermite(p)) dt *= 2; // gives 10^-6 energy error per orbit for a 0.9 eccentricity binary
+        if(eligible_for_hermite(p)) dt *= 2; // gives 10^-6 energy error per orbit for a 0.9 eccentricity binary
 #endif
     }
-
 #endif // SINGLE_STAR_TIMESTEPPING
     
     

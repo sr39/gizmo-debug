@@ -67,12 +67,12 @@ void run(void)
 	
         find_timesteps();		/* find-timesteps */
 #if defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_WIND_SPAWN)
-	int TreeReconstructFlag_local = TreeReconstructFlag;
+        int TreeReconstructFlag_local = TreeReconstructFlag;
 #endif	 
 #ifdef HERMITE_INTEGRATION	
-	HermiteOnlyFlag = 1;
-	compute_grav_accelerations();	/* compute gravitational accelerations for synchronous particles */
-	HermiteOnlyFlag = 0;
+        HermiteOnlyFlag = 1;
+        compute_grav_accelerations();	/* compute gravitational accelerations for synchronous particles */
+        HermiteOnlyFlag = 0;
 #endif        
         do_first_halfstep_kick();	/* half-step kick at beginning of timestep for synchronous particles */
         
@@ -133,13 +133,12 @@ void run(void)
 
         calculate_non_standard_physics();	/* source terms are here treated in a strang-split fashion */
 
-#ifdef HERMITE_INTEGRATION
-	// we do a prediction step using the saved "old" pos, accel and jerk from the beginning of the timestep. Then we recompute accel and jerk and do the correction
-	do_hermite_prediction();
-	HermiteOnlyFlag = 1;
-	compute_grav_accelerations();	/* compute gravitational accelerations for synchronous particles */
-	HermiteOnlyFlag = 0;
-	do_hermite_correction();
+#ifdef HERMITE_INTEGRATION // we do a prediction step using the saved "old" pos, accel and jerk from the beginning of the timestep. Then we recompute accel and jerk and do the correction
+        do_hermite_prediction();
+        HermiteOnlyFlag = 1;
+        compute_grav_accelerations();	/* compute gravitational accelerations for synchronous particles */
+        HermiteOnlyFlag = 0;
+        do_hermite_correction();
 #endif                		
 
 	

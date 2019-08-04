@@ -1855,8 +1855,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         }
 #endif
     }
-#ifdef HERMITE_INTEGRATION
-//    if we're doing a force evaluation for Hermite-integrated particles only, quit right here if it isn't one
+#ifdef HERMITE_INTEGRATION // if we're doing a force evaluation for Hermite-integrated particles only, quit right here if it isn't one
     if (mode==0) {if(HermiteOnlyFlag && !eligible_for_hermite(target)) return 0;}
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
