@@ -218,7 +218,7 @@ double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, doubl
     if(r2*All.UnitLength_in_cm*All.UnitLength_in_cm*All.cf_atime*All.cf_atime < 9.523e36) return 0; /* no force at < 1pc */
 #if defined(BH_FB_COLLIMATED)
     double cos_theta = fabs((dx*bh_angle[0] + dy*bh_angle[1] + dz*bh_angle[2])/sqrt(r2)); if(!isfinite(cos_theta)) {cos_theta=1;}
-    return bh_lum_input * 0.0847655*exp(-4.5*cos_theta*cos_theta); // ~exp(-x^2/2*hR^2), normalized appropriately to give the correct total flux, for hR~0.3
+    return bh_lum_input * 0.0847655*exp(4.5*cos_theta*cos_theta); // ~exp(-x^2/2*hR^2), normalized appropriately to give the correct total flux, for hR~0.3
 #endif
     return bh_lum_input;
 
