@@ -568,11 +568,11 @@ void force_update_node_recursive(int no, int sib, int father)
 #ifdef BH_PHOTONMOMENTUM
         MyFloat bh_lum,bh_lum_hR,bh_lum_grad[3];
         bh_lum=bh_lum_hR=bh_lum_grad[0]=bh_lum_grad[1]=bh_lum_grad[2]=0;
-		#ifdef SINGLE_STAR_SINK_DYNAMICS
-			MyFloat bh_lum_unitfactor = 1.0; //code units are good units
-		#else
-			MyFloat bh_lum_unitfactor = All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s/All.UnitTime_in_s * All.HubbleParam * (SOLAR_MASS/SOLAR_LUM); // convert bh luminosity to our tree units
-		#endif
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+        MyFloat bh_lum_unitfactor = 1.0; //code units are good units
+#else
+        MyFloat bh_lum_unitfactor = All.UnitVelocity_in_cm_per_s*All.UnitVelocity_in_cm_per_s/All.UnitTime_in_s * All.HubbleParam * (SOLAR_MASS/SOLAR_LUM); // convert bh luminosity to our tree units
+#endif
 #endif
 #ifdef BH_CALC_DISTANCES
         MyFloat bh_mass=0;
@@ -758,7 +758,11 @@ void force_update_node_recursive(int no, int sib, int father)
                             double BHLum = bh_lum_bol(pa->BH_Mdot, pa->BH_Mass, p) * bh_lum_unitfactor;
                             bh_lum += BHLum;
                             bh_lum_hR += BHLum * pa->BH_disk_hr;
+#if defined(BH_FOLLOW_ACCRETED_ANGMOM)
+                            for(k=0;k<3;k++) {bh_lum_grad[k] += BHLum * pa->BH_Specific_AngMom[k];}
+#else
                             for(k=0;k<3;k++) {bh_lum_grad[k] += BHLum * pa->GradRho[k];}
+#endif
                         }
                     }
 #endif
@@ -2043,7 +2047,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 		            if(P[no].Type==5) 
 		            {
 			            double bhlum_t = bh_lum_bol(P[no].BH_Mdot, P[no].BH_Mass, no) * bh_lum_unitfactor;
+#if defined(BH_FOLLOW_ACCRETED_ANGMOM)
+                        mass_bhlum = bh_angleweight(bhlum_t, P[no].BH_Specific_AngMom, P[no].BH_disk_hr, dx,dy,dz);
+#else
 			            mass_bhlum = bh_angleweight(bhlum_t, P[no].GradRho, P[no].BH_disk_hr, dx,dy,dz);
+#endif
 		            }
 #endif
                 }
