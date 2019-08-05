@@ -213,7 +213,7 @@ double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, doubl
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     return bh_lum_input;
 #endif
-    if(bh_lum <= 0 || isnan(hR) || hR <= 0) return 0;
+    if(bh_lum_input <= 0 || isnan(hR) || hR <= 0) return 0;
     double r2 = dx*dx+dy*dy+dz*dz; if(r2 <= 0) return 0;
     if(r2*All.UnitLength_in_cm*All.UnitLength_in_cm*All.cf_atime*All.cf_atime < 9.523e36) return 0; /* no force at < 1pc */
 #if defined(BH_FB_COLLIMATED)
