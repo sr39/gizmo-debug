@@ -73,9 +73,9 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
         }
     }
 #endif
-#endif    
     lum_sol *= SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s);
     lum += lum_sol;
+#endif    
     return lum;
 }
 
