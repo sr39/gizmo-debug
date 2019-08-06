@@ -2164,9 +2164,12 @@ extern ALIGN(32) struct particle_data
     MyFloat PM_Potential;
 #endif
 #endif
-#if defined(GALSF_SFR_TIDAL_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION) || defined(GDE_DISTORTIONTENSOR) || defined(COMPUTE_JERK_IN_GRAVTREE)
+#if defined(GALSF_SFR_TIDAL_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION) || defined(GDE_DISTORTIONTENSOR) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(OUTPUT_TIDAL_TENSOR)
 #define COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     double tidal_tensorps[3][3];                        /*!< tidal tensor (=second derivatives of grav. potential) */
+#ifdef PMGRID
+    double tidal_tensorpsPM[3][3];                /*!< for TreePM simulations, long range tidal field */
+#endif
 #endif
 #ifdef COMPUTE_JERK_IN_GRAVTREE
     double GravJerk[3];
@@ -2202,10 +2205,7 @@ extern ALIGN(32) struct particle_data
     MyFloat lc_smear_y;
     MyFloat lc_smear_z;
 #endif
-#ifdef PMGRID
-    double tidal_tensorpsPM[3][3];	            /*!< for TreePM simulations, long range tidal field */
-#endif
-#endif // GDE_DISTORTIONTENSOR // 
+#endif // GDE_DISTORTIONTENSOR //
     
     
 #ifdef GALSF

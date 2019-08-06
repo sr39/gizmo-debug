@@ -102,7 +102,8 @@ void rt_source_injection(void)
         {
             double lum[N_RT_FREQ_BINS];
             for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[j].Je[k]=0;} // need to zero -before- calling injection //
-	    int active_check = rt_get_source_luminosity(j,0,lum);
+            int active_check = rt_get_source_luminosity(j,0,lum);
+            /* here is where we would need to code some source luminosity for the gas */
             for(k=0;k<N_RT_FREQ_BINS;k++) if(active_check) {SphP[j].Je[k]=lum[k];}
         }
     }

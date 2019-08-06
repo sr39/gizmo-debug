@@ -396,8 +396,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
         /* set the momentum shift so we know how to move the tree! */
         for(j=0;j<3;j++) {P[i].dp[j] += dp[j];}
 #ifdef GDE_DISTORTIONTENSOR
-        /* momentum-space correction for following phase-space distribution (call after momentum-space kicks) */
-        do_the_phase_space_kick(i, dt_gravkick);
+        do_the_phase_space_kick(i, dt_gravkick); /* momentum-space correction for following phase-space distribution (call after momentum-space kicks) */
 #endif
 #ifdef DM_FUZZY
         do_dm_fuzzy_drift_kick(i, dt_entr, 0); /* kicks for fuzzy-dm integration */

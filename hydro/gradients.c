@@ -1498,9 +1498,7 @@ void hydro_gradient_calc(void)
                             diffusion limit (since whatever we come up with here will be multiplied by lambda in the relevant forces/etc: therefore 
                             we need to multiply chifac_iso by a power of 3 (because this goes to I/3, but also when lambda->1/3) */
 						//chi=1./3.; // pure isotropic
-#ifdef RT_RAD_PRESSURE_FORCES
-//						chi=1.; // pure optically-thin // may be needed for RP problems
-#endif
+                        //chi=1.; // pure optically-thin // may be needed for RP problems
                         double chifac_iso=3.*(1-chi)/2., chifac_ot=(3.*chi-1.)/2.;
 #ifdef RT_DIFFUSION_CG
                         for(k=0;k<6;k++) {SphP[i].ET[k_freq][k] *= chifac_ot; if(k<3) {SphP[i].ET[k_freq][k] += chifac_iso/3.;}} // diagonal components // (this only makes sense if ET is freq-dependent) [note this will cause instability in the explicit methods; only use for CG where ET is explicitly called and this is done only on global timesteps]

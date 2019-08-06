@@ -797,8 +797,17 @@ void hydro_final_operations_and_cleanup(void)
                 {
                     Fmag = sqrt(Fmag);
                     double Fthin = SphP[i].E_gamma[k2] * (RT_SPEEDOFLIGHT_REDUCTION * C / All.UnitVelocity_in_cm_per_s);
-                    double F_eff = DMAX(Fthin , Fmag);
-                    for(k=0;k<3;k++) {radacc[k] += (F_eff/Fmag) * slabfac * SphP[i].Kappa_RT[k2] * (SphP[i].Flux_Pred[k2][k] * SphP[i].Density/P[i].Mass) / (RT_SPEEDOFLIGHT_REDUCTION * C / All.UnitVelocity_in_cm_per_s);}
+                    double F_eff = DMAX(Fthin , Fmag), work_band=0;
+                    double kappa_abs = SphP[i].Kappa_RT[k2];
+                    double kappa_scatter = 0;
+                    for(k=0;k<3;k++)
+                    {
+                        double radacc_abs = (F_eff/Fmag) * slabfac * kappa_abs * (SphP[i].Flux_Pred[k2][k] * SphP[i].Density/P[i].Mass) / (RT_SPEEDOFLIGHT_REDUCTION * C / All.UnitVelocity_in_cm_per_s);
+                        double radacc_scatter = (F_eff/Fmag) * slabfac * kappa_scatter * (SphP[i].Flux_Pred[k2][k] * SphP[i].Density/P[i].Mass) / (RT_SPEEDOFLIGHT_REDUCTION * C / All.UnitVelocity_in_cm_per_s);
+                        radacc[k] += radacc_abs + radacc_scatter; // contribution to acceleration
+                        work_band += radacc_scatter * P[i].Vel[k]/All.cf_atime * P[i].Mass; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
+                    }
+                    SphP[i].Dt_E_gamma[k2] -= work_band;
                 }
 #endif
 //#elif defined(RT_EVOLVE_EDDINGTON_TENSOR)

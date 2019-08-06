@@ -808,6 +808,10 @@ void mult_matrix_transpose_A(MyBigFloat ** matrix_a, MyBigFloat ** matrix_b, int
 void luinvert(MyBigFloat ** input_matrix, int n, MyBigFloat ** inverse_matrix);
 void eigsrt(MyBigFloat d[], MyBigFloat ** v, int n);
 void jacobi(MyBigFloat ** a, int n, MyBigFloat d[], MyBigFloat ** v, int *nrot);
+#endif
+
+
+#if defined(COMPUTE_TIDAL_TENSOR_IN_GRAVTREE)
 #ifdef PMGRID
 void pmtidaltensor_periodic_diff(void);
 void pmtidaltensor_periodic_fourier(int component);
