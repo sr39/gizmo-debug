@@ -2363,11 +2363,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     
                     /* check in addition whether we lie inside the cell */
                     
-                    if(fabs(nop->center[0] - pos_x) < 0.60 * nop->len)
+                    if(NGB_PERIODIC_BOX_LONG_X(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
                     {
-                        if(fabs(nop->center[1] - pos_y) < 0.60 * nop->len)
+                        if(NGB_PERIODIC_BOX_LONG_Y(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
                         {
-                            if(fabs(nop->center[2] - pos_z) < 0.60 * nop->len)
+                            if(NGB_PERIODIC_BOX_LONG_Z(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
                             {
                                 no = nop->u.d.nextnode;
                                 continue;
@@ -3104,11 +3104,11 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                     }
                     else
                     {
-                        if(fabs(nop->center[0] - pos_x) < 0.60 * nop->len)
+                        if(NGB_PERIODIC_BOX_LONG_X(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
                         {
-                            if(fabs(nop->center[1] - pos_y) < 0.60 * nop->len)
+                            if(NGB_PERIODIC_BOX_LONG_Y(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
                             {
-                                if(fabs(nop->center[2] - pos_z) < 0.60 * nop->len)
+                                if(NGB_PERIODIC_BOX_LONG_Z(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
                                 {
                                     openflag = 1;
                                 }
@@ -3566,8 +3566,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
 
 #ifdef REDUCE_TREEWALK_BRANCHING
                     if((mass * nop->len * nop->len > r2 * r2 * aold) |
-                       ((fabs(dxx) < 0.60 * nop->len) & (fabs(dyy) < 0.60 * nop->len) & (fabs(dzz) <
-                                                                                         0.60 * nop->len)))
+                       ((fabs(dxx) < 0.60 * nop->len) & (fabs(dyy) < 0.60 * nop->len) & (fabs(dzz) < 0.60 * nop->len)))
                     {
                         /* open cell */
                         no = nop->u.d.nextnode;
