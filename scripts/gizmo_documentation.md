@@ -1126,7 +1126,6 @@ Note that when `ADAPTIVE_GRAVSOFT` is set (for gas or stars), then it is importa
 #GDE_READIC                     #- read initial sheet orientation/initial density/initial caustic count from ICs
 #GDE_LEAN                       #- lean version of GDE
 #OUTPUT_GDE_DISTORTIONTENSOR        #- write phase-space distortion tensor to snapshot
-#OUTPUT_GDE_TIDALTENSORPS           #- write configuration-space tidal tensor to snapshot
 #OUTPUT_GDE_LASTCAUSTIC            #- write info on last passed caustic to snapshot
 ##-----------------------------------------------------------------------------------------------------
 ```
@@ -1777,6 +1776,7 @@ These flags govern the implementation of multi-threading in the code. Must be en
 #OUTPUT_POSITIONS_IN_DOUBLE     # input/output files in single, but positions in double (used in hires, hi-dynamic range sims when positions differ by < float accuracy)
 #INPUT_POSITIONS_IN_DOUBLE      # as above, but specific to the ICs file
 #OUTPUT_POTENTIAL               # forces code to compute+output potentials in snapshots
+#OUTPUT_TIDAL_TENSOR            # writes tidal tensor (computed in gravity) to snapshots
 #OUTPUT_ACCELERATION            # output physical acceleration of each particle in snapshots
 #OUTPUT_CHANGEOFENERGY          # outputs rate-of-change of internal energy of gas particles in snapshots
 #OUTPUT_VORTICITY               # outputs the vorticity vector
@@ -1815,6 +1815,8 @@ These flags govern snapshot outputs (what is saved and how it is saved).
 The remaining flags in this section all turn on/off additional (optional) outputs to snapshots, which can often be quite useful (but are by default excluded to save on storage requirements). Many other physics modules have additional such output flags hard-wired to output certain quantities used in the module. If youre curious, you should look at the file "io.c" -- under e.g. "get\_dataset\_name" you can see a list of the names of the different datasets which can be output. Here are some of the more common output flags: 
 
 **OUTPUT\_POTENTIAL**: Add potential energy to snapshots (under HDF5 buffer header name "Potential")
+
+**#OUTPUT\_TIDAL\_TENSOR**: Add tidal tensor (computed in gravity) to snapshots (HDF5 "TidalTensor")
 
 **OUTPUT\_ACCELERATION**: Add acceleration to snapshots (HDF5 "Acceleration")
 

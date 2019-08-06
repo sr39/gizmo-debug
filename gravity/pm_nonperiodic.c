@@ -85,7 +85,7 @@ static fftw_real *kernel[2], *rhogrid, *forcegrid, *workspace;
 static fftw_complex *fft_of_kernel[2], *fft_of_rhogrid;
 static d_fftw_real *d_rhogrid, *d_forcegrid, *d_workspace;
 
-#ifdef GDE_DISTORTIONTENSOR
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 static fftw_real *tidal_workspace;
 static fftw_real *d_tidal_workspace;
 #endif
@@ -99,7 +99,7 @@ void pm_nonperiodic_transposeA(fftw_real * field, fftw_real * scratch);
 void pm_nonperiodic_transposeB(fftw_real * field, fftw_real * scratch);
 int pm_nonperiodic_compare_sortindex(const void *a, const void *b);
 
-#ifdef GDE_DISTORTIONTENSOR
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 void pm_nonperiodic_transposeAz(fftw_real * field, fftw_real * scratch);
 void pm_nonperiodic_transposeBz(fftw_real * field, fftw_real * scratch);
 #endif
@@ -458,7 +458,7 @@ void pm_init_nonperiodic_allocate(void)
     }
   bytes_tot += bytes;
 
-#ifdef GDE_DISTORTIONTENSOR
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
   if(!(tidal_workspace = (fftw_real *) mymalloc("tidal_workspace", bytes = maxfftsize * sizeof(d_fftw_real))))
     {
       printf("failed to allocate memory for `FFT-tidal_workspace' (%g MB).\n", bytes / (1024.0 * 1024.0));
@@ -475,7 +475,7 @@ void pm_init_nonperiodic_allocate(void)
   d_rhogrid = (d_fftw_real *) rhogrid;
   d_forcegrid = (d_fftw_real *) forcegrid;
   d_workspace = (d_fftw_real *) workspace;
-#ifdef GDE_DISTORTIONTENSOR
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
   d_tidal_workspace = (d_fftw_real *) tidal_workspace;
 #endif
 }
@@ -488,7 +488,7 @@ void pm_init_nonperiodic_allocate(void)
 void pm_init_nonperiodic_free(void)
 {
   /* deallocate memory */
-#ifdef GDE_DISTORTIONTENSOR
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
   myfree(tidal_workspace);
 #endif
   myfree(part_sortindex);
@@ -1469,7 +1469,7 @@ void pm_nonperiodic_transposeB(fftw_real * field, fftw_real * scratch)
 	  }
 }
 
-#ifdef GDE_DISTORTIONTENSOR
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 void pm_nonperiodic_transposeAz(fftw_real * field, fftw_real * scratch)
 {
   int x, y, z, task;
@@ -2114,7 +2114,7 @@ void mysort_pmnonperiodic(void *b, size_t n, size_t s, int (*cmp) (const void *,
 }
 
 
-#ifdef GDE_DISTORTIONTENSOR
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 /*! Calculates the long-range tidal field using the PM method.  The potential is
  *  Gaussian filtered with Asmth, given in mesh-cell units. We carry out a CIC
  *  charge assignment, and compute the potenial by Fourier transform
@@ -3402,6 +3402,6 @@ void check_tidaltensor_nonperiodic(int particle_ID)
 	}
     }
 }
-#endif /*GDE_DISTORTIONTENSOR*/
+#endif /*COMPUTE_TIDAL_TENSOR_IN_GRAVTREE*/
 #endif
 #endif

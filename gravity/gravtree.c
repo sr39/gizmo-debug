@@ -557,7 +557,7 @@ void gravity_tree(void)
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                     {int i1tt,i2tt; for(i1tt=0;i1tt<3;i1tt++) {for(i2tt=0;i2tt<3;i2tt++) {P[place].tidal_tensorps[i1tt][i2tt] += GravDataOut[j].tidal_tensorps[i1tt][i2tt];}}}
 #ifdef COMPUTE_JERK_IN_GRAVTREE
-		    int i1tt; for(i1tt=0; i1tt<3; i1tt++) P[place].GravJerk[i1tt] += GravDataOut[j].GravJerk[i1tt];
+                    int i1tt; for(i1tt=0; i1tt<3; i1tt++) P[place].GravJerk[i1tt] += GravDataOut[j].GravJerk[i1tt];
 #endif		    		    
 #endif
                     
@@ -662,11 +662,11 @@ void gravity_tree(void)
 #endif	
 
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-#ifdef GDE_DISTORTIONTENSOR /* Diagonal terms of tidal tensor need correction, because tree is running over all particles -> also over target particle -> extra term -> correct it */
-        if(All.ComovingIntegrationOn) {P[i].tidal_tensorps[0][0] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[1][1] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[2][2] -= All.TidalCorrection/All.G;} // subtract Hubble flow terms //
-#endif
 #if (defined(TIDAL_TIMESTEP_CRITERION) || defined(GALSF_SFR_TIDAL_HILL_CRITERION)) // diagonalize the tidal tensor so we can use its invariants, which don't change with rotation
         double tt[9]; for(j=0; j<3; j++) {for (k=0; k<3; k++) tt[3*j+k] = P[i].tidal_tensorps[j][k];}
+#ifdef PMGRID
+        for(j=0; j<3; j++) {for (k=0; k<3; k++) tt[3*j+k] += P[i].tidal_tensorpsPM[j][k];}
+#endif
         gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3);
         gsl_vector *eval = gsl_vector_alloc (3);
         gsl_eigen_symm_workspace * w = gsl_eigen_symm_alloc (3);
@@ -675,9 +675,10 @@ void gravity_tree(void)
         P[i].tidal_tensorps[0][1] = P[i].tidal_tensorps[1][0] = P[i].tidal_tensorps[1][2] = P[i].tidal_tensorps[2][1] = P[i].tidal_tensorps[0][2] = P[i].tidal_tensorps[2][0] = 0; //zero out off-diagonal elements
         gsl_eigen_symm_free(w);
         gsl_vector_free (eval);
-#else // for GDE implementation, want to include particle self-tide contribution -- for timestep or hill criteria, on the other hand, this is not necessary
-        /* Diagonal terms of tidal tensor need correction, because tree is running over all particles -> also over target particle -> extra term -> correct it */
+#endif
+#ifdef GDE_DISTORTIONTENSOR /* for GDE implementation, want to include particle self-tide contribution -- for timestep or hill criteria, on the other hand, this is not necessary */
         if(All.ComovingIntegrationOn) {P[i].tidal_tensorps[0][0] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[1][1] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[2][2] -= All.TidalCorrection/All.G;} // subtract Hubble flow terms //
+        /* Diagonal terms of tidal tensor need correction, because tree is running over all particles -> also over target particle -> extra term -> correct it */
         P[i].tidal_tensorps[0][0] += P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type]) * 10.666666666667;
         P[i].tidal_tensorps[1][1] += P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type]) * 10.666666666667;
         P[i].tidal_tensorps[2][2] += P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type]) * 10.666666666667;
@@ -769,24 +770,9 @@ void gravity_tree(void)
 #else /* gravity is switched off */
     t0 = my_second();
     
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-        for(j = 0; j < 3; j++)
-            P[i].GravAccel[j] = 0;
-    
-    
-#ifdef GDE_DISTORTIONTENSOR
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-    {
-        P[i].tidal_tensorps[0][0] = 0.0;
-        P[i].tidal_tensorps[0][1] = 0.0;
-        P[i].tidal_tensorps[0][2] = 0.0;
-        P[i].tidal_tensorps[1][0] = 0.0;
-        P[i].tidal_tensorps[1][1] = 0.0;
-        P[i].tidal_tensorps[1][2] = 0.0;
-        P[i].tidal_tensorps[2][0] = 0.0;
-        P[i].tidal_tensorps[2][1] = 0.0;
-        P[i].tidal_tensorps[2][2] = 0.0;
-    }
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {for(j = 0; j < 3; j++) {P[i].GravAccel[j] = 0;}}
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {P[i].tidal_tensorps[0][0] = P[i].tidal_tensorps[0][1] = P[i].tidal_tensorps[0][2] = P[i].tidal_tensorps[1][0] = P[i].tidal_tensorps[1][1] = P[i].tidal_tensorps[1][2] = P[i].tidal_tensorps[2][0] = P[i].tidal_tensorps[2][1] = P[i].tidal_tensorps[2][2] = 0.0;}
 #endif
 #endif /* end of SELFGRAVITY_OFF */
     

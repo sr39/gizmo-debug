@@ -76,7 +76,7 @@ static d_fftw_real *d_rhogrid, *d_forcegrid, *d_workspace;
 static fftw_complex *Cdata;
 #endif
 
-#ifdef GDE_DISTORTIONTENSOR
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 static fftw_real *tidal_workspace;
 static fftw_real *d_tidal_workspace;
 #endif
@@ -91,7 +91,7 @@ void pm_periodic_transposeA(fftw_real * field, fftw_real * scratch);
 void pm_periodic_transposeB(fftw_real * field, fftw_real * scratch);
 int pm_periodic_compare_sortindex(const void *a, const void *b);
 
-#ifdef GDE_DISTORTIONTENSOR
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 void pm_periodic_transposeAz(fftw_real * field, fftw_real * scratch);
 void pm_periodic_transposeBz(fftw_real * field, fftw_real * scratch);
 #endif
@@ -255,7 +255,7 @@ void pm_init_periodic_allocate(void)
     }
   bytes_tot += bytes;
 
-#ifdef GDE_DISTORTIONTENSOR
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
   if(!(tidal_workspace = (fftw_real *) mymalloc("tidal_workspace", bytes = maxfftsize * sizeof(d_fftw_real))))
     {
       printf("failed to allocate memory for `FFT-tidal_workspace' (%g MB).\n", bytes / (1024.0 * 1024.0));
@@ -278,7 +278,7 @@ void pm_init_periodic_allocate(void)
   d_rhogrid = (d_fftw_real *) rhogrid;
   d_forcegrid = (d_fftw_real *) forcegrid;
   d_workspace = (d_fftw_real *) workspace;
-#ifdef GDE_DISTORTIONTENSOR
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
   d_tidal_workspace = (d_fftw_real *) tidal_workspace;
 #endif
 }
@@ -290,7 +290,7 @@ void pm_init_periodic_allocate(void)
 void pm_init_periodic_free(void)
 {
   /* allocate the memory to hold the FFT fields */
-#ifdef GDE_DISTORTIONTENSOR
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
   myfree(tidal_workspace);
 #endif
   myfree(part_sortindex);
@@ -1621,7 +1621,7 @@ void pm_periodic_transposeB(fftw_real * field, fftw_real * scratch)
 
 }
 
-#ifdef GDE_DISTORTIONTENSOR
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 void pm_periodic_transposeAz(fftw_real * field, fftw_real * scratch)
 {
   int x, y, z, task;
@@ -1749,7 +1749,7 @@ void pm_periodic_transposeBz(fftw_real * field, fftw_real * scratch)
 
 
 
-#ifdef GDE_DISTORTIONTENSOR
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 /*! Calculates the long-range tidal field using the PM method.  The potential is
  *  Gaussian filtered with Asmth, given in mesh-cell units. We carry out a CIC
  *  charge assignment, and compute the potenial by Fourier transform
@@ -3107,7 +3107,8 @@ void check_tidaltensor_periodic(int particle_ID)
 */
 }
 
-#endif /*GDE_DISTORTIONTENSOR*/
+#endif /*COMPUTE_TIDAL_TENSOR_IN_GRAVTREE*/
+
 /*           Here comes code for the power-sepctrum computation.
  */
 #define BINS_PS  2000		/* number of bins for power spectrum computation */

@@ -39,10 +39,6 @@ void init(void)
     int count_holes = 0;
 #endif
     
-#ifdef GDE_DISTORTIONTENSOR
-    int i1, i2;
-#endif
-
 #ifdef CHIMES 
     double H_mass_fraction, He_mass_fraction; 
 #endif 
@@ -222,80 +218,40 @@ void init(void)
     
     for(i = 0; i < NumPart; i++)	/*  start-up initialization */
     {
-        for(j = 0; j < 3; j++)
-            P[i].GravAccel[j] = 0;
-        /* DISTORTION PARTICLE SETUP */
+        for(j = 0; j < 3; j++) {P[i].GravAccel[j] = 0;}
+
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* init tidal tensor for first output (not used for calculation) */
+        P[i].tidal_tensorps[0][0]=P[i].tidal_tensorps[0][1]=P[i].tidal_tensorps[0][2]=0;
+        P[i].tidal_tensorps[1][0]=P[i].tidal_tensorps[1][1]=P[i].tidal_tensorps[1][2]=0;
+        P[i].tidal_tensorps[2][0]=P[i].tidal_tensorps[2][1]=P[i].tidal_tensorps[2][2]=0;
+#ifdef PMGRID
+        P[i].tidal_tensorpsPM[0][0]=P[i].tidal_tensorpsPM[0][1]=P[i].tidal_tensorpsPM[0][2]=0;
+        P[i].tidal_tensorpsPM[1][0]=P[i].tidal_tensorpsPM[1][1]=P[i].tidal_tensorpsPM[1][2]=0;
+        P[i].tidal_tensorpsPM[2][0]=P[i].tidal_tensorpsPM[2][1]=P[i].tidal_tensorpsPM[2][2]=0;
+#endif
+#endif
 #ifdef GDE_DISTORTIONTENSOR
-        /*init tidal tensor for first output (not used for calculation) */
-        for(i1 = 0; i1 < 3; i1++)
-            for(i2 = 0; i2 < 3; i2++)
-                P[i].tidal_tensorps[i1][i2] = 0.0;
-        
         /* find caustics by sign analysis of configuration space distortion */
         P[i].last_determinant = 1.0;
-        
 #ifdef OUTPUT_GDE_LASTCAUSTIC
-        /* all entries zero -> no caustic yet */
-        P[i].lc_Time = 0.0;
-        P[i].lc_Pos[0] = 0.0;
-        P[i].lc_Pos[1] = 0.0;
-        P[i].lc_Pos[2] = 0.0;
-        P[i].lc_Vel[0] = 0.0;
-        P[i].lc_Vel[1] = 0.0;
-        P[i].lc_Vel[2] = 0.0;
+        P[i].lc_Time = 0.0; /* all entries zero -> no caustic yet */
+        P[i].lc_Pos[0] = 0.0; P[i].lc_Pos[1] = 0.0; P[i].lc_Pos[2] = 0.0;
+        P[i].lc_Vel[0] = 0.0; P[i].lc_Vel[1] = 0.0; P[i].lc_Vel[2] = 0.0;
         P[i].lc_rho_normed_cutoff = 0.0;
-        
-        P[i].lc_Dir_x[0] = 0.0;
-        P[i].lc_Dir_x[1] = 0.0;
-        P[i].lc_Dir_x[2] = 0.0;
-        P[i].lc_Dir_y[0] = 0.0;
-        P[i].lc_Dir_y[1] = 0.0;
-        P[i].lc_Dir_y[2] = 0.0;
-        P[i].lc_Dir_z[0] = 0.0;
-        P[i].lc_Dir_z[1] = 0.0;
-        P[i].lc_Dir_z[2] = 0.0;
-        
-        P[i].lc_smear_x = 0.0;
-        P[i].lc_smear_y = 0.0;
-        P[i].lc_smear_z = 0.0;
+        P[i].lc_Dir_x[0] = 0.0; P[i].lc_Dir_x[1] = 0.0; P[i].lc_Dir_x[2] = 0.0;
+        P[i].lc_Dir_y[0] = 0.0; P[i].lc_Dir_y[1] = 0.0; P[i].lc_Dir_y[2] = 0.0;
+        P[i].lc_Dir_z[0] = 0.0; P[i].lc_Dir_z[1] = 0.0; P[i].lc_Dir_z[2] = 0.0;
+        P[i].lc_smear_x = 0.0; P[i].lc_smear_y = 0.0; P[i].lc_smear_z = 0.0;
 #endif
-        
-        
-#ifdef PMGRID
-        /* long range tidal field init */
-        P[i].tidal_tensorpsPM[0][0] = 0;
-        P[i].tidal_tensorpsPM[0][1] = 0;
-        P[i].tidal_tensorpsPM[0][2] = 0;
-        P[i].tidal_tensorpsPM[1][0] = 0;
-        P[i].tidal_tensorpsPM[1][1] = 0;
-        P[i].tidal_tensorpsPM[1][2] = 0;
-        P[i].tidal_tensorpsPM[2][0] = 0;
-        P[i].tidal_tensorpsPM[2][1] = 0;
-        P[i].tidal_tensorpsPM[2][2] = 0;
-#endif
-        
-        for(i1 = 0; i1 < 6; i1++)
-            for(i2 = 0; i2 < 6; i2++)
-            {
-                if(i1 == i2)
-                    P[i].distortion_tensorps[i1][i2] = 1.0;
-                else
-                    P[i].distortion_tensorps[i1][i2] = 0.0;
-            }
-        
-        /* for cosmological simulations we do init here, not read from ICs */
-        if(All.ComovingIntegrationOn)
+        for(i1 = 0; i1 < 6; i1++) {for(i2 = 0; i2 < 6; i2++) {if(i1 == i2) {P[i].distortion_tensorps[i1][i2] = 1.0;} else {P[i].distortion_tensorps[i1][i2] = 0.0;}}}
+        if(All.ComovingIntegrationOn) /* for cosmological simulations we do init here, not read from ICs */
         {
 #ifndef GDE_READIC
-            /* no caustic passages in the beginning */
-            P[i].caustic_counter = 0.0;
+            P[i].caustic_counter = 0.0; /* no caustic passages in the beginning */
 #ifndef GDE_LEAN
-            /* Lagrange time of particle */
-            P[i].a0 = All.TimeBegin;
+            P[i].a0 = All.TimeBegin; /* Lagrange time of particle */
             /* approximation: perfect Hubble Flow -> peculiar sheet orientation is exactly zero */
-            for(i1 = 0; i1 < 3; i1++)
-                for(i2 = 0; i2 < 3; i2++)
-                    GDE_VMATRIX(i,i1,i2) = 0.0;
+            for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GDE_VMATRIX(i,i1,i2) = 0.0;}}
             /* approximation: initial sream density equals background density */
             P[i].init_density = All.Omega0 * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
 #else
@@ -303,32 +259,15 @@ void init(void)
 #endif
 #endif
         }
-        
 #ifndef GDE_LEAN
         /* annihilation stuff */
-        P[i].s_1_last = 1.0;
-        P[i].s_2_last = 1.0;
-        P[i].s_3_last = 1.0;
-        P[i].second_deriv_last = 0.0;
-        P[i].rho_normed_cutoff_last = 1.0;
-        
-        P[i].s_1_current = 1.0;
-        P[i].s_2_current = 1.0;
-        P[i].s_3_current = 1.0;
-        P[i].second_deriv_current = 0.0;
-        P[i].rho_normed_cutoff_current = 1.0;
-        
-        P[i].annihilation = 0.0;
-        P[i].analytic_caustics = 0.0;
-        P[i].analytic_annihilation = 0.0;
+        P[i].s_1_last = 1.0; P[i].s_2_last = 1.0; P[i].s_3_last = 1.0; P[i].second_deriv_last = 0.0; P[i].rho_normed_cutoff_last = 1.0;
+        P[i].s_1_current = 1.0; P[i].s_2_current = 1.0; P[i].s_3_current = 1.0; P[i].second_deriv_current = 0.0; P[i].rho_normed_cutoff_current = 1.0;
+        P[i].annihilation = 0.0; P[i].analytic_caustics = 0.0; P[i].analytic_annihilation = 0.0;
 #endif
-        
-        if(All.ComovingIntegrationOn)
-            P[i].stream_density = GDE_INITDENSITY(i) / (All.TimeBegin * All.TimeBegin * All.TimeBegin);
-        else
-            P[i].stream_density = GDE_INITDENSITY(i);
-        
+        if(All.ComovingIntegrationOn) {P[i].stream_density = GDE_INITDENSITY(i) / (All.TimeBegin * All.TimeBegin * All.TimeBegin);} else {P[i].stream_density = GDE_INITDENSITY(i);}
 #endif /* GDE_DISTORTIONTENSOR */
+
         
 #ifdef KEEP_DM_HSML_AS_GUESS
         if(RestartFlag != 1)

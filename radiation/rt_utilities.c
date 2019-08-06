@@ -684,8 +684,26 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #endif
                     rmag = rmag_max;
 #endif
-                    for(kx=0;kx<3;kx++) {if(mode==0) {P[i].Vel[kx]+=radacc[kx]*rmag;} else {SphP[i].VelPred[kx]+=radacc[kx]*rmag;}}
-                }}
+                    double f_kappa_abs = 1;
+                    double f_kappa_scatter = 0;
+                    double work_band = 0;
+                    for(kx=0;kx<3;kx++)
+                    {
+                        double radacc_abs = f_kappa_abs * radacc[kx] * rmag;
+                        double radacc_scatter = f_kappa_scatter * radacc[kx] * rmag;
+                        double radacc_eff = radacc_abs + radacc_scatter;
+                        if(mode==0)
+                        {
+                            P[i].Vel[kx] += radacc_eff;
+                            work_band += radacc_scatter * P[i].Vel[k]/All.cf_atime * P[i].Mass; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
+                        } else {
+                            SphP[i].VelPred[kx] += radacc_eff;
+                            work_band += radacc_scatter * SphP[i].VelPred[k]/All.cf_atime * P[i].Mass; // PdV work done by photons [absorbed ones are fully-destroyed, so their loss of energy and momentum is already accounted for by their deletion in this limit //
+                        }
+                    }
+                    if(mode==0) {SphP[i].E_gamma[k2] -= work_band;} else {SphP[i].E_gamma_Pred[k2] -= work_band;}
+                }
+            }
 #endif
             
             int donation_target_bin = -1; // frequency into which the photons will be deposited, if any //

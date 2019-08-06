@@ -201,9 +201,8 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     double tcool, u;
 #endif
     
-#if (defined(OUTPUT_GDE_DISTORTIONTENSOR) || defined(OUTPUT_GDE_TIDALTENSORPS))
+#if defined(OUTPUT_GDE_DISTORTIONTENSOR)
     MyBigFloat half_kick_add[6][6];
-    int l;
 #endif
     
     
@@ -1099,18 +1098,19 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             
         case IO_TIDALTENSORPS:
             /* 3x3 configuration-space tidal tensor that is driving the GDE */
-#ifdef OUTPUT_GDE_TIDALTENSORPS
+#ifdef OUTPUT_TIDAL_TENSOR
             for(n = 0; n < pc; pindex++)
                 
                 if(P[pindex].Type == type)
                 {
                     for(k = 0; k < 3; k++)
                     {
-                        for(l = 0; l < 3; l++)
+                        int l_tt_tmp;
+                        for(l_tt_tmp = 0; l_tt_tmp < 3; l_tt_tmp++)
                         {
-                            fp[k * 3 + l] = (MyOutputFloat) P[pindex].tidal_tensorps[k][l];
-#if defined(PMGRID)
-                            fp[k * 3 + l] += (MyOutputFloat) P[pindex].tidal_tensorpsPM[k][l];
+                            fp[k * 3 + l_tt_tmp] = (MyOutputFloat) P[pindex].tidal_tensorps[k][l_tt_tmp];
+#if defined(PMGRID) && !defined(GDE_DISTORTIONTENSOR)
+                            fp[k * 3 + l_tt_tmp] += (MyOutputFloat) P[pindex].tidal_tensorpsPM[k][l_tt_tmp]; // in current code (without GDE_DISTORTIONTENSOR) this isn't necessary because of how the tidal tensor terms are added and diagonalized already in the gravtree operations
 #endif
                             
                         }
@@ -3223,7 +3223,7 @@ int blockpresent(enum iofields blocknr)
                         
             
         case IO_TIDALTENSORPS:
-#ifdef OUTPUT_GDE_TIDALTENSORPS
+#ifdef OUTPUT_TIDAL_TENSOR
             return 1;
 #else
             return 0;
@@ -4185,7 +4185,7 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             strcpy(buf, "BH_NProgs");
             break;
         case IO_TIDALTENSORPS:
-            strcpy(buf, "TidalTensorPS");
+            strcpy(buf, "TidalTensor");
             break;
         case IO_GDE_DISTORTIONTENSOR:
             strcpy(buf, "DistortionTensorPS");
