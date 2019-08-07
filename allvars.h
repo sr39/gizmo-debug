@@ -1522,7 +1522,7 @@ extern FILE *FdHIIHeating;	/*!< file handle for HIIheating.txt log-file */
 extern FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 #endif
 
-#ifdef GDE_DISTORTIONTENSOR
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 #ifdef PMGRID
 extern FILE *FdTidaltensor;     /*!< file handle for tidaltensor.txt log-file. */
 #endif
