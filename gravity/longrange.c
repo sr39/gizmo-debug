@@ -92,9 +92,9 @@ void long_range_force(void)
 
 #ifdef BOX_PERIODIC
   pmforce_periodic(0, NULL);
-#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE   /* choose what kind of tidal field calculation you want (fourier method is disfavored in current code) */
-    //pmtidaltensor_periodic_fourier(0); pmtidaltensor_periodic_fourier(1); pmtidaltensor_periodic_fourier(2); pmtidaltensor_periodic_fourier(3); pmtidaltensor_periodic_fourier(4); pmtidaltensor_periodic_fourier(5); /* fourier */
-    pmtidaltensor_periodic_diff(); /* finite-difference */
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE   /* choose what kind of tidal field calculation you want (for this step use Fourier method; the direct-difference method is buggy still) */
+    pmtidaltensor_periodic_fourier(0); pmtidaltensor_periodic_fourier(1); pmtidaltensor_periodic_fourier(2); pmtidaltensor_periodic_fourier(3); pmtidaltensor_periodic_fourier(4); pmtidaltensor_periodic_fourier(5); /* fourier */
+    //pmtidaltensor_periodic_diff(); /* finite-difference */
 #endif
 #ifdef PM_PLACEHIGHRESREGION
   i = pmforce_nonperiodic(1);

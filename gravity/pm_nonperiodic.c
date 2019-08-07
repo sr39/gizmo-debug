@@ -2150,7 +2150,7 @@ int pmtidaltensor_nonperiodic_diff(int grnr)
 #endif
 
   if(ThisTask == 0)
-    printf("Starting non-periodic PM calculation (grid=%d)  presently allocated=%g MB).\n", grnr,
+    printf("Starting non-periodic PM-TIDAL calculation (grid=%d)  presently allocated=%g MB).\n", grnr,
 	   AllocatedBytes / (1024.0 * 1024.0));
 
   fac = All.G / pow(All.TotalMeshSize[grnr], 4) * pow(All.TotalMeshSize[grnr] / GRID, 3);	/* to get potential */
@@ -2836,7 +2836,7 @@ int pmtidaltensor_nonperiodic_diff(int grnr)
   pm_init_nonperiodic_free();
 
   if(ThisTask == 0)
-    printf("done PM.\n");
+    printf("done PM-TIDAL.\n");
 
   return 0;
 }
