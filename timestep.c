@@ -318,7 +318,7 @@ integertime get_timestep(int p,		/*!< particle index */
                          double *aphys,	/*!< acceleration (physical units) */
                          int flag	/*!< either 0 for normal operation, or finite timestep to get corresponding aphys */ )
 {
-    double ax, ay, az, ac, csnd = 0, dt = 0, dt_courant = 0, dt_divv = 0;
+    double ax, ay, az, ac, csnd = 0, dt = All.MaxSizeTimestep, dt_courant = 0, dt_divv = 0;
     integertime ti_step; int k; k=0;
 #ifdef CHEMCOOL
     double hubble_param; if(All.ComovingIntegrationOn) {hubble_param=All.HubbleParam;} else {hubble_param=1;}
@@ -348,54 +348,49 @@ integertime get_timestep(int p,		/*!< particle index */
         ax = All.cf_a2inv * P[p].GravAccel[0];
         ay = All.cf_a2inv * P[p].GravAccel[1];
         az = All.cf_a2inv * P[p].GravAccel[2];
-#if defined(TIDAL_TIMESTEP_CRITERION) && !defined(GALSF_FB_FIRE_RT_LONGRANGE)
-        ax = ay = az = 0.0; // we're getting our gravitational timestep criterion from the tidal tensor, but still want to do the accel criterion for other forces
-#endif
-
 #ifdef PMGRID
         ax += All.cf_a2inv * P[p].GravPM[0];
         ay += All.cf_a2inv * P[p].GravPM[1];
         az += All.cf_a2inv * P[p].GravPM[2];
 #endif
-        
-#ifdef TURB_DRIVING
-        if(P[p].Type==0)
-        {
-            ax += SphP[p].TurbAccel[0];
-            ay += SphP[p].TurbAccel[1];
-            az += SphP[p].TurbAccel[2];
-        }
+#if defined(TIDAL_TIMESTEP_CRITERION)
+#if defined(RT_USE_GRAVTREE)
+        if(P[p].Type>0) // strictly this is better for accuracy, but necessary???
 #endif
-#ifdef RT_RAD_PRESSURE_OUTPUT
-        if(P[p].Type==0)
-        {
-            ax += SphP[p].RadAccel[0];
-            ay += SphP[p].RadAccel[1];
-            az += SphP[p].RadAccel[2];
-        }
+        ax = ay = az = 0.0; // we're getting our gravitational timestep criterion from the tidal tensor, but still want to do the accel criterion for other forces
 #endif
-        
+
         if(P[p].Type == 0)
         {
             ax += SphP[p].HydroAccel[0];
             ay += SphP[p].HydroAccel[1];
             az += SphP[p].HydroAccel[2];
+#ifdef TURB_DRIVING
+            ax += SphP[p].TurbAccel[0];
+            ay += SphP[p].TurbAccel[1];
+            az += SphP[p].TurbAccel[2];
+#endif
+#ifdef RT_RAD_PRESSURE_OUTPUT
+            ax += SphP[p].RadAccel[0];
+            ay += SphP[p].RadAccel[1];
+            az += SphP[p].RadAccel[2];
+#endif
         }
-        
+
         ac = sqrt(ax * ax + ay * ay + az * az);	/* this is now the physical acceleration */
 #ifdef TURB_DRIVING
         if(P[p].Type==0)
-        {
-            /* because the turbulent acceleration is a random variable, we dont want it to catch us by surprise if it moves up, so 
-                we include a safety factor here which (very crudely) approximates the maximum amplitude it could reach */
+        { /* because the turbulent acceleration is a random variable, we dont want it to catch us by surprise if it moves up, so
+            we include a safety factor here which (very crudely) approximates the maximum amplitude it could reach */
             double a_max_safety = 1.4 * sqrt(pow(All.StKmax,NUMDIMS) * All.StEnergy / All.StDecay);
             ac = sqrt(ac*ac + a_max_safety*a_max_safety);
         }
 #endif
+        
         *aphys = ac;
     }
     else
-        ac = *aphys;
+    {ac = *aphys;}
     
     if(ac == 0) ac = 1.0e-30;
     
@@ -453,7 +448,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     if(P[p].SuperTimestepFlag>=2) {dt_tidal = sqrt(All.ErrTolIntAccuracy) * P[p].COM_dt_tidal;}
 #endif
-    if(P[p].Type==0) {dt=DMIN(dt,dt_tidal);} else {dt=DMIN(All.MaxSizeTimestep,dt_tidal);}
+    dt=DMIN(dt,dt_tidal);
 #endif
 
 #ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step, which gives superior conservation

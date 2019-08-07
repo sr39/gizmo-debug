@@ -478,6 +478,9 @@ void disp_density(void)
             iter++;
             if(iter > 0 && ThisTask == 0)
             {
+#ifdef IO_REDUCED_MODE
+                if(iter > 10)
+#endif
                 printf("DM disp: ngb iteration %d: need to repeat for %d%09d particles.\n", iter,
                        (int) (ntot / 1000000000), (int) (ntot % 1000000000));
             }
