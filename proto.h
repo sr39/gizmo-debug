@@ -814,10 +814,9 @@ void jacobi(MyBigFloat ** a, int n, MyBigFloat d[], MyBigFloat ** v, int *nrot);
 #if defined(COMPUTE_TIDAL_TENSOR_IN_GRAVTREE)
 #ifdef PMGRID
 void pmtidaltensor_periodic_diff(void);
-void pmtidaltensor_periodic_fourier(int component);
 int pmtidaltensor_nonperiodic_diff(int grnr);
+void pmtidaltensor_periodic_fourier(int component);
 int pmtidaltensor_nonperiodic_fourier(int component, int grnr);
-void check_tidaltensor_nonperiodic(int particle_ID);
 #endif
 #endif
 

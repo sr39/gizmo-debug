@@ -3357,42 +3357,6 @@ int pmtidaltensor_nonperiodic_fourier(int grnr, int component)
     return 0;
 }
 
-void check_tidaltensor_nonperiodic(int particle_ID)
-{
-  int i;
-
-  for(i = 0; i < NumPart; i++)
-    {
-
-      if(P[i].ID == particle_ID)
-	{
-
-	  FdTidaltensor = fopen("Tidaltensor.txt", "a");
-	  fprintf(FdTidaltensor, "Non-Periodic\n");
-	  fprintf(FdTidaltensor, "Mesh-Force: %f %f %f\n", P[i].GravPM[0], P[i].GravPM[1], P[i].GravPM[2]);
-	  fprintf(FdTidaltensor, "Tree-Force: %f %f %f\n", P[i].GravAccel[0], P[i].GravAccel[1],
-		  P[i].GravAccel[2]);
-	  fprintf(FdTidaltensor, "Sum-Force : %f %f %f\n", P[i].GravAccel[0] + P[i].GravPM[0],
-		  P[i].GravAccel[1] + P[i].GravPM[1], P[i].GravAccel[2] + P[i].GravPM[2]);
-
-	  fprintf(FdTidaltensor, "Mesh-Tidal: %f %f %f %f %f %f\n", P[i].tidal_tensorpsPM[0][0],
-		  P[i].tidal_tensorpsPM[0][1], P[i].tidal_tensorpsPM[0][2], P[i].tidal_tensorpsPM[1][1],
-		  P[i].tidal_tensorpsPM[1][2], P[i].tidal_tensorpsPM[2][2]);
-	  fprintf(FdTidaltensor, "Tree-Tidal: %f %f %f %f %f %f\n", P[i].tidal_tensorps[0][0],
-		  P[i].tidal_tensorps[0][1], P[i].tidal_tensorps[0][2], P[i].tidal_tensorps[1][1],
-		  P[i].tidal_tensorps[1][2], P[i].tidal_tensorps[2][2]);
-	  fprintf(FdTidaltensor, "Sum-Tidal: %f %f %f %f %f %f\n",
-		  P[i].tidal_tensorpsPM[0][0] + P[i].tidal_tensorps[0][0],
-		  P[i].tidal_tensorpsPM[0][1] + P[i].tidal_tensorps[0][1],
-		  P[i].tidal_tensorpsPM[0][2] + P[i].tidal_tensorps[0][2],
-		  P[i].tidal_tensorpsPM[1][1] + P[i].tidal_tensorps[1][1],
-		  P[i].tidal_tensorpsPM[1][2] + P[i].tidal_tensorps[1][2],
-		  P[i].tidal_tensorpsPM[2][2] + P[i].tidal_tensorps[2][2]);
-	  fprintf(FdTidaltensor, "----------\n");
-	  fclose(FdTidaltensor);
-	}
-    }
-}
 #endif /*COMPUTE_TIDAL_TENSOR_IN_GRAVTREE*/
 #endif
 #endif
