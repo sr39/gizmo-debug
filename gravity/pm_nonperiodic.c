@@ -3389,15 +3389,6 @@ void check_tidaltensor_nonperiodic(int particle_ID)
 		  P[i].tidal_tensorpsPM[1][2] + P[i].tidal_tensorps[1][2],
 		  P[i].tidal_tensorpsPM[2][2] + P[i].tidal_tensorps[2][2]);
 	  fprintf(FdTidaltensor, "----------\n");
-
-/*     FORCE TEST:
-       fprintf(FdTidaltensor,"Test:\n");
-       fprintf(FdTidaltensor,"FORCE: TRILINEAR = %f\n", P[i].GravPM[2]);
-       fprintf(FdTidaltensor,"FORCE: FOURIER   = %f\n", P[i].tidal_tensorpsPM[2][2]);       
-       fprintf(FdTidaltensor,"------------------------\n");
-       
-*/
-
 	  fclose(FdTidaltensor);
 	}
     }

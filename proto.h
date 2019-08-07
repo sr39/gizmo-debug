@@ -817,7 +817,6 @@ void pmtidaltensor_periodic_diff(void);
 void pmtidaltensor_periodic_fourier(int component);
 int pmtidaltensor_nonperiodic_diff(int grnr);
 int pmtidaltensor_nonperiodic_fourier(int component, int grnr);
-void check_tidaltensor_periodic(int particle_ID);
 void check_tidaltensor_nonperiodic(int particle_ID);
 #endif
 #endif
