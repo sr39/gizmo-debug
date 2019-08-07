@@ -2930,7 +2930,7 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
     int i, j, k, openflag, task;
     double u, v, w;
     double f1, f2, f3, f4, f5, f6, f7, f8;
-    MyLongDouble acc_x, acc_y, acc_z;
+    MyLongDouble acc_x, acc_y, acc_z, xtmp;
     double boxsize, boxhalf;
     double pos_x, pos_y, pos_z, aold;
     
