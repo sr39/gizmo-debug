@@ -475,7 +475,7 @@ void ags_density(void)
                 }
                 
                 // inverse of SPH volume element (to satisfy constraint implicit in Lagrange multipliers)
-                if(PPP[i].DhsmlNgbFactor > -0.5)	/* note: this would be -1 if only a single particle at zero lag is found */
+                if(PPP[i].DhsmlNgbFactor > -0.9)	/* note: this would be -1 if only a single particle at zero lag is found */
                     PPP[i].DhsmlNgbFactor = 1 / (1 + PPP[i].DhsmlNgbFactor);
                 else
                     PPP[i].DhsmlNgbFactor = 1;
@@ -635,7 +635,7 @@ void ags_density(void)
                                     double slope = PPP[i].DhsmlNgbFactor;
                                     if(iter>2 && slope<1) slope = 0.5*(slope+1);
                                     fac = fac_lim * slope; // account for derivative in making the 'corrected' guess
-                                    if(iter>=10)
+                                    if(iter>=4)
                                         if(PPP[i].DhsmlNgbFactor==1) fac *= 10; // tries to help with being trapped in small steps
                                     
                                     if(fac < fac_lim+0.231)
@@ -701,6 +701,9 @@ void ags_density(void)
             iter++;
             if(iter > 0 && ThisTask == 0)
             {
+#ifdef IO_REDUCED_MODE
+                if(iter > 10)
+#endif
                 printf("ags-ngb iteration %d: need to repeat for %d%09d particles.\n", iter,
                        (int) (ntot / 1000000000), (int) (ntot % 1000000000));
             }
