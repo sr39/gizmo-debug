@@ -488,7 +488,7 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         if(PPP[p].AGS_Hsml > 1.01*All.ForceSoftening[P[p].Type])
         {
-            double dt_divv = 0.25 / (MIN_REAL_NUMBER + All.cf_a2inv*fabs(P[p].Particle_DivVel));
+            double dt_divv = 1.5 / (MIN_REAL_NUMBER + All.cf_a2inv*fabs(P[p].Particle_DivVel)); // with new integration accuracy in gravtree, we may not need to be super-conservative here. old code used pre-factor 0.25 here, see if we can get away with the larger value which is standard for gas below
             if(dt_divv < dt) {dt = dt_divv;}
 #ifdef CBE_INTEGRATOR
             double dt_cour = All.CourantFac * (Get_Particle_Size_AGS(p)*All.cf_atime) / (MIN_REAL_NUMBER + P[p].AGS_vsig*All.cf_afac3);

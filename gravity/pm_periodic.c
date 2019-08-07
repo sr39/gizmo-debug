@@ -1786,7 +1786,7 @@ void pmtidaltensor_periodic_diff(void)
 #ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
-      printf("Starting periodic PM calculation.  (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
+      printf("Starting periodic PM-TIDAL calculation.  (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
       fflush(stdout);
     }
 #endif
@@ -2384,6 +2384,10 @@ void pmtidaltensor_periodic_diff(void)
 		      import_globalindex = localfield_globalindex + localfield_offset[ThisTask];
 		    }
 
+            /* PFH: I'm getting bugs/crashes in this step below in some runs. works fine for the
+                first few dims, but when the dims gets down to dim=1, some task or tasks
+                seem to segfault in the operation below. can't isolate it yet. using Fourier
+                method instead for this step, as its cheap in our cosmological runs */
 		  for(i = 0; i < localfield_togo[recvTask * NTask + sendTask]; i++)
 		    {
 		      /* determine offset in local FFT slab */
@@ -2488,7 +2492,7 @@ void pmtidaltensor_periodic_diff(void)
 #ifndef IO_REDUCED_MODE
   if(ThisTask == 0)
     {
-      printf("done PM.\n");
+      printf("done PM-TIDAL.\n");
       fflush(stdout);
     }
 #endif
