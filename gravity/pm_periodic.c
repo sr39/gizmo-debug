@@ -1764,6 +1764,7 @@ void pmtidaltensor_periodic_diff(void)
   double dx, dy, dz;
   double fx, fy, fz, ff;
   double asmth2, fac, tidal_dim;
+  MyDouble pp[3];
   int i, j, slab, level, sendTask, recvTask, task;
   int x, y, z, yl, zl, yr, zr, yll, zll, yrr, zrr, ip, dim;
   int slab_x, slab_y, slab_z;
@@ -2559,6 +2560,7 @@ void pmtidaltensor_periodic_fourier(int component)
   double dx, dy, dz;
   double fx, fy, fz, ff;
   double asmth2, fac, tidal;
+  MyDouble pp[3];
   int i, j, slab, level, sendTask, recvTask, task;
   int x, y, z, ip;
   int slab_x, slab_y, slab_z;
