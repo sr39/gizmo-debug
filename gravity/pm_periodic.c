@@ -1952,52 +1952,7 @@ void pmtidaltensor_periodic_diff(void)
 	} 
       
       /* clear local FFT-mesh density field */
-      for(i = 0; i < fftsize; i++)
-	d_rhogrid[i] = 0;
-
-/*    TEST CODE
-      *********
-
-      // set some values
-      for(x = slabstart_x; x < slabstart_x + nslab_x; x++)
-	for(y = 0; y < PMGRID; y++)
-	  for(z = 0; z < PMGRID; z++)
-           {
-            ip=PMGRID2 * (PMGRID * (x-slabstart_x) + y) + z;
-            rhogrid[ip]=x*1.0;
-            printf("before %d %d %d: %f\n", x, y, z, rhogrid[ip]);
-	   }
-
-
-      // y transpose
-      pm_periodic_transposeAz(rhogrid, tidal_workspace);
-      // z transpose
-      pm_periodic_transposeAz(rhogrid, tidal_workspace);
-
-
-
-      // y transpose
-      for(x = 0; x < PMGRID; x++)
-	for(y = slabstart_x; y < slabstart_x + nslab_x; y++)
-	  for(z = 0; z < PMGRID; z++)
-           {
-            ip=PMGRID * (nslab_x * x + (y-slabstart_x)) + z;
-            printf("after-P %d %d %d: %f\n", x, y, z, rhogrid[ip]);
-
-	   }
-
-
-      // z transpose
-      for(x = 0; x < PMGRID; x++)
-	for(z = slabstart_x; z < slabstart_x + nslab_x; z++)
-	  for(y = 0; y < PMGRID; y++)
-           {
-            ip=nslab_x * (PMGRID * x + y) + (z-slabstart_x);
-            printf("after-P %d %d %d: %f\n", x, y, z, rhogrid[ip]);
-
-	   }
-
-*/
+        for(i = 0; i < fftsize; i++) {d_rhogrid[i] = 0;}
 
       /* exchange data and add contributions to the local mesh-path */
 
@@ -2877,26 +2832,8 @@ void pmtidaltensor_periodic_fourier(int component)
 		}
 	      if(component == 5)
 		{
-		  /*
-		     FORCE TEST:
-		     this calculates F_z by pulling down -i k_z, later on this is compared to the trilinear interpolation
-		     i k_z comes from the FFTW backward transformation and -1 because the force is given by the negative gradient
-
-		     the second derivative that is needed for the tidalfield can be calculated in the same way by pulling down.
-		   */
-
-		  /*
-		     double rep, imp;
-		     rep = fft_of_rhogrid[ip].re;
-		     imp = fft_of_rhogrid[ip].im;
-
-		     fft_of_rhogrid[ip].re = smth*imp*kz * (2*M_PI) / All.BoxSize;
-		     fft_of_rhogrid[ip].im = -smth*rep*kz * (2*M_PI) / All.BoxSize;
-		   */
-
 		  cmplx_re(fft_of_rhogrid[ip]) *= smth * kz * kz;
 		  cmplx_im(fft_of_rhogrid[ip]) *= smth * kz * kz;
-
 		}
 
 	      /* prefactor = (2*M_PI) / All.BoxSize */

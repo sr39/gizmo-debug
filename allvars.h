@@ -1522,15 +1522,8 @@ extern FILE *FdHIIHeating;	/*!< file handle for HIIheating.txt log-file */
 extern FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 #endif
 
-#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-#ifdef PMGRID
-extern FILE *FdTidaltensor;     /*!< file handle for tidaltensor.txt log-file. */
-#endif
-#endif
-
 #ifdef BLACK_HOLES
 extern FILE *FdBlackHoles;	/*!< file handle for blackholes.txt log-file. */
-//#ifndef IO_REDUCED_MODE   DAA-IO: BH_OUTPUT_MOREINFO overrides IO_REDUCED_MODE
 #if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
 extern FILE *FdBlackHolesDetails;
 #ifdef BH_OUTPUT_MOREINFO
