@@ -496,7 +496,8 @@ void set_blackhole_mdot(int i, int n, double dt)
         double t_yr = SEC_PER_YEAR / (All.UnitTime_in_s / All.HubbleParam);
         double t_acc_disk = 4.2e7 * t_yr * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass) / BPP(n).BH_Mass_AlphaDisk, 0.4); /* shakura-sunyaev disk, integrated out to Q~1 radius, approximately */
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-        t_acc_disk = sqrt( pow(All.ForceSoftening[5],3) / (P[n].Mass*All.G) ); /* sink dynamical time */
+        //t_acc_disk = sqrt( pow(All.ForceSoftening[5],3) / (P[n].Mass*All.G) ); /* sink dynamical time */
+        t_acc_disk = sqrt( pow(PPP[n].Hsml,3) / (P[n].Mass*All.G) ); /* sink dynamical time */
 #endif
         t_acc_disk = DMAX(t_acc_disk , 3.*dt); /* make sure accretion timescale is at least a few timesteps to avoid over-shoot, etc */
         mdot = BPP(n).BH_Mass_AlphaDisk / t_acc_disk;

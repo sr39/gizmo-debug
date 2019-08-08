@@ -2302,7 +2302,7 @@ extern ALIGN(32) struct particle_data
 #ifdef BH_CALC_DISTANCES
     MyFloat min_dist_to_bh;
     MyFloat min_xyz_to_bh[3];
-#ifdef SINGLE_STAR_FIND_BINARIES
+#if defined(SINGLE_STAR_FIND_BINARIES) || defined(SINGLE_STAR_TIMESTEPPING)
     MyDouble min_bh_t_orbital; //orbital time for binary
     MyDouble comp_dx[3]; //position offset of binary companion - this will be evolved in the Kepler solution while we use the Pos attribute to track the binary COM
     MyDouble comp_dv[3]; //velocity offset of binary companion - this will be evolved in the Kepler solution while we use the Vel attribute to track the binary COM velocity
