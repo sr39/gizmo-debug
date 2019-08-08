@@ -352,11 +352,11 @@ double get_starformation_rate(int i)
 #if (SINGLE_STAR_SINK_FORMATION & 4)
     if(SphP[i].Density_Relative_Maximum_in_Kernel > 0) {rateOfSF=0;} // restrict to local density/potential maxima //
 #endif
-#if (SINGLE_STAR_SINK_FORMATION & 8) // NOTE: we have a "no sink in gas kernel" check but not "no gas in sink kernel", as the latter has been found to suppress bona fide star formation and grind the simulation to a halt
-    if(P[i].min_dist_to_bh < 3*PPP[i].Hsml || P[i].BH_Ngb_Flag) {rateOfSF=0;} // restrict to particles without a sink in their kernel or in kernel of sink; we can actually go pretty aggressive with this, as hsml will inevitably get small enough if this gas is really collapsing - MYG
+#if (SINGLE_STAR_SINK_FORMATION & 8)
+    if(P[i].min_dist_to_bh < PPP[i].Hsml || P[i].BH_Ngb_Flag) {rateOfSF=0;} // No overlap in interacting hydro stencil with a sink //
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 16)
-    if(DMIN(P[i].min_bh_approach_time, P[i].min_bh_freefall_time)/2 < tsfr) {rateOfSF = 0;}
+    if(DMIN(P[i].min_bh_approach_time, P[i].min_bh_freefall_time) < tsfr) {rateOfSF = 0;} // probably not about to get gobbled up by a sink before it can collapse //
 #endif
 
 
