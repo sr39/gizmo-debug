@@ -94,6 +94,17 @@ static double fac_intp;
 #endif
 
 
+#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC) /* need to do box-wrapping, just refer to our standard box-wrapping macros */
+#define GRAVITY_NEAREST_XYZ(x,y,z,sign) NEAREST_XYZ(x,y,z,sign)
+#define GRAVITY_NGB_PERIODIC_BOX_LONG_X(x,y,z,sign) NGB_PERIODIC_BOX_LONG_X(x,y,z,sign)
+#define GRAVITY_NGB_PERIODIC_BOX_LONG_Y(x,y,z,sign) NGB_PERIODIC_BOX_LONG_Y(x,y,z,sign)
+#define GRAVITY_NGB_PERIODIC_BOX_LONG_Z(x,y,z,sign) NGB_PERIODIC_BOX_LONG_Z(x,y,z,sign)
+#else /* either the box is not periodic, OR gravity is not, in either case no box-wrapping is needed */
+#define GRAVITY_NEAREST_XYZ(x,y,z,sign) /* this is an empty macro: nothing will happen to the variables input here */
+#define GRAVITY_NGB_PERIODIC_BOX_LONG_X(x,y,z,sign) (fabs(x)) /* just return absolute values */
+#define GRAVITY_NGB_PERIODIC_BOX_LONG_Y(x,y,z,sign) (fabs(y))
+#define GRAVITY_NGB_PERIODIC_BOX_LONG_Z(x,y,z,sign) (fabs(z))
+#endif
 
 /*! This function is a driver routine for constructing the gravitational
  *  oct-tree, which is done by calling a small number of other functions.
@@ -1954,13 +1965,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 dy = P[no].Pos[1] - pos_y;
                 dz = P[no].Pos[2] - pos_z;
 #ifdef COMPUTE_JERK_IN_GRAVTREE
-		dvx = P[no].Vel[0] - vel_x;
-		dvy = P[no].Vel[1] - vel_y;
-		dvz = P[no].Vel[2] - vel_z;
+                dvx = P[no].Vel[0] - vel_x;
+                dvy = P[no].Vel[1] - vel_y;
+                dvz = P[no].Vel[2] - vel_z;
 #endif		
-#ifdef BOX_PERIODIC
-                NEAREST_XYZ(dx,dy,dz,-1);
-#endif
+                GRAVITY_NEAREST_XYZ(dx,dy,dz,-1);
                 r2 = dx * dx + dy * dy + dz * dz;
                 mass = P[no].Mass;
 
@@ -2206,13 +2215,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 dy = nop->u.d.s[1] - pos_y;
                 dz = nop->u.d.s[2] - pos_z;
 #ifdef COMPUTE_JERK_IN_GRAVTREE
-		dvx = Extnodes[no].vs[0] - vel_x;
-		dvy = Extnodes[no].vs[1] - vel_y;
-		dvz = Extnodes[no].vs[2] - vel_z;
+                dvx = Extnodes[no].vs[0] - vel_x;
+                dvy = Extnodes[no].vs[1] - vel_y;
+                dvz = Extnodes[no].vs[2] - vel_z;
 #endif		
-#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-                NEAREST_XYZ(dx,dy,dz,-1);
-#endif
+                GRAVITY_NEAREST_XYZ(dx,dy,dz,-1);
                 r2 = dx * dx + dy * dy + dz * dz;
              
 #ifdef RT_USE_GRAVTREE
@@ -2228,9 +2235,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif 
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
                     dx_stellarlum = nop->rt_source_lum_s[0] - pos_x; dy_stellarlum = nop->rt_source_lum_s[1] - pos_y; dz_stellarlum = nop->rt_source_lum_s[2] - pos_z;
-#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-                    NEAREST_XYZ(dx_stellarlum,dy_stellarlum,dz_stellarlum,-1);
-#endif
+                    GRAVITY_NEAREST_XYZ(dx_stellarlum,dy_stellarlum,dz_stellarlum,-1);
 #else
                     dx_stellarlum = dx; dy_stellarlum = dy; dz_stellarlum = dz;
 #endif
@@ -2262,9 +2267,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 dyy = (nop->center[1] - pos_y);
                 dzz = (nop->center[2] - pos_z);
                 eff_dist = rcut + 0.5 * nop->len;
-                pdxx = NGB_PERIODIC_BOX_LONG_X(dxx,dyy,dzz,-1);
-                pdyy = NGB_PERIODIC_BOX_LONG_Y(dxx,dyy,dzz,-1);
-                pdzz = NGB_PERIODIC_BOX_LONG_Z(dxx,dyy,dzz,-1);
+                pdxx = GRAVITY_NGB_PERIODIC_BOX_LONG_X(dxx,dyy,dzz,-1);
+                pdyy = GRAVITY_NGB_PERIODIC_BOX_LONG_Y(dxx,dyy,dzz,-1);
+                pdzz = GRAVITY_NGB_PERIODIC_BOX_LONG_Z(dxx,dyy,dzz,-1);
                 /* check whether we can stop walking along this branch */
                 if((r2 > rcut2) & ((pdxx > eff_dist) | (pdyy > eff_dist) | (pdzz > eff_dist)))
                 {
@@ -2276,19 +2281,19 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if(r2 > rcut2)
                 {
                     eff_dist = rcut + 0.5 * nop->len;
-                    dist = NGB_PERIODIC_BOX_LONG_X(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
+                    dist = GRAVITY_NGB_PERIODIC_BOX_LONG_X(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
                     if(dist > eff_dist)
                     {
                         no = nop->u.d.sibling;
                         continue;
                     }
-                    dist = NGB_PERIODIC_BOX_LONG_Y(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
+                    dist = GRAVITY_NGB_PERIODIC_BOX_LONG_Y(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
                     if(dist > eff_dist)
                     {
                         no = nop->u.d.sibling;
                         continue;
                     }
-                    dist = NGB_PERIODIC_BOX_LONG_Z(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
+                    dist = GRAVITY_NGB_PERIODIC_BOX_LONG_Z(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
                     if(dist > eff_dist)
                     {
                         no = nop->u.d.sibling;
@@ -2304,9 +2309,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double dx_nc = nop->center[0] - pos_x;
                     double dy_nc = nop->center[1] - pos_y;
                     double dz_nc = nop->center[2] - pos_z;
-#ifdef BOX_PERIODIC
-                    NEAREST_XYZ(dx_nc,dy_nc,dz_nc,-1); /* find the closest image in the given box size  */
-#endif
+                    GRAVITY_NEAREST_XYZ(dx_nc,dy_nc,dz_nc,-1); /* find the closest image in the given box size  */
                     double dist_to_center2 = dx_nc*dx_nc +  dy_nc*dy_nc + dz_nc*dz_nc;
                     /* check if any portion the cell lies within the interaction range */
 		            double dist_to_open = 2.0*targeth_si + nop->len*1.73205/2.0;
@@ -2363,11 +2366,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     
                     /* check in addition whether we lie inside the cell */
                     
-                    if(NGB_PERIODIC_BOX_LONG_X(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
+                    if(GRAVITY_NGB_PERIODIC_BOX_LONG_X(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
                     {
-                        if(NGB_PERIODIC_BOX_LONG_Y(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
+                        if(GRAVITY_NGB_PERIODIC_BOX_LONG_Y(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
                         {
-                            if(NGB_PERIODIC_BOX_LONG_Z(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
+                            if(GRAVITY_NGB_PERIODIC_BOX_LONG_Z(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
                             {
                                 no = nop->u.d.nextnode;
                                 continue;
@@ -2417,9 +2420,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double bh_dx = nop->bh_pos[0] - pos_x;      /* SHEA:  now using bh_pos instead of center */
                     double bh_dy = nop->bh_pos[1] - pos_y;
                     double bh_dz = nop->bh_pos[2] - pos_z;
-#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-                    NEAREST_XYZ(bh_dx,bh_dy,bh_dz,-1);
-#endif
+                    GRAVITY_NEAREST_XYZ(bh_dx,bh_dy,bh_dz,-1);
                     double bh_r2 = bh_dx * bh_dx + bh_dy * bh_dy + bh_dz * bh_dz; // + (nop->len)*(nop->len);
                     if(bh_r2 < min_dist_to_bh2)
                     {
@@ -2734,9 +2735,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef DM_SCALARFIELD_SCREENING
             if(ptype != 0)	/* we have a dark matter particle as target */
             {
-#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-                NEAREST_XYZ(dx_dm,dy_dm,dz_dm,-1);
-#endif
+                GRAVITY_NEAREST_XYZ(dx_dm,dy_dm,dz_dm,-1);
                 r2 = dx_dm * dx_dm + dy_dm * dy_dm + dz_dm * dz_dm;
                 r = sqrt(r2);
                 if(r >= h)
@@ -3075,8 +3074,7 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                 dy = nop->u.d.s[1] - pos_y;
                 dz = nop->u.d.s[2] - pos_z;
             }
-            
-            NEAREST_XYZ(dx,dy,dz,-1);
+            GRAVITY_NEAREST_XYZ(dx,dy,dz,-1);
             
             if(no < All.MaxPart)
                 no = Nextnode[no];
@@ -3104,11 +3102,11 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                     }
                     else
                     {
-                        if(NGB_PERIODIC_BOX_LONG_X(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
+                        if(GRAVITY_NGB_PERIODIC_BOX_LONG_X(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
                         {
-                            if(NGB_PERIODIC_BOX_LONG_Y(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
+                            if(GRAVITY_NGB_PERIODIC_BOX_LONG_Y(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
                             {
-                                if(NGB_PERIODIC_BOX_LONG_Z(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
+                                if(GRAVITY_NGB_PERIODIC_BOX_LONG_Z(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
                                 {
                                     openflag = 1;
                                 }
@@ -3456,10 +3454,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                 dy = nop->u.d.s[1] - pos_y;
                 dz = nop->u.d.s[2] - pos_z;
             }
-            
-#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-            NEAREST_XYZ(dx,dy,dz,-1);
-#endif
+            GRAVITY_NEAREST_XYZ(dx,dy,dz,-1);
             r2 = dx * dx + dy * dy + dz * dz;
             if(no < All.MaxPart)
             {
@@ -3505,7 +3500,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                 dxx = nop->center[0] - pos_x;	/* observe the sign ! */
                 dyy = nop->center[1] - pos_y;	/* this vector is -y in my thesis notation */
                 dzz = nop->center[2] - pos_z;
-                NEAREST_XYZ(dxx,dyy,dzz,-1);
+                GRAVITY_NEAREST_XYZ(dxx,dyy,dzz,-1);
 #ifdef REDUCE_TREEWALK_BRANCHING
                 if((fabs(dxx) > eff_dist) | (fabs(dyy) > eff_dist) | (fabs(dzz) > eff_dist))
                 {
@@ -3535,7 +3530,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                 dxx = nop->center[0] - pos_x;	/* observe the sign ! */
                 dyy = nop->center[1] - pos_y;	/* this vector is -y in my thesis notation */
                 dzz = nop->center[2] - pos_z;
-                NEAREST_XYZ(dxx,dyy,dzz,-1);
+                GRAVITY_NEAREST_XYZ(dxx,dyy,dzz,-1);
 #endif // PMGRID
 
                 if(All.ErrTolTheta)	/* check Barnes-Hut opening criterion */
@@ -3806,10 +3801,7 @@ int subfind_force_treeevaluate_potential(int target, int mode, int *nexport, int
                 dy = nop->u.d.s[1] - pos_y;
                 dz = nop->u.d.s[2] - pos_z;
             }
-            
-#if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC)
-            NEAREST_XYZ(dx,dy,dz,-1);
-#endif
+            GRAVITY_NEAREST_XYZ(dx,dy,dz,-1);
             r2 = dx * dx + dy * dy + dz * dz;
             if(no < All.MaxPart)
             {
