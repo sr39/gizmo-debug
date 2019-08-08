@@ -186,7 +186,7 @@ double bh_angleweight_localcoupling(int j, double hR, double cos_theta, double r
     wk = 0.5 * (1. - 1./sqrt(1. + sph_area / (M_PI*r*r))); // corresponding geometric weight //
     //wk = 0.5 * (V_j/V_i) * (V_i*wk + V_j*wk_j); // weight in the limit N_particles >> 1 for equal-mass particles (accounts for self-shielding if some in dense disk)
 #if defined(BH_FB_COLLIMATED)
-    double costheta2=cos(theta), eps_width_jet=0.35; costheta2*=costheta2; eps_width_jet*=eps_width_jet; /* eps_width^2 is approximate with in radians of 'core' of jet */
+    double costheta2=cos_theta*cos_theta, eps_width_jet=0.35; eps_width_jet*=eps_width_jet; /* eps_width^2 is approximate with in radians of 'core' of jet */
     wk *= eps_width_jet * (eps_width_jet + costheta2) / ((eps_width_jet + 1) * (eps_width_jet + (1-costheta2)));
 #endif
     if((wk <= 0)||(isnan(wk))) return 0; // no point in going further, there's no physical weight here
