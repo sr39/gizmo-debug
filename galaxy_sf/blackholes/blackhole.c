@@ -167,7 +167,7 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
 /* weight function for local (short-range) coupling terms from the black hole, including the single-scattering radiation pressure and the bal winds */
-double bh_angleweight_localcoupling(int j, double hR, double theta, double r, double H_bh)
+double bh_angleweight_localcoupling(int j, double hR, double cos_theta, double r, double H_bh)
 {
     // this follows what we do with SNe, and applies a normalized weight based on the fraction of the solid angle subtended by the particle //
     if(r <= 0 || H_bh <= 0) return 0;
@@ -186,8 +186,8 @@ double bh_angleweight_localcoupling(int j, double hR, double theta, double r, do
     wk = 0.5 * (1. - 1./sqrt(1. + sph_area / (M_PI*r*r))); // corresponding geometric weight //
     wk = 0.5 * (V_j/V_i) * (V_i*wk + V_j*wk_j); // weight in the limit N_particles >> 1 for equal-mass particles (accounts for self-shielding if some in dense disk)
 #if defined(BH_FB_COLLIMATED)
-    double costheta2=cos(theta); costheta2=costheta2*costheta2;
-    wk *= (1e-4 + costheta2) / (1e-4 + (1-costheta2));
+    double costheta2=cos(theta), eps_width_jet=0.35; costheta2*=costheta2; eps_width_jet*=eps_width_jet; /* eps_width^2 is approximate with in radians of 'core' of jet */
+    wk *= eps_width_jet * (eps_width_jet + costheta2) / ((eps_width_jet + 1) * (eps_width_jet + (1-costheta2)));
 #endif
     if((wk <= 0)||(isnan(wk))) return 0; // no point in going further, there's no physical weight here
     return wk;
@@ -217,8 +217,11 @@ double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, doubl
     double r2 = dx*dx+dy*dy+dz*dz; if(r2 <= 0) return 0;
     if(r2*All.UnitLength_in_cm*All.UnitLength_in_cm*All.cf_atime*All.cf_atime < 9.523e36) return 0; /* no force at < 1pc */
 #if defined(BH_FB_COLLIMATED)
-    double cos_theta = fabs((dx*bh_angle[0] + dy*bh_angle[1] + dz*bh_angle[2])/sqrt(r2)); if(!isfinite(cos_theta)) {cos_theta=1;}
-    return bh_lum_input * 0.0847655*exp(4.5*cos_theta*cos_theta); // ~exp(-x^2/2*hR^2), normalized appropriately to give the correct total flux, for hR~0.3
+    double cos_theta = fabs((dx*bh_angle[0] + dy*bh_angle[1] + dz*bh_angle[2])/sqrt(r2*(bh_angle[0]*bh_angle[0]+bh_angle[1]*bh_angle[1]+bh_angle[2]*bh_angle[2]))); if(!isfinite(cos_theta)) {cos_theta=1;}
+    double wt_normalized = 0.0847655*exp(4.5*cos_theta*cos_theta); // ~exp(-x^2/2*hR^2), normalized appropriately to give the correct total flux, for hR~0.3
+    //double costheta2=cos_theta*cos_theta, eps2=0.25; /* eps_width^2 is approximate with in radians of 'core' of jet */
+    //double wt_normalized = 5.33709 * eps_width_jet * (eps_width_jet + costheta2) / ((eps_width_jet + 1) * (eps_width_jet + (1-costheta2)));
+    return bh_lum_input * wt_normalized; // ~exp(-x^2/2*hR^2), normalized appropriately to give the correct total flux, for hR~0.3
 #endif
     return bh_lum_input;
 

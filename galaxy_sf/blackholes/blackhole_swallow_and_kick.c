@@ -268,11 +268,11 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     MyFloat dir[3], norm, mom;
     mom=0; norm=0; dir[0]=0;
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) 
-    MyFloat *Jgas_in_Kernel;
+    MyFloat *J_dir;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     double BH_angle_weighted_kernel_sum, mom_wt;
-    MyFloat theta,BH_disk_hr,kernel_zero,dwk;
+    MyFloat BH_disk_hr,kernel_zero,dwk;
     kernel_main(0.0,1.0,1.0,&kernel_zero,&dwk,-1);
 #endif
 #ifdef GALSF
@@ -304,9 +304,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
-        Jgas_in_Kernel = P[target].BH_Specific_AngMom;
+        J_dir = P[target].BH_Specific_AngMom;
 #else
-        Jgas_in_Kernel = BlackholeTempInfo[P[target].IndexMapToTempStruc].Jgas_in_Kernel;
+        J_dir = BlackholeTempInfo[P[target].IndexMapToTempStruc].Jgas_in_Kernel;
 #endif
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
@@ -337,7 +337,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
         dt = BlackholeDataGet[target].Dt;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
-        Jgas_in_Kernel = BlackholeDataGet[target].Jgas_in_Kernel;
+        J_dir = BlackholeDataGet[target].Jgas_in_Kernel;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
         BH_disk_hr = BlackholeDataGet[target].BH_disk_hr;
@@ -364,6 +364,10 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #if defined(BH_WIND_CONTINUOUS) && !defined(BH_WIND_KICK)
     hinv=h_i; hinv3=hinv*hinv*hinv;
+#endif
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
+    norm=0; for(k=0;k<3;k++) {norm+=J_dir[k]*J_dir[k];}
+    if(norm>0) {norm=1/sqrt(norm); for(k=0;k<3;k++) {J_dir[k]*=norm;}} else {J_dir[0]=J_dir[1]=0; J_dir[2]=1;}
 #endif
     
     if(mode == 0)
@@ -517,7 +521,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #endif
 #if (BH_WIND_KICK < 0)  /* DAA: along polar axis defined by angular momentum within Kernel (we could add finite opening angle) work out the geometry w/r to the plane of the disk */
-                        if((dir[0]*Jgas_in_Kernel[0] + dir[1]*Jgas_in_Kernel[1] + dir[2]*Jgas_in_Kernel[2]) > 0){for(k=0;k<3;k++) {dir[k]=Jgas_in_Kernel[k];}} else {for(k=0;k<3;k++) {dir[k]=-Jgas_in_Kernel[k];}}
+                        if((dir[0]*J_dir[0] + dir[1]*J_dir[1] + dir[2]*J_dir[2]) > 0){for(k=0;k<3;k++) {dir[k]=J_dir[k];}} else {for(k=0;k<3;k++) {dir[k]=-J_dir[k];}}
 #endif
                         for(k=0,norm=0;k<3;k++) {norm+=dir[k]*dir[k];} if(norm<=0) {dir[0]=0;dir[1]=0;dir[2]=1;norm=1;} else {norm=sqrt(norm); dir[0]/=norm;dir[1]/=norm;dir[2]/=norm;}
                         for(k=0;k<3;k++) {P[j].Vel[k]+=v_kick*All.cf_atime*dir[k]; SphP[j].VelPred[k]+=v_kick*All.cf_atime*dir[k];}
@@ -545,9 +549,8 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                     if(r>0)
                     {
                         r=sqrt(r); for(k=0;k<3;k++) {dir[k]/=r;} /* cos_theta with respect to disk of BH is given by dot product of r and Jgas */
-                        for(norm=0,k=0;k<3;k++) {norm+=dir[k]*Jgas_in_Kernel[k];}
-                        theta = acos(fabs(norm)); /* now we get the weight function based on what we calculated earlier */
-                        mom_wt = bh_angleweight_localcoupling(j,BH_disk_hr,theta,r,h_i) / BH_angle_weighted_kernel_sum;
+                        for(norm=0,k=0;k<3;k++) {norm+=dir[k]*J_dir[k];}
+                        mom_wt = bh_angleweight_localcoupling(j,BH_disk_hr,norm,r,h_i) / BH_angle_weighted_kernel_sum;
                         if(BH_angle_weighted_kernel_sum<=0) mom_wt=0;
                                 
 #ifdef BH_PHOTONMOMENTUM /* inject radiation pressure: add initial L/c optical/UV coupling to the gas at the dust sublimation radius */

@@ -574,7 +574,7 @@ char *GetMultiSpeciesFilename(int i, int hk);
 
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
 double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double hR, double dx, double dy, double dz);
-double bh_angleweight_localcoupling(int j, double hR, double theta, double r, double H_bh);
+double bh_angleweight_localcoupling(int j, double hR, double cos_theta, double r, double H_bh);
 #endif
 
 #if defined(GALSF_SUBGRID_WINDS)

@@ -193,7 +193,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     double meddington, medd_max_accretable, mass_to_swallow_edd, eddington_factor;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-    double norm, theta, BH_disk_hr, *Jgas_in_Kernel;
+    double norm, BH_disk_hr, *J_dir;
     double BH_angle_weighted_kernel_sum=0;
 #endif
 #ifdef BH_REPOSITION_ON_POTMIN
@@ -234,9 +234,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         id = P[target].ID;
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
-        Jgas_in_Kernel = P[target].BH_Specific_AngMom;
+        J_dir = P[target].BH_Specific_AngMom;
 #else
-        Jgas_in_Kernel = BlackholeTempInfo[P[target].IndexMapToTempStruc].Jgas_in_Kernel;
+        J_dir = BlackholeTempInfo[P[target].IndexMapToTempStruc].Jgas_in_Kernel;
 #endif
         BH_disk_hr = P[target].BH_disk_hr;
 #endif
@@ -271,7 +271,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         velocity = BlackholeDataGet[target].Vel;
         id = BlackholeDataGet[target].ID;
 #if defined(BH_PHOTONMOMENTUM)  || defined(BH_WIND_CONTINUOUS)
-        Jgas_in_Kernel = BlackholeDataGet[target].Jgas_in_Kernel;
+        J_dir = BlackholeDataGet[target].Jgas_in_Kernel;
         BH_disk_hr = BlackholeDataGet[target].BH_disk_hr;
 #endif
 #ifdef BH_ACCRETE_NEARESTFIRST
@@ -307,6 +307,10 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
            (i.e. we need lower velocity and higher mass outflow rates compared to accretion disk scales) - */
     f_accreted = All.BAL_f_accretion;
     if((All.BlackHoleFeedbackFactor > 0) && (All.BlackHoleFeedbackFactor != 1.)) {f_accreted /= All.BlackHoleFeedbackFactor;} else {if(All.BAL_v_outflow > 0) {f_accreted = 1./(1. + fabs(1.*BH_WIND_KICK)*All.BlackHoleRadiativeEfficiency*(C/All.UnitVelocity_in_cm_per_s)/(All.BAL_v_outflow));}}
+#endif
+#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
+    norm=0; for(k=0;k<3;k++) {norm+=J_dir[k]*J_dir[k];}
+    if(norm>0) {norm=1/sqrt(norm); for(k=0;k<3;k++) {J_dir[k]*=norm;}} else {J_dir[0]=J_dir[1]=0; J_dir[2]=1;}
 #endif
     
     /* Now start the actual SPH computation for this BH particle */
@@ -483,8 +487,8 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) /* calculate the angle-weighting for the photon momentum */
                             if((mdot>0)&&(dt>0)&&(r>0)&&(P[j].SwallowID==0)&&(P[j].Mass>0)&&(P[j].Type==0))
                             { /* cos_theta with respect to disk of BH is given by dot product of r and Jgas */
-                                norm=0; for(k=0;k<3;k++) {norm+=(dpos[k]/r)*Jgas_in_Kernel[k];}
-                                norm=fabs(norm); theta=acos(norm); BH_angle_weighted_kernel_sum += bh_angleweight_localcoupling(j,BH_disk_hr,theta,r,h_i);
+                                norm=0; for(k=0;k<3;k++) {norm+=(dpos[k]/r)*J_dir[k];}
+                                BH_angle_weighted_kernel_sum += bh_angleweight_localcoupling(j,BH_disk_hr,norm,r,h_i);
                             }
 #endif
 
