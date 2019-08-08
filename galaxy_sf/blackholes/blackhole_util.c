@@ -119,6 +119,9 @@ void blackhole_end(void)
 //#ifndef IO_REDUCED_MODE   DAA-IO: BH_OUTPUT_MOREINFO overrides IO_REDUCED_MODE
 #if !defined(IO_REDUCED_MODE) || defined(BH_OUTPUT_MOREINFO)
         fflush(FdBlackHolesDetails);
+#ifdef BH_OUTPUT_GASSWALLOW
+        fflush(FdBhSwallowDetails);
+#endif
 #ifdef BH_OUTPUT_MOREINFO
         fflush(FdBhMergerDetails);
 #ifdef BH_WIND_KICK

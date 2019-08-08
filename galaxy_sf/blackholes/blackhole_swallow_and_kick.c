@@ -536,6 +536,13 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #endif // #ifdef BH_WIND_KICK
                         N_gas_swallowed++;
+#ifdef BH_OUTPUT_GASSWALLOW
+                        MyDouble tempB[3]={0,0,0};
+#ifdef MAGNETIC
+                        tempB=SphP[j].B //point to particle magnetic field
+#endif
+                        fprintf(FdBhSwallowDetails,"%g  %u %g %2.7f %2.7f %2.7f  %u %g %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f\n", All.Time,  id,bh_mass,pos[0],pos[1],pos[2],  P[j].ID, P[j].Mass, (P[j].Pos[0]-pos[0]),(P[j].Pos[1]-pos[1]),(P[j].Pos[2]-pos[2]), (P[j].Vel[0]-vel[0]),(P[j].Vel[1]-vel[1]),(P[j].Vel[2]-vel[2]), SphP[j].InternalEnergy, SphP[j].B[0], SphP[j].B[1], SphP[j].B[2]);
+#endif
                     }  // if(P[j].Type == 0)
 
                     P[j].SwallowID = 0; /* DAA: make sure it is not accreted (or ejected) by the same BH again if inactive in the next timestep */

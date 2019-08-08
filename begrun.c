@@ -582,6 +582,14 @@ void open_outputfiles(void)
       printf("error in opening file '%s'\n", buf);
       endrun(1);
     }
+#ifdef BH_OUTPUT_GASSWALLOW
+  sprintf(buf, "%sblackhole_details/bhswallow_%d.txt", All.OutputDir, ThisTask); 
+  if(!(FdBhSwallowDetails = fopen(buf, mode)))
+    {
+      printf("error in opening file '%s'\n", buf);
+      endrun(1);
+    }
+#endif
 #ifdef BH_OUTPUT_MOREINFO
   sprintf(buf, "%sblackhole_details/bhmergers_%d.txt", All.OutputDir, ThisTask); 
   if(!(FdBhMergerDetails = fopen(buf, mode)))
