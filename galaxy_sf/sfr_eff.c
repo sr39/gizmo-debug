@@ -353,7 +353,7 @@ double get_starformation_rate(int i)
     if(SphP[i].Density_Relative_Maximum_in_Kernel > 0) {rateOfSF=0;} // restrict to local density/potential maxima //
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 8)
-    if(P[i].min_dist_to_bh < PPP[i].Hsml || P[i].BH_Ngb_Flag) {rateOfSF=0;} // No overlap in interactic hydro stencil with a sink //
+    if(P[i].min_dist_to_bh < PPP[i].Hsml || P[i].BH_Ngb_Flag) {rateOfSF=0;} // No overlap in interacting hydro stencil with a sink //
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 16)
     if(DMIN(P[i].min_bh_approach_time, P[i].min_bh_freefall_time) < tsfr) {rateOfSF = 0;} // probably not about to get gobbled up by a sink before it can collapse //
