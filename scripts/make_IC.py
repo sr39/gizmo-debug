@@ -68,7 +68,7 @@ def make_IC():
     #   the same. so the setup would be identical for any of the particle types 1,2,3,4,5
 
     # set the desired number of particles (here to about twice as many as the gas particles, because we feel like it)
-    Ngrains = np.round(2. * (1.*N_1D)**DIMS)
+    Ngrains = int(np.round(2. * (1.*N_1D)**DIMS))
     # set the x/y/z positions: again a simple list for each: here to random numbers from a uniform distribution
     xv_d = (np.random.rand(Ngrains)-0.5)*Lbox
     yv_d = (np.random.rand(Ngrains)-0.5)*Lbox
