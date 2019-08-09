@@ -337,7 +337,7 @@ double get_starformation_rate(int i)
 
     
 #ifdef GALSF_SFR_TIDAL_HILL_CRITERION // we check that the tidal tensor is negative-definite, ie. converging along all principal axes, indicating that we're dominating our environment gravitationally and are living in our own Hill sphere
-    for(k=0;k<3;k++) {if(P[i].tidal_tensorps[k][k] >= 0) {rateOfSF = 0;}} // we've already diagonized this bad boy in gravtree.c - MYG
+    {int k; for(k=0;k<3;k++) {if(P[i].tidal_tensorps[k][k] >= 0) {rateOfSF = 0;}}} // we've already diagonized this bad boy in gravtree.c - MYG
 #endif
 
     
@@ -353,7 +353,8 @@ double get_starformation_rate(int i)
     if(SphP[i].Density_Relative_Maximum_in_Kernel > 0) {rateOfSF=0;} // restrict to local density/potential maxima //
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 8)
-    if(P[i].min_dist_to_bh < PPP[i].Hsml || P[i].BH_Ngb_Flag) {rateOfSF=0;} // No overlap in interacting hydro stencil with a sink //
+    if(P[i].BH_Ngb_Flag) {rateOfSF=0;} // particle cannot be 'seen' by -any- sink as a potential interacting neighbor //
+    if(P[i].min_dist_to_bh < 1.24*Get_Particle_Size(i)) {rateOfSF=0;} // particle does not see a sink within a volume = 8x=2^3 times its cell volume [set coefficient =1.86 for 27x=3^3 its cell volume] //
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 16)
     if(DMIN(P[i].min_bh_approach_time, P[i].min_bh_freefall_time) < tsfr) {rateOfSF = 0;} // probably not about to get gobbled up by a sink before it can collapse //

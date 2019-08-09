@@ -507,27 +507,29 @@ void gravity_tree(void)
                     /* GravDataOut[j].min_dist_to_bh contains the min dist to particle "P[place]" on another
                      task.  We now check if it is smaller than the current value */
                     if(Ewald_iter==0)
-                    if(GravDataOut[j].min_dist_to_bh < P[place].min_dist_to_bh)
                     {
-                        P[place].min_dist_to_bh = GravDataOut[j].min_dist_to_bh;
-                        P[place].min_xyz_to_bh[0] = GravDataOut[j].min_xyz_to_bh[0];
-                        P[place].min_xyz_to_bh[1] = GravDataOut[j].min_xyz_to_bh[1];
-                        P[place].min_xyz_to_bh[2] = GravDataOut[j].min_xyz_to_bh[2];
-                    }
+                        if(GravDataOut[j].min_dist_to_bh < P[place].min_dist_to_bh)
+                        {
+                            P[place].min_dist_to_bh = GravDataOut[j].min_dist_to_bh;
+                            P[place].min_xyz_to_bh[0] = GravDataOut[j].min_xyz_to_bh[0];
+                            P[place].min_xyz_to_bh[1] = GravDataOut[j].min_xyz_to_bh[1];
+                            P[place].min_xyz_to_bh[2] = GravDataOut[j].min_xyz_to_bh[2];
+                        }
 #ifdef SINGLE_STAR_TIMESTEPPING
-                    if(GravDataOut[j].min_bh_approach_time < P[place].min_bh_approach_time) {P[place].min_bh_approach_time = GravDataOut[j].min_bh_approach_time;}
-                    if(GravDataOut[j].min_bh_freefall_time < P[place].min_bh_freefall_time) {P[place].min_bh_freefall_time = GravDataOut[j].min_bh_freefall_time;}
-                    if(GravDataOut[j].min_bh_periastron < P[place].min_bh_periastron) {P[place].min_bh_periastron = GravDataOut[j].min_bh_periastron;}
+                        if(GravDataOut[j].min_bh_approach_time < P[place].min_bh_approach_time) {P[place].min_bh_approach_time = GravDataOut[j].min_bh_approach_time;}
+                        if(GravDataOut[j].min_bh_freefall_time < P[place].min_bh_freefall_time) {P[place].min_bh_freefall_time = GravDataOut[j].min_bh_freefall_time;}
+                        if(GravDataOut[j].min_bh_periastron < P[place].min_bh_periastron) {P[place].min_bh_periastron = GravDataOut[j].min_bh_periastron;}
 #ifdef SINGLE_STAR_FIND_BINARIES
-                    if ( (P[place].Type==5) && (GravDataOut[j].min_bh_t_orbital < P[place].min_bh_t_orbital) )
-                    {
-                        P[place].min_bh_t_orbital = GravDataOut[j].min_bh_t_orbital;
-                        P[place].comp_Mass = GravDataOut[j].comp_Mass;
-                        P[place].is_in_a_binary = GravDataOut[j].is_in_a_binary;
-                        for(k=0;k<3;k++) {P[place].comp_dx[k]=GravDataOut[j].comp_dx[k]; P[place].comp_dv[k]=GravDataOut[j].comp_dv[k];}
+                        if ( (P[place].Type==5) && (GravDataOut[j].min_bh_t_orbital < P[place].min_bh_t_orbital) )
+                        {
+                            P[place].min_bh_t_orbital = GravDataOut[j].min_bh_t_orbital;
+                            P[place].comp_Mass = GravDataOut[j].comp_Mass;
+                            P[place].is_in_a_binary = GravDataOut[j].is_in_a_binary;
+                            for(k=0;k<3;k++) {P[place].comp_dx[k]=GravDataOut[j].comp_dx[k]; P[place].comp_dv[k]=GravDataOut[j].comp_dv[k];}
+                        }
+#endif
+#endif
                     }
-#endif
-#endif
 #endif
                     if(Ewald_iter==0) /* don't allow for an infinite hierarchy of these moments, or you will get nonsense */
                     {
@@ -555,9 +557,9 @@ void gravity_tree(void)
                     }
                     
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-                    {int i1tt,i2tt; for(i1tt=0;i1tt<3;i1tt++) {for(i2tt=0;i2tt<3;i2tt++) {P[place].tidal_tensorps[i1tt][i2tt] += GravDataOut[j].tidal_tensorps[i1tt][i2tt];}}}
+                    if(Ewald_iter==0) {int i1tt,i2tt; for(i1tt=0;i1tt<3;i1tt++) {for(i2tt=0;i2tt<3;i2tt++) {P[place].tidal_tensorps[i1tt][i2tt] += GravDataOut[j].tidal_tensorps[i1tt][i2tt];}}}
 #ifdef COMPUTE_JERK_IN_GRAVTREE
-                    int i1tt; for(i1tt=0; i1tt<3; i1tt++) P[place].GravJerk[i1tt] += GravDataOut[j].GravJerk[i1tt];
+                    if(Ewald_iter==0) {int i1tt; for(i1tt=0; i1tt<3; i1tt++) P[place].GravJerk[i1tt] += GravDataOut[j].GravJerk[i1tt];}
 #endif		    		    
 #endif
                     
