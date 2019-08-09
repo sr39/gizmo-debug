@@ -426,6 +426,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #if defined(BH_ALPHADISK_ACCRETION)
                             if(bh_mass_alphadisk < BH_ALPHADISK_ACCRETION*bh_mass)
 #endif
+#if defined(BH_ACCRETE_NEARESTFIRST)
+                            if((P[j].Type != 0) || (r<=1.0001*BH_dr_to_NearestGasNeighbor))
+#endif
                             if((vrel < vesc)) // && (particles_swallowed_this_bh_this_process < particles_swallowed_this_bh_this_process_max))
                             { /* bound */
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS

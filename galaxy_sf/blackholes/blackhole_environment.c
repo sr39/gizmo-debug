@@ -191,6 +191,9 @@ void blackhole_environment_loop(void)
         for(j = 0; j < nexport; j++)
         {
             place = DataIndexTable[j].Index;
+#if defined(BH_ACCRETE_NEARESTFIRST) && defined(BH_GRAVCAPTURE_GAS)
+            if(P[place].BH_dr_to_NearestGasNeighbor > BlackholeDataPasserOut[j].BH_dr_to_NearestGasNeighbor) {P[place].BH_dr_to_NearestGasNeighbor  = BlackholeDataPasserOut[j].BH_dr_to_NearestGasNeighbor;}
+#endif
             out2particle_blackhole(&BlackholeDataPasserOut[j], P[place].IndexMapToTempStruc, 1);
         } // for(j = 0; j < nexport; j++)
         myfree(BlackholeDataPasserOut);
@@ -215,18 +218,21 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
     /* initialize variables before SPH loop is started */
     int startnode, numngb, j, k, n, listindex=0, mod_index;
     MyFloat *pos, h_i, *vel, hinv, mass, hinv3; mass=0; MyFloat ags_h_i = All.ForceSoftening[5]; MyIDType id;
+    MyDouble dP[3],dv[3],wt;
+    struct blackhole_temp_particle_data out;
+    memset(&out, 0, sizeof(struct blackhole_temp_particle_data));
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || (BH_GRAVACCRETION == 8)
     MyFloat wk, dwk, u; u=wk=dwk=0;
 #endif
 #if defined(BH_GRAVCAPTURE_GAS)
     MyFloat vrel, vbound, r2, sink_radius; sink_radius=0;
+#ifdef BH_ACCRETE_NEARESTFIRST
+    out.BH_dr_to_NearestGasNeighbor = MAX_REAL_NUMBER; // initialize large value
+#endif
 #endif
 #if defined(BH_RETURN_ANGMOM_TO_GAS)
     MyFloat *BH_Specific_AngMom;
 #endif
-    MyDouble dP[3],dv[3],wt;
-    struct blackhole_temp_particle_data out;
-    memset(&out, 0, sizeof(struct blackhole_temp_particle_data));
     
     /* these are the BH properties */
     if(mode == 0)
@@ -427,7 +433,11 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
 			                    double tff = eps*eps*eps / (mass + P[j].Mass);
 			                    if(tff < P[j].SwallowTime) {P[j].SwallowTime = tff;}
 #endif
+#if defined(BH_ACCRETE_NEARESTFIRST)
+                                if((out.BH_dr_to_NearestGasNeighbor > dr_code) && (P[j].SwallowID < id)) {out.BH_dr_to_NearestGasNeighbor = dr_code; out.mass_to_swallow_edd = P[j].Mass;}
+#else
                                 if(P[j].SwallowID < id) {out.mass_to_swallow_edd += P[j].Mass;} /* mark as 'will be swallowed' on next loop, to correct accretion rate */
+#endif
                             } /* if( apocenter in tolerance range ) */
                         } /* if(vrel < vbound) */
                     } /* type check */
@@ -436,9 +446,16 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
             } // for(n = 0; n < numngb; n++)
 
             if(mode == 0) /* local -> send directly to local temp struct */
+            {
+#if defined(BH_ACCRETE_NEARESTFIRST) && defined(BH_GRAVCAPTURE_GAS)
+                P[target].BH_dr_to_NearestGasNeighbor = out.BH_dr_to_NearestGasNeighbor;
+#endif
                 out2particle_blackhole(&out, mod_index, 0);     /* target -> mod_index for reduced size struc */
+            }
             else
+            {
                 BlackholeDataPasserResult[target] = out;        /* this is okay because target cycles over nimport only */
+            }
             
         } // while(startnode >= 0)
         

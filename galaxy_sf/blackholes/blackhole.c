@@ -146,7 +146,7 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
         double apocenter_max = 2*All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS // Bate 1995-style criterion, with a fixed sink/accretion radius that is distinct from both the force softening and the search radius
         double eps = DMIN(2.*Get_Particle_Size(j),sink_radius); // in the unresolved limit there's no need to force it to actually get within r_sink
-        if(dr_code>eps) {return 0;} else {return 1;}
+        if(dr_code>eps) {return 0;} //else {return 1;}
 #endif
 #if !defined(SINGLE_STAR_SINK_DYNAMICS) && (defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS))
         if(P[j].Type==5) {apocenter_max += MAX_REAL_NUMBER;} // default is to be unrestrictive for BH-BH mergers //
@@ -472,10 +472,8 @@ void set_blackhole_mdot(int i, int n, double dt)
     
 #ifdef BH_ALPHADISK_ACCRETION
     /* use the mass in the accretion disk from the previous timestep to determine the BH accretion rate */
-#ifndef SINGLE_STAR_SINK_DYNAMICS    /* note that if the alpha-disk is self-gravitating, it limits its mass, so we limit accretion into it beyond a certain point */
     double x_MdiskSelfGravLimiter = BPP(n).BH_Mass_AlphaDisk / (BH_ALPHADISK_ACCRETION * BPP(n).BH_Mass);
     if(x_MdiskSelfGravLimiter > 20.) {mdot=0;} else {mdot *= exp(-0.5*x_MdiskSelfGravLimiter*x_MdiskSelfGravLimiter);}
-#endif
     BlackholeTempInfo[i].mdot_alphadisk = mdot;     /* if BH_GRAVCAPTURE_GAS is off, this gets the accretion rate */
     mdot = 0;
     if(BPP(n).BH_Mass_AlphaDisk > 0)
@@ -493,7 +491,7 @@ void set_blackhole_mdot(int i, int n, double dt)
         double t_yr = SEC_PER_YEAR / (All.UnitTime_in_s / All.HubbleParam);
         double t_acc_disk = 4.2e7 * t_yr * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass) / BPP(n).BH_Mass_AlphaDisk, 0.4); /* shakura-sunyaev disk, integrated out to Q~1 radius, approximately */
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-        t_acc_disk = 30 * 2.*M_PI * sqrt( pow(PPP[n].Hsml,3) / (P[n].Mass*All.G) ); /* 30 orbits at sink radius to spiral all the way in (pretty fast) */
+        t_acc_disk = 10 * 2.*M_PI * sqrt( pow(PPP[n].Hsml,3) / (P[n].Mass*All.G) ); /* 10 orbits at sink radius to spiral all the way in (very fast) */
 #endif
         t_acc_disk = DMAX(t_acc_disk , 3.*dt); /* make sure accretion timescale is at least a few timesteps to avoid over-shoot, etc */
         mdot = BPP(n).BH_Mass_AlphaDisk / t_acc_disk;
