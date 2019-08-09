@@ -422,7 +422,10 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #ifdef SINGLE_STAR_SINK_DYNAMICS
 			                double eps = DMAX(P[j].Hsml/2.8, DMAX(ags_h_i/2.8, r));			    
 			                if(eps*eps*eps /(P[j].Mass + mass) <= P[j].SwallowTime)
-#endif			      			  
+#endif
+#if defined(BH_ALPHADISK_ACCRETION)
+                            if(bh_mass_alphadisk < BH_ALPHADISK_ACCRETION*bh_mass)
+#endif
                             if((vrel < vesc)) // && (particles_swallowed_this_bh_this_process < particles_swallowed_this_bh_this_process_max))
                             { /* bound */
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
