@@ -139,16 +139,13 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 {
     /* if pair is a gas particle make sure to account for its thermal pressure */
     double cs = 0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}
-#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
-    cs = 0;
-#endif
     double v2 = (vrel*vrel+cs*cs)/(vesc*vesc); int bound = 0;
     if(v2 < 1) 
     {
         double apocenter = dr_code / (1.0-v2); // NOTE: this is the major axis of the orbit, not the apocenter... - MYG
         double apocenter_max = 2*All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS // Bate 1995-style criterion, with a fixed sink/accretion radius that is distinct from both the force softening and the search radius
-        double eps = DMAX(Get_Particle_Size(j),sink_radius); // in the unresolved limit there's no need to force it to actually get within r_sink
+        double eps = DMIN(2.*Get_Particle_Size(j),sink_radius); // in the unresolved limit there's no need to force it to actually get within r_sink
         if(dr_code>eps) {return 0;} else {return 1;}
 #endif
 #if !defined(SINGLE_STAR_SINK_DYNAMICS) && (defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS))
@@ -496,8 +493,7 @@ void set_blackhole_mdot(int i, int n, double dt)
         double t_yr = SEC_PER_YEAR / (All.UnitTime_in_s / All.HubbleParam);
         double t_acc_disk = 4.2e7 * t_yr * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass) / BPP(n).BH_Mass_AlphaDisk, 0.4); /* shakura-sunyaev disk, integrated out to Q~1 radius, approximately */
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-        //t_acc_disk = sqrt( pow(All.ForceSoftening[5],3) / (P[n].Mass*All.G) ); /* sink dynamical time */
-        t_acc_disk = sqrt( pow(PPP[n].Hsml,3) / (P[n].Mass*All.G) ); /* sink dynamical time */
+        t_acc_disk = 30 * 2.*M_PI * sqrt( pow(PPP[n].Hsml,3) / (P[n].Mass*All.G) ); /* 30 orbits at sink radius to spiral all the way in (pretty fast) */
 #endif
         t_acc_disk = DMAX(t_acc_disk , 3.*dt); /* make sure accretion timescale is at least a few timesteps to avoid over-shoot, etc */
         mdot = BPP(n).BH_Mass_AlphaDisk / t_acc_disk;

@@ -1672,7 +1672,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 {
     struct NODE *nop = 0;
     int no, nodesinlist, ptype, ninteractions, nexp, task, listindex = 0;
-    double r2, dx, dy, dz, mass, r, fac, u, h, h_inv, h3_inv;
+    double r2, dx, dy, dz, mass, r, fac, u, h, h_inv, h3_inv, xtmp;
 #ifdef COMPUTE_JERK_IN_GRAVTREE
     double dvx, dvy, dvz;
     double jerk[3] = {0,0,0};
@@ -1684,7 +1684,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif    
 #ifdef PMGRID
     int tabindex;
-    double eff_dist, rcut, asmth, asmthfac, rcut2, dist, xtmp;
+    double eff_dist, rcut, asmth, asmthfac, rcut2, dist;
     dist = 0;
 #endif
     MyLongDouble acc_x, acc_y, acc_z;
