@@ -305,7 +305,6 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
 #define ADAPTIVE_GRAVSOFT_FORGAS
 #define GRAVITY_ACCURATE_FEWBODY_INTEGRATION
-#define BH_SWALLOW_SMALLTIMESTEPS
 #define BH_RETURN_ANGMOM_TO_GAS
 #define SINGLE_STAR_TIMESTEPPING 0
 #define SINGLE_STAR_ACCRETION 12
@@ -341,7 +340,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 #ifdef SINGLE_STAR_ACCRETION // figure out flags needed for the chosen sink accretion model
 #define BH_SWALLOWGAS // need to swallow gas [part of sink model]
-#define BH_ALPHADISK_ACCRETION (2.) // all models will use a 'reservoir' of some kind to smooth out accretion rates (and represent unresolved disk)
+#define BH_ALPHADISK_ACCRETION 1e6 // all models will use a 'reservoir' of some kind to smooth out accretion rates (and represent unresolved disk)
 #if (SINGLE_STAR_ACCRETION <= 8)
 #define BH_GRAVACCRETION (SINGLE_STAR_ACCRETION) // use one of these pre-built accretion models
 #endif
