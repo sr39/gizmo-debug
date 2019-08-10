@@ -100,7 +100,7 @@ static struct densdata_out
     
 #if defined(BLACK_HOLES)
     int BH_TimeBinGasNeighbor;
-#if defined(BH_ACCRETE_NEARESTFIRST)
+#if defined(BH_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
     MyDouble BH_dr_to_NearestGasNeighbor;
 #endif 
 #endif
@@ -220,7 +220,7 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
     if(P[i].Type == 5)
     {
         if(mode == 0) {BPP(i).BH_TimeBinGasNeighbor = out->BH_TimeBinGasNeighbor;} else {if(BPP(i).BH_TimeBinGasNeighbor > out->BH_TimeBinGasNeighbor) {BPP(i).BH_TimeBinGasNeighbor = out->BH_TimeBinGasNeighbor;}}
-#ifdef BH_ACCRETE_NEARESTFIRST
+#if defined(BH_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
         if(mode == 0) {BPP(i).BH_dr_to_NearestGasNeighbor = out->BH_dr_to_NearestGasNeighbor;} else {if(BPP(i).BH_dr_to_NearestGasNeighbor > out->BH_dr_to_NearestGasNeighbor) {BPP(i).BH_dr_to_NearestGasNeighbor = out->BH_dr_to_NearestGasNeighbor;}}
 #endif
     } /* if(P[i].Type == 5) */
@@ -277,8 +277,11 @@ void density(void)
 #ifdef BLACK_HOLES
             P[i].SwallowID = 0;   
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-	        P[i].BH_Ngb_Flag = 0; P[i].SwallowTime = MAX_REAL_NUMBER;
-#endif	    
+	    P[i].SwallowTime = MAX_REAL_NUMBER;
+#endif
+#if (SINGLE_STAR_SINK_FORMATION & 8)	    
+	    P[i].BH_Ngb_Flag = 0;
+#endif		
 #endif
         }
     } /* done with intial zero-out loop */
@@ -1430,8 +1433,11 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
         {
             P[j].SwallowID = 0;  // this way we don't have to do a global loop over local particles in blackhole_accretion() to reset these quantities...
             if(out->BH_TimeBinGasNeighbor > P[j].TimeBin) {out->BH_TimeBinGasNeighbor = P[j].TimeBin;}
-#ifdef BH_ACCRETE_NEARESTFIRST
-            P[j].BH_Ngb_Flag = 1; P[j].SwallowTime = MAX_REAL_NUMBER;
+#if (SINGLE_STAR_SINK_FORMATION & 8)
+	    P[j].BH_Ngb_Flag = 1;
+#endif
+#if defined(BH_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
+	    P[j].SwallowTime = MAX_REAL_NUMBER;
             double dr_eff_wtd = Get_Particle_Size(j); dr_eff_wtd=sqrt(dr_eff_wtd*dr_eff_wtd + (kernel->r)*(kernel->r)); /* effective distance for Gaussian-type kernel, weighted by density */
             if((dr_eff_wtd < out->BH_dr_to_NearestGasNeighbor) && (P[j].Mass > 0)) {out->BH_dr_to_NearestGasNeighbor = dr_eff_wtd;}
 #endif
