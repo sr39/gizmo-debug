@@ -306,7 +306,6 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define ADAPTIVE_GRAVSOFT_FORGAS
 #define GRAVITY_ACCURATE_FEWBODY_INTEGRATION
 #define BH_SWALLOW_SMALLTIMESTEPS
-#define BH_ACCRETE_NEARESTFIRST
 #define BH_RETURN_ANGMOM_TO_GAS
 #define SINGLE_STAR_TIMESTEPPING 0
 #define SINGLE_STAR_ACCRETION 12
@@ -2290,7 +2289,7 @@ extern ALIGN(32) struct particle_data
 #endif
     MyFloat BH_Mdot;
     int BH_TimeBinGasNeighbor;
-#ifdef BH_ACCRETE_NEARESTFIRST
+#if defined(BH_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
     MyFloat BH_dr_to_NearestGasNeighbor;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
