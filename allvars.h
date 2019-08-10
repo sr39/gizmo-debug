@@ -342,7 +342,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 #ifdef SINGLE_STAR_ACCRETION // figure out flags needed for the chosen sink accretion model
 #define BH_SWALLOWGAS // need to swallow gas [part of sink model]
-#define BH_ALPHADISK_ACCRETION (10.) // all models will use a 'reservoir' of some kind to smooth out accretion rates (and represent unresolved disk)
+#define BH_ALPHADISK_ACCRETION (2.) // all models will use a 'reservoir' of some kind to smooth out accretion rates (and represent unresolved disk)
 #if (SINGLE_STAR_ACCRETION <= 8)
 #define BH_GRAVACCRETION (SINGLE_STAR_ACCRETION) // use one of these pre-built accretion models
 #endif
@@ -2979,6 +2979,9 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 #endif
 #if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;        /*!< gives the mass we want to swallow that contributes to eddington */
+#if defined(BH_ACCRETE_NEARESTFIRST)
+    MyFloat BH_dr_to_NearestGasNeighbor;      /*!< this needs to be here for looping over neighbors to restrict to <=1 accreted per timestep */
+#endif
 #endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
     MyLongDouble accreted_momentum[3];        /*!< accreted linear momentum */
