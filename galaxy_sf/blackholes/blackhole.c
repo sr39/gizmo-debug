@@ -139,13 +139,17 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 {
     /* if pair is a gas particle make sure to account for its thermal pressure */
     double cs = 0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}
+#if defined(COOLING) && defined(SINGLE_STAR_SINK_DYNAMICS)
+    double nHcgs = HYDROGEN_MASSFRAC * (SphP[j].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
+    if(nHcgs > 1e14) cs = DMIN(2e5 / All.UnitVelocity_in_cm_per_s, cs); // putting a limiter here so the sink spawned in dense a Larson core can get started accreting
+#endif    
     double v2 = (vrel*vrel+cs*cs)/(vesc*vesc); int bound = 0;
     if(v2 < 1) 
     {
         double apocenter = dr_code / (1.0-v2); // NOTE: this is the major axis of the orbit, not the apocenter... - MYG
         double apocenter_max = 2*All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS // Bate 1995-style criterion, with a fixed sink/accretion radius that is distinct from both the force softening and the search radius
-        double eps = DMIN(2.*Get_Particle_Size(j),sink_radius); // in the unresolved limit there's no need to force it to actually get within r_sink
+        double eps = DMAX(Get_Particle_Size(j),sink_radius); // in the unresolved limit there's no need to force it to actually get within r_sink
         if(dr_code>eps) {return 0;} //else {return 1;}
 #endif
 #if !defined(SINGLE_STAR_SINK_DYNAMICS) && (defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS))
