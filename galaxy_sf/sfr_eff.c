@@ -353,7 +353,7 @@ double get_starformation_rate(int i)
     if(SphP[i].Density_Relative_Maximum_in_Kernel > 0) {rateOfSF=0;} // restrict to local density/potential maxima //
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 8)
-    if(P[i].BH_Ngb_Flag) {rateOfSF=0;} // particle cannot be 'seen' by -any- sink as a potential interacting neighbor //
+//    if(P[i].BH_Ngb_Flag) {rateOfSF=0;} // particle cannot be 'seen' by -any- sink as a potential interacting neighbor //
     if(P[i].min_dist_to_bh < 1.24*Get_Particle_Size(i)) {rateOfSF=0;} // particle does not see a sink within a volume = 8x=2^3 times its cell volume [set coefficient =1.86 for 27x=3^3 its cell volume] //
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 16)
