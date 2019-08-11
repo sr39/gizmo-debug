@@ -1436,8 +1436,10 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
 #if (SINGLE_STAR_SINK_FORMATION & 8)
 	    P[j].BH_Ngb_Flag = 1;
 #endif
-#if defined(BH_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
+#ifdef SINGLE_STAR_SINK_DYNAMICS
 	    P[j].SwallowTime = MAX_REAL_NUMBER;
+#endif	    
+#if defined(BH_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
             double dr_eff_wtd = Get_Particle_Size(j); dr_eff_wtd=sqrt(dr_eff_wtd*dr_eff_wtd + (kernel->r)*(kernel->r)); /* effective distance for Gaussian-type kernel, weighted by density */
             if((dr_eff_wtd < out->BH_dr_to_NearestGasNeighbor) && (P[j].Mass > 0)) {out->BH_dr_to_NearestGasNeighbor = dr_eff_wtd;}
 #endif
