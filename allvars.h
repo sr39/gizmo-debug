@@ -309,6 +309,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define SINGLE_STAR_TIMESTEPPING 0
 #define SINGLE_STAR_ACCRETION 12
 #define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion
+#define BH_ACCRETE_NEARESTFIRST
 #define DEVELOPER_MODE
 #define IO_SUPPRESS_TIMEBIN_STDOUT 10 //only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #ifdef MAGNETIC
@@ -340,7 +341,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 #ifdef SINGLE_STAR_ACCRETION // figure out flags needed for the chosen sink accretion model
 #define BH_SWALLOWGAS // need to swallow gas [part of sink model]
-#define BH_ALPHADISK_ACCRETION 1e6 // all models will use a 'reservoir' of some kind to smooth out accretion rates (and represent unresolved disk)
+#define BH_ALPHADISK_ACCRETION (2.) // all models will use a 'reservoir' of some kind to smooth out accretion rates (and represent unresolved disk)
 #if (SINGLE_STAR_ACCRETION <= 8)
 #define BH_GRAVACCRETION (SINGLE_STAR_ACCRETION) // use one of these pre-built accretion models
 #endif
