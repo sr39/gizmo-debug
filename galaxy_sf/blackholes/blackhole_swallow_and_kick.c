@@ -287,7 +287,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
         vel = P[target].Vel;
         h_i = PPP[target].Hsml;
         id = P[target].ID;
-#if defined(BH_WIND_KICK)
+#if defined(BH_WIND_KICK) || defined(BH_OUTPUT_GASSWALLOW)
         mass = P[target].Mass;    
 #endif
 #if defined(BH_ALPHADISK_ACCRETION) && defined(BH_WIND_KICK)
@@ -325,7 +325,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
         vel = BlackholeDataGet[target].Vel;
         h_i = BlackholeDataGet[target].Hsml;
         id = BlackholeDataGet[target].ID;
-#if defined(BH_WIND_KICK)
+#if defined(BH_WIND_KICK) || defined(BH_OUTPUT_GASSWALLOW)
         mass = BlackholeDataGet[target].Mass;
 #if defined(BH_ALPHADISK_ACCRETION) && defined(BH_WIND_KICK)
         bh_mass_alphadisk = BlackholeDataGet[target].BH_Mass_AlphaDisk;      
