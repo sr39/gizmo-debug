@@ -490,6 +490,10 @@ void star_formation_parent_routine(void)
                 P[i].StellarAge = All.Time;
 
                 P[i].BH_Mass = All.SeedBlackHoleMass;
+#ifdef SLOPE2_SINKS
+                P[i].BH_Mass = 0.5*P[i].Mass; //put half of it into the seed so that the alpha disk mass limit won't slow down accretion
+                P[i].Mass -= P[i].BH_Mass; //mass conservation
+#endif
                 if(All.SeedBlackHoleMassSigma > 0)
                 {
                     gsl_rng *random_generator_forbh; /* generate gaussian random number for random BH seed mass */
