@@ -251,7 +251,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     MyFloat hinv, hinv3;
 #endif
     MyFloat f_accreted=0;
-#if defined(BH_WIND_KICK)
+#if defined(BH_WIND_KICK) || defined(BH_OUTPUT_GASSWALLOW)
     MyFloat mass;
 #ifdef BH_WIND_KICK
     MyFloat v_kick=0;
