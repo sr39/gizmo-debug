@@ -539,7 +539,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #ifdef BH_OUTPUT_GASSWALLOW
                         MyDouble tempB[3]={0,0,0};
 #ifdef MAGNETIC
-                        tempB=SphP[j].B //point to particle magnetic field
+                        tempB[0]=SphP[j].B[0];tempB[1]=SphP[j].B[1];tempB[2]=SphP[j].B[2]; //use particle magnetic field
 #endif
                         fprintf(FdBhSwallowDetails,"%g  %u %g %2.7f %2.7f %2.7f  %u %g %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f\n", All.Time,  id,mass,pos[0],pos[1],pos[2],  P[j].ID, P[j].Mass, (P[j].Pos[0]-pos[0]),(P[j].Pos[1]-pos[1]),(P[j].Pos[2]-pos[2]), (P[j].Vel[0]-vel[0]),(P[j].Vel[1]-vel[1]),(P[j].Vel[2]-vel[2]), SphP[j].InternalEnergy, tempB[0], tempB[1], tempB[2]);
 #endif
