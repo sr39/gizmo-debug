@@ -141,7 +141,7 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
     double cs = 0; if(P[j].Type==0) {cs=Particle_effective_soundspeed_i(j);}
 #if defined(COOLING) && defined(SINGLE_STAR_SINK_DYNAMICS)
     double nHcgs = HYDROGEN_MASSFRAC * (SphP[j].Density * All.cf_a3inv * All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam) / PROTONMASS;
-    if(nHcgs > 1e14) cs = DMIN(2e5 / All.UnitVelocity_in_cm_per_s, cs); // putting a limiter here so the sink spawned in dense a Larson core can get started accreting
+    if(nHcgs > 1e12 && dr_code < All.ForceSoftening[5]) cs = 0; // need some kind of limiter or adiabatic cores can't ever accrete at sufficiently high resolution
 #endif    
     double v2 = (vrel*vrel+cs*cs)/(vesc*vesc); int bound = 0;
     if(v2 < 1) 
