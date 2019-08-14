@@ -312,6 +312,13 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define BH_ACCRETE_NEARESTFIRST
 #define DEVELOPER_MODE
 #define IO_SUPPRESS_TIMEBIN_STDOUT 10 //only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
+#ifdef SLOPE1_SINKS //Slope1 sinks, this gives a top heavy IMF in isoT sims
+#define BH_ALPHADISK_ACCRETION (1.0e6)
+#else
+#define SLOPE2_SINKS //Slope2 sinks, this should give dN/dM~M^-2 in isoT sims
+#define BH_DEBUG_DISABLE_MERGERS
+#define BH_ALPHADISK_ACCRETION (2.)
+#endif
 #ifdef MAGNETIC
 #define MHD_CONSTRAINED_GRADIENT 1
 #endif
@@ -320,6 +327,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define JET_DIRECTION_FROM_KERNEL_AND_SINK //the direction of the jet is a mass weighted average of Jsink and Jgaskernel
 #endif
 #endif // SINGLE_STAR_SINK_DYNAMICS_MG_DG_TEST_PACKAGE
+
 
 #ifdef SINGLE_STAR_SINK_DYNAMICS
 #define GALSF // master switch needed to enable various frameworks
@@ -339,25 +347,11 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define GALSF_SFR_TIDAL_HILL_CRITERION
 #endif
 
-
-
 #ifdef SINGLE_STAR_ACCRETION // figure out flags needed for the chosen sink accretion model
 #define BH_SWALLOWGAS // need to swallow gas [part of sink model]
-
-#ifdef SLOPE1_SINKS
-//Slope1 sinks, this gives a top heavy IMF in isoT sims
-#define BH_ACCRETE_NEARESTFIRST
-#define SINGLE_STAR_SINK_DYNAMICS_ACC_N_ORBITS 10
-#define BH_ALPHADISK_ACCRETION 1e6 // all models will use a 'reservoir' of some kind to smooth out accretion rates (and represent unresolved disk)
-#else
-//Slope2 sinks, this should give dN/dM~M^-2 in isoT sims
-#define SLOPE2_SINKS
-#define BH_ACCRETE_NEARESTFIRST
-#define SINGLE_STAR_SINK_DYNAMICS_ACC_N_ORBITS 10
-#define BH_DEBUG_DISABLE_MERGERS
-#define BH_ALPHADISK_ACCRETION 2 // all models will use a 'reservoir' of some kind to smooth out accretion rates (and represent unresolved disk)
+#ifndef BH_ALPHADISK_ACCRETION
+#define BH_ALPHADISK_ACCRETION (2.) // all models will use a 'reservoir' of some kind to smooth out accretion rates (and represent unresolved disk)
 #endif
-
 #if (SINGLE_STAR_ACCRETION <= 8)
 #define BH_GRAVACCRETION (SINGLE_STAR_ACCRETION) // use one of these pre-built accretion models
 #endif
