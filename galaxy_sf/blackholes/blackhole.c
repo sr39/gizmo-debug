@@ -152,8 +152,8 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
         double apocenter = dr_code / (1.0-v2); // NOTE: this is the major axis of the orbit, not the apocenter... - MYG
         double apocenter_max = 2*All.ForceSoftening[5]; // 2.8*epsilon (softening length) //
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS // Bate 1995-style criterion, with a fixed sink/accretion radius that is distinct from both the force softening and the search radius
-        double eps = DMIN(2*Get_Particle_Size(j),sink_radius); // in the unresolved limit there's no need to force it to actually get within r_sink
-        if(dr_code>eps) {return 0;} //else {return 1;}
+        double eps = sink_radius; //DMIN(2*Get_Particle_Size(j),sink_radius); // in the unresolved limit there's no need to force it to actually get within r_sink
+        if(dr_code>eps) {return 0;} 
 #endif
 #if !defined(SINGLE_STAR_SINK_DYNAMICS) && (defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS))
         if(P[j].Type==5) {apocenter_max += MAX_REAL_NUMBER;} // default is to be unrestrictive for BH-BH mergers //
@@ -393,27 +393,27 @@ void set_blackhole_mdot(int i, int n, double dt)
 #endif
             mgas_in_racc = (4.*M_PI/3.) * (BPP(n).DensAroundStar*All.cf_a3inv) * r0_accretion*r0_accretion*r0_accretion; // use -local- estimator of gas mass in accretion radius //
 
-            fac = All.BlackHoleAccretionFactor * (5.0*(SOLAR_MASS/All.UnitMass_in_g)/(SEC_PER_YEAR/All.UnitTime_in_s)); // basic normalization (use alpha=5, midpoint of values alpha=[1,10] from Hopkins and Quataert 2011 //
+            fac = (5.0*(SOLAR_MASS/All.UnitMass_in_g)/(SEC_PER_YEAR/All.UnitTime_in_s)); // basic normalization (use alpha=5, midpoint of values alpha=[1,10] from Hopkins and Quataert 2011 //
             fac *= pow(f_disk_for_bhar, 3./2.) * pow(bh_mass_units,1./6.) / (1. + f0_for_bhar/fgas_for_bhar); // dimensionless dependence on f_disk and m_bh (latter is weak)
             mdot = fac * mdisk_for_bhar_units * pow(rmax_for_bhar_units,-3./2.); // these are the quantities which scale strongly with the scale where we evaluate the BHAR
             mdot *= pow(r0_accretion/rmax_for_bhar , 3./2.); // scales to estimator value at specified 'accretion radius' r0_accretion, assuming f_disk, etc constant and M_enclosed is a constant-density profile //
             
 #if (BH_GRAVACCRETION == 2) // gas accreted at a constant rate per free-fall time from the specified 'accretion radius'
-            mdot = All.BlackHoleAccretionFactor * mgas_in_racc * omega_dyn;
+            mdot = mgas_in_racc * omega_dyn;
 #endif
 #if (BH_GRAVACCRETION == 3) // gravito-turbulent estimator: accrete at constant fraction per free-fall from 'accretion radius' with that fraction being f_disk^2
-            mdot = All.BlackHoleAccretionFactor * (mdisk_for_bhar / menc_all) * (mdisk_for_bhar / menc_all) * mgas_in_racc * omega_dyn;
+            mdot = (mdisk_for_bhar / menc_all) * (mdisk_for_bhar / menc_all) * mgas_in_racc * omega_dyn;
 #endif
 #if (BH_GRAVACCRETION == 4) || (BH_GRAVACCRETION == 6) || (BH_GRAVACCRETION == 7) // accrete constant fraction per free-fall time from accretion radius set to minimum of BH radius of gravitational dominance over Vc or cs (basically where gas more tightly bound to BH) - has Bondi-like form
             double soundspeed = GAMMA*GAMMA_MINUS1 * BlackholeTempInfo[i].BH_InternalEnergy, Vc2_rmax = All.G * menc_all / rmax_for_bhar; // this is in physical units now
-            mdot = All.BlackHoleAccretionFactor * 4.*M_PI * All.G*All.G * BPP(n).BH_Mass*menc_all * (BPP(n).DensAroundStar*All.cf_a3inv) / pow(soundspeed + Vc2_rmax, 1.5);
+            mdot = 4.*M_PI * All.G*All.G * BPP(n).BH_Mass*menc_all * (BPP(n).DensAroundStar*All.cf_a3inv) / pow(soundspeed + Vc2_rmax, 1.5);
 #if (BH_GRAVACCRETION == 6) || (BH_GRAVACCRETION == 7)
             double bhvel=0; for(k=0;k<3;k++) {bhvel += BlackholeTempInfo[i].BH_SurroundingGasVel[k]*BlackholeTempInfo[i].BH_SurroundingGasVel[k];}
             double veldisp2_eff = bhvel/3. + soundspeed, masscorrfac = pow( menc_all/(1.e-10*menc_all + BPP(n).BH_Mass) , 0.25 );
-            mdot = All.BlackHoleAccretionFactor * masscorrfac * 4.*M_PI * All.G*All.G * BPP(n).BH_Mass*menc_all * (BPP(n).DensAroundStar*All.cf_a3inv) / pow(1.e-5*soundspeed + Vc2_rmax, 1.5);
+            mdot = masscorrfac * 4.*M_PI * All.G*All.G * BPP(n).BH_Mass*menc_all * (BPP(n).DensAroundStar*All.cf_a3inv) / pow(1.e-5*soundspeed + Vc2_rmax, 1.5);
             mdot /= 1 + sqrt(veldisp2_eff/Vc2_rmax) * DMIN( veldisp2_eff/Vc2_rmax , masscorrfac );
 #if (BH_GRAVACCRETION == 7)
-            mdot = All.BlackHoleAccretionFactor * 4.*M_PI * All.G*All.G * menc_all*menc_all * (BPP(n).DensAroundStar*All.cf_a3inv) / pow(veldisp2_eff + Vc2_rmax, 1.5);
+            mdot = 4.*M_PI * All.G*All.G * menc_all*menc_all * (BPP(n).DensAroundStar*All.cf_a3inv) / pow(veldisp2_eff + Vc2_rmax, 1.5);
 #endif
 #endif
 #endif
@@ -427,7 +427,7 @@ void set_blackhole_mdot(int i, int n, double dt)
                 double rho = BPP(n).DensAroundStar*All.cf_a3inv; /* we want all quantities in physical units */
                 double soundspeed = GAMMA*GAMMA_MINUS1 * BlackholeTempInfo[i].BH_InternalEnergy; // this is in physical units now
                 double vcs_fac = pow(soundspeed+bhvel, 1.5);
-                mdot = All.BlackHoleAccretionFactor * 4.*M_PI * All.G*All.G * BPP(n).BH_Mass*BPP(n).BH_Mass * rho / vcs_fac;
+                mdot = 4.*M_PI * All.G*All.G * BPP(n).BH_Mass*BPP(n).BH_Mass * rho / vcs_fac;
             } /* otherwise, circularization outside BH-dominated region, efficiency according to usual [above] */
 #endif
 #if (BH_GRAVACCRETION == 8)
@@ -438,15 +438,13 @@ void set_blackhole_mdot(int i, int n, double dt)
             double facc_which_hubber_mdot = DMIN(1, 1.75*sqrt(j_eff)/(m_eff*sqrt(All.G*(m_eff+P[n].Mass)*rmax_for_bhar))); /* disk fraction estimator */
             mdot = DMAX( BlackholeTempInfo[i].hubber_mdot_bondi_limiter , pow(hubber_mdot_from_vr_estimator,1-facc_which_hubber_mdot)*pow(hubber_mdot_disk_estimator,facc_which_hubber_mdot));
 #endif
-            
 #ifndef IO_REDUCED_MODE
-            printf("BH GravAcc Eval :: mdot %g BHaccFac %g Norm %g fdisk %g bh_8 %g fgas %g f0 %g mdisk_9 %g rmax_100 %g \n",
-                   mdot,All.BlackHoleAccretionFactor,fac,
-                   f_disk_for_bhar,bh_mass_units,fgas_for_bhar,f0_for_bhar,mdisk_for_bhar_units,rmax_for_bhar_units);
+            printf("BH GravAcc Eval :: mdot %g Norm %g fdisk %g bh_8 %g fgas %g f0 %g mdisk_9 %g rmax_100 %g \n",
+                   mdot,fac,f_disk_for_bhar,bh_mass_units,fgas_for_bhar,f0_for_bhar,mdisk_for_bhar_units,rmax_for_bhar_units);
 #endif
         } // if(fgas_for_bhar<=0)
-
     } // if(BlackholeTempInfo[i].Mgas_in_Kernel > 0)
+    mdot *= All.BlackHoleAccretionFactor; // this is a pure normalization multiplier here
 #endif // ifdef BH_GRAVACCRETION
     
     
@@ -488,8 +486,7 @@ void set_blackhole_mdot(int i, int n, double dt)
         /* this below is a more complicated expression using the outer-disk expression from Shakura & Sunyaev. Simpler expression
             below captures the same physics with considerably less potential to extrapolate to rather odd scalings in extreme regimes */
         
-        /* mdot = All.BlackHoleAccretionFactor *
-            (2.45 * (SOLAR_MASS/All.UnitMass_in_g)/(SEC_PER_YEAR/All.UnitTime_in_s)) * // normalization
+        /* mdot = (2.45 * (SOLAR_MASS/All.UnitMass_in_g)/(SEC_PER_YEAR/All.UnitTime_in_s)) * // normalization
             pow( 0.1 , 8./7.) * // viscous disk 'alpha'
             pow( BPP(n).BH_Mass*All.UnitMass_in_g / (All.HubbleParam * 1.0e8*SOLAR_MASS) , -5./14. ) * // mbh dependence
             pow( BPP(n).BH_Mass_AlphaDisk*All.UnitMass_in_g / (All.HubbleParam * 1.0e8*SOLAR_MASS) , 10./7. ) * // m_disk dependence
@@ -498,7 +495,16 @@ void set_blackhole_mdot(int i, int n, double dt)
         double t_yr = SEC_PER_YEAR / (All.UnitTime_in_s / All.HubbleParam);
         double t_acc_disk = 4.2e7 * t_yr * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass) / BPP(n).BH_Mass_AlphaDisk, 0.4); /* shakura-sunyaev disk, integrated out to Q~1 radius, approximately */
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-        t_acc_disk = SINGLE_STAR_SINK_DYNAMICS_ACC_N_ORBITS * 2.*M_PI * sqrt( pow(PPP[n].Hsml,3) / (P[n].Mass*All.G) ); /* SINGLE_STAR_SINK_DYNAMICS_ACC_N_ORBITS orbits at sink radius to spiral all the way in (very fast) */
+        double Gm_i=1./(All.G*P[n].Mass), t_dyn_eff=sqrt(PPP[n].Hsml*PPP[n].Hsml*PPP[n].Hsml*Gm_i); // dynamical time at radius "H" where the neighbor gas is located
+#if defined(BH_FOLLOW_ACCRETED_ANGMOM)
+        double j=0; for(k=0;k<3;k++) {j+=P[n].BH_Specific_AngMom[k]*P[n].BH_Specific_AngMom[k];} // calculate magnitude of specific ang mom
+        if(j>0) {j=sqrt(j);} else {j=0;}
+        t_dyn_eff = DMIN( t_dyn_eff , j*j*j*Gm_i*Gm_i ); // dynamical time at circularization radius of the alpha-disk
+#endif
+        t_acc_disk = 10. * 2.*M_PI * t_dyn_eff; // 10 orbits at circularization radius to spiral all the way in (very fast)
+#endif
+#if defined(BH_GRAVCAPTURE_GAS)
+        t_acc_disk /= All.BlackHoleAccretionFactor; // when using GRAVCAPTURE, this won't multiply the continuous mdot, but rather mdot from disk to BH
 #endif
         t_acc_disk = DMAX(t_acc_disk , 3.*dt); /* make sure accretion timescale is at least a few timesteps to avoid over-shoot, etc */
         mdot = BPP(n).BH_Mass_AlphaDisk / t_acc_disk;
@@ -562,11 +568,14 @@ void set_blackhole_mdot(int i, int n, double dt)
     
 #if defined(BH_RETURN_ANGMOM_TO_GAS) /* pre-calculate some quantities for 'angular momentum feedback' here, these have to be based on the mdot estimator above */
     double jmag=0,lmag=0,mdot_eff=mdot; BlackholeTempInfo[i].angmom_norm_topass_in_swallowloop=0;
+/*
 #if defined(BH_GRAVCAPTURE_GAS)
     mdot_eff = BlackholeTempInfo[i].mass_to_swallow_edd / (MIN_REAL_NUMBER + dt);
 #elif defined(BH_ALPHADISK_ACCRETION)
     mdot_eff = BlackholeTempInfo[i].mdot_alphadisk;
 #endif
+*/
+    mdot_eff = mdot; /* even if we are using gravcapture, and alpha-disk, then it's actually this we want to use [the rate of material depleting out of the disk, which is the rate of total angular momentum loss in the disk ] */
     for(k=0;k<3;k++) {jmag+=BlackholeTempInfo[i].angmom_prepass_sum_for_passback[k]*BlackholeTempInfo[i].angmom_prepass_sum_for_passback[k]; lmag+=BPP(n).BH_Specific_AngMom[k]*BPP(n).BH_Specific_AngMom[k];}
     if(jmag>0 && lmag>0) {BlackholeTempInfo[i].angmom_norm_topass_in_swallowloop = P[n].Mass * sqrt(lmag) * mdot_eff * dt / sqrt(jmag);} /* this should be in units such that, times CODE radius+(code=physical) ang-mom, gives CODE velocity: looks ok at present */
 #endif
