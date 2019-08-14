@@ -339,6 +339,8 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define GALSF_SFR_TIDAL_HILL_CRITERION
 #endif
 
+
+
 #ifdef SINGLE_STAR_ACCRETION // figure out flags needed for the chosen sink accretion model
 #define BH_SWALLOWGAS // need to swallow gas [part of sink model]
 
