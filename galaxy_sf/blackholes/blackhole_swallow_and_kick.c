@@ -251,7 +251,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     MyFloat hinv, hinv3;
 #endif
     MyFloat f_accreted=0;
-#if defined(BH_WIND_KICK)
+#if defined(BH_WIND_KICK) || defined(BH_OUTPUT_GASSWALLOW)
     MyFloat mass;
 #ifdef BH_WIND_KICK
     MyFloat v_kick=0;
@@ -287,7 +287,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
         vel = P[target].Vel;
         h_i = PPP[target].Hsml;
         id = P[target].ID;
-#if defined(BH_WIND_KICK)
+#if defined(BH_WIND_KICK) || defined(BH_OUTPUT_GASSWALLOW)
         mass = P[target].Mass;    
 #endif
 #if defined(BH_ALPHADISK_ACCRETION) && defined(BH_WIND_KICK)
@@ -325,7 +325,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
         vel = BlackholeDataGet[target].Vel;
         h_i = BlackholeDataGet[target].Hsml;
         id = BlackholeDataGet[target].ID;
-#if defined(BH_WIND_KICK)
+#if defined(BH_WIND_KICK) || defined(BH_OUTPUT_GASSWALLOW)
         mass = BlackholeDataGet[target].Mass;
 #if defined(BH_ALPHADISK_ACCRETION) && defined(BH_WIND_KICK)
         bh_mass_alphadisk = BlackholeDataGet[target].BH_Mass_AlphaDisk;      
@@ -539,9 +539,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #ifdef BH_OUTPUT_GASSWALLOW
                         MyDouble tempB[3]={0,0,0};
 #ifdef MAGNETIC
-                        tempB=SphP[j].B //point to particle magnetic field
+                        tempB[0]=SphP[j].B[0];tempB[1]=SphP[j].B[1];tempB[2]=SphP[j].B[2]; //use particle magnetic field
 #endif
-                        fprintf(FdBhSwallowDetails,"%g  %u %g %2.7f %2.7f %2.7f  %u %g %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f\n", All.Time,  id,bh_mass,pos[0],pos[1],pos[2],  P[j].ID, P[j].Mass, (P[j].Pos[0]-pos[0]),(P[j].Pos[1]-pos[1]),(P[j].Pos[2]-pos[2]), (P[j].Vel[0]-vel[0]),(P[j].Vel[1]-vel[1]),(P[j].Vel[2]-vel[2]), SphP[j].InternalEnergy, tempB[0], tempB[1], tempB[2]);
+                        fprintf(FdBhSwallowDetails,"%g  %u %g %2.7f %2.7f %2.7f  %u %g %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f\n", All.Time,  id,mass,pos[0],pos[1],pos[2],  P[j].ID, P[j].Mass, (P[j].Pos[0]-pos[0]),(P[j].Pos[1]-pos[1]),(P[j].Pos[2]-pos[2]), (P[j].Vel[0]-vel[0]),(P[j].Vel[1]-vel[1]),(P[j].Vel[2]-vel[2]), SphP[j].InternalEnergy, tempB[0], tempB[1], tempB[2]);
 #endif
                     }  // if(P[j].Type == 0)
 
