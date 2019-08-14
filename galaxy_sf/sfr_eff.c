@@ -558,6 +558,9 @@ void star_formation_parent_routine(void)
                 P[i].Type = 5;
                 num_bhformed++;
                 P[i].BH_Mass = All.SeedBlackHoleMass;
+#ifdef SLOPE2_SINKS
+                P[i].BH_Mass = 0.5*P[i].Mass; //put half of it into the seed so that the alpha disk mass limit won't slow down accretion
+#endif
                 TreeReconstructFlag = 1;
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
 		P[i].SinkRadius = All.ForceSoftening[5]; //DMAX(pow(3 * P[i].Mass/ (All.PhysDensThresh * 4 * M_PI), 1./3) , All.ForceSoftening[5]); // want a sphere of equal volume to particle size at ncrit, R = (3V/(4 PI))^(1/3)
