@@ -495,16 +495,15 @@ void set_blackhole_mdot(int i, int n, double dt)
         double t_yr = SEC_PER_YEAR / (All.UnitTime_in_s / All.HubbleParam);
         double t_acc_disk = 4.2e7 * t_yr * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass) / BPP(n).BH_Mass_AlphaDisk, 0.4); /* shakura-sunyaev disk, integrated out to Q~1 radius, approximately */
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-        double Gm_i=1./(All.G*P[n].Mass), reff = DMAX(All.SofteningTable[5],Get_Particle_Size(n)), t_dyn_eff =sqrt(reff*reff*reff*Gm_i); // dynamical time at radius "H" where the neighbor gas is located
+        double Gm_i=1./(All.G*P[n].Mass), reff=DMAX(All.SofteningTable[5],Get_Particle_Size(n)), t_dyn_eff=sqrt(reff*reff*reff*Gm_i); // dynamical time at radius "H" where the neighbor gas is located
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
         double j=0; for(k=0;k<3;k++) {j+=P[n].BH_Specific_AngMom[k]*P[n].BH_Specific_AngMom[k];} // calculate magnitude of specific ang mom
         if(j>0) {j=sqrt(j);} else {j=0;}
-	double r_circ = j*j*Gm_i;
-	if(r_circ < 10 * 6.957e10 / All.UnitLength_in_cm) {t_acc_disk = 0;} // in the unlikely event that angular momentum is low enough, we're falling straight onto the protostellar surface, here taking 10R_solar as a rough number
-        else {t_acc_disk = j*j*j*Gm_i*Gm_i;} // dynamical time at circularization radius of the alpha-disk
+        t_acc_disk = j*j*j*Gm_i*Gm_i; // dynamical time at circularization radius of the alpha-disk
+        if(j*j*Gm_i < 6.957e11 / All.UnitLength_in_cm) {t_acc_disk *= 1.e-2;} // in the unlikely event that angular momentum is low enough, we're falling straight onto the protostellar surface, here taking 10R_solar as a rough number
 #endif
         t_acc_disk = 10. * 2.*M_PI * t_acc_disk; // 10 orbits at circularization radius to spiral all the way in (very fast)
-	t_acc_disk = DMAX(t_acc_disk, t_dyn_eff); // Should be no less than the resolution-scale dynamical time
+        t_acc_disk = DMAX(t_acc_disk, t_dyn_eff); // Should be no less than the resolution-scale dynamical time
 #endif
 #if defined(BH_GRAVCAPTURE_GAS)
         t_acc_disk /= All.BlackHoleAccretionFactor; // when using GRAVCAPTURE, this won't multiply the continuous mdot, but rather mdot from disk to BH
