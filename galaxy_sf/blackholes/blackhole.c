@@ -499,10 +499,12 @@ void set_blackhole_mdot(int i, int n, double dt)
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
         double j=0; for(k=0;k<3;k++) {j+=P[n].BH_Specific_AngMom[k]*P[n].BH_Specific_AngMom[k];} // calculate magnitude of specific ang mom
         if(j>0) {j=sqrt(j);} else {j=0;}
-        t_acc_disk = DMIN(t_dyn_eff, j*j*j*Gm_i*Gm_i ); // dynamical time at circularization radius of the alpha-disk
+	double r_circ = j*j*Gm_i;
+	if(r_circ < 10 * 6.957e10 / All.UnitLength_in_cm) {t_acc_disk = 0;} // in the unlikely event that angular momentum is low enough, we're falling straight onto the protostellar surface, here taking 10R_solar as a rough number
+        else {t_acc_disk = j*j*j*Gm_i*Gm_i;} // dynamical time at circularization radius of the alpha-disk
 #endif
         t_acc_disk = 10. * 2.*M_PI * t_acc_disk; // 10 orbits at circularization radius to spiral all the way in (very fast)
-	t_acc_disk = DMAX(t_acc_disk, t_dyn_eff);
+	t_acc_disk = DMAX(t_acc_disk, t_dyn_eff); // Should be no less than the resolution-scale dynamical time
 #endif
 #if defined(BH_GRAVCAPTURE_GAS)
         t_acc_disk /= All.BlackHoleAccretionFactor; // when using GRAVCAPTURE, this won't multiply the continuous mdot, but rather mdot from disk to BH
