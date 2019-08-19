@@ -317,7 +317,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #else
 #define SLOPE2_SINKS //Slope2 sinks, this should give dN/dM~M^-2 in isoT sims
 #define BH_DEBUG_DISABLE_MERGERS
-#define BH_ALPHADISK_ACCRETION (2.)
+#define BH_ALPHADISK_ACCRETION (1.2)
 #endif
 #ifdef MAGNETIC
 #define MHD_CONSTRAINED_GRADIENT 1

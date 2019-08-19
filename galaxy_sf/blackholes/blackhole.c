@@ -156,11 +156,13 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
         if(dr_code>eps) {return 0;} 
 #endif
 #if !defined(SINGLE_STAR_SINK_DYNAMICS) && (defined(BH_SEED_GROWTH_TESTS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS))
-        if(P[j].Type==5) {apocenter_max += MAX_REAL_NUMBER;} // default is to be unrestrictive for BH-BH mergers //
         double r_j = All.ForceSoftening[P[j].Type];
         if(P[j].Type==0) {r_j = DMAX(r_j , PPP[j].Hsml);}
         apocenter_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
         if(P[j].Type==5) {apocenter_max = DMIN(apocenter_max , 1.*All.ForceSoftening[5]);}
+#endif
+#if defined(BH_REPOSITION_ON_POTMIN)
+        if(P[j].Type==5) {return 1;} // default is to be unrestrictive for BH-BH mergers //
 #endif
         if(apocenter < apocenter_max) {bound = 1;}
     }
@@ -496,11 +498,18 @@ void set_blackhole_mdot(int i, int n, double dt)
         double t_acc_disk = 4.2e7 * t_yr * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass) / BPP(n).BH_Mass_AlphaDisk, 0.4); /* shakura-sunyaev disk, integrated out to Q~1 radius, approximately */
 #ifdef SINGLE_STAR_SINK_DYNAMICS
         double Gm_i=1./(All.G*P[n].Mass), reff=DMAX(All.SofteningTable[5],Get_Particle_Size(n)), t_dyn_eff=sqrt(reff*reff*reff*Gm_i); // dynamical time at radius "H" where the neighbor gas is located
+        t_acc_disk = t_dyn_eff; // temporary set for use below
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
         double j=0; for(k=0;k<3;k++) {j+=P[n].BH_Specific_AngMom[k]*P[n].BH_Specific_AngMom[k];} // calculate magnitude of specific ang mom
         if(j>0) {j=sqrt(j);} else {j=0;}
         t_acc_disk = j*j*j*Gm_i*Gm_i; // dynamical time at circularization radius of the alpha-disk
+#ifdef SLOPE2_SINKS
+        t_acc_disk *= pow(1. + 1./BH_ALPHADISK_ACCRETION , 3.); // correction assuming a ratio of accretion disk to sink mass ~BH_ALPHADISK_ACCRETION [max allowed], with the material in the sink having given its angular momentum to the sink [which is what should happen]
+        double t_acc_min = sqrt(pow(0.033*All.SofteningTable[5],3)/(All.G*P[n].BH_Mass)); // catch against un-resolvably small j [since accreted particles are extended, there is always material at non-zero "j" even if accreted at zero impact parameter; 1/30th is conservative estimate for perfect impact parameter]
+        t_acc_disk = DMAX(t_acc_min,t_acc_disk);
+#else
         if(j*j*Gm_i < 6.957e11 / All.UnitLength_in_cm) {t_acc_disk *= 1.e-2;} // in the unlikely event that angular momentum is low enough, we're falling straight onto the protostellar surface, here taking 10R_solar as a rough number
+#endif
 #endif
         t_acc_disk = 10. * 2.*M_PI * t_acc_disk; // 10 orbits at circularization radius to spiral all the way in (very fast)
         t_acc_disk = DMAX(t_acc_disk, t_dyn_eff); // Should be no less than the resolution-scale dynamical time
