@@ -481,6 +481,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
                 if(fb_loop_iteration == 2) continue; // for r-process, nothing left here to bother coupling //
+                if(fb_loop_iteration == 3) continue; // for age tracers, nothing left here to bother coupling //
 #endif
 #endif
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
@@ -791,6 +792,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=(1-massratio_ejecta)*P[j].Metallicity[k] + massratio_ejecta*local.yields[k];}
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
                 if(fb_loop_iteration == 2) continue; // for r-process, nothing left here to bother coupling //
+                if(fb_loop_iteration == 3) continue; // for age tracers, nothing left here to bother coupling //
 #endif
 #endif
 #if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
@@ -886,6 +888,7 @@ int addFB_evaluate_active_check(int i, int fb_loop_iteration)
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
     if(P[i].MassReturn_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==1) return 1;}
     if(P[i].RProcessEvent_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==2) return 1;}
+    if(P[i].AgeDeposition_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==3) return 1;}
 #endif
     return 0;
 }

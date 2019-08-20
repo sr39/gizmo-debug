@@ -177,6 +177,7 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
     RSNe = mechanical_fb_calculate_eventrates_SNe(i,dt);
     mechanical_fb_calculate_eventrates_Winds(i,dt);
     mechanical_fb_calculate_eventrates_Rprocess(i,dt);
+    mechanical_fb_calculate_eventrates_Agetracers(i,dt);
     return RSNe;
 #endif
 #ifdef GALSF_FB_THERMAL
@@ -258,6 +259,13 @@ void mechanical_fb_calculate_eventrates_Rprocess(int i, double dt)
         double n_sn_0=(float)floor(p); p-=n_sn_0; if(get_random_number(P[i].ID + 7) < p) {n_sn_0++;} // if > 1, this cuts that part off so we get appropriate n > 1 solution
         P[i].RProcessEvent_ThisTimeStep = n_sn_0; // assign event
     }
+#endif
+}
+
+void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
+{
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
+    P[i].AgeDeposition_ThisTimeStep = 1; // always happens (for now)
 #endif
 }
 
@@ -344,15 +352,15 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
     P[i].AgeDeposition_ThisTimeStep = 1;
     int k; if(P[i].AgeDeposition_ThisTimeStep<=0) {in->Msne=0; return;} // no deposition
 #ifdef METALS
-    int kstart = NUM_METAL_SPECIES-NUM_AGE_TRACERS;
-    int kend   = NUM_METAL_SPECIES;
+    const int k_age_start = NUM_METAL_SPECIES-NUM_AGE_TRACERS;
+    const int k_age_end   = NUM_METAL_SPECIES;
     /* pull surface "abundances" - really... these are surface "ages" */
-    double yields[NUM_AGE_TRACERS]; for(k=kstart;k=kend;k++) {yields[k-kstart]=P[i].Metallicity[k];}
+    double yields[NUM_AGE_TRACERS]={0.0}; for(k=0;k<NUM_AGE_TRACERS;k++) {yields[k]=P[i].Metallicity[k+k_age_start];}
     // set default abundances
-    for (k=kstart; k<kend; k++){
-        in->yields[k] = yields[k-kstart];
+    for (k=0; k<NUM_AGE_TRACERS; k++){
+        in->yields[k + k_age_start] = yields[k];
     }
-    double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+    double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge) * 0.001; // Age in Myr
 
 #ifndef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
     // find the age tracer bin to dump into using
@@ -361,9 +369,9 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
     const double binend   = log10(AGE_TRACER_BIN_END);
     const double log_bin_dt = (binend - binstart) / (1.0*NUM_AGE_TRACERS);
 
-    if( star_age*1000.0 < AGE_TRACER_BIN_START){
+    if( star_age <= AGE_TRACER_BIN_START){
         k = 0;
-    } else if (star_age*1000.0 > AGE_TRACER_BIN_END){
+    } else if (star_age >= AGE_TRACER_BIN_END){
       printf("stellar age greater than bin size");
       endrun(399);
     } else{
@@ -371,7 +379,7 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
     };
 
     // bin size in linear time (better normalization)
-    double bin_dt = pow(binstart+(k+1)*log_bin_dt,10.0) - pow(binstart + k*log_bin_dt,10.0);
+    double bin_dt = pow(10.0, binstart+(k+1)*log_bin_dt) - pow(10.0, binstart + k*log_bin_dt);
     double dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a * All.UnitTime_in_Megayears; // get particle timestep in Myr
     /* AJE: may need to switch to normalizing over logbin spacing if bins are large
       too avoid small number issues  - this requires undoing the normalization in post */
@@ -388,7 +396,7 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
 
 #endif // metals
 
-    in->Msne = 1.0E-30; // small number just to be nonzero -- AJE make sure this works
+    in->Msne = 1.0E-20; // small number just to be nonzero -- AJE make sure this works
 #endif // age tracer model
 }
 
