@@ -600,7 +600,7 @@ void merge_particles_ij(int i, int j)
         }
         PPP[j].Hsml = pow(pow(PPP[j].Hsml,NUMDIMS)+pow(PPP[i].Hsml,NUMDIMS),1.0/NUMDIMS);
 #ifdef METALS
-        for(k=0;k<NUM_METAL_SPECIES;k++)
+        for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++)
             P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k]; /* metal-mass conserving */
 #endif
         /* finally zero out the particle mass so it will be deleted */
@@ -780,7 +780,7 @@ void merge_particles_ij(int i, int j)
       ChimesGasVars[j].abundances[k] = (ChimesGasVars[j].abundances[k] * wt_j * wt_h_j) + (ChimesGasVars[i].abundances[k] * wt_i * wt_h_i);
 #endif // CHIMES 
 #ifdef METALS
-    for(k=0;k<NUM_METAL_SPECIES;k++)
+    for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++)
         P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k]; /* metal-mass conserving */
 #endif
 #ifdef COSMIC_RAYS

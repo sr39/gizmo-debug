@@ -89,22 +89,24 @@
 #define TAG_FBLOOP_4B     87
 #define TAG_FBLOOP_5A     88
 #define TAG_FBLOOP_5B     89
+#define TAG_FBLOOP_6A     90
+#define TAG_FBLOOP_6B     91
 
-#define TAG_GRADLOOP_A    90
-#define TAG_GRADLOOP_B    91
-#define TAG_GRADLOOP_C    92
+#define TAG_GRADLOOP_A    91
+#define TAG_GRADLOOP_B    92
+#define TAG_GRADLOOP_C    93
 
-#define TAG_PDATA_STARS   93
-#define TAG_KEY_STARS     94
-#define TAG_PDATA_BHS     95
-#define TAG_KEY_BHS       96
-#define TAG_BHDATA        97
+#define TAG_PDATA_STARS   94
+#define TAG_KEY_STARS     95
+#define TAG_PDATA_BHS     96
+#define TAG_KEY_BHS       97
+#define TAG_BHDATA        98
 
-#define TAG_DYNSMAGLOOP_A 98
-#define TAG_DYNSMAGLOOP_B 99
-#define TAG_DYNSMAGLOOP_C 100
+#define TAG_DYNSMAGLOOP_A 99
+#define TAG_DYNSMAGLOOP_B 100
+#define TAG_DYNSMAGLOOP_C 101
 
-#ifdef CHIMES 
-#define TAG_CHIMESDATA 101 
-#define TAG_ABUNDATA 102 
-#endif 
+#ifdef CHIMES
+#define TAG_CHIMESDATA 102
+#define TAG_ABUNDATA 103
+#endif

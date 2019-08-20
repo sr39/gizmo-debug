@@ -14,7 +14,7 @@
 /*
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel (volker.springel@h-its.org). The code has been modified
- * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO (mostly initializing 
+ * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO (mostly initializing
  * new/modified variables, as needed)
  */
 
@@ -27,39 +27,39 @@ void init(void)
 {
     int i, j;
     double a3, atime;
-    
+
 #ifdef MAGNETIC
     double a2_fac;
     double gauss2gizmo = All.UnitMagneticField_in_gauss / sqrt(4.*M_PI*All.UnitPressure_in_cgs*All.HubbleParam*All.HubbleParam);
     /* NOTE: we will always work -internally- in code units where MU_0 = 1; hence the 4pi here;
         [much simpler, but be sure of your conversions!] */
 #endif
-    
+
 #ifdef BLACK_HOLES
     int count_holes = 0;
 #endif
-    
-#ifdef CHIMES 
-    double H_mass_fraction, He_mass_fraction; 
-#endif 
-    
+
+#ifdef CHIMES
+    double H_mass_fraction, He_mass_fraction;
+#endif
+
     All.Time = All.TimeBegin;
-    set_cosmo_factors_for_current_time();    
-    
+    set_cosmo_factors_for_current_time();
+
     if(RestartFlag == 3 && RestartSnapNum < 0)
     {
         if(ThisTask == 0)
             printf("Need to give the snapshot number if FOF/SUBFIND is selected for output\n");
         endrun(0);
     }
-    
+
     if(RestartFlag == 4 && RestartSnapNum < 0)
     {
         if(ThisTask == 0)
             printf("Need to give the snapshot number if snapshot should be converted\n");
         endrun(0);
     }
-    
+
     if(RestartFlag == 5 && RestartSnapNum < 0)
     {
         if(ThisTask == 0)
@@ -67,7 +67,7 @@ void init(void)
             ("Need to give the snapshot number if power spectrum and two-point correlation function should be calculated\n");
         endrun(0);
     }
-    
+
     if(RestartFlag == 6 && RestartSnapNum < 0)
     {
         if(ThisTask == 0)
@@ -75,8 +75,8 @@ void init(void)
             ("Need to give the snapshot number if velocity power spectrum for the gas cells should be calculated\n");
         endrun(0);
     }
-    
-    
+
+
     switch (All.ICFormat)
     {
         case 1:
@@ -86,41 +86,41 @@ void init(void)
             if(RestartFlag >= 2 && RestartSnapNum >= 0)
             {
                 char fname[1000];
-                
+
                 if(All.NumFilesPerSnapshot > 1)
                     sprintf(fname, "%s/snapdir_%03d/%s_%03d", All.OutputDir, RestartSnapNum, All.SnapshotFileBase,
                             RestartSnapNum);
                 else
                     sprintf(fname, "%s%s_%03d", All.OutputDir, All.SnapshotFileBase, RestartSnapNum);
-                
+
                 read_ic(fname);
-                
+
             }
             else
             {
                 read_ic(All.InitCondFile);
             }
             break;
-            
+
         default:
             if(ThisTask == 0)
                 printf("ICFormat=%d not supported.\n", All.ICFormat);
             endrun(0);
     }
 
-#ifdef CHIMES_INITIALISE_IN_EQM 
-    for (i = 0; i < N_gas; i++) 
-      allocate_gas_abundances_memory(&(ChimesGasVars[i]), &ChimesGlobalVars); 
-#endif 
-    
+#ifdef CHIMES_INITIALISE_IN_EQM
+    for (i = 0; i < N_gas; i++)
+      allocate_gas_abundances_memory(&(ChimesGasVars[i]), &ChimesGlobalVars);
+#endif
+
     All.Time = All.TimeBegin;
     set_cosmo_factors_for_current_time();
-    
-    
-#if defined(COOLING) && !defined(CHIMES) 
+
+
+#if defined(COOLING) && !defined(CHIMES)
     IonizeParams();
 #endif
-    
+
     if(All.ComovingIntegrationOn)
     {
         All.Timebase_interval = (log(All.TimeMax) - log(All.TimeBegin)) / TIMEBASE;
@@ -141,9 +141,9 @@ void init(void)
         a2_fac = 1;
 #endif
     }
-        
+
     set_softenings();
-    
+
     All.NumCurrentTiStep = 0;	/* setup some counters */
     All.SnapshotFileCount = 0;
     if(RestartFlag == 2)
@@ -164,45 +164,45 @@ void init(void)
         else
             All.SnapshotFileCount = RestartSnapNum + 1;
     }
-    
+
 #ifdef OUTPUT_LINEOFSIGHT
     All.Ti_nextlineofsight = (int) (log(All.TimeFirstLineOfSight / All.TimeBegin) / All.Timebase_interval);
     if(RestartFlag == 2)
         endrun(78787);
 #endif
-    
+
     All.TotNumOfForces = 0;
     All.TopNodeAllocFactor = 0.008; /* this will start from a low value and be iteratively increased until it is well-behaved */
     All.TreeAllocFactor = 0.45; /* this will also iteratively increase to fit the particle distribution */
     /* To construct the BH-tree for N particles, somewhat less than N
-     internal tree-nodes are necessary for ‘normal’ particle distributions. 
-     TreeAllocFactor sets the number of internal tree-nodes allocated in units of the particle number. 
-     By experience, space for ≃ 0.65N internal nodes is usually fully sufficient for typical clustered 
-     particle distributions, so a value of 0.7 should put you on the safe side. If the employed particle 
-     number per processor is very small (less than a thousand or so), or if there are many particle pairs 
-     with identical or nearly identical coordinates, a higher value may be required. Since the number of 
-     particles on a given processor may be higher by a factor PartAllocFactor than the average particle 
-     number, the total amount of memory requested for the BH tree on a single processor scales proportional 
+     internal tree-nodes are necessary for ‘normal’ particle distributions.
+     TreeAllocFactor sets the number of internal tree-nodes allocated in units of the particle number.
+     By experience, space for ≃ 0.65N internal nodes is usually fully sufficient for typical clustered
+     particle distributions, so a value of 0.7 should put you on the safe side. If the employed particle
+     number per processor is very small (less than a thousand or so), or if there are many particle pairs
+     with identical or nearly identical coordinates, a higher value may be required. Since the number of
+     particles on a given processor may be higher by a factor PartAllocFactor than the average particle
+     number, the total amount of memory requested for the BH tree on a single processor scales proportional
      to PartAllocFactor*TreeAllocFactor. */
-    
-    
-    
+
+
+
 #ifdef BOX_PERIODIC
     if(All.ComovingIntegrationOn) check_omega();
 #endif
-    
+
     All.TimeLastStatistics = All.TimeBegin - All.TimeBetStatistics;
 #if defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)
     All.TimeNextOnTheFlyFoF = All.TimeBegin;
 #endif
-    
+
     for(i = 0; i < GRAVCOSTLEVELS; i++)
         All.LevelToTimeBin[i] = 0;
-    
+
     for(i = 0; i < NumPart; i++)
         for(j = 0; j < GRAVCOSTLEVELS; j++)
             P[i].GravCost[j] = 0;
-    
+
     if(All.ComovingIntegrationOn)	/*  change to new velocity variable */
     {
         for(i = 0; i < NumPart; i++)
@@ -211,11 +211,11 @@ void init(void)
                 P[i].Vel[j] *= sqrt(All.Time) * All.Time;
 	    }
     }
-    
+
 #ifdef DM_SIDM
     init_self_interactions();
 #endif
-    
+
     for(i = 0; i < NumPart; i++)	/*  start-up initialization */
     {
         for(j = 0; j < 3; j++) {P[i].GravAccel[j] = 0;}
@@ -268,12 +268,12 @@ void init(void)
         if(All.ComovingIntegrationOn) {P[i].stream_density = GDE_INITDENSITY(i) / (All.TimeBegin * All.TimeBegin * All.TimeBegin);} else {P[i].stream_density = GDE_INITDENSITY(i);}
 #endif /* GDE_DISTORTIONTENSOR */
 
-        
+
 #ifdef KEEP_DM_HSML_AS_GUESS
         if(RestartFlag != 1)
             P[i].DM_Hsml = -1;
 #endif
-        
+
 #ifdef PMGRID
         for(j = 0; j < 3; j++)
             P[i].GravPM[j] = 0;
@@ -281,11 +281,11 @@ void init(void)
         P[i].Ti_begstep = 0;
         P[i].Ti_current = (integertime)0;
         P[i].TimeBin = 0;
-        
+
         if(header.flag_ic_info != FLAG_SECOND_ORDER_ICS)
             P[i].OldAcc = 0;	/* Do not zero in 2lpt case as masses are stored here */
-        
-#if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY)    
+
+#if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY)
         P[i].Potential = 0;
 #endif
 #ifdef GALSF
@@ -300,7 +300,7 @@ void init(void)
 #endif
         }
 #endif
-        
+
         if(RestartFlag != 1)
         {
 #if defined(DO_DENSITY_AROUND_STAR_PARTICLES)
@@ -317,17 +317,20 @@ void init(void)
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
             P[i].MassReturn_ThisTimeStep = 0;
             P[i].RProcessEvent_ThisTimeStep = 0;
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
+            P[i].AgeDeposition_ThisTimeStep = 0;
+#endif
 #endif
 #endif
         }
-       
+
 #if defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
         if(RestartFlag == 0)
         {
 	        P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (All.UnitTime_in_Megayears*0.001) * get_random_number(P[i].ID + 3);
         }
 #endif
-        
+
 #ifdef GRAIN_FLUID
         if(RestartFlag == 0)
         {
@@ -340,7 +343,7 @@ void init(void)
 	    if(P[i].Type == 3) /* initialize various quantities for test problems from parameters set in the ICs */
 	    {
 		P[i].Mass *= All.Dust_to_Gas_Mass_Ratio;
-		{ 	
+		{
 			double tS0 = 0.626657 * P[i].Grain_Size * sqrt(GAMMA); /* stopping time [Epstein] for driftvel->0 */
             double a0 = tS0 * All.Vertical_Grain_Accel / (1.+All.Dust_to_Gas_Mass_Ratio); /* acc * tS0 / (1+mu) */
 #ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
@@ -356,17 +359,17 @@ void init(void)
 			{
 			   tau2 = tau2_0 / (1. + agamma*w0*w0); // guess tau [including velocity dependence] //
 			   f_tau_guess2 = (1.+tau2*ct2) / (1.+tau2); // what the projection factor (reduction in w from projection) would be //
-			   w0 = sqrt((sqrt(1.+4.*agamma*a0*a0*f_tau_guess2)-1.)/(2.*agamma)); // re-calculate w0 with this // 
+			   w0 = sqrt((sqrt(1.+4.*agamma*a0*a0*f_tau_guess2)-1.)/(2.*agamma)); // re-calculate w0 with this //
 			}
 #endif
 		w0 /= sqrt((1.+tau2)*(1.+tau2*ct2)); // ensures normalization to unity with convention below //
-        int non_gdir=1; 
+        int non_gdir=1;
         if(GRAV_DIRECTION_RDI==1) {non_gdir=2;}
 		P[i].Vel[0] = w0*st; P[i].Vel[non_gdir] = w0*sqrt(tau2)*st; P[i].Vel[GRAV_DIRECTION_RDI] = w0*(1.+tau2)*ct;
         a0 = tS0 * All.Vertical_Gravity_Strength / (1.+All.Dust_to_Gas_Mass_Ratio); w0=sqrt((sqrt(1.+4.*agamma*a0*a0)-1.)/(2.*agamma));
         P[i].Vel[GRAV_DIRECTION_RDI] -= w0;
 		}
-	    }	    
+	    }
 #endif
 
             P[i].Gas_Density = P[i].Gas_InternalEnergy = P[i].Gas_Velocity[0]=P[i].Gas_Velocity[1]=P[i].Gas_Velocity[2]=0;
@@ -381,9 +384,9 @@ void init(void)
 #endif
         }
 #endif
-        
-        
-        
+
+
+
 #ifdef METALS
         All.SolarAbundances[0]=0.02;        // all metals (by mass); present photospheric abundances from Asplund et al. 2009 (Z=0.0134, proto-solar=0.0142) in notes;
                                             //   also Anders+Grevesse 1989 (older, but hugely-cited compilation; their Z=0.0201, proto-solar=0.0213)
@@ -404,11 +407,22 @@ void init(void)
 #endif // COOL_METAL_LINES_BY_SPECIES
 #ifdef GALSF_FB_FIRE_RPROCESS
         //All.SolarAbundances[NUM_METAL_SPECIES-1]=0.0; // R-process tracer
-        for(j=1;j<=NUM_RPROCESS_SPECIES;j++) All.SolarAbundances[NUM_METAL_SPECIES-j]=0.0; // R-process tracer
+        for(j=1;j<=NUM_RPROCESS_SPECIES;j++) All.SolarAbundances[NUM_METAL_SPECIES-NUM_AGE_TRACERS-j]=0.0; // R-process tracer
 #endif
-        
+
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
+        for(j=1;j<=NUM_AGE_TRACERS;j++) All.SolarAbundances[NUM_METAL_SPECIES-j]=0.0; // stellar age tracers
+
+#ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM // flag to use custom list of age tracer bins
+          for(j=0;j<=NUM_AGE_TRACERS;j++){
+              AgeTracerTimeBins[j] = -999; // AJE NOT YET IMPLEMENTED!!!!
+          }
+#endif
+#endif
+
+
         if(RestartFlag == 0) {
-#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)  
+#if defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
             P[i].Metallicity[0] = All.InitMetallicityinSolar*All.SolarAbundances[0];
 #else
             P[i].Metallicity[0] = 0;
@@ -419,61 +433,61 @@ void init(void)
             if(NUM_METAL_SPECIES>=10) P[i].Metallicity[1]=0.25+(All.SolarAbundances[1]-0.25)*P[i].Metallicity[0]/All.SolarAbundances[0];
         } // if(RestartFlag == 0)
 
-#ifdef CHIMES 
-#ifdef COOL_METAL_LINES_BY_SPECIES 
-	if (P[i].Type == 0) 
+#ifdef CHIMES
+#ifdef COOL_METAL_LINES_BY_SPECIES
+	if (P[i].Type == 0)
 	  {
-	    H_mass_fraction = 1.0 - (P[i].Metallicity[0] + P[i].Metallicity[1]); 
-	    ChimesGasVars[i].element_abundances[0] = P[i].Metallicity[1] / (4.0 * H_mass_fraction);   // He 
-	    ChimesGasVars[i].element_abundances[1] = P[i].Metallicity[2] / (12.0 * H_mass_fraction);  // C 
-	    ChimesGasVars[i].element_abundances[2] = P[i].Metallicity[3] / (14.0 * H_mass_fraction);  // N 
-	    ChimesGasVars[i].element_abundances[3] = P[i].Metallicity[4] / (16.0 * H_mass_fraction);  // O 
-	    ChimesGasVars[i].element_abundances[4] = P[i].Metallicity[5] / (20.0 * H_mass_fraction);  // Ne 
-	    ChimesGasVars[i].element_abundances[5] = P[i].Metallicity[6] / (24.0 * H_mass_fraction);  // Mg 
-	    ChimesGasVars[i].element_abundances[6] = P[i].Metallicity[7] / (28.0 * H_mass_fraction);  // Si 
-	    ChimesGasVars[i].element_abundances[7] = P[i].Metallicity[8] / (32.0 * H_mass_fraction);  // S 
-	    ChimesGasVars[i].element_abundances[8] = P[i].Metallicity[9] / (40.0 * H_mass_fraction);  // Ca 
-	    ChimesGasVars[i].element_abundances[9] = P[i].Metallicity[10] / (56.0 * H_mass_fraction); // Fe 
+	    H_mass_fraction = 1.0 - (P[i].Metallicity[0] + P[i].Metallicity[1]);
+	    ChimesGasVars[i].element_abundances[0] = P[i].Metallicity[1] / (4.0 * H_mass_fraction);   // He
+	    ChimesGasVars[i].element_abundances[1] = P[i].Metallicity[2] / (12.0 * H_mass_fraction);  // C
+	    ChimesGasVars[i].element_abundances[2] = P[i].Metallicity[3] / (14.0 * H_mass_fraction);  // N
+	    ChimesGasVars[i].element_abundances[3] = P[i].Metallicity[4] / (16.0 * H_mass_fraction);  // O
+	    ChimesGasVars[i].element_abundances[4] = P[i].Metallicity[5] / (20.0 * H_mass_fraction);  // Ne
+	    ChimesGasVars[i].element_abundances[5] = P[i].Metallicity[6] / (24.0 * H_mass_fraction);  // Mg
+	    ChimesGasVars[i].element_abundances[6] = P[i].Metallicity[7] / (28.0 * H_mass_fraction);  // Si
+	    ChimesGasVars[i].element_abundances[7] = P[i].Metallicity[8] / (32.0 * H_mass_fraction);  // S
+	    ChimesGasVars[i].element_abundances[8] = P[i].Metallicity[9] / (40.0 * H_mass_fraction);  // Ca
+	    ChimesGasVars[i].element_abundances[9] = P[i].Metallicity[10] / (56.0 * H_mass_fraction); // Fe
 
-	    ChimesGasVars[i].metallicity = P[i].Metallicity[0] / 0.0129;  // In Zsol. CHIMES uses Zsol = 0.0129. 
+	    ChimesGasVars[i].metallicity = P[i].Metallicity[0] / 0.0129;  // In Zsol. CHIMES uses Zsol = 0.0129.
 	  }
-#else 
+#else
 	if (ThisTask == 0)
 	  {
-	    printf("ERROR: Config flags CHIMES and METALS are switched on, but COOL_METAL_LINES_BY_SPECIES is switched off. \n"); 
-	    printf("If you want to include metals with CHIMES, you will also need to switch on COOL_METAL_LINES_BY_SPECIES. Aborting. \n"); 
-	    endrun(202); 
+	    printf("ERROR: Config flags CHIMES and METALS are switched on, but COOL_METAL_LINES_BY_SPECIES is switched off. \n");
+	    printf("If you want to include metals with CHIMES, you will also need to switch on COOL_METAL_LINES_BY_SPECIES. Aborting. \n");
+	    endrun(202);
 	  }
-#endif // COOL_METAL_LINES_BY_SPECIES 
-#endif // CHIMES 
-#else 
-#ifdef CHIMES 
-	if (P[i].Type == 0) 
+#endif // COOL_METAL_LINES_BY_SPECIES
+#endif // CHIMES
+#else
+#ifdef CHIMES
+	if (P[i].Type == 0)
 	  {
-	    H_mass_fraction = HYDROGEN_MASSFRAC; 
-	    ChimesGasVars[i].element_abundances[0] = (1.0 - H_mass_fraction) / (4.0 * H_mass_fraction);  // He 
-	    for (j = 1; j < 10; j++) 
-	      ChimesGasVars[i].element_abundances[j] = 0.0; 
-	    ChimesGasVars[i].metallicity = 0.0; 
+	    H_mass_fraction = HYDROGEN_MASSFRAC;
+	    ChimesGasVars[i].element_abundances[0] = (1.0 - H_mass_fraction) / (4.0 * H_mass_fraction);  // He
+	    for (j = 1; j < 10; j++)
+	      ChimesGasVars[i].element_abundances[j] = 0.0;
+	    ChimesGasVars[i].metallicity = 0.0;
 	  }
-#endif // CHIMES 
+#endif // CHIMES
 #endif // METALS
-        
-        
-        
+
+
+
 #ifdef BLACK_HOLES
 #ifdef BH_WAKEUP_GAS
 	    if(P[i].Type == 0) {P[i].LowestBHTimeBin = TIMEBINS;}
 #endif
 #ifdef SINGLE_STAR_FORMATION
         P[i].BH_Ngb_Flag = 0;
-#endif	
+#endif
 #ifdef SINGLE_STAR_TIMESTEPPING
 	    P[i].min_bh_approach_time = P[i].min_bh_freefall_time = MAX_REAL_NUMBER;
 #if (SINGLE_STAR_TIMESTEPPING > 0)
 	    P[i].SuperTimestepFlag = 0;
 #endif
-#endif	
+#endif
         if(P[i].Type == 5)
         {
             count_holes++;
@@ -485,7 +499,7 @@ void init(void)
 #endif
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
 		BPP(i).SinkRadius = All.ForceSoftening[5];
-#endif			
+#endif
 #ifdef BH_ALPHADISK_ACCRETION
                 BPP(i).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
 #endif
@@ -493,7 +507,7 @@ void init(void)
                 double bh_mu=DMAX(0,2*get_random_number(P[i].ID+3)-1), bh_phi=2*M_PI*get_random_number(P[i].ID+4), bh_sin=sqrt(1-bh_mu*bh_mu);
                 double spin_prefac = All.G * P[i].BH_Mass / (C/All.UnitVelocity_in_cm_per_s); // assume initially maximally-spinning BH with random orientation
                 P[i].BH_Specific_AngMom[0]=spin_prefac*bh_sin*cos(bh_phi); P[i].BH_Specific_AngMom[1]=spin_prefac*bh_sin*sin(bh_phi); P[i].BH_Specific_AngMom[2]=spin_prefac*bh_mu;
-#endif		
+#endif
 #ifdef BH_COUNTPROGS
                 BPP(i).BH_CountProgs = 1;
 #endif
@@ -501,30 +515,30 @@ void init(void)
         }
 #endif
     }
-    
+
 #ifdef BLACK_HOLES
     MPI_Allreduce(&count_holes, &All.TotBHs, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 #endif
-    
+
     for(i = 0; i < TIMEBINS; i++) {TimeBinActive[i] = 1;}
-    
+
     reconstruct_timebins();
-    
+
 #ifdef PMGRID
     All.PM_Ti_endstep = All.PM_Ti_begstep = 0;
 #endif
-        
+
     for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
     {
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
-        
+
         for(j = 0; j < 3; j++)
         {
             SphP[i].VelPred[j] = P[i].Vel[j];
             SphP[i].HydroAccel[j] = 0;
             //SphP[i].dMomentum[j] = 0;//manifest-indiv-timestep-debug//
         }
-        
+
         //SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
         P[i].Particle_DivVel = 0;
         SphP[i].ConditionNumber = 1;
@@ -538,14 +552,14 @@ void init(void)
         SphP[i].MassTrue = P[i].Mass;
         for(j=0;j<3;j++) SphP[i].GravWorkTerm[j] = 0;
 #endif
-        
+
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         PPPZ[i].AGS_zeta = 0;
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
         PPP[i].AGS_Hsml = PPP[i].Hsml;
 #endif
 #endif
-        
+
 #ifdef CONDUCTION
         SphP[i].Kappa_Conduction = 0;
 #endif
@@ -558,8 +572,8 @@ void init(void)
         SphP[i].Eta_ShearViscosity = 0;
         SphP[i].Zeta_BulkViscosity = 0;
 #endif
-        
-        
+
+
 #ifdef TURB_DIFFUSION
         SphP[i].TD_DiffCoeff = 0;
 
@@ -587,7 +601,7 @@ void init(void)
         }
 #endif
 #endif
-        
+
         if(RestartFlag == 0)
         {
 #ifndef INPUT_READ_HSML
@@ -595,20 +609,20 @@ void init(void)
 #endif
             SphP[i].Density = -1;
 #ifdef COOLING
-#ifndef CHIMES 
+#ifndef CHIMES
             SphP[i].Ne = 1.0;
-#endif 
+#endif
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
             SphP[i].RadFluxUV = 0;
             SphP[i].RadFluxEUV = 0;
-#endif 
-#ifdef CHIMES_STELLAR_FLUXES 
-	    int kc; 
-	    for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) 
-	      { 
-		SphP[i].Chimes_fluxPhotIon[kc] = 0; 
-		SphP[i].Chimes_G0[kc] = 0; 
+#endif
+#ifdef CHIMES_STELLAR_FLUXES
+	    int kc;
+	    for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++)
+	      {
+		SphP[i].Chimes_fluxPhotIon[kc] = 0;
+		SphP[i].Chimes_G0[kc] = 0;
 	      }
 #endif
 #ifdef BH_COMPTON_HEATING
@@ -622,7 +636,7 @@ void init(void)
         SphP[i].HostHaloMass = 0;
 #endif
 #endif // GALSF_SUBGRID_WINDS //
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS) 
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(CHIMES_HII_REGIONS)
         SphP[i].DelayTimeHII = 0;
 #endif
 #ifdef GALSF_FB_TURNOFF_COOLING
@@ -665,16 +679,16 @@ void init(void)
         SphP[i].Injected_BH_Energy = 0;
 #endif
     }
-    
+
 #ifndef BOX_SHEARING
 #if (NUMDIMS==2)
     for(i = 0; i < NumPart; i++)
     {
         P[i].Pos[2] = 0;
         //P[i].Vel[2] = 0; // this should be set in the ICs, not here //
-        
+
         P[i].GravAccel[2] = 0;
-        
+
         if(P[i].Type == 0)
         {
             SphP[i].VelPred[2] = 0;
@@ -683,15 +697,15 @@ void init(void)
     }
 #endif
 #endif
-    
+
 #if (NUMDIMS==1)
     for(i = 0; i < NumPart; i++)
     {
         P[i].Pos[1] = P[i].Pos[2] = 0;
         //P[i].Vel[1] = P[i].Vel[2] = 0; // this should be set in the ICs, not here //
-        
+
         P[i].GravAccel[1] = P[i].GravAccel[2] = 0;
-        
+
         if(P[i].Type == 0)
         {
             SphP[i].VelPred[1] = SphP[i].VelPred[2] = 0;
@@ -699,7 +713,7 @@ void init(void)
         }
     }
 #endif
-    
+
 #ifdef ASSIGN_NEW_IDS
     assign_unique_ids();
 #endif
@@ -708,26 +722,26 @@ void init(void)
     if(RestartFlag==0) {for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}}
 #ifdef NO_CHILD_IDS_IN_ICS
     if(RestartFlag != 1) {for(i = 0; i < NumPart; i++) {P[i].ID_child_number = 0; P[i].ID_generation = 0;}}
-#endif 
+#endif
 
 #ifdef CHIMES
     if(RestartFlag==0) {for(i = 0; i < NumPart; i++) {ChimesGasVars[i].ID_child_number = P[i].ID_child_number;}}
 #ifdef NO_CHILD_IDS_IN_ICS
     if(RestartFlag != 1) {for(i = 0; i < NumPart; i++) {ChimesGasVars[i].ID_child_number = P[i].ID_child_number;}}
-#endif 
-#endif 
-    
+#endif
+#endif
+
 #ifdef TEST_FOR_IDUNIQUENESS
     test_id_uniqueness();
 #endif
-    
+
     Flag_FullStep = 1;		/* to ensure that Peano-Hilber order is done */
     TreeReconstructFlag = 1;
 
 #ifdef BH_WIND_SPAWN
     MaxUnSpanMassBH     = 0;
 #endif
-    
+
 #ifdef SHIFT_BY_HALF_BOX
     for(i = 0; i < NumPart; i++)
         for(j = 0; j < 3; j++)
@@ -739,24 +753,24 @@ void init(void)
             P[i].Pos[j] += 0.5 * boxtmp;
         }
 #endif
-    
-    
+
+
     Gas_split = 0;
 #ifdef GALSF
     Stars_converted = 0;
 #endif
     domain_Decomposition(0, 0, 0);	/* do initial domain decomposition (gives equal numbers of particles) */
-    
+
     set_softenings();
-    
+
     /* will build tree */
     ngb_treebuild();
-    
+
     All.Ti_Current = 0;
-    
+
     if(RestartFlag != 3 && RestartFlag != 5)
         setup_smoothinglengths();
-    
+
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     if(RestartFlag != 3 && RestartFlag != 5)
         ags_setup_smoothinglengths();
@@ -764,21 +778,21 @@ void init(void)
 #ifdef CBE_INTEGRATOR
     do_cbe_initialization();
 #endif
-    
+
 #ifdef GALSF_SUBGRID_WINDS
 #if (GALSF_SUBGRID_WIND_SCALING==2)
     if(RestartFlag != 3 && RestartFlag != 5)
         disp_setup_smoothinglengths();
 #endif
 #endif
-    
+
 #if defined GALSF_SFR_IMF_VARIATION
     for(i = 0; i < NumPart; i++)
     {
         P[i].IMF_Mturnover = 2.0; // reset to normal IMF
     }
 #endif
-    
+
 #if defined(WAKEUP) && defined(ADAPTIVE_GRAVSOFT_FORALL)
     for(i=0;i<NumPart;i++) {P[i].wakeup=0;}
 #endif
@@ -794,26 +808,26 @@ void init(void)
         All.RefInternalEnergy = All.IsoSoundSpeed*All.IsoSoundSpeed / (GAMMA*GAMMA_MINUS1);
     }
 #endif
-    
+
     /* HELLO! This here is where you should insert custom code for hard-wiring the ICs of various test problems */
-    
+
     density();
     for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
     {
         int k; k=0;
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
-        
+
 #if defined(TURB_DRIVING) && defined(EOS_ENFORCE_ADIABAT)
         SphP[i].InternalEnergy = All.RefInternalEnergy;
         SphP[i].InternalEnergyPred = All.RefInternalEnergy;
 #endif
         // re-match the predicted and initial velocities and B-field values, just to be sure //
         for(j=0;j<3;j++) SphP[i].VelPred[j]=P[i].Vel[j];
-        
+
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && (HYDRO_FIX_MESH_MOTION==0)
         for(j=0;j<3;j++) {SphP[i].ParticleVel[k] = 0;} // set these to zero and forget them, for the rest of the run //
 #endif
-        
+
 #ifdef MAGNETIC
         for(j=0;j<3;j++) {SphP[i].B[j] = SphP[i].BPred[j] * P[i].Mass / SphP[i].Density;} // convert to the conserved unit V*B //
         for(j=0;j<3;j++) {SphP[i].BPred[j]=SphP[i].B[j]; SphP[i].DtB[j]=0;}
@@ -823,7 +837,7 @@ void init(void)
         SphP[i].CosmicRayDiffusionCoeff = 0;
         SphP[i].DtCosmicRayEnergy = 0;
 #ifdef COSMIC_RAYS_M1
-        for(j=0;j<3;j++) 
+        for(j=0;j<3;j++)
         {
             SphP[i].CosmicRayFlux[j]=0;
             SphP[i].CosmicRayFluxPred[j]=0;
@@ -870,8 +884,8 @@ void init(void)
 #endif
 #ifdef BH_COMPTON_HEATING
         SphP[i].RadFluxAGN = 0;
-#endif        
-        
+#endif
+
 #ifdef COOL_GRACKLE
         if(RestartFlag == 0)
         {
@@ -894,11 +908,11 @@ void init(void)
 #endif
         }
 #endif
-        
+
     }
-    
-    
-    /* we should define the maximum and minimum particle masses 
+
+
+    /* we should define the maximum and minimum particle masses
         below/above which particles are merged/split */
     if(RestartFlag != 1)
     {
@@ -924,10 +938,10 @@ void init(void)
 #endif
 #ifdef MERGESPLIT_HARDCODE_MIN_MASS
         All.MinMassForParticleMerger = MERGESPLIT_HARDCODE_MIN_MASS;
-#endif 
+#endif
     }
-    
-    
+
+
 #ifdef PM_HIRES_REGION_CLIPDM
     if(RestartFlag != 1)
     {
@@ -937,8 +951,8 @@ void init(void)
         All.MassOfClippedDMParticles = mpi_m_hires_max;
     }
 #endif
-    
-    
+
+
     if(RestartFlag == 3)
     {
 #ifdef SUBFIND_RESHUFFLE_AND_POTENTIAL
@@ -950,9 +964,9 @@ void init(void)
         compute_potential();
         if(ThisTask == 0)
             printf("potential energy done.\n");
-        
+
 #endif
-        
+
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
         if(ThisTask == 0)
             printf("*ADAPTIVE_GRAVSOFT_FORALL* Computation of softening lengths... \n");
@@ -960,13 +974,13 @@ void init(void)
         if(ThisTask == 0)
             printf("*ADAPTIVE_GRAVSOFT_FORALL* Computation of softening lengths done. \n");
 #endif
-        
+
 #ifdef FOF
         fof_fof(RestartSnapNum);
 #endif
         endrun(0);
     }
-    
+
 #ifdef OUTPUT_TWOPOINT_ENABLED
     if(RestartFlag == 5)
     {
@@ -982,7 +996,7 @@ void init(void)
         for(n = 0; n < NumPart; n++)
             n_type[P[n].Type]++;
         sumup_large_ints(6, n_type, ntot_type_all);
-        
+
         calculate_power_spectra(RestartSnapNum, ntot_type_all);
 #endif
 #endif
@@ -991,8 +1005,8 @@ void init(void)
         endrun(0);
     }
 #endif
-    
-    
+
+
     if(RestartFlag == 4)
     {
         All.Time = All.TimeBegin = header.time;
@@ -1000,61 +1014,61 @@ void init(void)
         if(ThisTask == 0)
             printf("Start writing file %s\n", All.SnapshotFileBase);
         printf("RestartSnapNum %d\n", RestartSnapNum);
-        
+
         All.TopNodeAllocFactor = 0.008;
-        
+
         savepositions(RestartSnapNum);
         endrun(0);
     }
 
-#ifdef CHIMES_INITIALISE_IN_EQM 
-    if (RestartFlag != 1) 
+#ifdef CHIMES_INITIALISE_IN_EQM
+    if (RestartFlag != 1)
       {
-	/* Note that stellar fluxes computed through the 
-	 * gravity tree are all zero at this stage, 
-	 * because the gravitational forces have not yet 
-	 * been computed. So the equilibrium abundances 
-	 * computed here include only the extragalactic UVB. */ 
-	if (ThisTask == 0) 
-	  printf("Computing equilibrium CHIMES abundances. \n"); 
+	/* Note that stellar fluxes computed through the
+	 * gravity tree are all zero at this stage,
+	 * because the gravitational forces have not yet
+	 * been computed. So the equilibrium abundances
+	 * computed here include only the extragalactic UVB. */
+	if (ThisTask == 0)
+	  printf("Computing equilibrium CHIMES abundances. \n");
 
-	int iter_number; 
-	
-#ifdef OPENMP 
-	int ThisThread; 
-	
-#pragma omp parallel private(i, iter_number, ThisThread) 
+	int iter_number;
+
+#ifdef OPENMP
+	int ThisThread;
+
+#pragma omp parallel private(i, iter_number, ThisThread)
 	{
-	  ThisThread = omp_get_thread_num(); 
+	  ThisThread = omp_get_thread_num();
 
-#pragma omp for schedule(dynamic) 
-#endif 
+#pragma omp for schedule(dynamic)
+#endif
 	  for(i = 0; i < N_gas; i++)
 	    {
-	      initialise_gas_abundances(&(ChimesGasVars[i]), &ChimesGlobalVars); 
+	      initialise_gas_abundances(&(ChimesGasVars[i]), &ChimesGlobalVars);
 
-#ifdef CHIMES_TURB_DIFF_IONS 
-	      chimes_update_turbulent_abundances(i, 1); 
-#endif 
+#ifdef CHIMES_TURB_DIFF_IONS
+	      chimes_update_turbulent_abundances(i, 1);
+#endif
 
-	      chimes_update_gas_vars(i); 
+	      chimes_update_gas_vars(i);
 
 	      // Evolve the chemistry for (1 / nH) Myr (limited to 1 Gyr) ten times at fixed temperature.
-	      ChimesGasVars[i].hydro_timestep = DMIN(3.16e13 / ChimesGasVars[i].nH_tot, 3.16e16); 
-	      ChimesGasVars[i].ThermEvolOn = 0; 
+	      ChimesGasVars[i].hydro_timestep = DMIN(3.16e13 / ChimesGasVars[i].nH_tot, 3.16e16);
+	      ChimesGasVars[i].ThermEvolOn = 0;
 
 	      for (iter_number = 0; iter_number < 10; iter_number++)
-		chimes_network(&(ChimesGasVars[i]), &ChimesGlobalVars, AllRates_omp[ThisThread], all_reactions_root_omp[ThisThread], nonmolecular_reactions_root_omp[ThisThread]); 
+		chimes_network(&(ChimesGasVars[i]), &ChimesGlobalVars, AllRates_omp[ThisThread], all_reactions_root_omp[ThisThread], nonmolecular_reactions_root_omp[ThisThread]);
 
-#ifdef CHIMES_TURB_DIFF_IONS 
-	      chimes_update_turbulent_abundances(i, 1); 
-#endif 
+#ifdef CHIMES_TURB_DIFF_IONS
+	      chimes_update_turbulent_abundances(i, 1);
+#endif
 	    }
-#ifdef OPENMP 
-	} // End of parallel block 
-#endif 
-      } // RestartFlag != 1 
-#endif // CHIMES_INITIALISE_IN_EQM 
+#ifdef OPENMP
+	} // End of parallel block
+#endif
+      } // RestartFlag != 1
+#endif // CHIMES_INITIALISE_IN_EQM
 }
 
 
@@ -1066,17 +1080,17 @@ void check_omega(void)
 {
     double mass = 0, masstot, omega;
     int i;
-    
+
     for(i = 0; i < NumPart; i++)
         mass += P[i].Mass;
-    
+
     MPI_Allreduce(&mass, &masstot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    
+
     omega = masstot / (boxSize_X*boxSize_Y*boxSize_Z) / (3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G));
 #ifdef GR_TABULATED_COSMOLOGY_G
     omega *= All.Gini / All.G;
 #endif
-    
+
     //if(fabs(omega - All.Omega0) > 1.0e-3)
     // because of how we set up these ICs, allow a little more generous tolerance
     if(fabs(omega - All.Omega0) > 1.0e-2)
@@ -1088,7 +1102,7 @@ void check_omega(void)
             ("The mass content accounts only for Omega=%g,\nbut you specified Omega=%g in the parameterfile.\n",
              omega, All.Omega0);
             printf("\nI better stop.\n");
-            
+
             fflush(stdout);
         }
         endrun(1);
@@ -1097,7 +1111,7 @@ void check_omega(void)
 #endif
 
 
-/*! This function is used to find an initial kernel length (what used to be called the 
+/*! This function is used to find an initial kernel length (what used to be called the
  *  'smoothing length' for SPH, but is just the kernel size for the mesh-free methods) for each gas
  *  particle. It guarantees that the number of neighbours will be between
  *  desired_ngb-MAXDEV and desired_ngb+MAXDEV. For simplicity, a first guess
@@ -1116,20 +1130,20 @@ void setup_smoothinglengths(void)
 #endif
             {
                 no = Father[i];
-                
+
                 while(10 * All.DesNumNgb * P[i].Mass > Nodes[no].u.d.mass)
                 {
                     p = Nodes[no].u.d.father;
-                    
+
                     if(p < 0)
                         break;
-                    
+
                     no = p;
                 }
-                
+
                 if((RestartFlag == 0)||(P[i].Type != 0)) // if Restartflag==2, use the saved Hsml of the gas as initial guess //
                 {
-                    
+
 #ifndef INPUT_READ_HSML
 #if NUMDIMS == 3
                     PPP[i].Hsml = pow(3.0 / (4 * M_PI) * All.DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 0.333333) * Nodes[no].len;
@@ -1153,8 +1167,8 @@ void setup_smoothinglengths(void)
                 } // closes if((RestartFlag == 0)||(P[i].Type != 0))
             }
     }
-    
-    
+
+
 #ifdef BLACK_HOLES
     if(RestartFlag == 0 || RestartFlag == 2)
     {
@@ -1163,7 +1177,7 @@ void setup_smoothinglengths(void)
                 PPP[i].Hsml = All.SofteningTable[5];
     }
 #endif
-    
+
 #ifdef GRAIN_FLUID
     if(RestartFlag == 0 || RestartFlag == 2)
     {
@@ -1172,8 +1186,8 @@ void setup_smoothinglengths(void)
                 PPP[i].Hsml = All.SofteningTable[P[i].Type];
     }
 #endif
- 
-    density();    
+
+    density();
 }
 
 
@@ -1181,22 +1195,22 @@ void assign_unique_ids(void)
 {
     int i, *numpartlist;
     MyIDType idfirst;
-    
+
     numpartlist = (int *) mymalloc("numpartlist", NTask * sizeof(int));
-    
+
     MPI_Allgather(&NumPart, 1, MPI_INT, numpartlist, 1, MPI_INT, MPI_COMM_WORLD);
-    
+
     idfirst = 1;
-    
+
     for(i = 0; i < ThisTask; i++)
         idfirst += numpartlist[i];
-    
+
     for(i = 0; i < NumPart; i++)
     {
         P[i].ID = idfirst;
         idfirst++;
     }
-    
+
     myfree(numpartlist);
 }
 
@@ -1268,7 +1282,7 @@ void disp_setup_smoothinglengths(void)
             }
         }
     }
-    
+
     if(ThisTask == 0)
     {
         printf("computing DM Vel_disp around gas particles.\n");
@@ -1286,61 +1300,61 @@ void test_id_uniqueness(void)
     int i;
     MyIDType *ids, *ids_first;
 #endif
-    
+
     if(ThisTask == 0)
     {
         printf("Testing ID uniqueness...\n");
     }
-    
+
     if(NumPart == 0)
     {
         printf("need at least one particle per cpu\n");
         endrun(8);
     }
-    
+
     t0 = my_second();
-    
+
 #ifndef BOX_BND_PARTICLES
     ids = (MyIDType *) mymalloc("ids", NumPart * sizeof(MyIDType));
     ids_first = (MyIDType *) mymalloc("ids_first", NTask * sizeof(MyIDType));
-    
+
     for(i = 0; i < NumPart; i++)
         ids[i] = P[i].ID;
-    
+
 #ifdef ALTERNATIVE_PSORT
     init_sort_ID(ids, NumPart);
 #else
     parallel_sort(ids, NumPart, sizeof(MyIDType), compare_IDs);
 #endif
-    
+
     for(i = 1; i < NumPart; i++)
         if(ids[i] == ids[i - 1])
         {
 #ifdef LONGIDS
             printf("non-unique ID=%d%09d found on task=%d (i=%d NumPart=%d)\n",
                    (int) (ids[i] / 1000000000), (int) (ids[i] % 1000000000), ThisTask, i, NumPart);
-            
+
 #else
             printf("non-unique ID=%d found on task=%d   (i=%d NumPart=%d)\n", (int) ids[i], ThisTask, i, NumPart);
 #endif
             endrun(12);
         }
-    
+
     MPI_Allgather(&ids[0], sizeof(MyIDType), MPI_BYTE, ids_first, sizeof(MyIDType), MPI_BYTE, MPI_COMM_WORLD);
-    
+
     if(ThisTask < NTask - 1)
         if(ids[NumPart - 1] == ids_first[ThisTask + 1])
         {
             printf("non-unique ID=%d found on task=%d\n", (int) ids[NumPart - 1], ThisTask);
             endrun(13);
         }
-    
+
     myfree(ids_first);
     myfree(ids);
 #endif
-    
+
     t1 = my_second();
-    
+
     if(ThisTask == 0)
     {
         printf("success.  took=%g sec\n", timediff(t0, t1));
@@ -1351,9 +1365,9 @@ int compare_IDs(const void *a, const void *b)
 {
     if(*((MyIDType *) a) < *((MyIDType *) b))
         return -1;
-    
+
     if(*((MyIDType *) a) > *((MyIDType *) b))
         return +1;
-    
+
     return 0;
 }

@@ -509,6 +509,7 @@ void mechanical_fb_calculate_eventrates_Rprocess(int i, double dt);
 void particle2in_addFB_SNe(struct addFBdata_in *in, int i);
 void particle2in_addFB_winds(struct addFBdata_in *in, int i);
 void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i);
+void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i);
 #endif
 #endif
 

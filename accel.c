@@ -160,6 +160,7 @@ void compute_stellar_feedback(void)
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
     mechanical_fb_calc(1); /* additional loop for stellar mass-loss */
     mechanical_fb_calc(2); /* additional loop for R-process */
+    mechanical_fb_calc(3); /* additional loop for stellar age tracers */
 #endif
     CPU_Step[CPU_SNIIHEATING] += measure_time();
 #endif

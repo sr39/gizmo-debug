@@ -11,7 +11,7 @@
 #include <pthread.h>
 #endif
 
-/* Routines for models that require stellar evolution: luminosities, mass loss, SNe rates, etc. 
+/* Routines for models that require stellar evolution: luminosities, mass loss, SNe rates, etc.
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 #ifdef GALSF
@@ -20,8 +20,8 @@
 /* return the (solar-scaled) light-to-mass ratio of an SSP with a given age; used throughout the code */
 double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i)
 {
-    double lum=1; if(stellar_age_in_gyr < 0.01) {lum=1000;} // default to a dumb imf-averaged 'young/high-mass' vs 'old/low-mass' distinction 
-#ifdef SINGLE_STAR_SINK_DYNAMICS // calculate single-star luminosity (and convert to solar luminosity-to-mass ratio, which this output assumes) 
+    double lum=1; if(stellar_age_in_gyr < 0.01) {lum=1000;} // default to a dumb imf-averaged 'young/high-mass' vs 'old/low-mass' distinction
+#ifdef SINGLE_STAR_SINK_DYNAMICS // calculate single-star luminosity (and convert to solar luminosity-to-mass ratio, which this output assumes)
     lum=calculate_individual_stellar_luminosity(0, P[i].BH_Mass, i) / P[i].BH_Mass * (All.UnitEnergy_in_cgs / (All.UnitTime_in_s * SOLAR_LUM)) / (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS));
 #endif
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION // fit to updated SB99 tracks: including rotation, new mass-loss tracks, etc.
@@ -32,7 +32,7 @@ double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i)
 }
 
 
-/* subroutine to calculate luminosity of an individual star, according to accretion rate, 
+/* subroutine to calculate luminosity of an individual star, according to accretion rate,
     mass, age, etc. Modify your assumptions about main-sequence evolution here. */
 double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
 {
@@ -46,7 +46,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
     lum = rad_eff_protostar * mdot * c_code*c_code;
     /* now for pre-main sequence, need to also check the mass-luminosity relation */
     double lum_sol = 0;
-#ifdef SINGLE_STAR_PROMOTION  
+#ifdef SINGLE_STAR_PROMOTION
     if(m_solar >= 0.012)
     {
         if(m_solar < 0.43) {lum_sol = 0.185 * m_solar*m_solar;}
@@ -55,7 +55,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
         else {lum_sol = 32000. * m_solar;}
     }
 #endif
-#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION 
+#ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION
     if(i > 0)
     {
         if(P[i].Type == 5) /* account for pre-main sequence evolution */
@@ -65,7 +65,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
             if(l_kh > lum_sol) {lum_sol = l_kh;} // if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
             // now, calculate accretion luminosity using protostellar radius
 #ifdef SINGLE_STAR_FB_JETS
-            double eps_protostar=All.BAL_f_accretion; //fraction of gas that does not get launched out with a jet 
+            double eps_protostar=All.BAL_f_accretion; //fraction of gas that does not get launched out with a jet
 #else
             double eps_protostar=0.75; //default value, although 1.0 would be energy conserving
 #endif
@@ -75,7 +75,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
 #endif
     lum_sol *= SOLAR_LUM / (All.UnitEnergy_in_cgs / All.UnitTime_in_s);
     lum += lum_sol;
-#endif    
+#endif
     return lum;
 }
 
@@ -83,7 +83,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
 /* return the light-to-mass ratio, for the IMF of a given particle, relative to the Chabrier/Kroupa IMF */
 double calculate_relative_light_to_mass_ratio_from_imf(double stellar_age_in_gyr, int i)
 {
-#ifdef GALSF_SFR_IMF_VARIATION // fitting function from David Guszejnov's IMF calculations (ok for Mturnover in range 0.01-100) for how mass-to-light ratio varies with IMF shape/effective turnover mass 
+#ifdef GALSF_SFR_IMF_VARIATION // fitting function from David Guszejnov's IMF calculations (ok for Mturnover in range 0.01-100) for how mass-to-light ratio varies with IMF shape/effective turnover mass
     double log_mimf = log10(P[i].IMF_Mturnover);
     return (0.051+0.042*(log_mimf+2)+0.031*(log_mimf+2)*(log_mimf+2)) / 0.31;
 #endif
@@ -147,6 +147,7 @@ void particle2in_addFB_fromstars(struct addFBdata_in *in, int i, int fb_loop_ite
     if(fb_loop_iteration == 0) {particle2in_addFB_SNe(in,i);}
     if(fb_loop_iteration == 1) {particle2in_addFB_winds(in,i);}
     if(fb_loop_iteration == 2) {particle2in_addFB_Rprocess(in,i);}
+    if(fb_loop_iteration == 3) {particle2in_addFB_ageTracer(in,i);}
     return;
 #endif
     if(P[i].SNe_ThisTimeStep<=0) {in->Msne=0; return;} // no event
@@ -154,7 +155,10 @@ void particle2in_addFB_fromstars(struct addFBdata_in *in, int i, int fb_loop_ite
     in->Msne = P[i].SNe_ThisTimeStep * (14.8*SOLAR_MASS)/(All.UnitMass_in_g/All.HubbleParam); // assume every SNe carries 14.8 solar masses (IMF-average)
     in->SNe_v_ejecta = 2.607e8 / All.UnitVelocity_in_cm_per_s; // assume ejecta are ~2607 km/s [KE=1e51 erg, for M=14.8 Msun]
 #ifdef METALS
-    int k; for(k=0;k<NUM_METAL_SPECIES;k++) {in->yields[k]=0.178*All.SolarAbundances[k]/All.SolarAbundances[0];} // assume a universal solar-type yield with ~2.63 Msun of metals
+    /* .... AJE: Make sure below scaling doesn't screw up age tracers....
+                 May need to just make new val to cut off loop below age tracers:
+    */
+    int k; for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {in->yields[k]=0.178*All.SolarAbundances[k]/All.SolarAbundances[0];} // assume a universal solar-type yield with ~2.63 Msun of metals
     if(NUM_METAL_SPECIES>=10) {in->yields[1] = 0.4;} // (catch for Helium, which the above scaling would give bad values for)
 #endif
 #endif
@@ -201,7 +205,7 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
 #if defined(GALSF_FB_MECHANICAL) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
 /* functions below contain pre-calculation of event rates and energetics, masses, etc, for FIRE mechanical feedback modules */
 
-double mechanical_fb_calculate_eventrates_SNe(int i, double dt) 
+double mechanical_fb_calculate_eventrates_SNe(int i, double dt)
 {
     if(All.SNeIIEnergyFrac <= 0) return 0;
     double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
@@ -223,7 +227,7 @@ double mechanical_fb_calculate_eventrates_SNe(int i, double dt)
     {
         if(star_age<=agebrk) {RSNe=5.408e-4;} else {if(star_age<=agemax) {RSNe=2.516e-4;}} // core-collapse
         if(star_age>agemax) {RSNe=5.3e-8 + 1.6e-5*exp(-0.5*((star_age-0.05)/0.01)*((star_age-0.05)/0.01));} // Ia (prompt Gaussian+delay, Manucci+06)
-		
+
         double renorm = calculate_relative_light_to_mass_ratio_from_imf(star_age,i); // account for higher # of O-stars with a different IMF
         if(star_age<agemax) {RSNe *= renorm;}
 #ifdef GALSF_SFR_IMF_SAMPLING
@@ -287,7 +291,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
     p *= All.GasReturnFraction * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam); // fraction of particle mass expected to return in the timestep //
     p = 1.0 - exp(-p); // need to account for p>1 cases //
     p *= 1.4 * 0.291175; // to give expected return fraction from stellar winds alone (~17%) //
-    
+
     /* // updated fit from M Grudic. More accurate for early times.
      //     Needs to add the above call for later times (t >~ 0.02-0.1 Gyr) since late-time AGB loss is not strongly
      //     metallicity-dependent (as fit below only includes line-driven winds).
@@ -324,11 +328,72 @@ void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i)
         if(k==1) {tcrit=0.003; pcrit=0.3333333333;}  // model 1: tmin > 3e6 yr, rate = 1e-5
         if(k==2) {tcrit=0.03;  pcrit=0.03333333333;} // model 2: tmin > 3e7 yr, rate = 1e-6
         if(k==3) {tcrit=0.003; pcrit=0.03333333333;} // model 3: tmin > 3e6 yr, rate = 1e-6
-        if((star_age>=tcrit)&&(p<=pcrit)) {in->yields[NUM_METAL_SPECIES-NUM_RPROCESS_SPECIES+k]=1;} // units irrelevant//
+        if((star_age>=tcrit)&&(p<=pcrit)) {in->yields[NUM_METAL_SPECIES-NUM_RPROCESS_SPECIES-NUM_AGE_TRACERS+k]=1;} // units irrelevant//
     }
     in->Msne = 0.01 * (double)P[i].RProcessEvent_ThisTimeStep / ((double)((All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS)); // mass ejected ~0.01*M_sun; only here for bookkeeping //
 #endif
 }
+
+
+
+
+
+void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
+{
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
+    P[i].AgeDeposition_ThisTimeStep = 1;
+    int k; if(P[i].AgeDeposition_ThisTimeStep<=0) {in->Msne=0; return;} // no deposition
+#ifdef METALS
+    int kstart = NUM_METAL_SPECIES-NUM_AGE_TRACERS;
+    int kend   = NUM_METAL_SPECIES;
+    /* pull surface "abundances" - really... these are surface "ages" */
+    double yields[NUM_AGE_TRACERS]; for(k=kstart;k=kend;k++) {yields[k-kstart]=P[i].Metallicity[k];}
+    // set default abundances
+    for (k=kstart; k<kend; k++){
+        in->yields[k] = yields[k-kstart];
+    }
+    double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+
+#ifndef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
+    // find the age tracer bin to dump into using
+    // logspace bins
+    const double binstart = log10(AGE_TRACER_BIN_START);
+    const double binend   = log10(AGE_TRACER_BIN_END);
+    const double log_bin_dt = (binend - binstart) / (1.0*NUM_AGE_TRACERS);
+
+    if( star_age*1000.0 < AGE_TRACER_BIN_START){
+        k = 0;
+    } else if (star_age*1000.0 > AGE_TRACER_BIN_END){
+      printf("stellar age greater than bin size");
+      endrun(399);
+    } else{
+        k = floor( (log10(star_age) - binstart)/ log_bin_dt); // find bin
+    };
+
+    // bin size in linear time (better normalization)
+    double bin_dt = pow(binstart+(k+1)*log_bin_dt,10.0) - pow(binstart + k*log_bin_dt,10.0);
+    double dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a * All.UnitTime_in_Megayears; // get particle timestep in Myr
+    /* AJE: may need to switch to normalizing over logbin spacing if bins are large
+      too avoid small number issues  - this requires undoing the normalization in post */
+
+    in->yields[k + (NUM_METAL_SPECIES-NUM_AGE_TRACERS)] += (1.0 / bin_dt) * dt;   // add to this yield bin
+#else
+   // NOT YET IMPLEMENTED!!!
+   // Do a search over the AgeTracerTimeBins array to find
+   // the index corresponding to the age
+   printf("ERROR: Custom age tracers not yet implemented\n");
+   endrun(1179);
+#endif // custom bins
+
+
+#endif // metals
+
+    in->Msne = 1.0E-30; // small number just to be nonzero -- AJE make sure this works
+#endif // age tracer model
+}
+
+
+
 
 
 
@@ -417,5 +482,5 @@ void particle2in_addFB_winds(struct addFBdata_in *in, int i)
 
 #endif // GALSF_FB_MECHANICAL+GALSF_FB_FIRE_STELLAREVOLUTION
 
-    
+
 #endif /* GALSF */
