@@ -446,7 +446,7 @@ integertime get_timestep(int p,		/*!< particle index */
     double dt_tidal = 0.; {int k; for(k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];}} // this is diagonalized already in the gravity loop
     dt_tidal = sqrt(2. * All.ErrTolIntAccuracy / sqrt(dt_tidal / 6)); // recovers sqrt(eta) * tdyn for a Keplerian potential
 #if (SINGLE_STAR_TIMESTEPPING > 0)
-    if(P[p].SuperTimestepFlag>=2) {dt_tidal = sqrt(All.ErrTolIntAccuracy) * P[p].COM_dt_tidal;}
+    if(P[p].SuperTimestepFlag>=2) {dt_tidal = sqrt(2*All.ErrTolIntAccuracy) * P[p].COM_dt_tidal;}
 #endif
     dt=DMIN(dt,dt_tidal);
 #endif
@@ -454,7 +454,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step, which gives superior conservation
     if(P[p].Type == 5)
     {
-        double dt_2body = sqrt(All.ErrTolIntAccuracy) * 0.3 / (1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time	
+        double dt_2body = sqrt(2*All.ErrTolIntAccuracy) * 0.3 / (1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time
 #ifdef HERMITE_INTEGRATION	
         if(eligible_for_hermite(p)) dt_2body /= 0.3;
 #endif
@@ -985,7 +985,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
 		    eps = DMAX(eps, KERNEL_CORE_SIZE*P[p].AGS_Hsml);
 #endif		
-		    double dt_gas = sqrt(All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * P[p].Mass)); // fraction of the freefall time of the nearest gas particle from rest
+		    double dt_gas = sqrt(2*All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * P[p].Mass)); // fraction of the freefall time of the nearest gas particle from rest
 		    if(dt > dt_gas && dt_gas > 0) {dt = 1.01 * dt_gas;}
 		}
 #endif
