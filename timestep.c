@@ -444,7 +444,7 @@ integertime get_timestep(int p,		/*!< particle index */
 
 #ifdef TIDAL_TIMESTEP_CRITERION // tidal criterion obtains the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion
     double dt_tidal = 0.; {int k; for(k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];}} // this is diagonalized already in the gravity loop
-    dt_tidal = sqrt(All.ErrTolIntAccuracy / sqrt(dt_tidal / 6)); // recovers sqrt(eta) * tdyn for a Keplerian potential
+    dt_tidal = sqrt(2. * All.ErrTolIntAccuracy / sqrt(dt_tidal / 6)); // recovers sqrt(eta) * tdyn for a Keplerian potential
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     if(P[p].SuperTimestepFlag>=2) {dt_tidal = sqrt(All.ErrTolIntAccuracy) * P[p].COM_dt_tidal;}
 #endif
