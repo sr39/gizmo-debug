@@ -312,12 +312,12 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define BH_ACCRETE_NEARESTFIRST
 #define DEVELOPER_MODE
 #define IO_SUPPRESS_TIMEBIN_STDOUT 10 //only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
-#ifdef SLOPE1_SINKS //Slope1 sinks, this gives a top heavy IMF in isoT sims
-#define BH_ALPHADISK_ACCRETION (1.0e6)
-#else
-#define SLOPE2_SINKS //Slope2 sinks, this should give dN/dM~M^-2 in isoT sims
+#ifdef SLOPE2_SINKS //Slope2 sinks, this should give dN/dM~M^-2 in isoT sims
 #define BH_DEBUG_DISABLE_MERGERS
 #define BH_ALPHADISK_ACCRETION (1.2)
+#else
+#define SLOPE1_SINKS //Slope1 sinks, this gives a top heavy IMF in isoT sims
+#define BH_ALPHADISK_ACCRETION (1.0e6)
 #endif
 #ifdef MAGNETIC
 #define MHD_CONSTRAINED_GRADIENT 1
@@ -2521,9 +2521,6 @@ extern struct sph_particle_data
     {
         MyDouble Density[3];
         MyDouble Pressure[3];
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-        MyDouble PressureMagnitude;
-#endif      
         MyDouble Velocity[3][3];
 #ifdef MAGNETIC
         MyDouble B[3][3];
