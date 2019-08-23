@@ -268,7 +268,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
     MyFloat dir[3], norm, mom;
     mom=0; norm=0; dir[0]=0;
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) 
-    MyFloat *J_dir;
+    MyFloat J_dir[3];
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
     double BH_angle_weighted_kernel_sum, mom_wt;
@@ -304,9 +304,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
-        J_dir = P[target].BH_Specific_AngMom;
+        for(k=0;k<3;k++) {J_dir[k] = P[target].BH_Specific_AngMom[k];}
 #else
-        J_dir = BlackholeTempInfo[P[target].IndexMapToTempStruc].Jgas_in_Kernel;
+        for(k=0;k<3;k++) {J_dir[k] = BlackholeTempInfo[P[target].IndexMapToTempStruc].Jgas_in_Kernel[k];}
 #endif
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
@@ -337,7 +337,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
         dt = BlackholeDataGet[target].Dt;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
-        J_dir = BlackholeDataGet[target].Jgas_in_Kernel;
+        for(k=0;k<3;k++) {J_dir[k] = BlackholeDataGet[target].Jgas_in_Kernel[k];}
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
         BH_disk_hr = BlackholeDataGet[target].BH_disk_hr;
@@ -439,9 +439,10 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                     for(k=0;k<3;k++) {accreted_centerofmass[k] += FLT(mcount_for_conserve * dP[k]);}
 #endif
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
-                    accreted_J[0] += FLT(mcount_for_conserve * ( dP[1]*dv[2] - dP[2]*dv[1] + BPP(j).BH_Specific_AngMom[0] ));
-                    accreted_J[1] += FLT(mcount_for_conserve * ( dP[2]*dv[0] - dP[0]*dv[2] + BPP(j).BH_Specific_AngMom[1] ));
-                    accreted_J[2] += FLT(mcount_for_conserve * ( dP[0]*dv[1] - dP[1]*dv[0] + BPP(j).BH_Specific_AngMom[2] ));
+                    accreted_J[0] += FLT(mcount_for_conserve * ( dP[1]*dv[2] - dP[2]*dv[1] ));
+                    accreted_J[1] += FLT(mcount_for_conserve * ( dP[2]*dv[0] - dP[0]*dv[2] ));
+                    accreted_J[2] += FLT(mcount_for_conserve * ( dP[0]*dv[1] - dP[1]*dv[0] ));
+                    if(P[j].Type==5) {for(k=0;k<3;k++) {accreted_J[k] += FLT(mcount_for_conserve * BPP(j).BH_Specific_AngMom[k]);}}
 #endif
 
                     
