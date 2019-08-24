@@ -499,12 +499,13 @@ void set_blackhole_mdot(int i, int n, double dt)
 #ifdef SINGLE_STAR_SINK_DYNAMICS
         double Gm_i=1./(All.G*P[n].Mass), reff=DMAX(All.SofteningTable[5],Get_Particle_Size(n)), t_dyn_eff=sqrt(reff*reff*reff*Gm_i); // dynamical time at radius "H" where the neighbor gas is located
         t_acc_disk = t_dyn_eff; // temporary set for use below
-#if defined(BH_FOLLOW_ACCRETED_ANGMOM)
+#if defined(BH_FOLLOW_ACCRETED_ANGMOM) && defined(BH_RETURN_ANGMOM_TO_GAS) /*without angular momentum feedback the sinks will keep accumulating it and become unable to accrete*/
         double j=0; for(k=0;k<3;k++) {j+=P[n].BH_Specific_AngMom[k]*P[n].BH_Specific_AngMom[k];} // calculate magnitude of specific ang mom
         if(j>0) {j=sqrt(j);} else {j=0;}
         t_acc_disk = j*j*j*Gm_i*Gm_i; // dynamical time at circularization radius of the alpha-disk
+        t_acc_disk *= pow(P[n].Mass/BPP(n).BH_Mass_AlphaDisk,3.0); //accounting for the fact that the disk contains all the angular momentum, it specific angulkar momentum is j_disk=m_diks/m_tot*j
 #ifdef SLOPE2_SINKS
-        t_acc_disk *= pow(1. + 1./BH_ALPHADISK_ACCRETION , 3.); // correction assuming a ratio of accretion disk to sink mass ~BH_ALPHADISK_ACCRETION [max allowed], with the material in the sink having given its angular momentum to the sink [which is what should happen]
+        //t_acc_disk *= pow(1. + 1./BH_ALPHADISK_ACCRETION , 3.); // correction assuming a ratio of accretion disk to sink mass ~BH_ALPHADISK_ACCRETION [max allowed], with the material in the sink having given its angular momentum to the sink [which is what should happen]
         double t_acc_min = sqrt(pow(0.033*All.SofteningTable[5],3)/(All.G*P[n].BH_Mass)); // catch against un-resolvably small j [since accreted particles are extended, there is always material at non-zero "j" even if accreted at zero impact parameter; 1/30th is conservative estimate for perfect impact parameter]
         t_acc_disk = DMAX(t_acc_min,t_acc_disk);
 #else
