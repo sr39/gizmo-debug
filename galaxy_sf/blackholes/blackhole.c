@@ -496,29 +496,30 @@ void set_blackhole_mdot(int i, int n, double dt)
         
         double t_yr = SEC_PER_YEAR / (All.UnitTime_in_s / All.HubbleParam);
         double t_acc_disk = 4.2e7 * t_yr * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass) / BPP(n).BH_Mass_AlphaDisk, 0.4); /* shakura-sunyaev disk, integrated out to Q~1 radius, approximately */
+
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-        double Gm_i=1./(All.G*P[n].Mass), reff=DMAX(All.SofteningTable[5],Get_Particle_Size(n)), t_dyn_eff=sqrt(reff*reff*reff*Gm_i); // dynamical time at radius "H" where the neighbor gas is located
-        t_acc_disk = t_dyn_eff; // temporary set for use below
-#if defined(BH_FOLLOW_ACCRETED_ANGMOM) && defined(BH_RETURN_ANGMOM_TO_GAS) /*without angular momentum feedback the sinks will keep accumulating it and become unable to accrete*/
-        double j=0; for(k=0;k<3;k++) {j+=P[n].BH_Specific_AngMom[k]*P[n].BH_Specific_AngMom[k];} // calculate magnitude of specific ang mom
-        if(j>0) {j=sqrt(j);} else {j=0;}
+        double Gm_i=1./(All.G*P[n].Mass), reff=DMAX(All.SofteningTable[5],Get_Particle_Size(n)), t_dyn_eff=sqrt(reff*reff*reff*Gm_i), t_acc_disk = t_dyn_eff;; // dynamical time at radius "H" where the neighbor gas is located
+#if defined(BH_FOLLOW_ACCRETED_ANGMOM)
+        double j=0; for(k=0;k<3;k++) {j+=P[n].BH_Specific_AngMom[k]*P[n].BH_Specific_AngMom[k];}
+        if(j>0) {j=sqrt(j);} else {j=0;} // calculate magnitude of specific ang mom
+#ifdef BH_RETURN_ANGMOM_TO_GAS /* in this particular case, we will assume AM transfer occurs 'first' to the disk, then to the ambient medium, instead of simply assuming specific AM of accreted material is conserved */
+        j *= P[n].Mass / (MIN_REAL_NUMBER + BPP(n).BH_Mass_AlphaDisk); // accounting for the fact that the disk contains all the angular momentum, it specific angulkar momentum is j_disk=m_disk/m_tot*j
+#else
+        j *= 1. + 1./BH_ALPHADISK_ACCRETION; // correction assuming a ratio of accretion disk to sink mass ~BH_ALPHADISK_ACCRETION [max allowed], with the material in the sink having given its angular momentum to the sink [which is what should happen]
+#endif
         t_acc_disk = j*j*j*Gm_i*Gm_i; // dynamical time at circularization radius of the alpha-disk
-        t_acc_disk *= pow(P[n].Mass/BPP(n).BH_Mass_AlphaDisk,3.0); //accounting for the fact that the disk contains all the angular momentum, it specific angulkar momentum is j_disk=m_diks/m_tot*j
 #ifdef SLOPE2_SINKS
-        //t_acc_disk *= pow(1. + 1./BH_ALPHADISK_ACCRETION , 3.); // correction assuming a ratio of accretion disk to sink mass ~BH_ALPHADISK_ACCRETION [max allowed], with the material in the sink having given its angular momentum to the sink [which is what should happen]
-        double t_acc_min = sqrt(pow(0.033*All.SofteningTable[5],3)/(All.G*P[n].BH_Mass)); // catch against un-resolvably small j [since accreted particles are extended, there is always material at non-zero "j" even if accreted at zero impact parameter; 1/30th is conservative estimate for perfect impact parameter]
-        t_acc_disk = DMAX(t_acc_min,t_acc_disk);
+        t_acc_disk = DMAX(sqrt(pow(0.033*All.SofteningTable[5],3)/(All.G*P[n].BH_Mass)) , t_acc_disk); // catch against un-resolvably small j [since accreted particles are extended, there is always material at non-zero "j" even if accreted at zero impact parameter; 1/30th is conservative estimate for perfect impact parameter]
 #else
         if(j*j*Gm_i < 6.957e11 / All.UnitLength_in_cm) {t_acc_disk *= 1.e-2;} // in the unlikely event that angular momentum is low enough, we're falling straight onto the protostellar surface, here taking 10R_solar as a rough number
 #endif
 #endif
-        t_acc_disk = 10. * 2.*M_PI * t_acc_disk; // 10 orbits at circularization radius to spiral all the way in (very fast)
-        t_acc_disk = DMAX(t_acc_disk, t_dyn_eff); // Should be no less than the resolution-scale dynamical time
-#endif
+        t_acc_disk = DMAX(10. * 2.*M_PI*t_acc_disk, t_dyn_eff); // 10 orbits at circularization radius to spiral all the way in (very fast), but should be no less than the resolution-scale dynamical time
+#endif // SINGLE_STAR_SINK_DYNAMICS
+        
 #if defined(BH_GRAVCAPTURE_GAS)
         t_acc_disk /= All.BlackHoleAccretionFactor; // when using GRAVCAPTURE, this won't multiply the continuous mdot, but rather mdot from disk to BH
 #endif
-
         t_acc_disk = DMAX(t_acc_disk , 3.*dt); /* make sure accretion timescale is at least a few timesteps to avoid over-shoot, etc */
         mdot = BPP(n).BH_Mass_AlphaDisk / t_acc_disk;
     }

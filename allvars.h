@@ -316,7 +316,6 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define BH_DEBUG_DISABLE_MERGERS
 #define BH_ALPHADISK_ACCRETION (1.2)
 #else
-#define SLOPE1_SINKS //Slope1 sinks, this gives a top heavy IMF in isoT sims
 #define BH_ALPHADISK_ACCRETION (1.0e6)
 #endif
 #ifdef MAGNETIC
