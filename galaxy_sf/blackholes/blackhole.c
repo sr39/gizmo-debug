@@ -498,7 +498,8 @@ void set_blackhole_mdot(int i, int n, double dt)
         double t_acc_disk = 4.2e7 * t_yr * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass) / BPP(n).BH_Mass_AlphaDisk, 0.4); /* shakura-sunyaev disk, integrated out to Q~1 radius, approximately */
 
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-        double Gm_i=1./(All.G*P[n].Mass), reff=DMAX(All.SofteningTable[5],Get_Particle_Size(n)), t_dyn_eff=sqrt(reff*reff*reff*Gm_i), t_acc_disk = t_dyn_eff;; // dynamical time at radius "H" where the neighbor gas is located
+        double Gm_i=1./(All.G*P[n].Mass), reff=DMAX(All.SofteningTable[5],Get_Particle_Size(n)), t_dyn_eff=sqrt(reff*reff*reff*Gm_i);
+        t_acc_disk = t_dyn_eff;// dynamical time at radius "H" where the neighbor gas is located
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
         double j=0; for(k=0;k<3;k++) {j+=P[n].BH_Specific_AngMom[k]*P[n].BH_Specific_AngMom[k];}
         if(j>0) {j=sqrt(j);} else {j=0;} // calculate magnitude of specific ang mom
