@@ -193,7 +193,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
     double meddington, medd_max_accretable, mass_to_swallow_edd, eddington_factor;
 #endif
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
-    double norm, BH_disk_hr, *J_dir;
+    double norm, BH_disk_hr, J_dir[3];
     double BH_angle_weighted_kernel_sum=0;
 #endif
 #ifdef BH_REPOSITION_ON_POTMIN
@@ -234,9 +234,9 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         id = P[target].ID;
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS)
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
-        J_dir = P[target].BH_Specific_AngMom;
+        for(k=0;k<3;k++) {J_dir[k] = P[target].BH_Specific_AngMom[k];}
 #else
-        J_dir = BlackholeTempInfo[P[target].IndexMapToTempStruc].Jgas_in_Kernel;
+        for(k=0;k<3;k++) {J_dir[k] = BlackholeTempInfo[P[target].IndexMapToTempStruc].Jgas_in_Kernel[k];}
 #endif
         BH_disk_hr = P[target].BH_disk_hr;
 #endif
@@ -271,7 +271,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
         velocity = BlackholeDataGet[target].Vel;
         id = BlackholeDataGet[target].ID;
 #if defined(BH_PHOTONMOMENTUM)  || defined(BH_WIND_CONTINUOUS)
-        J_dir = BlackholeDataGet[target].Jgas_in_Kernel;
+        for(k=0;k<3;k++) {J_dir[k] = BlackholeDataGet[target].Jgas_in_Kernel[k];}
         BH_disk_hr = BlackholeDataGet[target].BH_disk_hr;
 #endif
 #ifdef BH_ACCRETE_NEARESTFIRST
@@ -387,7 +387,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
 #if !defined(BH_DEBUG_DISABLE_MERGERS)
                         if((id != P[j].ID) && (P[j].Mass > 0) && (P[j].Type == 5))	/* we may have a black hole merger */
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-                        if((P[j].Mass < 3*All.MinMassForParticleMerger) && (r < All.ForceSoftening[5])) /* only merge away stuff that is within the softening radius, and is no more massive that a few gas particles */
+                        if((r < 1.0001*P[j].min_dist_to_bh) && (P[j].Mass < mass) && (r < PPP[j].Hsml) && (P[j].Mass < 3*All.MinMassForParticleMerger) && (r < All.ForceSoftening[5])) /* only merge away stuff that is within the softening radius, and is no more massive that a few gas particles */
 #endif
                         {
                             if(id != P[j].ID) /* check its not the same bh  (DAA: this is duplicated here...) */

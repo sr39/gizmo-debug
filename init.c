@@ -504,7 +504,7 @@ void init(void)
                 BPP(i).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
 #endif
 #ifdef BH_FOLLOW_ACCRETED_ANGMOM
-                double bh_mu=DMAX(0,2*get_random_number(P[i].ID+3)-1), bh_phi=2*M_PI*get_random_number(P[i].ID+4), bh_sin=sqrt(1-bh_mu*bh_mu);
+                double bh_mu=2*get_random_number(P[i].ID+3)-1, bh_phi=2*M_PI*get_random_number(P[i].ID+4), bh_sin=sqrt(1-bh_mu*bh_mu);
                 double spin_prefac = All.G * P[i].BH_Mass / (C/All.UnitVelocity_in_cm_per_s); // assume initially maximally-spinning BH with random orientation
                 P[i].BH_Specific_AngMom[0]=spin_prefac*bh_sin*cos(bh_phi); P[i].BH_Specific_AngMom[1]=spin_prefac*bh_sin*sin(bh_phi); P[i].BH_Specific_AngMom[2]=spin_prefac*bh_mu;
 #endif

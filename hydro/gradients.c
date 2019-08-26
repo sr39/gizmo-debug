@@ -1097,10 +1097,6 @@ void hydro_gradient_calc(void)
             /* now we can properly calculate (second-order accurate) gradients of hydrodynamic quantities from this loop */
             construct_gradient(SphP[i].Gradients.Density,i);
             construct_gradient(SphP[i].Gradients.Pressure,i);
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-	        SphP[i].Gradients.PressureMagnitude=0; for(k=0;k<3;k++) {SphP[i].Gradients.PressureMagnitude+=SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
-	        if(SphP[i].Gradients.PressureMagnitude>0) {SphP[i].Gradients.PressureMagnitude=sqrt(SphP[i].Gradients.PressureMagnitude);} else {SphP[i].Gradients.PressureMagnitude=0;}
-#endif	    
             for(k=0;k<3;k++) {construct_gradient(SphP[i].Gradients.Velocity[k],i);}
 #ifdef TURB_DIFF_DYNAMIC
             for (k = 0; k < 3; k++) {
