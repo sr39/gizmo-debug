@@ -355,10 +355,10 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
     const int k_age_start = NUM_METAL_SPECIES-NUM_AGE_TRACERS;
     const int k_age_end   = NUM_METAL_SPECIES;
     /* pull surface "abundances" - really... these are surface "ages" */
-    double yields[NUM_AGE_TRACERS]={0.0}; for(k=0;k<NUM_AGE_TRACERS;k++) {yields[k]=P[i].Metallicity[k+k_age_start];}
+    double yields[NUM_AGE_TRACERS]; for(k=0;k<NUM_AGE_TRACERS;k++) {yields[k]=0.0;} // AJE: Normalization here might be hard - test without P[i].Metallicity[k+k_age_start];}
     // set default abundances
     for (k=0; k<NUM_AGE_TRACERS; k++){
-        in->yields[k + k_age_start] = yields[k];
+        in->yields[k+k_age_start] = yields[k];
     }
     double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge) * 0.001; // Age in Myr
 
@@ -379,12 +379,35 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
     };
 
     // bin size in linear time (better normalization)
-    double bin_dt = pow(10.0, binstart+(k+1)*log_bin_dt) - pow(10.0, binstart + k*log_bin_dt);
-    double dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a * All.UnitTime_in_Megayears; // get particle timestep in Myr
+    double bin_dt = pow(10.0, binstart+(k+1)*log_bin_dt) - (k==0? 0.0 :pow(10.0, binstart + k*log_bin_dt));
+    // make sure this is the right unit conversion:
+    const double dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a * All.UnitTime_in_Megayears; // get particle timestep in Myr
     /* AJE: may need to switch to normalizing over logbin spacing if bins are large
       too avoid small number issues  - this requires undoing the normalization in post */
 
-    in->yields[k + (NUM_METAL_SPECIES-NUM_AGE_TRACERS)] += (1.0 / bin_dt) * dt;   // add to this yield bin
+    const double M_norm = P[i].Mass * (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS)); // arbitrary (kinda)
+
+    if (star_age + dt > pow(10.0, binstart+(k+1)*log_bin_dt)){ // goes over multiple bins!!
+       double tstart = star_age;
+
+       while ( tstart < star_age + dt){
+
+           // do fractional here:
+           bin_dt      =   pow(10.0, binstart + (k+1)*log_bin_dt) - pow(10.0, binstart+k*log_bin_dt);
+           double tend =   DMIN(   pow(10.0,binstart+(k+1)*log_bin_dt),   star_age + dt);
+           in->yields[k+k_age_start] += ((tend - tstart) / bin_dt) * M_norm;
+
+           tstart = tend;
+           k++;
+       }
+
+    } else {
+        // normalization is somewhat arbitrary, but choosing "1" unit per bin per solar mass of star for convenience
+        in->yields[k + k_age_start] += ( dt / bin_dt ) * M_norm;   // add to this yield bin
+    }
+
+
+
 #else
    // NOT YET IMPLEMENTED!!!
    // Do a search over the AgeTracerTimeBins array to find
@@ -396,7 +419,7 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
 
 #endif // metals
 
-    in->Msne = 1.0E-20; // small number just to be nonzero -- AJE make sure this works
+    in->Msne = 1.0E-30; // small number just to be nonzero -- AJE make sure this works
 #endif // age tracer model
 }
 

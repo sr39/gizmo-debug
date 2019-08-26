@@ -600,8 +600,13 @@ void merge_particles_ij(int i, int j)
         }
         PPP[j].Hsml = pow(pow(PPP[j].Hsml,NUMDIMS)+pow(PPP[i].Hsml,NUMDIMS),1.0/NUMDIMS);
 #ifdef METALS
+        /* AJE: Make sure this is O.K. for age tracers: */
         for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++)
             P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k]; /* metal-mass conserving */
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
+        for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++)
+            P[j].Metallicity[k] = P[j].Metallicity[k] + P[i].Metallicity[k]; /* conserve sum of tracer */
+#endif
 #endif
         /* finally zero out the particle mass so it will be deleted */
         P[i].Mass = 0;
@@ -782,6 +787,10 @@ void merge_particles_ij(int i, int j)
 #ifdef METALS
     for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++)
         P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k]; /* metal-mass conserving */
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
+        for(k=NUM_METAL_SPECIES-NUM_AGE_TRACERS;k<NUM_METAL_SPECIES;k++)
+            P[j].Metallicity[k] = P[j].Metallicity[k] + P[i].Metallicity[k]; /* conserve sum of tracer */
+#endif
 #endif
 #ifdef COSMIC_RAYS
     SphP[j].CosmicRayEnergy += SphP[i].CosmicRayEnergy;
