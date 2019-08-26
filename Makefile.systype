@@ -11,8 +11,8 @@
 #
 #############
 
-
-SYSTYPE="Frontera"
+SYSTYPE="Illium"
+#SYSTYPE="Frontera"
 #SYSTYPE="Stampede2"
 #SYSTYPE="Wheeler"
 #SYSTYPE="MacBookPro"

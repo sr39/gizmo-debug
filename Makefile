@@ -309,7 +309,30 @@ OPT     += -DUSE_MPI_IN_PLACE #-DNO_ISEND_IRECV_IN_DOMAIN
 endif
 
 
-
+#----------------------------
+ifeq ($(SYSTYPE),"Illium")
+ANACONDAINCL = /home/aemerick/anaconda3/include
+ANACONDALIB  = /home/aemerick/anaconda3/lib
+CC       =  mpicc
+CXX      =  mpiccxx
+FC       =  $(CC) #mpifort
+OPTIMIZE = -O1 -funroll-loops
+OPTIMIZE += -g -Wall # compiler warnings
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = #
+MKL_LIBS = #
+GSL_INCL = -I$(ANACONDAINCL)
+GSL_LIBS = -L$(ANACONDALIB)
+#FFTW_INCL= -I/home/aemerick/code/local
+#FFTW_LIBS= -L/home/aemerick/code/local
+HDF5INCL = -I$(ANACONDAINCL) -DH5_USE_16_API
+HDF5LIB  = -L$(ANACONDALIB) -lhdf5 -lz
+GRACKLEINCL = -I/home/aemerick/code/local/include
+GRACKLELIBS = -L/home/aemerick/code/local/lib -lgrackle
+MPICHLIB = #
+OPT     += #
+endif
 
 #----------------------------
 ifeq ($(SYSTYPE),"MacBookPro")
