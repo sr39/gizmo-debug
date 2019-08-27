@@ -314,6 +314,10 @@ void begrun(void)
 #endif
 #endif
 
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
+      All.AgeTracerRateLimit = all.AgeTracerRateLimit;
+#endif
+
 #ifdef GR_TABULATED_COSMOLOGY
       All.DarkEnergyConstantW = all.DarkEnergyConstantW;
 #endif
@@ -1095,6 +1099,12 @@ void read_parameter_file(char *fname)
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
         strcpy(tag[nt], "HIIRegion_fLum_Coupled");
         addr[nt] = &All.HIIRegion_fLum_Coupled;
+        id[nt++] = REAL;
+#endif
+
+#ifdef GALSF_FB_FIRE_AGE_TRACER
+        strcpy(tag[nt], "AgeTracerRateLimit");
+        addr[nt] = &All.AgeTracerRateLimit;
         id[nt++] = REAL;
 #endif
 
