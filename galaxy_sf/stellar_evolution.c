@@ -273,10 +273,8 @@ void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
     P[i].AgeDeposition_ThisTimeStep = 1; // always happens (for now)
 
     if (All.AgeTracerRateLimit > 0){
-
       printf("Age tracer rate limiter not yet implemented\n");
       endrun(12349876);
-
     }
 
 #endif
@@ -285,6 +283,9 @@ void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
 void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
 {
     if(All.GasReturnFraction <= 0) return;
+#ifdef NO_WIND_YIELDS
+    return;
+#endif
     double D_RETURN_FRAC = 0.01; // fraction of particle mass to return on a recycling step //
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     D_RETURN_FRAC = 1.0e-7; // needs to be much smaller to have quasi-continuous winds on these scales //
@@ -300,6 +301,9 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
     p = 1.0 - exp(-p); // need to account for p>1 cases //
 #else
     double p=0, star_age = evaluate_stellar_age_Gyr(P[i].StellarAge), ZZ = P[i].Metallicity[0]/All.SolarAbundances[0];
+#ifdef NO_METAL_DEP_YIELDS
+    ZZ = 1.0; // AJE: fix to solar
+#endif
     if(ZZ>3) {ZZ=3;}
     if(ZZ<0.01) {ZZ=0.01;}
     if(star_age<=0.001){p=11.6846;} else {
@@ -311,6 +315,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
     if(star_age < 0.1) {p *= calculate_relative_light_to_mass_ratio_from_imf(star_age,i);} // late-time independent of massive stars
     p *= All.GasReturnFraction * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam); // fraction of particle mass expected to return in the timestep //
     p = 1.0 - exp(-p); // need to account for p>1 cases //
+//    p  = DMIN(1.0, p);   // AJE
     p *= 1.4 * 0.291175; // to give expected return fraction from stellar winds alone (~17%) //
 
     /* // updated fit from M Grudic. More accurate for early times.
@@ -358,11 +363,25 @@ void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i)
 
 
 
+#ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
+int binarySearch(int arr[], int l, int r, int x)
+{
+  if (r>=1){
+    int mid = l + (r-1)/2;
+    if(arr[mid]==x) return mid;
+
+    if(arr[mid]>x) return binarySearch(arr,l,mid-1,x);
+
+    return binarySearch(arr,mid+1,r,x);
+  }
+
+  return -1;
+}
+#endif
+
 
 void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
 {
-
-
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
     P[i].AgeDeposition_ThisTimeStep = 1;
@@ -433,6 +452,40 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
    // NOT YET IMPLEMENTED!!!
    // Do a search over the AgeTracerTimeBins array to find
    // the index corresponding to the age
+
+   if (star_age < All.AgeTracerTimeBins[0]){
+     k = 0;
+   } else if (star_age >= All.AgeTracerTimeBins[NUM_AGE_TRACERS]){
+     return;
+   } else {
+   // search for the bin:
+     k = binarySearch(All.AgeTracerTimeBins, 0, NUM_AGE_TRACERS, star_age);
+     if ((star_age < All.AgeTracerTimeBins[k]) || (k<0)){
+         printf("Binary search not working %d  %f  %f  %f\n",k, star_age, All.AgeTracerTimeBins[k], All.AgeTracerTimeBins[k+1]);
+         endrun(8888);
+     }
+   }
+
+   double bin_dt      =   All.AgeTracerTimeBins[k+1] - All.AgeTracerTimeBins[k];
+
+   if (star_age + dt > All.AgeTracerTimeBins[k+1] ){ // goes over multiple bins!!
+      double tstart = star_age;
+
+      while ( tstart < star_age + dt){
+
+          // do fractional here:
+          bin_dt      =   All.AgeTracerTimeBins[k+1] - All.AgeTracerTimeBins[k];
+          double tend =   DMIN(   All.AgeTracerTimeBins[k+1],   star_age + dt);
+          in->yields[k+k_age_start] += ((tend - tstart) / bin_dt) * M_norm;
+          tstart = tend;
+          k++;
+      }
+
+   } else {
+       // normalization is somewhat arbitrary, but choosing "1" unit per bin per solar mass of star for convenience
+       in->yields[k + k_age_start] += ( dt / bin_dt ) * M_norm;   // add to this yield bin
+   }
+
    printf("ERROR: Custom age tracers not yet implemented\n");
    endrun(1179);
 #endif // custom bins
@@ -471,9 +524,11 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
             yields[1]=3.87;/*He*/ yields[2]=0.133;/*C*/ yields[3]=0.0479;/*N*/ yields[4]=1.17;/*O*/
             yields[5]=0.30;/*Ne*/ yields[6]=0.0987;/*Mg*/ yields[7]=0.0933;/*Si*/
             yields[8]=0.0397;/*S*/ yields[9]=0.00458;/*Ca*/ yields[10]=0.0741;/*Fe*/
+#ifndef NO_METAL_DEP_YIELDS
             // metal-dependent yields:
             if(P[i].Metallicity[0]<0.033) {yields[3]*=P[i].Metallicity[0]/All.SolarAbundances[0];} else {yields[3]*=1.65;} // N scaling is strongly dependent on initial metallicity of the star //
             yields[0] += yields[3]-0.0479; // correct total metal mass for this correction //
+#endif
         }
     }
     if(NUM_METAL_SPECIES==3 || NUM_METAL_SPECIES==4)
@@ -489,7 +544,7 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
 #ifndef NO_SURFACE_ABUNDANCES
     /* add a check to allow for larger abundances in the progenitor stars (usually irrelevant) */
     /* AJE Q: What does the below line scale for? */
-    for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]);}
+    // for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]);}
 #endif
     if(SNeIaFlag) {if(NUM_METAL_SPECIES>=10) {yields[1]=0.0;}} // no He yield for Ia SNe //
     for(k=0;k<NUM_METAL_SPECIES;k++) {if(yields[k]<0) {yields[k]=0.0;} if(yields[k]>1) {yields[k]=1;} in->yields[k]=yields[k];}
@@ -518,14 +573,17 @@ void particle2in_addFB_winds(struct addFBdata_in *in, int i)
         /*   the interesting species are He & CNO: below is based on a compilation of van den Hoek & Groenewegen 1997, Marigo 2001, Izzard 2004 */
 #ifndef NO_WIND_YIELDS
         yields[1]=0.36; /*He*/ yields[2]=0.016; /*C*/ yields[3]=0.0041; /*N*/ yields[4]=0.0118; /*O*/
-#endif
-#ifndef NO_SURFACE_ABUNDANCES
+#ifndef NO_METAL_DEP_YIELDS
         // metal-dependent yields: O scaling is strongly dependent on initial metallicity of the star //
         if(P[i].Metallicity[0]<0.033) {yields[4] *= P[i].Metallicity[0]/All.SolarAbundances[0];} else {yields[4] *= 1.65;}
+#endif // metal dep yields
+#ifndef NO_SURFACE_ABUNDANCES
         /* AJE Q: What does the below line scale for? */
-        for(k=1;k<=4;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]); if(yields[k]<0) {yields[k]=0.0;} if(yields[k]>1) {yields[k]=1;} in->yields[k]=yields[k];} // enforce yields obeying pre-existing surface abundances, and upper/lower limits //
+        //for(k=1;k<=4;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]); if(yields[k]<0) {yields[k]=0.0;} if(yields[k]>1) {yields[k]=1;} in->yields[k]=yields[k];} // enforce yields obeying pre-existing surface abundances, and upper/lower limits //
+#endif // surface abundances
         yields[0]=0.0; for(k=2;k<NUM_METAL_SPECIES;k++) {yields[0]+=yields[k];}
-#endif
+#endif // wind yields
+
     } else {
         yields[0]=0.032; for(k=1;k<NUM_METAL_SPECIES;k++) {yields[k]=0.0;}
     }

@@ -316,6 +316,9 @@ void begrun(void)
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
       All.AgeTracerRateLimit = all.AgeTracerRateLimit;
+#ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
+      strcpy(All.AgeTracerListFilename, all.AgeTracerListFilename);
+#endif
 #endif
 
 #ifdef GR_TABULATED_COSMOLOGY
@@ -1106,6 +1109,11 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "AgeTracerRateLimit");
         addr[nt] = &All.AgeTracerRateLimit;
         id[nt++] = REAL;
+#ifdef GALSF_FB_FIRE_AGE_TRACER_CUSTOM
+        strcpy(tag[nt], "AgeTracerListFilename");
+        addr[nt] = &All.AgeTracerListFilename;
+        id[nt++] = STRING;
+#endif
 #endif
 
 #ifdef RT_LEBRON
@@ -2009,6 +2017,10 @@ void read_parameter_file(char *fname)
             errorFlag += read_outputlist(All.OutputListFilename);
         else
             All.OutputListLength = 0;
+
+#ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
+        errorFlag += read_agetracerlist(All.AgeTracerListFilename);
+#endif
     }
 
     MPI_Bcast(&errorFlag, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -2313,6 +2325,59 @@ void read_parameter_file(char *fname)
 }
 
 
+#ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
+int read_agetracerlist(char *fname)
+{
+  FILE *fd;
+  int count;
+  char buf[512];
+
+  if(!(fd = fopen(fname, "r")))
+    {
+      printf("can't read age tracer list in file '%s'\n", fname);
+      return 1;
+    }
+
+  int i = 0;
+  while(1)
+    {
+      if(fgets(buf, 500, fd) != buf)
+        break;
+
+      count = sscanf(buf, " %lg", &All.AgeTracerTimeBins[i]);
+
+      if(count == 1)
+        flag = 1;
+
+      if(count == 1 || count == 2)
+        {
+          if(i >= NUM_AGE_TRACERS)
+            {
+              if(ThisTask == 0)
+                printf("\ntoo many entries in age tracer list. You should increase NUM_AGE_TRACERS=%d.\n",
+                       (int) NUM_AGE_TRACERS);
+              endrun(313);
+            }
+
+          i++;
+        }
+    }
+
+  if (i < NUM_AGE_TRACERS){
+    printf("\n not enough entries in age tracer list\n");
+
+    endrun(314); // for now, once tested do below:
+    for(int k = i; k < NUM_AGE_TRACERS; k++){ All.AgeTracerTimeBins[k] = All.AgeTracerTimeBins[k-1];}
+  }
+
+  fclose(fd);
+
+  printf("\nfound %d age tracer bins in age tracer list.\n", i);
+  return 1;
+}
+
+
+#endif
 
 /*! this function reads a table with a list of desired output times. The table
  *  does not have to be ordered in any way, but may not contain more than

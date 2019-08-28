@@ -217,9 +217,10 @@
 #define GALSF_FB_FIRE_RT_LONGRANGE          /*! continuous acceleration from starlight (uses luminosity tree) to propagate FIRE RT */
 #define GALSF_FB_FIRE_RT_UVHEATING          /*! use estimate of local spectral information from FIRE RT for photoionization and photoelectric heating */
 #define GALSF_FB_FIRE_RPROCESS 4            /*! tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model) */
-#define GALSF_FB_FIRE_AGE_TRACERS 15         /*! tracks a set of passive scalars corresponding to stellar ages for chemical evolution model postprocessing */
-#define NO_SURFACE_ABUNDANCES               /*! AJE: Testing purposes */
-#define NO_WIND_YIELDS                      /*! AJE: Testing purposes */
+#define GALSF_FB_FIRE_AGE_TRACERS 20         /*! tracks a set of passive scalars corresponding to stellar ages for chemical evolution model postprocessing */
+//#define NO_SURFACE_ABUNDANCES               /*! AJE: Testing purposes */
+// #define NO_WIND_YIELDS                      /*! AJE: Testing purposes */
+#define NO_METAL_DEP_YIELDS     /* AJE: Testing purposes */
 //#define GALSF_SFR_IMF_VARIATION           /*! track [do not change] properties of gas from which stars form, for IMF models in post-processing */
 #define PROTECT_FROZEN_FIRE                 /*! protect code so FIRE runs are not modified by various code updates, etc -- default FIRE-2 code locked */
 #else
@@ -1025,7 +1026,7 @@ typedef unsigned long long peanokey;
 #endif
 
 #ifndef AGE_TRACER_BIN_END
-#define AGE_TRACER_BIN_END 1400.0 /* end time bin in Myr */
+#define AGE_TRACER_BIN_END 14000.0 /* end time bin in Myr */
 #endif
 
 #else
