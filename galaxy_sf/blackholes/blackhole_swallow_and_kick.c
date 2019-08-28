@@ -418,7 +418,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                     {
                         f_accreted = All.BAL_f_accretion; /* if particle is gas, only a fraction gets accreted in these particular modules */
 #ifndef BH_GRAVCAPTURE_GAS
-                        if((All.BlackHoleFeedbackFactor > 0) && (All.BlackHoleFeedbackFactor != 1.)) {f_accreted /= All.BlackHoleFeedbackFactor;} else {if(All.BAL_v_outflow > 0) f_accreted = 1./(1. + fabs(1.*BH_WIND_KICK)*All.BlackHoleRadiativeEfficiency*(C/All.UnitVelocity_in_cm_per_s)/(All.BAL_v_outflow*(1e5/All.UnitVelocity_in_cm_per_s)));}
+                        if((All.BlackHoleFeedbackFactor > 0) && (All.BlackHoleFeedbackFactor != 1.)) {f_accreted /= All.BlackHoleFeedbackFactor;} else {if(All.BAL_v_outflow > 0) f_accreted = 1./(1. + fabs(1.*BH_WIND_KICK)*All.BlackHoleRadiativeEfficiency*(C/All.UnitVelocity_in_cm_per_s)/(All.BAL_v_outflow));}
                         if((bh_mass_withdisk - mass) <= 0) {f_accreted=0;} // DAA: no need to accrete gas particle to enforce mass conservation (we will simply kick),  note that here the particle mass P.Mass is larger than the physical BH mass P.BH_Mass
 #endif
                     }
@@ -514,7 +514,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
 #endif
 
 #ifdef BH_WIND_KICK     /* BAL kicking operations. NOTE: we have two separate BAL wind models, particle kicking and smooth wind model. This is where we do the particle kicking BAL model. This should also work when there is alpha-disk. */
-                        v_kick=All.BAL_v_outflow*(1e5/All.UnitVelocity_in_cm_per_s); for(k=0;k<3;k++) {dir[k]=dP[k];} // DAA: default direction is radially outwards
+                        v_kick=All.BAL_v_outflow; for(k=0;k<3;k++) {dir[k]=dP[k];} // DAA: default direction is radially outwards
 #if defined(BH_COSMIC_RAYS) /* inject cosmic rays alongside wind injection */
                         double dEcr = All.BH_CosmicRay_Injection_Efficiency * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * (C / All.UnitVelocity_in_cm_per_s)*(C / All.UnitVelocity_in_cm_per_s); SphP[j].CosmicRayEnergy+=dEcr; SphP[j].CosmicRayEnergyPred+=dEcr;
 #ifdef COSMIC_RAYS_M1
@@ -595,12 +595,12 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *nexport, int 
                         SphP[j].MassTrue += m_wind;
 #endif
                         /* now add wind momentum to particle */
-                        if(dvr_gas_to_bh < All.BAL_v_outflow*(1e5/All.UnitVelocity_in_cm_per_s))   // gas moving away from BH at v < BAL speed
+                        if(dvr_gas_to_bh < All.BAL_v_outflow)   // gas moving away from BH at v < BAL speed
                         {
                             double e_wind = 0;
                             for(k=0;k<3;k++)
                             {
-                                norm = All.cf_atime*All.BAL_v_outflow*(1e5/All.UnitVelocity_in_cm_per_s)*dir[k] - dv[k]; // relative wind-particle velocity (in code units) including BH-particle motion;
+                                norm = All.cf_atime*All.BAL_v_outflow*dir[k] - dv[k]; // relative wind-particle velocity (in code units) including BH-particle motion;
                                 P[j].Vel[k] += All.BlackHoleFeedbackFactor * norm * m_wind/P[j].Mass; // momentum conservation gives updated velocity
                                 SphP[j].VelPred[k] += All.BlackHoleFeedbackFactor * norm * m_wind/P[j].Mass;
                                 e_wind += (norm/All.cf_atime)*(norm/All.cf_atime); // -specific- shocked wind energy
@@ -907,7 +907,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         if(cos_theta<0) {jet_theta=M_PI-jet_theta;} // determines 'up' or 'down' based on which hemisphere particle is in
         veldir[0]=sin(jet_theta)*cos_phi; veldir[1]=sin(jet_theta)*sin_phi; veldir[2]=cos(jet_theta);//relative direction of velocity compared to BH_Specific_AngMom
 #endif
-        double v_magnitude = All.BAL_v_outflow*(1e5/All.UnitVelocity_in_cm_per_s) * All.cf_atime; // velocity of the jet
+        double v_magnitude = All.BAL_v_outflow * All.cf_atime; // velocity of the jet
 #ifdef SINGLE_STAR_FB_JETS
         double R_star_solar_launch = 10; // without a better guess, assume fiducial protostellar radius of 10*Rsun, as in Federrath 2014
 #ifdef SINGLE_STAR_PROTOSTELLAR_EVOLUTION

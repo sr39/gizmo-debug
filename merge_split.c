@@ -41,7 +41,7 @@ int does_particle_need_to_be_merged(int i)
     {
 #ifdef BH_DEBUG_SPAWN_JET_TEST
         MyFloat vr2 = (P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]) * All.cf_a2inv; // physical
-        if(vr2 <= 0.01 * All.BAL_v_outflow*(1e5/All.UnitVelocity_in_cm_per_s)*All.BAL_v_outflow*(1e5/All.UnitVelocity_in_cm_per_s)) {return 1;} else {return 0;} // merge only if velocity condition satisfied, even if surrounded by more massive particles //
+        if(vr2 <= 0.01 * All.BAL_v_outflow*All.BAL_v_outflow) {return 1;} else {return 0;} // merge only if velocity condition satisfied, even if surrounded by more massive particles //
 #else
         if(P[i].Mass < (All.MaxMassForParticleSplit * ref_mass_factor(i))) return 1;
 #endif
@@ -205,7 +205,7 @@ void merge_and_split_particles(void)
 #ifdef BH_WIND_SPAWN
                                 double v2_tmp=0,vr_tmp=0; int ktmp=0; for(ktmp=0;ktmp<3;ktmp++) {v2_tmp+=(P[i].Vel[ktmp]-P[j].Vel[ktmp])*(P[i].Vel[ktmp]-P[j].Vel[ktmp]); vr_tmp+=(P[i].Vel[ktmp]-P[j].Vel[ktmp])*(P[i].Pos[ktmp]-P[j].Pos[ktmp]);}
                                 if(v2_tmp > 0) {v2_tmp=sqrt(v2_tmp*All.cf_a2inv);} else {v2_tmp=0;}
-                                if(((v2_tmp < 0.2*All.BAL_v_outflow*(1e5/All.UnitVelocity_in_cm_per_s)) || (v2_tmp < 0.9*Particle_effective_soundspeed_i(j)*All.cf_afac3)) && (vr_tmp < 0)) /* check if particle has strongly decelerated to be either sub-sonic or well-below launch velocity, and two particles are approaching */
+                                if(((v2_tmp < 0.2*All.BAL_v_outflow) || (v2_tmp < 0.9*Particle_effective_soundspeed_i(j)*All.cf_afac3)) && (vr_tmp < 0)) /* check if particle has strongly decelerated to be either sub-sonic or well-below launch velocity, and two particles are approaching */
 #endif
                                 {
                                     if(P[j].Mass<threshold_val) {threshold_val=P[j].Mass; target_for_merger=j;} // mass-based //
