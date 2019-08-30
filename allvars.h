@@ -56,7 +56,7 @@
 
 #define DO_PREPROCESSOR_EXPAND_(VAL)  VAL ## 1
 #define EXPAND_PREPROCESSOR_(VAL)     DO_PREPROCESSOR_EXPAND_(VAL) /* checks for a NON-ZERO value of this parameter */
-
+#define CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(VAL) !(EXPAND_PREPROCESSOR_(VAL) == 1) /* returns True if a non-zero int value of VAL is set */
 
 #if !defined(SLOPE_LIMITER_TOLERANCE)
 #if defined(AGGRESSIVE_SLOPE_LIMITERS)
@@ -164,8 +164,8 @@
 #define BOX_SHEARING_Q SHEARING_BOX_Q
 #endif
 #ifdef ANALYTIC_GRAVITY
-#if !(EXPAND_PREPROCESSOR_(ANALYTIC_GRAVITY) == 1)
-#define GRAVITY_ANALYTIC 1
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(ANALYTIC_GRAVITY)
+#define GRAVITY_ANALYTIC ANALYTIC_GRAVITY
 #else
 #define GRAVITY_ANALYTIC
 #endif
@@ -228,6 +228,9 @@
 #if !defined(OUTPUT_POSITIONS_IN_DOUBLE)
 #define OUTPUT_POSITIONS_IN_DOUBLE
 #endif
+#if !defined(ALLOW_IMBALANCED_GASPARTICLELOAD)
+#define ALLOW_IMBALANCED_GASPARTICLELOAD
+#endif
 #if defined(PMGRID)
 #if !defined(PM_PLACEHIGHRESREGION)
 #define PM_PLACEHIGHRESREGION 19 /* 1+2+16 */
@@ -236,6 +239,7 @@
 #define PM_HIRES_REGION_CLIPPING 3000 /* just a safety factor here */
 #endif
 #endif
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(FIRE_PHYSICS_DEFAULTS) /* check if a numerical value is set */
 #if (FIRE_PHYSICS_DEFAULTS == 1)
 #define FIRE1_SNE_COUPLING      /* reverts to old mass-scalar-weight, 1-way-search, non-tensor-renormalized SNe model */
 #define EOS_TRUELOVE_PRESSURE   /* uses effective EOS for gas near resolution limit */
@@ -250,6 +254,7 @@
 #undef GALSF_SFR_VIRIAL_SF_CRITERION    /* can't be used reliably with effective EOS, will give bogus results */
 #define GALSF_SFR_VIRIAL_SF_CRITERION 4 /*! sink-particle like self-gravity requirement for star formation: slightly more sophisticated version per Mike */
 #endif
+#endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
 #else
 #if (defined(COOLING) && defined(GALSF) && defined(GALSF_FB_MECHANICAL)) && !defined(FIRE_UNPROTECT_FROZEN)
 #define PROTECT_FROZEN_FIRE
@@ -729,7 +734,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 
 #if defined(GRAVITY_ANALYTIC)
-#if !(EXPAND_PREPROCESSOR_(GRAVITY_ANALYTIC) == 1)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(GRAVITY_ANALYTIC)
 #if (GRAVITY_ANALYTIC > 0)
 #define GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE /* ok, analytic gravity is defined with a numerical value > 0, indicating we should use this flag */
 #ifndef BH_CALC_DISTANCES
