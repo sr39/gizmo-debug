@@ -1843,6 +1843,7 @@ The remaining flags in this section all turn on/off additional (optional) output
 # ----- General De-Bugging and Special Behaviors
 #DEVELOPER_MODE                 # allows you to modify various numerical parameters (courant factor, etc) at run-time
 #LONG_INTEGER_TIME              # total number of integer time step = 1<<39
+#FORCE_EQUAL_TIMESTEPS          # force the code to use a single universal timestep (can change in time, but all particles advance together). chosen as minimum of any particle that step.
 #STOP_WHEN_BELOW_MINTIMESTEP    # forces code to quit when stepsize wants to go below MinSizeTimestep specified in the parameterfile
 #DEBUG                          # enables core-dumps and FPU exceptions
 # --------------------
@@ -1910,6 +1911,8 @@ These are miscellaneous flags for de-bugging and special purpose behaviors. If y
 **DEVELOPER\_MODE**: Turn this on to give yourself the option to set many numerical parameters explicitly in the run-time parameterfile. This includes things like the Courant factor and other error tolerance parameters. Otherwise these are hard-coded. Only enable this if you know what you are doing!!!
 
 **LONG\_INTEGER\_TIME**: By default, the depth of the timebin tree is set to the size of an int, which allows for a dynamic range of timesteps of $\sim 2^{30}$ or so. This is almost always sufficient, but if needed, using this flag (at the cost of some memory) will extend the list to long ints, allowing at least $\sim 2^{40}$ dynamic range in timetree. Use this if your timesteps are dropping below the min allowed, but you think your simulation should actually be able to run for the desired maximum time (otherwise shorten that time, since the time-tree needs to extend to that time). 
+
+**FORCE\_EQUAL\_TIMESTEPS**: Force the code to take uniform timesteps (all elements in the same time-bin, set to the lowest value of any element in the timestep routine). This global timestepping is extremely inefficient for all but some very special problems (e.g. uniform sub-sonic turbulence), but very useful for de-bugging and testing conservation properties.
 
 **STOP\_WHEN\_BELOW\_MINTIMESTEP**: Forces code to quit when stepsize wants to go below MinSizeTimestep specified in the parameterfile.
 
