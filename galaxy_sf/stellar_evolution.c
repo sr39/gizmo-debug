@@ -623,7 +623,9 @@ void particle2in_addFB_SNe(struct addFBdata_in *in, int i)
     for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]);}
 #else
     // direct add in surface abundances without scaling to do better test
+#ifndef NO_SURFACE_ABUNDANCES
     for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {yields[k]=yields[k] + P[i].Metallicity[k];}
+#endif    
 #endif
 
 
