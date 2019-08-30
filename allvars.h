@@ -1989,7 +1989,7 @@ extern struct global_data_all_processes
 #endif
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-  double AgeTracerRateLimit;
+  double AgeTracerRateLimitThreshold;
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
   double AgeTracerTimeBins[NUM_AGE_TRACERS];
   char AgeTracerListFilename[100];

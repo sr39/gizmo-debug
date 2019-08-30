@@ -267,11 +267,36 @@ void mechanical_fb_calculate_eventrates_Rprocess(int i, double dt)
 void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
 {
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-    P[i].AgeDeposition_ThisTimeStep = 1; // always happens (for now)
 
-    if (All.AgeTracerRateLimit > 0){
-      printf("Age tracer rate limiter not yet implemented\n");
-      endrun(12349876);
+    P[i].AgeDeposition_ThisTimeStep = 1;
+    if (All.AgeTracerRateLimitThreshold <= 0) { return;}
+
+      // find bin - make sure dt is not comparable to width
+    const double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge) * 1000.0; // Age in Myr
+    dt                   *= All.UnitTime_in_Megayears; // convert to Myr
+    const int k           = get_age_tracer_bin(star_age);
+#ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
+    const double bin_dt   = All.AgeTracerTimeBins[k+1] - All.AgeTracerTimeBins[k];
+#else
+    const double log_bin_dt = (log10(AGE_TRACER_BIN_END - log10(AGE_TRACER_BIN_START)))
+                                        / (1.0*NUM_AGE_TRACERS);
+    const double bin_dt = pow(10.0,log10(AGE_TRACER_BIN_START+(k+1)*log_bin_dt)) -
+                          pow(10.0,log10(AGE_TRACER_BIN_START+(k  )*log_bin_dt));
+#endif
+
+    // if dt is large compared to bin spacing, make an event
+    if (dt / star_age > All.AgeTracerRateLimitThreshold){
+      P[i].AgeDeposition_ThisTimeStep = 1; // make event
+    }
+
+    // otherwise, rate limit
+    double D_RETURN_FRAC = 0.10; // only do this 1% of the time - make a free variable
+    if(get_random_number(P[i].ID + 5) < 1.0 / D_RETURN_FRAC){
+        // deposit age tracer and use this scaling to increase
+        // the normalization of the tracer field
+        P[i].AgeDeposition_ThisTimeStep = 1.0 / D_RETURN_FRAC;
+    } else {
+        P[i].AgeDeposition_ThisTimeStep = 0;
     }
 
 #endif
@@ -394,7 +419,6 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
 */
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-    P[i].AgeDeposition_ThisTimeStep = 1;
     int k; if(P[i].AgeDeposition_ThisTimeStep<=0) {in->Msne=0; return;} // no deposition
 
     if (P[i].Type != 4) return; // do nothing!
@@ -413,7 +437,8 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
 
     /* AJE: may need to switch to normalizing over logbin spacing if bins are large
       too avoid small number issues  - this requires undoing the normalization in post */
-    const double M_norm = P[i].Mass * (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS)); // arbitrary (kinda)
+    const double M_norm = P[i].Mass * (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS))
+                                    * P[i].AgeDeposition_ThisTimeStep;
 
 #ifndef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
     // find the age tracer bin to dump into using
