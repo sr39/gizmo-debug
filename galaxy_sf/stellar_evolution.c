@@ -155,9 +155,6 @@ void particle2in_addFB_fromstars(struct addFBdata_in *in, int i, int fb_loop_ite
     in->Msne = P[i].SNe_ThisTimeStep * (14.8*SOLAR_MASS)/(All.UnitMass_in_g/All.HubbleParam); // assume every SNe carries 14.8 solar masses (IMF-average)
     in->SNe_v_ejecta = 2.607e8 / All.UnitVelocity_in_cm_per_s; // assume ejecta are ~2607 km/s [KE=1e51 erg, for M=14.8 Msun]
 #ifdef METALS
-    /* .... AJE: Make sure below scaling doesn't screw up age tracers....
-                 May need to just make new val to cut off loop below age tracers:
-    */
     int k; for(k=0;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {in->yields[k]=0.178*All.SolarAbundances[k]/All.SolarAbundances[0];} // assume a universal solar-type yield with ~2.63 Msun of metals
     if(NUM_METAL_SPECIES>=10) {in->yields[1] = 0.4;} // (catch for Helium, which the above scaling would give bad values for)
 #endif
@@ -278,6 +275,7 @@ void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
     }
 
 #endif
+    return;
 }
 
 void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
@@ -315,7 +313,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
     if(star_age < 0.1) {p *= calculate_relative_light_to_mass_ratio_from_imf(star_age,i);} // late-time independent of massive stars
     p *= All.GasReturnFraction * (dt*0.001*All.UnitTime_in_Megayears/All.HubbleParam); // fraction of particle mass expected to return in the timestep //
     p = 1.0 - exp(-p); // need to account for p>1 cases //
-//    p  = DMIN(1.0, p);   // AJE
+    p  = DMIN(1.0, p);
     p *= 1.4 * 0.291175; // to give expected return fraction from stellar winds alone (~17%) //
 
     /* // updated fit from M Grudic. More accurate for early times.
@@ -384,6 +382,16 @@ int binarySearch(const double * arr, int l, int r, const double x)
 
 void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
 {
+/*
+  Routine injects passive scalar tracer field for each star particle
+  according to the age of that particle for post processing stellar
+  abundances. Finds the appropriate time bin(s) to inject into given
+  the star's age and the timestep. Normalization of these fields is
+  somewhat arbitrary, but normalizing such that each star deposits
+  1 unit in each time bin (regardless of size) per solar mass. Thus,
+  scaling is simple (just multiply field by mass of metal species
+  produced per solar mass of star formation to get an abundance)
+*/
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
     P[i].AgeDeposition_ThisTimeStep = 1;
@@ -448,8 +456,6 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
         in->yields[k + k_age_start] += ( dt / bin_dt ) * M_norm;   // add to this yield bin
     }
 
-
-
 #else
    // Do a search over the AgeTracerTimeBins array to find
    // the index corresponding to the age
@@ -466,15 +472,13 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
          endrun(8888);
      }
    }
-   printf("Search found that a star of age %f belongs in bin %d between bounds %f and %f\n", star_age, k, All.AgeTracerTimeBins[k], All.AgeTracerTimeBins[k+1]);
+//   printf("Search found that a star of age %f belongs in bin %d between bounds %f and %f\n", star_age, k, All.AgeTracerTimeBins[k], All.AgeTracerTimeBins[k+1]);
 
    double bin_dt      =   All.AgeTracerTimeBins[k+1] - All.AgeTracerTimeBins[k];
-
    if (star_age + dt > All.AgeTracerTimeBins[k+1] ){ // goes over multiple bins!!
       double tstart = star_age;
 
       while ( tstart < star_age + dt){
-
           // do fractional here:
           bin_dt      =   All.AgeTracerTimeBins[k+1] - All.AgeTracerTimeBins[k];
           double tend =   DMIN(   All.AgeTracerTimeBins[k+1],   star_age + dt);
@@ -496,9 +500,6 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
     in->Msne = 1.0E-30; // small number just to be nonzero -- AJE make sure this works
 #endif // age tracer model
 }
-
-
-
 
 
 
