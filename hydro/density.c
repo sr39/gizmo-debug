@@ -85,7 +85,7 @@ static struct densdata_out
     MyLongDouble EgyRho;
 #endif
 
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
     MyFloat AGS_zeta;
 #endif
 
@@ -168,7 +168,7 @@ void out2particle_density(struct densdata_out *out, int i, int mode)
         ASSIGN_ADD(SphP[i].DhsmlHydroSumFactor, out->DhsmlHydroSumFactor, mode);
 #endif
 
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
         ASSIGN_ADD(PPPZ[i].AGS_zeta, out->AGS_zeta,   mode);
 #endif
 
@@ -590,8 +590,8 @@ void density(void)
                 } else {
                     PPP[i].NumNgb = PPP[i].DhsmlNgbFactor = P[i].Particle_DivVel = 0;
                 }
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-                if(P[i].Type > 0) {PPP[i].Particle_DivVel = 0;}
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) /* if particle is AGS-active and non-gas, set DivVel to zero because it will be reset in ags_hsml routine */
+                if( ((1 << P[i].Type) & (ADAPTIVE_GRAVSOFT_FORALL)) && (P[i].Type > 0) ) {PPP[i].Particle_DivVel = 0;}
 #endif
                 
                 // inverse of SPH volume element (to satisfy constraint implicit in Lagrange multipliers)
@@ -1110,7 +1110,7 @@ void density(void)
 #endif
             
             
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
             /* non-gas particles are handled separately, in the ags_hsml routine */
             if(P[i].Type==0)
             {
@@ -1267,7 +1267,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     out.DhsmlHydroSumFactor += -mass_eff * (NUMDIMS * kernel.hinv * kernel.wk + u * kernel.dwk);
 #endif
                     
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
                     if(local.Type == 0) {out.AGS_zeta += mass_j * kernel_gravity(u, kernel.hinv, kernel.hinv3, 0);}
 #endif
                     /* for everything below, we do NOT include the particle self-contribution! */
