@@ -821,22 +821,16 @@ void force_update_node_recursive(int no, int sib, int father)
                     
                     /* update of the maximum gravitational softening  */
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-                    if(PPP[p].AGS_Hsml > maxsoft)
-                        maxsoft = PPP[p].AGS_Hsml;
+                    if(PPP[p].AGS_Hsml > maxsoft) {maxsoft = PPP[p].AGS_Hsml;}
 #else
 #ifndef ADAPTIVE_GRAVSOFT_FORGAS
-                    if(All.ForceSoftening[pa->Type] > maxsoft)
-                        maxsoft = All.ForceSoftening[pa->Type];
+                    if(All.ForceSoftening[pa->Type] > maxsoft) {maxsoft = All.ForceSoftening[pa->Type];}
 #else
                     if(pa->Type == 0)
                     {
-                        if(PPP[p].Hsml > maxsoft)
-                            maxsoft = PPP[p].Hsml;
-                    }
-                    else
-                    {
-                        if(All.ForceSoftening[pa->Type] > maxsoft)
-                            maxsoft = All.ForceSoftening[pa->Type];
+                        if(PPP[p].Hsml > maxsoft) {maxsoft = PPP[p].Hsml;}
+                    } else {
+                        if(All.ForceSoftening[pa->Type] > maxsoft) {maxsoft = All.ForceSoftening[pa->Type];}
                     }
 #endif
 #endif
@@ -1816,22 +1810,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS)
         if((ptype == 0) && (PPP[target].Hsml>All.ForceSoftening[ptype]))
         {
-            soft = PPP[target].Hsml;
-            zeta = PPPZ[target].AGS_zeta;
+            soft = PPP[target].Hsml; zeta = PPPZ[target].AGS_zeta;
         } else {
-            soft = All.ForceSoftening[ptype];
-            zeta = 0;
+            soft = All.ForceSoftening[ptype]; zeta = 0;
         }
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORALL)
-        if(PPP[target].AGS_Hsml > All.ForceSoftening[ptype])
-        {
-            soft = PPP[target].AGS_Hsml;
-            zeta = PPPZ[target].AGS_zeta;
-        } else {
-            soft = All.ForceSoftening[ptype];
-            zeta = 0;
-        }
+        soft = PPP[target].AGS_Hsml;
+        zeta = PPPZ[target].AGS_zeta;
 #endif
 #if defined(PMGRID) && defined(PM_PLACEHIGHRESREGION)
         if(pmforce_is_particle_high_res(ptype, P[target].Pos))
@@ -2085,40 +2071,16 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 }
 #endif
                 
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
-                /* set secondary softening and zeta term */
-                ptype_sec = P[no].Type;
-                j0_sec_for_ags = no;
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) /* set secondary softening and zeta term */
+                    ptype_sec = P[no].Type; j0_sec_for_ags = no;
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
-                if(ptype_sec == 0)
+                    if(ptype_sec == 0) {h_p_inv=1./PPP[no].Hsml; zeta_sec=PPPZ[no].AGS_zeta;} else {h_p_inv=1./All.ForceSoftening[P[no].Type]; zeta_sec=0;}
 #else
-                    if(ptype_sec > -1) /* trigger for all particles */
+                    h_p_inv=1./PPP[no].AGS_Hsml; zeta_sec=PPPZ[no].AGS_zeta;
 #endif
-                    {
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-                        double h_no = PPP[no].AGS_Hsml;
 #else
-                        double h_no = PPP[no].Hsml;
-#endif
-                        if(h_no > All.ForceSoftening[P[no].Type])
-                        {
-                            h_p_inv = 1.0 / h_no;
-                            zeta_sec = PPPZ[no].AGS_zeta;
-                        }
-                        else
-                        {
-                            h_p_inv = 1.0 / All.ForceSoftening[P[no].Type];
-                            zeta_sec = 0;
-                        }
-                    }
-                    else
-                    {
-                        h_p_inv = 1.0 / All.ForceSoftening[P[no].Type];
-                        zeta_sec = 0;
-                    }
-#else
-                h = All.ForceSoftening[ptype];
-                if(h < All.ForceSoftening[P[no].Type]) {h = All.ForceSoftening[P[no].Type];}
+                    h = All.ForceSoftening[ptype];
+                    if(h < All.ForceSoftening[P[no].Type]) {h = All.ForceSoftening[P[no].Type];}
 #endif
                 } // closes (if((r2 > 0) && (mass > 0))) check
                 
@@ -2383,10 +2345,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
                 /* set secondary softening and zeta term */
                 if(nop->maxsoft > 0) {h_p_inv = 1.0 / nop->maxsoft;} else {h_p_inv = 0;}
-                zeta_sec = 0;
-                ptype_sec = -1;
-                j0_sec_for_ags = -1;
-
+                zeta_sec = 0; ptype_sec = -1; j0_sec_for_ags = -1;
                 if(h < nop->maxsoft) // compare primary softening to node maximum
                 {
                     if(r2 < nop->maxsoft * nop->maxsoft) // inside node maxsoft! continue down tree
@@ -2504,16 +2463,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if((h_p_inv > 0) && (ptype_sec > -1))
                 {
 #ifdef HYDRO_SPH
-                    if(h_p_inv != h_inv)
-                    {
-                        h_p3_inv = h_p_inv * h_p_inv * h_p_inv;
-                        u_p = r * h_p_inv;
-                        fac += mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1);
-                        fac *= 0.5;
-                    } else {
-                        if(zeta_sec != 0)
-                        {u_p=u; h_p3_inv=h3_inv;}
-                    }
+                    h_p3_inv = h_p_inv * h_p_inv * h_p_inv; u_p = r * h_p_inv;
+                    fac = 0.5 * (fac + mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1)); // average with neighbor
+#if defined(COMPUTE_TIDAL_TENSOR_IN_GRAVTREE)
+                    double h_p5_inv = h_p3_inv * h_p_inv * h_p_inv;
+                    if(u_p < 0.5) {fac2_tidal += mass * h_p5_inv * (76.8 - 96.0 * u_p);} else if(u_p <1) {fac2_tidal += mass * h_p5_inv * (-0.2 / (u_p * u_p * u_p * u_p * u_p) + 48.0 / u_p - 76.8 + 32.0 * u_p);} else {fac2_tidal += 3 * mass / (r2 * r2 * r);}
+                    fac2_tidal *= 0.5; // average forces -> average in tidal tensor as well
+#endif
                     // correction only applies to 'shared-kernel' particles: so this needs to check if
                     // these are the same particles for which the kernel lengths are computed
                     if((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG))
@@ -2523,15 +2479,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         {
                             kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
                             fac_corr += -(zeta/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
-                        } // if(ptype==0)
-                        
-                        if(zeta_sec != 0) // secondary is adaptively-softened particle (set above)
-                            if(h_p_inv > 0)
-                                if((r>0) && (u_p<1) && (pmass>0))
-                                {
-                                    kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
-                                    fac_corr += -(zeta_sec/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
-                                } // if(zeta_sec != 0)
+                        }
+                        if((zeta_sec!=0) && (h_p_inv>0) && (r>0) && (u_p<1) && (pmass>0)) // secondary is adaptively-softened particle (set above)
+                        {
+                            kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
+                            fac_corr += -(zeta_sec/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
+                        } // if(zeta_sec != 0)
                         if(!isnan(fac_corr)) {fac += fac_corr;}
                     } // if(ptype==ptype_sec)
 #else
@@ -3319,12 +3272,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
         }
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-        if(PPP[target].AGS_Hsml > All.ForceSoftening[ptype])
-        {
-            soft = PPP[target].AGS_Hsml;
-        } else {
-            soft = All.ForceSoftening[ptype];
-        }
+        soft = PPP[target].AGS_Hsml;
 #endif
 #if defined(PMGRID) && defined(PM_PLACEHIGHRESREGION)
         if(pmforce_is_particle_high_res(ptype, P[target].Pos))
@@ -3459,19 +3407,14 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
             if(no < All.MaxPart)
             {
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
-                /* set softening */
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-                h = soft;
+                h = soft; /* set softening */
 #else
-                if(ptype == 0)
-                    h = soft;
-                else
-                    h = All.ForceSoftening[ptype];
+                if(ptype == 0) {h = soft;} else {h = All.ForceSoftening[ptype];} /* set softening */
 #endif
 #else
                 h = All.ForceSoftening[ptype];
-                if(h < All.ForceSoftening[P[no].Type])
-                    h = All.ForceSoftening[P[no].Type];
+                if(h < All.ForceSoftening[P[no].Type]) {h = All.ForceSoftening[P[no].Type];}
 #endif
                 no = Nextnode[no];
             }
@@ -3593,10 +3536,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
                 h = soft;
 #else
-                if(ptype == 0)
-                    h = soft;
-                else
-                    h = All.ForceSoftening[ptype];
+                if(ptype == 0) {h = soft;} else {h = All.ForceSoftening[ptype];}
 #endif
                 
                 if(h < nop->maxsoft)

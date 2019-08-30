@@ -981,8 +981,7 @@ void density(void)
     /* mark as active again */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        if(P[i].TimeBin < 0)
-            P[i].TimeBin = -P[i].TimeBin - 1;
+        if(P[i].TimeBin < 0) {P[i].TimeBin = -P[i].TimeBin - 1;}
     }
     
     
@@ -1432,7 +1431,8 @@ void density_evaluate_extra_physics_gas(struct densdata_in *local, struct densda
         if(local->Type == 5)
         {
             P[j].SwallowID = 0;  // this way we don't have to do a global loop over local particles in blackhole_accretion() to reset these quantities...
-            if(out->BH_TimeBinGasNeighbor > P[j].TimeBin) {out->BH_TimeBinGasNeighbor = P[j].TimeBin;}
+            short int TimeBin_j = P[j].TimeBin; if(TimeBin_j < 0) {TimeBin_j = -TimeBin_j - 1;} // need to make sure we correct for the fact that TimeBin is used as a 'switch' here to determine if a particle is active for iteration, otherwise this gives nonsense!
+            if(out->BH_TimeBinGasNeighbor > TimeBin_j) {out->BH_TimeBinGasNeighbor = TimeBin_j;}
 #if (SINGLE_STAR_SINK_FORMATION & 8)
 	    P[j].BH_Ngb_Flag = 1;
 #endif

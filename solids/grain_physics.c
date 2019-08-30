@@ -597,13 +597,6 @@ void grain_density(void)
     //myfree(Right);
     //myfree(Left);
     
-    /* mark as active again */
-    /*
-     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-     if(P[i].TimeBin < 0)
-     P[i].TimeBin = -P[i].TimeBin - 1;
-     */
-    
     /* collect some timing information */
     t1 = WallclockTime = my_second();
     timeall += timediff(t0, t1);
