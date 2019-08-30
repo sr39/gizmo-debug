@@ -364,11 +364,13 @@ void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i)
 
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
-int binarySearch(int arr[], int l, int r, int x)
+int binarySearch(const double * arr, int l, int r, const double x)
 {
+
   if (r>=1){
     int mid = l + (r-1)/2;
-    if(arr[mid]==x) return mid;
+
+    if ((x >= arr[mid]) && (x < arr[mid+1])) return mid;
 
     if(arr[mid]>x) return binarySearch(arr,l,mid-1,x);
 
@@ -399,6 +401,12 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
     }
     double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge) * 1000.0; // Age in Myr
 
+    const double dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a * All.UnitTime_in_Megayears; // get particle timestep in Myr
+
+    /* AJE: may need to switch to normalizing over logbin spacing if bins are large
+      too avoid small number issues  - this requires undoing the normalization in post */
+    const double M_norm = P[i].Mass * (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS)); // arbitrary (kinda)
+
 #ifndef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
     // find the age tracer bin to dump into using
     // logspace bins
@@ -420,12 +428,6 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
 
     // bin size in linear time (better normalization)
     double bin_dt = pow(10.0, binstart+(k+1)*log_bin_dt) - (k==0? 0.0 :pow(10.0, binstart + k*log_bin_dt));
-    // make sure this is the right unit conversion:
-    const double dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a * All.UnitTime_in_Megayears; // get particle timestep in Myr
-
-    /* AJE: may need to switch to normalizing over logbin spacing if bins are large
-      too avoid small number issues  - this requires undoing the normalization in post */
-    const double M_norm = P[i].Mass * (All.UnitMass_in_g / (All.HubbleParam * SOLAR_MASS)); // arbitrary (kinda)
 
     if (star_age + dt > pow(10.0, binstart+(k+1)*log_bin_dt)){ // goes over multiple bins!!
        double tstart = star_age;
@@ -449,13 +451,12 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
 
 
 #else
-   // NOT YET IMPLEMENTED!!!
    // Do a search over the AgeTracerTimeBins array to find
    // the index corresponding to the age
 
    if (star_age < All.AgeTracerTimeBins[0]){
      k = 0;
-   } else if (star_age >= All.AgeTracerTimeBins[NUM_AGE_TRACERS]){
+   } else if (star_age >= All.AgeTracerTimeBins[NUM_AGE_TRACERS-1]){
      return;
    } else {
    // search for the bin:
@@ -465,6 +466,7 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
          endrun(8888);
      }
    }
+   printf("Search found that a star of age %f belongs in bin %d between bounds %f and %f\n", star_age, k, All.AgeTracerTimeBins[k], All.AgeTracerTimeBins[k+1]);
 
    double bin_dt      =   All.AgeTracerTimeBins[k+1] - All.AgeTracerTimeBins[k];
 
@@ -486,8 +488,6 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
        in->yields[k + k_age_start] += ( dt / bin_dt ) * M_norm;   // add to this yield bin
    }
 
-   printf("ERROR: Custom age tracers not yet implemented\n");
-   endrun(1179);
 #endif // custom bins
 
 
