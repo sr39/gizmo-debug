@@ -222,16 +222,43 @@
 #define GALSF_FB_FIRE_RPROCESS 4            /*! tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model) */
 //#define GALSF_SFR_IMF_VARIATION           /*! track [do not change] properties of gas from which stars form, for IMF models in post-processing */
 #define PROTECT_FROZEN_FIRE                 /*! protect code so FIRE runs are not modified by various code updates, etc -- default FIRE-2 code locked */
+#if !defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
+#define ADAPTIVE_GRAVSOFT_FORGAS
+#endif
+#if !defined(OUTPUT_POSITIONS_IN_DOUBLE)
+#define OUTPUT_POSITIONS_IN_DOUBLE
+#endif
+#if defined(PMGRID)
+#if !defined(PM_PLACEHIGHRESREGION)
+#define PM_PLACEHIGHRESREGION 19 /* 1+2+16 */
+#endif
+#if !defined(PM_HIRES_REGION_CLIPPING)
+#define PM_HIRES_REGION_CLIPPING 3000 /* just a safety factor here */
+#endif
+#endif
+#if (FIRE_PHYSICS_DEFAULTS == 1)
+#define FIRE1_SNE_COUPLING      /* reverts to old mass-scalar-weight, 1-way-search, non-tensor-renormalized SNe model */
+#define EOS_TRUELOVE_PRESSURE   /* uses effective EOS for gas near resolution limit */
+#undef GALSF_SFR_VIRIAL_SF_CRITERION    /* can't be used reliably with effective EOS, will give bogus results */
+#endif
+#endif
+#if (FIRE_PHYSICS_DEFAULTS == 2)
+// currently uses default settings above, but keep this here for future use //
+#endif
+#if (FIRE_PHYSICS_DEFAULTS == 3)
+#undef PROTECT_FROZEN_FIRE  /* undefine protections to test new code */
+#undef GALSF_SFR_VIRIAL_SF_CRITERION    /* can't be used reliably with effective EOS, will give bogus results */
+#define GALSF_SFR_VIRIAL_SF_CRITERION 4 /*! sink-particle like self-gravity requirement for star formation: slightly more sophisticated version per Mike */
+#endif
 #else
 #if (defined(COOLING) && defined(GALSF) && defined(GALSF_FB_MECHANICAL)) && !defined(FIRE_UNPROTECT_FROZEN)
 #define PROTECT_FROZEN_FIRE
 #endif
-#endif
+#endif // FIRE_PHYSICS_DEFAULTS clauses
 
 #ifdef PROTECT_FROZEN_FIRE
 #define GALSF_USE_SNE_ONELOOP_SCHEME // set to use the 'base' FIRE-2 SNe coupling. if commented out, will user newer version that more accurately manages the injected energy with neighbors moving to inject a specific target
 #endif
-
 
 
 #ifdef COSMIC_RAYS
