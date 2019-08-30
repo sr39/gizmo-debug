@@ -1105,11 +1105,11 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
-#ifdef GALSF_FB_FIRE_AGE_TRACER
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
         strcpy(tag[nt], "AgeTracerRateLimit");
         addr[nt] = &All.AgeTracerRateLimit;
         id[nt++] = REAL;
-#ifdef GALSF_FB_FIRE_AGE_TRACER_CUSTOM
+#ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
         strcpy(tag[nt], "AgeTracerListFilename");
         addr[nt] = &All.AgeTracerListFilename;
         id[nt++] = STRING;
@@ -2346,10 +2346,7 @@ int read_agetracerlist(char *fname)
 
       count = sscanf(buf, " %lg", &All.AgeTracerTimeBins[i]);
 
-      if(count == 1)
-        flag = 1;
-
-      if(count == 1 || count == 2)
+      if (count == 1 || count == 2)
         {
           if(i >= NUM_AGE_TRACERS)
             {
@@ -2364,7 +2361,7 @@ int read_agetracerlist(char *fname)
     }
 
   if (i < NUM_AGE_TRACERS){
-    printf("\n not enough entries in age tracer list\n");
+    printf("\n not enough entries in age tracer list. Found %d entries, but we need %d\n", i, NUM_AGE_TRACERS);
 
     endrun(314); // for now, once tested do below:
     for(int k = i; k < NUM_AGE_TRACERS; k++){ All.AgeTracerTimeBins[k] = All.AgeTracerTimeBins[k-1];}
@@ -2373,7 +2370,7 @@ int read_agetracerlist(char *fname)
   fclose(fd);
 
   printf("\nfound %d age tracer bins in age tracer list.\n", i);
-  return 1;
+  return 0;
 }
 
 
