@@ -331,7 +331,7 @@ HDF5LIB  = -L$(ANACONDALIB) -lhdf5 -lz
 GRACKLEINCL = -I/home/aemerick/code/local/include
 GRACKLELIBS = -L/home/aemerick/code/local/lib -lgrackle
 MPICHLIB = #
-OPT     += #
+OPT     += -DUSE_MPI_IN_PLACE #
 endif
 
 #----------------------------
