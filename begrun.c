@@ -316,6 +316,7 @@ void begrun(void)
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
       All.AgeTracerRateLimitThreshold = all.AgeTracerRateLimitThreshold;
+      All.AgeTracerReturnFraction     = all.AgeTracerReturnFraction;
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
       strcpy(All.AgeTracerListFilename, all.AgeTracerListFilename);
 #endif
@@ -324,7 +325,7 @@ void begrun(void)
 #ifdef GR_TABULATED_COSMOLOGY
       All.DarkEnergyConstantW = all.DarkEnergyConstantW;
 #endif
-        
+
       All.MaxNumNgbDeviation = all.MaxNumNgbDeviation;
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
       /* Allow the tolerance over the number of neighbours to vary during the run:
@@ -1109,6 +1110,11 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "AgeTracerRateLimitThreshold");
         addr[nt] = &All.AgeTracerRateLimitThreshold;
         id[nt++] = REAL;
+
+        strcpy(tag[nt], "AgeTracerReturnFraction");
+        addr[nt] = &All.AgeTracerReturnFraction;
+        id[nt++] = REAL;
+
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
         strcpy(tag[nt], "AgeTracerListFilename");
         addr[nt] = &All.AgeTracerListFilename;
