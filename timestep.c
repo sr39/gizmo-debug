@@ -486,17 +486,13 @@ integertime get_timestep(int p,		/*!< particle index */
     /* make sure smoothing length of non-gas particles doesn't change too much in one timestep */
     if(P[p].Type > 0)
     {
-        if(PPP[p].AGS_Hsml > 1.01*All.ForceSoftening[P[p].Type])
-        {
-            double dt_divv = 1.5 / (MIN_REAL_NUMBER + All.cf_a2inv*fabs(P[p].Particle_DivVel)); // with new integration accuracy in gravtree, we may not need to be super-conservative here. old code used pre-factor 0.25 here, see if we can get away with the larger value which is standard for gas below
-            if(dt_divv < dt) {dt = dt_divv;}
-#ifdef CBE_INTEGRATOR
-            double dt_cour = All.CourantFac * (Get_Particle_Size_AGS(p)*All.cf_atime) / (MIN_REAL_NUMBER + P[p].AGS_vsig*All.cf_afac3);
-#else
-            double dt_cour = All.CourantFac * (Get_Particle_Size_AGS(p)*All.cf_atime) / (MIN_REAL_NUMBER + 0.5*P[p].AGS_vsig*All.cf_afac3);
+        double dt_divv = 0.3 / (MIN_REAL_NUMBER + All.cf_a2inv*fabs(P[p].Particle_DivVel)); // with new integration accuracy in gravtree, we may not need to be super-conservative here. old code used pre-factor 0.25 here, see if we can get away with the larger value which is standard for gas below
+        if(dt_divv < dt) {dt = dt_divv;}
+        double dt_cour = 2. * All.CourantFac * (Get_Particle_Size_AGS(p)*All.cf_atime) / (MIN_REAL_NUMBER + 0.5*P[p].AGS_vsig*All.cf_afac3); // can be generous here, really the signal velocity isn't that important in the collisionless case, but it is important with some of the physics above //
+#if defined(CBE_INTEGRATOR)
+        dt_cour *= 0.25; // need a much stricter criterion here, to account for fluxes de-stabilizing the method //
 #endif
-            if(dt_cour < dt) {dt = dt_cour;}
-        }
+        if(dt_cour < dt) {dt = dt_cour;}
     }
 #endif
 

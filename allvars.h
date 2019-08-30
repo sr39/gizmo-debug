@@ -897,7 +897,7 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 #define  NODELISTLENGTH      8
 
 
-#define EPSILON_FOR_TREERND_SUBNODE_SPLITTING (1.0e-3) /* define some number << 1; particles with less than this separation will trigger randomized sub-node splitting in the tree.
+#define EPSILON_FOR_TREERND_SUBNODE_SPLITTING (1.0e-4) /* define some number << 1; particles with less than this separation will trigger randomized sub-node splitting in the tree.
                                                             we set it to a global value here so that other sub-routines will know not to force particle separations below this */
 
 #ifdef GALSF_SFR_IMF_VARIATION
