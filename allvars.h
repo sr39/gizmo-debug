@@ -180,7 +180,11 @@
 
 #if defined(CBE_INTEGRATOR) || defined(DM_FUZZY) || defined(DM_SIDM)
 #ifndef ADAPTIVE_GRAVSOFT_FORALL
-#define ADAPTIVE_GRAVSOFT_FORALL 100000
+#if defined(DM_SIDM)
+#define ADAPTIVE_GRAVSOFT_FORALL DM_SIDM /*! enable at least for the DM which is 'active' */
+#else
+#define ADAPTIVE_GRAVSOFT_FORALL 2 /*! enable at least for the high-res DM */
+#endif
 #endif
 #endif
 

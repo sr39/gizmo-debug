@@ -1976,9 +1976,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINGLE_STAR_TIMESTEPPING
                     double bh_dvx=P[no].Vel[0]-vel_x, bh_dvy=P[no].Vel[1]-vel_y, bh_dvz=P[no].Vel[2]-vel_z, vSqr=bh_dvx*bh_dvx+bh_dvy*bh_dvy+bh_dvz*bh_dvz, M_total=P[no].Mass+pmass, r2soft;
 		            r2soft = DMAX(All.SofteningTable[5], soft/2.8);
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-		            if(ptype==5) r2soft = All.SofteningTable[5];
-#endif		
                     r2soft = r2 + r2soft*r2soft;
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER), tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
                     if(tSqr < min_bh_approach_time) {min_bh_approach_time = tSqr;}
@@ -2391,9 +2388,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINGLE_STAR_TIMESTEPPING
                     double bh_dvx=nop->bh_vel[0]-vel_x, bh_dvy=nop->bh_vel[1]-vel_y, bh_dvz=nop->bh_vel[2]-vel_z, vSqr=bh_dvx*bh_dvx+bh_dvy*bh_dvy+bh_dvz*bh_dvz, M_total=nop->bh_mass+pmass, r2soft;
                     r2soft = DMAX(All.SofteningTable[5], soft/2.8);
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-		            if(ptype==5) r2soft = All.SofteningTable[5];
-#endif				    
                     r2soft = r2 + r2soft*r2soft;
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER), tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
                     if(tSqr < min_bh_approach_time) {min_bh_approach_time = tSqr;}		    
@@ -2445,16 +2439,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 h5_inv = h_inv * h_inv * h_inv * h_inv * h_inv;
 #endif
 #endif
-#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(ADAPTIVE_GRAVSOFT_FORALL)  // for star-star interactions, we wanna use fixed softening, so we update them here if that's what we've got
-                if(ptype==5 && ptype_sec==5) {h=All.ForceSoftening[5]; h_inv=1/h; h3_inv=h_inv*h_inv*h_inv; h5_inv=h3_inv*h_inv*h_inv; h_p_inv=h_inv; zeta_sec=0;}
-#endif
                 u = r * h_inv;
                 fac = mass * kernel_gravity(u, h_inv, h3_inv, 1);
 #ifdef EVALPOTENTIAL
                 facpot = mass * kernel_gravity(u, h_inv, h3_inv, -1);
 #endif 
-#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* second derivatives needed -> calculate them from softend potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */		
-//                if(u < 0.5) {fac2_tidal = mass * h5_inv * (76.8 - 96.0 * u);} else {fac2_tidal = mass * h5_inv * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u);}
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* second derivatives needed -> calculate them from softened potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
                 if(u < 0.5) {fac2_tidal = mass * h5_inv * (76.8 - 96.0 * u);} else {if(u < 1) {fac2_tidal = mass * h5_inv * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u);} else {fac2_tidal = 3 * mass / (r2 * r2 * r);}}
 #endif
 		
@@ -2465,27 +2455,33 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef HYDRO_SPH
                     h_p3_inv = h_p_inv * h_p_inv * h_p_inv; u_p = r * h_p_inv;
                     fac = 0.5 * (fac + mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1)); // average with neighbor
+#ifdef EVALPOTENTIAL
+                    facpot = 0.5 * (facpot + mass * kernel_gravity(u, h_p_inv, h_p3_inv, -1)); // average with neighbor
+#endif
 #if defined(COMPUTE_TIDAL_TENSOR_IN_GRAVTREE)
                     double h_p5_inv = h_p3_inv * h_p_inv * h_p_inv;
                     if(u_p < 0.5) {fac2_tidal += mass * h_p5_inv * (76.8 - 96.0 * u_p);} else if(u_p <1) {fac2_tidal += mass * h_p5_inv * (-0.2 / (u_p * u_p * u_p * u_p * u_p) + 48.0 / u_p - 76.8 + 32.0 * u_p);} else {fac2_tidal += 3 * mass / (r2 * r2 * r);}
                     fac2_tidal *= 0.5; // average forces -> average in tidal tensor as well
 #endif
                     // correction only applies to 'shared-kernel' particles: so this needs to check if
-                    // these are the same particles for which the kernel lengths are computed
+                    // these are the same particles for which the 'shared' kernel lengths are computed
                     if((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG))
                     {
-                        double dWdr, wp, fac_corr = 0;
-                        if((r>0) && (u<1) && (pmass>0)) // checks that these aren't the same particle
+                        if((r>0) && (pmass>0)) // checks that these aren't the same particle or test particle
                         {
-                            kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
-                            fac_corr += -(zeta/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
+                            double dWdr, wp, fac_corr = 0;
+                            if((zeta != 0) && (u < 1)) // in kernel [zeta non-zero]
+                            {
+                                kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
+                                fac_corr += -(zeta/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
+                            }
+                            if((zeta_sec != 0) && (u_p < 1)) // in kernel [ zeta non-zero]
+                            {
+                                kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
+                                fac_corr += -(zeta_sec/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
+                            }
+                            if(!isnan(fac_corr)) {fac += fac_corr;}
                         }
-                        if((zeta_sec!=0) && (h_p_inv>0) && (r>0) && (u_p<1) && (pmass>0)) // secondary is adaptively-softened particle (set above)
-                        {
-                            kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
-                            fac_corr += -(zeta_sec/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
-                        } // if(zeta_sec != 0)
-                        if(!isnan(fac_corr)) {fac += fac_corr;}
                     } // if(ptype==ptype_sec)
 #else
                     if(h_p_inv < h_inv) // if the softening of the particle whose force is being summed is greater than the target
@@ -2506,7 +2502,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     // these are the same particles for which the kernel lengths are computed
                     // (also checks that these aren't the same particle)
 #if (defined(MAGNETIC) || defined(COOLING) || defined(GALSF) || defined(BLACK_HOLES))
-                    /* since these modules imply nonstandard cross-particel interactions for certain types, need to limit the correction terms here */
+                    /* since these modules imply nonstandard cross-species interactions for certain types, need to limit the correction terms here */
                     if((ptype>0) && (ptype<4) && (ptype_sec>0) && (ptype_sec<4) && (r > 0) && (pmass > 0))
 #else
                     if((r > 0) && (pmass > 0)) // check for entering correction terms

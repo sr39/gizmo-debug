@@ -24,7 +24,7 @@ static struct blackholedata_in
     MyFloat Mdot;
     MyFloat Dt;
     MyFloat Hsml;
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32)
     MyFloat AGS_Hsml;
 #endif    
     MyFloat Mass;
