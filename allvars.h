@@ -245,7 +245,6 @@
 #define EOS_TRUELOVE_PRESSURE   /* uses effective EOS for gas near resolution limit */
 #undef GALSF_SFR_VIRIAL_SF_CRITERION    /* can't be used reliably with effective EOS, will give bogus results */
 #endif
-#endif
 #if (FIRE_PHYSICS_DEFAULTS == 2)
 // currently uses default settings above, but keep this here for future use //
 #endif
