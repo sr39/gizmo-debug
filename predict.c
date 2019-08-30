@@ -153,6 +153,9 @@ void drift_particle(int i, integertime time1)
     
     double divv_fac = P[i].Particle_DivVel * dt_drift;
     double divv_fac_max = 0.3; //1.5; // don't allow Hsml to change too much in predict-step //
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+    if(P[i].Type>0) {divv_fac_max=10;} // can [should] allow larger changes when using adapting soft for all
+#endif
     if(divv_fac > +divv_fac_max) divv_fac = +divv_fac_max;
     if(divv_fac < -divv_fac_max) divv_fac = -divv_fac_max;
     
