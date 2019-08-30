@@ -414,9 +414,9 @@ void init(void)
         for(j=1;j<=NUM_AGE_TRACERS;j++) All.SolarAbundances[NUM_METAL_SPECIES-j]=0.0; // stellar age tracers
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM // flag to use custom list of age tracer bins
-          for(j=0;j<=NUM_AGE_TRACERS;j++){
-              AgeTracerTimeBins[j] = -999; // AJE NOT YET IMPLEMENTED!!!!
-          }
+        //  for(j=0;j<=NUM_AGE_TRACERS;j++){
+        //      All.AgeTracerTimeBins[j] = -999; // AJE NOT YET IMPLEMENTED!!!!
+        //  }
 #endif
 #endif
 
