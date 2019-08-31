@@ -42,7 +42,7 @@ static struct blackholedata_in
     MyFloat Jstar[3];
 #endif
     MyFloat Hsml;
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32)
     MyFloat AGS_Hsml;
 #endif    
     MyIDType ID;
@@ -117,7 +117,7 @@ void blackhole_environment_loop(void)
             BlackholeDataIn[j].SinkRadius = P[place].SinkRadius;
 #endif	    
 #endif
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32)
             BlackholeDataIn[j].AGS_Hsml = PPP[place].AGS_Hsml;
 #endif	    
             BlackholeDataIn[j].Hsml = PPP[place].Hsml;	    
@@ -246,7 +246,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
         pos = P[target].Pos;
         vel = P[target].Vel;
         h_i = PPP[target].Hsml;
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32)
 	    ags_h_i = PPP[target].AGS_Hsml;
 #endif	
         id = P[target].ID;
@@ -269,7 +269,7 @@ int blackhole_environment_evaluate(int target, int mode, int *nexport, int *nSen
         pos = BlackholeDataGet[target].Pos;
         vel = BlackholeDataGet[target].Vel;
         h_i = BlackholeDataGet[target].Hsml;
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32)
 	    ags_h_i = BlackholeDataGet[target].AGS_Hsml;
 #endif	
         id = BlackholeDataGet[target].ID;
@@ -544,7 +544,7 @@ void blackhole_environment_second_loop(void)
                 BlackholeDataIn[j].Jstar[k] = BlackholeTempInfo[mod_index].Jstar_in_Kernel[k];
             }
             BlackholeDataIn[j].Hsml = PPP[place].Hsml;
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32)
             BlackholeDataIn[j].AGS_Hsml = PPP[place].AGS_Hsml;
 #endif	    
             BlackholeDataIn[j].ID = P[place].ID;

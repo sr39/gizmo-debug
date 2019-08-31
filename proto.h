@@ -300,7 +300,7 @@ double INLINE_FUNC Get_Particle_PhiField(int i_particle_id);
 double INLINE_FUNC Get_Particle_PhiField_DampingTimeInv(int i_particle_id);
 #endif
 #endif
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
 double INLINE_FUNC Get_Particle_Size_AGS(int i);
 double get_particle_volume_ags(int j);
 #endif
@@ -821,7 +821,7 @@ int pmtidaltensor_nonperiodic_fourier(int component, int grnr);
 #endif
 
 int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary);
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
 void ags_setup_smoothinglengths(void);
 void ags_density(void);
 int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);

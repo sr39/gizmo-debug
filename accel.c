@@ -78,7 +78,7 @@ void compute_hydro_densities_and_forces(void)
         if(ThisTask == 0) {printf("Start density & tree-update computation...\n");}
 #endif
         density();		/* computes density, and pressure */
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
         ags_density();
 #endif
         force_update_hmax();	/* update kernel lengths in tree */
@@ -118,7 +118,7 @@ void compute_hydro_densities_and_forces(void)
 #endif
 
     } else {
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
         ags_density(); // if there are no gas particles but ags-all is active, still need to enter this loop //
         force_update_hmax();    /* update kernel lengths in tree */
 #endif

@@ -137,16 +137,10 @@ double gravfac(double r, double mass){
 }
 
 // quantity needed for the jerk, 3* mass/r^5 in Newtonian gravity
-double gravfac2(double r, double mass){
-   if(r < All.ForceSoftening[5]) {
-	double u = r / All.ForceSoftening[5];
-	double h_inv = 1/All.ForceSoftening[5];
-	if(u<0.5){
-	    return mass * (76.8 - 96.0 * u) * h_inv * h_inv * h_inv * h_inv * h_inv;
-	} else {
-	    return mass * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u) * h_inv * h_inv * h_inv * h_inv * h_inv;
-	}
-    } else return 3*mass / (r*r*r*r*r);
+double gravfac2(double r, double mass)
+{
+    double h_inv = 1. / All.ForceSoftening[5];
+    return mass * kernel_gravity(r*h_inv, hinv, hinv*hinv*hinv, 2);
 }
 
 // Computes the gravitational acceleration of a body at separation dx from a mass, accounting for softening
