@@ -1689,8 +1689,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     integertime ti_Current = All.Ti_Current;
     double errTol2 = All.ErrTolTheta * All.ErrTolTheta;
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-    int i1, i2; double fac2_tidal, h_tidal, h_inv_tidal, h3_inv_tidal, h5_inv, h5_inv_tidal, fac_tidal;
-    MyDouble tidal_tensorps[3][3];
+    int i1, i2; double fac2_tidal, fac_tidal; MyDouble tidal_tensorps[3][3];
 #endif    
 #if defined(REDUCE_TREEWALK_BRANCHING) && defined(PMGRID)
     double dxx, dyy, dzz, pdxx, pdyy, pdzz;
@@ -1890,9 +1889,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
     h_inv = 1.0 / h;
     h3_inv = h_inv * h_inv * h_inv;
-#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-    h5_inv = h3_inv * h_inv * h_inv;
-#endif    
 #endif
     
     
@@ -1911,12 +1907,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {fac_stellum[kf] = 1 - exp(-rt_kappa(0,kf)*sigma_eff_abs);}
     }
 #endif
-#endif
-    
-    
-#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* different tidal field softening */
-    h_tidal = All.ForceSoftening[ptype]; h_inv_tidal = 1.0 / h_tidal; h3_inv_tidal = h_inv_tidal * h_inv_tidal * h_inv_tidal;
-    h5_inv_tidal = h_inv_tidal * h_inv_tidal * h_inv_tidal * h_inv_tidal * h_inv_tidal;
 #endif
     
     
@@ -2435,9 +2425,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if !defined(ADAPTIVE_GRAVSOFT_FORALL) && !defined(ADAPTIVE_GRAVSOFT_FORGAS)
                 h_inv = 1.0 / h;
                 h3_inv = h_inv * h_inv * h_inv;
-#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-                h5_inv = h_inv * h_inv * h_inv * h_inv * h_inv;
-#endif
 #endif
                 u = r * h_inv;
                 fac = mass * kernel_gravity(u, h_inv, h3_inv, 1);
@@ -2445,7 +2432,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 facpot = mass * kernel_gravity(u, h_inv, h3_inv, -1);
 #endif 
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* second derivatives needed -> calculate them from softened potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
-                if(u < 0.5) {fac2_tidal = mass * h5_inv * (76.8 - 96.0 * u);} else {if(u < 1) {fac2_tidal = mass * h5_inv * (-0.2 / (u * u * u * u * u) + 48.0 / u - 76.8 + 32.0 * u);} else {fac2_tidal = 3 * mass / (r2 * r2 * r);}}
+                fac2_tidal = mass * kernel_gravity(u, h_inv, h3_inv, 2);
 #endif
 		
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
@@ -2459,9 +2446,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     facpot = 0.5 * (facpot + mass * kernel_gravity(u, h_p_inv, h_p3_inv, -1)); // average with neighbor
 #endif
 #if defined(COMPUTE_TIDAL_TENSOR_IN_GRAVTREE)
-                    double h_p5_inv = h_p3_inv * h_p_inv * h_p_inv;
-                    if(u_p < 0.5) {fac2_tidal += mass * h_p5_inv * (76.8 - 96.0 * u_p);} else if(u_p <1) {fac2_tidal += mass * h_p5_inv * (-0.2 / (u_p * u_p * u_p * u_p * u_p) + 48.0 / u_p - 76.8 + 32.0 * u_p);} else {fac2_tidal += 3 * mass / (r2 * r2 * r);}
-                    fac2_tidal *= 0.5; // average forces -> average in tidal tensor as well
+                    fac2_tidal = 0.5 * (fac2_tidal + mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 2)); // average forces -> average in tidal tensor as well
 #endif
                     // correction only applies to 'shared-kernel' particles: so this needs to check if
                     // these are the same particles for which the 'shared' kernel lengths are computed
@@ -2494,8 +2479,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 			            facpot = mass * kernel_gravity(u, h_p_inv, h_p3_inv, -1);
 #endif 			
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-                        double h_p5_inv = h_p3_inv * h_p_inv * h_p_inv;
-                        if(u_p < 0.5) {fac2_tidal = mass * h_p5_inv * (76.8 - 96.0 * u_p);} else if(u_p <1) {fac2_tidal = mass * h_p5_inv * (-0.2 / (u_p * u_p * u_p * u_p * u_p) + 48.0 / u_p - 76.8 + 32.0 * u_p);} else {fac2_tidal = 3 * mass / (r2 * r2 * r);}
+                        fac2_tidal = mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 2);
 #endif
                     }
                     // correction only applies to 'shared-kernel' particles: so this needs to check if

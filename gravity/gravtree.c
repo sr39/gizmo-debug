@@ -1192,14 +1192,14 @@ void mysort_dataindex(void *b, size_t n, size_t s, int (*cmp) (const void *, con
 void subtract_companion_gravity(int i)
 {
     /* Remove contribution to gravitational field and tidal tensor from the stars in the binary to the center of mass */
-    double u, dr, fac, fac2, h, h_inv, h3_inv, h5_inv, u2, tidal_tensorps[3][3]; int i1, i2;
+    double u, dr, fac, fac2, h, h_inv, h3_inv, u2, tidal_tensorps[3][3]; int i1, i2;
     dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
-    h = All.ForceSoftening[5];  h_inv = 1.0 / h; h3_inv = h_inv*h_inv*h_inv; h5_inv = h3_inv*h_inv*h_inv; u = dr*h_inv; u2=u*u;
+    h = All.ForceSoftening[5];  h_inv = 1.0 / h; h3_inv = h_inv*h_inv*h_inv; u = dr*h_inv; u2=u*u;
     fac = P[i].comp_Mass / (dr*dr*dr); fac2 = 3.0 * P[i].comp_Mass / (dr*dr*dr*dr*dr); /* no softening nonsense */
     if(dr < h) /* second derivatives needed -> calculate them from softened potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
     {
 	    fac = P[i].comp_Mass * kernel_gravity(u, h_inv, h3_inv, 1);
-	    if(u < 0.5) {fac2 = P[i].comp_Mass * h5_inv * (76.8 - 96.0 * u);} else {fac2 = P[i].comp_Mass * h5_inv * (-0.2 / (u2 * u2 * u) + 48.0 / u - 76.8 + 32.0 * u);}
+        fac2 = P[i].comp_Mass * kernel_gravity(u, h_inv, h3_inv, 2);
     }
     for(i1=0;i1<3;i1++) {P[i].COM_GravAccel[i1] = P[i].GravAccel[i1] - P[i].comp_dx[i1] * fac;}
     
