@@ -44,6 +44,8 @@ static int last;
 #define NEIGHBORS_MUST_BE_COMPUTED_EXPLICITLY_IN_FORCETREE
 #endif
 
+#define ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING /* comment out to revert to behavior of taking 'greater' softening in pairwise kernel interactions with adaptive softenings enabled */
+
 /*! length of lock-up table for short-range force kernel in TreePM algorithm */
 #define NTAB 1000
 /*! variables for short-range lookup table */
@@ -160,7 +162,7 @@ int force_treebuild(int npart, struct unbind_data *mp)
  *  particles", i.e. multipole moments of top-level nodes that lie on
  *  different CPUs. If such a node needs to be opened, the corresponding
  *  particle must be exported to that CPU. The 'Extnodes' structure
- *  parallels that of 'Nodes'. Its information is only needed for the SPH
+ *  parallels that of 'Nodes'. Its information is only needed for the hydro
  *  part of the computation. (The data is split onto these two structures
  *  as a tuning measure.  If it is merged into 'Nodes' a somewhat bigger
  *  size of the nodes also for gravity would result, which would reduce
@@ -2439,7 +2441,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 // first, appropriately symmetrize the forces between particles //
                 if((h_p_inv > 0) && (ptype_sec > -1))
                 {
-#ifdef HYDRO_SPH
+#ifdef ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING // the 'zeta' terms for conservation with adaptive softening assume kernel-scale forces are averaged to symmetrize, to make them continuous
                     h_p3_inv = h_p_inv * h_p_inv * h_p_inv; u_p = r * h_p_inv;
                     fac = 0.5 * (fac + mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1)); // average with neighbor
 #ifdef EVALPOTENTIAL
@@ -2468,13 +2470,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                             if(!isnan(fac_corr)) {fac += fac_corr;}
                         }
                     } // if(ptype==ptype_sec)
-#else
+#else // if not averaging, follow the standard procedure of 'taking the larger' softening. this leads to less-disparate forces, but is not exact with the 'zeta' terms below //
                     if(h_p_inv < h_inv) // if the softening of the particle whose force is being summed is greater than the target
                     {
-                        h_p3_inv = h_p_inv * h_p_inv * h_p_inv;
-                        u_p = r * h_p_inv;
-                        double fac2 = mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1);
-                        if(!isnan(fac2)) {fac=fac2;}
+                        h_p3_inv = h_p_inv * h_p_inv * h_p_inv; u_p = r * h_p_inv;
+                        fac = mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1);
 #ifdef EVALPOTENTIAL
 			            facpot = mass * kernel_gravity(u, h_p_inv, h_p3_inv, -1);
 #endif 			
@@ -2483,35 +2483,29 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
                     }
                     // correction only applies to 'shared-kernel' particles: so this needs to check if
-                    // these are the same particles for which the kernel lengths are computed
-                    // (also checks that these aren't the same particle)
-#if (defined(MAGNETIC) || defined(COOLING) || defined(GALSF) || defined(BLACK_HOLES))
-                    /* since these modules imply nonstandard cross-species interactions for certain types, need to limit the correction terms here */
-                    if((ptype>0) && (ptype<4) && (ptype_sec>0) && (ptype_sec<4) && (r > 0) && (pmass > 0))
-#else
-                    if((r > 0) && (pmass > 0)) // check for entering correction terms
-#endif
+                    // these are the same particles for which the 'shared' kernel lengths are computed
+                    if((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG))
                     {
-                        if((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG))
+                        if((r>0) && (pmass>0)) // checks that these aren't the same particle or test particle
                         {
                             double dWdr, wp, fac_corr=0;
                             if(h_p_inv >= h_inv)
                             {
-                                if((zeta != 0) && (u < 1))
+                                if((zeta != 0) && (u < 1)) // in kernel [zeta non-zero]
                                 {
                                     kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
-                                    fac_corr += -2. * (zeta/pmass) * dWdr / sqrt(r2 + 0.0001/(h_inv*h_inv));   // 0.5 * zeta * omega * dWdr / r;
+                                    fac_corr += -2. * (zeta/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
                                 }
                             } else {
-                                if((zeta_sec != 0) && (u_p < 1)) // secondary is adaptively-softened particle (set above)
+                                if((zeta_sec != 0) && (u_p < 1)) // in kernel [ zeta non-zero]
                                 {
                                     kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
-                                    fac_corr += -2. * (zeta_sec/pmass) * dWdr / sqrt(r2 + 0.0001/(h_p_inv*h_p_inv));
+                                    fac_corr += -2. * (zeta_sec/pmass) * dWdr / r;
                                 }
                             }
                             if(!isnan(fac_corr)) {fac += fac_corr;}
-                        } // if(ptype==ptype_sec)
-                    } // check for entering correction terms
+                        }
+                    } // if(ptype==ptype_sec)
 #endif
                 } // closes (if((h_p_inv > 0) && (ptype_sec > -1)))
 #endif // #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) //

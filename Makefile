@@ -275,7 +275,7 @@ endif
 HDF5INCL = -I$(TACC_HDF5_INC) -DH5_USE_16_API
 HDF5LIB  = -L$(TACC_HDF5_LIB) -lhdf5 -lz
 MPICHLIB =
-OPT     += -DUSE_MPI_IN_PLACE #-DNO_ISEND_IRECV_IN_DOMAIN
+OPT     += -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN
 ##
 # IMPORTANT: presently must use intel/18.x versions. 19.x versions compile and work, but lots of problems (+slower), esp. for high Ntasks or OpenMP
 #  e.g.: module load intel/18.0.5 impi hdf5 fftw3 gsl
