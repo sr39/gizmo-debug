@@ -32,7 +32,7 @@ extern pthread_mutex_t mutex_partnodedrift;
  */
 
 
-#define AGS_DSOFT_TOL (0.75)    // amount by which softening lengths are allowed to vary in single timesteps //
+#define AGS_DSOFT_TOL (0.5)    // amount by which softening lengths are allowed to vary in single timesteps //
 
 /*! this routine is called by the adaptive gravitational softening neighbor search and forcetree (for application 
     of the appropriate correction terms), to determine which particle types "talk to" which other particle types 
@@ -45,29 +45,31 @@ extern pthread_mutex_t mutex_partnodedrift;
  */
 int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary)
 {
-    /* gas particles see gas particles */
-    if(particle_type_primary == 0) {return 1;}
-
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-#ifdef BLACK_HOLES
-    /* black hole particles see gas */
-    if(particle_type_primary == 5) {return 1;}
+    if(!((1 << particle_type_primary) & (ADAPTIVE_GRAVSOFT_FORALL))) {return 0;} /* particle is NOT one of the designated 'adaptive' types */
 #endif
-#ifdef GALSF
-    /* stars see baryons (any type) */
-    if(All.ComovingIntegrationOn)
+    
+    if(particle_type_primary == 0) {return 1;} /* gas particles see gas particles */
+
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32) && defined(BLACK_HOLES)
+    if(particle_type_primary == 5) {return 1;} /* black hole particles are AGS-active, but using BH physics, they see only gas */
+#endif
+    
+#if defined(GALSF) && ( (ADAPTIVE_GRAVSOFT_FORALL & 16) || (ADAPTIVE_GRAVSOFT_FORALL & 8) || (ADAPTIVE_GRAVSOFT_FORALL & 4) )
+    if(All.ComovingIntegrationOn) /* stars [4 for cosmo runs, 2+3+4 for non-cosmo runs] are AGS-active and see baryons (any type) */
     {
         if(particle_type_primary == 4) {return 17;} // 2^0+2^4
     } else {
         if((particle_type_primary == 4)||(particle_type_primary == 2)||(particle_type_primary == 3)) {return 29;} // 2^0+2^2+2^3+2^4
     }
 #endif
+    
 #ifdef DM_SIDM
-    /* SIDM particles see other SIDM particles */
-    if((1 << particle_type_primary) & (DM_SIDM)) {return DM_SIDM;}
+    if((1 << particle_type_primary) & (DM_SIDM)) {return DM_SIDM;} /* SIDM particles see other SIDM particles, regardless of type/mass */
 #endif
-    /* if we haven't been caught by one of the above checks, we simply return whether or not we see 'ourselves' */
-    return (1 << particle_type_primary);
+    
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+    return (1 << particle_type_primary); /* if we haven't been caught by one of the above checks, we simply return whether or not we see 'ourselves' */
 #endif
     
     return 0;
@@ -75,7 +77,7 @@ int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary)
 
 
 
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
 
 /*! Structure for communication during the density computation. Holds data that is sent to other processors.
  */
@@ -486,12 +488,10 @@ void ags_density(void)
                 
                 double minsoft = ags_return_minsoft(i);
                 double maxsoft = ags_return_maxsoft(i);
-                minsoft = DMAX(minsoft , AGS_Prev[i]*AGS_DSOFT_TOL);
-                maxsoft = DMIN(maxsoft , AGS_Prev[i]/AGS_DSOFT_TOL);
-                if(All.Time==All.TimeBegin)
+                if(All.Time > All.TimeBegin)
                 {
-                    minsoft = All.ForceSoftening[P[i].Type];
-                    maxsoft = ADAPTIVE_GRAVSOFT_FORALL * All.ForceSoftening[P[i].Type];
+                    minsoft = DMAX(minsoft , AGS_Prev[i]*AGS_DSOFT_TOL);
+                    maxsoft = DMIN(maxsoft , AGS_Prev[i]/AGS_DSOFT_TOL);
                 }
                 desnumngb = All.AGS_DesNumNgb;
                 desnumngbdev = All.AGS_MaxNumNgbDeviation;
@@ -503,17 +503,18 @@ void ags_density(void)
 #else
                 if(iter > 4) {desnumngbdev = DMIN( 0.25*desnumngb , desnumngbdev * exp(0.1*log(desnumngb/(16.*desnumngbdev))*((double)iter - 3.)) );}
 #endif
-                if(All.Time<=1.001*All.TimeBegin) {if(All.AGS_MaxNumNgbDeviation > 0.0005) desnumngbdev=0.0005;}
+                if(All.Time<=All.TimeBegin) {if(desnumngbdev > 0.0005) desnumngbdev=0.0005; if(iter > 50) {desnumngbdev = DMIN( 0.25*desnumngb , desnumngbdev * exp(0.1*log(desnumngb/(16.*desnumngbdev))*((double)iter - 49.)) );}}
+
 
                 
                 /* check if we are in the 'normal' range between the max/min allowed values */
-                if((PPP[i].NumNgb < (desnumngb - desnumngbdev) && PPP[i].AGS_Hsml < 0.99*maxsoft) ||
-                   (PPP[i].NumNgb > (desnumngb + desnumngbdev) && PPP[i].AGS_Hsml > 1.01*minsoft))
+                if((PPP[i].NumNgb < (desnumngb - desnumngbdev) && PPP[i].AGS_Hsml < 0.999*maxsoft) ||
+                   (PPP[i].NumNgb > (desnumngb + desnumngbdev) && PPP[i].AGS_Hsml > 1.001*minsoft))
                     redo_particle = 1;
                 
                 /* check maximum kernel size allowed */
                 particle_set_to_maxhsml_flag = 0;
-                if((PPP[i].AGS_Hsml >= 0.99*maxsoft) && (PPP[i].NumNgb < (desnumngb - desnumngbdev)))
+                if((PPP[i].AGS_Hsml >= 0.999*maxsoft) && (PPP[i].NumNgb < (desnumngb - desnumngbdev)))
                 {
                     redo_particle = 0;
                     if(PPP[i].AGS_Hsml == maxsoft)
@@ -530,7 +531,7 @@ void ags_density(void)
                 
                 /* check minimum kernel size allowed */
                 particle_set_to_minhsml_flag = 0;
-                if((PPP[i].AGS_Hsml <= 1.01*minsoft) && (PPP[i].NumNgb > (desnumngb + desnumngbdev)))
+                if((PPP[i].AGS_Hsml <= 1.001*minsoft) && (PPP[i].NumNgb > (desnumngb + desnumngbdev)))
                 {
                     redo_particle = 0;
                     if(PPP[i].AGS_Hsml == minsoft)
@@ -574,7 +575,9 @@ void ags_density(void)
                     if((particle_set_to_maxhsml_flag==0)&&(particle_set_to_minhsml_flag==0))
                     {
                         if(PPP[i].NumNgb < (desnumngb - desnumngbdev))
+                        {
                             Left[i] = DMAX(PPP[i].AGS_Hsml, Left[i]);
+                        }
                         else
                         {
                             if(Right[i] != 0)
@@ -680,14 +683,15 @@ void ags_density(void)
                                 else
                                     PPP[i].AGS_Hsml *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
                             }
-                        } // closes if[particle_set_to_max/minhsml_flag]
-                    } // closes redo_particle
+                        } // closes if(Right[i] > 0 && Left[i] > 0) else clause
+                        
+                    } // closes if[particle_set_to_max/minhsml_flag]
                     /* resets for max/min values */
                     if(PPP[i].AGS_Hsml < minsoft) PPP[i].AGS_Hsml = minsoft;
                     if(particle_set_to_minhsml_flag==1) PPP[i].AGS_Hsml = minsoft;
                     if(PPP[i].AGS_Hsml > maxsoft) PPP[i].AGS_Hsml = maxsoft;
                     if(particle_set_to_maxhsml_flag==1) PPP[i].AGS_Hsml = maxsoft;
-                }
+                } // closes redo_particle
                 else
                     P[i].TimeBin = -P[i].TimeBin - 1;	/* Mark as inactive */
             } //  if(ags_density_isactive(i))
@@ -748,7 +752,7 @@ void ags_density(void)
                 PPPZ[i].AGS_zeta = P[i].Mass*P[i].Mass * PPP[i].DhsmlNgbFactor * ( z0 + Prho ); // force correction, including corrections for adaptive softenings and EOS terms
                 PPP[i].NumNgb = pow(PPP[i].NumNgb , 1./NUMDIMS); /* convert NGB to the more useful format, NumNgb^(1/NDIMS), which we can use to obtain the corrected particle sizes */
             } else {
-                PPPZ[i].AGS_zeta = 0; PPP[i].NumNgb = 0;
+                PPPZ[i].AGS_zeta = 0; PPP[i].NumNgb = 0; PPP[i].AGS_Hsml = All.ForceSoftening[P[i].Type];
             }
 #ifdef PM_HIRES_REGION_CLIPPING
             if(PPP[i].NumNgb <= 0) {P[i].Mass = 0;}
@@ -871,7 +875,7 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
                         short int TimeBin_j = P[j].TimeBin; if(TimeBin_j < 0) {TimeBin_j = -TimeBin_j - 1;} // need to make sure we correct for the fact that TimeBin is used as a 'switch' here to determine if a particle is active for iteration, otherwise this gives nonsense!
                         if(TimeBinActive[TimeBin_j]) {if(vsig > PPP[j].AGS_vsig) PPP[j].AGS_vsig = vsig;}
                         if(vsig > out.AGS_vsig) {out.AGS_vsig = vsig;}
-#ifdef WAKEUP
+#if defined(WAKEUP) && (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(DM_FUZZY) || defined(CBE_INTEGRATOR))
                         if(!(TimeBinActive[TimeBin_j]) && (All.Time > All.TimeBegin)) {if(vsig > WAKEUP*P[j].AGS_vsig) {P[j].wakeup = 1;}}
 #if defined(GALSF)
                         if((P[j].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[j].Type == 2)||(P[j].Type==3)))) {P[j].wakeup = 0;} // don't wakeup star particles, or risk 2x-counting feedback events! //
@@ -934,41 +938,48 @@ void *ags_density_evaluate_secondary(void *p)
 /* routine to determine if we need to use ags_density to calculate Hsml */
 int ags_density_isactive(int i)
 {
-    if(P[i].TimeBin < 0) return 0; /* check our 'marker' for particles which have finished
-                                        iterating to an Hsml solution (if they have, dont do them again) */
+    int default_to_return = 0; // default to not being active - needs to be pro-actively 'activated' by some physics
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+    default_to_return = 1;
+    if(!((1 << P[i].Type) & (ADAPTIVE_GRAVSOFT_FORALL))) /* particle is NOT one of the designated 'adaptive' types */
+    {
+        PPP[i].AGS_Hsml = All.ForceSoftening[P[i].Type];
+        PPPZ[i].AGS_zeta = 0;
+        default_to_return = 0;
+    } else {default_to_return = 1;} /* particle is AGS-active */
+#endif
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
     if(P[i].Type==0)
     {
         PPP[i].AGS_Hsml = PPP[i].Hsml; // gas sees gas, these are identical
-        return 0; // don't actually need to do the loop //
+        default_to_return = 0; // don't actually need to do the loop //
     }
-    return 1;
+#endif
+#ifdef DM_SIDM
+    if((1 << P[i].Type) & (DM_SIDM)) {default_to_return = 1;}
+#endif
+#if defined(DM_FUZZY) || defined(CBE_INTEGRATOR)
+    if(P[i].Type == 1) {default_to_return = 1;}
+#endif
+    if(P[i].TimeBin < 0) {default_to_return = 0;} /* check our 'marker' for particles which have finished iterating to an Hsml solution (if they have, dont do them again) */
+    return default_to_return;
 }
+    
 
 /* routine to return the maximum allowed softening */
 double ags_return_maxsoft(int i)
 {
-    double maxsoft = All.MaxHsml; // overall maximum - nothing is allowed to exceed this
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-    maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * All.ForceSoftening[P[i].Type]); // user-specified maximum
-#ifdef PMGRID
-    /*!< this gives the maximum allowed gravitational softening when using the TreePM method.
-     *  The quantity is given in units of the scale used for the force split (ASMTH) */
-    maxsoft = DMIN(maxsoft, ADAPTIVE_GRAVSOFT_FORALL * 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
+    double maxsoft = All.MaxHsml; // user-specified maximum: nothing is allowed to exceed this
+#ifdef PMGRID /* Maximum allowed gravitational softening when using the TreePM method. The quantity is given in units of the scale used for the force split (ASMTH) */
+    maxsoft = DMIN(maxsoft, 1e3 * 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell, times a 'safety factor' which can be pretty big */
 #endif
-#else
-    maxsoft = DMIN(maxsoft, 50.0 * All.ForceSoftening[P[i].Type]);
-#ifdef PMGRID
-    maxsoft = DMIN(maxsoft, 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell */
-#endif
-#endif
-#ifdef BLACK_HOLES
-#ifndef SINGLE_STAR_SINK_DYNAMICS
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32) && defined(BLACK_HOLES) && !defined(SINGLE_STAR_SINK_DYNAMICS)
     if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius  / All.cf_atime;}   // MaxAccretionRadius is now defined in params.txt in PHYSICAL units
-#endif
 #endif
     return maxsoft;
 }
 
+    
 /* routine to return the minimum allowed softening */
 double ags_return_minsoft(int i)
 {
@@ -1576,4 +1587,4 @@ int AGSForce_isactive(int i)
 
 
 
-#endif // ADAPTIVE_GRAVSOFT_FORALL
+#endif // AGS_HSML_CALCULATION_IS_ACTIVE

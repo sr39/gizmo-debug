@@ -56,7 +56,7 @@
 
 #define DO_PREPROCESSOR_EXPAND_(VAL)  VAL ## 1
 #define EXPAND_PREPROCESSOR_(VAL)     DO_PREPROCESSOR_EXPAND_(VAL) /* checks for a NON-ZERO value of this parameter */
-
+#define CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(VAL) !(EXPAND_PREPROCESSOR_(VAL) == 1) /* returns True if a non-zero int value of VAL is set */
 
 #if !defined(SLOPE_LIMITER_TOLERANCE)
 #if defined(AGGRESSIVE_SLOPE_LIMITERS)
@@ -164,8 +164,8 @@
 #define BOX_SHEARING_Q SHEARING_BOX_Q
 #endif
 #ifdef ANALYTIC_GRAVITY
-#if !(EXPAND_PREPROCESSOR_(ANALYTIC_GRAVITY) == 1)
-#define GRAVITY_ANALYTIC 1
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(ANALYTIC_GRAVITY)
+#define GRAVITY_ANALYTIC ANALYTIC_GRAVITY
 #else
 #define GRAVITY_ANALYTIC
 #endif
@@ -178,12 +178,6 @@
 #include "eos/eos.h"
 
 
-#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY) || defined(DM_SIDM)
-#ifndef ADAPTIVE_GRAVSOFT_FORALL
-#define ADAPTIVE_GRAVSOFT_FORALL 100000
-#endif
-#endif
-
 #if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
 #define AGS_FACE_CALCULATION_IS_ACTIVE
 #endif
@@ -195,6 +189,11 @@
 #else
 #define CBE_INTEGRATOR_NMOMENTS 4
 #endif
+#endif
+
+
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(CBE_INTEGRATOR) || defined(DM_FUZZY) || defined(DM_SIDM) || defined(AGS_FACE_CALCULATION_IS_ACTIVE)
+#define AGS_HSML_CALCULATION_IS_ACTIVE
 #endif
 
 
@@ -218,16 +217,47 @@
 #define GALSF_FB_FIRE_RPROCESS 4            /*! tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model) */
 //#define GALSF_SFR_IMF_VARIATION           /*! track [do not change] properties of gas from which stars form, for IMF models in post-processing */
 #define PROTECT_FROZEN_FIRE                 /*! protect code so FIRE runs are not modified by various code updates, etc -- default FIRE-2 code locked */
+#if !defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
+#define ADAPTIVE_GRAVSOFT_FORGAS
+#endif
+#if !defined(OUTPUT_POSITIONS_IN_DOUBLE)
+#define OUTPUT_POSITIONS_IN_DOUBLE
+#endif
+#if !defined(ALLOW_IMBALANCED_GASPARTICLELOAD)
+#define ALLOW_IMBALANCED_GASPARTICLELOAD
+#endif
+#if defined(PMGRID)
+#if !defined(PM_PLACEHIGHRESREGION)
+#define PM_PLACEHIGHRESREGION 19 /* 1+2+16 */
+#endif
+#if !defined(PM_HIRES_REGION_CLIPPING)
+#define PM_HIRES_REGION_CLIPPING 3000 /* just a safety factor here */
+#endif
+#endif
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(FIRE_PHYSICS_DEFAULTS) /* check if a numerical value is set */
+#if (FIRE_PHYSICS_DEFAULTS == 1)
+#define FIRE1_SNE_COUPLING      /* reverts to old mass-scalar-weight, 1-way-search, non-tensor-renormalized SNe model */
+#define EOS_TRUELOVE_PRESSURE   /* uses effective EOS for gas near resolution limit */
+#undef GALSF_SFR_VIRIAL_SF_CRITERION    /* can't be used reliably with effective EOS, will give bogus results */
+#endif
+#if (FIRE_PHYSICS_DEFAULTS == 2)
+// currently uses default settings above, but keep this here for future use //
+#endif
+#if (FIRE_PHYSICS_DEFAULTS == 3)
+#undef PROTECT_FROZEN_FIRE  /* undefine protections to test new code */
+#undef GALSF_SFR_VIRIAL_SF_CRITERION    /* can't be used reliably with effective EOS, will give bogus results */
+#define GALSF_SFR_VIRIAL_SF_CRITERION 4 /*! sink-particle like self-gravity requirement for star formation: slightly more sophisticated version per Mike */
+#endif
+#endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
 #else
 #if (defined(COOLING) && defined(GALSF) && defined(GALSF_FB_MECHANICAL)) && !defined(FIRE_UNPROTECT_FROZEN)
 #define PROTECT_FROZEN_FIRE
 #endif
-#endif
+#endif // FIRE_PHYSICS_DEFAULTS clauses
 
 #ifdef PROTECT_FROZEN_FIRE
 #define GALSF_USE_SNE_ONELOOP_SCHEME // set to use the 'base' FIRE-2 SNe coupling. if commented out, will user newer version that more accurately manages the injected energy with neighbors moving to inject a specific target
 #endif
-
 
 
 #ifdef COSMIC_RAYS
@@ -698,7 +728,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 
 
 #if defined(GRAVITY_ANALYTIC)
-#if !(EXPAND_PREPROCESSOR_(GRAVITY_ANALYTIC) == 1)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(GRAVITY_ANALYTIC)
 #if (GRAVITY_ANALYTIC > 0)
 #define GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE /* ok, analytic gravity is defined with a numerical value > 0, indicating we should use this flag */
 #ifndef BH_CALC_DISTANCES
@@ -790,7 +820,7 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
                                          *   to 2^29
                                          */
 
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
 #define AGS_OUTPUTGRAVSOFT 1  /*! output softening to snapshots */
 //#define AGS_OUTPUTZETA 1 /*! output correction zeta term to snapshots */
 #endif
@@ -1218,7 +1248,7 @@ typedef MyDouble MyBigFloat;
 
 
 #define PPP P
-#if defined(ADAPTIVE_GRAVSOFT_FORALL)
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
 #define PPPZ P
 #else
 #define PPPZ SphP
@@ -2100,7 +2130,7 @@ extern struct global_data_all_processes
   double NetworkTempThreshold;
 #endif
 
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
   double AGS_DesNumNgb;
   double AGS_MaxNumNgbDeviation;
 #endif
@@ -2384,7 +2414,7 @@ extern ALIGN(32) struct particle_data
     integertime dt_step;
 #endif
     
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
     MyDouble AGS_Hsml;          /*!< smoothing length (for gravitational forces) */
     MyFloat AGS_zeta;           /*!< factor in the correction term */
     MyDouble AGS_vsig;          /*!< signal velocity of particle approach, to properly time-step */
@@ -2557,8 +2587,8 @@ extern struct sph_particle_data
 #ifdef HYDRO_PRESSURE_SPH
     MyDouble EgyWtDensity;          /*!< 'effective' rho to use in hydro equations */
 #endif
-    
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
+
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(AGS_HSML_CALCULATION_IS_ACTIVE)
     MyFloat AGS_zeta;               /*!< correction term for adaptive gravitational softening lengths */
 #endif
     
@@ -2736,7 +2766,7 @@ extern struct sph_particle_data
 #endif
     
     
-#if defined(WAKEUP) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
+#if defined(WAKEUP) && !defined(AGS_HSML_CALCULATION_IS_ACTIVE)
     short int wakeup;                     /*!< flag to wake up particle */
 #endif
     

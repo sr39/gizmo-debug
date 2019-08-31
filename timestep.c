@@ -403,11 +403,10 @@ integertime get_timestep(int p,		/*!< particle index */
         
         ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / (dt * dt);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-        ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].AGS_Hsml,All.ForceSoftening[P[p].Type]) / (dt * dt);
+        ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * PPP[p].AGS_Hsml / (dt * dt);
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
-        if(P[p].Type==0)
-            ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / (dt * dt);
+        if(P[p].Type==0) {ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * PPP[p].Hsml / (dt * dt);}
 #endif
         *aphys = ac;
         return flag;
@@ -416,13 +415,10 @@ integertime get_timestep(int p,		/*!< particle index */
     dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / ac);
 
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-    dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * DMAX(PPP[p].AGS_Hsml,All.ForceSoftening[P[p].Type]) / ac);
+    dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * PPP[p].AGS_Hsml / ac);
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
-    if(P[p].Type == 0)
-    {
-        dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]) / ac);
-    }
+    if(P[p].Type == 0) {dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * PPP[p].Hsml / ac);}
 #endif
 
 #if (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)) && defined(GALSF) && defined(GALSF_FB_MECHANICAL)
@@ -430,12 +426,11 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         if((All.ComovingIntegrationOn))
         {
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-            double ags_h = DMAX(PPP[p].AGS_Hsml , DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]));
-            ags_h = DMIN(ags_h, DMAX(100.*All.ForceSoftening[P[p].Type] , 10.*PPP[p].AGS_Hsml));
-#else
-            double ags_h = DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]);
+            double ags_h = DMAX(PPP[p].Hsml, All.ForceSoftening[P[p].Type]);
             ags_h = DMIN(ags_h, 10.*All.ForceSoftening[P[p].Type]);
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+            ags_h = DMAX(PPP[p].AGS_Hsml , DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]));
+            ags_h = DMIN(ags_h, DMAX(100.*All.ForceSoftening[P[p].Type] , 10.*PPP[p].AGS_Hsml));
 #endif
             dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * ags_h / ac);
         }
@@ -484,9 +479,9 @@ integertime get_timestep(int p,		/*!< particle index */
     
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     /* make sure smoothing length of non-gas particles doesn't change too much in one timestep */
-    if(P[p].Type > 0)
+    if(((1 << P[p].Type) & (ADAPTIVE_GRAVSOFT_FORALL)) && (P[p].Type > 0))
     {
-        double dt_divv = 0.3 / (MIN_REAL_NUMBER + All.cf_a2inv*fabs(P[p].Particle_DivVel)); // with new integration accuracy in gravtree, we may not need to be super-conservative here. old code used pre-factor 0.25 here, see if we can get away with the larger value which is standard for gas below
+        double dt_divv = 0.1 / (MIN_REAL_NUMBER + All.cf_a2inv*fabs(P[p].Particle_DivVel)); // with new integration accuracy in gravtree, we may not need to be super-conservative here. old code used pre-factor 0.25 here, see if we can get away with the larger value which is standard for gas below
         if(dt_divv < dt) {dt = dt_divv;}
         double dt_cour = 2. * All.CourantFac * (Get_Particle_Size_AGS(p)*All.cf_atime) / (MIN_REAL_NUMBER + 0.5*P[p].AGS_vsig*All.cf_afac3); // can be generous here, really the signal velocity isn't that important in the collisionless case, but it is important with some of the physics above //
 #if defined(CBE_INTEGRATOR)
@@ -898,10 +893,20 @@ integertime get_timestep(int p,		/*!< particle index */
     
 #ifdef DM_SIDM
     /* Reduce time-step if this particle got interaction probabilities > 0.2 during the last time-step */
-    if(P[p].dt_step_sidm > 0)
+    if((1 << P[p].Type) & (DM_SIDM))
     {
-        double dt_sidm_physical = P[p].dt_step_sidm * All.Timebase_interval / All.cf_hubble_a;
-        if(dt_sidm_physical < dt) {dt = dt_sidm_physical;}
+        if(P[p].dt_step_sidm > 0)
+        {
+            double dt_sidm_physical = P[p].dt_step_sidm * All.Timebase_interval / All.cf_hubble_a;
+            if(dt_sidm_physical < dt) {dt = dt_sidm_physical;}
+        }
+        if(dt > 0)
+        {
+            double p_target = 0.2; // desired maximum probability per timestep
+            double dV[3]; for(k=0;k<3;k++) {dV[k]=P[p].AGS_vsig*All.cf_afac3*All.cf_atime/sqrt(3.);} // convert signal vel to velocity dispersion for estimating rates
+            double p_dt = prob_of_interaction(P[p].Mass,0.,PPP[p].AGS_Hsml,dV,dt); // probability of interacting with another DM particle well within kernel, assuming same mass, H, and V~signalvel, for current timestep dt
+            if(p_dt > p_target) {dt = p_target;}
+        }
     }
 #endif
     
@@ -978,7 +983,7 @@ integertime get_timestep(int p,		/*!< particle index */
 	    {
 		    double eps = DMAX(KERNEL_CORE_SIZE*All.ForceSoftening[5], BPP(p).BH_dr_to_NearestGasNeighbor);
 		    if(eps < MAX_REAL_NUMBER) {eps = DMAX(Get_Particle_Size(p), eps);} else {eps = Get_Particle_Size(p);}
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32)
 		    eps = DMAX(eps, KERNEL_CORE_SIZE*P[p].AGS_Hsml);
 #endif		
 		    double dt_gas = sqrt(2*All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * P[p].Mass)); // fraction of the freefall time of the nearest gas particle from rest
@@ -1242,7 +1247,7 @@ void process_wake_ups(void)
     
     for(i = 0; i < NumPart; i++)
     {
-#if !defined(ADAPTIVE_GRAVSOFT_FORALL)
+#if !defined(AGS_HSML_CALCULATION_IS_ACTIVE)
         if(P[i].Type != 0) {continue;} // only gas particles can be awakened
 #endif
         
