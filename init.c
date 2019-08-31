@@ -539,7 +539,7 @@ void init(void)
         for(j=0;j<3;j++) SphP[i].GravWorkTerm[j] = 0;
 #endif
         
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(AGS_HSML_CALCULATION_IS_ACTIVE)
         PPPZ[i].AGS_zeta = 0;
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
         if(1 & ADAPTIVE_GRAVSOFT_FORALL) {PPP[i].AGS_Hsml = PPP[i].Hsml;} else {PPP[i].AGS_Hsml = All.ForceSoftening[0];}
@@ -757,7 +757,7 @@ void init(void)
     if(RestartFlag != 3 && RestartFlag != 5)
         setup_smoothinglengths();
     
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
     if(RestartFlag != 3 && RestartFlag != 5) {ags_setup_smoothinglengths();}
 #endif
 #ifdef CBE_INTEGRATOR
@@ -774,7 +774,7 @@ void init(void)
     for(i = 0; i < NumPart; i++) {P[i].IMF_Mturnover = 2.0;} // reset to normal IMF
 #endif
     
-#if defined(WAKEUP) && defined(ADAPTIVE_GRAVSOFT_FORALL)
+#if defined(WAKEUP) && defined(AGS_HSML_CALCULATION_IS_ACTIVE)
     for(i=0;i<NumPart;i++) {P[i].wakeup=0;}
 #endif
 
@@ -847,7 +847,7 @@ void init(void)
         SphP[i].MassTrue = P[i].Mass;
         for(j=0;j<3;j++) SphP[i].GravWorkTerm[j] = 0;
 #endif
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(AGS_HSML_CALCULATION_IS_ACTIVE)
         PPPZ[i].AGS_zeta = 0;
 #endif
 #ifdef WAKEUP
@@ -946,10 +946,10 @@ void init(void)
         
 #endif
         
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-        if(ThisTask == 0) {printf("*ADAPTIVE_GRAVSOFT_FORALL* Computation of softening lengths... \n");}
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+        if(ThisTask == 0) {printf("*AGS_HSML_CALCULATION_IS_ACTIVE* Computation of softening lengths... \n");}
         ags_setup_smoothinglengths();
-        if(ThisTask == 0) {printf("*ADAPTIVE_GRAVSOFT_FORALL* Computation of softening lengths done. \n");}
+        if(ThisTask == 0) {printf("*AGS_HSML_CALCULATION_IS_ACTIVE* Computation of softening lengths done. \n");}
 #endif
         
 #ifdef FOF
@@ -1192,7 +1192,7 @@ void assign_unique_ids(void)
 }
 
 
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
 void ags_setup_smoothinglengths(void)
 {
     int i, no, p;
@@ -1202,7 +1202,7 @@ void ags_setup_smoothinglengths(void)
         {
             P[i].Particle_DivVel = 0;
             PPPZ[i].AGS_zeta = 0;
-            if((1 << P[i].Type) & (ADAPTIVE_GRAVSOFT_FORALL))
+            if(ags_density_isactive(i) || P[i].Type==0) // type is AGS-active //
             {
                 if(P[i].Type > 0)
                 {
@@ -1232,7 +1232,7 @@ void ags_setup_smoothinglengths(void)
     do_dm_fuzzy_initialization();
 #endif
 }
-#endif // ADAPTIVE_GRAVSOFT_FORALL
+#endif // AGS_HSML_CALCULATION_IS_ACTIVE
 
 
 #if defined(GALSF_SUBGRID_WINDS)

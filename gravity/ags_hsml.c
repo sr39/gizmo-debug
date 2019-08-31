@@ -68,7 +68,7 @@ int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary)
     if((1 << particle_type_primary) & (DM_SIDM)) {return DM_SIDM;} /* SIDM particles see other SIDM particles, regardless of type/mass */
 #endif
     
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
     return (1 << particle_type_primary); /* if we haven't been caught by one of the above checks, we simply return whether or not we see 'ourselves' */
 #endif
     
@@ -77,7 +77,7 @@ int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary)
 
 
 
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
 
 /*! Structure for communication during the density computation. Holds data that is sent to other processors.
  */
@@ -503,17 +503,18 @@ void ags_density(void)
 #else
                 if(iter > 4) {desnumngbdev = DMIN( 0.25*desnumngb , desnumngbdev * exp(0.1*log(desnumngb/(16.*desnumngbdev))*((double)iter - 3.)) );}
 #endif
-                if(All.Time<=1.001*All.TimeBegin) {if(All.AGS_MaxNumNgbDeviation > 0.0005) desnumngbdev=0.0005;}
+                if(All.Time<=All.TimeBegin) {if(desnumngbdev > 0.0005) desnumngbdev=0.0005; if(iter > 50) {desnumngbdev = DMIN( 0.25*desnumngb , desnumngbdev * exp(0.1*log(desnumngb/(16.*desnumngbdev))*((double)iter - 49.)) );}
+
 
                 
                 /* check if we are in the 'normal' range between the max/min allowed values */
-                if((PPP[i].NumNgb < (desnumngb - desnumngbdev) && PPP[i].AGS_Hsml < 0.99*maxsoft) ||
-                   (PPP[i].NumNgb > (desnumngb + desnumngbdev) && PPP[i].AGS_Hsml > 1.01*minsoft))
+                if((PPP[i].NumNgb < (desnumngb - desnumngbdev) && PPP[i].AGS_Hsml < 0.999*maxsoft) ||
+                   (PPP[i].NumNgb > (desnumngb + desnumngbdev) && PPP[i].AGS_Hsml > 1.001*minsoft))
                     redo_particle = 1;
                 
                 /* check maximum kernel size allowed */
                 particle_set_to_maxhsml_flag = 0;
-                if((PPP[i].AGS_Hsml >= 0.99*maxsoft) && (PPP[i].NumNgb < (desnumngb - desnumngbdev)))
+                if((PPP[i].AGS_Hsml >= 0.999*maxsoft) && (PPP[i].NumNgb < (desnumngb - desnumngbdev)))
                 {
                     redo_particle = 0;
                     if(PPP[i].AGS_Hsml == maxsoft)
@@ -530,7 +531,7 @@ void ags_density(void)
                 
                 /* check minimum kernel size allowed */
                 particle_set_to_minhsml_flag = 0;
-                if((PPP[i].AGS_Hsml <= 1.01*minsoft) && (PPP[i].NumNgb > (desnumngb + desnumngbdev)))
+                if((PPP[i].AGS_Hsml <= 1.001*minsoft) && (PPP[i].NumNgb > (desnumngb + desnumngbdev)))
                 {
                     redo_particle = 0;
                     if(PPP[i].AGS_Hsml == minsoft)
@@ -574,7 +575,9 @@ void ags_density(void)
                     if((particle_set_to_maxhsml_flag==0)&&(particle_set_to_minhsml_flag==0))
                     {
                         if(PPP[i].NumNgb < (desnumngb - desnumngbdev))
+                        {
                             Left[i] = DMAX(PPP[i].AGS_Hsml, Left[i]);
+                        }
                         else
                         {
                             if(Right[i] != 0)
@@ -680,14 +683,15 @@ void ags_density(void)
                                 else
                                     PPP[i].AGS_Hsml *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
                             }
-                        } // closes if[particle_set_to_max/minhsml_flag]
-                    } // closes redo_particle
+                        } // closes if(Right[i] > 0 && Left[i] > 0) else clause
+                        
+                    } // closes if[particle_set_to_max/minhsml_flag]
                     /* resets for max/min values */
                     if(PPP[i].AGS_Hsml < minsoft) PPP[i].AGS_Hsml = minsoft;
                     if(particle_set_to_minhsml_flag==1) PPP[i].AGS_Hsml = minsoft;
                     if(PPP[i].AGS_Hsml > maxsoft) PPP[i].AGS_Hsml = maxsoft;
                     if(particle_set_to_maxhsml_flag==1) PPP[i].AGS_Hsml = maxsoft;
-                }
+                } // closes redo_particle
                 else
                     P[i].TimeBin = -P[i].TimeBin - 1;	/* Mark as inactive */
             } //  if(ags_density_isactive(i))
@@ -934,24 +938,33 @@ void *ags_density_evaluate_secondary(void *p)
 /* routine to determine if we need to use ags_density to calculate Hsml */
 int ags_density_isactive(int i)
 {
+    int default_to_return = 0; // default to not being active - needs to be pro-actively 'activated' by some physics
+#ifdef ADAPTIVE_GRAVSOFT_FORALL
+    default_to_return = 1;
     if(!((1 << P[i].Type) & (ADAPTIVE_GRAVSOFT_FORALL))) /* particle is NOT one of the designated 'adaptive' types */
     {
         PPP[i].AGS_Hsml = All.ForceSoftening[P[i].Type];
         PPPZ[i].AGS_zeta = 0;
-        return 0;
-    }
-
+        default_to_return = 0;
+    } else {default_to_return = 1;} /* particle is AGS-active */
+#endif
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
     if(P[i].Type==0)
     {
         PPP[i].AGS_Hsml = PPP[i].Hsml; // gas sees gas, these are identical
-        return 0; // don't actually need to do the loop //
+        default_to_return = 0; // don't actually need to do the loop //
     }
-
-    if(P[i].TimeBin < 0) return 0; /* check our 'marker' for particles which have finished
-                                    iterating to an Hsml solution (if they have, dont do them again) */
-
-    return 1;
+#endif
+#ifdef DM_SIDM
+    if((1 << P[i].Type) & (DM_SIDM)) {default_to_return = 1;}
+#endif
+#if defined(DM_FUZZY) || defined(CBE_INTEGRATOR)
+    if(P[i].Type == 1) {default_to_return = 1;}
+#endif
+    if(P[i].TimeBin < 0) {default_to_return = 0;} /* check our 'marker' for particles which have finished iterating to an Hsml solution (if they have, dont do them again) */
+    return default_to_return;
 }
+    
 
 /* routine to return the maximum allowed softening */
 double ags_return_maxsoft(int i)
@@ -966,6 +979,7 @@ double ags_return_maxsoft(int i)
     return maxsoft;
 }
 
+    
 /* routine to return the minimum allowed softening */
 double ags_return_minsoft(int i)
 {
@@ -1573,4 +1587,4 @@ int AGSForce_isactive(int i)
 
 
 
-#endif // ADAPTIVE_GRAVSOFT_FORALL
+#endif // AGS_HSML_CALCULATION_IS_ACTIVE

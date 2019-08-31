@@ -1237,7 +1237,7 @@ void process_wake_ups(void)
     
     for(i = 0; i < NumPart; i++)
     {
-#if !defined(ADAPTIVE_GRAVSOFT_FORALL)
+#if !defined(AGS_HSML_CALCULATION_IS_ACTIVE)
         if(P[i].Type != 0) {continue;} // only gas particles can be awakened
 #endif
         
