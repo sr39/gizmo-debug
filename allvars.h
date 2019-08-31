@@ -178,16 +178,6 @@
 #include "eos/eos.h"
 
 
-#if defined(CBE_INTEGRATOR) || defined(DM_FUZZY) || defined(DM_SIDM)
-#ifndef ADAPTIVE_GRAVSOFT_FORALL
-#if defined(DM_SIDM)
-#define ADAPTIVE_GRAVSOFT_FORALL DM_SIDM /*! enable at least for the DM which is 'active' */
-#else
-#define ADAPTIVE_GRAVSOFT_FORALL 2 /*! enable at least for the high-res DM */
-#endif
-#endif
-#endif
-
 #if defined(CBE_INTEGRATOR) || defined(DM_FUZZY)
 #define AGS_FACE_CALCULATION_IS_ACTIVE
 #endif
@@ -199,6 +189,11 @@
 #else
 #define CBE_INTEGRATOR_NMOMENTS 4
 #endif
+#endif
+
+
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(CBE_INTEGRATOR) || defined(DM_FUZZY) || defined(DM_SIDM) || defined(AGS_FACE_CALCULATION_IS_ACTIVE)
+#define AGS_HSML_CALCULATION_IS_ACTIVE
 #endif
 
 
@@ -825,7 +820,7 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
                                          *   to 2^29
                                          */
 
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
 #define AGS_OUTPUTGRAVSOFT 1  /*! output softening to snapshots */
 //#define AGS_OUTPUTZETA 1 /*! output correction zeta term to snapshots */
 #endif
@@ -1253,7 +1248,7 @@ typedef MyDouble MyBigFloat;
 
 
 #define PPP P
-#if defined(ADAPTIVE_GRAVSOFT_FORALL)
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
 #define PPPZ P
 #else
 #define PPPZ SphP
@@ -2135,7 +2130,7 @@ extern struct global_data_all_processes
   double NetworkTempThreshold;
 #endif
 
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
   double AGS_DesNumNgb;
   double AGS_MaxNumNgbDeviation;
 #endif
@@ -2419,7 +2414,7 @@ extern ALIGN(32) struct particle_data
     integertime dt_step;
 #endif
     
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
     MyDouble AGS_Hsml;          /*!< smoothing length (for gravitational forces) */
     MyFloat AGS_zeta;           /*!< factor in the correction term */
     MyDouble AGS_vsig;          /*!< signal velocity of particle approach, to properly time-step */
@@ -2592,8 +2587,8 @@ extern struct sph_particle_data
 #ifdef HYDRO_PRESSURE_SPH
     MyDouble EgyWtDensity;          /*!< 'effective' rho to use in hydro equations */
 #endif
-    
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
+
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(AGS_HSML_CALCULATION_IS_ACTIVE)
     MyFloat AGS_zeta;               /*!< correction term for adaptive gravitational softening lengths */
 #endif
     
@@ -2771,7 +2766,7 @@ extern struct sph_particle_data
 #endif
     
     
-#if defined(WAKEUP) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
+#if defined(WAKEUP) && !defined(AGS_HSML_CALCULATION_IS_ACTIVE)
     short int wakeup;                     /*!< flag to wake up particle */
 #endif
     

@@ -319,7 +319,7 @@ void begrun(void)
 #endif
         
       All.MaxNumNgbDeviation = all.MaxNumNgbDeviation;
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
       /* Allow the tolerance over the number of neighbours to vary during the run:
        * If it was initially set to a very strict value, convergence in ngb-iteration may at some point fail */
       All.AGS_MaxNumNgbDeviation = all.AGS_MaxNumNgbDeviation;
@@ -1660,7 +1660,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
         strcpy(tag[nt], "AGS_DesNumNgb");
         addr[nt] = &All.AGS_DesNumNgb;
         id[nt++] = REAL;
@@ -2096,7 +2096,7 @@ void read_parameter_file(char *fname)
 #ifdef EOS_ELASTIC
     All.MaxNumNgbDeviation /= 5.0;
 #endif
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
     All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 640.;
 #ifdef GALSF
     All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 64.;
@@ -2225,7 +2225,7 @@ void read_parameter_file(char *fname)
             endrun(1);
         }
     }
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
     if((All.AGS_MaxNumNgbDeviation<=0)||(All.AGS_MaxNumNgbDeviation>0.1*All.AGS_DesNumNgb))
     {
         if(ThisTask==0)

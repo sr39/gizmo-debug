@@ -591,7 +591,7 @@ void density(void)
                     PPP[i].NumNgb = PPP[i].DhsmlNgbFactor = P[i].Particle_DivVel = 0;
                 }
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) /* if particle is AGS-active and non-gas, set DivVel to zero because it will be reset in ags_hsml routine */
-                if( ((1 << P[i].Type) & (ADAPTIVE_GRAVSOFT_FORALL)) && (P[i].Type > 0) ) {PPP[i].Particle_DivVel = 0;}
+                if(ags_density_isactive(i) && (P[i].Type > 0)) {PPP[i].Particle_DivVel = 0;}
 #endif
                 
                 // inverse of SPH volume element (to satisfy constraint implicit in Lagrange multipliers)
@@ -744,13 +744,13 @@ void density(void)
                 redo_particle = 0;
                 
                 /* check if we are in the 'normal' range between the max/min allowed values */
-                if((PPP[i].NumNgb < (desnumngb - desnumngbdev) && PPP[i].Hsml < 0.99*maxsoft) ||
-                   (PPP[i].NumNgb > (desnumngb + desnumngbdev) && PPP[i].Hsml > 1.01*minsoft))
+                if((PPP[i].NumNgb < (desnumngb - desnumngbdev) && PPP[i].Hsml < 0.999*maxsoft) ||
+                   (PPP[i].NumNgb > (desnumngb + desnumngbdev) && PPP[i].Hsml > 1.001*minsoft))
                     redo_particle = 1;
                 
                 /* check maximum kernel size allowed */
                 particle_set_to_maxhsml_flag = 0;
-                if((PPP[i].Hsml >= 0.99*maxsoft) && (PPP[i].NumNgb < (desnumngb - desnumngbdev)))
+                if((PPP[i].Hsml >= 0.999*maxsoft) && (PPP[i].NumNgb < (desnumngb - desnumngbdev)))
                 {
                     redo_particle = 0;
                     if(PPP[i].Hsml == maxsoft)
@@ -767,7 +767,7 @@ void density(void)
                 
                 /* check minimum kernel size allowed */
                 particle_set_to_minhsml_flag = 0;
-                if((PPP[i].Hsml <= 1.01*minsoft) && (PPP[i].NumNgb > (desnumngb + desnumngbdev)))
+                if((PPP[i].Hsml <= 1.001*minsoft) && (PPP[i].NumNgb > (desnumngb + desnumngbdev)))
                 {
                     redo_particle = 0;
                     if(PPP[i].Hsml == minsoft)
@@ -1120,7 +1120,7 @@ void density(void)
                 {
                     /* the zeta terms ONLY control errors if we maintain the 'correct' neighbor number: for boundary
                         particles, it can actually be worse. so we need to check whether we should use it or not */
-                    if((PPP[i].Hsml > 1.01*All.MinHsml) && (PPP[i].Hsml < 0.99*All.MaxHsml) &&
+                    if((PPP[i].Hsml > 1.001*All.MinHsml) && (PPP[i].Hsml < 0.999*All.MaxHsml) &&
                         (fabs(PPP[i].NumNgb-All.DesNumNgb)/All.DesNumNgb < 0.05))
                     {
                         double ndenNGB = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
