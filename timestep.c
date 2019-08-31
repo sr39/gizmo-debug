@@ -893,10 +893,20 @@ integertime get_timestep(int p,		/*!< particle index */
     
 #ifdef DM_SIDM
     /* Reduce time-step if this particle got interaction probabilities > 0.2 during the last time-step */
-    if(P[p].dt_step_sidm > 0)
+    if((1 << P[p].Type) & (DM_SIDM))
     {
-        double dt_sidm_physical = P[p].dt_step_sidm * All.Timebase_interval / All.cf_hubble_a;
-        if(dt_sidm_physical < dt) {dt = dt_sidm_physical;}
+        if(P[p].dt_step_sidm > 0)
+        {
+            double dt_sidm_physical = P[p].dt_step_sidm * All.Timebase_interval / All.cf_hubble_a;
+            if(dt_sidm_physical < dt) {dt = dt_sidm_physical;}
+        }
+        if(dt > 0)
+        {
+            double p_target = 0.2; // desired maximum probability per timestep
+            double dV[3]; for(k=0;k<3;k++) {dV[k]=P[p].AGS_vsig*All.cf_afac3*All.cf_atime/sqrt(3.);} // convert signal vel to velocity dispersion for estimating rates
+            double p_dt = prob_of_interaction(P[p].Mass,0.,PPP[p].AGS_Hsml,dV,dt); // probability of interacting with another DM particle well within kernel, assuming same mass, H, and V~signalvel, for current timestep dt
+            if(p_dt > p_target) {dt = p_target;}
+        }
     }
 #endif
     
