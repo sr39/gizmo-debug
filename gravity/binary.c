@@ -139,8 +139,8 @@ double gravfac(double r, double mass){
 // quantity needed for the jerk, 3* mass/r^5 in Newtonian gravity
 double gravfac2(double r, double mass)
 {
-    double h_inv = 1. / All.ForceSoftening[5];
-    return mass * kernel_gravity(r*h_inv, hinv, hinv*hinv*hinv, 2);
+    double hinv = 1. / All.ForceSoftening[5];
+    return mass * kernel_gravity(r*hinv, hinv, hinv*hinv*hinv, 2);
 }
 
 // Computes the gravitational acceleration of a body at separation dx from a mass, accounting for softening
