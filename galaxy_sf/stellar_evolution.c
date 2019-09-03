@@ -287,23 +287,30 @@ int get_age_tracer_bin(const double age){
   } else{
       index = floor( (log10(age) - binstart)/ log_bin_dt); // find bin
   };
+
 #else
   // Bins are custom with arbitrary sizes - perform a search
   if (age < All.AgeTracerTimeBins[0]){
     index = 0;
-  } else if (age >= All.AgeTracerTimeBins[NUM_AGE_TRACERS-1]){
+  } else if (age >= All.AgeTracerTimeBins[NUM_AGE_TRACERS]){
     return too_old_flag;
   } else {
-  // search for the bin:
-    index = binarySearch(All.AgeTracerTimeBins, 0, NUM_AGE_TRACERS, age);
-    if ((age < All.AgeTracerTimeBins[index]) || (index<0)){
+    // search for the bin:
+    index = binarySearch(All.AgeTracerTimeBins, 0, NUM_AGE_TRACERS+1, age);
+    if (age < All.AgeTracerTimeBins[index]){
         printf("Binary search not working %d  %f  %f  %f\n",index, age,
                                                 All.AgeTracerTimeBins[index],
                                                 All.AgeTracerTimeBins[index+1]);
         endrun(8888);
     }
   }
+
 #endif
+  if ( index < 0 ){
+    printf("Age tracer binary search not working %d  %f  %f  %f\n",index, age);
+    endrun(8888);
+  }
+
 
   return index;
 }
@@ -440,7 +447,6 @@ void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i)
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
 int binarySearch(const double * arr, int l, int r, const double x)
 {
-
   if (r>=1){
     int mid = l + (r-1)/2;
 
@@ -450,7 +456,6 @@ int binarySearch(const double * arr, int l, int r, const double x)
 
     return binarySearch(arr,mid+1,r,x);
   }
-
   return -1;
 }
 #endif
@@ -494,7 +499,7 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
                                     * P[i].AgeDeposition_ThisTimeStep;
 
     // get age tracer bin
-    k = get_age_tracer_bin(star_age); if (k == -9) return; // flag that age > max bin
+    k = get_age_tracer_bin(star_age); if (k == -9){return;} // flag that age > max bin
 
     // Now deposit the tracer field, with a check to make sure multiple
     // bins are crossed this dt if dt is large or age happens to be near a bin
