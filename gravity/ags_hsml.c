@@ -984,6 +984,9 @@ double ags_return_maxsoft(int i)
 double ags_return_minsoft(int i)
 {
     double minsoft = All.ForceSoftening[P[i].Type]; // this is the user-specified minimum
+#if !defined(ADAPTIVE_GRAVSOFT_FORALL)
+    minsoft = DMIN(All.MinHsml, minsoft);
+#endif
     return minsoft;
 }
 
