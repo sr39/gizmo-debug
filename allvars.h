@@ -408,7 +408,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 
 #ifdef SINGLE_STAR_FB_JETS
-#define BH_WIND_SPAWN (3) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
+#define BH_WIND_SPAWN (1) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
 #endif
 
 #ifdef SINGLE_STAR_PROMOTION
