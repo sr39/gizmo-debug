@@ -348,13 +348,15 @@ void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
 
     // otherwise, rate limit according to the return fraction
     //    this represents fraction of time star should be depositing
-    if(get_random_number(P[i].ID + 5) < 1.0 / All.AgeTracerReturnFraction){
+    if(get_random_number(P[i].ID + 3) < All.AgeTracerReturnFraction){
         // deposit age tracer and use this scaling to increase
         // the normalization of the tracer field
         P[i].AgeDeposition_ThisTimeStep = 1.0 / All.AgeTracerReturnFraction;
+        //printf("adding deposition\n");
     } else {
         // don't do anything this timestep
         P[i].AgeDeposition_ThisTimeStep = 0;
+        //printf("skipping deposition\n");
     }
 
 #endif
