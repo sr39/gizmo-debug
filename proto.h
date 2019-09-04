@@ -515,12 +515,6 @@ void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i);
 
 #ifdef GRAIN_FLUID
 void apply_grain_dragforce(void);
-#ifdef GRAIN_COLLISIONS
-void grain_collisions(void);
-void grain_density(void);
-int grain_density_evaluate(int target, int mode, int *nexport, int *nsend_local);
-int grain_density_isactive(int n);
-#endif
 #endif
 
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) || (defined(RT_CHEM_PHOTOION) && defined(GALSF))
@@ -880,6 +874,10 @@ void init_geofactor_table(void);
 double geofactor_integ(double x, void * params);
 double geofactor_angle_integ(double u, void * params);
 void init_self_interactions();
+#ifdef GRAIN_COLLISIONS
+double return_grain_cross_section_per_unit_mass(int i);
+double prob_of_grain_interaction(double cx_per_unitmass, double mass, double r, double h_si, double dV[3], integertime dt_step, int j_ngb);
+#endif
 #endif
 
 
