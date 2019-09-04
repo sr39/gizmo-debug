@@ -378,7 +378,7 @@ int maxThreads = 1;
 #endif
 
 
-#ifdef DM_SIDM
+#if defined(DM_SIDM)
 MyDouble GeoFactorTable[GEOFACTOR_TABLE_LENGTH];
 #endif
 

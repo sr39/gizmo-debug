@@ -1118,9 +1118,12 @@ struct AGSForce_data_in
 #if defined(CBE_INTEGRATOR)
     double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];
 #endif
-#ifdef DM_SIDM
+#if defined(DM_SIDM)
     integertime dt_step_sidm;
     MyIDType ID;
+#ifdef GRAIN_COLLISIONS
+    double Grain_CrossSection_PerUnitMass;
+#endif
 #endif
 }
 *AGSForce_DataIn, *AGSForce_DataGet;
@@ -1128,7 +1131,7 @@ struct AGSForce_data_in
 /* structure for variables which must be returned -from- the evaluation sub-routines */
 struct AGSForce_data_out
 {
-#ifdef DM_SIDM
+#if defined(DM_SIDM)
     double sidm_kick[3];
     integertime dt_step_sidm;
     int si_count;
@@ -1189,9 +1192,12 @@ static inline void particle2in_AGSForce(struct AGSForce_data_in *in, int i)
 #if defined(CBE_INTEGRATOR)
     for(k=0;k<CBE_INTEGRATOR_NBASIS;k++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {in->CBE_basis_moments[k][k2] = P[i].CBE_basis_moments[k][k2];}}
 #endif
-#ifdef DM_SIDM
+#if defined(DM_SIDM)
     in->dt_step_sidm = P[i].dt_step_sidm;
     in->ID = P[i].ID;
+#ifdef GRAIN_COLLISIONS
+    in->Grain_CrossSection_PerUnitMass = return_grain_cross_section_per_unit_mass(i);
+#endif
 #endif
 }
 
@@ -1204,7 +1210,7 @@ static inline void out2particle_AGSForce(struct AGSForce_data_out *out, int i, i
 static inline void out2particle_AGSForce(struct AGSForce_data_out *out, int i, int mode)
 {
     int k,k2; k=0; k2=0;
-#ifdef DM_SIDM
+#if defined(DM_SIDM)
     for(k=0;k<3;k++) {P[i].Vel[k] += out->sidm_kick[k];}
     MIN_ADD(P[i].dt_step_sidm, out->dt_step_sidm, mode);
     P[i].NInteractions += out->si_count;
@@ -1246,7 +1252,7 @@ void AGSForce_calc(void)
 
     /* before doing any operations, need to zero the appropriate memory so we can correctly do pair-wise operations */
     //for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {if(P[i].Type==0) {memset(&AGSForce_DataPasser[i], 0, sizeof(struct temporary_data_topass));}}
-#ifdef DM_SIDM
+#if defined(DM_SIDM)
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {P[i].dt_step_sidm = 10*P[i].dt_step;}
 #endif
 #ifdef CBE_INTEGRATOR
@@ -1481,7 +1487,7 @@ int AGSForce_evaluate(int target, int mode, int *exportflag, int *exportnodecoun
     kernel.h_i = local.AGS_Hsml;
     kernel_hinv(kernel.h_i, &kernel.hinv_i, &kernel.hinv3_i, &kernel.hinv4_i);
     int AGS_kernel_shared_BITFLAG = ags_gravity_kernel_shared_BITFLAG(local.Type); // determine allowed particle types for search for adaptive gravitational softening terms
-#ifdef DM_SIDM
+#if defined(DM_SIDM)
     out.dt_step_sidm = local.dt_step_sidm;
 #endif
 
@@ -1492,7 +1498,7 @@ int AGSForce_evaluate(int target, int mode, int *exportflag, int *exportnodecoun
         while(startnode >= 0)
         {
             double search_len = local.AGS_Hsml;
-#ifdef DM_SIDM
+#if defined(DM_SIDM)
             search_len *= 3.0; // need a 'buffer' because we will consider interactions with any kernel -overlap, not just inside one or the other kernel radius
 #endif
             numngb_inbox = ngb_treefind_pairs_threads_targeted(local.Pos, search_len, target, &startnode, mode, exportflag,
@@ -1511,7 +1517,7 @@ int AGSForce_evaluate(int target, int mode, int *exportflag, int *exportnodecoun
                 if(r2 <= 0) continue;
                 kernel.r = sqrt(r2);
                 kernel.h_j = PPP[j].AGS_Hsml;
-#ifdef DM_SIDM
+#if defined(DM_SIDM)
                 if(kernel.r > kernel.h_i+kernel.h_j) continue;
 #else
                 if(kernel.r > kernel.h_i && kernel.r > kernel.h_j) continue;
@@ -1533,7 +1539,7 @@ int AGSForce_evaluate(int target, int mode, int *exportflag, int *exportnodecoun
 #ifdef DM_FUZZY
 #include "../sidm/dm_fuzzy_flux_computation.h"
 #endif
-#ifdef DM_SIDM
+#if defined(DM_SIDM)
 #include "../sidm/sidm_core_flux_computation.h"
 #endif
 

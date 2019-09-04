@@ -922,9 +922,6 @@ void write_cpu_log(void)
         "   wait       %10.2f  %5.1f%%\n"
         "   misc       %10.2f  %5.1f%%\n"
 #endif
-#ifdef DM_SIDM
-          "sidm_total    %10.2f  %5.1f%%\n"
-#endif
 	      "pmgrav        %10.2f  %5.1f%%\n"
 	      "hydro         %10.2f  %5.1f%%\n"
 	      "   density    %10.2f  %5.1f%%\n"
@@ -986,9 +983,6 @@ void write_cpu_log(void)
     All.CPU_Sum[CPU_IMPROVDIFFWAIT], (All.CPU_Sum[CPU_IMPROVDIFFWAIT]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_IMPROVDIFFCOMM], (All.CPU_Sum[CPU_IMPROVDIFFCOMM]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_IMPROVDIFFMISC], (All.CPU_Sum[CPU_IMPROVDIFFMISC]) / All.CPU_Sum[CPU_ALL] * 100,
-#endif
-#ifdef DM_SIDM
-    All.CPU_Sum[CPU_SIDMSCATTER], (All.CPU_Sum[CPU_SIDMSCATTER])/ All.CPU_Sum[CPU_ALL] * 100,
 #endif
     All.CPU_Sum[CPU_MESH], (All.CPU_Sum[CPU_MESH]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_DENSCOMPUTE] + All.CPU_Sum[CPU_DENSWAIT] + All.CPU_Sum[CPU_DENSCOMM] + All.CPU_Sum[CPU_DENSMISC]
