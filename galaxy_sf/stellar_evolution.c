@@ -571,7 +571,7 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
    //p = 1.0 - exp(-p); // need to account for p>1 cases //
    //p  = DMIN(1.0, p);
    p *= 1.4 * 0.291175 * P[i].AgeDeposition_ThisTimeStep;
-   for(int k=0; k<NUM_AGE_TRACERS;k++){
+   for(k=0; k<NUM_AGE_TRACERS;k++){
      in->yields[k + k_age_start] += (p*P[i].Metallicity[k+k_age_start]);
    }
 #endif
