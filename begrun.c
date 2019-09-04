@@ -2354,7 +2354,7 @@ int read_agetracerlist(char *fname)
 
       if (count == 1 || count == 2)
         {
-          if(i >= NUM_AGE_TRACERS)
+          if(i >= NUM_AGE_TRACERS+1)
             {
               if(ThisTask == 0)
                 printf("\ntoo many entries in age tracer list. You should increase NUM_AGE_TRACERS=%d.\n",
@@ -2366,16 +2366,16 @@ int read_agetracerlist(char *fname)
         }
     }
 
-  if (i < NUM_AGE_TRACERS){
-    printf("\n not enough entries in age tracer list. Found %d entries, but we need %d\n", i, NUM_AGE_TRACERS);
+  if (i < NUM_AGE_TRACERS+1){
+    printf("\n not enough entries in age tracer list. Found %d entries, but we need %d\n", i, NUM_AGE_TRACERS+1);
 
-    endrun(314); // for now, once tested do below:
-    for(int k = i; k < NUM_AGE_TRACERS; k++){ All.AgeTracerTimeBins[k] = All.AgeTracerTimeBins[k-1];}
+    endrun(314);
+//    for(int k = i; k < NUM_AGE_TRACERS; k++){ All.AgeTracerTimeBins[k] = All.AgeTracerTimeBins[k-1];}
   }
 
   fclose(fd);
 
-  printf("\nfound %d age tracer bins in age tracer list.\n", i);
+  printf("\nfound %d age tracer bin edges in age tracer list.\n", i);
   return 0;
 }
 
