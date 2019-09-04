@@ -1228,6 +1228,10 @@ ifeq (DM_SIDM,$(findstring DM_SIDM,$(CONFIGVARS)))
 OBJS    +=  sidm/sidm_core.o 
 endif
 
+ifeq (GRAIN_COLLISIONS,$(findstring GRAIN_COLLISIONS,$(CONFIGVARS)))
+OBJS    +=  sidm/sidm_core.o
+endif
+
 ifeq (NUCLEAR_NETWORK,$(findstring NUCLEAR_NETWORK,$(CONFIGVARS)))
 OBJS	+=  nuclear/nuclear_network_solver.o nuclear/nuclear_network.o
 INCL	+=  nuclear/nuclear_network.h

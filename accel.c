@@ -133,7 +133,7 @@ void compute_additional_forces_for_all_particles(void)
 #ifdef DM_FUZZY
     DMGrad_gradient_calc();
 #endif
-#if defined(DM_FUZZY) || defined(DM_SIDM) || defined(CBE_INTEGRATOR)
+#if defined(DM_FUZZY) || defined(CBE_INTEGRATOR) || defined(DM_SIDM)
     AGSForce_calc();
 #endif
 #ifdef GRAIN_FLUID

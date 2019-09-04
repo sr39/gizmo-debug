@@ -184,7 +184,7 @@ void begrun(void)
     init_turb();
 #endif
 
-#ifdef DM_SIDM
+#if defined(DM_SIDM)
     init_geofactor_table();
 #endif
 
@@ -1117,6 +1117,23 @@ void read_parameter_file(char *fname)
         
         
 #ifdef DM_SIDM
+#ifdef GRAIN_COLLISIONS
+        strcpy(tag[nt], "Grain_InteractionRenormalization");
+        addr[nt] = &All.DM_InteractionCrossSection;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Grain_DissipationFactor");
+        addr[nt] = &All.DM_DissipationFactor;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Grain_KickPerCollision");
+        addr[nt] = &All.DM_KickPerCollision;
+        id[nt++] = REAL;
+        
+        strcpy(tag[nt], "Grain_InteractionVelocityScale");
+        addr[nt] = &All.DM_InteractionVelocityScale;
+        id[nt++] = REAL;
+#else
         strcpy(tag[nt], "DM_InteractionCrossSection");
         addr[nt] = &All.DM_InteractionCrossSection;
         id[nt++] = REAL;
@@ -1129,10 +1146,12 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.DM_KickPerCollision;
         id[nt++] = REAL;
 
-        strcpy(tag[nt], "DM_InteractionVelocityDependence");
-        addr[nt] = &All.DM_InteractionVelocityDependence;
+        strcpy(tag[nt], "DM_InteractionVelocityScale");
+        addr[nt] = &All.DM_InteractionVelocityScale;
         id[nt++] = REAL;
 #endif
+#endif
+        
 
 
 #ifdef SUBFIND
