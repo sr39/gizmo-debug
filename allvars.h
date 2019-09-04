@@ -191,8 +191,11 @@
 #endif
 #endif
 
+#if defined(GRAIN_COLLISIONS)
+#define DM_SIDM 8 /* use the SIDM module to handle scattering of otherwise-collisionless particles against each other -- set to Particle Type=3 here */
+#endif
 
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(CBE_INTEGRATOR) || defined(DM_FUZZY) || defined(DM_SIDM) || defined(AGS_FACE_CALCULATION_IS_ACTIVE)
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(CBE_INTEGRATOR) || defined(DM_FUZZY) || defined(AGS_FACE_CALCULATION_IS_ACTIVE) || defined(DM_SIDM)
 #define AGS_HSML_CALCULATION_IS_ACTIVE
 #endif
 
@@ -1611,11 +1614,11 @@ extern struct global_data_all_processes
 #endif
 
     
-#ifdef DM_SIDM
+#if defined(DM_SIDM)
     MyDouble DM_InteractionCrossSection;  /*!< self-interaction cross-section in [cm^2/g]*/
     MyDouble DM_DissipationFactor;  /*!< dimensionless parameter governing efficiency of dissipation (1=dissipative, 0=elastic) */
-    MyDouble DM_KickPerCollision;  /*!< for exo-thermic DM reactions, this determines the energy gain 'per event': kick in km/s (equivalent to specific energy in erg/g) associated 'per event' */
-    MyDouble DM_InteractionVelocityDependence; /*!< power-law slope of velocity dependence of DM interaction cross-section */
+    MyDouble DM_KickPerCollision;  /*!< for exo-thermic DM reactions, this determines the energy gain 'per event': kick in code units (equivalent to specific energy) associated 'per event' */
+    MyDouble DM_InteractionVelocityScale; /*!< scale above which the scattering becomes velocity-dependent */
 #endif
     
   int MaxPart;			/*!< This gives the maxmimum number of particles that can be stored on one processor. */
@@ -2290,10 +2293,6 @@ extern ALIGN(32) struct particle_data
 #ifdef GRAIN_LORENTZFORCE
     MyFloat Gas_B[3];
 #endif
-#ifdef GRAIN_COLLISIONS
-    MyFloat Grain_Density;
-    MyFloat Grain_Velocity[3];
-#endif
 #endif
     
 #if defined(BLACK_HOLES)
@@ -2371,7 +2370,7 @@ extern ALIGN(32) struct particle_data
     MyFloat ProtoStellarRadius_inSolar; /*!< protostellar radius (also tracks evolution from protostar to ZAMS star) */
 #endif
     
-#ifdef DM_SIDM
+#if defined(DM_SIDM)
     integertime dt_step_sidm; /*!< timestep used if self-interaction probabilities greater than 0.2 are found */
     long unsigned int NInteractions; /*!< Total number of interactions */
 #endif
@@ -3429,7 +3428,7 @@ extern int FB_Seed;
 
 
 
-#ifdef DM_SIDM
+#if defined(DM_SIDM)
 #define GEOFACTOR_TABLE_LENGTH 1000    /*!< length of the table used for the geometric factor spline */
 extern MyDouble GeoFactorTable[GEOFACTOR_TABLE_LENGTH];
 #endif

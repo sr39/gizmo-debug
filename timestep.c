@@ -891,7 +891,7 @@ integertime get_timestep(int p,		/*!< particle index */
         } // closes if(P[p].Type == 0) [gas particle check] //
     
     
-#ifdef DM_SIDM
+#if defined(DM_SIDM)
     /* Reduce time-step if this particle got interaction probabilities > 0.2 during the last time-step */
     if((1 << P[p].Type) & (DM_SIDM))
     {
@@ -904,7 +904,11 @@ integertime get_timestep(int p,		/*!< particle index */
         {
             double p_target = 0.2; // desired maximum probability per timestep
             double dV[3]; for(k=0;k<3;k++) {dV[k]=P[p].AGS_vsig*All.cf_afac3*All.cf_atime/sqrt(3.);} // convert signal vel to velocity dispersion for estimating rates
+#ifdef GRAIN_COLLISIONS
+            double p_dt = prob_of_grain_interaction(return_grain_cross_section_per_unit_mass(p),P[p].Mass,0.,PPP[p].AGS_Hsml,dV,dt,p); // probability of interacting with another grain super-particle well within kernel, assuming same mass, H, and V~signalvel, for current timestep dt
+#else
             double p_dt = prob_of_interaction(P[p].Mass,0.,PPP[p].AGS_Hsml,dV,dt); // probability of interacting with another DM particle well within kernel, assuming same mass, H, and V~signalvel, for current timestep dt
+#endif
             if(p_dt > p_target) {dt = p_target;}
         }
     }
