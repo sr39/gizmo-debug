@@ -902,7 +902,10 @@ int addFB_evaluate_active_check(int i, int fb_loop_iteration)
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
     if(P[i].MassReturn_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==1) return 1;}
     if(P[i].RProcessEvent_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==2) return 1;}
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
     if(P[i].AgeDeposition_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==3) return 1;}
+#endif
+
 #endif
     return 0;
 }
