@@ -103,7 +103,7 @@ double bh_vesc(int j, double mass, double r_code, double bh_softening)
     double m_eff = mass+P[j].Mass;
     if(P[j].Type==0)
     {
-#if defined(BH_SEED_GROWTH_TESTS) || (defined(SINGLE_STAR_SINK_DYNAMICS && !defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)))
+#if defined(BH_SEED_GROWTH_TESTS) || (defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS))
         m_eff += 4.*M_PI * r_code*r_code*r_code * SphP[j].Density; // assume an isothermal sphere interior, for Shu-type solution
 #endif
     }
