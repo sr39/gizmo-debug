@@ -269,7 +269,6 @@ void mechanical_fb_calculate_eventrates_Rprocess(int i, double dt)
 int get_age_tracer_bin(const double age){
 /* Finds the age tracer bin (passive scalar) corresponding
    to the given star's age (in Myr) */
-
   int index = -1;
   const int too_old_flag = -9;
 #ifndef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
@@ -296,7 +295,8 @@ int get_age_tracer_bin(const double age){
     return too_old_flag;
   } else {
     // search for the bin:
-    index = binarySearch(All.AgeTracerTimeBins, 0, NUM_AGE_TRACERS+1, age);
+    index = binarySearch(All.AgeTracerTimeBins, age, 0, NUM_AGE_TRACERS+1,
+                                                      NUM_AGE_TRACERS+1);
     if (age < All.AgeTracerTimeBins[index]){
         printf("Binary search not working %d  %f  %f  %f\n",index, age,
                                                 All.AgeTracerTimeBins[index],
@@ -307,10 +307,9 @@ int get_age_tracer_bin(const double age){
 
 #endif
   if ( index < 0 ){
-    printf("Age tracer binary search not working %d  %f  %f  %f\n",index, age);
+    printf("Age tracer binary search not working %d  %f\n",index, age);
     endrun(8888);
   }
-
 
   return index;
 }
@@ -320,8 +319,10 @@ int get_age_tracer_bin(const double age){
 void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
 {
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-
     P[i].AgeDeposition_ThisTimeStep = 0;
+    if (P[i].Type != 4) return;
+
+    // return; // this stops things
     if (All.AgeTracerRateLimitThreshold <= 0) {
       P[i].AgeDeposition_ThisTimeStep = 1.0;
       return;
@@ -339,7 +340,6 @@ void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
     const double bin_dt = pow(10.0,log10(AGE_TRACER_BIN_START+(k+1)*log_bin_dt)) -
                           pow(10.0,log10(AGE_TRACER_BIN_START+(k  )*log_bin_dt));
 #endif
-
     // if dt is large compared to bin spacing, make full event and return
     if (dt / bin_dt > All.AgeTracerRateLimitThreshold){
       P[i].AgeDeposition_ThisTimeStep = 1.0; // make event
@@ -352,13 +352,10 @@ void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
         // deposit age tracer and use this scaling to increase
         // the normalization of the tracer field
         P[i].AgeDeposition_ThisTimeStep = 1.0 / All.AgeTracerReturnFraction;
-        //printf("adding deposition\n");
     } else {
         // don't do anything this timestep
         P[i].AgeDeposition_ThisTimeStep = 0;
-        //printf("skipping deposition\n");
     }
-
 #endif
     return;
 }
@@ -447,17 +444,31 @@ void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i)
 
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
-int binarySearch(const double * arr, int l, int r, const double x)
+int binarySearch(const double * arr, const double x, 
+                 const int l, const int r, const int total)
 {
-  if (r>=1){
-    int mid = l + (r-1)/2;
 
-    if ((x >= arr[mid]) && (x < arr[mid+1])) return mid;
+  if (r<l){ endrun(7777);}
 
-    if(arr[mid]>x) return binarySearch(arr,l,mid-1,x);
+  const int w     = r-l;
+  const int mid   = l + w/2;
 
-    return binarySearch(arr,mid+1,r,x);
+  if (w  <= 1){
+    if (mid < total-1)
+      if (x >= arr[mid] && x < arr[mid+1])
+        return mid;
+    if (mid >0)
+      if(x >= arr[mid-1] && x < arr[mid])
+        return mid-1;
+  } // endif w < 1
+  if (arr[mid] > x){
+     return binarySearch(arr,x,l,mid-1,total);
+  } else if (arr[mid]<x){
+    return binarySearch(arr,x,mid+1,r,total);
+  } else {
+    return mid;
   }
+
   return -1;
 }
 #endif
@@ -465,6 +476,8 @@ int binarySearch(const double * arr, int l, int r, const double x)
 
 void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
 {
+
+  in->Msne = 0.0;
 /*
   Routine injects passive scalar tracer field for each star particle
   according to the age of that particle for post processing stellar
@@ -480,7 +493,6 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
 
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
     int k; if(P[i].AgeDeposition_ThisTimeStep<=0) {in->Msne=0; return;} // no deposition
-
     if (P[i].Type != 4) return; // do nothing!
 #ifdef METALS
     const int k_age_start = NUM_METAL_SPECIES-NUM_AGE_TRACERS;
@@ -501,13 +513,17 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
                                     * P[i].AgeDeposition_ThisTimeStep;
 
     // get age tracer bin
-    k = get_age_tracer_bin(star_age); if (k == -9){return;} // flag that age > max bin
+    k = get_age_tracer_bin(star_age); if (k == -9){printf("age greater than bin\n"); return;} // flag that age > max bin
 
     // Now deposit the tracer field, with a check to make sure multiple
     // bins are crossed this dt if dt is large or age happens to be near a bin
     // edge
 #ifndef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
     // bin size in linear time (better normalization)
+    const double binstart = log10(AGE_TRACER_BIN_START);
+    const double binend   = log10(AGE_TRACER_BIN_END);
+    const double log_bin_dt = (binend - binstart) / (1.0*NUM_AGE_TRACERS);
+
     double bin_dt = pow(10.0, binstart+(k+1)*log_bin_dt) - (k==0? 0.0 :pow(10.0, binstart + k*log_bin_dt));
 
     if (star_age + dt > pow(10.0, binstart+(k+1)*log_bin_dt)){ // goes over multiple bins!!
@@ -576,9 +592,9 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
    }
 #endif
 
-
 #endif // metals
-    in->Msne = 1.0E-30; // small number just to be nonzero
+    in->Msne = 1.0E-10 * SOLAR_MASS / All.UnitMass_in_g / All.HubbleParam; // small number just to be nonzero
+
 #endif // age tracer model
     return;
 }
@@ -670,6 +686,7 @@ void particle2in_addFB_winds(struct addFBdata_in *in, int i)
 
 #ifndef AGE_TRACER_TEST_MODE // turn this scaling off when testing tracers!!!
         for(k=1;k<=4;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]); if(yields[k]<0) {yields[k]=0.0;} if(yields[k]>1) {yields[k]=1;} in->yields[k]=yields[k];} // enforce yields obeying pre-existing surface abundances, and upper/lower limits //
+//  - no #else statement needed since default yield abundances are surface (see above)
 #endif // test mode
 
         yields[0]=0.0; for(k=2;k<NUM_METAL_SPECIES-NUM_AGE_TRACERS;k++) {yields[0]+=yields[k];}
