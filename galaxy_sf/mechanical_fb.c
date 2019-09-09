@@ -282,7 +282,6 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     particle2in_addFB(&local, target, fb_loop_iteration);
     else
     local = AddFBDataGet[target];
-
     if(local.Msne<=0) return 0; // no SNe for the master particle! nothing to do here //
     if(local.Hsml<=0) return 0; // zero-extent kernel, no particles //
     h2 = local.Hsml*local.Hsml;
@@ -324,7 +323,6 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
         startnode = AddFBDataGet[target].NodeList[0];
         startnode = Nodes[startnode].u.d.nextnode;    /* open it */
     }
-
     while(startnode >= 0)
     {
         while(startnode >= 0)
@@ -554,7 +552,6 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     out2particle_addFB(&out, target, 0, fb_loop_iteration);
     else
     AddFBDataResult[target] = out;
-
     return 0;
 } // int addFB_evaluate
 
@@ -884,7 +881,6 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 
     /* Now collect the result at the right place */
     if(mode == 0) {out2particle_addFB(&out, target, 0, fb_loop_iteration);} else {AddFBDataResult[target] = out;}
-
     return 0;
 } // int addFB_evaluate
 
@@ -943,6 +939,9 @@ void determine_where_SNe_occur(void)
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
         P[i].MassReturn_ThisTimeStep=0;
         P[i].RProcessEvent_ThisTimeStep=0;
+#ifdef GALSF_FB_FIRE_AGE_TRACERS
+        P[i].AgeDeposition_ThisTimeStep=0;
+#endif
 #endif
         if(All.ComovingIntegrationOn) {if(P[i].Type != 4) {continue;}} // in cosmological simulations, 'stars' have particle type=4
         if(All.ComovingIntegrationOn==0) {if((P[i].Type<2)||(P[i].Type>4)) {continue;}} // in non-cosmological sims, types 2,3,4 are valid 'stars'
