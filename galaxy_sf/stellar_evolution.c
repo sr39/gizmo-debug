@@ -564,7 +564,9 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
        abundances. Must assume a mass loss rate model: */
    // To Do: change flag to integer parameter to switch between potential models
 
+   //
    // use native FIRE wind model [CHANGE THIS IF WIND MODEL CHANGES]
+   //
    double p=0, ZZ = P[i].Metallicity[0]/All.SolarAbundances[0];
    star_age *= 0.001; // Convert to Gyr for the below
 #ifdef NO_METAL_DEP_YIELDS
@@ -582,9 +584,25 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
    p *= All.GasReturnFraction * (dt*0.001);
    //p = 1.0 - exp(-p); // need to account for p>1 cases //
    //p  = DMIN(1.0, p);
-   p *= 1.4 * 0.291175 * P[i].AgeDeposition_ThisTimeStep;
+   p *= 1.4 * 0.291175;
+
+   // now add in SN-rate mass loss
+   double agemin=0.003401, agebrk=0.01037, agemax=0.03753, RSNe=0, MSNe=0; // in Gyr //
+   if(star_age > agemin)
+   {
+        MSNe = 10.5; // Msun - ccSNE mass
+     	if(star_age<=agebrk) {RSNe=5.408e-4;} else {if(star_age<=agemax) {RSNe=2.516e-4;}} // core-collapse
+        if(star_age>agemax) {RSNe=5.3e-8 + 1.6e-5*exp(-0.5*((star_age-0.05)/0.01)*((star_age-0.05)/0.01)); MSNe = 1.4;} // Ia
+   }
+   
+   p = p + RSNe * (dt) * ((MSNe*SOLAR_MASS)/(All.UnitMass_in_g/All.HubbleParam)) / (P[i].Mass );
+   p *= P[i].AgeDeposition_ThisTimeStep; // scale if necessary
+
    for(k=0; k<NUM_AGE_TRACERS;k++){
      in->yields[k + k_age_start] += (p*P[i].Metallicity[k+k_age_start]);
+
+     // subtract off tracers since we track total amount and not fraction
+     P[i].Metallicity[k+k_age_start] *= (1.0-p);
    }
 #endif
 
