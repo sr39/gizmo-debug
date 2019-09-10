@@ -355,6 +355,9 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #define MHD_CONSTRAINED_GRADIENT 1
 #endif
 #define RT_DISABLE_R15_GRADIENTFIX
+#ifdef RT_INFRARED
+#define COOL_LOWTEMP_THIN_ONLY // Don't want to double-count trapping of radiation if we're doing it self-consistently
+#endif
 #ifdef SINGLE_STAR_FB_JETS
 #define JET_DIRECTION_FROM_KERNEL_AND_SINK //the direction of the jet is a mass weighted average of Jsink and Jgaskernel
 #endif
@@ -411,7 +414,7 @@ extern struct Chimes_depletion_data_structure ChimesDepletionData[1];
 #endif
 
 #ifdef SINGLE_STAR_FB_JETS
-#define BH_WIND_SPAWN (3) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
+#define BH_WIND_SPAWN (1) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
 #endif
 
 #ifdef SINGLE_STAR_PROMOTION
