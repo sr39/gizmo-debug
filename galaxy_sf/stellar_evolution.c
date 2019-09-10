@@ -172,10 +172,6 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
 #if defined(GALSF_FB_MECHANICAL) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
     // FIRE feedback rates: separate calculation for SNe, stellar mass loss, R-process injection //
 
-#ifdef ISOLATED_GALAXY_ICS
-    if(P[i].Type != 4) return 0.0;
-#endif
-
     RSNe = mechanical_fb_calculate_eventrates_SNe(i,dt);
     mechanical_fb_calculate_eventrates_Winds(i,dt);
     mechanical_fb_calculate_eventrates_Rprocess(i,dt);

@@ -197,9 +197,6 @@
 #endif
 #endif
 
-#define ISOLATED_GALAXY_ICS                 /* AJE: Testing */
-
-
 #ifdef FIRE_PHYSICS_DEFAULTS
 #define COOLING                             /*! master switch for cooling */
 #define COOL_LOW_TEMPERATURES               /*! include low-temperature (<1e4 K) cooling */
@@ -218,9 +215,9 @@
 #define GALSF_FB_FIRE_RT_UVHEATING          /*! use estimate of local spectral information from FIRE RT for photoionization and photoelectric heating */
 #define GALSF_FB_FIRE_RPROCESS 4            /*! tracks a set of 'dummy' species from neutron-star mergers (set to number: 4=extended model) */
 // #define GALSF_FB_FIRE_AGE_TRACERS 20        /*! tracks a set of passive scalars corresponding to stellar ages for chemical evolution model postprocessing */
-// #define NO_SURFACE_ABUNDANCES               /*! AJE: Testing purposes */
-// #define NO_WIND_YIELDS                      /*! AJE: Testing purposes */
-// #define NO_METAL_DEP_YIELDS     /* AJE: Testing purposes */
+// #define NO_SURFACE_ABUNDANCES               /*! AJE: Testing purposes - turns OFF return of surface abundances in all yields */
+// #define NO_WIND_YIELDS                      /*! AJE: Testing purposes - turns OFF return of wind yields */
+// #define NO_METAL_DEP_YIELDS                 /*! AJE: Testing purposes - turns OFF metal dep yields (fixes wind yields to solar) and turns OFF metallicity scaling of surface abundances */
 //#define GALSF_SFR_IMF_VARIATION           /*! track [do not change] properties of gas from which stars form, for IMF models in post-processing */
 #define PROTECT_FROZEN_FIRE                 /*! protect code so FIRE runs are not modified by various code updates, etc -- default FIRE-2 code locked */
 #else
