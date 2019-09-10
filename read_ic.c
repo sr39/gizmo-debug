@@ -250,8 +250,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
                 for(k = 0; k < 3; k++)
                 {
                     P[offset + n].Pos[k] = *fp_pos++;
-                    /* AJE TUrning this on for galaxy isolated disk ICs */
-                    P[offset + n].Pos[k] += 0.5*All.BoxSize; /* manually turn on for some ICs */
+                    // P[offset + n].Pos[k] += 0.5*All.BoxSize; /* manually turn on for some ICs */
                 }
             
             for(n = 0; n < pc; n++)
