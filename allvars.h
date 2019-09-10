@@ -1018,14 +1018,6 @@ typedef unsigned long long peanokey;
 
 #define NUM_AGE_TRACERS (GALSF_FB_FIRE_AGE_TRACERS)
 
-#ifndef AGE_TRACER_BIN_START
-#define AGE_TRACER_BIN_START 1.0 /* star time bin in Myr -- cannot be zero !*/
-#endif
-
-#ifndef AGE_TRACER_BIN_END
-#define AGE_TRACER_BIN_END 14000.0 /* end time bin in Myr */
-#endif
-
 #else
 
 #define NUM_AGE_TRACERS 0
@@ -1359,13 +1351,6 @@ extern int *PrevInTimeBin;
 
 #ifdef GALSF
 extern double TimeBinSfr[TIMEBINS];
-#endif
-
-#ifdef GALSF_FB_FIRE_AGE_TRACERS
-#ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
-/* Bin edges (left) for stellar age passive scalar tracers when using custom (uneven) bins */
-extern double AgeTracerTimeBins[NUM_AGE_TRACERS+1];
-#endif
 #endif
 
 #ifdef BLACK_HOLES
@@ -1989,8 +1974,13 @@ extern struct global_data_all_processes
   double AgeTracerRateLimitThreshold;
   double AgeTracerReturnFraction;
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
-  double AgeTracerTimeBins[NUM_AGE_TRACERS];
-  char AgeTracerListFilename[100];
+/* Bin edges (left) for stellar age passive scalar tracers when using custom (uneven) bins
+   the final value is the right edge of the final bin */
+  double AgeTracerTimeBins[NUM_AGE_TRACERS+1];
+  char   AgeTracerListFilename[100];
+#else
+  double AgeTracerBinStart; // left bin edge of first age tracers (Myr)
+  double AgeTracerBinEnd;   // right bin edge of last age tracer (Myr)
 #endif
 #endif
 

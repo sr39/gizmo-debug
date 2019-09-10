@@ -269,13 +269,13 @@ int get_age_tracer_bin(const double age){
   const int too_old_flag = -9;
 #ifndef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
   // Bins are log-spaced do not need to perform a search
-  const double binstart = log10(AGE_TRACER_BIN_START);
-  const double binend   = log10(AGE_TRACER_BIN_END);
+  const double binstart = log10(All.AgeTracerBinStart);
+  const double binend   = log10(All.AgeTracerBinEnd);
   const double log_bin_dt = (binend - binstart) / (1.0*NUM_AGE_TRACERS);
 
-  if( age <= AGE_TRACER_BIN_START){
+  if( age <= All.AgeTracerBinStart){
       index = 0;
-  } else if (age >= AGE_TRACER_BIN_END){
+  } else if (age >= All.AgeTracerBinEnd){
 //      Do nothing here and continue. Likely ONLY happens in test problems,
 //      otherwise stellar ages should really never be larger than largest bin
       return too_old_flag;
@@ -331,10 +331,10 @@ void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
     const double bin_dt   = All.AgeTracerTimeBins[k+1] - All.AgeTracerTimeBins[k];
 #else
-    const double log_bin_dt = (log10(AGE_TRACER_BIN_END - log10(AGE_TRACER_BIN_START)))
+    const double log_bin_dt = (log10(All.AgeTracerBinEnd - log10(All.AgeTracerBinStart)))
                                         / (1.0*NUM_AGE_TRACERS);
-    const double bin_dt = pow(10.0,log10(AGE_TRACER_BIN_START+(k+1)*log_bin_dt)) -
-                          pow(10.0,log10(AGE_TRACER_BIN_START+(k  )*log_bin_dt));
+    const double bin_dt = pow(10.0,log10(All.AgeTracerBinStart+(k+1)*log_bin_dt)) -
+                          pow(10.0,log10(All.AgeTracerBinStart+(k  )*log_bin_dt));
 #endif
     // if dt is large compared to bin spacing, make full event and return
     if (dt / bin_dt > All.AgeTracerRateLimitThreshold){
@@ -516,8 +516,8 @@ void particle2in_addFB_ageTracer(struct addFBdata_in *in, int i)
     // edge
 #ifndef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
     // bin size in linear time (better normalization)
-    const double binstart = log10(AGE_TRACER_BIN_START);
-    const double binend   = log10(AGE_TRACER_BIN_END);
+    const double binstart = log10(All.AgeTracerBinStart);
+    const double binend   = log10(All.AgeTracerBinEnd);
     const double log_bin_dt = (binend - binstart) / (1.0*NUM_AGE_TRACERS);
 
     double bin_dt = pow(10.0, binstart+(k+1)*log_bin_dt) - (k==0? 0.0 :pow(10.0, binstart + k*log_bin_dt));

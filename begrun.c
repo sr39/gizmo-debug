@@ -319,6 +319,9 @@ void begrun(void)
       All.AgeTracerReturnFraction     = all.AgeTracerReturnFraction;
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
       strcpy(All.AgeTracerListFilename, all.AgeTracerListFilename);
+#else
+      strcpy(All.AgeTracerBinStart, all.AgeTracerBinStart);
+      strcpy(All.AgeTracerBinEnd,   all.AgeTracerBinEnd);
 #endif
 #endif
 
@@ -1119,6 +1122,14 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "AgeTracerListFilename");
         addr[nt] = &All.AgeTracerListFilename;
         id[nt++] = STRING;
+#else
+        strcpy(tag[nt], "AgeTracerBinStart");
+        addr[nt] = &All.AgeTracerBinStart;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt], "AgeTracerBinEnd");
+        addr[nt] = &All.AgeTracerBinEnd;
+        id[nt++] = REAL;
 #endif
 #endif
 
@@ -2370,7 +2381,6 @@ int read_agetracerlist(char *fname)
     printf("\n not enough entries in age tracer list. Found %d entries, but we need %d\n", i, NUM_AGE_TRACERS+1);
 
     endrun(314);
-//    for(int k = i; k < NUM_AGE_TRACERS; k++){ All.AgeTracerTimeBins[k] = All.AgeTracerTimeBins[k-1];}
   }
 
   fclose(fd);
