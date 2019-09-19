@@ -103,15 +103,16 @@ double bh_vesc(int j, double mass, double r_code, double bh_softening)
     double m_eff = mass+P[j].Mass;
     if(P[j].Type==0)
     {
-#if defined(BH_SEED_GROWTH_TESTS) || (defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS))
+#if defined(BH_SEED_GROWTH_TESTS) || defined(SINGLE_STAR_SINK_DYNAMICS) //&& !defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS))
         m_eff += 4.*M_PI * r_code*r_code*r_code * SphP[j].Density; // assume an isothermal sphere interior, for Shu-type solution
 #endif
     }
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     double hinv; if(P[j].Type==0) {hinv=1/DMAX(bh_softening,P[j].Hsml);} else {hinv=1/All.ForceSoftening[5];}
     if(r_code < 1/hinv) {
-	double cs_min  = 2e4 / All.UnitVelocity_in_cm_per_s; // 200m/s
-	return DMAX(sqrt(-2*All.G*m_eff*kernel_gravity(r_code*hinv, hinv, hinv*hinv*hinv, -1)), cs_min*3.3); // Make sure the minimum possible escape velocity used is not less than ~3x the minimum sound speed, otherwise e.g. a Larson-Penston flow can fail to accrete onto a single sink as it should if the sink softening is mismatched with the minimum Jeans-resolved scale of the sim
+	return sqrt(-2*All.G*m_eff*kernel_gravity(r_code*hinv, hinv, hinv*hinv*hinv, -1));
+//	double cs_min  = 2e4 / All.UnitVelocity_in_cm_per_s; // 200m/s	
+//	return DMAX(sqrt(-2*All.G*m_eff*kernel_gravity(r_code*hinv, hinv, hinv*hinv*hinv, -1)), cs_min*3.3); // Make sure the minimum possible escape velocity used is not less than ~3x the minimum sound speed, otherwise e.g. a Larson-Penston flow can fail to accrete onto a single sink as it should if the sink softening is mismatched with the minimum Jeans-resolved scale of the sim
     }
 #endif    
     return sqrt(2.0*All.G*(m_eff)/(r_code*All.cf_atime) + cs_to_add_km_s*cs_to_add_km_s);
