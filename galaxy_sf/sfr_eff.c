@@ -296,9 +296,6 @@ double get_starformation_rate(int i)
     if(nHcgs > 1e13) cs_eff=DMIN(cs_eff, 1.62e5/All.UnitVelocity_in_cm_per_s); // limiter to permit sink formation in simulations that really resolve the opacity limit and bog down when an optically-thick core forms. Modify this if you want to follow first collapse more/less - scale as c_s ~ n^(1/5)
     k_cs = cs_eff / (Get_Particle_Size(i)*All.cf_atime);
 #endif
-    double press_grad_length = 0; for(k=0;k<3;k++) {press_grad_length += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];}
-    press_grad_length = All.cf_atime * DMAX(Get_Particle_Size(i) , SphP[i].Pressure / (1.e-37 + sqrt(press_grad_length)));
-    k_cs = DMAX( k_cs , cs_eff / press_grad_length );
 #ifdef MAGNETIC
     double bmag=0; for(k=0;k<3;k++) {bmag+=Get_Particle_BField(i,k)*Get_Particle_BField(i,k);}
     double cs_b = sqrt(cs_eff*cs_eff + bmag/SphP[i].Density);
