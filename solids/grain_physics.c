@@ -222,7 +222,7 @@ void apply_grain_dragforce(void)
 #define MASTER_FUNCTION_NAME GrainLoop_Master /* this function -must- be defined somewhere as "void MASTER_FUNCTION_NAME(void);" in order to actually be call-able by other parent routines! */
 #define KERNEL_BITFLAG_DEFINITION_LOCAL 1 /* set to bitflag or name of sub-routine which returns bitflag for valid -neighbor- types */
 #define CPU_COST_CODE_NAME CPU_DRAGFORCE /* cpu 'bin' name to charge costs to (for displaying/load-balancing) */
-# include "../system/code_predefs_for_standard_neighbor_loops.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together */
+#include "../system/code_predefs_for_standard_neighbor_loops.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together */
 
 /* this structure defines the variables that need to be sent -from- the 'searching' particle */
 struct INPUT_STRUCT_NAME

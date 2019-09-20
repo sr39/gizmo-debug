@@ -102,12 +102,24 @@
     + [Magneto-Hydrodynamics Tests](#tests-mhd) (e.g. waves, shocktubes, field-loops, current sheets, Orszag-Tang vortex, rotors, MRI, jets, MHD-mixing/gravity)
     + [Elasto-Dynamics Tests](#tests-elastic) (e.g. bouncing rubber cylinders)
     + [Dust/Particulate-Dynamics Tests](#tests-dust) (e.g. [uniform dust-gas acceleration](#tests-dust-dustybox), [damped two-fluid waves](#tests-dust-dustywave))
-12. [Useful Additional Resources](#faqs)
-    + [Visualization, Radiative Transfer, and Plotting](#faqs-vis)
-    + [Halo/Group-Finding and Structure Identification](#faqs-halofinders)
-    + [Other Analysis Tools](#faqs-otheranalysistools)
-    + [General Super-Computing Questions](#faqs-generalsupercomputing)
-13. [Disclaimer](#disclaimer)
+12. [Useful Additional Resources](#rscr)
+    + [Visualization, Radiative Transfer, and Plotting](#rscr-vis)
+    + [Halo/Group-Finding and Structure Identification](#rscr-halofinders)
+    + [Other Analysis Tools](#rscr-otheranalysistools)
+    + [General Super-Computing Questions](#rscr-generalsupercomputing)
+13. [Frequently Asked Questions](#faqs)
+    + [Where to Go for Help?](#faqs-help)
+    + [What Are 'Optimal' Code Settings? (aka 'My Run is Slow')](#faqs-optimal)
+    + [Are There 'Best' (More Accurate) Physics Modules or Solvers?](#faqs-best)
+    + [My Run Won't Start, What Did I Do Wrong?](#faqs-startup)
+    + [How do I Avoid Memory Errors/Crashes?](#faqs-memory)
+    + [My Large Simulation Hangs, but Smaller Runs Work?](#faqs-big)
+    + [Are there Public ICs? Analysis Tools? Image/Movie-Makers?](#faqs-rscr)
+    + [What Does this Variable Mean?](#faqs-variable)
+    + [What are the Code Units?](#faqs-units)
+    + [Can I use this Module? What should I cite?](#faq-citation)
+    + [Can the Code do 'X'?](#faq-capabilities)
+14. [Disclaimer](#disclaimer)
 
 ***
 
@@ -617,9 +629,22 @@ To start a simulation, invoke the executable with a command like
 
 This will have to be modified for the machine you're using ("mpirun" may have a different syntax, but should be a completely standard MPI call: see the users' guide for whatever system you're on for the details). This example would run the simulation with 32 processors, and with simulation parameters as specified in the parameter file of name myparameterfile.param (discussed in detail on its own page). 
 
-The code does not need to be recompiled for a different number of processors, or for a different problem size. It is necessary to recompile if you are using the code in hybrid OPENMP/MPI or PTHREADS/MPI (multi-threaded) mode, and want to change the number of threads (processors) per MPI process. Note that there is no formal requirement for the processor number to be a power of two (though that can sometimes be most efficient for communication). 
+The code does not need to be recompiled for a different number of processors, or for a different problem size. It is necessary to recompile if you are using the code in hybrid OPENMP/MPI or PTHREADS/MPI (multi-threaded) mode, and want to change the number of threads (processors) per MPI process. Note that there is no formal requirement for the processor number to be a power of two (though that can sometimes be most efficient for communication). While GIZMO runs, it will print out various log-messages that inform you about the code activity. If you run a simulation interactively (as in the above call), these log-messages will appear on the screen, but you can also re-direct them to a file. 
 
-While GIZMO runs, it will print out various log-messages that inform you about the code activity. If you run a simulation interactively (as in the above call), these log-messages will appear on the screen, but you can also re-direct them to a file. For normal runs at any cluster computer, you will usually have to put the "mpirun" comment into a script file submitted to the computing queue (again, see your computers users guide) -- in this case, it will automatically pipe standard output/error messages to files, but you may still want to specify filenames in the script.
+For normal runs at any cluster computer, you will usually have to put the "mpirun" comment into a script file submitted to the computing queue (again, see your computers users guide) -- in this case, it will automatically pipe standard output/error messages to files, but you may still want to specify filenames in the script. This is required for the queue systems to organize the jobs, though you can usually put in special requests to run jobs in interactive mode.
+
+Here is a typical example SLURM script (most modern systems use this or PBS as their job submission system): 
+
+    #!/bin/bash
+    #SBATCH -J TEST -p normal -N 100 --ntasks-per-node 16 -t 01:00:00 -A ALLOCATIONNAME
+    export OMP_NUM_THREADS=2
+    source $HOME/.bashrc
+    module purge
+    module load intel impi hdf5 fftw3 gsl
+    ibrun ./GIZMO ./params.txt 0 1>gizmo.out 2>gizmo.err
+
+This is a script submitting job-name `TEST`, requesting it go in the `NORMAL` queue, run on `100` nodes, with `16` MPI tasks per node, running for 1 hour (time in HH:MM:SS format), charged to allocation `ALLOCATIONNAME`. We've set it to use 2 OPENMP threads. We've also used the module system of the machine to load the relevant shared libraries (intel compiler, intel-MPI, hdf5, fftw, and gsl here). We can also load the modules through our personal .bashrc file, so including both calls here is a bit redundant. Then we submit the job, using `ibrun` (this is like `mpirun` above: different compilers and machines have different calls for running MPI executables), to call our compiled `GIZMO` executable in the local directory, with parameterfile `params.txt` in the same directory, restartflag `0` (start from ICs). The `1>gizmo.out 2>gizmo.err` are standard bash prompts that redirect stdout and stderr to files with those names, respectively (otherwise the machine will decide their default names, which you may prefer). Note that on different machines, the modules will be different, as will the `ibrun`/`mpirun` call, as will some of the required flags. Some machines will use `#PBS` instead of `#SBATCH`. You need to read the machine user guide to know how to submit on a particular machine. Also read the SBATCH or PBS (whichever you are using) manual page to learn what all the different flag options are. Finally, you could name this script something like `runscript` and submit it with the command `sbatch runscript`. 
+
 
 
 <a name="tutorial-interrupt"></a>
@@ -3677,12 +3702,12 @@ The exact solutions for the default setup are provided in the file "dustwave\_ex
 
 ***
 
-<a name="faqs"></a>
+<a name="rscr"></a>
 # 12. Useful Additional Resources 
 
 This section addresses some common questions and provides some additional resources for new users, which are not part of GIZMO itself.
 
-<a name="faqs-vis"></a>
+<a name="rscr-vis"></a>
 ## Visualization, Radiative Transfer, and Plotting
 
 Many questions I get about GIZMO are actually questions about how to visualize and plot data. GIZMO doesnt do this itself, of course, but there are many public codes out there which are compatible with GIZMO and have excellent tools available for visualization. Remember, anything that says it is compatible with "GADGET" formats is compatible with GIZMO outputs. Just a few examples include (thanks to Robyn Sanderson for suggesting several here):
@@ -3712,7 +3737,7 @@ For more detailed radiative transfer performed on the simulations, there are man
 + Many more specific codes exist, for example [pyXSIM](https://ascl.net/1608.002) is a code designed specifically to generate synthetic X-ray observations, which is compatible with our simulation outputs.
 
 
-<a name="faqs-halofinders"></a>
+<a name="rscr-halofinders"></a>
 ## Halo/Group-Finding and Structure Identification (Post-Processing)
 
 Many people ask about automated tools for halo-finding or structure identification in the simulations. This is a quite large and mature industry onto itself, on which many many papers have been written. I'll just note a couple popular codes that people commonly use to process GIZMO outputs:
@@ -3728,7 +3753,7 @@ Many people ask about automated tools for halo-finding or structure identificati
 + Power Spectra: Although there is some in-code functionality to compute power spectra in GIZMO, a variety of public codes exist specifically to efficiently compute various types of power spectra from the simulation outputs, including for example [GenPK](https://ascl.net/1706.006), [computePK](https://ascl.net/1403.015), and [POWMES](https://ascl.net/1110.017).
 
 
-<a name="faqs-otheranalysistools"></a>
+<a name="rscr-otheranalysistools"></a>
 ## Other Analysis Tools
 
 While there are a huge number of analysis tools, and users can of course write analysis software in any language they like, I highly recommend Python for analysis. It's open source, supported by the national centers (so you can run remotely), and much astronomy code development is based on it. 
@@ -3740,7 +3765,7 @@ While there are a huge number of analysis tools, and users can of course write a
 + [PynBody](https://ascl.net/1305.002), [PyGadgetReader](https://ascl.net/1411.001), [SPHGR](https://ascl.net/1502.012), and [PyGad](https://ascl.net/code/v/1569) are all python modules designed for easy reading and interaction with the simulation outputs. These are general analysis tools which have a variety of functionality associated with them. [YT](http://yt-project.org/), as described above, also has these tools (in addition to its pure visualization functions). 
 
 
-<a name="faqs-generalsupercomputing"></a>
+<a name="rscr-generalsupercomputing"></a>
 ## General Super-Computing Questions
 
 Questions about computing in general should be directed at the help resources for whatever computers you are using to run GIZMO. This includes things like "I can't get FFTW to compile," and "I can't get GIZMO to compile" (unless its a specific compiler error *internal* to the GIZMO code). But to help get started on submitting jobs, here's some useful resources for users not experienced with these systems.
