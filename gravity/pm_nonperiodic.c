@@ -2869,7 +2869,7 @@ int pmtidaltensor_nonperiodic_fourier(int grnr, int component)
   fftw_real *localfield_data, *import_data;
   MPI_Status status;
 
-  PRINT_STATUS("Starting non-periodic PM-Tidaltensor (component=%d) calculation (grid=%d)  presently allocated=%g MB).\n", component, grnr, AllocatedBytes / (1024.0 * 1024.0));
+  PRINT_STATUS("Starting non-periodic PM-Tidaltensor (component=%d) calculation (grid=%d)  presently allocated=%g MB).", component, grnr, AllocatedBytes / (1024.0 * 1024.0));
   fac = All.G / pow(All.TotalMeshSize[grnr], 4) * pow(All.TotalMeshSize[grnr] / GRID, 3);	/* to get potential */
   to_slab_fac = GRID / All.TotalMeshSize[grnr];
 
