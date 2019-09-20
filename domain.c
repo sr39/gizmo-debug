@@ -187,18 +187,7 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
         }
     }
     
-#ifdef IO_REDUCED_MODE
-    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
-#endif
-    if(ThisTask == 0)
-    {
-        printf("domain decomposition... LevelToTimeBin[TakeLevel=%d]=%d  (presently allocated=%g MB)\n",
-               TakeLevel, All.LevelToTimeBin[TakeLevel], AllocatedBytes / (1024.0 * 1024.0));
-#ifndef IO_REDUCED_MODE
-        fflush(stdout);
-#endif
-    }
-    
+    PRINT_STATUS("domain decomposition... LevelToTimeBin[TakeLevel=%d]=%d  (presently allocated=%g MB)", TakeLevel, All.LevelToTimeBin[TakeLevel], AllocatedBytes / (1024.0 * 1024.0));
     t0 = my_second();
 
   do
@@ -252,17 +241,7 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
 							(MaxTopNodes * sizeof(struct local_topnode_data)));
       all_bytes += bytes;
 
-#ifdef IO_REDUCED_MODE
-        if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
-#endif
-      if(ThisTask == 0)
-	{
-	  printf("use of %g MB of temporary storage for domain decomposition... (presently allocated=%g MB)\n",
-	     all_bytes / (1024.0 * 1024.0), AllocatedBytes / (1024.0 * 1024.0));
-#ifndef IO_REDUCED_MODE
-	  fflush(stdout);
-#endif
-	}
+	  PRINT_STATUS("use of %g MB of temporary storage for domain decomposition... (presently allocated=%g MB)",all_bytes / (1024.0 * 1024.0), AllocatedBytes / (1024.0 * 1024.0));
 
       maxLoad = (int) (All.MaxPart * REDUC_FAC);
       maxLoadsph = (int) (All.MaxPartSph * REDUC_FAC);
@@ -318,21 +297,13 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
 
 	  domain_free();
 
-	  if(ThisTask == 0)
-	    printf("Increasing TopNodeAllocFactor=%g  ", All.TopNodeAllocFactor);
+        if(ThisTask == 0) {printf("Increasing TopNodeAllocFactor=%g  ", All.TopNodeAllocFactor);}
 
 	  All.TopNodeAllocFactor *= 1.3;
 
-#ifndef IO_REDUCED_MODE
-	  if(ThisTask == 0)
-	    {
-	      printf("new value=%g\n", All.TopNodeAllocFactor);
-	      fflush(stdout);
-	    }
-#endif
+      PRINT_STATUS("new value=%g", All.TopNodeAllocFactor);
 	  if(All.TopNodeAllocFactor > 1000)
 	    {
-	      if(ThisTask == 0)
 		printf("something seems to be going seriously wrong here. Stopping.\n");
 	      fflush(stdout);
 	      endrun(781);
@@ -343,13 +314,7 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
 
   t1 = my_second();
 
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("domain decomposition done. (took %g sec)\n", timediff(t0, t1));
-      fflush(stdout);
-    }
-#endif
+  PRINT_STATUS("domain decomposition done. (took %g sec)", timediff(t0, t1));
   CPU_Step[CPU_DOMAIN] += measure_time();
 
   for(i = 0; i < NumPart; i++)
@@ -376,15 +341,9 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
   TopNodes = (struct topnode_data *) myrealloc(TopNodes, bytes =
 					       (NTopnodes * sizeof(struct topnode_data) +
 						NTopnodes * sizeof(int)));
-#ifdef IO_REDUCED_MODE
-    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
-#endif
-  if(ThisTask == 0) printf("Freed %g MByte in top-level domain structure\n", (MaxTopNodes - NTopnodes) * sizeof(struct topnode_data) / (1024.0 * 1024.0));
-
+  PRINT_STATUS("Freed %g MByte in top-level domain structure", (MaxTopNodes - NTopnodes) * sizeof(struct topnode_data) / (1024.0 * 1024.0));
   DomainTask = (int *) (TopNodes + NTopnodes);
-
   force_treeallocate((int) (All.TreeAllocFactor * All.MaxPart) + NTopnodes, All.MaxPart);
-
   reconstruct_timebins();
 }
 
@@ -408,10 +367,7 @@ void domain_allocate(void)
 
   DomainTask = (int *) (TopNodes + MaxTopNodes);
 
-#ifdef IO_REDUCED_MODE
-    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
-#endif
-  if(ThisTask == 0) printf("Allocated %g MByte for top-level domain structure\n", all_bytes / (1024.0 * 1024.0));
+  PRINT_STATUS("Allocated %g MByte for top-level domain structure", all_bytes / (1024.0 * 1024.0));
 
   domain_allocated_flag = 1;
 }
@@ -672,17 +628,7 @@ int domain_decompose(void)
 
       sumup_longs(1, &sumtogo, &sumtogo);
 
-#ifdef IO_REDUCED_MODE
-        if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
-#endif
-      if(ThisTask == 0)
-	{
-	  printf("iter=%d exchange of %d%09d particles (ret=%d)\n", iter,
-		 (int) (sumtogo / 1000000000), (int) (sumtogo % 1000000000), ret);
-#ifndef IO_REDUCED_MODE
-	  fflush(stdout);
-#endif
-	}
+	  PRINT_STATUS("iter=%d exchange of %d%09d particles (ret=%d)", iter, (int) (sumtogo / 1000000000), (int) (sumtogo % 1000000000), ret);
 
       domain_exchange();
 
@@ -2592,9 +2538,7 @@ int domain_determineTopTree(void)
 
   /* now let's see whether we should still append more nodes, based on the estimated cumulative cost/count in each cell */
 
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0) printf("Before=%d\n", NTopnodes);
-#endif
+  PRINT_STATUS("Before=%d", NTopnodes);
     
   for(i = 0, errflag = 0; i < NTopnodes; i++)
     {
@@ -2631,9 +2575,7 @@ int domain_determineTopTree(void)
   if(errsum)
     return errsum;
 
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0) printf("After=%d\n", NTopnodes);
-#endif
+  PRINT_STATUS("After=%d", NTopnodes);
   /* count toplevel leaves */
   domain_sumCost();
 
@@ -2680,10 +2622,7 @@ void domain_sumCost(void)
 #endif
     }
 
-#ifdef IO_REDUCED_MODE
-    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
-#endif
-    if(ThisTask == 0) {printf("NTopleaves= %d  NTopnodes=%d (space for %d)\n", NTopleaves, NTopnodes, MaxTopNodes);}
+    PRINT_STATUS("NTopleaves= %d  NTopnodes=%d (space for %d)\n", NTopleaves, NTopnodes, MaxTopNodes);
 
   for(n = 0; n < NumPart; n++)
     {

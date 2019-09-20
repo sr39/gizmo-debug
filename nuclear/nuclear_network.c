@@ -2395,10 +2395,10 @@ static network_var compute_screening(const struct network_rate *rate, network_va
       network_var zero_var = { 0 };
 #if DEBUG > 3
       if(rate != &Be8_alpha_rate)
-	myprintf("warning H is %g for Z_1 = %d, Z_2 = %d\n", H.v, nd->nucdata[rate->input[0]].nz,
+	PRINT_WARNING("warning H is %g for Z_1 = %d, Z_2 = %d\n", H.v, nd->nucdata[rate->input[0]].nz,
 		 nd->nucdata[rate->input[1]].nz);
       else
-	myprintf("warning H is %g for Be-8, He-4\n", H.v);
+	PRINT_WARNING("warning H is %g for Be-8, He-4\n", H.v);
 #endif /* DEBUG */
       H = zero_var;
     }

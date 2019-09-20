@@ -113,8 +113,7 @@ void report_pinning(void)
 #ifndef IO_REDUCED_MODE
   for(i=0; i<NTask; i++)
     {
-      if(ThisTask == i)
-	printf("Task=%02d: %s\n", ThisTask, buf);
+      if(ThisTask == i) printf("Task=%02d: %s\n", ThisTask, buf);
       fflush(stdout);
       MPI_Barrier(MPI_COMM_WORLD);
     }

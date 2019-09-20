@@ -621,10 +621,7 @@ void determine_interior(void);
 int dissolvegas(void);
 void do_box_wrapping(void);
 double enclosed_mass(double R);
-void endrun(int);
-#ifndef IO_REDUCED_MODE
 void energy_statistics(void);
-#endif
 void ensure_neighbours(void);
 
 void output_log_messages(void);

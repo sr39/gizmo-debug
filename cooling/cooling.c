@@ -585,9 +585,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     j = (int) t;
     if(j<0){j=0;}
     if(j>NCOOLTAB){
-#ifndef IO_REDUCED_MODE
-        printf("warning: j>NCOOLTAB : j=%d t %g Tlow %g Thi %g logT %g Tmin %g deltaT %g \n",j,t,Tmin+deltaT*j,Tmin+deltaT*(j+1),logT,Tmin,deltaT);fflush(stdout);
-#endif
+        PRINT_WARNING("warning: j>NCOOLTAB : j=%d t %g Tlow %g Thi %g logT %g Tmin %g deltaT %g \n",j,t,Tmin+deltaT*j,Tmin+deltaT*(j+1),logT,Tmin,deltaT);fflush(stdout);
         j=NCOOLTAB;
     }
     Tlow = Tmin + deltaT * j;

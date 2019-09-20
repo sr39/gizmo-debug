@@ -947,7 +947,6 @@ typedef unsigned long long peanokey;
 
 
 
-#define  terminate(x) {char termbuf[2000]; sprintf(termbuf, "code termination on task=%d, function '%s()', file '%s', line %d: '%s'\n", ThisTask, __FUNCTION__, __FILE__, __LINE__, x); printf("%s", termbuf); fflush(stdout); MPI_Abort(MPI_COMM_WORLD, 1); exit(0);}
 
 #ifndef DISABLE_MEMORY_MANAGER
 #define  mymalloc(x, y)            mymalloc_fullinfo(x, y, __FUNCTION__, __FILE__, __LINE__)
@@ -1353,6 +1352,22 @@ z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
 
 #define FACT1 0.366025403785	/* FACT1 = 0.5 * (sqrt(3)-1) */
 #define FACT2 0.86602540        /* FACT2 = 0.5 * sqrt(3) */
+
+
+
+/*****************************************************************/
+/*  Utility functions used for printing status, warning, endruns */
+/*****************************************************************/
+
+#define terminate(x) {char termbuf[2000]; sprintf(termbuf, "TERMINATE issued on task=%d, function '%s()', file '%s', line %d: '%s'\n", ThisTask, __FUNCTION__, __FILE__, __LINE__, x); printf("%s", termbuf); fflush(stdout); MPI_Abort(MPI_COMM_WORLD, 1); exit(0);}
+#define endrun(x) {if(x==0) {MPI_Finalize(); exit(0);} else {char termbuf[2000]; sprintf(termbuf, "ENDRUN issued on task=%d, function '%s()', file '%s', line %d: error level %d\n", ThisTask, __FUNCTION__, __FILE__, __LINE__, x); printf("%s", termbuf); fflush(stdout); MPI_Abort(MPI_COMM_WORLD, x); exit(0);}
+#define PRINT_WARNING(...) {char termbuf1[1000], termbuf2[1000]; sprintf(termbuf1, "WARNING issued on task=%d, function %s(), file %s, line %d", ThisTask, __FUNCTION__, __FILE__, __LINE__); sprintf(termbuf2, __VA_ARGS__); printf("%s: %s\n", termbuf1, termbuf2); fflush(stdout);}
+#ifdef IO_REDUCED_MODE
+#define PRINT_STATUS(...) {if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {if(ThisTask==0) {printf( __VA_ARGS__ ); fflush(stdout);}}}
+#else
+#define PRINT_STATUS(...) {if(ThisTask==0) {printf( __VA_ARGS__ ); fflush(stdout);}}
+#endif
+
 
 
 

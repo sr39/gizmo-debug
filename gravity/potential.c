@@ -39,29 +39,19 @@ void compute_potential(void)
   if(All.ComovingIntegrationOn)
     set_softenings();
 
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("Start computation of potential for all particles...\n");
-      fflush(stdout);
-    }
-#endif
+  PRINT_STATUS("Start computation of potential for all particles...");
   CPU_Step[CPU_MISC] += measure_time();
 
 
   if(TreeReconstructFlag)
     {
-#ifndef IO_REDUCED_MODE
-      if(ThisTask == 0) printf("Tree construction.\n");
-#endif
+      PRINT_STATUS("Tree construction");
       CPU_Step[CPU_MISC] += measure_time();
       rearrange_particle_sequence();
       force_treebuild(NumPart, NULL);
       CPU_Step[CPU_TREEBUILD] += measure_time();
       TreeReconstructFlag = 0;
-#ifndef IO_REDUCED_MODE
-      if(ThisTask == 0) printf("Tree construction done.\n");
-#endif
+      PRINT_STATUS("Tree construction done");
     }
 
 
@@ -318,15 +308,7 @@ void compute_potential(void)
 	}
     }
 
-
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("potential done.\n");
-      fflush(stdout);
-    }
-#endif
-
+      PRINT_STATUS("potential done");
 #else
   for(i = 0; i < NumPart; i++)
     P[i].Potential = 0;

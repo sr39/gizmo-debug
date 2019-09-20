@@ -33,16 +33,13 @@ void GrainLoop_Master(void);
 /* function to apply the drag on the grains from surrounding gas properties */
 void apply_grain_dragforce(void)
 {
-    
     CPU_Step[CPU_MISC] += measure_time();
-    
     int i, k;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
 #ifdef GRAIN_BACKREACTION
         for(k=0;k<3;k++) {P[i].Grain_DeltaMomentum[k]=0;}
 #endif
-        
         if((P[i].Type != 0)&&(P[i].Type != 4))
         {
 #ifdef BOX_BND_PARTICLES
@@ -61,7 +58,6 @@ void apply_grain_dragforce(void)
                         double rho_grain_code = rho_grain_physical / (All.UnitDensity_in_cgs * All.HubbleParam * All.HubbleParam); // code units //
                         double vgas_mag = 0.0;
                         for(k=0;k<3;k++) {vgas_mag+=(P[i].Gas_Velocity[k]-P[i].Vel[k])*(P[i].Gas_Velocity[k]-P[i].Vel[k]);}
-                        
                         
                         if(vgas_mag > 0)
                         {
@@ -156,8 +152,6 @@ void apply_grain_dragforce(void)
                             for(k=0;k<3;k++) {external_forcing[k] += (v_p[k] - dv[k]) / dt;} // boris integrator
                             //for(k=0;k<3;k++) {external_forcing[k] += grain_charge_cinv * v_cross_B[k];} // standard explicit integrator
                             
-                            
-                            
                             /* note: if grains moving super-sonically with respect to gas, and charge equilibration time is much shorter than the
                              streaming/dynamical timescales, then the charge is slightly reduced, because the ion collision rate is increased while the
                              electron collision rate is increased less (since electrons are moving much faster, we assume the grain is still sub-sonic
@@ -165,7 +159,6 @@ void apply_grain_dragforce(void)
                              the full expressions are messy but can be -approximated- fairly well for Mach numbers ~3-30 by simply
                              suppressing the equilibrium grain charge by a power ~exp[-0.04*mach]  (weak effect, though can be significant for mach>10) */
 #endif
-                            
                             double delta_egy = 0;
                             double delta_mom[3];
                             for(k=0; k<3; k++)
@@ -182,11 +175,9 @@ void apply_grain_dragforce(void)
                                 vel_new = v_init + dv[k];
                                 delta_mom[k] = P[i].Mass * (vel_new - v_init);
                                 delta_egy += 0.5*P[i].Mass * (vel_new*vel_new - v_init*v_init);
-                                
 #ifdef GRAIN_BACKREACTION
                                 P[i].Grain_DeltaMomentum[k] = delta_mom[k];
 #endif
-                                
                                 /* note, we can directly apply this by taking P[i].Vel[k] += dv[k]; but this is not as accurate as our
                                  normal leapfrog integration scheme.
                                  we can also account for the -gas- acceleration, by including it like vdrift;
@@ -362,442 +353,6 @@ void calculate_interact_kick(double dV[3], double kick[3], double m)
 
 
 
-
-#ifdef GRAIN_OLD_COLLISIONS_CUSTOM
-/* this is example code, if you want to calculate certain types of grain-grain interactions from the ambient medium. however, there is a full grain collisions
-    module which rises on top of the 'DM_SIDM' module which utilizes a lot of well-tested code for handling scattering/sticking/etc of otherwise collisionless
-    particle species. that leverages more sophisticated treatments of e.g. the kernel they are in, etc. */
-
-void grain_master_collisions_routine(void)
-{
-    int i,k;
-    double dt, dvel, degy, soundspeed, R_grain, t_stop, slow_fac, vel_new, delta_mom[3], delta_egy;
-    int N_MAX_KERNEL,N_MIN_KERNEL,MAXITER_FB,NITER,startnode,dummy,numngb_inbox,jnearest,i,j,k,n;
-    double *pos,h,h2,hinv,hinv3,r2,rho,u,wk;
-    Ngblist = (int *) mymalloc(NumPart * sizeof(int));
-    
-    CPU_Step[CPU_MISC] += measure_time();
-#ifndef IO_REDUCED_MODE
-    if(ThisTask == 0)
-    {
-        printf("Beginning Grain Collisions & Interactions \n");
-    }
-#endif
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-    {
-        if(P[i].Type == 3)
-        {
-            if(P[i].Grain_Density > 0)
-            {
-#ifndef WAKEUP
-                dt = (P[i].TimeBin ? (((integertime) 1) << P[i].TimeBin) : 0) * All.Timebase_interval / All.cf_hubble_a;
-#else
-                dt = P[i].dt_step * All.Timebase_interval / All.cf_hubble_a;
-#endif
-                if(dt > 0)
-                {
-                    soundspeed = Particle_effective_soundspeed_i(i);
-                    R_grain = P[i].Grain_Size; // grain size in --cgs-- units //
-                } // closes check for if(dt > 0)
-            } // closes check for if(P[i].Gas_Density > 0)
-        } // closes check for if(P[i].Type != 0)
-    } // closes main particle loop
-    myfree(Ngblist);
-    CPU_Step[CPU_DRAGFORCE] += measure_time();
-} /* closes grain_master_collisions_routine */
-
-
-
-
-/*! Structure for communication during the density computation. Holds data that is sent to other processors.
- */
-static struct grain_densdata_in
-{
-    MyDouble Pos[3];
-    MyFloat Vel[3];
-    MyFloat Hsml;
-    int NodeList[NODELISTLENGTH];
-}
-*GrnDensDataIn, *GrnDensDataGet;
-
-static struct grain_densdata_out
-{
-    MyLongDouble RhoGrains;
-    MyLongDouble GrainVel[3];
-}
-*GrnDensDataResult, *GrnDensDataOut;
-
-
-/*
- calculates density and velocity of surrounding grain particles;
- currently is the full routine allowing for MPI communications, etc;
- but have commented out the iteration to solve for the neighbor number (we just use Hsml
- as defined by the SPH; could easily make this free to iterate itself, at small cost)
- */
-void grain_density(void)
-{
-    MyFloat *Left, *Right;
-    int i, j, ndone, ndone_flag, npleft, dummy, iter = 0;
-    integertime  dt_step;
-    int ngrp, sendTask, recvTask, place, nexport, nimport;
-    long long ntot;
-    double fac;
-    double timeall = 0, timecomp1 = 0, timecomp2 = 0, timecommsumm1 = 0, timecommsumm2 = 0, timewait1 =
-    0, timewait2 = 0;
-    double timecomp, timecomm, timewait;
-    double tstart, tend, t0, t1;
-    double desnumngb, valuenorm;
-    
-    CPU_Step[CPU_DENSMISC] += measure_time();
-    
-    Left = (MyFloat *) mymalloc(NumPart * sizeof(MyFloat));
-    Right = (MyFloat *) mymalloc(NumPart * sizeof(MyFloat));
-    
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-    {
-        if(grain_density_isactive(i))
-        {
-            Left[i] = Right[i] = 0;
-        }
-    }
-    
-    /* allocate buffers to arrange communication */
-    Ngblist = (int *) mymalloc(NumPart * sizeof(int));
-    size_t MyBufferSize = All.BufferSize;
-    All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
-                                                           sizeof(struct grain_densdata_in) + sizeof(struct grain_densdata_out) +
-                                                           sizemax(sizeof(struct grain_densdata_in),sizeof(struct grain_densdata_out))));
-    DataIndexTable = (struct data_index *) mymalloc(All.BunchSize * sizeof(struct data_index));
-    DataNodeList = (struct data_nodelist *) mymalloc(All.BunchSize * sizeof(struct data_nodelist));
-    
-    t0 = my_second();
-    desnumngb = All.DesNumNgb;
-    /* we will repeat the whole thing for those particles where we didn't find enough neighbours */
-    do
-    {
-        i = FirstActiveParticle;    /* begin with this index */
-        do
-        {
-            for(j = 0; j < NTask; j++)
-            {
-                Send_count[j] = 0;
-                Exportflag[j] = -1;
-            }
-            /* do local particles and prepare export list */
-            tstart = my_second();
-            for(nexport = 0; i >= 0; i = NextActiveParticle[i])
-            {
-                if(grain_density_isactive(i))
-                {
-                    if(grain_density_evaluate(i, 0, &nexport, Send_count) < 0)
-                        break;
-                }
-            }
-            tend = my_second();
-            timecomp1 += timediff(tstart, tend);
-            
-            MYSORT_DATAINDEX(DataIndexTable, nexport, sizeof(struct data_index), data_index_compare);
-            
-            tstart = my_second();
-            MPI_Allgather(Send_count, NTask, MPI_INT, Sendcount_matrix, NTask, MPI_INT, MPI_COMM_WORLD);
-            tend = my_second();
-            timewait1 += timediff(tstart, tend);
-            
-            for(j = 0, nimport = 0, Recv_offset[0] = 0, Send_offset[0] = 0; j < NTask; j++)
-            {
-                Recv_count[j] = Sendcount_matrix[j * NTask + ThisTask];
-                nimport += Recv_count[j];
-                if(j > 0)
-                {
-                    Send_offset[j] = Send_offset[j - 1] + Send_count[j - 1];
-                    Recv_offset[j] = Recv_offset[j - 1] + Recv_count[j - 1];
-                }
-            }
-            GrnDensDataGet = (struct grain_densdata_in *) mymalloc(nimport * sizeof(struct grain_densdata_in));
-            GrnDensDataIn = (struct grain_densdata_in *) mymalloc(nexport * sizeof(struct grain_densdata_in));
-            
-            /* prepare particle data for export */
-            for(j = 0; j < nexport; j++)
-            {
-                place = DataIndexTable[j].Index;
-                GrnDensDataIn[j].Pos[0] = P[place].Pos[0];
-                GrnDensDataIn[j].Pos[1] = P[place].Pos[1];
-                GrnDensDataIn[j].Pos[2] = P[place].Pos[2];
-                GrnDensDataIn[j].Hsml = PPP[place].Hsml;
-                memcpy(GrnDensDataIn[j].NodeList,
-                       DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
-            }
-            /* exchange particle data */
-            tstart = my_second();
-            for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
-            {
-                sendTask = ThisTask;
-                recvTask = ThisTask ^ ngrp;
-                
-                if(recvTask < NTask)
-                {
-                    if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
-                    {
-                        /* get the particles */
-                        MPI_Sendrecv(&GrnDensDataIn[Send_offset[recvTask]],
-                                     Send_count[recvTask] * sizeof(struct grain_densdata_in), MPI_BYTE,
-                                     recvTask, TAG_GRDENS_A,
-                                     &GrnDensDataGet[Recv_offset[recvTask]],
-                                     Recv_count[recvTask] * sizeof(struct grain_densdata_in), MPI_BYTE,
-                                     recvTask, TAG_GRDENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                    }
-                }
-            }
-            tend = my_second();
-            timecommsumm1 += timediff(tstart, tend);
-            myfree(GrnDensDataIn);
-            GrnDensDataResult = (struct grain_densdata_out *) mymalloc(nimport * sizeof(struct grain_densdata_out));
-            GrnDensDataOut = (struct grain_densdata_out *) mymalloc(nexport * sizeof(struct grain_densdata_out));
-            
-            /* now do the particles that were sent to us */
-            tstart = my_second();
-            for(j = 0; j < nimport; j++)
-                grain_density_evaluate(j, 1, &dummy, &dummy);
-            tend = my_second();
-            timecomp2 += timediff(tstart, tend);
-            
-            if(i < 0)
-                ndone_flag = 1;
-            else
-                ndone_flag = 0;
-            
-            tstart = my_second();
-            MPI_Allreduce(&ndone_flag, &ndone, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-            tend = my_second();
-            timewait2 += timediff(tstart, tend);
-            
-            /* get the result */
-            tstart = my_second();
-            for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
-            {
-                sendTask = ThisTask;
-                recvTask = ThisTask ^ ngrp;
-                if(recvTask < NTask)
-                {
-                    if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
-                    {
-                        /* send the results */
-                        MPI_Sendrecv(&GrnDensDataResult[Recv_offset[recvTask]],
-                                     Recv_count[recvTask] * sizeof(struct grain_densdata_out),
-                                     MPI_BYTE, recvTask, TAG_GRDENS_B,
-                                     &GrnDensDataOut[Send_offset[recvTask]],
-                                     Send_count[recvTask] * sizeof(struct grain_densdata_out),
-                                     MPI_BYTE, recvTask, TAG_GRDENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                    }
-                }
-            }
-            tend = my_second();
-            timecommsumm2 += timediff(tstart, tend);
-            
-            /* add the result to the local particles */
-            tstart = my_second();
-            for(j = 0; j < nexport; j++)
-            {
-                place = DataIndexTable[j].Index;
-                if(P[place].Type == 3)
-                {
-                    P[place].Grain_Density += GrnDensDataOut[j].RhoGrains;
-                    P[place].Grain_Velocity[0] += GrnDensDataOut[j].GrainVel[0];
-                    P[place].Grain_Velocity[1] += GrnDensDataOut[j].GrainVel[1];
-                    P[place].Grain_Velocity[2] += GrnDensDataOut[j].GrainVel[2];
-                }
-            }
-            tend = my_second();
-            timecomp1 += timediff(tstart, tend);
-            
-            myfree(GrnDensDataOut);
-            myfree(GrnDensDataResult);
-            myfree(GrnDensDataGet);
-        }
-        while(ndone < NTask);
-        
-        
-        /* do final operations on results */
-        tstart = my_second();
-        for(i = FirstActiveParticle, npleft = 0; i >= 0; i = NextActiveParticle[i])
-        {
-            if(grain_density_isactive(i))
-            {
-                if(P[i].Grain_Density > 0)
-                {
-                    P[i].Grain_Velocity[0] /= P[i].Grain_Density;
-                    P[i].Grain_Velocity[1] /= P[i].Grain_Density;
-                    P[i].Grain_Velocity[2] /= P[i].Grain_Density;
-                }
-                
-            }
-            tend = my_second();
-            timecomp1 += timediff(tstart, tend);
-            sumup_large_ints(1, &npleft, &ntot);
-        }
-    } while(ntot > 0); /* closes the check for particles that need iteration */
-    
-    
-    myfree(DataNodeList);
-    myfree(DataIndexTable);
-    myfree(Ngblist);
-    //myfree(Right);
-    //myfree(Left);
-    
-    /* collect some timing information */
-    t1 = WallclockTime = my_second();
-    timeall += timediff(t0, t1);
-    
-    timecomp = timecomp1 + timecomp2;
-    timewait = timewait1 + timewait2;
-    timecomm = timecommsumm1 + timecommsumm2;
-    
-    CPU_Step[CPU_DENSCOMPUTE] += timecomp;
-    CPU_Step[CPU_DENSWAIT] += timewait;
-    CPU_Step[CPU_DENSCOMM] += timecomm;
-    CPU_Step[CPU_DENSMISC] += timeall - (timecomp + timewait + timecomm);
-    
-} // done with routine!
-
-
-
-
-
-/*! core of sph density computation, adapted to search for grains now */
-int grain_density_evaluate(int target, int mode, int *nexport, int *nsend_local)
-{
-    int j, n;
-    int startnode, numngb, numngb_inbox, listindex = 0;
-    double h, h2, fac, hinv, hinv3, hinv4, wk, dwk;
-    double dx, dy, dz, r, r2, u, mass_j;
-    MyLongDouble sum_variable;
-    MyLongDouble rho;
-    MyLongDouble weighted_numngb;
-    MyLongDouble gasvel[3];
-    MyDouble *pos;
-    MyFloat *vel;
-    gasvel[0] = gasvel[1] = gasvel[2] = 0;
-    rho = weighted_numngb = 0;
-    
-    if(mode == 0)
-    {
-        pos = P[target].Pos;
-        h = PPP[target].Hsml;
-        vel = P[target].Vel;
-    }
-    else
-    {
-        pos = GrnDensDataGet[target].Pos;
-        vel = GrnDensDataGet[target].Vel;
-        h = GrnDensDataGet[target].Hsml;
-    }
-    
-    h2 = h * h;
-    hinv = 1.0 / h;
-#if (NUMDIMS==1)
-    hinv3 = hinv / (boxSize_Y * boxSize_Z);
-#endif
-#if (NUMDIMS==2)
-    hinv3 = hinv * hinv / boxSize_Z;
-#endif
-#if (NUMDIMS==3)
-    hinv3 = hinv * hinv * hinv;
-#endif
-    hinv4 = hinv3 * hinv;
-    
-    if(mode == 0)
-    {
-        startnode = All.MaxPart;    /* root node */
-    }
-    else
-    {
-        startnode = GrnDensDataGet[target].NodeList[0];
-        startnode = Nodes[startnode].u.d.nextnode;    /* open it */
-    }
-    
-    numngb = 0;
-    while(startnode >= 0)
-    {
-        while(startnode >= 0)
-        {
-            numngb_inbox = ngb_treefind_variable_targeted(pos, h, target, &startnode, mode, nexport, nsend_local, 8); // 8 = 2^3: search for particles of type=3
-            if(numngb_inbox < 0) return -1;
-            
-            for(n = 0; n < numngb_inbox; n++)
-            {
-                j = Ngblist[n];
-                if(P[j].Mass == 0) continue;
-                dx = pos[0] - P[j].Pos[0];
-                dy = pos[1] - P[j].Pos[1];
-                dz = pos[2] - P[j].Pos[2];
-#ifdef BOX_PERIODIC            /*  now find the closest image in the given box size  */
-                NEAREST_XYZ(dx,dy,dz,1);
-#endif
-                r2 = dx*dx + dy*dy + dz*dz;
-                if(r2 < h2)
-                {
-                    numngb++;
-                    r = sqrt(r2);
-                    u = r * hinv;
-                    kernel_main(u,hinv3,hinv4,&wk,&dwk,0);
-                    mass_j = P[j].Mass;
-                    rho += FLT(mass_j * wk);
-                    weighted_numngb += FLT(NORM_COEFF * wk / hinv3);
-                    MyDouble VelPred_j[3];
-                    for(k=0;k<3;k++) {VelPred_j[k]=SphP[j].VelPred[k];}
-#ifdef BOX_SHEARING
-                    if(pos[0] - P[j].Pos[0] > +boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-                    if(pos[0] - P[j].Pos[0] < -boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
-#endif
-                    gasvel[0] += FLT(mass_j * wk * VelPred_j[0]);
-                    gasvel[1] += FLT(mass_j * wk * VelPred_j[1]);
-                    gasvel[2] += FLT(mass_j * wk * VelPred_j[2]);
-                }
-            }
-        }
-    }
-    
-    if(mode == 1)
-    {
-        listindex++;
-        if(listindex < NODELISTLENGTH)
-        {
-            startnode = GrnDensDataGet[target].NodeList[listindex];
-            if(startnode >= 0)
-                startnode = Nodes[startnode].u.d.nextnode;    /* open it */
-        }
-    }
-    if(mode == 0)
-    {
-        P[target].Grain_Density = rho;
-        P[target].Grain_Velocity[0] = 0;
-        P[target].Grain_Velocity[1] = 0;
-        P[target].Grain_Velocity[2] = 0;
-    }
-    else
-    {
-        GrnDensDataResult[target].RhoGrains = rho;
-        GrnDensDataResult[target].GrainVel[0] = 0;
-        GrnDensDataResult[target].GrainVel[1] = 0;
-        GrnDensDataResult[target].GrainVel[2] = 0;
-    }
-    
-    return 0;
-}
-
-
-
-/* code to tell the grain density routine which particles to use */
-int grain_density_isactive(int n)
-{
-    if(P[n].TimeBin < 0) return 0;
-    if(P[n].Type == 3) return 1;
-    return 0;
-}
-
-
-
-#endif // closes GRAIN_OLD_COLLISIONS_CUSTOM
 
 
 
