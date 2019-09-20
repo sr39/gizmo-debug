@@ -754,7 +754,7 @@ void hydro_gradient_calc(void)
                     for(int ngrp = ngrpstart; ngrp < ngrpstart + ncycles; ngrp++)
                     {
                         recvTask = ThisTask ^ ngrp;
-                        if(recvTask < NTask) {if(Recv_count[recvTask] > 0) {Nimport += Recv_count[recvTask]}}
+                        if(recvTask < NTask) {if(Recv_count[recvTask] > 0) {Nimport += Recv_count[recvTask];}}
                     }
                     size_t space_needed = Nimport * sizeof(struct GasGraddata_in) + Nimport * sizeof(struct GasGraddata_out) + 16384; /* extra bitflag is a padding, to avoid overflows */
                     if(space_needed > FreeBytes) {flag = 1;}
@@ -762,7 +762,7 @@ void hydro_gradient_calc(void)
                     MPI_Allreduce(&flag, &flagall, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
                     if(flagall) {ncycles /= 2;} else {break;}
                 } while(ncycles > 0);
-                if(ncycles == 0) {printf("Seems like we can't even do one cycle: ncycles=%d  ngrpstart=%d  Nimport=%d  FreeBytes=%lld  needed for storage=%lld \n",ncycles, ngrpstart, Nimport, (long long)FreeBytes,(long long)space_needed); endrun(9999)}
+                if(ncycles == 0) {printf("Seems like we can't even do one cycle: ncycles=%d  ngrpstart=%d  Nimport=%d  FreeBytes=%lld  needed for storage=%lld \n",ncycles, ngrpstart, Nimport, (long long)FreeBytes,(long long)(Nimport * sizeof(struct GasGraddata_in) + Nimport * sizeof(struct GasGraddata_out) + 16384)); endrun(9999);}
                 if(ngrpstart == 1 && ncycles != ((1 << PTask) - ngrpstart) && ThisTask == 0) printf("need multiple import/export phases to avoid memory overflow \n");
                 
                 /* now allocated the import and results buffers */
