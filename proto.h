@@ -388,9 +388,7 @@ int find_files(char *fname);
 int metals_compare_key(const void *a, const void *b);
 void enrichment_evaluate(int target, int mode);
 
-int hydro_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *hydro_evaluate_primary(void *p);
-void *hydro_evaluate_secondary(void *p);
+int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration);
 
 void pm_init_nonperiodic_allocate(void);
 

@@ -101,7 +101,7 @@ void gravity_tree(void)
 
         TreeReconstructFlag = 0;
         
-        PRINT_STATUS("Tree construction done.\n");
+        PRINT_STATUS("Tree construction done.");
     }
     
 #ifndef SELFGRAVITY_OFF

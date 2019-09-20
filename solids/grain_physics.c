@@ -27,7 +27,7 @@
 #ifdef GRAIN_FLUID
 
 #ifdef GRAIN_BACKREACTION
-void GrainLoop_Master(void);
+void grain_backrx_parent(void);
 #endif
 
 /* function to apply the drag on the grains from surrounding gas properties */
@@ -195,7 +195,7 @@ void apply_grain_dragforce(void)
     } // closes main particle loop
     
 #ifdef GRAIN_BACKREACTION
-    GrainLoop_Master(); /* call master routine to assign the back-reaction force among neighbors */
+    grain_backrx_parent(); /* call master routine to assign the back-reaction force among neighbors */
 #endif
     CPU_Step[CPU_DRAGFORCE] += measure_time();
 }
@@ -210,10 +210,12 @@ void apply_grain_dragforce(void)
  'work' between neighbors, but all of the parallelization, looping, communication blocks,
  etc, are all handled for you. */
 
-#define MASTER_FUNCTION_NAME GrainLoop_Master /* this function -must- be defined somewhere as "void MASTER_FUNCTION_NAME(void);" in order to actually be call-able by other parent routines! */
-#define KERNEL_BITFLAG_DEFINITION_LOCAL 1 /* set to bitflag or name of sub-routine which returns bitflag for valid -neighbor- types */
-#define CPU_COST_CODE_NAME CPU_DRAGFORCE /* cpu 'bin' name to charge costs to (for displaying/load-balancing) */
-#include "../system/code_predefs_for_standard_neighbor_loops.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together */
+#define MASTER_FUNCTION_NAME grain_backrx_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
+#define INPUTFUNCTION_NAME particle2in_grainbackrx    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
+#define OUTPUTFUNCTION_NAME out2particle_grainbackrx  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
+#define CONDITIONFUNCTION_FOR_EVALUATION if((P[i].Type==3)&&(P[i].TimeBin>=0)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
+#include "../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
+
 
 /* this structure defines the variables that need to be sent -from- the 'searching' particle */
 struct INPUT_STRUCT_NAME
@@ -251,58 +253,60 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
     /* example: ASSIGN_ADD(P[i].X,out->X,mode); which is short for: if(mode==0) {P[i].X=out->X;} else {P[i].X+=out->X;} */
 }
 
-/* this subroutine defines the conditions (true/false) for a particle to be considered 'active' and summon the evaluation subroutines */
-int CONDITIONFUNCTION_FOR_EVALUATION(int i);
-int CONDITIONFUNCTION_FOR_EVALUATION(int i) /* "i" is the index of the particle for which we evaluate */
+
+/* this subroutine does the actual neighbor-element calculations (this is the 'core' of the loop, essentially) */
+int grain_backrx_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration);
+int grain_backrx_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
-    if(P[i].TimeBin<0) {return 0;}
-    if(P[i].Type==3) {return 1;}
+    int startnode, numngb_inbox, listindex = 0, j, n; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* define variables and zero memory and import data for local target*/
+    if(mode == 0) {INPUTFUNCTION_NAME(&local, target);} else {local = DATAGET_NAME[target];} /* imports the data to the correct place and names */
+    
+    if(local.Hsml <= 0) {return 0;} /* don't bother doing a loop if this isnt going to do anything */
+    int kernel_shared_BITFLAG = 1; /* grains 'see' gas in this loop */
+    
+    /* Now start the actual neighbor computation for this particle */
+    if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;    /* open it */}
+    while(startnode >= 0) {
+        while(startnode >= 0) {
+            numngb_inbox = ngb_treefind_variable_threads_targeted(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, kernel_shared_BITFLAG);
+            if(numngb_inbox < 0) {return -1;} /* no neighbors! */
+            for(n = 0; n < numngb_inbox; n++) /* neighbor loop */
+            {
+                j = ngblist[n]; if((P[j].Mass <= 0)||(P[j].Hsml <= 0)) {continue;} /* make sure neighbor is valid */
+                int k; double dp[3]; for(k=0;k<3;k++) {dp[k]=local.Pos[k]-P[j].Pos[k];} /* position offset */
+                NEAREST_XYZ(dp[0],dp[1],dp[2],1); double r2=dp[0]*dp[0]+dp[1]*dp[1]+dp[2]*dp[2]; /* box-wrap appropriately and calculate distance */
+#ifdef BOX_BND_PARTICLES
+                if(P[j].ID > 0) {r2 = -1;} /* ignore frozen boundary particles */
+#endif
+                if((r2>0)&&(r2<local.Hsml*local.Hsml)) /* only keep elements inside search radius */
+                {
+                    double hinv,hinv3,hinv4,wk_i=0,dwk_i=0,r=sqrt(r2); kernel_hinv(local.Hsml,&hinv,&hinv3,&hinv4);
+                    kernel_main(r*hinv, hinv3, hinv4, &wk_i, &dwk_i, 0); /* kernel quantities that may be needed */
+#ifdef GRAIN_BACKREACTION
+                    double wt = -wk_i / local.Gas_Density; /* degy=wt*delta_egy; */
+                    for(k=0;k<3;k++) {double dv=wt*local.Grain_DeltaMomentum[k]; P[j].Vel[k]+=dv; SphP[j].VelPred[k]+=dv;}
+                    /* for(k=0;k<3;k++) {degy-=P[j].Mass*dv*(VelPred_j[k]+0.5*dv);} SphP[j].InternalEnergy += degy; */
+#endif
+                }
+            } // numngb_inbox loop
+        } // while(startnode)
+        if(mode == 1) {listindex++; if(listindex < NODELISTLENGTH) {startnode = DATAGET_NAME[target].NodeList[listindex]; if(startnode >= 0) {startnode = Nodes[startnode].u.d.nextnode; /* open it */}}} /* continue to open leaves if needed */
+    }
+    if(mode == 0) {OUTPUTFUNCTION_NAME(&out, target, 0, loop_iteration);} else {DATARESULT_NAME[target] = out;} /* collects the result at the right place */
     return 0;
 }
 
-/* this subroutine does the actual neighbor-element calculations (this is the 'core' of the loop, essentially) */
-static inline void NEIGHBOROPS_FUNCTION_NAME(struct INPUT_STRUCT_NAME *local, struct OUTPUT_STRUCT_NAME *out, int j, int loop_iteration);
-static inline void NEIGHBOROPS_FUNCTION_NAME(struct INPUT_STRUCT_NAME *local, struct OUTPUT_STRUCT_NAME *out, int j, int loop_iteration)
+
+void grain_backrx_evaluate(void)
 {
-    int k; double dp[3]; for(k=0;k<3;k++) {dp[k]=local->Pos[k]-P[j].Pos[k];} /* position */
-#ifdef BOX_PERIODIC /* box-wrap appropriately  */
-    NEAREST_XYZ(dp[0],dp[1],dp[2],1);
-#endif
-    double r2=dp[0]*dp[0]+dp[1]*dp[1]+dp[2]*dp[2];
-#ifdef BOX_BND_PARTICLES
-    if(P[j].ID > 0) {r2 = -1;}
-#endif
-    if((r2>0)&&(r2<local->Hsml*local->Hsml)) /* only keep elements inside search radius */
-    {
-        double hinv,hinv3,hinv4,wk_i=0,dwk_i=0,r=sqrt(r2); kernel_hinv(local->Hsml,&hinv,&hinv3,&hinv4);
-        kernel_main(r*hinv, hinv3, hinv4, &wk_i, &dwk_i, 0); /* kernel quantities that may be needed */
-        /*
-         double VelPred_j[3]; for(k=0;k<3;k++) {VelPred_j[k]=SphP[j].VelPred[k];}
-         #ifdef BOX_SHEARING
-         if(local->Pos[0]-P[j].Pos[0] > +boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;}
-         if(local->Pos[0]-P[j].Pos[0] < -boxHalf_X) {VelPred_j[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;}
-         #endif
-         */
-#ifdef GRAIN_BACKREACTION
-        double wt = -wk_i / local->Gas_Density;/*, degy = wt*delta_egy; */
-        for(k=0;k<3;k++)
-        {
-            double dv=wt*local->Grain_DeltaMomentum[k]; P[j].Vel[k]+=dv; SphP[j].VelPred[k]+=dv;
-            /*            degy-=P[j].Mass*dv*(VelPred_j[k]+0.5*dv); */
-        }
-        /*      SphP[j].InternalEnergy += degy; */
-#endif
-    }
+     //grain_backrx_initial_operations_preloop(); /* do initial pre-processing operations as needed before main loop [nothing needed here] */
+    
+#include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
+    
+    //grain_backrx_final_operations_and_cleanup(); /* do final operations on results [nothing needed here] */
+    CPU_Step[CPU_DRAGFORCE] += timeall; /* collect timing information [here lumping it all together] */
 }
-
-/* this subroutine computes any final operations on the particles after the main loop is completed */
-static inline void FINAL_OPERATIONS_FUNCTION_NAME(int i, int loop_iteration);
-static inline void FINAL_OPERATIONS_FUNCTION_NAME(int i, int loop_iteration)
-{ /* here "i" is the particle for which we've returned data -- do what you like to it! */
-}
-
-/* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
-#include "../system/code_block_for_standard_neighbor_loops.h"
+#include "../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
 
 
 

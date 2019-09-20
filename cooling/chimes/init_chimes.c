@@ -3195,7 +3195,6 @@ void initialise_gas_abundances(struct gasVariables *myGasVars, struct globalVari
   else
     {
       PRINT_WARNING("WARNING: initialise_gas_abundances() mode not recognised. Assuming fully neutral");
-      fflush(stdout);
       init_ion_state = 0;
     }
 

@@ -745,13 +745,13 @@ void hydro_gradient_calc(void)
             }
             
             /* ok now we have to figure out if there is enough memory to handle all the tasks sending us their data, and if not, break it into sub-chunks */
-            int ncycles, ngrpstart, ngrp;
-            for(ngrpstart = 1; ngrpstart < (1 << PTask); ngrpstart += ncycles) /* sub-chunking loop opener */
+            int N_chunks_for_import, ngrp_initial, ngrp;
+            for(ngrp_initial = 1; ngrp_initial < (1 << PTask); ngrp_initial += N_chunks_for_import) /* sub-chunking loop opener */
             {
-                ncycles = (1 << PTask) - ngrpstart;
+                N_chunks_for_import = (1 << PTask) - ngrp_initial;
                 do {
                     int flag = 0, flagall; Nimport = 0;
-                    for(ngrp = ngrpstart; ngrp < ngrpstart + ncycles; ngrp++)
+                    for(ngrp = ngrp_initial; ngrp < ngrp_initial + N_chunks_for_import; ngrp++)
                     {
                         recvTask = ThisTask ^ ngrp;
                         if(recvTask < NTask) {if(Recv_count[recvTask] > 0) {Nimport += Recv_count[recvTask];}}
@@ -760,10 +760,10 @@ void hydro_gradient_calc(void)
                     if(space_needed > FreeBytes) {flag = 1;}
                     
                     MPI_Allreduce(&flag, &flagall, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-                    if(flagall) {ncycles /= 2;} else {break;}
-                } while(ncycles > 0);
-                if(ncycles == 0) {printf("Seems like we can't even do one cycle: ncycles=%d  ngrpstart=%d  Nimport=%ld  FreeBytes=%lld  needed for storage=%lld \n",ncycles, ngrpstart, Nimport, (long long)FreeBytes,(long long)(Nimport * sizeof(struct GasGraddata_in) + Nimport * sizeof(struct GasGraddata_out) + 16384)); endrun(9999);}
-                if(ngrpstart == 1 && ncycles != ((1 << PTask) - ngrpstart) && ThisTask == 0) printf("need multiple import/export phases to avoid memory overflow \n");
+                    if(flagall) {N_chunks_for_import /= 2;} else {break;}
+                } while(N_chunks_for_import > 0);
+                if(N_chunks_for_import == 0) {printf("Memory is insufficient for even one import-chunk: N_chunks_for_import=%d  ngrp_initial=%d  Nimport=%ld  FreeBytes=%lld , but we need to allocate=%lld \n",N_chunks_for_import, ngrp_initial, Nimport, (long long)FreeBytes,(long long)(Nimport * sizeof(struct GasGraddata_in) + Nimport * sizeof(struct GasGraddata_out) + 16384)); endrun(9999);}
+                if(ngrp_initial == 1 && N_chunks_for_import != ((1 << PTask) - ngrp_initial) && ThisTask == 0) PRINT_WARNING("Splitting import operation into sub-chunks as we are hitting memory limits (check this isn't imposing large communication cost)");
                 
                 /* now allocated the import and results buffers */
                 GasGradDataGet = (struct GasGraddata_in *) mymalloc("GasGradDataGet", Nimport * sizeof(struct GasGraddata_in));
@@ -776,7 +776,7 @@ void hydro_gradient_calc(void)
                 
 
                 tstart = my_second(); Nimport = 0; /* reset because this will be cycled below to calculate the recieve offsets (Recv_offset) */
-                for(ngrp = ngrpstart; ngrp < ngrpstart + ncycles; ngrp++) /* exchange particle data */
+                for(ngrp = ngrp_initial; ngrp < ngrp_initial + N_chunks_for_import; ngrp++) /* exchange particle data */
                 {
                     recvTask = ThisTask ^ ngrp;
                     if(recvTask < NTask)
@@ -820,7 +820,7 @@ void hydro_gradient_calc(void)
 
                 
                 tstart = my_second(); Nimport = 0;
-                for(ngrp = ngrpstart; ngrp < ngrpstart + ncycles; ngrp++) /* send the results for imported elements back to their host tasks */
+                for(ngrp = ngrp_initial; ngrp < ngrp_initial + N_chunks_for_import; ngrp++) /* send the results for imported elements back to their host tasks */
                 {
                     recvTask = ThisTask ^ ngrp;
                     if(recvTask < NTask)
@@ -845,7 +845,7 @@ void hydro_gradient_calc(void)
                 if(gradient_iteration==0) {myfree(GasGradDataResult);} else {myfree(GasGradDataResult_iter);} /* free the structures used to send data back to tasks, its sent */
                 myfree(GasGradDataGet); /* free the structures used to send data back to tasks, its sent */
                 
-            } /* close the sub-chunking loop: for(ngrpstart = 1; ngrpstart < (1 << PTask); ngrpstart += ncycles) */
+            } /* close the sub-chunking loop: for(ngrp_initial = 1; ngrp_initial < (1 << PTask); ngrp_initial += N_chunks_for_import) */
 
 
             /* we have all our results back from the elements we exported: add the result to the local elements */

@@ -3923,7 +3923,7 @@ void ewald_init(void)
     }
     else
     {
-        printf("\nNo Ewald tables in file `%s' found.\nRecomputing them...\n", buf);}
+        printf("\nNo Ewald tables in file `%s' found.\nRecomputing them...\n", buf);
         
         /* ok, let's recompute things. Actually, we do that in parallel. */
         
@@ -3939,9 +3939,7 @@ void ewald_init(void)
                     n = (i * (EN + 1) + j) * (EN + 1) + k;
                     if(n >= beg && n < (beg + len))
                     {
-#ifndef IO_REDUCED_MODE
                         if((count % (len / 20)) == 0) {PRINT_STATUS("%4.1f percent done", count / (len / 100.0));}
-#endif
                         x[0] = 0.5 * ((double) i) / EN;
                         x[1] = 0.5 * ((double) j) / EN;
                         x[2] = 0.5 * ((double) k) / EN;
@@ -3994,10 +3992,7 @@ void ewald_init(void)
                 fcorrz[i][j][k] /= All.BoxSize * All.BoxSize;
             }
     
-    if(ThisTask == 0)
-    {
-        printf("initialization of periodic boundaries finished.\n");
-    }
+    if(ThisTask == 0) {printf("initialization of periodic boundaries finished.\n");}
 #endif // #ifndef SELFGRAVITY_OFF
 }
 

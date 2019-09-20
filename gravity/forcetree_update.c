@@ -18,56 +18,31 @@
 
 void force_update_tree(void)
 {
-  int i, j;
-
-    if(ThisTask == 0) {printf("Kick-subroutine will prepare for dynamic update of tree\n");}
-
-  GlobFlag++;
-  DomainNumChanged = 0;
-  DomainList = (int *) mymalloc("DomainList", NTopleaves * sizeof(int));
-
-
-  /* note: the current list of active particles still refers to that
-   * synchronized at the previous time.
-   */
-  for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+    PRINT_STATUS("Kick-subroutine will prepare for dynamic update of tree");
+    int i, j; GlobFlag++; DomainNumChanged = 0; DomainList = (int *) mymalloc("DomainList", NTopleaves * sizeof(int));
+    /* note: the current list of active particles still refers to that synchronized at the previous time. */
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-      force_kick_node(i, P[i].dp);	/* kick the parent nodes with this momentum
-					   difference, also updated maximum velocity, softening and soundspeed, if needed */
-      for(j = 0; j < 3; j++)
-	P[i].dp[j] = 0;
+        force_kick_node(i, P[i].dp);    /* kick the parent nodes with this momentum difference, also updated maximum velocity, softening and soundspeed, if needed */
+        for(j = 0; j < 3; j++) {P[i].dp[j] = 0;}
     }
-
-  force_finish_kick_nodes();
-  myfree(DomainList);
-
-PRINT_STATUS("Tree has been updated dynamically");
+    force_finish_kick_nodes();
+    myfree(DomainList);
+    PRINT_STATUS("Tree has been updated dynamically");
 }
-
-
-
-
-
-
-
 
 
 void force_kick_node(int i, MyDouble * dp)
 {
-  int j, no;
-  MyFloat v, vmax;
-
+  int j, no; MyFloat v, vmax;
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
     MyFloat rt_source_lum_dp[3];
 #endif
-
 #ifdef DM_SCALARFIELD_SCREENING
   MyFloat dp_dm[3];
 #endif
-
 #ifdef NEUTRINOS
-  if(P[i].Type == 2)
-    return;
+ if(P[i].Type == 2) {return;}
 #endif
 
   for(j = 0; j < 3; j++)
