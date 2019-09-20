@@ -310,9 +310,7 @@ int MPI_Check_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                 sendCheckSum += *p;
             
             printf("Task=%d gas send_checksum=%d %d\n", Local_ThisTask, (int) (sendCheckSum >> 32), (int) sendCheckSum);
-#ifndef IO_REDUCED_MODE
-            fflush(stdout);
-#endif
+
             if(dest > Local_ThisTask)
             {
                 if(sendcount > 0)

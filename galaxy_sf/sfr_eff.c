@@ -688,12 +688,7 @@ void star_formation_parent_routine(void)
   MPI_Allreduce(&num_bhformed, &tot_bhformed, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
   if(tot_bhformed > 0)
   {
-      if(ThisTask==0)
-      {
-#ifndef IO_REDUCED_MODE
-      printf("BH/Sink formation: %d gas particles converted into BHs \n",tot_bhformed);
-#endif
-      }
+      printf("BH/Sink formation: %d gas particles converted into BHs\n",tot_bhformed);
       All.TotBHs += tot_bhformed;
   } // if(tot_bhformed > 0)
 #endif
@@ -702,13 +697,7 @@ void star_formation_parent_routine(void)
   MPI_Allreduce(&stars_converted, &tot_converted, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
   if(tot_spawned > 0 || tot_converted > 0)
     {
-      if(ThisTask == 0)
-	{
-#ifndef IO_REDUCED_MODE
-	  printf("SFR: spawned %d stars, converted %d gas particles into stars\n",
-		 tot_spawned, tot_converted);
-#endif
-    }
+      printf("SFR: spawned %d stars, converted %d gas particles into stars\n", tot_spawned, tot_converted);
       All.TotNumPart += tot_spawned;
       All.TotN_gas -= tot_converted;
       NumPart += stars_spawned;
@@ -935,14 +924,12 @@ void init_clouds(void)
       All.BlackHoleRefSoundspeed = sqrt(GAMMA * GAMMA_MINUS1 * egyeff);
 #endif
 
-#ifndef IO_REDUCED_MODE
       if(ThisTask == 0)
 	{
 	  printf("Run-away sets in for dens=%g\n", thresholdStarburst);
 	  printf("Dynamic range for quiescent star formation= %g\n", thresholdStarburst / All.PhysDensThresh);
 	  fflush(stdout);
 	}
-#endif
 
       if(All.ComovingIntegrationOn)
 	{

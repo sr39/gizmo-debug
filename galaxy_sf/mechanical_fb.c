@@ -951,18 +951,13 @@ void determine_where_SNe_occur(void)
     
     if(ThisTask == 0)
     {
-#ifdef IO_REDUCED_MODE
         if(mpi_ntotal > 0 && mpi_nhosttotal > 0 && mpi_dtmean > 0)
-#endif
         if(mpi_npossible>0)
         {
             mpi_dtmean /= mpi_npossible; mpi_rmean /= mpi_npossible;
             fprintf(FdSneIIHeating, "%lg %g %g %g %g %g %g \n", All.Time,mpi_npossible,mpi_nhosttotal,mpi_ntotal,mpi_ptotal,mpi_dtmean,mpi_rmean);
         }
-#ifdef IO_REDUCED_MODE
-        if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
-#endif
-        {fflush(FdSneIIHeating);}
+        if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {fflush(FdSneIIHeating);}
     } // if(ThisTask == 0) //
     
 } // void determine_where_SNe_occur() //

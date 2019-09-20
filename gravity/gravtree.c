@@ -90,9 +90,7 @@ void gravity_tree(void)
 #endif    
     if(TreeReconstructFlag)
     {
-#ifndef IO_REDUCED_MODE
-        if(ThisTask == 0) printf("Tree construction.  (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
-#endif
+        PRINT_STATUS("Tree construction.  (presently allocated=%g MB)", AllocatedBytes / (1024.0 * 1024.0));
         CPU_Step[CPU_MISC] += measure_time();
 
         move_particles(All.Ti_Current);
@@ -103,18 +101,13 @@ void gravity_tree(void)
 
         TreeReconstructFlag = 0;
         
-#ifndef IO_REDUCED_MODE
-	if(ThisTask == 0) printf("Tree construction done.\n");
-#endif
+        PRINT_STATUS("Tree construction done.\n");
     }
     
 #ifndef SELFGRAVITY_OFF
     
     /* allocate buffers to arrange communication */
-#ifdef IO_REDUCED_MODE
-    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
-#endif
-    if(ThisTask == 0) printf("Begin tree force.  (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
+    PRINT_STATUS("Begin tree force. (presently allocated=%g MB)", AllocatedBytes / (1024.0 * 1024.0));
 
     
     size_t MyBufferSize = All.BufferSize;
@@ -124,10 +117,7 @@ void gravity_tree(void)
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
     
-#ifdef IO_REDUCED_MODE
-    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
-#endif
-    if(ThisTask == 0) printf("All.BunchSize=%d\n", All.BunchSize);
+    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {if(ThisTask == 0) printf("All.BunchSize=%d\n", All.BunchSize);}
     
     Ewaldcount = 0;
     Costtotal = 0;
@@ -844,8 +834,7 @@ void gravity_tree(void)
         fprintf(FdTimings, "Nf= %d%09d  total-Nf= %d%09d  ex-frac= %g (%g) iter= %d\n",
                 (int) (GlobNumForceUpdate / 1000000000), (int) (GlobNumForceUpdate % 1000000000),
                 (int) (All.TotNumOfForces / 1000000000), (int) (All.TotNumOfForces % 1000000000),
-                n_exported / ((double) GlobNumForceUpdate), N_nodesinlist / ((double) n_exported + 1.0e-10),
-                iter);
+                n_exported / ((double) GlobNumForceUpdate), N_nodesinlist / ((double) n_exported + 1.0e-10), iter);
         /* note: on Linux, the 8-byte integer could be printed with the format identifier "%qd", but doesn't work on AIX */
         
         fprintf(FdTimings, "work-load balance: %g (%g %g) rel1to2=%g   max=%g avg=%g\n",
@@ -870,12 +859,9 @@ void gravity_tree(void)
     double costtotal_new = 0, sum_costtotal_new;
     if(TakeLevel >= 0)
     {
-        for(i = 0; i < NumPart; i++)
-            costtotal_new += P[i].GravCost[TakeLevel];
+        for(i = 0; i < NumPart; i++) {costtotal_new += P[i].GravCost[TakeLevel];}
         MPI_Reduce(&costtotal_new, &sum_costtotal_new, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-        if(ThisTask == 0)
-            printf("relative error in the total number of tree-gravity interactions = %g\n",
-                   (sum_costtotal - sum_costtotal_new) / sum_costtotal);
+        PRINT_STASTUS("relative error in the total number of tree-gravity interactions = %g", (sum_costtotal - sum_costtotal_new) / sum_costtotal);
         /* can be non-zero if THREAD_SAFE_COSTS is not used (and due to round-off errors). */
     }
 #endif

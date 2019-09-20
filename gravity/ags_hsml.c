@@ -498,7 +498,7 @@ void ags_density(void)
                 /* allow the neighbor tolerance to gradually grow as we iterate, so that we don't spend forever trapped in a narrow iteration */
 #if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
                 double ConditionNumber = do_cbe_nvt_inversion_for_faces(i); // right now we don't do anything with this, but could use to force expansion of search, as in hydro
-                if(ConditionNumber > MAX_REAL_NUMBER) {printf("CNUM warning for CBE: ThisTask=%d i=%d ConditionNumber=%g desnumngb=%g NumNgb=%g iter=%d NVT=%g/%g/%g/%g/%g/%g AGS_Hsml=%g \n",ThisTask,i,ConditionNumber,desnumngb,PPP[i].NumNgb,iter,P[i].NV_T[0][0],P[i].NV_T[1][1],P[i].NV_T[2][2],P[i].NV_T[0][1],P[i].NV_T[0][2],P[i].NV_T[1][2],PPP[i].AGS_Hsml);}
+                if(ConditionNumber > MAX_REAL_NUMBER) {PRINT_WARNING("CNUM warning for CBE: ThisTask=%d i=%d ConditionNumber=%g desnumngb=%g NumNgb=%g iter=%d NVT=%g/%g/%g/%g/%g/%g AGS_Hsml=%g \n",ThisTask,i,ConditionNumber,desnumngb,PPP[i].NumNgb,iter,P[i].NV_T[0][0],P[i].NV_T[1][1],P[i].NV_T[2][2],P[i].NV_T[0][1],P[i].NV_T[0][2],P[i].NV_T[1][2],PPP[i].AGS_Hsml);}
                 if(iter > 10) {desnumngbdev = DMIN( 0.25*desnumngb , desnumngbdev * exp(0.1*log(desnumngb/(16.*desnumngbdev))*((double)iter - 9.)) );}
 #else
                 if(iter > 4) {desnumngbdev = DMIN( 0.25*desnumngb , desnumngbdev * exp(0.1*log(desnumngb/(16.*desnumngbdev))*((double)iter - 3.)) );}
@@ -551,13 +551,10 @@ void ags_density(void)
                 {
                     if(iter >= MAXITER - 10)
                     {
-#ifndef IO_REDUCED_MODE
-                        printf("AGS: i=%d task=%d ID=%llu Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)\n",
+                        PRINT_WARNING("AGS: i=%d task=%d ID=%llu Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)\n",
                                i, ThisTask, (unsigned long long) P[i].ID, P[i].Type, PPP[i].AGS_Hsml, PPP[i].DhsmlNgbFactor, Left[i], Right[i],
                                (float) PPP[i].NumNgb, Right[i] - Left[i], particle_set_to_maxhsml_flag, particle_set_to_minhsml_flag, minsoft,
                                maxsoft, desnumngb, desnumngbdev, redo_particle, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
-                        fflush(stdout);
-#endif
                     }
                     
                     /* need to redo this particle */
@@ -703,20 +700,8 @@ void ags_density(void)
         if(ntot > 0)
         {
             iter++;
-            if(iter > 0 && ThisTask == 0)
-            {
-#ifdef IO_REDUCED_MODE
-                if(iter > 10)
-#endif
-                printf("ags-ngb iteration %d: need to repeat for %d%09d particles.\n", iter,
-                       (int) (ntot / 1000000000), (int) (ntot % 1000000000));
-            }
-            if(iter > MAXITER)
-            {
-                printf("ags-failed to converge in neighbour iteration in density()\n");
-                fflush(stdout);
-                endrun(1155);
-            }
+            if(iter > 10 && ThisTask == 0) {printf("ags-ngb iteration %d: need to repeat for %d%09d particles.\n", iter, (int) (ntot / 1000000000), (int) (ntot % 1000000000));}
+            if(iter > MAXITER) {printf("ags-failed to converge in neighbour iteration in density()\n"); fflush(stdout); endrun(1155);}
         }
     }
     while(ntot > 0);

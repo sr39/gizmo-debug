@@ -69,17 +69,8 @@ void twopoint(void)
   double tstart, tend;
   double mass, masstot;
   void *state_buffer;
-
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("begin two-point correlation function...\n");
-      fflush(stdout);
-    }
-#endif
-
+  PRINT_STATUS("begin two-point correlation function...");
   tstart = my_second();
-
 
   /* set inner and outer radius for the bins that are used for the correlation function estimate */
   R0 = All.SofteningTable[1];	/* we assume that type=1 is the primary type */
@@ -284,16 +275,8 @@ void twopoint(void)
 #ifndef IO_REDUCED_MODE
   twopoint_save();
 #endif
-    
   tend = my_second();
-
-#ifndef IO_REDUCED_MODE
-  if(ThisTask == 0)
-    {
-      printf("end two-point: Took=%g seconds.\n", timediff(tstart, tend));
-      fflush(stdout);
-    }
-#endif
+  PRINT_STATUS("end two-point: Took=%g seconds", timediff(tstart, tend));
 }
 
 

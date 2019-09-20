@@ -1041,9 +1041,6 @@ void read_file(char *fname, int readTask, int lastTask)
             {
                 get_dataset_name(blocknr, buf);
                 printf("reading block %d (%s)...\n", bnr, buf);
-#ifndef IO_REDUCED_MODE
-                fflush(stdout);
-#endif
             }
             
             bytes_per_blockelement = get_bytes_per_blockelement(blocknr, 1);
@@ -1617,7 +1614,7 @@ void find_block(char *label, FILE * fd)
         if(blksize != 8)
         {
             printf("Incorrect Format (blksize=%u)!\n", blksize);
-            exit(1891);
+            endrun(1891);
         }
         else
         {
