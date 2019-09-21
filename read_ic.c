@@ -51,7 +51,7 @@ void read_ic(char *fname)
 #ifdef RESCALEVINI
     if(ThisTask == 0 && RestartFlag == 0)
     {
-        fprintf(stdout, "\nRescaling v_ini !\n\n");
+        fprintf(stdout, "Rescaling v_ini !\n");
         fflush(stdout);
     }
 #endif

@@ -87,7 +87,7 @@ void allocate_memory(void)
       bytes_tot += bytes; 
 
       if(ThisTask == 0)
-	printf("Allocated %g MByte for storage of ChimesGasVars data.\n\n", bytes_tot / (1024.0 * 1024.0));
+	printf("Allocated %g MByte for storage of ChimesGasVars data.\n", bytes_tot / (1024.0 * 1024.0));
 #endif
     }
 

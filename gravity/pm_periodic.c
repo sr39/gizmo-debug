@@ -191,7 +191,7 @@ void pm_init_periodic(void)
 
 
   if(ThisTask == 0)
-    printf("\nAllocated %g MByte for rhogrid.\n\n", bytes_tot / (1024.0 * 1024.0));
+    printf("Allocated %g MByte for rhogrid.\n", bytes_tot / (1024.0 * 1024.0));
 
   fft_of_rhogrid = (fftw_complex *) rhogrid;
 
