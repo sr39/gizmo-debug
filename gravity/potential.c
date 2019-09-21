@@ -68,7 +68,7 @@ void compute_potential(void)
     if(P[i].Ti_current != All.Ti_Current)
       drift_particle(i, All.Ti_Current);
 #endif
-  i = 0;			/* beginn with this index */
+  i = 0;			/* begin with this index */
 
   do
     {
