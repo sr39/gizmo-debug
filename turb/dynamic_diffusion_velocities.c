@@ -7,10 +7,6 @@
 #include "../allvars.h"
 #include "../proto.h"
 #include "../kernel.h"
-#ifdef PTHREADS_NUM_THREADS
-#include <pthread.h>
-#endif
-
 
 
 /*! \file dynamic_diffusion_velocities.c
@@ -28,17 +24,6 @@
 #define ASSIGN_ADD_PRESET(x,y,mode) (x+=y)
 #define MINMAX_CHECK(x,xmin,xmax) ((x<xmin)?(xmin=x):((x>xmax)?(xmax=x):(1)))
 #define SHOULD_I_USE_SPH_GRADIENTS(condition_number) ((condition_number > CONDITION_NUMBER_DANGER) ? (1):(0))
-
-#ifdef PTHREADS_NUM_THREADS
-extern pthread_mutex_t mutex_nexport;
-extern pthread_mutex_t mutex_partnodedrift;
-#define LOCK_NEXPORT     pthread_mutex_lock(&mutex_nexport);
-#define UNLOCK_NEXPORT   pthread_mutex_unlock(&mutex_nexport);
-#else
-#define LOCK_NEXPORT
-#define UNLOCK_NEXPORT
-#endif
-
 #define NV_MYSIGN(x) (( x > 0 ) - ( x < 0 ))
 
 struct kernel_DiffFilter {
@@ -97,6 +82,22 @@ static inline void out2particle_DiffFilter(struct OUTPUT_STRUCT_NAME *out, int i
     ASSIGN_ADD_PRESET(SphP[i].Norm_hat, out->Norm_hat, mode);
 }
 
+/* operations that need to be performed before entering the main loop */
+void dynamic_diff_vel_calc_initial_operations_preloop(void);
+void dynamic_diff_vel_calc_initial_operations_preloop(void)
+{
+    /* Because of the smoothing operation, need to set bar quantity to current SPH value first */
+    int i;
+    for (i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {
+        if (P[i].Type == 0) {
+            SphP[i].Norm_hat = 0;
+            SphP[i].h_turb = Get_Particle_Size(i); // All.cf_atime unnecessary, will multiply later
+            SphP[i].FilterWidth_bar = 0;
+            SphP[i].MaxDistance_for_grad = 0;
+            for (k = 0; k < 3; k++) {SphP[i].Velocity_bar[k] = SphP[i].VelPred[k] * smoothInv;}
+        }
+    }
+}
 
 
 /**
@@ -303,18 +304,12 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
 }
 
 
-
 /**
  * primary routine being called for this calculation
  */
 void dynamic_diff_vel_calc(void) {
     PRINT_STATUS("Start velocity smoothing computation...\n");
-    /* Because of the smoothing operation, need to set bar quantity to current SPH value first */
-    {int i; for (i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {
-        if (P[i].Type == 0) {
-            SphP[i].Norm_hat = 0; SphP[i].h_turb = Get_Particle_Size(i); // All.cf_atime unnecessary, will multiply later
-            SphP[i].FilterWidth_bar = 0; SphP[i].MaxDistance_for_grad = 0;
-            for (k = 0; k < 3; k++) {SphP[i].Velocity_bar[k] = SphP[i].VelPred[k] * smoothInv;}}}}
+    dynamic_diff_vel_calc_initial_operations_preloop(); /* any initial operations */
     #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
     CPU_Step[CPU_IMPROVDIFFCOMPUTE] += timecomp; CPU_Step[CPU_IMPROVDIFFWAIT] += timewait; CPU_Step[CPU_IMPROVDIFFCOMM] += timecomm; CPU_Step[CPU_IMPROVDIFFMISC] += timeall - (timecomp + timewait + timecomm);
     PRINT_STATUS(" ..velocity smoothing done.\n");
