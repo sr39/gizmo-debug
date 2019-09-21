@@ -70,7 +70,7 @@ for(loop_iteration=0; loop_iteration<number_of_loop_iterations; loop_iteration++
         MYSORT_DATAINDEX(DataIndexTable, Nexport, sizeof(struct data_index), data_index_compare); /* construct export count tables */
         tstart = my_second();
         MPI_Alltoall(Send_count, 1, MPI_INT, Recv_count, 1, MPI_INT, MPI_COMM_WORLD); /* broadcast import/export counts */
-        tend = my_second(); timewait1 += timediff(tstart, tend);
+        tend = my_second(); timewait += timediff(tstart, tend);
 
         for(j = 0, Send_offset[0] = 0; j < NTask; j++) {if(j > 0) {Send_offset[j] = Send_offset[j - 1] + Send_count[j - 1];}} /* calculate export table offsets */
         DATAIN_NAME = (struct INPUT_STRUCT_NAME *) mymalloc("DATAIN_NAME", Nexport * sizeof(struct INPUT_STRUCT_NAME));
@@ -122,7 +122,7 @@ for(loop_iteration=0; loop_iteration<number_of_loop_iterations; loop_iteration++
                     }
                 }
             }
-            tend = my_second(); timecommsumm1 += timediff(tstart, tend);
+            tend = my_second(); timecomm += timediff(tstart, tend);
             
             //report_memory_usage(&HighMark_sphhydro, "SPH_HYDRO"); ???? //
             
@@ -139,7 +139,7 @@ for(loop_iteration=0; loop_iteration<number_of_loop_iterations; loop_iteration++
 #endif
                 SECONDARY_SUBFUN_NAME(&mainthreadid, loop_iteration);
             }
-            tend = my_second(); timecomp2 += timediff(tstart, tend);
+            tend = my_second(); timecomp += timediff(tstart, tend);
             
             tstart = my_second(); Nimport = 0;
             for(ngrp = ngrp_initial; ngrp < ngrp_initial + N_chunks_for_import; ngrp++) /* send the results for imported elements back to their host tasks */
@@ -156,7 +156,7 @@ for(loop_iteration=0; loop_iteration<number_of_loop_iterations; loop_iteration++
                     }
                 }
             }
-            tend = my_second(); timecommsumm2 += timediff(tstart, tend);
+            tend = my_second(); timecomm += timediff(tstart, tend);
             myfree(DATARESULT_NAME); myfree(DATAGET_NAME); /* free the structures used to send data back to tasks, its sent */
             
         } /* close the sub-chunking loop: for(ngrp_initial = 1; ngrp_initial < (1 << PTask); ngrp_initial += N_chunks_for_import) */
@@ -168,13 +168,13 @@ for(loop_iteration=0; loop_iteration<number_of_loop_iterations; loop_iteration++
             place = DataIndexTable[j].Index;
             OUTPUTFUNCTION_NAME(&DATAOUT_NAME[j], place, 1, loop_iteration);
         }
-        tend = my_second(); timecomp1 += timediff(tstart, tend);
+        tend = my_second(); timecomp += timediff(tstart, tend);
         myfree(DATAOUT_NAME); myfree(DATAIN_NAME); /* free the structures used to prepare our initial export data, we're done here! */
         
         if(NextParticle < 0) {ndone_flag = 1;} else {ndone_flag = 0;} /* figure out if we are done with the particular active set here */
         tstart = my_second();
         MPI_Allreduce(&ndone_flag, &ndone, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD); /* call an allreduce to figure out if all tasks are also done here, otherwise we need to iterate */
-        tend = my_second(); timewait2 += timediff(tstart, tend);
+        tend = my_second(); timewait += timediff(tstart, tend);
     }
     while(ndone < NTask);
     myfree(DataNodeList); myfree(DataIndexTable); myfree(Ngblist);
