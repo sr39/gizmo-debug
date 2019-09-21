@@ -936,7 +936,7 @@ void hydro_force_initial_operations_preloop(void)
 #endif
     
     /* need to zero out all numbers that can be set -EITHER- by an active particle in the domain, or by one of the neighbors we will get sent */
-    int i;
+    int i, k;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
         if(P[i].Type==0)
         {
