@@ -28,7 +28,7 @@ void force_update_tree(void)
     }
     force_finish_kick_nodes();
     myfree(DomainList);
-    PRINT_STATUS("Tree has been updated dynamically");
+    PRINT_STATUS(" ..Tree has been updated dynamically");
 }
 
 
@@ -167,7 +167,7 @@ void force_finish_kick_nodes(void)
 	}
     }
 
-  PRINT_STATUS("I exchange kick momenta for %d top-level nodes out of %d", totDomainNumChanged, NTopleaves);
+  PRINT_STATUS(" ..exchanged kick momenta for %d top-level nodes out of %d", totDomainNumChanged, NTopleaves);
   domainDp_all = (MyLongDouble *) mymalloc("domainDp_all", totDomainNumChanged * 3 * sizeof(MyLongDouble));
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
     domainDp_stellarlum_all = (MyLongDouble *) mymalloc("domainDp_stellarlum_all", totDomainNumChanged * 3 * sizeof(MyLongDouble));

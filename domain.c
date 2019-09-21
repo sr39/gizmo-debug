@@ -2517,12 +2517,7 @@ int domain_determineTopTree(void)
 
   MPI_Allreduce(&errflag, &errsum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
-  if(errsum)
-    {
-      if(ThisTask == 0)
-	printf("can't combine trees due to lack of storage. Will try again.\n");
-      return errsum;
-    }
+  if(errsum) {if(ThisTask == 0) printf("Can't combine trees due to lack of storage. Will try again.\n"); return errsum;}
 
   /* now let's see whether we should still append more nodes, based on the estimated cumulative cost/count in each cell */
 

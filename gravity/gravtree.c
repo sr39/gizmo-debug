@@ -101,13 +101,13 @@ void gravity_tree(void)
 
         TreeReconstructFlag = 0;
         
-        PRINT_STATUS("Tree construction done.");
+        PRINT_STATUS(" ..Tree construction done.");
     }
     
 #ifndef SELFGRAVITY_OFF
     
     /* allocate buffers to arrange communication */
-    PRINT_STATUS("Begin tree force. (presently allocated=%g MB)", AllocatedBytes / (1024.0 * 1024.0));
+    PRINT_STATUS(" ..Begin tree force. (presently allocated=%g MB)", AllocatedBytes / (1024.0 * 1024.0));
 
     
     size_t MyBufferSize = All.BufferSize;
@@ -861,7 +861,7 @@ void gravity_tree(void)
     {
         for(i = 0; i < NumPart; i++) {costtotal_new += P[i].GravCost[TakeLevel];}
         MPI_Reduce(&costtotal_new, &sum_costtotal_new, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-        PRINT_STATUS("relative error in the total number of tree-gravity interactions = %g", (sum_costtotal - sum_costtotal_new) / sum_costtotal);
+        PRINT_STATUS(" ..relative error in the total number of tree-gravity interactions = %g", (sum_costtotal - sum_costtotal_new) / sum_costtotal);
         /* can be non-zero if THREAD_SAFE_COSTS is not used (and due to round-off errors). */
     }
 #endif

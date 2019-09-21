@@ -875,8 +875,8 @@ void read_file(char *fname, int readTask, int lastTask)
         for(i = 0, n_in_file = 0; i < 6; i++)
             n_in_file += header.npart[i];
         
-        printf("\nreading file `%s' on task=%d (contains %lld particles.)\n"
-               "distributing this file to tasks %d-%d\n"
+        printf("\nReading file `%s' on task=%d (contains %lld particles.)\n"
+               " ..distributing this file to tasks %d-%d\n"
                "Type 0 (gas):   %8d  (tot=%6d%09d) masstab=%g\n"
                "Type 1 (halo):  %8d  (tot=%6d%09d) masstab=%g\n"
                "Type 2 (disk):  %8d  (tot=%6d%09d) masstab=%g\n"

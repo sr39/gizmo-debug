@@ -789,7 +789,7 @@ void output_log_messages(void)
 #ifdef PMGRID
         if(All.PM_Ti_endstep == All.Ti_Current)
         {
-            printf("PM-Step. Total: %10llu  %10llu    Sum: %10llu\n", tot - tot_sph, tot_sph, tot);
+            printf("PM-Step. Total: %10llu  %10llu    Sum: %10llu\n\n", tot - tot_sph, tot_sph, tot);
 #ifndef IO_REDUCED_MODE
             fprintf(FdTimebin, "PM-Step. Total: %10llu  %10llu    Sum: %10llu\n", tot - tot_sph, tot_sph, tot);
 #endif
@@ -797,7 +797,7 @@ void output_log_messages(void)
         else
 #endif
         {
-            printf("Total active:   %10llu  %10llu    Sum: %10llu\n", tot - tot_sph, tot_sph, tot);
+            printf("Total active:   %10llu  %10llu    Sum: %10llu\n\n", tot - tot_sph, tot_sph, tot);
 #ifndef IO_REDUCED_MODE
             fprintf(FdTimebin, "Total active:   %10llu  %10llu    Sum: %10llu\n", tot - tot_sph, tot_sph, tot);
 #endif

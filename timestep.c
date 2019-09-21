@@ -1126,7 +1126,7 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
 #endif
         
         if(ThisTask == 0)
-            printf("Computing global displacement time constraint: \n");
+            printf("Global displacement time constraint computation: \n");
         for(type = 0; type < 6; type++)
         {
             if(count_sum[type] > 0)
@@ -1165,7 +1165,7 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
         }
         
         if(ThisTask == 0)
-            printf("Global displacement time constraint: %g  (All.MaxSizeTimestep=%g)\n", dt_displacement, All.MaxSizeTimestep);
+            printf(" ..global displacement time constraint: %g  (All.MaxSizeTimestep=%g)\n", dt_displacement, All.MaxSizeTimestep);
     }
 }
 

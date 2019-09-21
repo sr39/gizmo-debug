@@ -51,7 +51,7 @@ void compute_potential(void)
       force_treebuild(NumPart, NULL);
       CPU_Step[CPU_TREEBUILD] += measure_time();
       TreeReconstructFlag = 0;
-      PRINT_STATUS("Tree construction done");
+      PRINT_STATUS(" ..Tree construction done");
     }
 
 
