@@ -62,7 +62,7 @@ void begrun(void)
 #endif
 
       printf("Size of particle structure       %d  [bytes]\n", (int) sizeof(struct particle_data));
-      printf("\nSize of sph particle structure   %d  [bytes]\n", (int) sizeof(struct sph_particle_data));
+      printf("Size of hydro-cell structure   %d  [bytes]\n\n", (int) sizeof(struct sph_particle_data));
 
     }
 

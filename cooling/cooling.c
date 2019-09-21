@@ -1342,7 +1342,7 @@ void ReadMultiSpeciesTables(int iT)
     FILE *fdcool; char *fname;
     
     fname=GetMultiSpeciesFilename(iT,0);
-    if(ThisTask == 0) printf("Opening Cooling Table %s \n",fname);
+    if(ThisTask == 0) printf(" ..opening Cooling Table %s \n",fname);
     if(!(fdcool = fopen(fname, "r"))) {
         printf(" Cannot read species cooling table in file `%s'\n", fname); endrun(456);}
     for(i=0;i<kspecies;i++) {
@@ -1366,7 +1366,7 @@ void ReadMultiSpeciesTables(int iT)
      */
     if (All.ComovingIntegrationOn && i<48) {
         fname=GetMultiSpeciesFilename(iT+1,0);
-        if(ThisTask == 0) printf("Opening (z+) Cooling Table %s \n",fname);
+        if(ThisTask == 0) printf(" ..opening (z+) Cooling Table %s \n",fname);
         if(!(fdcool = fopen(fname, "r"))) {
             printf(" Cannot read species 1 cooling table in file `%s'\n", fname); endrun(456);}
         for(i=0;i<kspecies;i++) {
@@ -1448,8 +1448,7 @@ void ReadIonizeParams(char *fname)
         else
             break;
     
-    if(ThisTask == 0)
-        printf("\n\nread ionization table with %d entries in file `%s'.\n\n", nheattab, fname);
+    if(ThisTask == 0) printf(" ..read ionization table with %d entries in file `%s'.\n\n", nheattab, fname);
 }
 
 
@@ -1619,8 +1618,7 @@ void IonizeParamsFunction(void)
 
 void InitCool(void)
 {
-    if(ThisTask == 0)
-        printf("Initializing cooling ...\n");
+    if(ThisTask == 0) printf("Initializing cooling ...\n");
 
     All.Time = All.TimeBegin;
     set_cosmo_factors_for_current_time();

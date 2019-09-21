@@ -114,6 +114,7 @@
     + [My Run Won't Start, What Did I Do Wrong?](#faqs-startup)
     + [How do I Avoid Memory Errors/Crashes?](#faqs-memory)
     + [My Large Simulation Hangs, but Smaller Runs Work?](#faqs-big)
+    + [Why Did Everything Drop to TimeBin=1?](#faqs-timebin)
     + [Are there Public ICs? Analysis Tools? Image/Movie-Makers?](#faqs-rscr)
     + [What Does this Variable Mean?](#faqs-variable)
     + [What are the Code Units?](#faqs-units)
@@ -3802,8 +3803,120 @@ And remember, once you get your simulations running, **ALWAYS BACK UP YOUR DATA*
 
 ***
 
+
+***
+
+<a name="faqs"></a>
+# 13. Frequently Asked Questions 
+
+This section addresses some of the most-commonly asked questions from new users.
+
+<a name="faqs-help"></a>
+## Where to Go for Help?
+
+Good news, you're in the right spot: first, read this guide. Please read it completely before asking for help: the document is long precisely because it already contains answers to more than 99% of all questions I receive from users. Make sure you also check the `Template_Config.sh` file for the relevant modules/flags, and even take a look at the source code to see if there are obvious notes (often the code has comments to clarify things for users) or definitions.
+
+If that really doesn't answer your question, please check our [GIZMO Google Group](https://groups.google.com/d/forum/gizmo-code). There are various posts archived there, with code issues, bugs and their fixes, feature requests and their modules that were developed, all maintained. First check if someone else has already asked the same question, then (if not), please post and join the discussion -- that's what its for, and other users most likely have answers for you.
+
+If you still cannot get an answer, the best thing to do is to find another experienced user, and ask them directly. Many such users are active in the google group, and of course you can reach out to colleagues, collaborators, and members of the community who have published many papers using GIZMO. And of course, you can contact the code developers (Phil or the salient developers of the modules in question, which are listed in detail in the `Template_Config.sh` file, and User Guide descriptions).
+
+<a name="faqs-optimal"></a>
+## What Are 'Optimal' Code Settings? (aka 'My Run is Slow')
+
+This is (by a huge margin) the most common question I receive, including variants like 'What is the expected performance on X problem', or 'Why is the code spending so much time on X?', or 'How can I improve speed (or reduce load imbalances)?', or 'What is the optimal number of CPUs or configuration for this problem?' or 'Why does GIZMO take longer than this other code to run this problem?' etc. Unfortunately, it also has no simple answer: **there is no single optimal configuration**. 
+
+The reason is straightforward: GIZMO is designed to flexibly run a huge range of different types of simulations as specified by the user. With the right choices, GIZMO should be as fast or faster than almost any other codes out there on almost all problems I have seriously tested. But a simulation of linear MHD instabilities (where every element is nearly homogeneous and advancing in lockstep) and a 'zoom-in' simulation of galaxy formation (where tiny, dense clumps and star clusters have timesteps a million times shorter than the volume-filling inter-galactic medium) have wildly different optimal parallelization strategies. Likewise, a problem running on a single node with 20 shared-memory cores will have totally different bottlenecks and overheads compared to a problem running on a hundred thousand nodes linked via infiniband. It simply isn't possible (despite what some misleading compiler libraries may claim in their sales pitches) to write a code that can predict your specific use case and all the bottlenecks or gains that will apply. This is why the *very* fastest codes are often custom-written for a single extremely specific problem and configuration, even taken to the custom-hardware level (think GRAPE boards for direct-N-body integration, or custom chips for mining cryptocurrency).
+
+This means some parameters will *always* need to be tailored to your use case and the specific problem being simulated. And to be clear, 'specific problem' in this context means a combination of physics enabled, resolution, node configuration and processor number, type of CPU, memory, how deep the timestep hierarchy is, ratio of collisionless to gas elements, and so on: it does not simply mean a broad topic like 'cosmological simulation.' Until you have experience running a specific type of simulation on a specific machine, you simply have to experiment with many different choices to identify the optimal configurations (I myself still do this every time I'm using a new cluster). 
+
+There are some general 'rules of thumb' however, regarding which parameters you should consider, and how they might impact your performance. Be sure, if you are testing, to enable `OUTPUT_ADDITIONAL_RUNINFO` in your `Config.sh` file to get more fine-grained info. The best thing you can do is use actual software performance profiling tools to break down the time in every subroutine and call of the code: almost every computing center provides these tools and instructions on how to use them, please talk to the specialists there about how to use these tools!
+
+**Compilers:** On any machine the choice of compiler (e.g. intel, gnu, pcc), compiler flags (-O1/2/3, custom optimizations), and which MPI libraries you use (e.g. intel-MPI, openMPI, mvapich), is important, but highly machine-specific. Read the user guides specific to your platform, and experiment. If you are running on a machine listed in `Makefile.systype`, check its description in `Makefile` -- almost all have helpful notes there describing advice, most useful modules, some tests, etc. If you're running on a new machine, check `Makefile` for advice for machines with similar hardware (and once you determine best compilers, add it to the code). In general, intel or pcc compilers often provide best performance, with gnu a bit slower. Modern forms of the MPI libraries tend to be comparably fast, it is more about what the computing center has optimized for. Compiler optimization flags require care: usually 95% of the performance gain comes from mild or intermediate optimization like `-O1` or `-O2`. More aggressive optimization should be done only with care: `-O3` and other flags can introduce inaccuracy for speed, break the code entirely (by moving things out-of-order), or make things slower (by 'guessing' patterns incorrectly). If unsure, scale down the optimization and see if you lose anything (always safer to use lower optimization). Custom flags tend to be minor differences. The choice of which version of other code libraries (GSL, FFTW2 or FFTW3, MKL, etc) tend to make a very small difference.
+
+**Config.sh Settings:** A couple Config settings can have a big impact, you should explore different choices for them. (1) `OPENMP`: see node configuration options below. (2) `MULTIPLEDOMAINS`: increasing this will allow more sub-blocking of domains to give more flexibility in domain-decomposition, useful for highly inhomogeneous problems (e.g. deep timestep hierarchies), but also introduces larger memory overheads and more communication. Values anywhere from 1-128 are perfectly reasonable (higher values will work too, though those are more rarely helpful). Generally lower for problems that are memory or communication limited, higher for problems which are imbalance-limited. (3) If you're using `PMGRID` for gravity (in e.g. cosmological simulations with periodic boxes), changing the value here can optimize by trading time between the FFT algorithms used for the PMGRID and tree (used on scales below PMGRID). Higher values will cost memory and more FFT time and can make gravity less accurate on small scales (as the tree-solver is more accurate there), but reduce tree-walk times and imbalances. 
+
+**Parameterfile Settings:** The params file also has a couple settings that can have a big impact. (1) `TreeDomainUpdateFrequency`: this requires more hand-tuning from experience than almost any other parameter. See its description: decreasing it will force the code to rebuild the domain decomposition more frequently, and can reduce load imbalances. But making it too frequent will cause it to bottleneck the code. A good 'rule of thumb' is that if the code is spending comparable time on imbalances (`treeimbal`+`densimbal`+`hydimbal` in `cpu.txt`) and domain decomposition (`domain` in `cpu.txt`), then this is set about right (but if both of these are very large, this is obviously an issue). (2) `PartAllocFactor`: this sets how flexible the code can allocate particles to allow larger memory imbalances in order to reduce load imbalances. You generally want it as large as memory allows. (3) Other parameters like force softening, neighbor number, time between snapshots or statistics, etc, are generally small corrections, unless they are set to inappropriate values and cause problems. For example, setting a force softening much too-small means the timesteps are artificially small; setting it too large will introduce large imbalances as the particles need to perform direct-$N^{2}$ gravity operations between every neighbor within their force-softening kernels.
+
+**Node, CPU, MPI Configuration**: This is the trickiest but often most important issue. Again, read carefully the user guides for the machine and consult the IT help staff, and experiment before running production simulations. (1) On some machines, specific thread placement requires some custom options be set: this is especially important if the nodes involve a mix of floating-point and integer cores (on these types of machines, failure to specify the correct custom 'thread placement' can lead to order-of-magnitude slower performance, as the threads get placed on overlapping cores, or threads intended for floating-point cores land on integer cores). One example of this is in the Makefile for the 'BlueWaters' machine. (2) On some machines, hyper-threading is encouraged to get best performance. Hyper-threads should almost always be OPENMP threads (as opposed to putting 2 MPI tasks on the same CPU). On others hyper-threading will crash. On others, hyper-threading will run but cause an order-of-magnitude slowdown. (3) The balance between the number of `OPENMP` threads and MPI tasks is highly machine and problem dependent. In setting `OPENMP`, consider whether you want hyperthreads or want extra memory per task (larger `OPENMP`). But also note some things cannot be OPENMP parallelized as effectively as MPI parallelized: it can be faster to have more MPI tasks instead of OPENMP threads (for the same core number), especially for smaller jobs. Some small jobs (e.g. couple-hundred-core) may prefer no OPENMP threading at all. As a rule of thumb, larger jobs and jobs with a deeper timestep hierarchy will benefit more from increasing the OPENMP count (depending on the job and computer, I've found optimal performance with values of OPENMP ranging from none to 40). But also be aware of the node configuration: not all cores on a node have shared memory, and if you make OPENMP larger than the number with a shared memory access, the performance will drop dramatically. There really is no substitute for experimenting with this value. (4) In terms of the total number of cores or threads, you will also need to experiment, as the behavior of the strong and weak scaling will always be highly problem-dependent. As a rule of thumb, you probably want to aim for something like $\sim 10^{4}-10^{7}$ resolution elements 'per thread', and for many types of problems with deep timestep hierarchies you will find a 'sweet spot' more like $\sim 10^{5}-10^{6}$. With too many elements per thread you simply aren't getting all the parallel benefit (strong scaling) you could (and may run into memory issues). With too few, your threads will not have enough work to do each timestep and most will simply idle while a couple others finish or they all wait for communications. 
+
+Good luck!
+
+
+<a name="faqs-best"></a>
+## Are There 'Best' (More Accurate) Physics Modules or Solvers?
+
+**No.** There is no single 'best' hydro solver, or gravity solver, or physics module, etc, in terms of accuracy (either numerical or physical). There are choices which are better for certain types of problems: either they are more accurate under some conditions, or they are faster and allow you to run higher-resolution and so be more accurate in that way, or they minimize a certain specific type of error you care about, or they are compatible with other modules that allow you to run the relevant physics. But there is never a single always-best choice, and it is important that you think about what works for **your** problem. Also make sure you read the discussion of [Fluid (Hydro) Solvers](#hydro). 
+
+<a name="faqs-startup"></a>
+## My Run Won't Start, What Did I Do Wrong?
+
+Again, this is not something with a generic answer. If your run will not start, its almost never a code problem, but a setup problem. Common causes include: (1) code was compiled incorrectly, (2) cant find the libraries it needs, (3) memory settings (see below) are incorrect and ask for more memory than available, (4) the source code, parameterfile, other needed files (ICs, TREECOOL, etc) are not in the correct directories your run script thinks they should be in, (5) your run script was not written correctly for the machine you are running on, (6) your maximum/minimum timesteps are set much too high or low for the problem, (7) your end time or begin time of the run, or box size, or cosmological parameters are set incorrectly, (8) the initial conditions file is not in the correct format, or has data not in the format assumed (remember parameters like `INPUT_IN_DOUBLEPRECISION`, `LONGIDS`, etc. are needed for those inputs to be read correctly if they are in those formats), (9) your settings (e.g. node number or multipledomains, or force softenings and smoothing length limits) are set such that the code spends its entire run-time in the 'overhead' calculations (reading in ICs, initial iteration to converge to smoothing lengths, etc). 
+
+Always check all stdout and stderr and run-time output files (including outputs from the job script system if they include those). If no such outputs exist the problem is almost certainly in your job submission script. If outputs exist, search for the error codes. Outputs in stdout with error codes will be error codes in GIZMO -- search for them explicitly in the GIZMO source code (do a grep) to find out where the code exited if the description is unclear. Other error codes are machine or compiler-provided: a simple search online will usually find a more useful description. 
+
+<a name="faqs-memory"></a>
+## How do I Avoid Memory Errors/Crashes?
+
+Assuming runs are set up appropriately, begin smoothly, and there are no hardware problems, then by far the most common crash/error for GIZMO simulations is related to running out of memory. This can manifest in many different ways in detail, but with usually involves the code exiting with an error message like `Task=%d: Not enough memory in mymalloc_fullinfo() to allocate %g MB for variable '%s' at %s()/%s/line %d (FreeBytes=%g MB)` where the various `%g` values describe the specific memory location of the error and magnitude of the discrepancy. This is particularly commonly associated with the structure 'GasGradDataResult' in this output, because in many runs that will be the single most-demanding memory call of the relevant type. 
+
+??
+
+
+
+(3) `ALLOW_IMBALANCED_GASPARTICLELOAD`: this is more commonly a solution to memory problems, in highly-imbalanced runs, but it can 
+
+`BufferSize`, `MaxMemSize`, `PartAllocFactor`; OPENMP
+??
+
+
+<a name="faqs-big"></a>
+## My Large Simulation Hangs, but Smaller Runs Work?
+
+If small and intermediate jobs are running, but larger jobs fail immediately, there are a few things to check. First make sure its not a memory issue (larger jobs require more memory, even per particle, owing to larger overheads): see the question above. Second, make sure it isn't a machine issue (some versions of MPI and some machines require very special commands to run on a very large number of nodes) -- check with your IT help. 
+
+There are also a couple of `Config.sh` parameters which can be **required** for large runs. If you have more IDs than an int register can hold, be sure `LONGIDS` is set in your `Config.sh` file. The flag `NO_ISEND_IRECV_IN_DOMAIN` is **required** for runs with much more than a couple billion particles, as most versions of MPI will otherwise send certain requests using a regular int register and will crash. In the future, these flags will be 'always on': even if you do not need them for smaller runs, they don't involve any performance penalty. The reason they are not always right now is purely historical compatibility: many ICs generated for GIZMO and GADGET do not use `LONGIDS`, and `NO_ISEND_IRECV_IN_DOMAIN` is incompatible with some older and/or serial compilers.
+
+<a name="faqs-timebin"></a>
+## Why Did Everything Drop to TimeBin=1?
+
+This is a peculiar manifestation of a certain class of errors. In the stdout file, where it shows the number of particles in a given timebin, suddenly (in one or a few timesteps), a huge number of cells end up in `bin= 1`. This is the smallest allowed timebin. First check that your minimum timestep is not too large (i.e. that this isn't just the code doing what it should do, but you aren't allowing it to use small enough timebins). If you need more dynamic range for timesteps, turn on `LONG_INTEGER_TIME`. 
+
+Assuming this is a real issue, what has usually happened is that somewhere (usually in a neighbor interaction involving terms in a more experimental module), the code divided by zero (or nearly-zero) or otherwise inserted a `nan` or extremely large or small number. This can happen under some circumstances when un-addressed memory is called (instead of the code just immediately crashing). This assigns a huge value to something like acceleration or velocity or energy, which drops the timebin down. This might only occur in one interaction, but that infinity or nan propagates through the grid. 
+
+Look carefully at the stdout, and profiling info, to diagnose in which subroutine this occurred. Turn on `STOP_WHEN_BELOW_MINTIMESTEP` to get additional info on the cells when the timestep drops, to see what is jumping to NaN or very strange values. Turn on and off different physics modules in turn while re-starting from a snapshot or restartfile before the error to isolate which modules and sub-routines cause the error. 
+
+In my experience, this is usually caused by users setting inappropriate flags (flags not designed for the problem they are simulating, or mutually-incompatible flags), or having a units mistake in their ICs or parameter file (so the timesteps are wildly different from what the user 'thinks' they should be), or reading ICs with insufficient precision (so particles have identical positions at floating-point accuracy, solved by setting the input and output `Config.sh` flags to `DOUBLEPRECISION`). But obviously, if you think you've identified a bug, you should go to the user group and report it.
+
+<a name="faqs-rscr"></a>
+## Are there Public ICs? Analysis Tools? Image/Movie-Makers?
+
+Yes, lots of them! See the sections of this User Guide on [Initial Conditions (Making & Reading Them)](#snaps-ics) and [Useful Additional Resources](#rscr).
+
+<a name="faqs-variable"></a>
+## What Does this Variable Mean?
+
+Read the [Snapshot & Initial Condition Files](#snaps) section, as well as the description of the relevant `Config.sh` flags you have enabled in [Config.sh (Setting compile-time options)](#config), where most of the outputs are described. If you cannot find it, search the source code, in `io.c` you can find the map between the HDF5 variable name and what is actually written out. 
+
+Example: if you are using radiation-hydrodynamics, and see the variable `PhotonEnergy` in your HDF5 file, search this in `io.c` to see it is associated with the case `IO_RADGAMMA` (the switch for whether or not this variable is written out to a file), so search that and you see it is writing out a vector with `N_RT_FREQ_BINS` entries per particle, representing the different radiation frequency bins followed in the code in the same order, and writing out the variable `SphP[pindex].E_gamma[k]` -- the absolute energy of the radiation field (in code units) at frequency `k` associated with gas resolution element `pindex`. 
+
+<a name="faqs-units"></a>
+## What are the Code Units?
+    
+See the section of this User Guide on [Units](#snaps-units). If you aren't sure whether something is in one unit or another (e.g. is this an absolute energy associated with a particle, or a specific energy, or an energy density?) check the units for sanity, and search for the variable in the source code to see where it is defined and written out.
+
+<a name="faqs-citation"></a>
+## Can I use this Module? What should I cite?
+    
+See the [Code Use, Authorship, Citation, Sharing, & Development Rules](#requirements).
+
+<a name="faqs-capabilities"></a>
+## Can the Code do 'X'?
+
+Read this User Guide to find out, especially the [Feature (Physics Module) Set](#features) and various subs-sections on all the huge variety of different options in [Config.sh (Setting compile-time options)](#config). 
+
+
 <a name="disclaimer"></a>
-# 13. Disclaimer 
+# 14. Disclaimer 
 
 Use this code at your own risk! It is provided without any guarantees of support, accuracy, or even that it will work! While I will do what I can to maintain things and address questions that arise, it is ultimately up to each user to build and maintain their copy of the code. And it is up to you, the user, to understand what the code is doing, and to be responsible for the content of your simulations. No numbers in e.g. the parameterfile and Config file examples are meant to be taken as recommendations: you should do considerable experimentation to determine the most appropriate values for the problem at hand. They will change depending on the problem details and what you are trying to extract. 
 

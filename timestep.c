@@ -1125,6 +1125,8 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
 #endif
 #endif
         
+        if(ThisTask == 0)
+            printf("Computing global displacement time constraint: \n");
         for(type = 0; type < 6; type++)
         {
             if(count_sum[type] > 0)
@@ -1154,7 +1156,7 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
 #endif
                 
                 if(ThisTask == 0)
-                    printf("type=%d  dmean=%g asmth=%g minmass=%g a=%g  sqrt(<p^2>)=%g  dlogmax=%g\n",
+                    printf(" ..type=%d  dmean=%g asmth=%g minmass=%g a=%g  sqrt(<p^2>)=%g  dlogmax=%g\n",
                            type, dmean, asmth, min_mass[type], All.Time, sqrt(v_sum[type] / count_sum[type]), dt);
                 
                 if(dt < dt_displacement)
@@ -1163,7 +1165,7 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
         }
         
         if(ThisTask == 0)
-            printf("displacement time constraint: %g  (%g)\n", dt_displacement, All.MaxSizeTimestep);
+            printf("Global displacement time constraint: %g  (All.MaxSizeTimestep=%g)\n", dt_displacement, All.MaxSizeTimestep);
     }
 }
 
@@ -1224,7 +1226,7 @@ void process_wake_ups(void)
     
     MPI_Allreduce(&ti_next_kick, &ti_next_kick_global, 1, MPI_TYPE_TIME, MPI_MIN, MPI_COMM_WORLD);
     
-    PRINT_STATUS("predicting next timestep: %g", (ti_next_kick_global - All.Ti_Current) * All.Timebase_interval);
+    PRINT_STATUS("Predicting next timestep: %g", (ti_next_kick_global - All.Ti_Current) * All.Timebase_interval);
     max_time_bin_active = 0;
     /* get the highest bin, that is active next time */
     for(n = 0; n < TIMEBINS; n++)

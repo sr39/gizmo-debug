@@ -50,7 +50,7 @@ void compute_grav_accelerations(void)
    relative opening criterion for consistent accuracy */
     if(All.TypeOfOpeningCriterion == 1 && All.Ti_Current == 0) {gravity_tree();}
 
-  PRINT_STATUS("gravity force computation done");
+  PRINT_STATUS(" ..gravity force computation done");
 }
 
 
@@ -73,7 +73,7 @@ void compute_hydro_densities_and_forces(void)
          *  density().
          */
 
-        PRINT_STATUS("density & tree-update computation done...");
+        PRINT_STATUS(" ..density & tree-update computation done...");
 
 #ifdef TURB_DIFF_DYNAMIC
         dynamic_diff_vel_calc(); /* This must be called between density and gradient calculations */
@@ -86,14 +86,14 @@ void compute_hydro_densities_and_forces(void)
          and the local gradient calculation (GradRho) to
          properly self-shield the particles that had this calculated */
 #endif
-        PRINT_STATUS("gradient computation done.");
+        PRINT_STATUS(" ..gradient computation done.");
 
 #ifdef TURB_DIFF_DYNAMIC
         dynamic_diff_calc(); /* This MUST be called immediately following gradient calculations */
 #endif
         hydro_force();		/* adds hydrodynamical accelerations and computes du/dt  */
         compute_additional_forces_for_all_particles(); /* other accelerations that need to be computed are done here */
-        PRINT_STATUS("hydro force computation done.");
+        PRINT_STATUS(" ..hydro force computation done.");
 
     } else {
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE

@@ -187,7 +187,7 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
         }
     }
     
-    PRINT_STATUS("domain decomposition... LevelToTimeBin[TakeLevel=%d]=%d  (presently allocated=%g MB)", TakeLevel, All.LevelToTimeBin[TakeLevel], AllocatedBytes / (1024.0 * 1024.0));
+    PRINT_STATUS("Domain decomposition building... LevelToTimeBin[TakeLevel=%d]=%d  (presently allocated=%g MB)", TakeLevel, All.LevelToTimeBin[TakeLevel], AllocatedBytes / (1024.0 * 1024.0));
     t0 = my_second();
 
   do
@@ -241,7 +241,7 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
 							(MaxTopNodes * sizeof(struct local_topnode_data)));
       all_bytes += bytes;
 
-	  PRINT_STATUS("use of %g MB of temporary storage for domain decomposition... (presently allocated=%g MB)",all_bytes / (1024.0 * 1024.0), AllocatedBytes / (1024.0 * 1024.0));
+	  PRINT_STATUS(" ..using %g MB of temporary storage for domain decomposition... (presently allocated=%g MB)",all_bytes / (1024.0 * 1024.0), AllocatedBytes / (1024.0 * 1024.0));
 
       maxLoad = (int) (All.MaxPart * REDUC_FAC);
       maxLoadsph = (int) (All.MaxPartSph * REDUC_FAC);
@@ -301,30 +301,18 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
 
 	  All.TopNodeAllocFactor *= 1.3;
 
-      PRINT_STATUS("new value=%g", All.TopNodeAllocFactor);
-	  if(All.TopNodeAllocFactor > 1000)
-	    {
-		printf("something seems to be going seriously wrong here. Stopping.\n");
-	      fflush(stdout);
-	      endrun(781);
-	    }
+      PRINT_STATUS("..new value=%g", All.TopNodeAllocFactor);
+	  if(All.TopNodeAllocFactor > 1000) {printf("something seems to be going seriously wrong here. Stopping.\n"); fflush(stdout); endrun(781);}
 	}
     }
   while(retsum);
 
   t1 = my_second();
 
-  PRINT_STATUS("domain decomposition done. (took %g sec)", timediff(t0, t1));
+  PRINT_STATUS(" ..domain decomposition done. (took %g sec)", timediff(t0, t1));
   CPU_Step[CPU_DOMAIN] += measure_time();
 
-  for(i = 0; i < NumPart; i++)
-    {
-      if(P[i].Type > 5 || P[i].Type < 0)
-	{
-	  printf("task=%d:  P[i=%d].Type=%d\n", ThisTask, i, P[i].Type);
-	  endrun(111111);
-	}
-    }
+  for(i = 0; i < NumPart; i++) {if(P[i].Type > 5 || P[i].Type < 0) {printf("task=%d:  P[i=%d].Type=%d\n", ThisTask, i, P[i].Type); endrun(111111);}}
 
 #ifdef PEANOHILBERT
 #ifdef SUBFIND
@@ -341,7 +329,7 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
   TopNodes = (struct topnode_data *) myrealloc(TopNodes, bytes =
 					       (NTopnodes * sizeof(struct topnode_data) +
 						NTopnodes * sizeof(int)));
-  PRINT_STATUS("Freed %g MByte in top-level domain structure", (MaxTopNodes - NTopnodes) * sizeof(struct topnode_data) / (1024.0 * 1024.0));
+  PRINT_STATUS(" ..freed %g MByte in top-level domain structure", (MaxTopNodes - NTopnodes) * sizeof(struct topnode_data) / (1024.0 * 1024.0));
   DomainTask = (int *) (TopNodes + NTopnodes);
   force_treeallocate((int) (All.TreeAllocFactor * All.MaxPart) + NTopnodes, All.MaxPart);
   reconstruct_timebins();
@@ -367,7 +355,7 @@ void domain_allocate(void)
 
   DomainTask = (int *) (TopNodes + MaxTopNodes);
 
-  PRINT_STATUS("Allocated %g MByte for top-level domain structure", all_bytes / (1024.0 * 1024.0));
+  PRINT_STATUS(" ..allocated %g MByte for top-level domain structure", all_bytes / (1024.0 * 1024.0));
 
   domain_allocated_flag = 1;
 }
@@ -579,7 +567,7 @@ int domain_decompose(void)
 #endif
 	}
 
-      printf("gravity work-load balance=%g   memory-balance=%g   SPH work-load balance=%g\n",
+        printf("Balance: gravity work-load balance=%g   memory-balance=%g   hydro work-load balance=%g\n",
 	     maxwork / (sumwork / NTask), maxload / (((double) sumload) / NTask),
 	     maxworksph / ((sumworksph + 1.0e-30) / NTask));
     }
@@ -628,7 +616,7 @@ int domain_decompose(void)
 
       sumup_longs(1, &sumtogo, &sumtogo);
 
-	  PRINT_STATUS("iter=%d exchange of %d%09d particles (ret=%d)", iter, (int) (sumtogo / 1000000000), (int) (sumtogo % 1000000000), ret);
+	  PRINT_STATUS(" ..iter=%d exchange of %d%09d particles (ret=%d)", iter, (int) (sumtogo / 1000000000), (int) (sumtogo % 1000000000), ret);
 
       domain_exchange();
 
@@ -2538,7 +2526,7 @@ int domain_determineTopTree(void)
 
   /* now let's see whether we should still append more nodes, based on the estimated cumulative cost/count in each cell */
 
-  PRINT_STATUS("Before=%d", NTopnodes);
+  PRINT_STATUS(" ..NTopNodes before=%d", NTopnodes);
     
   for(i = 0, errflag = 0; i < NTopnodes; i++)
     {
@@ -2575,7 +2563,7 @@ int domain_determineTopTree(void)
   if(errsum)
     return errsum;
 
-  PRINT_STATUS("After=%d", NTopnodes);
+  PRINT_STATUS(" ..NTopnodes after=%d", NTopnodes);
   /* count toplevel leaves */
   domain_sumCost();
 
@@ -2622,7 +2610,7 @@ void domain_sumCost(void)
 #endif
     }
 
-    PRINT_STATUS("NTopleaves= %d  NTopnodes=%d (space for %d)\n", NTopleaves, NTopnodes, MaxTopNodes);
+    PRINT_STATUS(" ..NTopleaves= %d  NTopnodes=%d (space for %d)", NTopleaves, NTopnodes, MaxTopNodes);
 
   for(n = 0; n < NumPart; n++)
     {

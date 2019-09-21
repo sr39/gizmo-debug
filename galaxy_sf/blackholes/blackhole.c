@@ -35,7 +35,7 @@ extern struct blackhole_temp_particle_data *BlackholeTempInfo;
 void blackhole_accretion(void)
 {
     if(All.TimeStep == 0.) return; /* no evolution */
-    PRINT_STATUS("Start black-hole operations...");
+    PRINT_STATUS("Black-hole operations begin...");
     //     long i; for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* zero out accretion */ //  This zero-out loop is effectively performed in density.c now, only on gas particles that are actually going to be looked at this timestep, to reduce overhead when only a few particles are active
     blackhole_start();              /* allocates and cleans BlackholeTempInfo struct */
     
@@ -68,6 +68,7 @@ void blackhole_accretion(void)
      ----------------------------------------------------------------------*/
     blackhole_final_operations(); /* final operations on the BH with tabulated quantities (not a neighbor loop) */
     blackhole_end();            /* frees BlackholeTempInfo; cleans up */
+    PRINT_STATUS(" ..closing black-hole operations");
 //    for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;P[i].SwallowEnergy = MAX_REAL_NUMBER;} /* re-zero accretion */
 }
 
