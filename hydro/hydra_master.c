@@ -395,9 +395,6 @@ struct OUTPUT_STRUCT_NAME
 /* --------------------------------------------------------------------------------- */
 /* this subroutine actually loads the particle data into the structure to share between nodes */
 /* --------------------------------------------------------------------------------- */
-static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i);
-static inline void out2particle_hydra(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration);
-
 static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i)
 {
     int k;
