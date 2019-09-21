@@ -53,7 +53,7 @@ struct INPUT_STRUCT_NAME {
 }
 *DATAIN_NAME, *DATAGET_NAME;
 
-static inline void particle2in_DiffFilter(struct INPUT_STRUCT_NAME *in, int i) {
+static inline void particle2in_DiffFilter(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration) {
     int k; for(k = 0; k < 3; k++) {in->Pos[k] = P[i].Pos[k]; in->VelPred[k] = SphP[i].VelPred[k];}
     in->Density = SphP[i].Density;
     in->Hsml = PPP[i].Hsml;
@@ -120,7 +120,7 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
     memset(&kernel, 0, sizeof(struct kernel_DiffFilter));
     
     if (mode == 0) {
-        particle2in_DiffFilter(&local, target);
+        particle2in_DiffFilter(&local, target, loop_iteration);
     }
     else {
         local = DATAGET_NAME[target];

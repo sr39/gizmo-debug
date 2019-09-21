@@ -44,7 +44,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 
     if(mode == 0)
     {
-        particle2in_hydra(&local, target); // this setup allows for all the fields we need to define (don't hard-code here)
+        particle2in_hydra(&local, target, loop_iteration); // this setup allows for all the fields we need to define (don't hard-code here)
     }
     else
     {

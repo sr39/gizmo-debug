@@ -63,7 +63,7 @@ be copy-pasted and can be generically optimized in a single place */
         for(j = 0; j < Nexport; j++) /* prepare particle data for export [fill in the structures to be passed] */
         {
             place = DataIndexTable[j].Index;
-            INPUTFUNCTION_NAME(&DATAIN_NAME[j], place);
+            INPUTFUNCTION_NAME(&DATAIN_NAME[j], place, loop_iteration);
             memcpy(DATAIN_NAME[j].NodeList,DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
         }
 

@@ -228,7 +228,7 @@ struct INPUT_STRUCT_NAME
 *DATAIN_NAME, *DATAGET_NAME; /* dont mess with these names, they get filled-in by your definitions automatically */
 
 /* this subroutine assigns the values to the variables that need to be sent -from- the 'searching' particle */
-static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i)
+static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {   /* "i" is the particle from which data will be assigned, to structure "in" */
     int k; for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k];} /* good example - always needed */
     in->Hsml = PPP[i].Hsml; /* also always needed for search (can change the radius "PPP[i].Hsml" but in->Hsml must be defined */
@@ -256,7 +256,7 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 int grain_backrx_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
     int startnode, numngb_inbox, listindex = 0, j, n; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* define variables and zero memory and import data for local target*/
-    if(mode == 0) {INPUTFUNCTION_NAME(&local, target);} else {local = DATAGET_NAME[target];} /* imports the data to the correct place and names */
+    if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];} /* imports the data to the correct place and names */
     
     if(local.Hsml <= 0) {return 0;} /* don't bother doing a loop if this isnt going to do anything */
     int kernel_shared_BITFLAG = 1; /* grains 'see' gas in this loop */
