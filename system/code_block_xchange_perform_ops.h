@@ -115,8 +115,8 @@ for(loop_iteration=0; loop_iteration<number_of_loop_iterations; loop_iteration++
                 {
                     if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0) /* get the particles */
                     {
-                        MPI_Sendrecv(&DATAIN_NAME[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct INPUT_STRUCT_NAME), MPI_BYTE, recvTask, TAG_NAME_A,
-                                     &DATAGET_NAME[Nimport], Recv_count[recvTask] * sizeof(struct INPUT_STRUCT_NAME), MPI_BYTE, recvTask, TAG_NAME_A,
+                        MPI_Sendrecv(&DATAIN_NAME[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct INPUT_STRUCT_NAME), MPI_BYTE, recvTask, TAG_MPI_GENERIC_COM_BUFFER_A,
+                                     &DATAGET_NAME[Nimport], Recv_count[recvTask] * sizeof(struct INPUT_STRUCT_NAME), MPI_BYTE, recvTask, TAG_MPI_GENERIC_COM_BUFFER_A,
                                      MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                         Nimport += Recv_count[recvTask];
                     }
@@ -149,8 +149,8 @@ for(loop_iteration=0; loop_iteration<number_of_loop_iterations; loop_iteration++
                 {
                     if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
                     {
-                        MPI_Sendrecv(&DATARESULT_NAME[Nimport], Recv_count[recvTask] * sizeof(struct OUTPUT_STRUCT_NAME), MPI_BYTE, recvTask, TAG_NAME_B,
-                                     &DATAOUT_NAME[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct OUTPUT_STRUCT_NAME), MPI_BYTE, recvTask, TAG_NAME_B,
+                        MPI_Sendrecv(&DATARESULT_NAME[Nimport], Recv_count[recvTask] * sizeof(struct OUTPUT_STRUCT_NAME), MPI_BYTE, recvTask, TAG_MPI_GENERIC_COM_BUFFER_B,
+                                     &DATAOUT_NAME[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct OUTPUT_STRUCT_NAME), MPI_BYTE, recvTask, TAG_MPI_GENERIC_COM_BUFFER_B,
                                      MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                         Nimport += Recv_count[recvTask];
                     }

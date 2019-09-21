@@ -861,7 +861,7 @@ void gravity_tree(void)
     {
         for(i = 0; i < NumPart; i++) {costtotal_new += P[i].GravCost[TakeLevel];}
         MPI_Reduce(&costtotal_new, &sum_costtotal_new, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-        PRINT_STASTUS("relative error in the total number of tree-gravity interactions = %g", (sum_costtotal - sum_costtotal_new) / sum_costtotal);
+        PRINT_STATUS("relative error in the total number of tree-gravity interactions = %g", (sum_costtotal - sum_costtotal_new) / sum_costtotal);
         /* can be non-zero if THREAD_SAFE_COSTS is not used (and due to round-off errors). */
     }
 #endif

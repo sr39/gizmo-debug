@@ -5,6 +5,7 @@
     up some definitions for the multi-threading, and pre-defines some of the
     subroutines which will be referenced. */
 
+/* initialize some thread information */
 #ifdef PTHREADS_NUM_THREADS
 #include <pthread.h>
 #endif
@@ -18,19 +19,17 @@ extern pthread_mutex_t mutex_partnodedrift;
 #define UNLOCK_NEXPORT
 #endif
 
-#define INPUT_STRUCT_NAME MASTER_FUNCTION_NAME##_data_in /* dummy name - must be unique */
-#define DATAIN_NAME MASTER_FUNCTION_NAME##_DataIn /* dummy name - must be unique */
-#define DATAGET_NAME MASTER_FUNCTION_NAME##_DataGet /* dummy name - must be unique */
-#define OUTPUT_STRUCT_NAME MASTER_FUNCTION_NAME##_data_out /* dummy name - must be unique */
-#define DATAOUT_NAME MASTER_FUNCTION_NAME##_DataOut /* dummy name - must be unique */
-#define DATARESULT_NAME MASTER_FUNCTION_NAME##_DataResult /* dummy name - must be unique */
-#define TAG_NAME_A MASTER_FUNCTION_NAME##_TAG_A /* dummy name - must be unique */
-#define TAG_NAME_B MASTER_FUNCTION_NAME##_TAG_B /* dummy name - must be unique */
-#define PRIMARY_SUBFUN_NAME MASTER_FUNCTION_NAME##_subfun_primary /* dummy name - must be unique */
-#define SECONDARY_SUBFUN_NAME MASTER_FUNCTION_NAME##_subfun_secondary /* dummy name - must be unique */
-#define DATA_EXCHANGE_FUNCTION MASTER_FUNCTION_NAME##_exchange_data /* dummy name - must be unique */
+/* initialize macro and variable names: these define structures/variables with names following the value of MASTER_FUNCTION_NAME with the '_data_in' and other terms appended -- this should be unique within the file defined! */
+#define INPUT_STRUCT_NAME   MACRO_NAME_CONCATENATE(MASTER_FUNCTION_NAME, _data_in_)
+#define DATAIN_NAME         MACRO_NAME_CONCATENATE(MASTER_FUNCTION_NAME, _DataIn_)
+#define DATAGET_NAME        MACRO_NAME_CONCATENATE(MASTER_FUNCTION_NAME, _DataGet_)
+#define OUTPUT_STRUCT_NAME  MACRO_NAME_CONCATENATE(MASTER_FUNCTION_NAME, _data_out_)
+#define DATAOUT_NAME        MACRO_NAME_CONCATENATE(MASTER_FUNCTION_NAME, _DataOut_)
+#define DATARESULT_NAME     MACRO_NAME_CONCATENATE(MASTER_FUNCTION_NAME, _DataResult_)
+#define PRIMARY_SUBFUN_NAME MACRO_NAME_CONCATENATE(MASTER_FUNCTION_NAME, _subfun_primary_)
+#define SECONDARY_SUBFUN_NAME MACRO_NAME_CONCATENATE(MASTER_FUNCTION_NAME, _subfun_secondary_)
 
+/* define generic forms of functions used below */
 static inline void *PRIMARY_SUBFUN_NAME(void *p, int loop_iteration);
 static inline void *SECONDARY_SUBFUN_NAME(void *p, int loop_iteration);
-void DATA_EXCHANGE_FUNCTION(void);
 
