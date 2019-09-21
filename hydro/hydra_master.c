@@ -8,19 +8,6 @@
 #include "../proto.h"
 #include "../kernel.h"
 #define NDEBUG
-#ifdef PTHREADS_NUM_THREADS
-#include <pthread.h>
-#endif
-
-#ifdef PTHREADS_NUM_THREADS
-extern pthread_mutex_t mutex_nexport;
-extern pthread_mutex_t mutex_partnodedrift;
-#define LOCK_NEXPORT     pthread_mutex_lock(&mutex_nexport);
-#define UNLOCK_NEXPORT   pthread_mutex_unlock(&mutex_nexport);
-#else
-#define LOCK_NEXPORT
-#define UNLOCK_NEXPORT
-#endif
 
 /*! \file hydra_master.c
  *  \brief This contains the "second hydro loop", where the hydro fluxes are computed.

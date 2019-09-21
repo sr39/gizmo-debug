@@ -7,19 +7,6 @@
 #include "../allvars.h"
 #include "../proto.h"
 #include "../kernel.h"
-#ifdef PTHREADS_NUM_THREADS
-#include <pthread.h>
-#endif
-#ifdef PTHREADS_NUM_THREADS
-extern pthread_mutex_t mutex_nexport;
-extern pthread_mutex_t mutex_partnodedrift;
-#define LOCK_NEXPORT     pthread_mutex_lock(&mutex_nexport);
-#define UNLOCK_NEXPORT   pthread_mutex_unlock(&mutex_nexport);
-#else
-#define LOCK_NEXPORT
-#define UNLOCK_NEXPORT
-#endif
-
 
 
 /* Routines for pure thermal/scalar feedback/enrichment models: these are intended to represent
@@ -50,8 +37,6 @@ void determine_where_addthermalFB_events_occur(void)
 }
 
 struct kernel_addthermalFB {double dp[3], r, wk, dwk, hinv, hinv3, hinv4;};
-
-
 
 
 #define MASTER_FUNCTION_NAME addthermalFB_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int MASTER_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
