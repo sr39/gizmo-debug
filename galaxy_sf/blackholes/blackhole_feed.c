@@ -395,7 +395,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                 if((vrel < BH_CSND_FRAC_BH_MERGE * vesc) && (bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1))
                                 {
 #ifndef IO_REDUCED_MODE
-                                    printf("MARKING_BH_MERGER: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) id);
+                                    printf(" ..BH-BH Merger: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) id);
 #endif
                                     if((P[j].SwallowID == 0) && (BPP(j).BH_Mass < bh_mass)) {P[j].SwallowID = id;} // most massive BH swallows the other - simplifies analysis
                                 }
@@ -403,7 +403,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                 {
 #ifndef IO_REDUCED_MODE
 #ifdef BH_OUTPUT_MOREINFO           // DAA: BH merger info will be saved in a separate output file
-                                    printf("ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n", ThisTask, All.Time, id, P[j].ID, vrel, vesc);
+                                    printf(" ..ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n", ThisTask, All.Time, id, P[j].ID, vrel, vesc);
 #else
                                     fprintf(FdBlackHolesDetails, "ThisTask=%d, time=%g: id=%u would like to swallow %u, but vrel=%g vesc=%g\n", ThisTask, All.Time, id, P[j].ID, vrel, vesc);
 #endif
@@ -452,7 +452,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                                         if(w < p)
                                         {
 #ifndef IO_REDUCED_MODE
-                                            printf("MARKING_BH_FOOD: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) id);
+                                            printf(" ..BH-Food Marked: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) id);
 #endif
                                             if(P[j].SwallowID < id) P[j].SwallowID = id;
                                         }
@@ -484,7 +484,7 @@ int blackhole_feed_evaluate(int target, int mode, int *nexport, int *nSend_local
                             if(w < p)
                             {
 #ifndef IO_REDUCED_MODE
-                                printf("MARKING_BH_FOOD: j %d w %g p %g TO_BE_SWALLOWED \n",j,w,p);
+                                printf(" ..BH-Food Marked: j %d w %g p %g TO_BE_SWALLOWED \n",j,w,p);
 #endif
                                 if(P[j].SwallowID < id) {P[j].SwallowID = id; mass_markedswallow += P[j].Mass*f_accreted;}
                             } // if(w < p)

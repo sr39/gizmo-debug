@@ -465,7 +465,7 @@ void pm_init_nonperiodic_allocate(void)
 #endif
 
   if(ThisTask == 0)
-    printf("Using %g MByte for non-periodic FFT computation. (presently allocated %g MB)\n",
+    printf(" ..using %g MByte for non-periodic FFT computation. (presently allocated %g MB)\n",
 	   bytes_tot / (1024.0 * 1024.0), AllocatedBytes / (1024.0 * 1024.0));
 
   workspace = forcegrid;
