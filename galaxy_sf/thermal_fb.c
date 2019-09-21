@@ -58,11 +58,11 @@ struct INPUT_STRUCT_NAME
 *DATAIN_NAME, *DATAGET_NAME;
 
 /* define properties to be injected. these must be scalar-only -- the simple routine below will not conserve vector inputs/ejecta (e.g. momentum) */
-void particle2in_addthermalFB(struct INPUT_STRUCT_NAME *in, int i)
+void particle2in_addthermalFB(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
     if((P[i].SNe_ThisTimeStep<=0)||(P[i].DensAroundStar<=0)) {in->Msne=0; return;} // trap for no sne
     int k; in->Hsml=PPP[i].Hsml; in->wt_sum=P[i].DensAroundStar; for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k];} // simple kernel-weighted deposition
-    struct addFBdata_in local; particle2in_addFB_fromstars(&local,i,0); // get feedback properties from generic routine //
+    struct addFB_evaluate_data_in_ local; particle2in_addFB_fromstars(&local,i,0); // get feedback properties from generic routine //
     in->Msne = local.Msne; in->Esne = 0.5 * local.Msne * local.SNe_v_ejecta*local.SNe_v_ejecta; // assign mass and energy to be used below
 #ifdef METALS
     for(k=0;k<NUM_METAL_SPECIES;k++) {in->yields[k]=local.yields[k];} // assign yields //
@@ -106,7 +106,7 @@ int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnode
     kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1);
     
     /* Load the data for the particle injecting feedback */
-    if(mode == 0) {particle2in_addthermalFB(&local, target);} else {local = DATAGET_NAME[target];}
+    if(mode == 0) {particle2in_addthermalFB(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
     if(local.Msne<=0) return 0; // no SNe for the master particle! nothing to do here //
     if(local.Hsml<=0) return 0; // zero-extent kernel, no particles //
     h2 = local.Hsml*local.Hsml;

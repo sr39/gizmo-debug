@@ -482,7 +482,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
 double return_probability_of_this_forming_bh_from_seed_model(int i);
 
 // this structure needs to be defined here, because routines for feedback event rates, etc, are shared among files //
-struct addFBdata_in
+struct addFB_evaluate_data_in_
 {
     MyDouble Pos[3], Vel[3], Msne, unit_mom_SNe;
     MyFloat Hsml, V_i, SNe_v_ejecta;
@@ -494,17 +494,17 @@ struct addFBdata_in
 #endif
     int NodeList[NODELISTLENGTH];
 }
-*AddFBDataIn, *AddFBDataGet;
+*addFB_evaluate_DataIn_, *addFB_evaluate_DataGet_;
 
-void particle2in_addFB_fromstars(struct addFBdata_in *in, int i, int fb_loop_iteration);
+void particle2in_addFB_fromstars(struct addFB_evaluate_data_in_ *in, int i, int fb_loop_iteration);
 double mechanical_fb_calculate_eventrates(int i, double dt);
 #if defined(GALSF_FB_MECHANICAL) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
 double mechanical_fb_calculate_eventrates_SNe(int i, double dt);
 void mechanical_fb_calculate_eventrates_Winds(int i, double dt);
 void mechanical_fb_calculate_eventrates_Rprocess(int i, double dt);
-void particle2in_addFB_SNe(struct addFBdata_in *in, int i);
-void particle2in_addFB_winds(struct addFBdata_in *in, int i);
-void particle2in_addFB_Rprocess(struct addFBdata_in *in, int i);
+void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i);
+void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i);
+void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i);
 #endif
 #endif
 
@@ -536,10 +536,7 @@ void selfshield_local_incident_uv_flux(void);
 
 #ifdef GALSF_FB_MECHANICAL
 void determine_where_SNe_occur(void);
-void mechanical_fb_calc(int feedback_type);
-int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int feedback_type);
-void *addFB_evaluate_primary(void *p, int feedback_type);
-void *addFB_evaluate_secondary(void *p, int feedback_type);
+void mechanical_fb_calc(int fb_loop_iteration);
 #endif
 
 #ifdef GALSF_FB_THERMAL

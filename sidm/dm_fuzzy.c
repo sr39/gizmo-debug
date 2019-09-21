@@ -306,7 +306,7 @@ struct INPUT_STRUCT_NAME
 *DATAIN_NAME, *DATAGET_NAME;
 
 /* this subroutine assigns the values to the variables that need to be sent -from- the 'searching' particle */
-static inline void particle2in_DMGrad(struct INPUT_STRUCT_NAME *in, int i)
+static inline void particle2in_DMGrad(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
     int k; for(k=0;k<3;k++) {in->Pos[k] = P[i].Pos[k];}
     in->AGS_Hsml = PPP[i].AGS_Hsml;
@@ -388,7 +388,7 @@ int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
     /* zero memory and import data for local target */
     memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME));
     memset(&kernel, 0, sizeof(struct kernel_DMGrad));
-    if(mode == 0) {particle2in_DMGrad(&local, target);} else {local = DATAGET_NAME[target];}
+    if(mode == 0) {particle2in_DMGrad(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
     /* check if we should bother doing a neighbor loop */
     if(local.AGS_Hsml <= 0) return 0;
     if(local.GQuant.AGS_Density <= 0) return 0;
