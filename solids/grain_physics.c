@@ -300,9 +300,7 @@ int grain_backrx_evaluate(int target, int mode, int *exportflag, int *exportnode
 void grain_backrx_evaluate(void)
 {
      //grain_backrx_initial_operations_preloop(); /* do initial pre-processing operations as needed before main loop [nothing needed here] */
-    
-#include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
-    
+    #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
     //grain_backrx_final_operations_and_cleanup(); /* do final operations on results [nothing needed here] */
     CPU_Step[CPU_DRAGFORCE] += timeall; /* collect timing information [here lumping it all together] */
 }
