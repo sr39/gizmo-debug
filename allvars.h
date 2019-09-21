@@ -1359,13 +1359,13 @@ z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
 /*  Utility functions used for printing status, warning, endruns */
 /*****************************************************************/
 
-#define terminate(x) {char termbuf[2000]; sprintf(termbuf, "TERMINATE issued on task=%d, function '%s()', file '%s', line %d: '%s'\n", ThisTask, __FUNCTION__, __FILE__, __LINE__, x); fflush(stout); printf("%s", termbuf); fflush(stdout); MPI_Abort(MPI_COMM_WORLD, 1); exit(0);}
-#define endrun(x) {if(x==0) {MPI_Finalize(); exit(0);} else {char termbuf[2000]; sprintf(termbuf, "ENDRUN issued on task=%d, function '%s()', file '%s', line %d: error level %d\n", ThisTask, __FUNCTION__, __FILE__, __LINE__, x); fflush(stout); printf("%s", termbuf); fflush(stdout); MPI_Abort(MPI_COMM_WORLD, x); exit(0);}}
-#define PRINT_WARNING(...) {char termbuf1[1000], termbuf2[1000]; sprintf(termbuf1, "WARNING issued on task=%d, function %s(), file %s, line %d", ThisTask, __FUNCTION__, __FILE__, __LINE__); sprintf(termbuf2, __VA_ARGS__); fflush(stout); printf("%s: %s\n", termbuf1, termbuf2); fflush(stdout);}
+#define terminate(x) {char termbuf[2000]; sprintf(termbuf, "TERMINATE issued on task=%d, function '%s()', file '%s', line %d: '%s'\n", ThisTask, __FUNCTION__, __FILE__, __LINE__, x); fflush(stdout); printf("%s", termbuf); fflush(stdout); MPI_Abort(MPI_COMM_WORLD, 1); exit(0);}
+#define endrun(x) {if(x==0) {MPI_Finalize(); exit(0);} else {char termbuf[2000]; sprintf(termbuf, "ENDRUN issued on task=%d, function '%s()', file '%s', line %d: error level %d\n", ThisTask, __FUNCTION__, __FILE__, __LINE__, x); fflush(stdout); printf("%s", termbuf); fflush(stdout); MPI_Abort(MPI_COMM_WORLD, x); exit(0);}}
+#define PRINT_WARNING(...) {char termbuf1[1000], termbuf2[1000]; sprintf(termbuf1, "WARNING issued on task=%d, function %s(), file %s, line %d", ThisTask, __FUNCTION__, __FILE__, __LINE__); sprintf(termbuf2, __VA_ARGS__); fflush(stdout); printf("%s: %s\n", termbuf1, termbuf2); fflush(stdout);}
 #ifdef IO_REDUCED_MODE
-#define PRINT_STATUS(...) {if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {if(ThisTask==0) {fflush(stout); printf( __VA_ARGS__ ); printf("\n"); fflush(stdout);}}}
+#define PRINT_STATUS(...) {if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {if(ThisTask==0) {fflush(stdout); printf( __VA_ARGS__ ); printf("\n"); fflush(stdout);}}}
 #else
-#define PRINT_STATUS(...) {if(ThisTask==0) {fflush(stout); printf( __VA_ARGS__ ); printf("\n"); fflush(stdout);}}
+#define PRINT_STATUS(...) {if(ThisTask==0) {fflush(stdout); printf( __VA_ARGS__ ); printf("\n"); fflush(stdout);}}
 #endif
 
 #define MACRO_NAME_CONCATENATE(A, B) MACRO_NAME_CONCATENATE_(A, B)
