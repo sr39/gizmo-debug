@@ -3822,7 +3822,7 @@ void force_treeallocate(int maxnodes, int maxpart)
         first_flag = 1;
         if(ThisTask == 0)
             printf
-            ("\nAllocated %g MByte for BH-tree, and %g Mbyte for top-leaves.  (presently allocted %g MB)\n\n",
+            ("Allocated %g MByte for tree, and %g Mbyte for top-leaves.  (presently allocted %g MB)\n",
              allbytes / (1024.0 * 1024.0), allbytes_topleaves / (1024.0 * 1024.0),
              AllocatedBytes / (1024.0 * 1024.0));
         for(i = 0; i < NTAB; i++)
@@ -3906,7 +3906,7 @@ void ewald_init(void)
     char buf[200];
     FILE *fd;
     
-    if(ThisTask == 0) {printf("initialize Ewald correction...\n");}
+    if(ThisTask == 0) {printf("Initializing Ewald correction...\n");}
     
 #ifdef DOUBLEPRECISION
     sprintf(buf, "ewald_spc_table_%d_dbl.dat", EN);
@@ -3992,7 +3992,7 @@ void ewald_init(void)
                 fcorrz[i][j][k] /= All.BoxSize * All.BoxSize;
             }
     
-    if(ThisTask == 0) {printf("initialization of periodic boundaries finished.\n");}
+    if(ThisTask == 0) {printf(" ..initialization of periodic boundaries finished.\n");}
 #endif // #ifndef SELFGRAVITY_OFF
 }
 

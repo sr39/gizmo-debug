@@ -442,7 +442,7 @@ void force_update_hmax(void)
 	}
     }
 
-  PRINT_STATUS("Hmax exchange: %d topleaves out of %d", totDomainNumChanged, NTopleaves);
+  PRINT_STATUS(" ..Hmax exchange: %d topleaves out of %d", totDomainNumChanged, NTopleaves);
   domainHmax_all = (MyFloat *) mymalloc("domainHmax_all", totDomainNumChanged * OffsetSIZE * sizeof(MyFloat));
   domainList_all = (int *) mymalloc("domainList_all", totDomainNumChanged * sizeof(int));
 

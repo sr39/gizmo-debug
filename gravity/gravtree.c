@@ -90,7 +90,7 @@ void gravity_tree(void)
 #endif    
     if(TreeReconstructFlag)
     {
-        PRINT_STATUS("Tree construction.  (presently allocated=%g MB)", AllocatedBytes / (1024.0 * 1024.0));
+        PRINT_STATUS("Tree construction initiated (presently allocated=%g MB)", AllocatedBytes / (1024.0 * 1024.0));
         CPU_Step[CPU_MISC] += measure_time();
 
         move_particles(All.Ti_Current);
@@ -117,7 +117,7 @@ void gravity_tree(void)
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
     
-    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {if(ThisTask == 0) printf("All.BunchSize=%d\n", All.BunchSize);}
+    if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {if(ThisTask == 0) printf(" ..All.BunchSize=%d\n", All.BunchSize);}
     
     Ewaldcount = 0;
     Costtotal = 0;

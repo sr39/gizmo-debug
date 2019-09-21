@@ -67,7 +67,7 @@ HG_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null)
 HG_REPO := $(shell git config --get remote.origin.url)
 HG_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null)
 BUILDINFO = "Build on $(HOSTNAME) by $(USER) from $(HG_BRANCH):$(HG_COMMIT) at $(HG_REPO)"
-#OPT += -DBUILDINFO='$(BUILDINFO)'
+OPT += -DBUILDINFO='$(BUILDINFO)'
 
 ifeq (FIRE_PHYSICS_DEFAULTS,$(findstring FIRE_PHYSICS_DEFAULTS,$(CONFIGVARS)))  # using 'fire default' instead of all the above
     CONFIGVARS += COOLING COOL_LOW_TEMPERATURES COOL_METAL_LINES_BY_SPECIES

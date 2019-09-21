@@ -1424,7 +1424,7 @@ void pmpotential_periodic(void)
   myfree(localfield_globalindex);
 
   pm_init_periodic_free();
-  PRINT_STATUS("done PM-Potential");
+  PRINT_STATUS(" ..done PM-Potential");
 }
 
 
@@ -2462,7 +2462,7 @@ void pmtidaltensor_periodic_diff(void)
 #endif
 
   pm_init_periodic_free();
-  PRINT_STATUS("done PM-TIDAL");
+  PRINT_STATUS(" ..done PM-TIDAL");
 }
 
 
@@ -2955,7 +2955,7 @@ void pmtidaltensor_periodic_fourier(int component)
 
   pm_init_periodic_free();
 
-  PRINT_STATUS("done PM-Tidaltensor (component=%d).", component);
+  PRINT_STATUS(" ..done PM-Tidaltensor (component=%d).", component);
 }
 
 #endif /*COMPUTE_TIDAL_TENSOR_IN_GRAVTREE*/

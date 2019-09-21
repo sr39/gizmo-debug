@@ -28,7 +28,7 @@ static int *Id;
 
 void peano_hilbert_order(void)
 {
-  int i; PRINT_STATUS("begin Peano-Hilbert order...");
+  int i; PRINT_STATUS("Begin Peano-Hilbert order...");
     
   if(N_gas)
     {
@@ -89,7 +89,7 @@ void peano_hilbert_order(void)
       myfree(mp);
     }
 
-    PRINT_STATUS("Peano-Hilbert done");
+    PRINT_STATUS(" ..Peano-Hilbert done");
 }
 
 

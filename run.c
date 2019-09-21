@@ -676,7 +676,7 @@ integertime find_next_outputtime(integertime ti_curr)
 	next = All.TimeBegin + ti_next * All.Timebase_interval;
 
       if(ThisTask == 0)
-	printf("\nSetting next time for snapshot file to Time_next= %g  (DumpFlag=%d)\n\n", next, DumpFlag);
+	printf("\nSetting next time for snapshot file to Time_next= %g  (DumpFlag=%d)\n", next, DumpFlag);
 
     }
 

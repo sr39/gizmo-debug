@@ -24,7 +24,7 @@ void radiation_pressure_winds_consolidated(void)
 #endif
     if(All.WindMomentumLoading<=0) return;
     Ngblist = (int *) mymalloc("Ngblist",NumPart * sizeof(int));
-    PRINT_STATUS("Beginning Local Radiation-Pressure Acceleration");
+    PRINT_STATUS("Local Radiation-Pressure acceleration calculation");
 
     unitmass_in_msun=(All.UnitMass_in_g/All.HubbleParam)/SOLAR_MASS; sigma_eff_0 = 0.955 * All.UnitMass_in_g*All.HubbleParam/(All.UnitLength_in_cm*All.UnitLength_in_cm) / (All.cf_atime*All.cf_atime) * KAPPA_IR;
     double unitlength_in_kpc=All.UnitLength_in_cm/All.HubbleParam/3.086e21*All.cf_atime;
@@ -197,6 +197,7 @@ void radiation_pressure_winds_consolidated(void)
         }
         if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {fflush(FdMomWinds);}
     } // if(ThisTask==0)
+    PRINT_STATUS(" .. completed local Radiation-Pressure acceleration");
 } // end routine :: void radiation_pressure_winds_consolidated(void)
 
 #endif /* closes defined(GALSF_FB_FIRE_RT_LOCALRP)  */
