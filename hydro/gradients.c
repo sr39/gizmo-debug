@@ -58,6 +58,9 @@ extern pthread_mutex_t mutex_partnodedrift;
 
 #define NV_MYSIGN(x) (( x > 0 ) - ( x < 0 ))
 
+void *GasGrad_evaluate_primary(void *p, int gradient_iteration);
+void *GasGrad_evaluate_secondary(void *p, int gradient_iteration);
+
 /* define a common 'gradients' structure to hold
  everything we're going to take derivatives of */
 struct Quantities_for_Gradients

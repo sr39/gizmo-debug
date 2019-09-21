@@ -95,7 +95,7 @@ int addthermalFB_evaluate_active_check(int i)
 }
 
 
-int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist)
+int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)
 {
     int startnode, numngb_inbox, listindex = 0, j, k, n;
     double u,r2,h2,kernel_zero,wk;
@@ -196,7 +196,9 @@ int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnode
 void thermal_fb_calc(void)
 {
     PRINT_STATUS(" ..depositing thermal feedback to gas\n");
+    #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
     #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
+    #include "../system/code_block_xchange_perform_ops_demalloc.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
 }
 #include "../system/code_block_xchange_finalize.h" /* de-define the relevant variables and macros to avoid compilation errors and memory leaks */
 

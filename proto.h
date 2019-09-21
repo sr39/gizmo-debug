@@ -388,8 +388,6 @@ int find_files(char *fname);
 int metals_compare_key(const void *a, const void *b);
 void enrichment_evaluate(int target, int mode);
 
-int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration);
-
 void pm_init_nonperiodic_allocate(void);
 
 void  pm_init_nonperiodic_free(void);
@@ -547,9 +545,6 @@ void *addFB_evaluate_secondary(void *p, int feedback_type);
 #ifdef GALSF_FB_THERMAL
 void determine_where_addthermalFB_events_occur(void);
 void thermal_fb_calc(void);
-int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *addthermalFB_evaluate_primary(void *p);
-void *addthermalFB_evaluate_secondary(void *p);
 #endif
 
 #ifdef COOL_METAL_LINES_BY_SPECIES
@@ -842,19 +837,14 @@ void init_sort_ID(MyIDType *data, int ndata);
 
 void hydro_gradient_calc(void);
 int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
-void *GasGrad_evaluate_primary(void *p, int gradient_iteration);
-void *GasGrad_evaluate_secondary(void *p, int gradient_iteration);
 void local_slopelimiter(double *grad, double valmax, double valmin, double alim, double h, double shoot_tol);
 
 #ifdef TURB_DIFF_DYNAMIC
+void dynamic_diff_vel_calc(void);
 void dynamic_diff_calc(void);
 int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int dynamic_iteration);
 void *DynamicDiff_evaluate_primary(void *p, int dynamic_iteration);
 void *DynamicDiff_evaluate_secondary(void *p, int dynamic_iteration);
-void diffusion_velocity_calc(void);
-int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
-void *DiffFilter_evaluate_primary(void *p);
-void *DiffFilter_evaluate_secondary(void *p);
 #endif
 
 #ifdef PARTICLE_EXCISION
@@ -892,9 +882,6 @@ double do_cbe_nvt_inversion_for_faces(int i);
 void do_dm_fuzzy_initialization(void);
 void do_dm_fuzzy_drift_kick(int pindex, double dt_entr, int mode);
 void DMGrad_gradient_calc(void);
-int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int gradient_iteration);
-void *DMGrad_evaluate_primary(void *p, int gradient_iteration);
-void *DMGrad_evaluate_secondary(void *p, int gradient_iteration);
 void do_dm_fuzzy_flux_computation(double HLLwt, double dt, double prev_a, double dv[3],
                                   double GradRho_L[3], double GradRho_R[3],
                                   double GradRho2_L[3][3], double GradRho2_R[3][3],

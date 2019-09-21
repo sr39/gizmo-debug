@@ -6,7 +6,7 @@
 static inline void *PRIMARY_SUBFUN_NAME(void *p, int loop_iteration)
 {
 #define CONDITION_FOR_EVALUATION CONDITIONFUNCTION_FOR_EVALUATION
-#define EVALUATION_CALL MASTER_FUNCTION_NAME(i,0,exportflag,exportnodecount,exportindex,ngblist,loop_iteration)
+#define EVALUATION_CALL MASTER_FUNCTION_NAME(i, 0, exportflag, exportnodecount, exportindex, ngblist, loop_iteration)
 #include "../system/code_block_primary_loop_evaluation.h"
 #undef CONDITION_FOR_EVALUATION
 #undef EVALUATION_CALL

@@ -107,7 +107,7 @@ void dynamic_diff_vel_calc_initial_operations_preloop(void)
  *  - D. Rennehan
  *
  */
-int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist) {
+int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration) {
     int startnode, numngb, listindex = 0;
     int j, k, v, k2, n, swap_to_j;
     double hinv, hinv3, hinv4, r2, u, hinv_j, hinv3_j, hinv4_j;
@@ -310,7 +310,9 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
 void dynamic_diff_vel_calc(void) {
     PRINT_STATUS("Start velocity smoothing computation...\n");
     dynamic_diff_vel_calc_initial_operations_preloop(); /* any initial operations */
+    #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
     #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
+    #include "../system/code_block_xchange_perform_ops_demalloc.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
     CPU_Step[CPU_IMPROVDIFFCOMPUTE] += timecomp; CPU_Step[CPU_IMPROVDIFFWAIT] += timewait; CPU_Step[CPU_IMPROVDIFFCOMM] += timecomm; CPU_Step[CPU_IMPROVDIFFMISC] += timeall - (timecomp + timewait + timecomm);
     PRINT_STATUS(" ..velocity smoothing done.\n");
 }
