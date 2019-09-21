@@ -30,6 +30,8 @@ extern pthread_mutex_t mutex_partnodedrift;
 #define SECONDARY_SUBFUN_NAME MACRO_NAME_CONCATENATE(MASTER_FUNCTION_NAME, _subfun_secondary_)
 
 /* define generic forms of functions used below */
+static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i);
+static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration);
 static inline void *PRIMARY_SUBFUN_NAME(void *p, int loop_iteration);
 static inline void *SECONDARY_SUBFUN_NAME(void *p, int loop_iteration);
 

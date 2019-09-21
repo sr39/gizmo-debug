@@ -228,7 +228,6 @@ struct INPUT_STRUCT_NAME
 *DATAIN_NAME, *DATAGET_NAME; /* dont mess with these names, they get filled-in by your definitions automatically */
 
 /* this subroutine assigns the values to the variables that need to be sent -from- the 'searching' particle */
-static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i);
 static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i)
 {   /* "i" is the particle from which data will be assigned, to structure "in" */
     int k; for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k];} /* good example - always needed */
@@ -246,7 +245,6 @@ struct OUTPUT_STRUCT_NAME
 *DATARESULT_NAME, *DATAOUT_NAME; /* dont mess with these names, they get filled-in by your definitions automatically */
 
 /* this subroutine assigns the values to the variables that need to be sent -back to- the 'searching' particle */
-static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration);
 static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {  /* "i" is the particle to which data from structure "out" will be assigned. mode=0 for local communication,
     =1 for data sent back from other processors. you must account for this. */
@@ -299,6 +297,7 @@ int grain_backrx_evaluate(int target, int mode, int *exportflag, int *exportnode
 
 void grain_backrx_evaluate(void)
 {
+    PRINT_STATUS(" ..assigning grain back-reaction to gas\n");
      //grain_backrx_initial_operations_preloop(); /* do initial pre-processing operations as needed before main loop [nothing needed here] */
     #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
     //grain_backrx_final_operations_and_cleanup(); /* do final operations on results [nothing needed here] */
