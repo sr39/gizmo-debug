@@ -387,7 +387,7 @@ void pm_init_nonperiodic(void)
 #endif
 
 #ifndef USE_FFTW3
-  if(ThisTask == 0) printf("\nAllocated %g MByte for FFT kernel(s).\n\n", bytes_tot / (1024.0 * 1024.0));
+  if(ThisTask == 0) printf("\nAllocated %g MByte for FFT kernel(s).\n", bytes_tot / (1024.0 * 1024.0));
 #else
   
   if(!(rhogrid = (fftw_real *) mymalloc("rhogrid", bytes = maxfftsize * sizeof(d_fftw_real))))

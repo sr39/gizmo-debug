@@ -104,7 +104,7 @@ void report_detailed_memory_usage_of_largest_task(size_t * OldHighMarkBytes, con
       if(ThisTask == task)
 	{
 	  printf
-	    ("In '%s', %s()/%s/%d: Largest Allocation = %g Mbyte (on task=%d), Smallest = %g Mbyte, Average = %g Mbyte\n",
+	    ("\nIn '%s', %s()/%s/%d: Largest Allocation = %g Mbyte (on task=%d), Smallest = %g Mbyte, Average = %g Mbyte\n",
 	     label, func, file, line, maxsize / (1024.0 * 1024.0), task, minsize / (1024.0 * 1024.0),
 	     avgsize / (1024.0 * 1024.0));
 	  dump_memory_table();

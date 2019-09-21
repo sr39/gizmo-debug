@@ -1448,7 +1448,7 @@ void ReadIonizeParams(char *fname)
         else
             break;
     
-    if(ThisTask == 0) printf(" ..read ionization table with %d entries in file `%s'.\n\n", nheattab, fname);
+    if(ThisTask == 0) printf(" ..read ionization table with %d entries in file `%s'.\n", nheattab, fname);
 }
 
 

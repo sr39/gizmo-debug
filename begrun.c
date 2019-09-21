@@ -61,7 +61,7 @@ void begrun(void)
       }
 #endif
 
-      printf("Size of particle structure       %d  [bytes]\n", (int) sizeof(struct particle_data));
+      printf("\nSize of particle structure       %d  [bytes]\n", (int) sizeof(struct particle_data));
       printf("Size of hydro-cell structure   %d  [bytes]\n\n", (int) sizeof(struct sph_particle_data));
 
     }
@@ -2392,7 +2392,7 @@ void readjust_timebase(double TimeMax_old, double TimeMax_new)
   if(ThisTask == 0)
     {
       printf("\nAll.TimeMax has been changed in the parameterfile\n");
-      printf("Need to adjust integer timeline\n\n\n");
+      printf("Need to adjust integer timeline\n\n");
     }
 
   if(TimeMax_new < TimeMax_old)
